@@ -1,0 +1,292 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package compiler
+
+import (
+	"github.com/hajimehoshi/ekuma/internal/ast"
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
+)
+
+// closure compiles the function node and emits the creation of its closure into dst.
+// name is the value of the name property.
+func (f *fn) closure(node *ast.Function, dst int32, name string) {
+	p := f.c.compileFunction(f, node, name)
+	f.f.Protos = append(f.f.Protos, p)
+	f.emit(bytecode.OpClosure, dst, int32(len(f.f.Protos)-1), 0)
+}
+
+// forwardsArguments reports whether the function node uses its arguments only by passing
+// all of them on, as in g.apply(this, arguments) and g(...arguments), and never assigns
+// to a parameter, so that the arguments can be forwarded without creating an object.
+func forwardsArguments(node *ast.Function) bool {
+	params := map[string]bool{}
+	for _, p := range node.Params {
+		patternNames(p, func(id *ast.Identifier) {
+			params[id.Name] = true
+		})
+	}
+	ok := true
+	assignedNames(node, false, func(name string) {
+		if params[name] || name == "arguments" {
+			ok = false
+		}
+	})
+	if !ok {
+		return false
+	}
+	for _, d := range node.Scope.Decls {
+		if d.Name == "arguments" {
+			return false
+		}
+	}
+
+	// allowed holds the references to arguments that are in a forwarding position.
+	allowed := map[*ast.Identifier]bool{}
+	depth := 0
+	var visit func(ast.Node) bool
+	visit = func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.Function:
+			if n == node {
+				return true
+			}
+			if !n.Arrow {
+				return false
+			}
+			// The arguments of an arrow function are those of the enclosing function,
+			// but forwarding uses the arguments of the running function.
+			depth++
+			for _, p := range n.Params {
+				walk(p, visit)
+			}
+			for _, s := range n.Body {
+				walk(s, visit)
+			}
+			walk(n.ExprBody, visit)
+			depth--
+			return false
+		case *ast.CallExpr:
+			if depth > 0 {
+				break
+			}
+			if m, isMember := n.Callee.(*ast.MemberExpr); isMember && !m.Computed && len(n.Args) == 2 {
+				if p, isID := m.Property.(*ast.Identifier); isID && p.Name == "apply" {
+					if id, isID := n.Args[1].(*ast.Identifier); isID && id.Name == "arguments" {
+						allowed[id] = true
+					}
+				}
+			}
+			if len(n.Args) == 1 {
+				if s, isSpread := n.Args[0].(*ast.SpreadElement); isSpread {
+					if id, isID := s.Arg.(*ast.Identifier); isID && id.Name == "arguments" {
+						allowed[id] = true
+					}
+				}
+			}
+		case *ast.Identifier:
+			if n.Name == "arguments" && !allowed[n] {
+				ok = false
+			}
+		}
+		return ok
+	}
+	walk(node, visit)
+	return ok
+}
+
+func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) *bytecode.Func {
+	f := c.newFn(parent, node, name)
+	b := f.f
+	b.Strict = node.Strict
+	b.IsArrow = node.Arrow
+	b.IsGenerator = node.Generator
+	b.IsAsync = node.Async
+	b.IsMethod = node.Method || node.Getter || node.Setter
+	b.IsClassConstructor = node.ClassConstructor
+	b.IsDerived = node.DerivedConstructor
+	b.IsConstructor = node.ClassConstructor ||
+		!(node.Arrow || node.Generator || node.Async || node.Method || node.Getter || node.Setter || node.FieldInit || node.StaticBlock)
+	b.Length = node.Length
+	b.Source = c.prog.Text(node)
+	f.line = -1
+	f.setLine(node)
+
+	f.mutated = map[string]bool{}
+	assignedNames(node, true, func(s string) {
+		f.mutated[s] = true
+	})
+	if node.HasDirectEval {
+		c.fail(node, "direct eval is not supported yet")
+	}
+
+	// The parameters are the first registers.
+	nparams := len(node.Params)
+	var rest *ast.RestElement
+	if nparams > 0 {
+		if r, ok := node.Params[nparams-1].(*ast.RestElement); ok {
+			rest = r
+			nparams--
+		}
+	}
+	b.NumParams = nparams
+	slots := f.newRegs(nparams)
+	for i := 0; i < nparams; i++ {
+		if id, ok := node.Params[i].(*ast.Identifier); ok {
+			// With duplicate names, the last parameter wins.
+			f.declareAt(id.Name, bindVar, slots+int32(i))
+		}
+	}
+
+	// The values that the engine provides. An arrow function uses those of the enclosing function.
+	if !node.Arrow {
+		if node.UsesThis || node.DerivedConstructor || node.ClassConstructor {
+			this := f.declare("this", bindPseudo)
+			switch {
+			case node.DerivedConstructor:
+				this.tdz = true
+				this.alwaysCheck = true
+				f.emit(bytecode.OpLoadTDZ, this.reg, 0, 0)
+			case node.Strict:
+				f.emit(bytecode.OpLoadThis, this.reg, 0, 0)
+			default:
+				f.emit(bytecode.OpLoadThisSloppy, this.reg, 0, 0)
+			}
+		}
+		if node.UsesNewTarget || node.UsesSuperCall || node.DerivedConstructor {
+			nt := f.declare("new.target", bindPseudo)
+			f.emit(bytecode.OpLoadNewTarget, nt.reg, 0, 0)
+		}
+		if node.UsesSuperProperty {
+			home := f.declare("%home", bindPseudo)
+			f.emit(bytecode.OpLoadHome, home.reg, 0, 0)
+		}
+		if node.UsesSuperCall || node.ClassConstructor {
+			callee := f.declare("%callee", bindPseudo)
+			f.emit(bytecode.OpLoadCallee, callee.reg, 0, 0)
+		}
+		if node.UsesArguments {
+			if _, shadowed := f.scope.vars["arguments"]; !shadowed {
+				if forwardsArguments(node) {
+					f.forwardsArgs = true
+				} else {
+					args := f.declare("arguments", bindVar)
+					mapped := int32(0)
+					if !node.Strict && node.SimpleParams {
+						mapped = 1
+					}
+					f.emit(bytecode.OpArguments, args.reg, mapped, 0)
+				}
+				b.NeedsExtra = true
+			}
+		}
+	}
+
+	// The variables and functions of the body.
+	funcs := map[string]*ast.Function{}
+	var funcOrder []string
+	var lexicals []*binding
+	for _, d := range node.Scope.Decls {
+		switch d.Kind {
+		case ast.DeclVar, ast.DeclAnnexBVar:
+			f.declare(d.Name, bindVar)
+		case ast.DeclFunction:
+			if _, ok := funcs[d.Name]; !ok {
+				funcOrder = append(funcOrder, d.Name)
+			}
+			funcs[d.Name] = d.Func
+			f.declare(d.Name, bindVar)
+		case ast.DeclLet, ast.DeclConst, ast.DeclClass:
+			kind := bindLet
+			switch d.Kind {
+			case ast.DeclConst:
+				kind = bindConst
+			case ast.DeclClass:
+				kind = bindClass
+			}
+			lb := f.declare(d.Name, kind)
+			lb.tdz = true
+			lexicals = append(lexicals, lb)
+		}
+	}
+	// Parameters that are patterns or have defaults bind after the registers above are
+	// reserved, because their code can contain closures that capture any of them.
+	for i := 0; i < nparams; i++ {
+		slot := slots + int32(i)
+		switch p := node.Params[i].(type) {
+		case *ast.Identifier:
+		case *ast.AssignPattern:
+			if id, ok := p.Target.(*ast.Identifier); ok {
+				f.declareAt(id.Name, bindVar, slot)
+				skip := f.emit(bytecode.OpJumpIfNotUndef, 0, slot, 0)
+				f.named(p.Default, slot, id.Name)
+				f.patch(skip)
+				break
+			}
+			f.declarePattern(p)
+			f.destructure(p, slot, patAssign)
+		default:
+			f.declarePattern(p)
+			f.destructure(p, slot, patAssign)
+		}
+	}
+	if rest != nil {
+		b.NeedsExtra = true
+		f.declarePattern(rest.Target)
+		t := f.newReg()
+		f.emit(bytecode.OpRestArgs, t, int32(nparams), 0)
+		f.destructure(rest.Target, t, patAssign)
+		f.free(t)
+	}
+	// A named function expression can refer to itself by its name.
+	if node.Name != nil && c.isExpression[node] {
+		if _, shadowed := f.scope.vars[node.Name.Name]; !shadowed {
+			self := f.declare(node.Name.Name, bindFuncName)
+			f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
+		}
+	}
+	b.NumClear = int(f.top)
+	for _, lb := range lexicals {
+		f.emit(bytecode.OpLoadTDZ, lb.reg, 0, 0)
+	}
+	for _, fname := range funcOrder {
+		fb, _ := f.lookupLocal(fname)
+		f.closure(funcs[fname], fb.reg, fname)
+	}
+	if node.ClassConstructor && !node.DerivedConstructor {
+		callee, _ := f.lookupLocal("%callee")
+		this, _ := f.lookupLocal("this")
+		f.emit(bytecode.OpInitFields, callee.reg, this.reg, 0)
+	}
+	if node.Generator {
+		f.emit(bytecode.OpInitialYield, 0, 0, 0)
+	}
+
+	if node.ExprBody != nil {
+		t := f.newReg()
+		if name, ok := c.fieldNames[node]; ok {
+			f.named(node.ExprBody, t, name)
+		} else {
+			f.expr(node.ExprBody, t)
+		}
+		f.emit(bytecode.OpReturn, t, 0, 0)
+	} else {
+		f.stmts(node.Body)
+		if node.DerivedConstructor {
+			t := f.newReg()
+			f.emit(bytecode.OpLoadUndef, t, 0, 0)
+			this, _ := f.lookupLocal("this")
+			f.emit(bytecode.OpReturnDerived, t, this.reg, 0)
+		} else {
+			f.emit(bytecode.OpReturnUndef, 0, 0, 0)
+		}
+	}
+	return b
+}
+
+// declarePattern creates the variables that the parameter pattern p binds.
+func (f *fn) declarePattern(p ast.Pattern) {
+	patternNames(p, func(id *ast.Identifier) {
+		f.declare(id.Name, bindVar)
+	})
+}

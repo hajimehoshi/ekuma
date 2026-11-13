@@ -1,0 +1,68 @@
+name: Test
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      EKUMA_TEST262: ${{ github.workspace }}/.test262
+    steps:
+      - name: Git
+        run: |
+          # The conformance tests depend on the line terminators of their sources.
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find the test262 commit
+        id: test262
+        run: |
+          commit=$(sed -n 's/^const test262Commit = "\([0-9a-f]\{40\}\)"$/\1/p' test262_test.go)
+          if [ -z "$commit" ]; then
+            echo "test262Commit was not found in test262_test.go"
+            exit 1
+          fi
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout test262
+        uses: actions/checkout@v4
+        with:
+          repository: tc39/test262
+          ref: ${{ steps.test262.outputs.commit }}
+          path: .test262
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gofmt
+        # gofmt gives the same result on every platform, so one of them is enough.
+        if: runner.os == 'Linux'
+        run: |
+          files=$(gofmt -l $(git ls-files '*.go'))
+          if [ -n "$files" ]; then
+            echo "These files are not formatted with gofmt:"
+            echo "$files"
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test -v -shuffle=on -timeout 30m ./...
