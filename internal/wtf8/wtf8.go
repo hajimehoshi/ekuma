@@ -246,7 +246,7 @@ func Concat(a, b string) string {
 // Compare compares a and b by their UTF-16 code units and returns -1, 0 or 1.
 func Compare(a, b string) int {
 	n := min(len(a), len(b))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x, y := a[i], b[i]
 		if x == y {
 			continue

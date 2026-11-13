@@ -1525,8 +1525,7 @@ func TestDeepNesting(t *testing.T) {
 		strings.Repeat("function f(a=", 100000),
 	} {
 		_, err := parse(src, script)
-		var perr *parser.Error
-		if !errors.As(err, &perr) {
+		if _, ok := errors.AsType[*parser.Error](err); !ok {
 			t.Errorf("parse(%.20q...): got error %v, want *parser.Error", src, err)
 		}
 	}
@@ -2470,8 +2469,7 @@ func TestParseFunction(t *testing.T) {
 			t.Errorf("ParseFunction(%q, %q, %d): got error %v, want success %t", tc.params, tc.body, tc.kind, err, tc.ok)
 		}
 		if err != nil {
-			var perr *parser.Error
-			if !errors.As(err, &perr) {
+			if _, ok := errors.AsType[*parser.Error](err); !ok {
 				t.Errorf("ParseFunction(%q, %q, %d): error type is %T, want *parser.Error", tc.params, tc.body, tc.kind, err)
 			}
 		}

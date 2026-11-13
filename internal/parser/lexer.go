@@ -500,7 +500,7 @@ func (p *parser) scanUnicodeEscape() (rune, bool) {
 		return 0, false
 	}
 	var r rune
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		v := hexValue(src[pos+i])
 		if v < 0 {
 			return 0, false

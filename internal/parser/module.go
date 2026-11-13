@@ -68,9 +68,9 @@ func (p *parser) parseImportAttributes() []ast.ImportAttribute {
 			p.unexpected()
 		}
 		a := ast.ImportAttribute{
-			Key: p.t.str,
+			Key:      p.t.str,
+			StartOff: p.t.start,
 		}
-		a.StartOff = p.t.start
 		for i := range attrs {
 			if attrs[i].Key == a.Key {
 				p.failTok("duplicate import attribute '" + a.Key + "'")

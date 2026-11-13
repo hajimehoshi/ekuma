@@ -4,6 +4,8 @@
 package compiler
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
@@ -144,8 +146,7 @@ func declMode(k ast.DeclKind) patMode {
 
 // findTarget returns the construct that a break or continue with the given label targets.
 func (f *fn) findTarget(n ast.Node, label *ast.Identifier, isContinue bool) *ctl {
-	for i := len(f.control) - 1; i >= 0; i-- {
-		c := f.control[i]
+	for _, c := range slices.Backward(f.control) {
 		if c.kind != ctlLoop {
 			continue
 		}
@@ -155,10 +156,8 @@ func (f *fn) findTarget(n ast.Node, label *ast.Identifier, isContinue bool) *ctl
 			}
 			continue
 		}
-		for _, l := range c.labels {
-			if l == label.Name {
-				return c
-			}
+		if slices.Contains(c.labels, label.Name) {
+			return c
 		}
 	}
 	f.c.fail(n, "no target for the jump")
@@ -168,8 +167,7 @@ func (f *fn) findTarget(n ast.Node, label *ast.Identifier, isContinue bool) *ctl
 // exit emits the jump out of the constructs above target on the control stack.
 // For exitReturn, target is nil and value is the register of the result.
 func (f *fn) exit(kind exitKind, target *ctl, value int32) {
-	for i := len(f.control) - 1; i >= 0; i-- {
-		c := f.control[i]
+	for _, c := range slices.Backward(f.control) {
 		if c == target {
 			break
 		}

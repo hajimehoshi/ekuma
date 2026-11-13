@@ -401,15 +401,13 @@ func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, er
 		}
 	}
 	prog = &ast.Program{
-		Span: ast.Span{
-			StartOff: 0,
-			EndOff:   int32(len(src)),
-		},
-		Source: src,
-		Module: module,
-		Strict: p.f.strict,
-		Body:   body,
-		Scope:  s.ast,
+		StartOff: 0,
+		EndOff:   int32(len(src)),
+		Source:   src,
+		Module:   module,
+		Strict:   p.f.strict,
+		Body:     body,
+		Scope:    s.ast,
 	}
 	p.popScope()
 	return prog, nil
@@ -464,19 +462,15 @@ func parseFunctionSource(src string, opts *Options) (prog *ast.Program, err erro
 		p.unexpected()
 	}
 	prog = &ast.Program{
-		Span: ast.Span{
-			StartOff: 0,
-			EndOff:   int32(len(src)),
-		},
-		Source: src,
-		Strict: p.f.strict,
+		StartOff: 0,
+		EndOff:   int32(len(src)),
+		Source:   src,
+		Strict:   p.f.strict,
 		Body: []ast.Stmt{
 			&ast.ExprStmt{
-				Span: ast.Span{
-					StartOff: start,
-					EndOff:   fn.End(),
-				},
-				Expr: fn,
+				StartOff: start,
+				EndOff:   fn.End(),
+				Expr:     fn,
 			},
 		},
 		Scope: s.ast,
