@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -251,13 +252,26 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestValueSize(t *testing.T) {
+	// A Value is as large as its number and its pointer alone.
+	type layout struct {
+		n float64
+		o *byte
+	}
+	got := reflect.TypeFor[ekuma.Value]().Size()
+	want := reflect.TypeFor[layout]().Size()
+	if got != want {
+		t.Errorf("got %d, want %d", got, want)
+	}
+}
+
 func TestZeroValue(t *testing.T) {
 	ctx := t.Context()
 	var zero ekuma.Value
 	if !zero.IsUndefined() {
 		t.Errorf("the zero Value is not undefined")
 	}
-	if zero != ekuma.Undefined {
+	if !zero.Equal(ekuma.Undefined) {
 		t.Errorf("the zero Value is not equal to Undefined")
 	}
 	vm := ekuma.New()

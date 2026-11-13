@@ -76,9 +76,11 @@ func (e *ValueError) Error() string {
 
 // Value is a JavaScript value. The zero value is undefined.
 //
-// Comparing values with == is not the JavaScript operator ===: two strings with the same
-// content can be different values. Equal compares the way === does.
+// Values cannot be compared with ==. Equal compares the way the JavaScript operator === does.
 type Value struct {
+	// _ makes Value uncomparable.
+	_ [0]func()
+
 	n float64
 
 	// o is nil for undefined, numberTag for the number n, and the engine's object for anything else.
@@ -154,7 +156,7 @@ func (v Value) IsUndefined() bool {
 
 // IsNull reports whether v is null.
 func (v Value) IsNull() bool {
-	return v == Null
+	return v.o == Null.o
 }
 
 // IsNaN reports whether v is the number NaN.
