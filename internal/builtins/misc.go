@@ -17,23 +17,18 @@ import (
 
 func initNumber(vm *engine.VM) {
 	proto := vm.NumberProto
-	proto.Class = engine.ClassNumber
-	proto.Ext = 0.0
 	ctor := constructor(vm, "Number", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := 0.0
 		if len(args) > 0 {
 			v := vm.ToNumeric(args[0])
-			if v.O != nil {
-				n, _ = new(big.Float).SetInt(v.O.BigInt()).Float64()
+			if v.IsNumber() {
+				n = v.Number()
 			} else {
-				n = v.N
+				n, _ = new(big.Float).SetInt(v.Object().BigInt()).Float64()
 			}
 		}
 		if nt := vm.NewTarget; nt != nil {
-			w := vm.NewObject(vm.ProtoFromConstructor(nt, vm.NumberProto))
-			w.Class = engine.ClassNumber
-			w.Ext = n
-			return engine.Value{O: w}
+			return engine.ObjectValue(vm.NewNumberObject(n, vm.GetPrototypeFromConstructor(nt, vm.NumberProto)))
 		}
 		return engine.Number(n)
 	})
@@ -46,39 +41,36 @@ func initNumber(vm *engine.VM) {
 	constant(vm, ctor, "NEGATIVE_INFINITY", engine.Number(math.Inf(-1)))
 	constant(vm, ctor, "NaN", engine.Number(math.NaN()))
 	isInteger := func(v engine.Value) bool {
-		return v.IsNumber() && v.N == math.Trunc(v.N) && !math.IsInf(v.N, 0)
+		return v.IsNumber() && v.Number() == math.Trunc(v.Number()) && !math.IsInf(v.Number(), 0)
 	}
 	method(vm, ctor, "isInteger", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(isInteger(arg(args, 0)))
 	})
 	method(vm, ctor, "isSafeInteger", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
-		return engine.Bool(isInteger(v) && math.Abs(v.N) <= numconv.MaxSafeInteger)
+		return engine.Bool(isInteger(v) && math.Abs(v.Number()) <= numconv.MaxSafeInteger)
 	})
 	method(vm, ctor, "isFinite", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
-		return engine.Bool(v.IsNumber() && v.N == v.N && !math.IsInf(v.N, 0))
+		return engine.Bool(v.IsNumber() && v.Number() == v.Number() && !math.IsInf(v.Number(), 0))
 	})
 	method(vm, ctor, "isNaN", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
-		return engine.Bool(v.IsNumber() && v.N != v.N)
+		return engine.Bool(v.IsNumber() && v.Number() != v.Number())
 	})
 	g := vm.Global
 	for _, name := range []string{"parseFloat", "parseInt"} {
-		if p, ok := g.Shape.Lookup(vm.Intern(name)); ok {
-			vm.Define(ctor, vm.Intern(name), g.Slots[p.Slot], engine.FlagsHidden)
+		if d, ok := vm.GetOwnProperty(g, engine.NamedKey(vm.Intern(name))); ok {
+			vm.Define(ctor, vm.Intern(name), d.Value, engine.FlagsHidden)
 		}
 	}
 
 	thisNumber := func(vm *engine.VM, this engine.Value, what string) float64 {
-		if this.IsNumber() {
-			return this.N
+		n, ok := engine.ThisNumberValue(this)
+		if !ok {
+			vm.ThrowTypeError("Number.prototype." + what + " requires that 'this' be a Number")
 		}
-		if this.IsObject() && this.O.Class == engine.ClassNumber {
-			return this.O.Ext.(float64)
-		}
-		vm.ThrowTypeError("Number.prototype." + what + " requires that 'this' be a Number")
-		return 0
+		return n
 	}
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(thisNumber(vm, this, "valueOf"))
@@ -87,7 +79,7 @@ func initNumber(vm *engine.VM) {
 		n := thisNumber(vm, this, "toString")
 		radix := 10.0
 		if r := arg(args, 0); !r.IsUndefined() {
-			radix = vm.ToInteger(r)
+			radix = vm.ToIntegerOrInfinity(r)
 		}
 		if radix < 2 || radix > 36 {
 			vm.ThrowRangeError("toString() radix must be between 2 and 36")
@@ -102,7 +94,7 @@ func initNumber(vm *engine.VM) {
 	})
 	method(vm, proto, "toFixed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toFixed")
-		d := vm.ToInteger(arg(args, 0))
+		d := vm.ToIntegerOrInfinity(arg(args, 0))
 		if d < 0 || d > 100 {
 			vm.ThrowRangeError("toFixed() digits argument must be between 0 and 100")
 		}
@@ -120,7 +112,7 @@ func initNumber(vm *engine.VM) {
 		if arg(args, 0).IsUndefined() {
 			return vm.NewString(numconv.NumberToString(n))
 		}
-		p := vm.ToInteger(args[0])
+		p := vm.ToIntegerOrInfinity(args[0])
 		if n != n || math.IsInf(n, 0) {
 			return vm.NewString(numconv.NumberToString(n))
 		}
@@ -139,7 +131,7 @@ func initNumber(vm *engine.VM) {
 	})
 	method(vm, proto, "toExponential", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toExponential")
-		d := vm.ToInteger(arg(args, 0))
+		d := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n != n || math.IsInf(n, 0) {
 			return vm.NewString(numconv.NumberToString(n))
 		}
@@ -154,27 +146,19 @@ func initNumber(vm *engine.VM) {
 	})
 
 	bproto := vm.BooleanProto
-	bproto.Class = engine.ClassBoolean
-	bproto.Ext = false
 	constructor(vm, "Boolean", 1, bproto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		b := engine.Truthy(arg(args, 0))
+		b := engine.ToBoolean(arg(args, 0))
 		if nt := vm.NewTarget; nt != nil {
-			w := vm.NewObject(vm.ProtoFromConstructor(nt, vm.BooleanProto))
-			w.Class = engine.ClassBoolean
-			w.Ext = b
-			return engine.Value{O: w}
+			return engine.ObjectValue(vm.NewBooleanObject(b, vm.GetPrototypeFromConstructor(nt, vm.BooleanProto)))
 		}
 		return engine.Bool(b)
 	})
 	thisBool := func(vm *engine.VM, this engine.Value, what string) bool {
-		if this.IsBool() {
-			return this.O == engine.TrueObject
+		b, ok := engine.ThisBooleanValue(this)
+		if !ok {
+			vm.ThrowTypeError("Boolean.prototype." + what + " requires that 'this' be a Boolean")
 		}
-		if this.IsObject() && this.O.Class == engine.ClassBoolean {
-			return this.O.Ext.(bool)
-		}
-		vm.ThrowTypeError("Boolean.prototype." + what + " requires that 'this' be a Boolean")
-		return false
+		return b
 	}
 	method(vm, bproto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisBool(vm, this, "valueOf"))
@@ -189,11 +173,10 @@ func initNumber(vm *engine.VM) {
 
 // fixExponent rewrites the exponent that Go formats with at least two digits to the JavaScript form.
 func fixExponent(s string) string {
-	i := strings.IndexByte(s, 'e')
-	if i < 0 {
+	mant, exp, ok := strings.Cut(s, "e")
+	if !ok {
 		return s
 	}
-	mant, exp := s[:i], s[i+1:]
 	sign := exp[:1]
 	digits := strings.TrimLeft(exp[1:], "0")
 	if digits == "" {
@@ -210,9 +193,9 @@ func initSymbol(vm *engine.VM) {
 		}
 		d := arg(args, 0)
 		if d.IsUndefined() {
-			return engine.Value{O: vm.NewSymbol("", false)}
+			return engine.ObjectValue(vm.NewSymbol("", false))
 		}
-		return engine.Value{O: vm.NewSymbol(vm.ToString(d), true)}
+		return engine.ObjectValue(vm.NewSymbol(vm.ToString(d), true))
 	})
 	k := &vm.K
 	for _, e := range []struct {
@@ -225,60 +208,59 @@ func initSymbol(vm *engine.VM) {
 		{"match", k.SymMatch}, {"matchAll", k.SymMatchAll}, {"replace", k.SymReplace},
 		{"search", k.SymSearch}, {"split", k.SymSplit},
 	} {
-		constant(vm, ctor, e.name, engine.Value{O: e.sym})
+		constant(vm, ctor, e.name, engine.ObjectValue(e.sym))
 	}
 	method(vm, ctor, "for", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		key := vm.ToString(arg(args, 0))
 		if s, ok := vm.SymbolRegistry[key]; ok {
-			return engine.Value{O: s}
+			return engine.ObjectValue(s)
 		}
 		s := vm.NewSymbol(key, true)
 		vm.SymbolRegistry[key] = s
-		return engine.Value{O: s}
+		return engine.ObjectValue(s)
 	})
 	method(vm, ctor, "keyFor", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := arg(args, 0)
 		if !s.IsSymbol() {
 			vm.ThrowTypeError(vm.DisplayString(s) + " is not a symbol")
 		}
-		if r, ok := vm.SymbolRegistry[s.O.Str]; ok && r == s.O {
-			return vm.NewString(s.O.Str)
+		key, _ := engine.SymbolDescription(s.Object())
+		if r, ok := vm.SymbolRegistry[key]; ok && r == s.Object() {
+			return vm.NewString(key)
 		}
 		return engine.Undefined
 	})
 	thisSymbol := func(vm *engine.VM, this engine.Value, what string) *engine.Object {
-		if this.IsSymbol() {
-			return this.O
+		s, ok := engine.ThisSymbolValue(this)
+		if !ok {
+			vm.ThrowTypeError("Symbol.prototype." + what + " requires that 'this' be a Symbol")
 		}
-		if this.IsObject() && this.O.Class == engine.ClassSymbol {
-			return this.O.Ext.(*engine.Object)
-		}
-		vm.ThrowTypeError("Symbol.prototype." + what + " requires that 'this' be a Symbol")
-		return nil
+		return s
 	}
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString("Symbol(" + thisSymbol(vm, this, "toString").Str + ")")
+		desc, _ := engine.SymbolDescription(thisSymbol(vm, this, "toString"))
+		return vm.NewString("Symbol(" + desc + ")")
 	})
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Value{O: thisSymbol(vm, this, "valueOf")}
+		return engine.ObjectValue(thisSymbol(vm, this, "valueOf"))
 	})
 	getter(vm, proto, vm.Intern("description"), "description", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisSymbol(vm, this, "description")
-		if s.Ext == nil {
+		desc, ok := engine.SymbolDescription(thisSymbol(vm, this, "description"))
+		if !ok {
 			return engine.Undefined
 		}
-		return vm.NewString(s.Str)
+		return vm.NewString(desc)
 	})
 	vm.Define(proto, k.SymToStringTag, vm.NewString("Symbol"), engine.FlagConfigurable)
 	fn := vm.NewNative("[Symbol.toPrimitive]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Value{O: thisSymbol(vm, this, "[Symbol.toPrimitive]")}
+		return engine.ObjectValue(thisSymbol(vm, this, "[Symbol.toPrimitive]"))
 	})
-	vm.Define(proto, k.SymToPrimitive, engine.Value{O: fn}, engine.FlagConfigurable)
+	vm.Define(proto, k.SymToPrimitive, engine.ObjectValue(fn), engine.FlagConfigurable)
 }
 
 func initMath(vm *engine.VM) {
 	m := vm.NewObject(vm.ObjectProto)
-	vm.Define(vm.Global, vm.Intern("Math"), engine.Value{O: m}, engine.FlagsHidden)
+	vm.Define(vm.Global, vm.Intern("Math"), engine.ObjectValue(m), engine.FlagsHidden)
 	vm.Define(m, vm.K.SymToStringTag, vm.NewString("Math"), engine.FlagConfigurable)
 	for name, v := range map[string]float64{
 		"E":       math.E,
@@ -294,10 +276,10 @@ func initMath(vm *engine.VM) {
 	}
 	unary := func(name string, f func(float64) float64) {
 		method(vm, m, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			if len(args) > 0 && args[0].O == nil {
-				return engine.Value{N: f(args[0].N)}
+			if len(args) > 0 && args[0].IsNumber() {
+				return engine.Number(f(args[0].Number()))
 			}
-			return engine.Value{N: f(vm.ToNumber(arg(args, 0)))}
+			return engine.Number(f(vm.ToNumber(arg(args, 0))))
 		})
 	}
 	unary("abs", math.Abs)
@@ -426,68 +408,54 @@ func initIterators(vm *engine.VM) {
 	})
 
 	vm.FnArrayIterNext = method(vm, vm.ArrayIteratorProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		var it *arrayIterator
-		if this.IsObject() {
-			it, _ = this.O.Ext.(*arrayIterator)
-		}
+		it, _ := engine.IteratorState(this).(*arrayIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not an array iterator")
 		}
 		if it.obj == nil {
-			return engine.Value{O: vm.NewIterResult(engine.Undefined, true)}
+			return vm.CreateIterResultObject(engine.Undefined, true)
 		}
-		n := lengthOf(vm, it.obj)
+		n := vm.LengthOfArrayLike(it.obj)
 		i := it.pos
 		if i >= n {
 			it.obj = nil
-			return engine.Value{O: vm.NewIterResult(engine.Undefined, true)}
+			return vm.CreateIterResultObject(engine.Undefined, true)
 		}
 		it.pos++
 		switch it.kind {
 		case iterKeys:
-			return engine.Value{O: vm.NewIterResult(engine.Number(float64(i)), false)}
+			return vm.CreateIterResultObject(engine.Number(float64(i)), false)
 		case iterValues:
-			return engine.Value{O: vm.NewIterResult(getAt(vm, it.obj, i), false)}
+			return vm.CreateIterResultObject(getAt(vm, it.obj, i), false)
 		}
 		pair := vm.NewArray([]engine.Value{engine.Number(float64(i)), getAt(vm, it.obj, i)})
-		return engine.Value{O: vm.NewIterResult(engine.Value{O: pair}, false)}
+		return vm.CreateIterResultObject(engine.ObjectValue(pair), false)
 	})
 	vm.Define(vm.ArrayIteratorProto, vm.K.SymToStringTag, vm.NewString("Array Iterator"), engine.FlagConfigurable)
 
 	method(vm, vm.StringIteratorProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		var it *stringIterator
-		if this.IsObject() {
-			it, _ = this.O.Ext.(*stringIterator)
-		}
+		it, _ := engine.IteratorState(this).(*stringIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not a string iterator")
 		}
 		if it.pos >= len(it.str) {
-			return engine.Value{O: vm.NewIterResult(engine.Undefined, true)}
+			return vm.CreateIterResultObject(engine.Undefined, true)
 		}
 		_, size := wtf8.DecodeRune(it.str[it.pos:])
 		s := it.str[it.pos : it.pos+size]
 		it.pos += size
-		return engine.Value{O: vm.NewIterResult(vm.NewString(s), false)}
+		return vm.CreateIterResultObject(vm.NewString(s), false)
 	})
 	vm.Define(vm.StringIteratorProto, vm.K.SymToStringTag, vm.NewString("String Iterator"), engine.FlagConfigurable)
 
 	gp := vm.GeneratorProto
 	resume := func(name string, mode engine.ResumeMode) {
 		method(vm, gp, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			var g *engine.Generator
-			if this.IsObject() {
-				g, _ = this.O.Ext.(*engine.Generator)
-			}
-			if g == nil || g.Async != nil {
+			r, ok := vm.ResumeGenerator(this, mode, arg(args, 0))
+			if !ok {
 				vm.ThrowTypeError(name + " method called on an object that is not a generator")
 			}
-			v, done := vm.Resume(g, mode, arg(args, 0))
-			if !done && g.Delegating {
-				// yield* passes the result object of the inner iterator through.
-				return v
-			}
-			return engine.Value{O: vm.NewIterResult(v, done)}
+			return r
 		})
 	}
 	resume("next", engine.ResumeNext)
@@ -497,7 +465,7 @@ func initIterators(vm *engine.VM) {
 
 	// The prototype chain of generator functions.
 	gf := vm.GeneratorFunctionProto
-	vm.Define(gf, vm.K.Prototype, engine.Value{O: gp}, engine.FlagConfigurable)
-	vm.Define(gp, vm.K.Constructor, engine.Value{O: gf}, engine.FlagConfigurable)
+	vm.Define(gf, vm.K.Prototype, engine.ObjectValue(gp), engine.FlagConfigurable)
+	vm.Define(gp, vm.K.Constructor, engine.ObjectValue(gf), engine.FlagConfigurable)
 	vm.Define(gf, vm.K.SymToStringTag, vm.NewString("GeneratorFunction"), engine.FlagConfigurable)
 }

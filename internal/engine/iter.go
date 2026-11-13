@@ -37,7 +37,7 @@ func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 	if !r.IsObject() {
 		vm.ThrowTypeError("Iterator result " + vm.DisplayString(r) + " is not an object")
 	}
-	if Truthy(vm.GetV(r, vm.K.done)) {
+	if ToBoolean(vm.GetV(r, vm.K.done)) {
 		return Undefined, false
 	}
 	return vm.GetV(r, vm.K.Value), true
@@ -65,17 +65,17 @@ func (vm *VM) iteratorClose(it Value, pending bool) {
 	}
 }
 
-// iterate calls f for every value that iterating v yields. When f returns false,
+// Iterate calls f for every value that iterating v yields. When f returns false,
 // the iteration stops and the iterator is closed.
 func (vm *VM) Iterate(v Value, f func(Value) bool) {
-	if v.O != nil && v.O.Kind == KindArray && vm.arrayIterationPlain(v.O) {
-		o := v.O
-		for i := uint32(0); i < o.Length; i++ {
+	if v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+		o := v.o
+		for i := uint32(0); i < o.length; i++ {
 			e := Undefined
-			if int(i) < len(o.Elems) && !o.Elems[i].IsHole() {
-				e = o.Elems[i]
+			if int(i) < len(o.elems) && !o.elems[i].isHole() {
+				e = o.elems[i]
 			} else {
-				e = vm.GetKey(v, PropKey{Idx: i})
+				e = vm.Index(v, i)
 			}
 			if !f(e) {
 				return
@@ -106,18 +106,20 @@ func (vm *VM) Iterate(v Value, f func(Value) bool) {
 // appendIterable appends the values that iterating v yields to the array o.
 func (vm *VM) appendIterable(o *Object, v Value) {
 	vm.Iterate(v, func(e Value) bool {
-		o.Elems = append(o.Elems, e)
-		o.Length = uint32(len(o.Elems))
+		o.elems = append(o.elems, e)
+		o.length = uint32(len(o.elems))
 		return true
 	})
 }
 
-// newIterResult implements CreateIterResultObject.
-func (vm *VM) NewIterResult(v Value, done bool) *Object {
-	return &Object{
-		Kind:  kindObject,
-		Shape: vm.iterResultShape,
-		Slots: []Value{v, Bool(done)},
+// CreateIterResultObject implements CreateIterResultObject.
+func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
+	return Value{
+		o: &Object{
+			kind:  kindObject,
+			shape: vm.iterResultShape,
+			slots: []Value{v, Bool(done)},
+		},
 	}
 }
 
@@ -137,17 +139,17 @@ func (vm *VM) newForIn(v Value) Value {
 		it.keys = vm.OwnKeys(it.obj)
 	}
 	return Value{
-		O: &Object{
-			Kind:  kindObject,
-			Class: classForIn,
-			Ext:   it,
+		o: &Object{
+			kind:  kindObject,
+			class: classForIn,
+			ext:   it,
 		},
 	}
 }
 
 // forInNext returns the next key of the for-in iterator o.
 func (vm *VM) forInNext(o *Object) (Value, bool) {
-	it := o.Ext.(*forIn)
+	it := o.ext.(*forIn)
 	for it.obj != nil {
 		for it.pos < len(it.keys) {
 			k := it.keys[it.pos]
@@ -171,10 +173,10 @@ func (vm *VM) forInNext(o *Object) (Value, bool) {
 			if d.Flags&FlagEnumerable == 0 {
 				continue
 			}
-			if k.Key == nil {
-				return vm.NewString(strconv.FormatUint(uint64(k.Idx), 10)), true
+			if k.key == nil {
+				return vm.NewString(strconv.FormatUint(uint64(k.idx), 10)), true
 			}
-			return Value{O: k.Key}, true
+			return Value{o: k.key}, true
 		}
 		it.obj = vm.ProtoOf(it.obj)
 		it.pos = 0
@@ -189,16 +191,16 @@ func (vm *VM) forInNext(o *Object) (Value, bool) {
 // newArguments returns the arguments object of the frame fr.
 func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 	o := &Object{
-		Kind:  kindObject,
-		Class: ClassArguments,
-		Shape: vm.argumentsShape,
-		Elems: vm.frameArgs(fr, regs),
+		kind:  kindObject,
+		class: classArguments,
+		shape: vm.argumentsShape,
+		elems: vm.frameArgs(fr, regs),
 	}
-	o.Slots = []Value{Number(float64(fr.argc)), Value{O: vm.FnArrayValues}}
+	o.slots = []Value{Number(float64(fr.argc)), {o: vm.FnArrayValues}}
 	if mapped {
-		vm.Add(o, vm.K.callee, Value{O: fr.cl}, FlagsHidden)
+		vm.add(o, vm.K.callee, Value{o: fr.cl}, FlagsHidden)
 	} else {
-		vm.Add(o, vm.K.callee, NewAccessor(vm.ThrowTypeErrorFunc, vm.ThrowTypeErrorFunc), FlagAccessor)
+		vm.add(o, vm.K.callee, newAccessor(vm.ThrowTypeErrorFunc, vm.ThrowTypeErrorFunc), FlagAccessor)
 	}
 	return o
 }
@@ -211,22 +213,22 @@ func (vm *VM) templateObject(t *templateSite) *Object {
 	freeze := func(vals []Value) *Object {
 		a := vm.NewArray(nil)
 		for i, v := range vals {
-			vm.Add(a, vm.indexName(uint32(i)), v, FlagEnumerable)
+			vm.add(a, vm.indexName(uint32(i)), v, FlagEnumerable)
 		}
-		a.Length = uint32(len(vals))
-		a.Flags |= ObjSparse | ObjFrozenLength | ObjNotExtensible
+		a.length = uint32(len(vals))
+		a.flags |= objSparse | objFrozenLength | objNotExtensible
 		return a
 	}
 	raw := freeze(t.raw)
 	raw.makePrivate()
 	o := freeze(t.cooked)
-	vm.Add(o, vm.K.Raw, Value{O: raw}, 0)
+	vm.add(o, vm.K.Raw, Value{o: raw}, 0)
 	o.makePrivate()
 	t.object = o
 	return o
 }
 
-// stringFromGo returns the Go string s, which is taken to be UTF-8, as a value.
+// StringFromGo returns the Go string s, which is taken to be UTF-8, as a value.
 func (vm *VM) StringFromGo(s string) Value {
 	return vm.NewString(wtf8.FromValidUTF8(s))
 }

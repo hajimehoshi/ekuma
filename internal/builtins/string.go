@@ -15,63 +15,15 @@ import (
 
 // thisString implements the receiver conversion of the String.prototype methods.
 func thisString(vm *engine.VM, this engine.Value, what string) *engine.Object {
-	if this.O != nil && this.O.Kind == engine.KindString {
-		return this.O
+	if this.IsString() {
+		return this.Object()
 	}
 	vm.RequireObjectCoercible(this, "String.prototype."+what)
-	return vm.ToStringValue(this).O
-}
-
-// unitIndexOf returns the index in code units of the first occurrence of sub in s at or after from,
-// or -1.
-func unitIndexOf(s *engine.Object, sub string, from int) int {
-	n := s.StringLength()
-	if from > n {
-		return -1
-	}
-	if s.IsASCII() {
-		i := strings.Index(s.Str[from:], sub)
-		if i < 0 {
-			return -1
-		}
-		return from + i
-	}
-	p := s.Seek(from)
-	if p.Low {
-		// A match cannot start in the middle of a pair unless sub starts with a lone low surrogate,
-		// which never occurs inside a canonical string at that position.
-		p = wtf8.Seek(s.Str, p, from+1)
-	}
-	i := strings.Index(s.Str[p.Byte:], sub)
-	if i < 0 {
-		return -1
-	}
-	return p.Unit + wtf8.Len(s.Str[p.Byte:p.Byte+i])
-}
-
-// unitLastIndexOf returns the index in code units of the last occurrence of sub in s that starts
-// at or before from, or -1.
-func unitLastIndexOf(s *engine.Object, sub string, from int) int {
-	n := s.StringLength()
-	subLen := wtf8.Len(sub)
-	from = min(from, n-subLen)
-	if from < 0 {
-		return -1
-	}
-	end := s.Substring(0, from+subLen)
-	i := strings.LastIndex(end, sub)
-	if i < 0 {
-		return -1
-	}
-	return wtf8.Len(end[:i])
+	return vm.ToStringValue(this).Object()
 }
 
 func initString(vm *engine.VM) {
 	proto := vm.StringProto
-	proto.Class = engine.ClassString
-	proto.Ext = vm.EmptyString.O
-	vm.Add(proto, vm.K.Length, engine.Number(0), 0)
-
 	ctor := constructor(vm, "String", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := vm.EmptyString
 		if len(args) > 0 {
@@ -81,7 +33,7 @@ func initString(vm *engine.VM) {
 			s = vm.ToStringValue(args[0])
 		}
 		if nt := vm.NewTarget; nt != nil {
-			return engine.Value{O: vm.NewStringObject(s.O, vm.ProtoFromConstructor(nt, vm.StringProto))}
+			return engine.ObjectValue(vm.NewStringObject(s.Object(), vm.GetPrototypeFromConstructor(nt, vm.StringProto)))
 		}
 		return s
 	})
@@ -108,10 +60,10 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, ctor, "raw", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cooked := vm.ToObject(arg(args, 0))
-		raw := vm.ToObject(vm.GetV(engine.Value{O: cooked}, vm.K.Raw))
-		n := lengthOf(vm, raw)
+		raw := vm.ToObject(vm.GetV(engine.ObjectValue(cooked), vm.K.Raw))
+		n := vm.LengthOfArrayLike(raw)
 		var b wtf8.Builder
-		for i := int64(0); i < n; i++ {
+		for i := range n {
 			b.WriteString(vm.ToString(getAt(vm, raw, i)))
 			if i+1 < n && int(i)+1 < len(args) {
 				b.WriteString(vm.ToString(args[i+1]))
@@ -121,14 +73,11 @@ func initString(vm *engine.VM) {
 	})
 
 	thisValue := func(vm *engine.VM, this engine.Value, what string) engine.Value {
-		if this.IsString() {
-			return this
+		s, ok := engine.ThisStringValue(this)
+		if !ok {
+			vm.ThrowTypeError("String.prototype." + what + " requires that 'this' be a String")
 		}
-		if this.IsObject() && this.O.Class == engine.ClassString {
-			return engine.Value{O: this.O.Ext.(*engine.Object)}
-		}
-		vm.ThrowTypeError("String.prototype." + what + " requires that 'this' be a String")
-		return engine.Undefined
+		return s
 	}
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return thisValue(vm, this, "toString")
@@ -138,7 +87,7 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, proto, "charAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "charAt")
-		i := vm.ToInteger(arg(args, 0))
+		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 || i >= float64(s.StringLength()) {
 			return vm.EmptyString
 		}
@@ -147,7 +96,7 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "at", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "at")
 		n := float64(s.StringLength())
-		i := vm.ToInteger(arg(args, 0))
+		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 {
 			i += n
 		}
@@ -158,7 +107,7 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, proto, "charCodeAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "charCodeAt")
-		i := vm.ToInteger(arg(args, 0))
+		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 || i >= float64(s.StringLength()) {
 			return engine.Number(math.NaN())
 		}
@@ -166,7 +115,7 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, proto, "codePointAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "codePointAt")
-		i := vm.ToInteger(arg(args, 0))
+		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		n := s.StringLength()
 		if i < 0 || i >= float64(n) {
 			return engine.Undefined
@@ -182,8 +131,8 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "indexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "indexOf")
 		sub := vm.ToString(arg(args, 0))
-		from := engine.RelativeIndex(math.Max(vm.ToInteger(arg(args, 1)), 0), s.StringLength())
-		return engine.Number(float64(unitIndexOf(s, sub, from)))
+		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
+		return engine.Number(float64(s.UnitIndexOf(sub, from)))
 	})
 	method(vm, proto, "lastIndexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "lastIndexOf")
@@ -193,10 +142,10 @@ func initString(vm *engine.VM) {
 		if p := vm.ToNumber(arg(args, 1)); p == p {
 			from = engine.RelativeIndex(math.Max(numconv.ToIntegerOrInfinity(p), 0), n)
 		}
-		return engine.Number(float64(unitLastIndexOf(s, sub, from)))
+		return engine.Number(float64(s.UnitLastIndexOf(sub, from)))
 	})
 	noRegExp := func(vm *engine.VM, v engine.Value, what string) {
-		if v.IsObject() && v.O.Class == engine.ClassRegExp {
+		if v.IsObject() && v.Object().IsRegExpObject() {
 			vm.ThrowTypeError("First argument to String.prototype." + what + " must not be a regular expression")
 		}
 	}
@@ -204,15 +153,15 @@ func initString(vm *engine.VM) {
 		s := thisString(vm, this, "includes")
 		noRegExp(vm, arg(args, 0), "includes")
 		sub := vm.ToString(arg(args, 0))
-		from := engine.RelativeIndex(math.Max(vm.ToInteger(arg(args, 1)), 0), s.StringLength())
-		return engine.Bool(unitIndexOf(s, sub, from) >= 0)
+		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
+		return engine.Bool(s.UnitIndexOf(sub, from) >= 0)
 	})
 	method(vm, proto, "startsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "startsWith")
 		noRegExp(vm, arg(args, 0), "startsWith")
 		sub := vm.ToString(arg(args, 0))
 		n := s.StringLength()
-		from := engine.RelativeIndex(math.Max(vm.ToInteger(arg(args, 1)), 0), n)
+		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), n)
 		return engine.Bool(strings.HasPrefix(s.Substring(from, n), sub))
 	})
 	method(vm, proto, "endsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -222,17 +171,17 @@ func initString(vm *engine.VM) {
 		n := s.StringLength()
 		end := n
 		if e := arg(args, 1); !e.IsUndefined() {
-			end = engine.RelativeIndex(math.Max(vm.ToInteger(e), 0), n)
+			end = engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(e), 0), n)
 		}
 		return engine.Bool(strings.HasSuffix(s.Substring(0, end), sub))
 	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "slice")
 		n := s.StringLength()
-		start := engine.RelativeIndex(vm.ToInteger(arg(args, 0)), n)
+		start := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		end := n
 		if e := arg(args, 1); !e.IsUndefined() {
-			end = engine.RelativeIndex(vm.ToInteger(e), n)
+			end = engine.RelativeIndex(vm.ToIntegerOrInfinity(e), n)
 		}
 		if start >= end {
 			return vm.EmptyString
@@ -242,10 +191,10 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "substring", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "substring")
 		n := s.StringLength()
-		start := engine.RelativeIndex(math.Max(vm.ToInteger(arg(args, 0)), 0), n)
+		start := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 0)), 0), n)
 		end := n
 		if e := arg(args, 1); !e.IsUndefined() {
-			end = engine.RelativeIndex(math.Max(vm.ToInteger(e), 0), n)
+			end = engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(e), 0), n)
 		}
 		if start > end {
 			start, end = end, start
@@ -255,10 +204,10 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "substr", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "substr")
 		n := s.StringLength()
-		start := engine.RelativeIndex(vm.ToInteger(arg(args, 0)), n)
+		start := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		length := float64(n)
 		if l := arg(args, 1); !l.IsUndefined() {
-			length = vm.ToInteger(l)
+			length = vm.ToIntegerOrInfinity(l)
 		}
 		end := int(math.Min(float64(start)+math.Max(length, 0), float64(n)))
 		if start >= end {
@@ -269,7 +218,7 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "concat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "concat")
 		var b wtf8.Builder
-		b.WriteString(s.Str)
+		b.WriteString(s.Str())
 		for _, a := range args {
 			b.WriteString(vm.ToString(a))
 		}
@@ -277,24 +226,24 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, proto, "repeat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "repeat")
-		n := vm.ToInteger(arg(args, 0))
+		n := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || math.IsInf(n, 0) {
 			vm.ThrowRangeError("Invalid count value: " + vm.ToString(arg(args, 0)))
 		}
-		if n == 0 || s.Str == "" {
+		if n == 0 || s.Str() == "" {
 			return vm.EmptyString
 		}
-		if n*float64(len(s.Str)) > engine.MaxStringLength {
+		if n*float64(len(s.Str())) > engine.MaxStringLength {
 			vm.ThrowRangeError("Invalid string length")
 		}
-		if wtf8.JoinsPair(s.Str, s.Str) {
+		if wtf8.JoinsPair(s.Str(), s.Str()) {
 			var b wtf8.Builder
 			for i := 0; i < int(n); i++ {
-				b.WriteString(s.Str)
+				b.WriteString(s.Str())
 			}
 			return vm.NewString(b.String())
 		}
-		return vm.NewString(strings.Repeat(s.Str, int(n)))
+		return vm.NewString(strings.Repeat(s.Str(), int(n)))
 	})
 	pad := func(name string, atStart bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -306,12 +255,12 @@ func initString(vm *engine.VM) {
 				fill = vm.ToString(f)
 			}
 			if target <= n || fill == "" {
-				return engine.Value{O: s}
+				return engine.ObjectValue(s)
 			}
 			if target > engine.MaxStringLength {
 				vm.ThrowRangeError("Invalid string length")
 			}
-			fo := vm.NewString(fill).O
+			fo := vm.NewString(fill).Object()
 			fl := int64(fo.StringLength())
 			need := target - n
 			var b wtf8.Builder
@@ -320,10 +269,10 @@ func initString(vm *engine.VM) {
 			}
 			b.WriteString(fo.Substring(0, int(need%fl)))
 			if atStart {
-				b.WriteString(s.Str)
+				b.WriteString(s.Str())
 				return vm.NewString(b.String())
 			}
-			return vm.NewString(wtf8.Concat(s.Str, b.String()))
+			return vm.NewString(wtf8.Concat(s.Str(), b.String()))
 		})
 	}
 	pad("padStart", true)
@@ -331,7 +280,7 @@ func initString(vm *engine.VM) {
 	trim := func(name string, start, end bool) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisString(vm, this, name)
-			return vm.NewString(numconv.TrimWhiteSpace(s.Str, start, end))
+			return vm.NewString(numconv.TrimWhiteSpace(s.Str(), start, end))
 		})
 	}
 	trim("trim", true, true)
@@ -341,11 +290,11 @@ func initString(vm *engine.VM) {
 		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisString(vm, this, name)
 			if s.IsASCII() {
-				return vm.NewString(f(s.Str))
+				return vm.NewString(f(s.Str()))
 			}
 			// Map each well-formed run, leaving lone surrogates as they are.
 			var b wtf8.Builder
-			str := s.Str
+			str := s.Str()
 			for len(str) > 0 {
 				i := 0
 				for i < len(str) {
@@ -379,7 +328,7 @@ func initString(vm *engine.VM) {
 	mapCase("toLocaleLowerCase", lower)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "localeCompare")
-		return engine.Number(float64(wtf8.Compare(s.Str, vm.ToString(arg(args, 0)))))
+		return engine.Number(float64(wtf8.Compare(s.Str(), vm.ToString(arg(args, 0)))))
 	})
 	method(vm, proto, "normalize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "normalize")
@@ -390,13 +339,13 @@ func initString(vm *engine.VM) {
 				vm.ThrowRangeError("The normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
 		}
-		return engine.Value{O: s}
+		return engine.ObjectValue(s)
 	})
 	method(vm, proto, "isWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(wtf8.IsWellFormed(thisString(vm, this, "isWellFormed").Str))
+		return engine.Bool(wtf8.IsWellFormed(thisString(vm, this, "isWellFormed").Str()))
 	})
 	method(vm, proto, "toWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(wtf8.ToValidUTF8(thisString(vm, this, "toWellFormed").Str))
+		return vm.NewString(wtf8.ToValidUTF8(thisString(vm, this, "toWellFormed").Str()))
 	})
 	method(vm, proto, "split", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.RequireObjectCoercible(this, "String.prototype.split")
@@ -406,17 +355,17 @@ func initString(vm *engine.VM) {
 				return vm.Call(m, sepArg, this, limArg)
 			}
 		}
-		s := vm.ToStringValue(this).O
+		s := vm.ToStringValue(this).Object()
 		limit := uint32(math.MaxUint32)
 		if !limArg.IsUndefined() {
 			limit = vm.ToUint32(limArg)
 		}
 		sep := vm.ToString(sepArg)
 		if limit == 0 {
-			return engine.Value{O: vm.NewArray(nil)}
+			return engine.ObjectValue(vm.NewArray(nil))
 		}
 		if sepArg.IsUndefined() {
-			return engine.Value{O: vm.NewArray([]engine.Value{{O: s}})}
+			return engine.ObjectValue(vm.NewArray([]engine.Value{engine.ObjectValue(s)}))
 		}
 		var out []engine.Value
 		if sep == "" {
@@ -424,15 +373,15 @@ func initString(vm *engine.VM) {
 			for i := 0; i < n && uint32(len(out)) < limit; i++ {
 				out = append(out, vm.UnitString(s.UnitAt(i)))
 			}
-			return engine.Value{O: vm.NewArray(out)}
+			return engine.ObjectValue(vm.NewArray(out))
 		}
-		for _, part := range strings.Split(s.Str, sep) {
+		for part := range strings.SplitSeq(s.Str(), sep) {
 			if uint32(len(out)) >= limit {
 				break
 			}
 			out = append(out, vm.NewString(part))
 		}
-		return engine.Value{O: vm.NewArray(out)}
+		return engine.ObjectValue(vm.NewArray(out))
 	})
 	replace := func(name string, all bool) {
 		method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -443,7 +392,7 @@ func initString(vm *engine.VM) {
 					return vm.Call(m, pat, this, rep)
 				}
 			}
-			s := vm.ToStringValue(this).O
+			s := vm.ToStringValue(this).Object()
 			search := vm.ToString(pat)
 			var repStr string
 			if !rep.IsCallable() {
@@ -454,13 +403,13 @@ func initString(vm *engine.VM) {
 			n := s.StringLength()
 			searchLen := wtf8.Len(search)
 			for {
-				i := unitIndexOf(s, search, pos)
+				i := s.UnitIndexOf(search, pos)
 				if i < 0 {
 					break
 				}
 				b.WriteString(s.Substring(min(pos, n), i))
 				if rep.IsCallable() {
-					b.WriteString(vm.ToString(vm.Call(rep.O, engine.Undefined, vm.NewString(search), engine.Number(float64(i)), engine.Value{O: s})))
+					b.WriteString(vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(i)), engine.ObjectValue(s))))
 				} else {
 					b.WriteString(expandReplacement(repStr, search, s, i, nil))
 				}
@@ -507,10 +456,7 @@ func initString(vm *engine.VM) {
 	}
 	symMethod(vm, proto, vm.K.SymIterator, "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "[Symbol.iterator]")
-		it := vm.NewObject(vm.StringIteratorProto)
-		it.Class = engine.ClassIterator
-		it.Ext = &stringIterator{str: s.Str}
-		return engine.Value{O: it}
+		return engine.ObjectValue(vm.NewIteratorObject(vm.StringIteratorProto, &stringIterator{str: s.Str()}))
 	})
 }
 

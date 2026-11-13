@@ -18,9 +18,9 @@ import (
 type NativeFunc func(vm *VM, this Value, args []Value) Value
 
 // function is the state of a callable object.
-type Function struct {
+type function struct {
 	// code is the compiled code of a function written in JavaScript.
-	Code *funcProto
+	code *funcProto
 
 	// upvals are the variables of enclosing functions that code refers to.
 	upvals []*upvalue
@@ -28,10 +28,10 @@ type Function struct {
 	native NativeFunc
 
 	// name and length are the initial values of the properties of a native function.
-	Name   string
+	name   string
 	length int
 
-	Bound *BoundFunc
+	bound *boundFunc
 
 	// home is the object that super property accesses in a method start from.
 	home *Object
@@ -40,10 +40,10 @@ type Function struct {
 	fields []classElement
 
 	// materialized is set once the properties length, name and prototype exist as slots.
-	Materialized bool
+	materialized bool
 
 	// constructor says whether the function can be called with new.
-	Constructor bool
+	constructor bool
 
 	// derived marks the constructor of a class with an extends clause.
 	derived bool
@@ -52,10 +52,10 @@ type Function struct {
 	classConstructor bool
 }
 
-type BoundFunc struct {
-	Target *Object
-	This   Value
-	Args   []Value
+type boundFunc struct {
+	target *Object
+	this   Value
+	args   []Value
 }
 
 // upvalue is a variable of an enclosing function. p points to the variable: into the registers
@@ -137,7 +137,7 @@ type VM struct {
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
 
-	// newTarget is the constructor a native function is being constructed for, and nil in a plain call.
+	// NewTarget is the constructor a native function is being constructed for, and nil in a plain call.
 	NewTarget *Object
 
 	thrown Value
@@ -148,16 +148,16 @@ type VM struct {
 	globalLex *Object
 
 	interned    map[string]*Object
-	childShapes map[*Object]*Shape
+	childShapes map[*Object]*shape
 	K           keys
 
-	nullProtoShape  *Shape
-	objectShape     *Shape
-	ArrayShape      *Shape
-	FunctionShape   *Shape
-	stringShape     *Shape
-	iterResultShape *Shape
-	argumentsShape  *Shape
+	nullProtoShape  *shape
+	objectShape     *shape
+	arrayShape      *shape
+	functionShape   *shape
+	stringShape     *shape
+	iterResultShape *shape
+	argumentsShape  *shape
 
 	EmptyString  Value
 	asciiStrings [128]Value
@@ -182,7 +182,7 @@ type VM struct {
 	// fnArrayValues and fnArrayIterNext are the original Array.prototype.values and the next method of array iterators.
 	FnArrayValues, FnArrayIterNext, FnArraySpecies *Object
 
-	// joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
+	// Joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
 	Joining []*Object
 
 	// jobs is the queue of pending promise jobs.
@@ -202,12 +202,13 @@ type realm struct {
 	RegexpProto, PromiseProto, MapProto, SetObjectProto, DateProto                 *Object
 	promiseCtor, ArrayCtor, ObjectCtor, FunctionCtor                               *Object
 
-	// errorProtos are the prototypes of the native error types, by errorKind.
+	// ErrorProtos are the prototypes of the native error types, by errorKind.
 	ErrorProtos [ErrorKindCount]*Object
 
 	ThrowTypeErrorFunc *Object
 }
 
+// ErrorKind is a native error type.
 type ErrorKind uint8
 
 const (
@@ -243,14 +244,14 @@ func (vm *VM) Throw(v Value) {
 // newError returns a new error object of the given type.
 func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e := vm.NewObject(vm.ErrorProtos[kind])
-	e.Class = ClassError
+	e.class = classError
 	vm.Define(e, vm.K.Message, vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
 	vm.Define(e, vm.K.Stack, vm.NewString(vm.StackTrace(e, msg)), FlagsHidden)
 	return e
 }
 
 func (vm *VM) throwError(kind ErrorKind, msg string) {
-	vm.Throw(Value{O: vm.newError(kind, msg)})
+	vm.Throw(Value{o: vm.newError(kind, msg)})
 }
 
 // ThrowTypeError throws a TypeError with the given message. It does not return.
@@ -267,16 +268,16 @@ func (vm *VM) throwReferenceError(msg string) {
 	vm.throwError(ErrorKindReference, msg)
 }
 
-func (vm *VM) ThrowSyntaxError(msg string) {
+func (vm *VM) throwSyntaxError(msg string) {
 	vm.throwError(ErrorKindSyntax, msg)
 }
 
-// stackTrace returns the text of the stack property of a new error.
+// StackTrace returns the text of the stack property of a new error.
 func (vm *VM) StackTrace(e *Object, msg string) string {
 	var b wtf8.Builder
 	name := "Error"
-	if v, ok := vm.LookupData(e, vm.K.Name); ok && v.IsString() {
-		name = v.O.Str
+	if v, ok := vm.lookupData(e, vm.K.Name); ok && v.IsString() {
+		name = v.o.str
 	}
 	b.WriteString(name)
 	if msg != "" {
@@ -286,10 +287,10 @@ func (vm *VM) StackTrace(e *Object, msg string) string {
 	for i := len(vm.frames) - 1; i >= 0 && i >= len(vm.frames)-16; i-- {
 		fp := vm.frames[i].fp
 		b.WriteString("\n    at ")
-		if fp.Name == "" {
+		if fp.name == "" {
 			b.WriteString("<anonymous>")
 		} else {
-			b.WriteString(fp.Name)
+			b.WriteString(fp.name)
 		}
 		if fp.File != "" {
 			b.WriteString(" (")
@@ -301,12 +302,12 @@ func (vm *VM) StackTrace(e *Object, msg string) string {
 }
 
 // lookupData returns the data property key of o or its prototypes, without running any JavaScript.
-func (vm *VM) LookupData(o *Object, key *Object) (Value, bool) {
-	h, p, ok := Find(o, key)
-	if !ok || p.Flags&FlagAccessor != 0 {
+func (vm *VM) lookupData(o *Object, key *Object) (Value, bool) {
+	h, p, ok := find(o, key)
+	if !ok || p.flags&FlagAccessor != 0 {
 		return Undefined, false
 	}
-	return h.Slots[p.Slot], true
+	return h.slots[p.slot], true
 }
 
 // takeException converts the pending exception to a Go error.
@@ -320,10 +321,10 @@ func (vm *VM) takeException() error {
 func (vm *VM) ErrorOf(v Value) *Error {
 	msg := ""
 	if v.IsObject() {
-		if s, ok := vm.LookupData(v.O, vm.K.Stack); ok && s.IsString() {
-			msg = s.O.Str
-		} else if s, ok := vm.LookupData(v.O, vm.K.Message); ok && s.IsString() {
-			msg = s.O.Str
+		if s, ok := vm.lookupData(v.o, vm.K.Stack); ok && s.IsString() {
+			msg = s.o.str
+		} else if s, ok := vm.lookupData(v.o, vm.K.Message); ok && s.IsString() {
+			msg = s.o.str
 		} else {
 			msg = "uncaught exception"
 		}
@@ -338,16 +339,16 @@ func (vm *VM) ErrorOf(v Value) *Error {
 
 // NewError returns a new error object of the given type with the message msg, which is UTF-8.
 func (vm *VM) NewError(kind ErrorKind, msg string) Value {
-	return Value{O: vm.newError(kind, msg)}
+	return Value{o: vm.newError(kind, msg)}
 }
 
-// displayString describes v for messages, without running any JavaScript.
+// DisplayString describes v for messages, without running any JavaScript.
 func (vm *VM) DisplayString(v Value) string {
-	o := v.O
+	o := v.o
 	if o == nil {
-		return numconv.NumberToString(v.N)
+		return numconv.NumberToString(v.n)
 	}
-	switch o.Kind {
+	switch o.kind {
 	case kindUndefined:
 		return "undefined"
 	case kindNull:
@@ -356,16 +357,16 @@ func (vm *VM) DisplayString(v Value) string {
 		return "false"
 	case kindTrue:
 		return "true"
-	case KindString:
-		return o.Str
+	case kindString:
+		return o.str
 	case kindSymbol:
-		return "Symbol(" + o.Str + ")"
+		return "Symbol(" + o.str + ")"
 	case kindBigInt:
 		return o.BigInt().String()
-	case KindArray:
+	case kindArray:
 		return "[object Array]"
 	}
-	if o.Fn != nil {
+	if o.fn != nil {
 		return "[object Function]"
 	}
 	return "[object Object]"

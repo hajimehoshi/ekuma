@@ -18,7 +18,7 @@ const (
 	kindNull
 	kindFalse
 	kindTrue
-	KindString
+	kindString
 	kindSymbol
 	kindBigInt
 
@@ -30,8 +30,8 @@ const (
 
 	// Every kind from kindObject on is an object in the JavaScript sense.
 	kindObject
-	KindArray
-	KindFunction
+	kindArray
+	kindFunction
 )
 
 // Value is a JavaScript value.
@@ -39,35 +39,35 @@ const (
 // A nil o means the number n. Every other value is identified by o,
 // which makes a Value two words and keeps numbers off the heap.
 type Value struct {
-	N float64
-	O *Object
+	n float64
+	o *Object
 }
 
 var (
-	undefinedObject = &Object{Kind: kindUndefined}
-	nullObject      = &Object{Kind: kindNull}
-	falseObject     = &Object{Kind: kindFalse}
-	TrueObject      = &Object{Kind: kindTrue}
-	holeObject      = &Object{Kind: kindHole}
+	undefinedObject = &Object{kind: kindUndefined}
+	nullObject      = &Object{kind: kindNull}
+	falseObject     = &Object{kind: kindFalse}
+	trueObject      = &Object{kind: kindTrue}
+	holeObject      = &Object{kind: kindHole}
 
 	// Undefined is the value undefined.
-	Undefined = Value{O: undefinedObject}
+	Undefined = Value{o: undefinedObject}
 
 	// Null is the value null.
-	Null = Value{O: nullObject}
+	Null = Value{o: nullObject}
 
 	// False is the value false.
-	False = Value{O: falseObject}
+	False = Value{o: falseObject}
 
 	// True is the value true.
-	True = Value{O: TrueObject}
+	True = Value{o: trueObject}
 
-	hole = Value{O: holeObject}
+	hole = Value{o: holeObject}
 )
 
 // Number returns the number n as a value.
 func Number(n float64) Value {
-	return Value{N: n}
+	return Value{n: n}
 }
 
 // Bool returns the boolean b as a value.
@@ -78,64 +78,81 @@ func Bool(b bool) Value {
 	return False
 }
 
+// ObjectValue returns o as a value.
+func ObjectValue(o *Object) Value {
+	return Value{o: o}
+}
+
+// Object returns the object, string or symbol that v is. It returns nil for a number.
+func (v Value) Object() *Object {
+	return v.o
+}
+
+// Number returns the number v. v must be a number.
+func (v Value) Number() float64 {
+	return v.n
+}
+
 // IsNumber reports whether v is a number.
 func (v Value) IsNumber() bool {
-	return v.O == nil
+	return v.o == nil
 }
 
 // IsUndefined reports whether v is undefined.
 func (v Value) IsUndefined() bool {
-	return v.O == undefinedObject
+	return v.o == undefinedObject
 }
 
 // IsNull reports whether v is null.
 func (v Value) IsNull() bool {
-	return v.O == nullObject
+	return v.o == nullObject
 }
 
 // IsBool reports whether v is a boolean.
 func (v Value) IsBool() bool {
-	return v.O == TrueObject || v.O == falseObject
+	return v.o == trueObject || v.o == falseObject
 }
 
 // IsString reports whether v is a string.
 func (v Value) IsString() bool {
-	return v.O != nil && v.O.Kind == KindString
+	return v.o != nil && v.o.kind == kindString
 }
 
 // IsSymbol reports whether v is a symbol.
 func (v Value) IsSymbol() bool {
-	return v.O != nil && v.O.Kind == kindSymbol
+	return v.o != nil && v.o.kind == kindSymbol
 }
 
 // IsObject reports whether v is an object, which includes functions and arrays.
 func (v Value) IsObject() bool {
-	return v.O != nil && v.O.Kind >= kindObject
+	return v.o != nil && v.o.kind >= kindObject
 }
 
+// IsNullish reports whether v is undefined or null.
 func (v Value) IsNullish() bool {
-	return v.O == undefinedObject || v.O == nullObject
+	return v.o == undefinedObject || v.o == nullObject
 }
 
-func (v Value) IsHole() bool {
-	return v.O == holeObject
+func (v Value) isHole() bool {
+	return v.o == holeObject
 }
 
+// IsCallable implements IsCallable.
 func (v Value) IsCallable() bool {
-	return v.O != nil && v.O.Fn != nil
+	return v.o != nil && v.o.fn != nil
 }
 
-// truthy implements ToBoolean.
-func Truthy(v Value) bool {
-	o := v.O
+// ToBoolean implements ToBoolean.
+func ToBoolean(v Value) bool {
+	o := v.o
 	if o == nil {
-		return v.N != 0 && v.N == v.N
+		return v.n != 0 && v.n == v.n
 	}
-	switch o.Kind {
+	switch o.kind {
 	case kindUndefined, kindNull, kindFalse:
 		return false
-	case KindString:
-		return o.Str != ""
+	case kindString:
+		return o.str != ""
 	case kindBigInt:
 		return o.BigInt().Sign() != 0
 	}
@@ -144,68 +161,68 @@ func Truthy(v Value) bool {
 
 // typeOf implements the typeof operator.
 func typeOf(v Value) string {
-	o := v.O
+	o := v.o
 	if o == nil {
 		return "number"
 	}
-	switch o.Kind {
+	switch o.kind {
 	case kindUndefined:
 		return "undefined"
 	case kindFalse, kindTrue:
 		return "boolean"
-	case KindString:
+	case kindString:
 		return "string"
 	case kindSymbol:
 		return "symbol"
 	case kindBigInt:
 		return "bigint"
 	}
-	if o.Fn != nil {
+	if o.fn != nil {
 		return "function"
 	}
 	return "object"
 }
 
-// strictEquals implements IsStrictlyEqual.
-func StrictEquals(a, b Value) bool {
-	if a.O == nil || b.O == nil {
-		return a.O == b.O && a.N == b.N
+// IsStrictlyEqual implements IsStrictlyEqual.
+func IsStrictlyEqual(a, b Value) bool {
+	if a.o == nil || b.o == nil {
+		return a.o == b.o && a.n == b.n
 	}
-	if a.O == b.O {
+	if a.o == b.o {
 		return true
 	}
-	if a.O.Kind != b.O.Kind {
+	if a.o.kind != b.o.kind {
 		return false
 	}
-	switch a.O.Kind {
-	case KindString:
-		return a.O.Str == b.O.Str
+	switch a.o.kind {
+	case kindString:
+		return a.o.str == b.o.str
 	case kindBigInt:
-		return a.O.BigInt().Cmp(b.O.BigInt()) == 0
+		return a.o.BigInt().Cmp(b.o.BigInt()) == 0
 	}
 	return false
 }
 
-// sameValueZero implements SameValueZero.
+// SameValueZero implements SameValueZero.
 func SameValueZero(a, b Value) bool {
-	if a.O == nil && b.O == nil {
-		return a.N == b.N || (a.N != a.N && b.N != b.N)
+	if a.o == nil && b.o == nil {
+		return a.n == b.n || (a.n != a.n && b.n != b.n)
 	}
-	return StrictEquals(a, b)
+	return IsStrictlyEqual(a, b)
 }
 
-// sameValue implements SameValue.
+// SameValue implements SameValue.
 func SameValue(a, b Value) bool {
-	if a.O == nil && b.O == nil {
-		if a.N != a.N {
-			return b.N != b.N
+	if a.o == nil && b.o == nil {
+		if a.n != a.n {
+			return b.n != b.n
 		}
-		return a.N == b.N && math.Signbit(a.N) == math.Signbit(b.N)
+		return a.n == b.n && math.Signbit(a.n) == math.Signbit(b.n)
 	}
-	return StrictEquals(a, b)
+	return IsStrictlyEqual(a, b)
 }
 
-// relativeIndex resolves an index argument that counts from the end when negative
+// RelativeIndex resolves an index argument that counts from the end when negative
 // against a length, clamping the result to the range from 0 to length.
 func RelativeIndex(f float64, length int) int {
 	f = numconv.ToIntegerOrInfinity(f)
@@ -222,7 +239,7 @@ func RelativeIndex(f float64, length int) int {
 	return int(f)
 }
 
-// maxArrayIndex is the largest array index, 2**32 - 2.
+// MaxArrayIndex is the largest array index, 2**32 - 2.
 const MaxArrayIndex = 1<<32 - 2
 
 // numberIndex returns the array index that the number n stands for as a property key.

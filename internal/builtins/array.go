@@ -5,6 +5,7 @@ package builtins
 
 import (
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -12,34 +13,24 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// lengthOf implements LengthOfArrayLike.
-func lengthOf(vm *engine.VM, o *engine.Object) int64 {
-	if o.Kind == engine.KindArray {
-		return int64(o.Length)
-	}
-	return numconv.ToLength(vm.ToNumber(vm.GetV(engine.Value{O: o}, vm.K.Length)))
-}
-
 // bigKey returns the property key for an integer index, which may be beyond the array indices.
 func bigKey(vm *engine.VM, i int64) engine.PropKey {
 	if i >= 0 && i <= engine.MaxArrayIndex {
-		return engine.PropKey{Idx: uint32(i)}
+		return engine.IndexKey(uint32(i))
 	}
-	return engine.PropKey{Key: vm.Intern(numconv.NumberToString(float64(i)))}
+	return engine.NamedKey(vm.Intern(numconv.NumberToString(float64(i))))
 }
 
 func getAt(vm *engine.VM, o *engine.Object, i int64) engine.Value {
-	if i >= 0 && i < int64(len(o.Elems)) {
-		if e := o.Elems[i]; !e.IsHole() {
-			return e
-		}
+	if e, ok := o.Element(i); ok {
+		return e
 	}
 	vm.Poll()
-	return vm.GetProp(o, bigKey(vm, i), engine.Value{O: o})
+	return vm.Get(o, bigKey(vm, i))
 }
 
 func hasAt(vm *engine.VM, o *engine.Object, i int64) bool {
-	if i >= 0 && i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
+	if _, ok := o.Element(i); ok {
 		return true
 	}
 	vm.Poll()
@@ -47,11 +38,10 @@ func hasAt(vm *engine.VM, o *engine.Object, i int64) bool {
 }
 
 func putAt(vm *engine.VM, o *engine.Object, i int64, v engine.Value) {
-	if i >= 0 && i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-		o.Elems[i] = v
+	if o.SetElement(i, v) {
 		return
 	}
-	vm.Put(o, bigKey(vm, i), v)
+	vm.Set(o, bigKey(vm, i), v)
 }
 
 func deleteAt(vm *engine.VM, o *engine.Object, i int64) {
@@ -62,34 +52,15 @@ func deleteAt(vm *engine.VM, o *engine.Object, i int64) {
 }
 
 func setLength(vm *engine.VM, o *engine.Object, n int64) {
-	vm.Put(o, engine.PropKey{Key: vm.K.Length}, engine.Number(float64(n)))
-}
-
-// isArray implements IsArray.
-func isArray(vm *engine.VM, v engine.Value) bool {
-	return v.O != nil && v.O.Kind == engine.KindArray
-}
-
-// isPlainArray reports whether o is an array whose elements are all present in elems,
-// so that it can be read without looking at prototypes.
-func isDense(vm *engine.VM, o *engine.Object) bool {
-	if o.Kind != engine.KindArray || int(o.Length) != len(o.Elems) || o.Flags&(engine.ObjSparse|engine.ObjNotExtensible|engine.ObjFrozenLength) != 0 {
-		return false
-	}
-	for _, e := range o.Elems {
-		if e.IsHole() {
-			return false
-		}
-	}
-	return true
+	vm.Set(o, engine.NamedKey(vm.K.Length), engine.Number(float64(n)))
 }
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
 func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Object {
-	if orig.Kind == engine.KindArray {
-		c := vm.GetV(engine.Value{O: orig}, vm.K.Constructor)
+	if orig.IsArray() {
+		c := vm.GetV(engine.ObjectValue(orig), vm.K.Constructor)
 		if c.IsObject() {
-			if c.O == vm.ArrayCtor {
+			if c.Object() == vm.ArrayCtor {
 				c = engine.Undefined
 			} else if s := vm.GetV(c, vm.K.SymSpecies); s.IsNull() {
 				c = engine.Undefined
@@ -98,18 +69,16 @@ func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Obj
 			}
 		}
 		if !c.IsUndefined() {
-			if !c.IsCallable() || !vm.IsConstructor(c.O) {
+			if !c.IsCallable() || !vm.IsConstructor(c.Object()) {
 				vm.ThrowTypeError("object.constructor[Symbol.species] is not a constructor")
 			}
-			return vm.Construct(c.O, []engine.Value{engine.Number(float64(n))}, c.O)
+			return vm.Construct(c.Object(), []engine.Value{engine.Number(float64(n))}, c.Object())
 		}
 	}
 	if n > engine.MaxArrayIndex+1 {
 		vm.ThrowRangeError("Invalid array length")
 	}
-	a := vm.NewArray(nil)
-	a.Length = uint32(n)
-	return a
+	return vm.ArrayCreate(uint32(n), vm.ArrayProto)
 }
 
 func callback(vm *engine.VM, args []engine.Value, what string) *engine.Object {
@@ -117,23 +86,21 @@ func callback(vm *engine.VM, args []engine.Value, what string) *engine.Object {
 	if !f.IsCallable() {
 		vm.ThrowTypeError(vm.DisplayString(f) + " is not a function")
 	}
-	return f.O
+	return f.Object()
 }
 
 // joinArray implements Array.prototype.join for the object o.
 func joinArray(vm *engine.VM, o *engine.Object, sep string) engine.Value {
-	for _, a := range vm.Joining {
-		if a == o {
-			return vm.EmptyString
-		}
+	if slices.Contains(vm.Joining, o) {
+		return vm.EmptyString
 	}
 	vm.Joining = append(vm.Joining, o)
 	defer func() {
 		vm.Joining = vm.Joining[:len(vm.Joining)-1]
 	}()
-	n := lengthOf(vm, o)
+	n := vm.LengthOfArrayLike(o)
 	var b wtf8.Builder
-	for i := int64(0); i < n; i++ {
+	for i := range n {
 		if i > 0 {
 			b.WriteString(sep)
 		}
@@ -150,101 +117,99 @@ func joinArray(vm *engine.VM, o *engine.Object, sep string) engine.Value {
 func initArray(vm *engine.VM) {
 	proto := vm.ArrayProto
 	ctor := constructor(vm, "Array", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		a := vm.NewArray(nil)
+		proto := vm.ArrayProto
 		if nt := vm.NewTarget; nt != nil && nt != vm.ArrayCtor {
-			vm.SetProto(a, vm.ProtoFromConstructor(nt, vm.ArrayProto))
+			proto = vm.GetPrototypeFromConstructor(nt, vm.ArrayProto)
 		}
 		if len(args) == 1 {
 			if n := args[0]; n.IsNumber() {
-				u := numconv.ToUint32(n.N)
-				if float64(u) != n.N {
+				u := numconv.ToUint32(n.Number())
+				if float64(u) != n.Number() {
 					vm.ThrowRangeError("Invalid array length")
 				}
-				a.Length = u
-				return engine.Value{O: a}
+				return engine.ObjectValue(vm.ArrayCreate(u, proto))
 			}
 		}
-		a.Elems = append(a.Elems, args...)
-		a.Length = uint32(len(args))
-		return engine.Value{O: a}
+		a := vm.NewArray(append([]engine.Value(nil), args...))
+		if proto != vm.ArrayProto {
+			vm.SetPrototypeOf(a, proto)
+		}
+		return engine.ObjectValue(a)
 	})
 	vm.ArrayCtor = ctor
 	vm.FnArraySpecies = vm.NewNative("get [Symbol.species]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
-	vm.Define(ctor, vm.K.SymSpecies, engine.NewAccessor(vm.FnArraySpecies, nil), engine.FlagConfigurable|engine.FlagAccessor)
+	vm.DefineAccessor(ctor, vm.K.SymSpecies, vm.FnArraySpecies, nil, engine.FlagConfigurable)
 
 	method(vm, ctor, "isArray", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(isArray(vm, arg(args, 0)))
+		return engine.Bool(engine.IsArray(arg(args, 0)))
 	})
 	method(vm, ctor, "of", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if this.IsCallable() && vm.IsConstructor(this.O) && this.O != vm.ArrayCtor {
-			a := vm.Construct(this.O, []engine.Value{engine.Number(float64(len(args)))}, this.O)
+		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.ArrayCtor {
+			a := vm.Construct(this.Object(), []engine.Value{engine.Number(float64(len(args)))}, this.Object())
 			for i, v := range args {
-				vm.CreateDataProperty(a, engine.PropKey{Idx: uint32(i)}, v)
+				vm.CreateDataPropertyOrThrow(a, engine.IndexKey(uint32(i)), v)
 			}
 			setLength(vm, a, int64(len(args)))
-			return engine.Value{O: a}
+			return engine.ObjectValue(a)
 		}
-		return engine.Value{O: vm.NewArray(append([]engine.Value(nil), args...))}
+		return engine.ObjectValue(vm.NewArray(append([]engine.Value(nil), args...)))
 	})
 	method(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		items, mapFn, thisArg := arg(args, 0), arg(args, 1), arg(args, 2)
 		if !mapFn.IsUndefined() && !mapFn.IsCallable() {
 			vm.ThrowTypeError(vm.DisplayString(mapFn) + " is not a function")
 		}
-		custom := this.IsCallable() && vm.IsConstructor(this.O) && this.O != vm.ArrayCtor
+		custom := this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.ArrayCtor
 		mapped := func(v engine.Value, i int64) engine.Value {
 			if mapFn.IsUndefined() {
 				return v
 			}
-			return vm.Call(mapFn.O, thisArg, v, engine.Number(float64(i)))
+			return vm.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
 		}
 		if m := vm.GetMethod(items, vm.K.SymIterator); m != nil {
 			var a *engine.Object
 			if custom {
-				a = vm.Construct(this.O, nil, this.O)
+				a = vm.Construct(this.Object(), nil, this.Object())
 			} else {
 				a = vm.NewArray(nil)
 			}
 			i := int64(0)
 			vm.Iterate(items, func(v engine.Value) bool {
-				vm.CreateDataProperty(a, bigKey(vm, i), mapped(v, i))
+				vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), mapped(v, i))
 				i++
 				return true
 			})
 			setLength(vm, a, i)
-			return engine.Value{O: a}
+			return engine.ObjectValue(a)
 		}
 		src := vm.ToObject(items)
-		n := lengthOf(vm, src)
+		n := vm.LengthOfArrayLike(src)
 		var a *engine.Object
 		if custom {
-			a = vm.Construct(this.O, []engine.Value{engine.Number(float64(n))}, this.O)
+			a = vm.Construct(this.Object(), []engine.Value{engine.Number(float64(n))}, this.Object())
 		} else {
 			a = vm.NewArray(nil)
 		}
-		for i := int64(0); i < n; i++ {
-			vm.CreateDataProperty(a, bigKey(vm, i), mapped(getAt(vm, src, i), i))
+		for i := range n {
+			vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), mapped(getAt(vm, src, i), i))
 		}
 		setLength(vm, a, n)
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 
 	method(vm, proto, "push", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if o.Kind == engine.KindArray && int(o.Length) == len(o.Elems) && o.Flags&(engine.ObjSparse|engine.ObjNotExtensible|engine.ObjFrozenLength) == 0 && vm.ArrayProtoPlain() {
-			o.Elems = append(o.Elems, args...)
-			o.Length = uint32(len(o.Elems))
-			vm.TouchProto(o)
-			return engine.Number(float64(o.Length))
+		if n, ok := vm.AppendElements(o, args); ok {
+			return engine.Number(float64(n))
 		}
-		n := lengthOf(vm, o)
+		n := vm.LengthOfArrayLike(o)
 		if n+int64(len(args)) > numconv.MaxSafeInteger {
 			vm.ThrowTypeError("Pushing elements past the maximum length")
 		}
 		for _, v := range args {
-			vm.Put(o, bigKey(vm, n), v)
+			vm.Set(o, bigKey(vm, n), v)
 			n++
 		}
 		setLength(vm, o, n)
@@ -252,15 +217,10 @@ func initArray(vm *engine.VM) {
 	})
 	method(vm, proto, "pop", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if isDense(vm, o) && len(o.Elems) > 0 {
-			n := len(o.Elems) - 1
-			v := o.Elems[n]
-			o.Elems[n] = engine.Value{}
-			o.Elems = o.Elems[:n]
-			o.Length = uint32(n)
+		if v, ok := o.RemoveLastElement(); ok {
 			return v
 		}
-		n := lengthOf(vm, o)
+		n := vm.LengthOfArrayLike(o)
 		if n == 0 {
 			setLength(vm, o, 0)
 			return engine.Undefined
@@ -272,16 +232,10 @@ func initArray(vm *engine.VM) {
 	})
 	method(vm, proto, "shift", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if isDense(vm, o) && len(o.Elems) > 0 {
-			v := o.Elems[0]
-			copy(o.Elems, o.Elems[1:])
-			n := len(o.Elems) - 1
-			o.Elems[n] = engine.Value{}
-			o.Elems = o.Elems[:n]
-			o.Length = uint32(n)
+		if v, ok := o.RemoveFirstElement(); ok {
 			return v
 		}
-		n := lengthOf(vm, o)
+		n := vm.LengthOfArrayLike(o)
 		if n == 0 {
 			setLength(vm, o, 0)
 			return engine.Undefined
@@ -301,12 +255,10 @@ func initArray(vm *engine.VM) {
 	method(vm, proto, "unshift", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		k := int64(len(args))
-		if isDense(vm, o) && vm.ArrayProtoPlain() {
-			o.Elems = append(append(make([]engine.Value, 0, len(o.Elems)+len(args)), args...), o.Elems...)
-			o.Length = uint32(len(o.Elems))
-			return engine.Number(float64(o.Length))
+		if n, ok := vm.PrependElements(o, args); ok {
+			return engine.Number(float64(n))
 		}
-		n := lengthOf(vm, o)
+		n := vm.LengthOfArrayLike(o)
 		if k > 0 {
 			if n+k > numconv.MaxSafeInteger {
 				vm.ThrowTypeError("Unshifting elements past the maximum length")
@@ -327,54 +279,49 @@ func initArray(vm *engine.VM) {
 	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		n := lengthOf(vm, o)
-		start := relIndex(vm.ToInteger(arg(args, 0)), n)
+		n := vm.LengthOfArrayLike(o)
+		start := relIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		end := n
 		if e := arg(args, 1); !e.IsUndefined() {
-			end = relIndex(vm.ToInteger(e), n)
+			end = relIndex(vm.ToIntegerOrInfinity(e), n)
 		}
-		count := max(end-start, 0)
-		if isDense(vm, o) && arrayCtorPlain(vm, o) && end <= int64(len(o.Elems)) {
-			return engine.Value{O: vm.NewArray(append([]engine.Value(nil), o.Elems[start:start+count]...))}
+		if a, ok := vm.CopyElementRange(o, start, end); ok {
+			return engine.ObjectValue(a)
 		}
-		a := arraySpeciesCreate(vm, o, count)
+		a := arraySpeciesCreate(vm, o, max(end-start, 0))
 		j := int64(0)
 		for i := start; i < end; i, j = i+1, j+1 {
 			if hasAt(vm, o, i) {
-				vm.CreateDataProperty(a, bigKey(vm, j), getAt(vm, o, i))
+				vm.CreateDataPropertyOrThrow(a, bigKey(vm, j), getAt(vm, o, i))
 			}
 		}
 		setLength(vm, a, j)
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "splice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		n := lengthOf(vm, o)
-		start := relIndex(vm.ToInteger(arg(args, 0)), n)
+		n := vm.LengthOfArrayLike(o)
+		start := relIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		var items []engine.Value
 		del := int64(0)
 		switch {
 		case len(args) == 1:
 			del = n - start
 		case len(args) >= 2:
-			del = int64(math.Min(math.Max(vm.ToInteger(args[1]), 0), float64(n-start)))
+			del = int64(math.Min(math.Max(vm.ToIntegerOrInfinity(args[1]), 0), float64(n-start)))
 			items = args[2:]
 		}
 		k := int64(len(items))
 		if n+k-del > numconv.MaxSafeInteger {
 			vm.ThrowTypeError("Splicing elements past the maximum length")
 		}
-		if isDense(vm, o) && arrayCtorPlain(vm, o) && vm.ArrayProtoPlain() && n == int64(len(o.Elems)) {
-			removed := append([]engine.Value(nil), o.Elems[start:start+del]...)
-			tail := append([]engine.Value(nil), o.Elems[start+del:]...)
-			o.Elems = append(append(o.Elems[:start], items...), tail...)
-			o.Length = uint32(len(o.Elems))
-			return engine.Value{O: vm.NewArray(removed)}
+		if removed, ok := vm.SpliceElements(o, n, start, del, items); ok {
+			return engine.ObjectValue(removed)
 		}
 		a := arraySpeciesCreate(vm, o, del)
 		for i := int64(0); i < del; i++ {
 			if hasAt(vm, o, start+i) {
-				vm.CreateDataProperty(a, bigKey(vm, i), getAt(vm, o, start+i))
+				vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), getAt(vm, o, start+i))
 			}
 		}
 		setLength(vm, a, del)
@@ -403,49 +350,47 @@ func initArray(vm *engine.VM) {
 			putAt(vm, o, start+int64(i), v)
 		}
 		setLength(vm, o, n-del+k)
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "concat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		a := arraySpeciesCreate(vm, o, 0)
 		n := int64(0)
-		items := append([]engine.Value{{O: o}}, args...)
+		items := append([]engine.Value{engine.ObjectValue(o)}, args...)
 		for _, item := range items {
 			spreadable := false
 			if item.IsObject() {
 				if s := vm.GetV(item, vm.K.SymIsConcatSpreadable); !s.IsUndefined() {
-					spreadable = engine.Truthy(s)
+					spreadable = engine.ToBoolean(s)
 				} else {
-					spreadable = isArray(vm, item)
+					spreadable = engine.IsArray(item)
 				}
 			}
 			if !spreadable {
 				if n >= numconv.MaxSafeInteger {
 					vm.ThrowTypeError("Array too long")
 				}
-				vm.CreateDataProperty(a, bigKey(vm, n), item)
+				vm.CreateDataPropertyOrThrow(a, bigKey(vm, n), item)
 				n++
 				continue
 			}
-			l := lengthOf(vm, item.O)
+			l := vm.LengthOfArrayLike(item.Object())
 			if n+l > numconv.MaxSafeInteger {
 				vm.ThrowTypeError("Array too long")
 			}
-			if a.Kind == engine.KindArray && isDense(vm, item.O) && int64(len(a.Elems)) == n && a.Shape == vm.ArrayShape {
-				a.Elems = append(a.Elems, item.O.Elems...)
-				a.Length = uint32(len(a.Elems))
+			if vm.AppendElementsOf(a, n, item.Object()) {
 				n += l
 				continue
 			}
-			for i := int64(0); i < l; i++ {
-				if hasAt(vm, item.O, i) {
-					vm.CreateDataProperty(a, bigKey(vm, n), getAt(vm, item.O, i))
+			for i := range l {
+				if hasAt(vm, item.Object(), i) {
+					vm.CreateDataPropertyOrThrow(a, bigKey(vm, n), getAt(vm, item.Object(), i))
 				}
 				n++
 			}
 		}
 		setLength(vm, a, n)
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "join", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
@@ -457,19 +402,16 @@ func initArray(vm *engine.VM) {
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if j := vm.GetV(engine.Value{O: o}, vm.Intern("join")); j.IsCallable() {
-			return vm.Call(j.O, engine.Value{O: o})
+		if j := vm.GetV(engine.ObjectValue(o), vm.Intern("join")); j.IsCallable() {
+			return vm.Call(j.Object(), engine.ObjectValue(o))
 		}
-		return vm.NewString("[object " + classOf(vm, o) + "]")
+		return vm.NewString("[object " + o.BuiltinTag() + "]")
 	})
 	method(vm, proto, "reverse", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		n := lengthOf(vm, o)
-		if isDense(vm, o) {
-			for i, j := 0, len(o.Elems)-1; i < j; i, j = i+1, j-1 {
-				o.Elems[i], o.Elems[j] = o.Elems[j], o.Elems[i]
-			}
-			return engine.Value{O: o}
+		n := vm.LengthOfArrayLike(o)
+		if o.ReverseElements() {
+			return engine.ObjectValue(o)
 		}
 		for lo, hi := int64(0), n-1; lo < hi; lo, hi = lo+1, hi-1 {
 			lok, hok := hasAt(vm, o, lo), false
@@ -492,16 +434,16 @@ func initArray(vm *engine.VM) {
 				deleteAt(vm, o, hi)
 			}
 		}
-		return engine.Value{O: o}
+		return engine.ObjectValue(o)
 	})
 
 	search := func(name string, fromEnd, same bool) {
 		length := 1
 		method(vm, proto, name, length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
-			n := lengthOf(vm, o)
+			n := vm.LengthOfArrayLike(o)
 			target := arg(args, 0)
-			eq := engine.StrictEquals
+			eq := engine.IsStrictlyEqual
 			if same {
 				eq = engine.SameValueZero
 			}
@@ -514,7 +456,7 @@ func initArray(vm *engine.VM) {
 			if fromEnd {
 				from := n - 1
 				if len(args) > 1 {
-					f := vm.ToInteger(args[1])
+					f := vm.ToIntegerOrInfinity(args[1])
 					if f < 0 {
 						from = n + int64(math.Max(f, float64(-n-1)))
 					} else {
@@ -528,7 +470,7 @@ func initArray(vm *engine.VM) {
 				}
 				return engine.Number(-1)
 			}
-			from := relIndex(vm.ToInteger(arg(args, 1)), n)
+			from := relIndex(vm.ToIntegerOrInfinity(arg(args, 1)), n)
 			for i := from; i < n; i++ {
 				if same {
 					if eq(getAt(vm, o, i), target) {
@@ -536,8 +478,8 @@ func initArray(vm *engine.VM) {
 					}
 					continue
 				}
-				if i < int64(len(o.Elems)) && !o.Elems[i].IsHole() {
-					if eq(o.Elems[i], target) {
+				if e, ok := o.Element(i); ok {
+					if eq(e, target) {
 						return engine.Number(float64(i))
 					}
 					continue
@@ -562,16 +504,16 @@ func initArray(vm *engine.VM) {
 	each := func(name string, skipHoles bool, run func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
-			n := lengthOf(vm, o)
+			n := vm.LengthOfArrayLike(o)
 			cb := callback(vm, args, name)
 			thisArg := arg(args, 1)
 			return run(vm, o, n, func(s step) {
-				for i := int64(0); i < n; i++ {
+				for i := range n {
 					if skipHoles && !hasAt(vm, o, i) {
 						continue
 					}
 					v := getAt(vm, o, i)
-					r := vm.Call(cb, thisArg, v, engine.Number(float64(i)), engine.Value{O: o})
+					r := vm.Call(cb, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))
 					if !s(v, i, r) {
 						return
 					}
@@ -588,27 +530,27 @@ func initArray(vm *engine.VM) {
 	each("map", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
 		a := arraySpeciesCreate(vm, o, n)
 		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			vm.CreateDataProperty(a, bigKey(vm, i), r)
+			vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), r)
 			return true
 		})
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 	each("filter", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
 		a := arraySpeciesCreate(vm, o, 0)
 		j := int64(0)
 		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			if engine.Truthy(r) {
-				vm.CreateDataProperty(a, bigKey(vm, j), v)
+			if engine.ToBoolean(r) {
+				vm.CreateDataPropertyOrThrow(a, bigKey(vm, j), v)
 				j++
 			}
 			return true
 		})
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 	each("some", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
 		found := false
 		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			found = engine.Truthy(r)
+			found = engine.ToBoolean(r)
 			return !found
 		})
 		return engine.Bool(found)
@@ -616,7 +558,7 @@ func initArray(vm *engine.VM) {
 	each("every", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
 		all := true
 		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			all = engine.Truthy(r)
+			all = engine.ToBoolean(r)
 			return all
 		})
 		return engine.Bool(all)
@@ -624,7 +566,7 @@ func initArray(vm *engine.VM) {
 	each("find", false, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
 		res := engine.Undefined
 		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			if engine.Truthy(r) {
+			if engine.ToBoolean(r) {
 				res = v
 				return false
 			}
@@ -635,7 +577,7 @@ func initArray(vm *engine.VM) {
 	each("findIndex", false, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
 		res := engine.Number(-1)
 		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			if engine.Truthy(r) {
+			if engine.ToBoolean(r) {
 				res = engine.Number(float64(i))
 				return false
 			}
@@ -646,11 +588,11 @@ func initArray(vm *engine.VM) {
 	findLast := func(name string, index bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
-			n := lengthOf(vm, o)
+			n := vm.LengthOfArrayLike(o)
 			cb := callback(vm, args, name)
 			for i := n - 1; i >= 0; i-- {
 				v := getAt(vm, o, i)
-				if engine.Truthy(vm.Call(cb, arg(args, 1), v, engine.Number(float64(i)), engine.Value{O: o})) {
+				if engine.ToBoolean(vm.Call(cb, arg(args, 1), v, engine.Number(float64(i)), engine.ObjectValue(o))) {
 					if index {
 						return engine.Number(float64(i))
 					}
@@ -669,7 +611,7 @@ func initArray(vm *engine.VM) {
 	reduce := func(name string, right bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
-			n := lengthOf(vm, o)
+			n := vm.LengthOfArrayLike(o)
 			cb := callback(vm, args, name)
 			i, end, d := int64(0), n, int64(1)
 			if right {
@@ -694,7 +636,7 @@ func initArray(vm *engine.VM) {
 			}
 			for ; i != end; i += d {
 				if hasAt(vm, o, i) {
-					acc = vm.Call(cb, engine.Undefined, acc, getAt(vm, o, i), engine.Number(float64(i)), engine.Value{O: o})
+					acc = vm.Call(cb, engine.Undefined, acc, getAt(vm, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
 				}
 			}
 			return acc
@@ -705,21 +647,21 @@ func initArray(vm *engine.VM) {
 
 	method(vm, proto, "fill", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		n := lengthOf(vm, o)
-		start := relIndex(vm.ToInteger(arg(args, 1)), n)
+		n := vm.LengthOfArrayLike(o)
+		start := relIndex(vm.ToIntegerOrInfinity(arg(args, 1)), n)
 		end := n
 		if e := arg(args, 2); !e.IsUndefined() {
-			end = relIndex(vm.ToInteger(e), n)
+			end = relIndex(vm.ToIntegerOrInfinity(e), n)
 		}
 		for i := start; i < end; i++ {
 			putAt(vm, o, i, arg(args, 0))
 		}
-		return engine.Value{O: o}
+		return engine.ObjectValue(o)
 	})
 	method(vm, proto, "at", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		n := lengthOf(vm, o)
-		i := vm.ToInteger(arg(args, 0))
+		n := vm.LengthOfArrayLike(o)
+		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 {
 			i += float64(n)
 		}
@@ -734,10 +676,10 @@ func initArray(vm *engine.VM) {
 			vm.ThrowTypeError("The comparison function must be either a function or undefined")
 		}
 		o := vm.ToObject(this)
-		n := lengthOf(vm, o)
+		n := vm.LengthOfArrayLike(o)
 		var vals []engine.Value
 		undefs := int64(0)
-		for i := int64(0); i < n; i++ {
+		for i := range n {
 			if !hasAt(vm, o, i) {
 				continue
 			}
@@ -763,21 +705,21 @@ func initArray(vm *engine.VM) {
 				deleteAt(vm, o, i)
 			}
 		}
-		return engine.Value{O: o}
+		return engine.ObjectValue(o)
 	})
 	var flatten func(a *engine.Object, src *engine.Object, depth float64, n *int64)
 	flatten = func(a *engine.Object, src *engine.Object, depth float64, n *int64) {
-		l := lengthOf(vm, src)
-		for i := int64(0); i < l; i++ {
+		l := vm.LengthOfArrayLike(src)
+		for i := range l {
 			if !hasAt(vm, src, i) {
 				continue
 			}
 			v := getAt(vm, src, i)
-			if depth > 0 && isArray(vm, v) {
-				flatten(a, v.O, depth-1, n)
+			if depth > 0 && engine.IsArray(v) {
+				flatten(a, v.Object(), depth-1, n)
 				continue
 			}
-			vm.CreateDataProperty(a, bigKey(vm, *n), v)
+			vm.CreateDataPropertyOrThrow(a, bigKey(vm, *n), v)
 			*n++
 		}
 	}
@@ -785,43 +727,43 @@ func initArray(vm *engine.VM) {
 		o := vm.ToObject(this)
 		depth := 1.0
 		if d := arg(args, 0); !d.IsUndefined() {
-			depth = vm.ToInteger(d)
+			depth = vm.ToIntegerOrInfinity(d)
 		}
 		a := arraySpeciesCreate(vm, o, 0)
 		var n int64
 		flatten(a, o, depth, &n)
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "flatMap", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		l := lengthOf(vm, o)
+		l := vm.LengthOfArrayLike(o)
 		cb := callback(vm, args, "flatMap")
 		a := arraySpeciesCreate(vm, o, 0)
 		var n int64
-		for i := int64(0); i < l; i++ {
+		for i := range l {
 			if !hasAt(vm, o, i) {
 				continue
 			}
-			v := vm.Call(cb, arg(args, 1), getAt(vm, o, i), engine.Number(float64(i)), engine.Value{O: o})
-			if isArray(vm, v) {
-				flatten(a, v.O, 0, &n)
+			v := vm.Call(cb, arg(args, 1), getAt(vm, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
+			if engine.IsArray(v) {
+				flatten(a, v.Object(), 0, &n)
 				continue
 			}
-			vm.CreateDataProperty(a, bigKey(vm, n), v)
+			vm.CreateDataPropertyOrThrow(a, bigKey(vm, n), v)
 			n++
 		}
-		return engine.Value{O: a}
+		return engine.ObjectValue(a)
 	})
 
 	iter := func(name string, kind int) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return engine.Value{O: newArrayIterator(vm, vm.ToObject(this), kind)}
+			return engine.ObjectValue(newArrayIterator(vm, vm.ToObject(this), kind))
 		})
 	}
 	iter("keys", iterKeys)
 	iter("entries", iterEntries)
 	vm.FnArrayValues = iter("values", iterValues)
-	vm.Define(proto, vm.K.SymIterator, engine.Value{O: vm.FnArrayValues}, engine.FlagsHidden)
+	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(vm.FnArrayValues), engine.FlagsHidden)
 }
 
 // relIndex resolves a relative index against a length, clamping to the range from 0 to n.
@@ -830,20 +772,6 @@ func relIndex(f float64, n int64) int64 {
 		return int64(math.Max(f+float64(n), 0))
 	}
 	return int64(math.Min(f, float64(n)))
-}
-
-// arrayCtorPlain reports whether creating the result of a method for the array o
-// makes a plain array, because o has the original constructor.
-func arrayCtorPlain(vm *engine.VM, o *engine.Object) bool {
-	if o.Shape != vm.ArrayShape {
-		return false
-	}
-	c, ok := vm.LookupData(vm.ArrayProto, vm.K.Constructor)
-	if !ok || c.O != vm.ArrayCtor {
-		return false
-	}
-	_, p, found := engine.Find(vm.ArrayCtor, vm.K.SymSpecies)
-	return found && p.Flags&engine.FlagAccessor != 0 && vm.ArrayCtor.Slots[p.Slot].Accessor().Getter == vm.FnArraySpecies
 }
 
 // sortValues sorts vals with the comparison function cmp, or as strings when cmp is undefined.
@@ -858,7 +786,7 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 		}
 		if allNumbersOrStrings {
 			sort.SliceStable(vals, func(i, j int) bool {
-				return wtf8.Compare(vals[i].O.Str, vals[j].O.Str) < 0
+				return wtf8.Compare(vals[i].Object().Str(), vals[j].Object().Str()) < 0
 			})
 			return
 		}
@@ -873,7 +801,7 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 		return
 	}
 	sort.SliceStable(vals, func(i, j int) bool {
-		r := vm.Call(cmp.O, engine.Undefined, vals[i], vals[j])
+		r := vm.Call(cmp.Object(), engine.Undefined, vals[i], vals[j])
 		return vm.ToNumber(r) < 0
 	})
 }
@@ -910,11 +838,8 @@ type arrayIterator struct {
 }
 
 func newArrayIterator(vm *engine.VM, o *engine.Object, kind int) *engine.Object {
-	it := vm.NewObject(vm.ArrayIteratorProto)
-	it.Class = engine.ClassIterator
-	it.Ext = &arrayIterator{
+	return vm.NewIteratorObject(vm.ArrayIteratorProto, &arrayIterator{
 		obj:  o,
 		kind: kind,
-	}
-	return it
+	})
 }

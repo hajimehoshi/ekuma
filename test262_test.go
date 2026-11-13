@@ -74,7 +74,7 @@ func parseMetadata(src string) metadata {
 	list := func(s string) []string {
 		s = strings.Trim(strings.TrimSpace(s), "[]")
 		var out []string
-		for _, e := range strings.Split(s, ",") {
+		for e := range strings.SplitSeq(s, ",") {
 			if e = strings.TrimSpace(e); e != "" {
 				out = append(out, e)
 			}
@@ -82,7 +82,7 @@ func parseMetadata(src string) metadata {
 		return out
 	}
 	key := ""
-	for _, line := range strings.Split(src[start+5:end], "\n") {
+	for line := range strings.SplitSeq(src[start+5:end], "\n") {
 		line = strings.TrimRight(line, "\r")
 		trimmed := strings.TrimSpace(line)
 		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
@@ -148,8 +148,7 @@ const testTimeout = 5 * time.Second
 
 // errorName returns the name of the constructor of the thrown value of err, or of the kind of error.
 func errorName(ctx context.Context, err error) string {
-	var se *ekuma.SyntaxError
-	if errors.As(err, &se) {
+	if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 		return "SyntaxError"
 	}
 	var ex *ekuma.Error
@@ -307,13 +306,11 @@ func TestTest262(t *testing.T) {
 	var wg sync.WaitGroup
 	next := make(chan int)
 	for range runtime.GOMAXPROCS(0) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for i := range next {
 				reasons[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])))
 			}
-		}()
+		})
 	}
 	for i := range paths {
 		next <- i

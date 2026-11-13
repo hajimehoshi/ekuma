@@ -44,7 +44,7 @@ func (vm *VM) toPrimitive(v Value, h hint) Value {
 	}
 	for _, name := range [2]*Object{first, second} {
 		if m := vm.GetV(v, name); m.IsCallable() {
-			if r := vm.Call(m.O, v); !r.IsObject() {
+			if r := vm.Call(m.o, v); !r.IsObject() {
 				return r
 			}
 		}
@@ -53,33 +53,33 @@ func (vm *VM) toPrimitive(v Value, h hint) Value {
 	return Undefined
 }
 
-// getMethod implements GetMethod: the callable property key of v, or nil when it is undefined or null.
+// GetMethod implements GetMethod: the callable property key of v, or nil when it is undefined or null.
 func (vm *VM) GetMethod(v Value, key *Object) *Object {
 	m := vm.GetV(v, key)
 	if m.IsNullish() {
 		return nil
 	}
 	if !m.IsCallable() {
-		vm.ThrowTypeError(vm.KeyString(PropKey{Key: key}) + " is not a function")
+		vm.ThrowTypeError(vm.KeyString(PropKey{key: key}) + " is not a function")
 	}
-	return m.O
+	return m.o
 }
 
-// toNumber implements ToNumber.
+// ToNumber implements ToNumber.
 func (vm *VM) ToNumber(v Value) float64 {
-	o := v.O
+	o := v.o
 	if o == nil {
-		return v.N
+		return v.n
 	}
-	switch o.Kind {
+	switch o.kind {
 	case kindUndefined:
 		return math.NaN()
 	case kindNull, kindFalse:
 		return 0
 	case kindTrue:
 		return 1
-	case KindString:
-		return numconv.StringToNumber(o.Str)
+	case kindString:
+		return numconv.StringToNumber(o.str)
 	case kindSymbol:
 		vm.ThrowTypeError("Cannot convert a Symbol value to a number")
 	case kindBigInt:
@@ -88,51 +88,53 @@ func (vm *VM) ToNumber(v Value) float64 {
 	return vm.ToNumber(vm.toPrimitive(v, hintNumber))
 }
 
-// toNumeric implements ToNumeric: the result is a number or a BigInt.
+// ToNumeric implements ToNumeric: the result is a number or a BigInt.
 func (vm *VM) ToNumeric(v Value) Value {
-	if v.O == nil {
+	if v.o == nil {
 		return v
 	}
-	if v.O.Kind >= kindObject {
+	if v.o.kind >= kindObject {
 		v = vm.toPrimitive(v, hintNumber)
 	}
-	if v.O != nil && v.O.Kind == kindBigInt {
+	if v.o != nil && v.o.kind == kindBigInt {
 		return v
 	}
-	return Value{N: vm.ToNumber(v)}
+	return Value{n: vm.ToNumber(v)}
 }
 
-// toInteger implements ToIntegerOrInfinity.
-func (vm *VM) ToInteger(v Value) float64 {
-	if v.O == nil {
-		return numconv.ToIntegerOrInfinity(v.N)
+// ToIntegerOrInfinity implements ToIntegerOrInfinity.
+func (vm *VM) ToIntegerOrInfinity(v Value) float64 {
+	if v.o == nil {
+		return numconv.ToIntegerOrInfinity(v.n)
 	}
 	return numconv.ToIntegerOrInfinity(vm.ToNumber(v))
 }
 
+// ToInt32 implements ToInt32.
 func (vm *VM) ToInt32(v Value) int32 {
-	if v.O == nil {
-		return numconv.ToInt32(v.N)
+	if v.o == nil {
+		return numconv.ToInt32(v.n)
 	}
 	return numconv.ToInt32(vm.ToNumber(v))
 }
 
+// ToUint32 implements ToUint32.
 func (vm *VM) ToUint32(v Value) uint32 {
-	if v.O == nil {
-		return numconv.ToUint32(v.N)
+	if v.o == nil {
+		return numconv.ToUint32(v.n)
 	}
 	return numconv.ToUint32(vm.ToNumber(v))
 }
 
-// toString implements ToString.
+// ToString implements ToString.
 func (vm *VM) ToString(v Value) string {
-	o := v.O
+	o := v.o
 	if o == nil {
-		return numconv.NumberToString(v.N)
+		return numconv.NumberToString(v.n)
 	}
-	switch o.Kind {
-	case KindString:
-		return o.Str
+	switch o.kind {
+	case kindString:
+		return o.str
 	case kindUndefined:
 		return "undefined"
 	case kindNull:
@@ -149,60 +151,60 @@ func (vm *VM) ToString(v Value) string {
 	return vm.ToString(vm.toPrimitive(v, hintString))
 }
 
-// toStringValue implements ToString and returns the result as a value.
+// ToStringValue implements ToString and returns the result as a value.
 func (vm *VM) ToStringValue(v Value) Value {
-	if v.O != nil && v.O.Kind == KindString {
+	if v.o != nil && v.o.kind == kindString {
 		return v
 	}
 	return vm.NewString(vm.ToString(v))
 }
 
-// toObject implements ToObject.
+// ToObject implements ToObject.
 func (vm *VM) ToObject(v Value) *Object {
-	o := v.O
-	if o != nil && o.Kind >= kindObject {
+	o := v.o
+	if o != nil && o.kind >= kindObject {
 		return o
 	}
 	if o == nil {
 		w := vm.NewObject(vm.NumberProto)
-		w.Class = ClassNumber
-		w.Ext = v.N
+		w.class = classNumber
+		w.ext = v.n
 		return w
 	}
-	switch o.Kind {
+	switch o.kind {
 	case kindUndefined, kindNull:
 		vm.ThrowTypeError("Cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
 		w := vm.NewObject(vm.BooleanProto)
-		w.Class = ClassBoolean
-		w.Ext = o.Kind == kindTrue
+		w.class = classBoolean
+		w.ext = o.kind == kindTrue
 		return w
-	case KindString:
+	case kindString:
 		return vm.NewStringObject(o, vm.StringProto)
 	case kindSymbol:
 		w := vm.NewObject(vm.SymbolProto)
-		w.Class = ClassSymbol
-		w.Ext = o
+		w.class = classSymbol
+		w.ext = o
 		return w
 	case kindBigInt:
 		w := vm.NewObject(vm.BigintProto)
-		w.Class = classBigInt
-		w.Ext = o
+		w.class = classBigInt
+		w.ext = o
 		return w
 	}
 	panic("ekuma: internal value reached ToObject")
 }
 
-// newStringObject returns the String object that wraps the string s.
+// NewStringObject returns the String object that wraps the string s.
 func (vm *VM) NewStringObject(s *Object, proto *Object) *Object {
 	w := vm.NewObject(proto)
-	w.Class = ClassString
-	w.Ext = s
-	vm.Add(w, vm.K.Length, Number(float64(s.StringLength())), 0)
+	w.class = classString
+	w.ext = s
+	vm.add(w, vm.K.Length, Number(float64(s.StringLength())), 0)
 	return w
 }
 
-// requireObjectCoercible throws a TypeError when v is undefined or null.
+// RequireObjectCoercible throws a TypeError when v is undefined or null.
 func (vm *VM) RequireObjectCoercible(v Value, what string) {
 	if v.IsNullish() {
 		vm.ThrowTypeError(what + " called on null or undefined")
@@ -211,9 +213,9 @@ func (vm *VM) RequireObjectCoercible(v Value, what string) {
 
 func (vm *VM) newBigInt(i *big.Int) Value {
 	return Value{
-		O: &Object{
-			Kind: kindBigInt,
-			Ext:  i,
+		o: &Object{
+			kind: kindBigInt,
+			ext:  i,
 		},
 	}
 }
@@ -221,11 +223,11 @@ func (vm *VM) newBigInt(i *big.Int) Value {
 // looseEquals implements IsLooselyEqual.
 func (vm *VM) looseEquals(a, b Value) bool {
 	for {
-		if a.O == nil && b.O == nil {
-			return a.N == b.N
+		if a.o == nil && b.o == nil {
+			return a.n == b.n
 		}
-		if a.O != nil && b.O != nil && a.O.Kind == b.O.Kind {
-			return StrictEquals(a, b)
+		if a.o != nil && b.o != nil && a.o.kind == b.o.kind {
+			return IsStrictlyEqual(a, b)
 		}
 		an, bn := a.IsNullish(), b.IsNullish()
 		if an || bn {
@@ -234,15 +236,15 @@ func (vm *VM) looseEquals(a, b Value) bool {
 		ak, bk := kindNumber(a), kindNumber(b)
 		switch {
 		case a.IsObject() && b.IsObject():
-			return a.O == b.O
+			return a.o == b.o
 		case a.IsObject():
 			a = vm.toPrimitive(a, hintDefault)
 		case b.IsObject():
 			b = vm.toPrimitive(b, hintDefault)
 		case a.IsBool():
-			a = Value{N: vm.ToNumber(a)}
+			a = Value{n: vm.ToNumber(a)}
 		case b.IsBool():
-			b = Value{N: vm.ToNumber(b)}
+			b = Value{n: vm.ToNumber(b)}
 		case ak == kindSymbol || bk == kindSymbol:
 			return false
 		case ak == kindBigInt || bk == kindBigInt:
@@ -256,10 +258,10 @@ func (vm *VM) looseEquals(a, b Value) bool {
 
 // kindNumber returns the kind of v, with kindUndefined standing for a number never being asked about.
 func kindNumber(v Value) kind {
-	if v.O == nil {
+	if v.o == nil {
 		return kindObject
 	}
-	return v.O.Kind
+	return v.o.kind
 }
 
 type cmpResult uint8
@@ -274,14 +276,14 @@ const (
 // compareBigIntMixed compares a BigInt with a BigInt, a number or a string, in either order.
 func compareBigIntMixed(a, b Value) cmpResult {
 	toBig := func(v Value) (*big.Int, float64, bool) {
-		if v.O == nil {
-			return nil, v.N, true
+		if v.o == nil {
+			return nil, v.n, true
 		}
-		switch v.O.Kind {
+		switch v.o.kind {
 		case kindBigInt:
-			return v.O.BigInt(), 0, true
-		case KindString:
-			i := numconv.StringToBigInt(v.O.Str)
+			return v.o.BigInt(), 0, true
+		case kindString:
+			i := numconv.StringToBigInt(v.o.str)
 			return i, 0, i != nil
 		}
 		return nil, 0, false
@@ -327,8 +329,8 @@ func compareBigFloat(x *big.Int, f float64) cmpResult {
 
 // compare implements IsLessThan for a and b, converting a first when leftFirst is set.
 func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
-	if a.O == nil && b.O == nil {
-		return compareNumbers(a.N, b.N)
+	if a.o == nil && b.o == nil {
+		return compareNumbers(a.n, b.n)
 	}
 	if leftFirst {
 		a = vm.toPrimitive(a, hintNumber)
@@ -338,14 +340,14 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 		a = vm.toPrimitive(a, hintNumber)
 	}
 	if a.IsString() && b.IsString() {
-		return cmpResult(wtf8.Compare(a.O.Str, b.O.Str) + 1)
+		return cmpResult(wtf8.Compare(a.o.str, b.o.str) + 1)
 	}
 	if kindNumber(a) == kindBigInt || kindNumber(b) == kindBigInt {
-		if a.O != nil && a.O.Kind != kindBigInt && a.O.Kind != KindString {
-			a = Value{N: vm.ToNumber(a)}
+		if a.o != nil && a.o.kind != kindBigInt && a.o.kind != kindString {
+			a = Value{n: vm.ToNumber(a)}
 		}
-		if b.O != nil && b.O.Kind != kindBigInt && b.O.Kind != KindString {
-			b = Value{N: vm.ToNumber(b)}
+		if b.o != nil && b.o.kind != kindBigInt && b.o.kind != kindString {
+			b = Value{n: vm.ToNumber(b)}
 		}
 		return compareBigIntMixed(a, b)
 	}
@@ -372,28 +374,28 @@ func (vm *VM) addValues(a, b Value) Value {
 	if as || bs {
 		var x, y string
 		if as {
-			x = a.O.Str
+			x = a.o.str
 		} else {
 			x = vm.ToString(a)
 		}
 		if bs {
-			y = b.O.Str
+			y = b.o.str
 		} else {
 			y = vm.ToString(b)
 		}
 		return vm.concat(a, x, b, y)
 	}
 	a, b = vm.ToNumeric(a), vm.ToNumeric(b)
-	if a.O == nil && b.O == nil {
-		return Value{N: a.N + b.N}
+	if a.o == nil && b.o == nil {
+		return Value{n: a.n + b.n}
 	}
-	if a.O == nil || b.O == nil {
+	if a.o == nil || b.o == nil {
 		vm.ThrowTypeError("Cannot mix BigInt and other types, use explicit conversions")
 	}
-	return vm.newBigInt(new(big.Int).Add(a.O.BigInt(), b.O.BigInt()))
+	return vm.newBigInt(new(big.Int).Add(a.o.BigInt(), b.o.BigInt()))
 }
 
-// maxStringLength is the largest length a string may have, in bytes.
+// MaxStringLength is the largest length a string may have, in bytes.
 const MaxStringLength = 1<<30 - 1
 
 // concat returns the concatenation of the strings x and y, which are the contents of a and b

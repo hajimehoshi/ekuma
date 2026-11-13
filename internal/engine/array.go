@@ -1,0 +1,196 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package engine
+
+import (
+	"github.com/hajimehoshi/ekuma/internal/numconv"
+)
+
+// This file holds the operations on the elements of objects for the built-in objects.
+// An operation that reports false did nothing, and the caller has to run the generic algorithm.
+
+// IsArray implements IsArray.
+func IsArray(v Value) bool {
+	return v.o != nil && v.o.kind == kindArray
+}
+
+// IsArray reports whether o is an array.
+func (o *Object) IsArray() bool {
+	return o.kind == kindArray
+}
+
+// ArrayCreate implements ArrayCreate.
+func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
+	a := vm.NewArray(nil)
+	vm.setProto(a, proto)
+	a.length = length
+	return a
+}
+
+// LengthOfArrayLike implements LengthOfArrayLike.
+func (vm *VM) LengthOfArrayLike(o *Object) int64 {
+	if o.kind == kindArray {
+		return int64(o.length)
+	}
+	return numconv.ToLength(vm.ToNumber(vm.GetV(Value{o: o}, vm.K.Length)))
+}
+
+// Element returns the own property of o with the integer index i when reading it
+// cannot run any JavaScript. It reports false when that is not known.
+func (o *Object) Element(i int64) (Value, bool) {
+	if i >= 0 && i < int64(len(o.elems)) {
+		if e := o.elems[i]; !e.isHole() {
+			return e, true
+		}
+	}
+	return Value{}, false
+}
+
+// SetElement stores v as the own property of o with the integer index i when
+// Element returns that property, and reports whether it did.
+func (o *Object) SetElement(i int64, v Value) bool {
+	if i >= 0 && i < int64(len(o.elems)) && !o.elems[i].isHole() {
+		o.elems[i] = v
+		return true
+	}
+	return false
+}
+
+// ElementList returns a copy of the elements of the array o
+// when reading them cannot run any JavaScript.
+func (o *Object) ElementList() ([]Value, bool) {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objExotic) != 0 {
+		return nil, false
+	}
+	for _, e := range o.elems {
+		if e.isHole() {
+			return nil, false
+		}
+	}
+	return append([]Value(nil), o.elems...), true
+}
+
+// isDense reports whether o is an array whose elements are all present in elems
+// and that accepts changes to its elements and its length.
+func (o *Object) isDense() bool {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
+		return false
+	}
+	for _, e := range o.elems {
+		if e.isHole() {
+			return false
+		}
+	}
+	return true
+}
+
+// arrayCtorPlain reports whether creating the result of a method for the array o
+// makes a plain array, because o has the original constructor.
+func (vm *VM) arrayCtorPlain(o *Object) bool {
+	if o.shape != vm.arrayShape {
+		return false
+	}
+	c, ok := vm.lookupData(vm.ArrayProto, vm.K.Constructor)
+	if !ok || c.o != vm.ArrayCtor {
+		return false
+	}
+	_, p, found := find(vm.ArrayCtor, vm.K.SymSpecies)
+	return found && p.flags&FlagAccessor != 0 && vm.ArrayCtor.slots[p.slot].accessor().getter == vm.FnArraySpecies
+}
+
+// AppendElements adds vals at the end of the array o and returns the new length.
+func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !vm.arrayProtoPlain() {
+		return 0, false
+	}
+	o.elems = append(o.elems, vals...)
+	o.length = uint32(len(o.elems))
+	vm.touchProto(o)
+	return o.length, true
+}
+
+// PrependElements adds vals at the start of the array o and returns the new length.
+func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
+	if !o.isDense() || !vm.arrayProtoPlain() {
+		return 0, false
+	}
+	o.elems = append(append(make([]Value, 0, len(o.elems)+len(vals)), vals...), o.elems...)
+	o.length = uint32(len(o.elems))
+	return o.length, true
+}
+
+// RemoveLastElement removes the last element of the array o and returns it.
+// It reports false for an empty array.
+func (o *Object) RemoveLastElement() (Value, bool) {
+	if !o.isDense() || len(o.elems) == 0 {
+		return Value{}, false
+	}
+	n := len(o.elems) - 1
+	v := o.elems[n]
+	o.elems[n] = Value{}
+	o.elems = o.elems[:n]
+	o.length = uint32(n)
+	return v, true
+}
+
+// RemoveFirstElement removes the first element of the array o and returns it.
+// It reports false for an empty array.
+func (o *Object) RemoveFirstElement() (Value, bool) {
+	if !o.isDense() || len(o.elems) == 0 {
+		return Value{}, false
+	}
+	v := o.elems[0]
+	copy(o.elems, o.elems[1:])
+	n := len(o.elems) - 1
+	o.elems[n] = Value{}
+	o.elems = o.elems[:n]
+	o.length = uint32(n)
+	return v, true
+}
+
+// ReverseElements reverses the order of the elements of the array o.
+func (o *Object) ReverseElements() bool {
+	if !o.isDense() {
+		return false
+	}
+	for i, j := 0, len(o.elems)-1; i < j; i, j = i+1, j-1 {
+		o.elems[i], o.elems[j] = o.elems[j], o.elems[i]
+	}
+	return true
+}
+
+// CopyElementRange returns a new array with the elements of the array o from start up to end,
+// as Array.prototype.slice creates it.
+func (vm *VM) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
+	if !o.isDense() || !vm.arrayCtorPlain(o) || end > int64(len(o.elems)) {
+		return nil, false
+	}
+	count := max(end-start, 0)
+	return vm.NewArray(append([]Value(nil), o.elems[start:start+count]...)), true
+}
+
+// SpliceElements replaces del elements of the array o from start on with items, and returns
+// the removed elements as a new array, as Array.prototype.splice creates it.
+// length is the length of o that start and del were checked against.
+func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
+	if !o.isDense() || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() || length != int64(len(o.elems)) {
+		return nil, false
+	}
+	removed := append([]Value(nil), o.elems[start:start+del]...)
+	tail := append([]Value(nil), o.elems[start+del:]...)
+	o.elems = append(append(o.elems[:start], items...), tail...)
+	o.length = uint32(len(o.elems))
+	return vm.NewArray(removed), true
+}
+
+// AppendElementsOf adds the elements of the array src at the end of dst,
+// which must have exactly n elements and no other property.
+func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
+	if dst.kind != kindArray || !src.isDense() || int64(len(dst.elems)) != n || dst.shape != vm.arrayShape {
+		return false
+	}
+	dst.elems = append(dst.elems, src.elems...)
+	dst.length = uint32(len(dst.elems))
+	return true
+}

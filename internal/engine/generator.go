@@ -12,6 +12,7 @@ const (
 	genCompleted
 )
 
+// ResumeMode is the way a suspended generator is continued.
 type ResumeMode uint8
 
 const (
@@ -22,11 +23,11 @@ const (
 
 // closeSignal is thrown through a suspended generator to make it return:
 // only finally blocks intercept it. The value to return is generator.closeValue.
-var closeSignal = &Object{Kind: kindHole}
+var closeSignal = &Object{kind: kindHole}
 
 // generator is the suspended activation of a generator or async function.
 // Its registers are not on the stack, so that closures can keep referring to them.
-type Generator struct {
+type generator struct {
 	// object is the generator object, or the promise of an async function.
 	object *Object
 
@@ -53,7 +54,7 @@ type Generator struct {
 	awaiting bool
 
 	// delegating is set when the code after the suspension handles every way of resuming itself.
-	Delegating bool
+	delegating bool
 
 	closeValue Value
 
@@ -61,10 +62,10 @@ type Generator struct {
 	openUpvals []*upvalue
 
 	// async is the state of an async function or async generator.
-	Async *asyncState
+	async *asyncState
 }
 
-func (g *Generator) findUpval(index int) *upvalue {
+func (g *generator) findUpval(index int) *upvalue {
 	for _, u := range g.openUpvals {
 		if u.index == index {
 			return u
@@ -79,7 +80,7 @@ func (g *Generator) findUpval(index int) *upvalue {
 }
 
 // closeUpvals detaches the upvalues that refer to the registers from index from on.
-func (g *Generator) closeUpvals(from int) {
+func (g *generator) closeUpvals(from int) {
 	n := 0
 	for _, u := range g.openUpvals {
 		if u.index < from {
@@ -95,9 +96,9 @@ func (g *Generator) closeUpvals(from int) {
 }
 
 // newGenerator creates the activation of the generator or async function f without an object.
-func (vm *VM) newGenerator(f *Object, this Value, args []Value) *Generator {
-	fp := f.Fn.Code
-	g := &Generator{
+func (vm *VM) newGenerator(f *Object, this Value, args []Value) *generator {
+	fp := f.fn.code
+	g := &generator{
 		f:    f,
 		this: this,
 		argc: len(args),
@@ -118,22 +119,22 @@ func (vm *VM) newGenerator(f *Object, this Value, args []Value) *Generator {
 func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 	g := vm.newGenerator(f, this, args)
 	proto := vm.GeneratorProto
-	if p := vm.GetV(Value{O: f}, vm.K.Prototype); p.IsObject() {
-		proto = p.O
+	if p := vm.GetV(Value{o: f}, vm.K.Prototype); p.IsObject() {
+		proto = p.o
 	}
 	o := vm.NewObject(proto)
-	o.Class = classGenerator
-	o.Ext = g
+	o.class = classGenerator
+	o.ext = g
 	g.object = o
 	g.state = genRunning
 	vm.pushGenFrame(g, ret)
 }
 
 // pushGenFrame pushes the frame that continues g at g.pc.
-func (vm *VM) pushGenFrame(g *Generator, ret int32) {
+func (vm *VM) pushGenFrame(g *generator, ret int32) {
 	base := vm.sp
 	vm.frames = append(vm.frames, frame{
-		fp:        g.f.Fn.Code,
+		fp:        g.f.fn.code,
 		cl:        g.f,
 		pc:        g.pc,
 		base:      base,
@@ -149,7 +150,7 @@ func (vm *VM) pushGenFrame(g *Generator, ret int32) {
 
 // callCoroutine calls the generator or async function f from Go.
 func (vm *VM) callCoroutine(f *Object, this Value, args []Value) Value {
-	c := f.Fn.Code
+	c := f.fn.code
 	if c.isAsync {
 		return vm.callAsync(f, this, args)
 	}
@@ -162,7 +163,7 @@ func (vm *VM) callCoroutine(f *Object, this Value, args []Value) Value {
 
 // resume continues the suspended generator g. It returns the yielded or returned value
 // and whether g completed. An exception that leaves g is thrown.
-func (vm *VM) Resume(g *Generator, mode ResumeMode, v Value) (Value, bool) {
+func (vm *VM) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 	switch g.state {
 	case genRunning:
 		vm.ThrowTypeError("Generator is already running")
@@ -204,13 +205,13 @@ func (vm *VM) Resume(g *Generator, mode ResumeMode, v Value) (Value, bool) {
 			vm.thrown = v
 		case ResumeReturn:
 			g.closeValue = v
-			vm.thrown = Value{O: closeSignal}
+			vm.thrown = Value{o: closeSignal}
 		}
-		if mode != ResumeNext && !g.Delegating {
+		if mode != ResumeNext && !g.delegating {
 			g.mode = ResumeNext
 			if !vm.unwind(stop) {
 				vm.sp = sp
-				if vm.thrown.O == closeSignal {
+				if vm.thrown.o == closeSignal {
 					vm.thrown = Undefined
 					return g.closeValue, true
 				}
@@ -225,7 +226,7 @@ func (vm *VM) Resume(g *Generator, mode ResumeMode, v Value) (Value, bool) {
 		r = vm.run(stop)
 	}) {
 		vm.sp = sp
-		if vm.thrown.O == closeSignal {
+		if vm.thrown.o == closeSignal {
 			vm.thrown = Undefined
 			return g.closeValue, true
 		}
@@ -233,4 +234,22 @@ func (vm *VM) Resume(g *Generator, mode ResumeMode, v Value) (Value, bool) {
 	}
 	vm.sp = sp
 	return r, g.state == genCompleted
+}
+
+// ResumeGenerator continues the generator gen with the value v and returns the iterator result.
+// It reports false, without running anything, when gen is not a generator.
+func (vm *VM) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {
+	var g *generator
+	if gen.IsObject() {
+		g, _ = gen.o.ext.(*generator)
+	}
+	if g == nil || g.async != nil {
+		return Undefined, false
+	}
+	r, done := vm.resume(g, mode, v)
+	if !done && g.delegating {
+		// yield* passes the result object of the inner iterator through.
+		return r, true
+	}
+	return vm.CreateIterResultObject(r, done), true
 }

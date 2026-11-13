@@ -37,7 +37,7 @@ type frame struct {
 	newTarget *Object
 
 	// gen is the generator that the frame is an activation of.
-	gen *Generator
+	gen *generator
 
 	// scopes are the dynamic scopes entered by with statements, innermost last.
 	scopes []*Object
@@ -51,10 +51,10 @@ const (
 	maxDepth = 400
 )
 
-var tdzObject = &Object{Kind: kindHole}
+var tdzObject = &Object{kind: kindHole}
 
 // tdz is the content of a binding that is not initialized yet.
-var tdz = Value{O: tdzObject}
+var tdz = Value{o: tdzObject}
 
 type execStatus uint8
 
@@ -93,7 +93,7 @@ func (vm *VM) top() int {
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
 // It returns the stack index of register 0 of the new frame.
 func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object) int {
-	fp := f.Fn.Code
+	fp := f.fn.code
 	extraBase := -1
 	if argc > fp.nparams && fp.needsExtra {
 		// The surplus arguments stay where they are, and the registers start above them.
@@ -175,7 +175,7 @@ func (vm *VM) unwind(stop int) bool {
 		n := len(vm.frames) - 1
 		fr := &vm.frames[n]
 		pc := int32(fr.pc - 1)
-		closing := vm.thrown.O == closeSignal
+		closing := vm.thrown.o == closeSignal
 		for _, h := range fr.fp.Handlers {
 			if pc < h.Start || pc >= h.End || (closing && !h.Finally) {
 				continue
@@ -291,7 +291,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpLoadK:
 			regs[i.A] = fp.consts[i.B]
 		case bytecode.OpLoadInt:
-			regs[i.A] = Value{N: float64(i.B)}
+			regs[i.A] = Value{n: float64(i.B)}
 		case bytecode.OpLoadUndef:
 			regs[i.A] = Undefined
 		case bytecode.OpLoadNull:
@@ -305,21 +305,21 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpMove:
 			regs[i.A] = regs[i.B]
 		case bytecode.OpCheckTDZ:
-			if regs[i.A].O == tdzObject {
+			if regs[i.A].o == tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				vm.throwTDZ(fp.keys[i.B])
 			}
 		case bytecode.OpThrowConstAssign:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.ThrowTypeError("Assignment to constant variable '" + fp.keys[i.A].Str + "'")
+			vm.ThrowTypeError("Assignment to constant variable '" + fp.keys[i.A].str + "'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.throwError(ErrorKind(i.A), fp.consts[i.B].O.Str)
+			vm.throwError(ErrorKind(i.A), fp.consts[i.B].o.str)
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalOrUndef:
 			c := &fp.caches[i.C]
-			if h := c.holder; h != nil && h.Shape == c.shape && c.epoch == vm.globalEpoch {
-				if v := h.Slots[c.slot]; v.O != tdzObject {
+			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
+				if v := h.slots[c.slot]; v.o != tdzObject {
 					regs[i.A] = v
 					continue
 				}
@@ -329,9 +329,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			c := &fp.caches[i.C]
-			if h := c.holder; h != nil && h.Shape == c.shape && c.epoch == vm.globalEpoch && c.kind == cacheOwn {
-				if h.Slots[c.slot].O != tdzObject {
-					h.Slots[c.slot] = regs[i.A]
+			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch && c.kind == cacheOwn {
+				if h.slots[c.slot].o != tdzObject {
+					h.slots[c.slot] = regs[i.A]
 					continue
 				}
 			}
@@ -350,9 +350,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.checkGlobalDecl(fp.keys[i.A], int(i.B))
 
 		case bytecode.OpGetUpval:
-			regs[i.A] = *cl.Fn.upvals[i.B].p
+			regs[i.A] = *cl.fn.upvals[i.B].p
 		case bytecode.OpSetUpval:
-			*cl.Fn.upvals[i.B].p = regs[i.A]
+			*cl.fn.upvals[i.B].p = regs[i.A]
 		case bytecode.OpCloseUpvals:
 			if onHeap {
 				vm.frames[len(vm.frames)-1].gen.closeUpvals(int(i.A))
@@ -361,28 +361,28 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpClosure:
 			p := fp.protos[i.B]
-			fn := &Function{
-				Code:        p,
-				Constructor: p.isConstructor,
+			fn := &function{
+				code:        p,
+				constructor: p.isConstructor,
 			}
 			fn.classConstructor = p.isClassConstructor
 			fn.derived = p.isDerived
 			o := &Object{
-				Kind:  KindFunction,
-				Class: ClassFunction,
-				Flags: ObjExotic,
-				Shape: vm.FunctionShape,
-				Fn:    fn,
+				kind:  kindFunction,
+				class: classFunction,
+				flags: objExotic,
+				shape: vm.functionShape,
+				fn:    fn,
 			}
 			if p.isGenerator || p.isAsync {
-				o.Shape = vm.ShapeFor(vm.functionProtoFor(p))
+				o.shape = vm.shapeFor(vm.functionProtoFor(p))
 			}
 			if n := len(p.Upvals); n > 0 {
 				fn.upvals = make([]*upvalue, n)
 				for j, d := range p.Upvals {
 					switch {
 					case !d.Local:
-						fn.upvals[j] = cl.Fn.upvals[d.Index]
+						fn.upvals[j] = cl.fn.upvals[d.Index]
 					case onHeap:
 						fn.upvals[j] = vm.frames[len(vm.frames)-1].gen.findUpval(int(d.Index))
 					default:
@@ -390,37 +390,37 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-			regs[i.A] = Value{O: o}
+			regs[i.A] = Value{o: o}
 
 		case bytecode.OpLoadThis:
 			regs[i.A] = vm.frames[len(vm.frames)-1].this
 		case bytecode.OpLoadThisSloppy:
 			t := vm.frames[len(vm.frames)-1].this
-			if t.O == nil || t.O.Kind < kindObject {
+			if t.o == nil || t.o.kind < kindObject {
 				if t.IsNullish() {
-					t = Value{O: vm.Global}
+					t = Value{o: vm.Global}
 				} else {
-					t = Value{O: vm.ToObject(t)}
+					t = Value{o: vm.ToObject(t)}
 				}
 			}
 			regs[i.A] = t
 		case bytecode.OpLoadCallee:
-			regs[i.A] = Value{O: cl}
+			regs[i.A] = Value{o: cl}
 		case bytecode.OpLoadNewTarget:
 			if nt := vm.frames[len(vm.frames)-1].newTarget; nt != nil {
-				regs[i.A] = Value{O: nt}
+				regs[i.A] = Value{o: nt}
 			} else {
 				regs[i.A] = Undefined
 			}
 		case bytecode.OpLoadHome:
-			if h := cl.Fn.home; h != nil {
-				regs[i.A] = Value{O: h}
+			if h := cl.fn.home; h != nil {
+				regs[i.A] = Value{o: h}
 			} else {
 				regs[i.A] = Undefined
 			}
 		case bytecode.OpArguments:
 			cur := &vm.frames[len(vm.frames)-1]
-			regs[i.A] = Value{O: vm.newArguments(cur, regs, i.B != 0)}
+			regs[i.A] = Value{o: vm.newArguments(cur, regs, i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &vm.frames[len(vm.frames)-1]
 			var rest []Value
@@ -428,24 +428,24 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				all := vm.frameArgs(cur, regs)
 				rest = all[i.B:]
 			}
-			regs[i.A] = Value{O: vm.NewArray(rest)}
+			regs[i.A] = Value{o: vm.NewArray(rest)}
 
 		case bytecode.OpGetProp:
 			v := regs[i.B]
 			c := &fp.caches[i.C]
-			if o := v.O; o != nil {
+			if o := v.o; o != nil {
 				e := &c.cacheEntry
-				if o.Shape != e.shape {
+				if o.shape != e.shape {
 					e = &c.second
 				}
-				if o.Shape == e.shape {
+				if o.shape == e.shape {
 					if e.kind == cacheOwn {
-						regs[i.A] = o.Slots[e.slot]
+						regs[i.A] = o.slots[e.slot]
 						continue
 					}
 					if e.epoch == vm.protoEpoch {
 						if e.kind == cacheProto {
-							regs[i.A] = e.holder.Slots[e.slot]
+							regs[i.A] = e.holder.slots[e.slot]
 							continue
 						}
 						if e.kind == cacheGetter {
@@ -456,7 +456,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.get(v, fp.keys[i.C], c)
+			val, getter := vm.getNamed(v, fp.keys[i.C], c)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -466,20 +466,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := regs[i.A]
 			c := &fp.caches[i.B]
 			var setter *Object
-			if o := v.O; o != nil {
+			if o := v.o; o != nil {
 				e := &c.cacheEntry
-				if o.Shape != e.shape {
+				if o.shape != e.shape {
 					e = &c.second
 				}
-				if o.Shape == e.shape {
+				if o.shape == e.shape {
 					switch e.kind {
 					case cacheOwn:
-						o.Slots[e.slot] = regs[i.C]
+						o.slots[e.slot] = regs[i.C]
 						continue
 					case cacheAdd:
-						if e.epoch == vm.protoEpoch && o.Flags&objIsProto == 0 {
-							o.Shape = e.next
-							o.Slots = append(o.Slots, regs[i.C])
+						if e.epoch == vm.protoEpoch && o.flags&objIsProto == 0 {
+							o.shape = e.next
+							o.slots = append(o.slots, regs[i.C])
 							continue
 						}
 					case cacheSetter:
@@ -492,9 +492,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if setter == nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				var ok bool
-				setter, ok = vm.set(v, fp.keys[i.B], regs[i.C], c)
+				setter, ok = vm.setNamed(v, fp.keys[i.B], regs[i.C], c)
 				if !ok && i.Op == bytecode.OpSetPropStrict {
-					vm.throwReadOnly(v, PropKey{Key: fp.keys[i.B]})
+					vm.throwReadOnly(v, PropKey{key: fp.keys[i.B]})
 				}
 			}
 			if setter != nil {
@@ -507,12 +507,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpGetLength:
 			v := regs[i.B]
-			if o := v.O; o != nil && o.Kind == KindArray {
-				regs[i.A] = Value{N: float64(o.Length)}
+			if o := v.o; o != nil && o.kind == kindArray {
+				regs[i.A] = Value{n: float64(o.length)}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.get(v, vm.K.Length, &fp.caches[i.C])
+			val, getter := vm.getNamed(v, vm.K.Length, &fp.caches[i.C])
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -520,9 +520,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
-			if o := v.O; o != nil && k.O == nil {
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Elems)) {
-					if e := o.Elems[j]; e.O != holeObject {
+			if o := v.o; o != nil && k.o == nil {
+				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
+					if e := o.elems[j]; e.o != holeObject {
 						regs[i.A] = e
 						continue
 					}
@@ -537,8 +537,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpGetIndexInt:
 			v := regs[i.B]
-			if o := v.O; o != nil && uint(i.C) < uint(len(o.Elems)) {
-				if e := o.Elems[i.C]; e.O != holeObject {
+			if o := v.o; o != nil && uint(i.C) < uint(len(o.elems)) {
+				if e := o.elems[i.C]; e.o != holeObject {
 					regs[i.A] = e
 					continue
 				}
@@ -552,16 +552,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
 			v, k := regs[i.A], regs[i.B]
-			if o := v.O; o != nil && k.O == nil {
-				if j := int(k.N); float64(j) == k.N && uint(j) < uint(len(o.Elems)) {
-					if o.Elems[j].O != holeObject {
-						o.Elems[j] = regs[i.C]
+			if o := v.o; o != nil && k.o == nil {
+				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
+					if o.elems[j].o != holeObject {
+						o.elems[j] = regs[i.C]
 						continue
 					}
-				} else if j == len(o.Elems) && o.Kind == KindArray && uint32(j) == o.Length && o.Flags == 0 && float64(j) == k.N && o.Shape == vm.ArrayShape && vm.ArrayProtoPlain() {
+				} else if j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.arrayShape && vm.arrayProtoPlain() {
 					// Appending to a plain array.
-					o.Elems = append(o.Elems, regs[i.C])
-					o.Length++
+					o.elems = append(o.elems, regs[i.C])
+					o.length++
 					continue
 				}
 			}
@@ -605,7 +605,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if !c.IsObject() {
 				vm.ThrowTypeError("Cannot use 'in' operator to search for a key in a non-object")
 			}
-			r := vm.HasProperty(c.O, vm.ToPropertyKey(regs[i.B]))
+			r := vm.HasProperty(c.o, vm.ToPropertyKey(regs[i.B]))
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpInstanceof:
@@ -619,12 +619,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if !c.IsObject() {
 				vm.ThrowTypeError("Cannot use 'in' operator to search for a private field in a non-object")
 			}
-			_, ok := c.O.Shape.Lookup(regs[i.B].O)
+			_, ok := c.o.shape.lookup(regs[i.B].o)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpGetPrivate:
 			v := regs[i.B]
 			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.getPrivate(v, regs[i.C].O)
+			val, getter := vm.getPrivate(v, regs[i.C].o)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -633,7 +633,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetPrivate:
 			v := regs[i.A]
 			vm.frames[len(vm.frames)-1].pc = pc
-			if setter := vm.setPrivate(v, regs[i.B].O, regs[i.C]); setter != nil {
+			if setter := vm.setPrivate(v, regs[i.B].o, regs[i.C]); setter != nil {
 				val := regs[i.C]
 				argBase = vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(argBase + 1)
@@ -643,10 +643,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpDefinePrivate:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.definePrivate(regs[i.A], regs[i.B].O, regs[i.C])
+			vm.definePrivate(regs[i.A], regs[i.B].o, regs[i.C])
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
-			if v.O != nil && (v.O.Kind == KindString || v.O.Kind == kindSymbol) {
+			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) {
 				regs[i.A] = v
 				continue
 			}
@@ -657,13 +657,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpAdd:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: x.N + y.N}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: x.n + y.n}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			if x.O != nil && y.O != nil && x.O.Kind == KindString && y.O.Kind == KindString {
-				regs[i.A] = vm.concat(x, x.O.Str, y, y.O.Str)
+			if x.o != nil && y.o != nil && x.o.kind == kindString && y.o.kind == kindString {
+				regs[i.A] = vm.concat(x, x.o.str, y, y.o.str)
 				continue
 			}
 			v := vm.addValues(x, y)
@@ -671,90 +671,90 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSub:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: x.N - y.N}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: x.n - y.n}
 				continue
 			}
 			goto arith
 		case bytecode.OpMul:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: x.N * y.N}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: x.n * y.n}
 				continue
 			}
 			goto arith
 		case bytecode.OpDiv:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: x.N / y.N}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: x.n / y.n}
 				continue
 			}
 			goto arith
 		case bytecode.OpMod:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				xi, yi := int32(x.N), int32(y.N)
-				if xi >= 0 && yi > 0 && float64(xi) == x.N && float64(yi) == y.N {
-					regs[i.A] = Value{N: float64(xi % yi)}
+			if x.o == nil && y.o == nil {
+				xi, yi := int32(x.n), int32(y.n)
+				if xi >= 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
+					regs[i.A] = Value{n: float64(xi % yi)}
 					continue
 				}
-				regs[i.A] = Value{N: math.Mod(x.N, y.N)}
+				regs[i.A] = Value{n: math.Mod(x.n, y.n)}
 				continue
 			}
 			goto arith
 		case bytecode.OpBitOr:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) | numconv.ToInt32(y.N))}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) | numconv.ToInt32(y.n))}
 				continue
 			}
 			goto arith
 		case bytecode.OpBitAnd:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) & numconv.ToInt32(y.N))}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) & numconv.ToInt32(y.n))}
 				continue
 			}
 			goto arith
 		case bytecode.OpBitXor:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) ^ numconv.ToInt32(y.N))}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) ^ numconv.ToInt32(y.n))}
 				continue
 			}
 			goto arith
 		case bytecode.OpShl:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) << (numconv.ToUint32(y.N) & 31))}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) << (numconv.ToUint32(y.n) & 31))}
 				continue
 			}
 			goto arith
 		case bytecode.OpShr:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) >> (numconv.ToUint32(y.N) & 31))}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) >> (numconv.ToUint32(y.n) & 31))}
 				continue
 			}
 			goto arith
 		case bytecode.OpUShr:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToUint32(x.N) >> (numconv.ToUint32(y.N) & 31))}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToUint32(x.n) >> (numconv.ToUint32(y.n) & 31))}
 				continue
 			}
 			goto arith
 		case bytecode.OpExp:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Value{N: NumberPow(x.N, y.N)}
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Value{n: NumberPow(x.n, y.n)}
 				continue
 			}
 			goto arith
 		case bytecode.OpAddK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: x.N + fp.consts[i.C].N}
+			if x.o == nil {
+				regs[i.A] = Value{n: x.n + fp.consts[i.C].n}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -763,76 +763,76 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSubK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: x.N - fp.consts[i.C].N}
+			if x.o == nil {
+				regs[i.A] = Value{n: x.n - fp.consts[i.C].n}
 				continue
 			}
 			goto arithK
 		case bytecode.OpMulK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: x.N * fp.consts[i.C].N}
+			if x.o == nil {
+				regs[i.A] = Value{n: x.n * fp.consts[i.C].n}
 				continue
 			}
 			goto arithK
 		case bytecode.OpDivK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: x.N / fp.consts[i.C].N}
+			if x.o == nil {
+				regs[i.A] = Value{n: x.n / fp.consts[i.C].n}
 				continue
 			}
 			goto arithK
 		case bytecode.OpModK:
 			x, y := regs[i.B], fp.consts[i.C]
-			if x.O == nil {
-				xi, yi := int32(x.N), int32(y.N)
-				if xi >= 0 && yi > 0 && float64(xi) == x.N && float64(yi) == y.N {
-					regs[i.A] = Value{N: float64(xi % yi)}
+			if x.o == nil {
+				xi, yi := int32(x.n), int32(y.n)
+				if xi >= 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
+					regs[i.A] = Value{n: float64(xi % yi)}
 					continue
 				}
-				regs[i.A] = Value{N: math.Mod(x.N, y.N)}
+				regs[i.A] = Value{n: math.Mod(x.n, y.n)}
 				continue
 			}
 			goto arithK
 		case bytecode.OpBitOrK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) | int32(fp.consts[i.C].N))}
+			if x.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) | int32(fp.consts[i.C].n))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpBitAndK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) & int32(fp.consts[i.C].N))}
+			if x.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) & int32(fp.consts[i.C].n))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpShlK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) << (uint32(fp.consts[i.C].N) & 31))}
+			if x.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) << (uint32(fp.consts[i.C].n) & 31))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpShrK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToInt32(x.N) >> (uint32(fp.consts[i.C].N) & 31))}
+			if x.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) >> (uint32(fp.consts[i.C].n) & 31))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpUShrK:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: float64(numconv.ToUint32(x.N) >> (uint32(fp.consts[i.C].N) & 31))}
+			if x.o == nil {
+				regs[i.A] = Value{n: float64(numconv.ToUint32(x.n) >> (uint32(fp.consts[i.C].n) & 31))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpNeg:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: -x.N}
+			if x.o == nil {
+				regs[i.A] = Value{n: -x.n}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -841,20 +841,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpPlus:
 			x := regs[i.B]
-			if x.O == nil {
+			if x.o == nil {
 				regs[i.A] = x
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			n := vm.ToNumber(x)
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[i.A] = Value{N: n}
+			regs[i.A] = Value{n: n}
 		case bytecode.OpNot:
-			regs[i.A] = Bool(!Truthy(regs[i.B]))
+			regs[i.A] = Bool(!ToBoolean(regs[i.B]))
 		case bytecode.OpBitNot:
 			x := regs[i.B]
-			if x.O == nil {
-				regs[i.A] = Value{N: float64(^numconv.ToInt32(x.N))}
+			if x.o == nil {
+				regs[i.A] = Value{n: float64(^numconv.ToInt32(x.n))}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -863,7 +863,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpToNumeric:
 			x := regs[i.B]
-			if x.O == nil {
+			if x.o == nil {
 				regs[i.A] = x
 				continue
 			}
@@ -873,7 +873,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpToString:
 			x := regs[i.B]
-			if x.O != nil && x.O.Kind == KindString {
+			if x.o != nil && x.o.kind == kindString {
 				regs[i.A] = x
 				continue
 			}
@@ -885,11 +885,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = vm.typeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:
 			x := regs[i.B]
-			if x.O == nil {
+			if x.o == nil {
 				if i.Op == bytecode.OpInc {
-					regs[i.A] = Value{N: x.N + 1}
+					regs[i.A] = Value{n: x.n + 1}
 				} else {
-					regs[i.A] = Value{N: x.N - 1}
+					regs[i.A] = Value{n: x.n - 1}
 				}
 				continue
 			}
@@ -904,8 +904,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpLt:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Bool(x.N < y.N)
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Bool(x.n < y.n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -914,8 +914,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(r)
 		case bytecode.OpLe:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Bool(x.N <= y.N)
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Bool(x.n <= y.n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -924,8 +924,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpGt:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Bool(x.N > y.N)
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Bool(x.n > y.n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -934,8 +934,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(r)
 		case bytecode.OpGe:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				regs[i.A] = Bool(x.N >= y.N)
+			if x.o == nil && y.o == nil {
+				regs[i.A] = Bool(x.n >= y.n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -945,8 +945,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpEq, bytecode.OpNe:
 			x, y := regs[i.B], regs[i.C]
 			var r bool
-			if x.O == nil && y.O == nil {
-				r = x.N == y.N
+			if x.o == nil && y.o == nil {
+				r = x.n == y.n
 			} else {
 				vm.frames[len(vm.frames)-1].pc = pc
 				r = vm.looseEquals(x, y)
@@ -954,9 +954,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			regs[i.A] = Bool(r == (i.Op == bytecode.OpEq))
 		case bytecode.OpStrictEq:
-			regs[i.A] = Bool(StrictEquals(regs[i.B], regs[i.C]))
+			regs[i.A] = Bool(IsStrictlyEqual(regs[i.B], regs[i.C]))
 		case bytecode.OpStrictNe:
-			regs[i.A] = Bool(!StrictEquals(regs[i.B], regs[i.C]))
+			regs[i.A] = Bool(!IsStrictlyEqual(regs[i.B], regs[i.C]))
 
 		case bytecode.OpJump:
 			if int(i.A) < pc && vm.interrupt.Load() {
@@ -966,11 +966,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			pc = int(i.A)
 		case bytecode.OpJumpIf:
-			if Truthy(regs[i.B]) {
+			if ToBoolean(regs[i.B]) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNot:
-			if !Truthy(regs[i.B]) {
+			if !ToBoolean(regs[i.B]) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNullish:
@@ -982,17 +982,17 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfUndef:
-			if regs[i.B].O == undefinedObject {
+			if regs[i.B].o == undefinedObject {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNotUndef:
-			if regs[i.B].O != undefinedObject {
+			if regs[i.B].o != undefinedObject {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLt:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				if !(x.N < y.N) {
+			if x.o == nil && y.o == nil {
+				if !(x.n < y.n) {
 					pc = int(i.A)
 				}
 				continue
@@ -1005,8 +1005,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotLe:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				if !(x.N <= y.N) {
+			if x.o == nil && y.o == nil {
+				if !(x.n <= y.n) {
 					pc = int(i.A)
 				}
 				continue
@@ -1019,8 +1019,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotGt:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				if !(x.N > y.N) {
+			if x.o == nil && y.o == nil {
+				if !(x.n > y.n) {
 					pc = int(i.A)
 				}
 				continue
@@ -1033,8 +1033,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotGe:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				if !(x.N >= y.N) {
+			if x.o == nil && y.o == nil {
+				if !(x.n >= y.n) {
 					pc = int(i.A)
 				}
 				continue
@@ -1048,8 +1048,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotEq, bytecode.OpJumpNotNe:
 			x, y := regs[i.B], regs[i.C]
 			var r bool
-			if x.O == nil && y.O == nil {
-				r = x.N == y.N
+			if x.o == nil && y.o == nil {
+				r = x.n == y.n
 			} else {
 				vm.frames[len(vm.frames)-1].pc = pc
 				r = vm.looseEquals(x, y)
@@ -1060,128 +1060,128 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotSEq:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				if x.N != y.N {
+			if x.o == nil && y.o == nil {
+				if x.n != y.n {
 					pc = int(i.A)
 				}
 				continue
 			}
-			if !StrictEquals(x, y) {
+			if !IsStrictlyEqual(x, y) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSNe:
 			x, y := regs[i.B], regs[i.C]
-			if x.O == nil && y.O == nil {
-				if x.N == y.N {
+			if x.o == nil && y.o == nil {
+				if x.n == y.n {
 					pc = int(i.A)
 				}
 				continue
 			}
-			if StrictEquals(x, y) {
+			if IsStrictlyEqual(x, y) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLtK:
 			x := regs[i.B]
-			if x.O != nil {
+			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.O != nil {
+				if x.o != nil {
 					if compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.N < fp.consts[i.C].N) {
+			if !(x.n < fp.consts[i.C].n) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLeK:
 			x := regs[i.B]
-			if x.O != nil {
+			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.O != nil {
+				if x.o != nil {
 					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.N <= fp.consts[i.C].N) {
+			if !(x.n <= fp.consts[i.C].n) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotGtK:
 			x := regs[i.B]
-			if x.O != nil {
+			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.O != nil {
+				if x.o != nil {
 					if compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.N > fp.consts[i.C].N) {
+			if !(x.n > fp.consts[i.C].n) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotGeK:
 			x := regs[i.B]
-			if x.O != nil {
+			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.O != nil {
+				if x.o != nil {
 					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
 				}
 			}
-			if !(x.N >= fp.consts[i.C].N) {
+			if !(x.n >= fp.consts[i.C].n) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSEqK:
-			if x := regs[i.B]; x.O != nil || x.N != fp.consts[i.C].N {
+			if x := regs[i.B]; x.o != nil || x.n != fp.consts[i.C].n {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSNeK:
-			if x := regs[i.B]; x.O == nil && x.N == fp.consts[i.C].N {
+			if x := regs[i.B]; x.o == nil && x.n == fp.consts[i.C].n {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfInt:
-			if x := regs[i.B]; x.O == nil && x.N == float64(i.C) {
+			if x := regs[i.B]; x.o == nil && x.n == float64(i.C) {
 				pc = int(i.A)
 			}
 
 		case bytecode.OpCall:
 			a := int(i.A)
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].O, regs[a+1], a+2, int(i.B), i.A, false, nil
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
 			goto callRegs
 		case bytecode.OpCallCall:
 			a := int(i.A)
-			if regs[a].O == vm.FnCall {
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a+1].O, regs[a+2], a+3, int(i.B)-1, i.A, false, nil
+			if regs[a].o == vm.FnCall {
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a+1].o, regs[a+2], a+3, int(i.B)-1, i.A, false, nil
 				if argc < 0 {
 					callThis, argc = Undefined, 0
 				}
 			} else {
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].O, regs[a+1], a+2, int(i.B), i.A, false, nil
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
 			}
 			goto callRegs
 		case bytecode.OpApplyFwd:
 			a := int(i.A)
 			cur := &vm.frames[len(vm.frames)-1]
-			if regs[a].O != vm.FnApply {
+			if regs[a].o != vm.FnApply {
 				// Something else is called apply here: pass it a real arguments object.
-				regs[a+3] = Value{O: vm.newArguments(cur, regs, false)}
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].O, regs[a+1], a+2, 2, i.A, false, nil
+				regs[a+3] = Value{o: vm.newArguments(cur, regs, false)}
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, 2, i.A, false, nil
 				goto callRegs
 			}
-			f, callThis, argc, ret, isNew, newTarget = regs[a+1].O, regs[a+2], cur.argc, i.A, false, nil
+			f, callThis, argc, ret, isNew, newTarget = regs[a+1].o, regs[a+2], cur.argc, i.A, false, nil
 			argBase = cur.top()
 			vm.ensureStack(argBase + argc)
 			n := min(argc, fp.nparams)
@@ -1191,7 +1191,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCallFwd:
 			a := int(i.A)
 			cur := &vm.frames[len(vm.frames)-1]
-			f, callThis, argc, ret, isNew, newTarget = regs[a].O, regs[a+1], cur.argc, i.A, false, nil
+			f, callThis, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], cur.argc, i.A, false, nil
 			argBase = cur.top()
 			vm.ensureStack(argBase + argc)
 			n := min(argc, fp.nparams)
@@ -1200,8 +1200,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto call
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
 			a := int(i.A)
-			f, callThis, ret, isNew, newTarget = regs[a].O, regs[a+1], i.A, false, nil
-			args := regs[a+2].O.Elems
+			f, callThis, ret, isNew, newTarget = regs[a].o, regs[a+1], i.A, false, nil
+			args := regs[a+2].o.elems
 			argc = len(args)
 			argBase = vm.frames[len(vm.frames)-1].top()
 			vm.ensureStack(argBase + argc)
@@ -1210,13 +1210,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			case bytecode.OpNewSpread:
 				goto construct
 			case bytecode.OpSuperSpread:
-				newTarget = regs[a+1].O
+				newTarget = regs[a+1].o
 				goto superCall
 			}
 			goto call
 		case bytecode.OpCallEval:
 			a := int(i.A)
-			if regs[a].O == vm.FnEval {
+			if regs[a].o == vm.FnEval {
 				vm.frames[len(vm.frames)-1].pc = pc
 				var src Value = Undefined
 				if i.B > 0 {
@@ -1227,11 +1227,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[a] = v
 				continue
 			}
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].O, regs[a+1], a+2, int(i.B), i.A, false, nil
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
 			goto callRegs
 		case bytecode.OpNew:
 			a := int(i.A)
-			f, argBase, argc, ret = regs[a].O, a+2, int(i.B), i.A
+			f, argBase, argc, ret = regs[a].o, a+2, int(i.B), i.A
 			if onHeap {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
@@ -1240,32 +1240,32 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else {
 				argBase += base
 			}
-			if f != nil && f.Fn != nil && f.Fn.Code != nil && f.Fn.Constructor && !f.Fn.derived {
+			if f != nil && f.fn != nil && f.fn.code != nil && f.fn.constructor && !f.fn.derived {
 				// The common case: a plain constructor function, whose prototype property is cached.
 				c := &fp.caches[i.C]
 				var proto Value
-				if f.Shape == c.shape && c.kind == cacheOwn {
-					proto = f.Slots[c.slot]
+				if f.shape == c.shape && c.kind == cacheOwn {
+					proto = f.slots[c.slot]
 				} else {
 					vm.frames[len(vm.frames)-1].pc = pc
-					proto, _ = vm.get(Value{O: f}, vm.K.Prototype, c)
+					proto, _ = vm.getNamed(Value{o: f}, vm.K.Prototype, c)
 				}
-				if proto.O == nil || proto.O.Kind < kindObject {
-					proto = Value{O: vm.ObjectProto}
+				if proto.o == nil || proto.o.kind < kindObject {
+					proto = Value{o: vm.ObjectProto}
 				}
-				var shape *Shape
-				if proto.O == c.holder && c.next != nil {
+				var shape *shape
+				if proto.o == c.holder && c.next != nil {
 					shape = c.next
 				} else {
-					shape = vm.ShapeFor(proto.O)
+					shape = vm.shapeFor(proto.o)
 					if c.kind == cacheOwn {
-						c.holder, c.next = proto.O, shape
+						c.holder, c.next = proto.o, shape
 					}
 				}
 				callThis = Value{
-					O: &Object{
-						Kind:  kindObject,
-						Shape: shape,
+					o: &Object{
+						kind:  kindObject,
+						shape: shape,
 					},
 				}
 				isNew, newTarget = true, f
@@ -1283,7 +1283,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else {
 				argBase += base
 			}
-			f, newTarget = regs[a].O, regs[a+1].O
+			f, newTarget = regs[a].o, regs[a+1].o
 			goto superCall
 
 		case bytecode.OpReturn, bytecode.OpReturnUndef, bytecode.OpReturnDerived:
@@ -1300,12 +1300,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						vm.ThrowTypeError("Derived constructors may only return object or undefined")
 					}
 					r = regs[i.B]
-					if r.O == tdzObject {
+					if r.o == tdzObject {
 						done.pc = pc
 						vm.throwReferenceError("Must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
-			} else if done.isNew && (r.O == nil || r.O.Kind < kindObject) {
+			} else if done.isNew && (r.o == nil || r.o.kind < kindObject) {
 				r = done.this
 			}
 			if g := done.gen; g != nil {
@@ -1351,7 +1351,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			*cur = frame{}
 			vm.frames = vm.frames[:n]
 			if n == stop {
-				return Value{O: g.object}, execReturn
+				return Value{o: g.object}, execReturn
 			}
 			fr := &vm.frames[n-1]
 			fp = fr.fp
@@ -1367,7 +1367,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs = vm.stack[base : base+fp.nregs+1]
 				vm.sp = base + fp.nregs + 1
 			}
-			regs[ret] = Value{O: g.object}
+			regs[ret] = Value{o: g.object}
 		case bytecode.OpYield, bytecode.OpAwait:
 			n := len(vm.frames) - 1
 			cur := &vm.frames[n]
@@ -1378,14 +1378,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			g.scopes = cur.scopes
 			g.state = genSuspendedYield
 			g.awaiting = i.Op == bytecode.OpAwait
-			g.Delegating = i.C != 0
+			g.delegating = i.C != 0
 			*cur = frame{}
 			vm.frames = vm.frames[:n]
 			// A generator only ever runs as the frame its loop was started for.
 			return v, execYield
 		case bytecode.OpGenResumeMode:
 			g := vm.frames[len(vm.frames)-1].gen
-			regs[i.A] = Value{N: float64(g.mode)}
+			regs[i.A] = Value{n: float64(g.mode)}
 			g.mode = ResumeNext
 		case bytecode.OpYieldDelegateResult:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1393,7 +1393,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if !r.IsObject() {
 				vm.ThrowTypeError("Iterator result " + vm.DisplayString(r) + " is not an object")
 			}
-			done := Truthy(vm.GetV(r, vm.K.done))
+			done := ToBoolean(vm.GetV(r, vm.K.done))
 			regs = vm.reload(regs, onHeap, base, fp)
 			if !done {
 				pc = int(i.C)
@@ -1405,65 +1405,65 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpNewObject:
 			regs[i.A] = Value{
-				O: &Object{
-					Kind:  kindObject,
-					Shape: vm.objectShape,
+				o: &Object{
+					kind:  kindObject,
+					shape: vm.objectShape,
 				},
 			}
 		case bytecode.OpNewArray:
 			elems := make([]Value, i.B, max(i.B, i.C))
 			copy(elems, regs[i.A+1:])
-			regs[i.A] = Value{O: vm.NewArray(elems)}
+			regs[i.A] = Value{o: vm.NewArray(elems)}
 		case bytecode.OpArrayPush:
-			o := regs[i.A].O
-			o.Elems = append(o.Elems, regs[i.B])
-			o.Length = uint32(len(o.Elems))
+			o := regs[i.A].o
+			o.elems = append(o.elems, regs[i.B])
+			o.length = uint32(len(o.elems))
 		case bytecode.OpArrayHole:
-			o := regs[i.A].O
-			o.Elems = append(o.Elems, hole)
-			o.Length = uint32(len(o.Elems))
+			o := regs[i.A].o
+			o.elems = append(o.elems, hole)
+			o.length = uint32(len(o.elems))
 		case bytecode.OpArraySpread:
 			vm.frames[len(vm.frames)-1].pc = pc
-			o := regs[i.A].O
+			o := regs[i.A].o
 			vm.appendIterable(o, regs[i.B])
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpRegExp:
 			vm.frames[len(vm.frames)-1].pc = pc
 			regs[i.A] = vm.newRegExpLiteral(fp.consts[i.B], fp.consts[i.C])
 		case bytecode.OpTemplate:
-			regs[i.A] = Value{O: vm.templateObject(&fp.templates[i.B])}
+			regs[i.A] = Value{o: vm.templateObject(&fp.templates[i.B])}
 		case bytecode.OpDefineField:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.defineField(regs[i.A].O, regs[i.B], regs[i.C])
+			vm.defineField(regs[i.A].o, regs[i.B], regs[i.C])
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpDefineFieldK:
-			o := regs[i.A].O
+			o := regs[i.A].o
 			c := &fp.caches[i.B]
-			if o.Shape == c.shape && c.kind == cacheAdd {
-				o.Shape = c.next
-				o.Slots = append(o.Slots, regs[i.C])
+			if o.shape == c.shape && c.kind == cacheAdd {
+				o.shape = c.next
+				o.slots = append(o.slots, regs[i.C])
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.defineFieldK(o, fp.keys[i.B], regs[i.C], c)
 		case bytecode.OpDefineMethod:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.defineMethod(regs[i.A].O, regs[i.B], regs[i.C])
+			vm.defineMethod(regs[i.A].o, regs[i.B], regs[i.C])
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpDefineGetter, bytecode.OpDefineSetter:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			enumerable := code[pc].A != 0
 			pc++
-			vm.defineAccessor(regs[i.A].O, regs[i.B], regs[i.C].O, i.Op == bytecode.OpDefineSetter, enumerable)
+			vm.defineAccessor(regs[i.A].o, regs[i.B], regs[i.C].o, i.Op == bytecode.OpDefineSetter, enumerable)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpSetFuncName:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setFuncName(regs[i.A], regs[i.B], int(i.C))
 		case bytecode.OpSetHome:
-			regs[i.A].O.Fn.home = regs[i.B].O
+			regs[i.A].o.fn.home = regs[i.B].o
 		case bytecode.OpCopyProps:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.copyDataProperties(regs[i.A].O, regs[i.B], nil)
+			vm.copyDataProperties(regs[i.A].o, regs[i.B], nil)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpCopyPropsExcept:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
@@ -1473,12 +1473,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			excluded := append([]Value(nil), regs[int(i.C)+1:int(i.C)+1+n]...)
 			vm.copyDataProperties(o, regs[i.B], excluded)
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[i.A] = Value{O: o}
+			regs[i.A] = Value{o: o}
 		case bytecode.OpSetProto:
 			if p := regs[i.B]; p.IsObject() {
-				vm.SetProto(regs[i.A].O, p.O)
+				vm.setProto(regs[i.A].o, p.o)
 			} else if p.IsNull() {
-				vm.SetProto(regs[i.A].O, nil)
+				vm.setProto(regs[i.A].o, nil)
 			}
 		case bytecode.OpClass:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1486,23 +1486,23 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if i.C >= 0 {
 				parent = regs[i.C]
 			}
-			proto := vm.setupClass(regs[i.A].O, parent)
+			proto := vm.setupClass(regs[i.A].o, parent)
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[i.A+1] = Value{O: proto}
+			regs[i.A+1] = Value{o: proto}
 		case bytecode.OpPrivateName:
 			name := &Object{
-				Kind:  kindSymbol,
-				Class: ClassPrivateName,
-				Str:   fp.keys[i.B].Str,
+				kind:  kindSymbol,
+				class: classPrivateName,
+				str:   fp.keys[i.B].str,
 			}
 			if i.C != 0 {
-				name.Flags |= ObjFrozenLength
+				name.flags |= objFrozenLength
 			}
-			regs[i.A] = Value{O: name}
+			regs[i.A] = Value{o: name}
 		case bytecode.OpInitFields:
-			if regs[i.A].O.Fn.fields != nil {
+			if regs[i.A].o.fn.fields != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.initFields(regs[i.A].O, regs[i.B])
+				vm.initFields(regs[i.A].o, regs[i.B])
 				regs = vm.reload(regs, onHeap, base, fp)
 			}
 		case bytecode.OpAddField:
@@ -1511,12 +1511,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			pc++
 			var init *Object
 			if i.C >= 0 {
-				init = regs[i.C].O
+				init = regs[i.C].o
 			}
-			vm.addClassElement(regs[i.A].O, regs[i.B], init, kind)
+			vm.addClassElement(regs[i.A].o, regs[i.B], init, kind)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpCheckThisUninit:
-			if regs[i.A].O != tdzObject {
+			if regs[i.A].o != tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				vm.throwReferenceError("Super constructor may only be called once")
 			}
@@ -1533,7 +1533,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = it
 		case bytecode.OpForInNext:
 			vm.frames[len(vm.frames)-1].pc = pc
-			k, ok := vm.forInNext(regs[i.B].O)
+			k, ok := vm.forInNext(regs[i.B].o)
 			regs = vm.reload(regs, onHeap, base, fp)
 			if !ok {
 				pc = int(i.C)
@@ -1542,10 +1542,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = k
 		case bytecode.OpGetIterator:
 			v := regs[i.B]
-			if i.C == 0 && v.O != nil && v.O.Kind == KindArray && vm.arrayIterationPlain(v.O) {
+			if i.C == 0 && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
 				// Iterate a plain array by index: the next method slot holds the index.
 				regs[i.A] = v
-				regs[i.A+1] = Value{N: 0}
+				regs[i.A+1] = Value{n: 0}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1554,27 +1554,27 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = it
 			regs[i.A+1] = next
 		case bytecode.OpIterNext:
-			if regs[i.B].O == undefinedObject {
+			if regs[i.B].o == undefinedObject {
 				// The iterator finished earlier.
 				pc = int(i.C)
 				continue
 			}
-			if idx := regs[i.B+1]; idx.O == nil {
-				o := regs[i.B].O
-				j := uint32(idx.N)
-				if j >= o.Length {
+			if idx := regs[i.B+1]; idx.o == nil {
+				o := regs[i.B].o
+				j := uint32(idx.n)
+				if j >= o.length {
 					// Mark the iterator as finished, so that closing it does nothing.
 					regs[i.B] = Undefined
 					pc = int(i.C)
 					continue
 				}
-				regs[i.B+1] = Value{N: idx.N + 1}
-				if int(j) < len(o.Elems) && o.Elems[j].O != holeObject {
-					regs[i.A] = o.Elems[j]
+				regs[i.B+1] = Value{n: idx.n + 1}
+				if int(j) < len(o.elems) && o.elems[j].o != holeObject {
+					regs[i.A] = o.elems[j]
 					continue
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
-				v := vm.GetKey(Value{O: o}, PropKey{Idx: j})
+				v := vm.Index(Value{o: o}, j)
 				regs = vm.reload(regs, onHeap, base, fp)
 				regs[i.A] = v
 				continue
@@ -1591,7 +1591,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				var done bool
 				var v Value
 				if ok := vm.protect(func() {
-					done = Truthy(vm.GetV(r, vm.K.done))
+					done = ToBoolean(vm.GetV(r, vm.K.done))
 					if !done {
 						v = vm.GetV(r, vm.K.Value)
 					}
@@ -1611,14 +1611,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpIterClose:
 			it := regs[i.A]
-			if it.IsUndefined() || regs[i.A+1].O == nil {
+			if it.IsUndefined() || regs[i.A+1].o == nil {
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.iteratorClose(it, i.B != 0)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpIterResult:
-			regs[i.A] = Value{O: vm.NewIterResult(regs[i.B], i.C != 0)}
+			regs[i.A] = vm.CreateIterResultObject(regs[i.B], i.C != 0)
 		case bytecode.OpIterCall:
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
@@ -1721,12 +1721,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	call:
 		// The arguments are on the stack from argBase on.
 		{
-			if f == nil || f.Fn == nil {
+			if f == nil || f.fn == nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				vm.throwNotCallable(fp, pc-1, regs)
 			}
-			fn := f.Fn
-			if c := fn.Code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
+			fn := f.fn
+			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
 				if len(vm.frames) >= maxFrames {
 					vm.frames[len(vm.frames)-1].pc = pc
 					vm.ThrowRangeError("Maximum call stack size exceeded")
@@ -1742,7 +1742,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			if c := fn.Code; c != nil && c.isGenerator && !c.isAsync && fn.Bound == nil {
+			if c := fn.code; c != nil && c.isGenerator && !c.isAsync && fn.bound == nil {
 				// Run the generator up to its initial suspension as an ordinary frame.
 				vm.pushGenerator(f, callThis, vm.stack[argBase:argBase+argc], ret)
 				fr := &vm.frames[len(vm.frames)-1]
@@ -1758,7 +1758,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp
 			vm.sp = argBase + argc
-			r := vm.CallSlow(f, callThis, vm.stack[argBase:argBase+argc:argBase+argc], isNew, newTarget)
+			r := vm.callSlow(f, callThis, vm.stack[argBase:argBase+argc:argBase+argc], isNew, newTarget)
 			vm.sp = saved
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[ret] = r
@@ -1769,7 +1769,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		// new f(...) for anything but a plain constructor function.
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
-			if f == nil || f.Fn == nil || !vm.IsConstructor(f) {
+			if f == nil || f.fn == nil || !vm.IsConstructor(f) {
 				vm.throwNotConstructor(fp, pc-1, regs)
 			}
 			vm.ensureStack(argBase + argc)
@@ -1778,7 +1778,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			r := vm.Construct(f, vm.stack[argBase:argBase+argc:argBase+argc], f)
 			vm.sp = saved
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[ret] = Value{O: r}
+			regs[ret] = Value{o: r}
 			continue
 		}
 
@@ -1786,8 +1786,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		// super(...): f is the running constructor and newTarget its new.target.
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
-			parent := f.Shape.proto
-			if parent == nil || parent.Fn == nil || !vm.IsConstructor(parent) {
+			parent := f.shape.proto
+			if parent == nil || parent.fn == nil || !vm.IsConstructor(parent) {
 				vm.ThrowTypeError("Super constructor is not a constructor")
 			}
 			vm.ensureStack(argBase + argc)
@@ -1796,7 +1796,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			r := vm.Construct(parent, vm.stack[argBase:argBase+argc:argBase+argc], newTarget)
 			vm.sp = saved
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[ret] = Value{O: r}
+			regs[ret] = Value{o: r}
 			continue
 		}
 
@@ -1830,6 +1830,7 @@ func (vm *VM) reload(regs []Value, onHeap bool, base int, fp *funcProto) []Value
 	return vm.stack[base : base+fp.nregs+1]
 }
 
+// NumberPow implements Number::exponentiate.
 func NumberPow(x, y float64) float64 {
 	// The exponents NaN and ±Infinity with a base of ±1 give NaN, unlike in IEEE 754.
 	if y != y || (math.IsInf(y, 0) && (x == 1 || x == -1)) {

@@ -17,54 +17,57 @@ func New() *VM {
 	vm := &VM{
 		stack:          make([]Value, 1<<14),
 		interned:       map[string]*Object{},
-		childShapes:    map[*Object]*Shape{},
+		childShapes:    map[*Object]*shape{},
 		SymbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 	}
-	vm.nullProtoShape = &Shape{vm: vm}
+	vm.nullProtoShape = &shape{vm: vm}
 	vm.ObjectProto = &Object{
-		Kind:  kindObject,
-		Shape: vm.nullProtoShape,
+		kind:  kindObject,
+		shape: vm.nullProtoShape,
 	}
-	vm.objectShape = vm.ShapeFor(vm.ObjectProto)
+	vm.objectShape = vm.shapeFor(vm.ObjectProto)
 	vm.FunctionProto = &Object{
-		Kind:  KindFunction,
-		Class: ClassFunction,
-		Flags: ObjExotic,
-		Shape: vm.objectShape,
-		Fn: &Function{
+		kind:  kindFunction,
+		class: classFunction,
+		flags: objExotic,
+		shape: vm.objectShape,
+		fn: &function{
 			native: func(vm *VM, this Value, args []Value) Value {
 				return Undefined
 			},
 		},
 	}
-	vm.FunctionShape = vm.ShapeFor(vm.FunctionProto)
+	vm.functionShape = vm.shapeFor(vm.FunctionProto)
 	vm.ArrayProto = &Object{
-		Kind:  KindArray,
-		Class: classArray,
-		Shape: vm.objectShape,
+		kind:  kindArray,
+		class: classArray,
+		shape: vm.objectShape,
 	}
-	vm.ArrayShape = vm.ShapeFor(vm.ArrayProto)
+	vm.arrayShape = vm.shapeFor(vm.ArrayProto)
 	vm.StringProto = vm.NewObject(vm.ObjectProto)
-	vm.stringShape = vm.ShapeFor(vm.StringProto)
+	vm.stringShape = vm.shapeFor(vm.StringProto)
 
 	vm.EmptyString = Value{
-		O: &Object{
-			Kind:  KindString,
-			Flags: objInterned,
-			Shape: vm.stringShape,
+		o: &Object{
+			kind:  kindString,
+			flags: objInterned,
+			shape: vm.stringShape,
 		},
 	}
-	vm.interned[""] = vm.EmptyString.O
+	vm.interned[""] = vm.EmptyString.o
 	for i := range vm.asciiStrings {
-		vm.asciiStrings[i] = Value{O: vm.Intern(string(rune(i)))}
+		vm.asciiStrings[i] = Value{o: vm.Intern(string(rune(i)))}
 	}
 	vm.initKeys()
+	vm.StringProto.class = classString
+	vm.StringProto.ext = vm.EmptyString.o
+	vm.add(vm.StringProto, vm.K.Length, Number(0), 0)
 
 	vm.missHolder = &Object{
-		Kind:  kindObject,
-		Shape: vm.nullProtoShape,
-		Slots: []Value{Undefined},
+		kind:  kindObject,
+		shape: vm.nullProtoShape,
+		slots: []Value{Undefined},
 	}
 	vm.iterResultShape = vm.objectShape.with(vm.K.Value, FlagsData).with(vm.K.done, FlagsData)
 	vm.argumentsShape = vm.objectShape.with(vm.K.Length, FlagsHidden).with(vm.K.SymIterator, FlagsHidden)
@@ -74,13 +77,14 @@ func New() *VM {
 	return vm
 }
 
+// NewSymbol returns a new symbol. desc is its description when hasDesc is set.
 func (vm *VM) NewSymbol(desc string, hasDesc bool) *Object {
 	s := &Object{
-		Kind: kindSymbol,
-		Str:  desc,
+		kind: kindSymbol,
+		str:  desc,
 	}
 	if hasDesc {
-		s.Ext = true
+		s.ext = true
 	}
 	return s
 }
@@ -145,19 +149,13 @@ func itoa(n int) string {
 // The error is a *SyntaxError when src is not a valid script, and an *Error when
 // the script throws.
 func (vm *VM) RunScript(file, src string) (Value, error) {
-	fp, err := vm.CompileScript(file, src)
+	fp, err := vm.compileScript(file, src)
 	if err != nil {
 		return Undefined, err
 	}
-	f := &Object{
-		Kind:  KindFunction,
-		Class: ClassFunction,
-		Flags: ObjExotic,
-		Shape: vm.FunctionShape,
-		Fn:    &Function{Code: fp},
-	}
+	f := vm.newScriptFunction(fp)
 	return vm.enter(func() Value {
-		result := vm.Call(f, Value{O: vm.Global})
+		result := vm.Call(f, Value{o: vm.Global})
 		vm.runJobs()
 		return result
 	})
@@ -193,11 +191,10 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 	return result, nil
 }
 
-func (vm *VM) CompileScript(file, src string) (*funcProto, error) {
+func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), parser.Options{})
 	if err != nil {
-		var pe *parser.Error
-		if errors.As(err, &pe) {
+		if pe, ok := errors.AsType[*parser.Error](err); ok {
 			return nil, &SyntaxError{
 				File:    file,
 				Line:    pe.Line,
@@ -208,8 +205,7 @@ func (vm *VM) CompileScript(file, src string) (*funcProto, error) {
 	}
 	bc, err := compiler.CompileScript(prog, file)
 	if err != nil {
-		var ce *compiler.Error
-		if errors.As(err, &ce) {
+		if ce, ok := errors.AsType[*compiler.Error](err); ok {
 			return nil, &SyntaxError{
 				File:    file,
 				Line:    ce.Line,
@@ -229,4 +225,27 @@ func (vm *VM) runJobs() {
 		vm.jobs = vm.jobs[1:]
 		job()
 	}
+}
+
+// newScriptFunction returns the function that runs the script fp.
+func (vm *VM) newScriptFunction(fp *funcProto) *Object {
+	return &Object{
+		kind:  kindFunction,
+		class: classFunction,
+		flags: objExotic,
+		shape: vm.functionShape,
+		fn:    &function{code: fp},
+	}
+}
+
+// PerformEval implements PerformEval for an indirect eval.
+func (vm *VM) PerformEval(x Value) Value {
+	if !x.IsString() {
+		return x
+	}
+	fp, err := vm.compileScript("<eval>", x.o.str)
+	if err != nil {
+		vm.throwSyntaxError(err.Error())
+	}
+	return vm.Call(vm.newScriptFunction(fp), Value{o: vm.Global})
 }

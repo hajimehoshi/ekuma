@@ -6,16 +6,17 @@ package engine
 import (
 	"math"
 	"math/big"
+	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
 func (vm *VM) throwTDZ(name *Object) {
-	if name.Str == "this" {
+	if name.str == "this" {
 		vm.throwReferenceError("Must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	vm.throwReferenceError("Cannot access '" + name.Str + "' before initialization")
+	vm.throwReferenceError("Cannot access '" + name.str + "' before initialization")
 }
 
 func (vm *VM) throwReadOnly(v Value, k PropKey) {
@@ -32,9 +33,9 @@ func (vm *VM) calleeName(fp *funcProto, pc int) string {
 		}
 		switch in.Op {
 		case bytecode.OpGetProp:
-			return fp.keys[in.C].Str
+			return fp.keys[in.C].str
 		case bytecode.OpGetGlobal:
-			return fp.keys[in.B].Str
+			return fp.keys[in.B].str
 		}
 		break
 	}
@@ -60,112 +61,112 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 // getGlobal returns the global variable key. When it does not exist, it throws a ReferenceError
 // unless orUndef is set.
 func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
-	if p, ok := vm.globalLex.Shape.Lookup(key); ok {
-		v := vm.globalLex.Slots[p.Slot]
-		if v.O == tdzObject {
+	if p, ok := vm.globalLex.shape.lookup(key); ok {
+		v := vm.globalLex.slots[p.slot]
+		if v.o == tdzObject {
 			vm.throwTDZ(key)
 		}
 		c.holder = vm.globalLex
-		c.shape = vm.globalLex.Shape
-		c.slot = p.Slot
+		c.shape = vm.globalLex.shape
+		c.slot = p.slot
 		c.kind = cacheOwn
-		if p.Flags&FlagWritable == 0 {
+		if p.flags&FlagWritable == 0 {
 			c.kind = cacheProto
 		}
 		c.epoch = vm.globalEpoch
 		return v
 	}
 	g := vm.Global
-	if p, ok := g.Shape.Lookup(key); ok && p.Flags&FlagAccessor == 0 {
+	if p, ok := g.shape.lookup(key); ok && p.flags&FlagAccessor == 0 {
 		c.holder = g
-		c.shape = g.Shape
-		c.slot = p.Slot
+		c.shape = g.shape
+		c.slot = p.slot
 		c.kind = cacheOwn
-		if p.Flags&FlagWritable == 0 {
+		if p.flags&FlagWritable == 0 {
 			c.kind = cacheProto
 		}
 		c.epoch = vm.globalEpoch
-		return g.Slots[p.Slot]
+		return g.slots[p.slot]
 	}
-	k := PropKey{Key: key}
+	k := PropKey{key: key}
 	if !vm.HasProperty(g, k) {
 		if orUndef {
 			return Undefined
 		}
-		vm.throwReferenceError(key.Str + " is not defined")
+		vm.throwReferenceError(key.str + " is not defined")
 	}
-	return vm.GetProp(g, k, Value{O: g})
+	return vm.getProp(g, k, Value{o: g})
 }
 
 // setGlobal assigns to the global variable key.
 func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
-	if p, ok := vm.globalLex.Shape.Lookup(key); ok {
-		if vm.globalLex.Slots[p.Slot].O == tdzObject {
+	if p, ok := vm.globalLex.shape.lookup(key); ok {
+		if vm.globalLex.slots[p.slot].o == tdzObject {
 			vm.throwTDZ(key)
 		}
-		if p.Flags&FlagWritable == 0 {
-			vm.ThrowTypeError("Assignment to constant variable '" + key.Str + "'")
+		if p.flags&FlagWritable == 0 {
+			vm.ThrowTypeError("Assignment to constant variable '" + key.str + "'")
 		}
-		vm.globalLex.Slots[p.Slot] = val
+		vm.globalLex.slots[p.slot] = val
 		c.holder = vm.globalLex
-		c.shape = vm.globalLex.Shape
-		c.slot = p.Slot
+		c.shape = vm.globalLex.shape
+		c.slot = p.slot
 		c.kind = cacheOwn
 		c.epoch = vm.globalEpoch
 		return
 	}
 	g := vm.Global
-	if p, ok := g.Shape.Lookup(key); ok && p.Flags&(FlagAccessor|FlagWritable) == FlagWritable {
-		g.Slots[p.Slot] = val
+	if p, ok := g.shape.lookup(key); ok && p.flags&(FlagAccessor|FlagWritable) == FlagWritable {
+		g.slots[p.slot] = val
 		c.holder = g
-		c.shape = g.Shape
-		c.slot = p.Slot
+		c.shape = g.shape
+		c.slot = p.slot
 		c.kind = cacheOwn
 		c.epoch = vm.globalEpoch
 		return
 	}
-	k := PropKey{Key: key}
+	k := PropKey{key: key}
 	if strict && !vm.HasProperty(g, k) {
-		vm.throwReferenceError(key.Str + " is not defined")
+		vm.throwReferenceError(key.str + " is not defined")
 	}
-	if !vm.setProp(g, k, val, Value{O: g}) && strict {
-		vm.throwReadOnly(Value{O: g}, k)
+	if !vm.setProp(g, k, val, Value{o: g}) && strict {
+		vm.throwReadOnly(Value{o: g}, k)
 	}
 }
 
 // checkGlobalDecl throws when declaring key at the top level of a script would conflict
 // with an existing declaration. what is 0 for var, 1 for a lexical declaration and 2 for a function.
 func (vm *VM) checkGlobalDecl(key *Object, what int) {
-	_, lex := vm.globalLex.Shape.Lookup(key)
+	_, lex := vm.globalLex.shape.lookup(key)
 	switch what {
 	case 0:
 		if lex {
-			vm.ThrowSyntaxError("Identifier '" + key.Str + "' has already been declared")
+			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
 		}
-		if !vm.HasOwn(vm.Global, PropKey{Key: key}) && !vm.IsExtensible(vm.Global) {
-			vm.ThrowTypeError("Cannot declare global variable '" + key.Str + "'")
+		if !vm.HasOwnProperty(vm.Global, PropKey{key: key}) && !vm.IsExtensible(vm.Global) {
+			vm.ThrowTypeError("Cannot declare global variable '" + key.str + "'")
 		}
 	case 1:
 		if lex {
-			vm.ThrowSyntaxError("Identifier '" + key.Str + "' has already been declared")
+			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := vm.GetOwnProperty(vm.Global, PropKey{Key: key}); ok && d.Flags&FlagConfigurable == 0 {
-			vm.ThrowSyntaxError("Identifier '" + key.Str + "' has already been declared")
+		if d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key}); ok && d.Flags&FlagConfigurable == 0 {
+			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
 		}
 	case 2:
 		if lex {
-			vm.ThrowSyntaxError("Identifier '" + key.Str + "' has already been declared")
+			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
 		}
-		d, ok := vm.GetOwnProperty(vm.Global, PropKey{Key: key})
+		d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key})
 		switch {
 		case !ok:
 			if !vm.IsExtensible(vm.Global) {
-				vm.ThrowTypeError("Cannot declare global function '" + key.Str + "'")
+				vm.ThrowTypeError("Cannot declare global function '" + key.str + "'")
 			}
 		case d.Flags&FlagConfigurable != 0:
 		case d.Flags&FlagAccessor != 0 || d.Flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
-			vm.ThrowTypeError("Cannot declare global function '" + key.Str + "'")
+			vm.ThrowTypeError("Cannot declare global function '" + key.str + "'")
 		}
 	}
 }
@@ -173,19 +174,19 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when isFunc is set.
 func (vm *VM) declareGlobalVar(key *Object, isFunc bool, fn Value) {
 	g := vm.Global
-	k := PropKey{Key: key}
+	k := PropKey{key: key}
 	d, ok := vm.GetOwnProperty(g, k)
 	if !isFunc {
 		if !ok {
-			vm.DefineOrThrow(g, k, dataDesc(Undefined, FlagEnumerable|FlagWritable))
+			vm.DefinePropertyOrThrow(g, k, dataDesc(Undefined, FlagEnumerable|FlagWritable))
 		}
 		return
 	}
 	if !ok || d.Flags&FlagConfigurable != 0 {
-		vm.DefineOrThrow(g, k, dataDesc(fn, FlagEnumerable|FlagWritable))
+		vm.DefinePropertyOrThrow(g, k, dataDesc(fn, FlagEnumerable|FlagWritable))
 		return
 	}
-	vm.DefineOrThrow(g, k, PropDesc{
+	vm.DefinePropertyOrThrow(g, k, PropDesc{
 		Value: fn,
 		Has:   HasValue,
 	})
@@ -197,19 +198,19 @@ func (vm *VM) declareGlobalLex(key *Object, isConst bool) {
 	if isConst {
 		flags = FlagEnumerable | FlagConfigurable
 	}
-	vm.Add(vm.globalLex, key, tdz, flags)
+	vm.add(vm.globalLex, key, tdz, flags)
 	vm.globalEpoch++
 }
 
 func (vm *VM) initGlobalLex(key *Object, val Value) {
-	p, _ := vm.globalLex.Shape.Lookup(key)
-	vm.globalLex.Slots[p.Slot] = val
+	p, _ := vm.globalLex.shape.lookup(key)
+	vm.globalLex.slots[p.slot] = val
 }
 
 // getValue returns v[k], or the getter to call.
 func (vm *VM) getValue(v, k Value) (Value, *Object) {
-	if k.O == nil {
-		if i, ok := numberIndex(k.N); ok {
+	if k.o == nil {
+		if i, ok := numberIndex(k.n); ok {
 			return vm.getIndex(v, i)
 		}
 	}
@@ -218,16 +219,16 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 		vm.ThrowTypeError("Cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.DisplayString(k) + "')")
 	}
 	key := vm.ToPropertyKey(k)
-	if key.Key == nil {
-		return vm.getIndex(v, key.Idx)
+	if key.key == nil {
+		return vm.getIndex(v, key.idx)
 	}
-	return vm.get(v, key.Key, nil)
+	return vm.getNamed(v, key.key, nil)
 }
 
-// setValue stores v[k] = val. The results are those of set.
+// setValue stores v[k] = val. The results are those of setNamed.
 func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
-	if k.O == nil {
-		if i, ok := numberIndex(k.N); ok {
+	if k.o == nil {
+		if i, ok := numberIndex(k.n); ok {
 			return vm.setIndex(v, i, val)
 		}
 	}
@@ -235,10 +236,10 @@ func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 		vm.ThrowTypeError("Cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.DisplayString(k) + "')")
 	}
 	key := vm.ToPropertyKey(k)
-	if key.Key == nil {
-		return vm.setIndex(v, key.Idx, val)
+	if key.key == nil {
+		return vm.setIndex(v, key.idx, val)
 	}
-	return vm.set(v, key.Key, val, nil)
+	return vm.setNamed(v, key.key, val, nil)
 }
 
 // deleteValue implements the delete operator on a property.
@@ -258,9 +259,9 @@ func (vm *VM) deleteValue(v, k Value, strict bool) Value {
 // superBase returns the object that super property accesses start from, given the home object.
 func (vm *VM) superBase(home Value, key PropKey) *Object {
 	if !home.IsObject() {
-		vm.ThrowSyntaxError("'super' keyword unexpected here")
+		vm.throwSyntaxError("'super' keyword unexpected here")
 	}
-	base := vm.ProtoOf(home.O)
+	base := vm.ProtoOf(home.o)
 	if base == nil {
 		vm.ThrowTypeError("Cannot access property '" + vm.KeyString(key) + "' of a null prototype")
 	}
@@ -269,7 +270,7 @@ func (vm *VM) superBase(home Value, key PropKey) *Object {
 
 func (vm *VM) getSuper(home, k, this Value) Value {
 	key := vm.ToPropertyKey(k)
-	return vm.GetProp(vm.superBase(home, key), key, this)
+	return vm.getProp(vm.superBase(home, key), key, this)
 }
 
 func (vm *VM) setSuper(home, k, val, this Value, strict bool) {
@@ -288,7 +289,7 @@ func (vm *VM) instanceOf(v, c Value) bool {
 		if m == vm.FnHasInstance {
 			return vm.OrdinaryHasInstance(c, v)
 		}
-		return Truthy(vm.Call(m, c, v))
+		return ToBoolean(vm.Call(m, c, v))
 	}
 	if !c.IsCallable() {
 		vm.ThrowTypeError("Right-hand side of 'instanceof' is not callable")
@@ -296,13 +297,13 @@ func (vm *VM) instanceOf(v, c Value) bool {
 	return vm.OrdinaryHasInstance(c, v)
 }
 
-// ordinaryHasInstance implements OrdinaryHasInstance.
+// OrdinaryHasInstance implements OrdinaryHasInstance.
 func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 	if !c.IsCallable() {
 		return false
 	}
-	if b := c.O.Fn.Bound; b != nil {
-		return vm.instanceOf(v, Value{O: b.Target})
+	if b := c.o.fn.bound; b != nil {
+		return vm.instanceOf(v, Value{o: b.target})
 	}
 	if !v.IsObject() {
 		return false
@@ -311,8 +312,8 @@ func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 	if !p.IsObject() {
 		vm.ThrowTypeError("Function has non-object prototype in instanceof check")
 	}
-	for o := vm.ProtoOf(v.O); o != nil; o = vm.ProtoOf(o) {
-		if o == p.O {
+	for o := vm.ProtoOf(v.o); o != nil; o = vm.ProtoOf(o) {
+		if o == p.o {
 			return true
 		}
 	}
@@ -322,41 +323,41 @@ func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 // getPrivate returns the private element name of v, or the getter to call.
 func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
 	if v.IsObject() {
-		if p, ok := v.O.Shape.Lookup(name); ok {
-			val := v.O.Slots[p.Slot]
-			if p.Flags&FlagAccessor != 0 {
-				g := val.Accessor().Getter
+		if p, ok := v.o.shape.lookup(name); ok {
+			val := v.o.slots[p.slot]
+			if p.flags&FlagAccessor != 0 {
+				g := val.accessor().getter
 				if g == nil {
-					vm.ThrowTypeError("'#" + name.Str + "' was defined without a getter")
+					vm.ThrowTypeError("'#" + name.str + "' was defined without a getter")
 				}
 				return Undefined, g
 			}
 			return val, nil
 		}
 	}
-	vm.ThrowTypeError("Cannot read private member #" + name.Str + " from an object whose class did not declare it")
+	vm.ThrowTypeError("Cannot read private member #" + name.str + " from an object whose class did not declare it")
 	return Undefined, nil
 }
 
 // setPrivate stores val as the private element name of v, or returns the setter to call.
 func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
 	if v.IsObject() {
-		if p, ok := v.O.Shape.Lookup(name); ok {
-			if p.Flags&FlagAccessor != 0 {
-				s := v.O.Slots[p.Slot].Accessor().setter
+		if p, ok := v.o.shape.lookup(name); ok {
+			if p.flags&FlagAccessor != 0 {
+				s := v.o.slots[p.slot].accessor().setter
 				if s == nil {
-					vm.ThrowTypeError("'#" + name.Str + "' was defined without a setter")
+					vm.ThrowTypeError("'#" + name.str + "' was defined without a setter")
 				}
 				return s
 			}
-			if p.Flags&FlagWritable == 0 {
-				vm.ThrowTypeError("Private method '#" + name.Str + "' is not writable")
+			if p.flags&FlagWritable == 0 {
+				vm.ThrowTypeError("Private method '#" + name.str + "' is not writable")
 			}
-			v.O.Slots[p.Slot] = val
+			v.o.slots[p.slot] = val
 			return nil
 		}
 	}
-	vm.ThrowTypeError("Cannot write private member #" + name.Str + " to an object whose class did not declare it")
+	vm.ThrowTypeError("Cannot write private member #" + name.str + " to an object whose class did not declare it")
 	return nil
 }
 
@@ -365,57 +366,57 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 	if !v.IsObject() {
 		vm.ThrowTypeError("Cannot define a private member on a non-object")
 	}
-	o := v.O
-	if _, ok := o.Shape.Lookup(name); ok {
-		vm.ThrowTypeError("Cannot initialize #" + name.Str + " twice on the same object")
+	o := v.o
+	if _, ok := o.shape.lookup(name); ok {
+		vm.ThrowTypeError("Cannot initialize #" + name.str + " twice on the same object")
 	}
 	flags := FlagWritable
 	switch {
-	case val.O != nil && val.O.Kind == kindAccessor:
+	case val.o != nil && val.o.kind == kindAccessor:
 		flags = FlagAccessor
-	case name.Flags&ObjFrozenLength != 0:
+	case name.flags&objFrozenLength != 0:
 		// The name stands for a method, which cannot be assigned to.
 		flags = 0
 	}
-	vm.Add(o, name, val, flags)
+	vm.add(o, name, val, flags)
 }
 
 // arith implements the binary arithmetic operators other than + for operands that are not both numbers.
 func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	x = vm.ToNumeric(x)
 	y = vm.ToNumeric(y)
-	if x.O == nil && y.O == nil {
-		a, b := x.N, y.N
+	if x.o == nil && y.o == nil {
+		a, b := x.n, y.n
 		switch op {
 		case bytecode.OpSub:
-			return Value{N: a - b}
+			return Value{n: a - b}
 		case bytecode.OpMul:
-			return Value{N: a * b}
+			return Value{n: a * b}
 		case bytecode.OpDiv:
-			return Value{N: a / b}
+			return Value{n: a / b}
 		case bytecode.OpMod:
-			return Value{N: math.Mod(a, b)}
+			return Value{n: math.Mod(a, b)}
 		case bytecode.OpExp:
-			return Value{N: NumberPow(a, b)}
+			return Value{n: NumberPow(a, b)}
 		case bytecode.OpBitOr:
-			return Value{N: float64(numconv.ToInt32(a) | numconv.ToInt32(b))}
+			return Value{n: float64(numconv.ToInt32(a) | numconv.ToInt32(b))}
 		case bytecode.OpBitAnd:
-			return Value{N: float64(numconv.ToInt32(a) & numconv.ToInt32(b))}
+			return Value{n: float64(numconv.ToInt32(a) & numconv.ToInt32(b))}
 		case bytecode.OpBitXor:
-			return Value{N: float64(numconv.ToInt32(a) ^ numconv.ToInt32(b))}
+			return Value{n: float64(numconv.ToInt32(a) ^ numconv.ToInt32(b))}
 		case bytecode.OpShl:
-			return Value{N: float64(numconv.ToInt32(a) << (numconv.ToUint32(b) & 31))}
+			return Value{n: float64(numconv.ToInt32(a) << (numconv.ToUint32(b) & 31))}
 		case bytecode.OpShr:
-			return Value{N: float64(numconv.ToInt32(a) >> (numconv.ToUint32(b) & 31))}
+			return Value{n: float64(numconv.ToInt32(a) >> (numconv.ToUint32(b) & 31))}
 		case bytecode.OpUShr:
-			return Value{N: float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31))}
+			return Value{n: float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31))}
 		}
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	if x.O == nil || y.O == nil {
+	if x.o == nil || y.o == nil {
 		vm.ThrowTypeError("Cannot mix BigInt and other types, use explicit conversions")
 	}
-	a, b := x.O.BigInt(), y.O.BigInt()
+	a, b := x.o.BigInt(), y.o.BigInt()
 	r := new(big.Int)
 	switch op {
 	case bytecode.OpSub:
@@ -478,27 +479,27 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 
 func (vm *VM) negate(x Value) Value {
 	x = vm.ToNumeric(x)
-	if x.O == nil {
-		return Value{N: -x.N}
+	if x.o == nil {
+		return Value{n: -x.n}
 	}
-	return vm.newBigInt(new(big.Int).Neg(x.O.BigInt()))
+	return vm.newBigInt(new(big.Int).Neg(x.o.BigInt()))
 }
 
 func (vm *VM) bitNot(x Value) Value {
 	x = vm.ToNumeric(x)
-	if x.O == nil {
-		return Value{N: float64(^numconv.ToInt32(x.N))}
+	if x.o == nil {
+		return Value{n: float64(^numconv.ToInt32(x.n))}
 	}
-	return vm.newBigInt(new(big.Int).Not(x.O.BigInt()))
+	return vm.newBigInt(new(big.Int).Not(x.o.BigInt()))
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
 func (vm *VM) step(x Value, d int64) Value {
 	x = vm.ToNumeric(x)
-	if x.O == nil {
-		return Value{N: x.N + float64(d)}
+	if x.o == nil {
+		return Value{n: x.n + float64(d)}
 	}
-	return vm.newBigInt(new(big.Int).Add(x.O.BigInt(), big.NewInt(d)))
+	return vm.newBigInt(new(big.Int).Add(x.o.BigInt(), big.NewInt(d)))
 }
 
 // classElement is an element that the constructor of a class adds to every instance.
@@ -526,21 +527,21 @@ func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
 		val:  val,
 	}
 	if kind&elemStatic != 0 {
-		vm.defineClassElement(Value{O: ctor}, e)
+		vm.defineClassElement(Value{o: ctor}, e)
 		return
 	}
-	ctor.Fn.fields = append(ctor.Fn.fields, e)
+	ctor.fn.fields = append(ctor.fn.fields, e)
 }
 
 // initFields defines the instance elements of the class ctor on this.
 func (vm *VM) initFields(ctor *Object, this Value) {
 	// Private methods and accessors exist before any field initializer runs.
-	for _, e := range ctor.Fn.fields {
+	for _, e := range ctor.fn.fields {
 		if e.kind != elemField {
 			vm.defineClassElement(this, e)
 		}
 	}
-	for _, e := range ctor.Fn.fields {
+	for _, e := range ctor.fn.fields {
 		if e.kind == elemField {
 			vm.defineClassElement(this, e)
 		}
@@ -548,7 +549,7 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 }
 
 func (vm *VM) defineClassElement(this Value, e classElement) {
-	private := e.key.O != nil && e.key.O.Class == ClassPrivateName
+	private := e.key.o != nil && e.key.o.class == classPrivateName
 	switch e.kind {
 	case elemField:
 		v := Undefined
@@ -556,18 +557,18 @@ func (vm *VM) defineClassElement(this Value, e classElement) {
 			v = vm.Call(e.val, this)
 		}
 		if private {
-			vm.definePrivate(this, e.key.O, v)
+			vm.definePrivate(this, e.key.o, v)
 			return
 		}
-		vm.CreateDataProperty(this.O, vm.ToPropertyKey(e.key), v)
+		vm.CreateDataPropertyOrThrow(this.o, vm.ToPropertyKey(e.key), v)
 	case elemMethod:
-		vm.definePrivate(this, e.key.O, Value{O: e.val})
+		vm.definePrivate(this, e.key.o, Value{o: e.val})
 	case elemGetter, elemSetter:
 		if this.IsObject() {
-			if p, ok := this.O.Shape.Lookup(e.key.O); ok && p.Flags&FlagAccessor != 0 {
-				a := this.O.Slots[p.Slot].Accessor()
-				if e.kind == elemGetter && a.Getter == nil {
-					a.Getter = e.val
+			if p, ok := this.o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
+				a := this.o.slots[p.slot].accessor()
+				if e.kind == elemGetter && a.getter == nil {
+					a.getter = e.val
 					return
 				}
 				if e.kind == elemSetter && a.setter == nil {
@@ -577,49 +578,49 @@ func (vm *VM) defineClassElement(this Value, e classElement) {
 			}
 		}
 		if e.kind == elemGetter {
-			vm.definePrivate(this, e.key.O, NewAccessor(e.val, nil))
+			vm.definePrivate(this, e.key.o, newAccessor(e.val, nil))
 		} else {
-			vm.definePrivate(this, e.key.O, NewAccessor(nil, e.val))
+			vm.definePrivate(this, e.key.o, newAccessor(nil, e.val))
 		}
 	}
 }
 
 func (vm *VM) typeofValue(v Value) Value {
-	return Value{O: vm.Intern(typeOf(v))}
+	return Value{o: vm.Intern(typeOf(v))}
 }
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals
 // and public class fields use it.
 func (vm *VM) defineField(o *Object, k, val Value) {
-	vm.CreateDataProperty(o, vm.ToPropertyKey(k), val)
+	vm.CreateDataPropertyOrThrow(o, vm.ToPropertyKey(k), val)
 }
 
 // defineFieldK defines the enumerable data property key of o.
 func (vm *VM) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
-	if o.Class == classObject && o.Flags&(ObjNotExtensible|objIsProto|ObjExotic) == 0 {
-		if _, ok := o.Shape.Lookup(key); !ok {
-			old := o.Shape
-			vm.Add(o, key, val, FlagsData)
-			if !old.private && !o.Shape.private {
+	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 {
+		if _, ok := o.shape.lookup(key); !ok {
+			old := o.shape
+			vm.add(o, key, val, FlagsData)
+			if !old.private && !o.shape.private {
 				c.shape = old
 				c.kind = cacheAdd
-				c.next = o.Shape
+				c.next = o.shape
 			}
 			return
 		}
 	}
-	vm.CreateDataProperty(o, PropKey{Key: key}, val)
+	vm.CreateDataPropertyOrThrow(o, PropKey{key: key}, val)
 }
 
 // defineMethod defines the method f under the key k of o.
 func (vm *VM) defineMethod(o *Object, k, f Value) {
-	f.O.Fn.home = o
-	vm.DefineOrThrow(o, vm.ToPropertyKey(k), dataDesc(f, FlagsHidden))
+	f.o.fn.home = o
+	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), dataDesc(f, FlagsHidden))
 }
 
 // defineAccessor defines the getter or setter f under the key k of o.
 func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
-	f.Fn.home = o
+	f.fn.home = o
 	d := PropDesc{
 		Flags: FlagConfigurable,
 		Has:   HasEnumerable | HasConfigurable,
@@ -634,7 +635,7 @@ func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable
 		d.Getter = f
 		d.Has |= HasGet
 	}
-	vm.DefineOrThrow(o, vm.ToPropertyKey(k), d)
+	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), d)
 }
 
 // Prefix kinds of SetFunctionName.
@@ -652,13 +653,13 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 	var name string
 	switch {
 	case k.IsSymbol():
-		if k.O.Class == ClassPrivateName {
-			name = "#" + k.O.Str
-		} else if k.O.Ext != nil {
-			name = "[" + k.O.Str + "]"
+		if k.o.class == classPrivateName {
+			name = "#" + k.o.str
+		} else if k.o.ext != nil {
+			name = "[" + k.o.str + "]"
 		}
 	case k.IsString():
-		name = k.O.Str
+		name = k.o.str
 	default:
 		name = vm.ToString(k)
 	}
@@ -668,19 +669,19 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 	case nameSet:
 		name = "set " + name
 	}
-	o := f.O
-	if o.Fn.Materialized {
-		if _, ok := o.Shape.Lookup(vm.K.Name); ok {
-			if d, _ := vm.GetOwnProperty(o, PropKey{Key: vm.K.Name}); d.Flags&FlagAccessor != 0 || !d.Value.IsString() || d.Value.O.Str != "" {
+	o := f.o
+	if o.fn.materialized {
+		if _, ok := o.shape.lookup(vm.K.Name); ok {
+			if d, _ := vm.GetOwnProperty(o, PropKey{key: vm.K.Name}); d.Flags&FlagAccessor != 0 || !d.Value.IsString() || d.Value.o.str != "" {
 				return
 			}
 		}
-		vm.defineOwnProperty(o, PropKey{Key: vm.K.Name}, dataDesc(vm.NewString(name), FlagConfigurable))
+		vm.defineOwnProperty(o, PropKey{key: vm.K.Name}, dataDesc(vm.NewString(name), FlagConfigurable))
 		return
 	}
 	// The name is part of the code of an unmaterialized function, which closures share,
 	// so give this one its properties now.
-	vm.Materialize(o)
+	vm.materialize(o)
 	vm.Define(o, vm.K.Name, vm.NewString(name), FlagConfigurable)
 }
 
@@ -706,10 +707,10 @@ keys:
 			continue
 		}
 		val := d.Value
-		if d.Flags&FlagAccessor != 0 || from.Class == classProxy {
-			val = vm.GetProp(from, k, Value{O: from})
+		if d.Flags&FlagAccessor != 0 || from.class == classProxy {
+			val = vm.getProp(from, k, Value{o: from})
 		}
-		vm.CreateDataProperty(dst, k, val)
+		vm.CreateDataPropertyOrThrow(dst, k, val)
 	}
 }
 
@@ -718,51 +719,51 @@ keys:
 func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 	protoParent := vm.ObjectProto
 	ctorParent := vm.FunctionProto
-	if !parent.IsHole() {
+	if !parent.isHole() {
 		switch {
 		case parent.IsNull():
 			protoParent = nil
-		case !parent.IsCallable() || !vm.IsConstructor(parent.O):
+		case !parent.IsCallable() || !vm.IsConstructor(parent.o):
 			vm.ThrowTypeError("Class extends value " + vm.DisplayString(parent) + " is not a constructor or null")
 		default:
 			p := vm.GetV(parent, vm.K.Prototype)
 			switch {
 			case p.IsObject():
-				protoParent = p.O
+				protoParent = p.o
 			case p.IsNull():
 				protoParent = nil
 			default:
 				vm.ThrowTypeError("Class extends value does not have valid prototype property")
 			}
-			ctorParent = parent.O
+			ctorParent = parent.o
 		}
 	}
 	proto := vm.NewObject(protoParent)
-	fn := ctor.Fn
-	fn.Materialized = true
+	fn := ctor.fn
+	fn.materialized = true
 	fn.home = proto
-	ctor.Flags &^= ObjExotic
-	ctor.Shape = vm.ShapeFor(ctorParent)
-	vm.Add(ctor, vm.K.Length, Number(float64(fn.Code.length)), FlagConfigurable)
-	vm.Add(ctor, vm.K.Name, vm.NewString(fn.Code.Name), FlagConfigurable)
-	vm.Add(ctor, vm.K.Prototype, Value{O: proto}, 0)
-	vm.Add(proto, vm.K.Constructor, Value{O: ctor}, FlagsHidden)
+	ctor.flags &^= objExotic
+	ctor.shape = vm.shapeFor(ctorParent)
+	vm.add(ctor, vm.K.Length, Number(float64(fn.code.length)), FlagConfigurable)
+	vm.add(ctor, vm.K.Name, vm.NewString(fn.code.name), FlagConfigurable)
+	vm.add(ctor, vm.K.Prototype, Value{o: proto}, 0)
+	vm.add(proto, vm.K.Constructor, Value{o: ctor}, FlagsHidden)
 	return proto
 }
 
-// isConstructor implements IsConstructor.
+// IsConstructor implements IsConstructor.
 func (vm *VM) IsConstructor(f *Object) bool {
-	fn := f.Fn
+	fn := f.fn
 	if fn == nil {
 		return false
 	}
-	if fn.Bound != nil {
-		return vm.IsConstructor(fn.Bound.Target)
+	if fn.bound != nil {
+		return vm.IsConstructor(fn.bound.target)
 	}
-	if f.Class == classProxy {
+	if f.class == classProxy {
 		return vm.proxyIsConstructor(f)
 	}
-	return fn.Constructor
+	return fn.constructor
 }
 
 // functionProtoFor returns the prototype of the closures of p, which is a generator or async function.
@@ -780,54 +781,54 @@ func (vm *VM) functionProtoFor(p *funcProto) *Object {
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
 // so that storing a new element in such an array cannot run a setter.
-func (vm *VM) ArrayProtoPlain() bool {
+func (vm *VM) arrayProtoPlain() bool {
 	a, o := vm.ArrayProto, vm.ObjectProto
-	return len(a.Elems) == 0 && len(o.Elems) == 0 && (a.Flags|o.Flags)&ObjSparse == 0
+	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0
 }
 
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
 // without any observable call.
 func (vm *VM) arrayIterationPlain(o *Object) bool {
-	if o.Shape != vm.ArrayShape {
+	if o.shape != vm.arrayShape {
 		return false
 	}
 	if vm.arrayIterEpoch != vm.protoEpoch || !vm.arrayIterChecked {
 		vm.arrayIterChecked = true
 		vm.arrayIterEpoch = vm.protoEpoch
-		it, ok1 := vm.LookupData(vm.ArrayProto, vm.K.SymIterator)
-		next, ok2 := vm.LookupData(vm.ArrayIteratorProto, vm.K.next)
-		vm.arrayIterPlain = ok1 && ok2 && it.O == vm.FnArrayValues && next.O == vm.FnArrayIterNext
+		it, ok1 := vm.lookupData(vm.ArrayProto, vm.K.SymIterator)
+		next, ok2 := vm.lookupData(vm.ArrayIteratorProto, vm.K.next)
+		vm.arrayIterPlain = ok1 && ok2 && it.o == vm.FnArrayValues && next.o == vm.FnArrayIterNext
 	}
 	return vm.arrayIterPlain
 }
 
-// call calls the callable object f.
+// Call calls the callable object f.
 func (vm *VM) Call(f *Object, this Value, args ...Value) Value {
-	return vm.CallSlow(f, this, args, false, nil)
+	return vm.callSlow(f, this, args, false, nil)
 }
 
-// callValue calls f, which must be callable, or throws a TypeError.
+// CallValue calls f, which must be callable, or throws a TypeError.
 func (vm *VM) CallValue(f, this Value, args ...Value) Value {
 	if !f.IsCallable() {
 		vm.ThrowTypeError(vm.DisplayString(f) + " is not a function")
 	}
-	return vm.CallSlow(f.O, this, args, false, nil)
+	return vm.callSlow(f.o, this, args, false, nil)
 }
 
 // callSlow calls f with any kind of callee. With isNew set, this is the object under construction.
-func (vm *VM) CallSlow(f *Object, this Value, args []Value, isNew bool, newTarget *Object) Value {
+func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarget *Object) Value {
 	if vm.interrupt.Load() {
 		vm.Poll()
 	}
-	fn := f.Fn
+	fn := f.fn
 	if fn == nil {
-		vm.ThrowTypeError(vm.DisplayString(Value{O: f}) + " is not a function")
+		vm.ThrowTypeError(vm.DisplayString(Value{o: f}) + " is not a function")
 	}
-	if b := fn.Bound; b != nil {
-		if len(b.Args) > 0 {
-			args = append(append(make([]Value, 0, len(b.Args)+len(args)), b.Args...), args...)
+	if b := fn.bound; b != nil {
+		if len(b.args) > 0 {
+			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
 		}
-		return vm.CallSlow(b.Target, b.This, args, false, nil)
+		return vm.callSlow(b.target, b.this, args, false, nil)
 	}
 	if fn.native != nil {
 		saved := vm.NewTarget
@@ -836,9 +837,9 @@ func (vm *VM) CallSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 		vm.NewTarget = saved
 		return r
 	}
-	c := fn.Code
+	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		vm.ThrowTypeError("Class constructor " + c.Name + " cannot be invoked without 'new'")
+		vm.ThrowTypeError("Class constructor " + c.name + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return vm.callCoroutine(f, this, args)
@@ -855,17 +856,17 @@ func (vm *VM) CallSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	return r
 }
 
-// construct implements Construct: new f(...args) with the given new.target.
+// Construct implements Construct: new f(...args) with the given new.target.
 func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
-	fn := f.Fn
-	if b := fn.Bound; b != nil {
-		if len(b.Args) > 0 {
-			args = append(append(make([]Value, 0, len(b.Args)+len(args)), b.Args...), args...)
+	fn := f.fn
+	if b := fn.bound; b != nil {
+		if len(b.args) > 0 {
+			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
 		}
 		if newTarget == f {
-			newTarget = b.Target
+			newTarget = b.target
 		}
-		return vm.Construct(b.Target, args, newTarget)
+		return vm.Construct(b.target, args, newTarget)
 	}
 	if fn.native != nil {
 		saved := vm.NewTarget
@@ -875,50 +876,50 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 		if !r.IsObject() {
 			vm.ThrowTypeError("constructor did not return an object")
 		}
-		return r.O
+		return r.o
 	}
 	this := tdz
 	if !fn.derived {
-		this = Value{O: vm.NewObject(vm.ProtoFromConstructor(newTarget, vm.ObjectProto))}
+		this = Value{o: vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.ObjectProto))}
 	}
-	r := vm.CallSlow(f, this, args, !fn.derived, newTarget)
+	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {
 		vm.ThrowTypeError("constructor did not return an object")
 	}
-	return r.O
+	return r.o
 }
 
-// protoFromConstructor implements GetPrototypeFromConstructor.
-func (vm *VM) ProtoFromConstructor(ctor *Object, fallback *Object) *Object {
+// GetPrototypeFromConstructor implements GetPrototypeFromConstructor.
+func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Object {
 	if ctor == nil {
 		return fallback
 	}
-	if p := vm.GetV(Value{O: ctor}, vm.K.Prototype); p.IsObject() {
-		return p.O
+	if p := vm.GetV(Value{o: ctor}, vm.K.Prototype); p.IsObject() {
+		return p.o
 	}
 	return fallback
 }
 
-// newNative returns a function implemented in Go.
+// NewNative returns a function implemented in Go.
 func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 	return &Object{
-		Kind:  KindFunction,
-		Class: ClassFunction,
-		Flags: ObjExotic,
-		Shape: vm.FunctionShape,
-		Fn: &Function{
+		kind:  kindFunction,
+		class: classFunction,
+		flags: objExotic,
+		shape: vm.functionShape,
+		fn: &function{
 			native: f,
-			Name:   name,
+			name:   name,
 			length: length,
 		},
 	}
 }
 
-// newNativeConstructor returns a function implemented in Go that can be called with new.
-// f sees the constructor it is constructing for as VM.newTarget, which is nil in a plain call.
+// NewNativeConstructor returns a function implemented in Go that can be called with new.
+// f sees the constructor it is constructing for as VM.NewTarget, which is nil in a plain call.
 func (vm *VM) NewNativeConstructor(name string, length int, f NativeFunc) *Object {
 	o := vm.NewNative(name, length, f)
-	o.Fn.Constructor = true
+	o.fn.constructor = true
 	return o
 }
 
@@ -928,20 +929,19 @@ func (vm *VM) getName(key *Object) (Value, bool) {
 	if o == nil {
 		return Undefined, false
 	}
-	return vm.GetProp(o, PropKey{Key: key}, Value{O: o}), true
+	return vm.getProp(o, PropKey{key: key}, Value{o: o}), true
 }
 
 // findScope returns the innermost with scope of the running function that has the variable key.
 func (vm *VM) findScope(key *Object) *Object {
 	scopes := vm.frames[len(vm.frames)-1].scopes
-	k := PropKey{Key: key}
-	for i := len(scopes) - 1; i >= 0; i-- {
-		o := scopes[i]
+	k := PropKey{key: key}
+	for _, o := range slices.Backward(scopes) {
 		if !vm.HasProperty(o, k) {
 			continue
 		}
-		if u := vm.GetProp(o, PropKey{Key: vm.K.SymUnscopables}, Value{O: o}); u.IsObject() {
-			if Truthy(vm.GetProp(u.O, k, u)) {
+		if u := vm.getProp(o, PropKey{key: vm.K.SymUnscopables}, Value{o: o}); u.IsObject() {
+			if ToBoolean(vm.getProp(u.o, k, u)) {
 				continue
 			}
 		}
@@ -955,24 +955,24 @@ func (vm *VM) setName(key *Object, val Value, strict bool) bool {
 	if o == nil {
 		return false
 	}
-	k := PropKey{Key: key}
+	k := PropKey{key: key}
 	if strict && !vm.HasProperty(o, k) {
-		vm.throwReferenceError(key.Str + " is not defined")
+		vm.throwReferenceError(key.str + " is not defined")
 	}
-	if !vm.setProp(o, k, val, Value{O: o}) && strict {
-		vm.throwReadOnly(Value{O: o}, k)
+	if !vm.setProp(o, k, val, Value{o: o}) && strict {
+		vm.throwReadOnly(Value{o: o}, k)
 	}
 	return true
 }
 
 func (vm *VM) deleteName(key *Object) bool {
 	if o := vm.findScope(key); o != nil {
-		return vm.DeleteProp(o, PropKey{Key: key})
+		return vm.DeleteProp(o, PropKey{key: key})
 	}
-	if _, ok := vm.globalLex.Shape.Lookup(key); ok {
+	if _, ok := vm.globalLex.shape.lookup(key); ok {
 		return false
 	}
-	return vm.DeleteProp(vm.Global, PropKey{Key: key})
+	return vm.DeleteProp(vm.Global, PropKey{key: key})
 }
 
 func (vm *VM) callName(key *Object) (fn, this Value, found bool) {
@@ -980,5 +980,36 @@ func (vm *VM) callName(key *Object) (fn, this Value, found bool) {
 	if o == nil {
 		return Undefined, Undefined, false
 	}
-	return vm.GetProp(o, PropKey{Key: key}, Value{O: o}), Value{O: o}, true
+	return vm.getProp(o, PropKey{key: key}, Value{o: o}), Value{o: o}, true
+}
+
+// BoundFunctionCreate implements BoundFunctionCreate. It copies args.
+func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
+	return &Object{
+		kind:  kindFunction,
+		class: classFunction,
+		shape: vm.shapeFor(vm.ProtoOf(target)),
+		fn: &function{
+			bound: &boundFunc{
+				target: target,
+				this:   this,
+				args:   append([]Value(nil), args...),
+			},
+			materialized: true,
+			constructor:  vm.IsConstructor(target),
+		},
+	}
+}
+
+// SourceText returns the result of Function.prototype.toString for the function f.
+func (f *Object) SourceText() string {
+	fn := f.fn
+	if fn.code != nil && fn.code.Source != "" {
+		return fn.code.Source
+	}
+	name := fn.name
+	if fn.code != nil {
+		name = fn.code.name
+	}
+	return "function " + name + "() { [native code] }"
 }

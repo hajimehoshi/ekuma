@@ -22,21 +22,21 @@ func arg(args []engine.Value, i int) engine.Value {
 // method defines the non-enumerable function name on o.
 func method(vm *engine.VM, o *engine.Object, name string, length int, f engine.NativeFunc) *engine.Object {
 	fn := vm.NewNative(name, length, f)
-	vm.Define(o, vm.Intern(name), engine.Value{O: fn}, engine.FlagsHidden)
+	vm.Define(o, vm.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // symMethod defines the non-enumerable function under the symbol key on o.
 func symMethod(vm *engine.VM, o *engine.Object, key *engine.Object, name string, length int, f engine.NativeFunc) *engine.Object {
 	fn := vm.NewNative(name, length, f)
-	vm.Define(o, key, engine.Value{O: fn}, engine.FlagsHidden)
+	vm.Define(o, key, engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // getter defines the accessor property name on o with the getter f.
 func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name string, f engine.NativeFunc) {
 	g := vm.NewNative("get "+name, 0, f)
-	vm.Define(o, key, engine.NewAccessor(g, nil), engine.FlagConfigurable|engine.FlagAccessor)
+	vm.DefineAccessor(o, key, g, nil, engine.FlagConfigurable)
 }
 
 // constant defines the property name of o that cannot be changed.
@@ -48,10 +48,9 @@ func constant(vm *engine.VM, o *engine.Object, name string, v engine.Value) {
 // and defines it as a global.
 func constructor(vm *engine.VM, name string, length int, proto *engine.Object, f engine.NativeFunc) *engine.Object {
 	c := vm.NewNativeConstructor(name, length, f)
-	vm.Materialize(c)
-	vm.Add(c, vm.K.Prototype, engine.Value{O: proto}, 0)
-	vm.Define(proto, vm.K.Constructor, engine.Value{O: c}, engine.FlagsHidden)
-	vm.Define(vm.Global, vm.Intern(name), engine.Value{O: c}, engine.FlagsHidden)
+	vm.Define(c, vm.K.Prototype, engine.ObjectValue(proto), 0)
+	vm.Define(proto, vm.K.Constructor, engine.ObjectValue(c), engine.FlagsHidden)
+	vm.Define(vm.Global, vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
 	return c
 }
 
@@ -60,13 +59,15 @@ func thisObject(vm *engine.VM, this engine.Value, what string) *engine.Object {
 	if !this.IsObject() {
 		vm.ThrowTypeError(what + " called on non-object")
 	}
-	return this.O
+	return this.Object()
 }
 
 // Install creates the standard built-in objects of vm.
 func Install(vm *engine.VM) {
+	vm.NumberProto = vm.NewNumberObject(0, vm.ObjectProto)
+	vm.BooleanProto = vm.NewBooleanObject(false, vm.ObjectProto)
 	for _, p := range []**engine.Object{
-		&vm.NumberProto, &vm.BooleanProto, &vm.SymbolProto, &vm.BigintProto, &vm.ErrorProto,
+		&vm.SymbolProto, &vm.BigintProto, &vm.ErrorProto,
 		&vm.IteratorProto, &vm.AsyncIteratorProto, &vm.RegexpProto, &vm.PromiseProto,
 		&vm.MapProto, &vm.SetObjectProto, &vm.DateProto,
 	} {
@@ -81,7 +82,7 @@ func Install(vm *engine.VM) {
 	vm.AsyncGeneratorFunctionProto = vm.NewObject(vm.FunctionProto)
 
 	g := vm.Global
-	vm.Define(g, vm.Intern("globalThis"), engine.Value{O: g}, engine.FlagsHidden)
+	vm.Define(g, vm.Intern("globalThis"), engine.ObjectValue(g), engine.FlagsHidden)
 	constant(vm, g, "undefined", engine.Undefined)
 	constant(vm, g, "NaN", engine.Number(math.NaN()))
 	constant(vm, g, "Infinity", engine.Number(math.Inf(1)))
@@ -90,7 +91,6 @@ func Install(vm *engine.VM) {
 		vm.ThrowTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 		return engine.Undefined
 	})
-	vm.Materialize(vm.ThrowTypeErrorFunc)
 	vm.PreventExtensions(vm.ThrowTypeErrorFunc)
 
 	initObject(vm)
@@ -105,56 +105,29 @@ func Install(vm *engine.VM) {
 	initGlobalFunctions(vm)
 }
 
-// classOf implements the built-in tag of Object.prototype.toString.
-func classOf(vm *engine.VM, o *engine.Object) string {
-	switch {
-	case o.Kind == engine.KindArray:
-		return "Array"
-	case o.Fn != nil:
-		return "Function"
-	}
-	switch o.Class {
-	case engine.ClassError:
-		return "Error"
-	case engine.ClassBoolean:
-		return "Boolean"
-	case engine.ClassNumber:
-		return "Number"
-	case engine.ClassString:
-		return "String"
-	case engine.ClassDate:
-		return "Date"
-	case engine.ClassRegExp:
-		return "RegExp"
-	case engine.ClassArguments:
-		return "Arguments"
-	}
-	return "Object"
-}
-
 // toDescriptor implements ToPropertyDescriptor.
 func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 	if !v.IsObject() {
 		vm.ThrowTypeError("Property description must be an object: " + vm.DisplayString(v))
 	}
-	o := v.O
+	o := v.Object()
 	var d engine.PropDesc
 	field := func(key *engine.Object) (engine.Value, bool) {
-		k := engine.PropKey{Key: key}
+		k := engine.NamedKey(key)
 		if !vm.HasProperty(o, k) {
 			return engine.Undefined, false
 		}
-		return vm.GetProp(o, k, v), true
+		return vm.Get(o, k), true
 	}
 	if x, ok := field(vm.K.Enumerable); ok {
 		d.Has |= engine.HasEnumerable
-		if engine.Truthy(x) {
+		if engine.ToBoolean(x) {
 			d.Flags |= engine.FlagEnumerable
 		}
 	}
 	if x, ok := field(vm.K.Configurable); ok {
 		d.Has |= engine.HasConfigurable
-		if engine.Truthy(x) {
+		if engine.ToBoolean(x) {
 			d.Flags |= engine.FlagConfigurable
 		}
 	}
@@ -164,7 +137,7 @@ func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 	}
 	if x, ok := field(vm.K.Writable); ok {
 		d.Has |= engine.HasWritable
-		if engine.Truthy(x) {
+		if engine.ToBoolean(x) {
 			d.Flags |= engine.FlagWritable
 		}
 	}
@@ -174,7 +147,7 @@ func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 			if !x.IsCallable() {
 				vm.ThrowTypeError("Getter must be a function: " + vm.DisplayString(x))
 			}
-			d.Getter = x.O
+			d.Getter = x.Object()
 		}
 	}
 	if x, ok := field(vm.K.Set); ok {
@@ -183,7 +156,7 @@ func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 			if !x.IsCallable() {
 				vm.ThrowTypeError("Setter must be a function: " + vm.DisplayString(x))
 			}
-			d.Setter = x.O
+			d.Setter = x.Object()
 		}
 	}
 	if d.IsAccessor() && d.IsData() {
@@ -199,18 +172,18 @@ func fromDescriptor(vm *engine.VM, d engine.PropDesc) engine.Value {
 		if f == nil {
 			return engine.Undefined
 		}
-		return engine.Value{O: f}
+		return engine.ObjectValue(f)
 	}
 	if d.Flags&engine.FlagAccessor != 0 {
-		vm.Add(o, vm.K.Get, fn(d.Getter), engine.FlagsData)
-		vm.Add(o, vm.K.Set, fn(d.Setter), engine.FlagsData)
+		vm.Define(o, vm.K.Get, fn(d.Getter), engine.FlagsData)
+		vm.Define(o, vm.K.Set, fn(d.Setter), engine.FlagsData)
 	} else {
-		vm.Add(o, vm.K.Value, d.Value, engine.FlagsData)
-		vm.Add(o, vm.K.Writable, engine.Bool(d.Flags&engine.FlagWritable != 0), engine.FlagsData)
+		vm.Define(o, vm.K.Value, d.Value, engine.FlagsData)
+		vm.Define(o, vm.K.Writable, engine.Bool(d.Flags&engine.FlagWritable != 0), engine.FlagsData)
 	}
-	vm.Add(o, vm.K.Enumerable, engine.Bool(d.Flags&engine.FlagEnumerable != 0), engine.FlagsData)
-	vm.Add(o, vm.K.Configurable, engine.Bool(d.Flags&engine.FlagConfigurable != 0), engine.FlagsData)
-	return engine.Value{O: o}
+	vm.Define(o, vm.K.Enumerable, engine.Bool(d.Flags&engine.FlagEnumerable != 0), engine.FlagsData)
+	vm.Define(o, vm.K.Configurable, engine.Bool(d.Flags&engine.FlagConfigurable != 0), engine.FlagsData)
+	return engine.ObjectValue(o)
 }
 
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
@@ -229,7 +202,7 @@ func setIntegrity(vm *engine.VM, o *engine.Object, frozen bool) {
 				d.Has |= engine.HasWritable
 			}
 		}
-		vm.DefineOrThrow(o, k, d)
+		vm.DefinePropertyOrThrow(o, k, d)
 	}
 }
 
@@ -269,9 +242,9 @@ func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.
 			out = append(out, kv)
 			continue
 		}
-		v := vm.GetProp(o, k, engine.Value{O: o})
+		v := vm.Get(o, k)
 		if keys {
-			out = append(out, engine.Value{O: vm.NewArray([]engine.Value{kv, v})})
+			out = append(out, engine.ObjectValue(vm.NewArray([]engine.Value{kv, v})))
 		} else {
 			out = append(out, v)
 		}
@@ -283,19 +256,19 @@ func initObject(vm *engine.VM) {
 	proto := vm.ObjectProto
 	ctor := constructor(vm, "Object", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if nt := vm.NewTarget; nt != nil && nt != vm.ObjectCtor {
-			return engine.Value{O: vm.NewObject(vm.ProtoFromConstructor(nt, vm.ObjectProto))}
+			return engine.ObjectValue(vm.NewObject(vm.GetPrototypeFromConstructor(nt, vm.ObjectProto)))
 		}
 		v := arg(args, 0)
 		if v.IsNullish() {
-			return engine.Value{O: vm.NewObject(vm.ObjectProto)}
+			return engine.ObjectValue(vm.NewObject(vm.ObjectProto))
 		}
-		return engine.Value{O: vm.ToObject(v)}
+		return engine.ObjectValue(vm.ToObject(v))
 	})
 	vm.ObjectCtor = ctor
 
 	method(vm, proto, "hasOwnProperty", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		k := vm.ToPropertyKey(arg(args, 0))
-		return engine.Bool(vm.HasOwn(vm.ToObject(this), k))
+		return engine.Bool(vm.HasOwnProperty(vm.ToObject(this), k))
 	})
 	method(vm, proto, "isPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
@@ -303,7 +276,7 @@ func initObject(vm *engine.VM) {
 			return engine.False
 		}
 		o := vm.ToObject(this)
-		for p := vm.ProtoOf(v.O); p != nil; p = vm.ProtoOf(p) {
+		for p := vm.ProtoOf(v.Object()); p != nil; p = vm.ProtoOf(p) {
 			if p == o {
 				return engine.True
 			}
@@ -323,9 +296,9 @@ func initObject(vm *engine.VM) {
 			return vm.NewString("[object Null]")
 		}
 		o := vm.ToObject(this)
-		tag := classOf(vm, o)
-		if t := vm.GetV(engine.Value{O: o}, vm.K.SymToStringTag); t.IsString() {
-			tag = t.O.Str
+		tag := o.BuiltinTag()
+		if t := vm.GetV(engine.ObjectValue(o), vm.K.SymToStringTag); t.IsString() {
+			tag = t.Object().Str()
 		}
 		return vm.NewString("[object " + tag + "]")
 	})
@@ -333,13 +306,13 @@ func initObject(vm *engine.VM) {
 		return vm.CallValue(vm.GetV(this, vm.K.ToString), this)
 	})
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Value{O: vm.ToObject(this)}
+		return engine.ObjectValue(vm.ToObject(this))
 	})
 	protoKey := vm.Intern("__proto__")
-	vm.Define(proto, protoKey, engine.NewAccessor(
+	vm.DefineAccessor(proto, protoKey,
 		vm.NewNative("get __proto__", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if p := vm.ProtoOf(vm.ToObject(this)); p != nil {
-				return engine.Value{O: p}
+				return engine.ObjectValue(p)
 			}
 			return engine.Null
 		}),
@@ -351,18 +324,18 @@ func initObject(vm *engine.VM) {
 			}
 			var po *engine.Object
 			if p.IsObject() {
-				po = p.O
+				po = p.Object()
 			}
-			if !vm.SetPrototypeOf(this.O, po) {
+			if !vm.SetPrototypeOf(this.Object(), po) {
 				vm.ThrowTypeError("Cannot set prototype")
 			}
 			return engine.Undefined
 		}),
-	), engine.FlagConfigurable|engine.FlagAccessor)
+		engine.FlagConfigurable)
 
 	method(vm, ctor, "getPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if p := vm.ProtoOf(vm.ToObject(arg(args, 0))); p != nil {
-			return engine.Value{O: p}
+			return engine.ObjectValue(p)
 		}
 		return engine.Null
 	})
@@ -377,9 +350,9 @@ func initObject(vm *engine.VM) {
 		}
 		var po *engine.Object
 		if p.IsObject() {
-			po = p.O
+			po = p.Object()
 		}
-		if !vm.SetPrototypeOf(o.O, po) {
+		if !vm.SetPrototypeOf(o.Object(), po) {
 			vm.ThrowTypeError("Cannot set prototype")
 		}
 		return o
@@ -398,11 +371,11 @@ func initObject(vm *engine.VM) {
 			}
 			list = append(list, entry{
 				k: k,
-				d: toDescriptor(vm, vm.GetProp(src, k, engine.Value{O: src})),
+				d: toDescriptor(vm, vm.Get(src, k)),
 			})
 		}
 		for _, e := range list {
-			vm.DefineOrThrow(o, e.k, e.d)
+			vm.DefinePropertyOrThrow(o, e.k, e.d)
 		}
 	}
 	method(vm, ctor, "create", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -412,13 +385,13 @@ func initObject(vm *engine.VM) {
 		}
 		var po *engine.Object
 		if p.IsObject() {
-			po = p.O
+			po = p.Object()
 		}
 		o := vm.NewObject(po)
 		if props := arg(args, 1); !props.IsUndefined() {
 			defineProperties(vm, o, props)
 		}
-		return engine.Value{O: o}
+		return engine.ObjectValue(o)
 	})
 	method(vm, ctor, "defineProperty", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := arg(args, 0)
@@ -426,7 +399,7 @@ func initObject(vm *engine.VM) {
 			vm.ThrowTypeError("Object.defineProperty called on non-object")
 		}
 		k := vm.ToPropertyKey(arg(args, 1))
-		vm.DefineOrThrow(o.O, k, toDescriptor(vm, arg(args, 2)))
+		vm.DefinePropertyOrThrow(o.Object(), k, toDescriptor(vm, arg(args, 2)))
 		return o
 	})
 	method(vm, ctor, "defineProperties", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -434,7 +407,7 @@ func initObject(vm *engine.VM) {
 		if !o.IsObject() {
 			vm.ThrowTypeError("Object.defineProperties called on non-object")
 		}
-		defineProperties(vm, o.O, arg(args, 1))
+		defineProperties(vm, o.Object(), arg(args, 1))
 		return o
 	})
 	method(vm, ctor, "getOwnPropertyDescriptor", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -450,10 +423,10 @@ func initObject(vm *engine.VM) {
 		out := vm.NewObject(vm.ObjectProto)
 		for _, k := range vm.OwnKeys(o) {
 			if d, ok := vm.GetOwnProperty(o, k); ok {
-				vm.CreateDataProperty(out, k, fromDescriptor(vm, d))
+				vm.CreateDataPropertyOrThrow(out, k, fromDescriptor(vm, d))
 			}
 		}
-		return engine.Value{O: out}
+		return engine.ObjectValue(out)
 	})
 	method(vm, ctor, "getOwnPropertyNames", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
@@ -462,25 +435,25 @@ func initObject(vm *engine.VM) {
 				out = append(out, vm.KeyValue(k))
 			}
 		}
-		return engine.Value{O: vm.NewArray(out)}
+		return engine.ObjectValue(vm.NewArray(out))
 	})
 	method(vm, ctor, "getOwnPropertySymbols", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
 		for _, k := range vm.OwnKeys(vm.ToObject(arg(args, 0))) {
-			if k.IsSymbol() && k.Key.Class != engine.ClassPrivateName {
+			if k.IsSymbol() && !k.IsPrivateName() {
 				out = append(out, vm.KeyValue(k))
 			}
 		}
-		return engine.Value{O: vm.NewArray(out)}
+		return engine.ObjectValue(vm.NewArray(out))
 	})
 	method(vm, ctor, "keys", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Value{O: vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true, false))}
+		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true, false)))
 	})
 	method(vm, ctor, "values", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Value{O: vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), false, true))}
+		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), false, true)))
 	})
 	method(vm, ctor, "entries", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Value{O: vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true, true))}
+		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true, true)))
 	})
 	method(vm, ctor, "assign", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		to := vm.ToObject(arg(args, 0))
@@ -494,26 +467,26 @@ func initObject(vm *engine.VM) {
 				if !ok || d.Flags&engine.FlagEnumerable == 0 {
 					continue
 				}
-				vm.Put(to, k, vm.GetProp(from, k, engine.Value{O: from}))
+				vm.Set(to, k, vm.Get(from, k))
 			}
 		}
-		return engine.Value{O: to}
+		return engine.ObjectValue(to)
 	})
 	method(vm, ctor, "freeze", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if o := arg(args, 0); o.IsObject() {
-			setIntegrity(vm, o.O, true)
+			setIntegrity(vm, o.Object(), true)
 		}
 		return arg(args, 0)
 	})
 	method(vm, ctor, "seal", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if o := arg(args, 0); o.IsObject() {
-			setIntegrity(vm, o.O, false)
+			setIntegrity(vm, o.Object(), false)
 		}
 		return arg(args, 0)
 	})
 	method(vm, ctor, "preventExtensions", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if o := arg(args, 0); o.IsObject() {
-			if !vm.PreventExtensions(o.O) {
+			if !vm.PreventExtensions(o.Object()) {
 				vm.ThrowTypeError("Cannot prevent extensions")
 			}
 		}
@@ -521,15 +494,15 @@ func initObject(vm *engine.VM) {
 	})
 	method(vm, ctor, "isFrozen", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := arg(args, 0)
-		return engine.Bool(!o.IsObject() || testIntegrity(vm, o.O, true))
+		return engine.Bool(!o.IsObject() || testIntegrity(vm, o.Object(), true))
 	})
 	method(vm, ctor, "isSealed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := arg(args, 0)
-		return engine.Bool(!o.IsObject() || testIntegrity(vm, o.O, false))
+		return engine.Bool(!o.IsObject() || testIntegrity(vm, o.Object(), false))
 	})
 	method(vm, ctor, "isExtensible", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := arg(args, 0)
-		return engine.Bool(o.IsObject() && vm.IsExtensible(o.O))
+		return engine.Bool(o.IsObject() && vm.IsExtensible(o.Object()))
 	})
 	method(vm, ctor, "is", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(engine.SameValue(arg(args, 0), arg(args, 1)))
@@ -540,16 +513,16 @@ func initObject(vm *engine.VM) {
 			if !e.IsObject() {
 				vm.ThrowTypeError("Iterator value " + vm.DisplayString(e) + " is not an entry object")
 			}
-			k := vm.GetKey(e, engine.PropKey{Idx: 0})
-			v := vm.GetKey(e, engine.PropKey{Idx: 1})
-			vm.CreateDataProperty(o, vm.ToPropertyKey(k), v)
+			k := vm.Index(e, 0)
+			v := vm.Index(e, 1)
+			vm.CreateDataPropertyOrThrow(o, vm.ToPropertyKey(k), v)
 			return true
 		})
-		return engine.Value{O: o}
+		return engine.ObjectValue(o)
 	})
 	method(vm, ctor, "hasOwn", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(arg(args, 0))
-		return engine.Bool(vm.HasOwn(o, vm.ToPropertyKey(arg(args, 1))))
+		return engine.Bool(vm.HasOwnProperty(o, vm.ToPropertyKey(arg(args, 1))))
 	})
 }
 
@@ -561,18 +534,8 @@ func listFromArrayLike(vm *engine.VM, v engine.Value) []engine.Value {
 	if !v.IsObject() {
 		vm.ThrowTypeError("CreateListFromArrayLike called on non-object")
 	}
-	o := v.O
-	if o.Kind == engine.KindArray && int(o.Length) == len(o.Elems) && o.Flags&(engine.ObjSparse|engine.ObjExotic) == 0 {
-		plain := true
-		for _, e := range o.Elems {
-			if e.IsHole() {
-				plain = false
-				break
-			}
-		}
-		if plain {
-			return append([]engine.Value(nil), o.Elems...)
-		}
+	if list, ok := v.Object().ElementList(); ok {
+		return list
 	}
 	n := numconv.ToLength(vm.ToNumber(vm.GetV(v, vm.K.Length)))
 	if n > 1<<24 {
@@ -580,14 +543,13 @@ func listFromArrayLike(vm *engine.VM, v engine.Value) []engine.Value {
 	}
 	list := make([]engine.Value, n)
 	for i := range list {
-		list[i] = vm.GetKey(v, engine.PropKey{Idx: uint32(i)})
+		list[i] = vm.Index(v, uint32(i))
 	}
 	return list
 }
 
 func initFunction(vm *engine.VM) {
 	proto := vm.FunctionProto
-	vm.Materialize(proto)
 	ctor := constructor(vm, "Function", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.Unsupported("the Function constructor")
 		return engine.Undefined
@@ -598,65 +560,44 @@ func initFunction(vm *engine.VM) {
 		if !this.IsCallable() {
 			vm.ThrowTypeError("Function.prototype.call called on a value that is not a function")
 		}
-		return vm.CallSlow(this.O, arg(args, 0), args[min(1, len(args)):], false, nil)
+		return vm.Call(this.Object(), arg(args, 0), args[min(1, len(args)):]...)
 	})
 	vm.FnApply = method(vm, proto, "apply", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
 			vm.ThrowTypeError("Function.prototype.apply called on a value that is not a function")
 		}
-		return vm.CallSlow(this.O, arg(args, 0), listFromArrayLike(vm, arg(args, 1)), false, nil)
+		return vm.Call(this.Object(), arg(args, 0), listFromArrayLike(vm, arg(args, 1))...)
 	})
 	method(vm, proto, "bind", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
 			vm.ThrowTypeError("Bind must be called on a function")
 		}
-		target := this.O
-		b := &engine.Object{
-			Kind:  engine.KindFunction,
-			Class: engine.ClassFunction,
-			Shape: vm.ShapeFor(vm.ProtoOf(target)),
-			Fn: &engine.Function{
-				Bound: &engine.BoundFunc{
-					Target: target,
-					This:   arg(args, 0),
-					Args:   append([]engine.Value(nil), args[min(1, len(args)):]...),
-				},
-				Materialized: true,
-				Constructor:  vm.IsConstructor(target),
-			},
-		}
+		target := this.Object()
+		b := vm.BoundFunctionCreate(target, arg(args, 0), args[min(1, len(args)):])
 		length := 0.0
-		if vm.HasOwn(target, engine.PropKey{Key: vm.K.Length}) {
+		if vm.HasOwnProperty(target, engine.NamedKey(vm.K.Length)) {
 			if l := vm.GetV(this, vm.K.Length); l.IsNumber() {
-				length = math.Max(0, numconv.ToIntegerOrInfinity(l.N)-float64(max(0, len(args)-1)))
+				length = math.Max(0, numconv.ToIntegerOrInfinity(l.Number())-float64(max(0, len(args)-1)))
 			}
 		}
 		name := ""
 		if n := vm.GetV(this, vm.K.Name); n.IsString() {
-			name = n.O.Str
+			name = n.Object().Str()
 		}
-		vm.Add(b, vm.K.Length, engine.Number(length), engine.FlagConfigurable)
-		vm.Add(b, vm.K.Name, vm.NewString("bound "+name), engine.FlagConfigurable)
-		return engine.Value{O: b}
+		vm.Define(b, vm.K.Length, engine.Number(length), engine.FlagConfigurable)
+		vm.Define(b, vm.K.Name, vm.NewString("bound "+name), engine.FlagConfigurable)
+		return engine.ObjectValue(b)
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
 			vm.ThrowTypeError("Function.prototype.toString requires that 'this' be a Function")
 		}
-		fn := this.O.Fn
-		if fn.Code != nil && fn.Code.Source != "" {
-			return vm.NewString(fn.Code.Source)
-		}
-		name := fn.Name
-		if fn.Code != nil {
-			name = fn.Code.Name
-		}
-		return vm.NewString("function " + name + "() { [native code] }")
+		return vm.NewString(this.Object().SourceText())
 	})
 	vm.FnHasInstance = vm.NewNative("[Symbol.hasInstance]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(vm.OrdinaryHasInstance(this, arg(args, 0)))
 	})
-	vm.Define(proto, vm.K.SymHasInstance, engine.Value{O: vm.FnHasInstance}, 0)
+	vm.Define(proto, vm.K.SymHasInstance, engine.ObjectValue(vm.FnHasInstance), 0)
 }
 
 func initError(vm *engine.VM) {
@@ -684,8 +625,7 @@ func initError(vm *engine.VM) {
 		}
 		ctor := constructor(vm, name, length, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			nt := vm.NewTarget
-			e := vm.NewObject(vm.ProtoFromConstructor(nt, vm.ErrorProtos[kind]))
-			e.Class = engine.ClassError
+			e := vm.NewErrorObject(vm.GetPrototypeFromConstructor(nt, vm.ErrorProtos[kind]))
 			msgArg, optArg := arg(args, 0), arg(args, 1)
 			if kind == engine.ErrorKindAggregate {
 				msgArg, optArg = arg(args, 1), arg(args, 2)
@@ -695,7 +635,7 @@ func initError(vm *engine.VM) {
 				msg = vm.ToString(msgArg)
 				vm.Define(e, vm.K.Message, vm.NewString(msg), engine.FlagsHidden)
 			}
-			if optArg.IsObject() && vm.HasProperty(optArg.O, engine.PropKey{Key: vm.K.Cause}) {
+			if optArg.IsObject() && vm.HasProperty(optArg.Object(), engine.NamedKey(vm.K.Cause)) {
 				vm.Define(e, vm.K.Cause, vm.GetV(optArg, vm.K.Cause), engine.FlagsHidden)
 			}
 			if kind == engine.ErrorKindAggregate {
@@ -704,27 +644,27 @@ func initError(vm *engine.VM) {
 					errs = append(errs, v)
 					return true
 				})
-				vm.Define(e, vm.K.Errors, engine.Value{O: vm.NewArray(errs)}, engine.FlagsHidden)
+				vm.Define(e, vm.K.Errors, engine.ObjectValue(vm.NewArray(errs)), engine.FlagsHidden)
 			}
 			vm.Define(e, vm.K.Stack, vm.NewString(vm.StackTrace(e, wtf8.ToValidUTF8(msg))), engine.FlagsHidden)
-			return engine.Value{O: e}
+			return engine.ObjectValue(e)
 		})
 		vm.Define(proto, vm.K.Name, vm.NewString(name), engine.FlagsHidden)
 		vm.Define(proto, vm.K.Message, vm.EmptyString, engine.FlagsHidden)
 		if kind == engine.ErrorKindError {
 			base = ctor
 		} else {
-			vm.SetProto(ctor, base)
+			vm.SetPrototypeOf(ctor, base)
 		}
 	}
 	method(vm, vm.ErrorProto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := thisObject(vm, this, "Error.prototype.toString")
 		name := "Error"
-		if n := vm.GetV(engine.Value{O: o}, vm.K.Name); !n.IsUndefined() {
+		if n := vm.GetV(engine.ObjectValue(o), vm.K.Name); !n.IsUndefined() {
 			name = vm.ToString(n)
 		}
 		msg := ""
-		if m := vm.GetV(engine.Value{O: o}, vm.K.Message); !m.IsUndefined() {
+		if m := vm.GetV(engine.ObjectValue(o), vm.K.Message); !m.IsUndefined() {
 			msg = vm.ToString(m)
 		}
 		switch {
@@ -740,22 +680,7 @@ func initError(vm *engine.VM) {
 func initGlobalFunctions(vm *engine.VM) {
 	g := vm.Global
 	vm.FnEval = method(vm, g, "eval", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		src := arg(args, 0)
-		if !src.IsString() {
-			return src
-		}
-		fp, err := vm.CompileScript("<eval>", src.O.Str)
-		if err != nil {
-			vm.ThrowSyntaxError(err.Error())
-		}
-		f := &engine.Object{
-			Kind:  engine.KindFunction,
-			Class: engine.ClassFunction,
-			Flags: engine.ObjExotic,
-			Shape: vm.FunctionShape,
-			Fn:    &engine.Function{Code: fp},
-		}
-		return vm.Call(f, engine.Value{O: vm.Global})
+		return vm.PerformEval(arg(args, 0))
 	})
 	method(vm, g, "isNaN", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := vm.ToNumber(arg(args, 0))

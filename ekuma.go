@@ -93,15 +93,15 @@ var numberTag = &engine.Object{}
 // fromEngine converts a value of the engine to a Value.
 func fromEngine(v engine.Value) Value {
 	switch {
-	case v.O == nil:
+	case v.IsNumber():
 		return Value{
-			n: v.N,
+			n: v.Number(),
 			o: numberTag,
 		}
 	case v.IsUndefined():
 		return Value{}
 	}
-	return Value{o: v.O}
+	return Value{o: v.Object()}
 }
 
 // engine converts v to a value of the engine.
@@ -112,7 +112,7 @@ func (v Value) engine() engine.Value {
 	case numberTag:
 		return engine.Number(v.n)
 	}
-	return engine.Value{O: v.o}
+	return engine.ObjectValue(v.o)
 }
 
 var (
@@ -166,7 +166,7 @@ func (v Value) IsNaN() bool {
 
 // Truthy returns the boolean that v converts to.
 func (v Value) Truthy() bool {
-	return engine.Truthy(v.engine())
+	return engine.ToBoolean(v.engine())
 }
 
 // Bool returns the boolean v. It panics with a *ValueError when v is not a boolean.
@@ -221,7 +221,7 @@ func (v Value) String() string {
 
 // Equal reports whether v and w are equal the way the JavaScript operator === compares.
 func (v Value) Equal(w Value) bool {
-	return engine.StrictEquals(v.engine(), w.engine())
+	return engine.IsStrictlyEqual(v.engine(), w.engine())
 }
 
 // vm returns the VM that the value belongs to. Only objects, functions and strings have one.
@@ -497,8 +497,7 @@ func (vm *VM) funcOf(name string, f Func) engine.Value {
 
 // thrownValue returns the JavaScript value that the error of a Func throws.
 func (vm *VM) thrownValue(err error) engine.Value {
-	var ex *Error
-	if errors.As(err, &ex) {
+	if ex, ok := errors.AsType[*Error](err); ok {
 		return ex.Value.engine()
 	}
 	return vm.e.NewError(engine.ErrorKindError, err.Error())
@@ -582,16 +581,14 @@ func (vm *VM) publicError(err error) error {
 	if err == nil {
 		return nil
 	}
-	var se *engine.SyntaxError
-	if errors.As(err, &se) {
+	if se, ok := errors.AsType[*engine.SyntaxError](err); ok {
 		return &SyntaxError{
 			File:    se.File,
 			Line:    se.Line,
 			Message: se.Message,
 		}
 	}
-	var ex *engine.Error
-	if errors.As(err, &ex) {
+	if ex, ok := errors.AsType[*engine.Error](err); ok {
 		return &Error{Value: fromEngine(ex.Value)}
 	}
 	return err

@@ -14,7 +14,7 @@ import (
 type funcProto struct {
 	*bytecode.Func
 
-	Name   string
+	name   string
 	code   []bytecode.Instr
 	consts []Value
 	keys   []*Object
@@ -47,7 +47,7 @@ type templateSite struct {
 func (vm *VM) link(f *bytecode.Func) *funcProto {
 	p := &funcProto{
 		Func:               f,
-		Name:               f.Name,
+		name:               f.Name,
 		code:               f.Code,
 		consts:             make([]Value, len(f.Consts)),
 		keys:               make([]*Object, len(f.Keys)),
@@ -69,9 +69,9 @@ func (vm *VM) link(f *bytecode.Func) *funcProto {
 	for i, c := range f.Consts {
 		switch c.Kind {
 		case bytecode.ConstNumber:
-			p.consts[i] = Value{N: c.Num}
+			p.consts[i] = Value{n: c.Num}
 		case bytecode.ConstString:
-			p.consts[i] = Value{O: vm.Intern(c.Str)}
+			p.consts[i] = Value{o: vm.Intern(c.Str)}
 		case bytecode.ConstBigInt:
 			n, _ := new(big.Int).SetString(c.Str, 10)
 			p.consts[i] = vm.newBigInt(n)
