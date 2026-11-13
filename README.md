@@ -1,6 +1,6 @@
-# ekuma
+# Ekuma
 
-ekuma is a JavaScript engine written in pure Go: no cgo and no `unsafe`.
+Ekuma is a JavaScript engine written in pure Go: no cgo and no `unsafe`.
 It is an interpreter without a JIT, designed to be fast for one.
 
 The project is at an early stage. The API is unstable and a large part of the language's
@@ -22,14 +22,14 @@ a script or call a function take a `context.Context` that stops them.
 
 ## Differences from other engines for Go
 
-| | ekuma | [goja](https://github.com/dop251/goja) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) |
+| | Ekuma | [goja](https://github.com/dop251/goja) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) |
 |---|---|---|---|
 | Implementation | Written in Go | Written in Go | QuickJS, translated from C to Go |
 | cgo | No | No | No |
 | `unsafe` | No | Yes | Yes |
 | Maturity | Early | Mature | Mature (QuickJS itself) |
 
-What ekuma does differently is aimed at speed:
+What Ekuma does differently is aimed at speed:
 
 - Objects have hidden-class shapes, and every property access site has an inline cache.
 - The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
