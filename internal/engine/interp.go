@@ -375,7 +375,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				fn:    fn,
 			}
 			if p.isGenerator || p.isAsync {
-				o.shape = vm.shapeFor(vm.functionProtoFor(p))
+				o.shape = vm.functionShapeFor(vm.functionProtoFor(p))
 			}
 			if n := len(p.Upvals); n > 0 {
 				fn.upvals = make([]*upvalue, n)

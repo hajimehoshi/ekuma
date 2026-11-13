@@ -280,6 +280,22 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 	return s
 }
 
+// functionShapeFor returns the empty shape for the functions whose prototype is proto and whose
+// initial properties are not stored yet. No other object has this shape or one derived from it,
+// so an inline cache filled for another kind of object never applies to such a function.
+func (vm *VM) functionShapeFor(proto *Object) *shape {
+	if s, ok := vm.functionShapes[proto]; ok {
+		return s
+	}
+	s := &shape{
+		vm:    vm,
+		proto: proto,
+	}
+	vm.functionShapes[proto] = s
+	proto.flags |= objIsProto
+	return s
+}
+
 // NewObject returns a new empty object with the prototype proto, which may be nil.
 func (vm *VM) NewObject(proto *Object) *Object {
 	return &Object{

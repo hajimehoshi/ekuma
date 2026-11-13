@@ -18,6 +18,7 @@ func New() *VM {
 		stack:          make([]Value, 1<<14),
 		interned:       map[string]*Object{},
 		childShapes:    map[*Object]*shape{},
+		functionShapes: map[*Object]*shape{},
 		SymbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 	}
@@ -38,7 +39,7 @@ func New() *VM {
 			},
 		},
 	}
-	vm.functionShape = vm.shapeFor(vm.FunctionProto)
+	vm.functionShape = vm.functionShapeFor(vm.FunctionProto)
 	vm.ArrayProto = &Object{
 		kind:  kindArray,
 		class: classArray,

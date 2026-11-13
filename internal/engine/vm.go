@@ -151,6 +151,10 @@ type VM struct {
 	childShapes map[*Object]*shape
 	K           keys
 
+	// functionShapes maps a prototype to the shape of the functions with that prototype whose
+	// initial properties are not stored yet.
+	functionShapes map[*Object]*shape
+
 	nullProtoShape  *shape
 	objectShape     *shape
 	arrayShape      *shape

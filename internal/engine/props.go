@@ -568,13 +568,12 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 	if o.class == classProxy || o.flags&objExotic != 0 && o.fn == nil {
 		return nil, vm.setProp(o, PropKey{key: key}, val, v)
 	}
-	if vm.isLazyKey(key) {
-		if o.flags&objExotic != 0 {
-			vm.resolve(o)
-		}
-		if o.kind == kindArray && key == vm.K.Length {
-			return nil, vm.setArrayLengthValue(o, val)
-		}
+	if o.flags&objExotic != 0 {
+		// The initial properties of a function precede every property that a store adds.
+		vm.resolve(o)
+	}
+	if o.kind == kindArray && key == vm.K.Length {
+		return nil, vm.setArrayLengthValue(o, val)
 	}
 	if c != nil {
 		c.keep(o.shape)
@@ -761,6 +760,10 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 		}
 		if o.kind == kindArray && k.key == nil && k.idx >= o.length && o.flags&objFrozenLength != 0 {
 			return false
+		}
+		if o.flags&objExotic != 0 {
+			// The initial properties of a function precede every property that is defined later.
+			vm.resolve(o)
 		}
 		flags := d.Flags & d.attrMask()
 		val := d.Value
@@ -1069,6 +1072,10 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	}
 	if o.flags&objNotExtensible != 0 || o == vm.ObjectProto {
 		return false
+	}
+	if o.flags&objExotic != 0 {
+		// A function keeps the shape of functionShapeFor only until its properties are stored.
+		vm.resolve(o)
 	}
 	for p := proto; p != nil; p = p.shape.proto {
 		if p == o {

@@ -208,6 +208,49 @@ func TestScripts(t *testing.T) {
 			src:  `(Number.parseFloat === parseFloat) + ":" + (Number.parseInt === parseInt) + ":" + Number.parseInt("ff", 16)`,
 			want: "true:true:255",
 		},
+		{
+			name: "function own keys after an assignment",
+			src:  `function f() {} f.x = 1; Object.getOwnPropertyNames(f).join()`,
+			want: "length,name,prototype,x",
+		},
+		{
+			name: "function own keys after a definition",
+			src:  `function f() {} Object.defineProperty(f, "x", { value: 1 }); Object.getOwnPropertyNames(f).join()`,
+			want: "length,name,prototype,x",
+		},
+		{
+			name: "function own keys after deleting an initial property",
+			src:  `function f() {} delete f.name; f.x = 1; Object.getOwnPropertyNames(f).join()`,
+			want: "length,prototype,x",
+		},
+		{
+			name: "arrow function own keys",
+			src:  `var f = () => {}; f.x = 1; Object.getOwnPropertyNames(f).join()`,
+			want: "length,name,x",
+		},
+		{
+			name: "function own keys after a store cached for an object with the same prototype",
+			src: `function set(o) { o.x = 1; }
+				function f() {}
+				function* g() {}
+				var r = [];
+				for (var fn of [f, g]) {
+					var proto = Object.getPrototypeOf(fn);
+					set(Object.create(proto)); set(Object.create(proto)); set(fn);
+					r.push(Object.getOwnPropertyNames(fn).join());
+				}
+				r.join("|")`,
+			want: "length,name,prototype,x|length,name,prototype,x",
+		},
+		{
+			name: "function own keys after a store cached for an object with the new prototype",
+			src: `function set(o) { o.x = 1; }
+				function f() {}
+				Object.setPrototypeOf(f, null);
+				set(Object.create(null)); set(Object.create(null)); set(f);
+				Object.getOwnPropertyNames(f).join()`,
+			want: "length,name,prototype,x",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
