@@ -4753,10 +4753,6 @@ test/built-ins/NativeErrors/TypeError/proto-from-ctor-realm.js
 test/built-ins/NativeErrors/URIError/is-a-constructor.js
 test/built-ins/NativeErrors/URIError/proto-from-ctor-realm.js
 test/built-ins/Number/is-a-constructor.js
-test/built-ins/Number/parseFloat.js
-test/built-ins/Number/parseFloat/not-a-constructor.js
-test/built-ins/Number/parseInt.js
-test/built-ins/Number/parseInt/not-a-constructor.js
 test/built-ins/Number/proto-from-ctor-realm.js
 test/built-ins/Number/prototype/toExponential/return-values.js
 test/built-ins/Number/prototype/toExponential/this-is-0-fractiondigits-is-0.js

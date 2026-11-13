@@ -15,7 +15,9 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func initNumber(vm *engine.VM) {
+// initNumber defines Number and Boolean.
+// parseFloat and parseInt are the functions to define as properties of Number.
+func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	proto := vm.NumberProto
 	ctor := constructor(vm, "Number", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := 0.0
@@ -58,12 +60,8 @@ func initNumber(vm *engine.VM) {
 		v := arg(args, 0)
 		return engine.Bool(v.IsNumber() && v.Number() != v.Number())
 	})
-	g := vm.Global
-	for _, name := range []string{"parseFloat", "parseInt"} {
-		if d, ok := vm.GetOwnProperty(g, engine.NamedKey(vm.Intern(name))); ok {
-			vm.Define(ctor, vm.Intern(name), d.Value, engine.FlagsHidden)
-		}
-	}
+	vm.Define(ctor, vm.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
+	vm.Define(ctor, vm.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
 
 	thisNumber := func(vm *engine.VM, this engine.Value, what string) float64 {
 		n, ok := engine.ThisNumberValue(this)

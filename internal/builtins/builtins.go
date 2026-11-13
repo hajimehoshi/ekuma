@@ -98,11 +98,12 @@ func Install(vm *engine.VM) {
 	initError(vm)
 	initArray(vm)
 	initString(vm)
-	initNumber(vm)
+	parseFloat, parseInt := newParseFunctions(vm)
+	initNumber(vm, parseFloat, parseInt)
 	initSymbol(vm)
 	initMath(vm)
 	initIterators(vm)
-	initGlobalFunctions(vm)
+	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 
 // toDescriptor implements ToPropertyDescriptor.
@@ -677,7 +678,21 @@ func initError(vm *engine.VM) {
 	})
 }
 
-func initGlobalFunctions(vm *engine.VM) {
+// newParseFunctions creates the functions parseFloat and parseInt.
+func newParseFunctions(vm *engine.VM) (parseFloat, parseInt *engine.Object) {
+	parseFloat = vm.NewNative("parseFloat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(numconv.ParseFloat(vm.ToString(arg(args, 0))))
+	})
+	parseInt = vm.NewNative("parseInt", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		s := vm.ToString(arg(args, 0))
+		return engine.Number(numconv.ParseInt(s, int(vm.ToInt32(arg(args, 1)))))
+	})
+	return parseFloat, parseInt
+}
+
+// initGlobalFunctions defines the function properties of the global object.
+// parseFloat and parseInt are the functions to define under those names.
+func initGlobalFunctions(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	g := vm.Global
 	vm.FnEval = method(vm, g, "eval", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.PerformEval(arg(args, 0))
@@ -690,11 +705,6 @@ func initGlobalFunctions(vm *engine.VM) {
 		n := vm.ToNumber(arg(args, 0))
 		return engine.Bool(n == n && !math.IsInf(n, 0))
 	})
-	method(vm, g, "parseFloat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(numconv.ParseFloat(vm.ToString(arg(args, 0))))
-	})
-	method(vm, g, "parseInt", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := vm.ToString(arg(args, 0))
-		return engine.Number(numconv.ParseInt(s, int(vm.ToInt32(arg(args, 1)))))
-	})
+	vm.Define(g, vm.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
+	vm.Define(g, vm.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
 }

@@ -203,6 +203,11 @@ func TestScripts(t *testing.T) {
 			src:  `let gl = 1; var gv = 2; function rd() { return gl + gv + (typeof nope); } rd() + ":" + ("gv" in globalThis) + ("gl" in globalThis)`,
 			want: "3undefined:truefalse",
 		},
+		{
+			name: "Number.parseFloat and Number.parseInt are the globals",
+			src:  `(Number.parseFloat === parseFloat) + ":" + (Number.parseInt === parseInt) + ":" + Number.parseInt("ff", 16)`,
+			want: "true:true:255",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
