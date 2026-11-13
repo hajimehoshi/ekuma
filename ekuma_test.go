@@ -251,6 +251,32 @@ func TestScripts(t *testing.T) {
 				Object.getOwnPropertyNames(f).join()`,
 			want: "length,name,prototype,x",
 		},
+		{
+			name: "slice with an argument that shrinks the array",
+			src: `var a = [1, 2, 3, 4, 5, 6, 7, 8];
+				var r = a.slice({ valueOf() { a.length = 0; a.unshift(1); return 7; } }, { valueOf() { return 0; } });
+				[r.length, a.join()].join("|")`,
+			want: "0|1",
+		},
+		{
+			name: "join with a separator that shrinks the array",
+			src:  `var a = [1, 2, 3]; a.join({ toString() { a.length = 1; return "-"; } })`,
+			want: "1--",
+		},
+		{
+			name: "flat with a depth that grows the array",
+			src:  `var a = [1, [2]]; a.flat({ valueOf() { a.push(3); return 1; } }).join()`,
+			want: "1,2",
+		},
+		{
+			name: "concat into a species array keeps its length until the end",
+			src: `var created, seen;
+				class C extends Array { static get [Symbol.species]() { return function() { return created = new Array(5); }; } }
+				var c = new C(); c.push(1, 2);
+				var r = c.concat({ get [Symbol.isConcatSpreadable]() { seen = created.length; return false; } });
+				[seen, r.length].join()`,
+			want: "5,3",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

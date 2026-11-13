@@ -161,20 +161,25 @@ func (o *Object) ReverseElements() bool {
 }
 
 // CopyElementRange returns a new array with the elements of the array o from start up to end,
-// as Array.prototype.slice creates it.
+// as Array.prototype.slice creates it. A range that ends before it starts is empty.
 func (vm *VM) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
-	if !o.isDense() || !vm.arrayCtorPlain(o) || end > int64(len(o.elems)) {
+	if start < 0 || end > int64(len(o.elems)) || !o.isDense() || !vm.arrayCtorPlain(o) {
 		return nil, false
 	}
-	count := max(end-start, 0)
-	return vm.NewArray(append([]Value(nil), o.elems[start:start+count]...)), true
+	if start >= end {
+		return vm.NewArray(nil), true
+	}
+	return vm.NewArray(append([]Value(nil), o.elems[start:end]...)), true
 }
 
 // SpliceElements replaces del elements of the array o from start on with items, and returns
 // the removed elements as a new array, as Array.prototype.splice creates it.
 // length is the length of o that start and del were checked against.
 func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
-	if !o.isDense() || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() || length != int64(len(o.elems)) {
+	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
+		return nil, false
+	}
+	if !o.isDense() || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() {
 		return nil, false
 	}
 	removed := append([]Value(nil), o.elems[start:start+del]...)
@@ -184,10 +189,13 @@ func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value)
 	return vm.NewArray(removed), true
 }
 
-// AppendElementsOf adds the elements of the array src at the end of dst,
-// which must have exactly n elements and no other property.
+// AppendElementsOf adds the elements of the array src at the end of the array dst,
+// which must have the length n, exactly n elements and no other property.
 func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
-	if dst.kind != kindArray || !src.isDense() || int64(len(dst.elems)) != n || dst.shape != vm.arrayShape {
+	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != vm.arrayShape {
+		return false
+	}
+	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {
 		return false
 	}
 	dst.elems = append(dst.elems, src.elems...)

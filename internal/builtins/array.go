@@ -89,8 +89,8 @@ func callback(vm *engine.VM, args []engine.Value, what string) *engine.Object {
 	return f.Object()
 }
 
-// joinArray implements Array.prototype.join for the object o.
-func joinArray(vm *engine.VM, o *engine.Object, sep string) engine.Value {
+// joinArray implements Array.prototype.join for the first n elements of the object o.
+func joinArray(vm *engine.VM, o *engine.Object, n int64, sep string) engine.Value {
 	if slices.Contains(vm.Joining, o) {
 		return vm.EmptyString
 	}
@@ -98,7 +98,6 @@ func joinArray(vm *engine.VM, o *engine.Object, sep string) engine.Value {
 	defer func() {
 		vm.Joining = vm.Joining[:len(vm.Joining)-1]
 	}()
-	n := vm.LengthOfArrayLike(o)
 	var b wtf8.Builder
 	for i := range n {
 		if i > 0 {
@@ -394,11 +393,12 @@ func initArray(vm *engine.VM) {
 	})
 	method(vm, proto, "join", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
+		n := vm.LengthOfArrayLike(o)
 		sep := ","
 		if s := arg(args, 0); !s.IsUndefined() {
 			sep = vm.ToString(s)
 		}
-		return joinArray(vm, o, sep)
+		return joinArray(vm, o, n, sep)
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
@@ -707,16 +707,16 @@ func initArray(vm *engine.VM) {
 		}
 		return engine.ObjectValue(o)
 	})
-	var flatten func(a *engine.Object, src *engine.Object, depth float64, n *int64)
-	flatten = func(a *engine.Object, src *engine.Object, depth float64, n *int64) {
-		l := vm.LengthOfArrayLike(src)
+	// flatten implements FlattenIntoArray for the first l elements of src without a mapper function.
+	var flatten func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64)
+	flatten = func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
 		for i := range l {
 			if !hasAt(vm, src, i) {
 				continue
 			}
 			v := getAt(vm, src, i)
 			if depth > 0 && engine.IsArray(v) {
-				flatten(a, v.Object(), depth-1, n)
+				flatten(a, v.Object(), vm.LengthOfArrayLike(v.Object()), depth-1, n)
 				continue
 			}
 			vm.CreateDataPropertyOrThrow(a, bigKey(vm, *n), v)
@@ -725,13 +725,14 @@ func initArray(vm *engine.VM) {
 	}
 	method(vm, proto, "flat", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
+		l := vm.LengthOfArrayLike(o)
 		depth := 1.0
 		if d := arg(args, 0); !d.IsUndefined() {
 			depth = vm.ToIntegerOrInfinity(d)
 		}
 		a := arraySpeciesCreate(vm, o, 0)
 		var n int64
-		flatten(a, o, depth, &n)
+		flatten(a, o, l, depth, &n)
 		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "flatMap", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -746,7 +747,7 @@ func initArray(vm *engine.VM) {
 			}
 			v := vm.Call(cb, arg(args, 1), getAt(vm, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
 			if engine.IsArray(v) {
-				flatten(a, v.Object(), 0, &n)
+				flatten(a, v.Object(), vm.LengthOfArrayLike(v.Object()), 0, &n)
 				continue
 			}
 			vm.CreateDataPropertyOrThrow(a, bigKey(vm, n), v)
