@@ -196,15 +196,29 @@ type compiler struct {
 
 	// fieldNames holds the names that the anonymous functions of class field initializers get.
 	fieldNames map[*ast.Function]string
+
+	// dynamic is the function of a program from parser.ParseFunction, whose name is not bound inside it.
+	dynamic *ast.Function
 }
 
 // CompileScript compiles the script prog. file names the source in stack traces.
-func CompileScript(prog *ast.Program, file string) (f *bytecode.Func, err error) {
+func CompileScript(prog *ast.Program, file string) (*bytecode.Func, error) {
+	return compile(prog, file, nil)
+}
+
+// CompileFunction compiles the program prog from parser.ParseFunction. The returned script
+// evaluates to the function, which runs in the global scope and does not see its own name.
+func CompileFunction(prog *ast.Program, file string) (*bytecode.Func, error) {
+	return compile(prog, file, prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function))
+}
+
+func compile(prog *ast.Program, file string, dynamic *ast.Function) (f *bytecode.Func, err error) {
 	c := &compiler{
 		prog:         prog,
 		file:         file,
 		isExpression: map[*ast.Function]bool{},
 		fieldNames:   map[*ast.Function]string{},
+		dynamic:      dynamic,
 	}
 	defer func() {
 		if r := recover(); r != nil {

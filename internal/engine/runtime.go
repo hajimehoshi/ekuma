@@ -7,9 +7,11 @@ import (
 	"math"
 	"math/big"
 	"slices"
+	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/parser"
 )
 
 func (vm *VM) throwTDZ(name *Object) {
@@ -1011,6 +1013,11 @@ func (f *Object) SourceText() string {
 	name := fn.name
 	if fn.code != nil {
 		name = fn.code.name
+	}
+	// The name is a PropertyName after an optional accessor word, and is left out when it is not.
+	n := strings.TrimPrefix(strings.TrimPrefix(name, "get "), "set ")
+	if !parser.IsIdentifierName(n) && !strings.HasPrefix(n, "[") {
+		name = ""
 	}
 	return "function " + name + "() { [native code] }"
 }

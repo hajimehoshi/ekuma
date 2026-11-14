@@ -8,13 +8,12 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
-// functionKindConstructor creates the constructor name of a kind of functions whose prototype
+// functionKindConstructor creates the constructor name of the functions of kind whose prototype
 // object is proto, such as GeneratorFunction. It is not a global.
-func functionKindConstructor(vm *engine.VM, name string, proto *engine.Object) {
-	// The constructors need the Function constructor, so they only have their properties.
-	c := vm.NewNativeConstructor(name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.Unsupported("the " + name + " constructor")
-		return engine.Undefined
+func functionKindConstructor(vm *engine.VM, name string, kind engine.FunctionKind, proto *engine.Object) {
+	var c *engine.Object
+	c = vm.NewNativeConstructor(name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return vm.CreateDynamicFunction(c, vm.NewTarget, kind, args)
 	})
 	vm.SetPrototypeOf(c, vm.FunctionCtor)
 	vm.Define(c, vm.K.Prototype, engine.ObjectValue(proto), 0)
@@ -23,8 +22,8 @@ func functionKindConstructor(vm *engine.VM, name string, proto *engine.Object) {
 }
 
 func initAsync(vm *engine.VM) {
-	functionKindConstructor(vm, "AsyncFunction", vm.AsyncFunctionProto)
-	functionKindConstructor(vm, "AsyncGeneratorFunction", vm.AsyncGeneratorFunctionProto)
+	functionKindConstructor(vm, "AsyncFunction", engine.AsyncFunction, vm.AsyncFunctionProto)
+	functionKindConstructor(vm, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, vm.AsyncGeneratorFunctionProto)
 
 	gp := vm.AsyncGeneratorProto
 	resume := func(name string, mode engine.ResumeMode) {

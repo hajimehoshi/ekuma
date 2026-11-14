@@ -506,7 +506,7 @@ func initIterators(vm *engine.VM) {
 	gf := vm.GeneratorFunctionProto
 	vm.Define(gf, vm.K.Prototype, engine.ObjectValue(gp), engine.FlagConfigurable)
 	vm.Define(gp, vm.K.Constructor, engine.ObjectValue(gf), engine.FlagConfigurable)
-	functionKindConstructor(vm, "GeneratorFunction", gf)
+	functionKindConstructor(vm, "GeneratorFunction", engine.GeneratorFunction, gf)
 }
 
 // f16round returns x rounded to the nearest binary16 value, ties to even.

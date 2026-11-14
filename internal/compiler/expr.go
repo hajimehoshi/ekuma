@@ -208,7 +208,9 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 		name := ""
 		if e.Name != nil {
 			name = e.Name.Name
-			f.c.isExpression[e] = true
+			if e != f.c.dynamic {
+				f.c.isExpression[e] = true
+			}
 		}
 		f.closure(e, dst, name)
 	case *ast.Class:

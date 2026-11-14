@@ -50,6 +50,19 @@ func isIDPartRune(r rune) bool {
 	return isIDStartRune(r) || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Other_ID_Continue)
 }
 
+// IsIdentifierName reports whether s is an IdentifierName without escapes.
+func IsIdentifierName(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 && !isIDStartRune(r) || i > 0 && !isIDPartRune(r) {
+			return false
+		}
+	}
+	return true
+}
+
 func isSpaceRune(r rune) bool {
 	return r == 0xa0 || r == 0xfeff || unicode.Is(unicode.Zs, r)
 }

@@ -208,27 +208,45 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), parser.Options{})
 	if err != nil {
-		if pe, ok := errors.AsType[*parser.Error](err); ok {
-			return nil, &SyntaxError{
-				File:    file,
-				Line:    pe.Line,
-				Message: pe.Message,
-			}
-		}
-		return nil, err
+		return nil, toSyntaxError(file, err)
 	}
 	bc, err := compiler.CompileScript(prog, file)
 	if err != nil {
-		if ce, ok := errors.AsType[*compiler.Error](err); ok {
-			return nil, &SyntaxError{
-				File:    file,
-				Line:    ce.Line,
-				Message: ce.Message,
-			}
-		}
-		return nil, err
+		return nil, toSyntaxError(file, err)
 	}
 	return vm.link(bc), nil
+}
+
+// compileFunction compiles the function of parser.ParseFunction into a script that evaluates to it.
+func (vm *VM) compileFunction(file, params, body string, kind parser.FunctionKind) (*funcProto, error) {
+	prog, err := parser.ParseFunction(params, body, kind, parser.Options{})
+	if err != nil {
+		return nil, toSyntaxError(file, err)
+	}
+	bc, err := compiler.CompileFunction(prog, file)
+	if err != nil {
+		return nil, toSyntaxError(file, err)
+	}
+	return vm.link(bc), nil
+}
+
+// toSyntaxError converts an error of the parser or the compiler for the source file to a *SyntaxError.
+func toSyntaxError(file string, err error) error {
+	if pe, ok := errors.AsType[*parser.Error](err); ok {
+		return &SyntaxError{
+			File:    file,
+			Line:    pe.Line,
+			Message: pe.Message,
+		}
+	}
+	if ce, ok := errors.AsType[*compiler.Error](err); ok {
+		return &SyntaxError{
+			File:    file,
+			Line:    ce.Line,
+			Message: ce.Message,
+		}
+	}
+	return err
 }
 
 // newScriptFunction returns the function that runs the script fp.
@@ -252,4 +270,58 @@ func (vm *VM) PerformEval(x Value) Value {
 		vm.throwSyntaxError(err.Error())
 	}
 	return vm.Call(vm.newScriptFunction(fp), Value{o: vm.Global})
+}
+
+// FunctionKind is the kind of function that CreateDynamicFunction creates.
+type FunctionKind uint8
+
+const (
+	NormalFunction FunctionKind = iota
+	GeneratorFunction
+	AsyncFunction
+	AsyncGeneratorFunction
+)
+
+// CreateDynamicFunction implements CreateDynamicFunction. ctor is the constructor being called,
+// newTarget is nil in a plain call, and the last of args is the body.
+func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, args []Value) Value {
+	if newTarget == nil {
+		newTarget = ctor
+	}
+	var params, body string
+	if len(args) > 0 {
+		var sb []byte
+		for i, a := range args[:len(args)-1] {
+			if i > 0 {
+				sb = append(sb, ',')
+			}
+			sb = append(sb, vm.ToString(a)...)
+		}
+		params = string(sb)
+		body = vm.ToString(args[len(args)-1])
+	}
+
+	var pkind parser.FunctionKind
+	fallback := vm.FunctionProto
+	switch kind {
+	case GeneratorFunction:
+		pkind = parser.GeneratorFunction
+		fallback = vm.GeneratorFunctionProto
+	case AsyncFunction:
+		pkind = parser.AsyncFunction
+		fallback = vm.AsyncFunctionProto
+	case AsyncGeneratorFunction:
+		pkind = parser.AsyncGeneratorFunction
+		fallback = vm.AsyncGeneratorFunctionProto
+	}
+	fp, err := vm.compileFunction("<anonymous>", wtf8.FromValidUTF8(params), wtf8.FromValidUTF8(body), pkind)
+	if err != nil {
+		vm.throwSyntaxError(err.Error())
+	}
+	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
+	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.Global})
+	if proto != fallback {
+		vm.SetPrototypeOf(f.o, proto)
+	}
+	return f
 }

@@ -635,9 +635,9 @@ func listFromArrayLike(vm *engine.VM, v engine.Value) []engine.Value {
 
 func initFunction(vm *engine.VM) {
 	proto := vm.FunctionProto
-	ctor := constructor(vm, "Function", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.Unsupported("the Function constructor")
-		return engine.Undefined
+	var ctor *engine.Object
+	ctor = constructor(vm, "Function", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return vm.CreateDynamicFunction(ctor, vm.NewTarget, engine.NormalFunction, args)
 	})
 	vm.FunctionCtor = ctor
 
