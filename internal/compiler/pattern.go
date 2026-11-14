@@ -38,7 +38,7 @@ func (f *fn) destructure(p ast.Pattern, src int32, mode patMode) {
 		}
 		f.storeVar(p, p.Name, src, false)
 	case *ast.MemberExpr:
-		t := f.target(p)
+		t := f.assignTarget(p)
 		f.storeTarget(t, src)
 	case *ast.AssignPattern:
 		v := f.newReg()

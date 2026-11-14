@@ -256,26 +256,37 @@ func (vm *VM) deleteValue(v, k Value, strict bool) Value {
 	return Bool(ok)
 }
 
-// superBase returns the object that super property accesses start from, given the home object.
-func (vm *VM) superBase(home Value, key PropKey) *Object {
+// superBase implements GetSuperBase for the home object home.
+func (vm *VM) superBase(home Value) Value {
 	if !home.IsObject() {
 		vm.throwSyntaxError("'super' keyword unexpected here")
 	}
-	base := vm.ProtoOf(home.o)
-	if base == nil {
-		vm.ThrowTypeError("Cannot access property '" + vm.KeyString(key) + "' of a null prototype")
+	if p := vm.ProtoOf(home.o); p != nil {
+		return ObjectValue(p)
 	}
-	return base
+	return Null
 }
 
-func (vm *VM) getSuper(home, k, this Value) Value {
-	key := vm.ToPropertyKey(k)
-	return vm.getProp(vm.superBase(home, key), key, this)
+// superObject returns the object that a super property access with the super base base starts from.
+func (vm *VM) superObject(base Value) *Object {
+	if base.IsNull() {
+		vm.ThrowTypeError("Cannot access a property of a null prototype through 'super'")
+	}
+	return base.o
 }
 
-func (vm *VM) setSuper(home, k, val, this Value, strict bool) {
+// getSuper reads the property k of the super base base with the this value this,
+// and returns the property key as well.
+func (vm *VM) getSuper(base, k, this Value) (Value, PropKey) {
+	o := vm.superObject(base)
 	key := vm.ToPropertyKey(k)
-	if !vm.setProp(vm.superBase(home, key), key, val, this) && strict {
+	return vm.getProp(o, key, this), key
+}
+
+func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
+	o := vm.superObject(base)
+	key := vm.ToPropertyKey(k)
+	if !vm.setProp(o, key, val, this) && strict {
 		vm.throwReadOnly(this, key)
 	}
 }

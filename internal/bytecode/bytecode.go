@@ -52,8 +52,9 @@ const (
 	OpSetIndex  // a[b] = c
 	OpSetIndexStrict
 	OpGetIndexInt   // a = b[the integer c]
-	OpGetSuper      // a = super[b], with this c; the next instruction's a is the home object
-	OpSetSuper      // super[a] = b, with this c; the next instruction's a says whether the code is strict, and its b is the home object
+	OpSuperBase     // a = the super base of the home object b, which is its prototype
+	OpGetSuper      // a = super[b], with this c; the next instruction's a is the home object, or the super base with the key converted in place when its b is nonzero
+	OpSetSuper      // super[a] = b, with this c; the next instruction's a says whether the code is strict, and its b is the super base
 	OpDeleteProp    // a = delete b[c]; the next instruction's a says whether the code is strict
 	OpIn            // a = b in c
 	OpInstanceof    // a = b instanceof c

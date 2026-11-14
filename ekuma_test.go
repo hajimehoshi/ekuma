@@ -70,6 +70,29 @@ func TestScripts(t *testing.T) {
 			want: "true:1",
 		},
 		{
+			name: "computed super property evaluation order",
+			src: `var log = [];
+				var p1 = { get p() { log.push("get1"); return 1; }, set p(v) { log.push("set1:" + v); } };
+				var p2 = { get p() { log.push("get2"); return 2; }, set p(v) { log.push("set2:" + v); } };
+				var obj = { __proto__: p1,
+					read() { super[key]; },
+					assign() { super[key] = rhs(); },
+					compound() { super[key] += rhs(); } };
+				var key = { toString() { log.push("key"); Object.setPrototypeOf(obj, p2); return "p"; } };
+				function rhs() { log.push("rhs"); Object.setPrototypeOf(obj, p2); return 10; }
+				for (var m of ["read", "assign", "compound"]) { Object.setPrototypeOf(obj, p1); obj[m](); }
+				log.join()`,
+			want: "key,get1,rhs,key,set1:10,key,get1,rhs,set1:11",
+		},
+		{
+			name: "delete of a super property before super()",
+			src: `var log = [];
+				class D extends Object { constructor() { delete super[log.push("key")]; } }
+				try { new D(); } catch (e) { log.push(e.name); }
+				log.join()`,
+			want: "ReferenceError",
+		},
+		{
 			name: "let per iteration and closures",
 			src:  `var fs = []; for (let i = 0; i < 3; i++) fs.push(() => i); fs.map(f => f()).join()`,
 			want: "0,1,2",

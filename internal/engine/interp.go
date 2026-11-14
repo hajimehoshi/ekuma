@@ -578,19 +578,29 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.nregs), false, nil
 				goto call
 			}
+		case bytecode.OpSuperBase:
+			vm.frames[len(vm.frames)-1].pc = pc
+			regs[i.A] = vm.superBase(regs[i.B])
 		case bytecode.OpGetSuper:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			home := regs[code[pc].A]
+			ext := code[pc]
 			pc++
-			v := vm.getSuper(home, regs[i.B], regs[i.C])
+			if ext.B == 0 {
+				v, _ := vm.getSuper(vm.superBase(regs[ext.A]), regs[i.B], regs[i.C])
+				regs = vm.reload(regs, onHeap, base, fp)
+				regs[i.A] = v
+				continue
+			}
+			v, key := vm.getSuper(regs[ext.A], regs[i.B], regs[i.C])
 			regs = vm.reload(regs, onHeap, base, fp)
+			regs[i.B] = vm.KeyValue(key)
 			regs[i.A] = v
 		case bytecode.OpSetSuper:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			strict := code[pc].A != 0
-			home := regs[code[pc].B]
+			superBase := regs[code[pc].B]
 			pc++
-			vm.setSuper(home, regs[i.A], regs[i.B], regs[i.C], strict)
+			vm.setSuper(superBase, regs[i.A], regs[i.B], regs[i.C], strict)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpDeleteProp:
 			vm.frames[len(vm.frames)-1].pc = pc + 1

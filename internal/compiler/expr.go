@@ -456,11 +456,11 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 	switch arg := n.Arg.(type) {
 	case *ast.MemberExpr:
 		if _, ok := arg.Object.(*ast.SuperExpr); ok {
-			// Deleting a super property is a ReferenceError after the operands are evaluated.
+			// Deleting a super property is a ReferenceError after this and the key are evaluated.
+			f.loadVar("this", f.newReg(), false)
 			if arg.Computed {
 				f.effect(arg.Property)
 			}
-			f.loadVar("this", f.newReg(), false)
 			f.emit(bytecode.OpThrowError, errReference, f.constStr("Unsupported reference to 'super'"), 0)
 			return
 		}
@@ -555,7 +555,7 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 		f.storeVar(n, arg.Name, res, false)
 		f.emit(bytecode.OpMove, dst, old, 0)
 	case *ast.MemberExpr:
-		t := f.target(arg)
+		t := f.assignTarget(arg)
 		old := f.newReg()
 		f.loadTarget(t, old)
 		res := f.newReg()
@@ -584,13 +584,16 @@ type memberTarget struct {
 	// key is the register of a computed key or of a private name, and -1 for a named property.
 	key int32
 
-	// For a super property: the registers of this and of the home object.
-	super bool
-	this  int32
-	home  int32
+	// For a super property: the registers of this and of the home object,
+	// or of the super base when superBase is set.
+	super     bool
+	superBase bool
+	this      int32
+	home      int32
 }
 
-// target evaluates the object and the key of the property reference n.
+// target evaluates the object and the key of the property reference n for a read.
+// The key of a super property is converted by the read.
 func (f *fn) target(n *ast.MemberExpr) memberTarget {
 	t := memberTarget{
 		node: n,
@@ -603,7 +606,6 @@ func (f *fn) target(n *ast.MemberExpr) memberTarget {
 		t.key = f.newReg()
 		if n.Computed {
 			f.expr(n.Property, t.key)
-			f.emit(bytecode.OpToPropertyKey, t.key, t.key, 0)
 		} else {
 			f.emit(bytecode.OpLoadK, t.key, f.constStr(n.Property.(*ast.Identifier).Name), 0)
 		}
@@ -627,13 +629,28 @@ func (f *fn) target(n *ast.MemberExpr) memberTarget {
 	return t
 }
 
+// assignTarget evaluates the property reference n for a store, which may follow a read.
+func (f *fn) assignTarget(n *ast.MemberExpr) memberTarget {
+	t := f.target(n)
+	if t.super {
+		// The reference holds the super base from its evaluation on.
+		f.emit(bytecode.OpSuperBase, t.home, t.home, 0)
+		t.superBase = true
+	}
+	return t
+}
+
 // loadTarget reads the property t into dst.
 func (f *fn) loadTarget(t memberTarget, dst int32) {
 	n := t.node
 	switch {
 	case t.super:
+		var superBase int32
+		if t.superBase {
+			superBase = 1
+		}
 		f.emit(bytecode.OpGetSuper, dst, t.key, t.this)
-		f.emit(bytecode.OpNop, t.home, 0, 0)
+		f.emit(bytecode.OpNop, t.home, superBase, 0)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
 		f.emit(bytecode.OpGetProp, dst, t.obj, f.site(name))
@@ -651,6 +668,9 @@ func (f *fn) storeTarget(t memberTarget, src int32) {
 	n := t.node
 	switch {
 	case t.super:
+		if !t.superBase {
+			panic("compiler: store to a super property without its super base")
+		}
 		f.emit(bytecode.OpSetSuper, t.key, src, t.this)
 		f.emit(bytecode.OpNop, f.strictFlag(), t.home, 0)
 	case t.key < 0:
@@ -1246,7 +1266,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.storeVar(n, name, t, false)
 		}
 	case *ast.MemberExpr:
-		t := f.target(target)
+		t := f.assignTarget(target)
 		switch {
 		case n.Op == ast.OpNone:
 			v := f.exprAny(n.Value)
