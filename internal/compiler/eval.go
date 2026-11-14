@@ -292,6 +292,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 	f.eval = ev
 	f.f.Strict = prog.Strict
 	f.f.IsArrow = true
+	f.f.IsEval = true
 	f.mutated = map[string]bool{}
 	f.anyMutated = prog.Scope.ContainsDirectEval
 

@@ -65,6 +65,11 @@ func (f *fn) destructure(p ast.Pattern, src int32, mode patMode) {
 }
 
 func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
+	if len(p.Properties) > 0 {
+		f.setPos(p.Properties[0].Key.Start())
+	} else {
+		f.setPos(p.Start())
+	}
 	f.emit(bytecode.OpRequireCoercible, src, 0, 0)
 
 	// With a rest element, the keys that were read are kept in consecutive registers.
@@ -94,6 +99,7 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 		// A reference as the target is evaluated after the key and before the get.
 		ref, ok := f.elementRef(prop.Value, mode)
 		v := f.newReg()
+		f.setPos(prop.Key.Start())
 		if static {
 			f.emit(bytecode.OpGetProp, v, src, f.site(name))
 		} else {

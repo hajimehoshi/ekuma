@@ -352,6 +352,15 @@ func (f *fn) setPos(offset int32) {
 	f.f.Positions = append(f.f.Positions, pos)
 }
 
+// setRefPos records the position of n, a reference to the variable name, when using the
+// reference may throw.
+func (f *fn) setRefPos(n ast.Node, name string) {
+	r := f.resolve(name)
+	if r.kind == refGlobal || r.needsCheck() || (r.kind == refLocal && r.b.unset) || f.dynDepth(name) > 0 {
+		f.setPos(n.Start())
+	}
+}
+
 // newReg reserves the next register.
 func (f *fn) newReg() int32 {
 	r := f.top
@@ -670,6 +679,9 @@ func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 
 // storeVarTo is storeVar for the variable whose dynamic scope resolveName put in the register scope.
 func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int32) {
+	if !init {
+		f.setRefPos(n, name)
+	}
 	end := -1
 	if scope >= 0 {
 		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)

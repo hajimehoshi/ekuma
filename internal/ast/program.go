@@ -6,7 +6,6 @@ package ast
 import (
 	"sort"
 	"sync"
-	"unicode/utf8"
 )
 
 // Program is a parsed script or module.
@@ -26,7 +25,13 @@ type Program struct {
 
 	lineOnce   sync.Once
 	lineStarts []int32
+
+	// codePoints holds the number of code points before each multiple of codePointBlock in Source.
+	codePoints []int32
 }
+
+// codePointBlock is the interval in bytes at which Program counts the code points of its source.
+const codePointBlock = 256
 
 // Text returns the source text of n.
 func (p *Program) Text(n Node) string {
@@ -37,6 +42,10 @@ func (p *Program) Text(n Node) string {
 func (p *Program) Position(offset int32) (line, column int) {
 	p.lineOnce.Do(func() {
 		p.lineStarts = lineStarts(p.Source)
+		p.codePoints = make([]int32, len(p.Source)/codePointBlock+1)
+		for i := 1; i < len(p.codePoints); i++ {
+			p.codePoints[i] = p.codePoints[i-1] + int32(countCodePoints(p.Source[(i-1)*codePointBlock:i*codePointBlock]))
+		}
 	})
 	if offset < 0 {
 		offset = 0
@@ -47,7 +56,13 @@ func (p *Program) Position(offset int32) (line, column int) {
 	i := sort.Search(len(p.lineStarts), func(i int) bool {
 		return p.lineStarts[i] > offset
 	}) - 1
-	return i + 1, utf8.RuneCountInString(p.Source[p.lineStarts[i]:offset]) + 1
+	return i + 1, p.codePointsBefore(offset) - p.codePointsBefore(p.lineStarts[i]) + 1
+}
+
+// codePointsBefore returns the number of code points in Source before offset.
+func (p *Program) codePointsBefore(offset int32) int {
+	k := int(offset) / codePointBlock
+	return int(p.codePoints[k]) + countCodePoints(p.Source[k*codePointBlock:offset])
 }
 
 // Position converts a byte offset in src into a 1-based line and a 1-based column counted in code points.
@@ -59,7 +74,18 @@ func Position(src string, offset int) (line, column int) {
 		offset = len(src)
 	}
 	starts := lineStarts(src[:offset])
-	return len(starts), utf8.RuneCountInString(src[starts[len(starts)-1]:offset]) + 1
+	return len(starts), countCodePoints(src[starts[len(starts)-1]:offset]) + 1
+}
+
+// countCodePoints returns the number of code points in the WTF-8 text s.
+func countCodePoints(s string) int {
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i]&0xc0 != 0x80 {
+			n++
+		}
+	}
+	return n
 }
 
 func lineStarts(src string) []int32 {

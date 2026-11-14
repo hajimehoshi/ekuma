@@ -189,6 +189,7 @@ func (vm *VM) unwind(stop int) bool {
 			}
 			regs[h.Reg] = vm.thrown
 			vm.thrown = Undefined
+			vm.dropNatives(n)
 			fr.pc = int(h.Target)
 			fr.scopes = fr.scopes[:min(len(fr.scopes), int(h.Scopes))]
 			vm.sp = fr.top()

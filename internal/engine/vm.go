@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"cmp"
 	"errors"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
@@ -199,6 +200,51 @@ type throwSignal struct{}
 
 var errThrow = &throwSignal{}
 
+// nativeCall is a running call of a native function, which stack traces show.
+type nativeCall struct {
+	f    *Object
+	this Value
+
+	// frames is the number of frames when the call started.
+	frames int
+
+	isNew bool
+}
+
+// pushNative records the start of the call of the native function f.
+func (vm *VM) pushNative(f *Object, this Value, isNew bool) {
+	vm.natives = append(vm.natives, nativeCall{
+		f:      f,
+		this:   this,
+		frames: len(vm.frames),
+		isNew:  isNew,
+	})
+}
+
+// popNative records the end of the innermost call of a native function.
+func (vm *VM) popNative() {
+	n := len(vm.natives) - 1
+	vm.natives[n] = nativeCall{}
+	vm.natives = vm.natives[:n]
+}
+
+// truncateNatives drops the calls of native functions after the first n.
+func (vm *VM) truncateNatives(n int) {
+	clear(vm.natives[n:])
+	vm.natives = vm.natives[:n]
+}
+
+// dropNatives drops the calls of native functions that started when there were more than
+// frames frames, which an exception ended.
+func (vm *VM) dropNatives(frames int) {
+	n := len(vm.natives)
+	for n > 0 && vm.natives[n-1].frames > frames {
+		n--
+		vm.natives[n] = nativeCall{}
+	}
+	vm.natives = vm.natives[:n]
+}
+
 // VM is a JavaScript virtual machine. It must not be used from more than one goroutine at a time.
 type VM struct {
 	// hostDefined is the value that HostDefined returns.
@@ -206,6 +252,9 @@ type VM struct {
 
 	stack  []Value
 	frames []frame
+
+	// natives are the calls of native functions that are running, innermost last.
+	natives []nativeCall
 
 	// openUpvals are the upvalues that refer to stack slots, ordered by index.
 	openUpvals []*upvalue
@@ -396,7 +445,7 @@ func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e := vm.NewObject(vm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	e.class = classError
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
-	vm.RecordStack(e, msg)
+	e.ext = vm.stackTrace(e, msg, len(vm.frames), len(vm.natives))
 	return e
 }
 
@@ -424,13 +473,28 @@ func (vm *VM) throwSyntaxError(msg string) {
 }
 
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
-// as what ErrorStack returns.
-func (vm *VM) RecordStack(e *Object, msg string) {
-	e.ext = vm.stackTrace(e, msg)
+// as what ErrorStack returns. The running native function constructs e for newTarget: the trace
+// leaves out that function, and the frames up to the call of newTarget when newTarget is running.
+func (vm *VM) RecordStack(e *Object, msg string, newTarget *Object) {
+	frames, natives := len(vm.frames), max(len(vm.natives)-1, 0)
+	for i := frames - 1; i >= 0; i-- {
+		if vm.frames[i].cl == newTarget {
+			frames = i
+			for natives > 0 && vm.natives[natives-1].frames > i {
+				natives--
+			}
+			break
+		}
+	}
+	e.ext = vm.stackTrace(e, msg, frames, natives)
 }
 
-// stackTrace returns the stack trace of a new error.
-func (vm *VM) stackTrace(e *Object, msg string) string {
+// maxStackFrames is the number of calls that a stack trace shows.
+const maxStackFrames = 16
+
+// stackTrace returns the stack trace of a new error, which shows the first frames frames and
+// the first natives calls of native functions.
+func (vm *VM) stackTrace(e *Object, msg string, frames, natives int) string {
 	var b wtf8.Builder
 	name := "Error"
 	if v, ok := vm.lookupData(e, vm.Key(KeyName)); ok && v.IsString() {
@@ -441,28 +505,102 @@ func (vm *VM) stackTrace(e *Object, msg string) string {
 		b.WriteString(": ")
 		b.WriteString(wtf8.FromValidUTF8(msg))
 	}
-	for i := len(vm.frames) - 1; i >= 0 && i >= len(vm.frames)-16; i-- {
-		fp := vm.frames[i].fp
-		b.WriteString("\n    at ")
-		if fp.name == "" {
-			b.WriteString("<anonymous>")
-		} else {
-			b.WriteString(fp.name)
+	n := 0
+	j := natives - 1
+	for i := frames - 1; n < maxStackFrames; i-- {
+		// A native function called from the frame i runs inside it.
+		for ; j >= 0 && vm.natives[j].frames > i && n < maxStackFrames; j-- {
+			c := &vm.natives[j]
+			vm.writeCall(&b, c.f.fn.name, c.isNew, c.this, "<anonymous>")
+			n++
 		}
-		if fp.File != "" {
-			b.WriteString(" (")
-			b.WriteString(wtf8.FromValidUTF8(fp.File))
-			// pc is past the instruction that is running.
-			if line, column := fp.Position(max(vm.frames[i].pc-1, 0)); line > 0 {
-				b.WriteString(":")
-				b.WriteString(itoa(line))
-				b.WriteString(":")
-				b.WriteString(itoa(column))
-			}
-			b.WriteString(")")
+		if i < 0 || n >= maxStackFrames {
+			break
 		}
+		vm.writeFrame(&b, &vm.frames[i])
+		n++
 	}
 	return b.String()
+}
+
+// writeFrame writes the line of the stack trace for the frame fr to b.
+func (vm *VM) writeFrame(b *wtf8.Builder, fr *frame) {
+	fp := fr.fp
+	name := fp.name
+	if fp.IsEval {
+		name = "eval"
+	}
+	var loc string
+	if fp.File != "" {
+		loc = wtf8.FromValidUTF8(fp.File)
+		// pc is past the instruction that is running.
+		if line, column := fp.Position(max(fr.pc-1, 0)); line > 0 {
+			loc += ":" + itoa(line) + ":" + itoa(column)
+		}
+	}
+	this := fr.this
+	if fp.IsEval {
+		this = Undefined
+	}
+	vm.writeCall(b, name, fr.newTarget != nil, this, loc)
+}
+
+// writeCall writes the line of the stack trace for a call of the function name with this to b.
+// loc is where the function runs, or empty when it is unknown.
+func (vm *VM) writeCall(b *wtf8.Builder, name string, isNew bool, this Value, loc string) {
+	b.WriteString("\n    at ")
+	desc := name
+	switch {
+	case isNew:
+		desc = "new " + cmp.Or(name, "<anonymous>")
+	case this.IsObject() && this.o == vm.global, this.IsNullish():
+	default:
+		desc = vm.typeName(this) + "." + cmp.Or(name, "<anonymous>")
+	}
+	switch {
+	case desc == "":
+		b.WriteString(cmp.Or(loc, "<anonymous>"))
+	case loc == "":
+		b.WriteString(desc)
+	default:
+		b.WriteString(desc)
+		b.WriteString(" (")
+		b.WriteString(loc)
+		b.WriteString(")")
+	}
+}
+
+// typeName returns the name of the type of v that a stack trace shows for a method called on v.
+// It runs no JavaScript.
+func (vm *VM) typeName(v Value) string {
+	switch {
+	case v.IsString():
+		return "String"
+	case v.IsNumber():
+		return "Number"
+	case v.IsBool():
+		return "Boolean"
+	case v.IsSymbol():
+		return "Symbol"
+	case v.IsBigInt():
+		return "BigInt"
+	}
+	o := v.o
+	if v.IsCallable() {
+		if n, ok := vm.lookupData(o, vm.Key(KeyName)); ok && n.IsString() && n.o.str != "" {
+			return n.o.str
+		}
+		return "Function"
+	}
+	if c, ok := vm.lookupData(o, vm.Key(KeyConstructor)); ok && c.IsCallable() {
+		if n, ok := vm.lookupData(c.o, vm.Key(KeyName)); ok && n.IsString() && n.o.str != "" && n.o.str != "Object" {
+			return n.o.str
+		}
+	}
+	if t, ok := vm.lookupData(o, vm.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.o.str != "" {
+		return t.o.str
+	}
+	return "Object"
 }
 
 // lookupData returns the data property key of o or its prototypes, without running any JavaScript.
@@ -542,6 +680,7 @@ func (vm *VM) DisplayString(v Value) string {
 // When it reports false, the exception is in vm.thrown.
 func (vm *VM) protect(f func()) (ok bool) {
 	frames := len(vm.frames)
+	natives := len(vm.natives)
 	sp := vm.sp
 	depth := vm.depth
 	defer func() {
@@ -550,6 +689,7 @@ func (vm *VM) protect(f func()) (ok bool) {
 				panic(r)
 			}
 			vm.unwindTo(frames)
+			vm.truncateNatives(natives)
 			vm.sp = sp
 			vm.depth = depth
 			ok = false

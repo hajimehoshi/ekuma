@@ -212,7 +212,7 @@ func (vm *VM) RunScript(file, src string) (Value, error) {
 // An interruption ends the outermost such call: when Go code that JavaScript called enters
 // the engine again, the interruption passes through that inner call and the Go code.
 func (vm *VM) enter(f func() Value) (result Value, err error) {
-	frames, sp, depth := len(vm.frames), vm.sp, vm.depth
+	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
@@ -227,6 +227,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			}
 			// The interruption left frames and generators behind in whatever state they were.
 			vm.unwindTo(frames)
+			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
 			vm.thrown = Undefined
 			vm.dropJobs()

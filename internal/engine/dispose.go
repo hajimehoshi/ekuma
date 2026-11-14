@@ -151,7 +151,7 @@ func (vm *VM) disposeError(dc *DisposeCapability, e Value) {
 	s := vm.NewErrorObject(vm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
 	vm.Define(s, vm.Key(KeyError), e, FlagsHidden)
 	vm.Define(s, vm.Key(KeySuppressed), dc.completion, FlagsHidden)
-	vm.RecordStack(s, "")
+	s.ext = vm.stackTrace(s, "", len(vm.frames), len(vm.natives))
 	dc.completion = Value{o: s}
 }
 

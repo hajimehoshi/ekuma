@@ -374,6 +374,7 @@ type Func struct {
 
 	Strict      bool
 	IsArrow     bool
+	IsEval      bool
 	IsGenerator bool
 	IsAsync     bool
 	IsMethod    bool

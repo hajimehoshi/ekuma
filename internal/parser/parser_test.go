@@ -2492,6 +2492,13 @@ func TestPosition(t *testing.T) {
 	if line, col := prog.Position(prog.Body[3].Start()); line != 3 || col != 3 {
 		t.Errorf("Position of c: got %d:%d, want 3:3", line, col)
 	}
+
+	// A lone surrogate, in WTF-8, is one code point, also on a line longer than the blocks
+	// that the code points are counted in.
+	prog = mustParse(t, "a;\n'\xed\xa0\x80"+strings.Repeat("x", 300)+"'; d", script)
+	if line, col := prog.Position(prog.Body[2].Start()); line != 2 || col != 306 {
+		t.Errorf("Position of d: got %d:%d, want 2:306", line, col)
+	}
 }
 
 func FuzzParse(f *testing.F) {

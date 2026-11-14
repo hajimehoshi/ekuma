@@ -750,7 +750,7 @@ func initError(vm *engine.VM) {
 				vm.Define(e, vm.Key(engine.KeyError), arg(args, 0), engine.FlagsHidden)
 				vm.Define(e, vm.Key(engine.KeySuppressed), arg(args, 1), engine.FlagsHidden)
 			}
-			vm.RecordStack(e, wtf8.ToValidUTF8(msg))
+			vm.RecordStack(e, wtf8.ToValidUTF8(msg), nt)
 			return engine.ObjectValue(e)
 		})
 		vm.Define(proto, vm.Key(engine.KeyName), vm.NewString(name), engine.FlagsHidden)

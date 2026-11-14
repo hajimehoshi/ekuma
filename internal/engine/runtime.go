@@ -865,7 +865,9 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	if fn.native != nil {
 		saved := vm.newTarget
 		vm.newTarget = nil
+		vm.pushNative(f, this, false)
 		r := fn.native(vm, this, args)
+		vm.popNative()
 		vm.newTarget = saved
 		return r
 	}
@@ -903,7 +905,9 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	if fn.native != nil {
 		saved := vm.newTarget
 		vm.newTarget = newTarget
+		vm.pushNative(f, Undefined, true)
 		r := fn.native(vm, Undefined, args)
+		vm.popNative()
 		vm.newTarget = saved
 		if !r.IsObject() {
 			vm.ThrowTypeError("constructor did not return an object")

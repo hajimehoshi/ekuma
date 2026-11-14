@@ -189,6 +189,7 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 				return
 			}
 		}
+		f.setRefPos(e, e.Name)
 		f.loadVar(e.Name, dst, false)
 	case *ast.ThisExpr:
 		f.loadVar("this", dst, false)
@@ -471,6 +472,7 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 		} else {
 			f.emit(bytecode.OpLoadK, key, f.constStr(arg.Property.(*ast.Identifier).Name), 0)
 		}
+		f.setPos(arg.Property.Start())
 		f.emit(bytecode.OpDeleteProp, dst, obj, key)
 		f.emit(bytecode.OpNop, f.strictFlag(), 0, 0)
 	case *ast.OptionalChain:
@@ -652,6 +654,7 @@ func (f *fn) assignTarget(n *ast.MemberExpr) memberTarget {
 // loadTarget reads the property t into dst.
 func (f *fn) loadTarget(t memberTarget, dst int32) {
 	n := t.node
+	f.setPos(n.Property.Start())
 	switch {
 	case t.super:
 		var superBase int32
@@ -675,6 +678,7 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 // storeTarget stores the register src to the property t.
 func (f *fn) storeTarget(t memberTarget, src int32) {
 	n := t.node
+	f.setPos(n.Property.Start())
 	switch {
 	case t.super:
 		if !t.superBase {
@@ -714,6 +718,7 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		f.chainCheck(n.Optional, obj)
 		name := f.newReg()
 		f.loadVar("#"+p.Name, name, false)
+		f.setPos(n.Property.Start())
 		f.emit(bytecode.OpGetPrivate, dst, obj, name)
 		return
 	}
@@ -721,6 +726,7 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		obj := f.operand(n.Object)
 		f.chainCheck(n.Optional, obj)
 		name := n.Property.(*ast.Identifier).Name
+		f.setPos(n.Property.Start())
 		if name == "length" {
 			f.emit(bytecode.OpGetLength, dst, obj, f.site(name))
 			return
@@ -732,15 +738,18 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 	f.chainCheck(n.Optional, obj)
 	if k, ok := n.Property.(*ast.NumberLit); ok {
 		if i := int32(k.Value); float64(i) == k.Value && i >= 0 {
+			f.setPos(n.Property.Start())
 			f.emit(bytecode.OpGetIndexInt, dst, obj, i)
 			return
 		}
 	}
 	if s, ok := n.Property.(*ast.StringLit); ok && !isIndexString(s.Value) {
+		f.setPos(n.Property.Start())
 		f.emit(bytecode.OpGetProp, dst, obj, f.site(s.Value))
 		return
 	}
 	key := f.exprAny(n.Property)
+	f.setPos(n.Property.Start())
 	f.emit(bytecode.OpGetIndex, dst, obj, key)
 }
 
@@ -818,7 +827,8 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	// The callee goes to base, the this value to base+1 and the arguments follow.
 	base := f.newRegs(2)
 	op := bytecode.OpCall
-	// pos is the position of the call: the property name of a method call and the callee otherwise.
+	// pos is the position of the call: the property name of a method call, the name of
+	// the function, or the arguments after any other callee.
 	pos := n.Start()
 	callee := n.Callee
 	switch c := callee.(type) {
@@ -838,11 +848,13 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			if p, ok := c.Property.(*ast.PrivateName); ok {
 				name := f.newReg()
 				f.loadVar("#"+p.Name, name, false)
+				f.setPos(pos)
 				f.emit(bytecode.OpGetPrivate, base, base+1, name)
 				f.free(name)
 				break
 			}
 			name := c.Property.(*ast.Identifier).Name
+			f.setPos(pos)
 			f.emit(bytecode.OpGetProp, base, base+1, f.site(name))
 			switch name {
 			case "call":
@@ -862,6 +874,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			}
 		default:
 			key := f.exprAny(c.Property)
+			f.setPos(pos)
 			f.emit(bytecode.OpGetIndex, base, base+1, key)
 			f.free(base + 2)
 		}
@@ -889,6 +902,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			op = bytecode.OpCallEval
 		}
 	default:
+		pos = callee.End()
 		f.expr(callee, base)
 		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
 	}
