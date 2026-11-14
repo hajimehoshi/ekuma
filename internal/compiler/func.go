@@ -67,7 +67,8 @@ func forwardsArguments(node *ast.Function) bool {
 			depth--
 			return false
 		case *ast.CallExpr:
-			if depth > 0 {
+			// A super call and a call of a method of super build their arguments as usual.
+			if depth > 0 || isSuperCallee(n.Callee) {
 				break
 			}
 			if m, isMember := n.Callee.(*ast.MemberExpr); isMember && !m.Computed && len(n.Args) == 2 {
@@ -92,6 +93,15 @@ func forwardsArguments(node *ast.Function) bool {
 		return ok
 	}
 	walk(node, visit)
+	return ok
+}
+
+// isSuperCallee reports whether the callee e is super or a property of super.
+func isSuperCallee(e ast.Expr) bool {
+	if m, ok := e.(*ast.MemberExpr); ok {
+		e = m.Object
+	}
+	_, ok := e.(*ast.SuperExpr)
 	return ok
 }
 

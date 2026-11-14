@@ -326,6 +326,15 @@ func TestScripts(t *testing.T) {
 				n`,
 			want: "3",
 		},
+		{
+			name: "arguments passed on through super",
+			src: `class A { constructor(x) { this.x = x; } m(y) { return this.x + y; } }
+				class B extends A { constructor() { super(...arguments); } m() { return super.m.apply(this, arguments); }
+					n() { return super.apply(this, arguments); } }
+				A.prototype.apply = function(t, a) { return a.length; };
+				new B(5).x + "," + new B(5).m(1) + "," + new B(5).n(1, 2)`,
+			want: "5,6,2",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
