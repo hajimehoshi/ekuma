@@ -64,7 +64,7 @@ func TestJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vm := ekuma.New()
+			vm := ekuma.NewVM()
 			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
 			if err != nil {
 				t.Fatalf("RunScript: %v", err)
@@ -78,7 +78,7 @@ func TestJSON(t *testing.T) {
 
 // TestCancelJSON checks that parsing a long text can be stopped.
 func TestCancelJSON(t *testing.T) {
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	if _, err := vm.RunScript(t.Context(), "setup", `var text = "[" + "[0],".repeat(5000000) + "0]";`); err != nil {
 		t.Fatalf("RunScript: %v", err)
 	}

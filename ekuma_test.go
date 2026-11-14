@@ -311,7 +311,7 @@ func TestScripts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
-			vm := ekuma.New()
+			vm := ekuma.NewVM()
 			v, err := vm.RunScript(ctx, tt.name, tt.src)
 			if err != nil {
 				t.Fatalf("RunScript: %v", err)
@@ -335,7 +335,7 @@ func toString(t *testing.T, vm *ekuma.VM, v ekuma.Value) string {
 
 func TestErrors(t *testing.T) {
 	ctx := t.Context()
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	if _, err := vm.RunScript(ctx, "syntax", `var = 1`); err == nil {
 		t.Errorf("a syntax error was not reported")
 	} else if se := (*ekuma.SyntaxError)(nil); !errors.As(err, &se) {
@@ -378,7 +378,7 @@ func TestZeroValue(t *testing.T) {
 	if !zero.Equal(ekuma.Undefined) {
 		t.Errorf("the zero Value is not equal to Undefined")
 	}
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	f := vm.FuncOf("f", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		if len(args) == 0 {
 			// Nothing is returned explicitly.
@@ -399,7 +399,7 @@ func TestZeroValue(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	if _, err := vm.RunScript(ctx, "loop", `for (;;) {}`); !errors.Is(err, context.DeadlineExceeded) {
@@ -430,7 +430,7 @@ func TestCancel(t *testing.T) {
 
 // TestCancelRegExp checks that a match that backtracks for too long can be stopped.
 func TestCancelRegExp(t *testing.T) {
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	if _, err := vm.RunScript(ctx, "backtrack", `/^(a+)+$/.test("a".repeat(40) + "b")`); !errors.Is(err, context.DeadlineExceeded) {
@@ -447,7 +447,7 @@ func TestCancelRegExp(t *testing.T) {
 
 func TestFuncErrors(t *testing.T) {
 	ctx := t.Context()
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	var caught ekuma.Value
 	funcs := map[string]ekuma.Func{
 		"goError": func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -505,7 +505,7 @@ func TestFuncErrors(t *testing.T) {
 
 func TestValues(t *testing.T) {
 	ctx := t.Context()
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	global := vm.Global()
 	if _, err := vm.RunScript(ctx, "setup", `
 		var obj = { n: 1, get twice() { return this.n * 2; }, add(a, b) { return this.n + a + b; } };
@@ -603,7 +603,7 @@ func TestValues(t *testing.T) {
 }
 
 func TestValueString(t *testing.T) {
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	tests := []struct {
 		in   ekuma.Value
 		want string
@@ -625,7 +625,7 @@ func TestValueString(t *testing.T) {
 
 // TestCancelNested checks that a context stops what a Func does on behalf of the script.
 func TestCancelNested(t *testing.T) {
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	global := vm.Global()
 	returned := false
 	read := vm.FuncOf("read", func(this ekuma.Value, args []ekuma.Value) (any, error) {

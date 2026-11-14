@@ -22,7 +22,7 @@ func BenchmarkWorkload(b *testing.B) {
 	for _, plugins := range []int{12, 0} {
 		b.Run(fmt.Sprintf("plugins=%d", plugins), func(b *testing.B) {
 			ctx := b.Context()
-			vm := ekuma.New()
+			vm := ekuma.NewVM()
 			if _, err := vm.RunScript(ctx, "workload.js", string(src)); err != nil {
 				b.Fatal(err)
 			}
@@ -84,7 +84,7 @@ func gameDataJSON(n int) string {
 func BenchmarkJSON(b *testing.B) {
 	text := gameDataJSON(3000)
 	ctx := b.Context()
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	if err := vm.Global().Set("text", text); err != nil {
 		b.Fatal(err)
 	}

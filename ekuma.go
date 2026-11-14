@@ -380,8 +380,8 @@ type VM struct {
 	callArgs []engine.Value
 }
 
-// New creates a VM with the standard built-in objects.
-func New() *VM {
+// NewVM creates a VM with the standard built-in objects.
+func NewVM() *VM {
 	e := engine.New()
 	builtins.Install(e)
 	vm := &VM{e: e}

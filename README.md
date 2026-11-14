@@ -7,7 +7,7 @@ The project is at an early stage. The API is unstable and a large part of the la
 standard library is missing. See [Status](#status).
 
 ```go
-vm := ekuma.New()
+vm := ekuma.NewVM()
 v, err := vm.RunScript(ctx, "hello.js", `"Hello, " + ["wor", "ld"].join("")`)
 if err != nil {
 	// A *ekuma.SyntaxError, or a *ekuma.Error when the script throws.

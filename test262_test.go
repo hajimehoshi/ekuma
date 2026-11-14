@@ -176,7 +176,7 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 	if m.flags["module"] {
 		return "modules are not supported"
 	}
-	vm := ekuma.New()
+	vm := ekuma.NewVM()
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return ekuma.Undefined, nil
 	})
