@@ -530,52 +530,6 @@ func (e *Error) Error() string {
 	return engine.ThrownMessage(e.Value.engine())
 }
 
-// ErrorKind is one of the standard JavaScript error types.
-type ErrorKind int
-
-const (
-	// KindError is the type Error.
-	KindError ErrorKind = iota
-
-	// KindTypeError is the type TypeError.
-	KindTypeError
-
-	// KindRangeError is the type RangeError.
-	KindRangeError
-
-	// KindReferenceError is the type ReferenceError.
-	KindReferenceError
-
-	// KindSyntaxError is the type SyntaxError.
-	KindSyntaxError
-
-	// KindEvalError is the type EvalError.
-	KindEvalError
-
-	// KindURIError is the type URIError.
-	KindURIError
-)
-
-var engineErrorKinds = [...]engine.ErrorKind{
-	KindError:          engine.ErrorKindError,
-	KindTypeError:      engine.ErrorKindType,
-	KindRangeError:     engine.ErrorKindRange,
-	KindReferenceError: engine.ErrorKindReference,
-	KindSyntaxError:    engine.ErrorKindSyntax,
-	KindEvalError:      engine.ErrorKindEval,
-	KindURIError:       engine.ErrorKindURI,
-}
-
-// NewError returns an error whose value is a new JavaScript error object of the given type
-// with the message msg. An unknown kind gives the type Error.
-func (vm *VM) NewError(kind ErrorKind, msg string) *Error {
-	k := engine.ErrorKindError
-	if kind >= 0 && int(kind) < len(engineErrorKinds) {
-		k = engineErrorKinds[kind]
-	}
-	return &Error{Value: fromEngine(vm.e.NewError(k, msg))}
-}
-
 // publicError converts an error of the engine to the error types of this package.
 func (vm *VM) publicError(err error) error {
 	if err == nil {

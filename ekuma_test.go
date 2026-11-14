@@ -454,7 +454,15 @@ func TestFuncErrors(t *testing.T) {
 			return nil, errors.New("from Go")
 		},
 		"typeError": func(this ekuma.Value, args []ekuma.Value) (any, error) {
-			return nil, vm.NewError(ekuma.KindTypeError, "bad type")
+			c, err := vm.Global().Get("TypeError")
+			if err != nil {
+				return nil, err
+			}
+			e, err := c.New(ctx, "bad type")
+			if err != nil {
+				return nil, err
+			}
+			return nil, &ekuma.Error{Value: e}
 		},
 		"throwValue": func(this ekuma.Value, args []ekuma.Value) (any, error) {
 			return nil, &ekuma.Error{Value: args[0]}
