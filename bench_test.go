@@ -327,10 +327,10 @@ func BenchmarkTypedArray(b *testing.B) {
 	}
 }
 
-// BenchmarkSparseArray measures the array methods that skip holes on a sparse array of length
-// 100000 that has 10 elements. One iteration is one call of the method.
+// BenchmarkSparseArray measures the array methods that skip or read holes on a sparse array of
+// length 100000 that has 10 elements. One iteration is one call of the method.
 func BenchmarkSparseArray(b *testing.B) {
-	for _, method := range []string{"every", "forEach", "reduce", "indexOf", "lastIndexOf"} {
+	for _, method := range []string{"every", "forEach", "reduce", "indexOf", "lastIndexOf", "join", "toLocaleString", "includes"} {
 		b.Run(method, func(b *testing.B) {
 			ctx := b.Context()
 			vm := ekuma.NewVM()
@@ -370,6 +370,15 @@ function run(method, n) {
 			break;
 		case "lastIndexOf":
 			s += a.lastIndexOf(-1);
+			break;
+		case "join":
+			s += a.join().length;
+			break;
+		case "toLocaleString":
+			s += a.toLocaleString().length;
+			break;
+		case "includes":
+			if (a.includes(-1)) s++;
 			break;
 		}
 	}

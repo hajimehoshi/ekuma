@@ -78,6 +78,25 @@ func TestConcat(t *testing.T) {
 	}
 }
 
+func TestWriteRepeated(t *testing.T) {
+	for _, a := range samples {
+		for _, s := range samples {
+			for _, count := range []int{1, 5} {
+				var b wtf8.Builder
+				b.WriteString(wtf8.FromUTF16(a))
+				b.WriteRepeated(wtf8.FromUTF16(s), count)
+				want := slices.Clone(a)
+				for range count {
+					want = append(want, s...)
+				}
+				if got := b.String(); got != wtf8.FromUTF16(want) {
+					t.Errorf("WriteRepeated(%x, %d) after %x = %x, want %x", s, count, a, got, wtf8.FromUTF16(want))
+				}
+			}
+		}
+	}
+}
+
 func TestCompare(t *testing.T) {
 	for _, a := range samples {
 		for _, b := range samples {

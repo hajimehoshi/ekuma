@@ -401,6 +401,30 @@ func (b *Builder) WriteString(s string) {
 	b.buf = append(b.buf, s...)
 }
 
+// WriteRepeated appends the JavaScript string s count times.
+func (b *Builder) WriteRepeated(s string, count int) {
+	if count <= 0 {
+		return
+	}
+	if JoinsPair(s, s) {
+		for range count {
+			b.WriteString(s)
+		}
+		return
+	}
+	b.WriteString(s)
+	n := (count - 1) * len(s)
+	if n == 0 {
+		return
+	}
+	b.Grow(n)
+	start := len(b.buf)
+	b.buf = append(b.buf, s...)
+	for w := len(s); w < n; w = len(b.buf) - start {
+		b.buf = append(b.buf, b.buf[start:start+min(w, n-w)]...)
+	}
+}
+
 // String returns the built string.
 func (b *Builder) String() string {
 	return string(b.buf)

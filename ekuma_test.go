@@ -413,6 +413,20 @@ func TestScripts(t *testing.T) {
 				function f(a) { return o.apply(this, arguments) + "," + a; } f(1)`,
 			want: "true,2",
 		},
+		{
+			name: "join and includes across runs of holes",
+			src: `var r = [];
+				var a = []; a.length = 2 ** 32 - 1; a[3] = "x";
+				try { a.join("ab".repeat(1000)); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
+				var s = "\uDC00\uD800";
+				r.push([, , "c", , ].join(s) === s + s + "c" + s);
+				var c = [{ toString() { Array.prototype[2] = "p"; return "o"; } }, , , ]; c.length = 4;
+				r.push(c.join("-")); delete Array.prototype[2];
+				var d = []; d[100000] = 1;
+				r.push(d.includes(undefined), d.includes(undefined, 100000));
+				r.join()`,
+			want: "true,true,o--p-,true,false",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

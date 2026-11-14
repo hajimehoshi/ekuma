@@ -107,19 +107,54 @@ func joinArray(vm *engine.VM, o *engine.Object, n int64, sep string) engine.Valu
 	defer func() {
 		vm.Joining = vm.Joining[:len(vm.Joining)-1]
 	}()
+	return joinElements(vm, o, n, sep, vm.ToString)
+}
+
+// joinElements joins str of each of the first n elements of the object o that is neither
+// undefined nor null, with sep between elements.
+func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, str func(engine.Value) string) engine.Value {
 	var b wtf8.Builder
-	for i := range n {
+	for i := int64(0); i < n; i++ {
 		if i > 0 {
 			b.WriteString(sep)
 		}
-		if e := getAt(vm, o, i); !e.IsNullish() {
-			b.WriteString(vm.ToString(e))
+		e, ok := o.Element(i)
+		if !ok {
+			if j := vm.SkipHoles(o, i, n); j > i {
+				// The indices from i to j-1 read as undefined.
+				writeSeparators(vm, &b, sep, j-1-i)
+				i = j - 1
+				e = engine.Undefined
+			} else {
+				e = getAt(vm, o, i)
+			}
+		}
+		if !e.IsNullish() {
+			b.WriteString(str(e))
 		}
 		if b.Len() > engine.MaxStringLength {
 			vm.ThrowRangeError("invalid string length")
 		}
 	}
 	return vm.NewString(b.String())
+}
+
+// writeSeparators writes sep count times to b, and throws a RangeError instead when b would get
+// longer than MaxStringLength.
+func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep string, count int64) {
+	// A separator after another one adds len(sep) bytes, or len(sep)-2 when the two join a
+	// surrogate pair. The first one may also join a pair with what b ends with.
+	per := int64(len(sep))
+	if wtf8.JoinsPair(sep, sep) {
+		per -= 2
+	}
+	if int64(b.Len())+count*per-2 > engine.MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
+	b.WriteRepeated(sep, int(count))
+	if b.Len() > engine.MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
 }
 
 func initArray(vm *engine.VM) {
@@ -496,7 +531,19 @@ func initArray(vm *engine.VM) {
 			from := relIndex(vm.ToIntegerOrInfinity(arg(args, 1)), n)
 			for i := from; i < n; i++ {
 				if same {
-					if eq(getAt(vm, o, i), target) {
+					e, ok := o.Element(i)
+					if !ok {
+						if j := vm.SkipHoles(o, i, n); j > i {
+							// The indices from i to j-1 read as undefined.
+							if target.IsUndefined() {
+								return engine.True
+							}
+							i = j - 1
+							continue
+						}
+						e = getAt(vm, o, i)
+					}
+					if eq(e, target) {
 						return engine.True
 					}
 					continue
@@ -873,19 +920,9 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object) {
 			vm.Joining = vm.Joining[:len(vm.Joining)-1]
 		}()
 		n := vm.LengthOfArrayLike(o)
-		var b wtf8.Builder
-		for i := range n {
-			if i > 0 {
-				b.WriteString(",")
-			}
-			if e := getAt(vm, o, i); !e.IsNullish() {
-				b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, toLocaleStringKey), e)))
-			}
-			if b.Len() > engine.MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
-			}
-		}
-		return vm.NewString(b.String())
+		return joinElements(vm, o, n, ",", func(e engine.Value) string {
+			return vm.ToString(vm.CallValue(vm.GetV(e, toLocaleStringKey), e))
+		})
 	})
 	method(vm, proto, "toReversed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
