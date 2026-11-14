@@ -161,24 +161,12 @@ type VM struct {
 	// globalLex holds the top-level let, const and class declarations.
 	globalLex *Object
 
-	interned    map[string]*Object
-	childShapes map[*Object]*shape
-	K           keys
+	K keys
 
-	// functionShapes maps a prototype to the shape of the functions with that prototype whose
-	// initial properties are not stored yet.
-	functionShapes map[*Object]*shape
+	shapes shapeTable
 
-	nullProtoShape  *shape
-	objectShape     *shape
-	arrayShape      *shape
-	functionShape   *shape
-	stringShape     *shape
-	iterResultShape *shape
-	argumentsShape  *shape
-
-	EmptyString  Value
-	asciiStrings [128]Value
+	strings     stringTable
+	EmptyString Value
 
 	// missHolder stands in as the holder of a property that was not found.
 	missHolder *Object
@@ -192,18 +180,6 @@ type VM struct {
 	arrayIter     arrayIterCache
 	sparseIndices sparseIndexCache
 
-	// fnCall, fnApply and fnEval are the original Function.prototype.call, Function.prototype.apply and eval.
-	FnCall, FnApply, FnEval, FnHasInstance *Object
-
-	// fnArrayValues and fnArrayIterNext are the original Array.prototype.values and the next method of array iterators.
-	FnArrayValues, FnArrayIterNext, FnArraySpecies *Object
-
-	// FnTypedArrayLength is the original getter of %TypedArray%.prototype.length.
-	FnTypedArrayLength *Object
-
-	// FnGeneratorNext is the original next method of generators.
-	FnGeneratorNext *Object
-
 	// Joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
 	Joining []*Object
 
@@ -214,9 +190,6 @@ type VM struct {
 
 	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout.
 	timedWaiters timedWaiters
-
-	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
-	asyncFromSyncProto *Object
 
 	weak weakState
 
@@ -244,6 +217,23 @@ type realm struct {
 	ErrorProtos [ErrorKindCount]*Object
 
 	ThrowTypeErrorFunc *Object
+
+	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
+	asyncFromSyncProto *Object
+
+	// FnCall, FnApply and FnEval are the original Function.prototype.call,
+	// Function.prototype.apply and eval.
+	FnCall, FnApply, FnEval, FnHasInstance *Object
+
+	// FnArrayValues and FnArrayIterNext are the original Array.prototype.values and the next
+	// method of array iterators.
+	FnArrayValues, FnArrayIterNext, FnArraySpecies *Object
+
+	// FnTypedArrayLength is the original getter of %TypedArray%.prototype.length.
+	FnTypedArrayLength *Object
+
+	// FnGeneratorNext is the original next method of generators.
+	FnGeneratorNext *Object
 }
 
 // ErrorKind is a native error type.

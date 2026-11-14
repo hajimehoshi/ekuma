@@ -272,19 +272,37 @@ func (v Value) accessor() *accessorPair {
 	return v.o.ext.(*accessorPair)
 }
 
+// shapeTable holds the shapes that new objects start with.
+type shapeTable struct {
+	nullProto  *shape
+	object     *shape
+	array      *shape
+	function   *shape
+	string     *shape
+	iterResult *shape
+	arguments  *shape
+
+	// byProto maps a prototype to the empty shape of the objects with that prototype.
+	byProto map[*Object]*shape
+
+	// functionByProto maps a prototype to the shape of the functions with that prototype whose
+	// initial properties are not stored yet.
+	functionByProto map[*Object]*shape
+}
+
 // shapeFor returns the empty shape for objects whose prototype is proto, which may be nil.
 func (vm *VM) shapeFor(proto *Object) *shape {
 	if proto == nil {
-		return vm.nullProtoShape
+		return vm.shapes.nullProto
 	}
-	if s, ok := vm.childShapes[proto]; ok {
+	if s, ok := vm.shapes.byProto[proto]; ok {
 		return s
 	}
 	s := &shape{
 		vm:    vm,
 		proto: proto,
 	}
-	vm.childShapes[proto] = s
+	vm.shapes.byProto[proto] = s
 	proto.flags |= objIsProto
 	return s
 }
@@ -293,14 +311,14 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 // initial properties are not stored yet. No other object has this shape or one derived from it,
 // so an inline cache filled for another kind of object never applies to such a function.
 func (vm *VM) functionShapeFor(proto *Object) *shape {
-	if s, ok := vm.functionShapes[proto]; ok {
+	if s, ok := vm.shapes.functionByProto[proto]; ok {
 		return s
 	}
 	s := &shape{
 		vm:    vm,
 		proto: proto,
 	}
-	vm.functionShapes[proto] = s
+	vm.shapes.functionByProto[proto] = s
 	proto.flags |= objIsProto
 	return s
 }
@@ -318,7 +336,7 @@ func (vm *VM) NewArray(elems []Value) *Object {
 	return &Object{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  vm.arrayShape,
+		shape:  vm.shapes.array,
 		elems:  elems,
 		length: uint32(len(elems)),
 	}
@@ -336,7 +354,7 @@ func (vm *VM) NewArrayPair(a, b Value) *Object {
 	p := &pairArray{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  vm.arrayShape,
+		shape:  vm.shapes.array,
 		length: 2,
 		pair:   [2]Value{a, b},
 	}
@@ -350,7 +368,7 @@ func (vm *VM) NewArrayPair(a, b Value) *Object {
 func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 	o := &Object{
 		kind:  kindObject,
-		shape: vm.objectShape,
+		shape: vm.shapes.object,
 		slots: make([]Value, 0, len(vals)),
 	}
 	for i, k := range keys {
@@ -387,6 +405,15 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 	return o
 }
 
+// stringTable holds the strings that are shared.
+type stringTable struct {
+	// interned maps a string to its property key.
+	interned map[string]*Object
+
+	// ascii are the strings of one ASCII character.
+	ascii [128]Value
+}
+
 // NewString returns the string s, which must be in canonical WTF-8, as a value.
 func (vm *VM) NewString(s string) Value {
 	if len(s) <= 1 {
@@ -394,13 +421,13 @@ func (vm *VM) NewString(s string) Value {
 			return vm.EmptyString
 		}
 		if c := s[0]; c < 0x80 {
-			return vm.asciiStrings[c]
+			return vm.strings.ascii[c]
 		}
 	}
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: vm.stringShape,
+			shape: vm.shapes.string,
 			str:   s,
 		},
 	}
@@ -408,16 +435,16 @@ func (vm *VM) NewString(s string) Value {
 
 // Intern returns the string s as a property key.
 func (vm *VM) Intern(s string) *Object {
-	if o, ok := vm.interned[s]; ok {
+	if o, ok := vm.strings.interned[s]; ok {
 		return o
 	}
 	o := &Object{
 		kind:  kindString,
 		flags: objInterned,
-		shape: vm.stringShape,
+		shape: vm.shapes.string,
 		str:   s,
 	}
-	vm.interned[s] = o
+	vm.strings.interned[s] = o
 	return o
 }
 
@@ -489,12 +516,12 @@ func (o *Object) Substring(start, end int) string {
 // UnitString returns the string that consists of the code unit u.
 func (vm *VM) UnitString(u uint16) Value {
 	if u < 0x80 {
-		return vm.asciiStrings[u]
+		return vm.strings.ascii[u]
 	}
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: vm.stringShape,
+			shape: vm.shapes.string,
 			str:   string(wtf8.AppendRune(nil, rune(u))),
 		},
 	}

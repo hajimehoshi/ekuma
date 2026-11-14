@@ -280,7 +280,7 @@ type iterResult struct {
 func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
 	r := &iterResult{
 		kind:  kindObject,
-		shape: vm.iterResultShape,
+		shape: vm.shapes.iterResult,
 		props: [2]Value{v, Bool(done)},
 	}
 	r.slots = r.props[:]

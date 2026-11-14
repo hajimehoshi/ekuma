@@ -32,7 +32,7 @@ func (vm *VM) KeyOfString(s string) PropKey {
 	if i, ok := stringIndex(s); ok {
 		return PropKey{idx: i}
 	}
-	if o, ok := vm.interned[s]; ok {
+	if o, ok := vm.strings.interned[s]; ok {
 		return PropKey{key: o}
 	}
 	return PropKey{key: vm.Intern(strings.Clone(s))}
@@ -47,7 +47,7 @@ func (vm *VM) indexName(i uint32) *Object {
 // in which case no object has a property with that key.
 func (vm *VM) indexKey(i uint32) *Object {
 	var buf [10]byte
-	return vm.interned[string(strconv.AppendUint(buf[:0], uint64(i), 10))]
+	return vm.strings.interned[string(strconv.AppendUint(buf[:0], uint64(i), 10))]
 }
 
 // KeyValue returns the key k as a string or symbol value.

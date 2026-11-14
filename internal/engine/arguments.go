@@ -16,7 +16,7 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 	o := &Object{
 		kind:  kindObject,
 		class: classArguments,
-		shape: vm.argumentsShape,
+		shape: vm.shapes.arguments,
 		elems: vm.frameArgs(fr, regs),
 	}
 	o.slots = []Value{Number(float64(fr.argc)), {o: vm.FnArrayValues}}

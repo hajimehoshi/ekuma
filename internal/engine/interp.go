@@ -372,7 +372,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				kind:  kindFunction,
 				class: classFunction,
 				flags: objExotic,
-				shape: vm.functionShape,
+				shape: vm.shapes.function,
 				fn:    fn,
 			}
 			if p.isGenerator || p.isAsync {
@@ -559,7 +559,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						o.elems[j] = regs[i.C]
 						continue
 					}
-				} else if j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.arrayShape && vm.arrayProtoPlain() {
+				} else if j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.shapes.array && vm.arrayProtoPlain() {
 					// Appending to a plain array.
 					o.elems = append(o.elems, regs[i.C])
 					o.length++
@@ -1427,7 +1427,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Value{
 				o: &Object{
 					kind:  kindObject,
-					shape: vm.objectShape,
+					shape: vm.shapes.object,
 				},
 			}
 		case bytecode.OpNewArray:

@@ -792,7 +792,7 @@ func (vm *VM) arrayProtoPlain() bool {
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
 // without any observable call.
 func (vm *VM) arrayIterationPlain(o *Object) bool {
-	if o.shape != vm.arrayShape {
+	if o.shape != vm.shapes.array {
 		return false
 	}
 	c := &vm.arrayIter
@@ -918,7 +918,7 @@ func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.functionShape,
+		shape: vm.shapes.function,
 		fn: &function{
 			native: f,
 			name:   name,

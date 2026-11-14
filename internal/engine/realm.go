@@ -15,50 +15,54 @@ import (
 // New creates a VM with the standard built-in objects.
 func New() *VM {
 	vm := &VM{
-		stack:          make([]Value, 1<<14),
-		interned:       map[string]*Object{},
-		childShapes:    map[*Object]*shape{},
-		functionShapes: map[*Object]*shape{},
+		stack: make([]Value, 1<<14),
+		shapes: shapeTable{
+			byProto:         map[*Object]*shape{},
+			functionByProto: map[*Object]*shape{},
+		},
+		strings: stringTable{
+			interned: map[string]*Object{},
+		},
 		SymbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 	}
-	vm.nullProtoShape = &shape{vm: vm}
+	vm.shapes.nullProto = &shape{vm: vm}
 	vm.ObjectProto = &Object{
 		kind:  kindObject,
-		shape: vm.nullProtoShape,
+		shape: vm.shapes.nullProto,
 	}
-	vm.objectShape = vm.shapeFor(vm.ObjectProto)
+	vm.shapes.object = vm.shapeFor(vm.ObjectProto)
 	vm.FunctionProto = &Object{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.objectShape,
+		shape: vm.shapes.object,
 		fn: &function{
 			native: func(vm *VM, this Value, args []Value) Value {
 				return Undefined
 			},
 		},
 	}
-	vm.functionShape = vm.functionShapeFor(vm.FunctionProto)
+	vm.shapes.function = vm.functionShapeFor(vm.FunctionProto)
 	vm.ArrayProto = &Object{
 		kind:  kindArray,
 		class: classArray,
-		shape: vm.objectShape,
+		shape: vm.shapes.object,
 	}
-	vm.arrayShape = vm.shapeFor(vm.ArrayProto)
+	vm.shapes.array = vm.shapeFor(vm.ArrayProto)
 	vm.StringProto = vm.NewObject(vm.ObjectProto)
-	vm.stringShape = vm.shapeFor(vm.StringProto)
+	vm.shapes.string = vm.shapeFor(vm.StringProto)
 
 	vm.EmptyString = Value{
 		o: &Object{
 			kind:  kindString,
 			flags: objInterned,
-			shape: vm.stringShape,
+			shape: vm.shapes.string,
 		},
 	}
-	vm.interned[""] = vm.EmptyString.o
-	for i := range vm.asciiStrings {
-		vm.asciiStrings[i] = Value{o: vm.Intern(string(rune(i)))}
+	vm.strings.interned[""] = vm.EmptyString.o
+	for i := range vm.strings.ascii {
+		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
 	}
 	vm.initKeys()
 	vm.StringProto.class = classString
@@ -67,11 +71,11 @@ func New() *VM {
 
 	vm.missHolder = &Object{
 		kind:  kindObject,
-		shape: vm.nullProtoShape,
+		shape: vm.shapes.nullProto,
 		slots: []Value{Undefined},
 	}
-	vm.iterResultShape = vm.objectShape.with(vm.K.Value, FlagsData).with(vm.K.done, FlagsData)
-	vm.argumentsShape = vm.objectShape.with(vm.K.Length, FlagsHidden).with(vm.K.SymIterator, FlagsHidden)
+	vm.shapes.iterResult = vm.shapes.object.with(vm.K.Value, FlagsData).with(vm.K.done, FlagsData)
+	vm.shapes.arguments = vm.shapes.object.with(vm.K.Length, FlagsHidden).with(vm.K.SymIterator, FlagsHidden)
 
 	vm.Global = vm.NewObject(vm.ObjectProto)
 	vm.globalLex = vm.NewObject(nil)
@@ -256,7 +260,7 @@ func (vm *VM) newScriptFunction(fp *funcProto) *Object {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.functionShape,
+		shape: vm.shapes.function,
 		fn:    &function{code: fp},
 	}
 }
