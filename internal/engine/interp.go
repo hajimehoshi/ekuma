@@ -1357,11 +1357,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			g := cur.gen
 			g.pc = pc
 			g.state = genSuspendedStart
+			o := vm.newGeneratorObject(g)
 			ret = cur.ret
 			*cur = frame{}
 			vm.frames = vm.frames[:n]
 			if n == stop {
-				return Value{o: g.object}, execReturn
+				return Value{o: o}, execReturn
 			}
 			fr := &vm.frames[n-1]
 			fp = fr.fp
@@ -1377,7 +1378,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs = vm.stack[base : base+fp.nregs+1]
 				vm.sp = base + fp.nregs + 1
 			}
-			regs[ret] = Value{o: g.object}
+			regs[ret] = Value{o: o}
 		case bytecode.OpYield, bytecode.OpAwait:
 			n := len(vm.frames) - 1
 			cur := &vm.frames[n]

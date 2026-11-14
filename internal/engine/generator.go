@@ -114,24 +114,32 @@ func (vm *VM) newGenerator(f *Object, this Value, args []Value) *generator {
 	return g
 }
 
-// pushGenerator creates a generator or async generator for a call of f and pushes its frame,
-// so that the caller can run it up to its initial suspension.
+// pushGenerator creates the activation of a generator or async generator for a call of f and
+// pushes its frame, so that the caller can run it up to its initial suspension, which creates
+// the generator object.
 func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 	g := vm.newGenerator(f, this, args)
-	proto := vm.GeneratorProto
 	if f.fn.code.isAsync {
-		proto = vm.AsyncGeneratorProto
 		g.async = &asyncState{}
 	}
-	if p := vm.GetV(Value{o: f}, vm.K.Prototype); p.IsObject() {
+	g.state = genRunning
+	vm.pushGenFrame(g, ret)
+}
+
+// newGeneratorObject creates the generator object of g, whose parameters are instantiated.
+func (vm *VM) newGeneratorObject(g *generator) *Object {
+	proto := vm.GeneratorProto
+	if g.async != nil {
+		proto = vm.AsyncGeneratorProto
+	}
+	if p := vm.GetV(Value{o: g.f}, vm.K.Prototype); p.IsObject() {
 		proto = p.o
 	}
 	o := vm.NewObject(proto)
 	o.class = classGenerator
 	o.ext = g
 	g.object = o
-	g.state = genRunning
-	vm.pushGenFrame(g, ret)
+	return o
 }
 
 // pushGenFrame pushes the frame that continues g at g.pc.

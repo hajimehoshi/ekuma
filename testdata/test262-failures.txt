@@ -1115,10 +1115,8 @@ test/built-ins/GeneratorFunction/invoked-as-function-multiple-arguments.js
 test/built-ins/GeneratorFunction/invoked-as-function-no-arguments.js
 test/built-ins/GeneratorFunction/invoked-as-function-single-argument.js
 test/built-ins/GeneratorFunction/is-a-constructor.js
-test/built-ins/GeneratorFunction/name.js
 test/built-ins/GeneratorFunction/proto-from-ctor-realm-prototype.js
 test/built-ins/GeneratorFunction/proto-from-ctor-realm.js
-test/built-ins/GeneratorFunction/prototype/constructor.js
 test/built-ins/Iterator/from/get-return-method-when-call-return.js
 test/built-ins/Iterator/from/return-method-calls-base-return-method.js
 test/built-ins/Iterator/from/return-method-throws-for-invalid-this.js
@@ -6951,7 +6949,6 @@ test/language/expressions/async-generator/dflt-params-ref-later.js
 test/language/expressions/async-generator/dflt-params-ref-self.js
 test/language/expressions/async-generator/eval-body-proto-realm.js
 test/language/expressions/async-generator/eval-var-scope-syntax-err.js
-test/language/expressions/async-generator/generator-created-after-decl-inst.js
 test/language/expressions/async-generator/named-dflt-params-ref-later.js
 test/language/expressions/async-generator/named-dflt-params-ref-self.js
 test/language/expressions/async-generator/named-eval-var-scope-syntax-err.js
@@ -7855,7 +7852,6 @@ test/language/expressions/generators/dflt-params-ref-later.js
 test/language/expressions/generators/dflt-params-ref-self.js
 test/language/expressions/generators/eval-body-proto-realm.js
 test/language/expressions/generators/eval-var-scope-syntax-err.js
-test/language/expressions/generators/generator-created-after-decl-inst.js
 test/language/expressions/generators/named-no-strict-reassign-fn-name-in-body-in-eval.js
 test/language/expressions/generators/named-strict-error-reassign-fn-name-in-body-in-eval.js
 test/language/expressions/generators/scope-body-lex-distinct.js
@@ -8879,7 +8875,6 @@ test/language/statements/async-function/evaluation-mapped-arguments.js
 test/language/statements/async-generator/dflt-params-ref-later.js
 test/language/statements/async-generator/dflt-params-ref-self.js
 test/language/statements/async-generator/eval-var-scope-syntax-err.js
-test/language/statements/async-generator/generator-created-after-decl-inst.js
 test/language/statements/await-using/Symbol.asyncDispose-getter.js
 test/language/statements/await-using/Symbol.asyncDispose-method-called-with-correct-this.js
 test/language/statements/await-using/Symbol.asyncDispose-method-not-async.js
@@ -9250,7 +9245,6 @@ test/language/statements/generators/cptn-decl.js
 test/language/statements/generators/dflt-params-ref-later.js
 test/language/statements/generators/dflt-params-ref-self.js
 test/language/statements/generators/eval-var-scope-syntax-err.js
-test/language/statements/generators/generator-created-after-decl-inst.js
 test/language/statements/generators/scope-body-lex-distinct.js
 test/language/statements/generators/scope-param-elem-var-close.js
 test/language/statements/generators/scope-param-elem-var-open.js
