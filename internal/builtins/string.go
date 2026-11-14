@@ -52,7 +52,7 @@ func initString(vm *engine.VM) {
 		for _, a := range args {
 			n := vm.ToNumber(a)
 			if n != math.Trunc(n) || n < 0 || n > 0x10FFFF {
-				vm.ThrowRangeError("Invalid code point " + vm.ToString(a))
+				vm.ThrowRangeError("invalid code point " + vm.ToString(a))
 			}
 			b.WriteRune(rune(n))
 		}
@@ -146,7 +146,7 @@ func initString(vm *engine.VM) {
 	})
 	noRegExp := func(vm *engine.VM, v engine.Value, what string) {
 		if isRegExp(vm, v) {
-			vm.ThrowTypeError("First argument to String.prototype." + what + " must not be a regular expression")
+			vm.ThrowTypeError("first argument to String.prototype." + what + " must not be a regular expression")
 		}
 	}
 	method(vm, proto, "includes", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -228,13 +228,13 @@ func initString(vm *engine.VM) {
 		s := thisString(vm, this, "repeat")
 		n := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || math.IsInf(n, 0) {
-			vm.ThrowRangeError("Invalid count value: " + vm.ToString(arg(args, 0)))
+			vm.ThrowRangeError("invalid count value: " + vm.ToString(arg(args, 0)))
 		}
 		if n == 0 || s.Str() == "" {
 			return vm.EmptyString
 		}
 		if n*float64(len(s.Str())) > engine.MaxStringLength {
-			vm.ThrowRangeError("Invalid string length")
+			vm.ThrowRangeError("invalid string length")
 		}
 		if wtf8.JoinsPair(s.Str(), s.Str()) {
 			var b wtf8.Builder
@@ -258,7 +258,7 @@ func initString(vm *engine.VM) {
 				return engine.ObjectValue(s)
 			}
 			if target > engine.MaxStringLength {
-				vm.ThrowRangeError("Invalid string length")
+				vm.ThrowRangeError("invalid string length")
 			}
 			fo := vm.NewString(fill).Object()
 			fl := int64(fo.StringLength())
@@ -336,7 +336,7 @@ func initString(vm *engine.VM) {
 			switch vm.ToString(f) {
 			case "NFC", "NFD", "NFKC", "NFKD":
 			default:
-				vm.ThrowRangeError("The normalization form should be one of NFC, NFD, NFKC, NFKD")
+				vm.ThrowRangeError("the normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
 		}
 		return engine.ObjectValue(s)

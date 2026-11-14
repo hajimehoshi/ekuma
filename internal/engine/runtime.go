@@ -14,13 +14,13 @@ import (
 
 func (vm *VM) throwTDZ(name *Object) {
 	if name.str == "this" {
-		vm.throwReferenceError("Must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+		vm.throwReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	vm.throwReferenceError("Cannot access '" + name.str + "' before initialization")
+	vm.throwReferenceError("cannot access '" + name.str + "' before initialization")
 }
 
 func (vm *VM) throwReadOnly(v Value, k PropKey) {
-	vm.ThrowTypeError("Cannot assign to read only property '" + vm.KeyString(k) + "' of " + vm.DisplayString(v))
+	vm.ThrowTypeError("cannot assign to read only property '" + vm.KeyString(k) + "' of " + vm.DisplayString(v))
 }
 
 // callee names the function that the call instruction at pc calls, for an error message.
@@ -105,7 +105,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 			vm.throwTDZ(key)
 		}
 		if p.flags&FlagWritable == 0 {
-			vm.ThrowTypeError("Assignment to constant variable '" + key.str + "'")
+			vm.ThrowTypeError("assignment to constant variable '" + key.str + "'")
 		}
 		vm.globalLex.slots[p.slot] = val
 		c.holder = vm.globalLex
@@ -141,32 +141,32 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 	switch what {
 	case 0:
 		if lex {
-			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 		if !vm.HasOwnProperty(vm.Global, PropKey{key: key}) && !vm.IsExtensible(vm.Global) {
-			vm.ThrowTypeError("Cannot declare global variable '" + key.str + "'")
+			vm.ThrowTypeError("cannot declare global variable '" + key.str + "'")
 		}
 	case 1:
 		if lex {
-			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
 		if d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key}); ok && d.Flags&FlagConfigurable == 0 {
-			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 	case 2:
 		if lex {
-			vm.throwSyntaxError("Identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 		d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key})
 		switch {
 		case !ok:
 			if !vm.IsExtensible(vm.Global) {
-				vm.ThrowTypeError("Cannot declare global function '" + key.str + "'")
+				vm.ThrowTypeError("cannot declare global function '" + key.str + "'")
 			}
 		case d.Flags&FlagConfigurable != 0:
 		case d.Flags&FlagAccessor != 0 || d.Flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
-			vm.ThrowTypeError("Cannot declare global function '" + key.str + "'")
+			vm.ThrowTypeError("cannot declare global function '" + key.str + "'")
 		}
 	}
 }
@@ -216,7 +216,7 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	}
 	// The receiver is checked before the key is converted.
 	if v.IsNullish() {
-		vm.ThrowTypeError("Cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.DisplayString(k) + "')")
+		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.DisplayString(k) + "')")
 	}
 	key := vm.ToPropertyKey(k)
 	if key.key == nil {
@@ -233,7 +233,7 @@ func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 		}
 	}
 	if v.IsNullish() {
-		vm.ThrowTypeError("Cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.DisplayString(k) + "')")
+		vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.DisplayString(k) + "')")
 	}
 	key := vm.ToPropertyKey(k)
 	if key.key == nil {
@@ -245,13 +245,13 @@ func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 // deleteValue implements the delete operator on a property.
 func (vm *VM) deleteValue(v, k Value, strict bool) Value {
 	if v.IsNullish() {
-		vm.ThrowTypeError("Cannot convert undefined or null to object")
+		vm.ThrowTypeError("cannot convert undefined or null to object")
 	}
 	key := vm.ToPropertyKey(k)
 	o := vm.ToObject(v)
 	ok := vm.DeleteProp(o, key)
 	if !ok && strict {
-		vm.ThrowTypeError("Cannot delete property '" + vm.KeyString(key) + "' of " + vm.DisplayString(v))
+		vm.ThrowTypeError("cannot delete property '" + vm.KeyString(key) + "' of " + vm.DisplayString(v))
 	}
 	return Bool(ok)
 }
@@ -270,7 +270,7 @@ func (vm *VM) superBase(home Value) Value {
 // superObject returns the object that a super property access with the super base base starts from.
 func (vm *VM) superObject(base Value) *Object {
 	if base.IsNull() {
-		vm.ThrowTypeError("Cannot access a property of a null prototype through 'super'")
+		vm.ThrowTypeError("cannot access a property of a null prototype through 'super'")
 	}
 	return base.o
 }
@@ -294,7 +294,7 @@ func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
 // instanceOf implements InstanceofOperator.
 func (vm *VM) instanceOf(v, c Value) bool {
 	if !c.IsObject() {
-		vm.ThrowTypeError("Right-hand side of 'instanceof' is not an object")
+		vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 	}
 	if m := vm.GetMethod(c, vm.K.SymHasInstance); m != nil {
 		if m == vm.FnHasInstance {
@@ -303,7 +303,7 @@ func (vm *VM) instanceOf(v, c Value) bool {
 		return ToBoolean(vm.Call(m, c, v))
 	}
 	if !c.IsCallable() {
-		vm.ThrowTypeError("Right-hand side of 'instanceof' is not callable")
+		vm.ThrowTypeError("right-hand side of 'instanceof' is not callable")
 	}
 	return vm.OrdinaryHasInstance(c, v)
 }
@@ -321,7 +321,7 @@ func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 	}
 	p := vm.GetV(c, vm.K.Prototype)
 	if !p.IsObject() {
-		vm.ThrowTypeError("Function has non-object prototype in instanceof check")
+		vm.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
 	for o := vm.ProtoOf(v.o); o != nil; o = vm.ProtoOf(o) {
 		if o == p.o {
@@ -346,7 +346,7 @@ func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
 			return val, nil
 		}
 	}
-	vm.ThrowTypeError("Cannot read private member #" + name.str + " from an object whose class did not declare it")
+	vm.ThrowTypeError("cannot read private member #" + name.str + " from an object whose class did not declare it")
 	return Undefined, nil
 }
 
@@ -362,24 +362,24 @@ func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
 				return s
 			}
 			if p.flags&FlagWritable == 0 {
-				vm.ThrowTypeError("Private method '#" + name.str + "' is not writable")
+				vm.ThrowTypeError("private method '#" + name.str + "' is not writable")
 			}
 			v.o.slots[p.slot] = val
 			return nil
 		}
 	}
-	vm.ThrowTypeError("Cannot write private member #" + name.str + " to an object whose class did not declare it")
+	vm.ThrowTypeError("cannot write private member #" + name.str + " to an object whose class did not declare it")
 	return nil
 }
 
 // definePrivate adds the private element name to v. val is the field value, a method, or an accessor.
 func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 	if !v.IsObject() {
-		vm.ThrowTypeError("Cannot define a private member on a non-object")
+		vm.ThrowTypeError("cannot define a private member on a non-object")
 	}
 	o := v.o
 	if _, ok := o.shape.lookup(name); ok {
-		vm.ThrowTypeError("Cannot initialize #" + name.str + " twice on the same object")
+		vm.ThrowTypeError("cannot initialize #" + name.str + " twice on the same object")
 	}
 	flags := FlagWritable
 	switch {
@@ -425,7 +425,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
 	if x.o == nil || y.o == nil {
-		vm.ThrowTypeError("Cannot mix BigInt and other types, use explicit conversions")
+		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
 	a, b := x.o.BigInt(), y.o.BigInt()
 	r := new(big.Int)
@@ -436,20 +436,20 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		r.Mul(a, b)
 	case bytecode.OpDiv:
 		if b.Sign() == 0 {
-			vm.ThrowRangeError("Division by zero")
+			vm.ThrowRangeError("division by zero")
 		}
 		r.Quo(a, b)
 	case bytecode.OpMod:
 		if b.Sign() == 0 {
-			vm.ThrowRangeError("Division by zero")
+			vm.ThrowRangeError("division by zero")
 		}
 		r.Rem(a, b)
 	case bytecode.OpExp:
 		if b.Sign() < 0 {
-			vm.ThrowRangeError("Exponent must be non-negative")
+			vm.ThrowRangeError("exponent must be non-negative")
 		}
 		if !b.IsInt64() || (b.Int64() > 1<<24 && a.CmpAbs(big.NewInt(1)) > 0) {
-			vm.ThrowRangeError("Maximum BigInt size exceeded")
+			vm.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		r.Exp(a, b, nil)
 	case bytecode.OpBitOr:
@@ -466,7 +466,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		switch {
 		case !n.IsInt64() || n.Int64() > 1<<30:
 			if n.Sign() > 0 && a.Sign() != 0 {
-				vm.ThrowRangeError("Maximum BigInt size exceeded")
+				vm.ThrowRangeError("maximum BigInt size exceeded")
 			}
 			if a.Sign() < 0 && n.Sign() < 0 {
 				r.SetInt64(-1)
@@ -735,7 +735,7 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 		case parent.IsNull():
 			protoParent = nil
 		case !parent.IsCallable() || !vm.IsConstructor(parent.o):
-			vm.ThrowTypeError("Class extends value " + vm.DisplayString(parent) + " is not a constructor or null")
+			vm.ThrowTypeError("class extends value " + vm.DisplayString(parent) + " is not a constructor or null")
 		default:
 			p := vm.GetV(parent, vm.K.Prototype)
 			switch {
@@ -744,7 +744,7 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 			case p.IsNull():
 				protoParent = nil
 			default:
-				vm.ThrowTypeError("Class extends value does not have valid prototype property")
+				vm.ThrowTypeError("class extends value does not have valid prototype property")
 			}
 			ctorParent = parent.o
 		}
@@ -850,13 +850,13 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		vm.ThrowTypeError("Class constructor " + c.name + " cannot be invoked without 'new'")
+		vm.ThrowTypeError("class constructor " + c.name + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return vm.callCoroutine(f, this, args)
 	}
 	if len(vm.frames) >= maxFrames {
-		vm.ThrowRangeError("Maximum call stack size exceeded")
+		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
 	base := vm.sp
 	vm.ensureStack(base + len(args) + c.nregs + 1)

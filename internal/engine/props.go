@@ -210,7 +210,7 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	case kindBigInt:
 		return vm.BigintProto
 	case kindUndefined, kindNull:
-		vm.ThrowTypeError("Cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
+		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
 	}
 	// A string has the empty shape whose prototype is String.prototype.
 	return o
@@ -554,7 +554,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 	o := v.o
 	if o == nil || o.kind < kindObject {
 		if v.IsNullish() {
-			vm.ThrowTypeError("Cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{key: key}) + "')")
+			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{key: key}) + "')")
 		}
 		// A store to a primitive only has an effect when a setter is inherited.
 		start := vm.protoStart(v, PropKey{key: key})
@@ -649,7 +649,7 @@ func (vm *VM) setArrayLengthValue(o *Object, val Value) bool {
 	n := vm.ToNumber(val)
 	u := numconv.ToUint32(n)
 	if float64(u) != n {
-		vm.ThrowRangeError("Invalid array length")
+		vm.ThrowRangeError("invalid array length")
 	}
 	return vm.setArrayLength(o, u)
 }
@@ -660,7 +660,7 @@ func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 	o := v.o
 	if o == nil || o.kind < kindObject {
 		if v.IsNullish() {
-			vm.ThrowTypeError("Cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{idx: i}) + "')")
+			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{idx: i}) + "')")
 		}
 		return nil, false
 	}
@@ -738,7 +738,7 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 // Set stores val as the property k of o and throws a TypeError when the store is refused.
 func (vm *VM) Set(o *Object, k PropKey, val Value) {
 	if !vm.setProp(o, k, val, Value{o: o}) {
-		vm.ThrowTypeError("Cannot assign to read only property '" + vm.KeyString(k) + "'")
+		vm.ThrowTypeError("cannot assign to read only property '" + vm.KeyString(k) + "'")
 	}
 }
 
@@ -894,7 +894,7 @@ func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
 		f := vm.ToNumber(d.Value)
 		n = numconv.ToUint32(f)
 		if float64(n) != f {
-			vm.ThrowRangeError("Invalid array length")
+			vm.ThrowRangeError("invalid array length")
 		}
 	}
 	if d.IsAccessor() {
@@ -1092,14 +1092,14 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 // CreateDataPropertyOrThrow implements CreateDataPropertyOrThrow.
 func (vm *VM) CreateDataPropertyOrThrow(o *Object, k PropKey, val Value) {
 	if !vm.defineOwnProperty(o, k, dataDesc(val, FlagsData)) {
-		vm.ThrowTypeError("Cannot define property '" + vm.KeyString(k) + "'")
+		vm.ThrowTypeError("cannot define property '" + vm.KeyString(k) + "'")
 	}
 }
 
 // DefinePropertyOrThrow implements DefinePropertyOrThrow.
 func (vm *VM) DefinePropertyOrThrow(o *Object, k PropKey, d PropDesc) {
 	if !vm.defineOwnProperty(o, k, d) {
-		vm.ThrowTypeError("Cannot redefine property: " + vm.KeyString(k))
+		vm.ThrowTypeError("cannot redefine property: " + vm.KeyString(k))
 	}
 }
 

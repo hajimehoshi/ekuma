@@ -203,7 +203,7 @@ func (e *regexpEnv) regExpExecWith(vm *engine.VM, r *engine.Object, s *engine.Ob
 	if exec.IsCallable() {
 		res := vm.Call(exec.Object(), engine.ObjectValue(r), engine.ObjectValue(s))
 		if !res.IsObject() && !res.IsNull() {
-			vm.ThrowTypeError("The result of a RegExp exec method must be an object or null")
+			vm.ThrowTypeError("the result of a RegExp exec method must be an object or null")
 		}
 		return res
 	}
@@ -418,7 +418,7 @@ func initRegExp(vm *engine.VM) {
 		p, f := pattern, flags
 		if pattern.IsObject() && pattern.Object().IsRegExpObject() {
 			if !flags.IsUndefined() {
-				vm.ThrowTypeError("Cannot supply flags when constructing one RegExp from another")
+				vm.ThrowTypeError("cannot supply flags when constructing one RegExp from another")
 			}
 			src, fl := pattern.Object().RegExpOriginal()
 			p, f = vm.NewString(src), vm.NewString(fl)

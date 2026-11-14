@@ -110,7 +110,7 @@ func Install(vm *engine.VM) {
 // toDescriptor implements ToPropertyDescriptor.
 func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 	if !v.IsObject() {
-		vm.ThrowTypeError("Property description must be an object: " + vm.DisplayString(v))
+		vm.ThrowTypeError("property description must be an object: " + vm.DisplayString(v))
 	}
 	o := v.Object()
 	var d engine.PropDesc
@@ -147,7 +147,7 @@ func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 		d.Has |= engine.HasGet
 		if !x.IsUndefined() {
 			if !x.IsCallable() {
-				vm.ThrowTypeError("Getter must be a function: " + vm.DisplayString(x))
+				vm.ThrowTypeError("getter must be a function: " + vm.DisplayString(x))
 			}
 			d.Getter = x.Object()
 		}
@@ -156,13 +156,13 @@ func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
 		d.Has |= engine.HasSet
 		if !x.IsUndefined() {
 			if !x.IsCallable() {
-				vm.ThrowTypeError("Setter must be a function: " + vm.DisplayString(x))
+				vm.ThrowTypeError("setter must be a function: " + vm.DisplayString(x))
 			}
 			d.Setter = x.Object()
 		}
 	}
 	if d.IsAccessor() && d.IsData() {
-		vm.ThrowTypeError("Invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
+		vm.ThrowTypeError("invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
 	}
 	return d
 }
@@ -191,7 +191,7 @@ func fromDescriptor(vm *engine.VM, d engine.PropDesc) engine.Value {
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
 func setIntegrity(vm *engine.VM, o *engine.Object, frozen bool) {
 	if !vm.PreventExtensions(o) {
-		vm.ThrowTypeError("Cannot prevent extensions")
+		vm.ThrowTypeError("cannot prevent extensions")
 	}
 	for _, k := range vm.OwnKeys(o) {
 		d := engine.PropDesc{Has: engine.HasConfigurable}
@@ -329,7 +329,7 @@ func initObject(vm *engine.VM) {
 				po = p.Object()
 			}
 			if !vm.SetPrototypeOf(this.Object(), po) {
-				vm.ThrowTypeError("Cannot set prototype")
+				vm.ThrowTypeError("cannot set prototype")
 			}
 			return engine.Undefined
 		}),
@@ -345,7 +345,7 @@ func initObject(vm *engine.VM) {
 		o, p := arg(args, 0), arg(args, 1)
 		vm.RequireObjectCoercible(o, "Object.setPrototypeOf")
 		if !p.IsObject() && !p.IsNull() {
-			vm.ThrowTypeError("Object prototype may only be an Object or null: " + vm.DisplayString(p))
+			vm.ThrowTypeError("object prototype may only be an Object or null: " + vm.DisplayString(p))
 		}
 		if !o.IsObject() {
 			return o
@@ -355,7 +355,7 @@ func initObject(vm *engine.VM) {
 			po = p.Object()
 		}
 		if !vm.SetPrototypeOf(o.Object(), po) {
-			vm.ThrowTypeError("Cannot set prototype")
+			vm.ThrowTypeError("cannot set prototype")
 		}
 		return o
 	})
@@ -383,7 +383,7 @@ func initObject(vm *engine.VM) {
 	method(vm, ctor, "create", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		p := arg(args, 0)
 		if !p.IsObject() && !p.IsNull() {
-			vm.ThrowTypeError("Object prototype may only be an Object or null: " + vm.DisplayString(p))
+			vm.ThrowTypeError("object prototype may only be an Object or null: " + vm.DisplayString(p))
 		}
 		var po *engine.Object
 		if p.IsObject() {
@@ -489,7 +489,7 @@ func initObject(vm *engine.VM) {
 	method(vm, ctor, "preventExtensions", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if o := arg(args, 0); o.IsObject() {
 			if !vm.PreventExtensions(o.Object()) {
-				vm.ThrowTypeError("Cannot prevent extensions")
+				vm.ThrowTypeError("cannot prevent extensions")
 			}
 		}
 		return arg(args, 0)
@@ -513,7 +513,7 @@ func initObject(vm *engine.VM) {
 		o := vm.NewObject(vm.ObjectProto)
 		vm.Iterate(arg(args, 0), func(e engine.Value) bool {
 			if !e.IsObject() {
-				vm.ThrowTypeError("Iterator value " + vm.DisplayString(e) + " is not an entry object")
+				vm.ThrowTypeError("iterator value " + vm.DisplayString(e) + " is not an entry object")
 			}
 			k := vm.Index(e, 0)
 			v := vm.Index(e, 1)
@@ -541,7 +541,7 @@ func listFromArrayLike(vm *engine.VM, v engine.Value) []engine.Value {
 	}
 	n := numconv.ToLength(vm.ToNumber(vm.GetV(v, vm.K.Length)))
 	if n > 1<<24 {
-		vm.ThrowRangeError("Too many arguments")
+		vm.ThrowRangeError("too many arguments")
 	}
 	list := make([]engine.Value, n)
 	for i := range list {
@@ -572,7 +572,7 @@ func initFunction(vm *engine.VM) {
 	})
 	method(vm, proto, "bind", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
-			vm.ThrowTypeError("Bind must be called on a function")
+			vm.ThrowTypeError("bind must be called on a function")
 		}
 		target := this.Object()
 		b := vm.BoundFunctionCreate(target, arg(args, 0), args[min(1, len(args)):])

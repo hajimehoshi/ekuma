@@ -34,7 +34,7 @@ func (vm *VM) toPrimitive(v Value, h hint) Value {
 		}
 		r := vm.Call(m, v, vm.NewString(name))
 		if r.IsObject() {
-			vm.ThrowTypeError("Cannot convert object to primitive value")
+			vm.ThrowTypeError("cannot convert object to primitive value")
 		}
 		return r
 	}
@@ -49,7 +49,7 @@ func (vm *VM) toPrimitive(v Value, h hint) Value {
 			}
 		}
 	}
-	vm.ThrowTypeError("Cannot convert object to primitive value")
+	vm.ThrowTypeError("cannot convert object to primitive value")
 	return Undefined
 }
 
@@ -81,9 +81,9 @@ func (vm *VM) ToNumber(v Value) float64 {
 	case kindString:
 		return numconv.StringToNumber(o.str)
 	case kindSymbol:
-		vm.ThrowTypeError("Cannot convert a Symbol value to a number")
+		vm.ThrowTypeError("cannot convert a Symbol value to a number")
 	case kindBigInt:
-		vm.ThrowTypeError("Cannot convert a BigInt value to a number")
+		vm.ThrowTypeError("cannot convert a BigInt value to a number")
 	}
 	return vm.ToNumber(vm.toPrimitive(v, hintNumber))
 }
@@ -144,7 +144,7 @@ func (vm *VM) ToString(v Value) string {
 	case kindTrue:
 		return "true"
 	case kindSymbol:
-		vm.ThrowTypeError("Cannot convert a Symbol value to a string")
+		vm.ThrowTypeError("cannot convert a Symbol value to a string")
 	case kindBigInt:
 		return o.BigInt().String()
 	}
@@ -173,7 +173,7 @@ func (vm *VM) ToObject(v Value) *Object {
 	}
 	switch o.kind {
 	case kindUndefined, kindNull:
-		vm.ThrowTypeError("Cannot convert undefined or null to object")
+		vm.ThrowTypeError("cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
 		w := vm.NewObject(vm.BooleanProto)
 		w.class = classBoolean
@@ -390,7 +390,7 @@ func (vm *VM) addValues(a, b Value) Value {
 		return Value{n: a.n + b.n}
 	}
 	if a.o == nil || b.o == nil {
-		vm.ThrowTypeError("Cannot mix BigInt and other types, use explicit conversions")
+		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
 	return vm.newBigInt(new(big.Int).Add(a.o.BigInt(), b.o.BigInt()))
 }
@@ -408,7 +408,7 @@ func (vm *VM) concat(a Value, x string, b Value, y string) Value {
 		return a
 	}
 	if len(x)+len(y) > MaxStringLength {
-		vm.ThrowRangeError("Invalid string length")
+		vm.ThrowRangeError("invalid string length")
 	}
 	var s string
 	if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {

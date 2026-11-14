@@ -461,7 +461,7 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 			if arg.Computed {
 				f.effect(arg.Property)
 			}
-			f.emit(bytecode.OpThrowError, errReference, f.constStr("Unsupported reference to 'super'"), 0)
+			f.emit(bytecode.OpThrowError, errReference, f.constStr("unsupported reference to 'super'"), 0)
 			return
 		}
 		obj := f.operand(arg.Object, arg.Property)
@@ -1353,7 +1353,7 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
 	f.emit(bytecode.OpIterClose, it, 0, 0)
-	f.emit(bytecode.OpThrowError, errType, f.constStr("The iterator does not provide a 'throw' method"), 0)
+	f.emit(bytecode.OpThrowError, errType, f.constStr("the iterator does not provide a 'throw' method"), 0)
 	f.patch(hasThrow)
 	f.emit(bytecode.OpMove, res, recv, 0)
 	step2 := f.jump()

@@ -47,7 +47,7 @@ func putAt(vm *engine.VM, o *engine.Object, i int64, v engine.Value) {
 func deleteAt(vm *engine.VM, o *engine.Object, i int64) {
 	k := bigKey(vm, i)
 	if !vm.DeleteProp(o, k) {
-		vm.ThrowTypeError("Cannot delete property '" + vm.KeyString(k) + "'")
+		vm.ThrowTypeError("cannot delete property '" + vm.KeyString(k) + "'")
 	}
 }
 
@@ -76,7 +76,7 @@ func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Obj
 		}
 	}
 	if n > engine.MaxArrayIndex+1 {
-		vm.ThrowRangeError("Invalid array length")
+		vm.ThrowRangeError("invalid array length")
 	}
 	return vm.ArrayCreate(uint32(n), vm.ArrayProto)
 }
@@ -107,7 +107,7 @@ func joinArray(vm *engine.VM, o *engine.Object, n int64, sep string) engine.Valu
 			b.WriteString(vm.ToString(e))
 		}
 		if b.Len() > engine.MaxStringLength {
-			vm.ThrowRangeError("Invalid string length")
+			vm.ThrowRangeError("invalid string length")
 		}
 	}
 	return vm.NewString(b.String())
@@ -124,7 +124,7 @@ func initArray(vm *engine.VM) {
 			if n := args[0]; n.IsNumber() {
 				u := numconv.ToUint32(n.Number())
 				if float64(u) != n.Number() {
-					vm.ThrowRangeError("Invalid array length")
+					vm.ThrowRangeError("invalid array length")
 				}
 				return engine.ObjectValue(vm.ArrayCreate(u, proto))
 			}
@@ -205,7 +205,7 @@ func initArray(vm *engine.VM) {
 		}
 		n := vm.LengthOfArrayLike(o)
 		if n+int64(len(args)) > numconv.MaxSafeInteger {
-			vm.ThrowTypeError("Pushing elements past the maximum length")
+			vm.ThrowTypeError("pushing elements past the maximum length")
 		}
 		for _, v := range args {
 			vm.Set(o, bigKey(vm, n), v)
@@ -260,7 +260,7 @@ func initArray(vm *engine.VM) {
 		n := vm.LengthOfArrayLike(o)
 		if k > 0 {
 			if n+k > numconv.MaxSafeInteger {
-				vm.ThrowTypeError("Unshifting elements past the maximum length")
+				vm.ThrowTypeError("unshifting elements past the maximum length")
 			}
 			for i := n - 1; i >= 0; i-- {
 				if hasAt(vm, o, i) {
@@ -312,7 +312,7 @@ func initArray(vm *engine.VM) {
 		}
 		k := int64(len(items))
 		if n+k-del > numconv.MaxSafeInteger {
-			vm.ThrowTypeError("Splicing elements past the maximum length")
+			vm.ThrowTypeError("splicing elements past the maximum length")
 		}
 		if removed, ok := vm.SpliceElements(o, n, start, del, items); ok {
 			return engine.ObjectValue(removed)
@@ -367,7 +367,7 @@ func initArray(vm *engine.VM) {
 			}
 			if !spreadable {
 				if n >= numconv.MaxSafeInteger {
-					vm.ThrowTypeError("Array too long")
+					vm.ThrowTypeError("array too long")
 				}
 				vm.CreateDataPropertyOrThrow(a, bigKey(vm, n), item)
 				n++
@@ -375,7 +375,7 @@ func initArray(vm *engine.VM) {
 			}
 			l := vm.LengthOfArrayLike(item.Object())
 			if n+l > numconv.MaxSafeInteger {
-				vm.ThrowTypeError("Array too long")
+				vm.ThrowTypeError("array too long")
 			}
 			if vm.AppendElementsOf(a, n, item.Object()) {
 				n += l
@@ -631,7 +631,7 @@ func initArray(vm *engine.VM) {
 					}
 				}
 				if !found {
-					vm.ThrowTypeError("Reduce of empty array with no initial value")
+					vm.ThrowTypeError("reduce of empty array with no initial value")
 				}
 			}
 			for ; i != end; i += d {
@@ -673,7 +673,7 @@ func initArray(vm *engine.VM) {
 	method(vm, proto, "sort", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cmp := arg(args, 0)
 		if !cmp.IsUndefined() && !cmp.IsCallable() {
-			vm.ThrowTypeError("The comparison function must be either a function or undefined")
+			vm.ThrowTypeError("the comparison function must be either a function or undefined")
 		}
 		o := vm.ToObject(this)
 		n := vm.LengthOfArrayLike(o)

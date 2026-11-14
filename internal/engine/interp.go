@@ -220,7 +220,7 @@ func (fr *frame) top() int {
 func (vm *VM) run(stop int) Value {
 	if vm.depth >= maxDepth {
 		vm.unwindTo(stop)
-		vm.ThrowRangeError("Maximum call stack size exceeded")
+		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
 	vm.depth++
 	for {
@@ -311,7 +311,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpThrowConstAssign:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.ThrowTypeError("Assignment to constant variable '" + fp.keys[i.A].str + "'")
+			vm.ThrowTypeError("assignment to constant variable '" + fp.keys[i.A].str + "'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.throwError(ErrorKind(i.A), fp.consts[i.B].o.str)
@@ -613,7 +613,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			c := regs[i.C]
 			if !c.IsObject() {
-				vm.ThrowTypeError("Cannot use 'in' operator to search for a key in a non-object")
+				vm.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
 			r := vm.HasProperty(c.o, vm.ToPropertyKey(regs[i.B]))
 			regs = vm.reload(regs, onHeap, base, fp)
@@ -627,7 +627,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			c := regs[i.C]
 			if !c.IsObject() {
-				vm.ThrowTypeError("Cannot use 'in' operator to search for a private field in a non-object")
+				vm.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
 			_, ok := c.o.shape.lookup(regs[i.B].o)
 			regs[i.A] = Bool(ok)
@@ -1307,12 +1307,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				if !r.IsObject() {
 					if !r.IsUndefined() {
 						done.pc = pc
-						vm.ThrowTypeError("Derived constructors may only return object or undefined")
+						vm.ThrowTypeError("derived constructors may only return object or undefined")
 					}
 					r = regs[i.B]
 					if r.o == tdzObject {
 						done.pc = pc
-						vm.throwReferenceError("Must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+						vm.throwReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
 			} else if done.isNew && (r.o == nil || r.o.kind < kindObject) {
@@ -1401,7 +1401,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := regs[i.B]
 			if !r.IsObject() {
-				vm.ThrowTypeError("Iterator result " + vm.DisplayString(r) + " is not an object")
+				vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 			}
 			done := ToBoolean(vm.GetV(r, vm.K.done))
 			regs = vm.reload(regs, onHeap, base, fp)
@@ -1528,12 +1528,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwReferenceError("Super constructor may only be called once")
+				vm.throwReferenceError("super constructor may only be called once")
 			}
 		case bytecode.OpRequireCoercible:
 			if regs[i.A].IsNullish() {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.ThrowTypeError("Cannot destructure '" + vm.DisplayString(regs[i.A]) + "' as it is " + vm.DisplayString(regs[i.A]))
+				vm.ThrowTypeError("cannot destructure '" + vm.DisplayString(regs[i.A]) + "' as it is " + vm.DisplayString(regs[i.A]))
 			}
 
 		case bytecode.OpForIn:
@@ -1596,7 +1596,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs = vm.reload(regs, onHeap, base, fp)
 				if !r.IsObject() {
 					regs[i.B] = Undefined
-					vm.ThrowTypeError("Iterator result " + vm.DisplayString(r) + " is not an object")
+					vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 				}
 				var done bool
 				var v Value
@@ -1739,7 +1739,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
 				if len(vm.frames) >= maxFrames {
 					vm.frames[len(vm.frames)-1].pc = pc
-					vm.ThrowRangeError("Maximum call stack size exceeded")
+					vm.ThrowRangeError("maximum call stack size exceeded")
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
 				base = vm.pushFrame(f, callThis, argBase, argc, ret, isNew, newTarget)
@@ -1798,7 +1798,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			parent := f.shape.proto
 			if parent == nil || parent.fn == nil || !vm.IsConstructor(parent) {
-				vm.ThrowTypeError("Super constructor is not a constructor")
+				vm.ThrowTypeError("super constructor is not a constructor")
 			}
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp

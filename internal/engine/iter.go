@@ -26,7 +26,7 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 	}
 	it = vm.Call(m, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError("Result of the Symbol.iterator method is not an object")
+		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
 	return it, vm.GetV(it, vm.K.next)
 }
@@ -35,7 +35,7 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 	r := vm.CallValue(next, it)
 	if !r.IsObject() {
-		vm.ThrowTypeError("Iterator result " + vm.DisplayString(r) + " is not an object")
+		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 	}
 	if ToBoolean(vm.GetV(r, vm.K.done)) {
 		return Undefined, false
@@ -61,7 +61,7 @@ func (vm *VM) iteratorClose(it Value, pending bool) {
 		return
 	}
 	if r := vm.Call(m, it); !r.IsObject() {
-		vm.ThrowTypeError("Iterator result " + vm.DisplayString(r) + " is not an object")
+		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 	}
 }
 

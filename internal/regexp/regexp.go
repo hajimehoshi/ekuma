@@ -39,7 +39,7 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return "Invalid regular expression: " + e.Msg
+	return "invalid regular expression: " + e.Msg
 }
 
 // Is reports whether target is ErrSyntax.
