@@ -122,15 +122,34 @@ func callback(vm *engine.VM, args []engine.Value, what string) *engine.Object {
 	return f.Object()
 }
 
+// joinGuard holds the objects that are being joined, to stop at cycles.
+type joinGuard struct {
+	joining []*engine.Object
+}
+
+// enter adds o and reports whether it was not being joined. leave must be called when it
+// reports true.
+func (g *joinGuard) enter(o *engine.Object) bool {
+	if slices.Contains(g.joining, o) {
+		return false
+	}
+	g.joining = append(g.joining, o)
+	return true
+}
+
+// leave removes the object that the last call of enter added.
+func (g *joinGuard) leave() {
+	last := len(g.joining) - 1
+	g.joining[last] = nil
+	g.joining = g.joining[:last]
+}
+
 // joinArray implements Array.prototype.join for the first n elements of the object o.
-func joinArray(vm *engine.VM, o *engine.Object, n int64, sep string) engine.Value {
-	if slices.Contains(vm.Joining, o) {
+func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep string) engine.Value {
+	if !g.enter(o) {
 		return vm.EmptyString
 	}
-	vm.Joining = append(vm.Joining, o)
-	defer func() {
-		vm.Joining = vm.Joining[:len(vm.Joining)-1]
-	}()
+	defer g.leave()
 	return joinElements(vm, o, n, sep, vm.ToString)
 }
 
@@ -183,6 +202,7 @@ func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep string, count int64) {
 
 func initArray(vm *engine.VM) {
 	proto := vm.ArrayProto
+	var joins joinGuard
 	ctor := constructor(vm, "Array", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		proto := vm.ArrayProto
 		if nt := vm.NewTarget; nt != nil && nt != vm.ArrayCtor {
@@ -478,7 +498,7 @@ func initArray(vm *engine.VM) {
 		if s := arg(args, 0); !s.IsUndefined() {
 			sep = vm.ToString(s)
 		}
-		return joinArray(vm, o, n, sep)
+		return joinArray(vm, &joins, o, n, sep)
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
@@ -904,7 +924,7 @@ func initArray(vm *engine.VM) {
 	iter("entries", iterEntries)
 	vm.FnArrayValues = iter("values", iterValues)
 	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(vm.FnArrayValues), engine.FlagsHidden)
-	initArrayAdditions(vm, proto)
+	initArrayAdditions(vm, proto, &joins)
 }
 
 // newArrayOfLength checks that n is a valid array length as ArrayCreate does, and returns the storage
@@ -919,7 +939,7 @@ func newArrayOfLength(vm *engine.VM, n int64) []engine.Value {
 
 // initArrayAdditions defines copyWithin, toLocaleString, the methods that change an array by copy,
 // and Symbol.unscopables on Array.prototype.
-func initArrayAdditions(vm *engine.VM, proto *engine.Object) {
+func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 	method(vm, proto, "copyWithin", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		n := vm.LengthOfArrayLike(o)
@@ -954,13 +974,10 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object) {
 	toLocaleStringKey := vm.Intern("toLocaleString")
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if slices.Contains(vm.Joining, o) {
+		if !joins.enter(o) {
 			return vm.EmptyString
 		}
-		vm.Joining = append(vm.Joining, o)
-		defer func() {
-			vm.Joining = vm.Joining[:len(vm.Joining)-1]
-		}()
+		defer joins.leave()
 		n := vm.LengthOfArrayLike(o)
 		return joinElements(vm, o, n, ",", func(e engine.Value) string {
 			return vm.ToString(vm.CallValue(vm.GetV(e, toLocaleStringKey), e))

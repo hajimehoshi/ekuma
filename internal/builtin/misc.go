@@ -234,24 +234,18 @@ func initSymbol(vm *engine.VM) {
 		constant(vm, ctor, e.name, engine.ObjectValue(e.sym))
 	}
 	method(vm, ctor, "for", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		key := vm.ToString(arg(args, 0))
-		if s, ok := vm.SymbolRegistry[key]; ok {
-			return engine.ObjectValue(s)
-		}
-		s := vm.NewSymbol(key, true)
-		vm.SymbolRegistry[key] = s
-		return engine.ObjectValue(s)
+		return engine.ObjectValue(vm.RegisteredSymbol(vm.ToString(arg(args, 0))))
 	})
 	method(vm, ctor, "keyFor", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := arg(args, 0)
 		if !s.IsSymbol() {
 			vm.ThrowTypeError(vm.DisplayString(s) + " is not a symbol")
 		}
-		key, _ := engine.SymbolDescription(s.Object())
-		if r, ok := vm.SymbolRegistry[key]; ok && r == s.Object() {
-			return vm.NewString(key)
+		key, ok := vm.KeyForSymbol(s.Object())
+		if !ok {
+			return engine.Undefined
 		}
-		return engine.Undefined
+		return vm.NewString(key)
 	})
 	thisSymbol := func(vm *engine.VM, this engine.Value, what string) *engine.Object {
 		s, ok := engine.ThisSymbolValue(this)

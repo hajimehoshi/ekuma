@@ -79,8 +79,8 @@ func (vm *VM) CanBeHeldWeakly(v Value) bool {
 	if !v.IsSymbol() {
 		return false
 	}
-	r, ok := vm.SymbolRegistry[v.o.str]
-	return !ok || r != v.o
+	_, registered := vm.KeyForSymbol(v.o)
+	return !registered
 }
 
 // Get returns the value of the entry with the key k.

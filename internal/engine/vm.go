@@ -180,9 +180,6 @@ type VM struct {
 	arrayIter     arrayIterCache
 	sparseIndices sparseIndexCache
 
-	// Joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
-	Joining []*Object
-
 	jobs jobQueue
 
 	// rejections are the unhandled rejections, for HostPromiseRejectionTracker.
@@ -193,7 +190,8 @@ type VM struct {
 
 	weak weakState
 
-	SymbolRegistry map[string]*Object
+	// symbolRegistry is the GlobalSymbolRegistry List, by key.
+	symbolRegistry map[string]*Object
 
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[string]*regexp.Regexp

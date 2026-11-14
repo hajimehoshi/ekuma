@@ -23,7 +23,7 @@ func New() *VM {
 		strings: stringTable{
 			interned: map[string]*Object{},
 		},
-		SymbolRegistry: map[string]*Object{},
+		symbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 	}
 	vm.shapes.nullProto = &shape{vm: vm}
@@ -92,6 +92,26 @@ func (vm *VM) NewSymbol(desc string, hasDesc bool) *Object {
 		s.ext = true
 	}
 	return s
+}
+
+// RegisteredSymbol returns the symbol of the GlobalSymbolRegistry List with the key key,
+// which it adds when there is none.
+func (vm *VM) RegisteredSymbol(key string) *Object {
+	if s, ok := vm.symbolRegistry[key]; ok {
+		return s
+	}
+	s := vm.NewSymbol(key, true)
+	vm.symbolRegistry[key] = s
+	return s
+}
+
+// KeyForSymbol implements KeyForSymbol: it returns the key of the symbol sym in the
+// GlobalSymbolRegistry List, and reports whether sym is in it.
+func (vm *VM) KeyForSymbol(sym *Object) (string, bool) {
+	if r, ok := vm.symbolRegistry[sym.str]; !ok || r != sym {
+		return "", false
+	}
+	return sym.str, true
 }
 
 func (vm *VM) initKeys() {
