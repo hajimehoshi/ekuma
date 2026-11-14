@@ -195,6 +195,9 @@ type VM struct {
 	// fnArrayValues and fnArrayIterNext are the original Array.prototype.values and the next method of array iterators.
 	FnArrayValues, FnArrayIterNext, FnArraySpecies *Object
 
+	// FnTypedArrayLength is the original getter of %TypedArray%.prototype.length.
+	FnTypedArrayLength *Object
+
 	// FnGeneratorNext is the original next method of generators.
 	FnGeneratorNext *Object
 

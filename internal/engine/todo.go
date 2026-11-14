@@ -4,7 +4,7 @@
 package engine
 
 // This file holds the entry points of the features that are not implemented yet.
-// Nothing creates the objects that would reach the proxy and typed array functions.
+// Nothing creates the objects that would reach the proxy functions.
 
 // Unsupported throws an Error that says that the feature what is not implemented. It does not return.
 func (vm *VM) Unsupported(what string) {
@@ -72,27 +72,5 @@ func (vm *VM) proxyPreventExtensions(o *Object) bool {
 }
 
 func (vm *VM) proxyIsConstructor(o *Object) bool {
-	return false
-}
-
-func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
-	vm.Unsupported("typed arrays")
-	return Undefined
-}
-
-func (vm *VM) typedArraySet(o *Object, i uint32, val Value) {
-	vm.Unsupported("typed arrays")
-}
-
-func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
-	return false
-}
-
-func (vm *VM) typedArrayLength(o *Object) int {
-	return 0
-}
-
-func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
-	vm.Unsupported("typed arrays")
 	return false
 }

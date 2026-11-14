@@ -188,6 +188,9 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 	if err := vm.Global().Set("print", print); err != nil {
 		return "harness: " + err.Error()
 	}
+	if err := define262(vm); err != nil {
+		return "harness: " + err.Error()
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
@@ -246,6 +249,28 @@ func asyncOutcome(printed []string) string {
 		}
 	}
 	return "the async test did not complete"
+}
+
+// define262 defines the host object $262 of the harness, with the members that the engine supports.
+func define262(vm *ekuma.VM) error {
+	o, err := vm.RunScript(context.Background(), "$262", "({})")
+	if err != nil {
+		return err
+	}
+	detach := vm.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		v := ekuma.Undefined
+		if len(args) > 0 {
+			v = args[0]
+		}
+		return ekuma.Undefined, ekuma.DetachArrayBuffer(vm, v)
+	})
+	if err := o.Set("detachArrayBuffer", detach); err != nil {
+		return err
+	}
+	if err := o.Set("global", vm.Global()); err != nil {
+		return err
+	}
+	return vm.Global().Set("$262", o)
 }
 
 func firstLine(s string) string {

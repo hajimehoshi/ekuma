@@ -253,3 +253,76 @@ func BenchmarkAsync(b *testing.B) {
 		})
 	}
 }
+
+// typedArrayBenchJS defines setup(kind, n), which creates two arrays of n elements of the given
+// kind ("Array" for plain arrays of numbers), and run(op, total), which performs op on total elements.
+const typedArrayBenchJS = `
+var a, b;
+function make(kind, n, v) {
+	if (kind === "Array") {
+		var r = [];
+		for (var i = 0; i < n; i++) r.push(v);
+		return r;
+	}
+	return new globalThis[kind](n).fill(v);
+}
+function setup(kind, n) {
+	a = make(kind, n, 0);
+	b = make(kind, n, 1);
+}
+function run(op, total) {
+	var n = a.length, s = 0, i, m;
+	for (var done = 0; done < total; done += n) {
+		m = Math.min(n, total - done);
+		switch (op) {
+		case "read":
+			for (i = 0; i < m; i++) s += a[i];
+			break;
+		case "write":
+			for (i = 0; i < m; i++) a[i] = i;
+			break;
+		case "readLength":
+			for (i = 0; i < a.length; i++) s += a[i];
+			break;
+		case "set":
+			a.set(b);
+			break;
+		case "fill":
+			a.fill(done);
+			break;
+		case "subarray":
+			for (i = 0; i < m; i++) s += a.subarray(1, 9).length;
+			break;
+		}
+	}
+	return s;
+}
+`
+
+// BenchmarkTypedArray measures typed array element access and bulk operations. One iteration
+// is one element read, written, set or filled, or one subarray created. readLength reads the
+// length in the condition of the loop.
+func BenchmarkTypedArray(b *testing.B) {
+	for _, op := range []string{"read", "readLength", "write", "set", "fill", "subarray"} {
+		for _, kind := range []string{"Float64Array", "Float32Array", "Int32Array", "Uint8Array", "Array"} {
+			if kind == "Array" && op != "read" && op != "readLength" && op != "write" {
+				continue
+			}
+			b.Run(op+"/"+kind, func(b *testing.B) {
+				ctx := b.Context()
+				vm := ekuma.NewVM()
+				if _, err := vm.RunScript(ctx, "typedarray.js", typedArrayBenchJS); err != nil {
+					b.Fatal(err)
+				}
+				if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setup(%q, 1024)", kind)); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

@@ -182,8 +182,14 @@ func (vm *VM) resolve(o *Object) {
 func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 	length := key == vm.K.Length
 	for h := o; h != nil; h = h.shape.proto {
-		if h.flags&objExotic != 0 && vm.isLazyKey(key) {
-			vm.resolve(h)
+		if h.flags&objExotic != 0 {
+			if vm.isLazyKey(key) {
+				vm.resolve(h)
+			}
+			if h.class == classTypedArray && isCanonicalNumericString(key) {
+				// An integer-indexed object answers for every numeric key and never defers to its prototype.
+				return nil, prop{}, false
+			}
 		}
 		if length && h.kind == kindArray {
 			flags := FlagWritable
@@ -233,6 +239,16 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	}
 	if start.class == classProxy {
 		return vm.proxyGet(start, PropKey{key: key}, v), nil
+	}
+	if start.class == classTypedArray && key == vm.K.Length && c != nil {
+		// The cache says that the length is the original getter, whose result needs no call.
+		e := &c.cacheEntry
+		if e.shape != start.shape {
+			e = &c.second
+		}
+		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == vm.protoEpoch && e.holder == vm.FnTypedArrayLength {
+			return Number(float64(vm.typedArrayLength(start))), nil
+		}
 	}
 	if c != nil {
 		c.keep(start.shape)
@@ -300,6 +316,16 @@ func proxyOnChain(o *Object) *Object {
 
 func hasProxyOnChain(o *Object) bool {
 	return proxyOnChain(o) != nil
+}
+
+// typedArrayOnChain reports whether a typed array is on the prototype chain of o before any proxy.
+func typedArrayOnChain(o *Object) bool {
+	for h := o; h != nil && h.class != classProxy; h = h.shape.proto {
+		if h.class == classTypedArray {
+			return true
+		}
+	}
+	return false
 }
 
 // GetV returns the named property key of v, calling a getter.
@@ -430,8 +456,13 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		}
 		k.key = vm.indexName(k.idx)
 	} else {
-		if o.flags&objExotic != 0 && vm.isLazyKey(k.key) {
-			vm.resolve(o)
+		if o.flags&objExotic != 0 {
+			if vm.isLazyKey(k.key) {
+				vm.resolve(o)
+			}
+			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
+				return PropDesc{}, false
+			}
 		}
 		if k.key == vm.K.Length && o.kind == kindArray {
 			flags := FlagWritable
@@ -470,11 +501,11 @@ func (vm *VM) HasProperty(o *Object, k PropKey) bool {
 		if h.class == classProxy {
 			return vm.proxyHas(h, k)
 		}
+		if h.class == classTypedArray && isNumericKey(k) {
+			return k.key == nil && vm.typedArrayHas(h, k.idx)
+		}
 		if vm.HasOwnProperty(h, k) {
 			return true
-		}
-		if h.class == classTypedArray && k.key == nil {
-			return false
 		}
 	}
 	return false
@@ -494,11 +525,14 @@ func (vm *VM) getProp(o *Object, k PropKey, receiver Value) Value {
 		if h.class == classProxy {
 			return vm.proxyGet(h, k, receiver)
 		}
-		d, ok := vm.GetOwnProperty(h, k)
-		if !ok {
-			if h.class == classTypedArray && k.key == nil {
+		if h.class == classTypedArray && isNumericKey(k) {
+			if k.key != nil {
 				return Undefined
 			}
+			return vm.typedArrayGet(h, k.idx)
+		}
+		d, ok := vm.GetOwnProperty(h, k)
+		if !ok {
 			continue
 		}
 		if d.Flags&FlagAccessor != 0 {
@@ -650,7 +684,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 	}
 	// The property is new on o: a setter or a read-only property further up takes precedence.
 	if proto := o.shape.proto; proto != nil {
-		if hasProxyOnChain(proto) {
+		if hasProxyOnChain(proto) || isCanonicalNumericString(key) && typedArrayOnChain(proto) {
 			return nil, vm.setProp(o, PropKey{key: key}, val, v)
 		}
 		if h, p, found := vm.lookup(proto, key); found {
@@ -755,7 +789,11 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 		if h.class == classProxy {
 			return vm.proxySet(h, k, val, receiver)
 		}
-		if h.class == classTypedArray && k.key == nil {
+		if h.class == classTypedArray && isNumericKey(k) {
+			if k.key != nil {
+				vm.typedArraySetNamed(h, val, receiver)
+				return true
+			}
 			if receiver.o == h {
 				vm.typedArraySet(h, k.idx, val)
 				return true
@@ -806,8 +844,8 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	if o.class == classProxy {
 		return vm.proxyDefineOwnProperty(o, k, d)
 	}
-	if o.class == classTypedArray && k.key == nil {
-		return vm.typedArrayDefine(o, k.idx, d)
+	if o.class == classTypedArray && isNumericKey(k) {
+		return k.key == nil && vm.typedArrayDefine(o, k.idx, d)
 	}
 	if o.kind == kindArray && k.key == vm.K.Length {
 		return vm.defineArrayLength(o, d)
@@ -1002,8 +1040,13 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 		}
 		k.key = vm.indexName(k.idx)
 	} else {
-		if o.flags&objExotic != 0 && vm.isLazyKey(k.key) {
-			vm.resolve(o)
+		if o.flags&objExotic != 0 {
+			if vm.isLazyKey(k.key) {
+				vm.resolve(o)
+			}
+			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
+				return true
+			}
 		}
 		if k.key == vm.K.Length && o.kind == kindArray {
 			return false
@@ -1105,6 +1148,9 @@ func (vm *VM) IsExtensible(o *Object) bool {
 func (vm *VM) PreventExtensions(o *Object) bool {
 	if o.class == classProxy {
 		return vm.proxyPreventExtensions(o)
+	}
+	if o.class == classTypedArray && !o.ext.(*TypedArray).IsFixedLength() {
+		return false
 	}
 	if o.flags&objNotExtensible == 0 {
 		if o.flags&objExotic != 0 {

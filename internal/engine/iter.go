@@ -425,3 +425,29 @@ func (vm *VM) iterResultValue(r Value) (Value, bool) {
 	}
 	return vm.GetV(r, vm.K.Value), false
 }
+
+// IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
+func (vm *VM) IteratorToList(v Value, method *Object) []Value {
+	if method == vm.FnArrayValues && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+		o := v.o
+		vals := make([]Value, 0, o.length)
+		for i := uint32(0); i < o.length; i++ {
+			if int(i) < len(o.elems) && !o.elems[i].isHole() {
+				vals = append(vals, o.elems[i])
+			} else {
+				vals = append(vals, vm.Index(v, i))
+			}
+		}
+		return vals
+	}
+	it := vm.Call(method, v)
+	if !it.IsObject() {
+		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+	}
+	var vals []Value
+	vm.IterateRecord(it, vm.GetV(it, vm.K.next), func(e Value) bool {
+		vals = append(vals, e)
+		return true
+	})
+	return vals
+}

@@ -138,6 +138,7 @@ func Install(vm *engine.VM) {
 	initDate(vm)
 	initPromise(vm)
 	initAsync(vm)
+	initBinary(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 

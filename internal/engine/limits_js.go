@@ -6,3 +6,7 @@ package engine
 // maxDepth is the number of nested interpreter loops at which a RangeError is thrown.
 // It is lower than elsewhere, as the stack of WebAssembly in browsers is smaller.
 const maxDepth = 300
+
+// maxBufferLength is the largest length of an ArrayBuffer in bytes.
+// The memory of WebAssembly is limited to 4 GiB.
+const maxBufferLength = 1 << 30

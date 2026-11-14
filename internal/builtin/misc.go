@@ -446,7 +446,16 @@ func initIterators(vm *engine.VM) {
 		if it.obj == nil {
 			return engine.Undefined, false
 		}
-		n := vm.LengthOfArrayLike(it.obj)
+		var n int64
+		if t := engine.TypedArrayData(engine.ObjectValue(it.obj)); t != nil {
+			l, ok := t.Length()
+			if !ok {
+				vm.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
+			}
+			n = int64(l)
+		} else {
+			n = vm.LengthOfArrayLike(it.obj)
+		}
 		i := it.pos
 		if i >= n {
 			it.obj = nil

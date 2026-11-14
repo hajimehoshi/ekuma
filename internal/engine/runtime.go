@@ -211,6 +211,9 @@ func (vm *VM) initGlobalLex(key *Object, val Value) {
 func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	if k.o == nil {
 		if i, ok := numberIndex(k.n); ok {
+			if o := v.o; o != nil && o.class == classTypedArray {
+				return vm.typedArrayGet(o, i), nil
+			}
 			return vm.getIndex(v, i)
 		}
 	}
@@ -229,6 +232,10 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 	if k.o == nil {
 		if i, ok := numberIndex(k.n); ok {
+			if o := v.o; o != nil && o.class == classTypedArray {
+				vm.typedArraySet(o, i, val)
+				return nil, true
+			}
 			return vm.setIndex(v, i, val)
 		}
 	}

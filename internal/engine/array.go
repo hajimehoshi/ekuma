@@ -44,6 +44,12 @@ func (o *Object) Element(i int64) (Value, bool) {
 			return e, true
 		}
 	}
+	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
+		t := o.ext.(*TypedArray)
+		if b, ok := t.element(uint32(i)); ok {
+			return o.shape.vm.loadElement(t.typ, b), true
+		}
+	}
 	return Value{}, false
 }
 
