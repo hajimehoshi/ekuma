@@ -56,6 +56,20 @@ func TestDirectEval(t *testing.T) {
 				f("param")`,
 			want: "param,block,block",
 		},
+		{
+			name: "a lone surrogate in the source joins an escaped surrogate into a pair",
+			src: `var r = [
+					eval("'\\uD83D" + "\uDE00'") === "\u{1F600}",
+					eval("'\uD83D" + "\\uDE00'") === "\u{1F600}",
+				];
+				try {
+					eval("var a\uD83D;");
+				} catch (e) {
+					r.push(e instanceof SyntaxError);
+				}
+				r.join()`,
+			want: "true,true,true",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

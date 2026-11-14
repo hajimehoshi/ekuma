@@ -366,15 +366,9 @@ func (p *parser) init(src string, opts *Options, module bool) {
 		p.fail(0, "source text is too large")
 	}
 	if !utf8.ValidString(src) {
-		var pos int
-		for pos < len(src) {
-			r, size := utf8.DecodeRuneInString(src[pos:])
-			if r == utf8.RuneError && size <= 1 {
-				break
-			}
-			pos += size
+		if pos := invalidWTF8(src); pos >= 0 {
+			p.fail(pos, "source text is not valid WTF-8")
 		}
-		p.fail(pos, "source text is not valid UTF-8")
 	}
 	p.f = fnState{
 		strict:        opts.Strict || module,
@@ -385,6 +379,32 @@ func (p *parser) init(src string, opts *Options, module bool) {
 		newTarget:     opts.AllowNewTarget,
 		noArguments:   opts.InClassFieldInit,
 	}
+}
+
+// invalidWTF8 returns the offset of the first byte of src that is not part of a code point
+// in canonical WTF-8, or -1 if there is none.
+func invalidWTF8(src string) int {
+	for pos := 0; pos < len(src); {
+		c := src[pos]
+		if c < utf8.RuneSelf {
+			pos++
+			continue
+		}
+		if c == 0xed && pos+2 < len(src) && src[pos+1] >= 0xa0 && src[pos+1] <= 0xbf && src[pos+2]&0xc0 == 0x80 {
+			// A surrogate pair is a single four-byte sequence, never two surrogates.
+			if src[pos+1] <= 0xaf && pos+4 < len(src) && src[pos+3] == 0xed && src[pos+4] >= 0xb0 && src[pos+4] <= 0xbf {
+				return pos + 3
+			}
+			pos += 3
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(src[pos:])
+		if r == utf8.RuneError && size <= 1 {
+			return pos
+		}
+		pos += size
+	}
+	return -1
 }
 
 func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, err error) {

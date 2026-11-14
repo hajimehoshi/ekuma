@@ -1,7 +1,5 @@
 test/annexB/built-ins/Array/from/iterator-method-emulates-undefined.js
 test/annexB/built-ins/Object/is/emulates-undefined.js
-test/annexB/built-ins/RegExp/RegExp-leading-escape-BMP.js
-test/annexB/built-ins/RegExp/RegExp-trailing-escape-BMP.js
 test/annexB/built-ins/RegExp/legacy-accessors/index/this-cross-realm-constructor.js
 test/annexB/built-ins/RegExp/legacy-accessors/input/this-cross-realm-constructor.js
 test/annexB/built-ins/RegExp/legacy-accessors/lastMatch/this-cross-realm-constructor.js
@@ -6363,10 +6361,6 @@ test/language/import/import-defer/evaluation-triggers/trigger-ownPropertyKeys.js
 test/language/import/import-defer/syntax/import-attributes.js
 test/language/import/import-defer/syntax/valid-default-binding-named-defer.js
 test/language/import/import-defer/syntax/valid-defer-namespace.js
-test/language/literals/regexp/S7.8.5_A1.1_T2.js
-test/language/literals/regexp/S7.8.5_A1.4_T2.js
-test/language/literals/regexp/S7.8.5_A2.1_T2.js
-test/language/literals/regexp/S7.8.5_A2.4_T2.js
 test/language/module-code/ambiguous-export-bindings/error-export-from-named-as.js
 test/language/module-code/ambiguous-export-bindings/error-export-from-named.js
 test/language/module-code/ambiguous-export-bindings/error-import-named-as.js

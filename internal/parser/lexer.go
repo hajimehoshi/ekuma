@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 const (
@@ -760,10 +762,19 @@ func (p *parser) scanString(start int, quote byte) {
 		case '\n', '\r':
 			p.fail(start, "unterminated string literal")
 		default:
-			buf = append(buf, c)
-			pos++
+			buf, pos = appendSourceByte(buf, src, pos)
 		}
 	}
+}
+
+// appendSourceByte appends the source byte at pos to buf and returns the offset of the next byte.
+// A lone low surrogate in the source is combined with a high surrogate that ends buf.
+func appendSourceByte(buf []byte, src string, pos int) ([]byte, int) {
+	if src[pos] == 0xed && src[pos+1] >= 0xb0 {
+		r, size := wtf8.DecodeRune(src[pos:])
+		return appendWTF8(buf, r), pos + size
+	}
+	return append(buf, src[pos]), pos + 1
 }
 
 type escStatus uint8
@@ -857,12 +868,12 @@ func (p *parser) scanEscape(buf []byte, template bool) ([]byte, escStatus) {
 	if c < utf8.RuneSelf {
 		return append(buf, c), escOK
 	}
-	r, size := utf8.DecodeRuneInString(src[pos:])
+	r, size := wtf8.DecodeRune(src[pos:])
 	p.pos = pos + size
 	if r == 0x2028 || r == 0x2029 {
 		return buf, escOK
 	}
-	return append(buf, src[pos:pos+size]...), escOK
+	return appendWTF8(buf, r), escOK
 }
 
 // scanTemplate scans template characters from p.pos up to the end of the template or the next substitution.
@@ -899,10 +910,11 @@ func (p *parser) scanTemplate(tokStart int) {
 			break
 		}
 		if c != '\\' && c != '\r' {
-			if !plain {
-				buf = append(buf, c)
+			if plain {
+				pos++
+			} else {
+				buf, pos = appendSourceByte(buf, src, pos)
 			}
-			pos++
 			continue
 		}
 		if plain {

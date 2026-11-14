@@ -346,7 +346,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 		pkind = parser.AsyncGeneratorFunction
 		fallback = vm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
 	}
-	fp, err := vm.compileFunction("<anonymous>", wtf8.FromValidUTF8(params), wtf8.FromValidUTF8(body), pkind)
+	fp, err := vm.compileFunction("<anonymous>", params, body, pkind)
 	if err != nil {
 		vm.throwCompileError("<anonymous>", err)
 	}

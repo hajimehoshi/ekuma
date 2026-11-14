@@ -10,7 +10,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // maxEvalCache is the number of compiled eval codes that evalCache keeps.
@@ -157,7 +156,7 @@ func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
 			opts.PrivateNames = append(opts.PrivateNames, name)
 		}
 	}
-	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), opts)
+	prog, err := parser.ParseScript(src, opts)
 	if err != nil {
 		vm.throwCompileError("<eval>", err)
 	}
