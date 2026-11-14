@@ -102,7 +102,17 @@ jobs:
           echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
           # The browser's file system shim cannot open directories, so fuzz tests cannot read their seed corpora.
           # Large environment variables are removed since they are passed to the browser.
-          env GOOS=js GOARCH=wasm cleanenv -remove-prefix GITHUB_ -remove-prefix JAVA_ -remove-prefix PSModulePath -remove-prefix STATS_ -remove-prefix RUNNER_ -- go test -v -shuffle=on -timeout 30m -skip '^Fuzz' ./...
+          # Chrome sometimes fails to start in time ("websocket url timeout reached"), so the tests are retried.
+          max_attempts=3
+          for i in $(seq 1 $max_attempts); do
+            env GOOS=js GOARCH=wasm cleanenv -remove-prefix GITHUB_ -remove-prefix JAVA_ -remove-prefix PSModulePath -remove-prefix STATS_ -remove-prefix RUNNER_ -- go test -v -shuffle=on -timeout 30m -skip '^Fuzz' ./... && break
+            if [ $i -eq $max_attempts ]; then
+              echo "All $max_attempts attempts failed."
+              exit 1
+            fi
+            echo "Attempt $i failed. Retrying in 10 seconds..."
+            sleep 10
+          done
 
   wasm-test262:
     name: Test test262 on WebAssembly in Node.js
