@@ -5,6 +5,7 @@ package ekuma
 
 import (
 	"context"
+	"math"
 	"math/big"
 	"strconv"
 
@@ -67,6 +68,9 @@ type Value struct {
 
 // numberTag marks a [Value] that is a number. It is never passed to the engine.
 var numberTag = &engine.Object{}
+
+// canonicalNaN is the NaN that [Value.Float] returns.
+var canonicalNaN = math.Float64frombits(0x7ff8000000000000)
 
 // fromEngine converts a value of the engine to a [Value].
 func fromEngine(v engine.Value) Value {
@@ -159,13 +163,17 @@ func (v Value) Bool() bool {
 	return e == engine.True
 }
 
-// Float returns the number v. It panics with a [*ValueError] when v is not a number.
+// Float returns the number v. A NaN always has the bits 0x7ff8000000000000. Float panics with
+// a [*ValueError] when v is not a number.
 func (v Value) Float() float64 {
 	if v.o != numberTag {
 		panic(&ValueError{
 			Method: "Value.Float",
 			Type:   v.Type(),
 		})
+	}
+	if v.n != v.n {
+		return canonicalNaN
 	}
 	return v.n
 }

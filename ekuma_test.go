@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"reflect"
 	"runtime"
@@ -197,6 +198,24 @@ func TestValues(t *testing.T) {
 	// A lexical declaration is not a property of the global object.
 	if v, err := global.Get("lexical"); err != nil || !v.IsUndefined() {
 		t.Errorf("Get(lexical) = %v, %v, want undefined", v, err)
+	}
+}
+
+func TestFloatNaN(t *testing.T) {
+	var vm ekuma.VM
+	// The NaNs differ in their bits.
+	for _, src := range []string{
+		`0/0`,
+		`NaN`,
+		`new Float64Array(new Uint32Array([1, 0xfff80000]).buffer)[0]`,
+	} {
+		v, err := vm.RunScript(t.Context(), "nan", src)
+		if err != nil {
+			t.Fatalf("RunScript(%q): %v", src, err)
+		}
+		if got, want := math.Float64bits(v.Float()), uint64(0x7ff8000000000000); got != want {
+			t.Errorf("%s: got %#x, want %#x", src, got, want)
+		}
 	}
 }
 
