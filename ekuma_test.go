@@ -327,6 +327,24 @@ func TestScripts(t *testing.T) {
 			want: "3",
 		},
 		{
+			name: "for-of reports a throwing return method when a generator returns",
+			src: `var it = { [Symbol.iterator]() { return { next() { return { done: false }; }, return() { throw "closed"; } }; } };
+				function* g() { for (var x of it) yield 1; }
+				var r = g(); r.next();
+				var e; try { r.return(); } catch (x) { e = x; } e`,
+			want: "closed",
+		},
+		{
+			name: "store to length after an array prototype's length is frozen",
+			src: `var a = [1]; function G() {} G.prototype = a;
+				function set(o) { o.length = 5; }
+				set(new G());
+				Object.defineProperty(a, "length", { writable: false });
+				var g = new G(); set(g);
+				Object.getOwnPropertyNames(g).length + "," + g.length`,
+			want: "0,1",
+		},
+		{
 			name: "arguments passed on through super",
 			src: `class A { constructor(x) { this.x = x; } m(y) { return this.x + y; } }
 				class B extends A { constructor() { super(...arguments); } m() { return super.m.apply(this, arguments); }

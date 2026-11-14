@@ -688,10 +688,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 			return nil, vm.setProp(o, PropKey{key: key}, val, v)
 		}
 		if h, p, found := vm.lookup(proto, key); found {
-			if p.slot < 0 {
-				return nil, false
-			}
-			if p.flags&FlagAccessor != 0 {
+			if p.slot >= 0 && p.flags&FlagAccessor != 0 {
 				s := h.slots[p.slot].accessor().setter
 				if s == nil {
 					return nil, false
@@ -1012,6 +1009,7 @@ func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
 	}
 	if d.Has&HasWritable != 0 && d.Flags&FlagWritable == 0 {
 		o.flags |= objFrozenLength
+		vm.touchProto(o)
 	}
 	return ok
 }

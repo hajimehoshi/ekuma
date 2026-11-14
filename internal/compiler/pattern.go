@@ -108,6 +108,22 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	start := f.pc()
 	for _, e := range p.Elements {
 		mark := f.top
+		// A property reference as the target is evaluated before the iterator steps.
+		var target memberTarget
+		var def ast.Expr
+		member := false
+		if mode == patAssign {
+			t := e
+			if r, ok := t.(*ast.RestElement); ok {
+				t = r.Target
+			} else if a, ok := t.(*ast.AssignPattern); ok {
+				t, def = a.Target, a.Default
+			}
+			if m, ok := t.(*ast.MemberExpr); ok {
+				target = f.assignTarget(m)
+				member = true
+			}
+		}
 		v := f.newReg()
 		if rest, ok := e.(*ast.RestElement); ok {
 			f.emit(bytecode.OpNewArray, v, 0, 0)
@@ -117,7 +133,11 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 			f.emit(bytecode.OpArrayPush, v, t, 0)
 			f.jumpTo(loop)
 			f.patchC(done)
-			f.destructure(rest.Target, v, mode)
+			if member {
+				f.storeTarget(target, v)
+			} else {
+				f.destructure(rest.Target, v, mode)
+			}
 			f.free(mark)
 			continue
 		}
@@ -126,7 +146,15 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 		f.patchC(done)
 		f.emit(bytecode.OpLoadUndef, v, 0, 0)
 		f.patch(ok)
-		if e != nil {
+		switch {
+		case member:
+			if def != nil {
+				skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
+				f.expr(def, v)
+				f.patch(skip)
+			}
+			f.storeTarget(target, v)
+		case e != nil:
 			f.destructure(e, v, mode)
 		}
 		f.free(mark)
@@ -139,7 +167,7 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	exc := f.newReg()
 	f.addHandler(start, end, f.pc(), exc, true)
 	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
-	f.emit(bytecode.OpIterClose, it, 1, 0)
+	f.emit(bytecode.OpIterClose, it, exc+1, 0)
 	f.emit(bytecode.OpRethrow, exc, 0, 0)
 	f.patch(skip)
 }

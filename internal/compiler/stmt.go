@@ -534,7 +534,7 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	exc := f.newReg()
 	f.addHandler(start, end, f.pc(), exc, true)
 	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
-	f.emit(bytecode.OpIterClose, it, 1, 0)
+	f.emit(bytecode.OpIterClose, it, exc+1, 0)
 	f.emit(bytecode.OpRethrow, exc, 0, 0)
 
 	f.patchC(next)

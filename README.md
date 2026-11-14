@@ -49,7 +49,7 @@ is published yet.
 
 ## Status
 
-About four fifths of [test262](https://github.com/tc39/test262) pass: 39,096 of 48,797 tests
+About four fifths of [test262](https://github.com/tc39/test262) pass: 39,256 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.

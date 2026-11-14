@@ -657,8 +657,8 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 	case !n.Computed:
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
-		// A compound assignment converts the key once, before the read.
-		f.emit(bytecode.OpToPropertyKey, t.key, t.key, 0)
+		// A compound assignment converts the key once, before the read and after the base is checked.
+		f.emit(bytecode.OpToPropertyKey, t.key, t.key, t.obj+1)
 		f.emit(bytecode.OpGetIndex, dst, t.obj, t.key)
 	}
 }

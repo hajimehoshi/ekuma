@@ -62,7 +62,7 @@ const (
 	OpGetPrivate    // a = b.#c, where c holds the private name
 	OpSetPrivate    // a.#b = c, where b holds the private name
 	OpDefinePrivate // define the private field b of a as c
-	OpToPropertyKey // a = b converted to a property key
+	OpToPropertyKey // a = b converted to a property key; when c is nonzero, a TypeError is thrown first if c-1 is undefined or null
 
 	OpAdd
 	OpSub
@@ -178,7 +178,7 @@ const (
 	OpForInNext   // a = the next key of the for-in iterator b, or jump to c when it is exhausted
 	OpGetIterator // a, a+1 = the iterator of b and its next method; c selects sync (0) or async (1)
 	OpIterNext    // a = the next value of the iterator b, b+1; jump to c when it is done
-	OpIterClose   // close the iterator a, a+1; b says whether an exception is pending, which is then kept; a becomes undefined
+	OpIterClose   // close the iterator a, a+1; when b is nonzero, b-1 holds the pending exception, which is kept unless it makes a generator return; a becomes undefined
 	OpIterResult  // a = the iterator result object with the value b and done c
 	OpIterCall    // a = the result of calling the method Keys[c] of the iterator b with the argument a; a becomes undefined when there is none
 

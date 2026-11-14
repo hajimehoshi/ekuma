@@ -656,6 +656,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
+			if i.C != 0 {
+				if b := regs[i.C-1]; b.IsNullish() {
+					vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(b) + " (reading '" + vm.DisplayString(v) + "')")
+				}
+			}
 			k := vm.KeyValue(vm.ToPropertyKey(v))
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = k
@@ -1586,17 +1591,18 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
-				v, st := vm.iterNext(regs[i.B], regs[i.B+1])
+				// An iterator whose step throws counts as finished, so that it is not closed.
+				it := regs[i.B]
+				regs[i.B] = Undefined
+				v, st := vm.iterNext(it, regs[i.B+1])
 				regs = vm.reload(regs, onHeap, base, fp)
 				switch st {
 				case iterValue:
+					regs[i.B] = it
 					regs[i.A] = v
 				case iterDone:
-					regs[i.B] = Undefined
 					pc = int(i.C)
 				default:
-					// An iterator whose result cannot be read counts as finished.
-					regs[i.B] = Undefined
 					goto throw
 				}
 			}
@@ -1607,7 +1613,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			regs[i.A] = Undefined
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.iteratorClose(it, i.B != 0)
+			vm.iteratorClose(it, i.B != 0 && regs[i.B-1].o != closeSignal)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpIterResult:
 			regs[i.A] = vm.CreateIterResultObject(regs[i.B], i.C != 0)
