@@ -49,7 +49,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 30,259 of 48,797 tests
+About three quarters of [test262](https://github.com/tc39/test262) pass: 35,763 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -78,10 +78,12 @@ Implemented:
 - The locale-sensitive `String` methods use the root locale: `localeCompare` treats canonically
   equivalent strings as equal and otherwise compares code units
 - `BigInt`, with BigInt literals and arithmetic
+- `Promise`, including `Promise.any`, `Promise.withResolvers` and `Promise.try`; async functions,
+  async generators, `await` and `for await`; `Array.fromAsync`. The jobs run when the outermost
+  call from Go into the VM returns
 
 Missing:
 
-- `async` functions, `for await` and `Promise`
 - Direct `eval` and the `Function` constructor
 - Modules and dynamic `import`
 - `Proxy`

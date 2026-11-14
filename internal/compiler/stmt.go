@@ -174,7 +174,7 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 		switch c.kind {
 		case ctlLoop:
 			if c.hasIter {
-				f.emit(bytecode.OpIterClose, c.reg, 0, 0)
+				f.iterClose(c)
 			}
 		case ctlScope:
 			f.emit(bytecode.OpCloseUpvals, c.reg, 0, 0)
@@ -199,7 +199,7 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 	switch kind {
 	case exitBreak:
 		if target.hasIter {
-			f.emit(bytecode.OpIterClose, target.reg, 0, 0)
+			f.iterClose(target)
 		}
 		target.breaks = append(target.breaks, f.jump())
 	case exitContinue:
@@ -212,6 +212,28 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 		}
 		f.emit(bytecode.OpReturn, value, 0, 0)
 	}
+}
+
+// iterClose closes the iterator of the for-of or for-await loop c that is left normally.
+func (f *fn) iterClose(c *ctl) {
+	if c.asyncIter {
+		f.asyncIterClose(c.reg)
+		return
+	}
+	f.emit(bytecode.OpIterClose, c.reg, 0, 0)
+}
+
+// asyncIterClose closes the async iterator it, it+1 for a normal completion, as
+// AsyncIteratorClose does.
+func (f *fn) asyncIterClose(it int32) {
+	mark := f.top
+	r := f.newRegs(2)
+	f.emit(bytecode.OpIterReturn, r, it, 0)
+	skip := f.emit(bytecode.OpJumpIfNot, 0, r+1, 0)
+	f.emit(bytecode.OpAwait, r, r, 0)
+	f.emit(bytecode.OpIterCheckResult, r, 0, 0)
+	f.patch(skip)
+	f.free(mark)
 }
 
 func (f *fn) addHandler(start, end, target, reg int32, finally bool) {
@@ -290,6 +312,9 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		v := f.newReg()
 		if s.Arg != nil {
 			f.expr(s.Arg, v)
+			if f.f.IsAsync && f.f.IsGenerator {
+				f.emit(bytecode.OpAwait, v, v, 0)
+			}
 		} else {
 			f.emit(bytecode.OpLoadUndef, v, 0, 0)
 		}
@@ -484,7 +509,8 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 		}
 	}
 	if s.Await {
-		f.c.fail(s, "for await is not supported yet")
+		f.forAwaitOf(s, labels, it)
+		return
 	}
 	c := f.pushLoop(labels)
 	c.hasIter = true
@@ -509,6 +535,50 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	f.addHandler(start, end, f.pc(), exc, true)
 	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
 	f.emit(bytecode.OpIterClose, it, 1, 0)
+	f.emit(bytecode.OpRethrow, exc, 0, 0)
+
+	f.patchC(next)
+	f.popLoop(c)
+}
+
+// forAwaitOf compiles the loop of a for-await statement over the async iterator it, it+1.
+func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
+	c := f.pushLoop(labels)
+	c.hasIter = true
+	c.asyncIter = true
+	c.reg = it
+	top := f.pc()
+	base := f.top
+	scoped := f.enterScope(s.Scope, false)
+	v := f.newReg()
+	call := f.newRegs(2)
+	f.emit(bytecode.OpMove, call, it+1, 0)
+	f.emit(bytecode.OpMove, call+1, it, 0)
+	f.emit(bytecode.OpCall, call, 0, 0)
+	f.emit(bytecode.OpAwait, call, call, 0)
+	next := f.emit(bytecode.OpIterResultValue, v, call, 0)
+	f.free(call)
+	start := f.pc()
+	f.bindLoopVar(s.Decl, s.Target, v)
+	f.stmt(s.Body, nil)
+	f.patchAll(c.continues)
+	if scoped {
+		f.leaveScope()
+	}
+	end := f.pc()
+	f.jumpTo(top)
+
+	// An exception in the body closes the iterator, and an exception of closing it is dropped.
+	exc := f.newReg()
+	f.addHandler(start, end, f.pc(), exc, true)
+	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
+	dropped := f.newReg()
+	closeStart := f.pc()
+	f.asyncIterClose(it)
+	closeEnd := f.pc()
+	rethrow := f.jump()
+	f.addHandler(closeStart, closeEnd, f.pc(), dropped, false)
+	f.patch(rethrow)
 	f.emit(bytecode.OpRethrow, exc, 0, 0)
 
 	f.patchC(next)

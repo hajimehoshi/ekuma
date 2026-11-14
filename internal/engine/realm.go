@@ -157,8 +157,16 @@ func (vm *VM) RunScript(file, src string) (Value, error) {
 	}
 	f := vm.newScriptFunction(fp)
 	return vm.enter(func() Value {
-		result := vm.Call(f, Value{o: vm.Global})
+		var result Value
+		ok := vm.protect(func() {
+			result = vm.Call(f, Value{o: vm.Global})
+		})
+		// The jobs run after a script that throws too.
+		e := vm.takeThrown()
 		vm.runJobs()
+		if !ok {
+			vm.Throw(e)
+		}
 		return result
 	})
 }
@@ -174,7 +182,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 	defer func() {
 		vm.entered--
 		if outermost {
-			// The outermost call into the engine is a job, as long as there is no job queue.
+			// The outermost call into the engine ends the last job.
 			vm.clearKeptObjects()
 		}
 		if r := recover(); r != nil {
@@ -185,7 +193,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.unwindTo(frames)
 			vm.sp, vm.depth = sp, depth
 			vm.thrown = Undefined
-			vm.jobs = nil
+			vm.dropJobs()
 			result, err = Undefined, ErrInterrupted
 		}
 	}()
@@ -221,20 +229,6 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 		return nil, err
 	}
 	return vm.link(bc), nil
-}
-
-// runJobs runs the pending promise jobs until none is left. In the outermost call into the
-// engine, it then calls the cleanup callbacks of FinalizationRegistry objects.
-func (vm *VM) runJobs() {
-	for len(vm.jobs) > 0 {
-		job := vm.jobs[0]
-		vm.jobs[0] = nil
-		vm.jobs = vm.jobs[1:]
-		job()
-	}
-	if vm.entered == 1 {
-		vm.runFinalizationCleanups()
-	}
 }
 
 // newScriptFunction returns the function that runs the script fp.

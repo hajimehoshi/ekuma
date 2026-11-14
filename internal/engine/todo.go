@@ -11,18 +11,6 @@ func (vm *VM) Unsupported(what string) {
 	vm.throwError(ErrorKindError, "ekuma: "+what+" is not implemented yet")
 }
 
-type asyncState struct{}
-
-func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
-	vm.Unsupported("async functions")
-	return Undefined
-}
-
-func (vm *VM) asyncFromSyncIterator(it, next Value) (Value, Value) {
-	vm.Unsupported("async iteration")
-	return Undefined, Undefined
-}
-
 func (vm *VM) directEval(src Value, scope int, regs []Value) Value {
 	vm.Unsupported("direct eval")
 	return Undefined

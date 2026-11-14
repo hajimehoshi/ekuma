@@ -201,8 +201,15 @@ type VM struct {
 	// Joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
 	Joining []*Object
 
-	// jobs is the queue of pending promise jobs.
-	jobs []func()
+	// jobs is the queue of pending promise jobs, from jobHead on.
+	jobs    []job
+	jobHead int
+
+	// unhandledRejections are the rejected promises without a handler, for HostPromiseRejectionTracker.
+	unhandledRejections []*Object
+
+	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
+	asyncFromSyncProto *Object
 
 	// keptAlive is the [[KeptAlive]] list of the agent: the targets of WeakRef objects that
 	// must stay alive until the current job ends.
@@ -229,7 +236,7 @@ type realm struct {
 	ArrayIteratorProto, StringIteratorProto, GeneratorProto, AsyncGeneratorProto   *Object
 	GeneratorFunctionProto, AsyncFunctionProto, AsyncGeneratorFunctionProto        *Object
 	RegexpProto, PromiseProto, MapProto, SetObjectProto, DateProto                 *Object
-	promiseCtor, ArrayCtor, ObjectCtor, FunctionCtor, RegExpCtor                   *Object
+	PromiseCtor, ArrayCtor, ObjectCtor, FunctionCtor, RegExpCtor                   *Object
 
 	// ErrorProtos are the prototypes of the native error types, by errorKind.
 	ErrorProtos [ErrorKindCount]*Object

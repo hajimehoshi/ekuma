@@ -177,7 +177,12 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 		return "modules are not supported"
 	}
 	vm := ekuma.NewVM()
+	// An async test reports its outcome by printing it.
+	var printed []string
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if len(args) > 0 {
+			printed = append(printed, args[0].String())
+		}
 		return ekuma.Undefined, nil
 	})
 	if err := vm.Global().Set("print", print); err != nil {
@@ -225,9 +230,22 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 		return firstLine(err.Error())
 	}
 	if m.flags["async"] {
-		return "async tests are not supported"
+		return asyncOutcome(printed)
 	}
 	return ""
+}
+
+// asyncOutcome judges an async test by the lines that it printed, after its jobs ran.
+func asyncOutcome(printed []string) string {
+	for _, l := range printed {
+		if l == "Test262:AsyncTestComplete" {
+			return ""
+		}
+		if r, ok := strings.CutPrefix(l, "Test262:AsyncTestFailure:"); ok {
+			return "async: " + firstLine(r)
+		}
+	}
+	return "the async test did not complete"
 }
 
 func firstLine(s string) string {

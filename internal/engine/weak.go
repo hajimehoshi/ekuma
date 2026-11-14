@@ -169,7 +169,8 @@ func (vm *VM) AddToKeptObjects(o *Object) {
 }
 
 // clearKeptObjects implements ClearKeptObjects.
-// It must be called when a job ends, which is when the outermost call into the engine returns.
+// It must be called when a job ends: after each promise job, and when the outermost call into
+// the engine returns.
 func (vm *VM) clearKeptObjects() {
 	clear(vm.keptAlive)
 }

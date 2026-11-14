@@ -114,11 +114,15 @@ func (vm *VM) newGenerator(f *Object, this Value, args []Value) *generator {
 	return g
 }
 
-// pushGenerator creates a generator for a call of f and pushes its frame, so that the caller
-// can run it up to its initial suspension.
+// pushGenerator creates a generator or async generator for a call of f and pushes its frame,
+// so that the caller can run it up to its initial suspension.
 func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 	g := vm.newGenerator(f, this, args)
 	proto := vm.GeneratorProto
+	if f.fn.code.isAsync {
+		proto = vm.AsyncGeneratorProto
+		g.async = &asyncState{}
+	}
 	if p := vm.GetV(Value{o: f}, vm.K.Prototype); p.IsObject() {
 		proto = p.o
 	}
@@ -148,10 +152,10 @@ func (vm *VM) pushGenFrame(g *generator, ret int32) {
 	})
 }
 
-// callCoroutine calls the generator or async function f from Go.
+// callCoroutine calls the generator, async function or async generator f from Go.
 func (vm *VM) callCoroutine(f *Object, this Value, args []Value) Value {
 	c := f.fn.code
-	if c.isAsync {
+	if c.isAsync && !c.isGenerator {
 		return vm.callAsync(f, this, args)
 	}
 	sp := vm.sp

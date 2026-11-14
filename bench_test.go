@@ -207,3 +207,49 @@ func BenchmarkCollection(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkAsync measures promises and async functions. One iteration is one await of
+// a resolved promise, one call of an async function that awaits once, one step of
+// a for-await loop over an async generator, or one awaited Promise.all of three promises.
+func BenchmarkAsync(b *testing.B) {
+	const src = `
+		const p = Promise.resolve(1);
+		async function await_(n) {
+			for (let i = 0; i < n; i++) await p;
+		}
+		async function awaitOnce() {
+			await p;
+		}
+		function call(n) {
+			for (let i = 0; i < n; i++) awaitOnce();
+		}
+		async function* gen(n) {
+			for (let i = 0; i < n; i++) yield i;
+		}
+		async function forAwait(n) {
+			for await (const x of gen(n));
+		}
+		async function all(n) {
+			const q = Promise.resolve(2), r = Promise.resolve(3);
+			for (let i = 0; i < n; i++) await Promise.all([p, q, r]);
+		}
+	`
+	for _, name := range []string{"await", "call", "forAwait", "all"} {
+		b.Run(name, func(b *testing.B) {
+			ctx := b.Context()
+			vm := ekuma.NewVM()
+			if _, err := vm.RunScript(ctx, "async.js", src); err != nil {
+				b.Fatal(err)
+			}
+			f := name
+			if f == "await" {
+				f = "await_"
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("%s(%d)", f, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

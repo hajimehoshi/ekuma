@@ -396,3 +396,32 @@ func (vm *VM) templateObject(t *templateSite) *Object {
 func (vm *VM) StringFromGo(s string) Value {
 	return vm.NewString(wtf8.FromValidUTF8(s))
 }
+
+// iterReturn calls the return method of the iterator it without arguments, as
+// AsyncIteratorClose does, and returns the result. It reports false when it is undefined
+// or has no return method.
+func (vm *VM) iterReturn(it Value) (Value, bool) {
+	if it.IsUndefined() {
+		return Undefined, false
+	}
+	m := vm.GetMethod(it, vm.K.ret)
+	if m == nil {
+		return Undefined, false
+	}
+	return vm.Call(m, it), true
+}
+
+func (vm *VM) throwNotIterResult(r Value) {
+	vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+}
+
+// iterResultValue returns the value of the iterator result r, or reports true when it is done.
+func (vm *VM) iterResultValue(r Value) (Value, bool) {
+	if !r.IsObject() {
+		vm.throwNotIterResult(r)
+	}
+	if ToBoolean(vm.GetV(r, vm.K.done)) {
+		return Undefined, true
+	}
+	return vm.GetV(r, vm.K.Value), false
+}

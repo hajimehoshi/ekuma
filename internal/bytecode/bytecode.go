@@ -182,6 +182,10 @@ const (
 	OpIterResult  // a = the iterator result object with the value b and done c
 	OpIterCall    // a = the result of calling the method Keys[c] of the iterator b with the argument a; a becomes undefined when there is none
 
+	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
+	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
+	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
+
 	OpWith       // push the object a as a with scope
 	OpPopScope   // pop the innermost dynamic scope
 	OpGetName    // a = the variable Keys[b] looked up dynamically; c is the fallback instruction kind

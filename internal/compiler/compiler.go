@@ -128,6 +128,7 @@ type ctl struct {
 	isLoop      bool
 	isSwitch    bool
 	hasIter     bool
+	asyncIter   bool
 	breaks      []int
 	continues   []int
 	continuePC  int32

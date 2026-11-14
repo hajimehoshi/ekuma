@@ -1626,6 +1626,32 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = r
 				regs[i.A+1] = True
 			}
+		case bytecode.OpIterReturn:
+			vm.frames[len(vm.frames)-1].pc = pc
+			{
+				it := regs[i.B]
+				regs[i.B] = Undefined
+				r, ok := vm.iterReturn(it)
+				regs = vm.reload(regs, onHeap, base, fp)
+				regs[i.A] = r
+				regs[i.A+1] = Bool(ok)
+			}
+		case bytecode.OpIterCheckResult:
+			if !regs[i.A].IsObject() {
+				vm.frames[len(vm.frames)-1].pc = pc
+				vm.throwNotIterResult(regs[i.A])
+			}
+		case bytecode.OpIterResultValue:
+			vm.frames[len(vm.frames)-1].pc = pc
+			{
+				v, done := vm.iterResultValue(regs[i.B])
+				regs = vm.reload(regs, onHeap, base, fp)
+				if done {
+					pc = int(i.C)
+					continue
+				}
+				regs[i.A] = v
+			}
 
 		case bytecode.OpWith:
 			vm.frames[len(vm.frames)-1].pc = pc
