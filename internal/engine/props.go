@@ -43,6 +43,13 @@ func (vm *VM) indexName(i uint32) *Object {
 	return vm.Intern(strconv.FormatUint(uint64(i), 10))
 }
 
+// indexKey returns the interned key for the index i, or nil when the key was never interned,
+// in which case no object has a property with that key.
+func (vm *VM) indexKey(i uint32) *Object {
+	var buf [10]byte
+	return vm.interned[string(strconv.AppendUint(buf[:0], uint64(i), 10))]
+}
+
 // KeyValue returns the key k as a string or symbol value.
 func (vm *VM) KeyValue(k PropKey) Value {
 	if k.key == nil {
@@ -416,7 +423,7 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 			}
 		}
 		if h.flags&objSparse != 0 {
-			if p, ok := h.shape.lookup(vm.indexName(i)); ok {
+			if p, ok := h.shape.lookup(vm.indexKey(i)); ok {
 				val := h.slots[p.slot]
 				if p.flags&FlagAccessor != 0 {
 					return Undefined, val.accessor().getter
@@ -454,7 +461,10 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		if o.flags&objSparse == 0 {
 			return PropDesc{}, false
 		}
-		k.key = vm.indexName(k.idx)
+		k.key = vm.indexKey(k.idx)
+		if k.key == nil {
+			return PropDesc{}, false
+		}
 	} else {
 		if o.flags&objExotic != 0 {
 			if vm.isLazyKey(k.key) {
@@ -1038,7 +1048,10 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 		if o.flags&objSparse == 0 {
 			return true
 		}
-		k.key = vm.indexName(k.idx)
+		k.key = vm.indexKey(k.idx)
+		if k.key == nil {
+			return true
+		}
 	} else {
 		if o.flags&objExotic != 0 {
 			if vm.isLazyKey(k.key) {

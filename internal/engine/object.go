@@ -359,9 +359,11 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 				continue
 			}
 			if o.flags&objSparse != 0 {
-				if _, ok := o.shape.lookup(vm.indexName(k.idx)); ok {
-					vm.Define(o, vm.indexName(k.idx), v, FlagsData)
-					continue
+				if key := vm.indexKey(k.idx); key != nil {
+					if _, ok := o.shape.lookup(key); ok {
+						vm.Define(o, key, v, FlagsData)
+						continue
+					}
 				}
 			}
 			vm.addIndex(o, k.idx, v, FlagsData)
