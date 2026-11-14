@@ -167,14 +167,15 @@ func errorName(ctx context.Context, err error) string {
 }
 
 // runOnce runs the test source in one mode and returns why it failed, or "" when it passed.
-func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
+// timedOut reports whether it failed by running out of time.
+func runOnce(h *harness, src string, m metadata, strict bool) (reason string, timedOut bool) {
 	defer func() {
 		if r := recover(); r != nil {
-			reason = fmt.Sprintf("engine panic: %v", r)
+			reason, timedOut = fmt.Sprintf("engine panic: %v", r), false
 		}
 	}()
 	if m.flags["module"] {
-		return "modules are not supported"
+		return "modules are not supported", false
 	}
 	vm := ekuma.NewVM()
 	// An async test reports its outcome by printing it.
@@ -186,10 +187,10 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 		return ekuma.Undefined, nil
 	})
 	if err := vm.Global().Set("print", print); err != nil {
-		return "harness: " + err.Error()
+		return "harness: " + err.Error(), false
 	}
 	if err := define262(vm); err != nil {
-		return "harness: " + err.Error()
+		return "harness: " + err.Error(), false
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
@@ -202,10 +203,10 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 		for _, name := range includes {
 			text, err := h.file(name)
 			if err != nil {
-				return "harness: " + err.Error()
+				return "harness: " + err.Error(), false
 			}
 			if _, err := vm.RunScript(ctx, name, text); err != nil {
-				return "harness " + name + ": " + firstLine(err.Error())
+				return "harness " + name + ": " + firstLine(err.Error()), false
 			}
 		}
 	}
@@ -214,28 +215,28 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string) {
 	}
 	_, err := vm.RunScript(ctx, "test", src)
 	if errors.Is(err, context.DeadlineExceeded) {
-		return "timeout"
+		return "timeout", true
 	}
 	if m.negativePhase != "" {
 		if err == nil {
-			return "expected " + m.negativeType + " but the test completed"
+			return "expected " + m.negativeType + " but the test completed", false
 		}
 		if got := errorName(context.Background(), err); got != m.negativeType {
-			return "expected " + m.negativeType + " but got " + firstLine(err.Error())
+			return "expected " + m.negativeType + " but got " + firstLine(err.Error()), false
 		}
 		var se *ekuma.SyntaxError
 		if early := errors.As(err, &se); early != (m.negativePhase != "runtime") {
-			return "expected the error in the " + m.negativePhase + " phase: " + firstLine(err.Error())
+			return "expected the error in the " + m.negativePhase + " phase: " + firstLine(err.Error()), false
 		}
-		return ""
+		return "", false
 	}
 	if err != nil {
-		return firstLine(err.Error())
+		return firstLine(err.Error()), false
 	}
 	if m.flags["async"] {
-		return asyncOutcome(printed)
+		return asyncOutcome(printed), false
 	}
-	return ""
+	return "", false
 }
 
 // asyncOutcome judges an async test by the lines that it printed, after its jobs ran.
@@ -283,25 +284,26 @@ func firstLine(s string) string {
 	return s
 }
 
-// runTest runs the test at path in every mode that its flags ask for.
-func runTest(h *harness, path string) string {
+// runTest runs the test at path in every mode that its flags ask for. It returns why the test
+// failed, or "" when it passed, and whether it failed by running out of time.
+func runTest(h *harness, path string) (reason string, timedOut bool) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return err.Error()
+		return err.Error(), false
 	}
 	src := string(b)
 	m := parseMetadata(src)
 	if !m.flags["onlyStrict"] {
-		if r := runOnce(h, src, m, false); r != "" {
-			return r
+		if r, t := runOnce(h, src, m, false); r != "" {
+			return r, t
 		}
 	}
 	if !m.flags["noStrict"] && !m.flags["raw"] {
-		if r := runOnce(h, src, m, true); r != "" {
-			return "strict mode: " + r
+		if r, t := runOnce(h, src, m, true); r != "" {
+			return "strict mode: " + r, t
 		}
 	}
-	return ""
+	return "", false
 }
 
 // TestTest262 runs the ECMAScript conformance suite and compares the set of failing tests
@@ -346,12 +348,13 @@ func TestTest262(t *testing.T) {
 		files: map[string]string{},
 	}
 	reasons := make([]string, len(paths))
+	timedOut := make([]bool, len(paths))
 	var wg sync.WaitGroup
 	next := make(chan int)
 	for range runtime.GOMAXPROCS(0) {
 		wg.Go(func() {
 			for i := range next {
-				reasons[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])))
+				reasons[i], timedOut[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])))
 			}
 		})
 	}
@@ -360,6 +363,13 @@ func TestTest262(t *testing.T) {
 	}
 	close(next)
 	wg.Wait()
+	// A slow test can run out of time only because the other workers load the machine, so a
+	// timed-out test runs once more on its own.
+	for i := range paths {
+		if timedOut[i] {
+			reasons[i], _ = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])))
+		}
+	}
 
 	var failed []string
 	byArea := map[string][2]int{}
