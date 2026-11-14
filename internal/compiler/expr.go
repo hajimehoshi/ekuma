@@ -1150,7 +1150,7 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 	mark := f.top
 	defer f.free(mark)
 	obj := f.newReg()
-	f.emit(bytecode.OpNewObject, obj, 0, 0)
+	f.emit(bytecode.OpNewObject, obj, 0, int32(namedProperties(n)))
 	for i := range n.Properties {
 		p := &n.Properties[i]
 		m := f.top
@@ -1183,6 +1183,21 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 		f.free(m)
 	}
 	f.emit(bytecode.OpMove, dst, obj, 0)
+}
+
+// namedProperties returns the number of properties of n that have a name known at compile time.
+func namedProperties(n *ast.ObjectLit) int {
+	var c int
+	for i := range n.Properties {
+		p := &n.Properties[i]
+		if p.Kind == ast.PropertySpread {
+			continue
+		}
+		if name, static := keyName(p.Key, p.Computed); static && name != "__proto__" && !isIndexString(name) {
+			c++
+		}
+	}
+	return c
 }
 
 // method defines the method, getter or setter fnNode on the object in the register obj.

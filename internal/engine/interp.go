@@ -367,33 +367,27 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpClosure:
 			p := fp.protos[i.B]
-			fn := &function{
-				code:        p,
-				constructor: p.isConstructor,
-			}
+			o := newClosureObject(len(p.Upvals))
+			fn := o.fn
+			fn.code = p
+			fn.constructor = p.isConstructor
 			fn.classConstructor = p.isClassConstructor
 			fn.derived = p.isDerived
-			o := &Object{
-				kind:  kindFunction,
-				class: classFunction,
-				flags: objExotic,
-				shape: vm.shapes.function,
-				fn:    fn,
-			}
+			o.kind = kindFunction
+			o.class = classFunction
+			o.flags = objExotic
+			o.shape = vm.shapes.function
 			if p.isGenerator || p.isAsync {
 				o.shape = vm.functionShapeFor(vm.functionProtoFor(p))
 			}
-			if n := len(p.Upvals); n > 0 {
-				fn.upvals = make([]*upvalue, n)
-				for j, d := range p.Upvals {
-					switch {
-					case !d.Local:
-						fn.upvals[j] = cl.fn.upvals[d.Index]
-					case onHeap:
-						fn.upvals[j] = vm.frames[len(vm.frames)-1].gen.findUpval(int(d.Index))
-					default:
-						fn.upvals[j] = vm.findUpval(base + int(d.Index))
-					}
+			for j, d := range p.Upvals {
+				switch {
+				case !d.Local:
+					fn.upvals[j] = cl.fn.upvals[d.Index]
+				case onHeap:
+					fn.upvals[j] = vm.frames[len(vm.frames)-1].gen.findUpval(int(d.Index))
+				default:
+					fn.upvals[j] = vm.findUpval(base + int(d.Index))
 				}
 			}
 			regs[i.A] = Value{o: o}
@@ -1448,16 +1442,21 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 
 		case bytecode.OpNewObject:
-			regs[i.A] = Value{
-				o: &Object{
-					kind:  kindObject,
-					shape: vm.shapes.object,
-				},
-			}
+			o, slots := newObjectWithStorage(int(i.C))
+			o.kind = kindObject
+			o.shape = vm.shapes.object
+			o.slots = slots[:0]
+			regs[i.A] = Value{o: o}
 		case bytecode.OpNewArray:
-			elems := make([]Value, i.B, max(i.B, i.C))
+			o, elems := newObjectWithStorage(int(max(i.B, i.C)))
+			elems = elems[:i.B]
 			copy(elems, regs[i.A+1:])
-			regs[i.A] = Value{o: vm.NewArray(elems)}
+			o.kind = kindArray
+			o.class = classArray
+			o.shape = vm.shapes.array
+			o.elems = elems
+			o.length = uint32(len(elems))
+			regs[i.A] = Value{o: o}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].o
 			o.elems = append(o.elems, regs[i.B])

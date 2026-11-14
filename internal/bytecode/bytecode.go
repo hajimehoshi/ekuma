@@ -154,7 +154,7 @@ const (
 	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
 	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
 
-	OpNewObject        // a = {}
+	OpNewObject        // a = {}, with room for c properties
 	OpNewArray         // a = [a+1 ... a+b]
 	OpArrayPush        // append b to the array a
 	OpArrayHole        // append a hole to the array a

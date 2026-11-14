@@ -121,17 +121,9 @@ func (vm *VM) proxyTrap(handler *Object, key CommonKey) *Object {
 	return vm.GetMethod(Value{o: handler}, vm.Key(key))
 }
 
-// callTrap calls trap with handler as this. The arguments are passed on the [VM] stack,
-// so that they need no allocation.
+// callTrap calls trap with handler as this.
 func (vm *VM) callTrap(trap, handler *Object, args ...Value) Value {
-	base := vm.sp
-	n := len(args)
-	vm.ensureStack(base + n)
-	copy(vm.stack[base:], args)
-	vm.sp = base + n
-	r := vm.callSlow(trap, Value{o: handler}, vm.stack[base:base+n:base+n], false, nil)
-	vm.sp = base
-	return r
+	return vm.callOnStack(trap, Value{o: handler}, args)
 }
 
 func (vm *VM) throwTrapError(trap, msg string) {

@@ -424,6 +424,72 @@ type pairArray struct {
 	pair [2]Value
 }
 
+// closureObject is a function object together with its function state.
+type closureObject struct {
+	Object
+	state function
+}
+
+// closureObjectWith is a closureObject together with the storage of its upvalues.
+type closureObjectWith[U any] struct {
+	closureObject
+	upvals U
+}
+
+// newClosureObject returns a zero object whose function state has n nil upvalues. Small
+// closures are a single allocation.
+func newClosureObject(n int) *Object {
+	var c *closureObject
+	var upvals []*upvalue
+	switch n {
+	case 0:
+		c = &closureObject{}
+	case 1:
+		w := &closureObjectWith[[1]*upvalue]{}
+		c, upvals = &w.closureObject, w.upvals[:]
+	case 2:
+		w := &closureObjectWith[[2]*upvalue]{}
+		c, upvals = &w.closureObject, w.upvals[:]
+	case 3:
+		w := &closureObjectWith[[3]*upvalue]{}
+		c, upvals = &w.closureObject, w.upvals[:]
+	default:
+		c = &closureObject{}
+		upvals = make([]*upvalue, n)
+	}
+	c.state.upvals = upvals
+	c.fn = &c.state
+	return &c.Object
+}
+
+// newObjectWithStorage returns a zero object and storage for n values. For a small n, both are
+// a single allocation.
+func newObjectWithStorage(n int) (*Object, []Value) {
+	switch n {
+	case 0:
+		return &Object{}, nil
+	case 1:
+		w := &objectWith[[1]Value]{}
+		return &w.Object, w.storage[:]
+	case 2:
+		w := &objectWith[[2]Value]{}
+		return &w.Object, w.storage[:]
+	case 3:
+		w := &objectWith[[3]Value]{}
+		return &w.Object, w.storage[:]
+	case 4:
+		w := &objectWith[[4]Value]{}
+		return &w.Object, w.storage[:]
+	}
+	return &Object{}, make([]Value, n)
+}
+
+// objectWith is an object together with storage for its slots or elements.
+type objectWith[S any] struct {
+	Object
+	storage S
+}
+
 // NewArrayPair returns a new array with the elements a and b.
 func (vm *VM) NewArrayPair(a, b Value) *Object {
 	p := &pairArray{

@@ -60,13 +60,13 @@ func (vm *VM) regExpShape() *shape {
 // newRegExpObject returns a new RegExp object with the shape s, whose only property is
 // lastIndex, and the internal state st.
 func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
-	return &Object{
-		kind:  kindObject,
-		class: classRegExp,
-		shape: s,
-		slots: []Value{{n: 0}},
-		ext:   st,
-	}
+	o, slots := newObjectWithStorage(1)
+	o.kind = kindObject
+	o.class = classRegExp
+	o.shape = s
+	o.slots = slots
+	o.ext = st
+	return o
 }
 
 // RegExpInitialize implements RegExpInitialize for the RegExp object o and returns o.

@@ -488,6 +488,29 @@ func TestScripts(t *testing.T) {
 				[r1 !== r2, r1.source, r1.flags, r2.source, r2.flags, r2.test("A"), f().test("a")].join()`,
 			want: "true,b,i,a,g,false,true",
 		},
+		{
+			name: "Object.prototype.toString of primitives",
+			src: `var ts = Object.prototype.toString;
+				Object.defineProperty(String.prototype, Symbol.toStringTag, { value: "Str" });
+				[ts.call(1), ts.call("s"), ts.call(true), ts.call(Symbol()), ts.call(1n)].join()`,
+			want: "[object Number],[object Str],[object Boolean],[object Symbol],[object BigInt]",
+		},
+		{
+			name: "Object.prototype.toString passes a wrapper of a primitive to a getter",
+			src: `Object.defineProperty(Number.prototype, Symbol.toStringTag, {
+					get() { "use strict"; return typeof this; },
+				});
+				Object.prototype.toString.call(1)`,
+			want: "[object object]",
+		},
+		{
+			name: "Object.prototype.toString passes a wrapper of a primitive to a proxy",
+			src: `Object.setPrototypeOf(Boolean.prototype, new Proxy({}, {
+					get(t, k, r) { return typeof r; },
+				}));
+				Object.prototype.toString.call(true)`,
+			want: "[object object]",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

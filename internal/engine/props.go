@@ -471,6 +471,28 @@ func (vm *VM) GetV(v Value, key *Object) Value {
 	return val
 }
 
+// GetVWithoutCall returns GetV(v, key) when that runs no code, that is when it reaches neither
+// a getter nor a proxy. Otherwise ok is false.
+func (vm *VM) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
+	start := vm.protoStart(v, PropKey{key: key})
+	if start.kind == kindString && key == vm.Key(KeyLength) {
+		return Number(float64(start.StringLength())), true
+	}
+	if hasProxyOnChain(start) {
+		return Undefined, false
+	}
+	holder, p, found := vm.lookup(start, key)
+	switch {
+	case !found:
+		return Undefined, true
+	case p.slot < 0:
+		return Number(float64(holder.length)), true
+	case p.flags&FlagAccessor != 0:
+		return Undefined, false
+	}
+	return holder.slots[p.slot], true
+}
+
 // PropertyCache remembers where [VM.GetVCached] found a property, so that looking up the same key
 // again on values with the same layout is fast. The zero value is empty.
 type PropertyCache struct {

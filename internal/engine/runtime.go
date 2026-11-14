@@ -862,7 +862,7 @@ type arrayIterCache struct {
 
 // Call calls the callable object f.
 func (vm *VM) Call(f *Object, this Value, args ...Value) Value {
-	return vm.callSlow(f, this, args, false, nil)
+	return vm.callOnStack(f, this, args)
 }
 
 // CallValue calls f, which must be callable, or throws a TypeError.
@@ -870,7 +870,19 @@ func (vm *VM) CallValue(f, this Value, args ...Value) Value {
 	if !f.IsCallable() {
 		vm.ThrowTypeError(vm.DisplayString(f) + " is not a function")
 	}
-	return vm.callSlow(f.o, this, args, false, nil)
+	return vm.callOnStack(f.o, this, args)
+}
+
+// callOnStack calls f with a copy of args on the [VM] stack, so that args does not escape.
+func (vm *VM) callOnStack(f *Object, this Value, args []Value) Value {
+	base := vm.sp
+	n := len(args)
+	vm.ensureStack(base + n)
+	copy(vm.stack[base:], args)
+	vm.sp = base + n
+	r := vm.callSlow(f, this, vm.stack[base:base+n:base+n], false, nil)
+	vm.sp = base
+	return r
 }
 
 // callSlow calls f with any kind of callee. With isNew set, this is the object under construction.

@@ -127,10 +127,11 @@ func Install(vm *engine.VM) {
 	vm.PreventExtensions(throwTypeError)
 	vm.SetIntrinsic(engine.IntrinsicThrowTypeError, throwTypeError)
 
-	initObject(vm)
+	var strs objectStrings
+	initObject(vm, &strs)
 	initFunction(vm)
 	initError(vm)
-	initArray(vm)
+	initArray(vm, &strs)
 	initString(vm)
 	initRegExp(vm)
 	parseFloat, parseInt := newParseFunctions(vm)
@@ -153,13 +154,65 @@ func Install(vm *engine.VM) {
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 
+// objectStrings holds the results of Object.prototype.toString of a [engine.VM] by tag.
+type objectStrings struct {
+	byTag map[string]engine.Value
+}
+
+// objectStringsLimit bounds the number of tags that an objectStrings keeps.
+const objectStringsLimit = 64
+
+// forTag returns the string "[object tag]".
+func (s *objectStrings) forTag(vm *engine.VM, tag string) engine.Value {
+	if v, ok := s.byTag[tag]; ok {
+		return v
+	}
+	v := vm.NewString("[object " + tag + "]")
+	if len(s.byTag) < objectStringsLimit {
+		if s.byTag == nil {
+			s.byTag = map[string]engine.Value{}
+		}
+		s.byTag[tag] = v
+	}
+	return v
+}
+
+// toString implements Object.prototype.toString for the value v, which is neither undefined nor null.
+func (s *objectStrings) toString(vm *engine.VM, v engine.Value) engine.Value {
+	if !v.IsObject() {
+		// A wrapper object from ToObject is observable only by code that the lookup of
+		// @@toStringTag runs.
+		if t, ok := vm.GetVWithoutCall(v, vm.WellKnownSymbol(engine.SymbolToStringTag)); ok {
+			if t.IsString() {
+				return s.forTag(vm, t.Object().Str())
+			}
+			return s.forTag(vm, primitiveTag(v))
+		}
+	}
+	return s.objectToString(vm, vm.ToObject(v))
+}
+
+// primitiveTag returns the builtinTag of Object.prototype.toString for the object that
+// ToObject makes of the primitive v.
+func primitiveTag(v engine.Value) string {
+	switch {
+	case v.IsString():
+		return "String"
+	case v.IsNumber():
+		return "Number"
+	case v.IsBool():
+		return "Boolean"
+	}
+	return "Object"
+}
+
 // objectToString implements Object.prototype.toString for the object o.
-func objectToString(vm *engine.VM, o *engine.Object) engine.Value {
+func (s *objectStrings) objectToString(vm *engine.VM, o *engine.Object) engine.Value {
 	tag := vm.BuiltinTag(o)
 	if t := vm.GetV(engine.ObjectValue(o), vm.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
 		tag = t.Object().Str()
 	}
-	return vm.NewString("[object " + tag + "]")
+	return s.forTag(vm, tag)
 }
 
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
@@ -229,7 +282,7 @@ func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.
 	return out
 }
 
-func initObject(vm *engine.VM) {
+func initObject(vm *engine.VM, strs *objectStrings) {
 	proto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(vm, "Object", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicObject) {
@@ -268,11 +321,11 @@ func initObject(vm *engine.VM) {
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		switch {
 		case this.IsUndefined():
-			return vm.NewString("[object Undefined]")
+			return strs.forTag(vm, "Undefined")
 		case this.IsNull():
-			return vm.NewString("[object Null]")
+			return strs.forTag(vm, "Null")
 		}
-		return objectToString(vm, vm.ToObject(this))
+		return strs.toString(vm, this)
 	})
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.CallValue(vm.GetV(this, vm.Key(engine.KeyToString)), this)

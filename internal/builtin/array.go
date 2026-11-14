@@ -200,7 +200,7 @@ func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep string, count int64) {
 	}
 }
 
-func initArray(vm *engine.VM) {
+func initArray(vm *engine.VM, strs *objectStrings) {
 	proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
 	var joins joinGuard
 	ctor := constructor(vm, "Array", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -506,7 +506,7 @@ func initArray(vm *engine.VM) {
 		if j := vm.GetV(engine.ObjectValue(o), vm.Intern("join")); j.IsCallable() {
 			return vm.Call(j.Object(), engine.ObjectValue(o))
 		}
-		return objectToString(vm, o)
+		return strs.objectToString(vm, o)
 	})
 	method(vm, proto, "reverse", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
@@ -630,99 +630,87 @@ func initArray(vm *engine.VM) {
 	search("lastIndexOf", true, false)
 	search("includes", false, true)
 
-	// each defines an iteration method. f receives the element, its index and the result of
-	// the callback, and returns false to stop.
-	type step func(v engine.Value, i int64, r engine.Value) bool
-	each := func(name string, skipHoles bool, run func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			o := vm.ToObject(this)
-			n := vm.LengthOfArrayLike(o)
-			cb := callback(vm, args, name)
-			thisArg := arg(args, 1)
-			return run(vm, o, n, func(s step) {
-				for i := int64(0); i < n; i++ {
-					if skipHoles {
-						if _, ok := o.Element(i); !ok {
-							if i = vm.SkipHoles(o, i, n); i == n {
-								break
-							}
-							if !hasAt(vm, o, i) {
-								continue
-							}
-						}
-					}
-					v := getAt(vm, o, i)
-					r := vm.Call(cb, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))
-					if !s(v, i, r) {
-						return
-					}
-				}
-			})
-		})
-	}
-	each("forEach", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			return true
-		})
-		return engine.Undefined
+	method(vm, proto, "forEach", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "forEach", true)
+		for {
+			if _, _, ok := l.next(); !ok {
+				return engine.Undefined
+			}
+		}
 	})
-	each("map", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		a := arraySpeciesCreate(vm, o, n)
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), r)
-			return true
-		})
-		return engine.ObjectValue(a)
+	method(vm, proto, "map", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "map", true)
+		a := arraySpeciesCreate(vm, l.o, l.n)
+		for {
+			_, r, ok := l.next()
+			if !ok {
+				return engine.ObjectValue(a)
+			}
+			vm.CreateDataPropertyOrThrow(a, bigKey(vm, l.i), r)
+		}
 	})
-	each("filter", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		a := arraySpeciesCreate(vm, o, 0)
+	method(vm, proto, "filter", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "filter", true)
+		a := arraySpeciesCreate(vm, l.o, 0)
 		j := int64(0)
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
+		for {
+			v, r, ok := l.next()
+			if !ok {
+				return engine.ObjectValue(a)
+			}
 			if engine.ToBoolean(r) {
 				vm.CreateDataPropertyOrThrow(a, bigKey(vm, j), v)
 				j++
 			}
-			return true
-		})
-		return engine.ObjectValue(a)
+		}
 	})
-	each("some", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		found := false
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			found = engine.ToBoolean(r)
-			return !found
-		})
-		return engine.Bool(found)
-	})
-	each("every", true, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		all := true
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			all = engine.ToBoolean(r)
-			return all
-		})
-		return engine.Bool(all)
-	})
-	each("find", false, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		res := engine.Undefined
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
-			if engine.ToBoolean(r) {
-				res = v
-				return false
+	method(vm, proto, "some", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "some", true)
+		for {
+			_, r, ok := l.next()
+			if !ok {
+				return engine.False
 			}
-			return true
-		})
-		return res
-	})
-	each("findIndex", false, func(vm *engine.VM, o *engine.Object, n int64, loop func(step)) engine.Value {
-		res := engine.Number(-1)
-		loop(func(v engine.Value, i int64, r engine.Value) bool {
 			if engine.ToBoolean(r) {
-				res = engine.Number(float64(i))
-				return false
+				return engine.True
 			}
-			return true
-		})
-		return res
+		}
+	})
+	method(vm, proto, "every", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "every", true)
+		for {
+			_, r, ok := l.next()
+			if !ok {
+				return engine.True
+			}
+			if !engine.ToBoolean(r) {
+				return engine.False
+			}
+		}
+	})
+	method(vm, proto, "find", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "find", false)
+		for {
+			v, r, ok := l.next()
+			if !ok {
+				return engine.Undefined
+			}
+			if engine.ToBoolean(r) {
+				return v
+			}
+		}
+	})
+	method(vm, proto, "findIndex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		l := newEachLoop(vm, this, args, "findIndex", false)
+		for {
+			_, r, ok := l.next()
+			if !ok {
+				return engine.Number(-1)
+			}
+			if engine.ToBoolean(r) {
+				return engine.Number(float64(l.i))
+			}
+		}
 	})
 	findLast := func(name string, index bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -1154,4 +1142,57 @@ func newArrayIterator(vm *engine.VM, o *engine.Object, kind int) *engine.Object 
 		obj:  o,
 		kind: kind,
 	})
+}
+
+// eachLoop is the loop of an iteration method such as forEach, which calls a callback with
+// each element, its index and the object.
+type eachLoop struct {
+	vm        *engine.VM
+	o         *engine.Object
+	n         int64
+	cb        *engine.Object
+	thisArg   engine.Value
+	skipHoles bool
+
+	// i is the index of the element of the last call of next.
+	i int64
+}
+
+// newEachLoop converts this to an object, reads its length and checks the callback of the
+// method name. With skipHoles, the loop skips the indices that are not present.
+func newEachLoop(vm *engine.VM, this engine.Value, args []engine.Value, name string, skipHoles bool) eachLoop {
+	o := vm.ToObject(this)
+	n := vm.LengthOfArrayLike(o)
+	return eachLoop{
+		vm:        vm,
+		o:         o,
+		n:         n,
+		cb:        callback(vm, args, name),
+		thisArg:   arg(args, 1),
+		skipHoles: skipHoles,
+		i:         -1,
+	}
+}
+
+// next calls the callback with the next element. It returns the element and the result of
+// the callback, or false when no element is left.
+func (l *eachLoop) next() (v, r engine.Value, ok bool) {
+	vm, o := l.vm, l.o
+	for i := l.i + 1; i < l.n; i++ {
+		if l.skipHoles {
+			if _, ok := o.Element(i); !ok {
+				if i = vm.SkipHoles(o, i, l.n); i == l.n {
+					break
+				}
+				if !hasAt(vm, o, i) {
+					continue
+				}
+			}
+		}
+		l.i = i
+		v := getAt(vm, o, i)
+		return v, vm.Call(l.cb, l.thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o)), true
+	}
+	l.i = l.n
+	return engine.Undefined, engine.Undefined, false
 }
