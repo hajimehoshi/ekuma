@@ -172,6 +172,10 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 	vm.entered++
 	defer func() {
 		vm.entered--
+		if outermost {
+			// The outermost call into the engine is a job, as long as there is no job queue.
+			vm.clearKeptObjects()
+		}
 		if r := recover(); r != nil {
 			if r != any(errInterrupt) || !outermost {
 				panic(r)
@@ -218,13 +222,17 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	return vm.link(bc), nil
 }
 
-// runJobs runs the pending promise jobs until none is left.
+// runJobs runs the pending promise jobs until none is left. In the outermost call into the
+// engine, it then calls the cleanup callbacks of FinalizationRegistry objects.
 func (vm *VM) runJobs() {
 	for len(vm.jobs) > 0 {
 		job := vm.jobs[0]
 		vm.jobs[0] = nil
 		vm.jobs = vm.jobs[1:]
 		job()
+	}
+	if vm.entered == 1 {
+		vm.runFinalizationCleanups()
 	}
 }
 

@@ -71,6 +71,7 @@ const (
 	classWeakMap
 	classWeakSet
 	classWeakRef
+	classFinalizationRegistry
 	classArrayBuffer
 	classTypedArray
 	classDataView
@@ -107,20 +108,25 @@ type Object struct {
 	// str is the content of a string or the description of a symbol.
 	str string
 
-	// meta caches what indexing a non-ASCII string needs.
-	meta *stringMeta
+	// meta is the side data that few objects need: what indexing a non-ASCII string needs,
+	// and the entries in weak collections of an object or a symbol.
+	meta *objectMeta
 
 	// ext is the internal state of a built-in object. For a string that is not interned
 	// it is the interned string with the same content, once that was looked up.
 	ext any
 }
 
-// stringMeta is the cached UTF-16 view of a string that is not ASCII.
-type stringMeta struct {
+// objectMeta is the side data of an object.
+type objectMeta struct {
+	// length and cursor are the cached UTF-16 view of a string that is not ASCII:
+	// its length and the position of the most recent access.
 	length int
-
-	// cursor is the position of the most recent access.
 	cursor wtf8.Pos
+
+	// weak holds the values that the weak collections associate with an object or a symbol,
+	// by collection. See WeakTable.
+	weak weakEntries
 }
 
 // BigInt returns the content of the BigInt o.
@@ -421,7 +427,7 @@ func (o *Object) StringLength() int {
 		return len(o.str)
 	}
 	if o.meta == nil {
-		o.meta = &stringMeta{length: wtf8.Len(o.str)}
+		o.meta = &objectMeta{length: wtf8.Len(o.str)}
 	}
 	return o.meta.length
 }
@@ -429,7 +435,7 @@ func (o *Object) StringLength() int {
 // seek returns the position of the code unit i of the non-ASCII string o.
 func (o *Object) seek(i int) wtf8.Pos {
 	if o.meta == nil {
-		o.meta = &stringMeta{length: wtf8.Len(o.str)}
+		o.meta = &objectMeta{length: wtf8.Len(o.str)}
 	}
 	p := wtf8.Seek(o.str, o.meta.cursor, i)
 	o.meta.cursor = p

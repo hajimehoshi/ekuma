@@ -117,3 +117,93 @@ func BenchmarkJSON(b *testing.B) {
 		}
 	})
 }
+
+// collectionBenchJS defines setup(coll, kind, n), which creates a Map or a Set of n keys of
+// the given kind, and run(op, total), which performs total operations op on it.
+const collectionBenchJS = `
+function makeKeys(kind, n) {
+	var keys = [];
+	for (var i = 0; i < n; i++) {
+		if (kind === "int") keys.push(i);
+		else if (kind === "string") keys.push("key" + i);
+		else keys.push({id: i});
+	}
+	return keys;
+}
+function fill(isMap, keys) {
+	var c = isMap ? new Map() : new Set();
+	for (var i = 0; i < keys.length; i++) {
+		if (isMap) c.set(keys[i], i); else c.add(keys[i]);
+	}
+	return c;
+}
+var isMap, keys, c;
+function setup(coll, kind, n) {
+	isMap = coll === "Map";
+	keys = makeKeys(kind, n);
+	c = fill(isMap, keys);
+}
+function run(op, total) {
+	var n = keys.length, sum = 0;
+	for (var done = 0; done < total; done += n) {
+		var m = Math.min(n, total - done), i;
+		switch (op) {
+		case "set":
+			c = isMap ? new Map() : new Set();
+			if (isMap) for (i = 0; i < m; i++) c.set(keys[i], i);
+			else for (i = 0; i < m; i++) c.add(keys[i]);
+			break;
+		case "get":
+			for (i = 0; i < m; i++) sum += c.get(keys[i]);
+			break;
+		case "has":
+			for (i = 0; i < m; i++) if (c.has(keys[i])) sum++;
+			break;
+		case "delete":
+			for (i = 0; i < m; i++) c.delete(keys[i]);
+			if (isMap) for (i = 0; i < m; i++) c.set(keys[i], i);
+			else for (i = 0; i < m; i++) c.add(keys[i]);
+			break;
+		case "iterate":
+			i = 0;
+			for (var v of c.values()) if (++i >= m) break;
+			break;
+		case "forEach":
+			c.forEach(function(v) { sum++; });
+			break;
+		}
+	}
+	return sum;
+}
+`
+
+// BenchmarkCollection measures Map and Set operations. One iteration is one operation on one
+// key; delete counts deleting a key and adding it again, and iterate and forEach visiting one entry.
+func BenchmarkCollection(b *testing.B) {
+	for _, coll := range []string{"Map", "Set"} {
+		for _, op := range []string{"set", "get", "has", "delete", "iterate", "forEach"} {
+			if coll == "Set" && op == "get" {
+				continue
+			}
+			for _, kind := range []string{"int", "string", "object"} {
+				for _, n := range []int{8, 1000, 100000} {
+					b.Run(fmt.Sprintf("%s/%s/%s/n=%d", coll, op, kind, n), func(b *testing.B) {
+						ctx := b.Context()
+						vm := ekuma.NewVM()
+						if _, err := vm.RunScript(ctx, "collection.js", collectionBenchJS); err != nil {
+							b.Fatal(err)
+						}
+						if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setup(%q, %q, %d)", coll, kind, n)); err != nil {
+							b.Fatal(err)
+						}
+						b.ReportAllocs()
+						b.ResetTimer()
+						if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+							b.Fatal(err)
+						}
+					})
+				}
+			}
+		}
+	}
+}

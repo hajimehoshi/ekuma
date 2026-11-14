@@ -37,6 +37,38 @@ func (vm *VM) NewIteratorObject(proto *Object, state any) *Object {
 	return it
 }
 
+// NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
+func (vm *VM) NewMapObject(proto *Object, data any) *Object {
+	o := vm.NewObject(proto)
+	o.class = classMap
+	o.ext = data
+	return o
+}
+
+// MapData returns the [[MapData]] of the Map object v, or nil when v is not a Map object.
+func MapData(v Value) any {
+	if v.IsObject() && v.o.class == classMap {
+		return v.o.ext
+	}
+	return nil
+}
+
+// NewSetObject returns a Set object with the prototype proto whose [[SetData]] is data.
+func (vm *VM) NewSetObject(proto *Object, data any) *Object {
+	o := vm.NewObject(proto)
+	o.class = classSet
+	o.ext = data
+	return o
+}
+
+// SetData returns the [[SetData]] of the Set object v, or nil when v is not a Set object.
+func SetData(v Value) any {
+	if v.IsObject() && v.o.class == classSet {
+		return v.o.ext
+	}
+	return nil
+}
+
 // IteratorState returns the state of the built-in iterator object v,
 // or nil when v is not such an object.
 func IteratorState(v Value) any {

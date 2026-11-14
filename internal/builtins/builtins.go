@@ -105,6 +105,8 @@ func Install(vm *engine.VM) {
 	initMath(vm)
 	initIterators(vm)
 	initJSON(vm)
+	initMapAndSet(vm)
+	initWeak(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 

@@ -193,6 +193,13 @@ type VM struct {
 	// jobs is the queue of pending promise jobs.
 	jobs []func()
 
+	// keptAlive is the [[KeptAlive]] list of the agent: the targets of WeakRef objects that
+	// must stay alive until the current job ends.
+	keptAlive map[*Object]struct{}
+
+	// finalization receives the cells of FinalizationRegistry objects whose target was collected.
+	finalization *finalizationQueue
+
 	SymbolRegistry map[string]*Object
 
 	// regExps caches compiled patterns by their flags and source.

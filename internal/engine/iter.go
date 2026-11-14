@@ -84,6 +84,11 @@ func (vm *VM) Iterate(v Value, f func(Value) bool) {
 		return
 	}
 	it, next := vm.getIterator(v, false)
+	vm.IterateRecord(it, next, f)
+}
+
+// IterateRecord is Iterate for the iterator record of the iterator it and its next method next.
+func (vm *VM) IterateRecord(it, next Value, f func(Value) bool) {
 	for {
 		e, ok := vm.iteratorStep(it, next)
 		if !ok {
