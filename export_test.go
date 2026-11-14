@@ -5,9 +5,11 @@ package ekuma
 
 import (
 	"time"
+
+	"github.com/hajimehoshi/ekuma/internal/datetime"
 )
 
 // SetTimeZone sets the time zone of local time in vm to loc.
 func SetTimeZone(vm *VM, loc *time.Location) {
-	vm.e.SetDefaultTimeZone(loc)
+	vm.e.SetDefaultTimeZone(datetime.LocationZone(loc))
 }

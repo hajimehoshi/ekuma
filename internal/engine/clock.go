@@ -5,19 +5,22 @@ package engine
 
 import (
 	"time"
+
+	"github.com/hajimehoshi/ekuma/internal/datetime"
 )
 
-// DefaultTimeZone returns the time zone of local time. It is time.Local unless SetDefaultTimeZone changed it.
-func (vm *VM) DefaultTimeZone() *time.Location {
+// DefaultTimeZone returns the time zone of local time. It is the local time zone of the host
+// unless SetDefaultTimeZone changed it.
+func (vm *VM) DefaultTimeZone() datetime.TimeZone {
 	if vm.timeZone == nil {
-		return time.Local
+		return datetime.Local()
 	}
 	return vm.timeZone
 }
 
-// SetDefaultTimeZone sets the time zone of local time to loc.
-func (vm *VM) SetDefaultTimeZone(loc *time.Location) {
-	vm.timeZone = loc
+// SetDefaultTimeZone sets the time zone of local time to tz.
+func (vm *VM) SetDefaultTimeZone(tz datetime.TimeZone) {
+	vm.timeZone = tz
 }
 
 // SystemUTCEpochMilliseconds returns the current time as a time value.

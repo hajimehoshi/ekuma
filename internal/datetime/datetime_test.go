@@ -85,7 +85,7 @@ func TestRangeLimits(t *testing.T) {
 
 // TestParseLegacy checks the formats that Parse accepts besides the date time string format.
 func TestParseLegacy(t *testing.T) {
-	loc := time.FixedZone("Test", 9*3600)
+	loc := datetime.LocationZone(time.FixedZone("Test", 9*3600))
 	utc := func(y, mo, d, h, mi, s float64) float64 {
 		return datetime.MakeDate(datetime.MakeDay(y, mo-1, d), datetime.MakeTime(h, mi, s, 0))
 	}

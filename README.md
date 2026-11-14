@@ -72,8 +72,9 @@ Implemented:
   `getOrInsertComputed`, `Map.groupBy` and `Object.groupBy`
 - `WeakMap`, `WeakSet`, `WeakRef` and `FinalizationRegistry`, on Go's garbage collector:
   an entry of a weak collection does not keep its key alive
-- `Date`, with local time from Go's `time` package and the Annex B methods; the `toLocale*String`
-  methods use a fixed English format, since there is no `Intl`
+- `Date` and its Annex B methods, with the local time zone of Go's `time` package, or of the
+  JavaScript host with `GOOS=js`; the `toLocale*String` methods use a fixed English format,
+  since there is no `Intl`
 - The locale-sensitive `String` methods use the root locale: `localeCompare` treats canonically
   equivalent strings as equal and otherwise compares code units
 - `BigInt`, with BigInt literals and arithmetic

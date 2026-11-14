@@ -5,8 +5,8 @@ package engine
 
 import (
 	"errors"
-	"time"
 
+	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -218,8 +218,8 @@ type VM struct {
 
 	realm
 
-	// timeZone is the time zone of local time, or nil for time.Local.
-	timeZone *time.Location
+	// timeZone is the time zone of local time, or nil for the one of the host.
+	timeZone datetime.TimeZone
 }
 
 // realm is the set of intrinsic objects.

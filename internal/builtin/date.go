@@ -5,7 +5,6 @@ package builtin
 
 import (
 	"math"
-	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -56,9 +55,9 @@ func initDate(vm *engine.VM) {
 
 	ctor := constructor(vm, "Date", 7, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.NewTarget
-		loc := vm.DefaultTimeZone()
+		tz := vm.DefaultTimeZone()
 		if nt == nil {
-			return vm.StringFromGo(datetime.String(vm.SystemUTCEpochMilliseconds(), loc))
+			return vm.StringFromGo(datetime.String(vm.SystemUTCEpochMilliseconds(), tz))
 		}
 		var tv float64
 		switch len(args) {
@@ -71,7 +70,7 @@ func initDate(vm *engine.VM) {
 			}
 			v := vm.ToPrimitive(args[0], engine.HintDefault)
 			if v.IsString() {
-				tv = datetime.Parse(vm.ToString(v), loc)
+				tv = datetime.Parse(vm.ToString(v), tz)
 			} else {
 				tv = datetime.TimeClip(vm.ToNumber(v))
 			}
@@ -81,7 +80,7 @@ func initDate(vm *engine.VM) {
 				c[i] = vm.ToNumber(args[i])
 			}
 			c[dateYear] = datetime.MakeFullYear(c[dateYear])
-			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), loc))
+			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), tz))
 		}
 		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, vm.DateProto), tv))
 	})
@@ -197,20 +196,20 @@ func initDate(vm *engine.VM) {
 				for i := range n {
 					vals[i] = vm.ToNumber(arg(args, i))
 				}
-				loc := vm.DefaultTimeZone()
+				tz := vm.DefaultTimeZone()
 				switch {
 				case math.IsNaN(t) && first == dateYear:
 					t = 0
 				case math.IsNaN(t):
 					return engine.Number(t)
 				case local:
-					t = datetime.LocalTime(t, loc)
+					t = datetime.LocalTime(t, tz)
 				}
 				c := components(t)
 				copy(c[first:first+n], vals[:n])
 				u := makeDate(&c)
 				if local {
-					u = datetime.UTC(u, loc)
+					u = datetime.UTC(u, tz)
 				}
 				u = datetime.TimeClip(u)
 				engine.SetDateValue(this, u)
@@ -227,15 +226,15 @@ func initDate(vm *engine.VM) {
 	method(vm, proto, "setYear", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisDate(vm, this, "setYear")
 		y := vm.ToNumber(arg(args, 0))
-		loc := vm.DefaultTimeZone()
+		tz := vm.DefaultTimeZone()
 		if math.IsNaN(t) {
 			t = 0
 		} else {
-			t = datetime.LocalTime(t, loc)
+			t = datetime.LocalTime(t, tz)
 		}
 		c := components(t)
 		c[dateYear] = datetime.MakeFullYear(y)
-		u := datetime.TimeClip(datetime.UTC(makeDate(&c), loc))
+		u := datetime.TimeClip(datetime.UTC(makeDate(&c), tz))
 		engine.SetDateValue(this, u)
 		return engine.Number(u)
 	})
@@ -243,12 +242,12 @@ func initDate(vm *engine.VM) {
 	// formats defines the methods that return a string, or "Invalid Date" for an invalid date.
 	formats := []struct {
 		name   string
-		format func(tv float64, loc *time.Location) string
+		format func(tv float64, tz datetime.TimeZone) string
 	}{
 		{"toString", datetime.String},
 		{"toDateString", datetime.DateString},
 		{"toTimeString", datetime.TimeString},
-		{"toUTCString", func(tv float64, loc *time.Location) string { return datetime.UTCString(tv) }},
+		{"toUTCString", func(tv float64, tz datetime.TimeZone) string { return datetime.UTCString(tv) }},
 		{"toLocaleString", datetime.LocaleString},
 		{"toLocaleDateString", datetime.LocaleDateString},
 		{"toLocaleTimeString", datetime.LocaleTimeString},

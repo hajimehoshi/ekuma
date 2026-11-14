@@ -5,17 +5,16 @@ package datetime
 
 import (
 	"math"
-	"time"
 )
 
 // Parse returns the time value that the string s represents, or NaN. It accepts the
 // date time string format of ECMAScript, the formats of String and UTCString, and some
-// common legacy formats. A time without an offset is a local time of loc.
-func Parse(s string, loc *time.Location) float64 {
-	if f, ok := parseISO(s, loc); ok {
+// common legacy formats. A time without an offset is a local time of tz.
+func Parse(s string, tz TimeZone) float64 {
+	if f, ok := parseISO(s, tz); ok {
 		return f
 	}
-	return parseLegacy(s, loc)
+	return parseLegacy(s, tz)
 }
 
 // fields are the components of a parsed date. month is from 1 to 12.
@@ -28,14 +27,14 @@ type fields struct {
 	hasOffset bool
 }
 
-// timeValue returns the time value of f. A time without an offset is a local time of loc.
-func (f *fields) timeValue(loc *time.Location) float64 {
+// timeValue returns the time value of f. A time without an offset is a local time of tz.
+func (f *fields) timeValue(tz TimeZone) float64 {
 	day := MakeDay(f.year, f.month-1, f.day)
 	t := MakeDate(day, MakeTime(f.hour, f.minute, f.second, f.millisecond))
 	if f.hasOffset {
 		t -= f.offset
 	} else {
-		t = UTC(t, loc)
+		t = UTC(t, tz)
 	}
 	return TimeClip(t)
 }
@@ -136,7 +135,7 @@ func (f *fields) validTime() bool {
 }
 
 // parseISO parses the date time string format.
-func parseISO(s string, loc *time.Location) (float64, bool) {
+func parseISO(s string, tz TimeZone) (float64, bool) {
 	sc := scanner{s: s}
 	f := fields{month: 1, day: 1}
 	var ok bool
@@ -170,7 +169,7 @@ func parseISO(s string, loc *time.Location) (float64, bool) {
 	if sc.done() {
 		// A date-only form is UTC.
 		f.hasOffset = true
-		return f.timeValue(loc), true
+		return f.timeValue(tz), true
 	}
 	if !sc.accept('T') {
 		return 0, false
@@ -218,7 +217,7 @@ func parseISO(s string, loc *time.Location) (float64, bool) {
 	if !sc.done() {
 		return 0, false
 	}
-	return f.timeValue(loc), true
+	return f.timeValue(tz), true
 }
 
 var fullMonthNames = [12]string{"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
@@ -248,7 +247,7 @@ func legacyYear(y float64, n int) float64 {
 }
 
 // parseLegacy parses the formats of String and UTCString and some common legacy formats.
-func parseLegacy(s string, loc *time.Location) float64 {
+func parseLegacy(s string, tz TimeZone) float64 {
 	nan := math.NaN()
 	sc := scanner{s: s}
 	f := fields{}
@@ -461,5 +460,5 @@ func parseLegacy(s string, loc *time.Location) float64 {
 			f.hour += 12
 		}
 	}
-	return f.timeValue(loc)
+	return f.timeValue(tz)
 }

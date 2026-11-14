@@ -8,77 +8,68 @@ import (
 	"time"
 )
 
+// TimeZone is the time zone of local time.
+type TimeZone interface {
+	// Offset returns the offset from UTC in milliseconds at the finite time value t,
+	// a whole number of minutes, and the abbreviation of the zone, which may be empty.
+	Offset(t float64) (offset float64, name string)
+}
+
 // maxSeconds bounds the seconds handed to the time package. It is beyond the range of
 // time values, so a clamped instant is never the one of a valid time value.
 const maxSeconds = 1e13
 
-// zoneAt returns the zone of loc in effect at the time value t: its offset in milliseconds,
-// its abbreviation, and the time values where it starts and ends (infinite when unbounded).
-func zoneAt(t float64, loc *time.Location) (offset float64, name string, start, end float64) {
+// locationZone is a TimeZone from the time package.
+type locationZone struct {
+	loc *time.Location
+}
+
+// LocationZone returns the TimeZone of loc.
+func LocationZone(loc *time.Location) TimeZone {
+	return locationZone{loc: loc}
+}
+
+func (z locationZone) Offset(t float64) (float64, string) {
 	sec := math.Floor(t / msPerSecond)
 	sec = math.Max(-maxSeconds, math.Min(maxSeconds, sec))
-	tm := time.Unix(int64(sec), 0).In(loc)
-	name, off := tm.Zone()
-	s, e := tm.ZoneBounds()
-	start, end = math.Inf(-1), math.Inf(1)
-	if !s.IsZero() {
-		start = float64(s.Unix()) * msPerSecond
-	}
-	if !e.IsZero() {
-		end = float64(e.Unix()) * msPerSecond
-	}
+	name, off := time.Unix(int64(sec), 0).In(z.loc).Zone()
 	// The offsets of local mean time have seconds, which the offset in String cannot show.
 	// Whole minutes keep String and Parse inverse to each other.
-	return float64(off/60) * msPerMinute, name, start, end
+	return float64(off/60) * msPerMinute, name
 }
 
-// Offset returns the offset of loc from UTC in milliseconds at the time value t, and the
-// abbreviation of the zone, which may be empty. t must be finite.
-func Offset(t float64, loc *time.Location) (offset float64, name string) {
-	offset, name, _, _ = zoneAt(t, loc)
-	return offset, name
-}
-
-// LocalTime implements LocalTime with loc as the system time zone.
-func LocalTime(t float64, loc *time.Location) float64 {
+// LocalTime implements LocalTime with tz as the system time zone.
+func LocalTime(t float64, tz TimeZone) float64 {
 	if !isFinite(t) {
 		return t
 	}
-	off, _ := Offset(t, loc)
+	off, _ := tz.Offset(t)
 	return t + off
 }
 
-// UTC implements UTC with loc as the system time zone. A local time that is repeated
+// UTC implements UTC with tz as the system time zone. A local time that is repeated
 // is the earlier of its instants, and a local time that is skipped is interpreted
 // with the offset before the transition.
-func UTC(t float64, loc *time.Location) float64 {
+func UTC(t float64, tz TimeZone) float64 {
 	if !isFinite(t) {
 		return math.NaN()
 	}
-	// Every offset is less than a day, so the instants that t can be are within a day of it.
-	lo, hi := t-MsPerDay, t+MsPerDay
-	if lo < -maxTime-MsPerDay || hi > maxTime+MsPerDay {
-		off, _ := Offset(t, loc)
-		return t - off
+	// Every offset is less than a day, so the offsets that apply to the instants that t can be
+	// are the ones before and after a transition near t. At most one transition is assumed there.
+	before, _ := tz.Offset(t - MsPerDay)
+	after, _ := tz.Offset(t + MsPerDay)
+	if before == after {
+		return t - before
 	}
-	var prevOff float64
-	hasPrev := false
-	for u := lo; ; {
-		off, _, start, end := zoneAt(u, loc)
-		cand := t - off
-		if start <= cand && cand < end {
-			return cand
+	u := math.NaN()
+	for _, off := range [2]float64{before, after} {
+		if o, _ := tz.Offset(t - off); o == off && (math.IsNaN(u) || t-off < u) {
+			u = t - off
 		}
-		if cand < start && hasPrev {
-			// t is in a gap between the previous zone and this one.
-			return t - prevOff
-		}
-		if end > hi {
-			break
-		}
-		prevOff, hasPrev = off, true
-		u = end
 	}
-	off, _ := Offset(t, loc)
-	return t - off
+	if math.IsNaN(u) {
+		// t is in a gap.
+		return t - before
+	}
+	return u
 }

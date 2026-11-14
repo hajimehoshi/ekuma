@@ -7,7 +7,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var weekdayNames = [7]string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
@@ -53,8 +52,8 @@ func appendTime(b []byte, tv float64) []byte {
 }
 
 // appendTimeZone implements TimeZoneString.
-func appendTimeZone(b []byte, tv float64, loc *time.Location) []byte {
-	off, name := Offset(tv, loc)
+func appendTimeZone(b []byte, tv float64, tz TimeZone) []byte {
+	off, name := tz.Offset(tv)
 	if off >= 0 {
 		b = append(b, '+')
 	} else {
@@ -73,23 +72,23 @@ func appendTimeZone(b []byte, tv float64, loc *time.Location) []byte {
 }
 
 // String implements ToDateString for the time value tv, which must not be NaN.
-func String(tv float64, loc *time.Location) string {
-	t := LocalTime(tv, loc)
+func String(tv float64, tz TimeZone) string {
+	t := LocalTime(tv, tz)
 	b := appendDate(nil, t)
 	b = append(b, ' ')
 	b = appendTime(b, t)
-	return string(appendTimeZone(b, tv, loc))
+	return string(appendTimeZone(b, tv, tz))
 }
 
 // DateString returns the result of Date.prototype.toDateString for the time value tv, which must not be NaN.
-func DateString(tv float64, loc *time.Location) string {
-	return string(appendDate(nil, LocalTime(tv, loc)))
+func DateString(tv float64, tz TimeZone) string {
+	return string(appendDate(nil, LocalTime(tv, tz)))
 }
 
 // TimeString returns the result of Date.prototype.toTimeString for the time value tv, which must not be NaN.
-func TimeString(tv float64, loc *time.Location) string {
-	b := appendTime(nil, LocalTime(tv, loc))
-	return string(appendTimeZone(b, tv, loc))
+func TimeString(tv float64, tz TimeZone) string {
+	b := appendTime(nil, LocalTime(tv, tz))
+	return string(appendTimeZone(b, tv, tz))
 }
 
 // UTCString returns the result of Date.prototype.toUTCString for the time value tv, which must not be NaN.
@@ -135,13 +134,13 @@ func ISOString(tv float64) string {
 
 // LocaleString returns the result of Date.prototype.toLocaleString for the time value tv, which must not be NaN.
 // The format is fixed: month/day/year, hour:minute:second and AM or PM, in local time.
-func LocaleString(tv float64, loc *time.Location) string {
-	return LocaleDateString(tv, loc) + ", " + LocaleTimeString(tv, loc)
+func LocaleString(tv float64, tz TimeZone) string {
+	return LocaleDateString(tv, tz) + ", " + LocaleTimeString(tv, tz)
 }
 
 // LocaleDateString returns the result of Date.prototype.toLocaleDateString for the time value tv, which must not be NaN.
-func LocaleDateString(tv float64, loc *time.Location) string {
-	t := LocalTime(tv, loc)
+func LocaleDateString(tv float64, tz TimeZone) string {
+	t := LocalTime(tv, tz)
 	var b strings.Builder
 	b.WriteString(strconv.FormatFloat(MonthFromTime(t)+1, 'f', 0, 64))
 	b.WriteByte('/')
@@ -152,8 +151,8 @@ func LocaleDateString(tv float64, loc *time.Location) string {
 }
 
 // LocaleTimeString returns the result of Date.prototype.toLocaleTimeString for the time value tv, which must not be NaN.
-func LocaleTimeString(tv float64, loc *time.Location) string {
-	t := LocalTime(tv, loc)
+func LocaleTimeString(tv float64, tz TimeZone) string {
+	t := LocalTime(tv, tz)
 	h := HourFromTime(t)
 	suffix := " AM"
 	if h >= 12 {
