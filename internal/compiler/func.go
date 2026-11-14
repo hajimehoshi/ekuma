@@ -141,10 +141,41 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	}
 	b.NumParams = nparams
 	slots := f.newRegs(nparams)
-	for i := 0; i < nparams; i++ {
-		if id, ok := node.Params[i].(*ast.Identifier); ok {
+	if node.SimpleParams {
+		for i, p := range node.Params[:nparams] {
 			// With duplicate names, the last parameter wins.
-			f.declareAt(id.Name, bindVar, slots+int32(i))
+			f.declareAt(p.(*ast.Identifier).Name, bindVar, slots+int32(i))
+		}
+	}
+	// The parameters of a list that is not simple are in their temporal dead zone until bound.
+	// A binding that a nested function can capture before then holds the TDZ marker. Any other
+	// access before then is known at compile time.
+	var early map[string]bool
+	paramTDZ := func(pb *binding) {
+		pb.tdz = true
+		if early[pb.name] {
+			f.emit(bytecode.OpLoadTDZ, pb.reg, 0, 0)
+		} else {
+			pb.unset = true
+		}
+	}
+	if !node.SimpleParams {
+		early = earlyCaptures(node.Params)
+		for i, p := range node.Params[:nparams] {
+			id, ok := p.(*ast.Identifier)
+			if !ok {
+				if a, isAssign := p.(*ast.AssignPattern); isAssign {
+					id, ok = a.Target.(*ast.Identifier)
+				}
+			}
+			if !ok {
+				continue
+			}
+			if early[id.Name] {
+				paramTDZ(f.declare(id.Name, bindVar))
+			} else {
+				paramTDZ(f.declareAt(id.Name, bindVar, slots+int32(i)))
+			}
 		}
 	}
 
@@ -221,31 +252,44 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	}
 	// Parameters that are patterns or have defaults bind after the registers above are
 	// reserved, because their code can contain closures that capture any of them.
-	for i := 0; i < nparams; i++ {
-		slot := slots + int32(i)
-		switch p := node.Params[i].(type) {
-		case *ast.Identifier:
-		case *ast.AssignPattern:
-			if id, ok := p.Target.(*ast.Identifier); ok {
-				f.declareAt(id.Name, bindVar, slot)
-				skip := f.emit(bytecode.OpJumpIfNotUndef, 0, slot, 0)
-				f.named(p.Default, slot, id.Name)
-				f.patch(skip)
-				break
+	if !node.SimpleParams {
+		for _, p := range node.Params {
+			switch p := p.(type) {
+			case *ast.Identifier:
+				continue
+			case *ast.AssignPattern:
+				if _, ok := p.Target.(*ast.Identifier); ok {
+					continue
+				}
 			}
-			f.declarePattern(p)
-			f.destructure(p, slot, patAssign)
-		default:
-			f.declarePattern(p)
-			f.destructure(p, slot, patAssign)
+			patternNames(p, func(id *ast.Identifier) {
+				paramTDZ(f.declare(id.Name, bindVar))
+			})
+		}
+		for i, p := range node.Params[:nparams] {
+			slot := slots + int32(i)
+			switch p := p.(type) {
+			case *ast.Identifier:
+				f.initBinding(p, p.Name, slot)
+			case *ast.AssignPattern:
+				if id, ok := p.Target.(*ast.Identifier); ok {
+					skip := f.emit(bytecode.OpJumpIfNotUndef, 0, slot, 0)
+					f.named(p.Default, slot, id.Name)
+					f.patch(skip)
+					f.initBinding(id, id.Name, slot)
+					break
+				}
+				f.destructure(p, slot, patInit)
+			default:
+				f.destructure(p, slot, patInit)
+			}
 		}
 	}
 	if rest != nil {
 		b.NeedsExtra = true
-		f.declarePattern(rest.Target)
 		t := f.newReg()
 		f.emit(bytecode.OpRestArgs, t, int32(nparams), 0)
-		f.destructure(rest.Target, t, patAssign)
+		f.destructure(rest.Target, t, patInit)
 		f.free(t)
 	}
 	// A named function expression can refer to itself by its name.
@@ -294,9 +338,40 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	return b
 }
 
-// declarePattern creates the variables that the parameter pattern p binds.
-func (f *fn) declarePattern(p ast.Pattern) {
-	patternNames(p, func(id *ast.Identifier) {
-		f.declare(id.Name, bindVar)
-	})
+// earlyCaptures returns the names of the parameters in params that a function nested in
+// the parameter list can refer to before the parameter is bound.
+func earlyCaptures(params []ast.Pattern) map[string]bool {
+	seen := map[string]bool{}
+	early := map[string]bool{}
+	depth := 0
+	var visit func(ast.Node) bool
+	visit = func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.Function:
+			depth++
+			for _, p := range n.Params {
+				walk(p, visit)
+			}
+			for _, s := range n.Body {
+				walk(s, visit)
+			}
+			walk(n.ExprBody, visit)
+			depth--
+			return false
+		case *ast.Identifier:
+			if depth > 0 {
+				seen[n.Name] = true
+			}
+		}
+		return true
+	}
+	for _, p := range params {
+		walk(p, visit)
+		patternNames(p, func(id *ast.Identifier) {
+			if seen[id.Name] {
+				early[id.Name] = true
+			}
+		})
+	}
+	return early
 }

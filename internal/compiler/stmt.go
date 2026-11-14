@@ -80,6 +80,7 @@ func (f *fn) initBinding(n ast.Node, name string, src int32) {
 		f.emit(bytecode.OpMove, b.reg, src, 0)
 	}
 	b.tdz = false
+	b.unset = false
 }
 
 func (f *fn) varDecl(n *ast.VarDecl) {

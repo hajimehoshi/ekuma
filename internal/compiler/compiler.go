@@ -52,6 +52,10 @@ type binding struct {
 
 	// alwaysCheck is set for a binding whose declaration can be skipped by a jump.
 	alwaysCheck bool
+
+	// unset is set while tdz is set and the register does not hold the TDZ marker,
+	// so that every access of the binding is known to throw.
+	unset bool
 }
 
 // scope is a block scope.
@@ -498,6 +502,10 @@ func (f *fn) loadVar(name string, dst int32, orUndef bool) {
 	r := f.resolve(name)
 	switch r.kind {
 	case refLocal:
+		if r.b.unset {
+			f.checkTDZ(r, name)
+			break
+		}
 		if r.needsCheck() {
 			f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(name), 0)
 		}
@@ -586,6 +594,13 @@ func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 func (f *fn) checkTDZ(r ref, name string) {
 	switch r.kind {
 	case refLocal:
+		if r.b.unset {
+			t := f.newReg()
+			f.emit(bytecode.OpLoadTDZ, t, 0, 0)
+			f.emit(bytecode.OpCheckTDZ, t, f.key(name), 0)
+			f.free(t)
+			break
+		}
 		f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(name), 0)
 	case refUpval:
 		t := f.newReg()
