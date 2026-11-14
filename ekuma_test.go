@@ -317,6 +317,15 @@ func TestScripts(t *testing.T) {
 				r.push(o.x); r.join()`,
 			want: "10,11,new",
 		},
+		{
+			name: "for-of calls a throwing return method once when left normally",
+			src: `var n = 0;
+				var it = { [Symbol.iterator]() { return { next() { return { done: false }; }, return() { n++; throw 1; } }; } };
+				try { for (var x of it) break; } catch (e) {}
+				outer: for (var i = 0; i < 2; i++) { try { for (var x of it) continue outer; } catch (e) {} }
+				n`,
+			want: "3",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

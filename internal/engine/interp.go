@@ -1605,6 +1605,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if it.IsUndefined() || regs[i.A+1].o == nil {
 				continue
 			}
+			regs[i.A] = Undefined
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.iteratorClose(it, i.B != 0)
 			regs = vm.reload(regs, onHeap, base, fp)
