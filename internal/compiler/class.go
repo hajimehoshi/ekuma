@@ -102,6 +102,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 	code.Source = f.c.prog.Text(n)
 	f.f.Protos = append(f.f.Protos, code)
 	f.emit(bytecode.OpClosure, ctor, int32(len(f.f.Protos)-1), 0)
+	f.captureScopes(ctor)
 	f.emit(bytecode.OpClass, ctor, 0, parent)
 	proto := ctor + 1
 

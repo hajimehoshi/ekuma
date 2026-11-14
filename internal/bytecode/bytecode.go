@@ -186,13 +186,14 @@ const (
 	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
 	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
 
-	OpWith       // push the object a as a with scope
-	OpPopScope   // pop the innermost dynamic scope
-	OpGetName    // a = the variable Keys[b] looked up dynamically; c is the fallback instruction kind
-	OpSetName    // the variable Keys[b] looked up dynamically = a
-	OpDeleteName // a = delete the variable Keys[b]
-	OpTypeofName // a = typeof the variable Keys[b], looked up dynamically
-	OpCallName   // a, a+1 = the function Keys[b] looked up dynamically and its this value
+	OpWith          // push the object a as a with scope
+	OpPopScope      // pop the innermost dynamic scope
+	OpResolveName   // a = the innermost of the c innermost dynamic scopes that has the variable Keys[b], or undefined
+	OpGetScoped     // a = the variable Keys[c] of the dynamic scope b
+	OpSetScoped     // the variable Keys[c] of the dynamic scope b = a
+	OpDeleteScoped  // a = delete the variable Keys[c] of the dynamic scope b
+	OpDeleteName    // a = delete the global variable Keys[b]
+	OpCaptureScopes // the closure a sees the dynamic scopes that are open
 
 	OpDebugger
 	OpNop

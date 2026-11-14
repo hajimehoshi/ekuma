@@ -106,9 +106,10 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				}
 				break
 			}
+			scope := f.resolveName(id.Name)
 			t := f.newReg()
 			f.named(d.Init, t, id.Name)
-			f.storeVar(d, id.Name, t, false)
+			f.storeVarTo(d, id.Name, t, false, scope)
 		default:
 			b, _ := f.lookupLocal(id.Name)
 			switch {

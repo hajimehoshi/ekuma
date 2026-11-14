@@ -926,38 +926,50 @@ func (vm *VM) NewNativeConstructor(name string, length int, f NativeFunc) *Objec
 	return o
 }
 
-// getName looks the variable key up in the dynamic scopes of the running function.
-func (vm *VM) getName(key *Object) (Value, bool) {
-	o := vm.findScope(key)
-	if o == nil {
-		return Undefined, false
-	}
-	return vm.getProp(o, PropKey{key: key}, Value{o: o}), true
-}
-
-// findScope returns the innermost with scope of the running function that has the variable key.
-func (vm *VM) findScope(key *Object) *Object {
-	scopes := vm.frames[len(vm.frames)-1].scopes
+// findScope returns the innermost of the depth innermost dynamic scopes of the running
+// function cl that has the variable key, or nil.
+func (vm *VM) findScope(cl *Object, key *Object, depth int) *Object {
 	k := PropKey{key: key}
-	for _, o := range slices.Backward(scopes) {
-		if !vm.HasProperty(o, k) {
-			continue
-		}
-		if u := vm.getProp(o, PropKey{key: vm.K.SymUnscopables}, Value{o: o}); u.IsObject() {
-			if ToBoolean(vm.getProp(u.o, k, u)) {
+	for _, scopes := range [...][]*Object{vm.frames[len(vm.frames)-1].scopes, cl.fn.scopes} {
+		for _, o := range slices.Backward(scopes) {
+			if depth == 0 {
+				return nil
+			}
+			depth--
+			if !vm.HasProperty(o, k) {
 				continue
 			}
+			if u := vm.getProp(o, PropKey{key: vm.K.SymUnscopables}, Value{o: o}); u.IsObject() {
+				if ToBoolean(vm.getProp(u.o, k, u)) {
+					continue
+				}
+			}
+			return o
 		}
-		return o
 	}
 	return nil
 }
 
-func (vm *VM) setName(key *Object, val Value, strict bool) bool {
-	o := vm.findScope(key)
-	if o == nil {
-		return false
+// openScopes returns a copy of the dynamic scopes that are open in the running function cl,
+// innermost last.
+func (vm *VM) openScopes(cl *Object) []*Object {
+	return slices.Concat(cl.fn.scopes, vm.frames[len(vm.frames)-1].scopes)
+}
+
+// getScoped implements GetBindingValue of the object environment record of the dynamic scope o.
+func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
+	k := PropKey{key: key}
+	if !vm.HasProperty(o, k) {
+		if strict {
+			vm.throwReferenceError(key.str + " is not defined")
+		}
+		return Undefined
 	}
+	return vm.getProp(o, k, Value{o: o})
+}
+
+// setScoped implements SetMutableBinding of the object environment record of the dynamic scope o.
+func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
 	if strict && !vm.HasProperty(o, k) {
 		vm.throwReferenceError(key.str + " is not defined")
@@ -965,25 +977,14 @@ func (vm *VM) setName(key *Object, val Value, strict bool) bool {
 	if !vm.setProp(o, k, val, Value{o: o}) && strict {
 		vm.throwReadOnly(Value{o: o}, k)
 	}
-	return true
 }
 
+// deleteName deletes the global variable key.
 func (vm *VM) deleteName(key *Object) bool {
-	if o := vm.findScope(key); o != nil {
-		return vm.DeleteProp(o, PropKey{key: key})
-	}
 	if _, ok := vm.globalLex.shape.lookup(key); ok {
 		return false
 	}
 	return vm.DeleteProp(vm.Global, PropKey{key: key})
-}
-
-func (vm *VM) callName(key *Object) (fn, this Value, found bool) {
-	o := vm.findScope(key)
-	if o == nil {
-		return Undefined, Undefined, false
-	}
-	return vm.getProp(o, PropKey{key: key}, Value{o: o}), Value{o: o}, true
 }
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.

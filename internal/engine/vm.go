@@ -57,6 +57,9 @@ type function struct {
 
 	// classConstructor marks a function that throws when called without new.
 	classConstructor bool
+
+	// scopes are the dynamic scopes that were open where the function was created, innermost last.
+	scopes []*Object
 }
 
 type boundFunc struct {

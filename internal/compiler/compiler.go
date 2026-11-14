@@ -486,14 +486,50 @@ func (f *fn) resolve(name string) ref {
 	}
 }
 
-// dynamic reports whether name has to be looked up in with scopes first.
-func (f *fn) dynamic() bool {
+// withsAround returns the number of with statements around the code being compiled,
+// including those around the enclosing functions.
+func (f *fn) withsAround() int {
+	n := 0
 	for g := f; g != nil; g = g.parent {
-		if g.withDepth > 0 {
-			return true
-		}
+		n += g.withDepth
 	}
-	return false
+	return n
+}
+
+// dynDepth returns the number of the innermost dynamic scopes that a reference to the variable
+// name searches before its binding.
+func (f *fn) dynDepth(name string) int32 {
+	if f.withsAround() == 0 || name == "this" || name == "new.target" || name[0] == '#' || name[0] == '%' {
+		return 0
+	}
+	var n int32
+	for g := f; g != nil; g = g.parent {
+		if _, s := g.lookupLocal(name); s != nil {
+			return n + int32(g.withDepth-s.withs)
+		}
+		n += int32(g.withDepth)
+	}
+	return n
+}
+
+// resolveName emits the search of the dynamic scopes for the variable name, and returns the
+// register that holds the scope found or undefined. It returns -1 when no dynamic scope can
+// hold the variable.
+func (f *fn) resolveName(name string) int32 {
+	d := f.dynDepth(name)
+	if d == 0 {
+		return -1
+	}
+	s := f.newReg()
+	f.emit(bytecode.OpResolveName, s, f.key(name), d)
+	return s
+}
+
+// captureScopes emits what makes the closure dst see the dynamic scopes that are open.
+func (f *fn) captureScopes(dst int32) {
+	if f.withsAround() > 0 {
+		f.emit(bytecode.OpCaptureScopes, dst, 0, 0)
+	}
 }
 
 // needsCheck reports whether a read of the binding of r can see it uninitialized.
@@ -507,16 +543,31 @@ func (r ref) needsCheck() bool {
 	return r.b.tdz || r.b.alwaysCheck
 }
 
-// loadVar emits the read of the variable name into dst.
+// loadVar emits the read of the variable name into dst. orUndef makes an unresolvable
+// reference read as undefined.
 func (f *fn) loadVar(name string, dst int32, orUndef bool) {
-	var skip int = -1
-	if f.dynamic() {
-		op := bytecode.OpGetName
-		if orUndef {
-			op = bytecode.OpTypeofName
-		}
-		skip = f.emit(op, dst, f.key(name), 0)
+	mark := f.top
+	f.loadVarFrom(name, dst, orUndef, f.resolveName(name))
+	f.free(mark)
+}
+
+// loadVarFrom is loadVar for the variable whose dynamic scope resolveName put in the register scope.
+func (f *fn) loadVarFrom(name string, dst int32, orUndef bool, scope int32) {
+	end := -1
+	if scope >= 0 {
+		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
+		f.emit(bytecode.OpGetScoped, dst, scope, f.key(name))
+		end = f.jump()
+		f.patch(skip)
 	}
+	f.loadStatic(name, dst, orUndef)
+	if end >= 0 {
+		f.patch(end)
+	}
+}
+
+// loadStatic emits the read of the binding of the variable name outside the dynamic scopes into dst.
+func (f *fn) loadStatic(name string, dst int32, orUndef bool) {
 	r := f.resolve(name)
 	switch r.kind {
 	case refLocal:
@@ -543,21 +594,38 @@ func (f *fn) loadVar(name string, dst int32, orUndef bool) {
 		k := f.site(name)
 		f.emit(op, dst, k, k)
 	}
-	if skip >= 0 {
-		if orUndef {
-			f.emit(bytecode.OpTypeof, dst, dst, 0)
-		}
-		f.patchC(skip)
-	}
 }
 
 // storeVar emits the assignment of the register src to the variable name.
 // init marks the store that initializes a declaration, which is allowed for a constant.
 func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
-	var skip int = -1
-	if !init && f.dynamic() {
-		skip = f.emit(bytecode.OpSetName, src, f.key(name), 0)
+	mark := f.top
+	scope := int32(-1)
+	if !init {
+		scope = f.resolveName(name)
 	}
+	f.storeVarTo(n, name, src, init, scope)
+	f.free(mark)
+}
+
+// storeVarTo is storeVar for the variable whose dynamic scope resolveName put in the register scope.
+func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int32) {
+	end := -1
+	if scope >= 0 {
+		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
+		f.emit(bytecode.OpSetScoped, src, scope, f.key(name))
+		end = f.jump()
+		f.patch(skip)
+	}
+	f.storeStatic(n, name, src, init)
+	if end >= 0 {
+		f.patch(end)
+	}
+}
+
+// storeStatic emits the assignment of the register src to the binding of the variable name
+// outside the dynamic scopes.
+func (f *fn) storeStatic(n ast.Node, name string, src int32, init bool) {
 	r := f.resolve(name)
 	if r.b != nil && !init {
 		switch r.b.kind {
@@ -566,17 +634,11 @@ func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 				f.checkTDZ(r, name)
 			}
 			f.emit(bytecode.OpThrowConstAssign, f.key(name), 0, 0)
-			if skip >= 0 {
-				f.patchC(skip)
-			}
 			return
 		case bindFuncName:
 			// Assigning to the name of a function expression is an error in strict code only.
 			if f.f.Strict {
 				f.emit(bytecode.OpThrowConstAssign, f.key(name), 0, 0)
-			}
-			if skip >= 0 {
-				f.patchC(skip)
 			}
 			return
 		}
@@ -602,9 +664,6 @@ func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 			k := f.site(name)
 			f.emit(bytecode.OpSetGlobal, src, k, k)
 		}
-	}
-	if skip >= 0 {
-		f.patchC(skip)
 	}
 }
 
@@ -644,7 +703,7 @@ func (c *compiler) globalLexical(name string) bool {
 // localReg returns the register of the variable name when it is a local of f that can be
 // read without a check, and -1 otherwise.
 func (f *fn) localReg(name string) int32 {
-	if f.dynamic() {
+	if f.dynDepth(name) > 0 {
 		return -1
 	}
 	b, _ := f.lookupLocal(name)

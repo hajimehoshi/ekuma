@@ -1678,38 +1678,34 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpPopScope:
 			cur := &vm.frames[len(vm.frames)-1]
 			cur.scopes = cur.scopes[:len(cur.scopes)-1]
-		case bytecode.OpGetName, bytecode.OpTypeofName:
+		case bytecode.OpResolveName:
 			vm.frames[len(vm.frames)-1].pc = pc
-			v, found := vm.getName(fp.keys[i.B])
+			o := vm.findScope(cl, fp.keys[i.B], int(i.C))
 			regs = vm.reload(regs, onHeap, base, fp)
-			if !found {
-				// The name is not in a dynamic scope: the following instruction reads the static binding.
-				continue
+			if o != nil {
+				regs[i.A] = Value{o: o}
+			} else {
+				regs[i.A] = Undefined
 			}
-			if i.Op == bytecode.OpTypeofName {
-				v = vm.typeofValue(v)
-			}
+		case bytecode.OpGetScoped:
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.getScoped(regs[i.B].o, fp.keys[i.C], fp.strict)
+			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
-			pc = int(i.C)
-		case bytecode.OpSetName:
+		case bytecode.OpSetScoped:
 			vm.frames[len(vm.frames)-1].pc = pc
-			found := vm.setName(fp.keys[i.B], regs[i.A], fp.strict)
+			vm.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], fp.strict)
 			regs = vm.reload(regs, onHeap, base, fp)
-			if found {
-				pc = int(i.C)
-			}
+		case bytecode.OpDeleteScoped:
+			vm.frames[len(vm.frames)-1].pc = pc
+			ok := vm.DeleteProp(regs[i.B].o, PropKey{key: fp.keys[i.C]})
+			regs = vm.reload(regs, onHeap, base, fp)
+			regs[i.A] = Bool(ok)
 		case bytecode.OpDeleteName:
 			vm.frames[len(vm.frames)-1].pc = pc
 			regs[i.A] = Bool(vm.deleteName(fp.keys[i.B]))
-		case bytecode.OpCallName:
-			vm.frames[len(vm.frames)-1].pc = pc
-			fn, this, found := vm.callName(fp.keys[i.B])
-			regs = vm.reload(regs, onHeap, base, fp)
-			if found {
-				regs[i.A] = fn
-				regs[i.A+1] = this
-				pc = int(i.C)
-			}
+		case bytecode.OpCaptureScopes:
+			regs[i.A].o.fn.scopes = vm.openScopes(cl)
 
 		case bytecode.OpDebugger, bytecode.OpNop:
 		default:

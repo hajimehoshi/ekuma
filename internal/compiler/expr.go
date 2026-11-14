@@ -183,7 +183,7 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 		f.emit(bytecode.OpLoadNull, dst, 0, 0)
 	case *ast.Identifier:
 		if e.Name == "undefined" {
-			if r := f.resolve(e.Name); r.kind == refGlobal && !f.dynamic() {
+			if r := f.resolve(e.Name); r.kind == refGlobal && f.dynDepth(e.Name) == 0 {
 				// The global undefined cannot be changed.
 				f.emit(bytecode.OpLoadUndef, dst, 0, 0)
 				return
@@ -413,9 +413,7 @@ func (f *fn) unary(n *ast.UnaryExpr, dst int32) {
 		if id, ok := n.Arg.(*ast.Identifier); ok && f.localReg(id.Name) < 0 {
 			if r := f.resolve(id.Name); r.kind == refGlobal {
 				f.loadVar(id.Name, dst, true)
-				if !f.dynamic() {
-					f.emit(bytecode.OpTypeof, dst, dst, 0)
-				}
+				f.emit(bytecode.OpTypeof, dst, dst, 0)
 				return
 			}
 		}
@@ -494,15 +492,21 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 		f.emit(bytecode.OpLoadTrue, dst, 0, 0)
 		f.patch(end)
 	case *ast.Identifier:
-		if b, _ := f.lookupLocal(arg.Name); b != nil && !f.dynamic() {
-			f.emit(bytecode.OpLoadFalse, dst, 0, 0)
-			return
+		end := -1
+		if scope := f.resolveName(arg.Name); scope >= 0 {
+			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
+			f.emit(bytecode.OpDeleteScoped, dst, scope, f.key(arg.Name))
+			end = f.jump()
+			f.patch(skip)
 		}
-		if r := f.resolve(arg.Name); r.kind != refGlobal && !f.dynamic() {
+		if r := f.resolve(arg.Name); r.kind != refGlobal {
 			f.emit(bytecode.OpLoadFalse, dst, 0, 0)
-			return
+		} else {
+			f.emit(bytecode.OpDeleteName, dst, f.key(arg.Name), 0)
 		}
-		f.emit(bytecode.OpDeleteName, dst, f.key(arg.Name), 0)
+		if end >= 0 {
+			f.patch(end)
+		}
 	default:
 		f.effect(n.Arg)
 		f.emit(bytecode.OpLoadTrue, dst, 0, 0)
@@ -534,12 +538,13 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 				return
 			}
 		}
+		scope := f.resolveName(arg.Name)
 		old := f.newReg()
-		f.loadVar(arg.Name, old, false)
+		f.loadVarFrom(arg.Name, old, false, scope)
 		res := f.newReg()
 		if n.Prefix || dst < 0 {
 			f.emit(op, res, old, 0)
-			f.storeVar(n, arg.Name, res, false)
+			f.storeVarTo(n, arg.Name, res, false, scope)
 			if dst >= 0 {
 				f.emit(bytecode.OpMove, dst, res, 0)
 			}
@@ -547,7 +552,7 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 		}
 		f.emit(bytecode.OpToNumeric, old, old, 0)
 		f.emit(op, res, old, 0)
-		f.storeVar(n, arg.Name, res, false)
+		f.storeVarTo(n, arg.Name, res, false, scope)
 		f.emit(bytecode.OpMove, dst, old, 0)
 	case *ast.MemberExpr:
 		t := f.assignTarget(arg)
@@ -857,11 +862,17 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			f.free(base + 2)
 		}
 	case *ast.Identifier:
-		if f.dynamic() {
-			skip := f.emit(bytecode.OpCallName, base, f.key(c.Name), 0)
-			f.expr(callee, base)
+		mark := f.top
+		if scope := f.resolveName(c.Name); scope >= 0 {
+			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
+			f.emit(bytecode.OpGetScoped, base, scope, f.key(c.Name))
+			f.emit(bytecode.OpMove, base+1, scope, 0)
+			end := f.jump()
+			f.patch(skip)
+			f.loadStatic(c.Name, base, false)
 			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
-			f.patchC(skip)
+			f.patch(end)
+			f.free(mark)
 		} else {
 			f.expr(callee, base)
 			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
@@ -1225,21 +1236,23 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				}
 				return
 			}
+			scope := f.resolveName(name)
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
 			f.named(n.Value, t, inferred)
-			f.storeVar(n, name, t, false)
+			f.storeVarTo(n, name, t, false, scope)
 		case logical:
+			scope := f.resolveName(name)
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
-			f.loadVar(name, t, false)
+			f.loadVarFrom(name, t, false, scope)
 			skip := shortCircuit(t)
 			f.named(n.Value, t, inferred)
-			f.storeVar(n, name, t, false)
+			f.storeVarTo(n, name, t, false, scope)
 			f.patch(skip)
 		default:
 			if local >= 0 && !f.clobbers(name, n.Value) {
@@ -1259,15 +1272,16 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				}
 				return
 			}
+			scope := f.resolveName(name)
 			old := f.newReg()
-			f.loadVar(name, old, false)
+			f.loadVarFrom(name, old, false, scope)
 			r := f.exprAny(n.Value)
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
 			f.emit(compoundOp(n.Op), t, old, r)
-			f.storeVar(n, name, t, false)
+			f.storeVarTo(n, name, t, false, scope)
 		}
 	case *ast.MemberExpr:
 		t := f.assignTarget(target)

@@ -361,6 +361,13 @@ func TestScripts(t *testing.T) {
 				new B(5).x + "," + new B(5).m(1) + "," + new B(5).n(1, 2)`,
 			want: "5,6,2",
 		},
+		{
+			name: "with scope outside a block binding",
+			src: `var o = {x: 1, y: 2, this: 3}; var r = [];
+				with (o) { let x = 5; { let y = 6; r.push(x, y, this === globalThis); } }
+				r.join()`,
+			want: "5,6,true",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -14,6 +14,7 @@ func (f *fn) closure(node *ast.Function, dst int32, name string) {
 	p := f.c.compileFunction(f, node, name)
 	f.f.Protos = append(f.f.Protos, p)
 	f.emit(bytecode.OpClosure, dst, int32(len(f.f.Protos)-1), 0)
+	f.captureScopes(dst)
 }
 
 // forwardsArguments reports whether the function node uses its arguments only by passing
