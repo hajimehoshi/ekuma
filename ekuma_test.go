@@ -217,6 +217,13 @@ func TestScripts(t *testing.T) {
 			want: "10,50000,70000,100000|100000,50000,20,10|10",
 		},
 		{
+			name: "walk of a sparse array with many indices sees indices added by the callback",
+			src: `var a = []; for (var i = 0; i < 200; i++) a[i * 1000 + 500] = i; var seen = [];
+				a.forEach(function (v, i) { if (i === 500) { a.x = 0; a[1700] = -1; a[300] = -2; } if (i < 3000) seen.push(i); });
+				seen.join()`,
+			want: "500,1500,1700,2500",
+		},
+		{
 			name: "named function expression and arguments",
 			src:  `var f = function fact(n) { return n <= 1 ? 1 : n * fact(n - 1); }; (function() { return arguments.length + f(arguments[0]); })(4, 5)`,
 			want: "26",

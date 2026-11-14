@@ -282,6 +282,23 @@ func (vm *VM) sparseIndexList(o *Object) []uint32 {
 	if vm.sparseIndexShape == s && vm.sparseIndexCount == s.count {
 		return vm.sparseIndices
 	}
+	if added, ok := vm.addedSparseKeys(s); ok && len(added) <= maxSparseIndexInserts {
+		idxs := vm.sparseIndices
+		for _, k := range added {
+			if k.kind != kindString {
+				continue
+			}
+			if i, ok := stringIndex(k.str); ok {
+				if p, found := slices.BinarySearch(idxs, i); !found {
+					idxs = slices.Insert(idxs, p, i)
+				}
+			}
+		}
+		vm.sparseIndexShape = s
+		vm.sparseIndexCount = s.count
+		vm.sparseIndices = idxs
+		return idxs
+	}
 	idxs := vm.sparseIndices[:0]
 	for _, k := range s.keys() {
 		if k.kind != kindString {
@@ -296,4 +313,39 @@ func (vm *VM) sparseIndexList(o *Object) []uint32 {
 	vm.sparseIndexCount = s.count
 	vm.sparseIndices = idxs
 	return idxs
+}
+
+// maxSparseIndexInserts is the number of new keys above which sparseIndexList rebuilds the list
+// instead of inserting each one.
+const maxSparseIndexInserts = 16
+
+// addedSparseKeys returns the keys that s has in addition to those of the shape whose indices
+// sparseIndices holds, and reports whether s has all of those keys in the same slots.
+func (vm *VM) addedSparseKeys(s *shape) ([]*Object, bool) {
+	c, n := vm.sparseIndexShape, vm.sparseIndexCount
+	if c == nil || s.count < n {
+		return nil, false
+	}
+	if s.private {
+		// A private shape only grows in place.
+		if c != s {
+			return nil, false
+		}
+		return s.order[n:], true
+	}
+	if c.private {
+		return nil, false
+	}
+	if s.count-n > maxSparseIndexInserts {
+		return nil, false
+	}
+	var added []*Object
+	t := s
+	for ; t.count > n; t = t.parent {
+		added = append(added, t.key)
+	}
+	if t != c {
+		return nil, false
+	}
+	return added, true
 }

@@ -376,3 +376,40 @@ function run(method, n) {
 	return s;
 }
 `
+
+// BenchmarkSparseArrayGrowing walks a sparse array whose callback stores a new sparse index
+// at every step.
+func BenchmarkSparseArrayGrowing(b *testing.B) {
+	for _, n := range []int{100, 1000, 10000} {
+		b.Run(fmt.Sprint(n), func(b *testing.B) {
+			ctx := b.Context()
+			vm := ekuma.NewVM()
+			if _, err := vm.RunScript(ctx, "sparse.js", sparseArrayGrowingBenchJS); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%d, %d)", n, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
+const sparseArrayGrowingBenchJS = `
+function run(k, n) {
+	var s = 0;
+	for (var j = 0; j < n; j++) {
+		var a = [];
+		for (var i = 0; i < k; i++) {
+			a[i * 1000 + 500] = i;
+		}
+		var len = a.length;
+		a.forEach(function (x, i) {
+			s += x;
+			a[len + i] = x;
+		});
+	}
+	return s;
+}
+`
