@@ -199,6 +199,21 @@ func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
 	})
 }
 
+// declareGlobalAnnexB declares the global variable key of a block-level function of sloppy
+// code, as Annex B.3.2.2 and B.3.2.3 do, and reports whether it is declared. It declares
+// nothing when a global lexical declaration of key exists or CanDeclareGlobalVar(key) is false.
+// flags is a set of the bytecode GlobalVar flags.
+func (vm *VM) declareGlobalAnnexB(key *Object, flags int) bool {
+	if _, lex := vm.globalLex.shape.lookup(key); lex {
+		return false
+	}
+	if !vm.HasOwnProperty(vm.global, PropKey{key: key}) && !vm.IsExtensible(vm.global) {
+		return false
+	}
+	vm.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, Undefined)
+	return true
+}
+
 // declareGlobalLex creates the uninitialized global lexical binding key.
 func (vm *VM) declareGlobalLex(key *Object, isConst bool) {
 	flags := FlagsData

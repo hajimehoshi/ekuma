@@ -34,6 +34,7 @@ const (
 	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant when b is set
 	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
 	OpCheckGlobalDecl  // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds
+	OpDeclareAnnexB    // a = whether the global variable Keys[b] of a block-level function is declared; c is a set of GlobalVar flags
 
 	OpGetUpval    // a = upvalue b
 	OpSetUpval    // upvalue b = a

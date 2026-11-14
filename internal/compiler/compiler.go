@@ -215,6 +215,10 @@ type fn struct {
 	// eval describes the call site of the eval code being compiled, which is the outermost
 	// function, and is nil otherwise.
 	eval *evalOuter
+
+	// annexBRegs holds, for every block-level function that the top-level code hoists to a
+	// global variable only when it can be declared, the register that records whether it was.
+	annexBRegs map[string]int32
 }
 
 type compiler struct {
@@ -769,6 +773,18 @@ func (f *fn) localReg(name string) int32 {
 	return b.reg
 }
 
+// declareAnnexBGlobal declares the global variable name of a block-level function when it can,
+// and records in a register whether evaluating the declaration assigns the function to it.
+// flags is a set of the bytecode GlobalVar flags.
+func (f *fn) declareAnnexBGlobal(name string, flags int32) {
+	r := f.newReg()
+	f.emit(bytecode.OpDeclareAnnexB, r, f.key(name), flags)
+	if f.annexBRegs == nil {
+		f.annexBRegs = map[string]int32{}
+	}
+	f.annexBRegs[name] = r
+}
+
 func (c *compiler) compileScript() *bytecode.Func {
 	prog := c.prog
 	f := c.newFn(nil, nil, "")
@@ -801,11 +817,18 @@ func (c *compiler) compileScript() *bytecode.Func {
 	for _, name := range funcOrder {
 		f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclFunction, 0)
 	}
+	vars := map[string]bool{}
 	for _, d := range prog.Scope.Decls {
-		if d.Kind == ast.DeclVar || d.Kind == ast.DeclAnnexBVar {
+		if d.Kind == ast.DeclVar {
+			vars[d.Name] = true
 			if _, ok := funcs[d.Name]; !ok {
 				f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), bytecode.DeclVar, 0)
 			}
+		}
+	}
+	for _, d := range prog.Scope.Decls {
+		if d.Kind == ast.DeclAnnexBVar && funcs[d.Name] == nil && !vars[d.Name] {
+			f.declareAnnexBGlobal(d.Name, 0)
 		}
 	}
 	for _, d := range prog.Scope.Decls {
@@ -823,7 +846,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 		f.free(t)
 	}
 	for _, d := range prog.Scope.Decls {
-		if d.Kind == ast.DeclVar || d.Kind == ast.DeclAnnexBVar {
+		if d.Kind == ast.DeclVar {
 			if _, ok := funcs[d.Name]; !ok {
 				f.emit(bytecode.OpDeclareGlobalVar, f.key(d.Name), 0, 0)
 			}

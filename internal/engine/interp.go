@@ -349,6 +349,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCheckGlobalDecl:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.checkGlobalDecl(fp.keys[i.A], int(i.B))
+		case bytecode.OpDeclareAnnexB:
+			vm.frames[len(vm.frames)-1].pc = pc
+			regs[i.A] = Bool(vm.declareGlobalAnnexB(fp.keys[i.B], int(i.C)))
 
 		case bytecode.OpGetUpval:
 			regs[i.A] = *cl.fn.upvals[i.B].p

@@ -271,6 +271,29 @@ func define262(vm *ekuma.VM) error {
 	if err := o.Set("detachArrayBuffer", detach); err != nil {
 		return err
 	}
+	evalScript := vm.FuncOf("evalScript", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		var src string
+		if len(args) > 0 {
+			src = args[0].String()
+		}
+		v, err := vm.RunScript(context.Background(), "evalScript", src)
+		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
+			// An early error of the script is a SyntaxError thrown to the caller.
+			c, err := vm.Global().Get("SyntaxError")
+			if err != nil {
+				return nil, err
+			}
+			e, err := c.New(context.Background(), se.Message)
+			if err != nil {
+				return nil, err
+			}
+			return nil, &ekuma.Error{Value: e}
+		}
+		return v, err
+	})
+	if err := o.Set("evalScript", evalScript); err != nil {
+		return err
+	}
 	if err := o.Set("global", vm.Global()); err != nil {
 		return err
 	}

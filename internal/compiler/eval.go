@@ -311,6 +311,8 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 	var funcOrder []string
 	var varNames []string
 	var lexicals []*binding
+	// annexBOnly holds the hoisted names of block-level functions that are not also var names.
+	annexBOnly := map[string]bool{}
 	for _, d := range prog.Scope.Decls {
 		switch d.Kind {
 		case ast.DeclVar:
@@ -323,7 +325,10 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 				break
 			}
 			ev.hoisted[d.Name] = true
-			varNames = append(varNames, d.Name)
+			if !slices.Contains(varNames, d.Name) {
+				annexBOnly[d.Name] = true
+				varNames = append(varNames, d.Name)
+			}
 		case ast.DeclFunction:
 			if _, ok := funcs[d.Name]; !ok {
 				funcOrder = append(funcOrder, d.Name)
@@ -375,8 +380,13 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 			f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclFunction, 0)
 		}
 		for _, name := range varNames {
-			if funcs[name] == nil {
+			if funcs[name] == nil && !annexBOnly[name] {
 				f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclVar, 0)
+			}
+		}
+		for _, name := range varNames {
+			if funcs[name] == nil && annexBOnly[name] {
+				f.declareAnnexBGlobal(name, bytecode.GlobalVarDeletable)
 			}
 		}
 		for _, lb := range lexicals {
@@ -389,7 +399,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 			f.free(t)
 		}
 		for _, name := range varNames {
-			if funcs[name] == nil {
+			if funcs[name] == nil && !annexBOnly[name] {
 				f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarDeletable, 0)
 			}
 		}

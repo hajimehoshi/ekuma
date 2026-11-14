@@ -540,8 +540,7 @@ func (f *fn) annexBHoist(s *ast.FuncDecl) {
 			return
 		}
 		if f.eval.scope.VarDepth == 0 {
-			k := f.site(name)
-			f.emit(bytecode.OpSetGlobal, inner.reg, k, k)
+			f.setAnnexBGlobal(name, inner.reg)
 			return
 		}
 		f.storeEvalVar(name, inner.reg)
@@ -554,8 +553,21 @@ func (f *fn) annexBHoist(s *ast.FuncDecl) {
 		return
 	}
 	if f.isScript {
-		k := f.site(name)
-		f.emit(bytecode.OpSetGlobal, inner.reg, k, k)
+		f.setAnnexBGlobal(name, inner.reg)
+	}
+}
+
+// setAnnexBGlobal assigns the register src to the global variable name of a block-level function,
+// unless the top-level code found that the variable could not be declared.
+func (f *fn) setAnnexBGlobal(name string, src int32) {
+	j := -1
+	if r, ok := f.annexBRegs[name]; ok {
+		j = f.emit(bytecode.OpJumpIfNot, 0, r, 0)
+	}
+	k := f.site(name)
+	f.emit(bytecode.OpSetGlobal, src, k, k)
+	if j >= 0 {
+		f.patch(j)
 	}
 }
 
