@@ -66,7 +66,6 @@ const (
 	OpHasPrivate    // a = the private name b is in c
 	OpGetPrivate    // a = b.#c, where c holds the private name
 	OpSetPrivate    // a.#b = c, where b holds the private name
-	OpDefinePrivate // define the private field b of a as c
 	OpToPropertyKey // a = b converted to a property key; when c is nonzero, a TypeError is thrown first if c-1 is undefined or null
 
 	OpAdd

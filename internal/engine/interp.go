@@ -656,9 +656,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.nregs), false, nil
 				goto call
 			}
-		case bytecode.OpDefinePrivate:
-			vm.frames[len(vm.frames)-1].pc = pc
-			vm.definePrivate(regs[i.A], regs[i.B].o, regs[i.C])
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
 			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) {
