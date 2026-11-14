@@ -715,34 +715,34 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 	}
 	if typedArrayImmutable(o) {
 		// ValidateAndApplyPropertyDescriptor against a non-configurable, non-writable element.
-		if d.Has&HasConfigurable != 0 && d.Flags&FlagConfigurable != 0 {
+		if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
 			return false
 		}
-		if d.Has&HasEnumerable != 0 && d.Flags&FlagEnumerable == 0 {
+		if d.has&HasEnumerable != 0 && d.flags&FlagEnumerable == 0 {
 			return false
 		}
 		if d.IsAccessor() {
 			return false
 		}
-		if d.Has&HasWritable != 0 && d.Flags&FlagWritable != 0 {
+		if d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
 			return false
 		}
-		return d.Has&HasValue == 0 || SameValue(d.Value, vm.typedArrayGet(o, i))
+		return d.has&HasValue == 0 || SameValue(d.value, vm.typedArrayGet(o, i))
 	}
-	if d.Has&HasConfigurable != 0 && d.Flags&FlagConfigurable == 0 {
+	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable == 0 {
 		return false
 	}
-	if d.Has&HasEnumerable != 0 && d.Flags&FlagEnumerable == 0 {
+	if d.has&HasEnumerable != 0 && d.flags&FlagEnumerable == 0 {
 		return false
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.Has&HasWritable != 0 && d.Flags&FlagWritable == 0 {
+	if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
 		return false
 	}
-	if d.Has&HasValue != 0 {
-		vm.typedArraySetElement(o.ext.(*TypedArray), i, d.Value)
+	if d.has&HasValue != 0 {
+		vm.typedArraySetElement(o.ext.(*TypedArray), i, d.value)
 	}
 	return true
 }

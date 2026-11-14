@@ -26,7 +26,7 @@ type reviver struct {
 // Revive implements the steps of JSON.parse that call the function fn on the value v and
 // its parts. v and rec are the results of ParseWithRecord.
 func Revive(vm *engine.VM, v engine.Value, rec *Record, fn *engine.Object) engine.Value {
-	root := vm.NewObject(vm.ObjectProto)
+	root := vm.NewOrdinaryObject()
 	k := engine.NamedKey(vm.Intern(""))
 	vm.CreateDataPropertyOrThrow(root, k, v)
 	r := &reviver{
@@ -44,7 +44,7 @@ func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *R
 		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
 	val := vm.Get(holder, name)
-	ctx := vm.NewObject(vm.ObjectProto)
+	ctx := vm.NewOrdinaryObject()
 	if rec != nil && engine.SameValue(rec.value, val) {
 		if !val.IsObject() {
 			vm.CreateDataPropertyOrThrow(ctx, engine.NamedKey(r.keySource), vm.NewString(rec.source))

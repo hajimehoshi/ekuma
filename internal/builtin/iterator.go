@@ -43,7 +43,7 @@ func (k *iteratorKeys) getIteratorFlattenable(vm *engine.VM, v engine.Value, ite
 		vm.ThrowTypeError(vm.DisplayString(v) + " is not an iterator or an iterable object")
 	}
 	it := v
-	if m := vm.GetMethod(v, vm.K.SymIterator); m != nil {
+	if m := vm.GetMethod(v, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 		it = vm.Call(m, v)
 	}
 	if !it.IsObject() {
@@ -133,17 +133,17 @@ func initIteratorHelpers(vm *engine.VM) {
 		next: vm.Intern("next"),
 		ret:  vm.Intern("return"),
 	}
-	proto := vm.IteratorProto
+	proto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
 	var ctor *engine.Object
 	ctor = vm.NewNativeConstructor("Iterator", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil || nt == ctor {
 			vm.ThrowTypeError("Iterator cannot be constructed directly")
 		}
-		return engine.ObjectValue(vm.NewObject(vm.GetPrototypeFromConstructor(nt, vm.IteratorProto)))
+		return engine.ObjectValue(vm.NewObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicIteratorPrototype))))
 	})
-	vm.Define(ctor, vm.K.Prototype, engine.ObjectValue(proto), 0)
-	vm.Define(vm.Global, vm.Intern("Iterator"), engine.ObjectValue(ctor), engine.FlagsHidden)
+	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	vm.Define(vm.GlobalObject().Object(), vm.Intern("Iterator"), engine.ObjectValue(ctor), engine.FlagsHidden)
 
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters
 	// ignore the prototype.
@@ -157,10 +157,10 @@ func initIteratorHelpers(vm *engine.VM) {
 		})
 		vm.DefineAccessor(proto, key, g, s, engine.FlagConfigurable)
 	}
-	ignoringAccessor(vm.K.Constructor, "constructor", engine.ObjectValue(ctor))
-	ignoringAccessor(vm.K.SymToStringTag, "[Symbol.toStringTag]", vm.NewString("Iterator"))
+	ignoringAccessor(vm.Key(engine.KeyConstructor), "constructor", engine.ObjectValue(ctor))
+	ignoringAccessor(vm.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", vm.NewString("Iterator"))
 
-	symMethod(vm, proto, vm.K.SymDispose, "[Symbol.dispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if m := vm.GetMethod(this, k.ret); m != nil {
 			vm.Call(m, this)
 		}
@@ -170,7 +170,7 @@ func initIteratorHelpers(vm *engine.VM) {
 	helperProto := vm.NewObject(proto)
 	iteratorNext(vm, helperProto, helperNext)
 	method(vm, helperProto, "return", 0, helperReturn)
-	vm.Define(helperProto, vm.K.SymToStringTag, vm.NewString("Iterator Helper"), engine.FlagConfigurable)
+	vm.Define(helperProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Iterator Helper"), engine.FlagConfigurable)
 	newHelper := func(body helperBody) engine.Value {
 		return engine.ObjectValue(vm.NewIteratorObject(helperProto, &iteratorHelper{body: body}))
 	}
@@ -188,7 +188,7 @@ type wrappedIterator struct {
 }
 
 func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
-	wrapProto := vm.NewObject(vm.IteratorProto)
+	wrapProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	thisWrapped := func(vm *engine.VM, this engine.Value, what string) *wrappedIterator {
 		w, _ := engine.IteratorState(this).(*wrappedIterator)
 		if w == nil {
@@ -266,7 +266,7 @@ func initIteratorConcat(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, new
 			if !item.IsObject() {
 				vm.ThrowTypeError(vm.DisplayString(item) + " is not an object")
 			}
-			m := vm.GetMethod(item, vm.K.SymIterator)
+			m := vm.GetMethod(item, vm.WellKnownSymbol(engine.SymbolIterator))
 			if m == nil {
 				vm.ThrowTypeError(vm.DisplayString(item) + " is not iterable")
 			}
@@ -490,7 +490,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 			var add bool
 			vm.IfAbruptCloseIterators(its, func() {
 				d, ok := vm.GetOwnProperty(o, key)
-				if !ok || d.Flags&engine.FlagEnumerable == 0 {
+				if !ok || !d.Enumerable() {
 					return
 				}
 				v := vm.Get(o, key)
@@ -773,7 +773,7 @@ func (h *chunksHelper) close(vm *engine.VM) {
 
 // initLazyIteratorMethods defines the methods of Iterator.prototype that return iterator helpers.
 func initLazyIteratorMethods(vm *engine.VM, k *iteratorKeys, newHelper func(helperBody) engine.Value) {
-	proto := vm.IteratorProto
+	proto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(vm, proto, "map", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(vm, this, "map")
 		f := callableArg(vm, it, arg(args, 0))
@@ -846,7 +846,7 @@ func initLazyIteratorMethods(vm *engine.VM, k *iteratorKeys, newHelper func(help
 
 // initEagerIteratorMethods defines the methods of Iterator.prototype that consume the iterator.
 func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
-	proto := vm.IteratorProto
+	proto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(vm, proto, "reduce", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(vm, this, "reduce")
 		f := callableArg(vm, it, arg(args, 0))

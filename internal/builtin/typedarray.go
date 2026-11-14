@@ -112,7 +112,7 @@ func copyConverted(vm *engine.VM, dst []byte, to engine.ElementType, src []byte,
 
 // construct implements the typed array constructors for the element type typ.
 func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, args []engine.Value) engine.Value {
-	nt := vm.NewTarget
+	nt := vm.GetNewTarget()
 	name := typedArrayNames[typ]
 	if nt == nil {
 		vm.ThrowTypeError("constructor " + name + " requires 'new'")
@@ -179,7 +179,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 		}
 		return engine.ObjectValue(vm.NewTypedArrayObject(proto, typ, first.Object(), int(offset), int(newByteLength/int64(size))))
 	}
-	if m := vm.GetMethod(first, vm.K.SymIterator); m != nil {
+	if m := vm.GetMethod(first, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 		vals := vm.IteratorToList(first, m)
 		o := bi.newTypedArray(vm, proto, typ, int64(len(vals)))
 		t := engine.TypedArrayData(engine.ObjectValue(o))
@@ -328,15 +328,15 @@ func fillElements(b []byte, typ engine.ElementType, x uint64) {
 }
 
 func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	bi.typedArrayProto = proto
 	ctor := vm.NewNativeConstructor("TypedArray", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.ThrowTypeError("abstract class TypedArray not directly constructable")
 		return engine.Undefined
 	})
 	bi.typedArrayCtor = ctor
-	vm.Define(ctor, vm.K.Prototype, engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.K.Constructor, engine.ObjectValue(ctor), engine.FlagsHidden)
+	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	speciesGetter(vm, ctor)
 
 	method(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -354,7 +354,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 			}
 			return vm.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
 		}
-		if m := vm.GetMethod(source, vm.K.SymIterator); m != nil {
+		if m := vm.GetMethod(source, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 			vals := vm.IteratorToList(source, m)
 			o, t := createFromConstructor(vm, c, []engine.Value{engine.Number(float64(len(vals)))}, true)
 			for i, v := range vals {
@@ -403,12 +403,13 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return engine.Number(float64(t.ByteOffset()))
 	})
-	vm.FnTypedArrayLength = vm.NewNative("get length", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	lengthGetter := vm.NewNative("get length", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n, _ := thisTypedArray(vm, this, "length").Length()
 		return engine.Number(float64(n))
 	})
-	vm.DefineAccessor(proto, vm.K.Length, vm.FnTypedArrayLength, nil, engine.FlagConfigurable)
-	getter(vm, proto, vm.K.SymToStringTag, "[Symbol.toStringTag]", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetIntrinsic(engine.IntrinsicTypedArrayPrototypeLengthGetter, lengthGetter)
+	vm.DefineAccessor(proto, vm.Key(engine.KeyLength), lengthGetter, nil, engine.FlagConfigurable)
+	getter(vm, proto, vm.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := engine.TypedArrayData(this)
 		if t == nil {
 			return engine.Undefined
@@ -457,7 +458,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	iterMethod("entries", iterEntries)
 	iterMethod("keys", iterKeys)
 	values := iterMethod("values", iterValues)
-	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(values), engine.FlagsHidden)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
 
 	// predicate defines the methods that call a callback for the elements in order until it returns true.
 	predicate := func(name string, backward bool, result func(found bool, i int, v engine.Value) engine.Value) {
@@ -829,8 +830,8 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		storeAt(vm, a, at, int(idx), v)
 		return engine.ObjectValue(a)
 	})
-	toString := vm.Get(vm.ArrayProto, engine.NamedKey(vm.K.ToString))
-	vm.Define(proto, vm.K.ToString, toString, engine.FlagsHidden)
+	toString := vm.Get(vm.Intrinsic(engine.IntrinsicArrayPrototype), engine.NamedKey(vm.Key(engine.KeyToString)))
+	vm.Define(proto, vm.Key(engine.KeyToString), toString, engine.FlagsHidden)
 
 	for typ := range engine.ElementTypeCount {
 		name := typedArrayNames[typ]
@@ -839,9 +840,9 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 			return bi.construct(vm, typ, args)
 		})
 		vm.SetPrototypeOf(c, ctor)
-		vm.Define(c, vm.K.Prototype, engine.ObjectValue(p), 0)
-		vm.Define(p, vm.K.Constructor, engine.ObjectValue(c), engine.FlagsHidden)
-		vm.Define(vm.Global, vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
+		vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(p), 0)
+		vm.Define(p, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
+		vm.Define(vm.GlobalObject().Object(), vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
 		bpe := engine.Number(float64(typ.Size()))
 		constant(vm, c, "BYTES_PER_ELEMENT", bpe)
 		constant(vm, p, "BYTES_PER_ELEMENT", bpe)

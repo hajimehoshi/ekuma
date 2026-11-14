@@ -132,11 +132,11 @@ func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
 func (vm *VM) newGeneratorObject(g *generator) *Object {
-	proto := vm.GeneratorProto
+	proto := vm.Intrinsic(IntrinsicGeneratorPrototype)
 	if g.async != nil {
-		proto = vm.AsyncGeneratorProto
+		proto = vm.Intrinsic(IntrinsicAsyncGeneratorPrototype)
 	}
-	if p := vm.GetV(Value{o: g.f}, vm.K.Prototype); p.IsObject() {
+	if p := vm.GetV(Value{o: g.f}, vm.Key(KeyPrototype)); p.IsObject() {
 		proto = p.o
 	}
 	o := vm.NewObject(proto)

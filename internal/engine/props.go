@@ -107,30 +107,103 @@ const (
 
 // PropDesc is a property descriptor.
 type PropDesc struct {
-	Value  Value
-	Getter *Object
-	Setter *Object
+	value  Value
+	getter *Object
+	setter *Object
 
-	// Flags holds the attributes. Only the ones that has names are meaningful.
-	Flags uint8
-	Has   uint8
+	// flags holds the attributes. Only the ones that has names are meaningful.
+	flags uint8
+	has   uint8
+}
+
+// Value returns the [[Value]] field of the data descriptor d.
+func (d *PropDesc) Value() Value {
+	return d.value
+}
+
+// Getter returns the [[Get]] field of the accessor descriptor d, or nil when it is undefined.
+func (d *PropDesc) Getter() *Object {
+	return d.getter
+}
+
+// Setter returns the [[Set]] field of the accessor descriptor d, or nil when it is undefined.
+func (d *PropDesc) Setter() *Object {
+	return d.setter
+}
+
+// Writable reports the [[Writable]] field of d, which is false when absent.
+func (d *PropDesc) Writable() bool {
+	return d.flags&FlagWritable != 0
+}
+
+// Enumerable reports the [[Enumerable]] field of d, which is false when absent.
+func (d *PropDesc) Enumerable() bool {
+	return d.flags&FlagEnumerable != 0
+}
+
+// Configurable reports the [[Configurable]] field of d, which is false when absent.
+func (d *PropDesc) Configurable() bool {
+	return d.flags&FlagConfigurable != 0
+}
+
+// SetValue sets the [[Value]] field of d to v.
+func (d *PropDesc) SetValue(v Value) {
+	d.value = v
+	d.has |= HasValue
+}
+
+// SetGetter sets the [[Get]] field of d to f, where nil stands for undefined.
+func (d *PropDesc) SetGetter(f *Object) {
+	d.getter = f
+	d.has |= HasGet
+}
+
+// SetSetter sets the [[Set]] field of d to f, where nil stands for undefined.
+func (d *PropDesc) SetSetter(f *Object) {
+	d.setter = f
+	d.has |= HasSet
+}
+
+// SetWritable sets the [[Writable]] field of d to b.
+func (d *PropDesc) SetWritable(b bool) {
+	d.setFlag(HasWritable, FlagWritable, b)
+}
+
+// SetEnumerable sets the [[Enumerable]] field of d to b.
+func (d *PropDesc) SetEnumerable(b bool) {
+	d.setFlag(HasEnumerable, FlagEnumerable, b)
+}
+
+// SetConfigurable sets the [[Configurable]] field of d to b.
+func (d *PropDesc) SetConfigurable(b bool) {
+	d.setFlag(HasConfigurable, FlagConfigurable, b)
+}
+
+// setFlag makes the field has of d present with the attribute flag set to b.
+func (d *PropDesc) setFlag(has, flag uint8, b bool) {
+	d.has |= has
+	if b {
+		d.flags |= flag
+	} else {
+		d.flags &^= flag
+	}
 }
 
 // IsAccessor implements IsAccessorDescriptor.
 func (d *PropDesc) IsAccessor() bool {
-	return d.Has&(HasGet|HasSet) != 0
+	return d.has&(HasGet|HasSet) != 0
 }
 
 // IsData implements IsDataDescriptor.
 func (d *PropDesc) IsData() bool {
-	return d.Has&(HasValue|HasWritable) != 0
+	return d.has&(HasValue|HasWritable) != 0
 }
 
 func dataDesc(v Value, flags uint8) PropDesc {
 	return PropDesc{
-		Value: v,
-		Flags: flags,
-		Has:   HasValue | HasWritable | HasEnumerable | HasConfigurable,
+		value: v,
+		flags: flags,
+		has:   HasValue | HasWritable | HasEnumerable | HasConfigurable,
 	}
 }
 
@@ -144,37 +217,37 @@ func (vm *VM) materialize(o *Object) {
 	f.materialized = true
 	o.flags &^= objExotic
 	if c := f.code; c != nil {
-		vm.add(o, vm.K.Length, Number(float64(c.length)), FlagConfigurable)
-		vm.add(o, vm.K.Name, vm.NewString(c.name), FlagConfigurable)
+		vm.add(o, vm.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
+		vm.add(o, vm.Key(KeyName), vm.NewString(c.name), FlagConfigurable)
 		if c.legacyCallerArguments {
-			vm.add(o, vm.K.arguments, Undefined, 0)
-			vm.add(o, vm.K.caller, Undefined, 0)
+			vm.add(o, vm.Key(keyArguments), Undefined, 0)
+			vm.add(o, vm.Key(keyCaller), Undefined, 0)
 		}
 		switch {
 		case c.isGenerator:
-			proto := vm.GeneratorProto
+			proto := vm.Intrinsic(IntrinsicGeneratorPrototype)
 			if c.isAsync {
-				proto = vm.AsyncGeneratorProto
+				proto = vm.Intrinsic(IntrinsicAsyncGeneratorPrototype)
 			}
-			vm.add(o, vm.K.Prototype, Value{o: vm.NewObject(proto)}, FlagWritable)
+			vm.add(o, vm.Key(KeyPrototype), Value{o: vm.NewObject(proto)}, FlagWritable)
 		case f.constructor:
-			p := vm.NewObject(vm.ObjectProto)
-			vm.add(p, vm.K.Constructor, Value{o: o}, FlagsHidden)
+			p := vm.NewOrdinaryObject()
+			vm.add(p, vm.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {
 				flags = 0
 			}
-			vm.add(o, vm.K.Prototype, Value{o: p}, flags)
+			vm.add(o, vm.Key(KeyPrototype), Value{o: p}, flags)
 		}
 		return
 	}
-	vm.add(o, vm.K.Length, Number(float64(f.length)), FlagConfigurable)
-	vm.add(o, vm.K.Name, vm.NewString(f.name), FlagConfigurable)
+	vm.add(o, vm.Key(KeyLength), Number(float64(f.length)), FlagConfigurable)
+	vm.add(o, vm.Key(KeyName), vm.NewString(f.name), FlagConfigurable)
 }
 
 // isLazyKey reports whether key names a property that materialize creates.
 func (vm *VM) isLazyKey(key *Object) bool {
-	return key == vm.K.Prototype || key == vm.K.Name || key == vm.K.Length || key == vm.K.caller || key == vm.K.arguments
+	return key == vm.Key(KeyPrototype) || key == vm.Key(KeyName) || key == vm.Key(KeyLength) || key == vm.Key(keyCaller) || key == vm.Key(keyArguments)
 }
 
 // resolve prepares the exotic object o for an operation on its named properties.
@@ -187,7 +260,7 @@ func (vm *VM) resolve(o *Object) {
 // lookup finds the named property key on o and its prototype chain.
 // For the length of an array, which is not stored, it returns the array as holder and slot -1.
 func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
-	length := key == vm.K.Length
+	length := key == vm.Key(KeyLength)
 	for h := o; h != nil; h = h.shape.proto {
 		if h.flags&objExotic != 0 {
 			if vm.isLazyKey(key) {
@@ -220,15 +293,15 @@ func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	o := v.o
 	if o == nil {
-		return vm.NumberProto
+		return vm.Intrinsic(IntrinsicNumberPrototype)
 	}
 	switch o.kind {
 	case kindFalse, kindTrue:
-		return vm.BooleanProto
+		return vm.Intrinsic(IntrinsicBooleanPrototype)
 	case kindSymbol:
-		return vm.SymbolProto
+		return vm.Intrinsic(IntrinsicSymbolPrototype)
 	case kindBigInt:
-		return vm.BigintProto
+		return vm.Intrinsic(IntrinsicBigIntPrototype)
 	case kindUndefined, kindNull:
 		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
 	}
@@ -241,19 +314,19 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
 func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *Object) {
 	start := vm.protoStart(v, PropKey{key: key})
-	if start.kind == kindString && key == vm.K.Length {
+	if start.kind == kindString && key == vm.Key(KeyLength) {
 		return Number(float64(start.StringLength())), nil
 	}
 	if start.class == classProxy {
 		return vm.proxyGet(start, PropKey{key: key}, v), nil
 	}
-	if start.class == classTypedArray && key == vm.K.Length && c != nil {
+	if start.class == classTypedArray && key == vm.Key(KeyLength) && c != nil {
 		// The cache says that the length is the original getter, whose result needs no call.
 		e := &c.cacheEntry
 		if e.shape != start.shape {
 			e = &c.second
 		}
-		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == vm.protoEpoch && e.holder == vm.FnTypedArrayLength {
+		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == vm.protoEpoch && e.holder == vm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
 			return Number(float64(vm.typedArrayLength(start))), nil
 		}
 	}
@@ -481,7 +554,7 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 				return PropDesc{}, false
 			}
 		}
-		if k.key == vm.K.Length && o.kind == kindArray {
+		if k.key == vm.Key(KeyLength) && o.kind == kindArray {
 			flags := FlagWritable
 			if o.flags&objFrozenLength != 0 {
 				flags = 0
@@ -497,10 +570,10 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 	if p.flags&FlagAccessor != 0 {
 		a := val.accessor()
 		return PropDesc{
-			Getter: a.getter,
-			Setter: a.setter,
-			Flags:  p.flags,
-			Has:    HasGet | HasSet | HasEnumerable | HasConfigurable,
+			getter: a.getter,
+			setter: a.setter,
+			flags:  p.flags,
+			has:    HasGet | HasSet | HasEnumerable | HasConfigurable,
 		}, true
 	}
 	return dataDesc(val, p.flags), true
@@ -552,13 +625,13 @@ func (vm *VM) getProp(o *Object, k PropKey, receiver Value) Value {
 		if !ok {
 			continue
 		}
-		if d.Flags&FlagAccessor != 0 {
-			if d.Getter == nil {
+		if d.flags&FlagAccessor != 0 {
+			if d.getter == nil {
 				return Undefined
 			}
-			return vm.Call(d.Getter, receiver)
+			return vm.Call(d.getter, receiver)
 		}
-		return d.Value
+		return d.value
 	}
 	return Undefined
 }
@@ -673,7 +746,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 		// The initial properties of a function precede every property that a store adds.
 		vm.resolve(o)
 	}
-	if o.kind == kindArray && key == vm.K.Length {
+	if o.kind == kindArray && key == vm.Key(KeyLength) {
 		return nil, vm.setArrayLengthValue(o, val)
 	}
 	if c != nil {
@@ -822,14 +895,14 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 			break
 		}
 	}
-	if found && d.Flags&FlagAccessor != 0 {
-		if d.Setter == nil {
+	if found && d.flags&FlagAccessor != 0 {
+		if d.setter == nil {
 			return false
 		}
-		vm.Call(d.Setter, receiver, val)
+		vm.Call(d.setter, receiver, val)
 		return true
 	}
-	if found && d.Flags&FlagWritable == 0 {
+	if found && d.flags&FlagWritable == 0 {
 		return false
 	}
 	if !receiver.IsObject() {
@@ -837,12 +910,12 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 	}
 	r := receiver.o
 	if existing, ok := vm.GetOwnProperty(r, k); ok {
-		if existing.Flags&FlagAccessor != 0 || existing.Flags&FlagWritable == 0 {
+		if existing.flags&FlagAccessor != 0 || existing.flags&FlagWritable == 0 {
 			return false
 		}
 		return vm.defineOwnProperty(r, k, PropDesc{
-			Value: val,
-			Has:   HasValue,
+			value: val,
+			has:   HasValue,
 		})
 	}
 	return vm.defineOwnProperty(r, k, dataDesc(val, FlagsData))
@@ -863,7 +936,7 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	if o.class == classTypedArray && isNumericKey(k) {
 		return k.key == nil && vm.typedArrayDefine(o, k.idx, d)
 	}
-	if o.kind == kindArray && k.key == vm.K.Length {
+	if o.kind == kindArray && k.key == vm.Key(KeyLength) {
 		return vm.defineArrayLength(o, d)
 	}
 	if k.key == nil {
@@ -883,14 +956,14 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 			// The initial properties of a function precede every property that is defined later.
 			vm.resolve(o)
 		}
-		flags := d.Flags & d.attrMask()
-		val := d.Value
-		if d.Has&HasValue == 0 {
+		flags := d.flags & d.attrMask()
+		val := d.value
+		if d.has&HasValue == 0 {
 			val = Undefined
 		}
 		if d.IsAccessor() {
 			flags = flags&^FlagWritable | FlagAccessor
-			val = newAccessor(d.Getter, d.Setter)
+			val = newAccessor(d.getter, d.setter)
 		}
 		if k.key == nil {
 			return vm.addIndex(o, k.idx, val, flags)
@@ -900,70 +973,70 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	}
 
 	// ValidateAndApplyPropertyDescriptor for an existing property.
-	if cur.Flags&FlagConfigurable == 0 {
-		if d.Has&HasConfigurable != 0 && d.Flags&FlagConfigurable != 0 {
+	if cur.flags&FlagConfigurable == 0 {
+		if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
 			return false
 		}
-		if d.Has&HasEnumerable != 0 && (d.Flags^cur.Flags)&FlagEnumerable != 0 {
+		if d.has&HasEnumerable != 0 && (d.flags^cur.flags)&FlagEnumerable != 0 {
 			return false
 		}
-		curAccessor := cur.Flags&FlagAccessor != 0
+		curAccessor := cur.flags&FlagAccessor != 0
 		if d.IsAccessor() != curAccessor && (d.IsAccessor() || d.IsData()) {
 			return false
 		}
 		if curAccessor {
-			if d.Has&HasGet != 0 && d.Getter != cur.Getter {
+			if d.has&HasGet != 0 && d.getter != cur.getter {
 				return false
 			}
-			if d.Has&HasSet != 0 && d.Setter != cur.Setter {
+			if d.has&HasSet != 0 && d.setter != cur.setter {
 				return false
 			}
-		} else if cur.Flags&FlagWritable == 0 {
-			if d.Has&HasWritable != 0 && d.Flags&FlagWritable != 0 {
+		} else if cur.flags&FlagWritable == 0 {
+			if d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
 				return false
 			}
-			if d.Has&HasValue != 0 && !SameValue(d.Value, cur.Value) {
+			if d.has&HasValue != 0 && !SameValue(d.value, cur.value) {
 				return false
 			}
 		}
 	}
 
 	// Merge the fields that are present into the current property.
-	flags := cur.Flags
-	if d.Has&HasEnumerable != 0 {
-		flags = flags&^FlagEnumerable | d.Flags&FlagEnumerable
+	flags := cur.flags
+	if d.has&HasEnumerable != 0 {
+		flags = flags&^FlagEnumerable | d.flags&FlagEnumerable
 	}
-	if d.Has&HasConfigurable != 0 {
-		flags = flags&^FlagConfigurable | d.Flags&FlagConfigurable
+	if d.has&HasConfigurable != 0 {
+		flags = flags&^FlagConfigurable | d.flags&FlagConfigurable
 	}
 	var val Value
 	switch {
 	case d.IsAccessor():
-		g, s := cur.Getter, cur.Setter
-		if cur.Flags&FlagAccessor == 0 {
+		g, s := cur.getter, cur.setter
+		if cur.flags&FlagAccessor == 0 {
 			g, s = nil, nil
 		}
-		if d.Has&HasGet != 0 {
-			g = d.Getter
+		if d.has&HasGet != 0 {
+			g = d.getter
 		}
-		if d.Has&HasSet != 0 {
-			s = d.Setter
+		if d.has&HasSet != 0 {
+			s = d.setter
 		}
 		flags = flags&^FlagWritable | FlagAccessor
 		val = newAccessor(g, s)
-	case cur.Flags&FlagAccessor != 0 && !d.IsData():
-		val = newAccessor(cur.Getter, cur.Setter)
+	case cur.flags&FlagAccessor != 0 && !d.IsData():
+		val = newAccessor(cur.getter, cur.setter)
 	default:
-		val = cur.Value
-		if cur.Flags&FlagAccessor != 0 {
+		val = cur.value
+		if cur.flags&FlagAccessor != 0 {
 			val = Undefined
 			flags &^= FlagAccessor | FlagWritable
 		}
-		if d.Has&HasValue != 0 {
-			val = d.Value
+		if d.has&HasValue != 0 {
+			val = d.value
 		}
-		if d.Has&HasWritable != 0 {
-			flags = flags&^FlagWritable | d.Flags&FlagWritable
+		if d.has&HasWritable != 0 {
+			flags = flags&^FlagWritable | d.flags&FlagWritable
 		}
 	}
 	vm.replaceOwn(o, k, val, flags)
@@ -973,13 +1046,13 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 // attrMask returns the attribute bits that d specifies.
 func (d *PropDesc) attrMask() uint8 {
 	var m uint8
-	if d.Has&HasEnumerable != 0 {
+	if d.has&HasEnumerable != 0 {
 		m |= FlagEnumerable
 	}
-	if d.Has&HasConfigurable != 0 {
+	if d.has&HasConfigurable != 0 {
 		m |= FlagConfigurable
 	}
-	if d.Has&HasWritable != 0 {
+	if d.has&HasWritable != 0 {
 		m |= FlagWritable
 	}
 	return m
@@ -1008,20 +1081,20 @@ func (vm *VM) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 // defineArrayLength implements ArraySetLength.
 func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
 	n := o.length
-	if d.Has&HasValue != 0 {
-		n = vm.toArrayLength(d.Value)
+	if d.has&HasValue != 0 {
+		n = vm.toArrayLength(d.value)
 	}
 	if d.IsAccessor() {
 		return false
 	}
-	if d.Has&HasConfigurable != 0 && d.Flags&FlagConfigurable != 0 {
+	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
 		return false
 	}
-	if d.Has&HasEnumerable != 0 && d.Flags&FlagEnumerable != 0 {
+	if d.has&HasEnumerable != 0 && d.flags&FlagEnumerable != 0 {
 		return false
 	}
 	frozen := o.flags&objFrozenLength != 0
-	if frozen && d.Has&HasWritable != 0 && d.Flags&FlagWritable != 0 {
+	if frozen && d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
 		return false
 	}
 	ok := true
@@ -1031,7 +1104,7 @@ func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
 		}
 		ok = vm.setArrayLength(o, n)
 	}
-	if d.Has&HasWritable != 0 && d.Flags&FlagWritable == 0 {
+	if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
 		o.flags |= objFrozenLength
 		vm.touchProto(o)
 	}
@@ -1076,7 +1149,7 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 				return true
 			}
 		}
-		if k.key == vm.K.Length && o.kind == kindArray {
+		if k.key == vm.Key(KeyLength) && o.kind == kindArray {
 			return false
 		}
 	}
@@ -1143,7 +1216,7 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 		}
 	}
 	if o.kind == kindArray {
-		keys = append(keys, PropKey{key: vm.K.Length})
+		keys = append(keys, PropKey{key: vm.Key(KeyLength)})
 	}
 	for _, k := range names {
 		if k.kind != kindString {
@@ -1199,7 +1272,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	if o.shape.proto == proto {
 		return true
 	}
-	if o.flags&objNotExtensible != 0 || o == vm.ObjectProto {
+	if o.flags&objNotExtensible != 0 || o == vm.Intrinsic(IntrinsicObjectPrototype) {
 		return false
 	}
 	if o.flags&objExotic != 0 {
@@ -1283,7 +1356,7 @@ func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
 			if k.IsSymbol() {
 				continue
 			}
-			if d, ok := vm.GetOwnProperty(o, k); ok && d.Flags&FlagEnumerable != 0 {
+			if d, ok := vm.GetOwnProperty(o, k); ok && d.flags&FlagEnumerable != 0 {
 				keys = append(keys, k)
 			}
 		}

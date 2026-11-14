@@ -56,7 +56,7 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
 	g := vm.newGenerator(f, this, args)
 	g.async = asyncFunction
-	g.object = vm.NewPromiseObject(vm.PromiseProto)
+	g.object = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
 	g.state = genSuspendedStart
 	vm.asyncFunctionResume(g, ResumeNext, Undefined)
 	return Value{o: g.object}
@@ -283,7 +283,7 @@ func (vm *VM) asyncFromSyncIterator(it, next Value) (Value, Value) {
 		iterator: it,
 		next:     next,
 	}
-	return Value{o: o}, vm.GetV(Value{o: o}, vm.K.next)
+	return Value{o: o}, vm.GetV(Value{o: o}, vm.Key(keyNext))
 }
 
 // CreateAsyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
@@ -305,9 +305,9 @@ func (vm *VM) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
 
 // initAsyncFromSyncIteratorPrototype creates %AsyncFromSyncIteratorPrototype%.
 func (vm *VM) initAsyncFromSyncIteratorPrototype() {
-	proto := vm.NewObject(vm.AsyncIteratorProto)
+	proto := vm.NewObject(vm.Intrinsic(IntrinsicAsyncIteratorPrototype))
 	vm.asyncFromSyncProto = proto
-	vm.Define(proto, vm.K.next, Value{o: vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
+	vm.Define(proto, vm.Key(keyNext), Value{o: vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		s := vm.thisAsyncFromSyncIterator(this)
 		c := vm.newIntrinsicCapability()
 		var result Value
@@ -325,13 +325,13 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 		}
 		return vm.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
 	})}, FlagsHidden)
-	vm.Define(proto, vm.K.ret, Value{o: vm.NewNative("return", 0, func(vm *VM, this Value, args []Value) Value {
+	vm.Define(proto, vm.Key(keyReturn), Value{o: vm.NewNative("return", 0, func(vm *VM, this Value, args []Value) Value {
 		s := vm.thisAsyncFromSyncIterator(this)
 		c := vm.newIntrinsicCapability()
 		var result Value
 		var hasReturn bool
 		if !vm.IfAbruptRejectPromise(c, func() {
-			m := vm.GetMethod(s.iterator, vm.K.ret)
+			m := vm.GetMethod(s.iterator, vm.Key(keyReturn))
 			if m == nil {
 				return
 			}
@@ -354,13 +354,13 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 		}
 		return vm.asyncFromSyncIteratorContinuation(result, c, s.iterator, false)
 	})}, FlagsHidden)
-	vm.Define(proto, vm.K.throw, Value{o: vm.NewNative("throw", 0, func(vm *VM, this Value, args []Value) Value {
+	vm.Define(proto, vm.Key(keyThrow), Value{o: vm.NewNative("throw", 0, func(vm *VM, this Value, args []Value) Value {
 		s := vm.thisAsyncFromSyncIterator(this)
 		c := vm.newIntrinsicCapability()
 		var result Value
 		var hasThrow bool
 		if !vm.IfAbruptRejectPromise(c, func() {
-			m := vm.GetMethod(s.iterator, vm.K.throw)
+			m := vm.GetMethod(s.iterator, vm.Key(keyThrow))
 			if m == nil {
 				vm.iteratorClose(s.iterator, false)
 				return
@@ -391,8 +391,8 @@ func (vm *VM) asyncFromSyncIteratorContinuation(result Value, c *PromiseCapabili
 	var done bool
 	var value Value
 	if !vm.IfAbruptRejectPromise(c, func() {
-		done = ToBoolean(vm.GetV(result, vm.K.done))
-		value = vm.GetV(result, vm.K.Value)
+		done = ToBoolean(vm.GetV(result, vm.Key(keyDone)))
+		value = vm.GetV(result, vm.Key(KeyValue))
 	}) {
 		return c.Promise()
 	}
@@ -439,7 +439,7 @@ func (vm *VM) AsyncIteratorClose(it Value, v Value, thrown bool, k AwaitHandler)
 	}
 	var m *Object
 	if e, ok := vm.Completion(func() {
-		m = vm.GetMethod(it, vm.K.ret)
+		m = vm.GetMethod(it, vm.Key(keyReturn))
 	}); !ok {
 		fail(e)
 		return

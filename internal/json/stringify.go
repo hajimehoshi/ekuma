@@ -152,7 +152,7 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 
 	var holder *engine.Object
 	if w.replacer != nil {
-		holder = vm.NewObject(vm.ObjectProto)
+		holder = vm.NewOrdinaryObject()
 		vm.CreateDataPropertyOrThrow(holder, engine.NamedKey(vm.Intern("")), value)
 	}
 	if !w.serialize(holder, engine.NamedKey(vm.Intern("")), value) {

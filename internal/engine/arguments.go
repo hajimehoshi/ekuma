@@ -19,9 +19,9 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 		shape: vm.shapes.arguments,
 		elems: vm.frameArgs(fr, regs),
 	}
-	o.slots = []Value{Number(float64(fr.argc)), {o: vm.FnArrayValues}}
+	o.slots = []Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	if !mapped {
-		vm.add(o, vm.K.callee, newAccessor(vm.ThrowTypeErrorFunc, vm.ThrowTypeErrorFunc), FlagAccessor)
+		vm.add(o, vm.Key(keyCallee), newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError)), FlagAccessor)
 		return o
 	}
 	if n := min(fr.argc, fr.fp.nparams); n > 0 {
@@ -45,7 +45,7 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 		o.flags |= objSparse
 		o.ext = m
 	}
-	vm.add(o, vm.K.callee, Value{o: fr.cl}, FlagsHidden)
+	vm.add(o, vm.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
 	return o
 }
 
@@ -69,10 +69,10 @@ func (vm *VM) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) 
 	// The stored value is brought up to date, as the ordinary definition validates against it.
 	p, _ := o.shape.lookup(vm.indexName(i))
 	o.slots[p.slot] = *u.p
-	readOnly := d.Has&HasWritable != 0 && d.Flags&FlagWritable == 0
-	if d.IsData() && d.Has&HasValue == 0 && readOnly {
-		d.Value = *u.p
-		d.Has |= HasValue
+	readOnly := d.has&HasWritable != 0 && d.flags&FlagWritable == 0
+	if d.IsData() && d.has&HasValue == 0 && readOnly {
+		d.value = *u.p
+		d.has |= HasValue
 	}
 	m.params[i] = nil
 	if !vm.defineOwnProperty(o, PropKey{idx: i}, d) {
@@ -82,8 +82,8 @@ func (vm *VM) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) 
 	if d.IsAccessor() {
 		return true
 	}
-	if d.Has&HasValue != 0 {
-		*u.p = d.Value
+	if d.has&HasValue != 0 {
+		*u.p = d.value
 	}
 	if !readOnly {
 		m.params[i] = u

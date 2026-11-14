@@ -241,7 +241,7 @@ func (v Value) Equal(w Value) bool {
 func (v Value) vm(method string) (*VM, error) {
 	if v.o != nil && v.o != numberTag {
 		if e := v.o.VM(); e != nil {
-			return e.Host.(*VM), nil
+			return e.HostDefined().(*VM), nil
 		}
 	}
 	return nil, &ValueError{
@@ -432,10 +432,9 @@ type VM struct {
 
 // NewVM creates a VM with the standard built-in objects.
 func NewVM() *VM {
-	e := engine.New()
-	builtin.Install(e)
-	vm := &VM{e: e}
-	e.Host = vm
+	vm := &VM{}
+	vm.e = engine.New(vm)
+	builtin.Install(vm.e)
 	return vm
 }
 

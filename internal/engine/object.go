@@ -331,6 +331,14 @@ func (vm *VM) NewObject(proto *Object) *Object {
 	}
 }
 
+// NewOrdinaryObject returns a new empty ordinary object whose prototype is %Object.prototype%.
+func (vm *VM) NewOrdinaryObject() *Object {
+	return &Object{
+		kind:  kindObject,
+		shape: vm.shapes.object,
+	}
+}
+
 // NewArray returns a new array with the given elements, which it keeps.
 func (vm *VM) NewArray(elems []Value) *Object {
 	return &Object{
@@ -418,7 +426,7 @@ type stringTable struct {
 func (vm *VM) NewString(s string) Value {
 	if len(s) <= 1 {
 		if s == "" {
-			return vm.EmptyString
+			return vm.emptyString
 		}
 		if c := s[0]; c < 0x80 {
 			return vm.strings.ascii[c]

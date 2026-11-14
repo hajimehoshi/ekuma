@@ -22,11 +22,11 @@ func requireHoldable(vm *engine.VM, v engine.Value, what string) {
 }
 
 func initWeakMap(vm *engine.VM) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	setKey := vm.Intern("set")
 	var weakMapSet *engine.Object
 	constructor(vm, "WeakMap", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakMap requires 'new'")
 		}
@@ -105,15 +105,15 @@ func initWeakMap(vm *engine.VM) {
 		t.Set(k, v)
 		return v
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("WeakMap"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("WeakMap"), engine.FlagConfigurable)
 }
 
 func initWeakSet(vm *engine.VM) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	addKey := vm.Intern("add")
 	var weakSetAdd *engine.Object
 	constructor(vm, "WeakSet", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakSet requires 'new'")
 		}
@@ -160,13 +160,13 @@ func initWeakSet(vm *engine.VM) {
 		v := arg(args, 0)
 		return engine.Bool(vm.CanBeHeldWeakly(v) && t.Has(v))
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("WeakSet"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("WeakSet"), engine.FlagConfigurable)
 }
 
 func initWeakRef(vm *engine.VM) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	constructor(vm, "WeakRef", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakRef requires 'new'")
 		}
@@ -183,13 +183,13 @@ func initWeakRef(vm *engine.VM) {
 		}
 		return v
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("WeakRef"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("WeakRef"), engine.FlagConfigurable)
 }
 
 func initFinalizationRegistry(vm *engine.VM) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	constructor(vm, "FinalizationRegistry", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor FinalizationRegistry requires 'new'")
 		}
@@ -228,5 +228,5 @@ func initFinalizationRegistry(vm *engine.VM) {
 		requireHoldable(vm, token, "as unregister token")
 		return engine.Bool(r.Unregister(token))
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("FinalizationRegistry"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("FinalizationRegistry"), engine.FlagConfigurable)
 }

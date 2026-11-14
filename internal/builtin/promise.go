@@ -118,7 +118,7 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 	}
 	for _, k := range vm.OwnKeys(promises) {
 		d, ok := vm.GetOwnProperty(promises, k)
-		if !ok || d.Flags&engine.FlagEnumerable == 0 {
+		if !ok || !d.Enumerable() {
 			continue
 		}
 		v := vm.Get(promises, k)
@@ -135,7 +135,7 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 						return engine.Undefined
 					}
 					called = true
-					o := vm.NewObject(vm.ObjectProto)
+					o := vm.NewOrdinaryObject()
 					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(keyStatus), vm.NewString(status))
 					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(key), arg(args, 0))
 					e.values[i] = engine.ObjectValue(o)
@@ -143,7 +143,7 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 					return engine.Undefined
 				}))
 			}
-			onFulfilled = element("fulfilled", vm.K.Value)
+			onFulfilled = element("fulfilled", vm.Key(engine.KeyValue))
 			onRejected = element("rejected", keyReason)
 		} else {
 			onFulfilled = engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -164,9 +164,9 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 }
 
 func initPromise(vm *engine.VM) {
-	proto := vm.PromiseProto
+	proto := vm.Intrinsic(engine.IntrinsicPromisePrototype)
 	ctor := constructor(vm, "Promise", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("Promise constructor cannot be invoked without 'new'")
 		}
@@ -174,14 +174,14 @@ func initPromise(vm *engine.VM) {
 		if !executor.IsCallable() {
 			vm.ThrowTypeError("Promise resolver " + vm.DisplayString(executor) + " is not a function")
 		}
-		p := vm.NewPromiseObject(vm.GetPrototypeFromConstructor(nt, vm.PromiseProto))
+		p := vm.NewPromiseObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicPromisePrototype)))
 		rf := vm.CreateResolvingFunctions(p)
 		vm.IfAbruptRejectPromise(rf, func() {
 			vm.Call(executor.Object(), engine.Undefined, vm.CapabilityResolve(rf), vm.CapabilityReject(rf))
 		})
 		return engine.ObjectValue(p)
 	})
-	vm.PromiseCtor = ctor
+	vm.SetIntrinsic(engine.IntrinsicPromise, ctor)
 	speciesGetter(vm, ctor)
 
 	keyThen := vm.Intern("then")
@@ -232,7 +232,7 @@ func initPromise(vm *engine.VM) {
 						return engine.Undefined
 					}
 					called = true
-					o := vm.NewObject(vm.ObjectProto)
+					o := vm.NewOrdinaryObject()
 					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(keyStatus), vm.NewString(status))
 					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(key), arg(args, 0))
 					e.values[i] = engine.ObjectValue(o)
@@ -243,7 +243,7 @@ func initPromise(vm *engine.VM) {
 					return engine.Undefined
 				})
 			}
-			onFulfilled := element("fulfilled", vm.K.Value)
+			onFulfilled := element("fulfilled", vm.Key(engine.KeyValue))
 			onRejected := element("rejected", keyReason)
 			e.remaining++
 			invoke(vm, next, keyThen, engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
@@ -269,7 +269,7 @@ func initPromise(vm *engine.VM) {
 		}
 		aggregate := func() engine.Value {
 			err := vm.NewError(engine.ErrorKindAggregate, "all promises were rejected")
-			vm.Define(err.Object(), vm.K.Errors, engine.ObjectValue(vm.NewArray(slices.Clone(e.values))), engine.FlagsHidden)
+			vm.Define(err.Object(), vm.Key(engine.KeyErrors), engine.ObjectValue(vm.NewArray(slices.Clone(e.values))), engine.FlagsHidden)
 			return err
 		}
 		return promiseCombinator(vm, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
@@ -335,7 +335,7 @@ func initPromise(vm *engine.VM) {
 
 	method(vm, ctor, "withResolvers", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		pc := vm.NewPromiseCapability(this)
-		o := vm.NewObject(vm.ObjectProto)
+		o := vm.NewOrdinaryObject()
 		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("promise")), pc.Promise())
 		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("resolve")), vm.CapabilityResolve(pc))
 		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("reject")), vm.CapabilityReject(pc))
@@ -350,7 +350,7 @@ func initPromise(vm *engine.VM) {
 		if !this.IsObject() {
 			vm.ThrowTypeError("Promise.prototype.finally called on non-object")
 		}
-		c := speciesConstructor(vm, this.Object(), vm.PromiseCtor)
+		c := speciesConstructor(vm, this.Object(), vm.Intrinsic(engine.IntrinsicPromise))
 		onFinally := arg(args, 0)
 		thenFinally, catchFinally := onFinally, onFinally
 		if onFinally.IsCallable() {
@@ -381,10 +381,10 @@ func initPromise(vm *engine.VM) {
 		if !engine.IsPromise(this) {
 			vm.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + vm.DisplayString(this))
 		}
-		c := speciesConstructor(vm, this.Object(), vm.PromiseCtor)
+		c := speciesConstructor(vm, this.Object(), vm.Intrinsic(engine.IntrinsicPromise))
 		pc := vm.NewPromiseCapability(engine.ObjectValue(c))
 		return vm.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
 	})
 
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("Promise"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Promise"), engine.FlagConfigurable)
 }

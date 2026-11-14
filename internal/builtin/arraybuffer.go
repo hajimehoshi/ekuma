@@ -77,10 +77,10 @@ func relativeRange(vm *engine.VM, start, end engine.Value, length int) (int, int
 }
 
 func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	bi.arrayBufferProto = proto
 	ctor := constructor(vm, "ArrayBuffer", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor ArrayBuffer requires 'new'")
 		}
@@ -218,14 +218,14 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	transfer("transfer", true, false)
 	transfer("transferToFixedLength", false, false)
 	transfer("transferToImmutable", false, true)
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("ArrayBuffer"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("ArrayBuffer"), engine.FlagConfigurable)
 }
 
 func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	bi.sharedArrayBufferProto = proto
 	ctor := constructor(vm, "SharedArrayBuffer", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor SharedArrayBuffer requires 'new'")
 		}
@@ -281,5 +281,5 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return engine.ObjectValue(r)
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("SharedArrayBuffer"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("SharedArrayBuffer"), engine.FlagConfigurable)
 }

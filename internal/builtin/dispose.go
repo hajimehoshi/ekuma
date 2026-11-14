@@ -17,8 +17,8 @@ func initDisposableStacks(vm *engine.VM) {
 	initDisposableStack(vm, false)
 	initDisposableStack(vm, true)
 
-	symMethod(vm, vm.AsyncIteratorProto, vm.K.SymAsyncDispose, "[Symbol.asyncDispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		pc := vm.NewPromiseCapability(engine.ObjectValue(vm.PromiseCtor))
+	symMethod(vm, vm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), vm.WellKnownSymbol(engine.SymbolAsyncDispose), "[Symbol.asyncDispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		pc := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
 		vm.IfAbruptRejectPromise(pc, func() {
 			m := vm.GetMethod(this, vm.Intern("return"))
 			if m == nil {
@@ -46,7 +46,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		name = "AsyncDisposableStack"
 		hint = engine.AsyncDispose
 	}
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	var ctor *engine.Object
 	newStack := func(nt *engine.Object, dc *engine.DisposeCapability) engine.Value {
 		s := &disposableStack{
@@ -55,7 +55,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		return engine.ObjectValue(vm.NewDisposableStackObject(vm.GetPrototypeFromConstructor(nt, proto), async, s))
 	}
 	ctor = constructor(vm, name, 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor " + name + " requires 'new'")
 		}
@@ -103,7 +103,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 	var dispose *engine.Object
 	if async {
 		dispose = method(vm, proto, "disposeAsync", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			pc := vm.NewPromiseCapability(engine.ObjectValue(vm.PromiseCtor))
+			pc := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
 			s, _ := engine.DisposableStackState(this, async).(*disposableStack)
 			switch {
 			case s == nil:
@@ -122,7 +122,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 			}
 			return pc.Promise()
 		})
-		vm.Define(proto, vm.K.SymAsyncDispose, engine.ObjectValue(dispose), engine.FlagsHidden)
+		vm.Define(proto, vm.WellKnownSymbol(engine.SymbolAsyncDispose), engine.ObjectValue(dispose), engine.FlagsHidden)
 	} else {
 		dispose = method(vm, proto, "dispose", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisStack(vm, this, "dispose")
@@ -140,7 +140,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 			}
 			return result
 		})
-		vm.Define(proto, vm.K.SymDispose, engine.ObjectValue(dispose), engine.FlagsHidden)
+		vm.Define(proto, vm.WellKnownSymbol(engine.SymbolDispose), engine.ObjectValue(dispose), engine.FlagsHidden)
 	}
 	getter(vm, proto, vm.Intern("disposed"), "disposed", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisStack(vm, this, "disposed").disposed)
@@ -158,5 +158,5 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		vm.AddDisposableResource(s.dc, v, hint, nil)
 		return v
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString(name), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString(name), engine.FlagConfigurable)
 }

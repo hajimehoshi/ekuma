@@ -21,12 +21,12 @@ const regExpCacheLimit = 1024
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor
 // newTarget, with an own lastIndex property and no matcher yet.
 func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
-	o := vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.RegexpProto))
+	o := vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicRegExpPrototype)))
 	o.class = classRegExp
 	o.ext = &regExpState{
-		legacy: newTarget == vm.RegExpCtor,
+		legacy: newTarget == vm.Intrinsic(IntrinsicRegExp),
 	}
-	vm.Define(o, vm.K.lastIndex, Value{n: 0}, FlagWritable)
+	vm.Define(o, vm.Key(keyLastIndex), Value{n: 0}, FlagWritable)
 	return o
 }
 
@@ -46,7 +46,7 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 	st.matcher = re
 	st.source = p
 	st.flags = f
-	vm.Set(o, NamedKey(vm.K.lastIndex), Value{n: 0})
+	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Value{n: 0})
 	return o
 }
 
@@ -73,7 +73,7 @@ func (vm *VM) compileRegExp(p, f string) *regexp.Regexp {
 
 // newRegExpLiteral returns the RegExp object of a regular expression literal.
 func (vm *VM) newRegExpLiteral(pattern, flags Value) Value {
-	o := vm.RegExpAlloc(vm.RegExpCtor)
+	o := vm.RegExpAlloc(vm.Intrinsic(IntrinsicRegExp))
 	return Value{o: vm.RegExpInitialize(o, pattern, flags)}
 }
 

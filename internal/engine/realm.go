@@ -12,10 +12,11 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// New creates a VM with the standard built-in objects.
-func New() *VM {
+// New creates a VM with the standard built-in objects. hostDefined is what HostDefined returns.
+func New(hostDefined any) *VM {
 	vm := &VM{
-		stack: make([]Value, 1<<14),
+		hostDefined: hostDefined,
+		stack:       make([]Value, 1<<14),
 		shapes: shapeTable{
 			byProto:         map[*Object]*shape{},
 			functionByProto: map[*Object]*shape{},
@@ -27,12 +28,13 @@ func New() *VM {
 		thrown:         Undefined,
 	}
 	vm.shapes.nullProto = &shape{vm: vm}
-	vm.ObjectProto = &Object{
+	objectProto := &Object{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
 	}
-	vm.shapes.object = vm.shapeFor(vm.ObjectProto)
-	vm.FunctionProto = &Object{
+	vm.intrinsics[IntrinsicObjectPrototype] = objectProto
+	vm.shapes.object = vm.shapeFor(objectProto)
+	functionProto := &Object{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
@@ -43,41 +45,44 @@ func New() *VM {
 			},
 		},
 	}
-	vm.shapes.function = vm.functionShapeFor(vm.FunctionProto)
-	vm.ArrayProto = &Object{
+	vm.intrinsics[IntrinsicFunctionPrototype] = functionProto
+	vm.shapes.function = vm.functionShapeFor(functionProto)
+	arrayProto := &Object{
 		kind:  kindArray,
 		class: classArray,
 		shape: vm.shapes.object,
 	}
-	vm.shapes.array = vm.shapeFor(vm.ArrayProto)
-	vm.StringProto = vm.NewObject(vm.ObjectProto)
-	vm.shapes.string = vm.shapeFor(vm.StringProto)
+	vm.intrinsics[IntrinsicArrayPrototype] = arrayProto
+	vm.shapes.array = vm.shapeFor(arrayProto)
+	stringProto := vm.NewObject(objectProto)
+	vm.intrinsics[IntrinsicStringPrototype] = stringProto
+	vm.shapes.string = vm.shapeFor(stringProto)
 
-	vm.EmptyString = Value{
+	vm.emptyString = Value{
 		o: &Object{
 			kind:  kindString,
 			flags: objInterned,
 			shape: vm.shapes.string,
 		},
 	}
-	vm.strings.interned[""] = vm.EmptyString.o
+	vm.strings.interned[""] = vm.emptyString.o
 	for i := range vm.strings.ascii {
 		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
 	}
 	vm.initKeys()
-	vm.StringProto.class = classString
-	vm.StringProto.ext = vm.EmptyString.o
-	vm.add(vm.StringProto, vm.K.Length, Number(0), 0)
+	stringProto.class = classString
+	stringProto.ext = vm.emptyString.o
+	vm.add(stringProto, vm.Key(KeyLength), Number(0), 0)
 
 	vm.missHolder = &Object{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
 		slots: []Value{Undefined},
 	}
-	vm.shapes.iterResult = vm.shapes.object.with(vm.K.Value, FlagsData).with(vm.K.done, FlagsData)
-	vm.shapes.arguments = vm.shapes.object.with(vm.K.Length, FlagsHidden).with(vm.K.SymIterator, FlagsHidden)
+	vm.shapes.iterResult = vm.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
+	vm.shapes.arguments = vm.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
 
-	vm.Global = vm.NewObject(vm.ObjectProto)
+	vm.global = vm.NewObject(objectProto)
 	vm.globalLex = vm.NewObject(nil)
 	return vm
 }
@@ -115,39 +120,32 @@ func (vm *VM) KeyForSymbol(sym *Object) (string, bool) {
 }
 
 func (vm *VM) initKeys() {
-	k := &vm.K
-	for _, e := range []struct {
-		p    **Object
-		name string
-	}{
-		{&k.Length, "length"}, {&k.Prototype, "prototype"}, {&k.Constructor, "constructor"}, {&k.Name, "name"},
-		{&k.Message, "message"}, {&k.Stack, "stack"}, {&k.Cause, "cause"}, {&k.Errors, "errors"},
-		{&k.Error, "error"}, {&k.Suppressed, "suppressed"},
-		{&k.ToString, "toString"}, {&k.valueOf, "valueOf"}, {&k.toJSON, "toJSON"},
-		{&k.call, "call"}, {&k.apply, "apply"}, {&k.bind, "bind"},
-		{&k.Get, "get"}, {&k.Set, "set"}, {&k.Value, "value"}, {&k.Writable, "writable"},
-		{&k.Enumerable, "enumerable"}, {&k.Configurable, "configurable"},
-		{&k.next, "next"}, {&k.done, "done"}, {&k.ret, "return"}, {&k.throw, "throw"}, {&k.then, "then"},
-		{&k.callee, "callee"}, {&k.caller, "caller"}, {&k.arguments, "arguments"},
-		{&k.index, "index"}, {&k.input, "input"}, {&k.groups, "groups"}, {&k.lastIndex, "lastIndex"},
-		{&k.Raw, "raw"}, {&k.proxy, "proxy"}, {&k.revoke, "revoke"}, {&k.source, "source"},
-		{&k.flags, "flags"}, {&k.default_, "default"},
+	for k, name := range [commonKeyCount]string{
+		KeyLength: "length", KeyPrototype: "prototype", KeyConstructor: "constructor", KeyName: "name",
+		KeyMessage: "message", KeyStack: "stack", KeyCause: "cause", KeyErrors: "errors",
+		KeyError: "error", KeySuppressed: "suppressed",
+		KeyToString: "toString", keyValueOf: "valueOf", keyToJSON: "toJSON",
+		keyCall: "call", keyApply: "apply", keyBind: "bind",
+		KeyGet: "get", KeySet: "set", KeyValue: "value", KeyWritable: "writable",
+		KeyEnumerable: "enumerable", KeyConfigurable: "configurable",
+		keyNext: "next", keyDone: "done", keyReturn: "return", keyThrow: "throw", keyThen: "then",
+		keyCallee: "callee", keyCaller: "caller", keyArguments: "arguments",
+		keyIndex: "index", keyInput: "input", keyGroups: "groups", keyLastIndex: "lastIndex",
+		KeyRaw: "raw", keyProxy: "proxy", keyRevoke: "revoke", keySource: "source",
+		keyFlags: "flags", keyDefault: "default",
 	} {
-		*e.p = vm.Intern(e.name)
+		vm.keys.common[k] = vm.Intern(name)
 	}
-	for _, e := range []struct {
-		p    **Object
-		name string
-	}{
-		{&k.SymIterator, "Symbol.iterator"}, {&k.SymAsyncIterator, "Symbol.asyncIterator"},
-		{&k.SymHasInstance, "Symbol.hasInstance"}, {&k.SymToPrimitive, "Symbol.toPrimitive"},
-		{&k.SymToStringTag, "Symbol.toStringTag"}, {&k.SymSpecies, "Symbol.species"},
-		{&k.SymIsConcatSpreadable, "Symbol.isConcatSpreadable"}, {&k.SymUnscopables, "Symbol.unscopables"},
-		{&k.SymMatch, "Symbol.match"}, {&k.SymMatchAll, "Symbol.matchAll"}, {&k.SymReplace, "Symbol.replace"},
-		{&k.SymSearch, "Symbol.search"}, {&k.SymSplit, "Symbol.split"},
-		{&k.SymDispose, "Symbol.dispose"}, {&k.SymAsyncDispose, "Symbol.asyncDispose"},
+	for s, name := range [wellKnownSymbolCount]string{
+		SymbolIterator: "Symbol.iterator", SymbolAsyncIterator: "Symbol.asyncIterator",
+		SymbolHasInstance: "Symbol.hasInstance", SymbolToPrimitive: "Symbol.toPrimitive",
+		SymbolToStringTag: "Symbol.toStringTag", SymbolSpecies: "Symbol.species",
+		SymbolIsConcatSpreadable: "Symbol.isConcatSpreadable", SymbolUnscopables: "Symbol.unscopables",
+		SymbolMatch: "Symbol.match", SymbolMatchAll: "Symbol.matchAll", SymbolReplace: "Symbol.replace",
+		SymbolSearch: "Symbol.search", SymbolSplit: "Symbol.split",
+		SymbolDispose: "Symbol.dispose", SymbolAsyncDispose: "Symbol.asyncDispose",
 	} {
-		*e.p = vm.NewSymbol(e.name, true)
+		vm.keys.wellKnown[s] = vm.NewSymbol(name, true)
 	}
 }
 
@@ -184,7 +182,7 @@ func (vm *VM) RunScript(file, src string) (Value, error) {
 	return vm.enter(func() Value {
 		var result Value
 		ok := vm.protect(func() {
-			result = vm.Call(f, Value{o: vm.Global})
+			result = vm.Call(f, Value{o: vm.global})
 		})
 		// The jobs run after a script that throws too.
 		e := vm.takeThrown()
@@ -294,7 +292,7 @@ func (vm *VM) PerformEval(x Value) Value {
 	if err != nil {
 		vm.throwSyntaxError(err.Error())
 	}
-	return vm.Call(vm.newScriptFunction(fp), Value{o: vm.Global})
+	return vm.Call(vm.newScriptFunction(fp), Value{o: vm.global})
 }
 
 // FunctionKind is the kind of function that CreateDynamicFunction creates.
@@ -327,24 +325,24 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 
 	var pkind parser.FunctionKind
-	fallback := vm.FunctionProto
+	fallback := vm.Intrinsic(IntrinsicFunctionPrototype)
 	switch kind {
 	case GeneratorFunction:
 		pkind = parser.GeneratorFunction
-		fallback = vm.GeneratorFunctionProto
+		fallback = vm.Intrinsic(IntrinsicGeneratorFunctionPrototype)
 	case AsyncFunction:
 		pkind = parser.AsyncFunction
-		fallback = vm.AsyncFunctionProto
+		fallback = vm.Intrinsic(IntrinsicAsyncFunctionPrototype)
 	case AsyncGeneratorFunction:
 		pkind = parser.AsyncGeneratorFunction
-		fallback = vm.AsyncGeneratorFunctionProto
+		fallback = vm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
 	}
 	fp, err := vm.compileFunction("<anonymous>", wtf8.FromValidUTF8(params), wtf8.FromValidUTF8(body), pkind)
 	if err != nil {
 		vm.throwSyntaxError(err.Error())
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
-	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.Global})
+	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.global})
 	if proto != fallback {
 		vm.SetPrototypeOf(f.o, proto)
 	}

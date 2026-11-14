@@ -8,10 +8,10 @@ import (
 )
 
 func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
-	proto := vm.NewObject(vm.ObjectProto)
+	proto := vm.NewOrdinaryObject()
 	bi.dataViewProto = proto
 	constructor(vm, "DataView", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor DataView requires 'new'")
 		}
@@ -74,7 +74,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return engine.Number(float64(d.ByteOffset()))
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("DataView"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("DataView"), engine.FlagConfigurable)
 
 	for _, e := range []struct {
 		name string

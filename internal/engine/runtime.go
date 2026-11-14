@@ -78,7 +78,7 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
 		c.epoch = vm.globalEpoch
 		return v
 	}
-	g := vm.Global
+	g := vm.global
 	if p, ok := g.shape.lookup(key); ok && p.flags&FlagAccessor == 0 {
 		c.holder = g
 		c.shape = g.shape
@@ -117,7 +117,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 		c.epoch = vm.globalEpoch
 		return
 	}
-	g := vm.Global
+	g := vm.global
 	if p, ok := g.shape.lookup(key); ok && p.flags&(FlagAccessor|FlagWritable) == FlagWritable {
 		g.slots[p.slot] = val
 		c.holder = g
@@ -145,7 +145,7 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 		if lex {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
-		if !vm.HasOwnProperty(vm.Global, PropKey{key: key}) && !vm.IsExtensible(vm.Global) {
+		if !vm.HasOwnProperty(vm.global, PropKey{key: key}) && !vm.IsExtensible(vm.global) {
 			vm.ThrowTypeError("cannot declare global variable '" + key.str + "'")
 		}
 	case bytecode.DeclLexical:
@@ -153,21 +153,21 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key}); ok && d.Flags&FlagConfigurable == 0 {
+		if d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
-		d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key})
+		d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key})
 		switch {
 		case !ok:
-			if !vm.IsExtensible(vm.Global) {
+			if !vm.IsExtensible(vm.global) {
 				vm.ThrowTypeError("cannot declare global function '" + key.str + "'")
 			}
-		case d.Flags&FlagConfigurable != 0:
-		case d.Flags&FlagAccessor != 0 || d.Flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
+		case d.flags&FlagConfigurable != 0:
+		case d.flags&FlagAccessor != 0 || d.flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
 			vm.ThrowTypeError("cannot declare global function '" + key.str + "'")
 		}
 	}
@@ -175,7 +175,7 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when isFunc is set.
 func (vm *VM) declareGlobalVar(key *Object, isFunc bool, fn Value) {
-	g := vm.Global
+	g := vm.global
 	k := PropKey{key: key}
 	d, ok := vm.GetOwnProperty(g, k)
 	if !isFunc {
@@ -184,13 +184,13 @@ func (vm *VM) declareGlobalVar(key *Object, isFunc bool, fn Value) {
 		}
 		return
 	}
-	if !ok || d.Flags&FlagConfigurable != 0 {
+	if !ok || d.flags&FlagConfigurable != 0 {
 		vm.DefinePropertyOrThrow(g, k, dataDesc(fn, FlagEnumerable|FlagWritable))
 		return
 	}
 	vm.DefinePropertyOrThrow(g, k, PropDesc{
-		Value: fn,
-		Has:   HasValue,
+		value: fn,
+		has:   HasValue,
 	})
 }
 
@@ -304,8 +304,8 @@ func (vm *VM) instanceOf(v, c Value) bool {
 	if !c.IsObject() {
 		vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 	}
-	if m := vm.GetMethod(c, vm.K.SymHasInstance); m != nil {
-		if m == vm.FnHasInstance {
+	if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
+		if m == vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
 			return vm.OrdinaryHasInstance(c, v)
 		}
 		return ToBoolean(vm.Call(m, c, v))
@@ -327,7 +327,7 @@ func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 	if !v.IsObject() {
 		return false
 	}
-	p := vm.GetV(c, vm.K.Prototype)
+	p := vm.GetV(c, vm.Key(KeyPrototype))
 	if !p.IsObject() {
 		vm.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
@@ -632,18 +632,18 @@ func (vm *VM) defineMethod(o *Object, k, f Value) {
 func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
 	f.fn.home = o
 	d := PropDesc{
-		Flags: FlagConfigurable,
-		Has:   HasEnumerable | HasConfigurable,
+		flags: FlagConfigurable,
+		has:   HasEnumerable | HasConfigurable,
 	}
 	if enumerable {
-		d.Flags |= FlagEnumerable
+		d.flags |= FlagEnumerable
 	}
 	if isSetter {
-		d.Setter = f
-		d.Has |= HasSet
+		d.setter = f
+		d.has |= HasSet
 	} else {
-		d.Getter = f
-		d.Has |= HasGet
+		d.getter = f
+		d.has |= HasGet
 	}
 	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), d)
 }
@@ -674,18 +674,18 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 	}
 	o := f.o
 	if o.fn.materialized {
-		if _, ok := o.shape.lookup(vm.K.Name); ok {
-			if d, _ := vm.GetOwnProperty(o, PropKey{key: vm.K.Name}); d.Flags&FlagAccessor != 0 || !d.Value.IsString() || d.Value.o.str != "" {
+		if _, ok := o.shape.lookup(vm.Key(KeyName)); ok {
+			if d, _ := vm.GetOwnProperty(o, PropKey{key: vm.Key(KeyName)}); d.flags&FlagAccessor != 0 || !d.value.IsString() || d.value.o.str != "" {
 				return
 			}
 		}
-		vm.defineOwnProperty(o, PropKey{key: vm.K.Name}, dataDesc(vm.NewString(name), FlagConfigurable))
+		vm.defineOwnProperty(o, PropKey{key: vm.Key(KeyName)}, dataDesc(vm.NewString(name), FlagConfigurable))
 		return
 	}
 	// The name is part of the code of an unmaterialized function, which closures share,
 	// so give this one its properties now.
 	vm.materialize(o)
-	vm.Define(o, vm.K.Name, vm.NewString(name), FlagConfigurable)
+	vm.Define(o, vm.Key(KeyName), vm.NewString(name), FlagConfigurable)
 }
 
 // copyDataProperties implements CopyDataProperties.
@@ -706,11 +706,11 @@ keys:
 			}
 		}
 		d, ok := vm.GetOwnProperty(from, k)
-		if !ok || d.Flags&FlagEnumerable == 0 {
+		if !ok || d.flags&FlagEnumerable == 0 {
 			continue
 		}
-		val := d.Value
-		if d.Flags&FlagAccessor != 0 || from.class == classProxy {
+		val := d.value
+		if d.flags&FlagAccessor != 0 || from.class == classProxy {
 			val = vm.getProp(from, k, Value{o: from})
 		}
 		vm.CreateDataPropertyOrThrow(dst, k, val)
@@ -720,8 +720,8 @@ keys:
 // setupClass makes the function ctor a class constructor that extends parent,
 // which is hole for a class without an extends clause. It returns the prototype object.
 func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
-	protoParent := vm.ObjectProto
-	ctorParent := vm.FunctionProto
+	protoParent := vm.Intrinsic(IntrinsicObjectPrototype)
+	ctorParent := vm.Intrinsic(IntrinsicFunctionPrototype)
 	if !parent.isHole() {
 		switch {
 		case parent.IsNull():
@@ -729,7 +729,7 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 		case !parent.IsCallable() || !vm.IsConstructor(parent.o):
 			vm.ThrowTypeError("class extends value " + vm.DisplayString(parent) + " is not a constructor or null")
 		default:
-			p := vm.GetV(parent, vm.K.Prototype)
+			p := vm.GetV(parent, vm.Key(KeyPrototype))
 			switch {
 			case p.IsObject():
 				protoParent = p.o
@@ -747,10 +747,10 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 	fn.home = proto
 	ctor.flags &^= objExotic
 	ctor.shape = vm.shapeFor(ctorParent)
-	vm.add(ctor, vm.K.Length, Number(float64(fn.code.length)), FlagConfigurable)
-	vm.add(ctor, vm.K.Name, vm.NewString(fn.code.name), FlagConfigurable)
-	vm.add(ctor, vm.K.Prototype, Value{o: proto}, 0)
-	vm.add(proto, vm.K.Constructor, Value{o: ctor}, FlagsHidden)
+	vm.add(ctor, vm.Key(KeyLength), Number(float64(fn.code.length)), FlagConfigurable)
+	vm.add(ctor, vm.Key(KeyName), vm.NewString(fn.code.name), FlagConfigurable)
+	vm.add(ctor, vm.Key(KeyPrototype), Value{o: proto}, 0)
+	vm.add(proto, vm.Key(KeyConstructor), Value{o: ctor}, FlagsHidden)
 	return proto
 }
 
@@ -773,19 +773,19 @@ func (vm *VM) IsConstructor(f *Object) bool {
 func (vm *VM) functionProtoFor(p *funcProto) *Object {
 	switch {
 	case p.isGenerator && p.isAsync:
-		return vm.AsyncGeneratorFunctionProto
+		return vm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
 	case p.isGenerator:
-		return vm.GeneratorFunctionProto
+		return vm.Intrinsic(IntrinsicGeneratorFunctionPrototype)
 	case p.isAsync:
-		return vm.AsyncFunctionProto
+		return vm.Intrinsic(IntrinsicAsyncFunctionPrototype)
 	}
-	return vm.FunctionProto
+	return vm.Intrinsic(IntrinsicFunctionPrototype)
 }
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
 // so that storing a new element in such an array cannot run a setter.
 func (vm *VM) arrayProtoPlain() bool {
-	a, o := vm.ArrayProto, vm.ObjectProto
+	a, o := vm.Intrinsic(IntrinsicArrayPrototype), vm.Intrinsic(IntrinsicObjectPrototype)
 	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0
 }
 
@@ -799,9 +799,9 @@ func (vm *VM) arrayIterationPlain(o *Object) bool {
 	if c.epoch != vm.protoEpoch || !c.checked {
 		c.checked = true
 		c.epoch = vm.protoEpoch
-		it, ok1 := vm.lookupData(vm.ArrayProto, vm.K.SymIterator)
-		next, ok2 := vm.lookupData(vm.ArrayIteratorProto, vm.K.next)
-		c.plain = ok1 && ok2 && it.o == vm.FnArrayValues && next.o == vm.FnArrayIterNext
+		it, ok1 := vm.lookupData(vm.Intrinsic(IntrinsicArrayPrototype), vm.WellKnownSymbol(SymbolIterator))
+		next, ok2 := vm.lookupData(vm.Intrinsic(IntrinsicArrayIteratorPrototype), vm.Key(keyNext))
+		c.plain = ok1 && ok2 && it.o == vm.Intrinsic(IntrinsicArrayPrototypeValues) && next.o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
 	}
 	return c.plain
 }
@@ -843,10 +843,10 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 		return vm.callSlow(b.target, b.this, args, false, nil)
 	}
 	if fn.native != nil {
-		saved := vm.NewTarget
-		vm.NewTarget = nil
+		saved := vm.newTarget
+		vm.newTarget = nil
 		r := fn.native(vm, this, args)
-		vm.NewTarget = saved
+		vm.newTarget = saved
 		return r
 	}
 	c := fn.code
@@ -881,10 +881,10 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 		return vm.Construct(b.target, args, newTarget)
 	}
 	if fn.native != nil {
-		saved := vm.NewTarget
-		vm.NewTarget = newTarget
+		saved := vm.newTarget
+		vm.newTarget = newTarget
 		r := fn.native(vm, Undefined, args)
-		vm.NewTarget = saved
+		vm.newTarget = saved
 		if !r.IsObject() {
 			vm.ThrowTypeError("constructor did not return an object")
 		}
@@ -892,7 +892,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	}
 	this := tdz
 	if !fn.derived {
-		this = Value{o: vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.ObjectProto))}
+		this = Value{o: vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicObjectPrototype)))}
 	}
 	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {
@@ -906,7 +906,7 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Objec
 	if ctor == nil {
 		return fallback
 	}
-	if p := vm.GetV(Value{o: ctor}, vm.K.Prototype); p.IsObject() {
+	if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
 		return p.o
 	}
 	return fallback
@@ -928,11 +928,17 @@ func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 }
 
 // NewNativeConstructor returns a function implemented in Go that can be called with new.
-// f sees the constructor it is constructing for as VM.NewTarget, which is nil in a plain call.
+// f learns the constructor it is constructing for from GetNewTarget.
 func (vm *VM) NewNativeConstructor(name string, length int, f NativeFunc) *Object {
 	o := vm.NewNative(name, length, f)
 	o.fn.constructor = true
 	return o
+}
+
+// GetNewTarget implements GetNewTarget for the running native function: it returns the
+// constructor the function is being constructed for, or nil when it was called.
+func (vm *VM) GetNewTarget() *Object {
+	return vm.newTarget
 }
 
 // findScope returns the innermost of the depth innermost dynamic scopes of the running
@@ -948,7 +954,7 @@ func (vm *VM) findScope(cl *Object, key *Object, depth int) *Object {
 			if !vm.HasProperty(o, k) {
 				continue
 			}
-			if u := vm.getProp(o, PropKey{key: vm.K.SymUnscopables}, Value{o: o}); u.IsObject() {
+			if u := vm.getProp(o, PropKey{key: vm.WellKnownSymbol(SymbolUnscopables)}, Value{o: o}); u.IsObject() {
 				if ToBoolean(vm.getProp(u.o, k, u)) {
 					continue
 				}
@@ -1005,7 +1011,7 @@ func (vm *VM) deleteName(key *Object) bool {
 	if _, ok := vm.globalLex.shape.lookup(key); ok {
 		return false
 	}
-	return vm.DeleteProp(vm.Global, PropKey{key: key})
+	return vm.DeleteProp(vm.global, PropKey{key: key})
 }
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.

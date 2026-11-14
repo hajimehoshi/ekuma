@@ -140,7 +140,7 @@ func (vm *VM) NewPromiseObject(proto *Object) *Object {
 // as NewPromiseCapability(%Promise%) does.
 func (vm *VM) newIntrinsicCapability() *PromiseCapability {
 	return &PromiseCapability{
-		promise:   vm.NewPromiseObject(vm.PromiseProto),
+		promise:   vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype)),
 		intrinsic: true,
 	}
 }
@@ -185,7 +185,7 @@ func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
 	if !c.IsObject() || !vm.IsConstructor(c.o) {
 		vm.ThrowTypeError(vm.DisplayString(c) + " is not a constructor")
 	}
-	if c.o == vm.PromiseCtor {
+	if c.o == vm.Intrinsic(IntrinsicPromise) {
 		// Constructing %Promise% with an executor observes nothing that this does not.
 		return vm.newIntrinsicCapability()
 	}
@@ -280,7 +280,7 @@ func (vm *VM) resolvePromise(p *Object, resolution Value) {
 	}
 	var then Value
 	if !vm.protect(func() {
-		then = vm.GetV(resolution, vm.K.then)
+		then = vm.GetV(resolution, vm.Key(keyThen))
 	}) {
 		e := vm.thrown
 		vm.thrown = Undefined
@@ -383,7 +383,7 @@ func (vm *VM) addReaction(p *Object, r promiseReaction) {
 // PromiseResolve implements PromiseResolve for the constructor c.
 func (vm *VM) PromiseResolve(c *Object, x Value) Value {
 	if IsPromise(x) {
-		if ctor := vm.GetV(x, vm.K.Constructor); ctor.o == c {
+		if ctor := vm.GetV(x, vm.Key(KeyConstructor)); ctor.o == c {
 			return x
 		}
 	}
@@ -418,7 +418,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 	// would settle it at once, so the reaction job can be enqueued directly.
 	switch {
 	case IsPromise(v):
-		if ctor := vm.GetV(v, vm.K.Constructor); ctor.o == vm.PromiseCtor {
+		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == vm.Intrinsic(IntrinsicPromise) {
 			vm.addReaction(v.o, r)
 			return
 		}
@@ -432,7 +432,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 	default:
 		var then Value
 		if e, ok := vm.Completion(func() {
-			then = vm.GetV(v, vm.K.then)
+			then = vm.GetV(v, vm.Key(keyThen))
 		}); !ok {
 			vm.enqueueJob(job{
 				kind:     jobReaction,
@@ -450,7 +450,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 			})
 			return
 		}
-		p := vm.NewPromiseObject(vm.PromiseProto)
+		p := vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
 		vm.enqueueJob(job{
 			kind:     jobThenable,
 			argument: v,
@@ -460,7 +460,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 		vm.addReaction(p, r)
 		return
 	}
-	p := vm.NewPromiseObject(vm.PromiseProto)
+	p := vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
 	vm.resolvePromise(p, v)
 	vm.addReaction(p, r)
 }

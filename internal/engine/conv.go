@@ -25,7 +25,7 @@ func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 	if !v.IsObject() {
 		return v
 	}
-	if m := vm.GetMethod(v, vm.K.SymToPrimitive); m != nil {
+	if m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolToPrimitive)); m != nil {
 		name := "default"
 		switch h {
 		case HintNumber:
@@ -44,7 +44,7 @@ func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 
 // OrdinaryToPrimitive implements OrdinaryToPrimitive. h is HintString or HintNumber.
 func (vm *VM) OrdinaryToPrimitive(o *Object, h Hint) Value {
-	first, second := vm.K.valueOf, vm.K.ToString
+	first, second := vm.Key(keyValueOf), vm.Key(KeyToString)
 	if h == HintString {
 		first, second = second, first
 	}
@@ -173,7 +173,7 @@ func (vm *VM) ToObject(v Value) *Object {
 		return o
 	}
 	if o == nil {
-		w := vm.NewObject(vm.NumberProto)
+		w := vm.NewObject(vm.Intrinsic(IntrinsicNumberPrototype))
 		w.class = classNumber
 		w.ext = v.n
 		return w
@@ -182,19 +182,19 @@ func (vm *VM) ToObject(v Value) *Object {
 	case kindUndefined, kindNull:
 		vm.ThrowTypeError("cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
-		w := vm.NewObject(vm.BooleanProto)
+		w := vm.NewObject(vm.Intrinsic(IntrinsicBooleanPrototype))
 		w.class = classBoolean
 		w.ext = o.kind == kindTrue
 		return w
 	case kindString:
-		return vm.NewStringObject(o, vm.StringProto)
+		return vm.NewStringObject(o, vm.Intrinsic(IntrinsicStringPrototype))
 	case kindSymbol:
-		w := vm.NewObject(vm.SymbolProto)
+		w := vm.NewObject(vm.Intrinsic(IntrinsicSymbolPrototype))
 		w.class = classSymbol
 		w.ext = o
 		return w
 	case kindBigInt:
-		w := vm.NewObject(vm.BigintProto)
+		w := vm.NewObject(vm.Intrinsic(IntrinsicBigIntPrototype))
 		w.class = classBigInt
 		w.ext = o
 		return w
@@ -207,7 +207,7 @@ func (vm *VM) NewStringObject(s *Object, proto *Object) *Object {
 	w := vm.NewObject(proto)
 	w.class = classString
 	w.ext = s
-	vm.add(w, vm.K.Length, Number(float64(s.StringLength())), 0)
+	vm.add(w, vm.Key(KeyLength), Number(float64(s.StringLength())), 0)
 	return w
 }
 

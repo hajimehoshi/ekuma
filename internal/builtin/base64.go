@@ -258,7 +258,7 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		if r.err != "" {
 			throwSyntaxError(vm, r.err)
 		}
-		o := vm.NewObject(vm.ObjectProto)
+		o := vm.NewOrdinaryObject()
 		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("read")), engine.Number(float64(r.read)))
 		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("written")), engine.Number(float64(len(r.bytes))))
 		return engine.ObjectValue(o)

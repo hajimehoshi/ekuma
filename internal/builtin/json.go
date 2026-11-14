@@ -17,9 +17,9 @@ type jsonState struct {
 func initJSON(vm *engine.VM) {
 	st := &jsonState{}
 
-	j := vm.NewObject(vm.ObjectProto)
-	vm.Define(vm.Global, vm.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
-	vm.Define(j, vm.K.SymToStringTag, vm.NewString("JSON"), engine.FlagConfigurable)
+	j := vm.NewOrdinaryObject()
+	vm.Define(vm.GlobalObject().Object(), vm.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
+	vm.Define(j, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("JSON"), engine.FlagConfigurable)
 
 	method(vm, j, "parse", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		text := vm.ToString(arg(args, 0))

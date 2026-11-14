@@ -16,9 +16,9 @@ const maxBigIntBits = 1 << 30
 
 // initBigInt defines BigInt.
 func initBigInt(vm *engine.VM) {
-	proto := vm.BigintProto
+	proto := vm.Intrinsic(engine.IntrinsicBigIntPrototype)
 	ctor := constructor(vm, "BigInt", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if vm.NewTarget != nil {
+		if vm.GetNewTarget() != nil {
 			vm.ThrowTypeError("BigInt is not a constructor")
 		}
 		p := vm.ToPrimitive(arg(args, 0), engine.HintNumber)
@@ -84,7 +84,7 @@ func initBigInt(vm *engine.VM) {
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return thisBigInt(vm, this, "valueOf")
 	})
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("BigInt"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("BigInt"), engine.FlagConfigurable)
 }
 
 // numberToBigInt implements NumberToBigInt.

@@ -13,19 +13,19 @@ import (
 func functionKindConstructor(vm *engine.VM, name string, kind engine.FunctionKind, proto *engine.Object) {
 	var c *engine.Object
 	c = vm.NewNativeConstructor(name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.CreateDynamicFunction(c, vm.NewTarget, kind, args)
+		return vm.CreateDynamicFunction(c, vm.GetNewTarget(), kind, args)
 	})
-	vm.SetPrototypeOf(c, vm.FunctionCtor)
-	vm.Define(c, vm.K.Prototype, engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.K.Constructor, engine.ObjectValue(c), engine.FlagConfigurable)
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString(name), engine.FlagConfigurable)
+	vm.SetPrototypeOf(c, vm.Intrinsic(engine.IntrinsicFunction))
+	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString(name), engine.FlagConfigurable)
 }
 
 func initAsync(vm *engine.VM) {
-	functionKindConstructor(vm, "AsyncFunction", engine.AsyncFunction, vm.AsyncFunctionProto)
-	functionKindConstructor(vm, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, vm.AsyncGeneratorFunctionProto)
+	functionKindConstructor(vm, "AsyncFunction", engine.AsyncFunction, vm.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
+	functionKindConstructor(vm, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, vm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
 
-	gp := vm.AsyncGeneratorProto
+	gp := vm.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) {
 		method(vm, gp, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return vm.ResumeAsyncGenerator(this, mode, arg(args, 0))
@@ -34,12 +34,12 @@ func initAsync(vm *engine.VM) {
 	resume("next", engine.ResumeNext)
 	resume("return", engine.ResumeReturn)
 	resume("throw", engine.ResumeThrow)
-	vm.Define(gp, vm.K.SymToStringTag, vm.NewString("AsyncGenerator"), engine.FlagConfigurable)
-	gf := vm.AsyncGeneratorFunctionProto
-	vm.Define(gf, vm.K.Prototype, engine.ObjectValue(gp), engine.FlagConfigurable)
-	vm.Define(gp, vm.K.Constructor, engine.ObjectValue(gf), engine.FlagConfigurable)
+	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("AsyncGenerator"), engine.FlagConfigurable)
+	gf := vm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
+	vm.Define(gf, vm.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
+	vm.Define(gp, vm.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 
-	method(vm, vm.ArrayCtor, "fromAsync", 1, arrayFromAsync)
+	method(vm, vm.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
 }
 
 // getIteratorFromMethod implements GetIteratorFromMethod.
@@ -68,7 +68,7 @@ type fromAsync struct {
 }
 
 func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	pc := vm.NewPromiseCapability(engine.ObjectValue(vm.PromiseCtor))
+	pc := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
 	s := &fromAsync{
 		pc:      pc,
 		mapper:  arg(args, 1),
@@ -80,16 +80,16 @@ func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engin
 		if !s.mapper.IsUndefined() && !s.mapper.IsCallable() {
 			vm.ThrowTypeError(vm.DisplayString(s.mapper) + " is not a function")
 		}
-		if m := vm.GetMethod(items, vm.K.SymAsyncIterator); m != nil {
+		if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolAsyncIterator)); m != nil {
 			s.it, s.next = getIteratorFromMethod(vm, items, m)
-		} else if m := vm.GetMethod(items, vm.K.SymIterator); m != nil {
+		} else if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 			s.it, s.next = vm.CreateAsyncFromSyncIterator(getIteratorFromMethod(vm, items, m))
 		}
 		if s.it.IsObject() {
 			if custom {
 				s.array = vm.Construct(this.Object(), nil, this.Object())
 			} else {
-				s.array = vm.ArrayCreate(0, vm.ArrayProto)
+				s.array = vm.ArrayCreate(0, vm.Intrinsic(engine.IntrinsicArrayPrototype))
 			}
 			s.step(vm)
 			return
@@ -102,7 +102,7 @@ func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engin
 			if s.length > engine.MaxArrayIndex+1 {
 				vm.ThrowRangeError("invalid array length")
 			}
-			s.array = vm.ArrayCreate(uint32(s.length), vm.ArrayProto)
+			s.array = vm.ArrayCreate(uint32(s.length), vm.Intrinsic(engine.IntrinsicArrayPrototype))
 		}
 		s.stepArrayLike(vm)
 	})
@@ -148,7 +148,7 @@ func (s *fromAsync) onNext(vm *engine.VM, r engine.Value, rejected bool) {
 			setLength(vm, s.array, s.k)
 			return
 		}
-		v = vm.GetV(r, vm.K.Value)
+		v = vm.GetV(r, vm.Key(engine.KeyValue))
 	}); !ok {
 		s.reject(vm, e)
 		return

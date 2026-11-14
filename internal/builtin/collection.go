@@ -69,7 +69,7 @@ func adderOf(vm *engine.VM, o *engine.Object, name *engine.Object) *engine.Objec
 
 // speciesGetter defines the getter of Symbol.species that returns this on the constructor c.
 func speciesGetter(vm *engine.VM, c *engine.Object) {
-	getter(vm, c, vm.K.SymSpecies, "[Symbol.species]", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	getter(vm, c, vm.WellKnownSymbol(engine.SymbolSpecies), "[Symbol.species]", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
 }
@@ -96,16 +96,16 @@ func initMapAndSet(vm *engine.VM) {
 }
 
 func initMap(vm *engine.VM) {
-	proto := vm.MapProto
+	proto := vm.Intrinsic(engine.IntrinsicMapPrototype)
 	setKey := vm.Intern("set")
 	var mapSet *engine.Object
 	ctor := constructor(vm, "Map", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor Map requires 'new'")
 		}
 		t := &collection.Table{}
-		m := vm.NewMapObject(vm.GetPrototypeFromConstructor(nt, vm.MapProto), t)
+		m := vm.NewMapObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicMapPrototype)), t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
@@ -129,7 +129,7 @@ func initMap(vm *engine.VM) {
 			}
 			vm.AppendElements(g.Object(), []engine.Value{v})
 		})
-		return engine.ObjectValue(vm.NewMapObject(vm.MapProto, t))
+		return engine.ObjectValue(vm.NewMapObject(vm.Intrinsic(engine.IntrinsicMapPrototype), t))
 	})
 
 	method(vm, proto, "clear", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -198,7 +198,7 @@ func initMap(vm *engine.VM) {
 		return engine.Number(float64(thisMap(vm, this, "size").Size()))
 	})
 
-	iterProto := vm.NewObject(vm.IteratorProto)
+	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iterate := func(name string, kind int) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisMap(vm, this, name)
@@ -212,8 +212,8 @@ func initMap(vm *engine.VM) {
 	iterate("keys", iterKeys)
 	iterate("values", iterValues)
 	entries := iterate("entries", iterEntries)
-	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(entries), engine.FlagsHidden)
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("Map"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(entries), engine.FlagsHidden)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Map"), engine.FlagConfigurable)
 
 	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*mapIterator)
@@ -236,7 +236,7 @@ func initMap(vm *engine.VM) {
 		}
 		return engine.ObjectValue(vm.NewArrayPair(k, v)), true
 	})
-	vm.Define(iterProto, vm.K.SymToStringTag, vm.NewString("Map Iterator"), engine.FlagConfigurable)
+	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Map Iterator"), engine.FlagConfigurable)
 }
 
 // setRecord is a Set Record.
@@ -306,7 +306,7 @@ func (r *setRecord) eachKey(vm *engine.VM, f func(engine.Value) bool) {
 }
 
 func initSet(vm *engine.VM) {
-	proto := vm.SetObjectProto
+	proto := vm.Intrinsic(engine.IntrinsicSetPrototype)
 	addKey := vm.Intern("add")
 	keys := &setLikeKeys{
 		size: vm.Intern("size"),
@@ -316,12 +316,12 @@ func initSet(vm *engine.VM) {
 	}
 	var setAdd *engine.Object
 	ctor := constructor(vm, "Set", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor Set requires 'new'")
 		}
 		t := &collection.Table{}
-		s := vm.NewSetObject(vm.GetPrototypeFromConstructor(nt, vm.SetObjectProto), t)
+		s := vm.NewSetObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicSetPrototype)), t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
@@ -343,7 +343,7 @@ func initSet(vm *engine.VM) {
 	speciesGetter(vm, ctor)
 
 	newSet := func(t *collection.Table) engine.Value {
-		return engine.ObjectValue(vm.NewSetObject(vm.SetObjectProto, t))
+		return engine.ObjectValue(vm.NewSetObject(vm.Intrinsic(engine.IntrinsicSetPrototype), t))
 	}
 
 	setAdd = method(vm, proto, "add", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -521,7 +521,7 @@ func initSet(vm *engine.VM) {
 		return engine.Bool(result)
 	})
 
-	iterProto := vm.NewObject(vm.IteratorProto)
+	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iterate := func(name string, kind int) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisSet(vm, this, name)
@@ -535,8 +535,8 @@ func initSet(vm *engine.VM) {
 	iterate("entries", iterEntries)
 	values := iterate("values", iterValues)
 	vm.Define(proto, keys.keys, engine.ObjectValue(values), engine.FlagsHidden)
-	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(values), engine.FlagsHidden)
-	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("Set"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Set"), engine.FlagConfigurable)
 
 	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*setIterator)
@@ -556,11 +556,11 @@ func initSet(vm *engine.VM) {
 		}
 		return k, true
 	})
-	vm.Define(iterProto, vm.K.SymToStringTag, vm.NewString("Set Iterator"), engine.FlagConfigurable)
+	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Set Iterator"), engine.FlagConfigurable)
 }
 
 func initObjectGroupBy(vm *engine.VM) {
-	method(vm, vm.ObjectCtor, "groupBy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(vm, vm.Intrinsic(engine.IntrinsicObject), "groupBy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var keys []engine.PropKey
 		groups := map[engine.PropKey]*engine.Object{}
 		groupBy(vm, arg(args, 0), arg(args, 1), func(k, v engine.Value) {

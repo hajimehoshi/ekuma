@@ -207,7 +207,7 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 				if array {
 					v = engine.ObjectValue(vm.NewArray(nil))
 				} else {
-					v = engine.ObjectValue(vm.NewObject(vm.ObjectProto))
+					v = engine.ObjectValue(vm.NewOrdinaryObject())
 				}
 				if withRecords {
 					rec = &Record{value: v}

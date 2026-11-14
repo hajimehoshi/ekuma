@@ -98,16 +98,16 @@ func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 
 // waitResult returns the result object of Atomics.waitAsync.
 func waitResult(vm *engine.VM, async bool, value engine.Value) engine.Value {
-	o := vm.NewObject(vm.ObjectProto)
+	o := vm.NewOrdinaryObject()
 	vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("async")), engine.Bool(async))
 	vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("value")), value)
 	return engine.ObjectValue(o)
 }
 
 func initAtomics(vm *engine.VM) {
-	atomics := vm.NewObject(vm.ObjectProto)
-	vm.Define(vm.Global, vm.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
-	vm.Define(atomics, vm.K.SymToStringTag, vm.NewString("Atomics"), engine.FlagConfigurable)
+	atomics := vm.NewOrdinaryObject()
+	vm.Define(vm.GlobalObject().Object(), vm.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
+	vm.Define(atomics, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Atomics"), engine.FlagConfigurable)
 
 	// readModifyWrite implements AtomicReadModifyWrite with op on the encodings of the elements.
 	readModifyWrite := func(name string, op func(old, v uint64) uint64) {

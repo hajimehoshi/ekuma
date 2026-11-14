@@ -14,13 +14,13 @@ import (
 func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 	var m *Object
 	if async {
-		m = vm.GetMethod(v, vm.K.SymAsyncIterator)
+		m = vm.GetMethod(v, vm.WellKnownSymbol(SymbolAsyncIterator))
 		if m == nil {
 			sync, syncNext := vm.getIterator(v, false)
 			return vm.asyncFromSyncIterator(sync, syncNext)
 		}
 	} else {
-		m = vm.GetMethod(v, vm.K.SymIterator)
+		m = vm.GetMethod(v, vm.WellKnownSymbol(SymbolIterator))
 	}
 	if m == nil {
 		vm.ThrowTypeError(vm.DisplayString(v) + " is not iterable")
@@ -29,7 +29,7 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 	if !it.IsObject() {
 		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	return it, vm.GetV(it, vm.K.next)
+	return it, vm.GetV(it, vm.Key(keyNext))
 }
 
 // GetIterator implements GetIterator for a sync iterator and returns the iterator and its next method.
@@ -83,7 +83,7 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 			return Undefined, iterDone
 		}
 		return v, iterValue
-	case f != nil && f == vm.FnGeneratorNext && isSyncGenerator(it):
+	case f != nil && f == vm.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
 		if vm.interrupt.Load() {
 			vm.Poll()
 		}
@@ -106,9 +106,9 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 		if !r.IsObject() {
 			vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 		}
-		done = ToBoolean(vm.GetV(r, vm.K.done))
+		done = ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 		if !done {
-			v = vm.GetV(r, vm.K.Value)
+			v = vm.GetV(r, vm.Key(KeyValue))
 		}
 	}) {
 		return Undefined, iterFailed
@@ -140,7 +140,7 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 	if !r.IsObject() {
 		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 	}
-	return !ToBoolean(vm.GetV(r, vm.K.done))
+	return !ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 }
 
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
@@ -158,14 +158,14 @@ func (vm *VM) iteratorClose(it Value, pending bool) {
 	if pending {
 		saved := vm.thrown
 		vm.protect(func() {
-			if m := vm.GetMethod(it, vm.K.ret); m != nil {
+			if m := vm.GetMethod(it, vm.Key(keyReturn)); m != nil {
 				vm.Call(m, it)
 			}
 		})
 		vm.thrown = saved
 		return
 	}
-	m := vm.GetMethod(it, vm.K.ret)
+	m := vm.GetMethod(it, vm.Key(keyReturn))
 	if m == nil {
 		return
 	}
@@ -334,7 +334,7 @@ func (vm *VM) forInNext(o *Object) (Value, bool) {
 				it.visited = map[PropKey]struct{}{}
 			}
 			it.visited[k] = struct{}{}
-			if d.Flags&FlagEnumerable == 0 {
+			if d.flags&FlagEnumerable == 0 {
 				continue
 			}
 			if k.key == nil {
@@ -369,7 +369,7 @@ func (vm *VM) templateObject(t *templateSite) *Object {
 	raw := freeze(t.raw)
 	raw.makePrivate()
 	o := freeze(t.cooked)
-	vm.add(o, vm.K.Raw, Value{o: raw}, 0)
+	vm.add(o, vm.Key(KeyRaw), Value{o: raw}, 0)
 	o.makePrivate()
 	t.object = o
 	return o
@@ -387,7 +387,7 @@ func (vm *VM) iterReturn(it Value) (Value, bool) {
 	if it.IsUndefined() {
 		return Undefined, false
 	}
-	m := vm.GetMethod(it, vm.K.ret)
+	m := vm.GetMethod(it, vm.Key(keyReturn))
 	if m == nil {
 		return Undefined, false
 	}
@@ -403,15 +403,15 @@ func (vm *VM) iterResultValue(r Value) (Value, bool) {
 	if !r.IsObject() {
 		vm.throwNotIterResult(r)
 	}
-	if ToBoolean(vm.GetV(r, vm.K.done)) {
+	if ToBoolean(vm.GetV(r, vm.Key(keyDone))) {
 		return Undefined, true
 	}
-	return vm.GetV(r, vm.K.Value), false
+	return vm.GetV(r, vm.Key(KeyValue)), false
 }
 
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (vm *VM) IteratorToList(v Value, method *Object) []Value {
-	if method == vm.FnArrayValues && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
 		o := v.o
 		vals := make([]Value, 0, o.length)
 		for i := uint32(0); i < o.length; i++ {
@@ -428,7 +428,7 @@ func (vm *VM) IteratorToList(v Value, method *Object) []Value {
 		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
 	var vals []Value
-	vm.IterateRecord(it, vm.GetV(it, vm.K.next), func(e Value) bool {
+	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), func(e Value) bool {
 		vals = append(vals, e)
 		return true
 	})

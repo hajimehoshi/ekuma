@@ -51,10 +51,10 @@ func makeDate(c *[dateComponentCount]float64) float64 {
 }
 
 func initDate(vm *engine.VM) {
-	proto := vm.DateProto
+	proto := vm.Intrinsic(engine.IntrinsicDatePrototype)
 
 	ctor := constructor(vm, "Date", 7, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		tz := vm.DefaultTimeZone()
 		if nt == nil {
 			return vm.StringFromGo(datetime.String(vm.SystemUTCEpochMilliseconds(), tz))
@@ -82,7 +82,7 @@ func initDate(vm *engine.VM) {
 			c[dateYear] = datetime.MakeFullYear(c[dateYear])
 			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), tz))
 		}
-		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, vm.DateProto), tv))
+		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicDatePrototype)), tv))
 	})
 
 	method(vm, ctor, "now", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -297,5 +297,5 @@ func initDate(vm *engine.VM) {
 		vm.ThrowTypeError("invalid hint: " + vm.DisplayString(h))
 		return engine.Undefined
 	})
-	vm.Define(proto, vm.K.SymToPrimitive, engine.ObjectValue(toPrimitive), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToPrimitive), engine.ObjectValue(toPrimitive), engine.FlagConfigurable)
 }

@@ -24,7 +24,7 @@ const (
 // initURIFunctions defines the URI handling functions and the Annex B functions escape and
 // unescape on the global object.
 func initURIFunctions(vm *engine.VM) {
-	g := vm.Global
+	g := vm.GlobalObject().Object()
 	uriFunc := func(name string, f func(vm *engine.VM, s string) string) {
 		method(vm, g, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return vm.NewString(f(vm, vm.ToString(arg(args, 0))))

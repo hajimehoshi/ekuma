@@ -224,7 +224,7 @@ func isRegExp(vm *engine.VM, v engine.Value) bool {
 	if !v.IsObject() {
 		return false
 	}
-	if m := vm.GetV(v, vm.K.SymMatch); !m.IsUndefined() {
+	if m := vm.GetV(v, vm.WellKnownSymbol(engine.SymbolMatch)); !m.IsUndefined() {
 		return engine.ToBoolean(m)
 	}
 	return v.Object().IsRegExpObject()
@@ -232,19 +232,19 @@ func isRegExp(vm *engine.VM, v engine.Value) bool {
 
 // regExpCreate implements RegExpCreate.
 func regExpCreate(vm *engine.VM, p, f engine.Value) *engine.Object {
-	return vm.RegExpInitialize(vm.RegExpAlloc(vm.RegExpCtor), p, f)
+	return vm.RegExpInitialize(vm.RegExpAlloc(vm.Intrinsic(engine.IntrinsicRegExp)), p, f)
 }
 
 // speciesConstructor implements SpeciesConstructor.
 func speciesConstructor(vm *engine.VM, o *engine.Object, def *engine.Object) *engine.Object {
-	c := vm.Get(o, engine.NamedKey(vm.K.Constructor))
+	c := vm.Get(o, engine.NamedKey(vm.Key(engine.KeyConstructor)))
 	if c.IsUndefined() {
 		return def
 	}
 	if !c.IsObject() {
 		vm.ThrowTypeError("object.constructor is not an object")
 	}
-	s := vm.GetV(c, vm.K.SymSpecies)
+	s := vm.GetV(c, vm.WellKnownSymbol(engine.SymbolSpecies))
 	if s.IsNullish() {
 		return def
 	}
@@ -340,15 +340,15 @@ func initRegExp(vm *engine.VM) {
 		source:    vm.Intern("source"),
 		execKey:   vm.Intern("exec"),
 	}
-	proto := vm.RegexpProto
+	proto := vm.Intrinsic(engine.IntrinsicRegExpPrototype)
 	ctor := constructor(vm, "RegExp", 2, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		pattern, flags := arg(args, 0), arg(args, 1)
 		patternIsRegExp := isRegExp(vm, pattern)
-		nt := vm.NewTarget
+		nt := vm.GetNewTarget()
 		if nt == nil {
-			nt = vm.RegExpCtor
+			nt = vm.Intrinsic(engine.IntrinsicRegExp)
 			if patternIsRegExp && flags.IsUndefined() {
-				pc := vm.GetV(pattern, vm.K.Constructor)
+				pc := vm.GetV(pattern, vm.Key(engine.KeyConstructor))
 				if pc.IsObject() && pc.Object() == nt {
 					return pattern
 				}
@@ -377,8 +377,8 @@ func initRegExp(vm *engine.VM) {
 		o := vm.RegExpAlloc(nt)
 		return engine.ObjectValue(vm.RegExpInitialize(o, p, f))
 	})
-	vm.RegExpCtor = ctor
-	vm.DefineAccessor(ctor, vm.K.SymSpecies, vm.NewNative("get [Symbol.species]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetIntrinsic(engine.IntrinsicRegExp, ctor)
+	vm.DefineAccessor(ctor, vm.WellKnownSymbol(engine.SymbolSpecies), vm.NewNative("get [Symbol.species]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	}), nil, engine.FlagConfigurable)
 
@@ -432,7 +432,7 @@ func initRegExp(vm *engine.VM) {
 			}
 			re := this.Object().RegExpMatcher()
 			if re == nil {
-				if this.Object() == vm.RegexpProto {
+				if this.Object() == vm.Intrinsic(engine.IntrinsicRegExpPrototype) {
 					return engine.Undefined
 				}
 				vm.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-RegExp object")
@@ -460,7 +460,7 @@ func initRegExp(vm *engine.VM) {
 		}
 		o := this.Object()
 		if o.RegExpMatcher() == nil {
-			if o == vm.RegexpProto {
+			if o == vm.Intrinsic(engine.IntrinsicRegExpPrototype) {
 				return vm.NewString("(?:)")
 			}
 			vm.ThrowTypeError("RegExp.prototype.source getter called on non-RegExp object")
@@ -469,7 +469,7 @@ func initRegExp(vm *engine.VM) {
 		return vm.NewString(escapeRegExpPattern(src))
 	})
 
-	symMethod(vm, proto, vm.K.SymMatch, "[Symbol.match]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		rx := thisObject(vm, this, "RegExp.prototype[Symbol.match]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
 		flags := vm.ToString(vm.Get(rx, env.key(env.flags)))
@@ -506,7 +506,7 @@ func initRegExp(vm *engine.VM) {
 		return engine.ObjectValue(vm.NewArray(out))
 	})
 
-	iterProto := vm.NewObject(vm.IteratorProto)
+	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		st, ok := engine.IteratorState(this).(*regexpStringIterator)
 		if !ok {
@@ -530,12 +530,12 @@ func initRegExp(vm *engine.VM) {
 		}
 		return m, true
 	})
-	vm.Define(iterProto, vm.K.SymToStringTag, vm.NewString("RegExp String Iterator"), engine.FlagConfigurable)
+	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("RegExp String Iterator"), engine.FlagConfigurable)
 
-	symMethod(vm, proto, vm.K.SymMatchAll, "[Symbol.matchAll]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(vm, this, "RegExp.prototype[Symbol.matchAll]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
-		c := speciesConstructor(vm, r, vm.RegExpCtor)
+		c := speciesConstructor(vm, r, vm.Intrinsic(engine.IntrinsicRegExp))
 		flags := vm.ToStringValue(vm.Get(r, env.key(env.flags)))
 		matcher := vm.Construct(c, []engine.Value{engine.ObjectValue(r), flags}, c)
 		lastIndex := env.getLastIndex(vm, r)
@@ -549,13 +549,13 @@ func initRegExp(vm *engine.VM) {
 		}))
 	})
 
-	symMethod(vm, proto, vm.K.SymReplace, "[Symbol.replace]", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolReplace), "[Symbol.replace]", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		rx := thisObject(vm, this, "RegExp.prototype[Symbol.replace]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
 		return env.replace(vm, rx, s, arg(args, 1))
 	})
 
-	symMethod(vm, proto, vm.K.SymSearch, "[Symbol.search]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolSearch), "[Symbol.search]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		rx := thisObject(vm, this, "RegExp.prototype[Symbol.search]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
 		key := env.key(env.lastIndex)
@@ -581,7 +581,7 @@ func initRegExp(vm *engine.VM) {
 		return index
 	})
 
-	symMethod(vm, proto, vm.K.SymSplit, "[Symbol.split]", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolSplit), "[Symbol.split]", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		rx := thisObject(vm, this, "RegExp.prototype[Symbol.split]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
 		return env.split(vm, rx, s, arg(args, 1))
@@ -732,7 +732,7 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 }
 
 func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, limit engine.Value) engine.Value {
-	c := speciesConstructor(vm, rx, vm.RegExpCtor)
+	c := speciesConstructor(vm, rx, vm.Intrinsic(engine.IntrinsicRegExp))
 	flags := vm.ToString(vm.Get(rx, e.key(e.flags)))
 	unicodeMatching := strings.ContainsAny(flags, "uv")
 	newFlags := flags
@@ -763,7 +763,7 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, li
 	// When the splitter is a RegExp object that no code can see, and its exec is the original
 	// one, searching for the next match is the same as trying every position.
 	_, fast := e.fastExec(vm, splitter)
-	fast = fast && c == vm.RegExpCtor
+	fast = fast && c == vm.Intrinsic(engine.IntrinsicRegExp)
 	for q < size {
 		var caps []int
 		var z engine.Value
@@ -947,10 +947,10 @@ func isWhiteSpaceOrLineTerminator(r rune) bool {
 func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 	l := &env.legacy
 	l.valid = true
-	l.input = vm.EmptyString
+	l.input = vm.NewString("")
 	str := func(a, b int) engine.Value {
 		if a < 0 {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		return vm.NewString(l.str.Substring(a, b))
 	}
@@ -967,7 +967,7 @@ func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 					vm.ThrowTypeError("RegExp." + name + " is not available after a match of a subclass instance")
 				}
 				if l.str == nil && !settable {
-					return vm.EmptyString
+					return vm.NewString("")
 				}
 				return f()
 			})
@@ -991,7 +991,7 @@ func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 	define([]string{"lastParen", "$+"}, func() engine.Value {
 		n := len(l.caps) / 2
 		if n <= 1 {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		return str(l.caps[2*n-2], l.caps[2*n-1])
 	}, false)
@@ -1004,7 +1004,7 @@ func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 	for i := 1; i <= 9; i++ {
 		define([]string{"$" + strconv.Itoa(i)}, func() engine.Value {
 			if 2*i+1 >= len(l.caps) {
-				return vm.EmptyString
+				return vm.NewString("")
 			}
 			return str(l.caps[2*i], l.caps[2*i+1])
 		}, false)

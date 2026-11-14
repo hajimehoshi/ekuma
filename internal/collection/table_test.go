@@ -70,7 +70,7 @@ func TestCursorAcrossCompaction(t *testing.T) {
 }
 
 func TestSameValueZero(t *testing.T) {
-	vm := engine.New()
+	vm := engine.New(nil)
 	// Below and above the size at which the table indexes its keys.
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table

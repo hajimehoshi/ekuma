@@ -10,9 +10,14 @@ import (
 // This file holds the operations for Go code outside the engine. Unlike the rest of the engine,
 // they report a JavaScript exception as an error.
 
+// HostDefined returns the value that New was given.
+func (vm *VM) HostDefined() any {
+	return vm.hostDefined
+}
+
 // GlobalObject returns the global object.
 func (vm *VM) GlobalObject() Value {
-	return Value{o: vm.Global}
+	return Value{o: vm.global}
 }
 
 // NewFunction returns a function implemented by f. name is UTF-8.
@@ -22,7 +27,7 @@ func (vm *VM) NewFunction(name string, f NativeFunc) Value {
 
 // NewPlainObject returns a new empty object.
 func (vm *VM) NewPlainObject() Value {
-	return Value{o: vm.NewObject(vm.ObjectProto)}
+	return Value{o: vm.NewOrdinaryObject()}
 }
 
 // NewArrayOf returns a new array with the given elements, which it keeps.

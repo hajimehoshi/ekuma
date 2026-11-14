@@ -75,12 +75,12 @@ func (vm *VM) AddDisposableResource(dc *DisposeCapability, v Value, hint Dispose
 // getDisposeMethod implements GetDisposeMethod. It returns nil for undefined.
 func (vm *VM) getDisposeMethod(v Value, hint DisposeHint) *Object {
 	if hint == SyncDispose {
-		return vm.GetMethod(v, vm.K.SymDispose)
+		return vm.GetMethod(v, vm.WellKnownSymbol(SymbolDispose))
 	}
-	if m := vm.GetMethod(v, vm.K.SymAsyncDispose); m != nil {
+	if m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolAsyncDispose)); m != nil {
 		return m
 	}
-	m := vm.GetMethod(v, vm.K.SymDispose)
+	m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolDispose))
 	if m == nil {
 		return nil
 	}
@@ -148,9 +148,9 @@ func (vm *VM) disposeError(dc *DisposeCapability, e Value) {
 		dc.thrown = true
 		return
 	}
-	s := vm.NewErrorObject(vm.ErrorProtos[ErrorKindSuppressed])
-	vm.Define(s, vm.K.Error, e, FlagsHidden)
-	vm.Define(s, vm.K.Suppressed, dc.completion, FlagsHidden)
+	s := vm.NewErrorObject(vm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
+	vm.Define(s, vm.Key(KeyError), e, FlagsHidden)
+	vm.Define(s, vm.Key(KeySuppressed), dc.completion, FlagsHidden)
 	vm.RecordStack(s, "")
 	dc.completion = Value{o: s}
 }

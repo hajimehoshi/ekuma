@@ -399,7 +399,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			t := vm.frames[len(vm.frames)-1].this
 			if t.o == nil || t.o.kind < kindObject {
 				if t.IsNullish() {
-					t = Value{o: vm.Global}
+					t = Value{o: vm.global}
 				} else {
 					t = Value{o: vm.ToObject(t)}
 				}
@@ -513,7 +513,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.getNamed(v, vm.K.Length, &fp.caches[i.C])
+			val, getter := vm.getNamed(v, vm.Key(KeyLength), &fp.caches[i.C])
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -1179,7 +1179,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto callRegs
 		case bytecode.OpCallCall:
 			a := int(i.A)
-			if regs[a].o == vm.FnCall {
+			if regs[a].o == vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a+1].o, regs[a+2], a+3, int(i.B)-1, i.A, false, nil
 				if argc < 0 {
 					callThis, argc = Undefined, 0
@@ -1191,7 +1191,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpApplyFwd:
 			a := int(i.A)
 			cur := &vm.frames[len(vm.frames)-1]
-			if regs[a].o != vm.FnApply {
+			if regs[a].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
 				// Something else is called apply here: pass it a real arguments object.
 				regs[a+3] = Value{o: vm.newArguments(cur, regs, i.B != 0)}
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, 2, i.A, false, nil
@@ -1232,7 +1232,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto call
 		case bytecode.OpCallEval:
 			a := int(i.A)
-			if regs[a].o == vm.FnEval {
+			if regs[a].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
 				var src Value = Undefined
 				if i.B > 0 {
@@ -1264,10 +1264,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					proto = f.slots[c.slot]
 				} else {
 					vm.frames[len(vm.frames)-1].pc = pc
-					proto, _ = vm.getNamed(Value{o: f}, vm.K.Prototype, c)
+					proto, _ = vm.getNamed(Value{o: f}, vm.Key(KeyPrototype), c)
 				}
 				if proto.o == nil || proto.o.kind < kindObject {
-					proto = Value{o: vm.ObjectProto}
+					proto = Value{o: vm.Intrinsic(IntrinsicObjectPrototype)}
 				}
 				var shape *shape
 				if proto.o == c.holder && c.next != nil {
@@ -1413,13 +1413,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if !r.IsObject() {
 				vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 			}
-			done := ToBoolean(vm.GetV(r, vm.K.done))
+			done := ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 			regs = vm.reload(regs, onHeap, base, fp)
 			if !done {
 				pc = int(i.C)
 				continue
 			}
-			v := vm.GetV(r, vm.K.Value)
+			v := vm.GetV(r, vm.Key(KeyValue))
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
 
@@ -1489,7 +1489,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			n := int(code[pc].A)
 			pc++
-			o := vm.NewObject(vm.ObjectProto)
+			o := vm.NewOrdinaryObject()
 			excluded := append([]Value(nil), regs[int(i.C)+1:int(i.C)+1+n]...)
 			vm.copyDataProperties(o, regs[i.B], excluded)
 			regs = vm.reload(regs, onHeap, base, fp)

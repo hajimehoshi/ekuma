@@ -35,7 +35,7 @@ func (vm *VM) LengthOfArrayLike(o *Object) int64 {
 	if o.kind == kindArray {
 		return int64(o.length)
 	}
-	return numconv.ToLength(vm.ToNumber(vm.GetV(Value{o: o}, vm.K.Length)))
+	return numconv.ToLength(vm.ToNumber(vm.GetV(Value{o: o}, vm.Key(KeyLength))))
 }
 
 // Element returns the own property of o with the integer index i when reading it
@@ -99,12 +99,12 @@ func (vm *VM) arrayCtorPlain(o *Object) bool {
 	if o.shape != vm.shapes.array {
 		return false
 	}
-	c, ok := vm.lookupData(vm.ArrayProto, vm.K.Constructor)
-	if !ok || c.o != vm.ArrayCtor {
+	c, ok := vm.lookupData(vm.Intrinsic(IntrinsicArrayPrototype), vm.Key(KeyConstructor))
+	if !ok || c.o != vm.Intrinsic(IntrinsicArray) {
 		return false
 	}
-	_, p, found := find(vm.ArrayCtor, vm.K.SymSpecies)
-	return found && p.flags&FlagAccessor != 0 && vm.ArrayCtor.slots[p.slot].accessor().getter == vm.FnArraySpecies
+	_, p, found := find(vm.Intrinsic(IntrinsicArray), vm.WellKnownSymbol(SymbolSpecies))
+	return found && p.flags&FlagAccessor != 0 && vm.Intrinsic(IntrinsicArray).slots[p.slot].accessor().getter == vm.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
 // AppendElements adds vals at the end of the array o and returns the new length.

@@ -85,17 +85,17 @@ func deleteAt(vm *engine.VM, o *engine.Object, i int64) {
 }
 
 func setLength(vm *engine.VM, o *engine.Object, n int64) {
-	vm.Set(o, engine.NamedKey(vm.K.Length), engine.Number(float64(n)))
+	vm.Set(o, engine.NamedKey(vm.Key(engine.KeyLength)), engine.Number(float64(n)))
 }
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
 func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Object {
 	if orig.IsArray() {
-		c := vm.GetV(engine.ObjectValue(orig), vm.K.Constructor)
+		c := vm.GetV(engine.ObjectValue(orig), vm.Key(engine.KeyConstructor))
 		if c.IsObject() {
-			if c.Object() == vm.ArrayCtor {
+			if c.Object() == vm.Intrinsic(engine.IntrinsicArray) {
 				c = engine.Undefined
-			} else if s := vm.GetV(c, vm.K.SymSpecies); s.IsNull() {
+			} else if s := vm.GetV(c, vm.WellKnownSymbol(engine.SymbolSpecies)); s.IsNull() {
 				c = engine.Undefined
 			} else {
 				c = s
@@ -111,7 +111,7 @@ func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Obj
 	if n > engine.MaxArrayIndex+1 {
 		vm.ThrowRangeError("invalid array length")
 	}
-	return vm.ArrayCreate(uint32(n), vm.ArrayProto)
+	return vm.ArrayCreate(uint32(n), vm.Intrinsic(engine.IntrinsicArrayPrototype))
 }
 
 func callback(vm *engine.VM, args []engine.Value, what string) *engine.Object {
@@ -147,7 +147,7 @@ func (g *joinGuard) leave() {
 // joinArray implements Array.prototype.join for the first n elements of the object o.
 func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep string) engine.Value {
 	if !g.enter(o) {
-		return vm.EmptyString
+		return vm.NewString("")
 	}
 	defer g.leave()
 	return joinElements(vm, o, n, sep, vm.ToString)
@@ -201,12 +201,12 @@ func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep string, count int64) {
 }
 
 func initArray(vm *engine.VM) {
-	proto := vm.ArrayProto
+	proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
 	var joins joinGuard
 	ctor := constructor(vm, "Array", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		proto := vm.ArrayProto
-		if nt := vm.NewTarget; nt != nil && nt != vm.ArrayCtor {
-			proto = vm.GetPrototypeFromConstructor(nt, vm.ArrayProto)
+		proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
+		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicArray) {
+			proto = vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicArrayPrototype))
 		}
 		if len(args) == 1 {
 			if n := args[0]; n.IsNumber() {
@@ -218,22 +218,23 @@ func initArray(vm *engine.VM) {
 			}
 		}
 		a := vm.NewArray(append([]engine.Value(nil), args...))
-		if proto != vm.ArrayProto {
+		if proto != vm.Intrinsic(engine.IntrinsicArrayPrototype) {
 			vm.SetPrototypeOf(a, proto)
 		}
 		return engine.ObjectValue(a)
 	})
-	vm.ArrayCtor = ctor
-	vm.FnArraySpecies = vm.NewNative("get [Symbol.species]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetIntrinsic(engine.IntrinsicArray, ctor)
+	speciesGetter := vm.NewNative("get [Symbol.species]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
-	vm.DefineAccessor(ctor, vm.K.SymSpecies, vm.FnArraySpecies, nil, engine.FlagConfigurable)
+	vm.SetIntrinsic(engine.IntrinsicArraySpeciesGetter, speciesGetter)
+	vm.DefineAccessor(ctor, vm.WellKnownSymbol(engine.SymbolSpecies), speciesGetter, nil, engine.FlagConfigurable)
 
 	method(vm, ctor, "isArray", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(engine.IsArray(arg(args, 0)))
 	})
 	method(vm, ctor, "of", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.ArrayCtor {
+		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.Intrinsic(engine.IntrinsicArray) {
 			a := vm.Construct(this.Object(), []engine.Value{engine.Number(float64(len(args)))}, this.Object())
 			for i, v := range args {
 				vm.CreateDataPropertyOrThrow(a, engine.IndexKey(uint32(i)), v)
@@ -248,14 +249,14 @@ func initArray(vm *engine.VM) {
 		if !mapFn.IsUndefined() && !mapFn.IsCallable() {
 			vm.ThrowTypeError(vm.DisplayString(mapFn) + " is not a function")
 		}
-		custom := this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.ArrayCtor
+		custom := this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.Intrinsic(engine.IntrinsicArray)
 		mapped := func(v engine.Value, i int64) engine.Value {
 			if mapFn.IsUndefined() {
 				return v
 			}
 			return vm.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
 		}
-		if m := vm.GetMethod(items, vm.K.SymIterator); m != nil {
+		if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 			var a *engine.Object
 			if custom {
 				a = vm.Construct(this.Object(), nil, this.Object())
@@ -456,7 +457,7 @@ func initArray(vm *engine.VM) {
 		for _, item := range items {
 			spreadable := false
 			if item.IsObject() {
-				if s := vm.GetV(item, vm.K.SymIsConcatSpreadable); !s.IsUndefined() {
+				if s := vm.GetV(item, vm.WellKnownSymbol(engine.SymbolIsConcatSpreadable)); !s.IsUndefined() {
 					spreadable = engine.ToBoolean(s)
 				} else {
 					spreadable = engine.IsArray(item)
@@ -922,8 +923,8 @@ func initArray(vm *engine.VM) {
 	}
 	iter("keys", iterKeys)
 	iter("entries", iterEntries)
-	vm.FnArrayValues = iter("values", iterValues)
-	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(vm.FnArrayValues), engine.FlagsHidden)
+	vm.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, iter("values", iterValues))
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
 	initArrayAdditions(vm, proto, &joins)
 }
 
@@ -975,7 +976,7 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		if !joins.enter(o) {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		defer joins.leave()
 		n := vm.LengthOfArrayLike(o)
@@ -1074,7 +1075,7 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 	} {
 		vm.Define(unscopables, vm.Intern(name), engine.True, engine.FlagsData)
 	}
-	vm.Define(proto, vm.K.SymUnscopables, engine.ObjectValue(unscopables), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolUnscopables), engine.ObjectValue(unscopables), engine.FlagConfigurable)
 }
 
 // relIndex resolves a relative index against a length, clamping to the range from 0 to n.
@@ -1149,7 +1150,7 @@ type arrayIterator struct {
 }
 
 func newArrayIterator(vm *engine.VM, o *engine.Object, kind int) *engine.Object {
-	return vm.NewIteratorObject(vm.ArrayIteratorProto, &arrayIterator{
+	return vm.NewIteratorObject(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), &arrayIterator{
 		obj:  o,
 		kind: kind,
 	})

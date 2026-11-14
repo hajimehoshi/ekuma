@@ -97,7 +97,7 @@ func (vm *VM) AddWaiter(b *ArrayBuffer, byteIndex int, timeout float64) Value {
 		b.waiterLists[byteIndex] = l
 	}
 	w := &waiter{
-		promise:    vm.NewPromiseObject(vm.PromiseProto),
+		promise:    vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype)),
 		list:       l,
 		timedIndex: -1,
 	}

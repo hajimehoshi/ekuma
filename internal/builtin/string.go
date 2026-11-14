@@ -28,17 +28,17 @@ func thisString(vm *engine.VM, this engine.Value, what string) *engine.Object {
 }
 
 func initString(vm *engine.VM) {
-	proto := vm.StringProto
+	proto := vm.Intrinsic(engine.IntrinsicStringPrototype)
 	ctor := constructor(vm, "String", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := vm.EmptyString
+		s := vm.NewString("")
 		if len(args) > 0 {
-			if vm.NewTarget == nil && args[0].IsSymbol() {
+			if vm.GetNewTarget() == nil && args[0].IsSymbol() {
 				return vm.NewString(vm.DisplayString(args[0]))
 			}
 			s = vm.ToStringValue(args[0])
 		}
-		if nt := vm.NewTarget; nt != nil {
-			return engine.ObjectValue(vm.NewStringObject(s.Object(), vm.GetPrototypeFromConstructor(nt, vm.StringProto)))
+		if nt := vm.GetNewTarget(); nt != nil {
+			return engine.ObjectValue(vm.NewStringObject(s.Object(), vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicStringPrototype))))
 		}
 		return s
 	})
@@ -65,7 +65,7 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, ctor, "raw", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cooked := vm.ToObject(arg(args, 0))
-		raw := vm.ToObject(vm.GetV(engine.ObjectValue(cooked), vm.K.Raw))
+		raw := vm.ToObject(vm.GetV(engine.ObjectValue(cooked), vm.Key(engine.KeyRaw)))
 		n := vm.LengthOfArrayLike(raw)
 		var b wtf8.Builder
 		for i := range n {
@@ -94,7 +94,7 @@ func initString(vm *engine.VM) {
 		s := thisString(vm, this, "charAt")
 		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 || i >= float64(s.StringLength()) {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		return vm.UnitString(s.UnitAt(int(i)))
 	})
@@ -189,7 +189,7 @@ func initString(vm *engine.VM) {
 			end = engine.RelativeIndex(vm.ToIntegerOrInfinity(e), n)
 		}
 		if start >= end {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		return vm.NewString(s.Substring(start, end))
 	})
@@ -216,7 +216,7 @@ func initString(vm *engine.VM) {
 		}
 		end := int(math.Min(float64(start)+math.Max(length, 0), float64(n)))
 		if start >= end {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		return vm.NewString(s.Substring(start, end))
 	})
@@ -236,7 +236,7 @@ func initString(vm *engine.VM) {
 			vm.ThrowRangeError("invalid count value: " + vm.ToString(arg(args, 0)))
 		}
 		if n == 0 || s.Str() == "" {
-			return vm.EmptyString
+			return vm.NewString("")
 		}
 		if n*float64(len(s.Str())) > engine.MaxStringLength {
 			vm.ThrowRangeError("invalid string length")
@@ -382,7 +382,7 @@ func initString(vm *engine.VM) {
 		vm.RequireObjectCoercible(this, "String.prototype.split")
 		sepArg, limArg := arg(args, 0), arg(args, 1)
 		if sepArg.IsObject() {
-			if m := vm.GetMethod(sepArg, vm.K.SymSplit); m != nil {
+			if m := vm.GetMethod(sepArg, vm.WellKnownSymbol(engine.SymbolSplit)); m != nil {
 				return vm.Call(m, sepArg, this, limArg)
 			}
 		}
@@ -426,7 +426,7 @@ func initString(vm *engine.VM) {
 						vm.ThrowTypeError("replaceAll must be called with a global RegExp")
 					}
 				}
-				if m := vm.GetMethod(pat, vm.K.SymReplace); m != nil {
+				if m := vm.GetMethod(pat, vm.WellKnownSymbol(engine.SymbolReplace)); m != nil {
 					return vm.Call(m, pat, this, rep)
 				}
 			}
@@ -474,9 +474,9 @@ func initString(vm *engine.VM) {
 		name string
 		key  *engine.Object
 	}{
-		{"match", vm.K.SymMatch},
-		{"matchAll", vm.K.SymMatchAll},
-		{"search", vm.K.SymSearch},
+		{"match", vm.WellKnownSymbol(engine.SymbolMatch)},
+		{"matchAll", vm.WellKnownSymbol(engine.SymbolMatchAll)},
+		{"search", vm.WellKnownSymbol(engine.SymbolSearch)},
 	} {
 		method(vm, proto, e.name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+e.name)
@@ -502,9 +502,9 @@ func initString(vm *engine.VM) {
 			return vm.CallValue(vm.GetV(engine.ObjectValue(rx), e.key), engine.ObjectValue(rx), s)
 		})
 	}
-	symMethod(vm, proto, vm.K.SymIterator, "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "[Symbol.iterator]")
-		return engine.ObjectValue(vm.NewIteratorObject(vm.StringIteratorProto, &stringIterator{str: s.Str()}))
+		return engine.ObjectValue(vm.NewIteratorObject(vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), &stringIterator{str: s.Str()}))
 	})
 }
 

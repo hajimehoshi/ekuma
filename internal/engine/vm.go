@@ -79,19 +79,89 @@ type upvalue struct {
 	val   Value
 }
 
+// CommonKey identifies a string property key that the engine provides.
+type CommonKey uint8
+
+const (
+	KeyLength CommonKey = iota
+	KeyPrototype
+	KeyConstructor
+	KeyName
+	KeyMessage
+	KeyStack
+	KeyCause
+	KeyErrors
+	KeyError
+	KeySuppressed
+	KeyToString
+	keyValueOf
+	keyToJSON
+	keyCall
+	keyApply
+	keyBind
+	KeyGet
+	KeySet
+	KeyValue
+	KeyWritable
+	KeyEnumerable
+	KeyConfigurable
+	keyNext
+	keyDone
+	keyReturn
+	keyThrow
+	keyThen
+	keyCallee
+	keyCaller
+	keyArguments
+	keyIndex
+	keyInput
+	keyGroups
+	keyLastIndex
+	KeyRaw
+	keyProxy
+	keyRevoke
+	keySource
+	keyFlags
+	keyDefault
+	commonKeyCount
+)
+
+// WellKnownSymbol identifies a well-known symbol.
+type WellKnownSymbol uint8
+
+const (
+	SymbolIterator WellKnownSymbol = iota
+	SymbolAsyncIterator
+	SymbolHasInstance
+	SymbolToPrimitive
+	SymbolToStringTag
+	SymbolSpecies
+	SymbolIsConcatSpreadable
+	SymbolUnscopables
+	SymbolMatch
+	SymbolMatchAll
+	SymbolReplace
+	SymbolSearch
+	SymbolSplit
+	SymbolDispose
+	SymbolAsyncDispose
+	wellKnownSymbolCount
+)
+
 // keys are the property keys that the engine itself uses.
 type keys struct {
-	Length, Prototype, Constructor, Name, Message, Stack, Cause, Errors          *Object
-	Error, Suppressed                                                            *Object
-	ToString, valueOf, toJSON, call, apply, bind                                 *Object
-	Get, Set, Value, Writable, Enumerable, Configurable                          *Object
-	next, done, ret, throw, then, callee, caller, arguments                      *Object
-	index, input, groups, lastIndex, Raw, proxy, revoke, source, flags, default_ *Object
+	common    [commonKeyCount]*Object
+	wellKnown [wellKnownSymbolCount]*Object
+}
 
-	SymIterator, SymAsyncIterator, SymHasInstance, SymToPrimitive, SymToStringTag *Object
-	SymSpecies, SymIsConcatSpreadable, SymUnscopables                             *Object
-	SymMatch, SymMatchAll, SymReplace, SymSearch, SymSplit                        *Object
-	SymDispose, SymAsyncDispose                                                   *Object
+// Key returns the string property key k.
+func (vm *VM) Key(k CommonKey) *Object {
+	return vm.keys.common[k]
+}
+
+// WellKnownSymbol returns the well-known symbol s.
+func (vm *VM) WellKnownSymbol(s WellKnownSymbol) *Object {
+	return vm.keys.wellKnown[s]
 }
 
 // interruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
@@ -131,8 +201,8 @@ var errThrow = &throwSignal{}
 
 // VM is a JavaScript virtual machine. It must not be used from more than one goroutine at a time.
 type VM struct {
-	// Host is for the package that wraps the VM to find its own state.
-	Host any
+	// hostDefined is the value that HostDefined returns.
+	hostDefined any
 
 	stack  []Value
 	frames []frame
@@ -151,22 +221,22 @@ type VM struct {
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
 
-	// NewTarget is the constructor a native function is being constructed for, and nil in a plain call.
-	NewTarget *Object
+	// newTarget is the constructor a native function is being constructed for, and nil in a plain call.
+	newTarget *Object
 
 	thrown Value
 
-	Global *Object
+	global *Object
 
 	// globalLex holds the top-level let, const and class declarations.
 	globalLex *Object
 
-	K keys
+	keys keys
 
 	shapes shapeTable
 
 	strings     stringTable
-	EmptyString Value
+	emptyString Value
 
 	// missHolder stands in as the holder of a property that was not found.
 	missHolder *Object
@@ -204,34 +274,84 @@ type VM struct {
 
 // realm is the set of intrinsic objects.
 type realm struct {
-	ObjectProto, FunctionProto, ArrayProto, StringProto, NumberProto, BooleanProto *Object
-	SymbolProto, BigintProto, ErrorProto, IteratorProto, AsyncIteratorProto        *Object
-	ArrayIteratorProto, StringIteratorProto, GeneratorProto, AsyncGeneratorProto   *Object
-	GeneratorFunctionProto, AsyncFunctionProto, AsyncGeneratorFunctionProto        *Object
-	RegexpProto, PromiseProto, MapProto, SetObjectProto, DateProto                 *Object
-	PromiseCtor, ArrayCtor, ObjectCtor, FunctionCtor, RegExpCtor                   *Object
-
-	// ErrorProtos are the prototypes of the native error types, by errorKind.
-	ErrorProtos [ErrorKindCount]*Object
-
-	ThrowTypeErrorFunc *Object
+	intrinsics [intrinsicCount]*Object
 
 	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
 	asyncFromSyncProto *Object
+}
 
-	// FnCall, FnApply and FnEval are the original Function.prototype.call,
-	// Function.prototype.apply and eval.
-	FnCall, FnApply, FnEval, FnHasInstance *Object
+// Intrinsic identifies an intrinsic object.
+type Intrinsic uint8
 
-	// FnArrayValues and FnArrayIterNext are the original Array.prototype.values and the next
-	// method of array iterators.
-	FnArrayValues, FnArrayIterNext, FnArraySpecies *Object
+const (
+	IntrinsicObjectPrototype Intrinsic = iota
+	IntrinsicFunctionPrototype
+	IntrinsicArrayPrototype
+	IntrinsicStringPrototype
+	IntrinsicNumberPrototype
+	IntrinsicBooleanPrototype
+	IntrinsicSymbolPrototype
+	IntrinsicBigIntPrototype
+	IntrinsicIteratorPrototype
+	IntrinsicAsyncIteratorPrototype
+	IntrinsicArrayIteratorPrototype
+	IntrinsicStringIteratorPrototype
+	IntrinsicGeneratorPrototype
+	IntrinsicAsyncGeneratorPrototype
+	IntrinsicGeneratorFunctionPrototype
+	IntrinsicAsyncFunctionPrototype
+	IntrinsicAsyncGeneratorFunctionPrototype
+	IntrinsicRegExpPrototype
+	IntrinsicPromisePrototype
+	IntrinsicMapPrototype
+	IntrinsicSetPrototype
+	IntrinsicDatePrototype
+	IntrinsicPromise
+	IntrinsicArray
+	IntrinsicObject
+	IntrinsicFunction
+	IntrinsicRegExp
 
-	// FnTypedArrayLength is the original getter of %TypedArray%.prototype.length.
-	FnTypedArrayLength *Object
+	// The prototypes of the native error types are in the order of ErrorKind.
+	IntrinsicErrorPrototype
+	IntrinsicTypeErrorPrototype
+	IntrinsicRangeErrorPrototype
+	IntrinsicReferenceErrorPrototype
+	IntrinsicSyntaxErrorPrototype
+	IntrinsicEvalErrorPrototype
+	IntrinsicURIErrorPrototype
+	IntrinsicAggregateErrorPrototype
+	IntrinsicSuppressedErrorPrototype
 
-	// FnGeneratorNext is the original next method of generators.
-	FnGeneratorNext *Object
+	IntrinsicThrowTypeError
+
+	// The initial values of these functions are what the engine treats specially.
+	IntrinsicFunctionPrototypeCall
+	IntrinsicFunctionPrototypeApply
+	IntrinsicEval
+	IntrinsicFunctionPrototypeHasInstance
+	IntrinsicArrayPrototypeValues
+	IntrinsicArrayIteratorPrototypeNext
+	IntrinsicArraySpeciesGetter
+	IntrinsicTypedArrayPrototypeLengthGetter
+	IntrinsicGeneratorPrototypeNext
+
+	intrinsicCount
+)
+
+// ErrorPrototypeIntrinsic returns the intrinsic that is the prototype of the native error type k.
+func ErrorPrototypeIntrinsic(k ErrorKind) Intrinsic {
+	return IntrinsicErrorPrototype + Intrinsic(k)
+}
+
+// Intrinsic returns the intrinsic object id, or nil before it is set.
+func (vm *VM) Intrinsic(id Intrinsic) *Object {
+	return vm.intrinsics[id]
+}
+
+// SetIntrinsic makes o the intrinsic object id.
+func (vm *VM) SetIntrinsic(id Intrinsic, o *Object) {
+	vm.intrinsics[id] = o
 }
 
 // ErrorKind is a native error type.
@@ -270,9 +390,9 @@ func (vm *VM) Throw(v Value) {
 
 // newError returns a new error object of the given type.
 func (vm *VM) newError(kind ErrorKind, msg string) *Object {
-	e := vm.NewObject(vm.ErrorProtos[kind])
+	e := vm.NewObject(vm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	e.class = classError
-	vm.Define(e, vm.K.Message, vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
+	vm.Define(e, vm.Key(KeyMessage), vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
 	vm.RecordStack(e, msg)
 	return e
 }
@@ -310,7 +430,7 @@ func (vm *VM) RecordStack(e *Object, msg string) {
 func (vm *VM) stackTrace(e *Object, msg string) string {
 	var b wtf8.Builder
 	name := "Error"
-	if v, ok := vm.lookupData(e, vm.K.Name); ok && v.IsString() {
+	if v, ok := vm.lookupData(e, vm.Key(KeyName)); ok && v.IsString() {
 		name = v.o.str
 	}
 	b.WriteString(name)
@@ -355,11 +475,11 @@ func (vm *VM) takeException() error {
 func (vm *VM) errorOf(v Value) *Error {
 	msg := ""
 	if v.IsObject() {
-		if s, ok := vm.lookupData(v.o, vm.K.Stack); ok && s.IsString() {
+		if s, ok := vm.lookupData(v.o, vm.Key(KeyStack)); ok && s.IsString() {
 			msg = s.o.str
 		} else if s, ok := ErrorStack(v); ok {
 			msg = s
-		} else if s, ok := vm.lookupData(v.o, vm.K.Message); ok && s.IsString() {
+		} else if s, ok := vm.lookupData(v.o, vm.Key(KeyMessage)); ok && s.IsString() {
 			msg = s.o.str
 		} else {
 			msg = "uncaught exception"
