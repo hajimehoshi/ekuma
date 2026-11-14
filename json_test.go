@@ -47,6 +47,15 @@ func TestJSON(t *testing.T) {
 			want: `{"a":"[1,\"b\"]","c":"d"}`,
 		},
 		{
+			name: "stringify sees changes that its calls make to later objects",
+			src: `var r1 = {v: 0}, r2 = {v: 1};
+				var a = JSON.stringify([r1, {toJSON: function() { Object.defineProperty(r2, "v", {get: function() { return "g"; }, enumerable: true}); return 0; }}, r2]);
+				var b = JSON.stringify({a: {}, b: {get x() { Object.prototype.toJSON = function() { return "p"; }; return 1; }}, c: {}});
+				delete Object.prototype.toJSON;
+				a + b`,
+			want: `[{"v":0},0,{"v":"g"}]{"a":{},"b":{"x":1},"c":"p"}`,
+		},
+		{
 			name: "parse after a syntax error",
 			src: `try { JSON.parse('[1,{"a":[2,'); } catch (e) {}
 				JSON.stringify(JSON.parse('[3,{"b":4}]'))`,

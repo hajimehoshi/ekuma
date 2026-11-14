@@ -17,7 +17,8 @@ type writer struct {
 	vm  *engine.VM
 	buf []byte
 
-	keyToJSON, keyRawJSON *engine.Object
+	keyToJSON  engine.PropKey
+	keyRawJSON *engine.Object
 
 	replacer *engine.Object
 
@@ -35,6 +36,21 @@ type writer struct {
 
 	// keys is scratch storage for the keys of the objects being serialized.
 	keys []engine.PropKey
+
+	// getCaches are the caches for reading the properties whose keys are in keys, by index in keys.
+	// Objects of the same layout that are serialized one after another take the same indices.
+	getCaches []engine.PropertyCache
+
+	// toJSONCaches are the caches for looking up toJSON, by nesting depth.
+	toJSONCaches []engine.PropertyCache
+}
+
+// cacheAt returns the cache i of caches, growing caches as needed.
+func cacheAt(caches *[]engine.PropertyCache, i int) *engine.PropertyCache {
+	for len(*caches) <= i {
+		*caches = append(*caches, engine.PropertyCache{})
+	}
+	return &(*caches)[i]
 }
 
 // Stringifier converts values to JSON text. The zero value is ready to use.
@@ -42,19 +58,28 @@ type writer struct {
 type Stringifier struct {
 	out  []byte
 	busy bool
+
+	// The scratch storage of the writer, kept without references between calls.
+	stack                   []*engine.Object
+	keys                    []engine.PropKey
+	getCaches, toJSONCaches []engine.PropertyCache
 }
 
 // Stringify implements JSON.stringify.
 func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Value) engine.Value {
 	w := &writer{
 		vm:         vm,
-		keyToJSON:  vm.Intern("toJSON"),
+		keyToJSON:  engine.NamedKey(vm.Intern("toJSON")),
 		keyRawJSON: vm.Intern("rawJSON"),
 	}
-	// A call from a toJSON method or a replacer during another call uses a buffer of its own.
+	// A call from a toJSON method or a replacer during another call uses storage of its own.
 	if !s.busy {
 		s.busy = true
 		w.buf = s.out[:0]
+		w.stack = s.stack[:0]
+		w.keys = s.keys[:0]
+		w.getCaches = s.getCaches[:0]
+		w.toJSONCaches = s.toJSONCaches[:0]
 		defer func() {
 			s.busy = false
 			if cap(w.buf) <= maxRetainedBuffer {
@@ -62,6 +87,10 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 			} else {
 				s.out = nil
 			}
+			s.stack = releaseScratch(w.stack)
+			s.keys = releaseScratch(w.keys)
+			s.getCaches = releaseScratch(w.getCaches)
+			s.toJSONCaches = releaseScratch(w.toJSONCaches)
 		}()
 	}
 
@@ -144,7 +173,7 @@ func (w *writer) checkLength() {
 func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engine.Value) bool {
 	vm := w.vm
 	if value.IsObject() || value.IsBigInt() {
-		if f := vm.GetV(value, w.keyToJSON); f.IsCallable() {
+		if f := vm.GetVCached(value, w.keyToJSON, cacheAt(&w.toJSONCaches, len(w.stack))); f.IsCallable() {
 			value = vm.Call(f.Object(), value, vm.KeyValue(key))
 		}
 	}
@@ -254,7 +283,7 @@ func (w *writer) serializeObject(o *engine.Object) {
 	empty := true
 	for i := base; i < end; i++ {
 		k := w.keys[i]
-		v := vm.Get(o, k)
+		v := vm.GetVCached(engine.ObjectValue(o), k, cacheAt(&w.getCaches, i))
 		mark := len(w.buf)
 		if !empty {
 			w.buf = append(w.buf, ',')

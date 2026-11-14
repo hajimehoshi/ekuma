@@ -307,6 +307,47 @@ func (vm *VM) GetV(v Value, key *Object) Value {
 	return val
 }
 
+// PropertyCache remembers where GetVCached found a property, so that looking up the same key
+// again on values with the same layout is fast. The zero value is empty.
+type PropertyCache struct {
+	key PropKey
+	c   propCache
+}
+
+// GetVCached implements GetV(v, k), using and updating c.
+func (vm *VM) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
+	if k.key == nil {
+		return vm.Index(v, k.idx)
+	}
+	if c.key != k {
+		*c = PropertyCache{key: k}
+	}
+	if o := v.o; o != nil {
+		e := &c.c.cacheEntry
+		if o.shape != e.shape {
+			e = &c.c.second
+		}
+		if o.shape == e.shape {
+			if e.kind == cacheOwn {
+				return o.slots[e.slot]
+			}
+			if e.epoch == vm.protoEpoch {
+				switch e.kind {
+				case cacheProto:
+					return e.holder.slots[e.slot]
+				case cacheGetter:
+					return vm.Call(e.holder, v)
+				}
+			}
+		}
+	}
+	val, getter := vm.getNamed(v, k.key, &c.c)
+	if getter != nil {
+		return vm.Call(getter, v)
+	}
+	return val
+}
+
 // Index returns v[i], calling a getter.
 func (vm *VM) Index(v Value, i uint32) Value {
 	val, getter := vm.getIndex(v, i)
