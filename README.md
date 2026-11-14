@@ -57,44 +57,25 @@ that list would grow.
 
 Implemented:
 
-- Most of the syntax up to ES2025: classes with private members and static blocks, generators,
-  destructuring, spread, template literals, optional chaining, `let` and `const` with
-  the temporal dead zone, getters and setters, labels, `with`
-- Direct and indirect `eval` and the `Function` constructor; the compiled code of a direct
-  `eval` is reused when the same source text runs again at the same call site
-- `Object`, `Function`, `Array`, `String`, `Number`, `Boolean`, `Symbol`, `Math`, `Reflect`,
-  the error types, and array, string and generator iterators, including `Math.sumPrecise`,
-  `Error.isError` and the `stack` accessor of `Error.prototype`
-- `Iterator` with `Iterator.from`, the iterator helpers such as `map` and `flatMap`,
-  `Iterator.concat`, `Iterator.zip`, `Iterator.zipKeyed`, `chunks`, `windows`, `includes`
-  and `join`
-- `RegExp`, with its own backtracking engine: all flags including `v`, named groups, lookbehind,
-  Unicode property escapes, pattern modifiers, `RegExp.escape` and the legacy static properties
-- `JSON`, including `JSON.rawJSON`, `JSON.isRawJSON` and the `context` argument of a reviver
-- `Map` and `Set` with their iterators, the Set methods such as `union`, `getOrInsert`,
-  `getOrInsertComputed`, `Map.groupBy` and `Object.groupBy`
-- `WeakMap`, `WeakSet`, `WeakRef` and `FinalizationRegistry`, on Go's garbage collector:
-  an entry of a weak collection does not keep its key alive
-- `Date` and its Annex B methods, with the local time zone of Go's `time` package, or of the
-  JavaScript host with `GOOS=js`; the `toLocale*String` methods use a fixed English format,
-  since there is no `Intl`
-- The locale-sensitive `String` methods use the root locale: `localeCompare` treats canonically
-  equivalent strings as equal and otherwise compares code units
-- `BigInt`, with BigInt literals and arithmetic
-- `Promise`, including `Promise.any`, `Promise.allKeyed`, `Promise.allSettledKeyed`,
-  `Promise.withResolvers` and `Promise.try`; async functions, async generators, `await` and
-  `for await`; `Array.fromAsync`. The jobs run when the outermost call from Go into the VM
-  returns
-- `ArrayBuffer` (including resizable buffers, `transfer`, and immutable buffers with
-  `transferToImmutable` and `sliceToImmutable`), the typed arrays including
-  `Float16Array` and the `Uint8Array` base64 and hex methods, and `DataView`; elements are
-  stored in little-endian byte order on every platform
-- Explicit resource management: `using` and `await using` declarations, `DisposableStack`,
-  `AsyncDisposableStack`, `SuppressedError`, and the `Symbol.dispose` and
-  `Symbol.asyncDispose` methods of iterators and async iterators
-- `SharedArrayBuffer` and `Atomics` for a single agent: `Atomics.wait` throws, as on an agent
-  that cannot block, and `Atomics.notify` wakes the waiters of `Atomics.waitAsync`. A finite
-  `waitAsync` timeout takes effect when the jobs run after it expired
+- Nearly all of the syntax up to ES2025, including direct and indirect `eval` and the `Function`
+  constructor
+- Nearly all of the ES2025 standard library and of Annex B, with `RegExp` on its own
+  backtracking engine
+- Newer additions: explicit resource management, `Array.fromAsync`, `Error.isError`,
+  `Math.sumPrecise`, the `Uint8Array` base64 and hex methods, immutable `ArrayBuffer`s, the `Map`
+  upsert methods, `JSON.parse` source text access, the newer `Iterator` and `Promise` helpers,
+  and the `stack` accessor of `Error.prototype`
+
+Notes on behavior:
+
+- Promise jobs run when the outermost call from Go into the VM returns
+- Typed array elements are stored in little-endian byte order on every platform
+- `Date` uses the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`
+- Without `Intl`, the `toLocale*String` methods of `Date` use a fixed English format, and
+  `localeCompare` treats canonically equivalent strings as equal and otherwise compares code units
+- `Atomics` works for a single agent: `Atomics.wait` throws, as on an agent that cannot block, and
+  a finite `Atomics.waitAsync` timeout takes effect when the jobs next run after it expired
+- Weak collections, `WeakRef` and `FinalizationRegistry` use Go's garbage collector
 
 Missing:
 
@@ -102,6 +83,7 @@ Missing:
 - `Proxy`
 - Agents (workers) sharing a `SharedArrayBuffer`
 - `Intl` and `Temporal`
+- Proper tail calls
 
 Known inaccuracies in what is implemented: the `caller` and `arguments` properties of sloppy
 functions are always `undefined`.
