@@ -91,29 +91,29 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 			f.expr(prop.Key, k)
 			f.emit(bytecode.OpToPropertyKey, k, k, 0)
 		}
-		// A property reference as the target is evaluated after the key and before the get.
-		target, def, member := f.memberElement(prop.Value, mode)
+		// A reference as the target is evaluated after the key and before the get.
+		ref, ok := f.elementRef(prop.Value, mode)
 		v := f.newReg()
 		if static {
 			f.emit(bytecode.OpGetProp, v, src, f.site(name))
 		} else {
 			f.emit(bytecode.OpGetIndex, v, src, k)
 		}
-		if member {
-			f.storeElement(target, def, v)
+		if ok {
+			f.storeElement(ref, v)
 		} else {
 			f.destructure(prop.Value, v, mode)
 		}
 		f.free(mark)
 	}
 	if p.Rest != nil {
-		// A property reference as the target is evaluated before the properties are copied.
-		target, _, member := f.memberElement(p.Rest, mode)
+		// A reference as the target is evaluated before the properties are copied.
+		ref, ok := f.elementRef(p.Rest, mode)
 		v := f.newReg()
 		f.emit(bytecode.OpCopyPropsExcept, v, src, keys)
 		f.emit(bytecode.OpNop, int32(len(p.Properties)), 0, 0)
-		if member {
-			f.storeTarget(target, v)
+		if ok {
+			f.storeElement(ref, v)
 		} else {
 			f.destructure(p.Rest, v, mode)
 		}
@@ -127,8 +127,8 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	start := f.pc()
 	for _, e := range p.Elements {
 		mark := f.top
-		// A property reference as the target is evaluated before the iterator steps.
-		target, def, member := f.memberElement(e, mode)
+		// A reference as the target is evaluated before the iterator steps.
+		ref, member := f.elementRef(e, mode)
 		v := f.newReg()
 		if rest, ok := e.(*ast.RestElement); ok {
 			f.emit(bytecode.OpNewArray, v, 0, 0)
@@ -139,7 +139,7 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 			f.jumpTo(loop)
 			f.patchC(done)
 			if member {
-				f.storeTarget(target, v)
+				f.storeElement(ref, v)
 			} else {
 				f.destructure(rest.Target, v, mode)
 			}
@@ -153,7 +153,7 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 		f.patch(ok)
 		switch {
 		case member:
-			f.storeElement(target, def, v)
+			f.storeElement(ref, v)
 		case e != nil:
 			f.destructure(e, v, mode)
 		}
@@ -172,31 +172,64 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	f.patch(skip)
 }
 
-// memberElement evaluates the property reference that is the target of the assignment element e, if any.
-// def is the element's initializer, or nil.
-func (f *fn) memberElement(e ast.Pattern, mode patMode) (target memberTarget, def ast.Expr, ok bool) {
+// elementRef is the reference that is the target of an assignment element, evaluated before
+// the element's value.
+type elementRef struct {
+	// member is the property reference, when isMember is set.
+	member   memberTarget
+	isMember bool
+
+	// id is the variable, and scope the register of its dynamic scope from resolveName.
+	id    *ast.Identifier
+	scope int32
+
+	// def is the element's initializer, or nil.
+	def ast.Expr
+}
+
+// elementRef evaluates the reference that is the target of the assignment element e when
+// the reference is a property reference or a variable in a dynamic scope. ok reports whether
+// it is one of these.
+func (f *fn) elementRef(e ast.Pattern, mode patMode) (ref elementRef, ok bool) {
 	if mode != patAssign {
-		return memberTarget{}, nil, false
+		return elementRef{}, false
 	}
 	t := e
 	if r, ok := t.(*ast.RestElement); ok {
 		t = r.Target
 	} else if a, ok := t.(*ast.AssignPattern); ok {
-		t, def = a.Target, a.Default
+		t, ref.def = a.Target, a.Default
 	}
-	m, ok := t.(*ast.MemberExpr)
-	if !ok {
-		return memberTarget{}, nil, false
+	switch t := t.(type) {
+	case *ast.MemberExpr:
+		ref.member = f.assignTarget(t)
+		ref.isMember = true
+		return ref, true
+	case *ast.Identifier:
+		ref.scope = f.resolveName(t.Name)
+		if ref.scope < 0 {
+			return elementRef{}, false
+		}
+		ref.id = t
+		return ref, true
 	}
-	return f.assignTarget(m), def, true
+	return elementRef{}, false
 }
 
-// storeElement stores the value in the register v, or def when v is undefined, to target.
-func (f *fn) storeElement(target memberTarget, def ast.Expr, v int32) {
-	if def != nil {
+// storeElement stores the value in the register v, or the initializer when v is undefined, to ref.
+func (f *fn) storeElement(ref elementRef, v int32) {
+	if ref.def != nil {
 		skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
-		f.expr(def, v)
+		if ref.isMember {
+			f.expr(ref.def, v)
+		} else {
+			f.named(ref.def, v, ref.id.Name)
+		}
 		f.patch(skip)
 	}
-	f.storeTarget(target, v)
+	if ref.isMember {
+		f.storeTarget(ref.member, v)
+		return
+	}
+	f.storeVarTo(ref.id, ref.id.Name, v, false, ref.scope)
 }
