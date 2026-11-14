@@ -215,8 +215,6 @@ type fn struct {
 	// eval describes the call site of the eval code being compiled, which is the outermost
 	// function, and is nil otherwise.
 	eval *evalOuter
-
-	line int32
 }
 
 type compiler struct {
@@ -331,22 +329,23 @@ func (f *fn) jumpTo(pc int32) {
 	f.emit(bytecode.OpJump, pc, 0, 0)
 }
 
-// setLine records the source line of the instructions that follow.
-func (f *fn) setLine(n ast.Node) {
-	line, _ := f.c.prog.Position(n.Start())
-	if int32(line) == f.line {
+// setPos records the source position at offset for the instructions that follow.
+func (f *fn) setPos(offset int32) {
+	line, column := f.c.prog.Position(offset)
+	pos := bytecode.Pos{
+		PC:     f.pc(),
+		Line:   int32(line),
+		Column: int32(column),
+	}
+	k := len(f.f.Positions)
+	if k > 0 && f.f.Positions[k-1].Line == pos.Line && f.f.Positions[k-1].Column == pos.Column {
 		return
 	}
-	f.line = int32(line)
-	pc := f.pc()
-	if k := len(f.f.Lines); k > 0 && f.f.Lines[k-1].PC == pc {
-		f.f.Lines[k-1].Line = int32(line)
+	if k > 0 && f.f.Positions[k-1].PC == pos.PC {
+		f.f.Positions[k-1] = pos
 		return
 	}
-	f.f.Lines = append(f.f.Lines, bytecode.LinePos{
-		PC:   pc,
-		Line: int32(line),
-	})
+	f.f.Positions = append(f.f.Positions, pos)
 }
 
 // newReg reserves the next register.

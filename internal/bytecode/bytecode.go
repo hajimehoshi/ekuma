@@ -4,6 +4,10 @@
 // Package bytecode defines the instructions that the compiler emits and the interpreter executes.
 package bytecode
 
+import (
+	"sort"
+)
+
 // Opcode is the operation of an instruction.
 type Opcode uint8
 
@@ -295,10 +299,11 @@ type UpvalDesc struct {
 	Index int32
 }
 
-// LinePos says that the instructions from PC on belong to the source line Line.
-type LinePos struct {
-	PC   int32
-	Line int32
+// Pos says that the instructions from PC on belong to the source position at Line and Column.
+type Pos struct {
+	PC     int32
+	Line   int32
+	Column int32
 }
 
 // ConstKind is the type of a constant.
@@ -349,8 +354,8 @@ type Func struct {
 	// EvalScopes describe the call sites of direct evals, which OpCallEval refers to.
 	EvalScopes []EvalScope
 
-	// Lines maps instructions to source lines, ordered by PC.
-	Lines []LinePos
+	// Positions maps instructions to source positions, ordered by PC.
+	Positions []Pos
 
 	// Length is the value of the length property of the function.
 	Length int
@@ -459,14 +464,15 @@ type EvalVar struct {
 	Depth int32
 }
 
-// Line returns the source line of the instruction at pc.
-func (f *Func) Line(pc int) int {
-	l := 0
-	for _, e := range f.Lines {
-		if int(e.PC) > pc {
-			break
-		}
-		l = int(e.Line)
+// Position returns the 1-based source line and column of the instruction at pc,
+// or zeros when it has none.
+func (f *Func) Position(pc int) (line, column int) {
+	i := sort.Search(len(f.Positions), func(i int) bool {
+		return int(f.Positions[i].PC) > pc
+	}) - 1
+	if i < 0 {
+		return 0, 0
 	}
-	return l
+	p := f.Positions[i]
+	return int(p.Line), int(p.Column)
 }

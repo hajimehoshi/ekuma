@@ -452,6 +452,13 @@ func (vm *VM) stackTrace(e *Object, msg string) string {
 		if fp.File != "" {
 			b.WriteString(" (")
 			b.WriteString(wtf8.FromValidUTF8(fp.File))
+			// pc is past the instruction that is running.
+			if line, column := fp.Position(max(vm.frames[i].pc-1, 0)); line > 0 {
+				b.WriteString(":")
+				b.WriteString(itoa(line))
+				b.WriteString(":")
+				b.WriteString(itoa(column))
+			}
 			b.WriteString(")")
 		}
 	}

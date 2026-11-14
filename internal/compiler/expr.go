@@ -808,7 +808,7 @@ func (f *fn) isForwardedArguments(e ast.Expr) bool {
 func (f *fn) call(n *ast.CallExpr, dst int32) {
 	mark := f.top
 	defer f.free(mark)
-	f.setLine(n)
+	f.setPos(n.Start())
 
 	if _, ok := n.Callee.(*ast.SuperExpr); ok {
 		f.superCall(n, dst)
@@ -818,6 +818,8 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	// The callee goes to base, the this value to base+1 and the arguments follow.
 	base := f.newRegs(2)
 	op := bytecode.OpCall
+	// pos is the position of the call: the property name of a method call and the callee otherwise.
+	pos := n.Start()
 	callee := n.Callee
 	switch c := callee.(type) {
 	case *ast.MemberExpr:
@@ -828,6 +830,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			f.free(base + 2)
 			break
 		}
+		pos = c.Property.Start()
 		f.expr(c.Object, base+1)
 		f.chainCheck(c.Optional, base+1)
 		switch {
@@ -851,6 +854,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 					f.expr(n.Args[0], f.newReg())
 					// One more register for the arguments object of the general case.
 					f.newReg()
+					f.setPos(pos)
 					f.emit(bytecode.OpApplyFwd, base, mappedArguments(f.node), 0)
 					f.result(dst, base)
 					return
@@ -892,6 +896,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 
 	if len(n.Args) == 1 && op != bytecode.OpCallEval {
 		if s, ok := n.Args[0].(*ast.SpreadElement); ok && f.isForwardedArguments(s.Arg) {
+			f.setPos(pos)
 			f.emit(bytecode.OpCallFwd, base, 0, 0)
 			f.result(dst, base)
 			return
@@ -899,6 +904,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	}
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
+		f.setPos(pos)
 		if op == bytecode.OpCallEval {
 			f.emit(bytecode.OpCallEval, base, -1, f.evalSite())
 		}
@@ -913,6 +919,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if op == bytecode.OpCallEval {
 		site = f.evalSite()
 	}
+	f.setPos(pos)
 	f.emit(op, base, int32(len(n.Args)), site)
 	f.result(dst, base)
 }
@@ -930,11 +937,13 @@ func (f *fn) superCall(n *ast.CallExpr, dst int32) {
 	f.loadVar("new.target", base+1, false)
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
+		f.setPos(n.Start())
 		f.emit(bytecode.OpSuperSpread, base, 0, 0)
 	} else {
 		for _, a := range n.Args {
 			f.expr(a, f.newReg())
 		}
+		f.setPos(n.Start())
 		f.emit(bytecode.OpSuperCall, base, int32(len(n.Args)), 0)
 	}
 	// The result becomes this, which must not be initialized yet.
@@ -962,11 +971,12 @@ func (f *fn) superCall(n *ast.CallExpr, dst int32) {
 func (f *fn) newExpr(n *ast.NewExpr, dst int32) {
 	mark := f.top
 	defer f.free(mark)
-	f.setLine(n)
+	f.setPos(n.Start())
 	base := f.newRegs(2)
 	f.expr(n.Callee, base)
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
+		f.setPos(n.Start())
 		f.emit(bytecode.OpNewSpread, base, 0, 0)
 		f.result(dst, base)
 		return
@@ -974,6 +984,7 @@ func (f *fn) newExpr(n *ast.NewExpr, dst int32) {
 	for _, a := range n.Args {
 		f.expr(a, f.newReg())
 	}
+	f.setPos(n.Start())
 	f.emit(bytecode.OpNew, base, int32(len(n.Args)), f.site("prototype"))
 	f.result(dst, base)
 }

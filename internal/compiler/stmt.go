@@ -367,7 +367,7 @@ func (f *fn) addHandler(start, end, target, reg int32, finally bool) {
 func (f *fn) stmt(s ast.Stmt, labels []string) {
 	mark := f.top
 	defer f.free(mark)
-	f.setLine(s)
+	f.setPos(s.Start())
 	switch s.(type) {
 	case *ast.IfStmt, *ast.ForStmt, *ast.ForInStmt, *ast.ForOfStmt, *ast.WhileStmt, *ast.DoWhileStmt,
 		*ast.SwitchStmt, *ast.TryStmt, *ast.WithStmt:

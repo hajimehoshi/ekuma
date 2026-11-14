@@ -129,8 +129,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		!(node.Arrow || node.Generator || node.Async || node.Method || node.Getter || node.Setter || node.FieldInit || node.StaticBlock)
 	b.Length = node.Length
 	b.Source = c.prog.Text(node)
-	f.line = -1
-	f.setLine(node)
+	f.setPos(node.Start())
 
 	f.mutated = map[string]bool{}
 	assignedNames(node, true, func(s string) {
