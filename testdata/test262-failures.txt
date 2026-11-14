@@ -5081,7 +5081,6 @@ test/language/expressions/unsigned-right-shift/S11.7.3_A3_T2.1.js
 test/language/expressions/unsigned-right-shift/S11.7.3_A3_T2.2.js
 test/language/expressions/unsigned-right-shift/S9.6_A3.1_T3.js
 test/language/identifier-resolution/assign-to-global-undefined.js
-test/language/import/import-defer/evaluation-triggers/ignore-private-name-access.js
 test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-source-and-export.js
 test/language/module-code/source-phase-import/reexport-source-binding-named-import.js
 test/language/module-code/source-phase-import/reexport-source-binding-namespace-get.js
@@ -5100,7 +5099,6 @@ test/language/statements/class/decorator/syntax/valid/decorator-member-expr-iden
 test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js
 test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference.js
 test/language/statements/class/elements/arrow-body-arguments-label.js
-test/language/statements/class/elements/private-class-field-on-nonextensible-objects.js
 test/language/statements/class/elements/syntax/valid/grammar-field-accessor.js
 test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js
 test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js
@@ -5108,7 +5106,6 @@ test/language/statements/class/static-init-arguments-label.js
 test/language/statements/class/subclass/derived-class-return-override-catch-super-arrow.js
 test/language/statements/class/subclass/derived-class-return-override-catch-super.js
 test/language/statements/class/subclass/derived-class-return-override-catch.js
-test/language/statements/class/subclass/private-class-field-on-nonextensible-return-override.js
 test/language/statements/do-while/tco-body.js
 test/language/statements/for/scope-body-lex-open.js
 test/language/statements/for/tco-const-body.js

@@ -435,6 +435,14 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 	vm.add(o, name, val, flags)
 }
 
+// ensureCanAddPrivate throws a TypeError if the private element name cannot be added to v
+// because v is not extensible.
+func (vm *VM) ensureCanAddPrivate(v Value, name *Object) {
+	if v.IsObject() && !vm.IsExtensible(v.o) {
+		vm.ThrowTypeError("cannot define private member #" + name.str + " on an object that is not extensible")
+	}
+}
+
 // arith implements the binary arithmetic operators other than + for operands that are not both numbers.
 func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	x = vm.ToNumeric(x)
@@ -581,8 +589,13 @@ func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
 // initFields defines the instance elements of the class ctor on this.
 func (vm *VM) initFields(ctor *Object, this Value) {
 	// Private methods and accessors exist before any field initializer runs.
+	checked := false
 	for _, e := range ctor.fn.fields {
 		if e.kind != bytecode.ElemField {
+			if !checked {
+				vm.ensureCanAddPrivate(this, e.key.o)
+				checked = true
+			}
 			vm.defineClassElement(this, e)
 		}
 	}
@@ -602,6 +615,7 @@ func (vm *VM) defineClassElement(this Value, e classElement) {
 			v = vm.Call(e.val, this)
 		}
 		if private {
+			vm.ensureCanAddPrivate(this, e.key.o)
 			vm.definePrivate(this, e.key.o, v)
 			return
 		}

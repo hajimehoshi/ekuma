@@ -51,6 +51,22 @@ func TestScripts(t *testing.T) {
 			want: "10",
 		},
 		{
+			name: "private elements consult a proxy's isExtensible trap",
+			src: `var log = [];
+				function trap(name) { return { isExtensible(t) { log.push(name); return Reflect.isExtensible(t); } }; }
+				class C extends function (o) { return o; } {
+					#a() {} get #b() { return 1; } set #b(v) {} #f = log.push("f"); #g = 1;
+					static has(o) { return #a in o && #b in o && #f in o && #g in o; } }
+				var p = new Proxy({}, trap("x"));
+				new C(p);
+				var r = log.join() + " " + C.has(p);
+				log = [];
+				var q = new Proxy(Object.preventExtensions({}), trap("y"));
+				try { new C(q); } catch (e) { r += " " + e.name; }
+				r + " " + log.join() + " " + C.has(q)`,
+			want: "x,f,x,x true TypeError y false",
+		},
+		{
 			name: "class with fields, accessors and inheritance",
 			src: `class P { #secret = 7; base = 1; static count = 0;
 					constructor(x) { this.x = x; P.count++; }
