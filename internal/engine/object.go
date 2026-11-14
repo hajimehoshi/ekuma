@@ -195,8 +195,10 @@ type shape struct {
 	// table maps every property of the shape to its slot. A private shape always has one.
 	// A shared shape with more than smallShapeSize properties builds it on first lookup,
 	// or takes it over from its parent.
-	table       map[*Object]prop
-	transitions map[shapeKey]*shape
+	table map[*Object]prop
+
+	// transitions maps a property to the shared shape that adds it to this one.
+	transitions sweptTable[shapeKey, shape]
 
 	// small lists the properties of a shared shape with at most smallShapeSize properties,
 	// by slot. It is nil for any other shape.
@@ -213,6 +215,10 @@ type shapeEntry struct {
 	key *Object
 	prop
 }
+
+// transitionsMinSweep is the number of transitions from one shape below which they are kept
+// alive with the shape.
+const transitionsMinSweep = 8
 
 // smallShapeSize is the number of properties up to which a shared shape is searched linearly.
 const smallShapeSize = 8
@@ -257,7 +263,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 		key:   key,
 		flags: flags,
 	}
-	if t, ok := s.transitions[k]; ok {
+	if t := s.transitions.get(k); t != nil {
 		return t
 	}
 	t := &shape{
@@ -276,7 +282,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 			flags: flags,
 		})
 	}
-	if s.table != nil && s.transitions == nil && !s.private {
+	if s.table != nil && s.transitions.entries == nil && !s.private {
 		// An object that gains properties one by one looks each intermediate shape up once, so the
 		// first child takes over the table, and s builds a new one only if it is looked up again.
 		t.table, s.table = s.table, nil
@@ -285,10 +291,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 			flags: flags,
 		}
 	}
-	if s.transitions == nil {
-		s.transitions = make(map[shapeKey]*shape)
-	}
-	s.transitions[k] = t
+	s.transitions.put(k, t, transitionsMinSweep)
 	return t
 }
 
@@ -463,10 +466,10 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 		}
 		// A transition exists only for a key that the shape does not have.
 		if s := o.shape; !s.private {
-			if t, ok := s.transitions[shapeKey{
+			if t := s.transitions.get(shapeKey{
 				key:   k.key,
 				flags: FlagsData,
-			}]; ok {
+			}); t != nil {
 				o.shape = t
 				o.slots = append(o.slots, v)
 				continue
@@ -480,11 +483,15 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 // stringTable holds the strings that are shared.
 type stringTable struct {
 	// interned maps a string to its property key.
-	interned map[string]*Object
+	interned sweptTable[string, Object]
 
 	// ascii are the strings of one ASCII character.
 	ascii [128]Value
 }
+
+// internedMinSweep is the number of interned strings below which they are kept alive with the
+// VM.
+const internedMinSweep = 1 << 10
 
 // NewString returns the string s, which must be in canonical WTF-8, as a value.
 func (vm *VM) NewString(s string) Value {
@@ -507,7 +514,7 @@ func (vm *VM) NewString(s string) Value {
 
 // Intern returns the string s as a property key.
 func (vm *VM) Intern(s string) *Object {
-	if o, ok := vm.strings.interned[s]; ok {
+	if o := vm.strings.interned.get(s); o != nil {
 		return o
 	}
 	o := &Object{
@@ -516,7 +523,7 @@ func (vm *VM) Intern(s string) *Object {
 		shape: vm.shapes.string,
 		str:   s,
 	}
-	vm.strings.interned[s] = o
+	vm.strings.interned.put(s, o, internedMinSweep)
 	return o
 }
 

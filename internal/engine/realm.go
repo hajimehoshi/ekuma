@@ -16,11 +16,8 @@ import (
 // returns.
 func New(hostDefined any) *VM {
 	vm := &VM{
-		hostDefined: hostDefined,
-		stack:       make([]Value, 1<<14),
-		strings: stringTable{
-			interned: map[string]*Object{},
-		},
+		hostDefined:    hostDefined,
+		stack:          make([]Value, 1<<14),
 		symbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 	}
@@ -63,7 +60,7 @@ func New(hostDefined any) *VM {
 			shape: vm.shapes.string,
 		},
 	}
-	vm.strings.interned[""] = vm.emptyString.o
+	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep)
 	for i := range vm.strings.ascii {
 		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
 	}

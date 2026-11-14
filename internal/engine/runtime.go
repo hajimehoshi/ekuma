@@ -258,7 +258,12 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	if v.IsNullish() {
 		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.DisplayString(k) + "')")
 	}
-	key := vm.ToPropertyKey(k)
+	var key PropKey
+	if o := k.o; o != nil && o.kind == kindString {
+		key = vm.readKey(o)
+	} else {
+		key = vm.ToPropertyKey(k)
+	}
 	if key.key == nil {
 		return vm.getIndex(v, key.idx)
 	}

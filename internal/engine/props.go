@@ -32,7 +32,7 @@ func (vm *VM) KeyOfString(s string) PropKey {
 	if i, ok := stringIndex(s); ok {
 		return PropKey{idx: i}
 	}
-	if o, ok := vm.strings.interned[s]; ok {
+	if o := vm.strings.interned.get(s); o != nil {
 		return PropKey{key: o}
 	}
 	return PropKey{key: vm.Intern(strings.Clone(s))}
@@ -43,11 +43,11 @@ func (vm *VM) indexName(i uint32) *Object {
 	return vm.Intern(strconv.FormatUint(uint64(i), 10))
 }
 
-// indexKey returns the interned key for the index i, or nil when the key was never interned,
+// indexKey returns the interned key for the index i, or nil when the key is not interned,
 // in which case no object has a property with that key.
 func (vm *VM) indexKey(i uint32) *Object {
 	var buf [10]byte
-	return vm.strings.interned[string(strconv.AppendUint(buf[:0], uint64(i), 10))]
+	return vm.strings.interned.get(string(strconv.AppendUint(buf[:0], uint64(i), 10)))
 }
 
 // KeyValue returns the key k as a string or symbol value.
@@ -93,6 +93,29 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 		return vm.ToPropertyKey(vm.ToPrimitive(v, HintString))
 	}
 	return vm.KeyOfString(vm.ToString(v))
+}
+
+// readKey returns the property key for the string o for a read. When no property key has the
+// contents of o, it returns a key that no object has as a property.
+func (vm *VM) readKey(o *Object) PropKey {
+	if c := o.str; len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
+		if i, ok := stringIndex(c); ok {
+			return PropKey{idx: i}
+		}
+	}
+	if o.flags&objInterned != 0 {
+		return PropKey{key: o}
+	}
+	if k, ok := o.ext.(*Object); ok {
+		return PropKey{key: k}
+	}
+	if k := vm.strings.interned.get(o.str); k != nil {
+		o.ext = k
+		return PropKey{key: k}
+	}
+	// Every property key of every object is interned, so o differs from all of them. Not
+	// interning o keeps a read of a missing key from adding to the interned strings.
+	return PropKey{key: o}
 }
 
 // Fields of a property descriptor that are present.
