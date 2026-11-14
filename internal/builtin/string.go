@@ -9,6 +9,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -326,24 +328,24 @@ func initString(vm *engine.VM) {
 			return vm.NewString(b.String())
 		})
 	}
-	mapCase := func(name string, f func(string) string) {
+	// mapCase defines a case mapping method that applies ascii to ASCII-only strings and f to other strings.
+	mapCase := func(name string, ascii, f func(string) string) {
 		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisString(vm, this, name)
 			if s.IsASCII() {
-				return vm.NewString(f(s.Str()))
+				return vm.NewString(ascii(s.Str()))
 			}
 			return vm.NewString(mapWellFormed(s.Str(), f))
 		})
 	}
 	upper := func(s string) string {
-		// The special casing of the German sharp s is the common case that Go's mapping lacks.
-		return strings.ReplaceAll(strings.ToUpper(s), "ß", "SS")
+		return cases.Upper(language.Und).String(s)
 	}
 	lower := toLowerCase
-	mapCase("toUpperCase", upper)
-	mapCase("toLowerCase", lower)
-	mapCase("toLocaleUpperCase", upper)
-	mapCase("toLocaleLowerCase", lower)
+	mapCase("toUpperCase", strings.ToUpper, upper)
+	mapCase("toLowerCase", strings.ToLower, lower)
+	mapCase("toLocaleUpperCase", strings.ToUpper, upper)
+	mapCase("toLocaleLowerCase", strings.ToLower, lower)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "localeCompare")
 		that := vm.ToString(arg(args, 0))

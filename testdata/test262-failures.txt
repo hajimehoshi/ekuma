@@ -3860,11 +3860,9 @@ test/built-ins/String/prototype/split/separator-regexp-limit-string-via-eval.js
 test/built-ins/String/prototype/substring/S15.5.4.15_A1_T5.js
 test/built-ins/String/prototype/toLocaleLowerCase/S15.5.4.17_A1_T3.js
 test/built-ins/String/prototype/toLocaleUpperCase/S15.5.4.19_A1_T3.js
-test/built-ins/String/prototype/toLocaleUpperCase/special_casing.js
 test/built-ins/String/prototype/toLowerCase/S15.5.4.16_A1_T3.js
 test/built-ins/String/prototype/toString/non-generic-realm.js
 test/built-ins/String/prototype/toUpperCase/S15.5.4.18_A1_T3.js
-test/built-ins/String/prototype/toUpperCase/special_casing.js
 test/built-ins/String/prototype/valueOf/non-generic-realm.js
 test/built-ins/SuppressedError/is-a-constructor.js
 test/built-ins/SuppressedError/length.js
