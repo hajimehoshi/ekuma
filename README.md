@@ -47,7 +47,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 28,680 of 48,797 tests
+More than half of [test262](https://github.com/tc39/test262) passes: 29,781 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -58,7 +58,11 @@ Implemented:
   destructuring, spread, template literals, optional chaining, `let` and `const` with
   the temporal dead zone, getters and setters, labels, `with`
 - `Object`, `Function`, `Array`, `String`, `Number`, `Boolean`, `Symbol`, `Math`, the error types,
-  and array, string and generator iterators
+  and array, string and generator iterators, including `Math.sumPrecise`, `Error.isError`
+  and the `stack` accessor of `Error.prototype`
+- `Iterator` with `Iterator.from`, the iterator helpers such as `map` and `flatMap`,
+  `Iterator.concat`, `Iterator.zip`, `Iterator.zipKeyed`, `chunks`, `windows`, `includes`
+  and `join`
 - `RegExp`, with its own backtracking engine: all flags including `v`, named groups, lookbehind,
   Unicode property escapes, pattern modifiers, `RegExp.escape` and the legacy static properties
 - `JSON`, including `JSON.rawJSON`, `JSON.isRawJSON` and the `context` argument of a reviver
@@ -68,14 +72,14 @@ Implemented:
   an entry of a weak collection does not keep its key alive
 - `Date`, with local time from Go's `time` package and the Annex B methods; the `toLocale*String`
   methods use a fixed English format, since there is no `Intl`
-- BigInt literals and arithmetic (but not the `BigInt` object)
+- `BigInt`, with BigInt literals and arithmetic
 
 Missing:
 
 - `async` functions, `for await` and `Promise`
 - Direct `eval` and the `Function` constructor
 - Modules and dynamic `import`
-- `Proxy`, `Reflect`, the `BigInt` object
+- `Proxy`, `Reflect`
 - Typed arrays, `ArrayBuffer`, `DataView`
 - `Intl` and `Temporal`
 

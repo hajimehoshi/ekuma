@@ -31,7 +31,7 @@ type function struct {
 
 	// step is set for the next method of a built-in iterator. It is what native does
 	// without creating the iterator result.
-	step IteratorStep
+	step IteratorStepFunc
 
 	// name is the initial value of the property name of a native function.
 	name string
@@ -87,6 +87,7 @@ type keys struct {
 	SymIterator, SymAsyncIterator, SymHasInstance, SymToPrimitive, SymToStringTag *Object
 	SymSpecies, SymIsConcatSpreadable, SymUnscopables                             *Object
 	SymMatch, SymMatchAll, SymReplace, SymSearch, SymSplit                        *Object
+	SymDispose, SymAsyncDispose                                                   *Object
 }
 
 // interruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
@@ -274,7 +275,7 @@ func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e := vm.NewObject(vm.ErrorProtos[kind])
 	e.class = classError
 	vm.Define(e, vm.K.Message, vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
-	vm.Define(e, vm.K.Stack, vm.NewString(vm.StackTrace(e, msg)), FlagsHidden)
+	vm.RecordStack(e, msg)
 	return e
 }
 
@@ -300,8 +301,14 @@ func (vm *VM) throwSyntaxError(msg string) {
 	vm.throwError(ErrorKindSyntax, msg)
 }
 
-// StackTrace returns the text of the stack property of a new error.
-func (vm *VM) StackTrace(e *Object, msg string) string {
+// RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
+// as what ErrorStack returns.
+func (vm *VM) RecordStack(e *Object, msg string) {
+	e.ext = vm.stackTrace(e, msg)
+}
+
+// stackTrace returns the stack trace of a new error.
+func (vm *VM) stackTrace(e *Object, msg string) string {
 	var b wtf8.Builder
 	name := "Error"
 	if v, ok := vm.lookupData(e, vm.K.Name); ok && v.IsString() {
@@ -351,6 +358,8 @@ func (vm *VM) ErrorOf(v Value) *Error {
 	if v.IsObject() {
 		if s, ok := vm.lookupData(v.o, vm.K.Stack); ok && s.IsString() {
 			msg = s.o.str
+		} else if s, ok := ErrorStack(v); ok {
+			msg = s
 		} else if s, ok := vm.lookupData(v.o, vm.K.Message); ok && s.IsString() {
 			msg = s.o.str
 		} else {

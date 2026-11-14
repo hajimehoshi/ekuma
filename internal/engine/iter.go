@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"slices"
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -31,14 +32,19 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 	return it, vm.GetV(it, vm.K.next)
 }
 
-// IteratorStep is the next method of a built-in iterator, without the iterator result:
+// GetIterator implements GetIterator for a sync iterator and returns the iterator and its next method.
+func (vm *VM) GetIterator(v Value) (it, next Value) {
+	return vm.getIterator(v, false)
+}
+
+// IteratorStepFunc is the next method of a built-in iterator, without the iterator result:
 // it returns the next value of the iterator this, or reports false when the iterator is done.
 // It throws a TypeError when this is not an iterator of its kind.
-type IteratorStep func(vm *VM, this Value) (Value, bool)
+type IteratorStepFunc func(vm *VM, this Value) (Value, bool)
 
 // NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
 // result for what step returns.
-func (vm *VM) NewIteratorNext(step IteratorStep) *Object {
+func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
 	o := vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		v, ok := step(vm, this)
 		if !ok {
@@ -113,6 +119,30 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 	return v, iterValue
 }
 
+// IteratorStepValue implements IteratorStepValue for the iterator it and its next method next:
+// it returns the next value, or reports false when the iterator is done.
+func (vm *VM) IteratorStepValue(it, next Value) (Value, bool) {
+	return vm.iteratorStep(it, next)
+}
+
+// IteratorStep implements IteratorStep for the iterator it and its next method next,
+// without the result: it reports false when the iterator is done.
+func (vm *VM) IteratorStep(it, next Value) bool {
+	f := next.o
+	if f != nil && f.fn != nil && f.fn.step != nil {
+		if vm.interrupt.Load() {
+			vm.Poll()
+		}
+		_, ok := f.fn.step(vm, it)
+		return ok
+	}
+	r := vm.CallValue(next, it)
+	if !r.IsObject() {
+		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+	}
+	return !ToBoolean(vm.GetV(r, vm.K.done))
+}
+
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
 func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 	v, st := vm.iterNext(it, next)
@@ -142,6 +172,49 @@ func (vm *VM) iteratorClose(it Value, pending bool) {
 	if r := vm.Call(m, it); !r.IsObject() {
 		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 	}
+}
+
+// IteratorClose implements IteratorClose for a normal completion.
+func (vm *VM) IteratorClose(it Value) {
+	vm.iteratorClose(it, false)
+}
+
+// IteratorCloseAll implements IteratorCloseAll for a normal completion:
+// it closes the iterators its in reverse order.
+func (vm *VM) IteratorCloseAll(its []Value) {
+	for i, it := range slices.Backward(its) {
+		if !vm.protect(func() {
+			vm.iteratorClose(it, false)
+		}) {
+			for j := i - 1; j >= 0; j-- {
+				vm.iteratorClose(its[j], true)
+			}
+			panic(errThrow)
+		}
+	}
+}
+
+// IfAbruptCloseIterator implements IfAbruptCloseIterator for what f does: when f throws,
+// it closes the iterator it, ignoring any error of closing, and throws the exception again.
+func (vm *VM) IfAbruptCloseIterator(it Value, f func()) {
+	if vm.protect(f) {
+		return
+	}
+	vm.iteratorClose(it, true)
+	panic(errThrow)
+}
+
+// IfAbruptCloseIterators implements IfAbruptCloseIterators for what f does: when f throws,
+// it closes the iterators its in reverse order, ignoring any error of closing, and throws
+// the exception again.
+func (vm *VM) IfAbruptCloseIterators(its []Value, f func()) {
+	if vm.protect(f) {
+		return
+	}
+	for _, it := range slices.Backward(its) {
+		vm.iteratorClose(it, true)
+	}
+	panic(errThrow)
 }
 
 // Iterate calls f for every value that iterating v yields. When f returns false,

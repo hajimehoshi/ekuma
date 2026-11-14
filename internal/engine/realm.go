@@ -120,6 +120,7 @@ func (vm *VM) initKeys() {
 		{&k.SymIsConcatSpreadable, "Symbol.isConcatSpreadable"}, {&k.SymUnscopables, "Symbol.unscopables"},
 		{&k.SymMatch, "Symbol.match"}, {&k.SymMatchAll, "Symbol.matchAll"}, {&k.SymReplace, "Symbol.replace"},
 		{&k.SymSearch, "Symbol.search"}, {&k.SymSplit, "Symbol.split"},
+		{&k.SymDispose, "Symbol.dispose"}, {&k.SymAsyncDispose, "Symbol.asyncDispose"},
 	} {
 		*e.p = vm.NewSymbol(e.name, true)
 	}

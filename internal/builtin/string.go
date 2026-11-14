@@ -284,8 +284,45 @@ func initString(vm *engine.VM) {
 		})
 	}
 	trim("trim", true, true)
-	trim("trimStart", true, false)
-	trim("trimEnd", false, true)
+	trimStart := trim("trimStart", true, false)
+	trimEnd := trim("trimEnd", false, true)
+	vm.Define(proto, vm.Intern("trimLeft"), engine.ObjectValue(trimStart), engine.FlagsHidden)
+	vm.Define(proto, vm.Intern("trimRight"), engine.ObjectValue(trimEnd), engine.FlagsHidden)
+	// The HTML methods of Annex B.
+	for _, e := range []struct {
+		name string
+		tag  string
+		attr string
+	}{
+		{"anchor", "a", "name"}, {"big", "big", ""}, {"blink", "blink", ""}, {"bold", "b", ""},
+		{"fixed", "tt", ""}, {"fontcolor", "font", "color"}, {"fontsize", "font", "size"},
+		{"italics", "i", ""}, {"link", "a", "href"}, {"small", "small", ""}, {"strike", "strike", ""},
+		{"sub", "sub", ""}, {"sup", "sup", ""},
+	} {
+		length := 0
+		if e.attr != "" {
+			length = 1
+		}
+		method(vm, proto, e.name, length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			// CreateHTML.
+			s := thisString(vm, this, e.name)
+			var b wtf8.Builder
+			b.WriteString("<" + e.tag)
+			if e.attr != "" {
+				v := vm.ToString(arg(args, 0))
+				b.WriteString(" " + e.attr + "=\"")
+				b.WriteString(strings.ReplaceAll(v, "\"", "&quot;"))
+				b.WriteString("\"")
+			}
+			b.WriteString(">")
+			b.WriteString(s.Str())
+			b.WriteString("</" + e.tag + ">")
+			if b.Len() > engine.MaxStringLength {
+				vm.ThrowRangeError("invalid string length")
+			}
+			return vm.NewString(b.String())
+		})
+	}
 	mapCase := func(name string, f func(string) string) {
 		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisString(vm, this, name)

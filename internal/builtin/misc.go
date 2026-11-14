@@ -117,6 +117,10 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		if p < 1 || p > 100 {
 			vm.ThrowRangeError("toPrecision() argument must be between 1 and 100")
 		}
+		if n == 0 {
+			// -0 is formatted as 0.
+			n = 0
+		}
 		e := 0
 		if n != 0 {
 			es := strconv.FormatFloat(n, 'e', int(p)-1, 64)
@@ -135,6 +139,10 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		}
 		if d < 0 || d > 100 {
 			vm.ThrowRangeError("toExponential() argument must be between 0 and 100")
+		}
+		if n == 0 {
+			// -0 is formatted as 0.
+			n = 0
 		}
 		prec := int(d)
 		if arg(args, 0).IsUndefined() {
@@ -205,6 +213,7 @@ func initSymbol(vm *engine.VM) {
 		{"isConcatSpreadable", k.SymIsConcatSpreadable}, {"unscopables", k.SymUnscopables},
 		{"match", k.SymMatch}, {"matchAll", k.SymMatchAll}, {"replace", k.SymReplace},
 		{"search", k.SymSearch}, {"split", k.SymSplit},
+		{"dispose", k.SymDispose}, {"asyncDispose", k.SymAsyncDispose},
 	} {
 		constant(vm, ctor, e.name, engine.ObjectValue(e.sym))
 	}
@@ -297,6 +306,7 @@ func initMath(vm *engine.VM) {
 	unary("fround", func(x float64) float64 {
 		return float64(float32(x))
 	})
+	unary("f16round", f16round)
 	unary("log", math.Log)
 	unary("log1p", math.Log1p)
 	unary("log10", math.Log10)
@@ -308,7 +318,11 @@ func initMath(vm *engine.VM) {
 		if x < 0 && x >= -0.5 {
 			return math.Copysign(0, -1)
 		}
-		return math.Floor(x + 0.5)
+		r := math.Floor(x)
+		if x-r >= 0.5 {
+			r++
+		}
+		return r
 	})
 	unary("sign", func(x float64) float64 {
 		switch {
@@ -373,6 +387,9 @@ func initMath(vm *engine.VM) {
 	})
 	minmax("min", math.Inf(1), func(a, b float64) bool {
 		return a < b
+	})
+	method(vm, m, "sumPrecise", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(sumPrecise(vm, arg(args, 0)))
 	})
 	method(vm, m, "hypot", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nums := make([]float64, len(args))
@@ -465,4 +482,85 @@ func initIterators(vm *engine.VM) {
 	vm.Define(gf, vm.K.Prototype, engine.ObjectValue(gp), engine.FlagConfigurable)
 	vm.Define(gp, vm.K.Constructor, engine.ObjectValue(gf), engine.FlagConfigurable)
 	vm.Define(gf, vm.K.SymToStringTag, vm.NewString("GeneratorFunction"), engine.FlagConfigurable)
+}
+
+// f16round returns x rounded to the nearest binary16 value, ties to even.
+func f16round(x float64) float64 {
+	if x != x || math.IsInf(x, 0) || x == 0 {
+		return x
+	}
+	a := math.Abs(x)
+	// 65520 is halfway between the largest binary16 value and 2^16, and rounds to infinity.
+	if a >= 65520 {
+		return math.Copysign(math.Inf(1), x)
+	}
+	_, exp := math.Frexp(a)
+	// The unit in the last place of binary16 at a, with the subnormals below 2^-14.
+	e := max(exp-1, -14)
+	ulp := math.Ldexp(1, e-10)
+	return math.Copysign(math.RoundToEven(a/ulp)*ulp, x)
+}
+
+// sumPreciseBits is the precision that holds the exact sum of up to 2^53 finite numbers.
+const sumPreciseBits = 1074 + 1024 + 53 + 1
+
+// sumPrecise implements Math.sumPrecise.
+func sumPrecise(vm *engine.VM, items engine.Value) float64 {
+	vm.RequireObjectCoercible(items, "Math.sumPrecise")
+	it, next := vm.GetIterator(items)
+	const (
+		minusZero = iota
+		finite
+		plusInf
+		minusInf
+		notANumber
+	)
+	state := minusZero
+	sum := new(big.Float).SetPrec(sumPreciseBits)
+	var x big.Float
+	count := 0.0
+	vm.IterateRecord(it, next, func(v engine.Value) bool {
+		count++
+		if count >= 1<<53 {
+			vm.ThrowRangeError("Math.sumPrecise: too many values")
+		}
+		if !v.IsNumber() {
+			vm.ThrowTypeError("Math.sumPrecise: " + vm.DisplayString(v) + " is not a number")
+		}
+		n := v.Number()
+		switch {
+		case state == notANumber:
+		case n != n:
+			state = notANumber
+		case math.IsInf(n, 1):
+			if state == minusInf {
+				state = notANumber
+			} else {
+				state = plusInf
+			}
+		case math.IsInf(n, -1):
+			if state == plusInf {
+				state = notANumber
+			} else {
+				state = minusInf
+			}
+		case n == 0 && math.Signbit(n):
+		case state == minusZero || state == finite:
+			state = finite
+			sum.Add(sum, x.SetFloat64(n))
+		}
+		return true
+	})
+	switch state {
+	case notANumber:
+		return math.NaN()
+	case plusInf:
+		return math.Inf(1)
+	case minusInf:
+		return math.Inf(-1)
+	case minusZero:
+		return math.Copysign(0, -1)
+	}
+	f, _ := sum.Float64()
+	return f
 }

@@ -28,6 +28,21 @@ func (vm *VM) NewErrorObject(proto *Object) *Object {
 	return e
 }
 
+// IsError reports whether v is an object with an [[ErrorData]] internal slot.
+func IsError(v Value) bool {
+	return v.IsObject() && v.o.class == classError
+}
+
+// ErrorStack returns the stack trace that RecordStack recorded for the error object v.
+// It reports false when v has no [[ErrorData]] internal slot or no recorded stack trace.
+func ErrorStack(v Value) (string, bool) {
+	if !IsError(v) {
+		return "", false
+	}
+	s, ok := v.o.ext.(string)
+	return s, ok
+}
+
 // NewIteratorObject returns a built-in iterator object with the prototype proto.
 // state is what IteratorState returns for it.
 func (vm *VM) NewIteratorObject(proto *Object, state any) *Object {

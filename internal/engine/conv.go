@@ -218,6 +218,33 @@ func (vm *VM) RequireObjectCoercible(v Value, what string) {
 	}
 }
 
+// ToBigInt implements ToBigInt. The result is a BigInt.
+func (vm *VM) ToBigInt(v Value) Value {
+	p := vm.ToPrimitive(v, HintNumber)
+	if p.o == nil {
+		vm.ThrowTypeError("cannot convert " + numconv.NumberToString(p.n) + " to a BigInt")
+	}
+	switch p.o.kind {
+	case kindBigInt:
+		return p
+	case kindUndefined, kindNull:
+		vm.ThrowTypeError("cannot convert " + vm.ToString(p) + " to a BigInt")
+	case kindFalse:
+		return vm.NewBigInt(new(big.Int))
+	case kindTrue:
+		return vm.NewBigInt(big.NewInt(1))
+	case kindString:
+		i := numconv.StringToBigInt(p.o.str)
+		if i == nil {
+			vm.throwSyntaxError("cannot convert " + vm.DisplayString(p) + " to a BigInt")
+		}
+		return vm.NewBigInt(i)
+	case kindSymbol:
+		vm.ThrowTypeError("cannot convert a Symbol value to a BigInt")
+	}
+	panic("ekuma: internal value reached ToBigInt")
+}
+
 // NewBigInt returns the BigInt i, which must not be modified afterward.
 func (vm *VM) NewBigInt(i *big.Int) Value {
 	return Value{

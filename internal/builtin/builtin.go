@@ -35,7 +35,7 @@ func symMethod(vm *engine.VM, o *engine.Object, key *engine.Object, name string,
 
 // iteratorNext defines the next method of the built-in iterators with the prototype proto,
 // which steps the iterator with step.
-func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStep) *engine.Object {
+func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStepFunc) *engine.Object {
 	fn := vm.NewIteratorNext(step)
 	vm.Define(proto, vm.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
@@ -68,6 +68,23 @@ func thisObject(vm *engine.VM, this engine.Value, what string) *engine.Object {
 		vm.ThrowTypeError(what + " called on non-object")
 	}
 	return this.Object()
+}
+
+// setterThatIgnoresPrototypeProperties implements SetterThatIgnoresPrototypeProperties:
+// it sets the property key of this to v unless this is home. what names the setter in errors.
+func setterThatIgnoresPrototypeProperties(vm *engine.VM, this engine.Value, home *engine.Object, key engine.PropKey, v engine.Value, what string) {
+	if !this.IsObject() {
+		vm.ThrowTypeError(what + " called on non-object")
+	}
+	o := this.Object()
+	if o == home {
+		vm.ThrowTypeError("cannot assign to read only property '" + vm.KeyString(key) + "'")
+	}
+	if _, ok := vm.GetOwnProperty(o, key); !ok {
+		vm.CreateDataPropertyOrThrow(o, key, v)
+		return
+	}
+	vm.Set(o, key, v)
 }
 
 // Install creates the standard built-in objects of vm.
@@ -110,8 +127,10 @@ func Install(vm *engine.VM) {
 	parseFloat, parseInt := newParseFunctions(vm)
 	initNumber(vm, parseFloat, parseInt)
 	initSymbol(vm)
+	initBigInt(vm)
 	initMath(vm)
 	initIterators(vm)
+	initIteratorHelpers(vm)
 	initJSON(vm)
 	initMapAndSet(vm)
 	initWeak(vm)
@@ -346,6 +365,54 @@ func initObject(vm *engine.VM) {
 			return engine.Undefined
 		}),
 		engine.FlagConfigurable)
+
+	defineAccessor := func(name string, setter bool) {
+		method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			o := vm.ToObject(this)
+			f := arg(args, 1)
+			if !f.IsCallable() {
+				vm.ThrowTypeError("Object.prototype." + name + ": expecting function")
+			}
+			d := engine.PropDesc{
+				Flags: engine.FlagAccessor | engine.FlagEnumerable | engine.FlagConfigurable,
+				Has:   engine.HasEnumerable | engine.HasConfigurable,
+			}
+			if setter {
+				d.Setter = f.Object()
+				d.Has |= engine.HasSet
+			} else {
+				d.Getter = f.Object()
+				d.Has |= engine.HasGet
+			}
+			vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(arg(args, 0)), d)
+			return engine.Undefined
+		})
+	}
+	defineAccessor("__defineGetter__", false)
+	defineAccessor("__defineSetter__", true)
+	lookupAccessor := func(name string, setter bool) {
+		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			o := vm.ToObject(this)
+			k := vm.ToPropertyKey(arg(args, 0))
+			for ; o != nil; o = vm.ProtoOf(o) {
+				d, ok := vm.GetOwnProperty(o, k)
+				if !ok {
+					continue
+				}
+				f := d.Getter
+				if setter {
+					f = d.Setter
+				}
+				if !d.IsAccessor() || f == nil {
+					return engine.Undefined
+				}
+				return engine.ObjectValue(f)
+			}
+			return engine.Undefined
+		})
+	}
+	lookupAccessor("__lookupGetter__", false)
+	lookupAccessor("__lookupSetter__", true)
 
 	method(vm, ctor, "getPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if p := vm.ProtoOf(vm.ToObject(arg(args, 0))); p != nil {
@@ -660,7 +727,7 @@ func initError(vm *engine.VM) {
 				})
 				vm.Define(e, vm.K.Errors, engine.ObjectValue(vm.NewArray(errs)), engine.FlagsHidden)
 			}
-			vm.Define(e, vm.K.Stack, vm.NewString(vm.StackTrace(e, wtf8.ToValidUTF8(msg))), engine.FlagsHidden)
+			vm.RecordStack(e, wtf8.ToValidUTF8(msg))
 			return engine.ObjectValue(e)
 		})
 		vm.Define(proto, vm.K.Name, vm.NewString(name), engine.FlagsHidden)
@@ -671,6 +738,32 @@ func initError(vm *engine.VM) {
 			vm.SetPrototypeOf(ctor, base)
 		}
 	}
+	method(vm, base, "isError", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(engine.IsError(arg(args, 0)))
+	})
+	stackKey := engine.NamedKey(vm.K.Stack)
+	vm.DefineAccessor(vm.ErrorProto, vm.K.Stack,
+		vm.NewNative("get stack", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			if !this.IsObject() {
+				vm.ThrowTypeError("Error.prototype.stack getter called on non-object")
+			}
+			if s, ok := engine.ErrorStack(this); ok {
+				return vm.NewString(s)
+			}
+			return engine.Undefined
+		}),
+		vm.NewNative("set stack", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			if !this.IsObject() {
+				vm.ThrowTypeError("Error.prototype.stack setter called on non-object")
+			}
+			v := arg(args, 0)
+			if !v.IsString() {
+				vm.ThrowTypeError("Error.prototype.stack setter requires a string")
+			}
+			setterThatIgnoresPrototypeProperties(vm, this, vm.ErrorProto, stackKey, v, "Error.prototype.stack setter")
+			return engine.Undefined
+		}),
+		engine.FlagConfigurable)
 	method(vm, vm.ErrorProto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := thisObject(vm, this, "Error.prototype.toString")
 		name := "Error"

@@ -765,6 +765,166 @@ func initArray(vm *engine.VM) {
 	iter("entries", iterEntries)
 	vm.FnArrayValues = iter("values", iterValues)
 	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(vm.FnArrayValues), engine.FlagsHidden)
+	initArrayAdditions(vm, proto)
+}
+
+// newArrayOfLength checks that n is a valid array length as ArrayCreate does, and returns the storage
+// for the elements of a new array of that length.
+func newArrayOfLength(vm *engine.VM, n int64) []engine.Value {
+	if n > engine.MaxArrayIndex+1 {
+		vm.ThrowRangeError("invalid array length")
+	}
+	// The length is not trusted to allocate: the values are read one by one, which may throw.
+	return make([]engine.Value, 0, min(n, 1024))
+}
+
+// initArrayAdditions defines copyWithin, toLocaleString, the methods that change an array by copy,
+// and Symbol.unscopables on Array.prototype.
+func initArrayAdditions(vm *engine.VM, proto *engine.Object) {
+	method(vm, proto, "copyWithin", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		o := vm.ToObject(this)
+		n := vm.LengthOfArrayLike(o)
+		to := relIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
+		from := relIndex(vm.ToIntegerOrInfinity(arg(args, 1)), n)
+		end := n
+		if e := arg(args, 2); !e.IsUndefined() {
+			end = relIndex(vm.ToIntegerOrInfinity(e), n)
+		}
+		count := min(end-from, n-to)
+		dir := int64(1)
+		if from < to && to < from+count {
+			dir = -1
+			from += count - 1
+			to += count - 1
+		}
+		for ; count > 0; count-- {
+			if hasAt(vm, o, from) {
+				putAt(vm, o, to, getAt(vm, o, from))
+			} else {
+				deleteAt(vm, o, to)
+			}
+			from += dir
+			to += dir
+		}
+		return engine.ObjectValue(o)
+	})
+	toLocaleStringKey := vm.Intern("toLocaleString")
+	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		o := vm.ToObject(this)
+		if slices.Contains(vm.Joining, o) {
+			return vm.EmptyString
+		}
+		vm.Joining = append(vm.Joining, o)
+		defer func() {
+			vm.Joining = vm.Joining[:len(vm.Joining)-1]
+		}()
+		n := vm.LengthOfArrayLike(o)
+		var b wtf8.Builder
+		for i := range n {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			if e := getAt(vm, o, i); !e.IsNullish() {
+				b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, toLocaleStringKey), e)))
+			}
+			if b.Len() > engine.MaxStringLength {
+				vm.ThrowRangeError("invalid string length")
+			}
+		}
+		return vm.NewString(b.String())
+	})
+	method(vm, proto, "toReversed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		o := vm.ToObject(this)
+		n := vm.LengthOfArrayLike(o)
+		vals := newArrayOfLength(vm, n)
+		for i := n - 1; i >= 0; i-- {
+			vals = append(vals, getAt(vm, o, i))
+		}
+		return vm.NewArrayOf(vals)
+	})
+	method(vm, proto, "toSorted", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		cmp := arg(args, 0)
+		if !cmp.IsUndefined() && !cmp.IsCallable() {
+			vm.ThrowTypeError("the comparison function must be either a function or undefined")
+		}
+		o := vm.ToObject(this)
+		n := vm.LengthOfArrayLike(o)
+		vals := newArrayOfLength(vm, n)
+		undefs := 0
+		for i := range n {
+			v := getAt(vm, o, i)
+			if v.IsUndefined() {
+				undefs++
+				continue
+			}
+			vals = append(vals, v)
+		}
+		sortValues(vm, vals, cmp)
+		for range undefs {
+			vals = append(vals, engine.Undefined)
+		}
+		return vm.NewArrayOf(vals)
+	})
+	method(vm, proto, "toSpliced", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		o := vm.ToObject(this)
+		n := vm.LengthOfArrayLike(o)
+		start := relIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
+		var items []engine.Value
+		if len(args) > 2 {
+			items = args[2:]
+		}
+		var skip int64
+		switch {
+		case len(args) == 0:
+		case len(args) == 1:
+			skip = n - start
+		default:
+			skip = int64(math.Min(math.Max(vm.ToIntegerOrInfinity(args[1]), 0), float64(n-start)))
+		}
+		newLen := n + int64(len(items)) - skip
+		if newLen > numconv.MaxSafeInteger {
+			vm.ThrowTypeError("invalid array length")
+		}
+		vals := newArrayOfLength(vm, newLen)
+		for i := range start {
+			vals = append(vals, getAt(vm, o, i))
+		}
+		vals = append(vals, items...)
+		for i := start + skip; i < n; i++ {
+			vals = append(vals, getAt(vm, o, i))
+		}
+		return vm.NewArrayOf(vals)
+	})
+	method(vm, proto, "with", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		o := vm.ToObject(this)
+		n := vm.LengthOfArrayLike(o)
+		rel := vm.ToIntegerOrInfinity(arg(args, 0))
+		idx := rel
+		if rel < 0 {
+			idx = float64(n) + rel
+		}
+		if idx < 0 || idx >= float64(n) {
+			vm.ThrowRangeError("invalid index")
+		}
+		vals := newArrayOfLength(vm, n)
+		for i := range n {
+			if i == int64(idx) {
+				vals = append(vals, arg(args, 1))
+				continue
+			}
+			vals = append(vals, getAt(vm, o, i))
+		}
+		return vm.NewArrayOf(vals)
+	})
+
+	unscopables := vm.NewObject(nil)
+	for _, name := range []string{
+		"at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex",
+		"flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values",
+	} {
+		vm.Define(unscopables, vm.Intern(name), engine.True, engine.FlagsData)
+	}
+	vm.Define(proto, vm.K.SymUnscopables, engine.ObjectValue(unscopables), engine.FlagConfigurable)
 }
 
 // relIndex resolves a relative index against a length, clamping to the range from 0 to n.
