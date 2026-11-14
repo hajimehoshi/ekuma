@@ -159,11 +159,11 @@ func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
 	}
 	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), opts)
 	if err != nil {
-		vm.throwSyntaxError(toSyntaxError("<eval>", err).Error())
+		vm.throwCompileError("<eval>", err)
 	}
 	bc, err := compiler.CompileEval(prog, "<eval>", es)
 	if err != nil {
-		vm.throwSyntaxError(toSyntaxError("<eval>", err).Error())
+		vm.throwCompileError("<eval>", err)
 	}
 	p := vm.link(bc)
 	// Every evaluation of a tagged template in new eval code has template objects of its own.

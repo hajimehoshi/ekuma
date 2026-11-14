@@ -161,7 +161,20 @@ type SyntaxError struct {
 }
 
 func (e *SyntaxError) Error() string {
-	return "SyntaxError: " + e.Message + " (" + e.File + ":" + itoa(e.Line) + ")"
+	return "SyntaxError: " + e.messageWithPosition()
+}
+
+// messageWithPosition returns the message followed by the file and the line.
+func (e *SyntaxError) messageWithPosition() string {
+	return e.Message + " (" + e.File + ":" + itoa(e.Line) + ")"
+}
+
+// throwCompileError throws a SyntaxError for err, an error of the parser or the compiler for the source file.
+func (vm *VM) throwCompileError(file string, err error) {
+	if se, ok := errors.AsType[*SyntaxError](toSyntaxError(file, err)); ok {
+		vm.throwSyntaxError(se.messageWithPosition())
+	}
+	vm.throwSyntaxError(err.Error())
 }
 
 func itoa(n int) string {
@@ -335,7 +348,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 	fp, err := vm.compileFunction("<anonymous>", wtf8.FromValidUTF8(params), wtf8.FromValidUTF8(body), pkind)
 	if err != nil {
-		vm.throwSyntaxError(err.Error())
+		vm.throwCompileError("<anonymous>", err)
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
 	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.global})
