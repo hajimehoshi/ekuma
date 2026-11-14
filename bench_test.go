@@ -22,7 +22,7 @@ func BenchmarkWorkload(b *testing.B) {
 	for _, plugins := range []int{12, 0} {
 		b.Run(fmt.Sprintf("plugins=%d", plugins), func(b *testing.B) {
 			ctx := b.Context()
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			if _, err := vm.RunScript(ctx, "workload.js", string(src)); err != nil {
 				b.Fatal(err)
 			}
@@ -84,7 +84,7 @@ func gameDataJSON(n int) string {
 func BenchmarkJSON(b *testing.B) {
 	text := gameDataJSON(3000)
 	ctx := b.Context()
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	if err := vm.Global().Set("text", text); err != nil {
 		b.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func BenchmarkCollection(b *testing.B) {
 				for _, n := range []int{8, 1000, 100000} {
 					b.Run(fmt.Sprintf("%s/%s/%s/n=%d", coll, op, kind, n), func(b *testing.B) {
 						ctx := b.Context()
-						vm := ekuma.NewVM()
+						var vm ekuma.VM
 						if _, err := vm.RunScript(ctx, "collection.js", collectionBenchJS); err != nil {
 							b.Fatal(err)
 						}
@@ -236,7 +236,7 @@ func BenchmarkEval(b *testing.B) {
 	for _, name := range []string{"eval", "marked", "unmarked", "function"} {
 		b.Run(name, func(b *testing.B) {
 			ctx := b.Context()
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			if _, err := vm.RunScript(ctx, "eval.js", src); err != nil {
 				b.Fatal(err)
 			}
@@ -278,7 +278,7 @@ func BenchmarkAsync(b *testing.B) {
 	for _, name := range []string{"await", "call", "forAwait", "all"} {
 		b.Run(name, func(b *testing.B) {
 			ctx := b.Context()
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			if _, err := vm.RunScript(ctx, "async.js", src); err != nil {
 				b.Fatal(err)
 			}
@@ -351,7 +351,7 @@ func BenchmarkTypedArray(b *testing.B) {
 			}
 			b.Run(op+"/"+kind, func(b *testing.B) {
 				ctx := b.Context()
-				vm := ekuma.NewVM()
+				var vm ekuma.VM
 				if _, err := vm.RunScript(ctx, "typedarray.js", typedArrayBenchJS); err != nil {
 					b.Fatal(err)
 				}
@@ -375,7 +375,7 @@ func BenchmarkSparseArray(b *testing.B) {
 	for _, method := range []string{"every", "forEach", "reduce", "indexOf", "lastIndexOf", "join", "toLocaleString", "includes", "copyWithin", "shift", "unshift", "spliceRemove", "spliceInsert", "reverse"} {
 		b.Run(method, func(b *testing.B) {
 			ctx := b.Context()
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			if _, err := vm.RunScript(ctx, "sparse.js", sparseArrayBenchJS); err != nil {
 				b.Fatal(err)
 			}
@@ -456,7 +456,7 @@ func BenchmarkSparseArrayGrowing(b *testing.B) {
 	for _, n := range []int{100, 1000, 10000} {
 		b.Run(fmt.Sprint(n), func(b *testing.B) {
 			ctx := b.Context()
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			if _, err := vm.RunScript(ctx, "sparse.js", sparseArrayGrowingBenchJS); err != nil {
 				b.Fatal(err)
 			}
@@ -518,7 +518,7 @@ func BenchmarkProxy(b *testing.B) {
 		for _, kind := range []string{"plain", "proxy", "getTrap"} {
 			b.Run(op+"/"+kind, func(b *testing.B) {
 				ctx := b.Context()
-				vm := ekuma.NewVM()
+				var vm ekuma.VM
 				if _, err := vm.RunScript(ctx, "proxy.js", proxyBenchJS); err != nil {
 					b.Fatal(err)
 				}
@@ -538,7 +538,7 @@ func BenchmarkImportedCall(b *testing.B) {
 	const lib = `function add(a, b) { return a + b; }`
 	const loop = `function run(n) { let s = 0; for (let i = 0; i < n; i++) { s = add(s, i); } return s; }`
 	b.Run("script", func(b *testing.B) {
-		vm := ekuma.NewVM()
+		var vm ekuma.VM
 		if _, err := vm.RunScript(b.Context(), "script", lib+loop); err != nil {
 			b.Fatal(err)
 		}
@@ -549,8 +549,8 @@ func BenchmarkImportedCall(b *testing.B) {
 		}
 	})
 	b.Run("module", func(b *testing.B) {
-		vm := ekuma.NewVM()
-		l := newMemoryModules(vm, map[string]string{
+		var vm ekuma.VM
+		l := newMemoryModules(&vm, map[string]string{
 			"lib":  "export " + lib,
 			"main": `import { add } from "lib";` + loop + `globalThis.run = run;`,
 		})
@@ -558,7 +558,7 @@ func BenchmarkImportedCall(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		if _, err := ekuma.RunModule(b.Context(), vm, m); err != nil {
+		if _, err := ekuma.RunModule(b.Context(), &vm, m); err != nil {
 			b.Fatal(err)
 		}
 		b.ReportAllocs()

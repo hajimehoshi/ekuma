@@ -418,8 +418,9 @@ func CopyBytesToJS(dst Value, src []byte) int {
 // and any other error throws a new Error object with the message of the error.
 type Func func(this Value, args []Value) (any, error)
 
-// VM is a JavaScript virtual machine. It must not be used from more than one goroutine at a time,
-// and neither must its values.
+// VM is a JavaScript virtual machine with the standard built-in objects.
+// The zero value is ready to use. A VM must not be copied after first use.
+// It must not be used from more than one goroutine at a time, and neither must its values.
 type VM struct {
 	e *engine.VM
 
@@ -430,16 +431,21 @@ type VM struct {
 	callArgs []engine.Value
 }
 
-// NewVM creates a VM with the standard built-in objects.
-func NewVM() *VM {
-	vm := &VM{}
-	vm.e = engine.New(vm)
-	builtin.Install(vm.e)
-	return vm
+// initIfNeeded creates the engine of vm on first use, and panics when vm is a copy of a VM in use.
+func (vm *VM) initIfNeeded() {
+	if vm.e == nil {
+		vm.e = engine.New(vm)
+		builtin.Install(vm.e)
+		return
+	}
+	if vm.e.HostDefined() != any(vm) {
+		panic("ekuma: VM used through a copy")
+	}
 }
 
 // Global returns the global object.
 func (vm *VM) Global() Value {
+	vm.initIfNeeded()
 	return fromEngine(vm.e.GlobalObject())
 }
 
@@ -460,6 +466,7 @@ func (vm *VM) Global() Value {
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
 // ValueOf panics when x is not one of the expected types.
 func (vm *VM) ValueOf(x any) Value {
+	vm.initIfNeeded()
 	return fromEngine(vm.valueOf(x))
 }
 
@@ -528,6 +535,7 @@ func (vm *VM) valueOf(x any) engine.Value {
 // FuncOf returns a JavaScript function that calls f. name is the name of the function,
 // which stack traces show.
 func (vm *VM) FuncOf(name string, f Func) Value {
+	vm.initIfNeeded()
 	return fromEngine(vm.funcOf(name, f))
 }
 
@@ -633,6 +641,7 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 // When ctx is done, the script stops at its next loop iteration or call, and the error is
 // the cause of ctx.
 func (vm *VM) RunScript(ctx context.Context, file, src string) (Value, error) {
+	vm.initIfNeeded()
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.e.RunScript(file, src)
 	})

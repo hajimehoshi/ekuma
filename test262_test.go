@@ -174,13 +174,13 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 			reason, timedOut = fmt.Sprintf("engine panic: %v", r), false
 		}
 	}()
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	loader := &moduleLoader{
-		vm:      vm,
+		vm:      &vm,
 		dir:     filepath.Dir(path),
 		modules: map[string]*ekuma.Module{},
 	}
-	ekuma.SetModuleLoader(vm, loader.load)
+	ekuma.SetModuleLoader(&vm, loader.load)
 	// An async test reports its outcome by printing it.
 	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -192,7 +192,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 	if err := vm.Global().Set("print", print); err != nil {
 		return "harness: " + err.Error(), false
 	}
-	if err := define262(vm); err != nil {
+	if err := define262(&vm); err != nil {
 		return "harness: " + err.Error(), false
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -217,7 +217,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 		}
 	}
 	if m.flags["module"] {
-		return runModule(ctx, vm, loader, path, src, m, printed)
+		return runModule(ctx, &vm, loader, path, src, m, printed)
 	}
 	if strict {
 		src = "\"use strict\";\n" + src

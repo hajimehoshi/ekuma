@@ -9,13 +9,15 @@ The project is at an early stage. The API is unstable and a large part of the la
 standard library is missing. See [Status](#status).
 
 ```go
-vm := ekuma.NewVM()
+var vm ekuma.VM
 v, err := vm.RunScript(ctx, "hello.js", `"Hello, " + ["wor", "ld"].join("")`)
 if err != nil {
 	// A *ekuma.SyntaxError, or a *ekuma.Error when the script throws.
 }
 fmt.Println(v.String()) // Hello, world
 ```
+
+The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after first use.
 
 The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
 `Value.Get`, `Value.Set`, `Value.Call`, `Value.Invoke`, `Value.New`, `VM.ValueOf`, `VM.FuncOf`,

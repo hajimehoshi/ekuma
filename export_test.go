@@ -15,12 +15,14 @@ import (
 
 // SetTimeZone sets the time zone of local time in vm to loc.
 func SetTimeZone(vm *VM, loc *time.Location) {
+	vm.initIfNeeded()
 	vm.e.SetDefaultTimeZone(datetime.LocationZone(loc))
 }
 
 // DetachArrayBuffer detaches the ArrayBuffer v. The error is a TypeError for a value
 // that is not an ArrayBuffer or for an immutable ArrayBuffer.
 func DetachArrayBuffer(vm *VM, v Value) error {
+	vm.initIfNeeded()
 	e := v.engine()
 	b := engine.ArrayBufferData(e)
 	if b == nil || b.IsShared() {
@@ -41,6 +43,7 @@ type Module struct {
 // ParseModule parses src as the source text of a module named file.
 // The error is a *SyntaxError.
 func ParseModule(vm *VM, file, src string) (*Module, error) {
+	vm.initIfNeeded()
 	m := &Module{}
 	em, err := vm.e.ParseModule(file, src, m)
 	if err != nil {
@@ -52,6 +55,7 @@ func ParseModule(vm *VM, file, src string) (*Module, error) {
 
 // NewDefaultModule returns a module whose default export is v.
 func NewDefaultModule(vm *VM, v Value) *Module {
+	vm.initIfNeeded()
 	m := &Module{}
 	m.m = vm.e.CreateDefaultExportSyntheticModule(v.engine(), m)
 	return m
@@ -64,6 +68,7 @@ type ModuleLoader func(referrer, specifier string, attrs map[string]string) (*Mo
 
 // SetModuleLoader makes vm load the modules that it imports with load.
 func SetModuleLoader(vm *VM, load ModuleLoader) {
+	vm.initIfNeeded()
 	vm.e.SetHostLoadImportedModule(func(e *engine.VM, referrer *engine.Module, file string, req engine.ModuleRequest) (*engine.Module, error) {
 		attrs := map[string]string{}
 		for _, a := range req.Attributes {
@@ -89,6 +94,7 @@ func SetModuleLoader(vm *VM, load ModuleLoader) {
 
 // SetImportMeta makes vm give the import.meta object of a module the properties that props returns.
 func SetImportMeta(vm *VM, props func(m *Module) map[string]any) {
+	vm.initIfNeeded()
 	vm.e.SetHostGetImportMetaProperties(func(e *engine.VM, m *engine.Module) []engine.ImportMetaProperty {
 		var list []engine.ImportMetaProperty
 		for k, v := range props(m.HostDefined().(*Module)) {
@@ -105,6 +111,7 @@ func SetImportMeta(vm *VM, props func(m *Module) map[string]any) {
 // of the evaluation. The error is a *SyntaxError or an *Error when loading or linking fails, and
 // the cause of ctx when ctx is done.
 func RunModule(ctx context.Context, vm *VM, m *Module) (Value, error) {
+	vm.initIfNeeded()
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.e.RunModule(m.m)
 	})

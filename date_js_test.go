@@ -66,7 +66,7 @@ func compareWithHost(t *testing.T, vm *ekuma.VM, f string, values []float64) []s
 // TestDateHostTimeZone compares local time with the Date of the JavaScript host in the
 // host's time zone, at instants over a year and around the instants where the offset changes.
 func TestDateHostTimeZone(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	const (
 		year   = 2025
 		minute = 60 * 1000
@@ -81,7 +81,7 @@ func TestDateHostTimeZone(t *testing.T) {
 		scan = append(scan, v)
 	}
 
-	offsets := compareWithHost(t, vm, timezoneOffsetSrc, scan)
+	offsets := compareWithHost(t, &vm, timezoneOffsetSrc, scan)
 	// Around each change of the offset, the instants a minute apart and the local times a minute
 	// apart from two hours before to two hours after the change.
 	var instants, localTimes []float64
@@ -118,6 +118,6 @@ func TestDateHostTimeZone(t *testing.T) {
 		float64(time.Date(1960, 7, 1, 12, 0, 0, 0, time.UTC).UnixMilli()),
 		8.64e15,
 	}
-	compareWithHost(t, vm, timezoneOffsetSrc, append(instants, far...))
-	compareWithHost(t, vm, localTimeSrc, append(append(localTimes, scan...), far...))
+	compareWithHost(t, &vm, timezoneOffsetSrc, append(instants, far...))
+	compareWithHost(t, &vm, localTimeSrc, append(append(localTimes, scan...), far...))
 }

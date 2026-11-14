@@ -38,7 +38,7 @@ func TestZeroValue(t *testing.T) {
 	if !zero.Equal(ekuma.Undefined) {
 		t.Errorf("the zero Value is not equal to Undefined")
 	}
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	f := vm.FuncOf("f", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		if len(args) == 0 {
 			// Nothing is returned explicitly.
@@ -58,8 +58,28 @@ func TestZeroValue(t *testing.T) {
 	}
 }
 
+func TestVMCopy(t *testing.T) {
+	ctx := t.Context()
+	var vm ekuma.VM
+	// A copy of an unused VM is a VM of its own.
+	unused := vm
+	if _, err := unused.RunScript(ctx, "unused", "1"); err != nil {
+		t.Errorf("RunScript on a copy of an unused VM: %v", err)
+	}
+	if _, err := vm.RunScript(ctx, "used", "1"); err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	used := vm
+	defer func() {
+		if recover() == nil {
+			t.Errorf("RunScript on a copy of a used VM did not panic")
+		}
+	}()
+	_, _ = used.RunScript(ctx, "copy", "1")
+}
+
 func TestValueString(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	tests := []struct {
 		in   ekuma.Value
 		want string
@@ -81,7 +101,7 @@ func TestValueString(t *testing.T) {
 
 func TestValues(t *testing.T) {
 	ctx := t.Context()
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	global := vm.Global()
 	if _, err := vm.RunScript(ctx, "setup", `
 		var obj = { n: 1, get twice() { return this.n * 2; }, add(a, b) { return this.n + a + b; } };
@@ -179,7 +199,7 @@ func TestValues(t *testing.T) {
 }
 
 func TestBigInt(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	for _, want := range []string{"1180591620717411303425", "-36893488147419103232"} {
 		x, _ := new(big.Int).SetString(want, 10)
 		v := vm.ValueOf(x)
@@ -212,7 +232,7 @@ func TestBigInt(t *testing.T) {
 
 // TestCopyBytes tests CopyBytesToGo and CopyBytesToJS.
 func TestCopyBytes(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	run := func(src string) ekuma.Value {
 		t.Helper()
 		v, err := vm.RunScript(t.Context(), "test", src)
@@ -280,7 +300,7 @@ func TestCopyBytes(t *testing.T) {
 
 func TestFuncErrors(t *testing.T) {
 	ctx := t.Context()
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	var caught ekuma.Value
 	funcs := map[string]ekuma.Func{
 		"goError": func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -346,7 +366,7 @@ func TestFuncErrors(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	ctx := t.Context()
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	if _, err := vm.RunScript(ctx, "syntax", `var = 1`); err == nil {
 		t.Errorf("a syntax error was not reported")
 	} else if se := (*ekuma.SyntaxError)(nil); !errors.As(err, &se) {
@@ -369,7 +389,7 @@ func TestErrors(t *testing.T) {
 
 // TestJobOrder checks when the jobs run relative to the script and to calls from Go.
 func TestJobOrder(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	call := vm.FuncOf("call", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		// The jobs do not run while the script that called this is still running.
 		return args[0].Invoke(context.Background())
@@ -398,7 +418,7 @@ func TestJobOrder(t *testing.T) {
 }
 
 func TestCancel(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	if _, err := vm.RunScript(ctx, "loop", `for (;;) {}`); !errors.Is(err, context.DeadlineExceeded) {
@@ -429,7 +449,7 @@ func TestCancel(t *testing.T) {
 
 // TestCancelNested checks that a context stops what a Func does on behalf of the script.
 func TestCancelNested(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	global := vm.Global()
 	returned := false
 	read := vm.FuncOf("read", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -463,7 +483,7 @@ func TestCancelNested(t *testing.T) {
 
 // TestCancelRegExp checks that a match that backtracks for too long can be stopped.
 func TestCancelRegExp(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	if _, err := vm.RunScript(ctx, "backtrack", `/^(a+)+$/.test("a".repeat(40) + "b")`); !errors.Is(err, context.DeadlineExceeded) {
@@ -480,7 +500,7 @@ func TestCancelRegExp(t *testing.T) {
 
 // TestCancelJSON checks that parsing a long text can be stopped.
 func TestCancelJSON(t *testing.T) {
-	vm := ekuma.NewVM()
+	var vm ekuma.VM
 	if _, err := vm.RunScript(t.Context(), "setup", `var text = "[" + "[0],".repeat(5000000) + "0]";`); err != nil {
 		t.Fatalf("RunScript: %v", err)
 	}
@@ -516,7 +536,7 @@ func TestCancelJobs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 			defer cancel()
 			if _, err := vm.RunScript(ctx, "endless", tt.src); !errors.Is(err, context.DeadlineExceeded) {
@@ -557,7 +577,7 @@ func TestProxyInterrupt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vm := ekuma.NewVM()
+			var vm ekuma.VM
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 			defer cancel()
 			if _, err := vm.RunScript(ctx, tt.name, tt.src); !errors.Is(err, context.DeadlineExceeded) {
@@ -573,13 +593,13 @@ func TestCancelModule(t *testing.T) {
 		`for (;;) {}`,
 		`await null; for (;;) {}`,
 	} {
-		vm := ekuma.NewVM()
-		m, err := ekuma.ParseModule(vm, "endless", src)
+		var vm ekuma.VM
+		m, err := ekuma.ParseModule(&vm, "endless", src)
 		if err != nil {
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
-		if _, err := ekuma.RunModule(ctx, vm, m); !errors.Is(err, context.DeadlineExceeded) {
+		if _, err := ekuma.RunModule(ctx, &vm, m); !errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
 		}
 		cancel()
