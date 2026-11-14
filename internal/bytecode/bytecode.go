@@ -142,7 +142,7 @@ const (
 	OpReturnUndef   // return undefined
 	OpReturnDerived // return a from a derived constructor whose this is in b
 	OpThrow         // throw a
-	OpRethrow       // throw a again, as the completion of a finally block
+	OpRethrow       // throw a again, as the completion of a finally block; when b is nonzero and a makes a generator return, throw b-1 instead
 
 	OpInitialYield        // suspend a generator before its body
 	OpYield               // suspend the generator with the value b; a receives the value sent on resume

@@ -79,3 +79,46 @@ func TestJobOrder(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+// TestForAwaitCloseOnReturn checks that closing the iterator of a for-await loop reports its
+// error when a generator returns from inside the loop body.
+func TestForAwaitCloseOnReturn(t *testing.T) {
+	tests := []struct {
+		name string
+		ret  string
+		want string
+	}{
+		{
+			name: "throw",
+			ret:  `throw "closed";`,
+			want: "closed",
+		},
+		{
+			name: "non-object result",
+			ret:  `return 1;`,
+			want: "TypeError",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vm := ekuma.NewVM()
+			src := `
+				var it = { [Symbol.asyncIterator]() { return { next() { return { done: false }; }, return() { ` + tt.ret + ` } }; } };
+				async function* g() { for await (var x of it) yield 1; }
+				var got = "";
+				var r = g();
+				r.next().then(() => r.return()).then(() => { got = "fulfilled"; }, e => { got = e instanceof TypeError ? "TypeError" : String(e); });
+			`
+			if _, err := vm.RunScript(t.Context(), tt.name, src); err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			v, err := vm.RunScript(t.Context(), "got", `got`)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := v.String(); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

@@ -1349,6 +1349,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto throw
 		case bytecode.OpRethrow:
 			vm.thrown = regs[i.A]
+			if i.B != 0 && vm.thrown.o == closeSignal {
+				vm.thrown = regs[i.B-1]
+			}
 			goto throw
 
 		case bytecode.OpInitialYield:

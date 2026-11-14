@@ -568,18 +568,18 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 	end := f.pc()
 	f.jumpTo(top)
 
-	// An exception in the body closes the iterator, and an exception of closing it is dropped.
+	// An exception in the body closes the iterator. An exception of closing it is dropped,
+	// unless the generator is returning, which the exception then replaces.
 	exc := f.newReg()
 	f.addHandler(start, end, f.pc(), exc, true)
 	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
-	dropped := f.newReg()
+	closeExc := f.newReg()
 	closeStart := f.pc()
 	f.asyncIterClose(it)
 	closeEnd := f.pc()
-	rethrow := f.jump()
-	f.addHandler(closeStart, closeEnd, f.pc(), dropped, false)
-	f.patch(rethrow)
 	f.emit(bytecode.OpRethrow, exc, 0, 0)
+	f.addHandler(closeStart, closeEnd, f.pc(), closeExc, false)
+	f.emit(bytecode.OpRethrow, exc, closeExc+1, 0)
 
 	f.patchC(next)
 	f.popLoop(c)
