@@ -114,9 +114,6 @@ func recovered(r any) *Error {
 	return a.err
 }
 
-// maxDepth is the limit of the nesting depth of the syntax.
-const maxDepth = 3000
-
 type usage uint8
 
 const (

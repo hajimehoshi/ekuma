@@ -43,13 +43,8 @@ type frame struct {
 	scopes []*Object
 }
 
-const (
-	// maxFrames is the call depth at which a RangeError is thrown.
-	maxFrames = 10000
-
-	// maxDepth is the number of nested interpreter loops at which a RangeError is thrown.
-	maxDepth = 400
-)
+// maxFrames is the call depth at which a RangeError is thrown.
+const maxFrames = 10000
 
 var tdzObject = &Object{kind: kindHole}
 

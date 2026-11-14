@@ -8,9 +8,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
-// maxDepth is the nesting depth at which Stringify and Revive throw the RangeError of a stack overflow.
-const maxDepth = 10000
-
 // indexKey returns the property key for the integer index i, which may be beyond the array indices.
 func indexKey(vm *engine.VM, i int64) engine.PropKey {
 	if i >= 0 && i <= engine.MaxArrayIndex {

@@ -5,7 +5,6 @@ package engine
 
 import (
 	"errors"
-	"sync/atomic"
 	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -112,6 +111,7 @@ func (vm *VM) ClearInterrupt() {
 
 // Poll stops the script when an interruption was requested.
 func (vm *VM) Poll() {
+	vm.pollTick()
 	if vm.interrupt.Load() {
 		vm.interrupt.Store(false)
 		panic(errInterrupt)
@@ -141,7 +141,7 @@ type VM struct {
 	// depth is the number of interpreter loops that are running.
 	depth int
 
-	interrupt atomic.Bool
+	interrupt interruptFlag
 
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
