@@ -119,11 +119,19 @@ const (
 	keyGroups
 	keyLastIndex
 	KeyRaw
-	keyProxy
-	keyRevoke
 	keySource
 	keyFlags
 	keyDefault
+	keyGetPrototypeOf
+	keySetPrototypeOf
+	keyIsExtensible
+	keyPreventExtensions
+	keyGetOwnPropertyDescriptor
+	keyDefineProperty
+	keyHas
+	keyDeleteProperty
+	keyOwnKeys
+	keyConstruct
 	commonKeyCount
 )
 
@@ -511,6 +519,10 @@ func (vm *VM) stackTrace(e *Object, msg string, frames, natives int) string {
 		// A native function called from the frame i runs inside it.
 		for ; j >= 0 && vm.natives[j].frames > i && n < maxStackFrames; j-- {
 			c := &vm.natives[j]
+			if c.f.class == classProxy {
+				// Calling a proxy calls its target or its trap, which the trace shows instead.
+				continue
+			}
 			vm.writeCall(&b, c.f.fn.name, c.isNew, c.this, "<anonymous>")
 			n++
 		}

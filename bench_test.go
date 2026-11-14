@@ -486,3 +486,48 @@ function run(k, n) {
 	return s;
 }
 `
+
+const proxyBenchJS = `
+var target = {
+	x: 1,
+	m() { return this.x; },
+};
+var objects = {
+	plain: target,
+	proxy: new Proxy(target, {}),
+	getTrap: new Proxy(target, {
+		get(t, k, r) { return Reflect.get(t, k, r); },
+	}),
+};
+function run(kind, op, n) {
+	var o = objects[kind];
+	var s = 0;
+	if (op === "get") {
+		for (var i = 0; i < n; i++) s += o.x;
+	} else {
+		for (var i = 0; i < n; i++) s += o.m();
+	}
+	return s;
+}
+`
+
+// BenchmarkProxy measures property reads and method calls on a plain object, on a proxy of it
+// without traps, and on a proxy of it with a get trap. One iteration is one read or one call.
+func BenchmarkProxy(b *testing.B) {
+	for _, op := range []string{"get", "call"} {
+		for _, kind := range []string{"plain", "proxy", "getTrap"} {
+			b.Run(op+"/"+kind, func(b *testing.B) {
+				ctx := b.Context()
+				vm := ekuma.NewVM()
+				if _, err := vm.RunScript(ctx, "proxy.js", proxyBenchJS); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %q, %d)", kind, op, b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

@@ -1,0 +1,630 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package engine
+
+import (
+	"strconv"
+)
+
+// proxyState holds the internal slots of a proxy object.
+// Both are nil once the proxy is revoked.
+type proxyState struct {
+	target  *Object
+	handler *Object
+}
+
+// ProxyCreate implements ProxyCreate.
+func (vm *VM) ProxyCreate(target, handler Value) *Object {
+	if !target.IsObject() || !handler.IsObject() {
+		vm.ThrowTypeError("cannot create proxy with a non-object as target or handler")
+	}
+	p := &Object{
+		kind:  kindObject,
+		class: classProxy,
+		flags: objExotic,
+		shape: vm.shapes.proxy,
+		ext: &proxyState{
+			target:  target.o,
+			handler: handler.o,
+		},
+	}
+	if target.o.fn != nil {
+		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
+		// of calling a function reaches them.
+		p.fn = &function{
+			native: func(vm *VM, this Value, args []Value) Value {
+				if nt := vm.newTarget; nt != nil {
+					return Value{o: vm.proxyConstruct(p, args, nt)}
+				}
+				return vm.proxyCall(p, this, args)
+			},
+			materialized: true,
+			constructor:  vm.IsConstructor(target.o),
+		}
+	}
+	return p
+}
+
+// RevokeProxy revokes the proxy p: every internal method of p throws a TypeError from then on.
+func RevokeProxy(p *Object) {
+	st := p.ext.(*proxyState)
+	st.target = nil
+	st.handler = nil
+}
+
+// IsArray implements IsArray.
+func (vm *VM) IsArray(v Value) bool {
+	o := v.o
+	if o == nil {
+		return false
+	}
+	for o.class == classProxy {
+		st := o.ext.(*proxyState)
+		if st.handler == nil {
+			vm.throwRevoked("IsArray")
+		}
+		o = st.target
+	}
+	return o.kind == kindArray
+}
+
+// checkFunctionRealm implements the checks of GetFunctionRealm for the constructor f.
+// With a single realm, the result is always the current realm.
+func (vm *VM) checkFunctionRealm(f *Object) {
+	for {
+		switch {
+		case f.fn != nil && f.fn.bound != nil:
+			f = f.fn.bound.target
+		case f.class == classProxy:
+			st := f.ext.(*proxyState)
+			if st.handler == nil {
+				vm.throwRevoked("GetFunctionRealm")
+			}
+			f = st.target
+		default:
+			return
+		}
+	}
+}
+
+func (vm *VM) throwRevoked(op string) {
+	vm.ThrowTypeError("cannot perform '" + op + "' on a proxy that has been revoked")
+}
+
+// proxyEnter starts an internal method of the proxy o and returns its target and handler.
+// The caller has to call proxyLeave when the method ends.
+//
+// The internal methods of a proxy whose target is a proxy call each other without running
+// any JavaScript, so they count as nested interpreter loops and poll for interruptions.
+func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
+	st := o.ext.(*proxyState)
+	if st.handler == nil {
+		vm.throwRevoked(op)
+	}
+	if vm.interrupt.Load() {
+		vm.Poll()
+	}
+	if vm.depth >= maxDepth {
+		vm.ThrowRangeError("maximum call stack size exceeded")
+	}
+	vm.depth++
+	return st.target, st.handler
+}
+
+func (vm *VM) proxyLeave() {
+	vm.depth--
+}
+
+// proxyTrap returns the trap key of handler, or nil when the operation forwards to the target.
+func (vm *VM) proxyTrap(handler *Object, key CommonKey) *Object {
+	return vm.GetMethod(Value{o: handler}, vm.Key(key))
+}
+
+// callTrap calls trap with handler as this. The arguments are passed on the VM stack,
+// so that they need no allocation.
+func (vm *VM) callTrap(trap, handler *Object, args ...Value) Value {
+	base := vm.sp
+	n := len(args)
+	vm.ensureStack(base + n)
+	copy(vm.stack[base:], args)
+	vm.sp = base + n
+	r := vm.callSlow(trap, Value{o: handler}, vm.stack[base:base+n:base+n], false, nil)
+	vm.sp = base
+	return r
+}
+
+func (vm *VM) throwTrapError(trap, msg string) {
+	vm.ThrowTypeError("'" + trap + "' on proxy: " + msg)
+}
+
+// proxyGetPrototypeOf implements [[GetPrototypeOf]] of a proxy.
+func (vm *VM) proxyGetPrototypeOf(o *Object) *Object {
+	target, handler := vm.proxyEnter(o, "getPrototypeOf")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyGetPrototypeOf)
+	if trap == nil {
+		return vm.ProtoOf(target)
+	}
+	r := vm.callTrap(trap, handler, Value{o: target})
+	if !r.IsObject() && !r.IsNull() {
+		vm.throwTrapError("getPrototypeOf", "trap returned neither object nor null")
+	}
+	var proto *Object
+	if r.IsObject() {
+		proto = r.o
+	}
+	if vm.IsExtensible(target) {
+		return proto
+	}
+	if vm.ProtoOf(target) != proto {
+		vm.throwTrapError("getPrototypeOf", "proxy target is non-extensible but the trap did not return its actual prototype")
+	}
+	return proto
+}
+
+// proxySetPrototypeOf implements [[SetPrototypeOf]] of a proxy.
+func (vm *VM) proxySetPrototypeOf(o *Object, proto *Object) bool {
+	target, handler := vm.proxyEnter(o, "setPrototypeOf")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keySetPrototypeOf)
+	if trap == nil {
+		return vm.SetPrototypeOf(target, proto)
+	}
+	v := Null
+	if proto != nil {
+		v = Value{o: proto}
+	}
+	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, v)) {
+		return false
+	}
+	if vm.IsExtensible(target) {
+		return true
+	}
+	if vm.ProtoOf(target) != proto {
+		vm.throwTrapError("setPrototypeOf", "trap returned truish for setting a new prototype on the non-extensible proxy target")
+	}
+	return true
+}
+
+// proxyIsExtensible implements [[IsExtensible]] of a proxy.
+func (vm *VM) proxyIsExtensible(o *Object) bool {
+	target, handler := vm.proxyEnter(o, "isExtensible")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyIsExtensible)
+	if trap == nil {
+		return vm.IsExtensible(target)
+	}
+	r := ToBoolean(vm.callTrap(trap, handler, Value{o: target}))
+	if r != vm.IsExtensible(target) {
+		vm.throwTrapError("isExtensible", "trap result does not reflect extensibility of proxy target")
+	}
+	return r
+}
+
+// proxyPreventExtensions implements [[PreventExtensions]] of a proxy.
+func (vm *VM) proxyPreventExtensions(o *Object) bool {
+	target, handler := vm.proxyEnter(o, "preventExtensions")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyPreventExtensions)
+	if trap == nil {
+		return vm.PreventExtensions(target)
+	}
+	r := ToBoolean(vm.callTrap(trap, handler, Value{o: target}))
+	if r && vm.IsExtensible(target) {
+		vm.throwTrapError("preventExtensions", "trap returned truish but the proxy target is extensible")
+	}
+	return r
+}
+
+// proxyGetOwnProperty implements [[GetOwnProperty]] of a proxy.
+func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
+	target, handler := vm.proxyEnter(o, "getOwnPropertyDescriptor")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyGetOwnPropertyDescriptor)
+	if trap == nil {
+		return vm.GetOwnProperty(target, k)
+	}
+	const name = "getOwnPropertyDescriptor"
+	r := vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))
+	if !r.IsObject() && !r.IsUndefined() {
+		vm.throwTrapError(name, "trap returned neither object nor undefined for property '"+vm.KeyString(k)+"'")
+	}
+	targetDesc, targetHas := vm.GetOwnProperty(target, k)
+	if r.IsUndefined() {
+		if !targetHas {
+			return PropDesc{}, false
+		}
+		if targetDesc.flags&FlagConfigurable == 0 {
+			vm.throwTrapError(name, "trap returned undefined for property '"+vm.KeyString(k)+"' which is non-configurable in the proxy target")
+		}
+		if !vm.IsExtensible(target) {
+			vm.throwTrapError(name, "trap returned undefined for property '"+vm.KeyString(k)+"' which exists in the non-extensible proxy target")
+		}
+		return PropDesc{}, false
+	}
+	extensible := vm.IsExtensible(target)
+	d := vm.ToPropertyDescriptor(r)
+	d.complete()
+	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, targetHas) {
+		vm.throwTrapError(name, "trap returned descriptor for property '"+vm.KeyString(k)+"' that is incompatible with the existing property in the proxy target")
+	}
+	if d.flags&FlagConfigurable == 0 {
+		if !targetHas || targetDesc.flags&FlagConfigurable != 0 {
+			vm.throwTrapError(name, "trap reported non-configurability for property '"+vm.KeyString(k)+"' which is either non-existent or configurable in the proxy target")
+		}
+		if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 && targetDesc.flags&FlagWritable != 0 {
+			vm.throwTrapError(name, "trap reported non-configurable and writable for property '"+vm.KeyString(k)+"' which is non-configurable, non-writable in the proxy target")
+		}
+	}
+	return d, true
+}
+
+// proxyDefineOwnProperty implements [[DefineOwnProperty]] of a proxy.
+func (vm *VM) proxyDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+	target, handler := vm.proxyEnter(o, "defineProperty")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyDefineProperty)
+	if trap == nil {
+		return vm.defineOwnProperty(target, k, d)
+	}
+	const name = "defineProperty"
+	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), vm.FromPropertyDescriptor(d))) {
+		return false
+	}
+	targetDesc, targetHas := vm.GetOwnProperty(target, k)
+	extensible := vm.IsExtensible(target)
+	settingConfigFalse := d.has&HasConfigurable != 0 && d.flags&FlagConfigurable == 0
+	if !targetHas {
+		if !extensible {
+			vm.throwTrapError(name, "trap returned truish for adding property '"+vm.KeyString(k)+"' to the non-extensible proxy target")
+		}
+		if settingConfigFalse {
+			vm.throwTrapError(name, "trap returned truish for defining non-configurable property '"+vm.KeyString(k)+"' which is non-existent in the proxy target")
+		}
+		return true
+	}
+	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, true) {
+		vm.throwTrapError(name, "trap returned truish for adding property '"+vm.KeyString(k)+"' that is incompatible with the existing property in the proxy target")
+	}
+	if settingConfigFalse && targetDesc.flags&FlagConfigurable != 0 {
+		vm.throwTrapError(name, "trap returned truish for defining non-configurable property '"+vm.KeyString(k)+"' which is configurable in the proxy target")
+	}
+	if targetDesc.flags&(FlagAccessor|FlagConfigurable|FlagWritable) == FlagWritable && d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
+		vm.throwTrapError(name, "trap returned truish for defining non-configurable property '"+vm.KeyString(k)+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
+	}
+	return true
+}
+
+// proxyHas implements [[HasProperty]] of a proxy.
+func (vm *VM) proxyHas(o *Object, k PropKey) bool {
+	target, handler := vm.proxyEnter(o, "has")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyHas)
+	if trap == nil {
+		return vm.HasProperty(target, k)
+	}
+	if ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))) {
+		return true
+	}
+	if targetDesc, ok := vm.GetOwnProperty(target, k); ok {
+		if targetDesc.flags&FlagConfigurable == 0 {
+			vm.throwTrapError("has", "trap returned falsish for property '"+vm.KeyString(k)+"' which exists in the proxy target as non-configurable")
+		}
+		if !vm.IsExtensible(target) {
+			vm.throwTrapError("has", "trap returned falsish for property '"+vm.KeyString(k)+"' but the proxy target is not extensible")
+		}
+	}
+	return false
+}
+
+// proxyGet implements [[Get]] of a proxy.
+func (vm *VM) proxyGet(o *Object, k PropKey, receiver Value) Value {
+	target, handler := vm.proxyEnter(o, "get")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, KeyGet)
+	if trap == nil {
+		return vm.getProp(target, k, receiver)
+	}
+	r := vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), receiver)
+	if targetDesc, ok := vm.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
+		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(r, targetDesc.value) {
+			vm.throwTrapError("get", "property '"+vm.KeyString(k)+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
+		}
+		if targetDesc.flags&FlagAccessor != 0 && targetDesc.getter == nil && !r.IsUndefined() {
+			vm.throwTrapError("get", "property '"+vm.KeyString(k)+"' is a non-configurable accessor property on the proxy target and does not have a getter function, but the trap did not return 'undefined'")
+		}
+	}
+	return r
+}
+
+// proxySet implements [[Set]] of a proxy. It reports false when the store was refused.
+func (vm *VM) proxySet(o *Object, k PropKey, val, receiver Value) bool {
+	target, handler := vm.proxyEnter(o, "set")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, KeySet)
+	if trap == nil {
+		return vm.setProp(target, k, val, receiver)
+	}
+	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), val, receiver)) {
+		return false
+	}
+	if targetDesc, ok := vm.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
+		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(val, targetDesc.value) {
+			vm.throwTrapError("set", "trap returned truish for property '"+vm.KeyString(k)+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
+		}
+		if targetDesc.flags&FlagAccessor != 0 && targetDesc.setter == nil {
+			vm.throwTrapError("set", "trap returned truish for property '"+vm.KeyString(k)+"' which exists in the proxy target as a non-configurable and non-writable accessor property without a setter")
+		}
+	}
+	return true
+}
+
+// proxyDelete implements [[Delete]] of a proxy. It reports false when the property is not deleted.
+func (vm *VM) proxyDelete(o *Object, k PropKey) bool {
+	target, handler := vm.proxyEnter(o, "deleteProperty")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyDeleteProperty)
+	if trap == nil {
+		return vm.DeleteProp(target, k)
+	}
+	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))) {
+		return false
+	}
+	targetDesc, ok := vm.GetOwnProperty(target, k)
+	if !ok {
+		return true
+	}
+	if targetDesc.flags&FlagConfigurable == 0 {
+		vm.throwTrapError("deleteProperty", "trap returned truish for property '"+vm.KeyString(k)+"' which is non-configurable in the proxy target")
+	}
+	if !vm.IsExtensible(target) {
+		vm.throwTrapError("deleteProperty", "trap returned truish for property '"+vm.KeyString(k)+"' but the proxy target is non-extensible")
+	}
+	return true
+}
+
+// proxyOwnKeys implements [[OwnPropertyKeys]] of a proxy.
+func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
+	target, handler := vm.proxyEnter(o, "ownKeys")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyOwnKeys)
+	if trap == nil {
+		return vm.OwnKeys(target)
+	}
+	const name = "ownKeys"
+	keys := vm.propertyKeyList(vm.callTrap(trap, handler, Value{o: target}))
+	unchecked := make(map[PropKey]struct{}, len(keys))
+	for _, k := range keys {
+		if _, dup := unchecked[k]; dup {
+			vm.throwTrapError(name, "trap returned duplicate entries")
+		}
+		unchecked[k] = struct{}{}
+	}
+	extensible := vm.IsExtensible(target)
+	var configurable, nonconfigurable []PropKey
+	for _, k := range vm.OwnKeys(target) {
+		if d, ok := vm.GetOwnProperty(target, k); ok && d.flags&FlagConfigurable == 0 {
+			nonconfigurable = append(nonconfigurable, k)
+		} else {
+			configurable = append(configurable, k)
+		}
+	}
+	if extensible && len(nonconfigurable) == 0 {
+		return keys
+	}
+	for _, k := range nonconfigurable {
+		if _, ok := unchecked[k]; !ok {
+			vm.throwTrapError(name, "trap result did not include '"+vm.KeyString(k)+"'")
+		}
+		delete(unchecked, k)
+	}
+	if extensible {
+		return keys
+	}
+	for _, k := range configurable {
+		if _, ok := unchecked[k]; !ok {
+			vm.throwTrapError(name, "trap result did not include '"+vm.KeyString(k)+"'")
+		}
+		delete(unchecked, k)
+	}
+	if len(unchecked) != 0 {
+		vm.throwTrapError(name, "trap returned extra keys but proxy target is non-extensible")
+	}
+	return keys
+}
+
+// propertyKeyList implements CreateListFromArrayLike(v, property-key).
+func (vm *VM) propertyKeyList(v Value) []PropKey {
+	if !v.IsObject() {
+		vm.ThrowTypeError("CreateListFromArrayLike called on non-object")
+	}
+	n := vm.LengthOfArrayLike(v.o)
+	var keys []PropKey
+	for i := range n {
+		k := PropKey{idx: uint32(i)}
+		if i > MaxArrayIndex {
+			k = vm.KeyOfString(strconv.FormatInt(i, 10))
+		}
+		e := vm.getProp(v.o, k, v)
+		if !e.IsString() && !e.IsSymbol() {
+			vm.ThrowTypeError(vm.DisplayString(e) + " is not a valid property name")
+		}
+		keys = append(keys, vm.ToPropertyKey(e))
+	}
+	return keys
+}
+
+// proxyCall implements [[Call]] of a proxy.
+func (vm *VM) proxyCall(o *Object, this Value, args []Value) Value {
+	target, handler := vm.proxyEnter(o, "apply")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyApply)
+	if trap == nil {
+		return vm.Call(target, this, args...)
+	}
+	argArray := vm.NewArray(append([]Value(nil), args...))
+	return vm.callTrap(trap, handler, Value{o: target}, this, Value{o: argArray})
+}
+
+// proxyConstruct implements [[Construct]] of a proxy.
+func (vm *VM) proxyConstruct(o *Object, args []Value, newTarget *Object) *Object {
+	target, handler := vm.proxyEnter(o, "construct")
+	defer vm.proxyLeave()
+	trap := vm.proxyTrap(handler, keyConstruct)
+	if trap == nil {
+		return vm.Construct(target, args, newTarget)
+	}
+	argArray := vm.NewArray(append([]Value(nil), args...))
+	r := vm.callTrap(trap, handler, Value{o: target}, Value{o: argArray}, Value{o: newTarget})
+	if !r.IsObject() {
+		vm.throwTrapError("construct", "trap returned non-object ('"+vm.DisplayString(r)+"')")
+	}
+	return r.o
+}
+
+// isCompatiblePropertyDescriptor implements IsCompatiblePropertyDescriptor. hasCur reports whether
+// the property described by cur exists.
+func isCompatiblePropertyDescriptor(extensible bool, d, cur *PropDesc, hasCur bool) bool {
+	if !hasCur {
+		return extensible
+	}
+	return cur.flags&FlagConfigurable != 0 || nonConfigurableCompatible(cur, d)
+}
+
+// nonConfigurableCompatible reports whether ValidateAndApplyPropertyDescriptor accepts d for the
+// existing property described by cur, which is not configurable.
+func nonConfigurableCompatible(cur, d *PropDesc) bool {
+	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
+		return false
+	}
+	if d.has&HasEnumerable != 0 && (d.flags^cur.flags)&FlagEnumerable != 0 {
+		return false
+	}
+	curAccessor := cur.flags&FlagAccessor != 0
+	if d.IsAccessor() != curAccessor && (d.IsAccessor() || d.IsData()) {
+		return false
+	}
+	if curAccessor {
+		if d.has&HasGet != 0 && d.getter != cur.getter {
+			return false
+		}
+		if d.has&HasSet != 0 && d.setter != cur.setter {
+			return false
+		}
+	} else if cur.flags&FlagWritable == 0 {
+		if d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
+			return false
+		}
+		if d.has&HasValue != 0 && !SameValue(d.value, cur.value) {
+			return false
+		}
+	}
+	return true
+}
+
+// complete implements CompletePropertyDescriptor. It also marks an accessor descriptor with
+// FlagAccessor, as the descriptors of existing properties are.
+func (d *PropDesc) complete() {
+	if d.IsAccessor() {
+		d.has |= HasGet | HasSet
+		d.flags = d.flags&^FlagWritable | FlagAccessor
+	} else {
+		if d.has&HasValue == 0 {
+			d.value = Undefined
+		}
+		if d.has&HasWritable == 0 {
+			d.flags &^= FlagWritable
+		}
+		d.has |= HasValue | HasWritable
+	}
+	if d.has&HasEnumerable == 0 {
+		d.flags &^= FlagEnumerable
+	}
+	if d.has&HasConfigurable == 0 {
+		d.flags &^= FlagConfigurable
+	}
+	d.has |= HasEnumerable | HasConfigurable
+}
+
+// ToPropertyDescriptor implements ToPropertyDescriptor.
+func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
+	if !v.IsObject() {
+		vm.ThrowTypeError("property description must be an object: " + vm.DisplayString(v))
+	}
+	o := v.o
+	var d PropDesc
+	field := func(key CommonKey) (Value, bool) {
+		k := PropKey{key: vm.Key(key)}
+		if !vm.HasProperty(o, k) {
+			return Undefined, false
+		}
+		return vm.getProp(o, k, v), true
+	}
+	if x, ok := field(KeyEnumerable); ok {
+		d.SetEnumerable(ToBoolean(x))
+	}
+	if x, ok := field(KeyConfigurable); ok {
+		d.SetConfigurable(ToBoolean(x))
+	}
+	if x, ok := field(KeyValue); ok {
+		d.SetValue(x)
+	}
+	if x, ok := field(KeyWritable); ok {
+		d.SetWritable(ToBoolean(x))
+	}
+	if x, ok := field(KeyGet); ok {
+		if !x.IsUndefined() && !x.IsCallable() {
+			vm.ThrowTypeError("getter must be a function: " + vm.DisplayString(x))
+		}
+		var f *Object
+		if x.IsObject() {
+			f = x.o
+		}
+		d.SetGetter(f)
+	}
+	if x, ok := field(KeySet); ok {
+		if !x.IsUndefined() && !x.IsCallable() {
+			vm.ThrowTypeError("setter must be a function: " + vm.DisplayString(x))
+		}
+		var f *Object
+		if x.IsObject() {
+			f = x.o
+		}
+		d.SetSetter(f)
+	}
+	if d.IsAccessor() && d.IsData() {
+		vm.ThrowTypeError("invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
+	}
+	return d
+}
+
+// FromPropertyDescriptor implements FromPropertyDescriptor for a descriptor that is not undefined.
+func (vm *VM) FromPropertyDescriptor(d PropDesc) Value {
+	o := vm.NewOrdinaryObject()
+	fn := func(f *Object) Value {
+		if f == nil {
+			return Undefined
+		}
+		return Value{o: f}
+	}
+	if d.has&HasValue != 0 {
+		vm.add(o, vm.Key(KeyValue), d.value, FlagsData)
+	}
+	if d.has&HasWritable != 0 {
+		vm.add(o, vm.Key(KeyWritable), Bool(d.flags&FlagWritable != 0), FlagsData)
+	}
+	if d.has&HasGet != 0 {
+		vm.add(o, vm.Key(KeyGet), fn(d.getter), FlagsData)
+	}
+	if d.has&HasSet != 0 {
+		vm.add(o, vm.Key(KeySet), fn(d.setter), FlagsData)
+	}
+	if d.has&HasEnumerable != 0 {
+		vm.add(o, vm.Key(KeyEnumerable), Bool(d.flags&FlagEnumerable != 0), FlagsData)
+	}
+	if d.has&HasConfigurable != 0 {
+		vm.add(o, vm.Key(KeyConfigurable), Bool(d.flags&FlagConfigurable != 0), FlagsData)
+	}
+	return Value{o: o}
+}

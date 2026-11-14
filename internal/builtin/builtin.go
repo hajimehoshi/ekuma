@@ -142,6 +142,7 @@ func Install(vm *engine.VM) {
 	initIteratorHelpers(vm)
 	initJSON(vm)
 	initReflect(vm)
+	initProxy(vm)
 	initMapAndSet(vm)
 	initWeak(vm)
 	initDate(vm)
@@ -152,77 +153,13 @@ func Install(vm *engine.VM) {
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 
-// toDescriptor implements ToPropertyDescriptor.
-func toDescriptor(vm *engine.VM, v engine.Value) engine.PropDesc {
-	if !v.IsObject() {
-		vm.ThrowTypeError("property description must be an object: " + vm.DisplayString(v))
+// objectToString implements Object.prototype.toString for the object o.
+func objectToString(vm *engine.VM, o *engine.Object) engine.Value {
+	tag := vm.BuiltinTag(o)
+	if t := vm.GetV(engine.ObjectValue(o), vm.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
+		tag = t.Object().Str()
 	}
-	o := v.Object()
-	var d engine.PropDesc
-	field := func(key *engine.Object) (engine.Value, bool) {
-		k := engine.NamedKey(key)
-		if !vm.HasProperty(o, k) {
-			return engine.Undefined, false
-		}
-		return vm.Get(o, k), true
-	}
-	if x, ok := field(vm.Key(engine.KeyEnumerable)); ok {
-		d.SetEnumerable(engine.ToBoolean(x))
-	}
-	if x, ok := field(vm.Key(engine.KeyConfigurable)); ok {
-		d.SetConfigurable(engine.ToBoolean(x))
-	}
-	if x, ok := field(vm.Key(engine.KeyValue)); ok {
-		d.SetValue(x)
-	}
-	if x, ok := field(vm.Key(engine.KeyWritable)); ok {
-		d.SetWritable(engine.ToBoolean(x))
-	}
-	if x, ok := field(vm.Key(engine.KeyGet)); ok {
-		var g *engine.Object
-		if !x.IsUndefined() {
-			if !x.IsCallable() {
-				vm.ThrowTypeError("getter must be a function: " + vm.DisplayString(x))
-			}
-			g = x.Object()
-		}
-		d.SetGetter(g)
-	}
-	if x, ok := field(vm.Key(engine.KeySet)); ok {
-		var s *engine.Object
-		if !x.IsUndefined() {
-			if !x.IsCallable() {
-				vm.ThrowTypeError("setter must be a function: " + vm.DisplayString(x))
-			}
-			s = x.Object()
-		}
-		d.SetSetter(s)
-	}
-	if d.IsAccessor() && d.IsData() {
-		vm.ThrowTypeError("invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
-	}
-	return d
-}
-
-// fromDescriptor implements FromPropertyDescriptor.
-func fromDescriptor(vm *engine.VM, d engine.PropDesc) engine.Value {
-	o := vm.NewOrdinaryObject()
-	fn := func(f *engine.Object) engine.Value {
-		if f == nil {
-			return engine.Undefined
-		}
-		return engine.ObjectValue(f)
-	}
-	if d.IsAccessor() {
-		vm.Define(o, vm.Key(engine.KeyGet), fn(d.Getter()), engine.FlagsData)
-		vm.Define(o, vm.Key(engine.KeySet), fn(d.Setter()), engine.FlagsData)
-	} else {
-		vm.Define(o, vm.Key(engine.KeyValue), d.Value(), engine.FlagsData)
-		vm.Define(o, vm.Key(engine.KeyWritable), engine.Bool(d.Writable()), engine.FlagsData)
-	}
-	vm.Define(o, vm.Key(engine.KeyEnumerable), engine.Bool(d.Enumerable()), engine.FlagsData)
-	vm.Define(o, vm.Key(engine.KeyConfigurable), engine.Bool(d.Configurable()), engine.FlagsData)
-	return engine.ObjectValue(o)
+	return vm.NewString("[object " + tag + "]")
 }
 
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
@@ -335,12 +272,7 @@ func initObject(vm *engine.VM) {
 		case this.IsNull():
 			return vm.NewString("[object Null]")
 		}
-		o := vm.ToObject(this)
-		tag := o.BuiltinTag()
-		if t := vm.GetV(engine.ObjectValue(o), vm.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
-			tag = t.Object().Str()
-		}
-		return vm.NewString("[object " + tag + "]")
+		return objectToString(vm, vm.ToObject(this))
 	})
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.CallValue(vm.GetV(this, vm.Key(engine.KeyToString)), this)
@@ -456,7 +388,7 @@ func initObject(vm *engine.VM) {
 			}
 			list = append(list, entry{
 				k: k,
-				d: toDescriptor(vm, vm.Get(src, k)),
+				d: vm.ToPropertyDescriptor(vm.Get(src, k)),
 			})
 		}
 		for _, e := range list {
@@ -484,7 +416,7 @@ func initObject(vm *engine.VM) {
 			vm.ThrowTypeError("Object.defineProperty called on non-object")
 		}
 		k := vm.ToPropertyKey(arg(args, 1))
-		vm.DefinePropertyOrThrow(o.Object(), k, toDescriptor(vm, arg(args, 2)))
+		vm.DefinePropertyOrThrow(o.Object(), k, vm.ToPropertyDescriptor(arg(args, 2)))
 		return o
 	})
 	method(vm, ctor, "defineProperties", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -501,14 +433,14 @@ func initObject(vm *engine.VM) {
 		if !ok {
 			return engine.Undefined
 		}
-		return fromDescriptor(vm, d)
+		return vm.FromPropertyDescriptor(d)
 	})
 	method(vm, ctor, "getOwnPropertyDescriptors", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(arg(args, 0))
 		out := vm.NewOrdinaryObject()
 		for _, k := range vm.OwnKeys(o) {
 			if d, ok := vm.GetOwnProperty(o, k); ok {
-				vm.CreateDataPropertyOrThrow(out, k, fromDescriptor(vm, d))
+				vm.CreateDataPropertyOrThrow(out, k, vm.FromPropertyDescriptor(d))
 			}
 		}
 		return engine.ObjectValue(out)
@@ -525,7 +457,7 @@ func initObject(vm *engine.VM) {
 	method(vm, ctor, "getOwnPropertySymbols", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
 		for _, k := range vm.OwnKeys(vm.ToObject(arg(args, 0))) {
-			if k.IsSymbol() && !k.IsPrivateName() {
+			if k.IsSymbol() {
 				out = append(out, vm.KeyValue(k))
 			}
 		}

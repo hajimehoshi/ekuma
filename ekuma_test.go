@@ -535,3 +535,34 @@ func TestCancelJobs(t *testing.T) {
 		})
 	}
 }
+
+// TestProxyInterrupt checks that loops over the internal methods of proxies can be stopped.
+func TestProxyInterrupt(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "a prototype chain that loops through a proxy without traps",
+			src: `var t = {};
+				var p = new Proxy(t, {});
+				Object.setPrototypeOf(t, p);
+				p instanceof Array`,
+		},
+		{
+			name: "a trap that makes a proxy its own prototype",
+			src: `var p = new Proxy({}, { getPrototypeOf() { return p; } });
+				for (var k in p) {}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vm := ekuma.NewVM()
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+			defer cancel()
+			if _, err := vm.RunScript(ctx, tt.name, tt.src); !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("got %v, want context.DeadlineExceeded", err)
+			}
+		})
+	}
+}

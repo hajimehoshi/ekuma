@@ -96,7 +96,7 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 
 	if replacer.IsCallable() {
 		w.replacer = replacer.Object()
-	} else if engine.IsArray(replacer) {
+	} else if vm.IsArray(replacer) {
 		w.hasProps = true
 		r := replacer.Object()
 		n := vm.LengthOfArrayLike(r)
@@ -220,7 +220,7 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 	case value.IsObject() && !value.IsCallable():
 		o := value.Object()
 		w.enter(o)
-		if engine.IsArray(value) {
+		if vm.IsArray(value) {
 			w.serializeArray(o)
 		} else {
 			w.serializeObject(o)

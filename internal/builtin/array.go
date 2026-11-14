@@ -90,7 +90,7 @@ func setLength(vm *engine.VM, o *engine.Object, n int64) {
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
 func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Object {
-	if orig.IsArray() {
+	if vm.IsArray(engine.ObjectValue(orig)) {
 		c := vm.GetV(engine.ObjectValue(orig), vm.Key(engine.KeyConstructor))
 		if c.IsObject() {
 			if c.Object() == vm.Intrinsic(engine.IntrinsicArray) {
@@ -231,7 +231,7 @@ func initArray(vm *engine.VM) {
 	vm.DefineAccessor(ctor, vm.WellKnownSymbol(engine.SymbolSpecies), speciesGetter, nil, engine.FlagConfigurable)
 
 	method(vm, ctor, "isArray", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(engine.IsArray(arg(args, 0)))
+		return engine.Bool(vm.IsArray(arg(args, 0)))
 	})
 	method(vm, ctor, "of", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.Intrinsic(engine.IntrinsicArray) {
@@ -460,7 +460,7 @@ func initArray(vm *engine.VM) {
 				if s := vm.GetV(item, vm.WellKnownSymbol(engine.SymbolIsConcatSpreadable)); !s.IsUndefined() {
 					spreadable = engine.ToBoolean(s)
 				} else {
-					spreadable = engine.IsArray(item)
+					spreadable = vm.IsArray(item)
 				}
 			}
 			if !spreadable {
@@ -506,7 +506,7 @@ func initArray(vm *engine.VM) {
 		if j := vm.GetV(engine.ObjectValue(o), vm.Intern("join")); j.IsCallable() {
 			return vm.Call(j.Object(), engine.ObjectValue(o))
 		}
-		return vm.NewString("[object " + o.BuiltinTag() + "]")
+		return objectToString(vm, o)
 	})
 	method(vm, proto, "reverse", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
@@ -524,18 +524,18 @@ func initArray(vm *engine.VM) {
 			if hok {
 				hv = getAt(vm, o, hi)
 			}
-			if hok {
+			switch {
+			case lok && hok:
 				putAt(vm, o, lo, hv)
-			} else {
-				deleteAt(vm, o, lo)
-			}
-			if lok {
 				putAt(vm, o, hi, lv)
-				continue
-			}
-			deleteAt(vm, o, hi)
-			if !hok {
-				// The following pairs of holes change nothing.
+			case hok:
+				putAt(vm, o, lo, hv)
+				deleteAt(vm, o, hi)
+			case lok:
+				deleteAt(vm, o, lo)
+				putAt(vm, o, hi, lv)
+			default:
+				// A pair of holes changes nothing, and so do the pairs of holes that follow.
 				if m := holeSteps(vm, o, lo+1, (hi-lo-1)/2, 1); m > 0 {
 					m = min(m, holeSteps(vm, o, hi-1, m, -1))
 					lo, hi = lo+m, hi-m
@@ -872,7 +872,7 @@ func initArray(vm *engine.VM) {
 				continue
 			}
 			v := getAt(vm, src, i)
-			if depth > 0 && engine.IsArray(v) {
+			if depth > 0 && vm.IsArray(v) {
 				flatten(a, v.Object(), vm.LengthOfArrayLike(v.Object()), depth-1, n)
 				continue
 			}
@@ -906,7 +906,7 @@ func initArray(vm *engine.VM) {
 				continue
 			}
 			v := vm.Call(cb, arg(args, 1), getAt(vm, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
-			if engine.IsArray(v) {
+			if vm.IsArray(v) {
 				flatten(a, v.Object(), vm.LengthOfArrayLike(v.Object()), 0, &n)
 				continue
 			}

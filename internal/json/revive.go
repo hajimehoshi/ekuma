@@ -62,7 +62,7 @@ func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *R
 				vm.CreateDataProperty(o, k, v)
 			}
 		}
-		if engine.IsArray(val) {
+		if vm.IsArray(val) {
 			n := vm.LengthOfArrayLike(o)
 			for i := range n {
 				var sub *Record

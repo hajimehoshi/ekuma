@@ -1197,3 +1197,228 @@ func TestDateOffsetTransitions(t *testing.T) {
 		}
 	}
 }
+
+// TestProxy covers the behaviour of proxies that test262 does not pin down: the paths that
+// look properties up without the internal methods, and what proxies do to them.
+func TestProxy(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "a proxy installed as a prototype after a load site cached a hit",
+			src: `function f(o) { return o.x; }
+				var proto = {};
+				var o = Object.create(proto);
+				o.y = 1;
+				var mid = Object.create(Object.prototype);
+				mid.x = "mid";
+				Object.setPrototypeOf(proto, mid);
+				var before = f(o);
+				Object.setPrototypeOf(proto, new Proxy({}, { get(t, k, r) { return k + ":" + (r === o); } }));
+				before + " " + f(o)`,
+			want: "mid x:true",
+		},
+		{
+			name: "a proxy installed as a prototype after a load site cached a miss",
+			src: `function f(o) { return o.x; }
+				var proto = {};
+				var o = Object.create(proto);
+				var before = f(o);
+				Object.setPrototypeOf(proto, new Proxy({}, { get() { return "trap"; } }));
+				before + " " + f(o)`,
+			want: "undefined trap",
+		},
+		{
+			name: "a proxy installed as a prototype after a store site cached an addition",
+			src: `var log = "";
+				function g(o) { o.y = 1; }
+				var proto = {};
+				g(Object.create(proto));
+				Object.setPrototypeOf(proto, new Proxy({}, { set(t, k, v, r) { log += "set:" + k; return true; } }));
+				var o = Object.create(proto);
+				g(o);
+				log + " " + Object.hasOwn(o, "y")`,
+			want: "set:y false",
+		},
+		{
+			name: "appending to an array whose prototype inherits from a proxy",
+			src: `var log = "";
+				var arr = [1, 2];
+				arr[2] = 3;
+				Object.setPrototypeOf(Array.prototype, new Proxy({}, { set(t, k, v, r) { log += "set:" + k; return true; } }));
+				arr[3] = 4;
+				Object.setPrototypeOf(Array.prototype, Object.prototype);
+				log + " " + arr.length`,
+			want: "set:3 3",
+		},
+		{
+			name: "stores to primitives reach a proxy on the prototype chain",
+			src: `var log = "";
+				Object.setPrototypeOf(Number.prototype, new Proxy({}, {
+					set(t, k, v, r) { log += k + ":" + typeof r + " "; return true; },
+				}));
+				(1).x = 1;
+				(1)[2] = 1;
+				Object.setPrototypeOf(Number.prototype, Object.prototype);
+				log`,
+			want: "x:number 2:number ",
+		},
+		{
+			name: "an index store to a primitive calls an inherited setter",
+			src: `var log = "";
+				Object.defineProperty(Object.prototype, "5", { set(v) { log += "setter:" + v; }, configurable: true });
+				(1)[5] = "a";
+				"abcdefg"[5] = "b";
+				delete Object.prototype[5];
+				log`,
+			want: "setter:a",
+		},
+		{
+			name: "global variables with a proxy on the prototype chain of the global object",
+			src: `var log = [];
+				var target = { inherited: 1 };
+				Object.setPrototypeOf(globalThis, new Proxy(target, {
+					has(t, k) { if (typeof k === "string") log.push("has:" + k); return Reflect.has(t, k); },
+					get(t, k, r) { if (typeof k === "string") log.push("get:" + k); return Reflect.get(t, k, r); },
+					set(t, k, v, r) { log.push("set:" + k); return true; },
+				}));
+				inherited;
+				typeof missing;
+				inherited = 2;
+				(function() { "use strict"; inherited = 3; })();
+				log.join()`,
+			want: "has:inherited,has:inherited,get:inherited,has:missing,has:inherited,has:inherited,set:inherited,has:inherited,has:inherited,set:inherited",
+		},
+		{
+			name: "super property accesses with a proxy as the prototype of the home object",
+			src: `var log = [];
+				var proto = new Proxy({}, {
+					get(t, k, r) { log.push("get:" + k + ":" + (r === obj)); return 1; },
+					set(t, k, v, r) { log.push("set:" + k + ":" + (r === obj)); return true; },
+				});
+				var obj = { __proto__: proto, m() { super.y = 2; return super.x; } };
+				obj.m() + " " + log.join()`,
+			want: "1 set:y:true,get:x:true",
+		},
+		{
+			name: "for-in over a proxy",
+			src: `var log = [];
+				var target = Object.create({ a: 1, b: 2, d: 5 });
+				Object.defineProperty(target, "a", { value: 0, enumerable: false });
+				target.b = 3;
+				target.c = 4;
+				var p = new Proxy(target, {
+					ownKeys(t) { log.push("ownKeys"); return Reflect.ownKeys(t); },
+					getOwnPropertyDescriptor(t, k) { log.push("gopd:" + k); return Reflect.getOwnPropertyDescriptor(t, k); },
+					getPrototypeOf(t) { log.push("getPrototypeOf"); return Reflect.getPrototypeOf(t); },
+				});
+				var keys = [];
+				for (var k in p) keys.push(k);
+				keys.join() + " " + log.join()`,
+			want: "b,c,d ownKeys,gopd:a,gopd:b,gopd:c,getPrototypeOf",
+		},
+		{
+			name: "instanceof with proxies",
+			src: `var log = [];
+				function F() {}
+				var P = new Proxy(F, { get(t, k, r) { log.push(String(k)); return Reflect.get(t, k, r); } });
+				var q = new Proxy({}, { getPrototypeOf(t) { log.push("getPrototypeOf"); return F.prototype; } });
+				(new F() instanceof P) + " " + (q instanceof F) + " " + log.join()`,
+			want: "true true Symbol(Symbol.hasInstance),prototype,getPrototypeOf",
+		},
+		{
+			name: "class fields on a proxy receiver",
+			src: `var log = [];
+				class Base {
+					constructor() {
+						return new Proxy({}, { defineProperty(t, k, d) { log.push(k); return Reflect.defineProperty(t, k, d); } });
+					}
+				}
+				class C extends Base {
+					x = 1;
+					#y = 2;
+					static y(o) { return o.#y; }
+					static hasY(o) { return #y in o; }
+				}
+				var c = new C();
+				log.join() + " " + C.y(c) + " " + C.hasY(c) + " " + Reflect.ownKeys(c).join()`,
+			want: "x 2 true x",
+		},
+		{
+			name: "private fields are no own keys",
+			src: `class A {
+					#x = 1;
+					static setX(o) { o.#x = 2; return o.#x; }
+				}
+				var a = new A();
+				Object.freeze(a);
+				var keys = [];
+				Object.getOwnPropertySymbols(new Proxy(a, { ownKeys(t) { var k = Reflect.ownKeys(t); keys = k; return k; } }));
+				A.setX(a) + " " + keys.length`,
+			want: "2 0",
+		},
+		{
+			name: "a call through a proxy adds no line to stack traces",
+			src: `function f() { throw new Error(); }
+				function stack(g) { try { g(); } catch (e) { return e.stack.split("\n").length; } }
+				var p = new Proxy(f, {});
+				stack(function() { p(); }) === stack(function() { f(); })`,
+			want: "true",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vm := ekuma.NewVM()
+			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, vm, v); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestProxyDeepChains checks that internal methods that recurse through proxies without
+// running JavaScript end in a RangeError.
+func TestProxyDeepChains(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "a chain of proxies",
+			src: `var p = {};
+				for (var i = 0; i < 100000; i++) p = new Proxy(p, {});
+				p.x`,
+		},
+		{
+			name: "a proxy on the prototype chain of its target",
+			src: `var t = {};
+				var p = new Proxy(t, {});
+				Object.setPrototypeOf(t, p);
+				"x" in p`,
+		},
+		{
+			name: "a chain of callable proxies",
+			src: `var f = function() {};
+				for (var i = 0; i < 100000; i++) f = new Proxy(f, {});
+				f()`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vm := ekuma.NewVM()
+			v, err := vm.RunScript(t.Context(), tt.name, `try { `+tt.src+`; "no error" } catch (e) { e instanceof RangeError }`)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, vm, v); got != "true" {
+				t.Errorf("got %q, want a RangeError", got)
+			}
+		})
+	}
+}

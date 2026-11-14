@@ -176,9 +176,9 @@ func SymbolDescription(sym *Object) (string, bool) {
 
 // BuiltinTag returns the name that Object.prototype.toString uses for o
 // when o has no Symbol.toStringTag property.
-func (o *Object) BuiltinTag() string {
+func (vm *VM) BuiltinTag(o *Object) string {
 	switch {
-	case o.kind == kindArray:
+	case vm.IsArray(Value{o: o}):
 		return "Array"
 	case o.fn != nil:
 		return "Function"

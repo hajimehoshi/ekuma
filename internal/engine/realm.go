@@ -28,6 +28,7 @@ func New(hostDefined any) *VM {
 		thrown:         Undefined,
 	}
 	vm.shapes.nullProto = &shape{vm: vm}
+	vm.shapes.proxy = &shape{vm: vm}
 	objectProto := &Object{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
@@ -131,8 +132,11 @@ func (vm *VM) initKeys() {
 		keyNext: "next", keyDone: "done", keyReturn: "return", keyThrow: "throw", keyThen: "then",
 		keyCallee: "callee", keyCaller: "caller", keyArguments: "arguments",
 		keyIndex: "index", keyInput: "input", keyGroups: "groups", keyLastIndex: "lastIndex",
-		KeyRaw: "raw", keyProxy: "proxy", keyRevoke: "revoke", keySource: "source",
-		keyFlags: "flags", keyDefault: "default",
+		KeyRaw: "raw", keySource: "source", keyFlags: "flags", keyDefault: "default",
+		keyGetPrototypeOf: "getPrototypeOf", keySetPrototypeOf: "setPrototypeOf",
+		keyIsExtensible: "isExtensible", keyPreventExtensions: "preventExtensions",
+		keyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", keyDefineProperty: "defineProperty",
+		keyHas: "has", keyDeleteProperty: "deleteProperty", keyOwnKeys: "ownKeys", keyConstruct: "construct",
 	} {
 		vm.keys.common[k] = vm.Intern(name)
 	}

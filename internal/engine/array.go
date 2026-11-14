@@ -12,16 +12,6 @@ import (
 // This file holds the operations on the elements of objects for the built-in objects.
 // An operation that reports false did nothing, and the caller has to run the generic algorithm.
 
-// IsArray implements IsArray.
-func IsArray(v Value) bool {
-	return v.o != nil && v.o.kind == kindArray
-}
-
-// IsArray reports whether o is an array.
-func (o *Object) IsArray() bool {
-	return o.kind == kindArray
-}
-
 // ArrayCreate implements ArrayCreate.
 func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
 	a := vm.NewArray(nil)

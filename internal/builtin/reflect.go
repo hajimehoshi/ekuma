@@ -51,7 +51,7 @@ func initReflect(vm *engine.VM) {
 	method(vm, r, "defineProperty", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := target(vm, arg(args, 0), "defineProperty")
 		k := vm.ToPropertyKey(arg(args, 1))
-		return engine.Bool(vm.DefineOwnProperty(o, k, toDescriptor(vm, arg(args, 2))))
+		return engine.Bool(vm.DefineOwnProperty(o, k, vm.ToPropertyDescriptor(arg(args, 2))))
 	})
 	method(vm, r, "deleteProperty", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := target(vm, arg(args, 0), "deleteProperty")
@@ -72,7 +72,7 @@ func initReflect(vm *engine.VM) {
 		if !ok {
 			return engine.Undefined
 		}
-		return fromDescriptor(vm, d)
+		return vm.FromPropertyDescriptor(d)
 	})
 	method(vm, r, "getPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if p := vm.ProtoOf(target(vm, arg(args, 0), "getPrototypeOf")); p != nil {
@@ -90,9 +90,7 @@ func initReflect(vm *engine.VM) {
 	method(vm, r, "ownKeys", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
 		for _, k := range vm.OwnKeys(target(vm, arg(args, 0), "ownKeys")) {
-			if !k.IsPrivateName() {
-				out = append(out, vm.KeyValue(k))
-			}
+			out = append(out, vm.KeyValue(k))
 		}
 		return engine.ObjectValue(vm.NewArray(out))
 	})

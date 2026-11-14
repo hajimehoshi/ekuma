@@ -732,6 +732,12 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 		}
 		// A store to a primitive only has an effect when a setter is inherited.
 		start := vm.protoStart(v, PropKey{key: key})
+		if hasProxyOnChain(start) {
+			if start.kind == kindString && key == vm.Key(KeyLength) {
+				return nil, false
+			}
+			return nil, vm.setProp(start, PropKey{key: key}, val, v)
+		}
 		if h, p, found := vm.lookup(start, key); found && p.slot >= 0 && p.flags&FlagAccessor != 0 {
 			if s := h.slots[p.slot].accessor().setter; s != nil {
 				return s, true
@@ -842,7 +848,11 @@ func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 		if v.IsNullish() {
 			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{idx: i}) + "')")
 		}
-		return nil, false
+		if o != nil && o.kind == kindString && int64(i) < int64(o.StringLength()) {
+			return nil, false
+		}
+		// Only an inherited setter or a proxy can observe the store.
+		return nil, vm.setProp(vm.protoStart(v, PropKey{idx: i}), PropKey{idx: i}, val, v)
 	}
 	if int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
 		o.elems[i] = val
@@ -973,32 +983,8 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	}
 
 	// ValidateAndApplyPropertyDescriptor for an existing property.
-	if cur.flags&FlagConfigurable == 0 {
-		if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable != 0 {
-			return false
-		}
-		if d.has&HasEnumerable != 0 && (d.flags^cur.flags)&FlagEnumerable != 0 {
-			return false
-		}
-		curAccessor := cur.flags&FlagAccessor != 0
-		if d.IsAccessor() != curAccessor && (d.IsAccessor() || d.IsData()) {
-			return false
-		}
-		if curAccessor {
-			if d.has&HasGet != 0 && d.getter != cur.getter {
-				return false
-			}
-			if d.has&HasSet != 0 && d.setter != cur.setter {
-				return false
-			}
-		} else if cur.flags&FlagWritable == 0 {
-			if d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
-				return false
-			}
-			if d.has&HasValue != 0 && !SameValue(d.value, cur.value) {
-				return false
-			}
-		}
+	if cur.flags&FlagConfigurable == 0 && !nonConfigurableCompatible(&cur, &d) {
+		return false
 	}
 
 	// Merge the fields that are present into the current property.
@@ -1230,7 +1216,7 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 		keys = append(keys, PropKey{key: k})
 	}
 	for _, k := range names {
-		if k.kind == kindSymbol {
+		if k.kind == kindSymbol && k.class != classPrivateName {
 			keys = append(keys, PropKey{key: k})
 		}
 	}
@@ -1318,11 +1304,6 @@ func IndexKey(i uint32) PropKey {
 // NamedKey returns the property key for key, which is an interned string or a symbol.
 func NamedKey(key *Object) PropKey {
 	return PropKey{key: key}
-}
-
-// IsPrivateName reports whether k is the private name of a class element.
-func (k PropKey) IsPrivateName() bool {
-	return k.key != nil && k.key.class == classPrivateName
 }
 
 // Get implements Get.

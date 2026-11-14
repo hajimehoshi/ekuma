@@ -97,6 +97,13 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
 		}
 		vm.ThrowReferenceError(key.str + " is not defined")
 	}
+	// GetBindingValue checks for the property again, which only a proxy can observe.
+	if proxyOnChain(g) != nil && !vm.HasProperty(g, k) {
+		if vm.frames[len(vm.frames)-1].fp.strict {
+			vm.ThrowReferenceError(key.str + " is not defined")
+		}
+		return Undefined
+	}
 	return vm.getProp(g, k, Value{o: g})
 }
 
@@ -128,8 +135,16 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 		return
 	}
 	k := PropKey{key: key}
-	if strict && !vm.HasProperty(g, k) {
-		vm.ThrowReferenceError(key.str + " is not defined")
+	// Resolving the name and SetMutableBinding both check for the property, which only matters
+	// in strict code or to a proxy.
+	if proxied := proxyOnChain(g) != nil; strict || proxied {
+		found := vm.HasProperty(g, k)
+		if found && proxied {
+			found = vm.HasProperty(g, k)
+		}
+		if !found && strict {
+			vm.ThrowReferenceError(key.str + " is not defined")
+		}
 	}
 	if !vm.setProp(g, k, val, Value{o: g}) && strict {
 		vm.throwReadOnly(Value{o: g}, k)
@@ -783,9 +798,6 @@ func (vm *VM) IsConstructor(f *Object) bool {
 	if fn.bound != nil {
 		return vm.IsConstructor(fn.bound.target)
 	}
-	if f.class == classProxy {
-		return vm.proxyIsConstructor(f)
-	}
 	return fn.constructor
 }
 
@@ -806,7 +818,7 @@ func (vm *VM) functionProtoFor(p *funcProto) *Object {
 // so that storing a new element in such an array cannot run a setter.
 func (vm *VM) arrayProtoPlain() bool {
 	a, o := vm.Intrinsic(IntrinsicArrayPrototype), vm.Intrinsic(IntrinsicObjectPrototype)
-	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0
+	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
 }
 
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
@@ -933,6 +945,7 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Objec
 	if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
 		return p.o
 	}
+	vm.checkFunctionRealm(ctor)
 	return fallback
 }
 
@@ -1025,7 +1038,7 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 // setScoped implements SetMutableBinding of the object environment record of the dynamic scope o.
 func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
-	if strict && !vm.HasProperty(o, k) {
+	if !vm.HasProperty(o, k) && strict {
 		vm.ThrowReferenceError(key.str + " is not defined")
 	}
 	if !vm.setProp(o, k, val, Value{o: o}) && strict {

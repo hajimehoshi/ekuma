@@ -286,6 +286,10 @@ type shapeTable struct {
 	iterResult *shape
 	arguments  *shape
 
+	// proxy is the shape of a new proxy object. It has no prototype, so that a lookup in shapes
+	// stops at a proxy, and only ever gains private names.
+	proxy *shape
+
 	// byProto maps a prototype to the empty shape of the objects with that prototype.
 	byProto map[*Object]*shape
 
