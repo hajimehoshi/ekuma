@@ -454,7 +454,7 @@ func initString(vm *engine.VM) {
 				if functional {
 					b.WriteString(vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
 				} else {
-					b.WriteString(getSubstitution(vm, search, s, p, nil, engine.Undefined, repStr))
+					writeSubstitution(vm, &b, search, s, p, substCaptures{}, engine.Undefined, repStr)
 				}
 				end = p + searchLen
 			}

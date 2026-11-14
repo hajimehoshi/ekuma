@@ -718,8 +718,9 @@ type regexpStringIterator struct {
 type match struct {
 	// res is the match array, when the original exec did not produce the match.
 	res *engine.Object
-	// caps are the capture indices of a match of the original exec.
-	caps []int
+	// capsStart and capsEnd are the range of the capture indices of a match of the original
+	// exec in the buffer that holds them.
+	capsStart, capsEnd int
 }
 
 func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, replaceValue engine.Value) engine.Value {
@@ -735,8 +736,16 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 		fullUnicode = strings.ContainsAny(flags, "uv")
 		e.setLastIndex(vm, rx, 0)
 	}
-	var results []match
-	var capsBuf []int
+	length := s.StringLength()
+	var b wtf8.Builder
+	next := 0
+	found := false
+	// results holds the matches whose replacements are computed after the last match.
+	// A match of the original exec with a string template is replaced as soon as it is
+	// found, as long as no match is pending, since GetSubstitution then runs no JavaScript.
+	var resultsArr [4]match
+	var capsArr [16]int
+	results, capsBuf := resultsArr[:0], capsArr[:0]
 	for {
 		exec, fast := e.fastExec(vm, rx)
 		var empty bool
@@ -745,15 +754,24 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 			if caps == nil {
 				break
 			}
-			start := len(capsBuf)
-			capsBuf = append(capsBuf, caps...)
-			results = append(results, match{caps: capsBuf[start:len(capsBuf):len(capsBuf)]})
+			found = true
 			empty = caps[0] == caps[1]
+			if !functional && len(results) == 0 {
+				if b.Len() == 0 {
+					b.Grow(len(s.Str()))
+				}
+				next = substituteMatch(vm, &b, rx.RegExpMatcher(), s, caps, template, next)
+			} else {
+				start := len(capsBuf)
+				capsBuf = append(capsBuf, caps...)
+				results = append(results, match{capsStart: start, capsEnd: len(capsBuf)})
+			}
 		} else {
 			res := e.regExpExecWith(vm, rx, s, exec)
 			if res.IsNull() {
 				break
 			}
+			found = true
 			results = append(results, match{res: res.Object()})
 			if global {
 				empty = vm.ToString(vm.Get(res.Object(), engine.IndexKey(0))) == ""
@@ -767,14 +785,12 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 			e.setLastIndex(vm, rx, advanceStringIndex(s, i, fullUnicode))
 		}
 	}
-	if len(results) == 0 {
+	if !found {
 		return engine.ObjectValue(s)
 	}
-	length := s.StringLength()
-	var b wtf8.Builder
-	next := 0
 	var re *regexp.Regexp
 	for _, r := range results {
+		caps := capsBuf[r.capsStart:r.capsEnd]
 		var matched string
 		var position int
 		var captures []engine.Value
@@ -783,12 +799,12 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 			if re == nil {
 				re = rx.RegExpMatcher()
 			}
-			position = r.caps[0]
-			matched = s.Substring(r.caps[0], r.caps[1])
-			n := len(r.caps)/2 - 1
+			position = caps[0]
+			matched = s.Substring(caps[0], caps[1])
+			n := len(caps)/2 - 1
 			captures = make([]engine.Value, n)
 			for i := range captures {
-				captures[i] = capture(vm, s, r.caps, i+1)
+				captures[i] = capture(vm, s, caps, i+1)
 			}
 			named = engine.Undefined
 			if len(re.Names()) > 0 && (functional || strings.Contains(template, "$<")) {
@@ -810,22 +826,29 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 			}
 			named = vm.Get(res, e.key(e.groups))
 		}
-		var replacement string
-		if functional {
-			callArgs := make([]engine.Value, 0, len(captures)+4)
-			callArgs = append(callArgs, vm.NewString(matched))
-			callArgs = append(callArgs, captures...)
-			callArgs = append(callArgs, engine.Number(float64(position)), engine.ObjectValue(s))
-			if !named.IsUndefined() {
-				callArgs = append(callArgs, named)
-			}
-			replacement = vm.ToString(vm.Call(replaceValue.Object(), engine.Undefined, callArgs...))
-		} else {
+		if !functional {
 			if !named.IsUndefined() {
 				named = engine.ObjectValue(vm.ToObject(named))
 			}
-			replacement = getSubstitution(vm, matched, s, position, captures, named, template)
+			if position < next {
+				// The replacement is unused, but computing it can run JavaScript.
+				var rb wtf8.Builder
+				writeSubstitution(vm, &rb, matched, s, position, substCaptures{vals: captures}, named, template)
+				continue
+			}
+			b.WriteString(s.Substring(next, position))
+			writeSubstitution(vm, &b, matched, s, position, substCaptures{vals: captures}, named, template)
+			next = position + wtf8.Len(matched)
+			continue
 		}
+		callArgs := make([]engine.Value, 0, len(captures)+4)
+		callArgs = append(callArgs, vm.NewString(matched))
+		callArgs = append(callArgs, captures...)
+		callArgs = append(callArgs, engine.Number(float64(position)), engine.ObjectValue(s))
+		if !named.IsUndefined() {
+			callArgs = append(callArgs, named)
+		}
+		replacement := vm.ToString(vm.Call(replaceValue.Object(), engine.Undefined, callArgs...))
 		if position >= next {
 			b.WriteString(s.Substring(next, position))
 			b.WriteString(replacement)
@@ -837,6 +860,27 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 	}
 	b.WriteString(s.Substring(next, length))
 	return vm.NewString(b.String())
+}
+
+// substituteMatch writes to b the part of s from next up to a match of re with the capture
+// indices caps, followed by its replacement by template. It returns the index after the match.
+func substituteMatch(vm *engine.VM, b *wtf8.Builder, re *regexp.Regexp, s *engine.Object, caps []int, template string, next int) int {
+	position := caps[0]
+	if position < next {
+		return next
+	}
+	b.WriteString(s.Substring(next, position))
+	matched := s.Substring(caps[0], caps[1])
+	if !strings.Contains(template, "$") {
+		b.WriteString(template)
+		return caps[1]
+	}
+	named := engine.Undefined
+	if len(re.Names()) > 0 && strings.Contains(template, "$<") {
+		named = groupsObject(vm, re, func(i int) engine.Value { return capture(vm, s, caps, i) })
+	}
+	writeSubstitution(vm, b, matched, s, position, substCaptures{str: s, caps: caps}, named, template)
+	return caps[1]
 }
 
 func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, limit engine.Value) engine.Value {
@@ -965,13 +1009,42 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, li
 	return engine.ObjectValue(vm.NewArray(out))
 }
 
-// getSubstitution implements GetSubstitution. captures holds strings and undefined.
-func getSubstitution(vm *engine.VM, matched string, str *engine.Object, position int, captures []engine.Value, named engine.Value, template string) string {
-	if !strings.Contains(template, "$") {
-		return template
+// substCaptures is the captures of a match for GetSubstitution. They are vals, which holds
+// strings and undefined, unless str is set, in which case they are the capture indices caps in str.
+type substCaptures struct {
+	vals []engine.Value
+	str  *engine.Object
+	caps []int
+}
+
+// count returns the number of the captures.
+func (c *substCaptures) count() int {
+	if c.str == nil {
+		return len(c.vals)
 	}
-	var b wtf8.Builder
+	return len(c.caps)/2 - 1
+}
+
+// get returns the capture i, counted from 1, and whether it is not undefined.
+func (c *substCaptures) get(i int) (string, bool) {
+	if c.str == nil {
+		v := c.vals[i-1]
+		if v.IsUndefined() {
+			return "", false
+		}
+		return v.Object().Str(), true
+	}
+	a, b := c.caps[2*i], c.caps[2*i+1]
+	if a < 0 {
+		return "", false
+	}
+	return c.str.Substring(a, b), true
+}
+
+// writeSubstitution implements GetSubstitution, writing the result to b.
+func writeSubstitution(vm *engine.VM, b *wtf8.Builder, matched string, str *engine.Object, position int, captures substCaptures, named engine.Value, template string) {
 	length := str.StringLength()
+	ncaps := captures.count()
 	for i := 0; i < len(template); {
 		c := template[i]
 		if c != '$' || i+1 >= len(template) {
@@ -1005,14 +1078,14 @@ func getSubstitution(vm *engine.VM, matched string, str *engine.Object, position
 				digits = 2
 			}
 			index, _ := strconv.Atoi(template[i+1 : i+1+digits])
-			if index > len(captures) && digits == 2 {
+			if index > ncaps && digits == 2 {
 				digits = 1
 				index = int(next - '0')
 			}
 			ref := template[i : i+1+digits]
-			if index >= 1 && index <= len(captures) {
-				if c := captures[index-1]; !c.IsUndefined() {
-					b.WriteString(c.Object().Str())
+			if index >= 1 && index <= ncaps {
+				if c, ok := captures.get(index); ok {
+					b.WriteString(c)
 				}
 			} else {
 				b.WriteString(ref)
@@ -1036,7 +1109,6 @@ func getSubstitution(vm *engine.VM, matched string, str *engine.Object, position
 			i++
 		}
 	}
-	return b.String()
 }
 
 // regExpEscape implements RegExp.escape.

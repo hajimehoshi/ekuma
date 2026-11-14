@@ -1102,6 +1102,16 @@ func TestRegExpModified(t *testing.T) {
 			want: "axab",
 		},
 		{
+			name: "exec changed during replace",
+			src: `var re = /b/g, n = 0;
+				Object.defineProperty(re, "exec", {get() {
+					if (++n < 3) return RegExp.prototype.exec;
+					return function (s) { log.push("exec"); return n === 3 ? {0: "c", index: 5, length: 1} : null; };
+				}});
+				["abcabc".replace(re, "[$&]"), log.join()].join(" ")`,
+			want: "a[b]ca[b][c] exec,exec",
+		},
+		{
 			name: "prototype modified during split",
 			src: `var re = /,/;
 				var r = ["a,b;c".split(re, {valueOf() { re.compile(";"); return 10; }})];
