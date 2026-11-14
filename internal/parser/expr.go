@@ -5,6 +5,7 @@ package parser
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
+	"github.com/hajimehoshi/ekuma/internal/regexp"
 )
 
 func span(start, end int32) ast.Span {
@@ -1032,6 +1033,9 @@ func (p *parser) parsePrimary() ast.Expr {
 		return p.parseTemplate(false)
 	case tDiv, tDivAssign:
 		p.rescanRegExp()
+		if err := regexp.Validate(p.t.str, p.t.raw); err != nil {
+			p.fail(int(start), err.Error())
+		}
 		lit := &ast.RegExpLit{
 			Span:    span(start, p.t.end),
 			Pattern: p.t.str,

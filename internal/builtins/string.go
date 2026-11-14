@@ -145,7 +145,7 @@ func initString(vm *engine.VM) {
 		return engine.Number(float64(s.UnitLastIndexOf(sub, from)))
 	})
 	noRegExp := func(vm *engine.VM, v engine.Value, what string) {
-		if v.IsObject() && v.Object().IsRegExpObject() {
+		if isRegExp(vm, v) {
 			vm.ThrowTypeError("First argument to String.prototype." + what + " must not be a regular expression")
 		}
 	}
@@ -350,7 +350,7 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "split", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.RequireObjectCoercible(this, "String.prototype.split")
 		sepArg, limArg := arg(args, 0), arg(args, 1)
-		if !sepArg.IsNullish() {
+		if sepArg.IsObject() {
 			if m := vm.GetMethod(sepArg, vm.K.SymSplit); m != nil {
 				return vm.Call(m, sepArg, this, limArg)
 			}
@@ -387,47 +387,52 @@ func initString(vm *engine.VM) {
 		method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+name)
 			pat, rep := arg(args, 0), arg(args, 1)
-			if !pat.IsNullish() {
+			if pat.IsObject() {
+				if all && isRegExp(vm, pat) {
+					flags := vm.GetV(pat, vm.Intern("flags"))
+					vm.RequireObjectCoercible(flags, "String.prototype.replaceAll")
+					if !strings.Contains(vm.ToString(flags), "g") {
+						vm.ThrowTypeError("replaceAll must be called with a global RegExp")
+					}
+				}
 				if m := vm.GetMethod(pat, vm.K.SymReplace); m != nil {
 					return vm.Call(m, pat, this, rep)
 				}
 			}
 			s := vm.ToStringValue(this).Object()
 			search := vm.ToString(pat)
+			functional := rep.IsCallable()
 			var repStr string
-			if !rep.IsCallable() {
+			if !functional {
 				repStr = vm.ToString(rep)
 			}
-			var b wtf8.Builder
-			pos := 0
 			n := s.StringLength()
 			searchLen := wtf8.Len(search)
-			for {
-				i := s.UnitIndexOf(search, pos)
-				if i < 0 {
+			advance := max(1, searchLen)
+			var positions []int
+			for pos := s.UnitIndexOf(search, 0); pos >= 0; {
+				positions = append(positions, pos)
+				if !all || pos+advance > n {
 					break
 				}
-				b.WriteString(s.Substring(min(pos, n), i))
-				if rep.IsCallable() {
-					b.WriteString(vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(i)), engine.ObjectValue(s))))
-				} else {
-					b.WriteString(expandReplacement(repStr, search, s, i, nil))
-				}
-				pos = i + searchLen
-				if !all {
-					break
-				}
-				if searchLen == 0 {
-					if pos >= n {
-						pos = n + 1
-						break
-					}
-					b.WriteString(s.Substring(pos, pos+1))
-					pos++
-				}
+				pos = s.UnitIndexOf(search, pos+advance)
 			}
-			if pos < n {
-				b.WriteString(s.Substring(pos, n))
+			if len(positions) == 0 {
+				return engine.ObjectValue(s)
+			}
+			var b wtf8.Builder
+			end := 0
+			for _, p := range positions {
+				b.WriteString(s.Substring(end, p))
+				if functional {
+					b.WriteString(vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
+				} else {
+					b.WriteString(getSubstitution(vm, search, s, p, nil, engine.Undefined, repStr))
+				}
+				end = p + searchLen
+			}
+			if end < n {
+				b.WriteString(s.Substring(end, n))
 			}
 			return vm.NewString(b.String())
 		})
@@ -445,13 +450,25 @@ func initString(vm *engine.VM) {
 		method(vm, proto, e.name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+e.name)
 			pat := arg(args, 0)
-			if !pat.IsNullish() {
+			if pat.IsObject() {
+				if e.name == "matchAll" && isRegExp(vm, pat) {
+					flags := vm.GetV(pat, vm.Intern("flags"))
+					vm.RequireObjectCoercible(flags, "String.prototype.matchAll")
+					if !strings.Contains(vm.ToString(flags), "g") {
+						vm.ThrowTypeError("matchAll must be called with a global RegExp")
+					}
+				}
 				if m := vm.GetMethod(pat, e.key); m != nil {
 					return vm.Call(m, pat, this)
 				}
 			}
-			vm.Unsupported("RegExp")
-			return engine.Undefined
+			s := vm.ToStringValue(this)
+			flags := engine.Undefined
+			if e.name == "matchAll" {
+				flags = vm.NewString("g")
+			}
+			rx := regExpCreate(vm, pat, flags)
+			return vm.CallValue(vm.GetV(engine.ObjectValue(rx), e.key), engine.ObjectValue(rx), s)
 		})
 	}
 	symMethod(vm, proto, vm.K.SymIterator, "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -463,40 +480,4 @@ func initString(vm *engine.VM) {
 type stringIterator struct {
 	str string
 	pos int
-}
-
-// expandReplacement implements GetSubstitution for a string pattern, and for the captures
-// of a regular expression when groups is not nil.
-func expandReplacement(rep, matched string, s *engine.Object, pos int, groups []engine.Value) string {
-	if !strings.Contains(rep, "$") {
-		return rep
-	}
-	var b wtf8.Builder
-	n := s.StringLength()
-	for i := 0; i < len(rep); i++ {
-		c := rep[i]
-		if c != '$' || i+1 >= len(rep) {
-			b.WriteString(rep[i : i+1])
-			continue
-		}
-		switch next := rep[i+1]; {
-		case next == '$':
-			b.WriteString("$")
-			i++
-		case next == '&':
-			b.WriteString(matched)
-			i++
-		case next == '`':
-			b.WriteString(s.Substring(0, pos))
-			i++
-		case next == '\'':
-			if end := pos + wtf8.Len(matched); end < n {
-				b.WriteString(s.Substring(end, n))
-			}
-			i++
-		default:
-			b.WriteString("$")
-		}
-	}
-	return b.String()
 }

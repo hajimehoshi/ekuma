@@ -398,6 +398,23 @@ func TestCancel(t *testing.T) {
 	}
 }
 
+// TestCancelRegExp checks that a match that backtracks for too long can be stopped.
+func TestCancelRegExp(t *testing.T) {
+	vm := ekuma.New()
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := vm.RunScript(ctx, "backtrack", `/^(a+)+$/.test("a".repeat(40) + "b")`); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("got %v, want context.DeadlineExceeded", err)
+	}
+	v, err := vm.RunScript(t.Context(), "after", `"a1b22".replace(/\d+/g, function(m) { return "<" + m + ">"; })`)
+	if err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	if got, want := v.String(), "a<1>b<22>"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestFuncErrors(t *testing.T) {
 	ctx := t.Context()
 	vm := ekuma.New()

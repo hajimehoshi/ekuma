@@ -28,11 +28,6 @@ func (vm *VM) directEval(src Value, scope int, regs []Value) Value {
 	return Undefined
 }
 
-func (vm *VM) newRegExpLiteral(pattern, flags Value) Value {
-	vm.Unsupported("RegExp")
-	return Undefined
-}
-
 func (vm *VM) proxyGet(o *Object, k PropKey, receiver Value) Value {
 	vm.Unsupported("Proxy")
 	return Undefined

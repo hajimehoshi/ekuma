@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -194,6 +195,9 @@ type VM struct {
 
 	SymbolRegistry map[string]*Object
 
+	// regExps caches compiled patterns by their flags and source.
+	regExps map[string]*regexp.Regexp
+
 	realm
 }
 
@@ -204,7 +208,7 @@ type realm struct {
 	ArrayIteratorProto, StringIteratorProto, GeneratorProto, AsyncGeneratorProto   *Object
 	GeneratorFunctionProto, AsyncFunctionProto, AsyncGeneratorFunctionProto        *Object
 	RegexpProto, PromiseProto, MapProto, SetObjectProto, DateProto                 *Object
-	promiseCtor, ArrayCtor, ObjectCtor, FunctionCtor                               *Object
+	promiseCtor, ArrayCtor, ObjectCtor, FunctionCtor, RegExpCtor                   *Object
 
 	// ErrorProtos are the prototypes of the native error types, by errorKind.
 	ErrorProtos [ErrorKindCount]*Object

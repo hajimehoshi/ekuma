@@ -98,6 +98,7 @@ func Install(vm *engine.VM) {
 	initError(vm)
 	initArray(vm)
 	initString(vm)
+	initRegExp(vm)
 	parseFloat, parseInt := newParseFunctions(vm)
 	initNumber(vm, parseFloat, parseInt)
 	initSymbol(vm)
