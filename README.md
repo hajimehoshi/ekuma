@@ -18,7 +18,8 @@ fmt.Println(v.String()) // Hello, world
 ```
 
 The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
-`Value.Get`, `Value.Set`, `Value.Call`, `Value.Invoke`, `Value.New`, `VM.ValueOf`, `VM.FuncOf`.
+`Value.Get`, `Value.Set`, `Value.Call`, `Value.Invoke`, `Value.New`, `VM.ValueOf`, `VM.FuncOf`,
+`CopyBytesToGo`, `CopyBytesToJS`.
 Unlike `syscall/js`, a JavaScript exception is returned as an error, and the methods that run
 a script or call a function take a `context.Context` that stops them.
 

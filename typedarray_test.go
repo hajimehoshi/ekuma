@@ -4,6 +4,8 @@
 package ekuma_test
 
 import (
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma"
@@ -112,5 +114,73 @@ func TestDetachImmutableArrayBuffer(t *testing.T) {
 	}
 	if got, err := b.Get("detached"); err != nil || got.Bool() {
 		t.Errorf("detached: got %v, %v, want false", got, err)
+	}
+}
+
+// TestCopyBytes tests CopyBytesToGo and CopyBytesToJS.
+func TestCopyBytes(t *testing.T) {
+	vm := ekuma.NewVM()
+	run := func(src string) ekuma.Value {
+		t.Helper()
+		v, err := vm.RunScript(t.Context(), "test", src)
+		if err != nil {
+			t.Fatalf("RunScript: %v", err)
+		}
+		return v
+	}
+
+	// The copy is truncated to the shorter side.
+	dst := make([]byte, 2)
+	if n := ekuma.CopyBytesToGo(dst, run("new Uint8Array([1, 2, 3])")); n != 2 || !slices.Equal(dst, []byte{1, 2}) {
+		t.Errorf("CopyBytesToGo: got %d, %v, want 2, [1 2]", n, dst)
+	}
+	dst = make([]byte, 3)
+	if n := ekuma.CopyBytesToGo(dst, run("new Uint8ClampedArray([4, 5])")); n != 2 || !slices.Equal(dst, []byte{4, 5, 0}) {
+		t.Errorf("CopyBytesToGo with a Uint8ClampedArray: got %d, %v, want 2, [4 5 0]", n, dst)
+	}
+
+	a := run("var a = new Uint8ClampedArray(3); a")
+	if n := ekuma.CopyBytesToJS(a, []byte{6, 7, 8, 9}); n != 3 {
+		t.Errorf("CopyBytesToJS: got %d, want 3", n)
+	}
+	if got := run("a.join()").String(); got != "6,7,8" {
+		t.Errorf("CopyBytesToJS: got %s, want 6,7,8", got)
+	}
+
+	// A view on a detached buffer has no bytes.
+	d := run("var d = new Uint8Array(2); d.buffer.transfer(); d")
+	if n := ekuma.CopyBytesToGo(make([]byte, 2), d); n != 0 {
+		t.Errorf("CopyBytesToGo with a detached buffer: got %d, want 0", n)
+	}
+	if n := ekuma.CopyBytesToJS(d, []byte{1, 2}); n != 0 {
+		t.Errorf("CopyBytesToJS with a detached buffer: got %d, want 0", n)
+	}
+
+	expectValueError := func(name string, f func()) {
+		t.Helper()
+		defer func() {
+			t.Helper()
+			r := recover()
+			var verr *ekuma.ValueError
+			if err, ok := r.(error); !ok || !errors.As(err, &verr) {
+				t.Errorf("%s: got panic %v, want a *ValueError", name, r)
+			}
+		}()
+		f()
+	}
+	expectValueError("CopyBytesToGo with an Int8Array", func() {
+		ekuma.CopyBytesToGo(make([]byte, 1), run("new Int8Array(1)"))
+	})
+	im := run("var im = new Uint8Array(new Uint8Array([1]).buffer.transferToImmutable()); im")
+	expectValueError("CopyBytesToJS with an immutable buffer", func() {
+		ekuma.CopyBytesToJS(im, []byte{2})
+	})
+	if got := run("im[0]").Int(); got != 1 {
+		t.Errorf("immutable element: got %d, want 1", got)
+	}
+	// An immutable buffer can still be read.
+	dst = make([]byte, 1)
+	if n := ekuma.CopyBytesToGo(dst, im); n != 1 || dst[0] != 1 {
+		t.Errorf("CopyBytesToGo with an immutable buffer: got %d, %v, want 1, [1]", n, dst)
 	}
 }

@@ -64,8 +64,8 @@ func (t Type) String() string {
 	return "Type(" + strconv.Itoa(int(t)) + ")"
 }
 
-// ValueError is the error of a method of Value that does not support the type of the value.
-// The methods that return no error panic with it.
+// ValueError is the error of an operation on a Value that does not support the value.
+// The operations that return no error panic with it.
 type ValueError struct {
 	Method string
 	Type   Type
@@ -371,6 +371,43 @@ func (v Value) InstanceOf(t Value) (bool, error) {
 	}
 	r, err := vm.e.HostInstanceOf(v.engine(), t.engine())
 	return r, vm.publicError(err)
+}
+
+// uint8ArrayData returns the state of v when v is a Uint8Array or a Uint8ClampedArray,
+// and panics with a *ValueError otherwise.
+func uint8ArrayData(v Value, method string) *engine.TypedArray {
+	if t := engine.TypedArrayData(v.engine()); t != nil {
+		if e := t.ElementType(); e == engine.ElementUint8 || e == engine.ElementUint8C {
+			return t
+		}
+	}
+	panic(&ValueError{
+		Method: method,
+		Type:   v.Type(),
+	})
+}
+
+// CopyBytesToGo copies bytes from the Uint8Array or Uint8ClampedArray src to dst
+// and returns the number of bytes copied, which is the minimum of their lengths.
+// A detached or out of bounds src has no bytes. It panics with a *ValueError when src
+// is neither a Uint8Array nor a Uint8ClampedArray.
+func CopyBytesToGo(dst []byte, src Value) int {
+	return copy(dst, uint8ArrayData(src, "CopyBytesToGo").Bytes())
+}
+
+// CopyBytesToJS copies bytes from src to the Uint8Array or Uint8ClampedArray dst
+// and returns the number of bytes copied, which is the minimum of their lengths.
+// A detached or out of bounds dst has no bytes. It panics with a *ValueError when dst
+// is neither a Uint8Array nor a Uint8ClampedArray, or is backed by an immutable ArrayBuffer.
+func CopyBytesToJS(dst Value, src []byte) int {
+	t := uint8ArrayData(dst, "CopyBytesToJS")
+	if t.ArrayBuffer().IsImmutable() {
+		panic(&ValueError{
+			Method: "CopyBytesToJS",
+			Type:   dst.Type(),
+		})
+	}
+	return copy(t.Bytes(), src)
 }
 
 // Func is a function implemented in Go.
