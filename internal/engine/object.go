@@ -193,7 +193,8 @@ type shape struct {
 	count int32
 
 	// table maps every property of the shape to its slot. A private shape always has one.
-	// A shared shape with more than smallShapeSize properties builds it on first lookup.
+	// A shared shape with more than smallShapeSize properties builds it on first lookup,
+	// or takes it over from its parent.
 	table       map[*Object]prop
 	transitions map[shapeKey]*shape
 
@@ -274,6 +275,15 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 			slot:  s.count,
 			flags: flags,
 		})
+	}
+	if s.table != nil && s.transitions == nil && !s.private {
+		// An object that gains properties one by one looks each intermediate shape up once, so the
+		// first child takes over the table, and s builds a new one only if it is looked up again.
+		t.table, s.table = s.table, nil
+		t.table[key] = prop{
+			slot:  s.count,
+			flags: flags,
+		}
 	}
 	if s.transitions == nil {
 		s.transitions = make(map[shapeKey]*shape)
