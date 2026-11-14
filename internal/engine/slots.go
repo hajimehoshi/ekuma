@@ -79,6 +79,17 @@ func ThisStringValue(v Value) (Value, bool) {
 	return Undefined, false
 }
 
+// ThisBigIntValue implements ThisBigIntValue. It reports false when the specification throws.
+func ThisBigIntValue(v Value) (Value, bool) {
+	if v.IsBigInt() {
+		return v, true
+	}
+	if v.IsObject() && v.o.class == classBigInt {
+		return Value{o: v.o.ext.(*Object)}, true
+	}
+	return Undefined, false
+}
+
 // ThisSymbolValue implements ThisSymbolValue. It reports false when the specification throws.
 func ThisSymbolValue(v Value) (*Object, bool) {
 	if v.IsSymbol() {
@@ -126,4 +137,17 @@ func (o *Object) BuiltinTag() string {
 // IsRegExpObject reports whether o is a RegExp object.
 func (o *Object) IsRegExpObject() bool {
 	return o.class == classRegExp
+}
+
+// NewRawJSONObject returns an object without any property or prototype
+// that has the internal slot [[IsRawJSON]].
+func (vm *VM) NewRawJSONObject() *Object {
+	o := vm.NewObject(nil)
+	o.class = classRawJSON
+	return o
+}
+
+// IsRawJSON reports whether o has the internal slot [[IsRawJSON]].
+func (o *Object) IsRawJSON() bool {
+	return o.class == classRawJSON
 }

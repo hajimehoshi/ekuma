@@ -104,6 +104,7 @@ func Install(vm *engine.VM) {
 	initSymbol(vm)
 	initMath(vm)
 	initIterators(vm)
+	initJSON(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 

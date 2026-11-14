@@ -123,6 +123,11 @@ func (v Value) IsSymbol() bool {
 	return v.o != nil && v.o.kind == kindSymbol
 }
 
+// IsBigInt reports whether v is a BigInt.
+func (v Value) IsBigInt() bool {
+	return v.o != nil && v.o.kind == kindBigInt
+}
+
 // IsObject reports whether v is an object, which includes functions and arrays.
 func (v Value) IsObject() bool {
 	return v.o != nil && v.o.kind >= kindObject

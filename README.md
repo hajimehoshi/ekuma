@@ -47,7 +47,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 26,753 of 48,797 tests
+More than half of [test262](https://github.com/tc39/test262) passes: 26,965 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -61,6 +61,7 @@ Implemented:
   and array, string and generator iterators
 - `RegExp`, with its own backtracking engine: all flags including `v`, named groups, lookbehind,
   Unicode property escapes, pattern modifiers, `RegExp.escape` and the legacy static properties
+- `JSON`, including `JSON.rawJSON`, `JSON.isRawJSON` and the `context` argument of a reviver
 - BigInt literals and arithmetic (but not the `BigInt` object)
 
 Missing:
@@ -68,7 +69,7 @@ Missing:
 - `async` functions, `for await` and `Promise`
 - Direct `eval` and the `Function` constructor
 - Modules and dynamic `import`
-- `Map`, `Set`, `WeakMap`, `WeakSet`, `Date`, `JSON`, `Proxy`, `Reflect`, the `BigInt` object
+- `Map`, `Set`, `WeakMap`, `WeakSet`, `Date`, `Proxy`, `Reflect`, the `BigInt` object
 - Typed arrays, `ArrayBuffer`, `DataView`
 - `Intl` and `Temporal`
 

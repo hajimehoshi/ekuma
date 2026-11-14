@@ -6,6 +6,7 @@ package engine
 import (
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
@@ -25,12 +26,16 @@ func (k PropKey) IsSymbol() bool {
 	return k.key != nil && k.key.kind == kindSymbol
 }
 
-// keyOfString returns the property key for the string s.
-func (vm *VM) keyOfString(s string) PropKey {
+// KeyOfString returns the property key for the string s, which must be in canonical WTF-8.
+// It does not keep s.
+func (vm *VM) KeyOfString(s string) PropKey {
 	if i, ok := stringIndex(s); ok {
 		return PropKey{idx: i}
 	}
-	return PropKey{key: vm.Intern(s)}
+	if o, ok := vm.interned[s]; ok {
+		return PropKey{key: o}
+	}
+	return PropKey{key: vm.Intern(strings.Clone(s))}
 }
 
 // indexName returns the key under which the array index i is stored in a shape.
@@ -80,7 +85,7 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 	if o.kind >= kindObject {
 		return vm.ToPropertyKey(vm.toPrimitive(v, hintString))
 	}
-	return vm.keyOfString(vm.ToString(v))
+	return vm.KeyOfString(vm.ToString(v))
 }
 
 // Fields of a property descriptor that are present.
@@ -1096,6 +1101,11 @@ func (vm *VM) CreateDataPropertyOrThrow(o *Object, k PropKey, val Value) {
 	}
 }
 
+// CreateDataProperty implements CreateDataProperty. It reports false when the definition is refused.
+func (vm *VM) CreateDataProperty(o *Object, k PropKey, val Value) bool {
+	return vm.defineOwnProperty(o, k, dataDesc(val, FlagsData))
+}
+
 // DefinePropertyOrThrow implements DefinePropertyOrThrow.
 func (vm *VM) DefinePropertyOrThrow(o *Object, k PropKey, d PropDesc) {
 	if !vm.defineOwnProperty(o, k, d) {
@@ -1121,4 +1131,55 @@ func (k PropKey) IsPrivateName() bool {
 // Get implements Get.
 func (vm *VM) Get(o *Object, k PropKey) Value {
 	return vm.getProp(o, k, Value{o: o})
+}
+
+// EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
+// It appends the keys to keys and returns the extended slice.
+func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
+	if o.flags&objExotic != 0 && o.fn != nil {
+		vm.resolve(o)
+	}
+	if (o.class != classObject && o.class != classArray && o.class != classFunction) || o.flags&(objSparse|objExotic) != 0 {
+		for _, k := range vm.OwnKeys(o) {
+			if k.IsSymbol() {
+				continue
+			}
+			if d, ok := vm.GetOwnProperty(o, k); ok && d.Flags&FlagEnumerable != 0 {
+				keys = append(keys, k)
+			}
+		}
+		return keys
+	}
+	for i, e := range o.elems {
+		if !e.isHole() {
+			keys = append(keys, PropKey{idx: uint32(i)})
+		}
+	}
+	s := o.shape
+	if s.private {
+		for _, k := range s.order {
+			if k.kind == kindString && s.table[k].flags&FlagEnumerable != 0 {
+				keys = append(keys, PropKey{key: k})
+			}
+		}
+		return keys
+	}
+	// The chain of a shared shape lists its keys from the last one.
+	base := len(keys)
+	keys = slices.Grow(keys, int(s.count))[:base+int(s.count)]
+	for t := s; t.parent != nil; t = t.parent {
+		k := PropKey{}
+		if t.key.kind == kindString && t.flags&FlagEnumerable != 0 {
+			k.key = t.key
+		}
+		keys[base+int(t.count)-1] = k
+	}
+	n := base
+	for _, k := range keys[base:] {
+		if k.key != nil {
+			keys[n] = k
+			n++
+		}
+	}
+	return keys[:n]
 }

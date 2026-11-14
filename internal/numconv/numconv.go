@@ -22,13 +22,26 @@ func NumberToString(n float64) string {
 		// This also turns -0 into "0".
 		return strconv.FormatInt(i, 10)
 	}
+	var buf [32]byte
+	return string(AppendNumber(buf[:0], n))
+}
+
+// AppendNumber appends the result of Number::toString for radix 10 to dst.
+func AppendNumber(dst []byte, n float64) []byte {
+	if i := int64(n); float64(i) == n && i > -1e15 && i < 1e15 {
+		return strconv.AppendInt(dst, i, 10)
+	}
 	switch {
 	case n != n:
-		return "NaN"
+		return append(dst, "NaN"...)
 	case math.IsInf(n, 1):
-		return "Infinity"
+		return append(dst, "Infinity"...)
 	case math.IsInf(n, -1):
-		return "-Infinity"
+		return append(dst, "-Infinity"...)
+	}
+	if a := math.Abs(n); a >= 1e-6 && a < 1e21 {
+		// In this range the result is the shortest decimal digits without an exponent.
+		return strconv.AppendFloat(dst, n, 'f', -1, 64)
 	}
 
 	var buf [32]byte
@@ -43,7 +56,13 @@ func NumberToString(n float64) string {
 	for b[e] != 'e' {
 		e--
 	}
-	exp, _ := strconv.Atoi(string(b[e+1:]))
+	exp := 0
+	for _, c := range b[e+2:] {
+		exp = exp*10 + int(c-'0')
+	}
+	if b[e+1] == '-' {
+		exp = -exp
+	}
 	var digits [24]byte
 	k := 0
 	for _, c := range b[:e] {
@@ -57,7 +76,7 @@ func NumberToString(n float64) string {
 	// The value is 0.d1d2...dk * 10**pos.
 	pos := exp + 1
 
-	out := make([]byte, 0, 32)
+	out := dst
 	if neg {
 		out = append(out, '-')
 	}
@@ -89,7 +108,7 @@ func NumberToString(n float64) string {
 		}
 		out = strconv.AppendInt(out, int64(pos-1), 10)
 	}
-	return string(out)
+	return out
 }
 
 // isWhiteSpaceOrLineTerminator reports whether r is WhiteSpace or LineTerminator.

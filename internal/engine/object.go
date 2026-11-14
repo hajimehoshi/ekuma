@@ -81,6 +81,7 @@ const (
 	classForIn
 	classPrivateName
 	classModuleNamespace
+	classRawJSON
 )
 
 // Object is every heap value: plain objects, arrays, functions, strings, symbols, and the singletons.
@@ -313,6 +314,47 @@ func (vm *VM) NewArray(elems []Value) *Object {
 		elems:  elems,
 		length: uint32(len(elems)),
 	}
+}
+
+// NewObjectFromProperties returns a new ordinary object whose prototype is Object.prototype,
+// with the data properties keys[i]: vals[i] created in order as CreateDataProperty creates them.
+// A repeated key keeps its first position and takes the last value. It does not keep the slices.
+func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
+	o := &Object{
+		kind:  kindObject,
+		shape: vm.objectShape,
+		slots: make([]Value, 0, len(vals)),
+	}
+	for i, k := range keys {
+		v := vals[i]
+		if k.key == nil {
+			if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
+				o.elems[k.idx] = v
+				continue
+			}
+			if o.flags&objSparse != 0 {
+				if _, ok := o.shape.lookup(vm.indexName(k.idx)); ok {
+					vm.Define(o, vm.indexName(k.idx), v, FlagsData)
+					continue
+				}
+			}
+			vm.addIndex(o, k.idx, v, FlagsData)
+			continue
+		}
+		// A transition exists only for a key that the shape does not have.
+		if s := o.shape; !s.private {
+			if t, ok := s.transitions[shapeKey{
+				key:   k.key,
+				flags: FlagsData,
+			}]; ok {
+				o.shape = t
+				o.slots = append(o.slots, v)
+				continue
+			}
+		}
+		vm.Define(o, k.key, v, FlagsData)
+	}
+	return o
 }
 
 // NewString returns the string s, which must be in canonical WTF-8, as a value.
