@@ -30,16 +30,6 @@ func (vm *VM) NewArrayOf(elems []Value) Value {
 	return Value{o: vm.NewArray(elems)}
 }
 
-// TypeOf returns the result of the typeof operator for v.
-func TypeOf(v Value) string {
-	return typeOf(v)
-}
-
-// DebugString describes v without running any JavaScript. The result is UTF-8.
-func (vm *VM) DebugString(v Value) string {
-	return wtf8.ToValidUTF8(vm.DisplayString(v))
-}
-
 // GoString returns the content of the string v as UTF-8, with lone surrogates replaced by U+FFFD.
 func GoString(v Value) string {
 	return wtf8.ToValidUTF8(v.o.str)
@@ -134,5 +124,5 @@ func ThrownMessage(v Value) string {
 		// A primitive other than a string: its description needs no VM.
 		return "uncaught " + wtf8.ToValidUTF8(vm.DisplayString(v))
 	}
-	return vm.ErrorOf(v).Error()
+	return vm.errorOf(v).Error()
 }

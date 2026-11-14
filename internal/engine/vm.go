@@ -348,11 +348,11 @@ func (vm *VM) lookupData(o *Object, key *Object) (Value, bool) {
 func (vm *VM) takeException() error {
 	v := vm.thrown
 	vm.thrown = Undefined
-	return vm.ErrorOf(v)
+	return vm.errorOf(v)
 }
 
-// ErrorOf returns the Go error for the thrown value v.
-func (vm *VM) ErrorOf(v Value) *Error {
+// errorOf returns the Go error for the thrown value v.
+func (vm *VM) errorOf(v Value) *Error {
 	msg := ""
 	if v.IsObject() {
 		if s, ok := vm.lookupData(v.o, vm.K.Stack); ok && s.IsString() {
