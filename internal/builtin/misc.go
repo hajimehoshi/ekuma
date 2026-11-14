@@ -100,7 +100,8 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			return vm.NewString(numconv.NumberToString(n))
 		}
 		s := formatHalfUp(n, 'f', int(d))
-		if n == 0 || (strings.HasPrefix(s, "-") && strings.Trim(s, "-0.") == "") {
+		if n == 0 {
+			// -0 is formatted as 0.
 			s = strings.TrimPrefix(s, "-")
 		}
 		return vm.NewString(s)
