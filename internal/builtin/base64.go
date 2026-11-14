@@ -213,11 +213,14 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	ctor := bi.ctors[engine.ElementUint8]
 	proto := bi.protos[engine.ElementUint8]
 
-	// thisUint8Array implements ValidateUint8Array.
-	thisUint8Array := func(vm *engine.VM, this engine.Value, what string) *engine.TypedArray {
+	// thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
+	thisUint8Array := func(vm *engine.VM, this engine.Value, write bool, what string) *engine.TypedArray {
 		t := engine.TypedArrayData(this)
 		if t == nil || t.ElementType() != engine.ElementUint8 {
 			vm.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
+		}
+		if write && t.ArrayBuffer().IsImmutable() {
+			vm.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is backed by an immutable ArrayBuffer")
 		}
 		return t
 	}
@@ -278,20 +281,20 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		return newUint8Array(vm, r.bytes)
 	})
 	method(vm, proto, "setFromBase64", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, "setFromBase64")
+		t := thisUint8Array(vm, this, true, "setFromBase64")
 		s := stringArg(vm, args)
 		url, last := base64Options(vm, arg(args, 1))
 		b := bytesOf(vm, t, "setFromBase64")
 		return setResult(vm, t, fromBase64(s, url, last, len(b)))
 	})
 	method(vm, proto, "setFromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, "setFromHex")
+		t := thisUint8Array(vm, this, true, "setFromHex")
 		s := stringArg(vm, args)
 		b := bytesOf(vm, t, "setFromHex")
 		return setResult(vm, t, fromHex(s, len(b)))
 	})
 	method(vm, proto, "toBase64", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, "toBase64")
+		t := thisUint8Array(vm, this, false, "toBase64")
 		opts := optionsObject(vm, arg(args, 0))
 		alphabet := stringOption(vm, opts, "alphabet", "base64", "base64url")
 		omitPadding := engine.ToBoolean(vm.GetV(opts, vm.Intern("omitPadding")))
@@ -306,7 +309,7 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		return vm.NewString(enc.EncodeToString(b))
 	})
 	method(vm, proto, "toHex", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, "toHex")
+		t := thisUint8Array(vm, this, false, "toHex")
 		return vm.NewString(hex.EncodeToString(bytesOf(vm, t, "toHex")))
 	})
 }

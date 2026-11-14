@@ -114,6 +114,9 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		set := "set" + e.name
 		method(vm, proto, set, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d := thisView(vm, this, set)
+			if engine.ArrayBufferData(engine.ObjectValue(d.Buffer())).IsImmutable() {
+				vm.ThrowTypeError("DataView.prototype." + set + ": the DataView is backed by an immutable ArrayBuffer")
+			}
 			i := toIndex(vm, arg(args, 0))
 			v := vm.ToElementValue(typ, arg(args, 1))
 			le := engine.ToBoolean(arg(args, 2))

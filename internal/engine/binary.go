@@ -21,14 +21,16 @@ type ArrayBuffer struct {
 	// max is [[ArrayBufferMaxByteLength]], or -1 for a buffer whose length is fixed.
 	max int
 
-	detached bool
-	shared   bool
+	detached  bool
+	shared    bool
+	immutable bool
 
 	// waiterLists are the waiter lists of a shared buffer by byte index.
 	waiterLists map[int]*waiterList
 }
 
-// Bytes returns the contents of b. The slice stays valid until b is resized or detached.
+// Bytes returns the contents of b. The slice stays valid until b is resized or detached,
+// and must not be modified when b is immutable.
 func (b *ArrayBuffer) Bytes() []byte {
 	return b.data
 }
@@ -60,6 +62,11 @@ func (b *ArrayBuffer) IsDetached() bool {
 // IsShared implements IsSharedArrayBuffer.
 func (b *ArrayBuffer) IsShared() bool {
 	return b.shared
+}
+
+// IsImmutable implements IsImmutableBuffer.
+func (b *ArrayBuffer) IsImmutable() bool {
+	return b.immutable
 }
 
 // Resize changes the length of the resizable b to n, which must not exceed MaxByteLength.
@@ -119,10 +126,21 @@ func ArrayBufferData(v Value) *ArrayBuffer {
 	return nil
 }
 
+// NewImmutableArrayBufferFromBytes returns an immutable ArrayBuffer with the prototype proto
+// whose data is b, which it keeps. b must not be modified afterwards.
+func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
+	o := vm.NewArrayBufferFromBytes(proto, b, -1, false)
+	o.ext.(*ArrayBuffer).immutable = true
+	return o
+}
+
 // DetachArrayBuffer implements DetachArrayBuffer without a key. The buffer object o must not
-// be shared.
+// be shared. It throws a TypeError when o is immutable.
 func (vm *VM) DetachArrayBuffer(o *Object) {
 	b := o.ext.(*ArrayBuffer)
+	if b.immutable {
+		vm.ThrowTypeError("cannot detach an immutable ArrayBuffer")
+	}
 	b.data = nil
 	b.detached = true
 }
@@ -130,8 +148,9 @@ func (vm *VM) DetachArrayBuffer(o *Object) {
 // TransferArrayBuffer implements the end of ArrayBufferCopyAndDetach: it returns a new ArrayBuffer
 // with the prototype proto that has the first newByteLength bytes of the buffer object o,
 // zero-filled beyond its length, and detaches o. maxByteLength is -1 for a buffer whose length is fixed.
-// It throws a RangeError when the lengths are too large.
-func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64) *Object {
+// The new buffer is immutable when immutable is set. o must be mutable. It throws a RangeError when
+// the lengths are too large.
+func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
 	vm.checkBufferLength(newByteLength)
 	vm.checkBufferLength(maxByteLength)
 	b := o.ext.(*ArrayBuffer)
@@ -148,7 +167,9 @@ func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxBy
 		copy(data, b.data)
 	}
 	vm.DetachArrayBuffer(o)
-	return vm.NewArrayBufferFromBytes(proto, data, int(maxByteLength), false)
+	r := vm.NewArrayBufferFromBytes(proto, data, int(maxByteLength), false)
+	r.ext.(*ArrayBuffer).immutable = immutable
+	return r
 }
 
 // ElementType is the element type of a typed array.
@@ -458,6 +479,10 @@ type TypedArray struct {
 	tracking bool
 
 	typ ElementType
+
+	// numberStore reports whether the elements are numbers and the buffer is mutable,
+	// so that a number is stored without a conversion.
+	numberStore bool
 }
 
 // NewTypedArrayObject returns a typed array with the prototype proto whose elements of the type t
@@ -467,13 +492,15 @@ func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, 
 	o := vm.NewObject(proto)
 	o.class = classTypedArray
 	o.flags |= objExotic
+	data := buffer.ext.(*ArrayBuffer)
 	o.ext = &TypedArray{
-		buffer:   buffer,
-		data:     buffer.ext.(*ArrayBuffer),
-		offset:   byteOffset,
-		length:   max(length, 0),
-		tracking: length < 0,
-		typ:      t,
+		buffer:      buffer,
+		data:        data,
+		offset:      byteOffset,
+		length:      max(length, 0),
+		tracking:    length < 0,
+		typ:         t,
+		numberStore: !t.IsBigInt() && !data.immutable,
 	}
 	return o
 }
@@ -537,6 +564,7 @@ func (t *TypedArray) IsFixedLength() bool {
 
 // Bytes returns the bytes of the elements of t, or nil when t is out of bounds.
 // The slice stays valid until the buffer is resized or detached.
+// It must not be modified when the buffer is immutable.
 func (t *TypedArray) Bytes() []byte {
 	n, ok := t.Length()
 	if !ok {
@@ -629,20 +657,43 @@ func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
 	return vm.loadElement(t.typ, b)
 }
 
-// typedArraySet implements TypedArraySetElement.
-func (vm *VM) typedArraySet(o *Object, i uint32, val Value) {
+// typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
+// It reports false when the buffer is immutable.
+func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
 	t := o.ext.(*TypedArray)
-	if val.o == nil && !t.typ.IsBigInt() {
+	if val.o == nil && t.numberStore {
 		if b, ok := t.element(i); ok {
 			storeNumber(t.typ, b, val.n)
 		}
-		return
+		return true
 	}
+	if t.data.immutable {
+		return false
+	}
+	vm.typedArraySetElement(t, i, val)
+	return true
+}
+
+// typedArraySetElement implements TypedArraySetElement for the typed array t on a mutable buffer.
+func (vm *VM) typedArraySetElement(t *TypedArray, i uint32, val Value) {
 	val = vm.ToElementValue(t.typ, val)
 	// The conversion may have resized or detached the buffer.
 	if b, ok := t.element(i); ok {
 		storeBits(b, t.typ.Size(), ElementBits(t.typ, val), true)
 	}
+}
+
+// typedArrayImmutable reports whether the buffer of the typed array o is immutable.
+func typedArrayImmutable(o *Object) bool {
+	return o.ext.(*TypedArray).data.immutable
+}
+
+// typedArrayFlags returns the attributes of the elements of the typed array o.
+func typedArrayFlags(o *Object) uint8 {
+	if typedArrayImmutable(o) {
+		return FlagEnumerable
+	}
+	return FlagsData
 }
 
 // typedArrayHas implements IsValidIntegerIndex for an array index.
@@ -662,6 +713,22 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 	if !vm.typedArrayHas(o, i) {
 		return false
 	}
+	if typedArrayImmutable(o) {
+		// ValidateAndApplyPropertyDescriptor against a non-configurable, non-writable element.
+		if d.Has&HasConfigurable != 0 && d.Flags&FlagConfigurable != 0 {
+			return false
+		}
+		if d.Has&HasEnumerable != 0 && d.Flags&FlagEnumerable == 0 {
+			return false
+		}
+		if d.IsAccessor() {
+			return false
+		}
+		if d.Has&HasWritable != 0 && d.Flags&FlagWritable != 0 {
+			return false
+		}
+		return d.Has&HasValue == 0 || SameValue(d.Value, vm.typedArrayGet(o, i))
+	}
 	if d.Has&HasConfigurable != 0 && d.Flags&FlagConfigurable == 0 {
 		return false
 	}
@@ -675,7 +742,7 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 		return false
 	}
 	if d.Has&HasValue != 0 {
-		vm.typedArraySet(o, i, d.Value)
+		vm.typedArraySetElement(o.ext.(*TypedArray), i, d.Value)
 	}
 	return true
 }
@@ -781,6 +848,7 @@ func (d *DataView) ByteLength() (int, bool) {
 
 // Bytes returns the bytes that d views, or nil when d is out of bounds.
 // The slice stays valid until the buffer is resized or detached.
+// It must not be modified when the buffer is immutable.
 func (d *DataView) Bytes() []byte {
 	n, ok := d.ByteLength()
 	if !ok {

@@ -4,6 +4,8 @@
 package builtin
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -109,6 +111,9 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	getter(vm, proto, vm.Intern("detached"), "detached", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisArrayBuffer(vm, this, false, "detached").IsDetached())
 	})
+	getter(vm, proto, vm.Intern("immutable"), "immutable", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(thisArrayBuffer(vm, this, false, "immutable").IsImmutable())
+	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := thisArrayBuffer(vm, this, false, "slice")
 		if b.IsDetached() {
@@ -125,6 +130,9 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		if nb.IsDetached() {
 			vm.ThrowTypeError("species constructor returned a detached ArrayBuffer")
 		}
+		if nb.IsImmutable() {
+			vm.ThrowTypeError("species constructor returned an immutable ArrayBuffer")
+		}
 		if r == this.Object() {
 			vm.ThrowTypeError("species constructor returned the same ArrayBuffer")
 		}
@@ -139,6 +147,31 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 			copy(nb.Bytes()[:min(newLen, cur-first)], b.Bytes()[first:])
 		}
 		return engine.ObjectValue(r)
+	})
+	method(vm, proto, "sliceToImmutable", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		b := thisArrayBuffer(vm, this, false, "sliceToImmutable")
+		if b.IsDetached() {
+			vm.ThrowTypeError("cannot perform ArrayBuffer.prototype.sliceToImmutable on a detached ArrayBuffer")
+		}
+		first, final := relativeRange(vm, arg(args, 0), arg(args, 1), b.ByteLength())
+		newLen := max(final-first, 0)
+		// The conversions may have detached or shrunk the buffer.
+		if b.IsDetached() {
+			vm.ThrowTypeError("cannot perform ArrayBuffer.prototype.sliceToImmutable on a detached ArrayBuffer")
+		}
+		if b.ByteLength() < final {
+			vm.ThrowRangeError("the ArrayBuffer is too short for the slice")
+		}
+		var data []byte
+		if newLen > 0 {
+			if b.IsImmutable() {
+				// The bytes of an immutable buffer never change, so they can be shared.
+				data = b.Bytes()[first:final:final]
+			} else {
+				data = slices.Clone(b.Bytes()[first:final])
+			}
+		}
+		return engine.ObjectValue(vm.NewImmutableArrayBufferFromBytes(proto, data))
 	})
 	method(vm, proto, "resize", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ArrayBufferData(this)
@@ -155,7 +188,9 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		b.Resize(int(n))
 		return engine.Undefined
 	})
-	transfer := func(name string, preserve bool) {
+	// transfer implements ArrayBufferCopyAndDetach as the method name.
+	// preserve is ~preserve-resizability~, and immutable is ~immutable~.
+	transfer := func(name string, preserve, immutable bool) {
 		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			b := thisArrayBuffer(vm, this, false, name)
 			var n int64
@@ -167,6 +202,9 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 			if b.IsDetached() {
 				vm.ThrowTypeError("cannot transfer a detached ArrayBuffer")
 			}
+			if b.IsImmutable() {
+				vm.ThrowTypeError("cannot transfer an immutable ArrayBuffer")
+			}
 			m := int64(-1)
 			if preserve && b.IsResizable() {
 				m = int64(b.MaxByteLength())
@@ -174,11 +212,12 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 					vm.ThrowRangeError("new length exceeds maxByteLength")
 				}
 			}
-			return engine.ObjectValue(vm.TransferArrayBuffer(this.Object(), proto, n, m))
+			return engine.ObjectValue(vm.TransferArrayBuffer(this.Object(), proto, n, m, immutable))
 		})
 	}
-	transfer("transfer", true)
-	transfer("transferToFixedLength", false)
+	transfer("transfer", true, false)
+	transfer("transferToFixedLength", false, false)
+	transfer("transferToImmutable", false, true)
 	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("ArrayBuffer"), engine.FlagConfigurable)
 }
 

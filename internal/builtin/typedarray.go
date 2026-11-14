@@ -21,11 +21,25 @@ var typedArrayNames = [engine.ElementTypeCount]string{
 // pollInterval is the number of elements after which a loop that runs no JavaScript checks for an interruption.
 const pollInterval = 1 << 16
 
-// validateTypedArray implements ValidateTypedArray: it returns this as a typed array and its length.
+// validateTypedArray implements ValidateTypedArray with the access mode read: it returns this
+// as a typed array and its length.
 func validateTypedArray(vm *engine.VM, this engine.Value, what string) (*engine.Object, *engine.TypedArray, int) {
+	return validateTypedArrayAccess(vm, this, false, what)
+}
+
+// validateWritableTypedArray implements ValidateTypedArray with the access mode write.
+func validateWritableTypedArray(vm *engine.VM, this engine.Value, what string) (*engine.Object, *engine.TypedArray, int) {
+	return validateTypedArrayAccess(vm, this, true, what)
+}
+
+// validateTypedArrayAccess implements ValidateTypedArray with the access mode write when write is set.
+func validateTypedArrayAccess(vm *engine.VM, this engine.Value, write bool, what string) (*engine.Object, *engine.TypedArray, int) {
 	t := engine.TypedArrayData(this)
 	if t == nil {
 		vm.ThrowTypeError(what + ": this is not a typed array")
+	}
+	if write && t.ArrayBuffer().IsImmutable() {
+		vm.ThrowTypeError(what + ": the typed array is backed by an immutable ArrayBuffer")
 	}
 	n, ok := t.Length()
 	if !ok {
@@ -53,20 +67,20 @@ func (bi *binaryIntrinsics) newTypedArray(vm *engine.VM, proto *engine.Object, t
 	return vm.NewTypedArrayObject(proto, typ, buf, 0, int(n))
 }
 
-// createFromConstructor implements TypedArrayCreateFromConstructor.
-func createFromConstructor(vm *engine.VM, c *engine.Object, args []engine.Value) (*engine.Object, *engine.TypedArray) {
+// createFromConstructor implements TypedArrayCreateFromConstructor. The access mode is write when write is set.
+func createFromConstructor(vm *engine.VM, c *engine.Object, args []engine.Value, write bool) (*engine.Object, *engine.TypedArray) {
 	r := engine.ObjectValue(vm.Construct(c, args, c))
-	o, t, n := validateTypedArray(vm, r, "typed array constructor")
+	o, t, n := validateTypedArrayAccess(vm, r, write, "typed array constructor")
 	if len(args) == 1 && args[0].IsNumber() && float64(n) < args[0].Number() {
 		vm.ThrowTypeError("typed array constructor returned a too short typed array")
 	}
 	return o, t
 }
 
-// speciesCreate implements TypedArraySpeciesCreate.
-func (bi *binaryIntrinsics) speciesCreate(vm *engine.VM, exemplar *engine.Object, t *engine.TypedArray, args []engine.Value) (*engine.Object, *engine.TypedArray) {
+// speciesCreate implements TypedArraySpeciesCreate. The access mode is write when write is set.
+func (bi *binaryIntrinsics) speciesCreate(vm *engine.VM, exemplar *engine.Object, t *engine.TypedArray, args []engine.Value, write bool) (*engine.Object, *engine.TypedArray) {
 	c := speciesConstructor(vm, exemplar, bi.ctors[t.ElementType()])
-	o, r := createFromConstructor(vm, c, args)
+	o, r := createFromConstructor(vm, c, args, write)
 	if r.ElementType().IsBigInt() != t.ElementType().IsBigInt() {
 		vm.ThrowTypeError("typed array species constructor returned a typed array of a different content type")
 	}
@@ -342,7 +356,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		if m := vm.GetMethod(source, vm.K.SymIterator); m != nil {
 			vals := vm.IteratorToList(source, m)
-			o, t := createFromConstructor(vm, c, []engine.Value{engine.Number(float64(len(vals)))})
+			o, t := createFromConstructor(vm, c, []engine.Value{engine.Number(float64(len(vals)))}, true)
 			for i, v := range vals {
 				storeAt(vm, o, t, i, mapped(v, i))
 			}
@@ -350,7 +364,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		src := vm.ToObject(source)
 		n := vm.LengthOfArrayLike(src)
-		o, t := createFromConstructor(vm, c, []engine.Value{engine.Number(float64(n))})
+		o, t := createFromConstructor(vm, c, []engine.Value{engine.Number(float64(n))}, true)
 		for i := range n {
 			storeAt(vm, o, t, int(i), mapped(getAt(vm, src, i), int(i)))
 		}
@@ -360,7 +374,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		if !this.IsCallable() || !vm.IsConstructor(this.Object()) {
 			vm.ThrowTypeError(vm.DisplayString(this) + " is not a constructor")
 		}
-		o, t := createFromConstructor(vm, this.Object(), []engine.Value{engine.Number(float64(len(args)))})
+		o, t := createFromConstructor(vm, this.Object(), []engine.Value{engine.Number(float64(len(args)))}, true)
 		for i, v := range args {
 			storeAt(vm, o, t, i, v)
 		}
@@ -414,7 +428,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		return getAt(vm, o, int64(i))
 	})
 	method(vm, proto, "copyWithin", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.copyWithin")
+		o, t, n := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.copyWithin")
 		target := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		start, end := relativeRange(vm, arg(args, 1), arg(args, 2), n)
 		count := min(end-start, n-target)
@@ -502,7 +516,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		return engine.Undefined
 	})
 	method(vm, proto, "fill", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.fill")
+		o, t, n := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.fill")
 		typ := t.ElementType()
 		v := vm.ToElementValue(typ, arg(args, 0))
 		start, end := relativeRange(vm, arg(args, 1), arg(args, 2), n)
@@ -528,7 +542,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 				kept = append(kept, v)
 			}
 		}
-		a, at := bi.speciesCreate(vm, o, t, []engine.Value{engine.Number(float64(len(kept)))})
+		a, at := bi.speciesCreate(vm, o, t, []engine.Value{engine.Number(float64(len(kept)))}, true)
 		for i, v := range kept {
 			storeAt(vm, a, at, i, v)
 		}
@@ -612,7 +626,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.map")
 		f := callback(vm, args, "map")
 		thisArg := arg(args, 1)
-		a, at := bi.speciesCreate(vm, o, t, []engine.Value{engine.Number(float64(n))})
+		a, at := bi.speciesCreate(vm, o, t, []engine.Value{engine.Number(float64(n))}, true)
 		for i := range n {
 			v := vm.Call(f, thisArg, getAt(vm, o, int64(i)), engine.Number(float64(i)), engine.ObjectValue(o))
 			storeAt(vm, a, at, i, v)
@@ -650,7 +664,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	reduce("reduce", false)
 	reduce("reduceRight", true)
 	method(vm, proto, "reverse", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o, t, _ := validateTypedArray(vm, this, "%TypedArray%.prototype.reverse")
+		o, t, _ := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.reverse")
 		reverseElements(t.Bytes(), t.ElementType().Size())
 		return engine.ObjectValue(o)
 	})
@@ -658,6 +672,9 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		t := engine.TypedArrayData(this)
 		if t == nil {
 			vm.ThrowTypeError("%TypedArray%.prototype.set: this is not a typed array")
+		}
+		if t.ArrayBuffer().IsImmutable() {
+			vm.ThrowTypeError("%TypedArray%.prototype.set: the typed array is backed by an immutable ArrayBuffer")
 		}
 		offset := vm.ToIntegerOrInfinity(arg(args, 1))
 		if offset < 0 {
@@ -670,7 +687,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.slice")
 		start, end := relativeRange(vm, arg(args, 0), arg(args, 1), n)
 		count := max(end-start, 0)
-		a, at := bi.speciesCreate(vm, o, t, []engine.Value{engine.Number(float64(count))})
+		a, at := bi.speciesCreate(vm, o, t, []engine.Value{engine.Number(float64(count))}, true)
 		if count == 0 {
 			return engine.ObjectValue(a)
 		}
@@ -705,7 +722,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		if !cmp.IsUndefined() && !cmp.IsCallable() {
 			vm.ThrowTypeError("the comparison function must be either a function or undefined")
 		}
-		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.sort")
+		o, t, n := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.sort")
 		if cmp.IsUndefined() {
 			sortElements(t.Bytes(), t.ElementType())
 			return engine.ObjectValue(o)
@@ -732,13 +749,13 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		buf := engine.ObjectValue(t.Buffer())
 		var a *engine.Object
 		if end := arg(args, 1); t.IsLengthTracking() && end.IsUndefined() {
-			a, _ = bi.speciesCreate(vm, this.Object(), t, []engine.Value{buf, begin})
+			a, _ = bi.speciesCreate(vm, this.Object(), t, []engine.Value{buf, begin}, false)
 		} else {
 			e := n
 			if !end.IsUndefined() {
 				e = engine.RelativeIndex(vm.ToIntegerOrInfinity(end), n)
 			}
-			a, _ = bi.speciesCreate(vm, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))})
+			a, _ = bi.speciesCreate(vm, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))}, false)
 		}
 		return engine.ObjectValue(a)
 	})

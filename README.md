@@ -49,7 +49,7 @@ is published yet.
 
 ## Status
 
-About four fifths of [test262](https://github.com/tc39/test262) pass: 39,256 of 48,797 tests
+About four fifths of [test262](https://github.com/tc39/test262) pass: 39,315 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -81,7 +81,8 @@ Implemented:
 - `Promise`, including `Promise.any`, `Promise.withResolvers` and `Promise.try`; async functions,
   async generators, `await` and `for await`; `Array.fromAsync`. The jobs run when the outermost
   call from Go into the VM returns
-- `ArrayBuffer` (including resizable buffers and `transfer`), the typed arrays including
+- `ArrayBuffer` (including resizable buffers, `transfer`, and immutable buffers with
+  `transferToImmutable` and `sliceToImmutable`), the typed arrays including
   `Float16Array` and the `Uint8Array` base64 and hex methods, and `DataView`; elements are
   stored in little-endian byte order on every platform
 - `SharedArrayBuffer` and `Atomics` for a single agent: `Atomics.wait` throws, as on an agent
@@ -94,7 +95,6 @@ Missing:
 - Modules and dynamic `import`
 - `Proxy`
 - Agents (workers) sharing a `SharedArrayBuffer`
-- Immutable `ArrayBuffer`s (`transferToImmutable`, `sliceToImmutable`)
 - `Intl` and `Temporal`
 
 Known inaccuracies in what is implemented: `arguments` is not linked to the parameters in

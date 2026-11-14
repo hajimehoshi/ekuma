@@ -442,7 +442,7 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		switch o.class {
 		case classTypedArray:
 			if v := vm.typedArrayGet(o, k.idx); !v.IsUndefined() {
-				return dataDesc(v, FlagsData), true
+				return dataDesc(v, typedArrayFlags(o)), true
 			}
 			return PropDesc{}, false
 		case classString:
@@ -759,8 +759,7 @@ func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 		return nil, true
 	}
 	if o.class == classTypedArray {
-		vm.typedArraySet(o, i, val)
-		return nil, true
+		return nil, vm.typedArraySet(o, i, val)
 	}
 	// Anything but a plain store into a plain object or array takes the general path.
 	if (o.kind == kindArray || o.class == classObject) && o.flags&(objSparse|objExotic) == 0 {
@@ -787,12 +786,15 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 			return vm.proxySet(h, k, val, receiver)
 		}
 		if h.class == classTypedArray && isNumericKey(k) {
+			if typedArrayImmutable(h) {
+				return false
+			}
 			if k.key != nil {
 				vm.typedArraySetNamed(h, val, receiver)
 				return true
 			}
 			if receiver.o == h {
-				vm.typedArraySet(h, k.idx, val)
+				vm.typedArraySetElement(h.ext.(*TypedArray), k.idx, val)
 				return true
 			}
 			if !vm.typedArrayHas(h, k.idx) {

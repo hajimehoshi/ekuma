@@ -54,6 +54,37 @@ func TestTypedArray(t *testing.T) {
 				r.join()`,
 			want: "4,7,9",
 		},
+		{
+			// A store into an immutable buffer fails before the value is converted,
+			// whether or not the index is valid and whatever the receiver is.
+			name: "immutable element store",
+			src: `var ta = new Uint8Array(new Uint8Array([1, 2]).buffer.transferToImmutable()), r = [], calls = 0;
+				var v = {valueOf() { calls++; return 9; }};
+				for (var i = 0; i < 3; i++) { ta[0] = 7; ta[1] = v; }
+				r.push(ta.join(), calls);
+				try { (function() { "use strict"; ta[0] = 7; })(); r.push("no error"); } catch (e) { r.push(e.constructor.name); }
+				r.push(Reflect.set(ta, 0, 1), Reflect.set(ta, 5, 1), Reflect.set(ta, "-0", 1), Reflect.set(Object.create(ta), 0, 1));
+				r.join()`,
+			want: "1,2,0,TypeError,false,false,false,false",
+		},
+		{
+			// The elements of an immutable buffer are non-writable and non-configurable,
+			// so a typed array on one can be frozen.
+			name: "immutable element descriptors",
+			src: `var ta = new Uint8Array(new ArrayBuffer(2).transferToImmutable()), r = [];
+				var d = Object.getOwnPropertyDescriptor(ta, 0);
+				r.push(d.writable, d.enumerable, d.configurable);
+				r.push(
+					Reflect.defineProperty(ta, 0, {value: 0}),
+					Reflect.defineProperty(ta, 0, {value: 1}),
+					Reflect.defineProperty(ta, 0, {value: "0"}),
+					Reflect.defineProperty(ta, 0, {writable: true}),
+					Reflect.defineProperty(ta, 0, {writable: false, enumerable: true, configurable: false}));
+				r.push(Object.isFrozen(ta), Object.isFrozen(Object.freeze(ta)));
+				try { Object.freeze(new Uint8Array(2)); r.push("no error"); } catch (e) { r.push(e.constructor.name); }
+				r.join()`,
+			want: "false,true,false,true,false,false,false,true,false,true,TypeError",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -66,5 +97,20 @@ func TestTypedArray(t *testing.T) {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestDetachImmutableArrayBuffer tests that $262.detachArrayBuffer refuses an immutable buffer.
+func TestDetachImmutableArrayBuffer(t *testing.T) {
+	vm := ekuma.NewVM()
+	b, err := vm.RunScript(t.Context(), "test", "new ArrayBuffer(1).transferToImmutable()")
+	if err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	if err := ekuma.DetachArrayBuffer(vm, b); err == nil {
+		t.Errorf("DetachArrayBuffer: got no error")
+	}
+	if got, err := b.Get("detached"); err != nil || got.Bool() {
+		t.Errorf("detached: got %v, %v, want false", got, err)
 	}
 }

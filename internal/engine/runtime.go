@@ -233,8 +233,7 @@ func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 	if k.o == nil {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
-				vm.typedArraySet(o, i, val)
-				return nil, true
+				return nil, vm.typedArraySet(o, i, val)
 			}
 			return vm.setIndex(v, i, val)
 		}

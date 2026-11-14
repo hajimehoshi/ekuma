@@ -12,9 +12,10 @@ import (
 // The VM is a single agent that cannot suspend and shares no memory with another agent,
 // so the Atomics functions are ordinary reads and writes.
 
-// validateIntegerTypedArray implements ValidateIntegerTypedArray and returns the typed array and its length.
-func validateIntegerTypedArray(vm *engine.VM, v engine.Value, waitable bool, what string) (*engine.TypedArray, int) {
-	_, t, n := validateTypedArray(vm, v, "Atomics."+what)
+// validateIntegerTypedArray implements ValidateIntegerTypedArray, with the access mode write when write is set,
+// and returns the typed array and its length.
+func validateIntegerTypedArray(vm *engine.VM, v engine.Value, waitable, write bool, what string) (*engine.TypedArray, int) {
+	_, t, n := validateTypedArrayAccess(vm, v, write, "Atomics."+what)
 	typ := t.ElementType()
 	if waitable {
 		if typ != engine.ElementInt32 && typ != engine.ElementBigInt64 {
@@ -62,7 +63,7 @@ func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 	if async {
 		what = "waitAsync"
 	}
-	t, n := validateIntegerTypedArray(vm, arg(args, 0), true, what)
+	t, n := validateIntegerTypedArray(vm, arg(args, 0), true, false, what)
 	if !t.ArrayBuffer().IsShared() {
 		vm.ThrowTypeError("Atomics." + what + ": the typed array must be backed by a SharedArrayBuffer")
 	}
@@ -111,7 +112,7 @@ func initAtomics(vm *engine.VM) {
 	// readModifyWrite implements AtomicReadModifyWrite with op on the encodings of the elements.
 	readModifyWrite := func(name string, op func(old, v uint64) uint64) {
 		method(vm, atomics, name, 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			t, n := validateIntegerTypedArray(vm, arg(args, 0), false, name)
+			t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, name)
 			i := validateAtomicAccess(vm, n, arg(args, 1))
 			typ := t.ElementType()
 			v := toAtomicValue(vm, typ, arg(args, 2))
@@ -129,7 +130,7 @@ func initAtomics(vm *engine.VM) {
 	readModifyWrite("xor", func(old, v uint64) uint64 { return old ^ v })
 
 	method(vm, atomics, "compareExchange", 4, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, "compareExchange")
+		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, "compareExchange")
 		i := validateAtomicAccess(vm, n, arg(args, 1))
 		typ := t.ElementType()
 		expected := toAtomicValue(vm, typ, arg(args, 2))
@@ -151,13 +152,13 @@ func initAtomics(vm *engine.VM) {
 		return engine.False
 	})
 	method(vm, atomics, "load", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, "load")
+		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, false, "load")
 		i := validateAtomicAccess(vm, n, arg(args, 1))
 		b := revalidateAtomicAccess(vm, t, i)
 		return vm.ElementFromBits(t.ElementType(), engine.LoadElementBits(b, t.ElementType()))
 	})
 	method(vm, atomics, "store", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, "store")
+		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, "store")
 		i := validateAtomicAccess(vm, n, arg(args, 1))
 		typ := t.ElementType()
 		v := toAtomicValue(vm, typ, arg(args, 2))
@@ -172,7 +173,7 @@ func initAtomics(vm *engine.VM) {
 		return doWait(vm, true, args)
 	})
 	method(vm, atomics, "notify", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(vm, arg(args, 0), true, "notify")
+		t, n := validateIntegerTypedArray(vm, arg(args, 0), true, false, "notify")
 		i := validateAtomicAccess(vm, n, arg(args, 1))
 		c := math.Inf(1)
 		if v := arg(args, 2); !v.IsUndefined() {

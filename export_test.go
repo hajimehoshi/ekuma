@@ -16,11 +16,15 @@ func SetTimeZone(vm *VM, loc *time.Location) {
 }
 
 // DetachArrayBuffer detaches the ArrayBuffer v. The error is a TypeError for a value
-// that is not an ArrayBuffer.
+// that is not an ArrayBuffer or for an immutable ArrayBuffer.
 func DetachArrayBuffer(vm *VM, v Value) error {
 	e := v.engine()
-	if b := engine.ArrayBufferData(e); b == nil || b.IsShared() {
+	b := engine.ArrayBufferData(e)
+	if b == nil || b.IsShared() {
 		return &Error{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "not an ArrayBuffer"))}
+	}
+	if b.IsImmutable() {
+		return &Error{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "cannot detach an immutable ArrayBuffer"))}
 	}
 	vm.e.DetachArrayBuffer(e.Object())
 	return nil
