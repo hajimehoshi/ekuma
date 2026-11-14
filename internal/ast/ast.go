@@ -30,8 +30,9 @@ type Stmt interface {
 // Pattern is a binding or assignment target.
 //
 // The implementations are *Identifier, *MemberExpr (assignment targets only),
-// *ObjectPattern, *ArrayPattern, *AssignPattern (a target with a default value)
-// and *RestElement.
+// *CallExpr (a sloppy-mode assignment target that throws a ReferenceError when
+// assigned), *ObjectPattern, *ArrayPattern, *AssignPattern (a target with a default
+// value) and *RestElement.
 type Pattern interface {
 	Node
 	patternNode()
@@ -824,6 +825,7 @@ func (*AwaitExpr) exprNode()      {}
 
 func (*Identifier) patternNode()    {}
 func (*MemberExpr) patternNode()    {}
+func (*CallExpr) patternNode()      {}
 func (*ObjectPattern) patternNode() {}
 func (*ArrayPattern) patternNode()  {}
 func (*AssignPattern) patternNode() {}

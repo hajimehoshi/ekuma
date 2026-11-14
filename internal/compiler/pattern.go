@@ -40,6 +40,8 @@ func (f *fn) destructure(p ast.Pattern, src int32, mode patMode) {
 	case *ast.MemberExpr:
 		t := f.assignTarget(p)
 		f.storeTarget(t, src)
+	case *ast.CallExpr:
+		f.callTarget(p)
 	case *ast.AssignPattern:
 		v := f.newReg()
 		f.emit(bytecode.OpMove, v, src, 0)

@@ -481,7 +481,8 @@ func TestInvalid(t *testing.T) {
 			src: "(a, b) = 2",
 		},
 		{
-			src: "f() = 1",
+			src:  "f() = 1",
+			mode: strict,
 		},
 		{
 			src: "this = 1",

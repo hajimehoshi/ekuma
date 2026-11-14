@@ -335,13 +335,6 @@ test/annexB/language/eval-code/indirect/global-switch-case-eval-global-init.js
 test/annexB/language/eval-code/indirect/global-switch-dflt-eval-global-init.js
 test/annexB/language/expressions/assignment/dstr/array-pattern-emulates-undefined.js
 test/annexB/language/expressions/assignment/dstr/object-pattern-emulates-undefined.js
-test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-in-lhs.js
-test/annexB/language/expressions/assignmenttargettype/callexpression-as-for-of-lhs.js
-test/annexB/language/expressions/assignmenttargettype/callexpression-in-compound-assignment.js
-test/annexB/language/expressions/assignmenttargettype/callexpression-in-postfix-update.js
-test/annexB/language/expressions/assignmenttargettype/callexpression-in-prefix-update.js
-test/annexB/language/expressions/assignmenttargettype/callexpression.js
-test/annexB/language/expressions/assignmenttargettype/cover-callexpression-and-asyncarrowhead.js
 test/annexB/language/expressions/coalesce/emulates-undefined.js
 test/annexB/language/expressions/logical-assignment/emulates-undefined-coalesce.js
 test/annexB/language/expressions/strict-does-not-equals/emulates-undefined.js
@@ -6519,7 +6512,6 @@ test/language/expressions/assignmenttargettype/direct-importcall.js
 test/language/expressions/assignmenttargettype/parenthesized-importcall-defer.js
 test/language/expressions/assignmenttargettype/parenthesized-importcall-source.js
 test/language/expressions/assignmenttargettype/parenthesized-importcall.js
-test/language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js
 test/language/expressions/async-arrow-function/eval-var-scope-syntax-err.js
 test/language/expressions/async-function/named-eval-var-scope-syntax-err.js
 test/language/expressions/async-function/named-reassign-fn-name-in-body-in-eval.js

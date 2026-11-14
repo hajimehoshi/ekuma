@@ -769,6 +769,13 @@ func (p *parser) declarePattern(pat ast.Pattern, mode declMode) {
 	}
 }
 
+// noteAwaitIdent records pos as the first use of await as an identifier when name is await.
+func (p *parser) noteAwaitIdent(name string, pos int32) {
+	if name == "await" && p.f.awaitIdentPos == 0 {
+		p.f.awaitIdentPos = pos + 1
+	}
+}
+
 // checkIdent checks that name may be used as an identifier reference, or as a binding when binding is set.
 func (p *parser) checkIdent(name string, pos int32, binding bool) {
 	switch name {
@@ -780,9 +787,7 @@ func (p *parser) checkIdent(name string, pos int32, binding bool) {
 		if p.f.await || p.f.awaitReserved {
 			p.fail(int(pos), "await is not a valid identifier here")
 		}
-		if p.f.awaitIdentPos == 0 {
-			p.f.awaitIdentPos = pos + 1
-		}
+		p.noteAwaitIdent(name, pos)
 	case "let", "static", "implements", "interface", "package", "private", "protected", "public":
 		if p.f.strict {
 			p.fail(int(pos), "'"+name+"' is a reserved word in strict mode")

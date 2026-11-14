@@ -17,7 +17,21 @@ func (p *parser) toAssignTarget(e ast.Expr) ast.Pattern {
 		}
 		return p.toPattern(e, false)
 	}
+	if p.isCallTarget(e) {
+		return e.(*ast.CallExpr)
+	}
 	return p.toSimpleTarget(e)
+}
+
+// isCallTarget reports whether e is a function call that sloppy mode accepts as the target of
+// an assignment other than a logical one, of an update or of a for-in or for-of head.
+func (p *parser) isCallTarget(e ast.Expr) bool {
+	c, ok := e.(*ast.CallExpr)
+	if !ok || p.f.strict {
+		return false
+	}
+	_, super := c.Callee.(*ast.SuperExpr)
+	return !super
 }
 
 // toSimpleTarget checks that e is a simple assignment target.
@@ -166,6 +180,9 @@ func (p *parser) parseBindingTarget() ast.Pattern {
 			Span: span(start, p.t.end),
 			Name: p.t.str,
 		}
+		// The binding is checked when it is declared, possibly in a function state other than the
+		// current one, so a use of await that may belong to an enclosing async arrow head is noted here.
+		p.noteAwaitIdent(id.Name, start)
 		p.next()
 		return id
 	case tLBrack:
@@ -233,6 +250,7 @@ func (p *parser) parseBindingTarget() ast.Pattern {
 					p.unexpected()
 				}
 				id := key.(*ast.Identifier)
+				p.noteAwaitIdent(id.Name, propStart)
 				prop.Shorthand = true
 				prop.Value = id
 				if p.eat(tAssign) {

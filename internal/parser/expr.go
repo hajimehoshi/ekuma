@@ -79,6 +79,8 @@ func (p *parser) parseAssignCover() (result ast.Expr, cover int32) {
 				if p.coverNode == left {
 					p.cover = 0
 				}
+			} else if op != ast.OpAnd && op != ast.OpOr && op != ast.OpCoalesce && p.isCallTarget(left) {
+				target = left.(*ast.CallExpr)
 			} else {
 				target = p.toSimpleTarget(left)
 			}
@@ -354,6 +356,9 @@ func (p *parser) checkUpdateTarget(e ast.Expr) {
 		}
 	case *ast.MemberExpr:
 	default:
+		if p.isCallTarget(e) {
+			return
+		}
 		p.fail(int(e.Start()), "invalid operand of an increment or decrement")
 	}
 }
@@ -1105,9 +1110,7 @@ func (p *parser) parseIdentPrimary() ast.Expr {
 		}
 	}
 	if canArrow && p.t.kind == tArrow && !p.t.nl {
-		if id.Name == "await" && p.f.awaitIdentPos == 0 {
-			p.f.awaitIdentPos = start + 1
-		}
+		p.noteAwaitIdent(id.Name, start)
 		return p.parseArrow(start, []ast.Pattern{id}, false, 0, -1)
 	}
 	p.checkIdent(id.Name, start, false)

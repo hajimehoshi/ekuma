@@ -566,9 +566,18 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 		f.emit(op, res, old, 0)
 		f.storeTarget(t, res)
 		f.emit(bytecode.OpMove, dst, old, 0)
+	case *ast.CallExpr:
+		f.callTarget(arg)
 	default:
 		f.c.fail(n, "invalid update target")
 	}
+}
+
+// callTarget evaluates the call n used as an assignment target and throws the ReferenceError
+// for assigning to it.
+func (f *fn) callTarget(n *ast.CallExpr) {
+	f.effect(n)
+	f.emit(bytecode.OpThrowError, bytecode.ThrowReferenceError, f.constStr("invalid assignment target"), 0)
 }
 
 // memberTarget is a property reference whose object and key are evaluated.
@@ -1290,6 +1299,8 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				f.emit(bytecode.OpMove, dst, v, 0)
 			}
 		}
+	case *ast.CallExpr:
+		f.callTarget(target)
 	default:
 		v := f.exprAny(n.Value)
 		f.destructure(n.Target, v, patAssign)
