@@ -177,8 +177,8 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	})
 }
 
-// formatHalfUp formats n like strconv.FormatFloat with the format fmt ('e' or 'f') and the precision prec (non-negative),
-// except that an exact tie rounds away from zero.
+// formatHalfUp formats n like [strconv.FormatFloat] with the format fmt ('e' or 'f') and the
+// precision prec (non-negative), except that an exact tie rounds away from zero.
 func formatHalfUp(n float64, fmt byte, prec int) string {
 	// A tie shows as a trailing 5 with one more digit, and that string is then exactly n.
 	t := strconv.FormatFloat(n, fmt, prec+1, 64)

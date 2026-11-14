@@ -8,7 +8,7 @@ import (
 )
 
 // Parse returns the time value that the string s represents, or NaN. It accepts the
-// date time string format of ECMAScript, the formats of String and UTCString, and some
+// date time string format of ECMAScript, the formats of [String] and [UTCString], and some
 // common legacy formats. A time without an offset is a local time of tz.
 func Parse(s string, tz TimeZone) float64 {
 	if f, ok := parseISO(s, tz); ok {
@@ -246,7 +246,7 @@ func legacyYear(y float64, n int) float64 {
 	return y
 }
 
-// parseLegacy parses the formats of String and UTCString and some common legacy formats.
+// parseLegacy parses the formats of [String] and [UTCString] and some common legacy formats.
 func parseLegacy(s string, tz TimeZone) float64 {
 	nan := math.NaN()
 	sc := scanner{s: s}

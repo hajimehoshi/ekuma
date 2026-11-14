@@ -77,10 +77,10 @@ type PromiseCapability struct {
 	promise *Object
 
 	// resolve and reject are the [[Resolve]] and [[Reject]] functions. For a promise that
-	// the VM created itself, they are nil until something asks for them.
+	// the [VM] created itself, they are nil until something asks for them.
 	resolve, reject *Object
 
-	// intrinsic is set when the VM created the promise and its resolving functions are
+	// intrinsic is set when the [VM] created the promise and its resolving functions are
 	// the ones of CreateResolvingFunctions, which then share alreadyResolved.
 	intrinsic       bool
 	alreadyResolved bool

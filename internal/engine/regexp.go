@@ -15,7 +15,7 @@ type regExpState struct {
 	legacy  bool
 }
 
-// regExpCacheLimit bounds the number of compiled patterns that a VM keeps.
+// regExpCacheLimit bounds the number of compiled patterns that a [VM] keeps.
 const regExpCacheLimit = 1024
 
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor

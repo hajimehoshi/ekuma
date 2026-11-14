@@ -11,14 +11,14 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// maxRetainedBuffer is the largest string buffer that a Parser keeps for the next call.
+// maxRetainedBuffer is the largest string buffer that a [Parser] keeps for the next call.
 const maxRetainedBuffer = 1 << 23
 
 func throwSyntaxError(vm *engine.VM, msg string) {
 	vm.Throw(vm.NewError(engine.ErrorKindSyntax, msg))
 }
 
-// Record is a JSON Parse Record: what a part of the text produced, for Revive.
+// Record is a JSON Parse Record: what a part of the text produced, for [Revive].
 type Record struct {
 	value engine.Value
 
@@ -99,7 +99,7 @@ func (p *Parser) Parse(vm *engine.VM, src string) engine.Value {
 	return v
 }
 
-// ParseWithRecord is like Parse, and also returns the parse record of the value.
+// ParseWithRecord is like [Parser.Parse], and also returns the parse record of the value.
 func (p *Parser) ParseWithRecord(vm *engine.VM, src string) (engine.Value, *Record) {
 	return p.parse(vm, src, true)
 }

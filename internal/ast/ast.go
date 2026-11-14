@@ -29,10 +29,10 @@ type Stmt interface {
 
 // Pattern is a binding or assignment target.
 //
-// The implementations are *Identifier, *MemberExpr (assignment targets only),
-// *CallExpr (a sloppy-mode assignment target that throws a ReferenceError when
-// assigned), *ObjectPattern, *ArrayPattern, *AssignPattern (a target with a default
-// value) and *RestElement.
+// The implementations are [*Identifier], [*MemberExpr] (assignment targets only),
+// [*CallExpr] (a sloppy-mode assignment target that throws a ReferenceError when
+// assigned), [*ObjectPattern], [*ArrayPattern], [*AssignPattern] (a target with a default
+// value) and [*RestElement].
 type Pattern interface {
 	Node
 	patternNode()
@@ -54,7 +54,7 @@ func (s Span) End() int32 { return s.EndOff }
 type Op uint8
 
 const (
-	// OpNone is the absence of an operator. In an AssignExpr it means plain assignment.
+	// OpNone is the absence of an operator. In an [AssignExpr] it means plain assignment.
 	OpNone Op = iota
 
 	OpAdd
@@ -152,7 +152,7 @@ type Identifier struct {
 	Parenthesized bool
 }
 
-// PrivateName is a private identifier such as #x. Name excludes the '#'.
+// PrivateName is a private identifier such as #x. [PrivateName.Name] excludes the '#'.
 type PrivateName struct {
 	Span
 	Name string
@@ -175,26 +175,28 @@ type NumberLit struct {
 	Value float64
 }
 
-// BigIntLit is a BigInt literal. Value is its decimal digit string.
+// BigIntLit is a BigInt literal. [BigIntLit.Value] is its decimal digit string.
 type BigIntLit struct {
 	Span
 	Value string
 }
 
-// StringLit is a string literal. Value is in WTF-8.
+// StringLit is a string literal. [StringLit.Value] is in WTF-8.
 type StringLit struct {
 	Span
 	Value string
 }
 
-// RegExpLit is a regular expression literal. Pattern and Flags are source text.
+// RegExpLit is a regular expression literal. [RegExpLit.Pattern] and [RegExpLit.Flags] are source
+// text.
 type RegExpLit struct {
 	Span
 	Pattern string
 	Flags   string
 }
 
-// TemplateElement is a string part of a template literal. Cooked and Raw are in WTF-8.
+// TemplateElement is a string part of a template literal. [TemplateElement.Cooked] and
+// [TemplateElement.Raw] are in WTF-8.
 type TemplateElement struct {
 	Span
 	Cooked string
@@ -204,7 +206,7 @@ type TemplateElement struct {
 	HasCooked bool
 }
 
-// TemplateLit is a template literal. len(Quasis) is len(Exprs)+1.
+// TemplateLit is a template literal. len([TemplateLit.Quasis]) is len([TemplateLit.Exprs])+1.
 type TemplateLit struct {
 	Span
 	Quasis []TemplateElement
@@ -223,7 +225,7 @@ type ThisExpr struct {
 	Span
 }
 
-// SuperExpr is the super keyword. It only appears as MemberExpr.Object or CallExpr.Callee.
+// SuperExpr is the super keyword. It only appears as [MemberExpr.Object] or [CallExpr.Callee].
 type SuperExpr struct {
 	Span
 }
@@ -252,7 +254,7 @@ const (
 	PhaseSource
 )
 
-// ImportCall is a dynamic import. Options is nil when absent.
+// ImportCall is a dynamic import. [ImportCall.Options] is nil when absent.
 type ImportCall struct {
 	Span
 	Phase   ImportPhase
@@ -260,7 +262,7 @@ type ImportCall struct {
 	Options Expr
 }
 
-// ArrayLit is an array literal. A nil element is a hole. An element may be a *SpreadElement.
+// ArrayLit is an array literal. A nil element is a hole. An element may be a [*SpreadElement].
 type ArrayLit struct {
 	Span
 	Elements []Expr
@@ -272,11 +274,11 @@ type PropertyKind uint8
 const (
 	// PropertyInit is a key and value pair, including shorthand properties.
 	PropertyInit PropertyKind = iota
-	// PropertyMethod is a method definition. Value is a *Function.
+	// PropertyMethod is a method definition. [Property.Value] is a [*Function].
 	PropertyMethod
-	// PropertyGet is a getter. Value is a *Function.
+	// PropertyGet is a getter. [Property.Value] is a [*Function].
 	PropertyGet
-	// PropertySet is a setter. Value is a *Function.
+	// PropertySet is a setter. [Property.Value] is a [*Function].
 	PropertySet
 	// PropertySpread is a spread property. Key is nil and Value is the spread operand.
 	PropertySpread
@@ -284,7 +286,8 @@ const (
 
 // Property is a property of an object literal.
 //
-// Key is an *Identifier, *StringLit, *NumberLit or *BigIntLit, or any expression when Computed is set.
+// Key is an [*Identifier], [*StringLit], [*NumberLit] or [*BigIntLit], or any expression when
+// [Property.Computed] is set.
 type Property struct {
 	Span
 	Kind      PropertyKind
@@ -303,8 +306,8 @@ type ObjectLit struct {
 // Function is a function of any kind: declaration, expression, arrow function, method, accessor,
 // class constructor, class field initializer or class static block.
 //
-// Body holds the statements of a block body. ExprBody is set instead for an arrow function
-// with an expression body and for a class field initializer.
+// Body holds the statements of a block body. [Function.ExprBody] is set instead for an arrow
+// function with an expression body and for a class field initializer.
 type Function struct {
 	Span
 	Name     *Identifier
@@ -331,7 +334,8 @@ type Function struct {
 	// DerivedConstructor reports the constructor of a class with an extends clause.
 	DerivedConstructor bool
 
-	// FieldInit reports the initializer of a class field. ExprBody is the initializer expression.
+	// FieldInit reports the initializer of a class field. [Function.ExprBody] is the initializer
+	// expression.
 	FieldInit bool
 	// StaticBlock reports a class static initialization block.
 	StaticBlock bool
@@ -370,7 +374,8 @@ const (
 
 // ClassMember is an element of a class body.
 //
-// Key is an *Identifier, *StringLit, *NumberLit, *BigIntLit or *PrivateName, or any expression when Computed is set.
+// Key is an [*Identifier], [*StringLit], [*NumberLit], [*BigIntLit] or [*PrivateName], or any
+// expression when [ClassMember.Computed] is set.
 type ClassMember struct {
 	Span
 	Kind     MemberKind
@@ -401,7 +406,7 @@ type UnaryExpr struct {
 	Arg Expr
 }
 
-// UpdateExpr is an increment or decrement. Arg is an *Identifier or a *MemberExpr.
+// UpdateExpr is an increment or decrement. [UpdateExpr.Arg] is an [*Identifier] or a [*MemberExpr].
 type UpdateExpr struct {
 	Span
 	Op     Op
@@ -432,9 +437,11 @@ type PrivateInExpr struct {
 	Right Expr
 }
 
-// AssignExpr is an assignment. Op is OpNone for plain assignment, and the binary or logical operator otherwise.
+// AssignExpr is an assignment. [AssignExpr.Op] is [OpNone] for plain assignment, and the binary or
+// logical operator otherwise.
 //
-// Target is an *Identifier or a *MemberExpr, or with plain assignment an *ObjectPattern or an *ArrayPattern.
+// Target is an [*Identifier] or a [*MemberExpr], or with plain assignment an [*ObjectPattern] or an
+// [*ArrayPattern].
 type AssignExpr struct {
 	Span
 	Op     Op
@@ -450,7 +457,8 @@ type CondExpr struct {
 	Alternate  Expr
 }
 
-// CallExpr is a call. Callee may be a *SuperExpr. An argument may be a *SpreadElement.
+// CallExpr is a call. [CallExpr.Callee] may be a [*SuperExpr]. An argument may be a
+// [*SpreadElement].
 type CallExpr struct {
 	Span
 	Callee Expr
@@ -469,8 +477,8 @@ type NewExpr struct {
 
 // MemberExpr is a property access.
 //
-// Property is an *Identifier or a *PrivateName, or any expression when Computed is set.
-// Object may be a *SuperExpr.
+// Property is an [*Identifier] or a [*PrivateName], or any expression when [MemberExpr.Computed] is
+// set. Object may be a [*SuperExpr].
 type MemberExpr struct {
 	Span
 	Object   Expr
@@ -481,7 +489,8 @@ type MemberExpr struct {
 	Optional bool
 }
 
-// OptionalChain wraps a whole optional chain. A short circuit inside Expr ends the evaluation of the chain.
+// OptionalChain wraps a whole optional chain. A short circuit inside [OptionalChain.Expr] ends the
+// evaluation of the chain.
 type OptionalChain struct {
 	Span
 	Expr Expr
@@ -499,7 +508,7 @@ type SpreadElement struct {
 	Arg Expr
 }
 
-// YieldExpr is a yield expression. Arg may be nil.
+// YieldExpr is a yield expression. [YieldExpr.Arg] may be nil.
 type YieldExpr struct {
 	Span
 	Arg      Expr
@@ -521,14 +530,15 @@ type PatternProperty struct {
 	Value     Pattern
 }
 
-// ObjectPattern is an object destructuring pattern. Rest is nil when absent.
+// ObjectPattern is an object destructuring pattern. [ObjectPattern.Rest] is nil when absent.
 type ObjectPattern struct {
 	Span
 	Properties []PatternProperty
 	Rest       Pattern
 }
 
-// ArrayPattern is an array destructuring pattern. A nil element is a hole. The last element may be a *RestElement.
+// ArrayPattern is an array destructuring pattern. A nil element is a hole. The last element may be
+// a [*RestElement].
 type ArrayPattern struct {
 	Span
 	Elements []Pattern
@@ -552,19 +562,20 @@ type ExprStmt struct {
 	Span
 	Expr Expr
 
-	// Directive reports whether the statement belongs to a directive prologue. Expr is then a *StringLit.
+	// Directive reports whether the statement belongs to a directive prologue. [ExprStmt.Expr] is
+	// then a [*StringLit].
 	Directive bool
 }
 
-// Declarator is one binding of a variable declaration. Init may be nil.
+// Declarator is one binding of a variable declaration. [Declarator.Init] may be nil.
 type Declarator struct {
 	Span
 	Target Pattern
 	Init   Expr
 }
 
-// VarDecl is a var, let, const, using or await using declaration. Kind is DeclVar, DeclLet,
-// DeclConst, DeclUsing or DeclAwaitUsing.
+// VarDecl is a var, let, const, using or await using declaration. [VarDecl.Kind] is [DeclVar],
+// [DeclLet], [DeclConst], [DeclUsing] or [DeclAwaitUsing].
 type VarDecl struct {
 	Span
 	Kind  DeclKind
@@ -599,7 +610,7 @@ type EmptyStmt struct {
 	Span
 }
 
-// IfStmt is an if statement. Alternate may be nil.
+// IfStmt is an if statement. [IfStmt.Alternate] may be nil.
 type IfStmt struct {
 	Span
 	Test       Expr
@@ -607,7 +618,8 @@ type IfStmt struct {
 	Alternate  Stmt
 }
 
-// ForStmt is a for statement. Init is nil, a *VarDecl or an Expr. Test and Update may be nil.
+// ForStmt is a for statement. [ForStmt.Init] is nil, a [*VarDecl] or an [Expr]. [ForStmt.Test] and
+// [ForStmt.Update] may be nil.
 type ForStmt struct {
 	Span
 	Init   Node
@@ -619,7 +631,7 @@ type ForStmt struct {
 	Scope *Scope
 }
 
-// ForInStmt is a for-in statement. Exactly one of Decl and Target is set.
+// ForInStmt is a for-in statement. Exactly one of [ForInStmt.Decl] and [ForInStmt.Target] is set.
 type ForInStmt struct {
 	Span
 	Decl   *VarDecl
@@ -629,7 +641,7 @@ type ForInStmt struct {
 	Scope  *Scope
 }
 
-// ForOfStmt is a for-of statement. Exactly one of Decl and Target is set.
+// ForOfStmt is a for-of statement. Exactly one of [ForOfStmt.Decl] and [ForOfStmt.Target] is set.
 type ForOfStmt struct {
 	Span
 	Decl   *VarDecl
@@ -654,19 +666,19 @@ type DoWhileStmt struct {
 	Test Expr
 }
 
-// ReturnStmt is a return statement. Arg may be nil.
+// ReturnStmt is a return statement. [ReturnStmt.Arg] may be nil.
 type ReturnStmt struct {
 	Span
 	Arg Expr
 }
 
-// BreakStmt is a break statement. Label may be nil.
+// BreakStmt is a break statement. [BreakStmt.Label] may be nil.
 type BreakStmt struct {
 	Span
 	Label *Identifier
 }
 
-// ContinueStmt is a continue statement. Label may be nil.
+// ContinueStmt is a continue statement. [ContinueStmt.Label] may be nil.
 type ContinueStmt struct {
 	Span
 	Label *Identifier
@@ -680,8 +692,8 @@ type ThrowStmt struct {
 
 // TryStmt is a try statement.
 //
-// Handler is nil without a catch clause. Param and CatchScope are nil without a catch parameter.
-// Finalizer is nil without a finally clause.
+// [TryStmt.Handler] is nil without a catch clause. [TryStmt.Param] and [TryStmt.CatchScope] are nil
+// without a catch parameter. [TryStmt.Finalizer] is nil without a finally clause.
 type TryStmt struct {
 	Span
 	Block *BlockStmt
@@ -693,7 +705,7 @@ type TryStmt struct {
 	Finalizer *BlockStmt
 }
 
-// SwitchCase is a clause of a switch statement. Test is nil for the default clause.
+// SwitchCase is a clause of a switch statement. [SwitchCase.Test] is nil for the default clause.
 type SwitchCase struct {
 	Span
 	Test Expr
@@ -750,7 +762,8 @@ const (
 	ImportSource
 )
 
-// ImportSpecifier is one binding of an import declaration. Imported is only meaningful for ImportNamed.
+// ImportSpecifier is one binding of an import declaration. [ImportSpecifier.Imported] is only
+// meaningful for [ImportNamed].
 type ImportSpecifier struct {
 	Span
 	Kind     ImportKind
@@ -765,8 +778,8 @@ type ImportAttribute struct {
 	Value *StringLit
 }
 
-// ImportDecl is an import declaration. A declaration of PhaseDefer has one ImportNamespace
-// specifier, and one of PhaseSource has one ImportSource specifier.
+// ImportDecl is an import declaration. A declaration of [PhaseDefer] has one [ImportNamespace]
+// specifier, and one of [PhaseSource] has one [ImportSource] specifier.
 type ImportDecl struct {
 	Span
 	Phase      ImportPhase
@@ -782,8 +795,8 @@ type ExportSpecifier struct {
 	Exported ModuleName
 }
 
-// ExportNamedDecl is an export of a declaration (Decl is set) or of an export clause.
-// Source is nil unless the clause re-exports from another module.
+// ExportNamedDecl is an export of a declaration ([ExportNamedDecl.Decl] is set) or of an export
+// clause. [ExportNamedDecl.Source] is nil unless the clause re-exports from another module.
 type ExportNamedDecl struct {
 	Span
 	Decl       Stmt
@@ -792,15 +805,15 @@ type ExportNamedDecl struct {
 	Attributes []ImportAttribute
 }
 
-// ExportDefaultDecl is a default export. Exactly one of Decl and Expr is set.
-// Decl is a *FuncDecl or a *ClassDecl whose name may be nil.
+// ExportDefaultDecl is a default export. Exactly one of [ExportDefaultDecl.Decl] and
+// [ExportDefaultDecl.Expr] is set. Decl is a [*FuncDecl] or a [*ClassDecl] whose name may be nil.
 type ExportDefaultDecl struct {
 	Span
 	Decl Stmt
 	Expr Expr
 }
 
-// ExportAllDecl is an export * declaration. Exported is nil without an as clause.
+// ExportAllDecl is an export * declaration. [ExportAllDecl.Exported] is nil without an as clause.
 type ExportAllDecl struct {
 	Span
 	Exported   *ModuleName

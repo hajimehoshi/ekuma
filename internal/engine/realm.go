@@ -12,7 +12,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// New creates a VM with the standard built-in objects. hostDefined is what HostDefined returns.
+// New creates a [VM] with the standard built-in objects. hostDefined is what [VM.HostDefined]
+// returns.
 func New(hostDefined any) *VM {
 	vm := &VM{
 		hostDefined: hostDefined,
@@ -188,7 +189,7 @@ func itoa(n int) string {
 // RunScript evaluates src as a script and returns the value of its last expression statement.
 // file names the script in error messages.
 //
-// The error is a *SyntaxError when src is not a valid script, and an *Error when
+// The error is a [*SyntaxError] when src is not a valid script, and an [*Error] when
 // the script throws.
 func (vm *VM) RunScript(file, src string) (Value, error) {
 	fp, err := vm.compileScript(file, src)
@@ -258,7 +259,8 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	return vm.link(bc, &scriptOrModule{file: file}), nil
 }
 
-// compileFunction compiles the function of parser.ParseFunction into a script that evaluates to it.
+// compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
+// to it.
 func (vm *VM) compileFunction(file, params, body string, kind parser.FunctionKind) (*funcProto, error) {
 	prog, err := parser.ParseFunction(params, body, kind, parser.Options{})
 	if err != nil {
@@ -272,7 +274,8 @@ func (vm *VM) compileFunction(file, params, body string, kind parser.FunctionKin
 	return vm.link(bc, vm.activeScriptOrModule()), nil
 }
 
-// toSyntaxError converts an error of the parser or the compiler for the source file to a *SyntaxError.
+// toSyntaxError converts an error of the parser or the compiler for the source file to a
+// [*SyntaxError].
 func toSyntaxError(file string, err error) error {
 	if pe, ok := errors.AsType[*parser.Error](err); ok {
 		return &SyntaxError{

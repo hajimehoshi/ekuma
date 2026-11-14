@@ -34,7 +34,7 @@ type ImportAttribute struct {
 	Value string
 }
 
-// ModuleRequest is a ModuleRequest Record. Attributes are sorted by key.
+// ModuleRequest is a ModuleRequest Record. [ModuleRequest.Attributes] are sorted by key.
 type ModuleRequest struct {
 	Specifier  string
 	Attributes []ImportAttribute
@@ -62,7 +62,7 @@ func requestKey(r ModuleRequest) string {
 // or module was given, or empty. The engine calls it at most once for a request of a referrer
 // that completed normally.
 //
-// The error is an *Error for a thrown value, a *SyntaxError, or any other error, which is
+// The error is an [*Error] for a thrown value, a [*SyntaxError], or any other error, which is
 // thrown as an Error with its message.
 type HostLoadImportedModuleFunc func(vm *VM, referrer *Module, file string, req ModuleRequest) (*Module, error)
 
@@ -76,7 +76,7 @@ type ImportMetaProperty struct {
 	Value Value
 }
 
-// moduleHost is the state of the VM for modules.
+// moduleHost is the state of the [VM] for modules.
 type moduleHost struct {
 	load HostLoadImportedModuleFunc
 	meta HostGetImportMetaPropertiesFunc
@@ -172,7 +172,7 @@ func newCell(v Value) *upvalue {
 }
 
 // ParseModule implements ParseModule for the source text src. file names the module in error
-// messages and stack traces, and hostDefined is the [[HostDefined]]. The error is a *SyntaxError.
+// messages and stack traces, and hostDefined is the [[HostDefined]]. The error is a [*SyntaxError].
 func (vm *VM) ParseModule(file, src string, hostDefined any) (*Module, error) {
 	prog, err := parser.ParseModule(wtf8.FromValidUTF8(src), parser.Options{})
 	if err != nil {
@@ -219,7 +219,7 @@ func (m *Module) isCyclic() bool {
 }
 
 // RunModule loads the modules that m requests, links m and evaluates it, and returns the
-// promise of the evaluation. The error is an *Error when loading or linking fails, which is
+// promise of the evaluation. The error is an [*Error] when loading or linking fails, which is
 // before any module code runs.
 func (vm *VM) RunModule(m *Module) (Value, error) {
 	return vm.enter(func() Value {
@@ -298,7 +298,7 @@ func allImportAttributesSupported(attrs []ImportAttribute) bool {
 	return true
 }
 
-// moduleRequest converts the request of compiled code to a ModuleRequest.
+// moduleRequest converts the request of compiled code to a [ModuleRequest].
 func moduleRequest(r bytecode.ModuleRequest) ModuleRequest {
 	req := ModuleRequest{
 		Specifier: r.Specifier,

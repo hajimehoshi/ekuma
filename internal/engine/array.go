@@ -46,7 +46,7 @@ func (o *Object) Element(i int64) (Value, bool) {
 }
 
 // SetElement stores v as the own property of o with the integer index i when
-// Element returns that property, and reports whether it did.
+// [Object.Element] returns that property, and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {
 	if i >= 0 && i < int64(len(o.elems)) && !o.elems[i].isHole() {
 		o.elems[i] = v

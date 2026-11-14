@@ -27,10 +27,10 @@ const (
 	FlagSticky                        // y
 )
 
-// flagLetters lists the flag letters in the order of the bits of Flags.
+// flagLetters lists the flag letters in the order of the bits of [Flags].
 const flagLetters = "dgimsuvy"
 
-// ErrSyntax is the error that every syntax error of a pattern or of flags matches with errors.Is.
+// ErrSyntax is the error that every syntax error of a pattern or of flags matches with [errors.Is].
 var ErrSyntax = errors.New("regexp: syntax error")
 
 // Error is a syntax error in a pattern or in flags.
@@ -42,7 +42,7 @@ func (e *Error) Error() string {
 	return "invalid regular expression: " + e.Msg
 }
 
-// Is reports whether target is ErrSyntax.
+// Is reports whether target is [ErrSyntax].
 func (e *Error) Is(target error) bool {
 	return target == ErrSyntax
 }
@@ -77,7 +77,7 @@ func (f Flags) String() string {
 }
 
 // Regexp is a compiled regular expression. It is immutable and may be used by several
-// goroutines at once, each with its own Matcher.
+// goroutines at once, each with its own [Matcher].
 type Regexp struct {
 	prog  *program
 	flags Flags
@@ -128,7 +128,8 @@ func (re *Regexp) GroupCount() int {
 	return re.groupCount
 }
 
-// GroupName returns the name of the capturing group i, which is from 1 to GroupCount, or "".
+// GroupName returns the name of the capturing group i, which is from 1 to [Regexp.GroupCount], or
+// "".
 func (re *Regexp) GroupName(i int) string {
 	return re.groupNames[i]
 }
@@ -140,7 +141,7 @@ func (re *Regexp) Names() []string {
 }
 
 // Poller is what a long match calls now and then, so that it can be stopped.
-// Poll stops the match by panicking.
+// [Poller.Poll] stops the match by panicking.
 type Poller interface {
 	Poll()
 }

@@ -33,7 +33,7 @@ func IsError(v Value) bool {
 	return v.IsObject() && v.o.class == classError
 }
 
-// ErrorStack returns the stack trace that RecordStack recorded for the error object v.
+// ErrorStack returns the stack trace that [VM.RecordStack] recorded for the error object v.
 // It reports false when v has no [[ErrorData]] internal slot or no recorded stack trace.
 func ErrorStack(v Value) (string, bool) {
 	if !IsError(v) {
@@ -44,7 +44,7 @@ func ErrorStack(v Value) (string, bool) {
 }
 
 // NewIteratorObject returns a built-in iterator object with the prototype proto.
-// state is what IteratorState returns for it.
+// state is what [IteratorState] returns for it.
 func (vm *VM) NewIteratorObject(proto *Object, state any) *Object {
 	it := vm.NewObject(proto)
 	it.class = classIterator
@@ -221,7 +221,7 @@ func (o *Object) IsRawJSON() bool {
 }
 
 // NewDisposableStackObject returns a DisposableStack object, or an AsyncDisposableStack object
-// when async is set, with the prototype proto. state is what DisposableStackState returns for it.
+// when async is set, with the prototype proto. state is what [DisposableStackState] returns for it.
 func (vm *VM) NewDisposableStackObject(proto *Object, async bool, state any) *Object {
 	o := vm.NewObject(proto)
 	o.class = classDisposableStack

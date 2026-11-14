@@ -424,7 +424,7 @@ func (vm *VM) GetV(v Value, key *Object) Value {
 	return val
 }
 
-// PropertyCache remembers where GetVCached found a property, so that looking up the same key
+// PropertyCache remembers where [VM.GetVCached] found a property, so that looking up the same key
 // again on values with the same layout is fast. The zero value is empty.
 type PropertyCache struct {
 	key PropKey

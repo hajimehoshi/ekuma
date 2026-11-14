@@ -189,7 +189,7 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 }
 
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when
-// flags has bytecode.GlobalVarFunc. flags is a set of the bytecode GlobalVar flags.
+// flags has [bytecode.GlobalVarFunc]. flags is a set of the bytecode GlobalVar flags.
 func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
 	g := vm.global
 	k := PropKey{key: key}
@@ -965,7 +965,7 @@ func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 }
 
 // NewNativeConstructor returns a function implemented in Go that can be called with new.
-// f learns the constructor it is constructing for from GetNewTarget.
+// f learns the constructor it is constructing for from [VM.GetNewTarget].
 func (vm *VM) NewNativeConstructor(name string, length int, f NativeFunc) *Object {
 	o := vm.NewNative(name, length, f)
 	o.fn.constructor = true

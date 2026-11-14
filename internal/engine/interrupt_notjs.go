@@ -10,5 +10,5 @@ import "sync/atomic"
 // interruptFlag is the flag of a pending interruption.
 type interruptFlag = atomic.Bool
 
-// pollTick accounts for a call of Poll.
+// pollTick accounts for a call of [VM.Poll].
 func (vm *VM) pollTick() {}

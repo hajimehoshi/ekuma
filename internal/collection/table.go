@@ -336,7 +336,7 @@ func (t *Table) Start() Cursor {
 	return Cursor{gen: t.gen}
 }
 
-// Next returns the entry at the cursor c, which must have been created by Start of t,
+// Next returns the entry at the cursor c, which must have been created by [Table.Start] of t,
 // and moves c past it. It reports false when there is no entry left.
 func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
 	for c.gen.next != nil {

@@ -17,7 +17,7 @@ const (
 	ScopeBlock
 	// ScopeFor is the head of a for, for-in or for-of statement.
 	ScopeFor
-	// ScopeCatch holds the parameter of a catch clause. The clause body is a child ScopeBlock.
+	// ScopeCatch holds the parameter of a catch clause. The clause body is a child [ScopeBlock].
 	ScopeCatch
 	// ScopeSwitch is the case block of a switch statement.
 	ScopeSwitch
@@ -54,17 +54,17 @@ type Decl struct {
 	// Pos is the byte offset of the declared name.
 	Pos int32
 
-	// Func is the declared function for DeclFunction, and nil otherwise.
+	// Func is the declared function for [DeclFunction], and nil otherwise.
 	Func *Function
 }
 
 // Scope is the record of the declarations of one scope.
 //
-// Decls is in source order. A name declared with var more than once is listed once as DeclVar.
-// Every function declaration is listed, so the last DeclFunction of a name is the one in effect.
+// Decls is in source order. A name declared with var more than once is listed once as [DeclVar].
+// Every function declaration is listed, so the last [DeclFunction] of a name is the one in effect.
 // A var declaration is listed in the scope of the enclosing function, script or module.
 // A name can be listed under several kinds, for example as a parameter and as a var.
-// DeclAnnexBVar entries come after all other entries.
+// [DeclAnnexBVar] entries come after all other entries.
 // A default export without a name is listed as "*default*".
 type Scope struct {
 	Kind   ScopeKind

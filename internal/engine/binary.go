@@ -69,8 +69,8 @@ func (b *ArrayBuffer) IsImmutable() bool {
 	return b.immutable
 }
 
-// Resize changes the length of the resizable b to n, which must not exceed MaxByteLength.
-// New bytes are zero.
+// Resize changes the length of the resizable b to n, which must not exceed
+// [ArrayBuffer.MaxByteLength]. New bytes are zero.
 func (b *ArrayBuffer) Resize(n int) {
 	old := len(b.data)
 	if n <= cap(b.data) {

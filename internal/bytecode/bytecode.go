@@ -27,9 +27,9 @@ const (
 	OpThrowError                     // throw an error of the Throw kind a with the message Consts[b]
 
 	OpGetGlobal        // a = global Keys[b], cache c
-	OpGetGlobalOrUndef // like OpGetGlobal, but undefined when the global does not exist
+	OpGetGlobalOrUndef // like [OpGetGlobal], but undefined when the global does not exist
 	OpSetGlobal        // global Keys[b] = a, cache c; creates the global when it does not exist
-	OpSetGlobalStrict  // like OpSetGlobal, but a ReferenceError when the global does not exist
+	OpSetGlobalStrict  // like [OpSetGlobal], but a ReferenceError when the global does not exist
 	OpDeclareGlobalVar // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
 	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant when b is set
 	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
@@ -138,7 +138,7 @@ const (
 	OpApplyFwd      // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; b says whether an arguments object made for them is mapped
 	OpCallFwd       // a = a(this a+1, the arguments of the running function)
 	OpCallSpread    // a = a(this a+1, ...the array a+2)
-	OpCallEval      // like OpCall; a direct eval when a is the eval function. c indexes EvalScopes. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the OpCallSpread for any other function
+	OpCallEval      // like [OpCall]; a direct eval when a is the eval function. c indexes [Func.EvalScopes]. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the [OpCallSpread] for any other function
 	OpNew           // a = new a(args a+2...), b arguments, cache c
 	OpNewSpread     // a = new a(...the array a+2)
 	OpSuperCall     // a = super(args a+2...), b arguments, where a is the running constructor and a+1 new.target
@@ -211,18 +211,18 @@ const (
 
 	OpEvalScope      // push a new scope for the variables that direct evals declare
 	OpScopeThis      // a = the this value of a call of a function found in the dynamic scope b
-	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of OpEvalScope; it is a function when c is not -1, and c holds it
+	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
 
-	OpImport // a = the promise of a dynamic import of b with the options c in the Phase c+1, an integer; with b = -1, a = import.meta
+	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
 )
 
-// The kinds of error that OpThrowError throws.
+// The kinds of error that [OpThrowError] throws.
 const (
 	ThrowTypeError = iota
 	ThrowReferenceError
 )
 
-// The flags of OpDeclareGlobalVar.
+// The flags of [OpDeclareGlobalVar].
 const (
 	// GlobalVarFunc declares a function.
 	GlobalVarFunc = 1 << iota
@@ -231,28 +231,29 @@ const (
 	GlobalVarDeletable
 )
 
-// The kinds of top-level declaration that OpCheckGlobalDecl checks.
+// The kinds of top-level declaration that [OpCheckGlobalDecl] checks.
 const (
 	DeclVar = iota
 	DeclLexical
 	DeclFunction
 )
 
-// The ways a generator is resumed, as OpGenResumeMode reports them.
+// The ways a generator is resumed, as [OpGenResumeMode] reports them.
 const (
 	ResumeNext = iota
 	ResumeThrow
 	ResumeReturn
 )
 
-// The prefixes that OpSetFuncName adds to a function name.
+// The prefixes that [OpSetFuncName] adds to a function name.
 const (
 	NamePrefixNone = iota
 	NamePrefixGet  // "get "
 	NamePrefixSet  // "set "
 )
 
-// The kinds of class element that OpAddField adds. ElemStatic may be combined with any of the others.
+// The kinds of class element that [OpAddField] adds. [ElemStatic] may be combined with any of the
+// others.
 const (
 	ElemField = iota
 	ElemMethod
@@ -261,13 +262,13 @@ const (
 	ElemStatic = 8
 )
 
-// The hints of the resources that OpUsing adds.
+// The hints of the resources that [OpUsing] adds.
 const (
 	DisposeSync = iota
 	DisposeAsync
 )
 
-// The kinds of iterator that OpGetIterator gets.
+// The kinds of iterator that [OpGetIterator] gets.
 const (
 	IterSync     = iota // a sync iterator, or a plain array to be iterated by index
 	IterAsync           // an async iterator
@@ -297,12 +298,14 @@ type Handler struct {
 
 // UpvalDesc says where a closure finds a variable of an enclosing function.
 type UpvalDesc struct {
-	// Local says whether Index is a register of the enclosing function or one of its upvalues.
+	// Local says whether [UpvalDesc.Index] is a register of the enclosing function or one of its
+	// upvalues.
 	Local bool
 	Index int32
 }
 
-// Pos says that the instructions from PC on belong to the source position at Line and Column.
+// Pos says that the instructions from [Pos.PC] on belong to the source position at [Pos.Line] and
+// [Pos.Column].
 type Pos struct {
 	PC     int32
 	Line   int32
@@ -318,14 +321,16 @@ const (
 	ConstBigInt
 )
 
-// Const is a constant of a function. Strings are in WTF-8, and a BigInt is its decimal digits in Str.
+// Const is a constant of a function. Strings are in WTF-8, and a BigInt is its decimal digits in
+// [Const.Str].
 type Const struct {
 	Kind ConstKind
 	Num  float64
 	Str  string
 }
 
-// Template is the site of a tagged template. A cooked string is absent where HasCooked is false.
+// Template is the site of a tagged template. A cooked string is absent where [Template.HasCooked]
+// is false.
 type Template struct {
 	Cooked    []string
 	HasCooked []bool
@@ -354,7 +359,7 @@ type Func struct {
 
 	Templates []Template
 
-	// EvalScopes describe the call sites of direct evals, which OpCallEval refers to.
+	// EvalScopes describe the call sites of direct evals, which [OpCallEval] refers to.
 	EvalScopes []EvalScope
 
 	// Positions maps instructions to source positions, ordered by PC.
@@ -413,7 +418,7 @@ type EvalScope struct {
 	LazyArguments bool
 
 	// VarDepth says which of the dynamic scopes, counted from the innermost one starting at 1,
-	// is the scope of OpEvalScope that the var declarations of non-strict eval code go to.
+	// is the scope of [OpEvalScope] that the var declarations of non-strict eval code go to.
 	// It is 0 when they go to the global object.
 	VarDepth int32
 }
@@ -460,7 +465,7 @@ type EvalVar struct {
 	// Check says whether a read can find the variable uninitialized.
 	Check bool
 
-	// Local and Index say where the variable is, as in UpvalDesc.
+	// Local and [EvalVar.Index] say where the variable is, as in [UpvalDesc].
 	Local bool
 	Index int32
 
@@ -484,7 +489,8 @@ func (f *Func) Position(pc int) (line, column int) {
 // Module describes what a module imports and exports, and the bindings of its top level.
 //
 // The compiled code of a module is a function that reaches every binding of the top level as an
-// upvalue: an UpvalDesc of the module function with Local set refers to Bindings by index.
+// upvalue: an [UpvalDesc] of the module function with Local set refers to [Module.Bindings] by
+// index.
 type Module struct {
 	// Requests are the [[RequestedModules]], in source order without duplicates.
 	Requests []ModuleRequest
@@ -495,7 +501,7 @@ type Module struct {
 	// Imports are the import entries, except those of namespace imports.
 	Imports []ImportEntry
 
-	// LocalExports, IndirectExports and StarExports are the export entries.
+	// LocalExports, [Module.IndirectExports] and [Module.StarExports] are the export entries.
 	LocalExports    []LocalExport
 	IndirectExports []IndirectExport
 	StarExports     []int32
@@ -508,7 +514,7 @@ type Module struct {
 	HasTLA bool
 }
 
-// ModuleRequest is a ModuleRequest Record. Attributes are sorted by key.
+// ModuleRequest is a ModuleRequest Record. [ModuleRequest.Attributes] are sorted by key.
 type ModuleRequest struct {
 	Specifier  string
 	Attributes []ImportAttribute
@@ -563,7 +569,8 @@ type ModuleBinding struct {
 	Name string
 	Kind ModuleBindingKind
 
-	// Request indexes Requests for ModuleNamespace, ModuleDeferredNamespace and ModuleSource.
+	// Request indexes [Module.Requests] for [ModuleNamespace], [ModuleDeferredNamespace] and
+	// [ModuleSource].
 	Request int32
 }
 
@@ -574,14 +581,14 @@ type ImportEntry struct {
 	Binding    int32
 }
 
-// LocalExport exports Bindings[Binding] as Name.
+// LocalExport exports Bindings[Binding] as [LocalExport.Name].
 type LocalExport struct {
 	Name    string
 	Binding int32
 }
 
-// IndirectExport exports as Name the export ImportName of Requests[Request], or its namespace
-// object when All is set.
+// IndirectExport exports as [IndirectExport.Name] the export [IndirectExport.ImportName] of
+// Requests[Request], or its namespace object when [IndirectExport.All] is set.
 type IndirectExport struct {
 	Name       string
 	Request    int32

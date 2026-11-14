@@ -213,7 +213,7 @@ type finalizationCell struct {
 }
 
 // finalizationQueue holds the cells whose target was collected. The cleanup goroutine of the
-// Go runtime adds to it, and the VM takes from it between jobs.
+// Go runtime adds to it, and the [VM] takes from it between jobs.
 type finalizationQueue struct {
 	pending atomic.Bool
 

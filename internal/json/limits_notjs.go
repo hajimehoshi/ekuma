@@ -5,5 +5,6 @@
 
 package json
 
-// maxDepth is the nesting depth at which Stringify and Revive throw the RangeError of a stack overflow.
+// maxDepth is the nesting depth at which Stringify and [Revive] throw the RangeError of a stack
+// overflow.
 const maxDepth = 10000

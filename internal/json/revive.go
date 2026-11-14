@@ -16,7 +16,7 @@ func indexKey(vm *engine.VM, i int64) engine.PropKey {
 	return engine.NamedKey(vm.Intern(numconv.NumberToString(float64(i))))
 }
 
-// reviver is the state of one call of Revive.
+// reviver is the state of one call of [Revive].
 type reviver struct {
 	vm        *engine.VM
 	fn        *engine.Object

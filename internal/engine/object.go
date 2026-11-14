@@ -21,7 +21,7 @@ const (
 	FlagsHidden = FlagWritable | FlagConfigurable
 )
 
-// Object flags.
+// [Object] flags.
 const (
 	// objInterned marks a string that is the unique representative of its contents,
 	// so that it can serve as a property key compared by identity.
@@ -131,7 +131,7 @@ type objectMeta struct {
 	cursor wtf8.Pos
 
 	// weak holds the values that the weak collections associate with an object or a symbol,
-	// by collection. See WeakTable.
+	// by collection. See [WeakTable].
 	weak weakEntries
 }
 
@@ -162,7 +162,7 @@ const privateShapeThreshold = 128
 // A shared Shape never changes, so an inline cache that remembers one stays valid for as long
 // as the prototypes it looked through keep their properties.
 type shape struct {
-	// vm is the VM that the objects with this shape belong to.
+	// vm is the [VM] that the objects with this shape belong to.
 	vm *VM
 
 	proto  *Object
@@ -723,7 +723,7 @@ func (c *propCache) keep(shape *shape) {
 	}
 }
 
-// VM returns the VM that o belongs to, or nil for a value that is shared by all VMs.
+// VM returns the [VM] that o belongs to, or nil for a value that is shared by all VMs.
 func (o *Object) VM() *VM {
 	if o.shape == nil {
 		return nil

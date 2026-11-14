@@ -9,12 +9,12 @@ import (
 )
 
 // js/wasm runs one goroutine at a time and switches only when the running one yields.
-// A busy script yields now and then, so that the goroutine that calls Interrupt can run.
+// A busy script yields now and then, so that the goroutine that calls [VM.Interrupt] can run.
 const (
 	// yieldTicks is the number of ticks between two yields.
 	yieldTicks = 1 << 12
 
-	// pollTicks is the number of ticks that a call of Poll counts for, as its callers call it
+	// pollTicks is the number of ticks that a call of [VM.Poll] counts for, as its callers call it
 	// only every so many steps.
 	pollTicks = 1 << 8
 )
@@ -45,7 +45,7 @@ func (f *interruptFlag) tick(n uint32) {
 	}
 }
 
-// pollTick accounts for a call of Poll.
+// pollTick accounts for a call of [VM.Poll].
 func (vm *VM) pollTick() {
 	vm.interrupt.tick(pollTicks - 1)
 }

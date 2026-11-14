@@ -19,12 +19,12 @@ type TimeZone interface {
 // time values, so a clamped instant is never the one of a valid time value.
 const maxSeconds = 1e13
 
-// locationZone is a TimeZone from the time package.
+// locationZone is a [TimeZone] from the time package.
 type locationZone struct {
 	loc *time.Location
 }
 
-// LocationZone returns the TimeZone of loc.
+// LocationZone returns the [TimeZone] of loc.
 func LocationZone(loc *time.Location) TimeZone {
 	return locationZone{loc: loc}
 }

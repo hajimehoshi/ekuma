@@ -82,7 +82,7 @@ func (h *waiterHeap) Pop() any {
 
 // AddWaiter implements the steps of DoWait in async mode that follow a successful comparison:
 // it adds a waiter for byteIndex of the shared buffer b and returns its promise. The promise
-// resolves to "ok" when NotifyWaiters notifies the waiter, or to "timed-out" after timeout
+// resolves to "ok" when [VM.NotifyWaiters] notifies the waiter, or to "timed-out" after timeout
 // milliseconds unless timeout is +Inf. timeout must be positive.
 func (vm *VM) AddWaiter(b *ArrayBuffer, byteIndex int, timeout float64) Value {
 	if b.waiterLists == nil {

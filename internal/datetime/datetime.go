@@ -160,7 +160,7 @@ func MakeTime(hour, min, sec, ms float64) float64 {
 	return t + toInteger(ms)
 }
 
-// maxYear bounds the years that MakeDay accepts. A day in a year beyond it cannot
+// maxYear bounds the years that [MakeDay] accepts. A day in a year beyond it cannot
 // make a valid time value with any reasonable date argument.
 const maxYear = 1e6
 

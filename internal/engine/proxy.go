@@ -121,7 +121,7 @@ func (vm *VM) proxyTrap(handler *Object, key CommonKey) *Object {
 	return vm.GetMethod(Value{o: handler}, vm.Key(key))
 }
 
-// callTrap calls trap with handler as this. The arguments are passed on the VM stack,
+// callTrap calls trap with handler as this. The arguments are passed on the [VM] stack,
 // so that they need no allocation.
 func (vm *VM) callTrap(trap, handler *Object, args ...Value) Value {
 	base := vm.sp
@@ -524,7 +524,7 @@ func nonConfigurableCompatible(cur, d *PropDesc) bool {
 }
 
 // complete implements CompletePropertyDescriptor. It also marks an accessor descriptor with
-// FlagAccessor, as the descriptors of existing properties are.
+// [FlagAccessor], as the descriptors of existing properties are.
 func (d *PropDesc) complete() {
 	if d.IsAccessor() {
 		d.has |= HasGet | HasSet

@@ -37,7 +37,7 @@ const (
 // Value is a JavaScript value.
 //
 // A nil o means the number n. Every other value is identified by o,
-// which makes a Value two words and keeps numbers off the heap.
+// which makes a [Value] two words and keeps numbers off the heap.
 type Value struct {
 	n float64
 	o *Object

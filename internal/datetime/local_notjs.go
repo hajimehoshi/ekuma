@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Local returns the time zone of time.Local.
+// Local returns the time zone of [time.Local].
 func Local() TimeZone {
 	return LocationZone(time.Local)
 }

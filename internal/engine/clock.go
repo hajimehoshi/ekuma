@@ -10,7 +10,7 @@ import (
 )
 
 // DefaultTimeZone returns the time zone of local time. It is the local time zone of the host
-// unless SetDefaultTimeZone changed it.
+// unless [VM.SetDefaultTimeZone] changed it.
 func (vm *VM) DefaultTimeZone() datetime.TimeZone {
 	if vm.timeZone == nil {
 		return datetime.Local()

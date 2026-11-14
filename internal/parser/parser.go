@@ -34,7 +34,7 @@ type Options struct {
 	PrivateNames []string
 }
 
-// FunctionKind is the kind of function that ParseFunction creates.
+// FunctionKind is the kind of function that [ParseFunction] creates.
 type FunctionKind uint8
 
 const (
@@ -63,12 +63,12 @@ func (e *Error) Error() string {
 	return "SyntaxError: " + e.Message + " (" + strconv.Itoa(e.Line) + ":" + strconv.Itoa(e.Column) + ")"
 }
 
-// ParseScript parses src as a Script. The returned error is an *Error.
+// ParseScript parses src as a Script. The returned error is an [*Error].
 func ParseScript(src string, opts Options) (*ast.Program, error) {
 	return parseProgram(src, &opts, false)
 }
 
-// ParseModule parses src as a Module. The returned error is an *Error.
+// ParseModule parses src as a Module. The returned error is an [*Error].
 func ParseModule(src string, opts Options) (*ast.Program, error) {
 	return parseProgram(src, &opts, true)
 }
@@ -77,7 +77,7 @@ func ParseModule(src string, opts Options) (*ast.Program, error) {
 // as the Function constructor and its generator and async variants require.
 //
 // The source of the returned program is the synthesized function text.
-// Its body is one expression statement holding the function. The returned error is an *Error.
+// Its body is one expression statement holding the function. The returned error is an [*Error].
 func ParseFunction(params, body string, kind FunctionKind, opts Options) (*ast.Program, error) {
 	prefix := "function"
 	switch kind {
@@ -548,7 +548,7 @@ type hoistCand struct {
 	own bool
 }
 
-// scope is the parser's working state for one ast.Scope.
+// scope is the parser's working state for one [ast.Scope].
 type scope struct {
 	ast    *ast.Scope
 	parent *scope

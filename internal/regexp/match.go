@@ -63,7 +63,8 @@ func (re *Regexp) Match(m *Matcher, s string, start int, poller Poller) []int {
 	return re.match(m, s, start, re.flags&FlagSticky != 0, poller)
 }
 
-// Find is like Match, but it finds the first match at start or after it even when re is sticky.
+// Find is like [Regexp.Match], but it finds the first match at start or after it even when re is
+// sticky.
 func (re *Regexp) Find(m *Matcher, s string, start int, poller Poller) []int {
 	return re.match(m, s, start, false, poller)
 }

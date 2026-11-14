@@ -26,11 +26,12 @@ type Program struct {
 	lineOnce   sync.Once
 	lineStarts []int32
 
-	// codePoints holds the number of code points before each multiple of codePointBlock in Source.
+	// codePoints holds the number of code points before each multiple of codePointBlock in
+	// [Program.Source].
 	codePoints []int32
 }
 
-// codePointBlock is the interval in bytes at which Program counts the code points of its source.
+// codePointBlock is the interval in bytes at which [Program] counts the code points of its source.
 const codePointBlock = 256
 
 // Text returns the source text of n.
@@ -59,7 +60,7 @@ func (p *Program) Position(offset int32) (line, column int) {
 	return i + 1, p.codePointsBefore(offset) - p.codePointsBefore(p.lineStarts[i]) + 1
 }
 
-// codePointsBefore returns the number of code points in Source before offset.
+// codePointsBefore returns the number of code points in [Program.Source] before offset.
 func (p *Program) codePointsBefore(offset int32) int {
 	k := int(offset) / codePointBlock
 	return int(p.codePoints[k]) + countCodePoints(p.Source[k*codePointBlock:offset])

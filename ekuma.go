@@ -3,13 +3,13 @@
 
 // Package ekuma is a JavaScript engine written in pure Go.
 //
-// The API follows the one of syscall/js where it can. The differences come from JavaScript
+// The API follows the one of [syscall/js] where it can. The differences come from JavaScript
 // running inside the process: there can be several VMs, an exception is returned as an error
 // and not thrown as a panic, and the methods that run a script or call a function take
-// a context.Context that stops them.
+// a [context.Context] that stops them.
 //
-// A context stops everything that runs under it: when a Func reads a property or calls
-// a function, that is stopped by the context of the call that led to the Func.
+// A context stops everything that runs under it: when a [Func] reads a property or calls
+// a function, that is stopped by the context of the call that led to the [Func].
 package ekuma
 
 import (
@@ -64,7 +64,7 @@ func (t Type) String() string {
 	return "Type(" + strconv.Itoa(int(t)) + ")"
 }
 
-// ValueError is the error of an operation on a Value that does not support the value.
+// ValueError is the error of an operation on a [Value] that does not support the value.
 // The operations that return no error panic with it.
 type ValueError struct {
 	Method string
@@ -77,9 +77,10 @@ func (e *ValueError) Error() string {
 
 // Value is a JavaScript value. The zero value is undefined.
 //
-// Values cannot be compared with ==. Equal compares the way the JavaScript operator === does.
+// Values cannot be compared with ==. [Value.Equal] compares the way the JavaScript operator ===
+// does.
 type Value struct {
-	// _ makes Value uncomparable.
+	// _ makes [Value] uncomparable.
 	_ [0]func()
 
 	n float64
@@ -88,10 +89,10 @@ type Value struct {
 	o *engine.Object
 }
 
-// numberTag marks a Value that is a number. It is never passed to the engine.
+// numberTag marks a [Value] that is a number. It is never passed to the engine.
 var numberTag = &engine.Object{}
 
-// fromEngine converts a value of the engine to a Value.
+// fromEngine converts a value of the engine to a [Value].
 func fromEngine(v engine.Value) Value {
 	switch {
 	case v.IsNumber():
@@ -170,7 +171,7 @@ func (v Value) Truthy() bool {
 	return engine.ToBoolean(v.engine())
 }
 
-// Bool returns the boolean v. It panics with a *ValueError when v is not a boolean.
+// Bool returns the boolean v. It panics with a [*ValueError] when v is not a boolean.
 func (v Value) Bool() bool {
 	e := v.engine()
 	if !e.IsBool() {
@@ -182,7 +183,7 @@ func (v Value) Bool() bool {
 	return e == engine.True
 }
 
-// Float returns the number v. It panics with a *ValueError when v is not a number.
+// Float returns the number v. It panics with a [*ValueError] when v is not a number.
 func (v Value) Float() float64 {
 	if v.o != numberTag {
 		panic(&ValueError{
@@ -193,7 +194,8 @@ func (v Value) Float() float64 {
 	return v.n
 }
 
-// Int returns the number v truncated to an int. It panics with a *ValueError when v is not a number.
+// Int returns the number v truncated to an int. It panics with a [*ValueError] when v is not
+// a number.
 func (v Value) Int() int {
 	if v.o != numberTag {
 		panic(&ValueError{
@@ -204,7 +206,8 @@ func (v Value) Int() int {
 	return int(v.n)
 }
 
-// BigInt returns the BigInt v as a new *big.Int. It panics with a *ValueError when v is not a BigInt.
+// BigInt returns the BigInt v as a new [*big.Int]. It panics with a [*ValueError] when v is not
+// a BigInt.
 func (v Value) BigInt() *big.Int {
 	e := v.engine()
 	if !e.IsBigInt() {
@@ -237,7 +240,7 @@ func (v Value) Equal(w Value) bool {
 	return engine.IsStrictlyEqual(v.engine(), w.engine())
 }
 
-// vm returns the VM that the value belongs to. Only objects, functions and strings have one.
+// vm returns the [VM] that the value belongs to. Only objects, functions and strings have one.
 func (v Value) vm(method string) (*VM, error) {
 	if v.o != nil && v.o != numberTag {
 		if e := v.o.VM(); e != nil {
@@ -252,8 +255,8 @@ func (v Value) vm(method string) (*VM, error) {
 
 // Get returns the property name of v.
 //
-// The error is a *ValueError when v is not an object, a function or a string,
-// and an *Error when a getter throws.
+// The error is a [*ValueError] when v is not an object, a function or a string,
+// and an [*Error] when a getter throws.
 func (v Value) Get(name string) (Value, error) {
 	vm, err := v.vm("Value.Get")
 	if err != nil {
@@ -263,8 +266,8 @@ func (v Value) Get(name string) (Value, error) {
 	return fromEngine(r), vm.publicError(err)
 }
 
-// Set stores ValueOf(x) as the property name of v, the way an assignment in strict mode code does.
-// The errors are those of Get.
+// Set stores [VM.ValueOf](x) as the property name of v, the way an assignment in strict mode code
+// does. The errors are those of [Value.Get].
 func (v Value) Set(name string, x any) error {
 	vm, err := v.vm("Value.Set")
 	if err != nil {
@@ -274,7 +277,7 @@ func (v Value) Set(name string, x any) error {
 }
 
 // Delete deletes the property name of v, the way the delete operator in strict mode code does.
-// The errors are those of Get.
+// The errors are those of [Value.Get].
 func (v Value) Delete(name string) error {
 	vm, err := v.vm("Value.Delete")
 	if err != nil {
@@ -283,7 +286,7 @@ func (v Value) Delete(name string) error {
 	return vm.publicError(vm.e.HostDelete(v.engine(), vm.e.StringFromGo(name)))
 }
 
-// Index returns the element i of v. The errors are those of Get.
+// Index returns the element i of v. The errors are those of [Value.Get].
 func (v Value) Index(i int) (Value, error) {
 	vm, err := v.vm("Value.Index")
 	if err != nil {
@@ -293,7 +296,7 @@ func (v Value) Index(i int) (Value, error) {
 	return fromEngine(r), vm.publicError(err)
 }
 
-// SetIndex stores ValueOf(x) as the element i of v. The errors are those of Get.
+// SetIndex stores [VM.ValueOf](x) as the element i of v. The errors are those of [Value.Get].
 func (v Value) SetIndex(i int, x any) error {
 	vm, err := v.vm("Value.SetIndex")
 	if err != nil {
@@ -302,7 +305,7 @@ func (v Value) SetIndex(i int, x any) error {
 	return vm.publicError(vm.e.HostSet(v.engine(), engine.Number(float64(i)), vm.valueOf(x)))
 }
 
-// withArgs converts the arguments of a call with ValueOf and passes them to f.
+// withArgs converts the arguments of a call with [VM.ValueOf] and passes them to f.
 func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, error)) (engine.Value, error) {
 	n := len(vm.callArgs)
 	for _, a := range args {
@@ -314,9 +317,10 @@ func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, er
 	return v, err
 }
 
-// Call calls the method name of v with v as this. The arguments are converted with ValueOf.
-// The errors are those of Get, and a method that does not exist is an *Error holding a TypeError.
-// When ctx is done, the call stops at its next loop iteration or call, and the error is the cause of ctx.
+// Call calls the method name of v with v as this. The arguments are converted with [VM.ValueOf].
+// The errors are those of [Value.Get], and a method that does not exist is an [*Error] holding
+// a TypeError. When ctx is done, the call stops at its next loop iteration or call, and the error
+// is the cause of ctx.
 func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error) {
 	vm, err := v.vm("Value.Call")
 	if err != nil {
@@ -329,14 +333,15 @@ func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error
 	})
 }
 
-// Invoke calls the function v with undefined as this. The arguments are converted with ValueOf.
-// The error is a *ValueError when v is not a function, and an *Error when it throws.
+// Invoke calls the function v with undefined as this. The arguments are converted with
+// [VM.ValueOf]. The error is a [*ValueError] when v is not a function, and an [*Error] when it
+// throws.
 func (v Value) Invoke(ctx context.Context, args ...any) (Value, error) {
 	return v.invoke(ctx, "Value.Invoke", false, args)
 }
 
 // New calls the function v as a constructor, as the new operator does. The arguments are
-// converted with ValueOf. The errors are those of Invoke.
+// converted with [VM.ValueOf]. The errors are those of [Value.Invoke].
 func (v Value) New(ctx context.Context, args ...any) (Value, error) {
 	return v.invoke(ctx, "Value.New", true, args)
 }
@@ -363,7 +368,7 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 }
 
 // InstanceOf reports whether v is an instance of the constructor t, as the instanceof operator does.
-// The errors are those of Get, for t.
+// The errors are those of [Value.Get], for t.
 func (v Value) InstanceOf(t Value) (bool, error) {
 	vm, err := t.vm("Value.InstanceOf")
 	if err != nil {
@@ -374,7 +379,7 @@ func (v Value) InstanceOf(t Value) (bool, error) {
 }
 
 // uint8ArrayData returns the state of v when v is a Uint8Array or a Uint8ClampedArray,
-// and panics with a *ValueError otherwise.
+// and panics with a [*ValueError] otherwise.
 func uint8ArrayData(v Value, method string) *engine.TypedArray {
 	if t := engine.TypedArrayData(v.engine()); t != nil {
 		if e := t.ElementType(); e == engine.ElementUint8 || e == engine.ElementUint8C {
@@ -389,7 +394,7 @@ func uint8ArrayData(v Value, method string) *engine.TypedArray {
 
 // CopyBytesToGo copies bytes from the Uint8Array or Uint8ClampedArray src to dst
 // and returns the number of bytes copied, which is the minimum of their lengths.
-// A detached or out of bounds src has no bytes. It panics with a *ValueError when src
+// A detached or out of bounds src has no bytes. It panics with a [*ValueError] when src
 // is neither a Uint8Array nor a Uint8ClampedArray.
 func CopyBytesToGo(dst []byte, src Value) int {
 	return copy(dst, uint8ArrayData(src, "CopyBytesToGo").Bytes())
@@ -397,7 +402,7 @@ func CopyBytesToGo(dst []byte, src Value) int {
 
 // CopyBytesToJS copies bytes from src to the Uint8Array or Uint8ClampedArray dst
 // and returns the number of bytes copied, which is the minimum of their lengths.
-// A detached or out of bounds dst has no bytes. It panics with a *ValueError when dst
+// A detached or out of bounds dst has no bytes. It panics with a [*ValueError] when dst
 // is neither a Uint8Array nor a Uint8ClampedArray, or is backed by an immutable ArrayBuffer.
 func CopyBytesToJS(dst Value, src []byte) int {
 	t := uint8ArrayData(dst, "CopyBytesToJS")
@@ -412,9 +417,9 @@ func CopyBytesToJS(dst Value, src []byte) int {
 
 // Func is a function implemented in Go.
 //
-// args is only valid until the function returns. The result is converted with ValueOf.
+// args is only valid until the function returns. The result is converted with [VM.ValueOf].
 //
-// A non-nil error is thrown as a JavaScript exception: an *Error throws its value,
+// A non-nil error is thrown as a JavaScript exception: an [*Error] throws its value,
 // and any other error throws a new Error object with the message of the error.
 type Func func(this Value, args []Value) (any, error)
 
@@ -431,7 +436,8 @@ type VM struct {
 	callArgs []engine.Value
 }
 
-// initIfNeeded creates the engine of vm on first use, and panics when vm is a copy of a VM in use.
+// initIfNeeded creates the engine of vm on first use, and panics when vm is a copy of a [VM] in
+// use.
 func (vm *VM) initIfNeeded() {
 	if vm.e == nil {
 		vm.e = engine.New(vm)
@@ -555,7 +561,7 @@ func (vm *VM) funcOf(name string, f Func) engine.Value {
 	})
 }
 
-// thrownValue returns the JavaScript value that the error of a Func throws.
+// thrownValue returns the JavaScript value that the error of a [Func] throws.
 func (vm *VM) thrownValue(err error) engine.Value {
 	if ex, ok := errors.AsType[*Error](err); ok {
 		return ex.Value.engine()
@@ -578,7 +584,7 @@ func (e *SyntaxError) Error() string {
 	return "SyntaxError: " + e.Message + " (" + e.File + ":" + strconv.Itoa(e.Line) + ")"
 }
 
-// Error is a JavaScript exception: one that reached Go, or one for a Func to throw.
+// Error is a JavaScript exception: one that reached Go, or one for a [Func] to throw.
 type Error struct {
 	// Value is the thrown value.
 	Value Value
@@ -637,9 +643,9 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 // RunScript evaluates src as a script and returns the value of its last expression statement.
 // file names the script in error messages.
 //
-// The error is a *SyntaxError when src is not a valid script and an *Error when the script throws.
-// When ctx is done, the script stops at its next loop iteration or call, and the error is
-// the cause of ctx.
+// The error is a [*SyntaxError] when src is not a valid script and an [*Error] when the script
+// throws. When ctx is done, the script stops at its next loop iteration or call, and the error
+// is the cause of ctx.
 func (vm *VM) RunScript(ctx context.Context, file, src string) (Value, error) {
 	vm.initIfNeeded()
 	return vm.run(ctx, func() (engine.Value, error) {

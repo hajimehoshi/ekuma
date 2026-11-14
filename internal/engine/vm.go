@@ -15,8 +15,8 @@ import (
 
 // NativeFunc is a function implemented in Go.
 //
-// args is only valid until the function returns. An exception is thrown with the Throw methods of VM,
-// which do not return.
+// args is only valid until the function returns. An exception is thrown with the Throw methods of
+// [VM], which do not return.
 type NativeFunc func(vm *VM, this Value, args []Value) Value
 
 // function is the state of a callable object.
@@ -178,17 +178,17 @@ type interruptSignal struct{}
 
 var errInterrupt = &interruptSignal{}
 
-// ErrInterrupted is the error of a script that was stopped by VM.Interrupt.
+// ErrInterrupted is the error of a script that was stopped by [VM.Interrupt].
 var ErrInterrupted = errors.New("ekuma: interrupted")
 
-// Interrupt makes the running script stop with ErrInterrupted as soon as it reaches a loop
+// Interrupt makes the running script stop with [ErrInterrupted] as soon as it reaches a loop
 // or a call. It may be called from any goroutine. The request stays pending until a script
 // observes it, so it also stops the next script when none is running.
 func (vm *VM) Interrupt() {
 	vm.interrupt.Store(true)
 }
 
-// ClearInterrupt withdraws a request of Interrupt that no script has observed.
+// ClearInterrupt withdraws a request of [VM.Interrupt] that no script has observed.
 func (vm *VM) ClearInterrupt() {
 	vm.interrupt.Store(false)
 }
@@ -255,7 +255,7 @@ func (vm *VM) dropNatives(frames int) {
 
 // VM is a JavaScript virtual machine. It must not be used from more than one goroutine at a time.
 type VM struct {
-	// hostDefined is the value that HostDefined returns.
+	// hostDefined is the value that [VM.HostDefined] returns.
 	hostDefined any
 
 	stack  []Value
@@ -374,7 +374,7 @@ const (
 	IntrinsicFunction
 	IntrinsicRegExp
 
-	// The prototypes of the native error types are in the order of ErrorKind.
+	// The prototypes of the native error types are in the order of [ErrorKind].
 	IntrinsicErrorPrototype
 	IntrinsicTypeErrorPrototype
 	IntrinsicRangeErrorPrototype
@@ -483,7 +483,7 @@ func (vm *VM) throwSyntaxError(msg string) {
 }
 
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
-// as what ErrorStack returns. The running native function constructs e for newTarget: the trace
+// as what [ErrorStack] returns. The running native function constructs e for newTarget: the trace
 // leaves out that function, and the frames up to the call of newTarget when newTarget is running.
 func (vm *VM) RecordStack(e *Object, msg string, newTarget *Object) {
 	frames, natives := len(vm.frames), max(len(vm.natives)-1, 0)

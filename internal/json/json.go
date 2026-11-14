@@ -105,7 +105,7 @@ func ScanNumber(s string, i int) (float64, int, bool) {
 
 // ScanString scans a string whose opening quote is at i and returns its contents in canonical WTF-8.
 // The contents of a string without escapes are a substring of s. Otherwise they are built in b,
-// which ScanString resets first.
+// which [ScanString] resets first.
 func ScanString(s string, i int, b *wtf8.Builder) (string, int, bool) {
 	start := i + 1
 	i = start
@@ -300,7 +300,7 @@ func validKey(s string, i int) (int, bool) {
 
 const hexDigits = "0123456789abcdef"
 
-// plain says which bytes AppendQuote copies as they are.
+// plain says which bytes [AppendQuote] copies as they are.
 // 0xED is excluded because it may start a lone surrogate.
 var plain = func() (t [256]bool) {
 	for c := 0x20; c < 0x100; c++ {

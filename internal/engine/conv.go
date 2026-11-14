@@ -42,7 +42,7 @@ func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 	return vm.OrdinaryToPrimitive(v.o, h)
 }
 
-// OrdinaryToPrimitive implements OrdinaryToPrimitive. h is HintString or HintNumber.
+// OrdinaryToPrimitive implements OrdinaryToPrimitive. h is [HintString] or [HintNumber].
 func (vm *VM) OrdinaryToPrimitive(o *Object, h Hint) Value {
 	first, second := vm.Key(keyValueOf), vm.Key(KeyToString)
 	if h == HintString {

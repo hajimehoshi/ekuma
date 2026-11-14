@@ -103,8 +103,8 @@ func Len(s string) int {
 	return n
 }
 
-// Pos is a position in a string: the code unit Unit starts at the byte Byte.
-// Low is set when the code unit is the low surrogate of the four-byte sequence at Byte.
+// Pos is a position in a string: the code unit [Pos.Unit] starts at the byte [Pos.Byte].
+// Low is set when the code unit is the low surrogate of the four-byte sequence at [Pos.Byte].
 type Pos struct {
 	Unit int
 	Byte int
