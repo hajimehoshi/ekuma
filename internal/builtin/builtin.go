@@ -115,6 +115,7 @@ func Install(vm *engine.VM) {
 	initJSON(vm)
 	initMapAndSet(vm)
 	initWeak(vm)
+	initDate(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
 

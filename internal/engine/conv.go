@@ -11,25 +11,26 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-type hint uint8
+// Hint is the preferred type of ToPrimitive.
+type Hint uint8
 
 const (
-	hintDefault hint = iota
-	hintNumber
-	hintString
+	HintDefault Hint = iota
+	HintNumber
+	HintString
 )
 
-// toPrimitive implements ToPrimitive.
-func (vm *VM) toPrimitive(v Value, h hint) Value {
+// ToPrimitive implements ToPrimitive.
+func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 	if !v.IsObject() {
 		return v
 	}
 	if m := vm.GetMethod(v, vm.K.SymToPrimitive); m != nil {
 		name := "default"
 		switch h {
-		case hintNumber:
+		case HintNumber:
 			name = "number"
-		case hintString:
+		case HintString:
 			name = "string"
 		}
 		r := vm.Call(m, v, vm.NewString(name))
@@ -38,10 +39,16 @@ func (vm *VM) toPrimitive(v Value, h hint) Value {
 		}
 		return r
 	}
+	return vm.OrdinaryToPrimitive(v.o, h)
+}
+
+// OrdinaryToPrimitive implements OrdinaryToPrimitive. h is HintString or HintNumber.
+func (vm *VM) OrdinaryToPrimitive(o *Object, h Hint) Value {
 	first, second := vm.K.valueOf, vm.K.ToString
-	if h == hintString {
+	if h == HintString {
 		first, second = second, first
 	}
+	v := Value{o: o}
 	for _, name := range [2]*Object{first, second} {
 		if m := vm.GetV(v, name); m.IsCallable() {
 			if r := vm.Call(m.o, v); !r.IsObject() {
@@ -85,7 +92,7 @@ func (vm *VM) ToNumber(v Value) float64 {
 	case kindBigInt:
 		vm.ThrowTypeError("cannot convert a BigInt value to a number")
 	}
-	return vm.ToNumber(vm.toPrimitive(v, hintNumber))
+	return vm.ToNumber(vm.ToPrimitive(v, HintNumber))
 }
 
 // ToNumeric implements ToNumeric: the result is a number or a BigInt.
@@ -94,7 +101,7 @@ func (vm *VM) ToNumeric(v Value) Value {
 		return v
 	}
 	if v.o.kind >= kindObject {
-		v = vm.toPrimitive(v, hintNumber)
+		v = vm.ToPrimitive(v, HintNumber)
 	}
 	if v.o != nil && v.o.kind == kindBigInt {
 		return v
@@ -148,7 +155,7 @@ func (vm *VM) ToString(v Value) string {
 	case kindBigInt:
 		return o.BigInt().String()
 	}
-	return vm.ToString(vm.toPrimitive(v, hintString))
+	return vm.ToString(vm.ToPrimitive(v, HintString))
 }
 
 // ToStringValue implements ToString and returns the result as a value.
@@ -239,9 +246,9 @@ func (vm *VM) looseEquals(a, b Value) bool {
 		case a.IsObject() && b.IsObject():
 			return a.o == b.o
 		case a.IsObject():
-			a = vm.toPrimitive(a, hintDefault)
+			a = vm.ToPrimitive(a, HintDefault)
 		case b.IsObject():
-			b = vm.toPrimitive(b, hintDefault)
+			b = vm.ToPrimitive(b, HintDefault)
 		case a.IsBool():
 			a = Value{n: vm.ToNumber(a)}
 		case b.IsBool():
@@ -334,11 +341,11 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 		return compareNumbers(a.n, b.n)
 	}
 	if leftFirst {
-		a = vm.toPrimitive(a, hintNumber)
-		b = vm.toPrimitive(b, hintNumber)
+		a = vm.ToPrimitive(a, HintNumber)
+		b = vm.ToPrimitive(b, HintNumber)
 	} else {
-		b = vm.toPrimitive(b, hintNumber)
-		a = vm.toPrimitive(a, hintNumber)
+		b = vm.ToPrimitive(b, HintNumber)
+		a = vm.ToPrimitive(a, HintNumber)
 	}
 	if a.IsString() && b.IsString() {
 		return cmpResult(wtf8.Compare(a.o.str, b.o.str) + 1)
@@ -369,8 +376,8 @@ func compareNumbers(x, y float64) cmpResult {
 
 // addValues implements the + operator for operands that are not both numbers.
 func (vm *VM) addValues(a, b Value) Value {
-	a = vm.toPrimitive(a, hintDefault)
-	b = vm.toPrimitive(b, hintDefault)
+	a = vm.ToPrimitive(a, HintDefault)
+	b = vm.ToPrimitive(b, HintDefault)
 	as, bs := a.IsString(), b.IsString()
 	if as || bs {
 		var x, y string

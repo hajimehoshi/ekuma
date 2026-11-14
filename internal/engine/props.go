@@ -83,7 +83,7 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 		return PropKey{key: o}
 	}
 	if o.kind >= kindObject {
-		return vm.ToPropertyKey(vm.toPrimitive(v, hintString))
+		return vm.ToPropertyKey(vm.ToPrimitive(v, HintString))
 	}
 	return vm.KeyOfString(vm.ToString(v))
 }

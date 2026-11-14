@@ -1094,7 +1094,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
+				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != nil {
 					if compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
@@ -1110,7 +1110,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
+				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != nil {
 					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
@@ -1126,7 +1126,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
+				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != nil {
 					if compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
@@ -1142,7 +1142,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x := regs[i.B]
 			if x.o != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				x = vm.ToNumeric(vm.toPrimitive(x, hintNumber))
+				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != nil {
 					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {

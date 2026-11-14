@@ -47,7 +47,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 27,902 of 48,797 tests
+More than half of [test262](https://github.com/tc39/test262) passes: 28,680 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -66,6 +66,8 @@ Implemented:
   `getOrInsertComputed`, `Map.groupBy` and `Object.groupBy`
 - `WeakMap`, `WeakSet`, `WeakRef` and `FinalizationRegistry`, on Go's garbage collector:
   an entry of a weak collection does not keep its key alive
+- `Date`, with local time from Go's `time` package and the Annex B methods; the `toLocale*String`
+  methods use a fixed English format, since there is no `Intl`
 - BigInt literals and arithmetic (but not the `BigInt` object)
 
 Missing:
@@ -73,7 +75,7 @@ Missing:
 - `async` functions, `for await` and `Promise`
 - Direct `eval` and the `Function` constructor
 - Modules and dynamic `import`
-- `Date`, `Proxy`, `Reflect`, the `BigInt` object
+- `Proxy`, `Reflect`, the `BigInt` object
 - Typed arrays, `ArrayBuffer`, `DataView`
 - `Intl` and `Temporal`
 

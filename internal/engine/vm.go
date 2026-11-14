@@ -6,6 +6,7 @@ package engine
 import (
 	"errors"
 	"sync/atomic"
+	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
@@ -215,6 +216,9 @@ type VM struct {
 	regExps map[string]*regexp.Regexp
 
 	realm
+
+	// timeZone is the time zone of local time, or nil for time.Local.
+	timeZone *time.Location
 }
 
 // realm is the set of intrinsic objects.
