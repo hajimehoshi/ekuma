@@ -99,7 +99,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		if n != n || math.IsInf(n, 0) || math.Abs(n) >= 1e21 {
 			return vm.NewString(numconv.NumberToString(n))
 		}
-		s := strconv.FormatFloat(n, 'f', int(d), 64)
+		s := formatHalfUp(n, 'f', int(d))
 		if n == 0 || (strings.HasPrefix(s, "-") && strings.Trim(s, "-0.") == "") {
 			s = strings.TrimPrefix(s, "-")
 		}
@@ -123,13 +123,13 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		}
 		e := 0
 		if n != 0 {
-			es := strconv.FormatFloat(n, 'e', int(p)-1, 64)
+			es := formatHalfUp(n, 'e', int(p)-1)
 			e, _ = strconv.Atoi(es[strings.IndexByte(es, 'e')+1:])
 		}
 		if e < -6 || e >= int(p) {
-			return vm.NewString(fixExponent(strconv.FormatFloat(n, 'e', int(p)-1, 64)))
+			return vm.NewString(fixExponent(formatHalfUp(n, 'e', int(p)-1)))
 		}
-		return vm.NewString(strconv.FormatFloat(n, 'f', int(p)-1-e, 64))
+		return vm.NewString(formatHalfUp(n, 'f', int(p)-1-e))
 	})
 	method(vm, proto, "toExponential", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toExponential")
@@ -144,11 +144,10 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			// -0 is formatted as 0.
 			n = 0
 		}
-		prec := int(d)
 		if arg(args, 0).IsUndefined() {
-			prec = -1
+			return vm.NewString(fixExponent(strconv.FormatFloat(n, 'e', -1, 64)))
 		}
-		return vm.NewString(fixExponent(strconv.FormatFloat(n, 'e', prec, 64)))
+		return vm.NewString(fixExponent(formatHalfUp(n, 'e', int(d))))
 	})
 
 	bproto := vm.BooleanProto
@@ -175,6 +174,22 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		}
 		return vm.NewString("false")
 	})
+}
+
+// formatHalfUp formats n like strconv.FormatFloat with the format fmt ('e' or 'f') and the precision prec (non-negative),
+// except that an exact tie rounds away from zero.
+func formatHalfUp(n float64, fmt byte, prec int) string {
+	// A tie shows as a trailing 5 with one more digit, and that string is then exactly n.
+	t := strconv.FormatFloat(n, fmt, prec+1, 64)
+	mant, _, _ := strings.Cut(t, "e")
+	if mant[len(mant)-1] == '5' {
+		if r, ok := new(big.Rat).SetString(t); ok && r.Cmp(new(big.Rat).SetFloat64(n)) == 0 {
+			// The next float away from zero is past the tie and closer to it than to the next tie,
+			// so it rounds to the larger magnitude.
+			n = math.Nextafter(n, math.Copysign(math.Inf(1), n))
+		}
+	}
+	return strconv.FormatFloat(n, fmt, prec, 64)
 }
 
 // fixExponent rewrites the exponent that Go formats with at least two digits to the JavaScript form.

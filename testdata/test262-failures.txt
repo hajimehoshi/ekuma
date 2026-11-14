@@ -2540,7 +2540,6 @@ test/built-ins/NativeErrors/URIError/is-a-constructor.js
 test/built-ins/NativeErrors/URIError/proto-from-ctor-realm.js
 test/built-ins/Number/is-a-constructor.js
 test/built-ins/Number/proto-from-ctor-realm.js
-test/built-ins/Number/prototype/toExponential/return-values.js
 test/built-ins/Object/assign/source-own-prop-desc-missing.js
 test/built-ins/Object/assign/source-own-prop-error.js
 test/built-ins/Object/assign/source-own-prop-keys-error.js

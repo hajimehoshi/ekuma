@@ -694,12 +694,26 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 
 // setArrayLengthValue implements the store of an arbitrary value to the length of an array.
 func (vm *VM) setArrayLengthValue(o *Object, val Value) bool {
+	if o.flags&objFrozenLength != 0 {
+		return false
+	}
+	return vm.setArrayLength(o, vm.toArrayLength(val))
+}
+
+// toArrayLength converts val to a new array length as ArraySetLength does, throwing a RangeError when
+// val is not a valid length.
+func (vm *VM) toArrayLength(val Value) uint32 {
+	// ArraySetLength converts the value by ToUint32 and then by ToNumber. Only an object can observe the
+	// second conversion.
 	n := vm.ToNumber(val)
 	u := numconv.ToUint32(n)
+	if val.IsObject() {
+		n = vm.ToNumber(val)
+	}
 	if float64(u) != n {
 		vm.ThrowRangeError("invalid array length")
 	}
-	return vm.setArrayLength(o, u)
+	return u
 }
 
 // setIndex stores val as the property of v whose key is the array index i.
@@ -939,11 +953,7 @@ func (vm *VM) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
 	n := o.length
 	if d.Has&HasValue != 0 {
-		f := vm.ToNumber(d.Value)
-		n = numconv.ToUint32(f)
-		if float64(n) != f {
-			vm.ThrowRangeError("invalid array length")
-		}
+		n = vm.toArrayLength(d.Value)
 	}
 	if d.IsAccessor() {
 		return false
