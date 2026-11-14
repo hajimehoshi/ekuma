@@ -236,6 +236,15 @@ func (vm *VM) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 	return r, g.state == genCompleted
 }
 
+// isSyncGenerator reports whether v is a generator object that is not an async generator.
+func isSyncGenerator(v Value) bool {
+	if !v.IsObject() {
+		return false
+	}
+	g, _ := v.o.ext.(*generator)
+	return g != nil && g.async == nil
+}
+
 // ResumeGenerator continues the generator gen with the value v and returns the iterator result.
 // It reports false, without running anything, when gen is not a generator.
 func (vm *VM) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {

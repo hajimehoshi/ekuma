@@ -31,16 +31,95 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 	return it, vm.GetV(it, vm.K.next)
 }
 
+// IteratorStep is the next method of a built-in iterator, without the iterator result:
+// it returns the next value of the iterator this, or reports false when the iterator is done.
+// It throws a TypeError when this is not an iterator of its kind.
+type IteratorStep func(vm *VM, this Value) (Value, bool)
+
+// NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
+// result for what step returns.
+func (vm *VM) NewIteratorNext(step IteratorStep) *Object {
+	o := vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
+		v, ok := step(vm, this)
+		if !ok {
+			return vm.CreateIterResultObject(Undefined, true)
+		}
+		return vm.CreateIterResultObject(v, false)
+	})
+	o.fn.step = step
+	return o
+}
+
+// Outcomes of iterNext.
+const (
+	iterValue = iota
+	iterDone
+	iterFailed
+)
+
+// iterNext calls the next method next of the iterator it, as for-of and destructuring do.
+// It returns the value with iterValue, or iterDone when the iterator is done. When the result
+// is not an object or reading it throws, it returns iterFailed with the exception pending:
+// the iterator then counts as finished. An exception that next throws propagates.
+//
+// The next methods of the built-in iterators and of generators run without creating
+// the iterator result, whose reading would have no observable effect.
+func (vm *VM) iterNext(it, next Value) (Value, int) {
+	f := next.o
+	var r Value
+	switch {
+	case f != nil && f.fn != nil && f.fn.step != nil:
+		if vm.interrupt.Load() {
+			vm.Poll()
+		}
+		v, ok := f.fn.step(vm, it)
+		if !ok {
+			return Undefined, iterDone
+		}
+		return v, iterValue
+	case f != nil && f == vm.FnGeneratorNext && isSyncGenerator(it):
+		if vm.interrupt.Load() {
+			vm.Poll()
+		}
+		g := it.o.ext.(*generator)
+		v, done := vm.resume(g, ResumeNext, Undefined)
+		if done {
+			return Undefined, iterDone
+		}
+		if !g.delegating {
+			return v, iterValue
+		}
+		// yield* passes the result object of the inner iterator through.
+		r = v
+	default:
+		r = vm.CallValue(next, it)
+	}
+	var v Value
+	var done bool
+	if !vm.protect(func() {
+		if !r.IsObject() {
+			vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+		}
+		done = ToBoolean(vm.GetV(r, vm.K.done))
+		if !done {
+			v = vm.GetV(r, vm.K.Value)
+		}
+	}) {
+		return Undefined, iterFailed
+	}
+	if done {
+		return Undefined, iterDone
+	}
+	return v, iterValue
+}
+
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
 func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
-	r := vm.CallValue(next, it)
-	if !r.IsObject() {
-		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+	v, st := vm.iterNext(it, next)
+	if st == iterFailed {
+		panic(errThrow)
 	}
-	if ToBoolean(vm.GetV(r, vm.K.done)) {
-		return Undefined, false
-	}
-	return vm.GetV(r, vm.K.Value), true
+	return v, st == iterValue
 }
 
 // iteratorClose implements IteratorClose. With pending set, an exception is already
@@ -117,15 +196,22 @@ func (vm *VM) appendIterable(o *Object, v Value) {
 	})
 }
 
+// iterResult is an iterator result object together with the storage of its two properties,
+// so that creating one is a single allocation.
+type iterResult struct {
+	Object
+	props [2]Value
+}
+
 // CreateIterResultObject implements CreateIterResultObject.
 func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
-	return Value{
-		o: &Object{
-			kind:  kindObject,
-			shape: vm.iterResultShape,
-			slots: []Value{v, Bool(done)},
-		},
+	r := &iterResult{
+		kind:  kindObject,
+		shape: vm.iterResultShape,
+		props: [2]Value{v, Bool(done)},
 	}
+	r.slots = r.props[:]
+	return Value{o: &r.Object}
 }
 
 // forIn is the state of a for-in loop.

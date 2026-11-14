@@ -921,7 +921,7 @@ func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 		fn: &function{
 			native: f,
 			name:   name,
-			length: length,
+			length: int32(length),
 		},
 	}
 }

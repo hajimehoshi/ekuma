@@ -33,6 +33,14 @@ func symMethod(vm *engine.VM, o *engine.Object, key *engine.Object, name string,
 	return fn
 }
 
+// iteratorNext defines the next method of the built-in iterators with the prototype proto,
+// which steps the iterator with step.
+func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStep) *engine.Object {
+	fn := vm.NewIteratorNext(step)
+	vm.Define(proto, vm.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
+	return fn
+}
+
 // getter defines the accessor property name on o with the getter f.
 func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name string, f engine.NativeFunc) {
 	g := vm.NewNative("get "+name, 0, f)

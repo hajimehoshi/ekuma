@@ -507,28 +507,28 @@ func initRegExp(vm *engine.VM) {
 	})
 
 	iterProto := vm.NewObject(vm.IteratorProto)
-	method(vm, iterProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		st, ok := engine.IteratorState(this).(*regexpStringIterator)
 		if !ok {
 			vm.ThrowTypeError("%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")
 		}
 		if st.done {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		m := env.regExpExec(vm, st.r, st.s)
 		if m.IsNull() {
 			st.done = true
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		if !st.global {
 			st.done = true
-			return vm.CreateIterResultObject(m, false)
+			return m, true
 		}
 		if vm.ToString(vm.Get(m.Object(), engine.IndexKey(0))) == "" {
 			i := env.getLastIndex(vm, st.r)
 			env.setLastIndex(vm, st.r, advanceStringIndex(st.s, i, st.fullUnicode))
 		}
-		return vm.CreateIterResultObject(m, false)
+		return m, true
 	})
 	vm.Define(iterProto, vm.K.SymToStringTag, vm.NewString("RegExp String Iterator"), engine.FlagConfigurable)
 

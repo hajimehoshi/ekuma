@@ -28,9 +28,12 @@ type function struct {
 
 	native NativeFunc
 
-	// name and length are the initial values of the properties of a native function.
-	name   string
-	length int
+	// step is set for the next method of a built-in iterator. It is what native does
+	// without creating the iterator result.
+	step IteratorStep
+
+	// name is the initial value of the property name of a native function.
+	name string
 
 	bound *boundFunc
 
@@ -39,6 +42,9 @@ type function struct {
 
 	// fields are the elements that a class constructor adds to every instance.
 	fields []classElement
+
+	// length is the initial value of the property length of a native function.
+	length int32
 
 	// materialized is set once the properties length, name and prototype exist as slots.
 	materialized bool
@@ -186,6 +192,9 @@ type VM struct {
 
 	// fnArrayValues and fnArrayIterNext are the original Array.prototype.values and the next method of array iterators.
 	FnArrayValues, FnArrayIterNext, FnArraySpecies *Object
+
+	// FnGeneratorNext is the original next method of generators.
+	FnGeneratorNext *Object
 
 	// Joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
 	Joining []*Object

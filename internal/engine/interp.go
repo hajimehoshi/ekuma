@@ -1591,33 +1591,19 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
-				it, next := regs[i.B], regs[i.B+1]
-				r := vm.CallValue(next, it)
+				v, st := vm.iterNext(regs[i.B], regs[i.B+1])
 				regs = vm.reload(regs, onHeap, base, fp)
-				if !r.IsObject() {
+				switch st {
+				case iterValue:
+					regs[i.A] = v
+				case iterDone:
 					regs[i.B] = Undefined
-					vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
-				}
-				var done bool
-				var v Value
-				if ok := vm.protect(func() {
-					done = ToBoolean(vm.GetV(r, vm.K.done))
-					if !done {
-						v = vm.GetV(r, vm.K.Value)
-					}
-				}); !ok {
+					pc = int(i.C)
+				default:
 					// An iterator whose result cannot be read counts as finished.
-					regs = vm.reload(regs, onHeap, base, fp)
 					regs[i.B] = Undefined
 					goto throw
 				}
-				regs = vm.reload(regs, onHeap, base, fp)
-				if done {
-					regs[i.B] = Undefined
-					pc = int(i.C)
-					continue
-				}
-				regs[i.A] = v
 			}
 		case bytecode.OpIterClose:
 			it := regs[i.A]

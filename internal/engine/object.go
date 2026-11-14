@@ -322,6 +322,26 @@ func (vm *VM) NewArray(elems []Value) *Object {
 	}
 }
 
+// pairArray is an array of two elements together with the storage of its elements,
+// so that creating one is a single allocation.
+type pairArray struct {
+	Object
+	pair [2]Value
+}
+
+// NewArrayPair returns a new array with the elements a and b.
+func (vm *VM) NewArrayPair(a, b Value) *Object {
+	p := &pairArray{
+		kind:   kindArray,
+		class:  classArray,
+		shape:  vm.arrayShape,
+		length: 2,
+		pair:   [2]Value{a, b},
+	}
+	p.elems = p.pair[:]
+	return &p.Object
+}
+
 // NewObjectFromProperties returns a new ordinary object whose prototype is Object.prototype,
 // with the data properties keys[i]: vals[i] created in order as CreateDataProperty creates them.
 // A repeated key keeps its first position and takes the last value. It does not keep the slices.

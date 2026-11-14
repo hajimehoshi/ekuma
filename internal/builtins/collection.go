@@ -215,26 +215,26 @@ func initMap(vm *engine.VM) {
 	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(entries), engine.FlagsHidden)
 	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("Map"), engine.FlagConfigurable)
 
-	method(vm, iterProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*mapIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not a Map Iterator")
 		}
 		if it.table == nil {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		k, v, ok := it.table.Next(&it.cursor)
 		if !ok {
 			it.table = nil
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		switch it.kind {
 		case iterKeys:
-			return vm.CreateIterResultObject(k, false)
+			return k, true
 		case iterValues:
-			return vm.CreateIterResultObject(v, false)
+			return v, true
 		}
-		return vm.CreateIterResultObject(engine.ObjectValue(vm.NewArray([]engine.Value{k, v})), false)
+		return engine.ObjectValue(vm.NewArrayPair(k, v)), true
 	})
 	vm.Define(iterProto, vm.K.SymToStringTag, vm.NewString("Map Iterator"), engine.FlagConfigurable)
 }
@@ -538,23 +538,23 @@ func initSet(vm *engine.VM) {
 	vm.Define(proto, vm.K.SymIterator, engine.ObjectValue(values), engine.FlagsHidden)
 	vm.Define(proto, vm.K.SymToStringTag, vm.NewString("Set"), engine.FlagConfigurable)
 
-	method(vm, iterProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*setIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not a Set Iterator")
 		}
 		if it.table == nil {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		k, _, ok := it.table.Next(&it.cursor)
 		if !ok {
 			it.table = nil
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		if it.kind == iterEntries {
-			return vm.CreateIterResultObject(engine.ObjectValue(vm.NewArray([]engine.Value{k, k})), false)
+			return engine.ObjectValue(vm.NewArrayPair(k, k)), true
 		}
-		return vm.CreateIterResultObject(k, false)
+		return k, true
 	})
 	vm.Define(iterProto, vm.K.SymToStringTag, vm.NewString("Set Iterator"), engine.FlagConfigurable)
 }

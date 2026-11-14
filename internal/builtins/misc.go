@@ -405,50 +405,49 @@ func initIterators(vm *engine.VM) {
 		return this
 	})
 
-	vm.FnArrayIterNext = method(vm, vm.ArrayIteratorProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.FnArrayIterNext = iteratorNext(vm, vm.ArrayIteratorProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*arrayIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not an array iterator")
 		}
 		if it.obj == nil {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		n := vm.LengthOfArrayLike(it.obj)
 		i := it.pos
 		if i >= n {
 			it.obj = nil
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		it.pos++
 		switch it.kind {
 		case iterKeys:
-			return vm.CreateIterResultObject(engine.Number(float64(i)), false)
+			return engine.Number(float64(i)), true
 		case iterValues:
-			return vm.CreateIterResultObject(getAt(vm, it.obj, i), false)
+			return getAt(vm, it.obj, i), true
 		}
-		pair := vm.NewArray([]engine.Value{engine.Number(float64(i)), getAt(vm, it.obj, i)})
-		return vm.CreateIterResultObject(engine.ObjectValue(pair), false)
+		return engine.ObjectValue(vm.NewArrayPair(engine.Number(float64(i)), getAt(vm, it.obj, i))), true
 	})
 	vm.Define(vm.ArrayIteratorProto, vm.K.SymToStringTag, vm.NewString("Array Iterator"), engine.FlagConfigurable)
 
-	method(vm, vm.StringIteratorProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	iteratorNext(vm, vm.StringIteratorProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*stringIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not a string iterator")
 		}
 		if it.pos >= len(it.str) {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return engine.Undefined, false
 		}
 		_, size := wtf8.DecodeRune(it.str[it.pos:])
 		s := it.str[it.pos : it.pos+size]
 		it.pos += size
-		return vm.CreateIterResultObject(vm.NewString(s), false)
+		return vm.NewString(s), true
 	})
 	vm.Define(vm.StringIteratorProto, vm.K.SymToStringTag, vm.NewString("String Iterator"), engine.FlagConfigurable)
 
 	gp := vm.GeneratorProto
-	resume := func(name string, mode engine.ResumeMode) {
-		method(vm, gp, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	resume := func(name string, mode engine.ResumeMode) *engine.Object {
+		return method(vm, gp, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			r, ok := vm.ResumeGenerator(this, mode, arg(args, 0))
 			if !ok {
 				vm.ThrowTypeError(name + " method called on an object that is not a generator")
@@ -456,7 +455,7 @@ func initIterators(vm *engine.VM) {
 			return r
 		})
 	}
-	resume("next", engine.ResumeNext)
+	vm.FnGeneratorNext = resume("next", engine.ResumeNext)
 	resume("return", engine.ResumeReturn)
 	resume("throw", engine.ResumeThrow)
 	vm.Define(gp, vm.K.SymToStringTag, vm.NewString("Generator"), engine.FlagConfigurable)
