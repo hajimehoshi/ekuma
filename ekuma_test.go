@@ -10,6 +10,7 @@ import (
 	"io"
 	"math/big"
 	"reflect"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -1090,5 +1091,30 @@ func TestSyntheticModules(t *testing.T) {
 	var ex *ekuma.Error
 	if _, err := vm.ParseJSONModule("bad.json", `{`); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
 		t.Errorf("got %v, want a SyntaxError", err)
+	}
+}
+
+func TestPrototypeCollected(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := vm.RunScript(t.Context(), "make", `
+		function make() {
+			class C {}
+			return new C();
+		}
+		var refs = [];
+		for (let i = 0; i < 1000; i++) {
+			refs.push(new WeakRef(Object.getPrototypeOf(make())));
+		}
+	`); err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	runtime.GC()
+	v, err := vm.RunScript(t.Context(), "count", `refs.filter(r => r.deref() !== undefined).length`)
+	if err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	// The inline caches of make may keep the most recent prototypes alive.
+	if got, max := v.Float(), 2.0; got > max {
+		t.Errorf("got %v live prototypes, want at most %v", got, max)
 	}
 }

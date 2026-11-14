@@ -18,10 +18,6 @@ func New(hostDefined any) *VM {
 	vm := &VM{
 		hostDefined: hostDefined,
 		stack:       make([]Value, 1<<14),
-		shapes: shapeTable{
-			byProto:         map[*Object]*shape{},
-			functionByProto: map[*Object]*shape{},
-		},
 		strings: stringTable{
 			interned: map[string]*Object{},
 		},

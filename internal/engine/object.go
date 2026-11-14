@@ -115,7 +115,8 @@ type Object struct {
 	str string
 
 	// meta is the side data that few objects need: what indexing a non-ASCII string needs,
-	// and the entries in weak collections of an object or a symbol.
+	// the entries in weak collections of an object or a symbol, and the empty shapes of
+	// the objects whose prototype is this object.
 	meta *objectMeta
 
 	// ext is the internal state of a built-in object. For a string that is not interned
@@ -126,13 +127,30 @@ type Object struct {
 // objectMeta is the side data of an object.
 type objectMeta struct {
 	// length and cursor are the cached UTF-16 view of a string that is not ASCII:
-	// its length and the position of the most recent access.
+	// its length, or 0 before it is known, and the position of the most recent access.
 	length int
 	cursor wtf8.Pos
 
 	// weak holds the values that the weak collections associate with an object or a symbol,
 	// by collection. See [WeakTable].
 	weak weakEntries
+
+	// protoShape is the empty shape of the objects whose prototype is this object, once one
+	// was made. See [VM.shapeFor].
+	protoShape *shape
+
+	// functionProtoShape is the empty shape of the functions whose prototype is this object
+	// and whose initial properties are not stored yet, once one was made.
+	// See [VM.functionShapeFor].
+	functionProtoShape *shape
+}
+
+// ensureMeta returns the side data of o, creating it if needed.
+func (o *Object) ensureMeta() *objectMeta {
+	if o.meta == nil {
+		o.meta = &objectMeta{}
+	}
+	return o.meta
 }
 
 // BigInt returns the content of the BigInt o, which must not be modified.
@@ -293,13 +311,6 @@ type shapeTable struct {
 	// proxy is the shape of a new proxy object. It has no prototype, so that a lookup in shapes
 	// stops at a proxy, and only ever gains private names.
 	proxy *shape
-
-	// byProto maps a prototype to the empty shape of the objects with that prototype.
-	byProto map[*Object]*shape
-
-	// functionByProto maps a prototype to the shape of the functions with that prototype whose
-	// initial properties are not stored yet.
-	functionByProto map[*Object]*shape
 }
 
 // shapeFor returns the empty shape for objects whose prototype is proto, which may be nil.
@@ -307,32 +318,33 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 	if proto == nil {
 		return vm.shapes.nullProto
 	}
-	if s, ok := vm.shapes.byProto[proto]; ok {
-		return s
+	// The shape is stored on proto, so that it and the shapes derived from it are collected
+	// together with proto.
+	m := proto.ensureMeta()
+	if m.protoShape == nil {
+		m.protoShape = &shape{
+			vm:    vm,
+			proto: proto,
+		}
+		proto.flags |= objIsProto
 	}
-	s := &shape{
-		vm:    vm,
-		proto: proto,
-	}
-	vm.shapes.byProto[proto] = s
-	proto.flags |= objIsProto
-	return s
+	return m.protoShape
 }
 
 // functionShapeFor returns the empty shape for the functions whose prototype is proto and whose
 // initial properties are not stored yet. No other object has this shape or one derived from it,
 // so an inline cache filled for another kind of object never applies to such a function.
+// proto must not be nil.
 func (vm *VM) functionShapeFor(proto *Object) *shape {
-	if s, ok := vm.shapes.functionByProto[proto]; ok {
-		return s
+	m := proto.ensureMeta()
+	if m.functionProtoShape == nil {
+		m.functionProtoShape = &shape{
+			vm:    vm,
+			proto: proto,
+		}
+		proto.flags |= objIsProto
 	}
-	s := &shape{
-		vm:    vm,
-		proto: proto,
-	}
-	vm.shapes.functionByProto[proto] = s
-	proto.flags |= objIsProto
-	return s
+	return m.functionProtoShape
 }
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
@@ -497,19 +509,19 @@ func (o *Object) StringLength() int {
 	if o.IsASCII() {
 		return len(o.str)
 	}
-	if o.meta == nil {
-		o.meta = &objectMeta{length: wtf8.Len(o.str)}
+	m := o.ensureMeta()
+	// A string that is not ASCII is never empty, so 0 means that the length is not known yet.
+	if m.length == 0 {
+		m.length = wtf8.Len(o.str)
 	}
-	return o.meta.length
+	return m.length
 }
 
 // seek returns the position of the code unit i of the non-ASCII string o.
 func (o *Object) seek(i int) wtf8.Pos {
-	if o.meta == nil {
-		o.meta = &objectMeta{length: wtf8.Len(o.str)}
-	}
-	p := wtf8.Seek(o.str, o.meta.cursor, i)
-	o.meta.cursor = p
+	m := o.ensureMeta()
+	p := wtf8.Seek(o.str, m.cursor, i)
+	m.cursor = p
 	return p
 }
 

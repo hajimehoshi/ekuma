@@ -104,12 +104,7 @@ func (t *WeakTable) Has(k Value) bool {
 
 // Set sets the value of the entry with the key k.
 func (t *WeakTable) Set(k, v Value) {
-	m := k.o.meta
-	if m == nil {
-		m = &objectMeta{}
-		k.o.meta = m
-	}
-	w := &m.weak
+	w := &k.o.ensureMeta().weak
 	if w.vals == nil {
 		w.vals = map[weak.Pointer[WeakTable]]Value{}
 	}
