@@ -7026,7 +7026,6 @@ test/language/statements/return/tco.js
 test/language/statements/switch/tco-case-body-dflt.js
 test/language/statements/switch/tco-case-body.js
 test/language/statements/switch/tco-dftl-body.js
-test/language/statements/try/completion-values.js
 test/language/statements/try/tco-catch-finally.js
 test/language/statements/try/tco-catch.js
 test/language/statements/try/tco-finally.js

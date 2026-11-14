@@ -202,6 +202,11 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 			f.emit(bytecode.OpCloseUpvals, c.reg, 0, 0)
 		case ctlWith:
 			f.emit(bytecode.OpPopScope, 0, 0, 0)
+		case ctlFinalizer:
+			// A break or continue out of a finally block carries the value of the block.
+			if kind != exitReturn {
+				f.emit(bytecode.OpMove, c.valueReg, c.reg, 0)
+			}
 		case ctlFinally:
 			// Continue the jump after the finally block.
 			id := int32(len(c.pending) + 2)
@@ -367,7 +372,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 	case *ast.IfStmt, *ast.ForStmt, *ast.ForInStmt, *ast.ForOfStmt, *ast.WhileStmt, *ast.DoWhileStmt,
 		*ast.SwitchStmt, *ast.TryStmt, *ast.WithStmt:
 		// The value of these statements is undefined unless a statement in them has a value.
-		if f.completion >= 0 && f.eval != nil {
+		if f.completion >= 0 {
 			f.emit(bytecode.OpLoadUndef, f.completion, 0, 0)
 		}
 	}
@@ -826,6 +831,10 @@ func (f *fn) try(s *ast.TryStmt) {
 			}
 			f.destructure(s.Param, exc, patInit)
 		}
+		if f.completion >= 0 {
+			// The value of the statement is undefined unless the catch block has a value.
+			f.emit(bytecode.OpLoadUndef, f.completion, 0, 0)
+		}
 		f.block(s.Handler, nil)
 		f.leaveScope()
 	}
@@ -838,10 +847,20 @@ func (f *fn) try(s *ast.TryStmt) {
 	f.enterFinally(fin, start, base, done)
 	saved := f.completion
 	if saved >= 0 {
-		// The value of a finally block is not the value of the statement.
+		// The value of a finally block is the value of the statement only when the block
+		// breaks or continues.
 		f.completion = f.newReg()
+		f.emit(bytecode.OpLoadUndef, f.completion, 0, 0)
+		f.control = append(f.control, &ctl{
+			kind:     ctlFinalizer,
+			reg:      f.completion,
+			valueReg: saved,
+		})
 	}
 	f.block(s.Finalizer, nil)
+	if saved >= 0 {
+		f.control = f.control[:len(f.control)-1]
+	}
 	f.completion = saved
 	f.leaveFinally(fin)
 }

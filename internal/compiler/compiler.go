@@ -115,6 +115,9 @@ const (
 
 	// ctlWith is a with statement.
 	ctlWith
+
+	// ctlFinalizer is the finally block of a try statement in code that has a completion value.
+	ctlFinalizer
 )
 
 type exitKind uint8
@@ -153,6 +156,8 @@ type ctl struct {
 	pending  []pendingExit
 
 	// For ctlScope and ctlIter: the first register of the scope, or the iterator.
+	// For ctlFinalizer: the register of the completion value of the finally block, and
+	// valueReg is the register of the completion value of the code around the try statement.
 	reg int32
 }
 

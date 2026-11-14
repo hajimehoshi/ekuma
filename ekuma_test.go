@@ -427,6 +427,16 @@ func TestScripts(t *testing.T) {
 				r.join()`,
 			want: "true,true,o--p-,true,false",
 		},
+		{
+			name: "a statement without a value makes the script value undefined",
+			src:  `1; if (false) {}`,
+			want: "undefined",
+		},
+		{
+			name: "an empty catch block makes the try statement value undefined",
+			src:  `1; try { 2; throw 0; } catch (e) {}`,
+			want: "undefined",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
