@@ -208,6 +208,47 @@ func BenchmarkCollection(b *testing.B) {
 	}
 }
 
+// BenchmarkEval measures eval. One iteration is one call: eval evaluates a short expression
+// at one call site, whose compiled code is reused; marked calls a function that contains a
+// direct eval it does not reach, and unmarked the same function without the eval; function
+// creates a function with new Function and calls it.
+func BenchmarkEval(b *testing.B) {
+	const src = `
+		function evalExpr(x) { return eval("x * 2 + 1"); }
+		function marked(x, y) {
+			if (x < 0) return eval("y");
+			var s = 0;
+			for (var i = 0; i < 4; i++) s += x * i + y;
+			return s;
+		}
+		function unmarked(x, y) {
+			if (x < 0) return y;
+			var s = 0;
+			for (var i = 0; i < 4; i++) s += x * i + y;
+			return s;
+		}
+		var runs = {
+			eval(n) { var s = 0; for (var i = 0; i < n; i++) s += evalExpr(i); return s; },
+			marked(n) { var s = 0; for (var i = 0; i < n; i++) s += marked(i, 1); return s; },
+			unmarked(n) { var s = 0; for (var i = 0; i < n; i++) s += unmarked(i, 1); return s; },
+			function(n) { var s = 0; for (var i = 0; i < n; i++) s += new Function("x", "return x * 2 + 1")(i); return s; },
+		};`
+	for _, name := range []string{"eval", "marked", "unmarked", "function"} {
+		b.Run(name, func(b *testing.B) {
+			ctx := b.Context()
+			vm := ekuma.NewVM()
+			if _, err := vm.RunScript(ctx, "eval.js", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("runs[%q](%d)", name, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkAsync measures promises and async functions. One iteration is one await of
 // a resolved promise, one call of an async function that awaits once, one step of
 // a for-await loop over an async generator, or one awaited Promise.all of three promises.

@@ -56,6 +56,9 @@ type binding struct {
 	// unset is set while tdz is set and the register does not hold the TDZ marker,
 	// so that every access of the binding is known to throw.
 	unset bool
+
+	// catch marks a parameter of a catch clause.
+	catch bool
 }
 
 // scope is a block scope.
@@ -189,6 +192,24 @@ type fn struct {
 
 	// chains holds, for every optional chain being compiled, the jumps of its short circuits.
 	chains [][]int
+
+	// classDepth is the number of class bodies around the code being compiled, within the function.
+	classDepth int
+
+	// lazyArgs is set when the variable arguments holds the TDZ marker until a direct eval
+	// creates the mapped arguments object.
+	lazyArgs bool
+
+	// anyMutated is set when a direct eval can assign to any variable of the function.
+	anyMutated bool
+
+	// evalLevel is the withDepth at which the scope of OpEvalScope that the direct evals of
+	// the code being compiled declare their variables in was pushed, or 0 when there is none.
+	evalLevel int
+
+	// eval describes the call site of the eval code being compiled, which is the outermost
+	// function, and is nil otherwise.
+	eval *evalOuter
 
 	line int32
 }
@@ -461,6 +482,11 @@ func (f *fn) resolve(name string) ref {
 		}
 	}
 	if f.parent == nil {
+		if f.eval != nil {
+			if r, ok := f.eval.resolve(f, name); ok {
+				return r
+			}
+		}
 		return ref{kind: refGlobal}
 	}
 	r := f.parent.resolve(name)
@@ -498,8 +524,22 @@ func (f *fn) withsAround() int {
 	n := 0
 	for g := f; g != nil; g = g.parent {
 		n += g.withDepth
+		if g.eval != nil {
+			n += int(g.eval.scope.Depth)
+		}
 	}
 	return n
+}
+
+// evalScopesAround reports whether a scope of OpEvalScope can be among the dynamic scopes
+// around the code being compiled.
+func (f *fn) evalScopesAround() bool {
+	for g := f; g != nil; g = g.parent {
+		if g.evalLevel > 0 || g.eval != nil && g.eval.scope.VarDepth > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // dynDepth returns the number of the innermost dynamic scopes that a reference to the variable
@@ -514,6 +554,12 @@ func (f *fn) dynDepth(name string) int32 {
 			return n + int32(g.withDepth-s.withs)
 		}
 		n += int32(g.withDepth)
+		if g.eval != nil {
+			if v, ok := g.eval.vars[name]; ok {
+				return n + v.Depth
+			}
+			return n + g.eval.scope.Depth
+		}
 	}
 	return n
 }
@@ -726,6 +772,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 	f.f.Strict = prog.Strict
 	f.f.Source = prog.Source
 	f.mutated = map[string]bool{}
+	f.anyMutated = prog.Scope.ContainsDirectEval
 
 	// Register 0 holds this, and register 1 the completion value.
 	this := f.declare("this", bindPseudo)
@@ -768,7 +815,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 	for _, name := range funcOrder {
 		t := f.newReg()
 		f.closure(funcs[name], t, name)
-		f.emit(bytecode.OpDeclareGlobalVar, f.key(name), 1, t)
+		f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarFunc, t)
 		f.free(t)
 	}
 	for _, d := range prog.Scope.Decls {

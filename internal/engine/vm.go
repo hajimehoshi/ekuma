@@ -270,6 +270,9 @@ type VM struct {
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
+
+	// evals caches the compiled code of eval.
+	evals evalCache
 }
 
 // realm is the set of intrinsic objects.

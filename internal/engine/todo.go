@@ -11,11 +11,6 @@ func (vm *VM) unsupported(what string) {
 	vm.throwError(ErrorKindError, "ekuma: "+what+" is not implemented yet")
 }
 
-func (vm *VM) directEval(src Value, scope int, regs []Value) Value {
-	vm.unsupported("direct eval")
-	return Undefined
-}
-
 func (vm *VM) proxyGet(o *Object, k PropKey, receiver Value) Value {
 	vm.unsupported("Proxy")
 	return Undefined

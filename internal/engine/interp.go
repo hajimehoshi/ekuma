@@ -340,7 +340,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)
 		case bytecode.OpDeclareGlobalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.declareGlobalVar(fp.keys[i.A], i.B != 0, regs[i.C])
+			vm.declareGlobalVar(fp.keys[i.A], int(i.B), regs[i.C])
 		case bytecode.OpDeclareGlobalLex:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.declareGlobalLex(fp.keys[i.A], i.B != 0)
@@ -1234,13 +1234,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			a := int(i.A)
 			if regs[a].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
-				var src Value = Undefined
-				if i.B > 0 {
-					src = regs[a+2]
-				}
-				v := vm.directEval(src, int(i.C), regs)
+				v := vm.directEval(evalArg(regs[a+2:], int(i.B)), int(i.C))
 				regs = vm.reload(regs, onHeap, base, fp)
 				regs[a] = v
+				if i.B < 0 {
+					pc++
+				}
+				continue
+			}
+			if i.B < 0 {
 				continue
 			}
 			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
@@ -1365,6 +1367,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			cur := &vm.frames[n]
 			g := cur.gen
 			g.pc = pc
+			g.scopes = cur.scopes
 			g.state = genSuspendedStart
 			o := vm.newGeneratorObject(g)
 			ret = cur.ret
@@ -1736,6 +1739,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(vm.deleteName(fp.keys[i.B]))
 		case bytecode.OpCaptureScopes:
 			regs[i.A].o.fn.scopes = vm.openScopes(cl)
+		case bytecode.OpEvalScope:
+			vm.pushEvalScope()
+		case bytecode.OpScopeThis:
+			regs[i.A] = scopeThis(regs[i.B])
+		case bytecode.OpDeclareEvalVar:
+			vm.frames[len(vm.frames)-1].pc = pc
+			vm.declareEvalVar(cl, fp.keys[i.A], int(i.B), regs, int(i.C))
 
 		case bytecode.OpDebugger, bytecode.OpNop:
 		default:

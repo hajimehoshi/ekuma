@@ -173,19 +173,24 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 	}
 }
 
-// declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when isFunc is set.
-func (vm *VM) declareGlobalVar(key *Object, isFunc bool, fn Value) {
+// declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when
+// flags has bytecode.GlobalVarFunc. flags is a set of the bytecode GlobalVar flags.
+func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
 	g := vm.global
 	k := PropKey{key: key}
 	d, ok := vm.GetOwnProperty(g, k)
-	if !isFunc {
+	attrs := FlagEnumerable | FlagWritable
+	if flags&bytecode.GlobalVarDeletable != 0 {
+		attrs |= FlagConfigurable
+	}
+	if flags&bytecode.GlobalVarFunc == 0 {
 		if !ok {
-			vm.DefinePropertyOrThrow(g, k, dataDesc(Undefined, FlagEnumerable|FlagWritable))
+			vm.DefinePropertyOrThrow(g, k, dataDesc(Undefined, attrs))
 		}
 		return
 	}
 	if !ok || d.flags&FlagConfigurable != 0 {
-		vm.DefinePropertyOrThrow(g, k, dataDesc(fn, FlagEnumerable|FlagWritable))
+		vm.DefinePropertyOrThrow(g, k, dataDesc(fn, attrs))
 		return
 	}
 	vm.DefinePropertyOrThrow(g, k, PropDesc{
@@ -953,6 +958,9 @@ func (vm *VM) findScope(cl *Object, key *Object, depth int) *Object {
 			depth--
 			if !vm.HasProperty(o, k) {
 				continue
+			}
+			if o.class == classEvalScope {
+				return o
 			}
 			if u := vm.getProp(o, PropKey{key: vm.WellKnownSymbol(SymbolUnscopables)}, Value{o: o}); u.IsObject() {
 				if ToBoolean(vm.getProp(u.o, k, u)) {

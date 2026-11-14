@@ -96,7 +96,7 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 		if e == nil || pure(e) {
 			continue
 		}
-		if f.mutated[name] {
+		if f.mutated[name] || f.anyMutated {
 			return true
 		}
 		found := false
@@ -866,7 +866,11 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		if scope := f.resolveName(c.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
 			f.emit(bytecode.OpGetScoped, base, scope, f.key(c.Name))
-			f.emit(bytecode.OpMove, base+1, scope, 0)
+			if f.evalScopesAround() {
+				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
+			} else {
+				f.emit(bytecode.OpMove, base+1, scope, 0)
+			}
 			end := f.jump()
 			f.patch(skip)
 			f.loadStatic(c.Name, base, false)
@@ -877,7 +881,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			f.expr(callee, base)
 			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
 		}
-		if c.Name == "eval" {
+		if c.Name == "eval" && !n.Optional {
 			op = bytecode.OpCallEval
 		}
 	default:
@@ -886,7 +890,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	}
 	f.chainCheck(n.Optional, base)
 
-	if len(n.Args) == 1 {
+	if len(n.Args) == 1 && op != bytecode.OpCallEval {
 		if s, ok := n.Args[0].(*ast.SpreadElement); ok && f.isForwardedArguments(s.Arg) {
 			f.emit(bytecode.OpCallFwd, base, 0, 0)
 			f.result(dst, base)
@@ -895,6 +899,9 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	}
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
+		if op == bytecode.OpCallEval {
+			f.emit(bytecode.OpCallEval, base, -1, f.evalSite())
+		}
 		f.emit(bytecode.OpCallSpread, base, 0, 0)
 		f.result(dst, base)
 		return
@@ -902,7 +909,11 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	for _, a := range n.Args {
 		f.expr(a, f.newReg())
 	}
-	f.emit(op, base, int32(len(n.Args)), 0)
+	site := int32(0)
+	if op == bytecode.OpCallEval {
+		site = f.evalSite()
+	}
+	f.emit(op, base, int32(len(n.Args)), site)
 	f.result(dst, base)
 }
 

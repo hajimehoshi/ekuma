@@ -288,11 +288,7 @@ func (vm *VM) PerformEval(x Value) Value {
 	if !x.IsString() {
 		return x
 	}
-	fp, err := vm.compileScript("<eval>", x.o.str)
-	if err != nil {
-		vm.throwSyntaxError(err.Error())
-	}
-	return vm.Call(vm.newScriptFunction(fp), Value{o: vm.global})
+	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.o.str)), Value{o: vm.global})
 }
 
 // FunctionKind is the kind of function that CreateDynamicFunction creates.

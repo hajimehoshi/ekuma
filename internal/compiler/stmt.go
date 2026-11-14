@@ -363,6 +363,14 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 	mark := f.top
 	defer f.free(mark)
 	f.setLine(s)
+	switch s.(type) {
+	case *ast.IfStmt, *ast.ForStmt, *ast.ForInStmt, *ast.ForOfStmt, *ast.WhileStmt, *ast.DoWhileStmt,
+		*ast.SwitchStmt, *ast.TryStmt, *ast.WithStmt:
+		// The value of these statements is undefined unless a statement in them has a value.
+		if f.completion >= 0 && f.eval != nil {
+			f.emit(bytecode.OpLoadUndef, f.completion, 0, 0)
+		}
+	}
 	switch s := s.(type) {
 	case *ast.ExprStmt:
 		if f.completion >= 0 {
@@ -520,6 +528,18 @@ func (f *fn) annexBHoist(s *ast.FuncDecl) {
 	name := s.Func.Name.Name
 	inner, _ := f.lookupLocal(name)
 	if inner == nil {
+		return
+	}
+	if f.eval != nil && !f.f.Strict {
+		if !f.eval.hoisted[name] {
+			return
+		}
+		if f.eval.scope.VarDepth == 0 {
+			k := f.site(name)
+			f.emit(bytecode.OpSetGlobal, inner.reg, k, k)
+			return
+		}
+		f.storeEvalVar(name, inner.reg)
 		return
 	}
 	if outer, ok := f.varScope.vars[name]; ok {
@@ -801,6 +821,7 @@ func (f *fn) try(s *ast.TryStmt) {
 				for _, d := range s.CatchScope.Decls {
 					b := f.declare(d.Name, bindLet)
 					b.tdz = false
+					b.catch = true
 				}
 			}
 			f.destructure(s.Param, exc, patInit)

@@ -85,6 +85,10 @@ const (
 	classRawJSON
 	classDisposableStack
 	classAsyncDisposableStack
+
+	// classEvalScope is the scope of OpEvalScope, whose properties are the variables that
+	// direct evals declare in a function.
+	classEvalScope
 )
 
 // Object is every heap value: plain objects, arrays, functions, strings, symbols, and the singletons.

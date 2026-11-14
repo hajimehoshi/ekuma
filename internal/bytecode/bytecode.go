@@ -26,7 +26,7 @@ const (
 	OpGetGlobalOrUndef // like OpGetGlobal, but undefined when the global does not exist
 	OpSetGlobal        // global Keys[b] = a, cache c; creates the global when it does not exist
 	OpSetGlobalStrict  // like OpSetGlobal, but a ReferenceError when the global does not exist
-	OpDeclareGlobalVar // declare the global variable Keys[a]; b says whether it is a function, which c holds
+	OpDeclareGlobalVar // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
 	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant when b is set
 	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
 	OpCheckGlobalDecl  // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds
@@ -133,7 +133,7 @@ const (
 	OpApplyFwd      // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; b says whether an arguments object made for them is mapped
 	OpCallFwd       // a = a(this a+1, the arguments of the running function)
 	OpCallSpread    // a = a(this a+1, ...the array a+2)
-	OpCallEval      // like OpCall; a direct eval when a is the eval function. c is the index of the scope description
+	OpCallEval      // like OpCall; a direct eval when a is the eval function. c indexes EvalScopes. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the OpCallSpread for any other function
 	OpNew           // a = new a(args a+2...), b arguments, cache c
 	OpNewSpread     // a = new a(...the array a+2)
 	OpSuperCall     // a = super(args a+2...), b arguments, where a is the running constructor and a+1 new.target
@@ -203,12 +203,25 @@ const (
 	OpDisposeStep  // a = the next value to await in disposing the capability b; jump to c when there is none
 	OpDisposeError // record that disposing a resource of the capability a threw b
 	OpDisposeEnd   // end disposing the capability a and throw its completion when it is a throw; a becomes undefined
+
+	OpEvalScope      // push a new scope for the variables that direct evals declare
+	OpScopeThis      // a = the this value of a call of a function found in the dynamic scope b
+	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of OpEvalScope; it is a function when c is not -1, and c holds it
 )
 
 // The kinds of error that OpThrowError throws.
 const (
 	ThrowTypeError = iota
 	ThrowReferenceError
+)
+
+// The flags of OpDeclareGlobalVar.
+const (
+	// GlobalVarFunc declares a function.
+	GlobalVarFunc = 1 << iota
+
+	// GlobalVarDeletable declares a binding of eval code, which can be deleted.
+	GlobalVarDeletable
 )
 
 // The kinds of top-level declaration that OpCheckGlobalDecl checks.
@@ -333,6 +346,9 @@ type Func struct {
 
 	Templates []Template
 
+	// EvalScopes describe the call sites of direct evals, which OpCallEval refers to.
+	EvalScopes []EvalScope
+
 	// Lines maps instructions to source lines, ordered by PC.
 	Lines []LinePos
 
@@ -363,6 +379,84 @@ type Func struct {
 
 	// NeedsExtra is set when the function reads the arguments beyond its parameters.
 	NeedsExtra bool
+}
+
+// EvalScope is what eval code sees at the call site of a direct eval.
+type EvalScope struct {
+	// Strict says whether the calling code is strict.
+	Strict bool
+
+	// The constructs that the calling context allows in eval code.
+	NewTarget     bool
+	SuperProperty bool
+	SuperCall     bool
+	InFieldInit   bool
+
+	// Vars are the variables visible at the call, one for each name, sorted by name.
+	Vars []EvalVar
+
+	// Depth is the number of dynamic scopes open at the call.
+	Depth int32
+
+	// LazyArguments says whether the variable arguments, when it is a register of the calling
+	// function, holds the TDZ marker until a direct eval that refers to it creates the mapped
+	// arguments object of the calling function.
+	LazyArguments bool
+
+	// VarDepth says which of the dynamic scopes, counted from the innermost one starting at 1,
+	// is the scope of OpEvalScope that the var declarations of non-strict eval code go to.
+	// It is 0 when they go to the global object.
+	VarDepth int32
+}
+
+// EvalVarKind is the kind of a variable that eval code sees.
+type EvalVarKind uint8
+
+const (
+	EvalVarVar EvalVarKind = iota
+	EvalVarLet
+	EvalVarConst
+	EvalVarClass
+
+	// EvalVarFuncName is the name of a named function expression inside that function.
+	EvalVarFuncName
+
+	// EvalVarPseudo is a value that the engine provides, such as this, or a private name.
+	EvalVarPseudo
+)
+
+// EvalPlace says where a variable is relative to the variable environment of non-strict eval code.
+type EvalPlace uint8
+
+const (
+	// EvalPlaceOuter is a variable outside the variable environment.
+	EvalPlaceOuter EvalPlace = iota
+
+	// EvalPlaceVarEnv is a var-scoped variable of the variable environment itself.
+	EvalPlaceVarEnv
+
+	// EvalPlaceInner is a variable of a scope between the call and the variable environment.
+	EvalPlaceInner
+
+	// EvalPlaceCatch is a catch parameter between the call and the variable environment.
+	EvalPlaceCatch
+)
+
+// EvalVar is a variable that eval code sees.
+type EvalVar struct {
+	Name  string
+	Kind  EvalVarKind
+	Place EvalPlace
+
+	// Check says whether a read can find the variable uninitialized.
+	Check bool
+
+	// Local and Index say where the variable is, as in UpvalDesc.
+	Local bool
+	Index int32
+
+	// Depth is the number of dynamic scopes that a reference searches before the variable.
+	Depth int32
 }
 
 // Line returns the source line of the instruction at pc.

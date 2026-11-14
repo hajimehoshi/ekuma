@@ -144,8 +144,17 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			}
 		}
 	}
-	if node.HasDirectEval {
-		c.fail(node, "direct eval is not supported yet")
+	f.anyMutated = node.Scope.ContainsDirectEval
+
+	// A non-strict function that calls eval directly has a dynamic scope for the variables that
+	// eval code declares. The calls in a parameter list that is not simple declare them in a
+	// scope of their own, outside the parameters.
+	sloppyEval := node.HasDirectEval && !node.Strict
+	evalInParams := sloppyEval && !node.SimpleParams && hasDirectEval(evalOwn, paramNodes(node.Params)...)
+	evalInBody := sloppyEval && hasDirectEval(evalOwn, bodyNodes(node)...)
+	if evalInParams || node.SimpleParams && evalInBody {
+		f.pushEvalScope()
+		f.scope.withs = f.withDepth
 	}
 
 	// The parameters are the first registers.
@@ -186,6 +195,14 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	}
 	if !node.SimpleParams {
 		early = earlyCaptures(node.Params)
+		if node.HasDirectEval && hasDirectEval(evalAll, paramNodes(node.Params)...) {
+			// Eval code can see any parameter before it is bound.
+			for _, p := range node.Params {
+				patternNames(p, func(id *ast.Identifier) {
+					early[id.Name] = true
+				})
+			}
+		}
 		for i, p := range node.Params[:nparams] {
 			id, ok := p.(*ast.Identifier)
 			if !ok {
@@ -206,7 +223,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 
 	// The values that the engine provides. An arrow function uses those of the enclosing function.
 	if !node.Arrow {
-		if node.UsesThis || node.DerivedConstructor || node.ClassConstructor {
+		if node.UsesThis || node.DerivedConstructor || node.ClassConstructor || node.HasDirectEval {
 			this := f.declare("this", bindPseudo)
 			switch {
 			case node.DerivedConstructor:
@@ -219,11 +236,11 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 				f.emit(bytecode.OpLoadThisSloppy, this.reg, 0, 0)
 			}
 		}
-		if node.UsesNewTarget || node.UsesSuperCall || node.DerivedConstructor {
+		if node.UsesNewTarget || node.UsesSuperCall || node.DerivedConstructor || node.HasDirectEval {
 			nt := f.declare("new.target", bindPseudo)
 			f.emit(bytecode.OpLoadNewTarget, nt.reg, 0, 0)
 		}
-		if node.UsesSuperProperty {
+		if node.UsesSuperProperty || node.HasDirectEval && (node.Method || node.FieldInit || node.StaticBlock) {
 			home := f.declare("%home", bindPseudo)
 			f.emit(bytecode.OpLoadHome, home.reg, 0, 0)
 		}
@@ -231,11 +248,19 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			callee := f.declare("%callee", bindPseudo)
 			f.emit(bytecode.OpLoadCallee, callee.reg, 0, 0)
 		}
-		if node.UsesArguments {
+		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
 			if _, shadowed := f.scope.vars["arguments"]; !shadowed {
-				if forwardsArguments(node) {
+				switch {
+				case !node.HasDirectEval && forwardsArguments(node):
 					f.forwardsArgs = true
-				} else {
+				case !node.UsesArguments && mappedArguments(node) != 0 &&
+					!arrowsHaveDirectEval(node):
+					// Only the direct evals of the function itself can see the arguments object,
+					// which the first of them that needs it creates.
+					args := f.declare("arguments", bindVar)
+					f.emit(bytecode.OpLoadTDZ, args.reg, 0, 0)
+					f.lazyArgs = true
+				default:
 					args := f.declare("arguments", bindVar)
 					f.emit(bytecode.OpArguments, args.reg, mappedArguments(node), 0)
 				}
@@ -271,6 +296,9 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			vars:     map[string]*binding{},
 			firstReg: f.top,
 			withs:    f.withDepth,
+		}
+		if evalInBody {
+			f.varScope.withs++
 		}
 		f.scope = f.varScope
 	}
@@ -352,6 +380,9 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		f.free(t)
 	}
 	if !node.SimpleParams {
+		if evalInBody {
+			f.pushEvalScope()
+		}
 		// A variable of the body starts with the value of the parameter of the same name.
 		f.scope = f.varScope
 		moved := map[string]bool{}
@@ -418,6 +449,27 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		}
 	}
 	return b
+}
+
+// paramNodes returns the parameters params as nodes.
+func paramNodes(params []ast.Pattern) []ast.Node {
+	nodes := make([]ast.Node, len(params))
+	for i, p := range params {
+		nodes[i] = p
+	}
+	return nodes
+}
+
+// bodyNodes returns the body of the function node as nodes.
+func bodyNodes(node *ast.Function) []ast.Node {
+	nodes := make([]ast.Node, 0, len(node.Body)+1)
+	for _, s := range node.Body {
+		nodes = append(nodes, s)
+	}
+	if node.ExprBody != nil {
+		nodes = append(nodes, node.ExprBody)
+	}
+	return nodes
 }
 
 // earlyCaptures returns the names of the parameters in params that a function nested in

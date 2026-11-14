@@ -55,6 +55,10 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 		name = n.Name.Name
 	}
 
+	f.classDepth++
+	defer func() {
+		f.classDepth--
+	}()
 	sc := f.pushScope()
 	f.control = append(f.control, &ctl{
 		kind: ctlScope,
