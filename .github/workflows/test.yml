@@ -96,6 +96,9 @@ jobs:
         run: env GOOS=js GOARCH=wasm go vet ./...
 
       - name: go test
+        env:
+          # A zone with daylight saving time, so that TestDateHostTimeZone compares offset changes with Chrome.
+          TZ: America/Los_Angeles
         run: |
           # Disable AppArmor for Ubuntu 23.10+.
           # https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
