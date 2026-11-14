@@ -459,6 +459,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 							goto callAbove
 						}
 					}
+					if e.kind == cacheOwnGetter {
+						g := o.slots[e.slot].accessor().getter
+						if g == nil {
+							regs[i.A] = Undefined
+							continue
+						}
+						f, callThis, argc, ret = g, v, 0, i.A
+						goto callAbove
+					}
 				}
 			}
 			vm.frames[len(vm.frames)-1].pc = pc

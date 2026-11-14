@@ -375,11 +375,14 @@ func TestScripts(t *testing.T) {
 		{
 			name: "own accessors of objects that share a shape",
 			src: `function make(d) { return { get x() { return d; }, set x(v) { d += v; } }; }
+				function read(o) { return String(o.x); }
 				var r = [];
-				for (var d = 0; d < 2; d++) { var o = make(d); o.x = 10; r.push(o.x); }
+				for (var d = 0; d < 2; d++) { var o = make(d); o.x = 10; r.push(read(o)); }
 				Object.defineProperty(o, "x", { get() { return "new"; } });
-				r.push(o.x); r.join()`,
-			want: "10,11,new",
+				r.push(read(o));
+				Object.defineProperty(o, "x", { get: undefined });
+				r.push(read(o)); r.join()`,
+			want: "10,11,new,undefined",
 		},
 		{
 			name: "for-of calls a throwing return method once when left normally",

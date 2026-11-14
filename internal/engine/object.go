@@ -746,6 +746,9 @@ const (
 	cacheGetter
 	cacheSetter
 
+	// cacheOwnGetter: the property is an accessor in slot of the receiver, whose getter is called.
+	cacheOwnGetter
+
 	// cacheAdd: a store adds the property and moves the receiver to the shape next.
 	cacheAdd
 )

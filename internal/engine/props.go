@@ -360,12 +360,17 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	}
 	val = holder.slots[p.slot]
 	if p.flags&FlagAccessor != 0 {
+		// Objects of one shape can hold different own accessors, and replacing an own accessor
+		// keeps the shape, so the cache of an own accessor remembers its slot, not its getter.
+		if c != nil && holder == start {
+			c.shape = start.shape
+			c.kind = cacheOwnGetter
+			c.slot = p.slot
+		}
 		g := val.accessor().getter
 		if g == nil {
 			return Undefined, nil
 		}
-		// Objects of one shape can hold different own accessors, and replacing an own accessor
-		// keeps the shape, so only an inherited getter is cached.
 		if c != nil && holder != start && !start.shape.private {
 			c.shape = start.shape
 			c.kind = cacheGetter
@@ -455,6 +460,12 @@ func (vm *VM) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
 				case cacheGetter:
 					return vm.Call(e.holder, v)
 				}
+			}
+			if e.kind == cacheOwnGetter {
+				if g := o.slots[e.slot].accessor().getter; g != nil {
+					return vm.Call(g, v)
+				}
+				return Undefined
 			}
 		}
 	}
