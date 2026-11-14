@@ -20,7 +20,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/hajimehoshi/ekuma/internal/builtins"
+	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -396,7 +396,7 @@ type VM struct {
 // NewVM creates a VM with the standard built-in objects.
 func NewVM() *VM {
 	e := engine.New()
-	builtins.Install(e)
+	builtin.Install(e)
 	vm := &VM{e: e}
 	e.Host = vm
 	return vm

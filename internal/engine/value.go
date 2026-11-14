@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
 // Package engine implements the JavaScript virtual machine: values, objects, the interpreter
-// and the abstract operations of the language. The built-in objects are in the package builtins.
+// and the abstract operations of the language. The built-in objects are in the package builtin.
 package engine
 
 import (
