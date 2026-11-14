@@ -115,6 +115,14 @@ func TestScripts(t *testing.T) {
 			want: "1|2|4|5,6|e,f",
 		},
 		{
+			name: "object destructuring assignment evaluates property targets first",
+			src: `var log = [], o = {};
+				var src = { get a() { log.push("get a"); }, get b() { log.push("get b"); return 2; } };
+				({ a: (log.push("target a"), o).x = (log.push("default"), 1), ...(log.push("target rest"), o).r } = src);
+				log.join() + "|" + o.x + o.r.b`,
+			want: "target a,get a,default,target rest,get b|12",
+		},
+		{
 			name: "spread and rest",
 			src:  `function f(a, ...r) { return a + r.length; } f(...[1, 2, 3], ...[4])`,
 			want: "4",

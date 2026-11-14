@@ -6928,7 +6928,6 @@ test/language/expressions/assignment/S11.13.1_A6_T1.js
 test/language/expressions/assignment/S11.13.1_A6_T2.js
 test/language/expressions/assignment/S11.13.1_A6_T3.js
 test/language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order-with-bindings.js
-test/language/expressions/assignment/destructuring/keyed-destructuring-property-reference-target-evaluation-order.js
 test/language/expressions/assignmenttargettype/direct-importcall-defer.js
 test/language/expressions/assignmenttargettype/direct-importcall-source.js
 test/language/expressions/assignmenttargettype/direct-importcall.js
@@ -9061,7 +9060,6 @@ test/language/statements/class/elements/private-static-getter-visible-to-direct-
 test/language/statements/class/elements/private-static-method-visible-to-direct-eval.js
 test/language/statements/class/elements/private-static-setter-visible-to-direct-eval.js
 test/language/statements/class/elements/privatefield-on-proxy.js
-test/language/statements/class/elements/privatefieldset-evaluation-order-1.js
 test/language/statements/class/elements/privategetter-on-proxy.js
 test/language/statements/class/elements/privatemethods-on-proxy.js
 test/language/statements/class/elements/privatename-not-valid-eval-earlyerr-1.js

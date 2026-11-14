@@ -73,31 +73,48 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 	for i := range p.Properties {
 		prop := &p.Properties[i]
 		mark := f.top
-		v := f.newReg()
 		name, static := keyName(prop.Key, prop.Computed)
+		static = static && !isIndexString(name)
+		var k int32
 		switch {
-		case static && !isIndexString(name):
+		case static:
 			if keys >= 0 {
 				f.emit(bytecode.OpLoadK, keys+1+int32(i), f.constStr(name), 0)
 			}
-			f.emit(bytecode.OpGetProp, v, src, f.site(name))
 		default:
-			k := f.newReg()
+			k = f.newReg()
 			if keys >= 0 {
 				k = keys + 1 + int32(i)
 			}
 			f.expr(prop.Key, k)
 			f.emit(bytecode.OpToPropertyKey, k, k, 0)
+		}
+		// A property reference as the target is evaluated after the key and before the get.
+		target, def, member := f.memberElement(prop.Value, mode)
+		v := f.newReg()
+		if static {
+			f.emit(bytecode.OpGetProp, v, src, f.site(name))
+		} else {
 			f.emit(bytecode.OpGetIndex, v, src, k)
 		}
-		f.destructure(prop.Value, v, mode)
+		if member {
+			f.storeElement(target, def, v)
+		} else {
+			f.destructure(prop.Value, v, mode)
+		}
 		f.free(mark)
 	}
 	if p.Rest != nil {
+		// A property reference as the target is evaluated before the properties are copied.
+		target, _, member := f.memberElement(p.Rest, mode)
 		v := f.newReg()
 		f.emit(bytecode.OpCopyPropsExcept, v, src, keys)
 		f.emit(bytecode.OpNop, int32(len(p.Properties)), 0, 0)
-		f.destructure(p.Rest, v, mode)
+		if member {
+			f.storeTarget(target, v)
+		} else {
+			f.destructure(p.Rest, v, mode)
+		}
 	}
 }
 
@@ -109,21 +126,7 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	for _, e := range p.Elements {
 		mark := f.top
 		// A property reference as the target is evaluated before the iterator steps.
-		var target memberTarget
-		var def ast.Expr
-		member := false
-		if mode == patAssign {
-			t := e
-			if r, ok := t.(*ast.RestElement); ok {
-				t = r.Target
-			} else if a, ok := t.(*ast.AssignPattern); ok {
-				t, def = a.Target, a.Default
-			}
-			if m, ok := t.(*ast.MemberExpr); ok {
-				target = f.assignTarget(m)
-				member = true
-			}
-		}
+		target, def, member := f.memberElement(e, mode)
 		v := f.newReg()
 		if rest, ok := e.(*ast.RestElement); ok {
 			f.emit(bytecode.OpNewArray, v, 0, 0)
@@ -148,12 +151,7 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 		f.patch(ok)
 		switch {
 		case member:
-			if def != nil {
-				skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
-				f.expr(def, v)
-				f.patch(skip)
-			}
-			f.storeTarget(target, v)
+			f.storeElement(target, def, v)
 		case e != nil:
 			f.destructure(e, v, mode)
 		}
@@ -170,4 +168,33 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	f.emit(bytecode.OpIterClose, it, exc+1, 0)
 	f.emit(bytecode.OpRethrow, exc, 0, 0)
 	f.patch(skip)
+}
+
+// memberElement evaluates the property reference that is the target of the assignment element e, if any.
+// def is the element's initializer, or nil.
+func (f *fn) memberElement(e ast.Pattern, mode patMode) (target memberTarget, def ast.Expr, ok bool) {
+	if mode != patAssign {
+		return memberTarget{}, nil, false
+	}
+	t := e
+	if r, ok := t.(*ast.RestElement); ok {
+		t = r.Target
+	} else if a, ok := t.(*ast.AssignPattern); ok {
+		t, def = a.Target, a.Default
+	}
+	m, ok := t.(*ast.MemberExpr)
+	if !ok {
+		return memberTarget{}, nil, false
+	}
+	return f.assignTarget(m), def, true
+}
+
+// storeElement stores the value in the register v, or def when v is undefined, to target.
+func (f *fn) storeElement(target memberTarget, def ast.Expr, v int32) {
+	if def != nil {
+		skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
+		f.expr(def, v)
+		f.patch(skip)
+	}
+	f.storeTarget(target, v)
 }
