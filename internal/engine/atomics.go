@@ -32,7 +32,7 @@ type waiter struct {
 	// seq orders the waiters with the same deadline by their creation.
 	seq uint64
 
-	// timedIndex is the index of the waiter in VM.timedWaiters, or -1.
+	// timedIndex is the index of the waiter in a waiterHeap, or -1.
 	timedIndex int
 }
 
@@ -45,33 +45,33 @@ type waiterList struct {
 	byteIndex int
 }
 
-// timedWaiters is a heap of the waiters with a finite timeout, ordered by deadline.
-type timedWaiters []*waiter
+// waiterHeap is a heap of waiters ordered by deadline.
+type waiterHeap []*waiter
 
-func (h timedWaiters) Len() int {
+func (h waiterHeap) Len() int {
 	return len(h)
 }
 
-func (h timedWaiters) Less(i, j int) bool {
+func (h waiterHeap) Less(i, j int) bool {
 	if !h[i].deadline.Equal(h[j].deadline) {
 		return h[i].deadline.Before(h[j].deadline)
 	}
 	return h[i].seq < h[j].seq
 }
 
-func (h timedWaiters) Swap(i, j int) {
+func (h waiterHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 	h[i].timedIndex = i
 	h[j].timedIndex = j
 }
 
-func (h *timedWaiters) Push(x any) {
+func (h *waiterHeap) Push(x any) {
 	w := x.(*waiter)
 	w.timedIndex = len(*h)
 	*h = append(*h, w)
 }
 
-func (h *timedWaiters) Pop() any {
+func (h *waiterHeap) Pop() any {
 	old := *h
 	w := old[len(old)-1]
 	old[len(old)-1] = nil
@@ -104,10 +104,7 @@ func (vm *VM) AddWaiter(b *ArrayBuffer, byteIndex int, timeout float64) Value {
 	l.waiters = append(l.waiters, w)
 	// A timeout that a time.Duration cannot hold, about 292 years, never expires.
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
-		w.deadline = time.Now().Add(time.Duration(ns))
-		w.seq = vm.waiterSeq
-		vm.waiterSeq++
-		heap.Push(&vm.timedWaiters, w)
+		vm.timedWaiters.add(w, time.Now().Add(time.Duration(ns)))
 	}
 	return Value{o: w.promise}
 }
@@ -126,9 +123,7 @@ func (vm *VM) NotifyWaiters(b *ArrayBuffer, byteIndex int, count float64) int {
 	}
 	for _, w := range l.waiters[:n] {
 		w.list = nil
-		if w.timedIndex >= 0 {
-			heap.Remove(&vm.timedWaiters, w.timedIndex)
-		}
+		vm.timedWaiters.remove(w)
 		vm.enqueueResolveInAgentJob(w.promise, vm.NewString("ok"))
 	}
 	m := copy(l.waiters, l.waiters[n:])
@@ -143,19 +138,57 @@ func (vm *VM) NotifyWaiters(b *ArrayBuffer, byteIndex int, count float64) int {
 // expireWaiters runs the timeout jobs of the waiters whose deadline has passed, and reports
 // whether there were any.
 func (vm *VM) expireWaiters() bool {
-	if len(vm.timedWaiters) == 0 {
+	if vm.timedWaiters.isEmpty() {
 		return false
 	}
 	now := time.Now()
 	var expired bool
-	for len(vm.timedWaiters) > 0 && !vm.timedWaiters[0].deadline.After(now) {
-		w := heap.Pop(&vm.timedWaiters).(*waiter)
+	for {
+		w, ok := vm.timedWaiters.popExpired(now)
+		if !ok {
+			break
+		}
 		w.list.remove(w)
 		w.list = nil
 		vm.enqueueResolveInAgentJob(w.promise, vm.NewString("timed-out"))
 		expired = true
 	}
 	return expired
+}
+
+// timedWaiters holds the waiters with a finite timeout.
+type timedWaiters struct {
+	heap waiterHeap
+
+	// seq numbers the waiters by their creation.
+	seq uint64
+}
+
+func (t *timedWaiters) isEmpty() bool {
+	return len(t.heap) == 0
+}
+
+// add adds w with the given deadline.
+func (t *timedWaiters) add(w *waiter, deadline time.Time) {
+	w.deadline = deadline
+	w.seq = t.seq
+	t.seq++
+	heap.Push(&t.heap, w)
+}
+
+// remove removes w, if it is there.
+func (t *timedWaiters) remove(w *waiter) {
+	if w.timedIndex >= 0 {
+		heap.Remove(&t.heap, w.timedIndex)
+	}
+}
+
+// popExpired removes and returns the waiter with the earliest deadline, if that is not after now.
+func (t *timedWaiters) popExpired(now time.Time) (*waiter, bool) {
+	if len(t.heap) == 0 || t.heap[0].deadline.After(now) {
+		return nil, false
+	}
+	return heap.Pop(&t.heap).(*waiter), true
 }
 
 // remove removes w from l, and l from its buffer when l becomes empty.

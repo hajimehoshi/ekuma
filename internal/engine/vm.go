@@ -189,17 +189,8 @@ type VM struct {
 	// globalEpoch changes whenever a global lexical binding is declared.
 	globalEpoch uint32
 
-	// arrayIterEpoch is the value of protoEpoch at which arrayIterPlain was computed.
-	arrayIterEpoch   uint32
-	arrayIterPlain   bool
-	arrayIterChecked bool
-
-	// sparseIndexShape and sparseIndexCount identify the shape whose array index keys
-	// sparseIndices holds in ascending order. A private shape only grows in place, so its
-	// count tells whether the keys changed.
-	sparseIndexShape *shape
-	sparseIndexCount int32
-	sparseIndices    []uint32
+	arrayIter     arrayIterCache
+	sparseIndices sparseIndexCache
 
 	// fnCall, fnApply and fnEval are the original Function.prototype.call, Function.prototype.apply and eval.
 	FnCall, FnApply, FnEval, FnHasInstance *Object
@@ -216,27 +207,18 @@ type VM struct {
 	// Joining holds the arrays that Array.prototype.join is converting, to stop at cycles.
 	Joining []*Object
 
-	// jobs is the queue of pending promise jobs, from jobHead on.
-	jobs    []job
-	jobHead int
+	jobs jobQueue
 
-	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout, and waiterSeq
-	// numbers them.
+	// rejections are the unhandled rejections, for HostPromiseRejectionTracker.
+	rejections rejectionTracker
+
+	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout.
 	timedWaiters timedWaiters
-	waiterSeq    uint64
-
-	// unhandledRejections are the rejected promises without a handler, for HostPromiseRejectionTracker.
-	unhandledRejections []*Object
 
 	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
 	asyncFromSyncProto *Object
 
-	// keptAlive is the [[KeptAlive]] list of the agent: the targets of WeakRef objects that
-	// must stay alive until the current job ends.
-	keptAlive map[*Object]struct{}
-
-	// finalization receives the cells of FinalizationRegistry objects whose target was collected.
-	finalization *finalizationQueue
+	weak weakState
 
 	SymbolRegistry map[string]*Object
 

@@ -160,19 +160,30 @@ func (vm *VM) WeakRefDeref(v Value) (Value, bool) {
 	return Value{o: t}, true
 }
 
+// weakState is the state of an agent for WeakRef and FinalizationRegistry objects.
+type weakState struct {
+	// keptAlive is the [[KeptAlive]] list: the targets of WeakRef objects that must stay alive
+	// until the current job ends.
+	keptAlive map[*Object]struct{}
+
+	// finalization receives the cells of FinalizationRegistry objects whose target was collected,
+	// or is nil until the first registry is created.
+	finalization *finalizationQueue
+}
+
 // AddToKeptObjects implements AddToKeptObjects: o stays alive until the current job ends.
 func (vm *VM) AddToKeptObjects(o *Object) {
-	if vm.keptAlive == nil {
-		vm.keptAlive = map[*Object]struct{}{}
+	if vm.weak.keptAlive == nil {
+		vm.weak.keptAlive = map[*Object]struct{}{}
 	}
-	vm.keptAlive[o] = struct{}{}
+	vm.weak.keptAlive[o] = struct{}{}
 }
 
 // clearKeptObjects implements ClearKeptObjects.
 // It must be called when a job ends: after each promise job, and when the outermost call into
 // the engine returns.
 func (vm *VM) clearKeptObjects() {
-	clear(vm.keptAlive)
+	clear(vm.weak.keptAlive)
 }
 
 // FinalizationRegistry is the state of a FinalizationRegistry object.
@@ -238,12 +249,12 @@ func (q *finalizationQueue) pop() (deadCell, bool) {
 // NewFinalizationRegistryObject returns a FinalizationRegistry object with the prototype proto
 // and the cleanup callback callback.
 func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Object {
-	if vm.finalization == nil {
-		vm.finalization = &finalizationQueue{}
+	if vm.weak.finalization == nil {
+		vm.weak.finalization = &finalizationQueue{}
 	}
 	r := &FinalizationRegistry{
 		callback: callback,
-		queue:    vm.finalization,
+		queue:    vm.weak.finalization,
 		cells:    map[uint64]*finalizationCell{},
 	}
 	r.self = weak.Make(r)
@@ -327,7 +338,7 @@ func (r *FinalizationRegistry) remove(id uint64, c *finalizationCell) {
 
 // runFinalizationCleanups calls the cleanup callbacks for the targets that were collected.
 func (vm *VM) runFinalizationCleanups() {
-	q := vm.finalization
+	q := vm.weak.finalization
 	if q == nil || !q.pending.Load() {
 		return
 	}

@@ -226,7 +226,7 @@ func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
 		}
 	}
 	if o.flags&objSparse != 0 {
-		idxs := vm.sparseIndexList(o)
+		idxs := vm.sparseIndices.list(o)
 		if p, _ := slices.BinarySearch(idxs, uint32(i)); p < len(idxs) && int64(idxs[p]) < j {
 			j = int64(idxs[p])
 		}
@@ -249,7 +249,7 @@ func (vm *VM) SkipHolesBackward(o *Object, i, end int64) int64 {
 		}
 	}
 	if o.flags&objSparse != 0 {
-		idxs := vm.sparseIndexList(o)
+		idxs := vm.sparseIndices.list(o)
 		p, found := slices.BinarySearch(idxs, uint32(i))
 		if found {
 			p++
@@ -275,15 +275,24 @@ func (vm *VM) holesAreAbsent(o *Object) bool {
 	return true
 }
 
-// sparseIndexList returns the array indices that o stores in its shape, in ascending order.
+// sparseIndexCache holds the array indices that the keys of one shape contain.
+type sparseIndexCache struct {
+	// shape and count identify the shape whose array index keys indices holds in ascending
+	// order. A private shape only grows in place, so its count tells whether the keys changed.
+	shape   *shape
+	count   int32
+	indices []uint32
+}
+
+// list returns the array indices that o stores in its shape, in ascending order.
 // The result must not be modified.
-func (vm *VM) sparseIndexList(o *Object) []uint32 {
+func (c *sparseIndexCache) list(o *Object) []uint32 {
 	s := o.shape
-	if vm.sparseIndexShape == s && vm.sparseIndexCount == s.count {
-		return vm.sparseIndices
+	if c.shape == s && c.count == s.count {
+		return c.indices
 	}
-	if added, ok := vm.addedSparseKeys(s); ok && len(added) <= maxSparseIndexInserts {
-		idxs := vm.sparseIndices
+	if added, ok := c.addedKeys(s); ok && len(added) <= maxSparseIndexInserts {
+		idxs := c.indices
 		for _, k := range added {
 			if k.kind != kindString {
 				continue
@@ -294,12 +303,12 @@ func (vm *VM) sparseIndexList(o *Object) []uint32 {
 				}
 			}
 		}
-		vm.sparseIndexShape = s
-		vm.sparseIndexCount = s.count
-		vm.sparseIndices = idxs
+		c.shape = s
+		c.count = s.count
+		c.indices = idxs
 		return idxs
 	}
-	idxs := vm.sparseIndices[:0]
+	idxs := c.indices[:0]
 	for _, k := range s.keys() {
 		if k.kind != kindString {
 			continue
@@ -309,31 +318,31 @@ func (vm *VM) sparseIndexList(o *Object) []uint32 {
 		}
 	}
 	slices.Sort(idxs)
-	vm.sparseIndexShape = s
-	vm.sparseIndexCount = s.count
-	vm.sparseIndices = idxs
+	c.shape = s
+	c.count = s.count
+	c.indices = idxs
 	return idxs
 }
 
-// maxSparseIndexInserts is the number of new keys above which sparseIndexList rebuilds the list
-// instead of inserting each one.
+// maxSparseIndexInserts is the number of new keys above which sparseIndexCache.list rebuilds
+// the list instead of inserting each one.
 const maxSparseIndexInserts = 16
 
-// addedSparseKeys returns the keys that s has in addition to those of the shape whose indices
-// sparseIndices holds, and reports whether s has all of those keys in the same slots.
-func (vm *VM) addedSparseKeys(s *shape) ([]*Object, bool) {
-	c, n := vm.sparseIndexShape, vm.sparseIndexCount
-	if c == nil || s.count < n {
+// addedKeys returns the keys that s has in addition to those of the cached shape, and reports
+// whether s has all of those keys in the same slots.
+func (c *sparseIndexCache) addedKeys(s *shape) ([]*Object, bool) {
+	cached, n := c.shape, c.count
+	if cached == nil || s.count < n {
 		return nil, false
 	}
 	if s.private {
 		// A private shape only grows in place.
-		if c != s {
+		if cached != s {
 			return nil, false
 		}
 		return s.order[n:], true
 	}
-	if c.private {
+	if cached.private {
 		return nil, false
 	}
 	if s.count-n > maxSparseIndexInserts {
@@ -344,7 +353,7 @@ func (vm *VM) addedSparseKeys(s *shape) ([]*Object, bool) {
 	for ; t.count > n; t = t.parent {
 		added = append(added, t.key)
 	}
-	if t != c {
+	if t != cached {
 		return nil, false
 	}
 	return added, true

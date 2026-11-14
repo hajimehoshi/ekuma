@@ -795,14 +795,23 @@ func (vm *VM) arrayIterationPlain(o *Object) bool {
 	if o.shape != vm.arrayShape {
 		return false
 	}
-	if vm.arrayIterEpoch != vm.protoEpoch || !vm.arrayIterChecked {
-		vm.arrayIterChecked = true
-		vm.arrayIterEpoch = vm.protoEpoch
+	c := &vm.arrayIter
+	if c.epoch != vm.protoEpoch || !c.checked {
+		c.checked = true
+		c.epoch = vm.protoEpoch
 		it, ok1 := vm.lookupData(vm.ArrayProto, vm.K.SymIterator)
 		next, ok2 := vm.lookupData(vm.ArrayIteratorProto, vm.K.next)
-		vm.arrayIterPlain = ok1 && ok2 && it.o == vm.FnArrayValues && next.o == vm.FnArrayIterNext
+		c.plain = ok1 && ok2 && it.o == vm.FnArrayValues && next.o == vm.FnArrayIterNext
 	}
-	return vm.arrayIterPlain
+	return c.plain
+}
+
+// arrayIterCache is the cached result of arrayIterationPlain for arrays with the initial shape.
+type arrayIterCache struct {
+	// epoch is the value of VM.protoEpoch at which plain was computed.
+	epoch   uint32
+	plain   bool
+	checked bool
 }
 
 // Call calls the callable object f.

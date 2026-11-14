@@ -472,22 +472,75 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 // the unhandled rejections. Nothing reports them yet.
 func (vm *VM) hostPromiseRejectionTracker(p *Object, handle bool) {
 	if !handle {
-		vm.unhandledRejections = append(vm.unhandledRejections, p)
+		vm.rejections.add(p)
 		return
 	}
-	for i, q := range vm.unhandledRejections {
+	vm.rejections.remove(p)
+}
+
+// rejectionTracker holds the rejected promises without a handler.
+type rejectionTracker struct {
+	promises []*Object
+}
+
+func (t *rejectionTracker) add(p *Object) {
+	t.promises = append(t.promises, p)
+}
+
+// remove removes p, if it is there.
+func (t *rejectionTracker) remove(p *Object) {
+	for i, q := range t.promises {
 		if q == p {
-			last := len(vm.unhandledRejections) - 1
-			copy(vm.unhandledRejections[i:], vm.unhandledRejections[i+1:])
-			vm.unhandledRejections[last] = nil
-			vm.unhandledRejections = vm.unhandledRejections[:last]
+			last := len(t.promises) - 1
+			copy(t.promises[i:], t.promises[i+1:])
+			t.promises[last] = nil
+			t.promises = t.promises[:last]
 			return
 		}
 	}
 }
 
+// reset removes all the promises.
+func (t *rejectionTracker) reset() {
+	clear(t.promises)
+	t.promises = t.promises[:0]
+}
+
+// jobQueue is a queue of pending promise jobs.
+type jobQueue struct {
+	// jobs holds the pending jobs from head on.
+	jobs []job
+	head int
+}
+
+func (q *jobQueue) isEmpty() bool {
+	return q.head >= len(q.jobs)
+}
+
+func (q *jobQueue) enqueue(j job) {
+	q.jobs = append(q.jobs, j)
+}
+
+// dequeue removes and returns the oldest job. The queue must not be empty.
+func (q *jobQueue) dequeue() job {
+	j := q.jobs[q.head]
+	q.jobs[q.head] = job{}
+	q.head++
+	if q.isEmpty() {
+		q.jobs = q.jobs[:0]
+		q.head = 0
+	} else if q.head >= 1024 && q.head*2 >= len(q.jobs) {
+		// Drop the jobs that ran, so that a queue that is never empty does not grow.
+		n := copy(q.jobs, q.jobs[q.head:])
+		clear(q.jobs[n:])
+		q.jobs = q.jobs[:n]
+		q.head = 0
+	}
+	return j
+}
+
 func (vm *VM) enqueueJob(j job) {
-	vm.jobs = append(vm.jobs, j)
+	vm.jobs.enqueue(j)
 }
 
 // runJob runs the job j. An exception that leaves the job is dropped, as the host would
@@ -592,20 +645,11 @@ func (vm *VM) runJobs() {
 		return
 	}
 	for {
-		for vm.jobHead < len(vm.jobs) {
+		for !vm.jobs.isEmpty() {
 			if vm.interrupt.Load() {
 				vm.Poll()
 			}
-			j := vm.jobs[vm.jobHead]
-			vm.jobs[vm.jobHead] = job{}
-			vm.jobHead++
-			if vm.jobHead >= 1024 && vm.jobHead*2 >= len(vm.jobs) {
-				// Drop the jobs that ran, so that a queue that is never empty does not grow.
-				n := copy(vm.jobs, vm.jobs[vm.jobHead:])
-				clear(vm.jobs[n:])
-				vm.jobs = vm.jobs[:n]
-				vm.jobHead = 0
-			}
+			j := vm.jobs.dequeue()
 			vm.runJob(&j)
 			vm.clearKeptObjects()
 		}
@@ -613,16 +657,12 @@ func (vm *VM) runJobs() {
 			break
 		}
 	}
-	vm.jobs = vm.jobs[:0]
-	vm.jobHead = 0
-	clear(vm.unhandledRejections)
-	vm.unhandledRejections = vm.unhandledRejections[:0]
+	vm.rejections.reset()
 	vm.runFinalizationCleanups()
 }
 
 // dropJobs discards the pending jobs.
 func (vm *VM) dropJobs() {
-	vm.jobs = nil
-	vm.jobHead = 0
-	vm.unhandledRejections = nil
+	vm.jobs = jobQueue{}
+	vm.rejections = rejectionTracker{}
 }
