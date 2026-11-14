@@ -1193,7 +1193,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			cur := &vm.frames[len(vm.frames)-1]
 			if regs[a].o != vm.FnApply {
 				// Something else is called apply here: pass it a real arguments object.
-				regs[a+3] = Value{o: vm.newArguments(cur, regs, false)}
+				regs[a+3] = Value{o: vm.newArguments(cur, regs, i.B != 0)}
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, 2, i.A, false, nil
 				goto callRegs
 			}

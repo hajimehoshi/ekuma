@@ -851,7 +851,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 					f.expr(n.Args[0], f.newReg())
 					// One more register for the arguments object of the general case.
 					f.newReg()
-					f.emit(bytecode.OpApplyFwd, base, 0, 0)
+					f.emit(bytecode.OpApplyFwd, base, mappedArguments(f.node), 0)
 					f.result(dst, base)
 					return
 				}

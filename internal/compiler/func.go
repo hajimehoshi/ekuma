@@ -97,6 +97,15 @@ func forwardsArguments(node *ast.Function) bool {
 	return ok
 }
 
+// mappedArguments returns the operand of OpArguments and OpApplyFwd that says whether
+// the arguments object of the function node is mapped to its parameters.
+func mappedArguments(node *ast.Function) int32 {
+	if !node.Strict && node.SimpleParams {
+		return 1
+	}
+	return 0
+}
+
 // isSuperCallee reports whether the callee e is super or a property of super.
 func isSuperCallee(e ast.Expr) bool {
 	if m, ok := e.(*ast.MemberExpr); ok {
@@ -127,6 +136,14 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	assignedNames(node, true, func(s string) {
 		f.mutated[s] = true
 	})
+	if node.UsesArguments && mappedArguments(node) != 0 {
+		// The arguments object can change the parameters.
+		for _, p := range node.Params {
+			if id, ok := p.(*ast.Identifier); ok {
+				f.mutated[id.Name] = true
+			}
+		}
+	}
 	if node.HasDirectEval {
 		c.fail(node, "direct eval is not supported yet")
 	}
@@ -145,7 +162,14 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	if node.SimpleParams {
 		for i, p := range node.Params[:nparams] {
 			// With duplicate names, the last parameter wins.
-			f.declareAt(p.(*ast.Identifier).Name, bindVar, slots+int32(i))
+			name := p.(*ast.Identifier).Name
+			if prev, ok := f.scope.vars[name]; ok && prev.reg >= slots {
+				if b.ShadowedParams == nil {
+					b.ShadowedParams = make([]bool, nparams)
+				}
+				b.ShadowedParams[prev.reg-slots] = true
+			}
+			f.declareAt(name, bindVar, slots+int32(i))
 		}
 	}
 	// The parameters of a list that is not simple are in their temporal dead zone until bound.
@@ -213,11 +237,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 					f.forwardsArgs = true
 				} else {
 					args := f.declare("arguments", bindVar)
-					mapped := int32(0)
-					if !node.Strict && node.SimpleParams {
-						mapped = 1
-					}
-					f.emit(bytecode.OpArguments, args.reg, mapped, 0)
+					f.emit(bytecode.OpArguments, args.reg, mappedArguments(node), 0)
 				}
 				b.NeedsExtra = true
 			}

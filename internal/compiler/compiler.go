@@ -169,7 +169,8 @@ type fn struct {
 	control   []*ctl
 	withDepth int
 
-	// mutated holds the names that functions nested in this one assign to.
+	// mutated holds the names that functions nested in this one assign to, and the parameters
+	// that an arguments object can change.
 	mutated map[string]bool
 
 	isScript bool

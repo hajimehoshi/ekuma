@@ -50,7 +50,7 @@ is published yet.
 
 ## Status
 
-82.2% of [test262](https://github.com/tc39/test262) pass: 40,090 of 48,797 tests
+82.2% of [test262](https://github.com/tc39/test262) pass: 40,122 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -98,9 +98,8 @@ Missing:
 - Agents (workers) sharing a `SharedArrayBuffer`
 - `Intl` and `Temporal`
 
-Known inaccuracies in what is implemented: `arguments` is not linked to the parameters in
-sloppy mode, and the `caller` and `arguments` properties of sloppy functions are always
-`undefined`.
+Known inaccuracies in what is implemented: the `caller` and `arguments` properties of sloppy
+functions are always `undefined`.
 
 ## Running the tests
 

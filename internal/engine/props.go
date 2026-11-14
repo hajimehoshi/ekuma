@@ -428,6 +428,9 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 				if p.flags&FlagAccessor != 0 {
 					return Undefined, val.accessor().getter
 				}
+				if u := mappedParam(h, i); u != nil {
+					return *u.p, nil
+				}
 				return val, nil
 			}
 		}
@@ -460,6 +463,10 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		}
 		if o.flags&objSparse == 0 {
 			return PropDesc{}, false
+		}
+		if u := mappedParam(o, k.idx); u != nil {
+			p, _ := o.shape.lookup(vm.indexName(k.idx))
+			return dataDesc(*u.p, p.flags), true
 		}
 		k.key = vm.indexKey(k.idx)
 		if k.key == nil {
@@ -859,6 +866,11 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	if o.kind == kindArray && k.key == vm.K.Length {
 		return vm.defineArrayLength(o, d)
 	}
+	if k.key == nil {
+		if u := mappedParam(o, k.idx); u != nil {
+			return vm.defineMappedArgument(o, k.idx, u, d)
+		}
+	}
 	cur, exists := vm.GetOwnProperty(o, k)
 	if !exists {
 		if o.flags&objNotExtensible != 0 {
@@ -1047,6 +1059,9 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 		}
 		if o.flags&objSparse == 0 {
 			return true
+		}
+		if mappedParam(o, k.idx) != nil {
+			return vm.deleteMappedArgument(o, k.idx)
 		}
 		k.key = vm.indexKey(k.idx)
 		if k.key == nil {

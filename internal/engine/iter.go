@@ -352,23 +352,6 @@ func (vm *VM) forInNext(o *Object) (Value, bool) {
 	return Undefined, false
 }
 
-// newArguments returns the arguments object of the frame fr.
-func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
-	o := &Object{
-		kind:  kindObject,
-		class: classArguments,
-		shape: vm.argumentsShape,
-		elems: vm.frameArgs(fr, regs),
-	}
-	o.slots = []Value{Number(float64(fr.argc)), {o: vm.FnArrayValues}}
-	if mapped {
-		vm.add(o, vm.K.callee, Value{o: fr.cl}, FlagsHidden)
-	} else {
-		vm.add(o, vm.K.callee, newAccessor(vm.ThrowTypeErrorFunc, vm.ThrowTypeErrorFunc), FlagAccessor)
-	}
-	return o
-}
-
 // templateObject returns the template object of a tagged template, creating it on first use.
 func (vm *VM) templateObject(t *templateSite) *Object {
 	if t.object != nil {

@@ -377,6 +377,26 @@ func TestScripts(t *testing.T) {
 				[o.a, o.b, o.c, typeof o.d, a, b, c].join()`,
 			want: "1,2,3,object,,,",
 		},
+		{
+			name: "mapped arguments outlive the call",
+			src: `function f(a) { return [arguments, function() { return a; }, function(v) { a = v; }]; }
+				var r = f(1); r[0][0] = 2; var x = r[1](); r[2](3);
+				function* g(a) { yield arguments; yield a; }
+				var it = g(1); it.next().value[0] = 4;
+				x + "," + r[0][0] + "," + it.next().value`,
+			want: "2,3,4",
+		},
+		{
+			name: "mapped arguments with a repeated parameter name",
+			src:  `function f(a, a) { arguments[0] = 3; arguments[1] = 4; return a; } f(1, 2)`,
+			want: "4",
+		},
+		{
+			name: "mapped arguments for a method called apply",
+			src: `var o = { apply(t, args) { args[0] = 2; return args.callee === f; } };
+				function f(a) { return o.apply(this, arguments) + "," + a; } f(1)`,
+			want: "true,2",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

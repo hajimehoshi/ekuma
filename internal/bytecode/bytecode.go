@@ -130,7 +130,7 @@ const (
 
 	OpCall          // a = a(this a+1, args a+2...), b arguments
 	OpCallCall      // a = a.call(...) where a+1 is the function, a+2 the this value and a+3... b arguments
-	OpApplyFwd      // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function
+	OpApplyFwd      // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; b says whether an arguments object made for them is mapped
 	OpCallFwd       // a = a(this a+1, the arguments of the running function)
 	OpCallSpread    // a = a(this a+1, ...the array a+2)
 	OpCallEval      // like OpCall; a direct eval when a is the eval function. c is the index of the scope description
@@ -329,6 +329,10 @@ type Func struct {
 
 	// NumParams is the number of leading registers that receive arguments.
 	NumParams int
+
+	// ShadowedParams marks, by index, the parameters whose name a later parameter repeats.
+	// It is nil when no name repeats.
+	ShadowedParams []bool
 
 	// NumClear is the number of leading registers that must not hold stale values when the function starts.
 	NumClear int
