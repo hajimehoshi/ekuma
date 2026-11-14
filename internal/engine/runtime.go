@@ -930,7 +930,7 @@ func (vm *VM) NewNativeConstructor(name string, length int, f NativeFunc) *Objec
 // function cl that has the variable key, or nil.
 func (vm *VM) findScope(cl *Object, key *Object, depth int) *Object {
 	k := PropKey{key: key}
-	for _, scopes := range [...][]*Object{vm.frames[len(vm.frames)-1].scopes, cl.fn.scopes} {
+	for _, scopes := range [...][]*Object{vm.frames[len(vm.frames)-1].scopes, cl.fn.capturedScopes()} {
 		for _, o := range slices.Backward(scopes) {
 			if depth == 0 {
 				return nil
@@ -950,10 +950,22 @@ func (vm *VM) findScope(cl *Object, key *Object, depth int) *Object {
 	return nil
 }
 
+// capturedScopes returns the dynamic scopes that were open where f was created, innermost last.
+func (f *function) capturedScopes() []*Object {
+	if f.scopes == nil {
+		return nil
+	}
+	return *f.scopes
+}
+
 // openScopes returns a copy of the dynamic scopes that are open in the running function cl,
-// innermost last.
-func (vm *VM) openScopes(cl *Object) []*Object {
-	return slices.Concat(cl.fn.scopes, vm.frames[len(vm.frames)-1].scopes)
+// innermost last, or nil when none are.
+func (vm *VM) openScopes(cl *Object) *[]*Object {
+	scopes := slices.Concat(cl.fn.capturedScopes(), vm.frames[len(vm.frames)-1].scopes)
+	if len(scopes) == 0 {
+		return nil
+	}
+	return &scopes
 }
 
 // getScoped implements GetBindingValue of the object environment record of the dynamic scope o.
