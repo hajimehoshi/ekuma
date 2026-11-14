@@ -99,8 +99,8 @@ Missing:
 - `Intl` and `Temporal`
 
 Known inaccuracies in what is implemented: `arguments` is not linked to the parameters in
-sloppy mode, parameter default values share the scope of the function body, and the `caller`
-and `arguments` properties of sloppy functions are always `undefined`.
+sloppy mode, and the `caller` and `arguments` properties of sloppy functions are always
+`undefined`.
 
 ## Running the tests
 
