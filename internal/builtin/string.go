@@ -7,6 +7,9 @@ import (
 	"math"
 	"strings"
 	"unicode"
+	"unicode/utf8"
+
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -329,54 +332,43 @@ func initString(vm *engine.VM) {
 			if s.IsASCII() {
 				return vm.NewString(f(s.Str()))
 			}
-			// Map each well-formed run, leaving lone surrogates as they are.
-			var b wtf8.Builder
-			str := s.Str()
-			for len(str) > 0 {
-				i := 0
-				for i < len(str) {
-					r, size := wtf8.DecodeRune(str[i:])
-					if r >= 0xD800 && r <= 0xDFFF {
-						break
-					}
-					i += size
-				}
-				b.WriteString(f(str[:i]))
-				str = str[i:]
-				if len(str) > 0 {
-					r, size := wtf8.DecodeRune(str)
-					b.WriteRune(r)
-					str = str[size:]
-				}
-			}
-			return vm.NewString(b.String())
+			return vm.NewString(mapWellFormed(s.Str(), f))
 		})
 	}
 	upper := func(s string) string {
 		// The special casing of the German sharp s is the common case that Go's mapping lacks.
 		return strings.ReplaceAll(strings.ToUpper(s), "ß", "SS")
 	}
-	lower := func(s string) string {
-		return strings.Map(unicode.ToLower, s)
-	}
+	lower := toLowerCase
 	mapCase("toUpperCase", upper)
 	mapCase("toLowerCase", lower)
 	mapCase("toLocaleUpperCase", upper)
 	mapCase("toLocaleLowerCase", lower)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "localeCompare")
-		return engine.Number(float64(wtf8.Compare(s.Str(), vm.ToString(arg(args, 0)))))
+		that := vm.ToString(arg(args, 0))
+		return engine.Number(float64(wtf8.Compare(mapWellFormed(s.Str(), norm.NFC.String), mapWellFormed(that, norm.NFC.String))))
 	})
 	method(vm, proto, "normalize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "normalize")
+		form := norm.NFC
 		if f := arg(args, 0); !f.IsUndefined() {
 			switch vm.ToString(f) {
-			case "NFC", "NFD", "NFKC", "NFKD":
+			case "NFC":
+			case "NFD":
+				form = norm.NFD
+			case "NFKC":
+				form = norm.NFKC
+			case "NFKD":
+				form = norm.NFKD
 			default:
 				vm.ThrowRangeError("the normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
 		}
-		return engine.ObjectValue(s)
+		if s.IsASCII() {
+			return engine.ObjectValue(s)
+		}
+		return vm.NewString(mapWellFormed(s.Str(), form.String))
 	})
 	method(vm, proto, "isWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(wtf8.IsWellFormed(thisString(vm, this, "isWellFormed").Str()))
@@ -517,4 +509,93 @@ func initString(vm *engine.VM) {
 type stringIterator struct {
 	str string
 	pos int
+}
+
+// toLowerCase converts s to lowercase with the root locale's full case mapping.
+func toLowerCase(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for i, r := range s {
+		switch r {
+		case '\u0130':
+			// LATIN CAPITAL LETTER I WITH DOT ABOVE keeps the dot as a combining character.
+			b.WriteString("i\u0307")
+		case '\u03A3':
+			if isFinalSigma(s, i) {
+				b.WriteRune('\u03C2')
+			} else {
+				b.WriteRune('\u03C3')
+			}
+		default:
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String()
+}
+
+// isFinalSigma reports whether the character at byte offset i of s satisfies the Final_Sigma casing context.
+func isFinalSigma(s string, i int) bool {
+	// Before: a cased letter followed by zero or more case-ignorable characters.
+	// A character that is both cased and case-ignorable counts as case-ignorable.
+	var before bool
+	for j := i; j > 0; {
+		r, size := utf8.DecodeLastRuneInString(s[:j])
+		j -= size
+		if isCaseIgnorable(r) {
+			continue
+		}
+		before = isCased(r)
+		break
+	}
+	if !before {
+		return false
+	}
+	// After: not zero or more case-ignorable characters followed by a cased letter.
+	_, size := utf8.DecodeRuneInString(s[i:])
+	for _, r := range s[i+size:] {
+		if isCaseIgnorable(r) {
+			continue
+		}
+		return !isCased(r)
+	}
+	return true
+}
+
+// isCased reports whether r has the Unicode Cased property.
+func isCased(r rune) bool {
+	return unicode.In(r, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Other_Lowercase, unicode.Other_Uppercase)
+}
+
+// isCaseIgnorable reports whether r has the Unicode Case_Ignorable property.
+func isCaseIgnorable(r rune) bool {
+	switch r {
+	// Word_Break values MidLetter, MidNumLet and Single_Quote.
+	case '\'', '.', ':', '\u00B7', '\u0387', '\u055F', '\u05F4', '\u2018', '\u2019', '\u2024', '\u2027',
+		'\uFE13', '\uFE52', '\uFE55', '\uFF07', '\uFF0E', '\uFF1A':
+		return true
+	}
+	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf, unicode.Lm, unicode.Sk)
+}
+
+// mapWellFormed applies f to each maximal run of s without lone surrogates and keeps the lone surrogates as they are.
+func mapWellFormed(s string, f func(string) string) string {
+	var b wtf8.Builder
+	for len(s) > 0 {
+		var i int
+		for i < len(s) {
+			r, size := wtf8.DecodeRune(s[i:])
+			if r >= 0xD800 && r <= 0xDFFF {
+				break
+			}
+			i += size
+		}
+		b.WriteString(f(s[:i]))
+		s = s[i:]
+		if len(s) > 0 {
+			r, size := wtf8.DecodeRune(s)
+			b.WriteRune(r)
+			s = s[size:]
+		}
+	}
+	return b.String()
 }

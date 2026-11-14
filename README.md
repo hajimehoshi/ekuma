@@ -2,6 +2,8 @@
 
 Ekuma is a JavaScript engine written in pure Go: no cgo and no `unsafe`.
 It is an interpreter without a JIT, designed to be fast for one.
+Its only dependency is [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text),
+for Unicode normalization.
 
 The project is at an early stage. The API is unstable and a large part of the language's
 standard library is missing. See [Status](#status).
@@ -47,7 +49,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 30,038 of 48,797 tests
+More than half of [test262](https://github.com/tc39/test262) passes: 30,048 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -72,6 +74,8 @@ Implemented:
   an entry of a weak collection does not keep its key alive
 - `Date`, with local time from Go's `time` package and the Annex B methods; the `toLocale*String`
   methods use a fixed English format, since there is no `Intl`
+- The locale-sensitive `String` methods use the root locale: `localeCompare` treats canonically
+  equivalent strings as equal and otherwise compares code units
 - `BigInt`, with BigInt literals and arithmetic
 
 Missing:
