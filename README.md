@@ -47,7 +47,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 29,991 of 48,797 tests
+More than half of [test262](https://github.com/tc39/test262) passes: 30,038 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -84,7 +84,8 @@ Missing:
 - `Intl` and `Temporal`
 
 Known inaccuracies in what is implemented: `arguments` is not linked to the parameters in
-sloppy mode, and parameter default values share the scope of the function body.
+sloppy mode, parameter default values share the scope of the function body, and the `caller`
+and `arguments` properties of sloppy functions are always `undefined`.
 
 ## Running the tests
 

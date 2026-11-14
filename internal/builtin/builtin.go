@@ -679,6 +679,10 @@ func initFunction(vm *engine.VM) {
 		return engine.Bool(vm.OrdinaryHasInstance(this, arg(args, 0)))
 	})
 	vm.Define(proto, vm.K.SymHasInstance, engine.ObjectValue(vm.FnHasInstance), 0)
+
+	// AddRestrictedFunctionProperties
+	vm.DefineAccessor(proto, vm.Intern("caller"), vm.ThrowTypeErrorFunc, vm.ThrowTypeErrorFunc, engine.FlagConfigurable)
+	vm.DefineAccessor(proto, vm.Intern("arguments"), vm.ThrowTypeErrorFunc, vm.ThrowTypeErrorFunc, engine.FlagConfigurable)
 }
 
 func initError(vm *engine.VM) {

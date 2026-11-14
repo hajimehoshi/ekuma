@@ -35,6 +35,10 @@ type funcProto struct {
 	isClassConstructor bool
 	isDerived          bool
 	needsExtra         bool
+
+	// legacyCallerArguments says whether the functions have the own properties caller and arguments
+	// that implementations add to non-strict ordinary functions.
+	legacyCallerArguments bool
 }
 
 type templateSite struct {
@@ -65,6 +69,8 @@ func (vm *VM) link(f *bytecode.Func) *funcProto {
 		isClassConstructor: f.IsClassConstructor,
 		isDerived:          f.IsDerived,
 		needsExtra:         f.NeedsExtra,
+
+		legacyCallerArguments: !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor,
 	}
 	for i, c := range f.Consts {
 		switch c.Kind {

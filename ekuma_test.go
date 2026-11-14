@@ -242,17 +242,17 @@ func TestScripts(t *testing.T) {
 		{
 			name: "function own keys after an assignment",
 			src:  `function f() {} f.x = 1; Object.getOwnPropertyNames(f).join()`,
-			want: "length,name,prototype,x",
+			want: "length,name,arguments,caller,prototype,x",
 		},
 		{
 			name: "function own keys after a definition",
 			src:  `function f() {} Object.defineProperty(f, "x", { value: 1 }); Object.getOwnPropertyNames(f).join()`,
-			want: "length,name,prototype,x",
+			want: "length,name,arguments,caller,prototype,x",
 		},
 		{
 			name: "function own keys after deleting an initial property",
 			src:  `function f() {} delete f.name; f.x = 1; Object.getOwnPropertyNames(f).join()`,
-			want: "length,prototype,x",
+			want: "length,arguments,caller,prototype,x",
 		},
 		{
 			name: "arrow function own keys",
@@ -271,7 +271,7 @@ func TestScripts(t *testing.T) {
 					r.push(Object.getOwnPropertyNames(fn).join());
 				}
 				r.join("|")`,
-			want: "length,name,prototype,x|length,name,prototype,x",
+			want: "length,name,arguments,caller,prototype,x|length,name,prototype,x",
 		},
 		{
 			name: "function own keys after a store cached for an object with the new prototype",
@@ -280,7 +280,7 @@ func TestScripts(t *testing.T) {
 				Object.setPrototypeOf(f, null);
 				set(Object.create(null)); set(Object.create(null)); set(f);
 				Object.getOwnPropertyNames(f).join()`,
-			want: "length,name,prototype,x",
+			want: "length,name,arguments,caller,prototype,x",
 		},
 		{
 			name: "slice with an argument that shrinks the array",

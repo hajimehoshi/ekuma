@@ -47,7 +47,7 @@ type function struct {
 	// length is the initial value of the property length of a native function.
 	length int32
 
-	// materialized is set once the properties length, name and prototype exist as slots.
+	// materialized is set once the initial properties, such as length and name, exist as slots.
 	materialized bool
 
 	// constructor says whether the function can be called with new.

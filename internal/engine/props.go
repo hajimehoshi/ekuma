@@ -139,6 +139,10 @@ func (vm *VM) materialize(o *Object) {
 	if c := f.code; c != nil {
 		vm.add(o, vm.K.Length, Number(float64(c.length)), FlagConfigurable)
 		vm.add(o, vm.K.Name, vm.NewString(c.name), FlagConfigurable)
+		if c.legacyCallerArguments {
+			vm.add(o, vm.K.arguments, Undefined, 0)
+			vm.add(o, vm.K.caller, Undefined, 0)
+		}
 		switch {
 		case c.isGenerator:
 			proto := vm.GeneratorProto
@@ -163,7 +167,7 @@ func (vm *VM) materialize(o *Object) {
 
 // isLazyKey reports whether key names a property that materialize creates.
 func (vm *VM) isLazyKey(key *Object) bool {
-	return key == vm.K.Prototype || key == vm.K.Name || key == vm.K.Length
+	return key == vm.K.Prototype || key == vm.K.Name || key == vm.K.Length || key == vm.K.caller || key == vm.K.arguments
 }
 
 // resolve prepares the exotic object o for an operation on its named properties.
@@ -176,22 +180,20 @@ func (vm *VM) resolve(o *Object) {
 // lookup finds the named property key on o and its prototype chain.
 // For the length of an array, which is not stored, it returns the array as holder and slot -1.
 func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
-	lazy := vm.isLazyKey(key)
+	length := key == vm.K.Length
 	for h := o; h != nil; h = h.shape.proto {
-		if lazy {
-			if h.flags&objExotic != 0 {
-				vm.resolve(h)
+		if h.flags&objExotic != 0 && vm.isLazyKey(key) {
+			vm.resolve(h)
+		}
+		if length && h.kind == kindArray {
+			flags := FlagWritable
+			if h.flags&objFrozenLength != 0 {
+				flags = 0
 			}
-			if h.kind == kindArray && key == vm.K.Length {
-				flags := FlagWritable
-				if h.flags&objFrozenLength != 0 {
-					flags = 0
-				}
-				return h, prop{
-					slot:  -1,
-					flags: flags,
-				}, true
-			}
+			return h, prop{
+				slot:  -1,
+				flags: flags,
+			}, true
 		}
 		if p, ok := h.shape.lookup(key); ok {
 			return h, p, true
@@ -425,11 +427,11 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 			return PropDesc{}, false
 		}
 		k.key = vm.indexName(k.idx)
-	} else if vm.isLazyKey(k.key) {
-		if o.flags&objExotic != 0 {
+	} else {
+		if o.flags&objExotic != 0 && vm.isLazyKey(k.key) {
 			vm.resolve(o)
 		}
-		if o.kind == kindArray && k.key == vm.K.Length {
+		if k.key == vm.K.Length && o.kind == kindArray {
 			flags := FlagWritable
 			if o.flags&objFrozenLength != 0 {
 				flags = 0
@@ -992,11 +994,11 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 			return true
 		}
 		k.key = vm.indexName(k.idx)
-	} else if vm.isLazyKey(k.key) {
-		if o.flags&objExotic != 0 {
+	} else {
+		if o.flags&objExotic != 0 && vm.isLazyKey(k.key) {
 			vm.resolve(o)
 		}
-		if o.kind == kindArray && k.key == vm.K.Length {
+		if k.key == vm.K.Length && o.kind == kindArray {
 			return false
 		}
 	}
