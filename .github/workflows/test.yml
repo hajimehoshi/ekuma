@@ -103,3 +103,42 @@ jobs:
           # The browser's file system shim cannot open directories, so fuzz tests cannot read their seed corpora.
           # Large environment variables are removed since they are passed to the browser.
           env GOOS=js GOARCH=wasm cleanenv -remove-prefix GITHUB_ -remove-prefix JAVA_ -remove-prefix PSModulePath -remove-prefix STATS_ -remove-prefix RUNNER_ -- go test -v -shuffle=on -timeout 30m -skip '^Fuzz' ./...
+
+  wasm-test262:
+    name: Test test262 on WebAssembly in Node.js
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      EKUMA_TEST262: ${{ github.workspace }}/.test262
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find the test262 commit
+        id: test262
+        run: |
+          commit=$(sed -n 's/^const test262Commit = "\([0-9a-f]\{40\}\)"$/\1/p' test262_test.go)
+          if [ -z "$commit" ]; then
+            echo "test262Commit was not found in test262_test.go"
+            exit 1
+          fi
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout test262
+        uses: actions/checkout@v4
+        with:
+          repository: tc39/test262
+          ref: ${{ steps.test262.outputs.commit }}
+          path: .test262
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go test
+        # A browser cannot read the test262 checkout, so test262 runs in Node.js instead.
+        # The other tests run in the Chrome job.
+        run: env GOOS=js GOARCH=wasm go test -v -shuffle=on -timeout 60m -run '^TestTest262$' -exec="$(go env GOROOT)/lib/wasm/go_js_wasm_exec" .
