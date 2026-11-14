@@ -566,3 +566,22 @@ func TestProxyInterrupt(t *testing.T) {
 		})
 	}
 }
+
+// TestCancelModule checks that a context stops a module whose top level loops forever.
+func TestCancelModule(t *testing.T) {
+	for _, src := range []string{
+		`for (;;) {}`,
+		`await null; for (;;) {}`,
+	} {
+		vm := ekuma.NewVM()
+		m, err := ekuma.ParseModule(vm, "endless", src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		if _, err := ekuma.RunModule(ctx, vm, m); !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
+		}
+		cancel()
+	}
+}

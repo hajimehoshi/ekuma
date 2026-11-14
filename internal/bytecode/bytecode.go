@@ -212,6 +212,8 @@ const (
 	OpEvalScope      // push a new scope for the variables that direct evals declare
 	OpScopeThis      // a = the this value of a call of a function found in the dynamic scope b
 	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of OpEvalScope; it is a function when c is not -1, and c holds it
+
+	OpImport // a = the promise of a dynamic import of b with the options c in the Phase c+1, an integer; with b = -1, a = import.meta
 )
 
 // The kinds of error that OpThrowError throws.
@@ -477,4 +479,118 @@ func (f *Func) Position(pc int) (line, column int) {
 	}
 	p := f.Positions[i]
 	return int(p.Line), int(p.Column)
+}
+
+// Module describes what a module imports and exports, and the bindings of its top level.
+//
+// The compiled code of a module is a function that reaches every binding of the top level as an
+// upvalue: an UpvalDesc of the module function with Local set refers to Bindings by index.
+type Module struct {
+	// Requests are the [[RequestedModules]], in source order without duplicates.
+	Requests []ModuleRequest
+
+	// Bindings are the bindings of the top level, including the imported ones.
+	Bindings []ModuleBinding
+
+	// Imports are the import entries, except those of namespace imports.
+	Imports []ImportEntry
+
+	// LocalExports, IndirectExports and StarExports are the export entries.
+	LocalExports    []LocalExport
+	IndirectExports []IndirectExport
+	StarExports     []int32
+
+	// Funcs are the function declarations of the top level, which are instantiated before the
+	// module is evaluated.
+	Funcs []ModuleFunc
+
+	// HasTLA says whether the top level contains await.
+	HasTLA bool
+}
+
+// ModuleRequest is a ModuleRequest Record. Attributes are sorted by key.
+type ModuleRequest struct {
+	Specifier  string
+	Attributes []ImportAttribute
+	Phase      Phase
+}
+
+// Phase is the phase of an import.
+type Phase uint8
+
+const (
+	PhaseEvaluation Phase = iota
+	PhaseDefer
+	PhaseSource
+)
+
+// ImportAttribute is an ImportAttribute Record.
+type ImportAttribute struct {
+	Key   string
+	Value string
+}
+
+// ModuleBindingKind is the kind of a binding of the top level of a module.
+type ModuleBindingKind uint8
+
+const (
+	// ModuleVar is a var declaration, initialized to undefined before evaluation.
+	ModuleVar ModuleBindingKind = iota
+
+	// ModuleLexical is a let, const, class or using declaration, or the default export of an
+	// expression, which is uninitialized until its declaration is evaluated.
+	ModuleLexical
+
+	// ModuleFunction is a function declaration.
+	ModuleFunction
+
+	// ModuleImport is a binding of the binding that another module exports.
+	ModuleImport
+
+	// ModuleNamespace is a namespace import, initialized to the namespace object of Request.
+	ModuleNamespace
+
+	// ModuleDeferredNamespace is a deferred namespace import, initialized to the deferred
+	// namespace object of Request.
+	ModuleDeferredNamespace
+
+	// ModuleSource is a source phase import, initialized to the module source of Request.
+	ModuleSource
+)
+
+// ModuleBinding is a binding of the top level of a module.
+type ModuleBinding struct {
+	Name string
+	Kind ModuleBindingKind
+
+	// Request indexes Requests for ModuleNamespace, ModuleDeferredNamespace and ModuleSource.
+	Request int32
+}
+
+// ImportEntry is an ImportEntry Record of a named or default import, which binds Bindings[Binding].
+type ImportEntry struct {
+	Request    int32
+	ImportName string
+	Binding    int32
+}
+
+// LocalExport exports Bindings[Binding] as Name.
+type LocalExport struct {
+	Name    string
+	Binding int32
+}
+
+// IndirectExport exports as Name the export ImportName of Requests[Request], or its namespace
+// object when All is set.
+type IndirectExport struct {
+	Name       string
+	Request    int32
+	ImportName string
+	All        bool
+}
+
+// ModuleFunc says that the closure of Protos[Proto] of the module function initializes Bindings[Binding].
+type ModuleFunc struct {
+	Proto   int32
+	Binding int32
 }

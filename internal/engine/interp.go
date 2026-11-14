@@ -1750,6 +1750,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDeclareEvalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.declareEvalVar(cl, fp.keys[i.A], int(i.B), regs, int(i.C))
+		case bytecode.OpImport:
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.importOp(regs, i.B, i.C)
+			regs = vm.reload(regs, onHeap, base, fp)
+			regs[i.A] = v
 
 		case bytecode.OpDebugger, bytecode.OpNop:
 		default:

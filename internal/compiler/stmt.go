@@ -147,7 +147,11 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 // declaration of the kind k, and then initializes the binding name with it.
 func (f *fn) initUsing(n ast.Node, k ast.DeclKind, name string, src int32) {
 	b, sc := f.lookupLocal(name)
-	if b == nil || !sc.hasDispose {
+	if b == nil && f.module {
+		// A declaration of the top level of a module, whose binding is an upvalue.
+		sc = f.varScope
+	}
+	if sc == nil || !sc.hasDispose {
 		f.c.fail(n, "using declaration outside of a disposing scope")
 	}
 	hint := int32(bytecode.DisposeSync)
@@ -155,6 +159,10 @@ func (f *fn) initUsing(n ast.Node, k ast.DeclKind, name string, src int32) {
 		hint = bytecode.DisposeAsync
 	}
 	f.emit(bytecode.OpUsing, src, sc.dispose, hint)
+	if b == nil {
+		f.storeVar(n, name, src, true)
+		return
+	}
 	f.emit(bytecode.OpMove, b.reg, src, 0)
 	b.tdz = false
 }
@@ -394,6 +402,13 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		t := f.newReg()
 		f.class(s.Class, t, name)
 		f.initBinding(s, name, t)
+	case *ast.ImportDecl, *ast.ExportAllDecl:
+	case *ast.ExportNamedDecl:
+		if s.Decl != nil {
+			f.stmt(s.Decl, nil)
+		}
+	case *ast.ExportDefaultDecl:
+		f.exportDefault(s)
 	case *ast.BlockStmt:
 		f.block(s, labels)
 	case *ast.EmptyStmt, *ast.DebuggerStmt:

@@ -320,6 +320,9 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	if start.class == classProxy {
 		return vm.proxyGet(start, PropKey{key: key}, v), nil
 	}
+	if start.class == classModuleNamespace {
+		return vm.getProp(start, PropKey{key: key}, v), nil
+	}
 	if start.class == classTypedArray && key == vm.Key(KeyLength) && c != nil {
 		// The cache says that the length is the original getter, whose result needs no call.
 		e := &c.cacheEntry
@@ -345,6 +348,9 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 			c.epoch = vm.protoEpoch
 		}
 		if h := proxyOnChain(start); h != nil {
+			if h.class == classModuleNamespace {
+				return vm.getProp(h, PropKey{key: key}, v), nil
+			}
 			return vm.proxyGet(h, PropKey{key: key}, v), nil
 		}
 		return Undefined, nil
@@ -384,10 +390,11 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	return val, nil
 }
 
-// proxyOnChain returns the first proxy on the prototype chain of o, which shape lookups stop at.
+// proxyOnChain returns the first proxy or module namespace object on the prototype chain of o,
+// which shape lookups stop at.
 func proxyOnChain(o *Object) *Object {
 	for h := o; h != nil; h = h.shape.proto {
-		if h.class == classProxy {
+		if h.class == classProxy || h.class == classModuleNamespace {
 			return h
 		}
 	}
@@ -482,6 +489,8 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 		switch h.class {
 		case classProxy:
 			return vm.proxyGet(h, PropKey{idx: i}, v), nil
+		case classModuleNamespace:
+			return vm.namespaceGet(h, PropKey{idx: i}), nil
 		case classTypedArray:
 			// An integer-indexed object answers for every index and never defers to its prototype.
 			return vm.typedArrayGet(h, i), nil
@@ -515,6 +524,9 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 	if o.class == classProxy {
 		return vm.proxyGetOwnProperty(o, k)
+	}
+	if o.class == classModuleNamespace && vm.isNamespaceExportKey(o, k) {
+		return vm.namespaceGetOwnProperty(o, k)
 	}
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) {
@@ -591,6 +603,9 @@ func (vm *VM) HasProperty(o *Object, k PropKey) bool {
 		if h.class == classProxy {
 			return vm.proxyHas(h, k)
 		}
+		if h.class == classModuleNamespace && vm.isNamespaceExportKey(h, k) {
+			return vm.namespaceHas(h, k)
+		}
 		if h.class == classTypedArray && isNumericKey(k) {
 			return k.key == nil && vm.typedArrayHas(h, k.idx)
 		}
@@ -614,6 +629,9 @@ func (vm *VM) getProp(o *Object, k PropKey, receiver Value) Value {
 	for h := o; h != nil; h = h.shape.proto {
 		if h.class == classProxy {
 			return vm.proxyGet(h, k, receiver)
+		}
+		if h.class == classModuleNamespace && vm.isNamespaceExportKey(h, k) {
+			return vm.namespaceGet(h, k)
 		}
 		if h.class == classTypedArray && isNumericKey(k) {
 			if k.key != nil {
@@ -745,7 +763,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 		}
 		return nil, false
 	}
-	if o.class == classProxy || o.class == classTypedArray && isCanonicalNumericString(key) {
+	if o.class == classProxy || o.class == classModuleNamespace || o.class == classTypedArray && isCanonicalNumericString(key) {
 		return nil, vm.setProp(o, PropKey{key: key}, val, v)
 	}
 	if o.flags&objExotic != 0 {
@@ -885,6 +903,9 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 		if h.class == classProxy {
 			return vm.proxySet(h, k, val, receiver)
 		}
+		if h.class == classModuleNamespace {
+			return false
+		}
 		if h.class == classTypedArray && isNumericKey(k) {
 			if typedArrayImmutable(h) {
 				return false
@@ -942,6 +963,9 @@ func (vm *VM) Set(o *Object, k PropKey, val Value) {
 func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	if o.class == classProxy {
 		return vm.proxyDefineOwnProperty(o, k, d)
+	}
+	if o.class == classModuleNamespace && vm.isNamespaceExportKey(o, k) {
+		return vm.namespaceDefineOwnProperty(o, k, d)
 	}
 	if o.class == classTypedArray && isNumericKey(k) {
 		return k.key == nil && vm.typedArrayDefine(o, k.idx, d)
@@ -1102,6 +1126,9 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 	if o.class == classProxy {
 		return vm.proxyDelete(o, k)
 	}
+	if o.class == classModuleNamespace && vm.isNamespaceExportKey(o, k) {
+		return vm.namespaceDelete(o, k)
+	}
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			o.elems[k.idx] = hole
@@ -1155,6 +1182,9 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 func (vm *VM) OwnKeys(o *Object) []PropKey {
 	if o.class == classProxy {
 		return vm.proxyOwnKeys(o)
+	}
+	if o.class == classModuleNamespace {
+		return vm.namespaceOwnKeys(o)
 	}
 	if o.flags&objExotic != 0 {
 		vm.resolve(o)

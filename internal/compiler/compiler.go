@@ -188,6 +188,9 @@ type fn struct {
 
 	isScript bool
 
+	// module is set for the function of a module, whose top-level bindings are upvalues.
+	module bool
+
 	// completion is the register of the completion value of a script, or -1.
 	completion int32
 

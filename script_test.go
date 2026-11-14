@@ -5,6 +5,8 @@ package ekuma_test
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -1420,5 +1422,299 @@ func TestProxyDeepChains(t *testing.T) {
 				t.Errorf("got %q, want a RangeError", got)
 			}
 		})
+	}
+}
+
+// memoryModules loads the modules of sources by name, ignoring the referrer, and keeps one
+// record per name. loads counts the calls of the loader for each name.
+type memoryModules struct {
+	vm      *ekuma.VM
+	sources map[string]string
+	modules map[string]*ekuma.Module
+	loads   map[string]int
+}
+
+func newMemoryModules(vm *ekuma.VM, sources map[string]string) *memoryModules {
+	l := &memoryModules{
+		vm:      vm,
+		sources: sources,
+		modules: map[string]*ekuma.Module{},
+		loads:   map[string]int{},
+	}
+	ekuma.SetModuleLoader(vm, l.load)
+	return l
+}
+
+func (l *memoryModules) load(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+	l.loads[specifier]++
+	if m, ok := l.modules[specifier]; ok {
+		return m, nil
+	}
+	src, ok := l.sources[specifier]
+	if !ok {
+		return nil, fmt.Errorf("no module %q", specifier)
+	}
+	m, err := ekuma.ParseModule(l.vm, specifier, src)
+	if err != nil {
+		return nil, err
+	}
+	l.modules[specifier] = m
+	return m, nil
+}
+
+// run runs the module name and returns the value of the global variable result
+// after the evaluation completed.
+func (l *memoryModules) run(t *testing.T, name string) ekuma.Value {
+	t.Helper()
+	m, err := l.load("", name, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := ekuma.RunModule(t.Context(), l.vm, m)
+	if err != nil {
+		t.Fatalf("RunModule: %v", err)
+	}
+	var rejected error
+	onRejected := l.vm.FuncOf("", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		rejected = &ekuma.Error{Value: args[0]}
+		return nil, nil
+	})
+	if _, err := p.Call(t.Context(), "then", nil, onRejected); err != nil {
+		t.Fatal(err)
+	}
+	if rejected != nil {
+		t.Fatalf("the evaluation was rejected: %v", rejected)
+	}
+	v, err := l.vm.Global().Get("result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
+}
+
+func TestModules(t *testing.T) {
+	tests := []struct {
+		name    string
+		sources map[string]string
+		want    string
+	}{
+		{
+			// An import is a live binding: it sees the later assignments of the exporter.
+			name: "live binding",
+			sources: map[string]string{
+				"main": `import { count, increment } from "counter";
+					const seen = [count];
+					increment();
+					seen.push(count);
+					globalThis.result = seen.join();`,
+				"counter": `export let count = 0;
+					export function increment() { count++; }`,
+			},
+			want: "0,1",
+		},
+		{
+			// b runs first and calls a function of a before a's body ran: the function was
+			// instantiated when a was linked.
+			name: "cycle with a hoisted function",
+			sources: map[string]string{
+				"a": `import { fromB } from "b";
+					export function greet(s) { return "hello " + s; }
+					globalThis.result = fromB;`,
+				"b": `import { greet } from "a";
+					export const fromB = greet("b");`,
+			},
+			want: "hello b",
+		},
+		{
+			// A module that two modules import, and that a dynamic import loads again,
+			// runs once, and all of them see the same namespace object.
+			name: "identity",
+			sources: map[string]string{
+				"main": `import * as ns from "shared";
+					import "other";
+					globalThis.result = import("shared").then(ns2 =>
+						[globalThis.runs, ns === ns2, ns === globalThis.fromOther].join());`,
+				"other": `import * as ns from "shared";
+					globalThis.fromOther = ns;`,
+				"shared": `globalThis.runs = (globalThis.runs ?? 0) + 1;`,
+			},
+			want: "1,true,true",
+		},
+		{
+			// The modules of a dynamic import evaluate after the importing module.
+			name: "dynamic import",
+			sources: map[string]string{
+				"main": `const log = globalThis.log = [];
+					const p = import("dep").then(ns => log.push(ns.default));
+					log.push("main");
+					globalThis.result = p.then(() => log.join());`,
+				"dep": `export default "dep";`,
+			},
+			want: "main,dep",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vm := ekuma.NewVM()
+			l := newMemoryModules(vm, tt.sources)
+			names := []string{"main", "a"}
+			name := names[0]
+			if _, ok := tt.sources[name]; !ok {
+				name = names[1]
+			}
+			v := l.run(t, name)
+			if v.Type() == ekuma.TypeObject {
+				// A promise of the result.
+				var got ekuma.Value
+				f := vm.FuncOf("", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+					got = args[0]
+					return nil, nil
+				})
+				if _, err := v.Call(t.Context(), "then", f); err != nil {
+					t.Fatal(err)
+				}
+				v = got
+			}
+			if got := v.String(); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestModuleLoadedOnce checks that the loader is asked once for a request of a referrer
+// that loaded.
+func TestModuleLoadedOnce(t *testing.T) {
+	vm := ekuma.NewVM()
+	l := newMemoryModules(vm, map[string]string{
+		"main": `globalThis.result = Promise.all([import("dep"), import("dep")]).then(([a, b]) => a === b);`,
+		"dep":  `export {};`,
+	})
+	v := l.run(t, "main")
+	var same ekuma.Value
+	f := vm.FuncOf("", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		same = args[0]
+		return nil, nil
+	})
+	if _, err := v.Call(t.Context(), "then", f); err != nil {
+		t.Fatal(err)
+	}
+	if !same.Truthy() {
+		t.Errorf("the two imports gave different namespace objects")
+	}
+	if got := l.loads["dep"]; got != 1 {
+		t.Errorf("the loader was called %d times for dep, want 1", got)
+	}
+}
+
+// TestDynamicImportLoadError checks that an error of the loader rejects the promise of a
+// dynamic import with the thrown value, and that a later import asks the loader again.
+func TestDynamicImportLoadError(t *testing.T) {
+	vm := ekuma.NewVM()
+	thrown, err := vm.RunScript(t.Context(), "thrown", `({})`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	ekuma.SetModuleLoader(vm, func(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+		calls++
+		return nil, &ekuma.Error{Value: thrown}
+	})
+	if err := vm.Global().Set("thrown", thrown); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := vm.RunScript(t.Context(), "main", `
+		var result = [];
+		import("missing").catch(e => result.push(e === thrown));
+		import("missing").catch(e => result.push(e === thrown));`); err != nil {
+		t.Fatal(err)
+	}
+	v, err := vm.RunScript(t.Context(), "check", `result.join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	if calls != 2 {
+		t.Errorf("the loader was called %d times, want 2", calls)
+	}
+}
+
+// TestModuleReferrer checks that the loader gets the name of the script or module that
+// contains the import, including from eval code and from a function made by Function.
+func TestModuleReferrer(t *testing.T) {
+	vm := ekuma.NewVM()
+	var referrers []string
+	ekuma.SetModuleLoader(vm, func(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+		referrers = append(referrers, referrer+":"+specifier)
+		if specifier == "mod" {
+			return ekuma.ParseModule(vm, "mod", `import("fromModule"); eval('import("fromEval")');`)
+		}
+		return nil, errors.New("no module")
+	})
+	if _, err := vm.RunScript(t.Context(), "script", `
+		import("mod");
+		(0, eval)('import("fromIndirectEval")');
+		Function('import("fromFunction")')();`); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"script:mod",
+		"script:fromIndirectEval",
+		"script:fromFunction",
+		"mod:fromModule",
+		"mod:fromEval",
+	}
+	if fmt.Sprint(referrers) != fmt.Sprint(want) {
+		t.Errorf("got %q, want %q", referrers, want)
+	}
+}
+
+// TestImportMeta checks that import.meta has the properties that the host gives it.
+func TestImportMeta(t *testing.T) {
+	vm := ekuma.NewVM()
+	l := newMemoryModules(vm, map[string]string{
+		"main": `globalThis.result = import.meta.url;`,
+	})
+	ekuma.SetImportMeta(vm, func(m *ekuma.Module) map[string]any {
+		return map[string]any{
+			"url": "memory:main",
+		}
+	})
+	if got, want := l.run(t, "main").String(), "memory:main"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestLongImportChain checks that loading, linking and evaluating a long chain of imports
+// does not exhaust the Go stack.
+func TestLongImportChain(t *testing.T) {
+	const n = 20000
+	vm := ekuma.NewVM()
+	ekuma.SetModuleLoader(vm, func(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+		var i int
+		if _, err := fmt.Sscanf(specifier, "m%d", &i); err != nil {
+			return nil, err
+		}
+		src := fmt.Sprintf(`export * from "m%d"; export const v%d = %d;`, i+1, i, i)
+		if i == n {
+			src = fmt.Sprintf(`export const v%d = %d;`, i, i)
+		}
+		return ekuma.ParseModule(vm, specifier, src)
+	})
+	m, err := ekuma.ParseModule(vm, "main", fmt.Sprintf(`import { v%d } from "m0"; globalThis.result = v%d;`, n, n))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ekuma.RunModule(t.Context(), vm, m); err != nil {
+		t.Fatal(err)
+	}
+	v, err := vm.Global().Get("result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := v.Int(); got != n {
+		t.Errorf("got %d, want %d", got, n)
 	}
 }

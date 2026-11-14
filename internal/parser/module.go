@@ -92,12 +92,53 @@ func (p *parser) parseImportAttributes() []ast.ImportAttribute {
 	return attrs
 }
 
+// isSourceImport reports whether the current token source starts a source phase import,
+// and is not the binding of a default import such as in import source from "m".
+func (p *parser) isSourceImport() bool {
+	pk, pk2 := p.peek2()
+	if pk.kind != tIdent {
+		return false
+	}
+	if pk.str == "from" && !pk.esc {
+		// import source from from "m"
+		return pk2.kind == tIdent && pk2.str == "from" && !pk2.esc
+	}
+	return true
+}
+
 // parseImport parses an import declaration. The current token is the import keyword.
 func (p *parser) parseImport() ast.Stmt {
 	d := &ast.ImportDecl{}
 	d.StartOff = p.t.start
 	p.next()
-	if p.t.kind != tString {
+	switch {
+	case p.isWord("defer") && p.peek().kind == tMul:
+		// import defer * as ns from "m"
+		p.next()
+		start := p.t.start
+		p.next()
+		p.expectWord("as")
+		local := p.parseImportBinding()
+		d.Phase = ast.PhaseDefer
+		d.Specifiers = append(d.Specifiers, ast.ImportSpecifier{
+			Span:  span(start, p.prevEnd),
+			Kind:  ast.ImportNamespace,
+			Local: local,
+		})
+		p.expectWord("from")
+	case p.isWord("source") && p.isSourceImport():
+		// import source x from "m"
+		p.next()
+		start := p.t.start
+		local := p.parseImportBinding()
+		d.Phase = ast.PhaseSource
+		d.Specifiers = append(d.Specifiers, ast.ImportSpecifier{
+			Span:  span(start, p.prevEnd),
+			Kind:  ast.ImportSource,
+			Local: local,
+		})
+		p.expectWord("from")
+	case p.t.kind != tString:
 		more := true
 		if p.t.kind == tIdent {
 			start := p.t.start

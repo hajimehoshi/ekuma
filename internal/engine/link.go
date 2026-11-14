@@ -39,6 +39,9 @@ type funcProto struct {
 	// legacyCallerArguments says whether the functions have the own properties caller and arguments
 	// that implementations add to non-strict ordinary functions.
 	legacyCallerArguments bool
+
+	// script is the [[ScriptOrModule]] of the functions.
+	script *scriptOrModule
 }
 
 type templateSite struct {
@@ -48,7 +51,8 @@ type templateSite struct {
 }
 
 // link converts the compiled function f and the functions nested in it to their runtime form.
-func (vm *VM) link(f *bytecode.Func) *funcProto {
+// script is their [[ScriptOrModule]].
+func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 	p := &funcProto{
 		Func:               f,
 		name:               f.Name,
@@ -71,6 +75,8 @@ func (vm *VM) link(f *bytecode.Func) *funcProto {
 		needsExtra:         f.NeedsExtra,
 
 		legacyCallerArguments: !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor,
+
+		script: script,
 	}
 	for i, c := range f.Consts {
 		switch c.Kind {
@@ -87,7 +93,7 @@ func (vm *VM) link(f *bytecode.Func) *funcProto {
 		p.keys[i] = vm.Intern(k)
 	}
 	for i, q := range f.Protos {
-		p.protos[i] = vm.link(q)
+		p.protos[i] = vm.link(q, script)
 	}
 	for i, t := range f.Templates {
 		site := templateSite{

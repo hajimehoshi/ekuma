@@ -255,7 +255,7 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
-	return vm.link(bc), nil
+	return vm.link(bc, &scriptOrModule{file: file}), nil
 }
 
 // compileFunction compiles the function of parser.ParseFunction into a script that evaluates to it.
@@ -268,7 +268,8 @@ func (vm *VM) compileFunction(file, params, body string, kind parser.FunctionKin
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
-	return vm.link(bc), nil
+	// The function has the active ScriptOrModule of its creation.
+	return vm.link(bc, vm.activeScriptOrModule()), nil
 }
 
 // toSyntaxError converts an error of the parser or the compiler for the source file to a *SyntaxError.

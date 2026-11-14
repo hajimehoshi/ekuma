@@ -238,9 +238,24 @@ type ImportMetaExpr struct {
 	Span
 }
 
+// ImportPhase is the phase of an import: what of the imported module it asks for.
+type ImportPhase uint8
+
+const (
+	// PhaseEvaluation imports the evaluated module.
+	PhaseEvaluation ImportPhase = iota
+
+	// PhaseDefer imports a namespace object that evaluates the module when it is first used.
+	PhaseDefer
+
+	// PhaseSource imports the source of the module.
+	PhaseSource
+)
+
 // ImportCall is a dynamic import. Options is nil when absent.
 type ImportCall struct {
 	Span
+	Phase   ImportPhase
 	Source  Expr
 	Options Expr
 }
@@ -731,6 +746,8 @@ const (
 	ImportDefault
 	// ImportNamespace is a namespace import such as * as ns.
 	ImportNamespace
+	// ImportSource is the binding of a source phase import.
+	ImportSource
 )
 
 // ImportSpecifier is one binding of an import declaration. Imported is only meaningful for ImportNamed.
@@ -748,9 +765,11 @@ type ImportAttribute struct {
 	Value *StringLit
 }
 
-// ImportDecl is an import declaration.
+// ImportDecl is an import declaration. A declaration of PhaseDefer has one ImportNamespace
+// specifier, and one of PhaseSource has one ImportSource specifier.
 type ImportDecl struct {
 	Span
+	Phase      ImportPhase
 	Specifiers []ImportSpecifier
 	Source     *StringLit
 	Attributes []ImportAttribute

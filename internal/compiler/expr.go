@@ -268,9 +268,9 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 	case *ast.SpreadElement:
 		f.c.fail(e, "unexpected spread element")
 	case *ast.ImportCall:
-		f.c.fail(e, "dynamic import is not supported yet")
+		f.importCall(e, dst)
 	case *ast.ImportMetaExpr:
-		f.c.fail(e, "import.meta is not supported yet")
+		f.emit(bytecode.OpImport, dst, -1, 0)
 	default:
 		f.c.fail(e, "unsupported expression %T", e)
 	}

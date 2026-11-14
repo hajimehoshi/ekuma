@@ -330,6 +330,8 @@ type VM struct {
 
 	// evals caches the compiled code of eval.
 	evals evalCache
+
+	modules moduleHost
 }
 
 // realm is the set of intrinsic objects.

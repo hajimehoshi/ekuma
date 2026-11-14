@@ -531,3 +531,40 @@ func BenchmarkProxy(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkImportedCall calls, in a loop, a function that another module exports, and compares
+// that with the same code in a script. One iteration is one call.
+func BenchmarkImportedCall(b *testing.B) {
+	const lib = `function add(a, b) { return a + b; }`
+	const loop = `function run(n) { let s = 0; for (let i = 0; i < n; i++) { s = add(s, i); } return s; }`
+	b.Run("script", func(b *testing.B) {
+		vm := ekuma.NewVM()
+		if _, err := vm.RunScript(b.Context(), "script", lib+loop); err != nil {
+			b.Fatal(err)
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		if _, err := vm.RunScript(b.Context(), "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+			b.Fatal(err)
+		}
+	})
+	b.Run("module", func(b *testing.B) {
+		vm := ekuma.NewVM()
+		l := newMemoryModules(vm, map[string]string{
+			"lib":  "export " + lib,
+			"main": `import { add } from "lib";` + loop + `globalThis.run = run;`,
+		})
+		m, err := l.load("", "main", nil)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if _, err := ekuma.RunModule(b.Context(), vm, m); err != nil {
+			b.Fatal(err)
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		if _, err := vm.RunScript(b.Context(), "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+			b.Fatal(err)
+		}
+	})
+}

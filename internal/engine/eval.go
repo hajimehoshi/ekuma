@@ -15,11 +15,13 @@ import (
 // maxEvalCache is the number of compiled eval codes that evalCache keeps.
 const maxEvalCache = 256
 
-// evalKey identifies the eval code of a source text at a call site of a direct eval.
+// evalKey identifies the eval code of a source text at a call site of a direct eval, or of
+// an indirect eval whose ScriptOrModule is script.
 type evalKey struct {
-	fp   *funcProto
-	site int
-	src  string
+	fp     *funcProto
+	site   int
+	src    string
+	script *scriptOrModule
 }
 
 // evalCache holds the compiled code of direct evals. The code of a call site depends only on
@@ -132,10 +134,19 @@ var indirectEvalScope bytecode.EvalScope
 // evalCode returns the compiled code of the eval code src at the call site site of fp,
 // or of an indirect eval when fp is nil.
 func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
+	// The eval code has the ScriptOrModule of the code that calls eval: the caller of a direct
+	// eval, and the active one for an indirect eval.
+	var script *scriptOrModule
+	if fp != nil {
+		script = fp.script
+	} else {
+		script = vm.activeScriptOrModule()
+	}
 	k := evalKey{
-		fp:   fp,
-		site: site,
-		src:  src,
+		fp:     fp,
+		site:   site,
+		src:    src,
+		script: script,
 	}
 	if p := vm.evals.get(k); p != nil {
 		return p
@@ -164,7 +175,7 @@ func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
 	if err != nil {
 		vm.throwCompileError("<eval>", err)
 	}
-	p := vm.link(bc)
+	p := vm.link(bc, script)
 	// Every evaluation of a tagged template in new eval code has template objects of its own.
 	if !hasTemplates(bc) {
 		vm.evals.add(k, p)

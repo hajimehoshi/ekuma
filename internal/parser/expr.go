@@ -978,33 +978,53 @@ func (p *parser) parseImportExpr(allowCall bool) ast.Expr {
 	switch p.t.kind {
 	case tDot:
 		p.next()
-		if !p.isWord("meta") {
+		phase := ast.PhaseEvaluation
+		switch {
+		case p.isWord("defer"):
+			phase = ast.PhaseDefer
+		case p.isWord("source"):
+			phase = ast.PhaseSource
+		case p.isWord("meta"):
+			if !p.module {
+				p.fail(int(start), "import.meta is only allowed in a module")
+			}
+			p.next()
+			return &ast.ImportMetaExpr{
+				Span: span(start, p.prevEnd),
+			}
+		default:
 			p.unexpected()
 		}
-		if !p.module {
-			p.fail(int(start), "import.meta is only allowed in a module")
-		}
 		p.next()
-		return &ast.ImportMetaExpr{
-			Span: span(start, p.prevEnd),
+		if p.t.kind != tLParen {
+			p.unexpected()
 		}
+		return p.parseImportCall(start, phase, allowCall)
 	case tLParen:
-		if !allowCall {
-			p.fail(int(start), "import call cannot be the operand of new")
-		}
-		p.next()
-		c := &ast.ImportCall{}
-		c.Source = p.parseAssignIn()
-		if p.eat(tComma) && p.t.kind != tRParen {
-			c.Options = p.parseAssignIn()
-			p.eat(tComma)
-		}
-		p.expect(tRParen)
-		c.Span = span(start, p.prevEnd)
-		return c
+		return p.parseImportCall(start, ast.PhaseEvaluation, allowCall)
 	}
 	p.unexpected()
 	return nil
+}
+
+// parseImportCall parses the arguments of a dynamic import of the phase, which started at start.
+// The current token is the opening parenthesis.
+func (p *parser) parseImportCall(start int32, phase ast.ImportPhase, allowCall bool) ast.Expr {
+	if !allowCall {
+		p.fail(int(start), "import call cannot be the operand of new")
+	}
+	p.next()
+	c := &ast.ImportCall{
+		Phase: phase,
+	}
+	c.Source = p.parseAssignIn()
+	if p.eat(tComma) && p.t.kind != tRParen {
+		c.Options = p.parseAssignIn()
+		p.eat(tComma)
+	}
+	p.expect(tRParen)
+	c.Span = span(start, p.prevEnd)
+	return c
 }
 
 func (p *parser) checkOctal() {

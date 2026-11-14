@@ -166,23 +166,26 @@ func errorName(ctx context.Context, err error) string {
 	return n.String()
 }
 
-// runOnce runs the test source in one mode and returns why it failed, or "" when it passed.
-// timedOut reports whether it failed by running out of time.
-func runOnce(h *harness, src string, m metadata, strict bool) (reason string, timedOut bool) {
+// runOnce runs the test source at path in one mode and returns why it failed, or "" when it
+// passed. timedOut reports whether it failed by running out of time.
+func runOnce(h *harness, path, src string, m metadata, strict bool) (reason string, timedOut bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			reason, timedOut = fmt.Sprintf("engine panic: %v", r), false
 		}
 	}()
-	if m.flags["module"] {
-		return "modules are not supported", false
-	}
 	vm := ekuma.NewVM()
+	loader := &moduleLoader{
+		vm:      vm,
+		dir:     filepath.Dir(path),
+		modules: map[string]*ekuma.Module{},
+	}
+	ekuma.SetModuleLoader(vm, loader.load)
 	// An async test reports its outcome by printing it.
-	var printed []string
+	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		if len(args) > 0 {
-			printed = append(printed, args[0].String())
+			*printed = append(*printed, args[0].String())
 		}
 		return ekuma.Undefined, nil
 	})
@@ -213,10 +216,13 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string, ti
 			}
 		}
 	}
+	if m.flags["module"] {
+		return runModule(ctx, vm, loader, path, src, m, printed)
+	}
 	if strict {
 		src = "\"use strict\";\n" + src
 	}
-	_, err := vm.RunScript(ctx, "test", src)
+	_, err := vm.RunScript(ctx, path, src)
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "timeout", true
 	}
@@ -237,7 +243,126 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string, ti
 		return firstLine(err.Error()), false
 	}
 	if m.flags["async"] {
-		return asyncOutcome(printed), false
+		return asyncOutcome(*printed), false
+	}
+	return "", false
+}
+
+// moduleLoader loads the modules of a test from the test262 checkout, resolving a specifier
+// relative to the directory of the importing file. It keeps one module record per file and type.
+type moduleLoader struct {
+	vm *ekuma.VM
+
+	// dir is the directory of the test, for the code that has no file.
+	dir string
+
+	modules map[string]*ekuma.Module
+}
+
+func (l *moduleLoader) load(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+	dir := l.dir
+	if filepath.IsAbs(referrer) {
+		dir = filepath.Dir(referrer)
+	}
+	path := filepath.Join(dir, filepath.FromSlash(specifier))
+	typ := attrs["type"]
+	key := path + "\x00" + typ
+	if m, ok := l.modules[key]; ok {
+		return m, nil
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var m *ekuma.Module
+	switch typ {
+	case "":
+		m, err = ekuma.ParseModule(l.vm, path, string(b))
+	case "json":
+		var v ekuma.Value
+		v, err = l.call("(s => JSON.parse(s))", string(b))
+		m = ekuma.NewDefaultModule(l.vm, v)
+	case "text":
+		m = ekuma.NewDefaultModule(l.vm, l.vm.ValueOf(string(b)))
+	case "bytes":
+		var v ekuma.Value
+		v, err = l.call("(n => new Uint8Array(n))", len(b))
+		if err == nil {
+			ekuma.CopyBytesToJS(v, b)
+			v, err = l.call("(a => new Uint8Array(a.buffer.transferToImmutable()))", v)
+		}
+		m = ekuma.NewDefaultModule(l.vm, v)
+	default:
+		return nil, fmt.Errorf("unsupported module type %q", typ)
+	}
+	if err != nil {
+		return nil, err
+	}
+	l.modules[key] = m
+	return m, nil
+}
+
+// call calls the function that the script fn evaluates to with arg.
+func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
+	f, err := l.vm.RunScript(context.Background(), "loader", fn)
+	if err != nil {
+		return ekuma.Undefined, err
+	}
+	return f.Invoke(context.Background(), arg)
+}
+
+// runModule runs the test source at path as a module, after the harness ran in vm.
+func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, src string, m metadata, printed *[]string) (reason string, timedOut bool) {
+	// phase judges the error of a phase of a negative test.
+	phase := func(name string, err error) string {
+		if m.negativePhase != name {
+			return "expected the error in the " + m.negativePhase + " phase: " + firstLine(err.Error())
+		}
+		if got := errorName(context.Background(), err); got != m.negativeType {
+			return "expected " + m.negativeType + " but got " + firstLine(err.Error())
+		}
+		return ""
+	}
+	mod, err := ekuma.ParseModule(vm, path, src)
+	if err != nil {
+		if m.negativePhase != "" {
+			return phase("parse", err), false
+		}
+		return firstLine(err.Error()), false
+	}
+	loader.modules[path+"\x00"] = mod
+	p, err := ekuma.RunModule(ctx, vm, mod)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "timeout", true
+	}
+	if err != nil {
+		if m.negativePhase != "" {
+			return phase("resolution", err), false
+		}
+		return firstLine(err.Error()), false
+	}
+	var rejected *ekuma.Error
+	onRejected := vm.FuncOf("", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		rejected = &ekuma.Error{Value: args[0]}
+		return nil, nil
+	})
+	if _, err := p.Call(ctx, "then", nil, onRejected); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return "timeout", true
+		}
+		return "harness: " + firstLine(err.Error()), false
+	}
+	if m.negativePhase != "" {
+		if rejected == nil {
+			return "expected " + m.negativeType + " but the test completed", false
+		}
+		return phase("runtime", rejected), false
+	}
+	if rejected != nil {
+		return firstLine(rejected.Error()), false
+	}
+	if m.flags["async"] {
+		return asyncOutcome(*printed), false
 	}
 	return "", false
 }
@@ -319,13 +444,17 @@ func runTest(h *harness, path string) (reason string, timedOut bool) {
 	}
 	src := string(b)
 	m := parseMetadata(src)
+	if m.flags["module"] {
+		// Module code is always strict.
+		return runOnce(h, path, src, m, false)
+	}
 	if !m.flags["onlyStrict"] {
-		if r, t := runOnce(h, src, m, false); r != "" {
+		if r, t := runOnce(h, path, src, m, false); r != "" {
 			return r, t
 		}
 	}
 	if !m.flags["noStrict"] && !m.flags["raw"] {
-		if r, t := runOnce(h, src, m, true); r != "" {
+		if r, t := runOnce(h, path, src, m, true); r != "" {
 			return "strict mode: " + r, t
 		}
 	}
