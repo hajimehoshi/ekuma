@@ -476,7 +476,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 // the "handle" operation, and the "reject" operation otherwise.
 //
 // The promises that are rejected without a handler when the job queue is drained are
-// the unhandled rejections. Nothing reports them yet.
+// the unhandled rejections, which notifyRejectedPromises reports.
 func (vm *VM) hostPromiseRejectionTracker(p *Object, handle bool) {
 	if !handle {
 		vm.rejections.add(p)
@@ -485,9 +485,24 @@ func (vm *VM) hostPromiseRejectionTracker(p *Object, handle bool) {
 	vm.rejections.remove(p)
 }
 
+// UnhandledRejectionFunc is the type of the function that is told about a promise that was
+// rejected with reason and has no handler.
+type UnhandledRejectionFunc func(vm *VM, promise, reason Value)
+
+// SetHostUnhandledRejection sets f as the function that is told about the unhandled
+// rejections, in the order of rejection, after the jobs ran. f may call into vm. Without
+// one, the unhandled rejections are discarded.
+func (vm *VM) SetHostUnhandledRejection(f UnhandledRejectionFunc) {
+	vm.rejections.notify = f
+}
+
 // rejectionTracker holds the rejected promises without a handler.
 type rejectionTracker struct {
+	// promises are the rejected promises without a handler, in the order of rejection.
 	promises []*Object
+
+	// notify is the function that is told about the unhandled rejections, or nil.
+	notify UnhandledRejectionFunc
 }
 
 func (t *rejectionTracker) add(p *Object) {
@@ -652,24 +667,59 @@ func (vm *VM) runJobs() {
 		return
 	}
 	for {
-		for !vm.jobs.isEmpty() {
-			if vm.interrupt.Load() {
-				vm.Poll()
+		for {
+			for !vm.jobs.isEmpty() {
+				if vm.interrupt.Load() {
+					vm.Poll()
+				}
+				j := vm.jobs.dequeue()
+				vm.runJob(&j)
+				vm.clearKeptObjects()
 			}
-			j := vm.jobs.dequeue()
-			vm.runJob(&j)
-			vm.clearKeptObjects()
+			if !vm.expireWaiters() {
+				break
+			}
 		}
-		if !vm.expireWaiters() {
+		// The reports can queue jobs and reject promises.
+		if !vm.notifyRejectedPromises() {
 			break
 		}
 	}
-	vm.rejections.reset()
 	vm.runFinalizationCleanups()
+}
+
+// notifyRejectedPromises reports the unhandled rejections and removes them, the way the
+// HTML standard notifies about rejected promises. It reports whether there were any to
+// report.
+func (vm *VM) notifyRejectedPromises() bool {
+	t := &vm.rejections
+	if len(t.promises) == 0 {
+		return false
+	}
+	if t.notify == nil {
+		t.reset()
+		return false
+	}
+	// Promises rejected by the reports are added to a new list, and reported next.
+	promises := t.promises
+	t.promises = nil
+	for _, p := range promises {
+		// An earlier report can handle p.
+		d := promiseOf(p)
+		if d.isHandled {
+			continue
+		}
+		// An earlier report can also remove the function.
+		if t.notify == nil {
+			break
+		}
+		t.notify(vm, Value{o: p}, d.result)
+	}
+	return true
 }
 
 // dropJobs discards the pending jobs.
 func (vm *VM) dropJobs() {
 	vm.jobs = jobQueue{}
-	vm.rejections = rejectionTracker{}
+	vm.rejections.reset()
 }

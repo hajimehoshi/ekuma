@@ -700,3 +700,26 @@ func (vm *VM) RunScript(ctx context.Context, file, src string) (Value, error) {
 		return vm.e.RunScript(file, src)
 	})
 }
+
+// SetUnhandledRejection sets f as the function that is told about each promise that was
+// rejected with reason and has no handler. f is called when the outermost call from Go into
+// vm has run the pending jobs, once for each such promise, in the order of rejection. A
+// promise is reported once, and a handler added later does not undo the report. This
+// includes the promise that [Module.Evaluate] returns for a module that throws.
+//
+// f may call into vm and run JavaScript. The jobs that this queues, and the reports of the
+// promises that this rejects, run before the outermost call returns.
+//
+// The reports that are made after the call go to f, including those of promises that were
+// rejected earlier in a call that is running. A nil f stops the reports, and the promises
+// that would have been reported are discarded.
+func (vm *VM) SetUnhandledRejection(f func(promise, reason Value)) {
+	vm.initIfNeeded()
+	if f == nil {
+		vm.e.SetHostUnhandledRejection(nil)
+		return
+	}
+	vm.e.SetHostUnhandledRejection(func(e *engine.VM, promise, reason engine.Value) {
+		f(fromEngine(promise), fromEngine(reason))
+	})
+}

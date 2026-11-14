@@ -80,6 +80,8 @@ Implemented:
 Notes on behavior:
 
 - Promise jobs run when the outermost call from Go into the VM returns
+- Promise rejections that nothing handled by then are reported to `VM.SetUnhandledRejection`,
+  the way HTML fires `unhandledrejection`
 - Typed array elements are stored in little-endian byte order on every platform
 - `Date` uses the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`
 - Without `Intl`, the `toLocale*String` methods of `Date` use a fixed English format, and

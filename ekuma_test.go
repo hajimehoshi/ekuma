@@ -674,6 +674,75 @@ func TestPromiseState(t *testing.T) {
 	thenable.PromiseState()
 }
 
+func TestUnhandledRejection(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want []string
+	}{
+		{
+			name: "reject",
+			src:  `Promise.reject("a"); Promise.reject("b")`,
+			want: []string{"a", "b"},
+		},
+		{
+			name: "handled by a job",
+			src:  `const p = Promise.reject("a"); Promise.resolve().then(() => p.catch(() => {}))`,
+			want: nil,
+		},
+		{
+			name: "state read",
+			src:  `inspect(Promise.reject("a"))`,
+			want: []string{"a"},
+		},
+		{
+			name: "async function",
+			src:  `(async () => { throw "a"; })()`,
+			want: []string{"a"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			var got []string
+			vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+				got = append(got, reason.String())
+			})
+			inspect := vm.FuncOf("inspect", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+				args[0].PromiseState()
+				return nil, nil
+			})
+			if err := vm.Global().Set("inspect", inspect); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := vm.RunScript(t.Context(), tt.name, tt.src); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+
+	// A report can run JavaScript that rejects another promise.
+	var vm ekuma.VM
+	var got []string
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		got = append(got, reason.String())
+		if reason.String() == "a" {
+			if _, err := vm.RunScript(t.Context(), "report", `Promise.resolve().then(() => { throw "b"; })`); err != nil {
+				t.Error(err)
+			}
+		}
+	})
+	if _, err := vm.RunScript(t.Context(), "reentry", `Promise.reject("a")`); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a", "b"}; !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 // isInstance reports whether v is an instance of the global constructor name.
 func isInstance(t *testing.T, vm *ekuma.VM, v ekuma.Value, name string) bool {
 	t.Helper()
