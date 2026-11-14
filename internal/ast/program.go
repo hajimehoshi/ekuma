@@ -5,6 +5,7 @@ package ast
 
 import (
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -90,7 +91,7 @@ func countCodePoints(s string) int {
 }
 
 func lineStarts(src string) []int32 {
-	starts := []int32{0}
+	starts := make([]int32, 1, 1+strings.Count(src, "\n"))
 	for i := 0; i < len(src); i++ {
 		switch c := src[i]; {
 		case c == '\n':

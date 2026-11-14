@@ -131,7 +131,6 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	b.Source = c.prog.Text(node)
 	f.setPos(node.Start())
 
-	f.mutated = map[string]bool{}
 	assignedNames(node, true, func(s string) {
 		f.mutated[s] = true
 	})
@@ -447,7 +446,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			f.emit(bytecode.OpReturnUndef, 0, 0, 0)
 		}
 	}
-	return b
+	return f.finish()
 }
 
 // paramNodes returns the parameters params as nodes.

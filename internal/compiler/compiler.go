@@ -6,6 +6,7 @@ package compiler
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -236,6 +237,54 @@ type compiler struct {
 
 	// dynamic is the function of a program from parser.ParseFunction, whose name is not bound inside it.
 	dynamic *ast.Function
+
+	scratch *scratch
+}
+
+// scratch is the storage that compilations reuse.
+type scratch struct {
+	// The free buffers that the functions being compiled build their code, positions, keys
+	// and constants in. A finished function gets copies of exactly the used length.
+	codeBufs  [][]bytecode.Instr
+	posBufs   [][]bytecode.Pos
+	keyBufs   [][]string
+	constBufs [][]bytecode.Const
+
+	// fns are the states of finished functions, with their maps emptied.
+	fns []*fn
+}
+
+var scratchPool = sync.Pool{
+	New: func() any {
+		return &scratch{}
+	},
+}
+
+// takeBuf removes a scratch buffer from bufs and returns it empty, or returns nil when bufs has none.
+func takeBuf[T any](bufs *[][]T) []T {
+	n := len(*bufs)
+	if n == 0 {
+		return nil
+	}
+	b := (*bufs)[n-1]
+	*bufs = (*bufs)[:n-1]
+	return b
+}
+
+// releaseBuf returns a copy of work with no spare capacity, or nil when work is empty, and
+// puts work back into bufs for reuse.
+func releaseBuf[T any](bufs *[][]T, work []T) []T {
+	if cap(work) == 0 {
+		return nil
+	}
+	var out []T
+	if len(work) > 0 {
+		out = make([]T, len(work))
+		copy(out, work)
+	}
+	clear(work)
+	*bufs = append(*bufs, work[:0])
+	return out
 }
 
 // CompileScript compiles the script prog. file names the source in stack traces.
@@ -250,13 +299,9 @@ func CompileFunction(prog *ast.Program, file string) (*bytecode.Func, error) {
 }
 
 func compile(prog *ast.Program, file string, dynamic *ast.Function) (f *bytecode.Func, err error) {
-	c := &compiler{
-		prog:         prog,
-		file:         file,
-		isExpression: map[*ast.Function]bool{},
-		fieldNames:   map[*ast.Function]string{},
-		dynamic:      dynamic,
-	}
+	c := newCompiler(prog, file)
+	defer c.release()
+	c.dynamic = dynamic
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(*Error)
@@ -267,6 +312,23 @@ func compile(prog *ast.Program, file string, dynamic *ast.Function) (f *bytecode
 		}
 	}()
 	return c.compileScript(), nil
+}
+
+// newCompiler returns a compiler of prog. The compiler must be released when it is done.
+func newCompiler(prog *ast.Program, file string) *compiler {
+	return &compiler{
+		prog:         prog,
+		file:         file,
+		isExpression: map[*ast.Function]bool{},
+		fieldNames:   map[*ast.Function]string{},
+		scratch:      scratchPool.Get().(*scratch),
+	}
+}
+
+// release gives back the storage of c for reuse.
+func (c *compiler) release() {
+	scratchPool.Put(c.scratch)
+	c.scratch = nil
 }
 
 // fail aborts the compilation with an error at the node n.
@@ -280,21 +342,73 @@ func (c *compiler) fail(n ast.Node, format string, args ...any) {
 }
 
 func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
-	f := &fn{
-		c:      c,
-		parent: parent,
-		node:   node,
-		f: &bytecode.Func{
-			Name: name,
-			File: c.file,
-		},
-		consts:     map[bytecode.Const]int32{},
-		keys:       map[string]int32{},
-		completion: -1,
+	sc := c.scratch
+	var f *fn
+	if n := len(sc.fns); n > 0 {
+		f = sc.fns[n-1]
+		sc.fns = sc.fns[:n-1]
+		*f = fn{
+			consts:   f.consts,
+			keys:     f.keys,
+			mutated:  f.mutated,
+			scope:    f.scope,
+			varScope: f.scope,
+		}
+	} else {
+		f = &fn{
+			consts:  map[bytecode.Const]int32{},
+			keys:    map[string]int32{},
+			mutated: map[string]bool{},
+			scope: &scope{
+				vars: map[string]*binding{},
+			},
+		}
+		f.varScope = f.scope
 	}
-	f.scope = &scope{vars: map[string]*binding{}}
-	f.varScope = f.scope
+	f.c = c
+	f.parent = parent
+	f.node = node
+	f.completion = -1
+	f.f = &bytecode.Func{
+		Name:      name,
+		File:      c.file,
+		Code:      takeBuf(&sc.codeBufs),
+		Positions: takeBuf(&sc.posBufs),
+		Keys:      takeBuf(&sc.keyBufs),
+		Consts:    takeBuf(&sc.constBufs),
+	}
 	return f
+}
+
+// finish ends the compilation of f and returns its code. f must not be used afterwards.
+func (f *fn) finish() *bytecode.Func {
+	b := f.f
+	sc := f.c.scratch
+	b.Code = releaseBuf(&sc.codeBufs, b.Code)
+	b.Positions = releaseBuf(&sc.posBufs, b.Positions)
+	b.Keys = releaseBuf(&sc.keyBufs, b.Keys)
+	b.Consts = releaseBuf(&sc.constBufs, b.Consts)
+
+	// The scope that newFn created is the outermost one of the function.
+	root := f.scope
+	for root.parent != nil {
+		root = root.parent
+	}
+	*root = scope{
+		vars: root.vars,
+	}
+	clear(root.vars)
+	clear(f.consts)
+	clear(f.keys)
+	clear(f.mutated)
+	*f = fn{
+		consts:  f.consts,
+		keys:    f.keys,
+		mutated: f.mutated,
+		scope:   root,
+	}
+	sc.fns = append(sc.fns, f)
+	return b
 }
 
 func (f *fn) emit(op bytecode.Opcode, a, b, c int32) int {
@@ -806,7 +920,6 @@ func (c *compiler) compileScript() *bytecode.Func {
 	f.isScript = true
 	f.f.Strict = prog.Strict
 	f.f.Source = prog.Source
-	f.mutated = map[string]bool{}
 	f.anyMutated = prog.Scope.ContainsDirectEval
 
 	// Register 0 holds this, and register 1 the completion value.
@@ -871,5 +984,5 @@ func (c *compiler) compileScript() *bytecode.Func {
 	f.stmts(prog.Body)
 	f.emit(bytecode.OpReturn, f.completion, 0, 0)
 	f.f.NumClear = 0
-	return f.f
+	return f.finish()
 }

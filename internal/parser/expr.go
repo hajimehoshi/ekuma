@@ -86,12 +86,12 @@ func (p *parser) parseAssignCover() (result ast.Expr, cover int32) {
 			}
 			p.next()
 			value := p.parseAssign()
-			result = &ast.AssignExpr{
+			result = newNode(&p.nodes.assign, ast.AssignExpr{
 				Span:   span(left.Start(), p.prevEnd),
 				Op:     op,
 				Target: target,
 				Value:  value,
-			}
+			})
 		}
 	}
 
@@ -206,20 +206,20 @@ func (p *parser) parseBinary(minPrec int) ast.Expr {
 				p.fail(int(left.Start()), "?? cannot be mixed with || or && without parentheses")
 			}
 		default:
-			left = &ast.BinaryExpr{
+			left = newNode(&p.nodes.binary, ast.BinaryExpr{
 				Span:  span(left.Start(), p.prevEnd),
 				Op:    info.op,
 				Left:  left,
 				Right: right,
-			}
+			})
 			continue
 		}
-		left = &ast.LogicalExpr{
+		left = newNode(&p.nodes.logical, ast.LogicalExpr{
 			Span:  span(left.Start(), p.prevEnd),
 			Op:    info.op,
 			Left:  left,
 			Right: right,
-		}
+		})
 	}
 	return left
 }
@@ -239,12 +239,12 @@ func (p *parser) parseExponent() ast.Expr {
 	p.enter()
 	right := p.parseExponent()
 	p.leave()
-	return &ast.BinaryExpr{
+	return newNode(&p.nodes.binary, ast.BinaryExpr{
 		Span:  span(e.Start(), p.prevEnd),
 		Op:    ast.OpExp,
 		Left:  e,
 		Right: right,
-	}
+	})
 }
 
 func (p *parser) parseUnary() ast.Expr {
@@ -377,10 +377,10 @@ func (p *parser) parseMemberName() ast.Expr {
 	if !p.t.kind.isWord() {
 		p.unexpected()
 	}
-	id := &ast.Identifier{
+	id := newNode(&p.nodes.identifier, ast.Identifier{
 		Span: span(p.t.start, p.t.end),
 		Name: p.t.str,
-	}
+	})
 	p.next()
 	return id
 }
@@ -408,55 +408,55 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 		case tDot:
 			p.next()
 			prop := p.parseMemberName()
-			e = &ast.MemberExpr{
+			e = newNode(&p.nodes.member, ast.MemberExpr{
 				Span:     span(start, p.prevEnd),
 				Object:   e,
 				Property: prop,
-			}
+			})
 		case tQuestionDot:
 			chain = true
 			p.next()
 			switch p.t.kind {
 			case tLParen:
 				args := p.parseArguments()
-				e = &ast.CallExpr{
+				e = newNode(&p.nodes.call, ast.CallExpr{
 					Span:     span(start, p.prevEnd),
 					Callee:   e,
 					Args:     args,
 					Optional: true,
-				}
+				})
 			case tLBrack:
 				p.next()
 				prop := p.parseExpressionIn()
 				p.expect(tRBrack)
-				e = &ast.MemberExpr{
+				e = newNode(&p.nodes.member, ast.MemberExpr{
 					Span:     span(start, p.prevEnd),
 					Object:   e,
 					Property: prop,
 					Computed: true,
 					Optional: true,
-				}
+				})
 			case tTemplate:
 				p.failTok("tagged template cannot be used in an optional chain")
 			default:
 				prop := p.parseMemberName()
-				e = &ast.MemberExpr{
+				e = newNode(&p.nodes.member, ast.MemberExpr{
 					Span:     span(start, p.prevEnd),
 					Object:   e,
 					Property: prop,
 					Optional: true,
-				}
+				})
 			}
 		case tLBrack:
 			p.next()
 			prop := p.parseExpressionIn()
 			p.expect(tRBrack)
-			e = &ast.MemberExpr{
+			e = newNode(&p.nodes.member, ast.MemberExpr{
 				Span:     span(start, p.prevEnd),
 				Object:   e,
 				Property: prop,
 				Computed: true,
-			}
+			})
 		case tLParen:
 			if id, ok := e.(*ast.Identifier); ok && id == p.plainAsync && start == p.arrowStart && !id.Parenthesized && !p.t.nl {
 				var arrow bool
@@ -471,11 +471,11 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 				p.f.use |= useDirectEval
 				p.scope.ast.ContainsDirectEval = true
 			}
-			e = &ast.CallExpr{
+			e = newNode(&p.nodes.call, ast.CallExpr{
 				Span:   span(start, p.prevEnd),
 				Callee: e,
 				Args:   args,
-			}
+			})
 		case tTemplate:
 			if chain {
 				p.failTok("tagged template cannot be used in an optional chain")
@@ -502,18 +502,18 @@ func (p *parser) parseArguments() []ast.Expr {
 	p.next()
 	noIn := p.f.noIn
 	p.f.noIn = false
-	var args []ast.Expr
+	mark := p.exprs.mark()
 	for p.t.kind != tRParen {
 		if p.t.kind == tEllipsis {
 			start := p.t.start
 			p.next()
 			arg := p.parseAssign()
-			args = append(args, &ast.SpreadElement{
+			p.exprs.push(&ast.SpreadElement{
 				Span: span(start, p.prevEnd),
 				Arg:  arg,
 			})
 		} else {
-			args = append(args, p.parseAssign())
+			p.exprs.push(p.parseAssign())
 		}
 		if p.t.kind != tRParen {
 			p.expect(tComma)
@@ -521,7 +521,7 @@ func (p *parser) parseArguments() []ast.Expr {
 	}
 	p.next()
 	p.f.noIn = noIn
-	return args
+	return p.exprs.take(mark)
 }
 
 // arrowHead is the state saved around a construct that can turn out to be an arrow function head.
@@ -648,11 +648,11 @@ func (p *parser) parseAsyncCall(id *ast.Identifier) (e ast.Expr, arrow bool) {
 		if cover != 0 {
 			p.fail(int(cover-1), "invalid shorthand property initializer")
 		}
-		return &ast.CallExpr{
+		return newNode(&p.nodes.call, ast.CallExpr{
 			Span:   span(id.StartOff, p.prevEnd),
 			Callee: id,
 			Args:   args,
-		}, false
+		}), false
 	}
 
 	inner := p.endArrowHead(&h, true, true)
@@ -778,11 +778,11 @@ func (p *parser) parseParen() ast.Expr {
 // use is the usage collected in the parameters, and mark is the index in p.pending of the first scope
 // created in the parameters, or a negative value when the parameters cannot contain scopes.
 func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use usage, mark int) ast.Expr {
-	fn := &ast.Function{
+	fn := newNode(&p.nodes.function, ast.Function{
 		Params: params,
 		Arrow:  true,
 		Async:  async,
-	}
+	})
 	fn.StartOff = start
 	setParamInfo(fn)
 
@@ -876,21 +876,21 @@ loop:
 		case tDot:
 			p.next()
 			prop := p.parseMemberName()
-			callee = &ast.MemberExpr{
+			callee = newNode(&p.nodes.member, ast.MemberExpr{
 				Span:     span(calleeStart, p.prevEnd),
 				Object:   callee,
 				Property: prop,
-			}
+			})
 		case tLBrack:
 			p.next()
 			prop := p.parseExpressionIn()
 			p.expect(tRBrack)
-			callee = &ast.MemberExpr{
+			callee = newNode(&p.nodes.member, ast.MemberExpr{
 				Span:     span(calleeStart, p.prevEnd),
 				Object:   callee,
 				Property: prop,
 				Computed: true,
-			}
+			})
 		case tTemplate:
 			quasi := p.parseTemplate(true)
 			callee = &ast.TaggedTemplate{
@@ -930,11 +930,11 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 		}
 		p.f.use |= useSuperCall
 		args := p.parseArguments()
-		return &ast.CallExpr{
+		return newNode(&p.nodes.call, ast.CallExpr{
 			Span:   span(start, p.prevEnd),
 			Callee: sup,
 			Args:   args,
-		}
+		})
 	case tDot:
 		if !p.f.superProp {
 			p.fail(int(start), "super property access is not allowed here")
@@ -946,11 +946,11 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 			p.unexpected()
 		}
 		prop := p.parseMemberName()
-		return &ast.MemberExpr{
+		return newNode(&p.nodes.member, ast.MemberExpr{
 			Span:     span(start, p.prevEnd),
 			Object:   sup,
 			Property: prop,
-		}
+		})
 	case tLBrack:
 		if !p.f.superProp {
 			p.fail(int(start), "super property access is not allowed here")
@@ -960,12 +960,12 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 		p.next()
 		prop := p.parseExpressionIn()
 		p.expect(tRBrack)
-		return &ast.MemberExpr{
+		return newNode(&p.nodes.member, ast.MemberExpr{
 			Span:     span(start, p.prevEnd),
 			Object:   sup,
 			Property: prop,
 			Computed: true,
-		}
+		})
 	}
 	p.fail(int(start), "super must be followed by a property access or a call")
 	return nil
@@ -1035,10 +1035,10 @@ func (p *parser) checkOctal() {
 
 func (p *parser) parseStringLit() *ast.StringLit {
 	p.checkOctal()
-	lit := &ast.StringLit{
+	lit := newNode(&p.nodes.str, ast.StringLit{
 		Span:  span(p.t.start, p.t.end),
 		Value: p.t.str,
-	}
+	})
 	p.next()
 	return lit
 }
@@ -1050,10 +1050,10 @@ func (p *parser) parsePrimary() ast.Expr {
 		return p.parseIdentPrimary()
 	case tNumber:
 		p.checkOctal()
-		lit := &ast.NumberLit{
+		lit := newNode(&p.nodes.number, ast.NumberLit{
 			Span:  span(start, p.t.end),
 			Value: p.t.num,
-		}
+		})
 		p.next()
 		return lit
 	case tBigInt:
@@ -1082,9 +1082,9 @@ func (p *parser) parsePrimary() ast.Expr {
 	case tThis:
 		p.f.use |= useThis
 		p.next()
-		return &ast.ThisExpr{
+		return newNode(&p.nodes.this, ast.ThisExpr{
 			Span: span(start, p.prevEnd),
-		}
+		})
 	case tNull:
 		p.next()
 		return &ast.NullLit{
@@ -1115,10 +1115,10 @@ func (p *parser) parsePrimary() ast.Expr {
 func (p *parser) parseIdentPrimary() ast.Expr {
 	start := p.t.start
 	canArrow := p.arrowStart == start
-	id := &ast.Identifier{
+	id := newNode(&p.nodes.identifier, ast.Identifier{
 		Span: span(start, p.t.end),
 		Name: p.t.str,
-	}
+	})
 	async := p.isWord("async")
 	p.next()
 	if async {
@@ -1127,10 +1127,10 @@ func (p *parser) parseIdentPrimary() ast.Expr {
 			return p.parseFunctionExpr(start, true)
 		}
 		if canArrow && p.t.kind == tIdent && !p.t.nl {
-			param := &ast.Identifier{
+			param := newNode(&p.nodes.identifier, ast.Identifier{
 				Span: span(p.t.start, p.t.end),
 				Name: p.t.str,
-			}
+			})
 			p.next()
 			if p.t.kind != tArrow || p.t.nl {
 				p.unexpected()
@@ -1187,10 +1187,11 @@ func (p *parser) parseArray() ast.Expr {
 	noIn := p.f.noIn
 	p.f.noIn = false
 	var cover, patErr int32
+	mark := p.exprs.mark()
 	for p.t.kind != tRBrack {
 		if p.t.kind == tComma {
 			p.next()
-			arr.Elements = append(arr.Elements, nil)
+			p.exprs.push(nil)
 			continue
 		}
 		if p.t.kind == tEllipsis {
@@ -1203,7 +1204,7 @@ func (p *parser) parseArray() ast.Expr {
 			if patErr == 0 {
 				patErr = p.patErrOf(arg)
 			}
-			arr.Elements = append(arr.Elements, &ast.SpreadElement{
+			p.exprs.push(&ast.SpreadElement{
 				Span: span(start, p.prevEnd),
 				Arg:  arg,
 			})
@@ -1218,13 +1219,14 @@ func (p *parser) parseArray() ast.Expr {
 			if patErr == 0 {
 				patErr = p.patErrOf(e)
 			}
-			arr.Elements = append(arr.Elements, e)
+			p.exprs.push(e)
 		}
 		if p.t.kind != tRBrack {
 			p.expect(tComma)
 		}
 	}
 	p.next()
+	arr.Elements = p.exprs.take(mark)
 	p.f.noIn = noIn
 	arr.EndOff = p.prevEnd
 	if cover != 0 {
@@ -1276,20 +1278,20 @@ func (p *parser) parsePropertyKey(allowPrivate bool) (ast.Expr, bool) {
 	start := p.t.start
 	switch k := p.t.kind; {
 	case k.isWord():
-		id := &ast.Identifier{
+		id := newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.next()
 		return id, false
 	case k == tString:
 		return p.parseStringLit(), false
 	case k == tNumber:
 		p.checkOctal()
-		lit := &ast.NumberLit{
+		lit := newNode(&p.nodes.number, ast.NumberLit{
 			Span:  span(start, p.t.end),
 			Value: p.t.num,
-		}
+		})
 		p.next()
 		return lit, false
 	case k == tBigInt:
@@ -1336,10 +1338,10 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 	var async, generator bool
 	keyKind := p.t.kind
 	if p.t.kind == tIdent && !p.t.esc && (p.t.str == "get" || p.t.str == "set" || p.t.str == "async") {
-		id := &ast.Identifier{
+		id := newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.next()
 		switch {
 		case isPropertyKeyEnd(p.t.kind) || id.Name == "async" && p.t.nl:
@@ -1362,13 +1364,13 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 
 	switch {
 	case prop.Kind != ast.PropertyInit || async || generator || p.t.kind == tLParen:
-		fn := &ast.Function{
+		fn := newNode(&p.nodes.function, ast.Function{
 			Method:    true,
 			Async:     async,
 			Generator: generator,
 			Getter:    prop.Kind == ast.PropertyGet,
 			Setter:    prop.Kind == ast.PropertySet,
-		}
+		})
 		if prop.Kind == ast.PropertyInit {
 			prop.Kind = ast.PropertyMethod
 		}
@@ -1422,11 +1424,11 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 			}
 			p.next()
 			def := p.parseAssignIn()
-			prop.Value = &ast.AssignExpr{
+			prop.Value = newNode(&p.nodes.assign, ast.AssignExpr{
 				Span:   span(id.StartOff, p.prevEnd),
 				Target: p.toSimpleTarget(id),
 				Value:  def,
-			}
+			})
 		}
 	}
 	prop.Span = span(start, p.prevEnd)

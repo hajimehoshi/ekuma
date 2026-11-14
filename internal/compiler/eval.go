@@ -17,12 +17,8 @@ import (
 // function reaches the variables of the call site as its upvalues and returns the completion
 // value of the code.
 func CompileEval(prog *ast.Program, file string, scope *bytecode.EvalScope) (f *bytecode.Func, err error) {
-	c := &compiler{
-		prog:         prog,
-		file:         file,
-		isExpression: map[*ast.Function]bool{},
-		fieldNames:   map[*ast.Function]string{},
-	}
+	c := newCompiler(prog, file)
+	defer c.release()
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(*Error)
@@ -293,7 +289,6 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 	f.f.Strict = prog.Strict
 	f.f.IsArrow = true
 	f.f.IsEval = true
-	f.mutated = map[string]bool{}
 	f.anyMutated = prog.Scope.ContainsDirectEval
 
 	// The eval code of an indirect eval sees no call site, and its this is the one it is called with.
@@ -428,7 +423,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 
 	f.stmts(prog.Body)
 	f.emit(bytecode.OpReturn, f.completion, 0, 0)
-	return f.f
+	return f.finish()
 }
 
 // storeEvalVar emits the assignment of the register src to the variable name of the variable

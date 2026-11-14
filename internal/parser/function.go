@@ -168,10 +168,10 @@ func (p *parser) parseFunctionRest(fn *ast.Function, outerStrict bool) {
 // parseFunctionExpr parses a function expression. The current token is the function keyword.
 func (p *parser) parseFunctionExpr(start int32, async bool) ast.Expr {
 	p.next()
-	fn := &ast.Function{
+	fn := newNode(&p.nodes.function, ast.Function{
 		Async:     async,
 		Generator: p.eat(tMul),
-	}
+	})
 	fn.StartOff = start
 	outerStrict := p.f.strict
 	saved := p.enterFunction(fn)
@@ -179,10 +179,10 @@ func (p *parser) parseFunctionExpr(start int32, async bool) ast.Expr {
 		if p.t.kind != tIdent {
 			p.unexpected()
 		}
-		fn.Name = &ast.Identifier{
+		fn.Name = newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.checkIdent(fn.Name.Name, fn.Name.StartOff, true)
 		p.next()
 	}
@@ -223,10 +223,10 @@ func (p *parser) parseMethod(fn *ast.Function, start int32) {
 // ctx is the statement context, and anonymous permits a missing name, as in a default export.
 func (p *parser) parseFunctionDecl(start int32, async bool, ctx stmtCtx, anonymous bool) *ast.FuncDecl {
 	p.next()
-	fn := &ast.Function{
+	fn := newNode(&p.nodes.function, ast.Function{
 		Async:     async,
 		Generator: p.eat(tMul),
-	}
+	})
 	fn.StartOff = start
 	plain := !fn.Async && !fn.Generator
 	if ctx != ctxList && !plain {
@@ -237,10 +237,10 @@ func (p *parser) parseFunctionDecl(start int32, async bool, ctx stmtCtx, anonymo
 	}
 
 	if p.t.kind == tIdent {
-		fn.Name = &ast.Identifier{
+		fn.Name = newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.checkIdent(fn.Name.Name, fn.Name.StartOff, true)
 		p.next()
 		p.declareFunction(decl, plain)
@@ -289,10 +289,10 @@ func (p *parser) parseClass(decl, anonymous bool) *ast.Class {
 	p.next()
 
 	if p.t.kind == tIdent {
-		cls.Name = &ast.Identifier{
+		cls.Name = newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.checkIdent(cls.Name.Name, cls.Name.StartOff, true)
 		p.next()
 		if decl {
@@ -362,10 +362,10 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 	memberStart := p.t.start
 	var key ast.Expr
 	if p.isWord("static") {
-		id := &ast.Identifier{
+		id := newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.next()
 		if isClassKeyEnd(p.t.kind) {
 			key = id
@@ -379,9 +379,9 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		start = memberStart
 	}
 	if m.Static && p.t.kind == tLBrace {
-		fn := &ast.Function{
+		fn := newNode(&p.nodes.function, ast.Function{
 			StaticBlock: true,
-		}
+		})
 		fn.StartOff = start
 		saved := p.enterFunction(fn)
 		p.next()
@@ -397,10 +397,10 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 
 	var async, generator bool
 	if key == nil && p.t.kind == tIdent && !p.t.esc && (p.t.str == "get" || p.t.str == "set" || p.t.str == "async") {
-		id := &ast.Identifier{
+		id := newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.next()
 		switch {
 		case isClassKeyEnd(p.t.kind) || id.Name == "async" && p.t.nl:
@@ -446,9 +446,9 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 			p.privateDecl(private.Name, private.StartOff, flags)
 		}
 		if p.eat(tAssign) {
-			fn := &ast.Function{
+			fn := newNode(&p.nodes.function, ast.Function{
 				FieldInit: true,
-			}
+			})
 			fn.StartOff = p.t.start
 			saved := p.enterFunction(fn)
 			fn.ExprBody = p.parseAssignIn()
@@ -461,13 +461,13 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		return
 	}
 
-	fn := &ast.Function{
+	fn := newNode(&p.nodes.function, ast.Function{
 		Method:    true,
 		Async:     async,
 		Generator: generator,
 		Getter:    m.Kind == ast.MemberGetter,
 		Setter:    m.Kind == ast.MemberSetter,
-	}
+	})
 	switch {
 	case private != nil:
 		flags := uint8(privOther)

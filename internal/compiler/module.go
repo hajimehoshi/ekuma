@@ -18,12 +18,8 @@ const defaultBinding = "*default*"
 // stack traces. The returned function is the code of the module, and the returned Module
 // describes its imports, exports and top-level bindings.
 func CompileModule(prog *ast.Program, file string) (f *bytecode.Func, m *bytecode.Module, err error) {
-	c := &compiler{
-		prog:         prog,
-		file:         file,
-		isExpression: map[*ast.Function]bool{},
-		fieldNames:   map[*ast.Function]string{},
-	}
+	c := newCompiler(prog, file)
+	defer c.release()
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(*Error)
@@ -266,7 +262,6 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 	f.f.Strict = true
 	f.f.IsAsync = m.HasTLA
 	f.f.Source = prog.Source
-	f.mutated = map[string]bool{}
 	f.anyMutated = prog.Scope.ContainsDirectEval
 	this := f.declare("this", bindPseudo)
 	f.emit(bytecode.OpLoadThis, this.reg, 0, 0)
@@ -299,7 +294,7 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 		f.stmts(prog.Body)
 	}
 	f.emit(bytecode.OpReturnUndef, 0, 0, 0)
-	return f.f, m
+	return f.finish(), m
 }
 
 // declaredNames returns the names that the declaration s binds.

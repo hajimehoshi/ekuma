@@ -39,10 +39,10 @@ func (p *parser) parseImportBinding() *ast.Identifier {
 	if p.t.kind != tIdent {
 		p.unexpected()
 	}
-	id := &ast.Identifier{
+	id := newNode(&p.nodes.identifier, ast.Identifier{
 		Span: span(p.t.start, p.t.end),
 		Name: p.t.str,
-	}
+	})
 	p.checkIdent(id.Name, id.StartOff, true)
 	p.declareLexical(id.Name, id.StartOff, ast.DeclImport, nil, false)
 	p.next()
@@ -176,10 +176,10 @@ func (p *parser) parseImport() ast.Stmt {
 					if !plain {
 						p.fail(int(start), "import name '"+imported.Name+"' requires a local binding")
 					}
-					local = &ast.Identifier{
+					local = newNode(&p.nodes.identifier, ast.Identifier{
 						Span: imported.Span,
 						Name: imported.Name,
-					}
+					})
 					p.checkIdent(local.Name, local.StartOff, true)
 					p.declareLexical(local.Name, local.StartOff, ast.DeclImport, nil, false)
 				}

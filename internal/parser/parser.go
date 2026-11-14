@@ -224,6 +224,10 @@ type parser struct {
 
 	exported     map[string]struct{}
 	exportLocals []exportLocal
+
+	nodes nodeSlabs
+	stmts listStack[ast.Stmt]
+	exprs listStack[ast.Expr]
 }
 
 type exportLocal struct {
@@ -604,9 +608,9 @@ func (p *parser) pushScope(kind ast.ScopeKind, varScope bool) *scope {
 	} else {
 		s = &scope{}
 	}
-	as := &ast.Scope{
+	as := newNode(&p.nodes.scope, ast.Scope{
 		Kind: kind,
-	}
+	})
 	if p.scope != nil {
 		as.Parent = p.scope.ast
 		if p.scope == p.arrowBase {

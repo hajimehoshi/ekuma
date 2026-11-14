@@ -176,10 +176,10 @@ func (p *parser) parseBindingTarget() ast.Pattern {
 	start := p.t.start
 	switch p.t.kind {
 	case tIdent:
-		id := &ast.Identifier{
+		id := newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		// The binding is checked when it is declared, possibly in a function state other than the
 		// current one, so a use of await that may belong to an enclosing async arrow head is noted here.
 		p.noteAwaitIdent(id.Name, start)

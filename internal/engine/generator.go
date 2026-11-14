@@ -149,6 +149,7 @@ func (vm *VM) newGeneratorObject(g *generator) *Object {
 // pushGenFrame pushes the frame that continues g at g.pc.
 func (vm *VM) pushGenFrame(g *generator, ret int32) {
 	base := vm.sp
+	g.f.fn.code.prepare()
 	vm.frames = append(vm.frames, frame{
 		fp:        g.f.fn.code,
 		cl:        g.f,

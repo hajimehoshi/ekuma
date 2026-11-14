@@ -95,6 +95,7 @@ func (vm *VM) top() int {
 // It returns the stack index of register 0 of the new frame.
 func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object) int {
 	fp := f.fn.code
+	fp.prepare()
 	extraBase := -1
 	if argc > fp.nparams && fp.needsExtra {
 		// The surplus arguments stay where they are, and the registers start above them.

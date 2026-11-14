@@ -18,6 +18,8 @@ type funcProto struct {
 	code   []bytecode.Instr
 	consts []Value
 	keys   []*Object
+
+	// caches holds the inline caches, and is nil until a frame of the function is pushed.
 	caches []propCache
 	protos []*funcProto
 
@@ -52,7 +54,8 @@ type templateSite struct {
 }
 
 // link converts the compiled function f and the functions nested in it to their runtime form.
-// script is their [[ScriptOrModule]].
+// script is their [[ScriptOrModule]]. The constants and keys of f are no longer available
+// afterwards.
 func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 	p := &funcProto{
 		Func:               f,
@@ -60,7 +63,6 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		code:               f.Code,
 		consts:             make([]Value, len(f.Consts)),
 		keys:               make([]*Object, len(f.Keys)),
-		caches:             make([]propCache, f.NumCaches),
 		protos:             make([]*funcProto, len(f.Protos)),
 		templates:          make([]templateSite, len(f.Templates)),
 		regExps:            make([]regExpSite, len(f.RegExps)),
@@ -117,5 +119,15 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		}
 		p.templates[i] = site
 	}
+	// The runtime form replaces them.
+	f.Consts = nil
+	f.Keys = nil
 	return p
+}
+
+// prepare allocates the inline caches of p, which a frame of p needs.
+func (p *funcProto) prepare() {
+	if p.caches == nil {
+		p.caches = make([]propCache, p.NumCaches)
+	}
 }

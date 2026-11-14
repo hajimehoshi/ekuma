@@ -22,13 +22,17 @@ const (
 )
 
 func (p *parser) parseStatementList(body []ast.Stmt, end tokKind) []ast.Stmt {
+	mark := p.stmts.mark()
+	for _, s := range body {
+		p.stmts.push(s)
+	}
 	for p.t.kind != end {
 		if p.t.kind == tEOF {
 			p.unexpected()
 		}
-		body = append(body, p.parseStatement(ctxList))
+		p.stmts.push(p.parseStatement(ctxList))
 	}
-	return body
+	return p.stmts.take(mark)
 }
 
 func (p *parser) atModuleTop() bool {
@@ -78,11 +82,11 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 		scope := p.pushScope(ast.ScopeBlock, false).ast
 		d := p.parseFunctionDecl(start, false, ctx, false)
 		p.popScope()
-		return &ast.BlockStmt{
+		return newNode(&p.nodes.block, ast.BlockStmt{
 			Span:  d.Span,
 			Body:  []ast.Stmt{d},
 			Scope: scope,
-		}
+		})
 	case tClass:
 		if ctx != ctxList {
 			p.failTok("class declaration is not allowed here")
@@ -102,12 +106,12 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 		if p.eat(tElse) {
 			alt = p.parseStatement(ctxIf)
 		}
-		return &ast.IfStmt{
+		return newNode(&p.nodes.ifStmt, ast.IfStmt{
 			Span:       span(start, p.prevEnd),
 			Test:       test,
 			Consequent: cons,
 			Alternate:  alt,
-		}
+		})
 	case tFor:
 		p.markLoopLabels(run)
 		return p.parseFor()
@@ -147,10 +151,10 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 			arg = p.parseExpressionIn()
 		}
 		p.consumeSemicolon()
-		return &ast.ReturnStmt{
+		return newNode(&p.nodes.ret, ast.ReturnStmt{
 			Span: span(start, p.prevEnd),
 			Arg:  arg,
-		}
+		})
 	case tBreak, tContinue:
 		return p.parseBreakContinue()
 	case tThrow:
@@ -270,10 +274,10 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 		}
 	}
 	p.consumeSemicolon()
-	return &ast.ExprStmt{
+	return newNode(&p.nodes.exprStmt, ast.ExprStmt{
 		Span: span(start, p.prevEnd),
 		Expr: e,
-	}
+	})
 }
 
 // atUsingDecl reports whether a using declaration, or an await using declaration when
@@ -327,9 +331,9 @@ func (p *parser) parseBlock(catchBody bool) *ast.BlockStmt {
 	s := p.pushScope(ast.ScopeBlock, false)
 	s.catchBody = catchBody
 	p.next()
-	b := &ast.BlockStmt{
+	b := newNode(&p.nodes.block, ast.BlockStmt{
 		Scope: s.ast,
-	}
+	})
 	b.Body = p.parseStatementList(nil, tRBrace)
 	p.popScope()
 	p.next()
@@ -340,7 +344,7 @@ func (p *parser) parseBlock(catchBody bool) *ast.BlockStmt {
 // parseVarDecl parses a var, let or const declaration without its semicolon.
 // inFor reports the head of a for statement, where the caller checks the initializers.
 func (p *parser) parseVarDecl(mode declMode, inFor bool) *ast.VarDecl {
-	d := &ast.VarDecl{}
+	d := newNode(&p.nodes.varDecl, ast.VarDecl{})
 	d.StartOff = p.t.start
 	switch mode {
 	case declVar:
@@ -432,10 +436,10 @@ func (p *parser) parseFor() ast.Stmt {
 		}
 	case isAwait && p.isWord("async"):
 		if pk := p.peek(); pk.kind == tIdent && !pk.esc && pk.str == "of" {
-			init = &ast.Identifier{
+			init = newNode(&p.nodes.identifier, ast.Identifier{
 				Span: span(p.t.start, p.t.end),
 				Name: p.t.str,
-			}
+			})
 			p.next()
 		} else {
 			init, cover = p.parseAssignCover()
@@ -570,10 +574,10 @@ func (p *parser) parseBreakContinue() ast.Stmt {
 	p.next()
 	var id *ast.Identifier
 	if p.t.kind == tIdent && !p.t.nl {
-		id = &ast.Identifier{
+		id = newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
-		}
+		})
 		p.checkIdent(id.Name, id.StartOff, false)
 		found := false
 		for _, l := range p.labels[p.f.labelBase:] {
