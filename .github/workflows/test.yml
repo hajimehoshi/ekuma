@@ -66,3 +66,40 @@ jobs:
 
       - name: go test
         run: go test -v -shuffle=on -timeout 30m ./...
+
+  wasm:
+    name: Test WebAssembly in Chrome
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Install wasmbrowsertest
+        run: |
+          wasmbrowsertest_version=eec8f6b3828fd793968ed35171566ab20de7b4cc
+          go install github.com/agnivade/wasmbrowsertest@${wasmbrowsertest_version}
+          mv $(go env GOPATH)/bin/wasmbrowsertest $(go env GOPATH)/bin/go_js_wasm_exec
+          go install github.com/agnivade/wasmbrowsertest/cmd/cleanenv@${wasmbrowsertest_version}
+
+      - name: go vet
+        run: env GOOS=js GOARCH=wasm go vet ./...
+
+      - name: go test
+        run: |
+          # Disable AppArmor for Ubuntu 23.10+.
+          # https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md
+          echo 0 | sudo tee /proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          # The browser's file system shim cannot open directories, so fuzz tests cannot read their seed corpora.
+          # Large environment variables are removed since they are passed to the browser.
+          env GOOS=js GOARCH=wasm cleanenv -remove-prefix GITHUB_ -remove-prefix JAVA_ -remove-prefix PSModulePath -remove-prefix STATS_ -remove-prefix RUNNER_ -- go test -v -shuffle=on -timeout 30m -skip '^Fuzz' ./...
