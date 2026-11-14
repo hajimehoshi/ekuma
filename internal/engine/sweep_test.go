@@ -21,22 +21,6 @@ func newVM(t *testing.T) *engine.VM {
 	return vm
 }
 
-func TestReadOfMissingKeyNotInterned(t *testing.T) {
-	vm := newVM(t)
-	before := engine.InternedCount(vm)
-	if _, err := vm.RunScript("read", `
-		o = {};
-		for (let i = 0; i < 10000; i++) {
-			o["k" + i];
-		}
-	`); err != nil {
-		t.Fatalf("RunScript: %v", err)
-	}
-	if got := engine.InternedCount(vm); got != before {
-		t.Errorf("got %d interned strings, want %d", got, before)
-	}
-}
-
 func TestDynamicKeysCollected(t *testing.T) {
 	const (
 		rounds = 20

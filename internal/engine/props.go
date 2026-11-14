@@ -95,9 +95,18 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 	return vm.KeyOfString(vm.ToString(v))
 }
 
-// readKey returns the property key for the string o for a read. When no property key has the
-// contents of o, it returns a key that no object has as a property.
-func (vm *VM) readKey(o *Object) PropKey {
+// QueryKey returns ToPropertyKey(v) for an operation that only reads properties. The key is
+// valid only for that operation and must not be used to create a property.
+func (vm *VM) QueryKey(v Value) PropKey {
+	if o := v.o; o != nil && o.kind == kindString {
+		return vm.queryStringKey(o)
+	}
+	return vm.ToPropertyKey(v)
+}
+
+// queryStringKey returns the property key for the string o for a read. When no property key has
+// the contents of o, it returns a key that no object has as a property.
+func (vm *VM) queryStringKey(o *Object) PropKey {
 	if c := o.str; len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
 		if i, ok := stringIndex(c); ok {
 			return PropKey{idx: i}
@@ -116,6 +125,16 @@ func (vm *VM) readKey(o *Object) PropKey {
 	// Every property key of every object is interned, so o differs from all of them. Not
 	// interning o keeps a read of a missing key from adding to the interned strings.
 	return PropKey{key: o}
+}
+
+// storedKey returns k as the key that a property with k is stored under. A trap of a proxy can
+// create the property while a read with a key from [VM.QueryKey] runs, and the checks after the
+// trap have to find it.
+func (vm *VM) storedKey(k PropKey) PropKey {
+	if o := k.key; o != nil && o.kind == kindString && o.flags&objInterned == 0 {
+		return PropKey{key: vm.stringKey(o)}
+	}
+	return k
 }
 
 // Fields of a property descriptor that are present.

@@ -219,6 +219,7 @@ func (vm *VM) proxyPreventExtensions(o *Object) bool {
 
 // proxyGetOwnProperty implements [[GetOwnProperty]] of a proxy.
 func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
+	k = vm.storedKey(k)
 	target, handler := vm.proxyEnter(o, "getOwnPropertyDescriptor")
 	defer vm.proxyLeave()
 	trap := vm.proxyTrap(handler, keyGetOwnPropertyDescriptor)
@@ -298,6 +299,7 @@ func (vm *VM) proxyDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 
 // proxyHas implements [[HasProperty]] of a proxy.
 func (vm *VM) proxyHas(o *Object, k PropKey) bool {
+	k = vm.storedKey(k)
 	target, handler := vm.proxyEnter(o, "has")
 	defer vm.proxyLeave()
 	trap := vm.proxyTrap(handler, keyHas)
@@ -320,6 +322,7 @@ func (vm *VM) proxyHas(o *Object, k PropKey) bool {
 
 // proxyGet implements [[Get]] of a proxy.
 func (vm *VM) proxyGet(o *Object, k PropKey, receiver Value) Value {
+	k = vm.storedKey(k)
 	target, handler := vm.proxyEnter(o, "get")
 	defer vm.proxyLeave()
 	trap := vm.proxyTrap(handler, KeyGet)

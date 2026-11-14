@@ -630,7 +630,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if !c.IsObject() {
 				vm.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
-			r := vm.HasProperty(c.o, vm.ToPropertyKey(regs[i.B]))
+			r := vm.HasProperty(c.o, vm.QueryKey(regs[i.B]))
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpInstanceof:

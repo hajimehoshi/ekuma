@@ -82,7 +82,7 @@ func initReflect(vm *engine.VM) {
 	})
 	method(vm, r, "has", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := target(vm, arg(args, 0), "has")
-		return engine.Bool(vm.HasProperty(o, vm.ToPropertyKey(arg(args, 1))))
+		return engine.Bool(vm.HasProperty(o, vm.QueryKey(arg(args, 1))))
 	})
 	method(vm, r, "isExtensible", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(vm.IsExtensible(target(vm, arg(args, 0), "isExtensible")))

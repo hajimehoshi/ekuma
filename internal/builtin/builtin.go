@@ -244,7 +244,7 @@ func initObject(vm *engine.VM) {
 	vm.SetIntrinsic(engine.IntrinsicObject, ctor)
 
 	method(vm, proto, "hasOwnProperty", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		k := vm.ToPropertyKey(arg(args, 0))
+		k := vm.QueryKey(arg(args, 0))
 		return engine.Bool(vm.HasOwnProperty(vm.ToObject(this), k))
 	})
 	method(vm, proto, "isPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -539,7 +539,7 @@ func initObject(vm *engine.VM) {
 	})
 	method(vm, ctor, "hasOwn", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(arg(args, 0))
-		return engine.Bool(vm.HasOwnProperty(o, vm.ToPropertyKey(arg(args, 1))))
+		return engine.Bool(vm.HasOwnProperty(o, vm.QueryKey(arg(args, 1))))
 	})
 }
 
