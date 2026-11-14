@@ -159,7 +159,7 @@ const (
 	OpArrayPush        // append b to the array a
 	OpArrayHole        // append a hole to the array a
 	OpArraySpread      // append the elements of the iterable b to the array a
-	OpRegExp           // a = new RegExp(Consts[b], Consts[c])
+	OpRegExp           // a = a new RegExp object for the literal RegExps[b]
 	OpTemplate         // a = the template object b of the function
 	OpDefineField      // define the enumerable data property b of a as c
 	OpDefineFieldK     // define the enumerable data property Keys[b] of a as c, cache b
@@ -336,6 +336,12 @@ type Template struct {
 	Raw       []string
 }
 
+// RegExp is a regular expression literal.
+type RegExp struct {
+	Pattern string
+	Flags   string
+}
+
 // Func is the compiled code of a function.
 type Func struct {
 	Name string
@@ -357,6 +363,8 @@ type Func struct {
 	NumCaches int
 
 	Templates []Template
+
+	RegExps []RegExp
 
 	// EvalScopes describe the call sites of direct evals, which [OpCallEval] refers to.
 	EvalScopes []EvalScope

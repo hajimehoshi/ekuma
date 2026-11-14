@@ -196,7 +196,11 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 	case *ast.NewTargetExpr:
 		f.loadVar("new.target", dst, false)
 	case *ast.RegExpLit:
-		f.emit(bytecode.OpRegExp, dst, f.constStr(e.Pattern), f.constStr(e.Flags))
+		f.f.RegExps = append(f.f.RegExps, bytecode.RegExp{
+			Pattern: e.Pattern,
+			Flags:   e.Flags,
+		})
+		f.emit(bytecode.OpRegExp, dst, int32(len(f.f.RegExps)-1), 0)
 	case *ast.TemplateLit:
 		f.template(e, dst)
 	case *ast.TaggedTemplate:

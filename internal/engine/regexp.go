@@ -4,15 +4,26 @@
 package engine
 
 import (
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 )
 
-// regExpState holds the internal slots of a RegExp object.
+// regExpState holds the internal slots of a RegExp object. It does not change once it is
+// set, so objects can share it.
 type regExpState struct {
 	matcher *regexp.Regexp
 	source  string
 	flags   string
 	legacy  bool
+}
+
+// regExpSite is a regular expression literal of a function.
+type regExpSite struct {
+	literal bytecode.RegExp
+
+	// state is the internal state that the RegExp objects of the literal share, once the
+	// pattern is compiled.
+	state *regExpState
 }
 
 // regExpCacheLimit bounds the number of compiled patterns that a [VM] keeps.
@@ -21,13 +32,41 @@ const regExpCacheLimit = 1024
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor
 // newTarget, with an own lastIndex property and no matcher yet.
 func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
-	o := vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicRegExpPrototype)))
-	o.class = classRegExp
-	o.ext = &regExpState{
-		legacy: newTarget == vm.Intrinsic(IntrinsicRegExp),
+	legacy := newTarget == vm.Intrinsic(IntrinsicRegExp)
+	var s *shape
+	if legacy {
+		// The prototype property of %RegExp% is neither writable nor configurable.
+		s = vm.regExpShape()
+	} else {
+		proto := vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicRegExpPrototype))
+		s = vm.shapeFor(proto).with(vm.Key(keyLastIndex), FlagWritable)
 	}
-	vm.Define(o, vm.Key(keyLastIndex), Value{n: 0}, FlagWritable)
-	return o
+	return vm.newRegExpObject(s, &regExpState{
+		legacy: legacy,
+	})
+}
+
+// regExpShape returns the shape of a new RegExp object whose prototype is %RegExp.prototype%.
+func (vm *VM) regExpShape() *shape {
+	proto := vm.Intrinsic(IntrinsicRegExpPrototype)
+	if s := vm.shapes.regExp; s != nil && s.proto == proto {
+		return s
+	}
+	s := vm.shapeFor(proto).with(vm.Key(keyLastIndex), FlagWritable)
+	vm.shapes.regExp = s
+	return s
+}
+
+// newRegExpObject returns a new RegExp object with the shape s, whose only property is
+// lastIndex, and the internal state st.
+func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
+	return &Object{
+		kind:  kindObject,
+		class: classRegExp,
+		shape: s,
+		slots: []Value{{n: 0}},
+		ext:   st,
+	}
 }
 
 // RegExpInitialize implements RegExpInitialize for the RegExp object o and returns o.
@@ -42,10 +81,12 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 		f = vm.ToString(flags)
 	}
 	re := vm.compileRegExp(p, f)
-	st := o.ext.(*regExpState)
-	st.matcher = re
-	st.source = p
-	st.flags = f
+	o.ext = &regExpState{
+		matcher: re,
+		source:  p,
+		flags:   f,
+		legacy:  o.ext.(*regExpState).legacy,
+	}
 	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Value{n: 0})
 	return o
 }
@@ -71,10 +112,17 @@ func (vm *VM) compileRegExp(p, f string) *regexp.Regexp {
 	return re
 }
 
-// newRegExpLiteral returns the RegExp object of a regular expression literal.
-func (vm *VM) newRegExpLiteral(pattern, flags Value) Value {
-	o := vm.RegExpAlloc(vm.Intrinsic(IntrinsicRegExp))
-	return Value{o: vm.RegExpInitialize(o, pattern, flags)}
+// newRegExpLiteral evaluates the regular expression literal site: it returns a new RegExp object.
+func (vm *VM) newRegExpLiteral(site *regExpSite) *Object {
+	if site.state == nil {
+		site.state = &regExpState{
+			matcher: vm.compileRegExp(site.literal.Pattern, site.literal.Flags),
+			source:  site.literal.Pattern,
+			flags:   site.literal.Flags,
+			legacy:  true,
+		}
+	}
+	return vm.newRegExpObject(vm.regExpShape(), site.state)
 }
 
 // RegExpMatcher returns the compiled pattern of the RegExp object o,

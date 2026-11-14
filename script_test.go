@@ -452,6 +452,14 @@ func TestScripts(t *testing.T) {
 			src:  `1; try { 2; throw 0; } catch (e) {}`,
 			want: "undefined",
 		},
+		{
+			name: "compiling a RegExp from a literal leaves the other objects of the literal alone",
+			src: `function f() { return /a/g; }
+				var r1 = f(), r2 = f();
+				r1.compile("b", "i");
+				[r1 !== r2, r1.source, r1.flags, r2.source, r2.flags, r2.test("A"), f().test("a")].join()`,
+			want: "true,b,i,a,g,false,true",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -1453,7 +1453,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpRegExp:
 			vm.frames[len(vm.frames)-1].pc = pc
-			regs[i.A] = vm.newRegExpLiteral(fp.consts[i.B], fp.consts[i.C])
+			regs[i.A] = Value{o: vm.newRegExpLiteral(&fp.regExps[i.B])}
 		case bytecode.OpTemplate:
 			regs[i.A] = Value{o: vm.templateObject(&fp.templates[i.B])}
 		case bytecode.OpDefineField:

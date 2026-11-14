@@ -286,6 +286,10 @@ type shapeTable struct {
 	iterResult *shape
 	arguments  *shape
 
+	// regExp is the shape of a new RegExp object whose prototype is %RegExp.prototype%,
+	// once one was made.
+	regExp *shape
+
 	// proxy is the shape of a new proxy object. It has no prototype, so that a lookup in shapes
 	// stops at a proxy, and only ever gains private names.
 	proxy *shape

@@ -22,6 +22,7 @@ type funcProto struct {
 	protos []*funcProto
 
 	templates []templateSite
+	regExps   []regExpSite
 
 	length  int
 	nparams int
@@ -62,6 +63,7 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		caches:             make([]propCache, f.NumCaches),
 		protos:             make([]*funcProto, len(f.Protos)),
 		templates:          make([]templateSite, len(f.Templates)),
+		regExps:            make([]regExpSite, len(f.RegExps)),
 		length:             f.Length,
 		nparams:            f.NumParams,
 		nclear:             f.NumClear,
@@ -94,6 +96,9 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 	}
 	for i, q := range f.Protos {
 		p.protos[i] = vm.link(q, script)
+	}
+	for i, r := range f.RegExps {
+		p.regExps[i].literal = r
 	}
 	for i, t := range f.Templates {
 		site := templateSite{
