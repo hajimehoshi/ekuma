@@ -96,6 +96,7 @@ type jobKind uint8
 const (
 	jobReaction jobKind = iota
 	jobThenable
+	jobResolve
 )
 
 // job is a pending promise job.
@@ -111,6 +112,7 @@ type job struct {
 	argument Value
 
 	// promise and then are the promise to resolve and the then method of a thenable job.
+	// A resolve job resolves promise with argument.
 	promise *Object
 	then    Value
 }
@@ -491,6 +493,10 @@ func (vm *VM) enqueueJob(j job) {
 // runJob runs the job j. An exception that leaves the job is dropped, as the host would
 // only report it.
 func (vm *VM) runJob(j *job) {
+	if j.kind == jobResolve {
+		vm.resolvePromise(j.promise, j.argument)
+		return
+	}
 	if j.kind == jobThenable {
 		vm.protect(func() {
 			vm.promiseResolveThenableJob(j.promise, j.argument, j.then)
@@ -578,29 +584,34 @@ func (vm *VM) promiseResolveThenableJob(p *Object, thenable, then Value) {
 	}
 }
 
-// runJobs runs the pending jobs until none is left, and then the cleanup callbacks of
-// FinalizationRegistry objects. It does nothing unless it is called by the outermost call
+// runJobs runs the pending jobs and the timeout jobs of the expired waiters until none is
+// left, and then the cleanup callbacks of FinalizationRegistry objects. It does nothing unless it is called by the outermost call
 // into the engine, as jobs only run when no other JavaScript is running.
 func (vm *VM) runJobs() {
 	if vm.entered != 1 {
 		return
 	}
-	for vm.jobHead < len(vm.jobs) {
-		if vm.interrupt.Load() {
-			vm.Poll()
+	for {
+		for vm.jobHead < len(vm.jobs) {
+			if vm.interrupt.Load() {
+				vm.Poll()
+			}
+			j := vm.jobs[vm.jobHead]
+			vm.jobs[vm.jobHead] = job{}
+			vm.jobHead++
+			if vm.jobHead >= 1024 && vm.jobHead*2 >= len(vm.jobs) {
+				// Drop the jobs that ran, so that a queue that is never empty does not grow.
+				n := copy(vm.jobs, vm.jobs[vm.jobHead:])
+				clear(vm.jobs[n:])
+				vm.jobs = vm.jobs[:n]
+				vm.jobHead = 0
+			}
+			vm.runJob(&j)
+			vm.clearKeptObjects()
 		}
-		j := vm.jobs[vm.jobHead]
-		vm.jobs[vm.jobHead] = job{}
-		vm.jobHead++
-		if vm.jobHead >= 1024 && vm.jobHead*2 >= len(vm.jobs) {
-			// Drop the jobs that ran, so that a queue that is never empty does not grow.
-			n := copy(vm.jobs, vm.jobs[vm.jobHead:])
-			clear(vm.jobs[n:])
-			vm.jobs = vm.jobs[:n]
-			vm.jobHead = 0
+		if !vm.expireWaiters() {
+			break
 		}
-		vm.runJob(&j)
-		vm.clearKeptObjects()
 	}
 	vm.jobs = vm.jobs[:0]
 	vm.jobHead = 0

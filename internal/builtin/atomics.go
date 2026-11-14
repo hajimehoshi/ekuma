@@ -56,6 +56,53 @@ func toAtomicValue(vm *engine.VM, typ engine.ElementType, v engine.Value) engine
 	return engine.Number(vm.ToIntegerOrInfinity(v))
 }
 
+// doWait implements DoWait. The VM is an agent that cannot suspend, so a synchronous wait throws.
+func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
+	what := "wait"
+	if async {
+		what = "waitAsync"
+	}
+	t, n := validateIntegerTypedArray(vm, arg(args, 0), true, what)
+	if !t.ArrayBuffer().IsShared() {
+		vm.ThrowTypeError("Atomics." + what + ": the typed array must be backed by a SharedArrayBuffer")
+	}
+	i := validateAtomicAccess(vm, n, arg(args, 1))
+	typ := t.ElementType()
+	var v engine.Value
+	if typ.IsBigInt() {
+		v = vm.ToBigInt(arg(args, 2))
+	} else {
+		v = engine.Number(float64(vm.ToInt32(arg(args, 2))))
+	}
+	q := vm.ToNumber(arg(args, 3))
+	timeout := math.Inf(1)
+	if !math.IsNaN(q) {
+		timeout = max(q, 0)
+	}
+	if !async {
+		vm.ThrowTypeError("Atomics.wait cannot be called in this context")
+	}
+	b := revalidateAtomicAccess(vm, t, i)
+	// The encodings are compared in the size of the element.
+	mask := uint64(math.MaxUint64) >> (64 - 8*typ.Size())
+	if engine.LoadElementBits(b, typ)&mask != engine.ElementBits(typ, v)&mask {
+		return waitResult(vm, false, vm.NewString("not-equal"))
+	}
+	if timeout == 0 {
+		return waitResult(vm, false, vm.NewString("timed-out"))
+	}
+	byteIndex := t.ByteOffset() + i*typ.Size()
+	return waitResult(vm, true, vm.AddWaiter(t.ArrayBuffer(), byteIndex, timeout))
+}
+
+// waitResult returns the result object of Atomics.waitAsync.
+func waitResult(vm *engine.VM, async bool, value engine.Value) engine.Value {
+	o := vm.NewObject(vm.ObjectProto)
+	vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("async")), engine.Bool(async))
+	vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("value")), value)
+	return engine.ObjectValue(o)
+}
+
 func initAtomics(vm *engine.VM) {
 	atomics := vm.NewObject(vm.ObjectProto)
 	vm.Define(vm.Global, vm.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
@@ -119,28 +166,24 @@ func initAtomics(vm *engine.VM) {
 		return v
 	})
 	method(vm, atomics, "wait", 4, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t, n := validateIntegerTypedArray(vm, arg(args, 0), true, "wait")
-		if !t.ArrayBuffer().IsShared() {
-			vm.ThrowTypeError("Atomics.wait: the typed array must be backed by a SharedArrayBuffer")
-		}
-		validateAtomicAccess(vm, n, arg(args, 1))
-		if t.ElementType().IsBigInt() {
-			vm.ToBigInt(arg(args, 2))
-		} else {
-			vm.ToInt32(arg(args, 2))
-		}
-		vm.ToNumber(arg(args, 3))
-		vm.ThrowTypeError("Atomics.wait cannot be called in this context")
-		return engine.Undefined
+		return doWait(vm, false, args)
+	})
+	method(vm, atomics, "waitAsync", 4, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return doWait(vm, true, args)
 	})
 	method(vm, atomics, "notify", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		_, n := validateIntegerTypedArray(vm, arg(args, 0), true, "notify")
-		validateAtomicAccess(vm, n, arg(args, 1))
-		if c := arg(args, 2); !c.IsUndefined() {
-			vm.ToIntegerOrInfinity(c)
+		t, n := validateIntegerTypedArray(vm, arg(args, 0), true, "notify")
+		i := validateAtomicAccess(vm, n, arg(args, 1))
+		c := math.Inf(1)
+		if v := arg(args, 2); !v.IsUndefined() {
+			c = max(vm.ToIntegerOrInfinity(v), 0)
 		}
-		// No agent can be waiting.
-		return engine.Number(0)
+		b := t.ArrayBuffer()
+		if !b.IsShared() {
+			return engine.Number(0)
+		}
+		byteIndex := t.ByteOffset() + i*t.ElementType().Size()
+		return engine.Number(float64(vm.NotifyWaiters(b, byteIndex, c)))
 	})
 	method(vm, atomics, "pause", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if v := arg(args, 0); !v.IsUndefined() {

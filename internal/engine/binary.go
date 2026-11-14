@@ -23,6 +23,9 @@ type ArrayBuffer struct {
 
 	detached bool
 	shared   bool
+
+	// waiterLists are the waiter lists of a shared buffer by byte index.
+	waiterLists map[int]*waiterList
 }
 
 // Bytes returns the contents of b. The slice stays valid until b is resized or detached.

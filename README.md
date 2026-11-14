@@ -49,7 +49,7 @@ is published yet.
 
 ## Status
 
-About four fifths of [test262](https://github.com/tc39/test262) pass: 39,048 of 48,797 tests
+About four fifths of [test262](https://github.com/tc39/test262) pass: 39,096 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -85,14 +85,15 @@ Implemented:
   `Float16Array` and the `Uint8Array` base64 and hex methods, and `DataView`; elements are
   stored in little-endian byte order on every platform
 - `SharedArrayBuffer` and `Atomics` for a single agent: `Atomics.wait` throws, as on an agent
-  that cannot block, and `Atomics.notify` finds no waiters
+  that cannot block, and `Atomics.notify` wakes the waiters of `Atomics.waitAsync`. A finite
+  `waitAsync` timeout takes effect when the jobs run after it expired
 
 Missing:
 
 - Direct `eval` and the `Function` constructor
 - Modules and dynamic `import`
 - `Proxy`
-- `Atomics.waitAsync`, and agents (workers) sharing a `SharedArrayBuffer`
+- Agents (workers) sharing a `SharedArrayBuffer`
 - Immutable `ArrayBuffer`s (`transferToImmutable`, `sliceToImmutable`)
 - `Intl` and `Temporal`
 

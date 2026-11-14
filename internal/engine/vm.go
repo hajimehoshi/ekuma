@@ -208,6 +208,11 @@ type VM struct {
 	jobs    []job
 	jobHead int
 
+	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout, and waiterSeq
+	// numbers them.
+	timedWaiters timedWaiters
+	waiterSeq    uint64
+
 	// unhandledRejections are the rejected promises without a handler, for HostPromiseRejectionTracker.
 	unhandledRejections []*Object
 
