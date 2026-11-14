@@ -813,4 +813,5 @@ func initGlobalFunctions(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	})
 	vm.Define(g, vm.Intern("parseFloat"), engine.ObjectValue(parseFloat), engine.FlagsHidden)
 	vm.Define(g, vm.Intern("parseInt"), engine.ObjectValue(parseInt), engine.FlagsHidden)
+	initURIFunctions(vm)
 }
