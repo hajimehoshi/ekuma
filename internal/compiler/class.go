@@ -27,7 +27,6 @@ func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func 
 		})
 	}
 	if !derived {
-		b.Source = "constructor() {}"
 		b.NumRegs = 2
 		emit(bytecode.OpLoadCallee, 0, 0, 0)
 		emit(bytecode.OpLoadThis, 1, 0, 0)
@@ -36,7 +35,6 @@ func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func 
 		return b
 	}
 	// constructor(...args) { super(...args); }
-	b.Source = "constructor(...args) { super(...args); }"
 	b.NeedsExtra = true
 	b.NumRegs = 4
 	emit(bytecode.OpLoadCallee, 0, 0, 0)
@@ -94,12 +92,16 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 
 	// ctor holds the constructor and ctor+1 the prototype object.
 	ctor := f.newRegs(2)
+	var code *bytecode.Func
 	if n.Constructor != nil {
-		f.closure(n.Constructor, ctor, name)
+		code = f.c.compileFunction(f, n.Constructor, name)
 	} else {
-		f.f.Protos = append(f.f.Protos, f.c.defaultConstructor(name, n.Super != nil))
-		f.emit(bytecode.OpClosure, ctor, int32(len(f.f.Protos)-1), 0)
+		code = f.c.defaultConstructor(name, n.Super != nil)
 	}
+	// The source text of a class constructor is the whole class.
+	code.Source = f.c.prog.Text(n)
+	f.f.Protos = append(f.f.Protos, code)
+	f.emit(bytecode.OpClosure, ctor, int32(len(f.f.Protos)-1), 0)
 	f.emit(bytecode.OpClass, ctor, 0, parent)
 	proto := ctor + 1
 

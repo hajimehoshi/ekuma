@@ -816,11 +816,6 @@ test/built-ins/Function/prototype/bind/get-fn-realm.js
 test/built-ins/Function/prototype/bind/proto-from-ctor-realm.js
 test/built-ins/Function/prototype/call/S15.3.4.4_A3_T10.js
 test/built-ins/Function/prototype/call/S15.3.4.4_A3_T9.js
-test/built-ins/Function/prototype/toString/class-declaration-complex-heritage.js
-test/built-ins/Function/prototype/toString/class-declaration-explicit-ctor.js
-test/built-ins/Function/prototype/toString/class-declaration-implicit-ctor.js
-test/built-ins/Function/prototype/toString/class-expression-explicit-ctor.js
-test/built-ins/Function/prototype/toString/class-expression-implicit-ctor.js
 test/built-ins/Function/prototype/toString/line-terminator-normalisation-CR.js
 test/built-ins/Function/prototype/toString/proxy-arrow-function.js
 test/built-ins/Function/prototype/toString/proxy-async-function.js
