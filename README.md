@@ -50,7 +50,7 @@ is published yet.
 
 ## Status
 
-82.4% of [test262](https://github.com/tc39/test262) pass: 40,203 of 48,797 tests
+83.1% of [test262](https://github.com/tc39/test262) pass: 40,545 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -87,6 +87,9 @@ Implemented:
   `transferToImmutable` and `sliceToImmutable`), the typed arrays including
   `Float16Array` and the `Uint8Array` base64 and hex methods, and `DataView`; elements are
   stored in little-endian byte order on every platform
+- Explicit resource management: `using` and `await using` declarations, `DisposableStack`,
+  `AsyncDisposableStack`, `SuppressedError`, and the `Symbol.dispose` and
+  `Symbol.asyncDispose` methods of iterators and async iterators
 - `SharedArrayBuffer` and `Atomics` for a single agent: `Atomics.wait` throws, as on an agent
   that cannot block, and `Atomics.notify` wakes the waiters of `Atomics.waitAsync`. A finite
   `waitAsync` timeout takes effect when the jobs run after it expired

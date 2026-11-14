@@ -226,6 +226,9 @@ func TestValid(t *testing.T) {
 			src:  "class C { static { var await_; } }; x = { yield: 1, let: 2, static: 3 }",
 			mode: strict,
 		},
+		{
+			src: "class C { static { x = () => await; } }",
+		},
 
 		// Modules.
 		{
@@ -1195,7 +1198,7 @@ func TestInvalid(t *testing.T) {
 			src: "class A { static { var await; } }",
 		},
 		{
-			src: "class A { static { x = () => await; } }",
+			src: "class A { static { x = (y = await) => 0; } }",
 		},
 		{
 			src: "class A { static { arguments; } }",

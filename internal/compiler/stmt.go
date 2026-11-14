@@ -43,10 +43,10 @@ func (f *fn) declareLexical(s *ast.Scope, alwaysCheck bool) {
 	var order []string
 	for _, d := range s.Decls {
 		switch d.Kind {
-		case ast.DeclLet, ast.DeclConst, ast.DeclClass:
+		case ast.DeclLet, ast.DeclConst, ast.DeclClass, ast.DeclUsing, ast.DeclAwaitUsing:
 			kind := bindLet
 			switch d.Kind {
-			case ast.DeclConst:
+			case ast.DeclConst, ast.DeclUsing, ast.DeclAwaitUsing:
 				kind = bindConst
 			case ast.DeclClass:
 				kind = bindClass
@@ -110,6 +110,10 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 			t := f.newReg()
 			f.named(d.Init, t, id.Name)
 			f.storeVarTo(d, id.Name, t, false, scope)
+		case n.Kind == ast.DeclUsing || n.Kind == ast.DeclAwaitUsing:
+			t := f.newReg()
+			f.named(d.Init, t, id.Name)
+			f.initUsing(d, n.Kind, id.Name, t)
 		default:
 			b, _ := f.lookupLocal(id.Name)
 			switch {
@@ -137,6 +141,22 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 		}
 		f.free(mark)
 	}
+}
+
+// initUsing adds the value of the register src as a resource of the using or await using
+// declaration of the kind k, and then initializes the binding name with it.
+func (f *fn) initUsing(n ast.Node, k ast.DeclKind, name string, src int32) {
+	b, sc := f.lookupLocal(name)
+	if b == nil || !sc.hasDispose {
+		f.c.fail(n, "using declaration outside of a disposing scope")
+	}
+	hint := int32(bytecode.DisposeSync)
+	if k == ast.DeclAwaitUsing {
+		hint = bytecode.DisposeAsync
+	}
+	f.emit(bytecode.OpUsing, src, sc.dispose, hint)
+	f.emit(bytecode.OpMove, b.reg, src, 0)
+	b.tdz = false
 }
 
 func declMode(k ast.DeclKind) patMode {
@@ -236,6 +256,95 @@ func (f *fn) asyncIterClose(it int32) {
 	f.emit(bytecode.OpIterCheckResult, r, 0, 0)
 	f.patch(skip)
 	f.free(mark)
+}
+
+// usingKinds reports whether the scope s, which may be nil, has using declarations, and
+// whether any of them is an await using declaration.
+func usingKinds(s *ast.Scope) (using, async bool) {
+	if s == nil {
+		return false, false
+	}
+	for _, d := range s.Decls {
+		switch d.Kind {
+		case ast.DeclUsing:
+			using = true
+		case ast.DeclAwaitUsing:
+			using, async = true, true
+		}
+	}
+	return using, async
+}
+
+// disposing compiles body so that every way out of it disposes the resources that the using
+// declarations of the current scope add, as DisposeResources does. async reports whether the
+// disposal awaits.
+func (f *fn) disposing(async bool, body func()) {
+	sc := f.scope
+	sc.dispose = f.newReg()
+	sc.hasDispose = true
+	f.emit(bytecode.OpLoadUndef, sc.dispose, 0, 0)
+	fin := &ctl{
+		kind:     ctlFinally,
+		kindReg:  f.newReg(),
+		valueReg: f.newReg(),
+	}
+	v := f.newReg()
+	f.control = append(f.control, fin)
+	base := f.top
+	start := f.pc()
+	body()
+	f.control = f.control[:len(f.control)-1]
+	f.enterFinally(fin, start, base, nil)
+
+	f.emit(bytecode.OpDisposeBegin, sc.dispose, fin.valueReg, fin.kindReg)
+	top := f.pc()
+	step := f.emit(bytecode.OpDisposeStep, v, sc.dispose, 0)
+	if async {
+		awaitStart := f.pc()
+		f.emit(bytecode.OpAwait, v, v, 0)
+		awaitEnd := f.pc()
+		f.jumpTo(top)
+		f.addHandler(awaitStart, awaitEnd, f.pc(), v, false)
+		f.emit(bytecode.OpDisposeError, sc.dispose, v, 0)
+		f.jumpTo(top)
+	}
+	f.patchC(step)
+	f.emit(bytecode.OpDisposeEnd, sc.dispose, 0, 0)
+	sc.hasDispose = false
+	f.leaveFinally(fin)
+}
+
+// enterFinally ends the region that the finally block of fin covers, which starts at start, and
+// starts the code that runs for every completion of the region. base is the first register of
+// the region. done lists the jumps that complete the region normally.
+func (f *fn) enterFinally(fin *ctl, start int32, base int32, done []int) {
+	covered := f.pc()
+	f.patchAll(done)
+	f.emit(bytecode.OpLoadInt, fin.kindReg, 0, 0)
+	normal := f.jump()
+
+	// An exception from the region: remember it and run the finally block.
+	f.addHandler(start, covered, f.pc(), fin.valueReg, true)
+	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
+	f.emit(bytecode.OpLoadInt, fin.kindReg, 1, 0)
+
+	f.patch(normal)
+	f.patchAll(fin.toFinal)
+}
+
+// leaveFinally continues after the finally block of fin with whatever led to it.
+func (f *fn) leaveFinally(fin *ctl) {
+	completed := f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, 0)
+	dispatch := make([]int, len(fin.pending))
+	for i, p := range fin.pending {
+		dispatch[i] = f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, p.id)
+	}
+	f.emit(bytecode.OpRethrow, fin.valueReg, 0, 0)
+	for i, p := range fin.pending {
+		f.patch(dispatch[i])
+		f.exit(p.kind, p.target, fin.valueReg)
+	}
+	f.patch(completed)
 }
 
 func (f *fn) addHandler(start, end, target, reg int32, finally bool) {
@@ -390,7 +499,13 @@ func (f *fn) block(s *ast.BlockStmt, labels []string) {
 		f.control = append(f.control, c)
 	}
 	scoped := f.enterScope(s.Scope, false)
-	f.stmts(s.Body)
+	if using, async := usingKinds(s.Scope); using {
+		f.disposing(async, func() {
+			f.stmts(s.Body)
+		})
+	} else {
+		f.stmts(s.Body)
+	}
 	if scoped {
 		f.leaveScope()
 	}
@@ -421,6 +536,20 @@ func (f *fn) annexBHoist(s *ast.FuncDecl) {
 
 func (f *fn) forStmt(s *ast.ForStmt, labels []string) {
 	scoped := f.enterScope(s.Scope, false)
+	if using, async := usingKinds(s.Scope); using {
+		f.disposing(async, func() {
+			f.forLoop(s, labels, scoped)
+		})
+	} else {
+		f.forLoop(s, labels, scoped)
+	}
+	if scoped {
+		f.leaveScope()
+	}
+}
+
+// forLoop compiles the for statement s in its scope, if scoped.
+func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 	switch init := s.Init.(type) {
 	case nil:
 	case *ast.VarDecl:
@@ -448,14 +577,16 @@ func (f *fn) forStmt(s *ast.ForStmt, labels []string) {
 	f.jumpTo(top)
 	f.patchAll(exit)
 	f.popLoop(c)
-	if scoped {
-		f.leaveScope()
-	}
 }
 
 // bindLoopVar stores the register v to the variable of a for-in or for-of loop.
 func (f *fn) bindLoopVar(decl *ast.VarDecl, target ast.Pattern, v int32) {
 	if decl != nil {
+		if decl.Kind == ast.DeclUsing || decl.Kind == ast.DeclAwaitUsing {
+			d := &decl.Decls[0]
+			f.initUsing(d, decl.Kind, d.Target.(*ast.Identifier).Name, v)
+			return
+		}
 		f.destructure(decl.Decls[0].Target, v, declMode(decl.Kind))
 		return
 	}
@@ -519,8 +650,7 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	v := f.newReg()
 	next := f.emit(bytecode.OpIterNext, v, it, 0)
 	start := f.pc()
-	f.bindLoopVar(s.Decl, s.Target, v)
-	f.stmt(s.Body, nil)
+	f.loopBody(s, v)
 	f.patchAll(c.continues)
 	if scoped {
 		f.leaveScope()
@@ -537,6 +667,19 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 
 	f.patchC(next)
 	f.popLoop(c)
+}
+
+// loopBody compiles one iteration of the for-of or for-await statement s for the value v.
+func (f *fn) loopBody(s *ast.ForOfStmt, v int32) {
+	if using, async := usingKinds(s.Scope); using {
+		f.disposing(async, func() {
+			f.bindLoopVar(s.Decl, s.Target, v)
+			f.stmt(s.Body, nil)
+		})
+		return
+	}
+	f.bindLoopVar(s.Decl, s.Target, v)
+	f.stmt(s.Body, nil)
 }
 
 // forAwaitOf compiles the loop of a for-await statement over the async iterator it, it+1.
@@ -557,8 +700,7 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 	next := f.emit(bytecode.OpIterResultValue, v, call, 0)
 	f.free(call)
 	start := f.pc()
-	f.bindLoopVar(s.Decl, s.Target, v)
-	f.stmt(s.Body, nil)
+	f.loopBody(s, v)
 	f.patchAll(c.continues)
 	if scoped {
 		f.leaveScope()
@@ -672,18 +814,7 @@ func (f *fn) try(s *ast.TryStmt) {
 	}
 
 	f.control = f.control[:len(f.control)-1]
-	covered := f.pc()
-	f.patchAll(done)
-	f.emit(bytecode.OpLoadInt, fin.kindReg, 0, 0)
-	normal := f.jump()
-
-	// An exception from the try or the catch block: remember it and run the finally block.
-	f.addHandler(start, covered, f.pc(), fin.valueReg, true)
-	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
-	f.emit(bytecode.OpLoadInt, fin.kindReg, 1, 0)
-
-	f.patch(normal)
-	f.patchAll(fin.toFinal)
+	f.enterFinally(fin, start, base, done)
 	saved := f.completion
 	if saved >= 0 {
 		// The value of a finally block is not the value of the statement.
@@ -691,17 +822,5 @@ func (f *fn) try(s *ast.TryStmt) {
 	}
 	f.block(s.Finalizer, nil)
 	f.completion = saved
-
-	// Continue with whatever led to the finally block.
-	completed := f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, 0)
-	dispatch := make([]int, len(fin.pending))
-	for i, p := range fin.pending {
-		dispatch[i] = f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, p.id)
-	}
-	f.emit(bytecode.OpRethrow, fin.valueReg, 0, 0)
-	for i, p := range fin.pending {
-		f.patch(dispatch[i])
-		f.exit(p.kind, p.target, fin.valueReg)
-	}
-	f.patch(completed)
+	f.leaveFinally(fin)
 }

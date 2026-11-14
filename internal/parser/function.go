@@ -24,7 +24,7 @@ func (p *parser) enterFunction(fn *ast.Function) fnState {
 		f.superCall = saved.superCall
 		f.newTarget = saved.newTarget
 		f.noArguments = saved.noArguments
-		f.awaitReserved = saved.awaitReserved
+		f.awaitReserved = p.module
 	} else {
 		f.superProp = fn.Method || fn.FieldInit || fn.StaticBlock
 		f.superCall = fn.DerivedConstructor

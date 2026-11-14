@@ -138,6 +138,7 @@ func Install(vm *engine.VM) {
 	initDate(vm)
 	initPromise(vm)
 	initAsync(vm)
+	initDisposableStacks(vm)
 	initBinary(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
 }
@@ -691,14 +692,15 @@ func initFunction(vm *engine.VM) {
 
 func initError(vm *engine.VM) {
 	names := [engine.ErrorKindCount]string{
-		engine.ErrorKindError:     "Error",
-		engine.ErrorKindType:      "TypeError",
-		engine.ErrorKindRange:     "RangeError",
-		engine.ErrorKindReference: "ReferenceError",
-		engine.ErrorKindSyntax:    "SyntaxError",
-		engine.ErrorKindEval:      "EvalError",
-		engine.ErrorKindURI:       "URIError",
-		engine.ErrorKindAggregate: "AggregateError",
+		engine.ErrorKindError:      "Error",
+		engine.ErrorKindType:       "TypeError",
+		engine.ErrorKindRange:      "RangeError",
+		engine.ErrorKindReference:  "ReferenceError",
+		engine.ErrorKindSyntax:     "SyntaxError",
+		engine.ErrorKindEval:       "EvalError",
+		engine.ErrorKindURI:        "URIError",
+		engine.ErrorKindAggregate:  "AggregateError",
+		engine.ErrorKindSuppressed: "SuppressedError",
 	}
 	var base *engine.Object
 	for kind, name := range names {
@@ -709,15 +711,21 @@ func initError(vm *engine.VM) {
 		}
 		vm.ErrorProtos[kind] = proto
 		length := 1
-		if kind == engine.ErrorKindAggregate {
+		switch kind {
+		case engine.ErrorKindAggregate:
 			length = 2
+		case engine.ErrorKindSuppressed:
+			length = 3
 		}
 		ctor := constructor(vm, name, length, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			nt := vm.NewTarget
 			e := vm.NewErrorObject(vm.GetPrototypeFromConstructor(nt, vm.ErrorProtos[kind]))
 			msgArg, optArg := arg(args, 0), arg(args, 1)
-			if kind == engine.ErrorKindAggregate {
+			switch kind {
+			case engine.ErrorKindAggregate:
 				msgArg, optArg = arg(args, 1), arg(args, 2)
+			case engine.ErrorKindSuppressed:
+				msgArg, optArg = arg(args, 2), engine.Undefined
 			}
 			msg := ""
 			if !msgArg.IsUndefined() {
@@ -734,6 +742,10 @@ func initError(vm *engine.VM) {
 					return true
 				})
 				vm.Define(e, vm.K.Errors, engine.ObjectValue(vm.NewArray(errs)), engine.FlagsHidden)
+			}
+			if kind == engine.ErrorKindSuppressed {
+				vm.Define(e, vm.K.Error, arg(args, 0), engine.FlagsHidden)
+				vm.Define(e, vm.K.Suppressed, arg(args, 1), engine.FlagsHidden)
 			}
 			vm.RecordStack(e, wtf8.ToValidUTF8(msg))
 			return engine.ObjectValue(e)

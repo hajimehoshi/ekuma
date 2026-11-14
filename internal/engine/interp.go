@@ -1318,7 +1318,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					r = regs[i.B]
 					if r.o == tdzObject {
 						done.pc = pc
-						vm.throwReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+						vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
 			} else if done.isNew && (r.o == nil || r.o.kind < kindObject) {
@@ -1538,7 +1538,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwReferenceError("super constructor may only be called once")
+				vm.ThrowReferenceError("super constructor may only be called once")
 			}
 		case bytecode.OpRequireCoercible:
 			if regs[i.A].IsNullish() {
@@ -1669,6 +1669,36 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				regs[i.A] = v
 			}
+
+		case bytecode.OpUsing:
+			vm.frames[len(vm.frames)-1].pc = pc
+			{
+				dc := vm.addDisposableOp(regs[i.A], regs[i.B], DisposeHint(i.C))
+				regs = vm.reload(regs, onHeap, base, fp)
+				regs[i.B] = dc
+			}
+		case bytecode.OpDisposeBegin:
+			beginDisposeOp(regs[i.A], regs[i.B], regs[i.C])
+		case bytecode.OpDisposeStep:
+			vm.frames[len(vm.frames)-1].pc = pc
+			{
+				v, await := vm.disposeStepOp(regs[i.B])
+				regs = vm.reload(regs, onHeap, base, fp)
+				if !await {
+					pc = int(i.C)
+					continue
+				}
+				regs[i.A] = v
+			}
+		case bytecode.OpDisposeError:
+			vm.disposeError(regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
+		case bytecode.OpDisposeEnd:
+			if v, thrown := endDisposeOp(regs[i.A]); thrown {
+				regs[i.A] = Undefined
+				vm.thrown = v
+				goto throw
+			}
+			regs[i.A] = Undefined
 
 		case bytecode.OpWith:
 			vm.frames[len(vm.frames)-1].pc = pc

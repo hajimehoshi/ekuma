@@ -315,6 +315,27 @@ func (p *parser) peek() peeked {
 	return r
 }
 
+// peek2 returns the two tokens after the current one.
+func (p *parser) peek2() (peeked, peeked) {
+	saved := p.t
+	pos := p.pos
+	prevEnd := p.prevEnd
+	var r [2]peeked
+	for i := range r {
+		p.next()
+		r[i] = peeked{
+			kind: p.t.kind,
+			nl:   p.t.nl,
+			esc:  p.t.esc,
+			str:  p.t.str,
+		}
+	}
+	p.t = saved
+	p.pos = pos
+	p.prevEnd = prevEnd
+	return r[0], r[1]
+}
+
 func (p *parser) enter() {
 	p.depth++
 	if p.depth > maxDepth {
@@ -716,6 +737,8 @@ const (
 	declVar declMode = iota
 	declLet
 	declConst
+	declUsing
+	declAwaitUsing
 	declParam
 	declParamDup
 	declCatch
@@ -730,13 +753,18 @@ func (p *parser) declarePattern(pat ast.Pattern, mode declMode) {
 		switch mode {
 		case declVar:
 			p.declareVar(pat.Name, pat.StartOff, nil)
-		case declLet, declConst:
+		case declLet, declConst, declUsing, declAwaitUsing:
 			if pat.Name == "let" {
 				p.fail(int(pat.StartOff), "let is disallowed as a lexically bound name")
 			}
 			kind := ast.DeclLet
-			if mode == declConst {
+			switch mode {
+			case declConst:
 				kind = ast.DeclConst
+			case declUsing:
+				kind = ast.DeclUsing
+			case declAwaitUsing:
+				kind = ast.DeclAwaitUsing
 			}
 			p.declareLexical(pat.Name, pat.StartOff, kind, nil, false)
 		case declParam, declParamDup:

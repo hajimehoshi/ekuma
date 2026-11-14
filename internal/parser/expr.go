@@ -815,19 +815,28 @@ func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use u
 	if p.t.kind == tLBrace {
 		p.next()
 		body := p.parseDirectives(fn)
-		p.declareParams(fn)
+		p.declareArrowParams(fn, saved)
 		fn.Body = p.parseStatementList(body, tRBrace)
 		fn.EndOff = p.t.end
 		p.leaveFunction(fn, saved)
 		p.next()
 		return fn
 	}
-	p.declareParams(fn)
+	p.declareArrowParams(fn, saved)
 	p.f.noIn = noIn
 	fn.ExprBody = p.parseAssign()
 	fn.EndOff = p.prevEnd
 	p.leaveFunction(fn, saved)
 	return fn
+}
+
+// declareArrowParams declares the parameters of the arrow function fn, which are in the
+// function whose state is outer as far as await is concerned.
+func (p *parser) declareArrowParams(fn *ast.Function, outer fnState) {
+	reserved := p.f.awaitReserved
+	p.f.awaitReserved = outer.awaitReserved
+	p.declareParams(fn)
+	p.f.awaitReserved = reserved
 }
 
 func (p *parser) parseNew() ast.Expr {

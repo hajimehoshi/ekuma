@@ -16,9 +16,9 @@ import (
 
 func (vm *VM) throwTDZ(name *Object) {
 	if name.str == "this" {
-		vm.throwReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+		vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	vm.throwReferenceError("cannot access '" + name.str + "' before initialization")
+	vm.ThrowReferenceError("cannot access '" + name.str + "' before initialization")
 }
 
 func (vm *VM) throwReadOnly(v Value, k PropKey) {
@@ -95,7 +95,7 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
 		if orUndef {
 			return Undefined
 		}
-		vm.throwReferenceError(key.str + " is not defined")
+		vm.ThrowReferenceError(key.str + " is not defined")
 	}
 	return vm.getProp(g, k, Value{o: g})
 }
@@ -129,7 +129,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 	}
 	k := PropKey{key: key}
 	if strict && !vm.HasProperty(g, k) {
-		vm.throwReferenceError(key.str + " is not defined")
+		vm.ThrowReferenceError(key.str + " is not defined")
 	}
 	if !vm.setProp(g, k, val, Value{o: g}) && strict {
 		vm.throwReadOnly(Value{o: g}, k)
@@ -973,7 +973,7 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 	k := PropKey{key: key}
 	if !vm.HasProperty(o, k) {
 		if strict {
-			vm.throwReferenceError(key.str + " is not defined")
+			vm.ThrowReferenceError(key.str + " is not defined")
 		}
 		return Undefined
 	}
@@ -984,7 +984,7 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
 	if strict && !vm.HasProperty(o, k) {
-		vm.throwReferenceError(key.str + " is not defined")
+		vm.ThrowReferenceError(key.str + " is not defined")
 	}
 	if !vm.setProp(o, k, val, Value{o: o}) && strict {
 		vm.throwReadOnly(Value{o: o}, k)

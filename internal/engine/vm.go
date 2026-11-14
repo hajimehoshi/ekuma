@@ -82,6 +82,7 @@ type upvalue struct {
 // keys are the property keys that the engine itself uses.
 type keys struct {
 	Length, Prototype, Constructor, Name, Message, Stack, Cause, Errors          *Object
+	Error, Suppressed                                                            *Object
 	ToString, valueOf, toJSON, call, apply, bind                                 *Object
 	Get, Set, Value, Writable, Enumerable, Configurable                          *Object
 	next, done, ret, throw, then, callee, caller, arguments                      *Object
@@ -275,6 +276,7 @@ const (
 	ErrorKindEval
 	ErrorKindURI
 	ErrorKindAggregate
+	ErrorKindSuppressed
 	ErrorKindCount
 )
 
@@ -319,7 +321,8 @@ func (vm *VM) ThrowRangeError(msg string) {
 	vm.throwError(ErrorKindRange, msg)
 }
 
-func (vm *VM) throwReferenceError(msg string) {
+// ThrowReferenceError throws a ReferenceError with the given message. It does not return.
+func (vm *VM) ThrowReferenceError(msg string) {
 	vm.throwError(ErrorKindReference, msg)
 }
 

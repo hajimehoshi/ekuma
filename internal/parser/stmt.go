@@ -218,6 +218,22 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 			if pk.kind == tLBrack {
 				p.failTok("lexical declaration is not allowed here")
 			}
+		case "using":
+			if !p.atUsingDecl(false) {
+				break
+			}
+			p.checkUsingAllowed(ctx)
+			d := p.parseVarDecl(declUsing, false)
+			p.consumeSemicolon()
+			return d
+		case "await":
+			if !p.atUsingDecl(true) {
+				break
+			}
+			p.checkUsingAllowed(ctx)
+			d := p.parseVarDecl(declAwaitUsing, false)
+			p.consumeSemicolon()
+			return d
 		case "async":
 			if pk := p.peek(); pk.kind == tFunction && !pk.nl {
 				if ctx != ctxList {
@@ -257,6 +273,32 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 	return &ast.ExprStmt{
 		Span: span(start, p.prevEnd),
 		Expr: e,
+	}
+}
+
+// atUsingDecl reports whether a using declaration, or an await using declaration when
+// await is set, starts at the current token, which is the unescaped word using or await.
+func (p *parser) atUsingDecl(await bool) bool {
+	if !await {
+		pk := p.peek()
+		return pk.kind == tIdent && !pk.nl
+	}
+	if !p.f.await {
+		return false
+	}
+	u, pk := p.peek2()
+	return u.kind == tIdent && !u.esc && u.str == "using" && !u.nl && pk.kind == tIdent && !pk.nl
+}
+
+// checkUsingAllowed fails when a using declaration is not allowed in the statement position ctx.
+func (p *parser) checkUsingAllowed(ctx stmtCtx) {
+	switch {
+	case ctx != ctxList:
+		p.failTok("lexical declaration is not allowed here")
+	case p.scope.ast.Kind == ast.ScopeSwitch:
+		p.failTok("using declaration is not allowed directly in a case clause")
+	case p.scope.ast.Kind == ast.ScopeScript && !p.f.inFunction:
+		p.failTok("using declaration is not allowed at the top level of a script")
 	}
 }
 
@@ -305,12 +347,20 @@ func (p *parser) parseVarDecl(mode declMode, inFor bool) *ast.VarDecl {
 		d.Kind = ast.DeclVar
 	case declLet:
 		d.Kind = ast.DeclLet
+	case declUsing:
+		d.Kind = ast.DeclUsing
+	case declAwaitUsing:
+		d.Kind = ast.DeclAwaitUsing
+		p.next()
 	default:
 		d.Kind = ast.DeclConst
 	}
 	p.next()
 	for {
 		start := p.t.start
+		if (mode == declUsing || mode == declAwaitUsing) && p.t.kind != tIdent {
+			p.failTok("a using declaration cannot have a binding pattern")
+		}
 		target := p.parseBindingTarget()
 		p.declarePattern(target, mode)
 		var init ast.Expr
@@ -333,8 +383,11 @@ func (p *parser) parseVarDecl(mode declMode, inFor bool) *ast.VarDecl {
 }
 
 func (p *parser) checkMissingInit(kind ast.DeclKind, target ast.Pattern) {
-	if kind == ast.DeclConst {
+	switch kind {
+	case ast.DeclConst:
 		p.fail(int(target.Start()), "missing initializer in const declaration")
+	case ast.DeclUsing, ast.DeclAwaitUsing:
+		p.fail(int(target.Start()), "missing initializer in using declaration")
 	}
 	if _, ok := target.(*ast.Identifier); !ok {
 		p.fail(int(target.Start()), "missing initializer in destructuring declaration")
@@ -366,6 +419,10 @@ func (p *parser) parseFor() ast.Stmt {
 		decl = p.parseVarDecl(declVar, true)
 	case p.t.kind == tConst:
 		decl = p.parseVarDecl(declConst, true)
+	case p.isWord("using") && p.atForUsingDecl():
+		decl = p.parseVarDecl(declUsing, true)
+	case p.isWord("await") && p.atUsingDecl(true):
+		decl = p.parseVarDecl(declAwaitUsing, true)
 	case p.isWord("let"):
 		if pk := p.peek(); pk.kind == tIdent || pk.kind == tLBrack || pk.kind == tLBrace {
 			decl = p.parseVarDecl(declLet, true)
@@ -414,6 +471,9 @@ func (p *parser) parseFor() ast.Stmt {
 		if decl != nil {
 			if len(decl.Decls) != 1 {
 				p.fail(int(decl.StartOff), "a for-in or for-of statement declares exactly one binding")
+			}
+			if !isOf && (decl.Kind == ast.DeclUsing || decl.Kind == ast.DeclAwaitUsing) {
+				p.fail(int(decl.StartOff), "a for-in statement cannot declare a using binding")
 			}
 			d := &decl.Decls[0]
 			if d.Init != nil {
@@ -491,6 +551,17 @@ func (p *parser) parseFor() ast.Stmt {
 	p.popScope()
 	f.Span = span(start, p.prevEnd)
 	return f
+}
+
+// atForUsingDecl reports whether a using declaration starts at the current token, the unescaped
+// word using, in the head of a for statement. using of is a declaration only when an
+// initializer follows.
+func (p *parser) atForUsingDecl() bool {
+	pk, pk2 := p.peek2()
+	if pk.kind != tIdent || pk.nl {
+		return false
+	}
+	return pk.esc || pk.str != "of" || pk2.kind == tAssign
 }
 
 func (p *parser) parseBreakContinue() ast.Stmt {

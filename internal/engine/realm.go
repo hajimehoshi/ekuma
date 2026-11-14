@@ -98,6 +98,7 @@ func (vm *VM) initKeys() {
 	}{
 		{&k.Length, "length"}, {&k.Prototype, "prototype"}, {&k.Constructor, "constructor"}, {&k.Name, "name"},
 		{&k.Message, "message"}, {&k.Stack, "stack"}, {&k.Cause, "cause"}, {&k.Errors, "errors"},
+		{&k.Error, "error"}, {&k.Suppressed, "suppressed"},
 		{&k.ToString, "toString"}, {&k.valueOf, "valueOf"}, {&k.toJSON, "toJSON"},
 		{&k.call, "call"}, {&k.apply, "apply"}, {&k.bind, "bind"},
 		{&k.Get, "get"}, {&k.Set, "set"}, {&k.Value, "value"}, {&k.Writable, "writable"},

@@ -71,6 +71,11 @@ type scope struct {
 
 	// withs is the number of with statements that the scope is nested in, within the function.
 	withs int
+
+	// dispose is the register of the dispose capability of the using declarations of the scope,
+	// when hasDispose is set.
+	dispose    int32
+	hasDispose bool
 }
 
 type refKind uint8

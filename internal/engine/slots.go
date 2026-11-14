@@ -219,3 +219,28 @@ func (vm *VM) NewRawJSONObject() *Object {
 func (o *Object) IsRawJSON() bool {
 	return o.class == classRawJSON
 }
+
+// NewDisposableStackObject returns a DisposableStack object, or an AsyncDisposableStack object
+// when async is set, with the prototype proto. state is what DisposableStackState returns for it.
+func (vm *VM) NewDisposableStackObject(proto *Object, async bool, state any) *Object {
+	o := vm.NewObject(proto)
+	o.class = classDisposableStack
+	if async {
+		o.class = classAsyncDisposableStack
+	}
+	o.ext = state
+	return o
+}
+
+// DisposableStackState returns the state of v when it is a DisposableStack object, or
+// an AsyncDisposableStack object when async is set, and nil otherwise.
+func DisposableStackState(v Value, async bool) any {
+	c := classDisposableStack
+	if async {
+		c = classAsyncDisposableStack
+	}
+	if v.IsObject() && v.o.class == c {
+		return v.o.ext
+	}
+	return nil
+}

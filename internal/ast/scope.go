@@ -42,6 +42,8 @@ const (
 	// DeclAnnexBVar is the var binding created in a function or script scope for a
 	// function declared in a nested block of sloppy mode code.
 	DeclAnnexBVar
+	DeclUsing
+	DeclAwaitUsing
 )
 
 // Decl is one declaration of a scope.

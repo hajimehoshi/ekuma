@@ -83,6 +83,8 @@ const (
 	classPrivateName
 	classModuleNamespace
 	classRawJSON
+	classDisposableStack
+	classAsyncDisposableStack
 )
 
 // Object is every heap value: plain objects, arrays, functions, strings, symbols, and the singletons.

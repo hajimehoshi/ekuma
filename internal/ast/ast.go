@@ -548,7 +548,8 @@ type Declarator struct {
 	Init   Expr
 }
 
-// VarDecl is a var, let or const declaration. Kind is DeclVar, DeclLet or DeclConst.
+// VarDecl is a var, let, const, using or await using declaration. Kind is DeclVar, DeclLet,
+// DeclConst, DeclUsing or DeclAwaitUsing.
 type VarDecl struct {
 	Span
 	Kind  DeclKind

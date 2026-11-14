@@ -197,6 +197,12 @@ const (
 
 	OpDebugger
 	OpNop
+
+	OpUsing        // add the resource a with the Dispose hint c to the dispose capability b, which is created when b is undefined
+	OpDisposeBegin // start disposing the capability a for the completion b, which is a throw when c is the integer 1
+	OpDisposeStep  // a = the next value to await in disposing the capability b; jump to c when there is none
+	OpDisposeError // record that disposing a resource of the capability a threw b
+	OpDisposeEnd   // end disposing the capability a and throw its completion when it is a throw; a becomes undefined
 )
 
 // The kinds of error that OpThrowError throws.
@@ -233,6 +239,12 @@ const (
 	ElemGetter
 	ElemSetter
 	ElemStatic = 8
+)
+
+// The hints of the resources that OpUsing adds.
+const (
+	DisposeSync = iota
+	DisposeAsync
 )
 
 // The kinds of iterator that OpGetIterator gets.

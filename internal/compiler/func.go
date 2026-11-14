@@ -295,10 +295,10 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			}
 			funcs[d.Name] = d.Func
 			f.declare(d.Name, bindVar)
-		case ast.DeclLet, ast.DeclConst, ast.DeclClass:
+		case ast.DeclLet, ast.DeclConst, ast.DeclClass, ast.DeclUsing, ast.DeclAwaitUsing:
 			kind := bindLet
 			switch d.Kind {
-			case ast.DeclConst:
+			case ast.DeclConst, ast.DeclUsing, ast.DeclAwaitUsing:
 				kind = bindConst
 			case ast.DeclClass:
 				kind = bindClass
@@ -401,7 +401,13 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		}
 		f.emit(bytecode.OpReturn, t, 0, 0)
 	} else {
-		f.stmts(node.Body)
+		if using, async := usingKinds(node.Scope); using {
+			f.disposing(async, func() {
+				f.stmts(node.Body)
+			})
+		} else {
+			f.stmts(node.Body)
+		}
 		if node.DerivedConstructor {
 			t := f.newReg()
 			f.emit(bytecode.OpLoadUndef, t, 0, 0)
