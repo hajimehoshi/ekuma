@@ -6,7 +6,6 @@ package builtin
 import (
 	"math"
 	"math/big"
-	"math/rand/v2"
 	"strconv"
 	"strings"
 
@@ -366,7 +365,7 @@ func initMath(vm *engine.VM) {
 		return engine.Number(float64(x * vm.ToInt32(arg(args, 1))))
 	})
 	method(vm, m, "random", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(rand.Float64())
+		return engine.Number(vm.RandomNumber())
 	})
 	minmax := func(name string, start float64, pick func(a, b float64) bool) {
 		method(vm, m, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

@@ -84,6 +84,8 @@ Notes on behavior:
   the way HTML fires `unhandledrejection`
 - Typed array elements are stored in little-endian byte order on every platform
 - `Date` uses the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`
+- `VM.SetTimeZone` and `VM.SetRandomSource` replace the time zone of `Date` and the source of
+  `Math.random`, for deterministic runs
 - Without `Intl`, the `toLocale*String` methods of `Date` use a fixed English format, and
   `localeCompare` treats canonically equivalent strings as equal and otherwise compares code units
 - `Atomics` works for a single agent: `Atomics.wait` throws, as on an agent that cannot block, and

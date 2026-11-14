@@ -4,17 +4,8 @@
 package ekuma
 
 import (
-	"time"
-
-	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
-
-// SetTimeZone sets the time zone of local time in vm to loc.
-func SetTimeZone(vm *VM, loc *time.Location) {
-	vm.initIfNeeded()
-	vm.e.SetDefaultTimeZone(datetime.LocationZone(loc))
-}
 
 // DetachArrayBuffer detaches the ArrayBuffer v. The error is a TypeError for a value
 // that is not an ArrayBuffer or for an immutable ArrayBuffer.

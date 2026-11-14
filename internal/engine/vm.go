@@ -6,6 +6,7 @@ package engine
 import (
 	"cmp"
 	"errors"
+	"math/rand/v2"
 	"sync/atomic"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
@@ -345,6 +346,10 @@ type VM struct {
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
+
+	// randomSource gives the numbers of Math.random, or is nil for the global source of
+	// math/rand/v2.
+	randomSource rand.Source
 
 	// evals caches the compiled code of eval.
 	evals evalCache

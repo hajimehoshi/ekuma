@@ -17,10 +17,13 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand/v2"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
+	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -705,6 +708,26 @@ func (vm *VM) RunScript(ctx context.Context, file, src string) (Value, error) {
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.e.RunScript(file, src)
 	})
+}
+
+// SetTimeZone sets the time zone of local time to loc. A nil loc restores the default, the
+// local time zone of the host. The time zone applies to the later conversions of Date
+// between local time and UTC.
+func (vm *VM) SetTimeZone(loc *time.Location) {
+	vm.initIfNeeded()
+	if loc == nil {
+		vm.e.SetDefaultTimeZone(nil)
+		return
+	}
+	vm.e.SetDefaultTimeZone(datetime.LocationZone(loc))
+}
+
+// SetRandomSource sets src as the source of the numbers of Math.random. A nil src restores
+// the default, a source that is seeded randomly. The source applies to the later calls of
+// Math.random, which return the numbers that rand.New(src).Float64 would.
+func (vm *VM) SetRandomSource(src rand.Source) {
+	vm.initIfNeeded()
+	vm.e.SetRandomSource(src)
 }
 
 // SetUnhandledRejection sets f as the function that is told about each promise that was

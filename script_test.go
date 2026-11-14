@@ -1208,7 +1208,7 @@ func TestDateOffsetTransitions(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		ekuma.SetTimeZone(&vm, tc.zone)
+		vm.SetTimeZone(tc.zone)
 		v, err := vm.RunScript(t.Context(), "date", tc.src)
 		if err != nil {
 			t.Errorf("%s: %v", tc.src, err)
