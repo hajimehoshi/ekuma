@@ -235,6 +235,8 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
 			vm.thrown = Undefined
+			// The rejections of the modules queue jobs, which are dropped as well.
+			vm.abortModuleEvaluations()
 			vm.dropJobs()
 			result, err = Undefined, ErrInterrupted
 		}

@@ -603,6 +603,33 @@ func TestCancelModule(t *testing.T) {
 			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
 		}
 		cancel()
+
+		// The interruption evaluates the module with an error, which an importer gets too.
+		vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+			return m, nil
+		})
+		importer, err := vm.ParseModule("importer", `import "endless";`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		errorCtor, err := vm.Global().Get("Error")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range []*ekuma.Module{m, importer} {
+			p, err := m.Evaluate(t.Context())
+			if err != nil {
+				t.Fatalf("%s: Evaluate %s: %v", src, m.Name(), err)
+			}
+			st, r := p.PromiseState()
+			if st != ekuma.PromiseRejected {
+				t.Errorf("%s: %s: got %v, want rejected", src, m.Name(), st)
+				continue
+			}
+			if ok, err := r.InstanceOf(errorCtor); err != nil || !ok {
+				t.Errorf("%s: %s: got reason %v, want an Error", src, m.Name(), r)
+			}
+		}
 	}
 }
 

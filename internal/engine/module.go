@@ -86,6 +86,10 @@ type moduleHost struct {
 
 	// asyncOrder is the last [[AsyncEvaluationOrder]] that was given out.
 	asyncOrder int
+
+	// evaluating holds the modules whose evaluation started, in the order it did. It includes
+	// every module that is evaluating or evaluating-async, and may include evaluated ones.
+	evaluating []*Module
 }
 
 // SetHostLoadImportedModule sets the implementation of HostLoadImportedModule. Without one,
@@ -779,6 +783,9 @@ func (vm *VM) evaluateModule(m *Module) Value {
 	if m.topLevelCapability != nil {
 		return Value{o: m.topLevelCapability.promise}
 	}
+	vm.modules.evaluating = slices.DeleteFunc(vm.modules.evaluating, func(mod *Module) bool {
+		return mod.status == moduleEvaluated
+	})
 	c := vm.newIntrinsicCapability()
 	m.topLevelCapability = c
 	var stack []*Module
@@ -823,6 +830,7 @@ func (vm *VM) innerModuleEvaluation(root *Module, stack *[]*Module) (Value, bool
 			return Undefined, true, false
 		}
 		m.status = moduleEvaluating
+		vm.modules.evaluating = append(vm.modules.evaluating, m)
 		m.dfsIndex = index
 		m.dfsAncestorIndex = index
 		m.pendingAsyncDeps = 0
@@ -1128,6 +1136,26 @@ func (vm *VM) asyncModuleExecutionRejected(m *Module, e Value) {
 			continue
 		}
 		frames = frames[:len(frames)-1]
+	}
+}
+
+// abortModuleEvaluations evaluates every module whose evaluation is in progress with an error,
+// as an exception of the module does. An interruption cuts these evaluations off: it unwinds
+// the modules that run and drops the jobs that the others wait for.
+func (vm *VM) abortModuleEvaluations() {
+	modules := vm.modules.evaluating
+	vm.modules.evaluating = nil
+	var e Value
+	var hasError bool
+	for _, m := range modules {
+		if m.status == moduleEvaluated {
+			continue
+		}
+		if !hasError {
+			e = vm.errorValue(ErrInterrupted)
+			hasError = true
+		}
+		vm.asyncModuleExecutionRejected(m, e)
 	}
 }
 

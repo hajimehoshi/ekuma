@@ -199,7 +199,8 @@ func (m *Module) Link() error {
 // promise, and evaluating m again returns the same promise.
 //
 // The error is the error of [Module.Link]. When ctx is done, the evaluation stops at its next
-// loop iteration or call, and the error is the cause of ctx.
+// loop iteration or call, and the error is the cause of ctx. Any call that a context stops
+// ends the evaluations in progress with an Error, which rejects their promises.
 func (m *Module) Evaluate(ctx context.Context) (Value, error) {
 	vm := m.vm
 	vm.initIfNeeded()
