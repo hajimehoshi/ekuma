@@ -100,13 +100,13 @@ func (vm *VM) checkBufferLength(n int64) {
 func (vm *VM) NewArrayBufferObject(proto *Object, byteLength, maxByteLength int64, shared bool) *Object {
 	vm.checkBufferLength(byteLength)
 	vm.checkBufferLength(maxByteLength)
-	return vm.NewArrayBufferFromBytes(proto, make([]byte, byteLength), int(maxByteLength), shared)
+	return vm.newArrayBufferFromBytes(proto, make([]byte, byteLength), int(maxByteLength), shared)
 }
 
-// NewArrayBufferFromBytes returns a buffer object with the prototype proto whose data is b,
+// newArrayBufferFromBytes returns a buffer object with the prototype proto whose data is b,
 // which it keeps. maxByteLength is -1 for a buffer whose length is fixed and must not be
 // smaller than len(b) otherwise.
-func (vm *VM) NewArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int, shared bool) *Object {
+func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int, shared bool) *Object {
 	o := vm.NewObject(proto)
 	o.class = classArrayBuffer
 	o.ext = &ArrayBuffer{
@@ -129,7 +129,7 @@ func ArrayBufferData(v Value) *ArrayBuffer {
 // NewImmutableArrayBufferFromBytes returns an immutable ArrayBuffer with the prototype proto
 // whose data is b, which it keeps. b must not be modified afterwards.
 func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
-	o := vm.NewArrayBufferFromBytes(proto, b, -1, false)
+	o := vm.newArrayBufferFromBytes(proto, b, -1, false)
 	o.ext.(*ArrayBuffer).immutable = true
 	return o
 }
@@ -167,7 +167,7 @@ func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxBy
 		copy(data, b.data)
 	}
 	vm.DetachArrayBuffer(o)
-	r := vm.NewArrayBufferFromBytes(proto, data, int(maxByteLength), false)
+	r := vm.newArrayBufferFromBytes(proto, data, int(maxByteLength), false)
 	r.ext.(*ArrayBuffer).immutable = immutable
 	return r
 }
@@ -557,8 +557,8 @@ func (t *TypedArray) Length() (int, bool) {
 	return t.length, true
 }
 
-// IsFixedLength implements IsTypedArrayFixedLength.
-func (t *TypedArray) IsFixedLength() bool {
+// isTypedArrayFixedLength implements IsTypedArrayFixedLength.
+func (t *TypedArray) isTypedArrayFixedLength() bool {
 	return !t.tracking && (t.data.shared || !t.data.IsResizable())
 }
 
@@ -820,11 +820,6 @@ func (d *DataView) Buffer() *Object {
 // ByteOffset returns [[ByteOffset]] of d.
 func (d *DataView) ByteOffset() int {
 	return d.offset
-}
-
-// IsLengthTracking reports whether [[ByteLength]] of d is auto.
-func (d *DataView) IsLengthTracking() bool {
-	return d.tracking
 }
 
 // ByteLength implements GetViewByteLength. It reports false when the view is out of bounds,

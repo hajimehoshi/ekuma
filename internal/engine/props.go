@@ -1177,7 +1177,7 @@ func (vm *VM) PreventExtensions(o *Object) bool {
 	if o.class == classProxy {
 		return vm.proxyPreventExtensions(o)
 	}
-	if o.class == classTypedArray && !o.ext.(*TypedArray).IsFixedLength() {
+	if o.class == classTypedArray && !o.ext.(*TypedArray).isTypedArrayFixedLength() {
 		return false
 	}
 	if o.flags&objNotExtensible == 0 {
