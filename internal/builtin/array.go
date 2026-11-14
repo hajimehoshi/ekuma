@@ -46,6 +46,30 @@ func skipHoles(vm *engine.VM, o *engine.Object, i, end int64, backward bool) int
 	return vm.SkipHoles(o, i, end)
 }
 
+// holeSteps returns the number of consecutive indices from i, moving by dir (1 or -1) and at most
+// count, at which neither o nor its prototypes are known to have a property.
+func holeSteps(vm *engine.VM, o *engine.Object, i, count, dir int64) int64 {
+	if _, ok := o.Element(i); ok || i > engine.MaxArrayIndex {
+		return 0
+	}
+	if dir > 0 {
+		count = min(count, engine.MaxArrayIndex+1-i)
+		return vm.SkipHoles(o, i, i+count) - i
+	}
+	return i - vm.SkipHolesBackward(o, i, i-count)
+}
+
+// moveSteps returns how many steps, at most count, of a loop that moves the property at src to dst,
+// or deletes the property at dst when src has none, change nothing. Both indices move by dir (1 or
+// -1).
+func moveSteps(vm *engine.VM, o *engine.Object, src, dst, count, dir int64) int64 {
+	m := holeSteps(vm, o, src, count, dir)
+	if m == 0 {
+		return 0
+	}
+	return min(m, holeSteps(vm, o, dst, m, dir))
+}
+
 func putAt(vm *engine.VM, o *engine.Object, i int64, v engine.Value) {
 	if o.SetElement(i, v) {
 		return
@@ -289,6 +313,7 @@ func initArray(vm *engine.VM) {
 				putAt(vm, o, i-1, getAt(vm, o, i))
 			} else {
 				deleteAt(vm, o, i-1)
+				i += moveSteps(vm, o, i+1, i, n-i-1, 1)
 			}
 		}
 		deleteAt(vm, o, n-1)
@@ -311,6 +336,7 @@ func initArray(vm *engine.VM) {
 					putAt(vm, o, i+k, getAt(vm, o, i))
 				} else {
 					deleteAt(vm, o, i+k)
+					i -= moveSteps(vm, o, i-1, i+k-1, i, -1)
 				}
 			}
 			for i, v := range args {
@@ -367,6 +393,8 @@ func initArray(vm *engine.VM) {
 		for i := int64(0); i < del; i++ {
 			if hasAt(vm, o, start+i) {
 				vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), getAt(vm, o, start+i))
+			} else {
+				i += holeSteps(vm, o, start+i+1, del-i-1, 1)
 			}
 		}
 		setLength(vm, a, del)
@@ -377,10 +405,12 @@ func initArray(vm *engine.VM) {
 					putAt(vm, o, i+k, getAt(vm, o, i+del))
 				} else {
 					deleteAt(vm, o, i+k)
+					i += moveSteps(vm, o, i+del+1, i+k+1, n-del-i-1, 1)
 				}
 			}
 			for i := n; i > n-del+k; i-- {
 				deleteAt(vm, o, i-1)
+				i -= holeSteps(vm, o, i-2, i-1-(n-del+k), -1)
 			}
 		case k > del:
 			for i := n - del; i > start; i-- {
@@ -388,6 +418,7 @@ func initArray(vm *engine.VM) {
 					putAt(vm, o, i+k-1, getAt(vm, o, i+del-1))
 				} else {
 					deleteAt(vm, o, i+k-1)
+					i -= moveSteps(vm, o, i+del-2, i+k-2, i-start-1, -1)
 				}
 			}
 		}
@@ -479,8 +510,15 @@ func initArray(vm *engine.VM) {
 			}
 			if lok {
 				putAt(vm, o, hi, lv)
-			} else {
-				deleteAt(vm, o, hi)
+				continue
+			}
+			deleteAt(vm, o, hi)
+			if !hok {
+				// The following pairs of holes change nothing.
+				if m := holeSteps(vm, o, lo+1, (hi-lo-1)/2, 1); m > 0 {
+					m = min(m, holeSteps(vm, o, hi-1, m, -1))
+					lo, hi = lo+m, hi-m
+				}
 			}
 		}
 		return engine.ObjectValue(o)
@@ -903,6 +941,10 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object) {
 				putAt(vm, o, to, getAt(vm, o, from))
 			} else {
 				deleteAt(vm, o, to)
+				m := moveSteps(vm, o, from+dir, to+dir, count-1, dir)
+				from += dir * m
+				to += dir * m
+				count -= m
 			}
 			from += dir
 			to += dir

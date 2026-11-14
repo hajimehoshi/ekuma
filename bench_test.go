@@ -328,9 +328,10 @@ func BenchmarkTypedArray(b *testing.B) {
 }
 
 // BenchmarkSparseArray measures the array methods that skip or read holes on a sparse array of
-// length 100000 that has 10 elements. One iteration is one call of the method.
+// length 100000 that has 10 elements. One iteration is one call of the method. The methods that
+// change the array run on a new array in each iteration.
 func BenchmarkSparseArray(b *testing.B) {
-	for _, method := range []string{"every", "forEach", "reduce", "indexOf", "lastIndexOf", "join", "toLocaleString", "includes"} {
+	for _, method := range []string{"every", "forEach", "reduce", "indexOf", "lastIndexOf", "join", "toLocaleString", "includes", "copyWithin", "shift", "unshift", "spliceRemove", "spliceInsert", "reverse"} {
 		b.Run(method, func(b *testing.B) {
 			ctx := b.Context()
 			vm := ekuma.NewVM()
@@ -347,11 +348,15 @@ func BenchmarkSparseArray(b *testing.B) {
 }
 
 const sparseArrayBenchJS = `
-var a = [];
-for (var i = 0; i < 10; i++) {
-	a[i * 10000 + 5000] = i;
+function sparse() {
+	var a = [];
+	for (var i = 0; i < 10; i++) {
+		a[i * 10000 + 5000] = i;
+	}
+	a.length = 100000;
+	return a;
 }
-a.length = 100000;
+var a = sparse();
 function run(method, n) {
 	var s = 0;
 	for (var i = 0; i < n; i++) {
@@ -379,6 +384,24 @@ function run(method, n) {
 			break;
 		case "includes":
 			if (a.includes(-1)) s++;
+			break;
+		case "copyWithin":
+			s += sparse().copyWithin(1, 0).length;
+			break;
+		case "shift":
+			sparse().shift();
+			break;
+		case "unshift":
+			s += sparse().unshift(-1);
+			break;
+		case "spliceRemove":
+			s += sparse().splice(1, 1).length;
+			break;
+		case "spliceInsert":
+			s += sparse().splice(1, 0, -1).length;
+			break;
+		case "reverse":
+			s += sparse().reverse().length;
 			break;
 		}
 	}
