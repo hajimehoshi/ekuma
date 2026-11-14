@@ -964,7 +964,7 @@ func (vm *VM) ensureDeferredNamespaceEvaluation(m *Module) {
 		vm.ThrowTypeError("the deferred module cannot be evaluated synchronously")
 	}
 	p := promiseOf(vm.evaluateModule(m).o)
-	if p.state == promiseRejected {
+	if p.state == PromiseRejected {
 		vm.Throw(p.result)
 	}
 }

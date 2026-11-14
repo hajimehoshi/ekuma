@@ -3,17 +3,18 @@
 
 package engine
 
-type promiseState uint8
+// PromiseState is a value of [[PromiseState]].
+type PromiseState uint8
 
 const (
-	promisePending promiseState = iota
-	promiseFulfilled
-	promiseRejected
+	PromisePending PromiseState = iota
+	PromiseFulfilled
+	PromiseRejected
 )
 
 // promiseData holds the internal slots of a Promise object.
 type promiseData struct {
-	state     promiseState
+	state     PromiseState
 	isHandled bool
 
 	// result is the [[PromiseResult]].
@@ -120,6 +121,12 @@ type job struct {
 // IsPromise implements IsPromise.
 func IsPromise(v Value) bool {
 	return v.IsObject() && v.o.class == classPromise
+}
+
+// PromiseStateOf returns the [[PromiseState]] and the [[PromiseResult]] of the promise p.
+func PromiseStateOf(p Value) (PromiseState, Value) {
+	d := promiseOf(p.o)
+	return d.state, d.result
 }
 
 func promiseOf(o *Object) *promiseData {
@@ -305,7 +312,7 @@ func (vm *VM) fulfillPromise(p *Object, v Value) {
 	reactions := d.reactions
 	d.reactions = nil
 	d.result = v
-	d.state = promiseFulfilled
+	d.state = PromiseFulfilled
 	vm.triggerPromiseReactions(reactions, v, false)
 }
 
@@ -315,7 +322,7 @@ func (vm *VM) rejectPromise(p *Object, reason Value) {
 	reactions := d.reactions
 	d.reactions = nil
 	d.result = reason
-	d.state = promiseRejected
+	d.state = PromiseRejected
 	if !d.isHandled {
 		vm.hostPromiseRejectionTracker(p, false)
 	}
@@ -358,15 +365,15 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 func (vm *VM) addReaction(p *Object, r promiseReaction) {
 	d := promiseOf(p)
 	switch d.state {
-	case promisePending:
+	case PromisePending:
 		d.reactions = append(d.reactions, r)
-	case promiseFulfilled:
+	case PromiseFulfilled:
 		vm.enqueueJob(job{
 			kind:     jobReaction,
 			reaction: r,
 			argument: d.result,
 		})
-	case promiseRejected:
+	case PromiseRejected:
 		if !d.isHandled {
 			vm.hostPromiseRejectionTracker(p, true)
 		}

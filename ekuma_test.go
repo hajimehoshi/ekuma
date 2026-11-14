@@ -605,3 +605,71 @@ func TestCancelModule(t *testing.T) {
 		cancel()
 	}
 }
+
+func TestPromiseState(t *testing.T) {
+	tests := []struct {
+		name   string
+		src    string
+		state  ekuma.PromiseState
+		result string
+	}{
+		{
+			name:   "pending",
+			src:    `new Promise(() => {})`,
+			state:  ekuma.PromisePending,
+			result: "<undefined>",
+		},
+		{
+			name:   "fulfilled",
+			src:    `Promise.resolve("ok")`,
+			state:  ekuma.PromiseFulfilled,
+			result: "ok",
+		},
+		{
+			name:   "rejected",
+			src:    `Promise.reject("no")`,
+			state:  ekuma.PromiseRejected,
+			result: "no",
+		},
+		{
+			name:   "subclass",
+			src:    `class P extends Promise {}; P.resolve("sub")`,
+			state:  ekuma.PromiseFulfilled,
+			result: "sub",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			p, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !p.IsPromise() {
+				t.Fatalf("IsPromise is false")
+			}
+			state, result := p.PromiseState()
+			if state != tt.state {
+				t.Errorf("got state %v, want %v", state, tt.state)
+			}
+			if got := result.String(); got != tt.result {
+				t.Errorf("got result %q, want %q", got, tt.result)
+			}
+		})
+	}
+
+	var vm ekuma.VM
+	thenable, err := vm.RunScript(t.Context(), "thenable", `({ then(f) { f(1); } })`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if thenable.IsPromise() {
+		t.Errorf("a thenable is a promise")
+	}
+	defer func() {
+		if _, ok := recover().(*ekuma.ValueError); !ok {
+			t.Errorf("PromiseState of a thenable did not panic with a *ValueError")
+		}
+	}()
+	thenable.PromiseState()
+}

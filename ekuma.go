@@ -378,6 +378,54 @@ func (v Value) InstanceOf(t Value) (bool, error) {
 	return r, vm.publicError(err)
 }
 
+// PromiseState is the state of a promise.
+type PromiseState int
+
+const (
+	PromisePending PromiseState = iota
+	PromiseFulfilled
+	PromiseRejected
+)
+
+func (s PromiseState) String() string {
+	switch s {
+	case PromisePending:
+		return "pending"
+	case PromiseFulfilled:
+		return "fulfilled"
+	case PromiseRejected:
+		return "rejected"
+	}
+	return "PromiseState(" + strconv.Itoa(int(s)) + ")"
+}
+
+// IsPromise reports whether v is a promise: a Promise object, which a mere thenable is not.
+func (v Value) IsPromise() bool {
+	return engine.IsPromise(v.engine())
+}
+
+// PromiseState returns the state of the promise v and, unless it is pending, its result: the
+// value it was fulfilled with or the reason it was rejected with. It runs no JavaScript and does
+// not mark a rejected promise as handled. It panics with a [*ValueError] when v is not
+// a promise.
+func (v Value) PromiseState() (PromiseState, Value) {
+	e := v.engine()
+	if !engine.IsPromise(e) {
+		panic(&ValueError{
+			Method: "Value.PromiseState",
+			Type:   v.Type(),
+		})
+	}
+	s, r := engine.PromiseStateOf(e)
+	switch s {
+	case engine.PromiseFulfilled:
+		return PromiseFulfilled, fromEngine(r)
+	case engine.PromiseRejected:
+		return PromiseRejected, fromEngine(r)
+	}
+	return PromisePending, Undefined
+}
+
 // uint8ArrayData returns the state of v when v is a Uint8Array or a Uint8ClampedArray,
 // and panics with a [*ValueError] otherwise.
 func uint8ArrayData(v Value, method string) *engine.TypedArray {
