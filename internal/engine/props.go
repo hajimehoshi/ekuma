@@ -1183,6 +1183,21 @@ func (vm *VM) Get(o *Object, k PropKey) Value {
 	return vm.getProp(o, k, Value{o: o})
 }
 
+// GetWithReceiver implements o.[[Get]](k, receiver).
+func (vm *VM) GetWithReceiver(o *Object, k PropKey, receiver Value) Value {
+	return vm.getProp(o, k, receiver)
+}
+
+// SetWithReceiver implements o.[[Set]](k, val, receiver). It reports false when the store was refused.
+func (vm *VM) SetWithReceiver(o *Object, k PropKey, val Value, receiver Value) bool {
+	return vm.setProp(o, k, val, receiver)
+}
+
+// DefineOwnProperty implements [[DefineOwnProperty]]. It reports false when the definition is refused.
+func (vm *VM) DefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+	return vm.defineOwnProperty(o, k, d)
+}
+
 // EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
 // It appends the keys to keys and returns the extended slice.
 func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {

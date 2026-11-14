@@ -132,6 +132,7 @@ func Install(vm *engine.VM) {
 	initIterators(vm)
 	initIteratorHelpers(vm)
 	initJSON(vm)
+	initReflect(vm)
 	initMapAndSet(vm)
 	initWeak(vm)
 	initDate(vm)

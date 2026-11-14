@@ -49,7 +49,7 @@ is published yet.
 
 ## Status
 
-More than half of [test262](https://github.com/tc39/test262) passes: 30,048 of 48,797 tests
+More than half of [test262](https://github.com/tc39/test262) passes: 30,257 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -59,9 +59,9 @@ Implemented:
 - Most of the syntax up to ES2025: classes with private members and static blocks, generators,
   destructuring, spread, template literals, optional chaining, `let` and `const` with
   the temporal dead zone, getters and setters, labels, `with`
-- `Object`, `Function`, `Array`, `String`, `Number`, `Boolean`, `Symbol`, `Math`, the error types,
-  and array, string and generator iterators, including `Math.sumPrecise`, `Error.isError`
-  and the `stack` accessor of `Error.prototype`
+- `Object`, `Function`, `Array`, `String`, `Number`, `Boolean`, `Symbol`, `Math`, `Reflect`,
+  the error types, and array, string and generator iterators, including `Math.sumPrecise`,
+  `Error.isError` and the `stack` accessor of `Error.prototype`
 - `Iterator` with `Iterator.from`, the iterator helpers such as `map` and `flatMap`,
   `Iterator.concat`, `Iterator.zip`, `Iterator.zipKeyed`, `chunks`, `windows`, `includes`
   and `join`
@@ -83,7 +83,7 @@ Missing:
 - `async` functions, `for await` and `Promise`
 - Direct `eval` and the `Function` constructor
 - Modules and dynamic `import`
-- `Proxy`, `Reflect`
+- `Proxy`
 - Typed arrays, `ArrayBuffer`, `DataView`
 - `Intl` and `Temporal`
 
