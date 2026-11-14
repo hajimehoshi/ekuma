@@ -308,6 +308,15 @@ func TestScripts(t *testing.T) {
 				[seen, r.length].join()`,
 			want: "5,3",
 		},
+		{
+			name: "own accessors of objects that share a shape",
+			src: `function make(d) { return { get x() { return d; }, set x(v) { d += v; } }; }
+				var r = [];
+				for (var d = 0; d < 2; d++) { var o = make(d); o.x = 10; r.push(o.x); }
+				Object.defineProperty(o, "x", { get() { return "new"; } });
+				r.push(o.x); r.join()`,
+			want: "10,11,new",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

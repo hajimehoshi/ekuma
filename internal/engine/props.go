@@ -262,7 +262,9 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 		if g == nil {
 			return Undefined, nil
 		}
-		if c != nil && (holder == start || !start.shape.private) {
+		// Objects of one shape can hold different own accessors, and replacing an own accessor
+		// keeps the shape, so only an inherited getter is cached.
+		if c != nil && holder != start && !start.shape.private {
 			c.shape = start.shape
 			c.kind = cacheGetter
 			c.holder = g
@@ -632,12 +634,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 			if s == nil {
 				return nil, false
 			}
-			if c != nil {
-				c.shape = o.shape
-				c.kind = cacheSetter
-				c.holder = s
-				c.epoch = vm.protoEpoch
-			}
+			// An own setter is not cached, for the same reason as an own getter in getNamed.
 			return s, true
 		}
 		if p.flags&FlagWritable == 0 {
