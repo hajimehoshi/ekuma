@@ -925,7 +925,8 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 		if !p.f.superProp {
 			p.fail(int(start), "super property access is not allowed here")
 		}
-		p.f.use |= useSuperProp
+		// A super property reference resolves the this binding.
+		p.f.use |= useSuperProp | useThis
 		p.next()
 		if !p.t.kind.isWord() {
 			p.unexpected()
@@ -940,7 +941,8 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 		if !p.f.superProp {
 			p.fail(int(start), "super property access is not allowed here")
 		}
-		p.f.use |= useSuperProp
+		// A super property reference resolves the this binding.
+		p.f.use |= useSuperProp | useThis
 		p.next()
 		prop := p.parseExpressionIn()
 		p.expect(tRBrack)

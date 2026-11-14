@@ -63,6 +63,13 @@ func TestScripts(t *testing.T) {
 			want: "23:1",
 		},
 		{
+			name: "super property in a method that uses this only through super",
+			src: `class A { m() { return this; } set x(v) { this.y = v; } }
+				class B extends A { m() { return super.m(); } setX() { super.x = 1; } }
+				var b = new B(); b.setX(); (b.m() === b) + ":" + b.y`,
+			want: "true:1",
+		},
+		{
 			name: "let per iteration and closures",
 			src:  `var fs = []; for (let i = 0; i < 3; i++) fs.push(() => i); fs.map(f => f()).join()`,
 			want: "0,1,2",

@@ -6817,8 +6817,6 @@ test/built-ins/String/prototype/replace/S15.5.4.11_A1_T5.js
 test/built-ins/String/prototype/replace/S15.5.4.11_A1_T6.js
 test/built-ins/String/prototype/replace/cstm-replace-on-bigint-primitive.js
 test/built-ins/String/prototype/replaceAll/cstm-replaceall-on-bigint-primitive.js
-test/built-ins/String/prototype/replaceAll/searchValue-replacer-RegExp-call-fn.js
-test/built-ins/String/prototype/replaceAll/searchValue-replacer-RegExp-call.js
 test/built-ins/String/prototype/search/cstm-search-on-bigint-primitive.js
 test/built-ins/String/prototype/slice/S15.5.4.13_A1_T5.js
 test/built-ins/String/prototype/split/checking-by-using-eval.js
@@ -16580,7 +16578,6 @@ test/language/expressions/class/elements/same-line-method-rs-static-generator-me
 test/language/expressions/class/elements/static-field-init-with-this.js
 test/language/expressions/class/elements/static-private-fields-proxy-default-handler-throws.js
 test/language/expressions/class/elements/static-private-methods-proxy-default-handler-throws.js
-test/language/expressions/class/elements/super-access-from-arrow-func-on-field.js
 test/language/expressions/class/elements/syntax/valid/grammar-field-accessor.js
 test/language/expressions/class/elements/wrapped-in-sc-rs-static-async-generator-method-privatename-identifier-alt.js
 test/language/expressions/class/elements/wrapped-in-sc-rs-static-async-generator-method-privatename-identifier.js
@@ -17680,7 +17677,6 @@ test/language/expressions/object/dstr/async-gen-meth-obj-ptrn-rest-val-obj.js
 test/language/expressions/object/dstr/object-rest-proxy-get-not-called-on-dontenum-keys.js
 test/language/expressions/object/dstr/object-rest-proxy-gopd-not-called-on-excluded-keys.js
 test/language/expressions/object/dstr/object-rest-proxy-ownkeys-returned-keys-order.js
-test/language/expressions/object/getter-super-prop.js
 test/language/expressions/object/identifier-shorthand-static-init-await-valid.js
 test/language/expressions/object/method-definition/async-gen-meth-dflt-params-abrupt.js
 test/language/expressions/object/method-definition/async-gen-meth-dflt-params-arg-val-not-undefined.js
@@ -17813,7 +17809,6 @@ test/language/expressions/object/scope-meth-param-rest-elem-var-open.js
 test/language/expressions/object/scope-meth-paramsbody-var-open.js
 test/language/expressions/object/scope-setter-body-lex-distinc.js
 test/language/expressions/object/scope-setter-paramsbody-var-open.js
-test/language/expressions/object/setter-super-prop.js
 test/language/expressions/optional-chaining/eval-optional-call.js
 test/language/expressions/optional-chaining/iteration-statement-for-await-of.js
 test/language/expressions/optional-chaining/member-expression-async-identifier.js
@@ -17823,7 +17818,6 @@ test/language/expressions/optional-chaining/new-target-optional-call.js
 test/language/expressions/optional-chaining/optional-call-preserves-this.js
 test/language/expressions/optional-chaining/optional-chain-async-optional-chain-square-brackets.js
 test/language/expressions/optional-chaining/optional-chain-async-square-brackets.js
-test/language/expressions/optional-chaining/super-property-optional-call.js
 test/language/expressions/postfix-decrement/S11.3.2_A5_T1.js
 test/language/expressions/postfix-decrement/S11.3.2_A5_T2.js
 test/language/expressions/postfix-decrement/S11.3.2_A5_T3.js
@@ -17868,26 +17862,15 @@ test/language/expressions/subtraction/S11.6.2_A1.js
 test/language/expressions/subtraction/bigint-and-number.js
 test/language/expressions/subtraction/bigint-wrapped-values.js
 test/language/expressions/super/call-construct-invocation.js
-test/language/expressions/super/prop-dot-cls-ref-strict.js
-test/language/expressions/super/prop-dot-cls-ref-this.js
 test/language/expressions/super/prop-dot-cls-val-from-eval.js
-test/language/expressions/super/prop-dot-obj-ref-non-strict.js
-test/language/expressions/super/prop-dot-obj-ref-strict.js
-test/language/expressions/super/prop-dot-obj-ref-this.js
 test/language/expressions/super/prop-dot-obj-val-from-eval.js
-test/language/expressions/super/prop-expr-cls-ref-strict.js
-test/language/expressions/super/prop-expr-cls-ref-this.js
 test/language/expressions/super/prop-expr-cls-val-from-eval.js
 test/language/expressions/super/prop-expr-getsuperbase-before-topropertykey-getvalue.js
 test/language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-compound-assign.js
 test/language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue-increment.js
 test/language/expressions/super/prop-expr-getsuperbase-before-topropertykey-putvalue.js
-test/language/expressions/super/prop-expr-obj-ref-non-strict.js
-test/language/expressions/super/prop-expr-obj-ref-strict.js
-test/language/expressions/super/prop-expr-obj-ref-this.js
 test/language/expressions/super/prop-expr-obj-val-from-eval.js
 test/language/expressions/super/realm.js
-test/language/expressions/super/super-reference-resolution.js
 test/language/expressions/tagged-template/cache-differing-expressions-eval.js
 test/language/expressions/tagged-template/cache-differing-expressions-new-function.js
 test/language/expressions/tagged-template/cache-eval-inner-function.js
@@ -20417,7 +20400,6 @@ test/language/statements/class/elements/same-line-method-rs-static-generator-met
 test/language/statements/class/elements/same-line-method-rs-static-generator-method-privatename-identifier.js
 test/language/statements/class/elements/static-field-init-with-this.js
 test/language/statements/class/elements/static-private-fields-proxy-default-handler-throws.js
-test/language/statements/class/elements/super-access-from-arrow-func-on-field.js
 test/language/statements/class/elements/syntax/valid/grammar-field-accessor.js
 test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js
 test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js
@@ -20506,7 +20488,6 @@ test/language/statements/class/subclass/superclass-arrow-function.js
 test/language/statements/class/subclass/superclass-async-function.js
 test/language/statements/class/subclass/superclass-async-generator-function.js
 test/language/statements/class/subclass/superclass-generator-function.js
-test/language/statements/class/syntax/class-body-method-definition-super-property.js
 test/language/statements/const/cptn-value.js
 test/language/statements/const/static-init-await-binding-valid.js
 test/language/statements/continue/S12.7_A7.js
