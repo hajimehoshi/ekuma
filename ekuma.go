@@ -468,7 +468,8 @@ func CopyBytesToJS(dst Value, src []byte) int {
 // args is only valid until the function returns. The result is converted with [VM.ValueOf].
 //
 // A non-nil error is thrown as a JavaScript exception: an [*Error] throws its value,
-// and any other error throws a new Error object with the message of the error.
+// and any other error throws a new Error object made from the error, with its message.
+// [Error.Unwrap] of an [*Error] holding that object returns the error.
 type Func func(this Value, args []Value) (any, error)
 
 // VM is a JavaScript virtual machine with the standard built-in objects.
@@ -614,7 +615,7 @@ func (vm *VM) thrownValue(err error) engine.Value {
 	if ex, ok := errors.AsType[*Error](err); ok {
 		return ex.Value.engine()
 	}
-	return vm.e.NewError(engine.ErrorKindError, err.Error())
+	return vm.e.NewGoError(err)
 }
 
 // SyntaxError is a script that could not be parsed or compiled.
@@ -644,6 +645,11 @@ func (e *Error) Error() string {
 	return engine.ThrownMessage(e.Value.engine())
 }
 
+// Unwrap returns the Go error that e.Value was made from, or nil when it was not.
+func (e *Error) Unwrap() error {
+	return engine.GoError(e.Value.engine())
+}
+
 // publicError converts an error of the engine to the error types of this package.
 func (vm *VM) publicError(err error) error {
 	if err == nil {
@@ -670,7 +676,7 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 	if ctx.Done() != nil {
 		fired := make(chan struct{})
 		stop := context.AfterFunc(ctx, func() {
-			vm.e.Interrupt()
+			vm.e.Interrupt(context.Cause(ctx))
 			close(fired)
 		})
 		defer func() {

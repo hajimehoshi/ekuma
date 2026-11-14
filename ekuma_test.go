@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"reflect"
 	"slices"
@@ -364,6 +365,65 @@ func TestFuncErrors(t *testing.T) {
 	}
 }
 
+// TestErrorUnwrap checks that an exception made from a Go error unwraps to that error.
+func TestErrorUnwrap(t *testing.T) {
+	ctx := t.Context()
+	var vm ekuma.VM
+	fail := vm.FuncOf("fail", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return nil, fmt.Errorf("fail: %w", io.EOF)
+	})
+	if err := vm.Global().Set("fail", fail); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	for _, tc := range []struct {
+		name   string
+		src    string
+		wantIs bool
+	}{
+		{
+			name:   "uncaught",
+			src:    `fail()`,
+			wantIs: true,
+		},
+		{
+			name:   "rejected promise",
+			src:    `(async () => fail())()`,
+			wantIs: true,
+		},
+		{
+			name:   "rethrown",
+			src:    `try { fail(); } catch (e) { throw e; }`,
+			wantIs: true,
+		},
+		{
+			name:   "thrown by script",
+			src:    `try { fail(); } catch (e) { throw new Error(e.message); }`,
+			wantIs: false,
+		},
+	} {
+		v, err := vm.RunScript(ctx, tc.name, tc.src)
+		if err == nil {
+			st, r := v.PromiseState()
+			if st != ekuma.PromiseRejected {
+				t.Errorf("%s: got %v, want rejected", tc.name, st)
+				continue
+			}
+			err = &ekuma.Error{Value: r}
+		}
+		ex, ok := errors.AsType[*ekuma.Error](err)
+		if !ok {
+			t.Errorf("%s: got %T, want *ekuma.Error", tc.name, err)
+			continue
+		}
+		if got := errors.Is(err, io.EOF); got != tc.wantIs {
+			t.Errorf("%s: errors.Is(err, io.EOF) = %v, want %v", tc.name, got, tc.wantIs)
+		}
+		if !tc.wantIs && ex.Unwrap() != nil {
+			t.Errorf("%s: Unwrap() = %v, want nil", tc.name, ex.Unwrap())
+		}
+	}
+}
+
 func TestErrors(t *testing.T) {
 	ctx := t.Context()
 	var vm ekuma.VM
@@ -589,45 +649,45 @@ func TestProxyInterrupt(t *testing.T) {
 
 // TestCancelModule checks that a context stops a module whose top level loops forever.
 func TestCancelModule(t *testing.T) {
+	errStop := errors.New("stop")
 	for _, src := range []string{
 		`for (;;) {}`,
 		`await null; for (;;) {}`,
 	} {
-		var vm ekuma.VM
-		m, err := vm.ParseModule("endless", src)
-		if err != nil {
-			t.Fatal(err)
-		}
-		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
-		if _, err := m.Evaluate(ctx); !errors.Is(err, context.DeadlineExceeded) {
-			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
-		}
-		cancel()
-
-		// The interruption evaluates the module with an error, which an importer gets too.
-		vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
-			return m, nil
-		})
-		importer, err := vm.ParseModule("importer", `import "endless";`)
-		if err != nil {
-			t.Fatal(err)
-		}
-		errorCtor, err := vm.Global().Get("Error")
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, m := range []*ekuma.Module{m, importer} {
-			p, err := m.Evaluate(t.Context())
+		for _, cause := range []error{context.DeadlineExceeded, errStop} {
+			var vm ekuma.VM
+			m, err := vm.ParseModule("endless", src)
 			if err != nil {
-				t.Fatalf("%s: Evaluate %s: %v", src, m.Name(), err)
+				t.Fatal(err)
 			}
-			st, r := p.PromiseState()
-			if st != ekuma.PromiseRejected {
-				t.Errorf("%s: %s: got %v, want rejected", src, m.Name(), st)
-				continue
+			ctx, cancel := context.WithTimeoutCause(t.Context(), 20*time.Millisecond, cause)
+			if _, err := m.Evaluate(ctx); !errors.Is(err, cause) {
+				t.Errorf("%s: got %v, want %v", src, err, cause)
 			}
-			if ok, err := r.InstanceOf(errorCtor); err != nil || !ok {
-				t.Errorf("%s: %s: got reason %v, want an Error", src, m.Name(), r)
+			cancel()
+
+			// The interruption evaluates the module with an Error made from the cause, which an
+			// importer gets too.
+			vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+				return m, nil
+			})
+			importer, err := vm.ParseModule("importer", `import "endless";`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, m := range []*ekuma.Module{m, importer} {
+				p, err := m.Evaluate(t.Context())
+				if err != nil {
+					t.Fatalf("%s: Evaluate %s: %v", src, m.Name(), err)
+				}
+				st, r := p.PromiseState()
+				if st != ekuma.PromiseRejected {
+					t.Errorf("%s: %s: got %v, want rejected", src, m.Name(), st)
+					continue
+				}
+				if err := (&ekuma.Error{Value: r}); !errors.Is(err, cause) {
+					t.Errorf("%s: %s: got reason %v, want an Error made from %v", src, m.Name(), err, cause)
+				}
 			}
 		}
 	}

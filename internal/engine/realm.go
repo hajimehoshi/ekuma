@@ -227,7 +227,8 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.clearKeptObjects()
 		}
 		if r := recover(); r != nil {
-			if r != any(errInterrupt) || !outermost {
+			sig, ok := r.(*interruptSignal)
+			if !ok || !outermost {
 				panic(r)
 			}
 			// The interruption left frames and generators behind in whatever state they were.
@@ -236,7 +237,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.sp, vm.depth = sp, depth
 			vm.thrown = Undefined
 			// The rejections of the modules queue jobs, which are dropped as well.
-			vm.abortModuleEvaluations()
+			vm.abortModuleEvaluations(sig.cause)
 			vm.dropJobs()
 			result, err = Undefined, ErrInterrupted
 		}

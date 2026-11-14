@@ -21,6 +21,14 @@ func (vm *VM) NewBooleanObject(b bool, proto *Object) *Object {
 	return w
 }
 
+// errorData is the internal state of an error object that has a recorded stack trace.
+type errorData struct {
+	stack string
+
+	// goErr is the Go error that the error object was made from, or nil.
+	goErr error
+}
+
 // NewErrorObject returns an Error object without any property, with the prototype proto.
 func (vm *VM) NewErrorObject(proto *Object) *Object {
 	e := vm.NewObject(proto)
@@ -39,8 +47,35 @@ func ErrorStack(v Value) (string, bool) {
 	if !IsError(v) {
 		return "", false
 	}
-	s, ok := v.o.ext.(string)
-	return s, ok
+	d, ok := v.o.ext.(*errorData)
+	if !ok {
+		return "", false
+	}
+	return d.stack, true
+}
+
+// NewGoError returns a new Error object whose message is the text of err and that
+// [GoError] maps back to err.
+func (vm *VM) NewGoError(err error) Value {
+	return vm.newGoError(err.Error(), err)
+}
+
+// newGoError returns a new Error object whose message is msg and that [GoError] maps to err.
+func (vm *VM) newGoError(msg string, err error) Value {
+	e := vm.newError(ErrorKindError, msg)
+	e.ext.(*errorData).goErr = err
+	return Value{o: e}
+}
+
+// GoError returns the Go error that v was made from by [VM.NewGoError], or nil when it was not.
+func GoError(v Value) error {
+	if !IsError(v) {
+		return nil
+	}
+	if d, ok := v.o.ext.(*errorData); ok {
+		return d.goErr
+	}
+	return nil
 }
 
 // NewIteratorObject returns a built-in iterator object with the prototype proto.

@@ -314,7 +314,7 @@ func (vm *VM) errorValue(err error) Value {
 	if e, ok := errors.AsType[*SyntaxError](err); ok {
 		return vm.NewError(ErrorKindSyntax, e.messageWithPosition())
 	}
-	return vm.NewError(ErrorKindError, err.Error())
+	return vm.NewGoError(err)
 }
 
 // loadImportedModule returns the module of the request req of the referrer ref from its
@@ -1139,10 +1139,10 @@ func (vm *VM) asyncModuleExecutionRejected(m *Module, e Value) {
 	}
 }
 
-// abortModuleEvaluations evaluates every module whose evaluation is in progress with an error,
-// as an exception of the module does. An interruption cuts these evaluations off: it unwinds
-// the modules that run and drops the jobs that the others wait for.
-func (vm *VM) abortModuleEvaluations() {
+// abortModuleEvaluations evaluates every module whose evaluation is in progress with an Error
+// that [GoError] maps to cause, as an exception of the module does. An interruption cuts these evaluations
+// off: it unwinds the modules that run and drops the jobs that the others wait for.
+func (vm *VM) abortModuleEvaluations(cause error) {
 	modules := vm.modules.evaluating
 	vm.modules.evaluating = nil
 	var e Value
@@ -1152,7 +1152,8 @@ func (vm *VM) abortModuleEvaluations() {
 			continue
 		}
 		if !hasError {
-			e = vm.errorValue(ErrInterrupted)
+			// The message is fixed, so that scripts do not see the text of cause.
+			e = vm.newGoError(ErrInterrupted.Error(), cause)
 			hasError = true
 		}
 		vm.asyncModuleExecutionRejected(m, e)

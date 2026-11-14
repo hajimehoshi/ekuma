@@ -6,6 +6,7 @@ package engine
 import (
 	"cmp"
 	"errors"
+	"sync/atomic"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -174,23 +175,31 @@ func (vm *VM) WellKnownSymbol(s WellKnownSymbol) *Object {
 }
 
 // interruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
-type interruptSignal struct{}
-
-var errInterrupt = &interruptSignal{}
+type interruptSignal struct {
+	// cause is the cause of the interruption.
+	cause error
+}
 
 // ErrInterrupted is the error of a script that was stopped by [VM.Interrupt].
 var ErrInterrupted = errors.New("ekuma: interrupted")
 
 // Interrupt makes the running script stop with [ErrInterrupted] as soon as it reaches a loop
 // or a call. It may be called from any goroutine. The request stays pending until a script
-// observes it, so it also stops the next script when none is running.
-func (vm *VM) Interrupt() {
+// observes it, so it also stops the next script when none is running. The module evaluations
+// that the interruption ends are rejected with an Error whose message is that of
+// [ErrInterrupted] and that [GoError] maps to cause, or to [ErrInterrupted] when cause is nil.
+func (vm *VM) Interrupt(cause error) {
+	if cause == nil {
+		cause = ErrInterrupted
+	}
+	vm.interruptCause.Store(&cause)
 	vm.interrupt.Store(true)
 }
 
 // ClearInterrupt withdraws a request of [VM.Interrupt] that no script has observed.
 func (vm *VM) ClearInterrupt() {
 	vm.interrupt.Store(false)
+	vm.interruptCause.Store(nil)
 }
 
 // Poll stops the script when an interruption was requested.
@@ -198,7 +207,13 @@ func (vm *VM) Poll() {
 	vm.pollTick()
 	if vm.interrupt.Load() {
 		vm.interrupt.Store(false)
-		panic(errInterrupt)
+		cause := ErrInterrupted
+		if c := vm.interruptCause.Swap(nil); c != nil {
+			cause = *c
+		}
+		panic(&interruptSignal{
+			cause: cause,
+		})
 	}
 }
 
@@ -274,6 +289,9 @@ type VM struct {
 	depth int
 
 	interrupt interruptFlag
+
+	// interruptCause is the cause of the pending interruption.
+	interruptCause atomic.Pointer[error]
 
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
@@ -458,7 +476,9 @@ func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e := vm.NewObject(vm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	e.class = classError
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
-	e.ext = vm.stackTrace(e, msg, len(vm.frames), len(vm.natives))
+	e.ext = &errorData{
+		stack: vm.stackTrace(e, msg, len(vm.frames), len(vm.natives)),
+	}
 	return e
 }
 
@@ -499,7 +519,9 @@ func (vm *VM) RecordStack(e *Object, msg string, newTarget *Object) {
 			break
 		}
 	}
-	e.ext = vm.stackTrace(e, msg, frames, natives)
+	e.ext = &errorData{
+		stack: vm.stackTrace(e, msg, frames, natives),
+	}
 }
 
 // maxStackFrames is the number of calls that a stack trace shows.
