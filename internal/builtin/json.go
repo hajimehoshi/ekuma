@@ -21,7 +21,7 @@ func initJSON(vm *engine.VM) {
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
 	vm.Define(j, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("JSON"), engine.FlagConfigurable)
 
-	method(vm, j, "parse", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	parse := method(vm, j, "parse", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		text := vm.ToString(arg(args, 0))
 		reviver := arg(args, 1)
 		if !reviver.IsCallable() {
@@ -30,6 +30,7 @@ func initJSON(vm *engine.VM) {
 		v, rec := st.parser.ParseWithRecord(vm, text)
 		return json.Revive(vm, v, rec, reviver.Object())
 	})
+	vm.SetIntrinsic(engine.IntrinsicJSONParse, parse)
 
 	method(vm, j, "stringify", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return st.stringifier.Stringify(vm, arg(args, 0), arg(args, 1), arg(args, 2))

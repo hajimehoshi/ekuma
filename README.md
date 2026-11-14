@@ -25,6 +25,15 @@ The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
 Unlike `syscall/js`, a JavaScript exception is returned as an error, and the methods that run
 a script or call a function take a `context.Context` that stops them.
 
+### Modules
+
+A module is parsed with `VM.ParseModule`, `VM.ParseJSONModule` or `VM.NewSyntheticModule`, and
+the host supplies the modules that it imports with `VM.SetModuleLoader`, which `import()` uses
+too. `Module.Evaluate` loads, links and evaluates a module and returns the promise of the
+evaluation, whose state `Value.PromiseState` reads. `Module.LoadRequestedModules`,
+`Module.Link` and `Module.Namespace` take the earlier steps alone, and `VM.SetImportMeta` gives
+`import.meta` its properties.
+
 ## Differences from other engines for Go
 
 | | Ekuma | [goja](https://github.com/dop251/goja) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) |
@@ -78,14 +87,11 @@ Notes on behavior:
 - `Atomics` works for a single agent: `Atomics.wait` throws, as on an agent that cannot block, and
   a finite `Atomics.waitAsync` timeout takes effect when the jobs next run after it expired
 - Weak collections, `WeakRef` and `FinalizationRegistry` use Go's garbage collector
-- Modules, including dynamic `import()`, `import.meta`, JSON modules and `import defer`, work in
-  the engine, but there is no public API yet to run a module or to supply sources, so
-  `import()` in a script rejects with a `TypeError`. Source phase imports parse, but no module
-  has a source object
+- Modules include dynamic `import()`, `import.meta`, JSON modules and `import defer`. Module
+  loading is synchronous. Source phase imports parse, but no module has a source object
 
 Missing:
 
-- A public API to run modules
 - Agents (workers) sharing a `SharedArrayBuffer`
 - `Intl` and `Temporal`
 - Proper tail calls

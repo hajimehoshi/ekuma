@@ -554,11 +554,11 @@ func BenchmarkImportedCall(b *testing.B) {
 			"lib":  "export " + lib,
 			"main": `import { add } from "lib";` + loop + `globalThis.run = run;`,
 		})
-		m, err := l.load("", "main", nil)
+		m, err := l.load(ekuma.ModuleRequest{Specifier: "main"})
 		if err != nil {
 			b.Fatal(err)
 		}
-		if _, err := ekuma.RunModule(b.Context(), &vm, m); err != nil {
+		if _, err := m.Evaluate(b.Context()); err != nil {
 			b.Fatal(err)
 		}
 		b.ReportAllocs()

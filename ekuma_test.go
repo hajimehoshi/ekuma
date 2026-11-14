@@ -594,12 +594,12 @@ func TestCancelModule(t *testing.T) {
 		`await null; for (;;) {}`,
 	} {
 		var vm ekuma.VM
-		m, err := ekuma.ParseModule(&vm, "endless", src)
+		m, err := vm.ParseModule("endless", src)
 		if err != nil {
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
-		if _, err := ekuma.RunModule(ctx, &vm, m); !errors.Is(err, context.DeadlineExceeded) {
+		if _, err := m.Evaluate(ctx); !errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
 		}
 		cancel()
@@ -672,4 +672,267 @@ func TestPromiseState(t *testing.T) {
 		}
 	}()
 	thenable.PromiseState()
+}
+
+// isInstance reports whether v is an instance of the global constructor name.
+func isInstance(t *testing.T, vm *ekuma.VM, v ekuma.Value, name string) bool {
+	t.Helper()
+	c, err := vm.Global().Get(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok, err := v.InstanceOf(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ok
+}
+
+// TestModuleSteps checks that the steps of a module can be taken in any order and again.
+func TestModuleSteps(t *testing.T) {
+	var vm ekuma.VM
+	l := newMemoryModules(&vm, map[string]string{
+		"dep": `export let v = "dep";`,
+	})
+	m, err := vm.ParseModule("main", `export { v } from "dep";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Namespace loads and links m first.
+	ns, err := m.Namespace()
+	if err != nil {
+		t.Fatalf("Namespace: %v", err)
+	}
+	var ex *ekuma.Error
+	if _, err := ns.Get("v"); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "ReferenceError") {
+		t.Errorf("reading an export before the evaluation: got %v, want a ReferenceError", err)
+	}
+	if err := m.LoadRequestedModules(); err != nil {
+		t.Errorf("LoadRequestedModules: %v", err)
+	}
+	if err := m.Link(); err != nil {
+		t.Errorf("Link: %v", err)
+	}
+	p, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if st, _ := p.PromiseState(); st != ekuma.PromiseFulfilled {
+		t.Errorf("got %v, want fulfilled", st)
+	}
+	p2, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if !p2.Equal(p) {
+		t.Errorf("a second Evaluate returned another promise")
+	}
+	if err := m.Link(); err != nil {
+		t.Errorf("Link after Evaluate: %v", err)
+	}
+	ns2, err := m.Namespace()
+	if err != nil {
+		t.Fatalf("Namespace: %v", err)
+	}
+	if !ns2.Equal(ns) {
+		t.Errorf("a second Namespace returned another object")
+	}
+	if v, err := ns.Get("v"); err != nil || v.String() != "dep" {
+		t.Errorf("got %v, %v, want dep", v, err)
+	}
+	if got := l.loads["dep"]; got != 1 {
+		t.Errorf("the loader was called %d times for dep, want 1", got)
+	}
+}
+
+// TestModuleEvaluationError checks that an exception of a module rejects the promise of
+// Evaluate, and that evaluating the module again returns the same promise.
+func TestModuleEvaluationError(t *testing.T) {
+	var vm ekuma.VM
+	m, err := vm.ParseModule("main", `throw "thrown";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if st, r := p.PromiseState(); st != ekuma.PromiseRejected || r.String() != "thrown" {
+		t.Errorf("got %v with %v, want rejected with thrown", st, r)
+	}
+	p2, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if !p2.Equal(p) {
+		t.Errorf("a second Evaluate returned another promise")
+	}
+}
+
+// TestModuleLoaderErrors checks the error that each kind of error of the loader becomes.
+func TestModuleLoaderErrors(t *testing.T) {
+	var vm ekuma.VM
+	thrown := vm.ValueOf(map[string]any{})
+	tests := []struct {
+		name string
+		err  error
+
+		// ctor is the constructor of the thrown value, or empty for thrown itself.
+		ctor string
+	}{
+		{
+			name: "Error",
+			err:  &ekuma.Error{Value: thrown},
+		},
+		{
+			name: "SyntaxError",
+			err: &ekuma.SyntaxError{
+				File:    "dep",
+				Line:    1,
+				Message: "bad",
+			},
+			ctor: "SyntaxError",
+		},
+		{
+			name: "other",
+			err:  errors.New("no module"),
+			ctor: "Error",
+		},
+		{
+			name: "no loader",
+			ctor: "TypeError",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.err != nil {
+				vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+					return nil, tt.err
+				})
+			} else {
+				vm.SetModuleLoader(nil)
+			}
+			m, err := vm.ParseModule("main", `import "dep";`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var ex *ekuma.Error
+			if err := m.LoadRequestedModules(); !errors.As(err, &ex) {
+				t.Fatalf("got %v, want an *Error", err)
+			}
+			if tt.ctor == "" {
+				if !ex.Value.Equal(thrown) {
+					t.Errorf("got %v, want the value of the *Error", ex.Value)
+				}
+				return
+			}
+			c, err := ex.Value.Get("constructor")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if n, err := c.Get("name"); err != nil || n.String() != tt.ctor {
+				t.Errorf("got an instance of %v, want %s", n, tt.ctor)
+			}
+		})
+	}
+}
+
+// TestModuleLinkRetry checks that a Link that failed can be taken again, and that an import
+// that does not resolve is an error of Link.
+func TestModuleLinkRetry(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		return nil, errors.New("not yet")
+	})
+	m, err := vm.ParseModule("main", `import { v } from "dep"; globalThis.result = v;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Link(); err == nil {
+		t.Fatal("Link succeeded with a failing loader")
+	}
+	var referrer *ekuma.Module
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		referrer = req.Referrer
+		return vm.ParseModule(req.Specifier, `export const v = "linked";`)
+	})
+	p, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if st, r := p.PromiseState(); st != ekuma.PromiseFulfilled {
+		t.Errorf("got %v with %v, want fulfilled", st, r)
+	}
+	if referrer != m {
+		t.Errorf("the Referrer of the request is not the importing module")
+	}
+
+	bad, err := vm.ParseModule("bad", `import { missing } from "dep2";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ex *ekuma.Error
+	if err := bad.Link(); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
+		t.Errorf("got %v, want a SyntaxError", err)
+	}
+}
+
+// TestModuleOfAnotherVM checks that a loader that returns a Module of another VM panics.
+func TestModuleOfAnotherVM(t *testing.T) {
+	var vm, other ekuma.VM
+	dep := other.NewSyntheticModule("dep", ekuma.Undefined)
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		return dep, nil
+	})
+	m, err := vm.ParseModule("main", `import "dep";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if recover() == nil {
+			t.Errorf("LoadRequestedModules did not panic")
+		}
+	}()
+	_ = m.LoadRequestedModules()
+}
+
+// TestSyntheticModules checks the modules of NewSyntheticModule and ParseJSONModule.
+func TestSyntheticModules(t *testing.T) {
+	var vm ekuma.VM
+	syn := vm.NewSyntheticModule("syn", vm.ValueOf("synthetic"))
+	j, err := vm.ParseJSONModule("data.json", `{"a": [1, 2]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := j.Name(), "data.json"; got != want {
+		t.Errorf("got name %q, want %q", got, want)
+	}
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		if req.Attributes["type"] == "json" {
+			return j, nil
+		}
+		return syn, nil
+	})
+	m, err := vm.ParseModule("main", `import s from "syn";
+		import j from "data.json" with { type: "json" };
+		globalThis.result = s + " " + j.a.join();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Evaluate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	v, err := vm.Global().Get("result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "synthetic 1,2"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+
+	var ex *ekuma.Error
+	if _, err := vm.ParseJSONModule("bad.json", `{`); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
+		t.Errorf("got %v, want a SyntaxError", err)
+	}
 }

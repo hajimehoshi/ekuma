@@ -1441,11 +1441,12 @@ func newMemoryModules(vm *ekuma.VM, sources map[string]string) *memoryModules {
 		modules: map[string]*ekuma.Module{},
 		loads:   map[string]int{},
 	}
-	ekuma.SetModuleLoader(vm, l.load)
+	vm.SetModuleLoader(l.load)
 	return l
 }
 
-func (l *memoryModules) load(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+func (l *memoryModules) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+	specifier := req.Specifier
 	l.loads[specifier]++
 	if m, ok := l.modules[specifier]; ok {
 		return m, nil
@@ -1454,7 +1455,7 @@ func (l *memoryModules) load(referrer, specifier string, attrs map[string]string
 	if !ok {
 		return nil, fmt.Errorf("no module %q", specifier)
 	}
-	m, err := ekuma.ParseModule(l.vm, specifier, src)
+	m, err := l.vm.ParseModule(specifier, src)
 	if err != nil {
 		return nil, err
 	}
@@ -1466,24 +1467,16 @@ func (l *memoryModules) load(referrer, specifier string, attrs map[string]string
 // after the evaluation completed.
 func (l *memoryModules) run(t *testing.T, name string) ekuma.Value {
 	t.Helper()
-	m, err := l.load("", name, nil)
+	m, err := l.load(ekuma.ModuleRequest{Specifier: name})
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := ekuma.RunModule(t.Context(), l.vm, m)
+	p, err := m.Evaluate(t.Context())
 	if err != nil {
-		t.Fatalf("RunModule: %v", err)
+		t.Fatalf("Evaluate: %v", err)
 	}
-	var rejected error
-	onRejected := l.vm.FuncOf("", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		rejected = &ekuma.Error{Value: args[0]}
-		return nil, nil
-	})
-	if _, err := p.Call(t.Context(), "then", nil, onRejected); err != nil {
-		t.Fatal(err)
-	}
-	if rejected != nil {
-		t.Fatalf("the evaluation was rejected: %v", rejected)
+	if st, r := p.PromiseState(); st != ekuma.PromiseFulfilled {
+		t.Fatalf("the evaluation is %v: %v", st, r)
 	}
 	v, err := l.vm.Global().Get("result")
 	if err != nil {
@@ -1616,7 +1609,7 @@ func TestDynamicImportLoadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	ekuma.SetModuleLoader(&vm, func(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		calls++
 		return nil, &ekuma.Error{Value: thrown}
 	})
@@ -1646,10 +1639,10 @@ func TestDynamicImportLoadError(t *testing.T) {
 func TestModuleReferrer(t *testing.T) {
 	var vm ekuma.VM
 	var referrers []string
-	ekuma.SetModuleLoader(&vm, func(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
-		referrers = append(referrers, referrer+":"+specifier)
-		if specifier == "mod" {
-			return ekuma.ParseModule(&vm, "mod", `import("fromModule"); eval('import("fromEval")');`)
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		referrers = append(referrers, req.ReferrerName+":"+req.Specifier)
+		if req.Specifier == "mod" {
+			return vm.ParseModule("mod", `import("fromModule"); eval('import("fromEval")');`)
 		}
 		return nil, errors.New("no module")
 	})
@@ -1677,7 +1670,7 @@ func TestImportMeta(t *testing.T) {
 	l := newMemoryModules(&vm, map[string]string{
 		"main": `globalThis.result = import.meta.url;`,
 	})
-	ekuma.SetImportMeta(&vm, func(m *ekuma.Module) map[string]any {
+	vm.SetImportMeta(func(m *ekuma.Module) map[string]any {
 		return map[string]any{
 			"url": "memory:main",
 		}
@@ -1692,22 +1685,22 @@ func TestImportMeta(t *testing.T) {
 func TestLongImportChain(t *testing.T) {
 	const n = 20000
 	var vm ekuma.VM
-	ekuma.SetModuleLoader(&vm, func(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		var i int
-		if _, err := fmt.Sscanf(specifier, "m%d", &i); err != nil {
+		if _, err := fmt.Sscanf(req.Specifier, "m%d", &i); err != nil {
 			return nil, err
 		}
 		src := fmt.Sprintf(`export * from "m%d"; export const v%d = %d;`, i+1, i, i)
 		if i == n {
 			src = fmt.Sprintf(`export const v%d = %d;`, i, i)
 		}
-		return ekuma.ParseModule(&vm, specifier, src)
+		return vm.ParseModule(req.Specifier, src)
 	})
-	m, err := ekuma.ParseModule(&vm, "main", fmt.Sprintf(`import { v%d } from "m0"; globalThis.result = v%d;`, n, n))
+	m, err := vm.ParseModule("main", fmt.Sprintf(`import { v%d } from "m0"; globalThis.result = v%d;`, n, n))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ekuma.RunModule(t.Context(), &vm, m); err != nil {
+	if _, err := m.Evaluate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	v, err := vm.Global().Get("result")

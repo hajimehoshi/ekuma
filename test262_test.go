@@ -180,7 +180,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 		dir:     filepath.Dir(path),
 		modules: map[string]*ekuma.Module{},
 	}
-	ekuma.SetModuleLoader(&vm, loader.load)
+	vm.SetModuleLoader(loader.load)
 	// An async test reports its outcome by printing it.
 	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -259,13 +259,13 @@ type moduleLoader struct {
 	modules map[string]*ekuma.Module
 }
 
-func (l *moduleLoader) load(referrer, specifier string, attrs map[string]string) (*ekuma.Module, error) {
+func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 	dir := l.dir
-	if filepath.IsAbs(referrer) {
-		dir = filepath.Dir(referrer)
+	if filepath.IsAbs(req.ReferrerName) {
+		dir = filepath.Dir(req.ReferrerName)
 	}
-	path := filepath.Join(dir, filepath.FromSlash(specifier))
-	typ := attrs["type"]
+	path := filepath.Join(dir, filepath.FromSlash(req.Specifier))
+	typ := req.Attributes["type"]
 	key := path + "\x00" + typ
 	if m, ok := l.modules[key]; ok {
 		return m, nil
@@ -277,13 +277,11 @@ func (l *moduleLoader) load(referrer, specifier string, attrs map[string]string)
 	var m *ekuma.Module
 	switch typ {
 	case "":
-		m, err = ekuma.ParseModule(l.vm, path, string(b))
+		m, err = l.vm.ParseModule(path, string(b))
 	case "json":
-		var v ekuma.Value
-		v, err = l.call("(s => JSON.parse(s))", string(b))
-		m = ekuma.NewDefaultModule(l.vm, v)
+		m, err = l.vm.ParseJSONModule(path, string(b))
 	case "text":
-		m = ekuma.NewDefaultModule(l.vm, l.vm.ValueOf(string(b)))
+		m = l.vm.NewSyntheticModule(path, l.vm.ValueOf(string(b)))
 	case "bytes":
 		var v ekuma.Value
 		v, err = l.call("(n => new Uint8Array(n))", len(b))
@@ -291,7 +289,7 @@ func (l *moduleLoader) load(referrer, specifier string, attrs map[string]string)
 			ekuma.CopyBytesToJS(v, b)
 			v, err = l.call("(a => new Uint8Array(a.buffer.transferToImmutable()))", v)
 		}
-		m = ekuma.NewDefaultModule(l.vm, v)
+		m = l.vm.NewSyntheticModule(path, v)
 	default:
 		return nil, fmt.Errorf("unsupported module type %q", typ)
 	}
@@ -323,7 +321,7 @@ func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, sr
 		}
 		return ""
 	}
-	mod, err := ekuma.ParseModule(vm, path, src)
+	mod, err := vm.ParseModule(path, src)
 	if err != nil {
 		if m.negativePhase != "" {
 			return phase("parse", err), false
@@ -331,7 +329,7 @@ func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, sr
 		return firstLine(err.Error()), false
 	}
 	loader.modules[path+"\x00"] = mod
-	p, err := ekuma.RunModule(ctx, vm, mod)
+	p, err := mod.Evaluate(ctx)
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "timeout", true
 	}
@@ -341,16 +339,10 @@ func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, sr
 		}
 		return firstLine(err.Error()), false
 	}
+	// Evaluate ran the jobs: the promise is settled unless the evaluation waits forever.
 	var rejected *ekuma.Error
-	onRejected := vm.FuncOf("", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		rejected = &ekuma.Error{Value: args[0]}
-		return nil, nil
-	})
-	if _, err := p.Call(ctx, "then", nil, onRejected); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return "timeout", true
-		}
-		return "harness: " + firstLine(err.Error()), false
+	if st, r := p.PromiseState(); st == ekuma.PromiseRejected {
+		rejected = &ekuma.Error{Value: r}
 	}
 	if m.negativePhase != "" {
 		if rejected == nil {

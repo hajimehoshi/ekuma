@@ -398,6 +398,9 @@ const (
 	IntrinsicTypedArrayPrototypeLengthGetter
 	IntrinsicGeneratorPrototypeNext
 
+	// The functions that the engine calls.
+	IntrinsicJSONParse
+
 	intrinsicCount
 )
 

@@ -218,19 +218,47 @@ func (m *Module) isCyclic() bool {
 	return m.code != nil
 }
 
-// RunModule loads the modules that m requests, links m and evaluates it, and returns the
-// promise of the evaluation. The error is an [*Error] when loading or linking fails, which is
-// before any module code runs.
-func (vm *VM) RunModule(m *Module) (Value, error) {
+// LoadRequestedModules implements LoadRequestedModules for a host whose loading completes
+// synchronously: it loads the modules that m and its dependencies request. Once it has
+// completed for m, it does nothing. The error is an [*Error].
+func (vm *VM) LoadRequestedModules(m *Module) error {
+	_, err := vm.enter(func() Value {
+		if e, ok := vm.loadModuleGraph(m); !ok {
+			vm.Throw(e)
+		}
+		return Undefined
+	})
+	return err
+}
+
+// Link implements Link, after [VM.LoadRequestedModules] when m is not loaded. Once m is
+// linked, it does nothing. The error is an [*Error].
+func (vm *VM) Link(m *Module) error {
+	_, err := vm.enter(func() Value {
+		vm.loadAndLink(m)
+		return Undefined
+	})
+	return err
+}
+
+// loadAndLink loads and links m unless that is done, and throws the error of a failure.
+func (vm *VM) loadAndLink(m *Module) {
+	if e, ok := vm.loadModuleGraph(m); !ok {
+		vm.Throw(e)
+	}
+	if e, ok := vm.linkModule(m); !ok {
+		vm.Throw(e)
+	}
+}
+
+// Evaluate implements Evaluate, after [VM.Link] when m is not linked, and then runs the
+// pending jobs. It returns the promise of the evaluation. The error is an [*Error] when
+// loading or linking fails, which is before any module code runs.
+func (vm *VM) Evaluate(m *Module) (Value, error) {
 	return vm.enter(func() Value {
 		var p Value
 		ok := vm.protect(func() {
-			if e, ok := vm.loadModuleGraph(m); !ok {
-				vm.Throw(e)
-			}
-			if e, ok := vm.linkModule(m); !ok {
-				vm.Throw(e)
-			}
+			vm.loadAndLink(m)
 			p = vm.evaluateModule(m)
 		})
 		e := vm.takeThrown()
@@ -240,6 +268,28 @@ func (vm *VM) RunModule(m *Module) (Value, error) {
 		}
 		return p
 	})
+}
+
+// GetModuleNamespace implements GetModuleNamespace for the evaluation phase, after [VM.Link]
+// when m is not linked. The error is an [*Error].
+func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
+	return vm.enter(func() Value {
+		vm.loadAndLink(m)
+		return Value{o: vm.moduleNamespace(m)}
+	})
+}
+
+// ParseJSONModule implements ParseJSONModule for the source text src. hostDefined is the
+// [[HostDefined]]. The error is an [*Error] holding the JavaScript SyntaxError of a src that
+// is not JSON.
+func (vm *VM) ParseJSONModule(src string, hostDefined any) (*Module, error) {
+	v, err := vm.enter(func() Value {
+		return vm.Call(vm.Intrinsic(IntrinsicJSONParse), Undefined, vm.StringFromGo(src))
+	})
+	if err != nil {
+		return nil, err
+	}
+	return vm.CreateDefaultExportSyntheticModule(v, hostDefined), nil
 }
 
 // activeScriptOrModule implements GetActiveScriptOrModule, with the realm standing for null.
