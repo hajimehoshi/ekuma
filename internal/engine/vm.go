@@ -342,6 +342,8 @@ type VM struct {
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[string]*regexp.Regexp
 
+	regExpOriginals regExpOriginals
+
 	realm
 
 	// timeZone is the time zone of local time, or nil for the one of the host.

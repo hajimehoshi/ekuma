@@ -419,12 +419,8 @@ func initString(vm *engine.VM) {
 			vm.RequireObjectCoercible(this, "String.prototype."+name)
 			pat, rep := arg(args, 0), arg(args, 1)
 			if pat.IsObject() {
-				if all && isRegExp(vm, pat) {
-					flags := vm.GetV(pat, vm.Intern("flags"))
-					vm.RequireObjectCoercible(flags, "String.prototype.replaceAll")
-					if !strings.Contains(vm.ToString(flags), "g") {
-						vm.ThrowTypeError("replaceAll must be called with a global RegExp")
-					}
+				if all {
+					requireGlobalRegExp(vm, pat.Object(), "replaceAll")
 				}
 				if m := vm.GetMethod(pat, vm.WellKnownSymbol(engine.SymbolReplace)); m != nil {
 					return vm.Call(m, pat, this, rep)
@@ -482,12 +478,8 @@ func initString(vm *engine.VM) {
 			vm.RequireObjectCoercible(this, "String.prototype."+e.name)
 			pat := arg(args, 0)
 			if pat.IsObject() {
-				if e.name == "matchAll" && isRegExp(vm, pat) {
-					flags := vm.GetV(pat, vm.Intern("flags"))
-					vm.RequireObjectCoercible(flags, "String.prototype.matchAll")
-					if !strings.Contains(vm.ToString(flags), "g") {
-						vm.ThrowTypeError("matchAll must be called with a global RegExp")
-					}
+				if e.name == "matchAll" {
+					requireGlobalRegExp(vm, pat.Object(), "matchAll")
 				}
 				if m := vm.GetMethod(pat, e.key); m != nil {
 					return vm.Call(m, pat, this)

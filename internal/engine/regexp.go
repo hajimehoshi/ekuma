@@ -145,3 +145,142 @@ func (o *Object) RegExpOriginal() (source, flags string) {
 func (o *Object) RegExpLegacyFeaturesEnabled() bool {
 	return o.ext.(*regExpState).legacy
 }
+
+// regExpOriginals is what [VM.IsUnmodifiedRegExp] compares against.
+type regExpOriginals struct {
+	props []originalProp
+
+	// epoch is the value of VM.protoEpoch when the slots of props were last found.
+	epoch   uint32
+	checked bool
+	// found reports whether every property of props had its recorded attributes at epoch,
+	// and every accessor property its recorded getter.
+	found bool
+}
+
+// originalProp is a recorded own property of an object.
+type originalProp struct {
+	holder *Object
+	key    *Object
+	flags  uint8
+	// value is the value of a data property, or the getter of an accessor property.
+	value *Object
+	// slot is the slot of the property in holder, found at regExpOriginals.epoch.
+	slot int32
+}
+
+// find looks the property up in its holder, and reports whether it has the recorded attributes,
+// and the recorded getter if it is an accessor property.
+func (p *originalProp) find() bool {
+	q, ok := p.holder.shape.lookup(p.key)
+	if !ok || q.slot < 0 || q.flags != p.flags {
+		return false
+	}
+	p.slot = q.slot
+	if q.flags&FlagAccessor != 0 {
+		return p.holder.slots[q.slot].accessor().getter == p.value
+	}
+	return true
+}
+
+// RecordRegExpOriginals records the current own properties protoKeys of %RegExp.prototype%
+// and ctorKeys of %RegExp%, which [VM.IsUnmodifiedRegExp] requires to stay unchanged.
+// Every key must name an existing property whose value, if it is a data property, is an object.
+func (vm *VM) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
+	proto := vm.Intrinsic(IntrinsicRegExpPrototype)
+	ctor := vm.Intrinsic(IntrinsicRegExp)
+	r := &vm.regExpOriginals
+	// hasRegExpShape compares against this shape, so it must exist from now on.
+	vm.regExpShape()
+	r.props = r.props[:0]
+	record := func(holder *Object, keys []*Object) {
+		for _, k := range keys {
+			p, ok := holder.shape.lookup(k)
+			if !ok || p.slot < 0 {
+				panic("engine: RecordRegExpOriginals: missing property " + k.str)
+			}
+			v := holder.slots[p.slot]
+			var val *Object
+			if p.flags&FlagAccessor != 0 {
+				val = v.accessor().getter
+			} else {
+				val = v.o
+			}
+			if val == nil {
+				panic("engine: RecordRegExpOriginals: property " + k.str + " holds no object")
+			}
+			r.props = append(r.props, originalProp{
+				holder: holder,
+				key:    k,
+				flags:  p.flags,
+				value:  val,
+				slot:   p.slot,
+			})
+		}
+	}
+	record(proto, protoKeys)
+	record(ctor, ctorKeys)
+	// Adding, removing or redefining a property of an object marked as a prototype moves
+	// protoEpoch. Assigning to a data property does not.
+	ctor.flags |= objIsProto
+	r.checked = false
+}
+
+// IsUnmodifiedRegExp reports whether o is an initialized RegExp object whose prototype is
+// %RegExp.prototype% and whose only own property is a writable lastIndex, while the properties
+// recorded by [VM.RecordRegExpOriginals] are unchanged. Then those properties are the only
+// ones that reading the recorded keys from o finds, and lastIndex is an ordinary data property.
+func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
+	if o.class != classRegExp || !vm.hasRegExpShape(o) || o.ext.(*regExpState).matcher == nil {
+		return false
+	}
+	r := &vm.regExpOriginals
+	if !r.checked || r.epoch != vm.protoEpoch {
+		r.found = true
+		for i := range r.props {
+			if !r.props[i].find() {
+				r.found = false
+				break
+			}
+		}
+		r.epoch = vm.protoEpoch
+		r.checked = true
+	}
+	if !r.found {
+		return false
+	}
+	for i := range r.props {
+		p := &r.props[i]
+		if p.flags&FlagAccessor == 0 && p.holder.slots[p.slot].o != p.value {
+			return false
+		}
+	}
+	return true
+}
+
+// hasRegExpShape reports whether o has the shape of a new RegExp object whose prototype is
+// %RegExp.prototype%, so that its only own property is a writable lastIndex in slot 0.
+func (vm *VM) hasRegExpShape(o *Object) bool {
+	s := vm.shapes.regExp
+	return s != nil && o.shape == s
+}
+
+// RegExpLastIndex returns the value of the own lastIndex property of o, or false when o may not
+// have it as a writable data property where [VM.RegExpAlloc] puts it.
+func (vm *VM) RegExpLastIndex(o *Object) (Value, bool) {
+	if !vm.hasRegExpShape(o) {
+		return Undefined, false
+	}
+	return o.slots[0], true
+}
+
+// SetRegExpLastIndex sets the own lastIndex property of o to v and reports true, or reports
+// false when o may not have it as a writable data property where [VM.RegExpAlloc] puts it.
+func (vm *VM) SetRegExpLastIndex(o *Object, v Value) bool {
+	if !vm.hasRegExpShape(o) {
+		return false
+	}
+	o.slots[0] = v
+	vm.touchProto(o)
+	return true
+}

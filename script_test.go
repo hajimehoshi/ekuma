@@ -1019,6 +1019,94 @@ func TestTypedArray(t *testing.T) {
 	}
 }
 
+// TestRegExpModified tests that the RegExp built-ins follow modifications of RegExp objects,
+// %RegExp.prototype% and %RegExp% made after the built-ins ran on unmodified ones.
+func TestRegExpModified(t *testing.T) {
+	// warm runs the built-ins on unmodified RegExp objects first.
+	const warm = `var log = [];
+		var warm = ["abab".replace(/b/g, "x"), "a,b".split(/,/), "abab".match(/b/g), /b/g.flags, [..."ab".matchAll(/b/g)]];
+		`
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "assigned exec",
+			src: `RegExp.prototype.exec = function (s) { log.push("exec"); return null; };
+				["abab".replace(/b/g, "x"), /b/.test("abab"), "abab".match(/b/g), "a,b".split(/,/), log.length].join(" ")`,
+			want: "abab false  a,b 6",
+		},
+		{
+			name: "redefined flag getter",
+			src: `Object.defineProperty(RegExp.prototype, "global", {get() { log.push("global"); return false; }});
+				[/b/g.flags, "abab".replace(/b/g, "x"), log.length].join(" ")`,
+			want: " axab 2",
+		},
+		{
+			name: "own properties",
+			src: `var re = /b/g, li = /b/y, frozen = Object.freeze(/b/g);
+				Object.defineProperty(re, "flags", {value: ""});
+				li.lastIndex = {valueOf() { log.push("lastIndex"); return 1; }};
+				var r = ["abab".replace(re, "x"), "abab".replace(li, "x"), log.join()];
+				try { "abab".replace(frozen, "x"); r.push("no error"); } catch (e) { r.push(e.constructor.name); }
+				r.join(" ")`,
+			want: "axab axab lastIndex TypeError",
+		},
+		{
+			name: "subclass",
+			src: `class R extends RegExp { exec(s) { log.push(this.flags); return super.exec(s); } }
+				["abab".replace(new R("b", "g"), "x"), "a,b".split(new R(",")), log.join()].join(" ")`,
+			want: "axax a,b g,g,g,y,y,y",
+		},
+		{
+			name: "species constructor",
+			src: `function C(p, f) { log.push("C " + f); return new RegExp(p, f); }
+				C[Symbol.species] = C;
+				RegExp.prototype.constructor = C;
+				var r = ["a,b".split(/,/), [..."abab".matchAll(/b/g)].length];
+				delete RegExp.prototype.constructor;
+				Object.defineProperty(RegExp, Symbol.species, {get() { log.push("species"); return C; }});
+				r.push(Object.getPrototypeOf(/b/g).constructor === Object, log.join());
+				r.join(" ")`,
+			want: "a,b 2 true C y,C g",
+		},
+		{
+			name: "species getter of RegExp",
+			src: `Object.defineProperty(RegExp, Symbol.species, {get() { log.push("species"); return RegExp; }});
+				["a,b".split(/,/), [..."abab".matchAll(/b/g)].length, log.join()].join(" ")`,
+			want: "a,b 2 species,species",
+		},
+		{
+			name: "assigned Symbol.match",
+			src: `RegExp.prototype[Symbol.match] = 0;
+				"abab".replaceAll(/b/, "x")`,
+			want: "axab",
+		},
+		{
+			name: "prototype modified during split",
+			src: `var re = /,/;
+				var r = ["a,b;c".split(re, {valueOf() { re.compile(";"); return 10; }})];
+				r.push("a,b".split(/,/, {valueOf() { RegExp.prototype.exec = function () { log.push("exec"); return null; }; return 10; }}));
+				r.push(log.length > 0);
+				r.join(" ")`,
+			want: "a,b;c a,b true",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := vm.RunScript(t.Context(), "test", warm+tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := v.String(); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestDetachImmutableArrayBuffer tests that $262.detachArrayBuffer refuses an immutable buffer.
 func TestDetachImmutableArrayBuffer(t *testing.T) {
 	var vm ekuma.VM

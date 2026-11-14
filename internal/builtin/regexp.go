@@ -25,6 +25,9 @@ type regexpEnv struct {
 
 	lastIndex, index, input, groups, indices, flags, source, execKey *engine.Object
 
+	// flagStrings holds the value of the flags getter for each set of the 8 flags, once computed.
+	flagStrings *[1 << 8]engine.Value
+
 	legacy legacyStatics
 }
 
@@ -40,7 +43,13 @@ type legacyStatics struct {
 
 // record updates the legacy static properties after a match of r.
 func (l *legacyStatics) record(r *engine.Object, s *engine.Object, caps []int) {
-	if !r.RegExpLegacyFeaturesEnabled() {
+	l.recordLegacy(r.RegExpLegacyFeaturesEnabled(), s, caps)
+}
+
+// recordLegacy updates the legacy static properties after a match of a RegExp object
+// whose [[LegacyFeaturesEnabled]] is legacy.
+func (l *legacyStatics) recordLegacy(legacy bool, s *engine.Object, caps []int) {
+	if !legacy {
 		l.valid = false
 		return
 	}
@@ -54,9 +63,32 @@ func (e *regexpEnv) key(k *engine.Object) engine.PropKey {
 	return engine.NamedKey(k)
 }
 
+// flagsString returns the string of the flags f in the order of the flags getter.
+func (e *regexpEnv) flagsString(vm *engine.VM, f regexp.Flags) engine.Value {
+	if e.flagStrings == nil {
+		e.flagStrings = new([1 << 8]engine.Value)
+	}
+	v := &e.flagStrings[f]
+	if !v.IsString() {
+		*v = vm.NewString(f.String())
+	}
+	return *v
+}
+
+// getFlags returns ToString(Get(r, "flags")).
+func (e *regexpEnv) getFlags(vm *engine.VM, r *engine.Object) engine.Value {
+	if vm.IsUnmodifiedRegExp(r) {
+		return e.flagsString(vm, r.RegExpMatcher().Flags())
+	}
+	return vm.ToStringValue(vm.Get(r, e.key(e.flags)))
+}
+
 // getLastIndex returns ToLength(Get(r, "lastIndex")).
 func (e *regexpEnv) getLastIndex(vm *engine.VM, r *engine.Object) int64 {
-	v := vm.Get(r, e.key(e.lastIndex))
+	v, ok := vm.RegExpLastIndex(r)
+	if !ok {
+		v = vm.Get(r, e.key(e.lastIndex))
+	}
 	if v.IsNumber() {
 		n := v.Number()
 		if n >= 0 && n <= engine.MaxStringLength {
@@ -67,7 +99,9 @@ func (e *regexpEnv) getLastIndex(vm *engine.VM, r *engine.Object) int64 {
 }
 
 func (e *regexpEnv) setLastIndex(vm *engine.VM, r *engine.Object, n int64) {
-	vm.Set(r, e.key(e.lastIndex), engine.Number(float64(n)))
+	if !vm.SetRegExpLastIndex(r, engine.Number(float64(n))) {
+		vm.Set(r, e.key(e.lastIndex), engine.Number(float64(n)))
+	}
 }
 
 // advanceStringIndex implements AdvanceStringIndex.
@@ -194,8 +228,18 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s *engine.Objec
 // fastExec reports whether RegExpExec on r would call the original exec, and so whether
 // builtinExecRaw can stand for it.
 func (e *regexpEnv) fastExec(vm *engine.VM, r *engine.Object) (engine.Value, bool) {
+	if vm.IsUnmodifiedRegExp(r) {
+		return engine.ObjectValue(e.exec), true
+	}
 	exec := vm.Get(r, e.key(e.execKey))
 	return exec, exec.IsObject() && exec.Object() == e.exec && r.RegExpMatcher() != nil
+}
+
+// cloneRegExp returns a new RegExp object with the pattern src and the flags flags. It does what
+// Construct(%RegExp%, « r, flags ») does for a RegExp object r with the source src for which
+// [engine.VM.IsUnmodifiedRegExp] holds.
+func cloneRegExp(vm *engine.VM, src string, flags engine.Value) *engine.Object {
+	return vm.RegExpInitialize(vm.RegExpAlloc(vm.Intrinsic(engine.IntrinsicRegExp)), vm.NewString(src), flags)
 }
 
 // regExpExecWith implements RegExpExec with the value of r.exec already read.
@@ -228,6 +272,25 @@ func isRegExp(vm *engine.VM, v engine.Value) bool {
 		return engine.ToBoolean(m)
 	}
 	return v.Object().IsRegExpObject()
+}
+
+// requireGlobalRegExp throws the TypeError of String.prototype[name] when o is a RegExp
+// object, by IsRegExp, whose flags do not include g.
+func requireGlobalRegExp(vm *engine.VM, o *engine.Object, name string) {
+	var global bool
+	if vm.IsUnmodifiedRegExp(o) {
+		global = o.RegExpMatcher().Flags()&regexp.FlagGlobal != 0
+	} else {
+		if !isRegExp(vm, engine.ObjectValue(o)) {
+			return
+		}
+		flags := vm.GetV(engine.ObjectValue(o), vm.Intern("flags"))
+		vm.RequireObjectCoercible(flags, "String.prototype."+name)
+		global = strings.Contains(vm.ToString(flags), "g")
+	}
+	if !global {
+		vm.ThrowTypeError(name + " must be called with a global RegExp")
+	}
 }
 
 // regExpCreate implements RegExpCreate.
@@ -315,18 +378,41 @@ func escapeRegExpPattern(src string) string {
 
 // flagProps lists the flag accessors of RegExp.prototype in the order of the flags getter.
 var flagProps = []struct {
-	name   string
-	letter byte
-	flag   regexp.Flags
+	name string
+	flag regexp.Flags
 }{
-	{"hasIndices", 'd', regexp.FlagHasIndices},
-	{"global", 'g', regexp.FlagGlobal},
-	{"ignoreCase", 'i', regexp.FlagIgnoreCase},
-	{"multiline", 'm', regexp.FlagMultiline},
-	{"dotAll", 's', regexp.FlagDotAll},
-	{"unicode", 'u', regexp.FlagUnicode},
-	{"unicodeSets", 'v', regexp.FlagUnicodeSets},
-	{"sticky", 'y', regexp.FlagSticky},
+	{
+		name: "hasIndices",
+		flag: regexp.FlagHasIndices,
+	},
+	{
+		name: "global",
+		flag: regexp.FlagGlobal,
+	},
+	{
+		name: "ignoreCase",
+		flag: regexp.FlagIgnoreCase,
+	},
+	{
+		name: "multiline",
+		flag: regexp.FlagMultiline,
+	},
+	{
+		name: "dotAll",
+		flag: regexp.FlagDotAll,
+	},
+	{
+		name: "unicode",
+		flag: regexp.FlagUnicode,
+	},
+	{
+		name: "unicodeSets",
+		flag: regexp.FlagUnicodeSets,
+	},
+	{
+		name: "sticky",
+		flag: regexp.FlagSticky,
+	},
 }
 
 func initRegExp(vm *engine.VM) {
@@ -446,13 +532,16 @@ func initRegExp(vm *engine.VM) {
 	}
 	getter(vm, proto, env.flags, "flags", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(vm, this, "RegExp.prototype.flags getter")
-		var b []byte
+		if vm.IsUnmodifiedRegExp(r) {
+			return env.flagsString(vm, r.RegExpMatcher().Flags())
+		}
+		var f regexp.Flags
 		for i, fp := range flagProps {
 			if engine.ToBoolean(vm.Get(r, flagKeys[i])) {
-				b = append(b, fp.letter)
+				f |= fp.flag
 			}
 		}
-		return vm.NewString(string(b))
+		return env.flagsString(vm, f)
 	})
 	getter(vm, proto, env.source, "source", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
@@ -472,7 +561,7 @@ func initRegExp(vm *engine.VM) {
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		rx := thisObject(vm, this, "RegExp.prototype[Symbol.match]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
-		flags := vm.ToString(vm.Get(rx, env.key(env.flags)))
+		flags := env.getFlags(vm, rx).Object().Str()
 		if !strings.Contains(flags, "g") {
 			return env.regExpExec(vm, rx, s)
 		}
@@ -535,9 +624,19 @@ func initRegExp(vm *engine.VM) {
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(vm, this, "RegExp.prototype[Symbol.matchAll]")
 		s := vm.ToStringValue(arg(args, 0)).Object()
-		c := speciesConstructor(vm, r, vm.Intrinsic(engine.IntrinsicRegExp))
-		flags := vm.ToStringValue(vm.Get(r, env.key(env.flags)))
-		matcher := vm.Construct(c, []engine.Value{engine.ObjectValue(r), flags}, c)
+		unmodified := vm.IsUnmodifiedRegExp(r)
+		var c *engine.Object
+		if !unmodified {
+			c = speciesConstructor(vm, r, vm.Intrinsic(engine.IntrinsicRegExp))
+		}
+		flags := env.getFlags(vm, r)
+		var matcher *engine.Object
+		if unmodified {
+			src, _ := r.RegExpOriginal()
+			matcher = cloneRegExp(vm, src, flags)
+		} else {
+			matcher = vm.Construct(c, []engine.Value{engine.ObjectValue(r), flags}, c)
+		}
 		lastIndex := env.getLastIndex(vm, r)
 		env.setLastIndex(vm, matcher, lastIndex)
 		fl := flags.Object().Str()
@@ -596,6 +695,15 @@ func initRegExp(vm *engine.VM) {
 	})
 
 	initLegacyStatics(vm, ctor, env)
+
+	// The fast paths read these properties of an unmodified RegExp object without a lookup:
+	// the flag accessors, exec, constructor and @@species for SpeciesConstructor, and @@match
+	// for the IsRegExp of the RegExp constructor.
+	protoKeys := []*engine.Object{env.flags, env.execKey, vm.Key(engine.KeyConstructor), vm.WellKnownSymbol(engine.SymbolMatch)}
+	for _, fp := range flagProps {
+		protoKeys = append(protoKeys, vm.Intern(fp.name))
+	}
+	vm.RecordRegExpOriginals(protoKeys, []*engine.Object{vm.WellKnownSymbol(engine.SymbolSpecies)})
 }
 
 type regexpStringIterator struct {
@@ -620,7 +728,7 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 	if !functional {
 		template = vm.ToString(replaceValue)
 	}
-	flags := vm.ToString(vm.Get(rx, e.key(e.flags)))
+	flags := e.getFlags(vm, rx).Object().Str()
 	global := strings.Contains(flags, "g")
 	fullUnicode := false
 	if global {
@@ -732,14 +840,30 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 }
 
 func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, limit engine.Value) engine.Value {
-	c := speciesConstructor(vm, rx, vm.Intrinsic(engine.IntrinsicRegExp))
-	flags := vm.ToString(vm.Get(rx, e.key(e.flags)))
+	// For an unmodified rx, finding the constructor and constructing the splitter run no
+	// JavaScript, so the splitter is only made when the algorithm can observe it.
+	unmodified := vm.IsUnmodifiedRegExp(rx)
+	var c *engine.Object
+	if unmodified {
+		c = vm.Intrinsic(engine.IntrinsicRegExp)
+	} else {
+		c = speciesConstructor(vm, rx, vm.Intrinsic(engine.IntrinsicRegExp))
+	}
+	flags := e.getFlags(vm, rx).Object().Str()
 	unicodeMatching := strings.ContainsAny(flags, "uv")
 	newFlags := flags
 	if !strings.Contains(flags, "y") {
 		newFlags += "y"
 	}
-	splitter := vm.Construct(c, []engine.Value{engine.ObjectValue(rx), vm.NewString(newFlags)}, c)
+	var splitter *engine.Object
+	var src string
+	var re *regexp.Regexp
+	if unmodified {
+		src, _ = rx.RegExpOriginal()
+		re = rx.RegExpMatcher()
+	} else {
+		splitter = vm.Construct(c, []engine.Value{engine.ObjectValue(rx), vm.NewString(newFlags)}, c)
+	}
 	lim := uint32(math.MaxUint32)
 	if !limit.IsUndefined() {
 		lim = vm.ToUint32(limit)
@@ -748,33 +872,57 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, li
 	if lim == 0 {
 		return engine.ObjectValue(vm.NewArray(nil))
 	}
+	// When the splitter is a RegExp object that no code can see, and its exec is the original
+	// one, searching for the next match is the same as trying every position. The matcher of rx
+	// finds the same matches as that of the splitter, which differs only in the sticky flag.
+	var fast bool
+	if splitter == nil {
+		// ToUint32 may have changed %RegExp.prototype%.
+		fast = vm.IsUnmodifiedRegExp(rx)
+		if !fast {
+			splitter = cloneRegExp(vm, src, vm.NewString(newFlags))
+		}
+	}
+	var exec engine.Value
+	var origExec bool
+	if splitter != nil {
+		exec, origExec = e.fastExec(vm, splitter)
+		if origExec && c == vm.Intrinsic(engine.IntrinsicRegExp) {
+			fast = true
+			re = splitter.RegExpMatcher()
+		}
+	}
 	size := s.StringLength()
 	if size == 0 {
-		if exec, ok := e.fastExec(vm, splitter); ok {
+		switch {
+		case fast:
+			// The splitter is sticky and its lastIndex is 0, so it can only match at 0.
+			if caps := re.Find(&e.m, s.Str(), 0, vm); caps != nil {
+				e.legacy.recordLegacy(true, s, caps)
+				return engine.ObjectValue(vm.NewArray(nil))
+			}
+		case origExec:
 			if e.builtinExecRaw(vm, splitter, s) != nil {
 				return engine.ObjectValue(vm.NewArray(nil))
 			}
-		} else if !e.regExpExecWith(vm, splitter, s, exec).IsNull() {
-			return engine.ObjectValue(vm.NewArray(nil))
+		default:
+			if !e.regExpExecWith(vm, splitter, s, exec).IsNull() {
+				return engine.ObjectValue(vm.NewArray(nil))
+			}
 		}
 		return engine.ObjectValue(vm.NewArray([]engine.Value{engine.ObjectValue(s)}))
 	}
 	p, q := 0, 0
-	// When the splitter is a RegExp object that no code can see, and its exec is the original
-	// one, searching for the next match is the same as trying every position.
-	_, fast := e.fastExec(vm, splitter)
-	fast = fast && c == vm.Intrinsic(engine.IntrinsicRegExp)
 	for q < size {
 		var caps []int
 		var z engine.Value
 		var end int
 		if fast {
-			re := splitter.RegExpMatcher()
 			caps = re.Find(&e.m, s.Str(), q, vm)
 			if caps == nil || caps[0] >= size {
 				break
 			}
-			e.legacy.record(splitter, s, caps)
+			e.legacy.recordLegacy(true, s, caps)
 			q = caps[0]
 			end = caps[1]
 		} else {
