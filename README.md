@@ -50,7 +50,7 @@ is published yet.
 
 ## Status
 
-82.2% of [test262](https://github.com/tc39/test262) pass: 40,122 of 48,797 tests
+82.4% of [test262](https://github.com/tc39/test262) pass: 40,203 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -79,9 +79,10 @@ Implemented:
 - The locale-sensitive `String` methods use the root locale: `localeCompare` treats canonically
   equivalent strings as equal and otherwise compares code units
 - `BigInt`, with BigInt literals and arithmetic
-- `Promise`, including `Promise.any`, `Promise.withResolvers` and `Promise.try`; async functions,
-  async generators, `await` and `for await`; `Array.fromAsync`. The jobs run when the outermost
-  call from Go into the VM returns
+- `Promise`, including `Promise.any`, `Promise.allKeyed`, `Promise.allSettledKeyed`,
+  `Promise.withResolvers` and `Promise.try`; async functions, async generators, `await` and
+  `for await`; `Array.fromAsync`. The jobs run when the outermost call from Go into the VM
+  returns
 - `ArrayBuffer` (including resizable buffers, `transfer`, and immutable buffers with
   `transferToImmutable` and `sliceToImmutable`), the typed arrays including
   `Float16Array` and the `Uint8Array` base64 and hex methods, and `DataView`; elements are

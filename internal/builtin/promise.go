@@ -63,6 +63,106 @@ type promiseElements struct {
 	remaining int
 }
 
+// keyedPromiseElements are the keys and values of Promise.allKeyed and
+// Promise.allSettledKeyed with the count of the elements that are not settled yet.
+type keyedPromiseElements struct {
+	keys      []engine.PropKey
+	values    []engine.Value
+	remaining int
+}
+
+// resolveIfDone resolves pc with the result object when no element is left unsettled.
+func (e *keyedPromiseElements) resolveIfDone(vm *engine.VM, pc *engine.PromiseCapability) {
+	e.remaining--
+	if e.remaining == 0 {
+		vm.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(vm, e.keys, e.values)))
+	}
+}
+
+// createKeyedPromiseCombinatorResultObject implements CreateKeyedPromiseCombinatorResultObject.
+func createKeyedPromiseCombinatorResultObject(vm *engine.VM, keys []engine.PropKey, values []engine.Value) *engine.Object {
+	o := vm.NewObject(nil)
+	for i, k := range keys {
+		vm.CreateDataPropertyOrThrow(o, k, values[i])
+	}
+	return o
+}
+
+// promiseKeyedCombinator implements Promise.allKeyed, or Promise.allSettledKeyed when
+// settled is true.
+func promiseKeyedCombinator(vm *engine.VM, c, promises engine.Value, settled bool, name string) engine.Value {
+	pc := vm.NewPromiseCapability(c)
+	var resolve engine.Value
+	if !vm.IfAbruptRejectPromise(pc, func() {
+		resolve = getPromiseResolve(vm, c)
+	}) {
+		return pc.Promise()
+	}
+	if !promises.IsObject() {
+		vm.RejectCapability(pc, vm.NewError(engine.ErrorKindType, name+" called on non-object"))
+		return pc.Promise()
+	}
+	vm.IfAbruptRejectPromise(pc, func() {
+		performPromiseAllKeyed(vm, settled, promises.Object(), c, pc, resolve)
+	})
+	return pc.Promise()
+}
+
+// performPromiseAllKeyed implements PerformPromiseAllKeyed. settled selects the all-settled variant.
+func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object, c engine.Value, pc *engine.PromiseCapability, resolve engine.Value) {
+	keyThen := vm.Intern("then")
+	keyStatus := vm.Intern("status")
+	keyReason := vm.Intern("reason")
+	e := &keyedPromiseElements{
+		remaining: 1,
+	}
+	for _, k := range vm.OwnKeys(promises) {
+		d, ok := vm.GetOwnProperty(promises, k)
+		if !ok || d.Flags&engine.FlagEnumerable == 0 {
+			continue
+		}
+		v := vm.Get(promises, k)
+		i := len(e.values)
+		e.keys = append(e.keys, k)
+		e.values = append(e.values, engine.Undefined)
+		next := vm.CallValue(resolve, c, v)
+		called := false
+		var onFulfilled, onRejected engine.Value
+		if settled {
+			element := func(status string, key *engine.Object) engine.Value {
+				return engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+					if called {
+						return engine.Undefined
+					}
+					called = true
+					o := vm.NewObject(vm.ObjectProto)
+					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(keyStatus), vm.NewString(status))
+					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(key), arg(args, 0))
+					e.values[i] = engine.ObjectValue(o)
+					e.resolveIfDone(vm, pc)
+					return engine.Undefined
+				}))
+			}
+			onFulfilled = element("fulfilled", vm.K.Value)
+			onRejected = element("rejected", keyReason)
+		} else {
+			onFulfilled = engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+				if called {
+					return engine.Undefined
+				}
+				called = true
+				e.values[i] = arg(args, 0)
+				e.resolveIfDone(vm, pc)
+				return engine.Undefined
+			}))
+			onRejected = vm.CapabilityReject(pc)
+		}
+		e.remaining++
+		invoke(vm, next, keyThen, onFulfilled, onRejected)
+	}
+	e.resolveIfDone(vm, pc)
+}
+
 func initPromise(vm *engine.VM) {
 	proto := vm.PromiseProto
 	ctor := constructor(vm, "Promise", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -153,6 +253,14 @@ func initPromise(vm *engine.VM) {
 				vm.ResolveCapability(pc, engine.ObjectValue(vm.NewArray(slices.Clone(e.values))))
 			}
 		})
+	})
+
+	method(vm, ctor, "allKeyed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return promiseKeyedCombinator(vm, this, arg(args, 0), false, "Promise.allKeyed")
+	})
+
+	method(vm, ctor, "allSettledKeyed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return promiseKeyedCombinator(vm, this, arg(args, 0), true, "Promise.allSettledKeyed")
 	})
 
 	method(vm, ctor, "any", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
