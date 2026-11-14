@@ -79,7 +79,8 @@ Implemented:
 
 Notes on behavior:
 
-- Promise jobs run when the outermost call from Go into the VM returns
+- Promise jobs run when the outermost call from Go into the VM returns. Unlike QuickJS, where the
+  host drains them with `JS_ExecutePendingJob`, there is no way to run them later
 - Promise rejections that nothing handled by then are reported to `VM.SetUnhandledRejection`,
   the way HTML fires `unhandledrejection`
 - Typed array elements are stored in little-endian byte order on every platform
