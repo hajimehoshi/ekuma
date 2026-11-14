@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
@@ -1057,39 +1058,42 @@ func TestAtomicsNotifyWaitAsync(t *testing.T) {
 // TestAtomicsWaitAsyncTimeout checks that a finite timeout resolves the promise with
 // "timed-out" when the jobs run after it expired.
 func TestAtomicsWaitAsyncTimeout(t *testing.T) {
-	var vm ekuma.VM
-	_, err := vm.RunScript(t.Context(), "wait", `
-		var log = [];
-		var ia = new Int32Array(new SharedArrayBuffer(16));
-		Atomics.waitAsync(ia, 0, 0, 1).value.then(r => log.push("short " + r));
-		Atomics.waitAsync(ia, 0, 0).value.then(r => log.push("long " + r));
-	`)
-	if err != nil {
-		t.Fatalf("RunScript: %v", err)
-	}
-	time.Sleep(10 * time.Millisecond)
-	v, err := vm.RunScript(t.Context(), "expire", `log.join()`)
-	if err != nil {
-		t.Fatalf("RunScript: %v", err)
-	}
-	if got, want := v.String(), ""; got != want {
-		t.Errorf("log before the jobs ran: got %q, want %q", got, want)
-	}
-	// The timed-out waiter is no longer in the list.
-	v, err = vm.RunScript(t.Context(), "notify", `String(Atomics.notify(ia, 0))`)
-	if err != nil {
-		t.Fatalf("RunScript: %v", err)
-	}
-	if got, want := v.String(), "1"; got != want {
-		t.Errorf("notify: got %q, want %q", got, want)
-	}
-	v, err = vm.RunScript(t.Context(), "log", `log.join()`)
-	if err != nil {
-		t.Fatalf("RunScript: %v", err)
-	}
-	if got, want := v.String(), "short timed-out,long ok"; got != want {
-		t.Errorf("log: got %q, want %q", got, want)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		_, err := vm.RunScript(t.Context(), "wait", `
+			var log = [];
+			var ia = new Int32Array(new SharedArrayBuffer(16));
+			Atomics.waitAsync(ia, 0, 0, 1).value.then(r => log.push("short " + r));
+			Atomics.waitAsync(ia, 0, 0).value.then(r => log.push("long " + r));
+		`)
+		if err != nil {
+			t.Fatalf("RunScript: %v", err)
+		}
+		// The fake clock of the bubble reaches the deadline.
+		time.Sleep(time.Millisecond)
+		v, err := vm.RunScript(t.Context(), "expire", `log.join()`)
+		if err != nil {
+			t.Fatalf("RunScript: %v", err)
+		}
+		if got, want := v.String(), ""; got != want {
+			t.Errorf("log before the jobs ran: got %q, want %q", got, want)
+		}
+		// The timed-out waiter is no longer in the list.
+		v, err = vm.RunScript(t.Context(), "notify", `String(Atomics.notify(ia, 0))`)
+		if err != nil {
+			t.Fatalf("RunScript: %v", err)
+		}
+		if got, want := v.String(), "1"; got != want {
+			t.Errorf("notify: got %q, want %q", got, want)
+		}
+		v, err = vm.RunScript(t.Context(), "log", `log.join()`)
+		if err != nil {
+			t.Fatalf("RunScript: %v", err)
+		}
+		if got, want := v.String(), "short timed-out,long ok"; got != want {
+			t.Errorf("log: got %q, want %q", got, want)
+		}
+	})
 }
 
 // zoneType is a local time type of a time zone.
