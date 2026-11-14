@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -608,6 +609,38 @@ func TestValues(t *testing.T) {
 	if v, err := global.Get("lexical"); err != nil || !v.IsUndefined() {
 		t.Errorf("Get(lexical) = %v, %v, want undefined", v, err)
 	}
+}
+
+func TestBigInt(t *testing.T) {
+	vm := ekuma.NewVM()
+	for _, want := range []string{"1180591620717411303425", "-36893488147419103232"} {
+		x, _ := new(big.Int).SetString(want, 10)
+		v := vm.ValueOf(x)
+		x.SetInt64(0)
+		js, err := vm.RunScript(t.Context(), "bigint", want+"n")
+		if err != nil {
+			t.Fatalf("RunScript: %v", err)
+		}
+		if !v.Equal(js) {
+			t.Errorf("ValueOf(%s) is not equal to %sn", want, want)
+		}
+		got := v.BigInt()
+		if got.String() != want {
+			t.Errorf("BigInt() = %v, want %s", got, want)
+		}
+		got.SetInt64(0)
+		if got := v.BigInt(); got.String() != want {
+			t.Errorf("BigInt() after modifying a previous result = %v, want %s", got, want)
+		}
+	}
+
+	defer func() {
+		ve, ok := recover().(*ekuma.ValueError)
+		if !ok || ve.Method != "Value.BigInt" || ve.Type != ekuma.TypeNumber {
+			t.Errorf("BigInt() of a number panicked with %v, want a *ekuma.ValueError", ve)
+		}
+	}()
+	vm.ValueOf(1).BigInt()
 }
 
 func TestValueString(t *testing.T) {

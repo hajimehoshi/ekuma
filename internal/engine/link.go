@@ -74,7 +74,7 @@ func (vm *VM) link(f *bytecode.Func) *funcProto {
 			p.consts[i] = Value{o: vm.Intern(c.Str)}
 		case bytecode.ConstBigInt:
 			n, _ := new(big.Int).SetString(c.Str, 10)
-			p.consts[i] = vm.newBigInt(n)
+			p.consts[i] = vm.NewBigInt(n)
 		}
 	}
 	for i, k := range f.Keys {

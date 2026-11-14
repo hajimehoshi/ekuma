@@ -129,7 +129,7 @@ type objectMeta struct {
 	weak weakEntries
 }
 
-// BigInt returns the content of the BigInt o.
+// BigInt returns the content of the BigInt o, which must not be modified.
 func (o *Object) BigInt() *big.Int {
 	return o.ext.(*big.Int)
 }

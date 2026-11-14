@@ -16,6 +16,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"slices"
 	"strconv"
 
@@ -201,6 +202,18 @@ func (v Value) Int() int {
 		})
 	}
 	return int(v.n)
+}
+
+// BigInt returns the BigInt v as a new *big.Int. It panics with a *ValueError when v is not a BigInt.
+func (v Value) BigInt() *big.Int {
+	e := v.engine()
+	if !e.IsBigInt() {
+		panic(&ValueError{
+			Method: "Value.BigInt",
+			Type:   v.Type(),
+		})
+	}
+	return new(big.Int).Set(e.Object().BigInt())
 }
 
 // String returns the string v as UTF-8, with lone surrogates replaced by U+FFFD.
@@ -403,6 +416,7 @@ func (vm *VM) Global() Value {
 //	| nil                    | null                   |
 //	| bool                   | boolean                |
 //	| integers and floats    | number                 |
+//	| *big.Int               | bigint                 |
 //	| string                 | string                 |
 //	| []any                  | new array              |
 //	| map[string]any         | new object             |
@@ -449,6 +463,8 @@ func (vm *VM) valueOf(x any) engine.Value {
 		return engine.Number(float64(x))
 	case float64:
 		return engine.Number(x)
+	case *big.Int:
+		return vm.e.NewBigInt(new(big.Int).Set(x))
 	case string:
 		return vm.e.StringFromGo(x)
 	case []any:

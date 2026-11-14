@@ -211,7 +211,8 @@ func (vm *VM) RequireObjectCoercible(v Value, what string) {
 	}
 }
 
-func (vm *VM) newBigInt(i *big.Int) Value {
+// NewBigInt returns the BigInt i, which must not be modified afterward.
+func (vm *VM) NewBigInt(i *big.Int) Value {
 	return Value{
 		o: &Object{
 			kind: kindBigInt,
@@ -392,7 +393,7 @@ func (vm *VM) addValues(a, b Value) Value {
 	if a.o == nil || b.o == nil {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	return vm.newBigInt(new(big.Int).Add(a.o.BigInt(), b.o.BigInt()))
+	return vm.NewBigInt(new(big.Int).Add(a.o.BigInt(), b.o.BigInt()))
 }
 
 // MaxStringLength is the largest length a string may have, in bytes.

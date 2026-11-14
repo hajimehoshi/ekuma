@@ -485,7 +485,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	default:
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	return vm.newBigInt(r)
+	return vm.NewBigInt(r)
 }
 
 func (vm *VM) negate(x Value) Value {
@@ -493,7 +493,7 @@ func (vm *VM) negate(x Value) Value {
 	if x.o == nil {
 		return Value{n: -x.n}
 	}
-	return vm.newBigInt(new(big.Int).Neg(x.o.BigInt()))
+	return vm.NewBigInt(new(big.Int).Neg(x.o.BigInt()))
 }
 
 func (vm *VM) bitNot(x Value) Value {
@@ -501,7 +501,7 @@ func (vm *VM) bitNot(x Value) Value {
 	if x.o == nil {
 		return Value{n: float64(^numconv.ToInt32(x.n))}
 	}
-	return vm.newBigInt(new(big.Int).Not(x.o.BigInt()))
+	return vm.NewBigInt(new(big.Int).Not(x.o.BigInt()))
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
@@ -510,7 +510,7 @@ func (vm *VM) step(x Value, d int64) Value {
 	if x.o == nil {
 		return Value{n: x.n + float64(d)}
 	}
-	return vm.newBigInt(new(big.Int).Add(x.o.BigInt(), big.NewInt(d)))
+	return vm.NewBigInt(new(big.Int).Add(x.o.BigInt(), big.NewInt(d)))
 }
 
 // classElement is an element that the constructor of a class adds to every instance.
