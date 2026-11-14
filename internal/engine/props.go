@@ -649,7 +649,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 		}
 		return nil, false
 	}
-	if o.class == classProxy || o.flags&objExotic != 0 && o.fn == nil {
+	if o.class == classProxy || o.class == classTypedArray && isCanonicalNumericString(key) {
 		return nil, vm.setProp(o, PropKey{key: key}, val, v)
 	}
 	if o.flags&objExotic != 0 {
