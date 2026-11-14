@@ -326,3 +326,53 @@ func BenchmarkTypedArray(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkSparseArray measures the array methods that skip holes on a sparse array of length
+// 100000 that has 10 elements. One iteration is one call of the method.
+func BenchmarkSparseArray(b *testing.B) {
+	for _, method := range []string{"every", "forEach", "reduce", "indexOf", "lastIndexOf"} {
+		b.Run(method, func(b *testing.B) {
+			ctx := b.Context()
+			vm := ekuma.NewVM()
+			if _, err := vm.RunScript(ctx, "sparse.js", sparseArrayBenchJS); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", method, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
+const sparseArrayBenchJS = `
+var a = [];
+for (var i = 0; i < 10; i++) {
+	a[i * 10000 + 5000] = i;
+}
+a.length = 100000;
+function run(method, n) {
+	var s = 0;
+	for (var i = 0; i < n; i++) {
+		switch (method) {
+		case "every":
+			if (a.every(function (x) { return x >= 0; })) s++;
+			break;
+		case "forEach":
+			a.forEach(function (x) { s += x; });
+			break;
+		case "reduce":
+			s += a.reduce(function (acc, x) { return acc + x; }, 0);
+			break;
+		case "indexOf":
+			s += a.indexOf(-1);
+			break;
+		case "lastIndexOf":
+			s += a.lastIndexOf(-1);
+			break;
+		}
+	}
+	return s;
+}
+`

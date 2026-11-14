@@ -4,6 +4,8 @@
 package engine
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
@@ -207,4 +209,91 @@ func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	dst.elems = append(dst.elems, src.elems...)
 	dst.length = uint32(len(dst.elems))
 	return true
+}
+
+// SkipHoles returns the least index j with i <= j <= end such that neither o nor its prototypes
+// have a property with an integer index from i to j-1. It returns i when that is not known
+// without running JavaScript.
+func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
+	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !vm.holesAreAbsent(o) {
+		return i
+	}
+	j := end
+	for k := i; k < min(end, int64(len(o.elems))); k++ {
+		if !o.elems[k].isHole() {
+			j = k
+			break
+		}
+	}
+	if o.flags&objSparse != 0 {
+		idxs := vm.sparseIndexList(o)
+		if p, _ := slices.BinarySearch(idxs, uint32(i)); p < len(idxs) && int64(idxs[p]) < j {
+			j = int64(idxs[p])
+		}
+	}
+	return j
+}
+
+// SkipHolesBackward returns the greatest index j with end <= j <= i such that neither o nor its
+// prototypes have a property with an integer index from j+1 to i. It returns i when that is not
+// known without running JavaScript.
+func (vm *VM) SkipHolesBackward(o *Object, i, end int64) int64 {
+	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !vm.holesAreAbsent(o) {
+		return i
+	}
+	j := max(end, -1)
+	for k := min(i, int64(len(o.elems))-1); k > j; k-- {
+		if !o.elems[k].isHole() {
+			j = k
+			break
+		}
+	}
+	if o.flags&objSparse != 0 {
+		idxs := vm.sparseIndexList(o)
+		p, found := slices.BinarySearch(idxs, uint32(i))
+		if found {
+			p++
+		}
+		if p > 0 && int64(idxs[p-1]) > j {
+			j = int64(idxs[p-1])
+		}
+	}
+	return max(j, end)
+}
+
+// holesAreAbsent reports whether an integer index that o does not store is absent from o
+// and its prototypes, and whether finding that out runs no JavaScript.
+func (vm *VM) holesAreAbsent(o *Object) bool {
+	if o.kind != kindArray || o.flags&objExotic != 0 {
+		return false
+	}
+	for h := o.shape.proto; h != nil; h = h.shape.proto {
+		if len(h.elems) != 0 || h.flags&(objSparse|objExotic) != 0 || h.class != classObject && h.class != classArray && h.class != classFunction {
+			return false
+		}
+	}
+	return true
+}
+
+// sparseIndexList returns the array indices that o stores in its shape, in ascending order.
+// The result must not be modified.
+func (vm *VM) sparseIndexList(o *Object) []uint32 {
+	s := o.shape
+	if vm.sparseIndexShape == s && vm.sparseIndexCount == s.count {
+		return vm.sparseIndices
+	}
+	idxs := vm.sparseIndices[:0]
+	for _, k := range s.keys() {
+		if k.kind != kindString {
+			continue
+		}
+		if i, ok := stringIndex(k.str); ok {
+			idxs = append(idxs, i)
+		}
+	}
+	slices.Sort(idxs)
+	vm.sparseIndexShape = s
+	vm.sparseIndexCount = s.count
+	vm.sparseIndices = idxs
+	return idxs
 }

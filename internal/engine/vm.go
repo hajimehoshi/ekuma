@@ -193,6 +193,13 @@ type VM struct {
 	arrayIterPlain   bool
 	arrayIterChecked bool
 
+	// sparseIndexShape and sparseIndexCount identify the shape whose array index keys
+	// sparseIndices holds in ascending order. A private shape only grows in place, so its
+	// count tells whether the keys changed.
+	sparseIndexShape *shape
+	sparseIndexCount int32
+	sparseIndices    []uint32
+
 	// fnCall, fnApply and fnEval are the original Function.prototype.call, Function.prototype.apply and eval.
 	FnCall, FnApply, FnEval, FnHasInstance *Object
 

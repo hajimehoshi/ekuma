@@ -37,6 +37,15 @@ func hasAt(vm *engine.VM, o *engine.Object, i int64) bool {
 	return vm.HasProperty(o, bigKey(vm, i))
 }
 
+// skipHoles returns the next index from i toward end, which is excluded, that may have a property
+// on o, or end when there is none.
+func skipHoles(vm *engine.VM, o *engine.Object, i, end int64, backward bool) int64 {
+	if backward {
+		return vm.SkipHolesBackward(o, i, end)
+	}
+	return vm.SkipHoles(o, i, end)
+}
+
 func putAt(vm *engine.VM, o *engine.Object, i int64, v engine.Value) {
 	if o.SetElement(i, v) {
 		return
@@ -288,13 +297,15 @@ func initArray(vm *engine.VM) {
 			return engine.ObjectValue(a)
 		}
 		a := arraySpeciesCreate(vm, o, max(end-start, 0))
-		j := int64(0)
-		for i := start; i < end; i, j = i+1, j+1 {
+		for i := start; i < end; i++ {
+			if i = vm.SkipHoles(o, i, end); i == end {
+				break
+			}
 			if hasAt(vm, o, i) {
-				vm.CreateDataPropertyOrThrow(a, bigKey(vm, j), getAt(vm, o, i))
+				vm.CreateDataPropertyOrThrow(a, bigKey(vm, i-start), getAt(vm, o, i))
 			}
 		}
-		setLength(vm, a, j)
+		setLength(vm, a, max(end-start, 0))
 		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "splice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -381,12 +392,15 @@ func initArray(vm *engine.VM) {
 				n += l
 				continue
 			}
-			for i := range l {
-				if hasAt(vm, item.Object(), i) {
-					vm.CreateDataPropertyOrThrow(a, bigKey(vm, n), getAt(vm, item.Object(), i))
+			for i := int64(0); i < l; i++ {
+				if i = vm.SkipHoles(item.Object(), i, l); i == l {
+					break
 				}
-				n++
+				if hasAt(vm, item.Object(), i) {
+					vm.CreateDataPropertyOrThrow(a, bigKey(vm, n+i), getAt(vm, item.Object(), i))
+				}
 			}
+			n += l
 		}
 		setLength(vm, a, n)
 		return engine.ObjectValue(a)
@@ -464,6 +478,15 @@ func initArray(vm *engine.VM) {
 					}
 				}
 				for i := from; i >= 0; i-- {
+					if e, ok := o.Element(i); ok {
+						if eq(e, target) {
+							return engine.Number(float64(i))
+						}
+						continue
+					}
+					if i = vm.SkipHolesBackward(o, i, -1); i < 0 {
+						break
+					}
 					if hasAt(vm, o, i) && eq(getAt(vm, o, i), target) {
 						return engine.Number(float64(i))
 					}
@@ -483,6 +506,9 @@ func initArray(vm *engine.VM) {
 						return engine.Number(float64(i))
 					}
 					continue
+				}
+				if i = vm.SkipHoles(o, i, n); i == n {
+					break
 				}
 				if hasAt(vm, o, i) && eq(getAt(vm, o, i), target) {
 					return engine.Number(float64(i))
@@ -508,9 +534,16 @@ func initArray(vm *engine.VM) {
 			cb := callback(vm, args, name)
 			thisArg := arg(args, 1)
 			return run(vm, o, n, func(s step) {
-				for i := range n {
-					if skipHoles && !hasAt(vm, o, i) {
-						continue
+				for i := int64(0); i < n; i++ {
+					if skipHoles {
+						if _, ok := o.Element(i); !ok {
+							if i = vm.SkipHoles(o, i, n); i == n {
+								break
+							}
+							if !hasAt(vm, o, i) {
+								continue
+							}
+						}
 					}
 					v := getAt(vm, o, i)
 					r := vm.Call(cb, thisArg, v, engine.Number(float64(i)), engine.ObjectValue(o))
@@ -623,6 +656,9 @@ func initArray(vm *engine.VM) {
 			} else {
 				found := false
 				for ; i != end; i += d {
+					if i = skipHoles(vm, o, i, end, right); i == end {
+						break
+					}
 					if hasAt(vm, o, i) {
 						acc = getAt(vm, o, i)
 						found = true
@@ -635,9 +671,15 @@ func initArray(vm *engine.VM) {
 				}
 			}
 			for ; i != end; i += d {
-				if hasAt(vm, o, i) {
-					acc = vm.Call(cb, engine.Undefined, acc, getAt(vm, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
+				if _, ok := o.Element(i); !ok {
+					if i = skipHoles(vm, o, i, end, right); i == end {
+						break
+					}
+					if !hasAt(vm, o, i) {
+						continue
+					}
 				}
+				acc = vm.Call(cb, engine.Undefined, acc, getAt(vm, o, i), engine.Number(float64(i)), engine.ObjectValue(o))
 			}
 			return acc
 		})
@@ -679,7 +721,10 @@ func initArray(vm *engine.VM) {
 		n := vm.LengthOfArrayLike(o)
 		var vals []engine.Value
 		undefs := int64(0)
-		for i := range n {
+		for i := int64(0); i < n; i++ {
+			if i = vm.SkipHoles(o, i, n); i == n {
+				break
+			}
 			if !hasAt(vm, o, i) {
 				continue
 			}
@@ -701,6 +746,9 @@ func initArray(vm *engine.VM) {
 			i++
 		}
 		for ; i < n; i++ {
+			if i = vm.SkipHoles(o, i, n); i == n {
+				break
+			}
 			if hasAt(vm, o, i) {
 				deleteAt(vm, o, i)
 			}
@@ -710,7 +758,10 @@ func initArray(vm *engine.VM) {
 	// flatten implements FlattenIntoArray for the first l elements of src without a mapper function.
 	var flatten func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64)
 	flatten = func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
-		for i := range l {
+		for i := int64(0); i < l; i++ {
+			if i = vm.SkipHoles(src, i, l); i == l {
+				break
+			}
 			if !hasAt(vm, src, i) {
 				continue
 			}
@@ -741,7 +792,10 @@ func initArray(vm *engine.VM) {
 		cb := callback(vm, args, "flatMap")
 		a := arraySpeciesCreate(vm, o, 0)
 		var n int64
-		for i := range l {
+		for i := int64(0); i < l; i++ {
+			if i = vm.SkipHoles(o, i, l); i == l {
+				break
+			}
 			if !hasAt(vm, o, i) {
 				continue
 			}
