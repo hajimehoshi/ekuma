@@ -223,13 +223,50 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		}
 	}
 
+	// A named function expression can refer to itself by its name. With a parameter list that
+	// is not simple, the name is visible to the parameter code, and the body's declarations
+	// live in a scope of their own that the parameter code cannot see.
+	selfName := node.Name != nil && c.isExpression[node]
+	paramScope := f.scope
+	var paramNames map[string]bool
+	if !node.SimpleParams {
+		paramNames = map[string]bool{}
+		for _, p := range node.Params {
+			patternNames(p, func(id *ast.Identifier) {
+				paramNames[id.Name] = true
+			})
+		}
+		if selfName {
+			selfName = false
+			if n := node.Name.Name; !paramNames[n] && n != "arguments" {
+				self := f.declare(n, bindFuncName)
+				f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
+			}
+		}
+		// The registers of the body's declarations are reserved before the parameter code
+		// so that they start cleared.
+		f.varScope = &scope{
+			parent:   paramScope,
+			vars:     map[string]*binding{},
+			firstReg: f.top,
+			withs:    f.withDepth,
+		}
+		f.scope = f.varScope
+	}
+
 	// The variables and functions of the body.
 	funcs := map[string]*ast.Function{}
 	var funcOrder []string
 	var lexicals []*binding
 	for _, d := range node.Scope.Decls {
 		switch d.Kind {
-		case ast.DeclVar, ast.DeclAnnexBVar:
+		case ast.DeclAnnexBVar:
+			// A block-level function is not hoisted over a parameter of the same name.
+			if paramNames[d.Name] {
+				break
+			}
+			f.declare(d.Name, bindVar)
+		case ast.DeclVar:
 			f.declare(d.Name, bindVar)
 		case ast.DeclFunction:
 			if _, ok := funcs[d.Name]; !ok {
@@ -253,6 +290,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	// Parameters that are patterns or have defaults bind after the registers above are
 	// reserved, because their code can contain closures that capture any of them.
 	if !node.SimpleParams {
+		f.scope = paramScope
 		for _, p := range node.Params {
 			switch p := p.(type) {
 			case *ast.Identifier:
@@ -292,8 +330,25 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		f.destructure(rest.Target, t, patInit)
 		f.free(t)
 	}
-	// A named function expression can refer to itself by its name.
-	if node.Name != nil && c.isExpression[node] {
+	if !node.SimpleParams {
+		// A variable of the body starts with the value of the parameter of the same name.
+		f.scope = f.varScope
+		moved := map[string]bool{}
+		for _, d := range node.Scope.Decls {
+			if d.Kind != ast.DeclVar && d.Kind != ast.DeclAnnexBVar || funcs[d.Name] != nil || moved[d.Name] {
+				continue
+			}
+			vb, ok := f.varScope.vars[d.Name]
+			if !ok {
+				continue
+			}
+			if pb, ok := paramScope.vars[d.Name]; ok && pb.kind == bindVar {
+				f.emit(bytecode.OpMove, vb.reg, pb.reg, 0)
+				moved[d.Name] = true
+			}
+		}
+	}
+	if selfName {
 		if _, shadowed := f.scope.vars[node.Name.Name]; !shadowed {
 			self := f.declare(node.Name.Name, bindFuncName)
 			f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)

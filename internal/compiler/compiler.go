@@ -157,6 +157,9 @@ type fn struct {
 
 	scope *scope
 
+	// varScope is the scope of the var and function declarations of the function or script.
+	varScope *scope
+
 	// top is the first register that is not in use.
 	top int32
 
@@ -239,6 +242,7 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 		completion: -1,
 	}
 	f.scope = &scope{vars: map[string]*binding{}}
+	f.varScope = f.scope
 	return f
 }
 

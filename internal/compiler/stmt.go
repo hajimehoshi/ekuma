@@ -406,11 +406,7 @@ func (f *fn) annexBHoist(s *ast.FuncDecl) {
 	if inner == nil {
 		return
 	}
-	root := f.scope
-	for root.parent != nil {
-		root = root.parent
-	}
-	if outer, ok := root.vars[name]; ok {
+	if outer, ok := f.varScope.vars[name]; ok {
 		if outer != inner {
 			f.emit(bytecode.OpMove, outer.reg, inner.reg, 0)
 		}
