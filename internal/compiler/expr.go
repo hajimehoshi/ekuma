@@ -461,7 +461,7 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 			if arg.Computed {
 				f.effect(arg.Property)
 			}
-			f.emit(bytecode.OpThrowError, errReference, f.constStr("unsupported reference to 'super'"), 0)
+			f.emit(bytecode.OpThrowError, bytecode.ThrowReferenceError, f.constStr("unsupported reference to 'super'"), 0)
 			return
 		}
 		obj := f.operand(arg.Object, arg.Property)
@@ -506,13 +506,6 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 		f.emit(bytecode.OpLoadTrue, dst, 0, 0)
 	}
 }
-
-// Error kinds of OpThrowError. They match the error kinds of the VM.
-const (
-	errType      = 1
-	errReference = 3
-	errSyntax    = 4
-)
 
 // update compiles ++ and --. dst is -1 when the value is not needed.
 func (f *fn) update(n *ast.UpdateExpr, dst int32) {
@@ -1118,7 +1111,7 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 				v := f.newReg()
 				f.expr(p.Value, v)
 				if isAnonymousFunction(p.Value) {
-					f.emit(bytecode.OpSetFuncName, v, k, 0)
+					f.emit(bytecode.OpSetFuncName, v, k, bytecode.NamePrefixNone)
 				}
 				f.emit(bytecode.OpDefineField, obj, k, v)
 			}
@@ -1138,13 +1131,13 @@ func (f *fn) method(obj int32, key ast.Expr, computed bool, fnNode *ast.Function
 	if p, ok := key.(*ast.PrivateName); ok && !computed {
 		name, static = "#"+p.Name, true
 	}
-	prefix := int32(0)
+	prefix := int32(bytecode.NamePrefixNone)
 	switch kind {
 	case ast.PropertyGet:
-		prefix = 1
+		prefix = bytecode.NamePrefixGet
 		name = "get " + name
 	case ast.PropertySet:
-		prefix = 2
+		prefix = bytecode.NamePrefixSet
 		name = "set " + name
 	}
 	f.closure(fnNode, v, name)
@@ -1332,18 +1325,18 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	// it and it+1 hold the iterator and its next method.
 	it := f.newRegs(2)
 	src := f.exprAny(n.Arg)
-	f.emit(bytecode.OpGetIterator, it, src, 0)
+	f.emit(bytecode.OpGetIterator, it, src, bytecode.IterSyncNext)
 
 	// recv holds the value that was sent in, and recv+1 whether the called method exists.
 	recv := f.newRegs(2)
 	mode := f.newReg()
 	res := f.newReg()
 	f.emit(bytecode.OpLoadUndef, recv, 0, 0)
-	f.emit(bytecode.OpLoadInt, mode, 0, 0)
+	f.emit(bytecode.OpLoadInt, mode, bytecode.ResumeNext, 0)
 
 	loop := f.pc()
-	onThrow := f.emit(bytecode.OpJumpIfInt, 0, mode, 1)
-	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, 2)
+	onThrow := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeThrow)
+	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
 
 	// next: res = next.call(it, recv)
 	callBase := f.newRegs(3)
@@ -1360,7 +1353,7 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
 	f.emit(bytecode.OpIterClose, it, 0, 0)
-	f.emit(bytecode.OpThrowError, errType, f.constStr("the iterator does not provide a 'throw' method"), 0)
+	f.emit(bytecode.OpThrowError, bytecode.ThrowTypeError, f.constStr("the iterator does not provide a 'throw' method"), 0)
 	f.patch(hasThrow)
 	f.emit(bytecode.OpMove, res, recv, 0)
 	step2 := f.jump()
@@ -1396,18 +1389,18 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 	// it and it+1 hold the iterator and its next method.
 	it := f.newRegs(2)
 	src := f.exprAny(n.Arg)
-	f.emit(bytecode.OpGetIterator, it, src, 1)
+	f.emit(bytecode.OpGetIterator, it, src, bytecode.IterAsync)
 
 	// recv holds the value that was sent in, and recv+1 whether the called method exists.
 	recv := f.newRegs(2)
 	mode := f.newReg()
 	res := f.newReg()
 	f.emit(bytecode.OpLoadUndef, recv, 0, 0)
-	f.emit(bytecode.OpLoadInt, mode, 0, 0)
+	f.emit(bytecode.OpLoadInt, mode, bytecode.ResumeNext, 0)
 
 	loop := f.pc()
-	onThrow := f.emit(bytecode.OpJumpIfInt, 0, mode, 1)
-	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, 2)
+	onThrow := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeThrow)
+	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
 
 	// next: res = await next.call(it, recv)
 	callBase := f.newRegs(3)
@@ -1424,7 +1417,7 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
 	f.asyncIterClose(it)
-	f.emit(bytecode.OpThrowError, errType, f.constStr("the iterator does not provide a 'throw' method"), 0)
+	f.emit(bytecode.OpThrowError, bytecode.ThrowTypeError, f.constStr("the iterator does not provide a 'throw' method"), 0)
 	f.patch(hasThrow)
 	f.emit(bytecode.OpAwait, res, recv, 0)
 	step2 := f.jump()

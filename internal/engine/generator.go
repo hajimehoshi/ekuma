@@ -3,6 +3,10 @@
 
 package engine
 
+import (
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
+)
+
 type genState uint8
 
 const (
@@ -16,9 +20,9 @@ const (
 type ResumeMode uint8
 
 const (
-	ResumeNext ResumeMode = iota
-	ResumeThrow
-	ResumeReturn
+	ResumeNext   ResumeMode = bytecode.ResumeNext
+	ResumeThrow  ResumeMode = bytecode.ResumeThrow
+	ResumeReturn ResumeMode = bytecode.ResumeReturn
 )
 
 // closeSignal is thrown through a suspended generator to make it return:

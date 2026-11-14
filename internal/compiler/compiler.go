@@ -660,7 +660,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 	for _, d := range prog.Scope.Decls {
 		switch d.Kind {
 		case ast.DeclLet, ast.DeclConst, ast.DeclClass:
-			f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), 1, 0)
+			f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), bytecode.DeclLexical, 0)
 		case ast.DeclFunction:
 			if _, ok := funcs[d.Name]; !ok {
 				funcOrder = append(funcOrder, d.Name)
@@ -669,12 +669,12 @@ func (c *compiler) compileScript() *bytecode.Func {
 		}
 	}
 	for _, name := range funcOrder {
-		f.emit(bytecode.OpCheckGlobalDecl, f.key(name), 2, 0)
+		f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclFunction, 0)
 	}
 	for _, d := range prog.Scope.Decls {
 		if d.Kind == ast.DeclVar || d.Kind == ast.DeclAnnexBVar {
 			if _, ok := funcs[d.Name]; !ok {
-				f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), 0, 0)
+				f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), bytecode.DeclVar, 0)
 			}
 		}
 	}

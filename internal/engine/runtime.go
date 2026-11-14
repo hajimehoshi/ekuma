@@ -135,18 +135,18 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 }
 
 // checkGlobalDecl throws when declaring key at the top level of a script would conflict
-// with an existing declaration. what is 0 for var, 1 for a lexical declaration and 2 for a function.
+// with an existing declaration. what is a bytecode Decl kind.
 func (vm *VM) checkGlobalDecl(key *Object, what int) {
 	_, lex := vm.globalLex.shape.lookup(key)
 	switch what {
-	case 0:
+	case bytecode.DeclVar:
 		if lex {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
 		if !vm.HasOwnProperty(vm.Global, PropKey{key: key}) && !vm.IsExtensible(vm.Global) {
 			vm.ThrowTypeError("cannot declare global variable '" + key.str + "'")
 		}
-	case 1:
+	case bytecode.DeclLexical:
 		if lex {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
@@ -154,7 +154,7 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 		if d, ok := vm.GetOwnProperty(vm.Global, PropKey{key: key}); ok && d.Flags&FlagConfigurable == 0 {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
-	case 2:
+	case bytecode.DeclFunction:
 		if lex {
 			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
 		}
@@ -526,24 +526,15 @@ type classElement struct {
 	val  *Object
 }
 
-// Kinds of class elements. The compiler emits the same numbers.
-const (
-	elemField = iota
-	elemMethod
-	elemGetter
-	elemSetter
-	elemStatic = 8
-)
-
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
 // For a field, val is the function that computes the initial value, or nil.
 func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
 	e := classElement{
-		kind: kind &^ elemStatic,
+		kind: kind &^ bytecode.ElemStatic,
 		key:  key,
 		val:  val,
 	}
-	if kind&elemStatic != 0 {
+	if kind&bytecode.ElemStatic != 0 {
 		vm.defineClassElement(Value{o: ctor}, e)
 		return
 	}
@@ -554,12 +545,12 @@ func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
 func (vm *VM) initFields(ctor *Object, this Value) {
 	// Private methods and accessors exist before any field initializer runs.
 	for _, e := range ctor.fn.fields {
-		if e.kind != elemField {
+		if e.kind != bytecode.ElemField {
 			vm.defineClassElement(this, e)
 		}
 	}
 	for _, e := range ctor.fn.fields {
-		if e.kind == elemField {
+		if e.kind == bytecode.ElemField {
 			vm.defineClassElement(this, e)
 		}
 	}
@@ -568,7 +559,7 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 func (vm *VM) defineClassElement(this Value, e classElement) {
 	private := e.key.o != nil && e.key.o.class == classPrivateName
 	switch e.kind {
-	case elemField:
+	case bytecode.ElemField:
 		v := Undefined
 		if e.val != nil {
 			v = vm.Call(e.val, this)
@@ -578,23 +569,23 @@ func (vm *VM) defineClassElement(this Value, e classElement) {
 			return
 		}
 		vm.CreateDataPropertyOrThrow(this.o, vm.ToPropertyKey(e.key), v)
-	case elemMethod:
+	case bytecode.ElemMethod:
 		vm.definePrivate(this, e.key.o, Value{o: e.val})
-	case elemGetter, elemSetter:
+	case bytecode.ElemGetter, bytecode.ElemSetter:
 		if this.IsObject() {
 			if p, ok := this.o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
 				a := this.o.slots[p.slot].accessor()
-				if e.kind == elemGetter && a.getter == nil {
+				if e.kind == bytecode.ElemGetter && a.getter == nil {
 					a.getter = e.val
 					return
 				}
-				if e.kind == elemSetter && a.setter == nil {
+				if e.kind == bytecode.ElemSetter && a.setter == nil {
 					a.setter = e.val
 					return
 				}
 			}
 		}
-		if e.kind == elemGetter {
+		if e.kind == bytecode.ElemGetter {
 			vm.definePrivate(this, e.key.o, newAccessor(e.val, nil))
 		} else {
 			vm.definePrivate(this, e.key.o, newAccessor(nil, e.val))
@@ -655,13 +646,6 @@ func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable
 	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), d)
 }
 
-// Prefix kinds of SetFunctionName.
-const (
-	namePlain = iota
-	nameGet
-	nameSet
-)
-
 // setFuncName implements SetFunctionName for the function or class f, which must be anonymous.
 func (vm *VM) setFuncName(f, k Value, prefix int) {
 	if !f.IsCallable() {
@@ -681,9 +665,9 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 		name = vm.ToString(k)
 	}
 	switch prefix {
-	case nameGet:
+	case bytecode.NamePrefixGet:
 		name = "get " + name
-	case nameSet:
+	case bytecode.NamePrefixSet:
 		name = "set " + name
 	}
 	o := f.o

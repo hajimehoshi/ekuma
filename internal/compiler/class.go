@@ -49,15 +49,6 @@ func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func 
 	return b
 }
 
-// Kinds of class elements for OpAddField.
-const (
-	elemField = iota
-	elemMethod
-	elemGetter
-	elemSetter
-	elemStatic = 8
-)
-
 // class compiles the class n into dst. name is the value of the name property.
 func (f *fn) class(n *ast.Class, dst int32, name string) {
 	mark := f.top
@@ -131,14 +122,14 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 		case ast.MemberConstructor:
 		case ast.MemberMethod, ast.MemberGetter, ast.MemberSetter:
 			kind := ast.PropertyMethod
-			elem := int32(elemMethod)
+			elem := int32(bytecode.ElemMethod)
 			switch m.Kind {
 			case ast.MemberGetter:
 				kind = ast.PropertyGet
-				elem = elemGetter
+				elem = bytecode.ElemGetter
 			case ast.MemberSetter:
 				kind = ast.PropertySet
-				elem = elemSetter
+				elem = bytecode.ElemSetter
 			}
 			if !private {
 				mm := f.top
@@ -159,7 +150,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 			f.closure(m.Value, v, fname)
 			f.emit(bytecode.OpSetHome, v, obj, 0)
 			if m.Static {
-				elem |= elemStatic
+				elem |= bytecode.ElemStatic
 			}
 			f.emit(bytecode.OpAddField, ctor, k, v)
 			f.emit(bytecode.OpNop, elem, 0, 0)
@@ -186,7 +177,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 				break
 			}
 			f.emit(bytecode.OpAddField, ctor, k, v)
-			f.emit(bytecode.OpNop, elemField, 0, 0)
+			f.emit(bytecode.OpNop, bytecode.ElemField, 0, 0)
 		case ast.MemberStaticBlock:
 			v := f.newReg()
 			f.closure(m.Value, v, "")
@@ -212,7 +203,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 			continue
 		}
 		f.emit(bytecode.OpAddField, ctor, s.key, s.value)
-		f.emit(bytecode.OpNop, elemField|elemStatic, 0, 0)
+		f.emit(bytecode.OpNop, bytecode.ElemField|bytecode.ElemStatic, 0, 0)
 	}
 
 	f.emit(bytecode.OpMove, dst, ctor, 0)

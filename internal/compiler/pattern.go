@@ -120,7 +120,7 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 
 func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	it := f.newRegs(2)
-	f.emit(bytecode.OpGetIterator, it, src, 0)
+	f.emit(bytecode.OpGetIterator, it, src, bytecode.IterSync)
 	base := f.top
 	start := f.pc()
 	for _, e := range p.Elements {

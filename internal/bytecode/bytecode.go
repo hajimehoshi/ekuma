@@ -20,7 +20,7 @@ const (
 	OpMove                           // a = b
 	OpCheckTDZ                       // throw a ReferenceError naming Keys[b] when a is uninitialized
 	OpThrowConstAssign               // throw the TypeError for assigning to the constant Keys[a]
-	OpThrowError                     // throw an error of kind a with the message Consts[b]
+	OpThrowError                     // throw an error of the Throw kind a with the message Consts[b]
 
 	OpGetGlobal        // a = global Keys[b], cache c
 	OpGetGlobalOrUndef // like OpGetGlobal, but undefined when the global does not exist
@@ -29,7 +29,7 @@ const (
 	OpDeclareGlobalVar // declare the global variable Keys[a]; b says whether it is a function, which c holds
 	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant when b is set
 	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
-	OpCheckGlobalDecl  // throw when declaring Keys[a] at the top level would conflict; b: 0 var, 1 lexical, 2 function
+	OpCheckGlobalDecl  // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds
 
 	OpGetUpval    // a = upvalue b
 	OpSetUpval    // upvalue b = a
@@ -148,7 +148,7 @@ const (
 	OpYield               // suspend the generator with the value b; a receives the value sent on resume
 	OpAwait               // suspend until the promise b settles; a receives its value
 	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
-	OpGenResumeMode       // a = how the generator was resumed: 0 next, 1 throw, 2 return
+	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
 
 	OpNewObject        // a = {}
 	OpNewArray         // a = [a+1 ... a+b]
@@ -162,7 +162,7 @@ const (
 	OpDefineMethod     // define the non-enumerable method b of a as c, setting its home object
 	OpDefineGetter     // define the getter c for the property b of a; the next instruction's a says whether it is enumerable
 	OpDefineSetter     // define the setter c for the property b of a
-	OpSetFuncName      // set the name of the anonymous function a to the property key b, with the prefix kind c
+	OpSetFuncName      // set the name of the anonymous function a to the property key b, with the NamePrefix kind c
 	OpSetHome          // set the home object of the function a to b
 	OpCopyProps        // copy the own enumerable properties of b to a, as an object spread
 	OpCopyPropsExcept  // a = an object with the own enumerable properties of b except the keys in c+1...c+N, N in the next instruction's a
@@ -170,13 +170,13 @@ const (
 	OpClass            // make the function a a class constructor with the parent c; a+1 receives the prototype. c is -1 without an extends clause
 	OpPrivateName      // a = a new private name described by Keys[b]; c says whether it names a method
 	OpInitFields       // define the instance elements of the class a on the instance b
-	OpAddField         // add the class element with the key b and the value or initializer c to the class a; the next instruction's a is the kind
+	OpAddField         // add the class element with the key b and the value or initializer c to the class a; the next instruction's a is an Elem kind
 	OpCheckThisUninit  // throw when a is initialized: super was called twice
 	OpRequireCoercible // throw a TypeError when a is undefined or null
 
 	OpForIn       // a = the for-in iterator over b
 	OpForInNext   // a = the next key of the for-in iterator b, or jump to c when it is exhausted
-	OpGetIterator // a, a+1 = the iterator of b and its next method; c selects sync (0) or async (1)
+	OpGetIterator // a, a+1 = the iterator of b and its next method; c is one of the Iter kinds
 	OpIterNext    // a = the next value of the iterator b, b+1; jump to c when it is done
 	OpIterClose   // close the iterator a, a+1; when b is nonzero, b-1 holds the pending exception, which is kept unless it makes a generator return; a becomes undefined
 	OpIterResult  // a = the iterator result object with the value b and done c
@@ -196,6 +196,49 @@ const (
 
 	OpDebugger
 	OpNop
+)
+
+// The kinds of error that OpThrowError throws.
+const (
+	ThrowTypeError = iota
+	ThrowReferenceError
+)
+
+// The kinds of top-level declaration that OpCheckGlobalDecl checks.
+const (
+	DeclVar = iota
+	DeclLexical
+	DeclFunction
+)
+
+// The ways a generator is resumed, as OpGenResumeMode reports them.
+const (
+	ResumeNext = iota
+	ResumeThrow
+	ResumeReturn
+)
+
+// The prefixes that OpSetFuncName adds to a function name.
+const (
+	NamePrefixNone = iota
+	NamePrefixGet  // "get "
+	NamePrefixSet  // "set "
+)
+
+// The kinds of class element that OpAddField adds. ElemStatic may be combined with any of the others.
+const (
+	ElemField = iota
+	ElemMethod
+	ElemGetter
+	ElemSetter
+	ElemStatic = 8
+)
+
+// The kinds of iterator that OpGetIterator gets.
+const (
+	IterSync     = iota // a sync iterator, or a plain array to be iterated by index
+	IterAsync           // an async iterator
+	IterSyncNext        // a sync iterator whose next method can be called directly
 )
 
 // Instr is one instruction.

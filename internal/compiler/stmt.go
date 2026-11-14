@@ -496,11 +496,11 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	{
 		scoped := f.enterScope(s.Scope, false)
 		src := f.exprAny(s.Right)
-		async := int32(0)
+		kind := int32(bytecode.IterSync)
 		if s.Await {
-			async = 1
+			kind = bytecode.IterAsync
 		}
-		f.emit(bytecode.OpGetIterator, it, src, async)
+		f.emit(bytecode.OpGetIterator, it, src, kind)
 		if scoped {
 			f.leaveScope()
 		}

@@ -43,6 +43,12 @@ type frame struct {
 	scopes []*Object
 }
 
+// thrownErrorKinds maps the error kinds of OpThrowError to the VM's.
+var thrownErrorKinds = [...]ErrorKind{
+	bytecode.ThrowTypeError:      ErrorKindType,
+	bytecode.ThrowReferenceError: ErrorKindReference,
+}
+
 // maxFrames is the call depth at which a RangeError is thrown.
 const maxFrames = 10000
 
@@ -309,7 +315,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.ThrowTypeError("assignment to constant variable '" + fp.keys[i.A].str + "'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.throwError(ErrorKind(i.A), fp.consts[i.B].o.str)
+			vm.throwError(thrownErrorKinds[i.A], fp.consts[i.B].o.str)
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalOrUndef:
 			c := &fp.caches[i.C]
@@ -1556,14 +1562,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = k
 		case bytecode.OpGetIterator:
 			v := regs[i.B]
-			if i.C == 0 && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+			if i.C == bytecode.IterSync && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
 				// Iterate a plain array by index: the next method slot holds the index.
 				regs[i.A] = v
 				regs[i.A+1] = Value{n: 0}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			it, next := vm.getIterator(v, i.C != 0)
+			it, next := vm.getIterator(v, i.C == bytecode.IterAsync)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = it
 			regs[i.A+1] = next
