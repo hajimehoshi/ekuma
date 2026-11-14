@@ -982,12 +982,22 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.Poll()
 			}
 			pc = int(i.A)
-		case bytecode.OpJumpIf:
-			if ToBoolean(regs[i.B]) {
-				pc = int(i.A)
+		case bytecode.OpJumpIf, bytecode.OpJumpIfNot:
+			// ToBoolean, with the common cases inlined.
+			v := regs[i.B]
+			var t bool
+			if o := v.o; o == nil {
+				t = v.n != 0 && v.n == v.n
+			} else if k := o.kind; k == kindTrue {
+				t = true
+			} else if k <= kindFalse {
+				t = false
+			} else if k >= kindObject {
+				t = true
+			} else {
+				t = ToBoolean(v)
 			}
-		case bytecode.OpJumpIfNot:
-			if !ToBoolean(regs[i.B]) {
+			if t == (i.Op == bytecode.OpJumpIf) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNullish:
