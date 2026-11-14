@@ -206,6 +206,9 @@ func runOnce(h *harness, src string, m metadata, strict bool) (reason string, ti
 				return "harness: " + err.Error(), false
 			}
 			if _, err := vm.RunScript(ctx, name, text); err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					return "timeout in harness " + name, true
+				}
 				return "harness " + name + ": " + firstLine(err.Error()), false
 			}
 		}
