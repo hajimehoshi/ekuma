@@ -192,9 +192,14 @@ type shape struct {
 	flags uint8
 	count int32
 
-	// table maps every property of the shape to its slot. For a shared shape it is built on first lookup.
+	// table maps every property of the shape to its slot. A private shape always has one.
+	// A shared shape with more than smallShapeSize properties builds it on first lookup.
 	table       map[*Object]prop
 	transitions map[shapeKey]*shape
+
+	// small lists the properties of a shared shape with at most smallShapeSize properties,
+	// by slot. It is nil for any other shape.
+	small []shapeEntry
 
 	private bool
 
@@ -202,21 +207,35 @@ type shape struct {
 	order []*Object
 }
 
+// shapeEntry is a property of a shape and where it is.
+type shapeEntry struct {
+	key *Object
+	prop
+}
+
+// smallShapeSize is the number of properties up to which a shared shape is searched linearly.
+const smallShapeSize = 8
+
 func (s *shape) lookup(key *Object) (prop, bool) {
-	if s.table == nil {
-		if s.count == 0 {
-			return prop{}, false
-		}
-		s.table = make(map[*Object]prop, s.count)
-		for t := s; t.parent != nil; t = t.parent {
-			s.table[t.key] = prop{
-				slot:  t.count - 1,
-				flags: t.flags,
+	if s.small == nil {
+		if s.table == nil {
+			s.table = make(map[*Object]prop, s.count)
+			for t := s; t.parent != nil; t = t.parent {
+				s.table[t.key] = prop{
+					slot:  t.count - 1,
+					flags: t.flags,
+				}
 			}
 		}
+		p, ok := s.table[key]
+		return p, ok
 	}
-	p, ok := s.table[key]
-	return p, ok
+	for _, e := range s.small {
+		if e.key == key {
+			return e.prop, true
+		}
+	}
+	return prop{}, false
 }
 
 // keys returns the property keys in insertion order. The result must not be modified.
@@ -247,6 +266,14 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 		key:    key,
 		flags:  flags,
 		count:  s.count + 1,
+	}
+	if t.count <= smallShapeSize {
+		t.small = append(make([]shapeEntry, 0, t.count), s.small...)
+		t.small = append(t.small, shapeEntry{
+			key:   key,
+			slot:  s.count,
+			flags: flags,
+		})
 	}
 	if s.transitions == nil {
 		s.transitions = make(map[shapeKey]*shape)
@@ -313,6 +340,15 @@ type shapeTable struct {
 	proxy *shape
 }
 
+// newShape returns a new empty shared shape for objects whose prototype is proto.
+func (vm *VM) newShape(proto *Object) *shape {
+	return &shape{
+		vm:    vm,
+		proto: proto,
+		small: []shapeEntry{},
+	}
+}
+
 // shapeFor returns the empty shape for objects whose prototype is proto, which may be nil.
 func (vm *VM) shapeFor(proto *Object) *shape {
 	if proto == nil {
@@ -322,10 +358,7 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 	// together with proto.
 	m := proto.ensureMeta()
 	if m.protoShape == nil {
-		m.protoShape = &shape{
-			vm:    vm,
-			proto: proto,
-		}
+		m.protoShape = vm.newShape(proto)
 		proto.flags |= objIsProto
 	}
 	return m.protoShape
@@ -338,10 +371,7 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 func (vm *VM) functionShapeFor(proto *Object) *shape {
 	m := proto.ensureMeta()
 	if m.functionProtoShape == nil {
-		m.functionProtoShape = &shape{
-			vm:    vm,
-			proto: proto,
-		}
+		m.functionProtoShape = vm.newShape(proto)
 		proto.flags |= objIsProto
 	}
 	return m.functionProtoShape

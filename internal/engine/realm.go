@@ -24,8 +24,8 @@ func New(hostDefined any) *VM {
 		symbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 	}
-	vm.shapes.nullProto = &shape{vm: vm}
-	vm.shapes.proxy = &shape{vm: vm}
+	vm.shapes.nullProto = vm.newShape(nil)
+	vm.shapes.proxy = vm.newShape(nil)
 	objectProto := &Object{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
