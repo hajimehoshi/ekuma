@@ -25,12 +25,21 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 ## Differences from other engines for Go
 
-| | Ekuma | [goja](https://github.com/dop251/goja) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) |
-|---|---|---|---|
-| Implementation | Written in Go | Written in Go | QuickJS, translated from C to Go |
-| cgo | No | No | No |
-| `unsafe` | No | Yes | Yes |
-| Maturity | Early | Mature | Mature (QuickJS itself) |
+| | Ekuma | [goja](https://github.com/dop251/goja) | [otto](https://github.com/robertkrimen/otto) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | [QJS](https://github.com/fastschema/qjs) | [v8go](https://github.com/tommie/v8go) |
+|---|---|---|---|---|---|---|
+| Latest release | None | None | v0.5.1 (2024-11-05) | v0.27.0 (2026-10-24) | v0.0.6 (2025-10-28) | v0.44.0 (2026-11-12) |
+| Implementation | Written in Go | Written in Go | Written in Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
+| cgo | No | No | No | No | No | Yes |
+| `unsafe` | No | Yes | No | Yes | Yes | Yes |
+| ECMAScript | ES2025 | ES5.1, and much of ES2015 and later | ES5 | ES2023 | ES2023 | ES2025 |
+| Modules | Yes | No | No | Yes | Yes | No |
+| `Intl` | Yes | No | No | `DateTimeFormat` and `NumberFormat` in en-US | No | Yes |
+| `Temporal` | Yes | No | No | No | No | No |
+
+Investigated on 2026-11-16, with goja at its latest commit, since it has no release.
+[Sobek](https://github.com/grafana/sobek), the fork of goja that k6 uses, adds modules to goja.
+The v8go above is the fork of [rogchap.com/v8go](https://github.com/rogchap/v8go) that follows
+V8's releases.
 
 What Ekuma does differently is aimed at speed:
 
