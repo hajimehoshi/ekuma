@@ -25,18 +25,21 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		if b.IsDetached() {
 			vm.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
 		}
-		if offset > int64(b.ByteLength()) {
+		// The length of the buffer is taken before converting the view length, which can run
+		// JavaScript.
+		bufferLength := int64(b.ByteLength())
+		if offset > bufferLength {
 			vm.ThrowRangeError("start offset " + itoa(int(offset)) + " is outside the bounds of the buffer")
 		}
 		length := arg(args, 2)
 		viewLength := int64(-1)
 		if length.IsUndefined() {
 			if !b.IsResizable() {
-				viewLength = int64(b.ByteLength()) - offset
+				viewLength = bufferLength - offset
 			}
 		} else {
 			viewLength = toIndex(vm, length)
-			if offset+viewLength > int64(b.ByteLength()) {
+			if offset+viewLength > bufferLength {
 				vm.ThrowRangeError("invalid DataView length " + itoa(int(viewLength)))
 			}
 		}

@@ -2022,10 +2022,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		}
 
 	superCall:
-		// super(...): f is the running constructor and newTarget its new.target.
+		// super(...): f is the super constructor and newTarget the new.target of the running one.
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
-			parent := f.shape.proto
+			parent := f
 			if parent == nil || parent.fn == nil || !vm.IsConstructor(parent) {
 				vm.ThrowTypeError("super constructor is not a constructor")
 			}

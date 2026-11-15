@@ -525,6 +525,111 @@ func TestScripts(t *testing.T) {
 			want: `\u2028,\u2029,true`,
 		},
 		{
+			name: "order of the constants of Math",
+			src:  `Object.getOwnPropertyNames(Math).slice(0, 8).join()`,
+			want: "E,LN10,LN2,LOG10E,LOG2E,PI,SQRT1_2,SQRT2",
+		},
+		{
+			name: "Array.from gets the iterator method once",
+			src: `var n = 0;
+				var o = { get [Symbol.iterator]() { n++; return function() { return [1, 2].values(); }; } };
+				Array.from(o).join() + "|" + n`,
+			want: "1,2|1",
+		},
+		{
+			name: "Array.from of an array-like too long for an array",
+			src:  `try { Array.from({ length: 2 ** 32 }); "no error" } catch (e) { e instanceof RangeError }`,
+			want: "true",
+		},
+		{
+			name: "sort deletes every index after the sorted values",
+			src: `var deleted = [];
+				var p = new Proxy([, , 0], { deleteProperty(t, k) { deleted.push(k); return delete t[k]; } });
+				Array.prototype.sort.call(p);
+				deleted.join()`,
+			want: "1,2",
+		},
+		{
+			name: "groupBy with an index accessor on Array.prototype",
+			src: `Object.defineProperty(Array.prototype, "0", { get() { throw 1; }, set(v) { throw 2; } });
+				var m = Map.groupBy(["a", "b"], () => "k");
+				var o = Object.groupBy(["a"], () => "k");
+				[m.get("k").length, Object.getOwnPropertyDescriptor(m.get("k"), "1").value, o.k.length].join()`,
+			want: "2,b,1",
+		},
+		{
+			name: "union and symmetricDifference copy the set after getting the keys iterator",
+			src: `var s = new Set([1, 2, 3]);
+				var other = { size: 0, has() {}, keys() { return { get next() { s.clear(); s.add(4); return () => ({ done: true }); } }; } };
+				[...s.union(other)].join() + "|" + [...s.symmetricDifference(other)].join()`,
+			want: "4|4",
+		},
+		{
+			name: "DataView with a length whose conversion detaches the buffer",
+			src: `var ab = new ArrayBuffer(16);
+				try { new DataView(ab, 8, { valueOf() { ab.transfer(); return 8; } }); "no error" } catch (e) { e.constructor.name }`,
+			want: "TypeError",
+		},
+		{
+			name: "RegExp exec after converting lastIndex recompiles the RegExp",
+			src: `var re = /a/;
+				re.lastIndex = { valueOf() { re.compile("b"); return 0; } };
+				re[Symbol.match]("b") !== null`,
+			want: "true",
+		},
+		{
+			name: "RegExp search restores lastIndex before reading the index",
+			src: `var log = [], n = 0;
+				var o = {
+					get lastIndex() { log.push("get"); return n++; },
+					set lastIndex(v) { log.push("set"); },
+					exec() { log.push("exec"); return { get index() { log.push("index"); return 3; } }; },
+				};
+				RegExp.prototype[Symbol.search].call(o, "x") + ":" + log.join()`,
+			want: "3:get,exec,get,set,index",
+		},
+		{
+			name: "RegExp split reads exec only in RegExpExec",
+			src: `var gets = 0;
+				class R extends RegExp { get exec() { gets++; return RegExp.prototype.exec; } }
+				"abc".split(new R("b")).join() + ":" + gets`,
+			want: "a,c:3",
+		},
+		{
+			name: "fields of a base class are initialized before the parameters",
+			src: `var log = [];
+				class A { x = log.push("field"); constructor(a = log.push("param")) {} }
+				new A();
+				log.join()`,
+			want: "field,param",
+		},
+		{
+			name: "the heritage and computed keys of a class are strict",
+			src: `var r = [];
+				try { class B extends (Object.freeze({}).x = 1, Object) {} r.push("no error"); } catch (e) { r.push(e.constructor.name); }
+				try { class C { [(Object.freeze({}).y = 1, "m")]() {} } r.push("no error"); } catch (e) { r.push(e.constructor.name); }
+				r.join()`,
+			want: "TypeError,TypeError",
+		},
+		{
+			name: "super gets the parent constructor before the arguments and checks it after",
+			src: `class B {}
+				class D extends B { constructor() { super(Object.setPrototypeOf(D, null)); } }
+				var token = {};
+				class E extends B { constructor() { super((() => { throw token; })()); } }
+				Object.setPrototypeOf(E, Math.sin);
+				var r;
+				try { new E(); } catch (e) { r = e === token; }
+				(new D() instanceof B) + "," + r`,
+			want: "true,true",
+		},
+		{
+			name: "delete of an optional chain whose last link short-circuits",
+			src: `var o = { a: undefined };
+				[delete undefined?.x, delete o.a?.["x"], delete o?.a].join()`,
+			want: "true,true,true",
+		},
+		{
 			name: "a statement without a value makes the script value undefined",
 			src:  `1; if (false) {}`,
 			want: "undefined",

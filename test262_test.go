@@ -493,6 +493,13 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 	if err := o.Set("IsHTMLDDA", ekuma.NewHTMLDDA(r)); err != nil {
 		return ekuma.Undefined, err
 	}
+	gc := r.FuncOf("gc", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		runtime.GC()
+		return ekuma.Undefined, nil
+	})
+	if err := o.Set("gc", gc); err != nil {
+		return ekuma.Undefined, err
+	}
 	return o, nil
 }
 

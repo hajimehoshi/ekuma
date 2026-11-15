@@ -446,8 +446,14 @@ func (f *fn) unary(n *ast.UnaryExpr, dst int32) {
 	}
 }
 
+// strict reports whether the code being compiled is strict mode code. A class is strict even
+// inside sloppy code.
+func (f *fn) strict() bool {
+	return f.f.Strict || f.classDepth > 0
+}
+
 func (f *fn) strictFlag() int32 {
-	if f.f.Strict {
+	if f.strict() {
 		return 1
 	}
 	return 0
@@ -466,6 +472,7 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 			return
 		}
 		obj := f.operand(arg.Object, arg.Property)
+		f.chainCheck(arg.Optional, obj)
 		key := f.newReg()
 		if arg.Computed {
 			f.expr(arg.Property, key)
@@ -689,7 +696,7 @@ func (f *fn) storeTarget(t memberTarget, src int32) {
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
 		op := bytecode.OpSetProp
-		if f.f.Strict {
+		if f.strict() {
 			op = bytecode.OpSetPropStrict
 		}
 		f.emit(op, t.obj, f.site(name), src)
@@ -697,7 +704,7 @@ func (f *fn) storeTarget(t memberTarget, src int32) {
 		f.emit(bytecode.OpSetPrivate, t.obj, t.key, src)
 	default:
 		op := bytecode.OpSetIndex
-		if f.f.Strict {
+		if f.strict() {
 			op = bytecode.OpSetIndexStrict
 		}
 		f.emit(op, t.obj, t.key, src)
@@ -1026,6 +1033,8 @@ func (f *fn) result(dst, src int32) {
 func (f *fn) superCall(n *ast.CallExpr, dst int32) {
 	base := f.newRegs(2)
 	f.loadVar("%callee", base, false)
+	// GetSuperConstructor comes before the arguments.
+	f.emit(bytecode.OpSuperBase, base, base, 0)
 	f.loadVar("new.target", base+1, false)
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
@@ -1389,7 +1398,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			// A strict assignment to a global that does not exist yet throws even when the
 			// value creates the global.
 			resolved := int32(-1)
-			if scope < 0 && f.f.Strict && !pure(n.Value) && f.undeclaredGlobal(name) {
+			if scope < 0 && f.strict() && !pure(n.Value) && f.undeclaredGlobal(name) {
 				resolved = f.newReg()
 				k := f.site(name)
 				f.emit(bytecode.OpResolveGlobal, resolved, k, k)

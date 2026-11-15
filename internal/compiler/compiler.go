@@ -878,7 +878,7 @@ func (f *fn) storeStatic(n ast.Node, name string, src int32, init bool) {
 			return
 		case bindFuncName:
 			// Assigning to the name of a function expression is an error in strict code only.
-			if f.f.Strict {
+			if f.strict() {
 				f.emit(bytecode.OpThrowConstAssign, f.key(name), 0, 0)
 			}
 			return
@@ -898,7 +898,7 @@ func (f *fn) storeStatic(n ast.Node, name string, src int32, init bool) {
 		switch {
 		case init && f.isScript && f.c.globalLexical(name):
 			f.emit(bytecode.OpInitGlobalLex, src, f.key(name), 0)
-		case f.f.Strict:
+		case f.strict():
 			k := f.site(name)
 			f.emit(bytecode.OpSetGlobalStrict, src, k, k)
 		default:

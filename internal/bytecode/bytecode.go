@@ -141,7 +141,7 @@ const (
 	OpCallEval      // like [OpCall]; a direct eval when a is the eval function. c indexes [Func.EvalScopes]. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the [OpCallSpread] for any other function
 	OpNew           // a = new a(args a+2...), b arguments, cache c
 	OpNewSpread     // a = new a(...the array a+2)
-	OpSuperCall     // a = super(args a+2...), b arguments, where a is the running constructor and a+1 new.target
+	OpSuperCall     // a = super(args a+2...), b arguments, where a is the super constructor and a+1 new.target
 	OpSuperSpread   // a = super(...the array a+2)
 	OpReturn        // return a
 	OpReturnUndef   // return undefined

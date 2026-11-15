@@ -264,7 +264,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 				a = vm.NewArray(nil)
 			}
 			i := int64(0)
-			vm.Iterate(items, func(v engine.Value) bool {
+			vm.IterateFromMethod(items, m, func(v engine.Value) bool {
 				vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), mapped(v, i))
 				i++
 				return true
@@ -281,7 +281,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		case n <= engine.MaxArrayIndex+1:
 			a = vm.ArrayCreate(uint32(n), vm.Intrinsic(engine.IntrinsicArrayPrototype))
 		default:
-			a = vm.NewArray(nil)
+			vm.ThrowRangeError("invalid array length")
 		}
 		for i := range n {
 			vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), mapped(getAt(vm, src, i), i))
@@ -849,9 +849,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 			if i = vm.SkipHoles(o, i, n); i == n {
 				break
 			}
-			if hasAt(vm, o, i) {
-				deleteAt(vm, o, i)
-			}
+			deleteAt(vm, o, i)
 		}
 		return engine.ObjectValue(o)
 	})

@@ -275,17 +275,20 @@ func initMath(vm *engine.VM) {
 	m := vm.NewOrdinaryObject()
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Math"), engine.ObjectValue(m), engine.FlagsHidden)
 	vm.Define(m, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Math"), engine.FlagConfigurable)
-	for name, v := range map[string]float64{
-		"E":       math.E,
-		"LN10":    math.Ln10,
-		"LN2":     math.Ln2,
-		"LOG10E":  math.Log10E,
-		"LOG2E":   math.Log2E,
-		"PI":      math.Pi,
-		"SQRT1_2": math.Sqrt2 / 2,
-		"SQRT2":   math.Sqrt2,
+	for _, c := range []struct {
+		name  string
+		value float64
+	}{
+		{name: "E", value: math.E},
+		{name: "LN10", value: math.Ln10},
+		{name: "LN2", value: math.Ln2},
+		{name: "LOG10E", value: math.Log10E},
+		{name: "LOG2E", value: math.Log2E},
+		{name: "PI", value: math.Pi},
+		{name: "SQRT1_2", value: math.Sqrt2 / 2},
+		{name: "SQRT2", value: math.Sqrt2},
 	} {
-		constant(vm, m, name, engine.Number(v))
+		constant(vm, m, c.name, engine.Number(c.value))
 	}
 	unary := func(name string, f func(float64) float64) {
 		method(vm, m, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

@@ -130,6 +130,10 @@ func (p *parser) toPattern(e ast.Expr, binding bool) ast.Pattern {
 // toElement converts an expression into a pattern element, which may carry a default value.
 func (p *parser) toElement(e ast.Expr, binding bool) ast.Pattern {
 	if a, ok := e.(*ast.AssignExpr); ok && a.Op == ast.OpNone {
+		// A call is a target of a plain assignment in sloppy mode, but not of a destructuring one.
+		if _, ok := a.Target.(*ast.CallExpr); ok {
+			p.fail(int(a.Target.Start()), "invalid destructuring target")
+		}
 		if binding {
 			p.checkBindingPattern(a.Target)
 		}

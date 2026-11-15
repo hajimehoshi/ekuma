@@ -226,22 +226,41 @@ func (vm *VM) IfAbruptCloseIterators(its []Value, f func()) {
 // the iteration stops and the iterator is closed.
 func (vm *VM) Iterate(v Value, f func(Value) bool) {
 	if v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
-		o := v.o
-		for i := uint32(0); i < o.length; i++ {
-			e := Undefined
-			if int(i) < len(o.elems) && !o.elems[i].isHole() {
-				e = o.elems[i]
-			} else {
-				e = vm.Index(v, i)
-			}
-			if !f(e) {
-				return
-			}
-		}
+		vm.iteratePlainArray(v.o, f)
 		return
 	}
 	it, next := vm.getIterator(v, false)
 	vm.IterateRecord(it, next, f)
+}
+
+// IterateFromMethod is [VM.Iterate] for the iterator that GetIteratorFromMethod(v, method)
+// returns.
+func (vm *VM) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
+	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+		vm.iteratePlainArray(v.o, f)
+		return
+	}
+	it := vm.Call(method, v)
+	if !it.IsObject() {
+		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+	}
+	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), f)
+}
+
+// iteratePlainArray is [VM.Iterate] for the array o, whose iteration [VM.arrayIterationPlain]
+// reports to run no JavaScript.
+func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
+	for i := uint32(0); i < o.length; i++ {
+		e := Undefined
+		if int(i) < len(o.elems) && !o.elems[i].isHole() {
+			e = o.elems[i]
+		} else {
+			e = vm.Index(Value{o: o}, i)
+		}
+		if !f(e) {
+			return
+		}
+	}
 }
 
 // IterateRecord is [VM.Iterate] for the iterator record of the iterator it and its next method

@@ -125,8 +125,9 @@ func advanceStringIndex(s *engine.Object, index int64, unicode bool) int64 {
 // It returns the code unit indices of the captures, which are valid until the next match,
 // or nil when there is no match.
 func (e *regexpEnv) builtinExecRaw(vm *engine.VM, r *engine.Object, s *engine.Object) []int {
-	re := r.RegExpMatcher()
+	// Converting lastIndex can run JavaScript that recompiles r.
 	lastIndex := e.getLastIndex(vm, r)
+	re := r.RegExpMatcher()
 	f := re.Flags()
 	global, sticky := f&regexp.FlagGlobal != 0, f&regexp.FlagSticky != 0
 	if !global && !sticky {
@@ -680,20 +681,20 @@ func initRegExp(vm *engine.VM) {
 		if !engine.SameValue(prev, engine.Number(0)) {
 			vm.Set(rx, key, engine.Number(0))
 		}
-		var index engine.Value
+		index := engine.Number(-1)
+		var res engine.Value
 		if exec, ok := env.fastExec(vm, rx); ok {
 			if caps := env.builtinExecRaw(vm, rx, s); caps != nil {
 				index = engine.Number(float64(caps[0]))
-			} else {
-				index = engine.Number(-1)
 			}
-		} else if res := env.regExpExecWith(vm, rx, s, exec); res.IsNull() {
-			index = engine.Number(-1)
 		} else {
-			index = vm.Get(res.Object(), env.key(env.index))
+			res = env.regExpExecWith(vm, rx, s, exec)
 		}
 		if cur := vm.Get(rx, key); !engine.SameValue(cur, prev) {
 			vm.Set(rx, key, prev)
+		}
+		if res.IsObject() {
+			index = vm.Get(res.Object(), env.key(env.index))
 		}
 		return index
 	})
@@ -954,11 +955,12 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, li
 			splitter = cloneRegExp(vm, src, vm.NewString(newFlags))
 		}
 	}
-	var exec engine.Value
+	// Reading exec from a splitter that is not unmodified can run JavaScript, so it is read
+	// only where RegExpExec reads it.
 	var origExec bool
-	if splitter != nil {
-		exec, origExec = e.fastExec(vm, splitter)
-		if origExec && c == vm.Intrinsic(engine.IntrinsicRegExp) {
+	if splitter != nil && vm.IsUnmodifiedRegExp(splitter) {
+		origExec = true
+		if c == vm.Intrinsic(engine.IntrinsicRegExp) {
 			fast = true
 			re = splitter.RegExpMatcher()
 		}
@@ -977,7 +979,7 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s *engine.Object, li
 				return engine.ObjectValue(vm.NewArray(nil))
 			}
 		default:
-			if !e.regExpExecWith(vm, splitter, s, exec).IsNull() {
+			if !e.regExpExec(vm, splitter, s).IsNull() {
 				return engine.ObjectValue(vm.NewArray(nil))
 			}
 		}

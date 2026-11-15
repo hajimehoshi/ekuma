@@ -156,7 +156,7 @@ func (f *fn) pushEvalScope() {
 // index of the record.
 func (f *fn) evalSite() int32 {
 	es := bytecode.EvalScope{
-		Strict: f.f.Strict || f.classDepth > 0,
+		Strict: f.strict(),
 		Depth:  int32(f.withsAround()),
 	}
 	for g := f; g != nil; g = g.parent {

@@ -89,6 +89,14 @@ func groupBy(vm *engine.VM, items, cb engine.Value, add func(k, v engine.Value))
 	})
 }
 
+// appendToGroup adds v at the end of the array g of a group, which no code has seen yet.
+func appendToGroup(vm *engine.VM, g *engine.Object, v engine.Value) {
+	if _, ok := vm.AppendElements(g, []engine.Value{v}); ok {
+		return
+	}
+	vm.CreateDataPropertyOrThrow(g, bigKey(vm, vm.LengthOfArrayLike(g)), v)
+}
+
 func initMapAndSet(vm *engine.VM) {
 	initMap(vm)
 	initSet(vm)
@@ -127,7 +135,7 @@ func initMap(vm *engine.VM) {
 				g = engine.ObjectValue(vm.NewArray(nil))
 				t.Append(k, g)
 			}
-			vm.AppendElements(g.Object(), []engine.Value{v})
+			appendToGroup(vm, g.Object(), v)
 		})
 		return engine.ObjectValue(vm.NewMapObject(vm.Intrinsic(engine.IntrinsicMapPrototype), t))
 	})
@@ -291,17 +299,23 @@ func (r *setRecord) otherHas(vm *engine.VM, e engine.Value) bool {
 	return engine.ToBoolean(vm.Call(r.has, engine.ObjectValue(r.obj), e))
 }
 
-// eachKey iterates the iterator that GetIteratorFromMethod returns for the keys method of r.
-// When f returns false, the iteration stops and the iterator is closed.
-func (r *setRecord) eachKey(vm *engine.VM, f func(engine.Value) bool) {
-	it := vm.Call(r.keys, engine.ObjectValue(r.obj))
+// keysIterator implements GetKeysIterator(r) and returns the iterator and its next method.
+func (r *setRecord) keysIterator(vm *engine.VM) (it, next engine.Value) {
+	it = vm.Call(r.keys, engine.ObjectValue(r.obj))
 	if !it.IsObject() {
 		vm.ThrowTypeError("the keys method of a set-like object must return an object")
 	}
-	next := vm.GetV(it, r.next)
+	next = vm.GetV(it, r.next)
 	if !next.IsCallable() {
 		vm.ThrowTypeError("the iterator of a set-like object must have a next method")
 	}
+	return it, next
+}
+
+// eachKey iterates the iterator that GetKeysIterator returns for r.
+// When f returns false, the iteration stops and the iterator is closed.
+func (r *setRecord) eachKey(vm *engine.VM, f func(engine.Value) bool) {
+	it, next := r.keysIterator(vm)
 	vm.IterateRecord(it, next, f)
 }
 
@@ -389,8 +403,9 @@ func initSet(vm *engine.VM) {
 	method(vm, proto, "union", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(vm, this, "union")
 		r := getSetRecord(vm, arg(args, 0), keys)
+		it, next := r.keysIterator(vm)
 		result := t.Clone()
-		r.eachKey(vm, func(e engine.Value) bool {
+		vm.IterateRecord(it, next, func(e engine.Value) bool {
 			if !result.Has(e) {
 				result.Append(e, e)
 			}
@@ -454,8 +469,9 @@ func initSet(vm *engine.VM) {
 	method(vm, proto, "symmetricDifference", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(vm, this, "symmetricDifference")
 		r := getSetRecord(vm, arg(args, 0), keys)
+		it, next := r.keysIterator(vm)
 		result := t.Clone()
-		r.eachKey(vm, func(e engine.Value) bool {
+		vm.IterateRecord(it, next, func(e engine.Value) bool {
 			inResult := result.Has(e)
 			if t.Has(e) {
 				if inResult {
@@ -571,7 +587,7 @@ func initObjectGroupBy(vm *engine.VM) {
 				groups[pk] = g
 				keys = append(keys, pk)
 			}
-			vm.AppendElements(g, []engine.Value{v})
+			appendToGroup(vm, g, v)
 		})
 		o := vm.NewObject(nil)
 		for _, k := range keys {

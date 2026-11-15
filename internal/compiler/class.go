@@ -40,6 +40,7 @@ func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func 
 	b.NeedsExtra = true
 	b.NumRegs = 4
 	emit(bytecode.OpLoadCallee, 0, 0, 0)
+	emit(bytecode.OpSuperBase, 0, 0, 0)
 	emit(bytecode.OpLoadNewTarget, 1, 0, 0)
 	emit(bytecode.OpRestArgs, 2, 0, 0)
 	emit(bytecode.OpSuperSpread, 0, 0, 0)

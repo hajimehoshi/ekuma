@@ -253,6 +253,11 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			callee := f.declare("%callee", bindPseudo)
 			callee.initialized = true
 			f.emit(bytecode.OpLoadCallee, callee.reg, 0, 0)
+			if node.ClassConstructor && !node.DerivedConstructor {
+				// The fields of a base class are initialized before the parameters.
+				this, _ := f.lookupLocal("this")
+				f.emit(bytecode.OpInitFields, callee.reg, this.reg, 0)
+			}
 		}
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
 			if _, shadowed := f.scope.vars["arguments"]; !shadowed {
@@ -421,11 +426,6 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	for _, fname := range funcOrder {
 		fb, _ := f.lookupLocal(fname)
 		f.closure(funcs[fname], fb.reg, fname)
-	}
-	if node.ClassConstructor && !node.DerivedConstructor {
-		callee, _ := f.lookupLocal("%callee")
-		this, _ := f.lookupLocal("this")
-		f.emit(bytecode.OpInitFields, callee.reg, this.reg, 0)
 	}
 	if node.Generator {
 		f.emit(bytecode.OpInitialYield, 0, 0, 0)
