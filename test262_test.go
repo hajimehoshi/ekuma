@@ -21,12 +21,14 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
+	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
 var (
 	flagTest262Filter  = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
 	flagTest262Report  = flag.String("test262.report", "", "write every failing test262 test with its reason to this file")
 	flagTest262Shuffle = flag.String("test262.shuffle", "off", "run the test262 tests in random order: off, on, or a seed; a replay is exact only with GOMAXPROCS=1")
+	flagTest262Dir     = flag.String("test262.dir", "", "run the test262 tests in this directory of the suite instead of test262Dirs")
 )
 
 // test262Commit is the commit of https://github.com/tc39/test262 that the suite passes at.
@@ -534,8 +536,12 @@ func TestTest262(t *testing.T) {
 		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
 	}
 
+	dirs := test262Dirs
+	if *flagTest262Dir != "" {
+		dirs = []string{*flagTest262Dir}
+	}
 	var paths []string
-	for _, d := range test262Dirs {
+	for _, d := range dirs {
 		err := filepath.WalkDir(filepath.Join(dir, d), func(p string, e fs.DirEntry, err error) error {
 			if err != nil {
 				return err

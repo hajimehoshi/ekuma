@@ -1,0 +1,166 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package locale
+
+import (
+	"strings"
+	"sync"
+
+	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
+)
+
+// defaultRegionLocales holds the language-region form of each available locale with a
+// language, a script and a region whose script is the likely script of the language and
+// region, as ECMA-402 asks of the available locales.
+var defaultRegionLocales = sync.OnceValue(func() map[string]bool {
+	m := map[string]bool{}
+	for i := range cldr.AvailableLocales.Len() {
+		t, ok := Parse(cldr.AvailableLocales.At(i))
+		if !ok || t.Script == "" || t.Region == "" || len(t.Variants) > 0 {
+			continue
+		}
+		short := LanguageID{
+			Language: t.Language,
+			Region:   t.Region,
+		}
+		if max, ok := AddLikelySubtags(short); ok && max.Script == t.Script {
+			m[short.String()] = true
+		}
+	}
+	return m
+})
+
+// IsAvailable reports whether the canonical language tag s is an available locale.
+func IsAvailable(s string) bool {
+	return cldr.AvailableLocales.Contains(s) || defaultRegionLocales()[s]
+}
+
+// BestAvailableLocale implements BestAvailableLocale of ECMA-402 for the canonical language
+// tag s and the available locales. It reports false when no available locale matches.
+func BestAvailableLocale(s string) (string, bool) {
+	for {
+		if IsAvailable(s) {
+			return s, true
+		}
+		pos := strings.LastIndexByte(s, '-')
+		if pos < 0 {
+			return "", false
+		}
+		if pos >= 2 && s[pos-2] == '-' {
+			pos -= 2
+		}
+		s = s[:pos]
+	}
+}
+
+// Match is the result of matching requested locales against the available locales.
+type Match struct {
+	// Locale is the available locale that matched.
+	Locale string
+	// Requested is the requested locale that matched, or the default locale when none did.
+	Requested Tag
+}
+
+// LookupMatcher implements LookupMatcher of ECMA-402 for the canonical language tags
+// requested.
+func LookupMatcher(requested []string) Match {
+	for _, r := range requested {
+		t, ok := Parse(r)
+		if !ok {
+			continue
+		}
+		if l, ok := BestAvailableLocale(t.WithoutUnicode().String()); ok {
+			return Match{
+				Locale:    l,
+				Requested: t,
+			}
+		}
+	}
+	d := Default()
+	t, _ := Parse(d)
+	return Match{
+		Locale:    d,
+		Requested: t,
+	}
+}
+
+// SupportedLocales implements LookupSupportedLocales of ECMA-402 for the canonical language
+// tags requested: it returns those that an available locale matches.
+func SupportedLocales(requested []string) []string {
+	var out []string
+	for _, r := range requested {
+		t, ok := Parse(r)
+		if !ok {
+			continue
+		}
+		if _, ok := BestAvailableLocale(t.WithoutUnicode().String()); ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// Default returns the default locale: the available locale that best matches the locale of
+// the host environment, or "en-US".
+var Default = sync.OnceValue(func() string {
+	if s, ok := fromHost(hostLocale()); ok {
+		return s
+	}
+	return "en-US"
+})
+
+// fromHost returns the available locale that best matches the host locale s, which may be a
+// POSIX locale name such as "ja_JP.UTF-8".
+func fromHost(s string) (string, bool) {
+	s, _, _ = strings.Cut(s, ".")
+	s, _, _ = strings.Cut(s, "@")
+	s = strings.ReplaceAll(s, "_", "-")
+	if s == "" || s == "C" || s == "POSIX" {
+		return "", false
+	}
+	t, ok := Parse(s)
+	if !ok {
+		return "", false
+	}
+	return BestAvailableLocale(t.Canonicalize().WithoutUnicode().String())
+}
+
+// parent returns the parent locale of the canonical language tag s in the inheritance chain
+// of CLDR, with "und" for the root locale, and reports false when s is the root locale.
+// collation selects the parents of collation data.
+func parent(s string, collation bool) (string, bool) {
+	if s == "und" {
+		return "", false
+	}
+	if collation {
+		if p, ok := cldr.CollationParentLocales.Lookup(s); ok {
+			return p, true
+		}
+	}
+	if p, ok := cldr.ParentLocales.Lookup(s); ok {
+		return p, true
+	}
+	t, ok := Parse(s)
+	if !ok {
+		return "und", true
+	}
+	id := t.LanguageID
+	switch {
+	case len(id.Variants) > 0:
+		id.Variants = id.Variants[:len(id.Variants)-1]
+	case id.Region != "":
+		id.Region = ""
+	case id.Script != "":
+		// A script that is not the likely script of the language starts its own tree.
+		if max, ok := AddLikelySubtags(LanguageID{
+			Language: id.Language,
+		}); !ok || max.Script != id.Script {
+			return "und", true
+		}
+		id.Script = ""
+	default:
+		return "und", true
+	}
+	return id.String(), true
+}

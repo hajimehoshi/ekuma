@@ -426,6 +426,9 @@ type realm struct {
 
 	// referrer is the referrer of the code of the realm that has no ScriptOrModule.
 	referrer *scriptOrModule
+
+	// hostDefined is the [[HostDefined]] field of the realm.
+	hostDefined any
 }
 
 // Realm is a realm other than the one a [VM] is created with.

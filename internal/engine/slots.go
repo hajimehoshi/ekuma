@@ -136,6 +136,23 @@ func TemporalData(v Value) any {
 	return nil
 }
 
+// NewIntlObject returns an object of one of the Intl types with the prototype proto, whose
+// internal slots are data.
+func (vm *VM) NewIntlObject(proto *Object, data any) *Object {
+	o := vm.NewObject(proto)
+	o.class = classIntl
+	o.ext = data
+	return o
+}
+
+// IntlData returns the internal slots of the Intl object v, or nil when v is not one.
+func IntlData(v Value) any {
+	if v.IsObject() && v.o.class == classIntl {
+		return v.o.ext
+	}
+	return nil
+}
+
 // NewDateObject returns a Date object with the prototype proto whose [[DateValue]] is tv.
 func (vm *VM) NewDateObject(proto *Object, tv float64) *Object {
 	o := vm.NewObject(proto)

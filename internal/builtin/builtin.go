@@ -87,7 +87,17 @@ func setterThatIgnoresPrototypeProperties(vm *engine.VM, this engine.Value, home
 	vm.Set(o, key, v)
 }
 
-// Install creates the standard built-in objects of vm.
+// extensions are the functions that [RegisterExtension] registers.
+var extensions []func(vm *engine.VM)
+
+// RegisterExtension registers install to define further built-in objects in each realm that
+// [Install] creates, after the standard ones. It must be called before any VM is created,
+// typically from an init function.
+func RegisterExtension(install func(vm *engine.VM)) {
+	extensions = append(extensions, install)
+}
+
+// Install creates the standard built-in objects of vm, and those of the registered extensions.
 func Install(vm *engine.VM) {
 	vm.StartBuiltins()
 	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
@@ -156,6 +166,9 @@ func Install(vm *engine.VM) {
 	initDisposableStacks(vm)
 	initBinary(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
+	for _, install := range extensions {
+		install(vm)
+	}
 	vm.FinishBuiltins()
 }
 

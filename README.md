@@ -112,7 +112,8 @@ fails when any of them fails.
 
 ### Missing
 
-- `Intl`
+- Most of `Intl`. The optional package `ekuma/intl` adds it when it is imported for its side
+  effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf` and `Intl.Locale` so far
 
 ## Running the tests
 
@@ -125,4 +126,8 @@ under the user cache directory, or in the directory that `EKUMA_TEST262` names.
 
 ## License
 
-[0BSD](LICENSE)
+[0BSD](LICENSE), except for the data of the [Unicode Common Locale Data Repository](https://cldr.unicode.org/)
+in `internal/intl/cldr`, which is under the [Unicode License v3](internal/intl/cldr/LICENSE).
+Only the optional package `ekuma/intl` includes that data. A program that imports it must include
+the copyright and permission notice of the Unicode License v3 with its copies or in their
+documentation.

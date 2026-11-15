@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package locale_test
+
+import (
+	"testing"
+
+	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+)
+
+func TestFromHost(t *testing.T) {
+	for _, tc := range []struct {
+		host string
+		want string
+		ok   bool
+	}{
+		{
+			host: "ja_JP.UTF-8",
+			want: "ja-JP",
+			ok:   true,
+		},
+		{
+			host: "de_DE@euro",
+			want: "de-DE",
+			ok:   true,
+		},
+		{
+			// An alias, and a region without data of its own.
+			host: "iw_AQ",
+			want: "he",
+			ok:   true,
+		},
+		{
+			host: "C.UTF-8",
+		},
+		{
+			host: "POSIX",
+		},
+		{
+			host: "",
+		},
+		{
+			// A language without data.
+			host: "tlh",
+		},
+	} {
+		got, ok := locale.FromHost(tc.host)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("FromHost(%q): got %q, %t; want %q, %t", tc.host, got, ok, tc.want, tc.ok)
+		}
+	}
+}

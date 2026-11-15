@@ -429,3 +429,16 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 	return f
 }
+
+// SetRealmHostDefined sets the [[HostDefined]] field of the current realm to v.
+func (vm *VM) SetRealmHostDefined(v any) {
+	vm.realm.hostDefined = v
+}
+
+// RealmHostDefined returns the [[HostDefined]] field of the realm r.
+func (vm *VM) RealmHostDefined(r *Realm) any {
+	if (*realm)(r) == vm.curRealm {
+		return vm.realm.hostDefined
+	}
+	return r.hostDefined
+}

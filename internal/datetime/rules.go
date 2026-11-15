@@ -105,3 +105,33 @@ func primaryOfUTC(id string) string {
 	}
 	return id
 }
+
+// zoneTabEntry is a zone of the IANA time zone database.
+type zoneTabEntry struct {
+	// zone is the primary identifier of the zone.
+	zone string
+	// country is the ISO 3166 code of the country that zone.tab gives the zone, or empty.
+	country string
+}
+
+// PrimaryZones returns the primary identifiers of the zones of the IANA time zone database,
+// sorted.
+func PrimaryZones() []string {
+	zones := make([]string, len(zoneTab))
+	for i, e := range zoneTab {
+		zones[i] = e.zone
+	}
+	return zones
+}
+
+// ZonesOfCountry returns the primary identifiers of the zones that the IANA time zone
+// database gives the country with the ISO 3166 code country, sorted.
+func ZonesOfCountry(country string) []string {
+	var zones []string
+	for _, e := range zoneTab {
+		if e.country == country {
+			zones = append(zones, e.zone)
+		}
+	}
+	return zones
+}
