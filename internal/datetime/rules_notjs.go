@@ -107,7 +107,10 @@ func findZoneInSources(name string) (string, Zone, bool) {
 	if z := os.Getenv("ZONEINFO"); z != "" {
 		dirs = append([]string{z}, dirs...)
 	}
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS == "windows" {
+		// The sources of the time package match names in their case only.
+		name = zoneIDInCase(name)
+	} else {
 		for _, dir := range dirs {
 			if id, z, ok := findZoneInDir(dir, name); ok {
 				return id, z, true
@@ -121,6 +124,23 @@ func findZoneInSources(name string) (string, Zone, bool) {
 	return name, locationZone{
 		loc: loc,
 	}, true
+}
+
+// zoneIDInCase returns the identifier of the zone of the IANA time zone database that name
+// matches without regard to ASCII case, or name when there is none.
+func zoneIDInCase(name string) string {
+	for _, e := range zoneTab {
+		if strings.EqualFold(e.zone, name) {
+			return e.zone
+		}
+	}
+	// zoneTab has UTC for these zones.
+	for _, id := range []string{"Etc/UTC", "Etc/GMT"} {
+		if strings.EqualFold(id, name) {
+			return id
+		}
+	}
+	return name
 }
 
 // findZoneInDir finds the file of name in dir, matching each path element without regard to

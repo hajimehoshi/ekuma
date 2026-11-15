@@ -6,7 +6,6 @@
 package datetime_test
 
 import (
-	"runtime"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
@@ -19,11 +18,22 @@ func TestLoadZone(t *testing.T) {
 	if _, _, _, ok := datetime.LoadZone("Asia/Kolkata"); !ok {
 		t.Skip("no time zone database")
 	}
-	// The time zone database of Windows is not in files that can be matched without regard to
-	// case.
-	if runtime.GOOS != "windows" {
-		if id, _, _, ok := datetime.LoadZone("asia/KOLKATA"); !ok || id != "Asia/Kolkata" {
-			t.Errorf("LoadZone(asia/KOLKATA): got %q, %v, want Asia/Kolkata, true", id, ok)
+	for _, c := range []struct {
+		name string
+		want string
+	}{
+		{
+			name: "Africa/CAIRO",
+			want: "Africa/Cairo",
+		},
+		{
+			// A zone whose primary identifier is UTC.
+			name: "etc/UTC",
+			want: "Etc/UTC",
+		},
+	} {
+		if id, _, _, ok := datetime.LoadZone(c.name); !ok || id != c.want {
+			t.Errorf("LoadZone(%q): got %q, %v, want %q, true", c.name, id, ok, c.want)
 		}
 	}
 	if id, primary, _, ok := datetime.LoadZone("asia/CALCUTTA"); !ok || id != "Asia/Calcutta" || primary != "Asia/Kolkata" {
