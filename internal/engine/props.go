@@ -260,7 +260,7 @@ func (vm *VM) materialize(o *Object) {
 	o.flags &^= objExotic
 	if c := f.code; c != nil {
 		vm.add(o, vm.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
-		vm.add(o, vm.Key(KeyName), vm.NewString(c.name), FlagConfigurable)
+		vm.add(o, vm.Key(KeyName), vm.SharedString(c.name), FlagConfigurable)
 		if c.legacyCallerArguments {
 			vm.add(o, vm.Key(keyArguments), Undefined, 0)
 			vm.add(o, vm.Key(keyCaller), Undefined, 0)
@@ -288,7 +288,7 @@ func (vm *VM) materialize(o *Object) {
 		length = f.info.length
 	}
 	vm.add(o, vm.Key(KeyLength), Number(float64(length)), FlagConfigurable)
-	vm.add(o, vm.Key(KeyName), vm.NewString(f.nativeName()), FlagConfigurable)
+	vm.add(o, vm.Key(KeyName), vm.SharedString(f.nativeName()), FlagConfigurable)
 }
 
 // isLazyKey reports whether key names a property that materialize creates.
@@ -1470,6 +1470,15 @@ func (vm *VM) DefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	return vm.defineOwnProperty(o, k, d)
 }
 
+// enumerableKey returns key as a property key when it is a string and flags make it enumerable,
+// and the zero PropKey otherwise.
+func enumerableKey(key *Object, flags uint8) PropKey {
+	if key.kind == kindString && flags&FlagEnumerable != 0 {
+		return PropKey{key: key}
+	}
+	return PropKey{}
+}
+
 // EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
 // It appends the keys to keys and returns the extended slice.
 func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
@@ -1506,18 +1515,13 @@ func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
 	keys = slices.Grow(keys, int(s.count))[:base+int(s.count)]
 	t := s
 	for ; t.parent != nil; t = t.parent {
-		k := PropKey{}
-		if t.key.kind == kindString && t.flags&FlagEnumerable != 0 {
-			k.key = t.key
-		}
-		keys[base+int(t.count)-1] = k
+		keys[base+int(t.count)-1] = enumerableKey(t.key, t.flags)
 	}
-	for i, key := range t.order {
-		k := PropKey{}
-		if p, _ := t.lookup(key); key.kind == kindString && p.flags&FlagEnumerable != 0 {
-			k.key = key
-		}
-		keys[base+i] = k
+	for _, e := range t.small {
+		keys[base+int(e.slot)] = enumerableKey(e.key, e.flags)
+	}
+	for key, p := range t.table {
+		keys[base+int(p.slot)] = enumerableKey(key, p.flags)
 	}
 	n := base
 	for _, k := range keys[base:] {

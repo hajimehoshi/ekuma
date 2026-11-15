@@ -18,7 +18,7 @@ func functionKindConstructor(vm *engine.VM, name string, kind engine.FunctionKin
 	vm.SetPrototypeOf(c, vm.Intrinsic(engine.IntrinsicFunction))
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString(name), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString(name), engine.FlagConfigurable)
 }
 
 func initAsync(vm *engine.VM) {
@@ -34,7 +34,7 @@ func initAsync(vm *engine.VM) {
 	resume("next", engine.ResumeNext)
 	resume("return", engine.ResumeReturn)
 	resume("throw", engine.ResumeThrow)
-	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("AsyncGenerator"), engine.FlagConfigurable)
+	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("AsyncGenerator"), engine.FlagConfigurable)
 	gf := vm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
 	vm.Define(gf, vm.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	vm.Define(gp, vm.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)

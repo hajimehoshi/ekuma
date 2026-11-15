@@ -75,7 +75,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return engine.Number(float64(d.ByteOffset()))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("DataView"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("DataView"), engine.FlagConfigurable)
 
 	for _, e := range []struct {
 		name string

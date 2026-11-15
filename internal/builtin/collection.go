@@ -213,7 +213,7 @@ func initMap(vm *engine.VM) {
 	iterate("values", iterValues)
 	entries := iterate("entries", iterEntries)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(entries), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Map"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map"), engine.FlagConfigurable)
 
 	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*mapIterator)
@@ -236,7 +236,7 @@ func initMap(vm *engine.VM) {
 		}
 		return engine.ObjectValue(vm.NewArrayPair(k, v)), true
 	})
-	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Map Iterator"), engine.FlagConfigurable)
+	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map Iterator"), engine.FlagConfigurable)
 }
 
 // setRecord is a Set Record.
@@ -536,7 +536,7 @@ func initSet(vm *engine.VM) {
 	values := iterate("values", iterValues)
 	vm.Define(proto, keys.keys, engine.ObjectValue(values), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Set"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set"), engine.FlagConfigurable)
 
 	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*setIterator)
@@ -556,7 +556,7 @@ func initSet(vm *engine.VM) {
 		}
 		return k, true
 	})
-	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Set Iterator"), engine.FlagConfigurable)
+	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set Iterator"), engine.FlagConfigurable)
 }
 
 func initObjectGroupBy(vm *engine.VM) {

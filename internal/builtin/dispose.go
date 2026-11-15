@@ -163,5 +163,5 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		vm.AddDisposableResource(s.dc, v, hint, nil)
 		return v
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString(name), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString(name), engine.FlagConfigurable)
 }

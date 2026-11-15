@@ -19,7 +19,7 @@ func initJSON(vm *engine.VM) {
 
 	j := vm.NewOrdinaryObject()
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
-	vm.Define(j, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("JSON"), engine.FlagConfigurable)
+	vm.Define(j, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("JSON"), engine.FlagConfigurable)
 
 	parse := method(vm, j, "parse", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		text := vm.ToString(arg(args, 0))

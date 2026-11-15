@@ -106,7 +106,7 @@ func initWeakMap(vm *engine.VM) {
 		t.Set(k, v)
 		return v
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("WeakMap"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("WeakMap"), engine.FlagConfigurable)
 }
 
 func initWeakSet(vm *engine.VM) {
@@ -162,7 +162,7 @@ func initWeakSet(vm *engine.VM) {
 		v := arg(args, 0)
 		return engine.Bool(vm.CanBeHeldWeakly(v) && t.Has(v))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("WeakSet"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("WeakSet"), engine.FlagConfigurable)
 }
 
 func initWeakRef(vm *engine.VM) {
@@ -186,7 +186,7 @@ func initWeakRef(vm *engine.VM) {
 		}
 		return v
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("WeakRef"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("WeakRef"), engine.FlagConfigurable)
 }
 
 func initFinalizationRegistry(vm *engine.VM) {
@@ -232,5 +232,5 @@ func initFinalizationRegistry(vm *engine.VM) {
 		requireHoldable(vm, token, "as unregister token")
 		return engine.Bool(r.Unregister(token))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("FinalizationRegistry"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("FinalizationRegistry"), engine.FlagConfigurable)
 }

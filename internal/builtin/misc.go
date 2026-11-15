@@ -263,7 +263,7 @@ func initSymbol(vm *engine.VM) {
 		}
 		return vm.NewString(desc)
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Symbol"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Symbol"), engine.FlagConfigurable)
 	fn := vm.NewNative("[Symbol.toPrimitive]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.ObjectValue(thisSymbol(vm, this, "[Symbol.toPrimitive]"))
 	})
@@ -273,7 +273,7 @@ func initSymbol(vm *engine.VM) {
 func initMath(vm *engine.VM) {
 	m := vm.NewOrdinaryObject()
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Math"), engine.ObjectValue(m), engine.FlagsHidden)
-	vm.Define(m, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Math"), engine.FlagConfigurable)
+	vm.Define(m, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Math"), engine.FlagConfigurable)
 	for name, v := range map[string]float64{
 		"E":       math.E,
 		"LN10":    math.Ln10,
@@ -460,7 +460,7 @@ func initIterators(vm *engine.VM) {
 		return engine.ObjectValue(vm.NewArrayPair(engine.Number(float64(i)), getAt(vm, it.obj, i))), true
 	})
 	vm.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
-	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Array Iterator"), engine.FlagConfigurable)
+	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Array Iterator"), engine.FlagConfigurable)
 
 	iteratorNext(vm, vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*stringIterator)
@@ -475,7 +475,7 @@ func initIterators(vm *engine.VM) {
 		it.pos += size
 		return vm.NewString(s), true
 	})
-	vm.Define(vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("String Iterator"), engine.FlagConfigurable)
+	vm.Define(vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("String Iterator"), engine.FlagConfigurable)
 
 	gp := vm.Intrinsic(engine.IntrinsicGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) *engine.Object {
@@ -490,7 +490,7 @@ func initIterators(vm *engine.VM) {
 	vm.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, resume("next", engine.ResumeNext))
 	resume("return", engine.ResumeReturn)
 	resume("throw", engine.ResumeThrow)
-	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Generator"), engine.FlagConfigurable)
+	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Generator"), engine.FlagConfigurable)
 
 	// The prototype chain of generator functions.
 	gf := vm.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)

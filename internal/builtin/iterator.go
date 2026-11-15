@@ -158,7 +158,7 @@ func initIteratorHelpers(vm *engine.VM) {
 		vm.DefineAccessor(proto, key, g, s, engine.FlagConfigurable)
 	}
 	ignoringAccessor(vm.Key(engine.KeyConstructor), "constructor", engine.ObjectValue(ctor))
-	ignoringAccessor(vm.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", vm.NewString("Iterator"))
+	ignoringAccessor(vm.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", vm.SharedString("Iterator"))
 
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolDispose), "[Symbol.dispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if m := vm.GetMethod(this, k.ret); m != nil {
@@ -170,7 +170,7 @@ func initIteratorHelpers(vm *engine.VM) {
 	helperProto := vm.NewObject(proto)
 	iteratorNext(vm, helperProto, helperNext)
 	method(vm, helperProto, "return", 0, helperReturn)
-	vm.Define(helperProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Iterator Helper"), engine.FlagConfigurable)
+	vm.Define(helperProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Iterator Helper"), engine.FlagConfigurable)
 	newHelper := func(body helperBody) engine.Value {
 		return engine.ObjectValue(vm.NewIteratorObject(helperProto, &iteratorHelper{body: body}))
 	}

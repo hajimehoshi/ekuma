@@ -215,8 +215,7 @@ type shape struct {
 	// more than smallShapeSize properties keeps a table from the start.
 	flatBased bool
 
-	// order lists the keys of a private shape, or the keys that a shared shape without parent
-	// holds itself, in insertion order.
+	// order lists the keys of a private shape in insertion order.
 	order []*Object
 }
 
@@ -319,7 +318,13 @@ func (s *shape) keys() []*Object {
 	for ; t.parent != nil; t = t.parent {
 		keys[t.count-1] = t.key
 	}
-	copy(keys, t.order)
+	// A shared shape without parent may have properties of its own: see [VM.FinishBuiltins].
+	for _, e := range t.small {
+		keys[e.slot] = e.key
+	}
+	for k, p := range t.table {
+		keys[p.slot] = k
+	}
 	return keys
 }
 
@@ -691,6 +696,15 @@ func (vm *VM) NewString(s string) Value {
 	}
 }
 
+// SharedString returns the string s, which must be in canonical WTF-8, as a value that may be
+// the same object as a property key with the same contents.
+func (vm *VM) SharedString(s string) Value {
+	if o := vm.strings.interned.get(s); o != nil {
+		return Value{o: o}
+	}
+	return vm.NewString(s)
+}
+
 // Intern returns the string s as a property key.
 func (vm *VM) Intern(s string) *Object {
 	if o := vm.strings.interned.get(s); o != nil {
@@ -864,9 +878,11 @@ func (o *Object) shareShape() {
 	// The keys of a private shape are in the order of their slots.
 	s.private = false
 	s.flatBased = true
+	order := s.order
+	s.order = nil
 	if s.count <= smallShapeSize {
-		s.small = make([]shapeEntry, len(s.order))
-		for i, k := range s.order {
+		s.small = make([]shapeEntry, len(order))
+		for i, k := range order {
 			s.small[i] = shapeEntry{
 				key:  k,
 				prop: s.table[k],

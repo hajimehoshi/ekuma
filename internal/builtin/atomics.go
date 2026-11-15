@@ -99,7 +99,7 @@ func waitResult(vm *engine.VM, async bool, value engine.Value) engine.Value {
 func initAtomics(vm *engine.VM) {
 	atomics := vm.NewOrdinaryObject()
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Atomics"), engine.ObjectValue(atomics), engine.FlagsHidden)
-	vm.Define(atomics, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Atomics"), engine.FlagConfigurable)
+	vm.Define(atomics, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Atomics"), engine.FlagConfigurable)
 
 	// readModifyWrite implements AtomicReadModifyWrite with op on the encodings of the elements.
 	readModifyWrite := func(name string, op engine.AtomicOp) {

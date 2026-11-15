@@ -615,7 +615,7 @@ func temporalConstructor(vm *engine.VM, ns *engine.Object, name string, length i
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 	vm.Define(ns, vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Temporal."+name), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal."+name), engine.FlagConfigurable)
 	return c
 }
 
@@ -680,7 +680,7 @@ func initTemporal(vm *engine.VM) {
 
 // newTemporalRealm defines the properties of the Temporal namespace ns.
 func newTemporalRealm(vm *engine.VM, ns *engine.Object) *temporalRealm {
-	vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Temporal"), engine.FlagConfigurable)
+	vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal"), engine.FlagConfigurable)
 	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
 	r := &temporalRealm{
 		instant:        vm.NewObject(objectProto),

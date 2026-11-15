@@ -84,7 +84,7 @@ func initBigInt(vm *engine.VM) {
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return thisBigInt(vm, this, "valueOf")
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("BigInt"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("BigInt"), engine.FlagConfigurable)
 }
 
 // numberToBigInt implements NumberToBigInt.

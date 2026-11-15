@@ -17,7 +17,7 @@ import (
 func New(hostDefined any) *VM {
 	vm := &VM{
 		hostDefined:    hostDefined,
-		stack:          make([]Value, 1<<10),
+		stack:          make([]Value, 1<<8),
 		symbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 		mailbox:        newMailbox(),

@@ -631,7 +631,7 @@ func initRegExp(vm *engine.VM) {
 		}
 		return m, true
 	})
-	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("RegExp String Iterator"), engine.FlagConfigurable)
+	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("RegExp String Iterator"), engine.FlagConfigurable)
 
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolMatchAll), "[Symbol.matchAll]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(vm, this, "RegExp.prototype[Symbol.matchAll]")

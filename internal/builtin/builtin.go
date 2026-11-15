@@ -741,7 +741,7 @@ func initError(vm *engine.VM) {
 			vm.RecordStack(e, wtf8.ToValidUTF8(msg), nt)
 			return engine.ObjectValue(e)
 		})
-		vm.Define(proto, vm.Key(engine.KeyName), vm.NewString(name), engine.FlagsHidden)
+		vm.Define(proto, vm.Key(engine.KeyName), vm.SharedString(name), engine.FlagsHidden)
 		vm.Define(proto, vm.Key(engine.KeyMessage), vm.NewString(""), engine.FlagsHidden)
 		if kind == engine.ErrorKindError {
 			base = ctor

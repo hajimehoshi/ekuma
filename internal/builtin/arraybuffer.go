@@ -219,7 +219,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	transfer("transfer", true, false)
 	transfer("transferToFixedLength", false, false)
 	transfer("transferToImmutable", false, true)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("ArrayBuffer"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("ArrayBuffer"), engine.FlagConfigurable)
 }
 
 func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
@@ -282,5 +282,5 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return engine.ObjectValue(r)
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("SharedArrayBuffer"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("SharedArrayBuffer"), engine.FlagConfigurable)
 }

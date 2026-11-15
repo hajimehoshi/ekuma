@@ -10,7 +10,7 @@ import (
 func initReflect(vm *engine.VM) {
 	r := vm.NewOrdinaryObject()
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Reflect"), engine.ObjectValue(r), engine.FlagsHidden)
-	vm.Define(r, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Reflect"), engine.FlagConfigurable)
+	vm.Define(r, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Reflect"), engine.FlagConfigurable)
 
 	target := func(vm *engine.VM, v engine.Value, name string) *engine.Object {
 		if !v.IsObject() {

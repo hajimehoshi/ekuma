@@ -338,7 +338,7 @@ func systemUTCEpochNanoseconds() temporal.Int128 {
 func initTemporalNow(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 	now := vm.NewOrdinaryObject()
 	vm.Define(ns, vm.Intern("Now"), engine.ObjectValue(now), engine.FlagsHidden)
-	vm.Define(now, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Temporal.Now"), engine.FlagConfigurable)
+	vm.Define(now, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal.Now"), engine.FlagConfigurable)
 	// nowTimeZone returns the time zone argument of the methods of Temporal.Now.
 	nowTimeZone := func(vm *engine.VM, v engine.Value) temporal.TimeZone {
 		if v.IsUndefined() {

@@ -386,5 +386,5 @@ func initPromise(vm *engine.VM) {
 		return vm.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
 	})
 
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Promise"), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Promise"), engine.FlagConfigurable)
 }
