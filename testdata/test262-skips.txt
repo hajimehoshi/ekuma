@@ -1,0 +1,9 @@
+# The test262 tests that are not run, one path per line, each with the reason in a comment above
+# it. A skipped test still runs, and the test suite fails when it passes, so that its line is
+# removed.
+
+# The test expects the links of the IANA time zone database 2024b to 2026c from CST6CDT, EST5EDT,
+# MST7MDT and PST8PDT to America/Chicago, America/New_York, America/Denver and
+# America/Los_Angeles. Since 2026d these are zones again, "reverting to 2024a behavior", and the
+# test is stale. Remove this line when test262 updates the test.
+test/intl402/Temporal/ZonedDateTime/links.js

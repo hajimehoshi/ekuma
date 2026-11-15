@@ -84,16 +84,16 @@ the local time zone of Go's `time` package, or of the JavaScript host with `GOOS
 ### Intl
 
 Importing the package `github.com/hajimehoshi/ekuma/intl` for its side effect adds `Intl` to
-every VM, makes the `toLocale*String` methods of numbers, dates, arrays and typed arrays format by
-locale and `localeCompare`, `toLocaleUpperCase` and `toLocaleLowerCase` follow it, and gives
-`Temporal` the calendars of ECMA-402 besides `iso8601`:
+every VM, makes the `toLocale*String` methods of numbers, dates, durations, arrays and typed
+arrays format by locale and `localeCompare`, `toLocaleUpperCase` and `toLocaleLowerCase` follow
+it, and gives `Temporal` the calendars of ECMA-402 besides `iso8601`:
 
 ```go
 import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
 Without the import, the engine has none of these, and its binary does not grow. With it, a hello
-world grows from about 8.6 MB to 14.6 MB natively, and from 11.0 MB to 17.4 MB with `GOOS=js`.
+world grows from about 8.6 MB to 15.7 MB natively, and from 11.0 MB to 18.6 MB with `GOOS=js`.
 The default locale is the one that `LC_ALL`, `LC_MESSAGES` or `LANG` names natively, or
 `navigator.language` with `GOOS=js`, and en-US otherwise. The package brings locale data whose
 license notice a program must include: see [License](#license).
@@ -109,26 +109,17 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-100% of [test262](https://github.com/tc39/test262) pass: 49,743 of 49,743 tests in these
-directories. The test suite fails when any of them fails.
+All of [test262](https://github.com/tc39/test262) that runs passes: 52,388 tests in these
+directories, out of 52,389. The one other test is skipped because it is stale against the current
+time zone database, as `testdata/test262-skips.txt` says. The test suite fails when any test that
+runs fails.
 
-- `test/language`
-- `test/built-ins`
 - `test/annexB`
+- `test/built-ins`
 - `test/harness`
+- `test/intl402`
+- `test/language`
 - `test/staging`, except `test/staging/sm`
-- `test/intl402/Array`
-- `test/intl402/BigInt`
-- `test/intl402/Collator`
-- `test/intl402/Date`
-- `test/intl402/DateTimeFormat`
-- `test/intl402/FallbackSymbol`
-- `test/intl402/Number`
-- `test/intl402/NumberFormat`
-- `test/intl402/PluralRules`
-- `test/intl402/Segmenter`
-- `test/intl402/String`
-- `test/intl402/TypedArray`
 
 ### Implemented
 
@@ -146,12 +137,15 @@ directories. The test suite fails when any of them fails.
   the system's time zone database
 - Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
   compares code units after canonical equivalence, and `toLocaleUpperCase` and
-  `toLocaleLowerCase` ignore the locale. With it, all of these follow the locale, except
-  `Temporal.Duration`'s `toLocaleString`
+  `toLocaleLowerCase` ignore the locale. With it, all of these follow the locale
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root. `Intl.Segmenter`
   follows UAX #29 without dictionaries, so it does not split Chinese, Japanese or Thai text into
   words
+- `Intl.DisplayNames` gives the code of a language, or `undefined` with `fallback: "none"`, when
+  one of its subtags has no name, where ICU names the other subtags. `Intl.DurationFormat`
+  separates the fields of the `digital` style as CLDR's duration patterns do, such as `1.02.03`
+  in Serbian, where ICU uses the time separator
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
@@ -163,12 +157,6 @@ directories. The test suite fails when any of them fails.
 
 ### Missing
 
-- Part of `Intl`, which [importing `github.com/hajimehoshi/ekuma/intl`](#intl) adds.
-  - It has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`, `Intl.Locale`,
-    `Intl.NumberFormat`, `Intl.PluralRules`, `Intl.DateTimeFormat`, `Intl.Collator` and
-    `Intl.Segmenter`
-  - It does not have `Intl.ListFormat`, `Intl.RelativeTimeFormat`, `Intl.DisplayNames` or
-    `Intl.DurationFormat` yet
 - Host API for these, some of which the engine has and only the tests use:
   - Giving a module a module source
   - Property keys other than strings: symbol keys, property descriptors, and listing the keys

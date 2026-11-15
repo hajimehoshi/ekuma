@@ -34,6 +34,11 @@ type realm struct {
 	// options.
 	defaultCollator *collatorData
 
+	listFormatProto         *engine.Object
+	relativeTimeFormatProto *engine.Object
+	displayNamesProto       *engine.Object
+	durationFormatProto     *engine.Object
+
 	// fallbackSymbol is the [[FallbackSymbol]] of Intl.
 	fallbackSymbol *engine.Object
 }
@@ -91,6 +96,10 @@ func (r *realm) init(vm *engine.VM) {
 	r.initDateTimeFormat(vm)
 	r.initCollator(vm)
 	r.initSegmenter(vm)
+	r.initListFormat(vm)
+	r.initRelativeTimeFormat(vm)
+	r.initDisplayNames(vm)
+	r.initDurationFormat(vm)
 }
 
 // realmOf returns the Intl objects of the realm of the function f.

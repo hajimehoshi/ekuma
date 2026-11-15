@@ -11,6 +11,11 @@
 // which keeps each country's zones apart, except that every identifier in zone.tab is a zone,
 // as ECMA-402 requires. A link resolves through the link that its "#= TARGET1" comment names,
 // as if the data could link to links.
+//
+// As AvailableNamedTimeZoneIdentifiers of ECMA-402 asks, a link whose country differs from that
+// of its zone resolves to the only zone of its country when zone.tab has one. The country of a
+// link outside zone.tab is the one whose name in iso3166.tab, or a part of that name joined by
+// " & ", is the location of the link, such as "Jan Mayen" for Atlantic/Jan_Mayen.
 package main
 
 import (
@@ -177,6 +182,21 @@ func main() {
 		}
 	}
 
+	territories := territoryNames(files)
+	for zone, country := range countries {
+		if c, ok := territories[location(zone)]; ok && c != country {
+			log.Fatalf("zone.tab gives %s the country %s, but iso3166.tab names %s", zone, country, c)
+		}
+	}
+	onlyZones := map[string]string{}
+	for zone, country := range countries {
+		if _, ok := onlyZones[country]; ok {
+			onlyZones[country] = ""
+			continue
+		}
+		onlyZones[country] = zone
+	}
+
 	resolved := map[string]string{}
 	names := map[string]string{}
 	for name := range zones {
@@ -203,6 +223,9 @@ func main() {
 		}
 		if !zones[target] {
 			log.Fatalf("the links from %s form a cycle", name)
+		}
+		if country, ok := territories[location(name)]; ok && !strings.HasPrefix(target, "Etc/") && country != countries[target] && onlyZones[country] != "" {
+			target = onlyZones[country]
 		}
 		resolved[name] = target
 	}
@@ -240,6 +263,37 @@ func main() {
 	}
 	b.WriteString("}\n")
 	write("zonetab.go", b.Bytes())
+}
+
+// territoryNames maps the names of the territories in iso3166.tab, and the parts of the names
+// joined by " & ", to their ISO 3166 codes.
+func territoryNames(files map[string][]byte) map[string]string {
+	names := map[string]string{}
+	for l := range strings.Lines(string(files["iso3166.tab"])) {
+		if strings.HasPrefix(l, "#") {
+			continue
+		}
+		code, name, ok := strings.Cut(strings.TrimSuffix(l, "\n"), "\t")
+		if !ok {
+			log.Fatalf("iso3166.tab: malformed line: %s", l)
+		}
+		names[name] = code
+		for part := range strings.SplitSeq(name, " & ") {
+			if _, ok := names[part]; !ok {
+				names[part] = code
+			}
+		}
+	}
+	if len(names) == 0 {
+		log.Fatal("iso3166.tab has no territories")
+	}
+	return names
+}
+
+// location returns the location of the identifier of a zone or a link, its last component
+// with spaces for underscores.
+func location(id string) string {
+	return strings.ReplaceAll(id[strings.LastIndexByte(id, '/')+1:], "_", " ")
 }
 
 // primaryOfUTC returns the primary identifier for the identifiers that ECMA-262 treats as UTC,

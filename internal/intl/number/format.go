@@ -155,6 +155,9 @@ type formatted struct {
 	// outer is the unit or the currency name around the number.
 	outerPrefix, outerSuffix []Part
 	hasOuter                 bool
+	// omitsNumber reports whether the pattern of the unit or the currency name has no
+	// placeholder for the number, as the Arabic "سنة" for one year.
+	omitsNumber bool
 	// pluralString and pluralExponent select the plural form of the unit or currency name.
 	pluralString   string
 	pluralExponent int
@@ -422,7 +425,8 @@ func (f *Formatter) setOuter(r *formatted, category string) {
 	r.hasOuter = true
 	if f.o.Style == "unit" {
 		p := f.unitPattern(category)
-		before, after, _ := strings.Cut(p, "{0}")
+		before, after, ok := strings.Cut(p, "{0}")
+		r.omitsNumber = !ok
 		r.outerPrefix = splitSpaces("unit", before)
 		r.outerSuffix = splitSpaces("unit", after)
 		return
@@ -440,7 +444,8 @@ func (f *Formatter) setOuter(r *formatted, category string) {
 			name = f.o.Currency
 		}
 	}
-	before, after, _ := strings.Cut(p, "{0}")
+	before, after, ok := strings.Cut(p, "{0}")
+	r.omitsNumber = !ok
 	r.outerPrefix = currencyNameParts(before, name)
 	r.outerSuffix = currencyNameParts(after, name)
 }
@@ -655,8 +660,11 @@ func isSymbolOrSeparator(r rune) bool {
 
 // parts returns all the parts of r.
 func (f *Formatter) parts(r *formatted) []Part {
-	body := append(r.number[:len(r.number):len(r.number)], r.exponent...)
-	body = f.wrapMiddle(r.middlePrefix, body, r.middleSuffix)
+	var body []Part
+	if !r.omitsNumber {
+		body = append(r.number[:len(r.number):len(r.number)], r.exponent...)
+		body = f.wrapMiddle(r.middlePrefix, body, r.middleSuffix)
+	}
 	out := append(r.outerPrefix[:len(r.outerPrefix):len(r.outerPrefix)], body...)
 	return mergeLiterals(append(out, r.outerSuffix...))
 }

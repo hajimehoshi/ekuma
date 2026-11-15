@@ -27,7 +27,7 @@ var recordSums = []struct {
 	{
 		name: "UnitData",
 		m:    cldr.UnitData,
-		sum:  "75e58f8a85a522a7ca8cf4cc04801d33b8185cc632e1c90c07e754c9e4963830",
+		sum:  "fb0b2d7517a6e322d35768422b6ef7c4f600f73e0a282db4256f821a069bdf1a",
 	},
 	{
 		name: "GregorianData",
@@ -117,7 +117,7 @@ var recordSums = []struct {
 	{
 		name: "DateFieldNames",
 		m:    cldr.DateFieldNames,
-		sum:  "7713e3245dda2c275519cd4793b21e98d288d6a64466e2bb5f38a44ef009bf09",
+		sum:  "d154b5e81930a622dbcce82d2b0449e14719b242e30a9733c759b914a2d2fb4e",
 	},
 	{
 		name: "TimeZoneNames",
@@ -128,5 +128,20 @@ var recordSums = []struct {
 		name: "TerritoryNames",
 		m:    cldr.TerritoryNames,
 		sum:  "89c0ae57bde0320ee9fe07a94a4436f5cc093f6208e9f69d19b9b2c685f445f5",
+	},
+	{
+		name: "RelativeTimeData",
+		m:    cldr.RelativeTimeData,
+		sum:  "f2376bf1c597cba560bb4eb23db558aa0b84afbb61c0cb3fe69bbd1699a36dfb",
+	},
+	{
+		name: "ListPatterns",
+		m:    cldr.ListPatterns,
+		sum:  "8e47edc64050decb025d1baaca14c659e4c021630ab865726a3d1edc9fa0f16f",
+	},
+	{
+		name: "LocaleDisplayNames",
+		m:    cldr.LocaleDisplayNames,
+		sum:  "ddb7b33b0dc596f5518d2bbf8d5485cfeb6675311ef7c79f5ad7cd183ede3c91",
 	},
 }

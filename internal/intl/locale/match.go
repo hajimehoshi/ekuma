@@ -192,3 +192,18 @@ func parent(s string, collation bool) (string, bool) {
 	}
 	return id.String(), true
 }
+
+// LookupField returns the field key of the records in m for the locale of CLDR whose data
+// applies to the available locale l, inheriting the field from its ancestors.
+func LookupField(m cldr.Map, l, key string) (string, bool) {
+	for l, ok := DataLocale(l), true; ok; l, ok = Parent(l) {
+		r, ok := m.Lookup(l)
+		if !ok {
+			continue
+		}
+		if v, ok := cldr.Field(r, key); ok {
+			return v, true
+		}
+	}
+	return "", false
+}

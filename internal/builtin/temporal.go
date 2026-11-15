@@ -780,3 +780,12 @@ func TemporalInstantOf(v engine.Value) (temporal.Int128, bool) {
 	}
 	return s.ns, true
 }
+
+// TemporalDurationOf returns the fields of v, and reports whether v is a Temporal.Duration.
+func TemporalDurationOf(v engine.Value) (temporal.Duration, bool) {
+	s, ok := engine.TemporalData(v).(*durationSlots)
+	if !ok {
+		return temporal.Duration{}, false
+	}
+	return s.d, true
+}

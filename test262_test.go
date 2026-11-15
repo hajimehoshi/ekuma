@@ -4,6 +4,7 @@
 package ekuma_test
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -52,11 +53,31 @@ func test262Dir() string {
 // internationalization API, harness tests the files that tests include, and staging holds
 // tests that have not been fully reviewed yet.
 var test262Dirs = []string{
-	"test/language", "test/built-ins", "test/annexB", "test/harness", "test/staging",
-	"test/intl402/Array", "test/intl402/BigInt", "test/intl402/Collator", "test/intl402/Date",
-	"test/intl402/DateTimeFormat", "test/intl402/FallbackSymbol", "test/intl402/Number",
-	"test/intl402/NumberFormat", "test/intl402/PluralRules", "test/intl402/Segmenter",
-	"test/intl402/String", "test/intl402/TypedArray",
+	"test/annexB", "test/built-ins", "test/harness", "test/intl402", "test/language",
+	"test/staging",
+}
+
+// skippedTestsFile lists the test262 tests that are not run, one path per line, each with a
+// comment that says why. A line that starts with "#" is a comment.
+const skippedTestsFile = "testdata/test262-skips.txt"
+
+// readLines returns the lines of the file name other than the empty lines and the comments,
+// sorted.
+func readLines(name string) ([]string, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var lines []string
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if l := strings.TrimSpace(sc.Text()); l != "" && !strings.HasPrefix(l, "#") {
+			lines = append(lines, l)
+		}
+	}
+	sort.Strings(lines)
+	return lines, sc.Err()
 }
 
 // test262Excluded are the directories that are not run when a directory above them is.
@@ -568,6 +589,12 @@ func TestTest262(t *testing.T) {
 	if *flagTest262Dir != "" {
 		dirs = []string{*flagTest262Dir}
 	}
+	skips, err := readLines(skippedTestsFile)
+	if err != nil {
+		t.Fatalf("reading the skipped tests: %v", err)
+	}
+	// skipped holds the paths of the skipped tests in the directories.
+	var skipped []string
 	var paths []string
 	for _, d := range dirs {
 		root := filepath.Join(dir, d)
@@ -589,9 +616,14 @@ func TestTest262(t *testing.T) {
 			if !strings.HasSuffix(p, ".js") || strings.HasSuffix(p, "_FIXTURE.js") {
 				return nil
 			}
-			if *flagTest262Filter == "" || strings.Contains(rel, *flagTest262Filter) {
-				paths = append(paths, rel)
+			if *flagTest262Filter != "" && !strings.Contains(rel, *flagTest262Filter) {
+				return nil
 			}
+			if _, ok := slices.BinarySearch(skips, rel); ok {
+				skipped = append(skipped, rel)
+				return nil
+			}
+			paths = append(paths, rel)
 			return nil
 		})
 		if err != nil {
@@ -599,6 +631,7 @@ func TestTest262(t *testing.T) {
 		}
 	}
 	sort.Strings(paths)
+	sort.Strings(skipped)
 	// order holds the indices in paths in the order they are handed to the workers.
 	order := make([]int, len(paths))
 	for i := range order {
@@ -659,6 +692,25 @@ func TestTest262(t *testing.T) {
 	}
 	t.Logf("test262 at %s", test262Commit)
 	t.Logf("test262: %d of %d tests pass (%.1f%%)", len(paths)-len(failed), len(paths), 100*float64(len(paths)-len(failed))/float64(max(len(paths), 1)))
+	if len(skipped) > 0 {
+		t.Logf("test262: %d tests skipped, as %s lists", len(skipped), skippedTestsFile)
+	}
+	// A skipped test still runs, so that the list loses a test that passes again.
+	for _, p := range skipped {
+		if r, _ := runTest(h, filepath.Join(dir, filepath.FromSlash(p))); r == "" {
+			t.Errorf("%s passes now: remove it from %s", p, skippedTestsFile)
+		}
+	}
+	if *flagTest262Filter == "" {
+		for _, p := range skips {
+			inDirs := slices.ContainsFunc(dirs, func(d string) bool {
+				return strings.HasPrefix(p, d+"/")
+			})
+			if _, ok := slices.BinarySearch(skipped, p); inDirs && !ok {
+				t.Errorf("%s is not in the suite: remove it from %s", p, skippedTestsFile)
+			}
+		}
+	}
 	if testing.Verbose() {
 		areas := make([]string, 0, len(byArea))
 		for a := range byArea {

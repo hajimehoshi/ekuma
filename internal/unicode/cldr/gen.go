@@ -818,7 +818,7 @@ func main() {
 		unitData[l] = unitFields(object(decode(units, name, "main", l, "units")))
 	}
 	f = newFile("units.go", "cldr-json "+jsonVersion+" (cldr-units-full)")
-	f.records("maps locales to the patterns of the units of ECMA-402, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "UnitData", tree.records(unitData))
+	f.records("maps locales to the patterns of the units of ECMA-402 and of numeric durations, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "UnitData", tree.records(unitData))
 	f.write()
 
 	// Calendars. Every calendar has a table of its own with the same fields. The tables of the
@@ -912,7 +912,7 @@ func main() {
 		fieldData[l] = dateFieldNames(object(object(mainData(dates, name)["dates"])["fields"]))
 	}
 	f = newFile("datefields.go", datesSource)
-	f.records(`maps locales to the display names of date fields, as records in the form of [Field] keyed by the names of the fields in CLDR, such as "era" and "dayperiod". A record that a locale shares with its parent is left out.`, "DateFieldNames", tree.records(fieldData))
+	f.records(`maps locales to the display names of date fields, as records in the form of [Field] keyed by the names of the fields in CLDR, such as "era" and "dayperiod", followed by "-short" or "-narrow" for the short and narrow names. A record that a locale shares with its parent is left out.`, "DateFieldNames", tree.records(fieldData))
 	f.write()
 
 	// Time zone names.
@@ -1038,7 +1038,165 @@ func main() {
 	f.mapping(`maps scripts to their directions, "ltr" or "rtl", when they are known.`, "ScriptDirections", dirs)
 	f.write()
 
+	// Relative times.
+	relData := map[string]map[string]string{}
+	for name := range dates {
+		l, ok := mainLocale(name, "dateFields.json")
+		if !ok {
+			continue
+		}
+		relData[l] = relativeTimeFields(object(object(mainData(dates, name)["dates"])["fields"]))
+	}
+	f = newFile("relativetimes.go", datesSource)
+	f.records(`maps locales to the patterns of relative times, as records in the form of [Field]. A key is a unit ("second", "minute", "hour", "day", "week", "month", "quarter" or "year"), a width ("l", "s" or "n" for long, short or narrow), "|", and either an offset such as "-1" for the name of a relative time, or "f" or "p" for the future or the past followed by a plural category. A record that a locale shares with its parent is left out.`, "RelativeTimeData", tree.records(relData))
+	f.write()
+
+	// List patterns.
+	misc := npmPackage("cldr-misc-full")
+	listData := map[string]map[string]string{}
+	for name := range misc {
+		l, ok := mainLocale(name, "listPatterns.json")
+		if !ok {
+			continue
+		}
+		listData[l] = listFields(object(mainData(misc, name)["listPatterns"]))
+	}
+	f = newFile("listpatterns.go", "cldr-json "+jsonVersion+" (cldr-misc-full)")
+	f.records(`maps locales to their list patterns, as records in the form of [Field]. A key is a type ("c", "d" or "u" for conjunction, disjunction or unit), a width ("l", "s" or "n" for long, short or narrow), and the pattern ("s", "m", "e" or "2" for start, middle, end or a list of two). A record that a locale shares with its parent is left out.`, "ListPatterns", tree.records(listData))
+	f.write()
+
+	// Display names of locales and calendars.
+	nameData := map[string]map[string]string{}
+	for name := range localeNames {
+		l, ok := mainLocale(name, "localeDisplayNames.json")
+		if !ok {
+			continue
+		}
+		nameData[l] = localeDisplayNameFields(localeNames, l, path.Dir(name), kws["ca"].values, kws["ca"].names)
+	}
+	f = newFile("localedisplaynames.go", "cldr-json "+jsonVersion+" (cldr-localenames-full)")
+	f.records(`maps locales to the display names of languages, scripts, variants and calendars, the short names of regions, and the patterns of locale names, as records in the form of [Field]. "l", "s" and "v" followed by a code are the names of a language, a script or a variant, "c" followed by a Unicode calendar type the name of a calendar, and "r" followed by a region code the short name of a region. A language or script name may be followed by "|s" for its short form. "p" is the pattern of a locale name and "q" the pattern of the separator of its qualifiers. A record that a locale shares with its parent is left out.`, "LocaleDisplayNames", tree.records(nameData))
+	f.write()
+
 	writeRecordSums()
+}
+
+// widthLetters maps the suffixes of the widths of CLDR keys to the letters that the records use
+// for them.
+var widthLetters = map[string]string{
+	"":        "l",
+	"-short":  "s",
+	"-narrow": "n",
+}
+
+// relativeTimeFields returns the fields of the records of RelativeTimeData from the date fields
+// of a locale in cldr-json.
+func relativeTimeFields(fields map[string]any) map[string]string {
+	out := map[string]string{}
+	for _, unit := range []string{"second", "minute", "hour", "day", "week", "month", "quarter", "year"} {
+		for suffix, w := range widthLetters {
+			v, ok := fields[unit+suffix]
+			if !ok {
+				continue
+			}
+			prefix := unit + w + "|"
+			for k, p := range object(v) {
+				if n, ok := strings.CutPrefix(k, "relative-type-"); ok {
+					out[prefix+n] = str(p)
+					continue
+				}
+				tense, ok := strings.CutPrefix(k, "relativeTime-type-")
+				if !ok {
+					continue
+				}
+				t := map[string]string{"future": "f", "past": "p"}[tense]
+				if t == "" {
+					log.Fatalf("unknown tense %s", tense)
+				}
+				for pk, pp := range object(p) {
+					count := strings.TrimPrefix(pk, "relativeTimePattern-count-")
+					c, ok := pluralCategories[count]
+					if !ok {
+						log.Fatalf("unknown plural category %s", count)
+					}
+					out[prefix+t+c] = str(pp)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// listFields returns the fields of the records of ListPatterns from the list patterns of a
+// locale in cldr-json.
+func listFields(lists map[string]any) map[string]string {
+	out := map[string]string{}
+	for typ, t := range map[string]string{"standard": "c", "or": "d", "unit": "u"} {
+		for suffix, w := range widthLetters {
+			v, ok := lists["listPattern-type-"+typ+suffix]
+			if !ok {
+				log.Fatalf("listPattern-type-%s%s is missing", typ, suffix)
+			}
+			for k, p := range map[string]string{"start": "s", "middle": "m", "end": "e", "2": "2"} {
+				out[t+w+p] = str(object(v)[k])
+			}
+		}
+	}
+	return out
+}
+
+// localeDisplayNameFields returns the fields of the records of LocaleDisplayNames of the locale
+// l, whose files of cldr-localenames-full are in dir. calendarTypes are the Unicode calendar
+// types, and calendarNames maps the other CLDR names of calendars to them.
+func localeDisplayNameFields(files map[string][]byte, l, dir string, calendarTypes []string, calendarNames map[string]string) map[string]string {
+	out := map[string]string{}
+	names := func(file, kind, prefix string, alts map[string]string) {
+		if _, ok := files[dir+"/"+file]; !ok {
+			return
+		}
+		data := object(object(mainData(files, dir+"/"+file)["localeDisplayNames"])[kind])
+		for k, v := range data {
+			code, alt, isAlt := strings.Cut(k, "-alt-")
+			if strings.Contains(code, "-menu-") {
+				continue
+			}
+			if !isAlt {
+				out[prefix+code] = str(v)
+				continue
+			}
+			if s, ok := alts[alt]; ok {
+				out[prefix+code+s] = str(v)
+			}
+		}
+	}
+	names("languages.json", "languages", "l", map[string]string{"short": "|s"})
+	names("scripts.json", "scripts", "s", map[string]string{"short": "|s"})
+	names("variants.json", "variants", "v", nil)
+	if _, ok := files[dir+"/territories.json"]; ok {
+		for k, v := range object(object(mainData(files, dir+"/territories.json")["localeDisplayNames"])["territories"]) {
+			if code, ok := strings.CutSuffix(k, "-alt-short"); ok {
+				out["r"+code] = str(v)
+			}
+		}
+	}
+	ldn := object(mainData(files, dir+"/localeDisplayNames.json")["localeDisplayNames"])
+	pat := object(ldn["localeDisplayPattern"])
+	out["p"] = str(pat["localePattern"])
+	out["q"] = str(pat["localeSeparator"])
+	if types, ok := ldn["types"]; ok {
+		if cals, ok := object(types)["calendar"]; ok {
+			for k, v := range object(cals) {
+				if strings.HasPrefix(k, "_") || strings.Contains(k, "-alt-") {
+					continue
+				}
+				if t, ok := calendarNames[k]; ok && !slices.Contains(calendarTypes, k) {
+					k = t
+				}
+				out["c"+k] = str(v)
+			}
+		}
+	}
+	return out
 }
 
 // pluralCategories maps the plural categories of CLDR to the letters that the records of
@@ -1407,9 +1565,13 @@ var sanctionedUnits = []string{
 
 // unitFields returns the fields of the records of UnitData from the units of a locale in
 // cldr-json: the sanctioned units and the units that CLDR has for the division of two of
-// them.
+// them, and "D" followed by "hm", "hms" or "ms" for the patterns of durations in hours and
+// minutes, hours, minutes and seconds, or minutes and seconds.
 func unitFields(us map[string]any) map[string]string {
 	out := map[string]string{}
+	for _, k := range []string{"hm", "hms", "ms"} {
+		out["D"+k] = str(object(us["durationUnit-type-"+k])["durationUnitPattern"])
+	}
 	for width, w := range map[string]string{"long": "l", "short": "s", "narrow": "n"} {
 		units := object(us[width])
 		if per, ok := units["per"]; ok {
@@ -1639,12 +1801,12 @@ func calendarFields(cal map[string]any) map[string]string {
 }
 
 // dateFieldNames returns the fields of the records of DateFieldNames from the date fields of
-// a locale in cldr-json.
+// a locale in cldr-json. The keys are the names of the fields, followed by "-short" or
+// "-narrow" for the short and narrow names.
 func dateFieldNames(fields map[string]any) map[string]string {
 	out := map[string]string{}
 	for k, v := range fields {
-		if strings.Contains(k, "-") {
-			// A short or narrow form.
+		if _, width, ok := strings.Cut(k, "-"); ok && width != "short" && width != "narrow" {
 			continue
 		}
 		if n, ok := object(v)["displayName"]; ok {

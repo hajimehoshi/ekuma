@@ -103,3 +103,66 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatters(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "list contextual conjunctions",
+			src:  `[new Intl.ListFormat("es").format(["agua", "iglesia"]), new Intl.ListFormat("es", {type: "disjunction"}).format(["siete", "ocho"]), new Intl.ListFormat("he").format(["שלום", "abc"])].join("; ")`,
+			want: "agua e iglesia; siete u ocho; שלום ו-abc",
+		},
+		{
+			name: "relative time",
+			src:  `[new Intl.RelativeTimeFormat("ja", {numeric: "auto"}).format(-1, "day"), new Intl.RelativeTimeFormat("ar-u-nu-arab").format(3, "hours")].join("; ")`,
+			want: "昨日; خلال ٣ ساعات",
+		},
+		{
+			// The name of a dialect is used only when it covers every subtag that it
+			// stands for.
+			name: "language names",
+			src:  `["en-US", "zh-Hant-TW", "en-Latn-US", "de-1996"].map(c => new Intl.DisplayNames("en", {type: "language"}).of(c)).concat([new Intl.DisplayNames("en", {type: "language", style: "short"}).of("en-GB"), new Intl.DisplayNames("en", {type: "language", languageDisplay: "standard"}).of("en-US"), new Intl.DisplayNames("ja", {type: "language"}).of("zh-Hans-SG")]).join("; ")`,
+			want: "American English; Chinese (Traditional, Taiwan); English (Latin, United States); German (German orthography of 1996); UK English; English (United States); 中国語 (簡体字、シンガポール)",
+		},
+		{
+			name: "language without a name",
+			src:  `new Intl.DisplayNames("en", {type: "language"}).of("en-XY") + " " + new Intl.DisplayNames("en", {type: "language", fallback: "none"}).of("en-XY")`,
+			want: "en-XY undefined",
+		},
+		{
+			name: "other display names",
+			src:  `[new Intl.DisplayNames("fr", {type: "region"}).of("de"), new Intl.DisplayNames("en", {type: "region", style: "short"}).of("GB"), new Intl.DisplayNames("en", {type: "script"}).of("hans"), new Intl.DisplayNames("de", {type: "currency", style: "narrow"}).of("usd"), new Intl.DisplayNames("en", {type: "calendar"}).of("islamic-civil"), new Intl.DisplayNames("en", {type: "dateTimeField", style: "short"}).of("month")].join("; ")`,
+			want: "Allemagne; UK; Simplified; US-Dollar; Hijri Calendar (tabular, civil epoch); mo.",
+		},
+		{
+			// The Arabic name of one year has no number, and Serbian separates the
+			// fields of a numeric duration with periods.
+			name: "durations",
+			src:  `[new Intl.DurationFormat("ar", {style: "long"}).format({years: 1, months: 2}), new Intl.DurationFormat("sr", {style: "digital"}).format({hours: 1, minutes: 2, seconds: 3}), new Intl.DurationFormat("fr", {style: "long"}).format({hours: 1, minutes: 2, seconds: 3})].join("; ")`,
+			want: "سنة وشهران; 1.02.03; 1\u00a0heure, 2 minutes et 3\u00a0secondes",
+		},
+		{
+			name: "duration toLocaleString",
+			src:  `Temporal.Duration.from("PT1H30M").toLocaleString("de", {style: "long"})`,
+			want: "1 Stunde, 30 Minuten",
+		},
+	} {
+		var vm ekuma.VM
+		s, err := vm.ParseScript("test.js", tc.src)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		v, err := s.Evaluate(context.Background())
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		if got := v.String(); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}

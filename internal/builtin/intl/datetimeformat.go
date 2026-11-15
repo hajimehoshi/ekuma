@@ -653,8 +653,8 @@ func (dtf *dateTimeFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 	return engine.ObjectValue(out)
 }
 
-// initTemporalToLocaleString replaces the toLocaleString methods of the Temporal types other
-// than Temporal.Duration with the versions of ECMA-402. It replaces the namespace Temporal of
+// initTemporalToLocaleString replaces the toLocaleString methods of the Temporal types with
+// the versions of ECMA-402. It replaces the namespace Temporal of
 // the current realm with one that gets the properties of the original when it is first
 // needed, and replaces the methods then. Date.prototype.toTemporalInstant, which creates
 // Temporal objects without the namespace, makes the namespace get its properties first.
@@ -693,6 +693,9 @@ func initTemporalToLocaleString(vm *engine.VM) {
 				return formatTemporalLocaleString(vm, tv, arg(args, 0), arg(args, 1))
 			})
 		}
+		ctor := vm.Get(ns, engine.NamedKey(vm.Intern("Duration")))
+		proto := vm.Get(ctor.Object(), engine.NamedKey(vm.Key(engine.KeyPrototype))).Object()
+		method(vm, proto, "toLocaleString", 0, durationToLocaleString)
 	})
 	vm.Define(global, vm.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 	dateProto := vm.Intrinsic(engine.IntrinsicDatePrototype)

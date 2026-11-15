@@ -39,6 +39,11 @@ func TestLoadZone(t *testing.T) {
 	if id, primary, _, ok := datetime.LoadZone("asia/CALCUTTA"); !ok || id != "Asia/Calcutta" || primary != "Asia/Kolkata" {
 		t.Errorf("LoadZone(asia/CALCUTTA): got %q, %q, %v, want Asia/Calcutta, Asia/Kolkata, true", id, primary, ok)
 	}
+	// The link resolves to Europe/Oslo in the database, but Jan Mayen is in Svalbard and Jan
+	// Mayen, whose only zone in zone.tab is Arctic/Longyearbyen.
+	if _, primary, _, ok := datetime.LoadZone("Atlantic/Jan_Mayen"); !ok || primary != "Arctic/Longyearbyen" {
+		t.Errorf("LoadZone(Atlantic/Jan_Mayen): got the primary identifier %q, %v, want Arctic/Longyearbyen, true", primary, ok)
+	}
 	if _, oslo, _, ok := datetime.LoadZone("Europe/Oslo"); ok && oslo != "Europe/Oslo" {
 		t.Errorf("LoadZone(Europe/Oslo): got the primary identifier %q, want Europe/Oslo", oslo)
 	}

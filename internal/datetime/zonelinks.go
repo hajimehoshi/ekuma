@@ -54,7 +54,7 @@ var zoneLinks = map[string]string{
 	"Asia/Ujung_Pandang":               "Asia/Makassar",
 	"Asia/Ulan_Bator":                  "Asia/Ulaanbaatar",
 	"Atlantic/Faeroe":                  "Atlantic/Faroe",
-	"Atlantic/Jan_Mayen":               "Europe/Oslo",
+	"Atlantic/Jan_Mayen":               "Arctic/Longyearbyen",
 	"Australia/ACT":                    "Australia/Sydney",
 	"Australia/Canberra":               "Australia/Sydney",
 	"Australia/Currie":                 "Australia/Hobart",

@@ -10,30 +10,30 @@ import _ "embed"
 //go:embed unitdata.deflate
 var unitDataBlocks string
 
-// UnitData maps locales to the patterns of the units of ECMA-402, as records in the form of [Field]. A record that a locale shares with its parent is left out.
+// UnitData maps locales to the patterns of the units of ECMA-402 and of numeric durations, as records in the form of [Field]. A record that a locale shares with its parent is left out.
 var UnitData = Map{
 	keys: Strings{
 		data: "afakamarar-SAasastazbabal-Latnbebe-taraskbgblobnbrbrxbsbs-Cyrlcaccpcecebchrcopcscvcydadede-CHdsb" +
-			"dzeeelenen-001en-AUen-BSen-BZen-CAen-INen-KYen-PWeoeses-419es-ARes-COes-DOes-GTes-MXes-PRes-PYes" +
-			"-USeteufaff-Adlmfifilfofrfr-CAfr-HTfurfygagdglgswguhahawhehihi-Latnhrhsbhuhyiaidigisitjajgojvkak" +
-			"eakekkgpkkkk-Arabkmknkokokkok-Latnkskshkukylblktlldloltlvmimkmlmnmrmsmtmymznndsnenlnnnonqoocoros" +
-			"papcmplpsps-PKptpt-PTqurmroro-MDrusahscsdseshnsiskslsosqsrsr-Cyrl-BAsr-Latnsr-Latn-BAsvsv-FIswsw" +
-			"-KEsyrtatetgthtitktotrttugukunduruzuz-Cyrlvecviwaewoxnryoyo-BJyrlyrl-COyrl-VEyueyue-Hanszhzh-Han" +
-			"s-HKzh-Hans-MOzh-Hans-SGzh-Hantzh-Hant-HKzu",
+			"dzeeelenen-001en-AUen-BSen-BZen-CAen-INen-KYen-PWeoeses-419es-ARes-CLes-COes-DOes-GTes-MXes-PRes" +
+			"-PYes-USeteufaff-Adlmfifilfofrfr-CAfr-HTfurfygagdglgswguhahawhehihi-Latnhrhsbhuhyiaidigisitjajgo" +
+			"jvkakeakekkgpkkkk-Arabkmknkokokkok-Latnkskshkukylblktlldloltlvmimkmlmnmrmsmtmymznndsnenlnnnonqoo" +
+			"corospapcmplpsps-PKptpt-PTqurmroro-MDrusahscscnsdseshnsiskslsosqsrsr-Cyrl-BAsr-Latnsr-Latn-BAsus" +
+			"vsv-FIswsw-KEsyrtatetgthtitktotoktrttugukunduruzuz-Cyrlvecviwaewoxnryoyo-BJyrlyrl-COyrl-VEyueyue" +
+			"-Hanszhzh-Hans-HKzh-Hans-MOzh-Hans-SGzh-Hantzh-Hant-HKzu",
 		ends: []uint32{
 			2, 4, 6, 8, 13, 15, 18, 20, 22, 30, 32, 41, 43, 46, 48, 50,
 			53, 55, 62, 64, 67, 69, 72, 75, 78, 80, 82, 84, 86, 88, 93, 96,
 			98, 100, 102, 104, 110, 115, 120, 125, 130, 135, 140, 145, 147, 149, 155, 160,
-			165, 170, 175, 180, 185, 190, 195, 197, 199, 201, 208, 210, 213, 215, 217, 222,
-			227, 230, 232, 234, 236, 238, 241, 243, 245, 248, 250, 252, 259, 261, 264, 266,
-			268, 270, 272, 274, 276, 278, 280, 283, 285, 287, 290, 293, 296, 298, 305, 307,
-			309, 311, 314, 322, 324, 327, 329, 331, 333, 336, 339, 341, 343, 345, 347, 349,
-			351, 353, 355, 357, 359, 361, 364, 367, 369, 371, 373, 375, 378, 380, 382, 384,
-			386, 389, 391, 393, 398, 400, 405, 407, 409, 411, 416, 418, 421, 423, 425, 427,
-			430, 432, 434, 436, 438, 440, 442, 452, 459, 469, 471, 476, 478, 483, 486, 488,
-			490, 492, 494, 496, 498, 500, 502, 504, 506, 508, 511, 513, 515, 522, 525, 527,
-			530, 532, 535, 537, 542, 545, 551, 557, 560, 568, 570, 580, 590, 600, 607, 617,
-			619,
+			165, 170, 175, 180, 185, 190, 195, 200, 202, 204, 206, 213, 215, 218, 220, 222,
+			227, 232, 235, 237, 239, 241, 243, 246, 248, 250, 253, 255, 257, 264, 266, 269,
+			271, 273, 275, 277, 279, 281, 283, 285, 288, 290, 292, 295, 298, 301, 303, 310,
+			312, 314, 316, 319, 327, 329, 332, 334, 336, 338, 341, 344, 346, 348, 350, 352,
+			354, 356, 358, 360, 362, 364, 366, 369, 372, 374, 376, 378, 380, 383, 385, 387,
+			389, 391, 394, 396, 398, 403, 405, 410, 412, 414, 416, 421, 423, 426, 428, 431,
+			433, 435, 438, 440, 442, 444, 446, 448, 450, 460, 467, 477, 479, 481, 486, 488,
+			493, 496, 498, 500, 502, 504, 506, 508, 510, 513, 515, 517, 519, 521, 524, 526,
+			528, 535, 538, 540, 543, 545, 548, 550, 555, 558, 564, 570, 573, 581, 583, 593,
+			603, 613, 620, 630, 632,
 		},
 	},
 	values: Strings{
@@ -98,46 +98,47 @@ var UnitData = Map{
 			"o\x1f{0} mL\x1esmillimeter.o\x1f{0} mm\x1esmillisecond.o\x1f{0} ms\x1esminute.o\x1f{0} min\x1esmonth.o\x1f{0} mth\x1esmonth.x\x1f" +
 			"{0} mths\x1esnanosecond.o\x1f{0} ns\x1esounce.o\x1f{0} oz\x1espercent.o\x1f{0}%\x1espetabyte.o\x1f{0} PB\x1espound.o\x1f{0} lb" +
 			"\x1essecond.o\x1f{0} sec\x1essecond.x\x1f{0} sec\x1esstone.o\x1f{0} st\x1esterabit.o\x1f{0} Tb\x1esterabyte.o\x1f{0} TB\x1esweek." +
-			"o\x1f{0} wk\x1esweek.x\x1f{0} wks\x1esyard.o\x1f{0} yd\x1esyear.o\x1f{0} yr\x1esyear.x\x1f{0} yrs\x1el/\x1f{0}/{1}\x1elacre.x\x1f{0} ac" +
-			"\x1elbit.x\x1f{0} bit\x1elbyte.x\x1f{0} byte\x1elcelsius.x\x1f{0}°C\x1elcentimeter.p\x1f{0}/cm\x1elcentimeter.x\x1f{0} cm\x1elda" +
-			"y.p\x1f{0}/d\x1elday.x\x1f{0} d\x1eldegree.x\x1f{0}°\x1elfahrenheit.x\x1f{0}°F\x1elfluid-ounce.x\x1f{0} fl oz US\x1elfoot.p\x1f" +
-			"{0}/ft\x1elfoot.x\x1f{0} ft\x1elgallon.p\x1f{0}/gal US\x1elgallon.x\x1f{0} gal US\x1elgigabit.x\x1f{0} Gb\x1elgigabyte.x\x1f{0" +
-			"} GB\x1elgram.p\x1f{0}/g\x1elgram.x\x1f{0} g\x1elhectare.x\x1f{0} ha\x1elhour.p\x1f{0}/h\x1elhour.x\x1f{0} h\x1elinch.p\x1f{0}/in\x1eli" +
-			"nch.x\x1f{0} in\x1elkilobit.x\x1f{0} kb\x1elkilobyte.x\x1f{0} kB\x1elkilogram.p\x1f{0}/kg\x1elkilogram.x\x1f{0} kg\x1elkilomet" +
-			"er-per-hour.x\x1f{0} km/h\x1elkilometer.p\x1f{0}/km\x1elkilometer.x\x1f{0} km\x1elliter-per-kilometer.x\x1f{0} L/km\x1el" +
-			"liter.p\x1f{0}/l\x1elliter.x\x1f{0} l\x1elmegabit.x\x1f{0} Mb\x1elmegabyte.x\x1f{0} MB\x1elmeter-per-second.x\x1f{0} m/s\x1elm" +
-			"eter.p\x1f{0}/m\x1elmeter.x\x1f{0} m\x1elmicrosecond.x\x1f{0} μs\x1elmile-per-gallon.x\x1f{0} mpg US\x1elmile-per-hour." +
-			"x\x1f{0} mi/h\x1elmile-scandinavian.x\x1f{0} smi\x1elmile.x\x1f{0} mi\x1elmilliliter.x\x1f{0} mL\x1elmillimeter.x\x1f{0} mm" +
-			"\x1elmillisecond.x\x1f{0} ms\x1elminute.p\x1f{0}/min\x1elminute.x\x1f{0} min\x1elmonth.p\x1f{0}/m\x1elmonth.x\x1f{0} m\x1elnanose" +
-			"cond.x\x1f{0} ns\x1elounce.p\x1f{0}/oz\x1elounce.x\x1f{0} oz\x1elpercent.x\x1f{0}%\x1elpetabyte.x\x1f{0} PB\x1elpound.p\x1f{0}/lb" +
-			"\x1elpound.x\x1f{0} lb\x1elsecond.p\x1f{0}/s\x1elsecond.x\x1f{0} s\x1elstone.x\x1f{0} st\x1elterabit.x\x1f{0} Tb\x1elterabyte.x\x1f{" +
-			"0} TB\x1elweek.p\x1f{0}/w\x1elweek.x\x1f{0} w\x1elyard.x\x1f{0} yd\x1elyear.p\x1f{0}/y\x1elyear.x\x1f{0} y\x1en/\x1f{0}/{1}\x1enacre.x\x1f" +
-			"{0} ac\x1enbit.x\x1f{0} bit\x1enbyte.x\x1f{0} byte\x1encelsius.x\x1f{0}°C\x1encentimeter.p\x1f{0}/cm\x1encentimeter.x\x1f{0} " +
-			"cm\x1enday.p\x1f{0}/d\x1enday.x\x1f{0} d\x1endegree.x\x1f{0}°\x1enfahrenheit.x\x1f{0}°F\x1enfluid-ounce.x\x1f{0} fl oz US\x1enf" +
-			"oot.p\x1f{0}/ft\x1enfoot.x\x1f{0} ft\x1engallon.p\x1f{0}/gal US\x1engallon.x\x1f{0} gal US\x1engigabit.x\x1f{0} Gb\x1engigabyt" +
-			"e.x\x1f{0} GB\x1engram.p\x1f{0}/g\x1engram.x\x1f{0} g\x1enhectare.x\x1f{0} ha\x1enhour.p\x1f{0}/h\x1enhour.x\x1f{0} h\x1eninch.p\x1f{0}" +
-			"/in\x1eninch.x\x1f{0} in\x1enkilobit.x\x1f{0} kb\x1enkilobyte.x\x1f{0} kB\x1enkilogram.p\x1f{0}/kg\x1enkilogram.x\x1f{0} kg\x1enk" +
-			"ilometer-per-hour.x\x1f{0} km/h\x1enkilometer.p\x1f{0}/km\x1enkilometer.x\x1f{0} km\x1enliter-per-kilometer.x\x1f{0} " +
-			"L/km\x1enliter.p\x1f{0}/l\x1enliter.x\x1f{0} l\x1enmegabit.x\x1f{0} Mb\x1enmegabyte.x\x1f{0} MB\x1enmeter-per-second.x\x1f{0} " +
-			"m/s\x1enmeter.p\x1f{0}/m\x1enmeter.x\x1f{0} m\x1enmicrosecond.x\x1f{0} μs\x1enmile-per-gallon.x\x1f{0} mpg US\x1enmile-per" +
-			"-hour.x\x1f{0} mi/h\x1enmile-scandinavian.x\x1f{0} smi\x1enmile.x\x1f{0} mi\x1enmilliliter.x\x1f{0} mL\x1enmillimeter.x\x1f" +
-			"{0} mm\x1enmillisecond.x\x1f{0} ms\x1enminute.p\x1f{0}/min\x1enminute.x\x1f{0} min\x1enmonth.p\x1f{0}/m\x1enmonth.x\x1f{0} m\x1en" +
-			"nanosecond.x\x1f{0} ns\x1enounce.p\x1f{0}/oz\x1enounce.x\x1f{0} oz\x1enpercent.x\x1f{0}%\x1enpetabyte.x\x1f{0} PB\x1enpound.p\x1f" +
-			"{0}/lb\x1enpound.x\x1f{0} lb\x1ensecond.p\x1f{0}/s\x1ensecond.x\x1f{0} s\x1enstone.x\x1f{0} st\x1enterabit.x\x1f{0} Tb\x1enteraby" +
-			"te.x\x1f{0} TB\x1enweek.p\x1f{0}/w\x1enweek.x\x1f{0} w\x1enyard.x\x1f{0} yd\x1enyear.p\x1f{0}/y\x1enyear.x\x1f{0} y\x1es/\x1f{0}/{1}\x1esa" +
-			"cre.x\x1f{0} ac\x1esbit.x\x1f{0} bit\x1esbyte.x\x1f{0} byte\x1escelsius.x\x1f{0}°C\x1escentimeter.p\x1f{0}/cm\x1escentimeter." +
-			"x\x1f{0} cm\x1esday.p\x1f{0}/d\x1esday.x\x1f{0} d\x1esdegree.x\x1f{0}°\x1esfahrenheit.x\x1f{0}°F\x1esfluid-ounce.x\x1f{0} fl oz" +
-			" US\x1esfoot.p\x1f{0}/ft\x1esfoot.x\x1f{0} ft\x1esgallon.p\x1f{0}/gal US\x1esgallon.x\x1f{0} gal US\x1esgigabit.x\x1f{0} Gb\x1esg" +
-			"igabyte.x\x1f{0} GB\x1esgram.p\x1f{0}/g\x1esgram.x\x1f{0} g\x1eshectare.x\x1f{0} ha\x1eshour.p\x1f{0}/h\x1eshour.x\x1f{0} h\x1esinch" +
-			".p\x1f{0}/in\x1esinch.x\x1f{0} in\x1eskilobit.x\x1f{0} kb\x1eskilobyte.x\x1f{0} kB\x1eskilogram.p\x1f{0}/kg\x1eskilogram.x\x1f{0}" +
-			" kg\x1eskilometer-per-hour.x\x1f{0} km/h\x1eskilometer.p\x1f{0}/km\x1eskilometer.x\x1f{0} km\x1esliter-per-kilometer." +
-			"x\x1f{0} L/km\x1esliter.p\x1f{0}/l\x1esliter.x\x1f{0} l\x1esmegabit.x\x1f{0} Mb\x1esmegabyte.x\x1f{0} MB\x1esmeter-per-second." +
-			"x\x1f{0} m/s\x1esmeter.p\x1f{0}/m\x1esmeter.x\x1f{0} m\x1esmicrosecond.x\x1f{0} μs\x1esmile-per-gallon.x\x1f{0} mpg US\x1esmi" +
-			"le-per-hour.x\x1f{0} mi/h\x1esmile-scandinavian.x\x1f{0} smi\x1esmile.x\x1f{0} mi\x1esmilliliter.x\x1f{0} mL\x1esmillime" +
-			"ter.x\x1f{0} mm\x1esmillisecond.x\x1f{0} ms\x1esminute.p\x1f{0}/min\x1esminute.x\x1f{0} min\x1esmonth.p\x1f{0}/m\x1esmonth.x\x1f{" +
-			"0} m\x1esnanosecond.x\x1f{0} ns\x1esounce.p\x1f{0}/oz\x1esounce.x\x1f{0} oz\x1espercent.x\x1f{0}%\x1espetabyte.x\x1f{0} PB\x1espo" +
-			"und.p\x1f{0}/lb\x1espound.x\x1f{0} lb\x1essecond.p\x1f{0}/s\x1essecond.x\x1f{0} s\x1esstone.x\x1f{0} st\x1esterabit.x\x1f{0} Tb\x1es" +
-			"terabyte.x\x1f{0} TB\x1esweek.p\x1f{0}/w\x1esweek.x\x1f{0} w\x1esyard.x\x1f{0} yd\x1esyear.p\x1f{0}/y\x1esyear.x\x1f{0} y",
+			"o\x1f{0} wk\x1esweek.x\x1f{0} wks\x1esyard.o\x1f{0} yd\x1esyear.o\x1f{0} yr\x1esyear.x\x1f{0} yrs\x1eDhm\x1fh:mm\x1eDhms\x1fh:mm:ss\x1eDms" +
+			"\x1fm:ss\x1el/\x1f{0}/{1}\x1elacre.x\x1f{0} ac\x1elbit.x\x1f{0} bit\x1elbyte.x\x1f{0} byte\x1elcelsius.x\x1f{0}°C\x1elcentimeter.p\x1f" +
+			"{0}/cm\x1elcentimeter.x\x1f{0} cm\x1elday.p\x1f{0}/d\x1elday.x\x1f{0} d\x1eldegree.x\x1f{0}°\x1elfahrenheit.x\x1f{0}°F\x1elflui" +
+			"d-ounce.x\x1f{0} fl oz US\x1elfoot.p\x1f{0}/ft\x1elfoot.x\x1f{0} ft\x1elgallon.p\x1f{0}/gal US\x1elgallon.x\x1f{0} gal US\x1el" +
+			"gigabit.x\x1f{0} Gb\x1elgigabyte.x\x1f{0} GB\x1elgram.p\x1f{0}/g\x1elgram.x\x1f{0} g\x1elhectare.x\x1f{0} ha\x1elhour.p\x1f{0}/h\x1e" +
+			"lhour.x\x1f{0} h\x1elinch.p\x1f{0}/in\x1elinch.x\x1f{0} in\x1elkilobit.x\x1f{0} kb\x1elkilobyte.x\x1f{0} kB\x1elkilogram.p\x1f{0}" +
+			"/kg\x1elkilogram.x\x1f{0} kg\x1elkilometer-per-hour.x\x1f{0} km/h\x1elkilometer.p\x1f{0}/km\x1elkilometer.x\x1f{0} km\x1ell" +
+			"iter-per-kilometer.x\x1f{0} L/km\x1elliter.p\x1f{0}/l\x1elliter.x\x1f{0} l\x1elmegabit.x\x1f{0} Mb\x1elmegabyte.x\x1f{0} MB" +
+			"\x1elmeter-per-second.x\x1f{0} m/s\x1elmeter.p\x1f{0}/m\x1elmeter.x\x1f{0} m\x1elmicrosecond.x\x1f{0} μs\x1elmile-per-gall" +
+			"on.x\x1f{0} mpg US\x1elmile-per-hour.x\x1f{0} mi/h\x1elmile-scandinavian.x\x1f{0} smi\x1elmile.x\x1f{0} mi\x1elmillilite" +
+			"r.x\x1f{0} mL\x1elmillimeter.x\x1f{0} mm\x1elmillisecond.x\x1f{0} ms\x1elminute.p\x1f{0}/min\x1elminute.x\x1f{0} min\x1elmonth" +
+			".p\x1f{0}/m\x1elmonth.x\x1f{0} m\x1elnanosecond.x\x1f{0} ns\x1elounce.p\x1f{0}/oz\x1elounce.x\x1f{0} oz\x1elpercent.x\x1f{0}%\x1elpe" +
+			"tabyte.x\x1f{0} PB\x1elpound.p\x1f{0}/lb\x1elpound.x\x1f{0} lb\x1elsecond.p\x1f{0}/s\x1elsecond.x\x1f{0} s\x1elstone.x\x1f{0} st\x1e" +
+			"lterabit.x\x1f{0} Tb\x1elterabyte.x\x1f{0} TB\x1elweek.p\x1f{0}/w\x1elweek.x\x1f{0} w\x1elyard.x\x1f{0} yd\x1elyear.p\x1f{0}/y\x1ely" +
+			"ear.x\x1f{0} y\x1en/\x1f{0}/{1}\x1enacre.x\x1f{0} ac\x1enbit.x\x1f{0} bit\x1enbyte.x\x1f{0} byte\x1encelsius.x\x1f{0}°C\x1encentime" +
+			"ter.p\x1f{0}/cm\x1encentimeter.x\x1f{0} cm\x1enday.p\x1f{0}/d\x1enday.x\x1f{0} d\x1endegree.x\x1f{0}°\x1enfahrenheit.x\x1f{0}°F" +
+			"\x1enfluid-ounce.x\x1f{0} fl oz US\x1enfoot.p\x1f{0}/ft\x1enfoot.x\x1f{0} ft\x1engallon.p\x1f{0}/gal US\x1engallon.x\x1f{0} ga" +
+			"l US\x1engigabit.x\x1f{0} Gb\x1engigabyte.x\x1f{0} GB\x1engram.p\x1f{0}/g\x1engram.x\x1f{0} g\x1enhectare.x\x1f{0} ha\x1enhour.p\x1f" +
+			"{0}/h\x1enhour.x\x1f{0} h\x1eninch.p\x1f{0}/in\x1eninch.x\x1f{0} in\x1enkilobit.x\x1f{0} kb\x1enkilobyte.x\x1f{0} kB\x1enkilogram" +
+			".p\x1f{0}/kg\x1enkilogram.x\x1f{0} kg\x1enkilometer-per-hour.x\x1f{0} km/h\x1enkilometer.p\x1f{0}/km\x1enkilometer.x\x1f{0}" +
+			" km\x1enliter-per-kilometer.x\x1f{0} L/km\x1enliter.p\x1f{0}/l\x1enliter.x\x1f{0} l\x1enmegabit.x\x1f{0} Mb\x1enmegabyte.x\x1f" +
+			"{0} MB\x1enmeter-per-second.x\x1f{0} m/s\x1enmeter.p\x1f{0}/m\x1enmeter.x\x1f{0} m\x1enmicrosecond.x\x1f{0} μs\x1enmile-pe" +
+			"r-gallon.x\x1f{0} mpg US\x1enmile-per-hour.x\x1f{0} mi/h\x1enmile-scandinavian.x\x1f{0} smi\x1enmile.x\x1f{0} mi\x1enmil" +
+			"liliter.x\x1f{0} mL\x1enmillimeter.x\x1f{0} mm\x1enmillisecond.x\x1f{0} ms\x1enminute.p\x1f{0}/min\x1enminute.x\x1f{0} min\x1e" +
+			"nmonth.p\x1f{0}/m\x1enmonth.x\x1f{0} m\x1ennanosecond.x\x1f{0} ns\x1enounce.p\x1f{0}/oz\x1enounce.x\x1f{0} oz\x1enpercent.x\x1f{0" +
+			"}%\x1enpetabyte.x\x1f{0} PB\x1enpound.p\x1f{0}/lb\x1enpound.x\x1f{0} lb\x1ensecond.p\x1f{0}/s\x1ensecond.x\x1f{0} s\x1enstone.x\x1f{" +
+			"0} st\x1enterabit.x\x1f{0} Tb\x1enterabyte.x\x1f{0} TB\x1enweek.p\x1f{0}/w\x1enweek.x\x1f{0} w\x1enyard.x\x1f{0} yd\x1enyear.p\x1f{0" +
+			"}/y\x1enyear.x\x1f{0} y\x1es/\x1f{0}/{1}\x1esacre.x\x1f{0} ac\x1esbit.x\x1f{0} bit\x1esbyte.x\x1f{0} byte\x1escelsius.x\x1f{0}°C\x1esc" +
+			"entimeter.p\x1f{0}/cm\x1escentimeter.x\x1f{0} cm\x1esday.p\x1f{0}/d\x1esday.x\x1f{0} d\x1esdegree.x\x1f{0}°\x1esfahrenheit.x\x1f" +
+			"{0}°F\x1esfluid-ounce.x\x1f{0} fl oz US\x1esfoot.p\x1f{0}/ft\x1esfoot.x\x1f{0} ft\x1esgallon.p\x1f{0}/gal US\x1esgallon.x\x1f" +
+			"{0} gal US\x1esgigabit.x\x1f{0} Gb\x1esgigabyte.x\x1f{0} GB\x1esgram.p\x1f{0}/g\x1esgram.x\x1f{0} g\x1eshectare.x\x1f{0} ha\x1esh" +
+			"our.p\x1f{0}/h\x1eshour.x\x1f{0} h\x1esinch.p\x1f{0}/in\x1esinch.x\x1f{0} in\x1eskilobit.x\x1f{0} kb\x1eskilobyte.x\x1f{0} kB\x1eski" +
+			"logram.p\x1f{0}/kg\x1eskilogram.x\x1f{0} kg\x1eskilometer-per-hour.x\x1f{0} km/h\x1eskilometer.p\x1f{0}/km\x1eskilometer" +
+			".x\x1f{0} km\x1esliter-per-kilometer.x\x1f{0} L/km\x1esliter.p\x1f{0}/l\x1esliter.x\x1f{0} l\x1esmegabit.x\x1f{0} Mb\x1esmegab" +
+			"yte.x\x1f{0} MB\x1esmeter-per-second.x\x1f{0} m/s\x1esmeter.p\x1f{0}/m\x1esmeter.x\x1f{0} m\x1esmicrosecond.x\x1f{0} μs\x1esm" +
+			"ile-per-gallon.x\x1f{0} mpg US\x1esmile-per-hour.x\x1f{0} mi/h\x1esmile-scandinavian.x\x1f{0} smi\x1esmile.x\x1f{0} m" +
+			"i\x1esmilliliter.x\x1f{0} mL\x1esmillimeter.x\x1f{0} mm\x1esmillisecond.x\x1f{0} ms\x1esminute.p\x1f{0}/min\x1esminute.x\x1f{0" +
+			"} min\x1esmonth.p\x1f{0}/m\x1esmonth.x\x1f{0} m\x1esnanosecond.x\x1f{0} ns\x1esounce.p\x1f{0}/oz\x1esounce.x\x1f{0} oz\x1espercen" +
+			"t.x\x1f{0}%\x1espetabyte.x\x1f{0} PB\x1espound.p\x1f{0}/lb\x1espound.x\x1f{0} lb\x1essecond.p\x1f{0}/s\x1essecond.x\x1f{0} s\x1essto" +
+			"ne.x\x1f{0} st\x1esterabit.x\x1f{0} Tb\x1esterabyte.x\x1f{0} TB\x1esweek.p\x1f{0}/w\x1esweek.x\x1f{0} w\x1esyard.x\x1f{0} yd\x1esyea" +
+			"r.p\x1f{0}/y\x1esyear.x\x1f{0} y",
 		ends: []uint32{
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -149,9 +150,9 @@ var UnitData = Map{
 			5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928,
 			5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928,
 			5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928,
-			5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 9690, 9690, 9690, 9690, 9690, 9690,
-			9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690, 9690,
-			9690,
+			5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 5928, 9721, 9721,
+			9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721, 9721,
+			9721, 9721, 9721, 9721, 9721,
 		},
 	},
 	blocks: &blocks{
@@ -159,42 +160,42 @@ var UnitData = Map{
 		firstKeys: []uint32{
 			0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17,
 			19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 32, 33, 34, 35,
-			44, 45, 55, 56, 57, 58, 59, 60, 61, 62, 65, 66, 67, 68, 69, 70,
-			71, 72, 73, 74, 75, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87,
-			88, 89, 90, 91, 92, 93, 95, 96, 97, 98, 100, 101, 102, 103, 104, 105,
-			106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121,
-			122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 133, 135, 136, 137, 139, 140,
-			141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 154, 156, 158, 159, 160, 161,
-			162, 163, 164, 165, 166, 167, 168, 169, 171, 172, 174, 175, 176, 177, 178, 179,
-			181, 184, 186, 192,
+			44, 45, 56, 57, 58, 59, 60, 61, 62, 63, 66, 67, 68, 69, 70, 71,
+			72, 73, 74, 75, 76, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
+			89, 90, 91, 92, 93, 94, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106,
+			107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122,
+			123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 134, 136, 137, 138, 140, 141,
+			142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 156, 157, 159, 161, 162,
+			163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 175, 176, 178, 179, 180,
+			181, 182, 183, 185, 188, 190, 196,
 		},
 		dataEnds: []uint32{
-			931, 1422, 2890, 6761, 8372, 9037, 9906, 10933, 11349, 14004, 15075, 17138, 18458, 20629, 20761, 22641,
-			23307, 24438, 24895, 25735, 27061, 27150, 28667, 30557, 32928, 33707, 34613, 36164, 36286, 36480, 37747, 38232,
-			39429, 40515, 41373, 42143, 43355, 45254, 46221, 46963, 47973, 49834, 49925, 50297, 52439, 54330, 55089, 55188,
-			56632, 58160, 58248, 60170, 61758, 62973, 64547, 65386, 66979, 67547, 68002, 68308, 69343, 70039, 70777, 70853,
-			71429, 72970, 73504, 73683, 74631, 77344, 78239, 80196, 81028, 83026, 83147, 83716, 84165, 85675, 86341, 86552,
-			86595, 87496, 89159, 90541, 90913, 92040, 93015, 94518, 96009, 96549, 96707, 97461, 98042, 98101, 99523, 100027,
-			100245, 100945, 101265, 101322, 102895, 103063, 104545, 105619, 107375, 108335, 109170, 109448, 109990, 111229, 113871, 114498,
-			115328, 116668, 117291, 118390, 120119, 121684, 123178, 124245, 125005, 127673, 128357, 129703, 130688, 131942, 133809, 133830,
-			134895, 136397, 137373, 138303, 139139, 139156, 139838, 142658, 143898, 145303, 145951, 146468, 146562, 146576, 146593, 147227,
-			148127, 149164, 151002, 151367,
+			941, 1432, 2901, 6772, 8383, 9048, 9917, 10956, 11372, 14038, 15109, 17172, 18492, 20664, 20796, 22676,
+			23342, 24473, 24930, 25770, 27096, 27185, 28702, 30592, 32964, 33754, 34660, 36213, 36335, 36529, 37796, 38281,
+			39478, 40572, 41430, 42200, 43412, 45311, 46293, 47035, 48045, 49906, 49997, 50369, 52511, 54402, 55161, 55260,
+			56704, 58232, 58320, 60242, 61830, 63045, 64621, 65460, 67053, 67631, 68103, 68409, 69444, 70140, 70879, 70955,
+			71531, 73072, 73606, 73785, 74733, 77446, 78341, 80298, 81131, 83129, 83250, 83819, 84268, 85778, 86444, 86655,
+			86698, 87599, 89273, 90655, 91027, 92154, 93129, 94639, 96130, 96669, 96827, 97581, 98162, 98221, 99644, 100148,
+			100366, 101066, 101386, 101443, 103016, 103184, 104667, 105741, 107498, 108458, 109293, 109572, 110114, 111353, 113995, 114622,
+			115452, 115467, 116807, 117430, 118529, 120271, 121837, 123331, 124398, 125158, 127841, 127860, 128544, 129890, 130875, 132129,
+			133996, 134017, 135082, 136584, 137565, 138495, 138510, 139346, 139363, 140045, 142865, 144105, 145510, 146157, 146674, 146768,
+			146782, 146799, 147433, 148333, 149370, 151208, 151573,
 		},
 		valueEnds: []uint32{
-			5938, 2355, 8968, 24577, 28145, 12009, 5228, 4967, 4941, 2548, 16993, 17033, 5367, 10927, 9175, 13397,
-			365, 6076, 9343, 4228, 9620, 2233, 5214, 8259, 168, 8026, 11716, 14890, 5156, 4707, 4762, 8207,
+			5972, 2355, 8968, 24577, 28145, 12009, 5228, 4967, 4975, 2548, 17027, 17067, 5367, 10927, 9175, 13397,
+			365, 6076, 9343, 4228, 9620, 2233, 5214, 8259, 168, 8026, 11716, 14890, 5187, 4707, 4762, 8207,
 			236, 816, 7116, 0, 1843, 2364, 2404, 2444, 4494, 4612, 4652, 4692, 6654, 5428, 5968, 6174,
-			6649, 6715, 6774, 7349, 7389, 7669, 8058, 4371, 4440, 7998, 12283, 5831, 5159, 6207, 7136, 10537,
-			10610, 269, 1873, 13288, 11044, 4550, 272, 9961, 7089, 304, 11916, 9789, 10262, 5998, 8236, 4995,
-			8532, 4146, 2709, 1646, 5553, 5224, 3327, 200, 3062, 10723, 2492, 600, 4503, 8496, 16959, 4936,
-			11900, 3637, 8415, 10924, 322, 3478, 2118, 8198, 3369, 744, 180, 4686, 8805, 7430, 1595, 5731,
-			7770, 8548, 9605, 2699, 889, 4160, 2971, 140, 10390, 4249, 910, 5739, 1169, 137, 10408, 554,
-			9856, 5723, 9145, 4434, 4830, 4638, 5432, 1024, 5134, 6409, 6614, 16710, 2629, 5648, 8611, 3903,
-			6622, 11230, 8252, 7795, 5477, 4300, 7359, 7734, 13442, 13740, 5647, 5709, 8005, 8110, 5243, 8779,
-			11476, 22, 5760, 8765, 5544, 3877, 4852, 18, 4218, 16258, 0, 7266, 5568, 8084, 3853, 2624,
-			267, 88, 18, 1938, 3022, 4387, 4721, 5055, 3817, 7634, 3162, 3190, 3218, 3246, 7069, 9331,
-			2352,
+			6198, 6673, 6739, 6798, 7373, 7413, 7693, 8082, 4371, 4440, 7998, 12283, 5862, 5159, 6207, 7136,
+			10537, 10610, 269, 1873, 13288, 11044, 4550, 272, 9961, 7089, 304, 11916, 9789, 10262, 5998, 8236,
+			4995, 8532, 4180, 2740, 1646, 5553, 5224, 3327, 200, 3062, 10723, 2492, 600, 4503, 8496, 16959,
+			4936, 11900, 3637, 8415, 10924, 322, 3478, 2118, 8198, 3369, 744, 180, 4686, 8839, 7430, 1595,
+			5731, 7770, 8572, 9605, 2699, 889, 4160, 2971, 140, 10390, 4249, 910, 5739, 1169, 137, 10408,
+			554, 9856, 5723, 9145, 4434, 4830, 4638, 5432, 1024, 5134, 6409, 6614, 16710, 2629, 5648, 34,
+			8611, 3903, 6622, 11261, 8252, 7795, 5477, 4300, 7390, 7765, 13504, 13802, 31, 5647, 5709, 8005,
+			8110, 5243, 8779, 11476, 22, 5760, 8765, 5558, 3877, 34, 4852, 18, 4218, 16258, 0, 7266,
+			5568, 8084, 3853, 2624, 267, 88, 18, 1938, 3022, 4387, 4721, 5055, 3817, 7634, 3162, 3190,
+			3218, 3246, 7069, 9331, 2352,
 		},
-		inflated: make([]inflatedBlock, 148),
+		inflated: make([]inflatedBlock, 151),
 	},
 }
