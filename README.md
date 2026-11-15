@@ -113,8 +113,13 @@ fails when any of them fails.
 - `Temporal` has only the `iso8601` calendar without the optional package
   `github.com/hajimehoshi/ekuma/intl`, which adds the other calendars of ECMA-402. Its named
   time zones need the system's time zone database
-- Without `Intl`, `toLocale*String` uses a fixed English format, and `localeCompare` compares
-  code units after canonical equivalence
+- Without importing the optional package `github.com/hajimehoshi/ekuma/intl`, there is no
+  `Intl`: `toLocale*String` uses a fixed English format, and `localeCompare` compares code units
+  after canonical equivalence. When it is imported, the `toLocaleString` methods of `Number`, `BigInt`, `Date` and
+  `Temporal` (except `Temporal.Duration`) and `Date`'s `toLocaleDateString` and
+  `toLocaleTimeString` format by locale. `localeCompare`, `toLocaleUpperCase`,
+  `toLocaleLowerCase`, `Temporal.Duration`'s `toLocaleString`, and the `toLocaleString` of
+  arrays and typed arrays do not use locales yet
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
@@ -126,9 +131,12 @@ fails when any of them fails.
 
 ### Missing
 
-- Most of `Intl`. The optional package `github.com/hajimehoshi/ekuma/intl` adds it when it is
-  imported for its side effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`,
-  `Intl.Locale`, `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat` so far
+- Part of `Intl`. Importing the optional package `github.com/hajimehoshi/ekuma/intl` for its
+  side effect adds `Intl`.
+  - It has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`, `Intl.Locale`,
+    `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat`
+  - It does not have `Intl.Collator`, `Intl.Segmenter`, `Intl.ListFormat`,
+    `Intl.RelativeTimeFormat`, `Intl.DisplayNames` or `Intl.DurationFormat` yet
 - Host API for these, some of which the engine has and only the tests use:
   - Giving a module a module source
   - Property keys other than strings: symbol keys, property descriptors, and listing the keys
