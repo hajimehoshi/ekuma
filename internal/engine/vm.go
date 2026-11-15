@@ -294,7 +294,8 @@ func (vm *VM) dropNatives(frames int) {
 	vm.natives = vm.natives[:n]
 }
 
-// VM is a JavaScript virtual machine. It must not be used from more than one goroutine at a time.
+// VM is a JavaScript virtual machine, which is an agent of the specification. It must not be used
+// from more than one goroutine at a time.
 type VM struct {
 	// hostDefined is the value that [VM.HostDefined] returns.
 	hostDefined any
