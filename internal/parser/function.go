@@ -4,6 +4,8 @@
 package parser
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ekuma/internal/ast"
 )
 
@@ -39,6 +41,16 @@ func (p *parser) enterFunction(fn *ast.Function) fnState {
 
 // leaveFunction records the collected facts in fn and restores the state of the enclosing function.
 func (p *parser) leaveFunction(fn *ast.Function, saved fnState) {
+	if hasArgumentsObject(fn) {
+		// The arguments object counts as a parameter, which a block-level function is not
+		// hoisted over.
+		s := p.scope
+		if i := s.lookup("arguments"); i >= 0 {
+			s.names[i].flags |= nParam
+		} else {
+			s.add("arguments", nParam)
+		}
+	}
 	p.popScope()
 	use := p.f.use
 	fn.Strict = p.f.strict
@@ -53,6 +65,55 @@ func (p *parser) leaveFunction(fn *ast.Function, saved fnState) {
 		p.f.use |= use
 	}
 	p.leave()
+}
+
+// hasArgumentsObject reports whether the function fn, whose scope is complete, binds its
+// own arguments object.
+func hasArgumentsObject(fn *ast.Function) bool {
+	if fn.Arrow {
+		return false
+	}
+	params := !fn.SimpleParams && slices.ContainsFunc(fn.Params, hasExpression)
+	for _, d := range fn.Scope.Decls {
+		if d.Name != "arguments" {
+			continue
+		}
+		switch d.Kind {
+		case ast.DeclParam:
+			return false
+		case ast.DeclFunction, ast.DeclLet, ast.DeclConst, ast.DeclClass, ast.DeclUsing, ast.DeclAwaitUsing:
+			if !params {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// hasExpression reports whether the binding pattern p contains a default value or a computed key.
+func hasExpression(p ast.Pattern) bool {
+	switch p := p.(type) {
+	case *ast.AssignPattern:
+		return true
+	case *ast.RestElement:
+		return hasExpression(p.Target)
+	case *ast.ArrayPattern:
+		for _, e := range p.Elements {
+			if e != nil && hasExpression(e) {
+				return true
+			}
+		}
+	case *ast.ObjectPattern:
+		for _, pp := range p.Properties {
+			if pp.Computed || hasExpression(pp.Value) {
+				return true
+			}
+		}
+		if p.Rest != nil {
+			return hasExpression(p.Rest)
+		}
+	}
+	return false
 }
 
 // parseFormalParams parses formal parameters up to, and not including, the token end.

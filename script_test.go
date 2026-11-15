@@ -544,6 +544,23 @@ func TestScripts(t *testing.T) {
 			src:  `var x = -0, y = 1; 1 / (x % y)`,
 			want: "-Infinity",
 		},
+		{
+			// A parameter expression keeps the arguments object even with a function named
+			// arguments, and so stops the block-level function from being hoisted.
+			name: "block-level function arguments and parameter expressions",
+			src: `function f(a = 0) {
+					function arguments() { return "top"; }
+					{ function arguments() { return "block"; } }
+					return arguments();
+				}
+				function g({a}) {
+					function arguments() { return "top"; }
+					{ function arguments() { return "block"; } }
+					return arguments();
+				}
+				f() + " " + g({})`,
+			want: "top block",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

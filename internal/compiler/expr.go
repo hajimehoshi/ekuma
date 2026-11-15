@@ -834,6 +834,16 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	// the function, or the arguments after any other callee.
 	pos := n.Start()
 	callee := n.Callee
+	// A parenthesized optional chain that ends in a property access, as in (a?.b)(), keeps
+	// its object as the this value.
+	chained := false
+	if oc, ok := callee.(*ast.OptionalChain); ok {
+		if m, ok := oc.Expr.(*ast.MemberExpr); ok {
+			callee = m
+			chained = true
+			f.chains = append(f.chains, nil)
+		}
+	}
 	switch c := callee.(type) {
 	case *ast.MemberExpr:
 		if _, ok := c.Object.(*ast.SuperExpr); ok {
@@ -884,7 +894,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 					}
 				}
 			case "apply":
-				if len(n.Args) == 2 && f.isForwardedArguments(n.Args[1]) {
+				if len(n.Args) == 2 && f.isForwardedArguments(n.Args[1]) && !chained {
 					f.expr(n.Args[0], f.newReg())
 					// One more register for the arguments object of the general case.
 					f.newReg()
@@ -931,6 +941,13 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		pos = callee.End()
 		f.expr(callee, base)
 		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+	}
+	if chained {
+		end := f.jump()
+		f.patchAll(f.chains[len(f.chains)-1])
+		f.chains = f.chains[:len(f.chains)-1]
+		f.emit(bytecode.OpLoadUndef, base, 0, 0)
+		f.patch(end)
 	}
 	f.chainCheck(n.Optional, base)
 
@@ -1353,11 +1370,24 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				return
 			}
 			scope := f.resolveName(name)
+			// A strict assignment to a global that does not exist yet throws even when the
+			// value creates the global.
+			resolved := int32(-1)
+			if scope < 0 && f.f.Strict && !pure(n.Value) && f.undeclaredGlobal(name) {
+				resolved = f.newReg()
+				k := f.site(name)
+				f.emit(bytecode.OpResolveGlobal, resolved, k, k)
+			}
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
 			f.named(n.Value, t, inferred)
+			if resolved >= 0 {
+				ok := f.emit(bytecode.OpJumpIf, 0, resolved, 0)
+				f.emit(bytecode.OpThrowError, bytecode.ThrowReferenceError, f.constStr(name+" is not defined"), 0)
+				f.patch(ok)
+			}
 			f.storeVarTo(n, name, t, false, scope)
 		case logical:
 			scope := f.resolveName(name)

@@ -378,6 +378,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)
+		case bytecode.OpResolveGlobal:
+			c := &fp.caches[i.C]
+			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
+				regs[i.A] = True
+				continue
+			}
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.resolveGlobal(fp.keys[i.B], c)
+			regs = vm.reload(regs, onHeap, base, fp)
+			regs[i.A] = v
 		case bytecode.OpDeclareGlobalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.declareGlobalVar(fp.keys[i.A], int(i.B), regs[i.C])

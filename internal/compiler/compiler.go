@@ -923,6 +923,20 @@ func (f *fn) checkTDZ(r ref, name string) {
 	}
 }
 
+// undeclaredGlobal reports whether name refers to a global variable that the top level of
+// the program does not declare.
+func (f *fn) undeclaredGlobal(name string) bool {
+	if f.resolve(name).kind != refGlobal {
+		return false
+	}
+	for _, d := range f.c.prog.Scope.Decls {
+		if d.Name == name && d.Kind != ast.DeclAnnexBVar {
+			return false
+		}
+	}
+	return true
+}
+
 // globalLexical reports whether name is a let, const or class declaration of the top level of the script.
 func (c *compiler) globalLexical(name string) bool {
 	for _, d := range c.prog.Scope.Decls {

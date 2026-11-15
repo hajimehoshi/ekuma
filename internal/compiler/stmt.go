@@ -622,6 +622,11 @@ func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 	case ast.Expr:
 		f.effect(init)
 	}
+	if scoped && f.scope.captured {
+		// The first iteration has its own copy too, apart from the closures of the
+		// initializers.
+		f.emit(bytecode.OpCloseUpvals, f.scope.firstReg, 0, 0)
+	}
 	c := f.pushLoop(labels)
 	top := f.pc()
 	var exit []int

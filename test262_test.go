@@ -82,8 +82,9 @@ func parseMetadata(src string) metadata {
 		return out
 	}
 	key := ""
-	for line := range strings.SplitSeq(src[start+5:end], "\n") {
-		line = strings.TrimRight(line, "\r")
+	// YAML line breaks are LF, CR or CRLF.
+	front := strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(src[start+5 : end])
+	for line := range strings.SplitSeq(front, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
 			k, v, ok := strings.Cut(trimmed, ":")

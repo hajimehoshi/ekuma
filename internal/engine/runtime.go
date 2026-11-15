@@ -107,6 +107,28 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
 	return vm.getProp(g, k, Value{o: g})
 }
 
+// resolveGlobal returns whether the global variable key exists.
+func (vm *VM) resolveGlobal(key *Object, c *propCache) Value {
+	if p, ok := vm.globalLex.shape.lookup(key); ok {
+		c.holder = vm.globalLex
+		c.shape = vm.globalLex.shape
+		c.slot = p.slot
+		c.kind = cacheProto
+		c.epoch = vm.globalEpoch
+		return True
+	}
+	g := vm.global
+	if p, ok := g.shape.lookup(key); ok {
+		c.holder = g
+		c.shape = g.shape
+		c.slot = p.slot
+		c.kind = cacheProto
+		c.epoch = vm.globalEpoch
+		return True
+	}
+	return Bool(vm.HasProperty(g, PropKey{key: key}))
+}
+
 // setGlobal assigns to the global variable key.
 func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 	if p, ok := vm.globalLex.shape.lookup(key); ok {

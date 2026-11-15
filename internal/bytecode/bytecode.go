@@ -30,6 +30,7 @@ const (
 	OpGetGlobalOrUndef // like [OpGetGlobal], but undefined when the global does not exist
 	OpSetGlobal        // global Keys[b] = a, cache c; creates the global when it does not exist
 	OpSetGlobalStrict  // like [OpSetGlobal], but a ReferenceError when the global does not exist
+	OpResolveGlobal    // a = whether the global Keys[b] exists, cache c
 	OpDeclareGlobalVar // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
 	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant when b is set
 	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
