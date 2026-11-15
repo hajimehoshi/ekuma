@@ -265,6 +265,18 @@ func (vm *VM) enterCallerRealm(stop, n int) {
 	}
 }
 
+// throwReturnError throws an error of the given kind for the return at pc of the frame at index n,
+// where stop is as for enterCallerRealm. No handler of that frame catches it, and the error belongs
+// to the realm of the caller.
+func (vm *VM) throwReturnError(stop, n, pc int, kind ErrorKind, msg string) {
+	vm.frames[n].pc = pc
+	vm.enterCallerRealm(stop, n)
+	e := vm.newError(kind, msg)
+	// The frame has finished running, so it unwinds from pc 0, which lies before every handler.
+	vm.frames[n].pc = 0
+	vm.Throw(Value{o: e})
+}
+
 // arguments returns the arguments of the frame fr as a fresh slice.
 func (vm *VM) frameArgs(fr *frame, regs []Value) []Value {
 	n := min(fr.argc, fr.fp.nparams)
@@ -1371,15 +1383,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if i.Op == bytecode.OpReturnDerived {
 				if !r.IsObject() {
 					if !r.IsUndefined() {
-						done.pc = pc
-						vm.enterCallerRealm(stop, n)
-						vm.ThrowTypeError("derived constructors may only return object or undefined")
+						vm.throwReturnError(stop, n, pc, ErrorKindType, "derived constructors may only return object or undefined")
 					}
 					r = regs[i.B]
 					if r.o == tdzObject {
-						done.pc = pc
-						vm.enterCallerRealm(stop, n)
-						vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+						vm.throwReturnError(stop, n, pc, ErrorKindReference, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
 			} else if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {

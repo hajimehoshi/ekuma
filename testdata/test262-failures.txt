@@ -35,7 +35,4 @@ test/language/statements/class/decorator/syntax/valid/decorator-member-expr-iden
 test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js
 test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference.js
 test/language/statements/class/elements/syntax/valid/grammar-field-accessor.js
-test/language/statements/class/subclass/derived-class-return-override-catch-super-arrow.js
-test/language/statements/class/subclass/derived-class-return-override-catch-super.js
-test/language/statements/class/subclass/derived-class-return-override-catch.js
 test/language/statements/for/scope-body-lex-open.js

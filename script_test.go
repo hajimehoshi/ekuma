@@ -154,6 +154,14 @@ func TestScripts(t *testing.T) {
 			want: "ReferenceError",
 		},
 		{
+			name: "return before super() inside try",
+			src: `var log = [];
+				class D extends Object { constructor() { try { return; } catch (e) { log.push("caught"); } } }
+				try { new D(); } catch (e) { log.push(e.name); }
+				log.join()`,
+			want: "ReferenceError",
+		},
+		{
 			name: "let per iteration and closures",
 			src:  `var fs = []; for (let i = 0; i < 3; i++) fs.push(() => i); fs.map(f => f()).join()`,
 			want: "0,1,2",
