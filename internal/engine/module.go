@@ -158,6 +158,9 @@ type Module struct {
 	namespace         *Object
 	deferredNamespace *Object
 	meta              *Object
+
+	// source is the [[ModuleSource]], or nil when m has none.
+	source *Object
 }
 
 // HostDefined returns the [[HostDefined]] of m.
@@ -212,6 +215,24 @@ func (vm *VM) CreateDefaultExportSyntheticModule(v Value, hostDefined any) *Modu
 	}
 	m.ref = scriptOrModule{module: m}
 	return m
+}
+
+// SetModuleSource makes source, a module source object, the [[ModuleSource]] of m, which
+// source phase imports of m give. m must not be a source text module.
+func (m *Module) SetModuleSource(source *Object) {
+	if m.isCyclic() {
+		panic("engine: a source text module cannot have a module source")
+	}
+	m.source = source
+}
+
+// getModuleSource implements GetModuleSource. ok is false when m has no module source, and
+// the result is the error to throw then.
+func (vm *VM) getModuleSource(m *Module) (Value, bool) {
+	if m.source == nil {
+		return vm.NewError(ErrorKindSyntax, "a source phase import is not available for this module"), false
+	}
+	return Value{o: m.source}, true
 }
 
 // isCyclic reports whether m is a Cyclic Module Record.
@@ -494,8 +515,18 @@ const (
 	resolutionFound
 )
 
+// The special values of resolution.index for the bindings that are not of the environment.
+const (
+	// resolutionNamespace is the [[BindingName]] namespace.
+	resolutionNamespace = -1
+
+	// resolutionSource is the [[BindingName]] source.
+	resolutionSource = -2
+)
+
 // resolution is the result of ResolveExport: for resolutionFound, the binding env[index]
-// of module, or the namespace object of module when index is -1.
+// of module, or the namespace object or the module source of module when index is
+// resolutionNamespace or resolutionSource.
 type resolution struct {
 	kind   resolutionKind
 	module *Module
@@ -568,11 +599,14 @@ func (m *Module) resolveExport(name string) resolution {
 			}); j >= 0 {
 				e := mod.code.IndirectExports[j]
 				imported := mod.requested[e.Request]
-				if e.All {
+				if e.All || e.Source {
 					ret = resolution{
 						kind:   resolutionFound,
 						module: imported,
-						index:  -1,
+						index:  resolutionNamespace,
+					}
+					if e.Source {
+						ret.index = resolutionSource
 					}
 					frames = frames[:len(frames)-1]
 					continue
@@ -684,9 +718,16 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 		if r.kind != resolutionFound {
 			return vm.resolutionError(m, ie.ImportName, r), false
 		}
-		if r.index < 0 {
+		switch r.index {
+		case resolutionNamespace:
 			m.env[ie.Binding] = newCell(Value{o: vm.moduleNamespace(r.module)})
-		} else {
+		case resolutionSource:
+			v, ok := vm.getModuleSource(r.module)
+			if !ok {
+				return v, false
+			}
+			m.env[ie.Binding] = newCell(v)
+		default:
 			m.env[ie.Binding] = r.module.env[r.index]
 		}
 	}
@@ -697,7 +738,11 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 		case bytecode.ModuleDeferredNamespace:
 			m.env[i] = newCell(Value{o: vm.deferredModuleNamespace(m.requested[b.Request])})
 		case bytecode.ModuleSource:
-			return vm.moduleSourceError(), false
+			v, ok := vm.getModuleSource(m.requested[b.Request])
+			if !ok {
+				return v, false
+			}
+			m.env[i] = newCell(v)
 		}
 	}
 
@@ -719,12 +764,6 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 		*m.env[f.Binding].p = Value{o: vm.newClosure(m.body.protos[f.Proto], upvals)}
 	}
 	return Undefined, true
-}
-
-// moduleSourceError returns the error of GetModuleSource, which every module of the engine
-// throws: none has a representation of its source.
-func (vm *VM) moduleSourceError() Value {
-	return vm.NewError(ErrorKindSyntax, "a source phase import is not available for this module")
 }
 
 // resolutionError returns the SyntaxError of the import or export name of m that did not
@@ -1214,7 +1253,11 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 // continueDynamicImport implements ContinueDynamicImport for a module of the phase that loaded.
 func (vm *VM) continueDynamicImport(c *PromiseCapability, m *Module, phase bytecode.Phase) {
 	if phase == bytecode.PhaseSource {
-		vm.RejectCapability(c, vm.moduleSourceError())
+		if v, ok := vm.getModuleSource(m); ok {
+			vm.ResolveCapability(c, v)
+		} else {
+			vm.RejectCapability(c, v)
+		}
 		return
 	}
 	load := vm.loadRequestedModules(m)

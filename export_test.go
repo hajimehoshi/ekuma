@@ -96,3 +96,18 @@ func NewHTMLDDA(vm *VM) Value {
 		return engine.Null
 	}))
 }
+
+// AbstractModuleSource returns %AbstractModuleSource% of the current realm of vm.
+func AbstractModuleSource(vm *VM) Value {
+	vm.initIfNeeded()
+	return fromEngine(engine.ObjectValue(vm.e.Intrinsic(engine.IntrinsicAbstractModuleSource)))
+}
+
+// NewSourceModule returns a module of vm whose only export is a default of undefined and
+// whose module source is an instance of %AbstractModuleSource% named className.
+func NewSourceModule(vm *VM, name, className string) *Module {
+	m := vm.NewSyntheticModule(name, Undefined)
+	proto := vm.e.NewObject(vm.e.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
+	m.m.SetModuleSource(vm.e.NewModuleSourceObject(proto, className))
+	return m
+}

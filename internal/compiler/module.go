@@ -133,6 +133,7 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 	var reqs moduleRequests
 	imports := map[string]bytecode.ImportEntry{}
 	namespaces := map[string]int32{}
+	sources := map[string]int32{}
 	type exportEntry struct {
 		name  string
 		local string
@@ -155,8 +156,11 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 					}
 					m.Bindings[b.reg].Kind = kind
 					m.Bindings[b.reg].Request = r
-					if kind == bytecode.ModuleNamespace {
+					switch kind {
+					case bytecode.ModuleNamespace:
 						namespaces[sp.Local.Name] = r
+					case bytecode.ModuleSource:
+						sources[sp.Local.Name] = r
 					}
 				default:
 					name := "default"
@@ -242,6 +246,15 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 				Name:    e.name,
 				Request: r,
 				All:     true,
+			})
+			continue
+		}
+		if r, ok := sources[e.local]; ok {
+			// A re-export of an imported module source.
+			m.IndirectExports = append(m.IndirectExports, bytecode.IndirectExport{
+				Name:    e.name,
+				Request: r,
+				Source:  true,
 			})
 			continue
 		}

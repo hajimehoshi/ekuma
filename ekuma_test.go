@@ -1113,6 +1113,30 @@ func TestSyntheticModules(t *testing.T) {
 	}
 }
 
+func TestModuleSource(t *testing.T) {
+	var vm ekuma.VM
+	src := ekuma.NewSourceModule(&vm, "src", "TestModuleSource")
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		return src, nil
+	})
+	m, err := vm.ParseModule("main", `import source s from "src";
+		const d = await import.source("src");
+		globalThis.result = (s === d) + " " + Object.prototype.toString.call(s);`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Evaluate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	v, err := vm.Global().Get("result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true [object TestModuleSource]"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestPrototypeCollected(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := vm.RunScript(t.Context(), "make", `

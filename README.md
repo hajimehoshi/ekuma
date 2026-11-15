@@ -70,7 +70,7 @@ is published yet.
 
 ## Status
 
-99.93% of [test262](https://github.com/tc39/test262) pass: 48,764 of 48,797 tests
+99.95% of [test262](https://github.com/tc39/test262) pass: 48,775 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -90,7 +90,8 @@ that list would grow.
 - Without `Intl`, `toLocale*String` uses a fixed English format, and `localeCompare` compares
   code units after canonical equivalence
 - `Atomics.wait` throws, as a VM cannot block
-- Source phase imports have no source objects
+- Source phase imports and `%AbstractModuleSource%` exist, but there is no public API to give
+  a module a module source yet, so importing the source of any module throws a SyntaxError
 - `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,
   as `import()` in code without a file does. The loader cannot tell the realms apart, so a
   module that it returns again is shared by them

@@ -88,6 +88,7 @@ const (
 	classAsyncDisposableStack
 	classTemporal
 	classShadowRealm
+	classModuleSource
 	// classLazy is an ordinary object whose properties are not defined yet.
 	classLazy
 

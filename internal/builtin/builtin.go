@@ -150,6 +150,7 @@ func Install(vm *engine.VM) {
 	initDate(vm)
 	initTemporal(vm)
 	initShadowRealm(vm)
+	initAbstractModuleSource(vm)
 	initPromise(vm)
 	initAsync(vm)
 	initDisposableStacks(vm)

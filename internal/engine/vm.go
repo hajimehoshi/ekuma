@@ -468,11 +468,13 @@ const (
 	IntrinsicDisposableStackPrototype
 	IntrinsicAsyncDisposableStackPrototype
 	IntrinsicShadowRealmPrototype
+	IntrinsicAbstractModuleSourcePrototype
 	IntrinsicPromise
 	IntrinsicArray
 	IntrinsicObject
 	IntrinsicFunction
 	IntrinsicRegExp
+	IntrinsicAbstractModuleSource
 
 	// The prototypes of the native error types are in the order of [ErrorKind].
 	IntrinsicErrorPrototype

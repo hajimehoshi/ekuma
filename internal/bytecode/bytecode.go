@@ -633,12 +633,14 @@ type LocalExport struct {
 }
 
 // IndirectExport exports as [IndirectExport.Name] the export [IndirectExport.ImportName] of
-// Requests[Request], or its namespace object when [IndirectExport.All] is set.
+// Requests[Request], its namespace object when [IndirectExport.All] is set, or its module
+// source when [IndirectExport.Source] is set.
 type IndirectExport struct {
 	Name       string
 	Request    int32
 	ImportName string
 	All        bool
+	Source     bool
 }
 
 // ModuleFunc says that the closure of Protos[Proto] of the module function initializes Bindings[Binding].

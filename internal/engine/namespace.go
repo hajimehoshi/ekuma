@@ -122,8 +122,14 @@ func (vm *VM) namespaceGet(o *Object, k PropKey) Value {
 		return Undefined
 	}
 	r := ns.targets[i]
-	if r.index < 0 {
+	switch r.index {
+	case resolutionNamespace:
 		return Value{o: vm.moduleNamespace(r.module)}
+	case resolutionSource:
+		if r.module.source == nil {
+			vm.ThrowReferenceError("the module source of '" + vm.KeyString(k) + "' is not available")
+		}
+		return Value{o: r.module.source}
 	}
 	v := *r.module.env[r.index].p
 	if v.o == tdzObject {

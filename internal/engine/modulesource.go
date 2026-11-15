@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package engine
+
+// NewModuleSourceObject returns a module source object with the prototype proto whose
+// [[ModuleSourceClassName]] is className.
+func (vm *VM) NewModuleSourceObject(proto *Object, className string) *Object {
+	o := vm.NewObject(proto)
+	o.class = classModuleSource
+	o.ext = className
+	return o
+}
+
+// ModuleSourceClassName returns the [[ModuleSourceClassName]] of v. ok is false when v has
+// no such slot.
+func (vm *VM) ModuleSourceClassName(v Value) (name string, ok bool) {
+	if !v.IsObject() || v.o.class != classModuleSource {
+		return "", false
+	}
+	return v.o.ext.(string), true
+}

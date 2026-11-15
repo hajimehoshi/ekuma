@@ -265,9 +265,23 @@ type moduleLoader struct {
 	dir string
 
 	modules map[string]*ekuma.Module
+
+	// source is the module of moduleSourceSpecifier, once it is loaded.
+	source *ekuma.Module
 }
 
+// moduleSourceSpecifier is the specifier that test262 resolves to a module with a module source.
+const moduleSourceSpecifier = "<module source>"
+
 func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+	if req.Specifier == moduleSourceSpecifier {
+		// The specifier names a module that provides a module source, which no module that
+		// the loader parses does.
+		if l.source == nil {
+			l.source = ekuma.NewSourceModule(l.vm, req.Specifier, "Test262ModuleSource")
+		}
+		return l.source, nil
+	}
 	dir := l.dir
 	if filepath.IsAbs(req.ReferrerName) {
 		dir = filepath.Dir(req.ReferrerName)
@@ -415,6 +429,9 @@ func new262(vm *ekuma.VM) (ekuma.Value, error) {
 		return o, err
 	})
 	if err := o.Set("createRealm", createRealm); err != nil {
+		return ekuma.Undefined, err
+	}
+	if err := o.Set("AbstractModuleSource", ekuma.AbstractModuleSource(vm)); err != nil {
 		return ekuma.Undefined, err
 	}
 	detach := vm.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {

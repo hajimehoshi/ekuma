@@ -1,11 +1,3 @@
-test/built-ins/AbstractModuleSource/length.js
-test/built-ins/AbstractModuleSource/name.js
-test/built-ins/AbstractModuleSource/proto.js
-test/built-ins/AbstractModuleSource/prototype.js
-test/built-ins/AbstractModuleSource/prototype/Symbol.toStringTag.js
-test/built-ins/AbstractModuleSource/prototype/constructor.js
-test/built-ins/AbstractModuleSource/prototype/proto.js
-test/built-ins/AbstractModuleSource/throw-from-constructor.js
 test/language/expressions/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js
 test/language/expressions/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js
 test/language/expressions/class/decorator/syntax/valid/decorator-call-expr-identifier-reference.js
@@ -15,9 +7,6 @@ test/language/expressions/class/decorator/syntax/valid/decorator-member-expr-ide
 test/language/expressions/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js
 test/language/expressions/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference.js
 test/language/expressions/class/elements/syntax/valid/grammar-field-accessor.js
-test/language/module-code/ambiguous-export-bindings/namespace-unambiguous-if-import-source-and-export.js
-test/language/module-code/source-phase-import/reexport-source-binding-named-import.js
-test/language/module-code/source-phase-import/reexport-source-binding-namespace-get.js
 test/language/statements/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js
 test/language/statements/class/decorator/syntax/valid/class-element-decorator-call-expr-identifier-reference.js
 test/language/statements/class/decorator/syntax/valid/class-element-decorator-member-expr-decorator-member-expr.js
