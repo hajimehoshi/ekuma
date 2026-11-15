@@ -3,10 +3,6 @@
 
 package calendar
 
-import (
-	"github.com/hajimehoshi/ekuma/internal/unicode/icu4x"
-)
-
 // eastAsianYear is a year of the Chinese or Korean calendar, as ICU4X encodes it: bits 0 to 12
 // are set for the months with 30 days, bits 13 to 16 are the ordinal of the leap month or 0,
 // and bits 17 to 22 are the new year in days after January 19 of the related ISO year.
@@ -150,13 +146,13 @@ type eastAsian struct {
 
 var (
 	chinese = eastAsian{
-		modern:      icu4x.ChinaYears[:],
-		modernStart: icu4x.ChinaStart,
+		modern:      chinaYears[:],
+		modernStart: chinaStart,
 		offset:      utcPlus8,
 	}
 	dangi = eastAsian{
-		modern:      icu4x.KoreaYears[:],
-		modernStart: icu4x.KoreaStart,
+		modern:      koreaYears[:],
+		modernStart: koreaStart,
 		offset:      utcPlus9,
 	}
 )
@@ -169,8 +165,8 @@ func (c eastAsian) year(y int) eastAsianYear {
 		return simpleEastAsianYear(c.offset, y)
 	}
 	// Both calendars follow the rules of the Qing dynasty before 1912.
-	if i := y - icu4x.QingStart; i >= 0 && i < len(icu4x.QingYears) {
-		return eastAsianYear(icu4x.QingYears[i])
+	if i := y - qingStart; i >= 0 && i < len(qingYears) {
+		return eastAsianYear(qingYears[i])
 	}
 	return simpleEastAsianYear(beijingOffset, y)
 }

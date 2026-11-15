@@ -10,10 +10,9 @@
 // Common Locale Data Repository, and Temporal has the calendars of ECMA-402 besides ISO 8601.
 // Without the import, a VM has no Intl, and Temporal has only the ISO 8601 calendar.
 //
-// That data, and the calendar tables from ICU4X and ICU4C, are under the Unicode License v3. A
-// program that imports the package must include the copyright and permission notices of that
-// license, in internal/unicode/cldr/LICENSE, internal/unicode/icu4x/LICENSE and
-// internal/unicode/icu4c/LICENSE, with its copies or in their documentation.
+// That data is under the Unicode License v3. A program that imports the package must include
+// the copyright and permission notice of that license, in internal/unicode/cldr/LICENSE, with
+// its copies or in their documentation.
 //
 // The default locale is that of the environment: the LC_ALL, LC_MESSAGES or LANG
 // environment variable natively, and navigator.language on GOOS=js. It is en-US when the

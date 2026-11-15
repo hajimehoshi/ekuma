@@ -5,9 +5,6 @@ package calendar
 
 import (
 	"slices"
-
-	"github.com/hajimehoshi/ekuma/internal/unicode/icu4c"
-	"github.com/hajimehoshi/ekuma/internal/unicode/icu4x"
 )
 
 // A system is the arithmetic of a calendar. Years are arithmetic years, months are ordinal
@@ -235,7 +232,7 @@ func (persian) newYear(y int) int64 {
 	d := persianEpoch + 365*int64(y-1) + floorDiv(8*int64(y)+21, 33)
 	// A year that the rule makes a leap year but the equinox does not starts the next year a
 	// day earlier.
-	if _, ok := slices.BinarySearch(icu4c.PersianNonLeapYears[:], int32(y-1)); ok {
+	if _, ok := slices.BinarySearch(persianNonLeapYears[:], int32(y-1)); ok {
 		d--
 	}
 	return d
@@ -334,11 +331,11 @@ var umalquraTabular = tabularHijri{epoch: hijriCivilEpoch}
 
 // umalquraYear returns the data of year y, and whether it is published.
 func umalquraYear(y int) (newYear int64, longMonths int32, ok bool) {
-	i := y - icu4x.UmalquraStart
-	if i < 0 || i >= len(icu4x.UmalquraYears) {
+	i := y - umalquraStart
+	if i < 0 || i >= len(umalquraYears) {
 		return 0, 0, false
 	}
-	v := icu4x.UmalquraYears[i]
+	v := umalquraYears[i]
 	return int64(v >> 12), v & 0xfff, true
 }
 

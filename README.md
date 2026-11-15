@@ -151,17 +151,9 @@ under the user cache directory, or in the directory that `EKUMA_TEST262` names.
 
 ## License
 
-[0BSD](LICENSE), except for this data, which is under the Unicode License v3:
-
-- the data of the [Unicode Common Locale Data Repository](https://cldr.unicode.org/) in
-  `internal/unicode/cldr` ([license](internal/unicode/cldr/LICENSE));
-- the year tables of the Chinese, Korean and Umm al-Qura calendars from
-  [ICU4X](https://github.com/unicode-org/icu4x) in `internal/unicode/icu4x`
-  ([license](internal/unicode/icu4x/LICENSE));
-- the leap year corrections of the Persian calendar from
-  [ICU4C](https://github.com/unicode-org/icu/tree/main/icu4c) in `internal/unicode/icu4c`
-  ([license](internal/unicode/icu4c/LICENSE)).
-
-Only the optional package `github.com/hajimehoshi/ekuma/intl` includes that data. A program that
-imports it must include the copyright and permission notices of the Unicode License v3 with its
-copies or in their documentation.
+Ekuma is under [0BSD](LICENSE), except for the data of the
+[Unicode Common Locale Data Repository](https://cldr.unicode.org/) in `internal/unicode/cldr`,
+which is under the Unicode License v3 ([license](internal/unicode/cldr/LICENSE)). Only the
+optional package `github.com/hajimehoshi/ekuma/intl` includes this data, so only a program that
+imports that package must include the copyright and permission notice of the Unicode License v3
+with its copies or in their documentation.

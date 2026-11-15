@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
+//go:generate go run gen_persian.go
+//go:generate go run gen_years.go
+
 // Package calendar implements the calendars of ECMA-402 other than ISO 8601: their arithmetic,
 // month codes and eras.
 package calendar
