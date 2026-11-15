@@ -26,6 +26,10 @@ type funcProto struct {
 	templates []templateSite
 	regExps   []regExpSite
 
+	// ncopied is the number of the upvalues that are copies of the variables, by
+	// [bytecode.UpvalDesc.ByValue].
+	ncopied int
+
 	length  int
 	nparams int
 	nclear  int
@@ -95,6 +99,11 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 	}
 	for i, k := range f.Keys {
 		p.keys[i] = vm.Intern(k)
+	}
+	for _, d := range f.Upvals {
+		if d.ByValue {
+			p.ncopied++
+		}
 	}
 	for i, q := range f.Protos {
 		p.protos[i] = vm.link(q, script)

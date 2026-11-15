@@ -247,16 +247,21 @@ func patternNames(p ast.Pattern, f func(*ast.Identifier)) {
 }
 
 // assignedNames calls f for the name of every variable that the code below n assigns to.
-// With nestedOnly set, only the assignments inside functions nested in n count.
-func assignedNames(n ast.Node, nestedOnly bool, f func(string)) {
+func assignedNames(n ast.Node, f func(string)) {
+	assignments(n, func(name string, nested bool) {
+		f(name)
+	})
+}
+
+// assignments calls f for the name of every variable that the code below n assigns to.
+// nested says whether the assignment is inside a function nested in n.
+func assignments(n ast.Node, f func(name string, nested bool)) {
 	depth := 0
 	var visit func(ast.Node) bool
 	target := func(p ast.Pattern) {
-		if !nestedOnly || depth > 0 {
-			patternNames(p, func(id *ast.Identifier) {
-				f(id.Name)
-			})
-		}
+		patternNames(p, func(id *ast.Identifier) {
+			f(id.Name, depth > 0)
+		})
 	}
 	visit = func(m ast.Node) bool {
 		switch m := m.(type) {

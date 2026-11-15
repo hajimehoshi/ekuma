@@ -430,36 +430,63 @@ type closureObject struct {
 	state function
 }
 
-// closureObjectWith is a closureObject together with the storage of its upvalues.
-type closureObjectWith[U any] struct {
+// closureObjectWith is a closureObject together with the storage of its upvalues and of the
+// upvalues that hold copies of variables.
+type closureObjectWith[U, C any] struct {
 	closureObject
+
+	// copies comes first so that an empty C adds no padding at the end.
+	copies C
 	upvals U
 }
 
-// newClosureObject returns a zero object whose function state has n nil upvalues. Small
-// closures are a single allocation.
-func newClosureObject(n int) *Object {
+// newClosureObject returns a zero object whose function state has n nil upvalues, and
+// storage for the ncopied of them that hold copies of variables. Small closures are a single
+// allocation.
+func newClosureObject(n, ncopied int) (*Object, []upvalue) {
 	var c *closureObject
 	var upvals []*upvalue
-	switch n {
+	var copies []upvalue
+	switch n<<2 | ncopied {
 	case 0:
 		c = &closureObject{}
-	case 1:
-		w := &closureObjectWith[[1]*upvalue]{}
+	case 1 << 2:
+		w := &closureObjectWith[[1]*upvalue, struct{}]{}
 		c, upvals = &w.closureObject, w.upvals[:]
-	case 2:
-		w := &closureObjectWith[[2]*upvalue]{}
+	case 1<<2 | 1:
+		w := &closureObjectWith[[1]*upvalue, [1]upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 2 << 2:
+		w := &closureObjectWith[[2]*upvalue, struct{}]{}
 		c, upvals = &w.closureObject, w.upvals[:]
-	case 3:
-		w := &closureObjectWith[[3]*upvalue]{}
+	case 2<<2 | 1:
+		w := &closureObjectWith[[2]*upvalue, [1]upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 2<<2 | 2:
+		w := &closureObjectWith[[2]*upvalue, [2]upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 3 << 2:
+		w := &closureObjectWith[[3]*upvalue, struct{}]{}
 		c, upvals = &w.closureObject, w.upvals[:]
+	case 3<<2 | 1:
+		w := &closureObjectWith[[3]*upvalue, [1]upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 3<<2 | 2:
+		w := &closureObjectWith[[3]*upvalue, [2]upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
+	case 3<<2 | 3:
+		w := &closureObjectWith[[3]*upvalue, [3]upvalue]{}
+		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
 	default:
 		c = &closureObject{}
 		upvals = make([]*upvalue, n)
+		if ncopied > 0 {
+			copies = make([]upvalue, ncopied)
+		}
 	}
 	c.state.upvals = upvals
 	c.fn = &c.state
-	return &c.Object
+	return &c.Object, copies
 }
 
 // newObjectWithStorage returns a zero object and storage for n values. For a small n, both are

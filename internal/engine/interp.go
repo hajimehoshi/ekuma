@@ -367,7 +367,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpClosure:
 			p := fp.protos[i.B]
-			o := newClosureObject(len(p.Upvals))
+			o, copies := newClosureObject(len(p.Upvals), p.ncopied)
 			fn := o.fn
 			fn.code = p
 			fn.constructor = p.isConstructor
@@ -384,6 +384,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				switch {
 				case !d.Local:
 					fn.upvals[j] = cl.fn.upvals[d.Index]
+				case d.ByValue:
+					u := &copies[0]
+					copies = copies[1:]
+					u.val = regs[d.Index]
+					u.p = &u.val
+					fn.upvals[j] = u
 				case onHeap:
 					fn.upvals[j] = vm.frames[len(vm.frames)-1].gen.findUpval(int(d.Index))
 				default:
@@ -569,7 +575,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				} else if j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.shapes.array && vm.arrayProtoPlain() {
 					// Appending to a plain array.
-					o.elems = append(o.elems, regs[i.C])
+					o.elems = appendElem(o.elems, regs[i.C])
 					o.length++
 					continue
 				}
@@ -1459,11 +1465,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Value{o: o}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].o
-			o.elems = append(o.elems, regs[i.B])
+			o.elems = appendElem(o.elems, regs[i.B])
 			o.length = uint32(len(o.elems))
 		case bytecode.OpArrayHole:
 			o := regs[i.A].o
-			o.elems = append(o.elems, hole)
+			o.elems = appendElem(o.elems, hole)
 			o.length = uint32(len(o.elems))
 		case bytecode.OpArraySpread:
 			vm.frames[len(vm.frames)-1].pc = pc

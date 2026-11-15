@@ -541,6 +541,182 @@ func toString(t *testing.T, vm *ekuma.VM, v ekuma.Value) string {
 	return s.String()
 }
 
+// TestCapturedVariables covers closures that see variables which change or are not yet
+// initialized when the closures are created.
+func TestCapturedVariables(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "parameter assigned after the closure is created",
+			src:  `function f(a) { const g = () => a; a = 2; return g(); } f(1)`,
+			want: "2",
+		},
+		{
+			name: "parameter assigned by a nested function",
+			src:  `function f(a) { const g = () => () => a; (() => { a = 3; })(); return g()(); } f(1)`,
+			want: "3",
+		},
+		{
+			name: "parameter assigned by eval",
+			src:  `function f(a) { const g = () => a; eval("a = 4"); return g(); } f(1)`,
+			want: "4",
+		},
+		{
+			name: "parameter assigned by eval in a nested function",
+			src:  `function f(a) { const g = () => a; (() => eval("a = 5"))(); return g(); } f(1)`,
+			want: "5",
+		},
+		{
+			name: "parameter assigned in a with statement",
+			src:  `function f(a) { const g = () => a; with ({}) { a = 6; } return g(); } f(1)`,
+			want: "6",
+		},
+		{
+			name: "parameter assigned through arguments",
+			src:  `function f(a) { const g = () => a; (() => { arguments[0] = 7; })(); return g(); } f(1)`,
+			want: "7",
+		},
+		{
+			name: "parameter declared again by var",
+			src:  `function f(a) { const g = () => a; for (var a of [8]); return g(); } f(1)`,
+			want: "8",
+		},
+		{
+			name: "generator suspended across an assignment",
+			src: `function* gen(a) { let x = a; const g = () => x + a; yield g(); x = 10; yield g(); }
+				[...gen(1)].join()`,
+			want: "2,11",
+		},
+		{
+			name: "per-iteration bindings",
+			src: `var fs = [];
+				for (const x of [1, 2]) { const y = x * 10; fs.push(() => x + y); }
+				for (let i = 0, k = 100; i < 2; i++) fs.push(() => i + k);
+				fs.map(f => f()).join()`,
+			want: "11,22,100,101",
+		},
+		{
+			name: "let read before its initialization",
+			src: `function f() {
+					const g = () => x;
+					function h() { return x; }
+					let r = [];
+					try { g(); } catch (e) { r.push(e.name); }
+					try { h(); } catch (e) { r.push(e.name); }
+					let x = 1;
+					return r.concat(g(), h()).join();
+				}
+				f()`,
+			want: "ReferenceError,ReferenceError,1,1",
+		},
+		{
+			name: "function declarations instantiated together",
+			src:  `function f() { { function g() { return typeof h; } function h() {} return g(); } } f()`,
+			want: "function",
+		},
+		{
+			name: "let whose initialization a switch skips",
+			src: `var g;
+				switch (1) { case 0: let x = 1; case 1: g = () => x; }
+				var r; try { g(); } catch (e) { r = e.name; } r`,
+			want: "ReferenceError",
+		},
+		{
+			name: "default values that refer to later bindings",
+			src: `function f(a = () => b, b = 2) { return a(); }
+				var r; try { throw {}; } catch ({c = () => d, d = 3}) { r = c(); }
+				f() + r`,
+			want: "5",
+		},
+		{
+			name: "this before and after super",
+			src: `class B extends Object {
+					constructor() {
+						const f = () => this;
+						let r;
+						try { f(); } catch (e) { r = e.name; }
+						super();
+						this.r = r + (f() === this);
+					}
+				}
+				new B().r`,
+			want: "ReferenceErrortrue",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			var vm ekuma.VM
+			v, err := vm.RunScript(ctx, tt.name, tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, &vm, v); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAllocationsPerOperation covers the number of allocations of common operations.
+func TestAllocationsPerOperation(t *testing.T) {
+	tests := []struct {
+		name  string
+		setup string
+		body  string
+		want  float64
+	}{
+		{
+			name:  "arrow function capturing this and a parameter",
+			setup: `var o = {x: 1, m(a) { return () => this.x + a; }};`,
+			body:  `o.m(1);`,
+			want:  1,
+		},
+		{
+			name:  "spread of an array",
+			setup: `var src = []; for (var j = 0; j < 16; j++) src.push(j);`,
+			body:  `[...src];`,
+			want:  2,
+		},
+		{
+			name:  "map",
+			setup: `var src = []; for (var j = 0; j < 16; j++) src.push(j);`,
+			body:  `src.map(x => x);`,
+			want:  3,
+		},
+		{
+			name: "push onto an empty array",
+			body: `var a = []; for (var j = 0; j < 16; j++) a.push(j);`,
+			want: 4,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			var vm ekuma.VM
+			src := tt.setup + "\n(function(n) { for (var i = 0; i < n; i++) { " + tt.body + " } })"
+			fn, err := vm.RunScript(ctx, tt.name, src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			const n = 100
+			allocs := func(n int) float64 {
+				return testing.AllocsPerRun(10, func() {
+					if _, err := fn.Invoke(ctx, n); err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
+			if got := (allocs(n) - allocs(0)) / n; got != tt.want {
+				t.Errorf("allocations per operation: got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestAnnexBGlobalSkip covers the block-level functions of sloppy code that get no global
 // variable, which test262 does not.
 func TestAnnexBGlobalSkip(t *testing.T) {

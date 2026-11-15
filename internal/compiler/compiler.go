@@ -60,6 +60,10 @@ type binding struct {
 
 	// catch marks a parameter of a catch clause.
 	catch bool
+
+	// initialized is set once the code compiled from then on always runs after the binding
+	// got its first value.
+	initialized bool
 }
 
 // scope is a block scope.
@@ -186,6 +190,9 @@ type fn struct {
 	// mutated holds the names that functions nested in this one assign to, and the parameters
 	// that an arguments object can change.
 	mutated map[string]bool
+
+	// assigned holds the names that the function or the functions nested in it assign to.
+	assigned map[string]bool
 
 	isScript bool
 
@@ -351,14 +358,16 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 			consts:   f.consts,
 			keys:     f.keys,
 			mutated:  f.mutated,
+			assigned: f.assigned,
 			scope:    f.scope,
 			varScope: f.scope,
 		}
 	} else {
 		f = &fn{
-			consts:  map[bytecode.Const]int32{},
-			keys:    map[string]int32{},
-			mutated: map[string]bool{},
+			consts:   map[bytecode.Const]int32{},
+			keys:     map[string]int32{},
+			mutated:  map[string]bool{},
+			assigned: map[string]bool{},
 			scope: &scope{
 				vars: map[string]*binding{},
 			},
@@ -401,11 +410,13 @@ func (f *fn) finish() *bytecode.Func {
 	clear(f.consts)
 	clear(f.keys)
 	clear(f.mutated)
+	clear(f.assigned)
 	*f = fn{
-		consts:  f.consts,
-		keys:    f.keys,
-		mutated: f.mutated,
-		scope:   root,
+		consts:   f.consts,
+		keys:     f.keys,
+		mutated:  f.mutated,
+		assigned: f.assigned,
+		scope:    root,
 	}
 	sc.fns = append(sc.fns, f)
 	return b
@@ -640,8 +651,12 @@ func (f *fn) resolve(name string) ref {
 	if r.kind == refLocal {
 		d.Local = true
 		d.Index = r.b.reg
-		_, s := f.parent.lookupLocal(name)
-		s.captured = true
+		if f.parent.isFinal(r.b) {
+			d.ByValue = true
+		} else {
+			_, s := f.parent.lookupLocal(name)
+			s.captured = true
+		}
 	}
 	f.upvals = append(f.upvals, r.b)
 	f.f.Upvals = append(f.f.Upvals, d)
@@ -650,6 +665,26 @@ func (f *fn) resolve(name string) ref {
 		b:     r.b,
 		index: int32(len(f.upvals) - 1),
 	}
+}
+
+// isFinal reports whether the local binding b of f holds its final value from now on, so that
+// a closure created at this point can copy it.
+func (f *fn) isFinal(b *binding) bool {
+	if f.node == nil || f.anyMutated || !b.initialized || b.alwaysCheck {
+		return false
+	}
+	if f.assigned[b.name] || f.mutated[b.name] {
+		return false
+	}
+	if b.kind == bindVar {
+		// A parameter can also be declared by var or function declarations, which assign to it.
+		for _, d := range f.node.Scope.Decls {
+			if d.Name == b.name && d.Kind != ast.DeclParam {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // withsAround returns the number of with statements around the code being compiled,

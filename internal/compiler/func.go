@@ -28,7 +28,7 @@ func forwardsArguments(node *ast.Function) bool {
 		})
 	}
 	ok := true
-	assignedNames(node, false, func(name string) {
+	assignedNames(node, func(name string) {
 		if params[name] || name == "arguments" {
 			ok = false
 		}
@@ -131,8 +131,11 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	b.Source = c.prog.Text(node)
 	f.setPos(node.Start())
 
-	assignedNames(node, true, func(s string) {
-		f.mutated[s] = true
+	assignments(node, func(s string, nested bool) {
+		f.assigned[s] = true
+		if nested {
+			f.mutated[s] = true
+		}
 	})
 	if node.UsesArguments && mappedArguments(node) != 0 {
 		// The arguments object can change the parameters.
@@ -176,7 +179,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 				}
 				b.ShadowedParams[prev.reg-slots] = true
 			}
-			f.declareAt(name, bindVar, slots+int32(i))
+			f.declareAt(name, bindVar, slots+int32(i)).initialized = true
 		}
 	}
 	// The parameters of a list that is not simple are in their temporal dead zone until bound.
@@ -230,20 +233,25 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 				f.emit(bytecode.OpLoadTDZ, this.reg, 0, 0)
 			case node.Strict:
 				f.emit(bytecode.OpLoadThis, this.reg, 0, 0)
+				this.initialized = true
 			default:
 				f.emit(bytecode.OpLoadThisSloppy, this.reg, 0, 0)
+				this.initialized = true
 			}
 		}
 		if node.UsesNewTarget || node.UsesSuperCall || node.DerivedConstructor || node.HasDirectEval {
 			nt := f.declare("new.target", bindPseudo)
+			nt.initialized = true
 			f.emit(bytecode.OpLoadNewTarget, nt.reg, 0, 0)
 		}
 		if node.UsesSuperProperty || node.HasDirectEval && (node.Method || node.FieldInit || node.StaticBlock) {
 			home := f.declare("%home", bindPseudo)
+			home.initialized = true
 			f.emit(bytecode.OpLoadHome, home.reg, 0, 0)
 		}
 		if node.UsesSuperCall || node.ClassConstructor {
 			callee := f.declare("%callee", bindPseudo)
+			callee.initialized = true
 			f.emit(bytecode.OpLoadCallee, callee.reg, 0, 0)
 		}
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
@@ -284,6 +292,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			selfName = false
 			if n := node.Name.Name; !paramNames[n] && n != "arguments" {
 				self := f.declare(n, bindFuncName)
+				self.initialized = true
 				f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
 			}
 		}
@@ -401,6 +410,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	if selfName {
 		if _, shadowed := f.scope.vars[node.Name.Name]; !shadowed {
 			self := f.declare(node.Name.Name, bindFuncName)
+			self.initialized = true
 			f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
 		}
 	}

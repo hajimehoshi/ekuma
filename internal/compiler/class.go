@@ -199,6 +199,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 	if inner != nil {
 		f.emit(bytecode.OpMove, inner.reg, ctor, 0)
 		inner.tdz = false
+		inner.initialized = true
 	}
 	for _, s := range statics {
 		if s.block {

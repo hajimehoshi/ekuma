@@ -31,23 +31,17 @@ type function struct {
 
 	native NativeFunc
 
-	// step is set for the next method of a built-in iterator. It is what native does
-	// without creating the iterator result.
-	step IteratorStepFunc
-
-	// name is the initial value of the property name of a native function.
-	name string
+	// info describes a function created by [VM.NewNative], and is nil otherwise.
+	info *nativeInfo
 
 	bound *boundFunc
 
 	// home is the object that super property accesses in a method start from.
 	home *Object
 
-	// fields are the elements that a class constructor adds to every instance.
-	fields []classElement
-
-	// length is the initial value of the property length of a native function.
-	length int32
+	// fields are the elements that a class constructor adds to every instance, or nil when
+	// there are none.
+	fields *[]classElement
 
 	// materialized is set once the initial properties, such as length and name, exist as slots.
 	materialized bool
@@ -64,6 +58,33 @@ type function struct {
 	// scopes points to the dynamic scopes that were open where the function was created,
 	// innermost last, or is nil when none were.
 	scopes *[]*Object
+}
+
+// nativeInfo is the description of a native function.
+type nativeInfo struct {
+	// name and length are the initial values of the properties name and length.
+	name   string
+	length int32
+
+	// step is set for the next method of a built-in iterator. It is what the function does
+	// without creating the iterator result.
+	step IteratorStepFunc
+}
+
+// nativeName returns the initial value of the property name of the native function f.
+func (f *function) nativeName() string {
+	if f.info == nil {
+		return ""
+	}
+	return f.info.name
+}
+
+// iteratorStep returns the step function of the next method f of a built-in iterator, or nil.
+func (f *function) iteratorStep() IteratorStepFunc {
+	if f.info == nil {
+		return nil
+	}
+	return f.info.step
 }
 
 type boundFunc struct {
@@ -568,7 +589,7 @@ func (vm *VM) stackTrace(e *Object, msg string, frames, natives int) string {
 				// Calling a proxy calls its target or its trap, which the trace shows instead.
 				continue
 			}
-			vm.writeCall(&b, c.f.fn.name, c.isNew, c.this, "<anonymous>")
+			vm.writeCall(&b, c.f.fn.nativeName(), c.isNew, c.this, "<anonymous>")
 			n++
 		}
 		if i < 0 || n >= maxStackFrames {

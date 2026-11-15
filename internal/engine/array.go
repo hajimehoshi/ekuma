@@ -12,12 +12,50 @@ import (
 // This file holds the operations on the elements of objects for the built-in objects.
 // An operation that reports false did nothing, and the caller has to run the generic algorithm.
 
+// minElems is the number of elements that the storage of an array has room for when it is
+// first allocated to add an element.
+const minElems = 4
+
+// maxPresizedElems is the largest length for which ArrayCreate allocates the storage of the
+// elements upfront.
+const maxPresizedElems = 1024
+
 // ArrayCreate implements ArrayCreate.
 func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
-	a := vm.NewArray(nil)
+	var a *Object
+	if length > 0 && length <= maxPresizedElems {
+		// The array is usually filled up to its length afterwards.
+		var elems []Value
+		a, elems = newObjectWithStorage(int(length))
+		a.kind = kindArray
+		a.class = classArray
+		a.shape = vm.shapes.array
+		a.elems = elems[:0]
+	} else {
+		a = vm.NewArray(nil)
+	}
 	vm.setProto(a, proto)
 	a.length = length
 	return a
+}
+
+// reserveElems returns elems with room for n more elements.
+func reserveElems(elems []Value, n int) []Value {
+	if cap(elems)-len(elems) >= n {
+		return elems
+	}
+	if cap(elems) == 0 {
+		return make([]Value, 0, max(n, minElems))
+	}
+	return slices.Grow(elems, n)
+}
+
+// appendElem appends v to elems.
+func appendElem(elems []Value, v Value) []Value {
+	if cap(elems) == 0 {
+		elems = make([]Value, 0, minElems)
+	}
+	return append(elems, v)
 }
 
 // LengthOfArrayLike implements LengthOfArrayLike.
@@ -102,7 +140,7 @@ func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !vm.arrayProtoPlain() {
 		return 0, false
 	}
-	o.elems = append(o.elems, vals...)
+	o.elems = append(reserveElems(o.elems, len(vals)), vals...)
 	o.length = uint32(len(o.elems))
 	vm.touchProto(o)
 	return o.length, true

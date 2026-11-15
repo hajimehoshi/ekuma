@@ -100,7 +100,7 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 			return true
 		}
 		found := false
-		assignedNames(e, false, func(s string) {
+		assignedNames(e, func(s string) {
 			if s == name {
 				found = true
 			}

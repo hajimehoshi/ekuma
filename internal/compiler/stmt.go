@@ -81,6 +81,7 @@ func (f *fn) initBinding(n ast.Node, name string, src int32) {
 	}
 	b.tdz = false
 	b.unset = false
+	b.initialized = true
 }
 
 func (f *fn) varDecl(n *ast.VarDecl) {
@@ -129,14 +130,17 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 			case d.Init == nil:
 				f.emit(bytecode.OpLoadUndef, b.reg, 0, 0)
 				b.tdz = false
+				b.initialized = true
 			case singleWrite(d.Init):
 				f.named(d.Init, b.reg, id.Name)
 				b.tdz = false
+				b.initialized = true
 			default:
 				t := f.newReg()
 				f.named(d.Init, t, id.Name)
 				f.emit(bytecode.OpMove, b.reg, t, 0)
 				b.tdz = false
+				b.initialized = true
 			}
 		}
 		f.free(mark)
@@ -165,6 +169,7 @@ func (f *fn) initUsing(n ast.Node, k ast.DeclKind, name string, src int32) {
 	}
 	f.emit(bytecode.OpMove, b.reg, src, 0)
 	b.tdz = false
+	b.initialized = true
 }
 
 func declMode(k ast.DeclKind) patMode {

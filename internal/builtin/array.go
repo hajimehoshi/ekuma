@@ -275,9 +275,12 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		src := vm.ToObject(items)
 		n := vm.LengthOfArrayLike(src)
 		var a *engine.Object
-		if custom {
+		switch {
+		case custom:
 			a = vm.Construct(this.Object(), []engine.Value{engine.Number(float64(n))}, this.Object())
-		} else {
+		case n <= engine.MaxArrayIndex+1:
+			a = vm.ArrayCreate(uint32(n), vm.Intrinsic(engine.IntrinsicArrayPrototype))
+		default:
 			a = vm.NewArray(nil)
 		}
 		for i := range n {
@@ -453,8 +456,11 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		o := vm.ToObject(this)
 		a := arraySpeciesCreate(vm, o, 0)
 		n := int64(0)
-		items := append([]engine.Value{engine.ObjectValue(o)}, args...)
-		for _, item := range items {
+		for k := -1; k < len(args); k++ {
+			item := engine.ObjectValue(o)
+			if k >= 0 {
+				item = args[k]
+			}
 			spreadable := false
 			if item.IsObject() {
 				if s := vm.GetV(item, vm.WellKnownSymbol(engine.SymbolIsConcatSpreadable)); !s.IsUndefined() {

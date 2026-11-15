@@ -301,6 +301,11 @@ type UpvalDesc struct {
 	// upvalues.
 	Local bool
 	Index int32
+
+	// ByValue says that the register [UpvalDesc.Index] of the enclosing function holds the
+	// final value of the variable whenever the closure is created, so that the closure can keep
+	// a copy instead of sharing the variable. It is only set with [UpvalDesc.Local].
+	ByValue bool
 }
 
 // Pos says that the instructions from [Pos.PC] on belong to the source position at [Pos.Line] and

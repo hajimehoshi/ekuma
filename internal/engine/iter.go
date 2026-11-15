@@ -52,7 +52,7 @@ func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
 		}
 		return vm.CreateIterResultObject(v, false)
 	})
-	o.fn.step = step
+	o.fn.info.step = step
 	return o
 }
 
@@ -72,13 +72,17 @@ const (
 // the iterator result, whose reading would have no observable effect.
 func (vm *VM) iterNext(it, next Value) (Value, int) {
 	f := next.o
+	var step IteratorStepFunc
+	if f != nil && f.fn != nil {
+		step = f.fn.iteratorStep()
+	}
 	var r Value
 	switch {
-	case f != nil && f.fn != nil && f.fn.step != nil:
+	case step != nil:
 		if vm.interrupt.Load() {
 			vm.Poll()
 		}
-		v, ok := f.fn.step(vm, it)
+		v, ok := step(vm, it)
 		if !ok {
 			return Undefined, iterDone
 		}
@@ -128,13 +132,14 @@ func (vm *VM) IteratorStepValue(it, next Value) (Value, bool) {
 // IteratorStep implements IteratorStep for the iterator it and its next method next,
 // without the result: it reports false when the iterator is done.
 func (vm *VM) IteratorStep(it, next Value) bool {
-	f := next.o
-	if f != nil && f.fn != nil && f.fn.step != nil {
-		if vm.interrupt.Load() {
-			vm.Poll()
+	if f := next.o; f != nil && f.fn != nil {
+		if step := f.fn.iteratorStep(); step != nil {
+			if vm.interrupt.Load() {
+				vm.Poll()
+			}
+			_, ok := step(vm, it)
+			return ok
 		}
-		_, ok := f.fn.step(vm, it)
-		return ok
 	}
 	r := vm.CallValue(next, it)
 	if !r.IsObject() {
@@ -263,8 +268,11 @@ func (vm *VM) IterateRecord(it, next Value, f func(Value) bool) {
 
 // appendIterable appends the values that iterating v yields to the array o.
 func (vm *VM) appendIterable(o *Object, v Value) {
+	if s := v.o; s != nil && s.kind == kindArray {
+		o.elems = reserveElems(o.elems, len(s.elems))
+	}
 	vm.Iterate(v, func(e Value) bool {
-		o.elems = append(o.elems, e)
+		o.elems = appendElem(o.elems, e)
 		o.length = uint32(len(o.elems))
 		return true
 	})

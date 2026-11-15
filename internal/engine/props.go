@@ -283,8 +283,12 @@ func (vm *VM) materialize(o *Object) {
 		}
 		return
 	}
-	vm.add(o, vm.Key(KeyLength), Number(float64(f.length)), FlagConfigurable)
-	vm.add(o, vm.Key(KeyName), vm.NewString(f.name), FlagConfigurable)
+	var length int32
+	if f.info != nil {
+		length = f.info.length
+	}
+	vm.add(o, vm.Key(KeyLength), Number(float64(length)), FlagConfigurable)
+	vm.add(o, vm.Key(KeyName), vm.NewString(f.nativeName()), FlagConfigurable)
 }
 
 // isLazyKey reports whether key names a property that materialize creates.
@@ -754,6 +758,7 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 			return true
 		}
 		if growElems(n, i) {
+			o.elems = reserveElems(o.elems, int(i)+1-n)
 			for uint32(len(o.elems)) < i {
 				o.elems = append(o.elems, hole)
 			}

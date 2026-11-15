@@ -583,14 +583,17 @@ func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
 		vm.defineClassElement(Value{o: ctor}, e)
 		return
 	}
-	ctor.fn.fields = append(ctor.fn.fields, e)
+	if ctor.fn.fields == nil {
+		ctor.fn.fields = &[]classElement{}
+	}
+	*ctor.fn.fields = append(*ctor.fn.fields, e)
 }
 
 // initFields defines the instance elements of the class ctor on this.
 func (vm *VM) initFields(ctor *Object, this Value) {
 	// Private methods and accessors exist before any field initializer runs.
 	checked := false
-	for _, e := range ctor.fn.fields {
+	for _, e := range *ctor.fn.fields {
 		if e.kind != bytecode.ElemField {
 			if !checked {
 				vm.ensureCanAddPrivate(this, e.key.o)
@@ -599,7 +602,7 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 			vm.defineClassElement(this, e)
 		}
 	}
-	for _, e := range ctor.fn.fields {
+	for _, e := range *ctor.fn.fields {
 		if e.kind == bytecode.ElemField {
 			vm.defineClassElement(this, e)
 		}
@@ -977,17 +980,30 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Objec
 
 // NewNative returns a function implemented in Go.
 func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
-	return &Object{
+	n := &nativeObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
 		shape: vm.shapes.function,
-		fn: &function{
+		state: function{
 			native: f,
+		},
+		info: nativeInfo{
 			name:   name,
 			length: int32(length),
 		},
 	}
+	n.fn = &n.state
+	n.state.info = &n.info
+	return &n.Object
+}
+
+// nativeObject is a native function object together with its function state and description,
+// so that creating one is a single allocation.
+type nativeObject struct {
+	Object
+	state function
+	info  nativeInfo
 }
 
 // NewNativeConstructor returns a function implemented in Go that can be called with new.
@@ -1104,7 +1120,7 @@ func (f *Object) SourceText() string {
 	if fn.code != nil && fn.code.Source != "" {
 		return fn.code.Source
 	}
-	name := fn.name
+	name := fn.nativeName()
 	if fn.code != nil {
 		name = fn.code.name
 	}
