@@ -12,12 +12,17 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+// initialStackSize is the number of values that the stack of a VM has room for from the start.
+// It is large enough for the Go runtime to allocate it on pages of its own, which the interpreter
+// loop runs measurably faster with.
+const initialStackSize = 1 << 12
+
 // New creates a [VM] with the standard built-in objects. hostDefined is what [VM.HostDefined]
 // returns.
 func New(hostDefined any) *VM {
 	vm := &VM{
 		hostDefined:    hostDefined,
-		stack:          make([]Value, 1<<8),
+		stack:          make([]Value, initialStackSize),
 		symbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
 		mailbox:        newMailbox(),
