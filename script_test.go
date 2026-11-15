@@ -1733,15 +1733,48 @@ sab`)
 	if got, want := runIn(t, sab, `String(Atomics.notify(new Int32Array(sab), 1))`), "1"; got != want {
 		t.Errorf("Atomics.notify: got %s, want %s", got, want)
 	}
-	ok, err := ekuma.AwaitWaiters(t.Context(), &vm)
+	ok, err := vm.AwaitJobs(t.Context())
+	if err != nil || !ok {
+		t.Fatalf("AwaitJobs: got %t, %v, want true, nil", ok, err)
+	}
+	result, err := vm.Global().Get("result")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ok {
-		t.Error("AwaitWaiters: got false, want true")
-	}
-	if got, want := run(t, &vm, `result`), "ok"; got != want {
+	if got, want := result.String(), "ok"; got != want {
 		t.Errorf("result: got %s, want %s", got, want)
+	}
+	// The resolved waiter is gone, so nothing is left to wait for.
+	if ok, err := vm.AwaitJobs(t.Context()); ok || err != nil {
+		t.Errorf("AwaitJobs without waiters: got %t, %v, want false, nil", ok, err)
+	}
+}
+
+func TestAwaitJobsCanceled(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		run(t, &vm, `Atomics.waitAsync(new Int32Array(new SharedArrayBuffer(4)), 0, 0);`)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if _, err := vm.AwaitJobs(ctx); !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("AwaitJobs: got %v, want %v", err, context.DeadlineExceeded)
+		}
+	})
+}
+
+func TestAwaitJobsWhileRunning(t *testing.T) {
+	var vm ekuma.VM
+	var awaitErr error
+	f := vm.FuncOf("awaitJobs", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		_, awaitErr = vm.AwaitJobs(t.Context())
+		return nil, nil
+	})
+	if err := vm.Global().Set("awaitJobs", f); err != nil {
+		t.Fatal(err)
+	}
+	run(t, &vm, `awaitJobs();`)
+	if !errors.Is(awaitErr, ekuma.ErrRunning) {
+		t.Errorf("AwaitJobs: got %v, want %v", awaitErr, ekuma.ErrRunning)
 	}
 }
 

@@ -442,8 +442,13 @@ func (vm *VM) awaitWake() bool {
 	}
 }
 
+// Running reports whether a call from Go into vm is running.
+func (vm *VM) Running() bool {
+	return vm.entered > 0
+}
+
 // RunJobs runs the pending jobs, as the end of an outermost call into vm does. It must not be
-// called while JavaScript runs.
+// called while [VM.Running] reports true.
 func (vm *VM) RunJobs() error {
 	_, err := vm.enter(func() Value {
 		vm.runJobs()

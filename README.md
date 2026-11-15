@@ -49,6 +49,7 @@ VMs on different goroutines share the memory of a `SharedArrayBuffer` as agents 
 `SharedArrayBuffer` of another VM. `Atomics.wait` throws unless `VM.SetCanBlock` lets the VM
 block. When another VM notifies a waiter of `Atomics.waitAsync`, its promise is settled by the
 jobs that the waiting VM runs at the end of its current or next outermost call from Go.
+`VM.AwaitJobs` blocks until such a waiter is notified or times out, and runs the jobs.
 
 ## Differences from other engines for Go
 

@@ -222,6 +222,32 @@ func (vm *VM) RunScript(ctx context.Context, file, src string) (Value, error) {
 	})
 }
 
+// ErrRunning is the error of [VM.AwaitJobs] called while the VM runs JavaScript.
+var ErrRunning = errors.New("ekuma: AwaitJobs called while JavaScript runs")
+
+// AwaitJobs runs pending jobs, waiting for an Atomics.waitAsync waiter to be
+// notified or time out if necessary. It reports true if jobs were run, or
+// false without blocking if there are no asynchronous waiters.
+// It returns [ErrRunning] if the VM is running JavaScript, or the cause of ctx
+// if ctx is done.
+func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
+	vm.initIfNeeded()
+	if vm.e.Running() {
+		return false, ErrRunning
+	}
+	var waited bool
+	_, err := vm.run(ctx, func() (engine.Value, error) {
+		if waited = vm.e.AwaitWaiters(); !waited {
+			return engine.Undefined, nil
+		}
+		return engine.Undefined, vm.e.RunJobs()
+	})
+	if err == nil && ctx.Err() != nil {
+		err = context.Cause(ctx)
+	}
+	return waited, err
+}
+
 // SetTimeZone sets the time zone of local time to loc. A nil loc restores the default, the
 // local time zone of the host. The time zone applies to the later conversions of Date
 // between local time and UTC.

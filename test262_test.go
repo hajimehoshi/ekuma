@@ -831,7 +831,7 @@ func (c *agentCluster) run(a *testAgent, src string) {
 			}
 			// The waiters of Atomics.waitAsync resolve as other agents notify them.
 			for {
-				if ok, err := ekuma.AwaitWaiters(c.ctx, &vm); !ok || err != nil {
+				if ok, err := vm.AwaitJobs(c.ctx); !ok || err != nil {
 					break
 				}
 			}
@@ -844,7 +844,7 @@ func (c *agentCluster) run(a *testAgent, src string) {
 // printed its outcome or nothing is left to wait for. It reports whether ctx ended it.
 func awaitAgents(ctx context.Context, vm *ekuma.VM, printed *[]string) bool {
 	for asyncOutcome(*printed) == asyncIncomplete {
-		ok, err := ekuma.AwaitWaiters(ctx, vm)
+		ok, err := vm.AwaitJobs(ctx)
 		if err != nil {
 			return ctx.Err() != nil
 		}

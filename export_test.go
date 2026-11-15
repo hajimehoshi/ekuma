@@ -4,8 +4,6 @@
 package ekuma
 
 import (
-	"context"
-
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
@@ -24,24 +22,6 @@ func DetachArrayBuffer(vm *VM, v Value) error {
 	}
 	vm.e.DetachArrayBuffer(e.Object())
 	return nil
-}
-
-// AwaitWaiters blocks until a waiter of Atomics.waitAsync of vm is notified by another agent or
-// times out, and then runs the jobs. It reports false when vm has no such waiter. The error is
-// the cause of ctx when ctx is done.
-func AwaitWaiters(ctx context.Context, vm *VM) (bool, error) {
-	vm.initIfNeeded()
-	var waited bool
-	_, err := vm.run(ctx, func() (engine.Value, error) {
-		if waited = vm.e.AwaitWaiters(); !waited {
-			return engine.Undefined, nil
-		}
-		return engine.Undefined, vm.e.RunJobs()
-	})
-	if err == nil && ctx.Err() != nil {
-		err = context.Cause(ctx)
-	}
-	return waited, err
 }
 
 // Realm is a realm of a VM other than the one the VM starts with.
