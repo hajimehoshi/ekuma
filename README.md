@@ -79,8 +79,9 @@ is published yet.
 
 ## Status
 
-100% of [test262](https://github.com/tc39/test262) pass: 48,797 of 48,797 tests
-in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The test suite
+100% of [test262](https://github.com/tc39/test262) pass: 48,815 of 48,815 tests
+in `test/language`, `test/built-ins`, `test/annexB`, `test/intl402/BigInt` and
+`test/intl402/Number` (commit `2e58f87`). The test suite
 fails when any of them fails.
 
 ### Implemented
@@ -113,8 +114,9 @@ fails when any of them fails.
 
 ### Missing
 
-- Most of `Intl`. The optional package `ekuma/intl` adds it when it is imported for its side
-  effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf` and `Intl.Locale` so far
+- Most of `Intl`. The optional package `github.com/hajimehoshi/ekuma/intl` adds it when it is
+  imported for its side effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`,
+  `Intl.Locale`, `Intl.NumberFormat` and `Intl.PluralRules` so far
 - Host API for these, some of which the engine has and only the tests use:
   - Creating further realms in a VM
   - Giving a module a module source
@@ -140,6 +142,6 @@ under the user cache directory, or in the directory that `EKUMA_TEST262` names.
 
 [0BSD](LICENSE), except for the data of the [Unicode Common Locale Data Repository](https://cldr.unicode.org/)
 in `internal/intl/cldr`, which is under the [Unicode License v3](internal/intl/cldr/LICENSE).
-Only the optional package `ekuma/intl` includes that data. A program that imports it must include
-the copyright and permission notice of the Unicode License v3 with its copies or in their
-documentation.
+Only the optional package `github.com/hajimehoshi/ekuma/intl` includes that data. A program that
+imports it must include the copyright and permission notice of the Unicode License v3 with its
+copies or in their documentation.

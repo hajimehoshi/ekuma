@@ -10,11 +10,11 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 )
 
-// defaultRegionLocales holds the language-region form of each available locale with a
+// defaultRegionLocales maps the language-region form of each available locale with a
 // language, a script and a region whose script is the likely script of the language and
-// region, as ECMA-402 asks of the available locales.
-var defaultRegionLocales = sync.OnceValue(func() map[string]bool {
-	m := map[string]bool{}
+// region, as ECMA-402 asks of the available locales, to that locale.
+var defaultRegionLocales = sync.OnceValue(func() map[string]string {
+	m := map[string]string{}
 	for i := range cldr.AvailableLocales.Len() {
 		t, ok := Parse(cldr.AvailableLocales.At(i))
 		if !ok || t.Script == "" || t.Region == "" || len(t.Variants) > 0 {
@@ -25,7 +25,7 @@ var defaultRegionLocales = sync.OnceValue(func() map[string]bool {
 			Region:   t.Region,
 		}
 		if max, ok := AddLikelySubtags(short); ok && max.Script == t.Script {
-			m[short.String()] = true
+			m[short.String()] = t.String()
 		}
 	}
 	return m
@@ -33,7 +33,25 @@ var defaultRegionLocales = sync.OnceValue(func() map[string]bool {
 
 // IsAvailable reports whether the canonical language tag s is an available locale.
 func IsAvailable(s string) bool {
-	return cldr.AvailableLocales.Contains(s) || defaultRegionLocales()[s]
+	if cldr.AvailableLocales.Contains(s) {
+		return true
+	}
+	_, ok := defaultRegionLocales()[s]
+	return ok
+}
+
+// DataLocale returns the locale of CLDR whose data applies to the available locale s.
+func DataLocale(s string) string {
+	if l, ok := defaultRegionLocales()[s]; ok && !cldr.AvailableLocales.Contains(s) {
+		return l
+	}
+	return s
+}
+
+// Parent returns the parent locale of the locale s of CLDR in the inheritance chain of CLDR,
+// with "und" for the root locale, and reports false when s is the root locale.
+func Parent(s string) (string, bool) {
+	return parent(s, false)
 }
 
 // BestAvailableLocale implements BestAvailableLocale of ECMA-402 for the canonical language

@@ -90,3 +90,26 @@ func (m Map) Key(i int) string {
 func (m Map) Value(i int) string {
 	return m.values.At(i)
 }
+
+// Field returns the value of the field key in record, a sequence of fields that each start
+// with U+001E and hold a key and a value separated by U+001F, and reports whether record
+// has the field.
+func Field(record, key string) (string, bool) {
+	i := 0
+	for {
+		j := strings.Index(record[i:], key)
+		if j < 0 {
+			return "", false
+		}
+		j += i
+		end := j + len(key)
+		if j > 0 && record[j-1] == '\x1e' && end < len(record) && record[end] == '\x1f' {
+			v := record[end+1:]
+			if k := strings.IndexByte(v, '\x1e'); k >= 0 {
+				v = v[:k]
+			}
+			return v, true
+		}
+		i = j + 1
+	}
+}

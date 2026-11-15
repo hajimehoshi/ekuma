@@ -22,3 +22,14 @@ func TestNoIntl(t *testing.T) {
 		t.Error("Intl is defined without package intl")
 	}
 }
+
+func TestToLocaleStringWithoutIntl(t *testing.T) {
+	var vm ekuma.VM
+	v, err := vm.RunScript(context.Background(), "test.js", `(1234.5).toLocaleString("de") + " " + (12345n).toLocaleString("de")`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "1234.5 12345"; got != want {
+		t.Errorf("toLocaleString: got %q, want %q", got, want)
+	}
+}

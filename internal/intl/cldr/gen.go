@@ -359,6 +359,7 @@ func main() {
 	core := npmPackage("cldr-core")
 	bcp47 := npmPackage("cldr-bcp47")
 	numbers := npmPackage("cldr-numbers-full")
+	units := npmPackage("cldr-units-full")
 	collation := xmlFiles("common/collation")
 	jsonSource := "cldr-json " + jsonVersion
 
@@ -411,8 +412,9 @@ func main() {
 	f.write()
 
 	// Parent locales.
+	var parents map[string]string
 	f = newFile("parentlocales.go", jsonSource)
-	parents := object(decode(core, "supplemental/parentLocales.json", "supplemental", "parentLocales"))
+	parentData := object(decode(core, "supplemental/parentLocales.json", "supplemental", "parentLocales"))
 	for _, p := range []struct {
 		name, key, doc string
 	}{
@@ -420,7 +422,7 @@ func main() {
 		{"CollationParentLocales", "collations", "maps locales to their parents for collation, where the parent differs from that of ParentLocales."},
 	} {
 		m := map[string]string{}
-		for k, v := range object(parents[p.key]) {
+		for k, v := range object(parentData[p.key]) {
 			v := str(v)
 			if v == "root" {
 				v = "und"
@@ -428,6 +430,9 @@ func main() {
 			m[k] = v
 		}
 		f.mapping(p.doc, p.name, m)
+		if p.name == "ParentLocales" {
+			parents = m
+		}
 	}
 	f.write()
 
@@ -597,6 +602,80 @@ func main() {
 	f.mapping(`maps locales to the collation types other than "standard" and "search" that they define, sorted and separated by spaces.`, "Collations", colls)
 	f.write()
 
+	// Plural rules.
+	for _, p := range []struct {
+		file, name, key, doc string
+	}{
+		{"plurals.go", "PluralRules", "plurals-type-cardinal", "maps languages to their cardinal plural rules."},
+		{"ordinals.go", "OrdinalRules", "plurals-type-ordinal", "maps languages to their ordinal plural rules."},
+	} {
+		m := map[string]string{}
+		for lang, v := range object(decode(core, "supplemental/"+strings.TrimSuffix(p.file, ".go")+".json", "supplemental", p.key)) {
+			m[lang] = pluralRules(object(v))
+		}
+		f = newFile(p.file, jsonSource)
+		f.mapping(p.doc+` A value is the categories other than "other" with their conditions, as "category:condition", separated by ";".`, p.name, m)
+		f.write()
+	}
+	ranges := map[string]string{}
+	for lang, v := range object(decode(core, "supplemental/pluralRanges.json", "supplemental", "plurals")) {
+		var rs []string
+		for k, r := range object(v) {
+			k = strings.TrimPrefix(k, "pluralRange-start-")
+			start, end, ok := strings.Cut(k, "-end-")
+			if !ok {
+				log.Fatalf("pluralRanges: %s", k)
+			}
+			rs = append(rs, start+" "+end+" "+str(r))
+		}
+		slices.Sort(rs)
+		ranges[lang] = strings.Join(rs, ";")
+	}
+	f = newFile("pluralranges.go", jsonSource)
+	f.mapping(`maps languages to the plural categories of ranges, as "start end result", separated by ";".`, "PluralRanges", ranges)
+	f.write()
+
+	tree := newLocaleTree(likely, parents)
+
+	// Number symbols and patterns.
+	numberData := map[string]map[string]string{}
+	for name := range numbers {
+		l, ok := mainLocale(name, "numbers.json")
+		if !ok {
+			continue
+		}
+		numberData[l] = numberFields(object(decode(numbers, name, "main", l, "numbers")))
+	}
+	f = newFile("numbers.go", jsonSource)
+	f.mapping("maps locales to their number symbols and patterns, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "NumberData", tree.records(numberData))
+	f.write()
+
+	// Currency names and symbols.
+	currencyData := map[string]map[string]string{}
+	for name := range numbers {
+		l, ok := mainLocale(name, "currencies.json")
+		if !ok {
+			continue
+		}
+		currencyData[l] = currencyFields(object(decode(numbers, name, "main", l, "numbers", "currencies")))
+	}
+	f = newFile("currencies.go", jsonSource)
+	f.mapping("maps locales to the names and symbols of currencies, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "CurrencyData", tree.records(currencyData))
+	f.write()
+
+	// Unit patterns.
+	unitData := map[string]map[string]string{}
+	for name := range units {
+		l, ok := mainLocale(name, "units.json")
+		if !ok {
+			continue
+		}
+		unitData[l] = unitFields(object(decode(units, name, "main", l, "units")))
+	}
+	f = newFile("units.go", "cldr-json "+jsonVersion+" (cldr-units-full)")
+	f.mapping("maps locales to the patterns of the units of ECMA-402, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "UnitData", tree.records(unitData))
+	f.write()
+
 	// Script metadata.
 	dirs := map[string]string{}
 	for script, v := range object(decode(core, "scriptMetadata.json", "scriptMetadata")) {
@@ -610,4 +689,300 @@ func main() {
 	f = newFile("scriptmetadata.go", jsonSource)
 	f.mapping(`maps scripts to their directions, "ltr" or "rtl", when they are known.`, "ScriptDirections", dirs)
 	f.write()
+}
+
+// pluralCategories maps the plural categories of CLDR to the letters that the records of
+// locale data use for them.
+var pluralCategories = map[string]string{
+	"zero":  "z",
+	"one":   "o",
+	"two":   "t",
+	"few":   "f",
+	"many":  "m",
+	"other": "x",
+}
+
+// pluralRules returns the rules of v, the plural rules of a language in cldr-json, without
+// their samples and without the rule of "other".
+func pluralRules(v map[string]any) string {
+	var rules []string
+	for k, r := range v {
+		c := strings.TrimPrefix(k, "pluralRule-count-")
+		cond, _, _ := strings.Cut(str(r), "@")
+		cond = strings.Join(strings.Fields(cond), " ")
+		if c == "other" {
+			if cond != "" {
+				log.Fatalf("the rule of other has a condition: %s", cond)
+			}
+			continue
+		}
+		if _, ok := pluralCategories[c]; !ok {
+			log.Fatalf("unknown plural category %s", c)
+		}
+		rules = append(rules, c+":"+cond)
+	}
+	order := []string{"zero", "one", "two", "few", "many"}
+	slices.SortFunc(rules, func(a, b string) int {
+		ca, _, _ := strings.Cut(a, ":")
+		cb, _, _ := strings.Cut(b, ":")
+		return slices.Index(order, ca) - slices.Index(order, cb)
+	})
+	return strings.Join(rules, ";")
+}
+
+// mainLocale returns the locale of the file name in the main directory of a cldr-json
+// package, if its base name is base.
+func mainLocale(name, base string) (string, bool) {
+	dir, file := path.Split(name)
+	if file != base || !strings.HasPrefix(dir, "main/") {
+		return "", false
+	}
+	l := strings.Trim(strings.TrimPrefix(dir, "main/"), "/")
+	if l == "root" {
+		return "und", true
+	}
+	// Variants are lower case in canonical form.
+	subtags := strings.Split(l, "-")
+	for i, s := range subtags {
+		if i > 0 && (len(s) >= 5 || len(s) == 4 && '0' <= s[0] && s[0] <= '9') {
+			subtags[i] = strings.ToLower(s)
+		}
+	}
+	return strings.Join(subtags, "-"), true
+}
+
+// localeTree computes the parents of locales as package locale does at run time.
+type localeTree struct {
+	likely  map[string]string
+	parents map[string]string
+}
+
+func newLocaleTree(likely, parents map[string]string) *localeTree {
+	return &localeTree{
+		likely:  likely,
+		parents: parents,
+	}
+}
+
+// parent returns the parent of the locale l, with "und" for the root locale, and reports
+// false for the root locale.
+func (t *localeTree) parent(l string) (string, bool) {
+	if l == "und" {
+		return "", false
+	}
+	if p, ok := t.parents[l]; ok {
+		return p, true
+	}
+	subtags := strings.Split(l, "-")
+	lang, rest := subtags[0], subtags[1:]
+	var script, region string
+	if len(rest) > 0 && len(rest[0]) == 4 && !('0' <= rest[0][0] && rest[0][0] <= '9') {
+		script, rest = rest[0], rest[1:]
+	}
+	if len(rest) > 0 && (len(rest[0]) == 2 || len(rest[0]) == 3 && '0' <= rest[0][0] && rest[0][0] <= '9') {
+		region, rest = rest[0], rest[1:]
+	}
+	join := func(ss ...string) string {
+		var out []string
+		for _, s := range ss {
+			if s != "" {
+				out = append(out, s)
+			}
+		}
+		return strings.Join(out, "-")
+	}
+	switch {
+	case len(rest) > 0:
+		return join(append([]string{lang, script, region}, rest[:len(rest)-1]...)...), true
+	case region != "":
+		return join(lang, script), true
+	case script != "":
+		max := strings.Split(t.likely[lang], "-")
+		if len(max) < 2 || max[1] != script {
+			return "und", true
+		}
+		return lang, true
+	}
+	return "und", true
+}
+
+// records returns the records of the locales in data, each without the fields whose values
+// equal those of the nearest ancestor that has data.
+func (t *localeTree) records(data map[string]map[string]string) map[string]string {
+	out := map[string]string{}
+	for l, fields := range data {
+		var inherited map[string]string
+		for p, ok := t.parent(l); ok; p, ok = t.parent(p) {
+			if d, ok := data[p]; ok {
+				inherited = d
+				break
+			}
+		}
+		var b strings.Builder
+		for _, k := range slices.Sorted(maps.Keys(fields)) {
+			v := fields[k]
+			if iv, ok := inherited[k]; ok && iv == v {
+				continue
+			}
+			if strings.ContainsAny(k, "\x1e\x1f") || strings.ContainsAny(v, "\x1e\x1f") {
+				log.Fatalf("%s: %q: %q contains a separator", l, k, v)
+			}
+			b.WriteString("\x1e" + k + "\x1f" + v)
+		}
+		if b.Len() > 0 {
+			out[l] = b.String()
+		}
+	}
+	return out
+}
+
+// numberFields returns the fields of the records of NumberData from the numbers of a locale
+// in cldr-json.
+func numberFields(n map[string]any) map[string]string {
+	out := map[string]string{
+		"g": str(n["minimumGroupingDigits"]),
+	}
+	symbols := map[string]string{
+		"decimal":           "d",
+		"group":             "g",
+		"percentSign":       "p",
+		"plusSign":          "+",
+		"minusSign":         "-",
+		"approximatelySign": "~",
+		"exponential":       "e",
+		"perMille":          "m",
+		"infinity":          "i",
+		"nan":               "n",
+	}
+	compact := func(prefix string, v any) {
+		if v == nil {
+			return
+		}
+		for k, p := range object(v) {
+			// Keys are in the form of "1000-count-one".
+			mag, count, ok := strings.Cut(k, "-count-")
+			if !ok || strings.Contains(count, "-") {
+				continue
+			}
+			c, ok := pluralCategories[count]
+			if !ok {
+				continue
+			}
+			out[prefix+strconv.Itoa(len(mag)-1)+"."+c] = str(p)
+		}
+	}
+	for k, v := range n {
+		kind, nu, ok := strings.Cut(k, "-numberSystem-")
+		if !ok {
+			continue
+		}
+		v := object(v)
+		switch kind {
+		case "symbols":
+			for name, key := range symbols {
+				out[nu+"."+key] = str(v[name])
+			}
+		case "decimalFormats":
+			out[nu+".D"] = str(v["standard"])
+			compact(nu+".l", object(object(v["long"])["decimalFormat"]))
+			compact(nu+".s", object(object(v["short"])["decimalFormat"]))
+		case "percentFormats":
+			out[nu+".P"] = str(v["standard"])
+		case "scientificFormats":
+			out[nu+".S"] = str(v["standard"])
+		case "currencyFormats":
+			out[nu+".C"] = str(v["standard"])
+			out[nu+".A"] = str(v["accounting"])
+			spacing := object(v["currencySpacing"])
+			out[nu+".B"] = str(object(spacing["beforeCurrency"])["insertBetween"])
+			out[nu+".b"] = str(object(spacing["afterCurrency"])["insertBetween"])
+			if s, ok := v["short"]; ok {
+				compact(nu+".c", object(object(s)["standard"]))
+			}
+			for k, p := range v {
+				if count, ok := strings.CutPrefix(k, "unitPattern-count-"); ok {
+					if c, ok := pluralCategories[count]; ok {
+						out[nu+".U"+c] = str(p)
+					}
+				}
+			}
+		case "miscPatterns":
+			out[nu+".R"] = str(v["range"])
+			out[nu+".X"] = str(v["approximately"])
+		}
+	}
+	return out
+}
+
+// currencyFields returns the fields of the records of CurrencyData from the currencies of a
+// locale in cldr-json.
+func currencyFields(cs map[string]any) map[string]string {
+	out := map[string]string{}
+	for code, v := range cs {
+		for k, s := range object(v) {
+			switch k {
+			case "symbol":
+				out[code+"s"] = str(s)
+			case "symbol-alt-narrow":
+				out[code+"n"] = str(s)
+			case "displayName":
+				out[code+"d"] = str(s)
+			default:
+				if count, ok := strings.CutPrefix(k, "displayName-count-"); ok {
+					if c, ok := pluralCategories[count]; ok {
+						out[code+c] = str(s)
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+// sanctionedUnits are the sanctioned single unit identifiers of ECMA-402.
+var sanctionedUnits = []string{
+	"acre", "bit", "byte", "celsius", "centimeter", "day", "degree", "fahrenheit", "fluid-ounce",
+	"foot", "gallon", "gigabit", "gigabyte", "gram", "hectare", "hour", "inch", "kilobit",
+	"kilobyte", "kilogram", "kilometer", "liter", "megabit", "megabyte", "meter", "microsecond",
+	"mile", "mile-scandinavian", "milliliter", "millimeter", "millisecond", "minute", "month",
+	"nanosecond", "ounce", "percent", "petabyte", "pound", "second", "stone", "terabit",
+	"terabyte", "week", "yard", "year",
+}
+
+// unitFields returns the fields of the records of UnitData from the units of a locale in
+// cldr-json: the sanctioned units and the units that CLDR has for the division of two of
+// them.
+func unitFields(us map[string]any) map[string]string {
+	out := map[string]string{}
+	for width, w := range map[string]string{"long": "l", "short": "s", "narrow": "n"} {
+		units := object(us[width])
+		if per, ok := units["per"]; ok {
+			out[w+"/"] = str(object(per)["compoundUnitPattern"])
+		}
+		for k, v := range units {
+			_, unit, ok := strings.Cut(k, "-")
+			if !ok {
+				continue
+			}
+			valid := slices.Contains(sanctionedUnits, unit)
+			if num, den, ok := strings.Cut(unit, "-per-"); ok && slices.Contains(sanctionedUnits, num) && slices.Contains(sanctionedUnits, den) {
+				valid = true
+			}
+			if !valid {
+				continue
+			}
+			for f, p := range object(v) {
+				if f == "perUnitPattern" {
+					out[w+unit+".p"] = str(p)
+					continue
+				}
+				if count, ok := strings.CutPrefix(f, "unitPattern-count-"); ok {
+					if c, ok := pluralCategories[count]; ok {
+						out[w+unit+"."+c] = str(p)
+					}
+				}
+			}
+		}
+	}
+	return out
 }
