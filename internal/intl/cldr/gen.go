@@ -28,6 +28,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -82,9 +83,15 @@ func npmPackage(name string) map[string][]byte {
 	return files
 }
 
+// xmlZip is the XML release, fetched when it is first needed.
+var xmlZip []byte
+
 // xmlFiles returns the files of the XML release under the directory dir by their base names.
 func xmlFiles(dir string) map[string][]byte {
-	b := get(xmlURL)
+	if xmlZip == nil {
+		xmlZip = get(xmlURL)
+	}
+	b := xmlZip
 	zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
 	if err != nil {
 		log.Fatal(err)
@@ -493,11 +500,15 @@ func main() {
 
 	// Time data.
 	hours := map[string]string{}
+	allowed := map[string]string{}
 	for k, v := range object(decode(core, "supplemental/timeData.json", "supplemental", "timeData")) {
-		hours[strings.ReplaceAll(k, "_", "-")] = str(object(v)["_preferred"])
+		k = strings.ReplaceAll(k, "_", "-")
+		hours[k] = str(object(v)["_preferred"])
+		allowed[k] = str(object(v)["_allowed"])
 	}
 	f = newFile("timedata.go", jsonSource)
 	f.mapping(`maps regions, or languages and regions, to their preferred hour symbols in date patterns ("h", "H", "K" or "k").`, "PreferredHours", hours)
+	f.mapping(`maps regions, or languages and regions, to the hour symbols that their date patterns may use, most preferred first and separated by spaces. A symbol may be followed by "b" or "B" for the day period that goes with it.`, "AllowedHours", allowed)
 	f.write()
 
 	// Numbering systems.
@@ -646,6 +657,11 @@ func main() {
 		}
 		numberData[l] = numberFields(object(decode(numbers, name, "main", l, "numbers")))
 	}
+	for k, v := range rootSymbols(xmlFiles("common/main")["root.xml"]) {
+		if _, ok := numberData["und"][k]; !ok {
+			numberData["und"][k] = v
+		}
+	}
 	f = newFile("numbers.go", jsonSource)
 	f.mapping("maps locales to their number symbols and patterns, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "NumberData", tree.records(numberData))
 	f.write()
@@ -674,6 +690,151 @@ func main() {
 	}
 	f = newFile("units.go", "cldr-json "+jsonVersion+" (cldr-units-full)")
 	f.mapping("maps locales to the patterns of the units of ECMA-402, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "UnitData", tree.records(unitData))
+	f.write()
+
+	// Calendars. Every calendar has a table of its own with the same fields, so that a
+	// calendar is added by adding its file.
+	dates := npmPackage("cldr-dates-full")
+	datesSource := "cldr-json " + jsonVersion + " (cldr-dates-full)"
+	for _, c := range []struct {
+		file, name, calendar string
+	}{
+		{"gregorian.go", "GregorianData", "gregorian"},
+		{"generic.go", "GenericData", "generic"},
+	} {
+		data := map[string]map[string]string{}
+		for name := range dates {
+			l, ok := mainLocale(name, "ca-"+c.calendar+".json")
+			if !ok {
+				continue
+			}
+			data[l] = calendarFields(object(object(object(mainData(dates, name)["dates"])["calendars"])[c.calendar]))
+		}
+		f = newFile(c.file, datesSource)
+		f.mapping("maps locales to the names and patterns of the "+c.calendar+" calendar, as records in the form of [Field] with the keys that calendarFields in gen.go describes. A record that a locale shares with its parent is left out.", c.name, tree.records(data))
+		f.write()
+	}
+
+	// Names of date fields.
+	fieldData := map[string]map[string]string{}
+	for name := range dates {
+		l, ok := mainLocale(name, "dateFields.json")
+		if !ok {
+			continue
+		}
+		fieldData[l] = dateFieldNames(object(object(mainData(dates, name)["dates"])["fields"]))
+	}
+	f = newFile("datefields.go", datesSource)
+	f.mapping(`maps locales to the display names of date fields, as records in the form of [Field] keyed by the names of the fields in CLDR, such as "era" and "dayperiod". A record that a locale shares with its parent is left out.`, "DateFieldNames", tree.records(fieldData))
+	f.write()
+
+	// Time zone names.
+	zoneNames := map[string]map[string]string{}
+	for name := range dates {
+		l, ok := mainLocale(name, "timeZoneNames.json")
+		if !ok {
+			continue
+		}
+		zoneNames[l] = timeZoneFields(object(object(mainData(dates, name)["dates"])["timeZoneNames"]))
+	}
+	f = newFile("timezonenames.go", datesSource)
+	f.mapping(`maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "0" the GMT zero format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.`, "TimeZoneNames", tree.records(zoneNames))
+	f.write()
+
+	// Metazones.
+	mz := object(decode(core, "supplemental/metaZones.json", "supplemental", "metaZones"))
+	usages := map[string]string{}
+	var walkZones func(prefix string, v map[string]any)
+	walkZones = func(prefix string, v map[string]any) {
+		for k, e := range v {
+			if a, ok := e.([]any); ok {
+				var us []string
+				for _, u := range a {
+					u := object(object(u)["usesMetazone"])
+					from, to := "", ""
+					if s, ok := u["_from"]; ok {
+						from = metazoneTime(str(s))
+					}
+					if s, ok := u["_to"]; ok {
+						to = metazoneTime(str(s))
+					}
+					us = append(us, str(u["_mzone"])+" "+from+" "+to)
+				}
+				usages[prefix+k] = strings.Join(us, ";")
+				continue
+			}
+			walkZones(prefix+k+"/", object(e))
+		}
+	}
+	walkZones("", object(object(mz["metazoneInfo"])["timezone"]))
+	golden := map[string]string{}
+	for _, m := range mz["metazones"].([]any) {
+		m := object(object(m)["mapZone"])
+		golden[str(m["_other"])+"/"+str(m["_territory"])] = str(m["_type"])
+	}
+	primary := map[string]string{}
+	for k, v := range object(decode(core, "supplemental/primaryZones.json", "supplemental", "primaryZones")) {
+		primary[k] = str(v)
+	}
+	zoneAliases := map[string]string{}
+	for _, d := range object(decode(bcp47, "bcp47/timezone.json", "keyword", "u", "tz")) {
+		d, ok := d.(map[string]any)
+		if !ok {
+			continue
+		}
+		a, ok := d["_alias"]
+		if !ok {
+			continue
+		}
+		ids := strings.Fields(str(a))
+		for _, id := range ids[1:] {
+			zoneAliases[id] = ids[0]
+		}
+	}
+	f = newFile("metazones.go", jsonSource)
+	f.mapping(`maps the CLDR identifiers of zones to the metazones that they use, as "metazone from to" separated by ";", where from and to are Unix times in seconds, or empty when the use is unbounded.`, "MetaZoneUsages", usages)
+	f.mapping(`maps a metazone and a region, joined by "/", to the CLDR identifier of the zone that stands for the metazone in the region. The region "001" is for the rest of the world.`, "MetaZoneGoldenZones", golden)
+	f.mapping("maps regions to the CLDR identifiers of their primary zones, for the regions that have several zones but one that is used most.", "PrimaryZones", primary)
+	f.mapping("maps the identifiers of zones to their CLDR identifiers, for the identifiers that are not CLDR identifiers.", "ZoneAliases", zoneAliases)
+	f.write()
+
+	// Day period rules.
+	rules := map[string]string{}
+	for lang, v := range object(decode(core, "supplemental/dayPeriods.json", "supplemental", "dayPeriodRuleSet")) {
+		var rs []string
+		for name, r := range object(v) {
+			r := object(r)
+			if at, ok := r["_at"]; ok {
+				rs = append(rs, name+" "+dayPeriodHour(str(at)))
+				continue
+			}
+			rs = append(rs, name+" "+dayPeriodHour(str(r["_from"]))+" "+dayPeriodHour(str(r["_before"])))
+		}
+		slices.Sort(rs)
+		rules[strings.ReplaceAll(lang, "_", "-")] = strings.Join(rs, ";")
+	}
+	f = newFile("dayperiods.go", jsonSource)
+	f.mapping(`maps languages to the rules of their day periods, separated by ";": "name hour" for a period at an hour, and "name from before" for a period of hours.`, "DayPeriodRules", rules)
+	f.write()
+
+	// Territory names.
+	localeNames := npmPackage("cldr-localenames-full")
+	territoryData := map[string]map[string]string{}
+	for name := range localeNames {
+		l, ok := mainLocale(name, "territories.json")
+		if !ok {
+			continue
+		}
+		fields := map[string]string{}
+		for code, n := range object(object(mainData(localeNames, name)["localeDisplayNames"])["territories"]) {
+			if !strings.Contains(code, "-alt-") {
+				fields[code] = str(n)
+			}
+		}
+		territoryData[l] = fields
+	}
+	f = newFile("territories.go", "cldr-json "+jsonVersion+" (cldr-localenames-full)")
+	f.mapping("maps locales to the names of regions, as records in the form of [Field] keyed by region codes. A record that a locale shares with its parent is left out.", "TerritoryNames", tree.records(territoryData))
 	f.write()
 
 	// Script metadata.
@@ -836,23 +997,57 @@ func (t *localeTree) records(data map[string]map[string]string) map[string]strin
 	return out
 }
 
+// numberSymbols maps the names of number symbols in CLDR to the keys of the records of
+// NumberData.
+var numberSymbols = map[string]string{
+	"decimal":           "d",
+	"group":             "g",
+	"percentSign":       "p",
+	"plusSign":          "+",
+	"minusSign":         "-",
+	"approximatelySign": "~",
+	"exponential":       "e",
+	"perMille":          "m",
+	"infinity":          "i",
+	"nan":               "n",
+}
+
+// rootSymbols returns the fields of NumberData of the number symbols that root.xml, the root
+// locale of the XML data, has for numbering systems other than "latn". cldr-json leaves them
+// out of the root locale.
+func rootSymbols(root []byte) map[string]string {
+	var doc struct {
+		Symbols []struct {
+			NumberSystem string    `xml:"numberSystem,attr"`
+			Alias        *struct{} `xml:"alias"`
+			Fields       []struct {
+				XMLName xml.Name
+				Value   string `xml:",chardata"`
+			} `xml:",any"`
+		} `xml:"numbers>symbols"`
+	}
+	if err := xml.Unmarshal(root, &doc); err != nil {
+		log.Fatal(err)
+	}
+	out := map[string]string{}
+	for _, sy := range doc.Symbols {
+		if sy.Alias != nil || sy.NumberSystem == "latn" {
+			continue
+		}
+		for _, f := range sy.Fields {
+			if k, ok := numberSymbols[f.XMLName.Local]; ok {
+				out[sy.NumberSystem+"."+k] = f.Value
+			}
+		}
+	}
+	return out
+}
+
 // numberFields returns the fields of the records of NumberData from the numbers of a locale
 // in cldr-json.
 func numberFields(n map[string]any) map[string]string {
 	out := map[string]string{
 		"g": str(n["minimumGroupingDigits"]),
-	}
-	symbols := map[string]string{
-		"decimal":           "d",
-		"group":             "g",
-		"percentSign":       "p",
-		"plusSign":          "+",
-		"minusSign":         "-",
-		"approximatelySign": "~",
-		"exponential":       "e",
-		"perMille":          "m",
-		"infinity":          "i",
-		"nan":               "n",
 	}
 	compact := func(prefix string, v any) {
 		if v == nil {
@@ -879,7 +1074,7 @@ func numberFields(n map[string]any) map[string]string {
 		v := object(v)
 		switch kind {
 		case "symbols":
-			for name, key := range symbols {
+			for name, key := range numberSymbols {
 				out[nu+"."+key] = str(v[name])
 			}
 		case "decimalFormats":
@@ -985,4 +1180,268 @@ func unitFields(us map[string]any) map[string]string {
 		}
 	}
 	return out
+}
+
+// mainData returns the data of the only locale of the file name in the main directory of a
+// cldr-json package.
+func mainData(files map[string][]byte, name string) map[string]any {
+	m := object(decode(files, name, "main"))
+	if len(m) != 1 {
+		log.Fatalf("%s: %d locales", name, len(m))
+	}
+	for _, v := range m {
+		return object(v)
+	}
+	return nil
+}
+
+// widths maps the widths of names in CLDR to the letters that the records of calendar data
+// use for them.
+var widths = map[string]string{
+	"abbreviated": "a",
+	"narrow":      "n",
+	"short":       "s",
+	"wide":        "w",
+}
+
+// contexts maps the contexts of names in CLDR to the letters that the records of calendar
+// data use for them.
+var contexts = map[string]string{
+	"format":      "f",
+	"stand-alone": "s",
+}
+
+// styles maps the styles of patterns in CLDR to the letters that the records of calendar data
+// use for them.
+var styles = map[string]string{
+	"full":   "f",
+	"long":   "l",
+	"medium": "m",
+	"short":  "s",
+}
+
+// pattern returns the pattern v, which is either a string or an object with the pattern as
+// its "_value".
+func pattern(v any) string {
+	if m, ok := v.(map[string]any); ok {
+		return str(m["_value"])
+	}
+	return str(v)
+}
+
+// calendarFields returns the fields of the records of the calendar data from a calendar of a
+// locale in cldr-json. The keys are:
+//
+//   - "M", "D", "Q" and "P" followed by a context and a width, and the CLDR key of a month, a
+//     day, a quarter or a day period;
+//   - "E" followed by "n", "a" or "r" for the names, abbreviations or narrow names of eras,
+//     and the CLDR key of an era;
+//   - "F", "T", "C" and "A" followed by a style for the date, time, date-time and "at time"
+//     date-time patterns;
+//   - "S" followed by a skeleton for an available format;
+//   - "I" followed by a skeleton, "/" and a pattern letter for an interval format, and "I"
+//     alone for the fallback of interval formats;
+//   - "Y" followed by the name of a field for its append item.
+func calendarFields(cal map[string]any) map[string]string {
+	out := map[string]string{}
+	names := func(prefix string, v any) {
+		if v == nil {
+			return
+		}
+		for ctx, c := range object(v) {
+			cl, ok := contexts[ctx]
+			if !ok {
+				log.Fatalf("unknown context %s", ctx)
+			}
+			for width, w := range object(c) {
+				wl, ok := widths[width]
+				if !ok {
+					log.Fatalf("unknown width %s", width)
+				}
+				for k, n := range object(w) {
+					if !strings.Contains(k, "-alt-") {
+						out[prefix+cl+wl+k] = str(n)
+					}
+				}
+			}
+		}
+	}
+	names("M", cal["months"])
+	names("D", cal["days"])
+	names("Q", cal["quarters"])
+	names("P", cal["dayPeriods"])
+	if eras, ok := cal["eras"]; ok {
+		for kind, letter := range map[string]string{"eraNames": "n", "eraAbbr": "a", "eraNarrow": "r"} {
+			e, ok := object(eras)[kind]
+			if !ok {
+				continue
+			}
+			for k, n := range object(e) {
+				if !strings.Contains(k, "-alt-") {
+					out["E"+letter+k] = str(n)
+				}
+			}
+		}
+	}
+	stylePatterns := func(prefix string, v any) {
+		if v == nil {
+			return
+		}
+		for k, p := range object(v) {
+			if s, ok := styles[k]; ok {
+				out[prefix+s] = pattern(p)
+			}
+		}
+	}
+	stylePatterns("F", cal["dateFormats"])
+	stylePatterns("T", cal["timeFormats"])
+	dt := object(cal["dateTimeFormats"])
+	stylePatterns("C", dt)
+	if at, ok := cal["dateTimeFormats-atTime"]; ok {
+		stylePatterns("A", object(at)["standard"])
+	}
+	if af, ok := dt["availableFormats"]; ok {
+		af := object(af)
+		for k, p := range af {
+			if strings.Contains(k, "-alt-") {
+				continue
+			}
+			skel, count, ok := strings.Cut(k, "-count-")
+			if ok {
+				// A skeleton with plural forms has the pattern of "other" for numbers in
+				// general.
+				if _, ok := af[skel]; ok || count != "other" {
+					continue
+				}
+			}
+			out["S"+skel] = str(p)
+		}
+	}
+	if items, ok := dt["appendItems"]; ok {
+		for k, p := range object(items) {
+			out["Y"+k] = str(p)
+		}
+	}
+	if iv, ok := dt["intervalFormats"]; ok {
+		for skel, v := range object(iv) {
+			switch skel {
+			case "intervalFormatFallback":
+				out["I"] = str(v)
+				continue
+			case "intervalFormatRanges":
+				continue
+			}
+			for letter, p := range object(v) {
+				if !strings.Contains(letter, "-alt-") {
+					out["I"+skel+"/"+letter] = str(p)
+				}
+			}
+		}
+	}
+	return out
+}
+
+// dateFieldNames returns the fields of the records of DateFieldNames from the date fields of
+// a locale in cldr-json.
+func dateFieldNames(fields map[string]any) map[string]string {
+	out := map[string]string{}
+	for k, v := range fields {
+		if strings.Contains(k, "-") {
+			// A short or narrow form.
+			continue
+		}
+		if n, ok := object(v)["displayName"]; ok {
+			out[k] = str(n)
+		}
+	}
+	return out
+}
+
+// timeZoneFields returns the fields of the records of TimeZoneNames from the time zone names
+// of a locale in cldr-json.
+func timeZoneFields(tz map[string]any) map[string]string {
+	out := map[string]string{}
+	for k, key := range map[string]string{
+		"hourFormat":                 "h",
+		"gmtFormat":                  "g",
+		"gmtZeroFormat":              "0",
+		"regionFormat":               "r",
+		"regionFormat-type-daylight": "r+",
+		"regionFormat-type-standard": "r-",
+		"fallbackFormat":             "f",
+	} {
+		if v, ok := tz[k]; ok {
+			out[key] = str(v)
+		}
+	}
+	names := func(prefix string, v map[string]any) {
+		for k, n := range v {
+			switch k {
+			case "exemplarCity":
+				out[prefix+"e"] = str(n)
+			case "long", "short":
+				for t, s := range object(n) {
+					var l string
+					switch t {
+					case "generic":
+						l = "g"
+					case "standard":
+						l = "s"
+					case "daylight":
+						l = "d"
+					default:
+						continue
+					}
+					out[prefix+k[:1]+l] = str(s)
+				}
+			}
+		}
+	}
+	var walk func(prefix string, v map[string]any)
+	walk = func(prefix string, v map[string]any) {
+		for k, e := range v {
+			e := object(e)
+			if t, ok := e["_type"]; ok && str(t) == "zone" {
+				names("z"+prefix+k+"|", e)
+				continue
+			}
+			walk(prefix+k+"/", e)
+		}
+	}
+	if z, ok := tz["zone"]; ok {
+		walk("", object(z))
+	}
+	if m, ok := tz["metazone"]; ok {
+		for k, e := range object(m) {
+			names("m"+k+"|", object(e))
+		}
+	}
+	return out
+}
+
+// metazoneTime returns the time s of the use of a metazone, "yyyy-MM-dd HH:mm" with optional
+// seconds in UTC, as a Unix time in seconds.
+func metazoneTime(s string) string {
+	layout := "2006-01-02 15:04"
+	if strings.Count(s, ":") == 2 {
+		layout += ":05"
+	}
+	t, err := time.Parse(layout, s)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strconv.FormatInt(t.Unix(), 10)
+}
+
+// dayPeriodHour returns the hour of the time s, "HH:00", of a day period rule.
+func dayPeriodHour(s string) string {
+	h, ok := strings.CutSuffix(s, ":00")
+	if !ok {
+		log.Fatalf("day period rule at %s", s)
+	}
+	n, err := strconv.Atoi(h)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strconv.Itoa(n)
 }

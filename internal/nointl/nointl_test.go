@@ -8,6 +8,7 @@ package nointl_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hajimehoshi/ekuma"
 )
@@ -39,6 +40,18 @@ func TestToLocaleStringWithoutIntl(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, want := v.String(), "1234.5 12345"; got != want {
+		t.Errorf("toLocaleString: got %q, want %q", got, want)
+	}
+}
+
+func TestDateAndTemporalToLocaleStringWithoutIntl(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetTimeZone(time.UTC)
+	v, err := runScript(&vm, `new Date(0).toLocaleString("de") + " " + new Temporal.PlainDate(2024, 3, 1).toLocaleString("de")`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "1/1/1970, 12:00:00 AM 2024-03-01"; got != want {
 		t.Errorf("toLocaleString: got %q, want %q", got, want)
 	}
 }

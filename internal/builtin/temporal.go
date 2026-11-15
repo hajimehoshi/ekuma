@@ -703,3 +703,72 @@ func newTemporalRealm(vm *engine.VM, ns *engine.Object) *temporalRealm {
 	initTemporalNow(vm, ns, r)
 	return r
 }
+
+// TemporalPlainDateOf returns the ISO date and the calendar of v, and reports whether v is a
+// Temporal.PlainDate.
+func TemporalPlainDateOf(v engine.Value) (temporal.ISODate, string, bool) {
+	s, ok := engine.TemporalData(v).(*plainDateSlots)
+	if !ok {
+		return temporal.ISODate{}, "", false
+	}
+	return s.date, s.cal, true
+}
+
+// TemporalPlainYearMonthOf returns the ISO date and the calendar of v, and reports whether v
+// is a Temporal.PlainYearMonth.
+func TemporalPlainYearMonthOf(v engine.Value) (temporal.ISODate, string, bool) {
+	s, ok := engine.TemporalData(v).(*plainYearMonthSlots)
+	if !ok {
+		return temporal.ISODate{}, "", false
+	}
+	return s.date, s.cal, true
+}
+
+// TemporalPlainMonthDayOf returns the ISO date and the calendar of v, and reports whether v
+// is a Temporal.PlainMonthDay.
+func TemporalPlainMonthDayOf(v engine.Value) (temporal.ISODate, string, bool) {
+	s, ok := engine.TemporalData(v).(*plainMonthDaySlots)
+	if !ok {
+		return temporal.ISODate{}, "", false
+	}
+	return s.date, s.cal, true
+}
+
+// TemporalPlainTimeOf returns the time of v, and reports whether v is a Temporal.PlainTime.
+func TemporalPlainTimeOf(v engine.Value) (temporal.Time, bool) {
+	s, ok := engine.TemporalData(v).(*plainTimeSlots)
+	if !ok {
+		return temporal.Time{}, false
+	}
+	return s.t, true
+}
+
+// TemporalPlainDateTimeOf returns the ISO date and time and the calendar of v, and reports
+// whether v is a Temporal.PlainDateTime.
+func TemporalPlainDateTimeOf(v engine.Value) (temporal.ISODateTime, string, bool) {
+	s, ok := engine.TemporalData(v).(*plainDateTimeSlots)
+	if !ok {
+		return temporal.ISODateTime{}, "", false
+	}
+	return s.dt, s.cal, true
+}
+
+// TemporalZonedDateTimeOf returns the epoch nanoseconds, the time zone and the calendar of v,
+// and reports whether v is a Temporal.ZonedDateTime.
+func TemporalZonedDateTimeOf(v engine.Value) (temporal.Int128, temporal.TimeZone, string, bool) {
+	s, ok := engine.TemporalData(v).(*zonedDateTimeSlots)
+	if !ok {
+		return temporal.Int128{}, temporal.TimeZone{}, "", false
+	}
+	return s.ns, s.tz, s.cal, true
+}
+
+// TemporalInstantOf returns the epoch nanoseconds of v, and reports whether v is a
+// Temporal.Instant.
+func TemporalInstantOf(v engine.Value) (temporal.Int128, bool) {
+	s, ok := engine.TemporalData(v).(*instantSlots)
+	if !ok {
+		return temporal.Int128{}, false
+	}
+	return s.ns, true
+}

@@ -62,3 +62,78 @@ var PreferredHours = Map{
 		},
 	},
 }
+
+// AllowedHours maps regions, or languages and regions, to the hour symbols that their date patterns may use, most preferred first and separated by spaces. A symbol may be followed by "b" or "B" for the day period that goes with it.
+var AllowedHours = Map{
+	keys: Strings{
+		data: "001419ACADAEAFAGAIALAMAOARASATAUAWAXAZBABBBDBEBFBGBHBIBJBLBMBNBOBQBRBSBTBWBYBZCACCCDCFCGCHCICKCL" +
+			"CMCNCOCPCRCUCVCWCXCYCZDEDGDJDKDMDODZEAECEEEGEHERESETFIFJFKFMFOFRGAGBGDGEGFGGGHGIGLGMGNGPGQGRGSGT" +
+			"GUGWGYHKHNHRHTHUICIDIEILIMINIOIQIRISITJEJMJOJPKEKGKHKIKMKNKPKRKWKYKZLALBLCLILKLRLSLTLULVLYMAMCMD" +
+			"MEMFMGMHMKMLMMMNMOMPMQMRMSMTMUMVMWMXMYMZNANCNENFNGNINLNONPNRNUNZOMPAPEPFPGPHPKPLPMPNPRPSPTPWPYQA" +
+			"RERORSRURWSASBSCSDSESGSHSISJSKSLSMSNSOSRSSSTSVSXSYSZTATCTDTFTGTHTJTLTMTNTOTRTTTWTZUAUGUMUSUYUZVA" +
+			"VCVEVGVIVNVUWFWSXKYEYTZAZMZWaf-ZAar-001ca-ESen-001en-HKen-ILen-MYes-BRes-ESes-GQfr-CAgl-ESgu-INh" +
+			"i-INit-CHit-ITkn-INku-SYml-INmr-INpa-INta-INte-INzu-ZA",
+		ends: []uint32{
+			3, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34,
+			36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66,
+			68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96, 98,
+			100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126, 128, 130,
+			132, 134, 136, 138, 140, 142, 144, 146, 148, 150, 152, 154, 156, 158, 160, 162,
+			164, 166, 168, 170, 172, 174, 176, 178, 180, 182, 184, 186, 188, 190, 192, 194,
+			196, 198, 200, 202, 204, 206, 208, 210, 212, 214, 216, 218, 220, 222, 224, 226,
+			228, 230, 232, 234, 236, 238, 240, 242, 244, 246, 248, 250, 252, 254, 256, 258,
+			260, 262, 264, 266, 268, 270, 272, 274, 276, 278, 280, 282, 284, 286, 288, 290,
+			292, 294, 296, 298, 300, 302, 304, 306, 308, 310, 312, 314, 316, 318, 320, 322,
+			324, 326, 328, 330, 332, 334, 336, 338, 340, 342, 344, 346, 348, 350, 352, 354,
+			356, 358, 360, 362, 364, 366, 368, 370, 372, 374, 376, 378, 380, 382, 384, 386,
+			388, 390, 392, 394, 396, 398, 400, 402, 404, 406, 408, 410, 412, 414, 416, 418,
+			420, 422, 424, 426, 428, 430, 432, 434, 436, 438, 440, 442, 444, 446, 448, 450,
+			452, 454, 456, 458, 460, 462, 464, 466, 468, 470, 472, 474, 476, 478, 480, 482,
+			484, 486, 488, 490, 492, 494, 496, 498, 500, 502, 504, 506, 508, 513, 519, 524,
+			530, 535, 540, 545, 550, 555, 560, 565, 570, 575, 580, 585, 590, 595, 600, 605,
+			610, 615, 620, 625, 630,
+		},
+	},
+	values: Strings{
+		data: "H hh H hB hbH h hb hBH hBh hB hb HH hb hB hh hb H hBH h hb hBh H hBH hBH hBH h hB hbh HH hBh hb " +
+			"H hBH hBHH hB hH hB hh hb H hBh hB HH hBH hBH hB hh hB hb HH hH hBH hBh hb H hBhb hB h Hh H hB h" +
+			"bHH hBh hb H hBh HH h hb hBH hH h hb hBh hb H hBH h hb hBhB HH h hBH hBH hB hH hBH h hb hBH h hB" +
+			" hbH h hBH hB hb hh H hB hbHh H hB hbh H hB hbH hBH hBH h hb hBh H hb hBHH hBH h hb hBh HHh hb H" +
+			" hBh H hB hbh hB hb HH h hB hbh H hB hbH hBh hB hb Hh hB hb Hh HH hB h hbhB hb h HHh hb H hBH h " +
+			"hb hBh hb H hBH hH hBH hBH h hb hBh hb H hBH hB hH hBH h hb hBh HH h hb hBH hh hb H hBH hBH hBH " +
+			"hB h hbh H hb hBH h hb hBh H hB hbh hb H hBH hBh hb H hBh hB hb Hh H hB hbH hBH hBH hH h hB hbHH" +
+			" h hb hBH hBH h hb hBh HH h hb hBh hB hb HhB HHH hBH h hb hBh hb H hBh hB hb HH K hhB hb H hH h " +
+			"hB hbhB h H hbh hb H hBH h hB hbh hb H hBh H hB hbh H hB hbh hB hb Hh hb H hBH hBH hb hB hh hB h" +
+			"b Hh hb H hBH hB hH h hB hbh hb H hBh HH h hb hBH h hBH hB hb hh hB hb HH h hB hbH hBH hBH hB hH" +
+			" hBH hh hb H hBH h hb hBHhB hb H hH h hb hBh hB hb Hh hb H hBH hBh hB hb HH h hb hBH hH hH hh hb" +
+			" H hBh H hB hbhb hB h HH hBh H hB hbH hBHH h hb hBH h hb hBh H hB hbH hBH hH h hBH h hb hBH h hb" +
+			" hBh hb H hBh hB hb Hh H hB hbh H hB hbH h hBh Hh hB hb Hh hB HH hH hBH h hb hBh H hB hbh hB hb " +
+			"HH hBh HH h hB hbh hB hb HH hBH hBH hB hHhB hb H hh hB hb Hh hb H hBH h hBh hB hb HHh hb H hBH h" +
+			" hb hBH hBHHh hb H hBH h hBH h hBh HH hBh hb H hBH hBh H hB hbH h hb hBh hB hb Hh hb H hBH h hb " +
+			"hBh hb H hBh H hBH h hBH hBH hH hH hB hb hH hh hB hb Hh HH hBh hb H hBhB hb h HhB hb H hH hB hhB" +
+			" hb H hh hb H hBh hb H hBH h hB hbH hB hH h hBh hb H hBh H hB hbh hb H hBh hb H hBH hh HH hBh HH" +
+			" hB hh hB hb HH hBH h hb hBH hBH hH h hB hbh hB hb HH h hBh hb H hBh hb H hBH h hb hBh hb H hBH " +
+			"h hB hbH h hB hbH h hB hbH h hBH h hBhB hb h HhB h HH h hBH h hBhB h HH hBhB h HhB hb h HhB hb h" +
+			" HhB h hb HhB h HH hB hb h",
+		ends: []uint32{
+			3, 12, 21, 25, 34, 43, 52, 61, 67, 71, 75, 84, 87, 91, 100, 104,
+			105, 111, 117, 126, 132, 136, 140, 146, 155, 158, 162, 166, 175, 184, 193, 194,
+			198, 207, 210, 219, 222, 231, 240, 249, 253, 259, 263, 269, 273, 282, 291, 297,
+			306, 315, 316, 325, 334, 338, 342, 351, 360, 361, 365, 374, 377, 378, 387, 396,
+			405, 414, 423, 427, 436, 445, 448, 457, 466, 467, 476, 485, 494, 497, 501, 505,
+			514, 523, 529, 533, 542, 545, 554, 557, 566, 570, 574, 583, 592, 601, 610, 619,
+			623, 632, 641, 650, 654, 658, 661, 670, 671, 680, 684, 693, 696, 705, 714, 718,
+			719, 723, 732, 741, 750, 755, 764, 773, 782, 791, 800, 809, 818, 827, 836, 845,
+			849, 858, 867, 876, 882, 891, 900, 903, 912, 918, 927, 936, 945, 949, 953, 959,
+			963, 966, 975, 984, 985, 994, 1003, 1012, 1021, 1025, 1034, 1043, 1046, 1049, 1052, 1061,
+			1070, 1079, 1083, 1092, 1096, 1097, 1106, 1115, 1124, 1128, 1131, 1137, 1146, 1155, 1164, 1173,
+			1182, 1191, 1197, 1200, 1209, 1215, 1218, 1222, 1231, 1240, 1249, 1253, 1256, 1265, 1274, 1278,
+			1282, 1288, 1289, 1298, 1307, 1316, 1322, 1331, 1332, 1341, 1350, 1354, 1355, 1356, 1365, 1371,
+			1377, 1380, 1384, 1393, 1397, 1406, 1415, 1424, 1433, 1442, 1451, 1457, 1463, 1467, 1470, 1473,
+			1482, 1485, 1494, 1497, 1501, 1510, 1519, 1528, 1534, 1543, 1552, 1561, 1570, 1576, 1582, 1591,
+			1600, 1609, 1618, 1621, 1624, 1628, 1631, 1637, 1646, 1650, 1659, 1663, 1666, 1675, 1684, 1690,
+			1699, 1708, 1717, 1726, 1735, 1744, 1753, 1759, 1765, 1774, 1780, 1786, 1792, 1798, 1802, 1808,
+			1817, 1826, 1835, 1841, 1850,
+		},
+	},
+}

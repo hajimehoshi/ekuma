@@ -135,3 +135,14 @@ func ZonesOfCountry(country string) []string {
 	}
 	return zones
 }
+
+// CountryOfZone returns the ISO 3166 code of the country that the IANA time zone database
+// gives the zone with the primary identifier zone, or an empty string when it gives none.
+func CountryOfZone(zone string) string {
+	for _, e := range zoneTab {
+		if e.zone == zone {
+			return e.country
+		}
+	}
+	return ""
+}

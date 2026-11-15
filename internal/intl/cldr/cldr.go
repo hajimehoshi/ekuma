@@ -14,6 +14,7 @@
 package cldr
 
 import (
+	"iter"
 	"strings"
 )
 
@@ -111,5 +112,18 @@ func Field(record, key string) (string, bool) {
 			return v, true
 		}
 		i = j + 1
+	}
+}
+
+// Fields returns the keys and values of the fields of record, which is in the form of
+// [Field].
+func Fields(record string) iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		for f := range strings.SplitSeq(record, "\x1e") {
+			k, v, ok := strings.Cut(f, "\x1f")
+			if ok && !yield(k, v) {
+				return
+			}
+		}
 	}
 }

@@ -24,6 +24,9 @@ type realm struct {
 	numberFormatCtor  *engine.Object
 	pluralRulesProto  *engine.Object
 
+	dateTimeFormatProto *engine.Object
+	dateTimeFormatCtor  *engine.Object
+
 	// fallbackSymbol is the [[FallbackSymbol]] of Intl.
 	fallbackSymbol *engine.Object
 }
@@ -37,6 +40,8 @@ func Install(vm *engine.VM) {
 	vm.SetRealmHostDefined(r)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Intl"), engine.ObjectValue(r.ns), engine.FlagsHidden)
 	initToLocaleString(vm)
+	initDateToLocaleString(vm)
+	initTemporalToLocaleString(vm)
 }
 
 // init defines the properties of the Intl namespace.
@@ -73,6 +78,7 @@ func (r *realm) init(vm *engine.VM) {
 	r.initLocale(vm)
 	r.initNumberFormat(vm)
 	r.initPluralRules(vm)
+	r.initDateTimeFormat(vm)
 }
 
 // realmOf returns the Intl objects of the realm of the function f.

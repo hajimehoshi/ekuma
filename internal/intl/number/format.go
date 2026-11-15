@@ -85,11 +85,7 @@ func NewFormatter(o *Options) *Formatter {
 		infinity:      d.number("i"),
 		nan:           d.number("n"),
 	}
-	if ds, ok := cldr.NumberingSystemDigits.Lookup(o.NumberingSystem); ok && o.NumberingSystem != "latn" {
-		for _, r := range ds {
-			f.digits = append(f.digits, string(r))
-		}
-	}
+	f.digits = DigitsOf(o.NumberingSystem)
 	switch o.UseGrouping {
 	case "always":
 		f.minGrouping = 1
@@ -514,13 +510,33 @@ func (f *Formatter) unitPattern(category string) string {
 
 // transliterate replaces the ASCII digits of s with those of the numbering system.
 func (f *Formatter) transliterate(s string) string {
-	if f.digits == nil {
+	return Transliterate(f.digits, s)
+}
+
+// DigitsOf returns the digits from zero to nine of the numbering system nu, or nil for "latn"
+// and the numbering systems that have no digits.
+func DigitsOf(nu string) []string {
+	ds, ok := cldr.NumberingSystemDigits.Lookup(nu)
+	if !ok || nu == "latn" {
+		return nil
+	}
+	var digits []string
+	for _, r := range ds {
+		digits = append(digits, string(r))
+	}
+	return digits
+}
+
+// Transliterate replaces the ASCII digits of s with digits, the digits of a numbering system
+// from [DigitsOf].
+func Transliterate(digits []string, s string) string {
+	if digits == nil {
 		return s
 	}
 	var b strings.Builder
 	for i := range len(s) {
 		if c := s[i]; '0' <= c && c <= '9' {
-			b.WriteString(f.digits[c-'0'])
+			b.WriteString(digits[c-'0'])
 		} else {
 			b.WriteByte(c)
 		}

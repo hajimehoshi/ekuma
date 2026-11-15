@@ -15,6 +15,8 @@ type ExtensionKey struct {
 	// Option is the value of the option for the key, when HasOption is true.
 	Option    string
 	HasOption bool
+	// OptionNull makes the option null, which is an empty string in Values.
+	OptionNull bool
 	// Values returns the values that the available locale l supports for the key, the
 	// default first.
 	Values func(l string) []string
@@ -66,9 +68,12 @@ func ResolveLocale(requested []string, bestFit bool, keys []ExtensionKey) Resolu
 			}
 		}
 		if k.HasOption {
-			o := CanonicalizeUValue(k.Key, k.Option)
-			if o == "" {
-				o = "true"
+			var o string
+			if !k.OptionNull {
+				o = CanonicalizeUValue(k.Key, k.Option)
+				if o == "" {
+					o = "true"
+				}
 			}
 			if o != value && slices.Contains(values, o) {
 				value = o

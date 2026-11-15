@@ -215,6 +215,21 @@ func TestFormat(t *testing.T) {
 			in:   "-1",
 			want: "-CHF 1",
 		},
+		{
+			// en has no symbols for arab, which come from the root locale.
+			name: "symbols of the root locale",
+			o: number.Options{
+				Locale:          "en",
+				NumberingSystem: "arab",
+				Style:           "decimal",
+				Notation:        "standard",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "1.5",
+			want: "١٫٥",
+		},
 	} {
 		got := number.String(number.NewFormatter(&tc.o).Format(number.Parse(tc.in)))
 		if got != tc.want {

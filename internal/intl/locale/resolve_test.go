@@ -75,6 +75,21 @@ func TestResolveLocale(t *testing.T) {
 	}
 }
 
+func TestResolveLocaleNullOption(t *testing.T) {
+	// A null option, which hour12 makes of hourCycle, removes the keyword from the locale.
+	r := locale.ResolveLocale([]string{"en-u-hc-h12"}, true, []locale.ExtensionKey{{
+		Key:        "hc",
+		HasOption:  true,
+		OptionNull: true,
+		Values: func(l string) []string {
+			return []string{"", "h11", "h12", "h23", "h24"}
+		},
+	}})
+	if r.Locale != "en" || !slices.Equal(r.Values, []string{""}) {
+		t.Errorf("got %q, %q; want %q, %q", r.Locale, r.Values, "en", []string{""})
+	}
+}
+
 func TestDataLocale(t *testing.T) {
 	// zh-TW is available as the language-region form of zh-Hant-TW, whose data applies.
 	if got, want := locale.DataLocale("zh-TW"), "zh-Hant-TW"; got != want {

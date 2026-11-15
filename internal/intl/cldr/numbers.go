@@ -91,331 +91,330 @@ var NumberData = Map{
 			"2.x\x1f0\u00a0ት\x1elatn.s13.o\x1f00\u00a0ት\x1elatn.s13.x\x1f00\u00a0ት\x1elatn.s14.o\x1f000\u00a0ት\x1elatn.s14.x\x1f000\u00a0ት\x1elatn.s3" +
 			".o\x1f0\u00a0ሺ\x1elatn.s3.x\x1f0\u00a0ሺ\x1elatn.s4.o\x1f00\u00a0ሺ\x1elatn.s4.x\x1f00\u00a0ሺ\x1elatn.s5.o\x1f000\u00a0ሺ\x1elatn.s5.x\x1f000\u00a0" +
 			"ሺ\x1elatn.s6.o\x1f0\u00a0ሚ\x1elatn.s6.x\x1f0\u00a0ሚ\x1elatn.s7.o\x1f00\u00a0ሚ\x1elatn.s7.x\x1f00\u00a0ሚ\x1elatn.s8.o\x1f000\u00a0ሚ\x1elat" +
-			"n.s8.x\x1f000\u00a0ሚ\x1elatn.s9.o\x1f0\u00a0ቢ\x1elatn.s9.x\x1f0\u00a0ቢ\x1earab.+\x1f\u061c+\x1earab.-\x1f\u061c-\x1earab.A\x1f\u200f#,##0.00\u00a0¤\x1ea" +
-			"rab.B\x1f\u00a0\x1earab.C\x1f\u200f#,##0.00\u00a0¤\x1earab.D\x1f#,##0.###\x1earab.P\x1f#,##0%\x1earab.R\x1f{0}–{1}\x1earab.S\x1f#E0\x1earab." +
-			"Uf\x1f{0} {1}\x1earab.Um\x1f{0} {1}\x1earab.Uo\x1f{0} {1}\x1earab.Ut\x1f{0} {1}\x1earab.Ux\x1f{0} {1}\x1earab.Uz\x1f{0} {1}\x1earab." +
-			"X\x1f~{0}\x1earab.b\x1f\u00a0\x1earab.d\x1f٫\x1earab.e\x1fأس\x1earab.g\x1f٬\x1earab.i\x1f∞\x1earab.l10.f\x1f00 مليار\x1earab.l10.m\x1f" +
-			"00 مليار\x1earab.l10.o\x1f00 مليار\x1earab.l10.t\x1f00 مليار\x1earab.l10.x\x1f00 مليار\x1earab.l1" +
-			"0.z\x1f00 مليار\x1earab.l11.f\x1f000 مليار\x1earab.l11.m\x1f000 مليار\x1earab.l11.o\x1f000 مليار\x1e" +
-			"arab.l11.t\x1f000 مليار\x1earab.l11.x\x1f000 مليار\x1earab.l11.z\x1f000 مليار\x1earab.l12.f\x1f0 ترل" +
-			"يون\x1earab.l12.m\x1f0 ترليون\x1earab.l12.o\x1f0 ترليون\x1earab.l12.t\x1f0 ترليون\x1earab.l12.x\x1f" +
-			"0 ترليون\x1earab.l12.z\x1f0 ترليون\x1earab.l13.f\x1f00 ترليون\x1earab.l13.m\x1f00 ترليون\x1ea" +
-			"rab.l13.o\x1f00 ترليون\x1earab.l13.t\x1f00 ترليون\x1earab.l13.x\x1f00 ترليون\x1earab.l13.z\x1f00 ت" +
-			"رليون\x1earab.l14.f\x1f000 ترليون\x1earab.l14.m\x1f000 ترليون\x1earab.l14.o\x1f000 ترليون\x1ea" +
-			"rab.l14.t\x1f000 ترليون\x1earab.l14.x\x1f000 ترليون\x1earab.l14.z\x1f000 ترليون\x1earab.l3.f\x1f0 آ" +
-			"لاف\x1earab.l3.m\x1f0 ألف\x1earab.l3.o\x1f0 ألف\x1earab.l3.t\x1f0 ألف\x1earab.l3.x\x1f0 ألف\x1earab.l3.z\x1f0 أ" +
-			"لف\x1earab.l4.f\x1f00 ألف\x1earab.l4.m\x1f00 ألف\x1earab.l4.o\x1f00 ألف\x1earab.l4.t\x1f00 ألف\x1earab.l4.x\x1f0" +
-			"0 ألف\x1earab.l4.z\x1f00 ألف\x1earab.l5.f\x1f000 ألف\x1earab.l5.m\x1f000 ألف\x1earab.l5.o\x1f000 ألف\x1earab" +
-			".l5.t\x1f000 ألف\x1earab.l5.x\x1f000 ألف\x1earab.l5.z\x1f000 ألف\x1earab.l6.f\x1f0 ملايين\x1earab.l6.m\x1f0 " +
-			"مليون\x1earab.l6.o\x1f0 مليون\x1earab.l6.t\x1f0 مليون\x1earab.l6.x\x1f0 مليون\x1earab.l6.z\x1f0 مل" +
-			"يون\x1earab.l7.f\x1f00 ملايين\x1earab.l7.m\x1f00 مليون\x1earab.l7.o\x1f00 مليون\x1earab.l7.t\x1f00 م" +
-			"ليون\x1earab.l7.x\x1f00 مليون\x1earab.l7.z\x1f00 مليون\x1earab.l8.f\x1f000 مليون\x1earab.l8.m\x1f000 " +
-			"مليون\x1earab.l8.o\x1f000 مليون\x1earab.l8.t\x1f000 مليون\x1earab.l8.x\x1f000 مليون\x1earab.l8.z\x1f" +
-			"000 مليون\x1earab.l9.f\x1f0 مليار\x1earab.l9.m\x1f0 مليار\x1earab.l9.o\x1f0 مليار\x1earab.l9.t\x1f0 " +
-			"مليار\x1earab.l9.x\x1f0 مليار\x1earab.l9.z\x1f0 مليار\x1earab.m\x1f؉\x1earab.n\x1fليس\u00a0رقمًا\x1eara" +
-			"b.p\x1f٪\u061c\x1earab.s10.f\x1f00\u00a0مليار\x1earab.s10.m\x1f00\u00a0مليار\x1earab.s10.o\x1f00\u00a0مليار\x1earab.s10." +
-			"t\x1f00\u00a0مليار\x1earab.s10.x\x1f00\u00a0مليار\x1earab.s10.z\x1f00\u00a0مليار\x1earab.s11.f\x1f000\u00a0مليار\x1e" +
-			"arab.s11.m\x1f000\u00a0مليار\x1earab.s11.o\x1f000\u00a0مليار\x1earab.s11.t\x1f000\u00a0مليار\x1earab.s11.x\x1f000\u00a0" +
-			"مليار\x1earab.s11.z\x1f000\u00a0مليار\x1earab.s12.f\x1f0\u00a0ترليون\x1earab.s12.m\x1f0\u00a0ترليون\x1earab" +
-			".s12.o\x1f0\u00a0ترليون\x1earab.s12.t\x1f0\u00a0ترليون\x1earab.s12.x\x1f0\u00a0ترليون\x1earab.s12.z\x1f0\u00a0ترل" +
-			"يون\x1earab.s13.f\x1f00\u00a0ترليون\x1earab.s13.m\x1f00\u00a0ترليون\x1earab.s13.o\x1f00\u00a0ترليون\x1earab." +
-			"s13.t\x1f00\u00a0ترليون\x1earab.s13.x\x1f00\u00a0ترليون\x1earab.s13.z\x1f00\u00a0ترليون\x1earab.s14.f\x1f000\u00a0ت" +
-			"رليون\x1earab.s14.m\x1f000\u00a0ترليون\x1earab.s14.o\x1f000\u00a0ترليون\x1earab.s14.t\x1f000\u00a0ترليون" +
-			"\x1earab.s14.x\x1f000\u00a0ترليون\x1earab.s14.z\x1f000\u00a0ترليون\x1earab.s3.f\x1f0\u00a0آلاف\x1earab.s3.m\x1f0\u00a0أ" +
-			"لف\x1earab.s3.o\x1f0\u00a0ألف\x1earab.s3.t\x1f0\u00a0ألف\x1earab.s3.x\x1f0\u00a0ألف\x1earab.s3.z\x1f0\u00a0ألف\x1earab.s4.f\x1f0" +
-			"0\u00a0ألف\x1earab.s4.m\x1f00\u00a0ألف\x1earab.s4.o\x1f00\u00a0ألف\x1earab.s4.t\x1f00\u00a0ألف\x1earab.s4.x\x1f00\u00a0ألف\x1ear" +
-			"ab.s4.z\x1f00\u00a0ألف\x1earab.s5.f\x1f000\u00a0ألف\x1earab.s5.m\x1f000\u00a0ألف\x1earab.s5.o\x1f000\u00a0ألف\x1earab.s5.t\x1f0" +
-			"00\u00a0ألف\x1earab.s5.x\x1f000\u00a0ألف\x1earab.s5.z\x1f000\u00a0ألف\x1earab.s6.f\x1f0\u00a0مليون\x1earab.s6.m\x1f0\u00a0مل" +
-			"يون\x1earab.s6.o\x1f0\u00a0مليون\x1earab.s6.t\x1f0\u00a0مليون\x1earab.s6.x\x1f0\u00a0مليون\x1earab.s6.z\x1f0\u00a0مل" +
-			"يون\x1earab.s7.f\x1f00\u00a0مليون\x1earab.s7.m\x1f00\u00a0مليون\x1earab.s7.o\x1f00\u00a0مليون\x1earab.s7.t\x1f00\u00a0" +
-			"مليون\x1earab.s7.x\x1f00\u00a0مليون\x1earab.s7.z\x1f00\u00a0مليون\x1earab.s8.f\x1f000\u00a0مليون\x1earab.s8.m" +
-			"\x1f000\u00a0مليون\x1earab.s8.o\x1f000\u00a0مليون\x1earab.s8.t\x1f000\u00a0مليون\x1earab.s8.x\x1f000\u00a0مليون\x1ea" +
-			"rab.s8.z\x1f000\u00a0مليون\x1earab.s9.f\x1f0\u00a0مليار\x1earab.s9.m\x1f0\u00a0مليار\x1earab.s9.o\x1f0\u00a0مليار" +
-			"\x1earab.s9.t\x1f0\u00a0مليار\x1earab.s9.x\x1f0\u00a0مليار\x1earab.s9.z\x1f0\u00a0مليار\x1earab.~\x1f~\x1elatn.+\x1f\u200e+\x1ela" +
-			"tn.-\x1f\u200e-\x1elatn.A\x1f\u061c#,##0.00¤;(\u061c#,##0.00¤)\x1elatn.C\x1f\u200f#,##0.00\u00a0¤;\u200f-#,##0.00\u00a0¤\x1elatn.c10.f\x1f" +
-			"\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.m\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.o\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10" +
-			".t\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.x\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.z\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn." +
-			"c11.f\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.m\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.o\x1f\u200f000\u00a0مليار\u00a0¤" +
-			"\x1elatn.c11.t\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.x\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.z\x1f\u200f000\u00a0مليا" +
-			"ر\u00a0¤\x1elatn.c12.f\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.m\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.o\x1f\u200f0\u00a0تر" +
-			"ليون\u00a0¤\x1elatn.c12.t\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.x\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.z\x1f\u200f0" +
-			"\u00a0ترليون\u00a0¤\x1elatn.c13.f\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c13.m\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c1" +
-			"3.o\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c13.t\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c13.x\x1f\u200f00\u00a0ترليون\u00a0¤" +
-			"\x1elatn.c13.z\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c14.f\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c14.m\x1f\u200f000\u00a0ترل" +
-			"يون\u00a0¤\x1elatn.c14.o\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c14.t\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c14.x\x1f\u200f" +
-			"000\u00a0ترليون\u00a0¤\x1elatn.c14.z\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c3.f\x1f\u200f0\u00a0آلاف\u00a0¤\x1elatn.c3.m" +
-			"\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c3.o\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c3.t\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c3.x\x1f\u200f0\u00a0ألف\u00a0" +
-			"¤\x1elatn.c3.z\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c4.f\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.m\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.o\x1f" +
-			"\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.t\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.x\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.z\x1f\u200f00\u00a0ألف" +
-			"\u00a0¤\x1elatn.c5.f\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.m\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.o\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn" +
-			".c5.t\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.x\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.z\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c6.f\x1f\u200f" +
-			"0\u00a0مليون\u00a0¤\x1elatn.c6.m\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.o\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.t\x1f\u200f0\u00a0" +
-			"مليون\u00a0¤\x1elatn.c6.x\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.z\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c7.f\x1f\u200f00\u00a0م" +
-			"ليون\u00a0¤\x1elatn.c7.m\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.o\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.t\x1f\u200f00\u00a0م" +
-			"ليون\u00a0¤\x1elatn.c7.x\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.z\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c8.f\x1f\u200f000\u00a0م" +
-			"ليون\u00a0¤\x1elatn.c8.m\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.o\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.t\x1f\u200f000\u00a0" +
-			"مليون\u00a0¤\x1elatn.c8.x\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.z\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c9.f\x1f\u200f0\u00a0" +
-			"مليار\u00a0¤\x1elatn.c9.m\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.o\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.t\x1f\u200f0\u00a0مل" +
-			"يار\u00a0¤\x1elatn.c9.x\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.z\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.l10.f\x1f00 مليار" +
-			"\x1elatn.l10.m\x1f00 مليار\x1elatn.l10.o\x1f00 مليار\x1elatn.l10.t\x1f00 مليار\x1elatn.l10.x\x1f00 ملي" +
-			"ار\x1elatn.l10.z\x1f00 مليار\x1elatn.l11.f\x1f000 مليار\x1elatn.l11.m\x1f000 مليار\x1elatn.l11.o\x1f000" +
-			" مليار\x1elatn.l11.t\x1f000 مليار\x1elatn.l11.x\x1f000 مليار\x1elatn.l11.z\x1f000 مليار\x1elatn.l" +
-			"12.f\x1f0 ترليون\x1elatn.l12.m\x1f0 ترليون\x1elatn.l12.o\x1f0 ترليون\x1elatn.l12.t\x1f0 ترليون" +
-			"\x1elatn.l12.x\x1f0 ترليون\x1elatn.l12.z\x1f0 ترليون\x1elatn.l13.f\x1f00 ترليون\x1elatn.l13.m\x1f00 ت" +
-			"رليون\x1elatn.l13.o\x1f00 ترليون\x1elatn.l13.t\x1f00 ترليون\x1elatn.l13.x\x1f00 ترليون\x1elatn" +
-			".l13.z\x1f00 ترليون\x1elatn.l14.f\x1f000 ترليون\x1elatn.l14.m\x1f000 ترليون\x1elatn.l14.o\x1f000 ت" +
-			"رليون\x1elatn.l14.t\x1f000 ترليون\x1elatn.l14.x\x1f000 ترليون\x1elatn.l14.z\x1f000 ترليون\x1el" +
-			"atn.l3.f\x1f0 آلاف\x1elatn.l3.m\x1f0 ألف\x1elatn.l3.o\x1f0 ألف\x1elatn.l3.t\x1f0 ألف\x1elatn.l3.x\x1f0 ألف\x1e" +
-			"latn.l3.z\x1f0 ألف\x1elatn.l4.f\x1f00 ألف\x1elatn.l4.m\x1f00 ألف\x1elatn.l4.o\x1f00 ألف\x1elatn.l4.t\x1f00 أل" +
-			"ف\x1elatn.l4.x\x1f00 ألف\x1elatn.l4.z\x1f00 ألف\x1elatn.l5.f\x1f000 ألف\x1elatn.l5.m\x1f000 ألف\x1elatn.l5.o\x1f0" +
-			"00 ألف\x1elatn.l5.t\x1f000 ألف\x1elatn.l5.x\x1f000 ألف\x1elatn.l5.z\x1f000 ألف\x1elatn.l6.f\x1f0 ملايين" +
-			"\x1elatn.l6.m\x1f0 مليون\x1elatn.l6.o\x1f0 مليون\x1elatn.l6.t\x1f0 مليون\x1elatn.l6.x\x1f0 مليون\x1elat" +
-			"n.l6.z\x1f0 مليون\x1elatn.l7.f\x1f00 ملايين\x1elatn.l7.m\x1f00 مليون\x1elatn.l7.o\x1f00 مليون\x1ela" +
-			"tn.l7.t\x1f00 مليون\x1elatn.l7.x\x1f00 مليون\x1elatn.l7.z\x1f00 مليون\x1elatn.l8.f\x1f000 مليون\x1el" +
-			"atn.l8.m\x1f000 مليون\x1elatn.l8.o\x1f000 مليون\x1elatn.l8.t\x1f000 مليون\x1elatn.l8.x\x1f000 مليو" +
-			"ن\x1elatn.l8.z\x1f000 مليون\x1elatn.l9.f\x1f0 مليار\x1elatn.l9.m\x1f0 مليار\x1elatn.l9.o\x1f0 مليار" +
-			"\x1elatn.l9.t\x1f0 مليار\x1elatn.l9.x\x1f0 مليار\x1elatn.l9.z\x1f0 مليار\x1elatn.n\x1fليس\u00a0رقمًا\x1e" +
-			"latn.p\x1f\u200e%\u200e\x1elatn.s10.f\x1f00\u00a0مليار\x1elatn.s10.m\x1f00\u00a0مليار\x1elatn.s10.o\x1f00\u00a0مليار\x1elat" +
-			"n.s10.t\x1f00\u00a0مليار\x1elatn.s10.x\x1f00\u00a0مليار\x1elatn.s10.z\x1f00\u00a0مليار\x1elatn.s11.f\x1f000\u00a0ملي" +
-			"ار\x1elatn.s11.m\x1f000\u00a0مليار\x1elatn.s11.o\x1f000\u00a0مليار\x1elatn.s11.t\x1f000\u00a0مليار\x1elatn.s11.x" +
-			"\x1f000\u00a0مليار\x1elatn.s11.z\x1f000\u00a0مليار\x1elatn.s12.f\x1f0\u00a0ترليون\x1elatn.s12.m\x1f0\u00a0ترليون" +
-			"\x1elatn.s12.o\x1f0\u00a0ترليون\x1elatn.s12.t\x1f0\u00a0ترليون\x1elatn.s12.x\x1f0\u00a0ترليون\x1elatn.s12.z\x1f0\u00a0" +
-			"ترليون\x1elatn.s13.f\x1f00\u00a0ترليون\x1elatn.s13.m\x1f00\u00a0ترليون\x1elatn.s13.o\x1f00\u00a0ترليون" +
-			"\x1elatn.s13.t\x1f00\u00a0ترليون\x1elatn.s13.x\x1f00\u00a0ترليون\x1elatn.s13.z\x1f00\u00a0ترليون\x1elatn.s14.f\x1f" +
-			"000\u00a0ترليون\x1elatn.s14.m\x1f000\u00a0ترليون\x1elatn.s14.o\x1f000\u00a0ترليون\x1elatn.s14.t\x1f000\u00a0تر" +
-			"ليون\x1elatn.s14.x\x1f000\u00a0ترليون\x1elatn.s14.z\x1f000\u00a0ترليون\x1elatn.s3.f\x1f0\u00a0آلاف\x1elatn.s3" +
-			".m\x1f0\u00a0ألف\x1elatn.s3.o\x1f0\u00a0ألف\x1elatn.s3.t\x1f0\u00a0ألف\x1elatn.s3.x\x1f0\u00a0ألف\x1elatn.s3.z\x1f0\u00a0ألف\x1elat" +
-			"n.s4.f\x1f00\u00a0ألف\x1elatn.s4.m\x1f00\u00a0ألف\x1elatn.s4.o\x1f00\u00a0ألف\x1elatn.s4.t\x1f00\u00a0ألف\x1elatn.s4.x\x1f00\u00a0أ" +
-			"لف\x1elatn.s4.z\x1f00\u00a0ألف\x1elatn.s5.f\x1f000\u00a0ألف\x1elatn.s5.m\x1f000\u00a0ألف\x1elatn.s5.o\x1f000\u00a0ألف\x1elatn" +
-			".s5.t\x1f000\u00a0ألف\x1elatn.s5.x\x1f000\u00a0ألف\x1elatn.s5.z\x1f000\u00a0ألف\x1elatn.s6.f\x1f0\u00a0مليون\x1elatn.s6.m\x1f" +
-			"0\u00a0مليون\x1elatn.s6.o\x1f0\u00a0مليون\x1elatn.s6.t\x1f0\u00a0مليون\x1elatn.s6.x\x1f0\u00a0مليون\x1elatn.s6.z\x1f" +
-			"0\u00a0مليون\x1elatn.s7.f\x1f00\u00a0مليون\x1elatn.s7.m\x1f00\u00a0مليون\x1elatn.s7.o\x1f00\u00a0مليون\x1elatn.s7" +
-			".t\x1f00\u00a0مليون\x1elatn.s7.x\x1f00\u00a0مليون\x1elatn.s7.z\x1f00\u00a0مليون\x1elatn.s8.f\x1f000\u00a0مليون\x1ela" +
-			"tn.s8.m\x1f000\u00a0مليون\x1elatn.s8.o\x1f000\u00a0مليون\x1elatn.s8.t\x1f000\u00a0مليون\x1elatn.s8.x\x1f000\u00a0ملي" +
-			"ون\x1elatn.s8.z\x1f000\u00a0مليون\x1elatn.s9.f\x1f0\u00a0مليار\x1elatn.s9.m\x1f0\u00a0مليار\x1elatn.s9.o\x1f0\u00a0مل" +
-			"يار\x1elatn.s9.t\x1f0\u00a0مليار\x1elatn.s9.x\x1f0\u00a0مليار\x1elatn.s9.z\x1f0\u00a0مليار\x1elatn.d\x1f,\x1elatn.g\x1f." +
-			"\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.p\x1f٪\x1elatn.p\x1f٪\x1elat" +
-			"n.d\x1f,\x1elatn.g\x1f.\x1ebeng.+\x1f+\x1ebeng.-\x1f-\x1ebeng.A\x1f¤#,##0.00;(¤#,##0.00)\x1ebeng.B\x1f\u00a0\x1ebeng.C\x1f¤\u00a0#,##,##0.00" +
-			"\x1ebeng.D\x1f#,##,##0.###\x1ebeng.P\x1f#,##,##0%\x1ebeng.R\x1f{0}–{1}\x1ebeng.S\x1f#E0\x1ebeng.Ux\x1f{0} {1}\x1ebeng.X\x1f~{0}\x1ebe" +
-			"ng.b\x1f\u00a0\x1ebeng.c10.o\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ\x1ebeng.c10.x\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ\x1ebeng.c11.o\x1f¤\u00a0" +
-			"000\u00a0শঃ\u00a0কঃ\x1ebeng.c11.x\x1f¤\u00a0000\u00a0শঃ\u00a0কঃ\x1ebeng.c12.o\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1ebeng.c12" +
-			".x\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1ebeng.c13.o\x1f¤\u00a000\u00a0শঃ\u00a0পঃ\x1ebeng.c13.x\x1f¤\u00a000\u00a0শঃ\u00a0পঃ\x1eben" +
-			"g.c14.o\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1ebeng.c14.x\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1ebeng.c3.o\x1f¤\u00a00\u00a0হাজা" +
-			"ৰ\x1ebeng.c3.x\x1f¤\u00a00\u00a0হাজাৰ\x1ebeng.c4.o\x1f¤\u00a000\u00a0হাজাৰ\x1ebeng.c4.x\x1f¤\u00a000\u00a0হাজ" +
-			"াৰ\x1ebeng.c5.o\x1f¤\u00a00\u00a0লাখ\x1ebeng.c5.x\x1f¤\u00a00\u00a0লাখ\x1ebeng.c6.o\x1f¤\u00a00\u00a0নিযুত\x1ebe" +
-			"ng.c6.x\x1f¤\u00a00\u00a0নিযুত\x1ebeng.c7.o\x1f¤\u00a000\u00a0নিযুত\x1ebeng.c7.x\x1f¤\u00a000\u00a0নিযুত" +
-			"\x1ebeng.c8.o\x1f¤\u00a00\u00a0নিঃ\x1ebeng.c8.x\x1f¤\u00a00\u00a0নিঃ\x1ebeng.c9.o\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1ebeng.c" +
-			"9.x\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1ebeng.d\x1f.\x1ebeng.e\x1fE\x1ebeng.g\x1f,\x1ebeng.i\x1f∞\x1ebeng.l10.o\x1f00 শত কোট" +
-			"ি\x1ebeng.l10.x\x1f00 শত কোটি\x1ebeng.l11.o\x1f000 শত কোটি\x1ebeng.l11.x\x1f000 শত ক" +
-			"োটি\x1ebeng.l12.o\x1f0 শত পৰাৰ্দ্ধ\x1ebeng.l12.x\x1f0 শত পৰাৰ্দ্" +
-			"ধ\x1ebeng.l13.o\x1f00 শত পৰাৰ্দ্ধ\x1ebeng.l13.x\x1f00 শত পৰাৰ্দ্ধ\x1e" +
-			"beng.l14.o\x1f000 শত পৰাৰ্দ্ধ\x1ebeng.l14.x\x1f000 শত পৰাৰ্দ্ধ\x1ebe" +
-			"ng.l3.o\x1f0 হাজাৰ\x1ebeng.l3.x\x1f0 হাজাৰ\x1ebeng.l4.o\x1f00 হাজাৰ\x1ebeng.l4.x\x1f00 " +
-			"হাজাৰ\x1ebeng.l5.o\x1f0 লাখ\x1ebeng.l5.x\x1f0 লাখ\x1ebeng.l6.o\x1f0 নিযুত\x1ebeng.l6." +
-			"x\x1f0 নিযুত\x1ebeng.l7.o\x1f00 নিযুত\x1ebeng.l7.x\x1f00 নিযুত\x1ebeng.l8.o\x1f000 নি" +
-			"যুত\x1ebeng.l8.x\x1f000 নিযুত\x1ebeng.l9.o\x1f0 শত কোটি\x1ebeng.l9.x\x1f0 শত কো" +
-			"টি\x1ebeng.m\x1f‰\x1ebeng.n\x1fNaN\x1ebeng.p\x1f%\x1ebeng.s10.o\x1f00\u00a0শঃ\u00a0কোঃ\x1ebeng.s10.x\x1f00\u00a0শঃ\u00a0ক" +
-			"োঃ\x1ebeng.s11.o\x1f000\u00a0শঃ\u00a0কঃ\x1ebeng.s11.x\x1f000\u00a0শঃ\u00a0কঃ\x1ebeng.s12.o\x1f0\u00a0শঃ\u00a0পঃ" +
-			"\x1ebeng.s12.x\x1f0\u00a0শঃ\u00a0পঃ\x1ebeng.s13.o\x1f00\u00a0শঃ\u00a0পঃ\x1ebeng.s13.x\x1f00\u00a0শঃ\u00a0পঃ\x1ebeng.s" +
-			"14.o\x1f000\u00a0শঃপঃ\x1ebeng.s14.x\x1f000\u00a0শঃ\u00a0পঃ\x1ebeng.s3.o\x1f0\u00a0হাজাৰ\x1ebeng.s3.x\x1f0\u00a0" +
-			"হাজাৰ\x1ebeng.s4.o\x1f00\u00a0হাজাৰ\x1ebeng.s4.x\x1f00\u00a0হাজাৰ\x1ebeng.s5.o\x1f0\u00a0লাখ" +
-			"\x1ebeng.s5.x\x1f0\u00a0লাখ\x1ebeng.s6.o\x1f0\u00a0নিযুত\x1ebeng.s6.x\x1f0\u00a0নিযুত\x1ebeng.s7.o\x1f00\u00a0" +
-			"নিযুত\x1ebeng.s7.x\x1f00\u00a0নিযুত\x1ebeng.s8.o\x1f0\u00a0নিঃ\x1ebeng.s8.x\x1f0\u00a0নিঃ\x1ebeng" +
-			".s9.o\x1f0\u00a0শঃকোঃ\x1ebeng.s9.x\x1f0\u00a0শঃ\u00a0কোঃ\x1ebeng.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1e" +
-			"latn.C\x1f¤\u00a0#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.c10.o\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ" +
-			"\x1elatn.c10.x\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ\x1elatn.c11.o\x1f¤\u00a0000\u00a0শঃ\u00a0কঃ\x1elatn.c11.x\x1f¤\u00a0000\u00a0শ" +
-			"ঃ\u00a0কঃ\x1elatn.c12.o\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1elatn.c12.x\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1elatn.c13.o\x1f¤\u00a000\u00a0" +
-			"শঃ\u00a0পঃ\x1elatn.c13.x\x1f¤\u00a000\u00a0শঃ\u00a0পঃ\x1elatn.c14.o\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1elatn.c14.x\x1f¤" +
-			"\u00a0000\u00a0শঃ\u00a0পঃ\x1elatn.c3.o\x1f¤\u00a00\u00a0হাজাৰ\x1elatn.c3.x\x1f¤\u00a00\u00a0হাজাৰ\x1elatn.c4." +
-			"o\x1f¤\u00a000\u00a0হাজাৰ\x1elatn.c4.x\x1f¤\u00a000\u00a0হাজাৰ\x1elatn.c5.o\x1f¤\u00a00\u00a0লাখ\x1elatn.c5.x" +
-			"\x1f¤\u00a00\u00a0লাখ\x1elatn.c6.o\x1f¤\u00a00\u00a0নিযুত\x1elatn.c6.x\x1f¤\u00a00\u00a0নিযুত\x1elatn.c7.o\x1f¤" +
-			"\u00a000\u00a0নিযুত\x1elatn.c7.x\x1f¤\u00a000\u00a0নিযুত\x1elatn.c8.o\x1f¤\u00a00\u00a0নিঃ\x1elatn.c8.x\x1f¤\u00a0" +
-			"0\u00a0নিঃ\x1elatn.c9.o\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1elatn.c9.x\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1elatn.l10.o\x1f00" +
-			" শত কোটি\x1elatn.l10.x\x1f00 শত কোটি\x1elatn.l11.o\x1f000 শত কোটি\x1elatn.l" +
-			"11.x\x1f000 শত কোটি\x1elatn.l12.o\x1f0 শত পৰাৰ্দ্ধ\x1elatn.l12.x\x1f0 শত প" +
-			"ৰাৰ্দ্ধ\x1elatn.l13.o\x1f00 শত পৰাৰ্দ্ধ\x1elatn.l13.x\x1f00 শত পৰা" +
-			"ৰ্দ্ধ\x1elatn.l14.o\x1f000 শত পৰাৰ্দ্ধ\x1elatn.l14.x\x1f000 শত পৰাৰ" +
-			"্দ্ধ\x1elatn.l3.o\x1f0 হাজাৰ\x1elatn.l3.x\x1f0 হাজাৰ\x1elatn.l4.o\x1f00 হাজাৰ" +
-			"\x1elatn.l4.x\x1f00 হাজাৰ\x1elatn.l5.o\x1f0 লাখ\x1elatn.l5.x\x1f0 লাখ\x1elatn.l6.o\x1f0 নিযু" +
-			"ত\x1elatn.l6.x\x1f0 নিযুত\x1elatn.l7.o\x1f00 নিযুত\x1elatn.l7.x\x1f00 নিযুত\x1elatn.l" +
-			"8.o\x1f000 নিযুত\x1elatn.l8.x\x1f000 নিযুত\x1elatn.l9.o\x1f0 শত কোটি\x1elatn.l9.x\x1f" +
-			"0 শত কোটি\x1elatn.s10.o\x1f00\u00a0শঃ\u00a0কোঃ\x1elatn.s10.x\x1f00\u00a0শঃ\u00a0কোঃ\x1elatn.s11" +
-			".o\x1f000\u00a0শঃ\u00a0কঃ\x1elatn.s11.x\x1f000\u00a0শঃ\u00a0কঃ\x1elatn.s12.o\x1f0\u00a0শঃ\u00a0পঃ\x1elatn.s12.x\x1f0\u00a0" +
-			"শঃ\u00a0পঃ\x1elatn.s13.o\x1f00\u00a0শঃ\u00a0পঃ\x1elatn.s13.x\x1f00\u00a0শঃ\u00a0পঃ\x1elatn.s14.o\x1f000\u00a0শঃ" +
-			"পঃ\x1elatn.s14.x\x1f000\u00a0শঃ\u00a0পঃ\x1elatn.s3.o\x1f0\u00a0হাজাৰ\x1elatn.s3.x\x1f0\u00a0হাজাৰ\x1e" +
-			"latn.s4.o\x1f00\u00a0হাজাৰ\x1elatn.s4.x\x1f00\u00a0হাজাৰ\x1elatn.s5.o\x1f0\u00a0লাখ\x1elatn.s5.x\x1f0\u00a0" +
-			"লাখ\x1elatn.s6.o\x1f0\u00a0নিযুত\x1elatn.s6.x\x1f0\u00a0নিযুত\x1elatn.s7.o\x1f00\u00a0নিযুত" +
-			"\x1elatn.s7.x\x1f00\u00a0নিযুত\x1elatn.s8.o\x1f0\u00a0নিঃ\x1elatn.s8.x\x1f0\u00a0নিঃ\x1elatn.s9.o\x1f0\u00a0শঃ" +
-			"কোঃ\x1elatn.s9.x\x1f0\u00a0শঃ\u00a0কোঃ\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.A\x1f#,##0.00" +
-			"\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f00G\u00a0¤\x1elatn.c10.x\x1f00G\u00a0¤\x1elatn.c11.o\x1f000G\u00a0" +
-			"¤\x1elatn.c11.x\x1f000G\u00a0¤\x1elatn.c12.o\x1f0T\u00a0¤\x1elatn.c12.x\x1f0T\u00a0¤\x1elatn.c13.o\x1f00T\u00a0¤\x1elatn.c13.x\x1f00T\u00a0¤" +
-			"\x1elatn.c14.o\x1f000T\u00a0¤\x1elatn.c14.x\x1f000T\u00a0¤\x1elatn.c3.o\x1f0K\u00a0¤\x1elatn.c3.x\x1f0K\u00a0¤\x1elatn.c4.o\x1f00K\u00a0¤\x1elat" +
-			"n.c4.x\x1f00K\u00a0¤\x1elatn.c5.o\x1f000K\u00a0¤\x1elatn.c5.x\x1f000K\u00a0¤\x1elatn.c6.o\x1f0M\u00a0¤\x1elatn.c6.x\x1f0M\u00a0¤\x1elatn.c7.o" +
-			"\x1f00M\u00a0¤\x1elatn.c7.x\x1f00M\u00a0¤\x1elatn.c8.o\x1f000M\u00a0¤\x1elatn.c8.x\x1f000M\u00a0¤\x1elatn.c9.o\x1f0G\u00a0¤\x1elatn.c9.x\x1f0G\u00a0" +
-			"¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l3.o\x1f0 millar\x1elatn.l3.x\x1f0 millares\x1elatn.l4.o\x1f00 millares\x1elatn.l4.x\x1f00 " +
-			"millares\x1elatn.l5.o\x1f000 millares\x1elatn.l5.x\x1f000 millares\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millones\x1e" +
-			"latn.l7.o\x1f00 millones\x1elatn.l7.x\x1f00 millones\x1elatn.l8.o\x1f000 millones\x1elatn.l8.x\x1f000 millones\x1elatn.n" +
-			"\x1fND\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd\u00a0¤\x1elatn" +
-			".c11.o\x1f000\u00a0mlrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤\x1elatn" +
-			".c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln\u00a0¤\x1ela" +
-			"tn.c3.o\x1f0K\u00a0¤\x1elatn.c3.x\x1f0K\u00a0¤\x1elatn.c4.o\x1f00K\u00a0¤\x1elatn.c4.x\x1f00K\u00a0¤\x1elatn.c5.o\x1f000K\u00a0¤\x1elatn.c5.x" +
-			"\x1f000K\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1e" +
-			"latn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd\u00a0¤\x1elatn.d" +
-			"\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milyard\x1elatn.l10.x\x1f00 milyard\x1elatn.l11.o\x1f000 milyard\x1elatn.l11.x\x1f000 mi" +
-			"lyard\x1elatn.l12.o\x1f0 trilyon\x1elatn.l12.x\x1f0 trilyon\x1elatn.l13.o\x1f00 trilyon\x1elatn.l13.x\x1f00 trilyon\x1elatn" +
-			".l14.o\x1f000 trilyon\x1elatn.l14.x\x1f000 trilyon\x1elatn.l3.o\x1f0 min\x1elatn.l3.x\x1f0 min\x1elatn.l4.o\x1f00 min\x1elatn." +
-			"l4.x\x1f00 min\x1elatn.l5.o\x1f000 min\x1elatn.l5.x\x1f000 min\x1elatn.l6.o\x1f0 milyon\x1elatn.l6.x\x1f0 milyon\x1elatn.l7.o\x1f" +
-			"00 milyon\x1elatn.l7.x\x1f00 milyon\x1elatn.l8.o\x1f000 milyon\x1elatn.l8.x\x1f000 milyon\x1elatn.l9.o\x1f0 milyard\x1elatn" +
-			".l9.x\x1f0 milyard\x1elatn.s10.o\x1f00\u00a0mlrd\x1elatn.s10.x\x1f00\u00a0mlrd\x1elatn.s11.o\x1f000\u00a0mlrd\x1elatn.s11.x\x1f000\u00a0mlr" +
-			"d\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13.o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0trln\x1elatn.s14.o\x1f000\u00a0" +
-			"trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1e" +
-			"latn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mlrd\x1elatn.s9.x\x1f0\u00a0mlrd\x1elatn.A\x1f#,##0.00\u00a0¤\x1ela" +
-			"tn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.x\x1f00\u00a0млр" +
-			"д\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn." +
-			"c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.x\x1f0\u00a0мең\u00a0¤\x1elatn.c4.x\x1f00\u00a0мең\u00a0¤\x1elatn.c5.x\x1f000\u00a0мең\u00a0" +
-			"¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.x\x1f0\u00a0млр" +
-			"д\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.x\x1f000 миллиард\x1elatn.l1" +
-			"2.x\x1f0 триллион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l3.x\x1f" +
-			"0 мең\x1elatn.l4.x\x1f00 мең\x1elatn.l5.x\x1f000 мең\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.x\x1f00 мил" +
-			"лион\x1elatn.l8.x\x1f000 миллион\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fһан\u00a0түгел\x1elat" +
-			"n.s10.x\x1f00\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elat" +
-			"n.s14.x\x1f000\u00a0трлн\x1elatn.s3.x\x1f0\u00a0мең\x1elatn.s4.x\x1f00\u00a0мең\x1elatn.s5.x\x1f000\u00a0мең\x1elatn.s6.x\x1f0" +
-			"\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.c10.o\x1f¤\u00a000Kr\x1ela" +
-			"tn.c10.x\x1f¤\u00a000Kr\x1elatn.c11.o\x1f¤\u00a0000Kr\x1elatn.c11.x\x1f¤\u00a0000Kr\x1elatn.c3.o\x1f¤\u00a00H\x1elatn.c3.x\x1f¤\u00a00H\x1ela" +
-			"tn.c4.o\x1f¤\u00a000H\x1elatn.c4.x\x1f¤\u00a000H\x1elatn.c5.o\x1f¤\u00a0000H\x1elatn.c5.x\x1f¤\u00a0000H\x1elatn.c9.o\x1f¤\u00a00Kr\x1elatn.c" +
-			"9.x\x1f¤\u00a00Kr\x1elatn.l10.o\x1f00Kr\x1elatn.l10.x\x1f00Kr\x1elatn.l11.o\x1f000Kr\x1elatn.l11.x\x1f000Kr\x1elatn.l3.o\x1f0H\x1elatn." +
-			"l3.x\x1f0H\x1elatn.l4.o\x1f00H\x1elatn.l4.x\x1f00H\x1elatn.l5.o\x1f000H\x1elatn.l5.x\x1f000H\x1elatn.l9.o\x1f0Kr\x1elatn.l9.x\x1f0Kr\x1ela" +
-			"tn.s10.o\x1f00Kr\x1elatn.s10.x\x1f00Kr\x1elatn.s11.o\x1f000Kr\x1elatn.s11.x\x1f000Kr\x1elatn.s3.o\x1f0H\x1elatn.s3.x\x1f0H\x1elatn.s" +
-			"4.o\x1f00H\x1elatn.s4.x\x1f00H\x1elatn.s5.o\x1f000H\x1elatn.s5.x\x1f000H\x1elatn.s9.o\x1f0Kr\x1elatn.s9.x\x1f0Kr\x1elatn.A\x1f#,##0.00\u00a0" +
-			"¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.0" +
-			"0\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.m\x1f00\u00a0млрд\u00a0¤\x1elatn" +
-			".c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.f\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.m\x1f000\u00a0" +
-			"млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.f\x1f0\u00a0трлн\u00a0¤" +
-			"\x1elatn.c12.m\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.f\x1f00\u00a0" +
-			"трлн\u00a0¤\x1elatn.c13.m\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤" +
-			"\x1elatn.c14.f\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.m\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14" +
-			".x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.f\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0тыс'." +
-			"'\u00a0¤\x1elatn.c3.x\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4" +
-			".o\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0ты" +
-			"с'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0млн\u00a0¤\x1elatn" +
-			".c6.m\x1f0\u00a0млн\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.f\x1f00\u00a0млн\u00a0¤\x1elat" +
-			"n.c7.m\x1f00\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.f\x1f000\u00a0млн\u00a0¤" +
-			"\x1elatn.c8.m\x1f000\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.f\x1f0\u00a0мл" +
-			"рд\u00a0¤\x1elatn.c9.m\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1e" +
-			"latn.g\x1f\u00a0\x1elatn.l10.f\x1f00 мільярды\x1elatn.l10.m\x1f00 мільярдаў\x1elatn.l10.o\x1f00 міль" +
-			"ярд\x1elatn.l10.x\x1f00 мільярда\x1elatn.l11.f\x1f000 мільярды\x1elatn.l11.m\x1f000 мільяр" +
-			"даў\x1elatn.l11.o\x1f000 мільярд\x1elatn.l11.x\x1f000 мільярда\x1elatn.l12.f\x1f0 трыльён" +
-			"ы\x1elatn.l12.m\x1f0 трыльёнаў\x1elatn.l12.o\x1f0 трыльён\x1elatn.l12.x\x1f0 трыльёна\x1elat" +
-			"n.l13.f\x1f00 трыльёны\x1elatn.l13.m\x1f00 трыльёнаў\x1elatn.l13.o\x1f00 трыльён\x1elatn.l" +
-			"13.x\x1f00 трыльёна\x1elatn.l14.f\x1f000 трыльёны\x1elatn.l14.m\x1f000 трыльёнаў\x1elatn." +
-			"l14.o\x1f000 трыльён\x1elatn.l14.x\x1f000 трыльёна\x1elatn.l3.f\x1f0 тысячы\x1elatn.l3.m\x1f0 т" +
-			"ысяч\x1elatn.l3.o\x1f0 тысяча\x1elatn.l3.x\x1f0 тысячы\x1elatn.l4.f\x1f00 тысячы\x1elatn.l4.m\x1f0" +
-			"0 тысяч\x1elatn.l4.o\x1f00 тысяча\x1elatn.l4.x\x1f00 тысячы\x1elatn.l5.f\x1f000 тысячы\x1elatn" +
-			".l5.m\x1f000 тысяч\x1elatn.l5.o\x1f000 тысяча\x1elatn.l5.x\x1f000 тысячы\x1elatn.l6.f\x1f0 мільё" +
-			"ны\x1elatn.l6.m\x1f0 мільёнаў\x1elatn.l6.o\x1f0 мільён\x1elatn.l6.x\x1f0 мільёна\x1elatn.l7.f\x1f" +
-			"00 мільёны\x1elatn.l7.m\x1f00 мільёнаў\x1elatn.l7.o\x1f00 мільён\x1elatn.l7.x\x1f00 мільё" +
-			"на\x1elatn.l8.f\x1f000 мільёны\x1elatn.l8.m\x1f000 мільёнаў\x1elatn.l8.o\x1f000 мільён\x1elatn" +
-			".l8.x\x1f000 мільёна\x1elatn.l9.f\x1f0 мільярды\x1elatn.l9.m\x1f0 мільярдаў\x1elatn.l9.o\x1f0" +
-			" мільярд\x1elatn.l9.x\x1f0 мільярда\x1elatn.s10.f\x1f00\u00a0млрд\x1elatn.s10.m\x1f00\u00a0млрд\x1elat" +
-			"n.s10.o\x1f00\u00a0млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.f\x1f000\u00a0млрд\x1elatn.s11.m\x1f000\u00a0млрд\x1el" +
-			"atn.s11.o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.f\x1f0\u00a0трлн\x1elatn.s12.m\x1f0\u00a0трлн\x1el" +
-			"atn.s12.o\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.f\x1f00\u00a0трлн\x1elatn.s13.m\x1f00\u00a0трлн\x1elat" +
-			"n.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.f\x1f000\u00a0трлн\x1elatn.s14.m\x1f000\u00a0трлн\x1el" +
-			"atn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.f\x1f0\u00a0тыс'.'\x1elatn.s3.m\x1f0\u00a0тыс'.'\x1el" +
-			"atn.s3.o\x1f0\u00a0тыс'.'\x1elatn.s3.x\x1f0\u00a0тыс'.'\x1elatn.s4.f\x1f00\u00a0тыс'.'\x1elatn.s4.m\x1f00\u00a0тыс'.'\x1elat" +
-			"n.s4.o\x1f00\u00a0тыс'.'\x1elatn.s4.x\x1f00\u00a0тыс'.'\x1elatn.s5.f\x1f000\u00a0тыс'.'\x1elatn.s5.m\x1f000\u00a0тыс'.'\x1el" +
-			"atn.s5.o\x1f000\u00a0тыс'.'\x1elatn.s5.x\x1f000\u00a0тыс'.'\x1elatn.s6.f\x1f0\u00a0млн\x1elatn.s6.m\x1f0\u00a0млн\x1elatn.s6" +
-			".o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.f\x1f00\u00a0млн\x1elatn.s7.m\x1f00\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1e" +
-			"latn.s7.x\x1f00\u00a0млн\x1elatn.s8.f\x1f000\u00a0млн\x1elatn.s8.m\x1f000\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x" +
-			"\x1f000\u00a0млн\x1elatn.s9.f\x1f0\u00a0млрд\x1elatn.s9.m\x1f0\u00a0млрд\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0мл" +
-			"рд\x1elatn.~\x1f≈\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0." +
-			"00¤\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0} – {1}\x1elatn.c10.o\x1f00" +
-			"\u00a0млрд'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0" +
-			"млрд'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0трл" +
-			"н'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн" +
-			"'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0хил'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0хил'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0хил'.'\u00a0¤\x1elatn.c" +
-			"4.x\x1f00\u00a0хил'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0хил'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0хил'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0мл" +
-			"н'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн'.'\u00a0¤\x1elat" +
-			"n.c8.o\x1f000\u00a0млн'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0" +
-			"млрд'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 милиарда\x1elatn.l10.x\x1f00 милиарда" +
-			"\x1elatn.l11.o\x1f000 милиарда\x1elatn.l11.x\x1f000 милиарда\x1elatn.l12.o\x1f0 трилион\x1elat" +
-			"n.l12.x\x1f0 трилиона\x1elatn.l13.o\x1f00 трилиона\x1elatn.l13.x\x1f00 трилиона\x1elatn.l1" +
-			"4.o\x1f000 трилиона\x1elatn.l14.x\x1f000 трилиона\x1elatn.l3.o\x1f0 хил'.'\x1elatn.l3.x\x1f0 хил" +
-			"яди\x1elatn.l4.o\x1f00 хиляди\x1elatn.l4.x\x1f00 хиляди\x1elatn.l5.o\x1f000 хиляди\x1elatn.l5.x\x1f" +
-			"000 хиляди\x1elatn.l6.o\x1f0 милион\x1elatn.l6.x\x1f0 милиона\x1elatn.l7.o\x1f00 милиона" +
-			"\x1elatn.l7.x\x1f00 милиона\x1elatn.l8.o\x1f000 милиона\x1elatn.l8.x\x1f000 милиона\x1elatn.l9.o" +
-			"\x1f0 милиард\x1elatn.l9.x\x1f0 милиарда\x1elatn.s10.o\x1f00\u00a0млрд'.'\x1elatn.s10.x\x1f00\u00a0млрд" +
-			"'.'\x1elatn.s11.o\x1f000\u00a0млрд'.'\x1elatn.s11.x\x1f000\u00a0млрд'.'\x1elatn.s12.o\x1f0\u00a0трлн'.'\x1elatn.s12.x" +
-			"\x1f0\u00a0трлн'.'\x1elatn.s13.o\x1f00\u00a0трлн'.'\x1elatn.s13.x\x1f00\u00a0трлн'.'\x1elatn.s14.o\x1f000\u00a0трлн'." +
-			"'\x1elatn.s14.x\x1f000\u00a0трлн'.'\x1elatn.s3.o\x1f0\u00a0хил'.'\x1elatn.s3.x\x1f0\u00a0хил'.'\x1elatn.s4.o\x1f00\u00a0хил" +
-			"'.'\x1elatn.s4.x\x1f00\u00a0хил'.'\x1elatn.s5.o\x1f000\u00a0хил'.'\x1elatn.s5.x\x1f000\u00a0хил'.'\x1elatn.s6.o\x1f0\u00a0млн" +
-			"'.'\x1elatn.s6.x\x1f0\u00a0млн'.'\x1elatn.s7.o\x1f00\u00a0млн'.'\x1elatn.s7.x\x1f00\u00a0млн'.'\x1elatn.s8.o\x1f000\u00a0млн" +
-			"'.'\x1elatn.s8.x\x1f000\u00a0млн'.'\x1elatn.s9.o\x1f0\u00a0млрд'.'\x1elatn.s9.x\x1f0\u00a0млрд'.'\x1edeva.+\x1f+\x1edeva.-\x1f-" +
-			"\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##0.00\x1edeva.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{" +
-			"1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva." +
-			"c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x" +
-			"\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e" +
-			"\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f00" +
-			"0T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x" +
-			"\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1ed" +
-			"eva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f00" +
-			"0M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##0.00\x1edeva.D\x1f" +
-			"#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c" +
-			"10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c" +
-			"3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0" +
-			"000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva." +
-			"l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1ed" +
-			"eva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11." +
-			"x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1ede" +
-			"va.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.0" +
-			"0\x1elatn.A\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.P\x1f%\u00a0#,#0;%\u00a0-#,#0\x1ela" +
-			"tn.Uo\x1f{1} {0}\x1elatn.Ux\x1f{1} {0}\x1elatn.Uz\x1f{1} {0}\x1elatn.c10.o\x1f¤\u00a0ŋkl\u00a000\x1elatn.c10.x\x1f¤\u00a0akl\u00a000\x1elat" +
-			"n.c10.z\x1f¤\u00a0ŋkl\u00a000\x1elatn.c11.o\x1f¤\u00a0ŋkl\u00a0000\x1elatn.c11.x\x1f¤\u00a0akl\u00a0000\x1elatn.c11.z\x1f¤\u00a0ŋkl\u00a0000\x1el" +
-			"atn.c12.o\x1f¤\u00a0ŋkr\u00a00\x1elatn.c12.x\x1f¤\u00a0akr\u00a00\x1elatn.c12.z\x1f¤\u00a0ŋkr\u00a00\x1elatn.c13.o\x1f¤\u00a0ŋkr\u00a000\x1elatn." +
-			"c13.x\x1f¤\u00a0akr\u00a000\x1elatn.c13.z\x1f¤\u00a0ŋkr\u00a000\x1elatn.c14.o\x1f¤\u00a0ŋkr\u00a0000\x1elatn.c14.x\x1f¤\u00a0akr\u00a0000\x1elatn." +
-			"c14.z\x1f¤\u00a0ŋkr\u00a0000\x1elatn.c3.o\x1f¤\u00a0kt\u00a00\x1elatn.c3.x\x1f¤\u00a0ɩkt\u00a00\x1elatn.c3.z\x1f¤\u00a0kt\u00a00\x1elatn.c4.o\x1f¤\u00a0" +
-			"kt\u00a000\x1elatn.c4.x\x1f¤\u00a0ɩkt\u00a000\x1elatn.c4.z\x1f¤\u00a0kt\u00a000\x1elatn.c5.o\x1f¤\u00a0kt\u00a0000\x1elatn.c5.x\x1f¤\u00a0ɩkt\u00a0000" +
-			"\x1elatn.c5.z\x1f¤\u00a0kt\u00a0000\x1elatn.c6.o\x1f¤\u00a0gkl\u00a00\x1elatn.c6.x\x1f¤\u00a0bkl\u00a00\x1elatn.c6.z\x1f¤\u00a0gkl\u00a00\x1elatn.c7.o\x1f" +
-			"¤\u00a0gkl\u00a000\x1elatn.c7.x\x1f¤\u00a0bkl\u00a000\x1elatn.c7.z\x1f¤\u00a0gkl\u00a000\x1elatn.c8.o\x1f¤\u00a0gkl\u00a0000\x1elatn.c8.x\x1f¤\u00a0bkl" +
-			"\u00a0000\x1elatn.c8.z\x1f¤\u00a0gkl\u00a0000\x1elatn.c9.o\x1f¤\u00a0ŋkl\u00a00\x1elatn.c9.x\x1f¤\u00a0akl\u00a00\x1elatn.c9.z\x1f¤\u00a0ŋkl\u00a00\x1ela" +
-			"tn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1fŋkulo 00\x1elatn.l10.x\x1fakulo 00\x1elatn.l10.z\x1fbaa ŋkulo 00\x1elatn.l11.o\x1fŋ" +
-			"kulo 000\x1elatn.l11.x\x1fakulo 000\x1elatn.l11.z\x1fbaa ŋkulo 000\x1elatn.l12.o\x1fŋkrǝ 0\x1elatn.l12.x\x1fakrǝ 0\x1el" +
-			"atn.l12.z\x1fbaa ŋkrǝ 0\x1elatn.l13.o\x1fŋkrǝ 00\x1elatn.l13.x\x1fakrǝ 00\x1elatn.l13.z\x1fbaa ŋkrǝ 00\x1elatn.l1" +
-			"4.o\x1fŋkrǝ 000\x1elatn.l14.x\x1fakrǝ 000\x1elatn.l14.z\x1fbaa ŋkrǝ 000\x1elatn.l3.o\x1fkotoku 0\x1elatn.l3.x\x1fɩkot" +
-			"oku 0\x1elatn.l3.z\x1fbaa kotoku 0\x1elatn.l4.o\x1fkotoku 00\x1elatn.l4.x\x1fɩkotoku 00\x1elatn.l4.z\x1fbaa kotoku 00\x1el" +
-			"atn.l5.o\x1fkotoku 000\x1elatn.l5.x\x1fɩkotoku 000\x1elatn.l5.z\x1fbaa kotoku 000\x1elatn.l6.o\x1fgakuli 0\x1elatn.l6.x" +
-			"\x1fbʊkuli 0\x1elatn.l6.z\x1fbaa gakuli 0\x1elatn.l7.o\x1fgakuli 00\x1elatn.l7.x\x1fbʊkuli 00\x1elatn.l7.z\x1fbaa gakuli " +
-			"00\x1elatn.l8.o\x1fgakuli 000\x1elatn.l8.x\x1fbʊkuli 000\x1elatn.l8.z\x1fbaa gakuli 000\x1elatn.l9.o\x1fŋkulo 0\x1elatn.l" +
-			"9.x\x1fakulo 0\x1elatn.l9.z\x1fbaa ŋkulo 0\x1elatn.s10.o\x1fŋkl\u00a000\x1elatn.s10.x\x1fakl\u00a000\x1elatn.s10.z\x1fŋkl\u00a000\x1ela" +
-			"tn.s11.o\x1fŋkl\u00a0000\x1elatn.s11.x\x1fakl\u00a0000\x1elatn.s11.z\x1fŋkl\u00a0000\x1elatn.s12.o\x1fŋkr\u00a00\x1elatn.s12.x\x1fakr\u00a00" +
-			"\x1elatn.s12.z\x1fŋkr\u00a00\x1elatn.s13.o\x1fŋkr\u00a000\x1elatn.s13.x\x1fakr\u00a000\x1elatn.s13.z\x1fŋkr\u00a000\x1elatn.s14.o\x1fŋkr\u00a0" +
-			"000\x1elatn.s14.x\x1fakr\u00a0000\x1elatn.s14.z\x1fŋkr\u00a0000\x1elatn.s3.o\x1fkt\u00a00\x1elatn.s3.x\x1fɩkt\u00a00\x1elatn.s3.z\x1fkt\u00a00\x1el" +
-			"atn.s4.o\x1fkt\u00a000\x1elatn.s4.x\x1fɩkt\u00a000\x1elatn.s4.z\x1fkt\u00a000\x1elatn.s5.o\x1fkt\u00a0000\x1elatn.s5.x\x1fɩkt\u00a0000\x1elatn.s" +
-			"5.z\x1fkt\u00a0000\x1elatn.s6.o\x1fgkl\u00a00\x1elatn.s6.x\x1fbkl\u00a00\x1elatn.s6.z\x1fgkl\u00a00\x1elatn.s7.o\x1fgkl\u00a000\x1elatn.s7.x\x1fbkl\u00a0" +
-			"00\x1elatn.s7.z\x1fgkl\u00a000\x1elatn.s8.o\x1fgkl\u00a0000\x1elatn.s8.x\x1fbkl\u00a0000\x1elatn.s8.z\x1fgkl\u00a0000\x1elatn.s9.o\x1fŋkl\u00a00\x1e" +
-			"latn.s9.x\x1fakl\u00a00\x1elatn.s9.z\x1fŋkl\u00a00\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1ebeng.+\x1f+\x1eben" +
-			"g.-\x1f-\x1ebeng.A\x1f#,##,##0.00¤;(#,##,##0.00¤)\x1ebeng.B\x1f\u00a0\x1ebeng.C\x1f#,##,##0.00¤\x1ebeng.D\x1f#,##,##0.###\x1ebe" +
-			"ng.P\x1f#,##0%\x1ebeng.R\x1f{0}–{1}\x1ebeng.S\x1f#E0\x1ebeng.Ux\x1f{0} {1}\x1ebeng.X\x1f~{0}\x1ebeng.b\x1f\u00a0\x1ebeng.c10.o\x1f0\u00a0শত" +
-			"\u00a0কো¤\x1ebeng.c10.x\x1f0শত\u00a0কো¤\x1ebeng.c11.o\x1f0কো¤\x1ebeng.c11.x\x1f0কো¤\x1ebeng.c12.o\x1f0\u00a0" +
-			"লা'.'কো'.'¤\x1ebeng.c12.x\x1f0\u00a0লা'.'কো'.'¤\x1ebeng.c13.o\x1f00\u00a0লা'.'কো'.'¤\x1ebeng" +
-			".c13.x\x1f00\u00a0লা'.'কো'.'¤\x1ebeng.c14.o\x1f000\u00a0লা'.'কো'.'¤\x1ebeng.c14.x\x1f000\u00a0লা'.'ক" +
-			"ো'.'¤\x1ebeng.c3.o\x1f0\u00a0হা¤\x1ebeng.c3.x\x1f0\u00a0হা¤\x1ebeng.c4.o\x1f00\u00a0হা¤\x1ebeng.c4.x\x1f00\u00a0হা" +
-			"¤\x1ebeng.c5.o\x1f0\u00a0লা¤\x1ebeng.c5.x\x1f0\u00a0লা¤\x1ebeng.c6.o\x1f00\u00a0লা¤\x1ebeng.c6.x\x1f00\u00a0লা¤\x1eben" +
-			"g.c7.o\x1f0\u00a0কো¤\x1ebeng.c7.x\x1f0\u00a0কো¤\x1ebeng.c8.o\x1f00\u00a0কো¤\x1ebeng.c8.x\x1f00\u00a0কো¤\x1ebeng.c9.o" +
-			"\x1f000\u00a0কো¤\x1ebeng.c9.x\x1f000\u00a0কো¤\x1ebeng.d\x1f.\x1ebeng.e\x1fE\x1ebeng.g\x1f,\x1ebeng.i\x1f∞\x1ebeng.l10.o\x1f0000 ক" +
-			"োটি\x1ebeng.l10.x\x1f0000 কোটি\x1ebeng.l11.o\x1f00000 কোটি\x1ebeng.l11.x\x1f00000 কোটি" +
-			"\x1ebeng.l12.o\x1f0 লাখ কোটি\x1ebeng.l12.x\x1f0 লাখ কোটি\x1ebeng.l13.o\x1f00 লাখ" +
-			" কোটি\x1ebeng.l13.x\x1f00 লাখ কোটি\x1ebeng.l14.o\x1f000 লাখ কোটি\x1ebeng.l1" +
-			"4.x\x1f000 লাখ কোটি\x1ebeng.l3.o\x1f0 হাজার\x1ebeng.l3.x\x1f0 হাজার\x1ebeng.l4.o" +
-			"\x1f00 হাজার\x1ebeng.l4.x\x1f00 হাজার\x1ebeng.l5.o\x1f0 লাখ\x1ebeng.l5.x\x1f0 লাখ\x1eben" +
-			"g.l6.o\x1f00 লাখ\x1ebeng.l6.x\x1f00 লাখ\x1ebeng.l7.o\x1f0 কোটি\x1ebeng.l7.x\x1f0 কোটি\x1eben" +
-			"g.l8.o\x1f00 কোটি\x1ebeng.l8.x\x1f00 কোটি\x1ebeng.l9.o\x1f000 কোটি\x1ebeng.l9.x\x1f000 কো" +
-			"টি\x1ebeng.m\x1f‰\x1ebeng.n\x1fNaN\x1ebeng.p\x1f%\x1ebeng.s10.o\x1f0\u00a0শত\u00a0কো\x1ebeng.s10.x\x1f0শত\u00a0কো\x1ebe" +
-			"ng.s11.o\x1f0কো\x1ebeng.s11.x\x1f0কো\x1ebeng.s12.o\x1f0\u00a0লা'.'কো'.'\x1ebeng.s12.x\x1f0\u00a0লা'.'কো" +
-			"'.'\x1ebeng.s13.o\x1f00\u00a0লা'.'কো'.'\x1ebeng.s13.x\x1f00\u00a0লা'.'কো'.'\x1ebeng.s14.o\x1f000\u00a0লা'." +
-			"'কো'.'\x1ebeng.s14.x\x1f000\u00a0লা'.'কো'.'\x1ebeng.s3.o\x1f0\u00a0হা\x1ebeng.s3.x\x1f0\u00a0হা\x1ebeng.s4.o\x1f" +
-			"00\u00a0হা\x1ebeng.s4.x\x1f00\u00a0হা\x1ebeng.s5.o\x1f0\u00a0লা\x1ebeng.s5.x\x1f0\u00a0লা\x1ebeng.s6.o\x1f00\u00a0লা\x1eben" +
-			"g.s6.x\x1f00\u00a0লা\x1ebeng.s7.o\x1f0\u00a0কো\x1ebeng.s7.x\x1f0\u00a0কো\x1ebeng.s8.o\x1f00\u00a0কো\x1ebeng.s8.x\x1f00\u00a0ক" +
+			"n.s8.x\x1f000\u00a0ሚ\x1elatn.s9.o\x1f0\u00a0ቢ\x1elatn.s9.x\x1f0\u00a0ቢ\x1earab.A\x1f\u200f#,##0.00\u00a0¤\x1earab.B\x1f\u00a0\x1earab.C\x1f\u200f#,#" +
+			"#0.00\u00a0¤\x1earab.D\x1f#,##0.###\x1earab.P\x1f#,##0%\x1earab.R\x1f{0}–{1}\x1earab.S\x1f#E0\x1earab.Uf\x1f{0} {1}\x1earab.Um\x1f{0}" +
+			" {1}\x1earab.Uo\x1f{0} {1}\x1earab.Ut\x1f{0} {1}\x1earab.Ux\x1f{0} {1}\x1earab.Uz\x1f{0} {1}\x1earab.X\x1f~{0}\x1earab.b\x1f\u00a0\x1earab." +
+			"e\x1fأس\x1earab.l10.f\x1f00 مليار\x1earab.l10.m\x1f00 مليار\x1earab.l10.o\x1f00 مليار\x1earab.l10.t\x1f00 " +
+			"مليار\x1earab.l10.x\x1f00 مليار\x1earab.l10.z\x1f00 مليار\x1earab.l11.f\x1f000 مليار\x1earab.l11." +
+			"m\x1f000 مليار\x1earab.l11.o\x1f000 مليار\x1earab.l11.t\x1f000 مليار\x1earab.l11.x\x1f000 مليار\x1ea" +
+			"rab.l11.z\x1f000 مليار\x1earab.l12.f\x1f0 ترليون\x1earab.l12.m\x1f0 ترليون\x1earab.l12.o\x1f0 ترل" +
+			"يون\x1earab.l12.t\x1f0 ترليون\x1earab.l12.x\x1f0 ترليون\x1earab.l12.z\x1f0 ترليون\x1earab.l13.f\x1f" +
+			"00 ترليون\x1earab.l13.m\x1f00 ترليون\x1earab.l13.o\x1f00 ترليون\x1earab.l13.t\x1f00 ترليون" +
+			"\x1earab.l13.x\x1f00 ترليون\x1earab.l13.z\x1f00 ترليون\x1earab.l14.f\x1f000 ترليون\x1earab.l14.m\x1f00" +
+			"0 ترليون\x1earab.l14.o\x1f000 ترليون\x1earab.l14.t\x1f000 ترليون\x1earab.l14.x\x1f000 ترليو" +
+			"ن\x1earab.l14.z\x1f000 ترليون\x1earab.l3.f\x1f0 آلاف\x1earab.l3.m\x1f0 ألف\x1earab.l3.o\x1f0 ألف\x1earab.l" +
+			"3.t\x1f0 ألف\x1earab.l3.x\x1f0 ألف\x1earab.l3.z\x1f0 ألف\x1earab.l4.f\x1f00 ألف\x1earab.l4.m\x1f00 ألف\x1earab." +
+			"l4.o\x1f00 ألف\x1earab.l4.t\x1f00 ألف\x1earab.l4.x\x1f00 ألف\x1earab.l4.z\x1f00 ألف\x1earab.l5.f\x1f000 ألف\x1e" +
+			"arab.l5.m\x1f000 ألف\x1earab.l5.o\x1f000 ألف\x1earab.l5.t\x1f000 ألف\x1earab.l5.x\x1f000 ألف\x1earab.l5.z\x1f00" +
+			"0 ألف\x1earab.l6.f\x1f0 ملايين\x1earab.l6.m\x1f0 مليون\x1earab.l6.o\x1f0 مليون\x1earab.l6.t\x1f0 مل" +
+			"يون\x1earab.l6.x\x1f0 مليون\x1earab.l6.z\x1f0 مليون\x1earab.l7.f\x1f00 ملايين\x1earab.l7.m\x1f00 مل" +
+			"يون\x1earab.l7.o\x1f00 مليون\x1earab.l7.t\x1f00 مليون\x1earab.l7.x\x1f00 مليون\x1earab.l7.z\x1f00 مل" +
+			"يون\x1earab.l8.f\x1f000 مليون\x1earab.l8.m\x1f000 مليون\x1earab.l8.o\x1f000 مليون\x1earab.l8.t\x1f000 " +
+			"مليون\x1earab.l8.x\x1f000 مليون\x1earab.l8.z\x1f000 مليون\x1earab.l9.f\x1f0 مليار\x1earab.l9.m\x1f0 " +
+			"مليار\x1earab.l9.o\x1f0 مليار\x1earab.l9.t\x1f0 مليار\x1earab.l9.x\x1f0 مليار\x1earab.l9.z\x1f0 مل" +
+			"يار\x1earab.n\x1fليس\u00a0رقمًا\x1earab.s10.f\x1f00\u00a0مليار\x1earab.s10.m\x1f00\u00a0مليار\x1earab.s10.o\x1f" +
+			"00\u00a0مليار\x1earab.s10.t\x1f00\u00a0مليار\x1earab.s10.x\x1f00\u00a0مليار\x1earab.s10.z\x1f00\u00a0مليار\x1eara" +
+			"b.s11.f\x1f000\u00a0مليار\x1earab.s11.m\x1f000\u00a0مليار\x1earab.s11.o\x1f000\u00a0مليار\x1earab.s11.t\x1f000\u00a0م" +
+			"ليار\x1earab.s11.x\x1f000\u00a0مليار\x1earab.s11.z\x1f000\u00a0مليار\x1earab.s12.f\x1f0\u00a0ترليون\x1earab.s" +
+			"12.m\x1f0\u00a0ترليون\x1earab.s12.o\x1f0\u00a0ترليون\x1earab.s12.t\x1f0\u00a0ترليون\x1earab.s12.x\x1f0\u00a0ترلي" +
+			"ون\x1earab.s12.z\x1f0\u00a0ترليون\x1earab.s13.f\x1f00\u00a0ترليون\x1earab.s13.m\x1f00\u00a0ترليون\x1earab.s13" +
+			".o\x1f00\u00a0ترليون\x1earab.s13.t\x1f00\u00a0ترليون\x1earab.s13.x\x1f00\u00a0ترليون\x1earab.s13.z\x1f00\u00a0ترل" +
+			"يون\x1earab.s14.f\x1f000\u00a0ترليون\x1earab.s14.m\x1f000\u00a0ترليون\x1earab.s14.o\x1f000\u00a0ترليون\x1ear" +
+			"ab.s14.t\x1f000\u00a0ترليون\x1earab.s14.x\x1f000\u00a0ترليون\x1earab.s14.z\x1f000\u00a0ترليون\x1earab.s3.f\x1f0" +
+			"\u00a0آلاف\x1earab.s3.m\x1f0\u00a0ألف\x1earab.s3.o\x1f0\u00a0ألف\x1earab.s3.t\x1f0\u00a0ألف\x1earab.s3.x\x1f0\u00a0ألف\x1earab." +
+			"s3.z\x1f0\u00a0ألف\x1earab.s4.f\x1f00\u00a0ألف\x1earab.s4.m\x1f00\u00a0ألف\x1earab.s4.o\x1f00\u00a0ألف\x1earab.s4.t\x1f00\u00a0أل" +
+			"ف\x1earab.s4.x\x1f00\u00a0ألف\x1earab.s4.z\x1f00\u00a0ألف\x1earab.s5.f\x1f000\u00a0ألف\x1earab.s5.m\x1f000\u00a0ألف\x1earab.s5" +
+			".o\x1f000\u00a0ألف\x1earab.s5.t\x1f000\u00a0ألف\x1earab.s5.x\x1f000\u00a0ألف\x1earab.s5.z\x1f000\u00a0ألف\x1earab.s6.f\x1f0\u00a0م" +
+			"ليون\x1earab.s6.m\x1f0\u00a0مليون\x1earab.s6.o\x1f0\u00a0مليون\x1earab.s6.t\x1f0\u00a0مليون\x1earab.s6.x\x1f0\u00a0م" +
+			"ليون\x1earab.s6.z\x1f0\u00a0مليون\x1earab.s7.f\x1f00\u00a0مليون\x1earab.s7.m\x1f00\u00a0مليون\x1earab.s7.o\x1f00\u00a0" +
+			"مليون\x1earab.s7.t\x1f00\u00a0مليون\x1earab.s7.x\x1f00\u00a0مليون\x1earab.s7.z\x1f00\u00a0مليون\x1earab.s8.f\x1f" +
+			"000\u00a0مليون\x1earab.s8.m\x1f000\u00a0مليون\x1earab.s8.o\x1f000\u00a0مليون\x1earab.s8.t\x1f000\u00a0مليون\x1ear" +
+			"ab.s8.x\x1f000\u00a0مليون\x1earab.s8.z\x1f000\u00a0مليون\x1earab.s9.f\x1f0\u00a0مليار\x1earab.s9.m\x1f0\u00a0مليار" +
+			"\x1earab.s9.o\x1f0\u00a0مليار\x1earab.s9.t\x1f0\u00a0مليار\x1earab.s9.x\x1f0\u00a0مليار\x1earab.s9.z\x1f0\u00a0مليار" +
+			"\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e-\x1elatn.A\x1f\u061c#,##0.00¤;(\u061c#,##0.00¤)\x1elatn.C\x1f\u200f#,##0.00\u00a0¤;\u200f-#,##0.00\u00a0" +
+			"¤\x1elatn.c10.f\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.m\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.o\x1f\u200f00\u00a0مليار" +
+			"\u00a0¤\x1elatn.c10.t\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.x\x1f\u200f00\u00a0مليار\u00a0¤\x1elatn.c10.z\x1f\u200f00\u00a0مليا" +
+			"ر\u00a0¤\x1elatn.c11.f\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.m\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.o\x1f\u200f000\u00a0م" +
+			"ليار\u00a0¤\x1elatn.c11.t\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.x\x1f\u200f000\u00a0مليار\u00a0¤\x1elatn.c11.z\x1f\u200f0" +
+			"00\u00a0مليار\u00a0¤\x1elatn.c12.f\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.m\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12." +
+			"o\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.t\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c12.x\x1f\u200f0\u00a0ترليون\u00a0¤\x1elat" +
+			"n.c12.z\x1f\u200f0\u00a0ترليون\u00a0¤\x1elatn.c13.f\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c13.m\x1f\u200f00\u00a0ترليون" +
+			"\u00a0¤\x1elatn.c13.o\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c13.t\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c13.x\x1f\u200f00\u00a0تر" +
+			"ليون\u00a0¤\x1elatn.c13.z\x1f\u200f00\u00a0ترليون\u00a0¤\x1elatn.c14.f\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c14.m\x1f\u200f" +
+			"000\u00a0ترليون\u00a0¤\x1elatn.c14.o\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c14.t\x1f\u200f000\u00a0ترليون\u00a0¤\x1ela" +
+			"tn.c14.x\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c14.z\x1f\u200f000\u00a0ترليون\u00a0¤\x1elatn.c3.f\x1f\u200f0\u00a0آلاف\u00a0" +
+			"¤\x1elatn.c3.m\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c3.o\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c3.t\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c3.x\x1f\u200f" +
+			"0\u00a0ألف\u00a0¤\x1elatn.c3.z\x1f\u200f0\u00a0ألف\u00a0¤\x1elatn.c4.f\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.m\x1f\u200f00\u00a0ألف\u00a0¤" +
+			"\x1elatn.c4.o\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.t\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.x\x1f\u200f00\u00a0ألف\u00a0¤\x1elatn.c4.z\x1f\u200f" +
+			"00\u00a0ألف\u00a0¤\x1elatn.c5.f\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.m\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.o\x1f\u200f000\u00a0ألف" +
+			"\u00a0¤\x1elatn.c5.t\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.x\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn.c5.z\x1f\u200f000\u00a0ألف\u00a0¤\x1elatn" +
+			".c6.f\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.m\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.o\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6" +
+			".t\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.x\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c6.z\x1f\u200f0\u00a0مليون\u00a0¤\x1elatn.c7.f\x1f" +
+			"\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.m\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.o\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.t\x1f" +
+			"\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.x\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c7.z\x1f\u200f00\u00a0مليون\u00a0¤\x1elatn.c8.f\x1f" +
+			"\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.m\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.o\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8" +
+			".t\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.x\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn.c8.z\x1f\u200f000\u00a0مليون\u00a0¤\x1elatn" +
+			".c9.f\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.m\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.o\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9" +
+			".t\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.x\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.c9.z\x1f\u200f0\u00a0مليار\u00a0¤\x1elatn.l10.f" +
+			"\x1f00 مليار\x1elatn.l10.m\x1f00 مليار\x1elatn.l10.o\x1f00 مليار\x1elatn.l10.t\x1f00 مليار\x1elatn.l" +
+			"10.x\x1f00 مليار\x1elatn.l10.z\x1f00 مليار\x1elatn.l11.f\x1f000 مليار\x1elatn.l11.m\x1f000 مليار\x1e" +
+			"latn.l11.o\x1f000 مليار\x1elatn.l11.t\x1f000 مليار\x1elatn.l11.x\x1f000 مليار\x1elatn.l11.z\x1f000 مل" +
+			"يار\x1elatn.l12.f\x1f0 ترليون\x1elatn.l12.m\x1f0 ترليون\x1elatn.l12.o\x1f0 ترليون\x1elatn.l12.t\x1f" +
+			"0 ترليون\x1elatn.l12.x\x1f0 ترليون\x1elatn.l12.z\x1f0 ترليون\x1elatn.l13.f\x1f00 ترليون\x1ela" +
+			"tn.l13.m\x1f00 ترليون\x1elatn.l13.o\x1f00 ترليون\x1elatn.l13.t\x1f00 ترليون\x1elatn.l13.x\x1f00 تر" +
+			"ليون\x1elatn.l13.z\x1f00 ترليون\x1elatn.l14.f\x1f000 ترليون\x1elatn.l14.m\x1f000 ترليون\x1elatn" +
+			".l14.o\x1f000 ترليون\x1elatn.l14.t\x1f000 ترليون\x1elatn.l14.x\x1f000 ترليون\x1elatn.l14.z\x1f000 ت" +
+			"رليون\x1elatn.l3.f\x1f0 آلاف\x1elatn.l3.m\x1f0 ألف\x1elatn.l3.o\x1f0 ألف\x1elatn.l3.t\x1f0 ألف\x1elatn.l3" +
+			".x\x1f0 ألف\x1elatn.l3.z\x1f0 ألف\x1elatn.l4.f\x1f00 ألف\x1elatn.l4.m\x1f00 ألف\x1elatn.l4.o\x1f00 ألف\x1elatn." +
+			"l4.t\x1f00 ألف\x1elatn.l4.x\x1f00 ألف\x1elatn.l4.z\x1f00 ألف\x1elatn.l5.f\x1f000 ألف\x1elatn.l5.m\x1f000 ألف" +
+			"\x1elatn.l5.o\x1f000 ألف\x1elatn.l5.t\x1f000 ألف\x1elatn.l5.x\x1f000 ألف\x1elatn.l5.z\x1f000 ألف\x1elatn.l6.f\x1f0" +
+			" ملايين\x1elatn.l6.m\x1f0 مليون\x1elatn.l6.o\x1f0 مليون\x1elatn.l6.t\x1f0 مليون\x1elatn.l6.x\x1f0 م" +
+			"ليون\x1elatn.l6.z\x1f0 مليون\x1elatn.l7.f\x1f00 ملايين\x1elatn.l7.m\x1f00 مليون\x1elatn.l7.o\x1f00 م" +
+			"ليون\x1elatn.l7.t\x1f00 مليون\x1elatn.l7.x\x1f00 مليون\x1elatn.l7.z\x1f00 مليون\x1elatn.l8.f\x1f000 م" +
+			"ليون\x1elatn.l8.m\x1f000 مليون\x1elatn.l8.o\x1f000 مليون\x1elatn.l8.t\x1f000 مليون\x1elatn.l8.x\x1f00" +
+			"0 مليون\x1elatn.l8.z\x1f000 مليون\x1elatn.l9.f\x1f0 مليار\x1elatn.l9.m\x1f0 مليار\x1elatn.l9.o\x1f0 " +
+			"مليار\x1elatn.l9.t\x1f0 مليار\x1elatn.l9.x\x1f0 مليار\x1elatn.l9.z\x1f0 مليار\x1elatn.n\x1fليس\u00a0ر" +
+			"قمًا\x1elatn.p\x1f\u200e%\u200e\x1elatn.s10.f\x1f00\u00a0مليار\x1elatn.s10.m\x1f00\u00a0مليار\x1elatn.s10.o\x1f00\u00a0ملي" +
+			"ار\x1elatn.s10.t\x1f00\u00a0مليار\x1elatn.s10.x\x1f00\u00a0مليار\x1elatn.s10.z\x1f00\u00a0مليار\x1elatn.s11.f\x1f00" +
+			"0\u00a0مليار\x1elatn.s11.m\x1f000\u00a0مليار\x1elatn.s11.o\x1f000\u00a0مليار\x1elatn.s11.t\x1f000\u00a0مليار\x1el" +
+			"atn.s11.x\x1f000\u00a0مليار\x1elatn.s11.z\x1f000\u00a0مليار\x1elatn.s12.f\x1f0\u00a0ترليون\x1elatn.s12.m\x1f0\u00a0ت" +
+			"رليون\x1elatn.s12.o\x1f0\u00a0ترليون\x1elatn.s12.t\x1f0\u00a0ترليون\x1elatn.s12.x\x1f0\u00a0ترليون\x1elatn" +
+			".s12.z\x1f0\u00a0ترليون\x1elatn.s13.f\x1f00\u00a0ترليون\x1elatn.s13.m\x1f00\u00a0ترليون\x1elatn.s13.o\x1f00\u00a0ت" +
+			"رليون\x1elatn.s13.t\x1f00\u00a0ترليون\x1elatn.s13.x\x1f00\u00a0ترليون\x1elatn.s13.z\x1f00\u00a0ترليون\x1el" +
+			"atn.s14.f\x1f000\u00a0ترليون\x1elatn.s14.m\x1f000\u00a0ترليون\x1elatn.s14.o\x1f000\u00a0ترليون\x1elatn.s14.t" +
+			"\x1f000\u00a0ترليون\x1elatn.s14.x\x1f000\u00a0ترليون\x1elatn.s14.z\x1f000\u00a0ترليون\x1elatn.s3.f\x1f0\u00a0آلا" +
+			"ف\x1elatn.s3.m\x1f0\u00a0ألف\x1elatn.s3.o\x1f0\u00a0ألف\x1elatn.s3.t\x1f0\u00a0ألف\x1elatn.s3.x\x1f0\u00a0ألف\x1elatn.s3.z\x1f0\u00a0" +
+			"ألف\x1elatn.s4.f\x1f00\u00a0ألف\x1elatn.s4.m\x1f00\u00a0ألف\x1elatn.s4.o\x1f00\u00a0ألف\x1elatn.s4.t\x1f00\u00a0ألف\x1elatn." +
+			"s4.x\x1f00\u00a0ألف\x1elatn.s4.z\x1f00\u00a0ألف\x1elatn.s5.f\x1f000\u00a0ألف\x1elatn.s5.m\x1f000\u00a0ألف\x1elatn.s5.o\x1f000\u00a0" +
+			"ألف\x1elatn.s5.t\x1f000\u00a0ألف\x1elatn.s5.x\x1f000\u00a0ألف\x1elatn.s5.z\x1f000\u00a0ألف\x1elatn.s6.f\x1f0\u00a0مليون" +
+			"\x1elatn.s6.m\x1f0\u00a0مليون\x1elatn.s6.o\x1f0\u00a0مليون\x1elatn.s6.t\x1f0\u00a0مليون\x1elatn.s6.x\x1f0\u00a0مليون" +
+			"\x1elatn.s6.z\x1f0\u00a0مليون\x1elatn.s7.f\x1f00\u00a0مليون\x1elatn.s7.m\x1f00\u00a0مليون\x1elatn.s7.o\x1f00\u00a0مليو" +
+			"ن\x1elatn.s7.t\x1f00\u00a0مليون\x1elatn.s7.x\x1f00\u00a0مليون\x1elatn.s7.z\x1f00\u00a0مليون\x1elatn.s8.f\x1f000\u00a0مل" +
+			"يون\x1elatn.s8.m\x1f000\u00a0مليون\x1elatn.s8.o\x1f000\u00a0مليون\x1elatn.s8.t\x1f000\u00a0مليون\x1elatn.s8.x\x1f0" +
+			"00\u00a0مليون\x1elatn.s8.z\x1f000\u00a0مليون\x1elatn.s9.f\x1f0\u00a0مليار\x1elatn.s9.m\x1f0\u00a0مليار\x1elatn.s9" +
+			".o\x1f0\u00a0مليار\x1elatn.s9.t\x1f0\u00a0مليار\x1elatn.s9.x\x1f0\u00a0مليار\x1elatn.s9.z\x1f0\u00a0مليار\x1elatn.d\x1f" +
+			",\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.p\x1f٪\x1elat" +
+			"n.p\x1f٪\x1elatn.d\x1f,\x1elatn.g\x1f.\x1ebeng.+\x1f+\x1ebeng.-\x1f-\x1ebeng.A\x1f¤#,##0.00;(¤#,##0.00)\x1ebeng.B\x1f\u00a0\x1ebeng.C\x1f¤\u00a0#" +
+			",##,##0.00\x1ebeng.D\x1f#,##,##0.###\x1ebeng.P\x1f#,##,##0%\x1ebeng.R\x1f{0}–{1}\x1ebeng.S\x1f#E0\x1ebeng.Ux\x1f{0} {1}\x1ebeng" +
+			".X\x1f~{0}\x1ebeng.b\x1f\u00a0\x1ebeng.c10.o\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ\x1ebeng.c10.x\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ\x1ebeng" +
+			".c11.o\x1f¤\u00a0000\u00a0শঃ\u00a0কঃ\x1ebeng.c11.x\x1f¤\u00a0000\u00a0শঃ\u00a0কঃ\x1ebeng.c12.o\x1f¤\u00a00\u00a0শঃ\u00a0পঃ" +
+			"\x1ebeng.c12.x\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1ebeng.c13.o\x1f¤\u00a000\u00a0শঃ\u00a0পঃ\x1ebeng.c13.x\x1f¤\u00a000\u00a0শঃ\u00a0প" +
+			"ঃ\x1ebeng.c14.o\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1ebeng.c14.x\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1ebeng.c3.o\x1f¤\u00a00\u00a0হা" +
+			"জাৰ\x1ebeng.c3.x\x1f¤\u00a00\u00a0হাজাৰ\x1ebeng.c4.o\x1f¤\u00a000\u00a0হাজাৰ\x1ebeng.c4.x\x1f¤\u00a000\u00a0হ" +
+			"াজাৰ\x1ebeng.c5.o\x1f¤\u00a00\u00a0লাখ\x1ebeng.c5.x\x1f¤\u00a00\u00a0লাখ\x1ebeng.c6.o\x1f¤\u00a00\u00a0নিযু" +
+			"ত\x1ebeng.c6.x\x1f¤\u00a00\u00a0নিযুত\x1ebeng.c7.o\x1f¤\u00a000\u00a0নিযুত\x1ebeng.c7.x\x1f¤\u00a000\u00a0নিয" +
+			"ুত\x1ebeng.c8.o\x1f¤\u00a00\u00a0নিঃ\x1ebeng.c8.x\x1f¤\u00a00\u00a0নিঃ\x1ebeng.c9.o\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1e" +
+			"beng.c9.x\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1ebeng.d\x1f.\x1ebeng.e\x1fE\x1ebeng.g\x1f,\x1ebeng.i\x1f∞\x1ebeng.l10.o\x1f00 শত ক" +
+			"োটি\x1ebeng.l10.x\x1f00 শত কোটি\x1ebeng.l11.o\x1f000 শত কোটি\x1ebeng.l11.x\x1f000 শ" +
+			"ত কোটি\x1ebeng.l12.o\x1f0 শত পৰাৰ্দ্ধ\x1ebeng.l12.x\x1f0 শত পৰাৰ্" +
+			"দ্ধ\x1ebeng.l13.o\x1f00 শত পৰাৰ্দ্ধ\x1ebeng.l13.x\x1f00 শত পৰাৰ্দ্" +
+			"ধ\x1ebeng.l14.o\x1f000 শত পৰাৰ্দ্ধ\x1ebeng.l14.x\x1f000 শত পৰাৰ্দ্ধ" +
+			"\x1ebeng.l3.o\x1f0 হাজাৰ\x1ebeng.l3.x\x1f0 হাজাৰ\x1ebeng.l4.o\x1f00 হাজাৰ\x1ebeng.l4.x\x1f" +
+			"00 হাজাৰ\x1ebeng.l5.o\x1f0 লাখ\x1ebeng.l5.x\x1f0 লাখ\x1ebeng.l6.o\x1f0 নিযুত\x1ebeng." +
+			"l6.x\x1f0 নিযুত\x1ebeng.l7.o\x1f00 নিযুত\x1ebeng.l7.x\x1f00 নিযুত\x1ebeng.l8.o\x1f000 ন" +
+			"িযুত\x1ebeng.l8.x\x1f000 নিযুত\x1ebeng.l9.o\x1f0 শত কোটি\x1ebeng.l9.x\x1f0 শত ক" +
+			"োটি\x1ebeng.m\x1f‰\x1ebeng.n\x1fNaN\x1ebeng.p\x1f%\x1ebeng.s10.o\x1f00\u00a0শঃ\u00a0কোঃ\x1ebeng.s10.x\x1f00\u00a0শঃ\u00a0" +
+			"কোঃ\x1ebeng.s11.o\x1f000\u00a0শঃ\u00a0কঃ\x1ebeng.s11.x\x1f000\u00a0শঃ\u00a0কঃ\x1ebeng.s12.o\x1f0\u00a0শঃ\u00a0প" +
+			"ঃ\x1ebeng.s12.x\x1f0\u00a0শঃ\u00a0পঃ\x1ebeng.s13.o\x1f00\u00a0শঃ\u00a0পঃ\x1ebeng.s13.x\x1f00\u00a0শঃ\u00a0পঃ\x1eben" +
+			"g.s14.o\x1f000\u00a0শঃপঃ\x1ebeng.s14.x\x1f000\u00a0শঃ\u00a0পঃ\x1ebeng.s3.o\x1f0\u00a0হাজাৰ\x1ebeng.s3.x\x1f" +
+			"0\u00a0হাজাৰ\x1ebeng.s4.o\x1f00\u00a0হাজাৰ\x1ebeng.s4.x\x1f00\u00a0হাজাৰ\x1ebeng.s5.o\x1f0\u00a0লা" +
+			"খ\x1ebeng.s5.x\x1f0\u00a0লাখ\x1ebeng.s6.o\x1f0\u00a0নিযুত\x1ebeng.s6.x\x1f0\u00a0নিযুত\x1ebeng.s7.o\x1f0" +
+			"0\u00a0নিযুত\x1ebeng.s7.x\x1f00\u00a0নিযুত\x1ebeng.s8.o\x1f0\u00a0নিঃ\x1ebeng.s8.x\x1f0\u00a0নিঃ\x1eb" +
+			"eng.s9.o\x1f0\u00a0শঃকোঃ\x1ebeng.s9.x\x1f0\u00a0শঃ\u00a0কোঃ\x1ebeng.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.0" +
+			"0)\x1elatn.C\x1f¤\u00a0#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.c10.o\x1f¤\u00a000\u00a0শঃ\u00a0কো" +
+			"ঃ\x1elatn.c10.x\x1f¤\u00a000\u00a0শঃ\u00a0কোঃ\x1elatn.c11.o\x1f¤\u00a0000\u00a0শঃ\u00a0কঃ\x1elatn.c11.x\x1f¤\u00a0000\u00a0" +
+			"শঃ\u00a0কঃ\x1elatn.c12.o\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1elatn.c12.x\x1f¤\u00a00\u00a0শঃ\u00a0পঃ\x1elatn.c13.o\x1f¤\u00a0" +
+			"00\u00a0শঃ\u00a0পঃ\x1elatn.c13.x\x1f¤\u00a000\u00a0শঃ\u00a0পঃ\x1elatn.c14.o\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1elatn.c14" +
+			".x\x1f¤\u00a0000\u00a0শঃ\u00a0পঃ\x1elatn.c3.o\x1f¤\u00a00\u00a0হাজাৰ\x1elatn.c3.x\x1f¤\u00a00\u00a0হাজাৰ\x1elat" +
+			"n.c4.o\x1f¤\u00a000\u00a0হাজাৰ\x1elatn.c4.x\x1f¤\u00a000\u00a0হাজাৰ\x1elatn.c5.o\x1f¤\u00a00\u00a0লাখ\x1elatn" +
+			".c5.x\x1f¤\u00a00\u00a0লাখ\x1elatn.c6.o\x1f¤\u00a00\u00a0নিযুত\x1elatn.c6.x\x1f¤\u00a00\u00a0নিযুত\x1elatn.c7" +
+			".o\x1f¤\u00a000\u00a0নিযুত\x1elatn.c7.x\x1f¤\u00a000\u00a0নিযুত\x1elatn.c8.o\x1f¤\u00a00\u00a0নিঃ\x1elatn.c8." +
+			"x\x1f¤\u00a00\u00a0নিঃ\x1elatn.c9.o\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1elatn.c9.x\x1f¤\u00a00\u00a0শঃ\u00a0কোঃ\x1elatn.l1" +
+			"0.o\x1f00 শত কোটি\x1elatn.l10.x\x1f00 শত কোটি\x1elatn.l11.o\x1f000 শত কোটি\x1e" +
+			"latn.l11.x\x1f000 শত কোটি\x1elatn.l12.o\x1f0 শত পৰাৰ্দ্ধ\x1elatn.l12.x\x1f0 শ" +
+			"ত পৰাৰ্দ্ধ\x1elatn.l13.o\x1f00 শত পৰাৰ্দ্ধ\x1elatn.l13.x\x1f00 শত " +
+			"পৰাৰ্দ্ধ\x1elatn.l14.o\x1f000 শত পৰাৰ্দ্ধ\x1elatn.l14.x\x1f000 শত প" +
+			"ৰাৰ্দ্ধ\x1elatn.l3.o\x1f0 হাজাৰ\x1elatn.l3.x\x1f0 হাজাৰ\x1elatn.l4.o\x1f00 হা" +
+			"জাৰ\x1elatn.l4.x\x1f00 হাজাৰ\x1elatn.l5.o\x1f0 লাখ\x1elatn.l5.x\x1f0 লাখ\x1elatn.l6.o\x1f0 ন" +
+			"িযুত\x1elatn.l6.x\x1f0 নিযুত\x1elatn.l7.o\x1f00 নিযুত\x1elatn.l7.x\x1f00 নিযুত" +
+			"\x1elatn.l8.o\x1f000 নিযুত\x1elatn.l8.x\x1f000 নিযুত\x1elatn.l9.o\x1f0 শত কোটি\x1elat" +
+			"n.l9.x\x1f0 শত কোটি\x1elatn.s10.o\x1f00\u00a0শঃ\u00a0কোঃ\x1elatn.s10.x\x1f00\u00a0শঃ\u00a0কোঃ\x1el" +
+			"atn.s11.o\x1f000\u00a0শঃ\u00a0কঃ\x1elatn.s11.x\x1f000\u00a0শঃ\u00a0কঃ\x1elatn.s12.o\x1f0\u00a0শঃ\u00a0পঃ\x1elatn.s" +
+			"12.x\x1f0\u00a0শঃ\u00a0পঃ\x1elatn.s13.o\x1f00\u00a0শঃ\u00a0পঃ\x1elatn.s13.x\x1f00\u00a0শঃ\u00a0পঃ\x1elatn.s14.o\x1f00" +
+			"0\u00a0শঃপঃ\x1elatn.s14.x\x1f000\u00a0শঃ\u00a0পঃ\x1elatn.s3.o\x1f0\u00a0হাজাৰ\x1elatn.s3.x\x1f0\u00a0হাজ" +
+			"াৰ\x1elatn.s4.o\x1f00\u00a0হাজাৰ\x1elatn.s4.x\x1f00\u00a0হাজাৰ\x1elatn.s5.o\x1f0\u00a0লাখ\x1elatn.s" +
+			"5.x\x1f0\u00a0লাখ\x1elatn.s6.o\x1f0\u00a0নিযুত\x1elatn.s6.x\x1f0\u00a0নিযুত\x1elatn.s7.o\x1f00\u00a0নিয" +
+			"ুত\x1elatn.s7.x\x1f00\u00a0নিযুত\x1elatn.s8.o\x1f0\u00a0নিঃ\x1elatn.s8.x\x1f0\u00a0নিঃ\x1elatn.s9.o\x1f0\u00a0" +
+			"শঃকোঃ\x1elatn.s9.x\x1f0\u00a0শঃ\u00a0কোঃ\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.A\x1f#," +
+			"##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f00G\u00a0¤\x1elatn.c10.x\x1f00G\u00a0¤\x1elatn.c11.o\x1f" +
+			"000G\u00a0¤\x1elatn.c11.x\x1f000G\u00a0¤\x1elatn.c12.o\x1f0T\u00a0¤\x1elatn.c12.x\x1f0T\u00a0¤\x1elatn.c13.o\x1f00T\u00a0¤\x1elatn.c13.x\x1f0" +
+			"0T\u00a0¤\x1elatn.c14.o\x1f000T\u00a0¤\x1elatn.c14.x\x1f000T\u00a0¤\x1elatn.c3.o\x1f0K\u00a0¤\x1elatn.c3.x\x1f0K\u00a0¤\x1elatn.c4.o\x1f00K\u00a0" +
+			"¤\x1elatn.c4.x\x1f00K\u00a0¤\x1elatn.c5.o\x1f000K\u00a0¤\x1elatn.c5.x\x1f000K\u00a0¤\x1elatn.c6.o\x1f0M\u00a0¤\x1elatn.c6.x\x1f0M\u00a0¤\x1elat" +
+			"n.c7.o\x1f00M\u00a0¤\x1elatn.c7.x\x1f00M\u00a0¤\x1elatn.c8.o\x1f000M\u00a0¤\x1elatn.c8.x\x1f000M\u00a0¤\x1elatn.c9.o\x1f0G\u00a0¤\x1elatn.c9." +
+			"x\x1f0G\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l3.o\x1f0 millar\x1elatn.l3.x\x1f0 millares\x1elatn.l4.o\x1f00 millares\x1elatn.l4" +
+			".x\x1f00 millares\x1elatn.l5.o\x1f000 millares\x1elatn.l5.x\x1f000 millares\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 mil" +
+			"lones\x1elatn.l7.o\x1f00 millones\x1elatn.l7.x\x1f00 millones\x1elatn.l8.o\x1f000 millones\x1elatn.l8.x\x1f000 millones\x1e" +
+			"latn.n\x1fND\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd\u00a0¤" +
+			"\x1elatn.c11.o\x1f000\u00a0mlrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤" +
+			"\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln\u00a0" +
+			"¤\x1elatn.c3.o\x1f0K\u00a0¤\x1elatn.c3.x\x1f0K\u00a0¤\x1elatn.c4.o\x1f00K\u00a0¤\x1elatn.c4.x\x1f00K\u00a0¤\x1elatn.c5.o\x1f000K\u00a0¤\x1elatn" +
+			".c5.x\x1f000K\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln" +
+			"\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd\u00a0¤\x1el" +
+			"atn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milyard\x1elatn.l10.x\x1f00 milyard\x1elatn.l11.o\x1f000 milyard\x1elatn.l11.x\x1f0" +
+			"00 milyard\x1elatn.l12.o\x1f0 trilyon\x1elatn.l12.x\x1f0 trilyon\x1elatn.l13.o\x1f00 trilyon\x1elatn.l13.x\x1f00 trilyon" +
+			"\x1elatn.l14.o\x1f000 trilyon\x1elatn.l14.x\x1f000 trilyon\x1elatn.l3.o\x1f0 min\x1elatn.l3.x\x1f0 min\x1elatn.l4.o\x1f00 min\x1e" +
+			"latn.l4.x\x1f00 min\x1elatn.l5.o\x1f000 min\x1elatn.l5.x\x1f000 min\x1elatn.l6.o\x1f0 milyon\x1elatn.l6.x\x1f0 milyon\x1elatn." +
+			"l7.o\x1f00 milyon\x1elatn.l7.x\x1f00 milyon\x1elatn.l8.o\x1f000 milyon\x1elatn.l8.x\x1f000 milyon\x1elatn.l9.o\x1f0 milyard" +
+			"\x1elatn.l9.x\x1f0 milyard\x1elatn.s10.o\x1f00\u00a0mlrd\x1elatn.s10.x\x1f00\u00a0mlrd\x1elatn.s11.o\x1f000\u00a0mlrd\x1elatn.s11.x\x1f000" +
+			"\u00a0mlrd\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13.o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0trln\x1elatn.s14.o\x1f" +
+			"000\u00a0trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0" +
+			"mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mlrd\x1elatn.s9.x\x1f0\u00a0mlrd\x1elatn.A\x1f#,##0.00\u00a0¤" +
+			"\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.x\x1f00\u00a0м" +
+			"лрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1el" +
+			"atn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.x\x1f0\u00a0мең\u00a0¤\x1elatn.c4.x\x1f00\u00a0мең\u00a0¤\x1elatn.c5.x\x1f000\u00a0ме" +
+			"ң\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.x\x1f0\u00a0м" +
+			"лрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.x\x1f000 миллиард\x1elat" +
+			"n.l12.x\x1f0 триллион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l" +
+			"3.x\x1f0 мең\x1elatn.l4.x\x1f00 мең\x1elatn.l5.x\x1f000 мең\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.x\x1f00 м" +
+			"иллион\x1elatn.l8.x\x1f000 миллион\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fһан\u00a0түгел" +
+			"\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн" +
+			"\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.x\x1f0\u00a0мең\x1elatn.s4.x\x1f00\u00a0мең\x1elatn.s5.x\x1f000\u00a0мең\x1elatn.s6" +
+			".x\x1f0\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.c10.o\x1f¤\u00a000K" +
+			"r\x1elatn.c10.x\x1f¤\u00a000Kr\x1elatn.c11.o\x1f¤\u00a0000Kr\x1elatn.c11.x\x1f¤\u00a0000Kr\x1elatn.c3.o\x1f¤\u00a00H\x1elatn.c3.x\x1f¤\u00a00" +
+			"H\x1elatn.c4.o\x1f¤\u00a000H\x1elatn.c4.x\x1f¤\u00a000H\x1elatn.c5.o\x1f¤\u00a0000H\x1elatn.c5.x\x1f¤\u00a0000H\x1elatn.c9.o\x1f¤\u00a00Kr\x1ela" +
+			"tn.c9.x\x1f¤\u00a00Kr\x1elatn.l10.o\x1f00Kr\x1elatn.l10.x\x1f00Kr\x1elatn.l11.o\x1f000Kr\x1elatn.l11.x\x1f000Kr\x1elatn.l3.o\x1f0H\x1el" +
+			"atn.l3.x\x1f0H\x1elatn.l4.o\x1f00H\x1elatn.l4.x\x1f00H\x1elatn.l5.o\x1f000H\x1elatn.l5.x\x1f000H\x1elatn.l9.o\x1f0Kr\x1elatn.l9.x\x1f0K" +
+			"r\x1elatn.s10.o\x1f00Kr\x1elatn.s10.x\x1f00Kr\x1elatn.s11.o\x1f000Kr\x1elatn.s11.x\x1f000Kr\x1elatn.s3.o\x1f0H\x1elatn.s3.x\x1f0H\x1ela" +
+			"tn.s4.o\x1f00H\x1elatn.s4.x\x1f00H\x1elatn.s5.o\x1f000H\x1elatn.s5.x\x1f000H\x1elatn.s9.o\x1f0Kr\x1elatn.s9.x\x1f0Kr\x1elatn.A\x1f#,##0" +
+			".00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#," +
+			"##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.m\x1f00\u00a0млрд\u00a0¤" +
+			"\x1elatn.c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.f\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.m" +
+			"\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.f\x1f0\u00a0трл" +
+			"н\u00a0¤\x1elatn.c12.m\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13" +
+			".f\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.m\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трл" +
+			"н\u00a0¤\x1elatn.c14.f\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.m\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1ela" +
+			"tn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.f\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0т" +
+			"ыс'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0тыс'.'\u00a0¤\x1el" +
+			"atn.c4.o\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.m\x1f00" +
+			"0\u00a0тыс'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0млн\u00a0" +
+			"¤\x1elatn.c6.m\x1f0\u00a0млн\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.f\x1f00\u00a0млн\u00a0" +
+			"¤\x1elatn.c7.m\x1f00\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.f\x1f000\u00a0мл" +
+			"н\u00a0¤\x1elatn.c8.m\x1f000\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.f\x1f0" +
+			"\u00a0млрд\u00a0¤\x1elatn.c9.m\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elat" +
+			"n.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 мільярды\x1elatn.l10.m\x1f00 мільярдаў\x1elatn.l10.o\x1f00 м" +
+			"ільярд\x1elatn.l10.x\x1f00 мільярда\x1elatn.l11.f\x1f000 мільярды\x1elatn.l11.m\x1f000 міл" +
+			"ьярдаў\x1elatn.l11.o\x1f000 мільярд\x1elatn.l11.x\x1f000 мільярда\x1elatn.l12.f\x1f0 трыл" +
+			"ьёны\x1elatn.l12.m\x1f0 трыльёнаў\x1elatn.l12.o\x1f0 трыльён\x1elatn.l12.x\x1f0 трыльён" +
+			"а\x1elatn.l13.f\x1f00 трыльёны\x1elatn.l13.m\x1f00 трыльёнаў\x1elatn.l13.o\x1f00 трыльён\x1e" +
+			"latn.l13.x\x1f00 трыльёна\x1elatn.l14.f\x1f000 трыльёны\x1elatn.l14.m\x1f000 трыльёнаў" +
+			"\x1elatn.l14.o\x1f000 трыльён\x1elatn.l14.x\x1f000 трыльёна\x1elatn.l3.f\x1f0 тысячы\x1elatn.l3." +
+			"m\x1f0 тысяч\x1elatn.l3.o\x1f0 тысяча\x1elatn.l3.x\x1f0 тысячы\x1elatn.l4.f\x1f00 тысячы\x1elatn." +
+			"l4.m\x1f00 тысяч\x1elatn.l4.o\x1f00 тысяча\x1elatn.l4.x\x1f00 тысячы\x1elatn.l5.f\x1f000 тысячы" +
+			"\x1elatn.l5.m\x1f000 тысяч\x1elatn.l5.o\x1f000 тысяча\x1elatn.l5.x\x1f000 тысячы\x1elatn.l6.f\x1f0 мі" +
+			"льёны\x1elatn.l6.m\x1f0 мільёнаў\x1elatn.l6.o\x1f0 мільён\x1elatn.l6.x\x1f0 мільёна\x1elatn" +
+			".l7.f\x1f00 мільёны\x1elatn.l7.m\x1f00 мільёнаў\x1elatn.l7.o\x1f00 мільён\x1elatn.l7.x\x1f00 мі" +
+			"льёна\x1elatn.l8.f\x1f000 мільёны\x1elatn.l8.m\x1f000 мільёнаў\x1elatn.l8.o\x1f000 мільён" +
+			"\x1elatn.l8.x\x1f000 мільёна\x1elatn.l9.f\x1f0 мільярды\x1elatn.l9.m\x1f0 мільярдаў\x1elatn.l" +
+			"9.o\x1f0 мільярд\x1elatn.l9.x\x1f0 мільярда\x1elatn.s10.f\x1f00\u00a0млрд\x1elatn.s10.m\x1f00\u00a0млрд" +
+			"\x1elatn.s10.o\x1f00\u00a0млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.f\x1f000\u00a0млрд\x1elatn.s11.m\x1f000\u00a0млр" +
+			"д\x1elatn.s11.o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.f\x1f0\u00a0трлн\x1elatn.s12.m\x1f0\u00a0трл" +
+			"н\x1elatn.s12.o\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.f\x1f00\u00a0трлн\x1elatn.s13.m\x1f00\u00a0трлн" +
+			"\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.f\x1f000\u00a0трлн\x1elatn.s14.m\x1f000\u00a0трл" +
+			"н\x1elatn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.f\x1f0\u00a0тыс'.'\x1elatn.s3.m\x1f0\u00a0тыс'" +
+			".'\x1elatn.s3.o\x1f0\u00a0тыс'.'\x1elatn.s3.x\x1f0\u00a0тыс'.'\x1elatn.s4.f\x1f00\u00a0тыс'.'\x1elatn.s4.m\x1f00\u00a0тыс'.'" +
+			"\x1elatn.s4.o\x1f00\u00a0тыс'.'\x1elatn.s4.x\x1f00\u00a0тыс'.'\x1elatn.s5.f\x1f000\u00a0тыс'.'\x1elatn.s5.m\x1f000\u00a0тыс'" +
+			".'\x1elatn.s5.o\x1f000\u00a0тыс'.'\x1elatn.s5.x\x1f000\u00a0тыс'.'\x1elatn.s6.f\x1f0\u00a0млн\x1elatn.s6.m\x1f0\u00a0млн\x1elat" +
+			"n.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.f\x1f00\u00a0млн\x1elatn.s7.m\x1f00\u00a0млн\x1elatn.s7.o\x1f00\u00a0мл" +
+			"н\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.f\x1f000\u00a0млн\x1elatn.s8.m\x1f000\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s" +
+			"8.x\x1f000\u00a0млн\x1elatn.s9.f\x1f0\u00a0млрд\x1elatn.s9.m\x1f0\u00a0млрд\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0м" +
+			"лрд\x1elatn.~\x1f≈\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##" +
+			"0.00¤\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0} – {1}\x1elatn.c10.o\x1f" +
+			"00\u00a0млрд'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c11.x\x1f00" +
+			"0\u00a0млрд'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0т" +
+			"рлн'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0тр" +
+			"лн'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0хил'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0хил'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0хил'.'\u00a0¤\x1ela" +
+			"tn.c4.x\x1f00\u00a0хил'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0хил'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0хил'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0" +
+			"млн'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн'.'\u00a0¤" +
+			"\x1elatn.c8.o\x1f000\u00a0млн'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.c9." +
+			"x\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 милиарда\x1elatn.l10.x\x1f00 милиар" +
+			"да\x1elatn.l11.o\x1f000 милиарда\x1elatn.l11.x\x1f000 милиарда\x1elatn.l12.o\x1f0 трилион" +
+			"\x1elatn.l12.x\x1f0 трилиона\x1elatn.l13.o\x1f00 трилиона\x1elatn.l13.x\x1f00 трилиона\x1elat" +
+			"n.l14.o\x1f000 трилиона\x1elatn.l14.x\x1f000 трилиона\x1elatn.l3.o\x1f0 хил'.'\x1elatn.l3.x\x1f0 х" +
+			"иляди\x1elatn.l4.o\x1f00 хиляди\x1elatn.l4.x\x1f00 хиляди\x1elatn.l5.o\x1f000 хиляди\x1elatn.l" +
+			"5.x\x1f000 хиляди\x1elatn.l6.o\x1f0 милион\x1elatn.l6.x\x1f0 милиона\x1elatn.l7.o\x1f00 милио" +
+			"на\x1elatn.l7.x\x1f00 милиона\x1elatn.l8.o\x1f000 милиона\x1elatn.l8.x\x1f000 милиона\x1elatn." +
+			"l9.o\x1f0 милиард\x1elatn.l9.x\x1f0 милиарда\x1elatn.s10.o\x1f00\u00a0млрд'.'\x1elatn.s10.x\x1f00\u00a0мл" +
+			"рд'.'\x1elatn.s11.o\x1f000\u00a0млрд'.'\x1elatn.s11.x\x1f000\u00a0млрд'.'\x1elatn.s12.o\x1f0\u00a0трлн'.'\x1elatn.s" +
+			"12.x\x1f0\u00a0трлн'.'\x1elatn.s13.o\x1f00\u00a0трлн'.'\x1elatn.s13.x\x1f00\u00a0трлн'.'\x1elatn.s14.o\x1f000\u00a0трл" +
+			"н'.'\x1elatn.s14.x\x1f000\u00a0трлн'.'\x1elatn.s3.o\x1f0\u00a0хил'.'\x1elatn.s3.x\x1f0\u00a0хил'.'\x1elatn.s4.o\x1f00\u00a0х" +
+			"ил'.'\x1elatn.s4.x\x1f00\u00a0хил'.'\x1elatn.s5.o\x1f000\u00a0хил'.'\x1elatn.s5.x\x1f000\u00a0хил'.'\x1elatn.s6.o\x1f0\u00a0м" +
+			"лн'.'\x1elatn.s6.x\x1f0\u00a0млн'.'\x1elatn.s7.o\x1f00\u00a0млн'.'\x1elatn.s7.x\x1f00\u00a0млн'.'\x1elatn.s8.o\x1f000\u00a0м" +
+			"лн'.'\x1elatn.s8.x\x1f000\u00a0млн'.'\x1elatn.s9.o\x1f0\u00a0млрд'.'\x1elatn.s9.x\x1f0\u00a0млрд'.'\x1edeva.+\x1f+\x1edeva" +
+			".-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##0.00\x1edeva.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}" +
+			"–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1ed" +
+			"eva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva." +
+			"c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1ede" +
+			"va.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14." +
+			"x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva." +
+			"l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f0" +
+			"0T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8." +
+			"x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##0.00\x1edev" +
+			"a.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1ede" +
+			"va.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1ede" +
+			"va.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x" +
+			"\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1e" +
+			"deva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x" +
+			"\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva" +
+			".s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f00" +
+			"0K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#," +
+			"##0.00\x1elatn.A\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.P\x1f%\u00a0#,#0;%\u00a0-#," +
+			"#0\x1elatn.Uo\x1f{1} {0}\x1elatn.Ux\x1f{1} {0}\x1elatn.Uz\x1f{1} {0}\x1elatn.c10.o\x1f¤\u00a0ŋkl\u00a000\x1elatn.c10.x\x1f¤\u00a0akl\u00a00" +
+			"0\x1elatn.c10.z\x1f¤\u00a0ŋkl\u00a000\x1elatn.c11.o\x1f¤\u00a0ŋkl\u00a0000\x1elatn.c11.x\x1f¤\u00a0akl\u00a0000\x1elatn.c11.z\x1f¤\u00a0ŋkl\u00a0" +
+			"000\x1elatn.c12.o\x1f¤\u00a0ŋkr\u00a00\x1elatn.c12.x\x1f¤\u00a0akr\u00a00\x1elatn.c12.z\x1f¤\u00a0ŋkr\u00a00\x1elatn.c13.o\x1f¤\u00a0ŋkr\u00a000\x1e" +
+			"latn.c13.x\x1f¤\u00a0akr\u00a000\x1elatn.c13.z\x1f¤\u00a0ŋkr\u00a000\x1elatn.c14.o\x1f¤\u00a0ŋkr\u00a0000\x1elatn.c14.x\x1f¤\u00a0akr\u00a0000\x1e" +
+			"latn.c14.z\x1f¤\u00a0ŋkr\u00a0000\x1elatn.c3.o\x1f¤\u00a0kt\u00a00\x1elatn.c3.x\x1f¤\u00a0ɩkt\u00a00\x1elatn.c3.z\x1f¤\u00a0kt\u00a00\x1elatn.c4.o" +
+			"\x1f¤\u00a0kt\u00a000\x1elatn.c4.x\x1f¤\u00a0ɩkt\u00a000\x1elatn.c4.z\x1f¤\u00a0kt\u00a000\x1elatn.c5.o\x1f¤\u00a0kt\u00a0000\x1elatn.c5.x\x1f¤\u00a0ɩkt" +
+			"\u00a0000\x1elatn.c5.z\x1f¤\u00a0kt\u00a0000\x1elatn.c6.o\x1f¤\u00a0gkl\u00a00\x1elatn.c6.x\x1f¤\u00a0bkl\u00a00\x1elatn.c6.z\x1f¤\u00a0gkl\u00a00\x1elatn." +
+			"c7.o\x1f¤\u00a0gkl\u00a000\x1elatn.c7.x\x1f¤\u00a0bkl\u00a000\x1elatn.c7.z\x1f¤\u00a0gkl\u00a000\x1elatn.c8.o\x1f¤\u00a0gkl\u00a0000\x1elatn.c8.x\x1f¤" +
+			"\u00a0bkl\u00a0000\x1elatn.c8.z\x1f¤\u00a0gkl\u00a0000\x1elatn.c9.o\x1f¤\u00a0ŋkl\u00a00\x1elatn.c9.x\x1f¤\u00a0akl\u00a00\x1elatn.c9.z\x1f¤\u00a0ŋkl\u00a0" +
+			"0\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1fŋkulo 00\x1elatn.l10.x\x1fakulo 00\x1elatn.l10.z\x1fbaa ŋkulo 00\x1elatn.l11" +
+			".o\x1fŋkulo 000\x1elatn.l11.x\x1fakulo 000\x1elatn.l11.z\x1fbaa ŋkulo 000\x1elatn.l12.o\x1fŋkrǝ 0\x1elatn.l12.x\x1fakrǝ" +
+			" 0\x1elatn.l12.z\x1fbaa ŋkrǝ 0\x1elatn.l13.o\x1fŋkrǝ 00\x1elatn.l13.x\x1fakrǝ 00\x1elatn.l13.z\x1fbaa ŋkrǝ 00\x1elat" +
+			"n.l14.o\x1fŋkrǝ 000\x1elatn.l14.x\x1fakrǝ 000\x1elatn.l14.z\x1fbaa ŋkrǝ 000\x1elatn.l3.o\x1fkotoku 0\x1elatn.l3.x\x1fɩ" +
+			"kotoku 0\x1elatn.l3.z\x1fbaa kotoku 0\x1elatn.l4.o\x1fkotoku 00\x1elatn.l4.x\x1fɩkotoku 00\x1elatn.l4.z\x1fbaa kotoku 0" +
+			"0\x1elatn.l5.o\x1fkotoku 000\x1elatn.l5.x\x1fɩkotoku 000\x1elatn.l5.z\x1fbaa kotoku 000\x1elatn.l6.o\x1fgakuli 0\x1elatn.l" +
+			"6.x\x1fbʊkuli 0\x1elatn.l6.z\x1fbaa gakuli 0\x1elatn.l7.o\x1fgakuli 00\x1elatn.l7.x\x1fbʊkuli 00\x1elatn.l7.z\x1fbaa gaku" +
+			"li 00\x1elatn.l8.o\x1fgakuli 000\x1elatn.l8.x\x1fbʊkuli 000\x1elatn.l8.z\x1fbaa gakuli 000\x1elatn.l9.o\x1fŋkulo 0\x1elat" +
+			"n.l9.x\x1fakulo 0\x1elatn.l9.z\x1fbaa ŋkulo 0\x1elatn.s10.o\x1fŋkl\u00a000\x1elatn.s10.x\x1fakl\u00a000\x1elatn.s10.z\x1fŋkl\u00a000" +
+			"\x1elatn.s11.o\x1fŋkl\u00a0000\x1elatn.s11.x\x1fakl\u00a0000\x1elatn.s11.z\x1fŋkl\u00a0000\x1elatn.s12.o\x1fŋkr\u00a00\x1elatn.s12.x\x1fakr" +
+			"\u00a00\x1elatn.s12.z\x1fŋkr\u00a00\x1elatn.s13.o\x1fŋkr\u00a000\x1elatn.s13.x\x1fakr\u00a000\x1elatn.s13.z\x1fŋkr\u00a000\x1elatn.s14.o\x1fŋk" +
+			"r\u00a0000\x1elatn.s14.x\x1fakr\u00a0000\x1elatn.s14.z\x1fŋkr\u00a0000\x1elatn.s3.o\x1fkt\u00a00\x1elatn.s3.x\x1fɩkt\u00a00\x1elatn.s3.z\x1fkt\u00a0" +
+			"0\x1elatn.s4.o\x1fkt\u00a000\x1elatn.s4.x\x1fɩkt\u00a000\x1elatn.s4.z\x1fkt\u00a000\x1elatn.s5.o\x1fkt\u00a0000\x1elatn.s5.x\x1fɩkt\u00a0000\x1elat" +
+			"n.s5.z\x1fkt\u00a0000\x1elatn.s6.o\x1fgkl\u00a00\x1elatn.s6.x\x1fbkl\u00a00\x1elatn.s6.z\x1fgkl\u00a00\x1elatn.s7.o\x1fgkl\u00a000\x1elatn.s7.x\x1fbk" +
+			"l\u00a000\x1elatn.s7.z\x1fgkl\u00a000\x1elatn.s8.o\x1fgkl\u00a0000\x1elatn.s8.x\x1fbkl\u00a0000\x1elatn.s8.z\x1fgkl\u00a0000\x1elatn.s9.o\x1fŋkl\u00a0" +
+			"0\x1elatn.s9.x\x1fakl\u00a00\x1elatn.s9.z\x1fŋkl\u00a00\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1ebeng.+\x1f+\x1eb" +
+			"eng.-\x1f-\x1ebeng.A\x1f#,##,##0.00¤;(#,##,##0.00¤)\x1ebeng.B\x1f\u00a0\x1ebeng.C\x1f#,##,##0.00¤\x1ebeng.D\x1f#,##,##0.###\x1e" +
+			"beng.P\x1f#,##0%\x1ebeng.R\x1f{0}–{1}\x1ebeng.S\x1f#E0\x1ebeng.Ux\x1f{0} {1}\x1ebeng.X\x1f~{0}\x1ebeng.b\x1f\u00a0\x1ebeng.c10.o\x1f0\u00a0শ" +
+			"ত\u00a0কো¤\x1ebeng.c10.x\x1f0শত\u00a0কো¤\x1ebeng.c11.o\x1f0কো¤\x1ebeng.c11.x\x1f0কো¤\x1ebeng.c12.o\x1f" +
+			"0\u00a0লা'.'কো'.'¤\x1ebeng.c12.x\x1f0\u00a0লা'.'কো'.'¤\x1ebeng.c13.o\x1f00\u00a0লা'.'কো'.'¤\x1eb" +
+			"eng.c13.x\x1f00\u00a0লা'.'কো'.'¤\x1ebeng.c14.o\x1f000\u00a0লা'.'কো'.'¤\x1ebeng.c14.x\x1f000\u00a0লা'." +
+			"'কো'.'¤\x1ebeng.c3.o\x1f0\u00a0হা¤\x1ebeng.c3.x\x1f0\u00a0হা¤\x1ebeng.c4.o\x1f00\u00a0হা¤\x1ebeng.c4.x\x1f00\u00a0হ" +
+			"া¤\x1ebeng.c5.o\x1f0\u00a0লা¤\x1ebeng.c5.x\x1f0\u00a0লা¤\x1ebeng.c6.o\x1f00\u00a0লা¤\x1ebeng.c6.x\x1f00\u00a0লা¤\x1e" +
+			"beng.c7.o\x1f0\u00a0কো¤\x1ebeng.c7.x\x1f0\u00a0কো¤\x1ebeng.c8.o\x1f00\u00a0কো¤\x1ebeng.c8.x\x1f00\u00a0কো¤\x1ebeng.c" +
+			"9.o\x1f000\u00a0কো¤\x1ebeng.c9.x\x1f000\u00a0কো¤\x1ebeng.d\x1f.\x1ebeng.e\x1fE\x1ebeng.g\x1f,\x1ebeng.i\x1f∞\x1ebeng.l10.o\x1f0000 " +
+			"কোটি\x1ebeng.l10.x\x1f0000 কোটি\x1ebeng.l11.o\x1f00000 কোটি\x1ebeng.l11.x\x1f00000 কোট" +
+			"ি\x1ebeng.l12.o\x1f0 লাখ কোটি\x1ebeng.l12.x\x1f0 লাখ কোটি\x1ebeng.l13.o\x1f00 লা" +
+			"খ কোটি\x1ebeng.l13.x\x1f00 লাখ কোটি\x1ebeng.l14.o\x1f000 লাখ কোটি\x1ebeng" +
+			".l14.x\x1f000 লাখ কোটি\x1ebeng.l3.o\x1f0 হাজার\x1ebeng.l3.x\x1f0 হাজার\x1ebeng.l" +
+			"4.o\x1f00 হাজার\x1ebeng.l4.x\x1f00 হাজার\x1ebeng.l5.o\x1f0 লাখ\x1ebeng.l5.x\x1f0 লাখ\x1e" +
+			"beng.l6.o\x1f00 লাখ\x1ebeng.l6.x\x1f00 লাখ\x1ebeng.l7.o\x1f0 কোটি\x1ebeng.l7.x\x1f0 কোটি\x1e" +
+			"beng.l8.o\x1f00 কোটি\x1ebeng.l8.x\x1f00 কোটি\x1ebeng.l9.o\x1f000 কোটি\x1ebeng.l9.x\x1f000 ক" +
+			"োটি\x1ebeng.m\x1f‰\x1ebeng.n\x1fNaN\x1ebeng.p\x1f%\x1ebeng.s10.o\x1f0\u00a0শত\u00a0কো\x1ebeng.s10.x\x1f0শত\u00a0কো" +
+			"\x1ebeng.s11.o\x1f0কো\x1ebeng.s11.x\x1f0কো\x1ebeng.s12.o\x1f0\u00a0লা'.'কো'.'\x1ebeng.s12.x\x1f0\u00a0লা'.'ক" +
+			"ো'.'\x1ebeng.s13.o\x1f00\u00a0লা'.'কো'.'\x1ebeng.s13.x\x1f00\u00a0লা'.'কো'.'\x1ebeng.s14.o\x1f000\u00a0লা" +
+			"'.'কো'.'\x1ebeng.s14.x\x1f000\u00a0লা'.'কো'.'\x1ebeng.s3.o\x1f0\u00a0হা\x1ebeng.s3.x\x1f0\u00a0হা\x1ebeng.s4." +
+			"o\x1f00\u00a0হা\x1ebeng.s4.x\x1f00\u00a0হা\x1ebeng.s5.o\x1f0\u00a0লা\x1ebeng.s5.x\x1f0\u00a0লা\x1ebeng.s6.o\x1f00\u00a0লা\x1eb" +
+			"eng.s6.x\x1f00\u00a0লা\x1ebeng.s7.o\x1f0\u00a0কো\x1ebeng.s7.x\x1f0\u00a0কো\x1ebeng.s8.o\x1f00\u00a0কো\x1ebeng.s8.x\x1f00\u00a0ক" +
 			"ো\x1ebeng.s9.o\x1f000\u00a0কো\x1ebeng.s9.x\x1f000\u00a0কো\x1ebeng.~\x1f~\x1elatn.A\x1f#,##,##0.00¤;(#,##,##0.00¤)\x1ela" +
 			"tn.C\x1f#,##,##0.00¤\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.c10.o\x1f0\u00a0শত\u00a0কো¤\x1elatn.c10." +
 			"x\x1f0শত\u00a0কো¤\x1elatn.c11.o\x1f0কো¤\x1elatn.c11.x\x1f0কো¤\x1elatn.c12.o\x1f0\u00a0লা'.'কো'.'¤" +
@@ -645,1082 +644,1080 @@ var NumberData = Map{
 			"ᏗᏅᏛ\x1elatn.l9.o\x1f0 ᎢᏯᏔᎳᏗᏅᏛ\x1elatn.l9.x\x1f0 ᎢᏯᏔᎳᏗᏅᏛ\x1elatn.s10.o\x1f00B\x1elat" +
 			"n.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1earab.+\x1f\u200f+\x1earab.-\x1f\u200f-\x1ear" +
 			"ab.A\x1f#,##0.00\u00a0¤\x1earab.B\x1f\u00a0\x1earab.C\x1f#,##0.00\u00a0¤\x1earab.D\x1f#,##0.###\x1earab.P\x1f#,##0\u00a0%\x1earab.R\x1f{0}–{1" +
-			"}\x1earab.S\x1f#E0\x1earab.X\x1f~{0}\x1earab.b\x1f\u00a0\x1earab.d\x1f٫\x1earab.e\x1fاس\x1earab.g\x1f٬\x1earab.i\x1f∞\x1earab.l10.x\x1f00G\x1eara" +
-			"b.l11.x\x1f000G\x1earab.l12.x\x1f0T\x1earab.l13.x\x1f00T\x1earab.l14.x\x1f000T\x1earab.l3.x\x1f0K\x1earab.l4.x\x1f00K\x1earab.l5.x\x1f0" +
-			"00K\x1earab.l6.x\x1f0M\x1earab.l7.x\x1f00M\x1earab.l8.x\x1f000M\x1earab.l9.x\x1f0G\x1earab.m\x1f؉\x1earab.n\x1fNaN\x1earab.p\x1f٪\x1earab.s" +
-			"10.x\x1f00G\x1earab.s11.x\x1f000G\x1earab.s12.x\x1f0T\x1earab.s13.x\x1f00T\x1earab.s14.x\x1f000T\x1earab.s3.x\x1f0K\x1earab.s4.x\x1f00K" +
-			"\x1earab.s5.x\x1f000K\x1earab.s6.x\x1f0M\x1earab.s7.x\x1f00M\x1earab.s8.x\x1f000M\x1earab.s9.x\x1f0G\x1earab.~\x1f~\x1elatn.+\x1f\u200e+\x1elatn" +
-			".Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00B\x1elatn.c11.x\x1f¤000B\x1e" +
-			"latn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤00" +
-			"0K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f00 billion\x1elatn.l11" +
-			".x\x1f000 billion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.x\x1f00 trillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.x\x1f0 " +
-			"thousand\x1elatn.l4.x\x1f00 thousand\x1elatn.l5.x\x1f000 thousand\x1elatn.l6.x\x1f0 million\x1elatn.l7.x\x1f00 million\x1el" +
-			"atn.l8.x\x1f000 million\x1elatn.l9.x\x1f0 billion\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f#,##" +
-			"0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.f\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.m\x1f00\u00a0mld'.'\u00a0¤" +
-			"\x1elatn.c10.o\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.m\x1f000\u00a0" +
-			"mld'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c" +
-			"12.m\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1el" +
-			"atn.c13.m\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil" +
-			"'.'\u00a0¤\x1elatn.c14.m\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3" +
-			".f\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c4" +
-			".f\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tis'.'\u00a0¤\x1elat" +
-			"n.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tis'.'" +
-			"\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.m\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'.'" +
-			"\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.m\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mi" +
-			"l'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.m\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.x" +
-			"\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.m\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9" +
-			".x\x1f0\u00a0mld'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 miliard\x1elatn.l10.m\x1f00 miliardy\x1elatn.l10.o\x1f00 m" +
-			"iliard\x1elatn.l10.x\x1f00 miliard\x1elatn.l11.f\x1f000 miliard\x1elatn.l11.m\x1f000 miliardy\x1elatn.l11.o\x1f000 milia" +
-			"rd\x1elatn.l11.x\x1f000 miliard\x1elatn.l12.f\x1f0 biliony\x1elatn.l12.m\x1f0 bilionu\x1elatn.l12.o\x1f0 bilion\x1elatn.l12" +
-			".x\x1f0 bilionů\x1elatn.l13.f\x1f00 bilionů\x1elatn.l13.m\x1f00 bilionu\x1elatn.l13.o\x1f00 bilionů\x1elatn.l13.x\x1f00 " +
-			"bilionů\x1elatn.l14.f\x1f000 bilionů\x1elatn.l14.m\x1f000 bilionu\x1elatn.l14.o\x1f000 bilionů\x1elatn.l14.x\x1f000 b" +
-			"ilionů\x1elatn.l3.f\x1f0 tisíce\x1elatn.l3.m\x1f0 tisíce\x1elatn.l3.o\x1f0 tisíc\x1elatn.l3.x\x1f0 tisíc\x1elatn.l4.f\x1f" +
-			"00 tisíc\x1elatn.l4.m\x1f00 tisíce\x1elatn.l4.o\x1f00 tisíc\x1elatn.l4.x\x1f00 tisíc\x1elatn.l5.f\x1f000 tisíc\x1elatn" +
-			".l5.m\x1f000 tisíce\x1elatn.l5.o\x1f000 tisíc\x1elatn.l5.x\x1f000 tisíc\x1elatn.l6.f\x1f0 miliony\x1elatn.l6.m\x1f0 mili" +
-			"onu\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 milionů\x1elatn.l7.f\x1f00 milionů\x1elatn.l7.m\x1f00 milionu\x1elatn.l7.o" +
-			"\x1f00 milionů\x1elatn.l7.x\x1f00 milionů\x1elatn.l8.f\x1f000 milionů\x1elatn.l8.m\x1f000 milionu\x1elatn.l8.o\x1f000 mi" +
-			"lionů\x1elatn.l8.x\x1f000 milionů\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.m\x1f0 miliardy\x1elatn.l9.o\x1f0 miliarda\x1elat" +
-			"n.l9.x\x1f0 miliard\x1elatn.s10.f\x1f00\u00a0mld'.'\x1elatn.s10.m\x1f00\u00a0mld'.'\x1elatn.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00" +
-			"\u00a0mld'.'\x1elatn.s11.f\x1f000\u00a0mld'.'\x1elatn.s11.m\x1f000\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0ml" +
-			"d'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.m\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s1" +
-			"3.f\x1f00\u00a0bil'.'\x1elatn.s13.m\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0" +
-			"bil'.'\x1elatn.s14.m\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1e" +
-			"latn.s3.m\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0tis'.'\x1elatn.s4.m\x1f00\u00a0t" +
-			"is'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn.s5.f\x1f000\u00a0tis'.'\x1elatn.s5.m\x1f000\u00a0tis'.'\x1elatn" +
-			".s5.o\x1f000\u00a0tis'.'\x1elatn.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.m\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil" +
-			"'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.m\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x" +
-			"\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.m\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil" +
-			"'.'\x1elatn.s9.f\x1f0\u00a0mld'.'\x1elatn.s9.m\x1f0\u00a0mld'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'\x1elatn.A\x1f#,##0" +
-			".00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0млрд" +
-			"\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.z\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c" +
-			"11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.z\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0тр" +
-			"лн\u00a0¤\x1elatn.c12.z\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn" +
-			".c13.z\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.z\x1f000" +
-			"\u00a0трлн\u00a0¤\x1elatn.c3.o\x1f0\u00a0пин\u00a0¤\x1elatn.c3.x\x1f0\u00a0пин\u00a0¤\x1elatn.c3.z\x1f0\u00a0пин\u00a0¤\x1elatn.c4.o" +
-			"\x1f00\u00a0пин\u00a0¤\x1elatn.c4.x\x1f00\u00a0пин\u00a0¤\x1elatn.c4.z\x1f00\u00a0пин\u00a0¤\x1elatn.c5.o\x1f000\u00a0пин\u00a0¤\x1elatn" +
-			".c5.x\x1f000\u00a0пин\u00a0¤\x1elatn.c5.z\x1f000\u00a0пин\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1e" +
-			"latn.c6.z\x1f0\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c7.z\x1f00\u00a0млн\u00a0" +
-			"¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c8.z\x1f000\u00a0млн\u00a0¤\x1elatn.c9.o\x1f0\u00a0м" +
-			"лрд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.z\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 " +
-			"млрд\x1elatn.l10.x\x1f00 млрд\x1elatn.l10.z\x1f00 млрд\x1elatn.l11.o\x1f000 млрд\x1elatn.l11.x\x1f000 м" +
-			"лрд\x1elatn.l11.z\x1f000 млрд\x1elatn.l12.o\x1f0 трлн\x1elatn.l12.x\x1f0 трлн\x1elatn.l12.z\x1f0 трлн" +
-			"\x1elatn.l13.o\x1f00 трлн\x1elatn.l13.x\x1f00 трлн\x1elatn.l13.z\x1f00 трлн\x1elatn.l14.o\x1f000 трлн\x1ela" +
-			"tn.l14.x\x1f000 трлн\x1elatn.l14.z\x1f000 трлн\x1elatn.l3.o\x1f0 пин\x1elatn.l3.x\x1f0 пин\x1elatn.l3.z\x1f0 " +
-			"пин\x1elatn.l4.o\x1f00 пин\x1elatn.l4.x\x1f00 пин\x1elatn.l4.z\x1f00 пин\x1elatn.l5.o\x1f000 пин\x1elatn.l5." +
-			"x\x1f000 пин\x1elatn.l5.z\x1f000 пин\x1elatn.l6.o\x1f0 млн\x1elatn.l6.x\x1f0 млн\x1elatn.l6.z\x1f0 млн\x1elatn." +
-			"l7.o\x1f00 млн\x1elatn.l7.x\x1f00 млн\x1elatn.l7.z\x1f00 млн\x1elatn.l8.o\x1f000 млн\x1elatn.l8.x\x1f000 млн" +
-			"\x1elatn.l8.z\x1f000 млн\x1elatn.l9.o\x1f0 млрд\x1elatn.l9.x\x1f0 млрд\x1elatn.l9.z\x1f0 млрд\x1elatn.n\x1fхи" +
-			"сеп\u00a0мар\x1elatn.s10.o\x1f00\u00a0млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s10.z\x1f00\u00a0млрд\x1elatn.s11." +
-			"o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s11.z\x1f000\u00a0млрд\x1elatn.s12.o\x1f0\u00a0трлн\x1elatn.s1" +
-			"2.x\x1f0\u00a0трлн\x1elatn.s12.z\x1f0\u00a0трлн\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s13." +
-			"z\x1f00\u00a0трлн\x1elatn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s14.z\x1f000\u00a0трлн\x1elatn.s" +
-			"3.o\x1f0\u00a0пин\x1elatn.s3.x\x1f0\u00a0пин\x1elatn.s3.z\x1f0\u00a0пин\x1elatn.s4.o\x1f00\u00a0пин\x1elatn.s4.x\x1f00\u00a0пин\x1e" +
-			"latn.s4.z\x1f00\u00a0пин\x1elatn.s5.o\x1f000\u00a0пин\x1elatn.s5.x\x1f000\u00a0пин\x1elatn.s5.z\x1f000\u00a0пин\x1elatn.s6.o" +
-			"\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s6.z\x1f0\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elat" +
-			"n.s7.z\x1f00\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s8.z\x1f000\u00a0млн\x1elatn.s9.o\x1f0\u00a0" +
-			"млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.s9.z\x1f0\u00a0млрд\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,#" +
-			"#0.00\x1elatn.c10.f\x1f¤00B\x1elatn.c10.m\x1f¤00B\x1elatn.c10.o\x1f¤00B\x1elatn.c10.t\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn." +
-			"c10.z\x1f¤00B\x1elatn.c11.f\x1f¤000B\x1elatn.c11.m\x1f¤000B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.t\x1f¤000B\x1elatn.c11.x\x1f¤" +
-			"000B\x1elatn.c11.z\x1f¤000B\x1elatn.c12.f\x1f¤0T\x1elatn.c12.m\x1f¤0T\x1elatn.c12.o\x1f¤0T\x1elatn.c12.t\x1f¤0T\x1elatn.c12." +
-			"x\x1f¤0T\x1elatn.c12.z\x1f¤0T\x1elatn.c13.f\x1f¤00T\x1elatn.c13.m\x1f¤00T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.t\x1f¤00T\x1elatn." +
-			"c13.x\x1f¤00T\x1elatn.c13.z\x1f¤00T\x1elatn.c14.f\x1f¤000T\x1elatn.c14.m\x1f¤000T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.t\x1f¤" +
-			"000T\x1elatn.c14.x\x1f¤000T\x1elatn.c14.z\x1f¤000T\x1elatn.c3.f\x1f¤0K\x1elatn.c3.m\x1f¤0K\x1elatn.c3.o\x1f¤0K\x1elatn.c3.t\x1f" +
-			"¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c3.z\x1f¤0K\x1elatn.c4.f\x1f¤00K\x1elatn.c4.m\x1f¤00K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.t\x1f¤0" +
-			"0K\x1elatn.c4.x\x1f¤00K\x1elatn.c4.z\x1f¤00K\x1elatn.c5.f\x1f¤000K\x1elatn.c5.m\x1f¤000K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.t\x1f" +
-			"¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c5.z\x1f¤000K\x1elatn.c6.f\x1f¤0M\x1elatn.c6.m\x1f¤0M\x1elatn.c6.o\x1f¤0M\x1elatn.c6.t\x1f" +
-			"¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c6.z\x1f¤0M\x1elatn.c7.f\x1f¤00M\x1elatn.c7.m\x1f¤00M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.t\x1f¤0" +
-			"0M\x1elatn.c7.x\x1f¤00M\x1elatn.c7.z\x1f¤00M\x1elatn.c8.f\x1f¤000M\x1elatn.c8.m\x1f¤000M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.t\x1f" +
-			"¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c8.z\x1f¤000M\x1elatn.c9.f\x1f¤0B\x1elatn.c9.m\x1f¤0B\x1elatn.c9.o\x1f¤0B\x1elatn.c9.t\x1f" +
-			"¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.c9.z\x1f¤0B\x1elatn.l10.f\x1f00B\x1elatn.l10.m\x1f00B\x1elatn.l10.o\x1f00 biliwn\x1elatn.l10.t" +
-			"\x1f00B\x1elatn.l10.x\x1f00 biliwn\x1elatn.l10.z\x1f00B\x1elatn.l11.f\x1f000B\x1elatn.l11.m\x1f000B\x1elatn.l11.o\x1f000 biliwn\x1el" +
-			"atn.l11.t\x1f000B\x1elatn.l11.x\x1f000 biliwn\x1elatn.l11.z\x1f000B\x1elatn.l12.f\x1f0T\x1elatn.l12.m\x1f0T\x1elatn.l12.o\x1f0 tr" +
-			"iliwn\x1elatn.l12.t\x1f0T\x1elatn.l12.x\x1f0 triliwn\x1elatn.l12.z\x1f0T\x1elatn.l13.f\x1f00T\x1elatn.l13.m\x1f00T\x1elatn.l13.o\x1f" +
-			"00 triliwn\x1elatn.l13.t\x1f00T\x1elatn.l13.x\x1f00 triliwn\x1elatn.l13.z\x1f00T\x1elatn.l14.f\x1f000T\x1elatn.l14.m\x1f000T\x1el" +
-			"atn.l14.o\x1f000T\x1elatn.l14.t\x1f000T\x1elatn.l14.x\x1f000 triliwn\x1elatn.l14.z\x1f000T\x1elatn.l3.f\x1f0K\x1elatn.l3.m\x1f0K\x1e" +
-			"latn.l3.o\x1f0 mil\x1elatn.l3.t\x1f0K\x1elatn.l3.x\x1f0 mil\x1elatn.l3.z\x1f0 mil\x1elatn.l4.f\x1f00K\x1elatn.l4.m\x1f00K\x1elatn.l4" +
-			".o\x1f00 mil\x1elatn.l4.t\x1f00K\x1elatn.l4.x\x1f00 mil\x1elatn.l4.z\x1f00K\x1elatn.l5.f\x1f000K\x1elatn.l5.m\x1f000K\x1elatn.l5.o\x1f0" +
-			"00 mil\x1elatn.l5.t\x1f000K\x1elatn.l5.x\x1f000 mil\x1elatn.l5.z\x1f000K\x1elatn.l6.f\x1f0M\x1elatn.l6.m\x1f0M\x1elatn.l6.o\x1f0 mil" +
-			"iwn\x1elatn.l6.t\x1f0M\x1elatn.l6.x\x1f0 miliwn\x1elatn.l6.z\x1f0M\x1elatn.l7.f\x1f00M\x1elatn.l7.m\x1f00M\x1elatn.l7.o\x1f00 miliwn" +
-			"\x1elatn.l7.t\x1f00M\x1elatn.l7.x\x1f00 miliwn\x1elatn.l7.z\x1f00M\x1elatn.l8.f\x1f000M\x1elatn.l8.m\x1f000M\x1elatn.l8.o\x1f000 mil" +
-			"iwn\x1elatn.l8.t\x1f000M\x1elatn.l8.x\x1f000 miliwn\x1elatn.l8.z\x1f000M\x1elatn.l9.f\x1f0B\x1elatn.l9.m\x1f0B\x1elatn.l9.o\x1f0 bil" +
-			"iwn\x1elatn.l9.t\x1f0B\x1elatn.l9.x\x1f0 biliwn\x1elatn.l9.z\x1f0B\x1elatn.s10.f\x1f00B\x1elatn.s10.m\x1f00B\x1elatn.s10.o\x1f00B\x1ela" +
-			"tn.s10.t\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s10.z\x1f00B\x1elatn.s11.f\x1f000B\x1elatn.s11.m\x1f000B\x1elatn.s11.o\x1f000B\x1elatn." +
-			"s11.t\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s11.z\x1f000B\x1elatn.s9.f\x1f0B\x1elatn.s9.m\x1f0B\x1elatn.s9.o\x1f0B\x1elatn.s9.t\x1f0B\x1el" +
-			"atn.s9.x\x1f0B\x1elatn.s9.z\x1f0B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}-{1}\x1e" +
-			"latn.c10.o\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mia'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0m" +
-			"ia'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bio'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bio'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bio'.'\u00a0¤\x1elatn.c13.x" +
-			"\x1f00\u00a0bio'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bio'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bio'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0t\u00a0¤\x1elatn.c3" +
-			".x\x1f0\u00a0t\u00a0¤\x1elatn.c4.o\x1f00\u00a0t\u00a0¤\x1elatn.c4.x\x1f00\u00a0t\u00a0¤\x1elatn.c5.o\x1f000\u00a0t\u00a0¤\x1elatn.c5.x\x1f000\u00a0t\u00a0¤\x1ela" +
-			"tn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mio'.'\u00a0¤\x1e" +
-			"latn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mia'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mia'.'\u00a0" +
-			"¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliarder\x1elatn.l10.x\x1f00 milliarder\x1elatn.l11.o\x1f000 milliarder" +
-			"\x1elatn.l11.x\x1f000 milliarder\x1elatn.l12.o\x1f0 billion\x1elatn.l12.x\x1f0 billioner\x1elatn.l13.o\x1f00 billioner\x1el" +
-			"atn.l13.x\x1f00 billioner\x1elatn.l14.o\x1f000 billioner\x1elatn.l14.x\x1f000 billioner\x1elatn.l3.o\x1f0 tusind\x1elatn" +
-			".l3.x\x1f0 tusind\x1elatn.l4.o\x1f00 tusind\x1elatn.l4.x\x1f00 tusind\x1elatn.l5.o\x1f000 tusind\x1elatn.l5.x\x1f000 tusind" +
-			"\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 millioner\x1elatn.l7.o\x1f00 millioner\x1elatn.l7.x\x1f00 millioner\x1elatn.l8" +
-			".o\x1f000 millioner\x1elatn.l8.x\x1f000 millioner\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliarder\x1elatn.s10.o\x1f" +
-			"00\u00a0mia'.'\x1elatn.s10.x\x1f00\u00a0mia'.'\x1elatn.s11.o\x1f000\u00a0mia'.'\x1elatn.s11.x\x1f000\u00a0mia'.'\x1elatn.s12.o\x1f0\u00a0bio" +
-			"'.'\x1elatn.s12.x\x1f0\u00a0bio'.'\x1elatn.s13.o\x1f00\u00a0bio'.'\x1elatn.s13.x\x1f00\u00a0bio'.'\x1elatn.s14.o\x1f000\u00a0bio'.'\x1elatn" +
-			".s14.x\x1f000\u00a0bio'.'\x1elatn.s3.o\x1f0\u00a0t\x1elatn.s3.x\x1f0\u00a0t\x1elatn.s4.o\x1f00\u00a0t\x1elatn.s4.x\x1f00\u00a0t\x1elatn.s5.o\x1f000\u00a0" +
-			"t\x1elatn.s5.x\x1f000\u00a0t\x1elatn.s6.o\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.o\x1f00\u00a0mio'.'\x1elatn.s7.x\x1f00\u00a0mi" +
-			"o'.'\x1elatn.s8.o\x1f000\u00a0mio'.'\x1elatn.s8.x\x1f000\u00a0mio'.'\x1elatn.s9.o\x1f0\u00a0mia'.'\x1elatn.s9.x\x1f0\u00a0mia'.'\x1elatn.A\x1f" +
-			"¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0" +
-			"%\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mrd'.'\u00a0¤\x1el" +
-			"atn.c11.x\x1f000\u00a0Mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bio'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bio'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bio'." +
-			"'\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bio'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c3.o\x1f" +
-			"0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0\x1elatn.c5.o\x1f0\x1elatn.c5.x\x1f0\x1elatn.c6.o\x1f0\u00a0Mio'.'\u00a0¤\x1elatn.c6.x\x1f" +
-			"0\u00a0Mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c" +
-			"8.x\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o" +
-			"\x1f00 Milliarden\x1elatn.l10.x\x1f00 Milliarden\x1elatn.l11.o\x1f000 Milliarden\x1elatn.l11.x\x1f000 Milliarden\x1elatn" +
-			".l12.o\x1f0 Billion\x1elatn.l12.x\x1f0 Billionen\x1elatn.l13.o\x1f00 Billionen\x1elatn.l13.x\x1f00 Billionen\x1elatn.l14" +
-			".o\x1f000 Billionen\x1elatn.l14.x\x1f000 Billionen\x1elatn.l3.o\x1f0 Tausend\x1elatn.l3.x\x1f0 Tausend\x1elatn.l4.o\x1f00 T" +
-			"ausend\x1elatn.l4.x\x1f00 Tausend\x1elatn.l5.o\x1f000 Tausend\x1elatn.l5.x\x1f000 Tausend\x1elatn.l6.o\x1f0 Million\x1elatn" +
-			".l6.x\x1f0 Millionen\x1elatn.l7.o\x1f00 Millionen\x1elatn.l7.x\x1f00 Millionen\x1elatn.l8.o\x1f000 Millionen\x1elatn.l8." +
-			"x\x1f000 Millionen\x1elatn.l9.o\x1f0 Milliarde\x1elatn.l9.x\x1f0 Milliarden\x1elatn.s10.o\x1f00\u00a0Mrd'.'\x1elatn.s10.x\x1f00" +
-			"\u00a0Mrd'.'\x1elatn.s11.o\x1f000\u00a0Mrd'.'\x1elatn.s11.x\x1f000\u00a0Mrd'.'\x1elatn.s12.o\x1f0\u00a0Bio'.'\x1elatn.s12.x\x1f0\u00a0Bio'.'" +
-			"\x1elatn.s13.o\x1f00\u00a0Bio'.'\x1elatn.s13.x\x1f00\u00a0Bio'.'\x1elatn.s14.o\x1f000\u00a0Bio'.'\x1elatn.s14.x\x1f000\u00a0Bio'.'\x1elatn." +
-			"s3.o\x1f0\x1elatn.s3.x\x1f0\x1elatn.s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s6.o\x1f0\u00a0Mio'.'\x1elatn.s6.x" +
-			"\x1f0\u00a0Mio'.'\x1elatn.s7.o\x1f00\u00a0Mio'.'\x1elatn.s7.x\x1f00\u00a0Mio'.'\x1elatn.s8.o\x1f000\u00a0Mio'.'\x1elatn.s8.x\x1f000\u00a0Mio'.'" +
-			"\x1elatn.s9.o\x1f0\u00a0Mrd'.'\x1elatn.s9.x\x1f0\u00a0Mrd'.'\x1elatn.~\x1f≈\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn" +
-			".g\x1f\u00a0\x1elatn.A\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.P\x1f#,##0%\x1elatn.c10.o\x1f¤" +
-			"\u00a000\u00a0Mrd'.'\x1elatn.c10.x\x1f¤\u00a000\u00a0Mrd'.'\x1elatn.c11.o\x1f¤\u00a0000\u00a0Mrd'.'\x1elatn.c11.x\x1f¤\u00a0000\u00a0Mrd'.'\x1elat" +
-			"n.c12.o\x1f¤\u00a00\u00a0Bio'.'\x1elatn.c12.x\x1f¤\u00a00\u00a0Bio'.'\x1elatn.c13.o\x1f¤\u00a000\u00a0Bio'.'\x1elatn.c13.x\x1f¤\u00a000\u00a0Bio'" +
-			".'\x1elatn.c14.o\x1f¤\u00a0000\u00a0Bio'.'\x1elatn.c14.x\x1f¤\u00a0000\u00a0Bio'.'\x1elatn.c6.o\x1f¤\u00a00\u00a0Mio'.'\x1elatn.c6.x\x1f¤\u00a00" +
-			"\u00a0Mio'.'\x1elatn.c7.o\x1f¤\u00a000\u00a0Mio'.'\x1elatn.c7.x\x1f¤\u00a000\u00a0Mio'.'\x1elatn.c8.o\x1f¤\u00a0000\u00a0Mio'.'\x1elatn.c8.x\x1f¤" +
-			"\u00a0000\u00a0Mio'.'\x1elatn.c9.o\x1f¤\u00a00\u00a0Mrd'.'\x1elatn.c9.x\x1f¤\u00a00\u00a0Mrd'.'\x1elatn.d\x1f.\x1elatn.g\x1f'\x1elatn.A\x1f¤\u00a0#,##0" +
-			".00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.P\x1f#,##0%\x1elatn.d\x1f.\x1elatn.g\x1f'\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn" +
-			".g\x1f\u00a0\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##0.00\x1edeva.D\x1f#,##0.###\x1edeva.P\x1f#," +
-			"##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c" +
-			"11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4." +
-			"x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a0" +
-			"0G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x" +
-			"\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l" +
-			"8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0" +
-			"T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7." +
-			"x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0" +
-			"¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mr" +
-			"d'.'\u00a0¤\x1elatn.c10.t\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11" +
-			".o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.t\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤" +
-			"\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.t\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'." +
-			"'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.t\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f0" +
-			"00\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.t\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1e" +
-			"latn.c3.f\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.t\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tys'.'\u00a0¤\x1e" +
-			"latn.c4.f\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.t\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tys'.'\u00a0" +
-			"¤\x1elatn.c5.f\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.t\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0" +
-			"tys'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.t\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0" +
-			"mio'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.t\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.x\x1f" +
-			"00\u00a0mio'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.t\x1f000\u00a0mio'.'\u00a0¤\x1elat" +
-			"n.c8.x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.t\x1f0\u00a0mrd'.'\u00a0¤\x1el" +
-			"atn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 miliardow\x1elatn.l10.o\x1f00 miliardow\x1elatn.l1" +
-			"0.t\x1f00 miliardow\x1elatn.l10.x\x1f00 miliardow\x1elatn.l11.f\x1f000 miliardow\x1elatn.l11.o\x1f000 miliardow\x1elatn." +
-			"l11.t\x1f000 miliardow\x1elatn.l11.x\x1f000 miliardow\x1elatn.l12.f\x1f0 biliony\x1elatn.l12.o\x1f0 bilion\x1elatn.l12.t" +
-			"\x1f0 biliona\x1elatn.l12.x\x1f0 bilionow\x1elatn.l13.f\x1f00 bilionow\x1elatn.l13.o\x1f00 bilionow\x1elatn.l13.t\x1f00 bil" +
-			"ionow\x1elatn.l13.x\x1f00 bilionow\x1elatn.l14.f\x1f000 bilionow\x1elatn.l14.o\x1f000 bilionow\x1elatn.l14.t\x1f000 bili" +
-			"onow\x1elatn.l14.x\x1f000 bilionow\x1elatn.l3.f\x1f0 tysac\x1elatn.l3.o\x1f0 tysac\x1elatn.l3.t\x1f0 tysac\x1elatn.l3.x\x1f0 t" +
-			"ysac\x1elatn.l4.f\x1f00 tysac\x1elatn.l4.o\x1f00 tysac\x1elatn.l4.t\x1f00 tysac\x1elatn.l4.x\x1f00 tysac\x1elatn.l5.f\x1f000 t" +
-			"ysac\x1elatn.l5.o\x1f000 tysac\x1elatn.l5.t\x1f000 tysac\x1elatn.l5.x\x1f000 tysac\x1elatn.l6.f\x1f0 miliony\x1elatn.l6.o\x1f0" +
-			" milion\x1elatn.l6.t\x1f0 miliona\x1elatn.l6.x\x1f0 milionow\x1elatn.l7.f\x1f00 milionow\x1elatn.l7.o\x1f00 milionow\x1elat" +
-			"n.l7.t\x1f00 milionow\x1elatn.l7.x\x1f00 milionow\x1elatn.l8.f\x1f000 milionow\x1elatn.l8.o\x1f000 milionow\x1elatn.l8.t" +
-			"\x1f000 milionow\x1elatn.l8.x\x1f000 milionow\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.o\x1f0 miliarda\x1elatn.l9.t\x1f0 milia" +
-			"rźe\x1elatn.l9.x\x1f0 miliardow\x1elatn.s10.f\x1f00\u00a0mrd'.'\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.t\x1f00\u00a0mrd'.'\x1elat" +
-			"n.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.f\x1f000\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s11.t\x1f000\u00a0mrd'.'\x1elatn.s11" +
-			".x\x1f000\u00a0mrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.t\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'" +
-			".'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.t\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn." +
-			"s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.t\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f" +
-			"\x1f0\u00a0tys'.'\x1elatn.s3.o\x1f0\u00a0tys'.'\x1elatn.s3.t\x1f0\u00a0tys'.'\x1elatn.s3.x\x1f0\u00a0tys'.'\x1elatn.s4.f\x1f00\u00a0tys'.'\x1elatn" +
-			".s4.o\x1f00\u00a0tys'.'\x1elatn.s4.t\x1f00\u00a0tys'.'\x1elatn.s4.x\x1f00\u00a0tys'.'\x1elatn.s5.f\x1f000\u00a0tys'.'\x1elatn.s5.o\x1f000\u00a0" +
-			"tys'.'\x1elatn.s5.t\x1f000\u00a0tys'.'\x1elatn.s5.x\x1f000\u00a0tys'.'\x1elatn.s6.f\x1f0\u00a0mio'.'\x1elatn.s6.o\x1f0\u00a0mio'.'\x1elatn." +
-			"s6.t\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.f\x1f00\u00a0mio'.'\x1elatn.s7.o\x1f00\u00a0mio'.'\x1elatn.s7.t\x1f00\u00a0mio'." +
-			"'\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.f\x1f000\u00a0mio'.'\x1elatn.s8.o\x1f000\u00a0mio'.'\x1elatn.s8.t\x1f000\u00a0mio'.'\x1elatn.s8" +
-			".x\x1f000\u00a0mio'.'\x1elatn.s9.f\x1f0\u00a0mrd'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.t\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1el" +
-			"atn.~\x1f≈\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##" +
-			"0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D" +
-			"\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0\u00a0%\x1elatn.l10.x\x1fདུང་ཕྱུར་བརྒྱ་ 0\x1elatn.l1" +
-			"1.x\x1fདུང་ཕྱུར་སྟོང 0\x1elatn.l12.x\x1fདུང་ཕྱུར་ཁྲི་" +
-			" 0\x1elatn.l13.x\x1fདུང་ཕྱུར་འབུམ་ 0\x1elatn.l14.x\x1fདུང་ཕྱུར་" +
-			"ས་ཡ་ 0\x1elatn.l3.x\x1fསྟོང་ཕྲག 0\x1elatn.l4.x\x1fཁྲི་ཕྲག 0\x1elatn.l5.x\x1f" +
-			"འབུམ་ཕྲག 0\x1elatn.l6.x\x1fས་ཡ་ 0\x1elatn.l7.x\x1fབྱེ་བ་ 0\x1elatn.l8.x\x1fད" +
-			"ུང་ཕྱུར་ 0\x1elatn.l9.x\x1fདུང་ཕྱུར་ 00\x1etibt.+\x1f+\x1etibt.-\x1f-\x1etibt.A\x1f¤#" +
-			",##,##0.00\x1etibt.B\x1f\u00a0\x1etibt.C\x1f¤#,##,##0.00\x1etibt.D\x1f#,##,##0.###\x1etibt.P\x1f#,##,##0\u00a0%\x1etibt.R\x1f{0}–{1" +
-			"}\x1etibt.S\x1f#E0\x1etibt.Ux\x1f{0} {1}\x1etibt.X\x1f~{0}\x1etibt.b\x1f\u00a0\x1etibt.c10.x\x1f¤\u00a000G\x1etibt.c11.x\x1f¤\u00a0000G\x1etibt.c" +
-			"12.x\x1f¤\u00a00T\x1etibt.c13.x\x1f¤\u00a000T\x1etibt.c14.x\x1f¤\u00a0000T\x1etibt.c3.x\x1f¤\u00a00K\x1etibt.c4.x\x1f¤\u00a000K\x1etibt.c5.x\x1f" +
-			"¤\u00a0000K\x1etibt.c6.x\x1f¤\u00a00M\x1etibt.c7.x\x1f¤\u00a000M\x1etibt.c8.x\x1f¤\u00a0000M\x1etibt.c9.x\x1f¤\u00a00G\x1etibt.d\x1f.\x1etibt.e\x1f" +
-			"E\x1etibt.g\x1f,\x1etibt.i\x1fགྲངས་མེད\x1etibt.l10.x\x1fདུང་ཕྱུར་བརྒྱ་" +
-			" 0\x1etibt.l11.x\x1fདུང་ཕྱུར་སྟོང 0\x1etibt.l12.x\x1fདུང་ཕྱུར་ཁ" +
-			"ྲི་ 0\x1etibt.l13.x\x1fདུང་ཕྱུར་འབུམ་ 0\x1etibt.l14.x\x1fདུང་ཕྱ" +
-			"ུར་ས་ཡ་ 0\x1etibt.l3.x\x1fསྟོང་ཕྲག 0\x1etibt.l4.x\x1fཁྲི་ཕྲག 0\x1et" +
-			"ibt.l5.x\x1fའབུམ་ཕྲག 0\x1etibt.l6.x\x1fས་ཡ་ 0\x1etibt.l7.x\x1fབྱེ་བ་ 0\x1etibt" +
-			".l8.x\x1fདུང་ཕྱུར་ 0\x1etibt.l9.x\x1fདུང་ཕྱུར་ 00\x1etibt.m\x1f‰\x1etibt.n\x1fཨ" +
-			"ང་མད\x1etibt.p\x1f%\x1etibt.s10.x\x1f00G\x1etibt.s11.x\x1f000G\x1etibt.s12.x\x1f0T\x1etibt.s13.x\x1f00T\x1etibt.s14.x\x1f000" +
-			"T\x1etibt.s3.x\x1f0K\x1etibt.s4.x\x1f00K\x1etibt.s5.x\x1f000K\x1etibt.s6.x\x1f0M\x1etibt.s7.x\x1f00M\x1etibt.s8.x\x1f000M\x1etibt.s9.x\x1f" +
-			"0G\x1etibt.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1eg\x1f3\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1e" +
-			"latn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x" +
-			"\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn" +
-			".c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elat" +
-			"n.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elat" +
-			"n.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1fbiliɔn 00\x1elatn.l10.x\x1fbiliɔn 00\x1elatn.l11" +
-			".o\x1fbiliɔn 000\x1elatn.l11.x\x1fbiliɔn 000\x1elatn.l12.o\x1f0 triliɔn\x1elatn.l12.x\x1f0 triliɔn\x1elatn.l13.o\x1ftri" +
-			"liɔn 00\x1elatn.l13.x\x1ftriliɔn 00\x1elatn.l14.o\x1ftriliɔn 000\x1elatn.l14.x\x1ftriliɔn 000\x1elatn.l3.o\x1fakpe 0" +
-			"\x1elatn.l3.x\x1fakpe 0\x1elatn.l4.o\x1fakpe 00\x1elatn.l4.x\x1fakpe 00\x1elatn.l5.o\x1fakpe 000\x1elatn.l5.x\x1fakpe 000\x1elatn" +
-			".l6.o\x1fmiliɔn 0\x1elatn.l6.x\x1fmiliɔn 0\x1elatn.l7.o\x1fmiliɔn 00\x1elatn.l7.x\x1fmiliɔn 00\x1elatn.l8.o\x1fmiliɔn " +
-			"000\x1elatn.l8.x\x1fmiliɔn 000\x1elatn.l9.o\x1fbiliɔn 0\x1elatn.l9.x\x1fbiliɔn 0\x1elatn.n\x1fmnn\x1elatn.s10.o\x1f00B\x1elatn" +
-			".s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f" +
-			"#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0δισ'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0δισ'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0δισ'.'" +
-			"\u00a0¤\x1elatn.c11.x\x1f000\u00a0δισ'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0τρισ'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0τρισ'.'\u00a0¤\x1el" +
-			"atn.c13.o\x1f00\u00a0τρισ'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0τρισ'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0τρισ'.'\u00a0¤\x1elat" +
-			"n.c14.x\x1f000\u00a0τρισ'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0χιλ'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0χιλ'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0" +
-			"χιλ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0χιλ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0χιλ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0χιλ'.'\u00a0" +
-			"¤\x1elatn.c6.o\x1f0\u00a0εκ'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0εκ'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0εκ'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0εκ" +
-			"'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0εκ'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0εκ'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0δισ'.'\u00a0¤\x1elatn.c9" +
-			".x\x1f0\u00a0δισ'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 δισεκατομμύρια\x1elatn.l" +
-			"10.x\x1f00 δισεκατομμύρια\x1elatn.l11.o\x1f000 δισεκατομμύρια\x1elatn.l11.x\x1f000 " +
-			"δισεκατομμύρια\x1elatn.l12.o\x1f0 τρισεκατομμύριο\x1elatn.l12.x\x1f0 τρισε" +
-			"κατομμύρια\x1elatn.l13.o\x1f00 τρισεκατομμύρια\x1elatn.l13.x\x1f00 τρισεκατ" +
-			"ομμύρια\x1elatn.l14.o\x1f000 τρισεκατομμύρια\x1elatn.l14.x\x1f000 τρισεκατομ" +
-			"μύρια\x1elatn.l3.o\x1f0 χιλιάδα\x1elatn.l3.x\x1f0 χιλιάδες\x1elatn.l4.o\x1f00 χιλιάδες" +
-			"\x1elatn.l4.x\x1f00 χιλιάδες\x1elatn.l5.o\x1f000 χιλιάδες\x1elatn.l5.x\x1f000 χιλιάδες\x1elat" +
-			"n.l6.o\x1f0 εκατομμύριο\x1elatn.l6.x\x1f0 εκατομμύρια\x1elatn.l7.o\x1f00 εκατομμύ" +
-			"ρια\x1elatn.l7.x\x1f00 εκατομμύρια\x1elatn.l8.o\x1f000 εκατομμύρια\x1elatn.l8.x\x1f000 ε" +
-			"κατομμύρια\x1elatn.l9.o\x1f0 δισεκατομμύριο\x1elatn.l9.x\x1f0 δισεκατομμύ" +
-			"ρια\x1elatn.s10.o\x1f00\u00a0δισ'.'\x1elatn.s10.x\x1f00\u00a0δισ'.'\x1elatn.s11.o\x1f000\u00a0δισ'.'\x1elatn.s11.x\x1f00" +
-			"0\u00a0δισ'.'\x1elatn.s12.o\x1f0\u00a0τρισ'.'\x1elatn.s12.x\x1f0\u00a0τρισ'.'\x1elatn.s13.o\x1f00\u00a0τρισ'.'\x1elatn" +
-			".s13.x\x1f00\u00a0τρισ'.'\x1elatn.s14.o\x1f000\u00a0τρισ'.'\x1elatn.s14.x\x1f000\u00a0τρισ'.'\x1elatn.s3.o\x1f0\u00a0χι" +
-			"λ'.'\x1elatn.s3.x\x1f0\u00a0χιλ'.'\x1elatn.s4.o\x1f00\u00a0χιλ'.'\x1elatn.s4.x\x1f00\u00a0χιλ'.'\x1elatn.s5.o\x1f000\u00a0χι" +
-			"λ'.'\x1elatn.s5.x\x1f000\u00a0χιλ'.'\x1elatn.s6.o\x1f0\u00a0εκ'.'\x1elatn.s6.x\x1f0\u00a0εκ'.'\x1elatn.s7.o\x1f00\u00a0εκ'.'\x1el" +
-			"atn.s7.x\x1f00\u00a0εκ'.'\x1elatn.s8.o\x1f000\u00a0εκ'.'\x1elatn.s8.x\x1f000\u00a0εκ'.'\x1elatn.s9.o\x1f0\u00a0δισ'.'\x1elatn.s" +
-			"9.x\x1f0\u00a0δισ'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤0" +
-			"0B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13" +
-			".o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn" +
-			".c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn" +
-			".c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn" +
-			".l10.o\x1f00 billion\x1elatn.l10.x\x1f00 billion\x1elatn.l11.o\x1f000 billion\x1elatn.l11.x\x1f000 billion\x1elatn.l12.o" +
-			"\x1f0 trillion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.o\x1f00 trillion\x1elatn.l13.x\x1f00 trillion\x1elatn.l14.o\x1f000 t" +
-			"rillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.o\x1f0 thousand\x1elatn.l3.x\x1f0 thousand\x1elatn.l4.o\x1f00 thousand\x1e" +
-			"latn.l4.x\x1f00 thousand\x1elatn.l5.o\x1f000 thousand\x1elatn.l5.x\x1f000 thousand\x1elatn.l6.o\x1f0 million\x1elatn.l6." +
-			"x\x1f0 million\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 million\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 millio" +
-			"n\x1elatn.l9.o\x1f0 billion\x1elatn.l9.x\x1f0 billion\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11" +
-			".x\x1f000B\x1elatn.s12.o\x1f0T\x1elatn.s13.o\x1f00T\x1elatn.s14.o\x1f000T\x1elatn.s3.o\x1f0K\x1elatn.s4.o\x1f00K\x1elatn.s5.o\x1f000K\x1el" +
-			"atn.s6.o\x1f0M\x1elatn.s7.o\x1f00M\x1elatn.s8.o\x1f000M\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#," +
-			"##0.00\u00a0¤\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.e\x1fe\x1ela" +
-			"tn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.g\x1f'\x1elatn.d\x1f" +
-			",\x1elatn.g\x1f\u00a0\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f" +
-			"\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.c10.o\x1f¤00bn\x1ela" +
-			"tn.c10.x\x1f¤00bn\x1elatn.c11.o\x1f¤000bn\x1elatn.c11.x\x1f¤000bn\x1elatn.c12.o\x1f¤0tn\x1elatn.c12.x\x1f¤0tn\x1elatn.c13" +
-			".o\x1f¤00tn\x1elatn.c13.x\x1f¤00tn\x1elatn.c14.o\x1f¤000tn\x1elatn.c14.x\x1f¤000tn\x1elatn.c3.o\x1f¤0k\x1elatn.c3.x\x1f¤0k\x1e" +
-			"latn.c4.o\x1f¤00k\x1elatn.c4.x\x1f¤00k\x1elatn.c5.o\x1f¤000k\x1elatn.c5.x\x1f¤000k\x1elatn.c6.o\x1f¤0m\x1elatn.c6.x\x1f¤0m\x1e" +
-			"latn.c7.o\x1f¤00m\x1elatn.c7.x\x1f¤00m\x1elatn.c8.o\x1f¤000m\x1elatn.c8.x\x1f¤000m\x1elatn.c9.o\x1f¤0bn\x1elatn.c9.x\x1f¤0b" +
-			"n\x1elatn.s10.o\x1f00bn\x1elatn.s10.x\x1f00bn\x1elatn.s11.o\x1f000bn\x1elatn.s11.x\x1f000bn\x1elatn.s12.o\x1f0tn\x1elatn.s12.x\x1f0t" +
-			"n\x1elatn.s13.o\x1f00tn\x1elatn.s13.x\x1f00tn\x1elatn.s14.o\x1f000tn\x1elatn.s14.x\x1f000tn\x1elatn.s3.o\x1f0k\x1elatn.s3.x\x1f0k\x1ela" +
-			"tn.s4.o\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.o\x1f000k\x1elatn.s5.x\x1f000k\x1elatn.s6.o\x1f0m\x1elatn.s6.x\x1f0m\x1elatn.s7.o\x1f00m\x1e" +
-			"latn.s7.x\x1f00m\x1elatn.s8.o\x1f000m\x1elatn.s8.x\x1f000m\x1elatn.s9.o\x1f0bn\x1elatn.s9.x\x1f0bn\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn" +
-			".d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn." +
-			"c10.o\x1f¤0KCr\x1elatn.c10.x\x1f¤0KCr\x1elatn.c11.o\x1f¤00KCr\x1elatn.c11.x\x1f¤00KCr\x1elatn.c12.o\x1f¤0LCr\x1elatn.c12." +
-			"x\x1f¤0LCr\x1elatn.c13.o\x1f¤00LCr\x1elatn.c13.x\x1f¤00LCr\x1elatn.c14.o\x1f¤000LCr\x1elatn.c14.x\x1f¤000LCr\x1elatn.c5.o" +
-			"\x1f¤0L\x1elatn.c5.x\x1f¤0L\x1elatn.c6.o\x1f¤00L\x1elatn.c6.x\x1f¤00L\x1elatn.c7.o\x1f¤0Cr\x1elatn.c7.x\x1f¤0Cr\x1elatn.c8.o\x1f¤" +
-			"00Cr\x1elatn.c8.x\x1f¤00Cr\x1elatn.c9.o\x1f¤000Cr\x1elatn.c9.x\x1f¤000Cr\x1elatn.l10.o\x1f0000\u202fcrore\x1elatn.l10.x\x1f000" +
-			"0\u202fcrore\x1elatn.l11.o\x1f00000\u202fcrore\x1elatn.l11.x\x1f00000\u202fcrore\x1elatn.l12.o\x1f0\u202flakh\u202fcrore\x1elatn.l12" +
-			".x\x1f0\u202flakh\u202fcrore\x1elatn.l13.o\x1f00\u202flakh\u202fcrore\x1elatn.l13.x\x1f00\u202flakh\u202fcrore\x1elatn.l14.o\x1f000\u202fl" +
-			"akh\u202fcrore\x1elatn.l14.x\x1f000\u202flakh\u202fcrore\x1elatn.l5.o\x1f0\u202flakh\x1elatn.l5.x\x1f0\u202flakh\x1elatn.l6.o\x1f00\u202fl" +
-			"akh\x1elatn.l6.x\x1f00\u202flakh\x1elatn.l7.o\x1f0\u202fcrore\x1elatn.l7.x\x1f0\u202fcrore\x1elatn.l8.o\x1f00\u202fcrore\x1elatn.l8.x\x1f0" +
-			"0\u202fcrore\x1elatn.l9.o\x1f000\u202fcrore\x1elatn.l9.x\x1f000\u202fcrore\x1elatn.s10.o\x1f0KCr\x1elatn.s10.x\x1f0KCr\x1elatn.s11.o" +
-			"\x1f00KCr\x1elatn.s11.x\x1f00KCr\x1elatn.s12.o\x1f0LCr\x1elatn.s12.x\x1f0LCr\x1elatn.s13.o\x1f00LCr\x1elatn.s13.x\x1f00LCr\x1elatn.s" +
-			"14.o\x1f000LCr\x1elatn.s14.x\x1f000LCr\x1elatn.s5.o\x1f0L\x1elatn.s5.x\x1f0L\x1elatn.s6.o\x1f00L\x1elatn.s6.x\x1f00L\x1elatn.s7.o\x1f0C" +
-			"r\x1elatn.s7.x\x1f0Cr\x1elatn.s8.o\x1f00Cr\x1elatn.s8.x\x1f00Cr\x1elatn.s9.o\x1f000Cr\x1elatn.s9.x\x1f000Cr\x1elatn.d\x1f,\x1elatn.g\x1f.\x1e" +
-			"latn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.A\x1f¤\u00a0#,##0.0" +
-			"0;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1ela" +
-			"tn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1e" +
-			"latn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f," +
-			"\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f.\x1elatn.A\x1f#,#" +
-			"#0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn." +
-			"A\x1f#,##0.00\u202f¤;(#,##0.00\u202f¤)\x1elatn.C\x1f#,##0.00\u202f¤\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00G\u202f¤\x1elatn.c10." +
-			"x\x1f00G\u202f¤\x1elatn.c11.o\x1f000G\u202f¤\x1elatn.c11.x\x1f000G\u202f¤\x1elatn.c12.o\x1f0T\u202f¤\x1elatn.c12.x\x1f0T\u202f¤\x1elatn." +
-			"c13.o\x1f00T\u202f¤\x1elatn.c13.x\x1f00T\u202f¤\x1elatn.c14.o\x1f000T\u202f¤\x1elatn.c14.x\x1f000T\u202f¤\x1elatn.c3.o\x1f0k\u202f¤\x1el" +
-			"atn.c3.x\x1f0k\u202f¤\x1elatn.c4.o\x1f00k\u202f¤\x1elatn.c4.x\x1f00k\u202f¤\x1elatn.c5.o\x1f000k\u202f¤\x1elatn.c5.x\x1f000k\u202f¤\x1el" +
-			"atn.c6.o\x1f0M\u202f¤\x1elatn.c6.x\x1f0M\u202f¤\x1elatn.c7.o\x1f00M\u202f¤\x1elatn.c7.x\x1f00M\u202f¤\x1elatn.c8.o\x1f000M\u202f¤\x1elat" +
-			"n.c8.x\x1f000M\u202f¤\x1elatn.c9.o\x1f0G\u202f¤\x1elatn.c9.x\x1f0G\u202f¤\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 miliardoj" +
-			"\x1elatn.l10.x\x1f00 miliardoj\x1elatn.l11.o\x1f000 miliardoj\x1elatn.l11.x\x1f000 miliardoj\x1elatn.l12.o\x1f0 duiliono" +
-			"\x1elatn.l12.x\x1f0 duilionoj\x1elatn.l13.o\x1f00 duilionoj\x1elatn.l13.x\x1f00 duilionoj\x1elatn.l14.o\x1f000 duilionoj" +
-			"\x1elatn.l14.x\x1f000 duilionoj\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn.l4.x\x1f00 mil\x1elatn" +
-			".l5.o\x1f000 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 miliono\x1elatn.l6.x\x1f0 miliono\x1elatn.l7.o\x1f00 milionoj\x1ela" +
-			"tn.l7.x\x1f00 milionoj\x1elatn.l8.o\x1f000 milionoj\x1elatn.l8.x\x1f000 milionoj\x1elatn.l9.o\x1f0 miliardo\x1elatn.l9.x" +
-			"\x1f0 miliardoj\x1elatn.s3.o\x1f0k\x1elatn.s3.x\x1f0k\x1elatn.s4.o\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.o\x1f000k\x1elatn.s5.x\x1f000k" +
-			"\x1elatn.~\x1f≈\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}-{1}\x1elatn.c10." +
-			"o\x1f00\u00a0mil\u00a0M\u00a0¤\x1elatn.c10.x\x1f00\u00a0mil\u00a0M\u00a0¤\x1elatn.c11.o\x1f000\u00a0mil\u00a0M\u00a0¤\x1elatn.c11.x\x1f000\u00a0mil\u00a0M\u00a0¤" +
-			"\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B\u00a0¤\x1elatn.c14.o\x1f00" +
-			"0\u00a0B\u00a0¤\x1elatn.c14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\u00a0mil\u00a0¤\x1elatn.c3.x\x1f0\u00a0mil\u00a0¤\x1elatn.c4.o\x1f00\u00a0mil\u00a0¤\x1el" +
-			"atn.c4.x\x1f00\u00a0mil\u00a0¤\x1elatn.c5.o\x1f000\u00a0mil\u00a0¤\x1elatn.c5.x\x1f000\u00a0mil\u00a0¤\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f" +
-			"0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn." +
-			"c9.o\x1f0000\u00a0M\u00a0¤\x1elatn.c9.x\x1f0000\u00a0M\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 mil millones\x1elatn.l10.x\x1f0" +
-			"0 mil millones\x1elatn.l11.o\x1f000 mil millones\x1elatn.l11.x\x1f000 mil millones\x1elatn.l12.o\x1f0 billón\x1elatn" +
-			".l12.x\x1f0 billones\x1elatn.l13.o\x1f00 billones\x1elatn.l13.x\x1f00 billones\x1elatn.l14.o\x1f000 billones\x1elatn.l14" +
-			".x\x1f000 billones\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.o\x1f000 " +
-			"mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millones\x1elatn.l7.o\x1f00 millones\x1elatn.l7.x\x1f0" +
-			"0 millones\x1elatn.l8.o\x1f000 millones\x1elatn.l8.x\x1f000 millones\x1elatn.l9.o\x1f0 mil millones\x1elatn.l9.x\x1f0 mi" +
-			"l millones\x1elatn.s10.o\x1f00\u00a0mil\u00a0M\x1elatn.s10.x\x1f00\u00a0mil\u00a0M\x1elatn.s11.o\x1f000\u00a0mil\u00a0M\x1elatn.s11.x\x1f000\u00a0mi" +
-			"l\u00a0M\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14.o\x1f000\u00a0B\x1elatn.s1" +
-			"4.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\u00a0mil\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.o\x1f00\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.o\x1f000\u00a0" +
-			"mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f0" +
-			"00\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0000\u00a0M\x1elatn.s9.x\x1f0000\u00a0M\x1eg\x1f1\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0." +
-			"00\x1elatn.P\x1f#,##0%\x1elatn.c10.o\x1f¤00\u00a0mil\u00a0M\x1elatn.c10.x\x1f¤00\u00a0mil\u00a0M\x1elatn.c11.o\x1f¤000\u00a0mil\u00a0M\x1elatn.c" +
-			"11.x\x1f¤000\u00a0mil\u00a0M\x1elatn.c12.o\x1f¤0\u00a0B\x1elatn.c12.x\x1f¤0\u00a0B\x1elatn.c13.o\x1f¤00\u00a0B\x1elatn.c13.x\x1f¤00\u00a0B\x1elat" +
-			"n.c14.o\x1f¤000\u00a0B\x1elatn.c14.x\x1f¤000\u00a0B\x1elatn.c3.o\x1f¤0\u00a0K\x1elatn.c3.x\x1f¤0\u00a0K\x1elatn.c4.o\x1f¤00\u00a0k\x1elatn.c4" +
-			".x\x1f¤00\u00a0k\x1elatn.c5.o\x1f¤000\u00a0k\x1elatn.c5.x\x1f¤000\u00a0k\x1elatn.c6.o\x1f¤0\u00a0M\x1elatn.c6.x\x1f¤0\u00a0M\x1elatn.c7.o\x1f¤0" +
-			"0\u00a0M\x1elatn.c7.x\x1f¤00\u00a0M\x1elatn.c8.o\x1f¤000\u00a0M\x1elatn.c8.x\x1f¤000\u00a0M\x1elatn.c9.o\x1f¤0000\u00a0M\x1elatn.c9.x\x1f¤000" +
-			"0\u00a0M\x1elatn.d\x1f.\x1elatn.g\x1f,\x1elatn.s3.o\x1f0\u00a0K\x1elatn.s3.x\x1f0\u00a0K\x1elatn.s4.o\x1f00\u00a0k\x1elatn.s4.x\x1f00\u00a0k\x1elatn.s5.o\x1f0" +
-			"00\u00a0k\x1elatn.s5.x\x1f000\u00a0k\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1e" +
-			"latn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1e" +
-			"latn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(" +
-			"¤#,##0.00)\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A" +
-			"\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00MRD\x1elatn.c10.x\x1f¤00MRD\x1elatn.c11.o\x1f¤000MRD\x1elatn.c11" +
-			".x\x1f¤000MRD\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn." +
-			"c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn." +
-			"c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0000M\x1elatn.c9.x\x1f¤0000M\x1elatn.c3.o\x1f¤0\u00a0k\x1elatn.c3.x\x1f¤0\u00a0k\x1elatn.s3.o\x1f0\u00a0k" +
-			"\x1elatn.s3.x\x1f0\u00a0k\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.c10.o\x1f¤\u00a000\u00a0MRD\x1elatn.c10.x\x1f¤\u00a000" +
-			"\u00a0MRD\x1elatn.c11.o\x1f¤\u00a0000\u00a0MRD\x1elatn.c11.x\x1f¤\u00a0000\u00a0MRD\x1elatn.c12.o\x1f¤\u00a00\u00a0B\x1elatn.c12.x\x1f¤\u00a00\u00a0B\x1ela" +
-			"tn.c13.o\x1f¤\u00a000\u00a0B\x1elatn.c13.x\x1f¤\u00a000\u00a0B\x1elatn.c14.o\x1f¤\u00a0000\u00a0B\x1elatn.c14.x\x1f¤\u00a0000\u00a0B\x1elatn.c3.o\x1f¤" +
-			"\u00a00\u00a0K\x1elatn.c3.x\x1f¤\u00a00\u00a0K\x1elatn.c4.o\x1f¤\u00a000\u00a0K\x1elatn.c4.x\x1f¤\u00a000\u00a0K\x1elatn.c5.o\x1f¤\u00a0000\u00a0K\x1elatn.c5.x" +
-			"\x1f¤\u00a0000\u00a0K\x1elatn.c6.o\x1f¤\u00a00\u00a0M\x1elatn.c6.x\x1f¤\u00a00\u00a0M\x1elatn.c7.o\x1f¤\u00a000\u00a0M\x1elatn.c7.x\x1f¤\u00a000\u00a0M\x1elatn.c" +
-			"8.o\x1f¤\u00a0000\u00a0M\x1elatn.c8.x\x1f¤\u00a0000\u00a0M\x1elatn.c9.o\x1f¤\u00a00000\u00a0M\x1elatn.c9.x\x1f¤\u00a00000\u00a0M\x1elatn.A\x1f¤\u00a0#,##0" +
-			".00;¤\u00a0-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.c4.o\x1f¤00\u00a0K\x1elatn.c4." +
-			"x\x1f¤00\u00a0K\x1elatn.c5.o\x1f¤000\u00a0K\x1elatn.c5.x\x1f¤000\u00a0K\x1elatn.s4.o\x1f00\u00a0K\x1elatn.s4.x\x1f00\u00a0K\x1elatn.s5.o\x1f000\u00a0K" +
-			"\x1elatn.s5.x\x1f000\u00a0K\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn." +
-			"A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1eg\x1f2\x1elatn.-\x1f−\x1elatn.A\x1f#" +
-			",##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}‒{1}\x1elatn.X\x1f~ {0}\x1elatn.c10.o\x1f00\u00a0mld\u00a0" +
-			"¤\x1elatn.c10.x\x1f00\u00a0mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln\u00a0¤" +
-			"\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln\u00a0¤" +
-			"\x1elatn.c14.x\x1f000\u00a0trln\u00a0¤\x1elatn.c3.o\x1f0\u00a0tuh\u00a0¤\x1elatn.c3.x\x1f0\u00a0tuh\u00a0¤\x1elatn.c4.o\x1f00\u00a0tuh\u00a0¤\x1elatn.c" +
-			"4.x\x1f00\u00a0tuh\u00a0¤\x1elatn.c5.o\x1f000\u00a0tuh\u00a0¤\x1elatn.c5.x\x1f000\u00a0tuh\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0" +
-			"mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤" +
-			"\x1elatn.c9.o\x1f0\u00a0mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljard" +
-			"it\x1elatn.l10.x\x1f00 miljardit\x1elatn.l11.o\x1f000 miljardit\x1elatn.l11.x\x1f000 miljardit\x1elatn.l12.o\x1f0 triljo" +
-			"n\x1elatn.l12.x\x1f0 triljonit\x1elatn.l13.o\x1f00 triljonit\x1elatn.l13.x\x1f00 triljonit\x1elatn.l14.o\x1f000 triljoni" +
-			"t\x1elatn.l14.x\x1f000 triljonit\x1elatn.l3.o\x1f0 tuhat\x1elatn.l3.x\x1f0 tuhat\x1elatn.l4.o\x1f00 tuhat\x1elatn.l4.x\x1f00 t" +
-			"uhat\x1elatn.l5.o\x1f000 tuhat\x1elatn.l5.x\x1f000 tuhat\x1elatn.l6.o\x1f0 miljon\x1elatn.l6.x\x1f0 miljonit\x1elatn.l7.o\x1f0" +
-			"0 miljonit\x1elatn.l7.x\x1f00 miljonit\x1elatn.l8.o\x1f000 miljonit\x1elatn.l8.x\x1f000 miljonit\x1elatn.l9.o\x1f0 milja" +
-			"rd\x1elatn.l9.x\x1f0 miljardit\x1elatn.s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn.s11.x\x1f00" +
-			"0\u00a0mld\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13.o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0trln\x1elatn.s14.o\x1f" +
-			"000\u00a0trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s3.o\x1f0\u00a0tuh\x1elatn.s3.x\x1f0\u00a0tuh\x1elatn.s4.o\x1f00\u00a0tuh\x1elatn.s4.x\x1f00\u00a0" +
-			"tuh\x1elatn.s5.o\x1f000\u00a0tuh\x1elatn.s5.x\x1f000\u00a0tuh\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1ela" +
-			"tn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x\x1f0\u00a0mld\x1elatn.~\x1f≈" +
-			"\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f%\u00a0#,##0\x1elatn.R\x1f{0}-{1" +
-			"}\x1elatn.c10.o\x1f00000\u00a0M\u00a0¤\x1elatn.c10.x\x1f00000\u00a0M\u00a0¤\x1elatn.c11.o\x1f000000\u00a0M\u00a0¤\x1elatn.c11.x\x1f000000\u00a0M\u00a0" +
-			"¤\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B\u00a0¤\x1elatn.c14.o\x1f" +
-			"000\u00a0B\u00a0¤\x1elatn.c14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0\x1elatn.c5.o\x1f0\x1elat" +
-			"n.c5.x\x1f0\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o" +
-			"\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0000\u00a0M\u00a0¤\x1elatn.c9.x\x1f0000\u00a0M\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1el" +
-			"atn.l10.o\x1f00000 milioi\x1elatn.l10.x\x1f00000 milioi\x1elatn.l11.o\x1f000000 milioi\x1elatn.l11.x\x1f000000 milioi" +
-			"\x1elatn.l12.o\x1f0 bilioi\x1elatn.l12.x\x1f0 bilioi\x1elatn.l13.o\x1f00 bilioi\x1elatn.l13.x\x1f00 bilioi\x1elatn.l14.o\x1f00" +
-			"0 bilioi\x1elatn.l14.x\x1f000 bilioi\x1elatn.l3.o\x1f0\x1elatn.l3.x\x1f0\x1elatn.l4.o\x1f0\x1elatn.l4.x\x1f0\x1elatn.l5.o\x1f0\x1elatn." +
-			"l5.x\x1f0\x1elatn.l6.o\x1f0 milioi\x1elatn.l6.x\x1f0 milioi\x1elatn.l7.o\x1f00 milioi\x1elatn.l7.x\x1f00 milioi\x1elatn.l8.o\x1f0" +
-			"00 milioi\x1elatn.l8.x\x1f000 milioi\x1elatn.l9.o\x1f0000 milioi\x1elatn.l9.x\x1f0000 milioi\x1elatn.s10.o\x1f00000\u00a0M\x1el" +
-			"atn.s10.x\x1f00000\u00a0M\x1elatn.s11.o\x1f000000\u00a0M\x1elatn.s11.x\x1f000000\u00a0M\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f0\u00a0B\x1elat" +
-			"n.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14.o\x1f000\u00a0B\x1elatn.s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0\x1elatn." +
-			"s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7" +
-			".x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0000\u00a0M\x1elatn.s9.x\x1f0000\u00a0M\x1elatn.A\x1f#,##0.00\u00a0" +
-			"¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1earabext.+\x1f\u200e+\x1earabext.-\x1f\u200e−\x1earabext.A\x1f#,##0.00\u00a0¤" +
-			";(#,##0.00\u00a0¤)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f\u200e¤#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabex" +
-			"t.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.o\x1f\u200e¤\u00a0" +
-			"00\u00a0میلیارد\x1earabext.c10.x\x1f\u200e¤\u00a000\u00a0میلیارد\x1earabext.c11.o\x1f\u200e¤\u00a0000\u00a0میلیار" +
-			"د\x1earabext.c11.x\x1f\u200e¤\u00a0000\u00a0میلیارد\x1earabext.c12.o\x1f\u200e¤\u00a00\u00a0تریلیون\x1earabext.c12.x" +
-			"\x1f\u200e¤\u00a00\u00a0تریلیون\x1earabext.c13.o\x1f\u200e¤\u00a000\u00a0تریلیون\x1earabext.c13.x\x1f\u200e¤\u00a000\u00a0تری" +
-			"لیون\x1earabext.c14.o\x1f\u200e¤\u00a0000\u00a0تریلیون\x1earabext.c14.x\x1f\u200e¤\u00a0000\u00a0تریلیون\x1earabe" +
-			"xt.c3.o\x1f0K¤\x1earabext.c3.x\x1f\u200e¤\u00a00\u00a0هزار\x1earabext.c4.o\x1f\u200e¤\u00a000\u00a0هزار\x1earabext.c4.x\x1f\u200e¤" +
-			"\u00a000\u00a0هزار\x1earabext.c5.o\x1f\u200e¤\u00a0000\u00a0هزار\x1earabext.c5.x\x1f\u200e¤\u00a0000\u00a0هزار\x1earabext.c6.o\x1f" +
-			"\u200e¤\u00a00\u00a0میلیون\x1earabext.c6.x\x1f\u200e¤\u00a00\u00a0میلیون\x1earabext.c7.o\x1f\u200e¤\u00a000\u00a0میلیون\x1e" +
-			"arabext.c7.x\x1f\u200e¤\u00a000\u00a0میلیون\x1earabext.c8.o\x1f\u200e¤\u00a0000\u00a0میلیون\x1earabext.c8.x\x1f\u200e¤\u00a00" +
-			"00\u00a0میلیون\x1earabext.c9.o\x1f\u200e¤\u00a00\u00a0میلیارد\x1earabext.c9.x\x1f\u200e¤\u00a00\u00a0میلیارد\x1eara" +
-			"bext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1earabext.l10.o\x1f00 میلیارد\x1earabext.l" +
-			"10.x\x1f00 میلیارد\x1earabext.l11.o\x1f000 میلیارد\x1earabext.l11.x\x1f000 میلیارد\x1earabext" +
-			".l12.o\x1f0 هزارمیلیارد\x1earabext.l12.x\x1f0 هزارمیلیارد\x1earabext.l13.o\x1f00 هزار" +
-			"میلیارد\x1earabext.l13.x\x1f00 هزارمیلیارد\x1earabext.l14.o\x1f000 هزارمیلیارد\x1e" +
-			"arabext.l14.x\x1f000 هزارمیلیارد\x1earabext.l3.o\x1f0 هزار\x1earabext.l3.x\x1f0 هزار\x1earabext" +
-			".l4.o\x1f00 هزار\x1earabext.l4.x\x1f00 هزار\x1earabext.l5.o\x1f000 هزار\x1earabext.l5.x\x1f000 هزار\x1ea" +
-			"rabext.l6.o\x1f0 میلیون\x1earabext.l6.x\x1f0 میلیون\x1earabext.l7.o\x1f00 میلیون\x1earabext.l7.x" +
-			"\x1f00 میلیون\x1earabext.l8.o\x1f000 میلیون\x1earabext.l8.x\x1f000 میلیون\x1earabext.l9.o\x1f0 می" +
-			"لیارد\x1earabext.l9.x\x1f0 میلیارد\x1earabext.m\x1f؉\x1earabext.n\x1fناعدد\x1earabext.p\x1f٪\x1earabext." +
-			"s10.o\x1f00\u00a0میلیارد\x1earabext.s10.x\x1f00\u00a0میلیارد\x1earabext.s11.o\x1f000\u00a0میلیارد\x1earab" +
-			"ext.s11.x\x1f000\u00a0میلیارد\x1earabext.s12.o\x1f0\u00a0تریلیون\x1earabext.s12.x\x1f0\u00a0تریلیون\x1ear" +
-			"abext.s13.o\x1f00\u00a0تریلیون\x1earabext.s13.x\x1f00\u00a0تریلیون\x1earabext.s14.o\x1f000\u00a0تریلیون" +
-			"\x1earabext.s14.x\x1f000\u00a0تریلیون\x1earabext.s3.o\x1f0\u00a0هزار\x1earabext.s3.x\x1f0\u00a0هزار\x1earabext.s4." +
-			"o\x1f00\u00a0هزار\x1earabext.s4.x\x1f00\u00a0هزار\x1earabext.s5.o\x1f000\u00a0هزار\x1earabext.s5.x\x1f000\u00a0هزار\x1ea" +
-			"rabext.s6.o\x1f0\u00a0میلیون\x1earabext.s6.x\x1f0\u00a0میلیون\x1earabext.s7.o\x1f00\u00a0میلیون\x1earabext.s" +
-			"7.x\x1f00\u00a0میلیون\x1earabext.s8.o\x1f000\u00a0میلیون\x1earabext.s8.x\x1f000\u00a0میلیون\x1earabext.s9.o\x1f" +
-			"0\u00a0میلیارد\x1earabext.s9.x\x1f0\u00a0میلیارد\x1earabext.~\x1f~\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e−\x1elatn.A\x1f#," +
-			"##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f\u200e¤\u00a0#,##0.00\x1elatn.c10.o\x1f\u200e¤\u00a000\u00a0میلیارد\x1elatn.c10.x" +
-			"\x1f\u200e¤\u00a000\u00a0میلیارد\x1elatn.c11.o\x1f\u200e¤\u00a0000\u00a0میلیارد\x1elatn.c11.x\x1f\u200e¤\u00a0000\u00a0میلی" +
-			"ارد\x1elatn.c12.o\x1f\u200e¤\u00a00\u00a0تریلیون\x1elatn.c12.x\x1f\u200e¤\u00a00\u00a0تریلیون\x1elatn.c13.o\x1f\u200e¤\u00a0" +
-			"00\u00a0تریلیون\x1elatn.c13.x\x1f\u200e¤\u00a000\u00a0تریلیون\x1elatn.c14.o\x1f\u200e¤\u00a0000\u00a0تریلیون\x1ela" +
-			"tn.c14.x\x1f\u200e¤\u00a0000\u00a0تریلیون\x1elatn.c3.o\x1f0K¤\x1elatn.c3.x\x1f\u200e¤\u00a00\u00a0هزار\x1elatn.c4.o\x1f\u200e¤\u00a0" +
-			"00\u00a0هزار\x1elatn.c4.x\x1f\u200e¤\u00a000\u00a0هزار\x1elatn.c5.o\x1f\u200e¤\u00a0000\u00a0هزار\x1elatn.c5.x\x1f\u200e¤\u00a0000\u00a0" +
-			"هزار\x1elatn.c6.o\x1f\u200e¤\u00a00\u00a0میلیون\x1elatn.c6.x\x1f\u200e¤\u00a00\u00a0میلیون\x1elatn.c7.o\x1f\u200e¤\u00a000\u00a0" +
-			"میلیون\x1elatn.c7.x\x1f\u200e¤\u00a000\u00a0میلیون\x1elatn.c8.o\x1f\u200e¤\u00a0000\u00a0میلیون\x1elatn.c8.x\x1f\u200e¤" +
-			"\u00a0000\u00a0میلیون\x1elatn.c9.o\x1f\u200e¤\u00a00\u00a0میلیارد\x1elatn.c9.x\x1f\u200e¤\u00a00\u00a0میلیارد\x1elatn.l" +
-			"10.o\x1f00 میلیارد\x1elatn.l10.x\x1f00 میلیارد\x1elatn.l11.o\x1f000 میلیارد\x1elatn.l11.x\x1f000" +
-			" میلیارد\x1elatn.l12.o\x1f0 هزارمیلیارد\x1elatn.l12.x\x1f0 هزارمیلیارد\x1elatn.l13" +
-			".o\x1f00 هزارمیلیارد\x1elatn.l13.x\x1f00 هزارمیلیارد\x1elatn.l14.o\x1f000 هزارمیلی" +
-			"ارد\x1elatn.l14.x\x1f000 هزارمیلیارد\x1elatn.l3.o\x1f0 هزار\x1elatn.l3.x\x1f0 هزار\x1elatn.l4.o" +
-			"\x1f00 هزار\x1elatn.l4.x\x1f00 هزار\x1elatn.l5.o\x1f000 هزار\x1elatn.l5.x\x1f000 هزار\x1elatn.l6.o\x1f0 می" +
-			"لیون\x1elatn.l6.x\x1f0 میلیون\x1elatn.l7.o\x1f00 میلیون\x1elatn.l7.x\x1f00 میلیون\x1elatn.l8.o\x1f" +
-			"000 میلیون\x1elatn.l8.x\x1f000 میلیون\x1elatn.l9.o\x1f0 میلیارد\x1elatn.l9.x\x1f0 میلیارد" +
-			"\x1elatn.n\x1fناعدد\x1elatn.s10.o\x1f00\u00a0میلیارد\x1elatn.s10.x\x1f00\u00a0میلیارد\x1elatn.s11.o\x1f000\u00a0م" +
-			"یلیارد\x1elatn.s11.x\x1f000\u00a0میلیارد\x1elatn.s12.o\x1f0\u00a0تریلیون\x1elatn.s12.x\x1f0\u00a0تریلی" +
-			"ون\x1elatn.s13.o\x1f00\u00a0تریلیون\x1elatn.s13.x\x1f00\u00a0تریلیون\x1elatn.s14.o\x1f000\u00a0تریلیون\x1e" +
-			"latn.s14.x\x1f000\u00a0تریلیون\x1elatn.s3.o\x1f0\u00a0هزار\x1elatn.s3.x\x1f0\u00a0هزار\x1elatn.s4.o\x1f00\u00a0هزار" +
-			"\x1elatn.s4.x\x1f00\u00a0هزار\x1elatn.s5.o\x1f000\u00a0هزار\x1elatn.s5.x\x1f000\u00a0هزار\x1elatn.s6.o\x1f0\u00a0میلیون" +
-			"\x1elatn.s6.x\x1f0\u00a0میلیون\x1elatn.s7.o\x1f00\u00a0میلیون\x1elatn.s7.x\x1f00\u00a0میلیون\x1elatn.s8.o\x1f000\u00a0" +
-			"میلیون\x1elatn.s8.x\x1f000\u00a0میلیون\x1elatn.s9.o\x1f0\u00a0میلیارد\x1elatn.s9.x\x1f0\u00a0میلیارد" +
-			"\x1earabext.A\x1f¤\u00a0#,##0.00;\u200e(¤\u00a0#,##0.00)\x1earabext.C\x1f¤\u00a0#,##0.00\x1elatn.A\x1f¤\u00a0#,##0.00;\u200e(¤\u00a0#,#" +
-			"#0.00)\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1eadlm.+\x1f+\x1ea" +
-			"dlm.-\x1f-\x1eadlm.A\x1f¤\u00a0#,##0.00\x1eadlm.B\x1f\u00a0\x1eadlm.C\x1f¤\u00a0#,##0.00\x1eadlm.D\x1f#,##0.###\x1eadlm.P\x1f#,##0%\x1eadlm.R\x1f" +
-			"{0}–{1}\x1eadlm.S\x1f#E0\x1eadlm.Uo\x1f{0} {1}\x1eadlm.Ux\x1f{0} {1}\x1eadlm.X\x1f~{0}\x1eadlm.b\x1f\u00a0\x1eadlm.c10.o\x1f¤\u00a000𞤁" +
-			"𞤶\x1eadlm.c10.x\x1f¤\u00a000𞤁𞤶\x1eadlm.c11.o\x1f¤\u00a0000𞤁𞤶\x1eadlm.c11.x\x1f¤\u00a0000𞤁𞤶\x1eadlm.c12.o\x1f" +
-			"¤\u00a00𞤚\x1eadlm.c12.x\x1f¤\u00a00𞤚\x1eadlm.c13.o\x1f¤\u00a000𞤚\x1eadlm.c13.x\x1f¤\u00a000𞤚\x1eadlm.c14.o\x1f¤\u00a0000𞤚" +
-			"\x1eadlm.c14.x\x1f¤\u00a0000𞤚\x1eadlm.c3.o\x1f¤\u00a00𞤓\x1eadlm.c3.x\x1f¤\u00a00𞤓\x1eadlm.c4.o\x1f¤\u00a000𞤓\x1eadlm.c4.x\x1f¤" +
-			"\u00a000𞤓\x1eadlm.c5.o\x1f¤\u00a0000𞤓\x1eadlm.c5.x\x1f¤\u00a0000𞤓\x1eadlm.c6.o\x1f¤\u00a00𞤁\x1eadlm.c6.x\x1f¤\u00a00𞤁\x1eadl" +
-			"m.c7.o\x1f¤\u00a000𞤁\x1eadlm.c7.x\x1f¤\u00a000𞤁\x1eadlm.c8.o\x1f¤\u00a0000𞤁\x1eadlm.c8.x\x1f¤\u00a0000𞤁\x1eadlm.c9.o\x1f¤\u00a0" +
-			"0𞤁𞤶\x1eadlm.c9.x\x1f¤\u00a00𞤁𞤶\x1eadlm.d\x1f.\x1eadlm.e\x1f𞤉\x1eadlm.g\x1f⹁\x1eadlm.i\x1f∞\x1eadlm.l10.o\x1f00 𞤣𞤵" +
-			"𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l10.x\x1f00 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l11.o\x1f000 𞤣𞤵𞤶" +
-			"𞤵𞤲𞤫𞤪𞤫\x1eadlm.l11.x\x1f000 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l12.o\x1f0 𞤼𞤵𞤶𞤵" +
-			"𞤲𞤫𞤪𞤫\x1eadlm.l12.x\x1f0 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l13.o\x1f00 𞤼𞤵𞤶𞤵𞤲" +
-			"𞤫𞤪𞤫\x1eadlm.l13.x\x1f00 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l14.o\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫" +
-			"𞤪𞤫\x1eadlm.l14.x\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l3.o\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫" +
-			"\x1eadlm.l3.x\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l4.o\x1f00 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l4.x\x1f00" +
-			" 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l5.o\x1f000 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l5.x\x1f000 𞤵𞤶𞤵" +
-			"𞤲𞤫𞤪𞤫\x1eadlm.l6.o\x1f0 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l6.x\x1f0 𞤣𞤵𞤦𞤵𞤲𞤫" +
-			"𞤪𞤫\x1eadlm.l7.o\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l7.x\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫𞤪" +
-			"𞤫\x1eadlm.l8.o\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l8.x\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫" +
-			"\x1eadlm.l9.o\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l9.x\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm." +
-			"m\x1f‰\x1eadlm.n\x1fNaN\x1eadlm.p\x1f%\x1eadlm.s10.o\x1f00𞤁𞤶\x1eadlm.s10.x\x1f00𞤁𞤶\x1eadlm.s11.o\x1f000𞤁𞤶\x1eadl" +
-			"m.s11.x\x1f000𞤁𞤶\x1eadlm.s12.o\x1f0𞤚\x1eadlm.s12.x\x1f0𞤚\x1eadlm.s13.o\x1f00𞤚\x1eadlm.s13.x\x1f00𞤚\x1eadlm.s" +
-			"14.o\x1f000𞤚\x1eadlm.s14.x\x1f000𞤚\x1eadlm.s3.o\x1f0𞤓\x1eadlm.s3.x\x1f0𞤓\x1eadlm.s4.o\x1f00𞤓\x1eadlm.s4.x\x1f00𞤓" +
-			"\x1eadlm.s5.o\x1f000𞤓\x1eadlm.s5.x\x1f000𞤓\x1eadlm.s6.o\x1f0𞤁\x1eadlm.s6.x\x1f0𞤁\x1eadlm.s7.o\x1f00𞤁\x1eadlm.s7.x\x1f" +
-			"00𞤁\x1eadlm.s8.o\x1f000𞤁\x1eadlm.s8.x\x1f000𞤁\x1eadlm.s9.o\x1f0𞤁𞤶\x1eadlm.s9.x\x1f0𞤁𞤶\x1eadlm.~\x1f~\x1elatn" +
-			".Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤\u00a000𞤁𞤶\x1elatn.c10.x\x1f¤\u00a000𞤁𞤶\x1elatn.c11.o\x1f¤\u00a0000𞤁𞤶\x1elatn." +
-			"c11.x\x1f¤\u00a0000𞤁𞤶\x1elatn.c12.o\x1f¤\u00a00𞤚\x1elatn.c12.x\x1f¤\u00a00𞤚\x1elatn.c13.o\x1f¤\u00a000𞤚\x1elatn.c13.x" +
-			"\x1f¤\u00a000𞤚\x1elatn.c14.o\x1f¤\u00a0000𞤚\x1elatn.c14.x\x1f¤\u00a0000𞤚\x1elatn.c3.o\x1f¤\u00a00𞤓\x1elatn.c3.x\x1f¤\u00a00𞤓" +
-			"\x1elatn.c4.o\x1f¤\u00a000𞤓\x1elatn.c4.x\x1f¤\u00a000𞤓\x1elatn.c5.o\x1f¤\u00a0000𞤓\x1elatn.c5.x\x1f¤\u00a0000𞤓\x1elatn.c6.o" +
-			"\x1f¤\u00a00𞤁\x1elatn.c6.x\x1f¤\u00a00𞤁\x1elatn.c7.o\x1f¤\u00a000𞤁\x1elatn.c7.x\x1f¤\u00a000𞤁\x1elatn.c8.o\x1f¤\u00a0000𞤁\x1el" +
-			"atn.c8.x\x1f¤\u00a0000𞤁\x1elatn.c9.o\x1f¤\u00a00𞤁𞤶\x1elatn.c9.x\x1f¤\u00a00𞤁𞤶\x1elatn.g\x1f⹁\x1elatn.l10.o\x1f00 𞤣" +
-			"𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l10.x\x1f00 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l11.o\x1f000 𞤣𞤵" +
-			"𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l11.x\x1f000 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l12.o\x1f0 𞤼𞤵𞤶" +
-			"𞤵𞤲𞤫𞤪𞤫\x1elatn.l12.x\x1f0 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l13.o\x1f00 𞤼𞤵𞤶𞤵" +
-			"𞤲𞤫𞤪𞤫\x1elatn.l13.x\x1f00 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l14.o\x1f000 𞤼𞤵𞤶𞤵𞤲" +
-			"𞤫𞤪𞤫\x1elatn.l14.x\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l3.o\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪" +
-			"𞤫\x1elatn.l3.x\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l4.o\x1f00 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l4." +
-			"x\x1f00 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l5.o\x1f000 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l5.x\x1f000 𞤵𞤶" +
-			"𞤵𞤲𞤫𞤪𞤫\x1elatn.l6.o\x1f0 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1elatn.l6.x\x1f0 𞤣𞤵𞤦𞤵𞤲" +
-			"𞤫𞤪𞤫\x1elatn.l7.o\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1elatn.l7.x\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫" +
-			"𞤪𞤫\x1elatn.l8.o\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1elatn.l8.x\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪" +
-			"𞤫\x1elatn.l9.o\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l9.x\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1el" +
-			"atn.s10.o\x1f00𞤁𞤶\x1elatn.s10.x\x1f00𞤁𞤶\x1elatn.s11.o\x1f000𞤁𞤶\x1elatn.s11.x\x1f000𞤁𞤶\x1elatn.s1" +
-			"2.o\x1f0𞤚\x1elatn.s12.x\x1f0𞤚\x1elatn.s13.o\x1f00𞤚\x1elatn.s13.x\x1f00𞤚\x1elatn.s14.o\x1f000𞤚\x1elatn.s14.x\x1f000" +
-			"𞤚\x1elatn.s3.o\x1f0𞤓\x1elatn.s3.x\x1f0𞤓\x1elatn.s4.o\x1f00𞤓\x1elatn.s4.x\x1f00𞤓\x1elatn.s5.o\x1f000𞤓\x1elatn.s5" +
-			".x\x1f000𞤓\x1elatn.s6.o\x1f0𞤁\x1elatn.s6.x\x1f0𞤁\x1elatn.s7.o\x1f00𞤁\x1elatn.s7.x\x1f00𞤁\x1elatn.s8.o\x1f000𞤁\x1el" +
-			"atn.s8.x\x1f000𞤁\x1elatn.s9.o\x1f0𞤁𞤶\x1elatn.s9.x\x1f0𞤁𞤶\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#" +
-			",##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.o\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0" +
-			"mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bilj'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bilj'.'\u00a0¤\x1elatn.c" +
-			"13.o\x1f00\u00a0bilj'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bilj'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bilj'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bilj" +
-			"'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0t'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0t'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0t'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0t'.'\u00a0¤" +
-			"\x1elatn.c5.o\x1f000\u00a0t'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0t'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0milj'.'\u00a0" +
-			"¤\x1elatn.c7.o\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0" +
-			"milj'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 mil" +
-			"jardia\x1elatn.l10.x\x1f00 miljardia\x1elatn.l11.o\x1f000 miljardia\x1elatn.l11.x\x1f000 miljardia\x1elatn.l12.o\x1f0 bi" +
-			"ljoona\x1elatn.l12.x\x1f0 biljoonaa\x1elatn.l13.o\x1f00 biljoonaa\x1elatn.l13.x\x1f00 biljoonaa\x1elatn.l14.o\x1f000 bil" +
-			"joonaa\x1elatn.l14.x\x1f000 biljoonaa\x1elatn.l3.o\x1f0 tuhat\x1elatn.l3.x\x1f0 tuhatta\x1elatn.l4.o\x1f00 tuhatta\x1elatn." +
-			"l4.x\x1f00 tuhatta\x1elatn.l5.o\x1f000 tuhatta\x1elatn.l5.x\x1f000 tuhatta\x1elatn.l6.o\x1f0 miljoona\x1elatn.l6.x\x1f0 mil" +
-			"joonaa\x1elatn.l7.o\x1f00 miljoonaa\x1elatn.l7.x\x1f00 miljoonaa\x1elatn.l8.o\x1f000 miljoonaa\x1elatn.l8.x\x1f000 miljo" +
-			"onaa\x1elatn.l9.o\x1f0 miljardi\x1elatn.l9.x\x1f0 miljardia\x1elatn.n\x1fepäluku\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.x" +
-			"\x1f00\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.o\x1f0\u00a0bilj'.'\x1elatn.s12.x\x1f0\u00a0bi" +
-			"lj'.'\x1elatn.s13.o\x1f00\u00a0bilj'.'\x1elatn.s13.x\x1f00\u00a0bilj'.'\x1elatn.s14.o\x1f000\u00a0bilj'.'\x1elatn.s14.x\x1f000\u00a0bilj" +
-			"'.'\x1elatn.s3.o\x1f0\u00a0t'.'\x1elatn.s3.x\x1f0\u00a0t'.'\x1elatn.s4.o\x1f00\u00a0t'.'\x1elatn.s4.x\x1f00\u00a0t'.'\x1elatn.s5.o\x1f000\u00a0t'." +
-			"'\x1elatn.s5.x\x1f000\u00a0t'.'\x1elatn.s6.o\x1f0\u00a0milj'.'\x1elatn.s6.x\x1f0\u00a0milj'.'\x1elatn.s7.o\x1f00\u00a0milj'.'\x1elatn.s7.x\x1f" +
-			"00\u00a0milj'.'\x1elatn.s8.o\x1f000\u00a0milj'.'\x1elatn.s8.x\x1f000\u00a0milj'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'." +
-			"'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤" +
-			"00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c1" +
-			"3.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn" +
-			".c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn" +
-			".c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 bilyon" +
-			"\x1elatn.l10.x\x1f00 na bilyon\x1elatn.l11.o\x1f000 bilyon\x1elatn.l11.x\x1f000 na bilyon\x1elatn.l12.o\x1f0 trilyon\x1elat" +
-			"n.l12.x\x1f0 na trilyon\x1elatn.l13.o\x1f00 trilyon\x1elatn.l13.x\x1f00 na trilyon\x1elatn.l14.o\x1f000 trilyon\x1elatn." +
-			"l14.x\x1f000 na trilyon\x1elatn.l3.o\x1f0 libo\x1elatn.l3.x\x1f0 na libo\x1elatn.l4.o\x1f00 libo\x1elatn.l4.x\x1f00 na libo" +
-			"\x1elatn.l5.o\x1f000 libo\x1elatn.l5.x\x1f000 na libo\x1elatn.l6.o\x1f0 milyon\x1elatn.l6.x\x1f0 na milyon\x1elatn.l7.o\x1f00 " +
-			"milyon\x1elatn.l7.x\x1f00 na milyon\x1elatn.l8.o\x1f000 milyon\x1elatn.l8.x\x1f000 na milyon\x1elatn.l9.o\x1f0 bilyon\x1ela" +
-			"tn.l9.x\x1f0 na bilyon\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1el" +
-			"atn.s9.x\x1f0B\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1ela" +
-			"tn.c10.o\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mia'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mia" +
-			"'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bió'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bió'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bió'.'\u00a0¤\x1elatn.c13." +
-			"x\x1f00\u00a0bió'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bió'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bió'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tús'.'\u00a0" +
-			"¤\x1elatn.c3.x\x1f0\u00a0tús'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tús'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tús'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0t" +
-			"ús'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tús'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mió'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mió'.'\u00a0¤\x1elatn.c7." +
-			"o\x1f00\u00a0mió'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mió'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mió'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mió'.'\u00a0¤" +
-			"\x1elatn.c9.o\x1f0\u00a0mia'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mia'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliardir\x1elatn" +
-			".l10.x\x1f00 milliardir\x1elatn.l11.o\x1f000 milliardir\x1elatn.l11.x\x1f000 milliardir\x1elatn.l12.o\x1f0 billión\x1el" +
-			"atn.l12.x\x1f0 billiónir\x1elatn.l13.o\x1f00 billiónir\x1elatn.l13.x\x1f00 billiónir\x1elatn.l14.o\x1f000 billión" +
-			"ir\x1elatn.l14.x\x1f000 billiónir\x1elatn.l3.o\x1f0 túsund\x1elatn.l3.x\x1f0 túsund\x1elatn.l4.o\x1f00 túsund\x1elatn.l" +
-			"4.x\x1f00 túsund\x1elatn.l5.o\x1f000 túsund\x1elatn.l5.x\x1f000 túsund\x1elatn.l6.o\x1f0 millión\x1elatn.l6.x\x1f0 mill" +
-			"iónir\x1elatn.l7.o\x1f00 milliónir\x1elatn.l7.x\x1f00 milliónir\x1elatn.l8.o\x1f000 milliónir\x1elatn.l8.x\x1f000 mi" +
-			"lliónir\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliardir\x1elatn.s10.o\x1f00\u00a0mia'.'\x1elatn.s10.x\x1f00\u00a0mia'.'" +
-			"\x1elatn.s11.o\x1f000\u00a0mia\x1elatn.s11.x\x1f000\u00a0mia\x1elatn.s12.o\x1f0\u00a0bió'.'\x1elatn.s12.x\x1f0\u00a0bió'.'\x1elatn.s13.o\x1f" +
-			"00\u00a0bió'.'\x1elatn.s13.x\x1f00\u00a0bió'.'\x1elatn.s14.o\x1f000\u00a0bió'.'\x1elatn.s14.x\x1f000\u00a0bió'.'\x1elatn.s3.o\x1f0\u00a0" +
-			"tús'.'\x1elatn.s3.x\x1f0\u00a0tús'.'\x1elatn.s4.o\x1f00\u00a0tús'.'\x1elatn.s4.x\x1f00\u00a0tús'.'\x1elatn.s5.o\x1f000\u00a0tús'.'\x1e" +
-			"latn.s5.x\x1f000\u00a0tús'.'\x1elatn.s6.o\x1f0\u00a0mió'.'\x1elatn.s6.x\x1f0\u00a0mió'.'\x1elatn.s7.o\x1f00\u00a0mió'.'\x1elatn.s7.x" +
-			"\x1f00\u00a0mió'.'\x1elatn.s8.o\x1f000\u00a0mió\x1elatn.s8.x\x1f000\u00a0mió\x1elatn.s9.o\x1f0\u00a0mia'.'\x1elatn.s9.x\x1f0\u00a0mia'.'\x1elat" +
-			"n.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0" +
-			"Md\u00a0¤\x1elatn.c10.x\x1f00\u00a0Md\u00a0¤\x1elatn.c11.o\x1f000\u00a0Md\u00a0¤\x1elatn.c11.x\x1f000\u00a0Md\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bn\u00a0¤\x1e" +
-			"latn.c12.x\x1f0\u00a0Bn\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bn\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bn\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bn\u00a0¤\x1elatn.c14" +
-			".x\x1f000\u00a0Bn\u00a0¤\x1elatn.c3.o\x1f0\u00a0k\u00a0¤\x1elatn.c3.x\x1f0\u00a0k\u00a0¤\x1elatn.c4.o\x1f00\u00a0k\u00a0¤\x1elatn.c4.x\x1f00\u00a0k\u00a0¤\x1elat" +
-			"n.c5.o\x1f000\u00a0k\u00a0¤\x1elatn.c5.x\x1f000\u00a0k\u00a0¤\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤" +
-			"\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0\u00a0Md\u00a0¤\x1elatn.c9.x\x1f0\u00a0" +
-			"Md\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 milliard\x1elatn.l10.x\x1f00 milliards\x1elatn.l11.o\x1f000 milliar" +
-			"d\x1elatn.l11.x\x1f000 milliards\x1elatn.l12.o\x1f0 billion\x1elatn.l12.x\x1f0 billions\x1elatn.l13.o\x1f00 billion\x1elatn" +
-			".l13.x\x1f00 billions\x1elatn.l14.o\x1f000 billion\x1elatn.l14.x\x1f000 billions\x1elatn.l3.o\x1f0 millier\x1elatn.l3.x\x1f" +
-			"0 mille\x1elatn.l4.o\x1f00 mille\x1elatn.l4.x\x1f00 mille\x1elatn.l5.o\x1f000 mille\x1elatn.l5.x\x1f000 mille\x1elatn.l6.o\x1f" +
-			"0 million\x1elatn.l6.x\x1f0 millions\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 millions\x1elatn.l8.o\x1f000 million\x1e" +
-			"latn.l8.x\x1f000 millions\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliards\x1elatn.s10.o\x1f00\u00a0Md\x1elatn.s10.x\x1f0" +
-			"0\u00a0Md\x1elatn.s11.o\x1f000\u00a0Md\x1elatn.s11.x\x1f000\u00a0Md\x1elatn.s12.o\x1f0\u00a0Bn\x1elatn.s12.x\x1f0\u00a0Bn\x1elatn.s13.o\x1f00\u00a0Bn\x1e" +
-			"latn.s13.x\x1f00\u00a0Bn\x1elatn.s14.o\x1f000\u00a0Bn\x1elatn.s14.x\x1f000\u00a0Bn\x1elatn.s3.o\x1f0\u00a0k\x1elatn.s3.x\x1f0\u00a0k\x1elatn.s4.o\x1f" +
-			"00\u00a0k\x1elatn.s4.x\x1f00\u00a0k\x1elatn.s5.o\x1f000\u00a0k\x1elatn.s5.x\x1f000\u00a0k\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f" +
-			"00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0\u00a0Md\x1elatn.s9.x\x1f0\u00a0Md\x1elatn.~\x1f≃" +
-			"\x1elatn.Uo\x1f{0}\u00a0{1}\x1elatn.Ux\x1f{0}\u00a0{1}\x1elatn.c10.o\x1f00\u00a0G\u00a0¤\x1elatn.c10.x\x1f00\u00a0G\u00a0¤\x1elatn.c11.o\x1f000\u00a0G\u00a0" +
-			"¤\x1elatn.c11.x\x1f000\u00a0G\u00a0¤\x1elatn.c12.o\x1f0\u00a0T\u00a0¤\x1elatn.c12.x\x1f0\u00a0T\u00a0¤\x1elatn.c13.o\x1f00\u00a0T\u00a0¤\x1elatn.c13.x" +
-			"\x1f00\u00a0T\u00a0¤\x1elatn.c14.o\x1f000\u00a0T\u00a0¤\x1elatn.c14.x\x1f000\u00a0T\u00a0¤\x1elatn.c9.o\x1f0\u00a0G\u00a0¤\x1elatn.c9.x\x1f0\u00a0G\u00a0¤\x1elat" +
-			"n.g\x1f\u00a0\x1elatn.l3.o\x1f0 mille\x1elatn.s10.o\x1f00\u00a0G\x1elatn.s10.x\x1f00\u00a0G\x1elatn.s11.o\x1f000\u00a0G\x1elatn.s11.x\x1f000\u00a0G\x1el" +
-			"atn.s12.o\x1f0\u00a0T\x1elatn.s12.x\x1f0\u00a0T\x1elatn.s13.o\x1f00\u00a0T\x1elatn.s13.x\x1f00\u00a0T\x1elatn.s14.o\x1f000\u00a0T\x1elatn.s14.x\x1f00" +
-			"0\u00a0T\x1elatn.s9.o\x1f0\u00a0G\x1elatn.s9.x\x1f0\u00a0G\x1elatn.~\x1f≈\x1elatn.P\x1f#,##0%\x1elatn.g\x1f'\x1elatn.g\x1f.\x1elatn.g\x1f.\x1elatn.d\x1f.\x1e" +
-			"latn.g\x1f,\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.0" +
-			"0;¤\u00a0#,##0.00-\x1elatn.R\x1f{0}-{1}\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miljard\x1elatn.l10." +
-			"x\x1f00 miljard\x1elatn.l11.o\x1f000 miljard\x1elatn.l11.x\x1f000 miljard\x1elatn.l12.o\x1f0 biljoen\x1elatn.l12.x\x1f0 bil" +
-			"joen\x1elatn.l13.o\x1f00 biljoen\x1elatn.l13.x\x1f00 biljoen\x1elatn.l14.o\x1f000 biljoen\x1elatn.l14.x\x1f000 biljoen\x1el" +
-			"atn.l3.o\x1f0 tûzen\x1elatn.l3.x\x1f0 tûzen\x1elatn.l4.o\x1f00 tûzen\x1elatn.l4.x\x1f00 tûzen\x1elatn.l5.o\x1f000 tûze" +
-			"n\x1elatn.l5.x\x1f000 tûzen\x1elatn.l6.o\x1f0 miljoen\x1elatn.l6.x\x1f0 miljoen\x1elatn.l7.o\x1f00 miljoen\x1elatn.l7.x\x1f00" +
-			" miljoen\x1elatn.l8.o\x1f000 miljoen\x1elatn.l8.x\x1f000 miljoen\x1elatn.l9.o\x1f0 miljard\x1elatn.l9.x\x1f0 miljard\x1elat" +
-			"n.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12." +
-			"o\x1f0\u00a0bln'.'\x1elatn.s12.x\x1f0\u00a0bln'.'\x1elatn.s13.o\x1f00\u00a0bln'.'\x1elatn.s13.x\x1f00\u00a0bln'.'\x1elatn.s14.o\x1f000\u00a0bln" +
-			"'.'\x1elatn.s14.x\x1f000\u00a0bln'.'\x1elatn.s6.o\x1f0\u00a0mln'.'\x1elatn.s6.x\x1f0\u00a0mln'.'\x1elatn.s7.o\x1f00\u00a0mln'.'\x1elatn.s7." +
-			"x\x1f00\u00a0mln'.'\x1elatn.s8.o\x1f000\u00a0mln'.'\x1elatn.s8.x\x1f000\u00a0mln'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'" +
-			"\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.f\x1f¤00B\x1elatn.c10.m\x1f¤00B\x1elatn.c10.o\x1f¤" +
-			"00B\x1elatn.c10.t\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.f\x1f¤000B\x1elatn.c11.m\x1f¤000B\x1elatn.c11.o\x1f¤000B\x1elatn" +
-			".c11.t\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.f\x1f¤0T\x1elatn.c12.m\x1f¤0T\x1elatn.c12.o\x1f¤0T\x1elatn.c12.t\x1f¤0T\x1e" +
-			"latn.c12.x\x1f¤0T\x1elatn.c13.f\x1f¤00T\x1elatn.c13.m\x1f¤00T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.t\x1f¤00T\x1elatn.c13.x\x1f¤" +
-			"00T\x1elatn.c14.f\x1f¤000T\x1elatn.c14.m\x1f¤000T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.t\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1ela" +
-			"tn.c3.f\x1f¤0k\x1elatn.c3.m\x1f¤0k\x1elatn.c3.o\x1f¤0k\x1elatn.c3.t\x1f¤0k\x1elatn.c3.x\x1f¤0k\x1elatn.c4.f\x1f¤00k\x1elatn.c4" +
-			".m\x1f¤00k\x1elatn.c4.o\x1f¤00k\x1elatn.c4.t\x1f¤00k\x1elatn.c4.x\x1f¤00k\x1elatn.c5.f\x1f¤000k\x1elatn.c5.m\x1f¤000k\x1elatn." +
-			"c5.o\x1f¤000k\x1elatn.c5.t\x1f¤000k\x1elatn.c5.x\x1f¤000k\x1elatn.c6.f\x1f¤0M\x1elatn.c6.m\x1f¤0M\x1elatn.c6.o\x1f¤0M\x1elatn." +
-			"c6.t\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.f\x1f¤00M\x1elatn.c7.m\x1f¤00M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.t\x1f¤00M\x1elatn.c7" +
-			".x\x1f¤00M\x1elatn.c8.f\x1f¤000M\x1elatn.c8.m\x1f¤000M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.t\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1ela" +
-			"tn.c9.f\x1f¤0B\x1elatn.c9.m\x1f¤0B\x1elatn.c9.o\x1f¤0B\x1elatn.c9.t\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.f\x1f00 billiún\x1e" +
-			"latn.l10.m\x1f00 mbilliún\x1elatn.l10.o\x1f00 billiún\x1elatn.l10.t\x1f00 billiún\x1elatn.l10.x\x1f00 billiún\x1elat" +
-			"n.l11.f\x1f000 billiún\x1elatn.l11.m\x1f000 billiún\x1elatn.l11.o\x1f000 billiún\x1elatn.l11.t\x1f000 billiún\x1elat" +
-			"n.l11.x\x1f000 billiún\x1elatn.l12.f\x1f0 thrilliún\x1elatn.l12.m\x1f0 dtrilliún\x1elatn.l12.o\x1f0 trilliún\x1elatn" +
-			".l12.t\x1f0 thrilliún\x1elatn.l12.x\x1f0 trilliún\x1elatn.l13.f\x1f00 trilliún\x1elatn.l13.m\x1f00 dtrilliún\x1elatn" +
-			".l13.o\x1f00 trilliún\x1elatn.l13.t\x1f00 trilliún\x1elatn.l13.x\x1f00 trilliún\x1elatn.l14.f\x1f000 trilliún\x1elat" +
-			"n.l14.m\x1f000 trilliún\x1elatn.l14.o\x1f000 trilliún\x1elatn.l14.t\x1f000 trilliún\x1elatn.l14.x\x1f000 trilliún" +
-			"\x1elatn.l3.f\x1f0 mhíle\x1elatn.l3.m\x1f0 míle\x1elatn.l3.o\x1f0 mhíle\x1elatn.l3.t\x1f0 mhíle\x1elatn.l3.x\x1f0 míle\x1ela" +
-			"tn.l4.f\x1f00 míle\x1elatn.l4.m\x1f00 míle\x1elatn.l4.o\x1f00 míle\x1elatn.l4.t\x1f00 míle\x1elatn.l4.x\x1f00 míle\x1elat" +
-			"n.l5.f\x1f000 míle\x1elatn.l5.m\x1f000 míle\x1elatn.l5.o\x1f000 míle\x1elatn.l5.t\x1f000 míle\x1elatn.l5.x\x1f000 míle" +
-			"\x1elatn.l6.f\x1f0 mhilliún\x1elatn.l6.m\x1f0 milliún\x1elatn.l6.o\x1f0 mhilliún\x1elatn.l6.t\x1f0 mhilliún\x1elatn.l6." +
-			"x\x1f0 milliún\x1elatn.l7.f\x1f00 milliún\x1elatn.l7.m\x1f00 milliún\x1elatn.l7.o\x1f00 milliún\x1elatn.l7.t\x1f00 mill" +
-			"iún\x1elatn.l7.x\x1f00 milliún\x1elatn.l8.f\x1f000 milliún\x1elatn.l8.m\x1f000 milliún\x1elatn.l8.o\x1f000 milliún\x1e" +
-			"latn.l8.t\x1f000 milliún\x1elatn.l8.x\x1f000 milliún\x1elatn.l9.f\x1f0 bhilliún\x1elatn.l9.m\x1f0 mbilliún\x1elatn.l" +
-			"9.o\x1f0 bhilliún\x1elatn.l9.t\x1f0 bhilliún\x1elatn.l9.x\x1f0 billiún\x1elatn.n\x1fNuimh\x1elatn.s10.f\x1f00B\x1elatn.s10." +
-			"m\x1f00B\x1elatn.s10.o\x1f00B\x1elatn.s10.t\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.f\x1f000B\x1elatn.s11.m\x1f000B\x1elatn.s11.o\x1f00" +
-			"0B\x1elatn.s11.t\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s3.f\x1f0k\x1elatn.s3.m\x1f0k\x1elatn.s3.o\x1f0k\x1elatn.s3.t\x1f0k\x1elatn.s3.x" +
-			"\x1f0k\x1elatn.s4.f\x1f00k\x1elatn.s4.m\x1f00k\x1elatn.s4.o\x1f00k\x1elatn.s4.t\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.f\x1f000k\x1elatn.s5" +
-			".m\x1f000k\x1elatn.s5.o\x1f000k\x1elatn.s5.t\x1f000k\x1elatn.s5.x\x1f000k\x1elatn.s9.f\x1f0B\x1elatn.s9.m\x1f0B\x1elatn.s9.o\x1f0B\x1elatn" +
-			".s9.t\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.f\x1f¤00B\x1elatn.c10" +
-			".o\x1f¤00B\x1elatn.c10.t\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.f\x1f¤000B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.t\x1f¤000B" +
-			"\x1elatn.c11.x\x1f¤000B\x1elatn.c12.f\x1f¤0T\x1elatn.c12.o\x1f¤0T\x1elatn.c12.t\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.f\x1f¤" +
-			"00T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.t\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.f\x1f¤000T\x1elatn.c14.o\x1f¤000T\x1elatn." +
-			"c14.t\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.f\x1f¤0K\x1elatn.c3.o\x1f¤0K\x1elatn.c3.t\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn." +
-			"c4.f\x1f¤00K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.t\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.f\x1f¤000K\x1elatn.c5.o\x1f¤000K\x1elat" +
-			"n.c5.t\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.f\x1f¤0M\x1elatn.c6.o\x1f¤0M\x1elatn.c6.t\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn." +
-			"c7.f\x1f¤00M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.t\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.f\x1f¤000M\x1elatn.c8.o\x1f¤000M\x1elat" +
-			"n.c8.t\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.f\x1f¤0B\x1elatn.c9.o\x1f¤0B\x1elatn.c9.t\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn." +
-			"l10.f\x1f00 billeanan\x1elatn.l10.o\x1f00 bhillean\x1elatn.l10.t\x1f00 bhillean\x1elatn.l10.x\x1f00 billean\x1elatn.l11." +
-			"f\x1f000 billeanan\x1elatn.l11.o\x1f000 bhillean\x1elatn.l11.t\x1f000 bhillean\x1elatn.l11.x\x1f000 billean\x1elatn.l12." +
-			"f\x1f0 trilleanan\x1elatn.l12.o\x1f0 trillean\x1elatn.l12.t\x1f0 thrillean\x1elatn.l12.x\x1f0 trillean\x1elatn.l13.f\x1f00 " +
-			"trilleanan\x1elatn.l13.o\x1f00 trillean\x1elatn.l13.t\x1f00 thrillean\x1elatn.l13.x\x1f00 trillean\x1elatn.l14.f\x1f000 " +
-			"trilleanan\x1elatn.l14.o\x1f000 trillean\x1elatn.l14.t\x1f000 thrillean\x1elatn.l14.x\x1f000 trillean\x1elatn.l3.f\x1f0 " +
-			"mìltean\x1elatn.l3.o\x1f0 mhìle\x1elatn.l3.t\x1f0 mhìle\x1elatn.l3.x\x1f0 mìle\x1elatn.l4.f\x1f00 mìltean\x1elatn.l4.o" +
-			"\x1f00 mhìle\x1elatn.l4.t\x1f00 mhìle\x1elatn.l4.x\x1f00 mìle\x1elatn.l5.f\x1f000 mìltean\x1elatn.l5.o\x1f000 mhìle\x1ela" +
-			"tn.l5.t\x1f000 mhìle\x1elatn.l5.x\x1f000 mìle\x1elatn.l6.f\x1f0 milleanan\x1elatn.l6.o\x1f0 mhillean\x1elatn.l6.t\x1f0 mh" +
-			"illean\x1elatn.l6.x\x1f0 millean\x1elatn.l7.f\x1f00 milleanan\x1elatn.l7.o\x1f00 mhillean\x1elatn.l7.t\x1f00 mhillean\x1ela" +
-			"tn.l7.x\x1f00 millean\x1elatn.l8.f\x1f000 milleanan\x1elatn.l8.o\x1f000 mhillean\x1elatn.l8.t\x1f000 mhillean\x1elatn.l8" +
-			".x\x1f000 millean\x1elatn.l9.f\x1f0 billeanan\x1elatn.l9.o\x1f0 bhillean\x1elatn.l9.t\x1f0 bhillean\x1elatn.l9.x\x1f0 bille" +
-			"an\x1elatn.s10.f\x1f00B\x1elatn.s10.o\x1f00B\x1elatn.s10.t\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.f\x1f000B\x1elatn.s11.o\x1f000B\x1el" +
-			"atn.s11.t\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.f\x1f0B\x1elatn.s9.o\x1f0B\x1elatn.s9.t\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f#,##0." +
-			"00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f00000\u00a0M\u00a0¤" +
-			"\x1elatn.c10.x\x1f00000\u00a0M\u00a0¤\x1elatn.c11.o\x1f000000\u00a0M\u00a0¤\x1elatn.c11.x\x1f000000\u00a0M\u00a0¤\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1el" +
-			"atn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B\u00a0¤\x1elatn.c14.o\x1f000\u00a0B\u00a0¤\x1elatn.c14.x\x1f00" +
-			"0\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0\x1elatn.c5.o\x1f0\x1elatn.c5.x\x1f0\x1elatn.c6.o\x1f0\u00a0M\u00a0" +
-			"¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M¤\x1elatn.c8.x\x1f000\u00a0" +
-			"M\u00a0¤\x1elatn.c9.o\x1f0000\u00a0M\u00a0¤\x1elatn.c9.x\x1f0000\u00a0M\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00000 millóns\x1el" +
-			"atn.l10.x\x1f00000 millóns\x1elatn.l11.o\x1f000000 millóns\x1elatn.l11.x\x1f000000 millóns\x1elatn.l12.o\x1f0 bill" +
-			"ón\x1elatn.l12.x\x1f0 billóns\x1elatn.l13.o\x1f00 billóns\x1elatn.l13.x\x1f00 billóns\x1elatn.l14.o\x1f000 billóns\x1e" +
-			"latn.l14.x\x1f000 billóns\x1elatn.l3.o\x1f0\x1elatn.l3.x\x1f0\x1elatn.l4.o\x1f0\x1elatn.l4.x\x1f0\x1elatn.l5.o\x1f0\x1elatn.l5.x\x1f0\x1e" +
-			"latn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millóns\x1elatn.l7.o\x1f00 millóns\x1elatn.l7.x\x1f00 millóns\x1elatn.l8.o\x1f0" +
-			"00 millóns\x1elatn.l8.x\x1f000 millóns\x1elatn.l9.o\x1f0000 millóns\x1elatn.l9.x\x1f0000 millóns\x1elatn.s10.o\x1f00" +
-			"000\u00a0M\x1elatn.s10.x\x1f00000\u00a0M\x1elatn.s11.o\x1f000000\u00a0M\x1elatn.s11.x\x1f000000\u00a0M\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f" +
-			"0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14.o\x1f000\u00a0B\x1elatn.s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\x1elatn.s3.x" +
-			"\x1f0\x1elatn.s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M" +
-			"\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0000\u00a0M\x1elatn.s9.x\x1f0000\u00a0M\x1elatn.-\x1f−" +
-			"\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f00\u00a0Mrd'.'\u00a0" +
-			"¤\x1elatn.c10.x\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0" +
-			"Bio'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bio'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bio'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bio'.'\u00a0¤\x1elatn.c14" +
-			".o\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0Tsg'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0Tsg'.'\u00a0¤\x1ela" +
-			"tn.c4.o\x1f00\u00a0Tsg'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0Tsg'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0Tsg'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0Tsg'.'\u00a0" +
-			"¤\x1elatn.c6.o\x1f0\u00a0Mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0Mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mio'.'" +
-			"\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mr" +
-			"d'.'\u00a0¤\x1elatn.g\x1f'\x1elatn.l10.o\x1f00 Milliarde\x1elatn.l10.x\x1f00 Milliarde\x1elatn.l11.o\x1f000 Milliarde\x1elatn." +
-			"l11.x\x1f000 Milliarde\x1elatn.l12.o\x1f0 Billioon\x1elatn.l12.x\x1f0 Billioone\x1elatn.l13.o\x1f00 Billioon\x1elatn.l13" +
-			".x\x1f00 Billioone\x1elatn.l14.o\x1f000 Billioon\x1elatn.l14.x\x1f000 Billioone\x1elatn.l3.o\x1f0 Tuusig\x1elatn.l3.x\x1f0 " +
-			"Tuusig\x1elatn.l4.o\x1f00 Tuusig\x1elatn.l4.x\x1f00 Tuusig\x1elatn.l5.o\x1f000 Tuusig\x1elatn.l5.x\x1f000 Tuusig\x1elatn.l6" +
-			".o\x1f0 Millioon\x1elatn.l6.x\x1f0 Millioone\x1elatn.l7.o\x1f00 Millioon\x1elatn.l7.x\x1f00 Millioone\x1elatn.l8.o\x1f000 M" +
-			"illioon\x1elatn.l8.x\x1f000 Millioone\x1elatn.l9.o\x1f0 Milliarde\x1elatn.l9.x\x1f0 Milliarde\x1elatn.s10.o\x1f00\u00a0Mrd'." +
-			"'\x1elatn.s10.x\x1f00\u00a0Mrd'.'\x1elatn.s11.o\x1f000\u00a0Mrd'.'\x1elatn.s11.x\x1f000\u00a0Mrd'.'\x1elatn.s12.o\x1f0\u00a0Bio'.'\x1elatn." +
-			"s12.x\x1f0\u00a0Bio'.'\x1elatn.s13.o\x1f00\u00a0Bio'.'\x1elatn.s13.x\x1f00\u00a0Bio'.'\x1elatn.s14.o\x1f000\u00a0Bio'.'\x1elatn.s14.x\x1f00" +
-			"0\u00a0Bio'.'\x1elatn.s3.o\x1f0\u00a0Tsg'.'\x1elatn.s3.x\x1f0\u00a0Tsg'.'\x1elatn.s4.o\x1f00\u00a0Tsg'.'\x1elatn.s4.x\x1f00\u00a0Tsg'.'\x1elatn" +
-			".s5.o\x1f000\u00a0Tsg'.'\x1elatn.s5.x\x1f000\u00a0Tsg'.'\x1elatn.s6.o\x1f0\u00a0Mio'.'\x1elatn.s6.x\x1f0\u00a0Mio'.'\x1elatn.s7.o\x1f00\u00a0Mi" +
-			"o'.'\x1elatn.s7.x\x1f00\u00a0Mio'.'\x1elatn.s8.o\x1f000\u00a0Mio'.'\x1elatn.s8.x\x1f000\u00a0Mio'.'\x1elatn.s9.o\x1f0\u00a0Mrd'.'\x1elatn.s" +
-			"9.x\x1f0\u00a0Mrd'.'\x1egujr.+\x1f+\x1egujr.-\x1f-\x1egujr.A\x1f¤#,##,##0.00;(¤#,##,##0.00)\x1egujr.B\x1f\u00a0\x1egujr.C\x1f¤#,##0.00" +
-			"\x1egujr.D\x1f#,##,##0.###\x1egujr.P\x1f#,##0%\x1egujr.R\x1f{0}-{1}\x1egujr.S\x1f#E0\x1egujr.Ux\x1f{0} {1}\x1egujr.X\x1f~{0}\x1egujr.b\x1f" +
-			"\u00a0\x1egujr.c10.o\x1f¤00\u00a0અબજ\x1egujr.c10.x\x1f¤00\u00a0અબજ\x1egujr.c11.o\x1f¤0\u00a0નિખર્વ\x1egujr" +
-			".c11.x\x1f¤0\u00a0નિખર્વ\x1egujr.c12.o\x1f¤0\u00a0મહાપદ્મ\x1egujr.c12.x\x1f¤0\u00a0મહાપ" +
-			"દ્મ\x1egujr.c13.o\x1f¤0\u00a0શંકુ\x1egujr.c13.x\x1f¤0\u00a0શંકુ\x1egujr.c14.o\x1f¤0\u00a0જલધિ" +
-			"\x1egujr.c14.x\x1f¤0\u00a0જલધિ\x1egujr.c3.o\x1f¤0\u00a0હજાર\x1egujr.c3.x\x1f¤0\u00a0હજાર\x1egujr.c4.o\x1f" +
-			"¤00\u00a0હજાર\x1egujr.c4.x\x1f¤00\u00a0હજાર\x1egujr.c5.o\x1f¤0\u00a0લાખ\x1egujr.c5.x\x1f¤0\u00a0લાખ" +
-			"\x1egujr.c6.o\x1f¤00\u00a0લાખ\x1egujr.c6.x\x1f¤00\u00a0લાખ\x1egujr.c7.o\x1f¤0\u00a0કરોડ\x1egujr.c7.x\x1f¤0\u00a0" +
-			"કરોડ\x1egujr.c8.o\x1f¤00\u00a0કરોડ\x1egujr.c8.x\x1f¤00\u00a0કરોડ\x1egujr.c9.o\x1f¤0\u00a0અબજ\x1e" +
-			"gujr.c9.x\x1f¤0\u00a0અબજ\x1egujr.d\x1f.\x1egujr.e\x1fE\x1egujr.g\x1f,\x1egujr.i\x1f∞\x1egujr.l10.o\x1f00 અબજ\x1egujr.l10." +
-			"x\x1f00 અબજ\x1egujr.l11.o\x1f0 નિખર્વ\x1egujr.l11.x\x1f0 નિખર્વ\x1egujr.l12.o\x1f0 મહ" +
-			"ાપદ્મ\x1egujr.l12.x\x1f0 મહાપદ્મ\x1egujr.l13.o\x1f0 શંકુ\x1egujr.l13.x\x1f0 શં" +
-			"કુ\x1egujr.l14.o\x1f0 જલધિ\x1egujr.l14.x\x1f0 જલધિ\x1egujr.l3.o\x1f0 હજાર\x1egujr.l3.x\x1f0 " +
-			"હજાર\x1egujr.l4.o\x1f00 હજાર\x1egujr.l4.x\x1f00 હજાર\x1egujr.l5.o\x1f0 લાખ\x1egujr.l5.x" +
-			"\x1f0 લાખ\x1egujr.l6.o\x1f00 લાખ\x1egujr.l6.x\x1f00 લાખ\x1egujr.l7.o\x1f0 કરોડ\x1egujr.l7.x\x1f0 " +
-			"કરોડ\x1egujr.l8.o\x1f00 કરોડ\x1egujr.l8.x\x1f00 કરોડ\x1egujr.l9.o\x1f0 અબજ\x1egujr.l9.x" +
-			"\x1f0 અબજ\x1egujr.m\x1f‰\x1egujr.n\x1fNaN\x1egujr.p\x1f%\x1egujr.s10.o\x1f00\u00a0અબજ\x1egujr.s10.x\x1f00\u00a0અબજ\x1egu" +
-			"jr.s11.o\x1f0\u00a0નિખર્વ\x1egujr.s11.x\x1f0\u00a0નિખર્વ\x1egujr.s12.o\x1f0\u00a0મહાપદ્" +
-			"મ\x1egujr.s12.x\x1f0\u00a0મહાપદ્મ\x1egujr.s13.o\x1f0\u00a0શંકુ\x1egujr.s13.x\x1f0\u00a0શંકુ\x1egu" +
-			"jr.s14.o\x1f0\u00a0જલધિ\x1egujr.s14.x\x1f0\u00a0જલધિ\x1egujr.s3.o\x1f0\u00a0હજાર\x1egujr.s3.x\x1f0\u00a0હજ" +
-			"ાર\x1egujr.s4.o\x1f00\u00a0હજાર\x1egujr.s4.x\x1f00\u00a0હજાર\x1egujr.s5.o\x1f0\u00a0લાખ\x1egujr.s5.x\x1f0\u00a0" +
-			"લાખ\x1egujr.s6.o\x1f00\u00a0લાખ\x1egujr.s6.x\x1f00\u00a0લાખ\x1egujr.s7.o\x1f0\u00a0કરોડ\x1egujr.s7.x\x1f0\u00a0" +
-			"કરોડ\x1egujr.s8.o\x1f00\u00a0કરોડ\x1egujr.s8.x\x1f00\u00a0કરોડ\x1egujr.s9.o\x1f0\u00a0અબજ\x1egujr.s" +
-			"9.x\x1f0\u00a0અબજ\x1egujr.~\x1f~\x1elatn.A\x1f¤#,##,##0.00;(¤#,##,##0.00)\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##," +
-			"##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.R\x1f{0}-{1}\x1elatn.S\x1f[#E0]\x1elatn.c10.o\x1f¤00\u00a0અબજ\x1elatn.c10.x\x1f¤00\u00a0" +
-			"અબજ\x1elatn.c11.o\x1f¤0\u00a0નિખર્વ\x1elatn.c11.x\x1f¤0\u00a0નિખર્વ\x1elatn.c12.o\x1f¤0\u00a0" +
-			"મહાપદ્મ\x1elatn.c12.x\x1f¤0\u00a0મહાપદ્મ\x1elatn.c13.o\x1f¤0\u00a0શંકુ\x1elatn.c1" +
-			"3.x\x1f¤0\u00a0શંકુ\x1elatn.c14.o\x1f¤0\u00a0જલધિ\x1elatn.c14.x\x1f¤0\u00a0જલધિ\x1elatn.c3.o\x1f¤0\u00a0હ" +
-			"જાર\x1elatn.c3.x\x1f¤0\u00a0હજાર\x1elatn.c4.o\x1f¤00\u00a0હજાર\x1elatn.c4.x\x1f¤00\u00a0હજાર\x1e" +
-			"latn.c5.o\x1f¤0\u00a0લાખ\x1elatn.c5.x\x1f¤0\u00a0લાખ\x1elatn.c6.o\x1f¤00\u00a0લાખ\x1elatn.c6.x\x1f¤00\u00a0લા" +
-			"ખ\x1elatn.c7.o\x1f¤0\u00a0કરોડ\x1elatn.c7.x\x1f¤0\u00a0કરોડ\x1elatn.c8.o\x1f¤00\u00a0કરોડ\x1elatn.c8" +
-			".x\x1f¤00\u00a0કરોડ\x1elatn.c9.o\x1f¤0\u00a0અબજ\x1elatn.c9.x\x1f¤0\u00a0અબજ\x1elatn.l10.o\x1f00 અબજ\x1e" +
-			"latn.l10.x\x1f00 અબજ\x1elatn.l11.o\x1f0 નિખર્વ\x1elatn.l11.x\x1f0 નિખર્વ\x1elatn.l12" +
-			".o\x1f0 મહાપદ્મ\x1elatn.l12.x\x1f0 મહાપદ્મ\x1elatn.l13.o\x1f0 શંકુ\x1elatn.l13" +
-			".x\x1f0 શંકુ\x1elatn.l14.o\x1f0 જલધિ\x1elatn.l14.x\x1f0 જલધિ\x1elatn.l3.o\x1f0 હજાર\x1el" +
-			"atn.l3.x\x1f0 હજાર\x1elatn.l4.o\x1f00 હજાર\x1elatn.l4.x\x1f00 હજાર\x1elatn.l5.o\x1f0 લાખ" +
-			"\x1elatn.l5.x\x1f0 લાખ\x1elatn.l6.o\x1f00 લાખ\x1elatn.l6.x\x1f00 લાખ\x1elatn.l7.o\x1f0 કરોડ\x1ela" +
-			"tn.l7.x\x1f0 કરોડ\x1elatn.l8.o\x1f00 કરોડ\x1elatn.l8.x\x1f00 કરોડ\x1elatn.l9.o\x1f0 અબજ" +
-			"\x1elatn.l9.x\x1f0 અબજ\x1elatn.s10.o\x1f00\u00a0અબજ\x1elatn.s10.x\x1f00\u00a0અબજ\x1elatn.s11.o\x1f0\u00a0નિખ" +
-			"ર્વ\x1elatn.s11.x\x1f0\u00a0નિખર્વ\x1elatn.s12.o\x1f0\u00a0મહાપદ્મ\x1elatn.s12.x\x1f0\u00a0મ" +
-			"હાપદ્મ\x1elatn.s13.o\x1f0\u00a0શંકુ\x1elatn.s13.x\x1f0\u00a0શંકુ\x1elatn.s14.o\x1f0\u00a0જલધ" +
-			"િ\x1elatn.s14.x\x1f0\u00a0જલધિ\x1elatn.s3.o\x1f0\u00a0હજાર\x1elatn.s3.x\x1f0\u00a0હજાર\x1elatn.s4.o\x1f00\u00a0" +
-			"હજાર\x1elatn.s4.x\x1f00\u00a0હજાર\x1elatn.s5.o\x1f0\u00a0લાખ\x1elatn.s5.x\x1f0\u00a0લાખ\x1elatn.s6.o\x1f" +
-			"00\u00a0લાખ\x1elatn.s6.x\x1f00\u00a0લાખ\x1elatn.s7.o\x1f0\u00a0કરોડ\x1elatn.s7.x\x1f0\u00a0કરોડ\x1elatn.s" +
-			"8.o\x1f00\u00a0કરોડ\x1elatn.s8.x\x1f00\u00a0કરોડ\x1elatn.s9.o\x1f0\u00a0અબજ\x1elatn.s9.x\x1f0\u00a0અબજ\x1ela" +
-			"tn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤" +
-			"00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c1" +
-			"3.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elat" +
-			"n.c4.o\x1f¤00D\x1elatn.c4.x\x1f¤00D\x1elatn.c5.o\x1f¤000D\x1elatn.c5.x\x1f¤000D\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elat" +
-			"n.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elat" +
-			"n.l10.o\x1fBiliyan 00\x1elatn.l10.x\x1fBiliyan 00\x1elatn.l11.o\x1fBiliyan 000\x1elatn.l11.x\x1fBiliyan 000\x1elatn.l12." +
-			"o\x1fTriliyan 0\x1elatn.l12.x\x1fTriliyan 0\x1elatn.l13.o\x1fTriliyan 00\x1elatn.l13.x\x1fTriliyan 00\x1elatn.l14.o\x1fTril" +
-			"iyan 000\x1elatn.l14.x\x1fTriliyan 000\x1elatn.l3.o\x1fDubu 0\x1elatn.l3.x\x1fDubu 0\x1elatn.l4.o\x1fDubu 00\x1elatn.l4.x\x1fD" +
-			"ubu 00\x1elatn.l5.o\x1fDubu 000\x1elatn.l5.x\x1fDubu 000\x1elatn.l6.o\x1fMiliyan 0\x1elatn.l6.x\x1fMiliyan 0\x1elatn.l7.o\x1fM" +
-			"iliyan 00\x1elatn.l7.x\x1fMiliyan 00\x1elatn.l8.o\x1fMiliyan 000\x1elatn.l8.x\x1fMiliyan 000\x1elatn.l9.o\x1fBiliyan 0\x1el" +
-			"atn.l9.x\x1fBiliyan 0\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s3.o\x1f0K\x1ela" +
-			"tn.s4.o\x1f00D\x1elatn.s4.x\x1f00D\x1elatn.s5.o\x1f000D\x1elatn.s5.x\x1f000D\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f¤#,##0" +
-			".00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e-\x1elatn.A\x1f\u200f#,##0.00\u00a0\u200f" +
-			"¤;\u200f-#,##0.00\u00a0\u200f¤\x1elatn.C\x1f\u200f#,##0.00\u00a0\u200f¤;\u200f-#,##0.00\u00a0\u200f¤\x1elatn.c10.o\x1f\u200f00B\u200f\u00a0\u200f¤" +
-			"\x1elatn.c10.t\x1f\u200f00B\u200f\u00a0\u200f¤\x1elatn.c10.x\x1f\u200f00B\u200f\u00a0\u200f¤\x1elatn.c11.o\x1f\u200f000B\u200f\u00a0\u200f¤\x1elatn.c11.t" +
-			"\x1f\u200f000B\u200f\u00a0\u200f¤\x1elatn.c11.x\x1f\u200f000B\u200f\u00a0\u200f¤\x1elatn.c12.o\x1f\u200f0T\u200f\u00a0\u200f¤\x1elatn.c12.t\x1f\u200f0T\u200f\u00a0" +
-			"\u200f¤\x1elatn.c12.x\x1f\u200f0T\u200f\u00a0\u200f¤\x1elatn.c13.o\x1f\u200f00T\u200f\u00a0\u200f¤\x1elatn.c13.t\x1f\u200f00T\u200f\u00a0\u200f¤\x1elatn.c1" +
-			"3.x\x1f\u200f00T\u200f\u00a0\u200f¤\x1elatn.c14.o\x1f\u200f000T\u200f\u00a0\u200f¤\x1elatn.c14.t\x1f\u200f000T\u200f\u00a0\u200f¤\x1elatn.c14.x\x1f\u200f000" +
-			"T\u200f\u00a0\u200f¤\x1elatn.c3.o\x1f\u200f0\u00a0א׳\u200f\u00a0\u200f¤\x1elatn.c3.t\x1f\u200f0K\u200f\u00a0\u200f¤\x1elatn.c3.x\x1f\u200f0K\u200f\u00a0\u200f¤\x1el" +
-			"atn.c4.o\x1f\u200f00K\u200f\u00a0\u200f¤\x1elatn.c4.t\x1f\u200f00K\u200f\u00a0\u200f¤\x1elatn.c4.x\x1f\u200f00K\u200f\u00a0\u200f¤\x1elatn.c5.o\x1f\u200f000" +
-			"K\u200f\u00a0\u200f¤\x1elatn.c5.t\x1f\u200f000K\u200f\u00a0\u200f¤\x1elatn.c5.x\x1f\u200f000K\u200f\u00a0\u200f¤\x1elatn.c6.o\x1f\u200f0M\u200f\u00a0\u200f¤\x1ela" +
-			"tn.c6.t\x1f\u200f0M\u200f\u00a0\u200f¤\x1elatn.c6.x\x1f\u200f0M\u200f\u00a0\u200f¤\x1elatn.c7.o\x1f\u200f00M\u200f\u00a0\u200f¤\x1elatn.c7.t\x1f\u200f00M\u200f" +
-			"\u00a0\u200f¤\x1elatn.c7.x\x1f\u200f00M\u200f\u00a0\u200f¤\x1elatn.c8.o\x1f\u200f000M\u200f\u00a0\u200f¤\x1elatn.c8.t\x1f\u200f000M\u200f\u00a0\u200f¤\x1elatn." +
-			"c8.x\x1f\u200f000M\u200f\u00a0\u200f¤\x1elatn.c9.o\x1f\u200f0B\u200f\u00a0\u200f¤\x1elatn.c9.t\x1f\u200f0B\u200f\u00a0\u200f¤\x1elatn.c9.x\x1f\u200f0B\u200f\u00a0\u200f" +
-			"¤\x1elatn.l10.m\x1f\u200f00 מיליארד\x1elatn.l10.o\x1f\u200f00 מיליארד\x1elatn.l10.t\x1f\u200f00 מיליאר" +
-			"ד\x1elatn.l10.x\x1f\u200f00 מיליארד\x1elatn.l11.m\x1f\u200f000 מיליארד\x1elatn.l11.o\x1f\u200f000 מיליא" +
-			"רד\x1elatn.l11.t\x1f\u200f000 מיליארד\x1elatn.l11.x\x1f\u200f000 מיליארד\x1elatn.l12.m\x1f\u200f0 טרילי" +
-			"ון\x1elatn.l12.o\x1f\u200f0 טריליון\x1elatn.l12.t\x1f\u200f0 טריליון\x1elatn.l12.x\x1f\u200f0 טריליון" +
-			"\x1elatn.l13.m\x1f\u200f00 טריליון\x1elatn.l13.o\x1f\u200f00 טריליון\x1elatn.l13.t\x1f\u200f00 טריליון" +
-			"\x1elatn.l13.x\x1f\u200f00 טריליון\x1elatn.l14.m\x1f\u200f000 טריליון\x1elatn.l14.o\x1f\u200f000 טריליו" +
-			"ן\x1elatn.l14.t\x1f\u200f000 טריליון\x1elatn.l14.x\x1f\u200f000 טריליון\x1elatn.l3.m\x1f\u200f0 אלף\x1elatn." +
-			"l3.o\x1f\u200f0 אלף\x1elatn.l3.t\x1f\u200f0 אלף\x1elatn.l3.x\x1f\u200f0 אלף\x1elatn.l4.m\x1f\u200f00 אלף\x1elatn.l4.o\x1f\u200f" +
-			"00 אלף\x1elatn.l4.t\x1f\u200f00 אלף\x1elatn.l4.x\x1f\u200f00 אלף\x1elatn.l5.m\x1f\u200f000 אלף\x1elatn.l5.o\x1f\u200f000" +
-			" אלף\x1elatn.l5.t\x1f\u200f000 אלף\x1elatn.l5.x\x1f\u200f000 אלף\x1elatn.l6.m\x1f\u200f0 מיליון\x1elatn.l6.o\x1f\u200f" +
-			"0 מיליון\x1elatn.l6.t\x1f\u200f0 מיליון\x1elatn.l6.x\x1f\u200f0 מיליון\x1elatn.l7.m\x1f\u200f00 מיליו" +
-			"ן\x1elatn.l7.o\x1f\u200f00 מיליון\x1elatn.l7.t\x1f\u200f00 מיליון\x1elatn.l7.x\x1f\u200f00 מיליון\x1elatn.l" +
-			"8.m\x1f\u200f000 מיליון\x1elatn.l8.o\x1f\u200f000 מיליון\x1elatn.l8.t\x1f\u200f000 מיליון\x1elatn.l8.x\x1f\u200f" +
-			"000 מיליון\x1elatn.l9.m\x1f\u200f0 מיליארד\x1elatn.l9.o\x1f\u200f0 מיליארד\x1elatn.l9.t\x1f\u200f0 מי" +
-			"ליארד\x1elatn.l9.x\x1f\u200f0 מיליארד\x1elatn.s10.o\x1f00B\u200f\x1elatn.s10.t\x1f00B\u200f\x1elatn.s10.x\x1f00B\u200f\x1el" +
-			"atn.s11.o\x1f000B\u200f\x1elatn.s11.t\x1f000B\u200f\x1elatn.s11.x\x1f000B\u200f\x1elatn.s12.o\x1f0T\u200f\x1elatn.s12.t\x1f0T\u200f\x1elatn.s" +
-			"12.x\x1f0T\u200f\x1elatn.s13.o\x1f00T\u200f\x1elatn.s13.t\x1f00T\u200f\x1elatn.s13.x\x1f00T\u200f\x1elatn.s14.o\x1f000T\u200f\x1elatn.s14.t\x1f0" +
-			"00T\u200f\x1elatn.s14.x\x1f000T\u200f\x1elatn.s3.o\x1f0K\u200f\x1elatn.s3.t\x1f0K\u200f\x1elatn.s3.x\x1f0K\u200f\x1elatn.s4.o\x1f00K\u200f\x1elatn." +
-			"s4.t\x1f00K\u200f\x1elatn.s4.x\x1f00K\u200f\x1elatn.s5.o\x1f000K\u200f\x1elatn.s5.t\x1f000K\u200f\x1elatn.s5.x\x1f000K\u200f\x1elatn.s6.o\x1f0M\u200f" +
-			"\x1elatn.s6.t\x1f0M\u200f\x1elatn.s6.x\x1f0M\u200f\x1elatn.s7.o\x1f00M\u200f\x1elatn.s7.t\x1f00M\u200f\x1elatn.s7.x\x1f00M\u200f\x1elatn.s8.o\x1f00" +
-			"0M\u200f\x1elatn.s8.t\x1f000M\u200f\x1elatn.s8.x\x1f000M\u200f\x1elatn.s9.o\x1f0B\u200f\x1elatn.s9.t\x1f0B\u200f\x1elatn.s9.x\x1f0B\u200f\x1edeva.+" +
-			"\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##,##0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##," +
-			"##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.o\x1f¤00\u00a0अ॰" +
-			"\x1edeva.c10.x\x1f¤00\u00a0अ॰\x1edeva.c11.o\x1f¤0\u00a0ख॰\x1edeva.c11.x\x1f¤0\u00a0ख॰\x1edeva.c12.o\x1f¤00\u00a0ख॰\x1ed" +
-			"eva.c12.x\x1f¤00\u00a0ख॰\x1edeva.c13.o\x1f¤0\u00a0नील\x1edeva.c13.x\x1f¤0\u00a0नील\x1edeva.c14.o\x1f¤00\u00a0नी" +
-			"ल\x1edeva.c14.x\x1f¤00\u00a0नील\x1edeva.c3.o\x1f¤0\u00a0हज़ार\x1edeva.c3.x\x1f¤0\u00a0हज़ार\x1edev" +
-			"a.c4.o\x1f¤00\u00a0हज़ार\x1edeva.c4.x\x1f¤00\u00a0हज़ार\x1edeva.c5.o\x1f¤0\u00a0लाख\x1edeva.c5.x\x1f" +
-			"¤0\u00a0लाख\x1edeva.c6.o\x1f¤00\u00a0लाख\x1edeva.c6.x\x1f¤00\u00a0लाख\x1edeva.c7.o\x1f¤0\u00a0क॰\x1edeva.c7" +
-			".x\x1f¤0\u00a0क॰\x1edeva.c8.o\x1f¤00\u00a0क॰\x1edeva.c8.x\x1f¤00\u00a0क॰\x1edeva.c9.o\x1f¤0\u00a0अ॰\x1edeva.c9.x\x1f¤0" +
-			"\u00a0अ॰\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.o\x1f00 अरब\x1edeva.l10.x\x1f00 अरब\x1ed" +
-			"eva.l11.o\x1f0 खरब\x1edeva.l11.x\x1f0 खरब\x1edeva.l12.o\x1f00 खरब\x1edeva.l12.x\x1f00 खरब\x1edev" +
-			"a.l13.o\x1f000 खरब\x1edeva.l13.x\x1f000 खरब\x1edeva.l14.o\x1f0000 खरब\x1edeva.l14.x\x1f0000 खरब" +
-			"\x1edeva.l3.o\x1f0 हज़ार\x1edeva.l3.x\x1f0 हज़ार\x1edeva.l4.o\x1f00 हज़ार\x1edeva.l4.x\x1f" +
-			"00 हज़ार\x1edeva.l5.o\x1f0 लाख\x1edeva.l5.x\x1f0 लाख\x1edeva.l6.o\x1f00 लाख\x1edeva.l6.x\x1f" +
-			"00 लाख\x1edeva.l7.o\x1f0 करोड़\x1edeva.l7.x\x1f0 करोड़\x1edeva.l8.o\x1f00 करोड़" +
-			"\x1edeva.l8.x\x1f00 करोड़\x1edeva.l9.o\x1f0 अरब\x1edeva.l9.x\x1f0 अरब\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1e" +
-			"deva.p\x1f%\x1edeva.s10.o\x1f00\u00a0अ॰\x1edeva.s10.x\x1f00\u00a0अ॰\x1edeva.s11.o\x1f0\u00a0ख॰\x1edeva.s11.x\x1f0\u00a0ख॰\x1ed" +
-			"eva.s12.o\x1f00\u00a0ख॰\x1edeva.s12.x\x1f00\u00a0ख॰\x1edeva.s13.o\x1f0\u00a0नील\x1edeva.s13.x\x1f0\u00a0नील\x1edeva." +
-			"s14.o\x1f00\u00a0नील\x1edeva.s14.x\x1f00\u00a0नील\x1edeva.s3.o\x1f0\u00a0हज़ार\x1edeva.s3.x\x1f0\u00a0हज़" +
-			"ार\x1edeva.s4.o\x1f00\u00a0हज़ार\x1edeva.s4.x\x1f00\u00a0हज़ार\x1edeva.s5.o\x1f0\u00a0लाख\x1edeva.s" +
-			"5.x\x1f0\u00a0लाख\x1edeva.s6.o\x1f00\u00a0लाख\x1edeva.s6.x\x1f00\u00a0लाख\x1edeva.s7.o\x1f0\u00a0क॰\x1edeva.s7.x\x1f0" +
-			"\u00a0क॰\x1edeva.s8.o\x1f00\u00a0क॰\x1edeva.s8.x\x1f00\u00a0क॰\x1edeva.s9.o\x1f0\u00a0अ॰\x1edeva.s9.x\x1f0\u00a0अ॰\x1edeva." +
-			"~\x1f~\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.S\x1f[#E0]\x1e" +
-			"latn.c10.o\x1f¤00\u00a0अ॰\x1elatn.c10.x\x1f¤00\u00a0अ॰\x1elatn.c11.o\x1f¤0\u00a0ख॰\x1elatn.c11.x\x1f¤0\u00a0ख॰\x1ela" +
-			"tn.c12.o\x1f¤00\u00a0ख॰\x1elatn.c12.x\x1f¤00\u00a0ख॰\x1elatn.c13.o\x1f¤0\u00a0नील\x1elatn.c13.x\x1f¤0\u00a0नील" +
-			"\x1elatn.c14.o\x1f¤00\u00a0नील\x1elatn.c14.x\x1f¤00\u00a0नील\x1elatn.c3.o\x1f¤0\u00a0हज़ार\x1elatn.c3.x\x1f" +
-			"¤0\u00a0हज़ार\x1elatn.c4.o\x1f¤00\u00a0हज़ार\x1elatn.c4.x\x1f¤00\u00a0हज़ार\x1elatn.c5.o\x1f¤" +
-			"0\u00a0लाख\x1elatn.c5.x\x1f¤0\u00a0लाख\x1elatn.c6.o\x1f¤00\u00a0लाख\x1elatn.c6.x\x1f¤00\u00a0लाख\x1elatn.c" +
-			"7.o\x1f¤0\u00a0क॰\x1elatn.c7.x\x1f¤0\u00a0क॰\x1elatn.c8.o\x1f¤00\u00a0क॰\x1elatn.c8.x\x1f¤00\u00a0क॰\x1elatn.c9.o\x1f¤" +
-			"0\u00a0अ॰\x1elatn.c9.x\x1f¤0\u00a0अ॰\x1elatn.l10.o\x1f00 अरब\x1elatn.l10.x\x1f00 अरब\x1elatn.l11.o\x1f0 ख" +
-			"रब\x1elatn.l11.x\x1f0 खरब\x1elatn.l12.o\x1f00 खरब\x1elatn.l12.x\x1f00 खरब\x1elatn.l13.o\x1f000 ख" +
-			"रब\x1elatn.l13.x\x1f000 खरब\x1elatn.l14.o\x1f0000 खरब\x1elatn.l14.x\x1f0000 खरब\x1elatn.l3.o\x1f0 " +
-			"हज़ार\x1elatn.l3.x\x1f0 हज़ार\x1elatn.l4.o\x1f00 हज़ार\x1elatn.l4.x\x1f00 हज़ा" +
-			"र\x1elatn.l5.o\x1f0 लाख\x1elatn.l5.x\x1f0 लाख\x1elatn.l6.o\x1f00 लाख\x1elatn.l6.x\x1f00 लाख\x1ela" +
-			"tn.l7.o\x1f0 करोड़\x1elatn.l7.x\x1f0 करोड़\x1elatn.l8.o\x1f00 करोड़\x1elatn.l8.x\x1f00 " +
-			"करोड़\x1elatn.l9.o\x1f0 अरब\x1elatn.l9.x\x1f0 अरब\x1elatn.s10.o\x1f00\u00a0अ॰\x1elatn.s10.x\x1f00\u00a0" +
-			"अ॰\x1elatn.s11.o\x1f0\u00a0ख॰\x1elatn.s11.x\x1f0\u00a0ख॰\x1elatn.s12.o\x1f00\u00a0ख॰\x1elatn.s12.x\x1f00\u00a0ख॰\x1elat" +
-			"n.s13.o\x1f0\u00a0नील\x1elatn.s13.x\x1f0\u00a0नील\x1elatn.s14.o\x1f00\u00a0नील\x1elatn.s14.x\x1f00\u00a0नील\x1el" +
-			"atn.s3.o\x1f0\u00a0हज़ार\x1elatn.s3.x\x1f0\u00a0हज़ार\x1elatn.s4.o\x1f00\u00a0हज़ार\x1elatn.s4.x" +
-			"\x1f00\u00a0हज़ार\x1elatn.s5.o\x1f0\u00a0लाख\x1elatn.s5.x\x1f0\u00a0लाख\x1elatn.s6.o\x1f00\u00a0लाख\x1elatn." +
-			"s6.x\x1f00\u00a0लाख\x1elatn.s7.o\x1f0\u00a0क॰\x1elatn.s7.x\x1f0\u00a0क॰\x1elatn.s8.o\x1f00\u00a0क॰\x1elatn.s8.x\x1f00\u00a0क" +
-			"॰\x1elatn.s9.o\x1f0\u00a0अ॰\x1elatn.s9.x\x1f0\u00a0अ॰\x1elatn.A\x1f¤#,##,##0.00\x1elatn.S\x1f[#E0]\x1elatn.-\x1f−\x1elatn.A\x1f" +
-			"#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0} – {1}\x1elatn.c10.f\x1f00\u00a0mlr'.'\u00a0¤\x1ela" +
-			"tn.c10.o\x1f00\u00a0mlr'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlr'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mlr'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlr" +
-			"'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlr'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f" +
-			"0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn" +
-			".c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tis'.'" +
-			"\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'" +
-			".'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.x\x1f00" +
-			"0\u00a0tis'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f" +
-			"00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn." +
-			"c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mlr'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlr'.'\u00a0¤\x1el" +
-			"atn.c9.x\x1f0\u00a0mlr'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 milijarde\x1elatn.l10.o\x1f00 milijarda\x1elatn.l1" +
-			"0.x\x1f00 milijardi\x1elatn.l11.f\x1f000 milijarde\x1elatn.l11.o\x1f000 milijarda\x1elatn.l11.x\x1f000 milijardi\x1elatn" +
-			".l12.f\x1f0 bilijuna\x1elatn.l12.o\x1f0 bilijun\x1elatn.l12.x\x1f0 bilijuna\x1elatn.l13.f\x1f00 bilijuna\x1elatn.l13.o\x1f0" +
-			"0 bilijun\x1elatn.l13.x\x1f00 bilijuna\x1elatn.l14.f\x1f000 bilijuna\x1elatn.l14.o\x1f000 bilijun\x1elatn.l14.x\x1f000 b" +
-			"ilijuna\x1elatn.l3.f\x1f0 tisuće\x1elatn.l3.o\x1f0 tisuća\x1elatn.l3.x\x1f0 tisuća\x1elatn.l4.f\x1f00 tisuće\x1elatn.l4" +
-			".o\x1f00 tisuća\x1elatn.l4.x\x1f00 tisuća\x1elatn.l5.f\x1f000 tisuće\x1elatn.l5.o\x1f000 tisuća\x1elatn.l5.x\x1f000 tis" +
-			"uća\x1elatn.l6.f\x1f0 milijuna\x1elatn.l6.o\x1f0 milijun\x1elatn.l6.x\x1f0 milijuna\x1elatn.l7.f\x1f00 milijuna\x1elatn.l7" +
-			".o\x1f00 milijun\x1elatn.l7.x\x1f00 milijuna\x1elatn.l8.f\x1f000 milijuna\x1elatn.l8.o\x1f000 milijun\x1elatn.l8.x\x1f000 m" +
-			"ilijuna\x1elatn.l9.f\x1f0 milijarde\x1elatn.l9.o\x1f0 milijarda\x1elatn.l9.x\x1f0 milijardi\x1elatn.s10.f\x1f00\u00a0mlr'.'\x1e" +
-			"latn.s10.o\x1f00\u00a0mlr'.'\x1elatn.s10.x\x1f00\u00a0mlr'.'\x1elatn.s11.f\x1f000\u00a0mlr'.'\x1elatn.s11.o\x1f000\u00a0mlr'.'\x1elatn.s" +
-			"11.x\x1f000\u00a0mlr'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0b" +
-			"il'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1e" +
-			"latn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0" +
-			"tis'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn.s5.f\x1f000\u00a0tis'.'\x1elatn.s5.o\x1f000\u00a0tis'.'\x1elat" +
-			"n.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil" +
-			"'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s" +
-			"8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mlr'.'\x1elatn.s9.o\x1f0\u00a0mlr'.'\x1elatn.s9.x\x1f0\u00a0mlr'.'\x1elatn.A\x1f#,##0.00\u00a0¤\x1e" +
-			"latn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mrd'." +
-			"'\u00a0¤\x1elatn.c10.t\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f" +
-			"000\u00a0mrd'.'\u00a0¤\x1elatn.c11.t\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1el" +
-			"atn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.t\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0" +
-			"¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.t\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0" +
-			"bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.t\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn" +
-			".c3.f\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.t\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tys'.'\u00a0¤\x1elatn" +
-			".c4.f\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.t\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tys'.'\u00a0¤\x1e" +
-			"latn.c5.f\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.t\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tys" +
-			"'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.t\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mio" +
-			"'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.t\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0" +
-			"mio'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.t\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8" +
-			".x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.t\x1f0\u00a0mrd'.'\u00a0¤\x1elatn." +
-			"c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 miliardow\x1elatn.l10.o\x1f00 miliardow\x1elatn.l10.t\x1f" +
-			"00 miliardow\x1elatn.l10.x\x1f00 miliardow\x1elatn.l11.f\x1f000 miliardow\x1elatn.l11.o\x1f000 miliardow\x1elatn.l11." +
-			"t\x1f000 miliardow\x1elatn.l11.x\x1f000 miliardow\x1elatn.l12.f\x1f0 biliony\x1elatn.l12.o\x1f0 bilion\x1elatn.l12.t\x1f0 b" +
-			"ilionaj\x1elatn.l12.x\x1f0 bilionow\x1elatn.l13.f\x1f00 bilionow\x1elatn.l13.o\x1f00 bilionow\x1elatn.l13.t\x1f00 bilion" +
-			"ow\x1elatn.l13.x\x1f00 bilionow\x1elatn.l14.f\x1f000 bilionow\x1elatn.l14.o\x1f000 bilionow\x1elatn.l14.t\x1f000 biliono" +
-			"w\x1elatn.l14.x\x1f000 bilionow\x1elatn.l3.f\x1f0 tysac\x1elatn.l3.o\x1f0 tysac\x1elatn.l3.t\x1f0 tysac\x1elatn.l3.x\x1f0 tysa" +
-			"c\x1elatn.l4.f\x1f00 tysac\x1elatn.l4.o\x1f00 tysac\x1elatn.l4.t\x1f00 tysac\x1elatn.l4.x\x1f00 tysac\x1elatn.l5.f\x1f000 tysa" +
-			"c\x1elatn.l5.o\x1f000 tysac\x1elatn.l5.t\x1f000 tysac\x1elatn.l5.x\x1f000 tysac\x1elatn.l6.f\x1f0 miliony\x1elatn.l6.o\x1f0 mi" +
-			"lion\x1elatn.l6.t\x1f0 milionaj\x1elatn.l6.x\x1f0 milionow\x1elatn.l7.f\x1f00 milionow\x1elatn.l7.o\x1f00 milionow\x1elatn." +
-			"l7.t\x1f00 milionow\x1elatn.l7.x\x1f00 milionow\x1elatn.l8.f\x1f000 milionow\x1elatn.l8.o\x1f000 milionow\x1elatn.l8.t\x1f0" +
-			"00 milionow\x1elatn.l8.x\x1f000 milionow\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.o\x1f0 miliarda\x1elatn.l9.t\x1f0 miliard" +
-			"źe\x1elatn.l9.x\x1f0 miliardow\x1elatn.s10.f\x1f00\u00a0mrd'.'\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.t\x1f00\u00a0mrd'.'\x1elatn" +
-			".s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.f\x1f000\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s11.t\x1f000\u00a0mrd'.'\x1elatn.s11." +
-			"x\x1f000\u00a0mrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.t\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'." +
-			"'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.t\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s" +
-			"14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.t\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f" +
-			"0\u00a0tys'.'\x1elatn.s3.o\x1f0\u00a0tys'.'\x1elatn.s3.t\x1f0\u00a0tys'.'\x1elatn.s3.x\x1f0\u00a0tys'.'\x1elatn.s4.f\x1f00\u00a0tys'.'\x1elatn." +
-			"s4.o\x1f00\u00a0tys'.'\x1elatn.s4.t\x1f00\u00a0tys'.'\x1elatn.s4.x\x1f00\u00a0tys'.'\x1elatn.s5.f\x1f000\u00a0tys'.'\x1elatn.s5.o\x1f000\u00a0t" +
-			"ys'.'\x1elatn.s5.t\x1f000\u00a0tys'.'\x1elatn.s5.x\x1f000\u00a0tys'.'\x1elatn.s6.f\x1f0\u00a0mio'.'\x1elatn.s6.o\x1f0\u00a0mio'.'\x1elatn.s" +
-			"6.t\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.f\x1f00\u00a0mio'.'\x1elatn.s7.o\x1f00\u00a0mio'.'\x1elatn.s7.t\x1f00\u00a0mio'.'" +
-			"\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.f\x1f000\u00a0mio'.'\x1elatn.s8.o\x1f000\u00a0mio'.'\x1elatn.s8.t\x1f000\u00a0mio'.'\x1elatn.s8." +
-			"x\x1f000\u00a0mio'.'\x1elatn.s9.f\x1f0\u00a0mrd'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.t\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1ela" +
-			"tn.~\x1f≈\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0Mrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd\u00a0" +
-			"¤\x1elatn.c11.o\x1f000\u00a0Mrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn." +
-			"c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B\u00a0¤\x1elatn.c14.o\x1f000\u00a0B\u00a0¤\x1elatn.c14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\u00a0E\u00a0" +
-			"¤\x1elatn.c3.x\x1f0\u00a0E\u00a0¤\x1elatn.c4.o\x1f00\u00a0E\u00a0¤\x1elatn.c4.x\x1f00\u00a0E\u00a0¤\x1elatn.c5.o\x1f000\u00a0E\u00a0¤\x1elatn.c5.x\x1f000" +
-			"\u00a0E\u00a0¤\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f" +
-			"000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mrd\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elat" +
-			"n.l10.o\x1f00 milliárd\x1elatn.l10.x\x1f00 milliárd\x1elatn.l11.o\x1f000 milliárd\x1elatn.l11.x\x1f000 milliárd\x1el" +
-			"atn.l12.o\x1f0 billió\x1elatn.l12.x\x1f0 billió\x1elatn.l13.o\x1f00 billió\x1elatn.l13.x\x1f00 billió\x1elatn.l14.o\x1f" +
-			"000 billió\x1elatn.l14.x\x1f000 billió\x1elatn.l3.o\x1f0 ezer\x1elatn.l3.x\x1f0 ezer\x1elatn.l4.o\x1f00 ezer\x1elatn.l4.x" +
-			"\x1f00 ezer\x1elatn.l5.o\x1f000 ezer\x1elatn.l5.x\x1f000 ezer\x1elatn.l6.o\x1f0 millió\x1elatn.l6.x\x1f0 millió\x1elatn.l7.o" +
-			"\x1f00 millió\x1elatn.l7.x\x1f00 millió\x1elatn.l8.o\x1f000 millió\x1elatn.l8.x\x1f000 millió\x1elatn.l9.o\x1f0 milliá" +
-			"rd\x1elatn.l9.x\x1f0 milliárd\x1elatn.s10.o\x1f00\u00a0Mrd\x1elatn.s10.x\x1f00\u00a0Mrd\x1elatn.s11.o\x1f000\u00a0Mrd\x1elatn.s11.x\x1f00" +
-			"0\u00a0Mrd\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14.o\x1f000\u00a0B\x1elatn." +
-			"s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\u00a0E\x1elatn.s3.x\x1f0\u00a0E\x1elatn.s4.o\x1f00\u00a0E\x1elatn.s4.x\x1f00\u00a0E\x1elatn.s5.o\x1f000\u00a0E\x1elatn" +
-			".s5.x\x1f000\u00a0E\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn" +
-			".s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0\u00a0Mrd\x1elatn.s9.x\x1f0\u00a0Mrd\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn." +
-			"c10.o\x1f00\u00a0մլրդ\u00a0¤\x1elatn.c10.x\x1f00\u00a0մլրդ\u00a0¤\x1elatn.c11.o\x1f000\u00a0մլրդ\u00a0¤\x1elatn.c11.x\x1f000\u00a0" +
-			"մլրդ\u00a0¤\x1elatn.c12.o\x1f0\u00a0տրլն\u00a0¤\x1elatn.c12.x\x1f0\u00a0տրլն\u00a0¤\x1elatn.c13.o\x1f00\u00a0տրլն\u00a0¤\x1el" +
-			"atn.c13.x\x1f00\u00a0տրլն\u00a0¤\x1elatn.c14.o\x1f000\u00a0տրլն\u00a0¤\x1elatn.c14.x\x1f000\u00a0տրլն\u00a0¤\x1elatn.c3.o\x1f0" +
-			"\u00a0հզր\u00a0¤\x1elatn.c3.x\x1f0\u00a0հզր\u00a0¤\x1elatn.c4.o\x1f00\u00a0հզր\u00a0¤\x1elatn.c4.x\x1f00\u00a0հզր\u00a0¤\x1elatn.c5.o" +
-			"\x1f000\u00a0հզր\u00a0¤\x1elatn.c5.x\x1f000\u00a0հզր\u00a0¤\x1elatn.c6.o\x1f0\u00a0մլն\u00a0¤\x1elatn.c6.x\x1f0\u00a0մլն\u00a0¤\x1elatn." +
-			"c7.o\x1f00\u00a0մլն\u00a0¤\x1elatn.c7.x\x1f00\u00a0մլն\u00a0¤\x1elatn.c8.o\x1f000\u00a0մլն\u00a0¤\x1elatn.c8.x\x1f000\u00a0մլն\u00a0¤" +
-			"\x1elatn.c9.o\x1f0\u00a0մլրդ\u00a0¤\x1elatn.c9.x\x1f0\u00a0մլրդ\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 միլիա" +
-			"րդ\x1elatn.l10.x\x1f00 միլիարդ\x1elatn.l11.o\x1f000 միլիարդ\x1elatn.l11.x\x1f000 միլիարդ\x1ela" +
-			"tn.l12.o\x1f0 տրիլիոն\x1elatn.l12.x\x1f0 տրիլիոն\x1elatn.l13.o\x1f00 տրիլիոն\x1elatn.l13.x\x1f00" +
-			" տրիլիոն\x1elatn.l14.o\x1f000 տրիլիոն\x1elatn.l14.x\x1f000 տրիլիոն\x1elatn.l3.o\x1f0 հազա" +
-			"ր\x1elatn.l3.x\x1f0 հազար\x1elatn.l4.o\x1f00 հազար\x1elatn.l4.x\x1f00 հազար\x1elatn.l5.o\x1f000 հազա" +
-			"ր\x1elatn.l5.x\x1f000 հազար\x1elatn.l6.o\x1f0 միլիոն\x1elatn.l6.x\x1f0 միլիոն\x1elatn.l7.o\x1f00 միլ" +
-			"իոն\x1elatn.l7.x\x1f00 միլիոն\x1elatn.l8.o\x1f000 միլիոն\x1elatn.l8.x\x1f000 միլիոն\x1elatn.l9.o" +
-			"\x1f0 միլիարդ\x1elatn.l9.x\x1f0 միլիարդ\x1elatn.n\x1fՈչԹ\x1elatn.s10.o\x1f00\u00a0մլրդ\x1elatn.s10.x\x1f00" +
-			"\u00a0մլրդ\x1elatn.s11.o\x1f000\u00a0մլրդ\x1elatn.s11.x\x1f000\u00a0մլրդ\x1elatn.s12.o\x1f0\u00a0տրլն\x1elatn.s12.x\x1f0" +
-			"\u00a0տրլն\x1elatn.s13.o\x1f00\u00a0տրլն\x1elatn.s13.x\x1f00\u00a0տրլն\x1elatn.s14.o\x1f000\u00a0տրլն\x1elatn.s14.x\x1f0" +
-			"00\u00a0տրլն\x1elatn.s3.o\x1f0\u00a0հզր\x1elatn.s3.x\x1f0\u00a0հզր\x1elatn.s4.o\x1f00\u00a0հզր\x1elatn.s4.x\x1f00\u00a0հզր\x1el" +
-			"atn.s5.o\x1f000\u00a0հզր\x1elatn.s5.x\x1f000\u00a0հզր\x1elatn.s6.o\x1f0\u00a0մլն\x1elatn.s6.x\x1f0\u00a0մլն\x1elatn.s7.o\x1f00\u00a0" +
-			"մլն\x1elatn.s7.x\x1f00\u00a0մլն\x1elatn.s8.o\x1f000\u00a0մլն\x1elatn.s8.x\x1f000\u00a0մլն\x1elatn.s9.o\x1f0\u00a0մլրդ\x1ela" +
-			"tn.s9.x\x1f0\u00a0մլրդ\x1eg\x1f2\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.c10.o\x1f¤\u00a000\u00a0mld\x1elatn.c10.x\x1f¤\u00a0" +
-			"00\u00a0mld\x1elatn.c11.o\x1f¤\u00a0000\u00a0mld\x1elatn.c11.x\x1f¤\u00a0000\u00a0mld\x1elatn.c12.o\x1f¤\u00a00\u00a0bln\x1elatn.c12.x\x1f¤\u00a00\u00a0" +
-			"bln\x1elatn.c13.o\x1f¤\u00a000\u00a0bln\x1elatn.c13.x\x1f¤\u00a000\u00a0bln\x1elatn.c14.o\x1f¤\u00a0000\u00a0bln\x1elatn.c14.x\x1f¤\u00a0000\u00a0bl" +
-			"n\x1elatn.c3.o\x1f¤\u00a00\u00a0mil\x1elatn.c3.x\x1f¤\u00a00\u00a0mil\x1elatn.c4.o\x1f¤\u00a000\u00a0mil\x1elatn.c4.x\x1f¤\u00a000\u00a0mil\x1elatn.c5." +
-			"o\x1f¤\u00a0000\u00a0mil\x1elatn.c5.x\x1f¤\u00a0000\u00a0mil\x1elatn.c6.o\x1f¤\u00a00\u00a0mln\x1elatn.c6.x\x1f¤\u00a00\u00a0mln\x1elatn.c7.o\x1f¤\u00a000" +
-			"\u00a0mln\x1elatn.c7.x\x1f¤\u00a000\u00a0mln\x1elatn.c8.o\x1f¤\u00a0000\u00a0mln\x1elatn.c8.x\x1f¤\u00a0000\u00a0mln\x1elatn.c9.o\x1f¤\u00a00\u00a0mld\x1el" +
-			"atn.c9.x\x1f¤\u00a00\u00a0mld\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliardo\x1elatn.l10.x\x1f00 milliardos\x1elatn.l11." +
-			"o\x1f000 milliardo\x1elatn.l11.x\x1f000 milliardos\x1elatn.l12.o\x1f0 billion\x1elatn.l12.x\x1f0 billiones\x1elatn.l13.o" +
-			"\x1f00 billion\x1elatn.l13.x\x1f00 billiones\x1elatn.l14.o\x1f000 billion\x1elatn.l14.x\x1f000 billiones\x1elatn.l3.o\x1f0 " +
-			"mille\x1elatn.l3.x\x1f0 milles\x1elatn.l4.o\x1f00 mille\x1elatn.l4.x\x1f00 milles\x1elatn.l5.o\x1f000 mille\x1elatn.l5.x\x1f00" +
-			"0 milles\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 milliones\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 milliones\x1el" +
-			"atn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 milliones\x1elatn.l9.o\x1f0 milliardo\x1elatn.l9.x\x1f0 milliardos\x1elatn.s" +
-			"10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn.s11.x\x1f000\u00a0mld\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s" +
-			"12.x\x1f0\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0bln\x1elatn.s" +
-			"3.o\x1f0\u00a0mil\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.o\x1f00\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.o\x1f000\u00a0mil\x1elatn.s5.x\x1f000" +
-			"\u00a0mil\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1el" +
-			"atn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x\x1f0\u00a0mld\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10" +
-			".x\x1f¤00\u00a0M\x1elatn.c11.x\x1f¤000\u00a0M\x1elatn.c12.x\x1f¤0\u00a0T\x1elatn.c13.x\x1f¤00\u00a0T\x1elatn.c14.x\x1f¤000\u00a0T\x1elatn.c3." +
-			"x\x1f¤0\u00a0rb\x1elatn.c4.x\x1f¤00\u00a0rb\x1elatn.c5.x\x1f¤000\u00a0rb\x1elatn.c6.x\x1f¤0\u00a0jt\x1elatn.c7.x\x1f¤00\u00a0jt\x1elatn.c8.x\x1f" +
-			"¤000\u00a0jt\x1elatn.c9.x\x1f¤0\u00a0M\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 miliar\x1elatn.l11.x\x1f000 miliar\x1elatn.l12" +
-			".x\x1f0 triliun\x1elatn.l13.x\x1f00 triliun\x1elatn.l14.x\x1f000 triliun\x1elatn.l3.x\x1f0 ribu\x1elatn.l4.x\x1f00 ribu\x1elat" +
-			"n.l5.x\x1f000 ribu\x1elatn.l6.x\x1f0 juta\x1elatn.l7.x\x1f00 juta\x1elatn.l8.x\x1f000 juta\x1elatn.l9.x\x1f0 miliar\x1elatn.s1" +
-			"0.x\x1f00\u00a0M\x1elatn.s11.x\x1f000\u00a0M\x1elatn.s12.x\x1f0\u00a0T\x1elatn.s13.x\x1f00\u00a0T\x1elatn.s14.x\x1f000\u00a0T\x1elatn.s3.x\x1f0\u00a0rb\x1el" +
-			"atn.s4.x\x1f00\u00a0rb\x1elatn.s5.x\x1f000\u00a0rb\x1elatn.s6.x\x1f0\u00a0jt\x1elatn.s7.x\x1f00\u00a0jt\x1elatn.s8.x\x1f000\u00a0jt\x1elatn.s9.x\x1f0" +
-			"\u00a0M\x1eg\x1f2\x1elatn.A\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1el" +
-			"atn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00G\x1elatn.c11.x\x1f¤000G\x1elatn.c12.x\x1f¤" +
-			"0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f" +
-			"¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0G\x1elatn.l10.x\x1f00 ijeri\x1elatn.l11.x\x1f000 ijeri\x1ela" +
-			"tn.l12.x\x1f0 puku ijeri\x1elatn.l13.x\x1f00 puku ijeri\x1elatn.l14.x\x1f000 puku ijeri\x1elatn.l3.x\x1f0 puku\x1elatn.l" +
-			"4.x\x1f00 puku\x1elatn.l5.x\x1f000 puku\x1elatn.l6.x\x1f0 nde\x1elatn.l7.x\x1f00 nde\x1elatn.l8.x\x1f000 nde\x1elatn.l9.x\x1f0 ij" +
-			"eri\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0ma'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0ma'.'\u00a0¤\x1ela" +
-			"tn.c11.o\x1f000\u00a0ma'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0ma'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bn\u00a0¤\x1elatn.c12.x\x1f0\u00a0bn\u00a0¤\x1elatn" +
-			".c13.o\x1f00\u00a0bn\u00a0¤\x1elatn.c13.x\x1f00\u00a0bn\u00a0¤\x1elatn.c14.o\x1f000\u00a0bn\u00a0¤\x1elatn.c14.x\x1f000\u00a0bn\u00a0¤\x1elatn.c3.o\x1f" +
-			"0\u00a0þ'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0þ'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0þ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0þ'.'\u00a0¤\x1elatn.c5.o\x1f00" +
-			"0\u00a0þ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0þ'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0m'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0m'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0" +
-			"m'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0m'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0m'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0m'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0ma'" +
-			".'\u00a0¤\x1elatn.c9.x\x1f0\u00a0ma'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milljarður\x1elatn.l10.x\x1f00 milljarð" +
-			"ar\x1elatn.l11.o\x1f000 milljarður\x1elatn.l11.x\x1f000 milljarðar\x1elatn.l12.o\x1f0 billjón\x1elatn.l12.x\x1f0 bill" +
-			"jónir\x1elatn.l13.o\x1f00 billjón\x1elatn.l13.x\x1f00 billjónir\x1elatn.l14.o\x1f000 billjón\x1elatn.l14.x\x1f000 bi" +
-			"lljónir\x1elatn.l3.o\x1f0 þúsund\x1elatn.l3.x\x1f0 þúsund\x1elatn.l4.o\x1f00 þúsund\x1elatn.l4.x\x1f00 þúsund\x1el" +
-			"atn.l5.o\x1f000 þúsund\x1elatn.l5.x\x1f000 þúsund\x1elatn.l6.o\x1f0 milljón\x1elatn.l6.x\x1f0 milljónir\x1elatn.l7" +
-			".o\x1f00 milljón\x1elatn.l7.x\x1f00 milljónir\x1elatn.l8.o\x1f000 milljón\x1elatn.l8.x\x1f000 milljónir\x1elatn.l9.o" +
-			"\x1f0 milljarður\x1elatn.l9.x\x1f0 milljarðar\x1elatn.s10.o\x1f00\u00a0ma'.'\x1elatn.s10.x\x1f00\u00a0ma'.'\x1elatn.s11.o\x1f000\u00a0" +
-			"ma'.'\x1elatn.s11.x\x1f000\u00a0ma'.'\x1elatn.s12.o\x1f0\u00a0bn\x1elatn.s12.x\x1f0\u00a0bn\x1elatn.s13.o\x1f00\u00a0bn\x1elatn.s13.x\x1f00\u00a0b" +
-			"n\x1elatn.s14.o\x1f000\u00a0bn\x1elatn.s14.x\x1f000\u00a0bn\x1elatn.s3.o\x1f0\u00a0þ'.'\x1elatn.s3.x\x1f0\u00a0þ'.'\x1elatn.s4.o\x1f00\u00a0þ'." +
-			"'\x1elatn.s4.x\x1f00\u00a0þ'.'\x1elatn.s5.o\x1f000\u00a0þ'.'\x1elatn.s5.x\x1f000\u00a0þ'.'\x1elatn.s6.o\x1f0\u00a0m'.'\x1elatn.s6.x\x1f0\u00a0m" +
-			"'.'\x1elatn.s7.o\x1f00\u00a0m'.'\x1elatn.s7.x\x1f00\u00a0m'.'\x1elatn.s8.o\x1f000\u00a0m'.'\x1elatn.s8.x\x1f000\u00a0m'.'\x1elatn.s9.o\x1f0\u00a0m" +
-			"a'.'\x1elatn.s9.x\x1f0\u00a0ma'.'\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f00" +
-			"\u00a0Mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mld\u00a0¤\x1elatn.c12.o\x1f0\u00a0B" +
-			"ln\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bln\u00a0" +
-			"¤\x1elatn.c14.x\x1f000\u00a0Bln\u00a0¤\x1elatn.c3.o\x1f0K\u00a0¤\x1elatn.c3.x\x1f0K\u00a0¤\x1elatn.c4.o\x1f00K\u00a0¤\x1elatn.c4.x\x1f00K\u00a0¤" +
-			"\x1elatn.c5.o\x1f000K\u00a0¤\x1elatn.c5.x\x1f000K\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0Mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0M" +
-			"ln\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mld\u00a0¤\x1e" +
-			"latn.c9.x\x1f0\u00a0Mld\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miliardi\x1elatn.l10.x\x1f00 miliardi\x1elatn.l11.o\x1f" +
-			"000 miliardi\x1elatn.l11.x\x1f000 miliardi\x1elatn.l12.o\x1f0 mille miliardi\x1elatn.l12.x\x1f0 mila miliardi\x1elatn" +
-			".l13.o\x1f00 mila miliardi\x1elatn.l13.x\x1f00 mila miliardi\x1elatn.l14.o\x1f000 mila miliardi\x1elatn.l14.x\x1f000 " +
-			"mila miliardi\x1elatn.l3.o\x1fmille\x1elatn.l3.x\x1f0 mila\x1elatn.l4.o\x1f00 mila\x1elatn.l4.x\x1f00 mila\x1elatn.l5.o\x1f000" +
-			" mila\x1elatn.l5.x\x1f000 mila\x1elatn.l6.o\x1f0 milione\x1elatn.l6.x\x1f0 milioni\x1elatn.l7.o\x1f00 milioni\x1elatn.l7.x\x1f" +
-			"00 milioni\x1elatn.l8.o\x1f000 milioni\x1elatn.l8.x\x1f000 milioni\x1elatn.l9.o\x1f0 miliardo\x1elatn.l9.x\x1f0 miliardi" +
-			"\x1elatn.s10.o\x1f00\u00a0Mld\x1elatn.s10.x\x1f00\u00a0Mld\x1elatn.s11.o\x1f000\u00a0Mld\x1elatn.s11.x\x1f000\u00a0Mld\x1elatn.s12.o\x1f0\u00a0Bln" +
-			"\x1elatn.s12.x\x1f0\u00a0Bln\x1elatn.s13.o\x1f00\u00a0Bln\x1elatn.s13.x\x1f00\u00a0Bln\x1elatn.s14.o\x1f000\u00a0Bln\x1elatn.s14.x\x1f000\u00a0Bln" +
-			"\x1elatn.s6.o\x1f0\u00a0Mln\x1elatn.s6.x\x1f0\u00a0Mln\x1elatn.s7.o\x1f00\u00a0Mln\x1elatn.s7.x\x1f00\u00a0Mln\x1elatn.s8.o\x1f000\u00a0Mln\x1elatn.s" +
-			"8.x\x1f000\u00a0Mln\x1elatn.s9.o\x1f0\u00a0Mld\x1elatn.s9.x\x1f0\u00a0Mld\x1elatn.A\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0." +
-			"00;¤-#,##0.00\x1elatn.d\x1f.\x1elatn.g\x1f'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}～{" +
-			"1}\x1elatn.Ux\x1f{0}{1}\x1elatn.X\x1f約 {0}\x1elatn.c10.x\x1f¤000億\x1elatn.c11.x\x1f¤0000億\x1elatn.c12.x\x1f¤0兆\x1elatn" +
-			".c13.x\x1f¤00兆\x1elatn.c14.x\x1f¤000兆\x1elatn.c15.x\x1f¤0000兆\x1elatn.c16.x\x1f¤0京\x1elatn.c17.x\x1f¤00京\x1elat" +
-			"n.c18.x\x1f¤000京\x1elatn.c19.x\x1f¤0000京\x1elatn.c3.x\x1f0\x1elatn.c4.x\x1f¤0万\x1elatn.c5.x\x1f¤00万\x1elatn.c6.x\x1f¤" +
-			"000万\x1elatn.c7.x\x1f¤0000万\x1elatn.c8.x\x1f¤0億\x1elatn.c9.x\x1f¤00億\x1elatn.l10.x\x1f000億\x1elatn.l11.x\x1f0000億" +
-			"\x1elatn.l12.x\x1f0兆\x1elatn.l13.x\x1f00兆\x1elatn.l14.x\x1f000兆\x1elatn.l15.x\x1f0000兆\x1elatn.l16.x\x1f0京\x1elatn.l17." +
-			"x\x1f00京\x1elatn.l18.x\x1f000京\x1elatn.l19.x\x1f0000京\x1elatn.l3.x\x1f0\x1elatn.l4.x\x1f0万\x1elatn.l5.x\x1f00万\x1elatn.l6." +
-			"x\x1f000万\x1elatn.l7.x\x1f0000万\x1elatn.l8.x\x1f0億\x1elatn.l9.x\x1f00億\x1elatn.s10.x\x1f000億\x1elatn.s11.x\x1f0000億\x1el" +
-			"atn.s12.x\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s15.x\x1f0000兆\x1elatn.s16.x\x1f0京\x1elatn.s17.x\x1f" +
-			"00京\x1elatn.s18.x\x1f000京\x1elatn.s19.x\x1f0000京\x1elatn.s3.x\x1f0\x1elatn.s4.x\x1f0万\x1elatn.s5.x\x1f00万\x1elatn.s6.x\x1f" +
-			"000万\x1elatn.s7.x\x1f0000万\x1elatn.s8.x\x1f0億\x1elatn.s9.x\x1f00億\x1elatn.~\x1f約\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#," +
-			"##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0} – {1}\x1elatn.c10.x\x1f¤\u00a000M\x1elatn.c11.x\x1f¤\u00a0000M\x1elatn.c3.x\x1f¤\u00a0" +
-			"0È\x1elatn.c4.x\x1f¤\u00a000È\x1elatn.c5.x\x1f¤\u00a0000È\x1elatn.c6.x\x1f¤\u00a00Y\x1elatn.c7.x\x1f¤\u00a000Y\x1elatn.c8.x\x1f¤\u00a0000Y" +
-			"\x1elatn.c9.x\x1f¤\u00a00M\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 milyar\x1elatn.l11.x\x1f000 milyar\x1elatn.l12.x\x1f0 tril" +
-			"yun\x1elatn.l13.x\x1f00 trilyun\x1elatn.l14.x\x1f000 trilyun\x1elatn.l3.x\x1f0 èwu\x1elatn.l4.x\x1f00 èwu\x1elatn.l5.x\x1f00" +
-			"0 èwu\x1elatn.l6.x\x1f0 yuta\x1elatn.l7.x\x1f00 yuta\x1elatn.l8.x\x1f000 yuta\x1elatn.l9.x\x1f0 milyar\x1elatn.s10.x\x1f00M\x1el" +
-			"atn.s11.x\x1f000M\x1elatn.s3.x\x1f0È\x1elatn.s4.x\x1f00È\x1elatn.s5.x\x1f000È\x1elatn.s6.x\x1f0Y\x1elatn.s7.x\x1f00Y\x1elatn.s8.x" +
-			"\x1f000Y\x1elatn.s9.x\x1f0M\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}-{1}\x1elatn.X\x1f≈{0}\x1elatn" +
-			".c10.o\x1f00\u00a0მლრდ'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0მლრდ'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0მლრ'.'\u00a0" +
-			"¤\x1elatn.c11.x\x1f000\u00a0მლრ'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0ტრლ'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0ტრლ'.'\u00a0¤" +
-			"\x1elatn.c13.o\x1f00\u00a0ტრლ'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0ტრლ'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0ტრლ'.'\u00a0¤" +
-			"\x1elatn.c14.x\x1f000\u00a0ტრლ'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0ათ'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0ათ'.'\u00a0¤\x1elatn.c4." +
-			"o\x1f00\u00a0ათ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0ათ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0ათ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0ათ" +
-			"'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0მლნ'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0მლნ'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0მლნ'.'\u00a0" +
-			"¤\x1elatn.c7.x\x1f00\u00a0მლნ'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0მლნ'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0მლნ'.'\u00a0¤" +
-			"\x1elatn.c9.o\x1f0\u00a0მლრდ'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0მლრდ'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o" +
-			"\x1f00 მილიარდი\x1elatn.l10.x\x1f00 მილიარდი\x1elatn.l11.o\x1f000 მილია" +
-			"რდი\x1elatn.l11.x\x1f000 მილიარდი\x1elatn.l12.o\x1f0 ტრილიონი\x1elatn.l12" +
-			".x\x1f0 ტრილიონი\x1elatn.l13.o\x1f00 ტრილიონი\x1elatn.l13.x\x1f00 ტრილი" +
-			"ონი\x1elatn.l14.o\x1f000 ტრილიონი\x1elatn.l14.x\x1f000 ტრილიონი\x1elatn.l" +
-			"3.o\x1f0 ათასი\x1elatn.l3.x\x1f0 ათასი\x1elatn.l4.o\x1f00 ათასი\x1elatn.l4.x\x1f00 ათ" +
-			"ასი\x1elatn.l5.o\x1f000 ათასი\x1elatn.l5.x\x1f000 ათასი\x1elatn.l6.o\x1f0 მილიო" +
-			"ნი\x1elatn.l6.x\x1f0 მილიონი\x1elatn.l7.o\x1f00 მილიონი\x1elatn.l7.x\x1f00 მილ" +
-			"იონი\x1elatn.l8.o\x1f000 მილიონი\x1elatn.l8.x\x1f000 მილიონი\x1elatn.l9.o\x1f0" +
-			" მილიარდი\x1elatn.l9.x\x1f0 მილიარდი\x1elatn.n\x1fარ\u00a0არის\u00a0რი" +
-			"ცხვი\x1elatn.s10.o\x1f00\u00a0მლრდ'.'\x1elatn.s10.x\x1f00\u00a0მლრდ'.'\x1elatn.s11.o\x1f000\u00a0მლ" +
-			"რ'.'\x1elatn.s11.x\x1f000\u00a0მლრ'.'\x1elatn.s12.o\x1f0\u00a0ტრლ'.'\x1elatn.s12.x\x1f0\u00a0ტრლ'.'\x1elatn.s" +
-			"13.o\x1f00\u00a0ტრლ'.'\x1elatn.s13.x\x1f00\u00a0ტრლ'.'\x1elatn.s14.o\x1f000\u00a0ტრლ'.'\x1elatn.s14.x\x1f000\u00a0ტ" +
-			"რლ'.'\x1elatn.s3.o\x1f0\u00a0ათ'.'\x1elatn.s3.x\x1f0\u00a0ათ'.'\x1elatn.s4.o\x1f00\u00a0ათ'.'\x1elatn.s4.x\x1f00\u00a0ა" +
-			"თ'.'\x1elatn.s5.o\x1f000\u00a0ათ'.'\x1elatn.s5.x\x1f000\u00a0ათ'.'\x1elatn.s6.o\x1f0\u00a0მლნ'.'\x1elatn.s6.x\x1f0\u00a0" +
-			"მლნ'.'\x1elatn.s7.o\x1f00\u00a0მლნ'.'\x1elatn.s7.x\x1f00\u00a0მლნ'.'\x1elatn.s8.o\x1f000\u00a0მლნ'.'\x1el" +
-			"atn.s8.x\x1f000\u00a0მლნ'.'\x1elatn.s9.o\x1f0\u00a0მლრდ'.'\x1elatn.s9.x\x1f0\u00a0მლრდ'.'\x1elatn.~\x1f≈\x1e" +
-			"latn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.c10.o\x1f00L¤\x1elatn.c10.x\x1f00L¤\x1elatn.c11.o\x1f000L¤\x1elatn.c11" +
-			".x\x1f000L¤\x1elatn.c3.o\x1f0G¤\x1elatn.c3.x\x1f0G¤\x1elatn.c4.o\x1f00G¤\x1elatn.c4.x\x1f00G¤\x1elatn.c5.o\x1f000G¤\x1elatn.c5" +
-			".x\x1f000G¤\x1elatn.c9.o\x1f0L¤\x1elatn.c9.x\x1f0L¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C" +
-			"\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.n\x1fбжыгъэкъым\x1elatn.~\x1f≈\x1elatn.A\x1f¤#,##0.00;(¤#,##0" +
-			".00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0} – {1}" +
-			"\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 mil milhãu\x1elatn.l11.x\x1f000 mil milhãu\x1elatn.l12.x\x1f0 bilhãu\x1ela" +
-			"tn.l13.x\x1f00 bilhãu\x1elatn.l14.x\x1f000 bilhãu\x1elatn.l3.x\x1f0 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.x\x1f000 mil\x1ela" +
-			"tn.l6.x\x1f0 milhãu\x1elatn.l7.x\x1f00 milhãu\x1elatn.l8.x\x1f000 milhãu\x1elatn.l9.x\x1f0 mil milhãu\x1elatn.s10.x\x1f" +
-			"00\u00a0MM\x1elatn.s11.x\x1f000\u00a0MM\x1elatn.s12.x\x1f0\u00a0Bi\x1elatn.s13.x\x1f00\u00a0Bi\x1elatn.s14.x\x1f000\u00a0Bi\x1elatn.s3.x\x1f0\u00a0mil" +
-			"\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.x\x1f" +
-			"0\u00a0MM\x1elatn.c10.x\x1f¤00\u00a0M'.'M'.'\x1elatn.c11.x\x1f¤000\u00a0M'.'M'.'\x1elatn.c3.x\x1f¤\u00a00M\x1elatn.c4.x\x1f¤\u00a000M\x1ela" +
-			"tn.c5.x\x1f¤\u00a0000M\x1elatn.c6.x\x1f¤\u00a00MM\x1elatn.c7.x\x1f¤\u00a000MM\x1elatn.c8.x\x1f¤\u00a0000MM\x1elatn.c9.x\x1f¤0\u00a0M'.'M'." +
-			"'\x1elatn.l10.x\x1f00 mil de millones\x1elatn.l11.x\x1f000 mil de millones\x1elatn.l12.x\x1f0 trillones\x1elatn.l13.x" +
-			"\x1f00 trillones\x1elatn.l14.x\x1f000 trillones\x1elatn.l3.x\x1f0 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l" +
-			"6.x\x1f0 millones\x1elatn.l7.x\x1f00 millones\x1elatn.l8.x\x1f000 millones\x1elatn.l9.x\x1f0 mil de millones\x1elatn.s10" +
-			".x\x1f00M'.'M'.'\x1elatn.s11.x\x1f000M'.'M'.'\x1elatn.s3.x\x1f0M\x1elatn.s4.x\x1f00M\x1elatn.s5.x\x1f000M\x1elatn.s6.x\x1f0MM\x1elat" +
-			"n.s7.x\x1f00MM\x1elatn.s8.x\x1f000MM\x1elatn.s9.x\x1f0M'.'M'.'\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.x\x1f¤\u00a000\u00a0bi\x1elatn.c11.x" +
-			"\x1f¤\u00a0000\u00a0bi\x1elatn.c12.x\x1f¤\u00a00\u00a0tri\x1elatn.c13.x\x1f¤\u00a000\u00a0tri\x1elatn.c14.x\x1f¤\u00a0000\u00a0tri\x1elatn.c3.x\x1f¤\u00a0" +
-			"0\u00a0mil\x1elatn.c4.x\x1f¤\u00a000\u00a0mil\x1elatn.c5.x\x1f¤\u00a0000\u00a0mil\x1elatn.c6.x\x1f¤\u00a00\u00a0mi\x1elatn.c7.x\x1f¤\u00a000\u00a0mi\x1elat" +
-			"n.c8.x\x1f¤\u00a0000\u00a0mi\x1elatn.c9.x\x1f¤\u00a00\u00a0bi\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 bilhão\x1elatn.l10.x\x1f00 bil" +
-			"hão ag\x1elatn.l11.o\x1f000 bilhão\x1elatn.l11.x\x1f000 bilhão ag\x1elatn.l12.o\x1f0 trilhão\x1elatn.l12.x\x1f0 tril" +
-			"hão ag\x1elatn.l13.o\x1f00 trilhão\x1elatn.l13.x\x1f00 trilhão ag\x1elatn.l14.o\x1f000 trilhão\x1elatn.l14.x\x1f000 " +
-			"trilhão ag\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.o\x1f000 mil\x1e" +
-			"latn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 milhão\x1elatn.l6.x\x1f0 milhão ag\x1elatn.l7.o\x1f00 milhão\x1elatn.l7.x\x1f00 m" +
-			"ilhão ag\x1elatn.l8.o\x1f000 milhão\x1elatn.l8.x\x1f000 milhão ag\x1elatn.l9.o\x1f0 bilhão\x1elatn.l9.x\x1f0 bilhão" +
-			" ag\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.x\x1f0\u00a0tri\x1elatn.s13.x\x1f00\u00a0tri\x1elatn.s14.x\x1f000\u00a0tr" +
-			"i\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s7.x\x1f00\u00a0mi\x1elatn.s8" +
-			".x\x1f000\u00a0mi\x1elatn.s9.x\x1f0\u00a0bi\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#," +
-			"##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0млрд\u00a0¤\x1ela" +
-			"tn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.o\x1f0" +
-			"\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤" +
-			"\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.o\x1f0\u00a0мың\u00a0¤\x1elatn.c3.x\x1f0\u00a0" +
-			"мың\u00a0¤\x1elatn.c4.o\x1f00\u00a0мың\u00a0¤\x1elatn.c4.x\x1f00\u00a0мың\u00a0¤\x1elatn.c5.o\x1f000\u00a0м'.'\u00a0¤\x1elatn.c5.x\x1f" +
-			"000\u00a0м'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7." +
-			"x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1el" +
-			"atn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 миллиард\x1elatn.l10.x\x1f00 милл" +
-			"иард\x1elatn.l11.o\x1f000 миллиард\x1elatn.l11.x\x1f000 миллиард\x1elatn.l12.o\x1f0 трилл" +
-			"ион\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.o\x1f00 триллион\x1elatn.l13.x\x1f00 триллио" +
-			"н\x1elatn.l14.o\x1f000 триллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l3.o\x1f0 мың\x1elatn.l3.x\x1f" +
-			"0 мың\x1elatn.l4.o\x1f00 мың\x1elatn.l4.x\x1f00 мың\x1elatn.l5.o\x1f000 мың\x1elatn.l5.x\x1f000 мың\x1elatn." +
-			"l6.o\x1f0 миллион\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.o\x1f00 миллион\x1elatn.l7.x\x1f00 мил" +
-			"лион\x1elatn.l8.o\x1f000 миллион\x1elatn.l8.x\x1f000 миллион\x1elatn.l9.o\x1f0 миллиард\x1e" +
-			"latn.l9.x\x1f0 миллиард\x1elatn.n\x1fсан\u00a0емес\x1elatn.s10.o\x1f00\u00a0млрд\x1elatn.s10.x\x1f00\u00a0мл" +
-			"рд\x1elatn.s11.o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.o\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0тр" +
-			"лн\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0т" +
-			"рлн\x1elatn.s3.o\x1f0\u00a0мың\x1elatn.s3.x\x1f0\u00a0мың\x1elatn.s4.o\x1f00\u00a0мың\x1elatn.s4.x\x1f00\u00a0мың\x1elatn.s5" +
-			".o\x1f000\u00a0м'.'\x1elatn.s5.x\x1f000\u00a0м'.'\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1e" +
-			"latn.s7.x\x1f00\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x" +
-			"\x1f0\u00a0млрд\x1elatn.A\x1f#,##0.00¤;(#,##0.00¤)\x1elatn.C\x1f#,##0.00¤\x1elatn.c10.o\x1f00\u00a0ملرد\u00a0¤\x1elatn.c" +
-			"10.x\x1f00\u00a0ملرد\u00a0¤\x1elatn.c11.o\x1f000\u00a0ملرد\u00a0¤\x1elatn.c11.x\x1f000\u00a0ملرد\u00a0¤\x1elatn.c12.o\x1f0\u00a0ت" +
-			"ريلليون\u00a0¤\x1elatn.c12.x\x1f0\u00a0تريلليون\u00a0¤\x1elatn.c13.o\x1f00\u00a0ترلن\u00a0¤\x1elatn.c13.x\x1f00\u00a0" +
-			"ترلن\u00a0¤\x1elatn.c14.o\x1f000\u00a0ترلن\u00a0¤\x1elatn.c14.x\x1f000\u00a0ترلن\u00a0¤\x1elatn.c3.o\x1f0\u00a0مىڭ\u00a0¤\x1el" +
-			"atn.c3.x\x1f0\u00a0مىڭ\u00a0¤\x1elatn.c4.o\x1f00\u00a0مىڭ\u00a0¤\x1elatn.c4.x\x1f00\u00a0مىڭ\u00a0¤\x1elatn.c5.o\x1f000\u00a0مىڭ\u00a0" +
-			"¤\x1elatn.c5.x\x1f000\u00a0مىڭ\u00a0¤\x1elatn.c6.o\x1f0\u00a0ميلليون\u00a0¤\x1elatn.c6.x\x1f0\u00a0ميلليون\u00a0¤\x1elat" +
-			"n.c7.o\x1f00\u00a0ميلليون\u00a0¤\x1elatn.c7.x\x1f00\u00a0ميلليون\u00a0¤\x1elatn.c8.o\x1f000\u00a0ملن\u00a0¤\x1elatn.c8" +
-			".x\x1f000\u00a0ملن\u00a0¤\x1elatn.c9.o\x1f0\u00a0ميلليارد\u00a0¤\x1elatn.c9.x\x1f0\u00a0ميلليارد\u00a0¤\x1elatn.g\x1f\u00a0" +
-			"\x1elatn.l10.o\x1f00 ميلليارد\x1elatn.l10.x\x1f00 ميلليارد\x1elatn.l11.o\x1f000 ميلليارد\x1el" +
-			"atn.l11.x\x1f000 ميلليارد\x1elatn.l12.o\x1f0 تريلليون\x1elatn.l12.x\x1f0 تريلليون\x1elatn." +
-			"l13.o\x1f00 تريلليون\x1elatn.l13.x\x1f00 تريلليون\x1elatn.l14.o\x1f000 تريلليون\x1elatn.l1" +
-			"4.x\x1f000 تريلليون\x1elatn.l3.o\x1f0 مىڭ\x1elatn.l3.x\x1f0 مىڭ\x1elatn.l4.o\x1f00 مىڭ\x1elatn.l4.x\x1f00 " +
-			"مىڭ\x1elatn.l5.o\x1f000 مىڭ\x1elatn.l5.x\x1f000 مىڭ\x1elatn.l6.o\x1f0 ميلليون\x1elatn.l6.x\x1f0 ميلل" +
-			"يون\x1elatn.l7.o\x1f00 ميلليون\x1elatn.l7.x\x1f00 ميلليون\x1elatn.l8.o\x1f000 ميلليون\x1elatn" +
-			".l8.x\x1f000 ميلليون\x1elatn.l9.o\x1f0 ميلليارد\x1elatn.l9.x\x1f0 ميلليارد\x1elatn.n\x1fسان" +
-			"\u00a0ەمەس\x1elatn.s10.o\x1f00\u00a0ملرد\x1elatn.s10.x\x1f00\u00a0ملرد\x1elatn.s11.o\x1f000\u00a0ملرد\x1elatn.s11.x\x1f0" +
-			"00\u00a0ملرد\x1elatn.s12.o\x1f0\u00a0تريلليون\x1elatn.s12.x\x1f0\u00a0تريلليون\x1elatn.s13.o\x1f00\u00a0ترل" +
-			"ن\x1elatn.s13.x\x1f00\u00a0ترلن\x1elatn.s14.o\x1f000\u00a0ترلن\x1elatn.s14.x\x1f000\u00a0ترلن\x1elatn.s3.o\x1f0\u00a0مىڭ" +
-			"\x1elatn.s3.x\x1f0\u00a0مىڭ\x1elatn.s4.o\x1f00\u00a0مىڭ\x1elatn.s4.x\x1f00\u00a0مىڭ\x1elatn.s5.o\x1f000\u00a0مىڭ\x1elatn.s5.x\x1f0" +
-			"00\u00a0مىڭ\x1elatn.s6.o\x1f0\u00a0ميلليون\x1elatn.s6.x\x1f0\u00a0ميلليون\x1elatn.s7.o\x1f00\u00a0ميلليون\x1e" +
-			"latn.s7.x\x1f00\u00a0ميلليون\x1elatn.s8.o\x1f000\u00a0ملن\x1elatn.s8.x\x1f000\u00a0ملن\x1elatn.s9.o\x1f0\u00a0ميللي" +
-			"ارد\x1elatn.s9.x\x1f0\u00a0ميلليارد\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#," +
-			"##0.00;¤-#,##0.00\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,#" +
-			"#0.00\x1ekhmr.+\x1f+\x1ekhmr.-\x1f-\x1ekhmr.A\x1f#,##0.00¤;(#,##0.00¤)\x1ekhmr.B\x1f\u00a0\x1ekhmr.C\x1f#,##0.00¤\x1ekhmr.D\x1f#,##0." +
-			"###\x1ekhmr.P\x1f#,##0%\x1ekhmr.R\x1f{0}–{1}\x1ekhmr.S\x1f#E0\x1ekhmr.Ux\x1f{0} {1}\x1ekhmr.X\x1f~{0}\x1ekhmr.b\x1f\u00a0\x1ekhmr.c10.x\x1f0" +
-			"0\u00a0ប៊ីលាន¤\x1ekhmr.c11.x\x1f000\u00a0ប៊ីលាន¤\x1ekhmr.c12.x\x1f0\u00a0ទ្រីលាន" +
-			"¤\x1ekhmr.c13.x\x1f00\u00a0ទ្រីលាន¤\x1ekhmr.c14.x\x1f000\u00a0ទ្រីលាន¤\x1ekhmr.c3.x\x1f0ព" +
-			"ាន់¤\x1ekhmr.c4.x\x1f00\u00a0ពាន់¤\x1ekhmr.c5.x\x1f000\u00a0ពាន់¤\x1ekhmr.c6.x\x1f0\u00a0លាន¤\x1e" +
-			"khmr.c7.x\x1f00\u00a0លាន¤\x1ekhmr.c8.x\x1f000\u00a0លាន¤\x1ekhmr.c9.x\x1f0\u00a0ប៊ីលាន¤\x1ekhmr.d\x1f,\x1e" +
-			"khmr.e\x1fE\x1ekhmr.g\x1f.\x1ekhmr.i\x1f∞\x1ekhmr.l10.x\x1f00 ប៊ីលាន\x1ekhmr.l11.x\x1f000 ប៊ីលាន\x1e" +
-			"khmr.l12.x\x1f0 ទ្រីលាន\x1ekhmr.l13.x\x1f00 ទ្រីលាន\x1ekhmr.l14.x\x1f000 ទ្រី" +
-			"លាន\x1ekhmr.l3.x\x1f0 ពាន់\x1ekhmr.l4.x\x1f00 ពាន់\x1ekhmr.l5.x\x1f000ពាន់\x1ekhmr.l6.x" +
-			"\x1f0 លាន\x1ekhmr.l7.x\x1f00 លាន\x1ekhmr.l8.x\x1f000 លាន\x1ekhmr.l9.x\x1f0 ប៊ីលាន\x1ekhmr." +
-			"m\x1f‰\x1ekhmr.n\x1fNaN\x1ekhmr.p\x1f%\x1ekhmr.s10.x\x1f00\u00a0ប៊ីលាន\x1ekhmr.s11.x\x1f000\u00a0ប៊ីលាន\x1ek" +
-			"hmr.s12.x\x1f0\u00a0ទ្រីលាន\x1ekhmr.s13.x\x1f00\u00a0ទ្រីលាន\x1ekhmr.s14.x\x1f000\u00a0ទ្រ" +
-			"ីលាន\x1ekhmr.s3.x\x1f0ពាន់\x1ekhmr.s4.x\x1f00\u00a0ពាន់\x1ekhmr.s5.x\x1f000\u00a0ពាន់\x1ekhmr" +
-			".s6.x\x1f0\u00a0លាន\x1ekhmr.s7.x\x1f00\u00a0លាន\x1ekhmr.s8.x\x1f000\u00a0លាន\x1ekhmr.s9.x\x1f0\u00a0ប៊ីលា" +
-			"ន\x1ekhmr.~\x1f~\x1elatn.A\x1f#,##0.00¤;(#,##0.00¤)\x1elatn.C\x1f#,##0.00¤\x1elatn.c10.x\x1f00\u00a0ប៊ីលាន¤" +
-			"\x1elatn.c11.x\x1f000\u00a0ប៊ីលាន¤\x1elatn.c12.x\x1f0\u00a0ទ្រីលាន¤\x1elatn.c13.x\x1f00\u00a0ទ្" +
-			"រីលាន¤\x1elatn.c14.x\x1f000\u00a0ទ្រីលាន¤\x1elatn.c3.x\x1f0ពាន់¤\x1elatn.c4.x\x1f00" +
-			"\u00a0ពាន់¤\x1elatn.c5.x\x1f000\u00a0ពាន់¤\x1elatn.c6.x\x1f0\u00a0លាន¤\x1elatn.c7.x\x1f00\u00a0លាន¤" +
-			"\x1elatn.c8.x\x1f000\u00a0លាន¤\x1elatn.c9.x\x1f0\u00a0ប៊ីលាន¤\x1elatn.l10.x\x1f00 ប៊ីលាន\x1el" +
-			"atn.l11.x\x1f000 ប៊ីលាន\x1elatn.l12.x\x1f0 ទ្រីលាន\x1elatn.l13.x\x1f00 ទ្រីល" +
-			"ាន\x1elatn.l14.x\x1f000 ទ្រីលាន\x1elatn.l3.x\x1f0 ពាន់\x1elatn.l4.x\x1f00 ពាន់\x1el" +
-			"atn.l5.x\x1f000ពាន់\x1elatn.l6.x\x1f0 លាន\x1elatn.l7.x\x1f00 លាន\x1elatn.l8.x\x1f000 លាន\x1ela" +
-			"tn.l9.x\x1f0 ប៊ីលាន\x1elatn.s10.x\x1f00\u00a0ប៊ីលាន\x1elatn.s11.x\x1f000\u00a0ប៊ីលាន" +
-			"\x1elatn.s12.x\x1f0\u00a0ទ្រីលាន\x1elatn.s13.x\x1f00\u00a0ទ្រីលាន\x1elatn.s14.x\x1f000\u00a0ទ្" +
-			"រីលាន\x1elatn.s3.x\x1f0ពាន់\x1elatn.s4.x\x1f00\u00a0ពាន់\x1elatn.s5.x\x1f000\u00a0ពាន់\x1el" +
-			"atn.s6.x\x1f0\u00a0លាន\x1elatn.s7.x\x1f00\u00a0លាន\x1elatn.s8.x\x1f000\u00a0លាន\x1elatn.s9.x\x1f0\u00a0ប៊ីល" +
-			"ាន\x1eknda.+\x1f+\x1eknda.-\x1f-\x1eknda.A\x1f¤#,##0.00;(¤#,##0.00)\x1eknda.B\x1f\u00a0\x1eknda.C\x1f¤#,##0.00\x1eknda.D\x1f#,##0" +
-			".###\x1eknda.P\x1f#,##0%\x1eknda.R\x1f{0}–{1}\x1eknda.S\x1f#E0\x1eknda.Ux\x1f{0} {1}\x1eknda.X\x1f~{0}\x1eknda.b\x1f\u00a0\x1eknda.c10.o\x1f" +
-			"¤00ಬಿ\x1eknda.c10.x\x1f¤00ಬಿ\x1eknda.c11.o\x1f¤000ಬಿ\x1eknda.c11.x\x1f¤000ಬಿ\x1eknda.c12.o\x1f¤0ಟ" +
-			"್ರಿ\x1eknda.c12.x\x1f¤0ಟ್ರಿ\x1eknda.c13.o\x1f¤00ಟ್ರಿ\x1eknda.c13.x\x1f¤00ಟ್ರಿ\x1eknd" +
-			"a.c14.o\x1f¤000ಟ್ರಿ\x1eknda.c14.x\x1f¤000ಟ್ರಿ\x1eknda.c3.o\x1f¤0ಸಾ\x1eknda.c3.x\x1f¤0ಸಾ\x1ek" +
-			"nda.c4.o\x1f¤00ಸಾ\x1eknda.c4.x\x1f¤00ಸಾ\x1eknda.c5.o\x1f¤000ಸಾ\x1eknda.c5.x\x1f¤000ಸಾ\x1eknda.c6.o\x1f¤" +
-			"0ಮಿ\x1eknda.c6.x\x1f¤0ಮಿ\x1eknda.c7.o\x1f¤00ಮಿ\x1eknda.c7.x\x1f¤00ಮಿ\x1eknda.c8.o\x1f¤000ಮಿ\x1eknda" +
-			".c8.x\x1f¤000ಮಿ\x1eknda.c9.o\x1f¤0ಬಿ\x1eknda.c9.x\x1f¤0ಬಿ\x1eknda.d\x1f.\x1eknda.e\x1fE\x1eknda.g\x1f,\x1eknda.i\x1f∞\x1e" +
-			"knda.l10.o\x1f00 ಬಿಲಿಯನ್\x1eknda.l10.x\x1f00 ಬಿಲಿಯನ್\x1eknda.l11.o\x1f000 ಬಿಲ" +
+			"}\x1earab.S\x1f#E0\x1earab.X\x1f~{0}\x1earab.b\x1f\u00a0\x1earab.l10.x\x1f00G\x1earab.l11.x\x1f000G\x1earab.l12.x\x1f0T\x1earab.l13.x\x1f00T\x1ea" +
+			"rab.l14.x\x1f000T\x1earab.l3.x\x1f0K\x1earab.l4.x\x1f00K\x1earab.l5.x\x1f000K\x1earab.l6.x\x1f0M\x1earab.l7.x\x1f00M\x1earab.l8.x\x1f00" +
+			"0M\x1earab.l9.x\x1f0G\x1earab.p\x1f٪\x1earab.s10.x\x1f00G\x1earab.s11.x\x1f000G\x1earab.s12.x\x1f0T\x1earab.s13.x\x1f00T\x1earab.s14.x" +
+			"\x1f000T\x1earab.s3.x\x1f0K\x1earab.s4.x\x1f00K\x1earab.s5.x\x1f000K\x1earab.s6.x\x1f0M\x1earab.s7.x\x1f00M\x1earab.s8.x\x1f000M\x1earab.s" +
+			"9.x\x1f0G\x1elatn.+\x1f\u200e+\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤" +
+			"00B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4." +
+			"x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0B\x1elatn.l10" +
+			".x\x1f00 billion\x1elatn.l11.x\x1f000 billion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.x\x1f00 trillion\x1elatn.l14.x\x1f000" +
+			" trillion\x1elatn.l3.x\x1f0 thousand\x1elatn.l4.x\x1f00 thousand\x1elatn.l5.x\x1f000 thousand\x1elatn.l6.x\x1f0 million\x1e" +
+			"latn.l7.x\x1f00 million\x1elatn.l8.x\x1f000 million\x1elatn.l9.x\x1f0 billion\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1ela" +
+			"tn.s9.x\x1f0B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.f\x1f00\u00a0mld'.'\u00a0¤\x1elat" +
+			"n.c10.m\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld'." +
+			"'\u00a0¤\x1elatn.c11.m\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c12." +
+			"f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.m\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn." +
+			"c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.m\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0" +
+			"¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.m\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f0" +
+			"00\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x" +
+			"\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c" +
+			"4.x\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tis'.'\u00a0¤" +
+			"\x1elatn.c5.x\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.m\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0" +
+			"¤\x1elatn.c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.m\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'." +
+			"'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.m\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000" +
+			"\u00a0mil'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.m\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.o" +
+			"\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 miliard\x1elatn.l10.m\x1f00 mi" +
+			"liardy\x1elatn.l10.o\x1f00 miliard\x1elatn.l10.x\x1f00 miliard\x1elatn.l11.f\x1f000 miliard\x1elatn.l11.m\x1f000 miliard" +
+			"y\x1elatn.l11.o\x1f000 miliard\x1elatn.l11.x\x1f000 miliard\x1elatn.l12.f\x1f0 biliony\x1elatn.l12.m\x1f0 bilionu\x1elatn.l" +
+			"12.o\x1f0 bilion\x1elatn.l12.x\x1f0 bilionů\x1elatn.l13.f\x1f00 bilionů\x1elatn.l13.m\x1f00 bilionu\x1elatn.l13.o\x1f00 b" +
+			"ilionů\x1elatn.l13.x\x1f00 bilionů\x1elatn.l14.f\x1f000 bilionů\x1elatn.l14.m\x1f000 bilionu\x1elatn.l14.o\x1f000 bil" +
+			"ionů\x1elatn.l14.x\x1f000 bilionů\x1elatn.l3.f\x1f0 tisíce\x1elatn.l3.m\x1f0 tisíce\x1elatn.l3.o\x1f0 tisíc\x1elatn.l3" +
+			".x\x1f0 tisíc\x1elatn.l4.f\x1f00 tisíc\x1elatn.l4.m\x1f00 tisíce\x1elatn.l4.o\x1f00 tisíc\x1elatn.l4.x\x1f00 tisíc\x1elat" +
+			"n.l5.f\x1f000 tisíc\x1elatn.l5.m\x1f000 tisíce\x1elatn.l5.o\x1f000 tisíc\x1elatn.l5.x\x1f000 tisíc\x1elatn.l6.f\x1f0 mi" +
+			"liony\x1elatn.l6.m\x1f0 milionu\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 milionů\x1elatn.l7.f\x1f00 milionů\x1elatn.l7." +
+			"m\x1f00 milionu\x1elatn.l7.o\x1f00 milionů\x1elatn.l7.x\x1f00 milionů\x1elatn.l8.f\x1f000 milionů\x1elatn.l8.m\x1f000 mi" +
+			"lionu\x1elatn.l8.o\x1f000 milionů\x1elatn.l8.x\x1f000 milionů\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.m\x1f0 miliardy\x1ela" +
+			"tn.l9.o\x1f0 miliarda\x1elatn.l9.x\x1f0 miliard\x1elatn.s10.f\x1f00\u00a0mld'.'\x1elatn.s10.m\x1f00\u00a0mld'.'\x1elatn.s10.o\x1f00" +
+			"\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.f\x1f000\u00a0mld'.'\x1elatn.s11.m\x1f000\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld" +
+			"'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.m\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s" +
+			"12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.m\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0" +
+			"bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.m\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'" +
+			".'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.m\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0" +
+			"tis'.'\x1elatn.s4.m\x1f00\u00a0tis'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn.s5.f\x1f000\u00a0tis'.'\x1elatn" +
+			".s5.m\x1f000\u00a0tis'.'\x1elatn.s5.o\x1f000\u00a0tis'.'\x1elatn.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.m\x1f0\u00a0m" +
+			"il'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.m\x1f00\u00a0mil'.'\x1elatn.s7." +
+			"o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.m\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil" +
+			"'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mld'.'\x1elatn.s9.m\x1f0\u00a0mld'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f" +
+			"0\u00a0mld'.'\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1el" +
+			"atn.c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.z\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f00" +
+			"0\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.z\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн" +
+			"\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.z\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13." +
+			"x\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.z\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0тр" +
+			"лн\u00a0¤\x1elatn.c14.z\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.o\x1f0\u00a0пин\u00a0¤\x1elatn.c3.x\x1f0\u00a0пин\u00a0¤\x1elatn.c3.z\x1f" +
+			"0\u00a0пин\u00a0¤\x1elatn.c4.o\x1f00\u00a0пин\u00a0¤\x1elatn.c4.x\x1f00\u00a0пин\u00a0¤\x1elatn.c4.z\x1f00\u00a0пин\u00a0¤\x1elatn.c5" +
+			".o\x1f000\u00a0пин\u00a0¤\x1elatn.c5.x\x1f000\u00a0пин\u00a0¤\x1elatn.c5.z\x1f000\u00a0пин\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1el" +
+			"atn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c6.z\x1f0\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤" +
+			"\x1elatn.c7.z\x1f00\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c8.z\x1f000\u00a0мл" +
+			"н\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.z\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1ela" +
+			"tn.g\x1f\u00a0\x1elatn.l10.o\x1f00 млрд\x1elatn.l10.x\x1f00 млрд\x1elatn.l10.z\x1f00 млрд\x1elatn.l11.o\x1f000 мл" +
+			"рд\x1elatn.l11.x\x1f000 млрд\x1elatn.l11.z\x1f000 млрд\x1elatn.l12.o\x1f0 трлн\x1elatn.l12.x\x1f0 трлн" +
+			"\x1elatn.l12.z\x1f0 трлн\x1elatn.l13.o\x1f00 трлн\x1elatn.l13.x\x1f00 трлн\x1elatn.l13.z\x1f00 трлн\x1elatn" +
+			".l14.o\x1f000 трлн\x1elatn.l14.x\x1f000 трлн\x1elatn.l14.z\x1f000 трлн\x1elatn.l3.o\x1f0 пин\x1elatn.l3.x" +
+			"\x1f0 пин\x1elatn.l3.z\x1f0 пин\x1elatn.l4.o\x1f00 пин\x1elatn.l4.x\x1f00 пин\x1elatn.l4.z\x1f00 пин\x1elatn.l5" +
+			".o\x1f000 пин\x1elatn.l5.x\x1f000 пин\x1elatn.l5.z\x1f000 пин\x1elatn.l6.o\x1f0 млн\x1elatn.l6.x\x1f0 млн\x1ela" +
+			"tn.l6.z\x1f0 млн\x1elatn.l7.o\x1f00 млн\x1elatn.l7.x\x1f00 млн\x1elatn.l7.z\x1f00 млн\x1elatn.l8.o\x1f000 млн" +
+			"\x1elatn.l8.x\x1f000 млн\x1elatn.l8.z\x1f000 млн\x1elatn.l9.o\x1f0 млрд\x1elatn.l9.x\x1f0 млрд\x1elatn.l9.z\x1f0" +
+			" млрд\x1elatn.n\x1fхисеп\u00a0мар\x1elatn.s10.o\x1f00\u00a0млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s10.z\x1f0" +
+			"0\u00a0млрд\x1elatn.s11.o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s11.z\x1f000\u00a0млрд\x1elatn.s12." +
+			"o\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s12.z\x1f0\u00a0трлн\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f0" +
+			"0\u00a0трлн\x1elatn.s13.z\x1f00\u00a0трлн\x1elatn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s14.z" +
+			"\x1f000\u00a0трлн\x1elatn.s3.o\x1f0\u00a0пин\x1elatn.s3.x\x1f0\u00a0пин\x1elatn.s3.z\x1f0\u00a0пин\x1elatn.s4.o\x1f00\u00a0пин\x1e" +
+			"latn.s4.x\x1f00\u00a0пин\x1elatn.s4.z\x1f00\u00a0пин\x1elatn.s5.o\x1f000\u00a0пин\x1elatn.s5.x\x1f000\u00a0пин\x1elatn.s5.z\x1f" +
+			"000\u00a0пин\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s6.z\x1f0\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elat" +
+			"n.s7.x\x1f00\u00a0млн\x1elatn.s7.z\x1f00\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s8.z\x1f000" +
+			"\u00a0млн\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.s9.z\x1f0\u00a0млрд\x1elatn.A\x1f¤#,##0.00;(¤" +
+			"#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.f\x1f¤00B\x1elatn.c10.m\x1f¤00B\x1elatn.c10.o\x1f¤00B\x1elatn.c10.t\x1f¤00B\x1e" +
+			"latn.c10.x\x1f¤00B\x1elatn.c10.z\x1f¤00B\x1elatn.c11.f\x1f¤000B\x1elatn.c11.m\x1f¤000B\x1elatn.c11.o\x1f¤000B\x1elatn.c11" +
+			".t\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c11.z\x1f¤000B\x1elatn.c12.f\x1f¤0T\x1elatn.c12.m\x1f¤0T\x1elatn.c12.o\x1f¤0T\x1ela" +
+			"tn.c12.t\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c12.z\x1f¤0T\x1elatn.c13.f\x1f¤00T\x1elatn.c13.m\x1f¤00T\x1elatn.c13.o\x1f¤00T" +
+			"\x1elatn.c13.t\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c13.z\x1f¤00T\x1elatn.c14.f\x1f¤000T\x1elatn.c14.m\x1f¤000T\x1elatn.c14" +
+			".o\x1f¤000T\x1elatn.c14.t\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c14.z\x1f¤000T\x1elatn.c3.f\x1f¤0K\x1elatn.c3.m\x1f¤0K\x1ela" +
+			"tn.c3.o\x1f¤0K\x1elatn.c3.t\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c3.z\x1f¤0K\x1elatn.c4.f\x1f¤00K\x1elatn.c4.m\x1f¤00K\x1elatn.c" +
+			"4.o\x1f¤00K\x1elatn.c4.t\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c4.z\x1f¤00K\x1elatn.c5.f\x1f¤000K\x1elatn.c5.m\x1f¤000K\x1elatn" +
+			".c5.o\x1f¤000K\x1elatn.c5.t\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c5.z\x1f¤000K\x1elatn.c6.f\x1f¤0M\x1elatn.c6.m\x1f¤0M\x1ela" +
+			"tn.c6.o\x1f¤0M\x1elatn.c6.t\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c6.z\x1f¤0M\x1elatn.c7.f\x1f¤00M\x1elatn.c7.m\x1f¤00M\x1elatn.c" +
+			"7.o\x1f¤00M\x1elatn.c7.t\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c7.z\x1f¤00M\x1elatn.c8.f\x1f¤000M\x1elatn.c8.m\x1f¤000M\x1elatn" +
+			".c8.o\x1f¤000M\x1elatn.c8.t\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c8.z\x1f¤000M\x1elatn.c9.f\x1f¤0B\x1elatn.c9.m\x1f¤0B\x1ela" +
+			"tn.c9.o\x1f¤0B\x1elatn.c9.t\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.c9.z\x1f¤0B\x1elatn.l10.f\x1f00B\x1elatn.l10.m\x1f00B\x1elatn.l10" +
+			".o\x1f00 biliwn\x1elatn.l10.t\x1f00B\x1elatn.l10.x\x1f00 biliwn\x1elatn.l10.z\x1f00B\x1elatn.l11.f\x1f000B\x1elatn.l11.m\x1f000B\x1e" +
+			"latn.l11.o\x1f000 biliwn\x1elatn.l11.t\x1f000B\x1elatn.l11.x\x1f000 biliwn\x1elatn.l11.z\x1f000B\x1elatn.l12.f\x1f0T\x1elatn.l" +
+			"12.m\x1f0T\x1elatn.l12.o\x1f0 triliwn\x1elatn.l12.t\x1f0T\x1elatn.l12.x\x1f0 triliwn\x1elatn.l12.z\x1f0T\x1elatn.l13.f\x1f00T\x1elat" +
+			"n.l13.m\x1f00T\x1elatn.l13.o\x1f00 triliwn\x1elatn.l13.t\x1f00T\x1elatn.l13.x\x1f00 triliwn\x1elatn.l13.z\x1f00T\x1elatn.l14.f" +
+			"\x1f000T\x1elatn.l14.m\x1f000T\x1elatn.l14.o\x1f000T\x1elatn.l14.t\x1f000T\x1elatn.l14.x\x1f000 triliwn\x1elatn.l14.z\x1f000T\x1elat" +
+			"n.l3.f\x1f0K\x1elatn.l3.m\x1f0K\x1elatn.l3.o\x1f0 mil\x1elatn.l3.t\x1f0K\x1elatn.l3.x\x1f0 mil\x1elatn.l3.z\x1f0 mil\x1elatn.l4.f\x1f00" +
+			"K\x1elatn.l4.m\x1f00K\x1elatn.l4.o\x1f00 mil\x1elatn.l4.t\x1f00K\x1elatn.l4.x\x1f00 mil\x1elatn.l4.z\x1f00K\x1elatn.l5.f\x1f000K\x1elat" +
+			"n.l5.m\x1f000K\x1elatn.l5.o\x1f000 mil\x1elatn.l5.t\x1f000K\x1elatn.l5.x\x1f000 mil\x1elatn.l5.z\x1f000K\x1elatn.l6.f\x1f0M\x1elatn." +
+			"l6.m\x1f0M\x1elatn.l6.o\x1f0 miliwn\x1elatn.l6.t\x1f0M\x1elatn.l6.x\x1f0 miliwn\x1elatn.l6.z\x1f0M\x1elatn.l7.f\x1f00M\x1elatn.l7.m\x1f" +
+			"00M\x1elatn.l7.o\x1f00 miliwn\x1elatn.l7.t\x1f00M\x1elatn.l7.x\x1f00 miliwn\x1elatn.l7.z\x1f00M\x1elatn.l8.f\x1f000M\x1elatn.l8.m" +
+			"\x1f000M\x1elatn.l8.o\x1f000 miliwn\x1elatn.l8.t\x1f000M\x1elatn.l8.x\x1f000 miliwn\x1elatn.l8.z\x1f000M\x1elatn.l9.f\x1f0B\x1elatn." +
+			"l9.m\x1f0B\x1elatn.l9.o\x1f0 biliwn\x1elatn.l9.t\x1f0B\x1elatn.l9.x\x1f0 biliwn\x1elatn.l9.z\x1f0B\x1elatn.s10.f\x1f00B\x1elatn.s10." +
+			"m\x1f00B\x1elatn.s10.o\x1f00B\x1elatn.s10.t\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s10.z\x1f00B\x1elatn.s11.f\x1f000B\x1elatn.s11.m\x1f000" +
+			"B\x1elatn.s11.o\x1f000B\x1elatn.s11.t\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s11.z\x1f000B\x1elatn.s9.f\x1f0B\x1elatn.s9.m\x1f0B\x1elatn" +
+			".s9.o\x1f0B\x1elatn.s9.t\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.s9.z\x1f0B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#" +
+			",##0\u00a0%\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mia'." +
+			"'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mia'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bio'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bio'.'\u00a0¤\x1elatn.c13.o\x1f00" +
+			"\u00a0bio'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bio'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bio'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bio'.'\u00a0¤\x1elat" +
+			"n.c3.o\x1f0\u00a0t\u00a0¤\x1elatn.c3.x\x1f0\u00a0t\u00a0¤\x1elatn.c4.o\x1f00\u00a0t\u00a0¤\x1elatn.c4.x\x1f00\u00a0t\u00a0¤\x1elatn.c5.o\x1f000\u00a0t\u00a0¤\x1e" +
+			"latn.c5.x\x1f000\u00a0t\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1ela" +
+			"tn.c7.x\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mia'.'\u00a0" +
+			"¤\x1elatn.c9.x\x1f0\u00a0mia'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliarder\x1elatn.l10.x\x1f00 milliarder\x1el" +
+			"atn.l11.o\x1f000 milliarder\x1elatn.l11.x\x1f000 milliarder\x1elatn.l12.o\x1f0 billion\x1elatn.l12.x\x1f0 billioner\x1el" +
+			"atn.l13.o\x1f00 billioner\x1elatn.l13.x\x1f00 billioner\x1elatn.l14.o\x1f000 billioner\x1elatn.l14.x\x1f000 billioner" +
+			"\x1elatn.l3.o\x1f0 tusind\x1elatn.l3.x\x1f0 tusind\x1elatn.l4.o\x1f00 tusind\x1elatn.l4.x\x1f00 tusind\x1elatn.l5.o\x1f000 tus" +
+			"ind\x1elatn.l5.x\x1f000 tusind\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 millioner\x1elatn.l7.o\x1f00 millioner\x1elatn.l" +
+			"7.x\x1f00 millioner\x1elatn.l8.o\x1f000 millioner\x1elatn.l8.x\x1f000 millioner\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f" +
+			"0 milliarder\x1elatn.s10.o\x1f00\u00a0mia'.'\x1elatn.s10.x\x1f00\u00a0mia'.'\x1elatn.s11.o\x1f000\u00a0mia'.'\x1elatn.s11.x\x1f000\u00a0" +
+			"mia'.'\x1elatn.s12.o\x1f0\u00a0bio'.'\x1elatn.s12.x\x1f0\u00a0bio'.'\x1elatn.s13.o\x1f00\u00a0bio'.'\x1elatn.s13.x\x1f00\u00a0bio'.'\x1elat" +
+			"n.s14.o\x1f000\u00a0bio'.'\x1elatn.s14.x\x1f000\u00a0bio'.'\x1elatn.s3.o\x1f0\u00a0t\x1elatn.s3.x\x1f0\u00a0t\x1elatn.s4.o\x1f00\u00a0t\x1elatn.s4" +
+			".x\x1f00\u00a0t\x1elatn.s5.o\x1f000\u00a0t\x1elatn.s5.x\x1f000\u00a0t\x1elatn.s6.o\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.o\x1f00\u00a0" +
+			"mio'.'\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.o\x1f000\u00a0mio'.'\x1elatn.s8.x\x1f000\u00a0mio'.'\x1elatn.s9.o\x1f0\u00a0mia'.'\x1elatn" +
+			".s9.x\x1f0\u00a0mia'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##" +
+			"0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn." +
+			"c11.o\x1f000\u00a0Mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bio'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bio'.'\u00a0" +
+			"¤\x1elatn.c13.o\x1f00\u00a0Bio'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bio'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c14.x\x1f000" +
+			"\u00a0Bio'.'\u00a0¤\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0\x1elatn.c5.o\x1f0\x1elatn.c5.x\x1f0\x1elatn.c6.o\x1f0" +
+			"\u00a0Mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0Mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c8.o" +
+			"\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn." +
+			"d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 Milliarden\x1elatn.l10.x\x1f00 Milliarden\x1elatn.l11.o\x1f000 Milliarden\x1elatn.l1" +
+			"1.x\x1f000 Milliarden\x1elatn.l12.o\x1f0 Billion\x1elatn.l12.x\x1f0 Billionen\x1elatn.l13.o\x1f00 Billionen\x1elatn.l13." +
+			"x\x1f00 Billionen\x1elatn.l14.o\x1f000 Billionen\x1elatn.l14.x\x1f000 Billionen\x1elatn.l3.o\x1f0 Tausend\x1elatn.l3.x\x1f0" +
+			" Tausend\x1elatn.l4.o\x1f00 Tausend\x1elatn.l4.x\x1f00 Tausend\x1elatn.l5.o\x1f000 Tausend\x1elatn.l5.x\x1f000 Tausend\x1el" +
+			"atn.l6.o\x1f0 Million\x1elatn.l6.x\x1f0 Millionen\x1elatn.l7.o\x1f00 Millionen\x1elatn.l7.x\x1f00 Millionen\x1elatn.l8.o" +
+			"\x1f000 Millionen\x1elatn.l8.x\x1f000 Millionen\x1elatn.l9.o\x1f0 Milliarde\x1elatn.l9.x\x1f0 Milliarden\x1elatn.s10.o\x1f0" +
+			"0\u00a0Mrd'.'\x1elatn.s10.x\x1f00\u00a0Mrd'.'\x1elatn.s11.o\x1f000\u00a0Mrd'.'\x1elatn.s11.x\x1f000\u00a0Mrd'.'\x1elatn.s12.o\x1f0\u00a0Bio'" +
+			".'\x1elatn.s12.x\x1f0\u00a0Bio'.'\x1elatn.s13.o\x1f00\u00a0Bio'.'\x1elatn.s13.x\x1f00\u00a0Bio'.'\x1elatn.s14.o\x1f000\u00a0Bio'.'\x1elatn." +
+			"s14.x\x1f000\u00a0Bio'.'\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0\x1elatn.s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s" +
+			"6.o\x1f0\u00a0Mio'.'\x1elatn.s6.x\x1f0\u00a0Mio'.'\x1elatn.s7.o\x1f00\u00a0Mio'.'\x1elatn.s7.x\x1f00\u00a0Mio'.'\x1elatn.s8.o\x1f000\u00a0Mio'." +
+			"'\x1elatn.s8.x\x1f000\u00a0Mio'.'\x1elatn.s9.o\x1f0\u00a0Mrd'.'\x1elatn.s9.x\x1f0\u00a0Mrd'.'\x1elatn.~\x1f≈\x1elatn.A\x1f¤\u00a0#,##0.00\x1el" +
+			"atn.C\x1f¤\u00a0#,##0.00\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elat" +
+			"n.P\x1f#,##0%\x1elatn.c10.o\x1f¤\u00a000\u00a0Mrd'.'\x1elatn.c10.x\x1f¤\u00a000\u00a0Mrd'.'\x1elatn.c11.o\x1f¤\u00a0000\u00a0Mrd'.'\x1elatn.c" +
+			"11.x\x1f¤\u00a0000\u00a0Mrd'.'\x1elatn.c12.o\x1f¤\u00a00\u00a0Bio'.'\x1elatn.c12.x\x1f¤\u00a00\u00a0Bio'.'\x1elatn.c13.o\x1f¤\u00a000\u00a0Bio'.'" +
+			"\x1elatn.c13.x\x1f¤\u00a000\u00a0Bio'.'\x1elatn.c14.o\x1f¤\u00a0000\u00a0Bio'.'\x1elatn.c14.x\x1f¤\u00a0000\u00a0Bio'.'\x1elatn.c6.o\x1f¤\u00a00" +
+			"\u00a0Mio'.'\x1elatn.c6.x\x1f¤\u00a00\u00a0Mio'.'\x1elatn.c7.o\x1f¤\u00a000\u00a0Mio'.'\x1elatn.c7.x\x1f¤\u00a000\u00a0Mio'.'\x1elatn.c8.o\x1f¤\u00a0" +
+			"000\u00a0Mio'.'\x1elatn.c8.x\x1f¤\u00a0000\u00a0Mio'.'\x1elatn.c9.o\x1f¤\u00a00\u00a0Mrd'.'\x1elatn.c9.x\x1f¤\u00a00\u00a0Mrd'.'\x1elatn.d\x1f.\x1el" +
+			"atn.g\x1f'\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.P\x1f#,##0%\x1elatn.d\x1f.\x1elatn.g\x1f'\x1elatn.A\x1f#,##0.00¤" +
+			"\x1elatn.C\x1f#,##0.00¤\x1elatn.g\x1f\u00a0\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##0.00\x1edev" +
+			"a.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1ede" +
+			"va.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1ede" +
+			"va.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x" +
+			"\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1e" +
+			"deva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x" +
+			"\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva" +
+			".s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f00" +
+			"0K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#," +
+			"##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0mrd'" +
+			".'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.t\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.f\x1f" +
+			"000\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.t\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤" +
+			"\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.t\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'" +
+			"\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.t\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00" +
+			"\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.t\x1f000\u00a0bil'.'\u00a0¤\x1ela" +
+			"tn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.t\x1f0\u00a0tys'.'\u00a0¤" +
+			"\x1elatn.c3.x\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.t\x1f00\u00a0tys'.'\u00a0" +
+			"¤\x1elatn.c4.x\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.t\x1f000\u00a0t" +
+			"ys'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.t\x1f0\u00a0" +
+			"mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.t\x1f0" +
+			"0\u00a0mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn." +
+			"c8.t\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1el" +
+			"atn.c9.t\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 miliardow\x1elatn.l1" +
+			"0.o\x1f00 miliardow\x1elatn.l10.t\x1f00 miliardow\x1elatn.l10.x\x1f00 miliardow\x1elatn.l11.f\x1f000 miliardow\x1elatn.l" +
+			"11.o\x1f000 miliardow\x1elatn.l11.t\x1f000 miliardow\x1elatn.l11.x\x1f000 miliardow\x1elatn.l12.f\x1f0 biliony\x1elatn.l" +
+			"12.o\x1f0 bilion\x1elatn.l12.t\x1f0 biliona\x1elatn.l12.x\x1f0 bilionow\x1elatn.l13.f\x1f00 bilionow\x1elatn.l13.o\x1f00 bi" +
+			"lionow\x1elatn.l13.t\x1f00 bilionow\x1elatn.l13.x\x1f00 bilionow\x1elatn.l14.f\x1f000 bilionow\x1elatn.l14.o\x1f000 bili" +
+			"onow\x1elatn.l14.t\x1f000 bilionow\x1elatn.l14.x\x1f000 bilionow\x1elatn.l3.f\x1f0 tysac\x1elatn.l3.o\x1f0 tysac\x1elatn.l3" +
+			".t\x1f0 tysac\x1elatn.l3.x\x1f0 tysac\x1elatn.l4.f\x1f00 tysac\x1elatn.l4.o\x1f00 tysac\x1elatn.l4.t\x1f00 tysac\x1elatn.l4.x\x1f" +
+			"00 tysac\x1elatn.l5.f\x1f000 tysac\x1elatn.l5.o\x1f000 tysac\x1elatn.l5.t\x1f000 tysac\x1elatn.l5.x\x1f000 tysac\x1elatn.l6" +
+			".f\x1f0 miliony\x1elatn.l6.o\x1f0 milion\x1elatn.l6.t\x1f0 miliona\x1elatn.l6.x\x1f0 milionow\x1elatn.l7.f\x1f00 milionow\x1el" +
+			"atn.l7.o\x1f00 milionow\x1elatn.l7.t\x1f00 milionow\x1elatn.l7.x\x1f00 milionow\x1elatn.l8.f\x1f000 milionow\x1elatn.l8." +
+			"o\x1f000 milionow\x1elatn.l8.t\x1f000 milionow\x1elatn.l8.x\x1f000 milionow\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.o\x1f0 mi" +
+			"liarda\x1elatn.l9.t\x1f0 miliarźe\x1elatn.l9.x\x1f0 miliardow\x1elatn.s10.f\x1f00\u00a0mrd'.'\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1el" +
+			"atn.s10.t\x1f00\u00a0mrd'.'\x1elatn.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.f\x1f000\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s1" +
+			"1.t\x1f000\u00a0mrd'.'\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.t\x1f0\u00a0b" +
+			"il'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.t\x1f00\u00a0bil'.'\x1elat" +
+			"n.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.t\x1f000\u00a0bil'.'\x1elatn.s14" +
+			".x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tys'.'\x1elatn.s3.o\x1f0\u00a0tys'.'\x1elatn.s3.t\x1f0\u00a0tys'.'\x1elatn.s3.x\x1f0\u00a0tys'.'\x1el" +
+			"atn.s4.f\x1f00\u00a0tys'.'\x1elatn.s4.o\x1f00\u00a0tys'.'\x1elatn.s4.t\x1f00\u00a0tys'.'\x1elatn.s4.x\x1f00\u00a0tys'.'\x1elatn.s5.f\x1f000" +
+			"\u00a0tys'.'\x1elatn.s5.o\x1f000\u00a0tys'.'\x1elatn.s5.t\x1f000\u00a0tys'.'\x1elatn.s5.x\x1f000\u00a0tys'.'\x1elatn.s6.f\x1f0\u00a0mio'.'\x1el" +
+			"atn.s6.o\x1f0\u00a0mio'.'\x1elatn.s6.t\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.f\x1f00\u00a0mio'.'\x1elatn.s7.o\x1f00\u00a0mi" +
+			"o'.'\x1elatn.s7.t\x1f00\u00a0mio'.'\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.f\x1f000\u00a0mio'.'\x1elatn.s8.o\x1f000\u00a0mio'.'\x1elatn." +
+			"s8.t\x1f000\u00a0mio'.'\x1elatn.s8.x\x1f000\u00a0mio'.'\x1elatn.s9.f\x1f0\u00a0mrd'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.t\x1f0\u00a0mrd'" +
+			".'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1elatn.~\x1f≈\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d" +
+			"\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##,##0.00\x1elat" +
+			"n.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0\u00a0%\x1elatn.l10.x\x1fདུང་ཕྱུར་བ" +
+			"རྒྱ་ 0\x1elatn.l11.x\x1fདུང་ཕྱུར་སྟོང 0\x1elatn.l12.x\x1fདུང་ཕྱ" +
+			"ུར་ཁྲི་ 0\x1elatn.l13.x\x1fདུང་ཕྱུར་འབུམ་ 0\x1elatn.l14.x\x1fདུ" +
+			"ང་ཕྱུར་ས་ཡ་ 0\x1elatn.l3.x\x1fསྟོང་ཕྲག 0\x1elatn.l4.x\x1fཁྲི་ཕ" +
+			"ྲག 0\x1elatn.l5.x\x1fའབུམ་ཕྲག 0\x1elatn.l6.x\x1fས་ཡ་ 0\x1elatn.l7.x\x1fབྱེ་བ" +
+			"་ 0\x1elatn.l8.x\x1fདུང་ཕྱུར་ 0\x1elatn.l9.x\x1fདུང་ཕྱུར་ 00\x1etibt.+\x1f+\x1e" +
+			"tibt.-\x1f-\x1etibt.A\x1f¤#,##,##0.00\x1etibt.B\x1f\u00a0\x1etibt.C\x1f¤#,##,##0.00\x1etibt.D\x1f#,##,##0.###\x1etibt.P\x1f#,##,##0" +
+			"\u00a0%\x1etibt.R\x1f{0}–{1}\x1etibt.S\x1f#E0\x1etibt.Ux\x1f{0} {1}\x1etibt.X\x1f~{0}\x1etibt.b\x1f\u00a0\x1etibt.c10.x\x1f¤\u00a000G\x1etibt.c1" +
+			"1.x\x1f¤\u00a0000G\x1etibt.c12.x\x1f¤\u00a00T\x1etibt.c13.x\x1f¤\u00a000T\x1etibt.c14.x\x1f¤\u00a0000T\x1etibt.c3.x\x1f¤\u00a00K\x1etibt.c4.x" +
+			"\x1f¤\u00a000K\x1etibt.c5.x\x1f¤\u00a0000K\x1etibt.c6.x\x1f¤\u00a00M\x1etibt.c7.x\x1f¤\u00a000M\x1etibt.c8.x\x1f¤\u00a0000M\x1etibt.c9.x\x1f¤\u00a0" +
+			"0G\x1etibt.d\x1f.\x1etibt.e\x1fE\x1etibt.g\x1f,\x1etibt.i\x1fགྲངས་མེད\x1etibt.l10.x\x1fདུང་ཕྱུར" +
+			"་བརྒྱ་ 0\x1etibt.l11.x\x1fདུང་ཕྱུར་སྟོང 0\x1etibt.l12.x\x1fདུང་" +
+			"ཕྱུར་ཁྲི་ 0\x1etibt.l13.x\x1fདུང་ཕྱུར་འབུམ་ 0\x1etibt.l14.x" +
+			"\x1fདུང་ཕྱུར་ས་ཡ་ 0\x1etibt.l3.x\x1fསྟོང་ཕྲག 0\x1etibt.l4.x\x1fཁྲ" +
+			"ི་ཕྲག 0\x1etibt.l5.x\x1fའབུམ་ཕྲག 0\x1etibt.l6.x\x1fས་ཡ་ 0\x1etibt.l7.x\x1fབྱ" +
+			"ེ་བ་ 0\x1etibt.l8.x\x1fདུང་ཕྱུར་ 0\x1etibt.l9.x\x1fདུང་ཕྱུར་ 00\x1e" +
+			"tibt.m\x1f‰\x1etibt.n\x1fཨང་མད\x1etibt.p\x1f%\x1etibt.s10.x\x1f00G\x1etibt.s11.x\x1f000G\x1etibt.s12.x\x1f0T\x1etibt.s13" +
+			".x\x1f00T\x1etibt.s14.x\x1f000T\x1etibt.s3.x\x1f0K\x1etibt.s4.x\x1f00K\x1etibt.s5.x\x1f000K\x1etibt.s6.x\x1f0M\x1etibt.s7.x\x1f00M\x1etibt" +
+			".s8.x\x1f000M\x1etibt.s9.x\x1f0G\x1etibt.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1eg\x1f3\x1elatn.A\x1f¤#" +
+			",##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c1" +
+			"1.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1el" +
+			"atn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K" +
+			"\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M" +
+			"\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1fbiliɔn 00\x1elatn.l10." +
+			"x\x1fbiliɔn 00\x1elatn.l11.o\x1fbiliɔn 000\x1elatn.l11.x\x1fbiliɔn 000\x1elatn.l12.o\x1f0 triliɔn\x1elatn.l12.x\x1f0 tr" +
+			"iliɔn\x1elatn.l13.o\x1ftriliɔn 00\x1elatn.l13.x\x1ftriliɔn 00\x1elatn.l14.o\x1ftriliɔn 000\x1elatn.l14.x\x1ftriliɔn" +
+			" 000\x1elatn.l3.o\x1fakpe 0\x1elatn.l3.x\x1fakpe 0\x1elatn.l4.o\x1fakpe 00\x1elatn.l4.x\x1fakpe 00\x1elatn.l5.o\x1fakpe 000\x1ela" +
+			"tn.l5.x\x1fakpe 000\x1elatn.l6.o\x1fmiliɔn 0\x1elatn.l6.x\x1fmiliɔn 0\x1elatn.l7.o\x1fmiliɔn 00\x1elatn.l7.x\x1fmiliɔn " +
+			"00\x1elatn.l8.o\x1fmiliɔn 000\x1elatn.l8.x\x1fmiliɔn 000\x1elatn.l9.o\x1fbiliɔn 0\x1elatn.l9.x\x1fbiliɔn 0\x1elatn.n\x1fmn" +
+			"n\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A" +
+			"\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0δισ'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0δισ'.'\u00a0¤\x1elatn" +
+			".c11.o\x1f000\u00a0δισ'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0δισ'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0τρισ'.'\u00a0¤\x1elatn.c12.x" +
+			"\x1f0\u00a0τρισ'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0τρισ'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0τρισ'.'\u00a0¤\x1elatn.c14.o\x1f000" +
+			"\u00a0τρισ'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0τρισ'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0χιλ'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0χιλ" +
+			"'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0χιλ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0χιλ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0χιλ'.'\u00a0¤\x1elat" +
+			"n.c5.x\x1f000\u00a0χιλ'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0εκ'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0εκ'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0εκ'." +
+			"'\u00a0¤\x1elatn.c7.x\x1f00\u00a0εκ'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0εκ'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0εκ'.'\u00a0¤\x1elatn.c9.o\x1f" +
+			"0\u00a0δισ'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0δισ'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 δισεκα" +
+			"τομμύρια\x1elatn.l10.x\x1f00 δισεκατομμύρια\x1elatn.l11.o\x1f000 δισεκατομμύ" +
+			"ρια\x1elatn.l11.x\x1f000 δισεκατομμύρια\x1elatn.l12.o\x1f0 τρισεκατομμύριο\x1el" +
+			"atn.l12.x\x1f0 τρισεκατομμύρια\x1elatn.l13.o\x1f00 τρισεκατομμύρια\x1elatn.l13" +
+			".x\x1f00 τρισεκατομμύρια\x1elatn.l14.o\x1f000 τρισεκατομμύρια\x1elatn.l14.x\x1f00" +
+			"0 τρισεκατομμύρια\x1elatn.l3.o\x1f0 χιλιάδα\x1elatn.l3.x\x1f0 χιλιάδες\x1elatn.l4" +
+			".o\x1f00 χιλιάδες\x1elatn.l4.x\x1f00 χιλιάδες\x1elatn.l5.o\x1f000 χιλιάδες\x1elatn.l5.x\x1f00" +
+			"0 χιλιάδες\x1elatn.l6.o\x1f0 εκατομμύριο\x1elatn.l6.x\x1f0 εκατομμύρια\x1elatn.l7" +
+			".o\x1f00 εκατομμύρια\x1elatn.l7.x\x1f00 εκατομμύρια\x1elatn.l8.o\x1f000 εκατομμύρ" +
+			"ια\x1elatn.l8.x\x1f000 εκατομμύρια\x1elatn.l9.o\x1f0 δισεκατομμύριο\x1elatn.l9.x\x1f0 δ" +
+			"ισεκατομμύρια\x1elatn.s10.o\x1f00\u00a0δισ'.'\x1elatn.s10.x\x1f00\u00a0δισ'.'\x1elatn.s11.o\x1f000\u00a0δι" +
+			"σ'.'\x1elatn.s11.x\x1f000\u00a0δισ'.'\x1elatn.s12.o\x1f0\u00a0τρισ'.'\x1elatn.s12.x\x1f0\u00a0τρισ'.'\x1elatn.s13.o\x1f0" +
+			"0\u00a0τρισ'.'\x1elatn.s13.x\x1f00\u00a0τρισ'.'\x1elatn.s14.o\x1f000\u00a0τρισ'.'\x1elatn.s14.x\x1f000\u00a0τρισ'." +
+			"'\x1elatn.s3.o\x1f0\u00a0χιλ'.'\x1elatn.s3.x\x1f0\u00a0χιλ'.'\x1elatn.s4.o\x1f00\u00a0χιλ'.'\x1elatn.s4.x\x1f00\u00a0χιλ'.'\x1e" +
+			"latn.s5.o\x1f000\u00a0χιλ'.'\x1elatn.s5.x\x1f000\u00a0χιλ'.'\x1elatn.s6.o\x1f0\u00a0εκ'.'\x1elatn.s6.x\x1f0\u00a0εκ'.'\x1elatn" +
+			".s7.o\x1f00\u00a0εκ'.'\x1elatn.s7.x\x1f00\u00a0εκ'.'\x1elatn.s8.o\x1f000\u00a0εκ'.'\x1elatn.s8.x\x1f000\u00a0εκ'.'\x1elatn.s9.o\x1f" +
+			"0\u00a0δισ'.'\x1elatn.s9.x\x1f0\u00a0δισ'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0}" +
+			" {1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn." +
+			"c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1e" +
+			"latn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1e" +
+			"latn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1e" +
+			"latn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 billion\x1elatn.l10.x\x1f00 billion\x1elatn.l11.o\x1f000 billion\x1elatn.l11.x\x1f000" +
+			" billion\x1elatn.l12.o\x1f0 trillion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.o\x1f00 trillion\x1elatn.l13.x\x1f00 trilli" +
+			"on\x1elatn.l14.o\x1f000 trillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.o\x1f0 thousand\x1elatn.l3.x\x1f0 thousand\x1elat" +
+			"n.l4.o\x1f00 thousand\x1elatn.l4.x\x1f00 thousand\x1elatn.l5.o\x1f000 thousand\x1elatn.l5.x\x1f000 thousand\x1elatn.l6.o" +
+			"\x1f0 million\x1elatn.l6.x\x1f0 million\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 million\x1elatn.l8.o\x1f000 million\x1el" +
+			"atn.l8.x\x1f000 million\x1elatn.l9.o\x1f0 billion\x1elatn.l9.x\x1f0 billion\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn." +
+			"s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s12.o\x1f0T\x1elatn.s13.o\x1f00T\x1elatn.s14.o\x1f000T\x1elatn.s3.o\x1f0K\x1elatn.s4.o\x1f0" +
+			"0K\x1elatn.s5.o\x1f000K\x1elatn.s6.o\x1f0M\x1elatn.s7.o\x1f00M\x1elatn.s8.o\x1f000M\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f#,#" +
+			"#0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1el" +
+			"atn.g\x1f.\x1elatn.e\x1fe\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤-#,##0." +
+			"00\x1elatn.g\x1f'\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g" +
+			"\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1el" +
+			"atn.c10.o\x1f¤00bn\x1elatn.c10.x\x1f¤00bn\x1elatn.c11.o\x1f¤000bn\x1elatn.c11.x\x1f¤000bn\x1elatn.c12.o\x1f¤0tn\x1elatn.c" +
+			"12.x\x1f¤0tn\x1elatn.c13.o\x1f¤00tn\x1elatn.c13.x\x1f¤00tn\x1elatn.c14.o\x1f¤000tn\x1elatn.c14.x\x1f¤000tn\x1elatn.c3.o\x1f¤" +
+			"0k\x1elatn.c3.x\x1f¤0k\x1elatn.c4.o\x1f¤00k\x1elatn.c4.x\x1f¤00k\x1elatn.c5.o\x1f¤000k\x1elatn.c5.x\x1f¤000k\x1elatn.c6.o\x1f¤" +
+			"0m\x1elatn.c6.x\x1f¤0m\x1elatn.c7.o\x1f¤00m\x1elatn.c7.x\x1f¤00m\x1elatn.c8.o\x1f¤000m\x1elatn.c8.x\x1f¤000m\x1elatn.c9.o\x1f¤" +
+			"0bn\x1elatn.c9.x\x1f¤0bn\x1elatn.s10.o\x1f00bn\x1elatn.s10.x\x1f00bn\x1elatn.s11.o\x1f000bn\x1elatn.s11.x\x1f000bn\x1elatn.s12.o" +
+			"\x1f0tn\x1elatn.s12.x\x1f0tn\x1elatn.s13.o\x1f00tn\x1elatn.s13.x\x1f00tn\x1elatn.s14.o\x1f000tn\x1elatn.s14.x\x1f000tn\x1elatn.s3.o\x1f" +
+			"0k\x1elatn.s3.x\x1f0k\x1elatn.s4.o\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.o\x1f000k\x1elatn.s5.x\x1f000k\x1elatn.s6.o\x1f0m\x1elatn.s6.x" +
+			"\x1f0m\x1elatn.s7.o\x1f00m\x1elatn.s7.x\x1f00m\x1elatn.s8.o\x1f000m\x1elatn.s8.x\x1f000m\x1elatn.s9.o\x1f0bn\x1elatn.s9.x\x1f0bn\x1elatn.d" +
+			"\x1f,\x1elatn.g\x1f\u202f\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn" +
+			".P\x1f#,##,##0%\x1elatn.c10.o\x1f¤0KCr\x1elatn.c10.x\x1f¤0KCr\x1elatn.c11.o\x1f¤00KCr\x1elatn.c11.x\x1f¤00KCr\x1elatn.c12." +
+			"o\x1f¤0LCr\x1elatn.c12.x\x1f¤0LCr\x1elatn.c13.o\x1f¤00LCr\x1elatn.c13.x\x1f¤00LCr\x1elatn.c14.o\x1f¤000LCr\x1elatn.c14.x\x1f" +
+			"¤000LCr\x1elatn.c5.o\x1f¤0L\x1elatn.c5.x\x1f¤0L\x1elatn.c6.o\x1f¤00L\x1elatn.c6.x\x1f¤00L\x1elatn.c7.o\x1f¤0Cr\x1elatn.c7.x" +
+			"\x1f¤0Cr\x1elatn.c8.o\x1f¤00Cr\x1elatn.c8.x\x1f¤00Cr\x1elatn.c9.o\x1f¤000Cr\x1elatn.c9.x\x1f¤000Cr\x1elatn.l10.o\x1f0000\u202fc" +
+			"rore\x1elatn.l10.x\x1f0000\u202fcrore\x1elatn.l11.o\x1f00000\u202fcrore\x1elatn.l11.x\x1f00000\u202fcrore\x1elatn.l12.o\x1f0\u202fla" +
+			"kh\u202fcrore\x1elatn.l12.x\x1f0\u202flakh\u202fcrore\x1elatn.l13.o\x1f00\u202flakh\u202fcrore\x1elatn.l13.x\x1f00\u202flakh\u202fcrore" +
+			"\x1elatn.l14.o\x1f000\u202flakh\u202fcrore\x1elatn.l14.x\x1f000\u202flakh\u202fcrore\x1elatn.l5.o\x1f0\u202flakh\x1elatn.l5.x\x1f0\u202fla" +
+			"kh\x1elatn.l6.o\x1f00\u202flakh\x1elatn.l6.x\x1f00\u202flakh\x1elatn.l7.o\x1f0\u202fcrore\x1elatn.l7.x\x1f0\u202fcrore\x1elatn.l8.o\x1f00\u202f" +
+			"crore\x1elatn.l8.x\x1f00\u202fcrore\x1elatn.l9.o\x1f000\u202fcrore\x1elatn.l9.x\x1f000\u202fcrore\x1elatn.s10.o\x1f0KCr\x1elatn.s10." +
+			"x\x1f0KCr\x1elatn.s11.o\x1f00KCr\x1elatn.s11.x\x1f00KCr\x1elatn.s12.o\x1f0LCr\x1elatn.s12.x\x1f0LCr\x1elatn.s13.o\x1f00LCr\x1elatn.s" +
+			"13.x\x1f00LCr\x1elatn.s14.o\x1f000LCr\x1elatn.s14.x\x1f000LCr\x1elatn.s5.o\x1f0L\x1elatn.s5.x\x1f0L\x1elatn.s6.o\x1f00L\x1elatn.s6.x" +
+			"\x1f00L\x1elatn.s7.o\x1f0Cr\x1elatn.s7.x\x1f0Cr\x1elatn.s8.o\x1f00Cr\x1elatn.s8.x\x1f00Cr\x1elatn.s9.o\x1f000Cr\x1elatn.s9.x\x1f000Cr\x1el" +
+			"atn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1el" +
+			"atn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#,#" +
+			"#0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤" +
+			";(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.P\x1f#" +
+			",##0\u00a0%\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elat" +
+			"n.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f\u00a0\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.d\x1f," +
+			"\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u202f¤;(#,##0.00\u202f¤)\x1elatn.C\x1f#,##0.00\u202f¤\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00" +
+			"G\u202f¤\x1elatn.c10.x\x1f00G\u202f¤\x1elatn.c11.o\x1f000G\u202f¤\x1elatn.c11.x\x1f000G\u202f¤\x1elatn.c12.o\x1f0T\u202f¤\x1elatn.c12" +
+			".x\x1f0T\u202f¤\x1elatn.c13.o\x1f00T\u202f¤\x1elatn.c13.x\x1f00T\u202f¤\x1elatn.c14.o\x1f000T\u202f¤\x1elatn.c14.x\x1f000T\u202f¤\x1elat" +
+			"n.c3.o\x1f0k\u202f¤\x1elatn.c3.x\x1f0k\u202f¤\x1elatn.c4.o\x1f00k\u202f¤\x1elatn.c4.x\x1f00k\u202f¤\x1elatn.c5.o\x1f000k\u202f¤\x1elatn." +
+			"c5.x\x1f000k\u202f¤\x1elatn.c6.o\x1f0M\u202f¤\x1elatn.c6.x\x1f0M\u202f¤\x1elatn.c7.o\x1f00M\u202f¤\x1elatn.c7.x\x1f00M\u202f¤\x1elatn.c8" +
+			".o\x1f000M\u202f¤\x1elatn.c8.x\x1f000M\u202f¤\x1elatn.c9.o\x1f0G\u202f¤\x1elatn.c9.x\x1f0G\u202f¤\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l1" +
+			"0.o\x1f00 miliardoj\x1elatn.l10.x\x1f00 miliardoj\x1elatn.l11.o\x1f000 miliardoj\x1elatn.l11.x\x1f000 miliardoj\x1elatn." +
+			"l12.o\x1f0 duiliono\x1elatn.l12.x\x1f0 duilionoj\x1elatn.l13.o\x1f00 duilionoj\x1elatn.l13.x\x1f00 duilionoj\x1elatn.l14" +
+			".o\x1f000 duilionoj\x1elatn.l14.x\x1f000 duilionoj\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn." +
+			"l4.x\x1f00 mil\x1elatn.l5.o\x1f000 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 miliono\x1elatn.l6.x\x1f0 miliono\x1elatn.l7." +
+			"o\x1f00 milionoj\x1elatn.l7.x\x1f00 milionoj\x1elatn.l8.o\x1f000 milionoj\x1elatn.l8.x\x1f000 milionoj\x1elatn.l9.o\x1f0 mi" +
+			"liardo\x1elatn.l9.x\x1f0 miliardoj\x1elatn.s3.o\x1f0k\x1elatn.s3.x\x1f0k\x1elatn.s4.o\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.o\x1f000" +
+			"k\x1elatn.s5.x\x1f000k\x1elatn.~\x1f≈\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{" +
+			"0}-{1}\x1elatn.c10.o\x1f00\u00a0mil\u00a0M\u00a0¤\x1elatn.c10.x\x1f00\u00a0mil\u00a0M\u00a0¤\x1elatn.c11.o\x1f000\u00a0mil\u00a0M\u00a0¤\x1elatn.c11.x" +
+			"\x1f000\u00a0mil\u00a0M\u00a0¤\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B\u00a0" +
+			"¤\x1elatn.c14.o\x1f000\u00a0B\u00a0¤\x1elatn.c14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\u00a0mil\u00a0¤\x1elatn.c3.x\x1f0\u00a0mil\u00a0¤\x1elatn.c4" +
+			".o\x1f00\u00a0mil\u00a0¤\x1elatn.c4.x\x1f00\u00a0mil\u00a0¤\x1elatn.c5.o\x1f000\u00a0mil\u00a0¤\x1elatn.c5.x\x1f000\u00a0mil\u00a0¤\x1elatn.c6.o\x1f0\u00a0" +
+			"M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f" +
+			"000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0000\u00a0M\u00a0¤\x1elatn.c9.x\x1f0000\u00a0M\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 mil millo" +
+			"nes\x1elatn.l10.x\x1f00 mil millones\x1elatn.l11.o\x1f000 mil millones\x1elatn.l11.x\x1f000 mil millones\x1elatn.l12." +
+			"o\x1f0 billón\x1elatn.l12.x\x1f0 billones\x1elatn.l13.o\x1f00 billones\x1elatn.l13.x\x1f00 billones\x1elatn.l14.o\x1f000 b" +
+			"illones\x1elatn.l14.x\x1f000 billones\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn.l4.x\x1f00 mi" +
+			"l\x1elatn.l5.o\x1f000 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millones\x1elatn.l7.o\x1f00 mill" +
+			"ones\x1elatn.l7.x\x1f00 millones\x1elatn.l8.o\x1f000 millones\x1elatn.l8.x\x1f000 millones\x1elatn.l9.o\x1f0 mil millone" +
+			"s\x1elatn.l9.x\x1f0 mil millones\x1elatn.s10.o\x1f00\u00a0mil\u00a0M\x1elatn.s10.x\x1f00\u00a0mil\u00a0M\x1elatn.s11.o\x1f000\u00a0mil\u00a0M\x1ela" +
+			"tn.s11.x\x1f000\u00a0mil\u00a0M\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14." +
+			"o\x1f000\u00a0B\x1elatn.s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\u00a0mil\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.o\x1f00\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil" +
+			"\x1elatn.s5.o\x1f000\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f0" +
+			"0\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0000\u00a0M\x1elatn.s9.x\x1f0000\u00a0M\x1eg\x1f1\x1elatn.A\x1f¤#,##0.00" +
+			"\x1elatn.C\x1f¤#,##0.00\x1elatn.P\x1f#,##0%\x1elatn.c10.o\x1f¤00\u00a0mil\u00a0M\x1elatn.c10.x\x1f¤00\u00a0mil\u00a0M\x1elatn.c11.o\x1f¤00" +
+			"0\u00a0mil\u00a0M\x1elatn.c11.x\x1f¤000\u00a0mil\u00a0M\x1elatn.c12.o\x1f¤0\u00a0B\x1elatn.c12.x\x1f¤0\u00a0B\x1elatn.c13.o\x1f¤00\u00a0B\x1elatn.c" +
+			"13.x\x1f¤00\u00a0B\x1elatn.c14.o\x1f¤000\u00a0B\x1elatn.c14.x\x1f¤000\u00a0B\x1elatn.c3.o\x1f¤0\u00a0K\x1elatn.c3.x\x1f¤0\u00a0K\x1elatn.c4.o" +
+			"\x1f¤00\u00a0k\x1elatn.c4.x\x1f¤00\u00a0k\x1elatn.c5.o\x1f¤000\u00a0k\x1elatn.c5.x\x1f¤000\u00a0k\x1elatn.c6.o\x1f¤0\u00a0M\x1elatn.c6.x\x1f¤0\u00a0" +
+			"M\x1elatn.c7.o\x1f¤00\u00a0M\x1elatn.c7.x\x1f¤00\u00a0M\x1elatn.c8.o\x1f¤000\u00a0M\x1elatn.c8.x\x1f¤000\u00a0M\x1elatn.c9.o\x1f¤0000\u00a0M\x1e" +
+			"latn.c9.x\x1f¤0000\u00a0M\x1elatn.d\x1f.\x1elatn.g\x1f,\x1elatn.s3.o\x1f0\u00a0K\x1elatn.s3.x\x1f0\u00a0K\x1elatn.s4.o\x1f00\u00a0k\x1elatn.s4.x\x1f00" +
+			"\u00a0k\x1elatn.s5.o\x1f000\u00a0k\x1elatn.s5.x\x1f000\u00a0k\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00\x1elat" +
+			"n.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elat" +
+			"n.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn" +
+			".A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1e" +
+			"latn.g\x1f.\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00MRD\x1elatn.c10.x\x1f¤00MRD\x1elatn.c11.o\x1f¤" +
+			"000MRD\x1elatn.c11.x\x1f¤000MRD\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5" +
+			".o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8" +
+			".o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0000M\x1elatn.c9.x\x1f¤0000M\x1elatn.c3.o\x1f¤0\u00a0k\x1elatn.c3.x\x1f¤0\u00a0k" +
+			"\x1elatn.s3.o\x1f0\u00a0k\x1elatn.s3.x\x1f0\u00a0k\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.c10.o\x1f¤\u00a000\u00a0MRD\x1ela" +
+			"tn.c10.x\x1f¤\u00a000\u00a0MRD\x1elatn.c11.o\x1f¤\u00a0000\u00a0MRD\x1elatn.c11.x\x1f¤\u00a0000\u00a0MRD\x1elatn.c12.o\x1f¤\u00a00\u00a0B\x1elatn.c1" +
+			"2.x\x1f¤\u00a00\u00a0B\x1elatn.c13.o\x1f¤\u00a000\u00a0B\x1elatn.c13.x\x1f¤\u00a000\u00a0B\x1elatn.c14.o\x1f¤\u00a0000\u00a0B\x1elatn.c14.x\x1f¤\u00a0000\u00a0" +
+			"B\x1elatn.c3.o\x1f¤\u00a00\u00a0K\x1elatn.c3.x\x1f¤\u00a00\u00a0K\x1elatn.c4.o\x1f¤\u00a000\u00a0K\x1elatn.c4.x\x1f¤\u00a000\u00a0K\x1elatn.c5.o\x1f¤\u00a000" +
+			"0\u00a0K\x1elatn.c5.x\x1f¤\u00a0000\u00a0K\x1elatn.c6.o\x1f¤\u00a00\u00a0M\x1elatn.c6.x\x1f¤\u00a00\u00a0M\x1elatn.c7.o\x1f¤\u00a000\u00a0M\x1elatn.c7.x\x1f¤" +
+			"\u00a000\u00a0M\x1elatn.c8.o\x1f¤\u00a0000\u00a0M\x1elatn.c8.x\x1f¤\u00a0000\u00a0M\x1elatn.c9.o\x1f¤\u00a00000\u00a0M\x1elatn.c9.x\x1f¤\u00a00000\u00a0M\x1ela" +
+			"tn.A\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.c4.o\x1f¤" +
+			"00\u00a0K\x1elatn.c4.x\x1f¤00\u00a0K\x1elatn.c5.o\x1f¤000\u00a0K\x1elatn.c5.x\x1f¤000\u00a0K\x1elatn.s4.o\x1f00\u00a0K\x1elatn.s4.x\x1f00\u00a0K\x1ela" +
+			"tn.s5.o\x1f000\u00a0K\x1elatn.s5.x\x1f000\u00a0K\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1e" +
+			"latn.g\x1f.\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1eg\x1f2\x1elatn." +
+			"-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}‒{1}\x1elatn.X\x1f~ {0}\x1elatn." +
+			"c10.o\x1f00\u00a0mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld\u00a0¤\x1elatn.c1" +
+			"2.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn.c14." +
+			"o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln\u00a0¤\x1elatn.c3.o\x1f0\u00a0tuh\u00a0¤\x1elatn.c3.x\x1f0\u00a0tuh\u00a0¤\x1elatn.c4.o\x1f00\u00a0" +
+			"tuh\u00a0¤\x1elatn.c4.x\x1f00\u00a0tuh\u00a0¤\x1elatn.c5.o\x1f000\u00a0tuh\u00a0¤\x1elatn.c5.x\x1f000\u00a0tuh\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤" +
+			"\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8" +
+			".x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.l" +
+			"10.o\x1f00 miljardit\x1elatn.l10.x\x1f00 miljardit\x1elatn.l11.o\x1f000 miljardit\x1elatn.l11.x\x1f000 miljardit\x1elatn" +
+			".l12.o\x1f0 triljon\x1elatn.l12.x\x1f0 triljonit\x1elatn.l13.o\x1f00 triljonit\x1elatn.l13.x\x1f00 triljonit\x1elatn.l14" +
+			".o\x1f000 triljonit\x1elatn.l14.x\x1f000 triljonit\x1elatn.l3.o\x1f0 tuhat\x1elatn.l3.x\x1f0 tuhat\x1elatn.l4.o\x1f00 tuhat" +
+			"\x1elatn.l4.x\x1f00 tuhat\x1elatn.l5.o\x1f000 tuhat\x1elatn.l5.x\x1f000 tuhat\x1elatn.l6.o\x1f0 miljon\x1elatn.l6.x\x1f0 miljo" +
+			"nit\x1elatn.l7.o\x1f00 miljonit\x1elatn.l7.x\x1f00 miljonit\x1elatn.l8.o\x1f000 miljonit\x1elatn.l8.x\x1f000 miljonit\x1ela" +
+			"tn.l9.o\x1f0 miljard\x1elatn.l9.x\x1f0 miljardit\x1elatn.s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0ml" +
+			"d\x1elatn.s11.x\x1f000\u00a0mld\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13.o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0t" +
+			"rln\x1elatn.s14.o\x1f000\u00a0trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s3.o\x1f0\u00a0tuh\x1elatn.s3.x\x1f0\u00a0tuh\x1elatn.s4.o\x1f00\u00a0tu" +
+			"h\x1elatn.s4.x\x1f00\u00a0tuh\x1elatn.s5.o\x1f000\u00a0tuh\x1elatn.s5.x\x1f000\u00a0tuh\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn" +
+			".s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x" +
+			"\x1f0\u00a0mld\x1elatn.~\x1f≈\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f%\u00a0#" +
+			",##0\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f00000\u00a0M\u00a0¤\x1elatn.c10.x\x1f00000\u00a0M\u00a0¤\x1elatn.c11.o\x1f000000\u00a0M\u00a0¤\x1elat" +
+			"n.c11.x\x1f000000\u00a0M\u00a0¤\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00" +
+			"\u00a0B\u00a0¤\x1elatn.c14.o\x1f000\u00a0B\u00a0¤\x1elatn.c14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4." +
+			"x\x1f0\x1elatn.c5.o\x1f0\x1elatn.c5.x\x1f0\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f" +
+			"00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0000\u00a0M\u00a0¤\x1elatn.c9.x\x1f0000\u00a0M\u00a0¤\x1e" +
+			"latn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00000 milioi\x1elatn.l10.x\x1f00000 milioi\x1elatn.l11.o\x1f000000 milioi\x1elatn." +
+			"l11.x\x1f000000 milioi\x1elatn.l12.o\x1f0 bilioi\x1elatn.l12.x\x1f0 bilioi\x1elatn.l13.o\x1f00 bilioi\x1elatn.l13.x\x1f00 b" +
+			"ilioi\x1elatn.l14.o\x1f000 bilioi\x1elatn.l14.x\x1f000 bilioi\x1elatn.l3.o\x1f0\x1elatn.l3.x\x1f0\x1elatn.l4.o\x1f0\x1elatn.l4.x\x1f" +
+			"0\x1elatn.l5.o\x1f0\x1elatn.l5.x\x1f0\x1elatn.l6.o\x1f0 milioi\x1elatn.l6.x\x1f0 milioi\x1elatn.l7.o\x1f00 milioi\x1elatn.l7.x\x1f00" +
+			" milioi\x1elatn.l8.o\x1f000 milioi\x1elatn.l8.x\x1f000 milioi\x1elatn.l9.o\x1f0000 milioi\x1elatn.l9.x\x1f0000 milioi\x1ela" +
+			"tn.s10.o\x1f00000\u00a0M\x1elatn.s10.x\x1f00000\u00a0M\x1elatn.s11.o\x1f000000\u00a0M\x1elatn.s11.x\x1f000000\u00a0M\x1elatn.s12.o\x1f0\u00a0B\x1e" +
+			"latn.s12.x\x1f0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14.o\x1f000\u00a0B\x1elatn.s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f" +
+			"0\x1elatn.s3.x\x1f0\x1elatn.s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn" +
+			".s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0000\u00a0M\x1elatn.s9.x\x1f0000\u00a0" +
+			"M\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1earabext.+\x1f\u200e+\x1earabext.-\x1f\u200e−\x1eara" +
+			"bext.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f\u200e¤#,##0.00\x1earabext.D\x1f#,##0.###\x1earab" +
+			"ext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1ear" +
+			"abext.c10.o\x1f\u200e¤\u00a000\u00a0میلیارد\x1earabext.c10.x\x1f\u200e¤\u00a000\u00a0میلیارد\x1earabext.c11.o\x1f\u200e¤" +
+			"\u00a0000\u00a0میلیارد\x1earabext.c11.x\x1f\u200e¤\u00a0000\u00a0میلیارد\x1earabext.c12.o\x1f\u200e¤\u00a00\u00a0تریلی" +
+			"ون\x1earabext.c12.x\x1f\u200e¤\u00a00\u00a0تریلیون\x1earabext.c13.o\x1f\u200e¤\u00a000\u00a0تریلیون\x1earabext.c13." +
+			"x\x1f\u200e¤\u00a000\u00a0تریلیون\x1earabext.c14.o\x1f\u200e¤\u00a0000\u00a0تریلیون\x1earabext.c14.x\x1f\u200e¤\u00a0000\u00a0ت" +
+			"ریلیون\x1earabext.c3.o\x1f0K¤\x1earabext.c3.x\x1f\u200e¤\u00a00\u00a0هزار\x1earabext.c4.o\x1f\u200e¤\u00a000\u00a0هزار\x1e" +
+			"arabext.c4.x\x1f\u200e¤\u00a000\u00a0هزار\x1earabext.c5.o\x1f\u200e¤\u00a0000\u00a0هزار\x1earabext.c5.x\x1f\u200e¤\u00a0000\u00a0هز" +
+			"ار\x1earabext.c6.o\x1f\u200e¤\u00a00\u00a0میلیون\x1earabext.c6.x\x1f\u200e¤\u00a00\u00a0میلیون\x1earabext.c7.o\x1f\u200e¤\u00a0" +
+			"00\u00a0میلیون\x1earabext.c7.x\x1f\u200e¤\u00a000\u00a0میلیون\x1earabext.c8.o\x1f\u200e¤\u00a0000\u00a0میلیون\x1earab" +
+			"ext.c8.x\x1f\u200e¤\u00a0000\u00a0میلیون\x1earabext.c9.o\x1f\u200e¤\u00a00\u00a0میلیارد\x1earabext.c9.x\x1f\u200e¤\u00a00\u00a0م" +
+			"یلیارد\x1earabext.l10.o\x1f00 میلیارد\x1earabext.l10.x\x1f00 میلیارد\x1earabext.l11.o\x1f000 م" +
+			"یلیارد\x1earabext.l11.x\x1f000 میلیارد\x1earabext.l12.o\x1f0 هزارمیلیارد\x1earabext.l12" +
+			".x\x1f0 هزارمیلیارد\x1earabext.l13.o\x1f00 هزارمیلیارد\x1earabext.l13.x\x1f00 هزارمی" +
+			"لیارد\x1earabext.l14.o\x1f000 هزارمیلیارد\x1earabext.l14.x\x1f000 هزارمیلیارد\x1eara" +
+			"bext.l3.o\x1f0 هزار\x1earabext.l3.x\x1f0 هزار\x1earabext.l4.o\x1f00 هزار\x1earabext.l4.x\x1f00 هزار\x1ea" +
+			"rabext.l5.o\x1f000 هزار\x1earabext.l5.x\x1f000 هزار\x1earabext.l6.o\x1f0 میلیون\x1earabext.l6.x\x1f0 م" +
+			"یلیون\x1earabext.l7.o\x1f00 میلیون\x1earabext.l7.x\x1f00 میلیون\x1earabext.l8.o\x1f000 میلیو" +
+			"ن\x1earabext.l8.x\x1f000 میلیون\x1earabext.l9.o\x1f0 میلیارد\x1earabext.l9.x\x1f0 میلیارد\x1eara" +
+			"bext.n\x1fناعدد\x1earabext.s10.o\x1f00\u00a0میلیارد\x1earabext.s10.x\x1f00\u00a0میلیارد\x1earabext.s11." +
+			"o\x1f000\u00a0میلیارد\x1earabext.s11.x\x1f000\u00a0میلیارد\x1earabext.s12.o\x1f0\u00a0تریلیون\x1earabext." +
+			"s12.x\x1f0\u00a0تریلیون\x1earabext.s13.o\x1f00\u00a0تریلیون\x1earabext.s13.x\x1f00\u00a0تریلیون\x1earabex" +
+			"t.s14.o\x1f000\u00a0تریلیون\x1earabext.s14.x\x1f000\u00a0تریلیون\x1earabext.s3.o\x1f0\u00a0هزار\x1earabext.s" +
+			"3.x\x1f0\u00a0هزار\x1earabext.s4.o\x1f00\u00a0هزار\x1earabext.s4.x\x1f00\u00a0هزار\x1earabext.s5.o\x1f000\u00a0هزار\x1ea" +
+			"rabext.s5.x\x1f000\u00a0هزار\x1earabext.s6.o\x1f0\u00a0میلیون\x1earabext.s6.x\x1f0\u00a0میلیون\x1earabext.s7.o" +
+			"\x1f00\u00a0میلیون\x1earabext.s7.x\x1f00\u00a0میلیون\x1earabext.s8.o\x1f000\u00a0میلیون\x1earabext.s8.x\x1f000\u00a0" +
+			"میلیون\x1earabext.s9.o\x1f0\u00a0میلیارد\x1earabext.s9.x\x1f0\u00a0میلیارد\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e" +
+			"−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f\u200e¤\u00a0#,##0.00\x1elatn.c10.o\x1f\u200e¤\u00a000\u00a0میلیار" +
+			"د\x1elatn.c10.x\x1f\u200e¤\u00a000\u00a0میلیارد\x1elatn.c11.o\x1f\u200e¤\u00a0000\u00a0میلیارد\x1elatn.c11.x\x1f\u200e¤\u00a0" +
+			"000\u00a0میلیارد\x1elatn.c12.o\x1f\u200e¤\u00a00\u00a0تریلیون\x1elatn.c12.x\x1f\u200e¤\u00a00\u00a0تریلیون\x1elatn" +
+			".c13.o\x1f\u200e¤\u00a000\u00a0تریلیون\x1elatn.c13.x\x1f\u200e¤\u00a000\u00a0تریلیون\x1elatn.c14.o\x1f\u200e¤\u00a0000\u00a0تر" +
+			"یلیون\x1elatn.c14.x\x1f\u200e¤\u00a0000\u00a0تریلیون\x1elatn.c3.o\x1f0K¤\x1elatn.c3.x\x1f\u200e¤\u00a00\u00a0هزار\x1elat" +
+			"n.c4.o\x1f\u200e¤\u00a000\u00a0هزار\x1elatn.c4.x\x1f\u200e¤\u00a000\u00a0هزار\x1elatn.c5.o\x1f\u200e¤\u00a0000\u00a0هزار\x1elatn.c5." +
+			"x\x1f\u200e¤\u00a0000\u00a0هزار\x1elatn.c6.o\x1f\u200e¤\u00a00\u00a0میلیون\x1elatn.c6.x\x1f\u200e¤\u00a00\u00a0میلیون\x1elatn.c7" +
+			".o\x1f\u200e¤\u00a000\u00a0میلیون\x1elatn.c7.x\x1f\u200e¤\u00a000\u00a0میلیون\x1elatn.c8.o\x1f\u200e¤\u00a0000\u00a0میلیون\x1e" +
+			"latn.c8.x\x1f\u200e¤\u00a0000\u00a0میلیون\x1elatn.c9.o\x1f\u200e¤\u00a00\u00a0میلیارد\x1elatn.c9.x\x1f\u200e¤\u00a00\u00a0میل" +
+			"یارد\x1elatn.l10.o\x1f00 میلیارد\x1elatn.l10.x\x1f00 میلیارد\x1elatn.l11.o\x1f000 میلیارد" +
+			"\x1elatn.l11.x\x1f000 میلیارد\x1elatn.l12.o\x1f0 هزارمیلیارد\x1elatn.l12.x\x1f0 هزارمیلی" +
+			"ارد\x1elatn.l13.o\x1f00 هزارمیلیارد\x1elatn.l13.x\x1f00 هزارمیلیارد\x1elatn.l14.o\x1f000 " +
+			"هزارمیلیارد\x1elatn.l14.x\x1f000 هزارمیلیارد\x1elatn.l3.o\x1f0 هزار\x1elatn.l3.x\x1f0 ه" +
+			"زار\x1elatn.l4.o\x1f00 هزار\x1elatn.l4.x\x1f00 هزار\x1elatn.l5.o\x1f000 هزار\x1elatn.l5.x\x1f000 هزار" +
+			"\x1elatn.l6.o\x1f0 میلیون\x1elatn.l6.x\x1f0 میلیون\x1elatn.l7.o\x1f00 میلیون\x1elatn.l7.x\x1f00 میل" +
+			"یون\x1elatn.l8.o\x1f000 میلیون\x1elatn.l8.x\x1f000 میلیون\x1elatn.l9.o\x1f0 میلیارد\x1elatn.l9." +
+			"x\x1f0 میلیارد\x1elatn.n\x1fناعدد\x1elatn.s10.o\x1f00\u00a0میلیارد\x1elatn.s10.x\x1f00\u00a0میلیارد" +
+			"\x1elatn.s11.o\x1f000\u00a0میلیارد\x1elatn.s11.x\x1f000\u00a0میلیارد\x1elatn.s12.o\x1f0\u00a0تریلیون\x1elatn" +
+			".s12.x\x1f0\u00a0تریلیون\x1elatn.s13.o\x1f00\u00a0تریلیون\x1elatn.s13.x\x1f00\u00a0تریلیون\x1elatn.s14.o\x1f" +
+			"000\u00a0تریلیون\x1elatn.s14.x\x1f000\u00a0تریلیون\x1elatn.s3.o\x1f0\u00a0هزار\x1elatn.s3.x\x1f0\u00a0هزار\x1el" +
+			"atn.s4.o\x1f00\u00a0هزار\x1elatn.s4.x\x1f00\u00a0هزار\x1elatn.s5.o\x1f000\u00a0هزار\x1elatn.s5.x\x1f000\u00a0هزار\x1elat" +
+			"n.s6.o\x1f0\u00a0میلیون\x1elatn.s6.x\x1f0\u00a0میلیون\x1elatn.s7.o\x1f00\u00a0میلیون\x1elatn.s7.x\x1f00\u00a0میل" +
+			"یون\x1elatn.s8.o\x1f000\u00a0میلیون\x1elatn.s8.x\x1f000\u00a0میلیون\x1elatn.s9.o\x1f0\u00a0میلیارد\x1elatn." +
+			"s9.x\x1f0\u00a0میلیارد\x1earabext.A\x1f¤\u00a0#,##0.00;\u200e(¤\u00a0#,##0.00)\x1earabext.C\x1f¤\u00a0#,##0.00\x1elatn.A\x1f¤" +
+			"\u00a0#,##0.00;\u200e(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f" +
+			",\x1elatn.g\x1f\u00a0\x1eadlm.+\x1f+\x1eadlm.-\x1f-\x1eadlm.A\x1f¤\u00a0#,##0.00\x1eadlm.B\x1f\u00a0\x1eadlm.C\x1f¤\u00a0#,##0.00\x1eadlm.D\x1f#,##0.###" +
+			"\x1eadlm.P\x1f#,##0%\x1eadlm.R\x1f{0}–{1}\x1eadlm.S\x1f#E0\x1eadlm.Uo\x1f{0} {1}\x1eadlm.Ux\x1f{0} {1}\x1eadlm.X\x1f~{0}\x1eadlm.b\x1f\u00a0" +
+			"\x1eadlm.c10.o\x1f¤\u00a000𞤁𞤶\x1eadlm.c10.x\x1f¤\u00a000𞤁𞤶\x1eadlm.c11.o\x1f¤\u00a0000𞤁𞤶\x1eadlm.c11.x\x1f¤\u00a00" +
+			"00𞤁𞤶\x1eadlm.c12.o\x1f¤\u00a00𞤚\x1eadlm.c12.x\x1f¤\u00a00𞤚\x1eadlm.c13.o\x1f¤\u00a000𞤚\x1eadlm.c13.x\x1f¤\u00a000𞤚" +
+			"\x1eadlm.c14.o\x1f¤\u00a0000𞤚\x1eadlm.c14.x\x1f¤\u00a0000𞤚\x1eadlm.c3.o\x1f¤\u00a00𞤓\x1eadlm.c3.x\x1f¤\u00a00𞤓\x1eadlm.c4.o" +
+			"\x1f¤\u00a000𞤓\x1eadlm.c4.x\x1f¤\u00a000𞤓\x1eadlm.c5.o\x1f¤\u00a0000𞤓\x1eadlm.c5.x\x1f¤\u00a0000𞤓\x1eadlm.c6.o\x1f¤\u00a00𞤁" +
+			"\x1eadlm.c6.x\x1f¤\u00a00𞤁\x1eadlm.c7.o\x1f¤\u00a000𞤁\x1eadlm.c7.x\x1f¤\u00a000𞤁\x1eadlm.c8.o\x1f¤\u00a0000𞤁\x1eadlm.c8.x\x1f¤" +
+			"\u00a0000𞤁\x1eadlm.c9.o\x1f¤\u00a00𞤁𞤶\x1eadlm.c9.x\x1f¤\u00a00𞤁𞤶\x1eadlm.d\x1f.\x1eadlm.e\x1f𞤉\x1eadlm.g\x1f⹁\x1eadlm.i" +
+			"\x1f∞\x1eadlm.l10.o\x1f00 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l10.x\x1f00 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫" +
+			"\x1eadlm.l11.o\x1f000 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l11.x\x1f000 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫" +
+			"\x1eadlm.l12.o\x1f0 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l12.x\x1f0 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadl" +
+			"m.l13.o\x1f00 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l13.x\x1f00 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm." +
+			"l14.o\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l14.x\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm." +
+			"l3.o\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l3.x\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l4.o\x1f00 𞤵𞤶" +
+			"𞤵𞤲𞤫𞤪𞤫\x1eadlm.l4.x\x1f00 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l5.o\x1f000 𞤵𞤶𞤵𞤲𞤫" +
+			"𞤪𞤫\x1eadlm.l5.x\x1f000 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l6.o\x1f0 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫" +
+			"\x1eadlm.l6.x\x1f0 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l7.o\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm" +
+			".l7.x\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l8.o\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l8" +
+			".x\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1eadlm.l9.o\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.l9.x\x1f0" +
+			" 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1eadlm.m\x1f‰\x1eadlm.n\x1fNaN\x1eadlm.p\x1f%\x1eadlm.s10.o\x1f00𞤁𞤶\x1eadlm.s10." +
+			"x\x1f00𞤁𞤶\x1eadlm.s11.o\x1f000𞤁𞤶\x1eadlm.s11.x\x1f000𞤁𞤶\x1eadlm.s12.o\x1f0𞤚\x1eadlm.s12.x\x1f0𞤚\x1eadl" +
+			"m.s13.o\x1f00𞤚\x1eadlm.s13.x\x1f00𞤚\x1eadlm.s14.o\x1f000𞤚\x1eadlm.s14.x\x1f000𞤚\x1eadlm.s3.o\x1f0𞤓\x1eadlm.s3.x" +
+			"\x1f0𞤓\x1eadlm.s4.o\x1f00𞤓\x1eadlm.s4.x\x1f00𞤓\x1eadlm.s5.o\x1f000𞤓\x1eadlm.s5.x\x1f000𞤓\x1eadlm.s6.o\x1f0𞤁\x1eadl" +
+			"m.s6.x\x1f0𞤁\x1eadlm.s7.o\x1f00𞤁\x1eadlm.s7.x\x1f00𞤁\x1eadlm.s8.o\x1f000𞤁\x1eadlm.s8.x\x1f000𞤁\x1eadlm.s9.o\x1f0𞤁" +
+			"𞤶\x1eadlm.s9.x\x1f0𞤁𞤶\x1eadlm.~\x1f~\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤\u00a000𞤁𞤶\x1elatn.c10.x\x1f¤\u00a000𞤁" +
+			"𞤶\x1elatn.c11.o\x1f¤\u00a0000𞤁𞤶\x1elatn.c11.x\x1f¤\u00a0000𞤁𞤶\x1elatn.c12.o\x1f¤\u00a00𞤚\x1elatn.c12.x\x1f¤\u00a00" +
+			"𞤚\x1elatn.c13.o\x1f¤\u00a000𞤚\x1elatn.c13.x\x1f¤\u00a000𞤚\x1elatn.c14.o\x1f¤\u00a0000𞤚\x1elatn.c14.x\x1f¤\u00a0000𞤚\x1el" +
+			"atn.c3.o\x1f¤\u00a00𞤓\x1elatn.c3.x\x1f¤\u00a00𞤓\x1elatn.c4.o\x1f¤\u00a000𞤓\x1elatn.c4.x\x1f¤\u00a000𞤓\x1elatn.c5.o\x1f¤\u00a00" +
+			"00𞤓\x1elatn.c5.x\x1f¤\u00a0000𞤓\x1elatn.c6.o\x1f¤\u00a00𞤁\x1elatn.c6.x\x1f¤\u00a00𞤁\x1elatn.c7.o\x1f¤\u00a000𞤁\x1elatn.c" +
+			"7.x\x1f¤\u00a000𞤁\x1elatn.c8.o\x1f¤\u00a0000𞤁\x1elatn.c8.x\x1f¤\u00a0000𞤁\x1elatn.c9.o\x1f¤\u00a00𞤁𞤶\x1elatn.c9.x\x1f¤\u00a0" +
+			"0𞤁𞤶\x1elatn.g\x1f⹁\x1elatn.l10.o\x1f00 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l10.x\x1f00 𞤣𞤵𞤶𞤵" +
+			"𞤲𞤫𞤪𞤫\x1elatn.l11.o\x1f000 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l11.x\x1f000 𞤣𞤵𞤶𞤵" +
+			"𞤲𞤫𞤪𞤫\x1elatn.l12.o\x1f0 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l12.x\x1f0 𞤼𞤵𞤶𞤵𞤲" +
+			"𞤫𞤪𞤫\x1elatn.l13.o\x1f00 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l13.x\x1f00 𞤼𞤵𞤶𞤵𞤲𞤫" +
+			"𞤪𞤫\x1elatn.l14.o\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l14.x\x1f000 𞤼𞤵𞤶𞤵𞤲𞤫" +
+			"𞤪𞤫\x1elatn.l3.o\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l3.x\x1f0 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn." +
+			"l4.o\x1f00 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l4.x\x1f00 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l5.o\x1f000 𞤵" +
+			"𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l5.x\x1f000 𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.l6.o\x1f0 𞤣𞤵𞤦𞤵" +
+			"𞤲𞤫𞤪𞤫\x1elatn.l6.x\x1f0 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1elatn.l7.o\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫" +
+			"𞤪𞤫\x1elatn.l7.x\x1f00 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1elatn.l8.o\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪" +
+			"𞤫\x1elatn.l8.x\x1f000 𞤣𞤵𞤦𞤵𞤲𞤫𞤪𞤫\x1elatn.l9.o\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫" +
+			"\x1elatn.l9.x\x1f0 𞤣𞤵𞤶𞤵𞤲𞤫𞤪𞤫\x1elatn.s10.o\x1f00𞤁𞤶\x1elatn.s10.x\x1f00𞤁𞤶\x1elatn.s" +
+			"11.o\x1f000𞤁𞤶\x1elatn.s11.x\x1f000𞤁𞤶\x1elatn.s12.o\x1f0𞤚\x1elatn.s12.x\x1f0𞤚\x1elatn.s13.o\x1f00𞤚\x1elatn" +
+			".s13.x\x1f00𞤚\x1elatn.s14.o\x1f000𞤚\x1elatn.s14.x\x1f000𞤚\x1elatn.s3.o\x1f0𞤓\x1elatn.s3.x\x1f0𞤓\x1elatn.s4.o\x1f00" +
+			"𞤓\x1elatn.s4.x\x1f00𞤓\x1elatn.s5.o\x1f000𞤓\x1elatn.s5.x\x1f000𞤓\x1elatn.s6.o\x1f0𞤁\x1elatn.s6.x\x1f0𞤁\x1elatn.s" +
+			"7.o\x1f00𞤁\x1elatn.s7.x\x1f00𞤁\x1elatn.s8.o\x1f000𞤁\x1elatn.s8.x\x1f000𞤁\x1elatn.s9.o\x1f0𞤁𞤶\x1elatn.s9.x\x1f0𞤁" +
+			"𞤶\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.o\x1f00\u00a0mrd'.'\u00a0¤" +
+			"\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0b" +
+			"ilj'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bilj'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bilj'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bilj'.'\u00a0¤\x1elatn." +
+			"c14.o\x1f000\u00a0bilj'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bilj'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0t'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0t'.'\u00a0¤\x1el" +
+			"atn.c4.o\x1f00\u00a0t'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0t'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0t'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0t'.'\u00a0¤\x1elat" +
+			"n.c6.o\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0milj'.'\u00a0" +
+			"¤\x1elatn.c8.o\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mr" +
+			"d'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljardia\x1elatn.l10.x\x1f00 miljardia\x1elatn.l11.o\x1f000 milja" +
+			"rdia\x1elatn.l11.x\x1f000 miljardia\x1elatn.l12.o\x1f0 biljoona\x1elatn.l12.x\x1f0 biljoonaa\x1elatn.l13.o\x1f00 biljoon" +
+			"aa\x1elatn.l13.x\x1f00 biljoonaa\x1elatn.l14.o\x1f000 biljoonaa\x1elatn.l14.x\x1f000 biljoonaa\x1elatn.l3.o\x1f0 tuhat\x1el" +
+			"atn.l3.x\x1f0 tuhatta\x1elatn.l4.o\x1f00 tuhatta\x1elatn.l4.x\x1f00 tuhatta\x1elatn.l5.o\x1f000 tuhatta\x1elatn.l5.x\x1f000" +
+			" tuhatta\x1elatn.l6.o\x1f0 miljoona\x1elatn.l6.x\x1f0 miljoonaa\x1elatn.l7.o\x1f00 miljoonaa\x1elatn.l7.x\x1f00 miljoona" +
+			"a\x1elatn.l8.o\x1f000 miljoonaa\x1elatn.l8.x\x1f000 miljoonaa\x1elatn.l9.o\x1f0 miljardi\x1elatn.l9.x\x1f0 miljardia\x1elat" +
+			"n.n\x1fepäluku\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s11.x\x1f000\u00a0" +
+			"mrd'.'\x1elatn.s12.o\x1f0\u00a0bilj'.'\x1elatn.s12.x\x1f0\u00a0bilj'.'\x1elatn.s13.o\x1f00\u00a0bilj'.'\x1elatn.s13.x\x1f00\u00a0bilj'.'" +
+			"\x1elatn.s14.o\x1f000\u00a0bilj'.'\x1elatn.s14.x\x1f000\u00a0bilj'.'\x1elatn.s3.o\x1f0\u00a0t'.'\x1elatn.s3.x\x1f0\u00a0t'.'\x1elatn.s4.o\x1f0" +
+			"0\u00a0t'.'\x1elatn.s4.x\x1f00\u00a0t'.'\x1elatn.s5.o\x1f000\u00a0t'.'\x1elatn.s5.x\x1f000\u00a0t'.'\x1elatn.s6.o\x1f0\u00a0milj'.'\x1elatn.s6." +
+			"x\x1f0\u00a0milj'.'\x1elatn.s7.o\x1f00\u00a0milj'.'\x1elatn.s7.x\x1f00\u00a0milj'.'\x1elatn.s8.o\x1f000\u00a0milj'.'\x1elatn.s8.x\x1f000\u00a0m" +
+			"ilj'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1e" +
+			"latn.R\x1f{0}-{1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f" +
+			"¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn." +
+			"c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn." +
+			"c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn." +
+			"c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 bilyon\x1elatn.l10.x\x1f00 na bilyon\x1elatn.l11.o\x1f000 bilyon\x1elatn" +
+			".l11.x\x1f000 na bilyon\x1elatn.l12.o\x1f0 trilyon\x1elatn.l12.x\x1f0 na trilyon\x1elatn.l13.o\x1f00 trilyon\x1elatn.l13" +
+			".x\x1f00 na trilyon\x1elatn.l14.o\x1f000 trilyon\x1elatn.l14.x\x1f000 na trilyon\x1elatn.l3.o\x1f0 libo\x1elatn.l3.x\x1f0 n" +
+			"a libo\x1elatn.l4.o\x1f00 libo\x1elatn.l4.x\x1f00 na libo\x1elatn.l5.o\x1f000 libo\x1elatn.l5.x\x1f000 na libo\x1elatn.l6.o" +
+			"\x1f0 milyon\x1elatn.l6.x\x1f0 na milyon\x1elatn.l7.o\x1f00 milyon\x1elatn.l7.x\x1f00 na milyon\x1elatn.l8.o\x1f000 milyon\x1e" +
+			"latn.l8.x\x1f000 na milyon\x1elatn.l9.o\x1f0 bilyon\x1elatn.l9.x\x1f0 na bilyon\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1el" +
+			"atn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.0" +
+			"0\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.o\x1f00\u00a0mia'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mia'.'\u00a0¤\x1el" +
+			"atn.c11.o\x1f000\u00a0mia'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mia'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bió'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bió" +
+			"'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bió'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bió'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bió'.'\u00a0¤\x1elatn.c" +
+			"14.x\x1f000\u00a0bió'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tús'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tús'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tús'.'\u00a0¤" +
+			"\x1elatn.c4.x\x1f00\u00a0tús'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tús'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tús'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mi" +
+			"ó'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mió'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mió'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mió'.'\u00a0¤\x1elatn.c8.o" +
+			"\x1f000\u00a0mió'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mió'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mia'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mia'.'\u00a0¤\x1elat" +
+			"n.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliardir\x1elatn.l10.x\x1f00 milliardir\x1elatn.l11.o\x1f000 milliardir\x1elatn." +
+			"l11.x\x1f000 milliardir\x1elatn.l12.o\x1f0 billión\x1elatn.l12.x\x1f0 billiónir\x1elatn.l13.o\x1f00 billiónir\x1elatn" +
+			".l13.x\x1f00 billiónir\x1elatn.l14.o\x1f000 billiónir\x1elatn.l14.x\x1f000 billiónir\x1elatn.l3.o\x1f0 túsund\x1elat" +
+			"n.l3.x\x1f0 túsund\x1elatn.l4.o\x1f00 túsund\x1elatn.l4.x\x1f00 túsund\x1elatn.l5.o\x1f000 túsund\x1elatn.l5.x\x1f000 t" +
+			"úsund\x1elatn.l6.o\x1f0 millión\x1elatn.l6.x\x1f0 milliónir\x1elatn.l7.o\x1f00 milliónir\x1elatn.l7.x\x1f00 millión" +
+			"ir\x1elatn.l8.o\x1f000 milliónir\x1elatn.l8.x\x1f000 milliónir\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliardir" +
+			"\x1elatn.s10.o\x1f00\u00a0mia'.'\x1elatn.s10.x\x1f00\u00a0mia'.'\x1elatn.s11.o\x1f000\u00a0mia\x1elatn.s11.x\x1f000\u00a0mia\x1elatn.s12.o\x1f" +
+			"0\u00a0bió'.'\x1elatn.s12.x\x1f0\u00a0bió'.'\x1elatn.s13.o\x1f00\u00a0bió'.'\x1elatn.s13.x\x1f00\u00a0bió'.'\x1elatn.s14.o\x1f000\u00a0b" +
+			"ió'.'\x1elatn.s14.x\x1f000\u00a0bió'.'\x1elatn.s3.o\x1f0\u00a0tús'.'\x1elatn.s3.x\x1f0\u00a0tús'.'\x1elatn.s4.o\x1f00\u00a0tús'.'\x1el" +
+			"atn.s4.x\x1f00\u00a0tús'.'\x1elatn.s5.o\x1f000\u00a0tús'.'\x1elatn.s5.x\x1f000\u00a0tús'.'\x1elatn.s6.o\x1f0\u00a0mió'.'\x1elatn.s6." +
+			"x\x1f0\u00a0mió'.'\x1elatn.s7.o\x1f00\u00a0mió'.'\x1elatn.s7.x\x1f00\u00a0mió'.'\x1elatn.s8.o\x1f000\u00a0mió\x1elatn.s8.x\x1f000\u00a0mió" +
+			"\x1elatn.s9.o\x1f0\u00a0mia'.'\x1elatn.s9.x\x1f0\u00a0mia'.'\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1e" +
+			"latn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0Md\u00a0¤\x1elatn.c10.x\x1f00\u00a0Md\u00a0¤\x1elatn.c11.o\x1f000\u00a0Md\u00a0¤" +
+			"\x1elatn.c11.x\x1f000\u00a0Md\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bn\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bn\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bn\u00a0¤\x1elatn.c13" +
+			".x\x1f00\u00a0Bn\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bn\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bn\u00a0¤\x1elatn.c3.o\x1f0\u00a0k\u00a0¤\x1elatn.c3.x\x1f0\u00a0k\u00a0¤" +
+			"\x1elatn.c4.o\x1f00\u00a0k\u00a0¤\x1elatn.c4.x\x1f00\u00a0k\u00a0¤\x1elatn.c5.o\x1f000\u00a0k\u00a0¤\x1elatn.c5.x\x1f000\u00a0k\u00a0¤\x1elatn.c6.o\x1f0\u00a0" +
+			"M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f" +
+			"000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0\u00a0Md\u00a0¤\x1elatn.c9.x\x1f0\u00a0Md\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 milliard\x1ela" +
+			"tn.l10.x\x1f00 milliards\x1elatn.l11.o\x1f000 milliard\x1elatn.l11.x\x1f000 milliards\x1elatn.l12.o\x1f0 billion\x1elatn" +
+			".l12.x\x1f0 billions\x1elatn.l13.o\x1f00 billion\x1elatn.l13.x\x1f00 billions\x1elatn.l14.o\x1f000 billion\x1elatn.l14.x" +
+			"\x1f000 billions\x1elatn.l3.o\x1f0 millier\x1elatn.l3.x\x1f0 mille\x1elatn.l4.o\x1f00 mille\x1elatn.l4.x\x1f00 mille\x1elatn.l" +
+			"5.o\x1f000 mille\x1elatn.l5.x\x1f000 mille\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 millions\x1elatn.l7.o\x1f00 million\x1e" +
+			"latn.l7.x\x1f00 millions\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 millions\x1elatn.l9.o\x1f0 milliard\x1elatn.l9." +
+			"x\x1f0 milliards\x1elatn.s10.o\x1f00\u00a0Md\x1elatn.s10.x\x1f00\u00a0Md\x1elatn.s11.o\x1f000\u00a0Md\x1elatn.s11.x\x1f000\u00a0Md\x1elatn.s12" +
+			".o\x1f0\u00a0Bn\x1elatn.s12.x\x1f0\u00a0Bn\x1elatn.s13.o\x1f00\u00a0Bn\x1elatn.s13.x\x1f00\u00a0Bn\x1elatn.s14.o\x1f000\u00a0Bn\x1elatn.s14.x\x1f000\u00a0" +
+			"Bn\x1elatn.s3.o\x1f0\u00a0k\x1elatn.s3.x\x1f0\u00a0k\x1elatn.s4.o\x1f00\u00a0k\x1elatn.s4.x\x1f00\u00a0k\x1elatn.s5.o\x1f000\u00a0k\x1elatn.s5.x\x1f000\u00a0" +
+			"k\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0" +
+			"M\x1elatn.s9.o\x1f0\u00a0Md\x1elatn.s9.x\x1f0\u00a0Md\x1elatn.~\x1f≃\x1elatn.Uo\x1f{0}\u00a0{1}\x1elatn.Ux\x1f{0}\u00a0{1}\x1elatn.c10.o\x1f00\u00a0G\u00a0" +
+			"¤\x1elatn.c10.x\x1f00\u00a0G\u00a0¤\x1elatn.c11.o\x1f000\u00a0G\u00a0¤\x1elatn.c11.x\x1f000\u00a0G\u00a0¤\x1elatn.c12.o\x1f0\u00a0T\u00a0¤\x1elatn.c12" +
+			".x\x1f0\u00a0T\u00a0¤\x1elatn.c13.o\x1f00\u00a0T\u00a0¤\x1elatn.c13.x\x1f00\u00a0T\u00a0¤\x1elatn.c14.o\x1f000\u00a0T\u00a0¤\x1elatn.c14.x\x1f000\u00a0T\u00a0¤" +
+			"\x1elatn.c9.o\x1f0\u00a0G\u00a0¤\x1elatn.c9.x\x1f0\u00a0G\u00a0¤\x1elatn.g\x1f\u00a0\x1elatn.l3.o\x1f0 mille\x1elatn.s10.o\x1f00\u00a0G\x1elatn.s10.x\x1f0" +
+			"0\u00a0G\x1elatn.s11.o\x1f000\u00a0G\x1elatn.s11.x\x1f000\u00a0G\x1elatn.s12.o\x1f0\u00a0T\x1elatn.s12.x\x1f0\u00a0T\x1elatn.s13.o\x1f00\u00a0T\x1elatn.s" +
+			"13.x\x1f00\u00a0T\x1elatn.s14.o\x1f000\u00a0T\x1elatn.s14.x\x1f000\u00a0T\x1elatn.s9.o\x1f0\u00a0G\x1elatn.s9.x\x1f0\u00a0G\x1elatn.~\x1f≈\x1elatn.P\x1f#" +
+			",##0%\x1elatn.g\x1f'\x1elatn.g\x1f.\x1elatn.g\x1f.\x1elatn.d\x1f.\x1elatn.g\x1f,\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤\u00a0" +
+			"#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0#,##0.00-\x1elatn.R\x1f{0}-{1}\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f" +
+			",\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miljard\x1elatn.l10.x\x1f00 miljard\x1elatn.l11.o\x1f000 miljard\x1elatn.l11.x\x1f000 mil" +
+			"jard\x1elatn.l12.o\x1f0 biljoen\x1elatn.l12.x\x1f0 biljoen\x1elatn.l13.o\x1f00 biljoen\x1elatn.l13.x\x1f00 biljoen\x1elatn." +
+			"l14.o\x1f000 biljoen\x1elatn.l14.x\x1f000 biljoen\x1elatn.l3.o\x1f0 tûzen\x1elatn.l3.x\x1f0 tûzen\x1elatn.l4.o\x1f00 tûz" +
+			"en\x1elatn.l4.x\x1f00 tûzen\x1elatn.l5.o\x1f000 tûzen\x1elatn.l5.x\x1f000 tûzen\x1elatn.l6.o\x1f0 miljoen\x1elatn.l6.x\x1f0" +
+			" miljoen\x1elatn.l7.o\x1f00 miljoen\x1elatn.l7.x\x1f00 miljoen\x1elatn.l8.o\x1f000 miljoen\x1elatn.l8.x\x1f000 miljoen\x1el" +
+			"atn.l9.o\x1f0 miljard\x1elatn.l9.x\x1f0 miljard\x1elatn.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.o\x1f00" +
+			"0\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12.o\x1f0\u00a0bln'.'\x1elatn.s12.x\x1f0\u00a0bln'.'\x1elatn.s13.o\x1f00\u00a0bln'.'" +
+			"\x1elatn.s13.x\x1f00\u00a0bln'.'\x1elatn.s14.o\x1f000\u00a0bln'.'\x1elatn.s14.x\x1f000\u00a0bln'.'\x1elatn.s6.o\x1f0\u00a0mln'.'\x1elatn.s6" +
+			".x\x1f0\u00a0mln'.'\x1elatn.s7.o\x1f00\u00a0mln'.'\x1elatn.s7.x\x1f00\u00a0mln'.'\x1elatn.s8.o\x1f000\u00a0mln'.'\x1elatn.s8.x\x1f000\u00a0mln'" +
+			".'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn" +
+			".c10.f\x1f¤00B\x1elatn.c10.m\x1f¤00B\x1elatn.c10.o\x1f¤00B\x1elatn.c10.t\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.f\x1f¤00" +
+			"0B\x1elatn.c11.m\x1f¤000B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.t\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.f\x1f¤0T\x1elatn." +
+			"c12.m\x1f¤0T\x1elatn.c12.o\x1f¤0T\x1elatn.c12.t\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.f\x1f¤00T\x1elatn.c13.m\x1f¤00T\x1elat" +
+			"n.c13.o\x1f¤00T\x1elatn.c13.t\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.f\x1f¤000T\x1elatn.c14.m\x1f¤000T\x1elatn.c14.o\x1f¤" +
+			"000T\x1elatn.c14.t\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.f\x1f¤0k\x1elatn.c3.m\x1f¤0k\x1elatn.c3.o\x1f¤0k\x1elatn.c3.t\x1f" +
+			"¤0k\x1elatn.c3.x\x1f¤0k\x1elatn.c4.f\x1f¤00k\x1elatn.c4.m\x1f¤00k\x1elatn.c4.o\x1f¤00k\x1elatn.c4.t\x1f¤00k\x1elatn.c4.x\x1f¤" +
+			"00k\x1elatn.c5.f\x1f¤000k\x1elatn.c5.m\x1f¤000k\x1elatn.c5.o\x1f¤000k\x1elatn.c5.t\x1f¤000k\x1elatn.c5.x\x1f¤000k\x1elatn.c6" +
+			".f\x1f¤0M\x1elatn.c6.m\x1f¤0M\x1elatn.c6.o\x1f¤0M\x1elatn.c6.t\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.f\x1f¤00M\x1elatn.c7.m\x1f¤" +
+			"00M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.t\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.f\x1f¤000M\x1elatn.c8.m\x1f¤000M\x1elatn.c8.o\x1f" +
+			"¤000M\x1elatn.c8.t\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.f\x1f¤0B\x1elatn.c9.m\x1f¤0B\x1elatn.c9.o\x1f¤0B\x1elatn.c9.t\x1f" +
+			"¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.f\x1f00 billiún\x1elatn.l10.m\x1f00 mbilliún\x1elatn.l10.o\x1f00 billiún\x1elatn.l" +
+			"10.t\x1f00 billiún\x1elatn.l10.x\x1f00 billiún\x1elatn.l11.f\x1f000 billiún\x1elatn.l11.m\x1f000 billiún\x1elatn.l11" +
+			".o\x1f000 billiún\x1elatn.l11.t\x1f000 billiún\x1elatn.l11.x\x1f000 billiún\x1elatn.l12.f\x1f0 thrilliún\x1elatn.l12" +
+			".m\x1f0 dtrilliún\x1elatn.l12.o\x1f0 trilliún\x1elatn.l12.t\x1f0 thrilliún\x1elatn.l12.x\x1f0 trilliún\x1elatn.l13.f" +
+			"\x1f00 trilliún\x1elatn.l13.m\x1f00 dtrilliún\x1elatn.l13.o\x1f00 trilliún\x1elatn.l13.t\x1f00 trilliún\x1elatn.l13." +
+			"x\x1f00 trilliún\x1elatn.l14.f\x1f000 trilliún\x1elatn.l14.m\x1f000 trilliún\x1elatn.l14.o\x1f000 trilliún\x1elatn.l" +
+			"14.t\x1f000 trilliún\x1elatn.l14.x\x1f000 trilliún\x1elatn.l3.f\x1f0 mhíle\x1elatn.l3.m\x1f0 míle\x1elatn.l3.o\x1f0 mhí" +
+			"le\x1elatn.l3.t\x1f0 mhíle\x1elatn.l3.x\x1f0 míle\x1elatn.l4.f\x1f00 míle\x1elatn.l4.m\x1f00 míle\x1elatn.l4.o\x1f00 míle" +
+			"\x1elatn.l4.t\x1f00 míle\x1elatn.l4.x\x1f00 míle\x1elatn.l5.f\x1f000 míle\x1elatn.l5.m\x1f000 míle\x1elatn.l5.o\x1f000 mí" +
+			"le\x1elatn.l5.t\x1f000 míle\x1elatn.l5.x\x1f000 míle\x1elatn.l6.f\x1f0 mhilliún\x1elatn.l6.m\x1f0 milliún\x1elatn.l6.o\x1f" +
+			"0 mhilliún\x1elatn.l6.t\x1f0 mhilliún\x1elatn.l6.x\x1f0 milliún\x1elatn.l7.f\x1f00 milliún\x1elatn.l7.m\x1f00 milliú" +
+			"n\x1elatn.l7.o\x1f00 milliún\x1elatn.l7.t\x1f00 milliún\x1elatn.l7.x\x1f00 milliún\x1elatn.l8.f\x1f000 milliún\x1elatn." +
+			"l8.m\x1f000 milliún\x1elatn.l8.o\x1f000 milliún\x1elatn.l8.t\x1f000 milliún\x1elatn.l8.x\x1f000 milliún\x1elatn.l9.f" +
+			"\x1f0 bhilliún\x1elatn.l9.m\x1f0 mbilliún\x1elatn.l9.o\x1f0 bhilliún\x1elatn.l9.t\x1f0 bhilliún\x1elatn.l9.x\x1f0 billi" +
+			"ún\x1elatn.n\x1fNuimh\x1elatn.s10.f\x1f00B\x1elatn.s10.m\x1f00B\x1elatn.s10.o\x1f00B\x1elatn.s10.t\x1f00B\x1elatn.s10.x\x1f00B\x1elatn" +
+			".s11.f\x1f000B\x1elatn.s11.m\x1f000B\x1elatn.s11.o\x1f000B\x1elatn.s11.t\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s3.f\x1f0k\x1elatn.s3" +
+			".m\x1f0k\x1elatn.s3.o\x1f0k\x1elatn.s3.t\x1f0k\x1elatn.s3.x\x1f0k\x1elatn.s4.f\x1f00k\x1elatn.s4.m\x1f00k\x1elatn.s4.o\x1f00k\x1elatn.s4.t" +
+			"\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.f\x1f000k\x1elatn.s5.m\x1f000k\x1elatn.s5.o\x1f000k\x1elatn.s5.t\x1f000k\x1elatn.s5.x\x1f000k\x1ela" +
+			"tn.s9.f\x1f0B\x1elatn.s9.m\x1f0B\x1elatn.s9.o\x1f0B\x1elatn.s9.t\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1ela" +
+			"tn.C\x1f¤#,##0.00\x1elatn.c10.f\x1f¤00B\x1elatn.c10.o\x1f¤00B\x1elatn.c10.t\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.f\x1f¤" +
+			"000B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.t\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.f\x1f¤0T\x1elatn.c12.o\x1f¤0T\x1elatn." +
+			"c12.t\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.f\x1f¤00T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.t\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1el" +
+			"atn.c14.f\x1f¤000T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.t\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.f\x1f¤0K\x1elatn.c3.o\x1f" +
+			"¤0K\x1elatn.c3.t\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.f\x1f¤00K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.t\x1f¤00K\x1elatn.c4.x\x1f¤0" +
+			"0K\x1elatn.c5.f\x1f¤000K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.t\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.f\x1f¤0M\x1elatn.c6.o\x1f" +
+			"¤0M\x1elatn.c6.t\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.f\x1f¤00M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.t\x1f¤00M\x1elatn.c7.x\x1f¤0" +
+			"0M\x1elatn.c8.f\x1f¤000M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.t\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.f\x1f¤0B\x1elatn.c9.o\x1f" +
+			"¤0B\x1elatn.c9.t\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.f\x1f00 billeanan\x1elatn.l10.o\x1f00 bhillean\x1elatn.l10.t\x1f00 " +
+			"bhillean\x1elatn.l10.x\x1f00 billean\x1elatn.l11.f\x1f000 billeanan\x1elatn.l11.o\x1f000 bhillean\x1elatn.l11.t\x1f000 b" +
+			"hillean\x1elatn.l11.x\x1f000 billean\x1elatn.l12.f\x1f0 trilleanan\x1elatn.l12.o\x1f0 trillean\x1elatn.l12.t\x1f0 thrill" +
+			"ean\x1elatn.l12.x\x1f0 trillean\x1elatn.l13.f\x1f00 trilleanan\x1elatn.l13.o\x1f00 trillean\x1elatn.l13.t\x1f00 thrillea" +
+			"n\x1elatn.l13.x\x1f00 trillean\x1elatn.l14.f\x1f000 trilleanan\x1elatn.l14.o\x1f000 trillean\x1elatn.l14.t\x1f000 thrill" +
+			"ean\x1elatn.l14.x\x1f000 trillean\x1elatn.l3.f\x1f0 mìltean\x1elatn.l3.o\x1f0 mhìle\x1elatn.l3.t\x1f0 mhìle\x1elatn.l3.x" +
+			"\x1f0 mìle\x1elatn.l4.f\x1f00 mìltean\x1elatn.l4.o\x1f00 mhìle\x1elatn.l4.t\x1f00 mhìle\x1elatn.l4.x\x1f00 mìle\x1elatn.l" +
+			"5.f\x1f000 mìltean\x1elatn.l5.o\x1f000 mhìle\x1elatn.l5.t\x1f000 mhìle\x1elatn.l5.x\x1f000 mìle\x1elatn.l6.f\x1f0 mille" +
+			"anan\x1elatn.l6.o\x1f0 mhillean\x1elatn.l6.t\x1f0 mhillean\x1elatn.l6.x\x1f0 millean\x1elatn.l7.f\x1f00 milleanan\x1elatn.l" +
+			"7.o\x1f00 mhillean\x1elatn.l7.t\x1f00 mhillean\x1elatn.l7.x\x1f00 millean\x1elatn.l8.f\x1f000 milleanan\x1elatn.l8.o\x1f000" +
+			" mhillean\x1elatn.l8.t\x1f000 mhillean\x1elatn.l8.x\x1f000 millean\x1elatn.l9.f\x1f0 billeanan\x1elatn.l9.o\x1f0 bhillea" +
+			"n\x1elatn.l9.t\x1f0 bhillean\x1elatn.l9.x\x1f0 billean\x1elatn.s10.f\x1f00B\x1elatn.s10.o\x1f00B\x1elatn.s10.t\x1f00B\x1elatn.s10" +
+			".x\x1f00B\x1elatn.s11.f\x1f000B\x1elatn.s11.o\x1f000B\x1elatn.s11.t\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.f\x1f0B\x1elatn.s9.o\x1f0B" +
+			"\x1elatn.s9.t\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0" +
+			"%\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f00000\u00a0M\u00a0¤\x1elatn.c10.x\x1f00000\u00a0M\u00a0¤\x1elatn.c11.o\x1f000000\u00a0M\u00a0¤\x1elatn.c" +
+			"11.x\x1f000000\u00a0M\u00a0¤\x1elatn.c12.o\x1f0\u00a0B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B" +
+			"\u00a0¤\x1elatn.c14.o\x1f000\u00a0B\u00a0¤\x1elatn.c14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0" +
+			"\x1elatn.c5.o\x1f0\x1elatn.c5.x\x1f0\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0" +
+			"M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0000\u00a0M\u00a0¤\x1elatn.c9.x\x1f0000\u00a0M\u00a0¤\x1elatn.d" +
+			"\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00000 millóns\x1elatn.l10.x\x1f00000 millóns\x1elatn.l11.o\x1f000000 millóns\x1elatn" +
+			".l11.x\x1f000000 millóns\x1elatn.l12.o\x1f0 billón\x1elatn.l12.x\x1f0 billóns\x1elatn.l13.o\x1f00 billóns\x1elatn.l1" +
+			"3.x\x1f00 billóns\x1elatn.l14.o\x1f000 billóns\x1elatn.l14.x\x1f000 billóns\x1elatn.l3.o\x1f0\x1elatn.l3.x\x1f0\x1elatn.l4." +
+			"o\x1f0\x1elatn.l4.x\x1f0\x1elatn.l5.o\x1f0\x1elatn.l5.x\x1f0\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millóns\x1elatn.l7.o\x1f00 mi" +
+			"llóns\x1elatn.l7.x\x1f00 millóns\x1elatn.l8.o\x1f000 millóns\x1elatn.l8.x\x1f000 millóns\x1elatn.l9.o\x1f0000 milló" +
+			"ns\x1elatn.l9.x\x1f0000 millóns\x1elatn.s10.o\x1f00000\u00a0M\x1elatn.s10.x\x1f00000\u00a0M\x1elatn.s11.o\x1f000000\u00a0M\x1elatn.s11" +
+			".x\x1f000000\u00a0M\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f00\u00a0B\x1elatn.s14.o\x1f000\u00a0B" +
+			"\x1elatn.s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0\x1elatn.s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn." +
+			"s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn." +
+			"s9.o\x1f0000\u00a0M\x1elatn.s9.x\x1f0000\u00a0M\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0" +
+			"%\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mrd'.'\u00a0¤" +
+			"\x1elatn.c11.x\x1f000\u00a0Mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bio'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bio'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bio" +
+			"'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bio'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bio'.'\u00a0¤\x1elatn.c3." +
+			"o\x1f0\u00a0Tsg'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0Tsg'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0Tsg'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0Tsg'.'\u00a0¤\x1elatn.c" +
+			"5.o\x1f000\u00a0Tsg'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0Tsg'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0Mio'.'\u00a0¤\x1ela" +
+			"tn.c7.o\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mio'.'\u00a0" +
+			"¤\x1elatn.c9.o\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mrd'.'\u00a0¤\x1elatn.g\x1f'\x1elatn.l10.o\x1f00 Milliarde\x1elatn.l10.x\x1f0" +
+			"0 Milliarde\x1elatn.l11.o\x1f000 Milliarde\x1elatn.l11.x\x1f000 Milliarde\x1elatn.l12.o\x1f0 Billioon\x1elatn.l12.x\x1f0" +
+			" Billioone\x1elatn.l13.o\x1f00 Billioon\x1elatn.l13.x\x1f00 Billioone\x1elatn.l14.o\x1f000 Billioon\x1elatn.l14.x\x1f000" +
+			" Billioone\x1elatn.l3.o\x1f0 Tuusig\x1elatn.l3.x\x1f0 Tuusig\x1elatn.l4.o\x1f00 Tuusig\x1elatn.l4.x\x1f00 Tuusig\x1elatn.l5" +
+			".o\x1f000 Tuusig\x1elatn.l5.x\x1f000 Tuusig\x1elatn.l6.o\x1f0 Millioon\x1elatn.l6.x\x1f0 Millioone\x1elatn.l7.o\x1f00 Milli" +
+			"oon\x1elatn.l7.x\x1f00 Millioone\x1elatn.l8.o\x1f000 Millioon\x1elatn.l8.x\x1f000 Millioone\x1elatn.l9.o\x1f0 Milliarde\x1e" +
+			"latn.l9.x\x1f0 Milliarde\x1elatn.s10.o\x1f00\u00a0Mrd'.'\x1elatn.s10.x\x1f00\u00a0Mrd'.'\x1elatn.s11.o\x1f000\u00a0Mrd'.'\x1elatn.s1" +
+			"1.x\x1f000\u00a0Mrd'.'\x1elatn.s12.o\x1f0\u00a0Bio'.'\x1elatn.s12.x\x1f0\u00a0Bio'.'\x1elatn.s13.o\x1f00\u00a0Bio'.'\x1elatn.s13.x\x1f00\u00a0B" +
+			"io'.'\x1elatn.s14.o\x1f000\u00a0Bio'.'\x1elatn.s14.x\x1f000\u00a0Bio'.'\x1elatn.s3.o\x1f0\u00a0Tsg'.'\x1elatn.s3.x\x1f0\u00a0Tsg'.'\x1elatn" +
+			".s4.o\x1f00\u00a0Tsg'.'\x1elatn.s4.x\x1f00\u00a0Tsg'.'\x1elatn.s5.o\x1f000\u00a0Tsg'.'\x1elatn.s5.x\x1f000\u00a0Tsg'.'\x1elatn.s6.o\x1f0\u00a0M" +
+			"io'.'\x1elatn.s6.x\x1f0\u00a0Mio'.'\x1elatn.s7.o\x1f00\u00a0Mio'.'\x1elatn.s7.x\x1f00\u00a0Mio'.'\x1elatn.s8.o\x1f000\u00a0Mio'.'\x1elatn.s" +
+			"8.x\x1f000\u00a0Mio'.'\x1elatn.s9.o\x1f0\u00a0Mrd'.'\x1elatn.s9.x\x1f0\u00a0Mrd'.'\x1egujr.+\x1f+\x1egujr.-\x1f-\x1egujr.A\x1f¤#,##,##0.00;(" +
+			"¤#,##,##0.00)\x1egujr.B\x1f\u00a0\x1egujr.C\x1f¤#,##0.00\x1egujr.D\x1f#,##,##0.###\x1egujr.P\x1f#,##0%\x1egujr.R\x1f{0}-{1}\x1egujr" +
+			".S\x1f#E0\x1egujr.Ux\x1f{0} {1}\x1egujr.X\x1f~{0}\x1egujr.b\x1f\u00a0\x1egujr.c10.o\x1f¤00\u00a0અબજ\x1egujr.c10.x\x1f¤00\u00a0અબજ" +
+			"\x1egujr.c11.o\x1f¤0\u00a0નિખર્વ\x1egujr.c11.x\x1f¤0\u00a0નિખર્વ\x1egujr.c12.o\x1f¤0\u00a0મહા" +
+			"પદ્મ\x1egujr.c12.x\x1f¤0\u00a0મહાપદ્મ\x1egujr.c13.o\x1f¤0\u00a0શંકુ\x1egujr.c13.x\x1f¤0\u00a0" +
+			"શંકુ\x1egujr.c14.o\x1f¤0\u00a0જલધિ\x1egujr.c14.x\x1f¤0\u00a0જલધિ\x1egujr.c3.o\x1f¤0\u00a0હજાર" +
+			"\x1egujr.c3.x\x1f¤0\u00a0હજાર\x1egujr.c4.o\x1f¤00\u00a0હજાર\x1egujr.c4.x\x1f¤00\u00a0હજાર\x1egujr.c5.o" +
+			"\x1f¤0\u00a0લાખ\x1egujr.c5.x\x1f¤0\u00a0લાખ\x1egujr.c6.o\x1f¤00\u00a0લાખ\x1egujr.c6.x\x1f¤00\u00a0લાખ\x1eguj" +
+			"r.c7.o\x1f¤0\u00a0કરોડ\x1egujr.c7.x\x1f¤0\u00a0કરોડ\x1egujr.c8.o\x1f¤00\u00a0કરોડ\x1egujr.c8.x\x1f¤00" +
+			"\u00a0કરોડ\x1egujr.c9.o\x1f¤0\u00a0અબજ\x1egujr.c9.x\x1f¤0\u00a0અબજ\x1egujr.d\x1f.\x1egujr.e\x1fE\x1egujr.g\x1f,\x1egujr" +
+			".i\x1f∞\x1egujr.l10.o\x1f00 અબજ\x1egujr.l10.x\x1f00 અબજ\x1egujr.l11.o\x1f0 નિખર્વ\x1egujr.l11." +
+			"x\x1f0 નિખર્વ\x1egujr.l12.o\x1f0 મહાપદ્મ\x1egujr.l12.x\x1f0 મહાપદ્મ\x1eguj" +
+			"r.l13.o\x1f0 શંકુ\x1egujr.l13.x\x1f0 શંકુ\x1egujr.l14.o\x1f0 જલધિ\x1egujr.l14.x\x1f0 જલધ" +
+			"િ\x1egujr.l3.o\x1f0 હજાર\x1egujr.l3.x\x1f0 હજાર\x1egujr.l4.o\x1f00 હજાર\x1egujr.l4.x\x1f00 હ" +
+			"જાર\x1egujr.l5.o\x1f0 લાખ\x1egujr.l5.x\x1f0 લાખ\x1egujr.l6.o\x1f00 લાખ\x1egujr.l6.x\x1f00 લા" +
+			"ખ\x1egujr.l7.o\x1f0 કરોડ\x1egujr.l7.x\x1f0 કરોડ\x1egujr.l8.o\x1f00 કરોડ\x1egujr.l8.x\x1f00 ક" +
+			"રોડ\x1egujr.l9.o\x1f0 અબજ\x1egujr.l9.x\x1f0 અબજ\x1egujr.m\x1f‰\x1egujr.n\x1fNaN\x1egujr.p\x1f%\x1egujr.s10.o\x1f" +
+			"00\u00a0અબજ\x1egujr.s10.x\x1f00\u00a0અબજ\x1egujr.s11.o\x1f0\u00a0નિખર્વ\x1egujr.s11.x\x1f0\u00a0નિખર" +
+			"્વ\x1egujr.s12.o\x1f0\u00a0મહાપદ્મ\x1egujr.s12.x\x1f0\u00a0મહાપદ્મ\x1egujr.s13.o\x1f0\u00a0શ" +
+			"ંકુ\x1egujr.s13.x\x1f0\u00a0શંકુ\x1egujr.s14.o\x1f0\u00a0જલધિ\x1egujr.s14.x\x1f0\u00a0જલધિ\x1egujr." +
+			"s3.o\x1f0\u00a0હજાર\x1egujr.s3.x\x1f0\u00a0હજાર\x1egujr.s4.o\x1f00\u00a0હજાર\x1egujr.s4.x\x1f00\u00a0હજા" +
+			"ર\x1egujr.s5.o\x1f0\u00a0લાખ\x1egujr.s5.x\x1f0\u00a0લાખ\x1egujr.s6.o\x1f00\u00a0લાખ\x1egujr.s6.x\x1f00\u00a0લાખ" +
+			"\x1egujr.s7.o\x1f0\u00a0કરોડ\x1egujr.s7.x\x1f0\u00a0કરોડ\x1egujr.s8.o\x1f00\u00a0કરોડ\x1egujr.s8.x\x1f00\u00a0ક" +
+			"રોડ\x1egujr.s9.o\x1f0\u00a0અબજ\x1egujr.s9.x\x1f0\u00a0અબજ\x1egujr.~\x1f~\x1elatn.A\x1f¤#,##,##0.00;(¤#,##,##" +
+			"0.00)\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.R\x1f{0}-{1}\x1elatn.S\x1f[#E0]\x1elatn" +
+			".c10.o\x1f¤00\u00a0અબજ\x1elatn.c10.x\x1f¤00\u00a0અબજ\x1elatn.c11.o\x1f¤0\u00a0નિખર્વ\x1elatn.c11.x\x1f" +
+			"¤0\u00a0નિખર્વ\x1elatn.c12.o\x1f¤0\u00a0મહાપદ્મ\x1elatn.c12.x\x1f¤0\u00a0મહાપદ્" +
+			"મ\x1elatn.c13.o\x1f¤0\u00a0શંકુ\x1elatn.c13.x\x1f¤0\u00a0શંકુ\x1elatn.c14.o\x1f¤0\u00a0જલધિ\x1elatn." +
+			"c14.x\x1f¤0\u00a0જલધિ\x1elatn.c3.o\x1f¤0\u00a0હજાર\x1elatn.c3.x\x1f¤0\u00a0હજાર\x1elatn.c4.o\x1f¤00\u00a0" +
+			"હજાર\x1elatn.c4.x\x1f¤00\u00a0હજાર\x1elatn.c5.o\x1f¤0\u00a0લાખ\x1elatn.c5.x\x1f¤0\u00a0લાખ\x1elatn" +
+			".c6.o\x1f¤00\u00a0લાખ\x1elatn.c6.x\x1f¤00\u00a0લાખ\x1elatn.c7.o\x1f¤0\u00a0કરોડ\x1elatn.c7.x\x1f¤0\u00a0કર" +
+			"ોડ\x1elatn.c8.o\x1f¤00\u00a0કરોડ\x1elatn.c8.x\x1f¤00\u00a0કરોડ\x1elatn.c9.o\x1f¤0\u00a0અબજ\x1elatn.c" +
+			"9.x\x1f¤0\u00a0અબજ\x1elatn.l10.o\x1f00 અબજ\x1elatn.l10.x\x1f00 અબજ\x1elatn.l11.o\x1f0 નિખર્વ" +
+			"\x1elatn.l11.x\x1f0 નિખર્વ\x1elatn.l12.o\x1f0 મહાપદ્મ\x1elatn.l12.x\x1f0 મહાપદ" +
+			"્મ\x1elatn.l13.o\x1f0 શંકુ\x1elatn.l13.x\x1f0 શંકુ\x1elatn.l14.o\x1f0 જલધિ\x1elatn.l14.x\x1f" +
+			"0 જલધિ\x1elatn.l3.o\x1f0 હજાર\x1elatn.l3.x\x1f0 હજાર\x1elatn.l4.o\x1f00 હજાર\x1elatn." +
+			"l4.x\x1f00 હજાર\x1elatn.l5.o\x1f0 લાખ\x1elatn.l5.x\x1f0 લાખ\x1elatn.l6.o\x1f00 લાખ\x1elatn.l6." +
+			"x\x1f00 લાખ\x1elatn.l7.o\x1f0 કરોડ\x1elatn.l7.x\x1f0 કરોડ\x1elatn.l8.o\x1f00 કરોડ\x1elatn." +
+			"l8.x\x1f00 કરોડ\x1elatn.l9.o\x1f0 અબજ\x1elatn.l9.x\x1f0 અબજ\x1elatn.s10.o\x1f00\u00a0અબજ\x1elatn.s" +
+			"10.x\x1f00\u00a0અબજ\x1elatn.s11.o\x1f0\u00a0નિખર્વ\x1elatn.s11.x\x1f0\u00a0નિખર્વ\x1elatn.s12.o\x1f" +
+			"0\u00a0મહાપદ્મ\x1elatn.s12.x\x1f0\u00a0મહાપદ્મ\x1elatn.s13.o\x1f0\u00a0શંકુ\x1elatn.s13" +
+			".x\x1f0\u00a0શંકુ\x1elatn.s14.o\x1f0\u00a0જલધિ\x1elatn.s14.x\x1f0\u00a0જલધિ\x1elatn.s3.o\x1f0\u00a0હજાર" +
+			"\x1elatn.s3.x\x1f0\u00a0હજાર\x1elatn.s4.o\x1f00\u00a0હજાર\x1elatn.s4.x\x1f00\u00a0હજાર\x1elatn.s5.o\x1f0\u00a0લ" +
+			"ાખ\x1elatn.s5.x\x1f0\u00a0લાખ\x1elatn.s6.o\x1f00\u00a0લાખ\x1elatn.s6.x\x1f00\u00a0લાખ\x1elatn.s7.o\x1f0\u00a0કર" +
+			"ોડ\x1elatn.s7.x\x1f0\u00a0કરોડ\x1elatn.s8.o\x1f00\u00a0કરોડ\x1elatn.s8.x\x1f00\u00a0કરોડ\x1elatn.s9.o" +
+			"\x1f0\u00a0અબજ\x1elatn.s9.x\x1f0\u00a0અબજ\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#" +
+			",##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1e" +
+			"latn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤" +
+			"000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00D\x1elatn.c4.x\x1f¤00D\x1elatn.c5.o\x1f¤000D\x1elatn.c5.x\x1f¤" +
+			"000D\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤" +
+			"000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1fBiliyan 00\x1elatn.l10.x\x1fBiliyan 00\x1elatn.l11.o\x1fBiliya" +
+			"n 000\x1elatn.l11.x\x1fBiliyan 000\x1elatn.l12.o\x1fTriliyan 0\x1elatn.l12.x\x1fTriliyan 0\x1elatn.l13.o\x1fTriliyan 00\x1e" +
+			"latn.l13.x\x1fTriliyan 00\x1elatn.l14.o\x1fTriliyan 000\x1elatn.l14.x\x1fTriliyan 000\x1elatn.l3.o\x1fDubu 0\x1elatn.l3." +
+			"x\x1fDubu 0\x1elatn.l4.o\x1fDubu 00\x1elatn.l4.x\x1fDubu 00\x1elatn.l5.o\x1fDubu 000\x1elatn.l5.x\x1fDubu 000\x1elatn.l6.o\x1fMil" +
+			"iyan 0\x1elatn.l6.x\x1fMiliyan 0\x1elatn.l7.o\x1fMiliyan 00\x1elatn.l7.x\x1fMiliyan 00\x1elatn.l8.o\x1fMiliyan 000\x1elatn." +
+			"l8.x\x1fMiliyan 000\x1elatn.l9.o\x1fBiliyan 0\x1elatn.l9.x\x1fBiliyan 0\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11." +
+			"o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s3.o\x1f0K\x1elatn.s4.o\x1f00D\x1elatn.s4.x\x1f00D\x1elatn.s5.o\x1f000D\x1elatn.s5.x\x1f000D\x1ela" +
+			"tn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.+\x1f" +
+			"\u200e+\x1elatn.-\x1f\u200e-\x1elatn.A\x1f\u200f#,##0.00\u00a0\u200f¤;\u200f-#,##0.00\u00a0\u200f¤\x1elatn.C\x1f\u200f#,##0.00\u00a0\u200f¤;\u200f-#,#" +
+			"#0.00\u00a0\u200f¤\x1elatn.c10.o\x1f\u200f00B\u200f\u00a0\u200f¤\x1elatn.c10.t\x1f\u200f00B\u200f\u00a0\u200f¤\x1elatn.c10.x\x1f\u200f00B\u200f\u00a0\u200f¤" +
+			"\x1elatn.c11.o\x1f\u200f000B\u200f\u00a0\u200f¤\x1elatn.c11.t\x1f\u200f000B\u200f\u00a0\u200f¤\x1elatn.c11.x\x1f\u200f000B\u200f\u00a0\u200f¤\x1elatn.c12" +
+			".o\x1f\u200f0T\u200f\u00a0\u200f¤\x1elatn.c12.t\x1f\u200f0T\u200f\u00a0\u200f¤\x1elatn.c12.x\x1f\u200f0T\u200f\u00a0\u200f¤\x1elatn.c13.o\x1f\u200f00T\u200f\u00a0\u200f" +
+			"¤\x1elatn.c13.t\x1f\u200f00T\u200f\u00a0\u200f¤\x1elatn.c13.x\x1f\u200f00T\u200f\u00a0\u200f¤\x1elatn.c14.o\x1f\u200f000T\u200f\u00a0\u200f¤\x1elatn.c14" +
+			".t\x1f\u200f000T\u200f\u00a0\u200f¤\x1elatn.c14.x\x1f\u200f000T\u200f\u00a0\u200f¤\x1elatn.c3.o\x1f\u200f0\u00a0א׳\u200f\u00a0\u200f¤\x1elatn.c3.t\x1f\u200f0K" +
+			"\u200f\u00a0\u200f¤\x1elatn.c3.x\x1f\u200f0K\u200f\u00a0\u200f¤\x1elatn.c4.o\x1f\u200f00K\u200f\u00a0\u200f¤\x1elatn.c4.t\x1f\u200f00K\u200f\u00a0\u200f¤\x1elatn." +
+			"c4.x\x1f\u200f00K\u200f\u00a0\u200f¤\x1elatn.c5.o\x1f\u200f000K\u200f\u00a0\u200f¤\x1elatn.c5.t\x1f\u200f000K\u200f\u00a0\u200f¤\x1elatn.c5.x\x1f\u200f000K\u200f" +
+			"\u00a0\u200f¤\x1elatn.c6.o\x1f\u200f0M\u200f\u00a0\u200f¤\x1elatn.c6.t\x1f\u200f0M\u200f\u00a0\u200f¤\x1elatn.c6.x\x1f\u200f0M\u200f\u00a0\u200f¤\x1elatn.c7.o\x1f" +
+			"\u200f00M\u200f\u00a0\u200f¤\x1elatn.c7.t\x1f\u200f00M\u200f\u00a0\u200f¤\x1elatn.c7.x\x1f\u200f00M\u200f\u00a0\u200f¤\x1elatn.c8.o\x1f\u200f000M\u200f\u00a0\u200f" +
+			"¤\x1elatn.c8.t\x1f\u200f000M\u200f\u00a0\u200f¤\x1elatn.c8.x\x1f\u200f000M\u200f\u00a0\u200f¤\x1elatn.c9.o\x1f\u200f0B\u200f\u00a0\u200f¤\x1elatn.c9.t\x1f\u200f" +
+			"0B\u200f\u00a0\u200f¤\x1elatn.c9.x\x1f\u200f0B\u200f\u00a0\u200f¤\x1elatn.l10.m\x1f\u200f00 מיליארד\x1elatn.l10.o\x1f\u200f00 מילי" +
+			"ארד\x1elatn.l10.t\x1f\u200f00 מיליארד\x1elatn.l10.x\x1f\u200f00 מיליארד\x1elatn.l11.m\x1f\u200f000 מילי" +
+			"ארד\x1elatn.l11.o\x1f\u200f000 מיליארד\x1elatn.l11.t\x1f\u200f000 מיליארד\x1elatn.l11.x\x1f\u200f000 מיל" +
+			"יארד\x1elatn.l12.m\x1f\u200f0 טריליון\x1elatn.l12.o\x1f\u200f0 טריליון\x1elatn.l12.t\x1f\u200f0 טרילי" +
+			"ון\x1elatn.l12.x\x1f\u200f0 טריליון\x1elatn.l13.m\x1f\u200f00 טריליון\x1elatn.l13.o\x1f\u200f00 טריליו" +
+			"ן\x1elatn.l13.t\x1f\u200f00 טריליון\x1elatn.l13.x\x1f\u200f00 טריליון\x1elatn.l14.m\x1f\u200f000 טריליו" +
+			"ן\x1elatn.l14.o\x1f\u200f000 טריליון\x1elatn.l14.t\x1f\u200f000 טריליון\x1elatn.l14.x\x1f\u200f000 טרילי" +
+			"ון\x1elatn.l3.m\x1f\u200f0 אלף\x1elatn.l3.o\x1f\u200f0 אלף\x1elatn.l3.t\x1f\u200f0 אלף\x1elatn.l3.x\x1f\u200f0 אלף\x1elat" +
+			"n.l4.m\x1f\u200f00 אלף\x1elatn.l4.o\x1f\u200f00 אלף\x1elatn.l4.t\x1f\u200f00 אלף\x1elatn.l4.x\x1f\u200f00 אלף\x1elatn.l5" +
+			".m\x1f\u200f000 אלף\x1elatn.l5.o\x1f\u200f000 אלף\x1elatn.l5.t\x1f\u200f000 אלף\x1elatn.l5.x\x1f\u200f000 אלף\x1elatn.l6" +
+			".m\x1f\u200f0 מיליון\x1elatn.l6.o\x1f\u200f0 מיליון\x1elatn.l6.t\x1f\u200f0 מיליון\x1elatn.l6.x\x1f\u200f0 מי" +
+			"ליון\x1elatn.l7.m\x1f\u200f00 מיליון\x1elatn.l7.o\x1f\u200f00 מיליון\x1elatn.l7.t\x1f\u200f00 מיליון\x1e" +
+			"latn.l7.x\x1f\u200f00 מיליון\x1elatn.l8.m\x1f\u200f000 מיליון\x1elatn.l8.o\x1f\u200f000 מיליון\x1elatn.l8" +
+			".t\x1f\u200f000 מיליון\x1elatn.l8.x\x1f\u200f000 מיליון\x1elatn.l9.m\x1f\u200f0 מיליארד\x1elatn.l9.o\x1f\u200f" +
+			"0 מיליארד\x1elatn.l9.t\x1f\u200f0 מיליארד\x1elatn.l9.x\x1f\u200f0 מיליארד\x1elatn.s10.o\x1f00B\u200f\x1el" +
+			"atn.s10.t\x1f00B\u200f\x1elatn.s10.x\x1f00B\u200f\x1elatn.s11.o\x1f000B\u200f\x1elatn.s11.t\x1f000B\u200f\x1elatn.s11.x\x1f000B\u200f\x1elatn" +
+			".s12.o\x1f0T\u200f\x1elatn.s12.t\x1f0T\u200f\x1elatn.s12.x\x1f0T\u200f\x1elatn.s13.o\x1f00T\u200f\x1elatn.s13.t\x1f00T\u200f\x1elatn.s13.x\x1f00" +
+			"T\u200f\x1elatn.s14.o\x1f000T\u200f\x1elatn.s14.t\x1f000T\u200f\x1elatn.s14.x\x1f000T\u200f\x1elatn.s3.o\x1f0K\u200f\x1elatn.s3.t\x1f0K\u200f\x1ela" +
+			"tn.s3.x\x1f0K\u200f\x1elatn.s4.o\x1f00K\u200f\x1elatn.s4.t\x1f00K\u200f\x1elatn.s4.x\x1f00K\u200f\x1elatn.s5.o\x1f000K\u200f\x1elatn.s5.t\x1f000" +
+			"K\u200f\x1elatn.s5.x\x1f000K\u200f\x1elatn.s6.o\x1f0M\u200f\x1elatn.s6.t\x1f0M\u200f\x1elatn.s6.x\x1f0M\u200f\x1elatn.s7.o\x1f00M\u200f\x1elatn.s7." +
+			"t\x1f00M\u200f\x1elatn.s7.x\x1f00M\u200f\x1elatn.s8.o\x1f000M\u200f\x1elatn.s8.t\x1f000M\u200f\x1elatn.s8.x\x1f000M\u200f\x1elatn.s9.o\x1f0B\u200f\x1e" +
+			"latn.s9.t\x1f0B\u200f\x1elatn.s9.x\x1f0B\u200f\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##,#" +
+			"#0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f" +
+			"~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.o\x1f¤00\u00a0अ॰\x1edeva.c10.x\x1f¤00\u00a0अ॰\x1edeva.c11.o\x1f¤0\u00a0ख॰\x1edeva.c11.x" +
+			"\x1f¤0\u00a0ख॰\x1edeva.c12.o\x1f¤00\u00a0ख॰\x1edeva.c12.x\x1f¤00\u00a0ख॰\x1edeva.c13.o\x1f¤0\u00a0नील\x1edeva.c13." +
+			"x\x1f¤0\u00a0नील\x1edeva.c14.o\x1f¤00\u00a0नील\x1edeva.c14.x\x1f¤00\u00a0नील\x1edeva.c3.o\x1f¤0\u00a0हज़ा" +
+			"र\x1edeva.c3.x\x1f¤0\u00a0हज़ार\x1edeva.c4.o\x1f¤00\u00a0हज़ार\x1edeva.c4.x\x1f¤00\u00a0हज़ार" +
+			"\x1edeva.c5.o\x1f¤0\u00a0लाख\x1edeva.c5.x\x1f¤0\u00a0लाख\x1edeva.c6.o\x1f¤00\u00a0लाख\x1edeva.c6.x\x1f¤00\u00a0ल" +
+			"ाख\x1edeva.c7.o\x1f¤0\u00a0क॰\x1edeva.c7.x\x1f¤0\u00a0क॰\x1edeva.c8.o\x1f¤00\u00a0क॰\x1edeva.c8.x\x1f¤00\u00a0क॰" +
+			"\x1edeva.c9.o\x1f¤0\u00a0अ॰\x1edeva.c9.x\x1f¤0\u00a0अ॰\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.o\x1f00" +
+			" अरब\x1edeva.l10.x\x1f00 अरब\x1edeva.l11.o\x1f0 खरब\x1edeva.l11.x\x1f0 खरब\x1edeva.l12.o\x1f00 ख" +
+			"रब\x1edeva.l12.x\x1f00 खरब\x1edeva.l13.o\x1f000 खरब\x1edeva.l13.x\x1f000 खरब\x1edeva.l14.o\x1f0000" +
+			" खरब\x1edeva.l14.x\x1f0000 खरब\x1edeva.l3.o\x1f0 हज़ार\x1edeva.l3.x\x1f0 हज़ार\x1edev" +
+			"a.l4.o\x1f00 हज़ार\x1edeva.l4.x\x1f00 हज़ार\x1edeva.l5.o\x1f0 लाख\x1edeva.l5.x\x1f0 लाख" +
+			"\x1edeva.l6.o\x1f00 लाख\x1edeva.l6.x\x1f00 लाख\x1edeva.l7.o\x1f0 करोड़\x1edeva.l7.x\x1f0 करो" +
+			"ड़\x1edeva.l8.o\x1f00 करोड़\x1edeva.l8.x\x1f00 करोड़\x1edeva.l9.o\x1f0 अरब\x1edeva.l9.x" +
+			"\x1f0 अरब\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.o\x1f00\u00a0अ॰\x1edeva.s10.x\x1f00\u00a0अ॰\x1edeva.s11" +
+			".o\x1f0\u00a0ख॰\x1edeva.s11.x\x1f0\u00a0ख॰\x1edeva.s12.o\x1f00\u00a0ख॰\x1edeva.s12.x\x1f00\u00a0ख॰\x1edeva.s13.o\x1f0\u00a0नी" +
+			"ल\x1edeva.s13.x\x1f0\u00a0नील\x1edeva.s14.o\x1f00\u00a0नील\x1edeva.s14.x\x1f00\u00a0नील\x1edeva.s3.o\x1f0\u00a0हज" +
+			"़ार\x1edeva.s3.x\x1f0\u00a0हज़ार\x1edeva.s4.o\x1f00\u00a0हज़ार\x1edeva.s4.x\x1f00\u00a0हज़ार" +
+			"\x1edeva.s5.o\x1f0\u00a0लाख\x1edeva.s5.x\x1f0\u00a0लाख\x1edeva.s6.o\x1f00\u00a0लाख\x1edeva.s6.x\x1f00\u00a0लाख\x1ed" +
+			"eva.s7.o\x1f0\u00a0क॰\x1edeva.s7.x\x1f0\u00a0क॰\x1edeva.s8.o\x1f00\u00a0क॰\x1edeva.s8.x\x1f00\u00a0क॰\x1edeva.s9.o\x1f0\u00a0अ" +
+			"॰\x1edeva.s9.x\x1f0\u00a0अ॰\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1el" +
+			"atn.P\x1f#,##,##0%\x1elatn.S\x1f[#E0]\x1elatn.c10.o\x1f¤00\u00a0अ॰\x1elatn.c10.x\x1f¤00\u00a0अ॰\x1elatn.c11.o\x1f¤0\u00a0ख" +
+			"॰\x1elatn.c11.x\x1f¤0\u00a0ख॰\x1elatn.c12.o\x1f¤00\u00a0ख॰\x1elatn.c12.x\x1f¤00\u00a0ख॰\x1elatn.c13.o\x1f¤0\u00a0नी" +
+			"ल\x1elatn.c13.x\x1f¤0\u00a0नील\x1elatn.c14.o\x1f¤00\u00a0नील\x1elatn.c14.x\x1f¤00\u00a0नील\x1elatn.c3.o\x1f¤" +
+			"0\u00a0हज़ार\x1elatn.c3.x\x1f¤0\u00a0हज़ार\x1elatn.c4.o\x1f¤00\u00a0हज़ार\x1elatn.c4.x\x1f¤00" +
+			"\u00a0हज़ार\x1elatn.c5.o\x1f¤0\u00a0लाख\x1elatn.c5.x\x1f¤0\u00a0लाख\x1elatn.c6.o\x1f¤00\u00a0लाख\x1ela" +
+			"tn.c6.x\x1f¤00\u00a0लाख\x1elatn.c7.o\x1f¤0\u00a0क॰\x1elatn.c7.x\x1f¤0\u00a0क॰\x1elatn.c8.o\x1f¤00\u00a0क॰\x1elatn." +
+			"c8.x\x1f¤00\u00a0क॰\x1elatn.c9.o\x1f¤0\u00a0अ॰\x1elatn.c9.x\x1f¤0\u00a0अ॰\x1elatn.l10.o\x1f00 अरब\x1elatn.l10.x" +
+			"\x1f00 अरब\x1elatn.l11.o\x1f0 खरब\x1elatn.l11.x\x1f0 खरब\x1elatn.l12.o\x1f00 खरब\x1elatn.l12.x\x1f0" +
+			"0 खरब\x1elatn.l13.o\x1f000 खरब\x1elatn.l13.x\x1f000 खरब\x1elatn.l14.o\x1f0000 खरब\x1elatn.l14" +
+			".x\x1f0000 खरब\x1elatn.l3.o\x1f0 हज़ार\x1elatn.l3.x\x1f0 हज़ार\x1elatn.l4.o\x1f00 हज़" +
+			"ार\x1elatn.l4.x\x1f00 हज़ार\x1elatn.l5.o\x1f0 लाख\x1elatn.l5.x\x1f0 लाख\x1elatn.l6.o\x1f00 ल" +
+			"ाख\x1elatn.l6.x\x1f00 लाख\x1elatn.l7.o\x1f0 करोड़\x1elatn.l7.x\x1f0 करोड़\x1elatn.l8.o\x1f" +
+			"00 करोड़\x1elatn.l8.x\x1f00 करोड़\x1elatn.l9.o\x1f0 अरब\x1elatn.l9.x\x1f0 अरब\x1elatn" +
+			".s10.o\x1f00\u00a0अ॰\x1elatn.s10.x\x1f00\u00a0अ॰\x1elatn.s11.o\x1f0\u00a0ख॰\x1elatn.s11.x\x1f0\u00a0ख॰\x1elatn.s12.o\x1f00\u00a0" +
+			"ख॰\x1elatn.s12.x\x1f00\u00a0ख॰\x1elatn.s13.o\x1f0\u00a0नील\x1elatn.s13.x\x1f0\u00a0नील\x1elatn.s14.o\x1f00\u00a0नी" +
+			"ल\x1elatn.s14.x\x1f00\u00a0नील\x1elatn.s3.o\x1f0\u00a0हज़ार\x1elatn.s3.x\x1f0\u00a0हज़ार\x1elatn.s4.o" +
+			"\x1f00\u00a0हज़ार\x1elatn.s4.x\x1f00\u00a0हज़ार\x1elatn.s5.o\x1f0\u00a0लाख\x1elatn.s5.x\x1f0\u00a0लाख" +
+			"\x1elatn.s6.o\x1f00\u00a0लाख\x1elatn.s6.x\x1f00\u00a0लाख\x1elatn.s7.o\x1f0\u00a0क॰\x1elatn.s7.x\x1f0\u00a0क॰\x1elatn.s8" +
+			".o\x1f00\u00a0क॰\x1elatn.s8.x\x1f00\u00a0क॰\x1elatn.s9.o\x1f0\u00a0अ॰\x1elatn.s9.x\x1f0\u00a0अ॰\x1elatn.A\x1f¤#,##,##0.00\x1e" +
+			"latn.S\x1f[#E0]\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0} – {" +
+			"1}\x1elatn.c10.f\x1f00\u00a0mlr'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlr'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlr'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0" +
+			"mlr'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlr'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlr'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c" +
+			"12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1e" +
+			"latn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0" +
+			"bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0" +
+			"tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o" +
+			"\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn." +
+			"c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1ela" +
+			"tn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mlr'.'\u00a0" +
+			"¤\x1elatn.c9.o\x1f0\u00a0mlr'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlr'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 milijarde\x1elat" +
+			"n.l10.o\x1f00 milijarda\x1elatn.l10.x\x1f00 milijardi\x1elatn.l11.f\x1f000 milijarde\x1elatn.l11.o\x1f000 milijarda\x1el" +
+			"atn.l11.x\x1f000 milijardi\x1elatn.l12.f\x1f0 bilijuna\x1elatn.l12.o\x1f0 bilijun\x1elatn.l12.x\x1f0 bilijuna\x1elatn.l1" +
+			"3.f\x1f00 bilijuna\x1elatn.l13.o\x1f00 bilijun\x1elatn.l13.x\x1f00 bilijuna\x1elatn.l14.f\x1f000 bilijuna\x1elatn.l14.o\x1f" +
+			"000 bilijun\x1elatn.l14.x\x1f000 bilijuna\x1elatn.l3.f\x1f0 tisuće\x1elatn.l3.o\x1f0 tisuća\x1elatn.l3.x\x1f0 tisuća\x1e" +
+			"latn.l4.f\x1f00 tisuće\x1elatn.l4.o\x1f00 tisuća\x1elatn.l4.x\x1f00 tisuća\x1elatn.l5.f\x1f000 tisuće\x1elatn.l5.o\x1f0" +
+			"00 tisuća\x1elatn.l5.x\x1f000 tisuća\x1elatn.l6.f\x1f0 milijuna\x1elatn.l6.o\x1f0 milijun\x1elatn.l6.x\x1f0 milijuna\x1el" +
+			"atn.l7.f\x1f00 milijuna\x1elatn.l7.o\x1f00 milijun\x1elatn.l7.x\x1f00 milijuna\x1elatn.l8.f\x1f000 milijuna\x1elatn.l8.o" +
+			"\x1f000 milijun\x1elatn.l8.x\x1f000 milijuna\x1elatn.l9.f\x1f0 milijarde\x1elatn.l9.o\x1f0 milijarda\x1elatn.l9.x\x1f0 mili" +
+			"jardi\x1elatn.s10.f\x1f00\u00a0mlr'.'\x1elatn.s10.o\x1f00\u00a0mlr'.'\x1elatn.s10.x\x1f00\u00a0mlr'.'\x1elatn.s11.f\x1f000\u00a0mlr'.'\x1el" +
+			"atn.s11.o\x1f000\u00a0mlr'.'\x1elatn.s11.x\x1f000\u00a0mlr'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12." +
+			"x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bi" +
+			"l'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn." +
+			"s3.x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0tis'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn.s5.f\x1f000\u00a0tis" +
+			"'.'\x1elatn.s5.o\x1f000\u00a0tis'.'\x1elatn.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6." +
+			"x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'" +
+			"\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mlr'.'\x1elatn.s9.o\x1f0\u00a0mlr'.'\x1elatn.s9.x\x1f0" +
+			"\u00a0mlr'.'\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0mr" +
+			"d'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.t\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11." +
+			"f\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.t\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0" +
+			"¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.t\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'" +
+			".'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.t\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f" +
+			"00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.t\x1f000\u00a0bil'.'\u00a0¤\x1e" +
+			"latn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.t\x1f0\u00a0tys'.'\u00a0" +
+			"¤\x1elatn.c3.x\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.t\x1f00\u00a0tys'." +
+			"'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.t\x1f000" +
+			"\u00a0tys'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.t" +
+			"\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7" +
+			".t\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1el" +
+			"atn.c8.t\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0" +
+			"¤\x1elatn.c9.t\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 miliardow\x1elat" +
+			"n.l10.o\x1f00 miliardow\x1elatn.l10.t\x1f00 miliardow\x1elatn.l10.x\x1f00 miliardow\x1elatn.l11.f\x1f000 miliardow\x1ela" +
+			"tn.l11.o\x1f000 miliardow\x1elatn.l11.t\x1f000 miliardow\x1elatn.l11.x\x1f000 miliardow\x1elatn.l12.f\x1f0 biliony\x1ela" +
+			"tn.l12.o\x1f0 bilion\x1elatn.l12.t\x1f0 bilionaj\x1elatn.l12.x\x1f0 bilionow\x1elatn.l13.f\x1f00 bilionow\x1elatn.l13.o\x1f" +
+			"00 bilionow\x1elatn.l13.t\x1f00 bilionow\x1elatn.l13.x\x1f00 bilionow\x1elatn.l14.f\x1f000 bilionow\x1elatn.l14.o\x1f000" +
+			" bilionow\x1elatn.l14.t\x1f000 bilionow\x1elatn.l14.x\x1f000 bilionow\x1elatn.l3.f\x1f0 tysac\x1elatn.l3.o\x1f0 tysac\x1ela" +
+			"tn.l3.t\x1f0 tysac\x1elatn.l3.x\x1f0 tysac\x1elatn.l4.f\x1f00 tysac\x1elatn.l4.o\x1f00 tysac\x1elatn.l4.t\x1f00 tysac\x1elatn." +
+			"l4.x\x1f00 tysac\x1elatn.l5.f\x1f000 tysac\x1elatn.l5.o\x1f000 tysac\x1elatn.l5.t\x1f000 tysac\x1elatn.l5.x\x1f000 tysac\x1ela" +
+			"tn.l6.f\x1f0 miliony\x1elatn.l6.o\x1f0 milion\x1elatn.l6.t\x1f0 milionaj\x1elatn.l6.x\x1f0 milionow\x1elatn.l7.f\x1f00 mili" +
+			"onow\x1elatn.l7.o\x1f00 milionow\x1elatn.l7.t\x1f00 milionow\x1elatn.l7.x\x1f00 milionow\x1elatn.l8.f\x1f000 milionow\x1ela" +
+			"tn.l8.o\x1f000 milionow\x1elatn.l8.t\x1f000 milionow\x1elatn.l8.x\x1f000 milionow\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9." +
+			"o\x1f0 miliarda\x1elatn.l9.t\x1f0 miliardźe\x1elatn.l9.x\x1f0 miliardow\x1elatn.s10.f\x1f00\u00a0mrd'.'\x1elatn.s10.o\x1f00\u00a0m" +
+			"rd'.'\x1elatn.s10.t\x1f00\u00a0mrd'.'\x1elatn.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.f\x1f000\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1e" +
+			"latn.s11.t\x1f000\u00a0mrd'.'\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12" +
+			".t\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.t\x1f00\u00a0bil" +
+			"'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.t\x1f000\u00a0bil'.'\x1el" +
+			"atn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tys'.'\x1elatn.s3.o\x1f0\u00a0tys'.'\x1elatn.s3.t\x1f0\u00a0tys'.'\x1elatn.s3.x\x1f0\u00a0t" +
+			"ys'.'\x1elatn.s4.f\x1f00\u00a0tys'.'\x1elatn.s4.o\x1f00\u00a0tys'.'\x1elatn.s4.t\x1f00\u00a0tys'.'\x1elatn.s4.x\x1f00\u00a0tys'.'\x1elatn.s" +
+			"5.f\x1f000\u00a0tys'.'\x1elatn.s5.o\x1f000\u00a0tys'.'\x1elatn.s5.t\x1f000\u00a0tys'.'\x1elatn.s5.x\x1f000\u00a0tys'.'\x1elatn.s6.f\x1f0\u00a0m" +
+			"io'.'\x1elatn.s6.o\x1f0\u00a0mio'.'\x1elatn.s6.t\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.f\x1f00\u00a0mio'.'\x1elatn.s7.o" +
+			"\x1f00\u00a0mio'.'\x1elatn.s7.t\x1f00\u00a0mio'.'\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.f\x1f000\u00a0mio'.'\x1elatn.s8.o\x1f000\u00a0mio'." +
+			"'\x1elatn.s8.t\x1f000\u00a0mio'.'\x1elatn.s8.x\x1f000\u00a0mio'.'\x1elatn.s9.f\x1f0\u00a0mrd'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.t\x1f" +
+			"0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1elatn.~\x1f≈\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f" +
+			"00\u00a0Mrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0" +
+			"B\u00a0¤\x1elatn.c12.x\x1f0\u00a0B\u00a0¤\x1elatn.c13.o\x1f00\u00a0B\u00a0¤\x1elatn.c13.x\x1f00\u00a0B\u00a0¤\x1elatn.c14.o\x1f000\u00a0B\u00a0¤\x1elatn.c" +
+			"14.x\x1f000\u00a0B\u00a0¤\x1elatn.c3.o\x1f0\u00a0E\u00a0¤\x1elatn.c3.x\x1f0\u00a0E\u00a0¤\x1elatn.c4.o\x1f00\u00a0E\u00a0¤\x1elatn.c4.x\x1f00\u00a0E\u00a0¤\x1ela" +
+			"tn.c5.o\x1f000\u00a0E\u00a0¤\x1elatn.c5.x\x1f000\u00a0E\u00a0¤\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤" +
+			"\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0" +
+			"Mrd\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliárd\x1elatn.l10.x\x1f00 milliárd\x1elatn.l11.o\x1f000 milliá" +
+			"rd\x1elatn.l11.x\x1f000 milliárd\x1elatn.l12.o\x1f0 billió\x1elatn.l12.x\x1f0 billió\x1elatn.l13.o\x1f00 billió\x1elatn" +
+			".l13.x\x1f00 billió\x1elatn.l14.o\x1f000 billió\x1elatn.l14.x\x1f000 billió\x1elatn.l3.o\x1f0 ezer\x1elatn.l3.x\x1f0 eze" +
+			"r\x1elatn.l4.o\x1f00 ezer\x1elatn.l4.x\x1f00 ezer\x1elatn.l5.o\x1f000 ezer\x1elatn.l5.x\x1f000 ezer\x1elatn.l6.o\x1f0 millió\x1e" +
+			"latn.l6.x\x1f0 millió\x1elatn.l7.o\x1f00 millió\x1elatn.l7.x\x1f00 millió\x1elatn.l8.o\x1f000 millió\x1elatn.l8.x\x1f00" +
+			"0 millió\x1elatn.l9.o\x1f0 milliárd\x1elatn.l9.x\x1f0 milliárd\x1elatn.s10.o\x1f00\u00a0Mrd\x1elatn.s10.x\x1f00\u00a0Mrd\x1elatn" +
+			".s11.o\x1f000\u00a0Mrd\x1elatn.s11.x\x1f000\u00a0Mrd\x1elatn.s12.o\x1f0\u00a0B\x1elatn.s12.x\x1f0\u00a0B\x1elatn.s13.o\x1f00\u00a0B\x1elatn.s13.x\x1f" +
+			"00\u00a0B\x1elatn.s14.o\x1f000\u00a0B\x1elatn.s14.x\x1f000\u00a0B\x1elatn.s3.o\x1f0\u00a0E\x1elatn.s3.x\x1f0\u00a0E\x1elatn.s4.o\x1f00\u00a0E\x1elatn.s4." +
+			"x\x1f00\u00a0E\x1elatn.s5.o\x1f000\u00a0E\x1elatn.s5.x\x1f000\u00a0E\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7." +
+			"x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0\u00a0Mrd\x1elatn.s9.x\x1f0\u00a0Mrd\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0" +
+			"¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0մլրդ\u00a0¤\x1elatn.c10.x\x1f00\u00a0մլրդ\u00a0¤\x1elatn.c11.o\x1f000\u00a0մ" +
+			"լրդ\u00a0¤\x1elatn.c11.x\x1f000\u00a0մլրդ\u00a0¤\x1elatn.c12.o\x1f0\u00a0տրլն\u00a0¤\x1elatn.c12.x\x1f0\u00a0տրլն\u00a0¤\x1ela" +
+			"tn.c13.o\x1f00\u00a0տրլն\u00a0¤\x1elatn.c13.x\x1f00\u00a0տրլն\u00a0¤\x1elatn.c14.o\x1f000\u00a0տրլն\u00a0¤\x1elatn.c14.x\x1f00" +
+			"0\u00a0տրլն\u00a0¤\x1elatn.c3.o\x1f0\u00a0հզր\u00a0¤\x1elatn.c3.x\x1f0\u00a0հզր\u00a0¤\x1elatn.c4.o\x1f00\u00a0հզր\u00a0¤\x1elatn.c4" +
+			".x\x1f00\u00a0հզր\u00a0¤\x1elatn.c5.o\x1f000\u00a0հզր\u00a0¤\x1elatn.c5.x\x1f000\u00a0հզր\u00a0¤\x1elatn.c6.o\x1f0\u00a0մլն\u00a0¤\x1ela" +
+			"tn.c6.x\x1f0\u00a0մլն\u00a0¤\x1elatn.c7.o\x1f00\u00a0մլն\u00a0¤\x1elatn.c7.x\x1f00\u00a0մլն\u00a0¤\x1elatn.c8.o\x1f000\u00a0մլն\u00a0¤" +
+			"\x1elatn.c8.x\x1f000\u00a0մլն\u00a0¤\x1elatn.c9.o\x1f0\u00a0մլրդ\u00a0¤\x1elatn.c9.x\x1f0\u00a0մլրդ\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0" +
+			"\x1elatn.l10.o\x1f00 միլիարդ\x1elatn.l10.x\x1f00 միլիարդ\x1elatn.l11.o\x1f000 միլիարդ\x1elatn.l1" +
+			"1.x\x1f000 միլիարդ\x1elatn.l12.o\x1f0 տրիլիոն\x1elatn.l12.x\x1f0 տրիլիոն\x1elatn.l13.o\x1f00 տր" +
+			"իլիոն\x1elatn.l13.x\x1f00 տրիլիոն\x1elatn.l14.o\x1f000 տրիլիոն\x1elatn.l14.x\x1f000 տրիլիո" +
+			"ն\x1elatn.l3.o\x1f0 հազար\x1elatn.l3.x\x1f0 հազար\x1elatn.l4.o\x1f00 հազար\x1elatn.l4.x\x1f00 հազար" +
+			"\x1elatn.l5.o\x1f000 հազար\x1elatn.l5.x\x1f000 հազար\x1elatn.l6.o\x1f0 միլիոն\x1elatn.l6.x\x1f0 միլի" +
+			"ոն\x1elatn.l7.o\x1f00 միլիոն\x1elatn.l7.x\x1f00 միլիոն\x1elatn.l8.o\x1f000 միլիոն\x1elatn.l8.x\x1f00" +
+			"0 միլիոն\x1elatn.l9.o\x1f0 միլիարդ\x1elatn.l9.x\x1f0 միլիարդ\x1elatn.n\x1fՈչԹ\x1elatn.s10.o\x1f00" +
+			"\u00a0մլրդ\x1elatn.s10.x\x1f00\u00a0մլրդ\x1elatn.s11.o\x1f000\u00a0մլրդ\x1elatn.s11.x\x1f000\u00a0մլրդ\x1elatn.s12.o\x1f" +
+			"0\u00a0տրլն\x1elatn.s12.x\x1f0\u00a0տրլն\x1elatn.s13.o\x1f00\u00a0տրլն\x1elatn.s13.x\x1f00\u00a0տրլն\x1elatn.s14.o\x1f00" +
+			"0\u00a0տրլն\x1elatn.s14.x\x1f000\u00a0տրլն\x1elatn.s3.o\x1f0\u00a0հզր\x1elatn.s3.x\x1f0\u00a0հզր\x1elatn.s4.o\x1f00\u00a0հզր" +
+			"\x1elatn.s4.x\x1f00\u00a0հզր\x1elatn.s5.o\x1f000\u00a0հզր\x1elatn.s5.x\x1f000\u00a0հզր\x1elatn.s6.o\x1f0\u00a0մլն\x1elatn.s6.x\x1f" +
+			"0\u00a0մլն\x1elatn.s7.o\x1f00\u00a0մլն\x1elatn.s7.x\x1f00\u00a0մլն\x1elatn.s8.o\x1f000\u00a0մլն\x1elatn.s8.x\x1f000\u00a0մլն\x1e" +
+			"latn.s9.o\x1f0\u00a0մլրդ\x1elatn.s9.x\x1f0\u00a0մլրդ\x1eg\x1f2\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.c10.o\x1f¤" +
+			"\u00a000\u00a0mld\x1elatn.c10.x\x1f¤\u00a000\u00a0mld\x1elatn.c11.o\x1f¤\u00a0000\u00a0mld\x1elatn.c11.x\x1f¤\u00a0000\u00a0mld\x1elatn.c12.o\x1f¤\u00a0" +
+			"0\u00a0bln\x1elatn.c12.x\x1f¤\u00a00\u00a0bln\x1elatn.c13.o\x1f¤\u00a000\u00a0bln\x1elatn.c13.x\x1f¤\u00a000\u00a0bln\x1elatn.c14.o\x1f¤\u00a0000\u00a0b" +
+			"ln\x1elatn.c14.x\x1f¤\u00a0000\u00a0bln\x1elatn.c3.o\x1f¤\u00a00\u00a0mil\x1elatn.c3.x\x1f¤\u00a00\u00a0mil\x1elatn.c4.o\x1f¤\u00a000\u00a0mil\x1elatn." +
+			"c4.x\x1f¤\u00a000\u00a0mil\x1elatn.c5.o\x1f¤\u00a0000\u00a0mil\x1elatn.c5.x\x1f¤\u00a0000\u00a0mil\x1elatn.c6.o\x1f¤\u00a00\u00a0mln\x1elatn.c6.x\x1f¤" +
+			"\u00a00\u00a0mln\x1elatn.c7.o\x1f¤\u00a000\u00a0mln\x1elatn.c7.x\x1f¤\u00a000\u00a0mln\x1elatn.c8.o\x1f¤\u00a0000\u00a0mln\x1elatn.c8.x\x1f¤\u00a0000\u00a0m" +
+			"ln\x1elatn.c9.o\x1f¤\u00a00\u00a0mld\x1elatn.c9.x\x1f¤\u00a00\u00a0mld\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliardo\x1elatn.l10." +
+			"x\x1f00 milliardos\x1elatn.l11.o\x1f000 milliardo\x1elatn.l11.x\x1f000 milliardos\x1elatn.l12.o\x1f0 billion\x1elatn.l12" +
+			".x\x1f0 billiones\x1elatn.l13.o\x1f00 billion\x1elatn.l13.x\x1f00 billiones\x1elatn.l14.o\x1f000 billion\x1elatn.l14.x\x1f0" +
+			"00 billiones\x1elatn.l3.o\x1f0 mille\x1elatn.l3.x\x1f0 milles\x1elatn.l4.o\x1f00 mille\x1elatn.l4.x\x1f00 milles\x1elatn.l5" +
+			".o\x1f000 mille\x1elatn.l5.x\x1f000 milles\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 milliones\x1elatn.l7.o\x1f00 million" +
+			"\x1elatn.l7.x\x1f00 milliones\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 milliones\x1elatn.l9.o\x1f0 milliardo\x1elatn" +
+			".l9.x\x1f0 milliardos\x1elatn.s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn.s11.x\x1f000\u00a0mld" +
+			"\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1el" +
+			"atn.s14.x\x1f000\u00a0bln\x1elatn.s3.o\x1f0\u00a0mil\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.o\x1f00\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5" +
+			".o\x1f000\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0" +
+			"mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x\x1f0\u00a0mld\x1elatn.A\x1f¤#,##0.00\x1ela" +
+			"tn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00\u00a0M\x1elatn.c11.x\x1f¤000\u00a0M\x1elatn.c12.x\x1f¤0\u00a0T\x1elatn.c13.x\x1f¤00\u00a0T\x1elatn" +
+			".c14.x\x1f¤000\u00a0T\x1elatn.c3.x\x1f¤0\u00a0rb\x1elatn.c4.x\x1f¤00\u00a0rb\x1elatn.c5.x\x1f¤000\u00a0rb\x1elatn.c6.x\x1f¤0\u00a0jt\x1elatn." +
+			"c7.x\x1f¤00\u00a0jt\x1elatn.c8.x\x1f¤000\u00a0jt\x1elatn.c9.x\x1f¤0\u00a0M\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 miliar\x1elatn.l" +
+			"11.x\x1f000 miliar\x1elatn.l12.x\x1f0 triliun\x1elatn.l13.x\x1f00 triliun\x1elatn.l14.x\x1f000 triliun\x1elatn.l3.x\x1f0 ri" +
+			"bu\x1elatn.l4.x\x1f00 ribu\x1elatn.l5.x\x1f000 ribu\x1elatn.l6.x\x1f0 juta\x1elatn.l7.x\x1f00 juta\x1elatn.l8.x\x1f000 juta\x1ela" +
+			"tn.l9.x\x1f0 miliar\x1elatn.s10.x\x1f00\u00a0M\x1elatn.s11.x\x1f000\u00a0M\x1elatn.s12.x\x1f0\u00a0T\x1elatn.s13.x\x1f00\u00a0T\x1elatn.s14.x\x1f" +
+			"000\u00a0T\x1elatn.s3.x\x1f0\u00a0rb\x1elatn.s4.x\x1f00\u00a0rb\x1elatn.s5.x\x1f000\u00a0rb\x1elatn.s6.x\x1f0\u00a0jt\x1elatn.s7.x\x1f00\u00a0jt\x1elatn." +
+			"s8.x\x1f000\u00a0jt\x1elatn.s9.x\x1f0\u00a0M\x1eg\x1f2\x1elatn.A\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0" +
+			".00\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00G\x1elatn.c1" +
+			"1.x\x1f¤000G\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elat" +
+			"n.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0G\x1elatn.l10.x\x1f00 ijeri" +
+			"\x1elatn.l11.x\x1f000 ijeri\x1elatn.l12.x\x1f0 puku ijeri\x1elatn.l13.x\x1f00 puku ijeri\x1elatn.l14.x\x1f000 puku ijeri" +
+			"\x1elatn.l3.x\x1f0 puku\x1elatn.l4.x\x1f00 puku\x1elatn.l5.x\x1f000 puku\x1elatn.l6.x\x1f0 nde\x1elatn.l7.x\x1f00 nde\x1elatn.l8." +
+			"x\x1f000 nde\x1elatn.l9.x\x1f0 ijeri\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0ma'.'\u00a0¤\x1elat" +
+			"n.c10.x\x1f00\u00a0ma'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0ma'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0ma'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bn\u00a0¤\x1el" +
+			"atn.c12.x\x1f0\u00a0bn\u00a0¤\x1elatn.c13.o\x1f00\u00a0bn\u00a0¤\x1elatn.c13.x\x1f00\u00a0bn\u00a0¤\x1elatn.c14.o\x1f000\u00a0bn\u00a0¤\x1elatn.c14." +
+			"x\x1f000\u00a0bn\u00a0¤\x1elatn.c3.o\x1f0\u00a0þ'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0þ'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0þ'.'\u00a0¤\x1elatn.c4.x\x1f00" +
+			"\u00a0þ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0þ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0þ'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0m'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0" +
+			"m'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0m'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0m'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0m'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0m'" +
+			".'\u00a0¤\x1elatn.c9.o\x1f0\u00a0ma'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0ma'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milljarður" +
+			"\x1elatn.l10.x\x1f00 milljarðar\x1elatn.l11.o\x1f000 milljarður\x1elatn.l11.x\x1f000 milljarðar\x1elatn.l12.o\x1f0 bi" +
+			"lljón\x1elatn.l12.x\x1f0 billjónir\x1elatn.l13.o\x1f00 billjón\x1elatn.l13.x\x1f00 billjónir\x1elatn.l14.o\x1f000 bi" +
+			"lljón\x1elatn.l14.x\x1f000 billjónir\x1elatn.l3.o\x1f0 þúsund\x1elatn.l3.x\x1f0 þúsund\x1elatn.l4.o\x1f00 þúsund" +
+			"\x1elatn.l4.x\x1f00 þúsund\x1elatn.l5.o\x1f000 þúsund\x1elatn.l5.x\x1f000 þúsund\x1elatn.l6.o\x1f0 milljón\x1elatn.l" +
+			"6.x\x1f0 milljónir\x1elatn.l7.o\x1f00 milljón\x1elatn.l7.x\x1f00 milljónir\x1elatn.l8.o\x1f000 milljón\x1elatn.l8.x\x1f" +
+			"000 milljónir\x1elatn.l9.o\x1f0 milljarður\x1elatn.l9.x\x1f0 milljarðar\x1elatn.s10.o\x1f00\u00a0ma'.'\x1elatn.s10.x\x1f0" +
+			"0\u00a0ma'.'\x1elatn.s11.o\x1f000\u00a0ma'.'\x1elatn.s11.x\x1f000\u00a0ma'.'\x1elatn.s12.o\x1f0\u00a0bn\x1elatn.s12.x\x1f0\u00a0bn\x1elatn.s13." +
+			"o\x1f00\u00a0bn\x1elatn.s13.x\x1f00\u00a0bn\x1elatn.s14.o\x1f000\u00a0bn\x1elatn.s14.x\x1f000\u00a0bn\x1elatn.s3.o\x1f0\u00a0þ'.'\x1elatn.s3.x\x1f0\u00a0" +
+			"þ'.'\x1elatn.s4.o\x1f00\u00a0þ'.'\x1elatn.s4.x\x1f00\u00a0þ'.'\x1elatn.s5.o\x1f000\u00a0þ'.'\x1elatn.s5.x\x1f000\u00a0þ'.'\x1elatn.s6." +
+			"o\x1f0\u00a0m'.'\x1elatn.s6.x\x1f0\u00a0m'.'\x1elatn.s7.o\x1f00\u00a0m'.'\x1elatn.s7.x\x1f00\u00a0m'.'\x1elatn.s8.o\x1f000\u00a0m'.'\x1elatn.s8.x\x1f" +
+			"000\u00a0m'.'\x1elatn.s9.o\x1f0\u00a0ma'.'\x1elatn.s9.x\x1f0\u00a0ma'.'\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn" +
+			".R\x1f{0}-{1}\x1elatn.c10.o\x1f00\u00a0Mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0" +
+			"Mld\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bln\u00a0¤" +
+			"\x1elatn.c14.o\x1f000\u00a0Bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bln\u00a0¤\x1elatn.c3.o\x1f0K\u00a0¤\x1elatn.c3.x\x1f0K\u00a0¤\x1elatn.c4.o\x1f00K" +
+			"\u00a0¤\x1elatn.c4.x\x1f00K\u00a0¤\x1elatn.c5.o\x1f000K\u00a0¤\x1elatn.c5.x\x1f000K\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0M" +
+			"ln\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mln\u00a0¤" +
+			"\x1elatn.c9.o\x1f0\u00a0Mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mld\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miliardi\x1elatn.l10.x\x1f0" +
+			"0 miliardi\x1elatn.l11.o\x1f000 miliardi\x1elatn.l11.x\x1f000 miliardi\x1elatn.l12.o\x1f0 mille miliardi\x1elatn.l12." +
+			"x\x1f0 mila miliardi\x1elatn.l13.o\x1f00 mila miliardi\x1elatn.l13.x\x1f00 mila miliardi\x1elatn.l14.o\x1f000 mila mi" +
+			"liardi\x1elatn.l14.x\x1f000 mila miliardi\x1elatn.l3.o\x1fmille\x1elatn.l3.x\x1f0 mila\x1elatn.l4.o\x1f00 mila\x1elatn.l4.x" +
+			"\x1f00 mila\x1elatn.l5.o\x1f000 mila\x1elatn.l5.x\x1f000 mila\x1elatn.l6.o\x1f0 milione\x1elatn.l6.x\x1f0 milioni\x1elatn.l7.o" +
+			"\x1f00 milioni\x1elatn.l7.x\x1f00 milioni\x1elatn.l8.o\x1f000 milioni\x1elatn.l8.x\x1f000 milioni\x1elatn.l9.o\x1f0 miliard" +
+			"o\x1elatn.l9.x\x1f0 miliardi\x1elatn.s10.o\x1f00\u00a0Mld\x1elatn.s10.x\x1f00\u00a0Mld\x1elatn.s11.o\x1f000\u00a0Mld\x1elatn.s11.x\x1f000\u00a0" +
+			"Mld\x1elatn.s12.o\x1f0\u00a0Bln\x1elatn.s12.x\x1f0\u00a0Bln\x1elatn.s13.o\x1f00\u00a0Bln\x1elatn.s13.x\x1f00\u00a0Bln\x1elatn.s14.o\x1f000\u00a0Bl" +
+			"n\x1elatn.s14.x\x1f000\u00a0Bln\x1elatn.s6.o\x1f0\u00a0Mln\x1elatn.s6.x\x1f0\u00a0Mln\x1elatn.s7.o\x1f00\u00a0Mln\x1elatn.s7.x\x1f00\u00a0Mln\x1elatn" +
+			".s8.o\x1f000\u00a0Mln\x1elatn.s8.x\x1f000\u00a0Mln\x1elatn.s9.o\x1f0\u00a0Mld\x1elatn.s9.x\x1f0\u00a0Mld\x1elatn.A\x1f¤\u00a0#,##0.00;¤-#,##0" +
+			".00\x1elatn.C\x1f¤\u00a0#,##0.00;¤-#,##0.00\x1elatn.d\x1f.\x1elatn.g\x1f'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#," +
+			"##0.00\x1elatn.R\x1f{0}～{1}\x1elatn.Ux\x1f{0}{1}\x1elatn.X\x1f約 {0}\x1elatn.c10.x\x1f¤000億\x1elatn.c11.x\x1f¤0000億\x1el" +
+			"atn.c12.x\x1f¤0兆\x1elatn.c13.x\x1f¤00兆\x1elatn.c14.x\x1f¤000兆\x1elatn.c15.x\x1f¤0000兆\x1elatn.c16.x\x1f¤0京\x1el" +
+			"atn.c17.x\x1f¤00京\x1elatn.c18.x\x1f¤000京\x1elatn.c19.x\x1f¤0000京\x1elatn.c3.x\x1f0\x1elatn.c4.x\x1f¤0万\x1elatn.c5." +
+			"x\x1f¤00万\x1elatn.c6.x\x1f¤000万\x1elatn.c7.x\x1f¤0000万\x1elatn.c8.x\x1f¤0億\x1elatn.c9.x\x1f¤00億\x1elatn.l10.x\x1f0" +
+			"00億\x1elatn.l11.x\x1f0000億\x1elatn.l12.x\x1f0兆\x1elatn.l13.x\x1f00兆\x1elatn.l14.x\x1f000兆\x1elatn.l15.x\x1f0000兆\x1el" +
+			"atn.l16.x\x1f0京\x1elatn.l17.x\x1f00京\x1elatn.l18.x\x1f000京\x1elatn.l19.x\x1f0000京\x1elatn.l3.x\x1f0\x1elatn.l4.x\x1f0万\x1e" +
+			"latn.l5.x\x1f00万\x1elatn.l6.x\x1f000万\x1elatn.l7.x\x1f0000万\x1elatn.l8.x\x1f0億\x1elatn.l9.x\x1f00億\x1elatn.s10.x\x1f000" +
+			"億\x1elatn.s11.x\x1f0000億\x1elatn.s12.x\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s15.x\x1f0000兆\x1elat" +
+			"n.s16.x\x1f0京\x1elatn.s17.x\x1f00京\x1elatn.s18.x\x1f000京\x1elatn.s19.x\x1f0000京\x1elatn.s3.x\x1f0\x1elatn.s4.x\x1f0万\x1ela" +
+			"tn.s5.x\x1f00万\x1elatn.s6.x\x1f000万\x1elatn.s7.x\x1f0000万\x1elatn.s8.x\x1f0億\x1elatn.s9.x\x1f00億\x1elatn.~\x1f約\x1elatn." +
+			"d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0} – {1}\x1elatn.c10.x\x1f¤\u00a000M\x1elatn.c11." +
+			"x\x1f¤\u00a0000M\x1elatn.c3.x\x1f¤\u00a00È\x1elatn.c4.x\x1f¤\u00a000È\x1elatn.c5.x\x1f¤\u00a0000È\x1elatn.c6.x\x1f¤\u00a00Y\x1elatn.c7.x\x1f¤" +
+			"\u00a000Y\x1elatn.c8.x\x1f¤\u00a0000Y\x1elatn.c9.x\x1f¤\u00a00M\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 milyar\x1elatn.l11.x\x1f000 " +
+			"milyar\x1elatn.l12.x\x1f0 trilyun\x1elatn.l13.x\x1f00 trilyun\x1elatn.l14.x\x1f000 trilyun\x1elatn.l3.x\x1f0 èwu\x1elatn.l" +
+			"4.x\x1f00 èwu\x1elatn.l5.x\x1f000 èwu\x1elatn.l6.x\x1f0 yuta\x1elatn.l7.x\x1f00 yuta\x1elatn.l8.x\x1f000 yuta\x1elatn.l9.x\x1f0" +
+			" milyar\x1elatn.s10.x\x1f00M\x1elatn.s11.x\x1f000M\x1elatn.s3.x\x1f0È\x1elatn.s4.x\x1f00È\x1elatn.s5.x\x1f000È\x1elatn.s6.x\x1f0Y" +
+			"\x1elatn.s7.x\x1f00Y\x1elatn.s8.x\x1f000Y\x1elatn.s9.x\x1f0M\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0" +
+			"}-{1}\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0მლრდ'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0მლრდ'.'\u00a0¤\x1elatn.c" +
+			"11.o\x1f000\u00a0მლრ'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0მლრ'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0ტრლ'.'\u00a0¤\x1elatn." +
+			"c12.x\x1f0\u00a0ტრლ'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0ტრლ'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0ტრლ'.'\u00a0¤\x1elatn.c" +
+			"14.o\x1f000\u00a0ტრლ'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0ტრლ'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0ათ'.'\u00a0¤\x1elatn.c3.x" +
+			"\x1f0\u00a0ათ'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0ათ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0ათ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0ათ'" +
+			".'\u00a0¤\x1elatn.c5.x\x1f000\u00a0ათ'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0მლნ'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0მლნ'.'\u00a0¤\x1e" +
+			"latn.c7.o\x1f00\u00a0მლნ'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0მლნ'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0მლნ'.'\u00a0¤\x1ela" +
+			"tn.c8.x\x1f000\u00a0მლნ'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0მლრდ'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0მლრდ'.'\u00a0¤\x1e" +
+			"latn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 მილიარდი\x1elatn.l10.x\x1f00 მილიარდი" +
+			"\x1elatn.l11.o\x1f000 მილიარდი\x1elatn.l11.x\x1f000 მილიარდი\x1elatn.l12.o\x1f0 ტ" +
+			"რილიონი\x1elatn.l12.x\x1f0 ტრილიონი\x1elatn.l13.o\x1f00 ტრილიონი" +
+			"\x1elatn.l13.x\x1f00 ტრილიონი\x1elatn.l14.o\x1f000 ტრილიონი\x1elatn.l14.x\x1f000 ტ" +
+			"რილიონი\x1elatn.l3.o\x1f0 ათასი\x1elatn.l3.x\x1f0 ათასი\x1elatn.l4.o\x1f00 ათ" +
+			"ასი\x1elatn.l4.x\x1f00 ათასი\x1elatn.l5.o\x1f000 ათასი\x1elatn.l5.x\x1f000 ათასი" +
+			"\x1elatn.l6.o\x1f0 მილიონი\x1elatn.l6.x\x1f0 მილიონი\x1elatn.l7.o\x1f00 მილიო" +
+			"ნი\x1elatn.l7.x\x1f00 მილიონი\x1elatn.l8.o\x1f000 მილიონი\x1elatn.l8.x\x1f000 მი" +
+			"ლიონი\x1elatn.l9.o\x1f0 მილიარდი\x1elatn.l9.x\x1f0 მილიარდი\x1elatn.n" +
+			"\x1fარ\u00a0არის\u00a0რიცხვი\x1elatn.s10.o\x1f00\u00a0მლრდ'.'\x1elatn.s10.x\x1f00\u00a0მლრ" +
+			"დ'.'\x1elatn.s11.o\x1f000\u00a0მლრ'.'\x1elatn.s11.x\x1f000\u00a0მლრ'.'\x1elatn.s12.o\x1f0\u00a0ტრლ'.'\x1elatn" +
+			".s12.x\x1f0\u00a0ტრლ'.'\x1elatn.s13.o\x1f00\u00a0ტრლ'.'\x1elatn.s13.x\x1f00\u00a0ტრლ'.'\x1elatn.s14.o\x1f000\u00a0ტ" +
+			"რლ'.'\x1elatn.s14.x\x1f000\u00a0ტრლ'.'\x1elatn.s3.o\x1f0\u00a0ათ'.'\x1elatn.s3.x\x1f0\u00a0ათ'.'\x1elatn.s4.o\x1f0" +
+			"0\u00a0ათ'.'\x1elatn.s4.x\x1f00\u00a0ათ'.'\x1elatn.s5.o\x1f000\u00a0ათ'.'\x1elatn.s5.x\x1f000\u00a0ათ'.'\x1elatn.s6.o" +
+			"\x1f0\u00a0მლნ'.'\x1elatn.s6.x\x1f0\u00a0მლნ'.'\x1elatn.s7.o\x1f00\u00a0მლნ'.'\x1elatn.s7.x\x1f00\u00a0მლნ'.'" +
+			"\x1elatn.s8.o\x1f000\u00a0მლნ'.'\x1elatn.s8.x\x1f000\u00a0მლნ'.'\x1elatn.s9.o\x1f0\u00a0მლრდ'.'\x1elatn.s9.x\x1f" +
+			"0\u00a0მლრდ'.'\x1elatn.~\x1f≈\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.c10.o\x1f00L¤\x1elatn.c10.x\x1f00" +
+			"L¤\x1elatn.c11.o\x1f000L¤\x1elatn.c11.x\x1f000L¤\x1elatn.c3.o\x1f0G¤\x1elatn.c3.x\x1f0G¤\x1elatn.c4.o\x1f00G¤\x1elatn.c4.x\x1f" +
+			"00G¤\x1elatn.c5.o\x1f000G¤\x1elatn.c5.x\x1f000G¤\x1elatn.c9.o\x1f0L¤\x1elatn.c9.x\x1f0L¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f" +
+			"¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.n\x1fбжыгъэкъым\x1elatn.~\x1f" +
+			"≈\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#" +
+			",##0.00\u00a0¤\x1elatn.R\x1f{0} – {1}\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 mil milhãu\x1elatn.l11.x\x1f000 mil m" +
+			"ilhãu\x1elatn.l12.x\x1f0 bilhãu\x1elatn.l13.x\x1f00 bilhãu\x1elatn.l14.x\x1f000 bilhãu\x1elatn.l3.x\x1f0 mil\x1elatn.l4" +
+			".x\x1f00 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.x\x1f0 milhãu\x1elatn.l7.x\x1f00 milhãu\x1elatn.l8.x\x1f000 milhãu\x1elatn." +
+			"l9.x\x1f0 mil milhãu\x1elatn.s10.x\x1f00\u00a0MM\x1elatn.s11.x\x1f000\u00a0MM\x1elatn.s12.x\x1f0\u00a0Bi\x1elatn.s13.x\x1f00\u00a0Bi\x1elatn." +
+			"s14.x\x1f000\u00a0Bi\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.x\x1f00\u00a0" +
+			"M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.x\x1f0\u00a0MM\x1elatn.c10.x\x1f¤00\u00a0M'.'M'.'\x1elatn.c11.x\x1f¤000\u00a0M'.'M'.'\x1elatn.c3." +
+			"x\x1f¤\u00a00M\x1elatn.c4.x\x1f¤\u00a000M\x1elatn.c5.x\x1f¤\u00a0000M\x1elatn.c6.x\x1f¤\u00a00MM\x1elatn.c7.x\x1f¤\u00a000MM\x1elatn.c8.x\x1f¤\u00a0" +
+			"000MM\x1elatn.c9.x\x1f¤0\u00a0M'.'M'.'\x1elatn.l10.x\x1f00 mil de millones\x1elatn.l11.x\x1f000 mil de millones\x1elatn." +
+			"l12.x\x1f0 trillones\x1elatn.l13.x\x1f00 trillones\x1elatn.l14.x\x1f000 trillones\x1elatn.l3.x\x1f0 mil\x1elatn.l4.x\x1f00 " +
+			"mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.x\x1f0 millones\x1elatn.l7.x\x1f00 millones\x1elatn.l8.x\x1f000 millones\x1elatn.l9." +
+			"x\x1f0 mil de millones\x1elatn.s10.x\x1f00M'.'M'.'\x1elatn.s11.x\x1f000M'.'M'.'\x1elatn.s3.x\x1f0M\x1elatn.s4.x\x1f00M\x1elatn" +
+			".s5.x\x1f000M\x1elatn.s6.x\x1f0MM\x1elatn.s7.x\x1f00MM\x1elatn.s8.x\x1f000MM\x1elatn.s9.x\x1f0M'.'M'.'\x1elatn.Uo\x1f{0} {1}\x1elatn" +
+			".c10.x\x1f¤\u00a000\u00a0bi\x1elatn.c11.x\x1f¤\u00a0000\u00a0bi\x1elatn.c12.x\x1f¤\u00a00\u00a0tri\x1elatn.c13.x\x1f¤\u00a000\u00a0tri\x1elatn.c14.x" +
+			"\x1f¤\u00a0000\u00a0tri\x1elatn.c3.x\x1f¤\u00a00\u00a0mil\x1elatn.c4.x\x1f¤\u00a000\u00a0mil\x1elatn.c5.x\x1f¤\u00a0000\u00a0mil\x1elatn.c6.x\x1f¤\u00a00\u00a0" +
+			"mi\x1elatn.c7.x\x1f¤\u00a000\u00a0mi\x1elatn.c8.x\x1f¤\u00a0000\u00a0mi\x1elatn.c9.x\x1f¤\u00a00\u00a0bi\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f0" +
+			"0 bilhão\x1elatn.l10.x\x1f00 bilhão ag\x1elatn.l11.o\x1f000 bilhão\x1elatn.l11.x\x1f000 bilhão ag\x1elatn.l12.o\x1f0" +
+			" trilhão\x1elatn.l12.x\x1f0 trilhão ag\x1elatn.l13.o\x1f00 trilhão\x1elatn.l13.x\x1f00 trilhão ag\x1elatn.l14.o\x1f0" +
+			"00 trilhão\x1elatn.l14.x\x1f000 trilhão ag\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn.l4." +
+			"x\x1f00 mil\x1elatn.l5.o\x1f000 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 milhão\x1elatn.l6.x\x1f0 milhão ag\x1elatn.l7." +
+			"o\x1f00 milhão\x1elatn.l7.x\x1f00 milhão ag\x1elatn.l8.o\x1f000 milhão\x1elatn.l8.x\x1f000 milhão ag\x1elatn.l9.o\x1f0 " +
+			"bilhão\x1elatn.l9.x\x1f0 bilhão ag\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.x\x1f0\u00a0tri\x1elatn.s13.x" +
+			"\x1f00\u00a0tri\x1elatn.s14.x\x1f000\u00a0tri\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.x\x1f0\u00a0" +
+			"mi\x1elatn.s7.x\x1f00\u00a0mi\x1elatn.s8.x\x1f000\u00a0mi\x1elatn.s9.x\x1f0\u00a0bi\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.g" +
+			"\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elat" +
+			"n.c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000" +
+			"\u00a0млрд\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤" +
+			"\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.o" +
+			"\x1f0\u00a0мың\u00a0¤\x1elatn.c3.x\x1f0\u00a0мың\u00a0¤\x1elatn.c4.o\x1f00\u00a0мың\u00a0¤\x1elatn.c4.x\x1f00\u00a0мың\u00a0¤\x1elatn.c5" +
+			".o\x1f000\u00a0м'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0м'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn." +
+			"c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤" +
+			"\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 милли" +
+			"ард\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.o\x1f000 миллиард\x1elatn.l11.x\x1f000 миллиа" +
+			"рд\x1elatn.l12.o\x1f0 триллион\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.o\x1f00 триллион\x1e" +
+			"latn.l13.x\x1f00 триллион\x1elatn.l14.o\x1f000 триллион\x1elatn.l14.x\x1f000 триллион\x1el" +
+			"atn.l3.o\x1f0 мың\x1elatn.l3.x\x1f0 мың\x1elatn.l4.o\x1f00 мың\x1elatn.l4.x\x1f00 мың\x1elatn.l5.o\x1f000 мың" +
+			"\x1elatn.l5.x\x1f000 мың\x1elatn.l6.o\x1f0 миллион\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.o\x1f00 милл" +
+			"ион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.o\x1f000 миллион\x1elatn.l8.x\x1f000 миллион\x1elat" +
+			"n.l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fсан\u00a0емес\x1elatn.s10.o\x1f00\u00a0м" +
+			"лрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.o\x1f0\u00a0т" +
+			"рлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.o\x1f000\u00a0т" +
+			"рлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.o\x1f0\u00a0мың\x1elatn.s3.x\x1f0\u00a0мың\x1elatn.s4.o\x1f00\u00a0мың\x1elat" +
+			"n.s4.x\x1f00\u00a0мың\x1elatn.s5.o\x1f000\u00a0м'.'\x1elatn.s5.x\x1f000\u00a0м'.'\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0мл" +
+			"н\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9" +
+			".o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.A\x1f#,##0.00¤;(#,##0.00¤)\x1elatn.C\x1f#,##0.00¤\x1elatn.c10.o" +
+			"\x1f00\u00a0ملرد\u00a0¤\x1elatn.c10.x\x1f00\u00a0ملرد\u00a0¤\x1elatn.c11.o\x1f000\u00a0ملرد\u00a0¤\x1elatn.c11.x\x1f000\u00a0ملر" +
+			"د\u00a0¤\x1elatn.c12.o\x1f0\u00a0تريلليون\u00a0¤\x1elatn.c12.x\x1f0\u00a0تريلليون\u00a0¤\x1elatn.c13.o\x1f00\u00a0تر" +
+			"لن\u00a0¤\x1elatn.c13.x\x1f00\u00a0ترلن\u00a0¤\x1elatn.c14.o\x1f000\u00a0ترلن\u00a0¤\x1elatn.c14.x\x1f000\u00a0ترلن\u00a0¤\x1el" +
+			"atn.c3.o\x1f0\u00a0مىڭ\u00a0¤\x1elatn.c3.x\x1f0\u00a0مىڭ\u00a0¤\x1elatn.c4.o\x1f00\u00a0مىڭ\u00a0¤\x1elatn.c4.x\x1f00\u00a0مىڭ\u00a0¤" +
+			"\x1elatn.c5.o\x1f000\u00a0مىڭ\u00a0¤\x1elatn.c5.x\x1f000\u00a0مىڭ\u00a0¤\x1elatn.c6.o\x1f0\u00a0ميلليون\u00a0¤\x1elatn.c6.x\x1f0" +
+			"\u00a0ميلليون\u00a0¤\x1elatn.c7.o\x1f00\u00a0ميلليون\u00a0¤\x1elatn.c7.x\x1f00\u00a0ميلليون\u00a0¤\x1elatn.c8.o" +
+			"\x1f000\u00a0ملن\u00a0¤\x1elatn.c8.x\x1f000\u00a0ملن\u00a0¤\x1elatn.c9.o\x1f0\u00a0ميلليارد\u00a0¤\x1elatn.c9.x\x1f0\u00a0ميل" +
+			"ليارد\u00a0¤\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 ميلليارد\x1elatn.l10.x\x1f00 ميلليارد\x1elatn.l11." +
+			"o\x1f000 ميلليارد\x1elatn.l11.x\x1f000 ميلليارد\x1elatn.l12.o\x1f0 تريلليون\x1elatn.l12.x\x1f" +
+			"0 تريلليون\x1elatn.l13.o\x1f00 تريلليون\x1elatn.l13.x\x1f00 تريلليون\x1elatn.l14.o\x1f000 " +
+			"تريلليون\x1elatn.l14.x\x1f000 تريلليون\x1elatn.l3.o\x1f0 مىڭ\x1elatn.l3.x\x1f0 مىڭ\x1elatn.l4.o" +
+			"\x1f00 مىڭ\x1elatn.l4.x\x1f00 مىڭ\x1elatn.l5.o\x1f000 مىڭ\x1elatn.l5.x\x1f000 مىڭ\x1elatn.l6.o\x1f0 ميلليو" +
+			"ن\x1elatn.l6.x\x1f0 ميلليون\x1elatn.l7.o\x1f00 ميلليون\x1elatn.l7.x\x1f00 ميلليون\x1elatn.l8.o\x1f" +
+			"000 ميلليون\x1elatn.l8.x\x1f000 ميلليون\x1elatn.l9.o\x1f0 ميلليارد\x1elatn.l9.x\x1f0 ميلل" +
+			"يارد\x1elatn.n\x1fسان\u00a0ەمەس\x1elatn.s10.o\x1f00\u00a0ملرد\x1elatn.s10.x\x1f00\u00a0ملرد\x1elatn.s11.o\x1f000\u00a0" +
+			"ملرد\x1elatn.s11.x\x1f000\u00a0ملرد\x1elatn.s12.o\x1f0\u00a0تريلليون\x1elatn.s12.x\x1f0\u00a0تريلليون\x1e" +
+			"latn.s13.o\x1f00\u00a0ترلن\x1elatn.s13.x\x1f00\u00a0ترلن\x1elatn.s14.o\x1f000\u00a0ترلن\x1elatn.s14.x\x1f000\u00a0ترلن" +
+			"\x1elatn.s3.o\x1f0\u00a0مىڭ\x1elatn.s3.x\x1f0\u00a0مىڭ\x1elatn.s4.o\x1f00\u00a0مىڭ\x1elatn.s4.x\x1f00\u00a0مىڭ\x1elatn.s5.o\x1f000" +
+			"\u00a0مىڭ\x1elatn.s5.x\x1f000\u00a0مىڭ\x1elatn.s6.o\x1f0\u00a0ميلليون\x1elatn.s6.x\x1f0\u00a0ميلليون\x1elatn.s7.o" +
+			"\x1f00\u00a0ميلليون\x1elatn.s7.x\x1f00\u00a0ميلليون\x1elatn.s8.o\x1f000\u00a0ملن\x1elatn.s8.x\x1f000\u00a0ملن\x1elat" +
+			"n.s9.o\x1f0\u00a0ميلليارد\x1elatn.s9.x\x1f0\u00a0ميلليارد\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00;¤-" +
+			"#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00;(¤#," +
+			"##0.00)\x1elatn.C\x1f¤#,##0.00\x1ekhmr.+\x1f+\x1ekhmr.-\x1f-\x1ekhmr.A\x1f#,##0.00¤;(#,##0.00¤)\x1ekhmr.B\x1f\u00a0\x1ekhmr.C\x1f#,##" +
+			"0.00¤\x1ekhmr.D\x1f#,##0.###\x1ekhmr.P\x1f#,##0%\x1ekhmr.R\x1f{0}–{1}\x1ekhmr.S\x1f#E0\x1ekhmr.Ux\x1f{0} {1}\x1ekhmr.X\x1f~{0}\x1ekh" +
+			"mr.b\x1f\u00a0\x1ekhmr.c10.x\x1f00\u00a0ប៊ីលាន¤\x1ekhmr.c11.x\x1f000\u00a0ប៊ីលាន¤\x1ekhmr.c12.x\x1f0\u00a0ទ" +
+			"្រីលាន¤\x1ekhmr.c13.x\x1f00\u00a0ទ្រីលាន¤\x1ekhmr.c14.x\x1f000\u00a0ទ្រីលាន" +
+			"¤\x1ekhmr.c3.x\x1f0ពាន់¤\x1ekhmr.c4.x\x1f00\u00a0ពាន់¤\x1ekhmr.c5.x\x1f000\u00a0ពាន់¤\x1ekhmr.c6." +
+			"x\x1f0\u00a0លាន¤\x1ekhmr.c7.x\x1f00\u00a0លាន¤\x1ekhmr.c8.x\x1f000\u00a0លាន¤\x1ekhmr.c9.x\x1f0\u00a0ប៊ីលា" +
+			"ន¤\x1ekhmr.d\x1f,\x1ekhmr.e\x1fE\x1ekhmr.g\x1f.\x1ekhmr.i\x1f∞\x1ekhmr.l10.x\x1f00 ប៊ីលាន\x1ekhmr.l11.x\x1f000 ប៊" +
+			"ីលាន\x1ekhmr.l12.x\x1f0 ទ្រីលាន\x1ekhmr.l13.x\x1f00 ទ្រីលាន\x1ekhmr.l14.x\x1f0" +
+			"00 ទ្រីលាន\x1ekhmr.l3.x\x1f0 ពាន់\x1ekhmr.l4.x\x1f00 ពាន់\x1ekhmr.l5.x\x1f000ពាន" +
+			"់\x1ekhmr.l6.x\x1f0 លាន\x1ekhmr.l7.x\x1f00 លាន\x1ekhmr.l8.x\x1f000 លាន\x1ekhmr.l9.x\x1f0 ប៊ីល" +
+			"ាន\x1ekhmr.m\x1f‰\x1ekhmr.n\x1fNaN\x1ekhmr.p\x1f%\x1ekhmr.s10.x\x1f00\u00a0ប៊ីលាន\x1ekhmr.s11.x\x1f000\u00a0ប៊ី" +
+			"លាន\x1ekhmr.s12.x\x1f0\u00a0ទ្រីលាន\x1ekhmr.s13.x\x1f00\u00a0ទ្រីលាន\x1ekhmr.s14.x\x1f00" +
+			"0\u00a0ទ្រីលាន\x1ekhmr.s3.x\x1f0ពាន់\x1ekhmr.s4.x\x1f00\u00a0ពាន់\x1ekhmr.s5.x\x1f000\u00a0ពា" +
+			"ន់\x1ekhmr.s6.x\x1f0\u00a0លាន\x1ekhmr.s7.x\x1f00\u00a0លាន\x1ekhmr.s8.x\x1f000\u00a0លាន\x1ekhmr.s9.x\x1f0\u00a0ប៊" +
+			"ីលាន\x1ekhmr.~\x1f~\x1elatn.A\x1f#,##0.00¤;(#,##0.00¤)\x1elatn.C\x1f#,##0.00¤\x1elatn.c10.x\x1f00\u00a0ប៊ីល" +
+			"ាន¤\x1elatn.c11.x\x1f000\u00a0ប៊ីលាន¤\x1elatn.c12.x\x1f0\u00a0ទ្រីលាន¤\x1elatn.c13.x\x1f0" +
+			"0\u00a0ទ្រីលាន¤\x1elatn.c14.x\x1f000\u00a0ទ្រីលាន¤\x1elatn.c3.x\x1f0ពាន់¤\x1elat" +
+			"n.c4.x\x1f00\u00a0ពាន់¤\x1elatn.c5.x\x1f000\u00a0ពាន់¤\x1elatn.c6.x\x1f0\u00a0លាន¤\x1elatn.c7.x\x1f00\u00a0ល" +
+			"ាន¤\x1elatn.c8.x\x1f000\u00a0លាន¤\x1elatn.c9.x\x1f0\u00a0ប៊ីលាន¤\x1elatn.l10.x\x1f00 ប៊ីល" +
+			"ាន\x1elatn.l11.x\x1f000 ប៊ីលាន\x1elatn.l12.x\x1f0 ទ្រីលាន\x1elatn.l13.x\x1f00 ទ្" +
+			"រីលាន\x1elatn.l14.x\x1f000 ទ្រីលាន\x1elatn.l3.x\x1f0 ពាន់\x1elatn.l4.x\x1f00 ពា" +
+			"ន់\x1elatn.l5.x\x1f000ពាន់\x1elatn.l6.x\x1f0 លាន\x1elatn.l7.x\x1f00 លាន\x1elatn.l8.x\x1f000 លា" +
+			"ន\x1elatn.l9.x\x1f0 ប៊ីលាន\x1elatn.s10.x\x1f00\u00a0ប៊ីលាន\x1elatn.s11.x\x1f000\u00a0ប៊ីល" +
+			"ាន\x1elatn.s12.x\x1f0\u00a0ទ្រីលាន\x1elatn.s13.x\x1f00\u00a0ទ្រីលាន\x1elatn.s14.x\x1f000\u00a0" +
+			"ទ្រីលាន\x1elatn.s3.x\x1f0ពាន់\x1elatn.s4.x\x1f00\u00a0ពាន់\x1elatn.s5.x\x1f000\u00a0ពាន" +
+			"់\x1elatn.s6.x\x1f0\u00a0លាន\x1elatn.s7.x\x1f00\u00a0លាន\x1elatn.s8.x\x1f000\u00a0លាន\x1elatn.s9.x\x1f0\u00a0ប៊ី" +
+			"លាន\x1eknda.+\x1f+\x1eknda.-\x1f-\x1eknda.A\x1f¤#,##0.00;(¤#,##0.00)\x1eknda.B\x1f\u00a0\x1eknda.C\x1f¤#,##0.00\x1eknda.D\x1f#," +
+			"##0.###\x1eknda.P\x1f#,##0%\x1eknda.R\x1f{0}–{1}\x1eknda.S\x1f#E0\x1eknda.Ux\x1f{0} {1}\x1eknda.X\x1f~{0}\x1eknda.b\x1f\u00a0\x1eknda.c10" +
+			".o\x1f¤00ಬಿ\x1eknda.c10.x\x1f¤00ಬಿ\x1eknda.c11.o\x1f¤000ಬಿ\x1eknda.c11.x\x1f¤000ಬಿ\x1eknda.c12.o\x1f¤0" +
+			"ಟ್ರಿ\x1eknda.c12.x\x1f¤0ಟ್ರಿ\x1eknda.c13.o\x1f¤00ಟ್ರಿ\x1eknda.c13.x\x1f¤00ಟ್ರಿ\x1e" +
+			"knda.c14.o\x1f¤000ಟ್ರಿ\x1eknda.c14.x\x1f¤000ಟ್ರಿ\x1eknda.c3.o\x1f¤0ಸಾ\x1eknda.c3.x\x1f¤0ಸಾ" +
+			"\x1eknda.c4.o\x1f¤00ಸಾ\x1eknda.c4.x\x1f¤00ಸಾ\x1eknda.c5.o\x1f¤000ಸಾ\x1eknda.c5.x\x1f¤000ಸಾ\x1eknda.c6.o" +
+			"\x1f¤0ಮಿ\x1eknda.c6.x\x1f¤0ಮಿ\x1eknda.c7.o\x1f¤00ಮಿ\x1eknda.c7.x\x1f¤00ಮಿ\x1eknda.c8.o\x1f¤000ಮಿ\x1ek" +
+			"nda.c8.x\x1f¤000ಮಿ\x1eknda.c9.o\x1f¤0ಬಿ\x1eknda.c9.x\x1f¤0ಬಿ\x1eknda.d\x1f.\x1eknda.e\x1fE\x1eknda.g\x1f,\x1eknda.i\x1f∞" +
+			"\x1eknda.l10.o\x1f00 ಬಿಲಿಯನ್\x1eknda.l10.x\x1f00 ಬಿಲಿಯನ್\x1eknda.l11.o\x1f000 ಬಿಲ" +
 			"ಿಯನ್\x1eknda.l11.x\x1f000 ಬಿಲಿಯನ್\x1eknda.l12.o\x1f0 ಟ್ರಿಲಿಯನ್\u200c\x1ekn" +
 			"da.l12.x\x1f0 ಟ್ರಿಲಿಯನ್\u200c\x1eknda.l13.o\x1f00 ಟ್ರಿಲಿಯನ್\u200c\x1eknda.l13." +
 			"x\x1f00 ಟ್ರಿಲಿಯನ್\u200c\x1eknda.l14.o\x1f000 ಟ್ರಿಲಿಯನ್\u200c\x1eknda.l14.x\x1f000" +
@@ -1810,1755 +1807,1745 @@ var NumberData = Map{
 			"\x1f0 hozar\x1elatn.l4.x\x1f00 hozar\x1elatn.l5.x\x1f0 lakh\x1elatn.l6.x\x1f00 lakh\x1elatn.l7.x\x1f0 kotti\x1elatn.l8.x\x1f00 ko" +
 			"tti\x1elatn.l9.x\x1f0 obz\x1elatn.s10.x\x1f00obz\x1elatn.s11.x\x1f0nikh\x1elatn.s12.x\x1f00nikh\x1elatn.s13.x\x1f000nikh\x1elatn." +
 			"s14.x\x1f0hoz'.'nikh'.'\x1elatn.s3.x\x1f0hoz\x1elatn.s4.x\x1f00hoz\x1elatn.s5.x\x1f0lak\x1elatn.s6.x\x1f00lak\x1elatn.s7.x\x1f0ko" +
-			"\x1elatn.s8.x\x1f00ko\x1elatn.s9.x\x1f0obz\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤#,##0.00\x1earabext." +
-			"B\x1f\u00a0\x1earabext.C\x1f¤#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0" +
-			"\x1earabext.Uo\x1f{0} {1}\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext" +
-			".c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤" +
-			"\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext" +
-			".c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1eara" +
+			"\x1elatn.s8.x\x1f00ko\x1elatn.s9.x\x1f0obz\x1earabext.A\x1f¤#,##0.00\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤#,##0.00\x1earabext.D\x1f" +
+			"#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Uo\x1f{0} {1}\x1earabext.Ux\x1f{0} {" +
+			"1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T" +
+			"\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c" +
+			"5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1e" +
+			"arabext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabe" +
+			"xt.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M" +
+			"\x1earabext.l9.x\x1f0G\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext" +
+			".s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f000K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1e" +
+			"arabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.g\x1f،\x1e" +
+			"latn.Uo\x1f{0} {1}\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn" +
+			".d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0} {1" +
+			"}\x1elatn.Uz\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 Milljarde\x1elatn.l10.x\x1f00 Milliard" +
+			"en\x1elatn.l10.z\x1f00 Milljarde\x1elatn.l11.o\x1f000 Milliarde\x1elatn.l11.x\x1f000 Milliarden\x1elatn.l11.z\x1f000 Mil" +
+			"ljarde\x1elatn.l12.o\x1f0 Billjuhn\x1elatn.l12.x\x1f0 Billjuhn\x1elatn.l12.z\x1f0 Billjuhn\x1elatn.l13.o\x1f00 Billion\x1el" +
+			"atn.l13.x\x1f00 Billionen\x1elatn.l13.z\x1f00 Billjuhn\x1elatn.l14.o\x1f000 Billion\x1elatn.l14.x\x1f000 Billionen\x1ela" +
+			"tn.l14.z\x1f000 Billjuhn\x1elatn.l3.o\x1f0 Dousend\x1elatn.l3.x\x1f0 Dousend\x1elatn.l3.z\x1f0 Dousend\x1elatn.l4.o\x1f00 D" +
+			"ousend\x1elatn.l4.x\x1f00 Dousend\x1elatn.l4.z\x1f00 Dousend\x1elatn.l5.o\x1f000 Dousend\x1elatn.l5.x\x1f000 Dousend\x1elat" +
+			"n.l5.z\x1f000 Dousend\x1elatn.l6.o\x1f0 Million\x1elatn.l6.x\x1f0 Milljuhne\x1elatn.l6.z\x1f0 Milljuhne\x1elatn.l7.o\x1f00 " +
+			"Milljuhne\x1elatn.l7.x\x1f00 Millionen\x1elatn.l7.z\x1f00 Milljuhne\x1elatn.l8.o\x1f000 Milljuhne\x1elatn.l8.x\x1f000 Mi" +
+			"llionen\x1elatn.l8.z\x1f000 Milljuhne\x1elatn.l9.o\x1f0 Milliarde\x1elatn.l9.x\x1f0 Milljarde\x1elatn.l9.z\x1f0 Milljard" +
+			"\x1elatn.s10.o\x1f00\u00a0Mrd\x1elatn.s10.x\x1f00\u00a0Mrd\x1elatn.s10.z\x1f00\u00a0Mrd\x1elatn.s11.o\x1f000\u00a0Mrd\x1elatn.s11.x\x1f000\u00a0Mr" +
+			"d\x1elatn.s11.z\x1f000\u00a0Mrd\x1elatn.s12.o\x1f0\u00a0Bio\x1elatn.s12.x\x1f0\u00a0Bio\x1elatn.s12.z\x1f0\u00a0Bio\x1elatn.s13.o\x1f00\u00a0Bio\x1el" +
+			"atn.s13.x\x1f00\u00a0Bio\x1elatn.s13.z\x1f00\u00a0Bio\x1elatn.s14.o\x1f000\u00a0Bio\x1elatn.s14.x\x1f000\u00a0Bio\x1elatn.s14.z\x1f000\u00a0Bio" +
+			"\x1elatn.s3.o\x1f0\u00a0tsd\x1elatn.s3.x\x1f0\u00a0tsd\x1elatn.s3.z\x1f0\u00a0tsd\x1elatn.s4.o\x1f00\u00a0tsd\x1elatn.s4.x\x1f00\u00a0tsd\x1elatn.s4." +
+			"z\x1f00\u00a0tsd\x1elatn.s5.o\x1f000\u00a0tsd\x1elatn.s5.x\x1f000\u00a0tsd\x1elatn.s5.z\x1f000\u00a0tsd\x1elatn.s6.o\x1f0\u00a0Mio\x1elatn.s6.x\x1f0\u00a0" +
+			"Mio\x1elatn.s6.z\x1f0\u00a0Mio\x1elatn.s7.o\x1f00\u00a0Mio\x1elatn.s7.x\x1f00\u00a0Mio\x1elatn.s7.z\x1f00\u00a0Mio\x1elatn.s8.o\x1f000\u00a0Mio\x1ela" +
+			"tn.s8.x\x1f000\u00a0Mio\x1elatn.s8.z\x1f000\u00a0Mio\x1elatn.s9.o\x1f0\u00a0Mrd\x1elatn.s9.x\x1f0\u00a0Mrd\x1elatn.s9.z\x1f0\u00a0Mrd\x1elatn.A\x1f#," +
+			"##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f%#,##0\x1elatn.c10.o\x1f00MR\u00a0¤\x1elatn.c10.x\x1f00MR\u00a0" +
+			"¤\x1elatn.c11.o\x1f000MR\u00a0¤\x1elatn.c11.x\x1f000MR\u00a0¤\x1elatn.c12.o\x1f0TN\u00a0¤\x1elatn.c12.x\x1f0TN\u00a0¤\x1elatn.c13.o\x1f00" +
+			"TN\u00a0¤\x1elatn.c13.x\x1f00TN\u00a0¤\x1elatn.c14.o\x1f000TN\u00a0¤\x1elatn.c14.x\x1f000TN\u00a0¤\x1elatn.c3.o\x1f0H\u00a0¤\x1elatn.c3.x\x1f" +
+			"0H\u00a0¤\x1elatn.c4.o\x1f00H\u00a0¤\x1elatn.c4.x\x1f00H\u00a0¤\x1elatn.c5.o\x1f000H\u00a0¤\x1elatn.c5.x\x1f000H\u00a0¤\x1elatn.c6.o\x1f0MN\u00a0" +
+			"¤\x1elatn.c6.x\x1f0MN\u00a0¤\x1elatn.c7.o\x1f00MN\u00a0¤\x1elatn.c7.x\x1f00MN\u00a0¤\x1elatn.c8.o\x1f000MN\u00a0¤\x1elatn.c8.x\x1f000MN\u00a0" +
+			"¤\x1elatn.c9.o\x1f0MR\u00a0¤\x1elatn.c9.x\x1f0MR\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milyar\x1elatn.l10.x\x1f00 mily" +
+			"ar\x1elatn.l11.o\x1f000 milyar\x1elatn.l11.x\x1f000 milyar\x1elatn.l12.o\x1f0 trilyon\x1elatn.l12.x\x1f0 trilyon\x1elatn.l1" +
+			"3.o\x1f00 trilyon\x1elatn.l13.x\x1f00 trilyon\x1elatn.l14.o\x1f000 trilyon\x1elatn.l14.x\x1f000 trilyon\x1elatn.l3.o\x1f0 h" +
+			"ezar\x1elatn.l3.x\x1f0 hezar\x1elatn.l4.o\x1f00 hezar\x1elatn.l4.x\x1f00 hezar\x1elatn.l5.o\x1f000 hezar\x1elatn.l5.x\x1f000 h" +
+			"ezar\x1elatn.l6.o\x1f0 milyon\x1elatn.l6.x\x1f0 milyon\x1elatn.l7.o\x1f00 milyon\x1elatn.l7.x\x1f00 milyon\x1elatn.l8.o\x1f000" +
+			" milyon\x1elatn.l8.x\x1f000 milyon\x1elatn.l9.o\x1f0 milyar\x1elatn.l9.x\x1f0 milyar\x1elatn.s10.o\x1f00MR\x1elatn.s10.x\x1f00" +
+			"MR\x1elatn.s11.o\x1f000MR\x1elatn.s11.x\x1f000MR\x1elatn.s12.o\x1f0TN\x1elatn.s12.x\x1f0TN\x1elatn.s13.o\x1f00TN\x1elatn.s13.x\x1f00" +
+			"TN\x1elatn.s14.o\x1f000TN\x1elatn.s14.x\x1f000TN\x1elatn.s3.o\x1f0H\x1elatn.s3.x\x1f0H\x1elatn.s4.o\x1f00H\x1elatn.s4.x\x1f00H\x1elatn." +
+			"s5.o\x1f000H\x1elatn.s5.x\x1f000H\x1elatn.s6.o\x1f0MN\x1elatn.s6.x\x1f0MN\x1elatn.s7.o\x1f00MN\x1elatn.s7.x\x1f00MN\x1elatn.s8.o\x1f000" +
+			"MN\x1elatn.s8.x\x1f000MN\x1elatn.s9.o\x1f0MR\x1elatn.s9.x\x1f0MR\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##" +
+			"0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.c10.x\x1f¤00\u00a0bi\x1elatn.c11.x\x1f¤000\u00a0" +
+			"bi\x1elatn.c12.x\x1f¤0\u00a0tri\x1elatn.c13.x\x1f¤00\u00a0tri\x1elatn.c14.x\x1f¤000\u00a0tri\x1elatn.c3.x\x1f¤0\u00a0h\x1elatn.c4.x\x1f¤0" +
+			"0\u00a0h\x1elatn.c5.x\x1f¤000\u00a0h\x1elatn.c6.x\x1f¤0\u00a0mi\x1elatn.c7.x\x1f¤00\u00a0mi\x1elatn.c8.x\x1f¤000\u00a0mi\x1elatn.c9.x\x1f¤0\u00a0" +
+			"bi\x1elatn.l10.x\x1f00 billion\x1elatn.l11.x\x1f000 billion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.x\x1f00 trillion\x1elat" +
+			"n.l14.x\x1f000 trillion\x1elatn.l3.x\x1f0 hjar\x1elatn.l4.x\x1f00 hjar\x1elatn.l5.x\x1f000 hjar\x1elatn.l6.x\x1f0 million\x1el" +
+			"atn.l7.x\x1f00 million\x1elatn.l8.x\x1f000 million\x1elatn.l9.x\x1f0 billion\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.x\x1f000\u00a0" +
+			"bi\x1elatn.s12.x\x1f0\u00a0tri\x1elatn.s13.x\x1f00\u00a0tri\x1elatn.s14.x\x1f000\u00a0tri\x1elatn.s3.x\x1f0\u00a0h\x1elatn.s4.x\x1f00\u00a0h\x1elatn." +
+			"s5.x\x1f000\u00a0h\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s7.x\x1f00\u00a0mi\x1elatn.s8.x\x1f000\u00a0mi\x1elatn.s9.x\x1f0\u00a0bi\x1edeva.+\x1f+\x1edeva.-\x1f-" +
+			"\x1edeva.A\x1f¤#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##,##0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0" +
+			"}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1e" +
+			"deva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva" +
+			".c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1ed" +
+			"eva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14" +
+			".x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva" +
+			".l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f" +
+			"00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8" +
+			".x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn" +
+			".A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1eorya.+\x1f+\x1eorya.-\x1f-\x1eorya.A\x1f¤#,##,##0.00" +
+			"\x1eorya.B\x1f\u00a0\x1eorya.C\x1f¤#,##,##0.00\x1eorya.D\x1f#,##,##0.###\x1eorya.P\x1f#,##0%\x1eorya.R\x1f{0}–{1}\x1eorya.S\x1f#E0\x1eor" +
+			"ya.Ux\x1f{0} {1}\x1eorya.X\x1f~{0}\x1eorya.b\x1f\u00a0\x1eorya.c10.x\x1f¤\u00a000G\x1eorya.c11.x\x1f¤\u00a0000G\x1eorya.c12.x\x1f¤\u00a00T\x1eory" +
+			"a.c13.x\x1f¤\u00a000T\x1eorya.c14.x\x1f¤\u00a0000T\x1eorya.c3.x\x1f¤\u00a00K\x1eorya.c4.x\x1f¤\u00a000K\x1eorya.c5.x\x1f¤\u00a0000K\x1eorya.c" +
+			"6.x\x1f¤\u00a00M\x1eorya.c7.x\x1f¤\u00a000M\x1eorya.c8.x\x1f¤\u00a0000M\x1eorya.c9.x\x1f¤\u00a00G\x1eorya.d\x1f.\x1eorya.e\x1fE\x1eorya.g\x1f,\x1eorya" +
+			".i\x1f∞\x1eorya.l10.x\x1f00G\x1eorya.l11.x\x1f000G\x1eorya.l12.x\x1f0T\x1eorya.l13.x\x1f00T\x1eorya.l14.x\x1f000T\x1eorya.l3.x\x1f0K\x1e" +
+			"orya.l4.x\x1f00K\x1eorya.l5.x\x1f000K\x1eorya.l6.x\x1f0M\x1eorya.l7.x\x1f00M\x1eorya.l8.x\x1f000M\x1eorya.l9.x\x1f0G\x1eorya.m\x1f‰\x1eo" +
+			"rya.n\x1fNaN\x1eorya.p\x1f%\x1eorya.s10.x\x1f00G\x1eorya.s11.x\x1f000G\x1eorya.s12.x\x1f0T\x1eorya.s13.x\x1f00T\x1eorya.s14.x\x1f000T\x1eo" +
+			"rya.s3.x\x1f0K\x1eorya.s4.x\x1f00K\x1eorya.s5.x\x1f000K\x1eorya.s6.x\x1f0M\x1eorya.s7.x\x1f00M\x1eorya.s8.x\x1f000M\x1eorya.s9.x\x1f0G\x1e" +
+			"orya.~\x1f~\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1etelu.+\x1f+\x1etelu.-\x1f-\x1etelu.A\x1f" +
+			"¤#,##,##0.00\x1etelu.B\x1f\u00a0\x1etelu.C\x1f¤#,##,##0.00\x1etelu.D\x1f#,##,##0.###\x1etelu.P\x1f#,##0%\x1etelu.R\x1f{0}–{1}\x1e" +
+			"telu.S\x1f#E0\x1etelu.Ux\x1f{0} {1}\x1etelu.X\x1f~{0}\x1etelu.b\x1f\u00a0\x1etelu.c10.x\x1f¤\u00a000G\x1etelu.c11.x\x1f¤\u00a0000G\x1etelu.c12" +
+			".x\x1f¤\u00a00T\x1etelu.c13.x\x1f¤\u00a000T\x1etelu.c14.x\x1f¤\u00a0000T\x1etelu.c3.x\x1f¤\u00a00K\x1etelu.c4.x\x1f¤\u00a000K\x1etelu.c5.x\x1f¤" +
+			"\u00a0000K\x1etelu.c6.x\x1f¤\u00a00M\x1etelu.c7.x\x1f¤\u00a000M\x1etelu.c8.x\x1f¤\u00a0000M\x1etelu.c9.x\x1f¤\u00a00G\x1etelu.d\x1f.\x1etelu.e\x1fE\x1e" +
+			"telu.g\x1f,\x1etelu.i\x1f∞\x1etelu.l10.x\x1f00G\x1etelu.l11.x\x1f000G\x1etelu.l12.x\x1f0T\x1etelu.l13.x\x1f00T\x1etelu.l14.x\x1f000T\x1e" +
+			"telu.l3.x\x1f0K\x1etelu.l4.x\x1f00K\x1etelu.l5.x\x1f000K\x1etelu.l6.x\x1f0M\x1etelu.l7.x\x1f00M\x1etelu.l8.x\x1f000M\x1etelu.l9.x\x1f0G" +
+			"\x1etelu.m\x1f‰\x1etelu.n\x1fNaN\x1etelu.p\x1f%\x1etelu.s10.x\x1f00G\x1etelu.s11.x\x1f000G\x1etelu.s12.x\x1f0T\x1etelu.s13.x\x1f00T\x1etelu" +
+			".s14.x\x1f000T\x1etelu.s3.x\x1f0K\x1etelu.s4.x\x1f00K\x1etelu.s5.x\x1f000K\x1etelu.s6.x\x1f0M\x1etelu.s7.x\x1f00M\x1etelu.s8.x\x1f000M\x1e" +
+			"telu.s9.x\x1f0G\x1etelu.~\x1f~\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0млд\u00a0¤\x1elatn.c10" +
+			".x\x1f00\u00a0млд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млд\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0" +
+			"¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.o" +
+			"\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.o\x1f0\u00a0миң\u00a0¤\x1elatn.c3.x\x1f0\u00a0миң\u00a0¤\x1e" +
+			"latn.c4.o\x1f00\u00a0миң\u00a0¤\x1elatn.c4.x\x1f00\u00a0миң\u00a0¤\x1elatn.c5.o\x1f000\u00a0миң\u00a0¤\x1elatn.c5.x\x1f000\u00a0миң" +
+			"\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0мл" +
+			"н\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.o\x1f0\u00a0млд\u00a0¤\x1elatn.c9.x\x1f0\u00a0" +
+			"млд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 миллиард\x1elatn.l10.x\x1f00 миллиард\x1elatn" +
+			".l11.o\x1f000 миллиард\x1elatn.l11.x\x1f000 миллиард\x1elatn.l12.o\x1f0 триллион\x1elatn.l" +
+			"12.x\x1f0 триллион\x1elatn.l13.o\x1f00 триллион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.o" +
+			"\x1f000 триллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l3.o\x1f0 миң\x1elatn.l3.x\x1f0 миң\x1elatn" +
+			".l4.o\x1f00 миң\x1elatn.l4.x\x1f00 миң\x1elatn.l5.o\x1f000 миң\x1elatn.l5.x\x1f000 миң\x1elatn.l6.o\x1f0 мил" +
+			"лион\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.o\x1f00 миллион\x1elatn.l7.x\x1f00 миллион\x1elatn" +
+			".l8.o\x1f000 миллион\x1elatn.l8.x\x1f000 миллион\x1elatn.l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 м" +
+			"иллиард\x1elatn.n\x1fсан\u00a0эмес\x1elatn.s10.o\x1f00\u00a0млд\x1elatn.s10.x\x1f00\u00a0млд\x1elatn.s11.o\x1f00" +
+			"0\u00a0млд\x1elatn.s11.x\x1f000\u00a0млд\x1elatn.s12.o\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.o\x1f00\u00a0т" +
+			"рлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.o\x1f0\u00a0м" +
+			"иң\x1elatn.s3.x\x1f0\u00a0миң\x1elatn.s4.o\x1f00\u00a0миң\x1elatn.s4.x\x1f00\u00a0миң\x1elatn.s5.o\x1f000\u00a0миң\x1elatn.s5" +
+			".x\x1f000\u00a0миң\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн" +
+			"\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9.o\x1f0\u00a0млд\x1elatn.s9.x\x1f0\u00a0млд\x1elatn.A\x1f#,##" +
+			"0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 Mil" +
+			"liarden\x1elatn.l10.x\x1f00 Milliarden\x1elatn.l11.o\x1f000 Milliarden\x1elatn.l11.x\x1f000 Milliarden\x1elatn.l12.o\x1f" +
+			"0 Billioun\x1elatn.l12.x\x1f0 Billiounen\x1elatn.l13.o\x1f00 Billiounen\x1elatn.l13.x\x1f00 Billiounen\x1elatn.l14.o\x1f" +
+			"000 Billiounen\x1elatn.l14.x\x1f000 Billiounen\x1elatn.l3.o\x1f0 Dausend\x1elatn.l3.x\x1f0 Dausend\x1elatn.l4.o\x1f00 Da" +
+			"usend\x1elatn.l4.x\x1f00 Dausend\x1elatn.l5.o\x1f000 Dausend\x1elatn.l5.x\x1f000 Dausend\x1elatn.l6.o\x1f0 Millioun\x1elatn" +
+			".l6.x\x1f0 Milliounen\x1elatn.l7.o\x1f00 Milliounen\x1elatn.l7.x\x1f00 Milliounen\x1elatn.l8.o\x1f000 Milliounen\x1elatn" +
+			".l8.x\x1f000 Milliounen\x1elatn.l9.o\x1f0 Milliard\x1elatn.l9.x\x1f0 Milliarden\x1elatn.s10.o\x1f00\u00a0Mrd'.'\x1elatn.s10." +
+			"x\x1f00\u00a0Mrd'.'\x1elatn.s11.o\x1f000\u00a0Mrd'.'\x1elatn.s11.x\x1f000\u00a0Mrd'.'\x1elatn.s12.o\x1f0\u00a0Bio'.'\x1elatn.s12.x\x1f0\u00a0Bi" +
+			"o'.'\x1elatn.s13.o\x1f00\u00a0Bio'.'\x1elatn.s13.x\x1f00\u00a0Bio'.'\x1elatn.s14.o\x1f000\u00a0Bio'.'\x1elatn.s14.x\x1f000\u00a0Bio'.'\x1el" +
+			"atn.s3.o\x1f0\u00a0Dsd'.'\x1elatn.s3.x\x1f0\u00a0Dsd'.'\x1elatn.s4.o\x1f00\u00a0Dsd'.'\x1elatn.s4.x\x1f00\u00a0Dsd'.'\x1elatn.s5.o\x1f000\u00a0" +
+			"Dsd'.'\x1elatn.s5.x\x1f000\u00a0Dsd'.'\x1elatn.s6.o\x1f0\u00a0Mio'.'\x1elatn.s6.x\x1f0\u00a0Mio'.'\x1elatn.s7.o\x1f00\u00a0Mio'.'\x1elatn.s" +
+			"7.x\x1f00\u00a0Mio'.'\x1elatn.s8.o\x1f000\u00a0Mio'.'\x1elatn.s8.x\x1f000\u00a0Mio'.'\x1elatn.s9.o\x1f0\u00a0Mrd'.'\x1elatn.s9.x\x1f0\u00a0Mrd'" +
+			".'\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1ela" +
+			"tn.R\x1f{0}-{1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0Mlg\u00a0¤\x1ela" +
+			"tn.c10.x\x1f00\u00a0Mlg\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mlg\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mlg\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bln\u00a0¤\x1elatn." +
+			"c12.x\x1f0\u00a0Bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bln\u00a0¤\x1elatn.c14." +
+			"x\x1f000\u00a0Bln\u00a0¤\x1elatn.c3.o\x1f0m\u00a0¤\x1elatn.c3.x\x1f0m\u00a0¤\x1elatn.c4.o\x1f00m\u00a0¤\x1elatn.c4.x\x1f00m\u00a0¤\x1elatn.c5.o\x1f0" +
+			"00m\u00a0¤\x1elatn.c5.x\x1f000m\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0Mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mln\u00a0¤\x1elatn." +
+			"c7.x\x1f00\u00a0Mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mlg\u00a0¤\x1elatn.c9.x\x1f0\u00a0" +
+			"Mlg\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miliarg\x1elatn.l10.x\x1f00 miliarg\x1elatn.l11.o\x1f000 miliarg\x1elat" +
+			"n.l11.x\x1f000 miliarg\x1elatn.l12.o\x1f0 biliun\x1elatn.l12.x\x1f0 biliuns\x1elatn.l13.o\x1f00 biliuns\x1elatn.l13.x\x1f00" +
+			" biliuns\x1elatn.l14.o\x1f000 biliuns\x1elatn.l14.x\x1f000 biliuns\x1elatn.l3.o\x1fmile\x1elatn.l3.x\x1f0 mile\x1elatn.l4.o" +
+			"\x1f00 mile\x1elatn.l4.x\x1f00 mile\x1elatn.l5.o\x1f000 mile\x1elatn.l5.x\x1f000 mile\x1elatn.l6.o\x1f0 miliun\x1elatn.l6.x\x1f0 " +
+			"miliuns\x1elatn.l7.o\x1f00 miliuns\x1elatn.l7.x\x1f00 miliuns\x1elatn.l8.o\x1f000 miliuns\x1elatn.l8.x\x1f000 miliuns\x1ela" +
+			"tn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 miliarg\x1elatn.s10.o\x1f00\u00a0Mlg\x1elatn.s10.x\x1f00\u00a0Mlg\x1elatn.s11.o\x1f000\u00a0Mlg\x1e" +
+			"latn.s11.x\x1f000\u00a0Mlg\x1elatn.s12.o\x1f0\u00a0Bln\x1elatn.s12.x\x1f0\u00a0Bln\x1elatn.s13.o\x1f00\u00a0Bln\x1elatn.s13.x\x1f00\u00a0Bln\x1ela" +
+			"tn.s14.o\x1f000\u00a0Bln\x1elatn.s14.x\x1f000\u00a0Bln\x1elatn.s3.o\x1f0m\x1elatn.s3.x\x1f0m\x1elatn.s4.o\x1f00m\x1elatn.s4.x\x1f00m\x1elatn" +
+			".s5.o\x1f000m\x1elatn.s5.x\x1f000m\x1elatn.s6.o\x1f0\u00a0Mln\x1elatn.s6.x\x1f0\u00a0Mln\x1elatn.s7.o\x1f00\u00a0Mln\x1elatn.s7.x\x1f00\u00a0Mln\x1e" +
+			"latn.s8.o\x1f000\u00a0Mln\x1elatn.s8.x\x1f000\u00a0Mln\x1elatn.s9.o\x1f0\u00a0Mlg\x1elatn.s9.x\x1f0\u00a0Mlg\x1elatn.d\x1f,\x1elatn.g\x1f'\x1elatn.A" +
+			"\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elaoo.+\x1f+\x1elaoo.-\x1f-\x1elaoo.A\x1f¤#,##0.00;¤-#,##0" +
+			".00\x1elaoo.B\x1f\u00a0\x1elaoo.C\x1f¤#,##0.00;¤-#,##0.00\x1elaoo.D\x1f#,##0.###\x1elaoo.P\x1f#,##0%\x1elaoo.R\x1f{0}–{1}\x1elaoo" +
+			".S\x1f#\x1elaoo.Ux\x1f{0} {1}\x1elaoo.X\x1f~{0}\x1elaoo.b\x1f\u00a0\x1elaoo.c10.x\x1f¤00ຕື້\x1elaoo.c11.x\x1f¤000ຕື້\x1ela" +
+			"oo.c12.x\x1f¤0000ຕື້\x1elaoo.c13.x\x1f¤00ພັນຕື້\x1elaoo.c14.x\x1f¤000ພັນຕື້\x1ela" +
+			"oo.c3.x\x1f¤0ພັນ\x1elaoo.c4.x\x1f¤00ພັນ\x1elaoo.c5.x\x1f¤000ພັນ\x1elaoo.c6.x\x1f¤0ລ້ານ\x1e" +
+			"laoo.c7.x\x1f¤00ລ້ານ\x1elaoo.c8.x\x1f¤000ລ້ານ\x1elaoo.c9.x\x1f¤0ຕື້\x1elaoo.d\x1f,\x1elaoo.e\x1fE\x1e" +
+			"laoo.g\x1f.\x1elaoo.i\x1f∞\x1elaoo.l10.x\x1f00ພັນລ້ານ\x1elaoo.l11.x\x1f000ພັນລ້ານ\x1elaoo." +
+			"l12.x\x1f0000ພັນລ້ານ\x1elaoo.l13.x\x1f00ລ້ານລ້ານ\x1elaoo.l14.x\x1f000ລ້ານ" +
+			"ລ້ານ\x1elaoo.l3.x\x1f0ພັນ\x1elaoo.l4.x\x1f00ພັນ\x1elaoo.l5.x\x1f000ພັນ\x1elaoo.l6.x\x1f0ລ້" +
+			"ານ\x1elaoo.l7.x\x1f00ລ້ານ\x1elaoo.l8.x\x1f000ລ້ານ\x1elaoo.l9.x\x1f0ພັນລ້ານ\x1elaoo." +
+			"m\x1f‰\x1elaoo.n\x1fບໍ່\u200bແມ່ນ\u200bໂຕ\u200bເລກ\x1elaoo.p\x1f%\x1elaoo.s10.x\x1f00ຕື້\x1elaoo." +
+			"s11.x\x1f000ຕື້\x1elaoo.s12.x\x1f0000ຕື້\x1elaoo.s13.x\x1f00ພັນຕື້\x1elaoo.s14.x\x1f000ພັ" +
+			"ນຕື້\x1elaoo.s3.x\x1f0ພັນ\x1elaoo.s4.x\x1f00ພັນ\x1elaoo.s5.x\x1f000ພັນ\x1elaoo.s6.x\x1f0ລ້" +
+			"ານ\x1elaoo.s7.x\x1f00ລ້ານ\x1elaoo.s8.x\x1f000ລ້ານ\x1elaoo.s9.x\x1f0ຕື້\x1elaoo.~\x1f~\x1elatn.A\x1f¤" +
+			"#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.S\x1f#\x1elatn.c10.x\x1f¤00\u00a0ຕື້\x1elatn.c11." +
+			"x\x1f¤000\u00a0ຕື້\x1elatn.c12.x\x1f¤0\u00a0ລ້ານລ້ານ\x1elatn.c13.x\x1f¤00ລລ\x1elatn.c14.x\x1f¤0" +
+			"00ລລ\x1elatn.c3.x\x1f¤0\u00a0ພັນ\x1elatn.c4.x\x1f¤00\u00a0ພັນ\x1elatn.c5.x\x1f¤000\u00a0ພັນ\x1elatn.c6.x" +
+			"\x1f¤0\u00a0ລ້ານ\x1elatn.c7.x\x1f¤00\u00a0ລ້ານ\x1elatn.c8.x\x1f¤000\u00a0ລ້ານ\x1elatn.c9.x\x1f¤0\u00a0ຕ" +
+			"ື້\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 ຕື້\x1elatn.l11.x\x1f000 ຕື້\x1elatn.l12.x\x1f0 ລ້າ" +
+			"ນລ້ານ\x1elatn.l13.x\x1f00 ລ້ານລ້ານ\x1elatn.l14.x\x1f000 ລ້ານລ້ານ\x1el" +
+			"atn.l3.x\x1f0 ພັນ\x1elatn.l4.x\x1f00 ພັນ\x1elatn.l5.x\x1f0 ແສນ\x1elatn.l6.x\x1f0 ລ້ານ\x1elatn." +
+			"l7.x\x1f00 ລ້ານ\x1elatn.l8.x\x1f000 ລ້ານ\x1elatn.l9.x\x1f0 ຕື້\x1elatn.n\x1fບໍ່\u200bແມ່" +
+			"ນ\u200bໂຕ\u200bເລກ\x1elatn.s10.x\x1f00\u00a0ຕື້\x1elatn.s11.x\x1f000\u00a0ຕື້\x1elatn.s12.x\x1f0\u00a0ລ້" +
+			"ານລ້ານ\x1elatn.s13.x\x1f00ລລ\x1elatn.s14.x\x1f000ລລ\x1elatn.s3.x\x1f0\u00a0ພັນ\x1elatn.s4.x\x1f00\u00a0" +
+			"ພັນ\x1elatn.s5.x\x1f000\u00a0ພັນ\x1elatn.s6.x\x1f0\u00a0ລ້ານ\x1elatn.s7.x\x1f00\u00a0ລ້ານ\x1elatn.s8." +
+			"x\x1f000\u00a0ລ້ານ\x1elatn.s9.x\x1f0\u00a0ຕື້\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,#" +
+			"#0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1e" +
+			"arabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1ear" +
+			"abext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x" +
+			"\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1eara" +
 			"bext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabext." +
 			"l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M\x1ear" +
-			"abext.l9.x\x1f0G\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabe" +
-			"xt.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f0" +
-			"00K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1earabext.~\x1f~\x1elatn.A\x1f¤#,##" +
-			"0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.g\x1f،\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0." +
-			"00¤\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1el" +
-			"atn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0} {1}\x1elatn.Uz\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f" +
-			"\u00a0\x1elatn.l10.o\x1f00 Milljarde\x1elatn.l10.x\x1f00 Milliarden\x1elatn.l10.z\x1f00 Milljarde\x1elatn.l11.o\x1f000 Milli" +
-			"arde\x1elatn.l11.x\x1f000 Milliarden\x1elatn.l11.z\x1f000 Milljarde\x1elatn.l12.o\x1f0 Billjuhn\x1elatn.l12.x\x1f0 Billj" +
-			"uhn\x1elatn.l12.z\x1f0 Billjuhn\x1elatn.l13.o\x1f00 Billion\x1elatn.l13.x\x1f00 Billionen\x1elatn.l13.z\x1f00 Billjuhn\x1el" +
-			"atn.l14.o\x1f000 Billion\x1elatn.l14.x\x1f000 Billionen\x1elatn.l14.z\x1f000 Billjuhn\x1elatn.l3.o\x1f0 Dousend\x1elatn." +
-			"l3.x\x1f0 Dousend\x1elatn.l3.z\x1f0 Dousend\x1elatn.l4.o\x1f00 Dousend\x1elatn.l4.x\x1f00 Dousend\x1elatn.l4.z\x1f00 Dousen" +
-			"d\x1elatn.l5.o\x1f000 Dousend\x1elatn.l5.x\x1f000 Dousend\x1elatn.l5.z\x1f000 Dousend\x1elatn.l6.o\x1f0 Million\x1elatn.l6." +
-			"x\x1f0 Milljuhne\x1elatn.l6.z\x1f0 Milljuhne\x1elatn.l7.o\x1f00 Milljuhne\x1elatn.l7.x\x1f00 Millionen\x1elatn.l7.z\x1f00 M" +
-			"illjuhne\x1elatn.l8.o\x1f000 Milljuhne\x1elatn.l8.x\x1f000 Millionen\x1elatn.l8.z\x1f000 Milljuhne\x1elatn.l9.o\x1f0 Mil" +
-			"liarde\x1elatn.l9.x\x1f0 Milljarde\x1elatn.l9.z\x1f0 Milljard\x1elatn.s10.o\x1f00\u00a0Mrd\x1elatn.s10.x\x1f00\u00a0Mrd\x1elatn.s10" +
-			".z\x1f00\u00a0Mrd\x1elatn.s11.o\x1f000\u00a0Mrd\x1elatn.s11.x\x1f000\u00a0Mrd\x1elatn.s11.z\x1f000\u00a0Mrd\x1elatn.s12.o\x1f0\u00a0Bio\x1elatn.s1" +
-			"2.x\x1f0\u00a0Bio\x1elatn.s12.z\x1f0\u00a0Bio\x1elatn.s13.o\x1f00\u00a0Bio\x1elatn.s13.x\x1f00\u00a0Bio\x1elatn.s13.z\x1f00\u00a0Bio\x1elatn.s14.o" +
-			"\x1f000\u00a0Bio\x1elatn.s14.x\x1f000\u00a0Bio\x1elatn.s14.z\x1f000\u00a0Bio\x1elatn.s3.o\x1f0\u00a0tsd\x1elatn.s3.x\x1f0\u00a0tsd\x1elatn.s3.z\x1f0\u00a0" +
-			"tsd\x1elatn.s4.o\x1f00\u00a0tsd\x1elatn.s4.x\x1f00\u00a0tsd\x1elatn.s4.z\x1f00\u00a0tsd\x1elatn.s5.o\x1f000\u00a0tsd\x1elatn.s5.x\x1f000\u00a0tsd\x1e" +
-			"latn.s5.z\x1f000\u00a0tsd\x1elatn.s6.o\x1f0\u00a0Mio\x1elatn.s6.x\x1f0\u00a0Mio\x1elatn.s6.z\x1f0\u00a0Mio\x1elatn.s7.o\x1f00\u00a0Mio\x1elatn.s7." +
-			"x\x1f00\u00a0Mio\x1elatn.s7.z\x1f00\u00a0Mio\x1elatn.s8.o\x1f000\u00a0Mio\x1elatn.s8.x\x1f000\u00a0Mio\x1elatn.s8.z\x1f000\u00a0Mio\x1elatn.s9.o\x1f0" +
-			"\u00a0Mrd\x1elatn.s9.x\x1f0\u00a0Mrd\x1elatn.s9.z\x1f0\u00a0Mrd\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1el" +
-			"atn.P\x1f%#,##0\x1elatn.c10.o\x1f00MR\u00a0¤\x1elatn.c10.x\x1f00MR\u00a0¤\x1elatn.c11.o\x1f000MR\u00a0¤\x1elatn.c11.x\x1f000MR\u00a0¤\x1el" +
-			"atn.c12.o\x1f0TN\u00a0¤\x1elatn.c12.x\x1f0TN\u00a0¤\x1elatn.c13.o\x1f00TN\u00a0¤\x1elatn.c13.x\x1f00TN\u00a0¤\x1elatn.c14.o\x1f000TN\u00a0¤" +
-			"\x1elatn.c14.x\x1f000TN\u00a0¤\x1elatn.c3.o\x1f0H\u00a0¤\x1elatn.c3.x\x1f0H\u00a0¤\x1elatn.c4.o\x1f00H\u00a0¤\x1elatn.c4.x\x1f00H\u00a0¤\x1elatn" +
-			".c5.o\x1f000H\u00a0¤\x1elatn.c5.x\x1f000H\u00a0¤\x1elatn.c6.o\x1f0MN\u00a0¤\x1elatn.c6.x\x1f0MN\u00a0¤\x1elatn.c7.o\x1f00MN\u00a0¤\x1elatn.c7" +
-			".x\x1f00MN\u00a0¤\x1elatn.c8.o\x1f000MN\u00a0¤\x1elatn.c8.x\x1f000MN\u00a0¤\x1elatn.c9.o\x1f0MR\u00a0¤\x1elatn.c9.x\x1f0MR\u00a0¤\x1elatn.d\x1f," +
-			"\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milyar\x1elatn.l10.x\x1f00 milyar\x1elatn.l11.o\x1f000 milyar\x1elatn.l11.x\x1f000 milyar\x1e" +
-			"latn.l12.o\x1f0 trilyon\x1elatn.l12.x\x1f0 trilyon\x1elatn.l13.o\x1f00 trilyon\x1elatn.l13.x\x1f00 trilyon\x1elatn.l14.o" +
-			"\x1f000 trilyon\x1elatn.l14.x\x1f000 trilyon\x1elatn.l3.o\x1f0 hezar\x1elatn.l3.x\x1f0 hezar\x1elatn.l4.o\x1f00 hezar\x1elatn." +
-			"l4.x\x1f00 hezar\x1elatn.l5.o\x1f000 hezar\x1elatn.l5.x\x1f000 hezar\x1elatn.l6.o\x1f0 milyon\x1elatn.l6.x\x1f0 milyon\x1elatn" +
-			".l7.o\x1f00 milyon\x1elatn.l7.x\x1f00 milyon\x1elatn.l8.o\x1f000 milyon\x1elatn.l8.x\x1f000 milyon\x1elatn.l9.o\x1f0 milyar" +
-			"\x1elatn.l9.x\x1f0 milyar\x1elatn.s10.o\x1f00MR\x1elatn.s10.x\x1f00MR\x1elatn.s11.o\x1f000MR\x1elatn.s11.x\x1f000MR\x1elatn.s12.o" +
-			"\x1f0TN\x1elatn.s12.x\x1f0TN\x1elatn.s13.o\x1f00TN\x1elatn.s13.x\x1f00TN\x1elatn.s14.o\x1f000TN\x1elatn.s14.x\x1f000TN\x1elatn.s3.o\x1f" +
-			"0H\x1elatn.s3.x\x1f0H\x1elatn.s4.o\x1f00H\x1elatn.s4.x\x1f00H\x1elatn.s5.o\x1f000H\x1elatn.s5.x\x1f000H\x1elatn.s6.o\x1f0MN\x1elatn.s6." +
-			"x\x1f0MN\x1elatn.s7.o\x1f00MN\x1elatn.s7.x\x1f00MN\x1elatn.s8.o\x1f000MN\x1elatn.s8.x\x1f000MN\x1elatn.s9.o\x1f0MR\x1elatn.s9.x\x1f0MR\x1e" +
-			"latn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#" +
-			",##,##0.###\x1elatn.c10.x\x1f¤00\u00a0bi\x1elatn.c11.x\x1f¤000\u00a0bi\x1elatn.c12.x\x1f¤0\u00a0tri\x1elatn.c13.x\x1f¤00\u00a0tri\x1ela" +
-			"tn.c14.x\x1f¤000\u00a0tri\x1elatn.c3.x\x1f¤0\u00a0h\x1elatn.c4.x\x1f¤00\u00a0h\x1elatn.c5.x\x1f¤000\u00a0h\x1elatn.c6.x\x1f¤0\u00a0mi\x1elatn" +
-			".c7.x\x1f¤00\u00a0mi\x1elatn.c8.x\x1f¤000\u00a0mi\x1elatn.c9.x\x1f¤0\u00a0bi\x1elatn.l10.x\x1f00 billion\x1elatn.l11.x\x1f000 billio" +
-			"n\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.x\x1f00 trillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.x\x1f0 hjar\x1elatn.l4." +
-			"x\x1f00 hjar\x1elatn.l5.x\x1f000 hjar\x1elatn.l6.x\x1f0 million\x1elatn.l7.x\x1f00 million\x1elatn.l8.x\x1f000 million\x1elatn" +
-			".l9.x\x1f0 billion\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.x\x1f0\u00a0tri\x1elatn.s13.x\x1f00\u00a0tri\x1elatn.s" +
-			"14.x\x1f000\u00a0tri\x1elatn.s3.x\x1f0\u00a0h\x1elatn.s4.x\x1f00\u00a0h\x1elatn.s5.x\x1f000\u00a0h\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s7.x\x1f00\u00a0mi\x1el" +
-			"atn.s8.x\x1f000\u00a0mi\x1elatn.s9.x\x1f0\u00a0bi\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##," +
-			"##0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}" +
-			"\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14." +
-			"x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a0" +
-			"00M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edev" +
-			"a.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f0" +
-			"00K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s" +
-			"10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K" +
-			"\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##,##" +
-			"0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#" +
-			",##,##0.###\x1eorya.+\x1f+\x1eorya.-\x1f-\x1eorya.A\x1f¤#,##,##0.00\x1eorya.B\x1f\u00a0\x1eorya.C\x1f¤#,##,##0.00\x1eorya.D\x1f#,##,##" +
-			"0.###\x1eorya.P\x1f#,##0%\x1eorya.R\x1f{0}–{1}\x1eorya.S\x1f#E0\x1eorya.Ux\x1f{0} {1}\x1eorya.X\x1f~{0}\x1eorya.b\x1f\u00a0\x1eorya.c10.x" +
-			"\x1f¤\u00a000G\x1eorya.c11.x\x1f¤\u00a0000G\x1eorya.c12.x\x1f¤\u00a00T\x1eorya.c13.x\x1f¤\u00a000T\x1eorya.c14.x\x1f¤\u00a0000T\x1eorya.c3.x\x1f" +
-			"¤\u00a00K\x1eorya.c4.x\x1f¤\u00a000K\x1eorya.c5.x\x1f¤\u00a0000K\x1eorya.c6.x\x1f¤\u00a00M\x1eorya.c7.x\x1f¤\u00a000M\x1eorya.c8.x\x1f¤\u00a0000" +
-			"M\x1eorya.c9.x\x1f¤\u00a00G\x1eorya.d\x1f.\x1eorya.e\x1fE\x1eorya.g\x1f,\x1eorya.i\x1f∞\x1eorya.l10.x\x1f00G\x1eorya.l11.x\x1f000G\x1eorya.l12" +
-			".x\x1f0T\x1eorya.l13.x\x1f00T\x1eorya.l14.x\x1f000T\x1eorya.l3.x\x1f0K\x1eorya.l4.x\x1f00K\x1eorya.l5.x\x1f000K\x1eorya.l6.x\x1f0M\x1eorya" +
-			".l7.x\x1f00M\x1eorya.l8.x\x1f000M\x1eorya.l9.x\x1f0G\x1eorya.m\x1f‰\x1eorya.n\x1fNaN\x1eorya.p\x1f%\x1eorya.s10.x\x1f00G\x1eorya.s11.x\x1f0" +
-			"00G\x1eorya.s12.x\x1f0T\x1eorya.s13.x\x1f00T\x1eorya.s14.x\x1f000T\x1eorya.s3.x\x1f0K\x1eorya.s4.x\x1f00K\x1eorya.s5.x\x1f000K\x1eorya." +
-			"s6.x\x1f0M\x1eorya.s7.x\x1f00M\x1eorya.s8.x\x1f000M\x1eorya.s9.x\x1f0G\x1eorya.~\x1f~\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,##" +
-			"0.00\x1elatn.D\x1f#,##,##0.###\x1etelu.+\x1f+\x1etelu.-\x1f-\x1etelu.A\x1f¤#,##,##0.00\x1etelu.B\x1f\u00a0\x1etelu.C\x1f¤#,##,##0.00\x1et" +
-			"elu.D\x1f#,##,##0.###\x1etelu.P\x1f#,##0%\x1etelu.R\x1f{0}–{1}\x1etelu.S\x1f#E0\x1etelu.Ux\x1f{0} {1}\x1etelu.X\x1f~{0}\x1etelu.b\x1f" +
-			"\u00a0\x1etelu.c10.x\x1f¤\u00a000G\x1etelu.c11.x\x1f¤\u00a0000G\x1etelu.c12.x\x1f¤\u00a00T\x1etelu.c13.x\x1f¤\u00a000T\x1etelu.c14.x\x1f¤\u00a000" +
-			"0T\x1etelu.c3.x\x1f¤\u00a00K\x1etelu.c4.x\x1f¤\u00a000K\x1etelu.c5.x\x1f¤\u00a0000K\x1etelu.c6.x\x1f¤\u00a00M\x1etelu.c7.x\x1f¤\u00a000M\x1etelu" +
-			".c8.x\x1f¤\u00a0000M\x1etelu.c9.x\x1f¤\u00a00G\x1etelu.d\x1f.\x1etelu.e\x1fE\x1etelu.g\x1f,\x1etelu.i\x1f∞\x1etelu.l10.x\x1f00G\x1etelu.l11.x\x1f" +
-			"000G\x1etelu.l12.x\x1f0T\x1etelu.l13.x\x1f00T\x1etelu.l14.x\x1f000T\x1etelu.l3.x\x1f0K\x1etelu.l4.x\x1f00K\x1etelu.l5.x\x1f000K\x1etelu" +
-			".l6.x\x1f0M\x1etelu.l7.x\x1f00M\x1etelu.l8.x\x1f000M\x1etelu.l9.x\x1f0G\x1etelu.m\x1f‰\x1etelu.n\x1fNaN\x1etelu.p\x1f%\x1etelu.s10.x\x1f00G" +
-			"\x1etelu.s11.x\x1f000G\x1etelu.s12.x\x1f0T\x1etelu.s13.x\x1f00T\x1etelu.s14.x\x1f000T\x1etelu.s3.x\x1f0K\x1etelu.s4.x\x1f00K\x1etelu.s5" +
-			".x\x1f000K\x1etelu.s6.x\x1f0M\x1etelu.s7.x\x1f00M\x1etelu.s8.x\x1f000M\x1etelu.s9.x\x1f0G\x1etelu.~\x1f~\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn" +
-			".C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0млд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млд\u00a0¤\x1el" +
-			"atn.c11.x\x1f000\u00a0млд\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0т" +
-			"рлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤" +
-			"\x1elatn.c3.o\x1f0\u00a0миң\u00a0¤\x1elatn.c3.x\x1f0\u00a0миң\u00a0¤\x1elatn.c4.o\x1f00\u00a0миң\u00a0¤\x1elatn.c4.x\x1f00\u00a0миң\u00a0" +
-			"¤\x1elatn.c5.o\x1f000\u00a0миң\u00a0¤\x1elatn.c5.x\x1f000\u00a0миң\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0мл" +
-			"н\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000" +
-			"\u00a0млн\u00a0¤\x1elatn.c9.o\x1f0\u00a0млд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 м" +
-			"иллиард\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.o\x1f000 миллиард\x1elatn.l11.x\x1f000 ми" +
-			"ллиард\x1elatn.l12.o\x1f0 триллион\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.o\x1f00 трилл" +
-			"ион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.o\x1f000 триллион\x1elatn.l14.x\x1f000 трилли" +
-			"он\x1elatn.l3.o\x1f0 миң\x1elatn.l3.x\x1f0 миң\x1elatn.l4.o\x1f00 миң\x1elatn.l4.x\x1f00 миң\x1elatn.l5.o\x1f000" +
-			" миң\x1elatn.l5.x\x1f000 миң\x1elatn.l6.o\x1f0 миллион\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.o\x1f00 " +
-			"миллион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.o\x1f000 миллион\x1elatn.l8.x\x1f000 милли" +
-			"он\x1elatn.l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fсан\u00a0эмес\x1elatn.s10." +
-			"o\x1f00\u00a0млд\x1elatn.s10.x\x1f00\u00a0млд\x1elatn.s11.o\x1f000\u00a0млд\x1elatn.s11.x\x1f000\u00a0млд\x1elatn.s12.o\x1f0\u00a0т" +
-			"рлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.o\x1f000\u00a0т" +
-			"рлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.o\x1f0\u00a0миң\x1elatn.s3.x\x1f0\u00a0миң\x1elatn.s4.o\x1f00\u00a0миң\x1elat" +
-			"n.s4.x\x1f00\u00a0миң\x1elatn.s5.o\x1f000\u00a0миң\x1elatn.s5.x\x1f000\u00a0миң\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0м" +
-			"лн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn." +
-			"s9.o\x1f0\u00a0млд\x1elatn.s9.x\x1f0\u00a0млд\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn." +
-			"Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 Milliarden\x1elatn.l10.x\x1f00 Milliarden\x1elatn.l11.o\x1f000 Mi" +
-			"lliarden\x1elatn.l11.x\x1f000 Milliarden\x1elatn.l12.o\x1f0 Billioun\x1elatn.l12.x\x1f0 Billiounen\x1elatn.l13.o\x1f00 B" +
-			"illiounen\x1elatn.l13.x\x1f00 Billiounen\x1elatn.l14.o\x1f000 Billiounen\x1elatn.l14.x\x1f000 Billiounen\x1elatn.l3.o" +
-			"\x1f0 Dausend\x1elatn.l3.x\x1f0 Dausend\x1elatn.l4.o\x1f00 Dausend\x1elatn.l4.x\x1f00 Dausend\x1elatn.l5.o\x1f000 Dausend\x1el" +
-			"atn.l5.x\x1f000 Dausend\x1elatn.l6.o\x1f0 Millioun\x1elatn.l6.x\x1f0 Milliounen\x1elatn.l7.o\x1f00 Milliounen\x1elatn.l7" +
-			".x\x1f00 Milliounen\x1elatn.l8.o\x1f000 Milliounen\x1elatn.l8.x\x1f000 Milliounen\x1elatn.l9.o\x1f0 Milliard\x1elatn.l9." +
-			"x\x1f0 Milliarden\x1elatn.s10.o\x1f00\u00a0Mrd'.'\x1elatn.s10.x\x1f00\u00a0Mrd'.'\x1elatn.s11.o\x1f000\u00a0Mrd'.'\x1elatn.s11.x\x1f000" +
-			"\u00a0Mrd'.'\x1elatn.s12.o\x1f0\u00a0Bio'.'\x1elatn.s12.x\x1f0\u00a0Bio'.'\x1elatn.s13.o\x1f00\u00a0Bio'.'\x1elatn.s13.x\x1f00\u00a0Bio'.'\x1el" +
-			"atn.s14.o\x1f000\u00a0Bio'.'\x1elatn.s14.x\x1f000\u00a0Bio'.'\x1elatn.s3.o\x1f0\u00a0Dsd'.'\x1elatn.s3.x\x1f0\u00a0Dsd'.'\x1elatn.s4.o\x1f0" +
-			"0\u00a0Dsd'.'\x1elatn.s4.x\x1f00\u00a0Dsd'.'\x1elatn.s5.o\x1f000\u00a0Dsd'.'\x1elatn.s5.x\x1f000\u00a0Dsd'.'\x1elatn.s6.o\x1f0\u00a0Mio'.'\x1el" +
-			"atn.s6.x\x1f0\u00a0Mio'.'\x1elatn.s7.o\x1f00\u00a0Mio'.'\x1elatn.s7.x\x1f00\u00a0Mio'.'\x1elatn.s8.o\x1f000\u00a0Mio'.'\x1elatn.s8.x\x1f000" +
-			"\u00a0Mio'.'\x1elatn.s9.o\x1f0\u00a0Mrd'.'\x1elatn.s9.x\x1f0\u00a0Mrd'.'\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f#,##" +
-			"0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}-{1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤" +
-			"\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0Mlg\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mlg\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mlg\u00a0¤\x1elatn." +
-			"c11.x\x1f000\u00a0Mlg\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bln\u00a0¤\x1elatn.c13.x" +
-			"\x1f00\u00a0Bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bln\u00a0¤\x1elatn.c3.o\x1f0m\u00a0¤\x1elatn.c3.x\x1f0m\u00a0¤\x1el" +
-			"atn.c4.o\x1f00m\u00a0¤\x1elatn.c4.x\x1f00m\u00a0¤\x1elatn.c5.o\x1f000m\u00a0¤\x1elatn.c5.x\x1f000m\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mln\u00a0¤\x1ela" +
-			"tn.c6.x\x1f0\u00a0Mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mln\u00a0¤\x1elatn.c8.x\x1f" +
-			"000\u00a0Mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mlg\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mlg\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miliarg\x1el" +
-			"atn.l10.x\x1f00 miliarg\x1elatn.l11.o\x1f000 miliarg\x1elatn.l11.x\x1f000 miliarg\x1elatn.l12.o\x1f0 biliun\x1elatn.l12." +
-			"x\x1f0 biliuns\x1elatn.l13.o\x1f00 biliuns\x1elatn.l13.x\x1f00 biliuns\x1elatn.l14.o\x1f000 biliuns\x1elatn.l14.x\x1f000 bi" +
-			"liuns\x1elatn.l3.o\x1fmile\x1elatn.l3.x\x1f0 mile\x1elatn.l4.o\x1f00 mile\x1elatn.l4.x\x1f00 mile\x1elatn.l5.o\x1f000 mile\x1elat" +
-			"n.l5.x\x1f000 mile\x1elatn.l6.o\x1f0 miliun\x1elatn.l6.x\x1f0 miliuns\x1elatn.l7.o\x1f00 miliuns\x1elatn.l7.x\x1f00 miliuns" +
-			"\x1elatn.l8.o\x1f000 miliuns\x1elatn.l8.x\x1f000 miliuns\x1elatn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 miliarg\x1elatn.s10.o\x1f" +
-			"00\u00a0Mlg\x1elatn.s10.x\x1f00\u00a0Mlg\x1elatn.s11.o\x1f000\u00a0Mlg\x1elatn.s11.x\x1f000\u00a0Mlg\x1elatn.s12.o\x1f0\u00a0Bln\x1elatn.s12.x\x1f" +
-			"0\u00a0Bln\x1elatn.s13.o\x1f00\u00a0Bln\x1elatn.s13.x\x1f00\u00a0Bln\x1elatn.s14.o\x1f000\u00a0Bln\x1elatn.s14.x\x1f000\u00a0Bln\x1elatn.s3.o\x1f0" +
-			"m\x1elatn.s3.x\x1f0m\x1elatn.s4.o\x1f00m\x1elatn.s4.x\x1f00m\x1elatn.s5.o\x1f000m\x1elatn.s5.x\x1f000m\x1elatn.s6.o\x1f0\u00a0Mln\x1elatn.s" +
-			"6.x\x1f0\u00a0Mln\x1elatn.s7.o\x1f00\u00a0Mln\x1elatn.s7.x\x1f00\u00a0Mln\x1elatn.s8.o\x1f000\u00a0Mln\x1elatn.s8.x\x1f000\u00a0Mln\x1elatn.s9.o\x1f0" +
-			"\u00a0Mlg\x1elatn.s9.x\x1f0\u00a0Mlg\x1elatn.d\x1f,\x1elatn.g\x1f'\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g" +
-			"\x1f.\x1elaoo.+\x1f+\x1elaoo.-\x1f-\x1elaoo.A\x1f¤#,##0.00;¤-#,##0.00\x1elaoo.B\x1f\u00a0\x1elaoo.C\x1f¤#,##0.00;¤-#,##0.00\x1elaoo." +
-			"D\x1f#,##0.###\x1elaoo.P\x1f#,##0%\x1elaoo.R\x1f{0}–{1}\x1elaoo.S\x1f#\x1elaoo.Ux\x1f{0} {1}\x1elaoo.X\x1f~{0}\x1elaoo.b\x1f\u00a0\x1elaoo.c" +
-			"10.x\x1f¤00ຕື້\x1elaoo.c11.x\x1f¤000ຕື້\x1elaoo.c12.x\x1f¤0000ຕື້\x1elaoo.c13.x\x1f¤00ພັນ" +
-			"ຕື້\x1elaoo.c14.x\x1f¤000ພັນຕື້\x1elaoo.c3.x\x1f¤0ພັນ\x1elaoo.c4.x\x1f¤00ພັນ\x1elaoo" +
-			".c5.x\x1f¤000ພັນ\x1elaoo.c6.x\x1f¤0ລ້ານ\x1elaoo.c7.x\x1f¤00ລ້ານ\x1elaoo.c8.x\x1f¤000ລ້າ" +
-			"ນ\x1elaoo.c9.x\x1f¤0ຕື້\x1elaoo.d\x1f,\x1elaoo.e\x1fE\x1elaoo.g\x1f.\x1elaoo.i\x1f∞\x1elaoo.l10.x\x1f00ພັນລ້າ" +
-			"ນ\x1elaoo.l11.x\x1f000ພັນລ້ານ\x1elaoo.l12.x\x1f0000ພັນລ້ານ\x1elaoo.l13.x\x1f00ລ້" +
-			"ານລ້ານ\x1elaoo.l14.x\x1f000ລ້ານລ້ານ\x1elaoo.l3.x\x1f0ພັນ\x1elaoo.l4.x\x1f00ພັ" +
-			"ນ\x1elaoo.l5.x\x1f000ພັນ\x1elaoo.l6.x\x1f0ລ້ານ\x1elaoo.l7.x\x1f00ລ້ານ\x1elaoo.l8.x\x1f000ລ້າ" +
-			"ນ\x1elaoo.l9.x\x1f0ພັນລ້ານ\x1elaoo.m\x1f‰\x1elaoo.n\x1fບໍ່\u200bແມ່ນ\u200bໂຕ\u200bເລ" +
-			"ກ\x1elaoo.p\x1f%\x1elaoo.s10.x\x1f00ຕື້\x1elaoo.s11.x\x1f000ຕື້\x1elaoo.s12.x\x1f0000ຕື້\x1elaoo.s13.x\x1f" +
-			"00ພັນຕື້\x1elaoo.s14.x\x1f000ພັນຕື້\x1elaoo.s3.x\x1f0ພັນ\x1elaoo.s4.x\x1f00ພັນ" +
-			"\x1elaoo.s5.x\x1f000ພັນ\x1elaoo.s6.x\x1f0ລ້ານ\x1elaoo.s7.x\x1f00ລ້ານ\x1elaoo.s8.x\x1f000ລ້ານ" +
-			"\x1elaoo.s9.x\x1f0ຕື້\x1elaoo.~\x1f~\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn." +
-			"S\x1f#\x1elatn.c10.x\x1f¤00\u00a0ຕື້\x1elatn.c11.x\x1f¤000\u00a0ຕື້\x1elatn.c12.x\x1f¤0\u00a0ລ້ານລ້າ" +
-			"ນ\x1elatn.c13.x\x1f¤00ລລ\x1elatn.c14.x\x1f¤000ລລ\x1elatn.c3.x\x1f¤0\u00a0ພັນ\x1elatn.c4.x\x1f¤00\u00a0ພັ" +
-			"ນ\x1elatn.c5.x\x1f¤000\u00a0ພັນ\x1elatn.c6.x\x1f¤0\u00a0ລ້ານ\x1elatn.c7.x\x1f¤00\u00a0ລ້ານ\x1elatn.c8." +
-			"x\x1f¤000\u00a0ລ້ານ\x1elatn.c9.x\x1f¤0\u00a0ຕື້\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 ຕື້\x1elatn.l1" +
-			"1.x\x1f000 ຕື້\x1elatn.l12.x\x1f0 ລ້ານລ້ານ\x1elatn.l13.x\x1f00 ລ້ານລ້ານ\x1el" +
-			"atn.l14.x\x1f000 ລ້ານລ້ານ\x1elatn.l3.x\x1f0 ພັນ\x1elatn.l4.x\x1f00 ພັນ\x1elatn.l5.x\x1f0 " +
-			"ແສນ\x1elatn.l6.x\x1f0 ລ້ານ\x1elatn.l7.x\x1f00 ລ້ານ\x1elatn.l8.x\x1f000 ລ້ານ\x1elatn.l9." +
-			"x\x1f0 ຕື້\x1elatn.n\x1fບໍ່\u200bແມ່ນ\u200bໂຕ\u200bເລກ\x1elatn.s10.x\x1f00\u00a0ຕື້\x1elatn" +
-			".s11.x\x1f000\u00a0ຕື້\x1elatn.s12.x\x1f0\u00a0ລ້ານລ້ານ\x1elatn.s13.x\x1f00ລລ\x1elatn.s14.x\x1f000ລ" +
-			"ລ\x1elatn.s3.x\x1f0\u00a0ພັນ\x1elatn.s4.x\x1f00\u00a0ພັນ\x1elatn.s5.x\x1f000\u00a0ພັນ\x1elatn.s6.x\x1f0\u00a0ລ້າ" +
-			"ນ\x1elatn.s7.x\x1f00\u00a0ລ້ານ\x1elatn.s8.x\x1f000\u00a0ລ້ານ\x1elatn.s9.x\x1f0\u00a0ຕື້\x1earabext.+\x1f\u200e+" +
-			"\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0" +
-			".###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabex" +
-			"t.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1ea" +
-			"rabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6." +
-			"x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.d\x1f٫\x1earabext.e\x1f×" +
-			"۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1earabext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l" +
-			"13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabext.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1ea" +
-			"rabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M\x1earabext.l9.x\x1f0G\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabex" +
-			"t.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3." +
-			"x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f000K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabe" +
-			"xt.s9.x\x1f0G\x1earabext.~\x1f~\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c" +
-			"10.f\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.m\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd'." +
-			"'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.m\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c" +
-			"11.x\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0trln'.'\u00a0¤\x1elatn.c12.m\x1f0\u00a0trln'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln'.'\u00a0" +
-			"¤\x1elatn.c12.x\x1f0\u00a0trln'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0trln'.'\u00a0¤\x1elatn.c13.m\x1f00\u00a0trln'.'\u00a0¤\x1elatn.c13.o\x1f00" +
-			"\u00a0trln'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0trln'.'\u00a0¤\x1elatn.c14.m\x1f000\u00a0trln'.'\u00a0¤" +
-			"\x1elatn.c14.o\x1f000\u00a0trln'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0" +
-			"tūkst'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tūkst'.'\u00a0¤\x1e" +
-			"latn.c4.m\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c5.f\x1f00" +
-			"0\u00a0tūkst'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tūkst" +
-			"'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c6.m\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln" +
-			"'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mln'.'\u00a0¤\x1elatn.c7.m\x1f00\u00a0mln'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0" +
-			"mln'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c8.m\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c8" +
-			".x\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.m\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd'.'\u00a0¤\x1ela" +
-			"tn.c9.x\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 milijardai\x1elatn.l10.m\x1f00 mi" +
-			"lijardo\x1elatn.l10.o\x1f00 milijardas\x1elatn.l10.x\x1f00 milijardų\x1elatn.l11.f\x1f000 milijardai\x1elatn.l11.m\x1f0" +
-			"00 milijardo\x1elatn.l11.o\x1f000 milijardas\x1elatn.l11.x\x1f000 milijardų\x1elatn.l12.f\x1f0 trilijonai\x1elatn.l1" +
-			"2.m\x1f0 trilijono\x1elatn.l12.o\x1f0 trilijonas\x1elatn.l12.x\x1f0 trilijonų\x1elatn.l13.f\x1f00 trilijonai\x1elatn.l1" +
-			"3.m\x1f00 trilijono\x1elatn.l13.o\x1f00 trilijonas\x1elatn.l13.x\x1f00 trilijonų\x1elatn.l14.f\x1f000 trilijonai\x1elat" +
-			"n.l14.m\x1f000 trilijono\x1elatn.l14.o\x1f000 trilijonas\x1elatn.l14.x\x1f000 trilijonų\x1elatn.l3.f\x1f0 tūkstanč" +
-			"iai\x1elatn.l3.m\x1f0 tūkstančio\x1elatn.l3.o\x1f0 tūkstantis\x1elatn.l3.x\x1f0 tūkstančių\x1elatn.l4.f\x1f00 tūk" +
-			"stančiai\x1elatn.l4.m\x1f00 tūkstančio\x1elatn.l4.o\x1f00 tūkstantis\x1elatn.l4.x\x1f00 tūkstančių\x1elatn.l5." +
-			"f\x1f000 tūkstančiai\x1elatn.l5.m\x1f000 tūkstančio\x1elatn.l5.o\x1f000 tūkstantis\x1elatn.l5.x\x1f000 tūkstanč" +
-			"ių\x1elatn.l6.f\x1f0 milijonai\x1elatn.l6.m\x1f0 milijono\x1elatn.l6.o\x1f0 milijonas\x1elatn.l6.x\x1f0 milijonų\x1elatn." +
-			"l7.f\x1f00 milijonai\x1elatn.l7.m\x1f00 milijono\x1elatn.l7.o\x1f00 milijonas\x1elatn.l7.x\x1f00 milijonų\x1elatn.l8.f\x1f" +
-			"000 milijonai\x1elatn.l8.m\x1f000 milijono\x1elatn.l8.o\x1f000 milijonas\x1elatn.l8.x\x1f000 milijonų\x1elatn.l9.f\x1f0" +
-			" milijardai\x1elatn.l9.m\x1f0 milijardo\x1elatn.l9.o\x1f0 milijardas\x1elatn.l9.x\x1f0 milijardų\x1elatn.s10.f\x1f00\u00a0m" +
-			"lrd'.'\x1elatn.s10.m\x1f00\u00a0mlrd'.'\x1elatn.s10.o\x1f00\u00a0mlrd'.'\x1elatn.s10.x\x1f00\u00a0mlrd'.'\x1elatn.s11.f\x1f000\u00a0mlrd" +
-			"'.'\x1elatn.s11.m\x1f000\u00a0mlrd'.'\x1elatn.s11.o\x1f000\u00a0mlrd'.'\x1elatn.s11.x\x1f000\u00a0mlrd'.'\x1elatn.s12.f\x1f0\u00a0trln'." +
-			"'\x1elatn.s12.m\x1f0\u00a0trln'.'\x1elatn.s12.o\x1f0\u00a0trln'.'\x1elatn.s12.x\x1f0\u00a0trln'.'\x1elatn.s13.f\x1f00\u00a0trln'.'\x1elatn." +
-			"s13.m\x1f00\u00a0trln'.'\x1elatn.s13.o\x1f00\u00a0trln'.'\x1elatn.s13.x\x1f00\u00a0trln'.'\x1elatn.s14.f\x1f000\u00a0trln'.'\x1elatn.s14" +
-			".m\x1f000\u00a0trln'.'\x1elatn.s14.o\x1f000\u00a0trln'.'\x1elatn.s14.x\x1f000\u00a0trln'.'\x1elatn.s3.f\x1f0\u00a0tūkst'.'\x1elatn.s3.m" +
-			"\x1f0\u00a0tūkst'.'\x1elatn.s3.o\x1f0\u00a0tūkst'.'\x1elatn.s3.x\x1f0\u00a0tūkst'.'\x1elatn.s4.f\x1f00\u00a0tūkst'.'\x1elatn.s4.m\x1f00" +
-			"\u00a0tūkst'.'\x1elatn.s4.o\x1f00\u00a0tūkst'.'\x1elatn.s4.x\x1f00\u00a0tūkst'.'\x1elatn.s5.f\x1f000\u00a0tūkst'.'\x1elatn.s5.m\x1f0" +
-			"00\u00a0tūkst'.'\x1elatn.s5.o\x1f000\u00a0tūkst'.'\x1elatn.s5.x\x1f000\u00a0tūkst'.'\x1elatn.s6.f\x1f0\u00a0mln'.'\x1elatn.s6.m\x1f0\u00a0" +
-			"mln'.'\x1elatn.s6.o\x1f0\u00a0mln'.'\x1elatn.s6.x\x1f0\u00a0mln'.'\x1elatn.s7.f\x1f00\u00a0mln'.'\x1elatn.s7.m\x1f00\u00a0mln'.'\x1elatn.s7" +
-			".o\x1f00\u00a0mln'.'\x1elatn.s7.x\x1f00\u00a0mln'.'\x1elatn.s8.f\x1f000\u00a0mln'.'\x1elatn.s8.m\x1f000\u00a0mln'.'\x1elatn.s8.o\x1f000\u00a0ml" +
-			"n'.'\x1elatn.s8.x\x1f000\u00a0mln'.'\x1elatn.s9.f\x1f0\u00a0mlrd'.'\x1elatn.s9.m\x1f0\u00a0mlrd'.'\x1elatn.s9.o\x1f0\u00a0mlrd'.'\x1elatn.s" +
-			"9.x\x1f0\u00a0mlrd'.'\x1elatn.~\x1f∼\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00¤" +
-			"\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f¤#,##0.00;¤-\u00a0#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-\u00a0#,##0.00\x1eg\x1f2\x1elatn.A\x1f#," +
-			"##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0mljrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mljrd'.'\u00a0¤\x1elatn.c10." +
-			"z\x1f00\u00a0mljrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mljrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mljrd'.'\u00a0¤\x1elatn.c11.z\x1f000\u00a0mlj" +
-			"rd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0trilj'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0trilj'.'\u00a0¤\x1elatn.c12.z\x1f0\u00a0trilj'.'\u00a0¤\x1elatn." +
-			"c13.o\x1f00\u00a0trilj'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0trilj'.'\u00a0¤\x1elatn.c13.z\x1f00\u00a0trilj'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0t" +
-			"rilj'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0trilj'.'\u00a0¤\x1elatn.c14.z\x1f000\u00a0trilj'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tūkst'.'\u00a0¤" +
-			"\x1elatn.c3.x\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c3.z\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0" +
-			"tūkst'.'\u00a0¤\x1elatn.c4.z\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tūkst'.'\u00a0" +
-			"¤\x1elatn.c5.z\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c6.z\x1f0\u00a0m" +
-			"ilj'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c7.z\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c8" +
-			".o\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c8.z\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mljrd'.'\u00a0" +
-			"¤\x1elatn.c9.x\x1f0\u00a0mljrd'.'\u00a0¤\x1elatn.c9.z\x1f0\u00a0mljrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljards" +
-			"\x1elatn.l10.x\x1f00 miljardi\x1elatn.l10.z\x1f00 miljardi\x1elatn.l11.o\x1f000 miljards\x1elatn.l11.x\x1f000 miljardi\x1el" +
-			"atn.l11.z\x1f000 miljardi\x1elatn.l12.o\x1f0 triljons\x1elatn.l12.x\x1f0 triljoni\x1elatn.l12.z\x1f0 triljonu\x1elatn.l1" +
-			"3.o\x1f00 triljons\x1elatn.l13.x\x1f00 triljoni\x1elatn.l13.z\x1f00 triljoni\x1elatn.l14.o\x1f000 triljons\x1elatn.l14.x" +
-			"\x1f000 triljoni\x1elatn.l14.z\x1f000 triljoni\x1elatn.l3.o\x1f0 tūkstotis\x1elatn.l3.x\x1f0 tūkstoši\x1elatn.l3.z\x1f0 " +
-			"tūkstošu\x1elatn.l4.o\x1f00 tūkstotis\x1elatn.l4.x\x1f00 tūkstoši\x1elatn.l4.z\x1f00 tūkstoši\x1elatn.l5.o\x1f000" +
-			" tūkstotis\x1elatn.l5.x\x1f000 tūkstoši\x1elatn.l5.z\x1f000 tūkstoši\x1elatn.l6.o\x1f0 miljons\x1elatn.l6.x\x1f0 mi" +
-			"ljoni\x1elatn.l6.z\x1f0 miljonu\x1elatn.l7.o\x1f00 miljons\x1elatn.l7.x\x1f00 miljoni\x1elatn.l7.z\x1f00 miljoni\x1elatn.l8" +
-			".o\x1f000 miljons\x1elatn.l8.x\x1f000 miljoni\x1elatn.l8.z\x1f000 miljoni\x1elatn.l9.o\x1f0 miljards\x1elatn.l9.x\x1f0 milj" +
-			"ardi\x1elatn.l9.z\x1f0 miljardu\x1elatn.n\x1fNS\x1elatn.s10.o\x1f00\u00a0mljrd'.'\x1elatn.s10.x\x1f00\u00a0mljrd'.'\x1elatn.s10.z\x1f0" +
-			"0\u00a0mljrd'.'\x1elatn.s11.o\x1f000\u00a0mljrd'.'\x1elatn.s11.x\x1f000\u00a0mljrd'.'\x1elatn.s11.z\x1f000\u00a0mljrd'.'\x1elatn.s12." +
-			"o\x1f0\u00a0trilj'.'\x1elatn.s12.x\x1f0\u00a0trilj'.'\x1elatn.s12.z\x1f0\u00a0trilj'.'\x1elatn.s13.o\x1f00\u00a0trilj'.'\x1elatn.s13.x\x1f0" +
-			"0\u00a0trilj'.'\x1elatn.s13.z\x1f00\u00a0trilj'.'\x1elatn.s14.o\x1f000\u00a0trilj'.'\x1elatn.s14.x\x1f000\u00a0trilj'.'\x1elatn.s14.z" +
-			"\x1f000\u00a0trilj'.'\x1elatn.s3.o\x1f0\u00a0tūkst'.'\x1elatn.s3.x\x1f0\u00a0tūkst'.'\x1elatn.s3.z\x1f0\u00a0tūkst'.'\x1elatn.s4.o\x1f00" +
-			"\u00a0tūkst'.'\x1elatn.s4.x\x1f00\u00a0tūkst'.'\x1elatn.s4.z\x1f00\u00a0tūkst'.'\x1elatn.s5.o\x1f000\u00a0tūkst'.'\x1elatn.s5.x\x1f0" +
-			"00\u00a0tūkst'.'\x1elatn.s5.z\x1f000\u00a0tūkst'.'\x1elatn.s6.o\x1f0\u00a0milj'.'\x1elatn.s6.x\x1f0\u00a0milj'.'\x1elatn.s6.z\x1f0\u00a0mi" +
-			"lj'.'\x1elatn.s7.o\x1f00\u00a0milj'.'\x1elatn.s7.x\x1f00\u00a0milj'.'\x1elatn.s7.z\x1f00\u00a0milj'.'\x1elatn.s8.o\x1f000\u00a0milj'.'\x1el" +
-			"atn.s8.x\x1f000\u00a0milj'.'\x1elatn.s8.z\x1f000\u00a0milj'.'\x1elatn.s9.o\x1f0\u00a0mljrd'.'\x1elatn.s9.x\x1f0\u00a0mljrd'.'\x1elatn.s9" +
-			".z\x1f0\u00a0mljrd'.'\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##0.00\x1edeva.D\x1f#,##0." +
-			"###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x" +
-			"\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f" +
-			"¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000" +
-			"M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12" +
-			".x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva" +
-			".l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f0" +
-			"00G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva." +
-			"s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.S\x1f[#E0]\x1elatn.A\x1f¤#,##0.00;(¤#,#" +
-			"#0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,#" +
-			"#0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.x\x1f¤\u00a000B\x1elatn.c11.x\x1f¤\u00a0000B\x1el" +
-			"atn.c9.x\x1f¤\u00a00B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}\u2009–\u2009{1}\x1el" +
-			"atn.c10.o\x1f00\u00a0милј'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0милј'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0мј'.'\u00a0¤\x1elatn.c1" +
-			"1.x\x1f000\u00a0мј'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0би" +
-			"л'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0бил'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0бил'.'\u00a0" +
-			"¤\x1elatn.c3.o\x1f0\u00a0илј'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0илј'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0илј'.'\u00a0¤\x1elatn.c4.x\x1f0" +
-			"0\u00a0илј'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0илј'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0илј'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0мил'." +
-			"'\u00a0¤\x1elatn.c6.x\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c8" +
-			".o\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0милј'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0ми" +
-			"лј'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 милијарда\x1elatn.l10.x\x1f00 милијарди\x1e" +
-			"latn.l11.o\x1f000 милијарда\x1elatn.l11.x\x1f000 милијарди\x1elatn.l12.o\x1f0 билион\x1ela" +
-			"tn.l12.x\x1f0 билиони\x1elatn.l13.o\x1f00 билион\x1elatn.l13.x\x1f00 билиони\x1elatn.l14.o\x1f000" +
-			" билион\x1elatn.l14.x\x1f000 билиони\x1elatn.l3.o\x1f0 илјада\x1elatn.l3.x\x1f0 илјади\x1ela" +
-			"tn.l4.o\x1f00 илјада\x1elatn.l4.x\x1f00 илјади\x1elatn.l5.o\x1f000 илјада\x1elatn.l5.x\x1f000 илј" +
-			"ади\x1elatn.l6.o\x1f0 милион\x1elatn.l6.x\x1f0 милиони\x1elatn.l7.o\x1f00 милион\x1elatn.l7.x\x1f0" +
-			"0 милиони\x1elatn.l8.o\x1f000 милион\x1elatn.l8.x\x1f000 милиони\x1elatn.l9.o\x1f0 милија" +
-			"рда\x1elatn.l9.x\x1f0 милијарди\x1elatn.s10.o\x1f00\u00a0милј'.'\x1elatn.s10.x\x1f00\u00a0милј'.'\x1elatn" +
-			".s11.o\x1f000\u00a0мј'.'\x1elatn.s11.x\x1f000\u00a0ми'.'\x1elatn.s12.o\x1f0\u00a0бил'.'\x1elatn.s12.x\x1f0\u00a0бил'.'\x1elatn" +
-			".s13.o\x1f00\u00a0бил'.'\x1elatn.s13.x\x1f00\u00a0бил'.'\x1elatn.s14.o\x1f000\u00a0бил'.'\x1elatn.s14.x\x1f000\u00a0бил'." +
-			"'\x1elatn.s3.o\x1f0\u00a0илј'.'\x1elatn.s3.x\x1f0\u00a0илј'.'\x1elatn.s4.o\x1f00\u00a0илј'.'\x1elatn.s4.x\x1f00\u00a0илј'.'\x1e" +
-			"latn.s5.o\x1f000\u00a0илј'.'\x1elatn.s5.x\x1f000\u00a0илј'.'\x1elatn.s6.o\x1f0\u00a0мил'.'\x1elatn.s6.x\x1f0\u00a0мил'.'\x1e" +
-			"latn.s7.o\x1f00\u00a0мил'.'\x1elatn.s7.x\x1f00\u00a0мил'.'\x1elatn.s8.o\x1f000\u00a0М\x1elatn.s8.x\x1f000\u00a0М\x1elatn.s9.o\x1f0\u00a0" +
-			"милј'.'\x1elatn.s9.x\x1f0\u00a0милј'.'\x1elatn.~\x1f≈\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00" +
-			"\x1elatn.D\x1f#,##,##0.###\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11" +
-			".x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1ela" +
-			"tn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1el" +
-			"atn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1el" +
-			"atn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 ബില്യൺ\x1elatn.l10.x\x1f00 ബ" +
-			"ില്യൺ\x1elatn.l11.o\x1f000 ബില്യൺ\x1elatn.l11.x\x1f000 ബില്യൺ\x1elatn.l12.o\x1f0" +
-			" ട്രില്യൺ\x1elatn.l12.x\x1f0 ട്രില്യൺ\x1elatn.l13.o\x1f00 ട്രില്" +
-			"യൺ\x1elatn.l13.x\x1f00 ട്രില്യൺ\x1elatn.l14.o\x1f000 ട്രില്യൺ\x1elatn.l14.x" +
-			"\x1f000 ട്രില്യൺ\x1elatn.l3.o\x1f0 ആയിരം\x1elatn.l3.x\x1f0 ആയിരം\x1elatn.l4.o\x1f" +
-			"00 ആയിരം\x1elatn.l4.x\x1f00 ആയിരം\x1elatn.l5.o\x1f000 ആയിരം\x1elatn.l5.x\x1f000 ആയ" +
-			"ിരം\x1elatn.l6.o\x1f0 ദശലക്ഷം\x1elatn.l6.x\x1f0 ദശലക്ഷം\x1elatn.l7.o\x1f00 ദശ" +
-			"ലക്ഷം\x1elatn.l7.x\x1f00 ദശലക്ഷം\x1elatn.l8.o\x1f000 ദശലക്ഷം\x1elatn.l8.x" +
-			"\x1f000 ദശലക്ഷം\x1elatn.l9.o\x1f0 ബില്യൺ\x1elatn.l9.x\x1f0 ബില്യൺ\x1elatn.s1" +
-			"0.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1emlym.+\x1f+\x1emlym.-" +
-			"\x1f-\x1emlym.A\x1f¤#,##0.00;(¤#,##0.00)\x1emlym.B\x1f\u00a0\x1emlym.C\x1f¤#,##0.00\x1emlym.D\x1f#,##,##0.###\x1emlym.P\x1f#,##0%\x1e" +
-			"mlym.R\x1f{0}-{1}\x1emlym.S\x1f#E0\x1emlym.Ux\x1f{0} {1}\x1emlym.X\x1f~{0}\x1emlym.b\x1f\u00a0\x1emlym.c10.o\x1f¤00B\x1emlym.c10.x\x1f¤00" +
-			"B\x1emlym.c11.o\x1f¤000B\x1emlym.c11.x\x1f¤000B\x1emlym.c12.o\x1f¤0T\x1emlym.c12.x\x1f¤0T\x1emlym.c13.o\x1f¤00T\x1emlym.c13." +
-			"x\x1f¤00T\x1emlym.c14.o\x1f¤000T\x1emlym.c14.x\x1f¤000T\x1emlym.c3.o\x1f¤0K\x1emlym.c3.x\x1f¤0K\x1emlym.c4.o\x1f¤00K\x1emlym.c" +
-			"4.x\x1f¤00K\x1emlym.c5.o\x1f¤000K\x1emlym.c5.x\x1f¤000K\x1emlym.c6.o\x1f¤0M\x1emlym.c6.x\x1f¤0M\x1emlym.c7.o\x1f¤00M\x1emlym.c" +
-			"7.x\x1f¤00M\x1emlym.c8.o\x1f¤000M\x1emlym.c8.x\x1f¤000M\x1emlym.c9.o\x1f¤0B\x1emlym.c9.x\x1f¤0B\x1emlym.d\x1f.\x1emlym.e\x1fE\x1emlym" +
-			".g\x1f,\x1emlym.i\x1f∞\x1emlym.l10.o\x1f00 ബില്യൺ\x1emlym.l10.x\x1f00 ബില്യൺ\x1emlym.l11.o\x1f000" +
-			" ബില്യൺ\x1emlym.l11.x\x1f000 ബില്യൺ\x1emlym.l12.o\x1f0 ട്രില്യൺ\x1emlym" +
-			".l12.x\x1f0 ട്രില്യൺ\x1emlym.l13.o\x1f00 ട്രില്യൺ\x1emlym.l13.x\x1f00 ട്ര" +
-			"ില്യൺ\x1emlym.l14.o\x1f000 ട്രില്യൺ\x1emlym.l14.x\x1f000 ട്രില്യൺ\x1e" +
-			"mlym.l3.o\x1f0 ആയിരം\x1emlym.l3.x\x1f0 ആയിരം\x1emlym.l4.o\x1f00 ആയിരം\x1emlym.l4.x\x1f0" +
-			"0 ആയിരം\x1emlym.l5.o\x1f000 ആയിരം\x1emlym.l5.x\x1f000 ആയിരം\x1emlym.l6.o\x1f0 ദശ" +
-			"ലക്ഷം\x1emlym.l6.x\x1f0 ദശലക്ഷം\x1emlym.l7.o\x1f00 ദശലക്ഷം\x1emlym.l7.x\x1f0" +
-			"0 ദശലക്ഷം\x1emlym.l8.o\x1f000 ദശലക്ഷം\x1emlym.l8.x\x1f000 ദശലക്ഷം\x1e" +
-			"mlym.l9.o\x1f0 ബില്യൺ\x1emlym.l9.x\x1f0 ബില്യൺ\x1emlym.m\x1f‰\x1emlym.n\x1fNaN\x1emlym.p\x1f%\x1emly" +
-			"m.s10.o\x1f00B\x1emlym.s10.x\x1f00B\x1emlym.s11.o\x1f000B\x1emlym.s11.x\x1f000B\x1emlym.s12.x\x1f0T\x1emlym.s13.x\x1f00T\x1emlym.s14" +
-			".x\x1f000T\x1emlym.s3.x\x1f0K\x1emlym.s4.x\x1f00K\x1emlym.s5.x\x1f000K\x1emlym.s6.x\x1f0M\x1emlym.s7.x\x1f00M\x1emlym.s8.x\x1f000M\x1emlym" +
-			".s9.o\x1f0B\x1emlym.s9.x\x1f0B\x1emlym.~\x1f~\x1elatn.c10.o\x1f00\u00a0тэрбум\u00a0¤\x1elatn.c10.x\x1f00\u00a0тэрбум\u00a0¤\x1el" +
-			"atn.c11.o\x1f000\u00a0тэрбум\u00a0¤\x1elatn.c11.x\x1f000\u00a0тэрбум\u00a0¤\x1elatn.c12.o\x1f0\u00a0их\u00a0наяд\u00a0¤" +
-			"\x1elatn.c12.x\x1f0\u00a0их\u00a0наяд\u00a0¤\x1elatn.c13.o\x1f00\u00a0их\u00a0наяд\u00a0¤\x1elatn.c13.x\x1f00\u00a0их\u00a0наяд" +
-			"\u00a0¤\x1elatn.c14.o\x1f000\u00a0их\u00a0наяд\u00a0¤\x1elatn.c14.x\x1f¤\u00a0000ИН\x1elatn.c3.o\x1f0\u00a0мян\u00a0¤\x1elatn.c3.x" +
-			"\x1f0\u00a0мян\u00a0¤\x1elatn.c4.o\x1f00\u00a0мян\u00a0¤\x1elatn.c4.x\x1f00\u00a0мян\u00a0¤\x1elatn.c5.o\x1f000\u00a0мян\u00a0¤\x1elatn." +
-			"c5.x\x1f000\u00a0мян\u00a0¤\x1elatn.c6.o\x1f0\u00a0сая\u00a0¤\x1elatn.c6.x\x1f0\u00a0сая\u00a0¤\x1elatn.c7.o\x1f00\u00a0сая\u00a0¤\x1ela" +
-			"tn.c7.x\x1f00\u00a0сая\u00a0¤\x1elatn.c8.o\x1f000\u00a0сая\u00a0¤\x1elatn.c8.x\x1f000\u00a0сая\u00a0¤\x1elatn.c9.o\x1f0\u00a0тэрб" +
-			"ум\u00a0¤\x1elatn.c9.x\x1f0\u00a0тэрбум\u00a0¤\x1elatn.l10.o\x1f00 тэрбум\x1elatn.l10.x\x1f00 тэрбум\x1elat" +
-			"n.l11.o\x1f000 тэрбум\x1elatn.l11.x\x1f000 тэрбум\x1elatn.l12.o\x1f0 их наяд\x1elatn.l12.x\x1f0 их" +
-			" наяд\x1elatn.l13.o\x1f00 их наяд\x1elatn.l13.x\x1f00 их наяд\x1elatn.l14.o\x1f000 их наяд\x1el" +
-			"atn.l14.x\x1f000 их наяд\x1elatn.l3.o\x1f0 мянга\x1elatn.l3.x\x1f0 мянга\x1elatn.l4.o\x1f00 мянга" +
-			"\x1elatn.l4.x\x1f00 мянга\x1elatn.l5.o\x1f000 мянга\x1elatn.l5.x\x1f000 мянга\x1elatn.l6.o\x1f0 сая\x1ela" +
-			"tn.l6.x\x1f0 сая\x1elatn.l7.o\x1f00 сая\x1elatn.l7.x\x1f00 сая\x1elatn.l8.o\x1f000 сая\x1elatn.l8.x\x1f000 са" +
-			"я\x1elatn.l9.o\x1f0 тэрбум\x1elatn.l9.x\x1f0 тэрбум\x1elatn.s10.o\x1f00\u00a0тэрбум\x1elatn.s10.x\x1f00\u00a0" +
-			"тэрбум\x1elatn.s11.o\x1f000\u00a0т'.'бум\x1elatn.s11.x\x1f000\u00a0т'.'бум\x1elatn.s12.o\x1f0\u00a0их\u00a0наяд" +
-			"\x1elatn.s12.x\x1f0\u00a0их\u00a0наяд\x1elatn.s13.o\x1f00\u00a0и'.'наяд\x1elatn.s13.x\x1f00\u00a0и'.'наяд\x1elatn.s14" +
-			".o\x1f000\u00a0их\u00a0наяд\x1elatn.s14.x\x1f000\u00a0их\u00a0наяд\x1elatn.s3.o\x1f0\u00a0мян\x1elatn.s3.x\x1f0\u00a0мян\x1ela" +
-			"tn.s4.o\x1f00\u00a0мян\x1elatn.s4.x\x1f00\u00a0мян\x1elatn.s5.o\x1f000\u00a0мян\x1elatn.s5.x\x1f000\u00a0мян\x1elatn.s6.o\x1f0\u00a0" +
-			"сая\x1elatn.s6.x\x1f0\u00a0сая\x1elatn.s7.o\x1f00\u00a0сая\x1elatn.s7.x\x1f00\u00a0сая\x1elatn.s8.o\x1f000\u00a0сая\x1elatn." +
-			"s8.x\x1f000\u00a0сая\x1elatn.s9.o\x1f0\u00a0тэрбум\x1elatn.s9.x\x1f0\u00a0тэрбум\x1ebeng.+\x1f+\x1ebeng.-\x1f-\x1ebeng.A\x1f¤" +
-			"\u00a0#,##0.00\x1ebeng.B\x1f\u00a0\x1ebeng.C\x1f¤\u00a0#,##0.00\x1ebeng.D\x1f#,##0.###\x1ebeng.P\x1f#,##0%\x1ebeng.R\x1f{0}–{1}\x1ebeng.S\x1f" +
-			"#E0\x1ebeng.Ux\x1f{0} {1}\x1ebeng.X\x1f~{0}\x1ebeng.b\x1f\u00a0\x1ebeng.c10.x\x1f¤\u00a000G\x1ebeng.c11.x\x1f¤\u00a0000G\x1ebeng.c12.x\x1f¤\u00a0" +
-			"0T\x1ebeng.c13.x\x1f¤\u00a000T\x1ebeng.c14.x\x1f¤\u00a0000T\x1ebeng.c3.x\x1f¤\u00a00K\x1ebeng.c4.x\x1f¤\u00a000K\x1ebeng.c5.x\x1f¤\u00a0000K\x1e" +
-			"beng.c6.x\x1f¤\u00a00M\x1ebeng.c7.x\x1f¤\u00a000M\x1ebeng.c8.x\x1f¤\u00a0000M\x1ebeng.c9.x\x1f¤\u00a00G\x1ebeng.d\x1f.\x1ebeng.e\x1fE\x1ebeng.g\x1f" +
-			",\x1ebeng.i\x1f∞\x1ebeng.l10.x\x1f00G\x1ebeng.l11.x\x1f000G\x1ebeng.l12.x\x1f0T\x1ebeng.l13.x\x1f00T\x1ebeng.l14.x\x1f000T\x1ebeng.l3" +
-			".x\x1f0K\x1ebeng.l4.x\x1f00K\x1ebeng.l5.x\x1f000K\x1ebeng.l6.x\x1f0M\x1ebeng.l7.x\x1f00M\x1ebeng.l8.x\x1f000M\x1ebeng.l9.x\x1f0G\x1ebeng.m" +
-			"\x1f‰\x1ebeng.n\x1fNaN\x1ebeng.p\x1f%\x1ebeng.s10.x\x1f00G\x1ebeng.s11.x\x1f000G\x1ebeng.s12.x\x1f0T\x1ebeng.s13.x\x1f00T\x1ebeng.s14.x\x1f" +
-			"000T\x1ebeng.s3.x\x1f0K\x1ebeng.s4.x\x1f00K\x1ebeng.s5.x\x1f000K\x1ebeng.s6.x\x1f0M\x1ebeng.s7.x\x1f00M\x1ebeng.s8.x\x1f000M\x1ebeng.s9" +
-			".x\x1f0G\x1ebeng.~\x1f~\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##0.00;(¤#,##0.00)\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##0.00\x1edeva" +
-			".D\x1f#,##,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0" +
-			"\x1edeva.c10.o\x1f¤00\u00a0अब्ज\x1edeva.c10.x\x1f¤00\u00a0अब्ज\x1edeva.c11.o\x1f¤0\u00a0खर्व\x1edeva.c" +
-			"11.x\x1f¤0\u00a0खर्व\x1edeva.c12.o\x1f¤00\u00a0खर्व\x1edeva.c12.x\x1f¤00\u00a0खर्व\x1edeva.c13.o\x1f¤" +
-			"0\u00a0पद्म\x1edeva.c13.x\x1f¤0\u00a0पद्म\x1edeva.c14.o\x1f¤00\u00a0पद्म\x1edeva.c14.x\x1f¤00\u00a0पद" +
-			"्म\x1edeva.c3.o\x1f¤0\u00a0ह\x1edeva.c3.x\x1f¤0\u00a0ह\x1edeva.c4.o\x1f¤00\u00a0ह\x1edeva.c4.x\x1f¤00\u00a0ह\x1edeva.c5.o\x1f¤" +
-			"0\u00a0लाख\x1edeva.c5.x\x1f¤0\u00a0लाख\x1edeva.c6.o\x1f¤00\u00a0लाख\x1edeva.c6.x\x1f¤00\u00a0लाख\x1edeva.c" +
-			"7.o\x1f¤0\u00a0कोटी\x1edeva.c7.x\x1f¤0\u00a0कोटी\x1edeva.c8.o\x1f¤00\u00a0कोटी\x1edeva.c8.x\x1f¤00\u00a0क" +
-			"ोटी\x1edeva.c9.o\x1f¤0\u00a0अब्ज\x1edeva.c9.x\x1f¤0\u00a0अब्ज\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edev" +
-			"a.i\x1f∞\x1edeva.l10.o\x1f00 अब्ज\x1edeva.l10.x\x1f00 अब्ज\x1edeva.l11.o\x1f0 खर्व\x1edeva.l11" +
-			".x\x1f0 खर्व\x1edeva.l12.o\x1f00 खर्व\x1edeva.l12.x\x1f00 खर्व\x1edeva.l13.o\x1f0 पद्म" +
-			"\x1edeva.l13.x\x1f0 पद्म\x1edeva.l14.o\x1f00 पद्म\x1edeva.l14.x\x1f00 पद्म\x1edeva.l3.o\x1f0 ह" +
-			"जार\x1edeva.l3.x\x1f0 हजार\x1edeva.l4.o\x1f00 हजार\x1edeva.l4.x\x1f00 हजार\x1edeva.l5.o" +
-			"\x1f0 लाख\x1edeva.l5.x\x1f0 लाख\x1edeva.l6.o\x1f00 लाख\x1edeva.l6.x\x1f00 लाख\x1edeva.l7.o\x1f0 क" +
-			"ोटी\x1edeva.l7.x\x1f0 कोटी\x1edeva.l8.o\x1f00 कोटी\x1edeva.l8.x\x1f00 कोटी\x1edeva.l9.o" +
-			"\x1f0 अब्ज\x1edeva.l9.x\x1f0 अब्ज\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.o\x1f00\u00a0अब्" +
-			"ज\x1edeva.s10.x\x1f00\u00a0अब्ज\x1edeva.s11.o\x1f0\u00a0खर्व\x1edeva.s11.x\x1f0\u00a0खर्व\x1edeva.s12.o" +
-			"\x1f00\u00a0खर्व\x1edeva.s12.x\x1f00\u00a0खर्व\x1edeva.s13.o\x1f0\u00a0पद्म\x1edeva.s13.x\x1f0\u00a0पद्" +
-			"म\x1edeva.s14.o\x1f00\u00a0पद्म\x1edeva.s14.x\x1f00\u00a0पद्म\x1edeva.s3.o\x1f0\u00a0ह\x1edeva.s3.x\x1f0\u00a0ह\x1ede" +
-			"va.s4.o\x1f00\u00a0ह\x1edeva.s4.x\x1f00\u00a0ह\x1edeva.s5.o\x1f0\u00a0लाख\x1edeva.s5.x\x1f0\u00a0लाख\x1edeva.s6.o\x1f00\u00a0ल" +
-			"ाख\x1edeva.s6.x\x1f00\u00a0लाख\x1edeva.s7.o\x1f0\u00a0कोटी\x1edeva.s7.x\x1f0\u00a0कोटी\x1edeva.s8.o\x1f00\u00a0" +
-			"कोटी\x1edeva.s8.x\x1f00\u00a0कोटी\x1edeva.s9.o\x1f0\u00a0अब्ज\x1edeva.s9.x\x1f0\u00a0अब्ज\x1edeva" +
-			".~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.S\x1f[#E0]\x1elatn.c10." +
-			"o\x1f¤00\u00a0अब्ज\x1elatn.c10.x\x1f¤00\u00a0अब्ज\x1elatn.c11.o\x1f¤0\u00a0खर्व\x1elatn.c11.x\x1f¤0\u00a0" +
-			"खर्व\x1elatn.c12.o\x1f¤00\u00a0खर्व\x1elatn.c12.x\x1f¤00\u00a0खर्व\x1elatn.c13.o\x1f¤0\u00a0पद्" +
-			"म\x1elatn.c13.x\x1f¤0\u00a0पद्म\x1elatn.c14.o\x1f¤00\u00a0पद्म\x1elatn.c14.x\x1f¤00\u00a0पद्म\x1elat" +
-			"n.c3.o\x1f¤0\u00a0ह\x1elatn.c3.x\x1f¤0\u00a0ह\x1elatn.c4.o\x1f¤00\u00a0ह\x1elatn.c4.x\x1f¤00\u00a0ह\x1elatn.c5.o\x1f¤0\u00a0ला" +
-			"ख\x1elatn.c5.x\x1f¤0\u00a0लाख\x1elatn.c6.o\x1f¤00\u00a0लाख\x1elatn.c6.x\x1f¤00\u00a0लाख\x1elatn.c7.o\x1f¤0\u00a0" +
-			"कोटी\x1elatn.c7.x\x1f¤0\u00a0कोटी\x1elatn.c8.o\x1f¤00\u00a0कोटी\x1elatn.c8.x\x1f¤00\u00a0कोटी" +
-			"\x1elatn.c9.o\x1f¤0\u00a0अब्ज\x1elatn.c9.x\x1f¤0\u00a0अब्ज\x1elatn.l10.o\x1f00 अब्ज\x1elatn.l10.x\x1f0" +
-			"0 अब्ज\x1elatn.l11.o\x1f0 खर्व\x1elatn.l11.x\x1f0 खर्व\x1elatn.l12.o\x1f00 खर्व\x1ela" +
-			"tn.l12.x\x1f00 खर्व\x1elatn.l13.o\x1f0 पद्म\x1elatn.l13.x\x1f0 पद्म\x1elatn.l14.o\x1f00 पद" +
-			"्म\x1elatn.l14.x\x1f00 पद्म\x1elatn.l3.o\x1f0 हजार\x1elatn.l3.x\x1f0 हजार\x1elatn.l4.o\x1f00" +
-			" हजार\x1elatn.l4.x\x1f00 हजार\x1elatn.l5.o\x1f0 लाख\x1elatn.l5.x\x1f0 लाख\x1elatn.l6.o\x1f00" +
-			" लाख\x1elatn.l6.x\x1f00 लाख\x1elatn.l7.o\x1f0 कोटी\x1elatn.l7.x\x1f0 कोटी\x1elatn.l8.o\x1f00" +
-			" कोटी\x1elatn.l8.x\x1f00 कोटी\x1elatn.l9.o\x1f0 अब्ज\x1elatn.l9.x\x1f0 अब्ज\x1elatn.s" +
-			"10.o\x1f00\u00a0अब्ज\x1elatn.s10.x\x1f00\u00a0अब्ज\x1elatn.s11.o\x1f0\u00a0खर्व\x1elatn.s11.x\x1f0\u00a0खर" +
-			"्व\x1elatn.s12.o\x1f00\u00a0खर्व\x1elatn.s12.x\x1f00\u00a0खर्व\x1elatn.s13.o\x1f0\u00a0पद्म\x1elatn.s" +
-			"13.x\x1f0\u00a0पद्म\x1elatn.s14.o\x1f00\u00a0पद्म\x1elatn.s14.x\x1f00\u00a0पद्म\x1elatn.s3.o\x1f0\u00a0ह\x1ela" +
-			"tn.s3.x\x1f0\u00a0ह\x1elatn.s4.o\x1f00\u00a0ह\x1elatn.s4.x\x1f00\u00a0ह\x1elatn.s5.o\x1f0\u00a0लाख\x1elatn.s5.x\x1f0\u00a0लाख" +
-			"\x1elatn.s6.o\x1f00\u00a0लाख\x1elatn.s6.x\x1f00\u00a0लाख\x1elatn.s7.o\x1f0\u00a0कोटी\x1elatn.s7.x\x1f0\u00a0कोट" +
-			"ी\x1elatn.s8.o\x1f00\u00a0कोटी\x1elatn.s8.x\x1f00\u00a0कोटी\x1elatn.s9.o\x1f0\u00a0अब्ज\x1elatn.s9.x\x1f0\u00a0" +
-			"अब्ज\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00B\x1elatn.c11.x\x1f¤000B" +
-			"\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤0" +
-			"00K\x1elatn.c6.x\x1f¤0J\x1elatn.c7.x\x1f¤00J\x1elatn.c8.x\x1f¤000J\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f00 bilion\x1elatn.l11" +
-			".x\x1f000 bilion\x1elatn.l12.x\x1f0 trilion\x1elatn.l13.x\x1f00 trilion\x1elatn.l14.x\x1f000 trilion\x1elatn.l3.x\x1f0 ribu" +
-			"\x1elatn.l4.x\x1f00 ribu\x1elatn.l5.x\x1f000 ribu\x1elatn.l6.x\x1f0 juta\x1elatn.l7.x\x1f00 juta\x1elatn.l8.x\x1f000 juta\x1elatn" +
-			".l9.x\x1f0 bilion\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s6.x\x1f0J\x1elatn.s7.x\x1f00J\x1elatn.s8.x\x1f000J\x1elatn.s9." +
-			"x\x1f0B\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00" +
-			"\x1elatn.C\x1f¤#,##0.00\x1elatn.Uf\x1f{0} {1}\x1elatn.Um\x1f{0} {1}\x1elatn.Uo\x1f{0} {1}\x1elatn.Ut\x1f{0} {1}\x1elatn.A\x1f¤#,##" +
-			"0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0} - {1}\x1elatn." +
-			"Ux\x1f{1} {0}\x1elatn.c10.x\x1fဋေ\u00a00\u00a0ထ\u00a0¤\x1elatn.c11.x\x1fဋေ\u00a00\u00a0သ\u00a0¤\x1elatn.c12.x\x1fဋေ\u00a00\u00a0သ" +
-			"ိန်း\u00a0¤\x1elatn.c13.x\x1fဋေ\u00a00\u00a0သန်း\u00a0¤\x1elatn.c14.x\x1f0\u00a0ကောဋိ\u00a0¤\x1elatn.c" +
-			"3.x\x1f0\u00a0ထောင်\u00a0¤\x1elatn.c4.x\x1f0\u00a0သောင်း\u00a0¤\x1elatn.c5.x\x1f0\u00a0သိန်း\u00a0¤\x1e" +
-			"latn.c6.x\x1f0\u00a0သန်း\u00a0¤\x1elatn.c7.x\x1f0\u00a0ကုဋေ\u00a0¤\x1elatn.c8.x\x1f00\u00a0ကုဋေ\u00a0¤\x1elatn." +
-			"c9.x\x1f000\u00a0ဋေ\u00a0¤\x1elatn.l10.x\x1f0000 ကုဋေ\x1elatn.l11.x\x1fကုဋေ 0 သောင်း\x1el" +
-			"atn.l12.x\x1fကုဋေ 0 သိန်း\x1elatn.l13.x\x1fကုဋေ 0 သန်း\x1elatn.l14.x\x1f0 က" +
-			"ောဋိ\x1elatn.l3.x\x1f0 ထောင်\x1elatn.l4.x\x1f0 သောင်း\x1elatn.l5.x\x1f0 သိန်" +
-			"း\x1elatn.l6.x\x1f0 သန်း\x1elatn.l7.x\x1f0 ကုဋေ\x1elatn.l8.x\x1f00 ကုဋေ\x1elatn.l9.x\x1f000 က" +
-			"ုဋေ\x1elatn.n\x1fဂဏန်းမဟုတ်သော\x1elatn.s10.x\x1fဋေ\u00a00\u00a0ထ\x1elatn.s11.x\x1fဋ" +
-			"ေ\u00a00\u00a0သ\x1elatn.s12.x\x1fဋေ\u00a00\u00a0သိန်း\x1elatn.s13.x\x1fဋေ\u00a00\u00a0သန်း\x1elatn.s14.x\x1f" +
-			"0\u00a0ကောဋိ\x1elatn.s3.x\x1f0\u00a0ထောင်\x1elatn.s4.x\x1f0\u00a0သောင်း\x1elatn.s5.x\x1f0\u00a0သ" +
-			"ိန်း\x1elatn.s6.x\x1f0\u00a0သန်း\x1elatn.s7.x\x1f0\u00a0ကုဋေ\x1elatn.s8.x\x1f00\u00a0ကုဋေ\x1elatn" +
-			".s9.x\x1f000\u00a0ဋေ\x1emymr.+\x1f+\x1emymr.-\x1f-\x1emymr.A\x1f¤\u00a0#,##0.00\x1emymr.B\x1f\u00a0\x1emymr.C\x1f#,##0.00\u00a0¤\x1emymr.D\x1f#,#" +
-			"#0.###\x1emymr.P\x1f#,##0%\x1emymr.R\x1f{0} - {1}\x1emymr.S\x1f#E0\x1emymr.Ux\x1f{1} {0}\x1emymr.X\x1f~{0}\x1emymr.b\x1f\u00a0\x1emymr.c10." +
-			"x\x1fဋေ\u00a00\u00a0ထ\u00a0¤\x1emymr.c11.x\x1fဋေ\u00a00\u00a0သ\u00a0¤\x1emymr.c12.x\x1fဋေ\u00a00\u00a0သိန်း\u00a0¤\x1emym" +
-			"r.c13.x\x1fဋေ\u00a00\u00a0သန်း\u00a0¤\x1emymr.c14.x\x1f0\u00a0ကောဋိ\u00a0¤\x1emymr.c3.x\x1f0\u00a0ထောင်" +
-			"\u00a0¤\x1emymr.c4.x\x1f0\u00a0သောင်း\u00a0¤\x1emymr.c5.x\x1f0\u00a0သိန်း\u00a0¤\x1emymr.c6.x\x1f0\u00a0သန်" +
-			"း\u00a0¤\x1emymr.c7.x\x1f0\u00a0ကုဋေ\u00a0¤\x1emymr.c8.x\x1f00\u00a0ကုဋေ\u00a0¤\x1emymr.c9.x\x1f000\u00a0ဋေ\u00a0¤\x1em" +
-			"ymr.d\x1f.\x1emymr.e\x1fE\x1emymr.g\x1f,\x1emymr.i\x1f∞\x1emymr.l10.x\x1f0000 ကုဋေ\x1emymr.l11.x\x1fကုဋေ 0 သေ" +
-			"ာင်း\x1emymr.l12.x\x1fကုဋေ 0 သိန်း\x1emymr.l13.x\x1fကုဋေ 0 သန်း\x1emy" +
-			"mr.l14.x\x1f0 ကောဋိ\x1emymr.l3.x\x1f0 ထောင်\x1emymr.l4.x\x1f0 သောင်း\x1emymr.l5.x\x1f" +
-			"0 သိန်း\x1emymr.l6.x\x1f0 သန်း\x1emymr.l7.x\x1f0 ကုဋေ\x1emymr.l8.x\x1f00 ကုဋေ\x1emy" +
-			"mr.l9.x\x1f000 ကုဋေ\x1emymr.m\x1f‰\x1emymr.n\x1fဂဏန်းမဟုတ်သော\x1emymr.p\x1f%\x1emymr" +
-			".s10.x\x1fဋေ\u00a00\u00a0ထ\x1emymr.s11.x\x1fဋေ\u00a00\u00a0သ\x1emymr.s12.x\x1fဋေ\u00a00\u00a0သိန်း\x1emymr.s13.x" +
-			"\x1fဋေ\u00a00\u00a0သန်း\x1emymr.s14.x\x1f0\u00a0ကောဋိ\x1emymr.s3.x\x1f0\u00a0ထောင်\x1emymr.s4.x\x1f0\u00a0" +
-			"သောင်း\x1emymr.s5.x\x1f0\u00a0သိန်း\x1emymr.s6.x\x1f0\u00a0သန်း\x1emymr.s7.x\x1f0\u00a0ကုဋ" +
-			"ေ\x1emymr.s8.x\x1f00\u00a0ကုဋေ\x1emymr.s9.x\x1f000\u00a0ဋေ\x1emymr.~\x1f~\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e" +
-			"\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%" +
-			"\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f" +
-			"¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T" +
-			"\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x" +
-			"\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1ea" +
-			"rabext.i\x1f∞\x1earabext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1earabext.l14" +
-			".x\x1f000T\x1earabext.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x\x1f00M\x1earab" +
-			"ext.l8.x\x1f000M\x1earabext.l9.x\x1f0G\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.s10.x\x1f00G\x1earabext." +
-			"s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00" +
-			"K\x1earabext.s5.x\x1f000K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1earabext.~" +
-			"\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#" +
-			",##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#" +
-			",##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##,##0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1" +
-			"}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.o\x1f¤\u00a000\u00a0अरब\x1edeva.c10.x\x1f¤\u00a00" +
-			"0\u00a0अरब\x1edeva.c11.o\x1f¤\u00a00\u00a0खरब\x1edeva.c11.x\x1f¤\u00a00\u00a0खरब\x1edeva.c12.o\x1f¤\u00a000\u00a0खरब" +
-			"\x1edeva.c12.x\x1f¤\u00a000\u00a0खरब\x1edeva.c13.o\x1f¤\u00a00\u00a0शंख\x1edeva.c13.x\x1f¤\u00a00\u00a0शंख\x1edeva.c14.o" +
-			"\x1f¤\u00a000\u00a0शंख\x1edeva.c14.x\x1f¤\u00a000\u00a0शंख\x1edeva.c3.o\x1f¤\u00a00\u00a0हजार\x1edeva.c3.x\x1f¤\u00a00\u00a0ह" +
-			"जार\x1edeva.c4.o\x1f¤\u00a000\u00a0हजार\x1edeva.c4.x\x1f¤\u00a000\u00a0हजार\x1edeva.c5.o\x1f¤\u00a00\u00a0लाख" +
-			"\x1edeva.c5.x\x1f¤\u00a00\u00a0लाख\x1edeva.c6.o\x1f¤\u00a000\u00a0लाख\x1edeva.c6.x\x1f¤\u00a000\u00a0लाख\x1edeva.c7.o\x1f¤" +
-			"\u00a00\u00a0करोड\x1edeva.c7.x\x1f¤\u00a00\u00a0करोड\x1edeva.c8.o\x1f¤\u00a000\u00a0करोड\x1edeva.c8.x\x1f¤\u00a000\u00a0" +
-			"करोड\x1edeva.c9.o\x1f¤\u00a00\u00a0अरब\x1edeva.c9.x\x1f¤\u00a00\u00a0अरब\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1ede" +
-			"va.i\x1f∞\x1edeva.l10.o\x1f00 अरब\x1edeva.l10.x\x1f00 अरब\x1edeva.l11.o\x1f000 अरब\x1edeva.l11.x\x1f000" +
-			" अरब\x1edeva.l12.o\x1f00 खरब\x1edeva.l12.x\x1f00 खरब\x1edeva.l13.o\x1f0 शंख\x1edeva.l13.x\x1f0 श" +
-			"ंख\x1edeva.l14.o\x1f00 शंख\x1edeva.l14.x\x1f00 शंख\x1edeva.l3.o\x1f0 हजार\x1edeva.l3.x\x1f0 हज" +
-			"ार\x1edeva.l4.o\x1f00 हजार\x1edeva.l4.x\x1f00 हजार\x1edeva.l5.o\x1f0 लाख\x1edeva.l5.x\x1f0 ल" +
-			"ाख\x1edeva.l6.o\x1f0 करोड\x1edeva.l6.x\x1f0 करोड\x1edeva.l7.o\x1f00 करोड\x1edeva.l7.x\x1f00 " +
-			"करोड\x1edeva.l8.o\x1f000 करोड\x1edeva.l8.x\x1f000 करोड\x1edeva.l9.o\x1f0 अरब\x1edeva.l9" +
-			".x\x1f0 अरब\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.o\x1f00\u00a0अरब\x1edeva.s10.x\x1f00\u00a0अरब\x1e" +
-			"deva.s11.o\x1f0\u00a0खरब\x1edeva.s11.x\x1f0\u00a0खरब\x1edeva.s12.o\x1f00\u00a0खरब\x1edeva.s12.x\x1f00\u00a0खरब" +
-			"\x1edeva.s13.o\x1f0\u00a0शंख\x1edeva.s13.x\x1f0\u00a0शंख\x1edeva.s14.o\x1f00\u00a0शंख\x1edeva.s14.x\x1f00\u00a0शंख" +
-			"\x1edeva.s3.o\x1f0\u00a0हजार\x1edeva.s3.x\x1f0\u00a0हजार\x1edeva.s4.o\x1f00\u00a0हजार\x1edeva.s4.x\x1f00\u00a0ह" +
-			"जार\x1edeva.s5.o\x1f0\u00a0लाख\x1edeva.s5.x\x1f0\u00a0लाख\x1edeva.s6.o\x1f00\u00a0लाख\x1edeva.s6.x\x1f00\u00a0ल" +
-			"ाख\x1edeva.s7.o\x1f0\u00a0करोड\x1edeva.s7.x\x1f0\u00a0करोड\x1edeva.s8.o\x1f00\u00a0करोड\x1edeva.s8.x\x1f" +
-			"00\u00a0करोड\x1edeva.s9.o\x1f0\u00a0अरब\x1edeva.s9.x\x1f0\u00a0अरब\x1edeva.~\x1f~\x1elatn.A\x1f¤\u00a0#,##,##0.00\x1el" +
-			"atn.C\x1f¤\u00a0#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.c10.o\x1f¤\u00a000\u00a0अरब\x1elatn.c10.x\x1f¤\u00a000\u00a0अर" +
-			"ब\x1elatn.c11.o\x1f¤\u00a00\u00a0खरब\x1elatn.c11.x\x1f¤\u00a00\u00a0खरब\x1elatn.c12.o\x1f¤\u00a000\u00a0खरब\x1elatn.c1" +
-			"2.x\x1f¤\u00a000\u00a0खरब\x1elatn.c13.o\x1f¤\u00a00\u00a0शंख\x1elatn.c13.x\x1f¤\u00a00\u00a0शंख\x1elatn.c14.o\x1f¤\u00a000\u00a0" +
-			"शंख\x1elatn.c14.x\x1f¤\u00a000\u00a0शंख\x1elatn.c3.o\x1f¤\u00a00\u00a0हजार\x1elatn.c3.x\x1f¤\u00a00\u00a0हजार" +
-			"\x1elatn.c4.o\x1f¤\u00a000\u00a0हजार\x1elatn.c4.x\x1f¤\u00a000\u00a0हजार\x1elatn.c5.o\x1f¤\u00a00\u00a0लाख\x1elatn.c" +
-			"5.x\x1f¤\u00a00\u00a0लाख\x1elatn.c6.o\x1f¤\u00a000\u00a0लाख\x1elatn.c6.x\x1f¤\u00a000\u00a0लाख\x1elatn.c7.o\x1f¤\u00a00\u00a0क" +
-			"रोड\x1elatn.c7.x\x1f¤\u00a00\u00a0करोड\x1elatn.c8.o\x1f¤\u00a000\u00a0करोड\x1elatn.c8.x\x1f¤\u00a000\u00a0करो" +
-			"ड\x1elatn.c9.o\x1f¤\u00a00\u00a0अरब\x1elatn.c9.x\x1f¤\u00a00\u00a0अरब\x1elatn.l10.o\x1f00 अरब\x1elatn.l10.x\x1f00 " +
-			"अरब\x1elatn.l11.o\x1f000 अरब\x1elatn.l11.x\x1f000 अरब\x1elatn.l12.o\x1f00 खरब\x1elatn.l12.x\x1f0" +
-			"0 खरब\x1elatn.l13.o\x1f0 शंख\x1elatn.l13.x\x1f0 शंख\x1elatn.l14.o\x1f00 शंख\x1elatn.l14.x\x1f00 " +
-			"शंख\x1elatn.l3.o\x1f0 हजार\x1elatn.l3.x\x1f0 हजार\x1elatn.l4.o\x1f00 हजार\x1elatn.l4.x\x1f" +
-			"00 हजार\x1elatn.l5.o\x1f0 लाख\x1elatn.l5.x\x1f0 लाख\x1elatn.l6.o\x1f0 करोड\x1elatn.l6.x\x1f0" +
-			" करोड\x1elatn.l7.o\x1f00 करोड\x1elatn.l7.x\x1f00 करोड\x1elatn.l8.o\x1f000 करोड\x1elat" +
-			"n.l8.x\x1f000 करोड\x1elatn.l9.o\x1f0 अरब\x1elatn.l9.x\x1f0 अरब\x1elatn.s10.o\x1f00\u00a0अरब\x1elat" +
-			"n.s10.x\x1f00\u00a0अरब\x1elatn.s11.o\x1f0\u00a0खरब\x1elatn.s11.x\x1f0\u00a0खरब\x1elatn.s12.o\x1f00\u00a0खरब\x1el" +
-			"atn.s12.x\x1f00\u00a0खरब\x1elatn.s13.o\x1f0\u00a0शंख\x1elatn.s13.x\x1f0\u00a0शंख\x1elatn.s14.o\x1f00\u00a0शंख" +
-			"\x1elatn.s14.x\x1f00\u00a0शंख\x1elatn.s3.o\x1f0\u00a0हजार\x1elatn.s3.x\x1f0\u00a0हजार\x1elatn.s4.o\x1f00\u00a0हज" +
-			"ार\x1elatn.s4.x\x1f00\u00a0हजार\x1elatn.s5.o\x1f0\u00a0लाख\x1elatn.s5.x\x1f0\u00a0लाख\x1elatn.s6.o\x1f00\u00a0ल" +
-			"ाख\x1elatn.s6.x\x1f00\u00a0लाख\x1elatn.s7.o\x1f0\u00a0करोड\x1elatn.s7.x\x1f0\u00a0करोड\x1elatn.s8.o\x1f00\u00a0" +
-			"करोड\x1elatn.s8.x\x1f00\u00a0करोड\x1elatn.s9.o\x1f0\u00a0अरब\x1elatn.s9.x\x1f0\u00a0अरब\x1elatn.A\x1f¤\u00a0" +
-			"#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f¤\u00a000\u00a0mld'" +
-			".'\x1elatn.c10.x\x1f¤\u00a000\u00a0mld'.'\x1elatn.c11.o\x1f¤\u00a0000\u00a0mld'.'\x1elatn.c11.x\x1f¤\u00a0000\u00a0mld'.'\x1elatn.c12.o\x1f¤" +
-			"\u00a00\u00a0bln'.'\x1elatn.c12.x\x1f¤\u00a00\u00a0bln'.'\x1elatn.c13.o\x1f¤\u00a000\u00a0bln'.'\x1elatn.c13.x\x1f¤\u00a000\u00a0bln'.'\x1elatn.c1" +
-			"4.o\x1f¤\u00a0000\u00a0bln'.'\x1elatn.c14.x\x1f¤\u00a0000\u00a0bln'.'\x1elatn.c6.o\x1f¤\u00a00\u00a0mln'.'\x1elatn.c6.x\x1f¤\u00a00\u00a0mln'.'\x1el" +
-			"atn.c7.o\x1f¤\u00a000\u00a0mln'.'\x1elatn.c7.x\x1f¤\u00a000\u00a0mln'.'\x1elatn.c8.o\x1f¤\u00a0000\u00a0mln'.'\x1elatn.c8.x\x1f¤\u00a0000\u00a0ml" +
-			"n'.'\x1elatn.c9.o\x1f¤\u00a00\u00a0mld'.'\x1elatn.c9.x\x1f¤\u00a00\u00a0mld'.'\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miljard\x1elat" +
-			"n.l10.x\x1f00 miljard\x1elatn.l11.o\x1f000 miljard\x1elatn.l11.x\x1f000 miljard\x1elatn.l12.o\x1f0 biljoen\x1elatn.l12.x" +
-			"\x1f0 biljoen\x1elatn.l13.o\x1f00 biljoen\x1elatn.l13.x\x1f00 biljoen\x1elatn.l14.o\x1f000 biljoen\x1elatn.l14.x\x1f000 bil" +
-			"joen\x1elatn.l3.o\x1f0 duizend\x1elatn.l3.x\x1f0 duizend\x1elatn.l4.o\x1f00 duizend\x1elatn.l4.x\x1f00 duizend\x1elatn.l5.o" +
-			"\x1f000 duizend\x1elatn.l5.x\x1f000 duizend\x1elatn.l6.o\x1f0 miljoen\x1elatn.l6.x\x1f0 miljoen\x1elatn.l7.o\x1f00 miljoen\x1e" +
-			"latn.l7.x\x1f00 miljoen\x1elatn.l8.o\x1f000 miljoen\x1elatn.l8.x\x1f000 miljoen\x1elatn.l9.o\x1f0 miljard\x1elatn.l9.x\x1f0" +
-			" miljard\x1elatn.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'" +
-			".'\x1elatn.s12.o\x1f0\u00a0bln'.'\x1elatn.s12.x\x1f0\u00a0bln'.'\x1elatn.s13.o\x1f00\u00a0bln'.'\x1elatn.s13.x\x1f00\u00a0bln'.'\x1elatn.s1" +
-			"4.o\x1f000\u00a0bln'.'\x1elatn.s14.x\x1f000\u00a0bln'.'\x1elatn.s6.o\x1f0\u00a0mln'.'\x1elatn.s6.x\x1f0\u00a0mln'.'\x1elatn.s7.o\x1f00\u00a0mln" +
-			"'.'\x1elatn.s7.x\x1f00\u00a0mln'.'\x1elatn.s8.o\x1f000\u00a0mln'.'\x1elatn.s8.x\x1f000\u00a0mln'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9" +
-			".x\x1f0\u00a0mld'.'\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliardar" +
-			"\x1elatn.l10.x\x1f00 milliardar\x1elatn.l11.o\x1f000 milliardar\x1elatn.l11.x\x1f000 milliardar\x1elatn.l12.x\x1f0 billi" +
-			"onar\x1elatn.l13.o\x1f00 billionar\x1elatn.l13.x\x1f00 billionar\x1elatn.l14.o\x1f000 billionar\x1elatn.l14.x\x1f000 bil" +
-			"lionar\x1elatn.l6.x\x1f0 millionar\x1elatn.l7.o\x1f00 millionar\x1elatn.l7.x\x1f00 millionar\x1elatn.l8.o\x1f000 million" +
-			"ar\x1elatn.l8.x\x1f000 millionar\x1elatn.l9.x\x1f0 milliardar\x1elatn.~\x1f≈\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.-\x1f−\x1elatn.A" +
-			"\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1fca. {0}\x1elatn.c10.o\x1f00\u00a0m" +
-			"rd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c" +
-			"12.o\x1f0\u00a0bill'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bill'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bill'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bill'.'\u00a0" +
-			"¤\x1elatn.c14.o\x1f000\u00a0bill'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bill'.'\u00a0¤\x1elatn.c3.o\x1f0k\u00a0¤\x1elatn.c3.x\x1f0k\u00a0¤\x1elat" +
-			"n.c4.o\x1f00k\u00a0¤\x1elatn.c4.x\x1f00k\u00a0¤\x1elatn.c5.o\x1f000k\u00a0¤\x1elatn.c5.x\x1f000k\u00a0¤\x1elatn.c6.o\x1f0\u00a0mill'.'\u00a0¤\x1e" +
-			"latn.c6.x\x1f0\u00a0mill'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mill'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mill'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mill" +
-			"'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mill'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn" +
-			".g\x1f\u00a0\x1elatn.l10.o\x1f00 milliarder\x1elatn.l10.x\x1f00 milliarder\x1elatn.l11.o\x1f000 milliarder\x1elatn.l11.x\x1f000" +
-			" milliarder\x1elatn.l12.o\x1f0 billion\x1elatn.l12.x\x1f0 billioner\x1elatn.l13.o\x1f00 billioner\x1elatn.l13.x\x1f00 bi" +
-			"llioner\x1elatn.l14.o\x1f000 billioner\x1elatn.l14.x\x1f000 billioner\x1elatn.l3.o\x1f0 tusen\x1elatn.l3.x\x1f0 tusen\x1ela" +
-			"tn.l4.o\x1f00 tusen\x1elatn.l4.x\x1f00 tusen\x1elatn.l5.o\x1f000 tusen\x1elatn.l5.x\x1f000 tusen\x1elatn.l6.o\x1f0 million\x1e" +
-			"latn.l6.x\x1f0 millioner\x1elatn.l7.o\x1f00 millioner\x1elatn.l7.x\x1f00 millioner\x1elatn.l8.o\x1f000 millioner\x1elatn" +
-			".l8.x\x1f000 millioner\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliarder\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.x" +
-			"\x1f00\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.o\x1f0\u00a0bill'.'\x1elatn.s12.x\x1f0\u00a0bi" +
-			"ll'.'\x1elatn.s13.o\x1f00\u00a0bill'.'\x1elatn.s13.x\x1f00\u00a0bill'.'\x1elatn.s14.o\x1f000\u00a0bill'.'\x1elatn.s14.x\x1f000\u00a0bill" +
-			"'.'\x1elatn.s3.o\x1f0k\x1elatn.s3.x\x1f0k\x1elatn.s4.o\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.o\x1f000k\x1elatn.s5.x\x1f000k\x1elatn.s6." +
-			"o\x1f0\u00a0mill'.'\x1elatn.s6.x\x1f0\u00a0mill'.'\x1elatn.s7.o\x1f00\u00a0mill'.'\x1elatn.s7.x\x1f00\u00a0mill'.'\x1elatn.s8.o\x1f000\u00a0mil" +
-			"l'.'\x1elatn.s8.x\x1f000\u00a0mill'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1elatn.~\x1fca.\x1elatn.g\x1f،\x1enkoo.+\x1f" +
-			"+\x1enkoo.-\x1f-\x1enkoo.A\x1f¤\u00a0#,##0.00\x1enkoo.B\x1f\u00a0\x1enkoo.C\x1f¤\u00a0#,##0.00\x1enkoo.D\x1f#,##0.###\x1enkoo.P\x1f#,##0%\x1enkoo" +
-			".R\x1f{0}–{1}\x1enkoo.S\x1f#E0\x1enkoo.Ux\x1f{0} {1}\x1enkoo.X\x1f~{0}\x1enkoo.b\x1f\u00a0\x1enkoo.c10.x\x1f¤\u00a000G\x1enkoo.c11.x\x1f¤\u00a0" +
-			"000G\x1enkoo.c12.x\x1f¤\u00a00T\x1enkoo.c13.x\x1f¤\u00a000T\x1enkoo.c14.x\x1f¤\u00a0000T\x1enkoo.c3.x\x1f¤\u00a00K\x1enkoo.c4.x\x1f¤\u00a000K" +
-			"\x1enkoo.c5.x\x1f¤\u00a0000K\x1enkoo.c6.x\x1f¤\u00a00M\x1enkoo.c7.x\x1f¤\u00a000M\x1enkoo.c8.x\x1f¤\u00a0000M\x1enkoo.c9.x\x1f¤\u00a00G\x1enkoo." +
-			"d\x1f.\x1enkoo.e\x1fE\x1enkoo.g\x1f،\x1enkoo.i\x1f∞\x1enkoo.l10.x\x1f00G\x1enkoo.l11.x\x1f000G\x1enkoo.l12.x\x1f0T\x1enkoo.l13.x\x1f00T\x1enk" +
-			"oo.l14.x\x1f000T\x1enkoo.l3.x\x1f0K\x1enkoo.l4.x\x1f00K\x1enkoo.l5.x\x1f000K\x1enkoo.l6.x\x1f0M\x1enkoo.l7.x\x1f00M\x1enkoo.l8.x\x1f000" +
-			"M\x1enkoo.l9.x\x1f0G\x1enkoo.m\x1f‰\x1enkoo.n\x1fNaN\x1enkoo.p\x1f%\x1enkoo.s10.x\x1f00G\x1enkoo.s11.x\x1f000G\x1enkoo.s12.x\x1f0T\x1enkoo." +
-			"s13.x\x1f00T\x1enkoo.s14.x\x1f000T\x1enkoo.s3.x\x1f0K\x1enkoo.s4.x\x1f00K\x1enkoo.s5.x\x1f000K\x1enkoo.s6.x\x1f0M\x1enkoo.s7.x\x1f00M\x1en" +
-			"koo.s8.x\x1f000M\x1enkoo.s9.x\x1f0G\x1enkoo.~\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00;(¤#,##0" +
-			".00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1el" +
-			"atn.P\x1f#,##0\u202f%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.R\x1f{0}-{1}\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o" +
-			"\x1f¤00G\x1elatn.c10.x\x1f¤00G\x1elatn.c11.o\x1f¤000G\x1elatn.c11.x\x1f¤000G\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn" +
-			".c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1e" +
-			"latn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1e" +
-			"latn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0G\x1elatn.c9.x\x1f¤0G\x1e" +
-			"latn.l10.o\x1fbiiliyoona 00\x1elatn.l10.x\x1fbiiliyoona 00\x1elatn.l11.o\x1fbiiliyoona 000\x1elatn.l11.x\x1fbiiliyoon" +
-			"a 000\x1elatn.l12.o\x1ftiriiliyoona 0\x1elatn.l12.x\x1ftiriiliyoona 0\x1elatn.l13.o\x1ftiriiliyoona 00\x1elatn.l13.x\x1f" +
-			"tiriiliyoona 00\x1elatn.l14.o\x1ftiriiliyoona 000\x1elatn.l14.x\x1ftiriiliyoona 000\x1elatn.l3.o\x1fKuma 0\x1elatn.l3" +
-			".x\x1fkuma 0\x1elatn.l4.o\x1fkuma 00\x1elatn.l4.x\x1fkuma 00\x1elatn.l5.o\x1fkuma 000\x1elatn.l5.x\x1fkuma 000\x1elatn.l6.o\x1fmi" +
-			"iliyoona 0\x1elatn.l6.x\x1fmiiliyoona 0\x1elatn.l7.o\x1fmiiliyoona 00\x1elatn.l7.x\x1fmiiliyoona 00\x1elatn.l8.o\x1fmiil" +
-			"iyoona 000\x1elatn.l8.x\x1fmiiliyoona 000\x1elatn.l9.o\x1fbiiliyoona 0\x1elatn.l9.x\x1fbiiliyoona 0\x1elatn.A\x1f¤#,##0" +
-			".00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.c10.o\x1f¤00ବି\x1elatn.c10.x\x1f¤00ବି" +
-			"\x1elatn.c11.o\x1f¤000ବି\x1elatn.c11.x\x1f¤000ବି\x1elatn.c12.o\x1f¤0ଟ୍ରି\x1elatn.c12.x\x1f¤0ଟ୍ର" +
-			"ି\x1elatn.c13.o\x1f¤00ଟ୍ରି\x1elatn.c13.x\x1f¤00ଟ୍ରି\x1elatn.c14.o\x1f¤000ଟ୍ରି\x1elatn.c1" +
-			"4.x\x1f¤000ଟ୍ରି\x1elatn.c3.o\x1f¤0ହ\x1elatn.c3.x\x1f¤0ହ\x1elatn.c4.o\x1f¤00ହ\x1elatn.c4.x\x1f¤00ହ\x1elatn" +
-			".c5.o\x1f¤000ହ\x1elatn.c5.x\x1f¤000ହ\x1elatn.c6.o\x1f¤0ନି\x1elatn.c6.x\x1f¤0ନି\x1elatn.c7.o\x1f¤00ନି\x1el" +
-			"atn.c7.x\x1f¤00ନି\x1elatn.c8.o\x1f¤000ନି\x1elatn.c8.x\x1f¤000ନି\x1elatn.c9.o\x1f¤0ବି\x1elatn.c9.x\x1f¤" +
-			"0ବି\x1elatn.l10.o\x1f00 ଶହକୋଟି\x1elatn.l10.x\x1f00 ଶହକୋଟି\x1elatn.l11.o\x1f000 ଶହକ" +
-			"ୋଟି\x1elatn.l11.x\x1f000 ଶହକୋଟି\x1elatn.l12.o\x1f0 ଲକ୍ଷକୋଟି\x1elatn.l12.x\x1f0 ଲ" +
-			"କ୍ଷକୋଟି\x1elatn.l13.o\x1f00 ଲକ୍ଷକୋଟି\x1elatn.l13.x\x1f00 ଲକ୍ଷକୋଟ" +
-			"ି\x1elatn.l14.o\x1f000 ଲକ୍ଷକୋଟି\x1elatn.l14.x\x1f000 ଲକ୍ଷକୋଟି\x1elatn.l3.o\x1f0 " +
-			"ହଜାର\x1elatn.l3.x\x1f0 ହଜାର\x1elatn.l4.o\x1f00 ହଜାର\x1elatn.l4.x\x1f00 ହଜାର\x1elatn.l" +
-			"5.o\x1f000 ହଜାର\x1elatn.l5.x\x1f000 ହଜାର\x1elatn.l6.o\x1f0 ନିୟୁତ\x1elatn.l6.x\x1f0 ନିୟ" +
-			"ୁତ\x1elatn.l7.o\x1f00 ନିୟୁତ\x1elatn.l7.x\x1f00 ନିୟୁତ\x1elatn.l8.o\x1f000 ନିୟୁତ\x1el" +
-			"atn.l8.x\x1f000 ନିୟୁତ\x1elatn.l9.o\x1f0 ଶହକୋଟି\x1elatn.l9.x\x1f0 ଶହକୋଟି\x1elatn." +
-			"s10.o\x1f00ବି\x1elatn.s10.x\x1f00ବି\x1elatn.s11.o\x1f000ବି\x1elatn.s11.x\x1f000ବି\x1elatn.s12.o\x1f0ଟ୍ର" +
-			"ି\x1elatn.s12.x\x1f0ଟ୍ରି\x1elatn.s13.o\x1f00ଟ୍ରି\x1elatn.s13.x\x1f00ଟ୍ରି\x1elatn.s14.o\x1f000ଟ" +
-			"୍ରି\x1elatn.s14.x\x1f000ଟ୍ରି\x1elatn.s3.o\x1f0ହ\x1elatn.s3.x\x1f0ହ\x1elatn.s4.o\x1f00ହ\x1elatn.s4.x\x1f00ହ" +
-			"\x1elatn.s5.o\x1f000ହ\x1elatn.s5.x\x1f000ହ\x1elatn.s6.o\x1f0ନି\x1elatn.s6.x\x1f0ନି\x1elatn.s7.o\x1f00ନି\x1elatn.s" +
-			"7.x\x1f00ନି\x1elatn.s8.o\x1f000ନି\x1elatn.s8.x\x1f000ନି\x1elatn.s9.o\x1f0ବି\x1elatn.s9.x\x1f0ବି\x1eorya.+\x1f" +
-			"+\x1eorya.-\x1f-\x1eorya.A\x1f¤#,##0.00;(¤#,##0.00)\x1eorya.B\x1f\u00a0\x1eorya.C\x1f¤#,##0.00\x1eorya.D\x1f#,##,##0.###\x1eorya.P" +
-			"\x1f#,##0%\x1eorya.R\x1f{0}–{1}\x1eorya.S\x1f#E0\x1eorya.Ux\x1f{0} {1}\x1eorya.X\x1f~{0}\x1eorya.b\x1f\u00a0\x1eorya.c10.o\x1f¤00ବି\x1e" +
-			"orya.c10.x\x1f¤00ବି\x1eorya.c11.o\x1f¤000ବି\x1eorya.c11.x\x1f¤000ବି\x1eorya.c12.o\x1f¤0ଟ୍ରି\x1eo" +
-			"rya.c12.x\x1f¤0ଟ୍ରି\x1eorya.c13.o\x1f¤00ଟ୍ରି\x1eorya.c13.x\x1f¤00ଟ୍ରି\x1eorya.c14.o\x1f¤0" +
-			"00ଟ୍ରି\x1eorya.c14.x\x1f¤000ଟ୍ରି\x1eorya.c3.o\x1f¤0ହ\x1eorya.c3.x\x1f¤0ହ\x1eorya.c4.o\x1f¤00ହ\x1e" +
-			"orya.c4.x\x1f¤00ହ\x1eorya.c5.o\x1f¤000ହ\x1eorya.c5.x\x1f¤000ହ\x1eorya.c6.o\x1f¤0ନି\x1eorya.c6.x\x1f¤0ନି\x1e" +
-			"orya.c7.o\x1f¤00ନି\x1eorya.c7.x\x1f¤00ନି\x1eorya.c8.o\x1f¤000ନି\x1eorya.c8.x\x1f¤000ନି\x1eorya.c9.o\x1f" +
-			"¤0ବି\x1eorya.c9.x\x1f¤0ବି\x1eorya.d\x1f.\x1eorya.e\x1fE\x1eorya.g\x1f,\x1eorya.i\x1f∞\x1eorya.l10.o\x1f00 ଶହକୋଟ" +
-			"ି\x1eorya.l10.x\x1f00 ଶହକୋଟି\x1eorya.l11.o\x1f000 ଶହକୋଟି\x1eorya.l11.x\x1f000 ଶହକୋ" +
-			"ଟି\x1eorya.l12.o\x1f0 ଲକ୍ଷକୋଟି\x1eorya.l12.x\x1f0 ଲକ୍ଷକୋଟି\x1eorya.l13.o\x1f00" +
-			" ଲକ୍ଷକୋଟି\x1eorya.l13.x\x1f00 ଲକ୍ଷକୋଟି\x1eorya.l14.o\x1f000 ଲକ୍ଷକୋ" +
-			"ଟି\x1eorya.l14.x\x1f000 ଲକ୍ଷକୋଟି\x1eorya.l3.o\x1f0 ହଜାର\x1eorya.l3.x\x1f0 ହଜାର" +
-			"\x1eorya.l4.o\x1f00 ହଜାର\x1eorya.l4.x\x1f00 ହଜାର\x1eorya.l5.o\x1f000 ହଜାର\x1eorya.l5.x\x1f000 ହ" +
-			"ଜାର\x1eorya.l6.o\x1f0 ନିୟୁତ\x1eorya.l6.x\x1f0 ନିୟୁତ\x1eorya.l7.o\x1f00 ନିୟୁତ\x1eo" +
-			"rya.l7.x\x1f00 ନିୟୁତ\x1eorya.l8.o\x1f000 ନିୟୁତ\x1eorya.l8.x\x1f000 ନିୟୁତ\x1eorya.l9." +
-			"o\x1f0 ଶହକୋଟି\x1eorya.l9.x\x1f0 ଶହକୋଟି\x1eorya.m\x1f‰\x1eorya.n\x1fNaN\x1eorya.p\x1f%\x1eorya.s10.o\x1f" +
-			"00ବି\x1eorya.s10.x\x1f00ବି\x1eorya.s11.o\x1f000ବି\x1eorya.s11.x\x1f000ବି\x1eorya.s12.o\x1f0ଟ୍ରି\x1e" +
-			"orya.s12.x\x1f0ଟ୍ରି\x1eorya.s13.o\x1f00ଟ୍ରି\x1eorya.s13.x\x1f00ଟ୍ରି\x1eorya.s14.o\x1f000ଟ୍" +
-			"ରି\x1eorya.s14.x\x1f000ଟ୍ରି\x1eorya.s3.o\x1f0ହ\x1eorya.s3.x\x1f0ହ\x1eorya.s4.o\x1f00ହ\x1eorya.s4.x\x1f00ହ\x1e" +
-			"orya.s5.o\x1f000ହ\x1eorya.s5.x\x1f000ହ\x1eorya.s6.o\x1f0ନି\x1eorya.s6.x\x1f0ନି\x1eorya.s7.o\x1f00ନି\x1eorya.s7" +
-			".x\x1f00ନି\x1eorya.s8.o\x1f000ନି\x1eorya.s8.x\x1f000ନି\x1eorya.s9.o\x1f0ବି\x1eorya.s9.x\x1f0ବି\x1eorya.~\x1f~" +
-			"\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.n\x1fНН\x1eguru.+\x1f+\x1eguru.-\x1f-\x1eguru.A\x1f¤\u00a0#,##0.00\x1eguru.B\x1f\u00a0\x1e" +
-			"guru.C\x1f¤#,##,##0.00\x1eguru.D\x1f#,##,##0.###\x1eguru.P\x1f#,##,##0%\x1eguru.R\x1f{0}–{1}\x1eguru.S\x1f[#E0]\x1eguru.Ux\x1f" +
-			"{0} {1}\x1eguru.X\x1f~{0}\x1eguru.b\x1f\u00a0\x1eguru.c10.o\x1f¤00\u00a0ਅਰਬ\x1eguru.c10.x\x1f¤00\u00a0ਅਰਬ\x1eguru.c11.o\x1f¤" +
-			"0\u00a0ਖਰਬ\x1eguru.c11.x\x1f¤0\u00a0ਖਰਬ\x1eguru.c12.o\x1f¤00\u00a0ਖਰਬ\x1eguru.c12.x\x1f¤00\u00a0ਖਰਬ\x1egur" +
-			"u.c13.o\x1f¤0\u00a0ਨੀਲ\x1eguru.c13.x\x1f¤0\u00a0ਨੀਲ\x1eguru.c14.o\x1f¤00\u00a0ਨੀਲ\x1eguru.c14.x\x1f¤00\u00a0ਨ" +
-			"ੀਲ\x1eguru.c3.o\x1f¤0\u00a0ਹਜ਼ਾਰ\x1eguru.c3.x\x1f¤0\u00a0ਹਜ਼ਾਰ\x1eguru.c4.o\x1f¤00\u00a0ਹਜ਼ਾ" +
-			"ਰ\x1eguru.c4.x\x1f¤00\u00a0ਹਜ਼ਾਰ\x1eguru.c5.o\x1f¤0\u00a0ਲੱਖ\x1eguru.c5.x\x1f¤0\u00a0ਲੱਖ\x1eguru.c6.o\x1f" +
-			"¤00\u00a0ਲੱਖ\x1eguru.c6.x\x1f¤00\u00a0ਲੱਖ\x1eguru.c7.o\x1f¤0\u00a0ਕਰੋੜ\x1eguru.c7.x\x1f¤0\u00a0ਕਰੋੜ" +
-			"\x1eguru.c8.o\x1f¤00\u00a0ਕਰੋੜ\x1eguru.c8.x\x1f¤00\u00a0ਕਰੋੜ\x1eguru.c9.o\x1f¤0\u00a0ਅਰਬ\x1eguru.c9.x\x1f¤" +
-			"0\u00a0ਅਰਬ\x1eguru.d\x1f.\x1eguru.e\x1fE\x1eguru.g\x1f,\x1eguru.i\x1f∞\x1eguru.l10.o\x1f00 ਅਰਬ\x1eguru.l10.x\x1f00 ਅਰਬ" +
-			"\x1eguru.l11.o\x1f0 ਖਰਬ\x1eguru.l11.x\x1f0 ਖਰਬ\x1eguru.l12.o\x1f00 ਖਰਬ\x1eguru.l12.x\x1f00 ਖਰਬ\x1eg" +
-			"uru.l13.o\x1f0 ਨੀਲ\x1eguru.l13.x\x1f0 ਨੀਲ\x1eguru.l14.o\x1f00 ਨੀਲ\x1eguru.l14.x\x1f00 ਨੀਲ\x1egur" +
-			"u.l3.o\x1f0 ਹਜ਼ਾਰ\x1eguru.l3.x\x1f0 ਹਜ਼ਾਰ\x1eguru.l4.o\x1f00 ਹਜ਼ਾਰ\x1eguru.l4.x\x1f00 ਹ" +
-			"ਜ਼ਾਰ\x1eguru.l5.o\x1f0 ਲੱਖ\x1eguru.l5.x\x1f0 ਲੱਖ\x1eguru.l6.o\x1f00 ਲੱਖ\x1eguru.l6.x\x1f00 ਲ" +
-			"ੱਖ\x1eguru.l7.o\x1f0 ਕਰੋੜ\x1eguru.l7.x\x1f0 ਕਰੋੜ\x1eguru.l8.o\x1f00 ਕਰੋੜ\x1eguru.l8.x\x1f00 " +
-			"ਕਰੋੜ\x1eguru.l9.o\x1f0 ਅਰਬ\x1eguru.l9.x\x1f0 ਅਰਬ\x1eguru.m\x1f‰\x1eguru.n\x1fNaN\x1eguru.p\x1f%\x1eguru.s10" +
-			".o\x1f00\u00a0ਅਰਬ\x1eguru.s10.x\x1f00\u00a0ਅਰਬ\x1eguru.s11.o\x1f0\u00a0ਖਰਬ\x1eguru.s11.x\x1f0\u00a0ਖਰਬ\x1eguru.s" +
-			"12.o\x1f00\u00a0ਖਰਬ\x1eguru.s12.x\x1f00\u00a0ਖਰਬ\x1eguru.s13.o\x1f0\u00a0ਨੀਲ\x1eguru.s13.x\x1f0\u00a0ਨੀਲ\x1eguru" +
-			".s14.o\x1f00\u00a0ਨੀਲ\x1eguru.s14.x\x1f00\u00a0ਨੀਲ\x1eguru.s3.o\x1f0\u00a0ਹਜ਼ਾਰ\x1eguru.s3.x\x1f0\u00a0ਹਜ਼" +
-			"ਾਰ\x1eguru.s4.o\x1f00\u00a0ਹਜ਼ਾਰ\x1eguru.s4.x\x1f00\u00a0ਹਜ਼ਾਰ\x1eguru.s5.o\x1f0\u00a0ਲੱਖ\x1eguru.s" +
-			"5.x\x1f0\u00a0ਲੱਖ\x1eguru.s6.o\x1f00\u00a0ਲੱਖ\x1eguru.s6.x\x1f00\u00a0ਲੱਖ\x1eguru.s7.o\x1f0\u00a0ਕਰੋੜ\x1eguru." +
-			"s7.x\x1f0\u00a0ਕਰੋੜ\x1eguru.s8.o\x1f00\u00a0ਕਰੋੜ\x1eguru.s8.x\x1f00\u00a0ਕਰੋੜ\x1eguru.s9.o\x1f0\u00a0ਅਰਬ" +
-			"\x1eguru.s9.x\x1f0\u00a0ਅਰਬ\x1eguru.~\x1f~\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn." +
-			"S\x1f[#E0]\x1elatn.c10.o\x1f¤00\u00a0ਅਰਬ\x1elatn.c10.x\x1f¤00\u00a0ਅਰਬ\x1elatn.c11.o\x1f¤0\u00a0ਖਰਬ\x1elatn.c11" +
-			".x\x1f¤0\u00a0ਖਰਬ\x1elatn.c12.o\x1f¤00\u00a0ਖਰਬ\x1elatn.c12.x\x1f¤00\u00a0ਖਰਬ\x1elatn.c13.o\x1f¤0\u00a0ਨੀਲ" +
-			"\x1elatn.c13.x\x1f¤0\u00a0ਨੀਲ\x1elatn.c14.o\x1f¤00\u00a0ਨੀਲ\x1elatn.c14.x\x1f¤00\u00a0ਨੀਲ\x1elatn.c3.o\x1f¤0\u00a0" +
-			"ਹਜ਼ਾਰ\x1elatn.c3.x\x1f¤0\u00a0ਹਜ਼ਾਰ\x1elatn.c4.o\x1f¤00\u00a0ਹਜ਼ਾਰ\x1elatn.c4.x\x1f¤00\u00a0ਹ" +
-			"ਜ਼ਾਰ\x1elatn.c5.o\x1f¤0\u00a0ਲੱਖ\x1elatn.c5.x\x1f¤0\u00a0ਲੱਖ\x1elatn.c6.o\x1f¤00\u00a0ਲੱਖ\x1elatn.c6" +
-			".x\x1f¤00\u00a0ਲੱਖ\x1elatn.c7.o\x1f¤0\u00a0ਕਰੋੜ\x1elatn.c7.x\x1f¤0\u00a0ਕਰੋੜ\x1elatn.c8.o\x1f¤00\u00a0ਕਰ" +
-			"ੋੜ\x1elatn.c8.x\x1f¤00\u00a0ਕਰੋੜ\x1elatn.c9.o\x1f¤0\u00a0ਅਰਬ\x1elatn.c9.x\x1f¤0\u00a0ਅਰਬ\x1elatn.l10.o" +
-			"\x1f00 ਅਰਬ\x1elatn.l10.x\x1f00 ਅਰਬ\x1elatn.l11.o\x1f0 ਖਰਬ\x1elatn.l11.x\x1f0 ਖਰਬ\x1elatn.l12.o\x1f0" +
-			"0 ਖਰਬ\x1elatn.l12.x\x1f00 ਖਰਬ\x1elatn.l13.o\x1f0 ਨੀਲ\x1elatn.l13.x\x1f0 ਨੀਲ\x1elatn.l14.o\x1f00 " +
-			"ਨੀਲ\x1elatn.l14.x\x1f00 ਨੀਲ\x1elatn.l3.o\x1f0 ਹਜ਼ਾਰ\x1elatn.l3.x\x1f0 ਹਜ਼ਾਰ\x1elatn.l" +
-			"4.o\x1f00 ਹਜ਼ਾਰ\x1elatn.l4.x\x1f00 ਹਜ਼ਾਰ\x1elatn.l5.o\x1f0 ਲੱਖ\x1elatn.l5.x\x1f0 ਲੱਖ\x1e" +
-			"latn.l6.o\x1f00 ਲੱਖ\x1elatn.l6.x\x1f00 ਲੱਖ\x1elatn.l7.o\x1f0 ਕਰੋੜ\x1elatn.l7.x\x1f0 ਕਰੋੜ\x1e" +
-			"latn.l8.o\x1f00 ਕਰੋੜ\x1elatn.l8.x\x1f00 ਕਰੋੜ\x1elatn.l9.o\x1f0 ਅਰਬ\x1elatn.l9.x\x1f0 ਅਰਬ\x1e" +
-			"latn.s10.o\x1f00\u00a0ਅਰਬ\x1elatn.s10.x\x1f00\u00a0ਅਰਬ\x1elatn.s11.o\x1f0\u00a0ਖਰਬ\x1elatn.s11.x\x1f0\u00a0ਖਰਬ" +
-			"\x1elatn.s12.o\x1f00\u00a0ਖਰਬ\x1elatn.s12.x\x1f00\u00a0ਖਰਬ\x1elatn.s13.o\x1f0\u00a0ਨੀਲ\x1elatn.s13.x\x1f0\u00a0ਨੀਲ" +
-			"\x1elatn.s14.o\x1f00\u00a0ਨੀਲ\x1elatn.s14.x\x1f00\u00a0ਨੀਲ\x1elatn.s3.o\x1f0\u00a0ਹਜ਼ਾਰ\x1elatn.s3.x\x1f0\u00a0ਹ" +
-			"ਜ਼ਾਰ\x1elatn.s4.o\x1f00\u00a0ਹਜ਼ਾਰ\x1elatn.s4.x\x1f00\u00a0ਹਜ਼ਾਰ\x1elatn.s5.o\x1f0\u00a0ਲੱਖ\x1e" +
-			"latn.s5.x\x1f0\u00a0ਲੱਖ\x1elatn.s6.o\x1f00\u00a0ਲੱਖ\x1elatn.s6.x\x1f00\u00a0ਲੱਖ\x1elatn.s7.o\x1f0\u00a0ਕਰੋੜ" +
-			"\x1elatn.s7.x\x1f0\u00a0ਕਰੋੜ\x1elatn.s8.o\x1f00\u00a0ਕਰੋੜ\x1elatn.s8.x\x1f00\u00a0ਕਰੋੜ\x1elatn.s9.o\x1f0\u00a0ਅ" +
-			"ਰਬ\x1elatn.s9.x\x1f0\u00a0ਅਰਬ\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabext" +
-			".B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f" +
-			"#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1e" +
-			"arabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4" +
-			".x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1e" +
-			"arabext.c9.x\x1f¤\u00a00G\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1earabext.l10.x\x1f00G\x1e" +
-			"arabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabext.l3.x\x1f0K\x1earabext" +
-			".l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M\x1earabext.l9.x\x1f0G\x1ea" +
-			"rabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1eara" +
+			"abext.l9.x\x1f0G\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s1" +
+			"4.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f000K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1eara" +
+			"bext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0" +
+			"%\x1elatn.c10.f\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.m\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.x\x1f00" +
+			"\u00a0mlrd'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.m\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd'.'\u00a0¤" +
+			"\x1elatn.c11.x\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0trln'.'\u00a0¤\x1elatn.c12.m\x1f0\u00a0trln'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0t" +
+			"rln'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0trln'.'\u00a0¤\x1elatn.c13.m\x1f00\u00a0trln'.'\u00a0¤\x1elatn." +
+			"c13.o\x1f00\u00a0trln'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0trln'.'\u00a0¤\x1elatn.c14.m\x1f000\u00a0trl" +
+			"n'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn" +
+			".c3.m\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tūks" +
+			"t'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tūkst'.'\u00a0¤\x1elat" +
+			"n.c5.f\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.x\x1f00" +
+			"0\u00a0tūkst'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c6.m\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c6" +
+			".x\x1f0\u00a0mln'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mln'.'\u00a0¤\x1elatn.c7.m\x1f00\u00a0mln'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln'.'\u00a0¤\x1elatn" +
+			".c7.x\x1f00\u00a0mln'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c8.m\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln'.'\u00a0" +
+			"¤\x1elatn.c8.x\x1f000\u00a0mln'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.m\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd" +
+			"'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 milijardai\x1elatn.l" +
+			"10.m\x1f00 milijardo\x1elatn.l10.o\x1f00 milijardas\x1elatn.l10.x\x1f00 milijardų\x1elatn.l11.f\x1f000 milijardai\x1ela" +
+			"tn.l11.m\x1f000 milijardo\x1elatn.l11.o\x1f000 milijardas\x1elatn.l11.x\x1f000 milijardų\x1elatn.l12.f\x1f0 trilijon" +
+			"ai\x1elatn.l12.m\x1f0 trilijono\x1elatn.l12.o\x1f0 trilijonas\x1elatn.l12.x\x1f0 trilijonų\x1elatn.l13.f\x1f00 trilijon" +
+			"ai\x1elatn.l13.m\x1f00 trilijono\x1elatn.l13.o\x1f00 trilijonas\x1elatn.l13.x\x1f00 trilijonų\x1elatn.l14.f\x1f000 tril" +
+			"ijonai\x1elatn.l14.m\x1f000 trilijono\x1elatn.l14.o\x1f000 trilijonas\x1elatn.l14.x\x1f000 trilijonų\x1elatn.l3.f\x1f0 " +
+			"tūkstančiai\x1elatn.l3.m\x1f0 tūkstančio\x1elatn.l3.o\x1f0 tūkstantis\x1elatn.l3.x\x1f0 tūkstančių\x1elatn.l4" +
+			".f\x1f00 tūkstančiai\x1elatn.l4.m\x1f00 tūkstančio\x1elatn.l4.o\x1f00 tūkstantis\x1elatn.l4.x\x1f00 tūkstančių" +
+			"\x1elatn.l5.f\x1f000 tūkstančiai\x1elatn.l5.m\x1f000 tūkstančio\x1elatn.l5.o\x1f000 tūkstantis\x1elatn.l5.x\x1f000 " +
+			"tūkstančių\x1elatn.l6.f\x1f0 milijonai\x1elatn.l6.m\x1f0 milijono\x1elatn.l6.o\x1f0 milijonas\x1elatn.l6.x\x1f0 milij" +
+			"onų\x1elatn.l7.f\x1f00 milijonai\x1elatn.l7.m\x1f00 milijono\x1elatn.l7.o\x1f00 milijonas\x1elatn.l7.x\x1f00 milijonų\x1e" +
+			"latn.l8.f\x1f000 milijonai\x1elatn.l8.m\x1f000 milijono\x1elatn.l8.o\x1f000 milijonas\x1elatn.l8.x\x1f000 milijonų\x1el" +
+			"atn.l9.f\x1f0 milijardai\x1elatn.l9.m\x1f0 milijardo\x1elatn.l9.o\x1f0 milijardas\x1elatn.l9.x\x1f0 milijardų\x1elatn.s" +
+			"10.f\x1f00\u00a0mlrd'.'\x1elatn.s10.m\x1f00\u00a0mlrd'.'\x1elatn.s10.o\x1f00\u00a0mlrd'.'\x1elatn.s10.x\x1f00\u00a0mlrd'.'\x1elatn.s11.f" +
+			"\x1f000\u00a0mlrd'.'\x1elatn.s11.m\x1f000\u00a0mlrd'.'\x1elatn.s11.o\x1f000\u00a0mlrd'.'\x1elatn.s11.x\x1f000\u00a0mlrd'.'\x1elatn.s12.f" +
+			"\x1f0\u00a0trln'.'\x1elatn.s12.m\x1f0\u00a0trln'.'\x1elatn.s12.o\x1f0\u00a0trln'.'\x1elatn.s12.x\x1f0\u00a0trln'.'\x1elatn.s13.f\x1f00\u00a0trl" +
+			"n'.'\x1elatn.s13.m\x1f00\u00a0trln'.'\x1elatn.s13.o\x1f00\u00a0trln'.'\x1elatn.s13.x\x1f00\u00a0trln'.'\x1elatn.s14.f\x1f000\u00a0trln'." +
+			"'\x1elatn.s14.m\x1f000\u00a0trln'.'\x1elatn.s14.o\x1f000\u00a0trln'.'\x1elatn.s14.x\x1f000\u00a0trln'.'\x1elatn.s3.f\x1f0\u00a0tūkst'.'" +
+			"\x1elatn.s3.m\x1f0\u00a0tūkst'.'\x1elatn.s3.o\x1f0\u00a0tūkst'.'\x1elatn.s3.x\x1f0\u00a0tūkst'.'\x1elatn.s4.f\x1f00\u00a0tūkst'.'\x1ela" +
+			"tn.s4.m\x1f00\u00a0tūkst'.'\x1elatn.s4.o\x1f00\u00a0tūkst'.'\x1elatn.s4.x\x1f00\u00a0tūkst'.'\x1elatn.s5.f\x1f000\u00a0tūkst'.'\x1el" +
+			"atn.s5.m\x1f000\u00a0tūkst'.'\x1elatn.s5.o\x1f000\u00a0tūkst'.'\x1elatn.s5.x\x1f000\u00a0tūkst'.'\x1elatn.s6.f\x1f0\u00a0mln'.'\x1ela" +
+			"tn.s6.m\x1f0\u00a0mln'.'\x1elatn.s6.o\x1f0\u00a0mln'.'\x1elatn.s6.x\x1f0\u00a0mln'.'\x1elatn.s7.f\x1f00\u00a0mln'.'\x1elatn.s7.m\x1f00\u00a0mln" +
+			"'.'\x1elatn.s7.o\x1f00\u00a0mln'.'\x1elatn.s7.x\x1f00\u00a0mln'.'\x1elatn.s8.f\x1f000\u00a0mln'.'\x1elatn.s8.m\x1f000\u00a0mln'.'\x1elatn.s" +
+			"8.o\x1f000\u00a0mln'.'\x1elatn.s8.x\x1f000\u00a0mln'.'\x1elatn.s9.f\x1f0\u00a0mlrd'.'\x1elatn.s9.m\x1f0\u00a0mlrd'.'\x1elatn.s9.o\x1f0\u00a0mlr" +
+			"d'.'\x1elatn.s9.x\x1f0\u00a0mlrd'.'\x1elatn.~\x1f∼\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn." +
+			"A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f¤#,##0.00;¤-\u00a0#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-\u00a0#,##0.00\x1eg" +
+			"\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0mljrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mljrd'.'\u00a0" +
+			"¤\x1elatn.c10.z\x1f00\u00a0mljrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mljrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mljrd'.'\u00a0¤\x1elatn.c1" +
+			"1.z\x1f000\u00a0mljrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0trilj'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0trilj'.'\u00a0¤\x1elatn.c12.z\x1f0\u00a0trilj'" +
+			".'\u00a0¤\x1elatn.c13.o\x1f00\u00a0trilj'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0trilj'.'\u00a0¤\x1elatn.c13.z\x1f00\u00a0trilj'.'\u00a0¤\x1elatn." +
+			"c14.o\x1f000\u00a0trilj'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0trilj'.'\u00a0¤\x1elatn.c14.z\x1f000\u00a0trilj'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0t" +
+			"ūkst'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c3.z\x1f0\u00a0tūkst'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tūkst'.'\u00a0¤\x1el" +
+			"atn.c4.x\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c4.z\x1f00\u00a0tūkst'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c5.x\x1f00" +
+			"0\u00a0tūkst'.'\u00a0¤\x1elatn.c5.z\x1f000\u00a0tūkst'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0milj'.'\u00a0¤\x1e" +
+			"latn.c6.z\x1f0\u00a0milj'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0milj'.'\u00a0¤\x1elatn.c7.z\x1f00\u00a0milj'" +
+			".'\u00a0¤\x1elatn.c8.o\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c8.z\x1f000\u00a0milj'.'\u00a0¤\x1elatn.c9." +
+			"o\x1f0\u00a0mljrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mljrd'.'\u00a0¤\x1elatn.c9.z\x1f0\u00a0mljrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l1" +
+			"0.o\x1f00 miljards\x1elatn.l10.x\x1f00 miljardi\x1elatn.l10.z\x1f00 miljardi\x1elatn.l11.o\x1f000 miljards\x1elatn.l11.x" +
+			"\x1f000 miljardi\x1elatn.l11.z\x1f000 miljardi\x1elatn.l12.o\x1f0 triljons\x1elatn.l12.x\x1f0 triljoni\x1elatn.l12.z\x1f0 t" +
+			"riljonu\x1elatn.l13.o\x1f00 triljons\x1elatn.l13.x\x1f00 triljoni\x1elatn.l13.z\x1f00 triljoni\x1elatn.l14.o\x1f000 tril" +
+			"jons\x1elatn.l14.x\x1f000 triljoni\x1elatn.l14.z\x1f000 triljoni\x1elatn.l3.o\x1f0 tūkstotis\x1elatn.l3.x\x1f0 tūkstoš" +
+			"i\x1elatn.l3.z\x1f0 tūkstošu\x1elatn.l4.o\x1f00 tūkstotis\x1elatn.l4.x\x1f00 tūkstoši\x1elatn.l4.z\x1f00 tūkstoši" +
+			"\x1elatn.l5.o\x1f000 tūkstotis\x1elatn.l5.x\x1f000 tūkstoši\x1elatn.l5.z\x1f000 tūkstoši\x1elatn.l6.o\x1f0 miljons\x1e" +
+			"latn.l6.x\x1f0 miljoni\x1elatn.l6.z\x1f0 miljonu\x1elatn.l7.o\x1f00 miljons\x1elatn.l7.x\x1f00 miljoni\x1elatn.l7.z\x1f00 m" +
+			"iljoni\x1elatn.l8.o\x1f000 miljons\x1elatn.l8.x\x1f000 miljoni\x1elatn.l8.z\x1f000 miljoni\x1elatn.l9.o\x1f0 miljards\x1ela" +
+			"tn.l9.x\x1f0 miljardi\x1elatn.l9.z\x1f0 miljardu\x1elatn.n\x1fNS\x1elatn.s10.o\x1f00\u00a0mljrd'.'\x1elatn.s10.x\x1f00\u00a0mljrd'." +
+			"'\x1elatn.s10.z\x1f00\u00a0mljrd'.'\x1elatn.s11.o\x1f000\u00a0mljrd'.'\x1elatn.s11.x\x1f000\u00a0mljrd'.'\x1elatn.s11.z\x1f000\u00a0mljr" +
+			"d'.'\x1elatn.s12.o\x1f0\u00a0trilj'.'\x1elatn.s12.x\x1f0\u00a0trilj'.'\x1elatn.s12.z\x1f0\u00a0trilj'.'\x1elatn.s13.o\x1f00\u00a0trilj'." +
+			"'\x1elatn.s13.x\x1f00\u00a0trilj'.'\x1elatn.s13.z\x1f00\u00a0trilj'.'\x1elatn.s14.o\x1f000\u00a0trilj'.'\x1elatn.s14.x\x1f000\u00a0trilj" +
+			"'.'\x1elatn.s14.z\x1f000\u00a0trilj'.'\x1elatn.s3.o\x1f0\u00a0tūkst'.'\x1elatn.s3.x\x1f0\u00a0tūkst'.'\x1elatn.s3.z\x1f0\u00a0tūkst'." +
+			"'\x1elatn.s4.o\x1f00\u00a0tūkst'.'\x1elatn.s4.x\x1f00\u00a0tūkst'.'\x1elatn.s4.z\x1f00\u00a0tūkst'.'\x1elatn.s5.o\x1f000\u00a0tūkst'" +
+			".'\x1elatn.s5.x\x1f000\u00a0tūkst'.'\x1elatn.s5.z\x1f000\u00a0tūkst'.'\x1elatn.s6.o\x1f0\u00a0milj'.'\x1elatn.s6.x\x1f0\u00a0milj'.'\x1el" +
+			"atn.s6.z\x1f0\u00a0milj'.'\x1elatn.s7.o\x1f00\u00a0milj'.'\x1elatn.s7.x\x1f00\u00a0milj'.'\x1elatn.s7.z\x1f00\u00a0milj'.'\x1elatn.s8.o\x1f" +
+			"000\u00a0milj'.'\x1elatn.s8.x\x1f000\u00a0milj'.'\x1elatn.s8.z\x1f000\u00a0milj'.'\x1elatn.s9.o\x1f0\u00a0mljrd'.'\x1elatn.s9.x\x1f0\u00a0ml" +
+			"jrd'.'\x1elatn.s9.z\x1f0\u00a0mljrd'.'\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##0.00" +
+			"\x1edeva.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b" +
+			"\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a00" +
+			"00T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edev" +
+			"a.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x" +
+			"\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edev" +
+			"a.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00" +
+			"G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s" +
+			"5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.S\x1f[#E0]\x1elatn.A\x1f¤#" +
+			",##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.g\x1f\u00a0" +
+			"\x1elatn.A\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.x\x1f¤\u00a000B\x1elatn.c11" +
+			".x\x1f¤\u00a0000B\x1elatn.c9.x\x1f¤\u00a00B\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}\u2009" +
+			"–\u2009{1}\x1elatn.c10.o\x1f00\u00a0милј'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0милј'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0мј'.'\u00a0" +
+			"¤\x1elatn.c11.x\x1f000\u00a0мј'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c13." +
+			"o\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0бил'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0б" +
+			"ил'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0илј'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0илј'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0илј'.'\u00a0¤\x1ela" +
+			"tn.c4.x\x1f00\u00a0илј'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0илј'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0илј'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0" +
+			"мил'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0мил'.'\u00a0¤" +
+			"\x1elatn.c8.o\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0милј'.'\u00a0¤\x1elatn.c9." +
+			"x\x1f0\u00a0милј'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 милијарда\x1elatn.l10.x\x1f00 милиј" +
+			"арди\x1elatn.l11.o\x1f000 милијарда\x1elatn.l11.x\x1f000 милијарди\x1elatn.l12.o\x1f0 бил" +
+			"ион\x1elatn.l12.x\x1f0 билиони\x1elatn.l13.o\x1f00 билион\x1elatn.l13.x\x1f00 билиони\x1elatn." +
+			"l14.o\x1f000 билион\x1elatn.l14.x\x1f000 билиони\x1elatn.l3.o\x1f0 илјада\x1elatn.l3.x\x1f0 илј" +
+			"ади\x1elatn.l4.o\x1f00 илјада\x1elatn.l4.x\x1f00 илјади\x1elatn.l5.o\x1f000 илјада\x1elatn.l5.x\x1f" +
+			"000 илјади\x1elatn.l6.o\x1f0 милион\x1elatn.l6.x\x1f0 милиони\x1elatn.l7.o\x1f00 милион\x1el" +
+			"atn.l7.x\x1f00 милиони\x1elatn.l8.o\x1f000 милион\x1elatn.l8.x\x1f000 милиони\x1elatn.l9.o\x1f0 м" +
+			"илијарда\x1elatn.l9.x\x1f0 милијарди\x1elatn.s10.o\x1f00\u00a0милј'.'\x1elatn.s10.x\x1f00\u00a0мил" +
+			"ј'.'\x1elatn.s11.o\x1f000\u00a0мј'.'\x1elatn.s11.x\x1f000\u00a0ми'.'\x1elatn.s12.o\x1f0\u00a0бил'.'\x1elatn.s12.x\x1f0\u00a0би" +
+			"л'.'\x1elatn.s13.o\x1f00\u00a0бил'.'\x1elatn.s13.x\x1f00\u00a0бил'.'\x1elatn.s14.o\x1f000\u00a0бил'.'\x1elatn.s14.x\x1f000" +
+			"\u00a0бил'.'\x1elatn.s3.o\x1f0\u00a0илј'.'\x1elatn.s3.x\x1f0\u00a0илј'.'\x1elatn.s4.o\x1f00\u00a0илј'.'\x1elatn.s4.x\x1f00\u00a0" +
+			"илј'.'\x1elatn.s5.o\x1f000\u00a0илј'.'\x1elatn.s5.x\x1f000\u00a0илј'.'\x1elatn.s6.o\x1f0\u00a0мил'.'\x1elatn.s6.x\x1f0\u00a0" +
+			"мил'.'\x1elatn.s7.o\x1f00\u00a0мил'.'\x1elatn.s7.x\x1f00\u00a0мил'.'\x1elatn.s8.o\x1f000\u00a0М\x1elatn.s8.x\x1f000\u00a0М\x1ela" +
+			"tn.s9.o\x1f0\u00a0милј'.'\x1elatn.s9.x\x1f0\u00a0милј'.'\x1elatn.~\x1f≈\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C" +
+			"\x1f¤#,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤00" +
+			"0B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14." +
+			"o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5" +
+			".o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8" +
+			".o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 ബില്യൺ\x1elatn.l" +
+			"10.x\x1f00 ബില്യൺ\x1elatn.l11.o\x1f000 ബില്യൺ\x1elatn.l11.x\x1f000 ബില്യൺ\x1el" +
+			"atn.l12.o\x1f0 ട്രില്യൺ\x1elatn.l12.x\x1f0 ട്രില്യൺ\x1elatn.l13.o\x1f00 ട്ര" +
+			"ില്യൺ\x1elatn.l13.x\x1f00 ട്രില്യൺ\x1elatn.l14.o\x1f000 ട്രില്യൺ\x1el" +
+			"atn.l14.x\x1f000 ട്രില്യൺ\x1elatn.l3.o\x1f0 ആയിരം\x1elatn.l3.x\x1f0 ആയിരം\x1el" +
+			"atn.l4.o\x1f00 ആയിരം\x1elatn.l4.x\x1f00 ആയിരം\x1elatn.l5.o\x1f000 ആയിരം\x1elatn.l5.x" +
+			"\x1f000 ആയിരം\x1elatn.l6.o\x1f0 ദശലക്ഷം\x1elatn.l6.x\x1f0 ദശലക്ഷം\x1elatn.l7" +
+			".o\x1f00 ദശലക്ഷം\x1elatn.l7.x\x1f00 ദശലക്ഷം\x1elatn.l8.o\x1f000 ദശലക്ഷം" +
+			"\x1elatn.l8.x\x1f000 ദശലക്ഷം\x1elatn.l9.o\x1f0 ബില്യൺ\x1elatn.l9.x\x1f0 ബില്യൺ" +
+			"\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1emlym.+\x1f" +
+			"+\x1emlym.-\x1f-\x1emlym.A\x1f¤#,##0.00;(¤#,##0.00)\x1emlym.B\x1f\u00a0\x1emlym.C\x1f¤#,##0.00\x1emlym.D\x1f#,##,##0.###\x1emlym.P" +
+			"\x1f#,##0%\x1emlym.R\x1f{0}-{1}\x1emlym.S\x1f#E0\x1emlym.Ux\x1f{0} {1}\x1emlym.X\x1f~{0}\x1emlym.b\x1f\u00a0\x1emlym.c10.o\x1f¤00B\x1emlym.c1" +
+			"0.x\x1f¤00B\x1emlym.c11.o\x1f¤000B\x1emlym.c11.x\x1f¤000B\x1emlym.c12.o\x1f¤0T\x1emlym.c12.x\x1f¤0T\x1emlym.c13.o\x1f¤00T\x1em" +
+			"lym.c13.x\x1f¤00T\x1emlym.c14.o\x1f¤000T\x1emlym.c14.x\x1f¤000T\x1emlym.c3.o\x1f¤0K\x1emlym.c3.x\x1f¤0K\x1emlym.c4.o\x1f¤00" +
+			"K\x1emlym.c4.x\x1f¤00K\x1emlym.c5.o\x1f¤000K\x1emlym.c5.x\x1f¤000K\x1emlym.c6.o\x1f¤0M\x1emlym.c6.x\x1f¤0M\x1emlym.c7.o\x1f¤00" +
+			"M\x1emlym.c7.x\x1f¤00M\x1emlym.c8.o\x1f¤000M\x1emlym.c8.x\x1f¤000M\x1emlym.c9.o\x1f¤0B\x1emlym.c9.x\x1f¤0B\x1emlym.d\x1f.\x1emlym." +
+			"e\x1fE\x1emlym.g\x1f,\x1emlym.i\x1f∞\x1emlym.l10.o\x1f00 ബില്യൺ\x1emlym.l10.x\x1f00 ബില്യൺ\x1emlym.l" +
+			"11.o\x1f000 ബില്യൺ\x1emlym.l11.x\x1f000 ബില്യൺ\x1emlym.l12.o\x1f0 ട്രില്യ" +
+			"ൺ\x1emlym.l12.x\x1f0 ട്രില്യൺ\x1emlym.l13.o\x1f00 ട്രില്യൺ\x1emlym.l13.x\x1f00 ട" +
+			"്രില്യൺ\x1emlym.l14.o\x1f000 ട്രില്യൺ\x1emlym.l14.x\x1f000 ട്രില്യ" +
+			"ൺ\x1emlym.l3.o\x1f0 ആയിരം\x1emlym.l3.x\x1f0 ആയിരം\x1emlym.l4.o\x1f00 ആയിരം\x1emlym.l4" +
+			".x\x1f00 ആയിരം\x1emlym.l5.o\x1f000 ആയിരം\x1emlym.l5.x\x1f000 ആയിരം\x1emlym.l6.o\x1f0 ദ" +
+			"ശലക്ഷം\x1emlym.l6.x\x1f0 ദശലക്ഷം\x1emlym.l7.o\x1f00 ദശലക്ഷം\x1emlym.l7." +
+			"x\x1f00 ദശലക്ഷം\x1emlym.l8.o\x1f000 ദശലക്ഷം\x1emlym.l8.x\x1f000 ദശലക്ഷം" +
+			"\x1emlym.l9.o\x1f0 ബില്യൺ\x1emlym.l9.x\x1f0 ബില്യൺ\x1emlym.m\x1f‰\x1emlym.n\x1fNaN\x1emlym.p\x1f%\x1eml" +
+			"ym.s10.o\x1f00B\x1emlym.s10.x\x1f00B\x1emlym.s11.o\x1f000B\x1emlym.s11.x\x1f000B\x1emlym.s12.x\x1f0T\x1emlym.s13.x\x1f00T\x1emlym.s1" +
+			"4.x\x1f000T\x1emlym.s3.x\x1f0K\x1emlym.s4.x\x1f00K\x1emlym.s5.x\x1f000K\x1emlym.s6.x\x1f0M\x1emlym.s7.x\x1f00M\x1emlym.s8.x\x1f000M\x1emly" +
+			"m.s9.o\x1f0B\x1emlym.s9.x\x1f0B\x1emlym.~\x1f~\x1elatn.c10.o\x1f00\u00a0тэрбум\u00a0¤\x1elatn.c10.x\x1f00\u00a0тэрбум\u00a0¤\x1e" +
+			"latn.c11.o\x1f000\u00a0тэрбум\u00a0¤\x1elatn.c11.x\x1f000\u00a0тэрбум\u00a0¤\x1elatn.c12.o\x1f0\u00a0их\u00a0наяд\u00a0" +
+			"¤\x1elatn.c12.x\x1f0\u00a0их\u00a0наяд\u00a0¤\x1elatn.c13.o\x1f00\u00a0их\u00a0наяд\u00a0¤\x1elatn.c13.x\x1f00\u00a0их\u00a0ная" +
+			"д\u00a0¤\x1elatn.c14.o\x1f000\u00a0их\u00a0наяд\u00a0¤\x1elatn.c14.x\x1f¤\u00a0000ИН\x1elatn.c3.o\x1f0\u00a0мян\u00a0¤\x1elatn.c3" +
+			".x\x1f0\u00a0мян\u00a0¤\x1elatn.c4.o\x1f00\u00a0мян\u00a0¤\x1elatn.c4.x\x1f00\u00a0мян\u00a0¤\x1elatn.c5.o\x1f000\u00a0мян\u00a0¤\x1elat" +
+			"n.c5.x\x1f000\u00a0мян\u00a0¤\x1elatn.c6.o\x1f0\u00a0сая\u00a0¤\x1elatn.c6.x\x1f0\u00a0сая\u00a0¤\x1elatn.c7.o\x1f00\u00a0сая\u00a0¤\x1e" +
+			"latn.c7.x\x1f00\u00a0сая\u00a0¤\x1elatn.c8.o\x1f000\u00a0сая\u00a0¤\x1elatn.c8.x\x1f000\u00a0сая\u00a0¤\x1elatn.c9.o\x1f0\u00a0тэр" +
+			"бум\u00a0¤\x1elatn.c9.x\x1f0\u00a0тэрбум\u00a0¤\x1elatn.l10.o\x1f00 тэрбум\x1elatn.l10.x\x1f00 тэрбум\x1el" +
+			"atn.l11.o\x1f000 тэрбум\x1elatn.l11.x\x1f000 тэрбум\x1elatn.l12.o\x1f0 их наяд\x1elatn.l12.x\x1f0 и" +
+			"х наяд\x1elatn.l13.o\x1f00 их наяд\x1elatn.l13.x\x1f00 их наяд\x1elatn.l14.o\x1f000 их наяд" +
+			"\x1elatn.l14.x\x1f000 их наяд\x1elatn.l3.o\x1f0 мянга\x1elatn.l3.x\x1f0 мянга\x1elatn.l4.o\x1f00 мянг" +
+			"а\x1elatn.l4.x\x1f00 мянга\x1elatn.l5.o\x1f000 мянга\x1elatn.l5.x\x1f000 мянга\x1elatn.l6.o\x1f0 сая\x1e" +
+			"latn.l6.x\x1f0 сая\x1elatn.l7.o\x1f00 сая\x1elatn.l7.x\x1f00 сая\x1elatn.l8.o\x1f000 сая\x1elatn.l8.x\x1f000 с" +
+			"ая\x1elatn.l9.o\x1f0 тэрбум\x1elatn.l9.x\x1f0 тэрбум\x1elatn.s10.o\x1f00\u00a0тэрбум\x1elatn.s10.x\x1f00" +
+			"\u00a0тэрбум\x1elatn.s11.o\x1f000\u00a0т'.'бум\x1elatn.s11.x\x1f000\u00a0т'.'бум\x1elatn.s12.o\x1f0\u00a0их\u00a0ная" +
+			"д\x1elatn.s12.x\x1f0\u00a0их\u00a0наяд\x1elatn.s13.o\x1f00\u00a0и'.'наяд\x1elatn.s13.x\x1f00\u00a0и'.'наяд\x1elatn.s" +
+			"14.o\x1f000\u00a0их\u00a0наяд\x1elatn.s14.x\x1f000\u00a0их\u00a0наяд\x1elatn.s3.o\x1f0\u00a0мян\x1elatn.s3.x\x1f0\u00a0мян\x1e" +
+			"latn.s4.o\x1f00\u00a0мян\x1elatn.s4.x\x1f00\u00a0мян\x1elatn.s5.o\x1f000\u00a0мян\x1elatn.s5.x\x1f000\u00a0мян\x1elatn.s6.o\x1f" +
+			"0\u00a0сая\x1elatn.s6.x\x1f0\u00a0сая\x1elatn.s7.o\x1f00\u00a0сая\x1elatn.s7.x\x1f00\u00a0сая\x1elatn.s8.o\x1f000\u00a0сая\x1ela" +
+			"tn.s8.x\x1f000\u00a0сая\x1elatn.s9.o\x1f0\u00a0тэрбум\x1elatn.s9.x\x1f0\u00a0тэрбум\x1ebeng.+\x1f+\x1ebeng.-\x1f-\x1ebeng.A" +
+			"\x1f¤\u00a0#,##0.00\x1ebeng.B\x1f\u00a0\x1ebeng.C\x1f¤\u00a0#,##0.00\x1ebeng.D\x1f#,##0.###\x1ebeng.P\x1f#,##0%\x1ebeng.R\x1f{0}–{1}\x1ebeng" +
+			".S\x1f#E0\x1ebeng.Ux\x1f{0} {1}\x1ebeng.X\x1f~{0}\x1ebeng.b\x1f\u00a0\x1ebeng.c10.x\x1f¤\u00a000G\x1ebeng.c11.x\x1f¤\u00a0000G\x1ebeng.c12.x\x1f¤" +
+			"\u00a00T\x1ebeng.c13.x\x1f¤\u00a000T\x1ebeng.c14.x\x1f¤\u00a0000T\x1ebeng.c3.x\x1f¤\u00a00K\x1ebeng.c4.x\x1f¤\u00a000K\x1ebeng.c5.x\x1f¤\u00a0000" +
+			"K\x1ebeng.c6.x\x1f¤\u00a00M\x1ebeng.c7.x\x1f¤\u00a000M\x1ebeng.c8.x\x1f¤\u00a0000M\x1ebeng.c9.x\x1f¤\u00a00G\x1ebeng.d\x1f.\x1ebeng.e\x1fE\x1ebeng." +
+			"g\x1f,\x1ebeng.i\x1f∞\x1ebeng.l10.x\x1f00G\x1ebeng.l11.x\x1f000G\x1ebeng.l12.x\x1f0T\x1ebeng.l13.x\x1f00T\x1ebeng.l14.x\x1f000T\x1ebeng." +
+			"l3.x\x1f0K\x1ebeng.l4.x\x1f00K\x1ebeng.l5.x\x1f000K\x1ebeng.l6.x\x1f0M\x1ebeng.l7.x\x1f00M\x1ebeng.l8.x\x1f000M\x1ebeng.l9.x\x1f0G\x1ebeng" +
+			".m\x1f‰\x1ebeng.n\x1fNaN\x1ebeng.p\x1f%\x1ebeng.s10.x\x1f00G\x1ebeng.s11.x\x1f000G\x1ebeng.s12.x\x1f0T\x1ebeng.s13.x\x1f00T\x1ebeng.s14." +
+			"x\x1f000T\x1ebeng.s3.x\x1f0K\x1ebeng.s4.x\x1f00K\x1ebeng.s5.x\x1f000K\x1ebeng.s6.x\x1f0M\x1ebeng.s7.x\x1f00M\x1ebeng.s8.x\x1f000M\x1ebeng." +
+			"s9.x\x1f0G\x1ebeng.~\x1f~\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##0.00;(¤#,##0.00)\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##0.00\x1ede" +
+			"va.D\x1f#,##,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b" +
+			"\x1f\u00a0\x1edeva.c10.o\x1f¤00\u00a0अब्ज\x1edeva.c10.x\x1f¤00\u00a0अब्ज\x1edeva.c11.o\x1f¤0\u00a0खर्व\x1edev" +
+			"a.c11.x\x1f¤0\u00a0खर्व\x1edeva.c12.o\x1f¤00\u00a0खर्व\x1edeva.c12.x\x1f¤00\u00a0खर्व\x1edeva.c13.o" +
+			"\x1f¤0\u00a0पद्म\x1edeva.c13.x\x1f¤0\u00a0पद्म\x1edeva.c14.o\x1f¤00\u00a0पद्म\x1edeva.c14.x\x1f¤00\u00a0प" +
+			"द्म\x1edeva.c3.o\x1f¤0\u00a0ह\x1edeva.c3.x\x1f¤0\u00a0ह\x1edeva.c4.o\x1f¤00\u00a0ह\x1edeva.c4.x\x1f¤00\u00a0ह\x1edeva.c5." +
+			"o\x1f¤0\u00a0लाख\x1edeva.c5.x\x1f¤0\u00a0लाख\x1edeva.c6.o\x1f¤00\u00a0लाख\x1edeva.c6.x\x1f¤00\u00a0लाख\x1ede" +
+			"va.c7.o\x1f¤0\u00a0कोटी\x1edeva.c7.x\x1f¤0\u00a0कोटी\x1edeva.c8.o\x1f¤00\u00a0कोटी\x1edeva.c8.x\x1f¤0" +
+			"0\u00a0कोटी\x1edeva.c9.o\x1f¤0\u00a0अब्ज\x1edeva.c9.x\x1f¤0\u00a0अब्ज\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g" +
+			"\x1f,\x1edeva.i\x1f∞\x1edeva.l10.o\x1f00 अब्ज\x1edeva.l10.x\x1f00 अब्ज\x1edeva.l11.o\x1f0 खर्व\x1ede" +
+			"va.l11.x\x1f0 खर्व\x1edeva.l12.o\x1f00 खर्व\x1edeva.l12.x\x1f00 खर्व\x1edeva.l13.o\x1f0 पद" +
+			"्म\x1edeva.l13.x\x1f0 पद्म\x1edeva.l14.o\x1f00 पद्म\x1edeva.l14.x\x1f00 पद्म\x1edeva.l3.o" +
+			"\x1f0 हजार\x1edeva.l3.x\x1f0 हजार\x1edeva.l4.o\x1f00 हजार\x1edeva.l4.x\x1f00 हजार\x1edev" +
+			"a.l5.o\x1f0 लाख\x1edeva.l5.x\x1f0 लाख\x1edeva.l6.o\x1f00 लाख\x1edeva.l6.x\x1f00 लाख\x1edeva.l7.o" +
+			"\x1f0 कोटी\x1edeva.l7.x\x1f0 कोटी\x1edeva.l8.o\x1f00 कोटी\x1edeva.l8.x\x1f00 कोटी\x1edev" +
+			"a.l9.o\x1f0 अब्ज\x1edeva.l9.x\x1f0 अब्ज\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.o\x1f00\u00a0अ" +
+			"ब्ज\x1edeva.s10.x\x1f00\u00a0अब्ज\x1edeva.s11.o\x1f0\u00a0खर्व\x1edeva.s11.x\x1f0\u00a0खर्व\x1edeva" +
+			".s12.o\x1f00\u00a0खर्व\x1edeva.s12.x\x1f00\u00a0खर्व\x1edeva.s13.o\x1f0\u00a0पद्म\x1edeva.s13.x\x1f0\u00a0प" +
+			"द्म\x1edeva.s14.o\x1f00\u00a0पद्म\x1edeva.s14.x\x1f00\u00a0पद्म\x1edeva.s3.o\x1f0\u00a0ह\x1edeva.s3.x\x1f0\u00a0" +
+			"ह\x1edeva.s4.o\x1f00\u00a0ह\x1edeva.s4.x\x1f00\u00a0ह\x1edeva.s5.o\x1f0\u00a0लाख\x1edeva.s5.x\x1f0\u00a0लाख\x1edeva.s6.o\x1f" +
+			"00\u00a0लाख\x1edeva.s6.x\x1f00\u00a0लाख\x1edeva.s7.o\x1f0\u00a0कोटी\x1edeva.s7.x\x1f0\u00a0कोटी\x1edeva.s" +
+			"8.o\x1f00\u00a0कोटी\x1edeva.s8.x\x1f00\u00a0कोटी\x1edeva.s9.o\x1f0\u00a0अब्ज\x1edeva.s9.x\x1f0\u00a0अब्" +
+			"ज\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.S\x1f[#E0]\x1el" +
+			"atn.c10.o\x1f¤00\u00a0अब्ज\x1elatn.c10.x\x1f¤00\u00a0अब्ज\x1elatn.c11.o\x1f¤0\u00a0खर्व\x1elatn.c11" +
+			".x\x1f¤0\u00a0खर्व\x1elatn.c12.o\x1f¤00\u00a0खर्व\x1elatn.c12.x\x1f¤00\u00a0खर्व\x1elatn.c13.o\x1f¤0\u00a0" +
+			"पद्म\x1elatn.c13.x\x1f¤0\u00a0पद्म\x1elatn.c14.o\x1f¤00\u00a0पद्म\x1elatn.c14.x\x1f¤00\u00a0पद्" +
+			"म\x1elatn.c3.o\x1f¤0\u00a0ह\x1elatn.c3.x\x1f¤0\u00a0ह\x1elatn.c4.o\x1f¤00\u00a0ह\x1elatn.c4.x\x1f¤00\u00a0ह\x1elatn.c5.o\x1f¤0\u00a0" +
+			"लाख\x1elatn.c5.x\x1f¤0\u00a0लाख\x1elatn.c6.o\x1f¤00\u00a0लाख\x1elatn.c6.x\x1f¤00\u00a0लाख\x1elatn.c7.o" +
+			"\x1f¤0\u00a0कोटी\x1elatn.c7.x\x1f¤0\u00a0कोटी\x1elatn.c8.o\x1f¤00\u00a0कोटी\x1elatn.c8.x\x1f¤00\u00a0को" +
+			"टी\x1elatn.c9.o\x1f¤0\u00a0अब्ज\x1elatn.c9.x\x1f¤0\u00a0अब्ज\x1elatn.l10.o\x1f00 अब्ज\x1elatn.l" +
+			"10.x\x1f00 अब्ज\x1elatn.l11.o\x1f0 खर्व\x1elatn.l11.x\x1f0 खर्व\x1elatn.l12.o\x1f00 खर्" +
+			"व\x1elatn.l12.x\x1f00 खर्व\x1elatn.l13.o\x1f0 पद्म\x1elatn.l13.x\x1f0 पद्म\x1elatn.l14.o\x1f00" +
+			" पद्म\x1elatn.l14.x\x1f00 पद्म\x1elatn.l3.o\x1f0 हजार\x1elatn.l3.x\x1f0 हजार\x1elatn." +
+			"l4.o\x1f00 हजार\x1elatn.l4.x\x1f00 हजार\x1elatn.l5.o\x1f0 लाख\x1elatn.l5.x\x1f0 लाख\x1elatn." +
+			"l6.o\x1f00 लाख\x1elatn.l6.x\x1f00 लाख\x1elatn.l7.o\x1f0 कोटी\x1elatn.l7.x\x1f0 कोटी\x1elatn." +
+			"l8.o\x1f00 कोटी\x1elatn.l8.x\x1f00 कोटी\x1elatn.l9.o\x1f0 अब्ज\x1elatn.l9.x\x1f0 अब्ज" +
+			"\x1elatn.s10.o\x1f00\u00a0अब्ज\x1elatn.s10.x\x1f00\u00a0अब्ज\x1elatn.s11.o\x1f0\u00a0खर्व\x1elatn.s11.x\x1f0" +
+			"\u00a0खर्व\x1elatn.s12.o\x1f00\u00a0खर्व\x1elatn.s12.x\x1f00\u00a0खर्व\x1elatn.s13.o\x1f0\u00a0पद्म" +
+			"\x1elatn.s13.x\x1f0\u00a0पद्म\x1elatn.s14.o\x1f00\u00a0पद्म\x1elatn.s14.x\x1f00\u00a0पद्म\x1elatn.s3.o\x1f0\u00a0" +
+			"ह\x1elatn.s3.x\x1f0\u00a0ह\x1elatn.s4.o\x1f00\u00a0ह\x1elatn.s4.x\x1f00\u00a0ह\x1elatn.s5.o\x1f0\u00a0लाख\x1elatn.s5.x\x1f0\u00a0ल" +
+			"ाख\x1elatn.s6.o\x1f00\u00a0लाख\x1elatn.s6.x\x1f00\u00a0लाख\x1elatn.s7.o\x1f0\u00a0कोटी\x1elatn.s7.x\x1f0\u00a0क" +
+			"ोटी\x1elatn.s8.o\x1f00\u00a0कोटी\x1elatn.s8.x\x1f00\u00a0कोटी\x1elatn.s9.o\x1f0\u00a0अब्ज\x1elatn.s" +
+			"9.x\x1f0\u00a0अब्ज\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00B\x1elatn.c11.x" +
+			"\x1f¤000B\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c" +
+			"5.x\x1f¤000K\x1elatn.c6.x\x1f¤0J\x1elatn.c7.x\x1f¤00J\x1elatn.c8.x\x1f¤000J\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f00 bilion\x1el" +
+			"atn.l11.x\x1f000 bilion\x1elatn.l12.x\x1f0 trilion\x1elatn.l13.x\x1f00 trilion\x1elatn.l14.x\x1f000 trilion\x1elatn.l3.x" +
+			"\x1f0 ribu\x1elatn.l4.x\x1f00 ribu\x1elatn.l5.x\x1f000 ribu\x1elatn.l6.x\x1f0 juta\x1elatn.l7.x\x1f00 juta\x1elatn.l8.x\x1f000 ju" +
+			"ta\x1elatn.l9.x\x1f0 bilion\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s6.x\x1f0J\x1elatn.s7.x\x1f00J\x1elatn.s8.x\x1f000J\x1el" +
+			"atn.s9.x\x1f0B\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#" +
+			",##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uf\x1f{0} {1}\x1elatn.Um\x1f{0} {1}\x1elatn.Uo\x1f{0} {1}\x1elatn.Ut\x1f{0} {1}\x1elatn.A" +
+			"\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0} - {1" +
+			"}\x1elatn.Ux\x1f{1} {0}\x1elatn.c10.x\x1fဋေ\u00a00\u00a0ထ\u00a0¤\x1elatn.c11.x\x1fဋေ\u00a00\u00a0သ\u00a0¤\x1elatn.c12.x\x1fဋေ\u00a0" +
+			"0\u00a0သိန်း\u00a0¤\x1elatn.c13.x\x1fဋေ\u00a00\u00a0သန်း\u00a0¤\x1elatn.c14.x\x1f0\u00a0ကောဋိ\u00a0¤\x1e" +
+			"latn.c3.x\x1f0\u00a0ထောင်\u00a0¤\x1elatn.c4.x\x1f0\u00a0သောင်း\u00a0¤\x1elatn.c5.x\x1f0\u00a0သိန်း" +
+			"\u00a0¤\x1elatn.c6.x\x1f0\u00a0သန်း\u00a0¤\x1elatn.c7.x\x1f0\u00a0ကုဋေ\u00a0¤\x1elatn.c8.x\x1f00\u00a0ကုဋေ\u00a0¤\x1e" +
+			"latn.c9.x\x1f000\u00a0ဋေ\u00a0¤\x1elatn.l10.x\x1f0000 ကုဋေ\x1elatn.l11.x\x1fကုဋေ 0 သောင်" +
+			"း\x1elatn.l12.x\x1fကုဋေ 0 သိန်း\x1elatn.l13.x\x1fကုဋေ 0 သန်း\x1elatn.l14.x\x1f" +
+			"0 ကောဋိ\x1elatn.l3.x\x1f0 ထောင်\x1elatn.l4.x\x1f0 သောင်း\x1elatn.l5.x\x1f0 သိန" +
+			"်း\x1elatn.l6.x\x1f0 သန်း\x1elatn.l7.x\x1f0 ကုဋေ\x1elatn.l8.x\x1f00 ကုဋေ\x1elatn.l9.x\x1f000" +
+			" ကုဋေ\x1elatn.n\x1fဂဏန်းမဟုတ်သော\x1elatn.s10.x\x1fဋေ\u00a00\u00a0ထ\x1elatn.s11." +
+			"x\x1fဋေ\u00a00\u00a0သ\x1elatn.s12.x\x1fဋေ\u00a00\u00a0သိန်း\x1elatn.s13.x\x1fဋေ\u00a00\u00a0သန်း\x1elatn.s" +
+			"14.x\x1f0\u00a0ကောဋိ\x1elatn.s3.x\x1f0\u00a0ထောင်\x1elatn.s4.x\x1f0\u00a0သောင်း\x1elatn.s5.x\x1f0" +
+			"\u00a0သိန်း\x1elatn.s6.x\x1f0\u00a0သန်း\x1elatn.s7.x\x1f0\u00a0ကုဋေ\x1elatn.s8.x\x1f00\u00a0ကုဋေ" +
+			"\x1elatn.s9.x\x1f000\u00a0ဋေ\x1emymr.+\x1f+\x1emymr.-\x1f-\x1emymr.A\x1f¤\u00a0#,##0.00\x1emymr.B\x1f\u00a0\x1emymr.C\x1f#,##0.00\u00a0¤\x1emymr." +
+			"D\x1f#,##0.###\x1emymr.P\x1f#,##0%\x1emymr.R\x1f{0} - {1}\x1emymr.S\x1f#E0\x1emymr.Ux\x1f{1} {0}\x1emymr.X\x1f~{0}\x1emymr.b\x1f\u00a0\x1emymr" +
+			".c10.x\x1fဋေ\u00a00\u00a0ထ\u00a0¤\x1emymr.c11.x\x1fဋေ\u00a00\u00a0သ\u00a0¤\x1emymr.c12.x\x1fဋေ\u00a00\u00a0သိန်း\u00a0¤" +
+			"\x1emymr.c13.x\x1fဋေ\u00a00\u00a0သန်း\u00a0¤\x1emymr.c14.x\x1f0\u00a0ကောဋိ\u00a0¤\x1emymr.c3.x\x1f0\u00a0ထော" +
+			"င်\u00a0¤\x1emymr.c4.x\x1f0\u00a0သောင်း\u00a0¤\x1emymr.c5.x\x1f0\u00a0သိန်း\u00a0¤\x1emymr.c6.x\x1f0\u00a0သ" +
+			"န်း\u00a0¤\x1emymr.c7.x\x1f0\u00a0ကုဋေ\u00a0¤\x1emymr.c8.x\x1f00\u00a0ကုဋေ\u00a0¤\x1emymr.c9.x\x1f000\u00a0ဋေ" +
+			"\u00a0¤\x1emymr.d\x1f.\x1emymr.e\x1fE\x1emymr.g\x1f,\x1emymr.i\x1f∞\x1emymr.l10.x\x1f0000 ကုဋေ\x1emymr.l11.x\x1fကုဋေ " +
+			"0 သောင်း\x1emymr.l12.x\x1fကုဋေ 0 သိန်း\x1emymr.l13.x\x1fကုဋေ 0 သန်" +
+			"း\x1emymr.l14.x\x1f0 ကောဋိ\x1emymr.l3.x\x1f0 ထောင်\x1emymr.l4.x\x1f0 သောင်း\x1emymr" +
+			".l5.x\x1f0 သိန်း\x1emymr.l6.x\x1f0 သန်း\x1emymr.l7.x\x1f0 ကုဋေ\x1emymr.l8.x\x1f00 ကုဋ" +
+			"ေ\x1emymr.l9.x\x1f000 ကုဋေ\x1emymr.m\x1f‰\x1emymr.n\x1fဂဏန်းမဟုတ်သော\x1emymr.p\x1f" +
+			"%\x1emymr.s10.x\x1fဋေ\u00a00\u00a0ထ\x1emymr.s11.x\x1fဋေ\u00a00\u00a0သ\x1emymr.s12.x\x1fဋေ\u00a00\u00a0သိန်း\x1emymr" +
+			".s13.x\x1fဋေ\u00a00\u00a0သန်း\x1emymr.s14.x\x1f0\u00a0ကောဋိ\x1emymr.s3.x\x1f0\u00a0ထောင်\x1emymr.s" +
+			"4.x\x1f0\u00a0သောင်း\x1emymr.s5.x\x1f0\u00a0သိန်း\x1emymr.s6.x\x1f0\u00a0သန်း\x1emymr.s7.x\x1f0\u00a0က" +
+			"ုဋေ\x1emymr.s8.x\x1f00\u00a0ကုဋေ\x1emymr.s9.x\x1f000\u00a0ဋေ\x1emymr.~\x1f~\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabe" +
+			"xt.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext." +
+			"S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000" +
+			"G\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext." +
+			"c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000" +
+			"M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1ear" +
+			"abext.l14.x\x1f000T\x1earabext.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x" +
+			"\x1f00M\x1earabext.l8.x\x1f000M\x1earabext.l9.x\x1f0G\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1eara" +
 			"bext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f000K\x1earabext.s6." +
-			"x\x1f0M\x1earabext.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1earabext.~\x1f~\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e-\x1elatn" +
-			".A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤" +
-			"000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c1" +
-			"4.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c" +
-			"5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c" +
-			"8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 Bíliọn\x1elatn.l10.x\x1f00 Bíliọn\x1elatn.l1" +
-			"1.o\x1f000 Bíliọn\x1elatn.l11.x\x1f000 Bíliọn\x1elatn.l12.o\x1f0 Tríliọn\x1elatn.l12.x\x1f0 Tríliọn\x1elatn." +
-			"l13.o\x1f00 Tríliọn\x1elatn.l13.x\x1f00 Tríliọn\x1elatn.l14.o\x1f000 Tríliọn\x1elatn.l14.x\x1f000 Tríliọn" +
-			"\x1elatn.l3.o\x1f0 Taúzan\x1elatn.l3.x\x1f0 Taúzan\x1elatn.l4.o\x1f00 Taúzan\x1elatn.l4.x\x1f00 Taúzan\x1elatn.l5.o\x1f000" +
-			" Taúzan\x1elatn.l5.x\x1f000 Taúzan\x1elatn.l6.o\x1f0 Míliọn\x1elatn.l6.x\x1f0 Míliọn\x1elatn.l7.o\x1f00 Míliọ" +
-			"n\x1elatn.l7.x\x1f00 Míliọn\x1elatn.l8.o\x1f000 Míliọn\x1elatn.l8.x\x1f000 Míliọn\x1elatn.l9.o\x1f0 Bíliọn\x1el" +
-			"atn.l9.x\x1f0 Bíliọn\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1e" +
-			"latn.s9.x\x1f0B\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0mld\u00a0¤\x1el" +
-			"atn.c10.m\x1f00\u00a0mld\u00a0¤\x1elatn.c10.o\x1f00\u00a0mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld\u00a0¤\x1elatn" +
-			".c11.m\x1f000\u00a0mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld\u00a0¤\x1elatn.c12.f\x1f0\u00a0bln\u00a0¤\x1elatn.c" +
-			"12.m\x1f0\u00a0bln\u00a0¤\x1elatn.c12.o\x1f0\u00a0bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0bln\u00a0¤\x1elatn.c13.f\x1f00\u00a0bln\u00a0¤\x1elatn.c13.m\x1f00" +
-			"\u00a0bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0bln\u00a0¤\x1elatn.c14.f\x1f000\u00a0bln\u00a0¤\x1elatn.c14.m\x1f000\u00a0" +
-			"bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0bln\u00a0¤\x1elatn.c3.f\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0tys" +
-			"'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0t" +
-			"ys'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.m\x1f" +
-			"000\u00a0tys'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mln\u00a0¤\x1elatn.c6" +
-			".m\x1f0\u00a0mln\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.f\x1f00\u00a0mln\u00a0¤\x1elatn.c7.m\x1f00\u00a0mln\u00a0" +
-			"¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.f\x1f000\u00a0mln\u00a0¤\x1elatn.c8.m\x1f000\u00a0mln\u00a0¤\x1elat" +
-			"n.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld\u00a0¤\x1elatn.c9.m\x1f0\u00a0mld\u00a0¤\x1elatn.c9.o\x1f0" +
-			"\u00a0mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 miliardy\x1elatn.l10.m\x1f00 miliardó" +
-			"w\x1elatn.l10.o\x1f00 miliard\x1elatn.l10.x\x1f00 miliarda\x1elatn.l11.f\x1f000 miliardy\x1elatn.l11.m\x1f000 miliardów" +
-			"\x1elatn.l11.o\x1f000 miliard\x1elatn.l11.x\x1f000 miliarda\x1elatn.l12.f\x1f0 biliony\x1elatn.l12.m\x1f0 bilionów\x1elatn" +
-			".l12.o\x1f0 bilion\x1elatn.l12.x\x1f0 biliona\x1elatn.l13.f\x1f00 biliony\x1elatn.l13.m\x1f00 bilionów\x1elatn.l13.o\x1f00" +
-			" bilion\x1elatn.l13.x\x1f00 biliona\x1elatn.l14.f\x1f000 biliony\x1elatn.l14.m\x1f000 bilionów\x1elatn.l14.o\x1f000 bil" +
-			"ion\x1elatn.l14.x\x1f000 biliona\x1elatn.l3.f\x1f0 tysiące\x1elatn.l3.m\x1f0 tysięcy\x1elatn.l3.o\x1f0 tysiąc\x1elatn.l3" +
-			".x\x1f0 tysiąca\x1elatn.l4.f\x1f00 tysiące\x1elatn.l4.m\x1f00 tysięcy\x1elatn.l4.o\x1f00 tysiąc\x1elatn.l4.x\x1f00 tysi" +
-			"ąca\x1elatn.l5.f\x1f000 tysiące\x1elatn.l5.m\x1f000 tysięcy\x1elatn.l5.o\x1f000 tysiąc\x1elatn.l5.x\x1f000 tysiąca\x1e" +
-			"latn.l6.f\x1f0 miliony\x1elatn.l6.m\x1f0 milionów\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 miliona\x1elatn.l7.f\x1f00 mi" +
-			"liony\x1elatn.l7.m\x1f00 milionów\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 miliona\x1elatn.l8.f\x1f000 miliony\x1elatn" +
-			".l8.m\x1f000 milionów\x1elatn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 miliona\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.m\x1f0 " +
-			"miliardów\x1elatn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 miliarda\x1elatn.s10.f\x1f00\u00a0mld\x1elatn.s10.m\x1f00\u00a0mld\x1elatn.s" +
-			"10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.f\x1f000\u00a0mld\x1elatn.s11.m\x1f000\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn" +
-			".s11.x\x1f000\u00a0mld\x1elatn.s12.f\x1f0\u00a0bln\x1elatn.s12.m\x1f0\u00a0bln\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn.s13" +
-			".f\x1f00\u00a0bln\x1elatn.s13.m\x1f00\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14.f\x1f000\u00a0bln\x1elatn.s14" +
-			".m\x1f000\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0bln\x1elatn.s3.f\x1f0\u00a0tys'.'\x1elatn.s3.m\x1f0\u00a0tys'.'\x1elatn" +
-			".s3.o\x1f0\u00a0tys'.'\x1elatn.s3.x\x1f0\u00a0tys'.'\x1elatn.s4.f\x1f00\u00a0tys'.'\x1elatn.s4.m\x1f00\u00a0tys'.'\x1elatn.s4.o\x1f00\u00a0tys'" +
-			".'\x1elatn.s4.x\x1f00\u00a0tys'.'\x1elatn.s5.f\x1f000\u00a0tys'.'\x1elatn.s5.m\x1f000\u00a0tys'.'\x1elatn.s5.o\x1f000\u00a0tys'.'\x1elatn.s" +
-			"5.x\x1f000\u00a0tys'.'\x1elatn.s6.f\x1f0\u00a0mln\x1elatn.s6.m\x1f0\u00a0mln\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.f\x1f00" +
-			"\u00a0mln\x1elatn.s7.m\x1f00\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.f\x1f000\u00a0mln\x1elatn.s8.m\x1f000\u00a0ml" +
-			"n\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.f\x1f0\u00a0mld\x1elatn.s9.m\x1f0\u00a0mld\x1elatn.s9.o\x1f0\u00a0mld\x1elatn." +
-			"s9.x\x1f0\u00a0mld\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C" +
-			"\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤#,##0.00;(¤#,#" +
-			"#0.00)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–" +
-			"{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.o\x1f¤\u00a000B\x1earabext.c" +
-			"10.x\x1f¤\u00a000B\x1earabext.c11.o\x1f¤\u00a0000G\x1earabext.c11.x\x1f¤\u00a0000B\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤" +
-			"\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earab" +
-			"ext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.o\x1f¤\u00a00B\x1earabext.c9.x\x1f¤\u00a0" +
-			"0B\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1earabext.l10.o\x1f00 بیلیونه\x1eara" +
-			"bext.l10.x\x1f00 بیلیونه\x1earabext.l11.o\x1f000 بیلیونه\x1earabext.l11.x\x1f000 بیلیونه\x1ea" +
-			"rabext.l12.o\x1f0 ټریلیونه\x1earabext.l12.x\x1f0 ټریلیونه\x1earabext.l13.o\x1f00 ټریلیون" +
-			"ه\x1earabext.l13.x\x1f00 ټریلیونه\x1earabext.l14.o\x1f000 ټریلیونه\x1earabext.l14.x\x1f000 ټری" +
-			"لیونه\x1earabext.l3.o\x1f0 زره\x1earabext.l3.x\x1f0 زره\x1earabext.l4.o\x1f00 زره\x1earabext.l4.x\x1f00 ز" +
-			"ره\x1earabext.l5.o\x1f000 زره\x1earabext.l5.x\x1f000 زره\x1earabext.l6.o\x1f0 میلیونه\x1earabext.l6.x\x1f" +
-			"0 میلیونه\x1earabext.l7.o\x1f00 میلیونه\x1earabext.l7.x\x1f00 میلیونه\x1earabext.l8.o\x1f000 " +
-			"میلیونه\x1earabext.l8.x\x1f000 میلیونه\x1earabext.l9.o\x1f0 بیلیونه\x1earabext.l9.x\x1f0 بی" +
-			"لیونه\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.s10.o\x1f00B\x1earabext.s10.x\x1f00B\x1earabext.s" +
-			"11.o\x1f000G\x1earabext.s11.x\x1f000B\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.o\x1f" +
-			"0\u00a0زره\x1earabext.s3.x\x1f0\u00a0زره\x1earabext.s4.o\x1f00\u00a0زره\x1earabext.s4.x\x1f00\u00a0زره\x1earabext.s5.o\x1f00" +
-			"0\u00a0زره\x1earabext.s5.x\x1f000\u00a0زره\x1earabext.s6.o\x1f0\u00a0میلیونه\x1earabext.s6.x\x1f0\u00a0میلیونه" +
-			"\x1earabext.s7.o\x1f00\u00a0میلیونه\x1earabext.s7.x\x1f00\u00a0میلیونه\x1earabext.s8.o\x1f000\u00a0میلیونه" +
-			"\x1earabext.s8.x\x1f000M\x1earabext.s9.o\x1f0B\x1earabext.s9.x\x1f0B\x1earabext.~\x1f~\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e−\x1elatn.A\x1f" +
-			"¤#,##0.00;(¤#,##0.00)\x1elatn.c10.o\x1f¤\u00a000B\x1elatn.c10.x\x1f¤\u00a000B\x1elatn.c11.o\x1f¤\u00a0000G\x1elatn.c11.x\x1f¤\u00a0" +
-			"000B\x1elatn.c9.o\x1f¤\u00a00B\x1elatn.c9.x\x1f¤\u00a00B\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 بیلیونه\x1elatn.l10.x" +
-			"\x1f00 بیلیونه\x1elatn.l11.o\x1f000 بیلیونه\x1elatn.l11.x\x1f000 بیلیونه\x1elatn.l12.o\x1f0 ټر" +
-			"یلیونه\x1elatn.l12.x\x1f0 ټریلیونه\x1elatn.l13.o\x1f00 ټریلیونه\x1elatn.l13.x\x1f00 ټریل" +
-			"یونه\x1elatn.l14.o\x1f000 ټریلیونه\x1elatn.l14.x\x1f000 ټریلیونه\x1elatn.l3.o\x1f0 زره\x1elatn" +
-			".l3.x\x1f0 زره\x1elatn.l4.o\x1f00 زره\x1elatn.l4.x\x1f00 زره\x1elatn.l5.o\x1f000 زره\x1elatn.l5.x\x1f000 زره" +
-			"\x1elatn.l6.o\x1f0 میلیونه\x1elatn.l6.x\x1f0 میلیونه\x1elatn.l7.o\x1f00 میلیونه\x1elatn.l7.x\x1f00 " +
-			"میلیونه\x1elatn.l8.o\x1f000 میلیونه\x1elatn.l8.x\x1f000 میلیونه\x1elatn.l9.o\x1f0 بیلیون" +
-			"ه\x1elatn.l9.x\x1f0 بیلیونه\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000G\x1elatn.s11.x\x1f000B\x1elatn" +
-			".s3.o\x1f0\u00a0زره\x1elatn.s3.x\x1f0\u00a0زره\x1elatn.s4.o\x1f00\u00a0زره\x1elatn.s4.x\x1f00\u00a0زره\x1elatn.s5.o\x1f000\u00a0زر" +
-			"ه\x1elatn.s5.x\x1f000\u00a0زره\x1elatn.s6.o\x1f0\u00a0میلیونه\x1elatn.s6.x\x1f0\u00a0میلیونه\x1elatn.s7.o\x1f00\u00a0م" +
-			"یلیونه\x1elatn.s7.x\x1f00\u00a0میلیونه\x1elatn.s8.o\x1f000\u00a0میلیونه\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0" +
-			"B\x1elatn.c10.o\x1f¤\u00a000\u00a0bi\x1elatn.c10.x\x1f¤\u00a000\u00a0bi\x1elatn.c11.o\x1f¤\u00a0000\u00a0bi\x1elatn.c11.x\x1f¤\u00a0000\u00a0bi\x1elatn" +
-			".c12.o\x1f¤\u00a00\u00a0tri\x1elatn.c12.x\x1f¤\u00a00\u00a0tri\x1elatn.c13.o\x1f¤\u00a000\u00a0tri\x1elatn.c13.x\x1f¤\u00a000\u00a0tri\x1elatn.c14.o" +
-			"\x1f¤\u00a0000\u00a0tri\x1elatn.c14.x\x1f¤\u00a0000\u00a0tri\x1elatn.c3.o\x1f¤\u00a00\u00a0mil\x1elatn.c3.x\x1f¤\u00a00\u00a0mil\x1elatn.c4.o\x1f¤\u00a000" +
-			"\u00a0mil\x1elatn.c4.x\x1f¤\u00a000\u00a0mil\x1elatn.c5.o\x1f¤\u00a0000\u00a0mil\x1elatn.c5.x\x1f¤\u00a0000\u00a0mil\x1elatn.c6.o\x1f¤\u00a00\u00a0mi\x1ela" +
-			"tn.c6.x\x1f¤\u00a00\u00a0mi\x1elatn.c7.o\x1f¤\u00a000\u00a0mi\x1elatn.c7.x\x1f¤\u00a000\u00a0mi\x1elatn.c8.o\x1f¤\u00a0000\u00a0mi\x1elatn.c8.x\x1f¤\u00a0" +
-			"000\u00a0mi\x1elatn.c9.o\x1f¤\u00a00\u00a0bi\x1elatn.c9.x\x1f¤\u00a00\u00a0bi\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 bilhão\x1elatn.l10" +
-			".x\x1f00 bilhões\x1elatn.l11.o\x1f000 bilhão\x1elatn.l11.x\x1f000 bilhões\x1elatn.l12.o\x1f0 trilhão\x1elatn.l12.x\x1f0" +
-			" trilhões\x1elatn.l13.o\x1f00 trilhão\x1elatn.l13.x\x1f00 trilhões\x1elatn.l14.o\x1f000 trilhão\x1elatn.l14.x\x1f000" +
-			" trilhões\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1elatn.l4.o\x1f00 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.o\x1f000 mil\x1el" +
-			"atn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 milhão\x1elatn.l6.x\x1f0 milhões\x1elatn.l7.o\x1f00 milhão\x1elatn.l7.x\x1f00 milh" +
-			"ões\x1elatn.l8.o\x1f000 milhão\x1elatn.l8.x\x1f000 milhões\x1elatn.l9.o\x1f0 bilhão\x1elatn.l9.x\x1f0 bilhões\x1elatn." +
-			"s10.o\x1f00\u00a0bi\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.o\x1f000\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.o\x1f0\u00a0tri\x1elatn.s12." +
-			"x\x1f0\u00a0tri\x1elatn.s13.o\x1f00\u00a0tri\x1elatn.s13.x\x1f00\u00a0tri\x1elatn.s14.o\x1f000\u00a0tri\x1elatn.s14.x\x1f000\u00a0tri\x1elatn.s3.o" +
-			"\x1f0\u00a0mil\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.o\x1f00\u00a0mil\x1elatn.s4.x\x1f00\u00a0mil\x1elatn.s5.o\x1f000\u00a0mil\x1elatn.s5.x\x1f000\u00a0m" +
-			"il\x1elatn.s6.o\x1f0\u00a0mi\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s7.o\x1f00\u00a0mi\x1elatn.s7.x\x1f00\u00a0mi\x1elatn.s8.o\x1f000\u00a0mi\x1elatn.s8.x" +
-			"\x1f000\u00a0mi\x1elatn.s9.o\x1f0\u00a0bi\x1elatn.s9.x\x1f0\u00a0bi\x1eg\x1f1\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0" +
-			".00\u00a0¤\x1elatn.R\x1f{0} - {1}\x1elatn.c10.o\x1f00\u00a0mM\u00a0¤\x1elatn.c10.x\x1f00\u00a0mM\u00a0¤\x1elatn.c11.o\x1f000\u00a0mM\u00a0¤\x1elatn" +
-			".c11.x\x1f000\u00a0mM\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bi\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bi\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bi\u00a0¤\x1elatn.c13.x\x1f00" +
-			"\u00a0Bi\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bi\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bi\u00a0¤\x1elatn.c3.o\x1f0\u00a0mil\u00a0¤\x1elatn.c3.x\x1f0\u00a0mil\u00a0¤" +
-			"\x1elatn.c4.o\x1f00\u00a0mil\u00a0¤\x1elatn.c4.x\x1f00\u00a0mil\u00a0¤\x1elatn.c5.o\x1f000\u00a0mil\u00a0¤\x1elatn.c5.x\x1f000\u00a0mil\u00a0¤\x1elatn." +
-			"c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1ela" +
-			"tn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0\u00a0mM\u00a0¤\x1elatn.c9.x\x1f0\u00a0mM\u00a0¤\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 mil milhões\x1e" +
-			"latn.l10.x\x1f00 mil milhões\x1elatn.l11.o\x1f000 mil milhões\x1elatn.l11.x\x1f000 mil milhões\x1elatn.l12.o\x1f0 " +
-			"bilião\x1elatn.l12.x\x1f0 biliões\x1elatn.l13.o\x1f00 biliões\x1elatn.l13.x\x1f00 biliões\x1elatn.l14.o\x1f000 biliõ" +
-			"es\x1elatn.l14.x\x1f000 biliões\x1elatn.l7.o\x1f00 milhões\x1elatn.l8.o\x1f000 milhões\x1elatn.l9.o\x1f0 mil milhões" +
-			"\x1elatn.l9.x\x1f0 mil milhões\x1elatn.s10.o\x1f00\u00a0mM\x1elatn.s10.x\x1f00\u00a0mM\x1elatn.s11.o\x1f000\u00a0mM\x1elatn.s11.x\x1f000\u00a0" +
-			"mM\x1elatn.s12.o\x1f0\u00a0Bi\x1elatn.s12.x\x1f0\u00a0Bi\x1elatn.s13.o\x1f00\u00a0Bi\x1elatn.s13.x\x1f00\u00a0Bi\x1elatn.s14.o\x1f000\u00a0Bi\x1elatn" +
-			".s14.x\x1f000\u00a0Bi\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1elatn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1ela" +
-			"tn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0\u00a0mM\x1elatn.s9.x\x1f0\u00a0mM\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.c10.x\x1f¤00" +
-			"M'.'M'.'\x1elatn.c11.x\x1f¤000M'.'M'.'\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤" +
-			"0M\x1elatn.c4.x\x1f¤00M\x1elatn.c5.x\x1f¤000M\x1elatn.c6.x\x1f¤0MM\x1elatn.c7.x\x1f¤00MM\x1elatn.c8.x\x1f¤000MM\x1elatn.c9.x" +
-			"\x1f¤0M'.'M'.'\x1elatn.l10.x\x1f00 mil de millones\x1elatn.l11.x\x1f000 mil de millones\x1elatn.l12.x\x1f0 trillón\x1e" +
-			"latn.l13.x\x1f00 trillones\x1elatn.l14.x\x1f000 trillones\x1elatn.l3.x\x1f0 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.x\x1f000 " +
-			"mil\x1elatn.l6.x\x1f0 millón\x1elatn.l7.x\x1f00 millones\x1elatn.l8.x\x1f000 millón\x1elatn.l9.x\x1f0 mil de millones\x1e" +
-			"latn.s3.x\x1f0M\x1elatn.s4.x\x1f00M\x1elatn.s5.x\x1f000M\x1elatn.s6.x\x1f0MM\x1elatn.s7.x\x1f00MM\x1elatn.s8.x\x1f000MM\x1edeva.+\x1f+\x1e" +
-			"deva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##0.00\x1edeva.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R" +
-			"\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a000" +
-			"0G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1ed" +
-			"eva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f" +
-			".\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva." +
-			"l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1ed" +
-			"eva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13" +
-			".x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva" +
-			".s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤0" +
-			"0\u00a0mia'.'\x1elatn.c10.x\x1f¤00\u00a0mia'.'\x1elatn.c11.o\x1f¤000\u00a0mia'.'\x1elatn.c11.x\x1f¤000\u00a0mia'.'\x1elatn.c12.o\x1f¤" +
-			"0\u00a0biu'.'\x1elatn.c12.x\x1f¤0\u00a0biu'.'\x1elatn.c13.o\x1f¤00\u00a0biu'.'\x1elatn.c13.x\x1f¤00\u00a0biu'.'\x1elatn.c14.o\x1f¤00" +
-			"0T\u00a0biu'.'\x1elatn.c14.x\x1f¤000\u00a0biu'.'\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0\x1elatn.c5.o\x1f0\x1e" +
-			"latn.c5.x\x1f0\x1elatn.c6.o\x1f¤0\u00a0miu'.'\x1elatn.c6.x\x1f¤0\u00a0miu'.'\x1elatn.c7.o\x1f¤00\u00a0miu'.'\x1elatn.c7.x\x1f¤00\u00a0m" +
-			"iu'.'\x1elatn.c8.o\x1f¤000\u00a0miu'.'\x1elatn.c8.x\x1f¤000\u00a0miu'.'\x1elatn.c9.o\x1f¤0\u00a0mia'.'\x1elatn.c9.x\x1f¤0\u00a0mia'." +
-			"'\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 milliardas\x1elatn.l10.x\x1f00 milliardas\x1elatn.l11.o\x1f000 milliarda" +
-			"s\x1elatn.l11.x\x1f000 milliardas\x1elatn.l12.o\x1f0 billiun\x1elatn.l12.x\x1f0 billiuns\x1elatn.l13.o\x1f00 billiuns\x1ela" +
-			"tn.l13.x\x1f00 billiuns\x1elatn.l14.o\x1f000 billiuns\x1elatn.l14.x\x1f000 billiuns\x1elatn.l3.o\x1f0\x1elatn.l3.x\x1f0\x1elat" +
-			"n.l4.o\x1f0\x1elatn.l4.x\x1f0\x1elatn.l5.o\x1f0\x1elatn.l5.x\x1f0\x1elatn.l6.o\x1f0 milliun\x1elatn.l6.x\x1f0 milliuns\x1elatn.l7.o\x1f" +
-			"00 milliuns\x1elatn.l7.x\x1f00 milliuns\x1elatn.l8.o\x1f000 milliuns\x1elatn.l8.x\x1f000 milliuns\x1elatn.l9.o\x1f0 mill" +
-			"iarda\x1elatn.l9.x\x1f0 milliardas\x1elatn.s10.o\x1f00\u00a0mia'.'\x1elatn.s10.x\x1f00\u00a0mia'.'\x1elatn.s11.o\x1f000\u00a0mia'.'\x1e" +
-			"latn.s11.x\x1f000\u00a0mia'.'\x1elatn.s12.o\x1f0\u00a0biu'.'\x1elatn.s12.x\x1f0\u00a0biu'.'\x1elatn.s13.o\x1f00\u00a0biu'.'\x1elatn.s13." +
-			"x\x1f00\u00a0biu'.'\x1elatn.s14.o\x1f000T\u00a0biu'.'\x1elatn.s14.x\x1f000\u00a0biu'.'\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0\x1elatn.s4.o\x1f0\x1e" +
-			"latn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s6.o\x1f0\u00a0miu'.'\x1elatn.s6.x\x1f0\u00a0miu'.'\x1elatn.s7.o\x1f00\u00a0miu'.'" +
-			"\x1elatn.s7.x\x1f00\u00a0miu'.'\x1elatn.s8.o\x1f000\u00a0miu'.'\x1elatn.s8.x\x1f000\u00a0miu'.'\x1elatn.s9.o\x1f0\u00a0mia'.'\x1elatn.s9.x\x1f" +
-			"0\u00a0mia'.'\x1elatn.~\x1f≈\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn." +
-			"A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0} - {1}\x1elatn.Uf\x1f{0} {" +
-			"1}\x1elatn.Uo\x1f{0} {1}\x1elatn.Ux\x1f{0} de {1}\x1elatn.c10.f\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c" +
-			"10.x\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld'.'" +
-			"\u00a0¤\x1elatn.c12.f\x1f0\u00a0tril'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0tril'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0tril'.'\u00a0¤\x1elatn.c13.f\x1f00" +
-			"\u00a0tril'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0tril'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0tril'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0tril'.'\u00a0¤\x1e" +
-			"latn.c14.o\x1f000\u00a0tril'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0tril'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0K\u00a0¤\x1elatn.c3.o\x1f0\u00a0K\u00a0¤\x1ela" +
-			"tn.c3.x\x1f0\u00a0K\u00a0¤\x1elatn.c4.f\x1f00\u00a0K\u00a0¤\x1elatn.c4.o\x1f00\u00a0K\u00a0¤\x1elatn.c4.x\x1f00\u00a0K\u00a0¤\x1elatn.c5.f\x1f000\u00a0K\u00a0¤" +
-			"\x1elatn.c5.o\x1f000\u00a0K\u00a0¤\x1elatn.c5.x\x1f000\u00a0K\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn." +
-			"c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1ela" +
-			"tn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld'.'\u00a0" +
-			"¤\x1elatn.c9.o\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 miliarde\x1elatn" +
-			".l10.o\x1f00 miliard\x1elatn.l10.x\x1f00 de miliarde\x1elatn.l11.f\x1f000 miliarde\x1elatn.l11.o\x1f000 miliard\x1elatn." +
-			"l11.x\x1f000 de miliarde\x1elatn.l12.f\x1f0 trilioane\x1elatn.l12.o\x1f0 trilion\x1elatn.l12.x\x1f0 de trilioane\x1elatn" +
-			".l13.f\x1f00 trilioane\x1elatn.l13.o\x1f00 trilion\x1elatn.l13.x\x1f00 de trilioane\x1elatn.l14.f\x1f000 trilioane\x1ela" +
-			"tn.l14.o\x1f000 trilion\x1elatn.l14.x\x1f000 de trilioane\x1elatn.l3.f\x1f0 mii\x1elatn.l3.o\x1f0 mie\x1elatn.l3.x\x1f0 de " +
-			"mii\x1elatn.l4.f\x1f00 mii\x1elatn.l4.o\x1f00 mie\x1elatn.l4.x\x1f00 de mii\x1elatn.l5.f\x1f000 mii\x1elatn.l5.o\x1f000 mie\x1ela" +
-			"tn.l5.x\x1f000 de mii\x1elatn.l6.f\x1f0 milioane\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 de milioane\x1elatn.l7.f\x1f00 " +
-			"milioane\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 de milioane\x1elatn.l8.f\x1f000 milioane\x1elatn.l8.o\x1f000 milio" +
-			"n\x1elatn.l8.x\x1f000 de milioane\x1elatn.l9.f\x1f0 miliarde\x1elatn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 de miliarde\x1elat" +
-			"n.s10.f\x1f00\u00a0mld'.'\x1elatn.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.f\x1f000\u00a0mld'.'\x1elatn.s11.o" +
-			"\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12.f\x1f0\u00a0tril'.'\x1elatn.s12.o\x1f0\u00a0tril'.'\x1elatn.s12.x\x1f0\u00a0tr" +
-			"il'.'\x1elatn.s13.f\x1f00\u00a0tril'.'\x1elatn.s13.o\x1f00\u00a0tril'.'\x1elatn.s13.x\x1f00\u00a0tril'.'\x1elatn.s14.f\x1f000\u00a0tril'" +
-			".'\x1elatn.s14.o\x1f000\u00a0tril'.'\x1elatn.s14.x\x1f000\u00a0tril'.'\x1elatn.s3.f\x1f0\u00a0K\x1elatn.s3.o\x1f0\u00a0K\x1elatn.s3.x\x1f0\u00a0K\x1e" +
-			"latn.s4.f\x1f00\u00a0K\x1elatn.s4.o\x1f00\u00a0K\x1elatn.s4.x\x1f00\u00a0K\x1elatn.s5.f\x1f000\u00a0K\x1elatn.s5.o\x1f000\u00a0K\x1elatn.s5.x\x1f000\u00a0" +
-			"K\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0" +
-			"mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1ela" +
-			"tn.s9.f\x1f0\u00a0mld'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1ela" +
-			"tn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0млрд\u00a0¤\x1e" +
-			"latn.c10.m\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.f\x1f0" +
-			"00\u00a0млрд\u00a0¤\x1elatn.c11.m\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млр" +
-			"д\u00a0¤\x1elatn.c12.f\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.m\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12" +
-			".x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.f\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.m\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трл" +
-			"н\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.f\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.m\x1f000\u00a0трлн\u00a0¤\x1elat" +
-			"n.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.f\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0т" +
-			"ыс'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0тыс'.'\u00a0¤\x1ela" +
-			"tn.c4.m\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0" +
-			"тыс'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тыс'.'" +
-			"\u00a0¤\x1elatn.c6.f\x1f0\u00a0млн\u00a0¤\x1elatn.c6.m\x1f0\u00a0млн\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн" +
-			"\u00a0¤\x1elatn.c7.f\x1f00\u00a0млн\u00a0¤\x1elatn.c7.m\x1f00\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0м" +
-			"лн\u00a0¤\x1elatn.c8.f\x1f000\u00a0млн\u00a0¤\x1elatn.c8.m\x1f000\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x" +
-			"\x1f000\u00a0млн\u00a0¤\x1elatn.c9.f\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.m\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1el" +
-			"atn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 миллиарда\x1elatn.l10.m\x1f00 мил" +
-			"лиардов\x1elatn.l10.o\x1f00 миллиард\x1elatn.l10.x\x1f00 миллиарда\x1elatn.l11.f\x1f000 м" +
-			"иллиарда\x1elatn.l11.m\x1f000 миллиардов\x1elatn.l11.o\x1f000 миллиард\x1elatn.l11.x\x1f" +
-			"000 миллиарда\x1elatn.l12.f\x1f0 триллиона\x1elatn.l12.m\x1f0 триллионов\x1elatn.l1" +
-			"2.o\x1f0 триллион\x1elatn.l12.x\x1f0 триллиона\x1elatn.l13.f\x1f00 триллиона\x1elatn.l13" +
-			".m\x1f00 триллионов\x1elatn.l13.o\x1f00 триллион\x1elatn.l13.x\x1f00 триллиона\x1elatn." +
-			"l14.f\x1f000 триллиона\x1elatn.l14.m\x1f000 триллионов\x1elatn.l14.o\x1f000 триллион" +
-			"\x1elatn.l14.x\x1f000 триллиона\x1elatn.l3.f\x1f0 тысячи\x1elatn.l3.m\x1f0 тысяч\x1elatn.l3.o\x1f0 т" +
-			"ысяча\x1elatn.l3.x\x1f0 тысячи\x1elatn.l4.f\x1f00 тысячи\x1elatn.l4.m\x1f00 тысяч\x1elatn.l4.o\x1f" +
-			"00 тысяча\x1elatn.l4.x\x1f00 тысячи\x1elatn.l5.f\x1f000 тысячи\x1elatn.l5.m\x1f000 тысяч\x1ela" +
-			"tn.l5.o\x1f000 тысяча\x1elatn.l5.x\x1f000 тысячи\x1elatn.l6.f\x1f0 миллиона\x1elatn.l6.m\x1f0 ми" +
-			"ллионов\x1elatn.l6.o\x1f0 миллион\x1elatn.l6.x\x1f0 миллиона\x1elatn.l7.f\x1f00 миллио" +
-			"на\x1elatn.l7.m\x1f00 миллионов\x1elatn.l7.o\x1f00 миллион\x1elatn.l7.x\x1f00 миллиона\x1el" +
-			"atn.l8.f\x1f000 миллиона\x1elatn.l8.m\x1f000 миллионов\x1elatn.l8.o\x1f000 миллион\x1elatn" +
-			".l8.x\x1f000 миллиона\x1elatn.l9.f\x1f0 миллиарда\x1elatn.l9.m\x1f0 миллиардов\x1elatn." +
-			"l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 миллиарда\x1elatn.n\x1fне\u00a0число\x1elatn.s10.f\x1f00\u00a0м" +
-			"лрд\x1elatn.s10.m\x1f00\u00a0млрд\x1elatn.s10.o\x1f00\u00a0млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.f\x1f000\u00a0м" +
-			"лрд\x1elatn.s11.m\x1f000\u00a0млрд\x1elatn.s11.o\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.f\x1f0\u00a0" +
-			"трлн\x1elatn.s12.m\x1f0\u00a0трлн\x1elatn.s12.o\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.f\x1f00\u00a0тр" +
-			"лн\x1elatn.s13.m\x1f00\u00a0трлн\x1elatn.s13.o\x1f00\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.f\x1f000\u00a0тр" +
-			"лн\x1elatn.s14.m\x1f000\u00a0трлн\x1elatn.s14.o\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.f\x1f0\u00a0ты" +
-			"с'.'\x1elatn.s3.m\x1f0\u00a0тыс'.'\x1elatn.s3.o\x1f0\u00a0тыс'.'\x1elatn.s3.x\x1f0\u00a0тыс'.'\x1elatn.s4.f\x1f00\u00a0тыс'" +
-			".'\x1elatn.s4.m\x1f00\u00a0тыс'.'\x1elatn.s4.o\x1f00\u00a0тыс'.'\x1elatn.s4.x\x1f00\u00a0тыс'.'\x1elatn.s5.f\x1f000\u00a0тыс" +
-			"'.'\x1elatn.s5.m\x1f000\u00a0тыс'.'\x1elatn.s5.o\x1f000\u00a0тыс'.'\x1elatn.s5.x\x1f000\u00a0тыс'.'\x1elatn.s6.f\x1f0\u00a0мл" +
-			"н\x1elatn.s6.m\x1f0\u00a0млн\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.f\x1f00\u00a0млн\x1elatn.s7.m\x1f00" +
-			"\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.f\x1f000\u00a0млн\x1elatn.s8.m\x1f000\u00a0млн\x1el" +
-			"atn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9.f\x1f0\u00a0млрд\x1elatn.s9.m\x1f0\u00a0млрд\x1elatn.s9.o" +
-			"\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.~\x1f≈\x1eg\x1f2\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,#" +
-			"#0.00¤\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##,##0.00\x1edeva.D\x1f#,##,##0.###" +
-			"\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x" +
-			"\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f" +
-			"¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000" +
-			"M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12" +
-			".x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva" +
-			".l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f0" +
-			"00G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva." +
-			"s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0." +
-			"###\x1elatn.P\x1f#,##,##0%\x1elatn.S\x1f[#E0]\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд" +
-			"\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c1" +
-			"4.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.x\x1f0\u00a0тыһ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тыһ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0ты" +
-			"һ'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0мөл\u00a0¤\x1elatn.c7.x\x1f00\u00a0мөл\u00a0¤\x1elatn.c8.x\x1f000\u00a0мөл\u00a0¤\x1elatn.c9.x\x1f0" +
-			"\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.x\x1f000 миллиард" +
-			"\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.x\x1f000 триллион\x1ela" +
-			"tn.l3.x\x1f0 тыһыынча\x1elatn.l4.x\x1f00 тыһыынча\x1elatn.l5.x\x1f000 тыһыынча\x1elatn.l6." +
-			"x\x1f0 мөлүйүөн\x1elatn.l7.x\x1f00 мөлүйүөн\x1elatn.l8.x\x1f000 мөлүйүөн\x1elatn.l9.x\x1f0 м" +
-			"иллиард\x1elatn.n\x1fчыыһыла\u00a0буотах\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млр" +
-			"д\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.x\x1f0\u00a0тыһ'." +
-			"'\x1elatn.s4.x\x1f00\u00a0тыһ'.'\x1elatn.s5.x\x1f000\u00a0тыһ'.'\x1elatn.s6.x\x1f0\u00a0мөл\x1elatn.s7.x\x1f00\u00a0мөл\x1elatn" +
-			".s8.x\x1f000\u00a0мөл\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c3" +
-			".o\x1f¤0\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c3.t\x1f¤\u00a00\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c3.x\x1f¤\u00a00\u00a0ᱜᱮᱞᱥᱟᱭ" +
-			"\x1elatn.c5.o\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c5.t\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c5.x\x1f¤\u00a0000\u00a0" +
-			"ᱜᱮᱞᱥᱟᱭ\x1eolck.+\x1f+\x1eolck.-\x1f-\x1eolck.A\x1f¤\u00a0#,##0.00\x1eolck.B\x1f\u00a0\x1eolck.C\x1f¤\u00a0#,##0.00\x1eolck.D\x1f#," +
-			"##0.###\x1eolck.P\x1f#,##0%\x1eolck.R\x1f{0}–{1}\x1eolck.S\x1f#E0\x1eolck.Ux\x1f{0} {1}\x1eolck.X\x1f~{0}\x1eolck.b\x1f\u00a0\x1eolck.c10" +
-			".x\x1f¤\u00a000G\x1eolck.c11.x\x1f¤\u00a0000G\x1eolck.c12.x\x1f¤\u00a00T\x1eolck.c13.x\x1f¤\u00a000T\x1eolck.c14.x\x1f¤\u00a0000T\x1eolck.c3." +
-			"o\x1f¤0\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c3.t\x1f¤\u00a00\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c3.x\x1f¤\u00a00\u00a0ᱜᱮᱞᱥᱟᱭ" +
-			"\x1eolck.c4.x\x1f¤\u00a000K\x1eolck.c5.o\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c5.t\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1eo" +
-			"lck.c5.x\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c6.x\x1f¤\u00a00M\x1eolck.c7.x\x1f¤\u00a000M\x1eolck.c8.x\x1f¤\u00a0000M\x1eolck." +
-			"c9.x\x1f¤\u00a00G\x1eolck.d\x1f.\x1eolck.e\x1fE\x1eolck.g\x1f,\x1eolck.i\x1f∞\x1eolck.l10.x\x1f00G\x1eolck.l11.x\x1f000G\x1eolck.l12.x\x1f0T\x1eo" +
-			"lck.l13.x\x1f00T\x1eolck.l14.x\x1f000T\x1eolck.l3.x\x1f0K\x1eolck.l4.x\x1f00K\x1eolck.l5.x\x1f000K\x1eolck.l6.x\x1f0M\x1eolck.l7.x\x1f0" +
-			"0M\x1eolck.l8.x\x1f000M\x1eolck.l9.x\x1f0G\x1eolck.m\x1f‰\x1eolck.n\x1fNaN\x1eolck.p\x1f%\x1eolck.s10.x\x1f00G\x1eolck.s11.x\x1f000G\x1eolc" +
-			"k.s12.x\x1f0T\x1eolck.s13.x\x1f00T\x1eolck.s14.x\x1f000T\x1eolck.s3.x\x1f0K\x1eolck.s4.x\x1f00K\x1eolck.s5.x\x1f000K\x1eolck.s6.x\x1f0M" +
-			"\x1eolck.s7.x\x1f00M\x1eolck.s8.x\x1f000M\x1eolck.s9.x\x1f0G\x1eolck.~\x1f~\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f#" +
-			",##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0Mrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd\u00a0¤\x1elat" +
-			"n.c11.o\x1f000\u00a0Mrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bln\u00a0¤\x1elatn.c1" +
-			"3.o\x1f00\u00a0Bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bln\u00a0¤\x1elatn.c3.o" +
-			"\x1f0\u00a0mìg\u00a0¤\x1elatn.c3.x\x1f0\u00a0mìg\u00a0¤\x1elatn.c4.o\x1f00\u00a0mìg\u00a0¤\x1elatn.c4.x\x1f00\u00a0mìg\u00a0¤\x1elatn.c5.o\x1f000\u00a0" +
-			"mìg\u00a0¤\x1elatn.c5.x\x1f000\u00a0mìg\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0Mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mln\u00a0¤" +
-			"\x1elatn.c7.x\x1f00\u00a0Mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0Mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd\u00a0¤\x1elatn.c" +
-			"9.x\x1f0\u00a0Mrd\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milliardos\x1elatn.l10.x\x1f00 milliardos\x1elatn.l11.o\x1f00" +
-			"0 milliardos\x1elatn.l11.x\x1f000 milliardos\x1elatn.l12.o\x1f0 mìgia milliardos\x1elatn.l12.x\x1f0 mìgia millia" +
-			"rdos\x1elatn.l13.o\x1f00 mìgia milliardos\x1elatn.l13.x\x1f00 mìgia milliardos\x1elatn.l14.o\x1f000 mìgia milli" +
-			"ardos\x1elatn.l14.x\x1f000 mìgia milliardos\x1elatn.l3.o\x1f0 mìgia\x1elatn.l3.x\x1f0 mìgia\x1elatn.l4.o\x1f00 mìgia" +
-			"\x1elatn.l4.x\x1f00 mìgia\x1elatn.l5.o\x1f000 mìgia\x1elatn.l5.x\x1f000 mìgia\x1elatn.l6.o\x1f0 millione\x1elatn.l6.x\x1f0 " +
-			"milliones\x1elatn.l7.o\x1f00 milliones\x1elatn.l7.x\x1f00 milliones\x1elatn.l8.o\x1f000 milliones\x1elatn.l8.x\x1f000 mi" +
-			"lliones\x1elatn.l9.o\x1f0 milliardu\x1elatn.l9.x\x1f0 milliardos\x1elatn.s10.o\x1f00\u00a0Mrd\x1elatn.s10.x\x1f00\u00a0Mrd\x1elatn." +
-			"s11.o\x1f000\u00a0Mrd\x1elatn.s11.x\x1f000\u00a0Mrd\x1elatn.s12.o\x1f0\u00a0Bln\x1elatn.s12.x\x1f0\u00a0Bln\x1elatn.s13.o\x1f00\u00a0Bln\x1elatn.s" +
-			"13.x\x1f00\u00a0Bln\x1elatn.s14.o\x1f000\u00a0Bln\x1elatn.s14.x\x1f000\u00a0Bln\x1elatn.s3.o\x1f0\u00a0mìg\x1elatn.s3.x\x1f0\u00a0mìg\x1elatn.s4" +
-			".o\x1f00\u00a0mìg\x1elatn.s4.x\x1f00\u00a0mìg\x1elatn.s5.o\x1f000\u00a0mìg\x1elatn.s5.x\x1f000\u00a0mìg\x1elatn.s6.o\x1f0\u00a0Mln\x1elatn.s6." +
-			"x\x1f0\u00a0Mln\x1elatn.s7.o\x1f00\u00a0Mln\x1elatn.s7.x\x1f00\u00a0Mln\x1elatn.s8.o\x1f000\u00a0Mln\x1elatn.s8.x\x1f000\u00a0Mln\x1elatn.s9.o\x1f0\u00a0" +
-			"Mrd\x1elatn.s9.x\x1f0\u00a0Mrd\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miliardi\x1elatn.l10.x\x1f00 miliardi\x1elatn.l11.o\x1f" +
-			"000 miliardi\x1elatn.l11.x\x1f000 miliardi\x1elatn.l12.o\x1f0 biliuni\x1elatn.l12.x\x1f0 biliuna\x1elatn.l13.o\x1f00 bil" +
-			"iuna\x1elatn.l13.x\x1f00 biliuna\x1elatn.l14.o\x1f000 biliuna\x1elatn.l14.x\x1f000 biliuna\x1elatn.l3.o\x1f0 migghiaru\x1el" +
-			"atn.l3.x\x1f0 mila\x1elatn.l4.o\x1f00 mila\x1elatn.l4.x\x1f00 mila\x1elatn.l5.o\x1f000 mila\x1elatn.l5.x\x1f000 mila\x1elatn.l" +
-			"6.o\x1f0 miliuni\x1elatn.l6.x\x1f0 miliuna\x1elatn.l7.o\x1f00 miliuna\x1elatn.l7.x\x1f00 miliuna\x1elatn.l8.o\x1f000 miliun" +
-			"a\x1elatn.l8.x\x1f000 miliuna\x1elatn.l9.o\x1f0 miliardu\x1elatn.l9.x\x1f0 miliardi\x1earab.+\x1f\u061c+\x1earab.-\x1f\u061c-\x1earab.A\x1f#" +
-			",##0.00\u00a0¤\x1earab.B\x1f\u00a0\x1earab.C\x1f#,##0.00\u00a0¤\x1earab.D\x1f#,##0.###\x1earab.P\x1f#,##0%\x1earab.R\x1f{0}–{1}\x1earab.S" +
-			"\x1f#E0\x1earab.X\x1f~{0}\x1earab.b\x1f\u00a0\x1earab.d\x1f.\x1earab.e\x1fاس\x1earab.g\x1f٬\x1earab.i\x1f∞\x1earab.l10.o\x1f00 بلين\x1earab" +
-			".l10.x\x1f00 بلين\x1earab.l11.o\x1f000 بلين\x1earab.l11.x\x1f000 بلين\x1earab.l12.o\x1f0 ٽرلين\x1earab." +
-			"l12.x\x1f0 ٽرلين\x1earab.l13.o\x1f00 ٽرلين\x1earab.l13.x\x1f00 ٽرلين\x1earab.l14.o\x1f000 ٽرلين\x1ea" +
-			"rab.l14.x\x1f000 ٽرلين\x1earab.l3.o\x1f0 ھزار\x1earab.l3.x\x1f0 ھزار\x1earab.l4.o\x1f00 ھزار\x1earab.l4" +
-			".x\x1f00 هزار\x1earab.l5.o\x1f000 هزار\x1earab.l5.x\x1f000 هزار\x1earab.l6.o\x1f0 ملين\x1earab.l6.x\x1f0 م" +
-			"لين\x1earab.l7.o\x1f00 ملين\x1earab.l7.x\x1f00 ملين\x1earab.l8.o\x1f000 ملين\x1earab.l8.x\x1f000 ملين" +
-			"\x1earab.l9.o\x1f0 بلين\x1earab.l9.x\x1f0 بلين\x1earab.m\x1f؉\x1earab.n\x1fNaN\x1earab.p\x1f٪\u061c\x1earab.s10.o\x1f00\u00a0بلي" +
-			"ن\x1earab.s10.x\x1f00\u00a0بلين\x1earab.s11.o\x1f000\u00a0بلين\x1earab.s11.x\x1f000\u00a0بلين\x1earab.s12.o\x1f0\u00a0ٽرل" +
-			"ين\x1earab.s12.x\x1f0\u00a0ٽرلين\x1earab.s13.o\x1f00\u00a0ٽرلين\x1earab.s13.x\x1f00\u00a0ٽرلين\x1earab.s14.o\x1f000" +
-			"\u00a0ٽرلين\x1earab.s14.x\x1f000\u00a0ٽرلين\x1earab.s3.o\x1f0\u00a0هزار\x1earab.s3.x\x1f0\u00a0هزار\x1earab.s4.o\x1f00" +
-			"\u00a0هزار\x1earab.s4.x\x1f00\u00a0هزار\x1earab.s5.o\x1f000\u00a0هزار\x1earab.s5.x\x1f000\u00a0هزار\x1earab.s6.o\x1f0\u00a0م" +
-			"لين\x1earab.s6.x\x1f0\u00a0ملين\x1earab.s7.o\x1f00\u00a0ملين\x1earab.s7.x\x1f00\u00a0ملين\x1earab.s8.o\x1f000\u00a0ملي" +
-			"ن\x1earab.s8.x\x1f000\u00a0ملين\x1earab.s9.o\x1f0\u00a0بلين\x1earab.s9.x\x1f0\u00a0بلين\x1earab.~\x1f~\x1elatn.A\x1f¤#,##0.0" +
-			"0;(¤#,##0.00)\x1elatn.c10.o\x1f¤\u00a000\u00a0بلين\x1elatn.c10.x\x1f¤\u00a000\u00a0بلين\x1elatn.c11.o\x1f¤\u00a0000\u00a0بلي" +
-			"ن\x1elatn.c11.x\x1f¤\u00a0000\u00a0بلين\x1elatn.c12.o\x1f¤\u00a00\u00a0ٽرلين\x1elatn.c12.x\x1f¤\u00a00\u00a0ٽرلين\x1elatn.c" +
-			"13.o\x1f¤\u00a000\u00a0ٽرلين\x1elatn.c13.x\x1f¤\u00a000\u00a0ٽرلين\x1elatn.c14.o\x1f¤\u00a0000\u00a0ٽرلين\x1elatn.c14.x\x1f" +
-			"¤\u00a0000\u00a0ٽرلين\x1elatn.c3.o\x1f¤\u00a00\u00a0هزار\x1elatn.c3.x\x1f¤\u00a00\u00a0هزار\x1elatn.c4.o\x1f¤\u00a000\u00a0هزا" +
-			"ر\x1elatn.c4.x\x1f¤\u00a000\u00a0هزار\x1elatn.c5.o\x1f¤\u00a0000\u00a0هزار\x1elatn.c5.x\x1f¤\u00a0000\u00a0هزار\x1elatn.c6.o\x1f" +
-			"¤\u00a00\u00a0ملين\x1elatn.c6.x\x1f¤\u00a00\u00a0ملين\x1elatn.c7.o\x1f¤\u00a000\u00a0ملين\x1elatn.c7.x\x1f¤\u00a000\u00a0ملين\x1e" +
-			"latn.c8.o\x1f¤\u00a0000\u00a0ملين\x1elatn.c8.x\x1f¤\u00a0000\u00a0ملين\x1elatn.c9.o\x1f¤\u00a00\u00a0بلين\x1elatn.c9.x\x1f¤\u00a0" +
-			"0\u00a0بلين\x1elatn.l10.o\x1f00 بلين\x1elatn.l10.x\x1f00 بلين\x1elatn.l11.o\x1f000 بلين\x1elatn.l11.x\x1f000" +
-			" بلين\x1elatn.l12.o\x1f0 ٽرلين\x1elatn.l12.x\x1f0 ٽرلين\x1elatn.l13.o\x1f00 ٽرلين\x1elatn.l13.x\x1f00" +
-			" ٽرلين\x1elatn.l14.o\x1f000 ٽرلين\x1elatn.l14.x\x1f000 ٽرلين\x1elatn.l3.o\x1f0 ھزار\x1elatn.l3.x\x1f0" +
-			" ھزار\x1elatn.l4.o\x1f00 ھزار\x1elatn.l4.x\x1f00 هزار\x1elatn.l5.o\x1f000 هزار\x1elatn.l5.x\x1f000 هزا" +
-			"ر\x1elatn.l6.o\x1f0 ملين\x1elatn.l6.x\x1f0 ملين\x1elatn.l7.o\x1f00 ملين\x1elatn.l7.x\x1f00 ملين\x1elatn.l8" +
-			".o\x1f000 ملين\x1elatn.l8.x\x1f000 ملين\x1elatn.l9.o\x1f0 بلين\x1elatn.l9.x\x1f0 بلين\x1elatn.s10.o\x1f00\u00a0" +
-			"بلين\x1elatn.s10.x\x1f00\u00a0بلين\x1elatn.s11.o\x1f000\u00a0بلين\x1elatn.s11.x\x1f000\u00a0بلين\x1elatn.s12.o\x1f0\u00a0" +
-			"ٽرلين\x1elatn.s12.x\x1f0\u00a0ٽرلين\x1elatn.s13.o\x1f00\u00a0ٽرلين\x1elatn.s13.x\x1f00\u00a0ٽرلين\x1elatn.s14" +
-			".o\x1f000\u00a0ٽرلين\x1elatn.s14.x\x1f000\u00a0ٽرلين\x1elatn.s3.o\x1f0\u00a0هزار\x1elatn.s3.x\x1f0\u00a0هزار\x1elatn.s" +
-			"4.o\x1f00\u00a0هزار\x1elatn.s4.x\x1f00\u00a0هزار\x1elatn.s5.o\x1f000\u00a0هزار\x1elatn.s5.x\x1f000\u00a0هزار\x1elatn.s6." +
-			"o\x1f0\u00a0ملين\x1elatn.s6.x\x1f0\u00a0ملين\x1elatn.s7.o\x1f00\u00a0ملين\x1elatn.s7.x\x1f00\u00a0ملين\x1elatn.s8.o\x1f000\u00a0" +
-			"ملين\x1elatn.s8.x\x1f000\u00a0ملين\x1elatn.s9.o\x1f0\u00a0بلين\x1elatn.s9.x\x1f0\u00a0بلين\x1elatn.-\x1f−\x1elatn.A\x1f#" +
-			",##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0} {1}\x1elatn.Ut\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.e\x1f" +
-			"·10^\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljardi\x1elatn.l10.t\x1f00 miljardit\x1elatn.l10.x\x1f00 miljardit\x1elatn.l11." +
-			"o\x1f000 miljardi\x1elatn.l11.t\x1f000 miljardit\x1elatn.l11.x\x1f000 miljardit\x1elatn.l12.o\x1f0 biljona\x1elatn.l12.t" +
-			"\x1f0 biljonat\x1elatn.l12.x\x1f0 biljonat\x1elatn.l13.o\x1f00 biljona\x1elatn.l13.t\x1f00 biljonat\x1elatn.l13.x\x1f00 bil" +
-			"jonat\x1elatn.l14.o\x1f000 biljona\x1elatn.l14.t\x1f000 biljonat\x1elatn.l14.x\x1f000 biljonat\x1elatn.l3.o\x1f0 duhát\x1e" +
-			"latn.l3.t\x1f0 duháhat\x1elatn.l3.x\x1f0 duháhat\x1elatn.l4.o\x1f00 duhát\x1elatn.l4.t\x1f00 duháhat\x1elatn.l4.x\x1f00" +
-			" duháhat\x1elatn.l5.o\x1f000 duhát\x1elatn.l5.t\x1f000 duháhat\x1elatn.l5.x\x1f000 duháhat\x1elatn.l6.o\x1f0 miljona" +
-			"\x1elatn.l6.t\x1f0 miljonat\x1elatn.l6.x\x1f0 miljonat\x1elatn.l7.o\x1f00 miljona\x1elatn.l7.t\x1f00 miljonat\x1elatn.l7.x\x1f" +
-			"00 miljonat\x1elatn.l8.o\x1f000 miljona\x1elatn.l8.t\x1f000 miljonat\x1elatn.l8.x\x1f000 miljonat\x1elatn.l9.o\x1f0 milj" +
-			"ardi\x1elatn.l9.t\x1f0 miljardit\x1elatn.l9.x\x1f0 miljardit\x1elatn.s10.o\x1f00\u00a0md\x1elatn.s10.t\x1f00\u00a0md\x1elatn.s10.x\x1f" +
-			"00\u00a0md\x1elatn.s11.o\x1f000\u00a0md\x1elatn.s11.t\x1f000\u00a0md\x1elatn.s11.x\x1f000\u00a0md\x1elatn.s12.o\x1f0\u00a0bn\x1elatn.s12.t\x1f0\u00a0b" +
-			"n\x1elatn.s12.x\x1f0\u00a0bn\x1elatn.s13.o\x1f00\u00a0bn\x1elatn.s13.t\x1f00\u00a0bn\x1elatn.s13.x\x1f00\u00a0bn\x1elatn.s14.o\x1f000\u00a0bn\x1elatn" +
-			".s14.t\x1f000\u00a0bn\x1elatn.s14.x\x1f000\u00a0bn\x1elatn.s3.o\x1f0\u00a0dt\x1elatn.s3.t\x1f0\u00a0dt\x1elatn.s3.x\x1f0\u00a0dt\x1elatn.s4.o\x1f00\u00a0" +
-			"dt\x1elatn.s4.t\x1f00\u00a0dt\x1elatn.s4.x\x1f00\u00a0dt\x1elatn.s5.o\x1f000\u00a0dt\x1elatn.s5.t\x1f000\u00a0dt\x1elatn.s5.x\x1f000\u00a0dt\x1elatn." +
-			"s6.o\x1f0\u00a0mn\x1elatn.s6.t\x1f0\u00a0mn\x1elatn.s6.x\x1f0\u00a0mn\x1elatn.s7.o\x1f00\u00a0mn\x1elatn.s7.t\x1f00\u00a0mn\x1elatn.s7.x\x1f00\u00a0mn\x1ela" +
-			"tn.s8.o\x1f000\u00a0mn\x1elatn.s8.t\x1f000\u00a0mn\x1elatn.s8.x\x1f000\u00a0mn\x1elatn.s9.o\x1f0\u00a0md\x1elatn.s9.t\x1f0\u00a0md\x1elatn.s9.x\x1f0\u00a0" +
-			"md\x1elatn.l10.o\x1f00 miljárdat\x1elatn.l10.t\x1f00 md\x1elatn.l10.x\x1f00 miljárdat\x1elatn.l11.o\x1f000 miljárdat\x1e" +
-			"latn.l11.t\x1f000 md\x1elatn.l11.x\x1f000 miljárdat\x1elatn.l12.o\x1f0 biljovdna\x1elatn.l12.t\x1f0 bn\x1elatn.l12.x\x1f0 " +
-			"biljovdnat\x1elatn.l13.o\x1f00 biljovdnat\x1elatn.l13.t\x1f00 bn\x1elatn.l13.x\x1f00 biljovdnat\x1elatn.l14.o\x1f000 bil" +
-			"jovdnat\x1elatn.l14.t\x1f000 bn\x1elatn.l14.x\x1f000 biljovdnat\x1elatn.l3.t\x1f0 dt\x1elatn.l4.o\x1f00 duháhat\x1elatn.l4" +
-			".t\x1f00 dt\x1elatn.l5.o\x1f000 duháhat\x1elatn.l5.t\x1f000 dt\x1elatn.l6.t\x1f0 mn\x1elatn.l7.o\x1f00 miljonat\x1elatn.l7.t\x1f" +
-			"00 mn\x1elatn.l8.o\x1f000 miljonat\x1elatn.l8.t\x1f000 mn\x1elatn.l9.o\x1f0 miljárda\x1elatn.l9.t\x1f0 miljárdat\x1elatn." +
-			"l9.x\x1f0 miljárdat\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00¤\x1elatn.C" +
-			"\x1f#,##0.00¤\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn.C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1elatn." +
-			"g\x1f.\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1el" +
-			"atn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f0 မိုၼ်ႇလၢၼ်ႉ\x1elatn.l11.x\x1f0 သႅၼ်လၢ" +
-			"ၼ်ႉ\x1elatn.l12.x\x1f0 လၢၼ်ႉလၢၼ်ႉ\x1elatn.l13.x\x1f00 လၢၼ်ႉလၢၼ်ႉ" +
-			"\x1elatn.l14.x\x1f000 လၢၼ်ႉလၢၼ်ႉ\x1elatn.l3.x\x1f0 ႁဵင်\x1elatn.l4.x\x1f0 မိုၼ" +
-			"်ႇ\x1elatn.l5.x\x1f0 သႅၼ်\x1elatn.l6.x\x1f0 လၢၼ်ႉ\x1elatn.l7.x\x1f00 လၢၼ်ႉ\x1elatn.l8" +
-			".x\x1f000 လၢၼ်ႉ\x1elatn.l9.x\x1f0 ႁဵင်လၢၼ်ႉ\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1ela" +
-			"tn.C\x1f¤#,##0.00\x1elatn.S\x1f#\x1elatn.Uo\x1f{1}{0}\x1elatn.Ux\x1f{1}{0}\x1elatn.c10.o\x1f¤බි00\x1elatn.c10.x\x1f¤බි" +
-			"00\x1elatn.c11.o\x1f¤බි000\x1elatn.c11.x\x1f¤බි000\x1elatn.c12.o\x1f¤ට්\u200dරි0\x1elatn.c12.x\x1f¤ට්" +
-			"\u200dරි0\x1elatn.c13.o\x1f¤ට්\u200dරි00\x1elatn.c13.x\x1f¤ට්\u200dරි00\x1elatn.c14.o\x1f¤ට්\u200dර" +
-			"ි000\x1elatn.c14.x\x1f¤ට්\u200dරි000\x1elatn.c3.o\x1f¤ද0\x1elatn.c3.x\x1f¤ද0\x1elatn.c4.o\x1f¤ද00\x1elatn." +
-			"c4.x\x1f¤ද00\x1elatn.c5.o\x1f¤ද000\x1elatn.c5.x\x1f¤ද000\x1elatn.c6.o\x1f¤මි0\x1elatn.c6.x\x1f¤මි0\x1elatn." +
-			"c7.o\x1f¤මි00\x1elatn.c7.x\x1f¤මි00\x1elatn.c8.o\x1f¤මි000\x1elatn.c8.x\x1f¤මි000\x1elatn.c9.o\x1f¤බ" +
-			"ි0\x1elatn.c9.x\x1f¤බි0\x1elatn.l10.o\x1fබිලියන 00\x1elatn.l10.x\x1fබිලියන 00\x1elatn." +
-			"l11.o\x1fබිලියන 000\x1elatn.l11.x\x1fබිලියන 000\x1elatn.l12.o\x1fට්\u200dරිලිය" +
-			"න 0\x1elatn.l12.x\x1fට්\u200dරිලියන 0\x1elatn.l13.o\x1fට්\u200dරිලියන 00\x1elatn.l1" +
-			"3.x\x1fට්\u200dරිලියන 00\x1elatn.l14.o\x1fට්\u200dරිලියන 000\x1elatn.l14.x\x1fට්\u200d" +
-			"රිලියන 000\x1elatn.l3.o\x1fදහස 0\x1elatn.l3.x\x1fදහස 0\x1elatn.l4.o\x1fදහස 00\x1elatn.l" +
-			"4.x\x1fදහස 00\x1elatn.l5.o\x1fදහස 000\x1elatn.l5.x\x1fදහස 000\x1elatn.l6.o\x1fමිලියන 0\x1e" +
-			"latn.l6.x\x1fමිලියන 0\x1elatn.l7.o\x1fමිලියන 00\x1elatn.l7.x\x1fමිලියන 00\x1el" +
-			"atn.l8.o\x1fමිලියන 000\x1elatn.l8.x\x1fමිලියන 000\x1elatn.l9.o\x1fබිලියන 0\x1e" +
-			"latn.l9.x\x1fබිලියන 0\x1elatn.s10.o\x1fබි00\x1elatn.s10.x\x1fබි00\x1elatn.s11.o\x1fබි000\x1elatn" +
-			".s11.x\x1fබි000\x1elatn.s12.o\x1fට්\u200dරි0\x1elatn.s12.x\x1fට්\u200dරි0\x1elatn.s13.o\x1fට්\u200dර" +
-			"ි00\x1elatn.s13.x\x1fට්\u200dරි00\x1elatn.s14.o\x1fට්\u200dරි000\x1elatn.s14.x\x1fට්\u200dරි000\x1el" +
-			"atn.s3.o\x1fද0\x1elatn.s3.x\x1fද0\x1elatn.s4.o\x1fද00\x1elatn.s4.x\x1fද00\x1elatn.s5.o\x1fද000\x1elatn.s5.x\x1fද000\x1el" +
-			"atn.s6.o\x1fමි0\x1elatn.s6.x\x1fමි0\x1elatn.s7.o\x1fමි00\x1elatn.s7.x\x1fමි00\x1elatn.s8.o\x1fමි000\x1elat" +
-			"n.s8.x\x1fමි000\x1elatn.s9.o\x1fබි0\x1elatn.s9.x\x1fබි0\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#" +
-			",##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0} – {1}\x1elatn.c10.f\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.m\x1f00\u00a0mld'.'\u00a0" +
-			"¤\x1elatn.c10.o\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.m\x1f000" +
-			"\u00a0mld'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn" +
-			".c12.m\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤" +
-			"\x1elatn.c13.m\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0b" +
-			"il'.'\u00a0¤\x1elatn.c14.m\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn." +
-			"c3.f\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tis'.'\u00a0¤\x1elatn." +
-			"c4.f\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tis'.'\u00a0¤\x1el" +
-			"atn.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tis'" +
-			".'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.m\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'" +
-			".'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.m\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0" +
-			"mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.m\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8" +
-			".x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.m\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mld'.'\u00a0¤\x1elatn." +
-			"c9.x\x1f0\u00a0mld'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 miliárd\x1elatn.l10.m\x1f00 miliardy\x1elat" +
-			"n.l10.o\x1f00 miliárd\x1elatn.l10.x\x1f00 miliárd\x1elatn.l11.f\x1f000 miliárd\x1elatn.l11.m\x1f000 miliardy\x1elatn." +
-			"l11.o\x1f000 miliárd\x1elatn.l11.x\x1f000 miliárd\x1elatn.l12.f\x1f0 bilióny\x1elatn.l12.m\x1f0 bilióna\x1elatn.l12." +
-			"o\x1f0 bilión\x1elatn.l12.x\x1f0 biliónov\x1elatn.l13.f\x1f00 biliónov\x1elatn.l13.m\x1f00 bilióna\x1elatn.l13.o\x1f00 " +
-			"biliónov\x1elatn.l13.x\x1f00 biliónov\x1elatn.l14.f\x1f000 biliónov\x1elatn.l14.m\x1f000 bilióna\x1elatn.l14.o\x1f00" +
-			"0 biliónov\x1elatn.l14.x\x1f000 biliónov\x1elatn.l3.f\x1f0 tisíce\x1elatn.l3.m\x1f0 tisíca\x1elatn.l3.o\x1f0 tisíc\x1e" +
-			"latn.l3.x\x1f0 tisíc\x1elatn.l4.f\x1f00 tisíc\x1elatn.l4.m\x1f00 tisíca\x1elatn.l4.o\x1f00 tisíc\x1elatn.l4.x\x1f00 tis" +
-			"íc\x1elatn.l5.f\x1f000 tisíc\x1elatn.l5.m\x1f000 tisíca\x1elatn.l5.o\x1f000 tisíc\x1elatn.l5.x\x1f000 tisíc\x1elatn.l6" +
-			".f\x1f0 milióny\x1elatn.l6.m\x1f0 milióna\x1elatn.l6.o\x1f0 milión\x1elatn.l6.x\x1f0 miliónov\x1elatn.l7.f\x1f00 milió" +
-			"nov\x1elatn.l7.m\x1f00 milióna\x1elatn.l7.o\x1f00 miliónov\x1elatn.l7.x\x1f00 miliónov\x1elatn.l8.f\x1f000 miliónov\x1e" +
-			"latn.l8.m\x1f000 milióna\x1elatn.l8.o\x1f000 miliónov\x1elatn.l8.x\x1f000 miliónov\x1elatn.l9.f\x1f0 miliardy\x1elatn" +
-			".l9.m\x1f0 miliardy\x1elatn.l9.o\x1f0 miliarda\x1elatn.l9.x\x1f0 miliárd\x1elatn.s10.f\x1f00\u00a0mld'.'\x1elatn.s10.m\x1f00\u00a0" +
-			"mld'.'\x1elatn.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.f\x1f000\u00a0mld'.'\x1elatn.s11.m\x1f000\u00a0mld'.'" +
-			"\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.m\x1f0\u00a0bil'.'\x1elatn.s1" +
-			"2.o\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.m\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bi" +
-			"l'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.m\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1e" +
-			"latn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.m\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.x\x1f0\u00a0" +
-			"tis'.'\x1elatn.s4.f\x1f00\u00a0tis'.'\x1elatn.s4.m\x1f00\u00a0tis'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn." +
-			"s5.f\x1f000\u00a0tis'.'\x1elatn.s5.m\x1f000\u00a0tis'.'\x1elatn.s5.o\x1f000\u00a0tis'.'\x1elatn.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0" +
-			"mil'.'\x1elatn.s6.m\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7." +
-			"m\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.m\x1f000\u00a0mil'" +
-			".'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mld'.'\x1elatn.s9.m\x1f0\u00a0mld'.'\x1elatn.s9.o" +
-			"\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'\x1eg\x1f2\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00" +
-			"\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f~ {0}\x1elatn.c10.f\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.t" +
-			"\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1e" +
-			"latn.c11.t\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil" +
-			"'.'\u00a0¤\x1elatn.c12.t\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f0" +
-			"0\u00a0bil'.'\u00a0¤\x1elatn.c13.t\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elat" +
-			"n.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.t\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tis'." +
-			"'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.t\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tis'" +
-			".'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.t\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0" +
-			"tis'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.t\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c6" +
-			".f\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.t\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c7" +
-			".f\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.t\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mio'.'\u00a0¤\x1elat" +
-			"n.c8.f\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.t\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mio'.'" +
-			"\u00a0¤\x1elatn.c9.f\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.t\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'" +
-			"\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 milijarde\x1elatn.l10.o\x1f00 milijarda\x1elatn.l10.t\x1f00 mi" +
-			"lijardi\x1elatn.l10.x\x1f00 milijard\x1elatn.l11.f\x1f000 milijarde\x1elatn.l11.o\x1f000 milijarda\x1elatn.l11.t\x1f000 " +
-			"milijardi\x1elatn.l11.x\x1f000 milijard\x1elatn.l12.f\x1f0 bilijoni\x1elatn.l12.o\x1f0 bilijon\x1elatn.l12.t\x1f0 bilijo" +
-			"na\x1elatn.l12.x\x1f0 bilijonov\x1elatn.l13.f\x1f00 bilijoni\x1elatn.l13.o\x1f00 bilijon\x1elatn.l13.t\x1f00 bilijona\x1ela" +
-			"tn.l13.x\x1f00 bilijonov\x1elatn.l14.f\x1f000 bilijoni\x1elatn.l14.o\x1f000 bilijon\x1elatn.l14.t\x1f000 bilijona\x1elat" +
-			"n.l14.x\x1f000 bilijonov\x1elatn.l3.f\x1f0 tisoč\x1elatn.l3.o\x1f0 tisoč\x1elatn.l3.t\x1f0 tisoč\x1elatn.l3.x\x1f0 tisoč" +
-			"\x1elatn.l4.f\x1f00 tisoč\x1elatn.l4.o\x1f00 tisoč\x1elatn.l4.t\x1f00 tisoč\x1elatn.l4.x\x1f00 tisoč\x1elatn.l5.f\x1f000 t" +
-			"isoč\x1elatn.l5.o\x1f000 tisoč\x1elatn.l5.t\x1f000 tisoč\x1elatn.l5.x\x1f000 tisoč\x1elatn.l6.f\x1f0 milijoni\x1elatn.l" +
-			"6.o\x1f0 milijon\x1elatn.l6.t\x1f0 milijona\x1elatn.l6.x\x1f0 milijonov\x1elatn.l7.f\x1f00 milijona\x1elatn.l7.o\x1f00 mili" +
-			"jon\x1elatn.l7.t\x1f00 milijona\x1elatn.l7.x\x1f00 milijonov\x1elatn.l8.f\x1f000 milijoni\x1elatn.l8.o\x1f000 milijon\x1ela" +
-			"tn.l8.t\x1f000 milijona\x1elatn.l8.x\x1f000 milijonov\x1elatn.l9.f\x1f0 milijarde\x1elatn.l9.o\x1f0 milijarda\x1elatn.l9" +
-			".t\x1f0 milijardi\x1elatn.l9.x\x1f0 milijard\x1elatn.s10.f\x1f00\u00a0mrd'.'\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.t\x1f00\u00a0m" +
-			"rd'.'\x1elatn.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.f\x1f000\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'\x1elatn.s11.t\x1f000\u00a0mrd'.'" +
-			"\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.t\x1f0\u00a0bil'.'\x1elatn.s12." +
-			"x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.t\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil" +
-			"'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.t\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1e" +
-			"latn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.t\x1f0\u00a0tis'.'\x1elatn.s3.x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0ti" +
-			"s'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.t\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn.s5.f\x1f000\u00a0tis'.'\x1elatn.s" +
-			"5.o\x1f000\u00a0tis'.'\x1elatn.s5.t\x1f000\u00a0tis'.'\x1elatn.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0mio'.'\x1elatn.s6.o\x1f0\u00a0mio" +
-			"'.'\x1elatn.s6.t\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.f\x1f00\u00a0mio'.'\x1elatn.s7.o\x1f00\u00a0mio'.'\x1elatn.s7.t\x1f" +
-			"00\u00a0mio'.'\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.f\x1f000\u00a0mio'.'\x1elatn.s8.o\x1f000\u00a0mio'.'\x1elatn.s8.t\x1f000\u00a0mio'." +
-			"'\x1elatn.s8.x\x1f000\u00a0mio'.'\x1elatn.s9.f\x1f0\u00a0mrd'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elatn.s9.t\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0" +
-			"mrd'.'\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0} {1}\x1elatn.Ut\x1f{0} {1}\x1el" +
-			"atn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljard\x1elatn.l10.t\x1f00 miljard\x1elatn.l10.x\x1f00 miljard\x1elatn.l11.o\x1f0" +
-			"00 miljard\x1elatn.l11.t\x1f000 miljard\x1elatn.l11.x\x1f000 miljard\x1elatn.l12.o\x1f0 biljovn\x1elatn.l12.t\x1f0 biljo" +
-			"vn\x1elatn.l12.x\x1f0 biljovn\x1elatn.l13.o\x1f00 biljovn\x1elatn.l13.t\x1f00 biljovn\x1elatn.l13.x\x1f00 biljovn\x1elatn.l" +
-			"14.o\x1f000 biljovn\x1elatn.l14.t\x1f000 biljovn\x1elatn.l14.x\x1f000 biljovn\x1elatn.l3.o\x1f0 tuhháát\x1elatn.l3.t\x1f0" +
-			" tuhháát\x1elatn.l3.x\x1f0 tuhháát\x1elatn.l4.o\x1f00 tuhháát\x1elatn.l4.t\x1f00 tuhháát\x1elatn.l4.x\x1f00 tuhh" +
-			"áát\x1elatn.l5.o\x1f000 tuhháát\x1elatn.l5.t\x1f000 tuhháát\x1elatn.l5.x\x1f000 tuhháát\x1elatn.l6.o\x1f0 miljov" +
-			"n\x1elatn.l6.t\x1f0 miljovn\x1elatn.l6.x\x1f0 miljovn\x1elatn.l7.o\x1f00 miljovn\x1elatn.l7.t\x1f00 miljovn\x1elatn.l7.x\x1f00" +
-			" miljovn\x1elatn.l8.o\x1f000 miljovn\x1elatn.l8.t\x1f000 miljovn\x1elatn.l8.x\x1f000 miljovn\x1elatn.l9.o\x1f0 miljard\x1el" +
-			"atn.l9.t\x1f0 miljard\x1elatn.l9.x\x1f0 miljard\x1elatn.n\x1fepiloho\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#," +
-			"##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.c10" +
-			".o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1ela" +
-			"tn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0" +
-			"K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0" +
-			"M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0" +
-			"B\x1elatn.l10.o\x1f00 Bilyan\x1elatn.l10.x\x1f00 Bilyan\x1elatn.l11.o\x1f000 Bilyan\x1elatn.l11.x\x1f000 Bilyan\x1elatn.l12" +
-			".o\x1f0 Tirilyan\x1elatn.l12.x\x1f0 Tirilyan\x1elatn.l13.o\x1f00 Tirilyan\x1elatn.l13.x\x1f00 Tirilyan\x1elatn.l14.o\x1f000" +
-			" Tirilyan\x1elatn.l14.x\x1f000 Tirilyan\x1elatn.l3.o\x1f0 kun\x1elatn.l3.x\x1f0 Kun\x1elatn.l4.o\x1f00 Kun\x1elatn.l4.x\x1f00 " +
-			"Kun\x1elatn.l5.o\x1f000 Kun\x1elatn.l5.x\x1f000 Kun\x1elatn.l6.o\x1f0 Milyan\x1elatn.l6.x\x1f0 Milyan\x1elatn.l7.o\x1f00 Milya" +
-			"n\x1elatn.l7.x\x1f00 Milyan\x1elatn.l8.o\x1f000 Milyan\x1elatn.l8.x\x1f000 Milyan\x1elatn.l9.o\x1f0 Bilyan\x1elatn.l9.x\x1f0 B" +
-			"ilyan\x1elatn.n\x1fMaL\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn" +
-			".s9.x\x1f0B\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}-{1}\x1elatn.X\x1f≈{0}" +
-			"\x1elatn.c10.o\x1f00\u00a0mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld\u00a0¤\x1el" +
-			"atn.c12.o\x1f0\u00a0bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0bln\u00a0¤\x1elatn.c1" +
-			"4.o\x1f000\u00a0bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0bln\u00a0¤\x1elatn.c3.o\x1f0\u00a0mijë\u00a0¤\x1elatn.c3.x\x1f0\u00a0mijë\u00a0¤\x1elatn.c4.o" +
-			"\x1f00\u00a0mijë\u00a0¤\x1elatn.c4.x\x1f00\u00a0mijë\u00a0¤\x1elatn.c5.o\x1f000\u00a0mijë\u00a0¤\x1elatn.c5.x\x1f000\u00a0mijë\u00a0¤\x1elatn.c6" +
-			".o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0ml" +
-			"n\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l" +
-			"10.o\x1f00 miliard\x1elatn.l10.x\x1f00 miliard\x1elatn.l11.o\x1f000 miliard\x1elatn.l11.x\x1f000 miliard\x1elatn.l12.o\x1f0" +
-			" bilion\x1elatn.l12.x\x1f0 bilion\x1elatn.l13.o\x1f00 bilion\x1elatn.l13.x\x1f00 bilion\x1elatn.l14.o\x1f000 bilion\x1elatn" +
-			".l14.x\x1f000 bilion\x1elatn.l3.o\x1f0 mijë\x1elatn.l3.x\x1f0 mijë\x1elatn.l4.o\x1f00 mijë\x1elatn.l4.x\x1f00 mijë\x1elatn" +
-			".l5.o\x1f000 mijë\x1elatn.l5.x\x1f000 mijë\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 milion\x1elatn.l7.o\x1f00 milion\x1ela" +
-			"tn.l7.x\x1f00 milion\x1elatn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 milion\x1elatn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 mili" +
-			"ard\x1elatn.s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn.s11.x\x1f000\u00a0mld\x1elatn.s12.o\x1f0\u00a0" +
-			"bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0" +
-			"bln\x1elatn.s3.o\x1f0\u00a0mijë\x1elatn.s3.x\x1f0\u00a0mijë\x1elatn.s4.o\x1f00\u00a0mijë\x1elatn.s4.x\x1f00\u00a0mijë\x1elatn.s5.o\x1f000\u00a0" +
-			"mijë\x1elatn.s5.x\x1f000\u00a0mijë\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln" +
-			"\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x\x1f0\u00a0mld\x1elatn.~\x1f≈\x1elatn.A\x1f#,##0" +
-			".00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0млрд" +
-			"'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд'" +
-			".'\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0бил'.'\u00a0¤\x1el" +
-			"atn.c12.x\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c13.x\x1f" +
-			"00\u00a0бил'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0бил'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0бил'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0б" +
-			"ил'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0хиљ'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0хиљ'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0хиљ'.'\u00a0¤\x1elat" +
-			"n.c4.f\x1f00\u00a0хиљ'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0хиљ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0хиљ'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0" +
-			"хиљ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0хиљ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0хиљ'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0мил'.'\u00a0" +
-			"¤\x1elatn.c6.o\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c7.o\x1f0" +
-			"0\u00a0мил'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0мил'" +
-			".'\u00a0¤\x1elatn.c8.x\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд'.'\u00a0¤\x1ela" +
-			"tn.c9.x\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 милијарде\x1elatn.l10.o\x1f00 ми" +
-			"лијарда\x1elatn.l10.x\x1f00 милијарди\x1elatn.l11.f\x1f000 милијарде\x1elatn.l11.o\x1f000" +
-			" милијарда\x1elatn.l11.x\x1f000 милијарди\x1elatn.l12.f\x1f0 билиона\x1elatn.l12.o\x1f0 б" +
-			"илион\x1elatn.l12.x\x1f0 билиона\x1elatn.l13.f\x1f00 билиона\x1elatn.l13.o\x1f00 билион\x1el" +
-			"atn.l13.x\x1f00 билиона\x1elatn.l14.f\x1f000 билиона\x1elatn.l14.o\x1f000 билион\x1elatn.l14.x" +
-			"\x1f000 билиона\x1elatn.l3.f\x1f0 хиљаде\x1elatn.l3.o\x1f0 хиљада\x1elatn.l3.x\x1f0 хиљада\x1el" +
-			"atn.l4.f\x1f00 хиљаде\x1elatn.l4.o\x1f00 хиљада\x1elatn.l4.x\x1f00 хиљада\x1elatn.l5.f\x1f000 хиљ" +
-			"аде\x1elatn.l5.o\x1f000 хиљада\x1elatn.l5.x\x1f000 хиљада\x1elatn.l6.f\x1f0 милиона\x1elatn.l6." +
-			"o\x1f0 милион\x1elatn.l6.x\x1f0 милиона\x1elatn.l7.f\x1f00 милиона\x1elatn.l7.o\x1f00 милион" +
-			"\x1elatn.l7.x\x1f00 милиона\x1elatn.l8.f\x1f000 милиона\x1elatn.l8.o\x1f000 милион\x1elatn.l8.x\x1f0" +
-			"00 милиона\x1elatn.l9.f\x1f0 милијарде\x1elatn.l9.o\x1f0 милијарда\x1elatn.l9.x\x1f0 ми" +
-			"лијарди\x1elatn.s10.f\x1f00\u00a0млрд'.'\x1elatn.s10.o\x1f00\u00a0млрд'.'\x1elatn.s10.x\x1f00\u00a0млрд'.'\x1e" +
-			"latn.s11.f\x1f000\u00a0млрд'.'\x1elatn.s11.o\x1f000\u00a0млрд'.'\x1elatn.s11.x\x1f000\u00a0млрд'.'\x1elatn.s12.f\x1f0" +
-			"\u00a0бил'.'\x1elatn.s12.o\x1f0\u00a0бил'.'\x1elatn.s12.x\x1f0\u00a0бил'.'\x1elatn.s13.f\x1f00\u00a0бил'.'\x1elatn.s13.o\x1f" +
-			"00\u00a0бил'.'\x1elatn.s13.x\x1f00\u00a0бил'.'\x1elatn.s14.f\x1f000\u00a0бил'.'\x1elatn.s14.o\x1f000\u00a0бил'.'\x1elatn." +
-			"s14.x\x1f000\u00a0бил'.'\x1elatn.s3.f\x1f0\u00a0хиљ'.'\x1elatn.s3.o\x1f0\u00a0хиљ'.'\x1elatn.s3.x\x1f0\u00a0хиљ'.'\x1elatn.s" +
-			"4.f\x1f00\u00a0хиљ'.'\x1elatn.s4.o\x1f00\u00a0хиљ'.'\x1elatn.s4.x\x1f00\u00a0хиљ'.'\x1elatn.s5.f\x1f000\u00a0хиљ'.'\x1elatn." +
-			"s5.o\x1f000\u00a0хиљ'.'\x1elatn.s5.x\x1f000\u00a0хиљ'.'\x1elatn.s6.f\x1f0\u00a0мил'.'\x1elatn.s6.o\x1f0\u00a0мил'.'\x1elatn." +
-			"s6.x\x1f0\u00a0мил'.'\x1elatn.s7.f\x1f00\u00a0мил'.'\x1elatn.s7.o\x1f00\u00a0мил'.'\x1elatn.s7.x\x1f00\u00a0мил'.'\x1elatn.s" +
-			"8.f\x1f000\u00a0мил'.'\x1elatn.s8.o\x1f000\u00a0мил'.'\x1elatn.s8.x\x1f000\u00a0мил'.'\x1elatn.s9.f\x1f0\u00a0млрд'.'\x1ela" +
-			"tn.s9.o\x1f0\u00a0млрд'.'\x1elatn.s9.x\x1f0\u00a0млрд'.'\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0." +
-			"00\u00a0¤\x1elatn.c10.f\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c11" +
-			".f\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'" +
-			"\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0" +
-			"bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn." +
-			"c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0hilj'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0hilj'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0hilj'.'\u00a0¤" +
-			"\x1elatn.c4.f\x1f00\u00a0hilj'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0hilj'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0hilj'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0hi" +
-			"lj'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0hilj'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0hilj'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6." +
-			"o\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c" +
-			"7.x\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤" +
-			"\x1elatn.c9.f\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1ela" +
-			"tn.l10.f\x1f00 milijarde\x1elatn.l10.o\x1f00 milijarda\x1elatn.l10.x\x1f00 milijardi\x1elatn.l11.f\x1f000 milijarde\x1el" +
-			"atn.l11.o\x1f000 milijarda\x1elatn.l11.x\x1f000 milijardi\x1elatn.l12.f\x1f0 biliona\x1elatn.l12.o\x1f0 bilion\x1elatn.l" +
-			"12.x\x1f0 biliona\x1elatn.l13.f\x1f00 biliona\x1elatn.l13.o\x1f00 bilion\x1elatn.l13.x\x1f00 biliona\x1elatn.l14.f\x1f000 b" +
-			"iliona\x1elatn.l14.o\x1f000 bilion\x1elatn.l14.x\x1f000 biliona\x1elatn.l3.f\x1f0 hiljade\x1elatn.l3.o\x1f0 hiljada\x1elatn" +
-			".l3.x\x1f0 hiljada\x1elatn.l4.f\x1f00 hiljade\x1elatn.l4.o\x1f00 hiljada\x1elatn.l4.x\x1f00 hiljada\x1elatn.l5.f\x1f000 hil" +
-			"jade\x1elatn.l5.o\x1f000 hiljada\x1elatn.l5.x\x1f000 hiljada\x1elatn.l6.f\x1f0 miliona\x1elatn.l6.o\x1f0 milion\x1elatn.l6." +
-			"x\x1f0 miliona\x1elatn.l7.f\x1f00 miliona\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 miliona\x1elatn.l8.f\x1f000 miliona\x1e" +
-			"latn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 miliona\x1elatn.l9.f\x1f0 milijarde\x1elatn.l9.o\x1f0 milijarda\x1elatn.l9.x" +
-			"\x1f0 milijardi\x1elatn.s10.f\x1f00\u00a0mlrd'.'\x1elatn.s10.o\x1f00\u00a0mlrd'.'\x1elatn.s10.x\x1f00\u00a0mlrd'.'\x1elatn.s11.f\x1f000" +
-			"\u00a0mlrd'.'\x1elatn.s11.o\x1f000\u00a0mlrd'.'\x1elatn.s11.x\x1f000\u00a0mlrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil" +
-			"'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn." +
-			"s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0hilj'.'\x1elatn.s3.o\x1f0" +
-			"\u00a0hilj'.'\x1elatn.s3.x\x1f0\u00a0hilj'.'\x1elatn.s4.f\x1f00\u00a0hilj'.'\x1elatn.s4.o\x1f00\u00a0hilj'.'\x1elatn.s4.x\x1f00\u00a0hilj'.'" +
-			"\x1elatn.s5.f\x1f000\u00a0hilj'.'\x1elatn.s5.o\x1f000\u00a0hilj'.'\x1elatn.s5.x\x1f000\u00a0hilj'.'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s" +
-			"6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'" +
-			"\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mlrd'.'\x1elatn.s9." +
-			"o\x1f0\u00a0mlrd'.'\x1elatn.s9.x\x1f0\u00a0mlrd'.'\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#" +
-			",##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1el" +
-			"atn.P\x1f#,##0\u00a0%\x1elatn.c10.o\x1f00\u00a0md\u00a0¤\x1elatn.c10.x\x1f00\u00a0md\u00a0¤\x1elatn.c11.o\x1f000\u00a0md\u00a0¤\x1elatn.c11.x\x1f000" +
-			"\u00a0md\u00a0¤\x1elatn.c12.o\x1f0\u00a0bn\u00a0¤\x1elatn.c12.x\x1f0\u00a0bn\u00a0¤\x1elatn.c13.o\x1f00\u00a0bn\u00a0¤\x1elatn.c13.x\x1f00\u00a0bn\u00a0¤\x1el" +
-			"atn.c14.o\x1f000\u00a0bn\u00a0¤\x1elatn.c14.x\x1f000\u00a0bn\u00a0¤\x1elatn.c3.o\x1f0\u00a0tn\u00a0¤\x1elatn.c3.x\x1f0\u00a0tn\u00a0¤\x1elatn.c4.o\x1f0" +
-			"0\u00a0tn\u00a0¤\x1elatn.c4.x\x1f00\u00a0tn\u00a0¤\x1elatn.c5.o\x1f000\u00a0tn\u00a0¤\x1elatn.c5.x\x1f000\u00a0tn\u00a0¤\x1elatn.c6.o\x1f0\u00a0mn\u00a0¤\x1el" +
-			"atn.c6.x\x1f0\u00a0mn\u00a0¤\x1elatn.c7.o\x1f00\u00a0mn\u00a0¤\x1elatn.c7.x\x1f00\u00a0mn\u00a0¤\x1elatn.c8.o\x1f000\u00a0mn\u00a0¤\x1elatn.c8.x\x1f000" +
-			"\u00a0mn\u00a0¤\x1elatn.c9.o\x1f0\u00a0md\u00a0¤\x1elatn.c9.x\x1f0\u00a0md\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1f×10^\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 m" +
-			"iljarder\x1elatn.l10.x\x1f00 miljarder\x1elatn.l11.o\x1f000 miljarder\x1elatn.l11.x\x1f000 miljarder\x1elatn.l12.o\x1f0 " +
-			"biljon\x1elatn.l12.x\x1f0 biljoner\x1elatn.l13.o\x1f00 biljoner\x1elatn.l13.x\x1f00 biljoner\x1elatn.l14.o\x1f000 biljon" +
-			"er\x1elatn.l14.x\x1f000 biljoner\x1elatn.l3.o\x1f0 tusen\x1elatn.l3.x\x1f0 tusen\x1elatn.l4.o\x1f00 tusen\x1elatn.l4.x\x1f00 t" +
-			"usen\x1elatn.l5.o\x1f000 tusen\x1elatn.l5.x\x1f000 tusen\x1elatn.l6.o\x1f0 miljon\x1elatn.l6.x\x1f0 miljoner\x1elatn.l7.o\x1f0" +
-			"0 miljon\x1elatn.l7.x\x1f00 miljoner\x1elatn.l8.o\x1f000 miljoner\x1elatn.l8.x\x1f000 miljoner\x1elatn.l9.o\x1f0 miljard" +
-			"\x1elatn.l9.x\x1f0 miljarder\x1elatn.s10.o\x1f00\u00a0md\x1elatn.s10.x\x1f00\u00a0md\x1elatn.s11.o\x1f000\u00a0md\x1elatn.s11.x\x1f000\u00a0md" +
-			"\x1elatn.s12.o\x1f0\u00a0bn\x1elatn.s12.x\x1f0\u00a0bn\x1elatn.s13.o\x1f00\u00a0bn\x1elatn.s13.x\x1f00\u00a0bn\x1elatn.s14.o\x1f000\u00a0bn\x1elatn.s" +
-			"14.x\x1f000\u00a0bn\x1elatn.s3.o\x1f0\u00a0tn\x1elatn.s3.x\x1f0\u00a0tn\x1elatn.s4.o\x1f00\u00a0tn\x1elatn.s4.x\x1f00\u00a0tn\x1elatn.s5.o\x1f000\u00a0tn" +
-			"\x1elatn.s5.x\x1f000\u00a0tn\x1elatn.s6.o\x1f0\u00a0mn\x1elatn.s6.x\x1f0\u00a0mn\x1elatn.s7.o\x1f00\u00a0mn\x1elatn.s7.x\x1f00\u00a0mn\x1elatn.s8.o\x1f0" +
-			"00\u00a0mn\x1elatn.s8.x\x1f000\u00a0mn\x1elatn.s9.o\x1f0\u00a0md\x1elatn.s9.x\x1f0\u00a0md\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤\u00a000B;¤\u00a0" +
-			"-00B\x1elatn.c10.x\x1f¤\u00a000B;¤\u00a0-00B\x1elatn.c11.o\x1f¤\u00a0000B;¤\u00a0-000B\x1elatn.c11.x\x1f¤\u00a0000B;¤\u00a0-000B\x1elat" +
-			"n.c12.o\x1f¤\u00a00T;¤\u00a0-0T\x1elatn.c13.o\x1f¤\u00a000T;¤\u00a0-00T\x1elatn.c14.o\x1f¤\u00a0000T;¤\u00a0-000T\x1elatn.c3.o\x1f¤\u00a0e" +
-			"lfu\u00a00;¤\u00a0elfu\u00a0-0\x1elatn.c3.x\x1f¤\u00a0elfu\u00a00;¤\u00a0elfu\u00a0-0\x1elatn.c4.o\x1f¤\u00a0elfu\u00a000;¤\u00a0elfu\u00a0-00\x1elatn" +
-			".c4.x\x1f¤\u00a0elfu\u00a000;¤\u00a0elfu\u00a0-00\x1elatn.c5.o\x1f¤\u00a0elfu\u00a0000;¤\u00a0elfu\u00a0-000\x1elatn.c5.x\x1f¤\u00a0elfu\u00a0000;" +
-			"¤\u00a0elfu\u00a0-000\x1elatn.c6.o\x1f¤\u00a00M;¤\u00a0-0M\x1elatn.c7.o\x1f¤\u00a000M;¤\u00a0-00M\x1elatn.c8.o\x1f¤\u00a0000M;¤\u00a0-000M\x1e" +
-			"latn.c9.o\x1f¤\u00a00B;¤\u00a0-0B\x1elatn.c9.x\x1f¤\u00a00B;¤\u00a0-0B\x1elatn.l10.o\x1fbilioni 00;bilioni -00\x1elatn.l10.x\x1fb" +
-			"ilioni 00;bilioni -00\x1elatn.l11.o\x1fbilioni 000;bilioni -000\x1elatn.l11.x\x1fbilioni 000;bilioni -000\x1ela" +
-			"tn.l12.o\x1ftrilioni 0;trilioni -0\x1elatn.l12.x\x1ftrilioni 0;trilioni -0\x1elatn.l13.o\x1ftrilioni 00;trilion" +
-			"i -00\x1elatn.l13.x\x1ftrilioni 00;trilioni -00\x1elatn.l14.o\x1ftrilioni 000;trilioni -000\x1elatn.l14.x\x1ftrili" +
-			"oni 000;trilioni -000\x1elatn.l3.o\x1felfu 0;elfu -0\x1elatn.l3.x\x1felfu 0;elfu -0\x1elatn.l4.o\x1felfu 00;elfu -" +
-			"00\x1elatn.l4.x\x1felfu 00;elfu -00\x1elatn.l5.o\x1felfu 000;elfu -000\x1elatn.l5.x\x1felfu 000;elfu -000\x1elatn.l6." +
-			"o\x1fmilioni 0;milioni -0\x1elatn.l6.x\x1fmilioni 0;milioni -0\x1elatn.l7.o\x1fmilioni 00;milioni -00\x1elatn.l7.x" +
-			"\x1fmilioni 00;milioni -00\x1elatn.l8.o\x1fmilioni 000;milioni -000\x1elatn.l8.x\x1fmilioni 000;milioni -000\x1ela" +
-			"tn.l9.o\x1fbilioni 0;bilioni -0\x1elatn.l9.x\x1fbilioni 0;bilioni -0\x1elatn.s10.o\x1f00B;-00B\x1elatn.s10.x\x1f00B;-" +
-			"00B\x1elatn.s11.o\x1f000B;-000B\x1elatn.s11.x\x1f000B;-000B\x1elatn.s12.o\x1f0T;-0T\x1elatn.s13.o\x1f00T;-00T\x1elatn.s14.o" +
-			"\x1f000T;-000T\x1elatn.s3.o\x1felfu\u00a00;elfu\u00a0-0\x1elatn.s3.x\x1felfu\u00a00;elfu\u00a0-0\x1elatn.s4.o\x1felfu\u00a000;elfu\u00a0-00\x1el" +
-			"atn.s4.x\x1felfu\u00a000;elfu\u00a0-00\x1elatn.s5.o\x1felfu\u00a0000;elfu\u00a0-000\x1elatn.s5.x\x1felfu\u00a0000;elfu\u00a0-000\x1elatn.s" +
-			"6.o\x1f0M\x1elatn.s7.o\x1f00M;-00M\x1elatn.s8.o\x1f000M;-000M\x1elatn.s9.o\x1f0B;-0B\x1elatn.s9.x\x1f0B;-0B\x1elatn.d\x1f,\x1elatn.g" +
-			"\x1f.\x1elatn.c10.o\x1f¤\u00a0B00\x1elatn.c10.x\x1f¤\u00a0B00\x1elatn.c11.o\x1f¤\u00a0B000\x1elatn.c11.x\x1f¤\u00a0B000\x1elatn.c12.o\x1f¤\u00a0" +
-			"T0\x1elatn.c12.x\x1f¤\u00a0T0\x1elatn.c13.o\x1f¤\u00a0T00\x1elatn.c13.x\x1f¤\u00a0T00\x1elatn.c14.o\x1f¤\u00a0T000\x1elatn.c14.x\x1f¤\u00a0T0" +
-			"00\x1elatn.c3.o\x1f¤\u00a0elfu\u00a00\x1elatn.c3.x\x1f¤\u00a0elfu\u00a00\x1elatn.c4.o\x1f¤\u00a0elfu\u00a000\x1elatn.c4.x\x1f¤\u00a0elfu\u00a000\x1elat" +
-			"n.c5.o\x1f¤\u00a0elfu\u00a0000\x1elatn.c5.x\x1f¤\u00a0elfu\u00a0000\x1elatn.c6.o\x1f¤\u00a0M0\x1elatn.c6.x\x1f¤\u00a0M0\x1elatn.c7.o\x1f¤\u00a0M00" +
-			"\x1elatn.c7.x\x1f¤\u00a0M00\x1elatn.c8.o\x1f¤\u00a0M000\x1elatn.c8.x\x1f¤\u00a0M000\x1elatn.c9.o\x1f¤\u00a0B0\x1elatn.c9.x\x1f¤\u00a0B0\x1elatn." +
-			"l10.o\x1fbilioni 00\x1elatn.l10.x\x1fbilioni 00\x1elatn.l11.o\x1fbilioni 000\x1elatn.l11.x\x1fbilioni 000\x1elatn.l12.o\x1f" +
-			"trilioni 0\x1elatn.l12.x\x1ftrilioni 0\x1elatn.l13.o\x1ftrilioni 00\x1elatn.l13.x\x1ftrilioni 00\x1elatn.l14.o\x1ftrilio" +
-			"ni 000\x1elatn.l14.x\x1ftrilioni 000\x1elatn.l4.x\x1felfu 00\x1elatn.l5.o\x1felfu 000\x1elatn.l5.x\x1felfu 000\x1elatn.l6.o" +
-			"\x1fmilioni 0\x1elatn.l6.x\x1fmilioni 0\x1elatn.l7.o\x1fmilioni 00\x1elatn.l7.x\x1fmilioni 00\x1elatn.l8.o\x1fmilioni 000\x1el" +
-			"atn.l8.x\x1fmilioni 000\x1elatn.l9.o\x1fbilioni 0\x1elatn.l9.x\x1fbilioni 0\x1elatn.s10.o\x1fB00\x1elatn.s10.x\x1fB00\x1elatn." +
-			"s11.o\x1fB000\x1elatn.s11.x\x1fB000\x1elatn.s12.o\x1fT0\x1elatn.s12.x\x1fT0\x1elatn.s13.o\x1fT00\x1elatn.s13.x\x1fT00\x1elatn.s14.o\x1f" +
-			"T000\x1elatn.s14.x\x1fT000\x1elatn.s3.o\x1felfu\u00a00\x1elatn.s3.x\x1felfu\u00a00\x1elatn.s4.o\x1felfu\u00a000\x1elatn.s4.x\x1felfu\u00a000\x1el" +
-			"atn.s5.o\x1felfu\u00a0000\x1elatn.s5.x\x1felfu\u00a0000\x1elatn.s6.o\x1fM0\x1elatn.s6.x\x1fM0\x1elatn.s7.o\x1fM00\x1elatn.s7.x\x1fM00\x1elat" +
-			"n.s8.o\x1fM000\x1elatn.s8.x\x1fM000\x1elatn.s9.o\x1fB0\x1elatn.s9.x\x1fB0\x1elatn.n\x1fܠܝܬ\u00a0ܡܢܝܢܐ\x1elatn.A\x1f#,##0.00\u00a0" +
-			"¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.D\x1f#,##,##0.###\x1elat" +
-			"n.P\x1f#,##,##0%\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤" +
-			"0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3" +
-			".o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6" +
-			".o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9" +
-			".o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 பில்லியன்\x1elatn.l10.x\x1f00 பில்லி" +
-			"யன்\x1elatn.l11.o\x1f000 பில்லியன்\x1elatn.l11.x\x1f000 பில்லியன்\x1e" +
-			"latn.l12.o\x1f0 டிரில்லியன்\x1elatn.l12.x\x1f0 டிரில்லியன்\x1ela" +
-			"tn.l13.o\x1f00 டிரில்லியன்\x1elatn.l13.x\x1f00 டிரில்லியன்\x1ela" +
-			"tn.l14.o\x1f000 டிரில்லியன்\x1elatn.l14.x\x1f000 டிரில்லியன்\x1e" +
-			"latn.l3.o\x1f0 ஆயிரம்\x1elatn.l3.x\x1f0 ஆயிரம்\x1elatn.l4.o\x1f00 ஆயிரம்\x1ela" +
-			"tn.l4.x\x1f00 ஆயிரம்\x1elatn.l5.o\x1f000 ஆயிரம்\x1elatn.l5.x\x1f000 ஆயிரம்\x1e" +
-			"latn.l6.o\x1f0 மில்லியன்\x1elatn.l6.x\x1f0 மில்லியன்\x1elatn.l7.o\x1f00 ம" +
-			"ில்லியன்\x1elatn.l7.x\x1f00 மில்லியன்\x1elatn.l8.o\x1f000 மில்லி" +
-			"யன்\x1elatn.l8.x\x1f000 மில்லியன்\x1elatn.l9.o\x1f0 பில்லியன்\x1elatn" +
-			".l9.x\x1f0 பில்லியன்\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000" +
-			"B\x1elatn.s12.o\x1f0T\x1elatn.s13.o\x1f00T\x1elatn.s14.o\x1f000T\x1elatn.s3.o\x1f0K\x1elatn.s4.o\x1f00K\x1elatn.s5.o\x1f000K\x1elatn.s6" +
-			".o\x1f0M\x1elatn.s7.o\x1f00M\x1elatn.s8.o\x1f000M\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1etamldec.+\x1f+\x1etamldec.-\x1f-\x1etamldec.A\x1f¤" +
-			"#,##0.00;(¤#,##0.00)\x1etamldec.B\x1f\u00a0\x1etamldec.C\x1f¤#,##0.00\x1etamldec.D\x1f#,##,##0.###\x1etamldec.P\x1f#,##,##" +
-			"0%\x1etamldec.R\x1f{0}–{1}\x1etamldec.S\x1f#E0\x1etamldec.Ux\x1f{0} {1}\x1etamldec.X\x1f~{0}\x1etamldec.b\x1f\u00a0\x1etamldec.c10." +
-			"o\x1f¤00B\x1etamldec.c10.x\x1f¤00B\x1etamldec.c11.o\x1f¤000B\x1etamldec.c11.x\x1f¤000B\x1etamldec.c12.o\x1f¤0T\x1etamldec" +
-			".c12.x\x1f¤0T\x1etamldec.c13.o\x1f¤00T\x1etamldec.c13.x\x1f¤00T\x1etamldec.c14.o\x1f¤000T\x1etamldec.c14.x\x1f¤000T\x1eta" +
-			"mldec.c3.o\x1f¤0K\x1etamldec.c3.x\x1f¤0K\x1etamldec.c4.o\x1f¤00K\x1etamldec.c4.x\x1f¤00K\x1etamldec.c5.o\x1f¤000K\x1etaml" +
-			"dec.c5.x\x1f¤000K\x1etamldec.c6.o\x1f¤0M\x1etamldec.c6.x\x1f¤0M\x1etamldec.c7.o\x1f¤00M\x1etamldec.c7.x\x1f¤00M\x1etamlde" +
-			"c.c8.o\x1f¤000M\x1etamldec.c8.x\x1f¤000M\x1etamldec.c9.o\x1f¤0B\x1etamldec.c9.x\x1f¤0B\x1etamldec.d\x1f.\x1etamldec.e\x1fE\x1eta" +
-			"mldec.g\x1f,\x1etamldec.i\x1f∞\x1etamldec.l10.o\x1f00 பில்லியன்\x1etamldec.l10.x\x1f00 பில்" +
-			"லியன்\x1etamldec.l11.o\x1f000 பில்லியன்\x1etamldec.l11.x\x1f000 பில்லி" +
-			"யன்\x1etamldec.l12.o\x1f0 டிரில்லியன்\x1etamldec.l12.x\x1f0 டிரில்ல" +
-			"ியன்\x1etamldec.l13.o\x1f00 டிரில்லியன்\x1etamldec.l13.x\x1f00 டிரில" +
-			"்லியன்\x1etamldec.l14.o\x1f000 டிரில்லியன்\x1etamldec.l14.x\x1f000 டிர" +
-			"ில்லியன்\x1etamldec.l3.o\x1f0 ஆயிரம்\x1etamldec.l3.x\x1f0 ஆயிரம்\x1etam" +
-			"ldec.l4.o\x1f00 ஆயிரம்\x1etamldec.l4.x\x1f00 ஆயிரம்\x1etamldec.l5.o\x1f000 ஆயிர" +
-			"ம்\x1etamldec.l5.x\x1f000 ஆயிரம்\x1etamldec.l6.o\x1f0 மில்லியன்\x1etamldec.l6" +
-			".x\x1f0 மில்லியன்\x1etamldec.l7.o\x1f00 மில்லியன்\x1etamldec.l7.x\x1f00 ம" +
-			"ில்லியன்\x1etamldec.l8.o\x1f000 மில்லியன்\x1etamldec.l8.x\x1f000 மில" +
-			"்லியன்\x1etamldec.l9.o\x1f0 பில்லியன்\x1etamldec.l9.x\x1f0 பில்லிய" +
-			"ன்\x1etamldec.m\x1f‰\x1etamldec.n\x1fNaN\x1etamldec.p\x1f%\x1etamldec.s10.o\x1f00B\x1etamldec.s10.x\x1f00B\x1etamldec.s11.o" +
-			"\x1f000B\x1etamldec.s11.x\x1f000B\x1etamldec.s12.o\x1f0T\x1etamldec.s12.x\x1f0T\x1etamldec.s13.o\x1f00T\x1etamldec.s13.x\x1f00T\x1et" +
-			"amldec.s14.o\x1f000T\x1etamldec.s14.x\x1f000T\x1etamldec.s3.o\x1f0K\x1etamldec.s3.x\x1f0K\x1etamldec.s4.o\x1f00K\x1etamldec.s4" +
-			".x\x1f00K\x1etamldec.s5.o\x1f000K\x1etamldec.s5.x\x1f000K\x1etamldec.s6.o\x1f0M\x1etamldec.s6.x\x1f0M\x1etamldec.s7.o\x1f00M\x1etaml" +
-			"dec.s7.x\x1f00M\x1etamldec.s8.o\x1f000M\x1etamldec.s8.x\x1f000M\x1etamldec.s9.o\x1f0B\x1etamldec.s9.x\x1f0B\x1etamldec.~\x1f~\x1elat" +
-			"n.D\x1f#,##0.###\x1elatn.P\x1f#,##0%\x1etamldec.D\x1f#,##0.###\x1etamldec.P\x1f#,##0%\x1elatn.D\x1f#,##0.###\x1elatn.P\x1f#,##0%\x1e" +
-			"tamldec.D\x1f#,##0.###\x1etamldec.P\x1f#,##0%\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f" +
-			"#,##,##0.###\x1elatn.c10.o\x1f¤00బి\x1elatn.c10.x\x1f¤00బి\x1elatn.c11.o\x1f¤000బి\x1elatn.c11.x\x1f¤000" +
-			"బి\x1elatn.c12.o\x1f¤0ట్రి\x1elatn.c12.x\x1f¤0ట్రి\x1elatn.c13.o\x1f¤00ట్రి\x1elatn.c1" +
-			"3.x\x1f¤00ట్రి\x1elatn.c14.o\x1f¤000ట్రి\x1elatn.c14.x\x1f¤000ట్రి\x1elatn.c3.o\x1f¤0వే" +
-			"\x1elatn.c3.x\x1f¤0వే\x1elatn.c4.o\x1f¤00వే\x1elatn.c4.x\x1f¤00వే\x1elatn.c5.o\x1f¤000వే\x1elatn.c5.x\x1f¤" +
-			"000వే\x1elatn.c6.o\x1f¤0మి\x1elatn.c6.x\x1f¤0మి\x1elatn.c7.o\x1f¤00మి\x1elatn.c7.x\x1f¤00మి\x1elatn" +
-			".c8.o\x1f¤000మి\x1elatn.c8.x\x1f¤000మి\x1elatn.c9.o\x1f¤0బి\x1elatn.c9.x\x1f¤0బి\x1elatn.l10.o\x1f00 బ" +
-			"ిలియన్లు\x1elatn.l10.x\x1f00 బిలియన్లు\x1elatn.l11.o\x1f000 బిలియ" +
-			"న్లు\x1elatn.l11.x\x1f000 బిలియన్లు\x1elatn.l12.o\x1f0 ట్రిలియన్" +
-			"\x1elatn.l12.x\x1f0 ట్రిలియన్లు\x1elatn.l13.o\x1f00 ట్రిలియన్లు\x1e" +
-			"latn.l13.x\x1f00 ట్రిలియన్లు\x1elatn.l14.o\x1f000 ట్రిలియన్లు" +
-			"\x1elatn.l14.x\x1f000 ట్రిలియన్లు\x1elatn.l3.o\x1f0 వేయి\x1elatn.l3.x\x1f0 వేల" +
-			"ు\x1elatn.l4.o\x1f00 వేలు\x1elatn.l4.x\x1f00 వేలు\x1elatn.l5.o\x1f000 వేలు\x1elatn.l5.x\x1f000" +
-			" వేలు\x1elatn.l6.o\x1f0 మిలియన్\x1elatn.l6.x\x1f0 మిలియన్లు\x1elatn.l7." +
-			"o\x1f00 మిలియన్లు\x1elatn.l7.x\x1f00 మిలియన్లు\x1elatn.l8.o\x1f000 మిల" +
-			"ియన్లు\x1elatn.l8.x\x1f000 మిలియన్లు\x1elatn.l9.o\x1f0 బిలియన్\x1el" +
-			"atn.l9.x\x1f0 బిలియన్లు\x1elatn.s10.o\x1f00బి\x1elatn.s10.x\x1f00బి\x1elatn.s11.o\x1f000బ" +
-			"ి\x1elatn.s11.x\x1f000బి\x1elatn.s12.o\x1f0ట్రి\x1elatn.s12.x\x1f0ట్రి\x1elatn.s13.o\x1f00ట్ర" +
-			"ి\x1elatn.s13.x\x1f00ట్రి\x1elatn.s14.o\x1f000ట్రి\x1elatn.s14.x\x1f000ట్రి\x1elatn.s3.o\x1f0వ" +
-			"ే\x1elatn.s3.x\x1f0వే\x1elatn.s4.o\x1f00వే\x1elatn.s4.x\x1f00వే\x1elatn.s5.o\x1f000వే\x1elatn.s5.x\x1f000వ" +
-			"ే\x1elatn.s6.o\x1f0మి\x1elatn.s6.x\x1f0మి\x1elatn.s7.o\x1f00మి\x1elatn.s7.x\x1f00మి\x1elatn.s8.o\x1f000మి" +
-			"\x1elatn.s8.x\x1f000మి\x1elatn.s9.o\x1f0బి\x1elatn.s9.x\x1f0బి\x1etelu.+\x1f+\x1etelu.-\x1f-\x1etelu.A\x1f¤#,##0.00;(¤" +
-			"#,##0.00)\x1etelu.B\x1f\u00a0\x1etelu.C\x1f¤#,##,##0.00\x1etelu.D\x1f#,##0.###\x1etelu.P\x1f#,##0%\x1etelu.R\x1f{0}–{1}\x1etelu.S\x1f" +
-			"#E0\x1etelu.Ux\x1f{0} {1}\x1etelu.X\x1f~{0}\x1etelu.b\x1f\u00a0\x1etelu.c10.o\x1f¤00బి\x1etelu.c10.x\x1f¤00బి\x1etelu.c11.o" +
-			"\x1f¤000బి\x1etelu.c11.x\x1f¤000బి\x1etelu.c12.o\x1f¤0ట్రి\x1etelu.c12.x\x1f¤0ట్రి\x1etelu.c" +
-			"13.o\x1f¤00ట్రి\x1etelu.c13.x\x1f¤00ట్రి\x1etelu.c14.o\x1f¤000ట్రి\x1etelu.c14.x\x1f¤000ట" +
-			"్రి\x1etelu.c3.o\x1f¤0వే\x1etelu.c3.x\x1f¤0వే\x1etelu.c4.o\x1f¤00వే\x1etelu.c4.x\x1f¤00వే\x1etelu" +
-			".c5.o\x1f¤000వే\x1etelu.c5.x\x1f¤000వే\x1etelu.c6.o\x1f¤0మి\x1etelu.c6.x\x1f¤0మి\x1etelu.c7.o\x1f¤00మ" +
-			"ి\x1etelu.c7.x\x1f¤00మి\x1etelu.c8.o\x1f¤000మి\x1etelu.c8.x\x1f¤000మి\x1etelu.c9.o\x1f¤0బి\x1etelu.c9" +
-			".x\x1f¤0బి\x1etelu.d\x1f.\x1etelu.e\x1fE\x1etelu.g\x1f,\x1etelu.i\x1f∞\x1etelu.l10.o\x1f00 బిలియన్లు\x1etel" +
-			"u.l10.x\x1f00 బిలియన్లు\x1etelu.l11.o\x1f000 బిలియన్లు\x1etelu.l11.x\x1f000" +
-			" బిలియన్లు\x1etelu.l12.o\x1f0 ట్రిలియన్\x1etelu.l12.x\x1f0 ట్రిల" +
-			"ియన్లు\x1etelu.l13.o\x1f00 ట్రిలియన్లు\x1etelu.l13.x\x1f00 ట్రిల" +
-			"ియన్లు\x1etelu.l14.o\x1f000 ట్రిలియన్లు\x1etelu.l14.x\x1f000 ట్రిల" +
-			"ియన్లు\x1etelu.l3.o\x1f0 వేయి\x1etelu.l3.x\x1f0 వేలు\x1etelu.l4.o\x1f00 వేలు\x1et" +
-			"elu.l4.x\x1f00 వేలు\x1etelu.l5.o\x1f000 వేలు\x1etelu.l5.x\x1f000 వేలు\x1etelu.l6.o\x1f0 మి" +
-			"లియన్\x1etelu.l6.x\x1f0 మిలియన్లు\x1etelu.l7.o\x1f00 మిలియన్లు" +
-			"\x1etelu.l7.x\x1f00 మిలియన్లు\x1etelu.l8.o\x1f000 మిలియన్లు\x1etelu.l8.x\x1f00" +
-			"0 మిలియన్లు\x1etelu.l9.o\x1f0 బిలియన్\x1etelu.l9.x\x1f0 బిలియన్" +
-			"లు\x1etelu.m\x1f‰\x1etelu.n\x1fNaN\x1etelu.p\x1f%\x1etelu.s10.o\x1f00బి\x1etelu.s10.x\x1f00బి\x1etelu.s11.o\x1f000బి" +
-			"\x1etelu.s11.x\x1f000బి\x1etelu.s12.o\x1f0ట్రి\x1etelu.s12.x\x1f0ట్రి\x1etelu.s13.o\x1f00ట్రి" +
-			"\x1etelu.s13.x\x1f00ట్రి\x1etelu.s14.o\x1f000ట్రి\x1etelu.s14.x\x1f000ట్రి\x1etelu.s3.o\x1f0వే" +
-			"\x1etelu.s3.x\x1f0వే\x1etelu.s4.o\x1f00వే\x1etelu.s4.x\x1f00వే\x1etelu.s5.o\x1f000వే\x1etelu.s5.x\x1f000వే" +
-			"\x1etelu.s6.o\x1f0మి\x1etelu.s6.x\x1f0మి\x1etelu.s7.o\x1f00మి\x1etelu.s7.x\x1f00మి\x1etelu.s8.o\x1f000మి\x1et" +
-			"elu.s8.x\x1f000మి\x1etelu.s9.o\x1f0బి\x1etelu.s9.x\x1f0బి\x1etelu.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1el" +
-			"atn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c11" +
-			".x\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн'.'\u00a0¤\x1elatn.c14.x\x1f" +
-			"000\u00a0трлн'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0ҳзр'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0ҳзр'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0ҳзр" +
-			"'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн'.'\u00a0¤\x1elatn" +
-			".c9.x\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.x\x1f000 мил" +
-			"лиард\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.x\x1f000 трилл" +
-			"ион\x1elatn.l3.x\x1f0 ҳазор\x1elatn.l4.x\x1f00 ҳазор\x1elatn.l5.x\x1f000 ҳазор\x1elatn.l6.x\x1f0 мил" +
-			"лион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.x\x1f000 миллион\x1elatn.l9.x\x1f0 миллиард\x1el" +
-			"atn.s10.x\x1f00\u00a0млрд'.'\x1elatn.s11.x\x1f000\u00a0млрд'.'\x1elatn.s12.x\x1f0\u00a0трлн'.'\x1elatn.s13.x\x1f00\u00a0т" +
-			"рлн'.'\x1elatn.s14.x\x1f000\u00a0трлн'.'\x1elatn.s3.x\x1f0\u00a0ҳзр'.'\x1elatn.s4.x\x1f00\u00a0ҳзр'.'\x1elatn.s5.x\x1f0" +
-			"00\u00a0ҳзр'.'\x1elatn.s6.x\x1f0\u00a0млн'.'\x1elatn.s7.x\x1f00\u00a0млн'.'\x1elatn.s8.x\x1f000\u00a0млн'.'\x1elatn.s9.x\x1f" +
-			"0\u00a0млрд'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f¤00B\x1e" +
-			"latn.c11.x\x1f¤000B\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤" +
-			"00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f0" +
-			" หมื่นล้าน\x1elatn.l11.x\x1f0 แสนล้าน\x1elatn.l12.x\x1f0 ล้านล้า" +
-			"น\x1elatn.l13.x\x1f00 ล้านล้าน\x1elatn.l14.x\x1f000 ล้านล้าน\x1elatn.l3.x\x1f0 พ" +
-			"ัน\x1elatn.l4.x\x1f0 หมื่น\x1elatn.l5.x\x1f0 แสน\x1elatn.l6.x\x1f0 ล้าน\x1elatn.l7.x\x1f00 ล" +
-			"้าน\x1elatn.l8.x\x1f000 ล้าน\x1elatn.l9.x\x1f0 พันล้าน\x1elatn.s10.x\x1f00B\x1elatn.s11.x" +
-			"\x1f000B\x1elatn.s9.x\x1f0B\x1ethai.+\x1f+\x1ethai.-\x1f-\x1ethai.A\x1f¤#,##0.00;(¤#,##0.00)\x1ethai.B\x1f\u00a0\x1ethai.C\x1f¤#,##0.00\x1e" +
-			"thai.D\x1f#,##0.###\x1ethai.P\x1f#,##0%\x1ethai.R\x1f{0}-{1}\x1ethai.S\x1f#E0\x1ethai.Ux\x1f{0} {1}\x1ethai.X\x1f~{0}\x1ethai.b\x1f\u00a0\x1et" +
-			"hai.c10.x\x1f¤00B\x1ethai.c11.x\x1f¤000B\x1ethai.c12.x\x1f¤0T\x1ethai.c13.x\x1f¤00T\x1ethai.c14.x\x1f¤000T\x1ethai.c3.x\x1f¤" +
-			"0K\x1ethai.c4.x\x1f¤00K\x1ethai.c5.x\x1f¤000K\x1ethai.c6.x\x1f¤0M\x1ethai.c7.x\x1f¤00M\x1ethai.c8.x\x1f¤000M\x1ethai.c9.x\x1f¤" +
-			"0B\x1ethai.d\x1f.\x1ethai.e\x1fE\x1ethai.g\x1f,\x1ethai.i\x1f∞\x1ethai.l10.x\x1f0 หมื่นล้าน\x1ethai.l11.x\x1f0 แ" +
-			"สนล้าน\x1ethai.l12.x\x1f0 ล้านล้าน\x1ethai.l13.x\x1f00 ล้านล้าน\x1e" +
-			"thai.l14.x\x1f000 ล้านล้าน\x1ethai.l3.x\x1f0 พัน\x1ethai.l4.x\x1f0 หมื่น\x1ethai.l" +
-			"5.x\x1f0 แสน\x1ethai.l6.x\x1f0 ล้าน\x1ethai.l7.x\x1f00 ล้าน\x1ethai.l8.x\x1f000 ล้าน\x1eth" +
-			"ai.l9.x\x1f0 พันล้าน\x1ethai.m\x1f‰\x1ethai.n\x1fNaN\x1ethai.p\x1f%\x1ethai.s10.x\x1f00B\x1ethai.s11.x\x1f000B\x1eth" +
-			"ai.s12.x\x1f0T\x1ethai.s13.x\x1f00T\x1ethai.s14.x\x1f000T\x1ethai.s3.x\x1f0K\x1ethai.s4.x\x1f00K\x1ethai.s5.x\x1f000K\x1ethai.s6.x\x1f0" +
-			"M\x1ethai.s7.x\x1f00M\x1ethai.s8.x\x1f000M\x1ethai.s9.x\x1f0B\x1ethai.~\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c1" +
-			"0.o\x1f¤00\u00a0ቢ\x1elatn.c10.x\x1f¤00\u00a0ቢ\x1elatn.c11.o\x1f¤000\u00a0ቢ\x1elatn.c11.x\x1f¤000\u00a0ቢ\x1elatn.c12.o\x1f¤0\u00a0ት" +
-			"\x1elatn.c12.x\x1f¤0\u00a0ት\x1elatn.c13.o\x1f¤00\u00a0ት\x1elatn.c13.x\x1f¤00\u00a0ት\x1elatn.c14.o\x1f¤000\u00a0ት\x1elatn.c14.x\x1f" +
-			"¤000\u00a0ት\x1elatn.c3.o\x1f¤0\u00a0ሽ\x1elatn.c3.x\x1f¤0\u00a0ሽ\x1elatn.c4.o\x1f¤00\u00a0ሽ\x1elatn.c4.x\x1f¤00\u00a0ሽ\x1elatn.c5" +
-			".o\x1f¤000\u00a0ሽ\x1elatn.c5.x\x1f¤000\u00a0ሽ\x1elatn.c6.o\x1f¤0\u00a0ሚ\x1elatn.c6.x\x1f¤0\u00a0ሚ\x1elatn.c7.o\x1f¤00\u00a0ሚ\x1elat" +
-			"n.c7.x\x1f¤00\u00a0ሚ\x1elatn.c8.o\x1f¤000\u00a0ሚ\x1elatn.c8.x\x1f¤000\u00a0ሚ\x1elatn.c9.o\x1f¤0\u00a0ቢ\x1elatn.c9.x\x1f¤0\u00a0ቢ" +
-			"\x1elatn.l10.o\x1f00 ቢልዮን\x1elatn.l10.x\x1f00 ቢልዮን\x1elatn.l11.o\x1f000 ቢልዮን\x1elatn.l11.x\x1f00" +
-			"0 ቢልዮን\x1elatn.l12.o\x1f0 ትሪልዮን\x1elatn.l12.x\x1f0 ትሪልዮን\x1elatn.l13.o\x1f00 ትሪል" +
-			"ዮን\x1elatn.l13.x\x1f00 ትሪልዮን\x1elatn.l14.o\x1f000 ትሪልዮን\x1elatn.l14.x\x1f000 ትሪልዮን" +
-			"\x1elatn.l3.o\x1f0 ሽሕ\x1elatn.l3.x\x1f0 ሽሕ\x1elatn.l4.o\x1f00 ሽሕ\x1elatn.l4.x\x1f00 ሽሕ\x1elatn.l5.o\x1f000 ሽ" +
-			"ሕ\x1elatn.l5.x\x1f000 ሽሕ\x1elatn.l6.o\x1f0 ሚልዮን\x1elatn.l6.x\x1f0 ሚልዮን\x1elatn.l7.o\x1f00 ሚልዮ" +
-			"ን\x1elatn.l7.x\x1f00 ሚልዮን\x1elatn.l8.o\x1f000 ሚልዮን\x1elatn.l8.x\x1f000 ሚልዮን\x1elatn.l9.o\x1f0 " +
-			"ቢልዮን\x1elatn.l9.x\x1f0 ቢልዮን\x1elatn.s10.o\x1f00\u00a0ቢ\x1elatn.s10.x\x1f00\u00a0ቢ\x1elatn.s11.o\x1f000\u00a0ቢ\x1e" +
-			"latn.s11.x\x1f000\u00a0ቢ\x1elatn.s12.o\x1f0\u00a0ት\x1elatn.s12.x\x1f0\u00a0ት\x1elatn.s13.o\x1f00\u00a0ት\x1elatn.s13.x\x1f00\u00a0ት\x1ela" +
-			"tn.s14.o\x1f000\u00a0ት\x1elatn.s14.x\x1f000\u00a0ት\x1elatn.s3.o\x1f0\u00a0ሽ\x1elatn.s3.x\x1f0\u00a0ሽ\x1elatn.s4.o\x1f00\u00a0ሽ\x1elatn.s" +
-			"4.x\x1f00\u00a0ሽ\x1elatn.s5.o\x1f000\u00a0ሽ\x1elatn.s5.x\x1f000\u00a0ሽ\x1elatn.s6.o\x1f0\u00a0ሚ\x1elatn.s6.x\x1f0\u00a0ሚ\x1elatn.s7.o\x1f00" +
-			"\u00a0ሚ\x1elatn.s7.x\x1f00\u00a0ሚ\x1elatn.s8.o\x1f000\u00a0ሚ\x1elatn.s8.x\x1f000\u00a0ሚ\x1elatn.s9.o\x1f0\u00a0ቢ\x1elatn.s9.x\x1f0\u00a0ቢ\x1e" +
-			"latn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.o\x1f00\u00a0mlrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0m" +
-			"lrd\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0t" +
-			"rln\u00a0¤\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0" +
-			"trln\u00a0¤\x1elatn.c3.o\x1f0\u00a0müň\u00a0¤\x1elatn.c3.x\x1f0\u00a0müň\u00a0¤\x1elatn.c4.o\x1f00\u00a0müň\u00a0¤\x1elatn.c4.x\x1f00\u00a0mü" +
-			"ň\u00a0¤\x1elatn.c5.o\x1f000\u00a0müň\u00a0¤\x1elatn.c5.x\x1f000\u00a0müň\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0" +
-			"¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elat" +
-			"n.c9.o\x1f0\u00a0mlrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliard\x1elatn.l10.x\x1f00" +
-			" milliard\x1elatn.l11.o\x1f000 milliard\x1elatn.l11.x\x1f000 milliard\x1elatn.l12.o\x1f0 trillion\x1elatn.l12.x\x1f0 tri" +
-			"llion\x1elatn.l13.o\x1f00 trillion\x1elatn.l13.x\x1f00 trillion\x1elatn.l14.o\x1f000 trillion\x1elatn.l14.x\x1f000 trill" +
-			"ion\x1elatn.l3.o\x1f0 müň\x1elatn.l3.x\x1f0 müň\x1elatn.l4.o\x1f00 müň\x1elatn.l4.x\x1f00 müň\x1elatn.l5.o\x1f000 müň" +
-			"\x1elatn.l5.x\x1f000 müň\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 million\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 m" +
-			"illion\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 million\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliard\x1elat" +
-			"n.n\x1fsan\u00a0däl\x1elatn.s10.o\x1f00\u00a0mlrd\x1elatn.s10.x\x1f00\u00a0mlrd\x1elatn.s11.o\x1f000\u00a0mlrd\x1elatn.s11.x\x1f000\u00a0mlrd\x1e" +
-			"latn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13.o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0trln\x1elatn.s14.o\x1f000\u00a0tr" +
-			"ln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s3.o\x1f0\u00a0müň\x1elatn.s3.x\x1f0\u00a0müň\x1elatn.s4.o\x1f00\u00a0müň\x1elatn.s4.x\x1f00\u00a0" +
-			"müň\x1elatn.s5.o\x1f000\u00a0müň\x1elatn.s5.x\x1f000\u00a0müň\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0" +
-			"mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mlrd\x1elatn.s9.x\x1f0\u00a0mlrd\x1e" +
-			"latn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.R\x1f{0}—{1}\x1elatn.Ux\x1f{1} {0}\x1elatn.c10.x\x1f" +
-			"¤\u00a000P\x1elatn.c11.x\x1f¤\u00a0000P\x1elatn.c3.x\x1f¤\u00a00a\x1elatn.c4.x\x1f¤\u00a00m\x1elatn.c5.x\x1f¤\u00a00k\x1elatn.c9.x\x1f¤\u00a00P\x1e" +
-			"latn.g\x1f\u00a0\x1elatn.l10.x\x1f00 piliona\x1elatn.l11.x\x1f000 piliona\x1elatn.l12.x\x1f0 tiliona\x1elatn.l13.x\x1f00 tilion" +
-			"a\x1elatn.l14.x\x1f000 tiliona\x1elatn.l3.x\x1f0 afe\x1elatn.l4.x\x1f0 mano\x1elatn.l5.x\x1f0 kilu\x1elatn.l6.x\x1f0 miliona\x1el" +
-			"atn.l7.x\x1f00 miliona\x1elatn.l8.x\x1f000 miliona\x1elatn.l9.x\x1f0 piliona\x1elatn.n\x1fTF\x1elatn.s10.x\x1f00P\x1elatn.s11." +
-			"x\x1f000P\x1elatn.s3.x\x1f0a\x1elatn.s4.x\x1f0m\x1elatn.s5.x\x1f0k\x1elatn.s9.x\x1f0P\x1elatn.A\x1f¤#,#0.00\x1elatn.C\x1f¤#,#0.00\x1elat" +
-			"n.D\x1f#,#0.###\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.P\x1f%#,##0\x1el" +
-			"atn.c10.o\x1f¤00\u00a0Mr\x1elatn.c10.x\x1f¤00\u00a0Mr\x1elatn.c11.o\x1f¤000\u00a0Mr\x1elatn.c11.x\x1f¤000\u00a0Mr\x1elatn.c12.o\x1f¤0\u00a0" +
-			"Tn\x1elatn.c12.x\x1f¤0\u00a0Tn\x1elatn.c13.o\x1f¤00\u00a0Tn\x1elatn.c13.x\x1f¤00\u00a0Tn\x1elatn.c14.o\x1f¤000\u00a0Tn\x1elatn.c14.x\x1f¤" +
-			"000\u00a0Tn\x1elatn.c3.o\x1f¤0\u00a0B\x1elatn.c3.x\x1f¤0\u00a0B\x1elatn.c4.o\x1f¤00\u00a0B\x1elatn.c4.x\x1f¤00\u00a0B\x1elatn.c5.o\x1f¤000\u00a0B" +
-			"\x1elatn.c5.x\x1f¤000\u00a0B\x1elatn.c6.o\x1f¤0\u00a0Mn\x1elatn.c6.x\x1f¤0\u00a0Mn\x1elatn.c7.o\x1f¤00\u00a0Mn\x1elatn.c7.x\x1f¤00\u00a0Mn\x1ela" +
-			"tn.c8.o\x1f¤000\u00a0Mn\x1elatn.c8.x\x1f¤000\u00a0Mn\x1elatn.c9.o\x1f¤0\u00a0Mr\x1elatn.c9.x\x1f¤0\u00a0Mr\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn" +
-			".l10.o\x1f00 milyar\x1elatn.l10.x\x1f00 milyar\x1elatn.l11.o\x1f000 milyar\x1elatn.l11.x\x1f000 milyar\x1elatn.l12.o\x1f0 t" +
-			"rilyon\x1elatn.l12.x\x1f0 trilyon\x1elatn.l13.o\x1f00 trilyon\x1elatn.l13.x\x1f00 trilyon\x1elatn.l14.o\x1f000 trilyon\x1el" +
-			"atn.l14.x\x1f000 trilyon\x1elatn.l3.o\x1f0 bin\x1elatn.l3.x\x1f0 bin\x1elatn.l4.o\x1f00 bin\x1elatn.l4.x\x1f00 bin\x1elatn.l5." +
-			"o\x1f000 bin\x1elatn.l5.x\x1f000 bin\x1elatn.l6.o\x1f0 milyon\x1elatn.l6.x\x1f0 milyon\x1elatn.l7.o\x1f00 milyon\x1elatn.l7.x\x1f" +
-			"00 milyon\x1elatn.l8.o\x1f000 milyon\x1elatn.l8.x\x1f000 milyon\x1elatn.l9.o\x1f0 milyar\x1elatn.l9.x\x1f0 milyar\x1elatn.s" +
-			"10.o\x1f00\u00a0Mr\x1elatn.s10.x\x1f00\u00a0Mr\x1elatn.s11.o\x1f000\u00a0Mr\x1elatn.s11.x\x1f000\u00a0Mr\x1elatn.s12.o\x1f0\u00a0Tn\x1elatn.s12.x\x1f" +
-			"0\u00a0Tn\x1elatn.s13.o\x1f00\u00a0Tn\x1elatn.s13.x\x1f00\u00a0Tn\x1elatn.s14.o\x1f000\u00a0Tn\x1elatn.s14.x\x1f000\u00a0Tn\x1elatn.s3.o\x1f0\u00a0B\x1el" +
-			"atn.s3.x\x1f0\u00a0B\x1elatn.s4.o\x1f00\u00a0B\x1elatn.s4.x\x1f00\u00a0B\x1elatn.s5.o\x1f000\u00a0B\x1elatn.s5.x\x1f000\u00a0B\x1elatn.s6.o\x1f0\u00a0Mn\x1e" +
-			"latn.s6.x\x1f0\u00a0Mn\x1elatn.s7.o\x1f00\u00a0Mn\x1elatn.s7.x\x1f00\u00a0Mn\x1elatn.s8.o\x1f000\u00a0Mn\x1elatn.s8.x\x1f000\u00a0Mn\x1elatn.s9.o\x1f" +
-			"0\u00a0Mr\x1elatn.s9.x\x1f0\u00a0Mr\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}-{1}\x1elat" +
-			"n.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000млрд\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0т" +
-			"рлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.x\x1f0\u00a0мең\u00a0¤\x1elatn.c4.x\x1f00\u00a0мең\u00a0¤\x1elatn.c5" +
-			".x\x1f000\u00a0мең\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1ela" +
-			"tn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.x\x1f000 милл" +
-			"иард\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.x\x1f00 триллион\x1elatn.l14.x\x1f000 трилли" +
-			"он\x1elatn.l3.x\x1f0 мең\x1elatn.l4.x\x1f00 мең\x1elatn.l5.x\x1f000 мең\x1elatn.l6.x\x1f0 миллион\x1elatn" +
-			".l7.x\x1f00 миллион\x1elatn.l8.x\x1f000 миллион\x1elatn.l9.x\x1f0 миллиард\x1elatn.s10.x\x1f00\u00a0" +
-			"млрд\x1elatn.s11.x\x1f000млрд\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.x\x1f000\u00a0т" +
-			"рлн\x1elatn.s3.x\x1f0\u00a0мең\x1elatn.s4.x\x1f00\u00a0мең\x1elatn.s5.x\x1f000\u00a0мең\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s" +
-			"7.x\x1f00\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1el" +
-			"atn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0" +
-			"¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤#,##0.00;(¤#,##0.00)\x1earab" +
-			"ext.B\x1f\u00a0\x1earabext.C\x1f¤#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S" +
-			"\x1f#E0\x1earabext.Uo\x1f{0} {1}\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1eara" +
+			"x\x1f0M\x1earabext.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn" +
+			".A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##" +
+			"0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤\u00a0#,##,##0.00" +
+			"\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1ede" +
+			"va.b\x1f\u00a0\x1edeva.c10.o\x1f¤\u00a000\u00a0अरब\x1edeva.c10.x\x1f¤\u00a000\u00a0अरब\x1edeva.c11.o\x1f¤\u00a00\u00a0खरब\x1ede" +
+			"va.c11.x\x1f¤\u00a00\u00a0खरब\x1edeva.c12.o\x1f¤\u00a000\u00a0खरब\x1edeva.c12.x\x1f¤\u00a000\u00a0खरब\x1edeva.c13.o\x1f¤" +
+			"\u00a00\u00a0शंख\x1edeva.c13.x\x1f¤\u00a00\u00a0शंख\x1edeva.c14.o\x1f¤\u00a000\u00a0शंख\x1edeva.c14.x\x1f¤\u00a000\u00a0शं" +
+			"ख\x1edeva.c3.o\x1f¤\u00a00\u00a0हजार\x1edeva.c3.x\x1f¤\u00a00\u00a0हजार\x1edeva.c4.o\x1f¤\u00a000\u00a0हजार\x1ed" +
+			"eva.c4.x\x1f¤\u00a000\u00a0हजार\x1edeva.c5.o\x1f¤\u00a00\u00a0लाख\x1edeva.c5.x\x1f¤\u00a00\u00a0लाख\x1edeva.c6.o\x1f¤" +
+			"\u00a000\u00a0लाख\x1edeva.c6.x\x1f¤\u00a000\u00a0लाख\x1edeva.c7.o\x1f¤\u00a00\u00a0करोड\x1edeva.c7.x\x1f¤\u00a00\u00a0कर" +
+			"ोड\x1edeva.c8.o\x1f¤\u00a000\u00a0करोड\x1edeva.c8.x\x1f¤\u00a000\u00a0करोड\x1edeva.c9.o\x1f¤\u00a00\u00a0अरब\x1e" +
+			"deva.c9.x\x1f¤\u00a00\u00a0अरब\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.o\x1f00 अरब\x1edeva.l1" +
+			"0.x\x1f00 अरब\x1edeva.l11.o\x1f000 अरब\x1edeva.l11.x\x1f000 अरब\x1edeva.l12.o\x1f00 खरब\x1edeva." +
+			"l12.x\x1f00 खरब\x1edeva.l13.o\x1f0 शंख\x1edeva.l13.x\x1f0 शंख\x1edeva.l14.o\x1f00 शंख\x1edeva.l1" +
+			"4.x\x1f00 शंख\x1edeva.l3.o\x1f0 हजार\x1edeva.l3.x\x1f0 हजार\x1edeva.l4.o\x1f00 हजार\x1edev" +
+			"a.l4.x\x1f00 हजार\x1edeva.l5.o\x1f0 लाख\x1edeva.l5.x\x1f0 लाख\x1edeva.l6.o\x1f0 करोड\x1edeva" +
+			".l6.x\x1f0 करोड\x1edeva.l7.o\x1f00 करोड\x1edeva.l7.x\x1f00 करोड\x1edeva.l8.o\x1f000 करो" +
+			"ड\x1edeva.l8.x\x1f000 करोड\x1edeva.l9.o\x1f0 अरब\x1edeva.l9.x\x1f0 अरब\x1edeva.m\x1f‰\x1edeva.n\x1fNaN" +
+			"\x1edeva.p\x1f%\x1edeva.s10.o\x1f00\u00a0अरब\x1edeva.s10.x\x1f00\u00a0अरब\x1edeva.s11.o\x1f0\u00a0खरब\x1edeva.s11.x\x1f0" +
+			"\u00a0खरब\x1edeva.s12.o\x1f00\u00a0खरब\x1edeva.s12.x\x1f00\u00a0खरब\x1edeva.s13.o\x1f0\u00a0शंख\x1edeva.s13.x" +
+			"\x1f0\u00a0शंख\x1edeva.s14.o\x1f00\u00a0शंख\x1edeva.s14.x\x1f00\u00a0शंख\x1edeva.s3.o\x1f0\u00a0हजार\x1edeva.s" +
+			"3.x\x1f0\u00a0हजार\x1edeva.s4.o\x1f00\u00a0हजार\x1edeva.s4.x\x1f00\u00a0हजार\x1edeva.s5.o\x1f0\u00a0लाख" +
+			"\x1edeva.s5.x\x1f0\u00a0लाख\x1edeva.s6.o\x1f00\u00a0लाख\x1edeva.s6.x\x1f00\u00a0लाख\x1edeva.s7.o\x1f0\u00a0करोड" +
+			"\x1edeva.s7.x\x1f0\u00a0करोड\x1edeva.s8.o\x1f00\u00a0करोड\x1edeva.s8.x\x1f00\u00a0करोड\x1edeva.s9.o\x1f0\u00a0अ" +
+			"रब\x1edeva.s9.x\x1f0\u00a0अरब\x1edeva.~\x1f~\x1elatn.A\x1f¤\u00a0#,##,##0.00\x1elatn.C\x1f¤\u00a0#,##,##0.00\x1elatn.D\x1f#,##" +
+			",##0.###\x1elatn.c10.o\x1f¤\u00a000\u00a0अरब\x1elatn.c10.x\x1f¤\u00a000\u00a0अरब\x1elatn.c11.o\x1f¤\u00a00\u00a0खरब\x1el" +
+			"atn.c11.x\x1f¤\u00a00\u00a0खरब\x1elatn.c12.o\x1f¤\u00a000\u00a0खरब\x1elatn.c12.x\x1f¤\u00a000\u00a0खरब\x1elatn.c13.o\x1f" +
+			"¤\u00a00\u00a0शंख\x1elatn.c13.x\x1f¤\u00a00\u00a0शंख\x1elatn.c14.o\x1f¤\u00a000\u00a0शंख\x1elatn.c14.x\x1f¤\u00a000\u00a0श" +
+			"ंख\x1elatn.c3.o\x1f¤\u00a00\u00a0हजार\x1elatn.c3.x\x1f¤\u00a00\u00a0हजार\x1elatn.c4.o\x1f¤\u00a000\u00a0हजार" +
+			"\x1elatn.c4.x\x1f¤\u00a000\u00a0हजार\x1elatn.c5.o\x1f¤\u00a00\u00a0लाख\x1elatn.c5.x\x1f¤\u00a00\u00a0लाख\x1elatn.c6.o\x1f" +
+			"¤\u00a000\u00a0लाख\x1elatn.c6.x\x1f¤\u00a000\u00a0लाख\x1elatn.c7.o\x1f¤\u00a00\u00a0करोड\x1elatn.c7.x\x1f¤\u00a00\u00a0क" +
+			"रोड\x1elatn.c8.o\x1f¤\u00a000\u00a0करोड\x1elatn.c8.x\x1f¤\u00a000\u00a0करोड\x1elatn.c9.o\x1f¤\u00a00\u00a0अरब" +
+			"\x1elatn.c9.x\x1f¤\u00a00\u00a0अरब\x1elatn.l10.o\x1f00 अरब\x1elatn.l10.x\x1f00 अरब\x1elatn.l11.o\x1f000 अर" +
+			"ब\x1elatn.l11.x\x1f000 अरब\x1elatn.l12.o\x1f00 खरब\x1elatn.l12.x\x1f00 खरब\x1elatn.l13.o\x1f0 शं" +
+			"ख\x1elatn.l13.x\x1f0 शंख\x1elatn.l14.o\x1f00 शंख\x1elatn.l14.x\x1f00 शंख\x1elatn.l3.o\x1f0 हजा" +
+			"र\x1elatn.l3.x\x1f0 हजार\x1elatn.l4.o\x1f00 हजार\x1elatn.l4.x\x1f00 हजार\x1elatn.l5.o\x1f0 ल" +
+			"ाख\x1elatn.l5.x\x1f0 लाख\x1elatn.l6.o\x1f0 करोड\x1elatn.l6.x\x1f0 करोड\x1elatn.l7.o\x1f00 कर" +
+			"ोड\x1elatn.l7.x\x1f00 करोड\x1elatn.l8.o\x1f000 करोड\x1elatn.l8.x\x1f000 करोड\x1elatn.l9.o" +
+			"\x1f0 अरब\x1elatn.l9.x\x1f0 अरब\x1elatn.s10.o\x1f00\u00a0अरब\x1elatn.s10.x\x1f00\u00a0अरब\x1elatn.s11.o\x1f" +
+			"0\u00a0खरब\x1elatn.s11.x\x1f0\u00a0खरब\x1elatn.s12.o\x1f00\u00a0खरब\x1elatn.s12.x\x1f00\u00a0खरब\x1elatn.s13." +
+			"o\x1f0\u00a0शंख\x1elatn.s13.x\x1f0\u00a0शंख\x1elatn.s14.o\x1f00\u00a0शंख\x1elatn.s14.x\x1f00\u00a0शंख\x1elatn.s3" +
+			".o\x1f0\u00a0हजार\x1elatn.s3.x\x1f0\u00a0हजार\x1elatn.s4.o\x1f00\u00a0हजार\x1elatn.s4.x\x1f00\u00a0हजार" +
+			"\x1elatn.s5.o\x1f0\u00a0लाख\x1elatn.s5.x\x1f0\u00a0लाख\x1elatn.s6.o\x1f00\u00a0लाख\x1elatn.s6.x\x1f00\u00a0लाख\x1el" +
+			"atn.s7.o\x1f0\u00a0करोड\x1elatn.s7.x\x1f0\u00a0करोड\x1elatn.s8.o\x1f00\u00a0करोड\x1elatn.s8.x\x1f00\u00a0कर" +
+			"ोड\x1elatn.s9.o\x1f0\u00a0अरब\x1elatn.s9.x\x1f0\u00a0अरब\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn.C\x1f¤" +
+			"\u00a0#,##0.00;¤\u00a0-#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.o\x1f¤\u00a000\u00a0mld'.'\x1elatn.c10.x\x1f¤\u00a000\u00a0mld'.'\x1elatn" +
+			".c11.o\x1f¤\u00a0000\u00a0mld'.'\x1elatn.c11.x\x1f¤\u00a0000\u00a0mld'.'\x1elatn.c12.o\x1f¤\u00a00\u00a0bln'.'\x1elatn.c12.x\x1f¤\u00a00\u00a0bln" +
+			"'.'\x1elatn.c13.o\x1f¤\u00a000\u00a0bln'.'\x1elatn.c13.x\x1f¤\u00a000\u00a0bln'.'\x1elatn.c14.o\x1f¤\u00a0000\u00a0bln'.'\x1elatn.c14.x\x1f¤" +
+			"\u00a0000\u00a0bln'.'\x1elatn.c6.o\x1f¤\u00a00\u00a0mln'.'\x1elatn.c6.x\x1f¤\u00a00\u00a0mln'.'\x1elatn.c7.o\x1f¤\u00a000\u00a0mln'.'\x1elatn.c7.x" +
+			"\x1f¤\u00a000\u00a0mln'.'\x1elatn.c8.o\x1f¤\u00a0000\u00a0mln'.'\x1elatn.c8.x\x1f¤\u00a0000\u00a0mln'.'\x1elatn.c9.o\x1f¤\u00a00\u00a0mld'.'\x1elatn" +
+			".c9.x\x1f¤\u00a00\u00a0mld'.'\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 miljard\x1elatn.l10.x\x1f00 miljard\x1elatn.l11.o\x1f000" +
+			" miljard\x1elatn.l11.x\x1f000 miljard\x1elatn.l12.o\x1f0 biljoen\x1elatn.l12.x\x1f0 biljoen\x1elatn.l13.o\x1f00 biljoen\x1e" +
+			"latn.l13.x\x1f00 biljoen\x1elatn.l14.o\x1f000 biljoen\x1elatn.l14.x\x1f000 biljoen\x1elatn.l3.o\x1f0 duizend\x1elatn.l3." +
+			"x\x1f0 duizend\x1elatn.l4.o\x1f00 duizend\x1elatn.l4.x\x1f00 duizend\x1elatn.l5.o\x1f000 duizend\x1elatn.l5.x\x1f000 duizen" +
+			"d\x1elatn.l6.o\x1f0 miljoen\x1elatn.l6.x\x1f0 miljoen\x1elatn.l7.o\x1f00 miljoen\x1elatn.l7.x\x1f00 miljoen\x1elatn.l8.o\x1f00" +
+			"0 miljoen\x1elatn.l8.x\x1f000 miljoen\x1elatn.l9.o\x1f0 miljard\x1elatn.l9.x\x1f0 miljard\x1elatn.s10.o\x1f00\u00a0mld'.'\x1ela" +
+			"tn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12.o\x1f0\u00a0bln'.'\x1elatn.s12." +
+			"x\x1f0\u00a0bln'.'\x1elatn.s13.o\x1f00\u00a0bln'.'\x1elatn.s13.x\x1f00\u00a0bln'.'\x1elatn.s14.o\x1f000\u00a0bln'.'\x1elatn.s14.x\x1f000\u00a0b" +
+			"ln'.'\x1elatn.s6.o\x1f0\u00a0mln'.'\x1elatn.s6.x\x1f0\u00a0mln'.'\x1elatn.s7.o\x1f00\u00a0mln'.'\x1elatn.s7.x\x1f00\u00a0mln'.'\x1elatn.s8." +
+			"o\x1f000\u00a0mln'.'\x1elatn.s8.x\x1f000\u00a0mln'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'\x1elatn.A\x1f#,##0.00\u00a0¤\x1e" +
+			"latn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliardar\x1elatn.l10.x\x1f00 milliardar\x1elatn.l1" +
+			"1.o\x1f000 milliardar\x1elatn.l11.x\x1f000 milliardar\x1elatn.l12.x\x1f0 billionar\x1elatn.l13.o\x1f00 billionar\x1elatn" +
+			".l13.x\x1f00 billionar\x1elatn.l14.o\x1f000 billionar\x1elatn.l14.x\x1f000 billionar\x1elatn.l6.x\x1f0 millionar\x1elatn" +
+			".l7.o\x1f00 millionar\x1elatn.l7.x\x1f00 millionar\x1elatn.l8.o\x1f000 millionar\x1elatn.l8.x\x1f000 millionar\x1elatn.l" +
+			"9.x\x1f0 milliardar\x1elatn.~\x1f≈\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.-\x1f−\x1elatn.A\x1f¤\u00a0#,##0.00;(¤\u00a0#,##0.00)\x1elatn" +
+			".C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1fca. {0}\x1elatn.c10.o\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0" +
+			"¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bill'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0" +
+			"bill'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bill'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bill'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bill'.'\u00a0¤\x1ela" +
+			"tn.c14.x\x1f000\u00a0bill'.'\u00a0¤\x1elatn.c3.o\x1f0k\u00a0¤\x1elatn.c3.x\x1f0k\u00a0¤\x1elatn.c4.o\x1f00k\u00a0¤\x1elatn.c4.x\x1f00k\u00a0¤\x1e" +
+			"latn.c5.o\x1f000k\u00a0¤\x1elatn.c5.x\x1f000k\u00a0¤\x1elatn.c6.o\x1f0\u00a0mill'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mill'.'\u00a0¤\x1elatn.c7." +
+			"o\x1f00\u00a0mill'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mill'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mill'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mill'.'\u00a0¤" +
+			"\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliarder\x1elat" +
+			"n.l10.x\x1f00 milliarder\x1elatn.l11.o\x1f000 milliarder\x1elatn.l11.x\x1f000 milliarder\x1elatn.l12.o\x1f0 billion\x1el" +
+			"atn.l12.x\x1f0 billioner\x1elatn.l13.o\x1f00 billioner\x1elatn.l13.x\x1f00 billioner\x1elatn.l14.o\x1f000 billioner\x1el" +
+			"atn.l14.x\x1f000 billioner\x1elatn.l3.o\x1f0 tusen\x1elatn.l3.x\x1f0 tusen\x1elatn.l4.o\x1f00 tusen\x1elatn.l4.x\x1f00 tuse" +
+			"n\x1elatn.l5.o\x1f000 tusen\x1elatn.l5.x\x1f000 tusen\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 millioner\x1elatn.l7.o\x1f00" +
+			" millioner\x1elatn.l7.x\x1f00 millioner\x1elatn.l8.o\x1f000 millioner\x1elatn.l8.x\x1f000 millioner\x1elatn.l9.o\x1f0 mi" +
+			"lliard\x1elatn.l9.x\x1f0 milliarder\x1elatn.s10.o\x1f00\u00a0mrd'.'\x1elatn.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0mrd'.'" +
+			"\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.o\x1f0\u00a0bill'.'\x1elatn.s12.x\x1f0\u00a0bill'.'\x1elatn.s13.o\x1f00\u00a0bill'.'\x1elatn." +
+			"s13.x\x1f00\u00a0bill'.'\x1elatn.s14.o\x1f000\u00a0bill'.'\x1elatn.s14.x\x1f000\u00a0bill'.'\x1elatn.s3.o\x1f0k\x1elatn.s3.x\x1f0k\x1elatn" +
+			".s4.o\x1f00k\x1elatn.s4.x\x1f00k\x1elatn.s5.o\x1f000k\x1elatn.s5.x\x1f000k\x1elatn.s6.o\x1f0\u00a0mill'.'\x1elatn.s6.x\x1f0\u00a0mill'.'\x1e" +
+			"latn.s7.o\x1f00\u00a0mill'.'\x1elatn.s7.x\x1f00\u00a0mill'.'\x1elatn.s8.o\x1f000\u00a0mill'.'\x1elatn.s8.x\x1f000\u00a0mill'.'\x1elatn.s" +
+			"9.o\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1elatn.~\x1fca.\x1elatn.g\x1f،\x1enkoo.+\x1f+\x1enkoo.-\x1f-\x1enkoo.A\x1f¤\u00a0#,##0.00\x1enko" +
+			"o.B\x1f\u00a0\x1enkoo.C\x1f¤\u00a0#,##0.00\x1enkoo.D\x1f#,##0.###\x1enkoo.P\x1f#,##0%\x1enkoo.R\x1f{0}–{1}\x1enkoo.S\x1f#E0\x1enkoo.Ux\x1f{0" +
+			"} {1}\x1enkoo.X\x1f~{0}\x1enkoo.b\x1f\u00a0\x1enkoo.c10.x\x1f¤\u00a000G\x1enkoo.c11.x\x1f¤\u00a0000G\x1enkoo.c12.x\x1f¤\u00a00T\x1enkoo.c13.x\x1f" +
+			"¤\u00a000T\x1enkoo.c14.x\x1f¤\u00a0000T\x1enkoo.c3.x\x1f¤\u00a00K\x1enkoo.c4.x\x1f¤\u00a000K\x1enkoo.c5.x\x1f¤\u00a0000K\x1enkoo.c6.x\x1f¤\u00a0" +
+			"0M\x1enkoo.c7.x\x1f¤\u00a000M\x1enkoo.c8.x\x1f¤\u00a0000M\x1enkoo.c9.x\x1f¤\u00a00G\x1enkoo.d\x1f.\x1enkoo.e\x1fE\x1enkoo.g\x1f،\x1enkoo.i\x1f∞\x1e" +
+			"nkoo.l10.x\x1f00G\x1enkoo.l11.x\x1f000G\x1enkoo.l12.x\x1f0T\x1enkoo.l13.x\x1f00T\x1enkoo.l14.x\x1f000T\x1enkoo.l3.x\x1f0K\x1enkoo.l4" +
+			".x\x1f00K\x1enkoo.l5.x\x1f000K\x1enkoo.l6.x\x1f0M\x1enkoo.l7.x\x1f00M\x1enkoo.l8.x\x1f000M\x1enkoo.l9.x\x1f0G\x1enkoo.m\x1f‰\x1enkoo.n\x1fN" +
+			"aN\x1enkoo.p\x1f%\x1enkoo.s10.x\x1f00G\x1enkoo.s11.x\x1f000G\x1enkoo.s12.x\x1f0T\x1enkoo.s13.x\x1f00T\x1enkoo.s14.x\x1f000T\x1enkoo.s3." +
+			"x\x1f0K\x1enkoo.s4.x\x1f00K\x1enkoo.s5.x\x1f000K\x1enkoo.s6.x\x1f0M\x1enkoo.s7.x\x1f00M\x1enkoo.s8.x\x1f000M\x1enkoo.s9.x\x1f0G\x1enkoo.~\x1f" +
+			"~\x1elatn.A\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f¤#," +
+			"##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.P\x1f#,##0\u202f%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0" +
+			"\x1elatn.R\x1f{0}-{1}\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00G\x1elatn.c10.x\x1f¤00G\x1elatn.c11.o" +
+			"\x1f¤000G\x1elatn.c11.x\x1f¤000G\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn" +
+			".c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1ela" +
+			"tn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1ela" +
+			"tn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0G\x1elatn.c9.x\x1f¤0G\x1elatn.l10.o\x1fbiiliyoona 00\x1elatn.l10." +
+			"x\x1fbiiliyoona 00\x1elatn.l11.o\x1fbiiliyoona 000\x1elatn.l11.x\x1fbiiliyoona 000\x1elatn.l12.o\x1ftiriiliyoona 0\x1ela" +
+			"tn.l12.x\x1ftiriiliyoona 0\x1elatn.l13.o\x1ftiriiliyoona 00\x1elatn.l13.x\x1ftiriiliyoona 00\x1elatn.l14.o\x1ftiriili" +
+			"yoona 000\x1elatn.l14.x\x1ftiriiliyoona 000\x1elatn.l3.o\x1fKuma 0\x1elatn.l3.x\x1fkuma 0\x1elatn.l4.o\x1fkuma 00\x1elatn.l" +
+			"4.x\x1fkuma 00\x1elatn.l5.o\x1fkuma 000\x1elatn.l5.x\x1fkuma 000\x1elatn.l6.o\x1fmiiliyoona 0\x1elatn.l6.x\x1fmiiliyoona 0\x1e" +
+			"latn.l7.o\x1fmiiliyoona 00\x1elatn.l7.x\x1fmiiliyoona 00\x1elatn.l8.o\x1fmiiliyoona 000\x1elatn.l8.x\x1fmiiliyoona 00" +
+			"0\x1elatn.l9.o\x1fbiiliyoona 0\x1elatn.l9.x\x1fbiiliyoona 0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00" +
+			"\x1elatn.D\x1f#,##,##0.###\x1elatn.c10.o\x1f¤00ବି\x1elatn.c10.x\x1f¤00ବି\x1elatn.c11.o\x1f¤000ବି\x1elatn.c11" +
+			".x\x1f¤000ବି\x1elatn.c12.o\x1f¤0ଟ୍ରି\x1elatn.c12.x\x1f¤0ଟ୍ରି\x1elatn.c13.o\x1f¤00ଟ୍ରି" +
+			"\x1elatn.c13.x\x1f¤00ଟ୍ରି\x1elatn.c14.o\x1f¤000ଟ୍ରି\x1elatn.c14.x\x1f¤000ଟ୍ରି\x1elatn.c3.o" +
+			"\x1f¤0ହ\x1elatn.c3.x\x1f¤0ହ\x1elatn.c4.o\x1f¤00ହ\x1elatn.c4.x\x1f¤00ହ\x1elatn.c5.o\x1f¤000ହ\x1elatn.c5.x\x1f¤000ହ" +
+			"\x1elatn.c6.o\x1f¤0ନି\x1elatn.c6.x\x1f¤0ନି\x1elatn.c7.o\x1f¤00ନି\x1elatn.c7.x\x1f¤00ନି\x1elatn.c8.o\x1f¤0" +
+			"00ନି\x1elatn.c8.x\x1f¤000ନି\x1elatn.c9.o\x1f¤0ବି\x1elatn.c9.x\x1f¤0ବି\x1elatn.l10.o\x1f00 ଶହକୋ" +
+			"ଟି\x1elatn.l10.x\x1f00 ଶହକୋଟି\x1elatn.l11.o\x1f000 ଶହକୋଟି\x1elatn.l11.x\x1f000 ଶହକ" +
+			"ୋଟି\x1elatn.l12.o\x1f0 ଲକ୍ଷକୋଟି\x1elatn.l12.x\x1f0 ଲକ୍ଷକୋଟି\x1elatn.l13.o" +
+			"\x1f00 ଲକ୍ଷକୋଟି\x1elatn.l13.x\x1f00 ଲକ୍ଷକୋଟି\x1elatn.l14.o\x1f000 ଲକ୍ଷକ" +
+			"ୋଟି\x1elatn.l14.x\x1f000 ଲକ୍ଷକୋଟି\x1elatn.l3.o\x1f0 ହଜାର\x1elatn.l3.x\x1f0 ହଜା" +
+			"ର\x1elatn.l4.o\x1f00 ହଜାର\x1elatn.l4.x\x1f00 ହଜାର\x1elatn.l5.o\x1f000 ହଜାର\x1elatn.l5.x\x1f000" +
+			" ହଜାର\x1elatn.l6.o\x1f0 ନିୟୁତ\x1elatn.l6.x\x1f0 ନିୟୁତ\x1elatn.l7.o\x1f00 ନିୟୁତ" +
+			"\x1elatn.l7.x\x1f00 ନିୟୁତ\x1elatn.l8.o\x1f000 ନିୟୁତ\x1elatn.l8.x\x1f000 ନିୟୁତ\x1elatn.l" +
+			"9.o\x1f0 ଶହକୋଟି\x1elatn.l9.x\x1f0 ଶହକୋଟି\x1elatn.s10.o\x1f00ବି\x1elatn.s10.x\x1f00ବି\x1e" +
+			"latn.s11.o\x1f000ବି\x1elatn.s11.x\x1f000ବି\x1elatn.s12.o\x1f0ଟ୍ରି\x1elatn.s12.x\x1f0ଟ୍ରି\x1elatn" +
+			".s13.o\x1f00ଟ୍ରି\x1elatn.s13.x\x1f00ଟ୍ରି\x1elatn.s14.o\x1f000ଟ୍ରି\x1elatn.s14.x\x1f000ଟ୍ର" +
+			"ି\x1elatn.s3.o\x1f0ହ\x1elatn.s3.x\x1f0ହ\x1elatn.s4.o\x1f00ହ\x1elatn.s4.x\x1f00ହ\x1elatn.s5.o\x1f000ହ\x1elatn.s5.x\x1f000" +
+			"ହ\x1elatn.s6.o\x1f0ନି\x1elatn.s6.x\x1f0ନି\x1elatn.s7.o\x1f00ନି\x1elatn.s7.x\x1f00ନି\x1elatn.s8.o\x1f000ନି" +
+			"\x1elatn.s8.x\x1f000ନି\x1elatn.s9.o\x1f0ବି\x1elatn.s9.x\x1f0ବି\x1eorya.+\x1f+\x1eorya.-\x1f-\x1eorya.A\x1f¤#,##0.00;(¤" +
+			"#,##0.00)\x1eorya.B\x1f\u00a0\x1eorya.C\x1f¤#,##0.00\x1eorya.D\x1f#,##,##0.###\x1eorya.P\x1f#,##0%\x1eorya.R\x1f{0}–{1}\x1eorya.S\x1f" +
+			"#E0\x1eorya.Ux\x1f{0} {1}\x1eorya.X\x1f~{0}\x1eorya.b\x1f\u00a0\x1eorya.c10.o\x1f¤00ବି\x1eorya.c10.x\x1f¤00ବି\x1eorya.c11.o" +
+			"\x1f¤000ବି\x1eorya.c11.x\x1f¤000ବି\x1eorya.c12.o\x1f¤0ଟ୍ରି\x1eorya.c12.x\x1f¤0ଟ୍ରି\x1eorya.c" +
+			"13.o\x1f¤00ଟ୍ରି\x1eorya.c13.x\x1f¤00ଟ୍ରି\x1eorya.c14.o\x1f¤000ଟ୍ରି\x1eorya.c14.x\x1f¤000ଟ" +
+			"୍ରି\x1eorya.c3.o\x1f¤0ହ\x1eorya.c3.x\x1f¤0ହ\x1eorya.c4.o\x1f¤00ହ\x1eorya.c4.x\x1f¤00ହ\x1eorya.c5.o\x1f¤000ହ" +
+			"\x1eorya.c5.x\x1f¤000ହ\x1eorya.c6.o\x1f¤0ନି\x1eorya.c6.x\x1f¤0ନି\x1eorya.c7.o\x1f¤00ନି\x1eorya.c7.x\x1f¤00ନ" +
+			"ି\x1eorya.c8.o\x1f¤000ନି\x1eorya.c8.x\x1f¤000ନି\x1eorya.c9.o\x1f¤0ବି\x1eorya.c9.x\x1f¤0ବି\x1eorya.d\x1f." +
+			"\x1eorya.e\x1fE\x1eorya.g\x1f,\x1eorya.i\x1f∞\x1eorya.l10.o\x1f00 ଶହକୋଟି\x1eorya.l10.x\x1f00 ଶହକୋଟି\x1e" +
+			"orya.l11.o\x1f000 ଶହକୋଟି\x1eorya.l11.x\x1f000 ଶହକୋଟି\x1eorya.l12.o\x1f0 ଲକ୍ଷକ" +
+			"ୋଟି\x1eorya.l12.x\x1f0 ଲକ୍ଷକୋଟି\x1eorya.l13.o\x1f00 ଲକ୍ଷକୋଟି\x1eorya.l13." +
+			"x\x1f00 ଲକ୍ଷକୋଟି\x1eorya.l14.o\x1f000 ଲକ୍ଷକୋଟି\x1eorya.l14.x\x1f000 ଲକ୍ଷ" +
+			"କୋଟି\x1eorya.l3.o\x1f0 ହଜାର\x1eorya.l3.x\x1f0 ହଜାର\x1eorya.l4.o\x1f00 ହଜାର\x1eorya.l4" +
+			".x\x1f00 ହଜାର\x1eorya.l5.o\x1f000 ହଜାର\x1eorya.l5.x\x1f000 ହଜାର\x1eorya.l6.o\x1f0 ନିୟୁ" +
+			"ତ\x1eorya.l6.x\x1f0 ନିୟୁତ\x1eorya.l7.o\x1f00 ନିୟୁତ\x1eorya.l7.x\x1f00 ନିୟୁତ\x1eorya.l" +
+			"8.o\x1f000 ନିୟୁତ\x1eorya.l8.x\x1f000 ନିୟୁତ\x1eorya.l9.o\x1f0 ଶହକୋଟି\x1eorya.l9.x\x1f0" +
+			" ଶହକୋଟି\x1eorya.m\x1f‰\x1eorya.n\x1fNaN\x1eorya.p\x1f%\x1eorya.s10.o\x1f00ବି\x1eorya.s10.x\x1f00ବି\x1eorya." +
+			"s11.o\x1f000ବି\x1eorya.s11.x\x1f000ବି\x1eorya.s12.o\x1f0ଟ୍ରି\x1eorya.s12.x\x1f0ଟ୍ରି\x1eorya.s13." +
+			"o\x1f00ଟ୍ରି\x1eorya.s13.x\x1f00ଟ୍ରି\x1eorya.s14.o\x1f000ଟ୍ରି\x1eorya.s14.x\x1f000ଟ୍ରି" +
+			"\x1eorya.s3.o\x1f0ହ\x1eorya.s3.x\x1f0ହ\x1eorya.s4.o\x1f00ହ\x1eorya.s4.x\x1f00ହ\x1eorya.s5.o\x1f000ହ\x1eorya.s5.x\x1f000ହ" +
+			"\x1eorya.s6.o\x1f0ନି\x1eorya.s6.x\x1f0ନି\x1eorya.s7.o\x1f00ନି\x1eorya.s7.x\x1f00ନି\x1eorya.s8.o\x1f000ନି\x1eo" +
+			"rya.s8.x\x1f000ନି\x1eorya.s9.o\x1f0ବି\x1eorya.s9.x\x1f0ବି\x1eorya.~\x1f~\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f" +
+			"\u00a0\x1elatn.n\x1fНН\x1eguru.+\x1f+\x1eguru.-\x1f-\x1eguru.A\x1f¤\u00a0#,##0.00\x1eguru.B\x1f\u00a0\x1eguru.C\x1f¤#,##,##0.00\x1eguru.D\x1f#,##," +
+			"##0.###\x1eguru.P\x1f#,##,##0%\x1eguru.R\x1f{0}–{1}\x1eguru.S\x1f[#E0]\x1eguru.Ux\x1f{0} {1}\x1eguru.X\x1f~{0}\x1eguru.b\x1f\u00a0\x1egur" +
+			"u.c10.o\x1f¤00\u00a0ਅਰਬ\x1eguru.c10.x\x1f¤00\u00a0ਅਰਬ\x1eguru.c11.o\x1f¤0\u00a0ਖਰਬ\x1eguru.c11.x\x1f¤0\u00a0ਖ" +
+			"ਰਬ\x1eguru.c12.o\x1f¤00\u00a0ਖਰਬ\x1eguru.c12.x\x1f¤00\u00a0ਖਰਬ\x1eguru.c13.o\x1f¤0\u00a0ਨੀਲ\x1eguru.c13." +
+			"x\x1f¤0\u00a0ਨੀਲ\x1eguru.c14.o\x1f¤00\u00a0ਨੀਲ\x1eguru.c14.x\x1f¤00\u00a0ਨੀਲ\x1eguru.c3.o\x1f¤0\u00a0ਹਜ਼ਾ" +
+			"ਰ\x1eguru.c3.x\x1f¤0\u00a0ਹਜ਼ਾਰ\x1eguru.c4.o\x1f¤00\u00a0ਹਜ਼ਾਰ\x1eguru.c4.x\x1f¤00\u00a0ਹਜ਼ਾਰ" +
+			"\x1eguru.c5.o\x1f¤0\u00a0ਲੱਖ\x1eguru.c5.x\x1f¤0\u00a0ਲੱਖ\x1eguru.c6.o\x1f¤00\u00a0ਲੱਖ\x1eguru.c6.x\x1f¤00\u00a0ਲ" +
+			"ੱਖ\x1eguru.c7.o\x1f¤0\u00a0ਕਰੋੜ\x1eguru.c7.x\x1f¤0\u00a0ਕਰੋੜ\x1eguru.c8.o\x1f¤00\u00a0ਕਰੋੜ\x1eguru" +
+			".c8.x\x1f¤00\u00a0ਕਰੋੜ\x1eguru.c9.o\x1f¤0\u00a0ਅਰਬ\x1eguru.c9.x\x1f¤0\u00a0ਅਰਬ\x1eguru.d\x1f.\x1eguru.e\x1fE\x1egur" +
+			"u.g\x1f,\x1eguru.i\x1f∞\x1eguru.l10.o\x1f00 ਅਰਬ\x1eguru.l10.x\x1f00 ਅਰਬ\x1eguru.l11.o\x1f0 ਖਰਬ\x1eguru.l11" +
+			".x\x1f0 ਖਰਬ\x1eguru.l12.o\x1f00 ਖਰਬ\x1eguru.l12.x\x1f00 ਖਰਬ\x1eguru.l13.o\x1f0 ਨੀਲ\x1eguru.l13.x" +
+			"\x1f0 ਨੀਲ\x1eguru.l14.o\x1f00 ਨੀਲ\x1eguru.l14.x\x1f00 ਨੀਲ\x1eguru.l3.o\x1f0 ਹਜ਼ਾਰ\x1eguru.l3" +
+			".x\x1f0 ਹਜ਼ਾਰ\x1eguru.l4.o\x1f00 ਹਜ਼ਾਰ\x1eguru.l4.x\x1f00 ਹਜ਼ਾਰ\x1eguru.l5.o\x1f0 ਲੱ" +
+			"ਖ\x1eguru.l5.x\x1f0 ਲੱਖ\x1eguru.l6.o\x1f00 ਲੱਖ\x1eguru.l6.x\x1f00 ਲੱਖ\x1eguru.l7.o\x1f0 ਕਰੋੜ" +
+			"\x1eguru.l7.x\x1f0 ਕਰੋੜ\x1eguru.l8.o\x1f00 ਕਰੋੜ\x1eguru.l8.x\x1f00 ਕਰੋੜ\x1eguru.l9.o\x1f0 ਅਰ" +
+			"ਬ\x1eguru.l9.x\x1f0 ਅਰਬ\x1eguru.m\x1f‰\x1eguru.n\x1fNaN\x1eguru.p\x1f%\x1eguru.s10.o\x1f00\u00a0ਅਰਬ\x1eguru.s10.x\x1f00\u00a0" +
+			"ਅਰਬ\x1eguru.s11.o\x1f0\u00a0ਖਰਬ\x1eguru.s11.x\x1f0\u00a0ਖਰਬ\x1eguru.s12.o\x1f00\u00a0ਖਰਬ\x1eguru.s12.x\x1f00" +
+			"\u00a0ਖਰਬ\x1eguru.s13.o\x1f0\u00a0ਨੀਲ\x1eguru.s13.x\x1f0\u00a0ਨੀਲ\x1eguru.s14.o\x1f00\u00a0ਨੀਲ\x1eguru.s14.x\x1f" +
+			"00\u00a0ਨੀਲ\x1eguru.s3.o\x1f0\u00a0ਹਜ਼ਾਰ\x1eguru.s3.x\x1f0\u00a0ਹਜ਼ਾਰ\x1eguru.s4.o\x1f00\u00a0ਹਜ਼ਾ" +
+			"ਰ\x1eguru.s4.x\x1f00\u00a0ਹਜ਼ਾਰ\x1eguru.s5.o\x1f0\u00a0ਲੱਖ\x1eguru.s5.x\x1f0\u00a0ਲੱਖ\x1eguru.s6.o\x1f00\u00a0ਲ" +
+			"ੱਖ\x1eguru.s6.x\x1f00\u00a0ਲੱਖ\x1eguru.s7.o\x1f0\u00a0ਕਰੋੜ\x1eguru.s7.x\x1f0\u00a0ਕਰੋੜ\x1eguru.s8.o\x1f00\u00a0" +
+			"ਕਰੋੜ\x1eguru.s8.x\x1f00\u00a0ਕਰੋੜ\x1eguru.s9.o\x1f0\u00a0ਅਰਬ\x1eguru.s9.x\x1f0\u00a0ਅਰਬ\x1eguru.~\x1f~\x1el" +
+			"atn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.S\x1f[#E0]\x1elatn.c10.o\x1f¤00\u00a0ਅਰਬ" +
+			"\x1elatn.c10.x\x1f¤00\u00a0ਅਰਬ\x1elatn.c11.o\x1f¤0\u00a0ਖਰਬ\x1elatn.c11.x\x1f¤0\u00a0ਖਰਬ\x1elatn.c12.o\x1f¤00\u00a0" +
+			"ਖਰਬ\x1elatn.c12.x\x1f¤00\u00a0ਖਰਬ\x1elatn.c13.o\x1f¤0\u00a0ਨੀਲ\x1elatn.c13.x\x1f¤0\u00a0ਨੀਲ\x1elatn.c1" +
+			"4.o\x1f¤00\u00a0ਨੀਲ\x1elatn.c14.x\x1f¤00\u00a0ਨੀਲ\x1elatn.c3.o\x1f¤0\u00a0ਹਜ਼ਾਰ\x1elatn.c3.x\x1f¤0\u00a0ਹ" +
+			"ਜ਼ਾਰ\x1elatn.c4.o\x1f¤00\u00a0ਹਜ਼ਾਰ\x1elatn.c4.x\x1f¤00\u00a0ਹਜ਼ਾਰ\x1elatn.c5.o\x1f¤0\u00a0ਲੱ" +
+			"ਖ\x1elatn.c5.x\x1f¤0\u00a0ਲੱਖ\x1elatn.c6.o\x1f¤00\u00a0ਲੱਖ\x1elatn.c6.x\x1f¤00\u00a0ਲੱਖ\x1elatn.c7.o\x1f¤0\u00a0" +
+			"ਕਰੋੜ\x1elatn.c7.x\x1f¤0\u00a0ਕਰੋੜ\x1elatn.c8.o\x1f¤00\u00a0ਕਰੋੜ\x1elatn.c8.x\x1f¤00\u00a0ਕਰੋੜ" +
+			"\x1elatn.c9.o\x1f¤0\u00a0ਅਰਬ\x1elatn.c9.x\x1f¤0\u00a0ਅਰਬ\x1elatn.l10.o\x1f00 ਅਰਬ\x1elatn.l10.x\x1f00 ਅਰਬ" +
+			"\x1elatn.l11.o\x1f0 ਖਰਬ\x1elatn.l11.x\x1f0 ਖਰਬ\x1elatn.l12.o\x1f00 ਖਰਬ\x1elatn.l12.x\x1f00 ਖਰਬ\x1el" +
+			"atn.l13.o\x1f0 ਨੀਲ\x1elatn.l13.x\x1f0 ਨੀਲ\x1elatn.l14.o\x1f00 ਨੀਲ\x1elatn.l14.x\x1f00 ਨੀਲ\x1elat" +
+			"n.l3.o\x1f0 ਹਜ਼ਾਰ\x1elatn.l3.x\x1f0 ਹਜ਼ਾਰ\x1elatn.l4.o\x1f00 ਹਜ਼ਾਰ\x1elatn.l4.x\x1f00 ਹ" +
+			"ਜ਼ਾਰ\x1elatn.l5.o\x1f0 ਲੱਖ\x1elatn.l5.x\x1f0 ਲੱਖ\x1elatn.l6.o\x1f00 ਲੱਖ\x1elatn.l6.x\x1f00 ਲ" +
+			"ੱਖ\x1elatn.l7.o\x1f0 ਕਰੋੜ\x1elatn.l7.x\x1f0 ਕਰੋੜ\x1elatn.l8.o\x1f00 ਕਰੋੜ\x1elatn.l8.x\x1f00 " +
+			"ਕਰੋੜ\x1elatn.l9.o\x1f0 ਅਰਬ\x1elatn.l9.x\x1f0 ਅਰਬ\x1elatn.s10.o\x1f00\u00a0ਅਰਬ\x1elatn.s10.x\x1f00\u00a0" +
+			"ਅਰਬ\x1elatn.s11.o\x1f0\u00a0ਖਰਬ\x1elatn.s11.x\x1f0\u00a0ਖਰਬ\x1elatn.s12.o\x1f00\u00a0ਖਰਬ\x1elatn.s12.x\x1f00" +
+			"\u00a0ਖਰਬ\x1elatn.s13.o\x1f0\u00a0ਨੀਲ\x1elatn.s13.x\x1f0\u00a0ਨੀਲ\x1elatn.s14.o\x1f00\u00a0ਨੀਲ\x1elatn.s14.x\x1f" +
+			"00\u00a0ਨੀਲ\x1elatn.s3.o\x1f0\u00a0ਹਜ਼ਾਰ\x1elatn.s3.x\x1f0\u00a0ਹਜ਼ਾਰ\x1elatn.s4.o\x1f00\u00a0ਹਜ਼ਾ" +
+			"ਰ\x1elatn.s4.x\x1f00\u00a0ਹਜ਼ਾਰ\x1elatn.s5.o\x1f0\u00a0ਲੱਖ\x1elatn.s5.x\x1f0\u00a0ਲੱਖ\x1elatn.s6.o\x1f00\u00a0ਲ" +
+			"ੱਖ\x1elatn.s6.x\x1f00\u00a0ਲੱਖ\x1elatn.s7.o\x1f0\u00a0ਕਰੋੜ\x1elatn.s7.x\x1f0\u00a0ਕਰੋੜ\x1elatn.s8.o\x1f00\u00a0" +
+			"ਕਰੋੜ\x1elatn.s8.x\x1f00\u00a0ਕਰੋੜ\x1elatn.s9.o\x1f0\u00a0ਅਰਬ\x1elatn.s9.x\x1f0\u00a0ਅਰਬ\x1earabext.A\x1f" +
+			"¤\u00a0#,##0.00\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f" +
+			"{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1eara" +
 			"bext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3" +
 			".x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1ear" +
-			"abext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞" +
-			"\x1earabext.l10.o\x1f00 مىليارد\x1earabext.l10.x\x1f00 مىليارد\x1earabext.l11.o\x1f000 مىليارد" +
-			"\x1earabext.l11.x\x1f000 مىليارد\x1earabext.l12.o\x1f0 تىرىليون\x1earabext.l12.x\x1f0 تىرىليو" +
-			"ن\x1earabext.l13.o\x1f00 تىرىليون\x1earabext.l13.x\x1f00 تىرىليون\x1earabext.l14.o\x1f000 تىرى" +
-			"ليون\x1earabext.l14.x\x1f000 تىرىليون\x1earabext.l3.o\x1f0 مىڭ\x1earabext.l3.x\x1f0 مىڭ\x1earabext." +
-			"l4.o\x1f00 مىڭ\x1earabext.l4.x\x1f00 مىڭ\x1earabext.l5.o\x1f000 مىڭ\x1earabext.l5.x\x1f000 مىڭ\x1earabext.l6" +
-			".o\x1f0 مىليون\x1earabext.l6.x\x1f0 مىليون\x1earabext.l7.o\x1f00 مىليون\x1earabext.l7.x\x1f00 مىل" +
-			"يون\x1earabext.l8.o\x1f000 مىليون\x1earabext.l8.x\x1f000 مىليون\x1earabext.l9.o\x1f0 مىليارد" +
-			"\x1earabext.l9.x\x1f0 مىليارد\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.s10.o\x1f00مىليا" +
-			"رد\x1earabext.s10.x\x1f00مىليارد\x1earabext.s11.o\x1f000مىليارد\x1earabext.s11.x\x1f000مىليار" +
-			"د\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.o\x1f0مىڭ\x1earabext.s3.x\x1f0مى" +
-			"ڭ\x1earabext.s4.o\x1f00مىڭ\x1earabext.s4.x\x1f00مىڭ\x1earabext.s5.o\x1f000مىڭ\x1earabext.s5.x\x1f000مىڭ\x1eara" +
-			"bext.s6.o\x1f0مىليون\x1earabext.s6.x\x1f0مىليون\x1earabext.s7.o\x1f00مىليون\x1earabext.s7.x\x1f00م" +
-			"ىليون\x1earabext.s8.o\x1f000مىليون\x1earabext.s8.x\x1f000مىليون\x1earabext.s9.o\x1f0مىليارد" +
-			"\x1earabext.s9.x\x1f0مىليارد\x1earabext.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn." +
-			"Uo\x1f{0} {1}\x1elatn.l10.o\x1f00 مىليارد\x1elatn.l10.x\x1f00 مىليارد\x1elatn.l11.o\x1f000 مىليار" +
-			"د\x1elatn.l11.x\x1f000 مىليارد\x1elatn.l12.o\x1f0 تىرىليون\x1elatn.l12.x\x1f0 تىرىليون\x1elat" +
-			"n.l13.o\x1f00 تىرىليون\x1elatn.l13.x\x1f00 تىرىليون\x1elatn.l14.o\x1f000 تىرىليون\x1elatn." +
-			"l14.x\x1f000 تىرىليون\x1elatn.l3.o\x1f0 مىڭ\x1elatn.l3.x\x1f0 مىڭ\x1elatn.l4.o\x1f00 مىڭ\x1elatn.l4.x\x1f0" +
-			"0 مىڭ\x1elatn.l5.o\x1f000 مىڭ\x1elatn.l5.x\x1f000 مىڭ\x1elatn.l6.o\x1f0 مىليون\x1elatn.l6.x\x1f0 مىلي" +
-			"ون\x1elatn.l7.o\x1f00 مىليون\x1elatn.l7.x\x1f00 مىليون\x1elatn.l8.o\x1f000 مىليون\x1elatn.l8.x\x1f00" +
-			"0 مىليون\x1elatn.l9.o\x1f0 مىليارد\x1elatn.l9.x\x1f0 مىليارد\x1elatn.s10.o\x1f00مىليارد" +
-			"\x1elatn.s10.x\x1f00مىليارد\x1elatn.s11.o\x1f000مىليارد\x1elatn.s11.x\x1f000مىليارد\x1elatn.s3.o" +
-			"\x1f0مىڭ\x1elatn.s3.x\x1f0مىڭ\x1elatn.s4.o\x1f00مىڭ\x1elatn.s4.x\x1f00مىڭ\x1elatn.s5.o\x1f000مىڭ\x1elatn.s5.x\x1f0" +
-			"00مىڭ\x1elatn.s6.o\x1f0مىليون\x1elatn.s6.x\x1f0مىليون\x1elatn.s7.o\x1f00مىليون\x1elatn.s7.x\x1f00م" +
-			"ىليون\x1elatn.s8.o\x1f000مىليون\x1elatn.s8.x\x1f000مىليون\x1elatn.s9.o\x1f0مىليارد\x1elatn.s9" +
-			".x\x1f0مىليارد\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0млрд\u00a0¤\x1elatn.c10." +
-			"m\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.f\x1f000\u00a0млр" +
-			"д\u00a0¤\x1elatn.c11.m\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1ela" +
-			"tn.c12.f\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.m\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0тр" +
-			"лн\u00a0¤\x1elatn.c13.f\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.m\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elat" +
-			"n.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.f\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.m\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f00" +
-			"0\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.f\x1f0\u00a0тис'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0тис'.'\u00a0" +
-			"¤\x1elatn.c3.o\x1f0\u00a0тис'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0тис'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c4.m\x1f0" +
-			"0\u00a0тис'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0тис'." +
-			"'\u00a0¤\x1elatn.c5.m\x1f000\u00a0тис'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0тис'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тис'.'\u00a0¤\x1elat" +
-			"n.c6.f\x1f0\u00a0млн\u00a0¤\x1elatn.c6.m\x1f0\u00a0млн\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elat" +
-			"n.c7.f\x1f00\u00a0млн\u00a0¤\x1elatn.c7.m\x1f00\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤" +
-			"\x1elatn.c8.f\x1f000\u00a0млн\u00a0¤\x1elatn.c8.m\x1f000\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0м" +
-			"лн\u00a0¤\x1elatn.c9.f\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.m\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.x" +
-			"\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fЕ\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 мільярди\x1elatn.l10.m\x1f00 міл" +
-			"ьярдів\x1elatn.l10.o\x1f00 мільярд\x1elatn.l10.x\x1f00 мільярда\x1elatn.l11.f\x1f000 міль" +
-			"ярди\x1elatn.l11.m\x1f000 мільярдів\x1elatn.l11.o\x1f000 мільярд\x1elatn.l11.x\x1f000 міль" +
-			"ярда\x1elatn.l12.f\x1f0 трильйони\x1elatn.l12.m\x1f0 трильйонів\x1elatn.l12.o\x1f0 трил" +
-			"ьйон\x1elatn.l12.x\x1f0 трильйона\x1elatn.l13.f\x1f00 трильйони\x1elatn.l13.m\x1f00 трил" +
-			"ьйонів\x1elatn.l13.o\x1f00 трильйон\x1elatn.l13.x\x1f00 трильйона\x1elatn.l14.f\x1f000 тр" +
-			"ильйони\x1elatn.l14.m\x1f000 трильйонів\x1elatn.l14.o\x1f000 трильйон\x1elatn.l14.x\x1f00" +
-			"0 трильйона\x1elatn.l3.f\x1f0 тисячі\x1elatn.l3.m\x1f0 тисяч\x1elatn.l3.o\x1f0 тисяча\x1ela" +
-			"tn.l3.x\x1f0 тисячі\x1elatn.l4.f\x1f00 тисячі\x1elatn.l4.m\x1f00 тисяч\x1elatn.l4.o\x1f00 тисяч" +
-			"а\x1elatn.l4.x\x1f00 тисячі\x1elatn.l5.f\x1f000 тисячі\x1elatn.l5.m\x1f000 тисяч\x1elatn.l5.o\x1f000 т" +
-			"исяча\x1elatn.l5.x\x1f000 тисячі\x1elatn.l6.f\x1f0 мільйони\x1elatn.l6.m\x1f0 мільйонів" +
-			"\x1elatn.l6.o\x1f0 мільйон\x1elatn.l6.x\x1f0 мільйона\x1elatn.l7.f\x1f00 мільйони\x1elatn.l7.m" +
-			"\x1f00 мільйонів\x1elatn.l7.o\x1f00 мільйон\x1elatn.l7.x\x1f00 мільйона\x1elatn.l8.f\x1f000 м" +
-			"ільйони\x1elatn.l8.m\x1f000 мільйонів\x1elatn.l8.o\x1f000 мільйон\x1elatn.l8.x\x1f000 міл" +
-			"ьйона\x1elatn.l9.f\x1f0 мільярди\x1elatn.l9.m\x1f0 мільярдів\x1elatn.l9.o\x1f0 мільярд" +
-			"\x1elatn.l9.x\x1f0 мільярда\x1elatn.s10.f\x1f00\u00a0млрд\x1elatn.s10.m\x1f00\u00a0млрд\x1elatn.s10.o\x1f00\u00a0мл" +
-			"рд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.f\x1f000\u00a0млрд\x1elatn.s11.m\x1f000\u00a0млрд\x1elatn.s11.o\x1f000\u00a0м" +
-			"лрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.f\x1f0\u00a0трлн\x1elatn.s12.m\x1f0\u00a0трлн\x1elatn.s12.o\x1f0\u00a0тр" +
-			"лн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.f\x1f00\u00a0трлн\x1elatn.s13.m\x1f00\u00a0трлн\x1elatn.s13.o\x1f00\u00a0трл" +
-			"н\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.f\x1f000\u00a0трлн\x1elatn.s14.m\x1f000\u00a0трлн\x1elatn.s14.o\x1f000\u00a0тр" +
-			"лн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.f\x1f0\u00a0тис'.'\x1elatn.s3.m\x1f0\u00a0тис'.'\x1elatn.s3.o\x1f0\u00a0тис'" +
-			".'\x1elatn.s3.x\x1f0\u00a0тис'.'\x1elatn.s4.f\x1f00\u00a0тис'.'\x1elatn.s4.m\x1f00\u00a0тис'.'\x1elatn.s4.o\x1f00\u00a0тис'." +
-			"'\x1elatn.s4.x\x1f00\u00a0тис'.'\x1elatn.s5.f\x1f000\u00a0тис'.'\x1elatn.s5.m\x1f000\u00a0тис'.'\x1elatn.s5.o\x1f000\u00a0тис" +
-			"'.'\x1elatn.s5.x\x1f000\u00a0тис'.'\x1elatn.s6.f\x1f0\u00a0млн\x1elatn.s6.m\x1f0\u00a0млн\x1elatn.s6.o\x1f0\u00a0млн\x1elatn.s6" +
-			".x\x1f0\u00a0млн\x1elatn.s7.f\x1f00\u00a0млн\x1elatn.s7.m\x1f00\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн" +
-			"\x1elatn.s8.f\x1f000\u00a0млн\x1elatn.s8.m\x1f000\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9" +
-			".f\x1f0\u00a0млрд\x1elatn.s9.m\x1f0\u00a0млрд\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1eg\x1f1\x1elatn.+\x1f+\x1ela" +
-			"tn.-\x1f-\x1elatn.A\x1f¤\u00a0#,##0.00\x1elatn.B\x1f\u00a0\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.D\x1f#,##0.###\x1elatn.P\x1f#,##0%\x1elatn.R\x1f{" +
-			"0}–{1}\x1elatn.S\x1f#E0\x1elatn.Ux\x1f{0} {1}\x1elatn.X\x1f~{0}\x1elatn.b\x1f\u00a0\x1elatn.c10.x\x1f¤\u00a000G\x1elatn.c11.x\x1f¤\u00a0000G" +
-			"\x1elatn.c12.x\x1f¤\u00a00T\x1elatn.c13.x\x1f¤\u00a000T\x1elatn.c14.x\x1f¤\u00a0000T\x1elatn.c3.x\x1f¤\u00a00K\x1elatn.c4.x\x1f¤\u00a000K\x1elat" +
-			"n.c5.x\x1f¤\u00a0000K\x1elatn.c6.x\x1f¤\u00a00M\x1elatn.c7.x\x1f¤\u00a000M\x1elatn.c8.x\x1f¤\u00a0000M\x1elatn.c9.x\x1f¤\u00a00G\x1elatn.d\x1f.\x1e" +
-			"latn.e\x1fE\x1elatn.g\x1f,\x1elatn.i\x1f∞\x1elatn.l10.x\x1f00G\x1elatn.l11.x\x1f000G\x1elatn.l12.x\x1f0T\x1elatn.l13.x\x1f00T\x1elatn.l1" +
-			"4.x\x1f000T\x1elatn.l3.x\x1f0K\x1elatn.l4.x\x1f00K\x1elatn.l5.x\x1f000K\x1elatn.l6.x\x1f0M\x1elatn.l7.x\x1f00M\x1elatn.l8.x\x1f000M\x1elat" +
-			"n.l9.x\x1f0G\x1elatn.m\x1f‰\x1elatn.n\x1fNaN\x1elatn.p\x1f%\x1elatn.s10.x\x1f00G\x1elatn.s11.x\x1f000G\x1elatn.s12.x\x1f0T\x1elatn.s13.x" +
-			"\x1f00T\x1elatn.s14.x\x1f000T\x1elatn.s3.x\x1f0K\x1elatn.s4.x\x1f00K\x1elatn.s5.x\x1f000K\x1elatn.s6.x\x1f0M\x1elatn.s7.x\x1f00M\x1elatn.s" +
-			"8.x\x1f000M\x1elatn.s9.x\x1f0G\x1elatn.~\x1f~\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤#,##0.00;(¤#,##0" +
-			".00)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1e" +
-			"arabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.o\x1f¤00\u00a0ارب\x1earabext." +
-			"c10.x\x1f¤00\u00a0ارب\x1earabext.c11.o\x1f¤0\u00a0کھرب\x1earabext.c11.x\x1f¤0\u00a0کھرب\x1earabext.c12.o\x1f¤00\u00a0ک" +
-			"ھرب\x1earabext.c12.x\x1f¤00\u00a0کھرب\x1earabext.c13.o\x1f¤00\u00a0ٹریلین\x1earabext.c13.x\x1f¤00\u00a0ٹریل" +
-			"ین\x1earabext.c14.o\x1f¤000\u00a0ٹریلین\x1earabext.c14.x\x1f¤000\u00a0ٹریلین\x1earabext.c3.o\x1f¤0\u00a0ہزا" +
-			"ر\x1earabext.c3.x\x1f¤0\u00a0ہزار\x1earabext.c4.o\x1f¤00\u00a0ہزار\x1earabext.c4.x\x1f¤00\u00a0ہزار\x1earabext.c5" +
-			".o\x1f¤0\u00a0لاکھ\x1earabext.c5.x\x1f¤0\u00a0لاکھ\x1earabext.c6.o\x1f¤00\u00a0لاکھ\x1earabext.c6.x\x1f¤00\u00a0لاک" +
-			"ھ\x1earabext.c7.o\x1f¤0\u00a0کروڑ\x1earabext.c7.x\x1f¤0\u00a0کروڑ\x1earabext.c8.o\x1f¤00\u00a0کروڑ\x1earabext.c8." +
-			"x\x1f¤00\u00a0کروڑ\x1earabext.c9.o\x1f¤0\u00a0ارب\x1earabext.c9.x\x1f¤0\u00a0ارب\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰" +
-			"^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1earabext.l10.o\x1f00 ارب\x1earabext.l10.x\x1f00 ارب\x1earabext.l11.o\x1f0 کھ" +
-			"رب\x1earabext.l11.x\x1f0 کھرب\x1earabext.l12.o\x1f00 کھرب\x1earabext.l12.x\x1f00 کھرب\x1earabext.l13.o\x1f" +
-			"00 ٹریلین\x1earabext.l13.x\x1f00 ٹریلین\x1earabext.l14.o\x1f000 ٹریلین\x1earabext.l14.x\x1f000 ٹ" +
-			"ریلین\x1earabext.l3.o\x1f0 ہزار\x1earabext.l3.x\x1f0 ہزار\x1earabext.l4.o\x1f00 ہزار\x1earabext.l4.x" +
-			"\x1f00 ہزار\x1earabext.l5.o\x1f0 لاکھ\x1earabext.l5.x\x1f0 لاکھ\x1earabext.l6.o\x1f00 لاکھ\x1earabext.l6" +
-			".x\x1f00 لاکھ\x1earabext.l7.o\x1f0 کروڑ\x1earabext.l7.x\x1f0 کروڑ\x1earabext.l8.o\x1f00 کروڑ\x1earabext." +
-			"l8.x\x1f00 کروڑ\x1earabext.l9.o\x1f0 ارب\x1earabext.l9.x\x1f0 ارب\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext." +
-			"p\x1f٪\x1earabext.s10.o\x1f00\u00a0ارب\x1earabext.s10.x\x1f00\u00a0ارب\x1earabext.s11.o\x1f0\u00a0کھرب\x1earabext.s11.x\x1f0" +
-			"\u00a0کھرب\x1earabext.s12.o\x1f00\u00a0کھرب\x1earabext.s12.x\x1f00\u00a0کھرب\x1earabext.s13.o\x1f00\u00a0ٹریلین\x1e" +
-			"arabext.s13.x\x1f00\u00a0ٹریلین\x1earabext.s14.o\x1f000\u00a0ٹریلین\x1earabext.s14.x\x1f000\u00a0ٹریلین\x1ea" +
-			"rabext.s3.o\x1f0\u00a0ہزار\x1earabext.s3.x\x1f0\u00a0ہزار\x1earabext.s4.o\x1f00\u00a0ہزار\x1earabext.s4.x\x1f00\u00a0ہز" +
-			"ار\x1earabext.s5.o\x1f0\u00a0لاکھ\x1earabext.s5.x\x1f0\u00a0لاکھ\x1earabext.s6.o\x1f00\u00a0لاکھ\x1earabext.s6.x\x1f00" +
-			"\u00a0لاکھ\x1earabext.s7.o\x1f0\u00a0کروڑ\x1earabext.s7.x\x1f0\u00a0کروڑ\x1earabext.s8.o\x1f00\u00a0کروڑ\x1earabext.s" +
-			"8.x\x1f00\u00a0کروڑ\x1earabext.s9.o\x1f0\u00a0ارب\x1earabext.s9.x\x1f0\u00a0ارب\x1earabext.~\x1f~\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e" +
-			"-\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00\u00a0ارب\x1elatn.c10.x\x1f¤00\u00a0ار" +
-			"ب\x1elatn.c11.o\x1f¤0\u00a0کھرب\x1elatn.c11.x\x1f¤0\u00a0کھرب\x1elatn.c12.o\x1f¤00\u00a0کھرب\x1elatn.c12.x\x1f¤00\u00a0" +
-			"کھرب\x1elatn.c13.o\x1f¤00\u00a0ٹریلین\x1elatn.c13.x\x1f¤00\u00a0ٹریلین\x1elatn.c14.o\x1f¤000\u00a0ٹریلی" +
-			"ن\x1elatn.c14.x\x1f¤000\u00a0ٹریلین\x1elatn.c3.o\x1f¤0\u00a0ہزار\x1elatn.c3.x\x1f¤0\u00a0ہزار\x1elatn.c4.o\x1f¤00" +
-			"\u00a0ہزار\x1elatn.c4.x\x1f¤00\u00a0ہزار\x1elatn.c5.o\x1f¤0\u00a0لاکھ\x1elatn.c5.x\x1f¤0\u00a0لاکھ\x1elatn.c6.o\x1f¤" +
-			"00\u00a0لاکھ\x1elatn.c6.x\x1f¤00\u00a0لاکھ\x1elatn.c7.o\x1f¤0\u00a0کروڑ\x1elatn.c7.x\x1f¤0\u00a0کروڑ\x1elatn.c8.o\x1f" +
-			"¤00\u00a0کروڑ\x1elatn.c8.x\x1f¤00\u00a0کروڑ\x1elatn.c9.o\x1f¤0\u00a0ارب\x1elatn.c9.x\x1f¤0\u00a0ارب\x1elatn.l10.o\x1f0" +
-			"0 ارب\x1elatn.l10.x\x1f00 ارب\x1elatn.l11.o\x1f0 کھرب\x1elatn.l11.x\x1f0 کھرب\x1elatn.l12.o\x1f00 کھرب" +
-			"\x1elatn.l12.x\x1f00 کھرب\x1elatn.l13.o\x1f00 ٹریلین\x1elatn.l13.x\x1f00 ٹریلین\x1elatn.l14.o\x1f000 ٹر" +
-			"یلین\x1elatn.l14.x\x1f000 ٹریلین\x1elatn.l3.o\x1f0 ہزار\x1elatn.l3.x\x1f0 ہزار\x1elatn.l4.o\x1f00 ہز" +
-			"ار\x1elatn.l4.x\x1f00 ہزار\x1elatn.l5.o\x1f0 لاکھ\x1elatn.l5.x\x1f0 لاکھ\x1elatn.l6.o\x1f00 لاکھ\x1elatn." +
-			"l6.x\x1f00 لاکھ\x1elatn.l7.o\x1f0 کروڑ\x1elatn.l7.x\x1f0 کروڑ\x1elatn.l8.o\x1f00 کروڑ\x1elatn.l8.x\x1f00 ک" +
-			"روڑ\x1elatn.l9.o\x1f0 ارب\x1elatn.l9.x\x1f0 ارب\x1elatn.p\x1f٪\x1elatn.s10.o\x1f00\u00a0ارب\x1elatn.s10.x\x1f00\u00a0ار" +
-			"ب\x1elatn.s11.o\x1f0\u00a0کھرب\x1elatn.s11.x\x1f0\u00a0کھرب\x1elatn.s12.o\x1f00\u00a0کھرب\x1elatn.s12.x\x1f00\u00a0کھرب" +
-			"\x1elatn.s13.o\x1f00\u00a0ٹریلین\x1elatn.s13.x\x1f00\u00a0ٹریلین\x1elatn.s14.o\x1f000\u00a0ٹریلین\x1elatn.s14.x" +
-			"\x1f000\u00a0ٹریلین\x1elatn.s3.o\x1f0\u00a0ہزار\x1elatn.s3.x\x1f0\u00a0ہزار\x1elatn.s4.o\x1f00\u00a0ہزار\x1elatn.s4.x\x1f" +
-			"00\u00a0ہزار\x1elatn.s5.o\x1f0\u00a0لاکھ\x1elatn.s5.x\x1f0\u00a0لاکھ\x1elatn.s6.o\x1f00\u00a0لاکھ\x1elatn.s6.x\x1f00\u00a0ل" +
-			"اکھ\x1elatn.s7.o\x1f0\u00a0کروڑ\x1elatn.s7.x\x1f0\u00a0کروڑ\x1elatn.s8.o\x1f00\u00a0کروڑ\x1elatn.s8.x\x1f00\u00a0کروڑ" +
-			"\x1elatn.s9.o\x1f0\u00a0ارب\x1elatn.s9.x\x1f0\u00a0ارب\x1elatn.A\x1f#,##0.00¤;(#,##0.00¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn" +
-			".c10.o\x1f00\u00a0mlrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlrd\u00a0¤\x1ela" +
-			"tn.c12.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn" +
-			".c14.o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln\u00a0¤\x1elatn.c3.o\x1f0\u00a0ming\u00a0¤\x1elatn.c3.x\x1f0\u00a0ming\u00a0¤\x1elatn.c" +
-			"4.o\x1f00\u00a0ming\u00a0¤\x1elatn.c4.x\x1f00\u00a0ming\u00a0¤\x1elatn.c5.o\x1f000\u00a0ming\u00a0¤\x1elatn.c5.x\x1f000\u00a0ming\u00a0¤\x1elatn.c6." +
-			"o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln" +
-			"\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn." +
-			"l10.o\x1f00 milliard\x1elatn.l10.x\x1f00 milliard\x1elatn.l11.o\x1f000 milliard\x1elatn.l11.x\x1f000 milliard\x1elatn.l1" +
-			"2.o\x1f0 trillion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.o\x1f00 trillion\x1elatn.l13.x\x1f00 trillion\x1elatn.l14.o\x1f00" +
-			"0 trillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.o\x1f0 ming\x1elatn.l3.x\x1f0 ming\x1elatn.l4.o\x1f00 ming\x1elatn.l4.x" +
-			"\x1f00 ming\x1elatn.l5.o\x1f000 ming\x1elatn.l5.x\x1f000 ming\x1elatn.l6.o\x1f0 million\x1elatn.l6.x\x1f0 million\x1elatn.l7.o" +
-			"\x1f00 million\x1elatn.l7.x\x1f00 million\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 million\x1elatn.l9.o\x1f0 milliar" +
-			"d\x1elatn.l9.x\x1f0 milliard\x1elatn.n\x1fson\u00a0emas\x1elatn.s10.o\x1f00\u00a0mlrd\x1elatn.s10.x\x1f00\u00a0mlrd\x1elatn.s11.o\x1f000\u00a0" +
-			"mlrd\x1elatn.s11.x\x1f000\u00a0mlrd\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13.o\x1f00\u00a0trln\x1elatn.s13.x\x1f0" +
-			"0\u00a0trln\x1elatn.s14.o\x1f000\u00a0trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s3.o\x1f0\u00a0ming\x1elatn.s3.x\x1f0\u00a0ming\x1elatn.s4.o\x1f" +
-			"00\u00a0ming\x1elatn.s4.x\x1f00\u00a0ming\x1elatn.s5.o\x1f000\u00a0ming\x1elatn.s5.x\x1f000\u00a0ming\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0" +
-			"\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mlr" +
-			"d\x1elatn.s9.x\x1f0\u00a0mlrd\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabext.B\x1f\u00a0\x1earab" +
-			"ext.C\x1f¤\u00a0#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabex" +
-			"t.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c1" +
-			"2.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K" +
-			"\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9" +
-			".x\x1f¤\u00a00G\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f∞\x1earabext.l10.x\x1f00G\x1earabext.l1" +
-			"1.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabext.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1e" +
-			"arabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M\x1earabext.l9.x\x1f0G\x1earabext.m\x1f؉" +
-			"\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f" +
-			"00T\x1earabext.s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f000K\x1earabext.s6.x\x1f0M\x1earabex" +
-			"t.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1earabext.~\x1f~\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e−\x1elatn.d\x1f,\x1elatn" +
-			".g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f00млрд\u00a0¤\x1elatn.c10." +
-			"x\x1f00млрд\u00a0¤\x1elatn.c11.o\x1f000млрд\u00a0¤\x1elatn.c11.x\x1f000млрд\u00a0¤\x1elatn.c12.o\x1f0трлн\u00a0¤\x1e" +
-			"latn.c12.x\x1f0трлн\u00a0¤\x1elatn.c13.o\x1f00трлн\u00a0¤\x1elatn.c13.x\x1f00трлн\u00a0¤\x1elatn.c14.o\x1f000трл" +
-			"н\u00a0¤\x1elatn.c14.x\x1f000трлн\u00a0¤\x1elatn.c3.o\x1f0минг\u00a0¤\x1elatn.c3.x\x1f0минг\u00a0¤\x1elatn.c4.o\x1f00м" +
-			"инг\u00a0¤\x1elatn.c4.x\x1f00минг\u00a0¤\x1elatn.c5.o\x1f000минг\u00a0¤\x1elatn.c5.x\x1f000минг\u00a0¤\x1elatn.c6." +
-			"o\x1f0млн\u00a0¤\x1elatn.c6.x\x1f0млн\u00a0¤\x1elatn.c7.o\x1f00млн\u00a0¤\x1elatn.c7.x\x1f00млн\u00a0¤\x1elatn.c8.o\x1f000м" +
-			"лн\u00a0¤\x1elatn.c8.x\x1f000млн\u00a0¤\x1elatn.c9.o\x1f0млрд\u00a0¤\x1elatn.c9.x\x1f0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g" +
-			"\x1f\u00a0\x1elatn.l10.o\x1f00 миллиард\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.o\x1f000 миллиард" +
-			"\x1elatn.l11.x\x1f000 миллиард\x1elatn.l12.o\x1f0 трилион\x1elatn.l12.x\x1f0 трилион\x1elatn.l1" +
-			"3.o\x1f00 трилион\x1elatn.l13.x\x1f00 трилион\x1elatn.l14.o\x1f000 трилион\x1elatn.l14.x\x1f000 " +
-			"трилион\x1elatn.l3.o\x1f0 минг\x1elatn.l3.x\x1f0 минг\x1elatn.l4.o\x1f00 минг\x1elatn.l4.x\x1f00 ми" +
-			"нг\x1elatn.l5.o\x1f000 минг\x1elatn.l5.x\x1f000 минг\x1elatn.l6.o\x1f0 миллион\x1elatn.l6.x\x1f0 мил" +
-			"лион\x1elatn.l7.o\x1f00 миллион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.o\x1f000 миллион\x1ela" +
-			"tn.l8.x\x1f000 миллион\x1elatn.l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fҳа" +
-			"қиқий\u00a0сон\u00a0эмас\x1elatn.s10.o\x1f00млрд\x1elatn.s10.x\x1f00млрд\x1elatn.s11.o\x1f000млрд\x1e" +
-			"latn.s11.x\x1f000млрд\x1elatn.s12.o\x1f0трлн\x1elatn.s12.x\x1f0трлн\x1elatn.s13.o\x1f00трлн\x1elatn.s13." +
-			"x\x1f00трлн\x1elatn.s14.o\x1f000трлн\x1elatn.s14.x\x1f000трлн\x1elatn.s3.o\x1f0минг\x1elatn.s3.x\x1f0мин" +
-			"г\x1elatn.s4.o\x1f00минг\x1elatn.s4.x\x1f00минг\x1elatn.s5.o\x1f000минг\x1elatn.s5.x\x1f000минг\x1elatn.s6" +
-			".o\x1f0млн\x1elatn.s6.x\x1f0млн\x1elatn.s7.o\x1f00млн\x1elatn.s7.x\x1f00млн\x1elatn.s8.o\x1f000млн\x1elatn.s8.x" +
-			"\x1f000млн\x1elatn.s9.o\x1f0млрд\x1elatn.s9.x\x1f0млрд\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0" +
-			".00\x1evaii.+\x1f+\x1evaii.-\x1f-\x1evaii.A\x1f¤#,##0.00;(¤#,##0.00)\x1evaii.B\x1f\u00a0\x1evaii.C\x1f¤#,##0.00\x1evaii.D\x1f#,##0.##" +
-			"#\x1evaii.P\x1f#,##0%\x1evaii.R\x1f{0}–{1}\x1evaii.S\x1f#E0\x1evaii.Ux\x1f{0} {1}\x1evaii.X\x1f~{0}\x1evaii.b\x1f\u00a0\x1evaii.c10.x\x1f¤\u00a0" +
-			"00G\x1evaii.c11.x\x1f¤\u00a0000G\x1evaii.c12.x\x1f¤\u00a00T\x1evaii.c13.x\x1f¤\u00a000T\x1evaii.c14.x\x1f¤\u00a0000T\x1evaii.c3.x\x1f¤\u00a00" +
-			"K\x1evaii.c4.x\x1f¤\u00a000K\x1evaii.c5.x\x1f¤\u00a0000K\x1evaii.c6.x\x1f¤\u00a00M\x1evaii.c7.x\x1f¤\u00a000M\x1evaii.c8.x\x1f¤\u00a0000M\x1evai" +
-			"i.c9.x\x1f¤\u00a00G\x1evaii.d\x1f.\x1evaii.e\x1fE\x1evaii.g\x1f,\x1evaii.i\x1f∞\x1evaii.l10.x\x1f00G\x1evaii.l11.x\x1f000G\x1evaii.l12.x\x1f0T" +
-			"\x1evaii.l13.x\x1f00T\x1evaii.l14.x\x1f000T\x1evaii.l3.x\x1f0K\x1evaii.l4.x\x1f00K\x1evaii.l5.x\x1f000K\x1evaii.l6.x\x1f0M\x1evaii.l7.x" +
-			"\x1f00M\x1evaii.l8.x\x1f000M\x1evaii.l9.x\x1f0G\x1evaii.m\x1f‰\x1evaii.n\x1fNaN\x1evaii.p\x1f%\x1evaii.s10.x\x1f00G\x1evaii.s11.x\x1f000G\x1ev" +
-			"aii.s12.x\x1f0T\x1evaii.s13.x\x1f00T\x1evaii.s14.x\x1f000T\x1evaii.s3.x\x1f0K\x1evaii.s4.x\x1f00K\x1evaii.s5.x\x1f000K\x1evaii.s6.x\x1f" +
-			"0M\x1evaii.s7.x\x1f00M\x1evaii.s8.x\x1f000M\x1evaii.s9.x\x1f0G\x1evaii.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#," +
-			"##0.00\x1evaii.+\x1f+\x1evaii.-\x1f-\x1evaii.A\x1f¤#,##0.00;(¤#,##0.00)\x1evaii.B\x1f\u00a0\x1evaii.C\x1f¤#,##0.00\x1evaii.D\x1f#,##0" +
-			".###\x1evaii.P\x1f#,##0%\x1evaii.R\x1f{0}–{1}\x1evaii.S\x1f#E0\x1evaii.Ux\x1f{0} {1}\x1evaii.X\x1f~{0}\x1evaii.b\x1f\u00a0\x1evaii.c10.x\x1f" +
-			"¤\u00a000G\x1evaii.c11.x\x1f¤\u00a0000G\x1evaii.c12.x\x1f¤\u00a00T\x1evaii.c13.x\x1f¤\u00a000T\x1evaii.c14.x\x1f¤\u00a0000T\x1evaii.c3.x\x1f¤" +
-			"\u00a00K\x1evaii.c4.x\x1f¤\u00a000K\x1evaii.c5.x\x1f¤\u00a0000K\x1evaii.c6.x\x1f¤\u00a00M\x1evaii.c7.x\x1f¤\u00a000M\x1evaii.c8.x\x1f¤\u00a0000M\x1e" +
-			"vaii.c9.x\x1f¤\u00a00G\x1evaii.d\x1f.\x1evaii.e\x1fE\x1evaii.g\x1f,\x1evaii.i\x1f∞\x1evaii.l10.x\x1f00G\x1evaii.l11.x\x1f000G\x1evaii.l12.x" +
-			"\x1f0T\x1evaii.l13.x\x1f00T\x1evaii.l14.x\x1f000T\x1evaii.l3.x\x1f0K\x1evaii.l4.x\x1f00K\x1evaii.l5.x\x1f000K\x1evaii.l6.x\x1f0M\x1evaii.l" +
-			"7.x\x1f00M\x1evaii.l8.x\x1f000M\x1evaii.l9.x\x1f0G\x1evaii.m\x1f‰\x1evaii.n\x1fNaN\x1evaii.p\x1f%\x1evaii.s10.x\x1f00G\x1evaii.s11.x\x1f000" +
-			"G\x1evaii.s12.x\x1f0T\x1evaii.s13.x\x1f00T\x1evaii.s14.x\x1f000T\x1evaii.s3.x\x1f0K\x1evaii.s4.x\x1f00K\x1evaii.s5.x\x1f000K\x1evaii.s6" +
-			".x\x1f0M\x1evaii.s7.x\x1f00M\x1evaii.s8.x\x1f000M\x1evaii.s9.x\x1f0G\x1evaii.~\x1f~\x1elatn.A\x1f#,##0.00\u202f¤\x1elatn.C\x1f#,##0.00\u202f" +
-			"¤\x1elatn.R\x1f{0}-{1}\x1elatn.Uo\x1f{0}\u202f{1}\x1elatn.Ux\x1f{0}\u202f{1}\x1elatn.c10.o\x1f00\u00a0mld\u202f¤\x1elatn.c10.x\x1f00\u00a0mld" +
-			"\u202f¤\x1elatn.c11.o\x1f000\u00a0mld\u202f¤\x1elatn.c11.x\x1f000\u00a0mld\u202f¤\x1elatn.c12.o\x1f0\u00a0bln\u202f¤\x1elatn.c12.x\x1f0\u00a0bln" +
-			"\u202f¤\x1elatn.c13.o\x1f00\u00a0bln\u202f¤\x1elatn.c13.x\x1f00\u00a0bln\u202f¤\x1elatn.c14.o\x1f000\u00a0bln\u202f¤\x1elatn.c14.x\x1f000\u00a0b" +
-			"ln\u202f¤\x1elatn.c3.o\x1f0\x1elatn.c3.x\x1f0\u00a0mila\u202f¤\x1elatn.c4.o\x1f00\u00a0mila\u202f¤\x1elatn.c4.x\x1f00\u00a0mila\u202f¤\x1elatn." +
-			"c5.o\x1f000\u00a0mila\u202f¤\x1elatn.c5.x\x1f000\u00a0mila\u202f¤\x1elatn.c6.o\x1f0\u00a0mln\u202f¤\x1elatn.c6.x\x1f0\u00a0mln\u202f¤\x1elatn.c7" +
-			".o\x1f00\u00a0mln\u202f¤\x1elatn.c7.x\x1f00\u00a0mln\u202f¤\x1elatn.c8.o\x1f000\u00a0mln\u202f¤\x1elatn.c8.x\x1f000\u00a0mln\u202f¤\x1elatn.c9.o" +
-			"\x1f0\u00a0mld\u202f¤\x1elatn.c9.x\x1f0\u00a0mld\u202f¤\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 miliardi\x1elatn.l10.x\x1f00 mili" +
-			"ardi\x1elatn.l11.o\x1f000 miliardi\x1elatn.l11.x\x1f000 miliardi\x1elatn.l12.o\x1f0 bilion\x1elatn.l12.x\x1f0 bilioni\x1ela" +
-			"tn.l13.o\x1f00 bilioni\x1elatn.l13.x\x1f00 bilioni\x1elatn.l14.o\x1f000 bilioni\x1elatn.l14.x\x1f000 bilioni\x1elatn.l3." +
-			"o\x1fmile\x1elatn.l3.x\x1f0 mila\x1elatn.l4.o\x1f00 mila\x1elatn.l4.x\x1f00 mila\x1elatn.l5.o\x1f000 mila\x1elatn.l5.x\x1f000 mil" +
-			"a\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 milioni\x1elatn.l7.o\x1f00 milioni\x1elatn.l7.x\x1f00 milioni\x1elatn.l8.o\x1f000" +
-			" milioni\x1elatn.l8.x\x1f000 milioni\x1elatn.l9.o\x1f0 miliardo\x1elatn.l9.x\x1f0 miliardi\x1elatn.s10.o\x1f00\u00a0mld\x1elatn" +
-			".s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn.s11.x\x1f000\u00a0mld\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn." +
-			"s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0bln\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0" +
-			"\u00a0mila\x1elatn.s4.o\x1f00\u00a0mila\x1elatn.s4.x\x1f00\u00a0mila\x1elatn.s5.o\x1f000\u00a0mila\x1elatn.s5.x\x1f000\u00a0mila\x1elatn.s6.o\x1f0" +
-			"\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln" +
-			"\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x\x1f0\u00a0mld\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}-{1}\x1elatn.c" +
-			"10.x\x1f00\u00a0T\u00a0¤\x1elatn.c11.x\x1f000\u00a0T\u00a0¤\x1elatn.c12.x\x1f0\u00a0NT\u00a0¤\x1elatn.c13.x\x1f00\u00a0NT\u00a0¤\x1elatn.c14.x\x1f000\u00a0" +
-			"NT\u00a0¤\x1elatn.c3.x\x1f0\u00a0N\u00a0¤\x1elatn.c4.x\x1f00\u00a0N\u00a0¤\x1elatn.c5.x\x1f000\u00a0N\u00a0¤\x1elatn.c6.x\x1f0\u00a0Tr\u00a0¤\x1elatn.c7.x" +
-			"\x1f00\u00a0Tr\u00a0¤\x1elatn.c8.x\x1f000\u00a0Tr\u00a0¤\x1elatn.c9.x\x1f0\u00a0T\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 tỷ\x1elatn.l" +
-			"11.x\x1f000 tỷ\x1elatn.l12.x\x1f0 nghìn tỷ\x1elatn.l13.x\x1f00 nghìn tỷ\x1elatn.l14.x\x1f000 nghìn tỷ\x1elatn" +
-			".l3.x\x1f0 nghìn\x1elatn.l4.x\x1f00 nghìn\x1elatn.l5.x\x1f000 nghìn\x1elatn.l6.x\x1f0 triệu\x1elatn.l7.x\x1f00 triệu" +
-			"\x1elatn.l8.x\x1f000 triệu\x1elatn.l9.x\x1f0 tỷ\x1elatn.s10.x\x1f00\u00a0T\x1elatn.s11.x\x1f000\u00a0T\x1elatn.s12.x\x1f0\u00a0NT\x1elatn" +
-			".s13.x\x1f00\u00a0NT\x1elatn.s14.x\x1f000\u00a0NT\x1elatn.s3.x\x1f0\u00a0N\x1elatn.s4.x\x1f00\u00a0N\x1elatn.s5.x\x1f000\u00a0N\x1elatn.s6.x\x1f0\u00a0Tr" +
-			"\x1elatn.s7.x\x1f00\u00a0Tr\x1elatn.s8.x\x1f000\u00a0Tr\x1elatn.s9.x\x1f0\u00a0T\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn." +
-			"d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f'\x1elatn.c10.x\x1f¤" +
-			"\u00a000B\x1elatn.c11.x\x1f¤\u00a0000B\x1elatn.c9.x\x1f¤\u00a00B\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00B\x1elatn.l11.x\x1fVote 000G" +
-			"\x1elatn.l3.x\x1f0 thousand\x1elatn.l4.x\x1f00 thousand\x1elatn.l5.x\x1f000 thousand\x1elatn.l7.x\x1fVote 00M\x1elatn.l8.x\x1f" +
-			"Vote 000M\x1elatn.l9.x\x1f0B\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s9.x\x1f0B\x1elatn.~\x1f-\x1elatn.A\x1f¤#,##0.00\x1ela" +
-			"tn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o" +
-			"\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn" +
-			".c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn" +
-			".c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn" +
-			".c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.g\x1f\u00a0\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#," +
-			"##,##0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva." +
-			"X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤00\u00a0अ॰\x1edeva.c11.x\x1f¤0\u00a0ख॰\x1edeva.c12.x\x1f¤00\u00a0ख॰\x1edeva.c13" +
-			".x\x1f¤0\u00a0नील\x1edeva.c14.x\x1f¤00\u00a0नील\x1edeva.c3.x\x1f¤0\u00a0हजार\x1edeva.c4.x\x1f¤00\u00a0हजा" +
-			"र\x1edeva.c5.x\x1f¤0\u00a0लख\x1edeva.c6.x\x1f¤00\u00a0लख\x1edeva.c7.x\x1f¤0\u00a0क॰\x1edeva.c8.x\x1f¤00\u00a0क॰\x1ede" +
-			"va.c9.x\x1f¤0\u00a0अ॰\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00 अरब\x1edeva.l11.x\x1f0 ख" +
-			"रब\x1edeva.l12.x\x1f00 खरब\x1edeva.l13.x\x1f000 खरब\x1edeva.l14.x\x1f0000 खरब\x1edeva.l3.x\x1f0 ह" +
-			"जार\x1edeva.l4.x\x1f00 हजार\x1edeva.l5.x\x1f0 लख\x1edeva.l6.x\x1f00 लख\x1edeva.l7.x\x1f0 करो" +
-			"ड़\x1edeva.l8.x\x1f00 करोड़\x1edeva.l9.x\x1f0 अरब\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s1" +
-			"0.x\x1f00\u00a0अ॰\x1edeva.s11.x\x1f0\u00a0ख॰\x1edeva.s12.x\x1f00\u00a0ख॰\x1edeva.s13.x\x1f0\u00a0नील\x1edeva.s14.x\x1f00\u00a0" +
-			"नील\x1edeva.s3.x\x1f0\u00a0हजार\x1edeva.s4.x\x1f00\u00a0हजार\x1edeva.s5.x\x1f0\u00a0लख\x1edeva.s6.x\x1f00\u00a0" +
-			"लख\x1edeva.s7.x\x1f0\u00a0क॰\x1edeva.s8.x\x1f00\u00a0क॰\x1edeva.s9.x\x1f0\u00a0अ॰\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##,##0.0" +
-			"0\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.c10.x\x1f¤00\u00a0अ॰\x1elatn.c11.x\x1f¤" +
-			"0\u00a0ख॰\x1elatn.c12.x\x1f¤00\u00a0ख॰\x1elatn.c13.x\x1f¤0\u00a0नील\x1elatn.c14.x\x1f¤00\u00a0नील\x1elatn.c3.x" +
-			"\x1f¤0\u00a0हजार\x1elatn.c4.x\x1f¤00\u00a0हजार\x1elatn.c5.x\x1f¤0\u00a0लख\x1elatn.c6.x\x1f¤00\u00a0लख\x1elat" +
-			"n.c7.x\x1f¤0\u00a0क॰\x1elatn.c8.x\x1f¤00\u00a0क॰\x1elatn.c9.x\x1f¤0\u00a0अ॰\x1elatn.l10.x\x1f00 अरब\x1elatn.l11" +
-			".x\x1f0 खरब\x1elatn.l12.x\x1f00 खरब\x1elatn.l13.x\x1f000 खरब\x1elatn.l14.x\x1f0000 खरब\x1elatn.l" +
-			"3.x\x1f0 हजार\x1elatn.l4.x\x1f00 हजार\x1elatn.l5.x\x1f0 लख\x1elatn.l6.x\x1f00 लख\x1elatn.l7.x\x1f0 " +
-			"करोड़\x1elatn.l8.x\x1f00 करोड़\x1elatn.l9.x\x1f0 अरब\x1elatn.s10.x\x1f00\u00a0अ॰\x1elatn.s1" +
-			"1.x\x1f0\u00a0ख॰\x1elatn.s12.x\x1f00\u00a0ख॰\x1elatn.s13.x\x1f0\u00a0नील\x1elatn.s14.x\x1f00\u00a0नील\x1elatn.s3.x\x1f0" +
-			"\u00a0हजार\x1elatn.s4.x\x1f00\u00a0हजार\x1elatn.s5.x\x1f0\u00a0लख\x1elatn.s6.x\x1f00\u00a0लख\x1elatn.s7.x\x1f0\u00a0" +
-			"क॰\x1elatn.s8.x\x1f00\u00a0क॰\x1elatn.s9.x\x1f0\u00a0अ॰\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.A\x1f#" +
-			",##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)" +
-			"\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.x\x1f¤00G\x1elatn.c11.x\x1f¤000G\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14." +
-			"x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8." +
-			"x\x1f¤000M\x1elatn.c9.x\x1f¤0G\x1elatn.l10.x\x1f00 bilíọ̀nù\x1elatn.l11.x\x1f000 bilíọ̀nù\x1elatn.l12.x\x1f0 ti" +
-			"riliọ̀nù\x1elatn.l13.x\x1f00 tiriliọ̀nù\x1elatn.l14.x\x1f000 tiriliọ̀nù\x1elatn.l3.x\x1f0 ẹgbẹ̀rú" +
-			"n\x1elatn.l4.x\x1f00 ẹgbẹ̀rún\x1elatn.l5.x\x1f000 ẹgbẹ̀rún\x1elatn.l6.x\x1f0 mílíọ̀nù\x1elatn.l7.x\x1f" +
-			"00 mílíọ̀nù\x1elatn.l8.x\x1f000 mílíọ̀nù\x1elatn.l9.x\x1f0 bilíọ̀nù\x1elatn.~\x1fdáàṣì\x1elatn." +
-			"l10.x\x1f00 bilíɔ̀nù\x1elatn.l11.x\x1f000 bilíɔ̀nù\x1elatn.l12.x\x1f0 tiriliɔ̀nù\x1elatn.l13.x\x1f00 tiril" +
-			"iɔ̀nù\x1elatn.l14.x\x1f000 tiriliɔ̀nù\x1elatn.l3.x\x1f0 ɛgbɛ̀rún\x1elatn.l4.x\x1f00 ɛgbɛ̀rún\x1elatn.l5" +
-			".x\x1f000 ɛgbɛ̀rún\x1elatn.l6.x\x1f0 mílíɔ̀nù\x1elatn.l7.x\x1f00 mílíɔ̀nù\x1elatn.l8.x\x1f000 mílíɔ̀" +
-			"nù\x1elatn.l9.x\x1f0 bilíɔ̀nù\x1elatn.~\x1fdáàshì\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.x\x1f¤\u00a000\u00a0bi\x1elatn.c11.x\x1f¤" +
-			"\u00a0000\u00a0bi\x1elatn.c12.x\x1f¤\u00a00\u00a0tiri\x1elatn.c13.x\x1f¤\u00a000\u00a0tiri\x1elatn.c14.x\x1f¤\u00a0000\u00a0tiri\x1elatn.c3.x\x1f¤\u00a0" +
-			"0\u00a0miu\x1elatn.c4.x\x1f¤\u00a000\u00a0miu\x1elatn.c5.x\x1f¤\u00a0000\u00a0miu\x1elatn.c6.x\x1f¤\u00a00\u00a0mi\x1elatn.c7.x\x1f¤\u00a000\u00a0mi\x1elat" +
-			"n.c8.x\x1f¤\u00a0000\u00a0mi\x1elatn.c9.x\x1f¤\u00a00\u00a0bi\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 biliãu\x1elatn.l10.x\x1f00 bil" +
-			"iãu-ita\x1elatn.l11.o\x1f000 biliãu\x1elatn.l11.x\x1f000 biliãu-ita\x1elatn.l12.o\x1f0 tiriliãu\x1elatn.l12.x\x1f0 t" +
-			"iriliãu-ita\x1elatn.l13.o\x1f00 tiriliãu\x1elatn.l13.x\x1f00 tiriliãu-ita\x1elatn.l14.o\x1f000 tiriliãu\x1elatn.l" +
-			"14.x\x1f000 tiriliãu-ita\x1elatn.l3.o\x1f0 miu\x1elatn.l3.x\x1f0 miu\x1elatn.l4.o\x1f00 miu\x1elatn.l4.x\x1f00 miu\x1elatn.l5" +
-			".o\x1f000 miu\x1elatn.l5.x\x1f000 miu\x1elatn.l6.o\x1f0 miliãu\x1elatn.l6.x\x1f0 miliãu-ita\x1elatn.l7.o\x1f00 miliãu\x1ela" +
-			"tn.l7.x\x1f00 miliãu-ita\x1elatn.l8.o\x1f000 miliãu\x1elatn.l8.x\x1f000 miliãu-ita\x1elatn.l9.o\x1f0 biliãu\x1elatn." +
-			"l9.x\x1f0 biliãu-ita\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.x\x1f0\u00a0tiri\x1elatn.s13.x\x1f00\u00a0tiri\x1el" +
-			"atn.s14.x\x1f000\u00a0tiri\x1elatn.s3.x\x1f0\u00a0miu\x1elatn.s4.x\x1f00\u00a0miu\x1elatn.s5.x\x1f000\u00a0miu\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s" +
-			"7.x\x1f00\u00a0mi\x1elatn.s8.x\x1f000\u00a0mi\x1elatn.s9.x\x1f0\u00a0bi\x1elatn.l10.o\x1f00 billón\x1elatn.l10.x\x1f00 billón-ita\x1elat" +
-			"n.l11.o\x1f000 billón\x1elatn.l11.x\x1f000 billón-ita\x1elatn.l12.o\x1f0 tirillón\x1elatn.l12.x\x1f0 tirillón-ita" +
-			"\x1elatn.l13.o\x1f00 tirillón\x1elatn.l13.x\x1f00 tirillón-ita\x1elatn.l14.o\x1f000 tirillón\x1elatn.l14.x\x1f000 tir" +
-			"illón-ita\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millón-ita\x1elatn.l7.o\x1f00 millón\x1elatn.l7.x\x1f00 millón" +
-			"-ita\x1elatn.l8.o\x1f000 millón\x1elatn.l8.x\x1f000 millón-ita\x1elatn.l9.o\x1f0 billón\x1elatn.l9.x\x1f0 billón-ita" +
-			"\x1elatn.l10.o\x1f00 billón\x1elatn.l10.x\x1f00 billón-ita\x1elatn.l11.o\x1f000 billón\x1elatn.l11.x\x1f000 billón-i" +
-			"ta\x1elatn.l12.o\x1f0 tirillón\x1elatn.l12.x\x1f0 tirillón-ita\x1elatn.l13.o\x1f00 tirillón\x1elatn.l13.x\x1f00 tiril" +
-			"lón-ita\x1elatn.l14.o\x1f000 tirillón\x1elatn.l14.x\x1f000 tirillón-ita\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 m" +
-			"illón-ita\x1elatn.l7.o\x1f00 millón\x1elatn.l7.x\x1f00 millón-ita\x1elatn.l8.o\x1f000 millón\x1elatn.l8.x\x1f000 mil" +
-			"lón-ita\x1elatn.l9.o\x1f0 billón\x1elatn.l9.x\x1f0 billón-ita\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1ehanidec.A\x1f¤#,##0.0" +
-			"0;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec.P\x1f#,##0%\x1ehanidec.R\x1f" +
-			"{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec.c10.x\x1f¤000億\x1ehani" +
-			"dec.c11.x\x1f¤0000億\x1ehanidec.c12.x\x1f¤0兆\x1ehanidec.c13.x\x1f¤00兆\x1ehanidec.c14.x\x1f¤000兆\x1ehanidec.c3" +
-			".x\x1f¤0千\x1ehanidec.c4.x\x1f¤0萬\x1ehanidec.c5.x\x1f¤00萬\x1ehanidec.c6.x\x1f¤000萬\x1ehanidec.c7.x\x1f¤0000萬\x1e" +
-			"hanidec.c8.x\x1f¤0億\x1ehanidec.c9.x\x1f¤00億\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g\x1f,\x1ehanidec.i\x1f∞\x1ehanid" +
-			"ec.l10.x\x1f000億\x1ehanidec.l11.x\x1f0000億\x1ehanidec.l12.x\x1f0兆\x1ehanidec.l13.x\x1f00兆\x1ehanidec.l14.x\x1f000兆" +
-			"\x1ehanidec.l3.x\x1f0千\x1ehanidec.l4.x\x1f0萬\x1ehanidec.l5.x\x1f00萬\x1ehanidec.l6.x\x1f000萬\x1ehanidec.l7.x\x1f0000萬" +
-			"\x1ehanidec.l8.x\x1f0億\x1ehanidec.l9.x\x1f00億\x1ehanidec.m\x1f‰\x1ehanidec.n\x1f非數值\x1ehanidec.p\x1f%\x1ehanidec.s10." +
-			"x\x1f000億\x1ehanidec.s11.x\x1f0000億\x1ehanidec.s12.x\x1f0兆\x1ehanidec.s13.x\x1f00兆\x1ehanidec.s14.x\x1f000兆\x1ehanid" +
-			"ec.s3.x\x1f0千\x1ehanidec.s4.x\x1f0萬\x1ehanidec.s5.x\x1f00萬\x1ehanidec.s6.x\x1f000萬\x1ehanidec.s7.x\x1f0000萬\x1ehanid" +
-			"ec.s8.x\x1f0億\x1ehanidec.s9.x\x1f00億\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elat" +
-			"n.R\x1f{0}-{1}\x1elatn.c10.x\x1f¤000億\x1elatn.c11.x\x1f¤0000億\x1elatn.c12.x\x1f¤0兆\x1elatn.c13.x\x1f¤00兆\x1elatn.c" +
-			"14.x\x1f¤000兆\x1elatn.c3.x\x1f¤0千\x1elatn.c4.x\x1f¤0萬\x1elatn.c5.x\x1f¤00萬\x1elatn.c6.x\x1f¤000萬\x1elatn.c7.x\x1f¤" +
-			"0000萬\x1elatn.c8.x\x1f¤0億\x1elatn.c9.x\x1f¤00億\x1elatn.l10.x\x1f000億\x1elatn.l11.x\x1f0000億\x1elatn.l12.x\x1f0兆\x1e" +
-			"latn.l13.x\x1f00兆\x1elatn.l14.x\x1f000兆\x1elatn.l3.x\x1f0千\x1elatn.l4.x\x1f0萬\x1elatn.l5.x\x1f00萬\x1elatn.l6.x\x1f000萬" +
-			"\x1elatn.l7.x\x1f0000萬\x1elatn.l8.x\x1f0億\x1elatn.l9.x\x1f00億\x1elatn.n\x1f非數值\x1elatn.s10.x\x1f000億\x1elatn.s11.x\x1f" +
-			"0000億\x1elatn.s12.x\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s3.x\x1f0千\x1elatn.s4.x\x1f0萬\x1elatn.s5" +
-			".x\x1f00萬\x1elatn.s6.x\x1f000萬\x1elatn.s7.x\x1f0000萬\x1elatn.s8.x\x1f0億\x1elatn.s9.x\x1f00億\x1ehanidec.+\x1f+\x1ehanidec.-" +
-			"\x1f-\x1ehanidec.A\x1f¤#,##0.00;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanid" +
-			"ec.P\x1f#,##0%\x1ehanidec.R\x1f{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanid" +
-			"ec.c10.x\x1f¤000亿\x1ehanidec.c11.x\x1f¤0000亿\x1ehanidec.c12.x\x1f¤0兆\x1ehanidec.c13.x\x1f¤00兆\x1ehanidec.c14" +
-			".x\x1f¤000兆\x1ehanidec.c3.x\x1f¤0千\x1ehanidec.c4.x\x1f¤0万\x1ehanidec.c5.x\x1f¤00万\x1ehanidec.c6.x\x1f¤000万\x1eh" +
-			"anidec.c7.x\x1f¤0000万\x1ehanidec.c8.x\x1f¤0亿\x1ehanidec.c9.x\x1f¤00亿\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g" +
-			"\x1f,\x1ehanidec.i\x1f∞\x1ehanidec.l10.x\x1f000亿\x1ehanidec.l11.x\x1f0000亿\x1ehanidec.l12.x\x1f0兆\x1ehanidec.l13.x\x1f00兆" +
-			"\x1ehanidec.l14.x\x1f000兆\x1ehanidec.l3.x\x1f0千\x1ehanidec.l4.x\x1f0万\x1ehanidec.l5.x\x1f00万\x1ehanidec.l6.x\x1f000万" +
-			"\x1ehanidec.l7.x\x1f0000万\x1ehanidec.l8.x\x1f0亿\x1ehanidec.l9.x\x1f00亿\x1ehanidec.m\x1f‰\x1ehanidec.n\x1f非数值\x1ehan" +
-			"idec.p\x1f%\x1ehanidec.s10.x\x1f000亿\x1ehanidec.s11.x\x1f0000亿\x1ehanidec.s12.x\x1f0兆\x1ehanidec.s13.x\x1f00兆\x1ehanid" +
-			"ec.s14.x\x1f000兆\x1ehanidec.s3.x\x1f0千\x1ehanidec.s4.x\x1f0万\x1ehanidec.s5.x\x1f00万\x1ehanidec.s6.x\x1f000万\x1ehanid" +
-			"ec.s7.x\x1f0000万\x1ehanidec.s8.x\x1f0亿\x1ehanidec.s9.x\x1f00亿\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1e" +
-			"latn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f¤000亿\x1elatn.c11.x\x1f¤0000亿\x1elatn.c12.x\x1f¤0兆\x1elatn" +
-			".c13.x\x1f¤00兆\x1elatn.c14.x\x1f¤000兆\x1elatn.c3.x\x1f¤0千\x1elatn.c4.x\x1f¤0万\x1elatn.c5.x\x1f¤00万\x1elatn.c6.x" +
-			"\x1f¤000万\x1elatn.c7.x\x1f¤0000万\x1elatn.c8.x\x1f¤0亿\x1elatn.c9.x\x1f¤00亿\x1elatn.l10.x\x1f000亿\x1elatn.l11.x\x1f00" +
-			"00亿\x1elatn.l12.x\x1f0兆\x1elatn.l13.x\x1f00兆\x1elatn.l14.x\x1f000兆\x1elatn.l3.x\x1f0千\x1elatn.l4.x\x1f0万\x1elatn.l5.x" +
-			"\x1f00万\x1elatn.l6.x\x1f000万\x1elatn.l7.x\x1f0000万\x1elatn.l8.x\x1f0亿\x1elatn.l9.x\x1f00亿\x1elatn.n\x1f非数值\x1elatn.s" +
-			"10.x\x1f000亿\x1elatn.s11.x\x1f0000亿\x1elatn.s12.x\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s3.x\x1f0千" +
-			"\x1elatn.s4.x\x1f0万\x1elatn.s5.x\x1f00万\x1elatn.s6.x\x1f000万\x1elatn.s7.x\x1f0000万\x1elatn.s8.x\x1f0亿\x1elatn.s9.x\x1f00亿" +
-			"\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1e" +
-			"hanidec.A\x1f¤#,##0.00;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec." +
-			"P\x1f#,##0%\x1ehanidec.R\x1f{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec." +
-			"c10.x\x1f¤000亿\x1ehanidec.c11.x\x1f¤0000亿\x1ehanidec.c12.x\x1f¤0万亿\x1ehanidec.c13.x\x1f¤00万亿\x1ehanidec." +
-			"c14.x\x1f¤000万亿\x1ehanidec.c3.x\x1f0\x1ehanidec.c4.x\x1f¤0万\x1ehanidec.c5.x\x1f¤00万\x1ehanidec.c6.x\x1f¤000万\x1e" +
-			"hanidec.c7.x\x1f¤0000万\x1ehanidec.c8.x\x1f¤0亿\x1ehanidec.c9.x\x1f¤00亿\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec." +
-			"g\x1f,\x1ehanidec.i\x1f∞\x1ehanidec.l10.x\x1f000亿\x1ehanidec.l11.x\x1f0000亿\x1ehanidec.l12.x\x1f0万亿\x1ehanidec.l13.x" +
-			"\x1f00万亿\x1ehanidec.l14.x\x1f000万亿\x1ehanidec.l3.x\x1f0\x1ehanidec.l4.x\x1f0万\x1ehanidec.l5.x\x1f00万\x1ehanidec.l6" +
-			".x\x1f000万\x1ehanidec.l7.x\x1f0000万\x1ehanidec.l8.x\x1f0亿\x1ehanidec.l9.x\x1f00亿\x1ehanidec.m\x1f‰\x1ehanidec.n\x1fNaN\x1e" +
-			"hanidec.p\x1f%\x1ehanidec.s10.x\x1f000亿\x1ehanidec.s11.x\x1f0000亿\x1ehanidec.s12.x\x1f0万亿\x1ehanidec.s13.x\x1f00万" +
-			"亿\x1ehanidec.s14.x\x1f000万亿\x1ehanidec.s3.x\x1f0\x1ehanidec.s4.x\x1f0万\x1ehanidec.s5.x\x1f00万\x1ehanidec.s6.x\x1f000" +
-			"万\x1ehanidec.s7.x\x1f0000万\x1ehanidec.s8.x\x1f0亿\x1ehanidec.s9.x\x1f00亿\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#" +
-			",##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.Ux\x1f{0}{1}\x1elatn.c10.x\x1f¤000亿\x1elatn.c11.x\x1f¤0000亿" +
-			"\x1elatn.c12.x\x1f¤0万亿\x1elatn.c13.x\x1f¤00万亿\x1elatn.c14.x\x1f¤000万亿\x1elatn.c3.x\x1f0\x1elatn.c4.x\x1f¤0万\x1e" +
-			"latn.c5.x\x1f¤00万\x1elatn.c6.x\x1f¤000万\x1elatn.c7.x\x1f¤0000万\x1elatn.c8.x\x1f¤0亿\x1elatn.c9.x\x1f¤00亿\x1elatn" +
-			".l10.x\x1f000亿\x1elatn.l11.x\x1f0000亿\x1elatn.l12.x\x1f0万亿\x1elatn.l13.x\x1f00万亿\x1elatn.l14.x\x1f000万亿\x1elat" +
-			"n.l3.x\x1f0\x1elatn.l4.x\x1f0万\x1elatn.l5.x\x1f00万\x1elatn.l6.x\x1f000万\x1elatn.l7.x\x1f0000万\x1elatn.l8.x\x1f0亿\x1elatn.l" +
-			"9.x\x1f00亿\x1elatn.s10.x\x1f000亿\x1elatn.s11.x\x1f0000亿\x1elatn.s12.x\x1f0万亿\x1elatn.s13.x\x1f00万亿\x1elatn.s14.x" +
-			"\x1f000万亿\x1elatn.s3.x\x1f0\x1elatn.s4.x\x1f0万\x1elatn.s5.x\x1f00万\x1elatn.s6.x\x1f000万\x1elatn.s7.x\x1f0000万\x1elatn.s8" +
-			".x\x1f0亿\x1elatn.s9.x\x1f00亿\x1elatn.Ux\x1f{0} {1}\x1elatn.Ux\x1f{0} {1}\x1elatn.Ux\x1f{0} {1}\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1e" +
-			"hanidec.A\x1f¤#,##0.00;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec." +
-			"P\x1f#,##0%\x1ehanidec.R\x1f{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec." +
-			"c10.x\x1f¤000億\x1ehanidec.c11.x\x1f¤0000億\x1ehanidec.c12.x\x1f¤0兆\x1ehanidec.c13.x\x1f¤00兆\x1ehanidec.c14.x\x1f" +
-			"¤000兆\x1ehanidec.c3.x\x1f0\x1ehanidec.c4.x\x1f¤0萬\x1ehanidec.c5.x\x1f¤00萬\x1ehanidec.c6.x\x1f¤000萬\x1ehanidec.c" +
-			"7.x\x1f¤0000萬\x1ehanidec.c8.x\x1f¤0億\x1ehanidec.c9.x\x1f¤00億\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g\x1f,\x1ehanid" +
-			"ec.i\x1f∞\x1ehanidec.l10.x\x1f000億\x1ehanidec.l11.x\x1f0000億\x1ehanidec.l12.x\x1f0兆\x1ehanidec.l13.x\x1f00兆\x1ehanid" +
-			"ec.l14.x\x1f000兆\x1ehanidec.l3.x\x1f0\x1ehanidec.l4.x\x1f0萬\x1ehanidec.l5.x\x1f00萬\x1ehanidec.l6.x\x1f000萬\x1ehanidec." +
-			"l7.x\x1f0000萬\x1ehanidec.l8.x\x1f0億\x1ehanidec.l9.x\x1f00億\x1ehanidec.m\x1f‰\x1ehanidec.n\x1f非數值\x1ehanidec.p\x1f%\x1e" +
-			"hanidec.s10.x\x1f000億\x1ehanidec.s11.x\x1f0000億\x1ehanidec.s12.x\x1f0兆\x1ehanidec.s13.x\x1f00兆\x1ehanidec.s14.x\x1f" +
-			"000兆\x1ehanidec.s3.x\x1f0\x1ehanidec.s4.x\x1f0萬\x1ehanidec.s5.x\x1f00萬\x1ehanidec.s6.x\x1f000萬\x1ehanidec.s7.x\x1f0000" +
-			"萬\x1ehanidec.s8.x\x1f0億\x1ehanidec.s9.x\x1f00億\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,#" +
-			"#0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f¤000億\x1elatn.c11.x\x1f¤0000億\x1elatn.c12.x\x1f¤0兆\x1elatn.c13.x\x1f¤00兆" +
-			"\x1elatn.c14.x\x1f¤000兆\x1elatn.c3.x\x1f0\x1elatn.c4.x\x1f¤0萬\x1elatn.c5.x\x1f¤00萬\x1elatn.c6.x\x1f¤000萬\x1elatn.c7.x" +
-			"\x1f¤0000萬\x1elatn.c8.x\x1f¤0億\x1elatn.c9.x\x1f¤00億\x1elatn.l10.x\x1f000億\x1elatn.l11.x\x1f0000億\x1elatn.l12.x\x1f0兆" +
-			"\x1elatn.l13.x\x1f00兆\x1elatn.l14.x\x1f000兆\x1elatn.l3.x\x1f0\x1elatn.l4.x\x1f0萬\x1elatn.l5.x\x1f00萬\x1elatn.l6.x\x1f000萬\x1e" +
-			"latn.l7.x\x1f0000萬\x1elatn.l8.x\x1f0億\x1elatn.l9.x\x1f00億\x1elatn.n\x1f非數值\x1elatn.s10.x\x1f000億\x1elatn.s11.x\x1f0" +
-			"000億\x1elatn.s12.x\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s3.x\x1f0\x1elatn.s4.x\x1f0萬\x1elatn.s5.x\x1f0" +
-			"0萬\x1elatn.s6.x\x1f000萬\x1elatn.s7.x\x1f0000萬\x1elatn.s8.x\x1f0億\x1elatn.s9.x\x1f00億\x1ehanidec.c10.x\x1f¤00B\x1ehanid" +
-			"ec.c11.x\x1f¤000B\x1ehanidec.c12.x\x1f¤0T\x1ehanidec.c13.x\x1f¤00T\x1ehanidec.c14.x\x1f¤000T\x1ehanidec.c3.x\x1f¤0K\x1eha" +
-			"nidec.c4.x\x1f¤00K\x1ehanidec.c5.x\x1f¤000K\x1ehanidec.c6.x\x1f¤0M\x1ehanidec.c7.x\x1f¤00M\x1ehanidec.c8.x\x1f¤000M\x1eha" +
-			"nidec.c9.x\x1f¤0B\x1ehanidec.l10.x\x1f00B\x1ehanidec.l11.x\x1f000B\x1ehanidec.l12.x\x1f0T\x1ehanidec.l13.x\x1f00T\x1ehanidec." +
-			"l14.x\x1f000T\x1ehanidec.l3.x\x1f0K\x1ehanidec.l4.x\x1f00K\x1ehanidec.l5.x\x1f000K\x1ehanidec.l6.x\x1f0M\x1ehanidec.l7.x\x1f00M\x1eh" +
-			"anidec.l8.x\x1f000M\x1ehanidec.l9.x\x1f0B\x1ehanidec.s10.x\x1f00B\x1ehanidec.s11.x\x1f000B\x1ehanidec.s12.x\x1f0T\x1ehanidec.s" +
-			"13.x\x1f00T\x1ehanidec.s14.x\x1f000T\x1ehanidec.s3.x\x1f0K\x1ehanidec.s4.x\x1f00K\x1ehanidec.s5.x\x1f000K\x1ehanidec.s6.x\x1f0M\x1eh" +
-			"anidec.s7.x\x1f00M\x1ehanidec.s8.x\x1f000M\x1ehanidec.s9.x\x1f0B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.x\x1f" +
-			"¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6." +
-			"x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f00B\x1elatn.l11.x\x1f000B\x1elatn.l12.x" +
-			"\x1f0T\x1elatn.l13.x\x1f00T\x1elatn.l14.x\x1f000T\x1elatn.l3.x\x1f0K\x1elatn.l4.x\x1f00K\x1elatn.l5.x\x1f000K\x1elatn.l6.x\x1f0M\x1elatn.l" +
-			"7.x\x1f00M\x1elatn.l8.x\x1f000M\x1elatn.l9.x\x1f0B\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s12.x\x1f0T\x1elatn.s13.x\x1f00T\x1e" +
-			"latn.s14.x\x1f000T\x1elatn.s3.x\x1f0K\x1elatn.s4.x\x1f00K\x1elatn.s5.x\x1f000K\x1elatn.s6.x\x1f0M\x1elatn.s7.x\x1f00M\x1elatn.s8.x\x1f0" +
-			"00M\x1elatn.s9.x\x1f0B\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤" +
-			"00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c1" +
-			"3.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn" +
-			".c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn" +
-			".c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 isigid" +
-			"i sezigidi\x1elatn.l10.x\x1f00 isigidi sezigidi\x1elatn.l11.o\x1f000 isigidi sezigidi\x1elatn.l11.x\x1f000 isigidi" +
-			" sezigidi\x1elatn.l12.o\x1f0 isigidintathu\x1elatn.l12.x\x1f0 isigidintathu\x1elatn.l13.o\x1f00 isigidintathu\x1elatn" +
-			".l13.x\x1f00 isigidintathu\x1elatn.l14.o\x1f000 isigidintathu\x1elatn.l14.x\x1f000 isigidintathu\x1elatn.l3.o\x1f0 in" +
-			"kulungwane\x1elatn.l3.x\x1f0 inkulungwane\x1elatn.l4.o\x1f00 inkulungwane\x1elatn.l4.x\x1f00 inkulungwane\x1elatn.l5." +
-			"o\x1f000 inkulungwane\x1elatn.l5.x\x1f000 inkulungwane\x1elatn.l6.o\x1f0 isigidi\x1elatn.l6.x\x1f0 isigidi\x1elatn.l7.o\x1f" +
-			"00 isigidi\x1elatn.l7.x\x1f00 isigidi\x1elatn.l8.o\x1f000 isigidi\x1elatn.l8.x\x1f000 isigidi\x1elatn.l9.o\x1f0 isigidi " +
-			"sezigidi\x1elatn.l9.x\x1f0 isigidi sezigidi\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f0" +
-			"00B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B",
+			"abext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1ear" +
+			"abext.l13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabext.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6" +
+			".x\x1f0M\x1earabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M\x1earabext.l9.x\x1f0G\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1ear" +
+			"abext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5." +
+			"x\x1f000K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1earabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e" +
+			"-\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c" +
+			"11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1e" +
+			"latn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K" +
+			"\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M" +
+			"\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 Bíliọn\x1elatn.l10.x\x1f00 Bíliọn\x1e" +
+			"latn.l11.o\x1f000 Bíliọn\x1elatn.l11.x\x1f000 Bíliọn\x1elatn.l12.o\x1f0 Tríliọn\x1elatn.l12.x\x1f0 Tríliọ" +
+			"n\x1elatn.l13.o\x1f00 Tríliọn\x1elatn.l13.x\x1f00 Tríliọn\x1elatn.l14.o\x1f000 Tríliọn\x1elatn.l14.x\x1f000 Trí" +
+			"liọn\x1elatn.l3.o\x1f0 Taúzan\x1elatn.l3.x\x1f0 Taúzan\x1elatn.l4.o\x1f00 Taúzan\x1elatn.l4.x\x1f00 Taúzan\x1elatn.l5" +
+			".o\x1f000 Taúzan\x1elatn.l5.x\x1f000 Taúzan\x1elatn.l6.o\x1f0 Míliọn\x1elatn.l6.x\x1f0 Míliọn\x1elatn.l7.o\x1f00 Mí" +
+			"liọn\x1elatn.l7.x\x1f00 Míliọn\x1elatn.l8.o\x1f000 Míliọn\x1elatn.l8.x\x1f000 Míliọn\x1elatn.l9.o\x1f0 Bíliọ" +
+			"n\x1elatn.l9.x\x1f0 Bíliọn\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f" +
+			"0B\x1elatn.s9.x\x1f0B\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0mld\u00a0¤" +
+			"\x1elatn.c10.m\x1f00\u00a0mld\u00a0¤\x1elatn.c10.o\x1f00\u00a0mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld\u00a0¤\x1ela" +
+			"tn.c11.m\x1f000\u00a0mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld\u00a0¤\x1elatn.c12.f\x1f0\u00a0bln\u00a0¤\x1elatn" +
+			".c12.m\x1f0\u00a0bln\u00a0¤\x1elatn.c12.o\x1f0\u00a0bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0bln\u00a0¤\x1elatn.c13.f\x1f00\u00a0bln\u00a0¤\x1elatn.c13.m\x1f" +
+			"00\u00a0bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0bln\u00a0¤\x1elatn.c14.f\x1f000\u00a0bln\u00a0¤\x1elatn.c14.m\x1f000" +
+			"\u00a0bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0bln\u00a0¤\x1elatn.c3.f\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0t" +
+			"ys'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0tys'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0" +
+			"tys'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tys'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.m" +
+			"\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tys'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mln\u00a0¤\x1elatn.c" +
+			"6.m\x1f0\u00a0mln\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.f\x1f00\u00a0mln\u00a0¤\x1elatn.c7.m\x1f00\u00a0mln" +
+			"\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1elatn.c8.f\x1f000\u00a0mln\u00a0¤\x1elatn.c8.m\x1f000\u00a0mln\u00a0¤\x1el" +
+			"atn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld\u00a0¤\x1elatn.c9.m\x1f0\u00a0mld\u00a0¤\x1elatn.c9.o" +
+			"\x1f0\u00a0mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 miliardy\x1elatn.l10.m\x1f00 miliard" +
+			"ów\x1elatn.l10.o\x1f00 miliard\x1elatn.l10.x\x1f00 miliarda\x1elatn.l11.f\x1f000 miliardy\x1elatn.l11.m\x1f000 miliardó" +
+			"w\x1elatn.l11.o\x1f000 miliard\x1elatn.l11.x\x1f000 miliarda\x1elatn.l12.f\x1f0 biliony\x1elatn.l12.m\x1f0 bilionów\x1elat" +
+			"n.l12.o\x1f0 bilion\x1elatn.l12.x\x1f0 biliona\x1elatn.l13.f\x1f00 biliony\x1elatn.l13.m\x1f00 bilionów\x1elatn.l13.o\x1f0" +
+			"0 bilion\x1elatn.l13.x\x1f00 biliona\x1elatn.l14.f\x1f000 biliony\x1elatn.l14.m\x1f000 bilionów\x1elatn.l14.o\x1f000 bi" +
+			"lion\x1elatn.l14.x\x1f000 biliona\x1elatn.l3.f\x1f0 tysiące\x1elatn.l3.m\x1f0 tysięcy\x1elatn.l3.o\x1f0 tysiąc\x1elatn.l" +
+			"3.x\x1f0 tysiąca\x1elatn.l4.f\x1f00 tysiące\x1elatn.l4.m\x1f00 tysięcy\x1elatn.l4.o\x1f00 tysiąc\x1elatn.l4.x\x1f00 tys" +
+			"iąca\x1elatn.l5.f\x1f000 tysiące\x1elatn.l5.m\x1f000 tysięcy\x1elatn.l5.o\x1f000 tysiąc\x1elatn.l5.x\x1f000 tysiąca" +
+			"\x1elatn.l6.f\x1f0 miliony\x1elatn.l6.m\x1f0 milionów\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 miliona\x1elatn.l7.f\x1f00 m" +
+			"iliony\x1elatn.l7.m\x1f00 milionów\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 miliona\x1elatn.l8.f\x1f000 miliony\x1elat" +
+			"n.l8.m\x1f000 milionów\x1elatn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 miliona\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.m\x1f0" +
+			" miliardów\x1elatn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 miliarda\x1elatn.s10.f\x1f00\u00a0mld\x1elatn.s10.m\x1f00\u00a0mld\x1elatn." +
+			"s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.f\x1f000\u00a0mld\x1elatn.s11.m\x1f000\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elat" +
+			"n.s11.x\x1f000\u00a0mld\x1elatn.s12.f\x1f0\u00a0bln\x1elatn.s12.m\x1f0\u00a0bln\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn.s1" +
+			"3.f\x1f00\u00a0bln\x1elatn.s13.m\x1f00\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14.f\x1f000\u00a0bln\x1elatn.s1" +
+			"4.m\x1f000\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0bln\x1elatn.s3.f\x1f0\u00a0tys'.'\x1elatn.s3.m\x1f0\u00a0tys'.'\x1elat" +
+			"n.s3.o\x1f0\u00a0tys'.'\x1elatn.s3.x\x1f0\u00a0tys'.'\x1elatn.s4.f\x1f00\u00a0tys'.'\x1elatn.s4.m\x1f00\u00a0tys'.'\x1elatn.s4.o\x1f00\u00a0tys" +
+			"'.'\x1elatn.s4.x\x1f00\u00a0tys'.'\x1elatn.s5.f\x1f000\u00a0tys'.'\x1elatn.s5.m\x1f000\u00a0tys'.'\x1elatn.s5.o\x1f000\u00a0tys'.'\x1elatn." +
+			"s5.x\x1f000\u00a0tys'.'\x1elatn.s6.f\x1f0\u00a0mln\x1elatn.s6.m\x1f0\u00a0mln\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.f\x1f0" +
+			"0\u00a0mln\x1elatn.s7.m\x1f00\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.f\x1f000\u00a0mln\x1elatn.s8.m\x1f000\u00a0m" +
+			"ln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.f\x1f0\u00a0mld\x1elatn.s9.m\x1f0\u00a0mld\x1elatn.s9.o\x1f0\u00a0mld\x1elatn" +
+			".s9.x\x1f0\u00a0mld\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn." +
+			"C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1earabext.A\x1f¤#,##0.00;(¤#,##0.00)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#" +
+			",##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1" +
+			"}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.o\x1f¤\u00a000B\x1earabext.c10.x\x1f¤\u00a000B\x1earabext.c11.o\x1f¤\u00a0000G" +
+			"\x1earabext.c11.x\x1f¤\u00a0000B\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabex" +
+			"t.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000" +
+			"M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.o\x1f¤\u00a00B\x1earabext.c9.x\x1f¤\u00a00B\x1earabext.l10.o\x1f00 بیلیونه\x1e" +
+			"arabext.l10.x\x1f00 بیلیونه\x1earabext.l11.o\x1f000 بیلیونه\x1earabext.l11.x\x1f000 بیلیونه" +
+			"\x1earabext.l12.o\x1f0 ټریلیونه\x1earabext.l12.x\x1f0 ټریلیونه\x1earabext.l13.o\x1f00 ټریلیو" +
+			"نه\x1earabext.l13.x\x1f00 ټریلیونه\x1earabext.l14.o\x1f000 ټریلیونه\x1earabext.l14.x\x1f000 ټر" +
+			"یلیونه\x1earabext.l3.o\x1f0 زره\x1earabext.l3.x\x1f0 زره\x1earabext.l4.o\x1f00 زره\x1earabext.l4.x\x1f00 " +
+			"زره\x1earabext.l5.o\x1f000 زره\x1earabext.l5.x\x1f000 زره\x1earabext.l6.o\x1f0 میلیونه\x1earabext.l6." +
+			"x\x1f0 میلیونه\x1earabext.l7.o\x1f00 میلیونه\x1earabext.l7.x\x1f00 میلیونه\x1earabext.l8.o\x1f00" +
+			"0 میلیونه\x1earabext.l8.x\x1f000 میلیونه\x1earabext.l9.o\x1f0 بیلیونه\x1earabext.l9.x\x1f0 ب" +
+			"یلیونه\x1earabext.s10.o\x1f00B\x1earabext.s10.x\x1f00B\x1earabext.s11.o\x1f000G\x1earabext.s11.x\x1f000B\x1earabext.s" +
+			"12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.o\x1f0\u00a0زره\x1earabext.s3.x\x1f0\u00a0زره\x1earabe" +
+			"xt.s4.o\x1f00\u00a0زره\x1earabext.s4.x\x1f00\u00a0زره\x1earabext.s5.o\x1f000\u00a0زره\x1earabext.s5.x\x1f000\u00a0زره\x1eara" +
+			"bext.s6.o\x1f0\u00a0میلیونه\x1earabext.s6.x\x1f0\u00a0میلیونه\x1earabext.s7.o\x1f00\u00a0میلیونه\x1earabe" +
+			"xt.s7.x\x1f00\u00a0میلیونه\x1earabext.s8.o\x1f000\u00a0میلیونه\x1earabext.s8.x\x1f000M\x1earabext.s9.o\x1f0B\x1ear" +
+			"abext.s9.x\x1f0B\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e−\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.c10.o\x1f¤\u00a000B\x1elatn.c" +
+			"10.x\x1f¤\u00a000B\x1elatn.c11.o\x1f¤\u00a0000G\x1elatn.c11.x\x1f¤\u00a0000B\x1elatn.c9.o\x1f¤\u00a00B\x1elatn.c9.x\x1f¤\u00a00B\x1elatn.d\x1f,\x1e" +
+			"latn.g\x1f.\x1elatn.l10.o\x1f00 بیلیونه\x1elatn.l10.x\x1f00 بیلیونه\x1elatn.l11.o\x1f000 بیلیونه" +
+			"\x1elatn.l11.x\x1f000 بیلیونه\x1elatn.l12.o\x1f0 ټریلیونه\x1elatn.l12.x\x1f0 ټریلیونه\x1elatn." +
+			"l13.o\x1f00 ټریلیونه\x1elatn.l13.x\x1f00 ټریلیونه\x1elatn.l14.o\x1f000 ټریلیونه\x1elatn.l1" +
+			"4.x\x1f000 ټریلیونه\x1elatn.l3.o\x1f0 زره\x1elatn.l3.x\x1f0 زره\x1elatn.l4.o\x1f00 زره\x1elatn.l4.x\x1f00 " +
+			"زره\x1elatn.l5.o\x1f000 زره\x1elatn.l5.x\x1f000 زره\x1elatn.l6.o\x1f0 میلیونه\x1elatn.l6.x\x1f0 میلی" +
+			"ونه\x1elatn.l7.o\x1f00 میلیونه\x1elatn.l7.x\x1f00 میلیونه\x1elatn.l8.o\x1f000 میلیونه\x1elatn" +
+			".l8.x\x1f000 میلیونه\x1elatn.l9.o\x1f0 بیلیونه\x1elatn.l9.x\x1f0 بیلیونه\x1elatn.s10.o\x1f00B\x1ela" +
+			"tn.s10.x\x1f00B\x1elatn.s11.o\x1f000G\x1elatn.s11.x\x1f000B\x1elatn.s3.o\x1f0\u00a0زره\x1elatn.s3.x\x1f0\u00a0زره\x1elatn.s4.o\x1f0" +
+			"0\u00a0زره\x1elatn.s4.x\x1f00\u00a0زره\x1elatn.s5.o\x1f000\u00a0زره\x1elatn.s5.x\x1f000\u00a0زره\x1elatn.s6.o\x1f0\u00a0میلی" +
+			"ونه\x1elatn.s6.x\x1f0\u00a0میلیونه\x1elatn.s7.o\x1f00\u00a0میلیونه\x1elatn.s7.x\x1f00\u00a0میلیونه\x1elat" +
+			"n.s8.o\x1f000\u00a0میلیونه\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1elatn.c10.o\x1f¤\u00a000\u00a0bi\x1elatn.c10.x\x1f¤\u00a000\u00a0bi" +
+			"\x1elatn.c11.o\x1f¤\u00a0000\u00a0bi\x1elatn.c11.x\x1f¤\u00a0000\u00a0bi\x1elatn.c12.o\x1f¤\u00a00\u00a0tri\x1elatn.c12.x\x1f¤\u00a00\u00a0tri\x1elatn." +
+			"c13.o\x1f¤\u00a000\u00a0tri\x1elatn.c13.x\x1f¤\u00a000\u00a0tri\x1elatn.c14.o\x1f¤\u00a0000\u00a0tri\x1elatn.c14.x\x1f¤\u00a0000\u00a0tri\x1elatn.c3" +
+			".o\x1f¤\u00a00\u00a0mil\x1elatn.c3.x\x1f¤\u00a00\u00a0mil\x1elatn.c4.o\x1f¤\u00a000\u00a0mil\x1elatn.c4.x\x1f¤\u00a000\u00a0mil\x1elatn.c5.o\x1f¤\u00a0000" +
+			"\u00a0mil\x1elatn.c5.x\x1f¤\u00a0000\u00a0mil\x1elatn.c6.o\x1f¤\u00a00\u00a0mi\x1elatn.c6.x\x1f¤\u00a00\u00a0mi\x1elatn.c7.o\x1f¤\u00a000\u00a0mi\x1elatn.c" +
+			"7.x\x1f¤\u00a000\u00a0mi\x1elatn.c8.o\x1f¤\u00a0000\u00a0mi\x1elatn.c8.x\x1f¤\u00a0000\u00a0mi\x1elatn.c9.o\x1f¤\u00a00\u00a0bi\x1elatn.c9.x\x1f¤\u00a00\u00a0" +
+			"bi\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 bilhão\x1elatn.l10.x\x1f00 bilhões\x1elatn.l11.o\x1f000 bilhão\x1elatn.l1" +
+			"1.x\x1f000 bilhões\x1elatn.l12.o\x1f0 trilhão\x1elatn.l12.x\x1f0 trilhões\x1elatn.l13.o\x1f00 trilhão\x1elatn.l13.x\x1f" +
+			"00 trilhões\x1elatn.l14.o\x1f000 trilhão\x1elatn.l14.x\x1f000 trilhões\x1elatn.l3.o\x1f0 mil\x1elatn.l3.x\x1f0 mil\x1ela" +
+			"tn.l4.o\x1f00 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.o\x1f000 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.o\x1f0 milhão\x1elatn.l6." +
+			"x\x1f0 milhões\x1elatn.l7.o\x1f00 milhão\x1elatn.l7.x\x1f00 milhões\x1elatn.l8.o\x1f000 milhão\x1elatn.l8.x\x1f000 milh" +
+			"ões\x1elatn.l9.o\x1f0 bilhão\x1elatn.l9.x\x1f0 bilhões\x1elatn.s10.o\x1f00\u00a0bi\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.o\x1f000" +
+			"\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.o\x1f0\u00a0tri\x1elatn.s12.x\x1f0\u00a0tri\x1elatn.s13.o\x1f00\u00a0tri\x1elatn.s13.x\x1f00\u00a0tr" +
+			"i\x1elatn.s14.o\x1f000\u00a0tri\x1elatn.s14.x\x1f000\u00a0tri\x1elatn.s3.o\x1f0\u00a0mil\x1elatn.s3.x\x1f0\u00a0mil\x1elatn.s4.o\x1f00\u00a0mil\x1ela" +
+			"tn.s4.x\x1f00\u00a0mil\x1elatn.s5.o\x1f000\u00a0mil\x1elatn.s5.x\x1f000\u00a0mil\x1elatn.s6.o\x1f0\u00a0mi\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s7.o\x1f" +
+			"00\u00a0mi\x1elatn.s7.x\x1f00\u00a0mi\x1elatn.s8.o\x1f000\u00a0mi\x1elatn.s8.x\x1f000\u00a0mi\x1elatn.s9.o\x1f0\u00a0bi\x1elatn.s9.x\x1f0\u00a0bi\x1eg\x1f1\x1e" +
+			"g\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0} - {1}\x1elatn.c10.o\x1f00\u00a0mM\u00a0¤" +
+			"\x1elatn.c10.x\x1f00\u00a0mM\u00a0¤\x1elatn.c11.o\x1f000\u00a0mM\u00a0¤\x1elatn.c11.x\x1f000\u00a0mM\u00a0¤\x1elatn.c12.o\x1f0\u00a0Bi\u00a0¤\x1elatn.c" +
+			"12.x\x1f0\u00a0Bi\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bi\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bi\u00a0¤\x1elatn.c14.o\x1f000\u00a0Bi\u00a0¤\x1elatn.c14.x\x1f000" +
+			"\u00a0Bi\u00a0¤\x1elatn.c3.o\x1f0\u00a0mil\u00a0¤\x1elatn.c3.x\x1f0\u00a0mil\u00a0¤\x1elatn.c4.o\x1f00\u00a0mil\u00a0¤\x1elatn.c4.x\x1f00\u00a0mil\u00a0¤\x1el" +
+			"atn.c5.o\x1f000\u00a0mil\u00a0¤\x1elatn.c5.x\x1f000\u00a0mil\u00a0¤\x1elatn.c6.o\x1f0\u00a0M\u00a0¤\x1elatn.c6.x\x1f0\u00a0M\u00a0¤\x1elatn.c7.o\x1f00\u00a0" +
+			"M\u00a0¤\x1elatn.c7.x\x1f00\u00a0M\u00a0¤\x1elatn.c8.o\x1f000\u00a0M\u00a0¤\x1elatn.c8.x\x1f000\u00a0M\u00a0¤\x1elatn.c9.o\x1f0\u00a0mM\u00a0¤\x1elatn.c9." +
+			"x\x1f0\u00a0mM\u00a0¤\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 mil milhões\x1elatn.l10.x\x1f00 mil milhões\x1elatn.l11.o\x1f000 mil m" +
+			"ilhões\x1elatn.l11.x\x1f000 mil milhões\x1elatn.l12.o\x1f0 bilião\x1elatn.l12.x\x1f0 biliões\x1elatn.l13.o\x1f00 bil" +
+			"iões\x1elatn.l13.x\x1f00 biliões\x1elatn.l14.o\x1f000 biliões\x1elatn.l14.x\x1f000 biliões\x1elatn.l7.o\x1f00 milhõ" +
+			"es\x1elatn.l8.o\x1f000 milhões\x1elatn.l9.o\x1f0 mil milhões\x1elatn.l9.x\x1f0 mil milhões\x1elatn.s10.o\x1f00\u00a0mM\x1ela" +
+			"tn.s10.x\x1f00\u00a0mM\x1elatn.s11.o\x1f000\u00a0mM\x1elatn.s11.x\x1f000\u00a0mM\x1elatn.s12.o\x1f0\u00a0Bi\x1elatn.s12.x\x1f0\u00a0Bi\x1elatn.s13" +
+			".o\x1f00\u00a0Bi\x1elatn.s13.x\x1f00\u00a0Bi\x1elatn.s14.o\x1f000\u00a0Bi\x1elatn.s14.x\x1f000\u00a0Bi\x1elatn.s6.o\x1f0\u00a0M\x1elatn.s6.x\x1f0\u00a0M\x1e" +
+			"latn.s7.o\x1f00\u00a0M\x1elatn.s7.x\x1f00\u00a0M\x1elatn.s8.o\x1f000\u00a0M\x1elatn.s8.x\x1f000\u00a0M\x1elatn.s9.o\x1f0\u00a0mM\x1elatn.s9.x\x1f0\u00a0m" +
+			"M\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.c10.x\x1f¤00M'.'M'.'\x1elatn.c11.x\x1f¤000M'.'M'.'\x1elatn.c12.x\x1f" +
+			"¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0M\x1elatn.c4.x\x1f¤00M\x1elatn.c5.x\x1f¤000M\x1elatn.c6." +
+			"x\x1f¤0MM\x1elatn.c7.x\x1f¤00MM\x1elatn.c8.x\x1f¤000MM\x1elatn.c9.x\x1f¤0M'.'M'.'\x1elatn.l10.x\x1f00 mil de millones\x1el" +
+			"atn.l11.x\x1f000 mil de millones\x1elatn.l12.x\x1f0 trillón\x1elatn.l13.x\x1f00 trillones\x1elatn.l14.x\x1f000 trill" +
+			"ones\x1elatn.l3.x\x1f0 mil\x1elatn.l4.x\x1f00 mil\x1elatn.l5.x\x1f000 mil\x1elatn.l6.x\x1f0 millón\x1elatn.l7.x\x1f00 millone" +
+			"s\x1elatn.l8.x\x1f000 millón\x1elatn.l9.x\x1f0 mil de millones\x1elatn.s3.x\x1f0M\x1elatn.s4.x\x1f00M\x1elatn.s5.x\x1f000M\x1ela" +
+			"tn.s6.x\x1f0MM\x1elatn.s7.x\x1f00MM\x1elatn.s8.x\x1f000MM\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1edeva.B\x1f\u00a0\x1edeva." +
+			"C\x1f¤\u00a0#,##0.00\x1edeva.D\x1f#,##0.###\x1edeva.P\x1f#,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X" +
+			"\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1edeva.c13.x\x1f¤\u00a000T\x1edeva" +
+			".c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva.c6.x\x1f¤\u00a00M\x1edeva.c7.x" +
+			"\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00" +
+			"G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0K\x1edeva.l4.x\x1f00K\x1edeva.l" +
+			"5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1ed" +
+			"eva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T\x1edeva.s3.x\x1f0K\x1edeva.s4." +
+			"x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0G\x1edeva.~\x1f~\x1elatn.A\x1f¤#," +
+			"##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00\u00a0mia'.'\x1elatn.c10.x\x1f¤00\u00a0mia'.'\x1elatn.c11.o" +
+			"\x1f¤000\u00a0mia'.'\x1elatn.c11.x\x1f¤000\u00a0mia'.'\x1elatn.c12.o\x1f¤0\u00a0biu'.'\x1elatn.c12.x\x1f¤0\u00a0biu'.'\x1elatn.c13.o" +
+			"\x1f¤00\u00a0biu'.'\x1elatn.c13.x\x1f¤00\u00a0biu'.'\x1elatn.c14.o\x1f¤000T\u00a0biu'.'\x1elatn.c14.x\x1f¤000\u00a0biu'.'\x1elatn.c3" +
+			".o\x1f0\x1elatn.c3.x\x1f0\x1elatn.c4.o\x1f0\x1elatn.c4.x\x1f0\x1elatn.c5.o\x1f0\x1elatn.c5.x\x1f0\x1elatn.c6.o\x1f¤0\u00a0miu'.'\x1elatn.c6.x" +
+			"\x1f¤0\u00a0miu'.'\x1elatn.c7.o\x1f¤00\u00a0miu'.'\x1elatn.c7.x\x1f¤00\u00a0miu'.'\x1elatn.c8.o\x1f¤000\u00a0miu'.'\x1elatn.c8.x\x1f¤0" +
+			"00\u00a0miu'.'\x1elatn.c9.o\x1f¤0\u00a0mia'.'\x1elatn.c9.x\x1f¤0\u00a0mia'.'\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 milliar" +
+			"das\x1elatn.l10.x\x1f00 milliardas\x1elatn.l11.o\x1f000 milliardas\x1elatn.l11.x\x1f000 milliardas\x1elatn.l12.o\x1f0 bi" +
+			"lliun\x1elatn.l12.x\x1f0 billiuns\x1elatn.l13.o\x1f00 billiuns\x1elatn.l13.x\x1f00 billiuns\x1elatn.l14.o\x1f000 billiun" +
+			"s\x1elatn.l14.x\x1f000 billiuns\x1elatn.l3.o\x1f0\x1elatn.l3.x\x1f0\x1elatn.l4.o\x1f0\x1elatn.l4.x\x1f0\x1elatn.l5.o\x1f0\x1elatn.l5.x\x1f" +
+			"0\x1elatn.l6.o\x1f0 milliun\x1elatn.l6.x\x1f0 milliuns\x1elatn.l7.o\x1f00 milliuns\x1elatn.l7.x\x1f00 milliuns\x1elatn.l8.o" +
+			"\x1f000 milliuns\x1elatn.l8.x\x1f000 milliuns\x1elatn.l9.o\x1f0 milliarda\x1elatn.l9.x\x1f0 milliardas\x1elatn.s10.o\x1f00\u00a0" +
+			"mia'.'\x1elatn.s10.x\x1f00\u00a0mia'.'\x1elatn.s11.o\x1f000\u00a0mia'.'\x1elatn.s11.x\x1f000\u00a0mia'.'\x1elatn.s12.o\x1f0\u00a0biu'.'\x1e" +
+			"latn.s12.x\x1f0\u00a0biu'.'\x1elatn.s13.o\x1f00\u00a0biu'.'\x1elatn.s13.x\x1f00\u00a0biu'.'\x1elatn.s14.o\x1f000T\u00a0biu'.'\x1elatn.s1" +
+			"4.x\x1f000\u00a0biu'.'\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0\x1elatn.s4.o\x1f0\x1elatn.s4.x\x1f0\x1elatn.s5.o\x1f0\x1elatn.s5.x\x1f0\x1elatn.s6." +
+			"o\x1f0\u00a0miu'.'\x1elatn.s6.x\x1f0\u00a0miu'.'\x1elatn.s7.o\x1f00\u00a0miu'.'\x1elatn.s7.x\x1f00\u00a0miu'.'\x1elatn.s8.o\x1f000\u00a0miu'.'\x1e" +
+			"latn.s8.x\x1f000\u00a0miu'.'\x1elatn.s9.o\x1f0\u00a0mia'.'\x1elatn.s9.x\x1f0\u00a0mia'.'\x1elatn.~\x1f≈\x1elatn.A\x1f#,##0.00¤\x1elatn." +
+			"C\x1f#,##0.00¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.0" +
+			"0\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0} - {1}\x1elatn.Uf\x1f{0} {1}\x1elatn.Uo\x1f{0} {1}\x1elatn.Ux\x1f{0} de {1}\x1elatn.c" +
+			"10.f\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mld'.'\u00a0" +
+			"¤\x1elatn.c11.o\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0tril'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0" +
+			"tril'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0tril'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0tril'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0tril'.'\u00a0¤\x1elatn" +
+			".c13.x\x1f00\u00a0tril'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0tril'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0tril'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0t" +
+			"ril'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0K\u00a0¤\x1elatn.c3.o\x1f0\u00a0K\u00a0¤\x1elatn.c3.x\x1f0\u00a0K\u00a0¤\x1elatn.c4.f\x1f00\u00a0K\u00a0¤\x1elatn.c4." +
+			"o\x1f00\u00a0K\u00a0¤\x1elatn.c4.x\x1f00\u00a0K\u00a0¤\x1elatn.c5.f\x1f000\u00a0K\u00a0¤\x1elatn.c5.o\x1f000\u00a0K\u00a0¤\x1elatn.c5.x\x1f000\u00a0K\u00a0¤\x1el" +
+			"atn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1e" +
+			"latn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'." +
+			"'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld" +
+			"'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 miliarde\x1elatn.l10.o\x1f00 miliard\x1elatn.l10.x\x1f00 de miliarde" +
+			"\x1elatn.l11.f\x1f000 miliarde\x1elatn.l11.o\x1f000 miliard\x1elatn.l11.x\x1f000 de miliarde\x1elatn.l12.f\x1f0 trilioan" +
+			"e\x1elatn.l12.o\x1f0 trilion\x1elatn.l12.x\x1f0 de trilioane\x1elatn.l13.f\x1f00 trilioane\x1elatn.l13.o\x1f00 trilion\x1el" +
+			"atn.l13.x\x1f00 de trilioane\x1elatn.l14.f\x1f000 trilioane\x1elatn.l14.o\x1f000 trilion\x1elatn.l14.x\x1f000 de tril" +
+			"ioane\x1elatn.l3.f\x1f0 mii\x1elatn.l3.o\x1f0 mie\x1elatn.l3.x\x1f0 de mii\x1elatn.l4.f\x1f00 mii\x1elatn.l4.o\x1f00 mie\x1elatn." +
+			"l4.x\x1f00 de mii\x1elatn.l5.f\x1f000 mii\x1elatn.l5.o\x1f000 mie\x1elatn.l5.x\x1f000 de mii\x1elatn.l6.f\x1f0 milioane\x1elat" +
+			"n.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 de milioane\x1elatn.l7.f\x1f00 milioane\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 d" +
+			"e milioane\x1elatn.l8.f\x1f000 milioane\x1elatn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 de milioane\x1elatn.l9.f\x1f0 mil" +
+			"iarde\x1elatn.l9.o\x1f0 miliard\x1elatn.l9.x\x1f0 de miliarde\x1elatn.s10.f\x1f00\u00a0mld'.'\x1elatn.s10.o\x1f00\u00a0mld'.'\x1ela" +
+			"tn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.f\x1f000\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s1" +
+			"2.f\x1f0\u00a0tril'.'\x1elatn.s12.o\x1f0\u00a0tril'.'\x1elatn.s12.x\x1f0\u00a0tril'.'\x1elatn.s13.f\x1f00\u00a0tril'.'\x1elatn.s13.o\x1f00\u00a0" +
+			"tril'.'\x1elatn.s13.x\x1f00\u00a0tril'.'\x1elatn.s14.f\x1f000\u00a0tril'.'\x1elatn.s14.o\x1f000\u00a0tril'.'\x1elatn.s14.x\x1f000\u00a0t" +
+			"ril'.'\x1elatn.s3.f\x1f0\u00a0K\x1elatn.s3.o\x1f0\u00a0K\x1elatn.s3.x\x1f0\u00a0K\x1elatn.s4.f\x1f00\u00a0K\x1elatn.s4.o\x1f00\u00a0K\x1elatn.s4.x\x1f00" +
+			"\u00a0K\x1elatn.s5.f\x1f000\u00a0K\x1elatn.s5.o\x1f000\u00a0K\x1elatn.s5.x\x1f000\u00a0K\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1el" +
+			"atn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0" +
+			"mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mld'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn." +
+			"s9.x\x1f0\u00a0mld'.'\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn." +
+			"P\x1f#,##0\u00a0%\x1elatn.X\x1f≈{0}\x1elatn.c10.f\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.m\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.o\x1f00\u00a0" +
+			"млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.f\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.m\x1f000\u00a0млрд\u00a0" +
+			"¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.f\x1f0\u00a0трлн\u00a0¤\x1elatn.c12" +
+			".m\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.f\x1f00\u00a0трлн" +
+			"\u00a0¤\x1elatn.c13.m\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c1" +
+			"4.f\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.m\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0" +
+			"трлн\u00a0¤\x1elatn.c3.f\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0тыс'.'\u00a0¤\x1ela" +
+			"tn.c3.x\x1f0\u00a0тыс'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0т" +
+			"ыс'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тыс'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0тыс'.'\u00a0¤" +
+			"\x1elatn.c5.o\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тыс'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0млн\u00a0¤\x1elatn.c6.m\x1f0\u00a0" +
+			"млн\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn.c7.f\x1f00\u00a0млн\u00a0¤\x1elatn.c7.m\x1f00" +
+			"\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.f\x1f000\u00a0млн\u00a0¤\x1elatn.c8" +
+			".m\x1f000\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.f\x1f0\u00a0млрд\u00a0¤" +
+			"\x1elatn.c9.m\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0" +
+			"\x1elatn.l10.f\x1f00 миллиарда\x1elatn.l10.m\x1f00 миллиардов\x1elatn.l10.o\x1f00 миллиар" +
+			"д\x1elatn.l10.x\x1f00 миллиарда\x1elatn.l11.f\x1f000 миллиарда\x1elatn.l11.m\x1f000 миллиа" +
+			"рдов\x1elatn.l11.o\x1f000 миллиард\x1elatn.l11.x\x1f000 миллиарда\x1elatn.l12.f\x1f0 трил" +
+			"лиона\x1elatn.l12.m\x1f0 триллионов\x1elatn.l12.o\x1f0 триллион\x1elatn.l12.x\x1f0 трил" +
+			"лиона\x1elatn.l13.f\x1f00 триллиона\x1elatn.l13.m\x1f00 триллионов\x1elatn.l13.o\x1f00 тр" +
+			"иллион\x1elatn.l13.x\x1f00 триллиона\x1elatn.l14.f\x1f000 триллиона\x1elatn.l14.m\x1f000 т" +
+			"риллионов\x1elatn.l14.o\x1f000 триллион\x1elatn.l14.x\x1f000 триллиона\x1elatn.l3.f\x1f0" +
+			" тысячи\x1elatn.l3.m\x1f0 тысяч\x1elatn.l3.o\x1f0 тысяча\x1elatn.l3.x\x1f0 тысячи\x1elatn.l4.f" +
+			"\x1f00 тысячи\x1elatn.l4.m\x1f00 тысяч\x1elatn.l4.o\x1f00 тысяча\x1elatn.l4.x\x1f00 тысячи\x1elat" +
+			"n.l5.f\x1f000 тысячи\x1elatn.l5.m\x1f000 тысяч\x1elatn.l5.o\x1f000 тысяча\x1elatn.l5.x\x1f000 тыс" +
+			"ячи\x1elatn.l6.f\x1f0 миллиона\x1elatn.l6.m\x1f0 миллионов\x1elatn.l6.o\x1f0 миллион\x1ela" +
+			"tn.l6.x\x1f0 миллиона\x1elatn.l7.f\x1f00 миллиона\x1elatn.l7.m\x1f00 миллионов\x1elatn.l7" +
+			".o\x1f00 миллион\x1elatn.l7.x\x1f00 миллиона\x1elatn.l8.f\x1f000 миллиона\x1elatn.l8.m\x1f000 " +
+			"миллионов\x1elatn.l8.o\x1f000 миллион\x1elatn.l8.x\x1f000 миллиона\x1elatn.l9.f\x1f0 мил" +
+			"лиарда\x1elatn.l9.m\x1f0 миллиардов\x1elatn.l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 милли" +
+			"арда\x1elatn.n\x1fне\u00a0число\x1elatn.s10.f\x1f00\u00a0млрд\x1elatn.s10.m\x1f00\u00a0млрд\x1elatn.s10.o\x1f00\u00a0" +
+			"млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.f\x1f000\u00a0млрд\x1elatn.s11.m\x1f000\u00a0млрд\x1elatn.s11.o\x1f00" +
+			"0\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.f\x1f0\u00a0трлн\x1elatn.s12.m\x1f0\u00a0трлн\x1elatn.s12.o\x1f0\u00a0" +
+			"трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.f\x1f00\u00a0трлн\x1elatn.s13.m\x1f00\u00a0трлн\x1elatn.s13.o\x1f00\u00a0т" +
+			"рлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.f\x1f000\u00a0трлн\x1elatn.s14.m\x1f000\u00a0трлн\x1elatn.s14.o\x1f000\u00a0" +
+			"трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.f\x1f0\u00a0тыс'.'\x1elatn.s3.m\x1f0\u00a0тыс'.'\x1elatn.s3.o\x1f0\u00a0ты" +
+			"с'.'\x1elatn.s3.x\x1f0\u00a0тыс'.'\x1elatn.s4.f\x1f00\u00a0тыс'.'\x1elatn.s4.m\x1f00\u00a0тыс'.'\x1elatn.s4.o\x1f00\u00a0тыс" +
+			"'.'\x1elatn.s4.x\x1f00\u00a0тыс'.'\x1elatn.s5.f\x1f000\u00a0тыс'.'\x1elatn.s5.m\x1f000\u00a0тыс'.'\x1elatn.s5.o\x1f000\u00a0ты" +
+			"с'.'\x1elatn.s5.x\x1f000\u00a0тыс'.'\x1elatn.s6.f\x1f0\u00a0млн\x1elatn.s6.m\x1f0\u00a0млн\x1elatn.s6.o\x1f0\u00a0млн\x1elatn." +
+			"s6.x\x1f0\u00a0млн\x1elatn.s7.f\x1f00\u00a0млн\x1elatn.s7.m\x1f00\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f00\u00a0мл" +
+			"н\x1elatn.s8.f\x1f000\u00a0млн\x1elatn.s8.m\x1f000\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn." +
+			"s9.f\x1f0\u00a0млрд\x1elatn.s9.m\x1f0\u00a0млрд\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.~\x1f≈\x1eg\x1f" +
+			"2\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤\u00a0#,##0.00\x1ede" +
+			"va.B\x1f\u00a0\x1edeva.C\x1f¤#,##,##0.00\x1edeva.D\x1f#,##,##0.###\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f[#E0]\x1e" +
+			"deva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c10.x\x1f¤\u00a000G\x1edeva.c11.x\x1f¤\u00a0000G\x1edeva.c12.x\x1f¤\u00a00T\x1ed" +
+			"eva.c13.x\x1f¤\u00a000T\x1edeva.c14.x\x1f¤\u00a0000T\x1edeva.c3.x\x1f¤\u00a00K\x1edeva.c4.x\x1f¤\u00a000K\x1edeva.c5.x\x1f¤\u00a0000K\x1edeva" +
+			".c6.x\x1f¤\u00a00M\x1edeva.c7.x\x1f¤\u00a000M\x1edeva.c8.x\x1f¤\u00a0000M\x1edeva.c9.x\x1f¤\u00a00G\x1edeva.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1ede" +
+			"va.i\x1f∞\x1edeva.l10.x\x1f00G\x1edeva.l11.x\x1f000G\x1edeva.l12.x\x1f0T\x1edeva.l13.x\x1f00T\x1edeva.l14.x\x1f000T\x1edeva.l3.x\x1f0" +
+			"K\x1edeva.l4.x\x1f00K\x1edeva.l5.x\x1f000K\x1edeva.l6.x\x1f0M\x1edeva.l7.x\x1f00M\x1edeva.l8.x\x1f000M\x1edeva.l9.x\x1f0G\x1edeva.m\x1f‰" +
+			"\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00G\x1edeva.s11.x\x1f000G\x1edeva.s12.x\x1f0T\x1edeva.s13.x\x1f00T\x1edeva.s14.x\x1f000T" +
+			"\x1edeva.s3.x\x1f0K\x1edeva.s4.x\x1f00K\x1edeva.s5.x\x1f000K\x1edeva.s6.x\x1f0M\x1edeva.s7.x\x1f00M\x1edeva.s8.x\x1f000M\x1edeva.s9.x\x1f0" +
+			"G\x1edeva.~\x1f~\x1elatn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.S\x1f[#E0]\x1elatn.A\x1f#,##0.0" +
+			"0\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0¤\x1elatn.c12.x\x1f0\u00a0" +
+			"трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.x\x1f0\u00a0тыһ'.'\u00a0¤" +
+			"\x1elatn.c4.x\x1f00\u00a0тыһ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тыһ'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0мөл\u00a0¤\x1elatn.c7.x\x1f00\u00a0" +
+			"мөл\u00a0¤\x1elatn.c8.x\x1f000\u00a0мөл\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 " +
+			"миллиард\x1elatn.l11.x\x1f000 миллиард\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.x\x1f00 тр" +
+			"иллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l3.x\x1f0 тыһыынча\x1elatn.l4.x\x1f00 тыһыы" +
+			"нча\x1elatn.l5.x\x1f000 тыһыынча\x1elatn.l6.x\x1f0 мөлүйүөн\x1elatn.l7.x\x1f00 мөлүйүөн" +
+			"\x1elatn.l8.x\x1f000 мөлүйүөн\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fчыыһыла\u00a0буотах" +
+			"\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн" +
+			"\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.x\x1f0\u00a0тыһ'.'\x1elatn.s4.x\x1f00\u00a0тыһ'.'\x1elatn.s5.x\x1f000\u00a0тыһ'." +
+			"'\x1elatn.s6.x\x1f0\u00a0мөл\x1elatn.s7.x\x1f00\u00a0мөл\x1elatn.s8.x\x1f000\u00a0мөл\x1elatn.s9.x\x1f0\u00a0млрд\x1elatn.A\x1f¤" +
+			"#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c3.o\x1f¤0\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c3.t\x1f¤\u00a00\u00a0ᱜᱮ" +
+			"ᱞᱥᱟᱭ\x1elatn.c3.x\x1f¤\u00a00\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c5.o\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c5.t" +
+			"\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1elatn.c5.x\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.+\x1f+\x1eolck.-\x1f-\x1eolck.A\x1f¤\u00a0" +
+			"#,##0.00\x1eolck.B\x1f\u00a0\x1eolck.C\x1f¤\u00a0#,##0.00\x1eolck.D\x1f#,##0.###\x1eolck.P\x1f#,##0%\x1eolck.R\x1f{0}–{1}\x1eolck.S\x1f#E" +
+			"0\x1eolck.Ux\x1f{0} {1}\x1eolck.X\x1f~{0}\x1eolck.b\x1f\u00a0\x1eolck.c10.x\x1f¤\u00a000G\x1eolck.c11.x\x1f¤\u00a0000G\x1eolck.c12.x\x1f¤\u00a00T" +
+			"\x1eolck.c13.x\x1f¤\u00a000T\x1eolck.c14.x\x1f¤\u00a0000T\x1eolck.c3.o\x1f¤0\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c3.t\x1f¤\u00a00\u00a0ᱜᱮ" +
+			"ᱞᱥᱟᱭ\x1eolck.c3.x\x1f¤\u00a00\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c4.x\x1f¤\u00a000K\x1eolck.c5.o\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥ" +
+			"ᱟᱭ\x1eolck.c5.t\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c5.x\x1f¤\u00a0000\u00a0ᱜᱮᱞᱥᱟᱭ\x1eolck.c6.x\x1f¤\u00a0" +
+			"0M\x1eolck.c7.x\x1f¤\u00a000M\x1eolck.c8.x\x1f¤\u00a0000M\x1eolck.c9.x\x1f¤\u00a00G\x1eolck.d\x1f.\x1eolck.e\x1fE\x1eolck.g\x1f,\x1eolck.i\x1f∞\x1eo" +
+			"lck.l10.x\x1f00G\x1eolck.l11.x\x1f000G\x1eolck.l12.x\x1f0T\x1eolck.l13.x\x1f00T\x1eolck.l14.x\x1f000T\x1eolck.l3.x\x1f0K\x1eolck.l4." +
+			"x\x1f00K\x1eolck.l5.x\x1f000K\x1eolck.l6.x\x1f0M\x1eolck.l7.x\x1f00M\x1eolck.l8.x\x1f000M\x1eolck.l9.x\x1f0G\x1eolck.m\x1f‰\x1eolck.n\x1fNa" +
+			"N\x1eolck.p\x1f%\x1eolck.s10.x\x1f00G\x1eolck.s11.x\x1f000G\x1eolck.s12.x\x1f0T\x1eolck.s13.x\x1f00T\x1eolck.s14.x\x1f000T\x1eolck.s3.x" +
+			"\x1f0K\x1eolck.s4.x\x1f00K\x1eolck.s5.x\x1f000K\x1eolck.s6.x\x1f0M\x1eolck.s7.x\x1f00M\x1eolck.s8.x\x1f000M\x1eolck.s9.x\x1f0G\x1eolck.~\x1f~" +
+			"\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn" +
+			".c10.o\x1f00\u00a0Mrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0Mrd\u00a0¤\x1elatn.c11.o\x1f000\u00a0Mrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0Mrd\u00a0¤\x1elatn.c" +
+			"12.o\x1f0\u00a0Bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0Bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0Bln\u00a0¤\x1elatn.c13.x\x1f00\u00a0Bln\u00a0¤\x1elatn.c14.o\x1f0" +
+			"00\u00a0Bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0Bln\u00a0¤\x1elatn.c3.o\x1f0\u00a0mìg\u00a0¤\x1elatn.c3.x\x1f0\u00a0mìg\u00a0¤\x1elatn.c4.o\x1f00\u00a0mì" +
+			"g\u00a0¤\x1elatn.c4.x\x1f00\u00a0mìg\u00a0¤\x1elatn.c5.o\x1f000\u00a0mìg\u00a0¤\x1elatn.c5.x\x1f000\u00a0mìg\u00a0¤\x1elatn.c6.o\x1f0\u00a0Mln\u00a0¤" +
+			"\x1elatn.c6.x\x1f0\u00a0Mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0Mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0Mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0Mln\u00a0¤\x1elatn.c8" +
+			".x\x1f000\u00a0Mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0Mrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0Mrd\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 millia" +
+			"rdos\x1elatn.l10.x\x1f00 milliardos\x1elatn.l11.o\x1f000 milliardos\x1elatn.l11.x\x1f000 milliardos\x1elatn.l12.o\x1f0 m" +
+			"ìgia milliardos\x1elatn.l12.x\x1f0 mìgia milliardos\x1elatn.l13.o\x1f00 mìgia milliardos\x1elatn.l13.x\x1f00 mì" +
+			"gia milliardos\x1elatn.l14.o\x1f000 mìgia milliardos\x1elatn.l14.x\x1f000 mìgia milliardos\x1elatn.l3.o\x1f0 mì" +
+			"gia\x1elatn.l3.x\x1f0 mìgia\x1elatn.l4.o\x1f00 mìgia\x1elatn.l4.x\x1f00 mìgia\x1elatn.l5.o\x1f000 mìgia\x1elatn.l5.x\x1f00" +
+			"0 mìgia\x1elatn.l6.o\x1f0 millione\x1elatn.l6.x\x1f0 milliones\x1elatn.l7.o\x1f00 milliones\x1elatn.l7.x\x1f00 millione" +
+			"s\x1elatn.l8.o\x1f000 milliones\x1elatn.l8.x\x1f000 milliones\x1elatn.l9.o\x1f0 milliardu\x1elatn.l9.x\x1f0 milliardos\x1el" +
+			"atn.s10.o\x1f00\u00a0Mrd\x1elatn.s10.x\x1f00\u00a0Mrd\x1elatn.s11.o\x1f000\u00a0Mrd\x1elatn.s11.x\x1f000\u00a0Mrd\x1elatn.s12.o\x1f0\u00a0Bln\x1el" +
+			"atn.s12.x\x1f0\u00a0Bln\x1elatn.s13.o\x1f00\u00a0Bln\x1elatn.s13.x\x1f00\u00a0Bln\x1elatn.s14.o\x1f000\u00a0Bln\x1elatn.s14.x\x1f000\u00a0Bln\x1el" +
+			"atn.s3.o\x1f0\u00a0mìg\x1elatn.s3.x\x1f0\u00a0mìg\x1elatn.s4.o\x1f00\u00a0mìg\x1elatn.s4.x\x1f00\u00a0mìg\x1elatn.s5.o\x1f000\u00a0mìg\x1elat" +
+			"n.s5.x\x1f000\u00a0mìg\x1elatn.s6.o\x1f0\u00a0Mln\x1elatn.s6.x\x1f0\u00a0Mln\x1elatn.s7.o\x1f00\u00a0Mln\x1elatn.s7.x\x1f00\u00a0Mln\x1elatn.s8.o" +
+			"\x1f000\u00a0Mln\x1elatn.s8.x\x1f000\u00a0Mln\x1elatn.s9.o\x1f0\u00a0Mrd\x1elatn.s9.x\x1f0\u00a0Mrd\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 m" +
+			"iliardi\x1elatn.l10.x\x1f00 miliardi\x1elatn.l11.o\x1f000 miliardi\x1elatn.l11.x\x1f000 miliardi\x1elatn.l12.o\x1f0 bili" +
+			"uni\x1elatn.l12.x\x1f0 biliuna\x1elatn.l13.o\x1f00 biliuna\x1elatn.l13.x\x1f00 biliuna\x1elatn.l14.o\x1f000 biliuna\x1elatn" +
+			".l14.x\x1f000 biliuna\x1elatn.l3.o\x1f0 migghiaru\x1elatn.l3.x\x1f0 mila\x1elatn.l4.o\x1f00 mila\x1elatn.l4.x\x1f00 mila\x1ela" +
+			"tn.l5.o\x1f000 mila\x1elatn.l5.x\x1f000 mila\x1elatn.l6.o\x1f0 miliuni\x1elatn.l6.x\x1f0 miliuna\x1elatn.l7.o\x1f00 miliuna" +
+			"\x1elatn.l7.x\x1f00 miliuna\x1elatn.l8.o\x1f000 miliuna\x1elatn.l8.x\x1f000 miliuna\x1elatn.l9.o\x1f0 miliardu\x1elatn.l9.x" +
+			"\x1f0 miliardi\x1earab.A\x1f#,##0.00\u00a0¤\x1earab.B\x1f\u00a0\x1earab.C\x1f#,##0.00\u00a0¤\x1earab.D\x1f#,##0.###\x1earab.P\x1f#,##0%\x1eara" +
+			"b.R\x1f{0}–{1}\x1earab.S\x1f#E0\x1earab.X\x1f~{0}\x1earab.b\x1f\u00a0\x1earab.d\x1f.\x1earab.l10.o\x1f00 بلين\x1earab.l10.x\x1f00 بل" +
+			"ين\x1earab.l11.o\x1f000 بلين\x1earab.l11.x\x1f000 بلين\x1earab.l12.o\x1f0 ٽرلين\x1earab.l12.x\x1f0 ٽرل" +
+			"ين\x1earab.l13.o\x1f00 ٽرلين\x1earab.l13.x\x1f00 ٽرلين\x1earab.l14.o\x1f000 ٽرلين\x1earab.l14.x\x1f000 " +
+			"ٽرلين\x1earab.l3.o\x1f0 ھزار\x1earab.l3.x\x1f0 ھزار\x1earab.l4.o\x1f00 ھزار\x1earab.l4.x\x1f00 هزار" +
+			"\x1earab.l5.o\x1f000 هزار\x1earab.l5.x\x1f000 هزار\x1earab.l6.o\x1f0 ملين\x1earab.l6.x\x1f0 ملين\x1earab.l7" +
+			".o\x1f00 ملين\x1earab.l7.x\x1f00 ملين\x1earab.l8.o\x1f000 ملين\x1earab.l8.x\x1f000 ملين\x1earab.l9.o\x1f0 ب" +
+			"لين\x1earab.l9.x\x1f0 بلين\x1earab.s10.o\x1f00\u00a0بلين\x1earab.s10.x\x1f00\u00a0بلين\x1earab.s11.o\x1f000\u00a0بل" +
+			"ين\x1earab.s11.x\x1f000\u00a0بلين\x1earab.s12.o\x1f0\u00a0ٽرلين\x1earab.s12.x\x1f0\u00a0ٽرلين\x1earab.s13.o\x1f00\u00a0ٽ" +
+			"رلين\x1earab.s13.x\x1f00\u00a0ٽرلين\x1earab.s14.o\x1f000\u00a0ٽرلين\x1earab.s14.x\x1f000\u00a0ٽرلين\x1earab.s3" +
+			".o\x1f0\u00a0هزار\x1earab.s3.x\x1f0\u00a0هزار\x1earab.s4.o\x1f00\u00a0هزار\x1earab.s4.x\x1f00\u00a0هزار\x1earab.s5.o\x1f000" +
+			"\u00a0هزار\x1earab.s5.x\x1f000\u00a0هزار\x1earab.s6.o\x1f0\u00a0ملين\x1earab.s6.x\x1f0\u00a0ملين\x1earab.s7.o\x1f00\u00a0مل" +
+			"ين\x1earab.s7.x\x1f00\u00a0ملين\x1earab.s8.o\x1f000\u00a0ملين\x1earab.s8.x\x1f000\u00a0ملين\x1earab.s9.o\x1f0\u00a0بلين" +
+			"\x1earab.s9.x\x1f0\u00a0بلين\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.c10.o\x1f¤\u00a000\u00a0بلين\x1elatn.c10.x\x1f¤\u00a0" +
+			"00\u00a0بلين\x1elatn.c11.o\x1f¤\u00a0000\u00a0بلين\x1elatn.c11.x\x1f¤\u00a0000\u00a0بلين\x1elatn.c12.o\x1f¤\u00a00\u00a0ٽرلي" +
+			"ن\x1elatn.c12.x\x1f¤\u00a00\u00a0ٽرلين\x1elatn.c13.o\x1f¤\u00a000\u00a0ٽرلين\x1elatn.c13.x\x1f¤\u00a000\u00a0ٽرلين\x1elatn" +
+			".c14.o\x1f¤\u00a0000\u00a0ٽرلين\x1elatn.c14.x\x1f¤\u00a0000\u00a0ٽرلين\x1elatn.c3.o\x1f¤\u00a00\u00a0هزار\x1elatn.c3.x\x1f¤" +
+			"\u00a00\u00a0هزار\x1elatn.c4.o\x1f¤\u00a000\u00a0هزار\x1elatn.c4.x\x1f¤\u00a000\u00a0هزار\x1elatn.c5.o\x1f¤\u00a0000\u00a0هزار\x1e" +
+			"latn.c5.x\x1f¤\u00a0000\u00a0هزار\x1elatn.c6.o\x1f¤\u00a00\u00a0ملين\x1elatn.c6.x\x1f¤\u00a00\u00a0ملين\x1elatn.c7.o\x1f¤\u00a000" +
+			"\u00a0ملين\x1elatn.c7.x\x1f¤\u00a000\u00a0ملين\x1elatn.c8.o\x1f¤\u00a0000\u00a0ملين\x1elatn.c8.x\x1f¤\u00a0000\u00a0ملين\x1ela" +
+			"tn.c9.o\x1f¤\u00a00\u00a0بلين\x1elatn.c9.x\x1f¤\u00a00\u00a0بلين\x1elatn.l10.o\x1f00 بلين\x1elatn.l10.x\x1f00 بلين\x1e" +
+			"latn.l11.o\x1f000 بلين\x1elatn.l11.x\x1f000 بلين\x1elatn.l12.o\x1f0 ٽرلين\x1elatn.l12.x\x1f0 ٽرلين\x1e" +
+			"latn.l13.o\x1f00 ٽرلين\x1elatn.l13.x\x1f00 ٽرلين\x1elatn.l14.o\x1f000 ٽرلين\x1elatn.l14.x\x1f000 ٽرل" +
+			"ين\x1elatn.l3.o\x1f0 ھزار\x1elatn.l3.x\x1f0 ھزار\x1elatn.l4.o\x1f00 ھزار\x1elatn.l4.x\x1f00 هزار\x1elatn." +
+			"l5.o\x1f000 هزار\x1elatn.l5.x\x1f000 هزار\x1elatn.l6.o\x1f0 ملين\x1elatn.l6.x\x1f0 ملين\x1elatn.l7.o\x1f00 " +
+			"ملين\x1elatn.l7.x\x1f00 ملين\x1elatn.l8.o\x1f000 ملين\x1elatn.l8.x\x1f000 ملين\x1elatn.l9.o\x1f0 بلين" +
+			"\x1elatn.l9.x\x1f0 بلين\x1elatn.s10.o\x1f00\u00a0بلين\x1elatn.s10.x\x1f00\u00a0بلين\x1elatn.s11.o\x1f000\u00a0بلين\x1el" +
+			"atn.s11.x\x1f000\u00a0بلين\x1elatn.s12.o\x1f0\u00a0ٽرلين\x1elatn.s12.x\x1f0\u00a0ٽرلين\x1elatn.s13.o\x1f00\u00a0ٽرلي" +
+			"ن\x1elatn.s13.x\x1f00\u00a0ٽرلين\x1elatn.s14.o\x1f000\u00a0ٽرلين\x1elatn.s14.x\x1f000\u00a0ٽرلين\x1elatn.s3.o\x1f0\u00a0" +
+			"هزار\x1elatn.s3.x\x1f0\u00a0هزار\x1elatn.s4.o\x1f00\u00a0هزار\x1elatn.s4.x\x1f00\u00a0هزار\x1elatn.s5.o\x1f000\u00a0هز" +
+			"ار\x1elatn.s5.x\x1f000\u00a0هزار\x1elatn.s6.o\x1f0\u00a0ملين\x1elatn.s6.x\x1f0\u00a0ملين\x1elatn.s7.o\x1f00\u00a0ملين\x1e" +
+			"latn.s7.x\x1f00\u00a0ملين\x1elatn.s8.o\x1f000\u00a0ملين\x1elatn.s8.x\x1f000\u00a0ملين\x1elatn.s9.o\x1f0\u00a0بلين\x1elat" +
+			"n.s9.x\x1f0\u00a0بلين\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.Uo\x1f{0" +
+			"} {1}\x1elatn.Ut\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.e\x1f·10^\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljardi\x1elatn.l10.t\x1f00 milja" +
+			"rdit\x1elatn.l10.x\x1f00 miljardit\x1elatn.l11.o\x1f000 miljardi\x1elatn.l11.t\x1f000 miljardit\x1elatn.l11.x\x1f000 mil" +
+			"jardit\x1elatn.l12.o\x1f0 biljona\x1elatn.l12.t\x1f0 biljonat\x1elatn.l12.x\x1f0 biljonat\x1elatn.l13.o\x1f00 biljona\x1ela" +
+			"tn.l13.t\x1f00 biljonat\x1elatn.l13.x\x1f00 biljonat\x1elatn.l14.o\x1f000 biljona\x1elatn.l14.t\x1f000 biljonat\x1elatn." +
+			"l14.x\x1f000 biljonat\x1elatn.l3.o\x1f0 duhát\x1elatn.l3.t\x1f0 duháhat\x1elatn.l3.x\x1f0 duháhat\x1elatn.l4.o\x1f00 duh" +
+			"át\x1elatn.l4.t\x1f00 duháhat\x1elatn.l4.x\x1f00 duháhat\x1elatn.l5.o\x1f000 duhát\x1elatn.l5.t\x1f000 duháhat\x1elatn" +
+			".l5.x\x1f000 duháhat\x1elatn.l6.o\x1f0 miljona\x1elatn.l6.t\x1f0 miljonat\x1elatn.l6.x\x1f0 miljonat\x1elatn.l7.o\x1f00 mi" +
+			"ljona\x1elatn.l7.t\x1f00 miljonat\x1elatn.l7.x\x1f00 miljonat\x1elatn.l8.o\x1f000 miljona\x1elatn.l8.t\x1f000 miljonat\x1el" +
+			"atn.l8.x\x1f000 miljonat\x1elatn.l9.o\x1f0 miljardi\x1elatn.l9.t\x1f0 miljardit\x1elatn.l9.x\x1f0 miljardit\x1elatn.s10." +
+			"o\x1f00\u00a0md\x1elatn.s10.t\x1f00\u00a0md\x1elatn.s10.x\x1f00\u00a0md\x1elatn.s11.o\x1f000\u00a0md\x1elatn.s11.t\x1f000\u00a0md\x1elatn.s11.x\x1f00" +
+			"0\u00a0md\x1elatn.s12.o\x1f0\u00a0bn\x1elatn.s12.t\x1f0\u00a0bn\x1elatn.s12.x\x1f0\u00a0bn\x1elatn.s13.o\x1f00\u00a0bn\x1elatn.s13.t\x1f00\u00a0bn\x1elat" +
+			"n.s13.x\x1f00\u00a0bn\x1elatn.s14.o\x1f000\u00a0bn\x1elatn.s14.t\x1f000\u00a0bn\x1elatn.s14.x\x1f000\u00a0bn\x1elatn.s3.o\x1f0\u00a0dt\x1elatn.s3." +
+			"t\x1f0\u00a0dt\x1elatn.s3.x\x1f0\u00a0dt\x1elatn.s4.o\x1f00\u00a0dt\x1elatn.s4.t\x1f00\u00a0dt\x1elatn.s4.x\x1f00\u00a0dt\x1elatn.s5.o\x1f000\u00a0dt\x1elat" +
+			"n.s5.t\x1f000\u00a0dt\x1elatn.s5.x\x1f000\u00a0dt\x1elatn.s6.o\x1f0\u00a0mn\x1elatn.s6.t\x1f0\u00a0mn\x1elatn.s6.x\x1f0\u00a0mn\x1elatn.s7.o\x1f00\u00a0m" +
+			"n\x1elatn.s7.t\x1f00\u00a0mn\x1elatn.s7.x\x1f00\u00a0mn\x1elatn.s8.o\x1f000\u00a0mn\x1elatn.s8.t\x1f000\u00a0mn\x1elatn.s8.x\x1f000\u00a0mn\x1elatn.s" +
+			"9.o\x1f0\u00a0md\x1elatn.s9.t\x1f0\u00a0md\x1elatn.s9.x\x1f0\u00a0md\x1elatn.l10.o\x1f00 miljárdat\x1elatn.l10.t\x1f00 md\x1elatn.l10.x\x1f0" +
+			"0 miljárdat\x1elatn.l11.o\x1f000 miljárdat\x1elatn.l11.t\x1f000 md\x1elatn.l11.x\x1f000 miljárdat\x1elatn.l12.o\x1f0 " +
+			"biljovdna\x1elatn.l12.t\x1f0 bn\x1elatn.l12.x\x1f0 biljovdnat\x1elatn.l13.o\x1f00 biljovdnat\x1elatn.l13.t\x1f00 bn\x1elatn" +
+			".l13.x\x1f00 biljovdnat\x1elatn.l14.o\x1f000 biljovdnat\x1elatn.l14.t\x1f000 bn\x1elatn.l14.x\x1f000 biljovdnat\x1elatn." +
+			"l3.t\x1f0 dt\x1elatn.l4.o\x1f00 duháhat\x1elatn.l4.t\x1f00 dt\x1elatn.l5.o\x1f000 duháhat\x1elatn.l5.t\x1f000 dt\x1elatn.l6." +
+			"t\x1f0 mn\x1elatn.l7.o\x1f00 miljonat\x1elatn.l7.t\x1f00 mn\x1elatn.l8.o\x1f000 miljonat\x1elatn.l8.t\x1f000 mn\x1elatn.l9.o\x1f0" +
+			" miljárda\x1elatn.l9.t\x1f0 miljárdat\x1elatn.l9.x\x1f0 miljárdat\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elat" +
+			"n.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;¤-#,##0.00\x1elatn." +
+			"C\x1f¤#,##0.00;¤-#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0" +
+			"\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f0 မိုၼ်ႇလၢၼ" +
+			"်ႉ\x1elatn.l11.x\x1f0 သႅၼ်လၢၼ်ႉ\x1elatn.l12.x\x1f0 လၢၼ်ႉလၢၼ်ႉ\x1elatn" +
+			".l13.x\x1f00 လၢၼ်ႉလၢၼ်ႉ\x1elatn.l14.x\x1f000 လၢၼ်ႉလၢၼ်ႉ\x1elatn.l3.x" +
+			"\x1f0 ႁဵင်\x1elatn.l4.x\x1f0 မိုၼ်ႇ\x1elatn.l5.x\x1f0 သႅၼ်\x1elatn.l6.x\x1f0 လၢၼ်" +
+			"ႉ\x1elatn.l7.x\x1f00 လၢၼ်ႉ\x1elatn.l8.x\x1f000 လၢၼ်ႉ\x1elatn.l9.x\x1f0 ႁဵင်လၢၼ" +
+			"်ႉ\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.S\x1f#\x1elatn.Uo\x1f{1}{0}\x1elatn.Ux\x1f{1}{0}\x1el" +
+			"atn.c10.o\x1f¤බි00\x1elatn.c10.x\x1f¤බි00\x1elatn.c11.o\x1f¤බි000\x1elatn.c11.x\x1f¤බි000\x1elatn.c1" +
+			"2.o\x1f¤ට්\u200dරි0\x1elatn.c12.x\x1f¤ට්\u200dරි0\x1elatn.c13.o\x1f¤ට්\u200dරි00\x1elatn.c13.x\x1f¤" +
+			"ට්\u200dරි00\x1elatn.c14.o\x1f¤ට්\u200dරි000\x1elatn.c14.x\x1f¤ට්\u200dරි000\x1elatn.c3.o\x1f¤ද" +
+			"0\x1elatn.c3.x\x1f¤ද0\x1elatn.c4.o\x1f¤ද00\x1elatn.c4.x\x1f¤ද00\x1elatn.c5.o\x1f¤ද000\x1elatn.c5.x\x1f¤ද000\x1elat" +
+			"n.c6.o\x1f¤මි0\x1elatn.c6.x\x1f¤මි0\x1elatn.c7.o\x1f¤මි00\x1elatn.c7.x\x1f¤මි00\x1elatn.c8.o\x1f¤මි" +
+			"000\x1elatn.c8.x\x1f¤මි000\x1elatn.c9.o\x1f¤බි0\x1elatn.c9.x\x1f¤බි0\x1elatn.l10.o\x1fබිලියන " +
+			"00\x1elatn.l10.x\x1fබිලියන 00\x1elatn.l11.o\x1fබිලියන 000\x1elatn.l11.x\x1fබිලිය" +
+			"න 000\x1elatn.l12.o\x1fට්\u200dරිලියන 0\x1elatn.l12.x\x1fට්\u200dරිලියන 0\x1elatn.l" +
+			"13.o\x1fට්\u200dරිලියන 00\x1elatn.l13.x\x1fට්\u200dරිලියන 00\x1elatn.l14.o\x1fට්\u200d" +
+			"රිලියන 000\x1elatn.l14.x\x1fට්\u200dරිලියන 000\x1elatn.l3.o\x1fදහස 0\x1elatn.l3." +
+			"x\x1fදහස 0\x1elatn.l4.o\x1fදහස 00\x1elatn.l4.x\x1fදහස 00\x1elatn.l5.o\x1fදහස 000\x1elatn.l5.x\x1fද" +
+			"හස 000\x1elatn.l6.o\x1fමිලියන 0\x1elatn.l6.x\x1fමිලියන 0\x1elatn.l7.o\x1fමිලිය" +
+			"න 00\x1elatn.l7.x\x1fමිලියන 00\x1elatn.l8.o\x1fමිලියන 000\x1elatn.l8.x\x1fමිලිය" +
+			"න 000\x1elatn.l9.o\x1fබිලියන 0\x1elatn.l9.x\x1fබිලියන 0\x1elatn.s10.o\x1fබි00\x1elatn.s" +
+			"10.x\x1fබි00\x1elatn.s11.o\x1fබි000\x1elatn.s11.x\x1fබි000\x1elatn.s12.o\x1fට්\u200dරි0\x1elatn.s12.x\x1fට" +
+			"්\u200dරි0\x1elatn.s13.o\x1fට්\u200dරි00\x1elatn.s13.x\x1fට්\u200dරි00\x1elatn.s14.o\x1fට්\u200dරි" +
+			"000\x1elatn.s14.x\x1fට්\u200dරි000\x1elatn.s3.o\x1fද0\x1elatn.s3.x\x1fද0\x1elatn.s4.o\x1fද00\x1elatn.s4.x\x1fද00\x1e" +
+			"latn.s5.o\x1fද000\x1elatn.s5.x\x1fද000\x1elatn.s6.o\x1fමි0\x1elatn.s6.x\x1fමි0\x1elatn.s7.o\x1fමි00\x1elatn.s7" +
+			".x\x1fමි00\x1elatn.s8.o\x1fමි000\x1elatn.s8.x\x1fමි000\x1elatn.s9.o\x1fබි0\x1elatn.s9.x\x1fබි0\x1elatn.A\x1f#" +
+			",##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0} – {1}\x1elatn.c10.f\x1f00\u00a0" +
+			"mld'.'\u00a0¤\x1elatn.c10.m\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld'.'\u00a0¤\x1elatn.c1" +
+			"1.f\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.m\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mld'.'" +
+			"\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.m\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bi" +
+			"l'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.m\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13." +
+			"x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.m\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤" +
+			"\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0" +
+			"¤\x1elatn.c3.x\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.m\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'." +
+			"'\u00a0¤\x1elatn.c4.x\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o\x1f000" +
+			"\u00a0tis'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.m\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o" +
+			"\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.m\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7" +
+			".o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.m\x1f000\u00a0mil'.'\u00a0¤\x1el" +
+			"atn.c8.o\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.m\x1f0\u00a0mld'.'\u00a0" +
+			"¤\x1elatn.c9.o\x1f0\u00a0mld'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 mil" +
+			"iárd\x1elatn.l10.m\x1f00 miliardy\x1elatn.l10.o\x1f00 miliárd\x1elatn.l10.x\x1f00 miliárd\x1elatn.l11.f\x1f000 miliá" +
+			"rd\x1elatn.l11.m\x1f000 miliardy\x1elatn.l11.o\x1f000 miliárd\x1elatn.l11.x\x1f000 miliárd\x1elatn.l12.f\x1f0 bilióny" +
+			"\x1elatn.l12.m\x1f0 bilióna\x1elatn.l12.o\x1f0 bilión\x1elatn.l12.x\x1f0 biliónov\x1elatn.l13.f\x1f00 biliónov\x1elatn." +
+			"l13.m\x1f00 bilióna\x1elatn.l13.o\x1f00 biliónov\x1elatn.l13.x\x1f00 biliónov\x1elatn.l14.f\x1f000 biliónov\x1elatn." +
+			"l14.m\x1f000 bilióna\x1elatn.l14.o\x1f000 biliónov\x1elatn.l14.x\x1f000 biliónov\x1elatn.l3.f\x1f0 tisíce\x1elatn.l3" +
+			".m\x1f0 tisíca\x1elatn.l3.o\x1f0 tisíc\x1elatn.l3.x\x1f0 tisíc\x1elatn.l4.f\x1f00 tisíc\x1elatn.l4.m\x1f00 tisíca\x1elatn" +
+			".l4.o\x1f00 tisíc\x1elatn.l4.x\x1f00 tisíc\x1elatn.l5.f\x1f000 tisíc\x1elatn.l5.m\x1f000 tisíca\x1elatn.l5.o\x1f000 tis" +
+			"íc\x1elatn.l5.x\x1f000 tisíc\x1elatn.l6.f\x1f0 milióny\x1elatn.l6.m\x1f0 milióna\x1elatn.l6.o\x1f0 milión\x1elatn.l6.x" +
+			"\x1f0 miliónov\x1elatn.l7.f\x1f00 miliónov\x1elatn.l7.m\x1f00 milióna\x1elatn.l7.o\x1f00 miliónov\x1elatn.l7.x\x1f00 mi" +
+			"liónov\x1elatn.l8.f\x1f000 miliónov\x1elatn.l8.m\x1f000 milióna\x1elatn.l8.o\x1f000 miliónov\x1elatn.l8.x\x1f000 mil" +
+			"iónov\x1elatn.l9.f\x1f0 miliardy\x1elatn.l9.m\x1f0 miliardy\x1elatn.l9.o\x1f0 miliarda\x1elatn.l9.x\x1f0 miliárd\x1elatn." +
+			"s10.f\x1f00\u00a0mld'.'\x1elatn.s10.m\x1f00\u00a0mld'.'\x1elatn.s10.o\x1f00\u00a0mld'.'\x1elatn.s10.x\x1f00\u00a0mld'.'\x1elatn.s11.f\x1f00" +
+			"0\u00a0mld'.'\x1elatn.s11.m\x1f000\u00a0mld'.'\x1elatn.s11.o\x1f000\u00a0mld'.'\x1elatn.s11.x\x1f000\u00a0mld'.'\x1elatn.s12.f\x1f0\u00a0bil" +
+			"'.'\x1elatn.s12.m\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s1" +
+			"3.m\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.m\x1f000" +
+			"\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.m\x1f0\u00a0tis'.'\x1el" +
+			"atn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0tis'.'\x1elatn.s4.m\x1f00\u00a0tis'.'\x1elatn.s4.o\x1f00\u00a0t" +
+			"is'.'\x1elatn.s4.x\x1f00\u00a0tis'.'\x1elatn.s5.f\x1f000\u00a0tis'.'\x1elatn.s5.m\x1f000\u00a0tis'.'\x1elatn.s5.o\x1f000\u00a0tis'.'\x1elat" +
+			"n.s5.x\x1f000\u00a0tis'.'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.m\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'" +
+			".'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.m\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f" +
+			"\x1f000\u00a0mil'.'\x1elatn.s8.m\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1elatn.s9.f\x1f0\u00a0mld'" +
+			".'\x1elatn.s9.m\x1f0\u00a0mld'.'\x1elatn.s9.o\x1f0\u00a0mld'.'\x1elatn.s9.x\x1f0\u00a0mld'.'\x1eg\x1f2\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.00\u00a0¤" +
+			";(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.X\x1f~ {0}\x1elatn.c10.f\x1f00\u00a0mrd'.'\u00a0¤\x1elatn." +
+			"c10.o\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.t\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0mrd'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mrd'.'\u00a0" +
+			"¤\x1elatn.c11.o\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.t\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mrd'.'\u00a0¤\x1elatn.c12.f\x1f0" +
+			"\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.t\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13" +
+			".f\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.t\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1e" +
+			"latn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.t\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0" +
+			"bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.t\x1f0\u00a0tis'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0" +
+			"tis'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.t\x1f00\u00a0tis'.'\u00a0¤\x1elatn.c4.x\x1f" +
+			"00\u00a0tis'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c5.t\x1f000\u00a0tis'.'\u00a0¤\x1elat" +
+			"n.c5.x\x1f000\u00a0tis'.'\u00a0¤\x1elatn.c6.f\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c6.t\x1f0\u00a0mio'.'\u00a0¤\x1el" +
+			"atn.c6.x\x1f0\u00a0mio'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c7.t\x1f00\u00a0mio'.'\u00a0¤" +
+			"\x1elatn.c7.x\x1f00\u00a0mio'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c8.t\x1f000\u00a0mio" +
+			"'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0mio'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.c9.t\x1f0\u00a0m" +
+			"rd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mrd'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fe\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 milijarde\x1elatn.l10.o\x1f" +
+			"00 milijarda\x1elatn.l10.t\x1f00 milijardi\x1elatn.l10.x\x1f00 milijard\x1elatn.l11.f\x1f000 milijarde\x1elatn.l11.o\x1f" +
+			"000 milijarda\x1elatn.l11.t\x1f000 milijardi\x1elatn.l11.x\x1f000 milijard\x1elatn.l12.f\x1f0 bilijoni\x1elatn.l12.o\x1f" +
+			"0 bilijon\x1elatn.l12.t\x1f0 bilijona\x1elatn.l12.x\x1f0 bilijonov\x1elatn.l13.f\x1f00 bilijoni\x1elatn.l13.o\x1f00 bili" +
+			"jon\x1elatn.l13.t\x1f00 bilijona\x1elatn.l13.x\x1f00 bilijonov\x1elatn.l14.f\x1f000 bilijoni\x1elatn.l14.o\x1f000 bilijo" +
+			"n\x1elatn.l14.t\x1f000 bilijona\x1elatn.l14.x\x1f000 bilijonov\x1elatn.l3.f\x1f0 tisoč\x1elatn.l3.o\x1f0 tisoč\x1elatn.l3" +
+			".t\x1f0 tisoč\x1elatn.l3.x\x1f0 tisoč\x1elatn.l4.f\x1f00 tisoč\x1elatn.l4.o\x1f00 tisoč\x1elatn.l4.t\x1f00 tisoč\x1elatn." +
+			"l4.x\x1f00 tisoč\x1elatn.l5.f\x1f000 tisoč\x1elatn.l5.o\x1f000 tisoč\x1elatn.l5.t\x1f000 tisoč\x1elatn.l5.x\x1f000 tiso" +
+			"č\x1elatn.l6.f\x1f0 milijoni\x1elatn.l6.o\x1f0 milijon\x1elatn.l6.t\x1f0 milijona\x1elatn.l6.x\x1f0 milijonov\x1elatn.l7.f" +
+			"\x1f00 milijona\x1elatn.l7.o\x1f00 milijon\x1elatn.l7.t\x1f00 milijona\x1elatn.l7.x\x1f00 milijonov\x1elatn.l8.f\x1f000 mil" +
+			"ijoni\x1elatn.l8.o\x1f000 milijon\x1elatn.l8.t\x1f000 milijona\x1elatn.l8.x\x1f000 milijonov\x1elatn.l9.f\x1f0 milijarde" +
+			"\x1elatn.l9.o\x1f0 milijarda\x1elatn.l9.t\x1f0 milijardi\x1elatn.l9.x\x1f0 milijard\x1elatn.s10.f\x1f00\u00a0mrd'.'\x1elatn.s10" +
+			".o\x1f00\u00a0mrd'.'\x1elatn.s10.t\x1f00\u00a0mrd'.'\x1elatn.s10.x\x1f00\u00a0mrd'.'\x1elatn.s11.f\x1f000\u00a0mrd'.'\x1elatn.s11.o\x1f000\u00a0" +
+			"mrd'.'\x1elatn.s11.t\x1f000\u00a0mrd'.'\x1elatn.s11.x\x1f000\u00a0mrd'.'\x1elatn.s12.f\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1el" +
+			"atn.s12.t\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'\x1elatn.s13.t\x1f" +
+			"00\u00a0bil'.'\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.t\x1f000\u00a0b" +
+			"il'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn.s3.f\x1f0\u00a0tis'.'\x1elatn.s3.o\x1f0\u00a0tis'.'\x1elatn.s3.t\x1f0\u00a0tis'.'\x1elatn.s3" +
+			".x\x1f0\u00a0tis'.'\x1elatn.s4.f\x1f00\u00a0tis'.'\x1elatn.s4.o\x1f00\u00a0tis'.'\x1elatn.s4.t\x1f00\u00a0tis'.'\x1elatn.s4.x\x1f00\u00a0tis'.'" +
+			"\x1elatn.s5.f\x1f000\u00a0tis'.'\x1elatn.s5.o\x1f000\u00a0tis'.'\x1elatn.s5.t\x1f000\u00a0tis'.'\x1elatn.s5.x\x1f000\u00a0tis'.'\x1elatn.s6" +
+			".f\x1f0\u00a0mio'.'\x1elatn.s6.o\x1f0\u00a0mio'.'\x1elatn.s6.t\x1f0\u00a0mio'.'\x1elatn.s6.x\x1f0\u00a0mio'.'\x1elatn.s7.f\x1f00\u00a0mio'.'\x1ela" +
+			"tn.s7.o\x1f00\u00a0mio'.'\x1elatn.s7.t\x1f00\u00a0mio'.'\x1elatn.s7.x\x1f00\u00a0mio'.'\x1elatn.s8.f\x1f000\u00a0mio'.'\x1elatn.s8.o\x1f000" +
+			"\u00a0mio'.'\x1elatn.s8.t\x1f000\u00a0mio'.'\x1elatn.s8.x\x1f000\u00a0mio'.'\x1elatn.s9.f\x1f0\u00a0mrd'.'\x1elatn.s9.o\x1f0\u00a0mrd'.'\x1elat" +
+			"n.s9.t\x1f0\u00a0mrd'.'\x1elatn.s9.x\x1f0\u00a0mrd'.'\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elat" +
+			"n.Uo\x1f{0} {1}\x1elatn.Ut\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljard\x1elatn.l10.t\x1f00 miljard\x1elatn" +
+			".l10.x\x1f00 miljard\x1elatn.l11.o\x1f000 miljard\x1elatn.l11.t\x1f000 miljard\x1elatn.l11.x\x1f000 miljard\x1elatn.l12." +
+			"o\x1f0 biljovn\x1elatn.l12.t\x1f0 biljovn\x1elatn.l12.x\x1f0 biljovn\x1elatn.l13.o\x1f00 biljovn\x1elatn.l13.t\x1f00 biljov" +
+			"n\x1elatn.l13.x\x1f00 biljovn\x1elatn.l14.o\x1f000 biljovn\x1elatn.l14.t\x1f000 biljovn\x1elatn.l14.x\x1f000 biljovn\x1elat" +
+			"n.l3.o\x1f0 tuhháát\x1elatn.l3.t\x1f0 tuhháát\x1elatn.l3.x\x1f0 tuhháát\x1elatn.l4.o\x1f00 tuhháát\x1elatn.l4.t\x1f" +
+			"00 tuhháát\x1elatn.l4.x\x1f00 tuhháát\x1elatn.l5.o\x1f000 tuhháát\x1elatn.l5.t\x1f000 tuhháát\x1elatn.l5.x\x1f00" +
+			"0 tuhháát\x1elatn.l6.o\x1f0 miljovn\x1elatn.l6.t\x1f0 miljovn\x1elatn.l6.x\x1f0 miljovn\x1elatn.l7.o\x1f00 miljovn\x1elat" +
+			"n.l7.t\x1f00 miljovn\x1elatn.l7.x\x1f00 miljovn\x1elatn.l8.o\x1f000 miljovn\x1elatn.l8.t\x1f000 miljovn\x1elatn.l8.x\x1f000" +
+			" miljovn\x1elatn.l9.o\x1f0 miljard\x1elatn.l9.t\x1f0 miljard\x1elatn.l9.x\x1f0 miljard\x1elatn.n\x1fepiloho\x1elatn.A\x1f¤#,#" +
+			"#0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,#" +
+			"#0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn" +
+			".c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000" +
+			"T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000" +
+			"K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000" +
+			"M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 Bilyan\x1elatn.l10.x\x1f00 Bilyan\x1elatn.l11.o\x1f000 Bilyan\x1e" +
+			"latn.l11.x\x1f000 Bilyan\x1elatn.l12.o\x1f0 Tirilyan\x1elatn.l12.x\x1f0 Tirilyan\x1elatn.l13.o\x1f00 Tirilyan\x1elatn.l1" +
+			"3.x\x1f00 Tirilyan\x1elatn.l14.o\x1f000 Tirilyan\x1elatn.l14.x\x1f000 Tirilyan\x1elatn.l3.o\x1f0 kun\x1elatn.l3.x\x1f0 Kun\x1e" +
+			"latn.l4.o\x1f00 Kun\x1elatn.l4.x\x1f00 Kun\x1elatn.l5.o\x1f000 Kun\x1elatn.l5.x\x1f000 Kun\x1elatn.l6.o\x1f0 Milyan\x1elatn.l6" +
+			".x\x1f0 Milyan\x1elatn.l7.o\x1f00 Milyan\x1elatn.l7.x\x1f00 Milyan\x1elatn.l8.o\x1f000 Milyan\x1elatn.l8.x\x1f000 Milyan\x1ela" +
+			"tn.l9.o\x1f0 Bilyan\x1elatn.l9.x\x1f0 Bilyan\x1elatn.n\x1fMaL\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elat" +
+			"n.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1eg\x1f2\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤" +
+			"\x1elatn.R\x1f{0}-{1}\x1elatn.X\x1f≈{0}\x1elatn.c10.o\x1f00\u00a0mld\u00a0¤\x1elatn.c10.x\x1f00\u00a0mld\u00a0¤\x1elatn.c11.o\x1f000\u00a0mld\u00a0" +
+			"¤\x1elatn.c11.x\x1f000\u00a0mld\u00a0¤\x1elatn.c12.o\x1f0\u00a0bln\u00a0¤\x1elatn.c12.x\x1f0\u00a0bln\u00a0¤\x1elatn.c13.o\x1f00\u00a0bln\u00a0¤\x1ela" +
+			"tn.c13.x\x1f00\u00a0bln\u00a0¤\x1elatn.c14.o\x1f000\u00a0bln\u00a0¤\x1elatn.c14.x\x1f000\u00a0bln\u00a0¤\x1elatn.c3.o\x1f0\u00a0mijë\u00a0¤\x1elatn" +
+			".c3.x\x1f0\u00a0mijë\u00a0¤\x1elatn.c4.o\x1f00\u00a0mijë\u00a0¤\x1elatn.c4.x\x1f00\u00a0mijë\u00a0¤\x1elatn.c5.o\x1f000\u00a0mijë\u00a0¤\x1elatn" +
+			".c5.x\x1f000\u00a0mijë\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f0" +
+			"0\u00a0mln\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mld\u00a0¤\x1elatn.c9.x\x1f0\u00a0mld\u00a0" +
+			"¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miliard\x1elatn.l10.x\x1f00 miliard\x1elatn.l11.o\x1f000 miliard\x1elatn.l1" +
+			"1.x\x1f000 miliard\x1elatn.l12.o\x1f0 bilion\x1elatn.l12.x\x1f0 bilion\x1elatn.l13.o\x1f00 bilion\x1elatn.l13.x\x1f00 bilio" +
+			"n\x1elatn.l14.o\x1f000 bilion\x1elatn.l14.x\x1f000 bilion\x1elatn.l3.o\x1f0 mijë\x1elatn.l3.x\x1f0 mijë\x1elatn.l4.o\x1f00 m" +
+			"ijë\x1elatn.l4.x\x1f00 mijë\x1elatn.l5.o\x1f000 mijë\x1elatn.l5.x\x1f000 mijë\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 m" +
+			"ilion\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 milion\x1elatn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 milion\x1elatn.l9." +
+			"o\x1f0 miliard\x1elatn.l9.x\x1f0 miliard\x1elatn.s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s11.o\x1f000\u00a0mld\x1elatn.s" +
+			"11.x\x1f000\u00a0mld\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13.x\x1f00\u00a0bln\x1elatn.s14" +
+			".o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0bln\x1elatn.s3.o\x1f0\u00a0mijë\x1elatn.s3.x\x1f0\u00a0mijë\x1elatn.s4.o\x1f00\u00a0mijë\x1elatn.s" +
+			"4.x\x1f00\u00a0mijë\x1elatn.s5.o\x1f000\u00a0mijë\x1elatn.s5.x\x1f000\u00a0mijë\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s" +
+			"7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn.s9.x\x1f0" +
+			"\u00a0mld\x1elatn.~\x1f≈\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0млрд'" +
+			".'\u00a0¤\x1elatn.c10.o\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0млрд'.'" +
+			"\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0бил'.'\u00a0¤" +
+			"\x1elatn.c12.o\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0бил'.'\u00a0¤\x1elatn.c13.f\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c13.o" +
+			"\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0бил'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0бил'.'\u00a0¤\x1elatn.c14.o\x1f000\u00a0б" +
+			"ил'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0бил'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0хиљ'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0хиљ'.'\u00a0¤\x1e" +
+			"latn.c3.x\x1f0\u00a0хиљ'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0хиљ'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0хиљ'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0" +
+			"хиљ'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0хиљ'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0хиљ'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0хиљ'.'" +
+			"\u00a0¤\x1elatn.c6.f\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0мил'.'\u00a0¤\x1elatn.c7.f\x1f" +
+			"00\u00a0мил'.'\u00a0¤\x1elatn.c7.o\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0мил'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0мил'" +
+			".'\u00a0¤\x1elatn.c8.o\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c8.x\x1f000\u00a0мил'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0млрд'.'\u00a0¤\x1ela" +
+			"tn.c9.o\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 мили" +
+			"јарде\x1elatn.l10.o\x1f00 милијарда\x1elatn.l10.x\x1f00 милијарди\x1elatn.l11.f\x1f000 ми" +
+			"лијарде\x1elatn.l11.o\x1f000 милијарда\x1elatn.l11.x\x1f000 милијарди\x1elatn.l12.f\x1f0 " +
+			"билиона\x1elatn.l12.o\x1f0 билион\x1elatn.l12.x\x1f0 билиона\x1elatn.l13.f\x1f00 билиона" +
+			"\x1elatn.l13.o\x1f00 билион\x1elatn.l13.x\x1f00 билиона\x1elatn.l14.f\x1f000 билиона\x1elatn.l14." +
+			"o\x1f000 билион\x1elatn.l14.x\x1f000 билиона\x1elatn.l3.f\x1f0 хиљаде\x1elatn.l3.o\x1f0 хиљад" +
+			"а\x1elatn.l3.x\x1f0 хиљада\x1elatn.l4.f\x1f00 хиљаде\x1elatn.l4.o\x1f00 хиљада\x1elatn.l4.x\x1f00 хи" +
+			"љада\x1elatn.l5.f\x1f000 хиљаде\x1elatn.l5.o\x1f000 хиљада\x1elatn.l5.x\x1f000 хиљада\x1elatn.l" +
+			"6.f\x1f0 милиона\x1elatn.l6.o\x1f0 милион\x1elatn.l6.x\x1f0 милиона\x1elatn.l7.f\x1f00 милио" +
+			"на\x1elatn.l7.o\x1f00 милион\x1elatn.l7.x\x1f00 милиона\x1elatn.l8.f\x1f000 милиона\x1elatn.l8." +
+			"o\x1f000 милион\x1elatn.l8.x\x1f000 милиона\x1elatn.l9.f\x1f0 милијарде\x1elatn.l9.o\x1f0 мил" +
+			"ијарда\x1elatn.l9.x\x1f0 милијарди\x1elatn.s10.f\x1f00\u00a0млрд'.'\x1elatn.s10.o\x1f00\u00a0млрд'." +
+			"'\x1elatn.s10.x\x1f00\u00a0млрд'.'\x1elatn.s11.f\x1f000\u00a0млрд'.'\x1elatn.s11.o\x1f000\u00a0млрд'.'\x1elatn.s11.x\x1f" +
+			"000\u00a0млрд'.'\x1elatn.s12.f\x1f0\u00a0бил'.'\x1elatn.s12.o\x1f0\u00a0бил'.'\x1elatn.s12.x\x1f0\u00a0бил'.'\x1elatn.s1" +
+			"3.f\x1f00\u00a0бил'.'\x1elatn.s13.o\x1f00\u00a0бил'.'\x1elatn.s13.x\x1f00\u00a0бил'.'\x1elatn.s14.f\x1f000\u00a0бил'.'\x1ela" +
+			"tn.s14.o\x1f000\u00a0бил'.'\x1elatn.s14.x\x1f000\u00a0бил'.'\x1elatn.s3.f\x1f0\u00a0хиљ'.'\x1elatn.s3.o\x1f0\u00a0хиљ'.'\x1e" +
+			"latn.s3.x\x1f0\u00a0хиљ'.'\x1elatn.s4.f\x1f00\u00a0хиљ'.'\x1elatn.s4.o\x1f00\u00a0хиљ'.'\x1elatn.s4.x\x1f00\u00a0хиљ'.'\x1el" +
+			"atn.s5.f\x1f000\u00a0хиљ'.'\x1elatn.s5.o\x1f000\u00a0хиљ'.'\x1elatn.s5.x\x1f000\u00a0хиљ'.'\x1elatn.s6.f\x1f0\u00a0мил'.'" +
+			"\x1elatn.s6.o\x1f0\u00a0мил'.'\x1elatn.s6.x\x1f0\u00a0мил'.'\x1elatn.s7.f\x1f00\u00a0мил'.'\x1elatn.s7.o\x1f00\u00a0мил'.'\x1el" +
+			"atn.s7.x\x1f00\u00a0мил'.'\x1elatn.s8.f\x1f000\u00a0мил'.'\x1elatn.s8.o\x1f000\u00a0мил'.'\x1elatn.s8.x\x1f000\u00a0мил'." +
+			"'\x1elatn.s9.f\x1f0\u00a0млрд'.'\x1elatn.s9.o\x1f0\u00a0млрд'.'\x1elatn.s9.x\x1f0\u00a0млрд'.'\x1elatn.A\x1f#,##0.00\u00a0¤" +
+			";(#,##0.00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c" +
+			"10.x\x1f00\u00a0mlrd'.'\u00a0¤\x1elatn.c11.f\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0mlr" +
+			"d'.'\u00a0¤\x1elatn.c12.f\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.o\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0bil'.'\u00a0¤\x1elatn.c13.f\x1f0" +
+			"0\u00a0bil'.'\u00a0¤\x1elatn.c13.o\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c13.x\x1f00\u00a0bil'.'\u00a0¤\x1elatn.c14.f\x1f000\u00a0bil'.'\u00a0¤\x1elat" +
+			"n.c14.o\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0bil'.'\u00a0¤\x1elatn.c3.f\x1f0\u00a0hilj'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0hilj'.'" +
+			"\u00a0¤\x1elatn.c3.x\x1f0\u00a0hilj'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0hilj'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0hilj'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0" +
+			"hilj'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0hilj'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0hilj'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0hilj'.'\u00a0¤\x1elat" +
+			"n.c6.f\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.o\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0mil'.'\u00a0¤\x1elatn.c7.f\x1f00\u00a0mil'.'\u00a0¤\x1ela" +
+			"tn.c7.o\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0mil'.'\u00a0¤\x1elatn.c8.f\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c8.o\x1f000\u00a0mil'.'\u00a0" +
+			"¤\x1elatn.c8.x\x1f000\u00a0mil'.'\u00a0¤\x1elatn.c9.f\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd" +
+			"'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.f\x1f00 milijarde\x1elatn.l10.o\x1f00 milijarda\x1elatn.l10.x\x1f00 milijard" +
+			"i\x1elatn.l11.f\x1f000 milijarde\x1elatn.l11.o\x1f000 milijarda\x1elatn.l11.x\x1f000 milijardi\x1elatn.l12.f\x1f0 bilion" +
+			"a\x1elatn.l12.o\x1f0 bilion\x1elatn.l12.x\x1f0 biliona\x1elatn.l13.f\x1f00 biliona\x1elatn.l13.o\x1f00 bilion\x1elatn.l13.x" +
+			"\x1f00 biliona\x1elatn.l14.f\x1f000 biliona\x1elatn.l14.o\x1f000 bilion\x1elatn.l14.x\x1f000 biliona\x1elatn.l3.f\x1f0 hilj" +
+			"ade\x1elatn.l3.o\x1f0 hiljada\x1elatn.l3.x\x1f0 hiljada\x1elatn.l4.f\x1f00 hiljade\x1elatn.l4.o\x1f00 hiljada\x1elatn.l4.x\x1f" +
+			"00 hiljada\x1elatn.l5.f\x1f000 hiljade\x1elatn.l5.o\x1f000 hiljada\x1elatn.l5.x\x1f000 hiljada\x1elatn.l6.f\x1f0 miliona" +
+			"\x1elatn.l6.o\x1f0 milion\x1elatn.l6.x\x1f0 miliona\x1elatn.l7.f\x1f00 miliona\x1elatn.l7.o\x1f00 milion\x1elatn.l7.x\x1f00 mi" +
+			"liona\x1elatn.l8.f\x1f000 miliona\x1elatn.l8.o\x1f000 milion\x1elatn.l8.x\x1f000 miliona\x1elatn.l9.f\x1f0 milijarde\x1elat" +
+			"n.l9.o\x1f0 milijarda\x1elatn.l9.x\x1f0 milijardi\x1elatn.s10.f\x1f00\u00a0mlrd'.'\x1elatn.s10.o\x1f00\u00a0mlrd'.'\x1elatn.s10." +
+			"x\x1f00\u00a0mlrd'.'\x1elatn.s11.f\x1f000\u00a0mlrd'.'\x1elatn.s11.o\x1f000\u00a0mlrd'.'\x1elatn.s11.x\x1f000\u00a0mlrd'.'\x1elatn.s12.f" +
+			"\x1f0\u00a0bil'.'\x1elatn.s12.o\x1f0\u00a0bil'.'\x1elatn.s12.x\x1f0\u00a0bil'.'\x1elatn.s13.f\x1f00\u00a0bil'.'\x1elatn.s13.o\x1f00\u00a0bil'.'" +
+			"\x1elatn.s13.x\x1f00\u00a0bil'.'\x1elatn.s14.f\x1f000\u00a0bil'.'\x1elatn.s14.o\x1f000\u00a0bil'.'\x1elatn.s14.x\x1f000\u00a0bil'.'\x1elatn" +
+			".s3.f\x1f0\u00a0hilj'.'\x1elatn.s3.o\x1f0\u00a0hilj'.'\x1elatn.s3.x\x1f0\u00a0hilj'.'\x1elatn.s4.f\x1f00\u00a0hilj'.'\x1elatn.s4.o\x1f00\u00a0h" +
+			"ilj'.'\x1elatn.s4.x\x1f00\u00a0hilj'.'\x1elatn.s5.f\x1f000\u00a0hilj'.'\x1elatn.s5.o\x1f000\u00a0hilj'.'\x1elatn.s5.x\x1f000\u00a0hilj'." +
+			"'\x1elatn.s6.f\x1f0\u00a0mil'.'\x1elatn.s6.o\x1f0\u00a0mil'.'\x1elatn.s6.x\x1f0\u00a0mil'.'\x1elatn.s7.f\x1f00\u00a0mil'.'\x1elatn.s7.o\x1f00\u00a0" +
+			"mil'.'\x1elatn.s7.x\x1f00\u00a0mil'.'\x1elatn.s8.f\x1f000\u00a0mil'.'\x1elatn.s8.o\x1f000\u00a0mil'.'\x1elatn.s8.x\x1f000\u00a0mil'.'\x1ela" +
+			"tn.s9.f\x1f0\u00a0mlrd'.'\x1elatn.s9.o\x1f0\u00a0mlrd'.'\x1elatn.s9.x\x1f0\u00a0mlrd'.'\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00" +
+			"\x1elatn.Uo\x1f{0} {1}\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.-\x1f−\x1elatn.A\x1f#,##0.0" +
+			"0\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.c10.o\x1f00\u00a0md\u00a0¤\x1elatn.c10.x\x1f00\u00a0md\u00a0¤\x1elatn.c11.o" +
+			"\x1f000\u00a0md\u00a0¤\x1elatn.c11.x\x1f000\u00a0md\u00a0¤\x1elatn.c12.o\x1f0\u00a0bn\u00a0¤\x1elatn.c12.x\x1f0\u00a0bn\u00a0¤\x1elatn.c13.o\x1f00\u00a0bn\u00a0" +
+			"¤\x1elatn.c13.x\x1f00\u00a0bn\u00a0¤\x1elatn.c14.o\x1f000\u00a0bn\u00a0¤\x1elatn.c14.x\x1f000\u00a0bn\u00a0¤\x1elatn.c3.o\x1f0\u00a0tn\u00a0¤\x1elatn." +
+			"c3.x\x1f0\u00a0tn\u00a0¤\x1elatn.c4.o\x1f00\u00a0tn\u00a0¤\x1elatn.c4.x\x1f00\u00a0tn\u00a0¤\x1elatn.c5.o\x1f000\u00a0tn\u00a0¤\x1elatn.c5.x\x1f000\u00a0tn" +
+			"\u00a0¤\x1elatn.c6.o\x1f0\u00a0mn\u00a0¤\x1elatn.c6.x\x1f0\u00a0mn\u00a0¤\x1elatn.c7.o\x1f00\u00a0mn\u00a0¤\x1elatn.c7.x\x1f00\u00a0mn\u00a0¤\x1elatn.c8.o" +
+			"\x1f000\u00a0mn\u00a0¤\x1elatn.c8.x\x1f000\u00a0mn\u00a0¤\x1elatn.c9.o\x1f0\u00a0md\u00a0¤\x1elatn.c9.x\x1f0\u00a0md\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1f×10^" +
+			"\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 miljarder\x1elatn.l10.x\x1f00 miljarder\x1elatn.l11.o\x1f000 miljarder\x1elatn.l11.x\x1f0" +
+			"00 miljarder\x1elatn.l12.o\x1f0 biljon\x1elatn.l12.x\x1f0 biljoner\x1elatn.l13.o\x1f00 biljoner\x1elatn.l13.x\x1f00 bilj" +
+			"oner\x1elatn.l14.o\x1f000 biljoner\x1elatn.l14.x\x1f000 biljoner\x1elatn.l3.o\x1f0 tusen\x1elatn.l3.x\x1f0 tusen\x1elatn.l4" +
+			".o\x1f00 tusen\x1elatn.l4.x\x1f00 tusen\x1elatn.l5.o\x1f000 tusen\x1elatn.l5.x\x1f000 tusen\x1elatn.l6.o\x1f0 miljon\x1elatn.l" +
+			"6.x\x1f0 miljoner\x1elatn.l7.o\x1f00 miljon\x1elatn.l7.x\x1f00 miljoner\x1elatn.l8.o\x1f000 miljoner\x1elatn.l8.x\x1f000 mi" +
+			"ljoner\x1elatn.l9.o\x1f0 miljard\x1elatn.l9.x\x1f0 miljarder\x1elatn.s10.o\x1f00\u00a0md\x1elatn.s10.x\x1f00\u00a0md\x1elatn.s11.o\x1f" +
+			"000\u00a0md\x1elatn.s11.x\x1f000\u00a0md\x1elatn.s12.o\x1f0\u00a0bn\x1elatn.s12.x\x1f0\u00a0bn\x1elatn.s13.o\x1f00\u00a0bn\x1elatn.s13.x\x1f00\u00a0bn" +
+			"\x1elatn.s14.o\x1f000\u00a0bn\x1elatn.s14.x\x1f000\u00a0bn\x1elatn.s3.o\x1f0\u00a0tn\x1elatn.s3.x\x1f0\u00a0tn\x1elatn.s4.o\x1f00\u00a0tn\x1elatn.s4." +
+			"x\x1f00\u00a0tn\x1elatn.s5.o\x1f000\u00a0tn\x1elatn.s5.x\x1f000\u00a0tn\x1elatn.s6.o\x1f0\u00a0mn\x1elatn.s6.x\x1f0\u00a0mn\x1elatn.s7.o\x1f00\u00a0mn\x1ela" +
+			"tn.s7.x\x1f00\u00a0mn\x1elatn.s8.o\x1f000\u00a0mn\x1elatn.s8.x\x1f000\u00a0mn\x1elatn.s9.o\x1f0\u00a0md\x1elatn.s9.x\x1f0\u00a0md\x1elatn.Uo\x1f{0} {" +
+			"1}\x1elatn.c10.o\x1f¤\u00a000B;¤\u00a0-00B\x1elatn.c10.x\x1f¤\u00a000B;¤\u00a0-00B\x1elatn.c11.o\x1f¤\u00a0000B;¤\u00a0-000B\x1elatn.c1" +
+			"1.x\x1f¤\u00a0000B;¤\u00a0-000B\x1elatn.c12.o\x1f¤\u00a00T;¤\u00a0-0T\x1elatn.c13.o\x1f¤\u00a000T;¤\u00a0-00T\x1elatn.c14.o\x1f¤\u00a0000T" +
+			";¤\u00a0-000T\x1elatn.c3.o\x1f¤\u00a0elfu\u00a00;¤\u00a0elfu\u00a0-0\x1elatn.c3.x\x1f¤\u00a0elfu\u00a00;¤\u00a0elfu\u00a0-0\x1elatn.c4.o\x1f¤\u00a0e" +
+			"lfu\u00a000;¤\u00a0elfu\u00a0-00\x1elatn.c4.x\x1f¤\u00a0elfu\u00a000;¤\u00a0elfu\u00a0-00\x1elatn.c5.o\x1f¤\u00a0elfu\u00a0000;¤\u00a0elfu\u00a0-00" +
+			"0\x1elatn.c5.x\x1f¤\u00a0elfu\u00a0000;¤\u00a0elfu\u00a0-000\x1elatn.c6.o\x1f¤\u00a00M;¤\u00a0-0M\x1elatn.c7.o\x1f¤\u00a000M;¤\u00a0-00M\x1elat" +
+			"n.c8.o\x1f¤\u00a0000M;¤\u00a0-000M\x1elatn.c9.o\x1f¤\u00a00B;¤\u00a0-0B\x1elatn.c9.x\x1f¤\u00a00B;¤\u00a0-0B\x1elatn.l10.o\x1fbilioni 0" +
+			"0;bilioni -00\x1elatn.l10.x\x1fbilioni 00;bilioni -00\x1elatn.l11.o\x1fbilioni 000;bilioni -000\x1elatn.l11.x\x1fb" +
+			"ilioni 000;bilioni -000\x1elatn.l12.o\x1ftrilioni 0;trilioni -0\x1elatn.l12.x\x1ftrilioni 0;trilioni -0\x1elatn" +
+			".l13.o\x1ftrilioni 00;trilioni -00\x1elatn.l13.x\x1ftrilioni 00;trilioni -00\x1elatn.l14.o\x1ftrilioni 000;tril" +
+			"ioni -000\x1elatn.l14.x\x1ftrilioni 000;trilioni -000\x1elatn.l3.o\x1felfu 0;elfu -0\x1elatn.l3.x\x1felfu 0;elfu -" +
+			"0\x1elatn.l4.o\x1felfu 00;elfu -00\x1elatn.l4.x\x1felfu 00;elfu -00\x1elatn.l5.o\x1felfu 000;elfu -000\x1elatn.l5.x\x1fe" +
+			"lfu 000;elfu -000\x1elatn.l6.o\x1fmilioni 0;milioni -0\x1elatn.l6.x\x1fmilioni 0;milioni -0\x1elatn.l7.o\x1fmilion" +
+			"i 00;milioni -00\x1elatn.l7.x\x1fmilioni 00;milioni -00\x1elatn.l8.o\x1fmilioni 000;milioni -000\x1elatn.l8.x\x1fm" +
+			"ilioni 000;milioni -000\x1elatn.l9.o\x1fbilioni 0;bilioni -0\x1elatn.l9.x\x1fbilioni 0;bilioni -0\x1elatn.s10.o" +
+			"\x1f00B;-00B\x1elatn.s10.x\x1f00B;-00B\x1elatn.s11.o\x1f000B;-000B\x1elatn.s11.x\x1f000B;-000B\x1elatn.s12.o\x1f0T;-0T\x1elatn" +
+			".s13.o\x1f00T;-00T\x1elatn.s14.o\x1f000T;-000T\x1elatn.s3.o\x1felfu\u00a00;elfu\u00a0-0\x1elatn.s3.x\x1felfu\u00a00;elfu\u00a0-0\x1elatn" +
+			".s4.o\x1felfu\u00a000;elfu\u00a0-00\x1elatn.s4.x\x1felfu\u00a000;elfu\u00a0-00\x1elatn.s5.o\x1felfu\u00a0000;elfu\u00a0-000\x1elatn.s5.x\x1fe" +
+			"lfu\u00a0000;elfu\u00a0-000\x1elatn.s6.o\x1f0M\x1elatn.s7.o\x1f00M;-00M\x1elatn.s8.o\x1f000M;-000M\x1elatn.s9.o\x1f0B;-0B\x1elatn.s" +
+			"9.x\x1f0B;-0B\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.c10.o\x1f¤\u00a0B00\x1elatn.c10.x\x1f¤\u00a0B00\x1elatn.c11.o\x1f¤\u00a0B000\x1elatn.c11." +
+			"x\x1f¤\u00a0B000\x1elatn.c12.o\x1f¤\u00a0T0\x1elatn.c12.x\x1f¤\u00a0T0\x1elatn.c13.o\x1f¤\u00a0T00\x1elatn.c13.x\x1f¤\u00a0T00\x1elatn.c14.o\x1f" +
+			"¤\u00a0T000\x1elatn.c14.x\x1f¤\u00a0T000\x1elatn.c3.o\x1f¤\u00a0elfu\u00a00\x1elatn.c3.x\x1f¤\u00a0elfu\u00a00\x1elatn.c4.o\x1f¤\u00a0elfu\u00a000\x1e" +
+			"latn.c4.x\x1f¤\u00a0elfu\u00a000\x1elatn.c5.o\x1f¤\u00a0elfu\u00a0000\x1elatn.c5.x\x1f¤\u00a0elfu\u00a0000\x1elatn.c6.o\x1f¤\u00a0M0\x1elatn.c6." +
+			"x\x1f¤\u00a0M0\x1elatn.c7.o\x1f¤\u00a0M00\x1elatn.c7.x\x1f¤\u00a0M00\x1elatn.c8.o\x1f¤\u00a0M000\x1elatn.c8.x\x1f¤\u00a0M000\x1elatn.c9.o\x1f¤\u00a0" +
+			"B0\x1elatn.c9.x\x1f¤\u00a0B0\x1elatn.l10.o\x1fbilioni 00\x1elatn.l10.x\x1fbilioni 00\x1elatn.l11.o\x1fbilioni 000\x1elatn.l11." +
+			"x\x1fbilioni 000\x1elatn.l12.o\x1ftrilioni 0\x1elatn.l12.x\x1ftrilioni 0\x1elatn.l13.o\x1ftrilioni 00\x1elatn.l13.x\x1ftril" +
+			"ioni 00\x1elatn.l14.o\x1ftrilioni 000\x1elatn.l14.x\x1ftrilioni 000\x1elatn.l4.x\x1felfu 00\x1elatn.l5.o\x1felfu 000\x1elat" +
+			"n.l5.x\x1felfu 000\x1elatn.l6.o\x1fmilioni 0\x1elatn.l6.x\x1fmilioni 0\x1elatn.l7.o\x1fmilioni 00\x1elatn.l7.x\x1fmilioni 0" +
+			"0\x1elatn.l8.o\x1fmilioni 000\x1elatn.l8.x\x1fmilioni 000\x1elatn.l9.o\x1fbilioni 0\x1elatn.l9.x\x1fbilioni 0\x1elatn.s10.o" +
+			"\x1fB00\x1elatn.s10.x\x1fB00\x1elatn.s11.o\x1fB000\x1elatn.s11.x\x1fB000\x1elatn.s12.o\x1fT0\x1elatn.s12.x\x1fT0\x1elatn.s13.o\x1fT00\x1el" +
+			"atn.s13.x\x1fT00\x1elatn.s14.o\x1fT000\x1elatn.s14.x\x1fT000\x1elatn.s3.o\x1felfu\u00a00\x1elatn.s3.x\x1felfu\u00a00\x1elatn.s4.o\x1felfu" +
+			"\u00a000\x1elatn.s4.x\x1felfu\u00a000\x1elatn.s5.o\x1felfu\u00a0000\x1elatn.s5.x\x1felfu\u00a0000\x1elatn.s6.o\x1fM0\x1elatn.s6.x\x1fM0\x1elatn.s" +
+			"7.o\x1fM00\x1elatn.s7.x\x1fM00\x1elatn.s8.o\x1fM000\x1elatn.s8.x\x1fM000\x1elatn.s9.o\x1fB0\x1elatn.s9.x\x1fB0\x1elatn.n\x1fܠܝܬ\u00a0ܡܢ" +
+			"ܝܢܐ\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)" +
+			"\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c" +
+			"11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1e" +
+			"latn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K" +
+			"\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M" +
+			"\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 பில்லியன்\x1elatn.l" +
+			"10.x\x1f00 பில்லியன்\x1elatn.l11.o\x1f000 பில்லியன்\x1elatn.l11.x\x1f000 ப" +
+			"ில்லியன்\x1elatn.l12.o\x1f0 டிரில்லியன்\x1elatn.l12.x\x1f0 டிரி" +
+			"ல்லியன்\x1elatn.l13.o\x1f00 டிரில்லியன்\x1elatn.l13.x\x1f00 டிரி" +
+			"ல்லியன்\x1elatn.l14.o\x1f000 டிரில்லியன்\x1elatn.l14.x\x1f000 டிரி" +
+			"ல்லியன்\x1elatn.l3.o\x1f0 ஆயிரம்\x1elatn.l3.x\x1f0 ஆயிரம்\x1elatn.l4.o\x1f00" +
+			" ஆயிரம்\x1elatn.l4.x\x1f00 ஆயிரம்\x1elatn.l5.o\x1f000 ஆயிரம்\x1elatn.l5.x\x1f0" +
+			"00 ஆயிரம்\x1elatn.l6.o\x1f0 மில்லியன்\x1elatn.l6.x\x1f0 மில்லியன" +
+			"்\x1elatn.l7.o\x1f00 மில்லியன்\x1elatn.l7.x\x1f00 மில்லியன்\x1elatn.l8.o\x1f" +
+			"000 மில்லியன்\x1elatn.l8.x\x1f000 மில்லியன்\x1elatn.l9.o\x1f0 பில்" +
+			"லியன்\x1elatn.l9.x\x1f0 பில்லியன்\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o" +
+			"\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s12.o\x1f0T\x1elatn.s13.o\x1f00T\x1elatn.s14.o\x1f000T\x1elatn.s3.o\x1f0K\x1elatn.s4.o\x1f00K\x1ela" +
+			"tn.s5.o\x1f000K\x1elatn.s6.o\x1f0M\x1elatn.s7.o\x1f00M\x1elatn.s8.o\x1f000M\x1elatn.s9.o\x1f0B\x1elatn.s9.x\x1f0B\x1etamldec.+\x1f+\x1etam" +
+			"ldec.-\x1f-\x1etamldec.A\x1f¤#,##0.00;(¤#,##0.00)\x1etamldec.B\x1f\u00a0\x1etamldec.C\x1f¤#,##0.00\x1etamldec.D\x1f#,##,##0." +
+			"###\x1etamldec.P\x1f#,##,##0%\x1etamldec.R\x1f{0}–{1}\x1etamldec.S\x1f#E0\x1etamldec.Ux\x1f{0} {1}\x1etamldec.X\x1f~{0}\x1etaml" +
+			"dec.b\x1f\u00a0\x1etamldec.c10.o\x1f¤00B\x1etamldec.c10.x\x1f¤00B\x1etamldec.c11.o\x1f¤000B\x1etamldec.c11.x\x1f¤000B\x1etamld" +
+			"ec.c12.o\x1f¤0T\x1etamldec.c12.x\x1f¤0T\x1etamldec.c13.o\x1f¤00T\x1etamldec.c13.x\x1f¤00T\x1etamldec.c14.o\x1f¤000T\x1eta" +
+			"mldec.c14.x\x1f¤000T\x1etamldec.c3.o\x1f¤0K\x1etamldec.c3.x\x1f¤0K\x1etamldec.c4.o\x1f¤00K\x1etamldec.c4.x\x1f¤00K\x1etam" +
+			"ldec.c5.o\x1f¤000K\x1etamldec.c5.x\x1f¤000K\x1etamldec.c6.o\x1f¤0M\x1etamldec.c6.x\x1f¤0M\x1etamldec.c7.o\x1f¤00M\x1etaml" +
+			"dec.c7.x\x1f¤00M\x1etamldec.c8.o\x1f¤000M\x1etamldec.c8.x\x1f¤000M\x1etamldec.c9.o\x1f¤0B\x1etamldec.c9.x\x1f¤0B\x1etamld" +
+			"ec.d\x1f.\x1etamldec.e\x1fE\x1etamldec.g\x1f,\x1etamldec.i\x1f∞\x1etamldec.l10.o\x1f00 பில்லியன்\x1etamlde" +
+			"c.l10.x\x1f00 பில்லியன்\x1etamldec.l11.o\x1f000 பில்லியன்\x1etamldec.l11" +
+			".x\x1f000 பில்லியன்\x1etamldec.l12.o\x1f0 டிரில்லியன்\x1etamldec.l12" +
+			".x\x1f0 டிரில்லியன்\x1etamldec.l13.o\x1f00 டிரில்லியன்\x1etamlde" +
+			"c.l13.x\x1f00 டிரில்லியன்\x1etamldec.l14.o\x1f000 டிரில்லியன்" +
+			"\x1etamldec.l14.x\x1f000 டிரில்லியன்\x1etamldec.l3.o\x1f0 ஆயிரம்\x1etamldec.l" +
+			"3.x\x1f0 ஆயிரம்\x1etamldec.l4.o\x1f00 ஆயிரம்\x1etamldec.l4.x\x1f00 ஆயிரம்\x1et" +
+			"amldec.l5.o\x1f000 ஆயிரம்\x1etamldec.l5.x\x1f000 ஆயிரம்\x1etamldec.l6.o\x1f0 மில்" +
+			"லியன்\x1etamldec.l6.x\x1f0 மில்லியன்\x1etamldec.l7.o\x1f00 மில்லிய" +
+			"ன்\x1etamldec.l7.x\x1f00 மில்லியன்\x1etamldec.l8.o\x1f000 மில்லியன்\x1e" +
+			"tamldec.l8.x\x1f000 மில்லியன்\x1etamldec.l9.o\x1f0 பில்லியன்\x1etamldec." +
+			"l9.x\x1f0 பில்லியன்\x1etamldec.m\x1f‰\x1etamldec.n\x1fNaN\x1etamldec.p\x1f%\x1etamldec.s10.o\x1f00B\x1etam" +
+			"ldec.s10.x\x1f00B\x1etamldec.s11.o\x1f000B\x1etamldec.s11.x\x1f000B\x1etamldec.s12.o\x1f0T\x1etamldec.s12.x\x1f0T\x1etamldec.s" +
+			"13.o\x1f00T\x1etamldec.s13.x\x1f00T\x1etamldec.s14.o\x1f000T\x1etamldec.s14.x\x1f000T\x1etamldec.s3.o\x1f0K\x1etamldec.s3.x\x1f0K" +
+			"\x1etamldec.s4.o\x1f00K\x1etamldec.s4.x\x1f00K\x1etamldec.s5.o\x1f000K\x1etamldec.s5.x\x1f000K\x1etamldec.s6.o\x1f0M\x1etamldec.s" +
+			"6.x\x1f0M\x1etamldec.s7.o\x1f00M\x1etamldec.s7.x\x1f00M\x1etamldec.s8.o\x1f000M\x1etamldec.s8.x\x1f000M\x1etamldec.s9.o\x1f0B\x1etam" +
+			"ldec.s9.x\x1f0B\x1etamldec.~\x1f~\x1elatn.D\x1f#,##0.###\x1elatn.P\x1f#,##0%\x1etamldec.D\x1f#,##0.###\x1etamldec.P\x1f#,##0%\x1elat" +
+			"n.D\x1f#,##0.###\x1elatn.P\x1f#,##0%\x1etamldec.D\x1f#,##0.###\x1etamldec.P\x1f#,##0%\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1e" +
+			"latn.C\x1f¤#,##,##0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.c10.o\x1f¤00బి\x1elatn.c10.x\x1f¤00బి\x1elatn.c11.o\x1f" +
+			"¤000బి\x1elatn.c11.x\x1f¤000బి\x1elatn.c12.o\x1f¤0ట్రి\x1elatn.c12.x\x1f¤0ట్రి\x1elatn.c1" +
+			"3.o\x1f¤00ట్రి\x1elatn.c13.x\x1f¤00ట్రి\x1elatn.c14.o\x1f¤000ట్రి\x1elatn.c14.x\x1f¤000ట" +
+			"్రి\x1elatn.c3.o\x1f¤0వే\x1elatn.c3.x\x1f¤0వే\x1elatn.c4.o\x1f¤00వే\x1elatn.c4.x\x1f¤00వే\x1elatn" +
+			".c5.o\x1f¤000వే\x1elatn.c5.x\x1f¤000వే\x1elatn.c6.o\x1f¤0మి\x1elatn.c6.x\x1f¤0మి\x1elatn.c7.o\x1f¤00మ" +
+			"ి\x1elatn.c7.x\x1f¤00మి\x1elatn.c8.o\x1f¤000మి\x1elatn.c8.x\x1f¤000మి\x1elatn.c9.o\x1f¤0బి\x1elatn.c9" +
+			".x\x1f¤0బి\x1elatn.l10.o\x1f00 బిలియన్లు\x1elatn.l10.x\x1f00 బిలియన్లు" +
+			"\x1elatn.l11.o\x1f000 బిలియన్లు\x1elatn.l11.x\x1f000 బిలియన్లు\x1elatn.l12." +
+			"o\x1f0 ట్రిలియన్\x1elatn.l12.x\x1f0 ట్రిలియన్లు\x1elatn.l13.o\x1f00 ట" +
+			"్రిలియన్లు\x1elatn.l13.x\x1f00 ట్రిలియన్లు\x1elatn.l14.o\x1f000 ట" +
+			"్రిలియన్లు\x1elatn.l14.x\x1f000 ట్రిలియన్లు\x1elatn.l3.o\x1f0 వే" +
+			"యి\x1elatn.l3.x\x1f0 వేలు\x1elatn.l4.o\x1f00 వేలు\x1elatn.l4.x\x1f00 వేలు\x1elatn.l5.o\x1f00" +
+			"0 వేలు\x1elatn.l5.x\x1f000 వేలు\x1elatn.l6.o\x1f0 మిలియన్\x1elatn.l6.x\x1f0 మిల" +
+			"ియన్లు\x1elatn.l7.o\x1f00 మిలియన్లు\x1elatn.l7.x\x1f00 మిలియన్ల" +
+			"ు\x1elatn.l8.o\x1f000 మిలియన్లు\x1elatn.l8.x\x1f000 మిలియన్లు\x1elatn.l9." +
+			"o\x1f0 బిలియన్\x1elatn.l9.x\x1f0 బిలియన్లు\x1elatn.s10.o\x1f00బి\x1elatn.s10.x" +
+			"\x1f00బి\x1elatn.s11.o\x1f000బి\x1elatn.s11.x\x1f000బి\x1elatn.s12.o\x1f0ట్రి\x1elatn.s12.x\x1f0ట్ర" +
+			"ి\x1elatn.s13.o\x1f00ట్రి\x1elatn.s13.x\x1f00ట్రి\x1elatn.s14.o\x1f000ట్రి\x1elatn.s14.x\x1f00" +
+			"0ట్రి\x1elatn.s3.o\x1f0వే\x1elatn.s3.x\x1f0వే\x1elatn.s4.o\x1f00వే\x1elatn.s4.x\x1f00వే\x1elatn.s5." +
+			"o\x1f000వే\x1elatn.s5.x\x1f000వే\x1elatn.s6.o\x1f0మి\x1elatn.s6.x\x1f0మి\x1elatn.s7.o\x1f00మి\x1elatn.s7.x" +
+			"\x1f00మి\x1elatn.s8.o\x1f000మి\x1elatn.s8.x\x1f000మి\x1elatn.s9.o\x1f0బి\x1elatn.s9.x\x1f0బి\x1etelu.+\x1f+\x1et" +
+			"elu.-\x1f-\x1etelu.A\x1f¤#,##0.00;(¤#,##0.00)\x1etelu.B\x1f\u00a0\x1etelu.C\x1f¤#,##,##0.00\x1etelu.D\x1f#,##0.###\x1etelu.P\x1f#," +
+			"##0%\x1etelu.R\x1f{0}–{1}\x1etelu.S\x1f#E0\x1etelu.Ux\x1f{0} {1}\x1etelu.X\x1f~{0}\x1etelu.b\x1f\u00a0\x1etelu.c10.o\x1f¤00బి\x1etel" +
+			"u.c10.x\x1f¤00బి\x1etelu.c11.o\x1f¤000బి\x1etelu.c11.x\x1f¤000బి\x1etelu.c12.o\x1f¤0ట్రి\x1etelu" +
+			".c12.x\x1f¤0ట్రి\x1etelu.c13.o\x1f¤00ట్రి\x1etelu.c13.x\x1f¤00ట్రి\x1etelu.c14.o\x1f¤000ట" +
+			"్రి\x1etelu.c14.x\x1f¤000ట్రి\x1etelu.c3.o\x1f¤0వే\x1etelu.c3.x\x1f¤0వే\x1etelu.c4.o\x1f¤00వ" +
+			"ే\x1etelu.c4.x\x1f¤00వే\x1etelu.c5.o\x1f¤000వే\x1etelu.c5.x\x1f¤000వే\x1etelu.c6.o\x1f¤0మి\x1etelu.c6" +
+			".x\x1f¤0మి\x1etelu.c7.o\x1f¤00మి\x1etelu.c7.x\x1f¤00మి\x1etelu.c8.o\x1f¤000మి\x1etelu.c8.x\x1f¤000మి" +
+			"\x1etelu.c9.o\x1f¤0బి\x1etelu.c9.x\x1f¤0బి\x1etelu.d\x1f.\x1etelu.e\x1fE\x1etelu.g\x1f,\x1etelu.i\x1f∞\x1etelu.l10.o\x1f00 బ" +
+			"ిలియన్లు\x1etelu.l10.x\x1f00 బిలియన్లు\x1etelu.l11.o\x1f000 బిలియ" +
+			"న్లు\x1etelu.l11.x\x1f000 బిలియన్లు\x1etelu.l12.o\x1f0 ట్రిలియన్" +
+			"\x1etelu.l12.x\x1f0 ట్రిలియన్లు\x1etelu.l13.o\x1f00 ట్రిలియన్లు\x1e" +
+			"telu.l13.x\x1f00 ట్రిలియన్లు\x1etelu.l14.o\x1f000 ట్రిలియన్లు" +
+			"\x1etelu.l14.x\x1f000 ట్రిలియన్లు\x1etelu.l3.o\x1f0 వేయి\x1etelu.l3.x\x1f0 వేల" +
+			"ు\x1etelu.l4.o\x1f00 వేలు\x1etelu.l4.x\x1f00 వేలు\x1etelu.l5.o\x1f000 వేలు\x1etelu.l5.x\x1f000" +
+			" వేలు\x1etelu.l6.o\x1f0 మిలియన్\x1etelu.l6.x\x1f0 మిలియన్లు\x1etelu.l7." +
+			"o\x1f00 మిలియన్లు\x1etelu.l7.x\x1f00 మిలియన్లు\x1etelu.l8.o\x1f000 మిల" +
+			"ియన్లు\x1etelu.l8.x\x1f000 మిలియన్లు\x1etelu.l9.o\x1f0 బిలియన్\x1et" +
+			"elu.l9.x\x1f0 బిలియన్లు\x1etelu.m\x1f‰\x1etelu.n\x1fNaN\x1etelu.p\x1f%\x1etelu.s10.o\x1f00బి\x1etelu.s" +
+			"10.x\x1f00బి\x1etelu.s11.o\x1f000బి\x1etelu.s11.x\x1f000బి\x1etelu.s12.o\x1f0ట్రి\x1etelu.s12.x\x1f0ట" +
+			"్రి\x1etelu.s13.o\x1f00ట్రి\x1etelu.s13.x\x1f00ట్రి\x1etelu.s14.o\x1f000ట్రి\x1etelu.s1" +
+			"4.x\x1f000ట్రి\x1etelu.s3.o\x1f0వే\x1etelu.s3.x\x1f0వే\x1etelu.s4.o\x1f00వే\x1etelu.s4.x\x1f00వే\x1ete" +
+			"lu.s5.o\x1f000వే\x1etelu.s5.x\x1f000వే\x1etelu.s6.o\x1f0మి\x1etelu.s6.x\x1f0మి\x1etelu.s7.o\x1f00మి\x1etel" +
+			"u.s7.x\x1f00మి\x1etelu.s8.o\x1f000మి\x1etelu.s8.x\x1f000మి\x1etelu.s9.o\x1f0బి\x1etelu.s9.x\x1f0బి\x1etelu" +
+			".~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1ela" +
+			"tn.c10.x\x1f00\u00a0млрд'.'\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд'.'\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн'.'\u00a0¤\x1elatn." +
+			"c13.x\x1f00\u00a0трлн'.'\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0ҳзр'.'\u00a0¤\x1elatn.c4.x\x1f0" +
+			"0\u00a0ҳзр'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0ҳзр'.'\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн'.'\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн'.'" +
+			"\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн'.'\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд'.'\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 " +
+			"миллиард\x1elatn.l11.x\x1f000 миллиард\x1elatn.l12.x\x1f0 триллион\x1elatn.l13.x\x1f00 тр" +
+			"иллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l3.x\x1f0 ҳазор\x1elatn.l4.x\x1f00 ҳазор\x1elatn" +
+			".l5.x\x1f000 ҳазор\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.x\x1f000 мил" +
+			"лион\x1elatn.l9.x\x1f0 миллиард\x1elatn.s10.x\x1f00\u00a0млрд'.'\x1elatn.s11.x\x1f000\u00a0млрд'.'\x1elat" +
+			"n.s12.x\x1f0\u00a0трлн'.'\x1elatn.s13.x\x1f00\u00a0трлн'.'\x1elatn.s14.x\x1f000\u00a0трлн'.'\x1elatn.s3.x\x1f0\u00a0ҳзр" +
+			"'.'\x1elatn.s4.x\x1f00\u00a0ҳзр'.'\x1elatn.s5.x\x1f000\u00a0ҳзр'.'\x1elatn.s6.x\x1f0\u00a0млн'.'\x1elatn.s7.x\x1f00\u00a0млн" +
+			"'.'\x1elatn.s8.x\x1f000\u00a0млн'.'\x1elatn.s9.x\x1f0\u00a0млрд'.'\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#," +
+			"##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f¤00B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c" +
+			"14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn." +
+			"c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f0 หมื่นล้าน\x1elatn.l11.x\x1f0 แสนล้" +
+			"าน\x1elatn.l12.x\x1f0 ล้านล้าน\x1elatn.l13.x\x1f00 ล้านล้าน\x1elatn.l14.x\x1f0" +
+			"00 ล้านล้าน\x1elatn.l3.x\x1f0 พัน\x1elatn.l4.x\x1f0 หมื่น\x1elatn.l5.x\x1f0 แส" +
+			"น\x1elatn.l6.x\x1f0 ล้าน\x1elatn.l7.x\x1f00 ล้าน\x1elatn.l8.x\x1f000 ล้าน\x1elatn.l9.x\x1f0 พ" +
+			"ันล้าน\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s9.x\x1f0B\x1ethai.+\x1f+\x1ethai.-\x1f-\x1ethai.A\x1f¤#,##0." +
+			"00;(¤#,##0.00)\x1ethai.B\x1f\u00a0\x1ethai.C\x1f¤#,##0.00\x1ethai.D\x1f#,##0.###\x1ethai.P\x1f#,##0%\x1ethai.R\x1f{0}-{1}\x1ethai.S" +
+			"\x1f#E0\x1ethai.Ux\x1f{0} {1}\x1ethai.X\x1f~{0}\x1ethai.b\x1f\u00a0\x1ethai.c10.x\x1f¤00B\x1ethai.c11.x\x1f¤000B\x1ethai.c12.x\x1f¤0T\x1eth" +
+			"ai.c13.x\x1f¤00T\x1ethai.c14.x\x1f¤000T\x1ethai.c3.x\x1f¤0K\x1ethai.c4.x\x1f¤00K\x1ethai.c5.x\x1f¤000K\x1ethai.c6.x\x1f¤0M\x1e" +
+			"thai.c7.x\x1f¤00M\x1ethai.c8.x\x1f¤000M\x1ethai.c9.x\x1f¤0B\x1ethai.d\x1f.\x1ethai.e\x1fE\x1ethai.g\x1f,\x1ethai.i\x1f∞\x1ethai.l10.x" +
+			"\x1f0 หมื่นล้าน\x1ethai.l11.x\x1f0 แสนล้าน\x1ethai.l12.x\x1f0 ล้านล้" +
+			"าน\x1ethai.l13.x\x1f00 ล้านล้าน\x1ethai.l14.x\x1f000 ล้านล้าน\x1ethai.l3.x\x1f" +
+			"0 พัน\x1ethai.l4.x\x1f0 หมื่น\x1ethai.l5.x\x1f0 แสน\x1ethai.l6.x\x1f0 ล้าน\x1ethai.l7.x" +
+			"\x1f00 ล้าน\x1ethai.l8.x\x1f000 ล้าน\x1ethai.l9.x\x1f0 พันล้าน\x1ethai.m\x1f‰\x1ethai.n\x1f" +
+			"NaN\x1ethai.p\x1f%\x1ethai.s10.x\x1f00B\x1ethai.s11.x\x1f000B\x1ethai.s12.x\x1f0T\x1ethai.s13.x\x1f00T\x1ethai.s14.x\x1f000T\x1ethai.s3" +
+			".x\x1f0K\x1ethai.s4.x\x1f00K\x1ethai.s5.x\x1f000K\x1ethai.s6.x\x1f0M\x1ethai.s7.x\x1f00M\x1ethai.s8.x\x1f000M\x1ethai.s9.x\x1f0B\x1ethai.~" +
+			"\x1f~\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00\u00a0ቢ\x1elatn.c10.x\x1f¤00\u00a0ቢ\x1elatn.c11.o\x1f¤00" +
+			"0\u00a0ቢ\x1elatn.c11.x\x1f¤000\u00a0ቢ\x1elatn.c12.o\x1f¤0\u00a0ት\x1elatn.c12.x\x1f¤0\u00a0ት\x1elatn.c13.o\x1f¤00\u00a0ት\x1elatn.c" +
+			"13.x\x1f¤00\u00a0ት\x1elatn.c14.o\x1f¤000\u00a0ት\x1elatn.c14.x\x1f¤000\u00a0ት\x1elatn.c3.o\x1f¤0\u00a0ሽ\x1elatn.c3.x\x1f¤0\u00a0ሽ" +
+			"\x1elatn.c4.o\x1f¤00\u00a0ሽ\x1elatn.c4.x\x1f¤00\u00a0ሽ\x1elatn.c5.o\x1f¤000\u00a0ሽ\x1elatn.c5.x\x1f¤000\u00a0ሽ\x1elatn.c6.o\x1f¤0" +
+			"\u00a0ሚ\x1elatn.c6.x\x1f¤0\u00a0ሚ\x1elatn.c7.o\x1f¤00\u00a0ሚ\x1elatn.c7.x\x1f¤00\u00a0ሚ\x1elatn.c8.o\x1f¤000\u00a0ሚ\x1elatn.c8.x\x1f" +
+			"¤000\u00a0ሚ\x1elatn.c9.o\x1f¤0\u00a0ቢ\x1elatn.c9.x\x1f¤0\u00a0ቢ\x1elatn.l10.o\x1f00 ቢልዮን\x1elatn.l10.x\x1f00 ቢል" +
+			"ዮን\x1elatn.l11.o\x1f000 ቢልዮን\x1elatn.l11.x\x1f000 ቢልዮን\x1elatn.l12.o\x1f0 ትሪልዮን\x1elatn" +
+			".l12.x\x1f0 ትሪልዮን\x1elatn.l13.o\x1f00 ትሪልዮን\x1elatn.l13.x\x1f00 ትሪልዮን\x1elatn.l14.o\x1f" +
+			"000 ትሪልዮን\x1elatn.l14.x\x1f000 ትሪልዮን\x1elatn.l3.o\x1f0 ሽሕ\x1elatn.l3.x\x1f0 ሽሕ\x1elatn.l4" +
+			".o\x1f00 ሽሕ\x1elatn.l4.x\x1f00 ሽሕ\x1elatn.l5.o\x1f000 ሽሕ\x1elatn.l5.x\x1f000 ሽሕ\x1elatn.l6.o\x1f0 ሚልዮ" +
+			"ን\x1elatn.l6.x\x1f0 ሚልዮን\x1elatn.l7.o\x1f00 ሚልዮን\x1elatn.l7.x\x1f00 ሚልዮን\x1elatn.l8.o\x1f000 ሚ" +
+			"ልዮን\x1elatn.l8.x\x1f000 ሚልዮን\x1elatn.l9.o\x1f0 ቢልዮን\x1elatn.l9.x\x1f0 ቢልዮን\x1elatn.s10." +
+			"o\x1f00\u00a0ቢ\x1elatn.s10.x\x1f00\u00a0ቢ\x1elatn.s11.o\x1f000\u00a0ቢ\x1elatn.s11.x\x1f000\u00a0ቢ\x1elatn.s12.o\x1f0\u00a0ት\x1elatn.s12." +
+			"x\x1f0\u00a0ት\x1elatn.s13.o\x1f00\u00a0ት\x1elatn.s13.x\x1f00\u00a0ት\x1elatn.s14.o\x1f000\u00a0ት\x1elatn.s14.x\x1f000\u00a0ት\x1elatn.s3.o" +
+			"\x1f0\u00a0ሽ\x1elatn.s3.x\x1f0\u00a0ሽ\x1elatn.s4.o\x1f00\u00a0ሽ\x1elatn.s4.x\x1f00\u00a0ሽ\x1elatn.s5.o\x1f000\u00a0ሽ\x1elatn.s5.x\x1f000\u00a0ሽ" +
+			"\x1elatn.s6.o\x1f0\u00a0ሚ\x1elatn.s6.x\x1f0\u00a0ሚ\x1elatn.s7.o\x1f00\u00a0ሚ\x1elatn.s7.x\x1f00\u00a0ሚ\x1elatn.s8.o\x1f000\u00a0ሚ\x1elatn.s" +
+			"8.x\x1f000\u00a0ሚ\x1elatn.s9.o\x1f0\u00a0ቢ\x1elatn.s9.x\x1f0\u00a0ቢ\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#," +
+			"##0\u00a0%\x1elatn.c10.o\x1f00\u00a0mlrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd\u00a0¤\x1elatn.c11.x\x1f000\u00a0" +
+			"mlrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elatn.c13.x\x1f00\u00a0tr" +
+			"ln\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln\u00a0¤\x1elatn.c3.o\x1f0\u00a0müň\u00a0¤\x1elatn.c3.x\x1f0\u00a0mü" +
+			"ň\u00a0¤\x1elatn.c4.o\x1f00\u00a0müň\u00a0¤\x1elatn.c4.x\x1f00\u00a0müň\u00a0¤\x1elatn.c5.o\x1f000\u00a0müň\u00a0¤\x1elatn.c5.x\x1f000\u00a0m" +
+			"üň\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0mln\u00a0¤\x1el" +
+			"atn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd\u00a0¤\x1elatn.d\x1f" +
+			",\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliard\x1elatn.l10.x\x1f00 milliard\x1elatn.l11.o\x1f000 milliard\x1elatn.l11.x\x1f000" +
+			" milliard\x1elatn.l12.o\x1f0 trillion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.o\x1f00 trillion\x1elatn.l13.x\x1f00 trill" +
+			"ion\x1elatn.l14.o\x1f000 trillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.o\x1f0 müň\x1elatn.l3.x\x1f0 müň\x1elatn.l4." +
+			"o\x1f00 müň\x1elatn.l4.x\x1f00 müň\x1elatn.l5.o\x1f000 müň\x1elatn.l5.x\x1f000 müň\x1elatn.l6.o\x1f0 million\x1elatn.l" +
+			"6.x\x1f0 million\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 million\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 mill" +
+			"ion\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliard\x1elatn.n\x1fsan\u00a0däl\x1elatn.s10.o\x1f00\u00a0mlrd\x1elatn.s10.x\x1f00" +
+			"\u00a0mlrd\x1elatn.s11.o\x1f000\u00a0mlrd\x1elatn.s11.x\x1f000\u00a0mlrd\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s13." +
+			"o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0trln\x1elatn.s14.o\x1f000\u00a0trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s3.o\x1f0\u00a0müň\x1elatn" +
+			".s3.x\x1f0\u00a0müň\x1elatn.s4.o\x1f00\u00a0müň\x1elatn.s4.x\x1f00\u00a0müň\x1elatn.s5.o\x1f000\u00a0müň\x1elatn.s5.x\x1f000\u00a0müň" +
+			"\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s" +
+			"8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mlrd\x1elatn.s9.x\x1f0\u00a0mlrd\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0}" +
+			" {1}\x1elatn.R\x1f{0}—{1}\x1elatn.Ux\x1f{1} {0}\x1elatn.c10.x\x1f¤\u00a000P\x1elatn.c11.x\x1f¤\u00a0000P\x1elatn.c3.x\x1f¤\u00a00a\x1ela" +
+			"tn.c4.x\x1f¤\u00a00m\x1elatn.c5.x\x1f¤\u00a00k\x1elatn.c9.x\x1f¤\u00a00P\x1elatn.g\x1f\u00a0\x1elatn.l10.x\x1f00 piliona\x1elatn.l11.x\x1f000 " +
+			"piliona\x1elatn.l12.x\x1f0 tiliona\x1elatn.l13.x\x1f00 tiliona\x1elatn.l14.x\x1f000 tiliona\x1elatn.l3.x\x1f0 afe\x1elatn.l" +
+			"4.x\x1f0 mano\x1elatn.l5.x\x1f0 kilu\x1elatn.l6.x\x1f0 miliona\x1elatn.l7.x\x1f00 miliona\x1elatn.l8.x\x1f000 miliona\x1elatn." +
+			"l9.x\x1f0 piliona\x1elatn.n\x1fTF\x1elatn.s10.x\x1f00P\x1elatn.s11.x\x1f000P\x1elatn.s3.x\x1f0a\x1elatn.s4.x\x1f0m\x1elatn.s5.x\x1f0k\x1el" +
+			"atn.s9.x\x1f0P\x1elatn.A\x1f¤#,#0.00\x1elatn.C\x1f¤#,#0.00\x1elatn.D\x1f#,#0.###\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0." +
+			"00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.P\x1f%#,##0\x1elatn.c10.o\x1f¤00\u00a0Mr\x1elatn.c10.x\x1f¤00\u00a0Mr\x1elatn.c11" +
+			".o\x1f¤000\u00a0Mr\x1elatn.c11.x\x1f¤000\u00a0Mr\x1elatn.c12.o\x1f¤0\u00a0Tn\x1elatn.c12.x\x1f¤0\u00a0Tn\x1elatn.c13.o\x1f¤00\u00a0Tn\x1elatn" +
+			".c13.x\x1f¤00\u00a0Tn\x1elatn.c14.o\x1f¤000\u00a0Tn\x1elatn.c14.x\x1f¤000\u00a0Tn\x1elatn.c3.o\x1f¤0\u00a0B\x1elatn.c3.x\x1f¤0\u00a0B\x1elatn" +
+			".c4.o\x1f¤00\u00a0B\x1elatn.c4.x\x1f¤00\u00a0B\x1elatn.c5.o\x1f¤000\u00a0B\x1elatn.c5.x\x1f¤000\u00a0B\x1elatn.c6.o\x1f¤0\u00a0Mn\x1elatn.c6." +
+			"x\x1f¤0\u00a0Mn\x1elatn.c7.o\x1f¤00\u00a0Mn\x1elatn.c7.x\x1f¤00\u00a0Mn\x1elatn.c8.o\x1f¤000\u00a0Mn\x1elatn.c8.x\x1f¤000\u00a0Mn\x1elatn.c9." +
+			"o\x1f¤0\u00a0Mr\x1elatn.c9.x\x1f¤0\u00a0Mr\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 milyar\x1elatn.l10.x\x1f00 milyar\x1elatn.l11" +
+			".o\x1f000 milyar\x1elatn.l11.x\x1f000 milyar\x1elatn.l12.o\x1f0 trilyon\x1elatn.l12.x\x1f0 trilyon\x1elatn.l13.o\x1f00 tril" +
+			"yon\x1elatn.l13.x\x1f00 trilyon\x1elatn.l14.o\x1f000 trilyon\x1elatn.l14.x\x1f000 trilyon\x1elatn.l3.o\x1f0 bin\x1elatn.l3." +
+			"x\x1f0 bin\x1elatn.l4.o\x1f00 bin\x1elatn.l4.x\x1f00 bin\x1elatn.l5.o\x1f000 bin\x1elatn.l5.x\x1f000 bin\x1elatn.l6.o\x1f0 milyon" +
+			"\x1elatn.l6.x\x1f0 milyon\x1elatn.l7.o\x1f00 milyon\x1elatn.l7.x\x1f00 milyon\x1elatn.l8.o\x1f000 milyon\x1elatn.l8.x\x1f000 m" +
+			"ilyon\x1elatn.l9.o\x1f0 milyar\x1elatn.l9.x\x1f0 milyar\x1elatn.s10.o\x1f00\u00a0Mr\x1elatn.s10.x\x1f00\u00a0Mr\x1elatn.s11.o\x1f000\u00a0" +
+			"Mr\x1elatn.s11.x\x1f000\u00a0Mr\x1elatn.s12.o\x1f0\u00a0Tn\x1elatn.s12.x\x1f0\u00a0Tn\x1elatn.s13.o\x1f00\u00a0Tn\x1elatn.s13.x\x1f00\u00a0Tn\x1elatn" +
+			".s14.o\x1f000\u00a0Tn\x1elatn.s14.x\x1f000\u00a0Tn\x1elatn.s3.o\x1f0\u00a0B\x1elatn.s3.x\x1f0\u00a0B\x1elatn.s4.o\x1f00\u00a0B\x1elatn.s4.x\x1f00\u00a0B\x1e" +
+			"latn.s5.o\x1f000\u00a0B\x1elatn.s5.x\x1f000\u00a0B\x1elatn.s6.o\x1f0\u00a0Mn\x1elatn.s6.x\x1f0\u00a0Mn\x1elatn.s7.o\x1f00\u00a0Mn\x1elatn.s7.x\x1f00\u00a0" +
+			"Mn\x1elatn.s8.o\x1f000\u00a0Mn\x1elatn.s8.x\x1f000\u00a0Mn\x1elatn.s9.o\x1f0\u00a0Mr\x1elatn.s9.x\x1f0\u00a0Mr\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn." +
+			"C\x1f#,##0.00\u00a0¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000млрд" +
+			"\u00a0¤\x1elatn.c12.x\x1f0\u00a0трлн\u00a0¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3" +
+			".x\x1f0\u00a0мең\u00a0¤\x1elatn.c4.x\x1f00\u00a0мең\u00a0¤\x1elatn.c5.x\x1f000\u00a0мең\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤\x1elatn" +
+			".c7.x\x1f00\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000\u00a0млн\u00a0¤\x1elatn.c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn" +
+			".l10.x\x1f00 миллиард\x1elatn.l11.x\x1f000 миллиард\x1elatn.l12.x\x1f0 триллион\x1elatn.l1" +
+			"3.x\x1f00 триллион\x1elatn.l14.x\x1f000 триллион\x1elatn.l3.x\x1f0 мең\x1elatn.l4.x\x1f00 мең\x1el" +
+			"atn.l5.x\x1f000 мең\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.x\x1f000 милл" +
+			"ион\x1elatn.l9.x\x1f0 миллиард\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.x\x1f000млрд\x1elatn.s12.x\x1f0\u00a0" +
+			"трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.x\x1f0\u00a0мең\x1elatn.s4.x\x1f00\u00a0ме" +
+			"ң\x1elatn.s5.x\x1f000\u00a0мең\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.x\x1f00\u00a0млн\x1elatn.s8.x\x1f000\u00a0млн\x1elatn.s9." +
+			"x\x1f0\u00a0млрд\x1elatn.A\x1f#,##0.00¤\x1elatn.C\x1f#,##0.00¤\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0" +
+			"¤\x1elatn.g\x1f\u00a0\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1earabext.A\x1f¤#,##0.00;(¤" +
+			"#,##0.00)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤#,##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–" +
+			"{1}\x1earabext.S\x1f#E0\x1earabext.Uo\x1f{0} {1}\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10." +
+			"x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1earabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a000" +
+			"0T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5.x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7" +
+			".x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1earabext.l10.o\x1f00 مىليارد\x1earabext.l10" +
+			".x\x1f00 مىليارد\x1earabext.l11.o\x1f000 مىليارد\x1earabext.l11.x\x1f000 مىليارد\x1earabext.l" +
+			"12.o\x1f0 تىرىليون\x1earabext.l12.x\x1f0 تىرىليون\x1earabext.l13.o\x1f00 تىرىليون\x1earabe" +
+			"xt.l13.x\x1f00 تىرىليون\x1earabext.l14.o\x1f000 تىرىليون\x1earabext.l14.x\x1f000 تىرىليو" +
+			"ن\x1earabext.l3.o\x1f0 مىڭ\x1earabext.l3.x\x1f0 مىڭ\x1earabext.l4.o\x1f00 مىڭ\x1earabext.l4.x\x1f00 مىڭ\x1eara" +
+			"bext.l5.o\x1f000 مىڭ\x1earabext.l5.x\x1f000 مىڭ\x1earabext.l6.o\x1f0 مىليون\x1earabext.l6.x\x1f0 مىلي" +
+			"ون\x1earabext.l7.o\x1f00 مىليون\x1earabext.l7.x\x1f00 مىليون\x1earabext.l8.o\x1f000 مىليون\x1eara" +
+			"bext.l8.x\x1f000 مىليون\x1earabext.l9.o\x1f0 مىليارد\x1earabext.l9.x\x1f0 مىليارد\x1earabext.s" +
+			"10.o\x1f00مىليارد\x1earabext.s10.x\x1f00مىليارد\x1earabext.s11.o\x1f000مىليارد\x1earabext.s11" +
+			".x\x1f000مىليارد\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext.s14.x\x1f000T\x1earabext.s3.o\x1f0مىڭ\x1e" +
+			"arabext.s3.x\x1f0مىڭ\x1earabext.s4.o\x1f00مىڭ\x1earabext.s4.x\x1f00مىڭ\x1earabext.s5.o\x1f000مىڭ\x1earabext." +
+			"s5.x\x1f000مىڭ\x1earabext.s6.o\x1f0مىليون\x1earabext.s6.x\x1f0مىليون\x1earabext.s7.o\x1f00مىليون" +
+			"\x1earabext.s7.x\x1f00مىليون\x1earabext.s8.o\x1f000مىليون\x1earabext.s8.x\x1f000مىليون\x1earabext.s" +
+			"9.o\x1f0مىليارد\x1earabext.s9.x\x1f0مىليارد\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.0" +
+			"0\x1elatn.Uo\x1f{0} {1}\x1elatn.l10.o\x1f00 مىليارد\x1elatn.l10.x\x1f00 مىليارد\x1elatn.l11.o\x1f000 مىل" +
+			"يارد\x1elatn.l11.x\x1f000 مىليارد\x1elatn.l12.o\x1f0 تىرىليون\x1elatn.l12.x\x1f0 تىرىليو" +
+			"ن\x1elatn.l13.o\x1f00 تىرىليون\x1elatn.l13.x\x1f00 تىرىليون\x1elatn.l14.o\x1f000 تىرىليون" +
+			"\x1elatn.l14.x\x1f000 تىرىليون\x1elatn.l3.o\x1f0 مىڭ\x1elatn.l3.x\x1f0 مىڭ\x1elatn.l4.o\x1f00 مىڭ\x1elatn." +
+			"l4.x\x1f00 مىڭ\x1elatn.l5.o\x1f000 مىڭ\x1elatn.l5.x\x1f000 مىڭ\x1elatn.l6.o\x1f0 مىليون\x1elatn.l6.x\x1f0 م" +
+			"ىليون\x1elatn.l7.o\x1f00 مىليون\x1elatn.l7.x\x1f00 مىليون\x1elatn.l8.o\x1f000 مىليون\x1elatn.l" +
+			"8.x\x1f000 مىليون\x1elatn.l9.o\x1f0 مىليارد\x1elatn.l9.x\x1f0 مىليارد\x1elatn.s10.o\x1f00مىلي" +
+			"ارد\x1elatn.s10.x\x1f00مىليارد\x1elatn.s11.o\x1f000مىليارد\x1elatn.s11.x\x1f000مىليارد\x1elat" +
+			"n.s3.o\x1f0مىڭ\x1elatn.s3.x\x1f0مىڭ\x1elatn.s4.o\x1f00مىڭ\x1elatn.s4.x\x1f00مىڭ\x1elatn.s5.o\x1f000مىڭ\x1elatn." +
+			"s5.x\x1f000مىڭ\x1elatn.s6.o\x1f0مىليون\x1elatn.s6.x\x1f0مىليون\x1elatn.s7.o\x1f00مىليون\x1elatn.s7." +
+			"x\x1f00مىليون\x1elatn.s8.o\x1f000مىليون\x1elatn.s8.x\x1f000مىليون\x1elatn.s9.o\x1f0مىليارد\x1el" +
+			"atn.s9.x\x1f0مىليارد\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.f\x1f00\u00a0млрд\u00a0¤\x1elat" +
+			"n.c10.m\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.o\x1f00\u00a0млрд\u00a0¤\x1elatn.c10.x\x1f00\u00a0млрд\u00a0¤\x1elatn.c11.f\x1f000\u00a0" +
+			"млрд\u00a0¤\x1elatn.c11.m\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.o\x1f000\u00a0млрд\u00a0¤\x1elatn.c11.x\x1f000\u00a0млрд\u00a0" +
+			"¤\x1elatn.c12.f\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.m\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.o\x1f0\u00a0трлн\u00a0¤\x1elatn.c12.x\x1f0" +
+			"\u00a0трлн\u00a0¤\x1elatn.c13.f\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.m\x1f00\u00a0трлн\u00a0¤\x1elatn.c13.o\x1f00\u00a0трлн\u00a0" +
+			"¤\x1elatn.c13.x\x1f00\u00a0трлн\u00a0¤\x1elatn.c14.f\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.m\x1f000\u00a0трлн\u00a0¤\x1elatn.c1" +
+			"4.o\x1f000\u00a0трлн\u00a0¤\x1elatn.c14.x\x1f000\u00a0трлн\u00a0¤\x1elatn.c3.f\x1f0\u00a0тис'.'\u00a0¤\x1elatn.c3.m\x1f0\u00a0тис" +
+			"'.'\u00a0¤\x1elatn.c3.o\x1f0\u00a0тис'.'\u00a0¤\x1elatn.c3.x\x1f0\u00a0тис'.'\u00a0¤\x1elatn.c4.f\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c" +
+			"4.m\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c4.o\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c4.x\x1f00\u00a0тис'.'\u00a0¤\x1elatn.c5.f\x1f000\u00a0ти" +
+			"с'.'\u00a0¤\x1elatn.c5.m\x1f000\u00a0тис'.'\u00a0¤\x1elatn.c5.o\x1f000\u00a0тис'.'\u00a0¤\x1elatn.c5.x\x1f000\u00a0тис'.'\u00a0¤" +
+			"\x1elatn.c6.f\x1f0\u00a0млн\u00a0¤\x1elatn.c6.m\x1f0\u00a0млн\u00a0¤\x1elatn.c6.o\x1f0\u00a0млн\u00a0¤\x1elatn.c6.x\x1f0\u00a0млн\u00a0¤" +
+			"\x1elatn.c7.f\x1f00\u00a0млн\u00a0¤\x1elatn.c7.m\x1f00\u00a0млн\u00a0¤\x1elatn.c7.o\x1f00\u00a0млн\u00a0¤\x1elatn.c7.x\x1f00\u00a0млн" +
+			"\u00a0¤\x1elatn.c8.f\x1f000\u00a0млн\u00a0¤\x1elatn.c8.m\x1f000\u00a0млн\u00a0¤\x1elatn.c8.o\x1f000\u00a0млн\u00a0¤\x1elatn.c8.x\x1f000" +
+			"\u00a0млн\u00a0¤\x1elatn.c9.f\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.m\x1f0\u00a0млрд\u00a0¤\x1elatn.c9.o\x1f0\u00a0млрд\u00a0¤\x1elatn." +
+			"c9.x\x1f0\u00a0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.e\x1fЕ\x1elatn.g\x1f\u00a0\x1elatn.l10.f\x1f00 мільярди\x1elatn.l10.m\x1f00 м" +
+			"ільярдів\x1elatn.l10.o\x1f00 мільярд\x1elatn.l10.x\x1f00 мільярда\x1elatn.l11.f\x1f000 мі" +
+			"льярди\x1elatn.l11.m\x1f000 мільярдів\x1elatn.l11.o\x1f000 мільярд\x1elatn.l11.x\x1f000 мі" +
+			"льярда\x1elatn.l12.f\x1f0 трильйони\x1elatn.l12.m\x1f0 трильйонів\x1elatn.l12.o\x1f0 тр" +
+			"ильйон\x1elatn.l12.x\x1f0 трильйона\x1elatn.l13.f\x1f00 трильйони\x1elatn.l13.m\x1f00 тр" +
+			"ильйонів\x1elatn.l13.o\x1f00 трильйон\x1elatn.l13.x\x1f00 трильйона\x1elatn.l14.f\x1f000 " +
+			"трильйони\x1elatn.l14.m\x1f000 трильйонів\x1elatn.l14.o\x1f000 трильйон\x1elatn.l14." +
+			"x\x1f000 трильйона\x1elatn.l3.f\x1f0 тисячі\x1elatn.l3.m\x1f0 тисяч\x1elatn.l3.o\x1f0 тисяча" +
+			"\x1elatn.l3.x\x1f0 тисячі\x1elatn.l4.f\x1f00 тисячі\x1elatn.l4.m\x1f00 тисяч\x1elatn.l4.o\x1f00 тися" +
+			"ча\x1elatn.l4.x\x1f00 тисячі\x1elatn.l5.f\x1f000 тисячі\x1elatn.l5.m\x1f000 тисяч\x1elatn.l5.o\x1f000" +
+			" тисяча\x1elatn.l5.x\x1f000 тисячі\x1elatn.l6.f\x1f0 мільйони\x1elatn.l6.m\x1f0 мільйон" +
+			"ів\x1elatn.l6.o\x1f0 мільйон\x1elatn.l6.x\x1f0 мільйона\x1elatn.l7.f\x1f00 мільйони\x1elatn." +
+			"l7.m\x1f00 мільйонів\x1elatn.l7.o\x1f00 мільйон\x1elatn.l7.x\x1f00 мільйона\x1elatn.l8.f\x1f0" +
+			"00 мільйони\x1elatn.l8.m\x1f000 мільйонів\x1elatn.l8.o\x1f000 мільйон\x1elatn.l8.x\x1f000 " +
+			"мільйона\x1elatn.l9.f\x1f0 мільярди\x1elatn.l9.m\x1f0 мільярдів\x1elatn.l9.o\x1f0 міль" +
+			"ярд\x1elatn.l9.x\x1f0 мільярда\x1elatn.s10.f\x1f00\u00a0млрд\x1elatn.s10.m\x1f00\u00a0млрд\x1elatn.s10.o\x1f0" +
+			"0\u00a0млрд\x1elatn.s10.x\x1f00\u00a0млрд\x1elatn.s11.f\x1f000\u00a0млрд\x1elatn.s11.m\x1f000\u00a0млрд\x1elatn.s11.o" +
+			"\x1f000\u00a0млрд\x1elatn.s11.x\x1f000\u00a0млрд\x1elatn.s12.f\x1f0\u00a0трлн\x1elatn.s12.m\x1f0\u00a0трлн\x1elatn.s12.o" +
+			"\x1f0\u00a0трлн\x1elatn.s12.x\x1f0\u00a0трлн\x1elatn.s13.f\x1f00\u00a0трлн\x1elatn.s13.m\x1f00\u00a0трлн\x1elatn.s13.o\x1f0" +
+			"0\u00a0трлн\x1elatn.s13.x\x1f00\u00a0трлн\x1elatn.s14.f\x1f000\u00a0трлн\x1elatn.s14.m\x1f000\u00a0трлн\x1elatn.s14.o" +
+			"\x1f000\u00a0трлн\x1elatn.s14.x\x1f000\u00a0трлн\x1elatn.s3.f\x1f0\u00a0тис'.'\x1elatn.s3.m\x1f0\u00a0тис'.'\x1elatn.s3.o\x1f" +
+			"0\u00a0тис'.'\x1elatn.s3.x\x1f0\u00a0тис'.'\x1elatn.s4.f\x1f00\u00a0тис'.'\x1elatn.s4.m\x1f00\u00a0тис'.'\x1elatn.s4.o\x1f00" +
+			"\u00a0тис'.'\x1elatn.s4.x\x1f00\u00a0тис'.'\x1elatn.s5.f\x1f000\u00a0тис'.'\x1elatn.s5.m\x1f000\u00a0тис'.'\x1elatn.s5.o\x1f" +
+			"000\u00a0тис'.'\x1elatn.s5.x\x1f000\u00a0тис'.'\x1elatn.s6.f\x1f0\u00a0млн\x1elatn.s6.m\x1f0\u00a0млн\x1elatn.s6.o\x1f0\u00a0мл" +
+			"н\x1elatn.s6.x\x1f0\u00a0млн\x1elatn.s7.f\x1f00\u00a0млн\x1elatn.s7.m\x1f00\u00a0млн\x1elatn.s7.o\x1f00\u00a0млн\x1elatn.s7.x\x1f" +
+			"00\u00a0млн\x1elatn.s8.f\x1f000\u00a0млн\x1elatn.s8.m\x1f000\u00a0млн\x1elatn.s8.o\x1f000\u00a0млн\x1elatn.s8.x\x1f000\u00a0мл" +
+			"н\x1elatn.s9.f\x1f0\u00a0млрд\x1elatn.s9.m\x1f0\u00a0млрд\x1elatn.s9.o\x1f0\u00a0млрд\x1elatn.s9.x\x1f0\u00a0млрд\x1earab." +
+			"+\x1f\u061c+\x1earab.-\x1f\u061c-\x1earab.d\x1f٫\x1earab.e\x1fاس\x1earab.g\x1f٬\x1earab.i\x1f∞\x1earab.m\x1f؉\x1earab.n\x1fNaN\x1earab.p\x1f٪\u061c\x1eara" +
+			"b.~\x1f~\x1earabext.+\x1f\u200e+\u200e\x1earabext.-\x1f\u200e-\u200e\x1earabext.d\x1f٫\x1earabext.e\x1f×۱۰^\x1earabext.g\x1f٬\x1earabext.i\x1f" +
+			"∞\x1earabext.m\x1f؉\x1earabext.n\x1fNaN\x1earabext.p\x1f٪\x1earabext.~\x1f~\x1eg\x1f1\x1elatn.+\x1f+\x1elatn.-\x1f-\x1elatn.A\x1f¤\u00a0#,##0.0" +
+			"0\x1elatn.B\x1f\u00a0\x1elatn.C\x1f¤\u00a0#,##0.00\x1elatn.D\x1f#,##0.###\x1elatn.P\x1f#,##0%\x1elatn.R\x1f{0}–{1}\x1elatn.S\x1f#E0\x1elatn." +
+			"Ux\x1f{0} {1}\x1elatn.X\x1f~{0}\x1elatn.b\x1f\u00a0\x1elatn.c10.x\x1f¤\u00a000G\x1elatn.c11.x\x1f¤\u00a0000G\x1elatn.c12.x\x1f¤\u00a00T\x1elatn.c" +
+			"13.x\x1f¤\u00a000T\x1elatn.c14.x\x1f¤\u00a0000T\x1elatn.c3.x\x1f¤\u00a00K\x1elatn.c4.x\x1f¤\u00a000K\x1elatn.c5.x\x1f¤\u00a0000K\x1elatn.c6.x" +
+			"\x1f¤\u00a00M\x1elatn.c7.x\x1f¤\u00a000M\x1elatn.c8.x\x1f¤\u00a0000M\x1elatn.c9.x\x1f¤\u00a00G\x1elatn.d\x1f.\x1elatn.e\x1fE\x1elatn.g\x1f,\x1elatn.i\x1f" +
+			"∞\x1elatn.l10.x\x1f00G\x1elatn.l11.x\x1f000G\x1elatn.l12.x\x1f0T\x1elatn.l13.x\x1f00T\x1elatn.l14.x\x1f000T\x1elatn.l3.x\x1f0K\x1elat" +
+			"n.l4.x\x1f00K\x1elatn.l5.x\x1f000K\x1elatn.l6.x\x1f0M\x1elatn.l7.x\x1f00M\x1elatn.l8.x\x1f000M\x1elatn.l9.x\x1f0G\x1elatn.m\x1f‰\x1elatn" +
+			".n\x1fNaN\x1elatn.p\x1f%\x1elatn.s10.x\x1f00G\x1elatn.s11.x\x1f000G\x1elatn.s12.x\x1f0T\x1elatn.s13.x\x1f00T\x1elatn.s14.x\x1f000T\x1elatn" +
+			".s3.x\x1f0K\x1elatn.s4.x\x1f00K\x1elatn.s5.x\x1f000K\x1elatn.s6.x\x1f0M\x1elatn.s7.x\x1f00M\x1elatn.s8.x\x1f000M\x1elatn.s9.x\x1f0G\x1elat" +
+			"n.~\x1f~\x1earabext.A\x1f¤#,##0.00;(¤#,##0.00)\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤#,##0.00\x1earabext.D\x1f#,##0.###\x1ear" +
+			"abext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1e" +
+			"arabext.c10.o\x1f¤00\u00a0ارب\x1earabext.c10.x\x1f¤00\u00a0ارب\x1earabext.c11.o\x1f¤0\u00a0کھرب\x1earabext.c11.x\x1f" +
+			"¤0\u00a0کھرب\x1earabext.c12.o\x1f¤00\u00a0کھرب\x1earabext.c12.x\x1f¤00\u00a0کھرب\x1earabext.c13.o\x1f¤00\u00a0ٹر" +
+			"یلین\x1earabext.c13.x\x1f¤00\u00a0ٹریلین\x1earabext.c14.o\x1f¤000\u00a0ٹریلین\x1earabext.c14.x\x1f¤000\u00a0" +
+			"ٹریلین\x1earabext.c3.o\x1f¤0\u00a0ہزار\x1earabext.c3.x\x1f¤0\u00a0ہزار\x1earabext.c4.o\x1f¤00\u00a0ہزار\x1ea" +
+			"rabext.c4.x\x1f¤00\u00a0ہزار\x1earabext.c5.o\x1f¤0\u00a0لاکھ\x1earabext.c5.x\x1f¤0\u00a0لاکھ\x1earabext.c6.o\x1f¤" +
+			"00\u00a0لاکھ\x1earabext.c6.x\x1f¤00\u00a0لاکھ\x1earabext.c7.o\x1f¤0\u00a0کروڑ\x1earabext.c7.x\x1f¤0\u00a0کروڑ\x1ea" +
+			"rabext.c8.o\x1f¤00\u00a0کروڑ\x1earabext.c8.x\x1f¤00\u00a0کروڑ\x1earabext.c9.o\x1f¤0\u00a0ارب\x1earabext.c9.x\x1f¤0" +
+			"\u00a0ارب\x1earabext.l10.o\x1f00 ارب\x1earabext.l10.x\x1f00 ارب\x1earabext.l11.o\x1f0 کھرب\x1earabext.l11.x\x1f" +
+			"0 کھرب\x1earabext.l12.o\x1f00 کھرب\x1earabext.l12.x\x1f00 کھرب\x1earabext.l13.o\x1f00 ٹریلین\x1eara" +
+			"bext.l13.x\x1f00 ٹریلین\x1earabext.l14.o\x1f000 ٹریلین\x1earabext.l14.x\x1f000 ٹریلین\x1earabext" +
+			".l3.o\x1f0 ہزار\x1earabext.l3.x\x1f0 ہزار\x1earabext.l4.o\x1f00 ہزار\x1earabext.l4.x\x1f00 ہزار\x1earabe" +
+			"xt.l5.o\x1f0 لاکھ\x1earabext.l5.x\x1f0 لاکھ\x1earabext.l6.o\x1f00 لاکھ\x1earabext.l6.x\x1f00 لاکھ\x1eara" +
+			"bext.l7.o\x1f0 کروڑ\x1earabext.l7.x\x1f0 کروڑ\x1earabext.l8.o\x1f00 کروڑ\x1earabext.l8.x\x1f00 کروڑ\x1ea" +
+			"rabext.l9.o\x1f0 ارب\x1earabext.l9.x\x1f0 ارب\x1earabext.s10.o\x1f00\u00a0ارب\x1earabext.s10.x\x1f00\u00a0ارب\x1eara" +
+			"bext.s11.o\x1f0\u00a0کھرب\x1earabext.s11.x\x1f0\u00a0کھرب\x1earabext.s12.o\x1f00\u00a0کھرب\x1earabext.s12.x\x1f00\u00a0ک" +
+			"ھرب\x1earabext.s13.o\x1f00\u00a0ٹریلین\x1earabext.s13.x\x1f00\u00a0ٹریلین\x1earabext.s14.o\x1f000\u00a0ٹریل" +
+			"ین\x1earabext.s14.x\x1f000\u00a0ٹریلین\x1earabext.s3.o\x1f0\u00a0ہزار\x1earabext.s3.x\x1f0\u00a0ہزار\x1earabext.s" +
+			"4.o\x1f00\u00a0ہزار\x1earabext.s4.x\x1f00\u00a0ہزار\x1earabext.s5.o\x1f0\u00a0لاکھ\x1earabext.s5.x\x1f0\u00a0لاکھ\x1eara" +
+			"bext.s6.o\x1f00\u00a0لاکھ\x1earabext.s6.x\x1f00\u00a0لاکھ\x1earabext.s7.o\x1f0\u00a0کروڑ\x1earabext.s7.x\x1f0\u00a0کرو" +
+			"ڑ\x1earabext.s8.o\x1f00\u00a0کروڑ\x1earabext.s8.x\x1f00\u00a0کروڑ\x1earabext.s9.o\x1f0\u00a0ارب\x1earabext.s9.x\x1f0\u00a0ا" +
+			"رب\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e-\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00\u00a0ا" +
+			"رب\x1elatn.c10.x\x1f¤00\u00a0ارب\x1elatn.c11.o\x1f¤0\u00a0کھرب\x1elatn.c11.x\x1f¤0\u00a0کھرب\x1elatn.c12.o\x1f¤00\u00a0" +
+			"کھرب\x1elatn.c12.x\x1f¤00\u00a0کھرب\x1elatn.c13.o\x1f¤00\u00a0ٹریلین\x1elatn.c13.x\x1f¤00\u00a0ٹریلین\x1el" +
+			"atn.c14.o\x1f¤000\u00a0ٹریلین\x1elatn.c14.x\x1f¤000\u00a0ٹریلین\x1elatn.c3.o\x1f¤0\u00a0ہزار\x1elatn.c3.x\x1f¤" +
+			"0\u00a0ہزار\x1elatn.c4.o\x1f¤00\u00a0ہزار\x1elatn.c4.x\x1f¤00\u00a0ہزار\x1elatn.c5.o\x1f¤0\u00a0لاکھ\x1elatn.c5.x\x1f" +
+			"¤0\u00a0لاکھ\x1elatn.c6.o\x1f¤00\u00a0لاکھ\x1elatn.c6.x\x1f¤00\u00a0لاکھ\x1elatn.c7.o\x1f¤0\u00a0کروڑ\x1elatn.c7." +
+			"x\x1f¤0\u00a0کروڑ\x1elatn.c8.o\x1f¤00\u00a0کروڑ\x1elatn.c8.x\x1f¤00\u00a0کروڑ\x1elatn.c9.o\x1f¤0\u00a0ارب\x1elatn.c9." +
+			"x\x1f¤0\u00a0ارب\x1elatn.l10.o\x1f00 ارب\x1elatn.l10.x\x1f00 ارب\x1elatn.l11.o\x1f0 کھرب\x1elatn.l11.x\x1f0 کھر" +
+			"ب\x1elatn.l12.o\x1f00 کھرب\x1elatn.l12.x\x1f00 کھرب\x1elatn.l13.o\x1f00 ٹریلین\x1elatn.l13.x\x1f00 ٹری" +
+			"لین\x1elatn.l14.o\x1f000 ٹریلین\x1elatn.l14.x\x1f000 ٹریلین\x1elatn.l3.o\x1f0 ہزار\x1elatn.l3.x\x1f0 " +
+			"ہزار\x1elatn.l4.o\x1f00 ہزار\x1elatn.l4.x\x1f00 ہزار\x1elatn.l5.o\x1f0 لاکھ\x1elatn.l5.x\x1f0 لاکھ\x1el" +
+			"atn.l6.o\x1f00 لاکھ\x1elatn.l6.x\x1f00 لاکھ\x1elatn.l7.o\x1f0 کروڑ\x1elatn.l7.x\x1f0 کروڑ\x1elatn.l8.o\x1f0" +
+			"0 کروڑ\x1elatn.l8.x\x1f00 کروڑ\x1elatn.l9.o\x1f0 ارب\x1elatn.l9.x\x1f0 ارب\x1elatn.p\x1f٪\x1elatn.s10.o\x1f00\u00a0" +
+			"ارب\x1elatn.s10.x\x1f00\u00a0ارب\x1elatn.s11.o\x1f0\u00a0کھرب\x1elatn.s11.x\x1f0\u00a0کھرب\x1elatn.s12.o\x1f00\u00a0کھر" +
+			"ب\x1elatn.s12.x\x1f00\u00a0کھرب\x1elatn.s13.o\x1f00\u00a0ٹریلین\x1elatn.s13.x\x1f00\u00a0ٹریلین\x1elatn.s14.o\x1f00" +
+			"0\u00a0ٹریلین\x1elatn.s14.x\x1f000\u00a0ٹریلین\x1elatn.s3.o\x1f0\u00a0ہزار\x1elatn.s3.x\x1f0\u00a0ہزار\x1elatn.s4" +
+			".o\x1f00\u00a0ہزار\x1elatn.s4.x\x1f00\u00a0ہزار\x1elatn.s5.o\x1f0\u00a0لاکھ\x1elatn.s5.x\x1f0\u00a0لاکھ\x1elatn.s6.o\x1f00\u00a0" +
+			"لاکھ\x1elatn.s6.x\x1f00\u00a0لاکھ\x1elatn.s7.o\x1f0\u00a0کروڑ\x1elatn.s7.x\x1f0\u00a0کروڑ\x1elatn.s8.o\x1f00\u00a0کرو" +
+			"ڑ\x1elatn.s8.x\x1f00\u00a0کروڑ\x1elatn.s9.o\x1f0\u00a0ارب\x1elatn.s9.x\x1f0\u00a0ارب\x1elatn.A\x1f#,##0.00¤;(#,##0.00¤)" +
+			"\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.c10.o\x1f00\u00a0mlrd\u00a0¤\x1elatn.c10.x\x1f00\u00a0mlrd\u00a0¤\x1elatn.c11.o\x1f000\u00a0mlrd\u00a0¤\x1ela" +
+			"tn.c11.x\x1f000\u00a0mlrd\u00a0¤\x1elatn.c12.o\x1f0\u00a0trln\u00a0¤\x1elatn.c12.x\x1f0\u00a0trln\u00a0¤\x1elatn.c13.o\x1f00\u00a0trln\u00a0¤\x1elat" +
+			"n.c13.x\x1f00\u00a0trln\u00a0¤\x1elatn.c14.o\x1f000\u00a0trln\u00a0¤\x1elatn.c14.x\x1f000\u00a0trln\u00a0¤\x1elatn.c3.o\x1f0\u00a0ming\u00a0¤\x1elat" +
+			"n.c3.x\x1f0\u00a0ming\u00a0¤\x1elatn.c4.o\x1f00\u00a0ming\u00a0¤\x1elatn.c4.x\x1f00\u00a0ming\u00a0¤\x1elatn.c5.o\x1f000\u00a0ming\u00a0¤\x1elatn.c5" +
+			".x\x1f000\u00a0ming\u00a0¤\x1elatn.c6.o\x1f0\u00a0mln\u00a0¤\x1elatn.c6.x\x1f0\u00a0mln\u00a0¤\x1elatn.c7.o\x1f00\u00a0mln\u00a0¤\x1elatn.c7.x\x1f00\u00a0m" +
+			"ln\u00a0¤\x1elatn.c8.o\x1f000\u00a0mln\u00a0¤\x1elatn.c8.x\x1f000\u00a0mln\u00a0¤\x1elatn.c9.o\x1f0\u00a0mlrd\u00a0¤\x1elatn.c9.x\x1f0\u00a0mlrd\u00a0¤" +
+			"\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 milliard\x1elatn.l10.x\x1f00 milliard\x1elatn.l11.o\x1f000 milliard\x1elatn.l" +
+			"11.x\x1f000 milliard\x1elatn.l12.o\x1f0 trillion\x1elatn.l12.x\x1f0 trillion\x1elatn.l13.o\x1f00 trillion\x1elatn.l13.x\x1f" +
+			"00 trillion\x1elatn.l14.o\x1f000 trillion\x1elatn.l14.x\x1f000 trillion\x1elatn.l3.o\x1f0 ming\x1elatn.l3.x\x1f0 ming\x1ela" +
+			"tn.l4.o\x1f00 ming\x1elatn.l4.x\x1f00 ming\x1elatn.l5.o\x1f000 ming\x1elatn.l5.x\x1f000 ming\x1elatn.l6.o\x1f0 million\x1elatn" +
+			".l6.x\x1f0 million\x1elatn.l7.o\x1f00 million\x1elatn.l7.x\x1f00 million\x1elatn.l8.o\x1f000 million\x1elatn.l8.x\x1f000 mi" +
+			"llion\x1elatn.l9.o\x1f0 milliard\x1elatn.l9.x\x1f0 milliard\x1elatn.n\x1fson\u00a0emas\x1elatn.s10.o\x1f00\u00a0mlrd\x1elatn.s10.x\x1f" +
+			"00\u00a0mlrd\x1elatn.s11.o\x1f000\u00a0mlrd\x1elatn.s11.x\x1f000\u00a0mlrd\x1elatn.s12.o\x1f0\u00a0trln\x1elatn.s12.x\x1f0\u00a0trln\x1elatn.s1" +
+			"3.o\x1f00\u00a0trln\x1elatn.s13.x\x1f00\u00a0trln\x1elatn.s14.o\x1f000\u00a0trln\x1elatn.s14.x\x1f000\u00a0trln\x1elatn.s3.o\x1f0\u00a0ming\x1elat" +
+			"n.s3.x\x1f0\u00a0ming\x1elatn.s4.o\x1f00\u00a0ming\x1elatn.s4.x\x1f00\u00a0ming\x1elatn.s5.o\x1f000\u00a0ming\x1elatn.s5.x\x1f000\u00a0ming\x1elat" +
+			"n.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f" +
+			"000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mlrd\x1elatn.s9.x\x1f0\u00a0mlrd\x1earabext.A\x1f¤\u00a0#,##0.00\x1earabext.B\x1f\u00a0\x1earabext.C\x1f¤\u00a0#" +
+			",##0.00\x1earabext.D\x1f#,##0.###\x1earabext.P\x1f#,##0%\x1earabext.R\x1f{0}–{1}\x1earabext.S\x1f#E0\x1earabext.Ux\x1f{0} {1" +
+			"}\x1earabext.X\x1f~{0}\x1earabext.b\x1f\u00a0\x1earabext.c10.x\x1f¤\u00a000G\x1earabext.c11.x\x1f¤\u00a0000G\x1earabext.c12.x\x1f¤\u00a00T\x1e" +
+			"arabext.c13.x\x1f¤\u00a000T\x1earabext.c14.x\x1f¤\u00a0000T\x1earabext.c3.x\x1f¤\u00a00K\x1earabext.c4.x\x1f¤\u00a000K\x1earabext.c5" +
+			".x\x1f¤\u00a0000K\x1earabext.c6.x\x1f¤\u00a00M\x1earabext.c7.x\x1f¤\u00a000M\x1earabext.c8.x\x1f¤\u00a0000M\x1earabext.c9.x\x1f¤\u00a00G\x1ea" +
+			"rabext.l10.x\x1f00G\x1earabext.l11.x\x1f000G\x1earabext.l12.x\x1f0T\x1earabext.l13.x\x1f00T\x1earabext.l14.x\x1f000T\x1earabex" +
+			"t.l3.x\x1f0K\x1earabext.l4.x\x1f00K\x1earabext.l5.x\x1f000K\x1earabext.l6.x\x1f0M\x1earabext.l7.x\x1f00M\x1earabext.l8.x\x1f000M\x1e" +
+			"arabext.l9.x\x1f0G\x1earabext.s10.x\x1f00G\x1earabext.s11.x\x1f000G\x1earabext.s12.x\x1f0T\x1earabext.s13.x\x1f00T\x1earabext." +
+			"s14.x\x1f000T\x1earabext.s3.x\x1f0K\x1earabext.s4.x\x1f00K\x1earabext.s5.x\x1f000K\x1earabext.s6.x\x1f0M\x1earabext.s7.x\x1f00M\x1ea" +
+			"rabext.s8.x\x1f000M\x1earabext.s9.x\x1f0G\x1elatn.+\x1f\u200e+\x1elatn.-\x1f\u200e−\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f#,##0.00\u00a0¤" +
+			"\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.o\x1f00млрд\u00a0¤\x1elatn.c10.x\x1f00млрд\u00a0¤\x1elatn.c1" +
+			"1.o\x1f000млрд\u00a0¤\x1elatn.c11.x\x1f000млрд\u00a0¤\x1elatn.c12.o\x1f0трлн\u00a0¤\x1elatn.c12.x\x1f0трлн\u00a0¤" +
+			"\x1elatn.c13.o\x1f00трлн\u00a0¤\x1elatn.c13.x\x1f00трлн\u00a0¤\x1elatn.c14.o\x1f000трлн\u00a0¤\x1elatn.c14.x\x1f000т" +
+			"рлн\u00a0¤\x1elatn.c3.o\x1f0минг\u00a0¤\x1elatn.c3.x\x1f0минг\u00a0¤\x1elatn.c4.o\x1f00минг\u00a0¤\x1elatn.c4.x\x1f00" +
+			"минг\u00a0¤\x1elatn.c5.o\x1f000минг\u00a0¤\x1elatn.c5.x\x1f000минг\u00a0¤\x1elatn.c6.o\x1f0млн\u00a0¤\x1elatn.c6.x" +
+			"\x1f0млн\u00a0¤\x1elatn.c7.o\x1f00млн\u00a0¤\x1elatn.c7.x\x1f00млн\u00a0¤\x1elatn.c8.o\x1f000млн\u00a0¤\x1elatn.c8.x\x1f000" +
+			"млн\u00a0¤\x1elatn.c9.o\x1f0млрд\u00a0¤\x1elatn.c9.x\x1f0млрд\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.l10.o\x1f00 ми" +
+			"ллиард\x1elatn.l10.x\x1f00 миллиард\x1elatn.l11.o\x1f000 миллиард\x1elatn.l11.x\x1f000 мил" +
+			"лиард\x1elatn.l12.o\x1f0 трилион\x1elatn.l12.x\x1f0 трилион\x1elatn.l13.o\x1f00 трилион\x1e" +
+			"latn.l13.x\x1f00 трилион\x1elatn.l14.o\x1f000 трилион\x1elatn.l14.x\x1f000 трилион\x1elatn.l3" +
+			".o\x1f0 минг\x1elatn.l3.x\x1f0 минг\x1elatn.l4.o\x1f00 минг\x1elatn.l4.x\x1f00 минг\x1elatn.l5.o\x1f000 ми" +
+			"нг\x1elatn.l5.x\x1f000 минг\x1elatn.l6.o\x1f0 миллион\x1elatn.l6.x\x1f0 миллион\x1elatn.l7.o\x1f00 м" +
+			"иллион\x1elatn.l7.x\x1f00 миллион\x1elatn.l8.o\x1f000 миллион\x1elatn.l8.x\x1f000 миллио" +
+			"н\x1elatn.l9.o\x1f0 миллиард\x1elatn.l9.x\x1f0 миллиард\x1elatn.n\x1fҳақиқий\u00a0сон\u00a0эм" +
+			"ас\x1elatn.s10.o\x1f00млрд\x1elatn.s10.x\x1f00млрд\x1elatn.s11.o\x1f000млрд\x1elatn.s11.x\x1f000млрд\x1el" +
+			"atn.s12.o\x1f0трлн\x1elatn.s12.x\x1f0трлн\x1elatn.s13.o\x1f00трлн\x1elatn.s13.x\x1f00трлн\x1elatn.s14.o\x1f" +
+			"000трлн\x1elatn.s14.x\x1f000трлн\x1elatn.s3.o\x1f0минг\x1elatn.s3.x\x1f0минг\x1elatn.s4.o\x1f00минг\x1e" +
+			"latn.s4.x\x1f00минг\x1elatn.s5.o\x1f000минг\x1elatn.s5.x\x1f000минг\x1elatn.s6.o\x1f0млн\x1elatn.s6.x\x1f0м" +
+			"лн\x1elatn.s7.o\x1f00млн\x1elatn.s7.x\x1f00млн\x1elatn.s8.o\x1f000млн\x1elatn.s8.x\x1f000млн\x1elatn.s9.o\x1f0м" +
+			"лрд\x1elatn.s9.x\x1f0млрд\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1evaii.+\x1f+\x1evaii.-\x1f-\x1eva" +
+			"ii.A\x1f¤#,##0.00;(¤#,##0.00)\x1evaii.B\x1f\u00a0\x1evaii.C\x1f¤#,##0.00\x1evaii.D\x1f#,##0.###\x1evaii.P\x1f#,##0%\x1evaii.R\x1f{" +
+			"0}–{1}\x1evaii.S\x1f#E0\x1evaii.Ux\x1f{0} {1}\x1evaii.X\x1f~{0}\x1evaii.b\x1f\u00a0\x1evaii.c10.x\x1f¤\u00a000G\x1evaii.c11.x\x1f¤\u00a0000G" +
+			"\x1evaii.c12.x\x1f¤\u00a00T\x1evaii.c13.x\x1f¤\u00a000T\x1evaii.c14.x\x1f¤\u00a0000T\x1evaii.c3.x\x1f¤\u00a00K\x1evaii.c4.x\x1f¤\u00a000K\x1evai" +
+			"i.c5.x\x1f¤\u00a0000K\x1evaii.c6.x\x1f¤\u00a00M\x1evaii.c7.x\x1f¤\u00a000M\x1evaii.c8.x\x1f¤\u00a0000M\x1evaii.c9.x\x1f¤\u00a00G\x1evaii.d\x1f.\x1e" +
+			"vaii.e\x1fE\x1evaii.g\x1f,\x1evaii.i\x1f∞\x1evaii.l10.x\x1f00G\x1evaii.l11.x\x1f000G\x1evaii.l12.x\x1f0T\x1evaii.l13.x\x1f00T\x1evaii.l1" +
+			"4.x\x1f000T\x1evaii.l3.x\x1f0K\x1evaii.l4.x\x1f00K\x1evaii.l5.x\x1f000K\x1evaii.l6.x\x1f0M\x1evaii.l7.x\x1f00M\x1evaii.l8.x\x1f000M\x1evai" +
+			"i.l9.x\x1f0G\x1evaii.m\x1f‰\x1evaii.n\x1fNaN\x1evaii.p\x1f%\x1evaii.s10.x\x1f00G\x1evaii.s11.x\x1f000G\x1evaii.s12.x\x1f0T\x1evaii.s13.x" +
+			"\x1f00T\x1evaii.s14.x\x1f000T\x1evaii.s3.x\x1f0K\x1evaii.s4.x\x1f00K\x1evaii.s5.x\x1f000K\x1evaii.s6.x\x1f0M\x1evaii.s7.x\x1f00M\x1evaii.s" +
+			"8.x\x1f000M\x1evaii.s9.x\x1f0G\x1evaii.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1evaii.+\x1f+\x1evaii.-\x1f" +
+			"-\x1evaii.A\x1f¤#,##0.00;(¤#,##0.00)\x1evaii.B\x1f\u00a0\x1evaii.C\x1f¤#,##0.00\x1evaii.D\x1f#,##0.###\x1evaii.P\x1f#,##0%\x1evaii" +
+			".R\x1f{0}–{1}\x1evaii.S\x1f#E0\x1evaii.Ux\x1f{0} {1}\x1evaii.X\x1f~{0}\x1evaii.b\x1f\u00a0\x1evaii.c10.x\x1f¤\u00a000G\x1evaii.c11.x\x1f¤\u00a0" +
+			"000G\x1evaii.c12.x\x1f¤\u00a00T\x1evaii.c13.x\x1f¤\u00a000T\x1evaii.c14.x\x1f¤\u00a0000T\x1evaii.c3.x\x1f¤\u00a00K\x1evaii.c4.x\x1f¤\u00a000K" +
+			"\x1evaii.c5.x\x1f¤\u00a0000K\x1evaii.c6.x\x1f¤\u00a00M\x1evaii.c7.x\x1f¤\u00a000M\x1evaii.c8.x\x1f¤\u00a0000M\x1evaii.c9.x\x1f¤\u00a00G\x1evaii." +
+			"d\x1f.\x1evaii.e\x1fE\x1evaii.g\x1f,\x1evaii.i\x1f∞\x1evaii.l10.x\x1f00G\x1evaii.l11.x\x1f000G\x1evaii.l12.x\x1f0T\x1evaii.l13.x\x1f00T\x1evai" +
+			"i.l14.x\x1f000T\x1evaii.l3.x\x1f0K\x1evaii.l4.x\x1f00K\x1evaii.l5.x\x1f000K\x1evaii.l6.x\x1f0M\x1evaii.l7.x\x1f00M\x1evaii.l8.x\x1f000M" +
+			"\x1evaii.l9.x\x1f0G\x1evaii.m\x1f‰\x1evaii.n\x1fNaN\x1evaii.p\x1f%\x1evaii.s10.x\x1f00G\x1evaii.s11.x\x1f000G\x1evaii.s12.x\x1f0T\x1evaii.s" +
+			"13.x\x1f00T\x1evaii.s14.x\x1f000T\x1evaii.s3.x\x1f0K\x1evaii.s4.x\x1f00K\x1evaii.s5.x\x1f000K\x1evaii.s6.x\x1f0M\x1evaii.s7.x\x1f00M\x1eva" +
+			"ii.s8.x\x1f000M\x1evaii.s9.x\x1f0G\x1evaii.~\x1f~\x1elatn.A\x1f#,##0.00\u202f¤\x1elatn.C\x1f#,##0.00\u202f¤\x1elatn.R\x1f{0}-{1}\x1elatn" +
+			".Uo\x1f{0}\u202f{1}\x1elatn.Ux\x1f{0}\u202f{1}\x1elatn.c10.o\x1f00\u00a0mld\u202f¤\x1elatn.c10.x\x1f00\u00a0mld\u202f¤\x1elatn.c11.o\x1f000\u00a0" +
+			"mld\u202f¤\x1elatn.c11.x\x1f000\u00a0mld\u202f¤\x1elatn.c12.o\x1f0\u00a0bln\u202f¤\x1elatn.c12.x\x1f0\u00a0bln\u202f¤\x1elatn.c13.o\x1f00\u00a0b" +
+			"ln\u202f¤\x1elatn.c13.x\x1f00\u00a0bln\u202f¤\x1elatn.c14.o\x1f000\u00a0bln\u202f¤\x1elatn.c14.x\x1f000\u00a0bln\u202f¤\x1elatn.c3.o\x1f0\x1ela" +
+			"tn.c3.x\x1f0\u00a0mila\u202f¤\x1elatn.c4.o\x1f00\u00a0mila\u202f¤\x1elatn.c4.x\x1f00\u00a0mila\u202f¤\x1elatn.c5.o\x1f000\u00a0mila\u202f¤\x1ela" +
+			"tn.c5.x\x1f000\u00a0mila\u202f¤\x1elatn.c6.o\x1f0\u00a0mln\u202f¤\x1elatn.c6.x\x1f0\u00a0mln\u202f¤\x1elatn.c7.o\x1f00\u00a0mln\u202f¤\x1elatn.c" +
+			"7.x\x1f00\u00a0mln\u202f¤\x1elatn.c8.o\x1f000\u00a0mln\u202f¤\x1elatn.c8.x\x1f000\u00a0mln\u202f¤\x1elatn.c9.o\x1f0\u00a0mld\u202f¤\x1elatn.c9.x" +
+			"\x1f0\u00a0mld\u202f¤\x1elatn.d\x1f,\x1elatn.g\x1f\u202f\x1elatn.l10.o\x1f00 miliardi\x1elatn.l10.x\x1f00 miliardi\x1elatn.l11.o\x1f000 mi" +
+			"liardi\x1elatn.l11.x\x1f000 miliardi\x1elatn.l12.o\x1f0 bilion\x1elatn.l12.x\x1f0 bilioni\x1elatn.l13.o\x1f00 bilioni\x1ela" +
+			"tn.l13.x\x1f00 bilioni\x1elatn.l14.o\x1f000 bilioni\x1elatn.l14.x\x1f000 bilioni\x1elatn.l3.o\x1fmile\x1elatn.l3.x\x1f0 mil" +
+			"a\x1elatn.l4.o\x1f00 mila\x1elatn.l4.x\x1f00 mila\x1elatn.l5.o\x1f000 mila\x1elatn.l5.x\x1f000 mila\x1elatn.l6.o\x1f0 milion\x1el" +
+			"atn.l6.x\x1f0 milioni\x1elatn.l7.o\x1f00 milioni\x1elatn.l7.x\x1f00 milioni\x1elatn.l8.o\x1f000 milioni\x1elatn.l8.x\x1f000" +
+			" milioni\x1elatn.l9.o\x1f0 miliardo\x1elatn.l9.x\x1f0 miliardi\x1elatn.s10.o\x1f00\u00a0mld\x1elatn.s10.x\x1f00\u00a0mld\x1elatn.s1" +
+			"1.o\x1f000\u00a0mld\x1elatn.s11.x\x1f000\u00a0mld\x1elatn.s12.o\x1f0\u00a0bln\x1elatn.s12.x\x1f0\u00a0bln\x1elatn.s13.o\x1f00\u00a0bln\x1elatn.s13" +
+			".x\x1f00\u00a0bln\x1elatn.s14.o\x1f000\u00a0bln\x1elatn.s14.x\x1f000\u00a0bln\x1elatn.s3.o\x1f0\x1elatn.s3.x\x1f0\u00a0mila\x1elatn.s4.o\x1f00\u00a0m" +
+			"ila\x1elatn.s4.x\x1f00\u00a0mila\x1elatn.s5.o\x1f000\u00a0mila\x1elatn.s5.x\x1f000\u00a0mila\x1elatn.s6.o\x1f0\u00a0mln\x1elatn.s6.x\x1f0\u00a0mln" +
+			"\x1elatn.s7.o\x1f00\u00a0mln\x1elatn.s7.x\x1f00\u00a0mln\x1elatn.s8.o\x1f000\u00a0mln\x1elatn.s8.x\x1f000\u00a0mln\x1elatn.s9.o\x1f0\u00a0mld\x1elatn" +
+			".s9.x\x1f0\u00a0mld\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f00\u00a0T\u00a0¤\x1elatn.c1" +
+			"1.x\x1f000\u00a0T\u00a0¤\x1elatn.c12.x\x1f0\u00a0NT\u00a0¤\x1elatn.c13.x\x1f00\u00a0NT\u00a0¤\x1elatn.c14.x\x1f000\u00a0NT\u00a0¤\x1elatn.c3.x\x1f0\u00a0N\u00a0" +
+			"¤\x1elatn.c4.x\x1f00\u00a0N\u00a0¤\x1elatn.c5.x\x1f000\u00a0N\u00a0¤\x1elatn.c6.x\x1f0\u00a0Tr\u00a0¤\x1elatn.c7.x\x1f00\u00a0Tr\u00a0¤\x1elatn.c8.x\x1f0" +
+			"00\u00a0Tr\u00a0¤\x1elatn.c9.x\x1f0\u00a0T\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00 tỷ\x1elatn.l11.x\x1f000 tỷ\x1elatn.l12." +
+			"x\x1f0 nghìn tỷ\x1elatn.l13.x\x1f00 nghìn tỷ\x1elatn.l14.x\x1f000 nghìn tỷ\x1elatn.l3.x\x1f0 nghìn\x1elatn.l4." +
+			"x\x1f00 nghìn\x1elatn.l5.x\x1f000 nghìn\x1elatn.l6.x\x1f0 triệu\x1elatn.l7.x\x1f00 triệu\x1elatn.l8.x\x1f000 triệu\x1e" +
+			"latn.l9.x\x1f0 tỷ\x1elatn.s10.x\x1f00\u00a0T\x1elatn.s11.x\x1f000\u00a0T\x1elatn.s12.x\x1f0\u00a0NT\x1elatn.s13.x\x1f00\u00a0NT\x1elatn.s14." +
+			"x\x1f000\u00a0NT\x1elatn.s3.x\x1f0\u00a0N\x1elatn.s4.x\x1f00\u00a0N\x1elatn.s5.x\x1f000\u00a0N\x1elatn.s6.x\x1f0\u00a0Tr\x1elatn.s7.x\x1f00\u00a0Tr\x1elatn." +
+			"s8.x\x1f000\u00a0Tr\x1elatn.s9.x\x1f0\u00a0T\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.A\x1f¤#" +
+			",##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.Uo\x1f{0} {1}\x1elatn.d\x1f,\x1elatn.g\x1f'\x1elatn.c10.x\x1f¤\u00a000B\x1elatn.c11.x\x1f¤\u00a000" +
+			"0B\x1elatn.c9.x\x1f¤\u00a00B\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.x\x1f00B\x1elatn.l11.x\x1fVote 000G\x1elatn.l3.x\x1f0 thousand\x1el" +
+			"atn.l4.x\x1f00 thousand\x1elatn.l5.x\x1f000 thousand\x1elatn.l7.x\x1fVote 00M\x1elatn.l8.x\x1fVote 000M\x1elatn.l9.x\x1f0B\x1e" +
+			"latn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s9.x\x1f0B\x1elatn.~\x1f-\x1elatn.A\x1f¤#,##0.00\x1elatn.C\x1f¤#,##0.00\x1elatn.c1" +
+			"0.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤000B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1el" +
+			"atn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤" +
+			"0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤" +
+			"0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤" +
+			"0B\x1elatn.g\x1f\u00a0\x1edeva.+\x1f+\x1edeva.-\x1f-\x1edeva.A\x1f¤#,##,##0.00\x1edeva.B\x1f\u00a0\x1edeva.C\x1f¤#,##,##0.00\x1edeva.D\x1f#,##,#" +
+			"#0.###\x1edeva.P\x1f#,##,##0%\x1edeva.R\x1f{0}–{1}\x1edeva.S\x1f#E0\x1edeva.Ux\x1f{0} {1}\x1edeva.X\x1f~{0}\x1edeva.b\x1f\u00a0\x1edeva.c" +
+			"10.x\x1f¤00\u00a0अ॰\x1edeva.c11.x\x1f¤0\u00a0ख॰\x1edeva.c12.x\x1f¤00\u00a0ख॰\x1edeva.c13.x\x1f¤0\u00a0नील\x1edeva." +
+			"c14.x\x1f¤00\u00a0नील\x1edeva.c3.x\x1f¤0\u00a0हजार\x1edeva.c4.x\x1f¤00\u00a0हजार\x1edeva.c5.x\x1f¤0\u00a0ल" +
+			"ख\x1edeva.c6.x\x1f¤00\u00a0लख\x1edeva.c7.x\x1f¤0\u00a0क॰\x1edeva.c8.x\x1f¤00\u00a0क॰\x1edeva.c9.x\x1f¤0\u00a0अ॰\x1ede" +
+			"va.d\x1f.\x1edeva.e\x1fE\x1edeva.g\x1f,\x1edeva.i\x1f∞\x1edeva.l10.x\x1f00 अरब\x1edeva.l11.x\x1f0 खरब\x1edeva.l12.x\x1f00" +
+			" खरब\x1edeva.l13.x\x1f000 खरब\x1edeva.l14.x\x1f0000 खरब\x1edeva.l3.x\x1f0 हजार\x1edeva.l4.x" +
+			"\x1f00 हजार\x1edeva.l5.x\x1f0 लख\x1edeva.l6.x\x1f00 लख\x1edeva.l7.x\x1f0 करोड़\x1edeva.l8.x\x1f00" +
+			" करोड़\x1edeva.l9.x\x1f0 अरब\x1edeva.m\x1f‰\x1edeva.n\x1fNaN\x1edeva.p\x1f%\x1edeva.s10.x\x1f00\u00a0अ॰\x1edeva" +
+			".s11.x\x1f0\u00a0ख॰\x1edeva.s12.x\x1f00\u00a0ख॰\x1edeva.s13.x\x1f0\u00a0नील\x1edeva.s14.x\x1f00\u00a0नील\x1edeva.s3." +
+			"x\x1f0\u00a0हजार\x1edeva.s4.x\x1f00\u00a0हजार\x1edeva.s5.x\x1f0\u00a0लख\x1edeva.s6.x\x1f00\u00a0लख\x1edeva.s7.x\x1f" +
+			"0\u00a0क॰\x1edeva.s8.x\x1f00\u00a0क॰\x1edeva.s9.x\x1f0\u00a0अ॰\x1edeva.~\x1f~\x1elatn.A\x1f¤#,##,##0.00\x1elatn.C\x1f¤#,##,#" +
+			"#0.00\x1elatn.D\x1f#,##,##0.###\x1elatn.P\x1f#,##,##0%\x1elatn.c10.x\x1f¤00\u00a0अ॰\x1elatn.c11.x\x1f¤0\u00a0ख॰\x1elatn.c" +
+			"12.x\x1f¤00\u00a0ख॰\x1elatn.c13.x\x1f¤0\u00a0नील\x1elatn.c14.x\x1f¤00\u00a0नील\x1elatn.c3.x\x1f¤0\u00a0हजार" +
+			"\x1elatn.c4.x\x1f¤00\u00a0हजार\x1elatn.c5.x\x1f¤0\u00a0लख\x1elatn.c6.x\x1f¤00\u00a0लख\x1elatn.c7.x\x1f¤0\u00a0क॰" +
+			"\x1elatn.c8.x\x1f¤00\u00a0क॰\x1elatn.c9.x\x1f¤0\u00a0अ॰\x1elatn.l10.x\x1f00 अरब\x1elatn.l11.x\x1f0 खरब\x1elat" +
+			"n.l12.x\x1f00 खरब\x1elatn.l13.x\x1f000 खरब\x1elatn.l14.x\x1f0000 खरब\x1elatn.l3.x\x1f0 हजार" +
+			"\x1elatn.l4.x\x1f00 हजार\x1elatn.l5.x\x1f0 लख\x1elatn.l6.x\x1f00 लख\x1elatn.l7.x\x1f0 करोड़\x1ela" +
+			"tn.l8.x\x1f00 करोड़\x1elatn.l9.x\x1f0 अरब\x1elatn.s10.x\x1f00\u00a0अ॰\x1elatn.s11.x\x1f0\u00a0ख॰\x1elatn" +
+			".s12.x\x1f00\u00a0ख॰\x1elatn.s13.x\x1f0\u00a0नील\x1elatn.s14.x\x1f00\u00a0नील\x1elatn.s3.x\x1f0\u00a0हजार\x1elat" +
+			"n.s4.x\x1f00\u00a0हजार\x1elatn.s5.x\x1f0\u00a0लख\x1elatn.s6.x\x1f00\u00a0लख\x1elatn.s7.x\x1f0\u00a0क॰\x1elatn.s8.x\x1f0" +
+			"0\u00a0क॰\x1elatn.s9.x\x1f0\u00a0अ॰\x1elatn.A\x1f#,##0.00\u00a0¤\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.A\x1f#,##0.00\u00a0¤;(#,##0" +
+			".00\u00a0¤)\x1elatn.C\x1f#,##0.00\u00a0¤\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00" +
+			"\x1elatn.c10.x\x1f¤00G\x1elatn.c11.x\x1f¤000G\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x" +
+			"\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x" +
+			"\x1f¤0G\x1elatn.l10.x\x1f00 bilíọ̀nù\x1elatn.l11.x\x1f000 bilíọ̀nù\x1elatn.l12.x\x1f0 tiriliọ̀nù\x1elatn." +
+			"l13.x\x1f00 tiriliọ̀nù\x1elatn.l14.x\x1f000 tiriliọ̀nù\x1elatn.l3.x\x1f0 ẹgbẹ̀rún\x1elatn.l4.x\x1f00 ẹ" +
+			"gbẹ̀rún\x1elatn.l5.x\x1f000 ẹgbẹ̀rún\x1elatn.l6.x\x1f0 mílíọ̀nù\x1elatn.l7.x\x1f00 mílíọ̀nù\x1e" +
+			"latn.l8.x\x1f000 mílíọ̀nù\x1elatn.l9.x\x1f0 bilíọ̀nù\x1elatn.~\x1fdáàṣì\x1elatn.l10.x\x1f00 bilíɔ̀" +
+			"nù\x1elatn.l11.x\x1f000 bilíɔ̀nù\x1elatn.l12.x\x1f0 tiriliɔ̀nù\x1elatn.l13.x\x1f00 tiriliɔ̀nù\x1elatn.l14." +
+			"x\x1f000 tiriliɔ̀nù\x1elatn.l3.x\x1f0 ɛgbɛ̀rún\x1elatn.l4.x\x1f00 ɛgbɛ̀rún\x1elatn.l5.x\x1f000 ɛgbɛ̀rú" +
+			"n\x1elatn.l6.x\x1f0 mílíɔ̀nù\x1elatn.l7.x\x1f00 mílíɔ̀nù\x1elatn.l8.x\x1f000 mílíɔ̀nù\x1elatn.l9.x\x1f0 b" +
+			"ilíɔ̀nù\x1elatn.~\x1fdáàshì\x1elatn.Uo\x1f{0} {1}\x1elatn.c10.x\x1f¤\u00a000\u00a0bi\x1elatn.c11.x\x1f¤\u00a0000\u00a0bi\x1elatn.c" +
+			"12.x\x1f¤\u00a00\u00a0tiri\x1elatn.c13.x\x1f¤\u00a000\u00a0tiri\x1elatn.c14.x\x1f¤\u00a0000\u00a0tiri\x1elatn.c3.x\x1f¤\u00a00\u00a0miu\x1elatn.c4.x" +
+			"\x1f¤\u00a000\u00a0miu\x1elatn.c5.x\x1f¤\u00a0000\u00a0miu\x1elatn.c6.x\x1f¤\u00a00\u00a0mi\x1elatn.c7.x\x1f¤\u00a000\u00a0mi\x1elatn.c8.x\x1f¤\u00a0000\u00a0" +
+			"mi\x1elatn.c9.x\x1f¤\u00a00\u00a0bi\x1elatn.d\x1f,\x1elatn.g\x1f.\x1elatn.l10.o\x1f00 biliãu\x1elatn.l10.x\x1f00 biliãu-ita\x1elatn.l1" +
+			"1.o\x1f000 biliãu\x1elatn.l11.x\x1f000 biliãu-ita\x1elatn.l12.o\x1f0 tiriliãu\x1elatn.l12.x\x1f0 tiriliãu-ita\x1elat" +
+			"n.l13.o\x1f00 tiriliãu\x1elatn.l13.x\x1f00 tiriliãu-ita\x1elatn.l14.o\x1f000 tiriliãu\x1elatn.l14.x\x1f000 tiriliã" +
+			"u-ita\x1elatn.l3.o\x1f0 miu\x1elatn.l3.x\x1f0 miu\x1elatn.l4.o\x1f00 miu\x1elatn.l4.x\x1f00 miu\x1elatn.l5.o\x1f000 miu\x1elatn.l" +
+			"5.x\x1f000 miu\x1elatn.l6.o\x1f0 miliãu\x1elatn.l6.x\x1f0 miliãu-ita\x1elatn.l7.o\x1f00 miliãu\x1elatn.l7.x\x1f00 miliã" +
+			"u-ita\x1elatn.l8.o\x1f000 miliãu\x1elatn.l8.x\x1f000 miliãu-ita\x1elatn.l9.o\x1f0 biliãu\x1elatn.l9.x\x1f0 biliãu-it" +
+			"a\x1elatn.s10.x\x1f00\u00a0bi\x1elatn.s11.x\x1f000\u00a0bi\x1elatn.s12.x\x1f0\u00a0tiri\x1elatn.s13.x\x1f00\u00a0tiri\x1elatn.s14.x\x1f000\u00a0ti" +
+			"ri\x1elatn.s3.x\x1f0\u00a0miu\x1elatn.s4.x\x1f00\u00a0miu\x1elatn.s5.x\x1f000\u00a0miu\x1elatn.s6.x\x1f0\u00a0mi\x1elatn.s7.x\x1f00\u00a0mi\x1elatn.s" +
+			"8.x\x1f000\u00a0mi\x1elatn.s9.x\x1f0\u00a0bi\x1elatn.l10.o\x1f00 billón\x1elatn.l10.x\x1f00 billón-ita\x1elatn.l11.o\x1f000 billó" +
+			"n\x1elatn.l11.x\x1f000 billón-ita\x1elatn.l12.o\x1f0 tirillón\x1elatn.l12.x\x1f0 tirillón-ita\x1elatn.l13.o\x1f00 tir" +
+			"illón\x1elatn.l13.x\x1f00 tirillón-ita\x1elatn.l14.o\x1f000 tirillón\x1elatn.l14.x\x1f000 tirillón-ita\x1elatn.l6" +
+			".o\x1f0 millón\x1elatn.l6.x\x1f0 millón-ita\x1elatn.l7.o\x1f00 millón\x1elatn.l7.x\x1f00 millón-ita\x1elatn.l8.o\x1f000" +
+			" millón\x1elatn.l8.x\x1f000 millón-ita\x1elatn.l9.o\x1f0 billón\x1elatn.l9.x\x1f0 billón-ita\x1elatn.l10.o\x1f00 bil" +
+			"lón\x1elatn.l10.x\x1f00 billón-ita\x1elatn.l11.o\x1f000 billón\x1elatn.l11.x\x1f000 billón-ita\x1elatn.l12.o\x1f0 ti" +
+			"rillón\x1elatn.l12.x\x1f0 tirillón-ita\x1elatn.l13.o\x1f00 tirillón\x1elatn.l13.x\x1f00 tirillón-ita\x1elatn.l14." +
+			"o\x1f000 tirillón\x1elatn.l14.x\x1f000 tirillón-ita\x1elatn.l6.o\x1f0 millón\x1elatn.l6.x\x1f0 millón-ita\x1elatn.l7" +
+			".o\x1f00 millón\x1elatn.l7.x\x1f00 millón-ita\x1elatn.l8.o\x1f000 millón\x1elatn.l8.x\x1f000 millón-ita\x1elatn.l9.o" +
+			"\x1f0 billón\x1elatn.l9.x\x1f0 billón-ita\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1ehanidec.A\x1f¤#,##0.00;(¤#,##0.00)\x1ehan" +
+			"idec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec.P\x1f#,##0%\x1ehanidec.R\x1f{0}-{1}\x1ehanidec.S\x1f" +
+			"#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec.c10.x\x1f¤000億\x1ehanidec.c11.x\x1f¤0000億" +
+			"\x1ehanidec.c12.x\x1f¤0兆\x1ehanidec.c13.x\x1f¤00兆\x1ehanidec.c14.x\x1f¤000兆\x1ehanidec.c3.x\x1f¤0千\x1ehanidec.c" +
+			"4.x\x1f¤0萬\x1ehanidec.c5.x\x1f¤00萬\x1ehanidec.c6.x\x1f¤000萬\x1ehanidec.c7.x\x1f¤0000萬\x1ehanidec.c8.x\x1f¤0億" +
+			"\x1ehanidec.c9.x\x1f¤00億\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g\x1f,\x1ehanidec.i\x1f∞\x1ehanidec.l10.x\x1f000億\x1ehan" +
+			"idec.l11.x\x1f0000億\x1ehanidec.l12.x\x1f0兆\x1ehanidec.l13.x\x1f00兆\x1ehanidec.l14.x\x1f000兆\x1ehanidec.l3.x\x1f0千" +
+			"\x1ehanidec.l4.x\x1f0萬\x1ehanidec.l5.x\x1f00萬\x1ehanidec.l6.x\x1f000萬\x1ehanidec.l7.x\x1f0000萬\x1ehanidec.l8.x\x1f0億" +
+			"\x1ehanidec.l9.x\x1f00億\x1ehanidec.m\x1f‰\x1ehanidec.n\x1f非數值\x1ehanidec.p\x1f%\x1ehanidec.s10.x\x1f000億\x1ehanidec.s" +
+			"11.x\x1f0000億\x1ehanidec.s12.x\x1f0兆\x1ehanidec.s13.x\x1f00兆\x1ehanidec.s14.x\x1f000兆\x1ehanidec.s3.x\x1f0千\x1ehanid" +
+			"ec.s4.x\x1f0萬\x1ehanidec.s5.x\x1f00萬\x1ehanidec.s6.x\x1f000萬\x1ehanidec.s7.x\x1f0000萬\x1ehanidec.s8.x\x1f0億\x1ehanid" +
+			"ec.s9.x\x1f00億\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.c" +
+			"10.x\x1f¤000億\x1elatn.c11.x\x1f¤0000億\x1elatn.c12.x\x1f¤0兆\x1elatn.c13.x\x1f¤00兆\x1elatn.c14.x\x1f¤000兆\x1elatn" +
+			".c3.x\x1f¤0千\x1elatn.c4.x\x1f¤0萬\x1elatn.c5.x\x1f¤00萬\x1elatn.c6.x\x1f¤000萬\x1elatn.c7.x\x1f¤0000萬\x1elatn.c8.x" +
+			"\x1f¤0億\x1elatn.c9.x\x1f¤00億\x1elatn.l10.x\x1f000億\x1elatn.l11.x\x1f0000億\x1elatn.l12.x\x1f0兆\x1elatn.l13.x\x1f00兆\x1e" +
+			"latn.l14.x\x1f000兆\x1elatn.l3.x\x1f0千\x1elatn.l4.x\x1f0萬\x1elatn.l5.x\x1f00萬\x1elatn.l6.x\x1f000萬\x1elatn.l7.x\x1f0000萬" +
+			"\x1elatn.l8.x\x1f0億\x1elatn.l9.x\x1f00億\x1elatn.n\x1f非數值\x1elatn.s10.x\x1f000億\x1elatn.s11.x\x1f0000億\x1elatn.s12.x" +
+			"\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s3.x\x1f0千\x1elatn.s4.x\x1f0萬\x1elatn.s5.x\x1f00萬\x1elatn.s6.x" +
+			"\x1f000萬\x1elatn.s7.x\x1f0000萬\x1elatn.s8.x\x1f0億\x1elatn.s9.x\x1f00億\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1ehanidec.A\x1f¤#,#" +
+			"#0.00;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec.P\x1f#,##0%\x1ehanide" +
+			"c.R\x1f{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec.c10.x\x1f¤000亿\x1e" +
+			"hanidec.c11.x\x1f¤0000亿\x1ehanidec.c12.x\x1f¤0兆\x1ehanidec.c13.x\x1f¤00兆\x1ehanidec.c14.x\x1f¤000兆\x1ehanide" +
+			"c.c3.x\x1f¤0千\x1ehanidec.c4.x\x1f¤0万\x1ehanidec.c5.x\x1f¤00万\x1ehanidec.c6.x\x1f¤000万\x1ehanidec.c7.x\x1f¤0000" +
+			"万\x1ehanidec.c8.x\x1f¤0亿\x1ehanidec.c9.x\x1f¤00亿\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g\x1f,\x1ehanidec.i\x1f∞\x1eh" +
+			"anidec.l10.x\x1f000亿\x1ehanidec.l11.x\x1f0000亿\x1ehanidec.l12.x\x1f0兆\x1ehanidec.l13.x\x1f00兆\x1ehanidec.l14.x\x1f0" +
+			"00兆\x1ehanidec.l3.x\x1f0千\x1ehanidec.l4.x\x1f0万\x1ehanidec.l5.x\x1f00万\x1ehanidec.l6.x\x1f000万\x1ehanidec.l7.x\x1f00" +
+			"00万\x1ehanidec.l8.x\x1f0亿\x1ehanidec.l9.x\x1f00亿\x1ehanidec.m\x1f‰\x1ehanidec.n\x1f非数值\x1ehanidec.p\x1f%\x1ehanidec" +
+			".s10.x\x1f000亿\x1ehanidec.s11.x\x1f0000亿\x1ehanidec.s12.x\x1f0兆\x1ehanidec.s13.x\x1f00兆\x1ehanidec.s14.x\x1f000兆\x1e" +
+			"hanidec.s3.x\x1f0千\x1ehanidec.s4.x\x1f0万\x1ehanidec.s5.x\x1f00万\x1ehanidec.s6.x\x1f000万\x1ehanidec.s7.x\x1f0000万\x1e" +
+			"hanidec.s8.x\x1f0亿\x1ehanidec.s9.x\x1f00亿\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.0" +
+			"0\x1elatn.R\x1f{0}-{1}\x1elatn.c10.x\x1f¤000亿\x1elatn.c11.x\x1f¤0000亿\x1elatn.c12.x\x1f¤0兆\x1elatn.c13.x\x1f¤00兆\x1el" +
+			"atn.c14.x\x1f¤000兆\x1elatn.c3.x\x1f¤0千\x1elatn.c4.x\x1f¤0万\x1elatn.c5.x\x1f¤00万\x1elatn.c6.x\x1f¤000万\x1elatn.c" +
+			"7.x\x1f¤0000万\x1elatn.c8.x\x1f¤0亿\x1elatn.c9.x\x1f¤00亿\x1elatn.l10.x\x1f000亿\x1elatn.l11.x\x1f0000亿\x1elatn.l12.x" +
+			"\x1f0兆\x1elatn.l13.x\x1f00兆\x1elatn.l14.x\x1f000兆\x1elatn.l3.x\x1f0千\x1elatn.l4.x\x1f0万\x1elatn.l5.x\x1f00万\x1elatn.l6.x" +
+			"\x1f000万\x1elatn.l7.x\x1f0000万\x1elatn.l8.x\x1f0亿\x1elatn.l9.x\x1f00亿\x1elatn.n\x1f非数值\x1elatn.s10.x\x1f000亿\x1elatn" +
+			".s11.x\x1f0000亿\x1elatn.s12.x\x1f0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s3.x\x1f0千\x1elatn.s4.x\x1f0万\x1e" +
+			"latn.s5.x\x1f00万\x1elatn.s6.x\x1f000万\x1elatn.s7.x\x1f0000万\x1elatn.s8.x\x1f0亿\x1elatn.s9.x\x1f00亿\x1elatn.A\x1f#,##0.0" +
+			"0¤\x1elatn.C\x1f#,##0.00¤\x1elatn.P\x1f#,##0\u00a0%\x1elatn.d\x1f,\x1elatn.g\x1f\u00a0\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1ehanidec.A\x1f¤#,#" +
+			"#0.00;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec.P\x1f#,##0%\x1ehanide" +
+			"c.R\x1f{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec.c10.x\x1f¤000亿\x1e" +
+			"hanidec.c11.x\x1f¤0000亿\x1ehanidec.c12.x\x1f¤0万亿\x1ehanidec.c13.x\x1f¤00万亿\x1ehanidec.c14.x\x1f¤000万亿" +
+			"\x1ehanidec.c3.x\x1f0\x1ehanidec.c4.x\x1f¤0万\x1ehanidec.c5.x\x1f¤00万\x1ehanidec.c6.x\x1f¤000万\x1ehanidec.c7.x\x1f¤00" +
+			"00万\x1ehanidec.c8.x\x1f¤0亿\x1ehanidec.c9.x\x1f¤00亿\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g\x1f,\x1ehanidec.i\x1f∞" +
+			"\x1ehanidec.l10.x\x1f000亿\x1ehanidec.l11.x\x1f0000亿\x1ehanidec.l12.x\x1f0万亿\x1ehanidec.l13.x\x1f00万亿\x1ehanidec" +
+			".l14.x\x1f000万亿\x1ehanidec.l3.x\x1f0\x1ehanidec.l4.x\x1f0万\x1ehanidec.l5.x\x1f00万\x1ehanidec.l6.x\x1f000万\x1ehanidec" +
+			".l7.x\x1f0000万\x1ehanidec.l8.x\x1f0亿\x1ehanidec.l9.x\x1f00亿\x1ehanidec.m\x1f‰\x1ehanidec.n\x1fNaN\x1ehanidec.p\x1f%\x1ehanid" +
+			"ec.s10.x\x1f000亿\x1ehanidec.s11.x\x1f0000亿\x1ehanidec.s12.x\x1f0万亿\x1ehanidec.s13.x\x1f00万亿\x1ehanidec.s14.x" +
+			"\x1f000万亿\x1ehanidec.s3.x\x1f0\x1ehanidec.s4.x\x1f0万\x1ehanidec.s5.x\x1f00万\x1ehanidec.s6.x\x1f000万\x1ehanidec.s7.x\x1f" +
+			"0000万\x1ehanidec.s8.x\x1f0亿\x1ehanidec.s9.x\x1f00亿\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤" +
+			"#,##0.00\x1elatn.R\x1f{0}-{1}\x1elatn.Ux\x1f{0}{1}\x1elatn.c10.x\x1f¤000亿\x1elatn.c11.x\x1f¤0000亿\x1elatn.c12.x\x1f¤0万" +
+			"亿\x1elatn.c13.x\x1f¤00万亿\x1elatn.c14.x\x1f¤000万亿\x1elatn.c3.x\x1f0\x1elatn.c4.x\x1f¤0万\x1elatn.c5.x\x1f¤00万\x1e" +
+			"latn.c6.x\x1f¤000万\x1elatn.c7.x\x1f¤0000万\x1elatn.c8.x\x1f¤0亿\x1elatn.c9.x\x1f¤00亿\x1elatn.l10.x\x1f000亿\x1elatn" +
+			".l11.x\x1f0000亿\x1elatn.l12.x\x1f0万亿\x1elatn.l13.x\x1f00万亿\x1elatn.l14.x\x1f000万亿\x1elatn.l3.x\x1f0\x1elatn.l4.x" +
+			"\x1f0万\x1elatn.l5.x\x1f00万\x1elatn.l6.x\x1f000万\x1elatn.l7.x\x1f0000万\x1elatn.l8.x\x1f0亿\x1elatn.l9.x\x1f00亿\x1elatn.s10" +
+			".x\x1f000亿\x1elatn.s11.x\x1f0000亿\x1elatn.s12.x\x1f0万亿\x1elatn.s13.x\x1f00万亿\x1elatn.s14.x\x1f000万亿\x1elatn.s3" +
+			".x\x1f0\x1elatn.s4.x\x1f0万\x1elatn.s5.x\x1f00万\x1elatn.s6.x\x1f000万\x1elatn.s7.x\x1f0000万\x1elatn.s8.x\x1f0亿\x1elatn.s9.x\x1f" +
+			"00亿\x1elatn.Ux\x1f{0} {1}\x1elatn.Ux\x1f{0} {1}\x1elatn.Ux\x1f{0} {1}\x1ehanidec.+\x1f+\x1ehanidec.-\x1f-\x1ehanidec.A\x1f¤#,##0." +
+			"00;(¤#,##0.00)\x1ehanidec.B\x1f\u00a0\x1ehanidec.C\x1f¤#,##0.00\x1ehanidec.D\x1f#,##0.###\x1ehanidec.P\x1f#,##0%\x1ehanidec.R" +
+			"\x1f{0}-{1}\x1ehanidec.S\x1f#E0\x1ehanidec.Ux\x1f{0} {1}\x1ehanidec.X\x1f~{0}\x1ehanidec.b\x1f\u00a0\x1ehanidec.c10.x\x1f¤000億\x1ehan" +
+			"idec.c11.x\x1f¤0000億\x1ehanidec.c12.x\x1f¤0兆\x1ehanidec.c13.x\x1f¤00兆\x1ehanidec.c14.x\x1f¤000兆\x1ehanidec.c" +
+			"3.x\x1f0\x1ehanidec.c4.x\x1f¤0萬\x1ehanidec.c5.x\x1f¤00萬\x1ehanidec.c6.x\x1f¤000萬\x1ehanidec.c7.x\x1f¤0000萬\x1ehani" +
+			"dec.c8.x\x1f¤0億\x1ehanidec.c9.x\x1f¤00億\x1ehanidec.d\x1f.\x1ehanidec.e\x1fE\x1ehanidec.g\x1f,\x1ehanidec.i\x1f∞\x1ehanidec.l" +
+			"10.x\x1f000億\x1ehanidec.l11.x\x1f0000億\x1ehanidec.l12.x\x1f0兆\x1ehanidec.l13.x\x1f00兆\x1ehanidec.l14.x\x1f000兆\x1eha" +
+			"nidec.l3.x\x1f0\x1ehanidec.l4.x\x1f0萬\x1ehanidec.l5.x\x1f00萬\x1ehanidec.l6.x\x1f000萬\x1ehanidec.l7.x\x1f0000萬\x1ehanid" +
+			"ec.l8.x\x1f0億\x1ehanidec.l9.x\x1f00億\x1ehanidec.m\x1f‰\x1ehanidec.n\x1f非數值\x1ehanidec.p\x1f%\x1ehanidec.s10.x\x1f000億" +
+			"\x1ehanidec.s11.x\x1f0000億\x1ehanidec.s12.x\x1f0兆\x1ehanidec.s13.x\x1f00兆\x1ehanidec.s14.x\x1f000兆\x1ehanidec.s3.x\x1f" +
+			"0\x1ehanidec.s4.x\x1f0萬\x1ehanidec.s5.x\x1f00萬\x1ehanidec.s6.x\x1f000萬\x1ehanidec.s7.x\x1f0000萬\x1ehanidec.s8.x\x1f0億" +
+			"\x1ehanidec.s9.x\x1f00億\x1ehanidec.~\x1f~\x1elatn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.R\x1f{0}-{1}\x1e" +
+			"latn.c10.x\x1f¤000億\x1elatn.c11.x\x1f¤0000億\x1elatn.c12.x\x1f¤0兆\x1elatn.c13.x\x1f¤00兆\x1elatn.c14.x\x1f¤000兆" +
+			"\x1elatn.c3.x\x1f0\x1elatn.c4.x\x1f¤0萬\x1elatn.c5.x\x1f¤00萬\x1elatn.c6.x\x1f¤000萬\x1elatn.c7.x\x1f¤0000萬\x1elatn.c8.x" +
+			"\x1f¤0億\x1elatn.c9.x\x1f¤00億\x1elatn.l10.x\x1f000億\x1elatn.l11.x\x1f0000億\x1elatn.l12.x\x1f0兆\x1elatn.l13.x\x1f00兆\x1e" +
+			"latn.l14.x\x1f000兆\x1elatn.l3.x\x1f0\x1elatn.l4.x\x1f0萬\x1elatn.l5.x\x1f00萬\x1elatn.l6.x\x1f000萬\x1elatn.l7.x\x1f0000萬\x1e" +
+			"latn.l8.x\x1f0億\x1elatn.l9.x\x1f00億\x1elatn.n\x1f非數值\x1elatn.s10.x\x1f000億\x1elatn.s11.x\x1f0000億\x1elatn.s12.x\x1f" +
+			"0兆\x1elatn.s13.x\x1f00兆\x1elatn.s14.x\x1f000兆\x1elatn.s3.x\x1f0\x1elatn.s4.x\x1f0萬\x1elatn.s5.x\x1f00萬\x1elatn.s6.x\x1f000" +
+			"萬\x1elatn.s7.x\x1f0000萬\x1elatn.s8.x\x1f0億\x1elatn.s9.x\x1f00億\x1ehanidec.c10.x\x1f¤00B\x1ehanidec.c11.x\x1f¤000B\x1eha" +
+			"nidec.c12.x\x1f¤0T\x1ehanidec.c13.x\x1f¤00T\x1ehanidec.c14.x\x1f¤000T\x1ehanidec.c3.x\x1f¤0K\x1ehanidec.c4.x\x1f¤00K\x1eh" +
+			"anidec.c5.x\x1f¤000K\x1ehanidec.c6.x\x1f¤0M\x1ehanidec.c7.x\x1f¤00M\x1ehanidec.c8.x\x1f¤000M\x1ehanidec.c9.x\x1f¤0B\x1eha" +
+			"nidec.l10.x\x1f00B\x1ehanidec.l11.x\x1f000B\x1ehanidec.l12.x\x1f0T\x1ehanidec.l13.x\x1f00T\x1ehanidec.l14.x\x1f000T\x1ehanidec" +
+			".l3.x\x1f0K\x1ehanidec.l4.x\x1f00K\x1ehanidec.l5.x\x1f000K\x1ehanidec.l6.x\x1f0M\x1ehanidec.l7.x\x1f00M\x1ehanidec.l8.x\x1f000M\x1eh" +
+			"anidec.l9.x\x1f0B\x1ehanidec.s10.x\x1f00B\x1ehanidec.s11.x\x1f000B\x1ehanidec.s12.x\x1f0T\x1ehanidec.s13.x\x1f00T\x1ehanidec.s" +
+			"14.x\x1f000T\x1ehanidec.s3.x\x1f0K\x1ehanidec.s4.x\x1f00K\x1ehanidec.s5.x\x1f000K\x1ehanidec.s6.x\x1f0M\x1ehanidec.s7.x\x1f00M\x1eha" +
+			"nidec.s8.x\x1f000M\x1ehanidec.s9.x\x1f0B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.x\x1f¤0T\x1elatn.c13.x\x1f¤" +
+			"00T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.x\x1f¤0K\x1elatn.c4.x\x1f¤00K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.x\x1f¤0M\x1elatn.c7.x\x1f¤" +
+			"00M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.x\x1f¤0B\x1elatn.l10.x\x1f00B\x1elatn.l11.x\x1f000B\x1elatn.l12.x\x1f0T\x1elatn.l13.x\x1f00T\x1e" +
+			"latn.l14.x\x1f000T\x1elatn.l3.x\x1f0K\x1elatn.l4.x\x1f00K\x1elatn.l5.x\x1f000K\x1elatn.l6.x\x1f0M\x1elatn.l7.x\x1f00M\x1elatn.l8.x\x1f0" +
+			"00M\x1elatn.l9.x\x1f0B\x1elatn.s10.x\x1f00B\x1elatn.s11.x\x1f000B\x1elatn.s12.x\x1f0T\x1elatn.s13.x\x1f00T\x1elatn.s14.x\x1f000T\x1elat" +
+			"n.s3.x\x1f0K\x1elatn.s4.x\x1f00K\x1elatn.s5.x\x1f000K\x1elatn.s6.x\x1f0M\x1elatn.s7.x\x1f00M\x1elatn.s8.x\x1f000M\x1elatn.s9.x\x1f0B\x1ela" +
+			"tn.A\x1f¤#,##0.00;(¤#,##0.00)\x1elatn.C\x1f¤#,##0.00\x1elatn.c10.o\x1f¤00B\x1elatn.c10.x\x1f¤00B\x1elatn.c11.o\x1f¤00" +
+			"0B\x1elatn.c11.x\x1f¤000B\x1elatn.c12.o\x1f¤0T\x1elatn.c12.x\x1f¤0T\x1elatn.c13.o\x1f¤00T\x1elatn.c13.x\x1f¤00T\x1elatn.c14." +
+			"o\x1f¤000T\x1elatn.c14.x\x1f¤000T\x1elatn.c3.o\x1f¤0K\x1elatn.c3.x\x1f¤0K\x1elatn.c4.o\x1f¤00K\x1elatn.c4.x\x1f¤00K\x1elatn.c5" +
+			".o\x1f¤000K\x1elatn.c5.x\x1f¤000K\x1elatn.c6.o\x1f¤0M\x1elatn.c6.x\x1f¤0M\x1elatn.c7.o\x1f¤00M\x1elatn.c7.x\x1f¤00M\x1elatn.c8" +
+			".o\x1f¤000M\x1elatn.c8.x\x1f¤000M\x1elatn.c9.o\x1f¤0B\x1elatn.c9.x\x1f¤0B\x1elatn.l10.o\x1f00 isigidi sezigidi\x1elatn.l10" +
+			".x\x1f00 isigidi sezigidi\x1elatn.l11.o\x1f000 isigidi sezigidi\x1elatn.l11.x\x1f000 isigidi sezigidi\x1elatn.l12." +
+			"o\x1f0 isigidintathu\x1elatn.l12.x\x1f0 isigidintathu\x1elatn.l13.o\x1f00 isigidintathu\x1elatn.l13.x\x1f00 isigidint" +
+			"athu\x1elatn.l14.o\x1f000 isigidintathu\x1elatn.l14.x\x1f000 isigidintathu\x1elatn.l3.o\x1f0 inkulungwane\x1elatn.l3." +
+			"x\x1f0 inkulungwane\x1elatn.l4.o\x1f00 inkulungwane\x1elatn.l4.x\x1f00 inkulungwane\x1elatn.l5.o\x1f000 inkulungwane\x1e" +
+			"latn.l5.x\x1f000 inkulungwane\x1elatn.l6.o\x1f0 isigidi\x1elatn.l6.x\x1f0 isigidi\x1elatn.l7.o\x1f00 isigidi\x1elatn.l7." +
+			"x\x1f00 isigidi\x1elatn.l8.o\x1f000 isigidi\x1elatn.l8.x\x1f000 isigidi\x1elatn.l9.o\x1f0 isigidi sezigidi\x1elatn.l9.x\x1f" +
+			"0 isigidi sezigidi\x1elatn.s10.o\x1f00B\x1elatn.s10.x\x1f00B\x1elatn.s11.o\x1f000B\x1elatn.s11.x\x1f000B\x1elatn.s9.o\x1f0B\x1ela" +
+			"tn.s9.x\x1f0B",
 		ends: []uint32{
-			54, 1616, 1671, 2648, 4278, 14121, 14139, 14157, 14175, 14193, 14211, 14221, 14231, 14249, 19199, 19239,
-			20026, 21440, 21498, 22498, 23080, 23155, 27057, 27106, 27142, 29240, 30050, 30892, 33326, 33375, 37582, 37698,
-			38526, 41319, 45249, 47842, 50294, 50369, 51941, 52988, 54956, 56059, 56095, 57422, 58036, 58589, 61949, 64608,
-			67269, 68966, 69015, 70657, 70707, 71263, 71335, 71381, 72223, 75612, 75687, 75746, 77539, 77588, 78652, 80907,
-			82109, 82149, 82223, 82232, 82250, 82323, 82342, 82376, 82410, 82429, 82447, 82482, 82502, 83266, 83286, 83305,
-			83323, 84521, 84539, 84558, 84577, 84617, 84704, 84739, 84792, 84846, 84899, 84947, 85009, 85072, 85091, 85110,
-			86279, 87862, 88498, 88571, 88589, 88667, 88725, 88744, 88775, 88853, 88889, 89195, 89259, 89803, 89889, 90029,
-			90102, 90180, 91841, 93264, 93323, 98287, 98409, 98468, 102899, 104670, 105736, 107546, 109089, 109614, 109637, 109646,
-			109655, 109673, 109707, 110721, 113528, 115605, 117050, 118804, 123122, 123171, 123207, 124262, 124327, 127450, 131351, 131385,
-			133976, 137368, 138847, 140742, 142311, 143031, 143122, 143607, 145261, 146724, 146806, 147803, 147821, 147857, 148428, 150829,
-			151080, 151129, 151187, 151236, 151795, 152413, 153448, 153494, 153543, 155452, 157493, 157511, 157605, 157654, 160159, 164300,
-			164988, 168900, 169628, 170703, 170719, 170755, 170814, 172423, 173824, 173860, 174625, 175502, 176379, 177256, 179145, 180311,
-			180347, 180435, 181917, 181935, 181993, 184388, 185386, 189042, 189096, 189132, 189196, 191915, 192740, 192789, 192838, 192848,
-			192882, 192900, 192916, 192972, 195024, 198082, 199950, 200760, 204807, 205375, 205413, 205449, 205549, 205616, 208223, 209221,
-			209257, 209306, 209380, 213457, 214921, 214980, 215353, 215371, 217100, 217921, 217955, 218004, 218040, 218112, 218127, 219119,
-			222995, 223042, 227073, 228095, 229169, 232337, 232395, 232454, 235500, 236979, 236983, 238235, 238251, 238269, 238852, 239662,
-			241187, 241257, 243820, 243856, 247850, 247854, 247872, 247908, 248798, 249862, 249911, 251125, 251161, 252822, 253347, 256533,
-			258092, 258683, 258737, 258783, 258861, 258916, 258971, 259402, 261320, 264754, 268189, 269100, 269165, 270207, 271819, 274859,
-			277437, 277489, 277543, 279092, 280844, 280862, 282160, 282186, 282245, 286150, 286218, 286286, 290561, 290610, 291668, 293347,
-			294931, 296565, 296617, 297104, 297173, 298604, 299605, 299651, 299701, 299760, 302741, 306656, 307470, 311521, 313132, 314174,
-			316047, 316915, 317783, 319393, 320177, 320235, 320271, 320305, 320586, 321026, 323062, 323102, 323176, 323778, 324118, 325174,
-			325610, 326046, 327799, 329552, 329623, 331400, 331416, 331432, 331448, 333179, 334373, 335538,
+			54, 1616, 1671, 2648, 4278, 14037, 14055, 14073, 14091, 14109, 14127, 14137, 14147, 14165, 19115, 19155,
+			19942, 21356, 21414, 22414, 22996, 23071, 26973, 27022, 27058, 29156, 29966, 30808, 33242, 33291, 37498, 37614,
+			38442, 41235, 45165, 47758, 50210, 50285, 51857, 52904, 54872, 55975, 56011, 57338, 57879, 58432, 61792, 64451,
+			67112, 68809, 68858, 70500, 70550, 71106, 71178, 71224, 72066, 75455, 75530, 75589, 77382, 77431, 78495, 80750,
+			81952, 81992, 82066, 82075, 82093, 82166, 82185, 82219, 82253, 82272, 82290, 82325, 82345, 83109, 83129, 83148,
+			83166, 84364, 84382, 84401, 84420, 84460, 84547, 84582, 84635, 84689, 84742, 84790, 84852, 84915, 84934, 84953,
+			86122, 87705, 88341, 88414, 88432, 88510, 88568, 88587, 88618, 88696, 88732, 89038, 89102, 89646, 89732, 89872,
+			89945, 90023, 91684, 93107, 93166, 98034, 98156, 98215, 102646, 104417, 105483, 107293, 108836, 109361, 109384, 109393,
+			109402, 109420, 109454, 110468, 113275, 115352, 116797, 118551, 122869, 122918, 122954, 124009, 124074, 127197, 131098, 131132,
+			133723, 137115, 138594, 140489, 142058, 142778, 142869, 143354, 145008, 146471, 146553, 147550, 147568, 147604, 148175, 150576,
+			150827, 150876, 150934, 150983, 151542, 152160, 153195, 153241, 153290, 155199, 157240, 157258, 157352, 157401, 159906, 164047,
+			164735, 168647, 169375, 170304, 170320, 170356, 170415, 172024, 173425, 173461, 174226, 175103, 175980, 176857, 178746, 179912,
+			179948, 180036, 181518, 181536, 181594, 183989, 184841, 188497, 188551, 188587, 188651, 191370, 192195, 192244, 192293, 192303,
+			192337, 192355, 192371, 192427, 194479, 197537, 199405, 200215, 204262, 204830, 204868, 204904, 205004, 205071, 207678, 208530,
+			208566, 208615, 208689, 212766, 214230, 214289, 214662, 214680, 216409, 217230, 217264, 217313, 217349, 217421, 217436, 218428,
+			222304, 222351, 226382, 227258, 228332, 231500, 231558, 231617, 234517, 235996, 236000, 237252, 237268, 237286, 237869, 238679,
+			240204, 240274, 242837, 242873, 246867, 246871, 246889, 246925, 247815, 248879, 248928, 250142, 250178, 251839, 252364, 255453,
+			257012, 257603, 257657, 257703, 257781, 257836, 257891, 258322, 260240, 263674, 267109, 268020, 268085, 269127, 270739, 273779,
+			276357, 276409, 276463, 278012, 279764, 279782, 281080, 281106, 281165, 285070, 285138, 285206, 289481, 289530, 290588, 292267,
+			293851, 295485, 295537, 296024, 296093, 297524, 298525, 298571, 298621, 298680, 301515, 305430, 306497, 310402, 312013, 312909,
+			314782, 315650, 316518, 318128, 318912, 318970, 319006, 319040, 319321, 319761, 321797, 321837, 321911, 322513, 322853, 323909,
+			324345, 324781, 326534, 328287, 328358, 330135, 330151, 330167, 330183, 331914, 333108, 334273,
 		},
 	},
 }

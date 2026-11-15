@@ -83,9 +83,10 @@ is published yet.
 
 ## Status
 
-100% of [test262](https://github.com/tc39/test262) pass: 48,815 of 48,815 tests
-in `test/language`, `test/built-ins`, `test/annexB`, `test/intl402/BigInt` and
-`test/intl402/Number` (commit `2e58f87`). The test suite
+100% of [test262](https://github.com/tc39/test262) pass: 48,829 of 48,829 tests
+in `test/language`, `test/built-ins`, `test/annexB`, `test/intl402/BigInt`,
+`test/intl402/Date`, `test/intl402/FallbackSymbol` and `test/intl402/Number` (commit
+`2e58f87`). The test suite
 fails when any of them fails.
 
 ### Implemented
@@ -120,7 +121,8 @@ fails when any of them fails.
 
 - Most of `Intl`. The optional package `github.com/hajimehoshi/ekuma/intl` adds it when it is
   imported for its side effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`,
-  `Intl.Locale`, `Intl.NumberFormat` and `Intl.PluralRules` so far
+  `Intl.Locale`, `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat` so far.
+  `Intl.DateTimeFormat` formats only the Gregorian calendar yet
 - Host API for these, some of which the engine has and only the tests use:
   - Creating further realms in a VM
   - Giving a module a module source
