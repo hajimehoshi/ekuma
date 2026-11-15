@@ -164,6 +164,7 @@ func (vm *VM) pushGenFrame(g *generator, ret int32) {
 		gen:       g,
 		scopes:    g.scopes,
 	})
+	vm.framesHigh = max(vm.framesHigh, len(vm.frames))
 }
 
 // callCoroutine calls the generator, async function or async generator f from Go.

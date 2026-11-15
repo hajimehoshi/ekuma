@@ -296,6 +296,10 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.dropJobs()
 			result, err = Undefined, ErrInterrupted
 		}
+		if outermost {
+			// The values that the calls left behind must not stay reachable while the VM is idle.
+			vm.clearStale()
+		}
 	}()
 	if !vm.protect(func() {
 		result = f()

@@ -1780,14 +1780,10 @@ func TestAwaitJobsWhileRunning(t *testing.T) {
 
 func TestAwaitJobsRunsFinalization(t *testing.T) {
 	var vm ekuma.VM
-	// The most recent targets may stay reachable from the stack of the VM, so several are
-	// registered.
 	run(t, &vm, `
-globalThis.cleaned = 0;
-globalThis.registry = new FinalizationRegistry(() => { cleaned++; });
-for (let i = 0; i < 100; i++) {
-	registry.register({});
-}`)
+globalThis.held = "pending";
+globalThis.registry = new FinalizationRegistry(h => { held = h; });
+registry.register({}, "cleaned");`)
 	// The Go runtime queues the cleanups on its own goroutine some time after a collection.
 	deadline := time.Now().Add(10 * time.Second)
 	for {
@@ -1804,12 +1800,12 @@ for (let i = 0; i < 100; i++) {
 		}
 		time.Sleep(time.Millisecond)
 	}
-	cleaned, err := vm.Global().Get("cleaned")
+	held, err := vm.Global().Get("held")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cleaned.Int() == 0 {
-		t.Error("cleaned: got 0, want more")
+	if got, want := held.String(), "cleaned"; got != want {
+		t.Errorf("held: got %s, want %s", got, want)
 	}
 }
 

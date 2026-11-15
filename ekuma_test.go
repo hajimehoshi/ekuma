@@ -1162,6 +1162,29 @@ func TestPrototypeCollected(t *testing.T) {
 	}
 }
 
+// TestTemporariesCollected checks that the objects of a call that returned to Go are not kept
+// alive by the VM.
+func TestTemporariesCollected(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := vm.RunScript(t.Context(), "make", `
+		function make() {
+			return [new WeakRef({}), new WeakRef(this)];
+		}
+		var refs = make.call({});
+	`); err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	runtime.GC()
+	v, err := vm.RunScript(t.Context(), "deref", `refs.map(r => r.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	// The first object was a register of make, and the second its this.
+	if got, want := v.String(), "true,true"; got != want {
+		t.Errorf("collected: got %s, want %s", got, want)
+	}
+}
+
 // TestCancelTailCalls checks that a context stops endless tail recursion.
 func TestCancelTailCalls(t *testing.T) {
 	var vm ekuma.VM

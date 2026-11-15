@@ -73,11 +73,15 @@ const (
 	execYield
 )
 
+// stackHeadroom is the number of values that [VM.ensureStack] keeps free above what it is asked for.
+const stackHeadroom = 64
+
 func (vm *VM) ensureStack(n int) {
-	if n+64 <= len(vm.stack) {
+	vm.stackHigh = max(vm.stackHigh, n)
+	if n+stackHeadroom <= len(vm.stack) {
 		return
 	}
-	s := make([]Value, max(n+64, len(vm.stack)*2))
+	s := make([]Value, max(n+stackHeadroom, len(vm.stack)*2))
 	copy(s, vm.stack)
 	vm.stack = s
 	// The open upvalues point into the old stack.
@@ -89,6 +93,16 @@ func (vm *VM) ensureStack(n int) {
 // top returns the first stack index that is not in use.
 func (vm *VM) top() int {
 	return vm.sp
+}
+
+// clearStale clears the stack slots and frames above the ones in use, which the calls since the
+// outermost call into the engine started may have left values in.
+func (vm *VM) clearStale() {
+	clear(vm.stack[vm.sp:min(vm.stackHigh+stackHeadroom, len(vm.stack))])
+	vm.stackHigh = vm.sp
+	n := len(vm.frames)
+	clear(vm.frames[n:min(vm.framesHigh, cap(vm.frames))])
+	vm.framesHigh = n
 }
 
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
@@ -122,6 +136,7 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 		extraBase: extraBase,
 		newTarget: newTarget,
 	})
+	vm.framesHigh = max(vm.framesHigh, len(vm.frames))
 	vm.sp = base + fp.nregs + 1
 	return base
 }

@@ -312,6 +312,14 @@ type VM struct {
 	// sp is the first stack index that is not in use by the running function.
 	sp int
 
+	// stackHigh is the stack index below which values may remain from the calls since the
+	// outermost call into the engine started, apart from the headroom of [VM.ensureStack].
+	stackHigh int
+
+	// framesHigh is the number of elements of the array of frames that may remain from the
+	// calls since the outermost call into the engine started.
+	framesHigh int
+
 	// depth is the number of interpreter loops that are running.
 	depth int
 
