@@ -889,7 +889,11 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 					// One more register for the arguments object of the general case.
 					f.newReg()
 					f.setPos(pos)
-					f.emit(bytecode.OpApplyFwd, base, mappedArguments(f.node), 0)
+					op := bytecode.OpApplyFwd
+					if f.isTail(n) {
+						op = bytecode.OpTailApplyFwd
+					}
+					f.emit(op, base, mappedArguments(f.node), 0)
 					f.result(dst, base)
 					return
 				}
@@ -933,7 +937,11 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if len(n.Args) == 1 && op != bytecode.OpCallEval {
 		if s, ok := n.Args[0].(*ast.SpreadElement); ok && f.isForwardedArguments(s.Arg) {
 			f.setPos(pos)
-			f.emit(bytecode.OpCallFwd, base, 0, 0)
+			op := bytecode.OpCallFwd
+			if f.isTail(n) {
+				op = bytecode.OpTailCallFwd
+			}
+			f.emit(op, base, 0, 0)
 			f.result(dst, base)
 			return
 		}
@@ -965,7 +973,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	}
 	if f.isTail(n) {
 		switch op {
-		case bytecode.OpCall:
+		case bytecode.OpCall, bytecode.OpCallCall:
 			op = bytecode.OpTailCall
 		case bytecode.OpCallEval:
 			op = bytecode.OpTailCallEval

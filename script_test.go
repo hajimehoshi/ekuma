@@ -2546,6 +2546,45 @@ func TestTailCalls(t *testing.T) {
 			want: "t1",
 		},
 		{
+			name: "call a million deep",
+			src: `"use strict";
+				function f(n, acc) { return n === 0 ? this.k + acc : f.call(this, n - 1, acc + 1); }
+				f.call({k: 1}, 1e6, 0)`,
+			want: "1000001",
+		},
+		{
+			name: "call through a bound function",
+			src: `"use strict";
+				var c = Function.prototype.call.bind(f, "t");
+				function f(n) { return n === 0 ? this : c(n - 1); }
+				c(1e6)`,
+			want: "t",
+		},
+		{
+			name: "apply forwarding arguments a million deep",
+			src: `"use strict";
+				function f(n, acc) { return g.apply(this, arguments); }
+				function g(n, acc, x) { return n === 0 ? acc + x : f(n - 1, acc + 1, x); }
+				f(1e6, 0, "x")`,
+			want: "1000000x",
+		},
+		{
+			name: "apply that is not Function.prototype.apply",
+			src: `"use strict";
+				var o = { apply(t, args) { return args[0] === 0 ? args.length : f(args[0] - 1, 2); } };
+				function f(n) { return o.apply(null, arguments); }
+				f(1e6)`,
+			want: "2",
+		},
+		{
+			name: "spread arguments a million deep",
+			src: `"use strict";
+				function f(n) { return g(...arguments); }
+				function g(n, a, b) { return n === 0 ? a + b : f(n - 1, a, b); }
+				f(1e6, 1, 2)`,
+			want: "3",
+		},
+		{
 			name: "native function",
 			src: `"use strict";
 				function f(n) { return n === 0 ? Math.max(n, 7) : Reflect.apply(g, null, [n]); }
@@ -2631,7 +2670,7 @@ func TestTailCallStack(t *testing.T) {
 	var vm ekuma.VM
 	v, err := vm.RunScript(t.Context(), "trace.js", `"use strict";
 function a(n) { return b(n + 1); }
-function b(n) { return c(n + 1); }
+function b(n) { return c.call(null, n + 1); }
 function c(n) { throw new Error("x" + n); }
 function outer() { try { a(1); } catch (e) { return e.stack; } }
 outer()`)

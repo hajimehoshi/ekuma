@@ -218,11 +218,14 @@ const (
 
 	// The calls in tail position of strict functions. When the callee is a function written in
 	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
-	// callee returns to the caller of the running function. Otherwise they are the ordinary calls,
-	// and the next instructions return the result.
+	// callee returns to the caller of the running function. A callee that is Function.prototype.call
+	// stands for its this value. Otherwise they are the ordinary calls, and the next instructions
+	// return the result.
 	OpTailCall       // like [OpCall]
 	OpTailCallSpread // like [OpCallSpread]
 	OpTailCallEval   // like [OpCallEval], where the instruction after one with b = -1 is [OpTailCallSpread]
+	OpTailApplyFwd   // like [OpApplyFwd]
+	OpTailCallFwd    // like [OpCallFwd]
 )
 
 // The kinds of error that [OpThrowError] throws.

@@ -623,6 +623,8 @@ func BenchmarkNewVM(b *testing.B) {
 
 // BenchmarkTailCall compares a loop written as tail recursion in strict code with the same
 // loop as a while statement and with the same recursion in sloppy code, which grows the stack.
+// The other cases are tail recursion through call, through apply forwarding the arguments and
+// through a spread of the arguments.
 func BenchmarkTailCall(b *testing.B) {
 	const n = 1000
 	ctx := b.Context()
@@ -630,10 +632,15 @@ func BenchmarkTailCall(b *testing.B) {
 	if _, err := vm.RunScript(ctx, "setup", `
 		function tail(n, acc) { "use strict"; return n === 0 ? acc : tail(n - 1, acc + n); }
 		function loop(n, acc) { "use strict"; while (n !== 0) { acc += n; n--; } return acc; }
-		function sloppy(n, acc) { return n === 0 ? acc : sloppy(n - 1, acc + n); }`); err != nil {
+		function sloppy(n, acc) { return n === 0 ? acc : sloppy(n - 1, acc + n); }
+		function call(n, acc) { "use strict"; return n === 0 ? acc : call.call(this, n - 1, acc + n); }
+		function apply(n, acc) { "use strict"; return n === 0 ? acc : applyStep.apply(this, arguments); }
+		function applyStep(n, acc) { "use strict"; return apply(n - 1, acc + n); }
+		function spread(n, acc) { "use strict"; return n === 0 ? acc : spreadStep(...arguments); }
+		function spreadStep(n, acc) { "use strict"; return spread(n - 1, acc + n); }`); err != nil {
 		b.Fatal(err)
 	}
-	for _, name := range []string{"tail", "loop", "sloppy"} {
+	for _, name := range []string{"tail", "loop", "sloppy", "call", "apply", "spread"} {
 		b.Run(name, func(b *testing.B) {
 			for b.Loop() {
 				if _, err := vm.Global().Call(ctx, name, n, 0); err != nil {

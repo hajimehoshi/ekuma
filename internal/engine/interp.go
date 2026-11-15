@@ -1235,32 +1235,24 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
 			}
 			goto callRegs
-		case bytecode.OpApplyFwd:
+		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
 			a := int(i.A)
-			cur := &vm.frames[len(vm.frames)-1]
 			if regs[a].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
 				// Something else is called apply here: pass it a real arguments object.
-				regs[a+3] = Value{o: vm.newArguments(cur, regs, i.B != 0)}
+				regs[a+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, i.B != 0)}
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, 2, i.A, false, nil
+				if i.Op == bytecode.OpTailApplyFwd {
+					argBase += base
+					goto tailCall
+				}
 				goto callRegs
 			}
-			f, callThis, argc, ret, isNew, newTarget = regs[a+1].o, regs[a+2], cur.argc, i.A, false, nil
-			argBase = cur.top()
-			vm.ensureStack(argBase + argc)
-			n := min(argc, fp.nparams)
-			copy(vm.stack[argBase:], regs[:n])
-			copy(vm.stack[argBase+n:], vm.extraArgs(&vm.frames[len(vm.frames)-1]))
-			goto call
-		case bytecode.OpCallFwd:
+			f, callThis = regs[a+1].o, regs[a+2]
+			goto forward
+		case bytecode.OpCallFwd, bytecode.OpTailCallFwd:
 			a := int(i.A)
-			cur := &vm.frames[len(vm.frames)-1]
-			f, callThis, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], cur.argc, i.A, false, nil
-			argBase = cur.top()
-			vm.ensureStack(argBase + argc)
-			n := min(argc, fp.nparams)
-			copy(vm.stack[argBase:], regs[:n])
-			copy(vm.stack[argBase+n:], vm.extraArgs(&vm.frames[len(vm.frames)-1]))
-			goto call
+			f, callThis = regs[a].o, regs[a+1]
+			goto forward
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
 			a := int(i.A)
 			f, callThis, ret, isNew, newTarget = regs[a].o, regs[a+1], i.A, false, nil
@@ -1867,6 +1859,22 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		isNew, newTarget = false, nil
 		goto call
 
+	forward:
+		// A call with the arguments of the running function.
+		{
+			cur := &vm.frames[len(vm.frames)-1]
+			argc, ret, isNew, newTarget = cur.argc, i.A, false, nil
+			argBase = cur.top()
+			vm.ensureStack(argBase + argc)
+			n := min(argc, fp.nparams)
+			copy(vm.stack[argBase:], regs[:n])
+			copy(vm.stack[argBase+n:], vm.extraArgs(&vm.frames[len(vm.frames)-1]))
+			if i.Op >= bytecode.OpTailApplyFwd {
+				goto tailCall
+			}
+			goto call
+		}
+
 	callRegs:
 		// The arguments are in the registers from argBase on.
 		if onHeap {
@@ -1934,7 +1942,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	tailCall:
 		// A call in tail position, whose arguments are on the stack from argBase on.
 		vm.frames[len(vm.frames)-1].pc = pc
-		if f, callThis, argc = vm.unbind(f, callThis, argBase, argc); !vm.replaceFrame(f, callThis, argBase, argc) {
+		if f, callThis, argBase, argc = vm.unbind(f, callThis, argBase, argc); !vm.replaceFrame(f, callThis, argBase, argc) {
 			goto call
 		}
 		{
@@ -2011,21 +2019,34 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	}
 }
 
-// unbind returns the target, the this value and the argument count of a call of the bound
-// function f, inserting the bound arguments before the argc arguments at argBase on the stack.
-// For any other f, it returns its arguments unchanged.
-func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, int) {
-	for f != nil && f.fn != nil && f.fn.bound != nil {
-		b := f.fn.bound
-		if k := len(b.args); k > 0 {
-			vm.ensureStack(argBase + argc + k)
-			copy(vm.stack[argBase+k:], vm.stack[argBase:argBase+argc])
-			copy(vm.stack[argBase:], b.args)
-			argc += k
+// unbind returns the function that a tail call of f ends up calling, with its this value and
+// the stack index and count of its arguments, for the argc arguments at argBase on the stack.
+// A bound function stands for its target, with the bound arguments inserted before the others,
+// and Function.prototype.call of the running realm for its callable this value.
+func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, int, int) {
+	for f != nil && f.fn != nil {
+		if b := f.fn.bound; b != nil {
+			if k := len(b.args); k > 0 {
+				vm.ensureStack(argBase + argc + k)
+				copy(vm.stack[argBase+k:], vm.stack[argBase:argBase+argc])
+				copy(vm.stack[argBase:], b.args)
+				argc += k
+			}
+			f, this = b.target, b.this
+			continue
 		}
-		f, this = b.target, b.this
+		// Function.prototype.call ends in a tail call of its this value.
+		if f != vm.Intrinsic(IntrinsicFunctionPrototypeCall) || this.o == nil || this.o.fn == nil {
+			break
+		}
+		f, this = this.o, Undefined
+		if argc > 0 {
+			this = vm.stack[argBase]
+			argBase++
+			argc--
+		}
 	}
-	return f, this, argc
+	return f, this, argBase, argc
 }
 
 // replaceFrame replaces the running frame with a frame of f for the argc arguments at argBase on
