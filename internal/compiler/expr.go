@@ -215,7 +215,7 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 		}
 		f.closure(e, dst, name)
 	case *ast.Class:
-		f.class(e, dst, "")
+		f.class(e, dst, "", -1)
 	case *ast.UnaryExpr:
 		f.unary(e, dst)
 	case *ast.UpdateExpr:
@@ -1197,7 +1197,26 @@ func (f *fn) named(e ast.Expr, dst int32, name string) {
 		}
 	case *ast.Class:
 		if e.Name == nil {
-			f.class(e, dst, name)
+			f.class(e, dst, name, -1)
+			return
+		}
+	}
+	f.expr(e, dst)
+}
+
+// namedByKey compiles e into dst. When e is an anonymous function or class, it gets the name
+// of the property key in the register key.
+func (f *fn) namedByKey(e ast.Expr, dst, key int32) {
+	switch e := e.(type) {
+	case *ast.Function:
+		if e.Name == nil {
+			f.closure(e, dst, "")
+			f.emit(bytecode.OpSetFuncName, dst, key, bytecode.NamePrefixNone)
+			return
+		}
+	case *ast.Class:
+		if e.Name == nil {
+			f.class(e, dst, "", key)
 			return
 		}
 	}
@@ -1249,10 +1268,7 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 			default:
 				k := f.propertyKey(p.Key, p.Computed)
 				v := f.newReg()
-				f.expr(p.Value, v)
-				if isAnonymousFunction(p.Value) {
-					f.emit(bytecode.OpSetFuncName, v, k, bytecode.NamePrefixNone)
-				}
+				f.namedByKey(p.Value, v, k)
 				f.emit(bytecode.OpDefineField, obj, k, v)
 			}
 		case ast.PropertyMethod, ast.PropertyGet, ast.PropertySet:

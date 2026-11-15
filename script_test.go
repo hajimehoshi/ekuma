@@ -500,6 +500,31 @@ func TestScripts(t *testing.T) {
 			want: "true,true,o--p-,true,false",
 		},
 		{
+			name: "replace results longer than the string length limit",
+			src: `var s = "x".repeat(2 ** 30 - 1);
+				var r = [];
+				for (var f of [() => s.replace(/x/, "xx$'"), () => s.replace("x", () => "xx")]) {
+					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
+				}
+				r.join()`,
+			want: "true,true",
+		},
+		{
+			name: "anonymous functions named after keys known at run time",
+			src: `var k = "a";
+				class C { [k] = () => {}; 128 = class { static n = this.name; }; }
+				var c = new C();
+				var o = { [k]: class { static n = this.name; } };
+				[c.a.name, c[128].n, o.a.n].join()`,
+			want: "a,128,a",
+		},
+		{
+			name: "source of a RegExp with an escaped line separator",
+			src: `var r = RegExp("\\\u2028");
+				[r.source, RegExp("\\\u2029").source, eval("/" + r.source + "/").test("\u2028")].join()`,
+			want: `\u2028,\u2029,true`,
+		},
+		{
 			name: "a statement without a value makes the script value undefined",
 			src:  `1; if (false) {}`,
 			want: "undefined",

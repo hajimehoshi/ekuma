@@ -435,6 +435,10 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		t := f.newReg()
 		if name, ok := c.fieldNames[node]; ok {
 			f.named(node.ExprBody, t, name)
+		} else if name, ok := c.fieldKeys[node]; ok {
+			k := f.newReg()
+			f.loadVar(name, k, false)
+			f.namedByKey(node.ExprBody, t, k)
 		} else {
 			if f.canTailCall() {
 				f.markTails(node.ExprBody)

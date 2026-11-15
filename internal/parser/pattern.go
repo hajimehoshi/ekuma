@@ -180,9 +180,11 @@ func (p *parser) parseBindingTarget() ast.Pattern {
 			Span: span(start, p.t.end),
 			Name: p.t.str,
 		})
-		// The binding is checked when it is declared, possibly in a function state other than the
-		// current one, so a use of await that may belong to an enclosing async arrow head is noted here.
-		p.noteAwaitIdent(id.Name, start)
+		// The binding is checked again when it is declared, possibly in a function state other
+		// than the current one, such as that of an arrow function whose head this is. The current
+		// state decides whether yield and await are identifiers, and a use of await that may
+		// belong to an enclosing async arrow head is noted.
+		p.checkIdent(id.Name, start, true)
 		p.next()
 		return id
 	case tLBrack:
@@ -250,7 +252,7 @@ func (p *parser) parseBindingTarget() ast.Pattern {
 					p.unexpected()
 				}
 				id := key.(*ast.Identifier)
-				p.noteAwaitIdent(id.Name, propStart)
+				p.checkIdent(id.Name, propStart, true)
 				prop.Shorthand = true
 				prop.Value = id
 				if p.eat(tAssign) {

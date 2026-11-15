@@ -335,11 +335,17 @@ func escapeRegExpPattern(src string) string {
 			b.WriteByte(c)
 			if i+1 < len(src) {
 				i++
-				switch src[i] {
-				case '\n':
+				switch rest := src[i:]; {
+				case rest[0] == '\n':
 					b.WriteString("n")
-				case '\r':
+				case rest[0] == '\r':
 					b.WriteString("r")
+				case strings.HasPrefix(rest, "\u2028"):
+					b.WriteString("u2028")
+					i += 2
+				case strings.HasPrefix(rest, "\u2029"):
+					b.WriteString("u2029")
+					i += 2
 				default:
 					b.WriteByte(src[i])
 				}
@@ -857,7 +863,7 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 				writeSubstitution(vm, &rb, matched, s, position, substCaptures{vals: captures}, named, template)
 				continue
 			}
-			b.WriteString(s.Substring(next, position))
+			writeLimited(vm, &b, s.Substring(next, position))
 			writeSubstitution(vm, &b, matched, s, position, substCaptures{vals: captures}, named, template)
 			next = position + wtf8.Len(matched)
 			continue
@@ -871,15 +877,15 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s *engine.Object, 
 		}
 		replacement := vm.ToString(vm.Call(replaceValue.Object(), engine.Undefined, callArgs...))
 		if position >= next {
-			b.WriteString(s.Substring(next, position))
-			b.WriteString(replacement)
+			writeLimited(vm, &b, s.Substring(next, position))
+			writeLimited(vm, &b, replacement)
 			next = position + wtf8.Len(matched)
 		}
 	}
 	if next >= length {
 		return vm.NewString(b.String())
 	}
-	b.WriteString(s.Substring(next, length))
+	writeLimited(vm, &b, s.Substring(next, length))
 	return vm.NewString(b.String())
 }
 
@@ -890,10 +896,10 @@ func substituteMatch(vm *engine.VM, b *wtf8.Builder, re *regexp.Regexp, s *engin
 	if position < next {
 		return next
 	}
-	b.WriteString(s.Substring(next, position))
+	writeLimited(vm, b, s.Substring(next, position))
 	matched := s.Substring(caps[0], caps[1])
 	if !strings.Contains(template, "$") {
-		b.WriteString(template)
+		writeLimited(vm, b, template)
 		return caps[1]
 	}
 	named := engine.Undefined
@@ -1062,6 +1068,15 @@ func (c *substCaptures) get(i int) (string, bool) {
 	return c.str.Substring(a, b), true
 }
 
+// writeLimited writes s to b, and throws a RangeError instead when b would get longer than
+// MaxStringLength.
+func writeLimited(vm *engine.VM, b *wtf8.Builder, s string) {
+	if b.Len()+len(s) > engine.MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
+	b.WriteString(s)
+}
+
 // writeSubstitution implements GetSubstitution, writing the result to b.
 func writeSubstitution(vm *engine.VM, b *wtf8.Builder, matched string, str *engine.Object, position int, captures substCaptures, named engine.Value, template string) {
 	length := str.StringLength()
@@ -1071,26 +1086,26 @@ func writeSubstitution(vm *engine.VM, b *wtf8.Builder, matched string, str *engi
 		if c != '$' || i+1 >= len(template) {
 			j := strings.IndexByte(template[i+1:], '$')
 			if j < 0 {
-				b.WriteString(template[i:])
+				writeLimited(vm, b, template[i:])
 				break
 			}
-			b.WriteString(template[i : i+1+j])
+			writeLimited(vm, b, template[i:i+1+j])
 			i += 1 + j
 			continue
 		}
 		switch next := template[i+1]; {
 		case next == '$':
-			b.WriteString("$")
+			writeLimited(vm, b, "$")
 			i += 2
 		case next == '&':
-			b.WriteString(matched)
+			writeLimited(vm, b, matched)
 			i += 2
 		case next == '`':
-			b.WriteString(str.Substring(0, position))
+			writeLimited(vm, b, str.Substring(0, position))
 			i += 2
 		case next == '\'':
 			if tail := position + wtf8.Len(matched); tail < length {
-				b.WriteString(str.Substring(tail, length))
+				writeLimited(vm, b, str.Substring(tail, length))
 			}
 			i += 2
 		case next >= '0' && next <= '9':
@@ -1106,27 +1121,27 @@ func writeSubstitution(vm *engine.VM, b *wtf8.Builder, matched string, str *engi
 			ref := template[i : i+1+digits]
 			if index >= 1 && index <= ncaps {
 				if c, ok := captures.get(index); ok {
-					b.WriteString(c)
+					writeLimited(vm, b, c)
 				}
 			} else {
-				b.WriteString(ref)
+				writeLimited(vm, b, ref)
 			}
 			i += len(ref)
 		case next == '<':
 			gt := strings.IndexByte(template[i:], '>')
 			if gt < 0 || named.IsUndefined() {
-				b.WriteString("$<")
+				writeLimited(vm, b, "$<")
 				i += 2
 				continue
 			}
 			name := template[i+2 : i+gt]
 			v := vm.Get(named.Object(), vm.ToPropertyKey(vm.NewString(name)))
 			if !v.IsUndefined() {
-				b.WriteString(vm.ToString(v))
+				writeLimited(vm, b, vm.ToString(v))
 			}
 			i += gt + 1
 		default:
-			b.WriteString("$")
+			writeLimited(vm, b, "$")
 			i++
 		}
 	}

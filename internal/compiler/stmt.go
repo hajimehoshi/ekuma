@@ -407,7 +407,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 	case *ast.ClassDecl:
 		name := s.Class.Name.Name
 		t := f.newReg()
-		f.class(s.Class, t, name)
+		f.class(s.Class, t, name, -1)
 		f.initBinding(s, name, t)
 	case *ast.ImportDecl, *ast.ExportAllDecl:
 	case *ast.ExportNamedDecl:

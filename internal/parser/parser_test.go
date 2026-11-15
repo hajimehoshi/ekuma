@@ -684,6 +684,15 @@ func TestInvalid(t *testing.T) {
 			src: "async function f() { (await) => 0 }",
 		},
 		{
+			src: "async function f() { (...await) => 0 }",
+		},
+		{
+			src: "async function f() { (...{await}) => 0 }",
+		},
+		{
+			src: "function* g() { (...yield) => 0 }",
+		},
+		{
 			src: "a + b => 0",
 		},
 		{

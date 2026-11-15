@@ -461,16 +461,16 @@ func initString(vm *engine.VM) {
 			var b wtf8.Builder
 			end := 0
 			for _, p := range positions {
-				b.WriteString(s.Substring(end, p))
+				writeLimited(vm, &b, s.Substring(end, p))
 				if functional {
-					b.WriteString(vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
+					writeLimited(vm, &b, vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
 				} else {
 					writeSubstitution(vm, &b, search, s, p, substCaptures{}, engine.Undefined, repStr)
 				}
 				end = p + searchLen
 			}
 			if end < n {
-				b.WriteString(s.Substring(end, n))
+				writeLimited(vm, &b, s.Substring(end, n))
 			}
 			return vm.NewString(b.String())
 		}))

@@ -339,7 +339,7 @@ func (f *fn) exportDefault(s *ast.ExportDefaultDecl) {
 		if d.Class.Name != nil {
 			name = d.Class.Name.Name
 		}
-		f.class(d.Class, t, "default")
+		f.class(d.Class, t, "default", -1)
 		f.storeVar(s, name, t, true)
 	default:
 		t := f.newReg()

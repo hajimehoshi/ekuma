@@ -254,6 +254,10 @@ type compiler struct {
 	// fieldNames holds the names that the anonymous functions of class field initializers get.
 	fieldNames map[*ast.Function]string
 
+	// fieldKeys holds the variables of the property keys whose names the anonymous functions
+	// of class field initializers get, when the names are known only at run time.
+	fieldKeys map[*ast.Function]string
+
 	// dynamic is the function of a program from parser.ParseFunction, whose name is not bound inside it.
 	dynamic *ast.Function
 
@@ -340,6 +344,7 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 		file:         file,
 		isExpression: map[*ast.Function]bool{},
 		fieldNames:   map[*ast.Function]string{},
+		fieldKeys:    map[*ast.Function]string{},
 		scratch:      scratchPool.Get().(*scratch),
 	}
 }

@@ -4,6 +4,8 @@
 package compiler
 
 import (
+	"strconv"
+
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
@@ -47,12 +49,14 @@ func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func 
 	return b
 }
 
-// class compiles the class n into dst. name is the value of the name property.
-func (f *fn) class(n *ast.Class, dst int32, name string) {
+// class compiles the class n into dst. name is the value of the name property. When the
+// register nameKey is not -1 and n has no name, the name is that of the property key in it.
+func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 	mark := f.top
 	defer f.free(mark)
 	if n.Name != nil {
 		name = n.Name.Name
+		nameKey = -1
 	}
 
 	// state holds the state of the evaluation of a class with decorators. The decorators of
@@ -60,10 +64,14 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 	state := int32(-1)
 	if n.Decorators != nil || n.MemberDecorators {
 		state = f.newReg()
-		r := f.newReg()
-		f.emit(bytecode.OpLoadK, r, f.constStr(name), 0)
-		f.decorateStep(bytecode.DecBegin, -1, r, state, 0)
-		f.free(r)
+		if nameKey >= 0 {
+			f.decorateStep(bytecode.DecBegin, -1, nameKey, state, 0)
+		} else {
+			r := f.newReg()
+			f.emit(bytecode.OpLoadK, r, f.constStr(name), 0)
+			f.decorateStep(bytecode.DecBegin, -1, r, state, 0)
+			f.free(r)
+		}
 		for _, d := range n.Decorators {
 			f.decorator(state, d)
 		}
@@ -102,6 +110,23 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 		}
 		f.emit(bytecode.OpPrivateName, b.reg, f.key(p.Name), isMethod)
 	}
+	// The key of a field whose name is known only at run time is a variable of the class
+	// scope, so that its initializer can name an anonymous function after it.
+	for i := range n.Members {
+		m := &n.Members[i]
+		if m.Kind != ast.MemberField && m.Kind != ast.MemberAccessor || m.Value == nil || !isAnonymousFunction(m.Value.ExprBody) {
+			continue
+		}
+		if _, ok := keyName(m.Key, m.Computed); ok {
+			continue
+		}
+		if _, private := m.Key.(*ast.PrivateName); private {
+			continue
+		}
+		v := "%fieldkey" + strconv.Itoa(i)
+		f.declare(v, bindPseudo)
+		f.c.fieldKeys[m.Value] = v
+	}
 
 	parent := int32(-1)
 	if n.Super != nil {
@@ -123,6 +148,9 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 	f.emit(bytecode.OpClosure, ctor, int32(len(f.f.Protos)-1), 0)
 	f.captureScopes(ctor)
 	f.emit(bytecode.OpClass, ctor, 0, parent)
+	if nameKey >= 0 {
+		f.emit(bytecode.OpSetFuncName, ctor, nameKey, bytecode.NamePrefixNone)
+	}
 	proto := ctor + 1
 
 	if state >= 0 {
@@ -195,7 +223,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 		case ast.MemberField:
 			// The key and the initializer stay in registers until the static fields run.
 			k := f.propertyKey(m.Key, m.Computed)
-			v := f.fieldInit(m, obj, private)
+			v := f.fieldInit(m, obj, k, private)
 			if m.Static {
 				statics = append(statics, static{
 					key:   k,
@@ -210,7 +238,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 			k := f.propertyKey(m.Key, m.Computed)
 			acc := f.newRegs(3)
 			f.emit(bytecode.OpAutoAccessor, acc, k, 0)
-			v := f.fieldInit(m, obj, private)
+			v := f.fieldInit(m, obj, k, private)
 			if private {
 				elem := int32(0)
 				if m.Static {
@@ -272,8 +300,9 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 }
 
 // fieldInit compiles the initializer of the field or auto-accessor m with the home object obj
-// into a fresh register, and returns the register, or -1 when m has no initializer.
-func (f *fn) fieldInit(m *ast.ClassMember, obj int32, private bool) int32 {
+// and the property key in the register k into a fresh register, and returns the register,
+// or -1 when m has no initializer.
+func (f *fn) fieldInit(m *ast.ClassMember, obj, k int32, private bool) int32 {
 	if m.Value == nil {
 		return -1
 	}
@@ -282,6 +311,9 @@ func (f *fn) fieldInit(m *ast.ClassMember, obj int32, private bool) int32 {
 		f.c.fieldNames[m.Value] = fname
 	} else if private {
 		f.c.fieldNames[m.Value] = "#" + m.Key.(*ast.PrivateName).Name
+	} else if name, ok := f.c.fieldKeys[m.Value]; ok {
+		b, _ := f.lookupLocal(name)
+		f.emit(bytecode.OpMove, b.reg, k, 0)
 	}
 	f.closure(m.Value, v, "")
 	f.emit(bytecode.OpSetHome, v, obj, 0)
@@ -389,11 +421,11 @@ func (f *fn) decoratedMembers(n *ast.Class, state, ctor int32) {
 			f.emit(bytecode.OpSetHome, v, obj, 0)
 		case ast.MemberField:
 			k = f.propertyKey(m.Key, m.Computed)
-			v = f.fieldInit(m, obj, private)
+			v = f.fieldInit(m, obj, k, private)
 			elem |= bytecode.ElemField
 		case ast.MemberAccessor:
 			k = f.propertyKey(m.Key, m.Computed)
-			v = f.fieldInit(m, obj, private)
+			v = f.fieldInit(m, obj, k, private)
 			elem |= bytecode.ElemAccessor
 		case ast.MemberStaticBlock:
 			v = f.newReg()
