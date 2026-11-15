@@ -26,7 +26,7 @@ import (
 //
 // A waiter of Atomics.waitAsync that another agent notifies is posted to the mailbox of its VM,
 // which resolves its promise on its own goroutine: at its next poll for an interruption, when
-// it runs the jobs, or in [VM.AwaitWaiters].
+// it runs the jobs, or in [VM.AwaitJobs].
 //
 // The VM has no timers. A timeout job runs when the jobs run after its time: whenever the
 // promise jobs are drained, the waiters whose time has passed are notified with "timed-out".
@@ -406,16 +406,22 @@ func (vm *VM) receiveNotifications() bool {
 	return true
 }
 
-// AwaitWaiters blocks until a waiter of Atomics.waitAsync of vm is notified by another agent or
-// reaches its timeout, and reports true; its promise is then resolved when the jobs next run.
-// It reports false without blocking when vm has no such waiter, and when an interruption is
-// requested.
-func (vm *VM) AwaitWaiters() bool {
+// AwaitJobs blocks until a waiter of Atomics.waitAsync of vm is notified by another agent or
+// reaches its timeout, and reports true; the jobs run when [VM.RunJobs] next runs them. It
+// reports true without blocking when jobs are already pending, and false without blocking when
+// vm has no such waiter or when an interruption is requested.
+func (vm *VM) AwaitJobs() bool {
 	for {
-		if vm.asyncWaiters == 0 || vm.interruptCause.Load() != nil {
+		if vm.interruptCause.Load() != nil {
 			return false
 		}
-		if vm.mailbox.count.Load() != 0 || vm.awaitWake() {
+		if vm.finalizationPending() || vm.mailbox.count.Load() != 0 {
+			return true
+		}
+		if vm.asyncWaiters == 0 {
+			return false
+		}
+		if vm.awaitWake() {
 			return true
 		}
 	}

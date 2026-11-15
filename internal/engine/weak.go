@@ -331,12 +331,19 @@ func (r *FinalizationRegistry) remove(id uint64, c *finalizationCell) {
 	}
 }
 
+// finalizationPending reports whether a target of a FinalizationRegistry was collected and its
+// cleanup callback has not run yet.
+func (vm *VM) finalizationPending() bool {
+	q := vm.weak.finalization
+	return q != nil && q.pending.Load()
+}
+
 // runFinalizationCleanups calls the cleanup callbacks for the targets that were collected.
 func (vm *VM) runFinalizationCleanups() {
-	q := vm.weak.finalization
-	if q == nil || !q.pending.Load() {
+	if !vm.finalizationPending() {
 		return
 	}
+	q := vm.weak.finalization
 	for {
 		d, ok := q.pop()
 		if !ok {

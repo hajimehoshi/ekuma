@@ -227,7 +227,7 @@ var ErrRunning = errors.New("ekuma: AwaitJobs called while JavaScript runs")
 
 // AwaitJobs runs pending jobs, waiting for an Atomics.waitAsync waiter to be
 // notified or time out if necessary. It reports true if jobs were run, or
-// false without blocking if there are no asynchronous waiters.
+// false without blocking if there are no pending jobs or asynchronous waiters.
 // It returns [ErrRunning] if the VM is running JavaScript, or the cause of ctx
 // if ctx is done.
 func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
@@ -237,7 +237,7 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 	}
 	var waited bool
 	_, err := vm.run(ctx, func() (engine.Value, error) {
-		if waited = vm.e.AwaitWaiters(); !waited {
+		if waited = vm.e.AwaitJobs(); !waited {
 			return engine.Undefined, nil
 		}
 		return engine.Undefined, vm.e.RunJobs()
