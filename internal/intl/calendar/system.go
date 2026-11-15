@@ -4,6 +4,9 @@
 package calendar
 
 import (
+	"slices"
+
+	"github.com/hajimehoshi/ekuma/internal/unicode/icu4c"
 	"github.com/hajimehoshi/ekuma/internal/unicode/icu4x"
 )
 
@@ -224,11 +227,18 @@ func (indian) ordinal(y, n int, leap bool) (int, bool) {
 // 33-year rule.
 const persianEpoch = -492268
 
-// persian is the Persian calendar with the 33-year rule.
+// persian is the Persian calendar with the 33-year rule, and the corrections of ICU4C where the
+// equinox disagrees with the rule.
 type persian struct{}
 
 func (persian) newYear(y int) int64 {
-	return persianEpoch + 365*int64(y-1) + floorDiv(8*int64(y)+21, 33)
+	d := persianEpoch + 365*int64(y-1) + floorDiv(8*int64(y)+21, 33)
+	// A year that the rule makes a leap year but the equinox does not starts the next year a
+	// day earlier.
+	if _, ok := slices.BinarySearch(icu4c.PersianNonLeapYears[:], int32(y-1)); ok {
+		d--
+	}
+	return d
 }
 
 func (c persian) yearOf(d int64) int {

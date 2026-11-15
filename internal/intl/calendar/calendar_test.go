@@ -344,6 +344,25 @@ func TestDate(t *testing.T) {
 				MonthsInYear: 12,
 			},
 		},
+		// 1502 is the first year that the 33-year rule makes a leap year but the equinox does
+		// not, so 1503 starts a day earlier and is a leap year instead.
+		{
+			cal: "persian",
+			day: epochDays(2124, 3, 20),
+			want: calendar.Date{
+				Era:          "ap",
+				EraYear:      1503,
+				Year:         1503,
+				Month:        1,
+				MonthCode:    calendar.MonthCode{Number: 1},
+				Day:          1,
+				DayOfYear:    1,
+				DaysInMonth:  31,
+				DaysInYear:   366,
+				MonthsInYear: 12,
+				InLeapYear:   true,
+			},
+		},
 		{
 			cal: "roc",
 			day: -63000,
