@@ -163,6 +163,7 @@ func (f *fn) initUsing(n ast.Node, k ast.DeclKind, name string, src int32) {
 		hint = bytecode.DisposeAsync
 	}
 	f.emit(bytecode.OpUsing, src, sc.dispose, hint)
+	sc.used = true
 	if b == nil {
 		f.storeVar(n, name, src, true)
 		return
@@ -305,6 +306,7 @@ func (f *fn) disposing(async bool, body func()) {
 		kind:     ctlFinally,
 		kindReg:  f.newReg(),
 		valueReg: f.newReg(),
+		disposes: sc,
 	}
 	v := f.newReg()
 	f.control = append(f.control, fin)
@@ -455,7 +457,11 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 	case *ast.ReturnStmt:
 		v := f.newReg()
 		if s.Arg != nil {
+			if f.canTailCall() {
+				f.markTails(s.Arg)
+			}
 			f.expr(s.Arg, v)
+			f.tails = f.tails[:0]
 			if f.f.IsAsync && f.f.IsGenerator {
 				f.emit(bytecode.OpAwait, v, v, 0)
 			}
@@ -839,7 +845,13 @@ func (f *fn) try(s *ast.TryStmt) {
 	}
 	base := f.top
 	start := f.pc()
+	if s.Handler != nil {
+		f.catchDepth++
+	}
 	f.block(s.Block, nil)
+	if s.Handler != nil {
+		f.catchDepth--
+	}
 	end := f.pc()
 
 	var done []int
@@ -895,4 +907,50 @@ func (f *fn) try(s *ast.TryStmt) {
 	}
 	f.completion = saved
 	f.leaveFinally(fin)
+}
+
+// canTailCall reports whether a call that ends a return statement or the body of an arrow
+// function at the current point is in tail position, as IsInTailPosition defines it.
+func (f *fn) canTailCall() bool {
+	if !f.f.Strict || f.f.IsGenerator || f.f.IsAsync || f.node == nil || f.node.ClassConstructor || f.catchDepth > 0 {
+		return false
+	}
+	for _, c := range f.control {
+		if c.hasIter {
+			return false
+		}
+		// A finally block, or using declarations that precede the call.
+		if c.kind == ctlFinally && (c.disposes == nil || c.disposes.used) {
+			return false
+		}
+	}
+	return true
+}
+
+// markTails records the calls in tail position of e, an expression in tail position.
+func (f *fn) markTails(e ast.Expr) {
+	switch e := e.(type) {
+	case *ast.CallExpr:
+		if _, ok := e.Callee.(*ast.SuperExpr); !ok {
+			f.tails = append(f.tails, e)
+		}
+	case *ast.TaggedTemplate:
+		f.tails = append(f.tails, e)
+	case *ast.CondExpr:
+		f.markTails(e.Consequent)
+		f.markTails(e.Alternate)
+	case *ast.LogicalExpr:
+		f.markTails(e.Right)
+	case *ast.SequenceExpr:
+		f.markTails(e.Exprs[len(e.Exprs)-1])
+	case *ast.OptionalChain:
+		if c, ok := e.Expr.(*ast.CallExpr); ok {
+			f.tails = append(f.tails, c)
+		}
+	}
+}
+
+// isTail reports whether the call e is in tail position.
+func (f *fn) isTail(e ast.Expr) bool {
+	return len(f.tails) > 0 && slices.Contains(f.tails, e)
 }

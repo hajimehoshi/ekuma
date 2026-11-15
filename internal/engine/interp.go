@@ -1251,7 +1251,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				goto superCall
 			}
 			goto call
-		case bytecode.OpCallEval:
+		case bytecode.OpCallEval, bytecode.OpTailCallEval:
 			a := int(i.A)
 			if regs[a].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
@@ -1267,7 +1267,24 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
+			if i.Op == bytecode.OpTailCallEval {
+				argBase += base
+				goto tailCall
+			}
 			goto callRegs
+		case bytecode.OpTailCall:
+			a := int(i.A)
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], base+a+2, int(i.B), i.A, false, nil
+			goto tailCall
+		case bytecode.OpTailCallSpread:
+			a := int(i.A)
+			f, callThis, ret, isNew, newTarget = regs[a].o, regs[a+1], i.A, false, nil
+			args := regs[a+2].o.elems
+			argc = len(args)
+			argBase = vm.sp
+			vm.ensureStack(argBase + argc)
+			copy(vm.stack[argBase:], args)
+			goto tailCall
 		case bytecode.OpNew:
 			a := int(i.A)
 			f, argBase, argc, ret = regs[a].o, a+2, int(i.B), i.A
@@ -1866,6 +1883,23 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			continue
 		}
 
+	tailCall:
+		// A call in tail position, whose arguments are on the stack from argBase on.
+		vm.frames[len(vm.frames)-1].pc = pc
+		if f, callThis, argc = vm.unbind(f, callThis, argBase, argc); !vm.replaceFrame(f, callThis, argBase, argc) {
+			goto call
+		}
+		{
+			fr := &vm.frames[len(vm.frames)-1]
+			fp = fr.fp
+			cl = f
+			code = fp.code
+			base = fr.base
+			regs = vm.stack[base : base+fp.nregs+1]
+			pc = 0
+			continue
+		}
+
 	construct:
 		// new f(...) for anything but a plain constructor function.
 		{
@@ -1921,6 +1955,59 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		}
 	}
+}
+
+// unbind returns the target, the this value and the argument count of a call of the bound
+// function f, inserting the bound arguments before the argc arguments at argBase on the stack.
+// For any other f, it returns its arguments unchanged.
+func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, int) {
+	for f != nil && f.fn != nil && f.fn.bound != nil {
+		b := f.fn.bound
+		if k := len(b.args); k > 0 {
+			vm.ensureStack(argBase + argc + k)
+			copy(vm.stack[argBase+k:], vm.stack[argBase:argBase+argc])
+			copy(vm.stack[argBase:], b.args)
+			argc += k
+		}
+		f, this = b.target, b.this
+	}
+	return f, this, argc
+}
+
+// replaceFrame replaces the running frame with a frame of f for the argc arguments at argBase on
+// the stack, which returns to the caller of the running frame. It reports false, changing nothing,
+// when f is not an ordinary function written in JavaScript or the running frame constructs an object.
+func (vm *VM) replaceFrame(f *Object, this Value, argBase, argc int) bool {
+	n := len(vm.frames) - 1
+	cur := &vm.frames[n]
+	if f == nil || f.fn == nil || cur.isNew || cur.newTarget != nil {
+		return false
+	}
+	if c := f.fn.code; c == nil || c.isGenerator || c.isAsync || f.fn.classConstructor {
+		return false
+	}
+	if vm.interrupt.Load() {
+		vm.Poll()
+	}
+	// The arguments go where the running frame's were.
+	start := cur.base
+	if cur.extraBase >= 0 {
+		start = cur.extraBase - cur.fp.nparams
+	}
+	if len(vm.openUpvals) > 0 {
+		vm.closeUpvals(start)
+	}
+	end := max(vm.sp, argBase+argc)
+	copy(vm.stack[start:], vm.stack[argBase:argBase+argc])
+	ret := cur.ret
+	*cur = frame{}
+	vm.frames = vm.frames[:n]
+	vm.pushFrame(f, this, start, argc, ret, false, nil)
+	// Nothing above the new frame is in use any more.
+	if vm.sp < end {
+		clear(vm.stack[vm.sp:end])
+	}
+	return true
 }
 
 // reload returns the registers of the running frame after a call that may have moved the stack.

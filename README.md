@@ -61,7 +61,7 @@ is published yet.
 
 ## Status
 
-89.7% of [test262](https://github.com/tc39/test262) pass: 43,789 of 48,797 tests
+89.8% of [test262](https://github.com/tc39/test262) pass: 43,823 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -102,7 +102,6 @@ Missing:
 - A public API for agents (workers): the engine can share a `SharedArrayBuffer` between VMs on
   different goroutines, but a host cannot create such VMs or hand them buffers yet
 - `Intl` and `Temporal`
-- Proper tail calls
 
 Known inaccuracies in what is implemented: the `caller` and `arguments` properties of sloppy
 functions are always `undefined`.

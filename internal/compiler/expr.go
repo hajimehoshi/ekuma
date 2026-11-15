@@ -923,10 +923,14 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
 		f.setPos(pos)
-		if op == bytecode.OpCallEval {
-			f.emit(bytecode.OpCallEval, base, -1, f.evalSite())
+		evalOp, spreadOp := bytecode.OpCallEval, bytecode.OpCallSpread
+		if f.isTail(n) {
+			evalOp, spreadOp = bytecode.OpTailCallEval, bytecode.OpTailCallSpread
 		}
-		f.emit(bytecode.OpCallSpread, base, 0, 0)
+		if op == bytecode.OpCallEval {
+			f.emit(evalOp, base, -1, f.evalSite())
+		}
+		f.emit(spreadOp, base, 0, 0)
 		f.result(dst, base)
 		return
 	}
@@ -936,6 +940,14 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	site := int32(0)
 	if op == bytecode.OpCallEval {
 		site = f.evalSite()
+	}
+	if f.isTail(n) {
+		switch op {
+		case bytecode.OpCall:
+			op = bytecode.OpTailCall
+		case bytecode.OpCallEval:
+			op = bytecode.OpTailCallEval
+		}
 	}
 	f.setPos(pos)
 	f.emit(op, base, int32(len(n.Args)), site)
@@ -1058,7 +1070,11 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	for _, e := range n.Quasi.Exprs {
 		f.expr(e, f.newReg())
 	}
-	f.emit(bytecode.OpCall, base, int32(len(n.Quasi.Exprs)+1), 0)
+	op := bytecode.OpCall
+	if f.isTail(n) {
+		op = bytecode.OpTailCall
+	}
+	f.emit(op, base, int32(len(n.Quasi.Exprs)+1), 0)
 	f.result(dst, base)
 }
 

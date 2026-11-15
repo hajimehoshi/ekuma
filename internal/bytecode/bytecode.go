@@ -213,6 +213,14 @@ const (
 	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
 
 	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
+
+	// The calls in tail position of strict functions. When the callee is a function written in
+	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
+	// callee returns to the caller of the running function. Otherwise they are the ordinary calls,
+	// and the next instructions return the result.
+	OpTailCall       // like [OpCall]
+	OpTailCallSpread // like [OpCallSpread]
+	OpTailCallEval   // like [OpCallEval], where the instruction after one with b = -1 is [OpTailCallSpread]
 )
 
 // The kinds of error that [OpThrowError] throws.

@@ -1137,3 +1137,13 @@ func TestPrototypeCollected(t *testing.T) {
 		t.Errorf("got %v live prototypes, want at most %v", got, max)
 	}
 }
+
+// TestCancelTailCalls checks that a context stops endless tail recursion.
+func TestCancelTailCalls(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := vm.RunScript(ctx, "loop", `"use strict"; function f(n) { return g(n + 1); } function g(n) { return f(n); } f(0)`); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("got %v, want context.DeadlineExceeded", err)
+	}
+}

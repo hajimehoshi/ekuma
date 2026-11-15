@@ -2228,3 +2228,146 @@ func TestLongImportChain(t *testing.T) {
 		t.Errorf("got %d, want %d", got, n)
 	}
 }
+
+// TestTailCalls covers the calls in tail position that test262 does not: what reaches the callee,
+// and the calls that must still grow the stack.
+func TestTailCalls(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "mutual recursion a million deep",
+			src: `"use strict";
+				function even(n) { return n === 0 ? true : odd(n - 1); }
+				function odd(n) { return n === 0 ? false : even(n - 1); }
+				even(1e6)`,
+			want: "true",
+		},
+		{
+			name: "more arguments than the frame of the caller holds",
+			src: `"use strict";
+				function small(n, acc) {
+					return n === 0 ? acc : big(n, acc, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20);
+				}
+				function big(n, acc, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15, a16, a17, a18, a19, a20) {
+					return small(n - 1, acc + a1 + a20);
+				}
+				small(1e5, 0)`,
+			want: "2100000",
+		},
+		{
+			name: "surplus arguments, arguments and rest parameters",
+			src: `"use strict";
+				function f(n) { return n === 0 ? arguments.length : g(n, 1, 2, 3); }
+				function g(n, ...rest) { return f(n - 1, ...rest, rest.length); }
+				f(1e5)`,
+			want: "5",
+		},
+		{
+			name: "bound function",
+			src: `"use strict";
+				var h = f.bind("t", 1);
+				function f(k, n) { return n === 0 ? this + k : h(n - 1); }
+				h(1e5)`,
+			want: "t1",
+		},
+		{
+			name: "native function",
+			src: `"use strict";
+				function f(n) { return n === 0 ? Math.max(n, 7) : Reflect.apply(g, null, [n]); }
+				function g(n) { return f(n - 1); }
+				f(50)`,
+			want: "7",
+		},
+		{
+			name: "closure of a per-iteration binding",
+			src: `"use strict";
+				var fns = [];
+				function loop() {
+					for (let i = 0; i < 3; i++) {
+						fns.push(() => i);
+						if (i === 1) return done(7, 8, 9);
+					}
+				}
+				function done(a, b, c) { var x = a, y = b, z = c; return fns.map(f => f()).join() + x + y + z; }
+				loop()`,
+			want: "0,1789",
+		},
+		{
+			name: "constructor and generator",
+			src: `"use strict";
+				function g() { return 5; }
+				function F() { this.x = 1; return g(); }
+				function* gen() { yield 2; }
+				function h() { return gen(); }
+				new F().x + h().next().value`,
+			want: "3",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, &vm, v); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestNonTailCallsOverflow checks that calls that are not in tail position still end in a RangeError.
+func TestNonTailCallsOverflow(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "sloppy code",
+			src:  `function f(n) { return n === 0 ? 0 : f(n - 1); } f(1e6)`,
+		},
+		{
+			name: "try block",
+			src: `function f(n) {
+					"use strict";
+					try { return n === 0 ? 0 : f(n - 1); } catch (e) { throw e; }
+				}
+				f(1e6)`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := vm.RunScript(t.Context(), tt.name, `try { `+tt.src+`; "no error" } catch (e) { e instanceof RangeError }`)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, &vm, v); got != "true" {
+				t.Errorf("got %q, want a RangeError", got)
+			}
+		})
+	}
+}
+
+// TestTailCallStack checks the stack trace of an error thrown after tail calls, which replaced
+// the frames of their callers.
+func TestTailCallStack(t *testing.T) {
+	var vm ekuma.VM
+	v, err := vm.RunScript(t.Context(), "trace.js", `"use strict";
+function a(n) { return b(n + 1); }
+function b(n) { return c(n + 1); }
+function c(n) { throw new Error("x" + n); }
+function outer() { try { a(1); } catch (e) { return e.stack; } }
+outer()`)
+	if err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	want := "Error: x3\n    at c (trace.js:4:23)\n    at outer (trace.js:5:26)\n    at trace.js:6:1"
+	if got := v.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

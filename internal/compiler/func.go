@@ -436,7 +436,11 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		if name, ok := c.fieldNames[node]; ok {
 			f.named(node.ExprBody, t, name)
 		} else {
+			if f.canTailCall() {
+				f.markTails(node.ExprBody)
+			}
 			f.expr(node.ExprBody, t)
+			f.tails = f.tails[:0]
 		}
 		f.emit(bytecode.OpReturn, t, 0, 0)
 	} else {

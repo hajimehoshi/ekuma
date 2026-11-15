@@ -84,6 +84,9 @@ type scope struct {
 	// when hasDispose is set.
 	dispose    int32
 	hasDispose bool
+
+	// used is set once a using declaration of the scope was compiled.
+	used bool
 }
 
 type refKind uint8
@@ -160,6 +163,9 @@ type ctl struct {
 	toFinal  []int
 	pending  []pendingExit
 
+	// For ctlFinally: the scope whose using declarations it disposes, or nil for a try statement.
+	disposes *scope
+
 	// For ctlScope and ctlIter: the first register of the scope, or the iterator.
 	// For ctlFinalizer: the register of the completion value of the finally block, and
 	// valueReg is the register of the completion value of the code around the try statement.
@@ -230,6 +236,12 @@ type fn struct {
 	// annexBRegs holds, for every block-level function that the top-level code hoists to a
 	// global variable only when it can be declared, the register that records whether it was.
 	annexBRegs map[string]int32
+
+	// catchDepth is the number of try blocks with a catch clause around the code being compiled.
+	catchDepth int
+
+	// tails are the calls in tail position of the expression being compiled.
+	tails []ast.Expr
 }
 
 type compiler struct {
