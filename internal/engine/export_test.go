@@ -11,5 +11,5 @@ func InternedCount(vm *VM) int {
 // ObjectTransitionCount returns the number of transitions from the empty shape of the objects
 // whose prototype is %Object.prototype%.
 func ObjectTransitionCount(vm *VM) int {
-	return len(vm.shapes.object.transitions.entries)
+	return vm.shapes.object.transitions.len()
 }

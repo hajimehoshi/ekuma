@@ -198,7 +198,7 @@ type shape struct {
 	table map[*Object]prop
 
 	// transitions maps a property to the shared shape that adds it to this one.
-	transitions sweptTable[shapeKey, shape]
+	transitions transitionTable
 
 	// small lists the properties of a shared shape with at most smallShapeSize properties,
 	// by slot. It is nil for any other shape.
@@ -214,6 +214,60 @@ type shape struct {
 type shapeEntry struct {
 	key *Object
 	prop
+}
+
+// transitionTable maps a property to the shared shape that adds it to a shape.
+// The zero value is an empty table.
+type transitionTable struct {
+	// only is the shape of the sole transition while there is only one, and nil otherwise.
+	// Its key and flags are the key of the transition.
+	only *shape
+
+	// rest holds the transitions once there is more than one.
+	rest sweptTable[shapeKey, shape]
+}
+
+// get returns the shape under k, or nil.
+func (t *transitionTable) get(k shapeKey) *shape {
+	if s := t.only; s != nil {
+		if s.key == k.key && s.flags == k.flags {
+			return s
+		}
+		return nil
+	}
+	return t.rest.get(k)
+}
+
+// put adds s under the key that s adds to its parent, which the table must not have.
+func (t *transitionTable) put(s *shape) {
+	if t.only == nil && t.rest.entries == nil {
+		t.only = s
+		return
+	}
+	if only := t.only; only != nil {
+		t.only = nil
+		t.rest.put(shapeKey{
+			key:   only.key,
+			flags: only.flags,
+		}, only, transitionsMinSweep)
+	}
+	t.rest.put(shapeKey{
+		key:   s.key,
+		flags: s.flags,
+	}, s, transitionsMinSweep)
+}
+
+// empty reports whether no transition was ever added.
+func (t *transitionTable) empty() bool {
+	return t.only == nil && t.rest.entries == nil
+}
+
+// len returns the number of entries.
+func (t *transitionTable) len() int {
+	if t.only != nil {
+		return 1
+	}
+	return len(t.rest.entries)
 }
 
 // transitionsMinSweep is the number of transitions from one shape below which they are kept
@@ -282,7 +336,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 			flags: flags,
 		})
 	}
-	if s.table != nil && s.transitions.entries == nil && !s.private {
+	if s.table != nil && s.transitions.empty() && !s.private {
 		// An object that gains properties one by one looks each intermediate shape up once, so the
 		// first child takes over the table, and s builds a new one only if it is looked up again.
 		t.table, s.table = s.table, nil
@@ -291,7 +345,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 			flags: flags,
 		}
 	}
-	s.transitions.put(k, t, transitionsMinSweep)
+	s.transitions.put(t)
 	return t
 }
 

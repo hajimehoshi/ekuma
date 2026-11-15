@@ -599,3 +599,24 @@ func BenchmarkImportedCall(b *testing.B) {
 		}
 	})
 }
+
+// BenchmarkNewVM creates a VM and initialises it, alone and followed by a trivial script.
+func BenchmarkNewVM(b *testing.B) {
+	b.Run("init", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			var vm ekuma.VM
+			vm.Global()
+		}
+	})
+	b.Run("script", func(b *testing.B) {
+		b.ReportAllocs()
+		ctx := b.Context()
+		for b.Loop() {
+			var vm ekuma.VM
+			if _, err := vm.RunScript(ctx, "script", "1 + 1"); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}

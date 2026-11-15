@@ -277,9 +277,19 @@ func writeSets(b *bytes.Buffer, name, doc string, m map[string]set) {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
+	// Each set is a variable of its own, which the linker initializes statically, and the map
+	// only refers to them.
 	fmt.Fprintf(b, "// %s %s\nvar %s = map[string]charSet{\n", name, doc, name)
 	for _, k := range keys {
-		fmt.Fprintf(b, "%q: {%s},\n", k, runes(m[k].ranges()))
+		fmt.Fprintf(b, "%q: %s,\n", k, setVar(name, k))
 	}
 	b.WriteString("}\n\n")
+	for _, k := range keys {
+		fmt.Fprintf(b, "var %s = charSet{%s}\n\n", setVar(name, k), runes(m[k].ranges()))
+	}
+}
+
+// setVar returns the name of the variable that holds the set k of the table name.
+func setVar(name, k string) string {
+	return name + strings.ReplaceAll(k, "_", "")
 }
