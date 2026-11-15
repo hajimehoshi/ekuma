@@ -109,17 +109,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-All of [test262](https://github.com/tc39/test262) that runs passes: 52,388 tests in these
-directories, out of 52,389. The one other test is skipped because it is stale against the current
-time zone database, as `testdata/test262-skips.txt` says. The test suite fails when any test that
-runs fails.
-
-- `test/annexB`
-- `test/built-ins`
-- `test/harness`
-- `test/intl402`
-- `test/language`
-- `test/staging`, except `test/staging/sm`
+53,777 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.97%). The other
+18 fail for known reasons, which [`testdata/test262-skips.txt`](testdata/test262-skips.txt) lists.
 
 ### Implemented
 

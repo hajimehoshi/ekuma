@@ -30,7 +30,7 @@ var (
 	flagTest262Filter  = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
 	flagTest262Report  = flag.String("test262.report", "", "write every failing test262 test with its reason to this file")
 	flagTest262Shuffle = flag.String("test262.shuffle", "off", "run the test262 tests in random order: off, on, or a seed; a replay is exact only with GOMAXPROCS=1")
-	flagTest262Dir     = flag.String("test262.dir", "", "run the test262 tests in this directory of the suite instead of test262Dirs")
+	flagTest262Dir     = flag.String("test262.dir", "", "only run the test262 tests in this directory of the suite")
 )
 
 // test262Commit is the commit of https://github.com/tc39/test262 that the suite passes at.
@@ -47,14 +47,6 @@ func test262Dir() string {
 		return ""
 	}
 	return filepath.Join(c, "ekuma", "test262")
-}
-
-// test262Dirs are the directories of the suite that are run. intl402 tests the optional
-// internationalization API, harness tests the files that tests include, and staging holds
-// tests that have not been fully reviewed yet.
-var test262Dirs = []string{
-	"test/annexB", "test/built-ins", "test/harness", "test/intl402", "test/language",
-	"test/staging",
 }
 
 // skippedTestsFile lists the test262 tests that are not run, one path per line, each with a
@@ -78,12 +70,6 @@ func readLines(name string) ([]string, error) {
 	}
 	sort.Strings(lines)
 	return lines, sc.Err()
-}
-
-// test262Excluded are the directories that are not run when a directory above them is.
-// staging/sm holds tests imported from SpiderMonkey, some of which test its own extensions.
-var test262Excluded = []string{
-	"test/staging/sm",
 }
 
 // metadata is the part of the front matter of a test that the runner uses.
@@ -585,50 +571,42 @@ func TestTest262(t *testing.T) {
 		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
 	}
 
-	dirs := test262Dirs
+	// testDir is the directory of the suite whose tests run.
+	testDir := "test"
 	if *flagTest262Dir != "" {
-		dirs = []string{*flagTest262Dir}
+		testDir = *flagTest262Dir
 	}
 	skips, err := readLines(skippedTestsFile)
 	if err != nil {
 		t.Fatalf("reading the skipped tests: %v", err)
 	}
-	// skipped holds the paths of the skipped tests in the directories.
+	// skipped holds the paths of the skipped tests in testDir.
 	var skipped []string
 	var paths []string
-	for _, d := range dirs {
-		root := filepath.Join(dir, d)
-		err := filepath.WalkDir(root, func(p string, e fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			rel, err := filepath.Rel(dir, p)
-			if err != nil {
-				return err
-			}
-			rel = filepath.ToSlash(rel)
-			if e.IsDir() {
-				if p != root && slices.Contains(test262Excluded, rel) {
-					return fs.SkipDir
-				}
-				return nil
-			}
-			if !strings.HasSuffix(p, ".js") || strings.HasSuffix(p, "_FIXTURE.js") {
-				return nil
-			}
-			if *flagTest262Filter != "" && !strings.Contains(rel, *flagTest262Filter) {
-				return nil
-			}
-			if _, ok := slices.BinarySearch(skips, rel); ok {
-				skipped = append(skipped, rel)
-				return nil
-			}
-			paths = append(paths, rel)
-			return nil
-		})
+	err = filepath.WalkDir(filepath.Join(dir, testDir), func(p string, e fs.DirEntry, err error) error {
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
+		if e.IsDir() || !strings.HasSuffix(p, ".js") || strings.HasSuffix(p, "_FIXTURE.js") {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, p)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		if *flagTest262Filter != "" && !strings.Contains(rel, *flagTest262Filter) {
+			return nil
+		}
+		if _, ok := slices.BinarySearch(skips, rel); ok {
+			skipped = append(skipped, rel)
+			return nil
+		}
+		paths = append(paths, rel)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	sort.Strings(paths)
 	sort.Strings(skipped)
@@ -703,10 +681,7 @@ func TestTest262(t *testing.T) {
 	}
 	if *flagTest262Filter == "" {
 		for _, p := range skips {
-			inDirs := slices.ContainsFunc(dirs, func(d string) bool {
-				return strings.HasPrefix(p, d+"/")
-			})
-			if _, ok := slices.BinarySearch(skipped, p); inDirs && !ok {
+			if _, ok := slices.BinarySearch(skipped, p); strings.HasPrefix(p, testDir+"/") && !ok {
 				t.Errorf("%s is not in the suite: remove it from %s", p, skippedTestsFile)
 			}
 		}

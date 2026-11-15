@@ -7,3 +7,33 @@
 # America/Los_Angeles. Since 2026d these are zones again, "reverting to 2024a behavior", and the
 # test is stale. Remove this line when test262 updates the test.
 test/intl402/Temporal/ZonedDateTime/links.js
+
+# The tests use the caller and arguments properties of sloppy functions, which are legacy
+# behavior that ekuma does not implement.
+test/staging/sm/Function/function-caller-restrictions.js
+test/staging/sm/extensions/arguments-property-access-in-function.js
+test/staging/sm/extensions/censor-strict-caller.js
+test/staging/sm/extensions/function-caller-skips-eval-frames.js
+test/staging/sm/extensions/function-properties.js
+test/staging/sm/regress/regress-577648-1.js
+test/staging/sm/regress/regress-577648-2.js
+test/staging/sm/regress/regress-584355.js
+test/staging/sm/regress/regress-586482-1.js
+test/staging/sm/regress/regress-586482-2.js
+test/staging/sm/regress/regress-586482-3.js
+test/staging/sm/regress/regress-586482-4.js
+
+# The tests expect Date.parse to accept formats that the specification leaves to the
+# implementation, such as 1997-3-8 1:1:1 and the two-digit year of 3/8/97.
+test/staging/sm/Date/non-iso.js
+test/staging/sm/Date/two-digit-years.js
+
+# The test expects Math.sinh to be as precise as fdlibm's, while the specification leaves the
+# precision to the implementation.
+test/staging/sm/Math/sinh-approx.js
+
+# The tests expect a function named arguments that is declared in a block to replace the
+# arguments object, as in SpiderMonkey. The specification does not hoist it over the arguments
+# object, as test/annexB/language/function-code/block-decl-func-skip-arguments.js checks.
+test/staging/sm/lexical-environment/block-scoped-functions-annex-b-arguments.js
+test/staging/sm/regress/regress-602621.js
