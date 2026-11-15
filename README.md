@@ -23,6 +23,31 @@ fmt.Println(v.String()) // Hello, world
 
 The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after first use.
 
+## Differences from other engines for Go
+
+| | Ekuma | [goja](https://github.com/dop251/goja) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) |
+|---|---|---|---|
+| Implementation | Written in Go | Written in Go | QuickJS, translated from C to Go |
+| cgo | No | No | No |
+| `unsafe` | No | Yes | Yes |
+| Maturity | Early | Mature | Mature (QuickJS itself) |
+
+What Ekuma does differently is aimed at speed:
+
+- Objects have hidden-class shapes, and every property access site has an inline cache.
+- The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
+- Calls between JavaScript functions allocate nothing and do not recurse in Go.
+- A value is two words, and numbers are never allocated.
+- Forwarding calls such as `f.apply(this, arguments)` do not create an arguments object.
+- Memory is managed by Go's garbage collector, without reference counting.
+
+Strings are Go strings in [WTF-8](https://simonsapin.github.io/wtf-8/), with exact UTF-16 semantics.
+A well-formed string crosses the Go boundary without conversion.
+
+Performance has only been measured on one synthetic workload so far
+(`go test -bench Workload`, in `testdata/workload.js`). No comparison with other engines
+is published yet.
+
 ## Host API
 
 The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
@@ -56,6 +81,22 @@ are still unhandled then are reported to `VM.SetUnhandledRejection`. `Date` and 
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
 `VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`.
 
+### Intl
+
+Importing the package `github.com/hajimehoshi/ekuma/intl` for its side effect adds `Intl` to
+every VM, makes the `toLocale*String` methods of numbers and dates format by locale, and gives
+`Temporal` the calendars of ECMA-402 besides `iso8601`:
+
+```go
+import _ "github.com/hajimehoshi/ekuma/intl"
+```
+
+Without the import, the engine has none of these, and its binary does not grow. With it, a hello
+world grows from about 8.6 MB to 13.2 MB natively, and from 11.0 MB to 15.9 MB with `GOOS=js`.
+The default locale is the one that `LC_ALL`, `LC_MESSAGES` or `LANG` names natively, or
+`navigator.language` with `GOOS=js`, and en-US otherwise. The package brings locale data whose
+license notice a program must include: see [License](#license).
+
 ### Agents
 
 VMs on different goroutines share the memory of a `SharedArrayBuffer` as agents do:
@@ -64,31 +105,6 @@ VMs on different goroutines share the memory of a `SharedArrayBuffer` as agents 
 block. When another VM notifies a waiter of `Atomics.waitAsync`, its promise is settled by the
 jobs that the waiting VM runs at the end of its current or next outermost call from Go.
 `VM.AwaitJobs` blocks until such a waiter is notified or times out, and runs the jobs.
-
-## Differences from other engines for Go
-
-| | Ekuma | [goja](https://github.com/dop251/goja) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) |
-|---|---|---|---|
-| Implementation | Written in Go | Written in Go | QuickJS, translated from C to Go |
-| cgo | No | No | No |
-| `unsafe` | No | Yes | Yes |
-| Maturity | Early | Mature | Mature (QuickJS itself) |
-
-What Ekuma does differently is aimed at speed:
-
-- Objects have hidden-class shapes, and every property access site has an inline cache.
-- The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
-- Calls between JavaScript functions allocate nothing and do not recurse in Go.
-- A value is two words, and numbers are never allocated.
-- Forwarding calls such as `f.apply(this, arguments)` do not create an arguments object.
-- Memory is managed by Go's garbage collector, without reference counting.
-
-Strings are Go strings in [WTF-8](https://simonsapin.github.io/wtf-8/), with exact UTF-16 semantics.
-A well-formed string crosses the Go boundary without conversion.
-
-Performance has only been measured on one synthetic workload so far
-(`go test -bench Workload`, in `testdata/workload.js`). No comparison with other engines
-is published yet.
 
 ## Status
 
@@ -110,16 +126,14 @@ fails when any of them fails.
 
 ### Notes on behavior
 
-- `Temporal` has only the `iso8601` calendar without the optional package
-  `github.com/hajimehoshi/ekuma/intl`, which adds the other calendars of ECMA-402. Its named
-  time zones need the system's time zone database
-- Without importing the optional package `github.com/hajimehoshi/ekuma/intl`, there is no
-  `Intl`: `toLocale*String` uses a fixed English format, and `localeCompare` compares code units
-  after canonical equivalence. When it is imported, the `toLocaleString` methods of `Number`, `BigInt`, `Date` and
-  `Temporal` (except `Temporal.Duration`) and `Date`'s `toLocaleDateString` and
-  `toLocaleTimeString` format by locale. `localeCompare`, `toLocaleUpperCase`,
-  `toLocaleLowerCase`, `Temporal.Duration`'s `toLocaleString`, and the `toLocaleString` of
-  arrays and typed arrays do not use locales yet
+- `Temporal` has only the `iso8601` calendar without [Intl](#intl). Its named time zones need
+  the system's time zone database
+- Without [Intl](#intl), `toLocale*String` uses a fixed English format, and `localeCompare`
+  compares code units after canonical equivalence. With it, the `toLocaleString` methods of
+  `Number`, `BigInt`, `Date` and `Temporal` (except `Temporal.Duration`) and `Date`'s
+  `toLocaleDateString` and `toLocaleTimeString` format by locale. `localeCompare`,
+  `toLocaleUpperCase`, `toLocaleLowerCase`, `Temporal.Duration`'s `toLocaleString`, and the
+  `toLocaleString` of arrays and typed arrays do not use locales yet
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
@@ -131,8 +145,7 @@ fails when any of them fails.
 
 ### Missing
 
-- Part of `Intl`. Importing the optional package `github.com/hajimehoshi/ekuma/intl` for its
-  side effect adds `Intl`.
+- Part of `Intl`, which [importing `github.com/hajimehoshi/ekuma/intl`](#intl) adds.
   - It has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`, `Intl.Locale`,
     `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat`
   - It does not have `Intl.Collator`, `Intl.Segmenter`, `Intl.ListFormat`,
