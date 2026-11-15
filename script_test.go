@@ -2757,6 +2757,27 @@ func TestTailCalls(t *testing.T) {
 			want: "1000000x",
 		},
 		{
+			name: "apply with an array or no array a million deep",
+			src: `"use strict";
+				function f(n, acc) { return n === 0 ? acc : n % 2 ? f.apply(null, [n - 1, acc + 1]) : g.apply(n - 1); }
+				function g() { return f(this, 0); }
+				f(1e6, 0)`,
+			want: "1",
+		},
+		{
+			name: "apply with an array-like",
+			src: `"use strict";
+				var log = [];
+				var args = { get length() { log.push("length"); return 2; }, get 0() { log.push(0); return 3; }, 1: 4 };
+				function f(a, b) { log.push("f"); return a + b; }
+				function g() { return f.apply(null, args); }
+				var r = g();
+				function h() { return f.apply(null, { get length() { throw "x"; } }); }
+				var e = (function () { try { return h(); } catch (e) { return e; } })();
+				log.join() + " " + r + " " + e`,
+			want: "length,0,f 7 x",
+		},
+		{
 			name: "apply that is not Function.prototype.apply",
 			src: `"use strict";
 				var o = { apply(t, args) { return args[0] === 0 ? args.length : f(args[0] - 1, 2); } };

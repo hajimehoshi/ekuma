@@ -636,11 +636,12 @@ func BenchmarkTailCall(b *testing.B) {
 		function call(n, acc) { "use strict"; return n === 0 ? acc : call.call(this, n - 1, acc + n); }
 		function apply(n, acc) { "use strict"; return n === 0 ? acc : applyStep.apply(this, arguments); }
 		function applyStep(n, acc) { "use strict"; return apply(n - 1, acc + n); }
+		function applyArray(n, acc) { "use strict"; return n === 0 ? acc : applyArray.apply(this, [n - 1, acc + n]); }
 		function spread(n, acc) { "use strict"; return n === 0 ? acc : spreadStep(...arguments); }
 		function spreadStep(n, acc) { "use strict"; return spread(n - 1, acc + n); }`); err != nil {
 		b.Fatal(err)
 	}
-	for _, name := range []string{"tail", "loop", "sloppy", "call", "apply", "spread"} {
+	for _, name := range []string{"tail", "loop", "sloppy", "call", "apply", "applyArray", "spread"} {
 		b.Run(name, func(b *testing.B) {
 			for b.Loop() {
 				if _, err := vm.Global().Call(ctx, name, n, 0); err != nil {

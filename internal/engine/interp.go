@@ -2067,7 +2067,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 // unbind returns the function that a tail call of f ends up calling, with its this value and
 // the stack index and count of its arguments, for the argc arguments at argBase on the stack.
 // A bound function stands for its target, with the bound arguments inserted before the others,
-// and Function.prototype.call of the running realm for its callable this value.
+// Function.prototype.call of the running realm for its callable this value, and
+// Function.prototype.apply of the running realm for its callable this value when its argument
+// list can be made without running JavaScript.
 func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, int, int) {
 	for f != nil && f.fn != nil {
 		if b := f.fn.bound; b != nil {
@@ -2080,16 +2082,41 @@ func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, 
 			f, this = b.target, b.this
 			continue
 		}
-		// Function.prototype.call ends in a tail call of its this value.
-		if f != vm.Intrinsic(IntrinsicFunctionPrototypeCall) || this.o == nil || this.o.fn == nil {
+		if this.o == nil || this.o.fn == nil {
 			break
 		}
-		f, this = this.o, Undefined
-		if argc > 0 {
-			this = vm.stack[argBase]
-			argBase++
-			argc--
+		// Function.prototype.call and apply end in a tail call of their this value.
+		switch f {
+		case vm.Intrinsic(IntrinsicFunctionPrototypeCall):
+			f, this = this.o, Undefined
+			if argc > 0 {
+				this = vm.stack[argBase]
+				argBase++
+				argc--
+			}
+			continue
+		case vm.Intrinsic(IntrinsicFunctionPrototypeApply):
+			var list []Value
+			if argc > 1 {
+				if a := vm.stack[argBase+1]; !a.IsNullish() {
+					var ok bool
+					if list, ok = a.o.plainElems(); !ok {
+						return f, this, argBase, argc
+					}
+				}
+			}
+			f, this = this.o, Undefined
+			if argc > 0 {
+				this = vm.stack[argBase]
+			}
+			// The list goes above the arguments, which may be in the registers of the running frame.
+			argBase = max(vm.sp, argBase+argc)
+			argc = len(list)
+			vm.ensureStack(argBase + argc)
+			copy(vm.stack[argBase:], list)
+			continue
 		}
+		break
 	}
 	return f, this, argBase, argc
 }

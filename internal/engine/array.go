@@ -96,7 +96,17 @@ func (o *Object) SetElement(i int64, v Value) bool {
 // ElementList returns a copy of the elements of the array o
 // when reading them cannot run any JavaScript.
 func (o *Object) ElementList() ([]Value, bool) {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objExotic) != 0 {
+	elems, ok := o.plainElems()
+	if !ok {
+		return nil, false
+	}
+	return append([]Value(nil), elems...), true
+}
+
+// plainElems returns the elements of o, which the caller must not modify, when o is an array
+// whose elements can be read without running any JavaScript. o may be nil.
+func (o *Object) plainElems() ([]Value, bool) {
+	if o == nil || o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objExotic) != 0 {
 		return nil, false
 	}
 	for _, e := range o.elems {
@@ -104,7 +114,7 @@ func (o *Object) ElementList() ([]Value, bool) {
 			return nil, false
 		}
 	}
-	return append([]Value(nil), o.elems...), true
+	return o.elems, true
 }
 
 // isDense reports whether o is an array whose elements are all present in elems
