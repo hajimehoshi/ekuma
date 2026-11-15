@@ -2576,13 +2576,19 @@ func TestModuleReferrer(t *testing.T) {
 	}
 }
 
-// TestShadowRealmImportValue checks that each ShadowRealm loads a module for itself, once.
+// TestShadowRealmImportValue checks that each ShadowRealm loads a module for itself, once,
+// in its own realm.
 func TestShadowRealmImportValue(t *testing.T) {
 	var vm ekuma.VM
+	realms := map[*ekuma.Realm]bool{}
 	calls := 0
 	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		calls++
-		return vm.ParseModule(req.Specifier, `globalThis.count = (globalThis.count ?? 0) + 1; export const count = globalThis.count;`)
+		if req.Realm == vm.InitialRealm() {
+			t.Errorf("the request of a ShadowRealm has the initial realm")
+		}
+		realms[req.Realm] = true
+		return req.Realm.ParseModule(req.Specifier, `globalThis.count = (globalThis.count ?? 0) + 1; export const count = globalThis.count;`)
 	})
 	if _, err := runScript(t.Context(), &vm, "main", `
 		var result;
@@ -2599,6 +2605,9 @@ func TestShadowRealmImportValue(t *testing.T) {
 	}
 	if calls != 2 {
 		t.Errorf("the loader was called %d times, want 2", calls)
+	}
+	if len(realms) != 2 {
+		t.Errorf("the requests had %d realms, want 2", len(realms))
 	}
 }
 

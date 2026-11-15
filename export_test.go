@@ -4,7 +4,6 @@
 package ekuma
 
 import (
-	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -24,38 +23,24 @@ func DetachArrayBuffer(vm *VM, v Value) error {
 	return nil
 }
 
-// Realm is a realm of a VM other than the one the VM starts with.
-type Realm struct {
-	r *engine.Realm
+// NewHTMLDDA returns an object of r with the [[IsHTMLDDA]] internal slot, which returns null when called.
+func NewHTMLDDA(r *Realm) Value {
+	var v engine.Value
+	r.in(func() {
+		v = r.vm.e.NewHTMLDDA(func(*engine.VM, engine.Value, []engine.Value) engine.Value {
+			return engine.Null
+		})
+	})
+	return fromEngine(v)
 }
 
-// NewRealm creates a realm of vm with the standard built-in objects.
-func NewRealm(vm *VM) *Realm {
-	vm.initIfNeeded()
-	return &Realm{
-		r: vm.e.CreateRealm(func() {
-			builtin.Install(vm.e)
-		}),
-	}
-}
-
-// InRealm runs f with r as the current realm of vm, in which the methods of vm work.
-func InRealm(vm *VM, r *Realm, f func()) {
-	vm.e.InRealm(r.r, f)
-}
-
-// NewHTMLDDA returns an object of vm with the [[IsHTMLDDA]] internal slot, which returns null when called.
-func NewHTMLDDA(vm *VM) Value {
-	vm.initIfNeeded()
-	return fromEngine(vm.e.NewHTMLDDA(func(*engine.VM, engine.Value, []engine.Value) engine.Value {
-		return engine.Null
-	}))
-}
-
-// AbstractModuleSource returns %AbstractModuleSource% of the current realm of vm.
-func AbstractModuleSource(vm *VM) Value {
-	vm.initIfNeeded()
-	return fromEngine(engine.ObjectValue(vm.e.Intrinsic(engine.IntrinsicAbstractModuleSource)))
+// AbstractModuleSource returns %AbstractModuleSource% of r.
+func AbstractModuleSource(r *Realm) Value {
+	var v engine.Value
+	r.in(func() {
+		v = engine.ObjectValue(r.vm.e.Intrinsic(engine.IntrinsicAbstractModuleSource))
+	})
+	return fromEngine(v)
 }
 
 // NewSourceModule returns a module of vm whose only export is a default of undefined and

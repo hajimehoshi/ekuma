@@ -19,9 +19,12 @@ import (
 
 // VM is a JavaScript virtual machine with the standard built-in objects.
 // The zero value is ready to use. A VM must not be copied after first use.
-// It must not be used from more than one goroutine at a time, and neither must its values.
+// It must not be used from more than one goroutine at a time, and neither must its values
+// and realms.
 type VM struct {
 	e *engine.VM
+
+	initialRealm *Realm
 
 	// args is the storage of the arguments of the functions implemented in Go that are running.
 	args []Value
@@ -36,17 +39,12 @@ func (vm *VM) initIfNeeded() {
 	if vm.e == nil {
 		vm.e = engine.NewVM(vm)
 		builtin.Install(vm.e)
+		vm.initialRealm = vm.realmOf(vm.e.CurrentRealm())
 		return
 	}
 	if vm.e.HostDefined() != any(vm) {
 		panic("ekuma: VM used through a copy")
 	}
-}
-
-// Global returns the global object.
-func (vm *VM) Global() Value {
-	vm.initIfNeeded()
-	return fromEngine(vm.e.GlobalObject())
 }
 
 // ValueOf returns x as a JavaScript value:
@@ -66,17 +64,18 @@ func (vm *VM) Global() Value {
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
 // ValueOf panics when x is not one of the expected types or is a nil pointer.
+//
+// The objects that ValueOf creates belong to the initial realm.
 func (vm *VM) ValueOf(x any) Value {
 	vm.initIfNeeded()
-	return fromEngine(vm.valueOf(x))
+	return fromEngine(vm.valueOf(vm.initialRealm, x))
 }
 
-func (vm *VM) valueOf(x any) engine.Value {
+// valueOf implements [Realm.ValueOf] for the realm r.
+func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 	switch x := x.(type) {
 	case Value:
 		return x.engine()
-	case Func:
-		return vm.funcOf("", x)
 	case nil:
 		return engine.Null
 	case bool:
@@ -109,18 +108,34 @@ func (vm *VM) valueOf(x any) engine.Value {
 		return engine.Number(x)
 	case *big.Int:
 		return vm.e.NewBigInt(new(big.Int).Set(x))
+	case string:
+		return vm.e.StringFromGo(x)
+	case Func, *SharedDataBlock, []any, map[string]any:
+		var v engine.Value
+		vm.e.InRealm(r.r, func() {
+			v = vm.objectOf(r, x)
+		})
+		return v
+	}
+	panic(fmt.Sprintf("ekuma: ValueOf: invalid value of type %T", x))
+}
+
+// objectOf implements [Realm.ValueOf] for the values that become objects, with r as the
+// current realm.
+func (vm *VM) objectOf(r *Realm, x any) engine.Value {
+	switch x := x.(type) {
+	case Func:
+		return vm.funcOf(r, "", x)
 	case *SharedDataBlock:
 		if x == nil || x.b == nil {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
 		}
 		proto := vm.e.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
 		return engine.ObjectValue(vm.e.NewSharedArrayBufferObject(proto, x.b))
-	case string:
-		return vm.e.StringFromGo(x)
 	case []any:
 		elems := make([]engine.Value, len(x))
 		for i, e := range x {
-			elems[i] = vm.valueOf(e)
+			elems[i] = vm.valueOf(r, e)
 		}
 		return vm.e.NewArrayOf(elems)
 	case map[string]any:
@@ -132,42 +147,44 @@ func (vm *VM) valueOf(x any) engine.Value {
 		o := vm.e.NewPlainObject()
 		for _, k := range keys {
 			// Storing a property on a new plain object cannot fail.
-			_ = vm.e.HostSet(o, vm.e.StringFromGo(k), vm.valueOf(x[k]))
+			_ = vm.e.HostSet(o, vm.e.StringFromGo(k), vm.valueOf(r, x[k]))
 		}
 		return o
 	}
-	panic(fmt.Sprintf("ekuma: ValueOf: invalid value of type %T", x))
+	panic("not reached")
 }
 
 // Func is a function implemented in Go.
 //
-// args is only valid until the function returns. The result is converted with [VM.ValueOf].
+// args is only valid until the function returns. The result is converted with [Realm.ValueOf]
+// of the realm of the function.
 //
 // A non-nil error is thrown as a JavaScript exception: an [*Error] throws its value,
 // and any other error throws a new Error object made from the error, with its message.
 // [Error.Unwrap] of an [*Error] holding that object returns the error.
 type Func func(this Value, args []Value) (any, error)
 
-// FuncOf returns a JavaScript function that calls f. name is the name of the function,
-// which stack traces show.
+// FuncOf returns a JavaScript function of the initial realm that calls f. name is the name
+// of the function, which stack traces show.
 func (vm *VM) FuncOf(name string, f Func) Value {
 	vm.initIfNeeded()
-	return fromEngine(vm.funcOf(name, f))
+	return vm.initialRealm.FuncOf(name, f)
 }
 
-func (vm *VM) funcOf(name string, f Func) engine.Value {
+// funcOf implements [Realm.FuncOf] for the realm r, which is the current realm.
+func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 	return vm.e.NewFunction(name, func(_ *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := len(vm.args)
 		for _, a := range args {
 			vm.args = append(vm.args, fromEngine(a))
 		}
-		r, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
+		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
 		clear(vm.args[n:])
 		vm.args = vm.args[:n]
 		if err != nil {
 			vm.e.Throw(vm.thrownValue(err))
 		}
-		return vm.valueOf(r)
+		return vm.valueOf(r, res)
 	})
 }
 
@@ -175,7 +192,7 @@ func (vm *VM) funcOf(name string, f Func) engine.Value {
 func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, error)) (engine.Value, error) {
 	n := len(vm.callArgs)
 	for _, a := range args {
-		vm.callArgs = append(vm.callArgs, vm.valueOf(a))
+		vm.callArgs = append(vm.callArgs, vm.valueOf(vm.initialRealm, a))
 	}
 	v, err := f(vm.callArgs[n:len(vm.callArgs):len(vm.callArgs)])
 	clear(vm.callArgs[n:])

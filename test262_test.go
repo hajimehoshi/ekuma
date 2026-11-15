@@ -399,7 +399,7 @@ const asyncIncomplete = "the async test did not complete"
 // define262 defines the host object $262 of the harness, with the members that the engine supports.
 // agents implements $262.agent.
 func define262(vm *ekuma.VM, agents *agentCluster) error {
-	o, err := new262(vm)
+	o, err := new262(vm, vm.InitialRealm())
 	if err != nil {
 		return err
 	}
@@ -409,31 +409,35 @@ func define262(vm *ekuma.VM, agents *agentCluster) error {
 	return vm.Global().Set("$262", o)
 }
 
-// new262 returns the object $262 for the current realm of vm, without $262.agent.
-func new262(vm *ekuma.VM) (ekuma.Value, error) {
-	o, err := runScript(context.Background(), vm, "$262", "({})")
+// new262 returns the object $262 for the realm r of vm, without $262.agent.
+func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
+	ctx := context.Background()
+	s, err := r.ParseScript("$262", "({})")
 	if err != nil {
 		return ekuma.Undefined, err
 	}
-	createRealm := vm.FuncOf("createRealm", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		r := ekuma.NewRealm(vm)
-		var o ekuma.Value
-		var err error
-		ekuma.InRealm(vm, r, func() {
-			if o, err = new262(vm); err != nil {
-				return
-			}
-			err = vm.Global().Set("$262", o)
-		})
-		return o, err
+	o, err := s.Evaluate(ctx)
+	if err != nil {
+		return ekuma.Undefined, err
+	}
+	createRealm := r.FuncOf("createRealm", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		nr := vm.NewRealm()
+		o, err := new262(vm, nr)
+		if err != nil {
+			return nil, err
+		}
+		if err := nr.Global().Set("$262", o); err != nil {
+			return nil, err
+		}
+		return o, nil
 	})
 	if err := o.Set("createRealm", createRealm); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("AbstractModuleSource", ekuma.AbstractModuleSource(vm)); err != nil {
+	if err := o.Set("AbstractModuleSource", ekuma.AbstractModuleSource(r)); err != nil {
 		return ekuma.Undefined, err
 	}
-	detach := vm.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	detach := r.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		v := ekuma.Undefined
 		if len(args) > 0 {
 			v = args[0]
@@ -443,33 +447,36 @@ func new262(vm *ekuma.VM) (ekuma.Value, error) {
 	if err := o.Set("detachArrayBuffer", detach); err != nil {
 		return ekuma.Undefined, err
 	}
-	evalScript := vm.FuncOf("evalScript", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	evalScript := r.FuncOf("evalScript", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		var src string
 		if len(args) > 0 {
 			src = args[0].String()
 		}
-		v, err := runScript(context.Background(), vm, "evalScript", src)
+		s, err := r.ParseScript("evalScript", src)
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			// An early error of the script is a SyntaxError thrown to the caller.
-			c, err := vm.Global().Get("SyntaxError")
+			c, err := r.Global().Get("SyntaxError")
 			if err != nil {
 				return nil, err
 			}
-			e, err := c.New(context.Background(), se.Message)
+			e, err := c.New(ctx, se.Message)
 			if err != nil {
 				return nil, err
 			}
 			return nil, &ekuma.Error{Value: e}
 		}
-		return v, err
+		if err != nil {
+			return nil, err
+		}
+		return s.Evaluate(ctx)
 	})
 	if err := o.Set("evalScript", evalScript); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("global", vm.Global()); err != nil {
+	if err := o.Set("global", r.Global()); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("IsHTMLDDA", ekuma.NewHTMLDDA(vm)); err != nil {
+	if err := o.Set("IsHTMLDDA", ekuma.NewHTMLDDA(r)); err != nil {
 		return ekuma.Undefined, err
 	}
 	return o, nil

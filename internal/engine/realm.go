@@ -27,7 +27,7 @@ func NewVM(hostDefined any) *VM {
 		mailbox:        newMailbox(),
 	}
 	vm.curRealm = &realm{}
-	vm.referrer = &scriptOrModule{}
+	vm.referrer = &scriptOrModule{realm: vm.curRealm}
 	vm.initRealmPrototypes()
 
 	vm.emptyString = Value{
@@ -105,7 +105,7 @@ func (vm *VM) CreateRealm(install func()) *Realm {
 	saved := vm.curRealm
 	r := &realm{}
 	vm.switchRealm(r)
-	vm.referrer = &scriptOrModule{}
+	vm.referrer = &scriptOrModule{realm: r}
 	vm.initRealmPrototypes()
 	vm.initRealmGlobals()
 	install()
@@ -335,7 +335,10 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
-	return vm.link(bc, &scriptOrModule{file: file}), nil
+	return vm.link(bc, &scriptOrModule{
+		file:  file,
+		realm: vm.curRealm,
+	}), nil
 }
 
 // compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
@@ -446,9 +449,18 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	return f
 }
 
-// SetRealmHostDefined sets the [[HostDefined]] field of the current realm to v.
-func (vm *VM) SetRealmHostDefined(v any) {
-	vm.realm.hostDefined = v
+// CurrentRealm returns the current Realm Record.
+func (vm *VM) CurrentRealm() *Realm {
+	return (*Realm)(vm.curRealm)
+}
+
+// SetRealmHostDefined sets the [[HostDefined]] field of the realm r to v.
+func (vm *VM) SetRealmHostDefined(r *Realm, v any) {
+	if (*realm)(r) == vm.curRealm {
+		vm.realm.hostDefined = v
+		return
+	}
+	r.hostDefined = v
 }
 
 // RealmHostDefined returns the [[HostDefined]] field of the realm r.
@@ -457,4 +469,17 @@ func (vm *VM) RealmHostDefined(r *Realm) any {
 		return vm.realm.hostDefined
 	}
 	return r.hostDefined
+}
+
+// SetRealmExtension sets the state of the built-in extension of the current realm to v.
+func (vm *VM) SetRealmExtension(v any) {
+	vm.realm.extension = v
+}
+
+// RealmExtension returns the state of the built-in extension of the realm r.
+func (vm *VM) RealmExtension(r *Realm) any {
+	if (*realm)(r) == vm.curRealm {
+		return vm.realm.extension
+	}
+	return r.extension
 }

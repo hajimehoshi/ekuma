@@ -37,7 +37,7 @@ func Install(vm *engine.VM) {
 	r.ns = vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
 		r.init(vm)
 	})
-	vm.SetRealmHostDefined(r)
+	vm.SetRealmExtension(r)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Intl"), engine.ObjectValue(r.ns), engine.FlagsHidden)
 	initToLocaleString(vm)
 	initDateToLocaleString(vm)
@@ -83,7 +83,7 @@ func (r *realm) init(vm *engine.VM) {
 
 // realmOf returns the Intl objects of the realm of the function f.
 func realmOf(vm *engine.VM, f *engine.Object) *realm {
-	r := vm.RealmHostDefined(vm.GetFunctionRealm(f)).(*realm)
+	r := vm.RealmExtension(vm.GetFunctionRealm(f)).(*realm)
 	vm.InitLazyObject(r.ns)
 	return r
 }

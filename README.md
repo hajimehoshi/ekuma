@@ -40,6 +40,15 @@ evaluation, whose state `Value.PromiseState` reads. `Module.LoadRequestedModules
 `Module.Link` and `Module.Namespace` take the earlier steps alone, and `VM.SetImportMeta` gives
 `import.meta` its properties. Module loading is synchronous.
 
+### Realms
+
+`VM.NewRealm` creates a realm: a global object with its own built-in objects, in which
+`Realm.ParseScript`, `Realm.ParseModule`, `Realm.ValueOf` and `Realm.FuncOf` work. The methods
+of `VM` work in `VM.InitialRealm`. `ModuleRequest.Realm` tells the module loader the realm of
+an import, including that of a `ShadowRealm`. The realms of a VM share its jobs and settings,
+and values pass between them, so a realm is not a security boundary: an object of a realm
+gives access to its built-in objects. A separate `VM` isolates code.
+
 ### Host environment
 
 Promise jobs run when the outermost call from Go into the VM returns, and the rejections that
@@ -107,9 +116,6 @@ fails when any of them fails.
   code units after canonical equivalence
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
-- `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,
-  as `import()` in code without a file does. The loader cannot tell the realms apart, so a
-  module that it returns again is shared by them
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
   proposal defines it, so a class without decorators inherits `null` unless its superclass has
   metadata
@@ -124,7 +130,6 @@ fails when any of them fails.
   `Intl.Locale`, `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat` so far.
   `Intl.DateTimeFormat` formats only the Gregorian calendar yet
 - Host API for these, some of which the engine has and only the tests use:
-  - Creating further realms in a VM
   - Giving a module a module source
   - Property keys other than strings: symbol keys, property descriptors, and listing the keys
     of an object

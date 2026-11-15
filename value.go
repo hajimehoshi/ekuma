@@ -257,7 +257,7 @@ func (v Value) Set(name string, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.engine(), vm.e.StringFromGo(name), vm.valueOf(x)))
+	return vm.publicError(vm.e.HostSet(v.engine(), vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Delete deletes the property name of v, the way the delete operator in strict mode code does.
@@ -286,7 +286,7 @@ func (v Value) SetIndex(i int, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.engine(), engine.Number(float64(i)), vm.valueOf(x)))
+	return vm.publicError(vm.e.HostSet(v.engine(), engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Call calls the method name of v with v as this. The arguments are converted with [VM.ValueOf].

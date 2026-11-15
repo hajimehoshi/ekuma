@@ -104,6 +104,29 @@ func ExampleVM_ParseScript() {
 	// 3
 }
 
+func ExampleVM_NewRealm() {
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	if err := vm.Global().Set("other", r.Global()); err != nil {
+		fmt.Println(err)
+		return
+	}
+	s, err := vm.ParseScript("main.js", `
+		Array.prototype.first = function() { return this[0]; };
+		[typeof [].first, typeof other.eval("[]").first, other.Array === Array].join()`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	v, err := s.Evaluate(context.Background())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(v)
+	// Output: function,undefined,false
+}
+
 func Example_sharedArrayBuffer() {
 	ctx := context.Background()
 	blocks := make(chan *ekuma.SharedDataBlock)

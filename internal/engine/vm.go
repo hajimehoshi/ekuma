@@ -429,9 +429,12 @@ type realm struct {
 
 	// hostDefined is the [[HostDefined]] field of the realm.
 	hostDefined any
+
+	// extension is the state of the built-in extension in the realm.
+	extension any
 }
 
-// Realm is a realm other than the one a [VM] is created with.
+// Realm is a Realm Record.
 type Realm realm
 
 // switchRealm makes r the current realm.

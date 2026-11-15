@@ -19,13 +19,17 @@ import (
 // [Module.Namespace] takes the first two. Any order of calls is valid, and a step that has
 // completed does nothing when it is taken again.
 type Module struct {
-	vm   *VM
-	m    *engine.Module
-	name string
+	vm    *VM
+	realm *Realm
+	m     *engine.Module
+	name  string
 }
 
 // ModuleRequest is a request to load a module.
 type ModuleRequest struct {
+	// Realm is the realm of the importing script or module, or of the code that has neither.
+	Realm *Realm
+
 	// Referrer is the importing module, or nil for a script or for code that has neither.
 	Referrer *Module
 
@@ -56,8 +60,9 @@ func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 		vm.e.SetHostLoadImportedModule(nil)
 		return
 	}
-	vm.e.SetHostLoadImportedModule(func(e *engine.VM, referrer *engine.Module, file string, req engine.ModuleRequest) (*engine.Module, error) {
+	vm.e.SetHostLoadImportedModule(func(e *engine.VM, referrer *engine.Module, file string, realm *engine.Realm, req engine.ModuleRequest) (*engine.Module, error) {
 		r := ModuleRequest{
+			Realm:        vm.realmOf(realm),
 			ReferrerName: file,
 			Specifier:    wtf8.ToValidUTF8(req.Specifier),
 			Attributes:   map[string]string{},
@@ -108,7 +113,8 @@ func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 		return
 	}
 	vm.e.SetHostGetImportMetaProperties(func(e *engine.VM, m *engine.Module) []engine.ImportMetaProperty {
-		props := f(m.HostDefined().(*Module))
+		pm := m.HostDefined().(*Module)
+		props := f(pm)
 		keys := make([]string, 0, len(props))
 		for k := range props {
 			keys = append(keys, k)
@@ -118,56 +124,29 @@ func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 		for _, k := range keys {
 			list = append(list, engine.ImportMetaProperty{
 				Key:   e.ToPropertyKey(e.StringFromGo(k)),
-				Value: vm.valueOf(props[k]),
+				Value: vm.valueOf(pm.realm, props[k]),
 			})
 		}
 		return list
 	})
 }
 
-// ParseModule parses src as the source text of a module. name names the module in error
-// messages and stack traces, and in the [ModuleRequest.ReferrerName] of its imports.
-// The error is a [*SyntaxError] when src is not a valid module.
+// ParseModule is [Realm.ParseModule] of the initial realm.
 func (vm *VM) ParseModule(name, src string) (*Module, error) {
 	vm.initIfNeeded()
-	m := &Module{
-		vm:   vm,
-		name: name,
-	}
-	em, err := vm.e.ParseModule(name, src, m)
-	if err != nil {
-		return nil, vm.publicError(err)
-	}
-	m.m = em
-	return m, nil
+	return vm.initialRealm.ParseModule(name, src)
 }
 
-// ParseJSONModule returns a JSON module: a module whose only export is default, with the
-// value that JSON.parse returns for src. The error is an [*Error] holding a JavaScript
-// SyntaxError when src is not valid JSON.
+// ParseJSONModule is [Realm.ParseJSONModule] of the initial realm.
 func (vm *VM) ParseJSONModule(name, src string) (*Module, error) {
 	vm.initIfNeeded()
-	m := &Module{
-		vm:   vm,
-		name: name,
-	}
-	em, err := vm.e.ParseJSONModule(src, m)
-	if err != nil {
-		return nil, vm.publicError(err)
-	}
-	m.m = em
-	return m, nil
+	return vm.initialRealm.ParseJSONModule(name, src)
 }
 
-// NewSyntheticModule returns a module whose only export is default, with the value v.
+// NewSyntheticModule is [Realm.NewSyntheticModule] of the initial realm.
 func (vm *VM) NewSyntheticModule(name string, v Value) *Module {
 	vm.initIfNeeded()
-	m := &Module{
-		vm:   vm,
-		name: name,
-	}
-	m.m = vm.e.CreateDefaultExportSyntheticModule(v.engine(), m)
-	return m
+	return vm.initialRealm.NewSyntheticModule(name, v)
 }
 
 // Name returns the name that m was created with.

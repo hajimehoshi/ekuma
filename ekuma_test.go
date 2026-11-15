@@ -1198,14 +1198,9 @@ func TestCancelTailCalls(t *testing.T) {
 // TestScriptRealm checks that a script evaluates in the realm that it was parsed in.
 func TestScriptRealm(t *testing.T) {
 	var vm ekuma.VM
-	r := ekuma.NewRealm(&vm)
-	var other ekuma.Value
-	var s *ekuma.Script
-	var err error
-	ekuma.InRealm(&vm, r, func() {
-		other = vm.Global()
-		s, err = vm.ParseScript("other", `var inOther = 1; [globalThis, this, Object.getPrototypeOf([]) === Array.prototype]`)
-	})
+	r := vm.NewRealm()
+	other := r.Global()
+	s, err := r.ParseScript("other", `var inOther = 1; [globalThis, this, Object.getPrototypeOf([]) === Array.prototype]`)
 	if err != nil {
 		t.Fatalf("ParseScript: %v", err)
 	}
@@ -1233,16 +1228,114 @@ func TestScriptRealm(t *testing.T) {
 	}
 }
 
+// TestRealmValues checks which realm the values that Go creates belong to.
+func TestRealmValues(t *testing.T) {
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	g := vm.Global()
+	if err := g.Set("other", r.Global()); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	inner := r.FuncOf("inner", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		// The methods of the VM work in the initial realm even in a function of another realm.
+		if err := g.Set("fromVM", vm.ValueOf([]any{})); err != nil {
+			return nil, err
+		}
+		if err := g.Set("fromSet", []any{}); err != nil {
+			return nil, err
+		}
+		return nil, errors.New("thrown")
+	})
+	values := map[string]ekuma.Value{
+		"array":  r.ValueOf([]any{}),
+		"object": r.ValueOf(map[string]any{}),
+		"realmFn": r.ValueOf(ekuma.Func(func(this ekuma.Value, args []ekuma.Value) (any, error) {
+			return []any{}, nil
+		})),
+		"inner": inner,
+		"vmFn": vm.FuncOf("vmFn", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+			return nil, nil
+		}),
+	}
+	for name, v := range values {
+		if err := g.Set(name, v); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+	}
+	v, err := runScript(t.Context(), &vm, "check", `
+		let error;
+		try { inner(); } catch (e) { error = e; }
+		[
+			other.Array !== Array,
+			Object.getPrototypeOf(array) === other.Array.prototype,
+			Object.getPrototypeOf(object) === other.Object.prototype,
+			Object.getPrototypeOf(realmFn) === other.Function.prototype,
+			Object.getPrototypeOf(realmFn()) === other.Array.prototype,
+			Object.getPrototypeOf(inner) === other.Function.prototype,
+			error instanceof other.Error,
+			Object.getPrototypeOf(vmFn) === Function.prototype,
+			Object.getPrototypeOf(fromVM) === Array.prototype,
+			Object.getPrototypeOf(fromSet) === Array.prototype,
+		].join()`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got, want := v.String(), "true,true,true,true,true,true,true,true,true,true"; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+// TestRealmModules checks that modules belong to their realms, and that the module loader is
+// told the realm of each import.
+func TestRealmModules(t *testing.T) {
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	got := map[string]*ekuma.Realm{}
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		got[req.ReferrerName+":"+req.Specifier] = req.Realm
+		if req.Specifier == "data" {
+			return req.Realm.ParseJSONModule("data", `{}`)
+		}
+		return req.Realm.ParseModule(req.Specifier, `export default globalThis;`)
+	})
+	main, err := r.ParseModule("main", `
+		import g from "lib";
+		import data from "data" with { type: "json" };
+		export const ok = g === globalThis && Object.getPrototypeOf(data) === Object.prototype;
+		export const dynamic = import("dyn");`)
+	if err != nil {
+		t.Fatalf("ParseModule: %v", err)
+	}
+	if _, err := main.Evaluate(t.Context()); err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	ns, err := main.Namespace()
+	if err != nil {
+		t.Fatalf("Namespace: %v", err)
+	}
+	if ok, err := ns.Get("ok"); err != nil || !ok.Bool() {
+		t.Errorf("the imports of a module of a realm do not belong to the realm: %v, %v", ok, err)
+	}
+	if _, err := runScript(t.Context(), &vm, "script", `import("fromDefault")`); err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	for k, want := range map[string]*ekuma.Realm{
+		"main:lib":           r,
+		"main:data":          r,
+		"main:dyn":           r,
+		"script:fromDefault": vm.InitialRealm(),
+	} {
+		if got[k] != want {
+			t.Errorf("the realm of the request %s is not the expected one", k)
+		}
+	}
+}
+
 // TestRealmRestored checks that the realm of a VM is current again after a function of another
 // realm throws or is interrupted.
 func TestRealmRestored(t *testing.T) {
 	var vm ekuma.VM
-	r := ekuma.NewRealm(&vm)
-	var other ekuma.Value
-	ekuma.InRealm(&vm, r, func() {
-		other = vm.Global()
-	})
-	if err := vm.Global().Set("other", other); err != nil {
+	if err := vm.Global().Set("other", vm.NewRealm().Global()); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
 	if _, err := runScript(t.Context(), &vm, "setup", `var mark = 1;

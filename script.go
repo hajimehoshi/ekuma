@@ -9,25 +9,16 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-// Script is a script that [VM.ParseScript] parsed.
+// Script is a script that [Realm.ParseScript] parsed.
 type Script struct {
 	vm *VM
 	s  *engine.Script
 }
 
-// ParseScript parses src as the source text of a script. name names the script in error
-// messages and stack traces, and in the [ModuleRequest.ReferrerName] of its import() calls.
-// The error is a [*SyntaxError] when src is not a valid script.
+// ParseScript is [Realm.ParseScript] of the initial realm.
 func (vm *VM) ParseScript(name, src string) (*Script, error) {
 	vm.initIfNeeded()
-	es, err := vm.e.ParseScript(name, src)
-	if err != nil {
-		return nil, vm.publicError(err)
-	}
-	return &Script{
-		vm: vm,
-		s:  es,
-	}, nil
+	return vm.initialRealm.ParseScript(name, src)
 }
 
 // Evaluate evaluates s, runs the pending jobs, and returns the value of the last expression

@@ -24,6 +24,9 @@ type scriptOrModule struct {
 	// module is the Module Record, or nil for a script and for the realm.
 	module *Module
 
+	// realm is the [[Realm]] of the script or module, or the realm itself.
+	realm *realm
+
 	// loaded is the [[LoadedModules]], by requestKey.
 	loaded map[string]*Module
 }
@@ -59,12 +62,13 @@ func requestKey(r ModuleRequest) string {
 // HostLoadImportedModuleFunc implements HostLoadImportedModule synchronously: it returns the
 // module that the request req of the referrer resolves to. referrer is the importing module,
 // or nil for a script or for code that has neither; file is the name that the importing script
-// or module was given, or empty. The engine calls it at most once for a request of a referrer
+// or module was given, or empty; realm is the [[Realm]] of the importing script or module, or
+// the realm for code that has neither. The engine calls it at most once for a request of a referrer
 // that completed normally.
 //
 // The error is an [*Error] for a thrown value, a [*SyntaxError], or any other error, which is
 // thrown as an Error with its message.
-type HostLoadImportedModuleFunc func(vm *VM, referrer *Module, file string, req ModuleRequest) (*Module, error)
+type HostLoadImportedModuleFunc func(vm *VM, referrer *Module, file string, realm *Realm, req ModuleRequest) (*Module, error)
 
 // HostGetImportMetaPropertiesFunc implements HostGetImportMetaProperties: it returns the
 // properties of the object import.meta of the module m, which is created then.
@@ -196,6 +200,7 @@ func (vm *VM) ParseModule(file, src string, hostDefined any) (*Module, error) {
 	m.ref = scriptOrModule{
 		file:   file,
 		module: m,
+		realm:  vm.curRealm,
 	}
 	m.body = vm.link(bc, &m.ref)
 	for i := range m.env {
@@ -346,7 +351,7 @@ func (vm *VM) loadImportedModule(ref *scriptOrModule, req ModuleRequest) (m *Mod
 	if vm.modules.load == nil {
 		return nil, vm.NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
 	}
-	m, err := vm.modules.load(vm, ref.module, ref.file, req)
+	m, err := vm.modules.load(vm, ref.module, ref.file, (*Realm)(ref.realm), req)
 	if err != nil {
 		return nil, vm.errorValue(err), false
 	}
