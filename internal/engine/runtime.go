@@ -591,6 +591,9 @@ type classElement struct {
 	kind int
 	key  Value
 	val  *Object
+
+	// dec is what the decorators of a field add to it, or nil.
+	dec *fieldDecoration
 }
 
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
@@ -616,7 +619,7 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 	// Private methods and accessors exist before any field initializer runs.
 	checked := false
 	for _, e := range *ctor.fn.fields {
-		if e.kind != bytecode.ElemField {
+		if e.kind != bytecode.ElemField && e.kind != elemInitializer {
 			if !checked {
 				vm.ensureCanAddPrivate(this, e.key.o)
 				checked = true
@@ -625,8 +628,11 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 		}
 	}
 	for _, e := range *ctor.fn.fields {
-		if e.kind == bytecode.ElemField {
+		switch e.kind {
+		case bytecode.ElemField:
 			vm.defineClassElement(this, e)
+		case elemInitializer:
+			vm.Call(e.val, this)
 		}
 	}
 }
@@ -639,12 +645,22 @@ func (vm *VM) defineClassElement(this Value, e classElement) {
 		if e.val != nil {
 			v = vm.Call(e.val, this)
 		}
+		if e.dec != nil {
+			for _, init := range e.dec.initializers {
+				v = vm.Call(init, this, v)
+			}
+		}
 		if private {
 			vm.ensureCanAddPrivate(this, e.key.o)
 			vm.definePrivate(this, e.key.o, v)
-			return
+		} else {
+			vm.CreateDataPropertyOrThrow(this.o, vm.ToPropertyKey(e.key), v)
 		}
-		vm.CreateDataPropertyOrThrow(this.o, vm.ToPropertyKey(e.key), v)
+		if e.dec != nil {
+			for _, init := range e.dec.extra {
+				vm.Call(init, this)
+			}
+		}
 	case bytecode.ElemMethod:
 		vm.definePrivate(this, e.key.o, Value{o: e.val})
 	case bytecode.ElemGetter, bytecode.ElemSetter:
@@ -722,24 +738,29 @@ func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable
 	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), d)
 }
 
+// funcNameOfKey returns the name that SetFunctionName gives a function for the property key or private name k.
+func (vm *VM) funcNameOfKey(k Value) string {
+	switch {
+	case k.IsSymbol():
+		if k.o.class == classPrivateName {
+			return "#" + k.o.str
+		}
+		if k.o.ext != nil {
+			return "[" + k.o.str + "]"
+		}
+		return ""
+	case k.IsString():
+		return k.o.str
+	}
+	return vm.ToString(k)
+}
+
 // setFuncName implements SetFunctionName for the function or class f, which must be anonymous.
 func (vm *VM) setFuncName(f, k Value, prefix int) {
 	if !f.IsCallable() {
 		return
 	}
-	var name string
-	switch {
-	case k.IsSymbol():
-		if k.o.class == classPrivateName {
-			name = "#" + k.o.str
-		} else if k.o.ext != nil {
-			name = "[" + k.o.str + "]"
-		}
-	case k.IsString():
-		name = k.o.str
-	default:
-		name = vm.ToString(k)
-	}
+	name := vm.funcNameOfKey(k)
 	switch prefix {
 	case bytecode.NamePrefixGet:
 		name = "get " + name

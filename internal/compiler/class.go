@@ -55,6 +55,21 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 		name = n.Name.Name
 	}
 
+	// state holds the state of the evaluation of a class with decorators. The decorators of
+	// the class are outside the class body.
+	state := int32(-1)
+	if n.Decorators != nil || n.MemberDecorators {
+		state = f.newReg()
+		r := f.newReg()
+		f.emit(bytecode.OpLoadK, r, f.constStr(name), 0)
+		f.decorateStep(bytecode.DecBegin, -1, r, state, 0)
+		f.free(r)
+		for _, d := range n.Decorators {
+			f.decorator(state, d)
+		}
+		f.decorateStep(bytecode.DecClass, state, -1, -1, 0)
+	}
+
 	f.classDepth++
 	defer func() {
 		f.classDepth--
@@ -109,6 +124,21 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 	f.captureScopes(ctor)
 	f.emit(bytecode.OpClass, ctor, 0, parent)
 	proto := ctor + 1
+
+	if state >= 0 {
+		f.decoratedMembers(n, state, ctor)
+		f.decorateStep(bytecode.DecApply, state, ctor, ctor, 0)
+		if inner != nil {
+			f.emit(bytecode.OpMove, inner.reg, ctor, 0)
+			inner.tdz = false
+			inner.initialized = true
+		}
+		f.decorateStep(bytecode.DecFinish, state, ctor, -1, 0)
+		f.emit(bytecode.OpMove, dst, ctor, 0)
+		f.control = f.control[:len(f.control)-1]
+		f.popScope()
+		return
+	}
 
 	// The static fields and blocks run after everything else is defined.
 	type static struct {
@@ -165,17 +195,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 		case ast.MemberField:
 			// The key and the initializer stay in registers until the static fields run.
 			k := f.propertyKey(m.Key, m.Computed)
-			v := int32(-1)
-			if m.Value != nil {
-				v = f.newReg()
-				if fname, ok := keyName(m.Key, m.Computed); ok {
-					f.c.fieldNames[m.Value] = fname
-				} else if private {
-					f.c.fieldNames[m.Value] = "#" + m.Key.(*ast.PrivateName).Name
-				}
-				f.closure(m.Value, v, "")
-				f.emit(bytecode.OpSetHome, v, obj, 0)
-			}
+			v := f.fieldInit(m, obj, private)
 			if m.Static {
 				statics = append(statics, static{
 					key:   k,
@@ -185,6 +205,38 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 			}
 			f.emit(bytecode.OpAddField, ctor, k, v)
 			f.emit(bytecode.OpNop, bytecode.ElemField, 0, 0)
+		case ast.MemberAccessor:
+			mm := f.top
+			k := f.propertyKey(m.Key, m.Computed)
+			acc := f.newRegs(3)
+			f.emit(bytecode.OpAutoAccessor, acc, k, 0)
+			v := f.fieldInit(m, obj, private)
+			if private {
+				elem := int32(0)
+				if m.Static {
+					elem = bytecode.ElemStatic
+				}
+				f.emit(bytecode.OpAddField, ctor, k, acc+1)
+				f.emit(bytecode.OpNop, bytecode.ElemGetter|elem, 0, 0)
+				f.emit(bytecode.OpAddField, ctor, k, acc+2)
+				f.emit(bytecode.OpNop, bytecode.ElemSetter|elem, 0, 0)
+			} else {
+				f.emit(bytecode.OpDefineGetter, obj, k, acc+1)
+				f.emit(bytecode.OpNop, 0, 0, 0)
+				f.emit(bytecode.OpDefineSetter, obj, k, acc+2)
+				f.emit(bytecode.OpNop, 0, 0, 0)
+			}
+			if m.Static {
+				// The backing storage and the initializer stay in registers until the static fields run.
+				statics = append(statics, static{
+					key:   acc,
+					value: v,
+				})
+				break
+			}
+			f.emit(bytecode.OpAddField, ctor, acc, v)
+			f.emit(bytecode.OpNop, bytecode.ElemField, 0, 0)
+			f.free(mm)
 		case ast.MemberStaticBlock:
 			v := f.newReg()
 			f.closure(m.Value, v, "")
@@ -217,4 +269,139 @@ func (f *fn) class(n *ast.Class, dst int32, name string) {
 	f.emit(bytecode.OpMove, dst, ctor, 0)
 	f.control = f.control[:len(f.control)-1]
 	f.popScope()
+}
+
+// fieldInit compiles the initializer of the field or auto-accessor m with the home object obj
+// into a fresh register, and returns the register, or -1 when m has no initializer.
+func (f *fn) fieldInit(m *ast.ClassMember, obj int32, private bool) int32 {
+	if m.Value == nil {
+		return -1
+	}
+	v := f.newReg()
+	if fname, ok := keyName(m.Key, m.Computed); ok {
+		f.c.fieldNames[m.Value] = fname
+	} else if private {
+		f.c.fieldNames[m.Value] = "#" + m.Key.(*ast.PrivateName).Name
+	}
+	f.closure(m.Value, v, "")
+	f.emit(bytecode.OpSetHome, v, obj, 0)
+	return v
+}
+
+// decorateStep emits the [bytecode.OpDecorate] step of the Dec kind step with the
+// operands a, b and c, and the Elem kind elem.
+func (f *fn) decorateStep(step int32, a, b, c, elem int32) {
+	f.emit(bytecode.OpDecorate, a, b, c)
+	f.emit(bytecode.OpNop, step, elem, 0)
+}
+
+// decorator evaluates the decorator e and adds it to the decorators of the next element of
+// the class whose evaluation state is in the register state.
+func (f *fn) decorator(state int32, e ast.Expr) {
+	mark := f.top
+	defer f.free(mark)
+	f.setPos(e.Start())
+	// The decorator goes to base and its receiver to base+1.
+	base := f.newRegs(2)
+	switch e := e.(type) {
+	case *ast.MemberExpr:
+		f.expr(e.Object, base+1)
+		f.setPos(e.Property.Start())
+		if p, ok := e.Property.(*ast.PrivateName); ok {
+			name := f.newReg()
+			f.loadVar("#"+p.Name, name, false)
+			f.emit(bytecode.OpGetPrivate, base, base+1, name)
+			break
+		}
+		f.emit(bytecode.OpGetProp, base, base+1, f.site(e.Property.(*ast.Identifier).Name))
+	case *ast.Identifier:
+		if scope := f.resolveName(e.Name); scope >= 0 {
+			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
+			f.emit(bytecode.OpGetScoped, base, scope, f.key(e.Name))
+			if f.evalScopesAround() {
+				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
+			} else {
+				f.emit(bytecode.OpMove, base+1, scope, 0)
+			}
+			end := f.jump()
+			f.patch(skip)
+			f.loadStatic(e.Name, base, false)
+			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+			f.patch(end)
+			break
+		}
+		f.expr(e, base)
+		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+	default:
+		f.expr(e, base)
+		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+	}
+	f.decorateStep(bytecode.DecAdd, state, base, base+1, 0)
+}
+
+// decoratedMembers compiles the members of the class n, which has decorators, into steps of
+// the evaluation whose state is in the register state. ctor holds the constructor and ctor+1
+// the prototype.
+func (f *fn) decoratedMembers(n *ast.Class, state, ctor int32) {
+	proto := ctor + 1
+	for i := range n.Members {
+		m := &n.Members[i]
+		mark := f.top
+		for _, d := range m.Decorators {
+			f.decorator(state, d)
+		}
+		obj := proto
+		elem := int32(0)
+		if m.Static {
+			obj = ctor
+			elem = bytecode.ElemStatic
+		}
+		_, private := m.Key.(*ast.PrivateName)
+		private = private && !m.Computed
+		k, v := int32(-1), int32(-1)
+		switch m.Kind {
+		case ast.MemberConstructor:
+			continue
+		case ast.MemberMethod, ast.MemberGetter, ast.MemberSetter:
+			k = f.propertyKey(m.Key, m.Computed)
+			v = f.newReg()
+			name, static := keyName(m.Key, m.Computed)
+			if private {
+				name, static = "#"+m.Key.(*ast.PrivateName).Name, true
+			}
+			prefix := int32(bytecode.NamePrefixNone)
+			kind := int32(bytecode.ElemMethod)
+			switch m.Kind {
+			case ast.MemberGetter:
+				prefix = bytecode.NamePrefixGet
+				name = "get " + name
+				kind = bytecode.ElemGetter
+			case ast.MemberSetter:
+				prefix = bytecode.NamePrefixSet
+				name = "set " + name
+				kind = bytecode.ElemSetter
+			}
+			elem |= kind
+			f.closure(m.Value, v, name)
+			if !static {
+				f.emit(bytecode.OpSetFuncName, v, k, prefix)
+			}
+			f.emit(bytecode.OpSetHome, v, obj, 0)
+		case ast.MemberField:
+			k = f.propertyKey(m.Key, m.Computed)
+			v = f.fieldInit(m, obj, private)
+			elem |= bytecode.ElemField
+		case ast.MemberAccessor:
+			k = f.propertyKey(m.Key, m.Computed)
+			v = f.fieldInit(m, obj, private)
+			elem |= bytecode.ElemAccessor
+		case ast.MemberStaticBlock:
+			v = f.newReg()
+			f.closure(m.Value, v, "")
+			f.emit(bytecode.OpSetHome, v, ctor, 0)
+			elem |= bytecode.ElemStaticBlock
+		}
+		f.decorateStep(bytecode.DecElement, state, k, v, elem)
+		f.free(mark)
+	}
 }

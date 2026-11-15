@@ -48,9 +48,15 @@ func walk(n ast.Node, visit func(ast.Node) bool) {
 		}
 		w(n.ExprBody)
 	case *ast.Class:
+		for _, d := range n.Decorators {
+			w(d)
+		}
 		w(n.Super)
 		for i := range n.Members {
 			m := &n.Members[i]
+			for _, d := range m.Decorators {
+				w(d)
+			}
 			if m.Computed {
 				w(m.Key)
 			}

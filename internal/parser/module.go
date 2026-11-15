@@ -241,6 +241,29 @@ func (p *parser) addPatternExports(pat ast.Pattern) {
 	}
 }
 
+// parseDecoratedExport parses an export declaration that the decorators of its class precede.
+// The current token is the export keyword.
+func (p *parser) parseDecoratedExport(decorators []ast.Expr) ast.Stmt {
+	pos := p.t.start
+	s := p.parseExport()
+	var decl ast.Stmt
+	switch s := s.(type) {
+	case *ast.ExportNamedDecl:
+		decl = s.Decl
+	case *ast.ExportDefaultDecl:
+		decl = s.Decl
+	}
+	d, ok := decl.(*ast.ClassDecl)
+	if !ok {
+		p.fail(int(pos), "decorators may only precede the export of a class")
+	}
+	if d.Class.Decorators != nil {
+		p.fail(int(d.Class.StartOff), "decorators may not both precede and follow export")
+	}
+	d.Class.Decorators = decorators
+	return s
+}
+
 // parseExport parses an export declaration. The current token is the export keyword.
 func (p *parser) parseExport() ast.Stmt {
 	start := p.t.start
@@ -270,8 +293,19 @@ func (p *parser) parseExport() ast.Stmt {
 		switch {
 		case p.t.kind == tFunction:
 			d.Decl = p.parseFunctionDecl(declStart, false, ctxList, true)
-		case p.t.kind == tClass:
+		case p.t.kind == tClass || p.t.kind == tAt:
+			var decorators []ast.Expr
+			if p.t.kind == tAt {
+				decorators = p.parseDecorators()
+				if p.t.kind != tClass {
+					p.unexpected()
+				}
+			}
 			cls := p.parseClass(true, true)
+			if decorators != nil {
+				cls.Decorators = decorators
+				cls.StartOff = declStart
+			}
 			d.Decl = &ast.ClassDecl{
 				Span:  cls.Span,
 				Class: cls,

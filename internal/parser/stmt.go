@@ -96,6 +96,24 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 			Span:  cls.Span,
 			Class: cls,
 		}
+	case tAt:
+		if ctx != ctxList {
+			p.failTok("class declaration is not allowed here")
+		}
+		decorators := p.parseDecorators()
+		if p.t.kind == tExport && p.atModuleTop() {
+			return p.parseDecoratedExport(decorators)
+		}
+		if p.t.kind != tClass {
+			p.unexpected()
+		}
+		cls := p.parseClass(true, false)
+		cls.Decorators = decorators
+		cls.StartOff = start
+		return &ast.ClassDecl{
+			Span:  cls.Span,
+			Class: cls,
+		}
 	case tIf:
 		p.next()
 		p.expect(tLParen)

@@ -275,6 +275,15 @@ func TestValid(t *testing.T) {
 			src:  "-->",
 			mode: script,
 		},
+
+		// Decorators.
+		{
+			src:  "@a export class A {} export @b class B {} export default @c class {}",
+			mode: module,
+		},
+		{
+			src: "class C { @a static constructor() {} @b accessor\nx; static accessor [k] = 1 }",
+		},
 	}
 	for _, tc := range testCases {
 		if _, err := parse(tc.src, tc.mode); err != nil {
@@ -1479,6 +1488,46 @@ func TestInvalid(t *testing.T) {
 			src:  "new.target",
 			mode: module,
 		},
+
+		// Decorators.
+		{
+			src: "class C { @a constructor() {} }",
+		},
+		{
+			src: "class C { @a static {} }",
+		},
+		{
+			src: "class C { @a; }",
+		},
+		{
+			src: "class C { @a[0] m() {} }",
+		},
+		{
+			src: "class C { @a() () {} }",
+		},
+		{
+			src: "@a function f() {}",
+		},
+		{
+			src: "if (x) @a class C {}",
+		},
+		{
+			src:  "@a export const x = 1",
+			mode: module,
+		},
+		{
+			src:  "@a export @b class C {}",
+			mode: module,
+		},
+		{
+			src: "class C { accessor m() {} }",
+		},
+		{
+			src: "class C { accessor #x; get #x() {} }",
+		},
+		{
+			src: "class C { accessor constructor }",
+		},
 	}
 	for _, tc := range testCases {
 		prog, err := parse(tc.src, tc.mode)
@@ -1501,7 +1550,7 @@ func TestInvalid(t *testing.T) {
 }
 
 func TestErrorPosition(t *testing.T) {
-	_, err := parse("var a;\r\nvar é = @;", script)
+	_, err := parse("var a;\r\nvar é = #;", script)
 	var perr *parser.Error
 	if !errors.As(err, &perr) {
 		t.Fatalf("error type is %T, want *parser.Error", err)

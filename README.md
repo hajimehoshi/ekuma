@@ -70,10 +70,9 @@ is published yet.
 
 ## Status
 
-99.95% of [test262](https://github.com/tc39/test262) pass: 48,775 of 48,797 tests
-in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
-known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
-that list would grow.
+100% of [test262](https://github.com/tc39/test262) pass: 48,797 of 48,797 tests
+in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The test suite
+fails when any of them fails.
 
 ### Implemented
 
@@ -82,6 +81,7 @@ that list would grow.
 - `Temporal`, explicit resource management, `import defer`, and the newer `Array`, `Error`,
   `Math`, `Map`, `JSON`, `Iterator`, `Promise`, `Uint8Array` and `ArrayBuffer` additions
 - `ShadowRealm`, which is a proposal and not yet standard
+- Decorators and auto-accessors (`accessor`), which are a proposal and not yet standard
 
 ### Notes on behavior
 
@@ -95,6 +95,7 @@ that list would grow.
 - `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,
   as `import()` in code without a file does. The loader cannot tell the realms apart, so a
   module that it returns again is shared by them
+- The context objects of decorators have no `metadata`, which is a separate proposal
 
 ### Missing
 

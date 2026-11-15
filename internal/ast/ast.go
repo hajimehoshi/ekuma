@@ -370,6 +370,9 @@ const (
 	MemberConstructor
 	// MemberStaticBlock is a static initialization block. Key is nil.
 	MemberStaticBlock
+	// MemberAccessor is an auto-accessor of the decorators proposal. Value is the initializer
+	// function, or nil without an initializer.
+	MemberAccessor
 )
 
 // ClassMember is an element of a class body.
@@ -383,6 +386,9 @@ type ClassMember struct {
 	Computed bool
 	Key      Expr
 	Value    *Function
+
+	// Decorators are the decorator expressions of the member, in source order.
+	Decorators []Expr
 }
 
 // Class is a class declaration or expression.
@@ -394,6 +400,11 @@ type Class struct {
 
 	// Constructor is the explicit constructor, or nil.
 	Constructor *Function
+
+	// Decorators are the decorator expressions of the class, in source order.
+	Decorators []Expr
+	// MemberDecorators reports whether any member has decorators.
+	MemberDecorators bool
 
 	// Scope holds the inner binding of the class name.
 	Scope *Scope

@@ -229,6 +229,8 @@ skip:
 		kind = tColon
 	case '~':
 		kind = tTilde
+	case '@':
+		kind = tAt
 	case '.':
 		switch {
 		case c1 >= '0' && c1 <= '9':

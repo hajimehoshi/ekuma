@@ -78,6 +78,8 @@ const (
 	tTilde
 	tInc
 	tDec
+	// tAt is the @ that starts a decorator.
+	tAt
 
 	// tIdent and every kind after it is a word: its token text is an IdentifierName.
 	tIdent

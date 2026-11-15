@@ -1107,6 +1107,15 @@ func (p *parser) parsePrimary() ast.Expr {
 		return p.parseFunctionExpr(start, false)
 	case tClass:
 		return p.parseClass(false, false)
+	case tAt:
+		decorators := p.parseDecorators()
+		if p.t.kind != tClass {
+			p.unexpected()
+		}
+		cls := p.parseClass(false, false)
+		cls.Decorators = decorators
+		cls.StartOff = start
+		return cls
 	}
 	p.unexpected()
 	return nil

@@ -411,6 +411,70 @@ func (p *parser) parseClass(decl, anonymous bool) *ast.Class {
 	return cls
 }
 
+// isClassElementNameStart reports whether a token of the kind k can start a ClassElementName.
+func isClassElementNameStart(k tokKind) bool {
+	switch k {
+	case tString, tNumber, tBigInt, tLBrack, tPrivateName:
+		return true
+	}
+	return k.isWord()
+}
+
+// parseDecorators parses a DecoratorList. The current token is the @ of the first decorator.
+func (p *parser) parseDecorators() []ast.Expr {
+	var decorators []ast.Expr
+	for p.t.kind == tAt {
+		decorators = append(decorators, p.parseDecorator())
+	}
+	return decorators
+}
+
+// parseDecorator parses a Decorator. The current token is its @.
+func (p *parser) parseDecorator() ast.Expr {
+	p.next()
+	start := p.t.start
+	if p.t.kind == tLParen {
+		p.next()
+		e := p.parseExpressionIn()
+		p.expect(tRParen)
+		return e
+	}
+	if p.t.kind != tIdent {
+		p.unexpected()
+	}
+	id := newNode(&p.nodes.identifier, ast.Identifier{
+		Span: span(start, p.t.end),
+		Name: p.t.str,
+	})
+	p.checkIdent(id.Name, start, false)
+	if id.Name == "arguments" {
+		if p.f.noArguments {
+			p.fail(int(start), "arguments is not allowed in a class field initializer or a static block")
+		}
+		p.f.use |= useArguments
+	}
+	p.next()
+	var e ast.Expr = id
+	for p.t.kind == tDot {
+		p.next()
+		prop := p.parseMemberName()
+		e = newNode(&p.nodes.member, ast.MemberExpr{
+			Span:     span(start, p.prevEnd),
+			Object:   e,
+			Property: prop,
+		})
+	}
+	if p.t.kind == tLParen {
+		args := p.parseArguments()
+		e = newNode(&p.nodes.call, ast.CallExpr{
+			Span:   span(start, p.prevEnd),
+			Callee: e,
+			Args:   args,
+		})
+	}
+	return e
+}
+
 func isClassKeyEnd(k tokKind) bool {
 	switch k {
 	case tLParen, tAssign, tSemi, tRBrace:
@@ -421,6 +485,12 @@ func isClassKeyEnd(k tokKind) bool {
 
 func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 	memberStart := p.t.start
+	if p.t.kind == tAt {
+		m.Decorators = p.parseDecorators()
+		cls.MemberDecorators = true
+	}
+	// elemStart is the start of the element after its decorators.
+	elemStart := p.t.start
 	var key ast.Expr
 	if p.isWord("static") {
 		id := newNode(&p.nodes.identifier, ast.Identifier{
@@ -437,9 +507,12 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 
 	start := p.t.start
 	if key != nil {
-		start = memberStart
+		start = elemStart
 	}
 	if m.Static && p.t.kind == tLBrace {
+		if m.Decorators != nil {
+			p.failTok("a static block cannot be decorated")
+		}
 		fn := newNode(&p.nodes.function, ast.Function{
 			StaticBlock: true,
 		})
@@ -456,8 +529,14 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		return
 	}
 
-	var async, generator bool
-	if key == nil && p.t.kind == tIdent && !p.t.esc && (p.t.str == "get" || p.t.str == "set" || p.t.str == "async") {
+	var async, generator, accessor bool
+	if key == nil && p.t.kind == tIdent && !p.t.esc && p.t.str == "accessor" {
+		if pk := p.peek(); !pk.nl && isClassElementNameStart(pk.kind) {
+			p.next()
+			accessor = true
+		}
+	}
+	if key == nil && !accessor && p.t.kind == tIdent && !p.t.esc && (p.t.str == "get" || p.t.str == "set" || p.t.str == "async") {
 		id := newNode(&p.nodes.identifier, ast.Identifier{
 			Span: span(p.t.start, p.t.end),
 			Name: p.t.str,
@@ -475,7 +554,7 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 			async = true
 			generator = p.eat(tMul)
 		}
-	} else if key == nil && p.eat(tMul) {
+	} else if key == nil && !accessor && p.eat(tMul) {
 		generator = true
 	}
 	if key == nil {
@@ -495,8 +574,14 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 	}
 	private, _ := key.(*ast.PrivateName)
 
+	if accessor && p.t.kind == tLParen {
+		p.unexpected()
+	}
 	if m.Kind == ast.MemberMethod && !async && !generator && p.t.kind != tLParen {
 		m.Kind = ast.MemberField
+		if accessor {
+			m.Kind = ast.MemberAccessor
+		}
 		if name == "constructor" || m.Static && name == "prototype" {
 			p.fail(int(key.Start()), "invalid class field name '"+name+"'")
 		}
@@ -544,6 +629,9 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		}
 		p.privateDecl(private.Name, private.StartOff, flags)
 	case !m.Static && name == "constructor":
+		if m.Decorators != nil {
+			p.fail(int(key.Start()), "a class constructor cannot be decorated")
+		}
 		if m.Kind != ast.MemberMethod || async || generator {
 			p.fail(int(key.Start()), "class constructor must be a plain method")
 		}

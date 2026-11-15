@@ -217,6 +217,9 @@ const (
 
 	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
 
+	OpAutoAccessor // a, a+1, a+2 = the backing private name, the getter and the setter of an auto-accessor with the key b
+	OpDecorate     // a step of evaluating a class with decorators; the next instruction's a is the Dec kind, which gives the operands
+
 	// The calls in tail position of strict functions. When the callee is a function written in
 	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
 	// callee returns to the caller of the running function. A callee that is Function.prototype.call
@@ -292,6 +295,30 @@ const (
 	ElemGetter
 	ElemSetter
 	ElemStatic = 8
+)
+
+// The kinds of class element that only classes with decorators add with [OpDecorate].
+const (
+	ElemAccessor = ElemSetter + 1 + iota
+	ElemStaticBlock
+)
+
+// The steps of [OpDecorate]. a holds the state of the class evaluation.
+const (
+	// DecBegin sets c to a new state for the class with the name b.
+	DecBegin = iota
+	// DecAdd adds the decorator b with the receiver c to the decorators of the next element.
+	DecAdd
+	// DecClass makes the decorators added so far the decorators of the class.
+	DecClass
+	// DecElement adds the class element with the key b and the value or initializer c,
+	// which is -1 when there is none; the next instruction's b is its Elem kind.
+	DecElement
+	// DecApply applies the decorators of the elements, defines the elements on the class b
+	// and its prototype, and sets c to the result of the decorators of the class.
+	DecApply
+	// DecFinish runs the static elements and the initializers of the class b.
+	DecFinish
 )
 
 // The hints of the resources that [OpUsing] adds.

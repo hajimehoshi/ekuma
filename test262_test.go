@@ -4,7 +4,6 @@
 package ekuma_test
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -13,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -24,16 +22,12 @@ import (
 )
 
 var (
-	flagTest262Update = flag.Bool("test262.update", false, "rewrite the list of expected test262 failures from this run")
-	flagTest262Filter = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text; the expected failures are then not checked")
+	flagTest262Filter = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
 	flagTest262Report = flag.String("test262.report", "", "write every failing test262 test with its reason to this file")
 )
 
-// test262Commit is the commit of https://github.com/tc39/test262 that the list of expected failures was made with.
+// test262Commit is the commit of https://github.com/tc39/test262 that the suite passes at.
 const test262Commit = "2e58f87d8350ad51224617a041c6e041d52f8444"
-
-// expectedFailuresFile lists the test262 tests that are known to fail, one path per line.
-const expectedFailuresFile = "testdata/test262-failures.txt"
 
 // test262Dir returns the directory of the test262 checkout: $EKUMA_TEST262,
 // or ekuma/test262 in the user cache directory.
@@ -512,9 +506,7 @@ func runTest(h *harness, path string) (reason string, timedOut bool) {
 	return "", false
 }
 
-// TestTest262 runs the ECMAScript conformance suite and compares the set of failing tests
-// with the list in testdata. A test that fails without being listed is a regression, and
-// a listed test that passes has to be removed from the list, so the list only ever shrinks.
+// TestTest262 runs the ECMAScript conformance suite. Every test must pass.
 func TestTest262(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test262 in short mode")
@@ -577,7 +569,8 @@ func TestTest262(t *testing.T) {
 		}
 	}
 
-	var failed []string
+	// failed holds the indices in paths of the failing tests.
+	var failed []int
 	byArea := map[string][2]int{}
 	for i, p := range paths {
 		parts := strings.SplitN(p, "/", 4)
@@ -587,11 +580,11 @@ func TestTest262(t *testing.T) {
 		if reasons[i] == "" {
 			c[0]++
 		} else {
-			failed = append(failed, p)
+			failed = append(failed, i)
 		}
 		byArea[area] = c
 	}
-	t.Logf("the expected failures are for test262 at %s", test262Commit)
+	t.Logf("test262 at %s", test262Commit)
 	t.Logf("test262: %d of %d tests pass (%.1f%%)", len(paths)-len(failed), len(paths), 100*float64(len(paths)-len(failed))/float64(max(len(paths), 1)))
 	if testing.Verbose() {
 		areas := make([]string, 0, len(byArea))
@@ -615,56 +608,14 @@ func TestTest262(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if *flagTest262Filter != "" {
-		return
-	}
-	if *flagTest262Update {
-		if err := os.WriteFile(expectedFailuresFile, []byte(strings.Join(failed, "\n")+"\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-
-	expected, err := readLines(expectedFailuresFile)
-	if err != nil {
-		t.Fatalf("reading the expected failures: %v; run with -test262.update to create the list", err)
-	}
 	const maxShown = 40
-	shown := 0
-	for _, p := range failed {
-		if _, ok := slices.BinarySearch(expected, p); !ok {
-			if shown++; shown <= maxShown {
-				t.Errorf("regression: %s fails", p)
-			}
+	for n, i := range failed {
+		if n == maxShown {
+			t.Errorf("and %d more failures", len(failed)-maxShown)
+			break
 		}
+		t.Errorf("%s fails: %s", paths[i], reasons[i])
 	}
-	for _, p := range expected {
-		if _, ok := slices.BinarySearch(failed, p); !ok {
-			if shown++; shown <= maxShown {
-				t.Errorf("%s passes now: remove it from %s (or run with -test262.update)", p, expectedFailuresFile)
-			}
-		}
-	}
-	if shown > maxShown {
-		t.Errorf("and %d more differences", shown-maxShown)
-	}
-}
-
-func readLines(name string) ([]string, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	var lines []string
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if l := strings.TrimSpace(sc.Text()); l != "" {
-			lines = append(lines, l)
-		}
-	}
-	sort.Strings(lines)
-	return lines, sc.Err()
 }
 
 // agentCluster implements $262.agent for the agents that a test starts. Each agent is a VM that

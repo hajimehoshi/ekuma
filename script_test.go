@@ -2353,6 +2353,19 @@ func TestModules(t *testing.T) {
 			want: "1,true,true",
 		},
 		{
+			// The decorators of an exported class may precede or follow export.
+			name: "decorated exports",
+			sources: map[string]string{
+				"main": `import D, { A, B } from "dep";
+					globalThis.result = [A.tag, B.tag, D.tag].join();`,
+				"dep": `function tag(v, c) { v.tag = c.name; }
+					@tag export class A {}
+					export @tag class B {}
+					export default @tag class {}`,
+			},
+			want: "A,B,default",
+		},
+		{
 			// The modules of a dynamic import evaluate after the importing module.
 			name: "dynamic import",
 			sources: map[string]string{
@@ -2775,5 +2788,179 @@ outer()`)
 	want := "Error: x3\n    at c (trace.js:4:23)\n    at outer (trace.js:5:26)\n    at trace.js:6:1"
 	if got := v.String(); got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestDecorators covers the evaluation of decorators and auto-accessors, of which test262
+// only checks the syntax.
+func TestDecorators(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			// The decorators are evaluated in source order with the computed keys, and applied
+			// after all of them, the closest to the element first: the methods, getters, setters
+			// and accessors, static before instance ones, then the fields, then the class.
+			name: "order",
+			src: `var log = [];
+				function dec(name) {
+					log.push("eval " + name);
+					return function (value, ctx) {
+						log.push(name);
+						ctx.addInitializer(function () { log.push("init " + name); });
+					};
+				}
+				@dec("c1") @dec("c2")
+				class C {
+					@dec("m1") @dec("m2") m() {}
+					[(log.push("key"), "k")]() {}
+					@dec("f") f = log.push("field f");
+					@dec("sf") static sf = log.push("static field sf");
+					@dec("a") accessor a;
+					@dec("sm") static sm() {}
+					static { log.push("static block"); }
+				}
+				log.push("new");
+				new C();
+				log.join()`,
+			want: "eval c1,eval c2,eval m1,eval m2,key,eval f,eval sf,eval a,eval sm," +
+				"sm,m2,m1,a,sf,f,c2,c1," +
+				"init sm,static field sf,init sf,static block,init c2,init c1," +
+				"new,init m2,init m1,field f,init f,init a",
+		},
+		{
+			name: "context objects",
+			src: `var out = [], s = Symbol("s");
+				function dec(value, ctx) {
+					out.push(Object.keys(ctx).join("/") + ":" + ctx.kind + ":" + String(ctx.name) + ":" + ctx.static + ":" + ctx.private +
+						":" + Object.keys(ctx.access ?? {}).join("/"));
+				}
+				@dec class C {
+					@dec static #m() {}
+					@dec get g() {}
+					@dec set [s](v) {}
+					@dec accessor #a;
+					@dec 1 = 0;
+				}
+				out.join(" ")`,
+			want: "kind/access/static/private/name/addInitializer:method:#m:true:true:get/has " +
+				"kind/access/static/private/name/addInitializer:getter:g:false:false:get/has " +
+				"kind/access/static/private/name/addInitializer:setter:Symbol(s):false:false:set/has " +
+				"kind/access/static/private/name/addInitializer:accessor:#a:false:true:get/set/has " +
+				"kind/access/static/private/name/addInitializer:field:1:false:false:get/set/has " +
+				"kind/name/addInitializer:class:C:undefined:undefined:",
+		},
+		{
+			// A decorator is called with the object of a member expression as its this value.
+			name: "receivers",
+			src: `"use strict";
+				var out = [], ns = {
+					dec() { out.push(this === ns); },
+					make() { return function () { out.push(String(this)); }; },
+				};
+				@ns.dec @(ns.dec) @((0, ns.dec)) @ns.make() class C {}
+				out.join()`,
+			want: "undefined,false,true,true",
+		},
+		{
+			name: "invalid results and late initializers",
+			src: `var out = [], saved;
+				for (const [ret, src] of [[1, "m() {}"], [{}, "f"], [1, "accessor a"], [{init: 1}, "accessor a"], [1, ""]]) {
+					globalThis.r = () => ret;
+					try {
+						eval(src ? "(class { @r " + src + " })" : "(@r class {})");
+						out.push("none");
+					} catch (e) {
+						out.push(e.constructor.name);
+					}
+				}
+				class D { @((v, c) => { saved = c; }) m() {} }
+				try { saved.addInitializer(() => {}); } catch (e) { out.push(e.constructor.name); }
+				try { (class { @((v, c) => { c.addInitializer(1); }) m() {} }); } catch (e) { out.push(e.constructor.name); }
+				out.join()`,
+			want: "TypeError,TypeError,TypeError,TypeError,TypeError,TypeError,TypeError",
+		},
+		{
+			name: "access",
+			src: `var acc = {};
+				function keep(name) { return (v, c) => { acc[name] = c.access; }; }
+				class P {
+					@keep("x") x = 1;
+					@keep("y") #y = 2;
+					@keep("m") #m() { return this.#y; }
+				}
+				var p = new P(), out = [];
+				out.push(acc.x.get(p), acc.y.get(p), acc.x.has(p), acc.y.has(p), acc.y.has({}), acc.m.get(p).call(p));
+				acc.x.set(p, 10);
+				acc.y.set(p, 20);
+				out.push(p.x, acc.y.get(p), acc.x.get.length, acc.x.set.length, acc.x.has.name);
+				try { acc.y.get({}); } catch (e) { out.push(e.constructor.name); }
+				try { acc.x.get(1); } catch (e) { out.push(e.constructor.name); }
+				out.join()`,
+			want: "1,2,true,true,false,2,10,20,1,2,has,TypeError,TypeError",
+		},
+		{
+			// The class that a class decorator returns gets the class binding and the static
+			// fields, and is the this value of the static blocks and the initializers.
+			name: "replaced class",
+			src: `var orig, inner, out = [];
+				@((v, c) => { c.addInitializer(function () { out.push(this === inner); }); })
+				@((v, c) => { orig = v; return class extends v {}; })
+				class C {
+					static s = this;
+					static { inner = C; out.push(this === C); }
+				}
+				out.push(C === inner, C !== orig, Object.hasOwn(C, "s"), Object.hasOwn(orig, "s"));
+				out.join()`,
+			want: "true,true,true,true,true,false",
+		},
+		{
+			name: "decorated methods and accessors",
+			src: `function twice(v) { return function () { return v.call(this) * 2; }; }
+				class S {
+					@twice m() { return 1; }
+					@twice get g() { return 2; }
+					@twice static #sm() { return 3; }
+					@((v) => ({ get() { return v.get.call(this) * 2; }, set(x) { v.set.call(this, x + 1); } })) accessor a = 3;
+					@((v) => ({ init: x => x + 100 })) @((v) => ({ init: x => x * 2 })) accessor #b = 1;
+					@((v) => x => x + 1) @((v) => x => x * 3) f = 2;
+					b() { return this.#b; }
+					static sm() { return S.#sm(); }
+				}
+				var s = new S(), a = s.a;
+				s.a = 5;
+				[s.m(), s.g, S.sm(), a, s.a, s.b(), s.f].join()`,
+			want: "2,4,6,6,12,102,7",
+		},
+		{
+			name: "auto-accessors",
+			src: `var k = "x";
+				class A {
+					accessor [k] = 1;
+					static accessor #s = 2;
+					static s() { return A.#s; }
+				}
+				class B extends A {}
+				var d = Object.getOwnPropertyDescriptor(A.prototype, "x"), a = new A(), b = new A(), out = [];
+				a.x = 3;
+				out.push(a.x, b.x, A.s(), Object.keys(a).length, d.enumerable, d.get.name, d.set.name, d.get.length, d.set.length);
+				try { d.get.call({}); } catch (e) { out.push(e.constructor.name); }
+				out.join()`,
+			want: "3,1,2,0,false,get x,set x,0,1,TypeError",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, &vm, v); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

@@ -1847,6 +1847,17 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := vm.importOp(regs, i.B, i.C)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
+		case bytecode.OpAutoAccessor:
+			vm.autoAccessorOp(regs, i)
+		case bytecode.OpDecorate:
+			vm.frames[len(vm.frames)-1].pc = pc + 1
+			pc++
+			if v, ok := vm.decorateOp(regs, i, &code[pc-1]); ok {
+				regs = vm.reload(regs, onHeap, base, fp)
+				regs[i.C] = v
+			} else {
+				regs = vm.reload(regs, onHeap, base, fp)
+			}
 
 		case bytecode.OpDebugger, bytecode.OpNop:
 		default:
