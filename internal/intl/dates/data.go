@@ -7,8 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // localeData looks up the CLDR data of a locale, inheriting it from its ancestors.

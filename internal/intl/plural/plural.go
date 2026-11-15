@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // categoryOrder are the plural categories in the order of ECMA-402.

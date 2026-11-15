@@ -6,7 +6,7 @@ package locale
 import (
 	"strings"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // AddLikelySubtags implements the Add Likely Subtags algorithm of UTS 35 for id, which is in

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // Calendars are the calendars that Intl supports, sorted.

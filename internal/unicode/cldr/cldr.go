@@ -10,7 +10,7 @@
 // identifiers in the tables are BCP 47 language tags with "und" for the root locale.
 //
 // The tables are under the Unicode License v3, the license of the CLDR data, which is in the
-// file LICENSE.
+// file LICENSE of this directory. That license covers this package only.
 package cldr
 
 import (

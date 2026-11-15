@@ -10,8 +10,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/plural"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // Options holds the resolved options of an Intl.NumberFormat.

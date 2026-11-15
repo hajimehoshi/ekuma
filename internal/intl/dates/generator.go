@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // genPattern is a pattern of a generator with its skeleton.

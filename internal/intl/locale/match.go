@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // defaultRegionLocales maps the language-region form of each available locale with a

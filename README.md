@@ -152,7 +152,7 @@ under the user cache directory, or in the directory that `EKUMA_TEST262` names.
 ## License
 
 [0BSD](LICENSE), except for the data of the [Unicode Common Locale Data Repository](https://cldr.unicode.org/)
-in `internal/intl/cldr`, which is under the [Unicode License v3](internal/intl/cldr/LICENSE).
+in `internal/unicode/cldr`, which is under the [Unicode License v3](internal/unicode/cldr/LICENSE).
 Only the optional package `github.com/hajimehoshi/ekuma/intl` includes that data. A program that
 imports it must include the copyright and permission notice of the Unicode License v3 with its
 copies or in their documentation.

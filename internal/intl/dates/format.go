@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // Part is a part of a formatted date, with the type of the parts of formatToParts.

@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // msPerDay is the number of milliseconds in a day.

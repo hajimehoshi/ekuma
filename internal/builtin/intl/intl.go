@@ -8,8 +8,8 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // realm holds the Intl objects of a realm.

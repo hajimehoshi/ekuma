@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/cldr"
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
 // maxAliasSteps bounds the alias replacements of a unicode_language_id. The CLDR aliases
