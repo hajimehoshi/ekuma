@@ -19,6 +19,8 @@ fmt.Println(v.String()) // Hello, world
 
 The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after first use.
 
+## Host API
+
 The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
 `Value.Get`, `Value.Set`, `Value.Call`, `Value.Invoke`, `Value.New`, `VM.ValueOf`, `VM.FuncOf`,
 `CopyBytesToGo`, `CopyBytesToJS`.
@@ -39,8 +41,7 @@ evaluation, whose state `Value.PromiseState` reads. `Module.LoadRequestedModules
 Promise jobs run when the outermost call from Go into the VM returns, and the rejections that
 are still unhandled then are reported to `VM.SetUnhandledRejection`. `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
-`VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`. There is no
-public API yet for creating further realms in a VM.
+`VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`.
 
 ### Agents
 
@@ -98,8 +99,8 @@ fails when any of them fails.
   zone database
 - Without `Intl`, `toLocale*String` uses a fixed English format, and `localeCompare` compares
   code units after canonical equivalence
-- Source phase imports and `%AbstractModuleSource%` exist, but there is no public API to give
-  a module a module source yet, so importing the source of any module throws a SyntaxError
+- Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
+  module throws a SyntaxError, since no host API gives a module a module source
 - `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,
   as `import()` in code without a file does. The loader cannot tell the realms apart, so a
   module that it returns again is shared by them
@@ -114,6 +115,17 @@ fails when any of them fails.
 
 - Most of `Intl`. The optional package `ekuma/intl` adds it when it is imported for its side
   effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf` and `Intl.Locale` so far
+- Host API for these, some of which the engine has and only the tests use:
+  - Creating further realms in a VM
+  - Giving a module a module source
+  - Property keys other than strings: symbol keys, property descriptors, and listing the keys
+    of an object
+  - Creating or awaiting a promise from Go other than through the `Promise` constructor and
+    `then`
+  - Sharing a Go byte slice with an `ArrayBuffer`, which `CopyBytesToGo` and `CopyBytesToJS`
+    copy
+  - Replacing the clock of `Date.now`, which `testing/synctest` fakes in Go tests
+  - Limits on stack depth or memory, and statistics of the memory that a VM uses
 
 ## Running the tests
 
