@@ -33,9 +33,6 @@ test/built-ins/AbstractModuleSource/prototype/constructor.js
 test/built-ins/AbstractModuleSource/prototype/proto.js
 test/built-ins/AbstractModuleSource/throw-from-constructor.js
 test/built-ins/Function/prototype/toString/line-terminator-normalisation-CR.js
-test/built-ins/ThrowTypeError/frozen.js
-test/built-ins/ThrowTypeError/length.js
-test/built-ins/ThrowTypeError/name.js
 test/language/expressions/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js
 test/language/expressions/class/decorator/syntax/valid/decorator-call-expr-identifier-reference-yield.js
 test/language/expressions/class/decorator/syntax/valid/decorator-call-expr-identifier-reference.js

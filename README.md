@@ -70,7 +70,7 @@ is published yet.
 
 ## Status
 
-99.86% of [test262](https://github.com/tc39/test262) pass: 48,728 of 48,797 tests
+99.86% of [test262](https://github.com/tc39/test262) pass: 48,731 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.

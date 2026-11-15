@@ -125,7 +125,7 @@ func Install(vm *engine.VM) {
 		vm.ThrowTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 		return engine.Undefined
 	})
-	vm.PreventExtensions(throwTypeError)
+	setIntegrity(vm, throwTypeError, true)
 	vm.SetIntrinsic(engine.IntrinsicThrowTypeError, throwTypeError)
 
 	var strs objectStrings
