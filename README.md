@@ -32,7 +32,15 @@ the host supplies the modules that it imports with `VM.SetModuleLoader`, which `
 too. `Module.Evaluate` loads, links and evaluates a module and returns the promise of the
 evaluation, whose state `Value.PromiseState` reads. `Module.LoadRequestedModules`,
 `Module.Link` and `Module.Namespace` take the earlier steps alone, and `VM.SetImportMeta` gives
-`import.meta` its properties.
+`import.meta` its properties. Module loading is synchronous.
+
+### Host environment
+
+Promise jobs run when the outermost call from Go into the VM returns, and the rejections that
+are still unhandled then are reported to `VM.SetUnhandledRejection`. `Date` and `Temporal` use
+the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
+`VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`. There is no
+public API yet for agents (workers) that share a `SharedArrayBuffer`.
 
 ## Differences from other engines for Go
 
@@ -66,44 +74,24 @@ in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The t
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
 
-Implemented:
+### Implemented
 
-- Nearly all of the syntax up to ES2025, including direct and indirect `eval` and the `Function`
-  constructor
-- Nearly all of the ES2025 standard library and of Annex B, with `RegExp` on its own
+- Nearly all of the syntax and standard library up to ES2025 and Annex B, with `RegExp` on its own
   backtracking engine
-- Newer additions: explicit resource management, `Array.fromAsync`, `Error.isError`,
-  `Math.sumPrecise`, the `Uint8Array` base64 and hex methods, immutable `ArrayBuffer`s, the `Map`
-  upsert methods, `JSON.parse` source text access, the newer `Iterator` and `Promise` helpers,
-  and the `stack` accessor of `Error.prototype`
-- `Temporal`, created on the first access to it
+- `Temporal`, explicit resource management, `import defer`, and the newer `Array`, `Error`,
+  `Math`, `Map`, `JSON`, `Iterator`, `Promise`, `Uint8Array` and `ArrayBuffer` additions
 
-Notes on behavior:
+### Notes on behavior
 
-- Promise jobs run when the outermost call from Go into the VM returns. Unlike QuickJS, where the
-  host drains them with `JS_ExecutePendingJob`, there is no way to run them later
-- Promise rejections that nothing handled by then are reported to `VM.SetUnhandledRejection`,
-  the way HTML fires `unhandledrejection`
-- Typed array elements are stored in little-endian byte order on every platform
-- `Date` uses the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`
-- `VM.SetTimeZone` and `VM.SetRandomSource` replace the time zone of `Date` and the source of
-  `Math.random`, for deterministic runs
-- `Temporal` supports only the `iso8601` calendar. Its named time zones come from the system's
-  time zone database (`time/tzdata` is not embedded), or from the JavaScript host with `GOOS=js`
-- Without `Intl`, the `toLocale*String` methods of `Date` use a fixed English format, and
-  `localeCompare` treats canonically equivalent strings as equal and otherwise compares code units
-- A VM is an agent that cannot block, so `Atomics.wait` throws. A finite `Atomics.waitAsync`
-  timeout takes effect when the jobs run after it expired. The engine supports agents that share
-  the memory of a `SharedArrayBuffer` across goroutines, with blocking waits, but no public API
-  creates them yet
-- Weak collections, `WeakRef` and `FinalizationRegistry` use Go's garbage collector
-- Modules include dynamic `import()`, `import.meta`, JSON modules and `import defer`. Module
-  loading is synchronous. Source phase imports parse, but no module has a source object
+- `Temporal` has only the `iso8601` calendar, and its named time zones need the system's time
+  zone database
+- Without `Intl`, `toLocale*String` uses a fixed English format, and `localeCompare` compares
+  code units after canonical equivalence
+- `Atomics.wait` throws, as a VM cannot block
+- Source phase imports have no source objects
 
-Missing:
+### Missing
 
-- A public API for agents (workers): the engine can share a `SharedArrayBuffer` between VMs on
-  different goroutines, but a host cannot create such VMs or hand them buffers yet
 - `Intl`
 
 Known inaccuracies in what is implemented: the `caller` and `arguments` properties of sloppy
