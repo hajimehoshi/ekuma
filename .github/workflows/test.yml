@@ -65,7 +65,10 @@ jobs:
         run: go vet ./...
 
       - name: go test
-        run: go test -v -shuffle=on -timeout 30m ./...
+        run: |
+          # -test262.shuffle is defined only in the root package, so the other packages run separately.
+          go test -v -shuffle=on -timeout 30m . -test262.shuffle=on
+          go test -v -shuffle=on -timeout 30m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
 
   wasm:
     name: Test WebAssembly in Chrome

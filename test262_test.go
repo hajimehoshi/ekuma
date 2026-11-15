@@ -9,10 +9,12 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -22,8 +24,9 @@ import (
 )
 
 var (
-	flagTest262Filter = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
-	flagTest262Report = flag.String("test262.report", "", "write every failing test262 test with its reason to this file")
+	flagTest262Filter  = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
+	flagTest262Report  = flag.String("test262.report", "", "write every failing test262 test with its reason to this file")
+	flagTest262Shuffle = flag.String("test262.shuffle", "off", "run the test262 tests in random order: off, on, or a seed; a replay is exact only with GOMAXPROCS=1")
 )
 
 // test262Commit is the commit of https://github.com/tc39/test262 that the suite passes at.
@@ -506,6 +509,21 @@ func runTest(h *harness, path string) (reason string, timedOut bool) {
 	return "", false
 }
 
+// test262ShuffleSeed parses the -test262.shuffle value. ok reports whether the tests are shuffled.
+func test262ShuffleSeed(value string) (seed int64, ok bool, err error) {
+	switch value {
+	case "off":
+		return 0, false, nil
+	case "on":
+		return time.Now().UnixNano(), true, nil
+	}
+	seed, err = strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, false, fmt.Errorf("-test262.shuffle must be off, on, or an integer: %w", err)
+	}
+	return seed, true, nil
+}
+
 // TestTest262 runs the ECMAScript conformance suite. Every test must pass.
 func TestTest262(t *testing.T) {
 	if testing.Short() {
@@ -540,6 +558,20 @@ func TestTest262(t *testing.T) {
 		}
 	}
 	sort.Strings(paths)
+	// order holds the indices in paths in the order they are handed to the workers.
+	order := make([]int, len(paths))
+	for i := range order {
+		order[i] = i
+	}
+	if seed, ok, err := test262ShuffleSeed(*flagTest262Shuffle); err != nil {
+		t.Fatal(err)
+	} else if ok {
+		t.Logf("-test262.shuffle %d", seed)
+		r := rand.New(rand.NewPCG(uint64(seed), 0))
+		r.Shuffle(len(order), func(i, j int) {
+			order[i], order[j] = order[j], order[i]
+		})
+	}
 
 	h := &harness{
 		dir:   dir,
@@ -556,7 +588,7 @@ func TestTest262(t *testing.T) {
 			}
 		})
 	}
-	for i := range paths {
+	for _, i := range order {
 		next <- i
 	}
 	close(next)
