@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -48,13 +49,20 @@ func test262Dir() string {
 }
 
 // test262Dirs are the directories of the suite that are run. intl402 tests the optional
-// internationalization API, and staging holds tests of proposals.
+// internationalization API, harness tests the files that tests include, and staging holds
+// tests that have not been fully reviewed yet.
 var test262Dirs = []string{
-	"test/language", "test/built-ins", "test/annexB",
+	"test/language", "test/built-ins", "test/annexB", "test/harness", "test/staging",
 	"test/intl402/Array", "test/intl402/BigInt", "test/intl402/Collator", "test/intl402/Date",
 	"test/intl402/DateTimeFormat", "test/intl402/FallbackSymbol", "test/intl402/Number",
 	"test/intl402/NumberFormat", "test/intl402/PluralRules", "test/intl402/Segmenter",
 	"test/intl402/String", "test/intl402/TypedArray",
+}
+
+// test262Excluded are the directories that are not run when a directory above them is.
+// staging/sm holds tests imported from SpiderMonkey, some of which test its own extensions.
+var test262Excluded = []string{
+	"test/staging/sm",
 }
 
 // metadata is the part of the front matter of a test that the runner uses.
@@ -555,18 +563,25 @@ func TestTest262(t *testing.T) {
 	}
 	var paths []string
 	for _, d := range dirs {
-		err := filepath.WalkDir(filepath.Join(dir, d), func(p string, e fs.DirEntry, err error) error {
+		root := filepath.Join(dir, d)
+		err := filepath.WalkDir(root, func(p string, e fs.DirEntry, err error) error {
 			if err != nil {
 				return err
-			}
-			if e.IsDir() || !strings.HasSuffix(p, ".js") || strings.HasSuffix(p, "_FIXTURE.js") {
-				return nil
 			}
 			rel, err := filepath.Rel(dir, p)
 			if err != nil {
 				return err
 			}
 			rel = filepath.ToSlash(rel)
+			if e.IsDir() {
+				if p != root && slices.Contains(test262Excluded, rel) {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(p, ".js") || strings.HasSuffix(p, "_FIXTURE.js") {
+				return nil
+			}
 			if *flagTest262Filter == "" || strings.Contains(rel, *flagTest262Filter) {
 				paths = append(paths, rel)
 			}

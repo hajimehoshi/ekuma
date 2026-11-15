@@ -109,12 +109,14 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-100% of [test262](https://github.com/tc39/test262) pass: 49,545 of 49,545 tests in these
+100% of [test262](https://github.com/tc39/test262) pass: 49,743 of 49,743 tests in these
 directories. The test suite fails when any of them fails.
 
 - `test/language`
 - `test/built-ins`
 - `test/annexB`
+- `test/harness`
+- `test/staging`, except `test/staging/sm`
 - `test/intl402/Array`
 - `test/intl402/BigInt`
 - `test/intl402/Collator`
