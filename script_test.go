@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
+	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
 // TestScripts runs scripts and compares the string form of their last value.
@@ -2044,6 +2045,50 @@ func TestTemporalTimeZone(t *testing.T) {
 	}
 	for _, tc := range tests {
 		v, err := runScript(t.Context(), &vm, "temporal", tc.src)
+		if err != nil {
+			t.Errorf("%s: %v", tc.src, err)
+			continue
+		}
+		if got := toString(t, &vm, v); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.src, got, tc.want)
+		}
+	}
+}
+
+// TestTemporalCalendars checks the calendars other than ISO 8601 that package intl adds to
+// Temporal. The expected values are those of V8 with ICU4X.
+func TestTemporalCalendars(t *testing.T) {
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{
+			src: `const d = Temporal.PlainDate.from("2024-03-15[u-ca=hebrew]");
+				[d.era, d.eraYear, d.year, d.monthCode, d.day, d.weekOfYear, d.monthsInYear].join(" ")`,
+			want: "am 5784 5784 M06 5  13",
+		},
+		{
+			src:  `Temporal.PlainDate.from({calendar: "gregory", era: "bce", eraYear: 1, month: 1, day: 1}).year`,
+			want: "0",
+		},
+		{
+			// An era and an era year replace the year.
+			src:  `Temporal.PlainDate.from("2024-03-15[u-ca=gregory]").with({era: "bce", eraYear: 1}).toString()`,
+			want: "0000-03-15[u-ca=gregory]",
+		},
+		{
+			// A month day string keeps the month code and the day of its date in the calendar.
+			src:  `Temporal.PlainMonthDay.from("2023-01-01[u-ca=hebrew]").toString()`,
+			want: "1972-12-13[u-ca=hebrew]",
+		},
+		{
+			src:  `new Intl.DateTimeFormat("en-u-ca-islamic").resolvedOptions().calendar`,
+			want: "islamic-tbla",
+		},
+	}
+	for _, tc := range tests {
+		var vm ekuma.VM
+		v, err := runScript(t.Context(), &vm, "calendar", tc.src)
 		if err != nil {
 			t.Errorf("%s: %v", tc.src, err)
 			continue

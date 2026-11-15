@@ -171,9 +171,9 @@ func TemporalComponents(c Components, required, defaults, inherit string) (Compo
 		for _, n := range defaultOptions {
 			out.set(n, "numeric")
 		}
-	}
-	if defaults == ZonedDateTime && out.TimeZoneName == "" {
-		out.TimeZoneName = "short"
+		if defaults == ZonedDateTime && out.TimeZoneName == "" {
+			out.TimeZoneName = "short"
+		}
 	}
 	return out, true
 }

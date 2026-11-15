@@ -110,8 +110,9 @@ fails when any of them fails.
 
 ### Notes on behavior
 
-- `Temporal` has only the `iso8601` calendar, and its named time zones need the system's time
-  zone database
+- `Temporal` has only the `iso8601` calendar without the optional package
+  `github.com/hajimehoshi/ekuma/intl`, which adds the other calendars of ECMA-402. Its named
+  time zones need the system's time zone database
 - Without `Intl`, `toLocale*String` uses a fixed English format, and `localeCompare` compares
   code units after canonical equivalence
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
@@ -127,8 +128,7 @@ fails when any of them fails.
 
 - Most of `Intl`. The optional package `github.com/hajimehoshi/ekuma/intl` adds it when it is
   imported for its side effect, and has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`,
-  `Intl.Locale`, `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat` so far.
-  `Intl.DateTimeFormat` formats only the Gregorian calendar yet
+  `Intl.Locale`, `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat` so far
 - Host API for these, some of which the engine has and only the tests use:
   - Giving a module a module source
   - Property keys other than strings: symbol keys, property descriptors, and listing the keys
@@ -152,7 +152,9 @@ under the user cache directory, or in the directory that `EKUMA_TEST262` names.
 ## License
 
 [0BSD](LICENSE), except for the data of the [Unicode Common Locale Data Repository](https://cldr.unicode.org/)
-in `internal/unicode/cldr`, which is under the [Unicode License v3](internal/unicode/cldr/LICENSE).
+in `internal/unicode/cldr`, and the year tables of the Chinese, Korean and Umm al-Qura calendars
+from [ICU4X](https://github.com/unicode-org/icu4x) in `internal/unicode/icu4x`, which are under
+the Unicode License v3 ([CLDR](internal/unicode/cldr/LICENSE), [ICU4X](internal/unicode/icu4x/LICENSE)).
 Only the optional package `github.com/hajimehoshi/ekuma/intl` includes that data. A program that
-imports it must include the copyright and permission notice of the Unicode License v3 with its
+imports it must include the copyright and permission notices of the Unicode License v3 with its
 copies or in their documentation.

@@ -168,6 +168,10 @@ func (b *blocks) inflate(j int, dict string) string {
 	return out.String()
 }
 
+// Absent is the value of a field of a calendar table that the calendar does not have, although
+// the tables that it falls back to have one.
+const Absent = "\x00"
+
 // Field returns the value of the field key in record, a sequence of fields that each start
 // with U+001E and hold a key and a value separated by U+001F, and reports whether record
 // has the field.

@@ -74,12 +74,12 @@ func AddInstant(ns Int128, d Int128) (Int128, error) {
 }
 
 // AddZonedDateTime implements AddZonedDateTime.
-func AddZonedDateTime(ns Int128, tz TimeZone, d InternalDuration, overflow Overflow) (Int128, error) {
+func AddZonedDateTime(ns Int128, tz TimeZone, cal string, d InternalDuration, overflow Overflow) (Int128, error) {
 	if DateDurationSign(d.Date) == 0 {
 		return AddInstant(ns, d.Time)
 	}
 	dt := tz.ISODateTimeFor(ns)
-	added, err := CalendarDateAdd(dt.Date, d.Date, overflow)
+	added, err := CalendarDateAdd(cal, dt.Date, d.Date, overflow)
 	if err != nil {
 		return Int128{}, err
 	}
@@ -94,7 +94,7 @@ func AddZonedDateTime(ns Int128, tz TimeZone, d InternalDuration, overflow Overf
 }
 
 // DifferenceISODateTime implements DifferenceISODateTime.
-func DifferenceISODateTime(dt1, dt2 ISODateTime, largestUnit Unit) (InternalDuration, error) {
+func DifferenceISODateTime(dt1, dt2 ISODateTime, cal string, largestUnit Unit) (InternalDuration, error) {
 	t := DifferenceTime(dt1.Time, dt2.Time)
 	timeSign := t.Sign()
 	dateSign := CompareISODate(dt1.Date, dt2.Date)
@@ -104,7 +104,7 @@ func DifferenceISODateTime(dt1, dt2 ISODateTime, largestUnit Unit) (InternalDura
 		t = t.Add(Mul64(int64(-timeSign), NsPerDay))
 	}
 	dateLargest := LargerOfTwoTemporalUnits(UnitDay, largestUnit)
-	dd := CalendarDateUntil(dt1.Date, adjusted, dateLargest)
+	dd := CalendarDateUntil(cal, dt1.Date, adjusted, dateLargest)
 	if largestUnit != dateLargest {
 		var err error
 		if t, err = Add24HourDaysToTimeDuration(t, dd.Days); err != nil {
@@ -116,7 +116,7 @@ func DifferenceISODateTime(dt1, dt2 ISODateTime, largestUnit Unit) (InternalDura
 }
 
 // DifferenceZonedDateTime implements DifferenceZonedDateTime.
-func DifferenceZonedDateTime(ns1, ns2 Int128, tz TimeZone, largestUnit Unit) (InternalDuration, error) {
+func DifferenceZonedDateTime(ns1, ns2 Int128, tz TimeZone, cal string, largestUnit Unit) (InternalDuration, error) {
 	diff := ns2.Sub(ns1)
 	if diff.IsZero() {
 		return InternalDuration{}, nil
@@ -160,7 +160,7 @@ func DifferenceZonedDateTime(ns1, ns2 Int128, tz TimeZone, largestUnit Unit) (In
 		return InternalDuration{}, rangeErrorf("the time zone has inconsistent offsets")
 	}
 	dateLargest := LargerOfTwoTemporalUnits(UnitDay, largestUnit)
-	dd := CalendarDateUntil(start.Date, intermediate.Date, dateLargest)
+	dd := CalendarDateUntil(cal, start.Date, intermediate.Date, dateLargest)
 	return CombineDateAndTimeDuration(dd, t), nil
 }
 
@@ -181,7 +181,7 @@ type nudgeWindow struct {
 }
 
 // computeNudgeWindow implements ComputeNudgeWindow.
-func computeNudgeWindow(sign int, d InternalDuration, originEpochNs Int128, dt ISODateTime, tz *TimeZone, increment int64, unit Unit, additionalShift bool) (nudgeWindow, error) {
+func computeNudgeWindow(sign int, d InternalDuration, originEpochNs Int128, dt ISODateTime, cal string, tz *TimeZone, increment int64, unit Unit, additionalShift bool) (nudgeWindow, error) {
 	var w nudgeWindow
 	s := int64(sign)
 	var err error
@@ -217,12 +217,12 @@ func computeNudgeWindow(sign int, d InternalDuration, originEpochNs Int128, dt I
 		if err != nil {
 			return w, err
 		}
-		weeksStart, err := CalendarDateAdd(dt.Date, yearsMonths, OverflowConstrain)
+		weeksStart, err := CalendarDateAdd(cal, dt.Date, yearsMonths, OverflowConstrain)
 		if err != nil {
 			return w, err
 		}
 		weeksEnd := AddDaysToISODate(weeksStart, d.Date.Days)
-		until := CalendarDateUntil(weeksStart, weeksEnd, UnitWeek)
+		until := CalendarDateUntil(cal, weeksStart, weeksEnd, UnitWeek)
 		weeks := RoundNumberToIncrement(d.Date.Weeks+until.Weeks, increment, RoundTrunc)
 		w.r1 = weeks
 		w.r2 = weeks + increment*s
@@ -246,7 +246,7 @@ func computeNudgeWindow(sign int, d InternalDuration, originEpochNs Int128, dt I
 	if DateDurationSign(w.startDuration) == 0 {
 		w.startEpochNs = originEpochNs
 	} else {
-		start, err := CalendarDateAdd(dt.Date, w.startDuration, OverflowConstrain)
+		start, err := CalendarDateAdd(cal, dt.Date, w.startDuration, OverflowConstrain)
 		if err != nil {
 			return w, err
 		}
@@ -257,7 +257,7 @@ func computeNudgeWindow(sign int, d InternalDuration, originEpochNs Int128, dt I
 			return w, err
 		}
 	}
-	end, err := CalendarDateAdd(dt.Date, w.endDuration, OverflowConstrain)
+	end, err := CalendarDateAdd(cal, dt.Date, w.endDuration, OverflowConstrain)
 	if err != nil {
 		return w, err
 	}
@@ -282,9 +282,9 @@ func between(a, x, b Int128) bool {
 }
 
 // nudgeToCalendarUnit implements NudgeToCalendarUnit. It also returns the total.
-func nudgeToCalendarUnit(sign int, d InternalDuration, originEpochNs, destEpochNs Int128, dt ISODateTime, tz *TimeZone, increment int64, unit Unit, mode RoundingMode) (nudgeResult, float64, error) {
+func nudgeToCalendarUnit(sign int, d InternalDuration, originEpochNs, destEpochNs Int128, dt ISODateTime, cal string, tz *TimeZone, increment int64, unit Unit, mode RoundingMode) (nudgeResult, float64, error) {
 	didExpand := false
-	w, err := computeNudgeWindow(sign, d, originEpochNs, dt, tz, increment, unit, false)
+	w, err := computeNudgeWindow(sign, d, originEpochNs, dt, cal, tz, increment, unit, false)
 	if err != nil {
 		return nudgeResult{}, 0, err
 	}
@@ -293,7 +293,7 @@ func nudgeToCalendarUnit(sign int, d InternalDuration, originEpochNs, destEpochN
 		inside = between(w.endEpochNs, destEpochNs, w.startEpochNs)
 	}
 	if !inside {
-		if w, err = computeNudgeWindow(sign, d, originEpochNs, dt, tz, increment, unit, true); err != nil {
+		if w, err = computeNudgeWindow(sign, d, originEpochNs, dt, cal, tz, increment, unit, true); err != nil {
 			return nudgeResult{}, 0, err
 		}
 		didExpand = true
@@ -351,8 +351,8 @@ func abs64(x int64) int64 {
 }
 
 // nudgeToZonedTime implements NudgeToZonedTime.
-func nudgeToZonedTime(sign int, d InternalDuration, dt ISODateTime, tz TimeZone, increment int64, unit Unit, mode RoundingMode) (nudgeResult, error) {
-	start, err := CalendarDateAdd(dt.Date, d.Date, OverflowConstrain)
+func nudgeToZonedTime(sign int, d InternalDuration, dt ISODateTime, cal string, tz TimeZone, increment int64, unit Unit, mode RoundingMode) (nudgeResult, error) {
+	start, err := CalendarDateAdd(cal, dt.Date, d.Date, OverflowConstrain)
 	if err != nil {
 		return nudgeResult{}, err
 	}
@@ -439,7 +439,7 @@ func nudgeToDayOrTime(d InternalDuration, destEpochNs Int128, largestUnit Unit, 
 }
 
 // bubbleRelativeDuration implements BubbleRelativeDuration.
-func bubbleRelativeDuration(sign int, d InternalDuration, nudgedEpochNs Int128, dt ISODateTime, tz *TimeZone, largestUnit, smallestUnit Unit) (InternalDuration, error) {
+func bubbleRelativeDuration(sign int, d InternalDuration, nudgedEpochNs Int128, dt ISODateTime, cal string, tz *TimeZone, largestUnit, smallestUnit Unit) (InternalDuration, error) {
 	if smallestUnit == largestUnit {
 		return d, nil
 	}
@@ -466,7 +466,7 @@ func bubbleRelativeDuration(sign int, d InternalDuration, nudgedEpochNs Int128, 
 		default:
 			continue
 		}
-		endDate, err := CalendarDateAdd(dt.Date, end, OverflowConstrain)
+		endDate, err := CalendarDateAdd(cal, dt.Date, end, OverflowConstrain)
 		if err != nil {
 			return InternalDuration{}, err
 		}
@@ -489,7 +489,7 @@ func bubbleRelativeDuration(sign int, d InternalDuration, nudgedEpochNs Int128, 
 }
 
 // RoundRelativeDuration implements RoundRelativeDuration. A nil tz stands for unset.
-func RoundRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128, dt ISODateTime, tz *TimeZone, largestUnit Unit, increment int64, smallestUnit Unit, mode RoundingMode) (InternalDuration, error) {
+func RoundRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128, dt ISODateTime, cal string, tz *TimeZone, largestUnit Unit, increment int64, smallestUnit Unit, mode RoundingMode) (InternalDuration, error) {
 	irregular := smallestUnit.IsCalendarUnit() || (tz != nil && smallestUnit == UnitDay)
 	sign := 1
 	if InternalDurationSign(d) < 0 {
@@ -499,9 +499,9 @@ func RoundRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128
 	var err error
 	switch {
 	case irregular:
-		r, _, err = nudgeToCalendarUnit(sign, d, originEpochNs, destEpochNs, dt, tz, increment, smallestUnit, mode)
+		r, _, err = nudgeToCalendarUnit(sign, d, originEpochNs, destEpochNs, dt, cal, tz, increment, smallestUnit, mode)
 	case tz != nil:
-		r, err = nudgeToZonedTime(sign, d, dt, *tz, increment, smallestUnit, mode)
+		r, err = nudgeToZonedTime(sign, d, dt, cal, *tz, increment, smallestUnit, mode)
 	default:
 		r, err = nudgeToDayOrTime(d, destEpochNs, largestUnit, increment, smallestUnit, mode)
 	}
@@ -510,19 +510,19 @@ func RoundRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128
 	}
 	d = r.duration
 	if r.didExpandCalendarUnit && smallestUnit != UnitWeek {
-		return bubbleRelativeDuration(sign, d, r.nudgedEpochNs, dt, tz, largestUnit, LargerOfTwoTemporalUnits(smallestUnit, UnitDay))
+		return bubbleRelativeDuration(sign, d, r.nudgedEpochNs, dt, cal, tz, largestUnit, LargerOfTwoTemporalUnits(smallestUnit, UnitDay))
 	}
 	return d, nil
 }
 
 // TotalRelativeDuration implements TotalRelativeDuration.
-func TotalRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128, dt ISODateTime, tz *TimeZone, unit Unit) (float64, error) {
+func TotalRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128, dt ISODateTime, cal string, tz *TimeZone, unit Unit) (float64, error) {
 	if unit.IsCalendarUnit() || (tz != nil && unit == UnitDay) {
 		sign := 1
 		if InternalDurationSign(d) < 0 {
 			sign = -1
 		}
-		_, total, err := nudgeToCalendarUnit(sign, d, originEpochNs, destEpochNs, dt, tz, 1, unit, RoundTrunc)
+		_, total, err := nudgeToCalendarUnit(sign, d, originEpochNs, destEpochNs, dt, cal, tz, 1, unit, RoundTrunc)
 		return total, err
 	}
 	t, err := Add24HourDaysToTimeDuration(d.Time, d.Date.Days)
@@ -533,39 +533,39 @@ func TotalRelativeDuration(d InternalDuration, originEpochNs, destEpochNs Int128
 }
 
 // DifferencePlainDateTimeWithRounding implements DifferencePlainDateTimeWithRounding.
-func DifferencePlainDateTimeWithRounding(dt1, dt2 ISODateTime, largestUnit Unit, increment int64, smallestUnit Unit, mode RoundingMode) (InternalDuration, error) {
+func DifferencePlainDateTimeWithRounding(dt1, dt2 ISODateTime, cal string, largestUnit Unit, increment int64, smallestUnit Unit, mode RoundingMode) (InternalDuration, error) {
 	if CompareISODateTime(dt1, dt2) == 0 {
 		return InternalDuration{}, nil
 	}
 	if !ISODateTimeWithinLimits(dt1) || !ISODateTimeWithinLimits(dt2) {
 		return InternalDuration{}, rangeErrorf("date-time is out of range")
 	}
-	d, err := DifferenceISODateTime(dt1, dt2, largestUnit)
+	d, err := DifferenceISODateTime(dt1, dt2, cal, largestUnit)
 	if err != nil {
 		return InternalDuration{}, err
 	}
 	if smallestUnit == UnitNanosecond && increment == 1 {
 		return d, nil
 	}
-	return RoundRelativeDuration(d, dt1.UTCEpochNanoseconds(), dt2.UTCEpochNanoseconds(), dt1, nil, largestUnit, increment, smallestUnit, mode)
+	return RoundRelativeDuration(d, dt1.UTCEpochNanoseconds(), dt2.UTCEpochNanoseconds(), dt1, cal, nil, largestUnit, increment, smallestUnit, mode)
 }
 
 // DifferencePlainDateTimeWithTotal implements DifferencePlainDateTimeWithTotal.
-func DifferencePlainDateTimeWithTotal(dt1, dt2 ISODateTime, unit Unit) (float64, error) {
+func DifferencePlainDateTimeWithTotal(dt1, dt2 ISODateTime, cal string, unit Unit) (float64, error) {
 	if CompareISODateTime(dt1, dt2) == 0 {
 		return 0, nil
 	}
 	if !ISODateTimeWithinLimits(dt1) || !ISODateTimeWithinLimits(dt2) {
 		return 0, rangeErrorf("date-time is out of range")
 	}
-	d, err := DifferenceISODateTime(dt1, dt2, unit)
+	d, err := DifferenceISODateTime(dt1, dt2, cal, unit)
 	if err != nil {
 		return 0, err
 	}
 	if unit == UnitNanosecond {
 		return d.Time.Float64(), nil
 	}
-	return TotalRelativeDuration(d, dt1.UTCEpochNanoseconds(), dt2.UTCEpochNanoseconds(), dt1, nil, unit)
+	return TotalRelativeDuration(d, dt1.UTCEpochNanoseconds(), dt2.UTCEpochNanoseconds(), dt1, cal, nil, unit)
 }
 
 // DifferenceEpochNanoseconds implements DifferenceInstant.
@@ -578,11 +578,11 @@ func DifferenceEpochNanoseconds(ns1, ns2 Int128, increment int64, smallestUnit U
 }
 
 // DifferenceZonedDateTimeWithRounding implements DifferenceZonedDateTimeWithRounding.
-func DifferenceZonedDateTimeWithRounding(ns1, ns2 Int128, tz TimeZone, largestUnit Unit, increment int64, smallestUnit Unit, mode RoundingMode) (InternalDuration, error) {
+func DifferenceZonedDateTimeWithRounding(ns1, ns2 Int128, tz TimeZone, cal string, largestUnit Unit, increment int64, smallestUnit Unit, mode RoundingMode) (InternalDuration, error) {
 	if largestUnit.IsTimeUnit() {
 		return DifferenceEpochNanoseconds(ns1, ns2, increment, smallestUnit, mode)
 	}
-	d, err := DifferenceZonedDateTime(ns1, ns2, tz, largestUnit)
+	d, err := DifferenceZonedDateTime(ns1, ns2, tz, cal, largestUnit)
 	if err != nil {
 		return InternalDuration{}, err
 	}
@@ -590,20 +590,20 @@ func DifferenceZonedDateTimeWithRounding(ns1, ns2 Int128, tz TimeZone, largestUn
 		return d, nil
 	}
 	dt := tz.ISODateTimeFor(ns1)
-	return RoundRelativeDuration(d, ns1, ns2, dt, &tz, largestUnit, increment, smallestUnit, mode)
+	return RoundRelativeDuration(d, ns1, ns2, dt, cal, &tz, largestUnit, increment, smallestUnit, mode)
 }
 
 // DifferenceZonedDateTimeWithTotal implements DifferenceZonedDateTimeWithTotal.
-func DifferenceZonedDateTimeWithTotal(ns1, ns2 Int128, tz TimeZone, unit Unit) (float64, error) {
+func DifferenceZonedDateTimeWithTotal(ns1, ns2 Int128, tz TimeZone, cal string, unit Unit) (float64, error) {
 	if unit.IsTimeUnit() {
 		return TotalTimeDuration(ns2.Sub(ns1), unit), nil
 	}
-	d, err := DifferenceZonedDateTime(ns1, ns2, tz, unit)
+	d, err := DifferenceZonedDateTime(ns1, ns2, tz, cal, unit)
 	if err != nil {
 		return 0, err
 	}
 	dt := tz.ISODateTimeFor(ns1)
-	return TotalRelativeDuration(d, ns1, ns2, dt, &tz, unit)
+	return TotalRelativeDuration(d, ns1, ns2, dt, cal, &tz, unit)
 }
 
 // MatchBehaviour is how InterpretISODateTimeOffset matches an offset.
@@ -662,7 +662,7 @@ func InterpretISODateTimeOffset(d ISODate, t Time, startOfDay bool, behaviour Of
 }
 
 // DateDurationDays implements DateDurationDays.
-func DateDurationDays(dd DateDuration, relativeTo ISODate) (int64, error) {
+func DateDurationDays(dd DateDuration, relativeTo ISODate, cal string) (int64, error) {
 	ymw, err := AdjustDateDurationRecord(dd, 0, keep, keep)
 	if err != nil {
 		return 0, err
@@ -670,7 +670,7 @@ func DateDurationDays(dd DateDuration, relativeTo ISODate) (int64, error) {
 	if DateDurationSign(ymw) == 0 {
 		return dd.Days, nil
 	}
-	later, err := CalendarDateAdd(relativeTo, ymw, OverflowConstrain)
+	later, err := CalendarDateAdd(cal, relativeTo, ymw, OverflowConstrain)
 	if err != nil {
 		return 0, err
 	}

@@ -7,15 +7,114 @@ import (
 	"strings"
 )
 
-// ISO8601 is the identifier of the ISO 8601 calendar, the only available calendar.
+// ISO8601 is the identifier of the ISO 8601 calendar.
 const ISO8601 = "iso8601"
+
+// Calendar is the arithmetic of a calendar other than ISO 8601. Its methods implement the
+// abstract operations of the same names for that calendar.
+type Calendar interface {
+	ISOToDate(d ISODate) CalendarDate
+	ResolveFields(f *CalendarFields, t FieldsType) error
+	DateToISO(f *CalendarFields, overflow Overflow) (ISODate, error)
+	MonthDayToISOReferenceDate(f *CalendarFields, overflow Overflow) (ISODate, error)
+	DateAdd(d ISODate, dd DateDuration, overflow Overflow) (ISODate, error)
+	DateUntil(one, two ISODate, largestUnit Unit) DateDuration
+
+	// HasEras implements CalendarSupportsEra.
+	HasEras() bool
+
+	// HasMidYearEras implements CalendarHasMidYearEras.
+	HasMidYearEras() bool
+}
+
+// Calendars is a set of calendars other than ISO 8601.
+type Calendars interface {
+	// Canonicalize returns the canonical identifier of the lower-case calendar identifier id,
+	// and whether the set has that calendar.
+	Canonicalize(id string) (string, bool)
+
+	// Lookup returns the calendar with the canonical identifier id.
+	Lookup(id string) Calendar
+}
+
+// calendars is the set of calendars other than ISO 8601, or nil.
+var calendars Calendars
+
+// SetCalendars makes the calendars of c available besides ISO 8601. It must be called before
+// any other function of this package, from an init function.
+func SetCalendars(c Calendars) {
+	calendars = c
+}
 
 // CanonicalizeCalendar implements CanonicalizeCalendar.
 func CanonicalizeCalendar(id string) (string, error) {
-	if asciiLower(id) != ISO8601 {
-		return "", rangeErrorf("unknown calendar %s", id)
+	l := asciiLower(id)
+	if l == ISO8601 {
+		return ISO8601, nil
 	}
-	return ISO8601, nil
+	if calendars != nil {
+		if c, ok := calendars.Canonicalize(l); ok {
+			return c, nil
+		}
+	}
+	return "", rangeErrorf("unknown calendar %s", id)
+}
+
+// nonISO returns the calendar cal, or nil when cal is the ISO 8601 calendar.
+func nonISO(cal string) Calendar {
+	if cal == ISO8601 {
+		return nil
+	}
+	return calendars.Lookup(cal)
+}
+
+// CalendarDate is a Calendar Date Record. Era is empty for a calendar without eras, and
+// WeekOfYear and YearOfWeek are zero for a calendar without week numbering.
+type CalendarDate struct {
+	Era          string
+	EraYear      int
+	Year         int
+	Month        int
+	MonthCode    string
+	Day          int
+	DayOfWeek    int
+	DayOfYear    int
+	WeekOfYear   int
+	YearOfWeek   int
+	DaysInWeek   int
+	DaysInMonth  int
+	DaysInYear   int
+	MonthsInYear int
+	InLeapYear   bool
+}
+
+// CalendarISOToDate implements CalendarISOToDate.
+func CalendarISOToDate(cal string, d ISODate) CalendarDate {
+	if c := nonISO(cal); c != nil {
+		return c.ISOToDate(d)
+	}
+	w, wy := d.WeekOfYear()
+	return CalendarDate{
+		Year:         d.Year,
+		Month:        d.Month,
+		MonthCode:    CreateMonthCode(d.Month, false),
+		Day:          d.Day,
+		DayOfWeek:    d.DayOfWeek(),
+		DayOfYear:    d.DayOfYear(),
+		WeekOfYear:   w,
+		YearOfWeek:   wy,
+		DaysInWeek:   7,
+		DaysInMonth:  ISODaysInMonth(d.Year, d.Month),
+		DaysInYear:   DaysInYear(d.Year),
+		MonthsInYear: 12,
+		InLeapYear:   IsLeapYear(d.Year),
+	}
+}
+
+// CalendarSupportsEra reports whether cal has eras, which makes era and eraYear calendar fields.
+func CalendarSupportsEra(cal string) bool {
+	c := nonISO(cal)
+	return c != nil && c.HasEras()
 }
 
 // asciiLower returns s with the ASCII upper-case letters in lower case.
@@ -31,6 +130,10 @@ func asciiLower(s string) string {
 // CalendarFields is a Calendar Fields Record. A field is unset when its Has flag is false.
 // The numeric fields are mathematical values.
 type CalendarFields struct {
+	Era                                                           string
+	HasEra                                                        bool
+	EraYear                                                       float64
+	HasEraYear                                                    bool
 	Year, Month, Day                                              float64
 	HasYear, HasMonth, HasDay                                     bool
 	MonthCode                                                     string
@@ -62,27 +165,47 @@ const (
 )
 
 // ISODateToFields implements ISODateToFields.
-func ISODateToFields(d ISODate, t FieldsType) CalendarFields {
+func ISODateToFields(cal string, d ISODate, t FieldsType) CalendarFields {
+	year, monthCode, day := d.Year, CreateMonthCode(d.Month, false), d.Day
+	if c := nonISO(cal); c != nil {
+		cd := c.ISOToDate(d)
+		year, monthCode, day = cd.Year, cd.MonthCode, cd.Day
+	}
 	f := CalendarFields{
-		MonthCode:    CreateMonthCode(d.Month, false),
+		MonthCode:    monthCode,
 		HasMonthCode: true,
 	}
 	if t == FieldsMonthDay || t == FieldsDate {
-		f.Day, f.HasDay = float64(d.Day), true
+		f.Day, f.HasDay = float64(day), true
 	}
 	if t == FieldsYearMonth || t == FieldsDate {
-		f.Year, f.HasYear = float64(d.Year), true
+		f.Year, f.HasYear = float64(year), true
 	}
 	return f
 }
 
-// CalendarMergeFields implements CalendarMergeFields for the ISO 8601 calendar.
-func CalendarMergeFields(fields, additional CalendarFields) CalendarFields {
+// CalendarMergeFields implements CalendarMergeFields.
+func CalendarMergeFields(cal string, fields, additional CalendarFields) CalendarFields {
 	m := fields
+	c := nonISO(cal)
+	// CalendarFieldKeysToIgnore: a month or a month code replaces both of them. In a calendar
+	// with eras, any of era, eraYear and year replaces all three, and in a calendar with eras
+	// that start in the middle of a year, a day or a month replaces the era and the era year.
+	if c != nil && c.HasEras() && (additional.HasEra || additional.HasEraYear || additional.HasYear) {
+		m.HasEra, m.HasEraYear, m.HasYear = false, false, false
+	}
+	if c != nil && c.HasMidYearEras() && (additional.HasDay || additional.HasMonth || additional.HasMonthCode) {
+		m.HasEra, m.HasEraYear = false, false
+	}
+	if additional.HasEra {
+		m.Era, m.HasEra = additional.Era, true
+	}
+	if additional.HasEraYear {
+		m.EraYear, m.HasEraYear = additional.EraYear, true
+	}
 	if additional.HasYear {
 		m.Year, m.HasYear = additional.Year, true
 	}
-	// A month or a month code replaces both of them.
 	if additional.HasMonth || additional.HasMonthCode {
 		m.Month, m.HasMonth = additional.Month, additional.HasMonth
 		m.MonthCode, m.HasMonthCode = additional.MonthCode, additional.HasMonthCode
@@ -143,8 +266,11 @@ func CreateMonthCode(n int, leap bool) string {
 	return s
 }
 
-// CalendarResolveFields implements CalendarResolveFields for the ISO 8601 calendar.
-func CalendarResolveFields(f *CalendarFields, t FieldsType) error {
+// CalendarResolveFields implements CalendarResolveFields.
+func CalendarResolveFields(cal string, f *CalendarFields, t FieldsType) error {
+	if c := nonISO(cal); c != nil {
+		return c.ResolveFields(f, t)
+	}
 	if (t == FieldsDate || t == FieldsYearMonth) && !f.HasYear {
 		return typeErrorf("year is required")
 	}
@@ -171,17 +297,20 @@ func CalendarResolveFields(f *CalendarFields, t FieldsType) error {
 	return nil
 }
 
-// CalendarDateToISO implements CalendarDateToISO for the ISO 8601 calendar.
-func CalendarDateToISO(f *CalendarFields, overflow Overflow) (ISODate, error) {
+// CalendarDateToISO implements CalendarDateToISO.
+func CalendarDateToISO(cal string, f *CalendarFields, overflow Overflow) (ISODate, error) {
+	if c := nonISO(cal); c != nil {
+		return c.DateToISO(f, overflow)
+	}
 	return RegulateISODate(f.Year, f.Month, f.Day, overflow)
 }
 
 // CalendarDateFromFields implements CalendarDateFromFields.
-func CalendarDateFromFields(f CalendarFields, overflow Overflow) (ISODate, error) {
-	if err := CalendarResolveFields(&f, FieldsDate); err != nil {
+func CalendarDateFromFields(cal string, f CalendarFields, overflow Overflow) (ISODate, error) {
+	if err := CalendarResolveFields(cal, &f, FieldsDate); err != nil {
 		return ISODate{}, err
 	}
-	d, err := CalendarDateToISO(&f, overflow)
+	d, err := CalendarDateToISO(cal, &f, overflow)
 	if err != nil {
 		return ISODate{}, err
 	}
@@ -192,12 +321,12 @@ func CalendarDateFromFields(f CalendarFields, overflow Overflow) (ISODate, error
 }
 
 // CalendarYearMonthFromFields implements CalendarYearMonthFromFields.
-func CalendarYearMonthFromFields(f CalendarFields, overflow Overflow) (ISODate, error) {
-	if err := CalendarResolveFields(&f, FieldsYearMonth); err != nil {
+func CalendarYearMonthFromFields(cal string, f CalendarFields, overflow Overflow) (ISODate, error) {
+	f.Day, f.HasDay = 1, true
+	if err := CalendarResolveFields(cal, &f, FieldsYearMonth); err != nil {
 		return ISODate{}, err
 	}
-	f.Day, f.HasDay = 1, true
-	d, err := CalendarDateToISO(&f, overflow)
+	d, err := CalendarDateToISO(cal, &f, overflow)
 	if err != nil {
 		return ISODate{}, err
 	}
@@ -208,9 +337,12 @@ func CalendarYearMonthFromFields(f CalendarFields, overflow Overflow) (ISODate, 
 }
 
 // CalendarMonthDayFromFields implements CalendarMonthDayFromFields.
-func CalendarMonthDayFromFields(f CalendarFields, overflow Overflow) (ISODate, error) {
-	if err := CalendarResolveFields(&f, FieldsMonthDay); err != nil {
+func CalendarMonthDayFromFields(cal string, f CalendarFields, overflow Overflow) (ISODate, error) {
+	if err := CalendarResolveFields(cal, &f, FieldsMonthDay); err != nil {
 		return ISODate{}, err
+	}
+	if c := nonISO(cal); c != nil {
+		return c.MonthDayToISOReferenceDate(&f, overflow)
 	}
 	year := 1972.0
 	if f.HasYear {
@@ -224,8 +356,18 @@ func CalendarMonthDayFromFields(f CalendarFields, overflow Overflow) (ISODate, e
 	return d, nil
 }
 
-// CalendarDateAdd implements CalendarDateAdd for the ISO 8601 calendar.
-func CalendarDateAdd(d ISODate, dd DateDuration, overflow Overflow) (ISODate, error) {
+// CalendarDateAdd implements CalendarDateAdd.
+func CalendarDateAdd(cal string, d ISODate, dd DateDuration, overflow Overflow) (ISODate, error) {
+	if c := nonISO(cal); c != nil {
+		r, err := c.DateAdd(d, dd, overflow)
+		if err != nil {
+			return ISODate{}, err
+		}
+		if !ISODateWithinLimits(r) {
+			return ISODate{}, rangeErrorf("date is out of range")
+		}
+		return r, nil
+	}
 	y, m := BalanceISOYearMonth(int64(d.Year)+dd.Years, int64(d.Month)+dd.Months)
 	if y < -1e6 || y > 1e6 {
 		return ISODate{}, rangeErrorf("date is out of range")
@@ -271,11 +413,14 @@ func compareSurpasses(sign int, year, month, day int64, target ISODate) bool {
 	return false
 }
 
-// CalendarDateUntil implements CalendarDateUntil for the ISO 8601 calendar.
-func CalendarDateUntil(one, two ISODate, largestUnit Unit) DateDuration {
+// CalendarDateUntil implements CalendarDateUntil.
+func CalendarDateUntil(cal string, one, two ISODate, largestUnit Unit) DateDuration {
 	sign := -CompareISODate(one, two)
 	if sign == 0 {
 		return DateDuration{}
+	}
+	if c := nonISO(cal); c != nil {
+		return c.DateUntil(one, two, largestUnit)
 	}
 	var years, months int64
 	if largestUnit == UnitYear || largestUnit == UnitMonth {

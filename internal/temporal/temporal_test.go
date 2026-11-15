@@ -353,3 +353,22 @@ func TestDurationLimits(t *testing.T) {
 		t.Errorf("TemporalDurationFromInternal(nanosecond): got %v, want an error", d)
 	}
 }
+
+// TestNamedZoneAtLimit checks that the local date-time of the earliest instant in a named time
+// zone west of UTC, which falls on the day before the limit of epoch days, has that instant.
+func TestNamedZoneAtLimit(t *testing.T) {
+	// Pacific time.
+	z := daylightSavingZone(t, zoneType{
+		offset: -8 * 3600,
+		abbr:   "PST",
+	}, zoneType{
+		offset: -7 * 3600,
+		abbr:   "PDT",
+	}, 1616893200, 1635642000)
+	dt := dateTime(-271821, 4, 19, 16, 0)
+	got, err := z.PossibleEpochNanoseconds(dt)
+	want := temporal.Mul64(-100000000, temporal.NsPerDay)
+	if err != nil || len(got) != 1 || got[0].Cmp(want) != 0 {
+		t.Errorf("PossibleEpochNanoseconds(%v): got %v, %v, want [%v]", dt, got, err, want)
+	}
+}

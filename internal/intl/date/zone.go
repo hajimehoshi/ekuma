@@ -413,3 +413,7 @@ func floorDiv(x, y int64) int64 {
 	}
 	return q
 }
+
+func floorMod(x, y int64) int64 {
+	return x - floorDiv(x, y)*y
+}

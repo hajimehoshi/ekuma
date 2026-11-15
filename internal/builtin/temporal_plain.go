@@ -84,9 +84,9 @@ func toTemporalDate(vm *engine.VM, item, options engine.Value) plainDateSlots {
 		}
 		o := item.Object()
 		cal := calendarWithISODefault(vm, o)
-		f := prepareCalendarFields(vm, o, dateFieldNames, fieldsNoneRequired)
+		f := prepareCalendarFields(vm, cal, o, dateFieldNames, fieldsNoneRequired)
 		overflow := getOverflowOption(vm, getOptionsObject(vm, options))
-		d := must(temporal.CalendarDateFromFields(f, overflow))
+		d := must(temporal.CalendarDateFromFields(cal, f, overflow))
 		return plainDateSlots{
 			date: d,
 			cal:  cal,
@@ -131,9 +131,9 @@ func toTemporalDateTime(vm *engine.VM, item, options engine.Value) plainDateTime
 		}
 		o := item.Object()
 		cal := calendarWithISODefault(vm, o)
-		f := prepareCalendarFields(vm, o, append(append([]string{}, dateFieldNames...), timeFieldNames...), fieldsNoneRequired)
+		f := prepareCalendarFields(vm, cal, o, append(append([]string{}, dateFieldNames...), timeFieldNames...), fieldsNoneRequired)
 		overflow := getOverflowOption(vm, getOptionsObject(vm, options))
-		dt := interpretDateTimeFields(vm, f, overflow)
+		dt := interpretDateTimeFields(vm, cal, f, overflow)
 		if !temporal.ISODateTimeWithinLimits(dt) {
 			vm.ThrowRangeError("date-time is out of range")
 		}
@@ -199,39 +199,53 @@ func defineCalendarGetters(vm *engine.VM, proto *engine.Object, names []string, 
 	for _, name := range names {
 		tgetter(vm, proto, vm.Intern(name), name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d, cal := dateOf(vm, this, name)
-			switch name {
-			case "calendarId":
+			if name == "calendarId" {
 				return vm.NewString(cal)
-			case "era", "eraYear":
-				return engine.Undefined
+			}
+			c := temporal.CalendarISOToDate(cal, d)
+			switch name {
+			case "era":
+				if c.Era == "" {
+					return engine.Undefined
+				}
+				return vm.NewString(c.Era)
+			case "eraYear":
+				if c.Era == "" {
+					return engine.Undefined
+				}
+				return engine.Number(float64(c.EraYear))
 			case "year":
-				return engine.Number(float64(d.Year))
+				return engine.Number(float64(c.Year))
 			case "month":
-				return engine.Number(float64(d.Month))
+				return engine.Number(float64(c.Month))
 			case "monthCode":
-				return vm.NewString(temporal.CreateMonthCode(d.Month, false))
+				return vm.NewString(c.MonthCode)
 			case "day":
-				return engine.Number(float64(d.Day))
+				return engine.Number(float64(c.Day))
 			case "dayOfWeek":
-				return engine.Number(float64(d.DayOfWeek()))
+				return engine.Number(float64(c.DayOfWeek))
 			case "dayOfYear":
-				return engine.Number(float64(d.DayOfYear()))
+				return engine.Number(float64(c.DayOfYear))
 			case "weekOfYear":
-				w, _ := d.WeekOfYear()
-				return engine.Number(float64(w))
+				if c.WeekOfYear == 0 {
+					return engine.Undefined
+				}
+				return engine.Number(float64(c.WeekOfYear))
 			case "yearOfWeek":
-				_, y := d.WeekOfYear()
-				return engine.Number(float64(y))
+				if c.WeekOfYear == 0 {
+					return engine.Undefined
+				}
+				return engine.Number(float64(c.YearOfWeek))
 			case "daysInWeek":
-				return engine.Number(7)
+				return engine.Number(float64(c.DaysInWeek))
 			case "daysInMonth":
-				return engine.Number(float64(temporal.ISODaysInMonth(d.Year, d.Month)))
+				return engine.Number(float64(c.DaysInMonth))
 			case "daysInYear":
-				return engine.Number(float64(temporal.DaysInYear(d.Year)))
+				return engine.Number(float64(c.DaysInYear))
 			case "monthsInYear":
-				return engine.Number(12)
+				return engine.Number(float64(c.MonthsInYear))
 			case "inLeapYear":
-				return engine.Bool(temporal.IsLeapYear(d.Year))
+				return engine.Bool(c.InLeapYear)
 			}
 			return engine.Undefined
 		})
@@ -317,13 +331,13 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 	})
 	tmethod(vm, proto, "toPlainYearMonth", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(vm, this, "toPlainYearMonth")
-		f := temporal.ISODateToFields(s.date, temporal.FieldsDate)
-		return r.createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(f, temporal.OverflowConstrain)), s.cal, nil)
+		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsDate)
+		return r.createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 	})
 	tmethod(vm, proto, "toPlainMonthDay", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(vm, this, "toPlainMonthDay")
-		f := temporal.ISODateToFields(s.date, temporal.FieldsDate)
-		return r.createPlainMonthDay(vm, must(temporal.CalendarMonthDayFromFields(f, temporal.OverflowConstrain)), s.cal, nil)
+		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsDate)
+		return r.createPlainMonthDay(vm, must(temporal.CalendarMonthDayFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 	})
 	tmethod(vm, proto, "toPlainDateTime", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(vm, this, "toPlainDateTime")
@@ -351,11 +365,11 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 	tmethod(vm, proto, "with", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(vm, this, "with")
 		bag := rejectTemporalLikeObject(vm, arg(args, 0))
-		f := temporal.ISODateToFields(s.date, temporal.FieldsDate)
-		partial := prepareCalendarFields(vm, bag, dateFieldNames, fieldsPartial)
-		f = temporal.CalendarMergeFields(f, partial)
+		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsDate)
+		partial := prepareCalendarFields(vm, s.cal, bag, dateFieldNames, fieldsPartial)
+		f = temporal.CalendarMergeFields(s.cal, f, partial)
 		overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
-		return r.createPlainDate(vm, must(temporal.CalendarDateFromFields(f, overflow)), s.cal, nil)
+		return r.createPlainDate(vm, must(temporal.CalendarDateFromFields(s.cal, f, overflow)), s.cal, nil)
 	})
 	tmethod(vm, proto, "withCalendar", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(vm, this, "withCalendar")
@@ -371,7 +385,7 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 			}
 			dd := must(temporal.ToDateDurationRecordWithoutTime(&d))
 			overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
-			return r.createPlainDate(vm, must(temporal.CalendarDateAdd(s.date, dd, overflow)), s.cal, nil)
+			return r.createPlainDate(vm, must(temporal.CalendarDateAdd(s.cal, s.date, dd, overflow)), s.cal, nil)
 		})
 	}
 	for _, name := range []string{"until", "since"} {
@@ -384,7 +398,7 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 			if temporal.CompareISODate(s.date, other.date) == 0 {
 				return r.newDuration(vm, temporal.Duration{}, nil)
 			}
-			dd := temporal.CalendarDateUntil(s.date, other.date, settings.largestUnit)
+			dd := temporal.CalendarDateUntil(s.cal, s.date, other.date, settings.largestUnit)
 			id := temporal.InternalDuration{
 				Date: dd,
 			}
@@ -395,7 +409,7 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 				to := temporal.ISODateTime{
 					Date: other.date,
 				}
-				id = must(temporal.RoundRelativeDuration(id, from.UTCEpochNanoseconds(), to.UTCEpochNanoseconds(), from, nil,
+				id = must(temporal.RoundRelativeDuration(id, from.UTCEpochNanoseconds(), to.UTCEpochNanoseconds(), from, s.cal, nil,
 					settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
 			}
 			d := must(temporal.TemporalDurationFromInternal(id, temporal.UnitDay))
@@ -607,12 +621,12 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 	tmethod(vm, proto, "with", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDateTime(vm, this, "with")
 		bag := rejectTemporalLikeObject(vm, arg(args, 0))
-		f := temporal.ISODateToFields(s.dt.Date, temporal.FieldsDate)
+		f := temporal.ISODateToFields(s.cal, s.dt.Date, temporal.FieldsDate)
 		f.SetTime(s.dt.Time)
-		partial := prepareCalendarFields(vm, bag, append(append([]string{}, dateFieldNames...), timeFieldNames...), fieldsPartial)
-		f = temporal.CalendarMergeFields(f, partial)
+		partial := prepareCalendarFields(vm, s.cal, bag, append(append([]string{}, dateFieldNames...), timeFieldNames...), fieldsPartial)
+		f = temporal.CalendarMergeFields(s.cal, f, partial)
 		overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
-		return r.createPlainDateTime(vm, interpretDateTimeFields(vm, f, overflow), s.cal, nil)
+		return r.createPlainDateTime(vm, interpretDateTimeFields(vm, s.cal, f, overflow), s.cal, nil)
 	})
 	tmethod(vm, proto, "withPlainTime", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDateTime(vm, this, "withPlainTime")
@@ -638,7 +652,7 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 			id := temporal.ToInternalDurationRecordWith24HourDays(&d)
 			t, days := temporal.AddTime(s.dt.Time, id.Time)
 			dd := must(temporal.AdjustDateDurationRecord(id.Date, days, -1<<63, -1<<63))
-			date := must(temporal.CalendarDateAdd(s.dt.Date, dd, overflow))
+			date := must(temporal.CalendarDateAdd(s.cal, s.dt.Date, dd, overflow))
 			return r.createPlainDateTime(vm, temporal.ISODateTime{
 				Date: date,
 				Time: t,
@@ -655,7 +669,7 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 			if temporal.CompareISODateTime(s.dt, other.dt) == 0 {
 				return r.newDuration(vm, temporal.Duration{}, nil)
 			}
-			id := must(temporal.DifferencePlainDateTimeWithRounding(s.dt, other.dt, settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
+			id := must(temporal.DifferencePlainDateTimeWithRounding(s.dt, other.dt, s.cal, settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
 			d := must(temporal.TemporalDurationFromInternal(id, settings.largestUnit))
 			if name == "since" {
 				d = d.Negated()

@@ -49,7 +49,17 @@ func calendarsOf(l string) []string {
 	if cals := locale.CalendarsOf(t); len(cals) > 0 {
 		def = cals[0]
 	}
-	return append([]string{def}, locale.Calendars...)
+	// "islamic" stands for "islamic-tbla".
+	return append(append([]string{def}, locale.Calendars...), "islamic")
+}
+
+// resolvedCalendar returns the calendar that DateTimeFormat uses for the calendar cal of its
+// locale.
+func resolvedCalendar(cal string) string {
+	if cal == "islamic" {
+		return "islamic-tbla"
+	}
+	return cal
 }
 
 // hourCyclesOf returns the values of the key "hc": null, which is an empty string, first.
@@ -133,7 +143,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 	}})
 	dtf := &dateTimeFormatData{
 		locale:     res.Locale,
-		calendar:   res.Values[0],
+		calendar:   resolvedCalendar(res.Values[0]),
 		nu:         res.Values[2],
 		formatters: map[*date.Format]*date.Formatter{},
 	}

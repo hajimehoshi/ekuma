@@ -19,11 +19,39 @@ type localeData struct {
 	calendars []cldr.Map
 }
 
-// calendarTables returns the tables of the data of the calendar cal.
+// calendarTables returns the tables of the data of the calendar cal, each falling back to the
+// ones after it.
 func calendarTables(cal string) []cldr.Map {
+	common := []cldr.Map{cldr.GenericData, cldr.GregorianData}
 	switch cal {
-	case "gregory", "iso8601":
-		return []cldr.Map{cldr.GregorianData}
+	case "buddhist":
+		return append([]cldr.Map{cldr.BuddhistData}, common...)
+	case "chinese":
+		return append([]cldr.Map{cldr.ChineseData}, common...)
+	case "coptic":
+		return append([]cldr.Map{cldr.CopticData}, common...)
+	case "dangi":
+		return append([]cldr.Map{cldr.DangiData, cldr.ChineseData}, common...)
+	case "ethioaa":
+		return append([]cldr.Map{cldr.EthioaaData, cldr.EthiopicData}, common...)
+	case "ethiopic":
+		return append([]cldr.Map{cldr.EthiopicData}, common...)
+	case "hebrew":
+		return append([]cldr.Map{cldr.HebrewData}, common...)
+	case "indian":
+		return append([]cldr.Map{cldr.IndianData}, common...)
+	case "islamic-civil":
+		return append([]cldr.Map{cldr.IslamicCivilData, cldr.IslamicData}, common...)
+	case "islamic-tbla":
+		return append([]cldr.Map{cldr.IslamicTblaData, cldr.IslamicData}, common...)
+	case "islamic-umalqura":
+		return append([]cldr.Map{cldr.IslamicUmalquraData, cldr.IslamicData}, common...)
+	case "japanese":
+		return append([]cldr.Map{cldr.JapaneseData}, common...)
+	case "persian":
+		return append([]cldr.Map{cldr.PersianData}, common...)
+	case "roc":
+		return append([]cldr.Map{cldr.ROCData}, common...)
 	}
 	return []cldr.Map{cldr.GregorianData}
 }
@@ -58,7 +86,7 @@ func (d *localeData) lookup(m cldr.Map, key string) (string, bool) {
 func (d *localeData) calendar(key string) (string, bool) {
 	for _, m := range d.calendars {
 		if v, ok := d.lookup(m, key); ok {
-			return v, true
+			return v, v != cldr.Absent
 		}
 	}
 	return "", false
@@ -83,6 +111,11 @@ func (d *localeData) calendarFields(prefix string) map[string]string {
 					out[k] = v
 				}
 			}
+		}
+	}
+	for k, v := range out {
+		if v == cldr.Absent {
+			delete(out, k)
 		}
 	}
 	return out

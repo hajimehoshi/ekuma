@@ -463,10 +463,10 @@ func newRangeFormat(g *generator, p string) *rangeFormat {
 	}
 	found := r.setSeparate(normDate, normTime, date, time)
 	switch {
-	case !found || time != "" && date == "":
-		if !found && time == "" {
-			return r
-		}
+	case !found && (time == "" || date != ""):
+		// Every field falls back to the full pattern.
+		return r
+	case time != "" && date == "":
 		full := g.bestPattern("yMd"+time, matchOptions{})
 		for _, f := range []int{calDate, calMonth, calYear} {
 			r.patterns[f] = intervalPattern{
@@ -628,11 +628,11 @@ type RangePart struct {
 // largestDifference returns the largest calendar field in which a and b differ, or calCount.
 func largestDifference(a, b localTime) int {
 	switch {
-	case (a.year <= 0) != (b.year <= 0):
+	case a.era != b.era || a.gregorianEra != b.gregorianEra:
 		return calEra
 	case a.year != b.year:
 		return calYear
-	case a.month != b.month:
+	case a.month != b.month || a.leapMonth != b.leapMonth:
 		return calMonth
 	case a.day != b.day:
 		return calDate
@@ -660,8 +660,8 @@ type fieldPart struct {
 // epoch.
 func (fm *Formatter) FormatRange(x, y int64, plain bool) []RangePart {
 	r := fm.rangeFormat()
-	ax := civil(x + fm.zoneAt(x, plain).offset)
-	ay := civil(y + fm.zoneAt(y, plain).offset)
+	ax := fm.localTime(x + fm.zoneAt(x, plain).offset)
+	ay := fm.localTime(y + fm.zoneAt(y, plain).offset)
 	field := largestDifference(ax, ay)
 	shared := func() []RangePart {
 		var out []RangePart

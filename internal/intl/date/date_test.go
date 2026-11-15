@@ -254,6 +254,88 @@ func TestFormat(t *testing.T) {
 	}
 }
 
+func TestCalendarFormat(t *testing.T) {
+	day := func(y, m, d int) int64 {
+		return time.Date(y, time.Month(m), d, 12, 0, 0, 0, time.UTC).UnixMilli()
+	}
+	ymd := date.Components{
+		Year:  "numeric",
+		Month: "numeric",
+		Day:   "numeric",
+	}
+	yMMMMd := date.Components{
+		Year:  "numeric",
+		Month: "long",
+		Day:   "numeric",
+	}
+	for _, tc := range []struct {
+		locale string
+		cal    string
+		c      date.Components
+		t      int64
+		want   string
+	}{
+		// Adar of a leap year is Adar II.
+		{
+			locale: "en",
+			cal:    "hebrew",
+			c:      yMMMMd,
+			t:      day(2024, 3, 15),
+			want:   "5 Adar II 5784",
+		},
+		// A numeric Hebrew month is the ordinal month: Tamuz of a common year is 10.
+		{
+			locale: "ja",
+			cal:    "hebrew",
+			c:      ymd,
+			t:      day(2023, 6, 20),
+			want:   "AM5783/10/1",
+		},
+		{
+			locale: "en",
+			cal:    "chinese",
+			c:      yMMMMd,
+			t:      day(2023, 3, 22),
+			want:   "Second Monthbis 1, 2023(gui-mao)",
+		},
+		{
+			locale: "en",
+			cal:    "chinese",
+			c:      ymd,
+			t:      day(2023, 3, 22),
+			want:   "2bis/1/2023",
+		},
+		{
+			locale: "en",
+			cal:    "japanese",
+			c: date.Components{
+				Era:   "short",
+				Year:  "numeric",
+				Month: "long",
+				Day:   "numeric",
+			},
+			t:    day(2024, 3, 15),
+			want: "March 15, 6 Reiwa",
+		},
+		// Before Meiji, the Japanese calendar has the eras of the Gregorian calendar.
+		{
+			locale: "en",
+			cal:    "japanese",
+			c: date.Components{
+				Era:  "short",
+				Year: "numeric",
+			},
+			t:    day(1850, 1, 1),
+			want: "1850 AD",
+		},
+	} {
+		f := date.NewFormat(tc.locale, tc.cal, "h12", tc.c)
+		if got := join(date.NewFormatter(f, "latn", temporal.UTC).Format(tc.t, false)); got != tc.want {
+			t.Errorf("%s %s %+v: got %q, want %q", tc.locale, tc.cal, tc.c, got, tc.want)
+		}
+	}
+}
+
 func TestFormatRange(t *testing.T) {
 	day := func(y, m, d, h int) int64 {
 		return time.Date(y, time.Month(m), d, h, 0, 0, 0, time.UTC).UnixMilli()
@@ -286,6 +368,22 @@ func TestFormatRange(t *testing.T) {
 			x:    day(2019, 1, 3, 10),
 			y:    day(2019, 1, 3, 11),
 			want: "Jan 3, 2019, [10:00] – (11:00) AM",
+		},
+		// A date and a time without an interval format fall back to the whole pattern, era
+		// included.
+		{
+			c: date.Components{
+				Era:    "narrow",
+				Year:   "numeric",
+				Month:  "numeric",
+				Day:    "numeric",
+				Hour:   "numeric",
+				Minute: "numeric",
+				Second: "numeric",
+			},
+			x:    day(2025, 11, 4, 14),
+			y:    day(2025, 11, 15, 14),
+			want: "[11/4/2025 A, 2:00:00 PM]\u2009–\u2009(11/15/2025 A, 2:00:00 PM",
 		},
 		// Dates that do not differ in the fields of the format are one date.
 		{
@@ -321,6 +419,30 @@ func TestFormatRange(t *testing.T) {
 		}
 		if got := b.String(); got != tc.want {
 			t.Errorf("%+v: got %q, want %q", tc.c, got, tc.want)
+		}
+	}
+}
+
+// A zoned date-time has a time zone name by default, but not with a component of its own.
+func TestZonedDateTimeComponents(t *testing.T) {
+	for _, tc := range []struct {
+		c    date.Components
+		want string
+	}{
+		{
+			c:    date.Components{},
+			want: "short",
+		},
+		{
+			c: date.Components{
+				Year: "numeric",
+			},
+			want: "",
+		},
+	} {
+		got, ok := date.TemporalComponents(tc.c, date.Any, date.ZonedDateTime, date.InheritAll)
+		if !ok || got.TimeZoneName != tc.want {
+			t.Errorf("TemporalComponents(%+v): got %+v, %t, want the time zone name %q", tc.c, got, ok, tc.want)
 		}
 	}
 }

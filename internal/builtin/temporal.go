@@ -466,10 +466,14 @@ const (
 	fieldsTimeZoneRequired
 )
 
-// prepareCalendarFields implements PrepareCalendarFields for the ISO 8601 calendar. names are
+// prepareCalendarFields implements PrepareCalendarFields. names are
 // the names of the fields to read.
-func prepareCalendarFields(vm *engine.VM, bag *engine.Object, names []string, req fieldsRequirement) temporal.CalendarFields {
+func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names []string, req fieldsRequirement) temporal.CalendarFields {
 	names = slices.Clone(names)
+	// CalendarExtraFields.
+	if slices.Contains(names, "year") && temporal.CalendarSupportsEra(cal) {
+		names = append(names, "era", "eraYear")
+	}
 	slices.Sort(names)
 	var f temporal.CalendarFields
 	if req != fieldsPartial {
@@ -486,6 +490,10 @@ func prepareCalendarFields(vm *engine.VM, bag *engine.Object, names []string, re
 		}
 		any = true
 		switch name {
+		case "era":
+			f.Era, f.HasEra = vm.ToString(v), true
+		case "eraYear":
+			f.EraYear, f.HasEraYear = toIntegerWithTruncation(vm, v, name), true
 		case "year":
 			f.Year, f.HasYear = toIntegerWithTruncation(vm, v, name), true
 		case "month":
@@ -563,8 +571,8 @@ func toTemporalTimeRecord(vm *engine.VM, bag *engine.Object, partial bool) timeR
 }
 
 // interpretDateTimeFields implements InterpretTemporalDateTimeFields.
-func interpretDateTimeFields(vm *engine.VM, f temporal.CalendarFields, overflow temporal.Overflow) temporal.ISODateTime {
-	d := must(temporal.CalendarDateFromFields(f, overflow))
+func interpretDateTimeFields(vm *engine.VM, cal string, f temporal.CalendarFields, overflow temporal.Overflow) temporal.ISODateTime {
+	d := must(temporal.CalendarDateFromFields(cal, f, overflow))
 	t := must(temporal.RegulateTime(f.Hour, f.Minute, f.Second, f.Millisecond, f.Microsecond, f.Nanosecond, overflow))
 	return temporal.ISODateTime{
 		Date: d,

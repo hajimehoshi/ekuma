@@ -50,14 +50,14 @@ func toTemporalZonedDateTime(vm *engine.VM, item, options engine.Value) zonedDat
 		o := item.Object()
 		cal = calendarWithISODefault(vm, o)
 		names := append(append(append([]string{}, dateFieldNames...), timeFieldNames...), "offset", "timeZone")
-		f := prepareCalendarFields(vm, o, names, fieldsTimeZoneRequired)
+		f := prepareCalendarFields(vm, cal, o, names, fieldsTimeZoneRequired)
 		tz = f.TimeZone
 		offset, hasOffset = f.Offset, f.HasOffset
 		opts := getOptionsObject(vm, options)
 		disambiguation = getDisambiguationOption(vm, opts)
 		offsetOption = getOffsetOption(vm, opts, temporal.OffsetReject)
 		overflow := getOverflowOption(vm, opts)
-		dt := interpretDateTimeFields(vm, f, overflow)
+		dt := interpretDateTimeFields(vm, cal, f, overflow)
 		date, t = dt.Date, dt.Time
 	} else {
 		str := requireString(vm, item, "zoned date-time")
@@ -170,17 +170,17 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		s, dt := dateTimeOf(vm, this, "with")
 		bag := rejectTemporalLikeObject(vm, arg(args, 0))
 		offsetNs := s.tz.OffsetNanosecondsFor(s.ns)
-		f := temporal.ISODateToFields(dt.Date, temporal.FieldsDate)
+		f := temporal.ISODateToFields(s.cal, dt.Date, temporal.FieldsDate)
 		f.SetTime(dt.Time)
 		f.Offset, f.HasOffset = temporal.FormatUTCOffsetNanoseconds(offsetNs), true
 		names := append(append(append([]string{}, dateFieldNames...), timeFieldNames...), "offset")
-		partial := prepareCalendarFields(vm, bag, names, fieldsPartial)
-		f = temporal.CalendarMergeFields(f, partial)
+		partial := prepareCalendarFields(vm, s.cal, bag, names, fieldsPartial)
+		f = temporal.CalendarMergeFields(s.cal, f, partial)
 		opts := getOptionsObject(vm, arg(args, 1))
 		disambiguation := getDisambiguationOption(vm, opts)
 		offsetOption := getOffsetOption(vm, opts, temporal.OffsetPrefer)
 		overflow := getOverflowOption(vm, opts)
-		ndt := interpretDateTimeFields(vm, f, overflow)
+		ndt := interpretDateTimeFields(vm, s.cal, f, overflow)
 		newOffsetNs := must(temporal.ParseDateTimeUTCOffset(f.Offset))
 		epochNs := must(temporal.InterpretISODateTimeOffset(ndt.Date, ndt.Time, false, temporal.OffsetBehaviourOption, newOffsetNs, s.tz, disambiguation, offsetOption, temporal.MatchExactly))
 		return r.newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
@@ -218,7 +218,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 			}
 			overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
 			id := temporal.ToInternalDurationRecord(&d)
-			epochNs := must(temporal.AddZonedDateTime(s.ns, s.tz, id, overflow))
+			epochNs := must(temporal.AddZonedDateTime(s.ns, s.tz, s.cal, id, overflow))
 			return r.newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
 		})
 	}
@@ -240,7 +240,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 				if s.ns.Cmp(other.ns) == 0 {
 					return r.newDuration(vm, temporal.Duration{}, nil)
 				}
-				id := must(temporal.DifferenceZonedDateTimeWithRounding(s.ns, other.ns, s.tz, settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
+				id := must(temporal.DifferenceZonedDateTimeWithRounding(s.ns, other.ns, s.tz, s.cal, settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
 				d = must(temporal.TemporalDurationFromInternal(id, temporal.UnitHour))
 			}
 			if name == "since" {

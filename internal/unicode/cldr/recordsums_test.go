@@ -40,6 +40,81 @@ var recordSums = []struct {
 		sum:  "9a17800aaf52138c98c181ad3720e2407647e06f50d34edbbb9497d530640ec2",
 	},
 	{
+		name: "BuddhistData",
+		m:    cldr.BuddhistData,
+		sum:  "dd452c516721be4e7eee69ab720e92d0a7570d79ee7755025dc3b51167ef8abf",
+	},
+	{
+		name: "ChineseData",
+		m:    cldr.ChineseData,
+		sum:  "0aff141041a4203a9bba77d6bd59565561c71fda20d62e84c13d7286bbd96bd3",
+	},
+	{
+		name: "CopticData",
+		m:    cldr.CopticData,
+		sum:  "2b0c187ed9a6e792fe4bd439e8b5098d6551aef17a58d2746ad8967dfa7b3739",
+	},
+	{
+		name: "DangiData",
+		m:    cldr.DangiData,
+		sum:  "1b301263d7088178791fabbc718eca606f40d408007961ed17da39c65254e516",
+	},
+	{
+		name: "EthiopicData",
+		m:    cldr.EthiopicData,
+		sum:  "9ad1ba02e373054dcd76c1c7dc4931cbcfd095a8fbae446a11bba8a2f89a9895",
+	},
+	{
+		name: "EthioaaData",
+		m:    cldr.EthioaaData,
+		sum:  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	},
+	{
+		name: "HebrewData",
+		m:    cldr.HebrewData,
+		sum:  "1fcf1c4975d7da673cb743fae80fd0eaf066de030fb28bb8038f3e90bd839a37",
+	},
+	{
+		name: "IndianData",
+		m:    cldr.IndianData,
+		sum:  "bdbdfaf8f35061a214506df814aefbe12c107c8633646dac1e0102fe6fab3e86",
+	},
+	{
+		name: "IslamicData",
+		m:    cldr.IslamicData,
+		sum:  "dd726b99319c9a6c847b2be6e00dbb4c4036364b8e0fbce4c4177255ee812ae3",
+	},
+	{
+		name: "IslamicCivilData",
+		m:    cldr.IslamicCivilData,
+		sum:  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	},
+	{
+		name: "IslamicTblaData",
+		m:    cldr.IslamicTblaData,
+		sum:  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	},
+	{
+		name: "IslamicUmalquraData",
+		m:    cldr.IslamicUmalquraData,
+		sum:  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+	},
+	{
+		name: "JapaneseData",
+		m:    cldr.JapaneseData,
+		sum:  "ceecdbc3c84924c7fbacb5c922e9adf56ccedc20320ffd2e6f6ca306bd5fcd3b",
+	},
+	{
+		name: "PersianData",
+		m:    cldr.PersianData,
+		sum:  "d3ade75ec8a8c51407df37ba523291aec7e76d4dbdb949ac187a0a1b77c9c80f",
+	},
+	{
+		name: "ROCData",
+		m:    cldr.ROCData,
+		sum:  "3c855bc95c047eee90b8f5b3324e5ad4ccf1ee380fe254c20390ce7a8c144a4c",
+	},
+	{
 		name: "DateFieldNames",
 		m:    cldr.DateFieldNames,
 		sum:  "7713e3245dda2c275519cd4793b21e98d288d6a64466e2bb5f38a44ef009bf09",

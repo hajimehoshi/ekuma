@@ -124,8 +124,8 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 		o := v.Object()
 		cal = calendarWithISODefault(vm, o)
 		names := append(append(append([]string{}, dateFieldNames...), timeFieldNames...), "offset", "timeZone")
-		f := prepareCalendarFields(vm, o, names, fieldsNoneRequired)
-		dt := interpretDateTimeFields(vm, f, temporal.OverflowConstrain)
+		f := prepareCalendarFields(vm, cal, o, names, fieldsNoneRequired)
+		dt := interpretDateTimeFields(vm, cal, f, temporal.OverflowConstrain)
 		date, t = dt.Date, dt.Time
 		tz, hasTZ = f.TimeZone, f.HasTimeZone
 		offset = f.Offset
@@ -204,7 +204,7 @@ func plainRelativeEnd(vm *engine.VM, d *temporal.Duration, rel *plainDateSlots) 
 	id := temporal.ToInternalDurationRecordWith24HourDays(d)
 	targetTime, days := temporal.AddTime(temporal.MidnightTime, id.Time)
 	dd := must(temporal.AdjustDateDurationRecord(id.Date, days, -1<<63, -1<<63))
-	targetDate := must(temporal.CalendarDateAdd(rel.date, dd, temporal.OverflowConstrain))
+	targetDate := must(temporal.CalendarDateAdd(rel.cal, rel.date, dd, temporal.OverflowConstrain))
 	return id, temporal.ISODateTime{
 		Date: rel.date,
 	}, temporal.ISODateTime{
@@ -249,8 +249,8 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		d2 := temporal.ToInternalDurationRecord(&two)
 		if rel.zoned != nil && (lu1.IsDateUnit() || lu2.IsDateUnit()) {
 			z := rel.zoned
-			after1 := must(temporal.AddZonedDateTime(z.ns, z.tz, d1, temporal.OverflowConstrain))
-			after2 := must(temporal.AddZonedDateTime(z.ns, z.tz, d2, temporal.OverflowConstrain))
+			after1 := must(temporal.AddZonedDateTime(z.ns, z.tz, z.cal, d1, temporal.OverflowConstrain))
+			after2 := must(temporal.AddZonedDateTime(z.ns, z.tz, z.cal, d2, temporal.OverflowConstrain))
 			return compareResult(after1.Cmp(after2))
 		}
 		days1, days2 := d1.Date.Days, d2.Date.Days
@@ -258,8 +258,8 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 			if rel.plain == nil {
 				vm.ThrowRangeError("durations with years, months or weeks need a relativeTo to be compared")
 			}
-			days1 = must(temporal.DateDurationDays(d1.Date, rel.plain.date))
-			days2 = must(temporal.DateDurationDays(d2.Date, rel.plain.date))
+			days1 = must(temporal.DateDurationDays(d1.Date, rel.plain.date, rel.plain.cal))
+			days2 = must(temporal.DateDurationDays(d2.Date, rel.plain.date, rel.plain.cal))
 		}
 		t1 := must(temporal.Add24HourDaysToTimeDuration(d1.Time, days1))
 		t2 := must(temporal.Add24HourDaysToTimeDuration(d2.Time, days2))
@@ -338,8 +338,8 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		}
 		if z := rel.zoned; z != nil {
 			id := temporal.ToInternalDurationRecord(&d)
-			target := must(temporal.AddZonedDateTime(z.ns, z.tz, id, temporal.OverflowConstrain))
-			id = must(temporal.DifferenceZonedDateTimeWithRounding(z.ns, target, z.tz, largest, increment, smallest, mode))
+			target := must(temporal.AddZonedDateTime(z.ns, z.tz, z.cal, id, temporal.OverflowConstrain))
+			id = must(temporal.DifferenceZonedDateTimeWithRounding(z.ns, target, z.tz, z.cal, largest, increment, smallest, mode))
 			if largest.IsDateUnit() {
 				largest = temporal.UnitHour
 			}
@@ -347,7 +347,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		}
 		if p := rel.plain; p != nil {
 			_, from, to := plainRelativeEnd(vm, &d, p)
-			id := must(temporal.DifferencePlainDateTimeWithRounding(from, to, largest, increment, smallest, mode))
+			id := must(temporal.DifferencePlainDateTimeWithRounding(from, to, p.cal, largest, increment, smallest, mode))
 			return r.newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 		}
 		if existingLargest.IsCalendarUnit() || largest.IsCalendarUnit() {
@@ -376,12 +376,12 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		validateUnit(vm, unit, unitGroupDateTime)
 		if z := rel.zoned; z != nil {
 			id := temporal.ToInternalDurationRecord(&d)
-			target := must(temporal.AddZonedDateTime(z.ns, z.tz, id, temporal.OverflowConstrain))
-			return engine.Number(must(temporal.DifferenceZonedDateTimeWithTotal(z.ns, target, z.tz, unit)))
+			target := must(temporal.AddZonedDateTime(z.ns, z.tz, z.cal, id, temporal.OverflowConstrain))
+			return engine.Number(must(temporal.DifferenceZonedDateTimeWithTotal(z.ns, target, z.tz, z.cal, unit)))
 		}
 		if p := rel.plain; p != nil {
 			_, from, to := plainRelativeEnd(vm, &d, p)
-			return engine.Number(must(temporal.DifferencePlainDateTimeWithTotal(from, to, unit)))
+			return engine.Number(must(temporal.DifferencePlainDateTimeWithTotal(from, to, p.cal, unit)))
 		}
 		largest := temporal.DefaultTemporalLargestUnit(&d)
 		if largest.IsCalendarUnit() || unit.IsCalendarUnit() {

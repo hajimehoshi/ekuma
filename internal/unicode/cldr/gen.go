@@ -821,26 +821,84 @@ func main() {
 	f.records("maps locales to the patterns of the units of ECMA-402, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "UnitData", tree.records(unitData))
 	f.write()
 
-	// Calendars. Every calendar has a table of its own with the same fields, so that a
-	// calendar is added by adding its file.
+	// Calendars. Every calendar has a table of its own with the same fields. The tables of the
+	// calendars other than gregorian and generic hold only what differs from the tables that
+	// they fall back to, as package date looks them up.
 	dates := npmPackage("cldr-dates-full")
 	datesSource := "cldr-json " + jsonVersion + " (cldr-dates-full)"
+	calendarData := func(files map[string][]byte, calendar string) map[string]map[string]string {
+		data := map[string]map[string]string{}
+		for name := range files {
+			l, ok := mainLocale(name, "ca-"+calendar+".json")
+			if !ok {
+				continue
+			}
+			data[l] = calendarFields(object(object(object(mainData(files, name)["dates"])["calendars"])[calendar]))
+		}
+		return data
+	}
+	resolved := map[string]map[string]map[string]string{}
 	for _, c := range []struct {
 		file, name, calendar string
 	}{
 		{"gregorian.go", "GregorianData", "gregorian"},
 		{"generic.go", "GenericData", "generic"},
 	} {
-		data := map[string]map[string]string{}
-		for name := range dates {
-			l, ok := mainLocale(name, "ca-"+c.calendar+".json")
-			if !ok {
-				continue
-			}
-			data[l] = calendarFields(object(object(object(mainData(dates, name)["dates"])["calendars"])[c.calendar]))
-		}
+		data := calendarData(dates, c.calendar)
+		resolved[c.calendar] = data
 		f = newFile(c.file, datesSource)
 		f.records("maps locales to the names and patterns of the "+c.calendar+" calendar, as records in the form of [Field] with the keys that calendarFields in gen.go describes. A record that a locale shares with its parent is left out.", c.name, tree.records(data))
+		f.write()
+	}
+	packages := map[string]map[string][]byte{}
+	for _, c := range []struct {
+		file, name, calendar, pkg string
+		// fallback is the calendar that the table falls back to, or "" for generic and
+		// gregorian.
+		fallback string
+	}{
+		{"buddhist.go", "BuddhistData", "buddhist", "buddhist", ""},
+		{"chinese.go", "ChineseData", "chinese", "chinese", ""},
+		{"coptic.go", "CopticData", "coptic", "coptic", ""},
+		{"dangi.go", "DangiData", "dangi", "dangi", "chinese"},
+		{"ethiopic.go", "EthiopicData", "ethiopic", "ethiopic", ""},
+		{"ethioaa.go", "EthioaaData", "ethiopic-amete-alem", "ethiopic", "ethiopic"},
+		{"hebrew.go", "HebrewData", "hebrew", "hebrew", ""},
+		{"indian.go", "IndianData", "indian", "indian", ""},
+		{"islamic.go", "IslamicData", "islamic", "islamic", ""},
+		{"islamiccivil.go", "IslamicCivilData", "islamic-civil", "islamic", "islamic"},
+		{"islamictbla.go", "IslamicTblaData", "islamic-tbla", "islamic", "islamic"},
+		{"islamicumalqura.go", "IslamicUmalquraData", "islamic-umalqura", "islamic", "islamic"},
+		{"japanese.go", "JapaneseData", "japanese", "japanese", ""},
+		{"persian.go", "PersianData", "persian", "persian", ""},
+		{"roc.go", "ROCData", "roc", "roc", ""},
+	} {
+		files, ok := packages[c.pkg]
+		if !ok {
+			files = npmPackage("cldr-cal-" + c.pkg + "-full")
+			packages[c.pkg] = files
+		}
+		data := calendarData(files, c.calendar)
+		resolved[c.calendar] = data
+		fallback := func(l, k string) (string, bool) {
+			if c.fallback != "" {
+				v, ok := resolved[c.fallback][l][k]
+				return v, ok
+			}
+			if v, ok := resolved["generic"][l][k]; ok {
+				return v, true
+			}
+			v, ok := resolved["gregorian"][l][k]
+			return v, ok
+		}
+		keys := func(l string) []string {
+			if c.fallback != "" {
+				return slices.Collect(maps.Keys(resolved[c.fallback][l]))
+			}
+			return append(slices.Collect(maps.Keys(resolved["generic"][l])), slices.Collect(maps.Keys(resolved["gregorian"][l]))...)
+		}
+		f = newFile(c.file, "cldr-json "+jsonVersion+" (cldr-cal-"+c.pkg+"-full)")
+		f.records("maps locales to the names and patterns of the "+c.calendar+" calendar that differ from the tables it falls back to, as records in the form of [Field] with the keys that calendarFields in gen.go describes. A field that the calendar does not have has the value [Absent].", c.name, tree.diffRecords(data, fallback, keys))
 		f.write()
 	}
 
@@ -1128,6 +1186,78 @@ func (t *localeTree) records(data map[string]map[string]string) map[string]strin
 	return out
 }
 
+// diffRecords returns the records of the resolved data by locale for a lookup that walks a
+// locale and its ancestors in the records and then falls back to fallback, the resolved data of
+// the locale in the tables after these. keys returns the keys of that fallback data. A field
+// that data does not have but the fallback has gets the value [Absent].
+func (t *localeTree) diffRecords(data map[string]map[string]string, fallback func(l, k string) (string, bool), keys func(l string) []string) map[string]string {
+	depth := func(l string) int {
+		n := 0
+		for p, ok := t.parent(l); ok; p, ok = t.parent(p) {
+			n++
+		}
+		return n
+	}
+	locales := slices.Collect(maps.Keys(data))
+	slices.SortFunc(locales, func(a, b string) int {
+		if c := depth(a) - depth(b); c != 0 {
+			return c
+		}
+		return strings.Compare(a, b)
+	})
+	stored := map[string]map[string]string{}
+	out := map[string]string{}
+	for _, l := range locales {
+		inherited := func(k string) (string, bool) {
+			for p, ok := t.parent(l); ok; p, ok = t.parent(p) {
+				if v, ok := stored[p][k]; ok {
+					return v, true
+				}
+			}
+			return "", false
+		}
+		all := map[string]struct{}{}
+		for k := range data[l] {
+			all[k] = struct{}{}
+		}
+		for _, k := range keys(l) {
+			all[k] = struct{}{}
+		}
+		fields := map[string]string{}
+		for k := range all {
+			want, ok := data[l][k]
+			if !ok {
+				want = absent
+			}
+			got, ok := inherited(k)
+			if !ok {
+				if got, ok = fallback(l, k); !ok {
+					got = absent
+				}
+			}
+			if got != want {
+				fields[k] = want
+			}
+		}
+		stored[l] = fields
+		var b strings.Builder
+		for _, k := range slices.Sorted(maps.Keys(fields)) {
+			v := fields[k]
+			if strings.ContainsAny(k, "\x1e\x1f") || strings.ContainsAny(v, "\x1e\x1f") {
+				log.Fatalf("%s: %q: %q contains a separator", l, k, v)
+			}
+			b.WriteString("\x1e" + k + "\x1f" + v)
+		}
+		if b.Len() > 0 {
+			out[l] = b.String()
+		}
+	}
+	return out
+}
+
+// absent is the value of a field that a calendar does not have, as cldr.Absent.
+const absent = "\x00"
+
 // numberSymbols maps the names of number symbols in CLDR to the keys of the records of
 // NumberData.
 var numberSymbols = map[string]string{
@@ -1372,7 +1502,10 @@ func pattern(v any) string {
 //   - "S" followed by a skeleton for an available format;
 //   - "I" followed by a skeleton, "/" and a pattern letter for an interval format, and "I"
 //     alone for the fallback of interval formats;
-//   - "Y" followed by the name of a field for its append item.
+//   - "Y" followed by the name of a field for its append item;
+//   - "L" followed by a context ("n" for numeric), a width ("l" for numeric) and "leap" for
+//     the pattern of a leap month;
+//   - "U" followed by a number from 1 to 60 for the name of a year of the sexagenary cycle.
 func calendarFields(cal map[string]any) map[string]string {
 	out := map[string]string{}
 	names := func(prefix string, v any) {
@@ -1398,6 +1531,39 @@ func calendarFields(cal map[string]any) map[string]string {
 		}
 	}
 	names("M", cal["months"])
+	// The patterns of leap months, with "n" for the numeric context and "l" for its only
+	// width.
+	if mp, ok := cal["monthPatterns"]; ok {
+		for ctx, c := range object(mp) {
+			cl, ok := contexts[ctx]
+			if !ok && ctx == "numeric" {
+				cl, ok = "n", true
+			}
+			if !ok {
+				log.Fatalf("unknown context %s", ctx)
+			}
+			for width, w := range object(c) {
+				wl, ok := widths[width]
+				if !ok && width == "all" {
+					wl, ok = "l", true
+				}
+				if !ok {
+					log.Fatalf("unknown width %s", width)
+				}
+				for k, p := range object(w) {
+					out["L"+cl+wl+k] = str(p)
+				}
+			}
+		}
+	}
+	// The abbreviated names of the years of the sexagenary cycle.
+	if cn, ok := cal["cyclicNameSets"]; ok {
+		if years, ok := object(cn)["years"]; ok {
+			for k, n := range object(object(object(years)["format"])["abbreviated"]) {
+				out["U"+k] = str(n)
+			}
+		}
+	}
 	names("D", cal["days"])
 	names("Q", cal["quarters"])
 	names("P", cal["dayPeriods"])

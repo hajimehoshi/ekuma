@@ -182,9 +182,6 @@ func (z TimeZone) PossibleEpochNanoseconds(dt ISODateTime) ([]Int128, error) {
 		}
 		result = []Int128{balanced.UTCEpochNanoseconds()}
 	} else {
-		if err := CheckISODaysRange(dt.Date); err != nil {
-			return nil, err
-		}
 		result = z.namedEpochNanoseconds(dt)
 	}
 	for _, ns := range result {

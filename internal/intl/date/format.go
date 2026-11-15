@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hajimehoshi/ekuma/internal/intl/calendar"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
@@ -19,17 +20,102 @@ type Part struct {
 	Value string
 }
 
-// localTime is the fields of a date and time in the proleptic Gregorian calendar.
+// localTime is the fields of a date and time in a calendar.
 type localTime struct {
-	// year is the astronomical year, where 0 is 1 BC.
-	year        int64
-	month       int
+	// year is the arithmetic year, where 0 is 1 BC in the Gregorian calendar.
+	year int64
+	// era is the CLDR key of the era, and eraYear the year in it, which is the year of the
+	// sexagenary cycle for the Chinese and the Korean calendar.
+	era     string
+	eraYear int64
+	// gregorianEra reports whether the era is one of the Gregorian calendar.
+	gregorianEra bool
+	// relatedYear is the Gregorian year in which the year starts.
+	relatedYear int64
+	// month is the number of the month in the CLDR data, which is the number of its month
+	// code except in the Hebrew calendar, and numericMonth the number that a numeric month
+	// shows, which is the ordinal month in the Hebrew calendar.
+	month        int
+	numericMonth int
+	// leapMonth reports whether the month is a leap month of the Chinese or the Korean
+	// calendar, and leapYear whether the year is a Hebrew leap year.
+	leapMonth   bool
+	leapYear    bool
 	day         int
 	weekday     int // 0 for Sunday
 	hour        int
 	minute      int
 	second      int
 	millisecond int
+}
+
+// cldrEras maps the eras of the calendars to the keys of their names in CLDR.
+var cldrEras = map[string]string{
+	"buddhist/be":         "0",
+	"coptic/am":           "1",
+	"ethioaa/aa":          "0",
+	"ethiopic/aa":         "0",
+	"ethiopic/am":         "1",
+	"hebrew/am":           "0",
+	"indian/shaka":        "0",
+	"islamic-civil/ah":    "0",
+	"islamic-civil/bh":    "1",
+	"islamic-tbla/ah":     "0",
+	"islamic-tbla/bh":     "1",
+	"islamic-umalqura/ah": "0",
+	"islamic-umalqura/bh": "1",
+	"japanese/meiji":      "232",
+	"japanese/taisho":     "233",
+	"japanese/showa":      "234",
+	"japanese/heisei":     "235",
+	"japanese/reiwa":      "236",
+	"persian/ap":          "0",
+	"roc/broc":            "0",
+	"roc/roc":             "1",
+}
+
+// localTime returns the local time of t milliseconds since the epoch in the calendar of fm.
+func (fm *Formatter) localTime(t int64) localTime {
+	lt := civil(t)
+	lt.numericMonth = lt.month
+	lt.relatedYear = lt.year
+	lt.eraYear = lt.year
+	lt.era = "1"
+	if lt.year <= 0 {
+		lt.era = "0"
+		lt.eraYear = 1 - lt.year
+	}
+	if fm.cal == nil {
+		return lt
+	}
+	d := fm.cal.Date(floorDiv(t, msPerDay))
+	lt.year = int64(d.Year)
+	lt.eraYear = int64(d.EraYear)
+	lt.day = d.Day
+	lt.month = d.MonthCode.Number
+	lt.numericMonth = d.MonthCode.Number
+	switch id := fm.cal.ID(); id {
+	case "chinese", "dangi":
+		lt.relatedYear = int64(d.Year)
+		lt.eraYear = floorMod(int64(d.Year)-4, 60) + 1
+		lt.leapMonth = d.MonthCode.Leap
+	case "hebrew":
+		// CLDR numbers the Hebrew months as in a leap year, with Adar II as Adar.
+		if d.MonthCode.Leap || d.MonthCode.Number > 5 {
+			lt.month++
+		}
+		lt.leapYear = d.InLeapYear
+		lt.numericMonth = d.Month
+	}
+	if e, ok := cldrEras[fm.cal.ID()+"/"+d.Era]; ok {
+		lt.era = e
+	} else if d.Era == "" {
+		lt.era = ""
+	} else {
+		// The Japanese calendar uses the eras of the Gregorian calendar before Meiji.
+		lt.gregorianEra = true
+	}
+	return lt
 }
 
 // civil returns the local time of t milliseconds since the epoch.
@@ -70,7 +156,9 @@ var weekdayKeys = [7]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
 
 // Formatter formats dates with a format.
 type Formatter struct {
-	f      *Format
+	f *Format
+	// cal is the calendar, or nil for the Gregorian and the ISO 8601 calendar.
+	cal    *calendar.Calendar
 	data   *localeData
 	digits []string
 	zones  *zoneFormatter
@@ -88,6 +176,7 @@ func NewFormatter(f *Format, nu string, tz temporal.TimeZone) *Formatter {
 	digits := number.DigitsOf(nu)
 	return &Formatter{
 		f:      f,
+		cal:    calendar.Lookup(f.calendar),
 		data:   d,
 		digits: digits,
 		zones: &zoneFormatter{
@@ -121,7 +210,7 @@ func (fm *Formatter) zoneAt(t int64, plain bool) zoneAt {
 
 func (fm *Formatter) formatItems(items []item, t int64, plain bool) []Part {
 	za := fm.zoneAt(t, plain)
-	lt := civil(t + za.offset)
+	lt := fm.localTime(t + za.offset)
 	hasMinute, hasSecond := false, false
 	for _, it := range items {
 		switch it.ch {
@@ -203,10 +292,6 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 	n := it.n
 	switch it.ch {
 	case 'G':
-		era := "1"
-		if lt.year <= 0 {
-			era = "0"
-		}
 		w := "a"
 		switch n {
 		case 4:
@@ -214,22 +299,31 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 		case 5:
 			w = "r"
 		}
-		v, ok := fm.data.calendar("E" + w + era)
+		if lt.gregorianEra {
+			v, ok := fm.data.lookup(cldr.GregorianData, "E"+w+lt.era)
+			if !ok {
+				v, _ = fm.data.lookup(cldr.GregorianData, "Ea"+lt.era)
+			}
+			return "era", v
+		}
+		v, ok := fm.data.calendar("E" + w + lt.era)
 		if !ok {
-			v, _ = fm.data.calendar("Ea" + era)
+			v, _ = fm.data.calendar("Ea" + lt.era)
 		}
 		return "era", v
 	case 'y':
-		y := lt.year
-		if y <= 0 {
-			y = 1 - y
-		}
+		y := lt.eraYear
 		if n == 2 {
-			return "year", fm.num(y%100, 2)
+			return "year", fm.num(floorMod(y, 100), 2)
 		}
 		return "year", fm.num(y, n)
 	case 'u', 'r':
 		y := lt.year
+		typ := "year"
+		if it.ch == 'r' {
+			y = lt.relatedYear
+			typ = "relatedYear"
+		}
 		s := strconv.FormatInt(abs64(y), 10)
 		for len(s) < n {
 			s = "0" + s
@@ -237,20 +331,27 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 		if y < 0 {
 			s = "-" + s
 		}
-		typ := "year"
-		if it.ch == 'r' {
-			typ = "relatedYear"
-		}
 		return typ, number.Transliterate(fm.digits, s)
-	case 'M', 'L':
-		if n <= 2 {
-			return "month", fm.num(int64(lt.month), n)
+	case 'U':
+		if v, ok := fm.data.calendar("U" + strconv.FormatInt(lt.eraYear, 10)); ok {
+			return "yearName", v
 		}
+		return "yearName", fm.num(lt.eraYear, 1)
+	case 'M', 'L':
 		ctx := "f"
 		if it.ch == 'L' {
 			ctx = "s"
 		}
-		return "month", fm.name("M", ctx, nameWidth(n), strconv.Itoa(lt.month))
+		if n <= 2 {
+			return "month", fm.leapMonth(lt, "n", "l", fm.num(int64(lt.numericMonth), n))
+		}
+		key := strconv.Itoa(lt.month)
+		if lt.leapYear && lt.month == 7 {
+			if v, ok := fm.data.calendar("M" + ctx + nameWidth(n) + key + "-yeartype-leap"); ok {
+				return "month", v
+			}
+		}
+		return "month", fm.leapMonth(lt, ctx, nameWidth(n), fm.name("M", ctx, nameWidth(n), key))
 	case 'd':
 		return "day", fm.num(int64(lt.day), n)
 	case 'E', 'c', 'e':
@@ -320,6 +421,22 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 		return "timeZoneName", fm.zones.format(it.ch, n, za)
 	}
 	return "unknown", strings.Repeat(string(it.ch), n)
+}
+
+// leapMonth returns the month name or number v with the pattern of leap months of the context
+// and the width when the month of lt is a leap month.
+func (fm *Formatter) leapMonth(lt localTime, ctx, width, v string) string {
+	if !lt.leapMonth {
+		return v
+	}
+	p, ok := fm.data.calendar("L" + ctx + width + "leap")
+	if !ok && ctx != "n" {
+		p, ok = fm.data.calendar("L" + ctx + "aleap")
+	}
+	if !ok {
+		return v
+	}
+	return strings.Replace(p, "{0}", v, 1)
 }
 
 func abs64(x int64) int64 {
