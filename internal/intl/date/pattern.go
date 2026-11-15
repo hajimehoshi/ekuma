@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-// Package dates formats dates and times as Intl.DateTimeFormat does, with the CLDR data of
+// Package date formats dates and times as Intl.DateTimeFormat does, with the CLDR data of
 // package cldr. It reproduces the patterns that ICU chooses for the options of
 // Intl.DateTimeFormat.
-package dates
+package date
 
 import (
 	"strings"

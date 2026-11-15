@@ -10,7 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
-	"github.com/hajimehoshi/ekuma/internal/intl/dates"
+	"github.com/hajimehoshi/ekuma/internal/intl/date"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
@@ -28,16 +28,16 @@ type dateTimeFormatData struct {
 	dateStyle string
 	timeStyle string
 
-	format *dates.Format
+	format *date.Format
 	// The formats of the Temporal types, nil for null.
-	plainDate      *dates.Format
-	plainYearMonth *dates.Format
-	plainMonthDay  *dates.Format
-	plainTime      *dates.Format
-	plainDateTime  *dates.Format
-	instant        *dates.Format
+	plainDate      *date.Format
+	plainYearMonth *date.Format
+	plainMonthDay  *date.Format
+	plainTime      *date.Format
+	plainDateTime  *date.Format
+	instant        *date.Format
 
-	formatters  map[*dates.Format]*dates.Formatter
+	formatters  map[*date.Format]*date.Formatter
 	boundFormat *engine.Object
 }
 
@@ -135,9 +135,9 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		locale:     res.Locale,
 		calendar:   res.Values[0],
 		nu:         res.Values[2],
-		formatters: map[*dates.Format]*dates.Formatter{},
+		formatters: map[*date.Format]*date.Formatter{},
 	}
-	def, hc12, hc24 := dates.HourCycles(res.Locale)
+	def, hc12, hc24 := date.HourCycles(res.Locale)
 	hc := res.Values[1]
 	switch {
 	case hour12.IsUndefined():
@@ -177,7 +177,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 	}
 	dtf.timeZone = dtf.tz.ID()
 
-	var comps dates.Components
+	var comps date.Components
 	hasExplicit := false
 	for _, o := range componentOptions {
 		var v string
@@ -204,13 +204,13 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		if hasExplicit {
 			vm.ThrowTypeError("dateStyle and timeStyle cannot be used with date and time components")
 		}
-		if required == dates.Date && dtf.timeStyle != "" {
+		if required == date.Date && dtf.timeStyle != "" {
 			vm.ThrowTypeError("timeStyle is not allowed for a date")
 		}
-		if required == dates.Time && dtf.dateStyle != "" {
+		if required == date.Time && dtf.dateStyle != "" {
 			vm.ThrowTypeError("dateStyle is not allowed for a time")
 		}
-		best := dates.NewStyleFormat(l, c, hc, dtf.dateStyle, dtf.timeStyle)
+		best := date.NewStyleFormat(l, c, hc, dtf.dateStyle, dtf.timeStyle)
 		if dtf.dateStyle != "" {
 			dtf.plainDate = best.Adjust(hc, "weekday", "era", "year", "month", "day")
 			dtf.plainYearMonth = best.Adjust(hc, "era", "year", "month")
@@ -223,23 +223,23 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		dtf.instant = best
 		dtf.format = best
 	} else {
-		format := func(required, defaults, inherit string) *dates.Format {
-			fc, ok := dates.TemporalComponents(comps, required, defaults, inherit)
+		format := func(required, defaults, inherit string) *date.Format {
+			fc, ok := date.TemporalComponents(comps, required, defaults, inherit)
 			if !ok {
 				return nil
 			}
-			return dates.NewFormat(l, c, hc, fc)
+			return date.NewFormat(l, c, hc, fc)
 		}
-		dtf.format = format(required, defaults, dates.InheritAll)
-		dtf.plainDate = format(dates.Date, dates.Date, dates.InheritRelevant)
-		dtf.plainYearMonth = format(dates.YearMonth, dates.YearMonth, dates.InheritRelevant)
-		dtf.plainMonthDay = format(dates.MonthDay, dates.MonthDay, dates.InheritRelevant)
-		dtf.plainTime = format(dates.Time, dates.Time, dates.InheritRelevant)
-		dtf.plainDateTime = format(dates.Any, dates.All, dates.InheritRelevant)
+		dtf.format = format(required, defaults, date.InheritAll)
+		dtf.plainDate = format(date.Date, date.Date, date.InheritRelevant)
+		dtf.plainYearMonth = format(date.YearMonth, date.YearMonth, date.InheritRelevant)
+		dtf.plainMonthDay = format(date.MonthDay, date.MonthDay, date.InheritRelevant)
+		dtf.plainTime = format(date.Time, date.Time, date.InheritRelevant)
+		dtf.plainDateTime = format(date.Any, date.All, date.InheritRelevant)
 		if toLocaleStringTZ != nil {
-			dtf.instant = format(dates.Any, dates.ZonedDateTime, dates.InheritAll)
+			dtf.instant = format(date.Any, date.ZonedDateTime, date.InheritAll)
 		} else {
-			dtf.instant = format(dates.Any, dates.All, dates.InheritAll)
+			dtf.instant = format(date.Any, date.All, date.InheritAll)
 		}
 	}
 	if dtf.format.HasHour() {
@@ -249,7 +249,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 }
 
 // setComponent sets the component name of c to v.
-func setComponent(c *dates.Components, name, v string) {
+func setComponent(c *date.Components, name, v string) {
 	switch name {
 	case "weekday":
 		c.Weekday = v
@@ -275,10 +275,10 @@ func setComponent(c *dates.Components, name, v string) {
 }
 
 // formatter returns the formatter of the format f.
-func (dtf *dateTimeFormatData) formatter(f *dates.Format) *dates.Formatter {
+func (dtf *dateTimeFormatData) formatter(f *date.Format) *date.Formatter {
 	fm, ok := dtf.formatters[f]
 	if !ok {
-		fm = dates.NewFormatter(f, dtf.nu, dtf.tz)
+		fm = date.NewFormatter(f, dtf.nu, dtf.tz)
 		dtf.formatters[f] = fm
 	}
 	return fm
@@ -417,7 +417,7 @@ func epochMilliseconds(ns temporal.Int128) int64 {
 
 // handleDateTimeValue implements HandleDateTimeValue, returning the format, the time in
 // milliseconds since the epoch and whether it is a plain time.
-func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable) (*dates.Format, int64, bool) {
+func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable) (*date.Format, int64, bool) {
 	if !x.isTemporal {
 		t := datetime.TimeClip(x.t)
 		if math.IsNaN(t) {
@@ -426,7 +426,7 @@ func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable)
 		return dtf.format, int64(t), false
 	}
 	tv := x.temporal
-	var f *dates.Format
+	var f *date.Format
 	switch tv.kind {
 	case temporalPlainDate:
 		if tv.calendar != dtf.calendar && tv.calendar != temporal.ISO8601 {
@@ -465,7 +465,7 @@ func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable)
 }
 
 // partitionDateTimePattern implements PartitionDateTimePattern.
-func (dtf *dateTimeFormatData) partitionDateTimePattern(vm *engine.VM, x formattable) []dates.Part {
+func (dtf *dateTimeFormatData) partitionDateTimePattern(vm *engine.VM, x formattable) []date.Part {
 	f, t, plain := dtf.handleDateTimeValue(vm, x)
 	return dtf.formatter(f).Format(t, plain)
 }
@@ -480,7 +480,7 @@ func (dtf *dateTimeFormatData) formatDateTime(vm *engine.VM, x formattable) engi
 }
 
 // partitionDateTimeRangePattern implements PartitionDateTimeRangePattern.
-func (dtf *dateTimeFormatData) partitionDateTimeRangePattern(vm *engine.VM, x, y formattable) []dates.RangePart {
+func (dtf *dateTimeFormatData) partitionDateTimeRangePattern(vm *engine.VM, x, y formattable) []date.RangePart {
 	if x.isTemporal || y.isTemporal {
 		if !x.isTemporal || !y.isTemporal || x.temporal.kind != y.temporal.kind {
 			vm.ThrowTypeError("formatRange requires two Temporal objects of the same type")
@@ -499,7 +499,7 @@ func (r *realm) newDateTimeFormat(vm *engine.VM, this engine.Value, args []engin
 		newTarget = r.dateTimeFormatCtor
 	}
 	proto := protoFor(vm, newTarget, func(r *realm) *engine.Object { return r.dateTimeFormatProto })
-	dtf := vm.NewIntlObject(proto, createDateTimeFormat(vm, arg(args, 0), arg(args, 1), dates.Any, dates.Date, nil))
+	dtf := vm.NewIntlObject(proto, createDateTimeFormat(vm, arg(args, 0), arg(args, 1), date.Any, date.Date, nil))
 	// ChainDateTimeFormat.
 	if nt == nil && vm.OrdinaryHasInstance(engine.ObjectValue(r.dateTimeFormatCtor), this) {
 		var d engine.PropDesc
@@ -700,14 +700,14 @@ func initTemporalToLocaleString(vm *engine.VM) {
 func formatTemporalLocaleString(vm *engine.VM, tv temporalValue, locales, options engine.Value) engine.Value {
 	switch tv.kind {
 	case temporalPlainDate, temporalPlainYearMonth, temporalPlainMonthDay:
-		dtf := createDateTimeFormat(vm, locales, options, dates.Date, dates.Date, nil)
+		dtf := createDateTimeFormat(vm, locales, options, date.Date, date.Date, nil)
 		return dtf.formatDateTime(vm, formattable{temporal: tv, isTemporal: true})
 	case temporalPlainTime:
-		dtf := createDateTimeFormat(vm, locales, options, dates.Time, dates.Time, nil)
+		dtf := createDateTimeFormat(vm, locales, options, date.Time, date.Time, nil)
 		return dtf.formatDateTime(vm, formattable{temporal: tv, isTemporal: true})
 	case temporalZonedDateTime:
 		tz := tv.timeZone
-		dtf := createDateTimeFormat(vm, locales, options, dates.Any, dates.All, &tz)
+		dtf := createDateTimeFormat(vm, locales, options, date.Any, date.All, &tz)
 		if tv.calendar != temporal.ISO8601 && tv.calendar != dtf.calendar {
 			vm.ThrowRangeError("the calendar of the Temporal.ZonedDateTime differs from that of the DateTimeFormat")
 		}
@@ -719,7 +719,7 @@ func formatTemporalLocaleString(vm *engine.VM, tv temporalValue, locales, option
 			isTemporal: true,
 		})
 	}
-	dtf := createDateTimeFormat(vm, locales, options, dates.Any, dates.All, nil)
+	dtf := createDateTimeFormat(vm, locales, options, date.Any, date.All, nil)
 	return dtf.formatDateTime(vm, formattable{temporal: tv, isTemporal: true})
 }
 
@@ -730,9 +730,9 @@ func initDateToLocaleString(vm *engine.VM) {
 		name               string
 		required, defaults string
 	}{
-		{"toLocaleString", dates.Any, dates.All},
-		{"toLocaleDateString", dates.Date, dates.Date},
-		{"toLocaleTimeString", dates.Time, dates.Time},
+		{"toLocaleString", date.Any, date.All},
+		{"toLocaleDateString", date.Date, date.Date},
+		{"toLocaleTimeString", date.Time, date.Time},
 	} {
 		method(vm, vm.Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t, ok := engine.ThisTimeValue(this)

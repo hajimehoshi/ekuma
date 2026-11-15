@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package dates_test
+package date_test
 
 import (
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/hajimehoshi/ekuma/internal/intl/dates"
+	"github.com/hajimehoshi/ekuma/internal/intl/date"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
 
@@ -16,13 +16,13 @@ func TestPatterns(t *testing.T) {
 	for _, tc := range []struct {
 		locale string
 		hc     string
-		c      dates.Components
+		c      date.Components
 		want   string
 	}{
 		{
 			locale: "en-US",
 			hc:     "h12",
-			c: dates.Components{
+			c: date.Components{
 				Year:  "numeric",
 				Month: "numeric",
 				Day:   "numeric",
@@ -33,7 +33,7 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "en-US",
 			hc:     "h12",
-			c: dates.Components{
+			c: date.Components{
 				Year:   "numeric",
 				Month:  "long",
 				Day:    "numeric",
@@ -46,7 +46,7 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "de",
 			hc:     "h23",
-			c: dates.Components{
+			c: date.Components{
 				Minute:                 "numeric",
 				Second:                 "numeric",
 				FractionalSecondDigits: 3,
@@ -56,7 +56,7 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "en",
 			hc:     "h12",
-			c: dates.Components{
+			c: date.Components{
 				DayPeriod: "long",
 				Hour:      "numeric",
 				Minute:    "numeric",
@@ -67,7 +67,7 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "en",
 			hc:     "h23",
-			c: dates.Components{
+			c: date.Components{
 				DayPeriod: "long",
 				Hour:      "numeric",
 			},
@@ -76,7 +76,7 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "en",
 			hc:     "h11",
-			c: dates.Components{
+			c: date.Components{
 				Hour:   "numeric",
 				Minute: "numeric",
 			},
@@ -85,7 +85,7 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "ja",
 			hc:     "h11",
-			c: dates.Components{
+			c: date.Components{
 				Hour:   "numeric",
 				Minute: "numeric",
 			},
@@ -95,14 +95,14 @@ func TestPatterns(t *testing.T) {
 		{
 			locale: "en",
 			hc:     "h12",
-			c: dates.Components{
+			c: date.Components{
 				Hour:         "numeric",
 				TimeZoneName: "longGeneric",
 			},
 			want: "h a vvvv",
 		},
 	} {
-		if got := dates.NewFormat(tc.locale, "gregory", tc.hc, tc.c).Pattern(); got != tc.want {
+		if got := date.NewFormat(tc.locale, "gregory", tc.hc, tc.c).Pattern(); got != tc.want {
 			t.Errorf("%s %s %+v: got %q, want %q", tc.locale, tc.hc, tc.c, got, tc.want)
 		}
 	}
@@ -127,7 +127,7 @@ func TestStylePatterns(t *testing.T) {
 			want:      "HH:mm:ss z",
 		},
 	} {
-		if got := dates.NewStyleFormat("en-US", "gregory", tc.hc, tc.dateStyle, tc.timeStyle).Pattern(); got != tc.want {
+		if got := date.NewStyleFormat("en-US", "gregory", tc.hc, tc.dateStyle, tc.timeStyle).Pattern(); got != tc.want {
 			t.Errorf("%s %s %s: got %q, want %q", tc.hc, tc.dateStyle, tc.timeStyle, got, tc.want)
 		}
 	}
@@ -142,7 +142,7 @@ func zone(t *testing.T, id string) temporal.TimeZone {
 	return z
 }
 
-func join(parts []dates.Part) string {
+func join(parts []date.Part) string {
 	var b strings.Builder
 	for _, p := range parts {
 		b.WriteString(p.Value)
@@ -169,8 +169,8 @@ func TestTimeZoneNames(t *testing.T) {
 		{"en-US", "Europe/London", "shortGeneric", "United Kingdom Time"},
 		{"en-US", "UTC", "long", "Coordinated Universal Time"},
 	} {
-		f := dates.NewFormat(tc.locale, "gregory", "h23", dates.Components{TimeZoneName: tc.name})
-		parts := dates.NewFormatter(f, "latn", zone(t, tc.zone)).Format(winter, false)
+		f := date.NewFormat(tc.locale, "gregory", "h23", date.Components{TimeZoneName: tc.name})
+		parts := date.NewFormatter(f, "latn", zone(t, tc.zone)).Format(winter, false)
 		var got string
 		for _, p := range parts {
 			if p.Type == "timeZoneName" {
@@ -189,7 +189,7 @@ func TestFormat(t *testing.T) {
 	for _, tc := range []struct {
 		locale string
 		nu     string
-		c      dates.Components
+		c      date.Components
 		t      int64
 		want   string
 	}{
@@ -197,7 +197,7 @@ func TestFormat(t *testing.T) {
 		{
 			locale: "en",
 			nu:     "latn",
-			c: dates.Components{
+			c: date.Components{
 				Hour:   "numeric",
 				Minute: "2-digit",
 			},
@@ -207,7 +207,7 @@ func TestFormat(t *testing.T) {
 		{
 			locale: "en",
 			nu:     "latn",
-			c: dates.Components{
+			c: date.Components{
 				DayPeriod: "long",
 				Hour:      "numeric",
 			},
@@ -217,7 +217,7 @@ func TestFormat(t *testing.T) {
 		{
 			locale: "en",
 			nu:     "latn",
-			c: dates.Components{
+			c: date.Components{
 				DayPeriod: "short",
 				Hour:      "numeric",
 				Minute:    "2-digit",
@@ -228,7 +228,7 @@ func TestFormat(t *testing.T) {
 		{
 			locale: "en-u-nu-arab",
 			nu:     "arab",
-			c: dates.Components{
+			c: date.Components{
 				Minute:                 "2-digit",
 				Second:                 "2-digit",
 				FractionalSecondDigits: 2,
@@ -239,7 +239,7 @@ func TestFormat(t *testing.T) {
 		{
 			locale: "en",
 			nu:     "latn",
-			c: dates.Components{
+			c: date.Components{
 				Era:  "short",
 				Year: "numeric",
 			},
@@ -247,8 +247,8 @@ func TestFormat(t *testing.T) {
 			want: "44 BC",
 		},
 	} {
-		f := dates.NewFormat(tc.locale, "gregory", "h12", tc.c)
-		if got := join(dates.NewFormatter(f, tc.nu, temporal.UTC).Format(tc.t, false)); got != tc.want {
+		f := date.NewFormat(tc.locale, "gregory", "h12", tc.c)
+		if got := join(date.NewFormatter(f, tc.nu, temporal.UTC).Format(tc.t, false)); got != tc.want {
 			t.Errorf("%s %+v: got %q, want %q", tc.locale, tc.c, got, tc.want)
 		}
 	}
@@ -259,13 +259,13 @@ func TestFormatRange(t *testing.T) {
 		return time.Date(y, time.Month(m), d, h, 0, 0, 0, time.UTC).UnixMilli()
 	}
 	for _, tc := range []struct {
-		c    dates.Components
+		c    date.Components
 		x, y int64
 		want string
 	}{
 		// Only the fields that differ come from both dates.
 		{
-			c: dates.Components{
+			c: date.Components{
 				Year:  "numeric",
 				Month: "short",
 				Day:   "numeric",
@@ -276,7 +276,7 @@ func TestFormatRange(t *testing.T) {
 		},
 		// A time range on the same day has the date once.
 		{
-			c: dates.Components{
+			c: date.Components{
 				Year:   "numeric",
 				Month:  "short",
 				Day:    "numeric",
@@ -289,7 +289,7 @@ func TestFormatRange(t *testing.T) {
 		},
 		// Dates that do not differ in the fields of the format are one date.
 		{
-			c: dates.Components{
+			c: date.Components{
 				Year:  "numeric",
 				Month: "numeric",
 			},
@@ -298,10 +298,10 @@ func TestFormatRange(t *testing.T) {
 			want: "1/2019",
 		},
 	} {
-		f := dates.NewFormat("en-US", "gregory", "h12", tc.c)
+		f := date.NewFormat("en-US", "gregory", "h12", tc.c)
 		var b strings.Builder
 		src := "shared"
-		for _, p := range dates.NewFormatter(f, "latn", temporal.UTC).FormatRange(tc.x, tc.y, false) {
+		for _, p := range date.NewFormatter(f, "latn", temporal.UTC).FormatRange(tc.x, tc.y, false) {
 			if p.Source != src {
 				switch src {
 				case "startRange":
