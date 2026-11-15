@@ -1204,6 +1204,12 @@ func TestInvalid(t *testing.T) {
 			src: "class A { static { arguments; } }",
 		},
 		{
+			src: "class A { static { arguments: arguments; } }",
+		},
+		{
+			src: "class A { get *a() {} }",
+		},
+		{
 			src: "async function f() { class A { static { await 1; } } }",
 		},
 		{

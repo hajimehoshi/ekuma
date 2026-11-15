@@ -249,7 +249,17 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 		}
 	}
 
-	e := p.parseExpressionIn()
+	var e ast.Expr
+	if p.t.kind == tIdent && p.t.str == "arguments" && p.peek().kind == tColon {
+		// A label is not an identifier reference, so the restrictions on arguments do not apply.
+		e = newNode(&p.nodes.identifier, ast.Identifier{
+			Span: span(p.t.start, p.t.end),
+			Name: p.t.str,
+		})
+		p.next()
+	} else {
+		e = p.parseExpressionIn()
+	}
 	if id, ok := e.(*ast.Identifier); ok && p.t.kind == tColon && !id.Parenthesized && id.EndOff == p.prevEnd {
 		for _, l := range p.labels[p.f.labelBase:] {
 			if l.name == id.Name {

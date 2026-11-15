@@ -62,11 +62,7 @@ test/language/statements/class/decorator/syntax/valid/decorator-member-expr-iden
 test/language/statements/class/decorator/syntax/valid/decorator-member-expr-identifier-reference.js
 test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference-yield.js
 test/language/statements/class/decorator/syntax/valid/decorator-parenthesized-expr-identifier-reference.js
-test/language/statements/class/elements/arrow-body-arguments-label.js
 test/language/statements/class/elements/syntax/valid/grammar-field-accessor.js
-test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js
-test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js
-test/language/statements/class/static-init-arguments-label.js
 test/language/statements/class/subclass/derived-class-return-override-catch-super-arrow.js
 test/language/statements/class/subclass/derived-class-return-override-catch-super.js
 test/language/statements/class/subclass/derived-class-return-override-catch.js

@@ -403,7 +403,8 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		})
 		p.next()
 		switch {
-		case isClassKeyEnd(p.t.kind) || id.Name == "async" && p.t.nl:
+		case isClassKeyEnd(p.t.kind) || p.t.nl && (id.Name == "async" || p.t.kind == tMul):
+			// A line break after async, or before *, ends a field named get, set or async by ASI.
 			key = id
 		case id.Name == "get":
 			m.Kind = ast.MemberGetter
