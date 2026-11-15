@@ -64,6 +64,7 @@ type templateSite struct {
 // script is their [[ScriptOrModule]]. The constants and keys of f are no longer available
 // afterwards.
 func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
+	legacy := !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor
 	p := &funcProto{
 		Func:               f,
 		name:               f.Name,
@@ -83,9 +84,10 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		isConstructor:      f.IsConstructor,
 		isClassConstructor: f.IsClassConstructor,
 		isDerived:          f.IsDerived,
-		needsExtra:         f.NeedsExtra,
 
-		legacyCallerArguments: !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor,
+		// The arguments property of a non-strict function shows all the arguments of its calls.
+		needsExtra:            f.NeedsExtra || legacy,
+		legacyCallerArguments: legacy,
 
 		script: script,
 		realm:  vm.curRealm,

@@ -262,8 +262,10 @@ func (vm *VM) materialize(o *Object) {
 		vm.add(o, vm.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
 		vm.add(o, vm.Key(KeyName), vm.SharedString(c.name), FlagConfigurable)
 		if c.legacyCallerArguments {
-			vm.add(o, vm.Key(keyArguments), Undefined, 0)
-			vm.add(o, vm.Key(keyCaller), Undefined, 0)
+			// Accessors, as the values change while the properties are neither writable nor
+			// configurable.
+			vm.add(o, vm.Key(keyArguments), newAccessor(vm.realmIntrinsic(c.realm, IntrinsicFunctionArgumentsGetter), nil), FlagAccessor)
+			vm.add(o, vm.Key(keyCaller), newAccessor(vm.realmIntrinsic(c.realm, IntrinsicFunctionCallerGetter), nil), FlagAccessor)
 		}
 		switch {
 		case c.isGenerator:

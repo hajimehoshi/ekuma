@@ -13,13 +13,7 @@ type argumentsMap struct {
 // newArguments returns the arguments object of the frame fr, whose registers are regs.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
 func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
-	o := &Object{
-		kind:  kindObject,
-		class: classArguments,
-		shape: vm.shapes.arguments,
-		elems: vm.frameArgs(fr, regs),
-	}
-	o.slots = []Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
+	o := vm.newArgumentsObject(fr, regs)
 	if !mapped {
 		vm.add(o, vm.Key(keyCallee), newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError)), FlagAccessor)
 		return o
@@ -46,6 +40,19 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 		o.ext = m
 	}
 	vm.add(o, vm.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
+	return o
+}
+
+// newArgumentsObject returns an arguments object without callee whose elements are the arguments
+// of the frame fr, whose registers are regs.
+func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
+	o := &Object{
+		kind:  kindObject,
+		class: classArguments,
+		shape: vm.shapes.arguments,
+		elems: vm.frameArgs(fr, regs),
+	}
+	o.slots = []Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	return o
 }
 

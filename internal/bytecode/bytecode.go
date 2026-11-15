@@ -458,6 +458,9 @@ type Func struct {
 	IsAsync     bool
 	IsMethod    bool
 
+	// IsScript says whether the code is the top level of a script.
+	IsScript bool
+
 	// IsConstructor says whether closures of the function can be called with new.
 	IsConstructor      bool
 	IsClassConstructor bool

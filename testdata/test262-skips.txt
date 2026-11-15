@@ -8,21 +8,6 @@
 # test is stale. Remove this line when test262 updates the test.
 test/intl402/Temporal/ZonedDateTime/links.js
 
-# The tests use the caller and arguments properties of sloppy functions, which are legacy
-# behavior that ekuma does not implement.
-test/staging/sm/Function/function-caller-restrictions.js
-test/staging/sm/extensions/arguments-property-access-in-function.js
-test/staging/sm/extensions/censor-strict-caller.js
-test/staging/sm/extensions/function-caller-skips-eval-frames.js
-test/staging/sm/extensions/function-properties.js
-test/staging/sm/regress/regress-577648-1.js
-test/staging/sm/regress/regress-577648-2.js
-test/staging/sm/regress/regress-584355.js
-test/staging/sm/regress/regress-586482-1.js
-test/staging/sm/regress/regress-586482-2.js
-test/staging/sm/regress/regress-586482-3.js
-test/staging/sm/regress/regress-586482-4.js
-
 # The tests expect Date.parse to accept formats that the specification leaves to the
 # implementation, such as 1997-3-8 1:1:1 and the two-digit year of 3/8/97.
 test/staging/sm/Date/non-iso.js

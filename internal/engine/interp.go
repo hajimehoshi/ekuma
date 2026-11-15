@@ -116,7 +116,11 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 		extraBase = base + fp.nparams
 		newBase := base + argc
 		vm.ensureStack(newBase + fp.nregs + 1)
-		copy(vm.stack[newBase:newBase+fp.nparams], vm.stack[base:base+fp.nparams])
+		// The parameters move above the surplus arguments, so the two places do not overlap.
+		stack := vm.stack
+		for i := range fp.nparams {
+			stack[newBase+i] = stack[base+i]
+		}
 		base = newBase
 	} else {
 		vm.ensureStack(base + max(argc, fp.nregs+1))

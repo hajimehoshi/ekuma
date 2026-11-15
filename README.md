@@ -109,8 +109,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-53,777 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.97%). The other
-18 fail for known reasons, which [`testdata/test262-skips.txt`](testdata/test262-skips.txt) lists.
+53,789 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
+6 fail for known reasons, which [`testdata/test262-skips.txt`](testdata/test262-skips.txt) lists.
 
 ### Implemented
 
@@ -143,8 +143,10 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   proposal defines it, so a class without decorators inherits `null` unless its superclass has
   metadata
 - The `caller` and `arguments` properties of sloppy functions, a legacy extension that the
-  specification leaves to implementations, are always `undefined`. Browsers give the calling
-  function and the arguments of the running call
+  specification leaves to implementations, are accessors of each function. Browsers instead
+  change the accessors of `Function.prototype`, which the specification defines to throw. As in
+  SpiderMonkey, `caller` is `null` for a call from strict code, a generator, an async function or
+  a built-in function
 
 ### Missing
 

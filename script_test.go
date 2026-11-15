@@ -376,6 +376,58 @@ func TestScripts(t *testing.T) {
 			want: "length,name,arguments,caller,prototype,x",
 		},
 		{
+			name: "caller of a sloppy function",
+			src: `function f() { return f.caller; }
+				function g() { return f(); }
+				var a = () => f();
+				var o = { m() { return f(); } };
+				[f.caller === null, f() === null, g() === g, a() === a, o.m() === o.m, f.caller === null].join()`,
+			want: "true,true,true,true,true,true",
+		},
+		{
+			name: "caller hidden from a sloppy function",
+			src: `function f() { return f.caller; }
+				function s() { "use strict"; var c = f(); return c; }
+				function* gen() { yield f(); }
+				var r;
+				(async function() { r = f(); })();
+				function n() { return [0].map(f)[0]; }
+				[s(), gen().next().value, r, n()].map(v => v === null).join()`,
+			want: "true,true,true,true",
+		},
+		{
+			name: "caller skips eval code",
+			src: `function f() { return f.caller; }
+				function g() { return eval("f()"); }
+				function h() { return eval("eval('f()')"); }
+				[g() === g, h() === h].join()`,
+			want: "true,true",
+		},
+		{
+			// The arguments beyond the parameters outlive the registers they arrived in.
+			name: "arguments of a sloppy function",
+			src: `function f(a) {
+					a = 3;
+					var args = f.arguments;
+					var first = args[0];
+					args[0] = 9;
+					return [args.length, first, args[1], a, args.callee === f, args === f.arguments].join();
+				}
+				function r(n) { var inner = n ? r(n - 1) : ""; return r.arguments[0] + inner; }
+				[String(f.arguments), f(1, 2), r(2)].join("|")`,
+			want: "null|2,3,2,3,true,false|210",
+		},
+		{
+			name: "getter of caller",
+			src: `function f() {}
+				function g() {}
+				var get = Object.getOwnPropertyDescriptor(f, "caller").get;
+				var r = [typeof get, get === Object.getOwnPropertyDescriptor(g, "caller").get];
+				try { get.call(function() { "use strict"; }); } catch (e) { r.push(e.constructor.name); }
+				r.join()`,
+			want: "function,true,TypeError",
+		},
+		{
 			name: "slice with an argument that shrinks the array",
 			src: `var a = [1, 2, 3, 4, 5, 6, 7, 8];
 				var r = a.slice({ valueOf() { a.length = 0; a.unshift(1); return 7; } }, { valueOf() { return 0; } });

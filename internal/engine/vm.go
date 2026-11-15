@@ -504,6 +504,10 @@ const (
 
 	IntrinsicThrowTypeError
 
+	// The getters of the caller and arguments properties of non-strict ordinary functions.
+	IntrinsicFunctionCallerGetter
+	IntrinsicFunctionArgumentsGetter
+
 	// The prototypes of the typed array constructors are in the order of [ElementType].
 	IntrinsicInt8ArrayPrototype
 	IntrinsicUint8ArrayPrototype

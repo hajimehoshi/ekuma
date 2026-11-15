@@ -685,6 +685,14 @@ func initFunction(vm *engine.VM) {
 	throwTypeError := vm.Intrinsic(engine.IntrinsicThrowTypeError)
 	vm.DefineAccessor(proto, vm.Intern("caller"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 	vm.DefineAccessor(proto, vm.Intern("arguments"), throwTypeError, throwTypeError, engine.FlagConfigurable)
+
+	// The getters of the own caller and arguments properties of non-strict functions.
+	vm.SetIntrinsic(engine.IntrinsicFunctionCallerGetter, vm.NewNative("get caller", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return vm.FunctionCaller(this)
+	}))
+	vm.SetIntrinsic(engine.IntrinsicFunctionArgumentsGetter, vm.NewNative("get arguments", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return vm.FunctionArguments(this)
+	}))
 }
 
 // copyNameAndLength implements CopyNameAndLength.

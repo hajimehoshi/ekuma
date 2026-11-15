@@ -984,6 +984,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 	prog := c.prog
 	f := c.newFn(nil, nil, "")
 	f.isScript = true
+	f.f.IsScript = true
 	f.f.Strict = prog.Strict
 	f.f.Source = prog.Source
 	f.anyMutated = prog.Scope.ContainsDirectEval
