@@ -319,7 +319,10 @@ func (c *sparseIndexCache) list(o *Object) []uint32 {
 	if c.shape == s && c.count == s.count {
 		return c.indices
 	}
-	if added, ok := c.addedKeys(s); ok && len(added) <= maxSparseIndexInserts {
+	// The keys go into a buffer of fixed size. With go1.27.4, letting addedKeys grow a slice
+	// by append from nil goes with wrong results now and then, for a reason not found yet.
+	var buf [maxSparseIndexInserts]*Object
+	if added, ok := c.addedKeys(s, buf[:0]); ok {
 		idxs := c.indices
 		for _, k := range added {
 			if k.kind != kindString {
@@ -356,16 +359,17 @@ func (c *sparseIndexCache) list(o *Object) []uint32 {
 // the list instead of inserting each one.
 const maxSparseIndexInserts = 16
 
-// addedKeys returns the keys that s has in addition to those of the cached shape, and reports
-// whether s has all of those keys in the same slots.
-func (c *sparseIndexCache) addedKeys(s *shape) ([]*Object, bool) {
+// addedKeys returns the keys that s has in addition to those of the cached shape, appended to
+// buf, and reports whether s has all of those keys in the same slots and they are at most
+// maxSparseIndexInserts.
+func (c *sparseIndexCache) addedKeys(s *shape, buf []*Object) ([]*Object, bool) {
 	cached, n := c.shape, c.count
 	if cached == nil || s.count < n {
 		return nil, false
 	}
 	if s.private {
 		// A private shape only grows in place.
-		if cached != s {
+		if cached != s || s.count-n > maxSparseIndexInserts {
 			return nil, false
 		}
 		return s.order[n:], true
@@ -376,7 +380,7 @@ func (c *sparseIndexCache) addedKeys(s *shape) ([]*Object, bool) {
 	if s.count-n > maxSparseIndexInserts {
 		return nil, false
 	}
-	var added []*Object
+	added := buf
 	t := s
 	for ; t.count > n; t = t.parent {
 		if t.parent == nil {
