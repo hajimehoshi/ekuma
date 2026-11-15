@@ -747,7 +747,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x, y := regs[i.B], regs[i.C]
 			if x.o == nil && y.o == nil {
 				xi, yi := int32(x.n), int32(y.n)
-				if xi >= 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
+				if xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
 					regs[i.A] = Value{n: float64(xi % yi)}
 					continue
 				}
@@ -839,7 +839,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x, y := regs[i.B], fp.consts[i.C]
 			if x.o == nil {
 				xi, yi := int32(x.n), int32(y.n)
-				if xi >= 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
+				if xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
 					regs[i.A] = Value{n: float64(xi % yi)}
 					continue
 				}
@@ -1847,7 +1847,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	arithK:
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
-			v := vm.arith(i.Op-bytecode.OpAddK+bytecode.OpAdd, regs[i.B], fp.consts[i.C])
+			v := vm.arith(i.Op.RegOperand(), regs[i.B], fp.consts[i.C])
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
 			continue

@@ -531,6 +531,11 @@ func TestScripts(t *testing.T) {
 				Object.prototype.toString.call(true)`,
 			want: "[object object]",
 		},
+		{
+			name: "remainder of negative zero by a register",
+			src:  `var x = -0, y = 1; 1 / (x % y)`,
+			want: "-Infinity",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

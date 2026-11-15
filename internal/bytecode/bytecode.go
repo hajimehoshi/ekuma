@@ -228,6 +228,25 @@ const (
 	OpTailCallFwd    // like [OpCallFwd]
 )
 
+var regOperandOps = [...]Opcode{
+	OpAddK - OpAddK:    OpAdd,
+	OpSubK - OpAddK:    OpSub,
+	OpMulK - OpAddK:    OpMul,
+	OpDivK - OpAddK:    OpDiv,
+	OpModK - OpAddK:    OpMod,
+	OpBitOrK - OpAddK:  OpBitOr,
+	OpBitAndK - OpAddK: OpBitAnd,
+	OpShlK - OpAddK:    OpShl,
+	OpShrK - OpAddK:    OpShr,
+	OpUShrK - OpAddK:   OpUShr,
+}
+
+// RegOperand returns the opcode that takes a register in place of the constant of op, one of
+// [OpAddK] through [OpUShrK].
+func (op Opcode) RegOperand() Opcode {
+	return regOperandOps[op-OpAddK]
+}
+
 // The kinds of error that [OpThrowError] throws.
 const (
 	ThrowTypeError = iota
