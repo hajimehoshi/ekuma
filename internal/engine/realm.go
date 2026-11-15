@@ -200,6 +200,7 @@ func (vm *VM) initKeys() {
 		SymbolMatch: "Symbol.match", SymbolMatchAll: "Symbol.matchAll", SymbolReplace: "Symbol.replace",
 		SymbolSearch: "Symbol.search", SymbolSplit: "Symbol.split",
 		SymbolDispose: "Symbol.dispose", SymbolAsyncDispose: "Symbol.asyncDispose",
+		SymbolMetadata: "Symbol.metadata",
 	} {
 		vm.keys.wellKnown[s] = vm.NewSymbol(name, true)
 	}

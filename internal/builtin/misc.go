@@ -225,6 +225,7 @@ func initSymbol(vm *engine.VM) {
 		engine.SymbolMatch: "match", engine.SymbolMatchAll: "matchAll", engine.SymbolReplace: "replace",
 		engine.SymbolSearch: "search", engine.SymbolSplit: "split",
 		engine.SymbolDispose: "dispose", engine.SymbolAsyncDispose: "asyncDispose",
+		engine.SymbolMetadata: "metadata",
 	} {
 		constant(vm, ctor, name, engine.ObjectValue(vm.WellKnownSymbol(engine.WellKnownSymbol(sym))))
 	}

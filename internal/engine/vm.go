@@ -180,6 +180,7 @@ const (
 	SymbolSplit
 	SymbolDispose
 	SymbolAsyncDispose
+	SymbolMetadata
 	wellKnownSymbolCount
 )
 

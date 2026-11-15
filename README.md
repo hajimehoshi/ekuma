@@ -89,7 +89,8 @@ fails when any of them fails.
 - `Temporal`, explicit resource management, `import defer`, and the newer `Array`, `Error`,
   `Math`, `Map`, `JSON`, `Iterator`, `Promise`, `Uint8Array` and `ArrayBuffer` additions
 - `ShadowRealm`, which is a proposal and not yet standard
-- Decorators and auto-accessors (`accessor`), which are a proposal and not yet standard
+- Decorators, auto-accessors (`accessor`) and decorator metadata (`Symbol.metadata`), which are
+  proposals and not yet standard
 
 ### Notes on behavior
 
@@ -102,7 +103,9 @@ fails when any of them fails.
 - `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,
   as `import()` in code without a file does. The loader cannot tell the realms apart, so a
   module that it returns again is shared by them
-- The context objects of decorators have no `metadata`, which is a separate proposal
+- `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
+  proposal defines it, so a class without decorators inherits `null` unless its superclass has
+  metadata
 
 ### Missing
 

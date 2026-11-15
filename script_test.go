@@ -2925,12 +2925,12 @@ func TestDecorators(t *testing.T) {
 					@dec 1 = 0;
 				}
 				out.join(" ")`,
-			want: "kind/access/static/private/name/addInitializer:method:#m:true:true:get/has " +
-				"kind/access/static/private/name/addInitializer:getter:g:false:false:get/has " +
-				"kind/access/static/private/name/addInitializer:setter:Symbol(s):false:false:set/has " +
-				"kind/access/static/private/name/addInitializer:accessor:#a:false:true:get/set/has " +
-				"kind/access/static/private/name/addInitializer:field:1:false:false:get/set/has " +
-				"kind/name/addInitializer:class:C:undefined:undefined:",
+			want: "kind/access/static/private/name/addInitializer/metadata:method:#m:true:true:get/has " +
+				"kind/access/static/private/name/addInitializer/metadata:getter:g:false:false:get/has " +
+				"kind/access/static/private/name/addInitializer/metadata:setter:Symbol(s):false:false:set/has " +
+				"kind/access/static/private/name/addInitializer/metadata:accessor:#a:false:true:get/set/has " +
+				"kind/access/static/private/name/addInitializer/metadata:field:1:false:false:get/set/has " +
+				"kind/name/addInitializer/metadata:class:C:undefined:undefined:",
 		},
 		{
 			// A decorator is called with the object of a member expression as its this value.
@@ -3029,6 +3029,166 @@ func TestDecorators(t *testing.T) {
 				try { d.get.call({}); } catch (e) { out.push(e.constructor.name); }
 				out.join()`,
 			want: "3,1,2,0,false,get x,set x,0,1,TypeError",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := toString(t, &vm, v); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDecoratorMetadata covers the decorator metadata proposal
+// (https://github.com/tc39/proposal-decorator-metadata), for which test262 has no tests. The
+// steps cited are those of ClassDefinitionEvaluation in the proposal's spec text.
+func TestDecoratorMetadata(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "Symbol.metadata",
+			src: `var d = Object.getOwnPropertyDescriptor(Symbol, "metadata");
+				var f = Object.getOwnPropertyDescriptor(Function.prototype, Symbol.metadata);
+				[typeof Symbol.metadata, Symbol.metadata.description, d.writable, d.enumerable, d.configurable,
+					f.value, f.writable, f.enumerable, f.configurable, (function () {})[Symbol.metadata]].join()`,
+			want: "symbol,Symbol.metadata,false,false,false,,false,false,false,",
+		},
+		{
+			// The context gets metadata with CreateDataPropertyOrThrow after addInitializer,
+			// and the class gets it as a writable, non-enumerable, configurable property.
+			name: "properties",
+			src: `var ctx;
+				@((v, c) => { ctx = c; })
+				class C {}
+				var m = C[Symbol.metadata], d = Object.getOwnPropertyDescriptor(C, Symbol.metadata);
+				var cd = Object.getOwnPropertyDescriptor(ctx, "metadata");
+				[Object.keys(ctx).join(" "), cd.value === m, cd.writable, cd.enumerable, cd.configurable,
+					d.writable, d.enumerable, d.configurable, Object.getPrototypeOf(m), Reflect.ownKeys(m).length].join()`,
+			want: "kind name addInitializer metadata,true,true,true,true,true,false,true,,0",
+		},
+		{
+			name: "one object for all decorators of a class",
+			src: `var seen = [];
+				function dec(v, c) { seen.push(c.metadata); c.metadata[c.kind + (c.static ? " static" : "") + (c.private ? " private" : "")] = true; }
+				@dec @dec
+				class C {
+					@dec m() {}
+					@dec get g() { return 1; }
+					@dec set s(v) {}
+					@dec f = 1;
+					@dec accessor a = 1;
+					@dec static sm() {}
+					@dec static sf = 1;
+					@dec #pm() {}
+					@dec #pf = 1;
+					@dec static accessor #pa = 1;
+				}
+				var m = C[Symbol.metadata];
+				[seen.length, seen.every(x => x === m), Object.keys(m).sort().join("|")].join()`,
+			want: "12,true,accessor|accessor static private|class|field|field private|field static|getter|method|method private|method static|setter",
+		},
+		{
+			// A class expression evaluated twice runs ClassDefinitionEvaluation twice, so each
+			// class gets its own object.
+			name: "fresh object per evaluation",
+			src: `var classes = [];
+				for (var i = 0; i < 2; i++) {
+					classes.push(class { @((v, c) => { c.metadata.i = i; }) m() {} });
+				}
+				var a = classes[0][Symbol.metadata], b = classes[1][Symbol.metadata];
+				[a !== b, a.i, b.i].join()`,
+			want: "true,0,1",
+		},
+		{
+			name: "inheritance",
+			src: `function meta(key, value) { return (v, c) => { c.metadata[key] = value; }; }
+				function append(value) { return (v, c) => { c.metadata.list = [...(c.metadata.list ?? []), value]; }; }
+				@meta("a", "x") @append("x")
+				class A { @meta("b", "y") m() {} }
+				class B extends A {}
+				@append("z")
+				class C extends B { @meta("b", "z") m() {} }
+				var am = A[Symbol.metadata], cm = C[Symbol.metadata];
+				[Object.getPrototypeOf(cm) === am, B[Symbol.metadata] === am, Object.hasOwn(B, Symbol.metadata),
+					cm.a, cm.b, am.b, cm.list.join(" "), am.list.join(" ")].join()`,
+			want: "true,true,false,x,z,y,x z,x",
+		},
+		{
+			// The parent metadata is read with Get once all elements are evaluated, before the
+			// first decorator applies, and it is the prototype only when it is an object.
+			name: "parent metadata",
+			src: `var log = [];
+				function dec(name) {
+					log.push("eval " + name);
+					return (v, c) => { log.push(name + " " + Object.getPrototypeOf(c.metadata)?.p); };
+				}
+				class P {
+					static get [Symbol.metadata]() { log.push("get " + (this === P)); return { p: 1 }; }
+				}
+				@dec("c")
+				class C extends P {
+					@dec("f") f;
+					[(log.push("key"), "k")]() {}
+					@dec("m") m() {}
+				}
+				var out = [log.join()];
+				for (var parent of [1, undefined, "s", Symbol(), null]) {
+					class Q { static [Symbol.metadata] = parent; }
+					class R extends Q { @(() => {}) m() {} }
+					out.push(Object.getPrototypeOf(R[Symbol.metadata]));
+				}
+				@(() => {}) class N extends null {}
+				out.push(Object.getPrototypeOf(N[Symbol.metadata]));
+				out.join(";")`,
+			want: "eval c,eval f,key,eval m,get true,m 1,f 1,c 1;;;;;;",
+		},
+		{
+			// The metadata property is defined on the class that the class decorators returned,
+			// after they applied and before the static elements and the initializers run.
+			name: "order",
+			src: `var out = [], orig, m;
+				function has(v) { return Object.hasOwn(v, Symbol.metadata); }
+				@((v, c) => { c.addInitializer(function () { out.push("class init " + has(this)); }); })
+				@((v, c) => { out.push("class " + has(v)); orig = v; m = c.metadata; return class extends v {}; })
+				class C {
+					@((v, c) => { c.addInitializer(function () { out.push("method init " + has(this)); }); })
+					static m() {}
+					static f = out.push("field " + (C[Symbol.metadata] === m));
+					static { out.push("block " + (this[Symbol.metadata] === m)); }
+				}
+				out.push(has(orig), C[Symbol.metadata] === m);
+				out.join()`,
+			want: "class false,method init true,field true,block true,class init true,false,true",
+		},
+		{
+			name: "class that cannot get the property",
+			src: `try {
+					@(() => Object.freeze(function () {}))
+					class C {}
+					"no error";
+				} catch (e) {
+					e.constructor.name;
+				}`,
+			want: "TypeError",
+		},
+		{
+			// A class gets the property only when hasDecorators is true.
+			name: "undecorated class",
+			src: `@(() => {}) class A {}
+				class B { accessor x; static {} }
+				class C extends A { accessor x; }
+				[Object.hasOwn(B, Symbol.metadata), B[Symbol.metadata], Object.hasOwn(C, Symbol.metadata),
+					C[Symbol.metadata] === A[Symbol.metadata]].join()`,
+			want: "false,,false,true",
 		},
 	}
 	for _, tt := range tests {

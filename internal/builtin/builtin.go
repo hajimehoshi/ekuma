@@ -665,6 +665,8 @@ func initFunction(vm *engine.VM) {
 	})
 	vm.SetIntrinsic(engine.IntrinsicFunctionPrototypeHasInstance, hasInstance)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolHasInstance), engine.ObjectValue(hasInstance), 0)
+	// Function.prototype[Symbol.metadata] of the decorator metadata proposal.
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolMetadata), engine.Null, 0)
 
 	// AddRestrictedFunctionProperties
 	throwTypeError := vm.Intrinsic(engine.IntrinsicThrowTypeError)

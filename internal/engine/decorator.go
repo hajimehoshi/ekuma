@@ -10,7 +10,8 @@ import (
 )
 
 // This file implements the decorators proposal (https://github.com/tc39/proposal-decorators):
-// auto-accessors, and the evaluation of classes that have decorators.
+// auto-accessors, and the evaluation of classes that have decorators. It also implements the
+// decorator metadata proposal (https://github.com/tc39/proposal-decorator-metadata).
 
 // elemInitializer is the kind of a [classElement] that is an initializer that a decorator of a
 // method added. It runs on every instance before the fields are defined.
@@ -57,6 +58,9 @@ type classDecoration struct {
 
 	classDecorators []decoratorDef
 	elements        []*elementDef
+
+	// metadata is the object that the context objects of the decorators share.
+	metadata *Object
 
 	staticMethodInitializers []*Object
 	classInitializers        []*Object
@@ -182,6 +186,16 @@ func (vm *VM) PrivateSet(o Value, name *Object, v Value) {
 // returns the class that the decorators of the class returned.
 func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 	proto := f.fn.home
+
+	// Nothing has had access to F yet, so its [[Prototype]] is still constructorParent. Without
+	// a ClassHeritage it is %Function.prototype%, whose non-configurable, non-writable
+	// @@metadata is null, as the spec gives for that case.
+	parent := vm.Get(f.shape.proto, PropKey{key: vm.WellKnownSymbol(SymbolMetadata)})
+	var metadataProto *Object
+	if parent.IsObject() {
+		metadataProto = parent.o
+	}
+	st.metadata = vm.NewObject(metadataProto)
 	var instanceMethodInitializers []*Object
 
 	home := func(e *elementDef) *Object {
@@ -205,14 +219,14 @@ func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 			case static:
 				extra = &st.staticMethodInitializers
 			}
-			vm.applyDecoratorsToElementDefinition(e, extra)
+			vm.applyDecoratorsToElementDefinition(e, extra, st.metadata)
 			vm.defineMethodProperty(home(e), e)
 		}
 	}
 	for _, static := range []bool{true, false} {
 		for _, e := range st.elements {
 			if e.static == static && e.kind == bytecode.ElemField {
-				vm.applyDecoratorsToElementDefinition(e, &e.dec.extra)
+				vm.applyDecoratorsToElementDefinition(e, &e.dec.extra, st.metadata)
 			}
 		}
 	}
@@ -247,7 +261,9 @@ func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 		}
 	}
 
-	return vm.applyDecoratorsToClassDefinition(st, Value{o: f})
+	newF := vm.applyDecoratorsToClassDefinition(st, Value{o: f})
+	vm.DefinePropertyOrThrow(newF.o, PropKey{key: vm.WellKnownSymbol(SymbolMetadata)}, dataDesc(Value{o: st.metadata}, FlagsHidden))
+	return newF
 }
 
 // appendElements appends the elements that the element e adds to an object to elems: the
@@ -321,11 +337,11 @@ func (vm *VM) defineMethodProperty(home *Object, e *elementDef) {
 
 // applyDecoratorsToElementDefinition implements ApplyDecoratorsToElementDefinition.
 // The decorators of a field or an auto-accessor add their initializers to e.dec.
-func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object) {
+func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object, metadata *Object) {
 	// The decorator closest to the element applies first.
 	for _, d := range slices.Backward(e.decorators) {
 		state := &decorationState{}
-		ctx := vm.createDecoratorContextObject(e.kind, e.key, extra, state, e.static, false)
+		ctx := vm.createDecoratorContextObject(e.kind, e.key, extra, state, metadata, e.static, false)
 		value := Undefined
 		switch e.kind {
 		case bytecode.ElemMethod, bytecode.ElemGetter, bytecode.ElemSetter:
@@ -387,7 +403,7 @@ func (vm *VM) decoratorResultFunction(o Value, key *Object) *Object {
 func (vm *VM) applyDecoratorsToClassDefinition(st *classDecoration, classDef Value) Value {
 	for _, d := range slices.Backward(st.classDecorators) {
 		state := &decorationState{}
-		ctx := vm.createDecoratorContextObject(0, st.name, &st.classInitializers, state, false, true)
+		ctx := vm.createDecoratorContextObject(0, st.name, &st.classInitializers, state, st.metadata, false, true)
 		nd := vm.CallValue(d.decorator, d.receiver, classDef, ctx)
 		state.finished = true
 		if nd.IsCallable() {
@@ -428,7 +444,7 @@ func (vm *VM) finishClass(st *classDecoration, f Value) {
 
 // createDecoratorContextObject implements CreateDecoratorContextObject. kind is a bytecode
 // Elem kind, which isClass overrides.
-func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[]*Object, state *decorationState, static, isClass bool) Value {
+func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[]*Object, state *decorationState, metadata *Object, static, isClass bool) Value {
 	ctx := vm.NewOrdinaryObject()
 	var kindStr string
 	switch {
@@ -473,6 +489,7 @@ func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[
 		*initializers = append(*initializers, init.o)
 		return Undefined
 	})})
+	def("metadata", Value{o: metadata})
 	return Value{o: ctx}
 }
 
