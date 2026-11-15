@@ -198,7 +198,7 @@ func localZoneName() string {
 		return zoneNameFromPath(tz)
 	}
 	if runtime.GOOS == "windows" {
-		return ""
+		return windowsZoneName()
 	}
 	target, err := os.Readlink("/etc/localtime")
 	if err != nil {
@@ -220,5 +220,11 @@ func zoneNameFromPath(path string) string {
 
 // zoneName returns the identifier of a Zone that is not a locationZone.
 func zoneName(z Zone) string {
+	return ""
+}
+
+// windowsZoneName returns the IANA time zone identifier of the time zone that Windows is set
+// to, or an empty string when it is not known. It is set on Windows only.
+var windowsZoneName = func() string {
 	return ""
 }
