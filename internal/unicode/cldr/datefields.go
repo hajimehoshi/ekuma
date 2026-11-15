@@ -5,6 +5,11 @@
 
 package cldr
 
+import _ "embed"
+
+//go:embed datefieldnames.deflate
+var dateFieldNamesBlocks string
+
 // DateFieldNames maps locales to the display names of date fields, as records in the form of [Field] keyed by the names of the fields in CLDR, such as "era" and "dayperiod". A record that a locale shares with its parent is left out.
 var DateFieldNames = Map{
 	keys: Strings{
@@ -38,690 +43,86 @@ var DateFieldNames = Map{
 		},
 	},
 	values: Strings{
-		data: "\x1eday\x1fмафэ\x1ehour\x1fсыхьат\x1eminute\x1fтакъикъ\x1emonth\x1fмазэ\x1esecond\x1fнэгъэупӏэп" +
-			"ӏэгъу\x1eweek\x1fтхьамафэ\x1eyear\x1fилъэс\x1eday\x1fdag\x1edayOfYear\x1fdag van jaar\x1edayperiod\x1fvm./nm" +
-			".\x1eera\x1fera\x1ehour\x1fuur\x1eminute\x1fminuut\x1emonth\x1fmaand\x1equarter\x1fkwartaal\x1esecond\x1fsekonde\x1eweek\x1fweek\x1eweekOfMon" +
-			"th\x1fweek van maand\x1eweekday\x1fdag van die week\x1eweekdayOfMonth\x1fweekdag van die jaar\x1eyear\x1fjaar\x1ezone\x1fty" +
-			"dsone\x1eday\x1futsuʔ\x1edayperiod\x1fâ tsɨ̀\x1eera\x1fkɨtîgh\x1ehour\x1ftàm\x1eminute\x1fmenè\x1emonth\x1fndzɔŋ\x1esecond\x1fsɛ" +
-			"kɔ̀n\x1eweek\x1fewɨn\x1eweekday\x1ftsuʔu mɨ̀ èwɨ̄n\x1eyear\x1fkɨnûm\x1ezone\x1fdɨŋò kɨ enɨ̀gha\x1eday\x1fDa\x1ed" +
-			"ayOfYear\x1fafe mu da\x1edayperiod\x1fanɔpa/anwummerɛ\x1eera\x1fberɛ\x1ehour\x1fdɔnhwere\x1eminute\x1fsima\x1emonth\x1fBosome" +
-			"\x1equarter\x1fkɔta\x1esecond\x1fSimasin\x1eweek\x1fNnawɔtwe\x1eweekOfMonth\x1fbosome mu nnawɔtwe\x1eweekday\x1fnnawɔtwe m" +
-			"u da\x1eweekdayOfMonth\x1fnnawɔtwe mu da wɔ bosome mu\x1eyear\x1fAfe\x1ezone\x1fberɛ mu wiase nkyekyɛmu\x1eday\x1fቀ" +
-			"ን\x1edayOfYear\x1fየዓመቱ ቀን\x1edayperiod\x1fጥዋት/ከሰዓት\x1eera\x1fዘመን\x1ehour\x1fሰዓት\x1e" +
-			"minute\x1fደቂቃ\x1emonth\x1fወር\x1equarter\x1fሩብ\x1esecond\x1fሰከንድ\x1eweek\x1fሳምንት\x1eweekOfMonth\x1fየ" +
-			"ወሩ ሳምንት\x1eweekday\x1fአዘቦት\x1eweekdayOfMonth\x1fየወሩ የሳምንት ቀን\x1eyear\x1fዓ" +
-			"መት\x1ezone\x1fየሰዓት ሰቅ\x1eday\x1fيوم\x1edayOfYear\x1fيوم من السنة\x1edayperiod\x1fص/م\x1eera\x1f" +
-			"العصر\x1ehour\x1fالساعات\x1eminute\x1fالدقائق\x1emonth\x1fالشهر\x1equarter\x1fربع السنة\x1e" +
-			"second\x1fالثواني\x1eweek\x1fالأسبوع\x1eweekOfMonth\x1fالأسبوع من الشهر\x1eweekday\x1fال" +
-			"يوم\x1eweekdayOfMonth\x1fيوم عمل من الشهر\x1eyear\x1fالسنة\x1ezone\x1fالتوقيت\x1eday\x1fদি" +
-			"ন\x1edayOfYear\x1fবছৰৰ দিন\x1edayperiod\x1fপূৰ্বাহ্ন/অপৰাহ্ন" +
-			"\x1eera\x1fযুগ\x1ehour\x1fঘণ্টা\x1eminute\x1fমিনিট\x1emonth\x1fমাহ\x1equarter\x1fতিনি " +
-			"মাহ\x1esecond\x1fছেকেণ্ড\x1eweek\x1fসপ্তাহ\x1eweekOfMonth\x1fমাহৰ সপ্" +
-			"তাহ\x1eweekday\x1fসপ্তাহৰ দিন\x1eweekdayOfMonth\x1fমাহৰ সপ্তাহ" +
-			"ৰ দিন\x1eyear\x1fবছৰ\x1ezone\x1fসময় ক্ষেত্ৰ\x1eday\x1fThiku\x1edayperiod\x1fMarango" +
-			" athiku\x1eera\x1fEdhi\x1ehour\x1fThaa\x1eminute\x1fDakika\x1emonth\x1fMweji\x1esecond\x1fThekunde\x1eweek\x1fNdisha\x1eweekday\x1fThiku y" +
-			"a ndisha\x1eyear\x1fMwaka\x1ezone\x1fMajira Athaa\x1eday\x1fdía\x1edayperiod\x1fperiodu del día\x1eera\x1fera\x1ehour\x1fhora\x1eminu" +
-			"te\x1fminutu\x1emonth\x1fmes\x1equarter\x1ftrimestre\x1esecond\x1fsegundu\x1eweek\x1fselmana\x1eweekday\x1fdía de la selmana\x1eyea" +
-			"r\x1fañu\x1ezone\x1festaya horaria\x1eday\x1fgün\x1edayOfYear\x1filin günü\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fsaat\x1eminu" +
-			"te\x1fdəqiqə\x1emonth\x1fay\x1equarter\x1früb\x1esecond\x1fsaniyə\x1eweek\x1fhəftə\x1eweekOfMonth\x1fayın həftəsi\x1eweekda" +
-			"y\x1fhəftənin günü\x1eweekdayOfMonth\x1fayın həftəiçi günü\x1eyear\x1fil\x1ezone\x1fsaat qurşağı\x1eday\x1fкө" +
-			"н\x1edayOfYear\x1fйыл көнө\x1edayperiod\x1fAM/PM\x1eera\x1fэра\x1ehour\x1fсәғәт\x1eminute\x1fминут\x1emonth\x1f" +
-			"ай\x1equarter\x1fквартал\x1esecond\x1fсекунд\x1eweek\x1fаҙна\x1eweekOfMonth\x1fай аҙнаһы\x1eweek" +
-			"day\x1fаҙна көнө\x1eweekdayOfMonth\x1fайҙың аҙна көнө\x1eyear\x1fйыл\x1ezone\x1fсәғәт б" +
-			"үлкәте\x1eday\x1fRóch\x1edayOfYear\x1fSálay -mi róch\x1edayperiod\x1fBél\x1eera\x1fAhd\x1ehour\x1fGanthah\x1eminute\x1fMel" +
-			"etth\x1emonth\x1fMáh\x1equarter\x1fChárek\x1esecond\x1fKatrah\x1eweek\x1fHaptag\x1eweekOfMonth\x1fMáhay -mi haptag\x1eweekday\x1f" +
-			"Haptagay róch\x1eweekdayOfMonth\x1fMáhay -mi róch\x1eyear\x1fSál\x1ezone\x1fDamag\x1eday\x1fkɛl\x1edayperiod\x1fnjǎmùha" +
-			"\x1eera\x1fkèk\x1ehour\x1fŋgɛŋ\x1eminute\x1fŋget\x1emonth\x1fsoŋ\x1esecond\x1fhìŋgeŋget\x1eweek\x1fsɔndɛ̂\x1eweekday\x1fhìlɔ" +
-			" hi sɔndɛ̂\x1eyear\x1fŋwìi\x1ezone\x1fkomboo i ŋgɛŋ\x1eday\x1fдзень\x1edayOfYear\x1fдзень года\x1eera" +
-			"\x1fэра\x1ehour\x1fгадзіна\x1eminute\x1fхвіліна\x1emonth\x1fмесяц\x1equarter\x1fквартал\x1esecond" +
-			"\x1fсекунда\x1eweek\x1fтыд\x1eweekOfMonth\x1fтыдзень месяца\x1eweekday\x1fдзень тыдня" +
-			"\x1eweekdayOfMonth\x1fдзень месяца\x1eyear\x1fгод\x1ezone\x1fчасавы пояс\x1eday\x1fUbushiku\x1edayp" +
-			"eriod\x1fAkasuba\x1eera\x1fInkulo\x1ehour\x1fInsa\x1eminute\x1fMineti\x1emonth\x1fUmweshi\x1esecond\x1fSekondi\x1eweek\x1fUmulungu\x1eyear" +
-			"\x1fUmwaka\x1eday\x1fSihu\x1edayperiod\x1fLwamelau\x1eera\x1fAmajira\x1ehour\x1fSaa\x1eminute\x1fDakika\x1emonth\x1fMwedzi\x1esecond\x1fSekun" +
-			"de\x1eweek\x1fMlungu gumamfu\x1eweekday\x1fSihudza kasi\x1eyear\x1fMwaha\x1ezone\x1fAmajira ga saa\x1eday\x1fден\x1edayOfYear\x1f" +
-			"ден от годината\x1edayperiod\x1fam/pm\x1eera\x1fера\x1ehour\x1fчас\x1eminute\x1fминута\x1emonth\x1fм" +
-			"есец\x1equarter\x1fтримесечие\x1esecond\x1fсекунда\x1eweek\x1fседмица\x1eweekOfMonth\x1fсе" +
-			"дмица от месеца\x1eweekday\x1fден от седмицата\x1eweekdayOfMonth\x1fработен" +
-			" ден от месеца\x1eyear\x1fгодина\x1ezone\x1fчасова зона\x1eday\x1fʊshilé\x1edayOfYear\x1fga" +
-			"ja kʊshilé\x1edayperiod\x1fʊshilé kaŋkǝlǝ́\x1eera\x1fsaamanɩ\x1ehour\x1fgakɔŋkɔŋɔ̀\x1eminute\x1fgʊnaŋa\x1e" +
-			"month\x1faŋɔrɔ\x1equarter\x1fɩŋɔrɩriu\x1esecond\x1fgɩpi\x1eweek\x1fbɔkɔɩ\x1eweekOfMonth\x1faŋɔrɔ kabɔkɔɩ\x1ew" +
-			"eekday\x1fbɔkɔɩ kʊshilé\x1eweekdayOfMonth\x1faŋɔrɔ kabɔkɔɩ nɩ kʊshilé\x1eyear\x1fgaja\x1ezone\x1fgakɔŋ" +
-			"kɔŋɔ̀ kansaʊ\x1eday\x1fdon\x1edayperiod\x1fsɔgɔma/tile/wula/su\x1eera\x1ftile\x1ehour\x1flɛrɛ\x1eminute\x1fminiti\x1emon" +
-			"th\x1fkalo\x1esecond\x1fsekondi\x1eweek\x1fdɔgɔkun\x1eyear\x1fsan\x1ezone\x1fsigikun tilena\x1eday\x1fদিন\x1edayOfYear\x1fবছ" +
-			"রের দিন\x1edayperiod\x1fAM/PM\x1eera\x1fযুগ\x1ehour\x1fঘণ্টা\x1eminute\x1fমিনিট\x1emo" +
-			"nth\x1fমাস\x1equarter\x1fত্রৈমাসিক\x1esecond\x1fসেকেন্ড\x1eweek\x1fসপ্ত" +
-			"াহ\x1eweekOfMonth\x1fমাসের সপ্তাহ\x1eweekday\x1fসপ্তাহের দিন" +
-			"\x1eweekdayOfMonth\x1fমাসের কার্য দিবস\x1eyear\x1fবছর\x1ezone\x1fসময় অ" +
-			"ঞ্চল\x1eday\x1fཉིན།\x1ehour\x1fཆུ་ཚོད་\x1eminute\x1fསྐར་མ།\x1emonth\x1fཟླ་" +
-			"བ་\x1esecond\x1fསྐར་ཆ།\x1eyear\x1fལོ།\x1ezone\x1fདུས་ཚོད།\x1eday\x1fdeiz\x1edayOfYear" +
-			"\x1fdeiz ar bloaz\x1edayperiod\x1fAM/GM\x1eera\x1famzervezh\x1ehour\x1feur\x1eminute\x1fmunut\x1emonth\x1fmiz\x1equarter\x1ftrimiziad\x1es" +
-			"econd\x1feilenn\x1eweek\x1fsizhun\x1eweekOfMonth\x1fsizhun ar miz\x1eweekday\x1fdeiz ar sizhun\x1eweekdayOfMonth\x1fdeiz ar" +
-			" miz\x1eyear\x1fbloaz\x1ezone\x1ftakad eur\x1eday\x1fसान\x1edayOfYear\x1fबोसोरनि सान\x1edayperiod" +
-			"\x1fफुं/बेलासे\x1eera\x1fमुगा\x1ehour\x1fघन्टा\x1eminute\x1fमिनित\x1emonth" +
-			"\x1fदान\x1equarter\x1fब्रै बाहागो खोन्दोेसे\x1esecond\x1fसेके" +
-			"ण्ड\x1eweek\x1fसप्थाह\x1eweekOfMonth\x1fदाननि सप्थाह\x1eweekday\x1fसप्" +
-			"थाहनि सान\x1eweekdayOfMonth\x1fदाननि सप्थाहयारि सान" +
-			"\x1eyear\x1fबोसोर\x1ezone\x1fसम मण्डल\x1eday\x1fdan\x1edayOfYear\x1fdan u godini\x1edayperiod\x1fprije" +
-			"podne/poslijepodne\x1eera\x1fera\x1ehour\x1fsat\x1eminute\x1fminuta\x1emonth\x1fmjesec\x1equarter\x1fkvartal\x1esecond\x1fsekunda\x1ewe" +
-			"ek\x1fsedmica\x1eweekOfMonth\x1fsedmica u mjesecu\x1eweekday\x1fdan u sedmici\x1eweekdayOfMonth\x1fdan u mjesecu\x1eyear" +
-			"\x1fgodina\x1ezone\x1fvremenska zona\x1eday\x1fдан\x1edayOfYear\x1fдан у години\x1edayperiod\x1fприје по" +
-			"дне/послије подне\x1eera\x1fера\x1ehour\x1fсат\x1eminute\x1fминут\x1emonth\x1fмјесец\x1equa" +
-			"rter\x1fтромјесечје\x1esecond\x1fсекунд\x1eweek\x1fседмица\x1eweekOfMonth\x1fседмица у" +
-			" мјесецу\x1eweekday\x1fдан у седмици\x1eweekdayOfMonth\x1fрадни дан у мјесец" +
-			"у\x1eyear\x1fгодина\x1ezone\x1fзона\x1eday\x1fdia\x1edayOfYear\x1fdia de l’any\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1eera\x1f" +
-			"era\x1ehour\x1fhora\x1eminute\x1fminut\x1emonth\x1fmes\x1equarter\x1ftrimestre\x1esecond\x1fsegon\x1eweek\x1fsetmana\x1eweekOfMonth\x1fset" +
-			"mana del mes\x1eweekday\x1fdia de la setmana\x1eweekdayOfMonth\x1fdia de la setmana del mes\x1eyear\x1fany\x1ezone\x1ffu" +
-			"s horari\x1eday\x1f𑄘𑄨𑄚𑄴\x1edayperiod\x1fAM/PM\x1eera\x1f𑄡𑄪𑄇𑄴\x1ehour\x1f𑄊𑄮𑄚𑄴𑄓\x1emin" +
-			"ute\x1f𑄟𑄨𑄚𑄨𑄖𑄴\x1emonth\x1f𑄟𑄏𑄴\x1equarter\x1f𑄖𑄨𑄚𑄴𑄟𑄏𑄧𑄢𑄴\x1esec" +
-			"ond\x1f𑄥𑄬𑄉𑄬𑄚𑄴\x1eweek\x1f𑄥𑄛𑄴𑄖\x1eweekday\x1f𑄥𑄛𑄴𑄖𑄢𑄴 𑄘𑄨𑄚" +
-			"𑄴\x1eyear\x1f𑄝𑄧𑄏𑄧𑄢𑄴\x1ezone\x1f𑄃𑄧𑄇𑄴𑄖𑄧𑄢𑄴 𑄎𑄉\x1eday\x1fде\x1edayOf" +
-			"Year\x1fшеран де\x1edayperiod\x1fделкъал тӀехьа\x1eera\x1fмур\x1ehour\x1fсахьт\x1eminute\x1fми" +
-			"нот\x1emonth\x1fбутт\x1equarter\x1fКвартал\x1esecond\x1fсекунд\x1eweek\x1fкӀира\x1eweekOfMonth\x1fбе" +
-			"ттан кӀира\x1eweekday\x1fкӀиранан де\x1eweekdayOfMonth\x1fкӀиранан де\x1eyear\x1fшо" +
-			"\x1ezone\x1fсахьтан аса\x1eday\x1fadlaw\x1edayperiod\x1fAM/PM\x1eera\x1fpanahon\x1ehour\x1foras\x1eminute\x1fminuto\x1emonth\x1f" +
-			"buwan\x1equarter\x1fquarter\x1esecond\x1fsegundo\x1eweek\x1fsemana\x1eweekday\x1fadlaw sa semana\x1eyear\x1ftuig\x1ezone\x1ftime zon" +
-			"e\x1eday\x1fEizooba\x1edayperiod\x1fNyomushana/nyekiro\x1eera\x1fObunaku\x1ehour\x1fShaaha\x1eminute\x1fEdakiika\x1emonth\x1fOmwezi\x1e" +
-			"second\x1fObucweka/Esekendi\x1eweek\x1fEsande\x1eweekday\x1fEizooba ry’okukora\x1eyear\x1fOmwaka\x1eday\x1fᎢᎦ\x1edayOfYe" +
-			"ar\x1fᎢᎦ ᎤᏕᏘᏴᏌᏗᏒᎢ\x1edayperiod\x1fᏌᎾᎴ/ᏒᎯᏱ\x1eera\x1fᏗᏓᎴᏂᏍᎬ\x1ehour\x1fᏑ" +
-			"ᏟᎶᏓ\x1eminute\x1fᎢᏯᏔᏬᏍᏔᏅ\x1emonth\x1fᎧᎸᎢ\x1equarter\x1fᎩᏄᏙᏗ\x1esecond\x1fᎠᏎᏢ\x1ewee" +
-			"k\x1fᏒᎾᏙᏓᏆᏍᏗ\x1eweekOfMonth\x1fᏒᎾᏙᏓᏆᏍᏗ ᎧᎸᎢ\x1eweekday\x1fᎢᎦ ᏕᎨᏌᏗᏒ" +
-			"\x1eweekdayOfMonth\x1fᏒᎾᏙᏓᏆᏍᏗ ᎢᎦ ᎧᎸᎢ\x1eyear\x1fᎤᏕᏘᏴᏌᏗᏒᎢ\x1ezone\x1fᏂᎬ" +
-			"ᎾᏛ ᏧᏓᎴᏅᏓ ᏓᏟᎢᎵᏍᏒᎢ\x1eera\x1fسەردەم\x1eday\x1fⲡⲉϩⲟⲟⲩ\x1edayOfYear\x1fⲡ" +
-			"ⲉϩⲟⲟⲩ ⲛ̀ⲧⲉϯⲣⲟⲙⲡⲓ\x1edayperiod\x1fϧⲁϫⲉⲛ ⲧⲫⲁϣⲓ ⲙ̀ⲡⲓⲉ" +
-			"ϩⲟⲟⲩ/ⲙⲉⲛⲉⲛⲥⲁ ⲧⲫⲁϣⲓ ⲙ̀ⲡⲓⲉϩⲟⲟⲩ\x1eera\x1fⲡⲉⲱⲛ\x1ehour" +
-			"\x1fⲟⲩⲟⲩⲛⲟⲩ\x1eminute\x1fⲟⲩⲥⲟⲩⲥⲟⲩ\x1emonth\x1fⲡⲁⲃⲟⲧ\x1equarter\x1fⲧⲉⲧⲣ" +
-			"ⲁⲧⲟⲛ\x1esecond\x1fⲟⲩⲇⲉⲩⲧⲉⲣⲟⲥⲟⲩⲥⲟⲩ\x1eweek\x1fⲧⲉⲃⲇⲱⲙⲁⲥ\x1e" +
-			"weekOfMonth\x1fⲧⲉⲃⲇⲱⲙⲁⲥ ⲛ̀ⲧⲉⲡⲓⲁ̀ⲃⲟⲧ\x1eweekday\x1fⲡⲉϩⲟⲟⲩ ⲛ" +
-			"̀ⲧⲉϯⲉⲃⲇⲱⲙⲁⲥ\x1eweekdayOfMonth\x1fⲛⲓⲉϩⲟⲟⲩ ⲙ̀ⲡⲓⲁⲛϣⲁϥ ⲙ" +
-			"̀ⲡⲓⲁⲃⲟⲧ\x1eyear\x1fⲑⲣⲟⲙⲡⲓ\x1ezone\x1fⲡⲭⲣⲟⲛⲟⲥ ⲛ̀ⲧⲉϯⲍⲱⲛⲏ" +
-			"\x1eday\x1fden\x1edayOfYear\x1fden v roce\x1edayperiod\x1fčást dne\x1eera\x1fletopočet\x1ehour\x1fhodina\x1eminute\x1fminuta\x1emont" +
-			"h\x1fměsíc\x1equarter\x1fčtvrtletí\x1esecond\x1fsekunda\x1eweek\x1ftýden\x1eweekOfMonth\x1ftýden v měsíci\x1eweekday\x1fd" +
-			"en v týdnu\x1eweekdayOfMonth\x1fden týdne v měsíci\x1eyear\x1frok\x1ezone\x1fčasové pásmo\x1eday\x1fᑮᓯᑳᐤ\x1e" +
-			"hour\x1fᐚᐢᑳᐸᓂᐤ\x1eminute\x1fᑎᐸᐦᐃᑲᓂᐢ\x1emonth\x1fᐲᓯᒼ\x1eweek\x1fᑮᓯᑳᐘ\x1eyear\x1fᐊᐢ" +
-			"ᑭᕀ\x1eday\x1fкун\x1edayOfYear\x1fҫулталӑкӑн кунӗ\x1edayperiod\x1fк.\u202fу./к.\u202fх.\x1eera\x1fса" +
-			"мана\x1ehour\x1fсехет\x1eminute\x1fминут\x1emonth\x1fуйӑх\x1equarter\x1fчӗрӗк\x1esecond\x1fҫеккун" +
-			"т\x1eweek\x1fэрне\x1eweekOfMonth\x1fуйӑхӑн эрни\x1eweekday\x1fэрнен кунӗ\x1eweekdayOfMonth\x1fу" +
-			"йӑхӑн кунӗ\x1eyear\x1fҫул\x1ezone\x1fвӑхӑт тӑрӑхӗ\x1eday\x1fdiwrnod\x1edayOfYear\x1frhif y dydd y" +
-			"n y flwyddyn\x1edayperiod\x1fAM/PM\x1eera\x1foes\x1ehour\x1fawr\x1eminute\x1fmunud\x1emonth\x1fmis\x1equarter\x1fchwarter\x1esecond\x1feil" +
-			"iad\x1eweek\x1fwythnos\x1eweekOfMonth\x1frhif wythnos yn y mis\x1eweekday\x1fdiwrnod o’r wythnos\x1eweekdayOfMonth\x1f" +
-			"diwrnod yn y mis\x1eyear\x1fblwyddyn\x1ezone\x1fcylchfa amser\x1eday\x1fdag\x1edayOfYear\x1fdag i året\x1edayperiod\x1fAM/PM\x1e" +
-			"era\x1færa\x1ehour\x1ftime\x1eminute\x1fminut\x1emonth\x1fmåned\x1equarter\x1fkvartal\x1esecond\x1fsekund\x1eweek\x1fuge\x1eweekOfMonth\x1f" +
-			"uge i måneden\x1eweekday\x1fugedag\x1eweekdayOfMonth\x1fugedag i måneden\x1eyear\x1får\x1ezone\x1ftidszone\x1eday\x1fItuku\x1e" +
-			"dayperiod\x1fKE/PE\x1eera\x1fNgelo\x1ehour\x1fSaa\x1eminute\x1fDakika\x1emonth\x1fMori\x1esecond\x1fSekunde\x1eweek\x1fJuma\x1eyear\x1fMwaka\x1e" +
-			"zone\x1fMajira ya saa\x1eday\x1fTag\x1edayOfYear\x1fTag des Jahres\x1edayperiod\x1fTageshälfte\x1eera\x1fEpoche\x1ehour\x1fStund" +
-			"e\x1emonth\x1fMonat\x1equarter\x1fQuartal\x1esecond\x1fSekunde\x1eweek\x1fWoche\x1eweekOfMonth\x1fWoche des Monats\x1eweekday\x1fWoc" +
-			"hentag\x1eweekdayOfMonth\x1fWochentag\x1eyear\x1fJahr\x1ezone\x1fZeitzone\x1eweekOfMonth\x1fWoche im Monat\x1eweekdayOfMont" +
-			"h\x1fWochentag im Monat\x1eday\x1fZaari\x1edayperiod\x1fSubbaahi/Zaarikay banda\x1eera\x1fZaman\x1ehour\x1fGuuru\x1eminute\x1fMin" +
-			"iti\x1emonth\x1fHandu\x1esecond\x1fMiti\x1eweek\x1fHebu\x1eyear\x1fJiiri\x1ezone\x1fLeerazuu\x1eday\x1fदिन\x1edayOfYear\x1fब’र" +
-			"े दा दिन\x1edayperiod\x1fसवेर/बा.दपै.\x1eera\x1fजुग\x1ehour\x1fघैंटा" +
-			"\x1eminute\x1fमिंट्\u200cट\x1emonth\x1fम्हीना\x1equarter\x1fत्रमाही\x1esecond\x1fसक" +
-			"ैंट\x1eweek\x1fहफ्ता\x1eweekOfMonth\x1fम्हीने दा हफ्ता\x1eweekday\x1fह" +
-			"फ्ते दा दिन\x1eweekdayOfMonth\x1fम्हीने दा कम्म-दिन\x1eye" +
-			"ar\x1fब’रा\x1ezone\x1fसमां खेत्तर\x1eday\x1fźeń\x1edayOfYear\x1fźeń lěta\x1edayperiod\x1fp" +
-			"ołojca dnja\x1eera\x1fepocha\x1ehour\x1fgóźina\x1eminute\x1fminuta\x1emonth\x1fmjasec\x1equarter\x1fkwartal\x1esecond\x1fsekunda\x1e" +
-			"week\x1ftyźeń\x1eweekOfMonth\x1ftyźeń mjaseca\x1eweekday\x1fźeń tyźenja\x1eweekdayOfMonth\x1fźeń tyźenja w " +
-			"mjasecu\x1eyear\x1flěto\x1ezone\x1fcasowe pasmo\x1eday\x1fbúnyá\x1edayperiod\x1fepasi a búnyá\x1eera\x1fpóndá\x1ehour\x1fŋga" +
-			"ndɛ\x1eminute\x1fndɔkɔ\x1emonth\x1fmɔ́di\x1esecond\x1fpíndí\x1eweek\x1fdisama\x1eweekday\x1fmínyá má disama\x1eyear\x1fmbú" +
-			"\x1eday\x1fFunak\x1edayperiod\x1fBujom / Kalíim\x1eera\x1fJamanay\x1emonth\x1fFuleeŋ\x1eweek\x1fLóokuŋ\x1eyear\x1fEmit\x1eday\x1fཚེ" +
-			"ས་\x1edayperiod\x1fསྔ་ཆ/ཕྱི་ཆ་\x1eera\x1fདུས་བསྐལ\x1ehour\x1fཆུ་ཚོ" +
-			"ད\x1eminute\x1fསྐར་མ\x1emonth\x1fཟླ་ཝ་\x1esecond\x1fསྐར་ཆཱ་\x1eweek\x1fབདུན་" +
-			"ཕྲག\x1eweekday\x1fབདུན་ཕྲག་གི་ཉིམ\x1eyear\x1fལོ\x1ezone\x1fདུས་ཀ" +
-			"ུལ\x1eday\x1fMũthenya\x1eera\x1fIvinda\x1ehour\x1fIthaa\x1eminute\x1fNdagĩka\x1emonth\x1fMweri\x1esecond\x1fSekondi\x1eweek\x1fKiumi" +
-			"a\x1eweekday\x1fMũthenya kiumia-inĩ\x1eyear\x1fMwaka\x1ezone\x1fGĩthaa\x1eday\x1fŋkeke\x1edayperiod\x1fŋkekea me\x1eera\x1fŋɔ" +
-			"li\x1ehour\x1fgaƒoƒo\x1eminute\x1faɖabaƒoƒo\x1emonth\x1fɣleti\x1equarter\x1fkɔta\x1esecond\x1fsekend\x1eweek\x1fkɔsiɖa ɖek" +
-			"a\x1eweekday\x1fkɔsiɖa me ŋkeke\x1eyear\x1fƒe\x1ezone\x1fnutomegaƒoƒo\x1eday\x1fημέρα\x1edayOfYear\x1fημέρα έ" +
-			"τους\x1edayperiod\x1fπ.μ./μ.μ.\x1eera\x1fπερίοδος\x1ehour\x1fώρα\x1eminute\x1fλεπτό\x1emonth\x1fμήν" +
-			"ας\x1equarter\x1fτρίμηνο\x1esecond\x1fδευτερόλεπτο\x1eweek\x1fεβδομάδα\x1eweekOfMonth\x1fε" +
-			"βδομάδα μήνα\x1eweekday\x1fκαθημερινή\x1eweekdayOfMonth\x1fκαθημερινή μήνα" +
-			"\x1eyear\x1fέτος\x1ezone\x1fζώνη ώρας\x1eday\x1fday\x1edayOfYear\x1fday of year\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour" +
-			"\x1fhour\x1eminute\x1fminute\x1emonth\x1fmonth\x1equarter\x1fquarter\x1esecond\x1fsecond\x1eweek\x1fweek\x1eweekOfMonth\x1fweek of mont" +
-			"h\x1eweekday\x1fday of the week\x1eweekdayOfMonth\x1fweekday of the month\x1eyear\x1fyear\x1ezone\x1ftime zone\x1edayperiod" +
-			"\x1fam/pm\x1edayperiod\x1fa.m./p.m.\x1eday\x1ftago\x1edayOfYear\x1ftago de jaro\x1edayperiod\x1ftagtempo\x1eera\x1ferao\x1ehour\x1fhoro" +
-			"\x1eminute\x1fminuto\x1emonth\x1fmonato\x1equarter\x1fjarkvarono\x1esecond\x1fsekundo\x1eweek\x1fsemajno\x1eweekOfMonth\x1fsemajno d" +
-			"e monato\x1eweekday\x1ftago de semajno\x1eweekdayOfMonth\x1fsemajntago de monato\x1eyear\x1fjaro\x1ezone\x1fhorzono\x1eday\x1f" +
-			"día\x1edayOfYear\x1fdía del año\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1eera\x1fera\x1ehour\x1fhora\x1eminute\x1fminuto\x1emonth\x1fmes\x1eq" +
-			"uarter\x1ftrimestre\x1esecond\x1fsegundo\x1eweek\x1fsemana\x1eweekOfMonth\x1fsemana del mes\x1eweekday\x1fdía de la semana" +
-			"\x1eweekdayOfMonth\x1fdía de la semana del mes\x1eyear\x1faño\x1ezone\x1fzona horaria\x1edayperiod\x1fa.m./p.m.\x1eweekda" +
-			"yOfMonth\x1fdía hábil del mes\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./p." +
-			"\u00a0m.\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1eday\x1fDía\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1eera\x1fEra\x1emi" +
-			"nute\x1fMinuto\x1emonth\x1fMes\x1equarter\x1fTrimestre\x1esecond\x1fSegundo\x1eweek\x1fSemana\x1eweekday\x1fDía de la semana\x1eyea" +
-			"r\x1fAño\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./" +
-			"p.\u00a0m.\x1eweekdayOfMonth\x1fdía de la semana del mes\x1eday\x1fpäev\x1edayOfYear\x1faasta päev\x1edayperiod\x1fenne/p" +
-			"ärast lõunat\x1eera\x1fajastu\x1ehour\x1ftund\x1eminute\x1fminut\x1emonth\x1fkuu\x1equarter\x1fkvartal\x1esecond\x1fsekund\x1eweek\x1fnä" +
-			"dal\x1eweekOfMonth\x1fkuu nädal\x1eweekday\x1fnädalapäev\x1eweekdayOfMonth\x1fkuu nädalapäev\x1eyear\x1faasta\x1ezone\x1f" +
-			"ajavöönd\x1eday\x1feguna\x1edayOfYear\x1furteko #. eguna\x1edayperiod\x1fAM/PM\x1eera\x1faroa\x1ehour\x1fordua\x1eminute\x1fminutu" +
-			"a\x1emonth\x1fhilabetea\x1equarter\x1fhiruhilekoa\x1esecond\x1fsegundoa\x1eweek\x1fastea\x1eweekOfMonth\x1fhileko #. astea\x1ewee" +
-			"kday\x1fasteguna\x1eweekdayOfMonth\x1fhileko #. asteguna\x1eyear\x1furtea\x1ezone\x1fordu-zona\x1eday\x1fAmǒs\x1edayperiod\x1fKí" +
-			"rí / Ngəgógəle\x1eera\x1fAbǒg\x1ehour\x1fAwola\x1eminute\x1fEnútɛn\x1emonth\x1fNgɔn\x1esecond\x1fAkábəga\x1eweek\x1fSɔ́n" +
-			"dɔ\x1eweekday\x1fAmǒs yá sɔ́ndɔ\x1eyear\x1fM̀bú\x1ezone\x1fNkɔŋ Awola\x1eday\x1fروز\x1edayOfYear\x1fروز سال" +
-			"\x1edayperiod\x1fق.ظ/ب.ظ\x1eera\x1fدوره\x1ehour\x1fساعت\x1eminute\x1fدقیقه\x1emonth\x1fماه\x1equarter\x1fسه\u200c" +
-			"ماهه\x1esecond\x1fثانیه\x1eweek\x1fهفته\x1eweekOfMonth\x1fهفتهٔ ماه\x1eweekday\x1fروز هفته\x1ew" +
-			"eekdayOfMonth\x1fروز کاری ماه\x1eyear\x1fسال\x1ezone\x1fمنطقهٔ زمانی\x1eday\x1fÑalnde\x1edayper" +
-			"iod\x1fSahnga\x1eera\x1fJamaanu\x1ehour\x1fWaktu\x1eminute\x1fHoƴom\x1emonth\x1fLewru\x1esecond\x1fMajaango\x1eweek\x1fYontere\x1eweekday" +
-			"\x1fÑalɗi yontere\x1eyear\x1fHitaande\x1ezone\x1fDiiwaan waktu\x1eday\x1f𞤻𞤢𞤤𞤢𞥄𞤲𞤣𞤫\x1edayOfYear" +
-			"\x1f𞤻𞤢𞤤𞤢𞥄𞤲𞤣𞤫 𞤲𞤣𞤫𞤪 𞤸𞤭𞤼𞤢𞥄𞤲𞤣𞤫\x1edayperiod\x1f𞤀" +
-			"𞤎/𞤇𞤎\x1eera\x1f𞤺𞤭𞤪𞤢𞤤\x1ehour\x1f𞤲𞤶𞤢𞤥𞤣𞤭\x1eminute\x1f𞤸𞤮𞤶𞤮𞤥" +
-			"𞤢𞥄𞤪𞤫\x1emonth\x1f𞤤𞤫𞤱𞤪𞤵\x1equarter\x1f𞤲𞤢𞤴𞤢𞤩𞤭𞥅𞤪𞤫\x1esecond\x1f" +
-			"𞤳𞤭𞤲𞤰𞤫𞤪𞤫\x1eweek\x1f𞤴𞤮𞤲𞤼𞤫𞤪𞤫\x1eweekOfMonth\x1f𞤴𞤮𞤲𞤼𞤫𞤪" +
-			"𞤫 𞤲𞤣𞤫𞤪 𞤤𞤫𞤱𞤪𞤵\x1eweekday\x1f𞤻𞤢𞤤𞤢𞥄𞤲𞤣𞤫 𞤲𞤣𞤫" +
-			"𞤪 𞤴𞤮𞤲𞤼𞤫𞤪𞤫\x1eweekdayOfMonth\x1f𞤻𞤢𞤤𞤢𞥄𞤲𞤣𞤫 𞤲𞤣𞤫𞤪" +
-			" 𞤴𞤮𞤲𞤼𞤫𞤪𞤫\x1eyear\x1f𞤸𞤭𞤼𞤢𞥄𞤲𞤣𞤫\x1ezone\x1f𞤲𞤶𞤢𞤥𞤣𞤭" +
-			" 𞤲𞤮𞤳𞥆𞤵𞥅𞤪𞤫\x1eday\x1fpäivä\x1edayOfYear\x1fvuodenpäivä\x1edayperiod\x1fvuorokaudenaika\x1e" +
-			"era\x1faikakausi\x1ehour\x1ftunti\x1eminute\x1fminuutti\x1emonth\x1fkuukausi\x1equarter\x1fneljännesvuosi\x1esecond\x1fsekunti\x1ew" +
-			"eek\x1fviikko\x1eweekOfMonth\x1fkuukauden viikko\x1eweekday\x1fviikonpäivä\x1eweekdayOfMonth\x1fkuukauden viikonpä" +
-			"ivä\x1eyear\x1fvuosi\x1ezone\x1faikavyöhyke\x1eday\x1faraw\x1edayOfYear\x1faraw ng taon\x1edayperiod\x1fAM/PM\x1eera\x1fpanahon\x1eho" +
-			"ur\x1foras\x1eminute\x1fminuto\x1emonth\x1fbuwan\x1equarter\x1fquarter\x1esecond\x1fsegundo\x1eweek\x1flinggo\x1eweekOfMonth\x1flinggo " +
-			"ng buwan\x1eweekday\x1faraw ng linggo\x1eweekdayOfMonth\x1fkaraniwang araw ng buwan\x1eyear\x1ftaon\x1ezone\x1ftime zone" +
-			"\x1eday\x1fdagur\x1edayOfYear\x1fdagur í árinum\x1edayperiod\x1fAM/PM\x1eera\x1ftíðarrokning\x1ehour\x1ftími\x1eminute\x1fminut" +
-			"tur\x1emonth\x1fmánaður\x1equarter\x1fársfjórðingur\x1esecond\x1fsekund\x1eweek\x1fvika\x1eweekOfMonth\x1fvika í mánað" +
-			"inum\x1eweekday\x1fvikudagur\x1eweekdayOfMonth\x1fvikudagur í mánaðinum\x1eyear\x1fár\x1ezone\x1ftíðarøki\x1eday\x1fjou" +
-			"r\x1edayOfYear\x1fjour (année)\x1edayperiod\x1fcadran\x1eera\x1fère\x1ehour\x1fheure\x1eminute\x1fminute\x1emonth\x1fmois\x1equarter\x1f" +
-			"trimestre\x1esecond\x1fseconde\x1eweek\x1fsemaine\x1eweekOfMonth\x1fsemaine (mois)\x1eweekday\x1fjour de la semaine\x1eweek" +
-			"dayOfMonth\x1fjour (mois)\x1eyear\x1fannée\x1ezone\x1ffuseau horaire\x1edayOfYear\x1fjour de l’année\x1eweekOfMonth\x1f" +
-			"semaine du mois\x1eweekdayOfMonth\x1fjour du mois\x1eday\x1fdì\x1edayperiod\x1ftoc dal dì\x1eera\x1fere\x1ehour\x1fore\x1eminut" +
-			"e\x1fminût\x1emonth\x1fmês\x1esecond\x1fsecont\x1eweek\x1fsetemane\x1eweekday\x1fdì de setemane\x1eyear\x1fan\x1eday\x1fdei\x1edayperio" +
-			"d\x1fAM/PM\x1eera\x1fTiidsrin\x1ehour\x1foere\x1eminute\x1fMinút\x1emonth\x1fMoanne\x1esecond\x1fSekonde\x1eweek\x1fWike\x1eweekday\x1fdei v" +
-			"an de wike\x1eyear\x1fJier\x1eday\x1flá\x1edayOfYear\x1flá den bhliain\x1edayperiod\x1fa.m./p.m.\x1eera\x1fré\x1ehour\x1fuair\x1emin" +
-			"ute\x1fnóiméad\x1emonth\x1fmí\x1equarter\x1fráithe\x1esecond\x1fsoicind\x1eweek\x1fseachtain\x1eweekOfMonth\x1fseachtain den " +
-			"mhí\x1eweekday\x1flá den tseachtain\x1eweekdayOfMonth\x1flá den tseachtain sa mhí\x1eyear\x1fbliain\x1ezone\x1fcrios" +
-			" ama\x1eday\x1flatha\x1edayOfYear\x1flà dhen bhliadhna\x1edayperiod\x1fm/f\x1eera\x1flinn\x1ehour\x1fuair a thìde\x1eminute\x1fmio" +
-			"naid\x1emonth\x1fmìos\x1equarter\x1fcairteal\x1esecond\x1fdiog\x1eweek\x1fseachdain\x1eweekOfMonth\x1fseachdain dhen mhìos\x1ew" +
-			"eekday\x1flatha na seachdaine\x1eweekdayOfMonth\x1flà na seachdaine dhen mhìos\x1eyear\x1fbliadhna\x1ezone\x1froinn" +
-			"-tìde\x1eday\x1fdía\x1edayOfYear\x1fdía do ano\x1edayperiod\x1fa.m./p.m.\x1eera\x1fera\x1ehour\x1fhora\x1eminute\x1fminuto\x1emonth\x1f" +
-			"mes\x1equarter\x1ftrimestre\x1esecond\x1fsegundo\x1eweek\x1fsemana\x1eweekOfMonth\x1fsemana do mes\x1eweekday\x1fdía da seman" +
-			"a\x1eweekdayOfMonth\x1fsemana do mes\x1eyear\x1fano\x1ezone\x1ffuso horario\x1eday\x1fTag\x1edayperiod\x1fTageshälfti\x1eera\x1fEpo" +
-			"che\x1ehour\x1fSchtund\x1eminute\x1fMinuute\x1emonth\x1fMonet\x1esecond\x1fSekunde\x1eweek\x1fWuche\x1eweekday\x1fWuchetag\x1eyear\x1fJaar" +
-			"\x1eday\x1fદિવસ\x1edayOfYear\x1fવર્ષનો દિવસ\x1edayperiod\x1fAM/PM\x1eera\x1fયુગ\x1ehour\x1fક" +
-			"લાક\x1eminute\x1fમિનિટ\x1emonth\x1fમહિનો\x1equarter\x1fત્રિમાસિક\x1esecon" +
-			"d\x1fસેકંડ\x1eweek\x1fઅઠવાડિયું\x1eweekOfMonth\x1fમહિનાનું અઠવ" +
-			"ાડિયું\x1eweekday\x1fઅઠવાડિયાનો દિવસ\x1eweekdayOfMonth\x1fમહિન" +
-			"ાના અઠવાડિયાનો દિવસ\x1eyear\x1fવર્ષ\x1ezone\x1fસમય ઝોન" +
-			"\x1eday\x1fRituko\x1edayperiod\x1fMambia gose Morogoba\x1eera\x1fEbiro\x1ehour\x1fEnsa\x1eminute\x1fEdakika\x1emonth\x1fOmotienyi\x1ese" +
-			"cond\x1fEsekendi\x1eweek\x1fOmokubio\x1eweekday\x1fRituko r’ewiki\x1eyear\x1fOmwaka\x1ezone\x1fChinse ‘chimo\x1eday\x1fkwana\x1e" +
-			"dayOfYear\x1fKwanan Shekara\x1edayperiod\x1fSF/YM\x1eera\x1fzamani\x1ehour\x1fawa\x1eminute\x1fminti\x1emonth\x1fwata\x1equarter\x1fkwa" +
-			"ta\x1esecond\x1fdaƙiƙa\x1eweek\x1fmako\x1eweekOfMonth\x1fMakon Wata\x1eweekday\x1franar mako\x1eweekdayOfMonth\x1fRanar Aiki" +
-			"n Wata\x1eyear\x1fshekara\x1ezone\x1fLokacin yanki\x1eday\x1fיום\x1edayOfYear\x1fיום בשנה\x1edayperiod\x1fלפנה״" +
-			"צ/אחה״צ\x1eera\x1fתקופה\x1ehour\x1fשעה\x1eminute\x1fדקה\x1emonth\x1fחודש\x1equarter\x1fרבעון\x1esecond\x1f" +
-			"שנייה\x1eweek\x1fשבוע\x1eweekOfMonth\x1fהשבוע בחודש\x1eweekday\x1fיום בשבוע\x1eweekdayOfMo" +
-			"nth\x1fיום חול בחודש\x1eyear\x1fשנה\x1ezone\x1fאזור זמן\x1eday\x1fदिन\x1edayOfYear\x1fवर्ष" +
-			" का दिन\x1edayperiod\x1fपूर्वाह्न/अपराह्न\x1eera\x1fयुग\x1ehour" +
-			"\x1fघंटा\x1eminute\x1fमिनट\x1emonth\x1fमाह\x1equarter\x1fतिमाही\x1esecond\x1fसेकं" +
-			"ड\x1eweek\x1fसप्ताह\x1eweekOfMonth\x1fमाह का सप्ताह\x1eweekday\x1fसप्त" +
-			"ाह का दिन\x1eweekdayOfMonth\x1fमाह के कार्यदिवस\x1eyear\x1fवर्" +
-			"ष\x1ezone\x1fसमय क्षेत्र\x1eday\x1fdin\x1edayOfYear\x1fsaal kaa din\x1ehour\x1fghanta\x1emonth\x1fmahina" +
-			"\x1eweek\x1fhafta\x1eweekOfMonth\x1fmonth kaa week\x1eweekday\x1fWeek kaa din\x1eweekdayOfMonth\x1fmonth kaa weekday\x1eyea" +
-			"r\x1fsaal\x1eday\x1fdan\x1edayOfYear\x1fdan u godini\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fsat\x1eminute\x1fminuta\x1emonth\x1fmjese" +
-			"c\x1equarter\x1fkvartal\x1esecond\x1fsekunda\x1eweek\x1ftjedan\x1eweekOfMonth\x1ftjedan u mjesecu\x1eweekday\x1fdan u tjednu\x1ew" +
-			"eekdayOfMonth\x1fradni dan u mjesecu\x1eyear\x1fgodina\x1ezone\x1fvremenska zona\x1eday\x1fdźeń\x1edayOfYear\x1fdźeń lě" +
-			"ta\x1edayperiod\x1fpołojca dnja\x1eera\x1fdoba\x1ehour\x1fhodźina\x1eminute\x1fminuta\x1emonth\x1fměsac\x1equarter\x1fkwartal\x1esec" +
-			"ond\x1fsekunda\x1eweek\x1ftydźeń\x1eweekOfMonth\x1ftydźeń měsaca\x1eweekday\x1fdźeń tydźenja\x1eweekdayOfMonth\x1fd" +
-			"źeń tydźenja w měsacu\x1eyear\x1flěto\x1ezone\x1fčasowe pasmo\x1eday\x1fnap\x1edayOfYear\x1fév napja\x1edayperiod\x1fna" +
-			"pszak\x1eera\x1féra\x1ehour\x1fóra\x1eminute\x1fperc\x1emonth\x1fhónap\x1equarter\x1fnegyedév\x1esecond\x1fmásodperc\x1eweek\x1fhét\x1e" +
-			"weekOfMonth\x1fhónap hete\x1eweekday\x1fhét napja\x1eweekdayOfMonth\x1fhónap hétköznapja\x1eyear\x1fév\x1ezone\x1fidő" +
-			"zóna\x1eday\x1fօր\x1edayOfYear\x1fտարվա օր\x1edayperiod\x1fԿԱ/ԿՀ\x1eera\x1fթվարկություն\x1ehour\x1fժ" +
-			"ամ\x1eminute\x1fրոպե\x1emonth\x1fամիս\x1equarter\x1fեռամսյակ\x1esecond\x1fվայրկյան\x1eweek\x1fշաբ" +
-			"աթ\x1eweekOfMonth\x1fամսվա շաբաթ\x1eweekday\x1fշաբաթվա օր\x1eweekdayOfMonth\x1fամսվա օր" +
-			"\x1eyear\x1fտարի\x1ezone\x1fժամային գոտի\x1eday\x1fdie\x1edayOfYear\x1fdie del anno\x1edayperiod\x1fAM/PM\x1eera\x1fe" +
-			"ra\x1ehour\x1fhora\x1eminute\x1fminuta\x1emonth\x1fmense\x1equarter\x1ftrimestre\x1esecond\x1fsecunda\x1eweek\x1fseptimana\x1eweekOfMon" +
-			"th\x1fseptimana del mense\x1eweekday\x1fdie del septimana\x1eweekdayOfMonth\x1fdie de septimana del mense\x1eyear\x1f" +
-			"anno\x1ezone\x1ffuso horari\x1eday\x1fhari\x1edayOfYear\x1fhari dalam setahun\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fjam\x1emin" +
-			"ute\x1fmenit\x1emonth\x1fbulan\x1equarter\x1fkuartal\x1esecond\x1fdetik\x1eweek\x1fminggu\x1eweekOfMonth\x1fminggu\x1eweekday\x1fhari d" +
-			"alam seminggu\x1eweekdayOfMonth\x1fhari kerja\x1eyear\x1ftahun\x1ezone\x1fzona waktu\x1eday\x1fdie\x1edayperiod\x1fmidídie\x1eer" +
-			"a\x1fera\x1ehour\x1fhor\x1eminute\x1fminute\x1emonth\x1fmensu\x1equarter\x1ftrimestre\x1esecond\x1fseconde\x1eweek\x1fsemane\x1eweekday\x1fdi" +
-			"e del semane\x1eyear\x1fannu\x1ezone\x1fzone horari\x1eday\x1fỤbọchị\x1edayOfYear\x1fụbọchị na afọ\x1edayperi" +
-			"od\x1fN’ụtụtụ/N’abalị\x1eera\x1fOge\x1ehour\x1felekere\x1eminute\x1fNkeji\x1emonth\x1fỌnwa\x1equarter\x1fỌnwa atọ" +
-			" n’afọ\x1esecond\x1fsekọnd\x1eweek\x1fIzu\x1eweekOfMonth\x1fịzụ nke ọnwa\x1eweekday\x1fỤbọchị izu\x1eweek" +
-			"dayOfMonth\x1fỤbọchị ịzụ na ọnwa\x1eyear\x1fAfọ\x1ezone\x1foge mpaghara\x1eday\x1fꃅꑍ\x1edayperiod\x1fꎸꄑ" +
-			"/ꁯꋒ\x1eera\x1fꃅꋊ\x1ehour\x1fꄮꈉꂷ\x1eminute\x1fꄮꈉꃏ\x1emonth\x1fꃅꆪ\x1equarter\x1fꄮꐰ\x1esecond\x1fꄮꈉꇅ\x1e" +
-			"week\x1fꆏꊂ\x1eweekday\x1fꆏꑍꃅꑍ\x1eyear\x1fꃅꈎ\x1ezone\x1fꄮꈉꎖꌐꅉ\x1eday\x1fdagur\x1edayOfYear\x1fdagur í á" +
-			"ri\x1edayperiod\x1ff.h./e.h.\x1eera\x1ftímabil\x1ehour\x1fklukkustund\x1eminute\x1fmínúta\x1emonth\x1fmánuður\x1equarter\x1fár" +
-			"sfjórðungur\x1esecond\x1fsekúnda\x1eweek\x1fvika\x1eweekOfMonth\x1fvika í mánuði\x1eweekday\x1fvikudagur\x1eweekdayOf" +
-			"Month\x1fvikudagur í mánuði\x1eyear\x1fár\x1ezone\x1ftímabelti\x1eday\x1fgiorno\x1edayOfYear\x1fgiorno dell’anno\x1eday" +
-			"period\x1fAM/PM\x1eera\x1fera\x1ehour\x1fora\x1eminute\x1fminuto\x1emonth\x1fmese\x1equarter\x1ftrimestre\x1esecond\x1fsecondo\x1eweek\x1fset" +
-			"timana\x1eweekOfMonth\x1fsettimana del mese\x1eweekday\x1fgiorno della settimana\x1eweekdayOfMonth\x1fgiorno del m" +
-			"ese\x1eyear\x1fanno\x1ezone\x1ffuso orario\x1eday\x1f日\x1edayOfYear\x1f年の通日\x1edayperiod\x1f午前/午後\x1eera\x1f時代" +
-			"\x1ehour\x1f時\x1eminute\x1f分\x1emonth\x1f月\x1equarter\x1f四半期\x1esecond\x1f秒\x1eweek\x1f週\x1eweekOfMonth\x1f月の週番号" +
-			"\x1eweekday\x1f曜日\x1eweekdayOfMonth\x1f月の曜日番号\x1eyear\x1f年\x1ezone\x1fタイムゾーン\x1eday\x1fMfiri\x1eday" +
-			"period\x1fMfiri o siku\x1eera\x1fKacha\x1ehour\x1fSaa\x1eminute\x1fDakyika\x1emonth\x1fMori\x1esecond\x1fSekunde\x1eweek\x1fWiikyi\x1eyear" +
-			"\x1fMaka\x1ezone\x1fMfiri o saa\x1eday\x1fdina\x1edayOfYear\x1fdina sajrone setaun\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fjam\x1em" +
-			"inute\x1fmenit\x1emonth\x1fsasi\x1equarter\x1ftriwulan\x1esecond\x1fdetik\x1eweek\x1fminggu\x1eweekOfMonth\x1fminggu sajrone sesa" +
-			"si\x1eweekday\x1fdina sajrone seminggu\x1eweekdayOfMonth\x1fdina kerja sajrone sesasi\x1eyear\x1ftaun\x1ezone\x1fzona we" +
-			"ktu\x1eday\x1fდღე\x1edayOfYear\x1fწლის დღე\x1edayperiod\x1fდღის ნახევარი" +
-			"\x1eera\x1fეპოქა\x1ehour\x1fსაათი\x1eminute\x1fწუთი\x1emonth\x1fთვე\x1equarter\x1fკვარ" +
-			"ტალი\x1esecond\x1fწამი\x1eweek\x1fკვირა\x1eweekOfMonth\x1fთვის კვირა\x1ew" +
-			"eekday\x1fკვირის დღე\x1eweekdayOfMonth\x1fკვირის დღე თვეში\x1e" +
-			"year\x1fწელი\x1ezone\x1fდროის სარტყელი\x1eday\x1fAss\x1edayperiod\x1fn tufat / n tm" +
-			"eddit\x1eera\x1fTallit\x1ehour\x1fTamert\x1eminute\x1fTamrect\x1emonth\x1fAggur\x1esecond\x1fTasint\x1eweek\x1fDdurt\x1eweekday\x1fUssan n" +
-			" ddurt\x1eyear\x1fAseggas\x1ezone\x1fAseglem asergan\x1eday\x1fMũthenya\x1edayperiod\x1fĨyakwakya/Ĩyawĩoo\x1eera\x1fĨvind" +
-			"a\x1ehour\x1fSaa\x1eminute\x1fNdatĩka\x1emonth\x1fMwai\x1esecond\x1fsekondi\x1eweek\x1fKyumwa\x1eweekday\x1fKyumwanĩ\x1eyear\x1fMwaka\x1ezo" +
-			"ne\x1fKĩsio kya ĩsaa\x1eday\x1fLihiku\x1edayperiod\x1fMuhi/Chilo\x1eera\x1fMahiku\x1ehour\x1fSaa\x1eminute\x1fDakika\x1emonth\x1fMwed" +
-			"i\x1esecond\x1fSekunde\x1eweek\x1fLijuma\x1eweekday\x1fDisiku dya lijuma\x1eyear\x1fMwaka\x1ezone\x1fNpanda wa muda\x1eday\x1fdia\x1eda" +
-			"yOfYear\x1fdia di anu\x1edayperiod\x1fam/pm\x1eera\x1fera\x1ehour\x1fora\x1eminute\x1fminutu\x1emonth\x1fmes\x1equarter\x1ftrimestri\x1ese" +
-			"cond\x1fsigundu\x1eweek\x1fsimana\x1eweekOfMonth\x1fsimana di mes\x1eweekday\x1fdia di simana\x1eweekdayOfMonth\x1fdia di s" +
-			"imana di mes\x1eyear\x1fanu\x1ezone\x1fora lokal\x1eday\x1fkutan\x1edayOfYear\x1fkutan re chihabʼ\x1edayperiod\x1fE/EW\x1eera\x1fxq" +
-			"ʼehil\x1ehour\x1fhoor\x1eminute\x1fkʼasal\x1emonth\x1fpo\x1equarter\x1fraqal\x1esecond\x1fkokʼ kʼas\x1eweek\x1fxamaan\x1eweekOfMont" +
-			"h\x1fxamaan re po\x1eweekday\x1fkutan re xamaan\x1eweekdayOfMonth\x1fxkutanil kʼanjel re li po\x1eyear\x1fchihabʼ\x1ez" +
-			"one\x1fxnaʼaj hoonal\x1eday\x1fkurã\x1edayOfYear\x1fprỹg kurã ũ kã\x1edayperiod\x1fAM/PM\x1eera\x1fvãsỹ\x1ehour\x1fóra" +
-			"\x1eminute\x1fmĩnũtu\x1emonth\x1fkysã\x1equarter\x1fkysã-tẽgtũ\x1esecond\x1fsegũno\x1eweek\x1fsimỹnỹ\x1eweekOfMonth\x1fk" +
-			"ysã simỹnỹ ũ kã\x1eweekday\x1fsimỹnỹ kurã ũ kã\x1eweekdayOfMonth\x1fsimỹnỹ kurã ũ kã ky" +
-			"sã tag kã\x1eyear\x1fprỹg\x1ezone\x1fẽmã ũ tá óra\x1eday\x1fJaari\x1edayperiod\x1fAdduha wala Aluula\x1eera\x1fZaman" +
-			"\x1ehour\x1fGuuru\x1eminute\x1fMiniti\x1emonth\x1fHandu\x1esecond\x1fMiti\x1eweek\x1fHebu\x1eyear\x1fJiiri\x1ezone\x1fLeerazuu\x1eday\x1fMũthen" +
-			"ya\x1eera\x1fKĩhinda\x1ehour\x1fIthaa\x1eminute\x1fNdagĩka\x1emonth\x1fMweri\x1esecond\x1fica\x1eweek\x1fkiumia\x1eweekday\x1fMũthenya " +
-			"kiumia-inĩ\x1eyear\x1fMwaka\x1ezone\x1fMũcooro wa mathaa\x1eday\x1fкүн\x1edayOfYear\x1fжылдағы күн\x1edayper" +
-			"iod\x1fАМ/РМ\x1eera\x1fдәуір\x1ehour\x1fсағат\x1eminute\x1fминут\x1emonth\x1fай\x1equarter\x1fширек\x1esec" +
-			"ond\x1fсекунд\x1eweek\x1fапта\x1eweekOfMonth\x1fайдағы апта\x1eweekday\x1fапта күні\x1eweekd" +
-			"ayOfMonth\x1fайдағы апта күні\x1eyear\x1fжыл\x1ezone\x1fуақыт белдеуі\x1eday\x1fكۇن\x1ed" +
-			"ayOfYear\x1fجىلداعى كۇن\x1edayperiod\x1fتۇسكە دەيىن/تۇستەن كەيىن\x1eera\x1fءدا" +
-			"ۋىر\x1ehour\x1fساعات\x1eminute\x1fمينۋت\x1emonth\x1fاي\x1equarter\x1fشيرەك\x1esecond\x1fسەكۋند\x1eweek\x1f" +
-			"اپتا\x1eweekOfMonth\x1fايداعى اپتا\x1eweekday\x1fاپتا كۇنى\x1eweekdayOfMonth\x1fايداعى" +
-			" اپتا كۇنى\x1eyear\x1fجىل\x1ezone\x1fۋاقىت بەلدەۋى\x1eday\x1fBetut\x1edayperiod\x1fBE/KE\x1eera\x1fIbin" +
-			"ta\x1ehour\x1fSait\x1eminute\x1fMinitit\x1emonth\x1fArawet\x1esecond\x1fSekondit\x1eweek\x1fWikit\x1eweekday\x1fBetutab wikit\x1eyear\x1fK" +
-			"enyit\x1ezone\x1fSaitab sonit\x1eday\x1fថ្ងៃ\x1edayOfYear\x1fថ្ងៃនៃឆ្នាំ\x1edayperiod\x1fព" +
-			"្រឹក/ល្ងាច\x1eera\x1fសករាជ\x1ehour\x1fម៉ោង\x1eminute\x1fនាទី\x1emonth\x1fខ" +
-			"ែ\x1equarter\x1fត្រីមាស\x1esecond\x1fវិនាទី\x1eweek\x1fសប្ដាហ៍\x1eweekOfMon" +
-			"th\x1fសប្ដាហ៍នៃខែ\x1eweekday\x1fថ្ងៃ\u200bនៃ\u200bសប្ដាហ៍\x1eweekd" +
-			"ayOfMonth\x1fថ្ងៃសប្ដាហ៍នៃខែ\x1eyear\x1fឆ្នាំ\x1ezone\x1fល្វែង" +
-			"ម៉ោង\x1eday\x1fದಿನ\x1edayOfYear\x1fವರ್ಷದ ದಿನ\x1edayperiod\x1fAM/PM\x1eera\x1fಯುಗ\x1ehou" +
-			"r\x1fಗಂಟೆ\x1eminute\x1fನಿಮಿಷ\x1emonth\x1fತಿಂಗಳು\x1equarter\x1fತ್ರೈಮಾಸಿಕ" +
-			"\x1esecond\x1fಸೆಕೆಂಡ್\x1eweek\x1fವಾರ\x1eweekOfMonth\x1fತಿಂಗಳ ವಾರ\x1eweekday\x1fವಾ" +
-			"ರದ ದಿನ\x1eweekdayOfMonth\x1fತಿಂಗಳ ವಾರದ ದಿನ\x1eyear\x1fವರ್ಷ\x1ezone\x1fಸ" +
-			"ಮಯ ವಲಯ\x1eday\x1f일\x1edayOfYear\x1f년의 일\x1edayperiod\x1f오전/오후\x1eera\x1f연호\x1ehour\x1f시\x1eminute" +
-			"\x1f분\x1emonth\x1f월\x1equarter\x1f분기\x1esecond\x1f초\x1eweek\x1f주\x1eweekOfMonth\x1f월의 주\x1eweekday\x1f요일\x1eweekdayO" +
-			"fMonth\x1f월의 평일\x1eyear\x1f년\x1ezone\x1f시간대\x1eday\x1fदीस\x1edayOfYear\x1fवर्साचो दी" +
-			"स\x1edayperiod\x1fAM/PM\x1eera\x1fशक\x1ehour\x1fवर\x1eminute\x1fमिनीट\x1emonth\x1fम्हयनो\x1equart" +
-			"er\x1fत्रैमासीक\x1esecond\x1fसेकंद\x1eweek\x1fसप्तक\x1eweekOfMonth\x1fम्ह" +
-			"यन्यातलो सप्तक\x1eweekday\x1fसप्तकाचो दीस\x1eweekdayOfMon" +
-			"th\x1fम्हयन्यांत दीसाचो प्रसंग\x1eyear\x1fवर्स\x1ezone\x1fव" +
-			"ेळ झोन\x1eday\x1fdis\x1edayOfYear\x1fvorsacho dis\x1edayperiod\x1fAM/PM\x1eera\x1fyug\x1ehour\x1fvor\x1eminute\x1fminut\x1emo" +
-			"nth\x1fmhoino\x1equarter\x1ftimhoinallem\x1esecond\x1fsekond\x1eweek\x1fsuman\x1eweekOfMonth\x1fmhoineacho suman\x1eweekday\x1fsu" +
-			"manacho dis\x1eweekdayOfMonth\x1fmhoineant disacho prosong\x1eyear\x1fvoros\x1ezone\x1fvell kxetr\x1eday\x1fدۄہ\x1edaype" +
-			"riod\x1fصُبح/راتھ\x1eera\x1fدور\x1ehour\x1fگٲنٹہٕ\x1eminute\x1fمِنَٹ\x1emonth\x1fرؠتھ\x1equarter\x1fکو" +
-			"ارٹر\x1esecond\x1fسؠکَنڈ\x1eweek\x1fہفتہٕ\x1eweekday\x1fہفتُک دۄہ\x1eyear\x1fؤری\x1ezone\x1fوَکھ" +
-			" زون\x1eday\x1fदोह\x1edayperiod\x1fAM/PM\x1eera\x1fदोर\x1ehour\x1fगनटि\x1eminute\x1fमिनट\x1emonth\x1f" +
-			"माह\x1equarter\x1fचूरिम\x1esecond\x1fसेकंड\x1eweek\x1fहफ़ति\x1eweekday\x1fहफ़त" +
-			"ूक दोह\x1eyear\x1fवरीह\x1ezone\x1fवख ज़ून\x1eday\x1fSiku\x1edayperiod\x1fNamshii\x1eera\x1fMishi" +
-			"\x1ehour\x1fSaa\x1eminute\x1fDakika\x1emonth\x1fNg’ezi\x1esecond\x1fSekunde\x1eweek\x1fNiki\x1eweekday\x1fMwesiku za wiki\x1eyear\x1fNg’" +
-			"waka\x1ezone\x1fMajila\x1eday\x1fŊwós\x1edayperiod\x1fSárúwá / Cɛɛ́nko\x1eera\x1fByámɛɛn\x1ehour\x1fCámɛɛn\x1eminut" +
-			"e\x1fMǝnít\x1emonth\x1fŊwíí\x1esecond\x1fHáu\x1eweek\x1fSɔ́ndǝ\x1eweekday\x1fMǝrú mǝ sɔ́ndǝ\x1eyear\x1fBǝk\x1ezone\x1fW" +
-			"áas\x1eday\x1fDaach\x1edayperiod\x1fDaachteil\x1eera\x1fÄhra\x1ehour\x1fSchtund\x1eminute\x1fMenutt\x1emonth\x1fMohnd\x1equarter\x1fQuat" +
-			"tahl\x1esecond\x1fSekond\x1eweek\x1fWoch\x1eweekday\x1fWochedaach\x1eyear\x1fJohr\x1ezone\x1fZickzohn\x1eday\x1froj\x1edayOfYear\x1froja s" +
-			"alê\x1edayperiod\x1fBN/PN\x1eera\x1fçax\x1ehour\x1fsaet\x1eminute\x1fdeqîqe\x1emonth\x1fmeh\x1equarter\x1fçaryek\x1esecond\x1fsanîye\x1e" +
-			"week\x1fhefte\x1eweekOfMonth\x1fhefteya mehê\x1eweekday\x1froja hefteyê\x1eweekdayOfMonth\x1froja mehê\x1eyear\x1fsal\x1ezo" +
-			"ne\x1fqada saetê\x1eday\x1fdina\x1edayperiod\x1fam/pm\x1eera\x1fjug\x1ehour\x1fbelā\x1eminute\x1fminiṭ\x1emonth\x1flenju\x1equarter\x1fku" +
-			"arṭer\x1esecond\x1fsekenḍ\x1eweek\x1fvara\x1eweekday\x1fvara ti dina\x1eyear\x1fbarsa\x1ezone\x1fbelā muṭha\x1eday\x1fदिन" +
-			"ा\x1edayperiod\x1fए-एम/पी-एम\x1eera\x1fजुगाॅ\x1ehour\x1fबेला\x1eminute\x1fमिनि" +
-			"ट\x1emonth\x1fलेञ्जु\x1equarter\x1fतिनिमासा\x1esecond\x1fसेकेन्ड\x1eweek\x1f" +
-			"वारा\x1eweekday\x1fवारा ति दिना\x1eyear\x1fबार्सा\x1ezone\x1fबेला " +
-			"मुट्हा\x1eday\x1fଦିନା\x1edayperiod\x1fAM/PM\x1eera\x1fଜୁଗ\x1ehour\x1fବେଲା\x1eminute\x1fମି" +
-			"ନିଟ\x1emonth\x1fଲେଞ୍ଜୁ\x1equarter\x1fକ୍ୱାଟର\x1esecond\x1fସେକେଣ୍ଡ\x1eweek\x1f" +
-			"ୱାରା\x1eweekday\x1fୱାରା ତି ଦିନା\x1eyear\x1fବାର୍ସା\x1ezone\x1fବେଲା " +
-			"ମୁଟ୍ହା\x1eday\x1fదినం\x1edayperiod\x1fAM/PM\x1eera\x1fయుగం\x1ehour\x1fగంట\x1eminute\x1fని" +
-			"మిషము\x1emonth\x1fనెల\x1equarter\x1fత్రైమాసికం\x1esecond\x1fసెకను\x1ewe" +
-			"ek\x1fవారము\x1eweekday\x1fవారంలో రోజు\x1eyear\x1fసంవత్సరం\x1ezone\x1fస" +
-			"మయ మండలి\x1eday\x1fкүн\x1edayOfYear\x1fжылдын күнү\x1edayperiod\x1fТЧ/ТК\x1eera\x1fзам" +
-			"ан\x1ehour\x1fсаат\x1eminute\x1fмүнөт\x1emonth\x1fай\x1equarter\x1fчейрек\x1esecond\x1fсекунд\x1eweek\x1fа" +
-			"пта\x1eweekOfMonth\x1fайдын жумасы\x1eweekday\x1fаптанын күнү\x1eweekdayOfMonth\x1fайд" +
-			"ын жумуш күнү\x1eyear\x1fжыл\x1ezone\x1fубакыт алкагы\x1eday\x1fSikʉ\x1edayperiod\x1fMpɨɨnd" +
-			"ɨ ja sikʉ\x1eera\x1fMpɨɨndɨ\x1ehour\x1fSáa\x1eminute\x1fDakíka\x1emonth\x1fMweéri\x1esecond\x1fSekúunde\x1eweek\x1fWíiki\x1ew" +
-			"eekday\x1fSikʉ ya júma\x1eyear\x1fMwaáka\x1ezone\x1fMpɨɨndɨ ja mɨɨtʉ\x1eday\x1fDag\x1edayperiod\x1fDageshallschent" +
-			"\x1eera\x1fEpoch\x1ehour\x1fStonn\x1eminute\x1fMinutt\x1emonth\x1fMount\x1equarter\x1fQuartal\x1esecond\x1fSekonn\x1eweek\x1fWoch\x1eweekday\x1f" +
-			"Wochendag\x1eyear\x1fJoer\x1ezone\x1fZäitzon\x1eday\x1fLunaku\x1edayperiod\x1fAM/PM\x1eera\x1fMulembe\x1ehour\x1fSaawa\x1eminute\x1fDakii" +
-			"ka\x1emonth\x1fMwezi\x1esecond\x1fKasikonda\x1eweek\x1fSabbiiti\x1eweekday\x1fLunaku lw’omu sabbiiti\x1eyear\x1fMwaka\x1ezone\x1fS" +
-			"saawa za:\x1eday\x1fAŋpétu\x1ehour\x1fOwápȟe\x1eminute\x1fOwápȟe oȟʼáŋkȟo\x1emonth\x1fWí\x1esecond\x1fOkpí\x1eweek\x1fO" +
-			"kó\x1eweekday\x1fOkó-aŋpétu\x1eyear\x1fÓmakȟa\x1eday\x1fde\x1edayOfYear\x1fde dl ann\x1edayperiod\x1fAM/PM\x1eera\x1fepoca\x1ehou" +
-			"r\x1fora\x1eminute\x1fmenüt\x1emonth\x1fmëis\x1equarter\x1ftrimester\x1esecond\x1fsecunt\x1eweek\x1fedema\x1eweekOfMonth\x1fedema dl " +
-			"mëis\x1eweekday\x1fde dl’edema\x1eweekdayOfMonth\x1fde dl mëis\x1eyear\x1fann\x1ezone\x1fzona orara\x1eday\x1fMokɔlɔ\x1eday" +
-			"period\x1fEleko ya mokɔlɔ\x1eera\x1fNtángo\x1ehour\x1fNgonga\x1eminute\x1fMonúti\x1emonth\x1fSánzá\x1esecond\x1fSɛkɔ́ndɛ" +
-			"\x1eweek\x1fPɔ́sɔ\x1eweekday\x1fMokɔlɔ ya pɔ́sɔ\x1eyear\x1fMobú\x1ezone\x1fNtáká ya ngonga\x1eday\x1fມື້\x1edayO" +
-			"fYear\x1fມື້ຂອງປີ\x1edayperiod\x1fກ່ອນທ່ຽງ/ຫຼັງທ່ຽງ\x1eera\x1fສ" +
-			"ະໄໝ\x1ehour\x1fຊົ່ວໂມງ\x1eminute\x1fນາທີ\x1emonth\x1fເດືອນ\x1equarter\x1fໄຕຣ" +
-			"ມາດ\x1esecond\x1fວິນາທີ\x1eweek\x1fອາທິດ\x1eweekOfMonth\x1fອາທິດຂອງເ" +
-			"ດືອນ\x1eweekday\x1fມື້ຂອງອາທິດ\x1eweekdayOfMonth\x1fມື້ເຮັດວຽ" +
-			"ກຂອງເດືອນ\x1eyear\x1fປີ\x1ezone\x1fເຂດເວລາ\x1eday\x1fروٙز\x1edayperiod\x1fگات" +
-			" روٙز\x1eera\x1fسأرۉ\x1ehour\x1fساأت\x1eminute\x1fدئیقە\x1emonth\x1fما\x1equarter\x1fچارأک\x1esecond\x1fثا" +
-			"نیە\x1eweek\x1fھأفتە\x1eweekday\x1fروٙز ھأفتە\x1eyear\x1fسال\x1ezone\x1fراساگە\x1eday\x1fdiena\x1edayOf" +
-			"Year\x1fmetų diena\x1edayperiod\x1fiki pietų / po pietų\x1eera\x1fera\x1ehour\x1fvalanda\x1eminute\x1fminutė\x1emonth\x1fmėn" +
-			"uo\x1equarter\x1fketvirtis\x1esecond\x1fsekundė\x1eweek\x1fsavaitė\x1eweekOfMonth\x1fmėnesio savaitė\x1eweekday\x1fsavaitė" +
-			"s diena\x1eweekdayOfMonth\x1fmėnesio šiokiadienis\x1eyear\x1fmetai\x1ezone\x1flaiko juosta\x1eday\x1fDituku\x1edayperiod\x1f" +
-			"Mutantshi wa diba\x1eera\x1fTshipungu\x1ehour\x1fDiba\x1eminute\x1fKasunsu\x1emonth\x1fNgondo\x1esecond\x1fKasunsukusu\x1eweek\x1fLu" +
-			"bingu\x1eweekday\x1fDituku dia lubingu\x1eyear\x1fTshidimu\x1ezone\x1fNzeepu\x1eday\x1fchieng’\x1edayperiod\x1fodieochieng’" +
-			"/otieno\x1eera\x1fndalo\x1ehour\x1fsaa\x1eminute\x1fdakika\x1emonth\x1fdwe\x1esecond\x1fnyiriri mar saa\x1eweek\x1fjuma\x1eweekday\x1fndal" +
-			"o mar juma\x1eyear\x1fhiga\x1ezone\x1fkar saa\x1eday\x1fRidiku\x1edayperiod\x1fVuche/Vwira\x1eera\x1fRimenya\x1ehour\x1fIsaa\x1eminute\x1f" +
-			"Idagika\x1emonth\x1fMweri\x1esecond\x1fSekunde\x1eweek\x1fRisiza\x1eweekday\x1fMrisiza\x1eyear\x1fMuhiga\x1ezone\x1fHavundu\x1eday\x1fdien" +
-			"a\x1edayOfYear\x1fgada diena\x1edayperiod\x1fpriekšpusdienā/pēcpusdienā\x1eera\x1fēra\x1ehour\x1fstundas\x1eminute\x1fmin" +
-			"ūtes\x1emonth\x1fmēnesis\x1equarter\x1fceturksnis\x1esecond\x1fsekundes\x1eweek\x1fnedēļa\x1eweekOfMonth\x1fmēneša nedē" +
-			"ļa\x1eweekday\x1fnedēļas diena\x1eweekdayOfMonth\x1fmēneša nedēļas diena\x1eyear\x1fgads\x1ezone\x1flaika josla\x1ed" +
-			"ay\x1fदिन\x1edayOfYear\x1fबरखक दिन\x1edayperiod\x1fपूर्वाह्न/अपरा" +
-			"ह्न\x1eera\x1fमहीना केर सप्ताह\x1ehour\x1fघंटा\x1eminute\x1fमिनट" +
-			"\x1emonth\x1fमहीना\x1equarter\x1fतिमाही\x1esecond\x1fसेकंड\x1eweek\x1fसप्ताह" +
-			"\x1eweekOfMonth\x1fमहीना केर सप्ताह\x1eweekday\x1fसप्ताहक दिन" +
-			"\x1eweekdayOfMonth\x1fमाहक कार्यदिवस\x1eyear\x1fवर्ष\x1ezone\x1fसमय क्" +
-			"षेत्र\x1eday\x1fƐnkɔlɔ́ŋ\x1edayperiod\x1fƐnkakɛnyá/Ɛndámâ\x1eera\x1fƐnkátá\x1ehour\x1fƐ́sáâ\x1e" +
-			"minute\x1fOldákikaè\x1emonth\x1fƆlápà\x1esecond\x1fSekunde\x1eweek\x1fEwíkî\x1eweekday\x1fƐnkɔ́lɔŋ ewíkî\x1eyear" +
-			"\x1fƆlárì\x1ezone\x1fƐ́sáâ o inkuapí\x1eday\x1fNtukũ\x1edayperiod\x1fMũthenya\x1eera\x1fĨgita\x1ehour\x1fĨthaa\x1eminute" +
-			"\x1fNdagika\x1emonth\x1fMweri\x1esecond\x1fSekondi\x1eweek\x1fKiumia\x1eweekday\x1fNtukũ ya ngũgĩ\x1eyear\x1fMwaka\x1ezone\x1fGũntũ" +
-			" kwa thaa\x1eday\x1fZour\x1edayperiod\x1fPeryod dan lazourne\x1eera\x1fLepok\x1ehour\x1fLer\x1eminute\x1fMinit\x1emonth\x1fMwa\x1esecon" +
-			"d\x1fSegonn\x1eweek\x1fSemenn\x1eweekday\x1fZour lasemenn\x1eyear\x1fLane\x1ezone\x1fPeryod letan\x1eday\x1fAndro\x1edayperiod\x1fAM/PM" +
-			"\x1ehour\x1fOra\x1eminute\x1fMinitra\x1emonth\x1fVolana\x1esecond\x1fSegondra\x1eweek\x1fHerinandro\x1eyear\x1fTaona\x1eday\x1fnihuku\x1eera\x1f" +
-			"kal’lai\x1ehour\x1fisaa\x1eminute\x1fidakika\x1emonth\x1fmweri\x1esecond\x1fisekunde\x1eweek\x1fiwiki mocha\x1eweekday\x1fnihuku n" +
-			"o mwisho wa wiki\x1eyear\x1fyaka\x1eday\x1fanəg\x1emonth\x1fiməg\x1eweek\x1fnkap\x1eweekday\x1fanəg agu nkap\x1eyear\x1ffituʼ\x1eda" +
-			"y\x1frā\x1edayOfYear\x1frā o te tau\x1edayperiod\x1fi te ata/i te ahiahi/i te pō\x1eera\x1ftakiwātanga\x1ehour\x1fhāor" +
-			"a\x1eminute\x1fmeneti\x1emonth\x1fmarama\x1equarter\x1fhauwhā\x1esecond\x1fhēkona\x1eweek\x1fwiki\x1eweekOfMonth\x1fwiki o te mara" +
-			"ma\x1eweekday\x1frā o te wiki\x1eweekdayOfMonth\x1frā o te marama\x1eyear\x1ftau\x1ezone\x1frohe wā\x1eday\x1fден\x1edayOfY" +
-			"ear\x1fден од годината\x1edayperiod\x1fпретпладне/попладне\x1eera\x1fера\x1ehour" +
-			"\x1fчас\x1eminute\x1fминута\x1emonth\x1fмесец\x1equarter\x1fтримесечје\x1esecond\x1fсекунда\x1e" +
-			"week\x1fседмица\x1eweekOfMonth\x1fседмица од месецот\x1eweekday\x1fден од недел" +
-			"ата\x1eweekdayOfMonth\x1fден од месецот\x1eyear\x1fгодина\x1ezone\x1fвременска зон" +
-			"а\x1eday\x1fദിവസം\x1edayOfYear\x1fവർഷത്തിലെ ദിവസം\x1edayperiod\x1fAM/PM\x1eera" +
-			"\x1fകാലഘട്ടം\x1ehour\x1fമണിക്കൂർ\x1eminute\x1fമിനിറ്റ്\x1emonth\x1fമ" +
-			"ാസം\x1equarter\x1fപാദം\x1esecond\x1fസെക്കൻഡ്\x1eweek\x1fആഴ്ച\x1eweekOfMonth\x1fമ" +
-			"ാസത്തിലെ ആഴ്\u200cച\x1eweekday\x1fആഴ്ചയിലെ ദിവസം\x1eweekda" +
-			"yOfMonth\x1fമാസത്തിലെ പ്രവൃത്തി ദിവസം\x1eyear\x1fവർഷം" +
-			"\x1ezone\x1fസമയ മേഖല\x1eday\x1fөдөр\x1edayOfYear\x1fжилийн хоног\x1edayperiod\x1fү.ө./ү." +
-			"х.\x1eera\x1fэрин\x1ehour\x1fцаг\x1eminute\x1fминут\x1emonth\x1fсар\x1equarter\x1fулирал\x1esecond\x1fсеку" +
-			"нд\x1eweek\x1fдолоо хоног\x1eweekOfMonth\x1fсарын долоо хоног\x1eweekday\x1fгараг\x1e" +
-			"weekdayOfMonth\x1fажлын өдөр\x1eyear\x1fжил\x1ezone\x1fцагийн бүс\x1eday\x1fনুমিৎ\x1edayp" +
-			"eriod\x1fএ এম/পি এম\x1eera\x1fচক\x1ehour\x1fপুং\x1eminute\x1fমিনট\x1emonth\x1fথা\x1equarte" +
-			"r\x1fমসুং\x1esecond\x1fসেকেণ্ড\x1eweek\x1fচয়োল\x1eweekday\x1fচয়োলগী ন" +
-			"ুমিৎ\x1eyear\x1fচহী\x1ezone\x1fটাইম জোন\x1eday\x1fदिवस\x1edayOfYear\x1fवर्षा" +
-			"तील दिवस\x1edayperiod\x1fAM/PM\x1eera\x1fयुग\x1ehour\x1fतास\x1eminute\x1fमिनिट\x1emonth" +
-			"\x1fमहिना\x1equarter\x1fतिमाही\x1esecond\x1fसेकंद\x1eweek\x1fआठवडा\x1eweekOfMo" +
-			"nth\x1fमहिन्याचा आठवडा\x1eweekday\x1fआठवड्याचा दिवस" +
-			"\x1eweekdayOfMonth\x1fमहिन्यातील साप्ताहिक दिवस\x1eyear\x1fव" +
-			"र्ष\x1ezone\x1fटाइम झोन\x1eday\x1fhari\x1edayOfYear\x1fhari dalam tahun\x1edayperiod\x1fPG/PTG\x1eera\x1fe" +
-			"ra\x1ehour\x1fjam\x1eminute\x1fminit\x1emonth\x1fbulan\x1equarter\x1fsuku tahun\x1esecond\x1fsaat\x1eweek\x1fminggu\x1eweekOfMonth\x1fming" +
-			"gu dalam bulan\x1eweekday\x1fHari dalam Minggu\x1eweekdayOfMonth\x1fHari dalam Bulan\x1eyear\x1ftahun\x1ezone\x1fzon wak" +
-			"tu\x1eday\x1fjum\x1edayOfYear\x1fjum tas-sena\x1edayperiod\x1fAM/PM\x1ehour\x1fsiegħa\x1eminute\x1fminuta\x1emonth\x1fxahar\x1esecond\x1f" +
-			"sekonda\x1eweek\x1fġimgħa\x1eweekOfMonth\x1fġimgħa tax-xahar\x1eweekday\x1fjum tal-ġimgħa\x1eweekdayOfMonth\x1fjum" +
-			" tax-xahar\x1eyear\x1fSena\x1ezone\x1fżona tal-ħin\x1eday\x1fZah’nane/ Comme\x1eera\x1fSyii ma tãa\x1ehour\x1fCok comme\x1em" +
-			"inute\x1fCok comme ma laŋne\x1emonth\x1fFĩi\x1esecond\x1fCok comme ma laŋ tǝ biŋ\x1eweek\x1fLuma\x1eweekday\x1fKǝsyil" +
-			" luma\x1eyear\x1fSyii\x1ezone\x1fWaŋ cok comme\x1eday\x1fရက်\x1edayOfYear\x1fတစ်နှစ်အတွင်" +
-			"း ရက်ရေတွက်ပုံ\x1edayperiod\x1fနံနက်/ညနေ\x1eera\x1fခေတ်\x1eho" +
-			"ur\x1fနာရီ\x1eminute\x1fမိနစ်\x1emonth\x1fလ\x1equarter\x1fသုံးလပတ်\x1esecond\x1fစက္" +
-			"ကန့်\x1eweek\x1fပတ်\x1eweekOfMonth\x1fတစ်လအတွင်းရှိသီတင်း" +
-			"ပတ်\x1eweekday\x1fနေ့\x1eweekdayOfMonth\x1fတစ်လအတွင်းရှိအလုပ်" +
-			"ရက်\x1eyear\x1fနှစ်\x1ezone\x1fဇုန်\x1eday\x1fروز\x1edayperiod\x1fصواحی/ظُر\x1eera\x1fتقوی" +
-			"م\x1ehour\x1fساعِت\x1eminute\x1fدقیقه\x1emonth\x1fماه\x1equarter\x1fربع\x1esecond\x1fثانیه\x1eweek\x1fهفته" +
-			"\x1eweekday\x1fهفته\u200cی ِروز\x1eyear\x1fسال\x1ezone\x1fزمونی منقطه\x1eday\x1fTsees\x1edayperiod\x1fǁgoa" +
-			"s/ǃuis\x1eera\x1fǁAeǃgâs\x1ehour\x1fIiri\x1eminute\x1fHaib\x1emonth\x1fǁKhâb\x1esecond\x1fǀGâub\x1eweek\x1fWekheb\x1eweekday\x1fWe" +
-			"kheb tsees\x1eyear\x1fKurib\x1ezone\x1fǁAeb ǀharib\x1eday\x1fIlanga\x1ehour\x1fIhola\x1eminute\x1fUmuzuzu\x1emonth\x1fInyangacale\x1e" +
-			"second\x1fIsekendi\x1eweek\x1fIviki\x1eweekday\x1fIlanga leviki\x1eyear\x1fUmnyaka\x1ezone\x1fIsikhathi\x1eday\x1fबार\x1edayOf" +
-			"Year\x1fवर्षको बार\x1edayperiod\x1fपूर्वाह्न / अपराह्न\x1e" +
-			"era\x1fकाल\x1ehour\x1fघण्टा\x1eminute\x1fमिनेट\x1emonth\x1fमहिना\x1equarter\x1fत्र" +
-			"ैमासिक\x1esecond\x1fसेकेन्ड\x1eweek\x1fहप्ता\x1eweekOfMonth\x1fमहिना" +
-			"को हप्ता\x1eweekday\x1fहप्ताको बार\x1eweekdayOfMonth\x1fमहिनाक" +
-			"ो हप्तादिन\x1eyear\x1fवर्ष\x1ezone\x1fक्षेत्र\x1eday\x1fdag\x1edayOfYear\x1fdag " +
-			"van het jaar\x1edayperiod\x1fa.m./p.m.\x1eera\x1ftijdperk\x1ehour\x1fuur\x1eminute\x1fminuut\x1emonth\x1fmaand\x1equarter\x1fkwartaa" +
-			"l\x1esecond\x1fseconde\x1eweek\x1fweek\x1eweekOfMonth\x1fweek van de maand\x1eweekday\x1fdag van de week\x1eweekdayOfMonth\x1f" +
-			"weekdag van de maand\x1eyear\x1fjaar\x1ezone\x1ftijdzone\x1eday\x1fDuö\x1edayperiod\x1fMáná, Muó, Kugú, Bvul\x1eera\x1fPī" +
-			"l/Lahlɛ̄\x1ehour\x1fWulā\x1eminute\x1fMpálâ\x1emonth\x1fNgwɛn\x1esecond\x1fNyiɛl\x1eweek\x1fSɔ́ndɔ\x1eyear\x1fMbvu\x1ezone\x1fNk" +
-			"ɛ̌l wulā\x1emonth\x1fmånad\x1eweek\x1fveke\x1eweekOfMonth\x1fveke i månaden\x1eweekday\x1fvekedag\x1eweekdayOfMonth\x1fve" +
-			"kedag i månaden\x1eday\x1flyɛ̌ʼ\x1eera\x1ftsɔ́ fʉ̀ʼ\x1ehour\x1ffʉ̀ʼ nèm\x1eweekday\x1fngàba láʼ\x1eyear\x1fngù" +
-			"ʼ\x1eday\x1fdag\x1edayOfYear\x1fdag i året\x1edayperiod\x1fa.m./p.m.\x1eera\x1ftidsalder\x1ehour\x1ftime\x1eminute\x1fminutt\x1emonth" +
-			"\x1fmåned\x1equarter\x1fkvartal\x1esecond\x1fsekund\x1eweek\x1fuke\x1eweekOfMonth\x1fuke i måneden\x1eweekday\x1fukedag\x1eweekday" +
-			"OfMonth\x1fukedag i måneden\x1eyear\x1får\x1ezone\x1ftidssone\x1eday\x1fߟߏ߲\x1edayperiod\x1fߛ/ߥ\x1eera\x1fߕߎ߬ߡߊ\x1ehour\x1f" +
-			"ߕߎ߬ߡߊ߬ߙߋ߲\x1eminute\x1fߡߌ߬ߛߍ߲\x1emonth\x1fߞߊߙߏ\x1equarter\x1fߣߊ߯ߣߌ߲ߢߐ߲߮\x1esecond\x1fߝߌ߬" +
-			"ߟߊ߲\x1eweek\x1fߟߐ߯ߕߍ\x1eweekday\x1fߟߐ߯ߕߍ ߟߏ߲ ߠߎ߬\x1eyear\x1fߛߊ߲߭\x1ezone\x1fߝߊ߲߬ߕߙߊ߬ ߕߎ" +
-			"ߡߊ\x1eday\x1fCäŋ\x1eera\x1fGua̱a̱th Ruëc\x1ehour\x1fThaak\x1eminute\x1fMinit\x1emonth\x1fPay\x1esecond\x1fThɛkɛni\x1eweek\x1fJiɔ" +
-			"k\x1eweekday\x1fNi̱n jokä\x1eyear\x1fRuɔ̱n\x1eday\x1fEizooba\x1edayperiod\x1fNyomushana/nyekiro\x1eera\x1fObunaku\x1ehour\x1fSha" +
-			"aha\x1eminute\x1fEdakiika\x1emonth\x1fOmwezi\x1esecond\x1fObucweka/Esekendi\x1eweek\x1fEsande\x1eweekday\x1fEizooba ry’okuko" +
-			"ra\x1eyear\x1fOmwaka\x1ezone\x1fEshaaha za\x1eday\x1fguyyaa\x1edayOfYear\x1fguyyaa waggaa\x1edayperiod\x1fWD/WB\x1eera\x1fbara\x1ehour\x1f" +
-			"sa’aatii\x1eminute\x1fdaqiiqaa\x1emonth\x1fji’a\x1equarter\x1fkurmaana\x1esecond\x1fsekoondii\x1eweek\x1ftorbee\x1eweekOfMont" +
-			"h\x1ftorbrr ji’aa\x1eweekday\x1fguyyaa kan torbee\x1eweekdayOfMonth\x1fguyyaatorbee kan ji’aa\x1eyear\x1fwaggaa\x1ez" +
-			"one\x1fzoonii yeroo\x1eday\x1fଦିନ\x1edayOfYear\x1fବର୍ଷର ଦିନ\x1edayperiod\x1fAM/PM\x1eera\x1fଯୁଗ" +
-			"\x1ehour\x1fଘଣ୍ଟା\x1eminute\x1fମିନିଟ୍\x1emonth\x1fମାସ\x1equarter\x1fତ୍ରୟମାସ\x1ese" +
-			"cond\x1fସେକେଣ୍ଡ୍\x1eweek\x1fସପ୍ତାହ\x1eweekOfMonth\x1fମାସର ସପ୍ତାହ" +
-			"\x1eweekday\x1fସ. ର ଦିନ\x1eweekdayOfMonth\x1fମାସର ସାପ୍ତାହିକ ଦିନ\x1eye" +
-			"ar\x1fବର୍ଷ\x1ezone\x1fସମୟ କ୍ଷେତ୍ର\x1eday\x1fБон\x1edayperiod\x1fБоны период\x1e" +
-			"era\x1fДуг\x1ehour\x1fСахат\x1eminute\x1fМинут\x1emonth\x1fМӕй\x1esecond\x1fСекунд\x1eweek\x1fКъуыри\x1e" +
-			"weekday\x1fКъуырийы бон\x1eyear\x1fАз\x1ezone\x1fРӕстӕджы зонӕ\x1eday\x1fਦਿਨ\x1edayOfYear" +
-			"\x1fਸਾਲ ਦਾ ਦਿਨ\x1edayperiod\x1fAM/PM\x1eera\x1fਸੰਮਤ\x1ehour\x1fਘੰਟਾ\x1eminute\x1fਮਿੰਟ" +
-			"\x1emonth\x1fਮਹੀਨਾ\x1equarter\x1fਤਿਮਾਹੀ\x1esecond\x1fਸਕਿੰਟ\x1eweek\x1fਹਫ਼ਤਾ\x1ewe" +
-			"ekOfMonth\x1fਮਹੀਨੇ ਦਾ ਹਫ਼ਤਾ\x1eweekday\x1fਹਫ਼ਤੇ ਦਾ ਦਿਨ\x1eweekda" +
-			"yOfMonth\x1fਮਹੀਨੇ ਦਾ ਹਫ਼ਤੇ ਦਾ ਦਿਨ\x1eyear\x1fਸਾਲ\x1ezone\x1fਇਲਾਕ" +
-			"ਾਈ ਵੇਲਾ\x1eday\x1fدئن\x1ehour\x1fگھنٹا\x1eminute\x1fمنٹ\x1emonth\x1fمہينا\x1eweek\x1fہفتہ\x1eweek" +
-			"day\x1fہفتے دا دن\x1eyear\x1fورھا\x1ezone\x1fٹپہ\x1eday\x1fDè\x1edayOfYear\x1fDè fọ yiẹ\x1edayperiod\x1ffọ" +
-			" mọ́nin fọ áftanun fọ ívnin fọ nait\x1eera\x1fTaim\x1ehour\x1fAwa\x1eminute\x1fMínit\x1emonth\x1fMọnt\x1equar" +
-			"ter\x1fKwọ́ta\x1esecond\x1fSẹ́kọn\x1eweek\x1fWik\x1eweekOfMonth\x1fWik fọ mọnt\x1eweekday\x1fDè fọ wik\x1eweekd" +
-			"ayOfMonth\x1fDè fọ mọnt\x1eyear\x1fYiẹ\x1ezone\x1fTaím Zon\x1eday\x1fdzień\x1edayOfYear\x1fdzień roku\x1edayperiod\x1fr" +
-			"ano / po południu / wieczorem\x1eera\x1fera\x1ehour\x1fgodzina\x1eminute\x1fminuta\x1emonth\x1fmiesiąc\x1equarter\x1fkwartał" +
-			"\x1esecond\x1fsekunda\x1eweek\x1ftydzień\x1eweekOfMonth\x1ftydzień miesiąca\x1eweekday\x1fdzień tygodnia\x1eweekdayOfMo" +
-			"nth\x1fdzień miesiąca\x1eyear\x1frok\x1ezone\x1fstrefa czasowa\x1eday\x1fDi\x1ehour\x1fOra\x1eminute\x1fMinuta\x1emonth\x1fMèis\x1eyear" +
-			"\x1fAnn\x1eday\x1fورځ\x1edayOfYear\x1fد کال ورځ\x1edayperiod\x1fورځ شېبه\x1eera\x1fدور\x1ehour\x1fساعت\x1emi" +
-			"nute\x1fدقيقه\x1emonth\x1fمياشت\x1equarter\x1fڅلورمه برخه\x1esecond\x1fثانيه\x1eweek\x1fاونۍ\x1ew" +
-			"eekOfMonth\x1fد مياشتې اونۍ\x1eweekday\x1fد اونۍ ورځ\x1eweekdayOfMonth\x1fد مياشتې ا" +
-			"ونۍ ورځ\x1eyear\x1fکال\x1ezone\x1fوخت سيمه\x1eweekOfMonth\x1fد مياشتے اونۍ\x1eweekdayOfMon" +
-			"th\x1fد مياشتے اونۍ ورځ\x1eday\x1fdia\x1edayOfYear\x1fdia do ano\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fhor" +
-			"a\x1eminute\x1fminuto\x1emonth\x1fmês\x1equarter\x1ftrimestre\x1esecond\x1fsegundo\x1eweek\x1fsemana\x1eweekOfMonth\x1fsemana do mê" +
-			"s\x1eweekday\x1fdia da semana\x1eweekdayOfMonth\x1fdia da semana do mês\x1eyear\x1fano\x1ezone\x1ffuso horário\x1edayperi" +
-			"od\x1fam/pm\x1eday\x1fpunchaw\x1edayOfYear\x1fwatamanta punchaw\x1edayperiod\x1fa. m. / p. m.\x1ehour\x1fura\x1eminute\x1fminutu\x1e" +
-			"month\x1fkilla\x1equarter\x1ftrimestral nisqa\x1esecond\x1fsegundu\x1eweek\x1fsimana\x1eweekOfMonth\x1fkillamanta simana\x1ewe" +
-			"ekday\x1fsimanamanta punchaw\x1eweekdayOfMonth\x1fkillamanta llamkaypa punchawnin\x1eyear\x1fwata\x1ezone\x1fura pach" +
-			"api\x1eday\x1fdi\x1edayOfYear\x1fdi da l’onn\x1edayperiod\x1fAM/PM\x1eera\x1fèra\x1ehour\x1fura\x1eminute\x1fminuta\x1emonth\x1fmais\x1equ" +
-			"arter\x1fquartal\x1esecond\x1fsecunda\x1eweek\x1femna\x1eweekOfMonth\x1femna dal mais\x1eweekday\x1fdi da l’emna\x1eweekdayO" +
-			"fMonth\x1fdi dal mais\x1eyear\x1fonn\x1ezone\x1fzona d’urari\x1eday\x1fUmusi\x1edayperiod\x1fM.s/N.s\x1eera\x1fIgihe\x1ehour\x1fIsaha" +
-			"\x1eminute\x1fUmunota\x1emonth\x1fUkwezi\x1esecond\x1fIsegonda\x1eweek\x1fIndwi, Iyinga\x1eweekday\x1fIminsi y’iyinga\x1eyear\x1fU" +
-			"mwaka\x1ezone\x1fIsaha yo mukarere\x1eday\x1fzi\x1edayOfYear\x1fziua din an\x1edayperiod\x1fa.m./p.m.\x1eera\x1feră\x1ehour\x1foră" +
-			"\x1eminute\x1fminut\x1emonth\x1flună\x1equarter\x1ftrimestru\x1esecond\x1fsecundă\x1eweek\x1fsăptămână\x1eweekOfMonth\x1fsăpt" +
-			"ămâna din lună\x1eweekday\x1fziua din săptămână\x1eweekdayOfMonth\x1fziua săptămânii din lună\x1eyea" +
-			"r\x1fan\x1ezone\x1ffus orar\x1eday\x1fMfiri\x1edayperiod\x1fNkwaya\x1eera\x1fKacha\x1ehour\x1fIsaa\x1eminute\x1fDakika\x1emonth\x1fMweri\x1eseco" +
-			"nd\x1fSekunde\x1eweek\x1fIwiki\x1eweekday\x1fMfiri a iwiki\x1eyear\x1fMuaka\x1ezone\x1fMfiri o saa\x1eday\x1fдень\x1edayOfYear\x1fд" +
-			"ень года\x1edayperiod\x1fAM/PM\x1eera\x1fэра\x1ehour\x1fчас\x1eminute\x1fминута\x1emonth\x1fмесяц\x1equar" +
-			"ter\x1fквартал\x1esecond\x1fсекунда\x1eweek\x1fнеделя\x1eweekOfMonth\x1fнеделя месяца" +
-			"\x1eweekday\x1fдень недели\x1eweekdayOfMonth\x1fдень недели в месяце\x1eyear\x1fгод\x1e" +
-			"zone\x1fчасовой пояс\x1eday\x1fMfiri\x1edayperiod\x1fMfiri o siku\x1eera\x1fKacha\x1ehour\x1fSaa\x1eminute\x1fDakyika\x1e" +
-			"month\x1fMori\x1esecond\x1fSekunde\x1eweek\x1fWiikyi\x1eyear\x1fMaka\x1ezone\x1fMfiri o saa\x1eday\x1fवासर:\x1edayperiod\x1fप" +
-			"ूर्वाह्न/अपराह्न\x1eera\x1fयुग\x1ehour\x1fहोरा\x1eminute\x1fनिमे" +
-			"ष\x1emonth\x1fमास:\x1equarter\x1fत्रेमासिक\x1esecond\x1fक्षण\x1eweek\x1fसप्ता" +
-			"ह:\x1eweekday\x1fसप्ताहस्य दिनं\x1eyear\x1fवर्ष:\x1ezone\x1fसमय मण्" +
-			"डल\x1eday\x1fКүн\x1edayperiod\x1fЭИ/ЭК\x1eera\x1fЭэрэ\x1ehour\x1fЧаас\x1eminute\x1fМүнүүтэ\x1emonth\x1fЫй" +
-			"\x1equarter\x1fЧиэппэр\x1esecond\x1fСөкүүндэ\x1eweek\x1fНэдиэлэ\x1eweekday\x1fНэдиэлэ күн" +
-			"э\x1eyear\x1fСыл\x1ezone\x1fКэм балаһата\x1eday\x1fMpari\x1edayperiod\x1fTS/TP\x1eera\x1fNyamata\x1ehour\x1fSaai\x1eminu" +
-			"te\x1fIdakika\x1emonth\x1fLapa\x1esecond\x1fIsekondi\x1eweek\x1fSaipa napo\x1eyear\x1fLari\x1ezone\x1fMajira ya saa\x1eday\x1fᱢᱟᱦ" +
-			"ᱟ\x1edayOfYear\x1fᱥᱮᱨᱢᱟ ᱨᱮᱭᱟᱠ ᱢᱟᱦᱟ\x1edayperiod\x1fᱥᱮᱛᱟᱜ/ᱟᱹᱭᱩ" +
-			"ᱵ\x1eera\x1fᱡᱩᱜᱽ\x1ehour\x1fᱴᱟᱲᱟᱝ\x1eminute\x1fᱴᱤᱯᱤᱡ\x1emonth\x1fᱪᱟᱸᱫᱚ\x1equarter\x1fᱯ" +
-			"ᱮᱪᱟᱸᱫᱚ\x1esecond\x1fᱴᱤᱨᱤᱡ\x1eweek\x1fᱦᱟᱯᱛᱟ/ᱮᱢᱦᱟ\x1eweekOfMonth\x1fᱪᱟᱸ" +
-			"ᱫᱚ ᱨᱮᱭᱟᱠ ᱦᱟᱯᱛᱟ\x1eweekday\x1fᱦᱟᱯᱛᱟ ᱨᱮᱭᱟᱜ ᱢᱟᱦᱟ\x1eweek" +
-			"dayOfMonth\x1fᱪᱟᱸᱫᱚ ᱨᱮᱭᱟᱠ ᱢᱟᱦᱟ\x1eyear\x1fᱥᱮᱨᱢᱟ/ᱵᱚᱪᱷᱚᱞᱨ" +
-			"\x1ezone\x1fᱴᱚᱴᱷᱟ\x1eday\x1fLusiku\x1edayperiod\x1fUluhaavi lwa lusiku\x1eera\x1fUluhaavi lwa\x1ehour\x1fIlisala\x1emin" +
-			"ute\x1fIdakika\x1emonth\x1fMwesi\x1esecond\x1fIsekunde\x1eweek\x1fIlijuma\x1eweekday\x1fUlusiku lwa Lijuma\x1eyear\x1fMwakha\x1ezone" +
-			"\x1fUluhaavi lwa lisaa\x1eday\x1fdie\x1edayOfYear\x1fdie de s’annu\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fora\x1eminute\x1fmi" +
-			"nutu\x1emonth\x1fmese\x1equarter\x1ftrimestre\x1esecond\x1fsegundu\x1eweek\x1fchida\x1eweekOfMonth\x1fchida de su mese\x1eweekday" +
-			"\x1fdie de sa chida\x1eweekdayOfMonth\x1fdie de su mese\x1eyear\x1fannu\x1ezone\x1ffusu oràriu\x1eday\x1fjornu\x1edayOfYear\x1fj" +
-			"ornu di l’annu\x1edayperiod\x1fAM/PM\x1eera\x1fèbbica\x1ehour\x1fura\x1eminute\x1fminutu\x1emonth\x1fmisi\x1equarter\x1ftrimestri" +
-			"\x1esecond\x1fsicunnu\x1eweek\x1fsimana\x1eweekOfMonth\x1fsimana dû misi\x1eweekday\x1fjornu dâ simana\x1eyear\x1fannu\x1ezone\x1f" +
-			"fusu urariu\x1eday\x1fڏينهن\x1edayOfYear\x1fسال جو ڏينهن\x1edayperiod\x1fصبح/شام\x1eera\x1fدور\x1eh" +
-			"our\x1fڪلاڪ\x1eminute\x1fمنٽ\x1emonth\x1fمهينو\x1equarter\x1fٽي ماهي\x1esecond\x1fسيڪنڊ\x1eweek\x1fهفتو" +
-			"\x1eweekOfMonth\x1fمهيني جي هفتي\x1eweekday\x1fهفتي جو ڏينهن\x1eweekdayOfMonth\x1fمهيني" +
-			" جي موڪل جو ڏينهن\x1eyear\x1fسال\x1ezone\x1fٽائيم زون\x1eday\x1fदीं॒हुं\x1edayp" +
-			"eriod\x1fदीं॒हुं/ रातु\x1eera\x1fदौर\x1ehour\x1fकलाक\x1eminute\x1fमिंटु" +
-			"\x1emonth\x1fमहिनो\x1equarter\x1fटिमाही\x1esecond\x1fसेकिंडु\x1eweek\x1fहफ्त" +
-			"ो\x1eweekday\x1fहफ्ते जो दीं॒हुं\x1eyear\x1fसाल\x1ezone\x1fवक्तु ज" +
-			"ो दायरो\x1eday\x1fbeaivi\x1edayperiod\x1fbeaivi ráidodássi\x1eera\x1féra\x1ehour\x1fdiibmu\x1eminute\x1fminuhtt" +
-			"a\x1emonth\x1fmánnu\x1esecond\x1fsekunda\x1eweek\x1fváhkku\x1eweekday\x1fváhkkubeaivi\x1eyear\x1fjáhki\x1ezone\x1fáigeavádat\x1ed" +
-			"ayOfYear\x1fjagi beaivi\x1edayperiod\x1fib/eb\x1eera\x1fáigodat\x1equarter\x1fnjealjádasjahki\x1eweek\x1fvahkku\x1eweekOfMon" +
-			"th\x1fmánu vahkku\x1eweekday\x1fvahkkobeaivi\x1eweekdayOfMonth\x1fmánu vahkkobeaivi\x1eyear\x1fjahki\x1eday\x1fNtsiku\x1ehou" +
-			"r\x1fHora\x1eminute\x1fMinuto\x1emonth\x1fMwezi\x1esecond\x1fSegundo\x1eyear\x1fChaka\x1eday\x1fZaari\x1edayperiod\x1fAdduha wala Aluul" +
-			"a\x1eera\x1fZaman\x1ehour\x1fGuuru\x1eminute\x1fMiniti\x1emonth\x1fHandu\x1esecond\x1fMiti\x1eweek\x1fHebu\x1eyear\x1fJiiri\x1ezone\x1fLeerazuu\x1e" +
-			"day\x1fLâ\x1edayperiod\x1fNa lâ\x1eera\x1fKùotângo\x1ehour\x1fNgbonga\x1eminute\x1fNdurü ngbonga\x1emonth\x1fNze\x1esecond\x1fNzî" +
-			"na ngbonga\x1eweek\x1fDimâsi\x1eweekday\x1fBïkua\x1eyear\x1fNgû\x1ezone\x1fZukangbonga\x1eday\x1fⴰⵙⵙ\x1edayperiod\x1fⵜⵉ" +
-			"ⵣⵉ ⴳ ⵡⴰⵙⵙ: ⵜⵉⴼⴰⵡⵜ/ⵜⴰⴷⴳⴳⵯⴰⵜ\x1eera\x1fⵜⴰⵙⵓⵜ\x1ehour\x1fⵜ" +
-			"ⴰⵙⵔⴰⴳⵜ\x1eminute\x1fⵜⵓⵙⴷⵉⴷⵜ\x1emonth\x1fⴰⵢⵢⵓⵔ\x1esecond\x1fⵜⴰⵙⵉⵏⵜ\x1e" +
-			"week\x1fⵉⵎⴰⵍⴰⵙⵙ\x1eweekday\x1fⴰⵙⵙ ⴳ ⵉⵎⴰⵍⴰⵙⵙ\x1eyear\x1fⴰⵙⴳⴳⵯⴰⵙ" +
-			"\x1ezone\x1fⴰⴽⵓⴷ ⵏ ⵓⴳⵎⵎⴰⴹ\x1eday\x1fass\x1edayperiod\x1ftizi g wass: tifawt / tadggʷat\x1eera\x1f" +
-			"tasut\x1ehour\x1ftasragt\x1eminute\x1ftusdidt\x1emonth\x1fayyur\x1esecond\x1ftasint\x1eweek\x1fimalass\x1eweekday\x1fass g imalass\x1ey" +
-			"ear\x1fasggʷas\x1ezone\x1fakud n ugmmaḍ\x1eday\x1fဝၼ်း\x1edayOfYear\x1fဝၼ်းၶွင်ပီ\x1edayp" +
-			"eriod\x1fၶၢဝ်းယၢမ်းဝၼ်း\x1eera\x1fပၢၼ်\x1ehour\x1fမူင်း\x1eminute\x1fမ" +
-			"ိၼိတ်ႉ\x1emonth\x1fလိူၼ်\x1equarter\x1fသၢမ်လိူၼ်ႁွပ်ႈ\x1eseco" +
-			"nd\x1fသႅၵ်ႉၵၢၼ်ႉ\x1eweek\x1fဝူင်ႈ\x1eweekOfMonth\x1fဝူင်ႈၶွင်လ" +
-			"ိူၼ်\x1eweekday\x1fဝၼ်းၶွင်ဝူင်ႈ\x1eweekdayOfMonth\x1fဝၼ်းၼႂ်" +
-			"းဝူင်ႈၶွင်လိူၼ်\x1eyear\x1fပီ\x1ezone\x1fၸူၼ်ႇၶၢဝ်းယ" +
-			"ၢမ်း\x1eday\x1fදිනය\x1edayOfYear\x1fවසරේ දිනය\x1edayperiod\x1fපෙ.ව/ප.ව\x1ee" +
-			"ra\x1fයුගය\x1ehour\x1fපැය\x1eminute\x1fවිනාඩිය\x1emonth\x1fමාසය\x1equarter\x1fකාර" +
-			"්තුව\x1esecond\x1fතත්පරය\x1eweek\x1fසතිය\x1eweekOfMonth\x1fමාසයේ සතිය" +
-			"\x1eweekday\x1fසතියේ දිනය\x1eweekdayOfMonth\x1fමාසයේ සතියේ දිනය" +
-			"\x1eyear\x1fවර්ෂය\x1ezone\x1fවේලා කලාපය\x1eday\x1fdeň\x1edayOfYear\x1fdeň roka\x1edayperiod\x1fA" +
-			"M/PM\x1eera\x1fletopočet\x1ehour\x1fhodina\x1eminute\x1fminúta\x1emonth\x1fmesiac\x1equarter\x1fštvrťrok\x1esecond\x1fsekunda\x1ewe" +
-			"ek\x1ftýždeň\x1eweekOfMonth\x1ftýždeň mesiaca\x1eweekday\x1fdeň týždňa\x1eweekdayOfMonth\x1fdeň týždňa " +
-			"v\u00a0mesiaci\x1eyear\x1frok\x1ezone\x1fčasové pásmo\x1eday\x1fdan\x1edayOfYear\x1fdan leta\x1edayperiod\x1fdop/pop\x1eera\x1fdoba\x1eh" +
-			"our\x1fura\x1eminute\x1fminuta\x1emonth\x1fmesec\x1equarter\x1fčetrtletje\x1esecond\x1fsekunda\x1eweek\x1fteden\x1eweekOfMonth\x1ftede" +
-			"n meseca\x1eweekday\x1fdan v tednu\x1eweekdayOfMonth\x1fdan meseca\x1eyear\x1fleto\x1ezone\x1fčasovni pas\x1eday\x1fZuva\x1eera\x1f" +
-			"Mukore\x1ehour\x1fAwa\x1eminute\x1fMineti\x1emonth\x1fMwedzi\x1esecond\x1fSekondi\x1eweek\x1fVhiki\x1eweekday\x1fZuva revhiki\x1eyear\x1fG" +
-			"ore\x1ezone\x1fNguva\x1eday\x1fmaalin\x1edayOfYear\x1fmaalinta sannadka\x1edayperiod\x1fGH/GD\x1eera\x1fsaman\x1ehour\x1fSaacad\x1eminu" +
-			"te\x1fdaqiiqad\x1emonth\x1fBil\x1equarter\x1frubuc\x1esecond\x1filbiriqsi\x1eweek\x1fToddobaad\x1eweekOfMonth\x1fToddobaadka Bish" +
-			"a\x1eweekday\x1fmaalinta toddobaadka\x1eweekdayOfMonth\x1fmaalinta-toddobaadka bisha\x1eyear\x1fsannad\x1ezone\x1fwakhti" +
-			"ga aagga\x1eday\x1fditë\x1edayOfYear\x1fditë e vitit\x1edayperiod\x1fparadite/pasdite\x1eera\x1ferë\x1ehour\x1forë\x1eminute\x1f" +
-			"minutë\x1emonth\x1fmuaj\x1equarter\x1ftremujor\x1esecond\x1fsekondë\x1eweek\x1fjavë\x1eweekOfMonth\x1fjavë e muajit\x1eweekda" +
-			"y\x1fditë e javës\x1eweekdayOfMonth\x1fditë pune e muajit\x1eyear\x1fvit\x1ezone\x1fbrezi orar\x1eday\x1fдан\x1edayOfYea" +
-			"r\x1fдан у години\x1edayperiod\x1fAM/PM\x1eera\x1fера\x1ehour\x1fсат\x1eminute\x1fминут\x1emonth\x1fмесе" +
-			"ц\x1equarter\x1fквартал\x1esecond\x1fсекунд\x1eweek\x1fнедеља\x1eweekOfMonth\x1fнедеља у ме" +
-			"сецу\x1eweekday\x1fдан у недељи\x1eweekdayOfMonth\x1fдан у месецу\x1eyear\x1fгодина\x1e" +
-			"zone\x1fвременска зона\x1edayperiod\x1fприје подне/по подне\x1emonth\x1fмјесе" +
-			"ц\x1eweek\x1fседмица\x1eweekOfMonth\x1fседмица у мјесецу\x1eweekday\x1fдан у седми" +
-			"ци\x1eweekdayOfMonth\x1fдан у мјесецу\x1eday\x1fdan\x1edayOfYear\x1fdan u godini\x1edayperiod\x1fAM/PM\x1eera\x1f" +
-			"era\x1ehour\x1fsat\x1eminute\x1fminut\x1emonth\x1fmesec\x1equarter\x1fkvartal\x1esecond\x1fsekund\x1eweek\x1fnedelja\x1eweekOfMonth\x1fned" +
-			"elja u mesecu\x1eweekday\x1fdan u nedelji\x1eweekdayOfMonth\x1fdan u mesecu\x1eyear\x1fgodina\x1ezone\x1fvremenska zona\x1e" +
-			"dayperiod\x1fprije podne/po podne\x1emonth\x1fmjesec\x1eweek\x1fsedmica\x1eweekOfMonth\x1fsedmica u mjesecu\x1eweekday\x1fd" +
-			"an u sedmici\x1eweekdayOfMonth\x1fdan u mjesecu\x1eday\x1fdinten\x1edayperiod\x1fAM/PM\x1eera\x1féra\x1ehour\x1fjam\x1eminute\x1fme" +
-			"nit\x1emonth\x1fsasih\x1equarter\x1ftriwulan\x1esecond\x1fdetik\x1eweek\x1fminggu\x1eweekday\x1fdinten dina saminggu\x1eyear\x1ftaun" +
-			"\x1ezone\x1fzona waktu\x1eday\x1fdag\x1edayOfYear\x1fdag under året\x1edayperiod\x1ffm/em\x1eera\x1fera\x1ehour\x1ftimme\x1eminute\x1fmin" +
-			"ut\x1emonth\x1fmånad\x1equarter\x1fkvartal\x1esecond\x1fsekund\x1eweek\x1fvecka\x1eweekOfMonth\x1fvecka i månaden\x1eweekday\x1fve" +
-			"ckodag\x1eweekdayOfMonth\x1fveckodag i månad\x1eyear\x1får\x1ezone\x1ftidszon\x1eday\x1fsiku\x1edayOfYear\x1fsiku ya mwaka\x1ed" +
-			"ayperiod\x1fAM/PM\x1eera\x1fenzi\x1ehour\x1fsaa\x1eminute\x1fdakika\x1emonth\x1fmwezi\x1equarter\x1frobo\x1esecond\x1fsekunde\x1eweek\x1fwiki" +
-			"\x1eweekOfMonth\x1fwiki ya mwezi\x1eweekday\x1fsiku ya wiki\x1eweekdayOfMonth\x1fsiku ya mwezi\x1eyear\x1fmwaka\x1ezone\x1fsaa" +
-			" za eneo\x1edayperiod\x1fMuda wa siku\x1eera\x1fWakati\x1eweek\x1fJuma\x1eweekday\x1fSiku ya juma\x1ezone\x1fMajira ya saa\x1eday" +
-			"\x1fܝܘܡܐ\x1edayOfYear\x1fܝܘܡܐ ܕܫܢܬܐ\x1edayperiod\x1fܩܕܡ ܛܗܪܐ/ܒܬܪ ܛܗܪܐ\x1eera\x1fܕܪܐ\x1ehou" +
-			"r\x1fܫܥܬܐ\x1eminute\x1fܩܛܝܢܬܐ\x1emonth\x1fܝܪܚܐ\x1equarter\x1fܪܘܒܥܐ ܕܫܢܬܐ\x1esecond\x1fܪܦܦܐ\x1eweek" +
-			"\x1fܫܒܘܥܐ\x1eweekOfMonth\x1fܫܒܘܥܐ ܕܝܪܚܐ\x1eweekday\x1fܝܘܡܐ ܕܫܒܘܥܐ\x1eweekdayOfMonth\x1fܝܘܡ" +
-			"ܐ ܦܘܠܚܢܐ ܕܫܒܘܥܐ\x1eyear\x1fܫܢܬܐ\x1ezone\x1fܦܢܝܬܐ ܕܙܒܢܐ\x1eday\x1fநாள்\x1edayOfYear" +
-			"\x1fவருடத்தின் நாள்\x1edayperiod\x1fAM/PM\x1eera\x1fகாலம்\x1ehour\x1fமணிந" +
-			"ேரம்\x1eminute\x1fநிமிடம்\x1emonth\x1fமாதம்\x1equarter\x1fகாலாண்டு" +
-			"\x1esecond\x1fவிநாடி\x1eweek\x1fவாரம்\x1eweekOfMonth\x1fமாதத்தின் வார" +
-			"ம்\x1eweekday\x1fவாரத்தின் நாள்\x1eweekdayOfMonth\x1fமாதத்தின்" +
-			" வாரநாள்\x1eyear\x1fஆண்டு\x1ezone\x1fநேர மண்டலம்\x1eday\x1fరోజు" +
-			"\x1edayOfYear\x1fసంవత్సరంలో రోజు\x1edayperiod\x1fAM/PM\x1eera\x1fయుగం\x1ehour\x1fగ" +
-			"ంట\x1eminute\x1fనిమిషము\x1emonth\x1fనెల\x1equarter\x1fత్రైమాసికం\x1esecon" +
-			"d\x1fసెకను\x1eweek\x1fవారము\x1eweekOfMonth\x1fనెలలో వారం\x1eweekday\x1fవార" +
-			"ంలో రోజు\x1eweekdayOfMonth\x1fనెలలో పనిదినం\x1eyear\x1fసంవత్" +
-			"సరం\x1ezone\x1fసమయ మండలి\x1eday\x1fAparan\x1edayperiod\x1fTA/EB\x1eera\x1fEnzi\x1ehour\x1fEsaa\x1eminute\x1fId" +
-			"akika\x1emonth\x1fElap\x1esecond\x1fIsekonde\x1eweek\x1fEwiki\x1eyear\x1fEkan\x1ezone\x1fMajira ya saa\x1eday\x1fрӯз\x1edayOfYear\x1fр" +
-			"ӯзи сол\x1edayperiod\x1fсубҳ/бегоҳ\x1eera\x1fмабдаи таърих\x1ehour\x1fсоат\x1eminute\x1fд" +
-			"ақиқа\x1emonth\x1fмоҳ\x1equarter\x1fчоряк\x1esecond\x1fсония\x1eweek\x1fҳафта\x1eweekOfMonth\x1fҳафт" +
-			"аи моҳ\x1eweekday\x1fрӯзи ҳафта\x1eweekdayOfMonth\x1fрӯзи ҳафтаи моҳ\x1eyear\x1fсол\x1e" +
-			"zone\x1fминтақаи вақт\x1eday\x1fวัน\x1edayOfYear\x1fวันของปี\x1edayperiod\x1fช่" +
-			"วงวัน\x1eera\x1fสมัย\x1ehour\x1fชั่วโมง\x1eminute\x1fนาที\x1emonth\x1fเดือ" +
-			"น\x1equarter\x1fไตรมาส\x1esecond\x1fวินาที\x1eweek\x1fสัปดาห์\x1eweekOfMonth\x1f" +
-			"สัปดาห์ของเดือน\x1eweekday\x1fวันของสัปดาห์\x1ewe" +
-			"ekdayOfMonth\x1fวันของเดือน\x1eyear\x1fปี\x1ezone\x1fเขตเวลา\x1eday\x1fመዓ" +
-			"ልቲ\x1edayOfYear\x1fመዓልቲ ናይ ዓመት\x1edayperiod\x1fኤ.ኤም/ፒ.ኤም\x1eera\x1fዘመን\x1ehou" +
-			"r\x1fሰዓት\x1eminute\x1fደቒቕ\x1emonth\x1fወርሒ\x1equarter\x1fርብዒ\x1esecond\x1fሴኮንድ\x1eweek\x1fሰሙን" +
-			"\x1eweekOfMonth\x1fሰሙን ናይ ወርሒ\x1eweekday\x1fመዓልቲ ናይ ሰሙን\x1eweekdayOfMonth\x1fመ" +
-			"ዓልታት ስራሕ ናይ ወርሒ\x1eyear\x1fዓመት\x1ezone\x1fዞባ ግዜ\x1eday\x1fgün\x1edayOfYear\x1fýy" +
-			"lyň güni\x1edayperiod\x1fgünortadan öň/günortadan soň\x1eera\x1fera\x1ehour\x1fsagat\x1eminute\x1fminut\x1emonth\x1faý" +
-			"\x1equarter\x1fçärýek\x1esecond\x1fsekunt\x1eweek\x1fhepde\x1eweekOfMonth\x1faýyň hepdesi\x1eweekday\x1fhepdäniň güni\x1e" +
-			"weekdayOfMonth\x1faýda hepdäniň güni\x1eyear\x1fýyl\x1ezone\x1fsagat guşaklygy\x1eday\x1fʻaho\x1edayOfYear\x1fʻaho " +
-			"ʻo e taʻu\x1edayperiod\x1fHH/EA\x1eera\x1fkuonga\x1ehour\x1fhoua\x1eminute\x1fminiti\x1emonth\x1fmāhina\x1equarter\x1fkuata\x1esecon" +
-			"d\x1fsekoni\x1eweek\x1fuike\x1eweekOfMonth\x1fuike ʻo e māhina\x1eweekday\x1fʻaho ʻo e uike\x1eweekdayOfMonth\x1fʻaho " +
-			"ʻo e mahina\x1eyear\x1ftaʻu\x1ezone\x1ftaimi fakavahe\x1eday\x1ftenpo suno\x1eera\x1ftenpo\x1ehour\x1ftenpo ilo\x1emonth\x1ftenpo " +
-			"mun\x1eweek\x1ftenpo esun\x1eyear\x1ftenpo sike\x1ezone\x1fnasin tenpo\x1eday\x1fgün\x1edayOfYear\x1fyılın günü\x1edayperiod" +
-			"\x1fÖÖ/ÖS\x1eera\x1fçağ\x1ehour\x1fsaat\x1eminute\x1fdakika\x1emonth\x1fay\x1equarter\x1fçeyrek\x1esecond\x1fsaniye\x1eweek\x1fhafta\x1ewe" +
-			"ekOfMonth\x1fayın haftası\x1eweekday\x1fhaftanın günü\x1eweekdayOfMonth\x1fayın günü\x1eyear\x1fyıl\x1ezone\x1fsaa" +
-			"t dilimi\x1eday\x1fкөн\x1edayOfYear\x1fелның көне\x1edayperiod\x1fAM/PM\x1eera\x1fэра\x1ehour\x1fсәгать\x1em" +
-			"inute\x1fминут\x1emonth\x1fай\x1equarter\x1fквартал\x1esecond\x1fсекунд\x1eweek\x1fатна\x1eweekOfMonth" +
-			"\x1fай атнасы\x1eweekday\x1fатна көне\x1eweekdayOfMonth\x1fайның эш көне\x1eyear\x1fел\x1ez" +
-			"one\x1fвакыт өлкәсе\x1eday\x1fZaari\x1edayperiod\x1fSubbaahi/Zaarikay banda\x1eera\x1fZaman\x1ehour\x1fGuuru\x1emin" +
-			"ute\x1fMiniti\x1emonth\x1fHandu\x1esecond\x1fMiti\x1eweek\x1fHebu\x1eyear\x1fJiiri\x1ezone\x1fLeerazuu\x1eday\x1fхүн\x1edayperiod\x1fAM/PM" +
-			"\x1eera\x1fэра\x1ehour\x1fшак\x1eminute\x1fминута\x1emonth\x1fай\x1equarter\x1fквартал\x1esecond\x1fсекунд" +
-			"а\x1eweek\x1fчедилик\x1eweekday\x1fчедилик хүнү\x1eyear\x1fчыл\x1ezone\x1fшак куржаа\x1eday\x1f" +
-			"Ass\x1edayperiod\x1fZdat azal/Deffir azal\x1eera\x1fTallit\x1ehour\x1fTasragt\x1eminute\x1fTusdat\x1emonth\x1fAyur\x1esecond\x1fTusn" +
-			"at\x1eweek\x1fImalass\x1eweekday\x1fAss n Imalass\x1eyear\x1fAsseggas\x1ezone\x1fAseglem asergan\x1eday\x1fكۈن\x1edayperiod\x1fچ" +
-			"ۈشتىن بۇرۇن/چۈشتىن كېيىن\x1eera\x1fمىلادىيە\x1ehour\x1fسائەت\x1eminute\x1fمىن" +
-			"ۇت\x1emonth\x1fئاي\x1esecond\x1fسېكۇنت\x1eweek\x1fھەپتە\x1eweekday\x1fھەپتە كۈنلىرى\x1eyear\x1fيى" +
-			"ل\x1ezone\x1fۋاقىت رايونى\x1eday\x1fдень\x1edayOfYear\x1fдень року\x1edayperiod\x1fдп/пп\x1eera" +
-			"\x1fера\x1ehour\x1fгодина\x1eminute\x1fхвилина\x1emonth\x1fмісяць\x1equarter\x1fквартал\x1esecond" +
-			"\x1fсекунда\x1eweek\x1fтиждень\x1eweekOfMonth\x1fтиждень місяця\x1eweekday\x1fдень ти" +
-			"жня\x1eweekdayOfMonth\x1fдень місяця\x1eyear\x1fрік\x1ezone\x1fчасовий пояс\x1eday\x1fDay\x1eday" +
-			"OfYear\x1fDay Of Year\x1edayperiod\x1fDayperiod\x1eera\x1fEra\x1ehour\x1fHour\x1eminute\x1fMinute\x1emonth\x1fMonth\x1equarter\x1fQuart" +
-			"er\x1esecond\x1fSecond\x1eweek\x1fWeek\x1eweekOfMonth\x1fWeek Of Month\x1eweekday\x1fDay of the Week\x1eweekdayOfMonth\x1fWeek" +
-			"day Of Month\x1eyear\x1fYear\x1ezone\x1fZone\x1eday\x1fدن\x1edayOfYear\x1fیوم سال\x1edayperiod\x1fقبل دوپہر/ب" +
-			"عد دوپہر\x1eera\x1fعہد\x1ehour\x1fگھنٹہ\x1eminute\x1fمنٹ\x1emonth\x1fمہینہ\x1equarter\x1fسہ ماہی\x1e" +
-			"second\x1fسیکنڈ\x1eweek\x1fہفتہ\x1eweekOfMonth\x1fمہینے کا ہفتہ\x1eweekday\x1fہفتے کا دن\x1e" +
-			"weekdayOfMonth\x1fمہینے کا یوم ہفتہ\x1eyear\x1fسال\x1ezone\x1fمنطقۂ وقت\x1eera\x1fدور\x1eday" +
-			"\x1fkun\x1edayOfYear\x1fyilning kuni\x1edayperiod\x1fTO/TK\x1eera\x1fera\x1ehour\x1fsoat\x1eminute\x1fdaqiqa\x1emonth\x1foy\x1equarter\x1fcho" +
-			"rak\x1esecond\x1fsoniya\x1eweek\x1fhafta\x1eweekOfMonth\x1foyning haftasi\x1eweekday\x1fhafta kuni\x1eweekdayOfMonth\x1foyning" +
-			" hafta kuni\x1eyear\x1fyil\x1ezone\x1fvaqt mintaqasi\x1eday\x1fКун\x1edayperiod\x1fКун вақти\x1eera\x1fЭра\x1ehour\x1f" +
-			"Соат\x1eminute\x1fДақиқа\x1emonth\x1fОй\x1esecond\x1fСония\x1eweek\x1fҲафта\x1eweekday\x1fҲафта ку" +
-			"ни\x1eyear\x1fЙил\x1ezone\x1fМинтақа\x1eday\x1fꔎꔒ\x1ehour\x1fꕌꕎ\x1eminute\x1fꕆꕇ\x1emonth\x1fꕪꖃ\x1esecond\x1fꕧ" +
-			"ꕃꕧꕪ\x1eweek\x1fꔨꔤꕃ\x1eweekday\x1fꔨꕃꕮ ꔎꔒ\x1eyear\x1fꕢꘋ\x1eday\x1ftele\x1ehour\x1fhawa\x1eminute\x1fmini\x1emon" +
-			"th\x1fkalo\x1esecond\x1fjaki-jaka\x1eweek\x1fwiki\x1eweekday\x1fwikiyɛma tele\x1eyear\x1fsaŋ\x1eday\x1fdì\x1edayOfYear\x1fdì de l’" +
-			"ano\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fora\x1eminute\x1fmenuto\x1emonth\x1fmeze\x1equarter\x1ftrimestre\x1esecond\x1fsegondo\x1ew" +
-			"eek\x1fsetemana\x1eweekOfMonth\x1fsetemana de’l meze\x1eweekday\x1fdì de la setemana\x1eweekdayOfMonth\x1fdì de’" +
-			"l meze\x1eyear\x1fano\x1ezone\x1ffuzorario\x1eday\x1fNgày\x1edayOfYear\x1fngày trong năm\x1edayperiod\x1fSA/CH\x1eera\x1fthời đ" +
-			"ại\x1ehour\x1fGiờ\x1eminute\x1fPhút\x1emonth\x1fTháng\x1equarter\x1fQuý\x1esecond\x1fGiây\x1eweek\x1fTuần\x1eweekOfMonth\x1ftuầ" +
-			"n trong tháng\x1eweekday\x1fngày trong tuần\x1eweekdayOfMonth\x1fngày thường trong tháng\x1eyear\x1fNăm\x1e" +
-			"zone\x1fMúi giờ\x1eday\x1fMfiri\x1edayperiod\x1fMfiri o siku\x1eera\x1fKacha\x1ehour\x1fSaa\x1eminute\x1fDakyika\x1emonth\x1fMori\x1ese" +
-			"cond\x1fSekunde\x1eweek\x1fWiikyi\x1eyear\x1fMaka\x1ezone\x1fMfiri o saa\x1eday\x1fTag\x1edayperiod\x1fAM/PM\x1eera\x1fEpoča\x1ehour\x1fScht" +
-			"und\x1eminute\x1fMínütta\x1emonth\x1fMánet\x1esecond\x1fSekunda\x1eweek\x1fWuča\x1eweekday\x1fWučetag\x1eyear\x1fJár\x1ezone\x1fZitz" +
-			"óna\x1eday\x1ffan\x1edayOfYear\x1fbisu at mi\x1edayperiod\x1fSub/Ngo\x1eera\x1fjamono\x1ehour\x1fwaxt\x1eminute\x1fsimili\x1emonth\x1fwee" +
-			"r\x1equarter\x1fñeenti-weer\x1esecond\x1fsaa\x1eweek\x1fayu-bis\x1eweekOfMonth\x1fayu-bisu weer\x1eweekday\x1fbisu ayu-bis\x1ewe" +
-			"ekdayOfMonth\x1fbisu ayu-bisu weer wi\x1eyear\x1fat\x1ezone\x1fgoxu waxtu\x1eday\x1fusuku\x1edayperiod\x1fKusasa/Emva kwemi" +
-			"ni\x1eera\x1fixesha leminyaka\x1ehour\x1fiyure\x1eminute\x1fumzuzu\x1emonth\x1finyanga\x1equarter\x1fikota\x1esecond\x1fumzuzwana\x1ewe" +
-			"ek\x1fiveki\x1eweekday\x1fusuku lweveki\x1eyear\x1funyaka\x1ezone\x1fingingqi yexesha\x1eday\x1fध्याड़ा\x1edayOf" +
-			"Year\x1fसाल्ले दा ध्याड़ा\x1edayperiod\x1fभ्यागा/संजा\x1ee" +
-			"ra\x1fयुग\x1ehour\x1fघंटा\x1eminute\x1fमिंट\x1emonth\x1fमीन्ना\x1equarter\x1fतिन म" +
-			"ीन्ने\x1esecond\x1fसकिंट\x1eweek\x1fहफ्ता\x1eweekOfMonth\x1fमीन्ने दा" +
-			" हफ्ता\x1eweekday\x1fहफ्ते दा ध्याड़ा\x1eweekdayOfMonth\x1fमीन्" +
-			"ने दा कम्मे आला ध्याड़ा\x1eyear\x1fसाल\x1ezone\x1fटैम ला" +
-			"का\x1eday\x1fOlunaku\x1edayperiod\x1fmunkyo/Eigulo\x1eera\x1fEmulembe\x1ehour\x1fEssawa\x1eminute\x1fEdakiika\x1emonth\x1fOmwezi" +
-			"\x1esecond\x1fObutikitiki\x1eweek\x1fEsabiiti\x1eweekday\x1fOlunaka lwa sabiiti\x1eyear\x1fOmwaka\x1ezone\x1fEssawa edha\x1eday\x1fp" +
-			"uɔ́sɛ́\x1edayperiod\x1fkiɛmɛ́ɛm,kisɛ́ndɛ\x1eera\x1fkipéŋén\x1ehour\x1fkisikɛl,\x1eminute\x1fminít\x1emonth\x1f" +
-			"oóli\x1esecond\x1fsíkɛn\x1eweek\x1fsɔ́ndiɛ\x1eweekday\x1fmetúk mɔ́sɔ́ndiɛ\x1eyear\x1fyɔɔŋ\x1ezone\x1fkinúki ki" +
-			"sikɛl ɔ́ pitɔŋ\x1eday\x1fטאָג\x1eera\x1fתקופֿה\x1ehour\x1fשעה\x1eminute\x1fמינוט\x1emonth\x1fמאנאַ" +
-			"ט\x1esecond\x1fסעקונדע\x1eweek\x1fוואך\x1eweekday\x1fטאָג אין דער וואך\x1eyear\x1fיאָר\x1ezon" +
-			"e\x1fצײַטזאנע\x1eday\x1fỌjọ́\x1edayOfYear\x1fỌjọ́ inú ọdún\x1edayperiod\x1fÀárọ̀/ọ̀sán" +
-			"\x1eera\x1fSáà\x1ehour\x1fWákàtí\x1eminute\x1fÌsẹ́jú\x1emonth\x1fOsù\x1equarter\x1fÌdá mẹ́rin\x1esecond\x1fÌsẹ́j" +
-			"ú Ààyá\x1eweek\x1fỌ̀sẹ̀\x1eweekOfMonth\x1fỌṣẹ̀ inú Oṣù\x1eweekday\x1fỌjọ́ tó wà láàá" +
-			"rín ọ̀sẹ̀\x1eweekdayOfMonth\x1fỌjọ́ ọ̀ṣẹ̀ inú oṣù\x1eyear\x1fỌdún\x1ezone\x1fAgbègbè " +
-			"àkókò\x1eday\x1fƆjɔ́\x1edayOfYear\x1fƆjɔ́ inú ɔdún\x1edayperiod\x1fÀárɔ̀/ɔ̀sán\x1eminute\x1fÌsɛ́jú" +
-			"\x1equarter\x1fÌdá mɛ́rin\x1esecond\x1fÌsɛ́jú Ààyá\x1eweek\x1fƆ̀sɛ̀\x1eweekOfMonth\x1fƆshɛ̀ inú Oshù" +
-			"\x1eweekday\x1fƆjɔ́ tó wà láàárín ɔ̀sɛ̀\x1eweekdayOfMonth\x1fƆjɔ́ ɔ̀shɛ̀ inú oshù\x1eyear" +
-			"\x1fƆdún\x1eday\x1fara\x1edayOfYear\x1fara akayú suí\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fhura\x1eminute\x1fminutu\x1emonth\x1f" +
-			"yasí\x1equarter\x1fmusapíri-yasí\x1esecond\x1fsegũdu\x1eweek\x1fsẽmãna\x1eweekOfMonth\x1fsẽmãna suí yasí suí" +
-			"\x1eweekday\x1fara sẽmãna suí\x1eweekdayOfMonth\x1fara sẽmãna suí yasí suí\x1eyear\x1fakayú\x1ezone\x1feimã " +
-			"hura suí\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1edayperiod\x1fa.\u00a0m./p.\u00a0m.\x1eday\x1f日\x1edayOfYear\x1f年日\x1edayperiod\x1f上" +
-			"午/下午\x1eera\x1f年代\x1ehour\x1f小時\x1eminute\x1f分鐘\x1emonth\x1f月\x1equarter\x1f季\x1esecond\x1f秒\x1eweek\x1f週\x1eweekOf" +
-			"Month\x1f月週\x1eweekday\x1f週天\x1eweekdayOfMonth\x1f月平日\x1eyear\x1f年\x1ezone\x1f時區\x1eday\x1f日\x1edayOfYear\x1f年日" +
-			"\x1edayperiod\x1f上午/下午\x1eera\x1f年代\x1ehour\x1f小时\x1eminute\x1f分钟\x1emonth\x1f月\x1equarter\x1f季\x1esecond\x1f秒\x1ew" +
-			"eek\x1f周\x1eweekOfMonth\x1f月周\x1eweekday\x1f周天\x1eweekdayOfMonth\x1f月平日\x1eyear\x1f年\x1ezone\x1f时区\x1eday\x1fⴰⵙ" +
-			"ⵙ\x1edayperiod\x1fⵜⵉⵣⵉ ⴳ ⵡⴰⵙⵙ: ⵜⵉⴼⴰⵡⵜ/ⵜⴰⴷⴳⴳⵯⴰⵜ\x1eera\x1fⵜ" +
-			"ⴰⵙⵓⵜ\x1ehour\x1fⵜⴰⵙⵔⴰⴳⵜ\x1eminute\x1fⵜⵓⵙⴷⵉⴷⵜ\x1emonth\x1fⴰⵢⵢⵓⵔ\x1esecon" +
-			"d\x1fⵜⴰⵙⵉⵏⵜ\x1eweek\x1fⵉⵎⴰⵍⴰⵙⵙ\x1eweekday\x1fⴰⵙⵙ ⴳ ⵉⵎⴰⵍⴰⵙⵙ\x1eyear" +
-			"\x1fⴰⵙⴳⴳⵯⴰⵙ\x1ezone\x1fⴰⴽⵓⴷ ⵏ ⵓⴳⵎⵎⴰⴹ\x1eday\x1f日\x1edayOfYear\x1f年中日\x1edayp" +
-			"eriod\x1f上午/下午\x1eera\x1f纪元\x1ehour\x1f小时\x1eminute\x1f分钟\x1emonth\x1f月\x1equarter\x1f季度\x1esecond\x1f秒\x1ewee" +
-			"k\x1f周\x1eweekOfMonth\x1f月中周\x1eweekday\x1f星期\x1eweekdayOfMonth\x1f月中日\x1eyear\x1f年\x1ezone\x1f时区\x1eday\x1f日" +
-			"\x1edayOfYear\x1f該年第幾天\x1edayperiod\x1f時段\x1eera\x1f紀元\x1ehour\x1f小時\x1eminute\x1f分鐘\x1emonth\x1f月\x1equart" +
-			"er\x1f季度\x1esecond\x1f秒\x1eweek\x1f週\x1eweekOfMonth\x1f該月第幾週\x1eweekday\x1f星期\x1eweekdayOfMonth\x1f該月第" +
-			"幾週\x1eyear\x1f年\x1ezone\x1f時區\x1eweek\x1f星期\x1eweekday\x1f星期幾\x1eday\x1fUsuku\x1edayperiod\x1fAM/PM\x1eera\x1fIsikhath" +
-			"i\x1ehour\x1fIhora\x1eminute\x1fIminithi\x1emonth\x1fInyanga\x1equarter\x1fIkota\x1esecond\x1fIsekhondi\x1eweek\x1fIviki\x1eweekOfMonth" +
-			"\x1fIviki leNyanga\x1eweekday\x1fUsuku evikini\x1eyear\x1fUnyaka\x1ezone\x1fIsikhathi sendawo",
+		data: "\x1eday\x1fday\x1edayOfYear\x1fday of year\x1edayperiod\x1fAM/PM\x1eera\x1fera\x1ehour\x1fhour\x1eminute\x1fminute\x1emonth\x1fmonth\x1equart" +
+			"er\x1fquarter\x1esecond\x1fsecond\x1eweek\x1fweek\x1eweekOfMonth\x1fweek of month\x1eweekday\x1fday of the week\x1eweekdayOfMo" +
+			"nth\x1fweekday of the month\x1eyear\x1fyear\x1ezone\x1ftime zone\x1eday\x1fDay\x1edayOfYear\x1fDay Of Year\x1edayperiod\x1fDayper" +
+			"iod\x1eera\x1fEra\x1ehour\x1fHour\x1eminute\x1fMinute\x1emonth\x1fMonth\x1equarter\x1fQuarter\x1esecond\x1fSecond\x1eweek\x1fWeek\x1eweekOfMo" +
+			"nth\x1fWeek Of Month\x1eweekday\x1fDay of the Week\x1eweekdayOfMonth\x1fWeekday Of Month\x1eyear\x1fYear\x1ezone\x1fZone",
 		ends: []uint32{
-			144, 389, 568, 858, 1188, 1533, 1997, 2158, 2339, 2593, 2902, 3149, 3321, 3641, 3762, 3925,
-			4306, 4638, 4783, 5211, 5374, 5615, 6119, 6385, 6779, 7041, 7402, 7734, 7900, 8072, 8521, 8538,
-			9251, 9521, 9643, 9985, 10262, 10490, 10615, 10844, 10905, 11043, 11515, 11787, 11944, 12030, 12339, 12484,
-			12678, 13043, 13284, 13300, 13320, 13577, 13843, 13898, 13922, 13946, 13970, 13994, 14018, 14164, 14188, 14212,
-			14236, 14301, 14553, 14808, 14989, 15293, 15457, 16217, 16505, 16760, 17040, 17294, 17379, 17511, 17644, 17916,
-			18206, 18449, 18584, 19069, 19250, 19491, 19802, 20265, 20423, 20674, 20953, 21192, 21520, 21786, 22023, 22188,
-			22509, 22698, 22974, 23240, 23484, 23616, 23885, 24333, 24502, 24673, 24835, 25074, 25344, 25661, 25794, 25948,
-			26273, 26636, 26790, 27262, 27654, 27874, 28329, 28584, 28801, 29047, 29198, 29378, 29541, 29772, 29938, 30258,
-			30547, 30841, 31174, 31361, 31524, 31692, 31818, 32050, 32241, 32713, 32919, 33202, 33378, 33546, 33696, 33991,
-			34489, 34701, 34868, 35025, 35131, 35269, 35336, 35609, 36015, 36524, 36855, 37129, 37593, 37846, 38076, 38263,
-			38757, 38975, 39137, 39269, 39747, 40006, 40166, 40267, 40350, 40588, 40832, 40958, 41146, 41420, 41841, 42053,
-			42483, 42608, 42899, 43186, 43237, 43567, 43651, 43898, 43914, 44197, 44433, 44606, 44884, 45033, 45375, 45507,
-			45837, 46068, 46203, 46724, 46914, 47161, 47386, 47729, 48067, 48238, 48417, 48490, 48623, 48785, 49147, 49331,
-			49889, 50318, 50591, 50825, 50949, 51231, 51491, 51831, 52036, 52279, 52417, 52584, 52821, 53056, 53140, 53502,
-			53998, 54440, 54568, 54912, 55353, 55726, 56010, 56272, 56377, 56621, 56928, 57066, 57281, 57454, 57702, 58044,
-			58280, 58617, 58628, 58864, 59053, 59175, 59277, 59530, 59805, 59937, 60082, 60328, 60526, 61049, 61229, 61446,
-			61637, 62012, 62300, 62591, 62615, 62639, 62847, 63055, 63417, 63634, 63862, 63892, 64099,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241, 241,
+			477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477,
+			477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477, 477,
 		},
+	},
+	blocks: &blocks{
+		data: dateFieldNamesBlocks,
+		firstKeys: []uint32{
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+			16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32,
+			33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+			50, 53, 54, 66, 67, 68, 69, 70, 72, 73, 74, 75, 77, 78, 79, 80,
+			81, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 95, 96, 97,
+			98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 114,
+			115, 116, 117, 118, 120, 122, 123, 124, 125, 126, 130, 131, 132, 133, 134, 135,
+			136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151,
+			152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167,
+			168, 169, 170, 171, 172, 173, 174, 175, 176, 178, 179, 180, 181, 183, 185, 186,
+			187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 201, 203, 204,
+			205, 206, 208, 209, 210, 211, 212, 213, 214, 215, 219, 220, 221, 223, 224, 225,
+			226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 241, 243,
+			245, 247, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 259, 262, 264, 265,
+			268,
+		},
+		dataEnds: []uint32{
+			87, 179, 302, 442, 592, 734, 908, 1002, 1096, 1213, 1353, 1475, 1584, 1723, 1796, 1891,
+			2046, 2193, 2283, 2450, 2542, 2649, 2842, 3110, 3224, 3363, 3510, 3582, 3694, 3886, 3905, 4131,
+			4264, 4345, 4507, 4629, 4722, 4800, 4914, 5002, 5192, 5322, 5425, 5488, 5631, 5721, 5825, 5984,
+			6004, 6107, 6292, 6408, 6519, 6644, 6791, 7099, 7229, 7323, 7449, 7585, 7653, 7723, 7849, 7981,
+			8088, 8161, 8331, 8447, 8573, 8706, 8949, 9050, 9178, 9297, 9446, 9543, 9643, 9720, 9886, 9988,
+			10125, 10232, 10370, 10443, 10550, 10708, 10809, 10916, 11011, 11107, 11238, 11380, 11465, 11563, 11869, 11957,
+			12130, 12283, 12403, 12683, 12923, 13018, 13136, 13217, 13336, 13799, 13957, 14067, 14148, 14248, 14330, 14435,
+			14551, 14738, 14850, 14982, 15085, 15183, 15274, 15414, 15599, 15741, 15844, 15931, 15989, 16076, 16118, 16248,
+			16414, 16605, 16762, 16901, 17077, 17190, 17295, 17404, 17591, 17720, 17824, 17908, 18086, 18186, 18304, 18344,
+			18408, 18518, 18641, 18730, 18849, 18982, 19142, 19266, 19489, 19633, 19768, 19794, 19952, 20059, 20183, 20284,
+			20399, 20522, 20607, 20745, 20818, 20972, 21104, 21189, 21365, 21461, 21567, 21682, 21975, 22124, 22163, 22248,
+			22347, 22613, 22789, 22957, 23091, 23200, 23272, 23403, 23523, 23849, 23939, 24044, 24183, 24323, 24486, 24658,
+			24742, 24898, 25060, 25217, 25354, 25472, 25530, 25651, 25795, 25883, 25992, 26096, 26235, 26385, 26545, 26758,
+			26896, 27011, 27157, 27230, 27311, 27429, 27540, 27725, 27830, 27962, 28067, 28345, 28476, 28621, 28778, 28968,
+			29075,
+		},
+		valueEnds: []uint32{
+			144, 245, 179, 290, 330, 345, 464, 161, 181, 254, 309, 247, 172, 320, 121, 163,
+			381, 332, 145, 428, 163, 241, 504, 266, 660, 262, 361, 332, 166, 172, 449, 17,
+			713, 270, 122, 342, 277, 228, 125, 229, 290, 138, 472, 272, 157, 86, 309, 145,
+			194, 365, 0, 16, 36, 257, 266, 321, 345, 369, 393, 417, 441, 587, 611, 635,
+			659, 724, 252, 255, 181, 304, 164, 924, 288, 255, 280, 254, 339, 132, 133, 272,
+			290, 243, 135, 485, 181, 241, 311, 463, 621, 251, 279, 239, 328, 266, 237, 165,
+			321, 189, 276, 266, 244, 132, 269, 448, 169, 171, 162, 239, 270, 317, 133, 154,
+			325, 688, 154, 472, 392, 220, 455, 710, 217, 463, 151, 180, 163, 231, 166, 486,
+			775, 1069, 333, 187, 163, 168, 126, 232, 191, 472, 206, 283, 176, 168, 150, 295,
+			498, 212, 167, 157, 106, 138, 67, 273, 406, 509, 331, 274, 464, 253, 230, 187,
+			494, 218, 162, 132, 478, 259, 160, 101, 83, 238, 244, 126, 188, 274, 421, 212,
+			430, 555, 291, 287, 51, 330, 414, 247, 263, 283, 236, 173, 278, 149, 342, 132,
+			330, 231, 135, 521, 190, 247, 225, 343, 681, 171, 350, 73, 133, 162, 362, 546,
+			558, 429, 273, 234, 124, 282, 260, 340, 545, 788, 926, 167, 237, 235, 319, 362,
+			496, 442, 128, 344, 441, 373, 284, 262, 105, 244, 307, 138, 215, 173, 248, 342,
+			0, 337, 348, 236, 425, 122, 224, 253, 275, 132, 145, 246, 198, 523, 180, 217,
+			191, 375, 663, 291, 315, 339, 208, 416, 362, 217, 445, 475, 207,
+		},
+		inflated: make([]inflatedBlock, 225),
 	},
 }

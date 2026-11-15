@@ -14,8 +14,13 @@
 package cldr
 
 import (
+	"bytes"
+	"compress/flate"
+	"io"
 	"iter"
+	"slices"
 	"strings"
+	"sync"
 )
 
 // Strings is a sorted list of strings.
@@ -64,8 +69,10 @@ func (s Strings) Contains(x string) bool {
 
 // Map maps the sorted strings of keys to the strings of values with the same index.
 type Map struct {
-	keys   Strings
+	keys Strings
+	// values holds the values of m, except those that blocks holds, which are empty here.
 	values Strings
+	blocks *blocks
 }
 
 // Lookup returns the value of the key k, and reports whether m has the key.
@@ -74,7 +81,7 @@ func (m Map) Lookup(k string) (string, bool) {
 	if i < 0 {
 		return "", false
 	}
-	return m.values.At(i), true
+	return m.Value(i), true
 }
 
 // Len returns the number of keys in m.
@@ -89,7 +96,76 @@ func (m Map) Key(i int) string {
 
 // Value returns the value of the key i of m.
 func (m Map) Value(i int) string {
-	return m.values.At(i)
+	if v := m.values.At(i); v != "" || m.blocks == nil {
+		return v
+	}
+	return m.blocks.value(i, m.values.data)
+}
+
+// blocks holds the values of a Map compressed with DEFLATE in blocks of consecutive keys.
+// Every non-empty value of the Map that the Map's values do not hold is in a block. The preset
+// dictionary of every block is the end of the data of the Map's values, at most
+// [maxDictSize] bytes.
+type blocks struct {
+	// data is the compressed blocks, one after another.
+	data string
+	// firstKeys holds the index of the first key of each block. The keys of a block end
+	// where the next block starts.
+	firstKeys []uint32
+	// dataEnds holds the end offset in data of each block; a block starts where the
+	// previous one ends.
+	dataEnds []uint32
+	// valueEnds holds, for each key, the end offset of its value in the inflated block that
+	// holds the key; a value starts where the previous one of the same block ends.
+	valueEnds []uint32
+	// inflated holds the inflated blocks, in the order of firstKeys.
+	inflated []inflatedBlock
+}
+
+type inflatedBlock struct {
+	once sync.Once
+	data string
+}
+
+// maxDictSize is the maximum size of a preset dictionary of DEFLATE.
+const maxDictSize = 32 << 10
+
+// value returns the value of the key i, which is in a block, with dict the data of the values
+// of the Map.
+func (b *blocks) value(i int, dict string) string {
+	j, ok := slices.BinarySearch(b.firstKeys, uint32(i))
+	if !ok {
+		j--
+	}
+	data := b.block(j, dict)
+	var start uint32
+	if uint32(i) > b.firstKeys[j] {
+		start = b.valueEnds[i-1]
+	}
+	return data[start:b.valueEnds[i]]
+}
+
+// block returns the inflated block j.
+func (b *blocks) block(j int, dict string) string {
+	ib := &b.inflated[j]
+	ib.once.Do(func() {
+		ib.data = b.inflate(j, dict[max(0, len(dict)-maxDictSize):])
+	})
+	return ib.data
+}
+
+// inflate inflates the block j with the preset dictionary dict.
+func (b *blocks) inflate(j int, dict string) string {
+	var start uint32
+	if j > 0 {
+		start = b.dataEnds[j-1]
+	}
+	r := flate.NewReaderDict(strings.NewReader(b.data[start:b.dataEnds[j]]), []byte(dict))
+	var out bytes.Buffer
+	if _, err := io.Copy(&out, r); err != nil {
+		panic("cldr: inflating a block: " + err.Error())
+	}
+	return out.String()
 }
 
 // Field returns the value of the field key in record, a sequence of fields that each start
