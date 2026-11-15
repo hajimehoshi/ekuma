@@ -40,7 +40,8 @@ Promise jobs run when the outermost call from Go into the VM returns, and the re
 are still unhandled then are reported to `VM.SetUnhandledRejection`. `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
 `VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`. There is no
-public API yet for agents (workers) that share a `SharedArrayBuffer`.
+public API yet for agents (workers) that share a `SharedArrayBuffer`, or for creating further
+realms in a VM.
 
 ## Differences from other engines for Go
 
