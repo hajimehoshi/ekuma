@@ -204,10 +204,13 @@ func findZone(name string) loadedZone {
 	if !ok {
 		return loadedZone{}
 	}
-	id := z.id
-	if ids := supportedZoneIDs(); ids != nil {
-		if v, ok := ids[strings.ToLower(name)]; ok {
-			id = v
+	// The host resolves a name to its own primary identifier, which can be another name, so the
+	// identifier keeps the given name in the case of the database.
+	id, ok := zoneIDByLowerCase()[strings.ToLower(name)]
+	if !ok {
+		id = name
+		if strings.EqualFold(z.id, name) {
+			id = z.id
 		}
 	}
 	return loadedZone{
@@ -218,18 +221,22 @@ func findZone(name string) loadedZone {
 	}
 }
 
-var supportedZoneIDs = sync.OnceValue(func() map[string]string {
-	intl := js.Global().Get("Intl")
-	if intl.Type() != js.TypeObject || intl.Get("supportedValuesOf").Type() != js.TypeFunction {
-		return nil
-	}
-	list := intl.Call("supportedValuesOf", "timeZone")
+// zoneIDByLowerCase maps the lower-case form of each time zone identifier that the IANA link
+// table or the JavaScript host lists to the identifier.
+var zoneIDByLowerCase = sync.OnceValue(func() map[string]string {
 	m := map[string]string{}
-	for i := range list.Length() {
-		id := list.Index(i).String()
-		m[strings.ToLower(id)] = id
+	for link, zone := range zoneLinks {
+		m[strings.ToLower(link)] = link
+		m[strings.ToLower(zone)] = zone
 	}
-	m["utc"] = "UTC"
+	intl := js.Global().Get("Intl")
+	if intl.Type() == js.TypeObject && intl.Get("supportedValuesOf").Type() == js.TypeFunction {
+		list := intl.Call("supportedValuesOf", "timeZone")
+		for i := range list.Length() {
+			id := list.Index(i).String()
+			m[strings.ToLower(id)] = id
+		}
+	}
 	return m
 })
 

@@ -3,8 +3,6 @@
 
 //go:build !js
 
-//go:generate go run gen_zonelinks.go
-
 package datetime
 
 import (

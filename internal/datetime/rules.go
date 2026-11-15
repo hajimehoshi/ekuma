@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
+//go:generate go run gen_zonelinks.go
+
 package datetime
 
 import (
