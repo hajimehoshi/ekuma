@@ -238,17 +238,33 @@ func itoa(n int) string {
 	return numconv.NumberToString(float64(n))
 }
 
-// RunScript evaluates src as a script and returns the value of its last expression statement.
-// file names the script in error messages.
-//
-// The error is a [*SyntaxError] when src is not a valid script, and an [*Error] when
-// the script throws.
-func (vm *VM) RunScript(file, src string) (Value, error) {
+// Script is a Script Record.
+type Script struct {
+	code *funcProto
+}
+
+// ParseScript implements ParseScript for the current realm. file names the script in error
+// messages. The error is a [*SyntaxError] when src is not a valid script.
+func (vm *VM) ParseScript(file, src string) (*Script, error) {
 	fp, err := vm.compileScript(file, src)
 	if err != nil {
-		return Undefined, err
+		return nil, err
 	}
-	f := vm.newScriptFunction(fp)
+	return &Script{
+		code: fp,
+	}, nil
+}
+
+// ScriptEvaluation implements ScriptEvaluation, and then runs the pending jobs. It returns
+// the value of the last expression statement of s. The error is an [*Error] when the script
+// throws.
+func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
+	saved := vm.curRealm
+	if r := s.code.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
+	f := vm.newScriptFunction(s.code)
 	return vm.enter(func() Value {
 		var result Value
 		ok := vm.protect(func() {

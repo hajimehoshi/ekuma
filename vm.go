@@ -209,19 +209,6 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 	return fromEngine(v), vm.publicError(err)
 }
 
-// RunScript evaluates src as a script and returns the value of its last expression statement.
-// file names the script in error messages.
-//
-// The error is a [*SyntaxError] when src is not a valid script and an [*Error] when the script
-// throws. When ctx is done, the script stops at its next loop iteration or call, and the error
-// is the cause of ctx.
-func (vm *VM) RunScript(ctx context.Context, file, src string) (Value, error) {
-	vm.initIfNeeded()
-	return vm.run(ctx, func() (engine.Value, error) {
-		return vm.e.RunScript(file, src)
-	})
-}
-
 // ErrRunning is the error of [VM.AwaitJobs] called while the VM runs JavaScript.
 var ErrRunning = errors.New("ekuma: AwaitJobs called while JavaScript runs")
 

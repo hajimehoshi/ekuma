@@ -38,14 +38,14 @@ func TestQueryOfMissingKeyNotInterned(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			vm := newVM(t)
 			before := engine.InternedCount(vm)
-			if _, err := vm.RunScript("query", `
+			if _, err := runScript(vm, "query", `
 				o = {};
 				for (let i = 0; i < 10000; i++) {
 					const k = "k" + i;
 					`+tc.query+`;
 				}
 			`); err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := engine.InternedCount(vm); got != before {
 				t.Errorf("got %d interned strings, want %d", got, before)
@@ -80,7 +80,7 @@ func TestQueryKeyThroughProxy(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			vm := newVM(t)
-			v, err := vm.RunScript("proxy", `
+			v, err := runScript(vm, "proxy", `
 				function define(t, k) {
 					Object.defineProperty(t, k, {value: 1});
 				}
@@ -94,7 +94,7 @@ func TestQueryKeyThroughProxy(t *testing.T) {
 				}
 			`)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if !engine.ToBoolean(v) {
 				t.Errorf("got no TypeError for a trap result that violates an invariant")

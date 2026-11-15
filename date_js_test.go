@@ -40,9 +40,9 @@ func compareWithHost(t *testing.T, vm *ekuma.VM, f string, values []float64) []s
 	}
 	fmt.Fprintf(&src, "].map(%s).join()", f)
 
-	v, err := vm.RunScript(t.Context(), "date", src.String())
+	v, err := runScript(t.Context(), vm, "date", src.String())
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	got := strings.Split(v.String(), ",")
 	want := strings.Split(js.Global().Call("eval", src.String()).String(), ",")

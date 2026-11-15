@@ -11,7 +11,7 @@
 // A context stops everything that runs under it: when a [Func] reads a property or calls
 // a function, that is stopped by the context of the call that led to the [Func].
 //
-// Promise jobs run before [VM.RunScript], [Value.Call], [Value.Invoke], [Value.New] and
+// Promise jobs run before [Script.Evaluate], [Value.Call], [Value.Invoke], [Value.New] and
 // [Module.Evaluate] return, unless they are called from a [Func]. The host does not run the
 // jobs itself and cannot defer them.
 package ekuma

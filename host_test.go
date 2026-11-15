@@ -16,9 +16,9 @@ import (
 // run runs src in vm and returns the result as a string.
 func run(t *testing.T, vm *ekuma.VM, src string) string {
 	t.Helper()
-	v, err := vm.RunScript(t.Context(), "host", src)
+	v, err := runScript(t.Context(), vm, "host", src)
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	return toString(t, vm, v)
 }

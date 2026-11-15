@@ -83,6 +83,27 @@ func Example_modules() {
 
 // This example hands the memory of a SharedArrayBuffer to a VM on another goroutine, whose
 // store wakes the Atomics.wait of the first VM.
+func ExampleVM_ParseScript() {
+	var vm ekuma.VM
+	s, err := vm.ParseScript("count.js", `globalThis.n = (globalThis.n ?? 0) + 1`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for range 3 {
+		v, err := s.Evaluate(context.Background())
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(v.Int())
+	}
+	// Output:
+	// 1
+	// 2
+	// 3
+}
+
 func Example_sharedArrayBuffer() {
 	ctx := context.Background()
 	blocks := make(chan *ekuma.SharedDataBlock)
@@ -93,22 +114,37 @@ func Example_sharedArrayBuffer() {
 			done <- err
 			return
 		}
-		_, err := worker.RunScript(ctx, "worker.js", `
+		s, err := worker.ParseScript("worker.js", `
 			const ia = new Int32Array(sab);
 			Atomics.store(ia, 0, 42);
 			Atomics.notify(ia, 0);`)
+		if err != nil {
+			done <- err
+			return
+		}
+		_, err = s.Evaluate(ctx)
 		done <- err
 	}()
 
 	var vm ekuma.VM
 	vm.SetCanBlock(true)
-	sab, err := vm.RunScript(ctx, "main.js", `globalThis.ia = new Int32Array(new SharedArrayBuffer(4)); ia.buffer`)
+	main, err := vm.ParseScript("main.js", `globalThis.ia = new Int32Array(new SharedArrayBuffer(4)); ia.buffer`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	sab, err := main.Evaluate(ctx)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	blocks <- sab.SharedDataBlock()
-	v, err := vm.RunScript(ctx, "wait.js", `Atomics.wait(ia, 0, 0); Atomics.load(ia, 0)`)
+	wait, err := vm.ParseScript("wait.js", `Atomics.wait(ia, 0, 0); Atomics.load(ia, 0)`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	v, err := wait.Evaluate(ctx)
 	if err != nil {
 		fmt.Println(err)
 		return

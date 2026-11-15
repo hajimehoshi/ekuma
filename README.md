@@ -10,9 +10,13 @@ standard library is missing. See [Status](#status).
 
 ```go
 var vm ekuma.VM
-v, err := vm.RunScript(ctx, "hello.js", `"Hello, " + ["wor", "ld"].join("")`)
+s, err := vm.ParseScript("hello.js", `"Hello, " + ["wor", "ld"].join("")`)
 if err != nil {
-	// A *ekuma.SyntaxError, or a *ekuma.Error when the script throws.
+	// A *ekuma.SyntaxError.
+}
+v, err := s.Evaluate(ctx)
+if err != nil {
+	// A *ekuma.Error when the script throws.
 }
 fmt.Println(v.String()) // Hello, world
 ```

@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package ekuma
+
+import (
+	"context"
+
+	"github.com/hajimehoshi/ekuma/internal/engine"
+)
+
+// Script is a script that [VM.ParseScript] parsed.
+type Script struct {
+	vm *VM
+	s  *engine.Script
+}
+
+// ParseScript parses src as the source text of a script. name names the script in error
+// messages and stack traces, and in the [ModuleRequest.ReferrerName] of its import() calls.
+// The error is a [*SyntaxError] when src is not a valid script.
+func (vm *VM) ParseScript(name, src string) (*Script, error) {
+	vm.initIfNeeded()
+	es, err := vm.e.ParseScript(name, src)
+	if err != nil {
+		return nil, vm.publicError(err)
+	}
+	return &Script{
+		vm: vm,
+		s:  es,
+	}, nil
+}
+
+// Evaluate evaluates s, runs the pending jobs, and returns the value of the last expression
+// statement of s. s may be evaluated more than once.
+//
+// The error is an [*Error] when the script throws. When ctx is done, the script stops at its
+// next loop iteration or call, and the error is the cause of ctx.
+func (s *Script) Evaluate(ctx context.Context) (Value, error) {
+	vm := s.vm
+	vm.initIfNeeded()
+	return vm.run(ctx, func() (engine.Value, error) {
+		return vm.e.ScriptEvaluation(s.s)
+	})
+}

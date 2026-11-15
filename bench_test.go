@@ -23,14 +23,14 @@ func BenchmarkWorkload(b *testing.B) {
 		b.Run(fmt.Sprintf("plugins=%d", plugins), func(b *testing.B) {
 			ctx := b.Context()
 			var vm ekuma.VM
-			if _, err := vm.RunScript(ctx, "workload.js", string(src)); err != nil {
+			if _, err := runScript(ctx, &vm, "workload.js", string(src)); err != nil {
 				b.Fatal(err)
 			}
-			if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setup(60, %d)", plugins)); err != nil {
+			if _, err := runScript(ctx, &vm, "setup", fmt.Sprintf("setup(60, %d)", plugins)); err != nil {
 				b.Fatal(err)
 			}
 			b.ResetTimer()
-			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
 				b.Fatal(err)
 			}
 		})
@@ -88,7 +88,7 @@ func BenchmarkJSON(b *testing.B) {
 	if err := vm.Global().Set("text", text); err != nil {
 		b.Fatal(err)
 	}
-	if _, err := vm.RunScript(ctx, "setup", `
+	if _, err := runScript(ctx, &vm, "setup", `
 		function parse() { return JSON.parse(text); }
 		var data = parse();
 		function stringify() { return JSON.stringify(data); }`); err != nil {
@@ -190,15 +190,15 @@ func BenchmarkCollection(b *testing.B) {
 					b.Run(fmt.Sprintf("%s/%s/%s/n=%d", coll, op, kind, n), func(b *testing.B) {
 						ctx := b.Context()
 						var vm ekuma.VM
-						if _, err := vm.RunScript(ctx, "collection.js", collectionBenchJS); err != nil {
+						if _, err := runScript(ctx, &vm, "collection.js", collectionBenchJS); err != nil {
 							b.Fatal(err)
 						}
-						if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setup(%q, %q, %d)", coll, kind, n)); err != nil {
+						if _, err := runScript(ctx, &vm, "setup", fmt.Sprintf("setup(%q, %q, %d)", coll, kind, n)); err != nil {
 							b.Fatal(err)
 						}
 						b.ReportAllocs()
 						b.ResetTimer()
-						if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+						if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
 							b.Fatal(err)
 						}
 					})
@@ -237,12 +237,12 @@ func BenchmarkEval(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			ctx := b.Context()
 			var vm ekuma.VM
-			if _, err := vm.RunScript(ctx, "eval.js", src); err != nil {
+			if _, err := runScript(ctx, &vm, "eval.js", src); err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
-			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("runs[%q](%d)", name, b.N)); err != nil {
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("runs[%q](%d)", name, b.N)); err != nil {
 				b.Fatal(err)
 			}
 		})
@@ -279,7 +279,7 @@ func BenchmarkAsync(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			ctx := b.Context()
 			var vm ekuma.VM
-			if _, err := vm.RunScript(ctx, "async.js", src); err != nil {
+			if _, err := runScript(ctx, &vm, "async.js", src); err != nil {
 				b.Fatal(err)
 			}
 			f := name
@@ -288,7 +288,7 @@ func BenchmarkAsync(b *testing.B) {
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
-			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("%s(%d)", f, b.N)); err != nil {
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("%s(%d)", f, b.N)); err != nil {
 				b.Fatal(err)
 			}
 		})
@@ -358,15 +358,15 @@ func BenchmarkTypedArray(b *testing.B) {
 			b.Run(op+"/"+kind, func(b *testing.B) {
 				ctx := b.Context()
 				var vm ekuma.VM
-				if _, err := vm.RunScript(ctx, "typedarray.js", typedArrayBenchJS); err != nil {
+				if _, err := runScript(ctx, &vm, "typedarray.js", typedArrayBenchJS); err != nil {
 					b.Fatal(err)
 				}
-				if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setup(%q, 1024)", kind)); err != nil {
+				if _, err := runScript(ctx, &vm, "setup", fmt.Sprintf("setup(%q, 1024)", kind)); err != nil {
 					b.Fatal(err)
 				}
 				b.ReportAllocs()
 				b.ResetTimer()
-				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+				if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
 					b.Fatal(err)
 				}
 			})
@@ -383,15 +383,15 @@ func BenchmarkSharedTypedArray(b *testing.B) {
 			b.Run(op+"/"+buffer, func(b *testing.B) {
 				ctx := b.Context()
 				var vm ekuma.VM
-				if _, err := vm.RunScript(ctx, "typedarray.js", typedArrayBenchJS); err != nil {
+				if _, err := runScript(ctx, &vm, "typedarray.js", typedArrayBenchJS); err != nil {
 					b.Fatal(err)
 				}
-				if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setupInt32(%q, 1024)", buffer)); err != nil {
+				if _, err := runScript(ctx, &vm, "setup", fmt.Sprintf("setupInt32(%q, 1024)", buffer)); err != nil {
 					b.Fatal(err)
 				}
 				b.ReportAllocs()
 				b.ResetTimer()
-				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+				if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
 					b.Fatal(err)
 				}
 			})
@@ -407,12 +407,12 @@ func BenchmarkSparseArray(b *testing.B) {
 		b.Run(method, func(b *testing.B) {
 			ctx := b.Context()
 			var vm ekuma.VM
-			if _, err := vm.RunScript(ctx, "sparse.js", sparseArrayBenchJS); err != nil {
+			if _, err := runScript(ctx, &vm, "sparse.js", sparseArrayBenchJS); err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
-			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", method, b.N)); err != nil {
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %d)", method, b.N)); err != nil {
 				b.Fatal(err)
 			}
 		})
@@ -488,12 +488,12 @@ func BenchmarkSparseArrayGrowing(b *testing.B) {
 		b.Run(fmt.Sprint(n), func(b *testing.B) {
 			ctx := b.Context()
 			var vm ekuma.VM
-			if _, err := vm.RunScript(ctx, "sparse.js", sparseArrayGrowingBenchJS); err != nil {
+			if _, err := runScript(ctx, &vm, "sparse.js", sparseArrayGrowingBenchJS); err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			b.ResetTimer()
-			if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%d, %d)", n, b.N)); err != nil {
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%d, %d)", n, b.N)); err != nil {
 				b.Fatal(err)
 			}
 		})
@@ -550,12 +550,12 @@ func BenchmarkProxy(b *testing.B) {
 			b.Run(op+"/"+kind, func(b *testing.B) {
 				ctx := b.Context()
 				var vm ekuma.VM
-				if _, err := vm.RunScript(ctx, "proxy.js", proxyBenchJS); err != nil {
+				if _, err := runScript(ctx, &vm, "proxy.js", proxyBenchJS); err != nil {
 					b.Fatal(err)
 				}
 				b.ReportAllocs()
 				b.ResetTimer()
-				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %q, %d)", kind, op, b.N)); err != nil {
+				if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %q, %d)", kind, op, b.N)); err != nil {
 					b.Fatal(err)
 				}
 			})
@@ -570,12 +570,12 @@ func BenchmarkImportedCall(b *testing.B) {
 	const loop = `function run(n) { let s = 0; for (let i = 0; i < n; i++) { s = add(s, i); } return s; }`
 	b.Run("script", func(b *testing.B) {
 		var vm ekuma.VM
-		if _, err := vm.RunScript(b.Context(), "script", lib+loop); err != nil {
+		if _, err := runScript(b.Context(), &vm, "script", lib+loop); err != nil {
 			b.Fatal(err)
 		}
 		b.ReportAllocs()
 		b.ResetTimer()
-		if _, err := vm.RunScript(b.Context(), "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+		if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
 			b.Fatal(err)
 		}
 	})
@@ -594,7 +594,7 @@ func BenchmarkImportedCall(b *testing.B) {
 		}
 		b.ReportAllocs()
 		b.ResetTimer()
-		if _, err := vm.RunScript(b.Context(), "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+		if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
 			b.Fatal(err)
 		}
 	})
@@ -614,7 +614,7 @@ func BenchmarkNewVM(b *testing.B) {
 		ctx := b.Context()
 		for b.Loop() {
 			var vm ekuma.VM
-			if _, err := vm.RunScript(ctx, "script", "1 + 1"); err != nil {
+			if _, err := runScript(ctx, &vm, "script", "1 + 1"); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -629,7 +629,7 @@ func BenchmarkTailCall(b *testing.B) {
 	const n = 1000
 	ctx := b.Context()
 	var vm ekuma.VM
-	if _, err := vm.RunScript(ctx, "setup", `
+	if _, err := runScript(ctx, &vm, "setup", `
 		function tail(n, acc) { "use strict"; return n === 0 ? acc : tail(n - 1, acc + n); }
 		function loop(n, acc) { "use strict"; while (n !== 0) { acc += n; n--; } return acc; }
 		function sloppy(n, acc) { return n === 0 ? acc : sloppy(n - 1, acc + n); }
@@ -690,12 +690,12 @@ func BenchmarkRegExpLiteral(b *testing.B) {
 					function run(n) { var lit = %s, re, o; for (var i = 0; i < n; i++) o = %s; return o; }`, setup, lit, expr)
 				ctx := b.Context()
 				var vm ekuma.VM
-				if _, err := vm.RunScript(ctx, "regexp.js", src); err != nil {
+				if _, err := runScript(ctx, &vm, "regexp.js", src); err != nil {
 					b.Fatal(err)
 				}
 				b.ReportAllocs()
 				b.ResetTimer()
-				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
 					b.Fatal(err)
 				}
 			})

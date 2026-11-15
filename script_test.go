@@ -566,9 +566,9 @@ func TestScripts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
 			var vm ekuma.VM
-			v, err := vm.RunScript(ctx, tt.name, tt.src)
+			v, err := runScript(ctx, &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -696,9 +696,9 @@ func TestCapturedVariables(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
 			var vm ekuma.VM
-			v, err := vm.RunScript(ctx, tt.name, tt.src)
+			v, err := runScript(ctx, &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -744,9 +744,9 @@ func TestAllocationsPerOperation(t *testing.T) {
 			ctx := t.Context()
 			var vm ekuma.VM
 			src := tt.setup + "\n(function(n) { for (var i = 0; i < n; i++) { " + tt.body + " } })"
-			fn, err := vm.RunScript(ctx, tt.name, src)
+			fn, err := runScript(ctx, &vm, tt.name, src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			const n = 100
 			allocs := func(n int) float64 {
@@ -803,9 +803,9 @@ func TestAnnexBGlobalSkip(t *testing.T) {
 			var v ekuma.Value
 			for _, src := range tt.scripts {
 				var err error
-				v, err = vm.RunScript(t.Context(), tt.name, src)
+				v, err = runScript(t.Context(), &vm, tt.name, src)
 				if err != nil {
-					t.Fatalf("RunScript: %v", err)
+					t.Fatalf("runScript: %v", err)
 				}
 			}
 			if got := toString(t, &vm, v); got != tt.want {
@@ -880,9 +880,9 @@ func TestDirectEval(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -929,9 +929,9 @@ func TestIterationWithoutResults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -969,12 +969,12 @@ func TestForAwaitCloseOnReturn(t *testing.T) {
 				var r = g();
 				r.next().then(() => r.return()).then(() => { got = "fulfilled"; }, e => { got = e instanceof TypeError ? "TypeError" : String(e); });
 			`
-			if _, err := vm.RunScript(t.Context(), tt.name, src); err != nil {
-				t.Fatalf("RunScript: %v", err)
+			if _, err := runScript(t.Context(), &vm, tt.name, src); err != nil {
+				t.Fatalf("runScript: %v", err)
 			}
-			v, err := vm.RunScript(t.Context(), "got", `got`)
+			v, err := runScript(t.Context(), &vm, "got", `got`)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := v.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1046,9 +1046,9 @@ func TestUsing(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1071,12 +1071,12 @@ func TestAwaitUsingOnReturn(t *testing.T) {
 		var it = g(), it2 = g("boom");
 		it.next().then(() => it.return(1)).then(r => log.push(JSON.stringify(r)));
 		it2.next().then(() => it2.return(2)).catch(e => log.push(e));`
-	if _, err := vm.RunScript(t.Context(), "await using", src); err != nil {
-		t.Fatalf("RunScript: %v", err)
+	if _, err := runScript(t.Context(), &vm, "await using", src); err != nil {
+		t.Fatalf("runScript: %v", err)
 	}
-	v, err := vm.RunScript(t.Context(), "log", `log.join()`)
+	v, err := runScript(t.Context(), &vm, "log", `log.join()`)
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	if got, want := toString(t, &vm, v), `disposed,disposed,{"value":1,"done":true},boom`; got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -1105,9 +1105,9 @@ func TestBigIntAsNWithLargeBits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1169,9 +1169,9 @@ func TestJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1196,9 +1196,9 @@ func TestWeakCollectionsShareKeys(t *testing.T) {
 		});
 		r.join()`
 	var vm ekuma.VM
-	v, err := vm.RunScript(t.Context(), "weak", src)
+	v, err := runScript(t.Context(), &vm, "weak", src)
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	if got, want := toString(t, &vm, v), "false,2,true,2,false,false,2,true,2,false"; got != want {
 		t.Errorf("got %q, want %q", got, want)
@@ -1285,9 +1285,9 @@ func TestTypedArray(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), "test", tt.src)
+			v, err := runScript(t.Context(), &vm, "test", tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := v.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1383,9 +1383,9 @@ func TestRegExpModified(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), "test", warm+tt.src)
+			v, err := runScript(t.Context(), &vm, "test", warm+tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := v.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1548,9 +1548,9 @@ func TestRegExpLiteralLending(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), "test", prelude+tt.src)
+			v, err := runScript(t.Context(), &vm, "test", prelude+tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := v.String(); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -1562,9 +1562,9 @@ func TestRegExpLiteralLending(t *testing.T) {
 // TestDetachImmutableArrayBuffer tests that $262.detachArrayBuffer refuses an immutable buffer.
 func TestDetachImmutableArrayBuffer(t *testing.T) {
 	var vm ekuma.VM
-	b, err := vm.RunScript(t.Context(), "test", "new ArrayBuffer(1).transferToImmutable()")
+	b, err := runScript(t.Context(), &vm, "test", "new ArrayBuffer(1).transferToImmutable()")
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	if err := ekuma.DetachArrayBuffer(&vm, b); err == nil {
 		t.Errorf("DetachArrayBuffer: got no error")
@@ -1578,7 +1578,7 @@ func TestDetachImmutableArrayBuffer(t *testing.T) {
 // order, as many as its count, and returns how many it woke.
 func TestAtomicsNotifyWaitAsync(t *testing.T) {
 	var vm ekuma.VM
-	v, err := vm.RunScript(t.Context(), "notify", `
+	v, err := runScript(t.Context(), &vm, "notify", `
 		var log = [];
 		var ia = new Int32Array(new SharedArrayBuffer(16));
 		for (var i = 0; i < 3; i++) {
@@ -1589,14 +1589,14 @@ func TestAtomicsNotifyWaitAsync(t *testing.T) {
 		[Atomics.notify(ia, 1, 2), Atomics.notify(ia, 0), Atomics.notify(ia, 1), Atomics.notify(ia, 1)].join();
 	`)
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	if got, want := v.String(), "2,0,1,0"; got != want {
 		t.Errorf("notify results: got %q, want %q", got, want)
 	}
-	v, err = vm.RunScript(t.Context(), "log", `log.join()`)
+	v, err = runScript(t.Context(), &vm, "log", `log.join()`)
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	if got, want := v.String(), "0ok,1ok,2ok"; got != want {
 		t.Errorf("resolutions: got %q, want %q", got, want)
@@ -1608,35 +1608,35 @@ func TestAtomicsNotifyWaitAsync(t *testing.T) {
 func TestAtomicsWaitAsyncTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var vm ekuma.VM
-		_, err := vm.RunScript(t.Context(), "wait", `
+		_, err := runScript(t.Context(), &vm, "wait", `
 			var log = [];
 			var ia = new Int32Array(new SharedArrayBuffer(16));
 			Atomics.waitAsync(ia, 0, 0, 1).value.then(r => log.push("short " + r));
 			Atomics.waitAsync(ia, 0, 0).value.then(r => log.push("long " + r));
 		`)
 		if err != nil {
-			t.Fatalf("RunScript: %v", err)
+			t.Fatalf("runScript: %v", err)
 		}
 		// The fake clock of the bubble reaches the deadline.
 		time.Sleep(time.Millisecond)
-		v, err := vm.RunScript(t.Context(), "expire", `log.join()`)
+		v, err := runScript(t.Context(), &vm, "expire", `log.join()`)
 		if err != nil {
-			t.Fatalf("RunScript: %v", err)
+			t.Fatalf("runScript: %v", err)
 		}
 		if got, want := v.String(), ""; got != want {
 			t.Errorf("log before the jobs ran: got %q, want %q", got, want)
 		}
 		// The timed-out waiter is no longer in the list.
-		v, err = vm.RunScript(t.Context(), "notify", `String(Atomics.notify(ia, 0))`)
+		v, err = runScript(t.Context(), &vm, "notify", `String(Atomics.notify(ia, 0))`)
 		if err != nil {
-			t.Fatalf("RunScript: %v", err)
+			t.Fatalf("runScript: %v", err)
 		}
 		if got, want := v.String(), "1"; got != want {
 			t.Errorf("notify: got %q, want %q", got, want)
 		}
-		v, err = vm.RunScript(t.Context(), "log", `log.join()`)
+		v, err = runScript(t.Context(), &vm, "log", `log.join()`)
 		if err != nil {
-			t.Fatalf("RunScript: %v", err)
+			t.Fatalf("runScript: %v", err)
 		}
 		if got, want := v.String(), "short timed-out,long ok"; got != want {
 			t.Errorf("log: got %q, want %q", got, want)
@@ -1666,12 +1666,12 @@ func runIn(t *testing.T, v ekuma.Value, src string) string {
 			return
 		}
 		var r ekuma.Value
-		r, err = vm.RunScript(context.Background(), "agent", src)
+		r, err = runScript(context.Background(), &vm, "agent", src)
 		got = r.String()
 	})
 	wg.Wait()
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	return got
 }
@@ -1688,7 +1688,7 @@ func TestAtomicsWaitCannotBlock(t *testing.T) {
 
 func TestSharedDataBlockOfNonShared(t *testing.T) {
 	var vm ekuma.VM
-	ab, err := vm.RunScript(t.Context(), "ab", `new ArrayBuffer(4)`)
+	ab, err := runScript(t.Context(), &vm, "ab", `new ArrayBuffer(4)`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1709,8 +1709,8 @@ func TestAtomicsWaitInterrupted(t *testing.T) {
 		run(t, &vm, `globalThis.ta = new Int32Array(new SharedArrayBuffer(4));`)
 		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
-		if _, err := vm.RunScript(ctx, "wait", `Atomics.wait(ta, 0, 0)`); !errors.Is(err, context.DeadlineExceeded) {
-			t.Errorf("RunScript: got %v, want %v", err, context.DeadlineExceeded)
+		if _, err := runScript(ctx, &vm, "wait", `Atomics.wait(ta, 0, 0)`); !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("runScript: got %v, want %v", err, context.DeadlineExceeded)
 		}
 		// The interrupted wait left its waiter list.
 		if got, want := run(t, &vm, `Atomics.notify(ta, 0)`), "0"; got != want {
@@ -1722,7 +1722,7 @@ func TestAtomicsWaitInterrupted(t *testing.T) {
 func TestAtomicsWaitAsyncNotifiedByAnotherVM(t *testing.T) {
 	skipAgents(t)
 	var vm ekuma.VM
-	sab, err := vm.RunScript(t.Context(), "wait", `
+	sab, err := runScript(t.Context(), &vm, "wait", `
 globalThis.result = "pending";
 const sab = new SharedArrayBuffer(8);
 Atomics.waitAsync(new Int32Array(sab), 1, 0).value.then(v => { result = v; });
@@ -1812,7 +1812,7 @@ registry.register({}, "cleaned");`)
 func TestSharedArrayBufferGrownByAnotherVM(t *testing.T) {
 	skipAgents(t)
 	var vm ekuma.VM
-	sab, err := vm.RunScript(t.Context(), "grow", `
+	sab, err := runScript(t.Context(), &vm, "grow", `
 const sab = new SharedArrayBuffer(4, {maxByteLength: 16});
 globalThis.ta = new Int32Array(sab);
 sab`)
@@ -1834,7 +1834,7 @@ func TestAtomicsAcrossVMs(t *testing.T) {
 		n      = 2000
 	)
 	var vm ekuma.VM
-	sab, err := vm.RunScript(t.Context(), "main", `globalThis.ta = new Int32Array(new SharedArrayBuffer(4 * (2 + 4))); ta.buffer`)
+	sab, err := runScript(t.Context(), &vm, "main", `globalThis.ta = new Int32Array(new SharedArrayBuffer(4 * (2 + 4))); ta.buffer`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1866,7 +1866,7 @@ for (let i = 0; i < ` + strconv.Itoa(n) + `; i++) {
 				errs[id] = err
 				return
 			}
-			_, errs[id] = avm.RunScript(context.Background(), "agent", src)
+			_, errs[id] = runScript(context.Background(), &avm, "agent", src)
 		})
 	}
 	wg.Wait()
@@ -1997,7 +1997,7 @@ func TestDateOffsetTransitions(t *testing.T) {
 	}
 	for _, tc := range tests {
 		vm.SetTimeZone(tc.zone)
-		v, err := vm.RunScript(t.Context(), "date", tc.src)
+		v, err := runScript(t.Context(), &vm, "date", tc.src)
 		if err != nil {
 			t.Errorf("%s: %v", tc.src, err)
 			continue
@@ -2043,7 +2043,7 @@ func TestTemporalTimeZone(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
-		v, err := vm.RunScript(t.Context(), "temporal", tc.src)
+		v, err := runScript(t.Context(), &vm, "temporal", tc.src)
 		if err != nil {
 			t.Errorf("%s: %v", tc.src, err)
 			continue
@@ -2088,7 +2088,7 @@ func TestTemporalNamespace(t *testing.T) {
 	}
 	for _, tc := range tests {
 		var vm ekuma.VM
-		v, err := vm.RunScript(t.Context(), "temporal", tc.src)
+		v, err := runScript(t.Context(), &vm, "temporal", tc.src)
 		if err != nil {
 			t.Errorf("%s: %v", tc.src, err)
 			continue
@@ -2272,9 +2272,9 @@ func TestProxy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -2313,9 +2313,9 @@ func TestProxyDeepChains(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, `try { `+tt.src+`; "no error" } catch (e) { e instanceof RangeError }`)
+			v, err := runScript(t.Context(), &vm, tt.name, `try { `+tt.src+`; "no error" } catch (e) { e instanceof RangeError }`)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != "true" {
 				t.Errorf("got %q, want a RangeError", got)
@@ -2516,7 +2516,7 @@ func TestModuleLoadedOnce(t *testing.T) {
 // dynamic import with the thrown value, and that a later import asks the loader again.
 func TestDynamicImportLoadError(t *testing.T) {
 	var vm ekuma.VM
-	thrown, err := vm.RunScript(t.Context(), "thrown", `({})`)
+	thrown, err := runScript(t.Context(), &vm, "thrown", `({})`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2528,13 +2528,13 @@ func TestDynamicImportLoadError(t *testing.T) {
 	if err := vm.Global().Set("thrown", thrown); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := vm.RunScript(t.Context(), "main", `
+	if _, err := runScript(t.Context(), &vm, "main", `
 		var result = [];
 		import("missing").catch(e => result.push(e === thrown));
 		import("missing").catch(e => result.push(e === thrown));`); err != nil {
 		t.Fatal(err)
 	}
-	v, err := vm.RunScript(t.Context(), "check", `result.join()`)
+	v, err := runScript(t.Context(), &vm, "check", `result.join()`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2558,7 +2558,7 @@ func TestModuleReferrer(t *testing.T) {
 		}
 		return nil, errors.New("no module")
 	})
-	if _, err := vm.RunScript(t.Context(), "script", `
+	if _, err := runScript(t.Context(), &vm, "script", `
 		import("mod");
 		(0, eval)('import("fromIndirectEval")');
 		Function('import("fromFunction")')();`); err != nil {
@@ -2584,13 +2584,13 @@ func TestShadowRealmImportValue(t *testing.T) {
 		calls++
 		return vm.ParseModule(req.Specifier, `globalThis.count = (globalThis.count ?? 0) + 1; export const count = globalThis.count;`)
 	})
-	if _, err := vm.RunScript(t.Context(), "main", `
+	if _, err := runScript(t.Context(), &vm, "main", `
 		var result;
 		const a = new ShadowRealm(), b = new ShadowRealm();
 		Promise.all([a.importValue("mod", "count"), a.importValue("mod", "count"), b.importValue("mod", "count")]).then(v => result = v.join());`); err != nil {
 		t.Fatal(err)
 	}
-	v, err := vm.RunScript(t.Context(), "check", `result`)
+	v, err := runScript(t.Context(), &vm, "check", `result`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2623,14 +2623,14 @@ func TestShadowRealmCancel(t *testing.T) {
 			var vm ekuma.VM
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 			defer cancel()
-			_, err := vm.RunScript(ctx, "loop", `
+			_, err := runScript(ctx, &vm, "loop", `
 				var caught = false;
 				const r = new ShadowRealm();
 				try { `+tt.src+` } catch (e) { caught = true; }`)
 			if !errors.Is(err, context.DeadlineExceeded) {
 				t.Errorf("got %v, want context.DeadlineExceeded", err)
 			}
-			v, err := vm.RunScript(t.Context(), "after", `typeof caught + " " + caught`)
+			v, err := runScript(t.Context(), &vm, "after", `typeof caught + " " + caught`)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2829,9 +2829,9 @@ func TestTailCalls(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -2862,9 +2862,9 @@ func TestNonTailCallsOverflow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, `try { `+tt.src+`; "no error" } catch (e) { e instanceof RangeError }`)
+			v, err := runScript(t.Context(), &vm, tt.name, `try { `+tt.src+`; "no error" } catch (e) { e instanceof RangeError }`)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != "true" {
 				t.Errorf("got %q, want a RangeError", got)
@@ -2877,14 +2877,14 @@ func TestNonTailCallsOverflow(t *testing.T) {
 // the frames of their callers.
 func TestTailCallStack(t *testing.T) {
 	var vm ekuma.VM
-	v, err := vm.RunScript(t.Context(), "trace.js", `"use strict";
+	v, err := runScript(t.Context(), &vm, "trace.js", `"use strict";
 function a(n) { return b(n + 1); }
 function b(n) { return c.call(null, n + 1); }
 function c(n) { throw new Error("x" + n); }
 function outer() { try { a(1); } catch (e) { return e.stack; } }
 outer()`)
 	if err != nil {
-		t.Fatalf("RunScript: %v", err)
+		t.Fatalf("runScript: %v", err)
 	}
 	want := "Error: x3\n    at c (trace.js:4:23)\n    at outer (trace.js:5:26)\n    at trace.js:6:1"
 	if got := v.String(); got != want {
@@ -3055,9 +3055,9 @@ func TestDecorators(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
@@ -3215,13 +3215,22 @@ func TestDecoratorMetadata(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			v, err := vm.RunScript(t.Context(), tt.name, tt.src)
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if got := toString(t, &vm, v); got != tt.want {
 				t.Errorf("got %q, want %q", got, tt.want)
 			}
 		})
 	}
+}
+
+// runScript parses src as a script of vm and evaluates it.
+func runScript(ctx context.Context, vm *ekuma.VM, name, src string) (ekuma.Value, error) {
+	s, err := vm.ParseScript(name, src)
+	if err != nil {
+		return ekuma.Undefined, err
+	}
+	return s.Evaluate(ctx)
 }

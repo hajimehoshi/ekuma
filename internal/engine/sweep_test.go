@@ -11,12 +11,21 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
+// runScript parses src as a script of vm and evaluates it.
+func runScript(vm *engine.VM, file, src string) (engine.Value, error) {
+	s, err := vm.ParseScript(file, src)
+	if err != nil {
+		return engine.Undefined, err
+	}
+	return vm.ScriptEvaluation(s)
+}
+
 func newVM(t *testing.T) *engine.VM {
 	t.Helper()
 	vm := engine.NewVM(nil)
 	builtin.Install(vm)
-	if _, err := vm.RunScript("init", `var o, i = 0;`); err != nil {
-		t.Fatalf("RunScript: %v", err)
+	if _, err := runScript(vm, "init", `var o, i = 0;`); err != nil {
+		t.Fatalf("runScript: %v", err)
 	}
 	return vm
 }
@@ -42,12 +51,12 @@ func TestDynamicKeysCollected(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			vm := newVM(t)
-			if _, err := vm.RunScript("keep", `var kept = {}; kept["k" + 0] = 0;`); err != nil {
-				t.Fatalf("RunScript: %v", err)
+			if _, err := runScript(vm, "keep", `var kept = {}; kept["k" + 0] = 0;`); err != nil {
+				t.Fatalf("runScript: %v", err)
 			}
 			for range rounds {
-				if _, err := vm.RunScript("round", tc.src); err != nil {
-					t.Fatalf("RunScript: %v", err)
+				if _, err := runScript(vm, "round", tc.src); err != nil {
+					t.Fatalf("runScript: %v", err)
 				}
 				runtime.GC()
 			}
@@ -58,9 +67,9 @@ func TestDynamicKeysCollected(t *testing.T) {
 				t.Errorf("got %d transitions after %d keys, want at most %d", got, rounds*keys, max)
 			}
 			// The key of a live object stays the same key.
-			v, err := vm.RunScript("check", `kept["k" + 0] === 0 && JSON.stringify(Object.assign({}, kept)) === '{"k0":0}'`)
+			v, err := runScript(vm, "check", `kept["k" + 0] === 0 && JSON.stringify(Object.assign({}, kept)) === '{"k0":0}'`)
 			if err != nil {
-				t.Fatalf("RunScript: %v", err)
+				t.Fatalf("runScript: %v", err)
 			}
 			if !engine.ToBoolean(v) {
 				t.Errorf("the property of a live object was not found")

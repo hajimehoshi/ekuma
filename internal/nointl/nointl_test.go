@@ -12,9 +12,18 @@ import (
 	"github.com/hajimehoshi/ekuma"
 )
 
+// runScript parses src as a script of vm and evaluates it.
+func runScript(vm *ekuma.VM, src string) (ekuma.Value, error) {
+	s, err := vm.ParseScript("test.js", src)
+	if err != nil {
+		return ekuma.Undefined, err
+	}
+	return s.Evaluate(context.Background())
+}
+
 func TestNoIntl(t *testing.T) {
 	var vm ekuma.VM
-	v, err := vm.RunScript(context.Background(), "test.js", `"Intl" in globalThis`)
+	v, err := runScript(&vm, `"Intl" in globalThis`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +34,7 @@ func TestNoIntl(t *testing.T) {
 
 func TestToLocaleStringWithoutIntl(t *testing.T) {
 	var vm ekuma.VM
-	v, err := vm.RunScript(context.Background(), "test.js", `(1234.5).toLocaleString("de") + " " + (12345n).toLocaleString("de")`)
+	v, err := runScript(&vm, `(1234.5).toLocaleString("de") + " " + (12345n).toLocaleString("de")`)
 	if err != nil {
 		t.Fatal(err)
 	}

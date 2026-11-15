@@ -212,7 +212,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 			if err != nil {
 				return "harness: " + err.Error(), false
 			}
-			if _, err := vm.RunScript(ctx, name, text); err != nil {
+			if _, err := runScript(ctx, &vm, name, text); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					return "timeout in harness " + name, true
 				}
@@ -226,7 +226,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 	if strict {
 		src = "\"use strict\";\n" + src
 	}
-	_, err := vm.RunScript(ctx, path, src)
+	_, err := runScript(ctx, &vm, path, src)
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "timeout", true
 	}
@@ -323,7 +323,7 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 
 // call calls the function that the script fn evaluates to with arg.
 func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
-	f, err := l.vm.RunScript(context.Background(), "loader", fn)
+	f, err := runScript(context.Background(), l.vm, "loader", fn)
 	if err != nil {
 		return ekuma.Undefined, err
 	}
@@ -411,7 +411,7 @@ func define262(vm *ekuma.VM, agents *agentCluster) error {
 
 // new262 returns the object $262 for the current realm of vm, without $262.agent.
 func new262(vm *ekuma.VM) (ekuma.Value, error) {
-	o, err := vm.RunScript(context.Background(), "$262", "({})")
+	o, err := runScript(context.Background(), vm, "$262", "({})")
 	if err != nil {
 		return ekuma.Undefined, err
 	}
@@ -448,7 +448,7 @@ func new262(vm *ekuma.VM) (ekuma.Value, error) {
 		if len(args) > 0 {
 			src = args[0].String()
 		}
-		v, err := vm.RunScript(context.Background(), "evalScript", src)
+		v, err := runScript(context.Background(), vm, "evalScript", src)
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			// An early error of the script is a SyntaxError thrown to the caller.
 			c, err := vm.Global().Get("SyntaxError")
@@ -795,7 +795,7 @@ func (c *agentCluster) define(vm *ekuma.VM, o ekuma.Value) error {
 	now := vm.FuncOf("monotonicNow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return c.monotonicNow(), nil
 	})
-	f, err := vm.RunScript(context.Background(), "$262.agent", "(start, broadcast, getReport, sleep, monotonicNow) => ({start, broadcast, getReport, sleep, monotonicNow})")
+	f, err := runScript(context.Background(), vm, "$262.agent", "(start, broadcast, getReport, sleep, monotonicNow) => ({start, broadcast, getReport, sleep, monotonicNow})")
 	if err != nil {
 		return err
 	}
@@ -841,14 +841,14 @@ func (c *agentCluster) run(a *testAgent, src string) {
 		},
 	};
 }`
-	f, err := vm.RunScript(c.ctx, "$262.agent", define)
+	f, err := runScript(c.ctx, &vm, "$262.agent", define)
 	if err != nil {
 		return
 	}
 	if _, err := f.Invoke(c.ctx, receive, report, sleep, now); err != nil {
 		return
 	}
-	if _, err := vm.RunScript(c.ctx, "agent", src); err != nil {
+	if _, err := runScript(c.ctx, &vm, "agent", src); err != nil {
 		return
 	}
 	for {
