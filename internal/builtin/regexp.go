@@ -698,8 +698,17 @@ func initRegExp(vm *engine.VM) {
 
 	// The fast paths read these properties of an unmodified RegExp object without a lookup:
 	// the flag accessors, exec, constructor and @@species for SpeciesConstructor, and @@match
-	// for the IsRegExp of the RegExp constructor.
-	protoKeys := []*engine.Object{env.flags, env.execKey, vm.Key(engine.KeyConstructor), vm.WellKnownSymbol(engine.SymbolMatch)}
+	// for the IsRegExp of the RegExp constructor. The String methods that borrow RegExp objects
+	// read @@match, @@replace, @@search and @@split without running script code.
+	protoKeys := []*engine.Object{
+		env.flags,
+		env.execKey,
+		vm.Key(engine.KeyConstructor),
+		vm.WellKnownSymbol(engine.SymbolMatch),
+		vm.WellKnownSymbol(engine.SymbolReplace),
+		vm.WellKnownSymbol(engine.SymbolSearch),
+		vm.WellKnownSymbol(engine.SymbolSplit),
+	}
 	for _, fp := range flagProps {
 		protoKeys = append(protoKeys, vm.Intern(fp.name))
 	}

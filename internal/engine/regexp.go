@@ -4,6 +4,8 @@
 package engine
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 )
@@ -15,6 +17,8 @@ type regExpState struct {
 	source  string
 	flags   string
 	legacy  bool
+	// lent marks the state of a RegExp object that [VM.LendRegExpLiterals] lends.
+	lent bool
 }
 
 // regExpSite is a regular expression literal of a function.
@@ -24,6 +28,9 @@ type regExpSite struct {
 	// state is the internal state that the RegExp objects of the literal share, once the
 	// pattern is compiled.
 	state *regExpState
+
+	// lent is the RegExp object that [VM.LendRegExpLiterals] lends for the literal, once made.
+	lent *Object
 }
 
 // regExpCacheLimit bounds the number of compiled patterns that a [VM] keeps.
@@ -114,6 +121,11 @@ func (vm *VM) compileRegExp(p, f string) *regexp.Regexp {
 
 // newRegExpLiteral evaluates the regular expression literal site: it returns a new RegExp object.
 func (vm *VM) newRegExpLiteral(site *regExpSite) *Object {
+	return vm.newRegExpObject(vm.regExpShape(), vm.regExpLiteralState(site))
+}
+
+// regExpLiteralState returns the state that the RegExp objects of the literal site share.
+func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
 	if site.state == nil {
 		site.state = &regExpState{
 			matcher: vm.compileRegExp(site.literal.Pattern, site.literal.Flags),
@@ -122,7 +134,54 @@ func (vm *VM) newRegExpLiteral(site *regExpSite) *Object {
 			legacy:  true,
 		}
 	}
-	return vm.newRegExpObject(vm.regExpShape(), site.state)
+	return site.state
+}
+
+// LendRegExpLiterals marks the native function f as one that may receive, as the first argument
+// of a call written with a regular expression literal there, a RegExp object that other
+// evaluations of the literal reuse instead of a new one. Unless f replaces that argument by
+// [VM.OwnRegExp] before using it, f must not keep it, expose it to script code, or use it after
+// running script code.
+func (vm *VM) LendRegExpLiterals(f *Object) {
+	vm.regExpBorrowers = append(vm.regExpBorrowers, f)
+}
+
+// regExpLiteralArg evaluates the regular expression literal site that is the first argument of
+// a call of f. It returns the lent object of the literal, as new, when f is marked by
+// [VM.LendRegExpLiterals] and [VM.IsUnmodifiedRegExp] holds for it, or else a new RegExp object.
+func (vm *VM) regExpLiteralArg(f *Object, site *regExpSite) *Object {
+	if f == nil || !slices.Contains(vm.regExpBorrowers, f) {
+		return vm.newRegExpLiteral(site)
+	}
+	st := vm.regExpLiteralState(site)
+	o := site.lent
+	if o == nil {
+		lent := *st
+		lent.lent = true
+		o = vm.newRegExpObject(vm.regExpShape(), &lent)
+		site.lent = o
+	} else {
+		// A borrower that runs script code may still hold o, but no longer uses it.
+		o.shape = vm.regExpShape()
+		o.slots[0] = Value{}
+	}
+	if !vm.IsUnmodifiedRegExp(o) {
+		return vm.newRegExpObject(vm.regExpShape(), st)
+	}
+	return o
+}
+
+// OwnRegExp returns v, or a new RegExp object for the same literal when v is a RegExp object
+// lent by [VM.LendRegExpLiterals]. v must not have been used since it was lent.
+func (vm *VM) OwnRegExp(v Value) Value {
+	if o := v.o; o != nil && o.class == classRegExp {
+		if st := o.ext.(*regExpState); st.lent {
+			own := *st
+			own.lent = false
+			return Value{o: vm.newRegExpObject(vm.regExpShape(), &own)}
+		}
+	}
+	return v
 }
 
 // RegExpMatcher returns the compiled pattern of the RegExp object o,

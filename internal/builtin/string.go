@@ -378,9 +378,17 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "toWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.NewString(wtf8.ToValidUTF8(thisString(vm, this, "toWellFormed").Str()))
 	})
-	method(vm, proto, "split", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	// split, replace, replaceAll, match and search borrow the RegExp object of a literal separator
+	// or pattern. RegExp.prototype[@@split] and the others reach it only through IsUnmodifiedRegExp,
+	// and run no script code before the last use of it, except the conversions of the other
+	// arguments, which the conditions below rule out, and the replacer function, which runs last
+	// and is not passed the object.
+	vm.LendRegExpLiterals(method(vm, proto, "split", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.RequireObjectCoercible(this, "String.prototype.split")
 		sepArg, limArg := arg(args, 0), arg(args, 1)
+		if !this.IsString() || limArg.IsObject() {
+			sepArg = vm.OwnRegExp(sepArg)
+		}
 		if sepArg.IsObject() {
 			if m := vm.GetMethod(sepArg, vm.WellKnownSymbol(engine.SymbolSplit)); m != nil {
 				return vm.Call(m, sepArg, this, limArg)
@@ -413,11 +421,14 @@ func initString(vm *engine.VM) {
 			out = append(out, vm.NewString(part))
 		}
 		return engine.ObjectValue(vm.NewArray(out))
-	})
+	}))
 	replace := func(name string, all bool) {
-		method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		vm.LendRegExpLiterals(method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+name)
 			pat, rep := arg(args, 0), arg(args, 1)
+			if !this.IsString() || rep.IsObject() && !rep.IsCallable() {
+				pat = vm.OwnRegExp(pat)
+			}
 			if pat.IsObject() {
 				if all {
 					requireGlobalRegExp(vm, pat.Object(), "replaceAll")
@@ -462,7 +473,7 @@ func initString(vm *engine.VM) {
 				b.WriteString(s.Substring(end, n))
 			}
 			return vm.NewString(b.String())
-		})
+		}))
 	}
 	replace("replace", false)
 	replace("replaceAll", true)
@@ -474,9 +485,12 @@ func initString(vm *engine.VM) {
 		{"matchAll", vm.WellKnownSymbol(engine.SymbolMatchAll)},
 		{"search", vm.WellKnownSymbol(engine.SymbolSearch)},
 	} {
-		method(vm, proto, e.name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		fn := method(vm, proto, e.name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+e.name)
 			pat := arg(args, 0)
+			if !this.IsString() {
+				pat = vm.OwnRegExp(pat)
+			}
 			if pat.IsObject() {
 				if e.name == "matchAll" {
 					requireGlobalRegExp(vm, pat.Object(), "matchAll")
@@ -493,6 +507,9 @@ func initString(vm *engine.VM) {
 			rx := regExpCreate(vm, pat, flags)
 			return vm.CallValue(vm.GetV(engine.ObjectValue(rx), e.key), engine.ObjectValue(rx), s)
 		})
+		if e.name != "matchAll" {
+			vm.LendRegExpLiterals(fn)
+		}
 	}
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "[Symbol.iterator]")

@@ -1348,6 +1348,128 @@ func TestRegExpModified(t *testing.T) {
 	}
 }
 
+// TestRegExpLiteralArgument tests that a regular expression literal passed to a String method
+// evaluates to a new RegExp object each time wherever script code can see the object.
+func TestRegExpLiteralArgument(t *testing.T) {
+	// seen collects the RegExp objects that script code receives. check reports how many
+	// distinct ones there are, which is the number of evaluations of literals that reach script
+	// code when each makes a new object.
+	const prelude = `var seen = [];
+		function check() {
+			return new Set(seen).size + " " + seen.every(function (r) { return r instanceof RegExp; });
+		}
+		var exec = RegExp.prototype.exec;
+		// patchExec makes the next call of exec record its RegExp object.
+		function patchExec() {
+			RegExp.prototype.exec = function (s) { seen.push(this); RegExp.prototype.exec = exec; return exec.call(this, s); };
+		}
+		`
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "assigned exec",
+			src: `RegExp.prototype.exec = function (s) { seen.push(this); return null; };
+				for (var i = 0; i < 2; i++) {
+					"ab".replace(/b/g, "x"); "ab".replace(/b/, function () { return "x"; });
+					"ab".match(/b/); "ab".search(/b/);
+				}
+				check()`,
+			want: "8 true",
+		},
+		{
+			name: "assigned String.prototype.replace",
+			src: `String.prototype.replace = function (re) { seen.push(re); return re.lastIndex++; };
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push("ab".replace(/b/y, "x"));
+				r.join() + " " + check()`,
+			want: "0,0 2 true",
+		},
+		{
+			name: "symbol methods",
+			src: `var r = [];
+				[Symbol.replace, Symbol.match, Symbol.search, Symbol.split].forEach(function (k) {
+					var f = RegExp.prototype[k];
+					Object.defineProperty(RegExp.prototype, k, {get() { seen.push(this); return f; }});
+					for (var i = 0; i < 2; i++) r.push("ab".replace(/b/g, "x"), "ab".match(/b/)[0], "ab".search(/b/), "a,b".split(/,/));
+					Object.defineProperty(RegExp.prototype, k, {value: f});
+					r.push(check());
+					seen = [];
+				});
+				r.join(" ")`,
+			want: "ax b 1 a,b ax b 1 a,b 2 true ax b 1 a,b ax b 1 a,b 4 true ax b 1 a,b ax b 1 a,b 2 true ax b 1 a,b ax b 1 a,b 2 true",
+		},
+		{
+			name: "assigned Symbol.replace",
+			src: `RegExp.prototype[Symbol.replace] = function (s, v) { seen.push(this); return this.lastIndex; };
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push("ab".replace(/b/g, "x"));
+				r.join() + " " + check()`,
+			want: "0,0 2 true",
+		},
+		{
+			name: "replacer",
+			src: `function f(s, depth) {
+					return s.replace(/(b)/g, function (m, p1, pos) {
+						"use strict";
+						var inner = depth > 0 ? f("abab", depth - 1) : "";
+						return "[" + (this === undefined) + arguments.length + pos + inner + "]";
+					});
+				}
+				f("abab", 1)`,
+			want: "a[true41a[true41]a[true43]]a[true43a[true41]a[true43]]",
+		},
+		{
+			name: "subject converted by script code",
+			src: `var s = new String("ab");
+				s.toString = function () { patchExec(); return "ab"; };
+				for (var i = 0; i < 2; i++) { s.replace(/b/g, "x"); s.match(/b/); }
+				check()`,
+			want: "4 true",
+		},
+		{
+			name: "other arguments converted by script code",
+			src: `var v = {toString() { patchExec(); return "x"; }, valueOf() { patchExec(); return 5; }};
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push("ab".replace(/b/g, v), "a,b".split(/,/, v));
+				r.join(" ") + " " + check()`,
+			want: "ax a,b ax a,b 4 true",
+		},
+		{
+			name: "callee that is not the String method",
+			src: `function f(x) { return x.replace(/b/g, "x"); }
+				var o = {replace(re) { return re; }};
+				var a = f(o);
+				a.lastIndex = 7;
+				var r = [f("abab"), f("abab")];
+				seen.push(a, f(o));
+				r.join() + " " + a.lastIndex + " " + seen[1].lastIndex + " " + check()`,
+			want: "axax,axax 7 0 2 true",
+		},
+		{
+			name: "sticky and global literals in loops",
+			src: `var r = [];
+				for (var i = 0; i < 3; i++) r.push("aaa".replace(/a/y, "b"), "aXaX".match(/X/g).length, "aXa".search(/a/y), "aXa".split(/a/y).length);
+				r.join()`,
+			want: "baa,2,0,3,baa,2,0,3,baa,2,0,3",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := vm.RunScript(t.Context(), "test", prelude+tt.src)
+			if err != nil {
+				t.Fatalf("RunScript: %v", err)
+			}
+			if got := v.String(); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestDetachImmutableArrayBuffer tests that $262.detachArrayBuffer refuses an immutable buffer.
 func TestDetachImmutableArrayBuffer(t *testing.T) {
 	var vm ekuma.VM

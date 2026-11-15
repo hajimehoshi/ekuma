@@ -644,3 +644,53 @@ func BenchmarkTailCall(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkRegExpLiteral measures the common uses of a regular expression literal. One iteration
+// evaluates the expression once. Each literal case has a hoisted twin that evaluates the literal
+// once before the loop, so the difference between the two is the cost of the RegExp object.
+func BenchmarkRegExpLiteral(b *testing.B) {
+	const setup = `
+		var s = "the quick brown fox jumps over the lazy dog";
+		var f = function(m) { return m; };
+		function countExec(re) { var c = 0; while (re.exec(s)) c++; return c; }
+		function countTest(re) { var c = 0; while (re.test(s)) c++; return c; }`
+	cases := []struct {
+		name string
+		lit  string
+		expr string
+	}{
+		{name: "replace/str", lit: `/o/g`, expr: `s.replace(LIT, "0")`},
+		{name: "replace/fn", lit: `/o/g`, expr: `s.replace(LIT, f)`},
+		{name: "match", lit: `/b(r)own/`, expr: `s.match(LIT)`},
+		{name: "matchAll", lit: `/o/g`, expr: `[...s.matchAll(LIT)].length`},
+		{name: "split", lit: `/ /`, expr: `s.split(LIT)`},
+		{name: "search", lit: `/fox/`, expr: `s.search(LIT)`},
+		{name: "test", lit: `/fox/`, expr: `LIT.test(s)`},
+		{name: "exec", lit: `/f(o)x/`, expr: `LIT.exec(s)`},
+		{name: "stored", lit: `/o/g`, expr: `(re = LIT, s.replace(re, "0"))`},
+		{name: "loop/g", lit: `/o/g`, expr: `countExec(LIT)`},
+		{name: "loop/y", lit: `/\w+|\s+/y`, expr: `countTest(LIT)`},
+	}
+	for _, c := range cases {
+		for _, kind := range []string{"literal", "hoisted"} {
+			b.Run(c.name+"/"+kind, func(b *testing.B) {
+				lit, expr := "null", strings.Replace(c.expr, "LIT", c.lit, 1)
+				if kind == "hoisted" {
+					lit, expr = c.lit, strings.Replace(c.expr, "LIT", "lit", 1)
+				}
+				src := fmt.Sprintf(`%s
+					function run(n) { var lit = %s, re, o; for (var i = 0; i < n; i++) o = %s; return o; }`, setup, lit, expr)
+				ctx := b.Context()
+				var vm ekuma.VM
+				if _, err := vm.RunScript(ctx, "regexp.js", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

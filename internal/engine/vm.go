@@ -373,6 +373,9 @@ type VM struct {
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[string]*regexp.Regexp
 
+	// regExpBorrowers are the functions marked by [VM.LendRegExpLiterals].
+	regExpBorrowers []*Object
+
 	regExpOriginals regExpOriginals
 
 	realm

@@ -160,6 +160,7 @@ const (
 	OpArrayHole        // append a hole to the array a
 	OpArraySpread      // append the elements of the iterable b to the array a
 	OpRegExp           // a = a new RegExp object for the literal RegExps[b]
+	OpRegExpArg        // a+2 = the RegExp object for the literal RegExps[b] as the first argument of the call of a that follows
 	OpTemplate         // a = the template object b of the function
 	OpDefineField      // define the enumerable data property b of a as c
 	OpDefineFieldK     // define the enumerable data property Keys[b] of a as c, cache b

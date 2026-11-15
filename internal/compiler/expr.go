@@ -196,11 +196,7 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 	case *ast.NewTargetExpr:
 		f.loadVar("new.target", dst, false)
 	case *ast.RegExpLit:
-		f.f.RegExps = append(f.f.RegExps, bytecode.RegExp{
-			Pattern: e.Pattern,
-			Flags:   e.Flags,
-		})
-		f.emit(bytecode.OpRegExp, dst, int32(len(f.f.RegExps)-1), 0)
+		f.emit(bytecode.OpRegExp, dst, f.regExpSite(e), 0)
 	case *ast.TemplateLit:
 		f.template(e, dst)
 	case *ast.TaggedTemplate:
@@ -831,6 +827,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	// The callee goes to base, the this value to base+1 and the arguments follow.
 	base := f.newRegs(2)
 	op := bytecode.OpCall
+	var regExpArg *ast.RegExpLit
 	// pos is the position of the call: the property name of a method call, the name of
 	// the function, or the arguments after any other callee.
 	pos := n.Start()
@@ -864,6 +861,15 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			case "call":
 				if !hasSpread(n.Args) {
 					op = bytecode.OpCallCall
+				}
+			case "match", "replace", "replaceAll", "search", "split":
+				// The callee may be a String method that the RegExp object for a literal
+				// first argument never escapes from, so the object is made right before
+				// the call, once the callee is known.
+				if len(n.Args) > 0 && !hasSpread(n.Args) {
+					if lit, ok := n.Args[0].(*ast.RegExpLit); ok {
+						regExpArg = lit
+					}
 				}
 			case "apply":
 				if len(n.Args) == 2 && f.isForwardedArguments(n.Args[1]) {
@@ -934,7 +940,11 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		f.result(dst, base)
 		return
 	}
-	for _, a := range n.Args {
+	for i, a := range n.Args {
+		if i == 0 && regExpArg != nil {
+			f.newReg()
+			continue
+		}
 		f.expr(a, f.newReg())
 	}
 	site := int32(0)
@@ -950,8 +960,20 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		}
 	}
 	f.setPos(pos)
+	if regExpArg != nil {
+		f.emit(bytecode.OpRegExpArg, base, f.regExpSite(regExpArg), 0)
+	}
 	f.emit(op, base, int32(len(n.Args)), site)
 	f.result(dst, base)
+}
+
+// regExpSite adds the regular expression literal e to the function and returns its index.
+func (f *fn) regExpSite(e *ast.RegExpLit) int32 {
+	f.f.RegExps = append(f.f.RegExps, bytecode.RegExp{
+		Pattern: e.Pattern,
+		Flags:   e.Flags,
+	})
+	return int32(len(f.f.RegExps) - 1)
 }
 
 // result moves the result of a call from the register src to dst.
