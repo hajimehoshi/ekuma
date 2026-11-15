@@ -11,8 +11,8 @@
 // Without the import, a VM has no Intl, and Temporal has only the ISO 8601 calendar.
 //
 // That data is under the Unicode License v3. A program that imports the package must include
-// the copyright and permission notice of that license, in internal/unicode/cldr/LICENSE, with
-// its copies or in their documentation.
+// the copyright and permission notice of that license, in internal/unicode/cldr/LICENSE and
+// internal/unicode/collation/LICENSE, with its copies or in their documentation.
 //
 // The default locale is that of the environment: the LC_ALL, LC_MESSAGES or LANG
 // environment variable natively, and navigator.language on GOOS=js. It is en-US when the

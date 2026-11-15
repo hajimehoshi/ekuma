@@ -84,7 +84,8 @@ the local time zone of Go's `time` package, or of the JavaScript host with `GOOS
 ### Intl
 
 Importing the package `github.com/hajimehoshi/ekuma/intl` for its side effect adds `Intl` to
-every VM, makes the `toLocale*String` methods of numbers and dates format by locale, and gives
+every VM, makes the `toLocale*String` methods of numbers, dates, arrays and typed arrays format by
+locale and `localeCompare`, `toLocaleUpperCase` and `toLocaleLowerCase` follow it, and gives
 `Temporal` the calendars of ECMA-402 besides `iso8601`:
 
 ```go
@@ -92,7 +93,7 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
 Without the import, the engine has none of these, and its binary does not grow. With it, a hello
-world grows from about 8.6 MB to 13.2 MB natively, and from 11.0 MB to 15.9 MB with `GOOS=js`.
+world grows from about 8.6 MB to 14.6 MB natively, and from 11.0 MB to 17.4 MB with `GOOS=js`.
 The default locale is the one that `LC_ALL`, `LC_MESSAGES` or `LANG` names natively, or
 `navigator.language` with `GOOS=js`, and en-US otherwise. The package brings locale data whose
 license notice a program must include: see [License](#license).
@@ -108,11 +109,24 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-100% of [test262](https://github.com/tc39/test262) pass: 48,829 of 48,829 tests
-in `test/language`, `test/built-ins`, `test/annexB`, `test/intl402/BigInt`,
-`test/intl402/Date`, `test/intl402/FallbackSymbol` and `test/intl402/Number` (commit
-`2e58f87`). The test suite
-fails when any of them fails.
+100% of [test262](https://github.com/tc39/test262) pass: 49,545 of 49,545 tests in these
+directories. The test suite fails when any of them fails.
+
+- `test/language`
+- `test/built-ins`
+- `test/annexB`
+- `test/intl402/Array`
+- `test/intl402/BigInt`
+- `test/intl402/Collator`
+- `test/intl402/Date`
+- `test/intl402/DateTimeFormat`
+- `test/intl402/FallbackSymbol`
+- `test/intl402/Number`
+- `test/intl402/NumberFormat`
+- `test/intl402/PluralRules`
+- `test/intl402/Segmenter`
+- `test/intl402/String`
+- `test/intl402/TypedArray`
 
 ### Implemented
 
@@ -128,12 +142,14 @@ fails when any of them fails.
 
 - `Temporal` has only the `iso8601` calendar without [Intl](#intl). Its named time zones need
   the system's time zone database
-- Without [Intl](#intl), `toLocale*String` uses a fixed English format, and `localeCompare`
-  compares code units after canonical equivalence. With it, the `toLocaleString` methods of
-  `Number`, `BigInt`, `Date` and `Temporal` (except `Temporal.Duration`) and `Date`'s
-  `toLocaleDateString` and `toLocaleTimeString` format by locale. `localeCompare`,
-  `toLocaleUpperCase`, `toLocaleLowerCase`, `Temporal.Duration`'s `toLocaleString`, and the
-  `toLocaleString` of arrays and typed arrays do not use locales yet
+- Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
+  compares code units after canonical equivalence, and `toLocaleUpperCase` and
+  `toLocaleLowerCase` ignore the locale. With it, all of these follow the locale, except
+  `Temporal.Duration`'s `toLocaleString`
+- `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
+  and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root. `Intl.Segmenter`
+  follows UAX #29 without dictionaries, so it does not split Chinese, Japanese or Thai text into
+  words
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
@@ -147,9 +163,10 @@ fails when any of them fails.
 
 - Part of `Intl`, which [importing `github.com/hajimehoshi/ekuma/intl`](#intl) adds.
   - It has `Intl.getCanonicalLocales`, `Intl.supportedValuesOf`, `Intl.Locale`,
-    `Intl.NumberFormat`, `Intl.PluralRules` and `Intl.DateTimeFormat`
-  - It does not have `Intl.Collator`, `Intl.Segmenter`, `Intl.ListFormat`,
-    `Intl.RelativeTimeFormat`, `Intl.DisplayNames` or `Intl.DurationFormat` yet
+    `Intl.NumberFormat`, `Intl.PluralRules`, `Intl.DateTimeFormat`, `Intl.Collator` and
+    `Intl.Segmenter`
+  - It does not have `Intl.ListFormat`, `Intl.RelativeTimeFormat`, `Intl.DisplayNames` or
+    `Intl.DurationFormat` yet
 - Host API for these, some of which the engine has and only the tests use:
   - Giving a module a module source
   - Property keys other than strings: symbol keys, property descriptors, and listing the keys
@@ -173,8 +190,9 @@ under the user cache directory, or in the directory that `EKUMA_TEST262` names.
 ## License
 
 Ekuma is under [0BSD](LICENSE), except for the data of the
-[Unicode Common Locale Data Repository](https://cldr.unicode.org/) in `internal/unicode/cldr`,
-which is under the Unicode License v3 ([license](internal/unicode/cldr/LICENSE)). Only the
-optional package `github.com/hajimehoshi/ekuma/intl` includes this data, so only a program that
-imports that package must include the copyright and permission notice of the Unicode License v3
-with its copies or in their documentation.
+[Unicode Common Locale Data Repository](https://cldr.unicode.org/) in `internal/unicode/cldr`
+and its collation data in `internal/unicode/collation`, which are under the Unicode License v3
+([license](internal/unicode/cldr/LICENSE), [license](internal/unicode/collation/LICENSE)). Only
+the optional package `github.com/hajimehoshi/ekuma/intl` includes this data, so only a program
+that imports that package must include the copyright and permission notice of the Unicode
+License v3 with its copies or in their documentation.

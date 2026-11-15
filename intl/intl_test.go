@@ -55,3 +55,51 @@ func TestTemporalToLocaleString(t *testing.T) {
 		}
 	}
 }
+
+func TestLocaleSensitiveMethods(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "localeCompare",
+			src:  `["a".localeCompare("B"), "ä".localeCompare("z", "sv"), "a".localeCompare("á", "en", {sensitivity: "base"})].join()`,
+			want: "-1,1,0",
+		},
+		{
+			name: "case mapping",
+			src:  `"i".toLocaleUpperCase("tr") + "I".toLocaleLowerCase("az-Latn") + "i".toLocaleUpperCase("en")`,
+			want: "İıI",
+		},
+		{
+			name: "array toLocaleString",
+			src:  `[1234.5, 1n].toLocaleString("de") + " " + new Float64Array([0.5]).toLocaleString("en", {style: "percent"})`,
+			want: "1.234,5,1 50%",
+		},
+		{
+			name: "segment of a surrogate pair",
+			src: `(() => {
+				const s = new Intl.Segmenter("en", {granularity: "word"}).segment("a \u{1F600}b");
+				const c = s.containing(3);
+				return [c.segment, c.index, c.isWordLike, [...s].length].join();
+			})()`,
+			want: "\U0001F600,2,false,4",
+		},
+	} {
+		var vm ekuma.VM
+		s, err := vm.ParseScript("test.js", tc.src)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		v, err := s.Evaluate(context.Background())
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		if got := v.String(); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}

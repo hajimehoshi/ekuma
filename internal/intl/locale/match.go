@@ -54,6 +54,13 @@ func Parent(s string) (string, bool) {
 	return parent(s, false)
 }
 
+// CollationParent returns the parent locale of the locale s of CLDR in the inheritance chain
+// of the collation data of CLDR, with "und" for the root locale, and reports false when s is
+// the root locale.
+func CollationParent(s string) (string, bool) {
+	return parent(s, true)
+}
+
 // BestAvailableLocale implements BestAvailableLocale of ECMA-402 for the canonical language
 // tag s and the available locales. It reports false when no available locale matches.
 func BestAvailableLocale(s string) (string, bool) {
@@ -146,7 +153,8 @@ func fromHost(s string) (string, bool) {
 
 // parent returns the parent locale of the canonical language tag s in the inheritance chain
 // of CLDR, with "und" for the root locale, and reports false when s is the root locale.
-// collation selects the parents of collation data.
+// collation selects the parents of collation data, where, as in ICU, a locale whose script
+// is not the likely one inherits from its language.
 func parent(s string, collation bool) (string, bool) {
 	if s == "und" {
 		return "", false
@@ -156,7 +164,7 @@ func parent(s string, collation bool) (string, bool) {
 			return p, true
 		}
 	}
-	if p, ok := cldr.ParentLocales.Lookup(s); ok {
+	if p, ok := cldr.ParentLocales.Lookup(s); ok && (!collation || p != "und") {
 		return p, true
 	}
 	t, ok := Parse(s)
@@ -169,6 +177,8 @@ func parent(s string, collation bool) (string, bool) {
 		id.Variants = id.Variants[:len(id.Variants)-1]
 	case id.Region != "":
 		id.Region = ""
+	case id.Script != "" && collation:
+		id.Script = ""
 	case id.Script != "":
 		// A script that is not the likely script of the language starts its own tree.
 		if max, ok := AddLikelySubtags(LanguageID{

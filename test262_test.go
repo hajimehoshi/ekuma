@@ -49,7 +49,13 @@ func test262Dir() string {
 
 // test262Dirs are the directories of the suite that are run. intl402 tests the optional
 // internationalization API, and staging holds tests of proposals.
-var test262Dirs = []string{"test/language", "test/built-ins", "test/annexB", "test/intl402/BigInt", "test/intl402/Date", "test/intl402/FallbackSymbol", "test/intl402/Number"}
+var test262Dirs = []string{
+	"test/language", "test/built-ins", "test/annexB",
+	"test/intl402/Array", "test/intl402/BigInt", "test/intl402/Collator", "test/intl402/Date",
+	"test/intl402/DateTimeFormat", "test/intl402/FallbackSymbol", "test/intl402/Number",
+	"test/intl402/NumberFormat", "test/intl402/PluralRules", "test/intl402/Segmenter",
+	"test/intl402/String", "test/intl402/TypedArray",
+}
 
 // metadata is the part of the front matter of a test that the runner uses.
 type metadata struct {

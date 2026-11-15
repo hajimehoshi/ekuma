@@ -27,6 +27,13 @@ type realm struct {
 	dateTimeFormatProto *engine.Object
 	dateTimeFormatCtor  *engine.Object
 
+	collatorProto  *engine.Object
+	segmenterProto *engine.Object
+	collatorCtor   *engine.Object
+	// defaultCollator is the collator of String.prototype.localeCompare without locales and
+	// options.
+	defaultCollator *collatorData
+
 	// fallbackSymbol is the [[FallbackSymbol]] of Intl.
 	fallbackSymbol *engine.Object
 }
@@ -42,6 +49,9 @@ func Install(vm *engine.VM) {
 	initToLocaleString(vm)
 	initDateToLocaleString(vm)
 	initTemporalToLocaleString(vm)
+	initLocaleCompare(vm)
+	initLocaleCase(vm)
+	initArrayToLocaleString(vm)
 }
 
 // init defines the properties of the Intl namespace.
@@ -79,6 +89,8 @@ func (r *realm) init(vm *engine.VM) {
 	r.initNumberFormat(vm)
 	r.initPluralRules(vm)
 	r.initDateTimeFormat(vm)
+	r.initCollator(vm)
+	r.initSegmenter(vm)
 }
 
 // realmOf returns the Intl objects of the realm of the function f.

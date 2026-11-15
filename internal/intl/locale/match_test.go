@@ -51,3 +51,32 @@ func TestFromHost(t *testing.T) {
 		}
 	}
 }
+
+func TestCollationParent(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want string
+	}{
+		{
+			// A script that is not the likely one inherits from its language.
+			in:   "zh-Hant",
+			want: "zh",
+		},
+		{
+			in:   "nb",
+			want: "no",
+		},
+		{
+			in:   "yue",
+			want: "zh-Hant",
+		},
+		{
+			in:   "de-AT",
+			want: "de",
+		},
+	} {
+		if got, _ := locale.CollationParent(tc.in); got != tc.want {
+			t.Errorf("CollationParent(%q): got %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

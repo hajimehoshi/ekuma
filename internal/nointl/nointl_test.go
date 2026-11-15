@@ -55,3 +55,16 @@ func TestDateAndTemporalToLocaleStringWithoutIntl(t *testing.T) {
 		t.Errorf("toLocaleString: got %q, want %q", got, want)
 	}
 }
+
+func TestStringLocaleMethodsWithoutIntl(t *testing.T) {
+	var vm ekuma.VM
+	// Without Intl, localeCompare compares code units after NFC, and the case mappings
+	// ignore the locales.
+	v, err := runScript(&vm, `["a".localeCompare("B"), "ö".localeCompare("ö"), "i".toLocaleUpperCase("tr"), [1234.5].toLocaleString("de")].join(" ")`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "1 0 I 1234.5"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
