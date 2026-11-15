@@ -81,9 +81,6 @@ type moduleHost struct {
 	load HostLoadImportedModuleFunc
 	meta HostGetImportMetaPropertiesFunc
 
-	// realm is the referrer of code that has no ScriptOrModule.
-	realm scriptOrModule
-
 	// asyncOrder is the last [[AsyncEvaluationOrder]] that was given out.
 	asyncOrder int
 
@@ -303,7 +300,7 @@ func (vm *VM) activeScriptOrModule() *scriptOrModule {
 			return s
 		}
 	}
-	return &vm.modules.realm
+	return vm.referrer
 }
 
 // errorValue returns the value to throw for an error of the host.

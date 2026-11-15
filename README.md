@@ -70,7 +70,7 @@ is published yet.
 
 ## Status
 
-99.7% of [test262](https://github.com/tc39/test262) pass: 48,637 of 48,797 tests
+99.8% of [test262](https://github.com/tc39/test262) pass: 48,701 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -81,6 +81,7 @@ that list would grow.
   backtracking engine
 - `Temporal`, explicit resource management, `import defer`, and the newer `Array`, `Error`,
   `Math`, `Map`, `JSON`, `Iterator`, `Promise`, `Uint8Array` and `ArrayBuffer` additions
+- `ShadowRealm`, which is a proposal and not yet standard
 
 ### Notes on behavior
 
@@ -90,6 +91,9 @@ that list would grow.
   code units after canonical equivalence
 - `Atomics.wait` throws, as a VM cannot block
 - Source phase imports have no source objects
+- `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,
+  as `import()` in code without a file does. The loader cannot tell the realms apart, so a
+  module that it returns again is shared by them
 
 ### Missing
 

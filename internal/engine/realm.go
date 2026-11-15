@@ -27,6 +27,7 @@ func NewVM(hostDefined any) *VM {
 		mailbox:        newMailbox(),
 	}
 	vm.curRealm = &realm{}
+	vm.referrer = &scriptOrModule{}
 	vm.initRealmPrototypes()
 
 	vm.emptyString = Value{
@@ -104,6 +105,7 @@ func (vm *VM) CreateRealm(install func()) *Realm {
 	saved := vm.curRealm
 	r := &realm{}
 	vm.switchRealm(r)
+	vm.referrer = &scriptOrModule{}
 	vm.initRealmPrototypes()
 	vm.initRealmGlobals()
 	install()

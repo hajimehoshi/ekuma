@@ -2453,6 +2453,71 @@ func TestModuleReferrer(t *testing.T) {
 	}
 }
 
+// TestShadowRealmImportValue checks that each ShadowRealm loads a module for itself, once.
+func TestShadowRealmImportValue(t *testing.T) {
+	var vm ekuma.VM
+	calls := 0
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		calls++
+		return vm.ParseModule(req.Specifier, `globalThis.count = (globalThis.count ?? 0) + 1; export const count = globalThis.count;`)
+	})
+	if _, err := vm.RunScript(t.Context(), "main", `
+		var result;
+		const a = new ShadowRealm(), b = new ShadowRealm();
+		Promise.all([a.importValue("mod", "count"), a.importValue("mod", "count"), b.importValue("mod", "count")]).then(v => result = v.join());`); err != nil {
+		t.Fatal(err)
+	}
+	v, err := vm.RunScript(t.Context(), "check", `result`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "1,1,1"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	if calls != 2 {
+		t.Errorf("the loader was called %d times, want 2", calls)
+	}
+}
+
+// TestShadowRealmCancel checks that an interruption in a ShadowRealm is not caught as an
+// error, and leaves the realm of the script current.
+func TestShadowRealmCancel(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "evaluate",
+			src:  `r.evaluate("for (;;) {}")`,
+		},
+		{
+			name: "wrapped function",
+			src:  `r.evaluate("() => { for (;;) {} }")()`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+			defer cancel()
+			_, err := vm.RunScript(ctx, "loop", `
+				var caught = false;
+				const r = new ShadowRealm();
+				try { `+tt.src+` } catch (e) { caught = true; }`)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("got %v, want context.DeadlineExceeded", err)
+			}
+			v, err := vm.RunScript(t.Context(), "after", `typeof caught + " " + caught`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := v.String(), "boolean false"; got != want {
+				t.Errorf("got %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 // TestImportMeta checks that import.meta has the properties that the host gives it.
 func TestImportMeta(t *testing.T) {
 	var vm ekuma.VM

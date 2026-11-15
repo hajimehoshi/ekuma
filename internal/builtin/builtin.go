@@ -149,6 +149,7 @@ func Install(vm *engine.VM) {
 	initWeak(vm)
 	initDate(vm)
 	initTemporal(vm)
+	initShadowRealm(vm)
 	initPromise(vm)
 	initAsync(vm)
 	initDisposableStacks(vm)
@@ -649,18 +650,7 @@ func initFunction(vm *engine.VM) {
 		}
 		target := this.Object()
 		b := vm.BoundFunctionCreate(target, arg(args, 0), args[min(1, len(args)):])
-		length := 0.0
-		if vm.HasOwnProperty(target, engine.NamedKey(vm.Key(engine.KeyLength))) {
-			if l := vm.GetV(this, vm.Key(engine.KeyLength)); l.IsNumber() {
-				length = math.Max(0, numconv.ToIntegerOrInfinity(l.Number())-float64(max(0, len(args)-1)))
-			}
-		}
-		name := ""
-		if n := vm.GetV(this, vm.Key(engine.KeyName)); n.IsString() {
-			name = n.Object().Str()
-		}
-		vm.Define(b, vm.Key(engine.KeyLength), engine.Number(length), engine.FlagConfigurable)
-		vm.Define(b, vm.Key(engine.KeyName), vm.NewString("bound "+name), engine.FlagConfigurable)
+		copyNameAndLength(vm, b, target, "bound ", max(0, len(args)-1))
 		return engine.ObjectValue(b)
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -679,6 +669,22 @@ func initFunction(vm *engine.VM) {
 	throwTypeError := vm.Intrinsic(engine.IntrinsicThrowTypeError)
 	vm.DefineAccessor(proto, vm.Intern("caller"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 	vm.DefineAccessor(proto, vm.Intern("arguments"), throwTypeError, throwTypeError, engine.FlagConfigurable)
+}
+
+// copyNameAndLength implements CopyNameAndLength.
+func copyNameAndLength(vm *engine.VM, f, target *engine.Object, prefix string, argCount int) {
+	length := 0.0
+	if vm.HasOwnProperty(target, engine.NamedKey(vm.Key(engine.KeyLength))) {
+		if l := vm.GetV(engine.ObjectValue(target), vm.Key(engine.KeyLength)); l.IsNumber() {
+			length = math.Max(0, numconv.ToIntegerOrInfinity(l.Number())-float64(argCount))
+		}
+	}
+	name := ""
+	if n := vm.GetV(engine.ObjectValue(target), vm.Key(engine.KeyName)); n.IsString() {
+		name = n.Object().Str()
+	}
+	vm.Define(f, vm.Key(engine.KeyLength), engine.Number(length), engine.FlagConfigurable)
+	vm.Define(f, vm.Key(engine.KeyName), vm.NewString(prefix+name), engine.FlagConfigurable)
 }
 
 func initError(vm *engine.VM) {

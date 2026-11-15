@@ -151,6 +151,18 @@ func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
 	if p := vm.evals.get(k); p != nil {
 		return p
 	}
+	bc := vm.compileEval(fp, site, src)
+	p := vm.link(bc, script)
+	// Every evaluation of a tagged template in new eval code has template objects of its own.
+	if !hasTemplates(bc) {
+		vm.evals.add(k, p)
+	}
+	return p
+}
+
+// compileEval compiles the eval code src of the call site site of fp, or of an indirect eval
+// when fp is nil. It throws a SyntaxError when src is not valid.
+func (vm *VM) compileEval(fp *funcProto, site int, src string) *bytecode.Func {
 	es := &indirectEvalScope
 	if fp != nil {
 		es = &fp.EvalScopes[site]
@@ -175,12 +187,7 @@ func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
 	if err != nil {
 		vm.throwCompileError("<eval>", err)
 	}
-	p := vm.link(bc, script)
-	// Every evaluation of a tagged template in new eval code has template objects of its own.
-	if !hasTemplates(bc) {
-		vm.evals.add(k, p)
-	}
-	return p
+	return bc
 }
 
 // hasTemplates reports whether f or a function nested in it has a tagged template.
