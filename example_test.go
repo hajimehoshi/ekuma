@@ -80,3 +80,43 @@ func Example_modules() {
 	// fulfilled
 	// Hello, modules
 }
+
+// This example hands the memory of a SharedArrayBuffer to a VM on another goroutine, whose
+// store wakes the Atomics.wait of the first VM.
+func Example_sharedArrayBuffer() {
+	ctx := context.Background()
+	blocks := make(chan *ekuma.SharedDataBlock)
+	done := make(chan error)
+	go func() {
+		var worker ekuma.VM
+		if err := worker.Global().Set("sab", <-blocks); err != nil {
+			done <- err
+			return
+		}
+		_, err := worker.RunScript(ctx, "worker.js", `
+			const ia = new Int32Array(sab);
+			Atomics.store(ia, 0, 42);
+			Atomics.notify(ia, 0);`)
+		done <- err
+	}()
+
+	var vm ekuma.VM
+	vm.SetCanBlock(true)
+	sab, err := vm.RunScript(ctx, "main.js", `globalThis.ia = new Int32Array(new SharedArrayBuffer(4)); ia.buffer`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	blocks <- sab.SharedDataBlock()
+	v, err := vm.RunScript(ctx, "wait.js", `Atomics.wait(ia, 0, 0); Atomics.load(ia, 0)`)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err := <-done; err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(v.Int())
+	// Output: 42
+}

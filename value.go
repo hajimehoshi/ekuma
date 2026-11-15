@@ -398,6 +398,23 @@ func (v Value) PromiseState() (PromiseState, Value) {
 	return PromisePending, Undefined
 }
 
+// SharedDataBlock is the memory of a SharedArrayBuffer, usable by any VM on any goroutine.
+type SharedDataBlock struct {
+	b *engine.SharedDataBlock
+}
+
+// SharedDataBlock returns the data block of the SharedArrayBuffer v. It panics with
+// a [*ValueError] when v is not a SharedArrayBuffer.
+func (v Value) SharedDataBlock() *SharedDataBlock {
+	if b := engine.ArrayBufferData(v.engine()); b != nil && b.IsShared() {
+		return &SharedDataBlock{b: b.SharedDataBlock()}
+	}
+	panic(&ValueError{
+		Method: "Value.SharedDataBlock",
+		Type:   v.Type(),
+	})
+}
+
 // uint8ArrayData returns the state of v when v is a Uint8Array or a Uint8ClampedArray,
 // and panics with a [*ValueError] otherwise.
 func uint8ArrayData(v Value, method string) *engine.TypedArray {

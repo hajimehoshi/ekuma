@@ -192,7 +192,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 	agents := newAgentCluster(ctx)
 	defer agents.close()
 	// The main agent can block, as in a shell, unless the test says otherwise.
-	ekuma.SetAgentCanSuspend(&vm, !m.flags["CanBlockIsFalse"])
+	vm.SetCanBlock(!m.flags["CanBlockIsFalse"])
 	if err := define262(&vm, agents); err != nil {
 		return "harness: " + err.Error(), false
 	}
@@ -719,13 +719,10 @@ func (c *agentCluster) define(vm *ekuma.VM, o ekuma.Value) error {
 		return ekuma.Undefined, nil
 	})
 	broadcast := vm.FuncOf("broadcast", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		var blk *ekuma.SharedDataBlock
-		if len(args) > 0 {
-			blk = ekuma.SharedDataBlockOf(args[0])
-		}
-		if blk == nil {
+		if len(args) == 0 {
 			return nil, errors.New("$262.agent.broadcast: not a SharedArrayBuffer")
 		}
+		blk := args[0].SharedDataBlock()
 		var num any
 		if len(args) > 1 && args[1].Type() == ekuma.TypeNumber {
 			num = args[1].Float()
@@ -774,7 +771,7 @@ func (c *agentCluster) define(vm *ekuma.VM, o ekuma.Value) error {
 // run runs the agent a with the source src until the cluster ends.
 func (c *agentCluster) run(a *testAgent, src string) {
 	var vm ekuma.VM
-	ekuma.SetAgentCanSuspend(&vm, true)
+	vm.SetCanBlock(true)
 	receiver := ekuma.Undefined
 	receive := vm.FuncOf("receiveBroadcast", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		if len(args) > 0 {
@@ -821,7 +818,7 @@ func (c *agentCluster) run(a *testAgent, src string) {
 		case <-c.ctx.Done():
 			return
 		case b := <-a.broadcasts:
-			sab := ekuma.NewSharedArrayBuffer(&vm, b.block)
+			sab := vm.ValueOf(b.block)
 			b.received <- struct{}{}
 			if receiver.Type() == ekuma.TypeFunction {
 				num := ekuma.Undefined

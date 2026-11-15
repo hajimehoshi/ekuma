@@ -40,8 +40,15 @@ Promise jobs run when the outermost call from Go into the VM returns, and the re
 are still unhandled then are reported to `VM.SetUnhandledRejection`. `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
 `VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`. There is no
-public API yet for agents (workers) that share a `SharedArrayBuffer`, or for creating further
-realms in a VM.
+public API yet for creating further realms in a VM.
+
+### Agents
+
+VMs on different goroutines share the memory of a `SharedArrayBuffer` as agents do:
+`Value.SharedDataBlock` returns the memory, which `VM.ValueOf` turns into a new
+`SharedArrayBuffer` of another VM. `Atomics.wait` throws unless `VM.SetCanBlock` lets the VM
+block. When another VM notifies a waiter of `Atomics.waitAsync`, its promise is settled by the
+jobs that the waiting VM runs at the end of its current or next outermost call from Go.
 
 ## Differences from other engines for Go
 
@@ -89,7 +96,6 @@ fails when any of them fails.
   zone database
 - Without `Intl`, `toLocale*String` uses a fixed English format, and `localeCompare` compares
   code units after canonical equivalence
-- `Atomics.wait` throws, as a VM cannot block
 - Source phase imports and `%AbstractModuleSource%` exist, but there is no public API to give
   a module a module source yet, so importing the source of any module throws a SyntaxError
 - `ShadowRealm.prototype.importValue` loads modules with the loader of `VM.SetModuleLoader`,

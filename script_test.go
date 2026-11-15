@@ -1652,27 +1652,17 @@ func skipAgents(t *testing.T) {
 	}
 }
 
-// dataBlock returns the data block of the SharedArrayBuffer v.
-func dataBlock(t *testing.T, v ekuma.Value) *ekuma.SharedDataBlock {
-	t.Helper()
-	blk := ekuma.SharedDataBlockOf(v)
-	if blk == nil {
-		t.Fatal("not a SharedArrayBuffer")
-	}
-	return blk
-}
-
 // runIn runs src in a new VM on another goroutine, with the global sab sharing the data block of
 // the SharedArrayBuffer v, and returns the result as a string.
 func runIn(t *testing.T, v ekuma.Value, src string) string {
 	t.Helper()
-	blk := dataBlock(t, v)
+	blk := v.SharedDataBlock()
 	var got string
 	var err error
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		var vm ekuma.VM
-		if err = vm.Global().Set("sab", ekuma.NewSharedArrayBuffer(&vm, blk)); err != nil {
+		if err = vm.Global().Set("sab", blk); err != nil {
 			return
 		}
 		var r ekuma.Value
@@ -1686,10 +1676,36 @@ func runIn(t *testing.T, v ekuma.Value, src string) string {
 	return got
 }
 
+func TestAtomicsWaitCannotBlock(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetCanBlock(true)
+	vm.SetCanBlock(false)
+	got := run(t, &vm, `try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0); "returned"; } catch (e) { e.constructor.name; }`)
+	if want := "TypeError"; got != want {
+		t.Errorf("Atomics.wait: got %s, want %s", got, want)
+	}
+}
+
+func TestSharedDataBlockOfNonShared(t *testing.T) {
+	var vm ekuma.VM
+	ab, err := vm.RunScript(t.Context(), "ab", `new ArrayBuffer(4)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		r := recover()
+		var verr *ekuma.ValueError
+		if err, ok := r.(error); !ok || !errors.As(err, &verr) {
+			t.Errorf("SharedDataBlock of an ArrayBuffer: got panic %v, want a *ValueError", r)
+		}
+	}()
+	ab.SharedDataBlock()
+}
+
 func TestAtomicsWaitInterrupted(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var vm ekuma.VM
-		ekuma.SetAgentCanSuspend(&vm, true)
+		vm.SetCanBlock(true)
 		run(t, &vm, `globalThis.ta = new Int32Array(new SharedArrayBuffer(4));`)
 		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
@@ -1772,13 +1788,13 @@ for (let i = 0; i < ` + strconv.Itoa(n) + `; i++) {
 	}
 	ta[2 + id] = i;
 }`
-	blk := dataBlock(t, sab)
+	blk := sab.SharedDataBlock()
 	var wg sync.WaitGroup
 	errs := make([]error, agents)
 	for id := range agents {
 		wg.Go(func() {
 			var avm ekuma.VM
-			if err := avm.Global().Set("sab", ekuma.NewSharedArrayBuffer(&avm, blk)); err != nil {
+			if err := avm.Global().Set("sab", blk); err != nil {
 				errs[id] = err
 				return
 			}

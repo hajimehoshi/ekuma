@@ -59,12 +59,13 @@ func (vm *VM) Global() Value {
 //	| bool                   | boolean                |
 //	| integers and floats    | number                 |
 //	| *big.Int               | bigint                 |
+//	| *SharedDataBlock       | new SharedArrayBuffer  |
 //	| string                 | string                 |
 //	| []any                  | new array              |
 //	| map[string]any         | new object             |
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
-// ValueOf panics when x is not one of the expected types.
+// ValueOf panics when x is not one of the expected types or is a nil pointer.
 func (vm *VM) ValueOf(x any) Value {
 	vm.initIfNeeded()
 	return fromEngine(vm.valueOf(x))
@@ -108,6 +109,12 @@ func (vm *VM) valueOf(x any) engine.Value {
 		return engine.Number(x)
 	case *big.Int:
 		return vm.e.NewBigInt(new(big.Int).Set(x))
+	case *SharedDataBlock:
+		if x == nil || x.b == nil {
+			panic("ekuma: ValueOf: invalid *SharedDataBlock")
+		}
+		proto := vm.e.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
+		return engine.ObjectValue(vm.e.NewSharedArrayBufferObject(proto, x.b))
 	case string:
 		return vm.e.StringFromGo(x)
 	case []any:
@@ -233,6 +240,12 @@ func (vm *VM) SetTimeZone(loc *time.Location) {
 func (vm *VM) SetRandomSource(src rand.Source) {
 	vm.initIfNeeded()
 	vm.e.SetRandomSource(src)
+}
+
+// SetCanBlock sets whether Atomics.wait may block the VM. The default is false.
+func (vm *VM) SetCanBlock(canBlock bool) {
+	vm.initIfNeeded()
+	vm.e.SetAgentCanSuspend(canBlock)
 }
 
 // SetUnhandledRejection sets f as the function that is told about each promise that was
