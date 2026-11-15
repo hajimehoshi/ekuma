@@ -1364,9 +1364,10 @@ func TestRegExpModified(t *testing.T) {
 	}
 }
 
-// TestRegExpLiteralArgument tests that a regular expression literal passed to a String method
-// evaluates to a new RegExp object each time wherever script code can see the object.
-func TestRegExpLiteralArgument(t *testing.T) {
+// TestRegExpLiteralLending tests that a regular expression literal passed to a String method, or
+// whose exec or test method is called, evaluates to a new RegExp object each time wherever script
+// code can see the object.
+func TestRegExpLiteralLending(t *testing.T) {
 	// seen collects the RegExp objects that script code receives. check reports how many
 	// distinct ones there are, which is the number of evaluations of literals that reach script
 	// code when each makes a new object.
@@ -1470,6 +1471,48 @@ func TestRegExpLiteralArgument(t *testing.T) {
 				for (var i = 0; i < 3; i++) r.push("aaa".replace(/a/y, "b"), "aXaX".match(/X/g).length, "aXa".search(/a/y), "aXa".split(/a/y).length);
 				r.join()`,
 			want: "baa,2,0,3,baa,2,0,3,baa,2,0,3",
+		},
+		{
+			name: "method getter",
+			src: `var test = RegExp.prototype.test;
+				Object.defineProperty(RegExp.prototype, "test", {get() { seen.push(this); return test; }});
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push(/b/.test("ab"));
+				r.join() + " " + check()`,
+			want: "true,true 2 true",
+		},
+		{
+			name: "method found through a proxy",
+			src: `delete RegExp.prototype.exec;
+				Object.setPrototypeOf(RegExp.prototype, new Proxy({}, {get(t, k, r) { seen.push(r); return function () { return 1; }; }}));
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push(/b/.exec("ab"));
+				r.join() + " " + check()`,
+			want: "1,1 2 true",
+		},
+		{
+			name: "assigned test",
+			src: `RegExp.prototype.test = function (s) { seen.push(this); return this.lastIndex++; };
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push(/b/y.test("ab"));
+				r.join() + " " + check()`,
+			want: "0,0 2 true",
+		},
+		{
+			name: "receiver used by script code",
+			src: `var s = {toString() { patchExec(); return "ab"; }};
+				var r = [];
+				for (var i = 0; i < 2; i++) r.push(/b/.test(s), /b/.test((patchExec(), "ab")));
+				r.join() + " " + check()`,
+			want: "true,true,true,true 4 true",
+		},
+		{
+			name: "receiver of a call that evaluates the literal again",
+			src: `var out = [];
+				function f(depth) { out.push(/a/g.test(depth > 0 ? (f(depth - 1), "a") : "a"), /a/y.exec("aa").index); }
+				f(2);
+				out.join()`,
+			want: "true,0,true,0,true,0",
 		},
 	}
 	for _, tt := range tests {

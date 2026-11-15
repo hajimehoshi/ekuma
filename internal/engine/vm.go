@@ -368,9 +368,6 @@ type VM struct {
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[string]*regexp.Regexp
 
-	// regExpBorrowers are the functions marked by [VM.LendRegExpLiterals].
-	regExpBorrowers []*Object
-
 	// realm is the state of the current realm, whose record is curRealm. The record of the
 	// current realm is stale: the state lives here until another realm becomes current.
 	realm
@@ -409,6 +406,10 @@ type realm struct {
 	arrayIter arrayIterCache
 
 	regExpOriginals regExpOriginals
+
+	// regExpBorrowers are the functions marked by [VM.LendRegExpLiterals], and
+	// regExpReceiverBorrowers those marked by [VM.LendRegExpLiteralReceivers].
+	regExpBorrowers, regExpReceiverBorrowers []*Object
 
 	// evals caches the compiled code of eval.
 	evals evalCache

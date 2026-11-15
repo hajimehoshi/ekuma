@@ -828,6 +828,8 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	base := f.newRegs(2)
 	op := bytecode.OpCall
 	var regExpArg *ast.RegExpLit
+	// receiver is the site of a regular expression literal that is the this value, or -1.
+	receiver := int32(-1)
 	// pos is the position of the call: the property name of a method call, the name of
 	// the function, or the arguments after any other callee.
 	pos := n.Start()
@@ -842,6 +844,16 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			break
 		}
 		pos = c.Property.Start()
+		if lit, ok := c.Object.(*ast.RegExpLit); ok && !c.Computed && !hasSpread(n.Args) {
+			if p, ok := c.Property.(*ast.Identifier); ok && (p.Name == "exec" || p.Name == "test") {
+				// The RegExp object never escapes from the original method, so the call
+				// decides whether to make it.
+				receiver = f.regExpSite(lit)
+				f.setPos(pos)
+				f.emit(bytecode.OpRegExpMethod, base, receiver, f.site(p.Name))
+				break
+			}
+		}
 		f.expr(c.Object, base+1)
 		f.chainCheck(c.Optional, base+1)
 		switch {
@@ -962,6 +974,9 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	f.setPos(pos)
 	if regExpArg != nil {
 		f.emit(bytecode.OpRegExpArg, base, f.regExpSite(regExpArg), 0)
+	}
+	if receiver >= 0 {
+		f.emit(bytecode.OpRegExpArg, base, receiver, 1)
 	}
 	f.emit(op, base, int32(len(n.Args)), site)
 	f.result(dst, base)

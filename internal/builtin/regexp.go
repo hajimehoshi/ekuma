@@ -475,12 +475,21 @@ func initRegExp(vm *engine.VM) {
 		return this.Object()
 	}
 
+	// exec and test borrow the RegExp object of a literal they are called on. They run no script
+	// code before the last use of it, except the conversion of an object argument.
 	env.exec = method(vm, proto, "exec", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		if arg(args, 0).IsObject() {
+			this = vm.OwnRegExp(this)
+		}
 		r := thisRegExp(vm, this, "exec")
 		s := vm.ToStringValue(arg(args, 0)).Object()
 		return env.builtinExec(vm, r, s)
 	})
-	method(vm, proto, "test", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.LendRegExpLiteralReceivers(env.exec)
+	vm.LendRegExpLiteralReceivers(method(vm, proto, "test", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		if arg(args, 0).IsObject() {
+			this = vm.OwnRegExp(this)
+		}
 		r := thisObject(vm, this, "RegExp.prototype.test")
 		s := vm.ToStringValue(arg(args, 0)).Object()
 		exec, ok := env.fastExec(vm, r)
@@ -488,7 +497,7 @@ func initRegExp(vm *engine.VM) {
 			return engine.Bool(env.builtinExecRaw(vm, r, s) != nil)
 		}
 		return engine.Bool(!env.regExpExecWith(vm, r, s, exec).IsNull())
-	})
+	}))
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(vm, this, "RegExp.prototype.toString")
 		src := vm.ToString(vm.Get(r, env.key(env.source)))

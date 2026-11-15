@@ -144,37 +144,80 @@ func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
 }
 
 // LendRegExpLiterals marks the native function f as one that may receive, as the first argument
-// of a call written with a regular expression literal there, a RegExp object that other
-// evaluations of the literal reuse instead of a new one. Unless f replaces that argument by
-// [VM.OwnRegExp] before using it, f must not keep it, expose it to script code, or use it after
-// running script code.
+// of a call in the current realm written with a regular expression literal there, a RegExp object
+// that other evaluations of the literal reuse instead of a new one. Unless f replaces that
+// argument by [VM.OwnRegExp] before using it, f must not keep it, expose it to script code, or use
+// it after running script code.
 func (vm *VM) LendRegExpLiterals(f *Object) {
 	vm.regExpBorrowers = append(vm.regExpBorrowers, f)
 }
 
-// regExpLiteralArg evaluates the regular expression literal site that is the first argument of
-// a call of f. It returns the lent object of the literal, as new, when f is marked by
-// [VM.LendRegExpLiterals] and [VM.IsUnmodifiedRegExp] holds for it, or else a new RegExp object.
-func (vm *VM) regExpLiteralArg(f *Object, site *regExpSite) *Object {
-	if f == nil || !slices.Contains(vm.regExpBorrowers, f) {
+// LendRegExpLiteralReceivers is like [VM.LendRegExpLiterals] for the this value of a method call
+// on a regular expression literal.
+func (vm *VM) LendRegExpLiteralReceivers(f *Object) {
+	vm.regExpReceiverBorrowers = append(vm.regExpReceiverBorrowers, f)
+}
+
+// lendRegExpLiteral evaluates the regular expression literal site for the call whose callee,
+// this value and arguments are in call: it sets the first argument, or the this value when
+// receiver is true and [VM.regExpLiteralMethod] left the lent object there.
+func (vm *VM) lendRegExpLiteral(call []Value, site *regExpSite, receiver bool) {
+	if !receiver {
+		call[2] = Value{o: vm.regExpLiteralFor(call[0].o, site, vm.regExpBorrowers)}
+		return
+	}
+	if o := call[1].o; o != nil && o == site.lent {
+		call[1] = Value{o: vm.regExpLiteralFor(call[0].o, site, vm.regExpReceiverBorrowers)}
+	}
+}
+
+// regExpLiteralFor returns the lent object of the literal site, as new, when f is one of
+// borrowers and [VM.IsUnmodifiedRegExp] holds for it, or else a new RegExp object.
+func (vm *VM) regExpLiteralFor(f *Object, site *regExpSite, borrowers []*Object) *Object {
+	if f == nil || !slices.Contains(borrowers, f) {
 		return vm.newRegExpLiteral(site)
 	}
-	st := vm.regExpLiteralState(site)
+	o := vm.resetLentRegExp(site)
+	if !vm.IsUnmodifiedRegExp(o) {
+		return vm.newRegExpLiteral(site)
+	}
+	return o
+}
+
+// resetLentRegExp returns the lent object of the literal site in the state of a new RegExp object.
+func (vm *VM) resetLentRegExp(site *regExpSite) *Object {
 	o := site.lent
 	if o == nil {
-		lent := *st
+		lent := *vm.regExpLiteralState(site)
 		lent.lent = true
 		o = vm.newRegExpObject(vm.regExpShape(), &lent)
 		site.lent = o
-	} else {
-		// A borrower that runs script code may still hold o, but no longer uses it.
-		o.shape = vm.regExpShape()
-		o.slots[0] = Value{}
+		return o
 	}
-	if !vm.IsUnmodifiedRegExp(o) {
-		return vm.newRegExpObject(vm.regExpShape(), st)
-	}
+	// A borrower that runs script code may still hold o, but no longer uses it.
+	o.shape = vm.regExpShape()
+	o.slots[0] = Value{}
 	return o
+}
+
+// regExpLiteralMethod reads the method key of a RegExp object for the literal site, using the
+// cache c, and returns it with the object to call it on. When reading it runs no code, that
+// object is the lent object of the literal, which [VM.lendRegExpLiteral] replaces before the call.
+func (vm *VM) regExpLiteralMethod(site *regExpSite, key *Object, c *propCache) (method Value, this *Object) {
+	o := vm.resetLentRegExp(site)
+	e := &c.cacheEntry
+	if o.shape != e.shape {
+		e = &c.second
+	}
+	if o.shape == e.shape && e.kind == cacheProto && e.epoch == vm.protoEpoch {
+		return e.holder.slots[e.slot], o
+	}
+	if _, ok := vm.GetVWithoutCall(Value{o: o}, key); ok {
+		v, _ := vm.getNamed(Value{o: o}, key, c)
+		return v, o
+	}
+	o = vm.newRegExpLiteral(site)
+	return vm.GetV(Value{o: o}, key), o
 }
 
 // OwnRegExp returns v, or a new RegExp object for the same literal when v is a RegExp object
