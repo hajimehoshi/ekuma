@@ -17,9 +17,8 @@ import (
 // loop runs measurably faster with.
 const initialStackSize = 1 << 12
 
-// New creates a [VM] with the standard built-in objects. hostDefined is what [VM.HostDefined]
-// returns.
-func New(hostDefined any) *VM {
+// NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
+func NewVM(hostDefined any) *VM {
 	vm := &VM{
 		hostDefined:    hostDefined,
 		stack:          make([]Value, initialStackSize),

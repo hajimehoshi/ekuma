@@ -13,7 +13,7 @@ import (
 
 func newVM(t *testing.T) *engine.VM {
 	t.Helper()
-	vm := engine.New(nil)
+	vm := engine.NewVM(nil)
 	builtin.Install(vm)
 	if _, err := vm.RunScript("init", `var o, i = 0;`); err != nil {
 		t.Fatalf("RunScript: %v", err)

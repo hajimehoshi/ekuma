@@ -34,7 +34,7 @@ type VM struct {
 // use.
 func (vm *VM) initIfNeeded() {
 	if vm.e == nil {
-		vm.e = engine.New(vm)
+		vm.e = engine.NewVM(vm)
 		builtin.Install(vm.e)
 		return
 	}

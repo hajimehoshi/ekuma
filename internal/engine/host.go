@@ -10,7 +10,7 @@ import (
 // This file holds the operations for Go code outside the engine. Unlike the rest of the engine,
 // they report a JavaScript exception as an error.
 
-// HostDefined returns the value that [New] was given.
+// HostDefined returns the value that [NewVM] was given.
 func (vm *VM) HostDefined() any {
 	return vm.hostDefined
 }
