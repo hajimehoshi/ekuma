@@ -930,6 +930,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	for typ := range engine.ElementTypeCount {
 		name := typedArrayNames[typ]
 		p := vm.NewObject(proto)
+		vm.SetIntrinsic(engine.IntrinsicInt8ArrayPrototype+engine.Intrinsic(typ), p)
 		c := vm.NewNativeConstructor(name, 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return bi.construct(vm, typ, args)
 		})

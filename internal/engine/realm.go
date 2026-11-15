@@ -22,6 +22,34 @@ func New(hostDefined any) *VM {
 		thrown:         Undefined,
 		mailbox:        newMailbox(),
 	}
+	vm.curRealm = &realm{}
+	vm.initRealmPrototypes()
+
+	vm.emptyString = Value{
+		o: &Object{
+			kind:  kindString,
+			flags: objInterned,
+			shape: vm.shapes.string,
+		},
+	}
+	vm.strings.interned.entries = make(map[string]sweptRef[Object], internedInitialSize)
+	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep)
+	for i := range vm.strings.ascii {
+		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
+	}
+	vm.initKeys()
+	vm.missHolder = &Object{
+		kind:  kindObject,
+		shape: vm.shapes.nullProto,
+		slots: []Value{Undefined},
+	}
+	vm.initRealmGlobals()
+	return vm
+}
+
+// initRealmPrototypes creates the prototypes of the current realm that the strings, the keys
+// and the other objects of the VM depend on.
+func (vm *VM) initRealmPrototypes() {
 	vm.shapes.nullProto = vm.newShape(nil)
 	vm.shapes.proxy = vm.newShape(nil)
 	objectProto := &Object{
@@ -53,35 +81,57 @@ func New(hostDefined any) *VM {
 	stringProto := vm.NewObject(objectProto)
 	vm.intrinsics[IntrinsicStringPrototype] = stringProto
 	vm.shapes.string = vm.shapeFor(stringProto)
+}
 
-	vm.emptyString = Value{
-		o: &Object{
-			kind:  kindString,
-			flags: objInterned,
-			shape: vm.shapes.string,
-		},
-	}
-	vm.strings.interned.entries = make(map[string]sweptRef[Object], internedInitialSize)
-	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep)
-	for i := range vm.strings.ascii {
-		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
-	}
-	vm.initKeys()
+// initRealmGlobals finishes the prototypes of the current realm and creates its global object.
+func (vm *VM) initRealmGlobals() {
+	stringProto := vm.intrinsics[IntrinsicStringPrototype]
 	stringProto.class = classString
 	stringProto.ext = vm.emptyString.o
 	vm.add(stringProto, vm.Key(KeyLength), Number(0), 0)
-
-	vm.missHolder = &Object{
-		kind:  kindObject,
-		shape: vm.shapes.nullProto,
-		slots: []Value{Undefined},
-	}
 	vm.shapes.iterResult = vm.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
 	vm.shapes.arguments = vm.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
-
-	vm.global = vm.NewObject(objectProto)
+	vm.global = vm.NewObject(vm.intrinsics[IntrinsicObjectPrototype])
 	vm.globalLex = vm.NewObject(nil)
-	return vm
+}
+
+// CreateRealm creates a realm whose built-in objects install creates while the realm is current.
+func (vm *VM) CreateRealm(install func()) *Realm {
+	saved := vm.curRealm
+	r := &realm{}
+	vm.switchRealm(r)
+	vm.initRealmPrototypes()
+	vm.initRealmGlobals()
+	install()
+	vm.switchRealm(saved)
+	return (*Realm)(r)
+}
+
+// realmIntrinsic returns the intrinsic id of the realm r.
+func (vm *VM) realmIntrinsic(r *realm, id Intrinsic) *Object {
+	if r == vm.curRealm {
+		return vm.intrinsics[id]
+	}
+	return r.intrinsics[id]
+}
+
+// IsIntrinsicOfOtherRealm reports whether the function f is the intrinsic id of
+// GetFunctionRealm(f), and that realm is not the current one.
+func (vm *VM) IsIntrinsicOfOtherRealm(f *Object, id Intrinsic) bool {
+	r := vm.getFunctionRealm(f)
+	return r != vm.curRealm && r.intrinsics[id] == f
+}
+
+// InRealm runs f with r as the current realm.
+func (vm *VM) InRealm(r *Realm, f func()) {
+	saved := vm.curRealm
+	if saved == (*realm)(r) {
+		f()
+		return
+	}
+	vm.switchRealm((*realm)(r))
+	defer vm.switchRealm(saved)
+	f()
 }
 
 // NewSymbol returns a new symbol. desc is its description when hasDesc is set.
@@ -213,6 +263,7 @@ func (vm *VM) RunScript(file, src string) (Value, error) {
 // the engine again, the interruption passes through that inner call and the Go code.
 func (vm *VM) enter(f func() Value) (result Value, err error) {
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
+	curRealm := vm.curRealm
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
@@ -227,6 +278,9 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 				panic(r)
 			}
 			// The interruption left frames and generators behind in whatever state they were.
+			if vm.curRealm != curRealm {
+				vm.switchRealm(curRealm)
+			}
 			vm.unwindTo(frames)
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth

@@ -79,6 +79,7 @@ func relativeRange(vm *engine.VM, start, end engine.Value, length int) (int, int
 func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	proto := vm.NewOrdinaryObject()
 	bi.arrayBufferProto = proto
+	vm.SetIntrinsic(engine.IntrinsicArrayBufferPrototype, proto)
 	ctor := constructor(vm, "ArrayBuffer", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {

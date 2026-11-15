@@ -19,6 +19,9 @@ type regExpState struct {
 	legacy  bool
 	// lent marks the state of a RegExp object that [VM.LendRegExpLiterals] lends.
 	lent bool
+
+	// realm is the [[Realm]] of the object.
+	realm *realm
 }
 
 // regExpSite is a regular expression literal of a function.
@@ -50,6 +53,7 @@ func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
 	}
 	return vm.newRegExpObject(s, &regExpState{
 		legacy: legacy,
+		realm:  vm.curRealm,
 	})
 }
 
@@ -93,6 +97,7 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 		source:  p,
 		flags:   f,
 		legacy:  o.ext.(*regExpState).legacy,
+		realm:   o.ext.(*regExpState).realm,
 	}
 	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Value{n: 0})
 	return o
@@ -132,6 +137,7 @@ func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
 			source:  site.literal.Pattern,
 			flags:   site.literal.Flags,
 			legacy:  true,
+			realm:   vm.curRealm,
 		}
 	}
 	return site.state
@@ -203,6 +209,11 @@ func (o *Object) RegExpOriginal() (source, flags string) {
 // object o: whether o was created for the RegExp constructor itself.
 func (o *Object) RegExpLegacyFeaturesEnabled() bool {
 	return o.ext.(*regExpState).legacy
+}
+
+// IsRegExpOfCurrentRealm reports whether the [[Realm]] of the RegExp object o is the current realm.
+func (vm *VM) IsRegExpOfCurrentRealm(o *Object) bool {
+	return o.ext.(*regExpState).realm == vm.curRealm
 }
 
 // regExpOriginals is what [VM.IsUnmodifiedRegExp] compares against.

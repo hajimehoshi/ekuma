@@ -132,9 +132,10 @@ func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
 func (vm *VM) newGeneratorObject(g *generator) *Object {
-	proto := vm.Intrinsic(IntrinsicGeneratorPrototype)
+	r := g.f.fn.code.realm
+	proto := vm.realmIntrinsic(r, IntrinsicGeneratorPrototype)
 	if g.async != nil {
-		proto = vm.Intrinsic(IntrinsicAsyncGeneratorPrototype)
+		proto = vm.realmIntrinsic(r, IntrinsicAsyncGeneratorPrototype)
 	}
 	if p := vm.GetV(Value{o: g.f}, vm.Key(KeyPrototype)); p.IsObject() {
 		proto = p.o

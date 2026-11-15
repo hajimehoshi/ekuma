@@ -69,6 +69,9 @@ type nativeInfo struct {
 	// step is set for the next method of a built-in iterator. It is what the function does
 	// without creating the iterator result.
 	step IteratorStepFunc
+
+	// realm is the [[Realm]] of the function.
+	realm *realm
 }
 
 // nativeName returns the initial value of the property name of the native function f.
@@ -324,14 +327,7 @@ type VM struct {
 
 	thrown Value
 
-	global *Object
-
-	// globalLex holds the top-level let, const and class declarations.
-	globalLex *Object
-
 	keys keys
-
-	shapes shapeTable
 
 	strings     stringTable
 	emptyString Value
@@ -345,7 +341,6 @@ type VM struct {
 	// globalEpoch changes whenever a global lexical binding is declared.
 	globalEpoch uint32
 
-	arrayIter     arrayIterCache
 	sparseIndices sparseIndexCache
 
 	jobs jobQueue
@@ -376,9 +371,14 @@ type VM struct {
 	// regExpBorrowers are the functions marked by [VM.LendRegExpLiterals].
 	regExpBorrowers []*Object
 
-	regExpOriginals regExpOriginals
-
+	// realm is the state of the current realm, whose record is curRealm. The record of the
+	// current realm is stale: the state lives here until another realm becomes current.
 	realm
+
+	curRealm *realm
+
+	// callerRealm is the realm that was current when the innermost interpreter loop started.
+	callerRealm *realm
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
@@ -387,20 +387,44 @@ type VM struct {
 	// math/rand/v2.
 	randomSource rand.Source
 
-	// evals caches the compiled code of eval.
-	evals evalCache
-
 	modules moduleHost
 
 	builtins builtinLayout
 }
 
-// realm is the set of intrinsic objects.
+// realm is a realm: the intrinsic objects, the global environment and what is derived from them.
 type realm struct {
 	intrinsics [intrinsicCount]*Object
 
 	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
 	asyncFromSyncProto *Object
+
+	global *Object
+
+	// globalLex holds the top-level let, const and class declarations.
+	globalLex *Object
+
+	shapes shapeTable
+
+	arrayIter arrayIterCache
+
+	regExpOriginals regExpOriginals
+
+	// evals caches the compiled code of eval.
+	evals evalCache
+}
+
+// Realm is a realm other than the one a [VM] is created with.
+type Realm realm
+
+// switchRealm makes r the current realm.
+//
+//go:noinline
+func (vm *VM) switchRealm(r *realm) {
+	// A switch is rare. Out of line, the copy does not grow the interpreter loop.
+	*vm.curRealm = vm.realm
+	vm.realm = *r
+	vm.curRealm = r
 }
 
 // Intrinsic identifies an intrinsic object.
@@ -430,6 +454,14 @@ const (
 	IntrinsicSetPrototype
 	IntrinsicDatePrototype
 	IntrinsicSharedArrayBufferPrototype
+	IntrinsicArrayBufferPrototype
+	IntrinsicDataViewPrototype
+	IntrinsicWeakMapPrototype
+	IntrinsicWeakSetPrototype
+	IntrinsicWeakRefPrototype
+	IntrinsicFinalizationRegistryPrototype
+	IntrinsicDisposableStackPrototype
+	IntrinsicAsyncDisposableStackPrototype
 	IntrinsicPromise
 	IntrinsicArray
 	IntrinsicObject
@@ -448,6 +480,20 @@ const (
 	IntrinsicSuppressedErrorPrototype
 
 	IntrinsicThrowTypeError
+
+	// The prototypes of the typed array constructors are in the order of [ElementType].
+	IntrinsicInt8ArrayPrototype
+	IntrinsicUint8ArrayPrototype
+	IntrinsicUint8ClampedArrayPrototype
+	IntrinsicInt16ArrayPrototype
+	IntrinsicUint16ArrayPrototype
+	IntrinsicInt32ArrayPrototype
+	IntrinsicUint32ArrayPrototype
+	IntrinsicFloat16ArrayPrototype
+	IntrinsicFloat32ArrayPrototype
+	IntrinsicFloat64ArrayPrototype
+	IntrinsicBigInt64ArrayPrototype
+	IntrinsicBigUint64ArrayPrototype
 
 	// The initial values of these functions are what the engine treats specially.
 	IntrinsicFunctionPrototypeCall
@@ -766,10 +812,14 @@ func (vm *VM) protect(f func()) (ok bool) {
 	natives := len(vm.natives)
 	sp := vm.sp
 	depth := vm.depth
+	curRealm := vm.curRealm
 	defer func() {
 		if r := recover(); r != nil {
 			if r != any(errThrow) {
 				panic(r)
+			}
+			if vm.curRealm != curRealm {
+				vm.switchRealm(curRealm)
 			}
 			vm.unwindTo(frames)
 			vm.truncateNatives(natives)

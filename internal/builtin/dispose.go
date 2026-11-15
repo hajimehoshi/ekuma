@@ -47,6 +47,11 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		hint = engine.AsyncDispose
 	}
 	proto := vm.NewOrdinaryObject()
+	if async {
+		vm.SetIntrinsic(engine.IntrinsicAsyncDisposableStackPrototype, proto)
+	} else {
+		vm.SetIntrinsic(engine.IntrinsicDisposableStackPrototype, proto)
+	}
 	var ctor *engine.Object
 	newStack := func(nt *engine.Object, dc *engine.DisposeCapability) engine.Value {
 		s := &disposableStack{

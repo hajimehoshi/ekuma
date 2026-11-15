@@ -267,13 +267,13 @@ func (vm *VM) materialize(o *Object) {
 		}
 		switch {
 		case c.isGenerator:
-			proto := vm.Intrinsic(IntrinsicGeneratorPrototype)
+			proto := vm.realmIntrinsic(c.realm, IntrinsicGeneratorPrototype)
 			if c.isAsync {
-				proto = vm.Intrinsic(IntrinsicAsyncGeneratorPrototype)
+				proto = vm.realmIntrinsic(c.realm, IntrinsicAsyncGeneratorPrototype)
 			}
 			vm.add(o, vm.Key(KeyPrototype), Value{o: vm.NewObject(proto)}, FlagWritable)
 		case f.constructor:
-			p := vm.NewOrdinaryObject()
+			p := vm.NewObject(vm.realmIntrinsic(c.realm, IntrinsicObjectPrototype))
 			vm.add(p, vm.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {
@@ -378,6 +378,12 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 		return vm.Intrinsic(IntrinsicBigIntPrototype)
 	case kindUndefined, kindNull:
 		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
+	case kindString:
+		if p := vm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {
+			// The shape of a string made in another realm leads to the String.prototype of
+			// that realm.
+			return vm.NewStringObject(o, p)
+		}
 	}
 	// A string has the empty shape whose prototype is String.prototype.
 	return o

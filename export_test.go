@@ -6,6 +6,7 @@ package ekuma
 import (
 	"context"
 
+	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -66,4 +67,24 @@ func AwaitWaiters(ctx context.Context, vm *VM) (bool, error) {
 		err = context.Cause(ctx)
 	}
 	return waited, err
+}
+
+// Realm is a realm of a VM other than the one the VM starts with.
+type Realm struct {
+	r *engine.Realm
+}
+
+// NewRealm creates a realm of vm with the standard built-in objects.
+func NewRealm(vm *VM) *Realm {
+	vm.initIfNeeded()
+	return &Realm{
+		r: vm.e.CreateRealm(func() {
+			builtin.Install(vm.e)
+		}),
+	}
+}
+
+// InRealm runs f with r as the current realm of vm, in which the methods of vm work.
+func InRealm(vm *VM, r *Realm, f func()) {
+	vm.e.InRealm(r.r, f)
 }

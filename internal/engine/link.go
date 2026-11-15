@@ -49,6 +49,9 @@ type funcProto struct {
 
 	// script is the [[ScriptOrModule]] of the functions.
 	script *scriptOrModule
+
+	// realm is the [[Realm]] of the functions.
+	realm *realm
 }
 
 type templateSite struct {
@@ -85,6 +88,7 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		legacyCallerArguments: !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor,
 
 		script: script,
+		realm:  vm.curRealm,
 	}
 	for i, c := range f.Consts {
 		switch c.Kind {

@@ -904,6 +904,9 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 		return vm.callSlow(b.target, b.this, args, false, nil)
 	}
 	if fn.native != nil {
+		if fn.info != nil && fn.info.realm != vm.curRealm {
+			return vm.callNativeInRealm(f, this, args, nil)
+		}
 		saved := vm.newTarget
 		vm.newTarget = nil
 		vm.pushNative(f, this, false)
@@ -914,6 +917,10 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
+		// The error belongs to the realm of the constructor.
+		if c.realm != vm.curRealm {
+			vm.switchRealm(c.realm)
+		}
 		vm.ThrowTypeError("class constructor " + c.name + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
@@ -931,6 +938,21 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	return r
 }
 
+// callNativeInRealm calls the native function f, whose realm is not the current one, in its realm.
+// newTarget is nil for a call and the new.target of a construction otherwise.
+func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *Object) Value {
+	fn := f.fn
+	savedRealm, savedTarget := vm.curRealm, vm.newTarget
+	vm.switchRealm(fn.info.realm)
+	defer vm.switchRealm(savedRealm)
+	vm.newTarget = newTarget
+	vm.pushNative(f, this, newTarget != nil)
+	r := fn.native(vm, this, args)
+	vm.popNative()
+	vm.newTarget = savedTarget
+	return r
+}
+
 // Construct implements Construct: new f(...args) with the given new.target.
 func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	fn := f.fn
@@ -944,12 +966,17 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 		return vm.Construct(b.target, args, newTarget)
 	}
 	if fn.native != nil {
-		saved := vm.newTarget
-		vm.newTarget = newTarget
-		vm.pushNative(f, Undefined, true)
-		r := fn.native(vm, Undefined, args)
-		vm.popNative()
-		vm.newTarget = saved
+		var r Value
+		if fn.info != nil && fn.info.realm != vm.curRealm {
+			r = vm.callNativeInRealm(f, Undefined, args, newTarget)
+		} else {
+			saved := vm.newTarget
+			vm.newTarget = newTarget
+			vm.pushNative(f, Undefined, true)
+			r = fn.native(vm, Undefined, args)
+			vm.popNative()
+			vm.newTarget = saved
+		}
 		if !r.IsObject() {
 			vm.ThrowTypeError("constructor did not return an object")
 		}
@@ -974,8 +1001,24 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Objec
 	if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
 		return p.o
 	}
-	vm.checkFunctionRealm(ctor)
+	if r := vm.getFunctionRealm(ctor); r != vm.curRealm {
+		return vm.intrinsicOfRealm(r, fallback)
+	}
 	return fallback
+}
+
+// intrinsicOfRealm returns the intrinsic of the realm r that corresponds to the intrinsic o of
+// the current realm, or o when o is not one.
+func (vm *VM) intrinsicOfRealm(r *realm, o *Object) *Object {
+	for i, p := range vm.intrinsics {
+		if p == o {
+			if q := r.intrinsics[i]; q != nil {
+				return q
+			}
+			break
+		}
+	}
+	return o
 }
 
 // NewNative returns a function implemented in Go.
@@ -991,6 +1034,7 @@ func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 		info: nativeInfo{
 			name:   name,
 			length: int32(length),
+			realm:  vm.curRealm,
 		},
 	}
 	n.fn = &n.state

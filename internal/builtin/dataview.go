@@ -9,6 +9,7 @@ import (
 
 func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 	proto := vm.NewOrdinaryObject()
+	vm.SetIntrinsic(engine.IntrinsicDataViewPrototype, proto)
 	bi.dataViewProto = proto
 	constructor(vm, "DataView", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()

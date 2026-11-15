@@ -226,11 +226,18 @@ func (vm *VM) run(stop int) Value {
 		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
 	vm.depth++
+	// The frames may belong to other realms than the code that started the loop.
+	saved, outer := vm.curRealm, vm.callerRealm
+	vm.callerRealm = saved
 	for {
 		v, st := vm.exec(stop)
 		switch st {
 		case execReturn, execYield:
 			vm.depth--
+			vm.callerRealm = outer
+			if vm.curRealm != saved {
+				vm.switchRealm(saved)
+			}
 			return v
 		case execPanic:
 			if vm.unwind(stop) {
@@ -238,7 +245,23 @@ func (vm *VM) run(stop int) Value {
 			}
 		}
 		vm.depth--
+		vm.callerRealm = outer
+		if vm.curRealm != saved {
+			vm.switchRealm(saved)
+		}
 		panic(errThrow)
+	}
+}
+
+// enterCallerRealm makes the realm of the caller of the frame at index n current, where stop
+// is the frame that the running interpreter loop was started for.
+func (vm *VM) enterCallerRealm(stop, n int) {
+	r := vm.callerRealm
+	if n > stop {
+		r = vm.frames[n-1].fp.realm
+	}
+	if r != vm.curRealm {
+		vm.switchRealm(r)
 	}
 }
 
@@ -269,6 +292,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	code := fp.code
 	base := fr.base
 	pc := fr.pc
+	if fp.realm != vm.curRealm {
+		vm.switchRealm(fp.realm)
+	}
 	var regs []Value
 	onHeap := fr.gen != nil
 	if onHeap {
@@ -1307,7 +1333,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					proto, _ = vm.getNamed(Value{o: f}, vm.Key(KeyPrototype), c)
 				}
 				if proto.o == nil || proto.o.kind < kindObject {
-					proto = Value{o: vm.Intrinsic(IntrinsicObjectPrototype)}
+					proto = Value{o: vm.realmIntrinsic(f.fn.code.realm, IntrinsicObjectPrototype)}
 				}
 				var shape *shape
 				if proto.o == c.holder && c.next != nil {
@@ -1353,11 +1379,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				if !r.IsObject() {
 					if !r.IsUndefined() {
 						done.pc = pc
+						vm.enterCallerRealm(stop, n)
 						vm.ThrowTypeError("derived constructors may only return object or undefined")
 					}
 					r = regs[i.B]
 					if r.o == tdzObject {
 						done.pc = pc
+						vm.enterCallerRealm(stop, n)
 						vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
@@ -1377,6 +1405,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			fr := &vm.frames[n-1]
 			fp = fr.fp
+			if fp.realm != vm.curRealm {
+				vm.switchRealm(fp.realm)
+			}
 			cl = fr.cl
 			code = fp.code
 			base = fr.base
@@ -1416,6 +1447,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			fr := &vm.frames[n-1]
 			fp = fr.fp
+			if fp.realm != vm.curRealm {
+				vm.switchRealm(fp.realm)
+			}
 			cl = fr.cl
 			code = fp.code
 			base = fr.base
@@ -1854,6 +1888,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
 				base = vm.pushFrame(f, callThis, argBase, argc, ret, isNew, newTarget)
+				if c.realm != vm.curRealm {
+					vm.switchRealm(c.realm)
+				}
 				fp = c
 				cl = f
 				code = c.code
@@ -1866,6 +1903,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if c := fn.code; c != nil && c.isGenerator && !c.isAsync && fn.bound == nil {
 				// Run the generator up to its initial suspension as an ordinary frame.
 				vm.pushGenerator(f, callThis, vm.stack[argBase:argBase+argc], ret)
+				if c.realm != vm.curRealm {
+					vm.switchRealm(c.realm)
+				}
 				fr := &vm.frames[len(vm.frames)-1]
 				fp = c
 				cl = f
@@ -1895,6 +1935,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &vm.frames[len(vm.frames)-1]
 			fp = fr.fp
+			if fp.realm != vm.curRealm {
+				vm.switchRealm(fp.realm)
+			}
 			cl = f
 			code = fp.code
 			base = fr.base
@@ -1946,6 +1989,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &vm.frames[len(vm.frames)-1]
 			fp = fr.fp
+			if fp.realm != vm.curRealm {
+				vm.switchRealm(fp.realm)
+			}
 			cl = fr.cl
 			code = fp.code
 			base = fr.base

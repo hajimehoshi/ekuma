@@ -1147,3 +1147,42 @@ func TestCancelTailCalls(t *testing.T) {
 		t.Errorf("got %v, want context.DeadlineExceeded", err)
 	}
 }
+
+// TestRealmRestored checks that the realm of a VM is current again after a function of another
+// realm throws or is interrupted.
+func TestRealmRestored(t *testing.T) {
+	var vm ekuma.VM
+	r := ekuma.NewRealm(&vm)
+	var other ekuma.Value
+	ekuma.InRealm(&vm, r, func() {
+		other = vm.Global()
+	})
+	if err := vm.Global().Set("other", other); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if _, err := vm.RunScript(t.Context(), "setup", `var mark = 1;
+		var throws = other.eval("(function() { throw new Error('x'); })");
+		var loops = other.eval("(function() { for (;;) {} })");`); err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	check := func(what string) {
+		t.Helper()
+		v, err := vm.RunScript(t.Context(), "check", `typeof mark === "number" && Object.getPrototypeOf([]) === Array.prototype`)
+		if err != nil {
+			t.Fatalf("RunScript after %s: %v", what, err)
+		}
+		if !v.Bool() {
+			t.Errorf("after %s, the realm of the VM is not current", what)
+		}
+	}
+	if _, err := vm.RunScript(t.Context(), "throw", `throws()`); err == nil {
+		t.Errorf("got no error, want the error of the other realm")
+	}
+	check("an exception")
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := vm.RunScript(ctx, "loop", `loops()`); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("got %v, want context.DeadlineExceeded", err)
+	}
+	check("an interruption")
+}

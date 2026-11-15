@@ -23,6 +23,7 @@ func requireHoldable(vm *engine.VM, v engine.Value, what string) {
 
 func initWeakMap(vm *engine.VM) {
 	proto := vm.NewOrdinaryObject()
+	vm.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
 	setKey := vm.Intern("set")
 	var weakMapSet *engine.Object
 	constructor(vm, "WeakMap", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -110,6 +111,7 @@ func initWeakMap(vm *engine.VM) {
 
 func initWeakSet(vm *engine.VM) {
 	proto := vm.NewOrdinaryObject()
+	vm.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
 	addKey := vm.Intern("add")
 	var weakSetAdd *engine.Object
 	constructor(vm, "WeakSet", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -165,6 +167,7 @@ func initWeakSet(vm *engine.VM) {
 
 func initWeakRef(vm *engine.VM) {
 	proto := vm.NewOrdinaryObject()
+	vm.SetIntrinsic(engine.IntrinsicWeakRefPrototype, proto)
 	constructor(vm, "WeakRef", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
@@ -188,6 +191,7 @@ func initWeakRef(vm *engine.VM) {
 
 func initFinalizationRegistry(vm *engine.VM) {
 	proto := vm.NewOrdinaryObject()
+	vm.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
 	constructor(vm, "FinalizationRegistry", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {

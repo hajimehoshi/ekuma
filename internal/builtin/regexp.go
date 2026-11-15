@@ -497,6 +497,9 @@ func initRegExp(vm *engine.VM) {
 	})
 	method(vm, proto, "compile", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := thisRegExp(vm, this, "compile")
+		if !vm.IsRegExpOfCurrentRealm(o) {
+			vm.ThrowTypeError("RegExp.prototype.compile cannot be used on a RegExp object of another realm")
+		}
 		if !o.RegExpLegacyFeaturesEnabled() {
 			vm.ThrowTypeError("RegExp.prototype.compile cannot be used on a subclass instance")
 		}

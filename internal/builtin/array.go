@@ -93,7 +93,7 @@ func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Obj
 	if vm.IsArray(engine.ObjectValue(orig)) {
 		c := vm.GetV(engine.ObjectValue(orig), vm.Key(engine.KeyConstructor))
 		if c.IsObject() {
-			if c.Object() == vm.Intrinsic(engine.IntrinsicArray) {
+			if c.Object() == vm.Intrinsic(engine.IntrinsicArray) || (c.IsCallable() && vm.IsConstructor(c.Object()) && vm.IsIntrinsicOfOtherRealm(c.Object(), engine.IntrinsicArray)) {
 				c = engine.Undefined
 			} else if s := vm.GetV(c, vm.WellKnownSymbol(engine.SymbolSpecies)); s.IsNull() {
 				c = engine.Undefined

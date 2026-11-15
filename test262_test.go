@@ -385,9 +385,36 @@ const asyncIncomplete = "the async test did not complete"
 // define262 defines the host object $262 of the harness, with the members that the engine supports.
 // agents implements $262.agent.
 func define262(vm *ekuma.VM, agents *agentCluster) error {
-	o, err := vm.RunScript(context.Background(), "$262", "({})")
+	o, err := new262(vm)
 	if err != nil {
 		return err
+	}
+	if err := agents.define(vm, o); err != nil {
+		return err
+	}
+	return vm.Global().Set("$262", o)
+}
+
+// new262 returns the object $262 for the current realm of vm, without $262.agent.
+func new262(vm *ekuma.VM) (ekuma.Value, error) {
+	o, err := vm.RunScript(context.Background(), "$262", "({})")
+	if err != nil {
+		return ekuma.Undefined, err
+	}
+	createRealm := vm.FuncOf("createRealm", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		r := ekuma.NewRealm(vm)
+		var o ekuma.Value
+		var err error
+		ekuma.InRealm(vm, r, func() {
+			if o, err = new262(vm); err != nil {
+				return
+			}
+			err = vm.Global().Set("$262", o)
+		})
+		return o, err
+	})
+	if err := o.Set("createRealm", createRealm); err != nil {
+		return ekuma.Undefined, err
 	}
 	detach := vm.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		v := ekuma.Undefined
@@ -397,7 +424,7 @@ func define262(vm *ekuma.VM, agents *agentCluster) error {
 		return ekuma.Undefined, ekuma.DetachArrayBuffer(vm, v)
 	})
 	if err := o.Set("detachArrayBuffer", detach); err != nil {
-		return err
+		return ekuma.Undefined, err
 	}
 	evalScript := vm.FuncOf("evalScript", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		var src string
@@ -420,15 +447,12 @@ func define262(vm *ekuma.VM, agents *agentCluster) error {
 		return v, err
 	})
 	if err := o.Set("evalScript", evalScript); err != nil {
-		return err
+		return ekuma.Undefined, err
 	}
 	if err := o.Set("global", vm.Global()); err != nil {
-		return err
+		return ekuma.Undefined, err
 	}
-	if err := agents.define(vm, o); err != nil {
-		return err
-	}
-	return vm.Global().Set("$262", o)
+	return o, nil
 }
 
 func firstLine(s string) string {

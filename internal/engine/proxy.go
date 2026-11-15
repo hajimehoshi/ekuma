@@ -69,9 +69,8 @@ func (vm *VM) IsArray(v Value) bool {
 	return o.kind == kindArray
 }
 
-// checkFunctionRealm implements the checks of GetFunctionRealm for the constructor f.
-// With a single realm, the result is always the current realm.
-func (vm *VM) checkFunctionRealm(f *Object) {
+// getFunctionRealm implements GetFunctionRealm.
+func (vm *VM) getFunctionRealm(f *Object) *realm {
 	for {
 		switch {
 		case f.fn != nil && f.fn.bound != nil:
@@ -82,8 +81,12 @@ func (vm *VM) checkFunctionRealm(f *Object) {
 				vm.throwRevoked("GetFunctionRealm")
 			}
 			f = st.target
+		case f.fn != nil && f.fn.code != nil:
+			return f.fn.code.realm
+		case f.fn != nil && f.fn.info != nil:
+			return f.fn.info.realm
 		default:
-			return
+			return vm.curRealm
 		}
 	}
 }
