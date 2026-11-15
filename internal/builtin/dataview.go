@@ -93,9 +93,9 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		{"BigUint64", engine.ElementBigUint64},
 	} {
 		typ := e.typ
-		// view returns the bytes of the element at the converted index, as GetViewValue and SetViewValue check it.
-		view := func(vm *engine.VM, d *engine.DataView, i int64, what string) []byte {
-			b := d.Bytes()
+		// view returns the bytes of the element at the converted index, as GetViewValue and SetViewValue
+		// check it, from the bytes b of the view.
+		view := func(vm *engine.VM, b []byte, i int64, what string) []byte {
 			if b == nil {
 				vm.ThrowTypeError("DataView.prototype." + what + ": the view is detached or out of bounds")
 			}
@@ -104,12 +104,23 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 			}
 			return b[i:]
 		}
+		// load and store hold the lock of the buffer, which a throw releases.
+		load := func(vm *engine.VM, d *engine.DataView, i int64, le bool, what string) engine.Value {
+			b := d.Lock()
+			defer d.Unlock()
+			return vm.GetValueFromBuffer(view(vm, b, i, what), typ, le)
+		}
+		store := func(vm *engine.VM, d *engine.DataView, i int64, v engine.Value, le bool, what string) {
+			b := d.Lock()
+			defer d.Unlock()
+			engine.SetValueInBuffer(view(vm, b, i, what), typ, v, le)
+		}
 		get := "get" + e.name
 		method(vm, proto, get, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d := thisView(vm, this, get)
 			i := toIndex(vm, arg(args, 0))
 			le := engine.ToBoolean(arg(args, 1))
-			return vm.GetValueFromBuffer(view(vm, d, i, get), typ, le)
+			return load(vm, d, i, le, get)
 		})
 		set := "set" + e.name
 		method(vm, proto, set, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -120,7 +131,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 			i := toIndex(vm, arg(args, 0))
 			v := vm.ToElementValue(typ, arg(args, 1))
 			le := engine.ToBoolean(arg(args, 2))
-			engine.SetValueInBuffer(view(vm, d, i, set), typ, v, le)
+			store(vm, d, i, v, le, set)
 			return engine.Undefined
 		})
 	}

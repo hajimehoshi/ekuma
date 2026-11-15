@@ -4,9 +4,13 @@
 package ekuma_test
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"runtime"
+	"strconv"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -1251,6 +1255,166 @@ func TestAtomicsWaitAsyncTimeout(t *testing.T) {
 			t.Errorf("log: got %q, want %q", got, want)
 		}
 	})
+}
+
+// skipAgents skips a test that runs agents on several goroutines, which a single thread cannot.
+func skipAgents(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "js" {
+		t.Skip("agents need threads")
+	}
+}
+
+// dataBlock returns the data block of the SharedArrayBuffer v.
+func dataBlock(t *testing.T, v ekuma.Value) *ekuma.SharedDataBlock {
+	t.Helper()
+	blk := ekuma.SharedDataBlockOf(v)
+	if blk == nil {
+		t.Fatal("not a SharedArrayBuffer")
+	}
+	return blk
+}
+
+// runIn runs src in a new VM on another goroutine, with the global sab sharing the data block of
+// the SharedArrayBuffer v, and returns the result as a string.
+func runIn(t *testing.T, v ekuma.Value, src string) string {
+	t.Helper()
+	blk := dataBlock(t, v)
+	var got string
+	var err error
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		var vm ekuma.VM
+		if err = vm.Global().Set("sab", ekuma.NewSharedArrayBuffer(&vm, blk)); err != nil {
+			return
+		}
+		var r ekuma.Value
+		r, err = vm.RunScript(context.Background(), "agent", src)
+		got = r.String()
+	})
+	wg.Wait()
+	if err != nil {
+		t.Fatalf("RunScript: %v", err)
+	}
+	return got
+}
+
+func TestAtomicsWaitInterrupted(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		ekuma.SetAgentCanSuspend(&vm, true)
+		run(t, &vm, `globalThis.ta = new Int32Array(new SharedArrayBuffer(4));`)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if _, err := vm.RunScript(ctx, "wait", `Atomics.wait(ta, 0, 0)`); !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("RunScript: got %v, want %v", err, context.DeadlineExceeded)
+		}
+		// The interrupted wait left its waiter list.
+		if got, want := run(t, &vm, `Atomics.notify(ta, 0)`), "0"; got != want {
+			t.Errorf("Atomics.notify: got %s, want %s", got, want)
+		}
+	})
+}
+
+func TestAtomicsWaitAsyncNotifiedByAnotherVM(t *testing.T) {
+	skipAgents(t)
+	var vm ekuma.VM
+	sab, err := vm.RunScript(t.Context(), "wait", `
+globalThis.result = "pending";
+const sab = new SharedArrayBuffer(8);
+Atomics.waitAsync(new Int32Array(sab), 1, 0).value.then(v => { result = v; });
+sab`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := runIn(t, sab, `String(Atomics.notify(new Int32Array(sab), 1))`), "1"; got != want {
+		t.Errorf("Atomics.notify: got %s, want %s", got, want)
+	}
+	ok, err := ekuma.AwaitWaiters(t.Context(), &vm)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Error("AwaitWaiters: got false, want true")
+	}
+	if got, want := run(t, &vm, `result`), "ok"; got != want {
+		t.Errorf("result: got %s, want %s", got, want)
+	}
+}
+
+func TestSharedArrayBufferGrownByAnotherVM(t *testing.T) {
+	skipAgents(t)
+	var vm ekuma.VM
+	sab, err := vm.RunScript(t.Context(), "grow", `
+const sab = new SharedArrayBuffer(4, {maxByteLength: 16});
+globalThis.ta = new Int32Array(sab);
+sab`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := runIn(t, sab, `sab.grow(12); new Int32Array(sab)[2] = 7; String(sab.byteLength)`), "12"; got != want {
+		t.Errorf("byteLength in the other VM: got %s, want %s", got, want)
+	}
+	if got, want := run(t, &vm, `[ta.buffer.byteLength, ta.length, ta[2]].join()`), "12,3,7"; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+func TestAtomicsAcrossVMs(t *testing.T) {
+	skipAgents(t)
+	const (
+		agents = 4
+		n      = 2000
+	)
+	var vm ekuma.VM
+	sab, err := vm.RunScript(t.Context(), "main", `globalThis.ta = new Int32Array(new SharedArrayBuffer(4 * (2 + 4))); ta.buffer`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Each agent counts with Atomics.add and with a compareExchange loop, and writes its own
+	// element without atomics.
+	src := `
+const ta = new Int32Array(sab);
+for (let i = 0; i < ` + strconv.Itoa(n) + `; i++) {
+	Atomics.add(ta, 0, 1);
+	for (;;) {
+		const old = Atomics.load(ta, 1);
+		if (Atomics.compareExchange(ta, 1, old, old + 1) === old) {
+			break;
+		}
+	}
+	ta[2 + id] = i;
+}`
+	blk := dataBlock(t, sab)
+	var wg sync.WaitGroup
+	errs := make([]error, agents)
+	for id := range agents {
+		wg.Go(func() {
+			var avm ekuma.VM
+			if err := avm.Global().Set("sab", ekuma.NewSharedArrayBuffer(&avm, blk)); err != nil {
+				errs[id] = err
+				return
+			}
+			if err := avm.Global().Set("id", id); err != nil {
+				errs[id] = err
+				return
+			}
+			_, errs[id] = avm.RunScript(context.Background(), "agent", src)
+		})
+	}
+	wg.Wait()
+	for id, err := range errs {
+		if err != nil {
+			t.Fatalf("agent %d: %v", id, err)
+		}
+	}
+	want := strconv.Itoa(agents*n) + "," + strconv.Itoa(agents*n)
+	for range agents {
+		want += "," + strconv.Itoa(n-1)
+	}
+	if got := run(t, &vm, `[...ta].join()`); got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
 }
 
 // zoneType is a local time type of a time zone.

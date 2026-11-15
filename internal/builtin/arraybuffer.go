@@ -224,6 +224,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	proto := vm.NewOrdinaryObject()
 	bi.sharedArrayBufferProto = proto
+	vm.SetIntrinsic(engine.IntrinsicSharedArrayBufferPrototype, proto)
 	ctor := constructor(vm, "SharedArrayBuffer", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
@@ -254,10 +255,9 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		if n > int64(b.MaxByteLength()) {
 			vm.ThrowRangeError("new length exceeds maxByteLength")
 		}
-		if n < int64(b.ByteLength()) {
+		if !b.Grow(int(n)) {
 			vm.ThrowRangeError("SharedArrayBuffer cannot shrink")
 		}
-		b.Resize(int(n))
 		return engine.Undefined
 	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -277,7 +277,7 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 			vm.ThrowTypeError("species constructor returned a too small SharedArrayBuffer")
 		}
 		if cur := b.ByteLength(); first < cur {
-			copy(nb.Bytes()[:min(newLen, cur-first)], b.Bytes()[first:])
+			engine.CopyBufferBytes(nb, 0, b, first, min(newLen, cur-first))
 		}
 		return engine.ObjectValue(r)
 	})

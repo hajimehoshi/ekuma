@@ -9,8 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-// The VM is a single agent that cannot suspend and shares no memory with another agent,
-// so the Atomics functions are ordinary reads and writes.
+// The engine makes the accesses to a shared data block atomic, as other agents may access it.
 
 // validateIntegerTypedArray implements ValidateIntegerTypedArray, with the access mode write when write is set,
 // and returns the typed array and its length.
@@ -36,17 +35,15 @@ func validateAtomicAccess(vm *engine.VM, n int, index engine.Value) int {
 	return int(i)
 }
 
-// revalidateAtomicAccess implements RevalidateAtomicAccess and returns the bytes of the element i.
-func revalidateAtomicAccess(vm *engine.VM, t *engine.TypedArray, i int) []byte {
-	b := t.Bytes()
-	if b == nil {
+// revalidateAtomicAccess implements RevalidateAtomicAccess for the element i.
+func revalidateAtomicAccess(vm *engine.VM, t *engine.TypedArray, i int) {
+	n, ok := t.Length()
+	if !ok {
 		vm.ThrowTypeError("the typed array is detached or out of bounds")
 	}
-	size := t.ElementType().Size()
-	if (i+1)*size > len(b) {
+	if i >= n {
 		vm.ThrowRangeError("invalid atomic access index")
 	}
-	return b[i*size:]
 }
 
 // toAtomicValue converts v as the Atomics functions do for an element of the type typ.
@@ -57,7 +54,7 @@ func toAtomicValue(vm *engine.VM, typ engine.ElementType, v engine.Value) engine
 	return engine.Number(vm.ToIntegerOrInfinity(v))
 }
 
-// doWait implements DoWait. The VM is an agent that cannot suspend, so a synchronous wait throws.
+// doWait implements DoWait.
 func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 	what := "wait"
 	if async {
@@ -80,20 +77,15 @@ func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 	if !math.IsNaN(q) {
 		timeout = max(q, 0)
 	}
-	if !async {
+	if !async && !vm.AgentCanSuspend() {
 		vm.ThrowTypeError("Atomics.wait cannot be called in this context")
 	}
-	b := revalidateAtomicAccess(vm, t, i)
-	// The encodings are compared in the size of the element.
-	mask := uint64(math.MaxUint64) >> (64 - 8*typ.Size())
-	if engine.LoadElementBits(b, typ)&mask != engine.ElementBits(typ, v)&mask {
-		return waitResult(vm, false, vm.NewString("not-equal"))
+	revalidateAtomicAccess(vm, t, i)
+	r, isPromise := vm.Wait(t, i, engine.ElementBits(typ, v), timeout, async)
+	if !async {
+		return r
 	}
-	if timeout == 0 {
-		return waitResult(vm, false, vm.NewString("timed-out"))
-	}
-	byteIndex := t.ByteOffset() + i*typ.Size()
-	return waitResult(vm, true, vm.AddWaiter(t.ArrayBuffer(), byteIndex, timeout))
+	return waitResult(vm, isPromise, r)
 }
 
 // waitResult returns the result object of Atomics.waitAsync.
@@ -110,24 +102,22 @@ func initAtomics(vm *engine.VM) {
 	vm.Define(atomics, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.NewString("Atomics"), engine.FlagConfigurable)
 
 	// readModifyWrite implements AtomicReadModifyWrite with op on the encodings of the elements.
-	readModifyWrite := func(name string, op func(old, v uint64) uint64) {
+	readModifyWrite := func(name string, op engine.AtomicOp) {
 		method(vm, atomics, name, 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, name)
 			i := validateAtomicAccess(vm, n, arg(args, 1))
 			typ := t.ElementType()
 			v := toAtomicValue(vm, typ, arg(args, 2))
-			b := revalidateAtomicAccess(vm, t, i)
-			old := engine.LoadElementBits(b, typ)
-			engine.StoreElementBits(b, typ, op(old, engine.ElementBits(typ, v)))
-			return vm.ElementFromBits(typ, old)
+			revalidateAtomicAccess(vm, t, i)
+			return vm.ElementFromBits(typ, t.AtomicReadModifyWrite(i, op, engine.ElementBits(typ, v), 0))
 		})
 	}
-	readModifyWrite("add", func(old, v uint64) uint64 { return old + v })
-	readModifyWrite("and", func(old, v uint64) uint64 { return old & v })
-	readModifyWrite("exchange", func(old, v uint64) uint64 { return v })
-	readModifyWrite("or", func(old, v uint64) uint64 { return old | v })
-	readModifyWrite("sub", func(old, v uint64) uint64 { return old - v })
-	readModifyWrite("xor", func(old, v uint64) uint64 { return old ^ v })
+	readModifyWrite("add", engine.AtomicAdd)
+	readModifyWrite("and", engine.AtomicAnd)
+	readModifyWrite("exchange", engine.AtomicExchange)
+	readModifyWrite("or", engine.AtomicOr)
+	readModifyWrite("sub", engine.AtomicSub)
+	readModifyWrite("xor", engine.AtomicXor)
 
 	method(vm, atomics, "compareExchange", 4, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, "compareExchange")
@@ -135,13 +125,8 @@ func initAtomics(vm *engine.VM) {
 		typ := t.ElementType()
 		expected := toAtomicValue(vm, typ, arg(args, 2))
 		replacement := toAtomicValue(vm, typ, arg(args, 3))
-		b := revalidateAtomicAccess(vm, t, i)
-		old := engine.LoadElementBits(b, typ)
-		// The encodings are compared in the size of the element.
-		mask := uint64(math.MaxUint64) >> (64 - 8*typ.Size())
-		if old&mask == engine.ElementBits(typ, expected)&mask {
-			engine.StoreElementBits(b, typ, engine.ElementBits(typ, replacement))
-		}
+		revalidateAtomicAccess(vm, t, i)
+		old := t.AtomicReadModifyWrite(i, engine.AtomicCompareExchange, engine.ElementBits(typ, expected), engine.ElementBits(typ, replacement))
 		return vm.ElementFromBits(typ, old)
 	})
 	method(vm, atomics, "isLockFree", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -154,16 +139,16 @@ func initAtomics(vm *engine.VM) {
 	method(vm, atomics, "load", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, false, "load")
 		i := validateAtomicAccess(vm, n, arg(args, 1))
-		b := revalidateAtomicAccess(vm, t, i)
-		return vm.ElementFromBits(t.ElementType(), engine.LoadElementBits(b, t.ElementType()))
+		revalidateAtomicAccess(vm, t, i)
+		return vm.ElementFromBits(t.ElementType(), t.AtomicLoad(i))
 	})
 	method(vm, atomics, "store", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, "store")
 		i := validateAtomicAccess(vm, n, arg(args, 1))
 		typ := t.ElementType()
 		v := toAtomicValue(vm, typ, arg(args, 2))
-		b := revalidateAtomicAccess(vm, t, i)
-		engine.StoreElementBits(b, typ, engine.ElementBits(typ, v))
+		revalidateAtomicAccess(vm, t, i)
+		t.AtomicStore(i, engine.ElementBits(typ, v))
 		return v
 	})
 	method(vm, atomics, "wait", 4, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

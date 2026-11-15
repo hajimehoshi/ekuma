@@ -52,13 +52,115 @@ func validateTypedArrayAccess(vm *engine.VM, this engine.Value, write bool, what
 func storeAt(vm *engine.VM, o *engine.Object, t *engine.TypedArray, i int, v engine.Value) {
 	typ := t.ElementType()
 	if v.IsNumber() && !typ.IsBigInt() {
-		size := typ.Size()
-		if b := t.Bytes(); (i+1)*size <= len(b) {
-			engine.StoreElementBits(b[i*size:], typ, engine.ElementBits(typ, v))
-		}
+		t.StoreElement(i, engine.ElementBits(typ, v))
 		return
 	}
 	vm.Set(o, engine.IndexKey(uint32(i)), v)
+}
+
+// The bytes of a buffer are reached with Lock and Unlock, which keep the other agents from accessing
+// a shared buffer in between. The helpers below each hold one lock, and run no JavaScript.
+
+// elementsOf returns the bytes of the elements of t, or nil when t is out of bounds. The bytes of
+// a shared buffer are a copy, as other agents may change them.
+func elementsOf(t *engine.TypedArray) []byte {
+	b := t.Lock()
+	defer t.Unlock()
+	if t.ArrayBuffer().IsShared() {
+		return slices.Clone(b)
+	}
+	return b
+}
+
+// writeElements copies src to the bytes of the elements of t from the element offset on, as far as
+// they reach.
+func writeElements(t *engine.TypedArray, offset int, src []byte) {
+	b := t.Lock()
+	defer t.Unlock()
+	if o := offset * t.ElementType().Size(); o < len(b) {
+		copy(b[o:], src)
+	}
+}
+
+// copyElements copies the first n elements of src to dst, which have the same element type.
+// Both must have at least n elements.
+func copyElements(dst, src *engine.TypedArray, n int) {
+	engine.CopyBufferBytes(dst.ArrayBuffer(), dst.ByteOffset(), src.ArrayBuffer(), src.ByteOffset(), n*src.ElementType().Size())
+}
+
+// storeConverted stores the n elements of the type from in src as elements of t from the element
+// offset on. t must have enough elements.
+func storeConverted(vm *engine.VM, t *engine.TypedArray, offset int, src []byte, from engine.ElementType, n int) {
+	b := t.Lock()
+	defer t.Unlock()
+	to := t.ElementType()
+	copyConverted(vm, b[offset*to.Size():], to, src, from, n)
+}
+
+// reverseFirst reverses the first n elements of t.
+func reverseFirst(t *engine.TypedArray, n int) {
+	b := t.Lock()
+	defer t.Unlock()
+	size := t.ElementType().Size()
+	reverseElements(b[:min(n*size, len(b))], size)
+}
+
+// sortFirst sorts the first n elements of t numerically.
+func sortFirst(t *engine.TypedArray, n int) {
+	b := t.Lock()
+	defer t.Unlock()
+	sortElements(b[:min(n*t.ElementType().Size(), len(b))], t.ElementType())
+}
+
+// fillRange stores the encoding x in the elements of t from start up to end.
+func fillRange(t *engine.TypedArray, start, end int, x uint64) {
+	b := t.Lock()
+	defer t.Unlock()
+	size := t.ElementType().Size()
+	fillElements(b[start*size:min(end*size, len(b))], t.ElementType(), x)
+}
+
+// searchRange is searchElements on the elements of t.
+func searchRange(t *engine.TypedArray, x engine.Value, from, to int, backward, sameValueZero bool) int {
+	b := t.Lock()
+	defer t.Unlock()
+	return searchElements(b, t.ElementType(), x, from, to, backward, sameValueZero)
+}
+
+// copyBytesWithin copies c bytes of the elements of t from the byte offset from to the byte offset to.
+func copyBytesWithin(t *engine.TypedArray, to, from, c int) {
+	b := t.Lock()
+	defer t.Unlock()
+	copy(b[to:to+c], b[from:from+c])
+}
+
+// copyBytesForward copies n bytes of the buffer b from the byte index src to the byte index dst one
+// at a time from the first on.
+func copyBytesForward(b *engine.ArrayBuffer, dst, src, n int) {
+	data := b.Lock()
+	defer b.Unlock()
+	for i := range n {
+		data[dst+i] = data[src+i]
+	}
+}
+
+// storeNumbers stores the elements of src from 0 on that are numbers that reading runs no
+// JavaScript for in the elements of t from the element offset on, as far as they reach, and
+// returns how many it stored.
+func storeNumbers(t *engine.TypedArray, offset int, src *engine.Object, n int64) int64 {
+	b := t.Lock()
+	defer t.Unlock()
+	typ := t.ElementType()
+	size := typ.Size()
+	i := int64(0)
+	for ; i < n; i++ {
+		e, ok := src.Element(i)
+		if !ok || !e.IsNumber() || (offset+int(i)+1)*size > len(b) {
+			break
+		}
+		engine.StoreElementBits(b[(offset+int(i))*size:], typ, engine.ElementBits(typ, e))
+	}
+	return i
 }
 
 // newTypedArray returns a new typed array of n elements of the type typ on a new ArrayBuffer.
@@ -138,7 +240,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 			vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
 		o := bi.newTypedArray(vm, proto, typ, int64(n))
-		copyConverted(vm, engine.TypedArrayData(engine.ObjectValue(o)).Bytes(), typ, src.Bytes(), src.ElementType(), n)
+		storeConverted(vm, engine.TypedArrayData(engine.ObjectValue(o)), 0, elementsOf(src), src.ElementType(), n)
 		return engine.ObjectValue(o)
 	}
 	if b := engine.ArrayBufferData(first); b != nil {
@@ -439,12 +541,10 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 				vm.ThrowTypeError("%TypedArray%.prototype.copyWithin: the typed array is detached or out of bounds")
 			}
 			size := t.ElementType().Size()
-			b := t.Bytes()
 			limit := n * size
 			from, to := start*size, target*size
-			c := min(count*size, limit-from, limit-to)
-			if c > 0 {
-				copy(b[to:to+c], b[from:from+c])
+			if c := min(count*size, limit-from, limit-to); c > 0 {
+				copyBytesWithin(t, to, from, c)
 			}
 		}
 		return engine.ObjectValue(o)
@@ -527,8 +627,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		end = min(end, cur)
 		if start < end {
-			size := typ.Size()
-			fillElements(t.Bytes()[start*size:end*size], typ, engine.ElementBits(typ, v))
+			fillRange(t, start, end, engine.ElementBits(typ, v))
 		}
 		return engine.ObjectValue(o)
 	})
@@ -593,7 +692,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 			} else {
 				to = min(to, cur)
 			}
-			i := searchElements(t.Bytes(), t.ElementType(), x, from, to, backward, sameValueZero)
+			i := searchRange(t, x, from, to, backward, sameValueZero)
 			if sameValueZero {
 				return engine.Bool(i >= 0)
 			}
@@ -665,8 +764,8 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	reduce("reduce", false)
 	reduce("reduceRight", true)
 	method(vm, proto, "reverse", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o, t, _ := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.reverse")
-		reverseElements(t.Bytes(), t.ElementType().Size())
+		o, t, n := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.reverse")
+		reverseFirst(t, n)
 		return engine.ObjectValue(o)
 	})
 	method(vm, proto, "set", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -707,14 +806,11 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		size := typ.Size()
 		src, dst := start*size+t.ByteOffset(), at.ByteOffset()
-		data := t.ArrayBuffer().Bytes()
-		if at.ArrayBuffer() == t.ArrayBuffer() && src < dst && dst < src+count*size {
+		if at.ArrayBuffer().SameDataBlock(t.ArrayBuffer()) && src < dst && dst < src+count*size {
 			// The bytes are copied one at a time from the first on, as the specification says.
-			for i := range count * size {
-				data[dst+i] = data[src+i]
-			}
+			copyBytesForward(t.ArrayBuffer(), dst, src, count*size)
 		} else {
-			copy(at.ArrayBuffer().Bytes()[dst:dst+count*size], data[src:src+count*size])
+			engine.CopyBufferBytes(at.ArrayBuffer(), dst, t.ArrayBuffer(), src, count*size)
 		}
 		return engine.ObjectValue(a)
 	})
@@ -725,7 +821,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		o, t, n := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.sort")
 		if cmp.IsUndefined() {
-			sortElements(t.Bytes(), t.ElementType())
+			sortFirst(t, n)
 			return engine.ObjectValue(o)
 		}
 		vals := make([]engine.Value, n)
@@ -780,9 +876,8 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "toReversed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		_, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.toReversed")
 		a, at := bi.createSameType(vm, t, n)
-		b := at.Bytes()
-		copy(b, t.Bytes())
-		reverseElements(b, t.ElementType().Size())
+		copyElements(at, t, n)
+		reverseFirst(at, n)
 		return engine.ObjectValue(a)
 	})
 	method(vm, proto, "toSorted", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -793,9 +888,8 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.toSorted")
 		a, at := bi.createSameType(vm, t, n)
 		if cmp.IsUndefined() {
-			b := at.Bytes()
-			copy(b, t.Bytes())
-			sortElements(b, t.ElementType())
+			copyElements(at, t, n)
+			sortFirst(at, n)
 			return engine.ObjectValue(a)
 		}
 		vals := make([]engine.Value, n)
@@ -823,7 +917,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		a, at := bi.createSameType(vm, t, n)
 		copied := min(n, cur)
-		copy(at.Bytes(), t.Bytes()[:copied*typ.Size()])
+		copyElements(at, t, copied)
 		for i := copied; i < n; i++ {
 			storeAt(vm, a, at, i, getAt(vm, o, int64(i)))
 		}
@@ -855,7 +949,6 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 // setFrom implements the part of %TypedArray%.prototype.set after the offset is converted.
 func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *engine.TypedArray, offset float64, source engine.Value) {
 	typ := t.ElementType()
-	size := typ.Size()
 	if src := engine.TypedArrayData(source); src != nil {
 		targetLen, ok := t.Length()
 		if !ok {
@@ -872,13 +965,12 @@ func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *eng
 		if typ.IsBigInt() != srcType.IsBigInt() {
 			vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
-		dst := t.Bytes()[int(offset)*size:]
-		sb := src.Bytes()
+		sb := elementsOf(src)
 		if srcType != typ && src.ArrayBuffer() == t.ArrayBuffer() {
 			// The source is cloned first, as the elements may overlap.
 			sb = slices.Clone(sb)
 		}
-		copyConverted(vm, dst, typ, sb, srcType, srcLen)
+		storeConverted(vm, t, int(offset), sb, srcType, srcLen)
 		return
 	}
 	targetLen, ok := t.Length()
@@ -893,15 +985,9 @@ func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *eng
 	off := int(offset)
 	if !typ.IsBigInt() {
 		// The elements that are numbers that reading runs no JavaScript for are stored directly.
-		b := t.Bytes()
-		i := int64(0)
-		for ; i < srcLen; i++ {
-			e, ok := src.Element(i)
-			if !ok || !e.IsNumber() || (off+int(i)+1)*size > len(b) {
-				break
-			}
-			engine.StoreElementBits(b[(off+int(i))*size:], typ, engine.ElementBits(typ, e))
-		}
+		// Reading the elements of a typed array on a shared buffer is never direct, so it takes
+		// no lock.
+		i := storeNumbers(t, off, src, srcLen)
 		for ; i < srcLen; i++ {
 			storeAt(vm, target, t, off+int(i), getAt(vm, src, i))
 		}

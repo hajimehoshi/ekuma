@@ -195,6 +195,7 @@ func (vm *VM) Interrupt(cause error) {
 	}
 	vm.interruptCause.Store(&cause)
 	vm.interrupt.Store(true)
+	vm.mailbox.poke()
 }
 
 // ClearInterrupt withdraws a request of [VM.Interrupt] that no script has observed.
@@ -203,18 +204,18 @@ func (vm *VM) ClearInterrupt() {
 	vm.interruptCause.Store(nil)
 }
 
-// Poll stops the script when an interruption was requested.
+// Poll stops the script when an interruption was requested. It also takes the notifications of
+// other agents, which raise the interrupt flag too.
 func (vm *VM) Poll() {
 	vm.pollTick()
 	if vm.interrupt.Load() {
 		vm.interrupt.Store(false)
-		cause := ErrInterrupted
+		vm.receiveNotifications()
 		if c := vm.interruptCause.Swap(nil); c != nil {
-			cause = *c
+			panic(&interruptSignal{
+				cause: *c,
+			})
 		}
-		panic(&interruptSignal{
-			cause: cause,
-		})
 	}
 }
 
@@ -334,6 +335,15 @@ type VM struct {
 	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout.
 	timedWaiters timedWaiters
 
+	// asyncWaiters is the number of waiters of Atomics.waitAsync whose promise is not resolved.
+	asyncWaiters int
+
+	// mailbox receives the notifications of other agents.
+	mailbox *mailbox
+
+	// canSuspend is AgentCanSuspend.
+	canSuspend bool
+
 	weak weakState
 
 	// symbolRegistry is the GlobalSymbolRegistry List, by key.
@@ -393,6 +403,7 @@ const (
 	IntrinsicMapPrototype
 	IntrinsicSetPrototype
 	IntrinsicDatePrototype
+	IntrinsicSharedArrayBufferPrototype
 	IntrinsicPromise
 	IntrinsicArray
 	IntrinsicObject

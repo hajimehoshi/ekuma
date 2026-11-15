@@ -417,7 +417,10 @@ func uint8ArrayData(v Value, method string) *engine.TypedArray {
 // A detached or out of bounds src has no bytes. It panics with a [*ValueError] when src
 // is neither a Uint8Array nor a Uint8ClampedArray.
 func CopyBytesToGo(dst []byte, src Value) int {
-	return copy(dst, uint8ArrayData(src, "CopyBytesToGo").Bytes())
+	t := uint8ArrayData(src, "CopyBytesToGo")
+	b := t.Lock()
+	defer t.Unlock()
+	return copy(dst, b)
 }
 
 // CopyBytesToJS copies bytes from src to the Uint8Array or Uint8ClampedArray dst
@@ -432,5 +435,7 @@ func CopyBytesToJS(dst Value, src []byte) int {
 			Type:   dst.Type(),
 		})
 	}
-	return copy(t.Bytes(), src)
+	b := t.Lock()
+	defer t.Unlock()
+	return copy(b, src)
 }

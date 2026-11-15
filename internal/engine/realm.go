@@ -20,6 +20,7 @@ func New(hostDefined any) *VM {
 		stack:          make([]Value, 1<<14),
 		symbolRegistry: map[string]*Object{},
 		thrown:         Undefined,
+		mailbox:        newMailbox(),
 	}
 	vm.shapes.nullProto = vm.newShape(nil)
 	vm.shapes.proxy = vm.newShape(nil)

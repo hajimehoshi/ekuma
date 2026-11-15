@@ -311,6 +311,9 @@ function setup(kind, n) {
 	a = make(kind, n, 0);
 	b = make(kind, n, 1);
 }
+function setupInt32(buffer, n) {
+	a = new Int32Array(new globalThis[buffer](4 * n));
+}
 function run(op, total) {
 	var n = a.length, s = 0, i, m;
 	for (var done = 0; done < total; done += n) {
@@ -334,6 +337,9 @@ function run(op, total) {
 		case "subarray":
 			for (i = 0; i < m; i++) s += a.subarray(1, 9).length;
 			break;
+		case "atomicsAdd":
+			for (i = 0; i < m; i++) s += Atomics.add(a, i, 1);
+			break;
 		}
 	}
 	return s;
@@ -356,6 +362,31 @@ func BenchmarkTypedArray(b *testing.B) {
 					b.Fatal(err)
 				}
 				if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setup(%q, 1024)", kind)); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := vm.RunScript(ctx, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}
+
+// BenchmarkSharedTypedArray compares the element accesses of an Int32Array over a
+// SharedArrayBuffer with those of one over an ArrayBuffer, in one VM. One iteration is one
+// element read or written, or one Atomics.add.
+func BenchmarkSharedTypedArray(b *testing.B) {
+	for _, op := range []string{"read", "write", "atomicsAdd"} {
+		for _, buffer := range []string{"ArrayBuffer", "SharedArrayBuffer"} {
+			b.Run(op+"/"+buffer, func(b *testing.B) {
+				ctx := b.Context()
+				var vm ekuma.VM
+				if _, err := vm.RunScript(ctx, "typedarray.js", typedArrayBenchJS); err != nil {
+					b.Fatal(err)
+				}
+				if _, err := vm.RunScript(ctx, "setup", fmt.Sprintf("setupInt32(%q, 1024)", buffer)); err != nil {
 					b.Fatal(err)
 				}
 				b.ReportAllocs()

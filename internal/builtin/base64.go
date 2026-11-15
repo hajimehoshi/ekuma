@@ -229,7 +229,7 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		if _, ok := t.Length(); !ok {
 			vm.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
 		}
-		return t.Bytes()
+		return elementsOf(t)
 	}
 	stringArg := func(vm *engine.VM, args []engine.Value) string {
 		s := arg(args, 0)
@@ -249,12 +249,12 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	}
 	newUint8Array := func(vm *engine.VM, b []byte) engine.Value {
 		o := bi.newTypedArray(vm, proto, engine.ElementUint8, int64(len(b)))
-		copy(engine.TypedArrayData(engine.ObjectValue(o)).Bytes(), b)
+		writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
 		return engine.ObjectValue(o)
 	}
 	// setResult implements the end of setFromBase64 and setFromHex.
 	setResult := func(vm *engine.VM, t *engine.TypedArray, r decodeResult) engine.Value {
-		copy(t.Bytes(), r.bytes)
+		writeElements(t, 0, r.bytes)
 		if r.err != "" {
 			throwSyntaxError(vm, r.err)
 		}

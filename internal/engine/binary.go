@@ -7,6 +7,9 @@ import (
 	"encoding/binary"
 	"math"
 	"math/big"
+	"slices"
+	"sync"
+	"sync/atomic"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
@@ -16,27 +19,72 @@ import (
 
 // ArrayBuffer is the data block of an ArrayBuffer or SharedArrayBuffer object.
 type ArrayBuffer struct {
+	// data is the data block of a buffer that is not shared, and nil for a shared buffer.
 	data []byte
+
+	// block is the data block of a shared buffer, and nil otherwise.
+	block *SharedDataBlock
 
 	// max is [[ArrayBufferMaxByteLength]], or -1 for a buffer whose length is fixed.
 	max int
 
-	detached  bool
-	shared    bool
+	// state is bufferDetached or bufferShared for a buffer whose bytes are not in data,
+	// so that one check sends both to the slow paths.
+	state bufferState
+
 	immutable bool
 
-	// waiterLists are the waiter lists of a shared buffer by byte index.
-	waiterLists map[int]*waiterList
+	// slowLength is the length of a buffer whose state is not bufferPlain: that of its shared
+	// data block, or -1 when it is detached.
+	slowLength *atomic.Int64
 }
 
-// Bytes returns the contents of b. The slice stays valid until b is resized or detached,
-// and must not be modified when b is immutable.
+// detachedLength is the slowLength of the detached buffers.
+var detachedLength = func() *atomic.Int64 {
+	var n atomic.Int64
+	n.Store(-1)
+	return &n
+}()
+
+// bufferState is the state of an [ArrayBuffer] that its fast paths do not handle.
+type bufferState uint8
+
+const (
+	bufferPlain bufferState = iota
+	bufferDetached
+	bufferShared
+)
+
+// Bytes returns the contents of b, or nil when b is shared or detached. The slice stays valid
+// until b is resized or detached, and must not be modified when b is immutable. The bytes
+// of a shared buffer are reached with [ArrayBuffer.Lock].
 func (b *ArrayBuffer) Bytes() []byte {
 	return b.data
 }
 
+// Lock returns the contents of b. For a shared b, it also keeps the other agents from accessing
+// the data block until [ArrayBuffer.Unlock] is called. No JavaScript may run and no other shared
+// data block may be locked in between. The slice is valid until then.
+func (b *ArrayBuffer) Lock() []byte {
+	if b.block != nil {
+		b.block.mu.Lock()
+		return b.block.data
+	}
+	return b.data
+}
+
+// Unlock ends the access of [ArrayBuffer.Lock].
+func (b *ArrayBuffer) Unlock() {
+	if b.block != nil {
+		b.block.mu.Unlock()
+	}
+}
+
 // ByteLength returns the length of b in bytes, which is 0 when b is detached.
 func (b *ArrayBuffer) ByteLength() int {
+	if b.block != nil {
+		return b.block.byteLength()
+	}
 	return len(b.data)
 }
 
@@ -44,7 +92,7 @@ func (b *ArrayBuffer) ByteLength() int {
 // and its length otherwise.
 func (b *ArrayBuffer) MaxByteLength() int {
 	if b.max < 0 {
-		return len(b.data)
+		return b.ByteLength()
 	}
 	return b.max
 }
@@ -56,12 +104,12 @@ func (b *ArrayBuffer) IsResizable() bool {
 
 // IsDetached implements IsDetachedBuffer.
 func (b *ArrayBuffer) IsDetached() bool {
-	return b.detached
+	return b.state == bufferDetached
 }
 
 // IsShared implements IsSharedArrayBuffer.
 func (b *ArrayBuffer) IsShared() bool {
-	return b.shared
+	return b.block != nil
 }
 
 // IsImmutable implements IsImmutableBuffer.
@@ -69,21 +117,114 @@ func (b *ArrayBuffer) IsImmutable() bool {
 	return b.immutable
 }
 
-// Resize changes the length of the resizable b to n, which must not exceed
+// SameDataBlock reports whether b and c have the same data block.
+func (b *ArrayBuffer) SameDataBlock(c *ArrayBuffer) bool {
+	return b == c || b.block != nil && b.block == c.block
+}
+
+// SharedDataBlock returns the data block of the shared buffer b, or nil when b is not shared.
+// Another VM, which may run on another goroutine, creates a SharedArrayBuffer over the block with
+// [VM.NewSharedArrayBufferObject].
+func (b *ArrayBuffer) SharedDataBlock() *SharedDataBlock {
+	return b.block
+}
+
+// Resize changes the length of the resizable b, which is not shared, to n, which must not exceed
 // [ArrayBuffer.MaxByteLength]. New bytes are zero.
 func (b *ArrayBuffer) Resize(n int) {
-	old := len(b.data)
-	if n <= cap(b.data) {
-		b.data = b.data[:n]
+	b.data = resizeBytes(b.data, n, b.max)
+}
+
+// Grow implements the growing of the growable SharedArrayBuffer b to n bytes, which must not exceed
+// [ArrayBuffer.MaxByteLength]. It reports false, without changing b, when n is smaller than the
+// length, which another agent may have grown.
+func (b *ArrayBuffer) Grow(n int) bool {
+	blk := b.block
+	blk.mu.Lock()
+	defer blk.mu.Unlock()
+	if n < len(blk.data) {
+		return false
+	}
+	blk.data = resizeBytes(blk.data, n, b.max)
+	blk.length.Store(int64(n))
+	return true
+}
+
+// resizeBytes returns data resized to n bytes, which must not exceed maxLen. New bytes are zero.
+func resizeBytes(data []byte, n, maxLen int) []byte {
+	old := len(data)
+	if n <= cap(data) {
+		data = data[:n]
 		if n > old {
-			clear(b.data[old:n])
+			clear(data[old:n])
 		}
-		return
+		return data
 	}
 	// The capacity grows geometrically, so that growing by small steps takes linear time.
-	d := make([]byte, n, min(max(n, 2*cap(b.data)), b.max))
-	copy(d, b.data)
-	b.data = d
+	d := make([]byte, n, min(max(n, 2*cap(data)), maxLen))
+	copy(d, data)
+	return d
+}
+
+// SharedDataBlock is a Shared Data Block: the bytes of a SharedArrayBuffer, which the VMs of an
+// agent cluster share. Its methods may be called from any goroutine.
+type SharedDataBlock struct {
+	// mu guards data and waiterLists. Every access to the bytes holds it.
+	mu sync.Mutex
+
+	data []byte
+
+	// length is len(data), which only grows, for reading without mu.
+	length atomic.Int64
+
+	// max is [[ArrayBufferMaxByteLength]], or -1 for a block whose length is fixed.
+	max int
+
+	// waiterLists are the waiter lists by byte index.
+	waiterLists map[int][]*waiter
+}
+
+func (blk *SharedDataBlock) byteLength() int {
+	return int(blk.length.Load())
+}
+
+// CopyBufferBytes copies n bytes from src at srcOffset to dst at dstOffset, as copy does when the
+// two have the same data block. Both ranges must be within the buffers, which are not detached.
+func CopyBufferBytes(dst *ArrayBuffer, dstOffset int, src *ArrayBuffer, srcOffset, n int) {
+	if dst.block == nil && src.block == nil {
+		copy(dst.data[dstOffset:dstOffset+n], src.data[srcOffset:srcOffset+n])
+		return
+	}
+	if dst.SameDataBlock(src) {
+		copyWithin(dst, dstOffset, srcOffset, n)
+		return
+	}
+	// The source is read before the destination is locked, as one agent locks one block at a time.
+	writeBytes(dst, dstOffset, readBytes(src, srcOffset, n))
+}
+
+// readBytes returns the n bytes of b at offset, copied when b is shared.
+func readBytes(b *ArrayBuffer, offset, n int) []byte {
+	d := b.Lock()
+	defer b.Unlock()
+	if b.block != nil {
+		return slices.Clone(d[offset : offset+n])
+	}
+	return d[offset : offset+n]
+}
+
+// writeBytes copies src to b at offset.
+func writeBytes(b *ArrayBuffer, offset int, src []byte) {
+	d := b.Lock()
+	defer b.Unlock()
+	copy(d[offset:offset+len(src)], src)
+}
+
+// copyWithin copies n bytes of b from srcOffset to dstOffset.
+func copyWithin(b *ArrayBuffer, dstOffset, srcOffset, n int) {
+	d := b.Lock()
+	defer b.Unlock()
+	copy(d[dstOffset:dstOffset+n], d[srcOffset:srcOffset+n])
 }
 
 // checkBufferLength throws a RangeError when a data block of n bytes cannot be created.
@@ -100,19 +241,40 @@ func (vm *VM) checkBufferLength(n int64) {
 func (vm *VM) NewArrayBufferObject(proto *Object, byteLength, maxByteLength int64, shared bool) *Object {
 	vm.checkBufferLength(byteLength)
 	vm.checkBufferLength(maxByteLength)
-	return vm.newArrayBufferFromBytes(proto, make([]byte, byteLength), int(maxByteLength), shared)
+	if shared {
+		blk := &SharedDataBlock{
+			data: make([]byte, byteLength),
+			max:  int(maxByteLength),
+		}
+		blk.length.Store(byteLength)
+		return vm.NewSharedArrayBufferObject(proto, blk)
+	}
+	return vm.newArrayBufferFromBytes(proto, make([]byte, byteLength), int(maxByteLength))
 }
 
-// newArrayBufferFromBytes returns a buffer object with the prototype proto whose data is b,
-// which it keeps. maxByteLength is -1 for a buffer whose length is fixed and must not be
-// smaller than len(b) otherwise.
-func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int, shared bool) *Object {
+// NewSharedArrayBufferObject returns a SharedArrayBuffer with the prototype proto over the data
+// block blk, which may come from another VM.
+func (vm *VM) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *Object {
 	o := vm.NewObject(proto)
 	o.class = classArrayBuffer
 	o.ext = &ArrayBuffer{
-		data:   b,
-		max:    maxByteLength,
-		shared: shared,
+		block:      blk,
+		max:        blk.max,
+		state:      bufferShared,
+		slowLength: &blk.length,
+	}
+	return o
+}
+
+// newArrayBufferFromBytes returns an ArrayBuffer with the prototype proto whose data is b,
+// which it keeps. maxByteLength is -1 for a buffer whose length is fixed and must not be
+// smaller than len(b) otherwise.
+func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int) *Object {
+	o := vm.NewObject(proto)
+	o.class = classArrayBuffer
+	o.ext = &ArrayBuffer{
+		data: b,
+		max:  maxByteLength,
 	}
 	return o
 }
@@ -129,7 +291,7 @@ func ArrayBufferData(v Value) *ArrayBuffer {
 // NewImmutableArrayBufferFromBytes returns an immutable ArrayBuffer with the prototype proto
 // whose data is b, which it keeps. b must not be modified afterwards.
 func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
-	o := vm.newArrayBufferFromBytes(proto, b, -1, false)
+	o := vm.newArrayBufferFromBytes(proto, b, -1)
 	o.ext.(*ArrayBuffer).immutable = true
 	return o
 }
@@ -142,7 +304,8 @@ func (vm *VM) DetachArrayBuffer(o *Object) {
 		vm.ThrowTypeError("cannot detach an immutable ArrayBuffer")
 	}
 	b.data = nil
-	b.detached = true
+	b.state = bufferDetached
+	b.slowLength = detachedLength
 }
 
 // TransferArrayBuffer implements the end of ArrayBufferCopyAndDetach: it returns a new ArrayBuffer
@@ -167,7 +330,7 @@ func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxBy
 		copy(data, b.data)
 	}
 	vm.DetachArrayBuffer(o)
-	r := vm.newArrayBufferFromBytes(proto, data, int(maxByteLength), false)
+	r := vm.newArrayBufferFromBytes(proto, data, int(maxByteLength))
 	r.ext.(*ArrayBuffer).immutable = immutable
 	return r
 }
@@ -480,8 +643,8 @@ type TypedArray struct {
 
 	typ ElementType
 
-	// numberStore reports whether the elements are numbers and the buffer is mutable,
-	// so that a number is stored without a conversion.
+	// numberStore reports whether the elements are numbers and the buffer is mutable and not
+	// shared, so that a number is stored without a conversion.
 	numberStore bool
 }
 
@@ -500,7 +663,7 @@ func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, 
 		length:      max(length, 0),
 		tracking:    length < 0,
 		typ:         t,
-		numberStore: !t.IsBigInt() && !data.immutable,
+		numberStore: !t.IsBigInt() && !data.immutable && data.block == nil,
 	}
 	return o
 }
@@ -541,10 +704,25 @@ func (t *TypedArray) IsLengthTracking() bool {
 // Length implements TypedArrayLength. It reports false when the typed array is out of bounds,
 // which includes a detached buffer.
 func (t *TypedArray) Length() (int, bool) {
-	if t.data.detached {
+	n := len(t.data.data)
+	if t.data.state != bufferPlain {
+		// A detached buffer has a negative length.
+		n = int(t.data.slowLength.Load())
+	}
+	if t.tracking {
+		if t.offset > n {
+			return 0, false
+		}
+		return (n - t.offset) / t.typ.Size(), true
+	}
+	if t.offset+t.length*t.typ.Size() > n {
 		return 0, false
 	}
-	n := len(t.data.data)
+	return t.length, true
+}
+
+// lengthOf implements TypedArrayLength for a buffer of n bytes that is not detached.
+func (t *TypedArray) lengthOf(n int) (int, bool) {
 	if t.tracking {
 		if t.offset > n {
 			return 0, false
@@ -559,18 +737,50 @@ func (t *TypedArray) Length() (int, bool) {
 
 // isTypedArrayFixedLength implements IsTypedArrayFixedLength.
 func (t *TypedArray) isTypedArrayFixedLength() bool {
-	return !t.tracking && (t.data.shared || !t.data.IsResizable())
+	return !t.tracking && (t.data.block != nil || !t.data.IsResizable())
 }
 
-// Bytes returns the bytes of the elements of t, or nil when t is out of bounds.
-// The slice stays valid until the buffer is resized or detached.
-// It must not be modified when the buffer is immutable.
-func (t *TypedArray) Bytes() []byte {
-	n, ok := t.Length()
+// Lock returns the bytes of the elements of t, or nil when t is out of bounds, as
+// [ArrayBuffer.Lock] does for the buffer. It must be paired with [TypedArray.Unlock]. The slice
+// must not be modified when the buffer is immutable.
+func (t *TypedArray) Lock() []byte {
+	b := t.data.Lock()
+	if t.data.state == bufferDetached {
+		return nil
+	}
+	n, ok := t.lengthOf(len(b))
 	if !ok {
 		return nil
 	}
-	return t.data.data[t.offset : t.offset+n*t.typ.Size()]
+	return b[t.offset : t.offset+n*t.typ.Size()]
+}
+
+// Unlock ends the access of [TypedArray.Lock].
+func (t *TypedArray) Unlock() {
+	t.data.Unlock()
+}
+
+// LoadElement returns the encoding of the element i of t, or reports false when i is not a valid
+// integer index.
+func (t *TypedArray) LoadElement(i int) (uint64, bool) {
+	b := t.Lock()
+	defer t.Unlock()
+	size := t.typ.Size()
+	if i < 0 || (i+1)*size > len(b) {
+		return 0, false
+	}
+	return LoadElementBits(b[i*size:], t.typ), true
+}
+
+// StoreElement stores the encoding x as the element i of t, which is mutable, when i is a valid
+// integer index.
+func (t *TypedArray) StoreElement(i int, x uint64) {
+	b := t.Lock()
+	defer t.Unlock()
+	size := t.typ.Size()
+	if i >= 0 && (i+1)*size <= len(b) {
+		StoreElementBits(b[i*size:], t.typ, x)
+	}
 }
 
 // element returns the bytes of the element i of t, or reports false when i is not a valid integer index.
@@ -652,9 +862,24 @@ func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
 	t := o.ext.(*TypedArray)
 	b, ok := t.element(i)
 	if !ok {
-		return Undefined
+		return vm.typedArrayGetSlow(o, i)
 	}
 	return vm.loadElement(t.typ, b)
+}
+
+// typedArrayGetSlow implements TypedArrayGetElement for the typed array o when the bytes of the
+// element i are not in the data of its buffer: when the buffer is shared or i is not a valid
+// integer index.
+func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
+	t := o.ext.(*TypedArray)
+	if t.data.block == nil {
+		return Undefined
+	}
+	x, ok := t.LoadElement(int(i))
+	if !ok {
+		return Undefined
+	}
+	return vm.ElementFromBits(t.typ, x)
 }
 
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
@@ -677,6 +902,10 @@ func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
 // typedArraySetElement implements TypedArraySetElement for the typed array t on a mutable buffer.
 func (vm *VM) typedArraySetElement(t *TypedArray, i uint32, val Value) {
 	val = vm.ToElementValue(t.typ, val)
+	if t.data.block != nil {
+		t.StoreElement(int(i), ElementBits(t.typ, val))
+		return
+	}
 	// The conversion may have resized or detached the buffer.
 	if b, ok := t.element(i); ok {
 		storeBits(b, t.typ.Size(), ElementBits(t.typ, val), true)
@@ -698,8 +927,15 @@ func typedArrayFlags(o *Object) uint8 {
 
 // typedArrayHas implements IsValidIntegerIndex for an array index.
 func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
-	_, ok := o.ext.(*TypedArray).element(i)
-	return ok
+	t := o.ext.(*TypedArray)
+	if _, ok := t.element(i); ok {
+		return true
+	}
+	if t.data.block != nil {
+		n, ok := t.Length()
+		return ok && int(i) < n
+	}
+	return false
 }
 
 // typedArrayLength returns the length of o, or 0 when o is out of bounds.
@@ -825,10 +1061,14 @@ func (d *DataView) ByteOffset() int {
 // ByteLength implements GetViewByteLength. It reports false when the view is out of bounds,
 // which includes a detached buffer.
 func (d *DataView) ByteLength() (int, bool) {
-	if d.data.detached {
+	if d.data.state == bufferDetached {
 		return 0, false
 	}
-	n := len(d.data.data)
+	return d.byteLengthOf(d.data.ByteLength())
+}
+
+// byteLengthOf implements GetViewByteLength for a buffer of n bytes that is not detached.
+func (d *DataView) byteLengthOf(n int) (int, bool) {
 	if d.tracking {
 		if d.offset > n {
 			return 0, false
@@ -841,13 +1081,22 @@ func (d *DataView) ByteLength() (int, bool) {
 	return d.length, true
 }
 
-// Bytes returns the bytes that d views, or nil when d is out of bounds.
-// The slice stays valid until the buffer is resized or detached.
-// It must not be modified when the buffer is immutable.
-func (d *DataView) Bytes() []byte {
-	n, ok := d.ByteLength()
+// Lock returns the bytes that d views, or nil when d is out of bounds, as [ArrayBuffer.Lock] does
+// for the buffer. It must be paired with [DataView.Unlock]. The slice must not be modified when
+// the buffer is immutable.
+func (d *DataView) Lock() []byte {
+	b := d.data.Lock()
+	if d.data.state == bufferDetached {
+		return nil
+	}
+	n, ok := d.byteLengthOf(len(b))
 	if !ok {
 		return nil
 	}
-	return d.data.data[d.offset : d.offset+n]
+	return b[d.offset : d.offset+n]
+}
+
+// Unlock ends the access of [DataView.Lock].
+func (d *DataView) Unlock() {
+	d.data.Unlock()
 }

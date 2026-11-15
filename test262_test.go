@@ -192,11 +192,15 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 	if err := vm.Global().Set("print", print); err != nil {
 		return "harness: " + err.Error(), false
 	}
-	if err := define262(&vm); err != nil {
-		return "harness: " + err.Error(), false
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
+	agents := newAgentCluster(ctx)
+	defer agents.close()
+	// The main agent can block, as in a shell, unless the test says otherwise.
+	ekuma.SetAgentCanSuspend(&vm, !m.flags["CanBlockIsFalse"])
+	if err := define262(&vm, agents); err != nil {
+		return "harness: " + err.Error(), false
+	}
 
 	if !m.flags["raw"] {
 		includes := append([]string{"assert.js", "sta.js"}, m.includes...)
@@ -243,6 +247,9 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 		return firstLine(err.Error()), false
 	}
 	if m.flags["async"] {
+		if awaitAgents(ctx, &vm, printed) {
+			return "timeout", true
+		}
 		return asyncOutcome(*printed), false
 	}
 	return "", false
@@ -369,11 +376,15 @@ func asyncOutcome(printed []string) string {
 			return "async: " + firstLine(r)
 		}
 	}
-	return "the async test did not complete"
+	return asyncIncomplete
 }
 
+// asyncIncomplete is the reason of an async test that has not printed its outcome.
+const asyncIncomplete = "the async test did not complete"
+
 // define262 defines the host object $262 of the harness, with the members that the engine supports.
-func define262(vm *ekuma.VM) error {
+// agents implements $262.agent.
+func define262(vm *ekuma.VM, agents *agentCluster) error {
 	o, err := vm.RunScript(context.Background(), "$262", "({})")
 	if err != nil {
 		return err
@@ -412,6 +423,9 @@ func define262(vm *ekuma.VM) error {
 		return err
 	}
 	if err := o.Set("global", vm.Global()); err != nil {
+		return err
+	}
+	if err := agents.define(vm, o); err != nil {
 		return err
 	}
 	return vm.Global().Set("$262", o)
@@ -606,4 +620,244 @@ func readLines(name string) ([]string, error) {
 	}
 	sort.Strings(lines)
 	return lines, sc.Err()
+}
+
+// agentCluster implements $262.agent for the agents that a test starts. Each agent is a VM that
+// runs on its own goroutine, and shares memory with the others through the SharedArrayBuffers
+// that broadcast hands it.
+type agentCluster struct {
+	// ctx ends the agents and the blocking functions of the main agent.
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	agents []*testAgent
+	wg     sync.WaitGroup
+	start  time.Time
+
+	mu      sync.Mutex
+	reports []string
+}
+
+// testAgent is an agent that a test started.
+type testAgent struct {
+	broadcasts chan agentBroadcast
+}
+
+// agentBroadcast is the message of $262.agent.broadcast.
+type agentBroadcast struct {
+	block *ekuma.SharedDataBlock
+
+	// num is the number that comes with the buffer, or nil.
+	num any
+
+	// received gets a value when the agent received the message.
+	received chan<- struct{}
+}
+
+func newAgentCluster(ctx context.Context) *agentCluster {
+	ctx, cancel := context.WithCancel(ctx)
+	return &agentCluster{
+		ctx:    ctx,
+		cancel: cancel,
+		start:  time.Now(),
+	}
+}
+
+// close ends the agents and waits for their goroutines.
+func (c *agentCluster) close() {
+	c.cancel()
+	c.wg.Wait()
+}
+
+func (c *agentCluster) report(s string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.reports = append(c.reports, s)
+}
+
+// takeReport removes and returns the oldest report, if any.
+func (c *agentCluster) takeReport() (string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.reports) == 0 {
+		return "", false
+	}
+	r := c.reports[0]
+	c.reports = c.reports[1:]
+	return r, true
+}
+
+// sleep implements $262.agent.sleep for any agent.
+func (c *agentCluster) sleep(args []ekuma.Value) {
+	var ms float64
+	if len(args) > 0 && args[0].Type() == ekuma.TypeNumber {
+		ms = args[0].Float()
+	}
+	t := time.NewTimer(time.Duration(ms * float64(time.Millisecond)))
+	defer t.Stop()
+	select {
+	case <-t.C:
+	case <-c.ctx.Done():
+	}
+}
+
+// monotonicNow implements $262.agent.monotonicNow.
+func (c *agentCluster) monotonicNow() float64 {
+	return float64(time.Since(c.start).Nanoseconds()) / 1e6
+}
+
+// define defines $262.agent of the main agent in vm.
+func (c *agentCluster) define(vm *ekuma.VM, o ekuma.Value) error {
+	start := vm.FuncOf("start", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		var src string
+		if len(args) > 0 {
+			src = args[0].String()
+		}
+		a := &testAgent{
+			broadcasts: make(chan agentBroadcast, 1),
+		}
+		c.agents = append(c.agents, a)
+		c.wg.Go(func() {
+			c.run(a, src)
+		})
+		return ekuma.Undefined, nil
+	})
+	broadcast := vm.FuncOf("broadcast", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		var blk *ekuma.SharedDataBlock
+		if len(args) > 0 {
+			blk = ekuma.SharedDataBlockOf(args[0])
+		}
+		if blk == nil {
+			return nil, errors.New("$262.agent.broadcast: not a SharedArrayBuffer")
+		}
+		var num any
+		if len(args) > 1 && args[1].Type() == ekuma.TypeNumber {
+			num = args[1].Float()
+		}
+		received := make(chan struct{}, len(c.agents))
+		for _, a := range c.agents {
+			select {
+			case a.broadcasts <- agentBroadcast{block: blk, num: num, received: received}:
+			case <-c.ctx.Done():
+				return nil, context.Cause(c.ctx)
+			}
+		}
+		for range c.agents {
+			select {
+			case <-received:
+			case <-c.ctx.Done():
+				return nil, context.Cause(c.ctx)
+			}
+		}
+		return ekuma.Undefined, nil
+	})
+	getReport := vm.FuncOf("getReport", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if r, ok := c.takeReport(); ok {
+			return r, nil
+		}
+		return ekuma.Null, nil
+	})
+	sleep := vm.FuncOf("sleep", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		c.sleep(args)
+		return ekuma.Undefined, nil
+	})
+	now := vm.FuncOf("monotonicNow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return c.monotonicNow(), nil
+	})
+	f, err := vm.RunScript(context.Background(), "$262.agent", "(start, broadcast, getReport, sleep, monotonicNow) => ({start, broadcast, getReport, sleep, monotonicNow})")
+	if err != nil {
+		return err
+	}
+	agent, err := f.Invoke(context.Background(), start, broadcast, getReport, sleep, now)
+	if err != nil {
+		return err
+	}
+	return o.Set("agent", agent)
+}
+
+// run runs the agent a with the source src until the cluster ends.
+func (c *agentCluster) run(a *testAgent, src string) {
+	var vm ekuma.VM
+	ekuma.SetAgentCanSuspend(&vm, true)
+	receiver := ekuma.Undefined
+	receive := vm.FuncOf("receiveBroadcast", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if len(args) > 0 {
+			receiver = args[0]
+		}
+		return ekuma.Undefined, nil
+	})
+	report := vm.FuncOf("report", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if len(args) > 0 {
+			c.report(args[0].String())
+		}
+		return ekuma.Undefined, nil
+	})
+	sleep := vm.FuncOf("sleep", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		c.sleep(args)
+		return ekuma.Undefined, nil
+	})
+	now := vm.FuncOf("monotonicNow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return c.monotonicNow(), nil
+	})
+	const define = `(receiveBroadcast, report, sleep, monotonicNow) => {
+	globalThis.$262 = {
+		agent: {
+			receiveBroadcast,
+			report(value) { report(String(value)); },
+			leaving() {},
+			sleep,
+			monotonicNow,
+		},
+	};
+}`
+	f, err := vm.RunScript(c.ctx, "$262.agent", define)
+	if err != nil {
+		return
+	}
+	if _, err := f.Invoke(c.ctx, receive, report, sleep, now); err != nil {
+		return
+	}
+	if _, err := vm.RunScript(c.ctx, "agent", src); err != nil {
+		return
+	}
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case b := <-a.broadcasts:
+			sab := ekuma.NewSharedArrayBuffer(&vm, b.block)
+			b.received <- struct{}{}
+			if receiver.Type() == ekuma.TypeFunction {
+				num := ekuma.Undefined
+				if b.num != nil {
+					num = vm.ValueOf(b.num)
+				}
+				if _, err := receiver.Invoke(c.ctx, sab, num); err != nil {
+					return
+				}
+			}
+			// The waiters of Atomics.waitAsync resolve as other agents notify them.
+			for {
+				if ok, err := ekuma.AwaitWaiters(c.ctx, &vm); !ok || err != nil {
+					break
+				}
+			}
+		}
+	}
+}
+
+// awaitAgents lets an async test whose promises wait for other agents complete: it runs the jobs
+// whenever a waiter of Atomics.waitAsync of vm is notified or times out, until the test has
+// printed its outcome or nothing is left to wait for. It reports whether ctx ended it.
+func awaitAgents(ctx context.Context, vm *ekuma.VM, printed *[]string) bool {
+	for asyncOutcome(*printed) == asyncIncomplete {
+		ok, err := ekuma.AwaitWaiters(ctx, vm)
+		if err != nil {
+			return ctx.Err() != nil
+		}
+		if !ok {
+			break
+		}
+	}
+	return false
 }

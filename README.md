@@ -61,7 +61,7 @@ is published yet.
 
 ## Status
 
-89.5% of [test262](https://github.com/tc39/test262) pass: 43,670 of 48,797 tests
+89.7% of [test262](https://github.com/tc39/test262) pass: 43,789 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -89,15 +89,18 @@ Notes on behavior:
   `Math.random`, for deterministic runs
 - Without `Intl`, the `toLocale*String` methods of `Date` use a fixed English format, and
   `localeCompare` treats canonically equivalent strings as equal and otherwise compares code units
-- `Atomics` works for a single agent: `Atomics.wait` throws, as on an agent that cannot block, and
-  a finite `Atomics.waitAsync` timeout takes effect when the jobs next run after it expired
+- A VM is an agent that cannot block, so `Atomics.wait` throws. A finite `Atomics.waitAsync`
+  timeout takes effect when the jobs run after it expired. The engine supports agents that share
+  the memory of a `SharedArrayBuffer` across goroutines, with blocking waits, but no public API
+  creates them yet
 - Weak collections, `WeakRef` and `FinalizationRegistry` use Go's garbage collector
 - Modules include dynamic `import()`, `import.meta`, JSON modules and `import defer`. Module
   loading is synchronous. Source phase imports parse, but no module has a source object
 
 Missing:
 
-- Agents (workers) sharing a `SharedArrayBuffer`
+- A public API for agents (workers): the engine can share a `SharedArrayBuffer` between VMs on
+  different goroutines, but a host cannot create such VMs or hand them buffers yet
 - `Intl` and `Temporal`
 - Proper tail calls
 

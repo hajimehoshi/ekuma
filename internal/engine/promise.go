@@ -659,8 +659,9 @@ func (vm *VM) promiseResolveThenableJob(p *Object, thenable, then Value) {
 	}
 }
 
-// runJobs runs the pending jobs and the timeout jobs of the expired waiters until none is
-// left, and then the cleanup callbacks of FinalizationRegistry objects. It does nothing unless it is called by the outermost call
+// runJobs runs the pending jobs, the timeout jobs of the expired waiters and the resolve jobs of
+// the waiters that other agents notified until none is left, and then the cleanup callbacks of
+// FinalizationRegistry objects. It does nothing unless it is called by the outermost call
 // into the engine, as jobs only run when no other JavaScript is running.
 func (vm *VM) runJobs() {
 	if vm.entered != 1 {
@@ -675,8 +676,14 @@ func (vm *VM) runJobs() {
 				j := vm.jobs.dequeue()
 				vm.runJob(&j)
 				vm.clearKeptObjects()
+				// A timeout job runs as soon as its time has passed, even while promise jobs keep
+				// queuing more.
+				if !vm.timedWaiters.isEmpty() {
+					vm.expireWaiters()
+				}
 			}
-			if !vm.expireWaiters() {
+			received := vm.receiveNotifications()
+			if !vm.expireWaiters() && !received {
 				break
 			}
 		}
