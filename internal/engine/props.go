@@ -89,7 +89,7 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 	case kindSymbol:
 		return PropKey{key: o}
 	}
-	if o.kind >= kindObject {
+	if o.kind >= kindFirstObject {
 		return vm.ToPropertyKey(vm.ToPrimitive(v, HintString))
 	}
 	return vm.KeyOfString(vm.ToString(v))
@@ -858,7 +858,7 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 // which is a TypeError in strict code.
 func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *Object, ok bool) {
 	o := v.o
-	if o == nil || o.kind < kindObject {
+	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
 			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{key: key}) + "')")
 		}
@@ -976,7 +976,7 @@ func (vm *VM) toArrayLength(val Value) uint32 {
 // The results are those of setNamed.
 func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 	o := v.o
-	if o == nil || o.kind < kindObject {
+	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
 			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{idx: i}) + "')")
 		}

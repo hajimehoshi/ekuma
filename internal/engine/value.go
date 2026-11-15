@@ -28,11 +28,16 @@ const (
 	// kindAccessor is the content of the slot of an accessor property. It never reaches JavaScript.
 	kindAccessor
 
-	// Every kind from kindObject on is an object in the JavaScript sense.
+	// kindHTMLDDA is an object with the [[IsHTMLDDA]] internal slot (B.3.6).
+	// It comes before kindObject, so that a check for kindObject or above excludes it.
+	kindHTMLDDA
 	kindObject
 	kindArray
 	kindFunction
 )
+
+// Every kind from kindFirstObject on is an object in the JavaScript sense.
+const kindFirstObject = kindHTMLDDA
 
 // Value is a JavaScript value.
 //
@@ -130,12 +135,16 @@ func (v Value) IsBigInt() bool {
 
 // IsObject reports whether v is an object, which includes functions and arrays.
 func (v Value) IsObject() bool {
-	return v.o != nil && v.o.kind >= kindObject
+	return v.o != nil && v.o.kind >= kindFirstObject
 }
 
 // IsNullish reports whether v is undefined or null.
 func (v Value) IsNullish() bool {
 	return v.o == undefinedObject || v.o == nullObject
+}
+
+func (v Value) isHTMLDDA() bool {
+	return v.o != nil && v.o.kind == kindHTMLDDA
 }
 
 func (v Value) isHole() bool {
@@ -154,7 +163,7 @@ func ToBoolean(v Value) bool {
 		return v.n != 0 && v.n == v.n
 	}
 	switch o.kind {
-	case kindUndefined, kindNull, kindFalse:
+	case kindUndefined, kindNull, kindFalse, kindHTMLDDA:
 		return false
 	case kindString:
 		return o.str != ""
@@ -171,7 +180,7 @@ func typeOf(v Value) string {
 		return "number"
 	}
 	switch o.kind {
-	case kindUndefined:
+	case kindUndefined, kindHTMLDDA:
 		return "undefined"
 	case kindFalse, kindTrue:
 		return "boolean"

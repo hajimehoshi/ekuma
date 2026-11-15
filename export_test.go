@@ -88,3 +88,11 @@ func NewRealm(vm *VM) *Realm {
 func InRealm(vm *VM, r *Realm, f func()) {
 	vm.e.InRealm(r.r, f)
 }
+
+// NewHTMLDDA returns an object of vm with the [[IsHTMLDDA]] internal slot, which returns null when called.
+func NewHTMLDDA(vm *VM) Value {
+	vm.initIfNeeded()
+	return fromEngine(vm.e.NewHTMLDDA(func(*engine.VM, engine.Value, []engine.Value) engine.Value {
+		return engine.Null
+	}))
+}

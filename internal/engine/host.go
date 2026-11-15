@@ -25,6 +25,13 @@ func (vm *VM) NewFunction(name string, f NativeFunc) Value {
 	return Value{o: vm.NewNative(wtf8.FromValidUTF8(name), 0, f)}
 }
 
+// NewHTMLDDA returns a function implemented by f that has the [[IsHTMLDDA]] internal slot.
+func (vm *VM) NewHTMLDDA(f NativeFunc) Value {
+	o := vm.NewNative("", 0, f)
+	o.kind = kindHTMLDDA
+	return Value{o: o}
+}
+
 // NewPlainObject returns a new empty object.
 func (vm *VM) NewPlainObject() Value {
 	return Value{o: vm.NewOrdinaryObject()}

@@ -452,6 +452,9 @@ func new262(vm *ekuma.VM) (ekuma.Value, error) {
 	if err := o.Set("global", vm.Global()); err != nil {
 		return ekuma.Undefined, err
 	}
+	if err := o.Set("IsHTMLDDA", ekuma.NewHTMLDDA(vm)); err != nil {
+		return ekuma.Undefined, err
+	}
 	return o, nil
 }
 

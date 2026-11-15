@@ -428,7 +428,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = vm.frames[len(vm.frames)-1].this
 		case bytecode.OpLoadThisSloppy:
 			t := vm.frames[len(vm.frames)-1].this
-			if t.o == nil || t.o.kind < kindObject {
+			if t.o == nil || t.o.kind < kindFirstObject {
 				if t.IsNullish() {
 					t = Value{o: vm.global}
 				} else {
@@ -1029,6 +1029,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else if k <= kindFalse {
 				t = false
 			} else if k >= kindObject {
+				// kindHTMLDDA is below kindObject and takes the slow path.
 				t = true
 			} else {
 				t = ToBoolean(v)
@@ -1324,7 +1325,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					vm.frames[len(vm.frames)-1].pc = pc
 					proto, _ = vm.getNamed(Value{o: f}, vm.Key(KeyPrototype), c)
 				}
-				if proto.o == nil || proto.o.kind < kindObject {
+				if proto.o == nil || proto.o.kind < kindFirstObject {
 					proto = Value{o: vm.realmIntrinsic(f.fn.code.realm, IntrinsicObjectPrototype)}
 				}
 				var shape *shape
@@ -1381,7 +1382,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 					}
 				}
-			} else if done.isNew && (r.o == nil || r.o.kind < kindObject) {
+			} else if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {
 				r = done.this
 			}
 			if g := done.gen; g != nil {

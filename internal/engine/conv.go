@@ -100,7 +100,7 @@ func (vm *VM) ToNumeric(v Value) Value {
 	if v.o == nil {
 		return v
 	}
-	if v.o.kind >= kindObject {
+	if v.o.kind >= kindFirstObject {
 		v = vm.ToPrimitive(v, HintNumber)
 	}
 	if v.o != nil && v.o.kind == kindBigInt {
@@ -169,7 +169,7 @@ func (vm *VM) ToStringValue(v Value) Value {
 // ToObject implements ToObject.
 func (vm *VM) ToObject(v Value) *Object {
 	o := v.o
-	if o != nil && o.kind >= kindObject {
+	if o != nil && o.kind >= kindFirstObject {
 		return o
 	}
 	if o == nil {
@@ -266,7 +266,8 @@ func (vm *VM) looseEquals(a, b Value) bool {
 		}
 		an, bn := a.IsNullish(), b.IsNullish()
 		if an || bn {
-			return an && bn
+			// B.3.6.2: an object with [[IsHTMLDDA]] equals undefined and null.
+			return an && bn || a.isHTMLDDA() || b.isHTMLDDA()
 		}
 		ak, bk := kindNumber(a), kindNumber(b)
 		switch {
