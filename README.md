@@ -106,13 +106,13 @@ fails when any of them fails.
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
   proposal defines it, so a class without decorators inherits `null` unless its superclass has
   metadata
+- The `caller` and `arguments` properties of sloppy functions, a legacy extension that the
+  specification leaves to implementations, are always `undefined`. Browsers give the calling
+  function and the arguments of the running call
 
 ### Missing
 
 - `Intl`
-
-Known inaccuracies in what is implemented: the `caller` and `arguments` properties of sloppy
-functions are always `undefined`.
 
 ## Running the tests
 
