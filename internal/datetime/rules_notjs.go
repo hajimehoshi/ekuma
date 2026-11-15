@@ -3,10 +3,11 @@
 
 //go:build !js
 
+//go:generate go run gen_zonelinks.go
+
 package datetime
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -46,43 +47,93 @@ func loadZone(name string) (string, string, Zone, bool) {
 	return l.id, l.primary, l.zone, l.ok
 }
 
-// findZone looks up name in the directories of the time zone database, and then in the
-// sources of the time package.
+// findZone finds the time zone that name stands for, resolving a link to its zone.
 func findZone(name string) loadedZone {
+	link, target, isLink := findZoneLink(name)
+	if !isLink {
+		id, z, ok := findZoneInSources(name)
+		if !ok {
+			return loadedZone{}
+		}
+		return loadedZone{
+			id:      id,
+			primary: primaryOfUTC(id),
+			zone:    z,
+			ok:      true,
+		}
+	}
+	// The sources might not have the link, which some systems put in an optional package. A
+	// database older than the table might have the link but not the zone that it resolves to.
+	z, ok := findZoneOfLink(target, link)
+	if !ok {
+		return loadedZone{}
+	}
+	return loadedZone{
+		id:      link,
+		primary: primaryOfUTC(target),
+		zone:    z,
+		ok:      true,
+	}
+}
+
+// findZoneLink finds the link of the IANA time zone database that name matches without regard
+// to ASCII case, and the zone that it resolves to.
+func findZoneLink(name string) (link, zone string, ok bool) {
+	if zone, ok := zoneLinks[name]; ok {
+		return name, zone, true
+	}
+	for link, zone := range zoneLinks {
+		if strings.EqualFold(link, name) {
+			return link, zone, true
+		}
+	}
+	return "", "", false
+}
+
+// findZoneOfLink finds the zone of a link in the sources by the name of the zone that the link
+// resolves to, or else by the name of the link.
+func findZoneOfLink(target, link string) (Zone, bool) {
+	if _, z, ok := findZoneInSources(target); ok {
+		return z, true
+	}
+	if _, z, ok := findZoneInSources(link); ok {
+		return z, true
+	}
+	return nil, false
+}
+
+// findZoneInSources looks up name in the directories of the time zone database, and then in
+// the sources of the time package. It returns the identifier in the case of the source.
+func findZoneInSources(name string) (string, Zone, bool) {
 	dirs := zoneDirs
 	if z := os.Getenv("ZONEINFO"); z != "" {
 		dirs = append([]string{z}, dirs...)
 	}
 	if runtime.GOOS != "windows" {
 		for _, dir := range dirs {
-			if l, ok := findZoneInDir(dir, name); ok {
-				return l
+			if id, z, ok := findZoneInDir(dir, name); ok {
+				return id, z, true
 			}
 		}
 	}
 	loc, err := time.LoadLocation(name)
 	if err != nil || loc.String() == "Local" {
-		return loadedZone{}
+		return "", nil, false
 	}
-	return loadedZone{
-		id:      name,
-		primary: primaryOfUTC(name),
-		zone: locationZone{
-			loc: loc,
-		},
-		ok: true,
-	}
+	return name, locationZone{
+		loc: loc,
+	}, true
 }
 
 // findZoneInDir finds the file of name in dir, matching each path element without regard to
-// ASCII case.
-func findZoneInDir(dir, name string) (loadedZone, bool) {
+// ASCII case. It returns the identifier in the case of the file.
+func findZoneInDir(dir, name string) (string, Zone, bool) {
 	path := dir
 	var elems []string
 	for elem := range strings.SplitSeq(name, "/") {
 		entries, err := os.ReadDir(path)
 		if err != nil {
-			return loadedZone{}, false
+			return "", nil, false
 		}
 		found := ""
 		for _, e := range entries {
@@ -95,38 +146,22 @@ func findZoneInDir(dir, name string) (loadedZone, bool) {
 			}
 		}
 		if found == "" {
-			return loadedZone{}, false
+			return "", nil, false
 		}
 		elems = append(elems, found)
 		path = filepath.Join(path, found)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return loadedZone{}, false
+		return "", nil, false
 	}
 	id := strings.Join(elems, "/")
 	loc, err := time.LoadLocationFromTZData(id, data)
 	if err != nil {
-		return loadedZone{}, false
+		return "", nil, false
 	}
-	// The files of links are symbolic links, hard links or copies depending on the system, so
-	// zones with the same data are taken to be links to one primary zone, which the data stands
-	// for. The leading NUL keeps it apart from identifiers.
-	primary := primaryOfUTC(id)
-	if primary != "UTC" {
-		if utc, err := os.ReadFile(filepath.Join(dir, "Etc", "UTC")); err == nil && bytes.Equal(utc, data) {
-			primary = "UTC"
-		} else {
-			primary = "\x00" + string(data)
-		}
-	}
-	return loadedZone{
-		id:      id,
-		primary: primary,
-		zone: locationZone{
-			loc: loc,
-		},
-		ok: true,
+	return id, locationZone{
+		loc: loc,
 	}, true
 }
 
