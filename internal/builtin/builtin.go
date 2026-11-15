@@ -89,6 +89,7 @@ func setterThatIgnoresPrototypeProperties(vm *engine.VM, this engine.Value, home
 
 // Install creates the standard built-in objects of vm.
 func Install(vm *engine.VM) {
+	vm.StartBuiltins()
 	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
 	vm.SetIntrinsic(engine.IntrinsicNumberPrototype, vm.NewNumberObject(0, objectProto))
 	vm.SetIntrinsic(engine.IntrinsicBooleanPrototype, vm.NewBooleanObject(false, objectProto))
@@ -153,6 +154,7 @@ func Install(vm *engine.VM) {
 	initDisposableStacks(vm)
 	initBinary(vm)
 	initGlobalFunctions(vm, parseFloat, parseInt)
+	vm.FinishBuiltins()
 }
 
 // objectStrings holds the results of Object.prototype.toString of a [engine.VM] by tag.

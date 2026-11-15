@@ -1498,12 +1498,20 @@ func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
 	// The chain of a shared shape lists its keys from the last one.
 	base := len(keys)
 	keys = slices.Grow(keys, int(s.count))[:base+int(s.count)]
-	for t := s; t.parent != nil; t = t.parent {
+	t := s
+	for ; t.parent != nil; t = t.parent {
 		k := PropKey{}
 		if t.key.kind == kindString && t.flags&FlagEnumerable != 0 {
 			k.key = t.key
 		}
 		keys[base+int(t.count)-1] = k
+	}
+	for i, key := range t.order {
+		k := PropKey{}
+		if p, _ := t.lookup(key); key.kind == kindString && p.flags&FlagEnumerable != 0 {
+			k.key = key
+		}
+		keys[base+i] = k
 	}
 	n := base
 	for _, k := range keys[base:] {

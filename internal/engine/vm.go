@@ -391,6 +391,8 @@ type VM struct {
 	evals evalCache
 
 	modules moduleHost
+
+	builtins builtinLayout
 }
 
 // realm is the set of intrinsic objects.

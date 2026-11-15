@@ -74,6 +74,22 @@ func TestScripts(t *testing.T) {
 				"36:false:8:p0p1p2p3p4p5p6p7 45:false:9:p0p1p2p3p4p5p6p7p8",
 		},
 		{
+			name: "properties added to built-in objects",
+			src: `var out = [], before = Object.getOwnPropertyNames(Math).length;
+				Math.extra = 1;
+				var names = Object.getOwnPropertyNames(Math);
+				var s = 0;
+				for (var i = 0; i < 3; i++) s += Math.abs(-1) + Math.extra;
+				out.push(names.length - before, names[names.length - 1], Object.keys(Math).join(), s);
+				for (var i = 0; i < 9; i++) Boolean["p" + i] = i;
+				out.push(Object.getOwnPropertyNames(Boolean).slice(0, 4).join(), Boolean.length, Boolean.p8, Object.keys(Boolean).length);
+				delete Boolean.p0;
+				Object.defineProperty(Math, "abs", {enumerable: true});
+				out.push(Object.getOwnPropertyNames(Boolean).length, Boolean.name, Object.keys(Math).join());
+				out.join("|")`,
+			want: "1|extra|extra|6|length,name,prototype,p0|1|8|9|11|Boolean|abs,extra",
+		},
+		{
 			name: "objects left on shapes that a larger object passed through",
 			src: `function make(n) { var o = {}; for (var i = 0; i < n; i++) o["q" + i] = i; return o; }
 				var a = make(12), b = make(11), c = make(10);

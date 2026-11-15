@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"maps"
 	"math/big"
 	"strings"
 
@@ -209,7 +210,13 @@ type shape struct {
 
 	private bool
 
-	// order lists the keys of a private shape in insertion order.
+	// flatBased is set for a shared shape without parent that has properties of its own
+	// (see [VM.FinishBuiltins]) and for the shapes that add properties to it. Such a shape with
+	// more than smallShapeSize properties keeps a table from the start.
+	flatBased bool
+
+	// order lists the keys of a private shape, or the keys that a shared shape without parent
+	// holds itself, in insertion order.
 	order []*Object
 }
 
@@ -308,9 +315,11 @@ func (s *shape) keys() []*Object {
 		return s.order
 	}
 	keys := make([]*Object, s.count)
-	for t := s; t.parent != nil; t = t.parent {
+	t := s
+	for ; t.parent != nil; t = t.parent {
 		keys[t.count-1] = t.key
 	}
+	copy(keys, t.order)
 	return keys
 }
 
@@ -339,7 +348,23 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 			flags: flags,
 		})
 	}
-	if s.table != nil && s.transitions.empty() && !s.private {
+	switch {
+	case s.flatBased:
+		t.flatBased = true
+		if t.small == nil {
+			// The chain of t does not list the properties of its base, so t cannot build its
+			// table from the chain.
+			t.table = make(map[*Object]prop, t.count)
+			maps.Copy(t.table, s.table)
+			for _, e := range s.small {
+				t.table[e.key] = e.prop
+			}
+			t.table[key] = prop{
+				slot:  s.count,
+				flags: flags,
+			}
+		}
+	case s.table != nil && s.transitions.empty() && !s.private:
 		// An object that gains properties one by one looks each intermediate shape up once, so the
 		// first child takes over the table, and s builds a new one only if it is looked up again.
 		t.table, s.table = s.table, nil
@@ -643,6 +668,10 @@ type stringTable struct {
 // VM.
 const internedMinSweep = 1 << 10
 
+// internedInitialSize is the number of interned strings that a VM has room for from the start,
+// which is more than the built-ins need.
+const internedInitialSize = 896
+
 // NewString returns the string s, which must be in canonical WTF-8, as a value.
 func (vm *VM) NewString(s string) Value {
 	if len(s) <= 1 {
@@ -781,9 +810,12 @@ func (vm *VM) touchProto(o *Object) {
 // add gives o the new own property key. The caller has checked that o has no such property.
 func (vm *VM) add(o *Object, key *Object, val Value, flags uint8) {
 	s := o.shape
-	if !s.private && s.count >= privateShapeThreshold {
+	if !s.private && (s.count >= privateShapeThreshold || vm.builtins.building) {
 		s = s.privateCopy()
 		o.shape = s
+		if vm.builtins.building {
+			vm.builtins.objects = append(vm.builtins.objects, o)
+		}
 	}
 	if s.private {
 		s.table[key] = prop{
@@ -797,6 +829,51 @@ func (vm *VM) add(o *Object, key *Object, val Value, flags uint8) {
 	}
 	o.slots = append(o.slots, val)
 	vm.touchProto(o)
+}
+
+// builtinLayout is the state of the creation of the built-in objects.
+type builtinLayout struct {
+	// building is set between [VM.StartBuiltins] and [VM.FinishBuiltins].
+	building bool
+
+	// objects are the objects that got a private shape while building.
+	objects []*Object
+}
+
+// StartBuiltins starts the creation of the built-in objects, which [VM.FinishBuiltins] ends.
+// In between, objects should only get their initial properties.
+func (vm *VM) StartBuiltins() {
+	vm.builtins.building = true
+}
+
+// FinishBuiltins ends the creation of the built-in objects.
+func (vm *VM) FinishBuiltins() {
+	for _, o := range vm.builtins.objects {
+		o.shareShape()
+	}
+	vm.builtins = builtinLayout{}
+}
+
+// shareShape turns the private shape of o into a shared shape without parent that holds all
+// the properties itself, so that inline caches apply to o. The shape must not change afterwards.
+func (o *Object) shareShape() {
+	s := o.shape
+	if !s.private || o.flags&objNotExtensible != 0 {
+		return
+	}
+	// The keys of a private shape are in the order of their slots.
+	s.private = false
+	s.flatBased = true
+	if s.count <= smallShapeSize {
+		s.small = make([]shapeEntry, len(s.order))
+		for i, k := range s.order {
+			s.small[i] = shapeEntry{
+				key:  k,
+				prop: s.table[k],
+			}
+		}
+		s.table = nil
+	}
 }
 
 // Define creates or replaces the own named property key of o with the given attributes,

@@ -61,6 +61,7 @@ func New(hostDefined any) *VM {
 			shape: vm.shapes.string,
 		},
 	}
+	vm.strings.interned.entries = make(map[string]sweptRef[Object], internedInitialSize)
 	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep)
 	for i := range vm.strings.ascii {
 		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}

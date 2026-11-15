@@ -379,6 +379,9 @@ func (c *sparseIndexCache) addedKeys(s *shape) ([]*Object, bool) {
 	var added []*Object
 	t := s
 	for ; t.count > n; t = t.parent {
+		if t.parent == nil {
+			return nil, false
+		}
 		added = append(added, t.key)
 	}
 	if t != cached {
