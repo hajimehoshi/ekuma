@@ -119,6 +119,23 @@ func SetData(v Value) any {
 	return nil
 }
 
+// NewTemporalObject returns an object of one of the Temporal types with the prototype proto,
+// whose internal slots are data.
+func (vm *VM) NewTemporalObject(proto *Object, data any) *Object {
+	o := vm.NewObject(proto)
+	o.class = classTemporal
+	o.ext = data
+	return o
+}
+
+// TemporalData returns the internal slots of the Temporal object v, or nil when v is not one.
+func TemporalData(v Value) any {
+	if v.IsObject() && v.o.class == classTemporal {
+		return v.o.ext
+	}
+	return nil
+}
+
 // NewDateObject returns a Date object with the prototype proto whose [[DateValue]] is tv.
 func (vm *VM) NewDateObject(proto *Object, tv float64) *Object {
 	o := vm.NewObject(proto)

@@ -85,6 +85,9 @@ const (
 	classRawJSON
 	classDisposableStack
 	classAsyncDisposableStack
+	classTemporal
+	// classLazy is an ordinary object whose properties are not defined yet.
+	classLazy
 
 	// classEvalScope is the scope of OpEvalScope, whose properties are the variables that
 	// direct evals declare in a function.

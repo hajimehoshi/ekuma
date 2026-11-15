@@ -1717,6 +1717,97 @@ func TestDateOffsetTransitions(t *testing.T) {
 	}
 }
 
+// TestTemporalTimeZone checks that Temporal takes the system time zone from VM.SetTimeZone, both
+// as Temporal.Now.timeZoneId and as a named time zone, with its transitions.
+func TestTemporalTimeZone(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetTimeZone(daylightSavingZone(t, zoneType{offset: 1 * 3600, abbr: "CET"}, zoneType{offset: 2 * 3600, abbr: "CEST"},
+		1616893200, // 2021-03-28T01:00:00Z
+		1635642000, // 2021-10-31T01:00:00Z
+	))
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{
+			src:  `Temporal.Now.timeZoneId()`,
+			want: "Test/CET",
+		},
+		{
+			src:  `Temporal.Now.zonedDateTimeISO().timeZoneId`,
+			want: "Test/CET",
+		},
+		{
+			// A skipped local time moves forward by the length of the gap.
+			src:  `Temporal.ZonedDateTime.from("2021-03-28T02:30[test/cet]").toString()`,
+			want: "2021-03-28T03:30:00+02:00[Test/CET]",
+		},
+		{
+			src:  `Temporal.ZonedDateTime.from("2021-06-01T12:00[Test/CET]").getTimeZoneTransition("next").toString()`,
+			want: "2021-10-31T02:00:00+01:00[Test/CET]",
+		},
+		{
+			src:  `Temporal.PlainDateTime.from("2021-10-31T02:30").toZonedDateTime("Test/CET", { disambiguation: "later" }).offset`,
+			want: "+01:00",
+		},
+	}
+	for _, tc := range tests {
+		v, err := vm.RunScript(t.Context(), "temporal", tc.src)
+		if err != nil {
+			t.Errorf("%s: %v", tc.src, err)
+			continue
+		}
+		if got := toString(t, &vm, v); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.src, got, tc.want)
+		}
+	}
+}
+
+// TestTemporalNamespace checks that the Temporal namespace, whose contents are created when
+// they are first needed, looks the same to operations that come first.
+func TestTemporalNamespace(t *testing.T) {
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{
+			src:  `Temporal.x = 1; Object.keys(Temporal).join() + " " + Object.getOwnPropertyNames(Temporal).indexOf("x")`,
+			want: "x 9",
+		},
+		{
+			src:  `Object.defineProperty(Temporal, "x", { value: 1 }); Object.getOwnPropertyNames(Temporal).slice(-2).join()`,
+			want: "Now,x",
+		},
+		{
+			src:  `delete Temporal.Now; "Now" in Temporal`,
+			want: "false",
+		},
+		{
+			src:  `Object.freeze(Temporal); [Object.isFrozen(Temporal), typeof Temporal.Instant].join()`,
+			want: "true,function",
+		},
+		{
+			src:  `new Date(0).toTemporalInstant() instanceof Temporal.Instant`,
+			want: "true",
+		},
+		{
+			src:  `Object.prototype.toString.call(Temporal) + " " + JSON.stringify(Temporal)`,
+			want: "[object Temporal] {}",
+		},
+	}
+	for _, tc := range tests {
+		var vm ekuma.VM
+		v, err := vm.RunScript(t.Context(), "temporal", tc.src)
+		if err != nil {
+			t.Errorf("%s: %v", tc.src, err)
+			continue
+		}
+		if got := toString(t, &vm, v); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.src, got, tc.want)
+		}
+	}
+}
+
 // TestProxy covers the behaviour of proxies that test262 does not pin down: the paths that
 // look properties up without the internal methods, and what proxies do to them.
 func TestProxy(t *testing.T) {

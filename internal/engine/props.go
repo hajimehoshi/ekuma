@@ -300,7 +300,35 @@ func (vm *VM) isLazyKey(key *Object) bool {
 func (vm *VM) resolve(o *Object) {
 	if o.fn != nil && !o.fn.materialized {
 		vm.materialize(o)
+		return
 	}
+	if o.class == classLazy {
+		vm.InitLazyObject(o)
+	}
+}
+
+// NewLazyObject returns an ordinary object with the prototype proto whose own properties
+// init defines. init runs once, before the first operation that needs the own properties of
+// the object, or in [VM.InitLazyObject].
+func (vm *VM) NewLazyObject(proto *Object, init func(o *Object)) *Object {
+	o := vm.NewObject(proto)
+	o.class = classLazy
+	o.flags |= objExotic
+	o.ext = init
+	return o
+}
+
+// InitLazyObject runs the init function of o, an object of [VM.NewLazyObject], unless it has
+// run already.
+func (vm *VM) InitLazyObject(o *Object) {
+	if o.class != classLazy {
+		return
+	}
+	init := o.ext.(func(*Object))
+	o.class = classObject
+	o.ext = nil
+	o.flags &^= objExotic
+	init(o)
 }
 
 // lookup finds the named property key on o and its prototype chain.
@@ -309,7 +337,7 @@ func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 	length := key == vm.Key(KeyLength)
 	for h := o; h != nil; h = h.shape.proto {
 		if h.flags&objExotic != 0 {
-			if vm.isLazyKey(key) {
+			if h.class == classLazy || vm.isLazyKey(key) {
 				vm.resolve(h)
 			}
 			if h.class == classTypedArray && isCanonicalNumericString(key) {
@@ -638,7 +666,7 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		}
 	} else {
 		if o.flags&objExotic != 0 {
-			if vm.isLazyKey(k.key) {
+			if o.class == classLazy || vm.isLazyKey(k.key) {
 				vm.resolve(o)
 			}
 			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
@@ -1235,7 +1263,7 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 		}
 	} else {
 		if o.flags&objExotic != 0 {
-			if vm.isLazyKey(k.key) {
+			if o.class == classLazy || vm.isLazyKey(k.key) {
 				vm.resolve(o)
 			}
 			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
@@ -1439,7 +1467,7 @@ func (vm *VM) DefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 // EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
 // It appends the keys to keys and returns the extended slice.
 func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
-	if o.flags&objExotic != 0 && o.fn != nil {
+	if o.flags&objExotic != 0 && (o.fn != nil || o.class == classLazy) {
 		vm.resolve(o)
 	}
 	if (o.class != classObject && o.class != classArray && o.class != classFunction) || o.flags&(objSparse|objExotic) != 0 {

@@ -61,7 +61,7 @@ is published yet.
 
 ## Status
 
-89.8% of [test262](https://github.com/tc39/test262) pass: 43,823 of 48,797 tests
+99.3% of [test262](https://github.com/tc39/test262) pass: 48,447 of 48,797 tests
 in `test/language`, `test/built-ins` and `test/annexB` (commit `2e58f87`). The tests that are
 known to fail are listed in `testdata/test262-failures.txt`, and the test suite fails when
 that list would grow.
@@ -76,6 +76,7 @@ Implemented:
   `Math.sumPrecise`, the `Uint8Array` base64 and hex methods, immutable `ArrayBuffer`s, the `Map`
   upsert methods, `JSON.parse` source text access, the newer `Iterator` and `Promise` helpers,
   and the `stack` accessor of `Error.prototype`
+- `Temporal`, created on the first access to it
 
 Notes on behavior:
 
@@ -87,6 +88,8 @@ Notes on behavior:
 - `Date` uses the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`
 - `VM.SetTimeZone` and `VM.SetRandomSource` replace the time zone of `Date` and the source of
   `Math.random`, for deterministic runs
+- `Temporal` supports only the `iso8601` calendar. Its named time zones come from the system's
+  time zone database (`time/tzdata` is not embedded), or from the JavaScript host with `GOOS=js`
 - Without `Intl`, the `toLocale*String` methods of `Date` use a fixed English format, and
   `localeCompare` treats canonically equivalent strings as equal and otherwise compares code units
 - A VM is an agent that cannot block, so `Atomics.wait` throws. A finite `Atomics.waitAsync`
@@ -101,7 +104,7 @@ Missing:
 
 - A public API for agents (workers): the engine can share a `SharedArrayBuffer` between VMs on
   different goroutines, but a host cannot create such VMs or hand them buffers yet
-- `Intl` and `Temporal`
+- `Intl`
 
 Known inaccuracies in what is implemented: the `caller` and `arguments` properties of sloppy
 functions are always `undefined`.

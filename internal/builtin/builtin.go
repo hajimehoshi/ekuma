@@ -147,6 +147,7 @@ func Install(vm *engine.VM) {
 	initMapAndSet(vm)
 	initWeak(vm)
 	initDate(vm)
+	initTemporal(vm)
 	initPromise(vm)
 	initAsync(vm)
 	initDisposableStacks(vm)
