@@ -250,6 +250,9 @@ func (vm *VM) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
 // reports to run no JavaScript.
 func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
 	for i := uint32(0); i < o.length; i++ {
+		if vm.interrupt.Load() {
+			vm.Poll()
+		}
 		e := Undefined
 		if int(i) < len(o.elems) && !o.elems[i].isHole() {
 			e = o.elems[i]
@@ -546,15 +549,12 @@ func (vm *VM) iterResultValue(r Value) (Value, bool) {
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (vm *VM) IteratorToList(v Value, method *Object) []Value {
 	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
-		o := v.o
-		vals := make([]Value, 0, o.length)
-		for i := uint32(0); i < o.length; i++ {
-			if int(i) < len(o.elems) && !o.elems[i].isHole() {
-				vals = append(vals, o.elems[i])
-			} else {
-				vals = append(vals, vm.Index(v, i))
-			}
-		}
+		// The length of a sparse array says nothing about the memory it holds.
+		vals := make([]Value, 0, len(v.o.elems))
+		vm.iteratePlainArray(v.o, func(e Value) bool {
+			vals = append(vals, e)
+			return true
+		})
 		return vals
 	}
 	it := vm.Call(method, v)

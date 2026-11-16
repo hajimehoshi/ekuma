@@ -1374,6 +1374,22 @@ func TestCancelRegExp(t *testing.T) {
 	}
 }
 
+// TestCancelArrayIteration checks that iterating a long array can be stopped.
+func TestCancelArrayIteration(t *testing.T) {
+	var vm ekuma.VM
+	for _, src := range []string{
+		`new Set(new Array(2 ** 32 - 1)).size`,
+		`new Uint8Array(new Array(2 ** 32 - 1)).length`,
+	} {
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		_, err := runScript(ctx, &vm, "iterate", src)
+		cancel()
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
+		}
+	}
+}
+
 // TestCancelJSON checks that parsing a long text can be stopped.
 func TestCancelJSON(t *testing.T) {
 	var vm ekuma.VM
