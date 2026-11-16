@@ -276,8 +276,9 @@ func testIntegrity(vm *engine.VM, o *engine.Object, frozen bool) bool {
 
 // enumerableOwn returns the enumerable own string keys of o and, when wanted, their values.
 func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.Value {
-	var out []engine.Value
-	for _, k := range vm.OwnKeys(o) {
+	ks := vm.OwnKeys(o)
+	out := make([]engine.Value, 0, len(ks))
+	for _, k := range ks {
 		if k.IsSymbol() {
 			continue
 		}
@@ -292,7 +293,7 @@ func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.
 		}
 		v := vm.Get(o, k)
 		if keys {
-			out = append(out, engine.ObjectValue(vm.NewArray([]engine.Value{kv, v})))
+			out = append(out, engine.ObjectValue(vm.NewArrayPair(kv, v)))
 		} else {
 			out = append(out, v)
 		}

@@ -831,8 +831,17 @@ func (vm *VM) copyDataProperties(dst *Object, src Value, excluded []Value) {
 	for _, e := range excluded {
 		skip = append(skip, vm.ToPropertyKey(e))
 	}
+	ks := vm.OwnKeys(from)
+	if dst.flags&objExotic == 0 {
+		// The keys of the elements come first, and the other keys usually get slots.
+		elems := 0
+		for elems < len(ks) && ks[elems].isIndex() {
+			elems++
+		}
+		dst.slots = slices.Grow(dst.slots, len(ks)-elems)
+	}
 keys:
-	for _, k := range vm.OwnKeys(from) {
+	for _, k := range ks {
 		for _, s := range skip {
 			if s == k {
 				continue keys

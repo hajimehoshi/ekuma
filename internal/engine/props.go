@@ -1399,7 +1399,8 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 	if o.flags&objExotic != 0 {
 		vm.resolve(o)
 	}
-	var keys []PropKey
+	// Every element, every named property and length.
+	keys := make([]PropKey, 0, len(o.elems)+int(o.shape.count)+1)
 	switch o.class {
 	case classString:
 		for i := range o.ext.(*Object).StringLength() {
