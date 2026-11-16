@@ -447,7 +447,11 @@ func initString(vm *engine.VM) {
 			n := s.StringLength()
 			searchLen := wtf8.Len(search)
 			advance := max(1, searchLen)
+			var firstPosition [1]int
 			var positions []int
+			if !all {
+				positions = firstPosition[:0]
+			}
 			for pos := s.UnitIndexOf(search, 0); pos >= 0; {
 				positions = append(positions, pos)
 				if !all || pos+advance > n {

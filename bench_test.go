@@ -702,3 +702,27 @@ func BenchmarkRegExpLiteral(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringReplace measures string-pattern replacement. One iteration is one call.
+func BenchmarkStringReplace(b *testing.B) {
+	for _, expr := range []string{
+		`s.replace("a", "x")`,
+		`s.replace("z", "x")`,
+		`s.replace("", "$&x")`,
+		`s.replace("a", f)`,
+		`s.replaceAll("a", "x")`,
+		`s.replaceAll("", "x")`,
+	} {
+		b.Run(expr, func(b *testing.B) {
+			var vm ekuma.VM
+			if _, err := runScript(b.Context(), &vm, "setup", `var s = "😀abcabcabcabcabcabcabcabc"; var f = function(m, p) { return p; }; function run(n) { var o; for (var i = 0; i < n; i++) o = `+expr+`; return o; }`); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
