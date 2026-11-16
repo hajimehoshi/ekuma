@@ -66,15 +66,15 @@ sums.
 ```
                      V8 benchmark  QuickJS
                      suite v7      microbench    Version
-Ekuma                 1.00         1.00          v0.0.0-20261116060912-21d9ec0f3fd5
-goja                  3.33         2.59          v0.0.0-20261110204830-f493a2b600d6
-Sobek                 3.32         2.58          v0.0.0-20261105103427-a5b602015248
-otto                 17.8 (9/10)    n/a          v0.5.1
-modernc.org/quickjs   2.42         1.81          v0.27.0
-QJS                   3.36 (6/10)  2.80 (69/74)  v0.0.6
-QuickJS (C)           0.739        0.486         v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.407        0.329         v0.44.0
-v8go                  0.0208       0.0639        v0.44.0
+Ekuma                 1.00         1.00          v0.0.0-20261116080942-4f50ec950347
+goja                  3.94         3.35          v0.0.0-20261110204830-f493a2b600d6
+Sobek                 3.93         3.34          v0.0.0-20261105103427-a5b602015248
+otto                 21.8 (9/10)    n/a          v0.5.1
+modernc.org/quickjs   2.87         2.33          v0.27.0
+QJS                   3.45 (6/10)  3.68 (69/74)  v0.0.6
+QuickJS (C)           0.884        0.626         v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.486        0.424         v0.44.0
+v8go                  0.0252       0.0797        v0.44.0
 ```
 
 Measured on 2026-11-16: Apple M3 Pro, macOS 27.2, go1.27.4.
@@ -90,17 +90,17 @@ Time relative to Ekuma's:
 ```
                                          modernc.org/        QuickJS  v8go
 Benchmark     Ekuma  goja  Sobek  otto   quickjs       QJS   (C)      --jitless  v8go
-Richards      1.00   3.34  3.16   18.8   2.67          2.55  0.789    0.594      0.0211
-DeltaBlue     1.00   2.93  2.92   23.7   2.99          2.74  0.850    0.618      0.00741
-Encrypt       1.00   2.36  2.37    9.72  1.31           n/a  0.359    0.315      0.00718
-Decrypt       1.00   3.82  3.84   15.3   2.18           n/a  0.575    0.501      0.0109
-RayTrace      1.00   6.21  6.18   20.7   4.00          5.04  1.06     0.568      0.0187
-Earley        1.00   3.53  3.53   20.0   3.32           n/a  0.956    0.377      0.0237
-Boyer         1.00   3.41  3.40   18.7   3.18           n/a  0.715    0.392      0.0272
-RegExp        1.00   1.52  1.54     n/a  1.58          4.03  0.996    0.0837     0.0300
-Splay         1.00   2.71  2.77   13.6   2.20          2.52  0.652    0.377      0.0707
-NavierStokes  1.00   6.15  6.08   25.6   2.07          4.02  0.751    0.808      0.0492
-Geomean       1.00   3.33  3.32   17.8   2.42          3.36  0.739    0.407      0.0208
+Richards      1.00   3.23  3.21   19.6   2.77          2.69  0.806    0.600      0.0228
+DeltaBlue     1.00   2.91  2.91   23.4   2.98          2.72  0.851    0.622      0.00776
+Encrypt       1.00   6.72  6.80   27.5   3.75           n/a  1.03     0.882      0.0206
+Decrypt       1.00   6.76  6.84   28.3   3.87           n/a  1.03     0.901      0.0193
+RayTrace      1.00   6.16  6.20   20.4   4.01          5.08  1.05     0.567      0.0188
+Earley        1.00   3.55  3.55   20.9   3.26           n/a  0.941    0.372      0.0233
+Boyer         1.00   3.42  3.38   18.9   3.19           n/a  0.706    0.385      0.0277
+RegExp        1.00   1.59  1.57     n/a  1.64          4.14  1.02     0.0853     0.0314
+Splay         1.00   2.79  2.75   13.8   2.18          2.64  0.725    0.422      0.0765
+NavierStokes  1.00   6.41  6.39   27.9   2.16          4.18  0.771    0.854      0.0513
+Geomean       1.00   3.94  3.93   21.8   2.87          3.45  0.884    0.486      0.0252
 ```
 
 <!-- END jsbench V8.relative -->
@@ -112,16 +112,16 @@ Median time of one run, in the unit of its row:
 ```
                                                      modernc.org/          QuickJS  v8go
 Benchmark     Unit  Ekuma   goja    Sobek   otto     quickjs       QJS     (C)      --jitless  v8go
-Richards      ms      2.94   10.1     9.11    54.8     7.82          7.67    2.26    1.70      0.0628
-DeltaBlue     ms      4.82   14.1    14.1    118      14.5          13.3     4.12    3.00      0.0357
-Encrypt       ms     10.2    23.9    24.0     99.0    13.4            n/a    3.70    3.21      0.0737
-Decrypt       ms    117     444     447     1867     254              n/a   67.7    60.0       1.27
-RayTrace      ms     19.1   121     121      395      76.7          96.8    20.2    10.9       0.364
-Earley        ms      4.02   14.1    14.3     80.6    13.3            n/a    3.81    1.52      0.0956
-Boyer         ms     77.0   260     262     1445     241              n/a   54.6    30.3       2.08
-RegExp        ms    141     214     212         n/a  224           560     141      11.6       4.33
-Splay         ms      1.58    3.99    4.38    21.5     3.23          3.82    1.03    0.600     0.114
-NavierStokes  ms     59.0   362     357     1509     121           236      43.8    47.9       2.89
+Richards      ms      2.85    9.21    9.27    54.6     7.73          7.65    2.26    1.70      0.0646
+DeltaBlue     ms      4.82   14.1    14.0    115      14.3          13.2     4.14    3.01      0.0376
+Encrypt       ms      3.64   24.0    24.3     99.4    13.6            n/a    3.68    3.19      0.0740
+Decrypt       ms     67.0   458     451     1954     258              n/a   70.0    59.8       1.30
+RayTrace      ms     19.9   118     118      392      76.5          96.6    20.4    10.8       0.359
+Earley        ms      4.11   14.6    14.5     85.6    13.5            n/a    3.86    1.55      0.0972
+Boyer         ms     77.5   264     263     1481     245              n/a   54.4    30.1       2.16
+RegExp        ms    138     218     216         n/a  229           569     144      11.8       4.33
+Splay         ms      1.48    4.12    4.06    20.4     3.20          3.90    1.07    0.609     0.114
+NavierStokes  ms     56.3   367     359     1573     122           236      43.4    48.0       2.90
 ```
 
 <!-- END jsbench V8.time -->
@@ -133,83 +133,83 @@ Time relative to Ekuma's:
 <!-- BEGIN jsbench Micro.relative -->
 
 ```
-                                                           modernc.org/          QuickJS  v8go
-Benchmark               Ekuma  goja       Sobek      otto  quickjs       QJS     (C)      --jitless  v8go
-empty_loop              1.00      6.06       6.05    n/a    2.18          3.20   0.630    0.884      0.0835
-empty_down_loop         1.00      6.03       5.99    n/a    2.14          3.13   0.629    0.805      0.0838
-empty_down_loop2        1.00      5.22       5.22    n/a    2.14          3.78   0.613    0.710      0.0611
-empty_do_loop           1.00      5.08       5.03    n/a    1.87          2.31   0.620    0.593      0.0621
-date_now                1.00      2.29       2.29    n/a    1.79          2.83   0.438    0.578      0.467
-date_parse              1.00      0.490      0.495   n/a    1.55          1.26   0.419    0.612      0.578
-prop_read               1.00      7.22       7.25    n/a    3.39          4.67   1.04     0.812      0.0436
-prop_write              1.00      8.33       8.34    n/a    3.45          5.52   0.968    0.981      0.0319
-prop_update             1.00      7.45       7.45    n/a    2.79          5.15   0.660    0.970      0.0432
-prop_create             1.00      4.26       4.30    n/a    3.04          5.03   1.07     0.427      0.173
-prop_clone              1.00      3.13       3.16    n/a    2.67          2.15   0.727    0.0253     0.0196
-prop_delete             1.00      1.32       1.27    n/a    1.14          0.936  0.287    0.132      0.110
-array_read              1.00      7.56       7.50    n/a    3.17          5.39   1.15     1.38       0.0847
-array_write             1.00      3.70       3.70    n/a    2.23         10.3    0.527    1.03       0.0222
-array_update            1.00      1.85       1.85    n/a    0.683         1.95   0.210    0.424      0.0105
-array_prop_create       1.00      6.14       5.72    n/a    1.42          4.81   0.620    0.721      0.0999
-array_slice             1.00     12.9       12.9     n/a   20.4           9.54   3.66     0.0407     0.0299
-array_length_read       1.00      7.31       7.08    n/a    3.25          4.56   1.05     0.850      0.114
-array_length_decr       1.00      4.75       4.73    n/a    5.29          3.91   0.970    1.19       0.812
-array_hole_length_decr  1.00      4.93       5.20    n/a    6.19          5.66   1.85     1.06       0.714
-array_push              1.00      4.70       4.70    n/a    2.54          3.35   0.586    0.391      0.0484
-array_pop               1.00      1.26       1.23    n/a    2.38          1.23   0.358    0.149      0.0218
-typed_array_read        1.00      4.16       3.94    n/a    3.25          2.79   0.623    0.827      0.0449
-typed_array_write       1.00      4.02       4.01    n/a    2.18          6.47   0.582    0.697      0.0141
-arguments_read          1.00      5.94       5.96    n/a    2.72           n/a   0.515    0.372      0.0593
-arguments_strict_read   1.00      4.48       4.54    n/a    1.61           n/a   0.337    0.283      0.0465
-global_read             1.00      6.48       6.45    n/a    2.21          4.02   1.03     0.651      0.0270
-global_write            1.00      8.19       8.31    n/a    2.72          5.25   0.545    0.584      0.0311
-global_write_strict     1.00     10.9       10.6     n/a    2.75          5.40   0.561    0.589      0.0315
-local_destruct          1.00      5.33       5.23    n/a    7.55         23.8    1.16     1.31       0.0480
-global_destruct         1.00      8.37       8.33    n/a    8.84         10.7    1.38     1.58       0.105
-global_destruct_strict  1.00      9.90       9.69    n/a    9.09         10.7    1.38     1.61       0.105
-global_func_call        1.00      2.36       2.33    n/a    2.23          1.82   0.470    0.540      0.00390
-func_call               1.00      1.95       1.93    n/a    2.23          1.49   0.470    0.569      0.00390
-func_closure_call       1.00      1.73       1.75    n/a    2.02          1.39   0.457    0.457      0.0698
-int_arith               1.00      7.03       7.08    n/a    2.64          3.72   0.847    0.881      0.0304
-float_arith             1.00      9.53       9.63    n/a    2.53          4.23   0.878    1.27       0.0522
-map_set_string          1.00      1.41       1.40    n/a    1.83          1.68   0.480    0.208      0.0750
-map_set_int             1.00      1.88       1.86    n/a    2.21         34.0    0.575    0.409      0.120
-map_set_bigint          1.00      0.826      0.836   n/a    1.01         18.6    0.178    0.239      0.153
-map_delete              1.00      1.28       1.27    n/a    1.54           n/a   0.390    0.178      0.0746
-weak_map_set            1.00   1115       1067       n/a    1.74           n/a   0.359    0.307      0.143
-weak_map_delete         1.00     12.1       12.4     n/a    1.95           n/a   0.464    0.346      0.150
-array_for               1.00      6.18       6.20    n/a    2.72          4.08   0.950    1.07       0.0872
-array_for_in            1.00      1.37       1.37    n/a    1.09          0.766  0.226    0.0904     0.0735
-array_for_of            1.00      6.17       6.04    n/a   10.3           4.98   1.41     2.39       0.292
-math_min                1.00      3.24       3.25    n/a    2.43          2.52   0.476    0.509      0.00823
-regexp_ascii            1.00      3.24       3.24    n/a    1.48          4.11   0.440    0.180      0.117
-regexp_utf16            1.00      2.97       2.98    n/a    1.36          3.86   0.459    0.166      0.111
-regexp_replace          1.00      2.00       1.99    n/a    1.65         12.3    1.48     0.194      0.152
-string_length           1.00      8.47       8.36    n/a    3.38          2.87   0.697    0.704      0.0707
-string_build1           1.00      0.609      0.614   n/a    0.311         0.955  0.107    0.0948     0.0195
-string_build1x          1.00      0.617      0.609   n/a    0.310         0.942  0.103    0.0915     0.0193
-string_build2c          1.00      0.388      0.385   n/a    0.201         0.686  0.0820   0.0587     0.0124
-string_build2           1.00      0.620      0.612   n/a    0.805         1.04   0.331    0.0955     0.0198
-string_build3           1.00      0.695      0.699   n/a    0.841         1.02   0.232    0.102      0.0197
-string_build4           1.00      0.649      0.648   n/a    0.885         1.04   0.332    0.0928     0.0191
-string_build_large1     1.00      0.0131     0.0130  n/a    0.0196        0.238  0.00629  0.00190    0.00131
-string_build_large2     1.00      0.0141     0.0142  n/a    0.0193        0.224  0.00581  0.00203    0.00120
-string_concat           1.00      2.08       2.06    n/a    3.08          5.00   0.871    0.270      0.239
-string_array_join       1.00      1.83       1.85    n/a    2.72          2.42   0.833    0.325      0.305
-string_template         1.00      0.291      0.288   n/a    0.643         1.20   0.155    0.111      0.0852
-int_to_string           1.00      1.64       1.63    n/a    2.10          2.19   0.611    0.316      0.0894
-int_toString            1.00      2.31       2.28    n/a    3.15          2.45   0.564    0.310      0.110
-float_to_string         1.00      1.77       1.76    n/a    3.36          3.50   1.59     0.491      0.322
-float_toString          1.00      1.60       1.60    n/a    3.86          3.61   1.51     0.466      0.325
-float_toFixed           1.00      2.42       2.43    n/a    1.13          1.12   0.315    0.381      0.281
-float_toPrecision       1.00      0.679      0.671   n/a    0.900         0.876  0.263    0.206      0.146
-float_toExponential     1.00      0.900      0.890   n/a    1.26          1.21   0.369    0.284      0.200
-string_to_int           1.00      5.96       6.05    n/a    7.95          8.32   3.00     0.744      0.185
-string_to_float         1.00      3.44       3.56    n/a    4.23          4.09   1.62     0.731      0.470
-bigint32_arith          1.00      0.879      0.880   n/a    0.459         0.649  0.0963   0.107      0.109
-bigint64_arith          1.00      0.879      0.894   n/a    0.608         0.908  0.135    0.121      0.111
-bigint256_arith         1.00      0.864      0.862   n/a    1.04          1.44   0.289    0.179      0.110
-Geomean                 1.00      2.59       2.58    n/a    1.81          2.80   0.486    0.329      0.0639
+                                                         modernc.org/          QuickJS  v8go
+Benchmark               Ekuma  goja      Sobek     otto  quickjs       QJS     (C)      --jitless  v8go
+empty_loop              1.00     6.07      6.08    n/a    2.16          3.12   0.623    0.874      0.0828
+empty_down_loop         1.00     6.06      6.05    n/a    2.17          3.17   0.644    0.802      0.0842
+empty_down_loop2        1.00     5.28      5.34    n/a    2.25          3.81   0.624    0.722      0.0622
+empty_do_loop           1.00     4.85      4.80    n/a    1.78          2.27   0.593    0.599      0.0625
+date_now                1.00     2.31      2.27    n/a    1.81          2.83   0.434    0.575      0.462
+date_parse              1.00     0.500     0.500   n/a    1.54          1.28   0.422    0.606      0.580
+prop_read               1.00     7.24      7.13    n/a    3.65          4.69   1.04     0.817      0.0441
+prop_write              1.00     8.44      8.39    n/a    3.47          5.61   0.980    0.992      0.0321
+prop_update             1.00     7.53      7.52    n/a    2.75          5.71   0.743    1.10       0.0438
+prop_create             1.00     4.07      4.09    n/a    3.00          4.90   1.01     0.416      0.165
+prop_clone              1.00     3.04      3.04    n/a    2.40          1.98   0.710    0.0247     0.0185
+prop_delete             1.00     1.27      1.27    n/a    1.13          0.940  0.295    0.131      0.110
+array_read              1.00     7.56      7.50    n/a    3.17          5.49   1.17     1.40       0.0883
+array_write             1.00     3.72      3.73    n/a    2.21          9.95   0.536    1.04       0.0223
+array_update            1.00     2.94      2.93    n/a    1.08          3.11   0.327    0.669      0.0169
+array_prop_create       1.00     5.77      5.95    n/a    1.39          4.80   0.619    0.724      0.100
+array_slice             1.00    13.0      12.9     n/a   20.3           9.56   3.66     0.0408     0.0371
+array_length_read       1.00     7.25      7.40    n/a    3.28          4.57   1.06     0.868      0.0869
+array_length_decr       1.00     4.75      4.73    n/a    5.29          3.88   0.967    1.20       0.805
+array_hole_length_decr  1.00     4.99      5.16    n/a    6.27          5.72   1.87     1.08       0.725
+array_push              1.00     4.53      4.66    n/a    2.45          3.27   0.581    0.385      0.0477
+array_pop               1.00     1.26      1.25    n/a    2.35          1.23   0.365    0.152      0.0219
+typed_array_read        1.00     4.14      3.92    n/a    3.24          2.80   0.622    0.839      0.0451
+typed_array_write       1.00     4.00      4.02    n/a    2.18          6.50   0.593    0.730      0.0143
+arguments_read          1.00     6.01      5.97    n/a    2.73           n/a   0.509    0.376      0.0595
+arguments_strict_read   1.00     4.54      4.63    n/a    1.62           n/a   0.346    0.292      0.0371
+global_read             1.00     6.87      6.57    n/a    2.19          3.91   0.998    0.634      0.0273
+global_write            1.00    10.1       8.29    n/a    2.80          5.46   0.571    0.607      0.0319
+global_write_strict     1.00    11.7      11.9     n/a    2.75          5.42   0.557    0.591      0.0315
+local_destruct          1.00     5.28      5.27    n/a    8.50         27.4    1.35     1.32       0.0502
+global_destruct         1.00     8.48      8.28    n/a    8.75         10.6    1.37     1.57       0.105
+global_destruct_strict  1.00    10.1       9.79    n/a    8.76         10.3    1.37     1.53       0.104
+global_func_call        1.00     2.35      2.38    n/a    2.24          1.80   0.474    0.565      0.00380
+func_call               1.00     1.94      1.94    n/a    2.24          1.46   0.484    0.561      0.00396
+func_closure_call       1.00     1.74      1.73    n/a    2.03          1.39   0.456    0.454      0.0688
+int_arith               1.00     7.16      7.20    n/a    2.70          3.81   0.863    0.884      0.0310
+float_arith             1.00     9.71      9.86    n/a    2.58          4.39   0.913    1.31       0.0544
+map_set_string          1.00     1.41      1.40    n/a    1.82          1.69   0.470    0.204      0.0760
+map_set_int             1.00     1.88      1.89    n/a    2.16         33.8    0.570    0.405      0.104
+map_set_bigint          1.00     2.25      2.26    n/a    2.71         50.7    0.487    0.640      0.416
+map_delete              1.00     1.29      1.27    n/a    1.50           n/a   0.385    0.177      0.0750
+weak_map_set            1.00   997       951       n/a    1.56           n/a   0.332    0.280      0.131
+weak_map_delete         1.00    13.7      13.3     n/a    1.99           n/a   0.464    0.353      0.150
+array_for               1.00     6.22      6.23    n/a    2.75          4.13   0.951    1.07       0.0886
+array_for_in            1.00    13.2      13.3     n/a   10.5           7.32   2.08     0.890      0.712
+array_for_of            1.00     6.30      6.23    n/a   10.4           5.06   1.43     2.42       0.295
+math_min                1.00     3.30      3.26    n/a    2.44          2.55   0.485    0.508      0.00821
+regexp_ascii            1.00     3.29      3.24    n/a    1.45          4.07   0.449    0.186      0.118
+regexp_utf16            1.00     3.06      2.96    n/a    1.38          3.84   0.464    0.170      0.111
+regexp_replace          1.00     2.00      2.00    n/a    1.63         12.4    1.48     0.193      0.154
+string_length           1.00     8.43      8.39    n/a    3.37          2.85   0.699    0.699      0.0711
+string_build1           1.00     1.49      1.48    n/a    0.751         2.29   0.254    0.229      0.0472
+string_build1x          1.00     1.51      1.51    n/a    0.763         2.33   0.282    0.224      0.0471
+string_build2c          1.00     1.46      1.45    n/a    0.753         2.63   0.288    0.214      0.0458
+string_build2           1.00     1.56      1.51    n/a    1.92          2.51   0.789    0.230      0.0474
+string_build3           1.00     0.689     0.684   n/a    0.835         1.01   0.230    0.102      0.0196
+string_build4           1.00     1.56      1.56    n/a    2.11          2.45   0.773    0.221      0.0446
+string_build_large1     1.00     1.47      1.53    n/a    2.22         27.4    0.734    0.224      0.153
+string_build_large2     1.00     0.0147    0.0148  n/a    0.0205        0.234  0.00610  0.00213    0.00120
+string_concat           1.00     2.04      2.07    n/a    3.12          5.05   0.876    0.275      0.248
+string_array_join       1.00     1.85      1.87    n/a    2.71          2.48   0.841    0.328      0.308
+string_template         1.00     1.98      1.97    n/a    4.30          8.16   1.05     0.760      0.576
+int_to_string           1.00     1.58      1.56    n/a    1.97          2.05   0.456    0.278      0.0776
+int_toString            1.00     2.27      2.28    n/a    3.12          2.44   0.545    0.308      0.106
+float_to_string         1.00     1.75      1.74    n/a    3.30          3.42   1.56     0.482      0.322
+float_toString          1.00     1.59      1.60    n/a    3.85          3.59   1.52     0.464      0.320
+float_toFixed           1.00     2.42      2.45    n/a    1.15          1.15   0.306    0.384      0.284
+float_toPrecision       1.00     0.662     0.663   n/a    0.886         0.870  0.262    0.204      0.144
+float_toExponential     1.00     0.891     0.879   n/a    1.24          1.19   0.365    0.284      0.203
+string_to_int           1.00     5.69      5.79    n/a    7.62          8.05   2.95     0.717      0.178
+string_to_float         1.00     3.50      3.48    n/a    4.24          4.13   1.63     0.715      0.477
+bigint32_arith          1.00     8.31      8.28    n/a    4.29          6.24   0.915    1.02       0.140
+bigint64_arith          1.00     3.37      3.28    n/a    2.27          3.22   0.513    0.459      0.421
+bigint256_arith         1.00     0.837     0.830   n/a    1.02          1.31   0.283    0.172      0.106
+Geomean                 1.00     3.35      3.34    n/a    2.33          3.68   0.626    0.424      0.0797
 ```
 
 <!-- END jsbench Micro.relative -->
@@ -219,82 +219,82 @@ Median time of one iteration of the loop of a function, in the unit of its row:
 <!-- BEGIN jsbench Micro.time -->
 
 ```
-                                                                    modernc.org/           QuickJS   v8go
-Benchmark               Unit  Ekuma   goja        Sobek       otto  quickjs       QJS      (C)       --jitless  v8go
-empty_loop              ns      6.35      38.6        38.6    n/a     13.8          20.3      4.00      5.61      0.530
-empty_down_loop         ns      6.33      38.2        38.0    n/a     13.6          19.8      4.04      5.06      0.530
-empty_down_loop2        ns      8.69      45.4        45.5    n/a     18.6          32.9      5.33      6.19      0.532
-empty_do_loop           ns      8.53      43.2        42.9    n/a     15.9          19.7      5.29      5.05      0.530
-date_now                ns     50.6      115         116      n/a     90.9         143       22.1      29.3      23.6
-date_parse              µs      6.59       3.23        3.25   n/a     10.3           8.32     2.77      4.02      3.81
-prop_read               ns     25.2      182         183      n/a     85.4         118       26.3      20.5       1.10
-prop_write              ns     16.8      140         140      n/a     57.8          92.3     16.2      16.3       0.531
-prop_update             ns     40.5      335         282      n/a    104           204       26.8      39.3       1.81
-prop_create             ns    543       2312        2284      n/a   1703          2732      567       232        91.6
-prop_clone              µs      1.03       3.23        3.25   n/a      2.81          2.21     0.750     0.0261    0.0203
-prop_delete             µs      3.79       4.94        4.81   n/a      4.30          3.54     1.10      0.505     0.412
-array_read              ns     52.5      399         397      n/a    166           286       60.2      73.1       4.45
-array_write             ns     60.2      225         224      n/a    134           615       31.7      61.8       1.34
-array_update            ns    297        557         552      n/a    203           580       62.4     126         3.12
-array_prop_create       µs     18.6      114         106      n/a     26.3          89.5     11.5      13.4       1.86
-array_slice             µs      2.75      35.5        35.5    n/a     56.2          26.4     10.1       0.112     0.0828
-array_length_read       ns     24.7      180         177      n/a     81.3         114       26.1      21.4       2.81
-array_length_decr       µs     21.3      101         101      n/a    113            83.2     20.8      25.4      17.3
-array_hole_length_decr  µs     24.0      118         124      n/a    148           135       44.4      25.5      17.3
-array_push              µs     18.9       89.5        88.5    n/a     47.8          62.9     11.0       7.36      0.911
-array_pop               µs     54.1       70.0        67.3    n/a    129            65.6     19.7       8.34      1.18
-typed_array_read        ns    101        418         398      n/a    327           280       63.6      84.5       4.57
-typed_array_write       ns     94.6      380         380      n/a    207           612       55.1      66.3       1.33
-arguments_read          ns    535       3180        3210      n/a   1452              n/a   276       199        31.9
-arguments_strict_read   ns    683       3060        3185      n/a   1094              n/a   231       193        31.7
-global_read             ns     25.3      164         167      n/a     55.9         102       26.1      16.4       0.690
-global_write            ns     25.8      218         213      n/a     69.8         136       14.1      15.1       0.806
-global_write_strict     ns     25.3      274         268      n/a     69.5         138       14.3      14.9       0.808
-local_destruct          ns    162        884         750      n/a   1213          3858      188       186         7.00
-global_destruct         ns    121       1011        1010      n/a   1069          1289      166       191        12.7
-global_destruct_strict  ns    120       1178        1167      n/a   1093          1283      166       207        12.7
-global_func_call        ns    122        289         286      n/a    276           223       57.9      66.1       0.490
-func_call               ns    125        237         234      n/a    270           182       57.3      69.0       0.495
-func_closure_call       ns    135        235         237      n/a    272           188       62.1      61.6       9.40
-int_arith               µs     11.0       76.7        78.0    n/a     29.1          40.9      9.32      9.72      0.334
-float_arith             µs     13.5      128         130      n/a     34.0          56.9     11.8      17.0       0.702
-map_set_string          µs    276        388         386      n/a    503           464      132        57.4      20.7
-map_set_int             µs    135        253         251      n/a    297          4574       76.3      54.3      16.1
-map_set_bigint          µs    461        387         394      n/a    466          8601       82.3     113        70.8
-map_delete              µs    330        424         421      n/a    505              n/a   128        58.3      24.6
-weak_map_set            µs    126     140372      134337      n/a    219              n/a    45.3      39.5      18.0
-weak_map_delete         µs    236       3084        3077      n/a    460              n/a   108        82.0      34.6
-array_for               µs      1.13       7.00        7.01   n/a      3.08          4.62     1.07      1.21      0.0991
-array_for_in            µs     15.8       21.6        21.7    n/a     17.2          12.1      3.56      1.47      1.16
-array_for_of            ns    950       5855        5884      n/a   9730          4707     1340      2260       276
-math_min                µs     32.9      106         107      n/a     80.4          83.6     15.9      16.7       0.270
-regexp_ascii            µs    245        812         795      n/a    368           998      109        44.1      29.2
-regexp_utf16            µs    277        832         835      n/a    370          1054      127        45.4      31.1
-regexp_replace          µs    401        800         801      n/a    660          4933      594        77.9      61.4
-string_length           ns     37.6      319         315      n/a    128           108       26.2      26.5       2.66
-string_build1           µs    112         68.8        69.4    n/a     34.9         107       12.0      10.6       2.20
-string_build1x          µs    113         69.0        69.0    n/a     35.1         107       12.0      10.4       2.19
-string_build2c          µs    177         68.8        68.3    n/a     35.6         122       13.7      10.6       2.26
-string_build2           µs    112         69.3        69.2    n/a     89.6         115       36.9      10.7       2.21
-string_build3           µs    111         77.6        77.4    n/a     93.8         113       26.0      11.4       2.20
-string_build4           µs    115         75.2        74.6    n/a    102           119       38.4      10.7       2.19
-string_build_large1     ms    111          1.45        1.43   n/a      2.18         26.0      0.697     0.211     0.144
-string_build_large2     ms    120          1.70        1.71   n/a      2.33         27.0      0.700     0.243     0.143
-string_concat           ns    685       1397        1398      n/a   2112          3425      596       185       161
-string_array_join       ns    723       1322        1336      n/a   1964          1753      599       234       220
-string_template         µs      2.29       0.659       0.655  n/a      1.45          2.73     0.351     0.252     0.193
-int_to_string           ns    127        212         208      n/a    264           274       78.7      39.5      11.2
-int_toString            ns    151        347         344      n/a    486           370       84.4      46.8      16.5
-float_to_string         ns    252        447         446      n/a    852           887      401       126        83.2
-float_toString          ns    279        447         449      n/a   1083          1015      419       130        91.1
-float_toFixed           ns    613       1506        1489      n/a    699           695      193       231       174
-float_toPrecision       ns    837        570         562      n/a    754           750      224       173       123
-float_toExponential     ns    605        546         538      n/a    762           733      225       172       122
-string_to_int           ns     18.7      112         113      n/a    149           156       56.7      13.9       3.45
-string_to_float         ns     42.7      147         152      n/a    181           175       69.0      31.2      20.1
-bigint32_arith          µs    183        163         162      n/a     85.4         121       17.8      19.7      20.2
-bigint64_arith          µs    185        161         167      n/a    112           168       24.7      22.4      20.3
-bigint256_arith         µs    199        172         171      n/a    208           286       57.9      35.7      21.9
+                                                                  modernc.org/            QuickJS   v8go
+Benchmark               Unit  Ekuma   goja       Sobek      otto  quickjs       QJS       (C)       --jitless  v8go
+empty_loop              ns      6.47      39.3       39.2   n/a     14.0           20.5      4.05      5.66      0.538
+empty_down_loop         ns      6.35      38.6       38.5   n/a     13.8           20.3      4.10      5.14      0.535
+empty_down_loop2        ns      8.67      45.9       46.3   n/a     19.6           33.1      5.41      6.26      0.539
+empty_do_loop           ns      9.12      44.2       43.2   n/a     16.1           20.6      5.54      5.72      0.664
+date_now                ns     51.3      118        116     n/a     92.2          145       22.2      29.4      23.9
+date_parse              µs      6.73       3.31       3.28  n/a     10.3            8.40     2.79      4.02      3.80
+prop_read               ns     25.8      187        184     n/a     95.0          120       26.7      20.9       1.12
+prop_write              ns     16.9      142        140     n/a     58.3           94.5     17.0      16.5       0.541
+prop_update             ns     35.8      269        270     n/a     99.0          205       26.8      39.1       1.57
+prop_create             ns    554       2275       2274     n/a   1659           2699      558       228        90.5
+prop_clone              µs      1.14       3.29       3.31  n/a      2.76           2.25     0.775     0.0266    0.0206
+prop_delete             µs      3.83       4.86       4.88  n/a      4.33           3.62     1.13      0.502     0.423
+array_read              ns     53.0      401        397     n/a    168            288       61.2      73.4       4.68
+array_write             ns     61.0      225        225     n/a    136            607       32.9      62.5       1.35
+array_update            ns    190        559        558     n/a    206            590       62.1     127         3.20
+array_prop_create       µs     18.8      114        112     n/a     26.3           90.1     11.6      13.6       1.90
+array_slice             µs      2.77      36.1       35.9   n/a     56.9           26.4     10.5       0.118     0.108
+array_length_read       ns     24.9      182        188     n/a     83.5          116       26.6      21.6       2.12
+array_length_decr       µs     21.7      103        103     n/a    115             84.1     20.9      25.6      17.2
+array_hole_length_decr  µs     23.9      120        124     n/a    151            137       44.6      25.8      17.4
+array_push              µs     19.1       86.3       89.0   n/a     46.6           62.5     11.1       7.37      0.926
+array_pop               µs     54.2       68.5       67.7   n/a    128             66.8     19.7       8.22      1.18
+typed_array_read        ns    102        421        396     n/a    330            284       62.7      84.9       4.68
+typed_array_write       ns     95.8      383        379     n/a    209            616       56.8      69.2       1.36
+arguments_read          ns    541       3295       3230     n/a   1474               n/a   275       200        32.1
+arguments_strict_read   ns    681       3118       3154     n/a   1113               n/a   238       201        25.5
+global_read             ns     26.1      180        171     n/a     56.8          102       26.0      16.6       0.717
+global_write            ns     25.4      255        217     n/a     70.8          138       14.5      15.4       0.808
+global_write_strict     ns     25.6      295        301     n/a     70.8          139       14.3      15.1       0.808
+local_destruct          ns    140        738        739     n/a   1184           3819      189       184         7.01
+global_destruct         ns    122       1038       1003     n/a   1071           1294      168       192        12.8
+global_destruct_strict  ns    127       1296       1194     n/a   1070           1287      169       193        12.8
+global_func_call        ns    124        294        294     n/a    283            224       58.6      71.6       0.468
+func_call               ns    122        237        237     n/a    274            179       59.6      69.0       0.480
+func_closure_call       ns    137        238        239     n/a    276            189       62.7      63.4       9.50
+int_arith               µs     10.9       78.2       78.7   n/a     29.4           41.4      9.35      9.65      0.338
+float_arith             µs     13.2      129        130     n/a     34.1           57.9     12.0      17.3       0.717
+map_set_string          µs    277        396        391     n/a    506            468      132        56.5      21.2
+map_set_int             µs    135        253        253     n/a    292           4582       77.1      54.8      13.8
+map_set_bigint          µs    172        387        388     n/a    468           8685       83.4     110        71.5
+map_delete              µs    334        435        424     n/a    503               n/a   129        58.6      24.8
+weak_map_set            µs    140     133319     133532     n/a    218               n/a    46.1      39.5      18.3
+weak_map_delete         µs    234       3197       3112     n/a    465               n/a   109        82.4      35.2
+array_for               µs      1.13       7.11       7.02  n/a      3.10           4.66     1.08      1.22      0.100
+array_for_in            µs      1.64      21.8       22.2   n/a     17.4           12.0      3.42      1.46      1.17
+array_for_of            ns    944       5897       5882     n/a   9823           4774     1360      2283       276
+math_min                µs     33.0      108        108     n/a     81.3           84.4     16.1      16.8       0.273
+regexp_ascii            µs    249        826        806     n/a    361           1011      112        46.3      29.4
+regexp_utf16            µs    276        855        840     n/a    377           1063      128        46.5      30.7
+regexp_replace          µs    402        804        803     n/a    657           4963      598        78.4      61.8
+string_length           ns     38.1      317        317     n/a    128            108       26.2      26.4       2.67
+string_build1           µs     46.8       69.5       69.1   n/a     35.3          107       11.9      10.7       2.20
+string_build1x          µs     46.6       70.0       70.0   n/a     35.4          108       13.1      10.4       2.24
+string_build2c          µs     47.5       68.8       69.5   n/a     36.1          124       13.8      10.2       2.29
+string_build2           µs     46.9       72.7       70.8   n/a     89.9          117       37.1      10.8       2.21
+string_build3           µs    114         77.9       77.9   n/a     95.1          114       26.2      11.6       2.22
+string_build4           µs     49.2       80.7       78.0   n/a    103            119       38.4      10.8       2.22
+string_build_large1     µs    978       1462       1462     n/a   2196          26489      704       223       148
+string_build_large2     ms    116          1.72       1.72  n/a      2.37          27.1      0.709     0.247     0.144
+string_concat           ns    685       1400       1418     n/a   2136           3456      602       188       170
+string_array_join       ns    724       1332       1344     n/a   1971           1781      604       239       221
+string_template         ns    335        662        656     n/a   1460           2790      352       255       193
+int_to_string           ns    134        210        210     n/a    264            275       61.2      37.2      10.3
+int_toString            ns    153        350        350     n/a    478            372       83.4      47.0      16.1
+float_to_string         ns    260        454        452     n/a    858            884      403       125        83.8
+float_toString          ns    282        449        452     n/a   1085           1011      429       131        90.1
+float_toFixed           ns    620       1499       1515     n/a    707            704      190       236       176
+float_toPrecision       ns    863        569        567     n/a    765            747      223       174       122
+float_toExponential     ns    618        552        551     n/a    770            736      226       174       124
+string_to_int           ns     19.6      112        113     n/a    150            158       58.1      14.1       3.50
+string_to_float         ns     42.9      150        149     n/a    181            178       69.7      30.7      20.4
+bigint32_arith          µs     19.6      163        162     n/a     84.4          122       17.9      19.9       2.75
+bigint64_arith          µs     49.2      165        164     n/a    112            158       25.1      22.4      20.6
+bigint256_arith         µs    209        174        173     n/a    211            272       58.8      35.8      22.1
 ```
 
 <!-- END jsbench Micro.time -->
@@ -318,21 +318,21 @@ bigint256_arith         µs    199        172         171      n/a    208       
 
 |  | V8 benchmark suite v7 | QuickJS microbench |
 | --- | --- | --- |
-| date | 2026-11-16T15:11:56+09:00 | 2026-11-16T15:24:24+09:00 |
+| date | 2026-11-16T17:09:58+09:00 | 2026-11-16T17:22:26+09:00 |
 | os | macOS 27.2 | macOS 27.2 |
 | go | go1.27.4 | go1.27.4 |
-| github.com/hajimehoshi/ekuma | v0.0.0-20261116060912-21d9ec0f3fd5 | v0.0.0-20261116060912-21d9ec0f3fd5 |
+| github.com/hajimehoshi/ekuma | v0.0.0-20261116080942-4f50ec950347 | v0.0.0-20261116080942-4f50ec950347 |
 | github.com/dop251/goja | v0.0.0-20261110204830-f493a2b600d6 | v0.0.0-20261110204830-f493a2b600d6 |
 | github.com/grafana/sobek | v0.0.0-20261105103427-a5b602015248 | v0.0.0-20261105103427-a5b602015248 |
 | github.com/robertkrimen/otto | v0.5.1 | v0.5.1 |
 | modernc.org/quickjs | v0.27.0 | v0.27.0 |
 | github.com/fastschema/qjs | v0.0.6 | v0.0.6 |
-| github.com/tommie/v8go | v0.44.0 | v0.44.0 |
 | github.com/bellard/quickjs | v0.0.0-20260604125329-3d5e064e9dd6 | v0.0.0-20260604125329-3d5e064e9dd6 |
+| github.com/tommie/v8go | v0.44.0 | v0.44.0 |
 | rounds | 5 | 3 |
 | benchtime | 1s | 200ms |
-| load-start | 2.29 3.07 3.59 | 10.02 5.85 4.66 |
-| load-end | 10.02 5.85 4.66 | 3.94 3.84 3.99 |
+| load-start | 3.00 3.69 5.42 | 5.81 4.46 4.54 |
+| load-end | 5.81 4.46 4.54 | 2.66 2.93 3.53 |
 | goos | darwin | darwin |
 | goarch | arm64 | arm64 |
 | pkg | github.com/hajimehoshi/ekuma/_bench | github.com/hajimehoshi/ekuma/_bench |
