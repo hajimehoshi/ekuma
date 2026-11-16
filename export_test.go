@@ -51,3 +51,17 @@ func NewSourceModule(vm *VM, name, className string) *Module {
 	m.m.SetModuleSource(vm.e.NewModuleSourceObject(proto, className))
 	return m
 }
+
+func ArgumentStorage(vm *VM) (argsLen, callArgsLen int, cleared bool) {
+	for _, v := range vm.args[len(vm.args):cap(vm.args)] {
+		if v.o != nil || v.n != 0 {
+			return len(vm.args), len(vm.callArgs), false
+		}
+	}
+	for _, v := range vm.callArgs[len(vm.callArgs):cap(vm.callArgs)] {
+		if v != (engine.Value{}) {
+			return len(vm.args), len(vm.callArgs), false
+		}
+	}
+	return len(vm.args), len(vm.callArgs), true
+}

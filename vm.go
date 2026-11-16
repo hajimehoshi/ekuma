@@ -174,12 +174,14 @@ func (vm *VM) FuncOf(name string, f Func) Value {
 func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 	return vm.e.NewFunction(name, func(_ *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := len(vm.args)
+		defer func() {
+			clear(vm.args[n:])
+			vm.args = vm.args[:n]
+		}()
 		for _, a := range args {
 			vm.args = append(vm.args, fromEngine(a))
 		}
 		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
-		clear(vm.args[n:])
-		vm.args = vm.args[:n]
 		if err != nil {
 			vm.e.Throw(vm.thrownValue(err))
 		}
@@ -190,13 +192,14 @@ func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 // withArgs converts the arguments of a call with [VM.ValueOf] and passes them to f.
 func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, error)) (engine.Value, error) {
 	n := len(vm.callArgs)
+	defer func() {
+		clear(vm.callArgs[n:])
+		vm.callArgs = vm.callArgs[:n]
+	}()
 	for _, a := range args {
 		vm.callArgs = append(vm.callArgs, vm.valueOf(vm.initialRealm, a))
 	}
-	v, err := f(vm.callArgs[n:len(vm.callArgs):len(vm.callArgs)])
-	clear(vm.callArgs[n:])
-	vm.callArgs = vm.callArgs[:n]
-	return v, err
+	return f(vm.callArgs[n:len(vm.callArgs):len(vm.callArgs)])
 }
 
 // run calls f, which executes JavaScript, and stops it when ctx is done.

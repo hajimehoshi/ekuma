@@ -993,6 +993,79 @@ func TestCancelNested(t *testing.T) {
 	}
 }
 
+func checkArgumentStorage(t *testing.T, vm *ekuma.VM, wantArgs, wantCallArgs int) {
+	t.Helper()
+	args, callArgs, cleared := ekuma.ArgumentStorage(vm)
+	if args != wantArgs || callArgs != wantCallArgs || !cleared {
+		t.Errorf("argument storage = (%d, %d, cleared=%v), want (%d, %d, cleared=true)", args, callArgs, cleared, wantArgs, wantCallArgs)
+	}
+}
+
+func TestArgumentStorageInterrupted(t *testing.T) {
+	var vm ekuma.VM
+	loop, err := runScript(t.Context(), &vm, "loop", `(object, cancel) => { cancel(); for (;;) {} }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	returned := false
+	outer := vm.FuncOf("outer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		v, err := loop.Invoke(ctx, args[0], ekuma.Func(func(ekuma.Value, []ekuma.Value) (any, error) {
+			cancel()
+			return nil, nil
+		}))
+		returned = true
+		return v, err
+	})
+	if err := vm.Global().Set("outer", outer); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		_, _ = runScript(t.Context(), &vm, "outer", `outer({})`)
+		if returned {
+			t.Error("host callback returned after interruption")
+		}
+		checkArgumentStorage(t, &vm, 0, 0)
+	}
+}
+
+func TestArgumentStorageConversionPanicReentrant(t *testing.T) {
+	var vm ekuma.VM
+	inner := vm.FuncOf("inner", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return args[0], nil
+	})
+	outer := vm.FuncOf("outer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Error("invalid argument conversion did not panic")
+				}
+			}()
+			_, _ = inner.Invoke(t.Context(), args[0], struct{}{})
+		}()
+		checkArgumentStorage(t, &vm, 1, 1)
+		v, err := inner.Invoke(t.Context(), args[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		checkArgumentStorage(t, &vm, 1, 1)
+		if !v.Equal(args[0]) {
+			t.Error("nested call changed the outer argument")
+		}
+		return args[0], nil
+	})
+	object := vm.ValueOf(map[string]any{})
+	v, err := outer.Invoke(t.Context(), object)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Equal(object) {
+		t.Error("outer call did not preserve its argument")
+	}
+	checkArgumentStorage(t, &vm, 0, 0)
+}
+
 // TestCancelRegExp checks that a match that backtracks for too long can be stopped.
 func TestCancelRegExp(t *testing.T) {
 	var vm ekuma.VM
