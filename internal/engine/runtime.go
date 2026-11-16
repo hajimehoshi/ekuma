@@ -1267,20 +1267,33 @@ func (vm *VM) deleteName(key *Object) bool {
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
 func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
-	return &Object{
-		kind:  kindFunction,
-		class: classFunction,
-		shape: vm.shapeFor(vm.ProtoOf(target)),
-		fn: &function{
-			bound: &boundFunc{
-				target: target,
-				this:   this,
-				args:   append([]Value(nil), args...),
-			},
-			materialized: true,
-			constructor:  vm.IsConstructor(target),
+	b := &boundObject{
+		bound: boundFunc{
+			target: target,
+			this:   this,
+			args:   append([]Value(nil), args...),
 		},
 	}
+	b.fn = &b.state
+	b.state = function{
+		bound:        &b.bound,
+		materialized: true,
+		constructor:  vm.IsConstructor(target),
+	}
+	b.kind = kindFunction
+	b.class = classFunction
+	b.shape = vm.shapeFor(vm.ProtoOf(target))
+	b.slots = b.props[:0]
+	return &b.Object
+}
+
+// boundObject is a bound function object together with its state and the storage of its
+// length and name properties, so that creating one is a single allocation.
+type boundObject struct {
+	Object
+	state function
+	bound boundFunc
+	props [2]Value
 }
 
 // SourceText returns the result of Function.prototype.toString for the function f.
