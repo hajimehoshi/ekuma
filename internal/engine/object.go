@@ -1195,6 +1195,9 @@ func (o *Object) UnitIndexOf(sub string, from int) int {
 	if from > n {
 		return -1
 	}
+	if sub == "" {
+		return from
+	}
 	if o.IsASCII() {
 		i := strings.Index(s[from:], sub)
 		if i < 0 {
@@ -1202,10 +1205,12 @@ func (o *Object) UnitIndexOf(sub string, from int) int {
 		}
 		return from + i
 	}
+	if mayMatchInsidePair(sub) {
+		return o.findUnits(sub, from, false)
+	}
 	p := o.seek(from)
 	if p.Low {
-		// A match cannot start in the middle of a pair unless sub starts with a lone low surrogate,
-		// which never occurs inside a canonical string at that position.
+		// This pattern can only start at a code point boundary.
 		p = wtf8.Seek(s, p, from+1)
 	}
 	i := strings.Index(s[p.Byte:], sub)
@@ -1224,12 +1229,53 @@ func (o *Object) UnitLastIndexOf(sub string, from int) int {
 	if from < 0 {
 		return -1
 	}
+	if sub == "" {
+		return from
+	}
+	if !o.IsASCII() && mayMatchInsidePair(sub) {
+		return o.findUnits(sub, from, true)
+	}
 	end := o.Substring(0, from+subLen)
 	i := strings.LastIndex(end, sub)
 	if i < 0 {
 		return -1
 	}
 	return wtf8.Len(end[:i])
+}
+
+func mayMatchInsidePair(sub string) bool {
+	// A canonical pattern can split a pair only at its outer boundaries.
+	first, _ := wtf8.DecodeRune(sub)
+	last, _ := wtf8.DecodeLastRune(sub)
+	return wtf8.IsLowSurrogate(first) || wtf8.IsHighSurrogate(last)
+}
+
+// findUnits returns the nearest match to from in the given direction, or -1.
+func (o *Object) findUnits(sub string, from int, backward bool) int {
+	units := wtf8.AppendUTF16(nil, sub)
+	last := o.StringLength() - len(units)
+	step := 1
+	if backward {
+		step = -1
+	}
+	s := o.Str()
+	p := o.seek(from)
+	for i := from; i >= 0 && i <= last; i += step {
+		p = wtf8.Seek(s, p, i)
+		q := p
+		matched := true
+		for j, unit := range units {
+			q = wtf8.Seek(s, q, i+j)
+			if wtf8.At(s, q) != unit {
+				matched = false
+				break
+			}
+		}
+		if matched {
+			return i
+		}
+	}
+	return -1
 }
 
 // DefineAccessor creates or replaces the own accessor property key of o with the given

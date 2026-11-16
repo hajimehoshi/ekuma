@@ -92,6 +92,46 @@ func TestScripts(t *testing.T) {
 			want: "41 42 1f600 true true true",
 		},
 		{
+			name: "string search at surrogate boundaries",
+			src: `var s = "😀x😀", h = "\ud83d", l = "\ude00";
+				[s.indexOf(h), s.indexOf(l, 1), s.indexOf(h, 1), s.indexOf(l + "x" + h),
+				 s.lastIndexOf(h), s.lastIndexOf(l, 3), s.lastIndexOf(l + "x" + h),
+				 s.includes(h), s.indexOf("😀", 1), s.indexOf("x", 1), s.indexOf(h + "x")].join()`,
+			want: "0,1,3,1,3,1,1,true,3,2,-1",
+		},
+		{
+			name: "empty string search inside surrogate pair",
+			src:  `["😀".indexOf("", 1), "😀".lastIndexOf("", 1)].join()`,
+			want: "1,1",
+		},
+		{
+			name: "string prefix and suffix at surrogate boundaries",
+			src: `var s = "😀", h = "\ud83d", l = "\ude00";
+				[s.startsWith(h), s.startsWith(l, 1), s.endsWith(l), s.endsWith(h, 1),
+				 s.startsWith(s, 1), s.endsWith(s, 1)].join()`,
+			want: "true,true,true,true,false,false",
+		},
+		{
+			name: "string split at surrogate boundaries",
+			src: `JSON.stringify(["😀".split("\ud83d"), "😀".split("\ude00"),
+				"😀x😀".split("\ude00x\ud83d"), "😀😀".split("\ud83d", 2)])`,
+			want: `[["","\ude00"],["\ud83d",""],["\ud83d","\ude00"],["","\ude00"]]`,
+		},
+		{
+			name: "string replacement at surrogate boundaries",
+			src: `JSON.stringify(["😀".replace("\ud83d", "_"), "😀😀".replaceAll("\ude00", "_"),
+				"😀".replaceAll("", "_"), "😀".replace("\ude00", "[$&][$\u0060][$']")])`,
+			want: `["_\ude00","\ud83d_\ud83d_","_\ud83d_\ude00_","\ud83d[\ude00][\ud83d][]"]`,
+		},
+		{
+			name: "string replacement callback code unit positions",
+			src: `var positions = [];
+				"😀".replaceAll("", (match, pos) => { positions.push(pos); return ""; });
+				"😀😀".replaceAll("\ude00", (match, pos) => { positions.push(pos); return ""; });
+				positions.join()`,
+			want: "0,1,2,1,3",
+		},
+		{
 			name: "template literals",
 			src: `var log = [];
 				var a = {toString() { log.push("a"); return "A"; }};

@@ -167,7 +167,8 @@ func initString(vm *engine.VM) {
 		sub := vm.ToString(arg(args, 0))
 		n := s.StringLength()
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), n)
-		return engine.Bool(strings.HasPrefix(s.Substring(from, n), sub))
+		end := from + wtf8.Len(sub)
+		return engine.Bool(end <= n && s.Substring(from, end) == sub)
 	})
 	method(vm, proto, "endsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "endsWith")
@@ -178,7 +179,8 @@ func initString(vm *engine.VM) {
 		if e := arg(args, 1); !e.IsUndefined() {
 			end = engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(e), 0), n)
 		}
-		return engine.Bool(strings.HasSuffix(s.Substring(0, end), sub))
+		start := end - wtf8.Len(sub)
+		return engine.Bool(start >= 0 && s.Substring(start, end) == sub)
 	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "slice")
@@ -414,11 +416,16 @@ func initString(vm *engine.VM) {
 			}
 			return engine.ObjectValue(vm.NewArray(out))
 		}
-		for part := range strings.SplitSeq(s.Str(), sep) {
-			if uint32(len(out)) >= limit {
+		sepLen := wtf8.Len(sep)
+		var start int
+		for uint32(len(out)) < limit {
+			pos := s.UnitIndexOf(sep, start)
+			if pos < 0 {
+				out = append(out, vm.NewString(s.Substring(start, s.StringLength())))
 				break
 			}
-			out = append(out, vm.NewString(part))
+			out = append(out, vm.NewString(s.Substring(start, pos)))
+			start = pos + sepLen
 		}
 		return engine.ObjectValue(vm.NewArray(out))
 	}))
