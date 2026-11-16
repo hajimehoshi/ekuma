@@ -329,8 +329,7 @@ func (c *sparseIndexCache) list(o *Object) []uint32 {
 	if c.shape == s && c.count == s.count {
 		return c.indices
 	}
-	// The keys go into a buffer of fixed size. With go1.27.4, letting addedKeys grow a slice
-	// by append from nil goes with wrong results now and then, for a reason not found yet.
+	// addedKeys appends at most maxSparseIndexInserts keys, so buf holds them all.
 	var buf [maxSparseIndexInserts]*Object
 	if added, ok := c.addedKeys(s, buf[:0]); ok {
 		idxs := c.indices
