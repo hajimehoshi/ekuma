@@ -617,7 +617,7 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 			if h.class == classString {
 				s = h.ext.(*Object)
 			}
-			if int(i) < s.StringLength() {
+			if uint(i) < uint(s.StringLength()) {
 				return vm.UnitString(s.UnitAt(int(i))), nil
 			}
 		}
@@ -659,7 +659,7 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 			return PropDesc{}, false
 		case classString:
 			s := o.ext.(*Object)
-			if int(k.idx) < s.StringLength() {
+			if uint(k.idx) < uint(s.StringLength()) {
 				return dataDesc(vm.UnitString(s.UnitAt(int(k.idx))), FlagEnumerable), true
 			}
 		}
@@ -795,7 +795,7 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	}
 	n := len(o.elems)
 	if flags == FlagsData {
-		if int(i) < n {
+		if uint(i) < uint(n) {
 			o.elems[i] = val
 			vm.touchProto(o)
 			return true
@@ -1349,7 +1349,7 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 		case classTypedArray:
 			return !vm.typedArrayHas(o, k.idx)
 		case classString:
-			if int(k.idx) < o.ext.(*Object).StringLength() {
+			if uint(k.idx) < uint(o.ext.(*Object).StringLength()) {
 				return false
 			}
 		}

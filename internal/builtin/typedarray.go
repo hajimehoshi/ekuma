@@ -246,7 +246,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 	if b := engine.ArrayBufferData(first); b != nil {
 		offset := toIndex(vm, arg(args, 1))
 		if offset%int64(size) != 0 {
-			vm.ThrowRangeError("start offset of " + name + " should be a multiple of " + itoa(size))
+			vm.ThrowRangeError("start offset of " + name + " should be a multiple of " + itoa(int64(size)))
 		}
 		fixed := !b.IsResizable()
 		length := arg(args, 2)
@@ -260,23 +260,23 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 		bl := int64(b.ByteLength())
 		if length.IsUndefined() && !fixed {
 			if offset > bl {
-				vm.ThrowRangeError("start offset " + itoa(int(offset)) + " is outside the bounds of the buffer")
+				vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
 			}
 			return engine.ObjectValue(vm.NewTypedArrayObject(proto, typ, first.Object(), int(offset), -1))
 		}
 		var newByteLength int64
 		if length.IsUndefined() {
 			if bl%int64(size) != 0 {
-				vm.ThrowRangeError("byte length of " + name + " should be a multiple of " + itoa(size))
+				vm.ThrowRangeError("byte length of " + name + " should be a multiple of " + itoa(int64(size)))
 			}
 			newByteLength = bl - offset
 			if newByteLength < 0 {
-				vm.ThrowRangeError("start offset " + itoa(int(offset)) + " is outside the bounds of the buffer")
+				vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
 			}
 		} else {
 			newByteLength = newLength * int64(size)
 			if offset+newByteLength > bl {
-				vm.ThrowRangeError("invalid typed array length: " + itoa(int(newLength)))
+				vm.ThrowRangeError("invalid typed array length: " + itoa(newLength))
 			}
 		}
 		return engine.ObjectValue(vm.NewTypedArrayObject(proto, typ, first.Object(), int(offset), int(newByteLength/int64(size))))
@@ -300,7 +300,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 	return engine.ObjectValue(o)
 }
 
-func itoa(n int) string {
+func itoa(n int64) string {
 	return numconv.NumberToString(float64(n))
 }
 

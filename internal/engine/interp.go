@@ -1710,7 +1710,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 				regs[i.B+1] = Value{n: idx.n + 1}
-				if int(j) < len(o.elems) && o.elems[j].o != holeObject {
+				if uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
 					regs[i.A] = o.elems[j]
 					continue
 				}

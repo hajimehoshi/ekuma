@@ -254,7 +254,7 @@ func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
 			vm.Poll()
 		}
 		e := Undefined
-		if int(i) < len(o.elems) && !o.elems[i].isHole() {
+		if uint(i) < uint(len(o.elems)) && !o.elems[i].isHole() {
 			e = o.elems[i]
 		} else {
 			e = vm.Index(Value{o: o}, i)

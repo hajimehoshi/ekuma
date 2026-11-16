@@ -70,6 +70,17 @@ jobs:
           go test -v -shuffle=on -timeout 30m . -test262.shuffle=on
           go test -v -shuffle=on -timeout 30m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
 
+      - name: go vet (386)
+        # The amd64 runners run 386 binaries natively. macOS has no 32-bit target.
+        if: runner.os != 'macOS'
+        run: env GOARCH=386 go vet ./...
+
+      - name: go test (386)
+        if: runner.os != 'macOS'
+        run: |
+          env GOARCH=386 go test -v -shuffle=on -timeout 30m . -test262.shuffle=on
+          env GOARCH=386 go test -v -shuffle=on -timeout 30m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
+
   wasm:
     name: Test WebAssembly in Chrome
     runs-on: ubuntu-latest

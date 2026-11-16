@@ -6,6 +6,7 @@ package engine
 import (
 	"math"
 	"math/big"
+	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -431,4 +432,5 @@ func (vm *VM) addValues(a, b Value) Value {
 }
 
 // MaxStringLength is the largest length a string may have, in bytes.
-const MaxStringLength = 1<<30 - 1
+// It is smaller where an int has 32 bits.
+const MaxStringLength = 1<<(27+3*(strconv.IntSize/64)) - 1

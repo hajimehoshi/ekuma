@@ -29,7 +29,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		// JavaScript.
 		bufferLength := int64(b.ByteLength())
 		if offset > bufferLength {
-			vm.ThrowRangeError("start offset " + itoa(int(offset)) + " is outside the bounds of the buffer")
+			vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
 		}
 		length := arg(args, 2)
 		viewLength := int64(-1)
@@ -40,7 +40,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		} else {
 			viewLength = toIndex(vm, length)
 			if offset+viewLength > bufferLength {
-				vm.ThrowRangeError("invalid DataView length " + itoa(int(viewLength)))
+				vm.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 			}
 		}
 		p := vm.GetPrototypeFromConstructor(nt, proto)
@@ -49,10 +49,10 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 			vm.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
 		}
 		if offset > int64(b.ByteLength()) {
-			vm.ThrowRangeError("start offset " + itoa(int(offset)) + " is outside the bounds of the buffer")
+			vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
 		}
 		if !length.IsUndefined() && offset+viewLength > int64(b.ByteLength()) {
-			vm.ThrowRangeError("invalid DataView length " + itoa(int(viewLength)))
+			vm.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 		}
 		return engine.ObjectValue(vm.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
 	})

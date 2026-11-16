@@ -896,7 +896,7 @@ func TestScripts(t *testing.T) {
 		},
 		{
 			name: "replace results longer than the string length limit",
-			src: `var s = "x".repeat(2 ** 30 - 1);
+			src: `var s = "x".repeat(` + strconv.Itoa(ekuma.MaxStringLength) + `);
 				var r = [];
 				for (var f of [() => s.replace(/x/, "xx$'"), () => s.replace("x", () => "xx")]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
@@ -906,7 +906,7 @@ func TestScripts(t *testing.T) {
 		},
 		{
 			name: "concatenations longer than the string length limit",
-			src: `var s = "x".repeat(2 ** 29);
+			src: `var s = "x".repeat(` + strconv.Itoa((ekuma.MaxStringLength+1)/2) + `);
 				var r = [];
 				for (var f of [() => s + s, () => ` + "`${s}${s}`" + `]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
@@ -2000,6 +2000,33 @@ func TestTypedArray(t *testing.T) {
 				}
 				r.join()`,
 			want: "RangeError,RangeError,RangeError",
+		},
+		{
+			// A maxByteLength above 2^31 either keeps the buffer resizable or, where an int
+			// cannot hold it, is a RangeError.
+			name: "large maxByteLength",
+			src: `var r = [];
+				for (var f of [() => new ArrayBuffer(0, {maxByteLength: 2 ** 32 - 1}), () => new SharedArrayBuffer(0, {maxByteLength: 2 ** 32 - 1})]) {
+					try {
+						var b = f();
+						r.push((b.resizable ?? b.growable) && b.maxByteLength === 2 ** 32 - 1 ? "ok" : "fixed");
+					} catch (e) {
+						r.push(e instanceof RangeError ? "ok" : e.constructor.name);
+					}
+				}
+				r.join()`,
+			want: "ok,ok",
+		},
+		{
+			// An index whose byte offset does not fit in 32 bits is out of bounds.
+			name: "large index",
+			src: `var a = new Float64Array([1.5]), r = [];
+				for (var i of [2 ** 29, 2 ** 31, 2 ** 32 - 2]) {
+					a[i] = 2;
+					r.push(a[i], a[0]);
+				}
+				r.join()`,
+			want: ",1.5,,1.5,,1.5",
 		},
 		{
 			// The length of a typed array keeps following its getter and own properties
@@ -3440,12 +3467,14 @@ func TestShadowRealmCancel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
+			// The deadline may pass before the loop starts on a slow machine, so the variables
+			// are declared without it.
+			if _, err := runScript(t.Context(), &vm, "setup", `var caught = false; var r = new ShadowRealm();`); err != nil {
+				t.Fatal(err)
+			}
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 			defer cancel()
-			_, err := runScript(ctx, &vm, "loop", `
-				var caught = false;
-				const r = new ShadowRealm();
-				try { `+tt.src+` } catch (e) { caught = true; }`)
+			_, err := runScript(ctx, &vm, "loop", `try { `+tt.src+` } catch (e) { caught = true; }`)
 			if !errors.Is(err, context.DeadlineExceeded) {
 				t.Errorf("got %v, want context.DeadlineExceeded", err)
 			}

@@ -772,7 +772,7 @@ func (t *TypedArray) LoadElement(i int) (uint64, bool) {
 	b := t.Lock()
 	defer t.Unlock()
 	size := t.typ.Size()
-	if i < 0 || (i+1)*size > len(b) {
+	if i < 0 || i >= len(b)/size {
 		return 0, false
 	}
 	return LoadElementBits(b[i*size:], t.typ), true
@@ -784,7 +784,7 @@ func (t *TypedArray) StoreElement(i int, x uint64) {
 	b := t.Lock()
 	defer t.Unlock()
 	size := t.typ.Size()
-	if i >= 0 && (i+1)*size <= len(b) {
+	if i >= 0 && i < len(b)/size {
 		StoreElementBits(b[i*size:], t.typ, x)
 	}
 }
@@ -793,16 +793,16 @@ func (t *TypedArray) StoreElement(i int, x uint64) {
 func (t *TypedArray) element(i uint32) ([]byte, bool) {
 	size := t.typ.Size()
 	data := t.data.data
-	p := t.offset + int(i)*size
+	var n int
 	if t.tracking {
-		if p+size > len(data) {
-			return nil, false
-		}
-		return data[p : p+size], true
+		n = (len(data) - t.offset) / size
+	} else if t.offset+t.length*size <= len(data) {
+		n = t.length
 	}
-	if int(i) >= t.length || t.offset+t.length*size > len(data) {
+	if n <= 0 || uint(i) >= uint(n) {
 		return nil, false
 	}
+	p := t.offset + int(i)*size
 	return data[p : p+size], true
 }
 
@@ -939,7 +939,7 @@ func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
 	}
 	if t.data.block != nil {
 		n, ok := t.Length()
-		return ok && int(i) < n
+		return ok && uint(i) < uint(n)
 	}
 	return false
 }

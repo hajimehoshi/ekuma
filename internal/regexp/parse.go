@@ -405,7 +405,7 @@ func (p *parser) decimal(i int) (int, int, bool) {
 	start := i
 	v := 0
 	for i < len(p.src) && p.src[i] >= '0' && p.src[i] <= '9' {
-		v = min(v*10+int(p.src[i]-'0'), countLimit)
+		v = int(min(int64(v)*10+int64(p.src[i]-'0'), countLimit))
 		i++
 	}
 	return v, i, i > start

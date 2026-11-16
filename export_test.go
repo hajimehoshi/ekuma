@@ -65,3 +65,6 @@ func ArgumentStorage(vm *VM) (argsLen, callArgsLen int, cleared bool) {
 	}
 	return len(vm.args), len(vm.callArgs), true
 }
+
+// MaxStringLength is the largest length a string may have, in bytes.
+const MaxStringLength = engine.MaxStringLength
