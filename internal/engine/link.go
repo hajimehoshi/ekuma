@@ -64,6 +64,18 @@ type templateSite struct {
 // script is their [[ScriptOrModule]]. The constants and keys of f are no longer available
 // afterwards.
 func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
+	return vm.linkFunc(f, script, true)
+}
+
+// linkShared is like [VM.link], but leaves f unchanged, so that any number of VMs can link f,
+// also at the same time.
+func (vm *VM) linkShared(f *bytecode.Func, script *scriptOrModule) *funcProto {
+	return vm.linkFunc(f, script, false)
+}
+
+// linkFunc implements [VM.link] and [VM.linkShared]. consume says whether the constants and keys
+// of f are dropped.
+func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *funcProto {
 	legacy := !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor
 	p := &funcProto{
 		Func:               f,
@@ -112,7 +124,7 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		}
 	}
 	for i, q := range f.Protos {
-		p.protos[i] = vm.link(q, script)
+		p.protos[i] = vm.linkFunc(q, script, consume)
 	}
 	for i, r := range f.RegExps {
 		p.regExps[i].literal = r
@@ -134,9 +146,11 @@ func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
 		}
 		p.templates[i] = site
 	}
-	// The runtime form replaces them.
-	f.Consts = nil
-	f.Keys = nil
+	if consume {
+		// The runtime form replaces them.
+		f.Consts = nil
+		f.Keys = nil
+	}
 	return p
 }
 

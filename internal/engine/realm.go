@@ -6,6 +6,7 @@ package engine
 import (
 	"errors"
 
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/parser"
@@ -355,6 +356,19 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 }
 
 func (vm *VM) compileScript(file, src string) (*funcProto, error) {
+	bc, err := compileScriptCode(file, src)
+	if err != nil {
+		return nil, err
+	}
+	return vm.link(bc, &scriptOrModule{
+		file:  file,
+		realm: vm.curRealm,
+	}), nil
+}
+
+// compileScriptCode parses and compiles the script src. The error is a [*SyntaxError] when src is
+// not a valid script.
+func compileScriptCode(file, src string) (*bytecode.Func, error) {
 	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), parser.Options{})
 	if err != nil {
 		return nil, toSyntaxError(file, err)
@@ -363,10 +377,39 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
-	return vm.link(bc, &scriptOrModule{
-		file:  file,
-		realm: vm.curRealm,
-	}), nil
+	return bc, nil
+}
+
+// CompiledScript is a script compiled for no particular VM. Any number of VMs may use it, also at
+// the same time. It lets a host that runs the same source in many VMs parse and compile it only
+// once, and link it into each VM with [VM.LinkScript].
+type CompiledScript struct {
+	file string
+	code *bytecode.Func
+}
+
+// CompileScript compiles src as the source text of a script. file names the script in error
+// messages. The error is a [*SyntaxError] when src is not a valid script.
+func CompileScript(file, src string) (*CompiledScript, error) {
+	bc, err := compileScriptCode(file, src)
+	if err != nil {
+		return nil, err
+	}
+	return &CompiledScript{
+		file: file,
+		code: bc,
+	}, nil
+}
+
+// LinkScript returns the script of c for the current realm, as [VM.ParseScript] returns it for
+// the source of c.
+func (vm *VM) LinkScript(c *CompiledScript) *Script {
+	return &Script{
+		code: vm.linkShared(c.code, &scriptOrModule{
+			file:  c.file,
+			realm: vm.curRealm,
+		}),
+	}
 }
 
 // compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
