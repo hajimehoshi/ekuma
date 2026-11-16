@@ -4,6 +4,7 @@
 package regexp
 
 import (
+	"math"
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -50,7 +51,7 @@ type node struct {
 // which cannot be observed since no string is that long.
 const unbounded = -1
 
-const countLimit = 1 << 31
+const countLimit = math.MaxInt32
 
 type tree struct {
 	root       *node

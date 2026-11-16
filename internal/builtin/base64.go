@@ -6,6 +6,7 @@ package builtin
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"math"
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -277,14 +278,14 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, ctor, "fromBase64", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := stringArg(vm, args)
 		url, last := base64Options(vm, arg(args, 1))
-		r := fromBase64(s, url, last, numconv.MaxSafeInteger)
+		r := fromBase64(s, url, last, math.MaxInt)
 		if r.err != "" {
 			throwSyntaxError(vm, r.err)
 		}
 		return newUint8Array(vm, r.bytes)
 	})
 	method(vm, ctor, "fromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		r := fromHex(stringArg(vm, args), numconv.MaxSafeInteger)
+		r := fromHex(stringArg(vm, args), math.MaxInt)
 		if r.err != "" {
 			throwSyntaxError(vm, r.err)
 		}
