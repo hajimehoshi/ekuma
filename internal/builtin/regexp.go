@@ -214,7 +214,11 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s *engine.Objec
 		}
 	}
 	index := caps[0]
-	a := vm.NewArray(vals)
+	nprops := 3
+	if pairs != nil {
+		nprops = 4
+	}
+	a := vm.NewArrayWithRoom(vals, nprops)
 	vm.CreateDataPropertyOrThrow(a, e.key(e.index), engine.Number(float64(index)))
 	vm.CreateDataPropertyOrThrow(a, e.key(e.input), engine.ObjectValue(s))
 	vm.CreateDataPropertyOrThrow(a, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value { return vals[i] }))

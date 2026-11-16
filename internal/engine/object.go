@@ -703,6 +703,32 @@ func (vm *VM) NewArrayPair(a, b Value) *Object {
 	return &p.Object
 }
 
+// roomyArray is an array together with the storage of a few named properties,
+// so that creating one and adding them is a single allocation.
+type roomyArray struct {
+	Object
+	props [4]Value
+}
+
+// NewArrayWithRoom returns a new array with the elements elems, which it keeps,
+// that has room for n named properties.
+func (vm *VM) NewArrayWithRoom(elems []Value, n int) *Object {
+	if n > len(roomyArray{}.props) {
+		a := vm.NewArray(elems)
+		a.slots = make([]Value, 0, n)
+		return a
+	}
+	a := &roomyArray{
+		kind:   kindArray,
+		class:  classArray,
+		shape:  vm.shapes.array,
+		elems:  elems,
+		length: uint32(len(elems)),
+	}
+	a.slots = a.props[:0]
+	return &a.Object
+}
+
 // NewObjectFromProperties returns a new ordinary object whose prototype is Object.prototype,
 // with the data properties keys[i]: vals[i] created in order as CreateDataProperty creates them.
 // A repeated key keeps its first position and takes the last value. It does not keep the slices.
