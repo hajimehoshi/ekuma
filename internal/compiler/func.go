@@ -21,6 +21,10 @@ func (f *fn) closure(node *ast.Function, dst int32, name string) {
 // all of them on, as in g.apply(this, arguments) and g(...arguments), and never assigns
 // to a parameter, so that the arguments can be forwarded without creating an object.
 func forwardsArguments(node *ast.Function) bool {
+	// The parameter registers hold the arguments only while no parameter code has run.
+	if !node.SimpleParams {
+		return false
+	}
 	params := map[string]bool{}
 	for _, p := range node.Params {
 		patternNames(p, func(id *ast.Identifier) {

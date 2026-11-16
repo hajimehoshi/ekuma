@@ -829,6 +829,15 @@ func TestScripts(t *testing.T) {
 			want: "5,6,2",
 		},
 		{
+			name: "arguments passed on past a parameter default",
+			src: `function g() { return arguments[arguments.length - 1]; }
+				function f(a = 1) { return g.apply(null, arguments); }
+				function h(a, b = a) { return g(...arguments); }
+				var o = { set s(a = 1) { this.r = g(...arguments); } }; o.s = undefined;
+				[f(undefined), h(1, undefined), o.r].join()`,
+			want: ",,",
+		},
+		{
 			name: "with scope outside a block binding",
 			src: `var o = {x: 1, y: 2, this: 3}; var r = [];
 				with (o) { let x = 5; { let y = 6; r.push(x, y, this === globalThis); } }
