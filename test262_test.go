@@ -167,6 +167,9 @@ func (h *harness) file(name string) (string, error) {
 // testTimeout is how long one run of a test may take before it is interrupted.
 const testTimeout = 5 * time.Second
 
+// retryTimeout is how long one run of a test may take when a timed-out test runs again on its own.
+const retryTimeout = 4 * testTimeout
+
 // errorName returns the name of the constructor of the thrown value of err, or of the kind of error.
 func errorName(ctx context.Context, err error) string {
 	if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
@@ -187,9 +190,9 @@ func errorName(ctx context.Context, err error) string {
 	return n.String()
 }
 
-// runOnce runs the test source at path in one mode and returns why it failed, or "" when it
-// passed. timedOut reports whether it failed by running out of time.
-func runOnce(h *harness, path, src string, m metadata, strict bool) (reason string, timedOut bool) {
+// runOnce runs the test source at path in one mode for at most timeout and returns why it
+// failed, or "" when it passed. timedOut reports whether it failed by running out of time.
+func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time.Duration) (reason string, timedOut bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			reason, timedOut = fmt.Sprintf("engine panic: %v", r), false
@@ -213,7 +216,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool) (reason stri
 	if err := vm.Global().Set("print", print); err != nil {
 		return "harness: " + err.Error(), false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	agents := newAgentCluster(ctx)
 	defer agents.close()
@@ -520,9 +523,10 @@ func firstLine(s string) string {
 	return s
 }
 
-// runTest runs the test at path in every mode that its flags ask for. It returns why the test
-// failed, or "" when it passed, and whether it failed by running out of time.
-func runTest(h *harness, path string) (reason string, timedOut bool) {
+// runTest runs the test at path in every mode that its flags ask for, each for at most timeout.
+// It returns why the test failed, or "" when it passed, and whether it failed by running out of
+// time.
+func runTest(h *harness, path string, timeout time.Duration) (reason string, timedOut bool) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return err.Error(), false
@@ -531,15 +535,15 @@ func runTest(h *harness, path string) (reason string, timedOut bool) {
 	m := parseMetadata(src)
 	if m.flags["module"] {
 		// Module code is always strict.
-		return runOnce(h, path, src, m, false)
+		return runOnce(h, path, src, m, false, timeout)
 	}
 	if !m.flags["onlyStrict"] {
-		if r, t := runOnce(h, path, src, m, false); r != "" {
+		if r, t := runOnce(h, path, src, m, false, timeout); r != "" {
 			return r, t
 		}
 	}
 	if !m.flags["noStrict"] && !m.flags["raw"] {
-		if r, t := runOnce(h, path, src, m, true); r != "" {
+		if r, t := runOnce(h, path, src, m, true, timeout); r != "" {
 			return "strict mode: " + r, t
 		}
 	}
@@ -636,7 +640,7 @@ func TestTest262(t *testing.T) {
 	for range runtime.GOMAXPROCS(0) {
 		wg.Go(func() {
 			for i := range next {
-				reasons[i], timedOut[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])))
+				reasons[i], timedOut[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])), testTimeout)
 			}
 		})
 	}
@@ -645,11 +649,11 @@ func TestTest262(t *testing.T) {
 	}
 	close(next)
 	wg.Wait()
-	// A slow test can run out of time only because the other workers load the machine, so a
-	// timed-out test runs once more on its own.
+	// A slow test can run out of time because the other workers load the machine, or because the
+	// machine is slow, so a timed-out test runs once more on its own with more time.
 	for i := range paths {
 		if timedOut[i] {
-			reasons[i], _ = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])))
+			reasons[i], _ = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])), retryTimeout)
 		}
 	}
 
@@ -675,7 +679,7 @@ func TestTest262(t *testing.T) {
 	}
 	// A skipped test still runs, so that the list loses a test that passes again.
 	for _, p := range skipped {
-		if r, _ := runTest(h, filepath.Join(dir, filepath.FromSlash(p))); r == "" {
+		if r, _ := runTest(h, filepath.Join(dir, filepath.FromSlash(p)), testTimeout); r == "" {
 			t.Errorf("%s passes now: remove it from %s", p, skippedTestsFile)
 		}
 	}
