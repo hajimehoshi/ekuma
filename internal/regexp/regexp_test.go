@@ -172,6 +172,7 @@ func TestSyntaxErrors(t *testing.T) {
 		{pattern: "(?<n>a)|(?<n>b)", flags: "x"},
 		{pattern: "[b-a]"},
 		{pattern: "a{2,1}"},
+		{pattern: "a{2147483648,2147483647}"},
 		{pattern: `\k<n>(?<m>a)`},
 		{pattern: `{1}`},
 		{pattern: `\c`, flags: "u"},

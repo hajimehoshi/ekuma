@@ -4,6 +4,7 @@
 package regexp
 
 import (
+	"cmp"
 	"math"
 	"slices"
 
@@ -345,7 +346,7 @@ func (p *parser) parseTerm() *node {
 		if p.unicode {
 			p.fail("nothing to repeat")
 		}
-		if _, _, _, ok := p.braceQuantifier(p.pos); ok {
+		if _, _, _, _, ok := p.braceQuantifier(p.pos); ok {
 			p.fail("nothing to repeat")
 		}
 		p.pos++
@@ -377,27 +378,49 @@ func (p *parser) charNode(c rune) *node {
 }
 
 // braceQuantifier parses {n}, {n,} or {n,m} at i and returns the bounds and the position after it.
-func (p *parser) braceQuantifier(i int) (lo, hi, end int, ok bool) {
+// ordered reports whether the upper bound, if any, is at least the lower bound before clamping.
+func (p *parser) braceQuantifier(i int) (lo, hi, end int, ordered, ok bool) {
 	if i >= len(p.src) || p.src[i] != '{' {
-		return 0, 0, 0, false
+		return 0, 0, 0, false, false
 	}
 	i++
+	loStart := i
 	lo, i, ok = p.decimal(i)
 	if !ok {
-		return 0, 0, 0, false
+		return 0, 0, 0, false, false
 	}
+	loDigits := p.src[loStart:i]
 	hi = lo
+	ordered = true
 	if i < len(p.src) && p.src[i] == ',' {
 		i++
 		hi = unbounded
 		if i < len(p.src) && p.src[i] >= '0' && p.src[i] <= '9' {
+			hiStart := i
 			hi, i, _ = p.decimal(i)
+			ordered = compareDigits(p.src[hiStart:i], loDigits) >= 0
 		}
 	}
 	if i >= len(p.src) || p.src[i] != '}' {
-		return 0, 0, 0, false
+		return 0, 0, 0, false, false
 	}
-	return lo, hi, i + 1, true
+	return lo, hi, i + 1, ordered, true
+}
+
+// compareDigits compares the numbers that the decimal digits a and b denote, and returns -1, 0
+// or +1.
+func compareDigits(a, b []rune) int {
+	trim := func(d []rune) []rune {
+		for len(d) > 1 && d[0] == '0' {
+			d = d[1:]
+		}
+		return d
+	}
+	a, b = trim(a), trim(b)
+	if len(a) != len(b) {
+		return cmp.Compare(len(a), len(b))
+	}
+	return slices.Compare(a, b)
 }
 
 // decimal parses decimal digits at i, clamping the value to countLimit.
@@ -426,14 +449,14 @@ func (p *parser) parseQuantifier(atom *node, quantifiable bool, groups int) *nod
 		lo, hi = 0, 1
 		p.pos++
 	case '{':
-		l, h, end, ok := p.braceQuantifier(p.pos)
+		l, h, end, ordered, ok := p.braceQuantifier(p.pos)
 		if !ok {
 			if p.unicode {
 				p.fail("incomplete quantifier")
 			}
 			return atom
 		}
-		if h != unbounded && h < l {
+		if !ordered {
 			p.fail("numbers out of order in {} quantifier")
 		}
 		lo, hi = l, h
