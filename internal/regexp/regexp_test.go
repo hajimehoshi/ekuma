@@ -139,6 +139,8 @@ func TestUTF16(t *testing.T) {
 		{pattern: `^[😀]$`, input: pair, want: nil},
 		{pattern: `^[😀]+$`, input: pair, want: []int{0, 2}},
 		{pattern: `^[😀]$`, flags: "u", input: pair, want: []int{0, 2}},
+		// A class repetition over a long subject of characters of every length.
+		{pattern: `[^x]+`, flags: "u", input: "x" + strings.Repeat("aé日"+pair, 4) + "x", want: []int{1, 21}},
 		// Literal runs of the pattern that hold surrogates.
 		{pattern: pair, input: "x" + pair, want: []int{1, 3}},
 		{pattern: pair + "+", input: units(0xD83D, 0xDE00, 0xDE00), want: []int{0, 3}},

@@ -4,6 +4,7 @@
 package regexp
 
 import (
+	"math/bits"
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -218,29 +219,40 @@ func (m *Matcher) unitIndex(pos int) int {
 			p.Unit--
 		}
 	}
-	u, b := p.Unit, p.Byte
-	for b < pos {
-		c := s[b]
-		switch {
-		case c < 0x80:
-			b++
-			u++
-		case c < 0xE0:
-			b += 2
-			u++
-		case c < 0xF0:
-			b += 3
-			u++
-		default:
-			if b+2 == pos {
-				return u + 1
-			}
-			b += 4
-			u += 2
+	// A middle position is one code unit after the start of its sequence.
+	if m.isMiddle(pos) {
+		return p.Unit + countUnits(s[p.Byte:pos-2]) + 1
+	}
+	u := p.Unit + countUnits(s[p.Byte:pos])
+	m.lastS, m.last = s, wtf8.Pos{Unit: u, Byte: pos}
+	return u
+}
+
+// countUnits returns the number of code units of s, which holds whole characters.
+func countUnits(s string) int {
+	const high = 0x8080808080808080
+	// Each byte is one code unit, except that a continuation byte is none and the first byte
+	// of a four-byte sequence is two.
+	n := len(s)
+	for len(s) >= 8 {
+		x := uint64(s[0]) | uint64(s[1])<<8 | uint64(s[2])<<16 | uint64(s[3])<<24 |
+			uint64(s[4])<<32 | uint64(s[5])<<40 | uint64(s[6])<<48 | uint64(s[7])<<56
+		s = s[8:]
+		if x&high == 0 {
+			continue
+		}
+		n -= bits.OnesCount64(x & ^(x << 1) & high)
+		n += bits.OnesCount64(x & (x << 1) & (x << 2) & (x << 3) & high)
+	}
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; {
+		case c&0xC0 == 0x80:
+			n--
+		case c >= 0xF0:
+			n++
 		}
 	}
-	m.lastS, m.last = s, wtf8.Pos{Unit: u, Byte: b}
-	return u
+	return n
 }
 
 func (m *Matcher) results() []int {
@@ -658,6 +670,44 @@ func (m *Matcher) star(in *inst, pc, pos int, uni bool) (int, bool) {
 		cls := in.cls
 		for pos < len(s) && (in.max == unbounded || n < in.max) && cls.has(rune(s[pos])) {
 			pos++
+			n++
+		}
+	} else if in.n == 1 {
+		cls := in.cls
+		set := cls.set
+		// lo and hi bound the range of the set that held the last character. Consecutive
+		// characters are usually in the same range.
+		lo, hi := rune(1), rune(0)
+		for pos < len(s) && (in.max == unbounded || n < in.max) {
+			b := s[pos]
+			if b < 0x80 {
+				if cls.ascii[b>>6]&(1<<(b&63)) == 0 {
+					break
+				}
+				pos++
+				n++
+				continue
+			}
+			var r rune
+			var p int
+			switch {
+			case b >= 0xC0 && b < 0xE0 && pos+1 < len(s):
+				r, p = rune(b&0x1F)<<6|rune(s[pos+1]&0x3F), pos+2
+			case b >= 0xE0 && b < 0xF0 && pos+2 < len(s):
+				r, p = rune(b&0x0F)<<12|rune(s[pos+1]&0x3F)<<6|rune(s[pos+2]&0x3F), pos+3
+			case b >= 0xF0 && uni && pos+3 < len(s):
+				r, p = decode4(s[pos:]), pos+4
+			default:
+				r, p = m.next(pos, uni)
+			}
+			if r < lo || r > hi {
+				i := set.find(r)
+				if i < 0 {
+					break
+				}
+				lo, hi = set[i], set[i+1]
+			}
+			pos = p
 			n++
 		}
 	} else {

@@ -5,7 +5,6 @@ package regexp
 
 import (
 	"slices"
-	"sort"
 	"sync"
 	"unicode"
 )
@@ -17,21 +16,37 @@ type charSet []rune
 const maxRune = 0x10FFFF
 
 func (s charSet) has(c rune) bool {
+	return s.find(c) >= 0
+}
+
+// find returns the index in s of the lower bound of the range that holds c, or -1.
+func (s charSet) find(c rune) int {
 	// The sets are usually short, so a linear scan of the first pairs beats a binary search.
 	if len(s) <= 8 {
-		for i := 0; i < len(s); i += 2 {
+		for i := 0; i+1 < len(s); i += 2 {
 			if c < s[i] {
-				return false
+				return -1
 			}
 			if c <= s[i+1] {
-				return true
+				return i
 			}
 		}
-		return false
+		return -1
 	}
-	n := len(s) / 2
-	i := sort.Search(n, func(i int) bool { return s[2*i+1] >= c })
-	return i < n && s[2*i] <= c
+	// Find the first range that does not end before c.
+	lo, hi := 0, len(s)/2
+	for lo < hi {
+		mid := int(uint(lo+hi) >> 1)
+		if s[2*mid+1] < c {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if i := 2 * lo; i < len(s) && s[i] <= c {
+		return i
+	}
+	return -1
 }
 
 // normalize returns s with its pairs sorted and merged. It does not modify s, which may be shared.
