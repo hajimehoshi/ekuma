@@ -3,10 +3,10 @@
 Ekuma is a JavaScript engine written in pure Go, without `unsafe`.
 It is an interpreter without a JIT, designed to be fast for one.
 Its only dependency is [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text),
-for Unicode normalization.
+for Unicode normalization and case mapping.
 
 The project is at an early stage and its API is unstable, though nearly all of the syntax and
-standard library up to ES2025 is implemented. See [Status](#status).
+standard library up to ES2026 is implemented. See [Status](#status).
 
 ```go
 var vm ekuma.VM
@@ -32,7 +32,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 | Execution strategy | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | AST interpreter | Bytecode interpreter | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | JIT compiler, or bytecode interpreter with `--jitless` |
 | Pure Go | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `unsafe`-free | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| ECMAScript | ES2025 | ES5.1, and much of ES2015 and later | ES5.1, and much of ES2015 and later | ES5 | ES2023 | ES2023 | ES2025 |
+| ECMAScript | ES2026 | ES5.1, and much of ES2015 and later | ES5.1, and much of ES2015 and later | ES5 | ES2023 | ES2023 | ES2025 |
 | Modules | ✅ | ❌ | ⚠️ Experimental | ❌ | ✅ | ✅ | ❌ |
 | `Intl` | ✅ | ❌ | ❌ | ❌ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ | ✅ |
 | `Temporal` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -131,7 +131,7 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
 Without the import, the engine has none of these, and its binary does not grow. With it, a hello
-world grows from about 8.6 MB to 15.7 MB natively, and from 11.0 MB to 18.6 MB with `GOOS=js`.
+world grows from about 8.7 MB to 15.8 MB natively, and from 11.1 MB to 18.8 MB with `GOOS=js`.
 The default locale is the one that `LC_ALL`, `LC_MESSAGES` or `LANG` names natively, or
 `navigator.language` with `GOOS=js`, and en-US otherwise. The package brings locale data whose
 license notice a program must include: see [License](#license).
@@ -152,10 +152,10 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ### Implemented
 
-- Nearly all of the syntax and standard library up to ES2025 and Annex B, with `RegExp` on its own
+- Nearly all of the syntax and standard library up to ES2026 and Annex B, with `RegExp` on its own
   backtracking engine
-- `Temporal`, explicit resource management, `import defer`, and the newer `Array`, `Error`,
-  `Math`, `Map`, `JSON`, `Iterator`, `Promise`, `Uint8Array` and `ArrayBuffer` additions
+- `Temporal`, explicit resource management, `import defer`, and the newer `Error`, `Iterator`,
+  `Promise` and `ArrayBuffer` additions
 - `ShadowRealm`, which is a proposal and not yet standard
 - Decorators, auto-accessors (`accessor`) and decorator metadata (`Symbol.metadata`), which are
   proposals and not yet standard
