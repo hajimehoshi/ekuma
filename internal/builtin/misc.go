@@ -188,12 +188,69 @@ const numberBufSize = 128
 // appendHalfUp appends n formatted like [strconv.AppendFloat] with the format fmt ('e' or 'f') and
 // the precision prec (non-negative), except that an exact tie rounds away from zero.
 func appendHalfUp(b []byte, n float64, fmt byte, prec int) []byte {
-	if isTie(n, fmt, prec) {
-		// The next float away from zero is past the tie and closer to it than to the next tie,
-		// so it rounds to the larger magnitude.
-		n = math.Nextafter(n, math.Copysign(math.Inf(1), n))
+	if !isTie(n, fmt, prec) {
+		return strconv.AppendFloat(b, n, fmt, prec, 64)
 	}
-	return strconv.AppendFloat(b, n, fmt, prec, 64)
+	// With one more digit, a tie is exact and ends in 5. Dropping that 5 and incrementing
+	// the remaining digits rounds it to the larger magnitude.
+	start := len(b)
+	b = strconv.AppendFloat(b, n, fmt, prec+1, 64)
+	var exp []byte
+	if fmt == 'e' {
+		i := bytes.IndexByte(b[start:], 'e') + start
+		exp = append([]byte(nil), b[i:]...)
+		b = b[:i]
+	}
+	b = b[:len(b)-1]
+	if prec == 0 {
+		// Drop the decimal point.
+		b = b[:len(b)-1]
+	}
+	carry := true
+	for i := len(b) - 1; i >= start && carry; i-- {
+		switch c := b[i]; {
+		case c == '9':
+			b[i] = '0'
+		case c >= '0' && c < '9':
+			b[i]++
+			carry = false
+		}
+	}
+	if carry {
+		// All the digits were 9: the result gains a leading 1.
+		i := start
+		if b[i] == '-' {
+			i++
+		}
+		b = append(b, 0)
+		copy(b[i+1:], b[i:])
+		b[i] = '1'
+		if fmt == 'e' {
+			// Keep one digit before the point: 10.0e+05 becomes 1.00e+06.
+			if prec > 0 {
+				b[i+1], b[i+2] = b[i+2], b[i+1]
+			}
+			b = b[:len(b)-1]
+			e, _ := strconv.Atoi(string(exp[1:]))
+			return appendExponent(b, e+1)
+		}
+	}
+	return append(b, exp...)
+}
+
+// appendExponent appends the exponent e in the form of [strconv.AppendFloat] with the format 'e'.
+func appendExponent(b []byte, e int) []byte {
+	b = append(b, 'e')
+	if e < 0 {
+		b = append(b, '-')
+		e = -e
+	} else {
+		b = append(b, '+')
+	}
+	if e < 10 {
+		b = append(b, '0')
+	}
+	return strconv.AppendInt(b, int64(e), 10)
 }
 
 // isTie reports whether the finite number n lies exactly halfway between the two nearest numbers

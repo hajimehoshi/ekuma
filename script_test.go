@@ -1101,6 +1101,12 @@ func TestScripts(t *testing.T) {
 			want: "1,2",
 		},
 		{
+			name: "exact ties finer than one ulp",
+			src: `[(2 ** -24).toExponential(15), (0.45).toFixed(53), (2 ** -24).toPrecision(16),
+					(-9.5).toExponential(0), (99.5).toFixed(0)].join(" ")`,
+			want: "5.960464477539063e-8 0.45000000000000001110223024625156540423631668090820313 5.960464477539063e-8 -1e+1 100",
+		},
+		{
 			name: "remainder of negative zero by a register",
 			src:  `var x = -0, y = 1; 1 / (x % y)`,
 			want: "-Infinity",
