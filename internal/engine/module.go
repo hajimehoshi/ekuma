@@ -837,7 +837,8 @@ func (vm *VM) evaluateModule(m *Module) Value {
 			s.hasError = true
 		}
 		vm.RejectCapability(c, e)
-	} else if m.asyncOrder == asyncOrderUnset {
+	} else if m.asyncOrder == asyncOrderUnset || m.asyncOrder == asyncOrderDone {
+		// m finished evaluating, possibly asynchronously as a dependency of another module.
 		vm.ResolveCapability(c, Undefined)
 	}
 	return Value{o: c.promise}

@@ -3257,6 +3257,18 @@ func TestModules(t *testing.T) {
 			want: "0,1",
 		},
 		{
+			// a finished its asynchronous evaluation as a dependency of c before import()
+			// asks to evaluate it.
+			name: "import of an asynchronous module evaluated as a dependency",
+			sources: map[string]string{
+				"main": `import "c";
+					globalThis.result = String((await import("a")).x);`,
+				"c": `import "a";`,
+				"a": `export let x = 1; await null; x = 2;`,
+			},
+			want: "2",
+		},
+		{
 			// b runs first and calls a function of a before a's body ran: the function was
 			// instantiated when a was linked.
 			name: "cycle with a hoisted function",
