@@ -741,7 +741,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
-			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) {
+			// The read and the write of a compound assignment convert an index alike.
+			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) || v.o == nil && i.C != 0 && float64(uint32(v.n)) == v.n {
 				regs[i.A] = v
 				continue
 			}

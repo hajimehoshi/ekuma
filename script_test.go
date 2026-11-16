@@ -786,6 +786,15 @@ func TestScripts(t *testing.T) {
 			want: "2,TypeError,true,200,false",
 		},
 		{
+			name: "compound assignment with number keys",
+			src: `var a = [1, 2], o = {}, r;
+				a[-0] += 5;
+				o[4294967295] = 1; o[4294967295] += 1; o[2 ** 32 - 1]++;
+				try { var u; u[5000] += 1; } catch (e) { r = e.message; }
+				[a.join(), o["4294967295"], Object.keys(o).join(), r].join("|")`,
+			want: "6,2|3|4294967295|cannot read properties of undefined (reading '5000')",
+		},
+		{
 			name: "join with a separator that shrinks the array",
 			src:  `var a = [1, 2, 3]; a.join({ toString() { a.length = 1; return "-"; } })`,
 			want: "1--",
@@ -1397,6 +1406,12 @@ func TestAllocationsPerOperation(t *testing.T) {
 			name:  "stores into an array filled from the end",
 			setup: `var a = []; for (var j = 199; j >= 0; j--) a[j] = j;`,
 			body:  `for (var j = 0; j < 200; j++) a[j] = j;`,
+			want:  0,
+		},
+		{
+			name:  "compound assignments to elements with large indices",
+			setup: `var a = new Array(3000).fill(0);`,
+			body:  `a[2000] += 1; a[2001]++;`,
 			want:  0,
 		},
 		{
