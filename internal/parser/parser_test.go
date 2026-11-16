@@ -1601,9 +1601,21 @@ func TestDeepNesting(t *testing.T) {
 		}
 	}
 
-	// A long chain of binary operators is not nested syntax.
-	if _, err := parse(strings.Repeat("a+", 100000)+"a", script); err != nil {
+	// A long chain is not nested syntax, but its length is limited, also across chains in
+	// the operands of a chain.
+	if _, err := parse(strings.Repeat("a+", parser.MaxLinks)+"a", script); err != nil {
 		t.Errorf("parse of a long binary chain failed: %v", err)
+	}
+	for _, src := range []string{
+		strings.Repeat("a+", parser.MaxLinks+1) + "a",
+		"a" + strings.Repeat(".a", parser.MaxLinks+1),
+		"new a" + strings.Repeat(".a", parser.MaxLinks+1),
+		"a+(a" + strings.Repeat("()", parser.MaxLinks) + ")",
+	} {
+		_, err := parse(src, script)
+		if _, ok := errors.AsType[*parser.Error](err); !ok {
+			t.Errorf("parse(%.20q...): got error %v, want *parser.Error", src, err)
+		}
 	}
 }
 

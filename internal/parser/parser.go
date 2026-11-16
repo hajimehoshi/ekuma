@@ -195,6 +195,9 @@ type parser struct {
 	labelRun int
 
 	depth int
+	// links is the number of links of the chains being parsed, which nest the tree
+	// without counting toward depth.
+	links int
 
 	// arrowStart is the offset of the first token of the innermost assignment expression being parsed.
 	// An arrow function can only start there.
@@ -349,6 +352,15 @@ func (p *parser) enter() {
 
 func (p *parser) leave() {
 	p.depth--
+}
+
+// enterLink counts a link of a chain that is parsed in a loop but nests the tree, as in a+b+c
+// and a.b.c. The caller restores p.links when the chain ends.
+func (p *parser) enterLink() {
+	p.links++
+	if p.links > maxLinks {
+		p.failTok("expression chain is too long")
+	}
 }
 
 // consumeSemicolon consumes a semicolon, applying automatic semicolon insertion.

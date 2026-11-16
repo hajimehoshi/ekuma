@@ -7,3 +7,6 @@ package parser
 
 // maxDepth is the limit of the nesting depth of the syntax.
 const maxDepth = 3000
+
+// maxLinks is the limit of the total length of the chains being parsed, such as a+b+c.
+const maxLinks = 1 << 17

@@ -187,6 +187,8 @@ func (p *parser) parseBinary(minPrec int) ast.Expr {
 		}
 	}
 
+	// Each operator nests the tree one level deeper on the left.
+	links := p.links
 	for {
 		k := p.t.kind
 		info := binaryOps[k]
@@ -194,6 +196,7 @@ func (p *parser) parseBinary(minPrec int) ast.Expr {
 			break
 		}
 		leftParen := left == p.lastParen
+		p.enterLink()
 		p.next()
 		right := p.parseBinary(int(info.prec) + 1)
 		switch info.op {
@@ -221,6 +224,7 @@ func (p *parser) parseBinary(minPrec int) ast.Expr {
 			Right: right,
 		})
 	}
+	p.links = links
 	return left
 }
 
@@ -402,8 +406,14 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 		}
 	}
 
+	// Each property access, call and tagged template nests the tree one level deeper.
+	links := p.links
 	var chain bool
 	for {
+		switch p.t.kind {
+		case tDot, tQuestionDot, tLBrack, tLParen, tTemplate:
+			p.enterLink()
+		}
 		switch p.t.kind {
 		case tDot:
 			p.next()
@@ -462,6 +472,7 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 				var arrow bool
 				e, arrow = p.parseAsyncCall(id)
 				if arrow {
+					p.links = links
 					return e
 				}
 				continue
@@ -493,6 +504,7 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 					Expr: e,
 				}
 			}
+			p.links = links
 			return e
 		}
 	}
@@ -870,8 +882,13 @@ func (p *parser) parseNew() ast.Expr {
 	default:
 		callee = p.parsePrimary()
 	}
+	links := p.links
 loop:
 	for {
+		switch p.t.kind {
+		case tDot, tLBrack, tTemplate:
+			p.enterLink()
+		}
 		switch p.t.kind {
 		case tDot:
 			p.next()
@@ -904,6 +921,7 @@ loop:
 			break loop
 		}
 	}
+	p.links = links
 	var args []ast.Expr
 	if p.t.kind == tLParen {
 		args = p.parseArguments()
