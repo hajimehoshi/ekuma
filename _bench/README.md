@@ -356,6 +356,10 @@ read, and prints the tables. The whole run takes about 25 minutes on an Apple M3
 
 - `-suite V8` or `-suite Micro` runs one suite, `-bench` runs the benchmarks whose names match a
   regular expression, and `-rounds` sets the number of rounds.
+- `-engine` runs the engines whose names match a regular expression. `-engine '^ekuma$' -results
+  DIR` measures Ekuma alone in about 3 minutes, and benchstat compares its results files with
+  earlier ones. Times measured hours apart can differ by 20% on a busy machine, so the tables
+  come from runs of all the engines.
 - `-report` makes the tables from the results files without running the benchmarks, and
   `-update README.md,../README.md` writes them between the markers of these files.
 - `-setup` only fetches the programs and builds QuickJS in C. Then `go test` runs the benchmarks

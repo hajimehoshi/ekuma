@@ -77,6 +77,7 @@ var (
 	flagSuites  = flag.String("suite", "V8,Micro", "comma-separated `suites` to run")
 	flagRounds  = flag.Int("rounds", 0, "number of rounds of each suite, or 0 for the default of the suite")
 	flagBench   = flag.String("bench", "", "run only the benchmarks whose names match `regexp`")
+	flagEngine  = flag.String("engine", "", "run only the engines whose names match `regexp`")
 	flagResults = flag.String("results", filepath.Join("results", runtime.GOOS+"_"+runtime.GOARCH), "`directory` of the results files")
 	flagSetup   = flag.Bool("setup", false, "only fetch the benchmark programs and build QuickJS in C")
 	flagReport  = flag.Bool("report", false, "report the results files without running the benchmarks")
@@ -124,7 +125,20 @@ func jsbench(ctx context.Context) error {
 				return err
 			}
 		}
-		if err := runSuites(ctx, selected, filter); err != nil {
+		engines := comparison.Engines
+		if *flagEngine != "" {
+			re, err := regexp.Compile(*flagEngine)
+			if err != nil {
+				return err
+			}
+			engines = slices.DeleteFunc(slices.Clone(engines), func(e string) bool {
+				return !re.MatchString(e)
+			})
+			if len(engines) == 0 {
+				return fmt.Errorf("no engines match %q", *flagEngine)
+			}
+		}
+		if err := runSuites(ctx, selected, filter, engines); err != nil {
 			return err
 		}
 	}
@@ -147,8 +161,9 @@ func jsbench(ctx context.Context) error {
 	return nil
 }
 
-// runSuites runs the benchmarks of suites that match filter, or all of them if filter is nil.
-func runSuites(ctx context.Context, suites []suite, filter *regexp.Regexp) error {
+// runSuites runs the benchmarks of suites that match filter, or all of them if filter is nil, on
+// engines.
+func runSuites(ctx context.Context, suites []suite, filter *regexp.Regexp, engines []string) error {
 	b, err := os.ReadFile("go.mod")
 	if err != nil || !strings.HasPrefix(string(b), "module "+modulePath+"\n") {
 		return fmt.Errorf("run this command in the directory of the module %s", modulePath)
@@ -190,7 +205,7 @@ func runSuites(ctx context.Context, suites []suite, filter *regexp.Regexp) error
 		if *flagRounds > 0 {
 			rounds = *flagRounds
 		}
-		if err := runSuite(ctx, bin, s, names, rounds, env, *flagResults); err != nil {
+		if err := runSuite(ctx, bin, s, names, engines, rounds, env, *flagResults); err != nil {
 			return err
 		}
 	}

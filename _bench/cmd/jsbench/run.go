@@ -164,11 +164,11 @@ func ekumaVersion(ctx context.Context) (string, error) {
 	return version, nil
 }
 
-// runSuite runs rounds rounds of the benchmarks names of s with the test binary bin, and writes
-// the results file of s into dir. The file starts with the configuration lines env.
-func runSuite(ctx context.Context, bin string, s suite, names []string, rounds int, env []string, dir string) error {
-	n := rounds * len(names) * len(comparison.Engines)
-	log.Printf("%s: %d rounds of %d benchmarks on %d engines: %d runs of %s each", s.name, rounds, len(names), len(comparison.Engines), n, s.benchtime)
+// runSuite runs rounds rounds of the benchmarks names of s on engines with the test binary bin,
+// and writes the results file of s into dir. The file starts with the configuration lines env.
+func runSuite(ctx context.Context, bin string, s suite, names, engines []string, rounds int, env []string, dir string) error {
+	n := rounds * len(names) * len(engines)
+	log.Printf("%s: %d rounds of %d benchmarks on %d engines: %d runs of %s each", s.name, rounds, len(names), len(engines), n, s.benchtime)
 
 	header := []string{
 		"date: " + time.Now().Format(time.RFC3339),
@@ -186,7 +186,7 @@ func runSuite(ctx context.Context, bin string, s suite, names []string, rounds i
 	start := time.Now()
 	for round := range rounds {
 		for i, name := range names {
-			for _, engine := range rotate(comparison.Engines, round+i) {
+			for _, engine := range rotate(engines, round+i) {
 				full := "Benchmark" + s.name + "/" + name + "/" + engine
 				r := runBenchmark(ctx, bin, s.benchtime, full)
 				if err := ctx.Err(); err != nil {
