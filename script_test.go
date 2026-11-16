@@ -33,6 +33,13 @@ func TestScripts(t *testing.T) {
 			want: "5",
 		},
 		{
+			name: "empty separator split counts UTF-16 units with uint32 limits",
+			src: `var s = "😀x";
+				[s.split("", 4294967297).map(c => c.charCodeAt(0)).join(),
+				 s.split("", -1).map(c => c.charCodeAt(0)).join()].join(";")`,
+			want: "55357;55357,56832,120",
+		},
+		{
 			name: "string concatenation",
 			src:  `"a" + 1 + 2 + "b" + (1 + 2)`,
 			want: "a12b3",

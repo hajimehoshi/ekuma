@@ -726,3 +726,42 @@ func BenchmarkStringReplace(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkStringSplitEmpty(b *testing.B) {
+	for _, c := range []struct {
+		name  string
+		text  string
+		limit string
+	}{
+		{
+			name:  "ASCII",
+			text:  strings.Repeat("a", 1024),
+			limit: "undefined",
+		},
+		{
+			name:  "Limited",
+			text:  strings.Repeat("a", 1024),
+			limit: "8",
+		},
+		{
+			name:  "UTF16",
+			text:  strings.Repeat("😀", 32),
+			limit: "undefined",
+		},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			src := fmt.Sprintf(`var s = %q;
+				function run(n) { var out; for (var i = 0; i < n; i++) out = s.split("", %s); return out; }`, c.text, c.limit)
+			if _, err := runScript(ctx, &vm, "split.js", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

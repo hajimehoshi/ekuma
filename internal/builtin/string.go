@@ -408,14 +408,15 @@ func initString(vm *engine.VM) {
 		if sepArg.IsUndefined() {
 			return engine.ObjectValue(vm.NewArray([]engine.Value{engine.ObjectValue(s)}))
 		}
-		var out []engine.Value
 		if sep == "" {
-			n := s.StringLength()
-			for i := 0; i < n && uint32(len(out)) < limit; i++ {
-				out = append(out, vm.UnitString(s.UnitAt(i)))
+			n := int(min(uint64(s.StringLength()), uint64(limit)))
+			out := make([]engine.Value, n)
+			for i := range out {
+				out[i] = vm.UnitString(s.UnitAt(i))
 			}
 			return engine.ObjectValue(vm.NewArray(out))
 		}
+		var out []engine.Value
 		sepLen := wtf8.Len(sep)
 		var start int
 		for uint32(len(out)) < limit {
