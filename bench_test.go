@@ -4,6 +4,7 @@
 package ekuma_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -843,5 +844,36 @@ func BenchmarkUint8ArrayDecodeInto(b *testing.B) {
 				}
 			})
 		}
+	}
+}
+
+func BenchmarkDateGetters(b *testing.B) {
+	for _, expression := range []string{
+		"d.getUTCMilliseconds()",
+		"d.getUTCHours()",
+		"d.getUTCFullYear()",
+		"d.getUTCMonth()",
+		"d.getUTCDate()",
+		"d.getMilliseconds()",
+		"d.getMonth()",
+		"d.getTime()%1000",
+	} {
+		b.Run(expression, func(b *testing.B) {
+			ctx := context.Background()
+			var vm ekuma.VM
+			fn, err := runScript(ctx, &vm, "date-getter", `(() => {
+				const d = new Date(1700000000123);
+				return () => `+expression+`;
+			})()`)
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := fn.Invoke(ctx); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
 	}
 }

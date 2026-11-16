@@ -104,15 +104,43 @@ func initDate(vm *engine.VM) {
 	// getters defines the methods that return one component of the date in local time and in UTC.
 	getters := []struct {
 		local, utc string
-		index      int
+		component  func(float64) float64
 	}{
-		{"getFullYear", "getUTCFullYear", dateYear},
-		{"getMonth", "getUTCMonth", dateMonth},
-		{"getDate", "getUTCDate", dateDay},
-		{"getHours", "getUTCHours", dateHours},
-		{"getMinutes", "getUTCMinutes", dateMinutes},
-		{"getSeconds", "getUTCSeconds", dateSeconds},
-		{"getMilliseconds", "getUTCMilliseconds", dateMilliseconds},
+		{
+			local:     "getFullYear",
+			utc:       "getUTCFullYear",
+			component: datetime.YearFromTime,
+		},
+		{
+			local:     "getMonth",
+			utc:       "getUTCMonth",
+			component: datetime.MonthFromTime,
+		},
+		{
+			local:     "getDate",
+			utc:       "getUTCDate",
+			component: datetime.DateFromTime,
+		},
+		{
+			local:     "getHours",
+			utc:       "getUTCHours",
+			component: datetime.HourFromTime,
+		},
+		{
+			local:     "getMinutes",
+			utc:       "getUTCMinutes",
+			component: datetime.MinFromTime,
+		},
+		{
+			local:     "getSeconds",
+			utc:       "getUTCSeconds",
+			component: datetime.SecFromTime,
+		},
+		{
+			local:     "getMilliseconds",
+			utc:       "getUTCMilliseconds",
+			component: datetime.MsFromTime,
+		},
 	}
 	for _, g := range getters {
 		for _, local := range []bool{true, false} {
@@ -120,7 +148,6 @@ func initDate(vm *engine.VM) {
 			if local {
 				name = g.local
 			}
-			index := g.index
 			method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				t := thisDate(vm, this, name)
 				if math.IsNaN(t) {
@@ -129,7 +156,7 @@ func initDate(vm *engine.VM) {
 				if local {
 					t = datetime.LocalTime(t, vm.DefaultTimeZone())
 				}
-				return engine.Number(components(t)[index])
+				return engine.Number(g.component(t))
 			})
 		}
 	}
