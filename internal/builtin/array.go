@@ -257,20 +257,37 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 			return vm.Call(mapFn.Object(), thisArg, v, engine.Number(float64(i)))
 		}
 		if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
-			var a *engine.Object
-			if custom {
-				a = vm.Construct(this.Object(), nil, this.Object())
-			} else {
-				a = vm.NewArray(nil)
+			// A new array is out of reach of JavaScript until it is returned, so its
+			// elements are collected first while they fit in one.
+			var st struct {
+				a    *engine.Object
+				vals []engine.Value
+				i    int64
 			}
-			i := int64(0)
+			if custom {
+				st.a = vm.Construct(this.Object(), nil, this.Object())
+			}
 			vm.IterateFromMethod(items, m, func(v engine.Value) bool {
-				vm.CreateDataPropertyOrThrow(a, bigKey(vm, i), mapped(v, i))
-				i++
+				v = mapped(v, st.i)
+				if st.a == nil && st.i <= engine.MaxArrayIndex {
+					if st.vals == nil {
+						st.vals = make([]engine.Value, 0, 8)
+					}
+					st.vals = append(st.vals, v)
+				} else {
+					if st.a == nil {
+						st.a = vm.NewArray(st.vals)
+					}
+					vm.CreateDataPropertyOrThrow(st.a, bigKey(vm, st.i), v)
+				}
+				st.i++
 				return true
 			})
-			setLength(vm, a, i)
-			return engine.ObjectValue(a)
+			if st.a == nil {
+				return engine.ObjectValue(vm.NewArray(st.vals))
+			}
+			setLength(vm, st.a, st.i)
+			return engine.ObjectValue(st.a)
 		}
 		src := vm.ToObject(items)
 		n := vm.LengthOfArrayLike(src)
