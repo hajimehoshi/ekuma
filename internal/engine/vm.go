@@ -654,7 +654,7 @@ func (vm *VM) stackTrace(e *Object, msg string, frames, natives int) string {
 	var b wtf8.Builder
 	name := "Error"
 	if v, ok := vm.lookupData(e, vm.Key(KeyName)); ok && v.IsString() {
-		name = v.o.str
+		name = v.o.Str()
 	}
 	b.WriteString(name)
 	if msg != "" {
@@ -747,18 +747,18 @@ func (vm *VM) typeName(v Value) string {
 	}
 	o := v.o
 	if v.IsCallable() {
-		if n, ok := vm.lookupData(o, vm.Key(KeyName)); ok && n.IsString() && n.o.str != "" {
-			return n.o.str
+		if n, ok := vm.lookupData(o, vm.Key(KeyName)); ok && n.IsString() && n.o.Str() != "" {
+			return n.o.Str()
 		}
 		return "Function"
 	}
 	if c, ok := vm.lookupData(o, vm.Key(KeyConstructor)); ok && c.IsCallable() {
-		if n, ok := vm.lookupData(c.o, vm.Key(KeyName)); ok && n.IsString() && n.o.str != "" && n.o.str != "Object" {
-			return n.o.str
+		if n, ok := vm.lookupData(c.o, vm.Key(KeyName)); ok && n.IsString() && n.o.Str() != "" && n.o.Str() != "Object" {
+			return n.o.Str()
 		}
 	}
-	if t, ok := vm.lookupData(o, vm.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.o.str != "" {
-		return t.o.str
+	if t, ok := vm.lookupData(o, vm.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.o.Str() != "" {
+		return t.o.Str()
 	}
 	return "Object"
 }
@@ -784,11 +784,11 @@ func (vm *VM) errorOf(v Value) *Error {
 	msg := ""
 	if v.IsObject() {
 		if s, ok := vm.lookupData(v.o, vm.Key(KeyStack)); ok && s.IsString() {
-			msg = s.o.str
+			msg = s.o.Str()
 		} else if s, ok := ErrorStack(v); ok {
 			msg = s
 		} else if s, ok := vm.lookupData(v.o, vm.Key(KeyMessage)); ok && s.IsString() {
-			msg = s.o.str
+			msg = s.o.Str()
 		} else {
 			msg = "uncaught exception"
 		}
@@ -822,7 +822,7 @@ func (vm *VM) DisplayString(v Value) string {
 	case kindTrue:
 		return "true"
 	case kindString:
-		return o.str
+		return o.Str()
 	case kindSymbol:
 		return "Symbol(" + o.str + ")"
 	case kindBigInt:

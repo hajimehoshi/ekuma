@@ -104,6 +104,90 @@ func TestScripts(t *testing.T) {
 			want: "<A|1|B2> a,f1,b,f2 50 56789 0 x",
 		},
 		{
+			name: "prepending to a string that another variable holds",
+			src: `var r = "";
+				for (var i = 0; i < 40; i++) r = "ab" + r;
+				var s = r;
+				var t = "X" + r;
+				var u = "Y" + s;
+				var g = u + "G";
+				var v = t + t;
+				var w = r + "Z";
+				var e = s + t;
+				r = "Q" + r;
+				var q = "";
+				for (var i = 0; i < 40; i++) q = "cd" + q;
+				var qq = q + q;
+				[t.slice(0, 3), u.slice(0, 3), g.slice(-2), r.slice(0, 3), s.slice(0, 2), w.slice(-3), v.length,
+					v.slice(79, 84), t === "X" + s, u === "Y" + "ab".repeat(40),
+					e === "ab".repeat(40) + "X" + "ab".repeat(40), qq === "cd".repeat(80)].join(" ")`,
+			want: "Xab Yab bG Qab ab abZ 162 abXab true true true true",
+		},
+		{
+			name: "prepended strings read in every way",
+			src: `function pre(s) {
+					var cs = Array.from(s), r = "";
+					for (var i = cs.length; i-- > 0;) r = cs[i] + r;
+					return r;
+				}
+				var d = "9876543210".repeat(4);
+				var o = {};
+				o[d] = 1;
+				var o2 = {};
+				o2[pre(d)] = 2;
+				[pre(d).length, o[pre(d)], o2[d], pre(d) in o, o.hasOwnProperty(pre(d)),
+					new Map([[d, "m"]]).get(pre(d)), new Set([pre(d)]).has(d),
+					pre(d) === d, d === pre(d), pre(d) == d, "9876" < pre(d), pre(d) < "9877",
+					[pre(d), "99", "9"].sort()[1] === d,
+					pre(d)[1], pre(d).charCodeAt(39), pre(d).at(-2), pre(d).slice(10, 13), pre(d).substring(37),
+					pre(d).indexOf("10", 5), pre(d).lastIndexOf("98"), pre(d).startsWith("987"), pre(d).split("0").length,
+					/(\d)0(\d)/.exec(pre(d)).index, pre(d).replace(/0/g, "").length, pre(d).match(/9/g).length,
+					JSON.stringify(pre(d)) === '"' + d + '"', JSON.parse(pre('{"a":[1,2,3],"b":"xyzxyzxyzxyzxyz"}')).b,
+					+pre("1234567890123456789012345678901234"), BigInt(pre(d)) === BigInt(d), pre(d) == BigInt(d),
+					BigInt(d) - 1n < pre(d), eval(pre("1+2+3+4+5+6+7+8+9+10+11+12+13+14")),
+					(0, eval)(pre("'abcdefghij' + 'klmnopqrstuvwxyz'.length"))].join(" ")`,
+			want: "40 1 2 true true m true true true true true true true 8 48 1 987 210 8 30 true 5 8 36 4 true xyzxyzxyzxyzxyz 1.2345678901234568e+33 true true true 105 abcdefghij16",
+		},
+		{
+			name: "prepending non-ASCII strings while reading the length",
+			src: `var s = "", n = 0, bad = [];
+				for (var i = 0; i < 40; i++) { s = "a" + s; n++; }
+				var parts = ["é", "x", "\u{1F600}"];
+				for (var i = 0; i < 60; i++) {
+					var p = parts[i % 3];
+					s = p + s;
+					n += p.length;
+					if (s.length !== n) bad.push(i);
+				}
+				bad.length + " " + s.length + " " + (s.slice(0, 4) === "\u{1F600}xé") + " " + s.indexOf("a") + " " + s.codePointAt(0).toString(16)`,
+			want: "0 120 true 80 1f600",
+		},
+		{
+			name: "lone surrogates joined by prepending",
+			src: `var h = "\uD83D", l = "\uDE00";
+				var s = "", e = h;
+				for (var i = 0; i < 40; i++) { s = "a" + s; e = "a" + e; }
+				var t = l + s;
+				var t2 = l + s;
+				var x = e + t2;
+				var w = ` + "`${h}${t}`" + `;
+				var u = h + t;
+				[t.length, u.length, u.codePointAt(0).toString(16), u === "\u{1F600}" + s, w === u,
+					x.length, x === "a".repeat(40) + "\u{1F600}" + "a".repeat(40)].join(" ")`,
+			want: "41 42 1f600 true true 82 true",
+		},
+		{
+			name: "prepending in template literals",
+			src: `var out = "";
+				for (var i = 0; i < 50; i++) out = ` + "`${i % 10}-${out}`" + `;
+				var mid = ` + "`<${out}>`" + `;
+				var dbl = ` + "`${out}|${out}`" + `;
+				var same = ` + "`${''}${out}`" + `;
+				[out.length, out.slice(0, 6), mid.slice(0, 4), mid.slice(-3), dbl.length, same === out,
+					out === Array.from({length: 50}, (_, i) => (49 - i) % 10 + "-").join("")].join(" ")`,
+			want: "100 9-8-7- <9-8 0-> 201 true true",
+		},
+		{
 			name: "closure counter",
 			src: `function counter() { var n = 0; return function() { n++; return n; }; }
 				var c = counter(); c(); c(); c()`,
@@ -1146,6 +1230,33 @@ func TestAppendedStringsToGo(t *testing.T) {
 	}
 	for i, s := range got {
 		if want := strings.Repeat("ab", i+1); s != want {
+			t.Errorf("string %d: got %q, want %q", i, s, want)
+		}
+	}
+}
+
+// TestPrependedStringsToGo covers strings that a script builds by prepending to one string:
+// each one has its contents when it reaches Go, even after the script prepended further.
+func TestPrependedStringsToGo(t *testing.T) {
+	ctx := t.Context()
+	var vm ekuma.VM
+	fn, err := runScript(ctx, &vm, "prepend", `(function() {
+		var r = "";
+		return function(s) { r = s + r; return r; };
+	})()`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	var got []ekuma.Value
+	for range 100 {
+		v, err := fn.Invoke(ctx, "ab")
+		if err != nil {
+			t.Fatalf("Invoke: %v", err)
+		}
+		got = append(got, v)
+	}
+	for i, v := range got {
+		if s, want := v.String(), strings.Repeat("ab", i+1); s != want {
 			t.Errorf("string %d: got %q, want %q", i, s, want)
 		}
 	}

@@ -785,7 +785,7 @@ func (vm *VM) funcNameOfKey(k Value) string {
 		}
 		return ""
 	case k.IsString():
-		return k.o.str
+		return k.o.Str()
 	}
 	return vm.ToString(k)
 }

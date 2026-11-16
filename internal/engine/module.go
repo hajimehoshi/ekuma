@@ -1233,7 +1233,7 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 			}
 			req.Attributes = append(req.Attributes, ImportAttribute{
 				Key:   vm.ToString(vm.KeyValue(k)),
-				Value: values[i].o.str,
+				Value: values[i].o.Str(),
 			})
 		}
 		if !allImportAttributesSupported(req.Attributes) {

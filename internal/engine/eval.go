@@ -73,7 +73,7 @@ func (vm *VM) directEval(x Value, site int) Value {
 		return x
 	}
 	fr := &vm.frames[len(vm.frames)-1]
-	p := vm.evalCode(fr.fp, site, x.o.str)
+	p := vm.evalCode(fr.fp, site, x.o.Str())
 	if es := &fr.fp.EvalScopes[site]; es.LazyArguments {
 		vm.createLazyArguments(fr, es, p)
 	}

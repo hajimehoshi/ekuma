@@ -52,6 +52,12 @@ const (
 	objExotic
 )
 
+// objReversed marks a string whose str holds its contents with the bytes in reverse order.
+// Its bit is that of objFrozenLength, which only arrays and private names use. The byte length,
+// the ASCII-ness and the UTF-16 length of str are those of the contents, so only a read of the
+// contents themselves needs [Object.Str].
+const objReversed = objFrozenLength
+
 // class distinguishes the built-in objects that have internal state or exotic behavior.
 type class uint8
 
@@ -840,7 +846,7 @@ func (vm *VM) stringKey(o *Object) *Object {
 	if k, ok := o.ext.(*Object); ok {
 		return k
 	}
-	k := vm.Intern(o.str)
+	k := vm.Intern(o.Str())
 	o.ext = k
 	return k
 }
@@ -874,7 +880,7 @@ func (o *Object) arrayIndex() (uint32, bool) {
 	if i, ok := o.knownArrayIndex(); ok {
 		return i, true
 	}
-	i, ok := stringIndex(o.str)
+	i, ok := stringIndex(o.Str())
 	if ok {
 		o.length = i + 1
 	}
@@ -889,30 +895,33 @@ func (o *Object) knownArrayIndex() (uint32, bool) {
 
 // seek returns the position of the code unit i of the non-ASCII string o.
 func (o *Object) seek(i int) wtf8.Pos {
+	s := o.Str()
 	m := o.ensureMeta()
-	p := wtf8.Seek(o.str, m.cursor, i)
+	p := wtf8.Seek(s, m.cursor, i)
 	m.cursor = p
 	return p
 }
 
 // UnitAt returns the code unit i of the string o. i must be in range.
 func (o *Object) UnitAt(i int) uint16 {
+	s := o.Str()
 	if o.IsASCII() {
-		return uint16(o.str[i])
+		return uint16(s[i])
 	}
-	return wtf8.At(o.str, o.seek(i))
+	return wtf8.At(s, o.seek(i))
 }
 
 // Substring returns the code units from start up to end of the string o.
 // The indices must be in range and in order.
 func (o *Object) Substring(start, end int) string {
+	s := o.Str()
 	if o.IsASCII() {
-		return o.str[start:end]
+		return s[start:end]
 	}
 	a := o.seek(start)
-	b := wtf8.Seek(o.str, a, end)
+	b := wtf8.Seek(s, a, end)
 	o.meta.cursor = b
-	return wtf8.Slice(o.str, a, b)
+	return wtf8.Slice(s, a, b)
 }
 
 // UnitString returns the string that consists of the code unit u.
@@ -1172,18 +1181,22 @@ func (o *Object) VM() *VM {
 
 // Str returns the content of the string o in WTF-8.
 func (o *Object) Str() string {
+	if o.flags&objReversed != 0 {
+		o.unreverse()
+	}
 	return o.str
 }
 
 // UnitIndexOf returns the index in code units of the first occurrence of sub in the string o
 // at or after from, or -1.
 func (o *Object) UnitIndexOf(sub string, from int) int {
+	s := o.Str()
 	n := o.StringLength()
 	if from > n {
 		return -1
 	}
 	if o.IsASCII() {
-		i := strings.Index(o.str[from:], sub)
+		i := strings.Index(s[from:], sub)
 		if i < 0 {
 			return -1
 		}
@@ -1193,13 +1206,13 @@ func (o *Object) UnitIndexOf(sub string, from int) int {
 	if p.Low {
 		// A match cannot start in the middle of a pair unless sub starts with a lone low surrogate,
 		// which never occurs inside a canonical string at that position.
-		p = wtf8.Seek(o.str, p, from+1)
+		p = wtf8.Seek(s, p, from+1)
 	}
-	i := strings.Index(o.str[p.Byte:], sub)
+	i := strings.Index(s[p.Byte:], sub)
 	if i < 0 {
 		return -1
 	}
-	return p.Unit + wtf8.Len(o.str[p.Byte:p.Byte+i])
+	return p.Unit + wtf8.Len(s[p.Byte:p.Byte+i])
 }
 
 // UnitLastIndexOf returns the index in code units of the last occurrence of sub in the string o

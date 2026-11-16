@@ -86,7 +86,7 @@ func (vm *VM) ToNumber(v Value) float64 {
 	case kindTrue:
 		return 1
 	case kindString:
-		return numconv.StringToNumber(o.str)
+		return numconv.StringToNumber(o.Str())
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a number")
 	case kindBigInt:
@@ -141,7 +141,7 @@ func (vm *VM) ToString(v Value) string {
 	}
 	switch o.kind {
 	case kindString:
-		return o.str
+		return o.Str()
 	case kindUndefined:
 		return "undefined"
 	case kindNull:
@@ -234,7 +234,7 @@ func (vm *VM) ToBigInt(v Value) Value {
 	case kindTrue:
 		return BigIntFromInt64(1)
 	case kindString:
-		i := numconv.StringToBigInt(p.o.str)
+		i := numconv.StringToBigInt(p.o.Str())
 		if i == nil {
 			vm.throwSyntaxError("cannot convert " + vm.DisplayString(p) + " to a BigInt")
 		}
@@ -319,7 +319,7 @@ func compareBigIntMixed(a, b Value) cmpResult {
 		case kindBigInt:
 			return v.BigInt(), 0, true
 		case kindString:
-			i := numconv.StringToBigInt(v.o.str)
+			i := numconv.StringToBigInt(v.o.Str())
 			return i, 0, i != nil
 		}
 		return nil, 0, false
@@ -368,7 +368,7 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 		a = vm.ToPrimitive(a, HintNumber)
 	}
 	if a.IsString() && b.IsString() {
-		return cmpResult(wtf8.Compare(a.o.str, b.o.str) + 1)
+		return cmpResult(wtf8.Compare(a.o.Str(), b.o.Str()) + 1)
 	}
 	if kindNumber(a) == kindBigInt || kindNumber(b) == kindBigInt {
 		if a.o != nil && a.o.kind != kindBigInt && a.o.kind != kindString {
