@@ -922,26 +922,61 @@ func (vm *VM) arrayProtoPlain() bool {
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
 // without any observable call.
 func (vm *VM) arrayIterationPlain(o *Object) bool {
-	if o.shape != vm.shapes.array {
-		return false
-	}
+	return o.shape == vm.shapes.array && vm.arrayIterationUnmodified()
+}
+
+// arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
+// %ArrayIteratorPrototype%.next are the original functions.
+func (vm *VM) arrayIterationUnmodified() bool {
 	c := &vm.arrayIter
 	if c.epoch != vm.protoEpoch || !c.checked {
 		c.checked = true
 		c.epoch = vm.protoEpoch
-		it, ok1 := vm.lookupData(vm.Intrinsic(IntrinsicArrayPrototype), vm.WellKnownSymbol(SymbolIterator))
-		next, ok2 := vm.lookupData(vm.Intrinsic(IntrinsicArrayIteratorPrototype), vm.Key(keyNext))
-		c.plain = ok1 && ok2 && it.o == vm.Intrinsic(IntrinsicArrayPrototypeValues) && next.o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
+		c.found = c.iter.findData(vm.Intrinsic(IntrinsicArrayPrototype), vm.WellKnownSymbol(SymbolIterator)) &&
+			c.next.findData(vm.Intrinsic(IntrinsicArrayIteratorPrototype), vm.Key(keyNext))
 	}
-	return c.plain
+	// Assigning to an existing data property does not move protoEpoch, so the values are
+	// compared on every call.
+	return c.found && c.iter.value().o == vm.Intrinsic(IntrinsicArrayPrototypeValues) &&
+		c.next.value().o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
 }
 
-// arrayIterCache is the cached result of arrayIterationPlain for arrays with the initial shape.
+// arrayIterCache is what arrayIterationPlain found for arrays with the initial shape.
 type arrayIterCache struct {
-	// epoch is the value of VM.protoEpoch at which plain was computed.
+	// iter and next are the data properties that iterating such an array reads.
+	iter dataSlot
+	next dataSlot
+
+	// epoch is the value of VM.protoEpoch at which iter and next were found.
 	epoch   uint32
-	plain   bool
 	checked bool
+	// found reports whether iter and next were found as data properties.
+	found bool
+}
+
+// dataSlot is the slot of a data property in the object that holds it.
+type dataSlot struct {
+	holder *Object
+	slot   int32
+}
+
+// findData looks key up on o and its prototypes, and reports whether it names a data property.
+func (d *dataSlot) findData(o *Object, key *Object) bool {
+	h, p, ok := find(o, key)
+	if !ok || p.flags&FlagAccessor != 0 || p.slot < 0 {
+		*d = dataSlot{}
+		return false
+	}
+	*d = dataSlot{
+		holder: h,
+		slot:   p.slot,
+	}
+	return true
+}
+
+// value returns the current value of the property that findData found.
+func (d *dataSlot) value() Value {
+	return d.holder.slots[d.slot]
 }
 
 // Call calls the callable object f.

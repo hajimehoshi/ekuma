@@ -1919,7 +1919,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		{
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && !vm.arrayIterationUnmodified() {
+			// The spread runs the modified iteration.
+			vm.frames[len(vm.frames)-1].pc = pc
+			argc, ret, isNew, newTarget = vm.iterateArguments(), i.A, false, nil
+			argBase = vm.frames[len(vm.frames)-1].top()
+			regs = vm.reload(regs, onHeap, base, fp)
+		} else {
 			cur := &vm.frames[len(vm.frames)-1]
 			argc, ret, isNew, newTarget = cur.argc, i.A, false, nil
 			argBase = cur.top()
@@ -1927,11 +1933,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			n := min(argc, fp.nparams)
 			copy(vm.stack[argBase:], regs[:n])
 			copy(vm.stack[argBase+n:], vm.extraArgs(&vm.frames[len(vm.frames)-1]))
-			if i.Op >= bytecode.OpTailApplyFwd {
-				goto tailCall
-			}
-			goto call
 		}
+		if i.Op >= bytecode.OpTailApplyFwd {
+			goto tailCall
+		}
+		goto call
 
 	callRegs:
 		// The arguments are in the registers from argBase on.
@@ -2168,6 +2174,25 @@ func (vm *VM) replaceFrame(f *Object, this Value, argBase, argc int) bool {
 		clear(vm.stack[vm.sp:end])
 	}
 	return true
+}
+
+// iterateArguments spreads the arguments of the running function, which is called through a
+// modified array iteration, onto the stack above its frame, and returns their number.
+func (vm *VM) iterateArguments() int {
+	fr := &vm.frames[len(vm.frames)-1]
+	regs := vm.stack[fr.base:]
+	if fr.gen != nil {
+		regs = fr.gen.regs
+	}
+	n := min(fr.argc, fr.fp.nparams)
+	args := make([]Value, 0, fr.argc)
+	args = append(args, regs[:n]...)
+	args = append(args, vm.extraArgs(fr)...)
+	list := vm.IteratorToList(Value{o: vm.NewArray(args)}, vm.Intrinsic(IntrinsicArrayPrototypeValues))
+	top := vm.frames[len(vm.frames)-1].top()
+	vm.ensureStack(top + len(list))
+	copy(vm.stack[top:], list)
+	return len(list)
 }
 
 // reload returns the registers of the running frame after a call that may have moved the stack.

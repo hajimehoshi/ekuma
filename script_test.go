@@ -1076,6 +1076,21 @@ func TestScripts(t *testing.T) {
 			want: "[object object]",
 		},
 		{
+			name: "array iteration modified after an iteration",
+			src: `[...[1, 2]];
+				Array.prototype[Symbol.iterator] = function* () { yield "X"; };
+				String([...[1, 2]])`,
+			want: "X",
+		},
+		{
+			name: "forwarded arguments with a modified array iterator next",
+			src: `function g(...r) { return r.length; }
+				(function (a, b) { return g(...arguments); })(1, 2);
+				Object.getPrototypeOf([][Symbol.iterator]()).next = function () { return { done: true }; };
+				(function (a, b) { return g(...arguments); })(1, 2)`,
+			want: "0",
+		},
+		{
 			name: "remainder of negative zero by a register",
 			src:  `var x = -0, y = 1; 1 / (x % y)`,
 			want: "-Infinity",
