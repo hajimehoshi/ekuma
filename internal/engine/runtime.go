@@ -545,7 +545,10 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		if b.Sign() < 0 {
 			vm.ThrowRangeError("exponent must be non-negative")
 		}
-		if !b.IsInt64() || (b.Int64() > 1<<24 && a.CmpAbs(big.NewInt(1)) > 0) {
+		// The result of a base other than 0, 1 and -1 has about BitLen(a)*b bits.
+		const maxExpBits = 1 << 25
+		if a.CmpAbs(big.NewInt(1)) > 0 &&
+			(!b.IsInt64() || b.Int64() > maxExpBits || int64(a.BitLen())*b.Int64() > maxExpBits) {
 			vm.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		r.Exp(a, b, nil)

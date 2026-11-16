@@ -829,6 +829,13 @@ func TestScripts(t *testing.T) {
 			want: "5,6,2",
 		},
 		{
+			name: "BigInt exponentiation by a huge exponent",
+			src: `var r = [0n ** (2n ** 64n), 1n ** (2n ** 64n), (-1n) ** (2n ** 64n + 1n)];
+				try { (2n ** 256n) ** (2n ** 24n); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
+				r.join()`,
+			want: "0,1,-1,true",
+		},
+		{
 			name: "arguments passed on past a parameter default",
 			src: `function g() { return arguments[arguments.length - 1]; }
 				function f(a = 1) { return g.apply(null, arguments); }
