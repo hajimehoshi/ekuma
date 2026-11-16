@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"math/bits"
 	"slices"
 	"strconv"
 	"strings"
@@ -769,10 +770,15 @@ func (vm *VM) getProp(o *Object, k PropKey, receiver Value) Value {
 	return Undefined
 }
 
-// growElems reports whether storing the index i in o should extend elems, given their length n.
-func growElems(n int, i uint32) bool {
-	return int64(i) <= int64(n)+int64(n)/2+16
+// growElems reports whether storing the index i should extend elems.
+func growElems(elems []Value, i uint32) bool {
+	n := int64(len(elems))
+	return int64(i) < int64(cap(elems)) || int64(i) <= n+n/2+16
 }
+
+// denseFactor is the largest number of slots per element for which [VM.densify] moves the array
+// index properties of an object into elems.
+const denseFactor = 4
 
 // addIndex creates the data property with the array index i on o, which has no such own property.
 // It reports false when o does not allow it.
@@ -793,13 +799,18 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 			vm.touchProto(o)
 			return true
 		}
-		if growElems(n, i) {
+		if growElems(o.elems, i) {
 			o.elems = reserveElems(o.elems, int(i)+1-n)
 			for uint32(len(o.elems)) < i {
 				o.elems = append(o.elems, hole)
 			}
 			o.elems = append(o.elems, val)
 			vm.touchProto(o)
+			// The elements may have reached the indices in the shape. Checking only when their
+			// number passes a power of two bounds the cost of the checks by that of the growth.
+			if o.flags&objSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.elems))) {
+				vm.densify(o)
+			}
 			return true
 		}
 	}
@@ -808,7 +819,89 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	if o.flags&objIsProto != 0 {
 		vm.protoEpoch++
 	}
+	// Checking only when the number of properties in the shape reaches a power of two bounds
+	// the cost of the checks by that of the additions. The elements would need more than i
+	// slots.
+	if c := int64(o.shape.count); flags == FlagsData && c&(c-1) == 0 && (int64(len(o.elems))+c)*denseFactor > int64(i) {
+		vm.densify(o)
+	}
 	return true
+}
+
+// densify moves the array index properties of o from its shape to elems, and clears objSparse,
+// when they are all writable, enumerable and configurable data properties and elems would have
+// at most denseFactor slots per element.
+func (vm *VM) densify(o *Object) {
+	if o.kind != kindArray && o.class != classObject || o.flags&(objExotic|objNotExtensible) != 0 {
+		return
+	}
+	// The new shape adds the named properties to root, which keeps its own properties, if any,
+	// in the first base slots.
+	s := o.shape
+	var root *shape
+	var base int
+	if s.private {
+		root = vm.shapeFor(s.proto)
+	} else {
+		root = s
+		for root.parent != nil {
+			root = root.parent
+		}
+		base = int(root.count)
+	}
+	keys := s.keys()
+	var count int64
+	end := int64(len(o.elems))
+	for j, k := range keys {
+		if k.kind != kindString {
+			continue
+		}
+		i, ok := stringIndex(k.str)
+		if !ok {
+			continue
+		}
+		if j < base {
+			return
+		}
+		if p, _ := s.lookup(k); p.flags != FlagsData {
+			return
+		}
+		count++
+		end = max(end, int64(i)+1)
+	}
+	if (int64(len(o.elems))+count)*denseFactor < end {
+		return
+	}
+	present := count
+	for _, e := range o.elems {
+		if !e.isHole() {
+			present++
+		}
+	}
+	if present*denseFactor < end {
+		return
+	}
+
+	elems := reserveElems(o.elems, int(end)-len(o.elems))
+	for int64(len(elems)) < end {
+		elems = append(elems, hole)
+	}
+	slots := o.slots
+	o.shape = root
+	o.slots = append(make([]Value, 0, int64(len(slots))-count), slots[:base]...)
+	for _, k := range keys[base:] {
+		p, _ := s.lookup(k)
+		if k.kind == kindString {
+			if i, ok := stringIndex(k.str); ok {
+				elems[i] = slots[p.slot]
+				continue
+			}
+		}
+		vm.add(o, k, slots[p.slot], p.flags)
+	}
+	o.elems = elems
+	o.flags &^= objSparse
+	vm.touchProto(o)
 }
 
 // setArrayLength implements ArraySetLength for a length that is already converted.

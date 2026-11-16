@@ -360,6 +360,77 @@ func TestScripts(t *testing.T) {
 			want: "500,1500,1700,2500",
 		},
 		{
+			name: "array filled from the end",
+			src: `var a = []; for (var i = 199; i >= 0; i--) { a[i] = i * 2; if (i === 150) a.x = "x"; }
+				var k = Object.keys(a);
+				[a.length, a[0], a[17], a[199], k.length, k[0], k[1], k[199], k[200], a.indexOf(300), a.lastIndexOf(2),
+					JSON.stringify(Object.getOwnPropertyDescriptor(a, 180))].join("|")`,
+			want: `200|0|34|398|201|0|1|199|x|150|1|{"value":360,"writable":true,"enumerable":true,"configurable":true}`,
+		},
+		{
+			name: "array with a few holes",
+			src: `var a = []; a[40] = 40; for (var i = 0; i < 40; i++) if (i % 10 !== 5) a[i] = i;
+				var n = 0; a.forEach(function () { n++; });
+				[a.length, 5 in a, 6 in a, a[40], n, Object.keys(a).slice(4, 7).join(), a.indexOf(undefined), a.includes(undefined),
+					a.findIndex(function (v) { return v === undefined; })].join("|")`,
+			want: "41|false|true|40|37|4,6,7|-1|true|5",
+		},
+		{
+			name: "array filled from the end keeps the attributes of its elements",
+			src: `var a = [];
+				Object.defineProperty(a, 150, { value: "ro", writable: false, enumerable: true, configurable: true });
+				Object.defineProperty(a, 120, { get: function () { return "g"; }, enumerable: false, configurable: true });
+				for (var i = 199; i >= 0; i--) if (i !== 150 && i !== 120) a[i] = i;
+				a[150] = "changed";
+				var k = Object.keys(a);
+				[a[150], Object.getOwnPropertyDescriptor(a, 150).writable, a[120], k.length, k.indexOf("120"), a.length].join("|")`,
+			want: "ro|false|g|199|-1|200",
+		},
+		{
+			name: "array filled from the end becomes sparse and dense again",
+			src: `var a = []; for (var i = 99; i >= 0; i--) a[i] = i;
+				a[1000000] = "far";
+				var k = Object.keys(a);
+				var r = [a.length, k.length, k[99], k[100], 500 in a, a[1000000]];
+				a.length = 50;
+				k = Object.keys(a);
+				r.push(a.length, k.length, k[49], 1000000 in a, a[60]);
+				a[300] = 3;
+				r.push(a.length, Object.keys(a).slice(-2).join());
+				for (var i = 299; i >= 50; i--) a[i] = -i;
+				r.push(Object.keys(a).length, a.lastIndexOf(3), a[100], a.indexOf(-50));
+				r.join("|")`,
+			want: "1000001|101|99|1000000|false|far|50|50|49|false||301|49,300|301|300|-100|50",
+		},
+		{
+			name: "object with index keys filled from the end",
+			src: `var o = { first: 1 }; for (var i = 99; i >= 0; i--) { o[i] = i; if (i === 50) o.mid = 2; }
+				var k = Object.keys(o);
+				[k.length, k[0], k[99], k[100], k[101], o[75], JSON.stringify(o).slice(-26)].join("|")`,
+			want: `102|0|99|first|mid|75|"99":99,"first":1,"mid":2}`,
+		},
+		{
+			name: "prototype filled from the end",
+			src: `var p = {}; p[99] = 0; p.m = function () { return "m"; };
+				var o = Object.create(p);
+				function f() { return o.m() + o[50]; }
+				var r = [f()];
+				for (var i = 98; i >= 0; i--) p[i] = i;
+				r.push(f(), f());
+				r.join()`,
+			want: "mundefined,m50,m50",
+		},
+		{
+			name: "arguments filled from the end keep their mapping",
+			src: `function f(a, b) {
+					for (var i = 99; i >= 2; i--) arguments[i] = i;
+					a = "a"; arguments[1] = "b";
+					return [arguments[0], b, arguments.length, arguments[50]].join();
+				}
+				f(1, 2)`,
+			want: "a,b,2,50",
+		},
+		{
 			name: "named function expression and arguments",
 			src:  `var f = function fact(n) { return n <= 1 ? 1 : n * fact(n - 1); }; (function() { return arguments.length + f(arguments[0]); })(4, 5)`,
 			want: "26",
@@ -1009,6 +1080,12 @@ func TestAllocationsPerOperation(t *testing.T) {
 			setup: `var a = "0";`,
 			body:  "`x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}`;",
 			want:  2,
+		},
+		{
+			name:  "stores into an array filled from the end",
+			setup: `var a = []; for (var j = 199; j >= 0; j--) a[j] = j;`,
+			body:  `for (var j = 0; j < 200; j++) a[j] = j;`,
+			want:  0,
 		},
 	}
 	for _, tt := range tests {
