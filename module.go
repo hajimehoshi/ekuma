@@ -75,7 +75,7 @@ func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 		}
 		m, err := f(r)
 		if err != nil {
-			return nil, engineError(err)
+			return nil, vm.engineError(err)
 		}
 		if m == nil {
 			return nil, nil
@@ -88,7 +88,7 @@ func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 }
 
 // engineError converts an error of the host to the error types of the engine.
-func engineError(err error) error {
+func (vm *VM) engineError(err error) error {
 	if se, ok := errors.AsType[*SyntaxError](err); ok {
 		return &engine.SyntaxError{
 			File:    se.File,
@@ -97,7 +97,7 @@ func engineError(err error) error {
 		}
 	}
 	if ex, ok := errors.AsType[*Error](err); ok {
-		return &engine.Error{Value: ex.Value.engine()}
+		return &engine.Error{Value: vm.acceptValue(ex.Value)}
 	}
 	return err
 }

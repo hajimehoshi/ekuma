@@ -64,6 +64,8 @@ func (vm *VM) initIfNeeded() {
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
 // ValueOf panics when x is not one of the expected types or is a nil pointer.
+// It panics for a string, object or function of another VM,
+// including values nested in arrays and maps.
 //
 // The objects that ValueOf creates belong to the initial realm.
 func (vm *VM) ValueOf(x any) Value {
@@ -75,7 +77,7 @@ func (vm *VM) ValueOf(x any) Value {
 func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 	switch x := x.(type) {
 	case Value:
-		return x.engine()
+		return vm.acceptValue(x)
 	case nil:
 		return engine.Null
 	case bool:
@@ -118,6 +120,16 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 		return v
 	}
 	panic(fmt.Sprintf("ekuma: ValueOf: invalid value of type %T", x))
+}
+
+// acceptValue checks ownership before passing v to the engine.
+func (vm *VM) acceptValue(v Value) engine.Value {
+	if v.o != nil {
+		if owner := v.o.VM(); owner != nil && owner != vm.e {
+			panic("ekuma: value belongs to another VM: " + v.String())
+		}
+	}
+	return v.engine()
 }
 
 // objectOf implements [Realm.ValueOf] for the values that become objects, with r as the

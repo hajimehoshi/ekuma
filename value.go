@@ -56,6 +56,11 @@ func (t Type) String() string {
 //
 // Values cannot be compared with ==. [Value.Equal] compares the way the JavaScript operator ===
 // does.
+//
+// Strings, objects and functions belong to their creating VM and may pass between its
+// realms. Passing them into another VM panics, including through
+// host callback results and exceptions. Other primitives may pass between VMs.
+// To share SharedArrayBuffer memory, pass its [SharedDataBlock] to [VM.ValueOf].
 type Value struct {
 	// _ makes [Value] uncomparable.
 	_ [0]func()
@@ -355,13 +360,14 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 }
 
 // InstanceOf reports whether v is an instance of the constructor t, as the instanceof operator does.
-// The errors are those of [Value.Get], for t.
+// The errors are those of [Value.Get], for t. It panics if v
+// belongs to a different VM from t.
 func (v Value) InstanceOf(t Value) (bool, error) {
 	vm, err := t.vm("Value.InstanceOf")
 	if err != nil {
 		return false, err
 	}
-	r, err := vm.e.HostInstanceOf(v.engine(), t.engine())
+	r, err := vm.e.HostInstanceOf(vm.acceptValue(v), t.engine())
 	return r, vm.publicError(err)
 }
 

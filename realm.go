@@ -135,10 +135,11 @@ func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 }
 
 // NewSyntheticModule returns a module of r whose only export is default, with the value v.
+// It panics if v belongs to another VM.
 func (r *Realm) NewSyntheticModule(name string, v Value) *Module {
 	m := r.newModule(name)
 	r.in(func() {
-		m.m = r.vm.e.CreateDefaultExportSyntheticModule(v.engine(), m)
+		m.m = r.vm.e.CreateDefaultExportSyntheticModule(r.vm.acceptValue(v), m)
 	})
 	return m
 }

@@ -19,6 +19,132 @@ import (
 	"github.com/hajimehoshi/ekuma"
 )
 
+func TestForeignValueEntry(t *testing.T) {
+	for _, name := range []string{
+		"ValueOf", "RealmValueOf", "Nested", "Set", "SetIndex", "Invoke", "Call", "New",
+		"Result", "Exception", "SyntheticModule", "InstanceOf", "LoaderException", "ImportMeta",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var a, b ekuma.VM
+			foreign := a.ValueOf(map[string]any{"x": 42})
+			f := b.FuncOf("identity", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+				return args[0], nil
+			})
+			defer func() {
+				if got := recover(); got != nil {
+					if _, ok := got.(string); !ok {
+						t.Errorf("panic = %v (%T), want a string", got, got)
+					}
+				} else {
+					t.Error("foreign value was accepted without a panic")
+				}
+			}()
+			switch name {
+			case "ValueOf":
+				b.ValueOf(foreign)
+			case "RealmValueOf":
+				b.NewRealm().ValueOf(foreign)
+			case "Nested":
+				b.ValueOf([]any{map[string]any{"nested": foreign}})
+			case "Set":
+				_ = b.Global().Set("foreign", foreign)
+			case "SetIndex":
+				_ = b.ValueOf([]any{}).SetIndex(0, foreign)
+			case "Invoke":
+				_, _ = f.Invoke(t.Context(), 1, foreign)
+			case "Call":
+				_, _ = b.ValueOf(map[string]any{"f": f}).Call(t.Context(), "f", foreign)
+			case "New":
+				ctor, err := b.Global().Get("Object")
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, _ = ctor.New(t.Context(), foreign)
+			case "Result", "Exception":
+				callback := b.FuncOf("foreign", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+					if name == "Exception" {
+						return nil, fmt.Errorf("wrapped: %w", &ekuma.Error{Value: foreign})
+					}
+					return foreign, nil
+				})
+				_, _ = callback.Invoke(t.Context())
+			case "SyntheticModule":
+				b.NewRealm().NewSyntheticModule("foreign", foreign)
+			case "InstanceOf":
+				ctor, err := b.Global().Get("Object")
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, _ = foreign.InstanceOf(ctor)
+			case "LoaderException":
+				b.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+					return nil, &ekuma.Error{Value: foreign}
+				})
+				m, err := b.ParseModule("main", `import "foreign"`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_ = m.LoadRequestedModules()
+			case "ImportMeta":
+				b.SetImportMeta(func(m *ekuma.Module) map[string]any {
+					return map[string]any{"foreign": foreign}
+				})
+				m, err := b.ParseModule("main", `import.meta.foreign`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, _ = m.Evaluate(t.Context())
+			}
+		})
+	}
+}
+
+func TestForeignValueKinds(t *testing.T) {
+	for _, src := range []string{`"key"`, `(() => {})`, `new SharedArrayBuffer(4)`} {
+		t.Run(src, func(t *testing.T) {
+			var a, b ekuma.VM
+			v, err := runScript(t.Context(), &a, "", src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if got := recover(); got != nil {
+					if _, ok := got.(string); !ok {
+						t.Errorf("panic = %v (%T), want a string", got, got)
+					}
+				} else {
+					t.Error("foreign value was accepted without a panic")
+				}
+			}()
+			b.ValueOf(v)
+		})
+	}
+}
+
+func TestVMIndependentValues(t *testing.T) {
+	var a, b ekuma.VM
+	values, err := runScript(t.Context(), &a, "", `[undefined, null, true, 42, 3n, 2n ** 100n, Symbol("key")]`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range 7 {
+		v, err := values.Index(i)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Global().Set("value", v); err != nil {
+			t.Fatal(err)
+		}
+		got, err := runScript(t.Context(), &b, "", `({[value]: value})[value]`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !got.Equal(v) {
+			t.Errorf("value %d did not survive transfer", i)
+		}
+	}
+}
+
 func TestValueSize(t *testing.T) {
 	// A Value is as large as its number and its pointer alone.
 	type layout struct {
