@@ -1109,7 +1109,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	}
 	this := tdz
 	if !fn.derived {
-		this = Value{o: vm.NewObject(vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicObjectPrototype)))}
+		this = Value{o: newInstance(vm.shapeFor(vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicObjectPrototype))))}
 	}
 	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {

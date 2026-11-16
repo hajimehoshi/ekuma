@@ -1415,6 +1415,12 @@ func TestAllocationsPerOperation(t *testing.T) {
 			want:  0,
 		},
 		{
+			name:  "construction of an instance of a subclass",
+			setup: `class P { constructor(x, y) { this.x = x; this.y = y; } } class Q extends P { constructor(x) { super(x, 2); } }`,
+			body:  `new Q(1);`,
+			want:  1,
+		},
+		{
 			name:  "for-in over an array",
 			setup: `var src = [], s = 0; for (var j = 0; j < 16; j++) src.push(j);`,
 			body:  `for (var k in src) s += src[k];`,

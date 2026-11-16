@@ -587,6 +587,31 @@ func (vm *VM) NewObject(proto *Object) *Object {
 	}
 }
 
+// maxInstanceSlots bounds the room for properties that newInstance gives an object.
+const maxInstanceSlots = 16
+
+// branchedInstanceSlots is the room for properties that newInstance gives an object when
+// the objects with its shape have been given different properties.
+const branchedInstanceSlots = 4
+
+// newInstance returns a new empty ordinary object with the shape s, with room for the
+// properties that the objects with s have been given one after another so far.
+func newInstance(s *shape) *Object {
+	n := 0
+	if s.transitions.only == nil && !s.transitions.empty() {
+		// The prototype of a subclass also starts with s.
+		n = branchedInstanceSlots
+	}
+	for t := s.transitions.only; t != nil && n < maxInstanceSlots; t = t.transitions.only {
+		n++
+	}
+	o, slots := newObjectWithStorage(n)
+	o.kind = kindObject
+	o.shape = s
+	o.slots = slots[:0]
+	return o
+}
+
 // NewOrdinaryObject returns a new empty ordinary object whose prototype is %Object.prototype%.
 func (vm *VM) NewOrdinaryObject() *Object {
 	return &Object{
