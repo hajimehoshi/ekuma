@@ -310,6 +310,7 @@ func (p *parser) parseTerm() *node {
 	c := p.peek()
 	var atom *node
 	quantifiable := true
+	groups := p.nextGroup
 	switch c {
 	case '^':
 		p.pos++
@@ -358,7 +359,7 @@ func (p *parser) parseTerm() *node {
 		p.pos++
 		atom = p.charNode(c)
 	}
-	return p.parseQuantifier(atom, quantifiable)
+	return p.parseQuantifier(atom, quantifiable, groups)
 }
 
 func (p *parser) top() rune {
@@ -409,7 +410,9 @@ func (p *parser) decimal(i int) (int, int, bool) {
 	return v, i, i > start
 }
 
-func (p *parser) parseQuantifier(atom *node, quantifiable bool) *node {
+// parseQuantifier parses the quantifier of atom, if any. groups is the number of the capturing
+// groups before atom.
+func (p *parser) parseQuantifier(atom *node, quantifiable bool, groups int) *node {
 	lo, hi := 0, 0
 	switch p.peek() {
 	case '*':
@@ -448,31 +451,11 @@ func (p *parser) parseQuantifier(atom *node, quantifiable bool) *node {
 		n.greedy = false
 	}
 	n.subs = []*node{atom}
-	n.cap, n.capEnd = p.capturesIn(atom)
+	// The groups of atom are numbered from groups+1 up to p.nextGroup.
+	if p.nextGroup > groups {
+		n.cap, n.capEnd = groups+1, p.nextGroup+1
+	}
 	return n
-}
-
-// capturesIn returns the range of capture indices that the parsed node contains: the groups
-// from first up to but excluding end.
-func (p *parser) capturesIn(n *node) (first, end int) {
-	first, end = -1, -1
-	var walk func(n *node)
-	walk = func(n *node) {
-		if n.op == opCapture {
-			if first < 0 || n.cap < first {
-				first = n.cap
-			}
-			end = max(end, n.cap+1)
-		}
-		for _, s := range n.subs {
-			walk(s)
-		}
-	}
-	walk(n)
-	if first < 0 {
-		return 0, 0
-	}
-	return first, end
 }
 
 func (p *parser) parseGroup() (*node, bool) {
