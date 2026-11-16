@@ -8,4 +8,4 @@ package parser
 const maxDepth = 400
 
 // maxLinks is the limit of the total length of the chains being parsed, such as a+b+c.
-const maxLinks = 1000
+const maxLinks = 3000
