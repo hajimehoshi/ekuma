@@ -1229,6 +1229,9 @@ func TestCapturedVariables(t *testing.T) {
 
 // TestAllocationsPerOperation covers the number of allocations of common operations.
 func TestAllocationsPerOperation(t *testing.T) {
+	if raceEnabled {
+		t.Skip("the race detector changes the number of allocations")
+	}
 	tests := []struct {
 		name  string
 		setup string
