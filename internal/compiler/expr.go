@@ -5,6 +5,7 @@ package compiler
 
 import (
 	"math"
+	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -750,14 +751,30 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 			return
 		}
 	}
-	if s, ok := n.Property.(*ast.StringLit); ok && !isIndexString(s.Value) {
-		f.setPos(n.Property.Start())
-		f.emit(bytecode.OpGetProp, dst, obj, f.site(s.Value))
-		return
+	if s, ok := n.Property.(*ast.StringLit); ok {
+		if i, ok := int32Index(s.Value); ok {
+			f.setPos(n.Property.Start())
+			f.emit(bytecode.OpGetIndexInt, dst, obj, i)
+			return
+		}
+		if !isIndexString(s.Value) {
+			f.setPos(n.Property.Start())
+			f.emit(bytecode.OpGetProp, dst, obj, f.site(s.Value))
+			return
+		}
 	}
 	key := f.exprAny(n.Property)
 	f.setPos(n.Property.Start())
 	f.emit(bytecode.OpGetIndex, dst, obj, key)
+}
+
+// int32Index returns the array index whose canonical string form is s, if it fits in an int32.
+func int32Index(s string) (int32, bool) {
+	i, err := strconv.ParseInt(s, 10, 32)
+	if err != nil || i < 0 || strconv.FormatInt(i, 10) != s {
+		return 0, false
+	}
+	return int32(i), true
 }
 
 // isIndexString reports whether s may be the canonical form of an array index.
