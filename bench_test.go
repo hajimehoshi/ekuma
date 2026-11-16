@@ -765,3 +765,48 @@ func BenchmarkStringSplitEmpty(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkURIEncode(b *testing.B) {
+	safe := strings.Repeat("abcXYZ09-_.!~*'()", 128)
+	for _, name := range []string{"encodeURI", "encodeURIComponent"} {
+		for _, c := range []struct {
+			name string
+			text string
+		}{
+			{
+				name: "Unchanged",
+				text: safe,
+			},
+			{
+				name: "LateEscape",
+				text: safe + " ",
+			},
+			{
+				name: "EarlyEscape",
+				text: " " + safe,
+			},
+			{
+				name: "Reserved",
+				text: strings.Repeat(";/?:@&=+$,#", 128),
+			},
+			{
+				name: "Unicode",
+				text: strings.Repeat("日本語😀", 128),
+			},
+		} {
+			b.Run(name+"/"+c.name, func(b *testing.B) {
+				var vm ekuma.VM
+				global := vm.Global()
+				input := vm.ValueOf(c.text)
+				ctx := b.Context()
+				b.ReportAllocs()
+				b.ResetTimer()
+				for b.Loop() {
+					if _, err := global.Call(ctx, name, input); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	}
+}

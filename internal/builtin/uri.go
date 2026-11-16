@@ -56,10 +56,18 @@ func throwURIError(vm *engine.VM, msg string) {
 
 // uriEncode implements Encode. The ASCII characters in extraUnescaped are not escaped.
 func uriEncode(vm *engine.VM, s string, extraUnescaped string) string {
+	var i int
+	for i < len(s) && s[i] < 0x80 && strings.IndexByte(extraUnescaped, s[i]) >= 0 {
+		i++
+	}
+	if i == len(s) {
+		return s
+	}
 	var b strings.Builder
 	b.Grow(len(s))
+	b.WriteString(s[:i])
 	var buf [utf8.UTFMax]byte
-	for i := 0; i < len(s); {
+	for i < len(s) {
 		if c := s[i]; c < 0x80 && strings.IndexByte(extraUnescaped, c) >= 0 {
 			b.WriteByte(c)
 			i++

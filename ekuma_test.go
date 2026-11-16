@@ -1942,3 +1942,30 @@ func TestRealmRestored(t *testing.T) {
 	}
 	check("an interruption")
 }
+
+func TestURIEncodeSafePrefix(t *testing.T) {
+	for _, name := range []string{"encodeURI", "encodeURIComponent"} {
+		t.Run(name, func(t *testing.T) {
+			var vm ekuma.VM
+			_, err := runScript(t.Context(), &vm, "uri.js", `
+				const encode = `+name+`;
+				const prefix = "abcXYZ09-_.!~*'()".repeat(128);
+				if (encode(prefix + "😀 x") !== prefix + "%F0%9F%98%80%20x") {
+					throw new Error("incorrect encoding after safe prefix");
+				}
+				for (const suffix of ["\uD800", "\uDC00"]) {
+					let caught = false;
+					try { encode(prefix + suffix); }
+					catch (e) {
+						if (!(e instanceof URIError)) throw e;
+						caught = true;
+					}
+					if (!caught) throw new Error("missing URIError after safe prefix");
+				}
+			`)
+			if err != nil {
+				t.Errorf("runScript: %v", err)
+			}
+		})
+	}
+}
