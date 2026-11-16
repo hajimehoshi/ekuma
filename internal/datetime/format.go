@@ -15,7 +15,13 @@ var monthNames = [12]string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Au
 
 // pad appends n, which must be a non-negative integer, with at least width digits.
 func pad(b []byte, n float64, width int) []byte {
-	s := strconv.FormatFloat(n, 'f', 0, 64)
+	var buf [24]byte
+	var s []byte
+	if n < maxExactInt {
+		s = strconv.AppendUint(buf[:0], uint64(n), 10)
+	} else {
+		s = strconv.AppendFloat(buf[:0], n, 'f', 0, 64)
+	}
 	for i := len(s); i < width; i++ {
 		b = append(b, '0')
 	}
@@ -74,7 +80,7 @@ func appendTimeZone(b []byte, tv float64, tz TimeZone) []byte {
 // String implements ToDateString for the time value tv, which must not be NaN.
 func String(tv float64, tz TimeZone) string {
 	t := LocalTime(tv, tz)
-	b := appendDate(nil, t)
+	b := appendDate(make([]byte, 0, 64), t)
 	b = append(b, ' ')
 	b = appendTime(b, t)
 	return string(appendTimeZone(b, tv, tz))
@@ -93,7 +99,7 @@ func TimeString(tv float64, tz TimeZone) string {
 
 // UTCString returns the result of Date.prototype.toUTCString for the time value tv, which must not be NaN.
 func UTCString(tv float64) string {
-	b := append([]byte(nil), weekdayNames[int(WeekDay(tv))]...)
+	b := append(make([]byte, 0, 32), weekdayNames[int(WeekDay(tv))]...)
 	b = append(b, ", "...)
 	b = pad(b, DateFromTime(tv), 2)
 	b = append(b, ' ')
@@ -106,7 +112,7 @@ func UTCString(tv float64) string {
 
 // ISOString returns the result of Date.prototype.toISOString for the time value tv, which must be finite.
 func ISOString(tv float64) string {
-	var b []byte
+	b := make([]byte, 0, 32)
 	switch y := YearFromTime(tv); {
 	case y < 0:
 		b = append(b, '-')

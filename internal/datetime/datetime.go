@@ -21,8 +21,18 @@ const (
 	maxTime = 8.64e15
 )
 
+// maxExactInt is the largest magnitude below which every integer is a float64.
+const maxExactInt = 1 << 53
+
 // modulo returns x modulo y with the sign of y.
 func modulo(x, y float64) float64 {
+	if y != 0 && x == math.Trunc(x) && y == math.Trunc(y) && math.Abs(x) <= maxExactInt && math.Abs(y) <= maxExactInt {
+		r := int64(x) % int64(y)
+		if r != 0 && (r < 0) != (y < 0) {
+			r += int64(y)
+		}
+		return float64(r)
+	}
 	r := math.Mod(x, y)
 	if r != 0 && (r < 0) != (y < 0) {
 		r += y
@@ -97,20 +107,28 @@ func DayWithinYear(t float64) float64 {
 	return Day(t) - DayFromYear(YearFromTime(t))
 }
 
+// monthFromTime returns the month (0 to 11) of the time value t, the day within its year,
+// and whether its year is a leap year.
+func monthFromTime(t float64) (month int, day float64, leap bool) {
+	y := YearFromTime(t)
+	day = Day(t) - DayFromYear(y)
+	leap = DaysInYear(y) == 366
+	for month < 11 && day >= daysBeforeMonth(month+1, leap) {
+		month++
+	}
+	return month, day, leap
+}
+
 // MonthFromTime implements MonthFromTime: a month from 0 to 11.
 func MonthFromTime(t float64) float64 {
-	d := DayWithinYear(t)
-	leap := InLeapYear(t)
-	m := 0
-	for m < 11 && d >= daysBeforeMonth(m+1, leap) {
-		m++
-	}
+	m, _, _ := monthFromTime(t)
 	return float64(m)
 }
 
 // DateFromTime implements DateFromTime: a day of the month from 1 to 31.
 func DateFromTime(t float64) float64 {
-	return DayWithinYear(t) - daysBeforeMonth(int(MonthFromTime(t)), InLeapYear(t)) + 1
+	m, d, leap := monthFromTime(t)
+	return d - daysBeforeMonth(m, leap) + 1
 }
 
 // WeekDay implements WeekDay: 0 for Sunday to 6 for Saturday.
