@@ -233,6 +233,30 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	return v, true
 }
 
+// FillElements stores v as the elements of the array o from start up to end, as
+// Array.prototype.fill does when the length of o is n. It reports false when it did nothing.
+func (vm *VM) FillElements(o *Object, n, start, end int64, v Value) bool {
+	if o.kind != kindArray || int64(o.length) != n || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
+		return false
+	}
+	// Storing past the stored elements must not skip an index.
+	if start < 0 || start > int64(len(o.elems)) || end > n || !vm.holesAreAbsent(o) {
+		return false
+	}
+	vm.touchProto(o)
+	for i := start; i < end; i++ {
+		if vm.interrupt.Load() {
+			vm.Poll()
+		}
+		if i < int64(len(o.elems)) {
+			o.elems[i] = v
+		} else {
+			o.elems = appendElem(o.elems, v)
+		}
+	}
+	return true
+}
+
 // ReverseElements reverses the order of the elements of the array o.
 func (o *Object) ReverseElements() bool {
 	if !o.isDense() {

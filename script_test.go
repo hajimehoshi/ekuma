@@ -757,6 +757,24 @@ func TestScripts(t *testing.T) {
 			want: "9,-9,8,-8,7,-7,6,-6,5,-5,4,-4,3,-3,2,-2,1,-1,0,0,99",
 		},
 		{
+			name: "fill through a setter on the prototype",
+			src: `var log = [];
+				Object.defineProperty(Array.prototype, 1, {set(v) { log.push(v); }, configurable: true});
+				var a = new Array(3).fill(7);
+				[a.hasOwnProperty(0), a.hasOwnProperty(1), a.hasOwnProperty(2), log.join()].join()`,
+			want: "true,false,true,7",
+		},
+		{
+			name: "fill with a start that shrinks the array",
+			src:  `var a = [1, 2, 3, 4]; a.fill(9, { valueOf() { a.length = 1; return 1; } }); a.join()`,
+			want: "1,9,9,9",
+		},
+		{
+			name: "fill of holes and past the elements",
+			src:  `var a = [1, , 3]; a.length = 6; a.fill(0, 1, 5); [a.join(), 5 in a, new Array(3000).fill(2).lastIndexOf(2)].join("|")`,
+			want: "1,0,0,0,0,|false|2999",
+		},
+		{
 			name: "join with a separator that shrinks the array",
 			src:  `var a = [1, 2, 3]; a.join({ toString() { a.length = 1; return "-"; } })`,
 			want: "1--",

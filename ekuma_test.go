@@ -1571,12 +1571,13 @@ func TestCancelRegExp(t *testing.T) {
 	}
 }
 
-// TestCancelArrayIteration checks that iterating a long array can be stopped.
+// TestCancelArrayIteration checks that iterating or filling a long array can be stopped.
 func TestCancelArrayIteration(t *testing.T) {
 	var vm ekuma.VM
 	for _, src := range []string{
 		`new Set(new Array(2 ** 32 - 1)).size`,
 		`new Uint8Array(new Array(2 ** 32 - 1)).length`,
+		`new Array(2 ** 32 - 1).fill(0).length`,
 	} {
 		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 		_, err := runScript(ctx, &vm, "iterate", src)

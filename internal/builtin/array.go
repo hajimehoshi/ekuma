@@ -795,6 +795,9 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		if e := arg(args, 2); !e.IsUndefined() {
 			end = relIndex(vm.ToIntegerOrInfinity(e), n)
 		}
+		if vm.FillElements(o, n, start, end, arg(args, 0)) {
+			return engine.ObjectValue(o)
+		}
 		for i := start; i < end; i++ {
 			putAt(vm, o, i, arg(args, 0))
 		}
