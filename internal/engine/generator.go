@@ -69,6 +69,29 @@ type generator struct {
 	async *asyncState
 }
 
+// abortOnHostPanic closes an activation whose Go-level step did not finish.
+func (g *generator) abortOnHostPanic() {
+	if r := recover(); r != nil {
+		if isHostPanic(r) {
+			g.abort()
+		}
+		panic(r)
+	}
+}
+
+// abort closes an activation abandoned by a host panic without running JavaScript.
+func (g *generator) abort() {
+	g.closeUpvals(0)
+	g.state = genCompleted
+	g.regs, g.scopes, g.extra = nil, nil, nil
+	g.this, g.closeValue = Undefined, Undefined
+	g.newTarget = nil
+	if g.async != nil && g.async != asyncFunction {
+		g.async.queue = nil
+		g.async.draining = false
+	}
+}
+
 func (g *generator) findUpval(index int) *upvalue {
 	for _, u := range g.openUpvals {
 		if u.index == index {

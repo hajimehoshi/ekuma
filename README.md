@@ -125,8 +125,16 @@ A context stops everything that runs under it. When a `Func` makes a call with a
 context and that context stops the call, the outermost call returns the cause of that context
 and the `Func` does not continue. A context that is done after its call returned stops
 nothing. A panic of a `Func` or of another host function passes through to the caller of the
-outermost call and leaves the VM usable: like an interruption, it discards pending jobs and
-rejects the promises of the module evaluations in progress.
+Go call unchanged and leaves the VM usable. A host callback may also recover a panic from
+its reentrant call and continue. At the outermost boundary, pending jobs and unhandled
+rejection reports are discarded, and unfinished module evaluations are rejected, even if
+an inner panic was recovered. Synchronous module evaluations abandoned by a panic are
+rejected before control returns to the host. Aborted generators are closed without running JavaScript
+`catch` or `finally` blocks. Side effects are not rolled back. Promises for abandoned async
+functions, async generator requests, and discarded jobs may remain pending; later requests
+on an aborted async generator see it as completed. Suspended generators outside the aborted
+call remain intact. Host callbacks must not call `runtime.Goexit`: it is not a panic and
+leaves the VM unusable.
 
 `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless

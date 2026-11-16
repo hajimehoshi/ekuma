@@ -236,6 +236,15 @@ func (e *PanicError) Unwrap() error {
 	return err
 }
 
+func isHostPanic(value any) bool {
+	switch value.(type) {
+	case *throwSignal, *interruptSignal:
+		return false
+	default:
+		return true
+	}
+}
+
 // Interrupt stops execution with an [InterruptedError] carrying cause at the next loop
 // or call. It may be called from any goroutine and remains pending until observed or
 // cleared. Interrupted module evaluations are rejected with an Error whose message is
@@ -354,6 +363,9 @@ type VM struct {
 
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
+
+	// hostPanic defers job and module abandonment until the outermost call ends.
+	hostPanic *PanicError
 
 	// newTarget is the constructor a native function is being constructed for, and nil in a plain call.
 	newTarget *Object

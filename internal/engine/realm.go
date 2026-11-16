@@ -276,33 +276,50 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 // An interruption ends the outermost such call: when Go code that JavaScript called enters
 // the engine again, the interruption passes through that inner call and the Go code.
 //
-// A Go panic passes through every such call. The outermost one leaves the VM the way an
-// interruption does, with a [PanicError] as the cause.
+// A Go panic restores each boundary it escapes. The outermost boundary discards pending
+// jobs and rejects unfinished module evaluations, including after a recovered inner panic.
 func (vm *VM) enter(f func() Value) (result Value, err error) {
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
-	curRealm := vm.curRealm
+	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
+	thrown := vm.thrown
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
 		vm.entered--
 		if outermost {
-			// The outermost call into the engine ends the last job.
-			vm.clearKeptObjects()
+			defer func() {
+				if vm.hostPanic != nil {
+					cause := vm.hostPanic
+					vm.hostPanic = nil
+					vm.abortModuleEvaluations(cause)
+					vm.dropJobs()
+				}
+				vm.clearKeptObjects()
+				vm.clearStale()
+			}()
 		}
 		if r := recover(); r != nil {
-			if !outermost {
+			sig, interrupted := r.(*interruptSignal)
+			if interrupted && !outermost {
 				panic(r)
 			}
-			// The panic left frames and generators behind in whatever state they were.
+			// Only activations belonging to this boundary have lost their Go callers.
 			if vm.curRealm != curRealm {
 				vm.switchRealm(curRealm)
+			}
+			if !interrupted {
+				for i := frames; i < len(vm.frames); i++ {
+					if g := vm.frames[i].gen; g != nil {
+						g.abort()
+					}
+				}
 			}
 			vm.unwindTo(frames)
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
-			vm.thrown = Undefined
+			vm.callerRealm, vm.newTarget = callerRealm, newTarget
+			vm.thrown = thrown
 			var cause error
-			sig, interrupted := r.(*interruptSignal)
 			if interrupted {
 				result, err = Undefined, &InterruptedError{
 					Cause: sig.cause,
@@ -312,21 +329,14 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 					cause = err
 				}
 			} else {
-				cause = &PanicError{
+				vm.hostPanic = &PanicError{
 					Value: r,
 				}
+				panic(r)
 			}
 			// The rejections of the modules queue jobs, which are dropped as well.
 			vm.abortModuleEvaluations(cause)
 			vm.dropJobs()
-			if !interrupted {
-				vm.clearStale()
-				panic(r)
-			}
-		}
-		if outermost {
-			// The values that the calls left behind must not stay reachable while the VM is idle.
-			vm.clearStale()
 		}
 	}()
 	if !vm.protect(func() {

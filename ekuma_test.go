@@ -1291,11 +1291,12 @@ func TestCancelNestedContextUnobserved(t *testing.T) {
 // TestGoPanic checks that a Go panic that passes through the VM leaves it as usable as
 // an interruption does.
 func TestGoPanic(t *testing.T) {
-	var vm ekuma.VM
+	var vm, foreignVM ekuma.VM
+	foreign := foreignVM.Global()
 	global := vm.Global()
-	// The result is not a value that ValueOf converts.
+	// Returning another VM's object raises an ownership panic.
 	if err := global.Set("bad", vm.FuncOf("bad", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		return []string{"x"}, nil
+		return foreign, nil
 	})); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
@@ -1348,6 +1349,202 @@ func TestGoPanic(t *testing.T) {
 	}
 	if st, _ := p.PromiseState(); st != ekuma.PromiseRejected {
 		t.Errorf("got %v, want rejected", st)
+	}
+}
+
+func recoverHostPanic(f func()) (value any) {
+	defer func() { value = recover() }()
+	f()
+	return nil
+}
+
+// TestHostPanicReentrantRecovery checks that a host can recover and continue its caller.
+func TestHostPanicReentrantRecovery(t *testing.T) {
+	var vm ekuma.VM
+	marker := new(int)
+	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+		panic(marker)
+	})); err != nil {
+		t.Fatal(err)
+	}
+	inner, err := vm.ParseScript("inner", `
+		function abandoned() {
+			let x = 42; saved = () => x;
+			try { bad(); } catch (_) { caught = true; } finally { finalized = true; }
+		}
+		Promise.resolve().then(() => jobs++);
+		abandoned();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := vm.Global().Set("recoverInner", vm.FuncOf("recoverInner", func(ekuma.Value, []ekuma.Value) (any, error) {
+		// Repeated failures exhaust the call limit if abandoned frames remain.
+		for range 400 {
+			if got := recoverHostPanic(func() { _, _ = inner.Evaluate(t.Context()) }); got != marker {
+				t.Errorf("panic = %v, want original marker", got)
+			}
+		}
+		return 7, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if got := run(t, &vm, `
+		var saved, caught = false, finalized = false, jobs = 0;
+		function outer() { let x = 10; return recoverInner() + x; }
+		[outer(), saved(), caught, finalized].join()`); got != "17,42,false,false" {
+		t.Errorf("result = %s", got)
+	}
+	if got := run(t, &vm, `jobs`); got != "0" {
+		t.Errorf("abandoned jobs ran: %s", got)
+	}
+}
+
+// TestHostPanicGenerators checks that aborted activations close without running finally.
+func TestHostPanicGenerators(t *testing.T) {
+	var vm ekuma.VM
+	marker := new(int)
+	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+		panic(marker)
+	})); err != nil {
+		t.Fatal(err)
+	}
+	run(t, &vm, `
+		var saved, finalized = false;
+		var g = (function* () {
+			let x = 42; saved = () => x;
+			try { bad(); } finally { finalized = true; }
+		})();
+		var ag = (async function* () { bad(); })();`)
+	for _, src := range []string{`g.next()`, `ag.next()`} {
+		if got := recoverHostPanic(func() { _, _ = runScript(t.Context(), &vm, "generator", src) }); got != marker {
+			t.Errorf("panic = %v, want original marker", got)
+		}
+	}
+	if got := run(t, &vm, `[g.next().done, saved(), finalized].join()`); got != "true,42,false" {
+		t.Errorf("generator after abort = %s", got)
+	}
+	run(t, &vm, `var done; ag.next().then(r => done = r.done);`)
+	if got := run(t, &vm, `done`); got != "true" {
+		t.Errorf("async generator after abort = %s", got)
+	}
+}
+
+// TestHostPanicReentrantModule checks that a recovered panic cannot expose a partial module.
+func TestHostPanicReentrantModule(t *testing.T) {
+	var vm ekuma.VM
+	marker := errors.New("host panic")
+	if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+		panic(marker)
+	})); err != nil {
+		t.Fatal(err)
+	}
+	m, err := vm.ParseModule("abandoned", `bad()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vm.SetModuleLoader(func(ekuma.ModuleRequest) (*ekuma.Module, error) { return m, nil })
+	importer, err := vm.ParseModule("importer", `import "abandoned"; globalThis.importerRan = true;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := vm.Global().Set("recoverModule", vm.FuncOf("recoverModule", func(ekuma.Value, []ekuma.Value) (any, error) {
+		if got := recoverHostPanic(func() { _, _ = m.Evaluate(t.Context()) }); got != marker {
+			t.Errorf("panic = %v, want original marker", got)
+			return nil, nil
+		}
+		p, err := importer.Evaluate(t.Context())
+		if err != nil {
+			t.Errorf("Evaluate importer: %v", err)
+			return nil, nil
+		}
+		state, reason := p.PromiseState()
+		if state != ekuma.PromiseRejected {
+			t.Errorf("importer state = %v, want rejected", state)
+		}
+		if err := (&ekuma.Error{Value: reason}); !errors.Is(err, marker) {
+			t.Errorf("importer error = %v, want original cause", err)
+		}
+		return nil, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if got := run(t, &vm, `var importerRan = false; recoverModule(); importerRan`); got != "false" {
+		t.Errorf("importer ran against partial module: %s", got)
+	}
+}
+
+// TestHostPanicJobRecovery checks that recovered panics stop the current job drain.
+func TestHostPanicJobRecovery(t *testing.T) {
+	for _, reports := range []bool{false, true} {
+		t.Run(fmt.Sprintf("reports=%t", reports), func(t *testing.T) {
+			var vm ekuma.VM
+			marker := new(int)
+			if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+				panic(marker)
+			})); err != nil {
+				t.Fatal(err)
+			}
+			inner, err := vm.ParseScript("inner", `bad()`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			recoverInner := func() {
+				if got := recoverHostPanic(func() { _, _ = inner.Evaluate(t.Context()) }); got != marker {
+					t.Errorf("panic = %v, want original marker", got)
+				}
+			}
+			if reports {
+				var notified int
+				vm.SetUnhandledRejection(func(ekuma.Value, ekuma.Value) {
+					notified++
+					recoverInner()
+				})
+				run(t, &vm, `Promise.reject(1); Promise.reject(2);`)
+				if notified != 1 {
+					t.Errorf("reports = %d, want 1", notified)
+				}
+			} else {
+				if err := vm.Global().Set("recoverInner", vm.FuncOf("recoverInner", func(ekuma.Value, []ekuma.Value) (any, error) {
+					recoverInner()
+					return nil, nil
+				})); err != nil {
+					t.Fatal(err)
+				}
+				run(t, &vm, `var jobs = 0; Promise.resolve().then(recoverInner); Promise.resolve().then(() => jobs++);`)
+				if got := run(t, &vm, `jobs`); got != "0" {
+					t.Errorf("abandoned jobs ran: %s", got)
+				}
+			}
+		})
+	}
+}
+
+// TestHostPanicAsyncGeneratorStep checks aborts after the interpreter frame is gone.
+func TestHostPanicAsyncGeneratorStep(t *testing.T) {
+	for _, src := range []string{
+		`var g = (async function* () {})(); g.return({get then() { bad(); }});`,
+		`var g = (async function* () { await 0; })();
+		 Object.defineProperty(Object.prototype, "then", { configurable: true, get() {
+			 delete Object.prototype.then; bad();
+		 }}); g.next();`,
+	} {
+		t.Run(src, func(t *testing.T) {
+			var vm ekuma.VM
+			marker := new(int)
+			if err := vm.Global().Set("bad", vm.FuncOf("bad", func(ekuma.Value, []ekuma.Value) (any, error) {
+				panic(marker)
+			})); err != nil {
+				t.Fatal(err)
+			}
+			if got := recoverHostPanic(func() { _, _ = runScript(t.Context(), &vm, "step", src) }); got != marker {
+				t.Errorf("panic = %v, want original marker", got)
+				return
+			}
+			run(t, &vm, `var done; g.next().then(r => done = r.done);`)
+			if got := run(t, &vm, `done`); got != "true" {
+				t.Errorf("async generator after abort = %s", got)
+			}
+		})
 	}
 }
 

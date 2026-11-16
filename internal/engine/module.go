@@ -820,6 +820,16 @@ func (vm *VM) evaluateModule(m *Module) Value {
 	c := vm.newIntrinsicCapability()
 	m.topLevelCapability = c
 	var stack []*Module
+	defer func() {
+		if r := recover(); r != nil {
+			if isHostPanic(r) {
+				vm.rejectModuleEvaluations(stack, &PanicError{
+					Value: r,
+				})
+			}
+			panic(r)
+		}
+	}()
 	if e, ok := vm.innerModuleEvaluation(m, &stack); !ok {
 		for _, s := range stack {
 			s.status = moduleEvaluated
@@ -1176,6 +1186,10 @@ func (vm *VM) asyncModuleExecutionRejected(m *Module, e Value) {
 func (vm *VM) abortModuleEvaluations(cause error) {
 	modules := vm.modules.evaluating
 	vm.modules.evaluating = nil
+	vm.rejectModuleEvaluations(modules, cause)
+}
+
+func (vm *VM) rejectModuleEvaluations(modules []*Module, cause error) {
 	var e Value
 	var hasError bool
 	for _, m := range modules {

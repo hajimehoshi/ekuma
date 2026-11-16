@@ -23,10 +23,13 @@
 // [VM.AwaitJobs] waits for asynchronous notifications and runs their jobs.
 //
 // A panic of a [Func], or of another function of the host that JavaScript calls, passes
-// through to the caller of the outermost Go call that executes JavaScript. The VM stays
-// usable: as an interruption does, the panic discards pending jobs and the reports of
-// unhandled rejections, and ends the module evaluations in progress by rejecting their
-// promises.
+// through Go calls unchanged after restoring the VM's execution state. Host callbacks
+// may recover panics from reentrant calls. At the outermost boundary, pending jobs and
+// unhandled rejection reports are discarded and unfinished module evaluations are rejected.
+// Abandoned synchronous module evaluations are rejected before returning to the host.
+// Aborted generators are closed without running JavaScript catch or finally blocks.
+// Side effects remain, and promises for abandoned async work may remain pending.
+// Host callbacks must not call runtime.Goexit, which leaves the VM unusable.
 package ekuma
 
 import (
