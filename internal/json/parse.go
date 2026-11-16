@@ -298,7 +298,7 @@ func (p *Parser) close(f *frame, withRecords bool) (engine.Value, *Record) {
 	vals := p.vals[f.base:]
 	var o *engine.Object
 	if f.array {
-		o = vm.NewArray(append([]engine.Value(nil), vals...))
+		o = vm.NewArrayCopy(vals)
 	} else {
 		o = vm.NewObjectFromProperties(p.keys[f.keyBase:], vals)
 	}

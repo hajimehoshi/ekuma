@@ -606,6 +606,18 @@ func (vm *VM) NewArray(elems []Value) *Object {
 	}
 }
 
+// NewArrayCopy returns a new array with a copy of elems as its elements.
+func (vm *VM) NewArrayCopy(elems []Value) *Object {
+	a, storage := newObjectWithStorage(len(elems))
+	a.kind = kindArray
+	a.class = classArray
+	a.shape = vm.shapes.array
+	a.elems = storage
+	copy(a.elems, elems)
+	a.length = uint32(len(elems))
+	return a
+}
+
 // pairArray is an array of two elements together with the storage of its elements,
 // so that creating one is a single allocation.
 type pairArray struct {
@@ -749,11 +761,10 @@ func (vm *VM) NewArrayWithRoom(elems []Value, n int) *Object {
 // with the data properties keys[i]: vals[i] created in order as CreateDataProperty creates them.
 // A repeated key keeps its first position and takes the last value. It does not keep the slices.
 func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
-	o := &Object{
-		kind:  kindObject,
-		shape: vm.shapes.object,
-		slots: make([]Value, 0, len(vals)),
-	}
+	o, slots := newObjectWithStorage(len(vals))
+	o.kind = kindObject
+	o.shape = vm.shapes.object
+	o.slots = slots[:0]
 	for i, k := range keys {
 		v := vals[i]
 		if k.key == nil {
