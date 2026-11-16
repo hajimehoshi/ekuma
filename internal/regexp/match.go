@@ -45,6 +45,7 @@ type Matcher struct {
 
 	s      string
 	ascii  bool
+	asciiS string // the subject ascii was computed for
 	poller Poller
 	steps  int
 
@@ -72,9 +73,12 @@ func (re *Regexp) Find(m *Matcher, s string, start int, poller Poller) []int {
 func (re *Regexp) match(m *Matcher, s string, start int, sticky bool, poller Poller) []int {
 	prog := re.prog
 	m.s = s
-	m.ascii = len(s) == 0 || wtf8.IsASCII(s)
+	if s != m.asciiS || len(s) == 0 {
+		m.asciiS, m.ascii = s, len(s) == 0 || wtf8.IsASCII(s)
+	}
+	// The step budget carries over from the previous match, so that a loop of cheap
+	// matches still polls.
 	m.poller = poller
-	m.steps = pollInterval
 	if cap(m.caps) < prog.ncaps {
 		m.caps = make([]int, prog.ncaps)
 	}

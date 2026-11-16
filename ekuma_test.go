@@ -1359,6 +1359,12 @@ func TestCancelRegExp(t *testing.T) {
 	if _, err := runScript(ctx, &vm, "backtrack", `/^(a+)+$/.test("a".repeat(40) + "b")`); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("got %v, want context.DeadlineExceeded", err)
 	}
+	// Each match of a global replace is cheap, but there are many of them.
+	ctx, cancel = context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := runScript(ctx, &vm, "global", `"x".repeat(1 << 26).replace(/x/g, "y")`); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("global replace: got %v, want context.DeadlineExceeded", err)
+	}
 	v, err := runScript(t.Context(), &vm, "after", `"a1b22".replace(/\d+/g, function(m) { return "<" + m + ">"; })`)
 	if err != nil {
 		t.Fatalf("runScript: %v", err)
