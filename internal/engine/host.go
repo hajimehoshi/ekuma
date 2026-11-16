@@ -81,16 +81,14 @@ func (vm *VM) HostDelete(v, key Value) error {
 	return err
 }
 
-// HostCall calls f with the given this value and arguments, and then runs the pending jobs.
+// HostCall calls f with the given this value and arguments.
 func (vm *VM) HostCall(f, this Value, args []Value) (Value, error) {
 	return vm.enter(func() Value {
-		r := vm.CallValue(f, this, args...)
-		vm.runJobs()
-		return r
+		return vm.CallValue(f, this, args...)
 	})
 }
 
-// HostCallMethod calls the method v[key] with v as this, and then runs the pending jobs.
+// HostCallMethod calls the method v[key] with v as this.
 func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
 	return vm.enter(func() Value {
 		f, getter := vm.getValue(v, key)
@@ -100,21 +98,17 @@ func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
 		if !f.IsCallable() {
 			vm.ThrowTypeError(vm.DisplayString(key) + " is not a function")
 		}
-		r := vm.CallValue(f, v, args...)
-		vm.runJobs()
-		return r
+		return vm.CallValue(f, v, args...)
 	})
 }
 
-// HostConstruct implements new f(...args), and then runs the pending jobs.
+// HostConstruct implements new f(...args).
 func (vm *VM) HostConstruct(f Value, args []Value) (Value, error) {
 	return vm.enter(func() Value {
 		if !f.IsCallable() || !vm.IsConstructor(f.o) {
 			vm.ThrowTypeError(vm.DisplayString(f) + " is not a constructor")
 		}
-		r := Value{o: vm.Construct(f.o, args, f.o)}
-		vm.runJobs()
-		return r
+		return Value{o: vm.Construct(f.o, args, f.o)}
 	})
 }
 

@@ -11,9 +11,12 @@
 // A context stops everything that runs under it: when a [Func] reads a property or calls
 // a function, that is stopped by the context of the call that led to the [Func].
 //
-// Promise jobs run before [Script.Evaluate], [Value.Call], [Value.Invoke], [Value.New] and
-// [Module.Evaluate] return, unless they are called from a [Func]. The host does not run the
-// jobs itself and cannot defer them.
+// Pending promise jobs run before the outermost Go call that executes JavaScript returns,
+// including property operations and calls that throw. Calls reentered from host callbacks
+// leave jobs to the outermost call. An interruption discards pending jobs.
+// Operations without a context can run JavaScript and jobs without a cancellation limit,
+// unless reentered under a call with a context.
+// [VM.AwaitJobs] waits for asynchronous notifications and runs their jobs.
 package ekuma
 
 import (

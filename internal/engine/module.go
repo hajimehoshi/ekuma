@@ -278,22 +278,12 @@ func (vm *VM) loadAndLink(m *Module) {
 	}
 }
 
-// Evaluate implements Evaluate, after [VM.Link] when m is not linked, and then runs the
-// pending jobs. It returns the promise of the evaluation. The error is an [*Error] when
+// Evaluate implements Evaluate, after [VM.Link] when m is not linked. It returns the promise of the evaluation. The error is an [*Error] when
 // loading or linking fails, which is before any module code runs.
 func (vm *VM) Evaluate(m *Module) (Value, error) {
 	return vm.enter(func() Value {
-		var p Value
-		ok := vm.protect(func() {
-			vm.loadAndLink(m)
-			p = vm.evaluateModule(m)
-		})
-		e := vm.takeThrown()
-		vm.runJobs()
-		if !ok {
-			vm.Throw(e)
-		}
-		return p
+		vm.loadAndLink(m)
+		return vm.evaluateModule(m)
 	})
 }
 

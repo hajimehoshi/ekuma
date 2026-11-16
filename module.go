@@ -163,7 +163,7 @@ func (m *Module) LoadRequestedModules() error {
 	return m.vm.publicError(m.vm.e.LoadRequestedModules(m.m))
 }
 
-// Link links m and its dependencies: it resolves their imports, which runs no JavaScript.
+// Link links m and its dependencies: it resolves their imports without evaluating module code.
 // It calls [Module.LoadRequestedModules] first. [Module.Evaluate] and [Module.Namespace] call
 // it, so calling it is needed only to link before evaluating. The error is the error of
 // [Module.LoadRequestedModules], or an [*Error] holding a JavaScript SyntaxError for an import

@@ -692,6 +692,213 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestHostJobBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		src   string
+		call  func(context.Context, ekuma.Value) error
+		throw bool
+	}{
+		{
+			name: "getter",
+			src:  `({ get x() { queue(); return 1; } })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				_, err := v.Get("x")
+				return err
+			},
+		},
+		{
+			name: "setter",
+			src:  `({ set x(v) { queue(); } })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				return v.Set("x", 1)
+			},
+		},
+		{
+			name: "delete trap",
+			src:  `new Proxy({}, { deleteProperty() { queue(); return true; } })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				return v.Delete("x")
+			},
+		},
+		{
+			name: "instanceof",
+			src:  `({ [Symbol.hasInstance]() { queue(); return true; } })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				_, err := ekuma.Undefined.InstanceOf(v)
+				return err
+			},
+		},
+		{
+			name: "throwing function",
+			src:  `(function() { queue(); throw sentinel; })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				_, err := v.Invoke(ctx)
+				return err
+			},
+			throw: true,
+		},
+		{
+			name: "throwing method",
+			src:  `({ x() { queue(); throw sentinel; } })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				_, err := v.Call(ctx, "x")
+				return err
+			},
+			throw: true,
+		},
+		{
+			name: "throwing method getter",
+			src:  `({ get x() { queue(); throw sentinel; } })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				_, err := v.Call(ctx, "x")
+				return err
+			},
+			throw: true,
+		},
+		{
+			name: "throwing constructor",
+			src:  `(function() { queue(); throw sentinel; })`,
+			call: func(ctx context.Context, v ekuma.Value) error {
+				_, err := v.New(ctx)
+				return err
+			},
+			throw: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			sentinel, err := runScript(t.Context(), &vm, "setup", `
+				var sentinel = {};
+				function queue() { Promise.resolve().then(() => { throw sentinel; }); }
+				sentinel;
+			`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			v, err := runScript(t.Context(), &vm, "target", tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var reports int
+			vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+				reports++
+				if !reason.Equal(sentinel) {
+					t.Error("rejection lost its identity")
+				}
+			})
+			err = tc.call(t.Context(), v)
+			if tc.throw {
+				var ex *ekuma.Error
+				if !errors.As(err, &ex) || !ex.Value.Equal(sentinel) {
+					t.Errorf("got %v, want the original thrown value", err)
+				}
+			} else if err != nil {
+				t.Error(err)
+			}
+			if reports != 1 {
+				t.Errorf("rejection reports before return = %d, want 1", reports)
+			}
+		})
+	}
+}
+
+func TestReentrantGetterJobs(t *testing.T) {
+	var vm ekuma.VM
+	read := vm.FuncOf("read", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		_, err := args[0].Get("x")
+		return nil, err
+	})
+	if err := vm.Global().Set("read", read); err != nil {
+		t.Fatal(err)
+	}
+	v, err := runScript(t.Context(), &vm, "nested", `
+		var ran = false;
+		var sentinel = {};
+		try {
+			read({ get x() { Promise.resolve().then(() => ran = true); throw sentinel; } });
+		} catch (e) {
+			if (e !== sentinel) throw new Error("wrong exception");
+		}
+		ran;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Truthy() {
+		t.Error("jobs ran during the reentrant getter")
+	}
+	v, err = vm.Global().Get("ran")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Truthy() {
+		t.Error("jobs did not run at the outermost return")
+	}
+}
+
+func TestThrowingCallJobInterruption(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		cancel()
+		return nil, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	v, err := runScript(t.Context(), &vm, "setup", `
+		var ran = false;
+		(function() {
+			Promise.resolve().then(() => { cancel(); for (;;) {} });
+			Promise.resolve().then(() => ran = true);
+			throw {};
+		});
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v.Invoke(ctx); !errors.Is(err, context.Canceled) {
+		t.Errorf("Invoke: got %v, want context.Canceled", err)
+	}
+	v, err = runScript(t.Context(), &vm, "after", `ran`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Truthy() {
+		t.Error("interrupted jobs were not discarded")
+	}
+}
+
+func TestModuleLoaderJobBoundary(t *testing.T) {
+	loaderErr := errors.New("loader failed")
+	var vm ekuma.VM
+	var reported bool
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		reported = true
+	})
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		_, err := runScript(t.Context(), &vm, "loader", `Promise.reject("loader");`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reported {
+			t.Error("jobs ran inside the module loader")
+		}
+		return nil, loaderErr
+	})
+	m, err := vm.ParseModule("main", `import "dep";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.LoadRequestedModules(); !errors.Is(err, loaderErr) {
+		t.Errorf("LoadRequestedModules: got %v, want the loader error", err)
+	}
+	if !reported {
+		t.Error("jobs did not run after the module loader failed")
+	}
+}
+
 // TestJobOrder checks when the jobs run relative to the script and to calls from Go.
 func TestJobOrder(t *testing.T) {
 	var vm ekuma.VM

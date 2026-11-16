@@ -114,8 +114,14 @@ gives access to its built-in objects. A separate `VM` isolates code.
 
 ### Host environment
 
-Promise jobs run when the outermost call from Go into the VM returns, and the rejections that
-are still unhandled then are reported to `VM.SetUnhandledRejection`. `Date` and `Temporal` use
+Pending promise jobs run before the outermost Go call that executes JavaScript returns,
+including property operations and calls that throw. Calls reentered from host callbacks leave
+jobs to the outermost call. An interruption discards pending jobs. Rejections still unhandled
+after draining are reported to `VM.SetUnhandledRejection`. Operations without a context can
+run JavaScript and jobs without a cancellation limit, unless reentered under a call with a
+context.
+
+`Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
 `VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`.
 

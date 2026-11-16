@@ -407,7 +407,7 @@ func (vm *VM) receiveNotifications() bool {
 }
 
 // AwaitJobs blocks until a waiter of Atomics.waitAsync of vm is notified by another agent or
-// reaches its timeout, and reports true; the jobs run when [VM.RunJobs] next runs them. It
+// reaches its timeout, and reports true. It
 // reports true without blocking when jobs are already pending, and false without blocking when
 // vm has no such waiter or when an interruption is requested.
 func (vm *VM) AwaitJobs() bool {
@@ -456,8 +456,8 @@ func (vm *VM) Running() bool {
 // RunJobs runs the pending jobs, as the end of an outermost call into vm does. It must not be
 // called while [VM.Running] reports true.
 func (vm *VM) RunJobs() error {
+	// enter drains the pending jobs after this empty callback returns.
 	_, err := vm.enter(func() Value {
-		vm.runJobs()
 		return Undefined
 	})
 	return err

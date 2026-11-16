@@ -255,7 +255,7 @@ func (vm *VM) ParseScript(file, src string) (*Script, error) {
 	}, nil
 }
 
-// ScriptEvaluation implements ScriptEvaluation, and then runs the pending jobs. It returns
+// ScriptEvaluation implements ScriptEvaluation. It returns
 // the value of the last expression statement of s. The error is an [*Error] when the script
 // throws.
 func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
@@ -266,21 +266,12 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 	}
 	f := vm.newScriptFunction(s.code)
 	return vm.enter(func() Value {
-		var result Value
-		ok := vm.protect(func() {
-			result = vm.Call(f, Value{o: vm.global})
-		})
-		// The jobs run after a script that throws too.
-		e := vm.takeThrown()
-		vm.runJobs()
-		if !ok {
-			vm.Throw(e)
-		}
-		return result
+		return vm.Call(f, Value{o: vm.global})
 	})
 }
 
-// enter runs f, which executes JavaScript, as a call from Go code outside the engine.
+// enter runs f as a call from Go and drains jobs at the outermost boundary, including
+// after a JavaScript exception.
 //
 // An interruption ends the outermost such call: when Go code that JavaScript called enters
 // the engine again, the interruption passes through that inner call and the Go code.
@@ -319,7 +310,14 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 		}
 	}()
 	if !vm.protect(func() {
-		result = f()
+		ok := vm.protect(func() {
+			result = f()
+		})
+		thrown := vm.takeThrown()
+		vm.runJobs()
+		if !ok {
+			vm.Throw(thrown)
+		}
 	}) {
 		return Undefined, vm.takeException()
 	}
