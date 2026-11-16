@@ -275,6 +275,9 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 //
 // An interruption ends the outermost such call: when Go code that JavaScript called enters
 // the engine again, the interruption passes through that inner call and the Go code.
+//
+// A Go panic passes through every such call. The outermost one leaves the VM the way an
+// interruption does, with a [PanicError] as the cause.
 func (vm *VM) enter(f func() Value) (result Value, err error) {
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	curRealm := vm.curRealm
@@ -287,11 +290,10 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.clearKeptObjects()
 		}
 		if r := recover(); r != nil {
-			sig, ok := r.(*interruptSignal)
-			if !ok || !outermost {
+			if !outermost {
 				panic(r)
 			}
-			// The interruption left frames and generators behind in whatever state they were.
+			// The panic left frames and generators behind in whatever state they were.
 			if vm.curRealm != curRealm {
 				vm.switchRealm(curRealm)
 			}
@@ -299,16 +301,28 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
 			vm.thrown = Undefined
-			result, err = Undefined, &InterruptedError{
-				Cause: sig.cause,
-			}
-			cause := sig.cause
-			if cause == nil {
-				cause = err
+			var cause error
+			sig, interrupted := r.(*interruptSignal)
+			if interrupted {
+				result, err = Undefined, &InterruptedError{
+					Cause: sig.cause,
+				}
+				cause = sig.cause
+				if cause == nil {
+					cause = err
+				}
+			} else {
+				cause = &PanicError{
+					Value: r,
+				}
 			}
 			// The rejections of the modules queue jobs, which are dropped as well.
 			vm.abortModuleEvaluations(cause)
 			vm.dropJobs()
+			if !interrupted {
+				vm.clearStale()
+				panic(r)
+			}
 		}
 		if outermost {
 			// The values that the calls left behind must not stay reachable while the VM is idle.

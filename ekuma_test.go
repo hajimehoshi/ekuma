@@ -1288,6 +1288,69 @@ func TestCancelNestedContextUnobserved(t *testing.T) {
 	}
 }
 
+// TestGoPanic checks that a Go panic that passes through the VM leaves it as usable as
+// an interruption does.
+func TestGoPanic(t *testing.T) {
+	var vm ekuma.VM
+	global := vm.Global()
+	// The result is not a value that ValueOf converts.
+	if err := global.Set("bad", vm.FuncOf("bad", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return []string{"x"}, nil
+	})); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	panics := func(f func()) (panicked bool) {
+		defer func() {
+			if recover() != nil {
+				panicked = true
+			}
+		}()
+		f()
+		return false
+	}
+	// state is the recursion depth that is left and the stack trace of a new script.
+	state := func() string {
+		t.Helper()
+		v, err := runScript(t.Context(), &vm, "state", `
+			function d(n) { try { return d(n + 1); } catch (e) { return n; } }
+			d(0) + "\n" + new Error().stack`)
+		if err != nil {
+			t.Fatalf("runScript: %v", err)
+		}
+		return v.String()
+	}
+	want := state()
+
+	for range 3 {
+		if !panics(func() {
+			_, _ = runScript(t.Context(), &vm, "panic", `function f(n) { return n ? f(n - 1) : bad(); } f(100)`)
+		}) {
+			t.Fatal("the script did not panic")
+		}
+	}
+	if got := state(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+
+	// The panic ends the module evaluation in progress.
+	m, err := vm.ParseModule("panic", `bad();`)
+	if err != nil {
+		t.Fatalf("ParseModule: %v", err)
+	}
+	if !panics(func() {
+		_, _ = m.Evaluate(t.Context())
+	}) {
+		t.Fatal("the module did not panic")
+	}
+	p, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if st, _ := p.PromiseState(); st != ekuma.PromiseRejected {
+		t.Errorf("got %v, want rejected", st)
+	}
+}
+
 // TestCancelRegExp checks that a match that backtracks for too long can be stopped.
 func TestCancelRegExp(t *testing.T) {
 	var vm ekuma.VM

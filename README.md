@@ -124,7 +124,9 @@ context.
 A context stops everything that runs under it. When a `Func` makes a call with another
 context and that context stops the call, the outermost call returns the cause of that context
 and the `Func` does not continue. A context that is done after its call returned stops
-nothing.
+nothing. A panic of a `Func` or of another host function passes through to the caller of the
+outermost call and leaves the VM usable: like an interruption, it discards pending jobs and
+rejects the promises of the module evaluations in progress.
 
 `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless

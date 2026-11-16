@@ -221,6 +221,21 @@ func (e *InterruptedError) Unwrap() error {
 	return e.Cause
 }
 
+// PanicError is the cause of the end of the module evaluations that a Go panic passed through.
+type PanicError struct {
+	// Value is the value of the panic.
+	Value any
+}
+
+func (e *PanicError) Error() string {
+	return "ekuma: panic"
+}
+
+func (e *PanicError) Unwrap() error {
+	err, _ := e.Value.(error)
+	return err
+}
+
 // Interrupt stops execution with an [InterruptedError] carrying cause at the next loop
 // or call. It may be called from any goroutine and remains pending until observed or
 // cleared. Interrupted module evaluations are rejected with an Error whose message is

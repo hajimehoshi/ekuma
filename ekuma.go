@@ -21,6 +21,12 @@
 // Operations without a context can run JavaScript and jobs without a cancellation limit,
 // unless reentered under a call with a context.
 // [VM.AwaitJobs] waits for asynchronous notifications and runs their jobs.
+//
+// A panic of a [Func], or of another function of the host that JavaScript calls, passes
+// through to the caller of the outermost Go call that executes JavaScript. The VM stays
+// usable: as an interruption does, the panic discards pending jobs and the reports of
+// unhandled rejections, and ends the module evaluations in progress by rejecting their
+// promises.
 package ekuma
 
 import (
