@@ -146,8 +146,7 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 		slices.Sort(keys)
 		o := vm.e.NewPlainObject()
 		for _, k := range keys {
-			// Storing a property on a new plain object cannot fail.
-			_ = vm.e.HostSet(o, vm.e.StringFromGo(k), vm.valueOf(r, x[k]))
+			vm.e.CreateDataPropertyOrThrow(o.Object(), vm.e.ToPropertyKey(vm.e.StringFromGo(k)), vm.valueOf(r, x[k]))
 		}
 		return o
 	}

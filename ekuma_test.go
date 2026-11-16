@@ -1510,6 +1510,79 @@ func TestRealmValues(t *testing.T) {
 	}
 }
 
+func TestValueOfMapOwnProperties(t *testing.T) {
+	for _, name := range []string{"VM", "Realm"} {
+		t.Run(name, func(t *testing.T) {
+			var vm ekuma.VM
+			r := vm.InitialRealm()
+			valueOf := vm.ValueOf
+			if name == "Realm" {
+				r = vm.NewRealm()
+				valueOf = r.ValueOf
+			}
+			if err := vm.Global().Set("target", r.Global()); err != nil {
+				t.Fatal(err)
+			}
+			run(t, &vm, `
+				var setterCalls = 0;
+				Object.defineProperty(target.Object.prototype, "blocked", {
+					set() { setterCalls++; throw new Error("setter called"); }
+				});
+			`)
+			v := valueOf(map[string]any{
+				"z":       1,
+				"blocked": 42,
+				"__proto__": map[string]any{
+					"injected": true,
+				},
+			})
+			if err := vm.Global().Set("converted", v); err != nil {
+				t.Fatal(err)
+			}
+			for _, tc := range []struct {
+				src  string
+				want string
+			}{
+				{
+					src:  `Object.getPrototypeOf(converted) === target.Object.prototype`,
+					want: "true",
+				},
+				{
+					src:  `Object.keys(converted).join()`,
+					want: "__proto__,blocked,z",
+				},
+				{
+					src:  `converted.__proto__.injected`,
+					want: "true",
+				},
+				{
+					src:  `Object.getPrototypeOf(converted.__proto__) === target.Object.prototype`,
+					want: "true",
+				},
+				{
+					src:  `converted.blocked`,
+					want: "42",
+				},
+				{
+					src:  `setterCalls`,
+					want: "0",
+				},
+				{
+					src: `Object.keys(converted).every(key => {
+						const d = Object.getOwnPropertyDescriptor(converted, key);
+						return "value" in d && d.writable && d.enumerable && d.configurable;
+					})`,
+					want: "true",
+				},
+			} {
+				if got := run(t, &vm, tc.src); got != tc.want {
+					t.Errorf("%s = %s, want %s", tc.src, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
 // TestRealmModules checks that modules belong to their realms, and that the module loader is
 // told the realm of each import.
 func TestRealmModules(t *testing.T) {
