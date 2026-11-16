@@ -485,6 +485,22 @@ func (s *shape) privateCopy() *shape {
 	return t
 }
 
+// handOver returns a new private shape with the properties of the private shape s, which
+// it takes from s. Only the object that has s may call it.
+func (s *shape) handOver() *shape {
+	t := &shape{
+		vm:      s.vm,
+		proto:   s.proto,
+		count:   s.count,
+		table:   s.table,
+		private: true,
+		order:   s.order,
+	}
+	s.table = nil
+	s.order = nil
+	return t
+}
+
 // accessor is the content of the slot of an accessor property.
 func newAccessor(getter, setter *Object) Value {
 	return Value{
@@ -1077,8 +1093,13 @@ func (vm *VM) Define(o *Object, key *Object, val Value, flags uint8) {
 
 // setFlags changes the attributes of the existing own property key of o.
 func (vm *VM) setFlags(o *Object, key *Object, p prop, flags uint8) {
-	// A shared shape may be remembered by inline caches, so the changed layout needs another one.
-	s := o.shape.privateCopy()
+	// An inline cache may remember the shape, so the changed layout needs another one.
+	var s *shape
+	if o.shape.private {
+		s = o.shape.handOver()
+	} else {
+		s = o.shape.privateCopy()
+	}
 	s.table[key] = prop{
 		slot:  p.slot,
 		flags: flags,
@@ -1123,17 +1144,8 @@ func (vm *VM) remove(o *Object, key *Object) {
 // removeFromPrivate deletes the own named property key of o, which must exist, from the private
 // shape of o. The new shape takes over the storage of the old one, which only o has.
 func (vm *VM) removeFromPrivate(o *Object, key *Object) {
-	old := o.shape
-	s := &shape{
-		vm:      old.vm,
-		proto:   old.proto,
-		count:   old.count - 1,
-		table:   old.table,
-		private: true,
-		order:   old.order,
-	}
-	old.table = nil
-	old.order = nil
+	s := o.shape.handOver()
+	s.count--
 	// The keys of a private shape are in the order of their slots.
 	i := int(s.table[key].slot)
 	delete(s.table, key)

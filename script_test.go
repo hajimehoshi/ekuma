@@ -775,6 +775,17 @@ func TestScripts(t *testing.T) {
 			want: "1,0,0,0,0,|false|2999",
 		},
 		{
+			name: "freeze of an object with its own shape after a cached store",
+			src: `"use strict";
+				var o = {}, r; for (var i = 0; i < 200; i++) o["k" + i] = i;
+				function set(v) { o.k5 = v; }
+				set(1); set(2);
+				Object.freeze(o);
+				try { set(3); } catch (e) { r = e.constructor.name; }
+				[o.k5, r, Object.isFrozen(o), Object.keys(o).length, Object.getOwnPropertyDescriptor(o, "k199").writable].join()`,
+			want: "2,TypeError,true,200,false",
+		},
+		{
 			name: "join with a separator that shrinks the array",
 			src:  `var a = [1, 2, 3]; a.join({ toString() { a.length = 1; return "-"; } })`,
 			want: "1--",
