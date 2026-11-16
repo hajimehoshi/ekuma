@@ -728,6 +728,29 @@ func TestScripts(t *testing.T) {
 			want: "0|1",
 		},
 		{
+			name: "shift and push on a long queue",
+			src: `var q = [], r = [];
+				for (var i = 0; i < 100; i++) q.push(i);
+				for (var i = 0; i < 150; i++) { r.push(q.shift()); if (i % 2) q.push(100 + i); }
+				[q.length, r.slice(95, 105).join(), q.join()].join("|")`,
+			want: "25|95,96,97,98,99,101,103,105,107,109|201,203,205,207,209,211,213,215,217,219,221,223,225,227,229,231,233,235,237,239,241,243,245,247,249",
+		},
+		{
+			name: "shift moves holes",
+			src: `var a = [0, 1, , 3]; for (var i = 4; i < 40; i++) a.push(i);
+				a.shift();
+				[a.length, 0 in a, 1 in a, 2 in a, a[2]].join()`,
+			want: "39,true,false,true,3",
+		},
+		{
+			name: "shift of holes reads the prototype",
+			src: `Array.prototype[2] = "p";
+				var a = [0, 1, , 3]; for (var i = 4; i < 40; i++) a.push(i);
+				a.shift();
+				[a.length, a.hasOwnProperty(1), a[1], 38 in a].join()`,
+			want: "39,true,p,true",
+		},
+		{
 			name: "join with a separator that shrinks the array",
 			src:  `var a = [1, 2, 3]; a.join({ toString() { a.length = 1; return "-"; } })`,
 			want: "1--",

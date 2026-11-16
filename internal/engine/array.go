@@ -20,6 +20,10 @@ const minElems = 4
 // elements upfront.
 const maxPresizedElems = 1024
 
+// shiftCopyElems is the length below which removing the first element of an array moves
+// the other elements, so that the storage keeps its room for elements added later.
+const shiftCopyElems = 32
+
 // ArrayCreate implements ArrayCreate.
 func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
 	var a *Object
@@ -193,14 +197,29 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 // RemoveFirstElement removes the first element of the array o and returns it.
 // It reports false for an empty array.
 func (o *Object) RemoveFirstElement() (Value, bool) {
-	if !o.isDense() || len(o.elems) == 0 {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || len(o.elems) == 0 {
 		return Value{}, false
 	}
 	v := o.elems[0]
-	copy(o.elems, o.elems[1:])
+	if v.isHole() {
+		return Value{}, false
+	}
+	// A hole after the first element moves with the elements when no prototype can have
+	// an element.
+	if !o.shape.vm.holesAreAbsent(o) && slices.ContainsFunc(o.elems, Value.isHole) {
+		return Value{}, false
+	}
 	n := len(o.elems) - 1
-	o.elems[n] = Value{}
-	o.elems = o.elems[:n]
+	if n < shiftCopyElems {
+		copy(o.elems, o.elems[1:])
+		o.elems[n] = Value{}
+		o.elems = o.elems[:n]
+	} else {
+		// The storage before the elements is released when they move to new storage as
+		// the array grows.
+		o.elems[0] = Value{}
+		o.elems = o.elems[1:]
+	}
 	o.length = uint32(n)
 	return v, true
 }
