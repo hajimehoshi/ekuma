@@ -507,6 +507,15 @@ func TestScripts(t *testing.T) {
 			want: "41|false|true|40|37|4,6,7|-1|true|5",
 		},
 		{
+			name: "pop with holes",
+			src: `var a = [, 1, 2]; var b = [1, , ];
+				Array.prototype[1] = "p";
+				var r = [a.pop(), a.length, 0 in a, b.pop(), b.length, b.hasOwnProperty(1)];
+				delete Array.prototype[1];
+				r.join("|")`,
+			want: "2|2|false|p|1|false",
+		},
+		{
 			name: "array filled from the end keeps the attributes of its elements",
 			src: `var a = [];
 				Object.defineProperty(a, 150, { value: "ro", writable: false, enumerable: true, configurable: true });

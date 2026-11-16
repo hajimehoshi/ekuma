@@ -169,11 +169,15 @@ func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
 // RemoveLastElement removes the last element of the array o and returns it.
 // It reports false for an empty array.
 func (o *Object) RemoveLastElement() (Value, bool) {
-	if !o.isDense() || len(o.elems) == 0 {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || len(o.elems) == 0 {
 		return Value{}, false
 	}
+	// Holes before the last element stay holes after it is removed.
 	n := len(o.elems) - 1
 	v := o.elems[n]
+	if v.isHole() {
+		return Value{}, false
+	}
 	o.elems[n] = Value{}
 	o.elems = o.elems[:n]
 	o.length = uint32(n)
