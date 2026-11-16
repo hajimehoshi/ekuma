@@ -82,10 +82,32 @@ func TestToInt32(t *testing.T) {
 		{in: math.NaN(), want: 0},
 		{in: math.Inf(1), want: 0},
 		{in: 1e30, want: 0},
+		{in: 1<<63 - 1024, want: -1024},
+		{in: 1<<63 + 2048, want: 2048},
+		{in: 1 << 63, want: 0},
+		{in: -(1<<63 + 4096), want: -4096},
 	}
 	for _, tt := range tests {
 		if got := numconv.ToInt32(tt.in); got != tt.want {
 			t.Errorf("ToInt32(%v) = %d, want %d", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestToUint32(t *testing.T) {
+	tests := []struct {
+		in   float64
+		want uint32
+	}{
+		{in: -1.9, want: 4294967295},
+		{in: 4294967295, want: 4294967295},
+		{in: 1<<63 - 1024, want: 4294966272},
+		{in: 1<<63 + 2048, want: 2048},
+		{in: math.Inf(-1), want: 0},
+	}
+	for _, tt := range tests {
+		if got := numconv.ToUint32(tt.in); got != tt.want {
+			t.Errorf("ToUint32(%v) = %d, want %d", tt.in, got, tt.want)
 		}
 	}
 }

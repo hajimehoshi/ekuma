@@ -387,18 +387,24 @@ func trimFraction(s string) string {
 
 // ToInt32 implements ToInt32 for a number.
 func ToInt32(f float64) int32 {
-	if f >= -2147483648 && f <= 2147483647 {
-		return int32(f)
+	if InInt64Range(f) {
+		return int32(int64(f))
 	}
 	return int32(toUint32Slow(f))
 }
 
 // ToUint32 implements ToUint32 for a number.
 func ToUint32(f float64) uint32 {
-	if f >= 0 && f <= 4294967295 {
-		return uint32(f)
+	if InInt64Range(f) {
+		return uint32(int64(f))
 	}
 	return toUint32Slow(f)
+}
+
+// InInt64Range reports whether int64(f) is f rounded toward zero. Then ToInt32(f) is
+// int32(int64(f)) and ToUint32(f) is uint32(int64(f)).
+func InInt64Range(f float64) bool {
+	return math.Abs(f) < 1<<63
 }
 
 func toUint32Slow(f float64) uint32 {

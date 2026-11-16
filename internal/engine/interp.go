@@ -798,43 +798,43 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto arith
 		case bytecode.OpBitOr:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) | numconv.ToInt32(y.n))}
+			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) | int32(int64(y.n)))}
 				continue
 			}
 			goto arith
 		case bytecode.OpBitAnd:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) & numconv.ToInt32(y.n))}
+			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) & int32(int64(y.n)))}
 				continue
 			}
 			goto arith
 		case bytecode.OpBitXor:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) ^ numconv.ToInt32(y.n))}
+			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) ^ int32(int64(y.n)))}
 				continue
 			}
 			goto arith
 		case bytecode.OpShl:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) << (numconv.ToUint32(y.n) & 31))}
+			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) << (uint32(int64(y.n)) & 31))}
 				continue
 			}
 			goto arith
 		case bytecode.OpShr:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) >> (numconv.ToUint32(y.n) & 31))}
+			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) >> (uint32(int64(y.n)) & 31))}
 				continue
 			}
 			goto arith
 		case bytecode.OpUShr:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToUint32(x.n) >> (numconv.ToUint32(y.n) & 31))}
+			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Value{n: float64(uint32(int64(x.n)) >> (uint32(int64(y.n)) & 31))}
 				continue
 			}
 			goto arith
@@ -890,36 +890,36 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto arithK
 		case bytecode.OpBitOrK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) | int32(fp.consts[i.C].n))}
+			if x.o == nil && numconv.InInt64Range(x.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) | int32(fp.consts[i.C].n))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpBitAndK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) & int32(fp.consts[i.C].n))}
+			if x.o == nil && numconv.InInt64Range(x.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) & int32(fp.consts[i.C].n))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpShlK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) << (uint32(fp.consts[i.C].n) & 31))}
+			if x.o == nil && numconv.InInt64Range(x.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) << (uint32(fp.consts[i.C].n) & 31))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpShrK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToInt32(x.n) >> (uint32(fp.consts[i.C].n) & 31))}
+			if x.o == nil && numconv.InInt64Range(x.n) {
+				regs[i.A] = Value{n: float64(int32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31))}
 				continue
 			}
 			goto arithK
 		case bytecode.OpUShrK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: float64(numconv.ToUint32(x.n) >> (uint32(fp.consts[i.C].n) & 31))}
+			if x.o == nil && numconv.InInt64Range(x.n) {
+				regs[i.A] = Value{n: float64(uint32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31))}
 				continue
 			}
 			goto arithK
@@ -947,8 +947,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(!ToBoolean(regs[i.B]))
 		case bytecode.OpBitNot:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: float64(^numconv.ToInt32(x.n))}
+			if x.o == nil && numconv.InInt64Range(x.n) {
+				regs[i.A] = Value{n: float64(^int32(int64(x.n)))}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
