@@ -82,6 +82,7 @@ type parser struct {
 	path        groupPath
 	disjCounter int
 	backrefs    []*node
+	depth       int
 
 	err *Error
 }
@@ -253,7 +254,21 @@ func (p *parser) newNode(op nodeOp) *node {
 	return &node{op: op, flags: p.flags}
 }
 
+// enter counts a level of nesting, which leave ends.
+func (p *parser) enter() {
+	p.depth++
+	if p.depth > maxDepth {
+		p.fail("regular expression is nested too deeply")
+	}
+}
+
+func (p *parser) leave() {
+	p.depth--
+}
+
 func (p *parser) parseDisjunction() *node {
+	p.enter()
+	defer p.leave()
 	id := p.disjCounter
 	p.disjCounter++
 	p.path = append(p.path, pathStep{disj: id})
@@ -1110,6 +1125,8 @@ func (p *parser) fold() bool {
 }
 
 func (p *parser) parseClassSetExpression() classValue {
+	p.enter()
+	defer p.leave()
 	// Read the first operand, then the operator that decides the kind of expression.
 	first, isRange := p.classSetOperandOrRange()
 	switch {

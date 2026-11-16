@@ -6,6 +6,7 @@ package regexp_test
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/regexp"
@@ -183,6 +184,8 @@ func TestSyntaxErrors(t *testing.T) {
 		{pattern: `(?-:a)`},
 		{pattern: `(`},
 		{pattern: `\`},
+		{pattern: strings.Repeat("(?:", 100000) + "a" + strings.Repeat(")", 100000)},
+		{pattern: strings.Repeat("[", 100000) + "a" + strings.Repeat("]", 100000), flags: "v"},
 	}
 	for _, tc := range tests {
 		f, err := regexp.ParseFlags(tc.flags)
@@ -190,7 +193,7 @@ func TestSyntaxErrors(t *testing.T) {
 			_, err = regexp.Compile(tc.pattern, f)
 		}
 		if !errors.Is(err, regexp.ErrSyntax) {
-			t.Errorf("/%s/%s: got %v, want a syntax error", tc.pattern, tc.flags, err)
+			t.Errorf("/%.40s/%s: got %v, want a syntax error", tc.pattern, tc.flags, err)
 		}
 	}
 }
