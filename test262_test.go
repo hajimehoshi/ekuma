@@ -523,31 +523,59 @@ func firstLine(s string) string {
 	return s
 }
 
-// runTest runs the test at path in every mode that its flags ask for, each for at most timeout.
-// It returns why the test failed, or "" when it passed, and whether it failed by running out of
-// time.
-func runTest(h *harness, path string, timeout time.Duration) (reason string, timedOut bool) {
+// test262Test is a test of the suite that is read and ready to run.
+type test262Test struct {
+	path string
+	src  string
+	m    metadata
+}
+
+func readTest(path string) (*test262Test, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return err.Error(), false
+		return nil, err
 	}
 	src := string(b)
-	m := parseMetadata(src)
-	if m.flags["module"] {
+	return &test262Test{
+		path: path,
+		src:  src,
+		m:    parseMetadata(src),
+	}, nil
+}
+
+// waitsForAgents reports whether the test spends its time waiting for its agents rather than
+// computing.
+func (t *test262Test) waitsForAgents() bool {
+	return slices.Contains(t.m.includes, "atomicsHelper.js")
+}
+
+// run runs the test in every mode that its flags ask for, each for at most timeout. It returns
+// why the test failed, or "" when it passed, and whether it failed by running out of time.
+func (t *test262Test) run(h *harness, timeout time.Duration) (reason string, timedOut bool) {
+	if t.m.flags["module"] {
 		// Module code is always strict.
-		return runOnce(h, path, src, m, false, timeout)
+		return runOnce(h, t.path, t.src, t.m, false, timeout)
 	}
-	if !m.flags["onlyStrict"] {
-		if r, t := runOnce(h, path, src, m, false, timeout); r != "" {
-			return r, t
+	if !t.m.flags["onlyStrict"] {
+		if r, to := runOnce(h, t.path, t.src, t.m, false, timeout); r != "" {
+			return r, to
 		}
 	}
-	if !m.flags["noStrict"] && !m.flags["raw"] {
-		if r, t := runOnce(h, path, src, m, true, timeout); r != "" {
-			return "strict mode: " + r, t
+	if !t.m.flags["noStrict"] && !t.m.flags["raw"] {
+		if r, to := runOnce(h, t.path, t.src, t.m, true, timeout); r != "" {
+			return "strict mode: " + r, to
 		}
 	}
 	return "", false
+}
+
+// runTest reads and runs the test at path. It returns what run returns.
+func runTest(h *harness, path string, timeout time.Duration) (reason string, timedOut bool) {
+	t, err := readTest(path)
+	if err != nil {
+		return err.Error(), false
+	}
+	return t.run(h, timeout)
 }
 
 // test262ShuffleSeed parses the -test262.shuffle value. ok reports whether the tests are shuffled.
@@ -637,10 +665,28 @@ func TestTest262(t *testing.T) {
 	timedOut := make([]bool, len(paths))
 	var wg sync.WaitGroup
 	next := make(chan int)
+	// waiting limits the tests that run without a worker.
+	waiting := make(chan struct{}, 4*runtime.GOMAXPROCS(0))
 	for range runtime.GOMAXPROCS(0) {
 		wg.Go(func() {
 			for i := range next {
-				reasons[i], timedOut[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])), testTimeout)
+				tt, err := readTest(filepath.Join(dir, filepath.FromSlash(paths[i])))
+				if err != nil {
+					reasons[i] = err.Error()
+					continue
+				}
+				if !tt.waitsForAgents() {
+					reasons[i], timedOut[i] = tt.run(h, testTimeout)
+					continue
+				}
+				// A test that waits needs no processor, so the worker goes on to the next test.
+				waiting <- struct{}{}
+				wg.Go(func() {
+					defer func() {
+						<-waiting
+					}()
+					reasons[i], timedOut[i] = tt.run(h, testTimeout)
+				})
 			}
 		})
 	}
