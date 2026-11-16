@@ -145,9 +145,15 @@ func (vm *VM) arrayCtorPlain(o *Object) bool {
 	return found && p.flags&FlagAccessor != 0 && vm.Intrinsic(IntrinsicArray).slots[p.slot].accessor().getter == vm.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
+// newElementsPlain reports whether storing a new element in the array o defines it as an own
+// data property without consulting a prototype.
+func (vm *VM) newElementsPlain(o *Object) bool {
+	return o.shape.proto == vm.Intrinsic(IntrinsicArrayPrototype) && vm.arrayProtoPlain()
+}
+
 // AppendElements adds vals at the end of the array o and returns the new length.
 func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !vm.arrayProtoPlain() {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !vm.newElementsPlain(o) {
 		return 0, false
 	}
 	o.elems = append(reserveElems(o.elems, len(vals)), vals...)
@@ -158,7 +164,7 @@ func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
 
 // PrependElements adds vals at the start of the array o and returns the new length.
 func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
-	if !o.isDense() || !vm.arrayProtoPlain() {
+	if !o.isDense() || !vm.newElementsPlain(o) {
 		return 0, false
 	}
 	o.elems = append(append(make([]Value, 0, len(o.elems)+len(vals)), vals...), o.elems...)

@@ -1091,6 +1091,16 @@ func TestScripts(t *testing.T) {
 			want: "0",
 		},
 		{
+			name: "push and unshift through a setter on the prototype of a subclass",
+			src: `var log = [];
+				class A extends Array {}
+				Object.defineProperty(A.prototype, 0, { set(v) { log.push(v); }, get() { return "G"; } });
+				new A().push(1);
+				new A().unshift(2);
+				log.join()`,
+			want: "1,2",
+		},
+		{
 			name: "remainder of negative zero by a register",
 			src:  `var x = -0, y = 1; 1 / (x % y)`,
 			want: "-Infinity",
