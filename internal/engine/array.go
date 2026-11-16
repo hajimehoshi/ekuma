@@ -171,7 +171,16 @@ func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
 	if !o.isDense() || !vm.newElementsPlain(o) {
 		return 0, false
 	}
-	o.elems = append(append(make([]Value, 0, len(o.elems)+len(vals)), vals...), o.elems...)
+	n, k := len(o.elems), len(vals)
+	if cap(o.elems)-n >= k {
+		o.elems = o.elems[:n+k]
+		copy(o.elems[k:], o.elems[:n])
+	} else {
+		elems := make([]Value, n+k, n+k+max((n+k)/2, minElems))
+		copy(elems[k:], o.elems)
+		o.elems = elems
+	}
+	copy(o.elems, vals)
 	o.length = uint32(len(o.elems))
 	return o.length, true
 }
