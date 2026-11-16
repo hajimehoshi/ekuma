@@ -61,10 +61,19 @@ faster):
 
 <!-- BEGIN jsbench summary -->
 
-|  | Ekuma | goja | Sobek | otto | modernc.org/quickjs | QJS | QuickJS (C) | v8go `--jitless` | v8go |
-| --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
-| V8 benchmark suite v7 | 1.00 | 3.33 | 3.32 | 17.8 (9 of 10) | 2.42 | 3.36 (6 of 10) | 0.739 | 0.407 | 0.0208 |
-| QuickJS microbench | 1.00 | 2.59 | 2.58 | n/a | 1.81 | 2.80 (69 of 74) | 0.486 | 0.329 | 0.0639 |
+```
+                     V8 benchmark  QuickJS
+                     suite v7      microbench    Version
+Ekuma                 1.00         1.00          v0.0.0-20261116060912-21d9ec0f3fd5
+goja                  3.33         2.59          v0.0.0-20261110204830-f493a2b600d6
+Sobek                 3.32         2.58          v0.0.0-20261105103427-a5b602015248
+otto                 17.8 (9/10)    n/a          v0.5.1
+modernc.org/quickjs   2.42         1.81          v0.27.0
+QJS                   3.36 (6/10)  2.80 (69/74)  v0.0.6
+QuickJS (C)           0.739        0.486         v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.407        0.329         v0.44.0
+v8go                  0.0208       0.0639        v0.44.0
+```
 
 Measured on 2026-11-16: Apple M3 Pro, macOS 27.2, go1.27.4.
 
@@ -72,8 +81,8 @@ Measured on 2026-11-16: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 - QuickJS (C) is the QuickJS that modernc.org/quickjs translates, compiled from C, and v8go runs
   with and without V8's JIT compilers, as references.
-- "(k of n)" means that the engine failed the other benchmarks, and its mean is over the ones it
-  ran. otto cannot parse microbench.js, which uses ES2015 syntax.
+- "(k/n)" means that the engine ran k of the n benchmarks and failed the others, and its mean is
+  over the ones it ran. otto cannot parse microbench.js, which uses ES2015 syntax.
 - [`_bench`](_bench/README.md) has the benchmarks, how they are measured, and the results of
   each benchmark.
 

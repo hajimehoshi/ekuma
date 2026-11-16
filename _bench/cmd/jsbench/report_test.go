@@ -6,18 +6,21 @@ package main_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	jsbench "github.com/hajimehoshi/ekuma/_bench/cmd/jsbench"
 )
 
-// TestReport checks that the ratios pair the runs of a round, and that a skipped benchmark is
-// left out of the geometric mean and reported with its reason.
+// TestReport checks that the ratios pair the runs of a round, that a skipped benchmark is left
+// out of the geometric mean and reported with its reason, and that the summary gives the version
+// of an engine.
 func TestReport(t *testing.T) {
 	// In the first round, goja takes 2 times as long as Ekuma on Richards, and 1.5 times in the
 	// second, so its median ratio is 1.75. The ratio of the medians would be 250 / 150.
 	const results = `date: 2026-11-16T00:00:00Z
+github.com/dop251/goja: v1.2.3
 goos: darwin
 BenchmarkV8/Richards/ekuma-12 	 10	 100 ns/op
 BenchmarkV8/Richards/goja-12 	 10	 200 ns/op
@@ -43,23 +46,38 @@ BenchmarkV8/DeltaBlue/goja-12 	 10	 400 ns/op
 
 	for _, tt := range []struct {
 		section string
-		line    string
+		want    []string
 	}{
 		{
 			section: "V8.relative",
-			line:    "| Richards | 1.00 | 1.75 | n/a | 12.5 | n/a | n/a | n/a | n/a | n/a |",
+			want:    []string{"Richards", "1.00", "1.75", "n/a", "12.5", "n/a", "n/a", "n/a", "n/a", "n/a"},
 		},
 		{
 			section: "summary",
-			line:    "| V8 benchmark suite v7 | 1.00 | 2.65 | n/a | 12.5 (1 of 2) | n/a | n/a | n/a | n/a | n/a |",
+			want:    []string{"goja", "2.65", "v1.2.3"},
 		},
 		{
-			section: "missing",
-			line:    "- otto in V8 benchmark suite v7 (DeltaBlue): `SyntaxError: unexpected token`",
+			section: "summary",
+			want:    []string{"otto", "12.5", "(1/2)"},
 		},
 	} {
-		if !strings.Contains(sections[tt.section], tt.line+"\n") {
-			t.Errorf("section %s:\n%s\nwant the line\n%s", tt.section, sections[tt.section], tt.line)
+		if got := rowFields(sections[tt.section], tt.want[0]); !slices.Equal(got, tt.want) {
+			t.Errorf("section %s: the row %s has the fields %q, want %q\n%s", tt.section, tt.want[0], got, tt.want, sections[tt.section])
 		}
 	}
+
+	const missing = "- otto in V8 benchmark suite v7 (DeltaBlue): `SyntaxError: unexpected token`\n"
+	if !strings.Contains(sections["missing"], missing) {
+		t.Errorf("section missing:\n%s\nwant the line\n%s", sections["missing"], missing)
+	}
+}
+
+// rowFields returns the fields of the first line of section whose first field is label.
+func rowFields(section, label string) []string {
+	for line := range strings.Lines(section) {
+		if f := strings.Fields(line); len(f) > 0 && f[0] == label {
+			return f
+		}
+	}
+	return nil
 }

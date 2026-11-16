@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/_bench/internal/comparison"
 )
@@ -27,7 +28,7 @@ var engineTitles = map[string]string{
 	"quickjs":      "modernc.org/quickjs",
 	"qjs":          "QJS",
 	"quickjs-c":    "QuickJS (C)",
-	"v8go-jitless": "v8go `--jitless`",
+	"v8go-jitless": "v8go --jitless",
 	"v8go":         "v8go",
 }
 
@@ -181,7 +182,7 @@ func (r *results) geomeanCell(engine string) string {
 		return "n/a"
 	}
 	if n < len(r.benchmarks) {
-		return fmt.Sprintf("%s (%d of %d)", sig3(g), n, len(r.benchmarks))
+		return fmt.Sprintf("%s (%d/%d)", sig3(g), n, len(r.benchmarks))
 	}
 	return sig3(g)
 }
@@ -209,28 +210,42 @@ func report(dir string) (map[string]string, error) {
 		return nil, fmt.Errorf("no results files in %s", dir)
 	}
 
-	var heads []string
-	for _, e := range comparison.Engines {
-		heads = append(heads, engineTitles[e])
-	}
 	sections := map[string]string{}
 
+	// The summary has a row for each engine, with its geometric mean in each suite and its
+	// version.
 	var summary [][]string
-	for _, s := range found {
-		row := []string{s.title}
-		for _, e := range comparison.Engines {
+	for _, e := range comparison.Engines {
+		row := []string{engineTitles[e]}
+		var versions []string
+		for _, s := range found {
 			row = append(row, rs[s.name].geomeanCell(e))
+			if v := rs[s.name].configValue(engineModules[e]); v != "" && !slices.Contains(versions, v) {
+				versions = append(versions, v)
+			}
 		}
-		summary = append(summary, row)
+		summary = append(summary, append(row, strings.Join(versions, ", ")))
 	}
-	sections["summary"] = table(slices.Concat([]string{""}, heads), summary, "--:") + "\n" + measuredOn(rs[found[0].name])
+	summaryHead := []string{""}
+	for _, s := range found {
+		summaryHead = append(summaryHead, s.title)
+	}
+	summaryHead = append(summaryHead, "Version")
+	sections["summary"] = textTable("l"+strings.Repeat(".", len(found))+"l", summaryHead, summary) + "\n" + measuredOn(rs[found[0].name])
 
+	var titles []string
+	for _, e := range comparison.Engines {
+		titles = append(titles, engineTitles[e])
+	}
+	periods := strings.Repeat(".", len(comparison.Engines))
 	for _, s := range found {
 		r := rs[s.name]
 		var relative, times [][]string
 		for _, b := range r.benchmarks {
 			rel := []string{b}
-			t := []string{b}
+			// The times of a benchmark share the unit that suits the time of the baseline.
+			unit, size := timeUnit(r.cell(b, comparison.Baseline).time)
+			t := []string{b, unit}
 			for _, e := range comparison.Engines {
 				c := r.cell(b, e)
 				if !c.ok {
@@ -239,18 +254,23 @@ func report(dir string) (map[string]string, error) {
 					continue
 				}
 				rel = append(rel, sig3(c.ratio))
-				t = append(t, formatTime(c.time))
+				t = append(t, sig3(c.time/size))
 			}
 			relative = append(relative, rel)
 			times = append(times, t)
 		}
+		// The rows above show the benchmarks that an engine did not run.
 		geomean := []string{"Geomean"}
 		for _, e := range comparison.Engines {
-			geomean = append(geomean, r.geomeanCell(e))
+			if g, n := r.geomean(e); n > 0 {
+				geomean = append(geomean, sig3(g))
+			} else {
+				geomean = append(geomean, "n/a")
+			}
 		}
 		relative = append(relative, geomean)
-		sections[s.name+".relative"] = table(slices.Concat([]string{"Benchmark"}, heads), relative, "--:")
-		sections[s.name+".time"] = table(slices.Concat([]string{"Benchmark"}, heads), times, "--:")
+		sections[s.name+".relative"] = textTable("l"+periods, slices.Concat([]string{"Benchmark"}, titles), relative)
+		sections[s.name+".time"] = textTable("ll"+periods, slices.Concat([]string{"Benchmark", "Unit"}, titles), times)
 	}
 
 	sections["environment"] = environmentTable(found, rs)
@@ -258,14 +278,22 @@ func report(dir string) (map[string]string, error) {
 	return sections, nil
 }
 
+// configValue returns the value of the last configuration line of key, or an empty string if
+// there is none.
+func (r *results) configValue(key string) string {
+	var v string
+	for _, c := range r.config {
+		if c.key == key {
+			v = c.value
+		}
+	}
+	return v
+}
+
 // measuredOn returns a sentence that tells when and on what r was measured.
 func measuredOn(r *results) string {
-	config := map[string]string{}
-	for _, c := range r.config {
-		config[c.key] = c.value
-	}
-	date, _, _ := strings.Cut(config["date"], "T")
-	return fmt.Sprintf("Measured on %s: %s, %s, %s.\n", date, config["cpu"], config["os"], config["go"])
+	date, _, _ := strings.Cut(r.configValue("date"), "T")
+	return fmt.Sprintf("Measured on %s: %s, %s, %s.\n", date, r.configValue("cpu"), r.configValue("os"), r.configValue("go"))
 }
 
 // environmentTable returns the table of the configuration lines of the results files of
@@ -283,13 +311,7 @@ func environmentTable(suites []suite, rs map[string]*results) string {
 	for _, k := range keys {
 		row := []string{k}
 		for _, s := range suites {
-			var v string
-			for _, c := range rs[s.name].config {
-				if c.key == k {
-					v = c.value
-				}
-			}
-			row = append(row, strings.ReplaceAll(v, "|", `\|`))
+			row = append(row, strings.ReplaceAll(rs[s.name].configValue(k), "|", `\|`))
 		}
 		rows = append(rows, row)
 	}
@@ -354,6 +376,118 @@ func table(head []string, rows [][]string, align string) string {
 		writeRow(r)
 	}
 	return b.String()
+}
+
+// textTable formats a table as left-aligned text in a Markdown code block. aligns has 'l' for
+// each column, or '.' for each column whose cells also align at their periods. A heading wider
+// than the cells of its column takes two lines.
+func textTable(aligns string, head []string, rows [][]string) string {
+	cells := make([][]string, len(rows))
+	for i, r := range rows {
+		cells[i] = slices.Clone(r)
+	}
+	for i := range head {
+		if aligns[i] != '.' {
+			continue
+		}
+		var column []string
+		for _, r := range cells {
+			column = append(column, r[i])
+		}
+		for j, c := range alignPeriods(column) {
+			cells[j][i] = c
+		}
+	}
+
+	widths := make([]int, len(head))
+	for _, r := range cells {
+		for i, c := range r {
+			widths[i] = max(widths[i], utf8.RuneCountInString(c))
+		}
+	}
+	top := make([]string, len(head))
+	bottom := slices.Clone(head)
+	var twoLines bool
+	for i, h := range head {
+		if utf8.RuneCountInString(h) > widths[i] {
+			if top[i], bottom[i] = splitHeading(h); top[i] != "" {
+				twoLines = true
+			}
+		}
+		widths[i] = max(widths[i], utf8.RuneCountInString(top[i]), utf8.RuneCountInString(bottom[i]))
+	}
+
+	var b strings.Builder
+	b.WriteString("```\n")
+	writeRow := func(cells []string) {
+		var line strings.Builder
+		for i, c := range cells {
+			if i > 0 {
+				line.WriteString("  ")
+			}
+			line.WriteString(c + strings.Repeat(" ", widths[i]-utf8.RuneCountInString(c)))
+		}
+		b.WriteString(strings.TrimRight(line.String(), " ") + "\n")
+	}
+	if twoLines {
+		writeRow(top)
+	}
+	writeRow(bottom)
+	for _, r := range cells {
+		writeRow(r)
+	}
+	b.WriteString("```\n")
+	return b.String()
+}
+
+// alignPeriods pads the cells of a column so that their periods align. A cell without a period
+// aligns the end of its leading digits there, and a cell without leading digits starts there.
+// The padded cells have the same width.
+func alignPeriods(column []string) []string {
+	var intWidth, restWidth int
+	for _, c := range column {
+		i := leadingDigits(c)
+		intWidth = max(intWidth, i)
+		restWidth = max(restWidth, utf8.RuneCountInString(c[i:]))
+	}
+	padded := make([]string, len(column))
+	for j, c := range column {
+		i := leadingDigits(c)
+		padded[j] = strings.Repeat(" ", intWidth-i) + c + strings.Repeat(" ", restWidth-utf8.RuneCountInString(c[i:]))
+	}
+	return padded
+}
+
+// leadingDigits returns the number of the ASCII digits that s starts with.
+func leadingDigits(s string) int {
+	i := strings.IndexFunc(s, func(r rune) bool {
+		return r < '0' || r > '9'
+	})
+	if i < 0 {
+		return len(s)
+	}
+	return i
+}
+
+// splitHeading splits the heading h into two lines at the space or after the slash that leaves
+// the longer line shortest. The first line is empty if h has neither.
+func splitHeading(h string) (string, string) {
+	first, second := "", h
+	for i, r := range h {
+		var a, b string
+		switch r {
+		case ' ':
+			a, b = h[:i], h[i+1:]
+		case '/':
+			a, b = h[:i+1], h[i+1:]
+		default:
+			continue
+		}
+		if max(utf8.RuneCountInString(a), utf8.RuneCountInString(b)) < max(utf8.RuneCountInString(first), utf8.RuneCountInString(second)) {
+			first, second = a, b
+		}
+	}
+	return first, second
 }
 
 // sectionNames returns the names of sections in the order of the report.
@@ -429,16 +563,16 @@ func sig3(x float64) string {
 	return strconv.FormatFloat(x, 'f', max(2-exp, 0), 64)
 }
 
-// formatTime formats the time ns in nanoseconds with three significant digits and a unit.
-func formatTime(ns float64) string {
-	rounded, _ := strconv.ParseFloat(strconv.FormatFloat(ns, 'e', 2, 64), 64)
+// timeUnit returns the unit of time that suits the time ns in nanoseconds, and the size of
+// the unit in nanoseconds.
+func timeUnit(ns float64) (string, float64) {
 	switch {
-	case rounded >= 1e9:
-		return sig3(ns/1e9) + " s"
-	case rounded >= 1e6:
-		return sig3(ns/1e6) + " ms"
-	case rounded >= 1e3:
-		return sig3(ns/1e3) + " µs"
+	case ns >= 1e9:
+		return "s", 1e9
+	case ns >= 1e6:
+		return "ms", 1e6
+	case ns >= 1e3:
+		return "µs", 1e3
 	}
-	return sig3(ns) + " ns"
+	return "ns", 1
 }

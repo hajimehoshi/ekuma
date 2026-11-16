@@ -23,15 +23,18 @@ import (
 	"github.com/hajimehoshi/ekuma/_bench/internal/comparison"
 )
 
-// engineModules lists the modules of the engines other than Ekuma, whose versions the results
-// files record.
-var engineModules = []string{
-	"github.com/dop251/goja",
-	"github.com/grafana/sobek",
-	"github.com/robertkrimen/otto",
-	"modernc.org/quickjs",
-	"github.com/fastschema/qjs",
-	"github.com/tommie/v8go",
+// engineModules holds the module or repository of each engine, whose version the results files
+// record.
+var engineModules = map[string]string{
+	comparison.Baseline: ekumaModule,
+	"goja":              "github.com/dop251/goja",
+	"sobek":             "github.com/grafana/sobek",
+	"otto":              "github.com/robertkrimen/otto",
+	"quickjs":           "modernc.org/quickjs",
+	"qjs":               "github.com/fastschema/qjs",
+	"quickjs-c":         comparison.QuickJSRepository,
+	"v8go-jitless":      "github.com/tommie/v8go",
+	"v8go":              "github.com/tommie/v8go",
 }
 
 // runTimeout limits the process of one run of a benchmark.
@@ -67,35 +70,47 @@ func environment(ctx context.Context, bin string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	ekumaVersion, err := ekumaVersion(ctx)
-	if err != nil {
-		return nil, err
-	}
 	lines := []string{
 		"os: " + osVersion(ctx),
 		"go: " + goVersion,
-		ekumaModule + ": " + ekumaVersion,
 	}
 
 	out, err := exec.CommandContext(ctx, "go", "version", "-m", bin).Output()
 	if err != nil {
 		return nil, fmt.Errorf("go version -m: %w", err)
 	}
-	versions := map[string]string{}
+	// deps holds the versions of the dependencies of bin, keyed by module path.
+	deps := map[string]string{}
 	for line := range strings.Lines(string(out)) {
 		// A dependency is a line "\tdep\tPATH\tVERSION\tSUM".
 		if f := strings.Split(strings.TrimSpace(line), "\t"); len(f) >= 3 && f[0] == "dep" {
-			versions[f[1]] = f[2]
+			deps[f[1]] = f[2]
 		}
 	}
-	for _, m := range engineModules {
-		v, ok := versions[m]
-		if !ok {
-			return nil, fmt.Errorf("the test binary does not depend on %s", m)
+
+	var recorded []string
+	for _, e := range comparison.Engines {
+		m := engineModules[e]
+		if slices.Contains(recorded, m) {
+			continue
+		}
+		recorded = append(recorded, m)
+		var v string
+		switch m {
+		case ekumaModule:
+			if v, err = ekumaVersion(ctx); err != nil {
+				return nil, err
+			}
+		case comparison.QuickJSRepository:
+			v = comparison.QuickJSVersion
+		default:
+			var ok bool
+			if v, ok = deps[m]; !ok {
+				return nil, fmt.Errorf("the test binary does not depend on %s", m)
+			}
 		}
 		lines = append(lines, m+": "+v)
 	}
-	lines = append(lines, comparison.QuickJSRepository+": "+comparison.QuickJSVersion)
 	return lines, nil
 }
 
