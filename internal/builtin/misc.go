@@ -4,10 +4,11 @@
 package builtin
 
 import (
+	"bytes"
 	"math"
 	"math/big"
+	"math/bits"
 	"strconv"
-	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -100,12 +101,13 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		if n != n || math.IsInf(n, 0) || math.Abs(n) >= 1e21 {
 			return vm.NewString(numconv.NumberToString(n))
 		}
-		s := formatHalfUp(n, 'f', int(d))
-		if n == 0 {
+		var buf [numberBufSize]byte
+		s := appendHalfUp(buf[:0], n, 'f', int(d))
+		if n == 0 && s[0] == '-' {
 			// -0 is formatted as 0.
-			s = strings.TrimPrefix(s, "-")
+			s = s[1:]
 		}
-		return vm.NewString(s)
+		return vm.NewString(string(s))
 	})
 	method(vm, proto, "toPrecision", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toPrecision")
@@ -123,15 +125,16 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			// -0 is formatted as 0.
 			n = 0
 		}
+		var buf [numberBufSize]byte
 		e := 0
 		if n != 0 {
-			es := formatHalfUp(n, 'e', int(p)-1)
-			e, _ = strconv.Atoi(es[strings.IndexByte(es, 'e')+1:])
+			es := appendHalfUp(buf[:0], n, 'e', int(p)-1)
+			e = exponent(es)
+			if e < -6 || e >= int(p) {
+				return vm.NewString(string(fixExponent(es)))
+			}
 		}
-		if e < -6 || e >= int(p) {
-			return vm.NewString(fixExponent(formatHalfUp(n, 'e', int(p)-1)))
-		}
-		return vm.NewString(formatHalfUp(n, 'f', int(p)-1-e))
+		return vm.NewString(string(appendHalfUp(buf[:0], n, 'f', int(p)-1-e)))
 	})
 	method(vm, proto, "toExponential", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toExponential")
@@ -146,10 +149,11 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			// -0 is formatted as 0.
 			n = 0
 		}
+		var buf [numberBufSize]byte
 		if arg(args, 0).IsUndefined() {
-			return vm.NewString(fixExponent(strconv.FormatFloat(n, 'e', -1, 64)))
+			return vm.NewString(string(fixExponent(strconv.AppendFloat(buf[:0], n, 'e', -1, 64))))
 		}
-		return vm.NewString(fixExponent(formatHalfUp(n, 'e', int(d))))
+		return vm.NewString(string(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d)))))
 	})
 
 	bproto := vm.Intrinsic(engine.IntrinsicBooleanPrototype)
@@ -178,34 +182,89 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	})
 }
 
-// formatHalfUp formats n like [strconv.FormatFloat] with the format fmt ('e' or 'f') and the
-// precision prec (non-negative), except that an exact tie rounds away from zero.
-func formatHalfUp(n float64, fmt byte, prec int) string {
-	// A tie shows as a trailing 5 with one more digit, and that string is then exactly n.
-	t := strconv.FormatFloat(n, fmt, prec+1, 64)
-	mant, _, _ := strings.Cut(t, "e")
-	if mant[len(mant)-1] == '5' {
-		if r, ok := new(big.Rat).SetString(t); ok && r.Cmp(new(big.Rat).SetFloat64(n)) == 0 {
-			// The next float away from zero is past the tie and closer to it than to the next tie,
-			// so it rounds to the larger magnitude.
-			n = math.Nextafter(n, math.Copysign(math.Inf(1), n))
-		}
+// numberBufSize is the size of a buffer that holds most results of formatting a number with a precision.
+const numberBufSize = 128
+
+// appendHalfUp appends n formatted like [strconv.AppendFloat] with the format fmt ('e' or 'f') and
+// the precision prec (non-negative), except that an exact tie rounds away from zero.
+func appendHalfUp(b []byte, n float64, fmt byte, prec int) []byte {
+	if isTie(n, fmt, prec) {
+		// The next float away from zero is past the tie and closer to it than to the next tie,
+		// so it rounds to the larger magnitude.
+		n = math.Nextafter(n, math.Copysign(math.Inf(1), n))
 	}
-	return strconv.FormatFloat(n, fmt, prec, 64)
+	return strconv.AppendFloat(b, n, fmt, prec, 64)
 }
 
-// fixExponent rewrites the exponent that Go formats with at least two digits to the JavaScript form.
-func fixExponent(s string) string {
-	mant, exp, ok := strings.Cut(s, "e")
-	if !ok {
+// isTie reports whether the finite number n lies exactly halfway between the two nearest numbers
+// that the format fmt ('e' or 'f') shows with the precision prec.
+func isTie(n float64, fmt byte, prec int) bool {
+	if n == 0 {
+		return false
+	}
+	u := math.Float64bits(n)
+	m := u & (1<<52 - 1)
+	e2 := int(u >> 52 & 0x7ff)
+	if e2 == 0 {
+		e2 = -1074
+	} else {
+		m |= 1 << 52
+		e2 -= 1075
+	}
+	tz := bits.TrailingZeros64(m)
+	m >>= tz
+	e2 += tz
+	// |n| is m×2^e2 with m odd, so its exact decimal expansion has k fraction digits
+	// and, when k is positive, ends in 5.
+	k := max(0, -e2)
+	if fmt == 'f' {
+		return k == prec+1
+	}
+	if k > 0 {
+		// The expansion has e10+1+k significant digits, where e10 is the decimal exponent of n,
+		// which lies within one of the bounds from the binary exponent.
+		e := e2 + bits.Len64(m) - 1
+		lo := int(math.Floor(float64(e)*math.Log10(2))) - 1
+		hi := int(math.Floor(float64(e+1)*math.Log10(2))) + 1
+		if prec+2 < lo+1+k || prec+2 > hi+1+k {
+			return false
+		}
+	}
+	// A tie shows as a trailing 5 with one more digit, and that string is then exactly n.
+	var buf [numberBufSize]byte
+	t := strconv.AppendFloat(buf[:0], n, 'e', prec+1, 64)
+	if t[bytes.IndexByte(t, 'e')-1] != '5' {
+		return false
+	}
+	r, ok := new(big.Rat).SetString(string(t))
+	return ok && r.Cmp(new(big.Rat).SetFloat64(n)) == 0
+}
+
+// exponent returns the exponent of the number s that [strconv.AppendFloat] formats with the format 'e'.
+func exponent(s []byte) int {
+	i := bytes.IndexByte(s, 'e')
+	e := 0
+	for _, c := range s[i+2:] {
+		e = e*10 + int(c-'0')
+	}
+	if s[i+1] == '-' {
+		return -e
+	}
+	return e
+}
+
+// fixExponent rewrites in place the exponent that Go formats with at least two digits to the JavaScript form.
+func fixExponent(s []byte) []byte {
+	i := bytes.IndexByte(s, 'e')
+	if i < 0 {
 		return s
 	}
-	sign := exp[:1]
-	digits := strings.TrimLeft(exp[1:], "0")
-	if digits == "" {
-		digits = "0"
+	digits := s[i+2:]
+	j := 0
+	for j < len(digits)-1 && digits[j] == '0' {
+		j++
 	}
-	return mant + "e" + sign + digits
+	return append(s[:i+2], digits[j:]...)
 }
 
 func initSymbol(vm *engine.VM) {
