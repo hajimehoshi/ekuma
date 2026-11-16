@@ -351,6 +351,10 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "localeCompare")
 		that := vm.ToString(arg(args, 0))
+		if s.IsASCII() && wtf8.IsASCII(that) {
+			// An ASCII string is in every normalization form.
+			return engine.Number(float64(wtf8.Compare(s.Str(), that)))
+		}
 		return engine.Number(float64(wtf8.Compare(mapWellFormed(s.Str(), norm.NFC.String), mapWellFormed(that, norm.NFC.String))))
 	})
 	method(vm, proto, "normalize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
