@@ -4010,3 +4010,63 @@ func runScript(ctx context.Context, vm *ekuma.VM, name, src string) (ekuma.Value
 	}
 	return s.Evaluate(ctx)
 }
+
+func TestUint8ArrayDecodeIntoResizableViews(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "base64 growth during options",
+			src: `
+				const buffer = new SharedArrayBuffer(2, {maxByteLength: 8});
+				const tracking = new Uint8Array(buffer, 1);
+				const fixed = new Uint8Array(buffer, 1, 1);
+				const result = tracking.setFromBase64("AQID", {
+					get lastChunkHandling() { buffer.grow(4); return "loose"; }
+				});
+				const limited = fixed.setFromBase64("BA==");
+				[result.read, result.written, limited.read, limited.written,
+				 new Uint8Array(buffer).join()].join(";")`,
+			want: "4;3;4;1;0,4,2,3",
+		},
+		{
+			name: "base64 shrink during options",
+			src: `
+				const buffer = new ArrayBuffer(4, {maxByteLength: 8});
+				const dst = new Uint8Array(buffer, 1, 3);
+				const calls = [];
+				try {
+					dst.setFromBase64("AQID", {
+						get alphabet() { calls.push("alphabet"); buffer.resize(2); return "base64"; },
+						get lastChunkHandling() { calls.push("last"); return "loose"; }
+					});
+				} catch (e) { calls.push(e instanceof TypeError); }
+				calls.join()`,
+			want: "alphabet,last,true",
+		},
+		{
+			name: "hex grown shared view partial write",
+			src: `
+				const buffer = new SharedArrayBuffer(2, {maxByteLength: 8});
+				const dst = new Uint8Array(buffer, 1);
+				buffer.grow(4);
+				let syntaxError = false;
+				try { dst.setFromHex("0102gg"); } catch (e) { syntaxError = e instanceof SyntaxError; }
+				[syntaxError, new Uint8Array(buffer).join()].join(";")`,
+			want: "true;0,1,2,0",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			got, err := runScript(t.Context(), &vm, "test", tt.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.String() != tt.want {
+				t.Errorf("got %q, want %q", got.String(), tt.want)
+			}
+		})
+	}
+}

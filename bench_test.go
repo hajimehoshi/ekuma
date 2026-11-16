@@ -810,3 +810,38 @@ func BenchmarkURIEncode(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkUint8ArrayDecodeInto(b *testing.B) {
+	for _, setter := range []struct {
+		method string
+		input  string
+	}{
+		{
+			method: "setFromHex",
+			input:  "00",
+		},
+		{
+			method: "setFromBase64",
+			input:  "AA==",
+		},
+	} {
+		for _, buffer := range []string{"ArrayBuffer", "SharedArrayBuffer"} {
+			b.Run(setter.method+"/"+buffer, func(b *testing.B) {
+				var vm ekuma.VM
+				_, err := runScript(b.Context(), &vm, "setup", fmt.Sprintf(`
+					const dst = new Uint8Array(new %s(65536));
+					function decode() { return dst.%s(%q); }
+				`, buffer, setter.method, setter.input))
+				if err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				for b.Loop() {
+					if _, err := vm.Global().Call(b.Context(), "decode"); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	}
+}

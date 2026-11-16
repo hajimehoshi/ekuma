@@ -229,11 +229,16 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return t
 	}
-	// bytesOf implements GetUint8ArrayBytes.
-	bytesOf := func(vm *engine.VM, t *engine.TypedArray, what string) []byte {
-		if _, ok := t.Length(); !ok {
+	lengthOf := func(vm *engine.VM, t *engine.TypedArray, what string) int {
+		n, ok := t.Length()
+		if !ok {
 			vm.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
 		}
+		return n
+	}
+	// bytesOf implements GetUint8ArrayBytes.
+	bytesOf := func(vm *engine.VM, t *engine.TypedArray, what string) []byte {
+		lengthOf(vm, t, what)
 		return elementsOf(t)
 	}
 	stringArg := func(vm *engine.VM, args []engine.Value) string {
@@ -289,14 +294,14 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		t := thisUint8Array(vm, this, true, "setFromBase64")
 		s := stringArg(vm, args)
 		url, last := base64Options(vm, arg(args, 1))
-		b := bytesOf(vm, t, "setFromBase64")
-		return setResult(vm, t, fromBase64(s, url, last, len(b)))
+		n := lengthOf(vm, t, "setFromBase64")
+		return setResult(vm, t, fromBase64(s, url, last, n))
 	})
 	method(vm, proto, "setFromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(vm, this, true, "setFromHex")
 		s := stringArg(vm, args)
-		b := bytesOf(vm, t, "setFromHex")
-		return setResult(vm, t, fromHex(s, len(b)))
+		n := lengthOf(vm, t, "setFromHex")
+		return setResult(vm, t, fromHex(s, n))
 	})
 	method(vm, proto, "toBase64", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(vm, this, false, "toBase64")
