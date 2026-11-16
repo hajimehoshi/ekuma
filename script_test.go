@@ -714,6 +714,40 @@ func TestScripts(t *testing.T) {
 			want: "1,2",
 		},
 		{
+			name: "current realm Array species value",
+			src: `class Other extends Array {}
+				Object.defineProperty(Array, Symbol.species, {value: Other, configurable: true});
+				var result = [1].map(x => x + 1);
+				[result instanceof Other, result.length, result[0]].join()`,
+			want: "true,1,2",
+		},
+		{
+			name: "current realm Array species getter",
+			src: `var calls = 0, receiver;
+				Object.defineProperty(Array, Symbol.species, {get() {
+					calls++; receiver = this; return Array;
+				}, configurable: true});
+				var result = [1, 2].slice(1);
+				[calls, receiver === Array, result.join()].join()`,
+			want: "1,true,2",
+		},
+		{
+			name: "current realm Array species getter throws before splice mutates",
+			src: `var sentinel = {}, caught, a = [1, 2];
+				Object.defineProperty(Array, Symbol.species, {get() { throw sentinel; }});
+				try { a.splice(0, 1); } catch (e) { caught = e; }
+				[caught === sentinel, a.join()].join("|")`,
+			want: "true|1,2",
+		},
+		{
+			name: "current realm Array species is not a constructor",
+			src: `Object.defineProperty(Array, Symbol.species, {value: {}});
+				var caught;
+				try { [1].map(x => x); } catch (e) { caught = e; }
+				caught instanceof TypeError`,
+			want: "true",
+		},
+		{
 			name: "concat into a species array keeps its length until the end",
 			src: `var created, seen;
 				class C extends Array { static get [Symbol.species]() { return function() { return created = new Array(5); }; } }
