@@ -5,7 +5,6 @@ package engine
 
 import (
 	"cmp"
-	"errors"
 	"math/rand/v2"
 	"sync/atomic"
 
@@ -206,18 +205,27 @@ type interruptSignal struct {
 	cause error
 }
 
-// ErrInterrupted is the error of a script that was stopped by [VM.Interrupt].
-var ErrInterrupted = errors.New("ekuma: interrupted")
+// InterruptedError reports the cause of an interruption by [VM.Interrupt].
+type InterruptedError struct {
+	Cause error
+}
 
-// Interrupt makes the running script stop with [ErrInterrupted] as soon as it reaches a loop
-// or a call. It may be called from any goroutine. The request stays pending until a script
-// observes it, so it also stops the next script when none is running. The module evaluations
-// that the interruption ends are rejected with an Error whose message is that of
-// [ErrInterrupted] and that [GoError] maps to cause, or to [ErrInterrupted] when cause is nil.
-func (vm *VM) Interrupt(cause error) {
-	if cause == nil {
-		cause = ErrInterrupted
+func (e *InterruptedError) Error() string {
+	if e.Cause == nil {
+		return "ekuma: interrupted"
 	}
+	return "ekuma: interrupted: " + e.Cause.Error()
+}
+
+func (e *InterruptedError) Unwrap() error {
+	return e.Cause
+}
+
+// Interrupt stops execution with an [InterruptedError] carrying cause at the next loop
+// or call. It may be called from any goroutine and remains pending until observed or
+// cleared. Interrupted module evaluations are rejected with an Error whose message is
+// "ekuma: interrupted" and whose [GoError] is cause, or the [InterruptedError] when cause is nil.
+func (vm *VM) Interrupt(cause error) {
 	vm.interruptCause.Store(&cause)
 	vm.interrupt.Store(true)
 	vm.mailbox.poke()

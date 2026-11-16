@@ -299,10 +299,16 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
 			vm.thrown = Undefined
+			result, err = Undefined, &InterruptedError{
+				Cause: sig.cause,
+			}
+			cause := sig.cause
+			if cause == nil {
+				cause = err
+			}
 			// The rejections of the modules queue jobs, which are dropped as well.
-			vm.abortModuleEvaluations(sig.cause)
+			vm.abortModuleEvaluations(cause)
 			vm.dropJobs()
-			result, err = Undefined, ErrInterrupted
 		}
 		if outermost {
 			// The values that the calls left behind must not stay reachable while the VM is idle.

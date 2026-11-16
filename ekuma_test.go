@@ -1066,6 +1066,37 @@ func TestArgumentStorageConversionPanicReentrant(t *testing.T) {
 	checkArgumentStorage(t, &vm, 0, 0)
 }
 
+func TestCancelNestedContext(t *testing.T) {
+	for _, cause := range []error{context.DeadlineExceeded, errors.New("nested cancellation")} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			var vm ekuma.VM
+			var returned bool
+			invoke := vm.FuncOf("invoke", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+				ctx, cancel := context.WithTimeoutCause(t.Context(), 20*time.Millisecond, cause)
+				defer cancel()
+				v, err := args[0].Invoke(ctx)
+				returned = true
+				return v, err
+			})
+			if err := vm.Global().Set("invoke", invoke); err != nil {
+				t.Fatalf("Set: %v", err)
+			}
+			_, err := runScript(context.Background(), &vm, "nested", `
+				var caught = false;
+				try { invoke(() => { while (true) {} }); } catch (e) { caught = true; }`)
+			if !errors.Is(err, cause) {
+				t.Errorf("got %v, want %v", err, cause)
+			}
+			if returned {
+				t.Error("the Func continued after the interruption")
+			}
+			if v, err := runScript(t.Context(), &vm, "after", `caught ? 0 : 1 + 1`); err != nil || v.Int() != 2 {
+				t.Errorf("after the interruption: %v, %v, want 2", v, err)
+			}
+		})
+	}
+}
+
 // TestCancelRegExp checks that a match that backtracks for too long can be stopped.
 func TestCancelRegExp(t *testing.T) {
 	var vm ekuma.VM

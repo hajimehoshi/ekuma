@@ -1184,7 +1184,7 @@ func (vm *VM) abortModuleEvaluations(cause error) {
 		}
 		if !hasError {
 			// The message is fixed, so that scripts do not see the text of cause.
-			e = vm.newGoError(ErrInterrupted.Error(), cause)
+			e = vm.newGoError("ekuma: interrupted", cause)
 			hasError = true
 		}
 		vm.asyncModuleExecutionRejected(m, e)
