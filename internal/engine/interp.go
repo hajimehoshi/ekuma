@@ -975,6 +975,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := vm.ToStringValue(x)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
+		case bytecode.OpConcat:
+			vm.frames[len(vm.frames)-1].pc = pc
+			regs[i.A] = vm.concatStrings(regs[i.B : i.B+i.C])
 		case bytecode.OpTypeof:
 			regs[i.A] = vm.typeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:

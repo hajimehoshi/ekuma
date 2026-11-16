@@ -433,24 +433,3 @@ func (vm *VM) addValues(a, b Value) Value {
 
 // MaxStringLength is the largest length a string may have, in bytes.
 const MaxStringLength = 1<<30 - 1
-
-// concat returns the concatenation of the strings x and y, which are the contents of a and b
-// when those are strings.
-func (vm *VM) concat(a Value, x string, b Value, y string) Value {
-	if x == "" && b.IsString() {
-		return b
-	}
-	if y == "" && a.IsString() {
-		return a
-	}
-	if len(x)+len(y) > MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
-	}
-	var s string
-	if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {
-		s = wtf8.Concat(x, y)
-	} else {
-		s = x + y
-	}
-	return vm.NewString(s)
-}

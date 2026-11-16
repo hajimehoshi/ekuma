@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -35,6 +36,72 @@ func TestScripts(t *testing.T) {
 			name: "string concatenation",
 			src:  `"a" + 1 + 2 + "b" + (1 + 2)`,
 			want: "a12b3",
+		},
+		{
+			name: "appending to a string that another variable holds",
+			src: `var r = "";
+				for (var i = 0; i < 40; i++) r += "ab";
+				var s = r;
+				var t = r + "X";
+				var u = s + "Y";
+				var v = t + t;
+				r += "Z";
+				[t.slice(78), u.slice(78), r.slice(78), s.slice(78), v.length, v.slice(79, 83),
+					t === s + "X", u === r.slice(0, 80) + "Y"].join(" ")`,
+			want: "abX abY abZ ab 162 bXab true true",
+		},
+		{
+			name: "appended string as a property key and in comparisons",
+			src: `var k = "";
+				for (var i = 0; i < 40; i++) k += "k";
+				var o = {};
+				o[k] = 1;
+				var k2 = k + "!";
+				o[k2] = 2;
+				var m = new Map([[k, "m"]]);
+				var lit = "k".repeat(40);
+				[o[lit], o[lit + "!"], m.get(lit), k === lit, k < k2, Object.keys(o).join().length].join(" ")`,
+			want: "1 2 m true true 82",
+		},
+		{
+			name: "appending non-ASCII strings while reading the length and the end",
+			src: `var s = "", n = 0, bad = [];
+				for (var i = 0; i < 40; i++) { s += "a"; n++; }
+				var parts = ["\u00e9", "x", "\u{1F600}"];
+				for (var i = 0; i < 60; i++) {
+					var p = parts[i % 3];
+					s += p;
+					n += p.length;
+					if (s.length !== n || s.charCodeAt(n - 1) !== p.charCodeAt(p.length - 1) || s.at(-p.length) !== p[0]) {
+						bad.push(i);
+					}
+				}
+				bad.length + " " + s.length + " " + (s.slice(-4) === "\u00e9x\u{1F600}") + " " + s.indexOf("\u00e9")`,
+			want: "0 120 true 40",
+		},
+		{
+			name: "lone surrogates joined by concatenation",
+			src: `var h = "\uD83D", l = "\uDE00";
+				var s = "";
+				for (var i = 0; i < 40; i++) s += "a";
+				var t = s + h;
+				var u = t + l;
+				var w = ` + "`${s}${h}${l}`" + `;
+				[t.length, u.length, u.codePointAt(40).toString(16), u === s + "\u{1F600}", w === u,
+					` + "`${h}${l}`" + ` === "\u{1F600}"].join(" ")`,
+			want: "41 42 1f600 true true true",
+		},
+		{
+			name: "template literals",
+			src: `var log = [];
+				var a = {toString() { log.push("a"); return "A"; }};
+				var b = {toString() { log.push("b"); return "B"; }, valueOf() { return "ignored"; }};
+				function f(x) { log.push("f" + x); return x; }
+				var t = ` + "`<${a}|${f(1)}|${b}${''}${f(2)}>`" + `;
+				var out = "";
+				for (var i = 0; i < 50; i++) out = ` + "`${out}${i % 10}`" + `;
+				[t, log.join(), out.length, out.slice(-5), ` + "`${''}`" + `.length, ` + "`x`" + `].join(" ")`,
+			want: "<A|1|B2> a,f1,b,f2 50 56789 0 x",
 		},
 		{
 			name: "closure counter",
@@ -562,6 +629,16 @@ func TestScripts(t *testing.T) {
 			want: "true,true",
 		},
 		{
+			name: "concatenations longer than the string length limit",
+			src: `var s = "x".repeat(2 ** 29);
+				var r = [];
+				for (var f of [() => s + s, () => ` + "`${s}${s}`" + `]) {
+					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
+				}
+				r.join()`,
+			want: "true,true",
+		},
+		{
 			name: "anonymous functions named after keys known at run time",
 			src: `var k = "a";
 				class C { [k] = () => {}; 128 = class { static n = this.name; }; }
@@ -921,6 +998,18 @@ func TestAllocationsPerOperation(t *testing.T) {
 			body: `var a = []; for (var j = 0; j < 16; j++) a.push(j);`,
 			want: 4,
 		},
+		{
+			name:  "concatenation of two long strings",
+			setup: `var a = "a".repeat(20), b = "b".repeat(20);`,
+			body:  `a + b;`,
+			want:  2,
+		},
+		{
+			name:  "template literal",
+			setup: `var a = "0";`,
+			body:  "`x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}x${a}`;",
+			want:  2,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -943,6 +1032,33 @@ func TestAllocationsPerOperation(t *testing.T) {
 				t.Errorf("allocations per operation: got %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestAppendedStringsToGo covers strings that a script builds by appending to one string:
+// each one that reached Go keeps its contents while the script appends further.
+func TestAppendedStringsToGo(t *testing.T) {
+	ctx := t.Context()
+	var vm ekuma.VM
+	fn, err := runScript(ctx, &vm, "append", `(function() {
+		var r = "";
+		return function(s) { r += s; return r; };
+	})()`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	var got []string
+	for range 100 {
+		v, err := fn.Invoke(ctx, "ab")
+		if err != nil {
+			t.Fatalf("Invoke: %v", err)
+		}
+		got = append(got, v.String())
+	}
+	for i, s := range got {
+		if want := strings.Repeat("ab", i+1); s != want {
+			t.Errorf("string %d: got %q, want %q", i, s, want)
+		}
 	}
 }
 

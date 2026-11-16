@@ -1091,22 +1091,30 @@ func (f *fn) newExpr(n *ast.NewExpr, dst int32) {
 }
 
 func (f *fn) template(n *ast.TemplateLit, dst int32) {
+	if len(n.Exprs) == 0 {
+		f.emit(bytecode.OpLoadK, dst, f.constStr(n.Quasis[0].Cooked), 0)
+		return
+	}
 	mark := f.top
 	defer f.free(mark)
-	acc := f.newReg()
-	f.emit(bytecode.OpLoadK, acc, f.constStr(n.Quasis[0].Cooked), 0)
+	// The parts go into consecutive registers and are concatenated at once, after each
+	// substitution was converted to a string in order.
+	if s := n.Quasis[0].Cooked; s != "" {
+		f.emit(bytecode.OpLoadK, f.newReg(), f.constStr(s), 0)
+	}
 	for i, e := range n.Exprs {
 		t := f.newReg()
 		f.expr(e, t)
 		f.emit(bytecode.OpToString, t, t, 0)
-		f.emit(bytecode.OpAdd, acc, acc, t)
 		if s := n.Quasis[i+1].Cooked; s != "" {
-			f.emit(bytecode.OpLoadK, t, f.constStr(s), 0)
-			f.emit(bytecode.OpAdd, acc, acc, t)
+			f.emit(bytecode.OpLoadK, f.newReg(), f.constStr(s), 0)
 		}
-		f.free(t)
 	}
-	f.emit(bytecode.OpMove, dst, acc, 0)
+	if f.top-mark == 1 {
+		f.emit(bytecode.OpMove, dst, mark, 0)
+		return
+	}
+	f.emit(bytecode.OpConcat, dst, mark, f.top-mark)
 }
 
 func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
