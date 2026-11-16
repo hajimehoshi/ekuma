@@ -1181,6 +1181,21 @@ func TestCapturedVariables(t *testing.T) {
 			want: "11,22,100,101",
 		},
 		{
+			name: "block variable of a region that throws",
+			src: `var f;
+				try { let v = 1; f = () => v; v = 2; throw "T"; } catch (e) {}
+				f()`,
+			want: "2",
+		},
+		{
+			name: "loop variable of a generator that returns",
+			src: `var f;
+				function* gen() { for (let v of [1, 2]) { f = () => v; if (v == 5) v = "x"; yield v; } }
+				var it = gen(); it.next(); it.return("r");
+				f()`,
+			want: "1",
+		},
+		{
 			name: "let read before its initialization",
 			src: `function f() {
 					const g = () => x;

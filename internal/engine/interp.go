@@ -201,11 +201,17 @@ func (vm *VM) unwind(stop int) bool {
 			if pc < h.Start || pc >= h.End || (closing && !h.Finally) {
 				continue
 			}
+			// The registers from h.Reg on belong to the scopes the handler leaves,
+			// so their captured variables are detached before h.Reg is overwritten.
 			var regs []Value
 			if fr.gen != nil {
 				regs = fr.gen.regs
+				fr.gen.closeUpvals(int(h.Reg))
 			} else {
 				regs = vm.stack[fr.base:]
+				if len(vm.openUpvals) > 0 {
+					vm.closeUpvals(fr.base + int(h.Reg))
+				}
 			}
 			regs[h.Reg] = vm.thrown
 			vm.thrown = Undefined
