@@ -1915,6 +1915,27 @@ func TestTypedArray(t *testing.T) {
 		want string
 	}{
 		{
+			name: "setFromHex even UTF-16 length beyond capacity",
+			src: `var a = new Uint8Array([255]);
+				var r = a.setFromHex("00éa");
+				[r.read, r.written, a[0]].join()`,
+			want: "2,1,0",
+		},
+		{
+			name: "setFromHex odd UTF-16 length before writing",
+			src: `var a = new Uint8Array([255]), syntaxError = false;
+				try { a.setFromHex("00é"); } catch (e) { syntaxError = e instanceof SyntaxError; }
+				[syntaxError, a[0]].join()`,
+			want: "true,255",
+		},
+		{
+			name: "setFromHex invalid Unicode pair after writing",
+			src: `var a = new Uint8Array([255, 255]), syntaxError = false;
+				try { a.setFromHex("00éa"); } catch (e) { syntaxError = e instanceof SyntaxError; }
+				[syntaxError, ...a].join()`,
+			want: "true,0,255",
+		},
+		{
 			// The specification leaves the byte order of typed arrays to the platform.
 			name: "little-endian",
 			src: `[

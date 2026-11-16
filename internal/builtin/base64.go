@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // decodeResult is the result of FromBase64 and FromHex.
@@ -166,7 +167,11 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 // fromHex implements FromHex for the string s.
 func fromHex(s string, maxLength int) decodeResult {
 	var r decodeResult
-	if len(s)%2 != 0 {
+	length := len(s)
+	if !wtf8.IsASCII(s) {
+		length = wtf8.Len(s)
+	}
+	if length%2 != 0 {
 		r.err = "the hex string has an odd length"
 		return r
 	}
