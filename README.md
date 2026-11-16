@@ -5,8 +5,8 @@ It is an interpreter without a JIT, designed to be fast for one.
 Its only dependency is [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text),
 for Unicode normalization.
 
-The project is at an early stage. The API is unstable and a large part of the language's
-standard library is missing. See [Status](#status).
+The project is at an early stage and its API is unstable, though nearly all of the syntax and
+standard library up to ES2025 is implemented. See [Status](#status).
 
 ```go
 var vm ekuma.VM
