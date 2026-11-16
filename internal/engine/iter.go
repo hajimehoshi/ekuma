@@ -5,7 +5,6 @@ package engine
 
 import (
 	"slices"
-	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -315,69 +314,176 @@ func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
 	return Value{o: &r.Object}
 }
 
-// forIn is the state of a for-in loop.
+// forIn is a for-in iterator object together with the state of its loop, so that creating
+// one is a single allocation.
 type forIn struct {
-	obj     *Object
-	keys    []PropKey
-	pos     int
+	Object
+
+	// obj is the object whose keys come next, or nil when the loop is done.
+	obj *Object
+
+	// The keys of obj that are left are the indices from index on that are below indices,
+	// which are elements of the receiver, followed by keys[pos:].
+	index, indices uint32
+	keys           []PropKey
+	pos            int
+
+	// visited holds the keys that were visited, once obj is a prototype, and is nil while obj
+	// is the receiver. The keys visited on the receiver are its keys above and the key length
+	// if length is set, less those in missing, which the receiver no longer had when they
+	// came up.
 	visited map[PropKey]struct{}
+	length  bool
+	missing []PropKey
 }
 
 // newForIn returns the iterator of a for-in loop over v.
 func (vm *VM) newForIn(v Value) Value {
-	it := &forIn{}
+	it := &forIn{
+		kind:  kindObject,
+		class: classForIn,
+	}
+	it.ext = it
 	if !v.IsNullish() {
 		it.obj = vm.ToObject(v)
-		it.keys = vm.OwnKeys(it.obj)
+		it.indices, it.length, it.keys = vm.forInOwnKeys(it.obj)
 	}
-	return Value{
-		o: &Object{
-			kind:  kindObject,
-			class: classForIn,
-			ext:   it,
-		},
+	return Value{o: &it.Object}
+}
+
+// forInOwnKeys returns the own property keys of the receiver o of a for-in loop in the order of
+// [VM.OwnKeys], where symbols may be left out: the indices below indices, then the key length
+// if length is set, then keys.
+func (vm *VM) forInOwnKeys(o *Object) (indices uint32, length bool, keys []PropKey) {
+	if o.class == classProxy || o.class == classModuleNamespace {
+		return 0, false, vm.OwnKeys(o)
 	}
+	if o.flags&objExotic != 0 {
+		vm.resolve(o)
+	}
+	// The own keys of any other object are its elements, the length of an array, and the
+	// keys of its shape.
+	if o.flags&(objExotic|objSparse) != 0 || o.class == classString || slices.ContainsFunc(o.elems, Value.isHole) {
+		return 0, false, vm.OwnKeys(o)
+	}
+	return uint32(len(o.elems)), o.kind == kindArray, o.shape.stringKeys()
 }
 
 // forInNext returns the next key of the for-in iterator o.
 func (vm *VM) forInNext(o *Object) (Value, bool) {
 	it := o.ext.(*forIn)
 	for it.obj != nil {
+		for it.index < it.indices {
+			i := it.index
+			it.index++
+			if obj := it.obj; int64(i) < int64(len(obj.elems)) && !obj.elems[i].isHole() {
+				return vm.indexString(i), true
+			}
+			k := PropKey{idx: i}
+			d, ok := vm.GetOwnProperty(it.obj, k)
+			if !ok {
+				it.missing = append(it.missing, k)
+				continue
+			}
+			if d.flags&FlagEnumerable != 0 {
+				return vm.indexString(i), true
+			}
+		}
 		for it.pos < len(it.keys) {
 			k := it.keys[it.pos]
 			it.pos++
 			if k.IsSymbol() {
 				continue
 			}
-			if _, seen := it.visited[k]; seen {
-				continue
+			if it.visited != nil {
+				if _, seen := it.visited[k]; seen {
+					continue
+				}
 			}
 			// A property that was deleted in the meantime is skipped, and one that is not
 			// enumerable still hides the properties of the same name further up.
 			d, ok := vm.GetOwnProperty(it.obj, k)
 			if !ok {
+				if it.visited == nil {
+					it.missing = append(it.missing, k)
+				}
 				continue
 			}
-			if it.visited == nil {
-				it.visited = map[PropKey]struct{}{}
+			if it.visited != nil {
+				it.visited[k] = struct{}{}
 			}
-			it.visited[k] = struct{}{}
 			if d.flags&FlagEnumerable == 0 {
 				continue
 			}
-			if k.key == nil {
-				return vm.NewString(strconv.FormatUint(uint64(k.idx), 10)), true
-			}
-			return Value{o: k.key}, true
+			return vm.KeyValue(k), true
 		}
-		it.obj = vm.ProtoOf(it.obj)
-		it.pos = 0
-		it.keys = nil
-		if it.obj != nil {
-			it.keys = vm.OwnKeys(it.obj)
-		}
+		vm.forInNextObject(it)
 	}
 	return Undefined, false
+}
+
+// forInNextObject moves the for-in iterator it from the object whose keys it visited to the
+// prototype of that object.
+func (vm *VM) forInNextObject(it *forIn) {
+	proto := vm.ProtoOf(it.obj)
+	if !vm.forInMayVisit(proto) {
+		it.obj = nil
+		return
+	}
+	if it.visited == nil {
+		vm.forInVisitReceiver(it)
+	}
+	it.obj = proto
+	it.index, it.indices = 0, 0
+	it.keys = vm.OwnKeys(proto)
+	it.pos = 0
+}
+
+// forInMayVisit reports whether a for-in loop might visit a key of o or of its prototypes. When
+// it reports false, visiting the keys of those objects would have no observable effect.
+func (vm *VM) forInMayVisit(o *Object) bool {
+	for ; o != nil; o = o.shape.proto {
+		if o.class == classProxy || o.class == classModuleNamespace {
+			return true
+		}
+		if o.flags&objExotic != 0 {
+			vm.resolve(o)
+			if o.flags&objExotic != 0 {
+				return true
+			}
+		}
+		if o.class == classString && o.ext.(*Object).StringLength() > 0 {
+			return true
+		}
+		if slices.ContainsFunc(o.elems, func(e Value) bool { return !e.isHole() }) {
+			return true
+		}
+		if o.shape.hasEnumerableString() {
+			return true
+		}
+	}
+	return false
+}
+
+// forInVisitReceiver records the keys that the for-in iterator it visited on the receiver,
+// which it is done with, in it.visited.
+func (vm *VM) forInVisitReceiver(it *forIn) {
+	it.visited = make(map[PropKey]struct{}, int(it.indices)+len(it.keys)+1)
+	for i := range it.indices {
+		it.visited[PropKey{idx: i}] = struct{}{}
+	}
+	if it.length {
+		it.visited[PropKey{key: vm.Key(KeyLength)}] = struct{}{}
+	}
+	for _, k := range it.keys {
+		if !k.IsSymbol() {
+			it.visited[k] = struct{}{}
+		}
+	}
+	for _, k := range it.missing {
+		delete(it.visited, k)
+	}
+	it.missing = nil
 }
 
 // templateObject returns the template object of a tagged template, creating it on first use.

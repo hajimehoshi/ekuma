@@ -1087,6 +1087,18 @@ func TestAllocationsPerOperation(t *testing.T) {
 			body:  `for (var j = 0; j < 200; j++) a[j] = j;`,
 			want:  0,
 		},
+		{
+			name:  "for-in over an array",
+			setup: `var src = [], s = 0; for (var j = 0; j < 16; j++) src.push(j);`,
+			body:  `for (var k in src) s += src[k];`,
+			want:  1,
+		},
+		{
+			name:  "for-in over an object with index keys",
+			setup: `var src = {x: 0}, s = 0; for (var j = 0; j < 16; j++) src[j] = j;`,
+			body:  `for (var k in src) s += src[k];`,
+			want:  2,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1300,6 +1312,128 @@ func TestIterationWithoutResults(t *testing.T) {
 				for (var x of g()) { reads.push(x); break; }
 				reads.join()`,
 			want: "done,done,value,1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := runScript(t.Context(), &vm, tt.name, tt.src)
+			if err != nil {
+				t.Fatalf("runScript: %v", err)
+			}
+			if got := toString(t, &vm, v); got != tt.want {
+				t.Errorf("got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestForIn covers the keys that for-in loops visit on objects with elements and on their
+// prototypes.
+func TestForIn(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "own keys hide the keys of prototypes",
+			src: `var p2 = {p: 0, 1: 0, length: 0, m: 0};
+				var p1 = Object.create(p2, {m: {value: 0, enumerable: false}});
+				var a = Object.setPrototypeOf([10, 20, 30], p1);
+				a.n = 0;
+				var keys = [];
+				for (var k in a) keys.push(k);
+				keys.join()`,
+			want: "0,1,2,n,p",
+		},
+		{
+			name: "keys deleted before they come up do not hide the keys of prototypes",
+			src: `var a = Object.setPrototypeOf([10, 20, 30], {0: 0, 1: 0, x: 0, y: 0});
+				a.x = 0;
+				a.y = 0;
+				var keys = [];
+				for (var k in a) {
+					keys.push(k);
+					if (k === "0") {
+						delete a[0];
+						delete a[1];
+						delete a.y;
+					}
+				}
+				keys.join()`,
+			want: "0,2,x,1,y",
+		},
+		{
+			name: "keys added during the loop come up only from prototypes",
+			src: `var a = Object.setPrototypeOf([10, 20], {3: 0});
+				var keys = [];
+				for (var k in a) {
+					keys.push(k);
+					if (k === "0") {
+						a[2] = 30;
+						a[3] = 40;
+					}
+				}
+				keys.join()`,
+			want: "0,1,3",
+		},
+		{
+			name: "holes",
+			src: `var a = Object.setPrototypeOf([10, , 30], {1: 0});
+				var keys = [];
+				for (var k in a) keys.push(k);
+				keys.join()`,
+			want: "0,2,1",
+		},
+		{
+			name: "keys are strings",
+			src: `var a = [];
+				for (var i = 0; i < 1100; i++) a.push(i);
+				var n = 0, bad = 0;
+				for (var round = 0; round < 2; round++) {
+					for (var k in a) {
+						n++;
+						if (typeof k !== "string" || k !== "" + a[k]) bad++;
+					}
+				}
+				var o = {7: 0, 2000: 0};
+				var cat = [];
+				for (var k in o) cat.push(k + 1);
+				[n, bad, cat.join()].join()`,
+			want: "2200,0,71,20001",
+		},
+		{
+			name: "prototype that changes between loops",
+			src: `var p = Object.defineProperty({}, "h", {value: 0, configurable: true});
+				var o = Object.create(p);
+				o.a = 0;
+				function keys() { var s = ""; for (var k in o) s += k; return s; }
+				var r = [keys()];
+				p.x = 0;
+				r.push(keys());
+				delete p.x;
+				r.push(keys());
+				p.y = 0;
+				r.push(keys());
+				Object.defineProperty(p, "h", {enumerable: true});
+				r.push(keys());
+				r.join()`,
+			want: "a,ax,a,ay,ahy",
+		},
+		{
+			name: "proxy as a prototype",
+			src: `var log = [];
+				var p = new Proxy({a: 1, b: 2}, {
+					ownKeys(t) { log.push("ownKeys"); return Reflect.ownKeys(t); },
+					getOwnPropertyDescriptor(t, k) { log.push("gopd:" + k); return Reflect.getOwnPropertyDescriptor(t, k); },
+					getPrototypeOf(t) { log.push("getPrototypeOf"); return null; },
+				});
+				var o = Object.setPrototypeOf({a: 0}, p);
+				var keys = [];
+				for (var k in o) keys.push(k);
+				keys.join() + " " + log.join()`,
+			want: "a,b ownKeys,gopd:b,getPrototypeOf",
 		},
 	}
 	for _, tt := range tests {

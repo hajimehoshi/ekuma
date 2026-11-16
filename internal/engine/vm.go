@@ -397,6 +397,10 @@ type VM struct {
 	modules moduleHost
 
 	builtins builtinLayout
+
+	// indexStrings holds the strings of the array indices below indexStringCount that were
+	// made, by index, and nil for the others.
+	indexStrings []*Object
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

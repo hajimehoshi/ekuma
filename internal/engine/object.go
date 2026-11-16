@@ -6,6 +6,8 @@ package engine
 import (
 	"maps"
 	"math/big"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -197,6 +199,11 @@ type shape struct {
 	// It is an interned string or a symbol.
 	key   *Object
 	flags uint8
+
+	// enumerable tells whether a shared shape has an enumerable property whose key is a
+	// string, once that is known: one of the enumerable* values.
+	enumerable uint8
+
 	count int32
 
 	// table maps every property of the shape to its slot. A private shape always has one.
@@ -329,6 +336,81 @@ func (s *shape) keys() []*Object {
 		keys[p.slot] = k
 	}
 	return keys
+}
+
+// stringKeys returns the property keys of s that are strings, in insertion order.
+func (s *shape) stringKeys() []PropKey {
+	if s.private {
+		keys := make([]PropKey, 0, len(s.order))
+		for _, k := range s.order {
+			if k.kind == kindString {
+				keys = append(keys, PropKey{key: k})
+			}
+		}
+		return keys
+	}
+	keys := make([]PropKey, s.count)
+	t := s
+	for ; t.parent != nil; t = t.parent {
+		keys[t.count-1] = PropKey{key: t.key}
+	}
+	for _, e := range t.small {
+		keys[e.slot] = PropKey{key: e.key}
+	}
+	for k, p := range t.table {
+		keys[p.slot] = PropKey{key: k}
+	}
+	return slices.DeleteFunc(keys, PropKey.IsSymbol)
+}
+
+// Values of shape.enumerable.
+const (
+	enumerableUnknown uint8 = iota
+	enumerableNone
+	enumerableSome
+)
+
+// hasEnumerableString reports whether s has an enumerable property whose key is a string.
+func (s *shape) hasEnumerableString() bool {
+	if s.private {
+		for k, p := range s.table {
+			if isEnumerableString(k, p.flags) {
+				return true
+			}
+		}
+		return false
+	}
+	// A shared shape does not change.
+	if s.enumerable == enumerableUnknown {
+		s.enumerable = enumerableNone
+		if s.sharedHasEnumerableString() {
+			s.enumerable = enumerableSome
+		}
+	}
+	return s.enumerable == enumerableSome
+}
+
+// sharedHasEnumerableString reports whether the shared shape s has an enumerable property
+// whose key is a string.
+func (s *shape) sharedHasEnumerableString() bool {
+	t := s
+	for ; t.parent != nil; t = t.parent {
+		if isEnumerableString(t.key, t.flags) {
+			return true
+		}
+	}
+	// A shared shape without parent may have properties of its own: see [VM.FinishBuiltins].
+	for _, e := range t.small {
+		if isEnumerableString(e.key, e.flags) {
+			return true
+		}
+	}
+	for k, p := range t.table {
+		if isEnumerableString(k, p.flags) {
+			return true
+		}
+	}
+	return false
 }
 
 // with returns the shared shape that has key in addition to the properties of s.
@@ -670,6 +752,31 @@ type stringTable struct {
 
 	// ascii are the strings of one ASCII character.
 	ascii [128]Value
+}
+
+// indexStringCount is the number of the smallest array indices whose strings are shared.
+const indexStringCount = 1024
+
+// indexString returns the string of the array index i.
+func (vm *VM) indexString(i uint32) Value {
+	if i < 10 {
+		return vm.strings.ascii['0'+i]
+	}
+	if i >= indexStringCount {
+		return vm.NewString(strconv.FormatUint(uint64(i), 10))
+	}
+	t := vm.indexStrings
+	if int(i) >= len(t) {
+		t = append(t, make([]*Object, int(i)+1-len(t))...)
+		t = t[:cap(t)]
+		vm.indexStrings = t
+	}
+	if o := t[i]; o != nil {
+		return Value{o: o}
+	}
+	v := vm.NewString(strconv.FormatUint(uint64(i), 10))
+	t[i] = v.o
+	return v
 }
 
 // internedMinSweep is the number of interned strings below which they are kept alive with the

@@ -54,7 +54,7 @@ func (vm *VM) indexKey(i uint32) *Object {
 // KeyValue returns the key k as a string or symbol value.
 func (vm *VM) KeyValue(k PropKey) Value {
 	if k.key == nil {
-		return vm.NewString(strconv.FormatUint(uint64(k.idx), 10))
+		return vm.indexString(k.idx)
 	}
 	return Value{o: k.key}
 }
@@ -1565,10 +1565,15 @@ func (vm *VM) DefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	return vm.defineOwnProperty(o, k, d)
 }
 
+// isEnumerableString reports whether key is a string and flags make the property enumerable.
+func isEnumerableString(key *Object, flags uint8) bool {
+	return key.kind == kindString && flags&FlagEnumerable != 0
+}
+
 // enumerableKey returns key as a property key when it is a string and flags make it enumerable,
 // and the zero PropKey otherwise.
 func enumerableKey(key *Object, flags uint8) PropKey {
-	if key.kind == kindString && flags&FlagEnumerable != 0 {
+	if isEnumerableString(key, flags) {
 		return PropKey{key: key}
 	}
 	return PropKey{}
