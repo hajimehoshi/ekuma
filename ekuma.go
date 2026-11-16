@@ -9,7 +9,11 @@
 // a [context.Context] that stops them.
 //
 // A context stops everything that runs under it: when a [Func] reads a property or calls
-// a function, that is stopped by the context of the call that led to the [Func].
+// a function, that is stopped by the context of the call that led to the [Func]. When
+// a [Func] makes a call with another context and that context stops the call, everything
+// stops: the outermost Go call that executes JavaScript returns the cause of that context,
+// and the [Func] does not continue. A context that is done after its call returned stops
+// nothing.
 //
 // Pending promise jobs run before the outermost Go call that executes JavaScript returns,
 // including property operations and calls that throw. Calls reentered from host callbacks

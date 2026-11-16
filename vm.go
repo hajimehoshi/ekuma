@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"math/rand/v2"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
@@ -31,6 +32,59 @@ type VM struct {
 
 	// callArgs is the storage of the arguments of the calls from Go that are running.
 	callArgs []engine.Value
+
+	interrupts *interruptRequests
+}
+
+// interruptRequest is the request of a call to stop, which the context of the call makes when
+// it is done.
+type interruptRequest struct {
+	cause error
+
+	// released is whether the call has ended.
+	released bool
+}
+
+// interruptRequests are the requests of the running calls whose contexts are done.
+type interruptRequests struct {
+	m sync.Mutex
+
+	// pending are the requests in the order in which they were made. The engine is asked to stop
+	// with the cause of the first one for as long as there is one.
+	pending []*interruptRequest
+}
+
+// request adds req with cause, unless its call has ended. It may be called from any goroutine.
+func (r *interruptRequests) request(e *engine.VM, req *interruptRequest, cause error) {
+	r.m.Lock()
+	defer r.m.Unlock()
+	if req.released {
+		return
+	}
+	req.cause = cause
+	r.pending = append(r.pending, req)
+	if len(r.pending) == 1 {
+		e.Interrupt(cause)
+	}
+}
+
+// release ends the call of req and withdraws req. The requests of the other calls stay.
+func (r *interruptRequests) release(e *engine.VM, req *interruptRequest) {
+	r.m.Lock()
+	defer r.m.Unlock()
+	req.released = true
+	i := slices.Index(r.pending, req)
+	if i < 0 {
+		return
+	}
+	r.pending = slices.Delete(r.pending, i, i+1)
+	if len(r.pending) == 0 {
+		// The request may not have been observed: it must not stop a later call.
+		e.ClearInterrupt()
+		return
+	}
+	// The engine is asked again, as the withdrawn request may be the one that it has.
+	e.Interrupt(r.pending[0].cause)
 }
 
 // initIfNeeded creates the engine of vm on first use, and panics when vm is a copy of a [VM] in
@@ -38,6 +92,7 @@ type VM struct {
 func (vm *VM) initIfNeeded() {
 	if vm.e == nil {
 		vm.e = engine.NewVM(vm)
+		vm.interrupts = &interruptRequests{}
 		builtin.Install(vm.e)
 		vm.initialRealm = vm.realmOf(vm.e.CurrentRealm())
 		return
@@ -220,16 +275,13 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 		return Undefined, context.Cause(ctx)
 	}
 	if ctx.Done() != nil {
-		fired := make(chan struct{})
+		var req interruptRequest
 		stop := context.AfterFunc(ctx, func() {
-			vm.e.Interrupt(context.Cause(ctx))
-			close(fired)
+			vm.interrupts.request(vm.e, &req, context.Cause(ctx))
 		})
 		defer func() {
 			if !stop() {
-				// The request may not have been observed: it must not stop a later call.
-				<-fired
-				vm.e.ClearInterrupt()
+				vm.interrupts.release(vm.e, &req)
 			}
 		}()
 	}

@@ -1223,6 +1223,71 @@ func TestCancelNestedContext(t *testing.T) {
 	}
 }
 
+// TestCancelNestedUnobserved checks that a nested call that returns without observing the
+// cancellation of its context leaves the cancellation to the calls around it.
+func TestCancelNestedUnobserved(t *testing.T) {
+	var vm ekuma.VM
+	global := vm.Global()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	slow := vm.FuncOf("slow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		cancel()
+		// The cancellation is requested on another goroutine.
+		time.Sleep(50 * time.Millisecond)
+		return nil, nil
+	})
+	if err := global.Set("h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return slow.Invoke(ctx)
+	})); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	errTooLong := errors.New("the script was not stopped")
+	var ticks int
+	if err := global.Set("tick", vm.FuncOf("tick", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		ticks++
+		if ticks > 1_000_000 {
+			return nil, errTooLong
+		}
+		return nil, nil
+	})); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if _, err := runScript(ctx, &vm, "nested", `h(); for (;;) { tick(); }`); !errors.Is(err, context.Canceled) {
+		t.Errorf("got %v, want context.Canceled", err)
+	}
+	// The cancellation does not affect later calls.
+	if v, err := runScript(t.Context(), &vm, "after", `for (var i = 0; i < 1000; i++) {} 1 + 1`); err != nil || v.Int() != 2 {
+		t.Errorf("after the cancellation: %v, %v, want 2", v, err)
+	}
+}
+
+// TestCancelNestedContextUnobserved checks that the context of a nested call that returned
+// does not stop the calls around it.
+func TestCancelNestedContextUnobserved(t *testing.T) {
+	var vm ekuma.VM
+	global := vm.Global()
+	if err := global.Set("h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		slow := vm.FuncOf("slow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+			cancel()
+			// The cancellation is requested on another goroutine.
+			time.Sleep(50 * time.Millisecond)
+			return nil, nil
+		})
+		return slow.Invoke(ctx)
+	})); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	v, err := runScript(t.Context(), &vm, "nested", `h(); var n = 0; for (var i = 0; i < 1000; i++) n += i; n`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got, want := v.Int(), 499500; got != want {
+		t.Errorf("got %d, want %d", got, want)
+	}
+}
+
 // TestCancelRegExp checks that a match that backtracks for too long can be stopped.
 func TestCancelRegExp(t *testing.T) {
 	var vm ekuma.VM
