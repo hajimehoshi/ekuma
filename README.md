@@ -1,7 +1,7 @@
 # Ekuma
 
 Ekuma is a JavaScript engine written in pure Go, without `unsafe`.
-It is an interpreter without a JIT, designed to be fast for one.
+It is designed for fast execution without a JIT compiler.
 Its only dependency is [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text),
 for Unicode normalization and case mapping.
 
@@ -42,7 +42,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 - v8go is the fork of [rogchap.com/v8go](https://github.com/rogchap/v8go) that follows V8's
   releases.
 
-What Ekuma does differently is aimed at speed:
+Ekuma uses the following techniques to improve performance:
 
 - Objects have hidden-class shapes, and every property access site has an inline cache.
 - The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
@@ -79,12 +79,12 @@ Measured on 2026-11-16: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
-- QuickJS (C) is the QuickJS that modernc.org/quickjs translates, compiled from C, and v8go runs
-  with and without V8's JIT compilers, as references.
+- For reference, the results include QuickJS compiled from the C source used by
+  modernc.org/quickjs, and v8go with and without V8's JIT compilers.
 - "(k/n)" means that the engine ran k of the n benchmarks and failed the others, and its mean is
   over the ones it ran. otto cannot parse microbench.js, which uses ES2015 syntax.
-- [`_bench`](_bench/README.md) has the benchmarks, how they are measured, and the results of
-  each benchmark.
+- See [`_bench`](_bench/README.md) for the benchmarks, measurement methodology, and individual
+  results.
 
 ## Host API
 
@@ -92,16 +92,17 @@ The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
 `Value.Get`, `Value.Set`, `Value.Call`, `Value.Invoke`, `Value.New`, `VM.ValueOf`, `VM.FuncOf`,
 `CopyBytesToGo`, `CopyBytesToJS`.
 Unlike `syscall/js`, a JavaScript exception is returned as an error, and the methods that run
-a script or call a function take a `context.Context` that stops them.
+a script or call a function take a `context.Context` that can cancel execution.
 
 ### Modules
 
-A module is parsed with `VM.ParseModule`, `VM.ParseJSONModule` or `VM.NewSyntheticModule`, and
-the host supplies the modules that it imports with `VM.SetModuleLoader`, which `import()` uses
-too. `Module.Evaluate` loads, links and evaluates a module and returns the promise of the
-evaluation, whose state `Value.PromiseState` reads. `Module.LoadRequestedModules`,
-`Module.Link` and `Module.Namespace` take the earlier steps alone, and `VM.SetImportMeta` gives
-`import.meta` its properties. Module loading is synchronous.
+Use `VM.ParseModule` or `VM.ParseJSONModule` to parse a module, or `VM.NewSyntheticModule` to
+create a synthetic module. The host supplies imported modules through `VM.SetModuleLoader`,
+which also handles `import()`. `Module.Evaluate` loads, links and evaluates a module and returns
+a promise whose state can be read with `Value.PromiseState`. `Module.LoadRequestedModules`
+and `Module.Link` perform the loading and linking steps separately. `Module.Namespace` returns
+the module namespace, and `VM.SetImportMeta` sets the properties of `import.meta`. Module loading
+is synchronous.
 
 ### Realms
 
@@ -142,17 +143,18 @@ the local time zone of Go's `time` package, or of the JavaScript host with `GOOS
 
 ### Intl
 
-Importing the package `github.com/hajimehoshi/ekuma/intl` for its side effect adds `Intl` to
-every VM, makes the `toLocale*String` methods of numbers, dates, durations, arrays and typed
-arrays format by locale and `localeCompare`, `toLocaleUpperCase` and `toLocaleLowerCase` follow
-it, and gives `Temporal` the calendars of ECMA-402 besides `iso8601`:
+Importing `github.com/hajimehoshi/ekuma/intl` for its side effects adds `Intl` to every VM.
+It enables locale-aware formatting for the `toLocale*String` methods of numbers, dates,
+durations, arrays and typed arrays, and locale-aware behavior for `localeCompare`,
+`toLocaleUpperCase` and `toLocaleLowerCase`. It also adds the ECMA-402 calendars to `Temporal`,
+in addition to `iso8601`:
 
 ```go
 import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
-Without the import, the engine has none of these, and its binary does not grow. With it, a hello
-world grows from about 8.7 MB to 15.8 MB natively, and from 11.1 MB to 18.8 MB with `GOOS=js`.
+Without the import, these features do not contribute to binary size. With it, a hello-world
+program grows from about 8.7 MB to 15.8 MB natively, and from 11.1 MB to 18.8 MB with `GOOS=js`.
 The default locale is the one that `LC_ALL`, `LC_MESSAGES` or `LANG` names natively, or
 `navigator.language` with `GOOS=js`, and en-US otherwise. The package brings locale data whose
 license notice a program must include: see [License](#license).
@@ -183,11 +185,11 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ### Notes on behavior
 
-- `Temporal` has only the `iso8601` calendar without [Intl](#intl). Its named time zones need
+- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar. Named time zones require
   the system's time zone database
 - Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
-  compares code units after canonical equivalence, and `toLocaleUpperCase` and
-  `toLocaleLowerCase` ignore the locale. With it, all of these follow the locale
+  compares code units after Unicode normalization, and `toLocaleUpperCase` and
+  `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root. `Intl.Segmenter`
   follows UAX #29 without dictionaries, so it does not split Chinese, Japanese or Thai text into
@@ -227,7 +229,7 @@ go test ./...
 ```
 
 The test262 run is skipped unless a checkout of the suite is found in `ekuma/test262`
-under the user cache directory, or in the directory that `EKUMA_TEST262` names.
+under the user cache directory, or in the directory specified by `EKUMA_TEST262`.
 
 ## License
 
