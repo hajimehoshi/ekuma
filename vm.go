@@ -252,9 +252,9 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 	return waited, err
 }
 
-// SetTimeZone sets the time zone of local time to loc. A nil loc restores the default, the
-// local time zone of the host. The time zone applies to the later conversions of Date
-// between local time and UTC.
+// SetTimeZone sets loc as the local time zone for Date, the system time zone for Temporal,
+// and the default time zone for new Intl.DateTimeFormat instances.
+// A nil loc restores the local time zone of the host.
 func (vm *VM) SetTimeZone(loc *time.Location) {
 	vm.initIfNeeded()
 	if loc == nil {
