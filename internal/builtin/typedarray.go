@@ -379,10 +379,13 @@ func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to i
 		bits := engine.LoadElementBits(b[i*size:], typ)
 		switch {
 		case typ == engine.ElementBigInt64:
-			v := x.Object().BigInt()
-			return v.IsInt64() && v.Int64() == int64(bits)
+			v, ok := x.BigInt64()
+			return ok && v == int64(bits)
 		case typ == engine.ElementBigUint64:
-			v := x.Object().BigInt()
+			if v, ok := x.BigInt64(); ok {
+				return v >= 0 && uint64(v) == bits
+			}
+			v := x.BigInt()
 			return v.IsUint64() && v.Uint64() == bits
 		}
 		f := engine.ElementNumber(typ, bits)

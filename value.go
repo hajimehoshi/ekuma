@@ -62,12 +62,19 @@ type Value struct {
 
 	n float64
 
-	// o is nil for undefined, numberTag for the number n, and the engine's object for anything else.
+	// o is nil for undefined, numberTag for the number n, bigInt64Tag for the BigInt whose
+	// two's complement bits n holds, and the engine's object for anything else.
 	o *engine.Object
 }
 
-// numberTag marks a [Value] that is a number. It is never passed to the engine.
-var numberTag = &engine.Object{}
+var (
+	// numberTag marks a [Value] that is a number. It is never passed to the engine.
+	numberTag = &engine.Object{}
+
+	// bigInt64Tag marks a [Value] that is a BigInt that fits in an int64. It is never passed to
+	// the engine.
+	bigInt64Tag = &engine.Object{}
+)
 
 // canonicalNaN is the NaN that [Value.Float] returns.
 var canonicalNaN = math.Float64frombits(0x7ff8000000000000)
@@ -83,6 +90,12 @@ func fromEngine(v engine.Value) Value {
 	case v.IsUndefined():
 		return Value{}
 	}
+	if i, ok := v.BigInt64(); ok {
+		return Value{
+			n: math.Float64frombits(uint64(i)),
+			o: bigInt64Tag,
+		}
+	}
 	return Value{o: v.Object()}
 }
 
@@ -93,6 +106,8 @@ func (v Value) engine() engine.Value {
 		return engine.Undefined
 	case numberTag:
 		return engine.Number(v.n)
+	case bigInt64Tag:
+		return engine.BigIntFromInt64(int64(math.Float64bits(v.n)))
 	}
 	return engine.ObjectValue(v.o)
 }
@@ -200,7 +215,7 @@ func (v Value) BigInt() *big.Int {
 			Type:   v.Type(),
 		})
 	}
-	return new(big.Int).Set(e.Object().BigInt())
+	return new(big.Int).Set(e.BigInt())
 }
 
 // String returns the string v as UTF-8, with lone surrogates replaced by U+FFFD.

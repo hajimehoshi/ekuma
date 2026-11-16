@@ -221,7 +221,15 @@ func TestFloatNaN(t *testing.T) {
 
 func TestBigInt(t *testing.T) {
 	var vm ekuma.VM
-	for _, want := range []string{"1180591620717411303425", "-36893488147419103232"} {
+	for _, want := range []string{
+		"1180591620717411303425",
+		"-36893488147419103232",
+		// The ends of the range of int64 and the values just outside it.
+		"9223372036854775807",
+		"-9223372036854775808",
+		"9223372036854775808",
+		"-9223372036854775809",
+	} {
 		x, _ := new(big.Int).SetString(want, 10)
 		v := vm.ValueOf(x)
 		x.SetInt64(0)
@@ -231,6 +239,12 @@ func TestBigInt(t *testing.T) {
 		}
 		if !v.Equal(js) {
 			t.Errorf("ValueOf(%s) is not equal to %sn", want, want)
+		}
+		if got := js.BigInt(); got.String() != want {
+			t.Errorf("BigInt() of %sn = %v, want %s", want, got, want)
+		}
+		if got := js.Type(); got != ekuma.TypeBigInt {
+			t.Errorf("Type() of %sn = %v, want %v", want, got, ekuma.TypeBigInt)
 		}
 		got := v.BigInt()
 		if got.String() != want {
@@ -249,6 +263,217 @@ func TestBigInt(t *testing.T) {
 		}
 	}()
 	vm.ValueOf(1).BigInt()
+}
+
+// TestBigIntInt64Boundaries tests BigInt operations whose operands or results lie at the ends of
+// the range of int64 or just outside it.
+func TestBigIntInt64Boundaries(t *testing.T) {
+	var vm ekuma.VM
+	for _, tc := range []struct {
+		expr string
+		want string
+	}{
+		{
+			expr: `9223372036854775807n + 1n`,
+			want: "9223372036854775808",
+		},
+		{
+			expr: `-9223372036854775808n - 1n`,
+			want: "-9223372036854775809",
+		},
+		{
+			expr: `-4294967296n * 2147483648n`,
+			want: "-9223372036854775808",
+		},
+		{
+			expr: `4294967296n * 2147483648n`,
+			want: "9223372036854775808",
+		},
+		{
+			expr: `-9223372036854775808n / -1n`,
+			want: "9223372036854775808",
+		},
+		{
+			expr: `-9223372036854775808n % -1n`,
+			want: "0",
+		},
+		{
+			expr: "`${-7n / 2n} ${-7n % 2n}`",
+			want: "-3 -1",
+		},
+		{
+			expr: `(() => { try { 1n / 0n; } catch (e) { return e instanceof RangeError; } })()`,
+			want: "true",
+		},
+		{
+			expr: `(() => { try { 1n % 0n; } catch (e) { return e instanceof RangeError; } })()`,
+			want: "true",
+		},
+		{
+			expr: `(-2n) ** 63n`,
+			want: "-9223372036854775808",
+		},
+		{
+			expr: `3n ** 40n`,
+			want: "12157665459056928801",
+		},
+		{
+			expr: `(-1n) ** 9007199254740993n`,
+			want: "-1",
+		},
+		{
+			expr: `(() => { try { 2n ** -1n; } catch (e) { return e instanceof RangeError; } })()`,
+			want: "true",
+		},
+		{
+			expr: `1n << 63n`,
+			want: "9223372036854775808",
+		},
+		{
+			expr: `-1n << 63n`,
+			want: "-9223372036854775808",
+		},
+		{
+			expr: `1n << 64n`,
+			want: "18446744073709551616",
+		},
+		{
+			expr: `-5n >> 1n`,
+			want: "-3",
+		},
+		{
+			expr: `5n >> -2n`,
+			want: "20",
+		},
+		{
+			expr: `-1n >> 64n`,
+			want: "-1",
+		},
+		{
+			expr: `(() => { try { -1n >> -9223372036854775808n; } catch (e) { return e instanceof RangeError; } })()`,
+			want: "true",
+		},
+		{
+			expr: `-(-9223372036854775808n)`,
+			want: "9223372036854775808",
+		},
+		{
+			expr: `(() => { let x = 9223372036854775807n; x++; return x; })()`,
+			want: "9223372036854775808",
+		},
+		{
+			// -1n has the bits of a NaN.
+			expr: `0n - 1n === -1n`,
+			want: "true",
+		},
+		{
+			// The bits of -9223372036854775808n are those of -0.
+			expr: `-9223372036854775808n === 0n`,
+			want: "false",
+		},
+		{
+			expr: `!!-9223372036854775808n`,
+			want: "true",
+		},
+		{
+			// A result computed beyond the range of int64 that comes back into it, compared with
+			// a value that never left it.
+			expr: `2n ** 64n - 18446744073709551615n === BigInt(1)`,
+			want: "true",
+		},
+		{
+			// The number is 2 ** 63.
+			expr: `9223372036854775807n < 9223372036854775807`,
+			want: "true",
+		},
+		{
+			expr: `-9223372036854775808n == -9223372036854775808`,
+			want: "true",
+		},
+		{
+			expr: `1n < 1.5`,
+			want: "true",
+		},
+		{
+			expr: `-1n > -1.5`,
+			want: "true",
+		},
+		{
+			expr: `1.5 > 1n`,
+			want: "true",
+		},
+		{
+			expr: `BigInt.asIntN(64, 9223372036854775808n)`,
+			want: "-9223372036854775808",
+		},
+		{
+			expr: `BigInt.asIntN(8, 255n)`,
+			want: "-1",
+		},
+		{
+			expr: `BigInt.asUintN(64, -1n)`,
+			want: "18446744073709551615",
+		},
+		{
+			expr: `BigInt.asUintN(8, -1n)`,
+			want: "255",
+		},
+		{
+			expr: `BigInt.asUintN(65, -1n)`,
+			want: "36893488147419103231",
+		},
+		{
+			expr: `new BigUint64Array([-1n])[0]`,
+			want: "18446744073709551615",
+		},
+		{
+			expr: `new BigInt64Array([2n ** 63n])[0]`,
+			want: "-9223372036854775808",
+		},
+		{
+			expr: `new BigInt64Array([-1n]).includes(-1n)`,
+			want: "true",
+		},
+		{
+			// The element has the bits of -1n.
+			expr: `new BigUint64Array([-1n]).includes(-1n)`,
+			want: "false",
+		},
+		{
+			expr: `new BigUint64Array([-1n]).includes(2n ** 64n - 1n)`,
+			want: "true",
+		},
+		{
+			// The value lies halfway between two numbers.
+			expr: `Number(9007199254740993n)`,
+			want: "9007199254740992",
+		},
+		{
+			expr: `BigInt(-9223372036854775808)`,
+			want: "-9223372036854775808",
+		},
+		{
+			expr: `BigInt(9223372036854775808)`,
+			want: "9223372036854775808",
+		},
+		{
+			expr: `(-9223372036854775808n).toString(2)`,
+			want: "-1000000000000000000000000000000000000000000000000000000000000000",
+		},
+		{
+			expr: `Object(0n - 1n).valueOf() === -1n`,
+			want: "true",
+		},
+	} {
+		v, err := runScript(t.Context(), &vm, "bigint", "String("+tc.expr+")")
+		if err != nil {
+			t.Errorf("%s: %v", tc.expr, err)
+			continue
+		}
+		if got := v.String(); got != tc.want {
+			t.Errorf("%s = %s, want %s", tc.expr, got, tc.want)
+		}
+	}
 }
 
 // TestCopyBytes tests CopyBytesToGo and CopyBytesToJS.

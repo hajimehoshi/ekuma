@@ -7,6 +7,7 @@ package engine
 
 import (
 	"math"
+	"math/big"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
@@ -41,8 +42,9 @@ const kindFirstObject = kindHTMLDDA
 
 // Value is a JavaScript value.
 //
-// A nil o means the number n. Every other value is identified by o,
-// which makes a [Value] two words and keeps numbers off the heap.
+// A nil o means the number n. An o of bigInt64Object means the BigInt whose two's complement
+// bits n holds. Every other value is identified by o, which makes a [Value] two words and keeps
+// numbers and BigInts that fit in an int64 off the heap.
 type Value struct {
 	n float64
 	o *Object
@@ -54,6 +56,10 @@ var (
 	falseObject     = &Object{kind: kindFalse}
 	trueObject      = &Object{kind: kindTrue}
 	holeObject      = &Object{kind: kindHole}
+
+	// bigInt64Object is the o of every BigInt that fits in an int64. Every other BigInt is an
+	// object of its own holding a *big.Int, so each BigInt has exactly one representation.
+	bigInt64Object = &Object{kind: kindBigInt}
 
 	// Undefined is the value undefined.
 	Undefined = Value{o: undefinedObject}
@@ -75,6 +81,14 @@ func Number(n float64) Value {
 	return Value{n: n}
 }
 
+// BigIntFromInt64 returns the BigInt i.
+func BigIntFromInt64(i int64) Value {
+	return Value{
+		n: math.Float64frombits(uint64(i)),
+		o: bigInt64Object,
+	}
+}
+
 // Bool returns the boolean b as a value.
 func Bool(b bool) Value {
 	if b {
@@ -88,7 +102,8 @@ func ObjectValue(o *Object) Value {
 	return Value{o: o}
 }
 
-// Object returns the object, string or symbol that v is. It returns nil for a number.
+// Object returns the object, string, symbol or BigInt that v is. It returns nil for a number,
+// and the same object for every BigInt that fits in an int64.
 func (v Value) Object() *Object {
 	return v.o
 }
@@ -133,6 +148,22 @@ func (v Value) IsBigInt() bool {
 	return v.o != nil && v.o.kind == kindBigInt
 }
 
+// BigInt64 returns the BigInt v as an int64, and reports whether v is a BigInt that fits in one.
+func (v Value) BigInt64() (int64, bool) {
+	if v.o != bigInt64Object {
+		return 0, false
+	}
+	return int64(math.Float64bits(v.n)), true
+}
+
+// BigInt returns the BigInt v, which must not be modified.
+func (v Value) BigInt() *big.Int {
+	if i, ok := v.BigInt64(); ok {
+		return big.NewInt(i)
+	}
+	return v.o.ext.(*big.Int)
+}
+
 // IsObject reports whether v is an object, which includes functions and arrays.
 func (v Value) IsObject() bool {
 	return v.o != nil && v.o.kind >= kindFirstObject
@@ -168,7 +199,8 @@ func ToBoolean(v Value) bool {
 	case kindString:
 		return o.str != ""
 	case kindBigInt:
-		return o.BigInt().Sign() != 0
+		// Zero fits in an int64.
+		return o != bigInt64Object || math.Float64bits(v.n) != 0
 	}
 	return true
 }
@@ -203,7 +235,7 @@ func IsStrictlyEqual(a, b Value) bool {
 		return a.o == b.o && a.n == b.n
 	}
 	if a.o == b.o {
-		return true
+		return a.o != bigInt64Object || math.Float64bits(a.n) == math.Float64bits(b.n)
 	}
 	if a.o.kind != b.o.kind {
 		return false
@@ -212,7 +244,8 @@ func IsStrictlyEqual(a, b Value) bool {
 	case kindString:
 		return a.o.str == b.o.str
 	case kindBigInt:
-		return a.o.BigInt().Cmp(b.o.BigInt()) == 0
+		// A BigInt that fits in an int64 never equals one that does not.
+		return a.o != bigInt64Object && b.o != bigInt64Object && a.o.ext.(*big.Int).Cmp(b.o.ext.(*big.Int)) == 0
 	}
 	return false
 }

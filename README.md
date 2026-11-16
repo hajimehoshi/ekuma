@@ -47,7 +47,7 @@ What Ekuma does differently is aimed at speed:
 - Objects have hidden-class shapes, and every property access site has an inline cache.
 - The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
 - Calls between JavaScript functions allocate nothing and do not recurse in Go.
-- A value is two words, and numbers are never allocated.
+- A value is two words, and numbers and BigInts that fit in 64 bits are never allocated.
 - Forwarding calls such as `f.apply(this, arguments)` do not create an arguments object.
 - Memory is managed by Go's garbage collector, without reference counting.
 

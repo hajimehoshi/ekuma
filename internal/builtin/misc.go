@@ -24,8 +24,10 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			v := vm.ToNumeric(args[0])
 			if v.IsNumber() {
 				n = v.Number()
+			} else if i, ok := v.BigInt64(); ok {
+				n = float64(i)
 			} else {
-				n, _ = new(big.Float).SetInt(v.Object().BigInt()).Float64()
+				n, _ = new(big.Float).SetInt(v.BigInt()).Float64()
 			}
 		}
 		if nt := vm.GetNewTarget(); nt != nil {

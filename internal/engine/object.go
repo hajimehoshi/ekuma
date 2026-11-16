@@ -5,7 +5,6 @@ package engine
 
 import (
 	"maps"
-	"math/big"
 	"slices"
 	"strconv"
 	"strings"
@@ -160,11 +159,6 @@ func (o *Object) ensureMeta() *objectMeta {
 		o.meta = &objectMeta{}
 	}
 	return o.meta
-}
-
-// BigInt returns the content of the BigInt o, which must not be modified.
-func (o *Object) BigInt() *big.Int {
-	return o.ext.(*big.Int)
 }
 
 type prop struct {

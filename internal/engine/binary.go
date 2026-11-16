@@ -565,7 +565,10 @@ func bigIntBits(i *big.Int) uint64 {
 // v must be a BigInt for a BigInt type and a number otherwise.
 func ElementBits(t ElementType, v Value) uint64 {
 	if t.IsBigInt() {
-		return bigIntBits(v.o.BigInt())
+		if i, ok := v.BigInt64(); ok {
+			return uint64(i)
+		}
+		return bigIntBits(v.BigInt())
 	}
 	return numberBits(t, v.n)
 }
@@ -579,8 +582,11 @@ func ElementNumber(t ElementType, x uint64) float64 {
 func (vm *VM) ElementFromBits(t ElementType, x uint64) Value {
 	switch t {
 	case ElementBigInt64:
-		return vm.NewBigInt(big.NewInt(int64(x)))
+		return BigIntFromInt64(int64(x))
 	case ElementBigUint64:
+		if x <= math.MaxInt64 {
+			return BigIntFromInt64(int64(x))
+		}
 		return vm.NewBigInt(new(big.Int).SetUint64(x))
 	}
 	return Number(numberFromBits(t, x))

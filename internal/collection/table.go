@@ -34,10 +34,13 @@ type Table struct {
 	// indexed says that the maps below locate every live entry by its key.
 	indexed bool
 
-	// nums, strs, bigs and objs map the keys to their indices in entries: numbers by the bits
-	// of the canonical value, strings and BigInts by their contents, and everything else by identity.
+	// nums, strs, ints, bigs and objs map the keys to their indices in entries: numbers by the
+	// bits of the canonical value, strings by their contents, BigInts by their values (as an
+	// int64 when they fit in one and as a decimal string otherwise), and everything else by
+	// identity.
 	nums map[uint64]int32
 	strs map[string]int32
+	ints map[int64]int32
 	bigs map[string]int32
 	objs map[*engine.Object]int32
 
@@ -102,7 +105,11 @@ func (t *Table) find(k engine.Value) int {
 	case k.IsString():
 		i, ok = t.strs[k.Object().Str()]
 	case k.IsBigInt():
-		i, ok = t.bigs[k.Object().BigInt().String()]
+		if n, ok64 := k.BigInt64(); ok64 {
+			i, ok = t.ints[n]
+		} else {
+			i, ok = t.bigs[k.BigInt().String()]
+		}
 	default:
 		i, ok = t.objs[k.Object()]
 	}
@@ -161,10 +168,17 @@ func (t *Table) index(k engine.Value, i int) {
 		}
 		t.strs[k.Object().Str()] = int32(i)
 	case k.IsBigInt():
+		if n, ok := k.BigInt64(); ok {
+			if t.ints == nil {
+				t.ints = map[int64]int32{}
+			}
+			t.ints[n] = int32(i)
+			return
+		}
 		if t.bigs == nil {
 			t.bigs = map[string]int32{}
 		}
-		t.bigs[k.Object().BigInt().String()] = int32(i)
+		t.bigs[k.BigInt().String()] = int32(i)
 	default:
 		if t.objs == nil {
 			t.objs = map[*engine.Object]int32{}
@@ -181,7 +195,11 @@ func (t *Table) unindex(k engine.Value) {
 	case k.IsString():
 		delete(t.strs, k.Object().Str())
 	case k.IsBigInt():
-		delete(t.bigs, k.Object().BigInt().String())
+		if n, ok := k.BigInt64(); ok {
+			delete(t.ints, n)
+		} else {
+			delete(t.bigs, k.BigInt().String())
+		}
 	default:
 		delete(t.objs, k.Object())
 	}
@@ -191,6 +209,7 @@ func (t *Table) unindex(k engine.Value) {
 func (t *Table) reindex() {
 	clear(t.nums)
 	clear(t.strs)
+	clear(t.ints)
 	clear(t.bigs)
 	clear(t.objs)
 	for i := range t.entries {
@@ -302,7 +321,7 @@ func (t *Table) Clear() {
 	t.entries = nil
 	t.live = 0
 	t.indexed = false
-	t.nums, t.strs, t.bigs, t.objs = nil, nil, nil, nil
+	t.nums, t.strs, t.ints, t.bigs, t.objs = nil, nil, nil, nil, nil
 	if t.gen != nil {
 		next := &generation{}
 		t.gen.cleared = true

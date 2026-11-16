@@ -467,6 +467,13 @@ func (vm *VM) ensureCanAddPrivate(v Value, name *Object) {
 
 // arith implements the binary arithmetic operators other than + for operands that are not both numbers.
 func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
+	if xi, ok := x.BigInt64(); ok {
+		if yi, ok := y.BigInt64(); ok {
+			if r, ok := arithBigInt64(op, xi, yi); ok {
+				return r
+			}
+		}
+	}
 	x = vm.ToNumeric(x)
 	y = vm.ToNumeric(y)
 	if x.o == nil && y.o == nil {
@@ -500,7 +507,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	if x.o == nil || y.o == nil {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	a, b := x.o.BigInt(), y.o.BigInt()
+	a, b := x.BigInt(), y.BigInt()
 	r := new(big.Int)
 	switch op {
 	case bytecode.OpSub:
@@ -562,28 +569,39 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 }
 
 func (vm *VM) negate(x Value) Value {
+	if i, ok := x.BigInt64(); ok && i != math.MinInt64 {
+		return BigIntFromInt64(-i)
+	}
 	x = vm.ToNumeric(x)
 	if x.o == nil {
 		return Value{n: -x.n}
 	}
-	return vm.NewBigInt(new(big.Int).Neg(x.o.BigInt()))
+	return vm.NewBigInt(new(big.Int).Neg(x.BigInt()))
 }
 
 func (vm *VM) bitNot(x Value) Value {
+	if i, ok := x.BigInt64(); ok {
+		return BigIntFromInt64(^i)
+	}
 	x = vm.ToNumeric(x)
 	if x.o == nil {
 		return Value{n: float64(^numconv.ToInt32(x.n))}
 	}
-	return vm.NewBigInt(new(big.Int).Not(x.o.BigInt()))
+	return vm.NewBigInt(new(big.Int).Not(x.BigInt()))
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
 func (vm *VM) step(x Value, d int64) Value {
+	if i, ok := x.BigInt64(); ok {
+		if s, ok := add64(i, d); ok {
+			return BigIntFromInt64(s)
+		}
+	}
 	x = vm.ToNumeric(x)
 	if x.o == nil {
 		return Value{n: x.n + float64(d)}
 	}
-	return vm.NewBigInt(new(big.Int).Add(x.o.BigInt(), big.NewInt(d)))
+	return vm.NewBigInt(new(big.Int).Add(x.BigInt(), big.NewInt(d)))
 }
 
 // classElement is an element that the constructor of a class adds to every instance.

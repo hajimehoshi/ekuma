@@ -153,7 +153,7 @@ func (vm *VM) ToString(v Value) string {
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a string")
 	case kindBigInt:
-		return o.BigInt().String()
+		return bigIntString(v, 10)
 	}
 	return vm.ToString(vm.ToPrimitive(v, HintString))
 }
@@ -196,7 +196,7 @@ func (vm *VM) ToObject(v Value) *Object {
 	case kindBigInt:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicBigIntPrototype))
 		w.class = classBigInt
-		w.ext = o
+		w.ext = v
 		return w
 	}
 	panic("ekuma: internal value reached ToObject")
@@ -230,9 +230,9 @@ func (vm *VM) ToBigInt(v Value) Value {
 	case kindUndefined, kindNull:
 		vm.ThrowTypeError("cannot convert " + vm.ToString(p) + " to a BigInt")
 	case kindFalse:
-		return vm.NewBigInt(new(big.Int))
+		return BigIntFromInt64(0)
 	case kindTrue:
-		return vm.NewBigInt(big.NewInt(1))
+		return BigIntFromInt64(1)
 	case kindString:
 		i := numconv.StringToBigInt(p.o.str)
 		if i == nil {
@@ -243,16 +243,6 @@ func (vm *VM) ToBigInt(v Value) Value {
 		vm.ThrowTypeError("cannot convert a Symbol value to a BigInt")
 	}
 	panic("ekuma: internal value reached ToBigInt")
-}
-
-// NewBigInt returns the BigInt i, which must not be modified afterward.
-func (vm *VM) NewBigInt(i *big.Int) Value {
-	return Value{
-		o: &Object{
-			kind: kindBigInt,
-			ext:  i,
-		},
-	}
 }
 
 // looseEquals implements IsLooselyEqual.
@@ -311,13 +301,23 @@ const (
 
 // compareBigIntMixed compares a BigInt with a BigInt, a number or a string, in either order.
 func compareBigIntMixed(a, b Value) cmpResult {
+	if x, ok := a.BigInt64(); ok {
+		if y, ok := b.BigInt64(); ok {
+			return compareInt64s(x, y)
+		}
+		if b.o == nil {
+			return compareInt64Number(x, b.n)
+		}
+	} else if y, ok := b.BigInt64(); ok && a.o == nil {
+		return compareInt64Number(y, a.n).reverse()
+	}
 	toBig := func(v Value) (*big.Int, float64, bool) {
 		if v.o == nil {
 			return nil, v.n, true
 		}
 		switch v.o.kind {
 		case kindBigInt:
-			return v.o.BigInt(), 0, true
+			return v.BigInt(), 0, true
 		case kindString:
 			i := numconv.StringToBigInt(v.o.str)
 			return i, 0, i != nil
@@ -338,15 +338,7 @@ func compareBigIntMixed(a, b Value) cmpResult {
 	case x != nil:
 		return compareBigFloat(x, yf)
 	case y != nil:
-		switch compareBigFloat(y, xf) {
-		case cmpLess:
-			return cmpGreater
-		case cmpGreater:
-			return cmpLess
-		case cmpEqual:
-			return cmpEqual
-		}
-		return cmpUndefined
+		return compareBigFloat(y, xf).reverse()
 	}
 	return cmpUndefined
 }
@@ -404,6 +396,13 @@ func compareNumbers(x, y float64) cmpResult {
 
 // addValues implements the + operator for operands that are not both numbers.
 func (vm *VM) addValues(a, b Value) Value {
+	if x, ok := a.BigInt64(); ok {
+		if y, ok := b.BigInt64(); ok {
+			if s, ok := add64(x, y); ok {
+				return BigIntFromInt64(s)
+			}
+		}
+	}
 	a = vm.ToPrimitive(a, HintDefault)
 	b = vm.ToPrimitive(b, HintDefault)
 	as, bs := a.IsString(), b.IsString()
@@ -428,7 +427,7 @@ func (vm *VM) addValues(a, b Value) Value {
 	if a.o == nil || b.o == nil {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	return vm.NewBigInt(new(big.Int).Add(a.o.BigInt(), b.o.BigInt()))
+	return vm.NewBigInt(new(big.Int).Add(a.BigInt(), b.BigInt()))
 }
 
 // MaxStringLength is the largest length a string may have, in bytes.

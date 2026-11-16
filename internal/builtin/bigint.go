@@ -6,6 +6,7 @@ package builtin
 import (
 	"math"
 	"math/big"
+	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -30,10 +31,18 @@ func initBigInt(vm *engine.VM) {
 	method(vm, ctor, "asIntN", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		bits := toIndex(vm, arg(args, 0))
 		x := vm.ToBigInt(arg(args, 1))
-		i := x.Object().BigInt()
 		if bits == 0 {
-			return vm.NewBigInt(new(big.Int))
+			return engine.BigIntFromInt64(0)
 		}
+		if n, ok := x.BigInt64(); ok {
+			if bits >= 64 {
+				return x
+			}
+			// Keep the low bits and extend the sign bit among them.
+			s := 64 - bits
+			return engine.BigIntFromInt64(n << s >> s)
+		}
+		i := x.BigInt()
 		// i already lies in [-2^(bits-1), 2^(bits-1)).
 		if int64(i.BitLen()) < bits {
 			return x
@@ -48,7 +57,17 @@ func initBigInt(vm *engine.VM) {
 	method(vm, ctor, "asUintN", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		bits := toIndex(vm, arg(args, 0))
 		x := vm.ToBigInt(arg(args, 1))
-		i := x.Object().BigInt()
+		if n, ok := x.BigInt64(); ok && bits <= 64 {
+			u := uint64(n)
+			if bits < 64 {
+				u &= 1<<bits - 1
+			}
+			if u <= math.MaxInt64 {
+				return engine.BigIntFromInt64(int64(u))
+			}
+			return vm.NewBigInt(new(big.Int).SetUint64(u))
+		}
+		i := x.BigInt()
 		if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
 			return x
 		}
@@ -75,11 +94,14 @@ func initBigInt(vm *engine.VM) {
 		if radix < 2 || radix > 36 {
 			vm.ThrowRangeError("toString() radix must be between 2 and 36")
 		}
-		return vm.NewString(x.Object().BigInt().Text(int(radix)))
+		if n, ok := x.BigInt64(); ok {
+			return vm.NewString(strconv.FormatInt(n, int(radix)))
+		}
+		return vm.NewString(x.BigInt().Text(int(radix)))
 	})
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x := thisBigInt(vm, this, "toLocaleString")
-		return vm.NewString(x.Object().BigInt().String())
+		return vm.NewString(vm.ToString(x))
 	})
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return thisBigInt(vm, this, "valueOf")
@@ -91,6 +113,9 @@ func initBigInt(vm *engine.VM) {
 func numberToBigInt(vm *engine.VM, n float64) engine.Value {
 	if n != math.Trunc(n) || math.IsInf(n, 0) {
 		vm.ThrowRangeError("the number " + numconv.NumberToString(n) + " cannot be converted to a BigInt because it is not an integer")
+	}
+	if n >= -1<<63 && n < 1<<63 {
+		return engine.BigIntFromInt64(int64(n))
 	}
 	i, _ := big.NewFloat(n).Int(nil)
 	return vm.NewBigInt(i)

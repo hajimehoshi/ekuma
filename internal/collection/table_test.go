@@ -5,6 +5,7 @@ package collection_test
 
 import (
 	"math"
+	"math/big"
 	"slices"
 	"testing"
 
@@ -126,6 +127,51 @@ func TestSameValueZero(t *testing.T) {
 				}
 				break
 			}
+		}
+	}
+}
+
+func TestSameValueZeroBigInts(t *testing.T) {
+	vm := engine.NewVM(nil)
+	big64 := func() engine.Value {
+		return vm.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
+	}
+	// Below and above the size at which the table indexes its keys.
+	for _, filler := range []int{0, 20} {
+		var tab collection.Table
+		for i := range filler {
+			tab.Set(engine.Number(float64(1000+i)), engine.Undefined)
+		}
+		// The bits of -1n are those of a NaN, and the bits of the smallest int64 are those of -0.
+		tab.Set(engine.BigIntFromInt64(-1), engine.Number(1))
+		tab.Set(engine.BigIntFromInt64(math.MinInt64), engine.Number(2))
+		tab.Set(big64(), engine.Number(3))
+
+		for _, tc := range []struct {
+			key  engine.Value
+			want float64
+		}{
+			{
+				key:  engine.BigIntFromInt64(-1),
+				want: 1,
+			},
+			{
+				key:  engine.BigIntFromInt64(math.MinInt64),
+				want: 2,
+			},
+			{
+				// A BigInt with the same value that is another object.
+				key:  big64(),
+				want: 3,
+			},
+		} {
+			v, ok := tab.Get(tc.key)
+			if !ok || v.Number() != tc.want {
+				t.Errorf("filler %d: Get(%s) = %v, %t; want %v", filler, vm.DisplayString(tc.key), vm.DisplayString(v), ok, tc.want)
+			}
+		}
+		if tab.Has(engine.BigIntFromInt64(0)) {
+			t.Errorf("filler %d: 0n is found", filler)
 		}
 	}
 }

@@ -826,7 +826,7 @@ func (vm *VM) DisplayString(v Value) string {
 	case kindSymbol:
 		return "Symbol(" + o.str + ")"
 	case kindBigInt:
-		return o.BigInt().String()
+		return bigIntString(v, 10)
 	case kindArray:
 		return "[object Array]"
 	}

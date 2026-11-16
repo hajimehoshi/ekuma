@@ -643,7 +643,7 @@ func incompatible(vm *engine.VM, what string, this engine.Value) {
 // bigIntToEpochNs returns the BigInt v as epoch nanoseconds, or throws a RangeError when they
 // are not valid.
 func bigIntToEpochNs(vm *engine.VM, v engine.Value) temporal.Int128 {
-	b := vm.ToBigInt(v).Object().BigInt()
+	b := vm.ToBigInt(v).BigInt()
 	ns, ok := temporal.Int128FromBig(b)
 	if !ok || !temporal.IsValidEpochNanoseconds(ns) {
 		vm.ThrowRangeError("epoch nanoseconds are out of range")

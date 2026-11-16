@@ -318,7 +318,7 @@ func toIntlMathematicalValue(vm *engine.VM, v engine.Value) number.Decimal {
 	p := vm.ToPrimitive(v, engine.HintNumber)
 	switch {
 	case p.IsBigInt():
-		return number.FromBigInt(p.Object().BigInt())
+		return number.FromBigInt(p.BigInt())
 	case p.IsString():
 		return number.Parse(vm.ToString(p))
 	}
@@ -532,6 +532,6 @@ func initToLocaleString(vm *engine.VM) {
 		if !ok {
 			vm.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
 		}
-		return format(vm, args, number.FromBigInt(x.Object().BigInt()))
+		return format(vm, args, number.FromBigInt(x.BigInt()))
 	})
 }

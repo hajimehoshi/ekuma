@@ -222,7 +222,7 @@ func ThisBigIntValue(v Value) (Value, bool) {
 		return v, true
 	}
 	if v.IsObject() && v.o.class == classBigInt {
-		return Value{o: v.o.ext.(*Object)}, true
+		return v.o.ext.(Value), true
 	}
 	return Undefined, false
 }
