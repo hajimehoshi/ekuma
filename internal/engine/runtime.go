@@ -268,12 +268,21 @@ func (vm *VM) initGlobalLex(key *Object, val Value) {
 
 // getValue returns v[k], or the getter to call.
 func (vm *VM) getValue(v, k Value) (Value, *Object) {
-	if k.o == nil {
+	if ko := k.o; ko == nil {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
 				return vm.typedArrayGet(o, i), nil
 			}
 			return vm.getIndex(v, i)
+		}
+	} else if ko.kind == kindString {
+		// An element in elems is an own data property, whatever object v is.
+		if i, ok := ko.knownArrayIndex(); ok {
+			if o := v.o; o != nil && int64(i) < int64(len(o.elems)) {
+				if e := o.elems[i]; !e.isHole() {
+					return e, nil
+				}
+			}
 		}
 	}
 	// The receiver is checked before the key is converted.
@@ -289,12 +298,20 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 
 // setValue stores v[k] = val. The results are those of setNamed.
 func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
-	if k.o == nil {
+	if ko := k.o; ko == nil {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
 				return nil, vm.typedArraySet(o, i, val)
 			}
 			return vm.setIndex(v, i, val)
+		}
+	} else if ko.kind == kindString {
+		// An element in elems is a writable own data property, whatever object v is.
+		if i, ok := ko.knownArrayIndex(); ok {
+			if o := v.o; o != nil && int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
+				o.elems[i] = val
+				return nil, true
+			}
 		}
 	}
 	if v.IsNullish() {

@@ -105,7 +105,8 @@ type Object struct {
 	class class
 	flags uint8
 
-	// length is the length of an array, which is at least len(elems).
+	// length is the length of an array, which is at least len(elems). For a string it is 0,
+	// or the array index that the string stands for plus one. See [Object.arrayIndex].
 	length uint32
 
 	// shape is the layout of slots. Only the singletons and internal values have none.
@@ -757,7 +758,7 @@ func (vm *VM) indexString(i uint32) Value {
 		return vm.strings.ascii['0'+i]
 	}
 	if i >= indexStringCount {
-		return vm.NewString(strconv.FormatUint(uint64(i), 10))
+		return vm.newIndexString(i)
 	}
 	t := vm.indexStrings
 	if int(i) >= len(t) {
@@ -768,8 +769,15 @@ func (vm *VM) indexString(i uint32) Value {
 	if o := t[i]; o != nil {
 		return Value{o: o}
 	}
-	v := vm.NewString(strconv.FormatUint(uint64(i), 10))
+	v := vm.newIndexString(i)
 	t[i] = v.o
+	return v
+}
+
+// newIndexString returns a new string of the array index i, which is at least 10.
+func (vm *VM) newIndexString(i uint32) Value {
+	v := vm.NewString(strconv.FormatUint(uint64(i), 10))
+	v.o.length = i + 1
 	return v
 }
 
@@ -859,6 +867,24 @@ func (o *Object) StringLength() int {
 		m.length = wtf8.Len(o.str)
 	}
 	return m.length
+}
+
+// arrayIndex returns the array index whose canonical string form is the string o.
+func (o *Object) arrayIndex() (uint32, bool) {
+	if i, ok := o.knownArrayIndex(); ok {
+		return i, true
+	}
+	i, ok := stringIndex(o.str)
+	if ok {
+		o.length = i + 1
+	}
+	return i, ok
+}
+
+// knownArrayIndex returns the array index that the string o stands for, if it is known
+// already. It reports false otherwise, even when o is an array index.
+func (o *Object) knownArrayIndex() (uint32, bool) {
+	return o.length - 1, o.length != 0
 }
 
 // seek returns the position of the code unit i of the non-ASCII string o.

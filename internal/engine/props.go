@@ -82,7 +82,7 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 	switch o.kind {
 	case kindString:
 		if c := o.str; len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
-			if i, ok := stringIndex(c); ok {
+			if i, ok := o.arrayIndex(); ok {
 				return PropKey{idx: i}
 			}
 		}
@@ -109,7 +109,7 @@ func (vm *VM) QueryKey(v Value) PropKey {
 // the contents of o, it returns a key that no object has as a property.
 func (vm *VM) queryStringKey(o *Object) PropKey {
 	if c := o.str; len(c) > 0 && c[0] >= '0' && c[0] <= '9' {
-		if i, ok := stringIndex(c); ok {
+		if i, ok := o.arrayIndex(); ok {
 			return PropKey{idx: i}
 		}
 	}
