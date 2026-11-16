@@ -1091,6 +1091,10 @@ func (vm *VM) setFlags(o *Object, key *Object, p prop, flags uint8) {
 func (vm *VM) remove(o *Object, key *Object) {
 	// Removing a property moves the later ones, so the object gets a shape that no inline cache has seen.
 	old := o.shape
+	if old.private {
+		vm.removeFromPrivate(o, key)
+		return
+	}
 	s := &shape{
 		vm:      old.vm,
 		proto:   old.proto,
@@ -1113,6 +1117,39 @@ func (vm *VM) remove(o *Object, key *Object) {
 	}
 	o.shape = s
 	o.slots = slots
+	vm.touchProto(o)
+}
+
+// removeFromPrivate deletes the own named property key of o, which must exist, from the private
+// shape of o. The new shape takes over the storage of the old one, which only o has.
+func (vm *VM) removeFromPrivate(o *Object, key *Object) {
+	old := o.shape
+	s := &shape{
+		vm:      old.vm,
+		proto:   old.proto,
+		count:   old.count - 1,
+		table:   old.table,
+		private: true,
+		order:   old.order,
+	}
+	old.table = nil
+	old.order = nil
+	// The keys of a private shape are in the order of their slots.
+	i := int(s.table[key].slot)
+	delete(s.table, key)
+	last := len(s.order) - 1
+	copy(s.order[i:], s.order[i+1:])
+	s.order[last] = nil
+	s.order = s.order[:last]
+	for _, k := range s.order[i:] {
+		p := s.table[k]
+		p.slot--
+		s.table[k] = p
+	}
+	copy(o.slots[i:], o.slots[i+1:])
+	o.slots[last] = Value{}
+	o.slots = o.slots[:last]
+	o.shape = s
 	vm.touchProto(o)
 }
 
