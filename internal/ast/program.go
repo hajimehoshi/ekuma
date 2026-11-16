@@ -27,6 +27,8 @@ type Program struct {
 	lineOnce   sync.Once
 	lineStarts []int32
 
+	codePointsOnce sync.Once
+
 	// codePoints holds the number of code points before each multiple of codePointBlock in
 	// [Program.Source].
 	codePoints []int32
@@ -40,31 +42,112 @@ func (p *Program) Text(n Node) string {
 	return p.Source[n.Start():n.End()]
 }
 
-// Position converts a byte offset into a 1-based line and a 1-based column counted in code points.
-func (p *Program) Position(offset int32) (line, column int) {
+// lines returns the offsets at which the lines of [Program.Source] start.
+func (p *Program) lines() []int32 {
 	p.lineOnce.Do(func() {
 		p.lineStarts = lineStarts(p.Source)
+	})
+	return p.lineStarts
+}
+
+// clampOffset returns offset limited to the range of [Program.Source].
+func (p *Program) clampOffset(offset int32) int32 {
+	return min(max(offset, 0), int32(len(p.Source)))
+}
+
+// Position converts a byte offset into a 1-based line and a 1-based column counted in code points.
+func (p *Program) Position(offset int32) (line, column int) {
+	offset = p.clampOffset(offset)
+	starts := p.lines()
+	i := sort.Search(len(starts), func(i int) bool {
+		return starts[i] > offset
+	}) - 1
+	return i + 1, p.column(starts[i], offset)
+}
+
+// column returns the 1-based column of offset on the line starting at lineStart.
+func (p *Program) column(lineStart, offset int32) int {
+	if offset-lineStart <= 2*codePointBlock {
+		return countCodePoints(p.Source[lineStart:offset]) + 1
+	}
+	p.codePointsOnce.Do(func() {
 		p.codePoints = make([]int32, len(p.Source)/codePointBlock+1)
 		for i := 1; i < len(p.codePoints); i++ {
 			p.codePoints[i] = p.codePoints[i-1] + int32(countCodePoints(p.Source[(i-1)*codePointBlock:i*codePointBlock]))
 		}
 	})
-	if offset < 0 {
-		offset = 0
-	}
-	if int(offset) > len(p.Source) {
-		offset = int32(len(p.Source))
-	}
-	i := sort.Search(len(p.lineStarts), func(i int) bool {
-		return p.lineStarts[i] > offset
-	}) - 1
-	return i + 1, p.codePointsBefore(offset) - p.codePointsBefore(p.lineStarts[i]) + 1
+	return p.codePointsBefore(offset) - p.codePointsBefore(lineStart) + 1
 }
 
 // codePointsBefore returns the number of code points in [Program.Source] before offset.
 func (p *Program) codePointsBefore(offset int32) int {
 	k := int(offset) / codePointBlock
 	return int(p.codePoints[k]) + countCodePoints(p.Source[k*codePointBlock:offset])
+}
+
+// Positioner converts byte offsets in the source of a [Program] into positions as
+// [Program.Position] does. It is fastest when the offsets mostly increase.
+// A Positioner must not be used by multiple goroutines at the same time.
+type Positioner struct {
+	p *Program
+
+	valid bool
+
+	// offset is the last offset converted, line the 0-based index of its line, and column its
+	// 1-based column.
+	offset int32
+	line   int
+	column int
+}
+
+// NewPositioner returns a Positioner for p.
+func NewPositioner(p *Program) *Positioner {
+	return &Positioner{
+		p: p,
+	}
+}
+
+// Position converts a byte offset into a 1-based line and a 1-based column counted in code points.
+func (r *Positioner) Position(offset int32) (line, column int) {
+	p := r.p
+	offset = p.clampOffset(offset)
+	if r.valid && offset == r.offset {
+		return r.line + 1, r.column
+	}
+	starts := p.lines()
+	i := 0
+	if r.valid {
+		i = r.line
+	}
+	if offset >= starts[i] {
+		// Step forward a few lines before searching the rest.
+		for range 4 {
+			if i+1 >= len(starts) || starts[i+1] > offset {
+				break
+			}
+			i++
+		}
+		if i+1 < len(starts) && starts[i+1] <= offset {
+			rest := starts[i+1:]
+			i += sort.Search(len(rest), func(j int) bool {
+				return rest[j] > offset
+			})
+		}
+	} else {
+		i = sort.Search(i, func(j int) bool {
+			return starts[j] > offset
+		}) - 1
+	}
+	if r.valid && i == r.line && offset > r.offset && offset-r.offset <= 2*codePointBlock {
+		column = r.column + countCodePoints(p.Source[r.offset:offset])
+	} else {
+		column = p.column(starts[i], offset)
+	}
+	r.valid = true
+	r.offset = offset
+	r.line = i
+	r.column = column
+	return i + 1, column
 }
 
 // Position converts a byte offset in src into a 1-based line and a 1-based column counted in code points.

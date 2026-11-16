@@ -248,6 +248,9 @@ type compiler struct {
 	prog *ast.Program
 	file string
 
+	// positioner converts the offsets of prog for the positions of the compiled code.
+	positioner *ast.Positioner
+
 	// isExpression holds the named function expressions, whose names are bound inside them.
 	isExpression map[*ast.Function]bool
 
@@ -342,6 +345,7 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 	return &compiler{
 		prog:         prog,
 		file:         file,
+		positioner:   ast.NewPositioner(prog),
 		isExpression: map[*ast.Function]bool{},
 		fieldNames:   map[*ast.Function]string{},
 		fieldKeys:    map[*ast.Function]string{},
@@ -480,7 +484,7 @@ func (f *fn) jumpTo(pc int32) {
 
 // setPos records the source position at offset for the instructions that follow.
 func (f *fn) setPos(offset int32) {
-	line, column := f.c.prog.Position(offset)
+	line, column := f.c.positioner.Position(offset)
 	pos := bytecode.Pos{
 		PC:     f.pc(),
 		Line:   int32(line),
