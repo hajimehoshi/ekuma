@@ -98,12 +98,20 @@ func TestWriteRepeated(t *testing.T) {
 }
 
 func TestCompare(t *testing.T) {
-	for _, a := range samples {
-		for _, b := range samples {
-			got := wtf8.Compare(wtf8.FromUTF16(a), wtf8.FromUTF16(b))
-			want := slices.CompareFunc(a, b, cmp.Compare[uint16])
-			if got != want {
-				t.Errorf("Compare(%x, %x) = %d, want %d", a, b, got, want)
+	// A common prefix longer than the chunks that Compare skips, which ends inside one.
+	var long []uint16
+	for i := range 35 {
+		long = append(long, 'a'+uint16(i%3), 0x3042)
+	}
+	for _, prefix := range [][]uint16{nil, long} {
+		for _, a := range samples {
+			for _, b := range samples {
+				a, b := slices.Concat(prefix, a), slices.Concat(prefix, b)
+				got := wtf8.Compare(wtf8.FromUTF16(a), wtf8.FromUTF16(b))
+				want := slices.CompareFunc(a, b, cmp.Compare[uint16])
+				if got != want {
+					t.Errorf("Compare(%x, %x) = %d, want %d", a, b, got, want)
+				}
 			}
 		}
 	}
