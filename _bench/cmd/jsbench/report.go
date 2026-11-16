@@ -223,7 +223,7 @@ func report(dir string) (map[string]string, error) {
 		}
 		summary = append(summary, row)
 	}
-	sections["summary"] = table(slices.Concat([]string{""}, heads), summary, "--:")
+	sections["summary"] = table(slices.Concat([]string{""}, heads), summary, "--:") + "\n" + measuredOn(rs[found[0].name])
 
 	for _, s := range found {
 		r := rs[s.name]
@@ -256,6 +256,16 @@ func report(dir string) (map[string]string, error) {
 	sections["environment"] = environmentTable(found, rs)
 	sections["missing"] = missingList(found, rs)
 	return sections, nil
+}
+
+// measuredOn returns a sentence that tells when and on what r was measured.
+func measuredOn(r *results) string {
+	config := map[string]string{}
+	for _, c := range r.config {
+		config[c.key] = c.value
+	}
+	date, _, _ := strings.Cut(config["date"], "T")
+	return fmt.Sprintf("Measured on %s: %s, %s, %s.\n", date, config["cpu"], config["os"], config["go"])
 }
 
 // environmentTable returns the table of the configuration lines of the results files of

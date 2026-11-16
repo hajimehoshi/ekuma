@@ -54,9 +54,28 @@ What Ekuma does differently is aimed at speed:
 Strings are Go strings in [WTF-8](https://simonsapin.github.io/wtf-8/), with exact UTF-16 semantics.
 A well-formed string crosses the Go boundary without conversion.
 
-Performance has only been measured on one synthetic workload so far
-(`go test -bench Workload`, in `testdata/workload.js`). No comparison with other engines
-is published yet.
+## Performance
+
+Time relative to Ekuma, as the geometric mean over the benchmarks of each suite (lower is
+faster):
+
+<!-- BEGIN jsbench summary -->
+
+|  | Ekuma | goja | Sobek | otto | modernc.org/quickjs | QJS | QuickJS (C) | v8go `--jitless` | v8go |
+| --- | --: | --: | --: | --: | --: | --: | --: | --: | --: |
+| V8 benchmark suite v7 | 1.00 | 3.33 | 3.32 | 17.8 (9 of 10) | 2.42 | 3.36 (6 of 10) | 0.739 | 0.407 | 0.0208 |
+| QuickJS microbench | 1.00 | 2.59 | 2.58 | n/a | 1.81 | 2.80 (69 of 74) | 0.486 | 0.329 | 0.0639 |
+
+Measured on 2026-11-16: Apple M3 Pro, macOS 27.2, go1.27.4.
+
+<!-- END jsbench summary -->
+
+- QuickJS (C) is the QuickJS that modernc.org/quickjs translates, compiled from C, and v8go runs
+  with and without V8's JIT compilers, as references.
+- "(k of n)" means that the engine failed the other benchmarks, and its mean is over the ones it
+  ran. otto cannot parse microbench.js, which uses ES2015 syntax.
+- [`_bench`](_bench/README.md) has the benchmarks, how they are measured, and the results of
+  each benchmark.
 
 ## Host API
 
