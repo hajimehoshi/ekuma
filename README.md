@@ -28,7 +28,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 | | Ekuma | [goja](https://github.com/dop251/goja) | [Sobek](https://github.com/grafana/sobek) | [otto](https://github.com/robertkrimen/otto) | [modernc.org/quickjs](https://pkg.go.dev/modernc.org/quickjs) | [QJS](https://github.com/fastschema/qjs) | [v8go](https://github.com/tommie/v8go) |
 |---|---|---|---|---|---|---|---|
 | Latest release | None | None | None | v0.5.1 (2024-11-05) | v0.27.0 (2026-10-24) | v0.0.6 (2025-10-28) | v0.44.0 (2026-11-12) |
-| Implementation | Written in Go | Written in Go | Fork of goja | Written in Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
+| Implementation | Written in Go | Written in Go | Written in Go | Written in Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
 | Execution strategy | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | AST interpreter | Bytecode interpreter | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | JIT compiler, or bytecode interpreter with `--jitless` |
 | Pure Go | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `unsafe`-free | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
@@ -37,10 +37,10 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 | `Intl` | ✅ | ❌ | ❌ | ❌ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ | ✅ |
 | `Temporal` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-Investigated on 2026-11-16, with goja and Sobek at their latest commits, since they have no
-releases. Sobek is the fork of goja that k6 uses.
-The v8go above is the fork of [rogchap.com/v8go](https://github.com/rogchap/v8go) that follows
-V8's releases.
+- Investigated on 2026-11-16, with goja and Sobek at their latest commits.
+- Sobek is the fork of goja that k6 uses.
+- v8go is the fork of [rogchap.com/v8go](https://github.com/rogchap/v8go) that follows V8's
+  releases.
 
 What Ekuma does differently is aimed at speed:
 
