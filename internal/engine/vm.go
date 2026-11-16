@@ -459,6 +459,10 @@ type realm struct {
 
 	// extension is the state of the built-in extension in the realm.
 	extension any
+
+	// strictCallee is the callee property of unmapped arguments objects, or the zero value
+	// until it is needed.
+	strictCallee Value
 }
 
 // Realm is a Realm Record.

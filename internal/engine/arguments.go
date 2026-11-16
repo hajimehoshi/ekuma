@@ -15,7 +15,11 @@ type argumentsMap struct {
 func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 	o := vm.newArgumentsObject(fr, regs)
 	if !mapped {
-		vm.add(o, vm.Key(keyCallee), newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError)), FlagAccessor)
+		if vm.strictCallee.o == nil {
+			// An accessor pair is never changed in place, so the objects share it.
+			vm.strictCallee = newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError))
+		}
+		vm.add(o, vm.Key(keyCallee), vm.strictCallee, FlagAccessor)
 		return o
 	}
 	if n := min(fr.argc, fr.fp.nparams); n > 0 {
@@ -46,14 +50,22 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 // newArgumentsObject returns an arguments object without callee whose elements are the arguments
 // of the frame fr, whose registers are regs.
 func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
-	o := &Object{
-		kind:  kindObject,
-		class: classArguments,
-		shape: vm.shapes.arguments,
-		elems: vm.frameArgs(fr, regs),
+	a := &argumentsObject{
+		kind:    kindObject,
+		class:   classArguments,
+		shape:   vm.shapes.arguments,
+		elems:   vm.frameArgs(fr, regs),
+		storage: [3]Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}},
 	}
-	o.slots = []Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
-	return o
+	a.slots = a.storage[:2]
+	return &a.Object
+}
+
+// argumentsObject is an arguments object together with the storage of its length,
+// its iterator and its callee, so that creating one is a single allocation.
+type argumentsObject struct {
+	Object
+	storage [3]Value
 }
 
 // mappedParam returns the storage of the parameter that the index property i of o is mapped to,
