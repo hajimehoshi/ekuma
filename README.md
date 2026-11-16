@@ -29,6 +29,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 |---|---|---|---|---|---|---|---|
 | Latest release | None | None | None | v0.5.1 (2024-11-05) | v0.27.0 (2026-10-24) | v0.0.6 (2025-10-28) | v0.44.0 (2026-11-12) |
 | Implementation | Written in Go | Written in Go | Fork of goja | Written in Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
+| Execution strategy | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | AST interpreter | Bytecode interpreter | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | JIT compiler, or bytecode interpreter with `--jitless` |
 | Pure Go | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | `unsafe`-free | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | ECMAScript | ES2025 | ES5.1, and much of ES2015 and later | ES5.1, and much of ES2015 and later | ES5 | ES2023 | ES2023 | ES2025 |
