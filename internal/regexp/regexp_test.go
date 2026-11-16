@@ -230,3 +230,77 @@ func TestPoll(t *testing.T) {
 		t.Errorf("Poll was called %d times, want 1", p.n)
 	}
 }
+
+// FuzzRequiredLiteral compares matching with the same pattern in an alternation, where no
+// literal is required.
+func FuzzRequiredLiteral(f *testing.F) {
+	atoms := []string{"a", "b", "ab", "abc", "x", "xyz", "1", ".", `\d`, `\w`, `\s`, "[ab]", "[^a]", "(a)", "(ab|b)", "(?:a|bc)", "a*", "b+", "a?", ".*", ".*?", ".{2}", `\d{1,3}`, "b{2,}", "(a|)", "^", "$", `\b`, "(?=b)", "(?!a)", "(?<=a)", "(?<!b)", `\1`, "é", "😀", `\uD83D`, `\uDE00`, "(?:ab){1,2}", "a{0,2}", "(x)?", "(?:)", "[a-c]{2,}", "日本", "(?<n>b)", `\k<n>`, "(?i:b)", `[\q{ab|c}]`}
+	inputs := []string{"", "a", "abc", "aabbcc", "xabcabcx", "ababab", "aaa bbb ccc abc", "x1 xyz 12 xyz9", "é日本ab😀abc", "\x01ab\x02c\x01\x02", "ccab\nabcc", "xxabab日本abc", "ABCabcAbC xYz"}
+	seed := uint32(1)
+	rnd := func(n int) int {
+		seed = seed*1103515245 + 12345
+		return int(seed>>8) % n
+	}
+	for range 300 {
+		var p strings.Builder
+		for range 1 + rnd(5) {
+			p.WriteString(atoms[rnd(len(atoms))])
+			if rnd(8) == 0 {
+				p.WriteString("|")
+			}
+		}
+		f.Add(p.String(), inputs[rnd(len(inputs))])
+	}
+	// Literals at the greatest distance from the start of a match.
+	f.Add(".{2}xyz", "a\nbxyz")
+	f.Add(`\d{1,3}(?:a|bc)x`, "1234bcx")
+	f.Add(`(?<=b)(?:a|日本)x`, "b日本x")
+	flagSets := []string{"", "g", "i", "m", "s", "u", "y", "iu", "uy", "v", "iv"}
+	f.Fuzz(func(t *testing.T, pattern, input string) {
+		// \x01 and \x02 stand for lone surrogates.
+		var us []uint16
+		for _, r := range input {
+			switch r {
+			case 1:
+				us = append(us, 0xD83D)
+			case 2:
+				us = append(us, 0xDE00)
+			default:
+				if r >= 0x10000 {
+					r -= 0x10000
+					us = append(us, uint16(0xD800+r>>10), uint16(0xDC00+r&0x3FF))
+				} else {
+					us = append(us, uint16(r))
+				}
+			}
+		}
+		s := wtf8.FromUTF16(us)
+		var m regexp.Matcher
+		for _, flags := range flagSets {
+			fl, err := regexp.ParseFlags(flags)
+			if err != nil {
+				t.Fatal(err)
+			}
+			re, err := regexp.Compile(pattern, fl)
+			if err != nil {
+				continue
+			}
+			ref, err := regexp.Compile("(?:"+pattern+`)|[^\s\S]`, fl)
+			if err != nil {
+				continue
+			}
+			for start := 0; start <= len(us); start++ {
+				got := slices.Clone(re.Match(&m, s, start, nil))
+				want := ref.Match(&m, s, start, nil)
+				if !slices.Equal(got, want) {
+					t.Errorf("Match /%s/%s on %q from %d: got %v, want %v", pattern, flags, input, start, got, want)
+				}
+				got = slices.Clone(re.Find(&m, s, start, nil))
+				want = ref.Find(&m, s, start, nil)
+				if !slices.Equal(got, want) {
+					t.Errorf("Find /%s/%s on %q from %d: got %v, want %v", pattern, flags, input, start, got, want)
+				}
+			}
+		}
+	})
+}

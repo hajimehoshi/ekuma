@@ -90,6 +90,13 @@ type program struct {
 
 	// prefix, when not empty, is a literal that every match starts with.
 	prefix string
+
+	// need, when not empty, is a literal that every match contains, starting at least
+	// needMin and at most needMax characters after the start of the match. needMax is
+	// unbounded when there is no upper bound.
+	need    string
+	needMin int
+	needMax int
 }
 
 type compiler struct {
@@ -406,21 +413,143 @@ func anchoredAtStart(n *node) bool {
 
 func (c *compiler) analyze(root *node) {
 	c.prog.anchored = anchoredAtStart(root)
-	f := c.first(root)
-	if f.any || f.empty {
-		return
+	if f := c.first(root); !f.any && !f.empty {
+		t := new([256]bool)
+		set := f.set
+		for i := 0; i < len(set); i += 2 {
+			lo, hi := set[i], set[i+1]
+			markLeads(t, lo, hi, c.unicode)
+		}
+		c.prog.first = t
+		// A literal prefix.
+		if i := c.prog.insts[1]; i.op == iStr {
+			c.prog.prefix = i.str
+		}
 	}
-	t := new([256]bool)
-	set := f.set
-	for i := 0; i < len(set); i += 2 {
-		lo, hi := set[i], set[i+1]
-		markLeads(t, lo, hi, c.unicode)
+	c.analyzeNeed(root)
+	if c.prog.need != "" && c.prog.needMax == 0 {
+		// Every match starts with the literal.
+		if len(c.prog.need) > len(c.prog.prefix) {
+			c.prog.prefix = c.prog.need
+		}
+		c.prog.need = ""
 	}
-	c.prog.first = t
-	// A literal prefix.
-	if i := c.prog.insts[1]; i.op == iStr {
-		c.prog.prefix = i.str
+}
+
+// analyzeNeed finds the longest literal that every match contains in its top-level sequence.
+func (c *compiler) analyzeNeed(root *node) {
+	nodes := appendSeq(nil, root)
+	var lo, hi int
+	var b []byte
+	for i := 0; i < len(nodes); {
+		b = b[:0]
+		j := i
+		for ; j < len(nodes); j++ {
+			r, ok := c.literal(nodes[j])
+			// A lone surrogate cannot be found as bytes, since it can be half of a pair.
+			if !ok || r >= 0xD800 && r <= 0xDFFF {
+				break
+			}
+			b = wtf8.AppendRune(b, r)
+		}
+		if len(b) > len(c.prog.need) {
+			c.prog.need, c.prog.needMin, c.prog.needMax = string(b), lo, hi
+		}
+		if j == i {
+			j++
+		}
+		for _, n := range nodes[i:j] {
+			l, h := width(n)
+			lo, hi = addMin(lo, l), addMax(hi, h)
+		}
+		i = j
 	}
+}
+
+// appendSeq appends the nodes that every match of n matches one after another.
+func appendSeq(nodes []*node, n *node) []*node {
+	switch n.op {
+	case opSeq:
+		for _, s := range n.subs {
+			nodes = appendSeq(nodes, s)
+		}
+		return nodes
+	case opCapture, opGroup:
+		return appendSeq(nodes, n.subs[0])
+	}
+	return append(nodes, n)
+}
+
+// widthLimit bounds the widths that width computes. A lower bound beyond it is clamped to it,
+// and an upper bound beyond it is unbounded.
+const widthLimit = 1 << 16
+
+// width returns the least and the greatest number of characters that a match of n spans.
+// The greatest is unbounded when there is no upper bound.
+func width(n *node) (lo, hi int) {
+	switch n.op {
+	case opChar, opClass:
+		return 1, 1
+	case opSeq:
+		for _, s := range n.subs {
+			l, h := width(s)
+			lo, hi = addMin(lo, l), addMax(hi, h)
+		}
+		return lo, hi
+	case opAlt:
+		for i, s := range n.subs {
+			l, h := width(s)
+			if i == 0 {
+				lo, hi = l, h
+				continue
+			}
+			lo = min(lo, l)
+			if hi != unbounded && (h == unbounded || h > hi) {
+				hi = h
+			}
+		}
+		return lo, hi
+	case opCapture, opGroup:
+		return width(n.subs[0])
+	case opRepeat:
+		if n.max == 0 {
+			return 0, 0
+		}
+		l, h := width(n.subs[0])
+		return mulMin(l, n.min), mulMax(h, n.max)
+	case opBackref:
+		return 0, unbounded
+	}
+	// Empty nodes, assertions and lookarounds.
+	return 0, 0
+}
+
+func addMin(a, b int) int {
+	return min(a+b, widthLimit)
+}
+
+func addMax(a, b int) int {
+	if a == unbounded || b == unbounded || a+b > widthLimit {
+		return unbounded
+	}
+	return a + b
+}
+
+func mulMin(a, n int) int {
+	if a != 0 && n > widthLimit/a {
+		return widthLimit
+	}
+	return a * n
+}
+
+func mulMax(a, n int) int {
+	if a == 0 {
+		return 0
+	}
+	if a == unbounded || n == unbounded || n > widthLimit/a {
+		return unbounded
+	}
+	return a * n
 }
 
 // markLeads marks the bytes that a position holding a character from lo to hi can start with.

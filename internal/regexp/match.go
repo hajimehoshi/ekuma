@@ -92,6 +92,8 @@ func (re *Regexp) match(m *Matcher, s string, start int, sticky bool, poller Pol
 	if prog.unicode && m.isMiddle(pos) {
 		pos -= 2
 	}
+	// need is the position of the first prog.need at or after an earlier pos+prog.needMin.
+	need := -1
 	for {
 		if prog.anchored && pos != 0 {
 			return nil
@@ -100,6 +102,23 @@ func (re *Regexp) match(m *Matcher, s string, start int, sticky bool, poller Pol
 			pos = m.skip(prog, pos)
 			if pos < 0 {
 				return nil
+			}
+		}
+		if prog.need != "" && need < pos+prog.needMin {
+			// A character spans at least one byte.
+			from := pos + prog.needMin
+			if from > len(s) {
+				return nil
+			}
+			i := strings.Index(s[from:], prog.need)
+			if i < 0 {
+				return nil
+			}
+			need = from + i
+			// In an ASCII subject, a character spans exactly one byte.
+			if !sticky && m.ascii && prog.needMax != unbounded && need-prog.needMax > pos {
+				pos = need - prog.needMax
+				continue
 			}
 		}
 		if m.run(prog, pos) {
