@@ -528,6 +528,10 @@ func (t *rejectionTracker) reset() {
 	t.promises = t.promises[:0]
 }
 
+// maxIdleJobs is the number of jobs that the storage of the job queue keeps room for when the
+// queue drains.
+const maxIdleJobs = 1024
+
 // jobQueue is a queue of pending promise jobs.
 type jobQueue struct {
 	// jobs holds the pending jobs from head on.
@@ -549,13 +553,24 @@ func (q *jobQueue) dequeue() job {
 	q.jobs[q.head] = job{}
 	q.head++
 	if q.isEmpty() {
-		q.jobs = q.jobs[:0]
+		if cap(q.jobs) > maxIdleJobs {
+			q.jobs = nil
+		} else {
+			q.jobs = q.jobs[:0]
+		}
 		q.head = 0
-	} else if q.head >= 1024 && q.head*2 >= len(q.jobs) {
+	} else if q.head >= maxIdleJobs && q.head*2 >= len(q.jobs) {
 		// Drop the jobs that ran, so that a queue that is never empty does not grow.
-		n := copy(q.jobs, q.jobs[q.head:])
-		clear(q.jobs[n:])
-		q.jobs = q.jobs[:n]
+		n := len(q.jobs) - q.head
+		if n < cap(q.jobs)/4 {
+			jobs := make([]job, n, 2*n)
+			copy(jobs, q.jobs[q.head:])
+			q.jobs = jobs
+		} else {
+			copy(q.jobs, q.jobs[q.head:])
+			clear(q.jobs[n:])
+			q.jobs = q.jobs[:n]
+		}
 		q.head = 0
 	}
 	return j

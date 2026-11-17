@@ -169,6 +169,12 @@ type objectMeta struct {
 	// and whose initial properties are not stored yet, once one was made.
 	// See [VM.functionShapeFor].
 	functionProtoShape *shape
+
+	// shiftedElems is the number of unused values before the elements of an array in their
+	// storage, left by removing the first elements. It counts only while the elements have the
+	// capacity shiftedCap. See [Object.elemsStorage].
+	shiftedElems int
+	shiftedCap   int
 }
 
 // stringPos is a [wtf8.Pos] in a string of at most MaxStringLength bytes.

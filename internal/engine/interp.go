@@ -91,6 +91,28 @@ func (vm *VM) ensureStack(n int) {
 	}
 }
 
+// maxIdleStack is the number of stack slots that the stack keeps between calls into the engine.
+const maxIdleStack = 1 << 16
+
+// releaseStack moves the values in use to a smaller stack when the stack is larger than
+// maxIdleStack.
+func (vm *VM) releaseStack() {
+	if len(vm.stack) <= maxIdleStack || vm.sp+stackHeadroom > maxIdleStack {
+		return
+	}
+	var s []Value
+	if vm.sp > 0 {
+		s = make([]Value, vm.sp+stackHeadroom)
+		copy(s, vm.stack[:vm.sp])
+	}
+	vm.stack = s
+	vm.stackHigh = vm.sp
+	// The open upvalues point into the old stack.
+	for _, u := range vm.openUpvals {
+		u.p = &s[u.index]
+	}
+}
+
 // top returns the first stack index that is not in use.
 func (vm *VM) top() int {
 	return vm.sp

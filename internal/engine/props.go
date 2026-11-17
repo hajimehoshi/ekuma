@@ -946,12 +946,18 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 	if int64(n) < int64(len(o.elems)) {
 		tail := o.elems[n:]
 		o.elems = o.elems[:n]
+		oversized := o.elemsOversized()
 		if len(tail) > pollChunk {
 			// The tail, which may be left uncleared, stays out of reach of later growth.
 			o.elems = o.elems[:n:n]
 		}
 		o.length = n
-		clearPolled(vm, tail)
+		if oversized {
+			// The tail goes away with the storage.
+			vm.reallocElems(o)
+		} else {
+			clearPolled(vm, tail)
+		}
 	}
 	o.length = n
 	return ok

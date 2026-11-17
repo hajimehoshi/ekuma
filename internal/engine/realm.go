@@ -301,6 +301,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 				}
 				vm.clearKeptObjects()
 				vm.clearStale()
+				vm.releaseStack()
 			}()
 		}
 		if r := recover(); r != nil {

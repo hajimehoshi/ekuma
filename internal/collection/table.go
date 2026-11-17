@@ -18,6 +18,10 @@ const smallSize = 4
 // minDeleted is the number of deleted entries below which a table is never compacted.
 const minDeleted = 8
 
+// minShrinkEntries is the capacity up to which a table keeps the storage of its entries however
+// few entries remain.
+const minShrinkEntries = 64
+
 // canonicalNaN is the key of every NaN.
 const canonicalNaN = 0x7ff8000000000001
 
@@ -306,6 +310,13 @@ func (t *Table) compact() {
 	}
 	clear(t.entries[n:])
 	t.entries = t.entries[:n]
+	// The maps keep their room until they are rebuilt.
+	shrink := cap(t.entries) > minShrinkEntries && n < cap(t.entries)/4
+	if shrink {
+		entries := make([]entry, n, 2*n)
+		copy(entries, t.entries)
+		t.entries = entries
+	}
 	if t.gen != nil {
 		next := &generation{}
 		t.gen.removed = removed
@@ -313,6 +324,13 @@ func (t *Table) compact() {
 		t.gen = next
 	}
 	if t.indexed {
+		if shrink {
+			t.nums = withRoom(t.nums, len(t.nums))
+			t.strs = withRoom(t.strs, len(t.strs))
+			t.ints = withRoom(t.ints, len(t.ints))
+			t.bigs = withRoom(t.bigs, len(t.bigs))
+			t.objs = withRoom(t.objs, len(t.objs))
+		}
 		t.reindex()
 	}
 }

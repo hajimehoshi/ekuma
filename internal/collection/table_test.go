@@ -175,3 +175,21 @@ func TestSameValueZeroBigInts(t *testing.T) {
 		}
 	}
 }
+
+// TestStorageShrinks tests that deleting most entries gives up the storage that they used.
+func TestStorageShrinks(t *testing.T) {
+	var tab collection.Table
+	for i := range 10000 {
+		tab.Append(engine.Number(float64(i)), engine.Undefined)
+	}
+	for i := range 9990 {
+		tab.Delete(engine.Number(float64(i)))
+	}
+	if got := collection.EntryStorage(&tab); got > 100 {
+		t.Errorf("got storage for %d entries, want at most 100", got)
+	}
+	// The entries left are still found.
+	if !tab.Has(engine.Number(9995)) {
+		t.Errorf("Has(9995) = false, want true")
+	}
+}

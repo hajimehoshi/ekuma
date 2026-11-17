@@ -20,6 +20,10 @@ const minElems = 4
 // elements upfront.
 const maxPresizedElems = 1024
 
+// minShrinkElems is the capacity up to which the storage of the elements of an array is kept
+// however few elements remain.
+const minShrinkElems = 64
+
 // shiftCopyElems is the length below which removing the first element of an array moves
 // the other elements, so that the storage keeps its room for elements added later.
 const shiftCopyElems = 32
@@ -60,6 +64,30 @@ func appendElem(elems []Value, v Value) []Value {
 		elems = make([]Value, 0, minElems)
 	}
 	return append(elems, v)
+}
+
+// elemsStorage returns the number of values that the storage of the elements of o has room
+// for, counting those before the elements that removing the first elements left unused.
+func (o *Object) elemsStorage() int {
+	n := cap(o.elems)
+	if m := o.meta; m != nil && m.shiftedCap == n {
+		n += m.shiftedElems
+	}
+	return n
+}
+
+// elemsOversized reports whether the elements of o use less than a quarter of their storage
+// and the storage is larger than minShrinkElems.
+func (o *Object) elemsOversized() bool {
+	n := o.elemsStorage()
+	return n > minShrinkElems && len(o.elems) < n/4
+}
+
+// reallocElems moves the elements of o to new storage with room for as many elements again.
+func (vm *VM) reallocElems(o *Object) {
+	elems := make([]Value, len(o.elems), max(2*len(o.elems), minElems))
+	CopyPolled(vm, elems, o.elems)
+	o.elems = elems
 }
 
 // LengthOfArrayLike implements LengthOfArrayLike.
@@ -209,6 +237,9 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	o.elems[n] = Value{}
 	o.elems = o.elems[:n]
 	o.length = uint32(n)
+	if o.elemsOversized() {
+		o.shape.vm.reallocElems(o)
+	}
 	return v, true
 }
 
@@ -233,12 +264,18 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 		o.elems[n] = Value{}
 		o.elems = o.elems[:n]
 	} else {
-		// The storage before the elements is released when they move to new storage as
-		// the array grows.
+		// The storage before the elements is released when they move to new storage.
+		shifted := o.elemsStorage() - cap(o.elems) + 1
 		o.elems[0] = Value{}
 		o.elems = o.elems[1:]
+		m := o.ensureMeta()
+		m.shiftedElems = shifted
+		m.shiftedCap = cap(o.elems)
 	}
 	o.length = uint32(n)
+	if o.elemsOversized() {
+		o.shape.vm.reallocElems(o)
+	}
 	return v, true
 }
 
@@ -346,7 +383,14 @@ func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value)
 	removed := appendPolled(vm, nil, o.elems[start:start+del])
 	tail := appendPolled(vm, nil, o.elems[start+del:])
 	o.elems = append(append(o.elems[:start], items...), tail...)
+	if int64(len(o.elems)) < length {
+		// The removed elements stay out of reach in the storage that the elements keep.
+		clear(o.elems[len(o.elems):length])
+	}
 	o.length = uint32(len(o.elems))
+	if o.elemsOversized() {
+		vm.reallocElems(o)
+	}
 	return vm.NewArray(removed), true
 }
 

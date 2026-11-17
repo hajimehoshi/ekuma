@@ -13,3 +13,19 @@ func InternedCount(vm *VM) int {
 func ObjectTransitionCount(vm *VM) int {
 	return vm.shapes.object.transitions.len()
 }
+
+// ElementStorage returns the number of values that the storage of the elements of the object
+// v has room for, including those that removing its first elements left unused.
+func ElementStorage(v Value) int {
+	return v.o.elemsStorage()
+}
+
+// StackSize returns the number of slots of the stack of vm.
+func StackSize(vm *VM) int {
+	return len(vm.stack)
+}
+
+// JobStorage returns the number of jobs that the storage of the job queue of vm has room for.
+func JobStorage(vm *VM) int {
+	return cap(vm.jobs.jobs)
+}
