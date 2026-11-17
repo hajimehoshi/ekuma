@@ -227,7 +227,7 @@ func (v Value) vm(method string) (*VM, error) {
 // Get returns the property name of v.
 //
 // The error is a [*ValueError] when v is not an object, a function or a string,
-// and an [*Error] when a getter throws.
+// and a [*ScriptError] when a getter throws.
 func (v Value) Get(name string) (Value, error) {
 	vm, err := v.vm("Value.Get")
 	if err != nil {
@@ -238,7 +238,7 @@ func (v Value) Get(name string) (Value, error) {
 }
 
 // GetWithValueKey is like [Value.Get], but key is converted to a property key the way the
-// expression v[key] converts it, and a conversion that throws is an [*Error]. It panics if key
+// expression v[key] converts it, and a conversion that throws is a [*ScriptError]. It panics if key
 // belongs to a different VM from v.
 func (v Value) GetWithValueKey(key Value) (Value, error) {
 	vm, err := v.vm("Value.GetWithValueKey")
@@ -307,7 +307,7 @@ func (v Value) SetIndex(i int, x any) error {
 }
 
 // Call calls the method name of v with v as this. The arguments are converted with [VM.ValueOf].
-// The errors are those of [Value.Get], and a method that does not exist is an [*Error] holding
+// The errors are those of [Value.Get], and a method that does not exist is a [*ScriptError] holding
 // a TypeError. When ctx is done, the call stops at its next loop iteration or call, and the error
 // is the cause of ctx.
 func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error) {
@@ -337,7 +337,7 @@ func (v Value) CallWithValueKey(ctx context.Context, key Value, args ...any) (Va
 }
 
 // Invoke calls the function v with undefined as this. The arguments are converted with
-// [VM.ValueOf]. The error is a [*ValueError] when v is not a function, and an [*Error] when it
+// [VM.ValueOf]. The error is a [*ValueError] when v is not a function, and a [*ScriptError] when it
 // throws.
 func (v Value) Invoke(ctx context.Context, args ...any) (Value, error) {
 	return v.invoke(ctx, "Value.Invoke", false, args)

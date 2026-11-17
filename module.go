@@ -18,7 +18,7 @@ import (
 // have not completed: [Module.LoadRequestedModules], [Module.Link] and [Module.Evaluate].
 // [Module.Namespace] takes the first two. Any order of calls is valid, and a step that has
 // completed does nothing when it is taken again. A call from inside the module loader that
-// has to load a module that is still being loaded returns an [*Error] holding a TypeError.
+// has to load a module that is still being loaded returns a [*ScriptError] holding a TypeError.
 type Module struct {
 	vm    *VM
 	realm *Realm
@@ -50,7 +50,7 @@ type ModuleRequest struct {
 //
 // The error of f is thrown the way the error of a [Func] is, except that a [*SyntaxError]
 // throws a JavaScript SyntaxError. import() rejects its promise with it, and the methods of
-// [Module] return it as an [*Error].
+// [Module] return it as a [*ScriptError].
 //
 // Without a loader, or with a nil f, every import fails with a TypeError. The loader applies
 // to the modules that are loaded after the call: a module that loaded keeps the modules that
@@ -97,7 +97,7 @@ func (vm *VM) engineError(err error) error {
 			Message: se.Message,
 		}
 	}
-	if ex, ok := errors.AsType[*Error](err); ok {
+	if ex, ok := errors.AsType[*ScriptError](err); ok {
 		return &engine.Error{Value: vm.acceptValue(ex.Value)}
 	}
 	return err
@@ -159,7 +159,7 @@ func (m *Module) Name() string {
 // LoadRequestedModules loads the modules that m and its dependencies import, with the loader
 // of the VM (see [VM.SetModuleLoader]). [Module.Link], [Module.Evaluate] and [Module.Namespace]
 // call it, so calling it is needed only to load before linking. The error is the error of the
-// loader, or an [*Error] holding a TypeError when there is no loader.
+// loader, or a [*ScriptError] holding a TypeError when there is no loader.
 func (m *Module) LoadRequestedModules() error {
 	m.vm.initIfNeeded()
 	return m.vm.publicError(m.vm.e.LoadRequestedModules(m.m))
@@ -168,7 +168,7 @@ func (m *Module) LoadRequestedModules() error {
 // Link links m and its dependencies: it resolves their imports without evaluating module code.
 // It calls [Module.LoadRequestedModules] first. [Module.Evaluate] and [Module.Namespace] call
 // it, so calling it is needed only to link before evaluating. The error is the error of
-// [Module.LoadRequestedModules], or an [*Error] holding a JavaScript SyntaxError for an import
+// [Module.LoadRequestedModules], or a [*ScriptError] holding a JavaScript SyntaxError for an import
 // that does not resolve. A failed Link can be taken again.
 func (m *Module) Link() error {
 	m.vm.initIfNeeded()
@@ -182,7 +182,8 @@ func (m *Module) Link() error {
 // The error is the error of [Module.Link]. When ctx is done, the evaluation stops at its next
 // loop iteration or call, and the error is the cause of ctx. Any call that a context stops
 // ends the evaluations in progress with an Error, which rejects their promises:
-// [Error.Unwrap] of an [*Error] holding such a reason returns the cause of ctx.
+// [ScriptError.Unwrap] of a [*ScriptError] holding such a reason returns the cause of ctx.
+// Internal operation failures return an [*InternalError].
 func (m *Module) Evaluate(ctx context.Context) (Value, error) {
 	vm := m.vm
 	vm.initIfNeeded()

@@ -21,6 +21,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
 // Strings is a sorted list of strings.
@@ -125,6 +127,7 @@ type blocks struct {
 type inflatedBlock struct {
 	once sync.Once
 	data string
+	err  error
 }
 
 // maxDictSize is the maximum size of a preset dictionary of DEFLATE.
@@ -149,23 +152,30 @@ func (b *blocks) value(i int, dict string) string {
 func (b *blocks) block(j int, dict string) string {
 	ib := &b.inflated[j]
 	ib.once.Do(func() {
-		ib.data = b.inflate(j, dict[max(0, len(dict)-maxDictSize):])
+		ib.data, ib.err = b.inflate(j, dict[max(0, len(dict)-maxDictSize):])
 	})
+	if ib.err != nil {
+		panic(ib.err)
+	}
 	return ib.data
 }
 
 // inflate inflates the block j with the preset dictionary dict.
-func (b *blocks) inflate(j int, dict string) string {
+func (b *blocks) inflate(j int, dict string) (string, error) {
 	var start uint32
 	if j > 0 {
 		start = b.dataEnds[j-1]
 	}
 	r := flate.NewReaderDict(strings.NewReader(b.data[start:b.dataEnds[j]]), []byte(dict))
+	defer r.Close()
 	var out bytes.Buffer
 	if _, err := io.Copy(&out, r); err != nil {
-		panic("cldr: inflating a block: " + err.Error())
+		return "", &xerrors.InternalError{
+			Op:  "inflate CLDR block",
+			Err: err,
+		}
 	}
-	return out.String()
+	return out.String(), nil
 }
 
 // Absent is the value of a field of a calendar table that the calendar does not have, although

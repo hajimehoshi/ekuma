@@ -496,7 +496,7 @@ func TestNativeRecursion(t *testing.T) {
 				t.Fatal(err)
 			}
 			_, err := runScript(t.Context(), &vm, "recursion", tt.src)
-			var ex *ekuma.Error
+			var ex *ekuma.ScriptError
 			if !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "RangeError") {
 				t.Errorf("got %v, want a RangeError", err)
 			}
@@ -1049,7 +1049,7 @@ func TestDynamicImportLoadError(t *testing.T) {
 	calls := 0
 	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		calls++
-		return nil, &ekuma.Error{Value: thrown}
+		return nil, &ekuma.ScriptError{Value: thrown}
 	})
 	if err := vm.Global().Set("thrown", thrown); err != nil {
 		t.Fatal(err)

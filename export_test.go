@@ -5,6 +5,7 @@ package ekuma
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
 // DetachArrayBuffer detaches the ArrayBuffer v. The error is a TypeError for a value
@@ -14,10 +15,10 @@ func DetachArrayBuffer(vm *VM, v Value) error {
 	e := v.value
 	b := engine.ArrayBufferData(e)
 	if b == nil || b.IsShared() {
-		return &Error{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "not an ArrayBuffer"))}
+		return &ScriptError{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "not an ArrayBuffer"))}
 	}
 	if b.IsImmutable() {
-		return &Error{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "cannot detach an immutable ArrayBuffer"))}
+		return &ScriptError{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "cannot detach an immutable ArrayBuffer"))}
 	}
 	vm.e.DetachArrayBuffer(e.Object())
 	return nil
@@ -101,4 +102,15 @@ func LinkScript(vm *VM, c *CompiledScript) *Script {
 		vm: vm,
 		s:  s,
 	}
+}
+
+// InternalFailureFunc returns a native function that fails with cause.
+func InternalFailureFunc(vm *VM, cause error) Value {
+	vm.initIfNeeded()
+	return fromEngine(vm.e.NewFunction("fail", func(*engine.VM, engine.Value, []engine.Value) engine.Value {
+		panic(&xerrors.InternalError{
+			Op:  "test operation",
+			Err: cause,
+		})
+	}))
 }

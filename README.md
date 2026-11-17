@@ -15,7 +15,7 @@ if err != nil {
 }
 v, err := s.Evaluate(ctx)
 if err != nil {
-	// A *ekuma.Error when the script throws.
+	// A *ekuma.ScriptError when the script throws.
 }
 fmt.Println(v.String()) // Hello, world
 ```

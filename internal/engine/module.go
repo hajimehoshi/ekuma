@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
 // scriptOrModule is what a Script Record or a Module Record is as the referrer of an import,
@@ -848,7 +849,9 @@ func (vm *VM) evaluateModule(m *Module) Value {
 	var stack []*Module
 	defer func() {
 		if r := recover(); r != nil {
-			if isHostPanic(r) {
+			if e, ok := r.(*xerrors.InternalError); ok {
+				vm.rejectModuleEvaluations(stack, e)
+			} else if isHostPanic(r) {
 				vm.rejectModuleEvaluations(stack, &PanicError{
 					Value: r,
 				})

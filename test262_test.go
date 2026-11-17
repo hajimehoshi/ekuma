@@ -198,7 +198,7 @@ func errorName(ctx context.Context, err error) string {
 	if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 		return "SyntaxError"
 	}
-	var ex *ekuma.Error
+	var ex *ekuma.ScriptError
 	if !errors.As(err, &ex) {
 		return ""
 	}
@@ -412,9 +412,9 @@ func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, sr
 		return firstLine(err.Error()), false
 	}
 	// Evaluate ran the jobs: the promise is settled unless the evaluation waits forever.
-	var rejected *ekuma.Error
+	var rejected *ekuma.ScriptError
 	if st, r := p.PromiseState(); st == ekuma.PromiseRejected {
-		rejected = &ekuma.Error{Value: r}
+		rejected = &ekuma.ScriptError{Value: r}
 	}
 	if m.negativePhase != "" {
 		if rejected == nil {
@@ -514,7 +514,7 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, &ekuma.Error{Value: e}
+			return nil, &ekuma.ScriptError{Value: e}
 		}
 		if err != nil {
 			return nil, err

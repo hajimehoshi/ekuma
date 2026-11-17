@@ -21,6 +21,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/unicode/collation"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
+	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
 // A CE is a collation element: the primary weight in bits 33 to 63, the secondary weight
@@ -165,10 +166,23 @@ type complexEntry struct {
 	ces  []ce
 }
 
-var tailorings = make([]struct {
+type tailoringEntry struct {
 	once sync.Once
 	t    *tailoring
-}, len(collation.TailoringKeys))
+	err  error
+}
+
+var tailorings = make([]tailoringEntry, len(collation.TailoringKeys))
+
+func (e *tailoringEntry) get(compressed string) *tailoring {
+	e.once.Do(func() {
+		e.t, e.err = loadTailoring(compressed)
+	})
+	if e.err != nil {
+		panic(e.err)
+	}
+	return e.t
+}
 
 // lookupTailoring returns the tailoring of key, or nil.
 func lookupTailoring(key string) *tailoring {
@@ -176,31 +190,48 @@ func lookupTailoring(key string) *tailoring {
 	if !ok {
 		return nil
 	}
-	e := &tailorings[i]
-	e.once.Do(func() {
-		start := uint32(0)
-		if i > 0 {
-			start = collation.TailoringEnds[i-1]
-		}
-		data, err := io.ReadAll(flate.NewReader(strings.NewReader(collation.Tailorings[start:collation.TailoringEnds[i]])))
-		if err != nil {
-			panic("collate: " + err.Error())
-		}
-		e.t = decodeTailoring(data)
-	})
-	return e.t
+	var start uint32
+	if i > 0 {
+		start = collation.TailoringEnds[i-1]
+	}
+	return tailorings[i].get(collation.Tailorings[start:collation.TailoringEnds[i]])
 }
 
-func decodeTailoring(data []byte) *tailoring {
+func loadTailoring(compressed string) (*tailoring, error) {
+	r := flate.NewReader(strings.NewReader(compressed))
+	defer r.Close()
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, &xerrors.InternalError{
+			Op:  "inflate collation tailoring",
+			Err: err,
+		}
+	}
+	return decodeTailoring(data)
+}
+
+func decodeTailoring(data []byte) (t *tailoring, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if e, ok := r.(*xerrors.InternalError); ok {
+				t, err = nil, e
+			} else {
+				panic(r)
+			}
+		}
+	}()
 	r := bytes.NewReader(data)
 	u := func() uint64 {
 		v, err := binary.ReadUvarint(r)
 		if err != nil {
-			panic("collate: a broken tailoring")
+			panic(&xerrors.InternalError{
+				Op:  "decode collation tailoring",
+				Err: err,
+			})
 		}
 		return v
 	}
-	t := &tailoring{
+	t = &tailoring{
 		complex: map[rune]*complexEntries{},
 	}
 	flags := u()
@@ -280,7 +311,7 @@ func decodeTailoring(data []byte) *tailoring {
 			t.low[c] = 2
 		}
 	}
-	return t
+	return t, nil
 }
 
 // single returns the CEs of the code point c tailored alone.

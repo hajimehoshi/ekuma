@@ -65,7 +65,7 @@ func TestForeignValueEntry(t *testing.T) {
 			case "Result", "Exception":
 				callback := b.FuncOf("foreign", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 					if name == "Exception" {
-						return nil, fmt.Errorf("wrapped: %w", &ekuma.Error{Value: foreign})
+						return nil, fmt.Errorf("wrapped: %w", &ekuma.ScriptError{Value: foreign})
 					}
 					return foreign, nil
 				})
@@ -80,7 +80,7 @@ func TestForeignValueEntry(t *testing.T) {
 				_, _ = foreign.InstanceOf(ctor)
 			case "LoaderException":
 				b.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
-					return nil, &ekuma.Error{Value: foreign}
+					return nil, &ekuma.ScriptError{Value: foreign}
 				})
 				m, err := b.ParseModule("main", `import "foreign"`)
 				if err != nil {
@@ -369,9 +369,9 @@ func TestValues(t *testing.T) {
 	}
 
 	// The refusals of JavaScript come back as exceptions, and a value of the wrong type as a ValueError.
-	ex := (*ekuma.Error)(nil)
+	ex := (*ekuma.ScriptError)(nil)
 	if _, err := obj.Call(ctx, "missing"); !errors.As(err, &ex) {
-		t.Errorf("calling a missing method: got %v, want *ekuma.Error", err)
+		t.Errorf("calling a missing method: got %v, want *ekuma.ScriptError", err)
 	}
 	ve := (*ekuma.ValueError)(nil)
 	if _, err := obj.Invoke(ctx); !errors.As(err, &ve) {
@@ -589,10 +589,10 @@ func TestFuncErrors(t *testing.T) {
 			if err != nil {
 				return nil, err
 			}
-			return nil, &ekuma.Error{Value: e}
+			return nil, &ekuma.ScriptError{Value: e}
 		},
 		"throwValue": func(this ekuma.Value, args []ekuma.Value) (any, error) {
-			return nil, &ekuma.Error{Value: args[0]}
+			return nil, &ekuma.ScriptError{Value: args[0]}
 		},
 		"rethrow": func(this ekuma.Value, args []ekuma.Value) (any, error) {
 			// The error of a nested script passes through unchanged, even when it is wrapped.
@@ -624,16 +624,16 @@ func TestFuncErrors(t *testing.T) {
 		t.Errorf("the thrown TypeError reached the function as %v, want object", got)
 	}
 
-	// An error that no script catches comes back from Script.Evaluate as an *Error.
+	// An error that no script catches comes back from Script.Evaluate as a *ScriptError.
 	_, err = runScript(ctx, &vm, "uncaught", `typeError()`)
-	if ex := (*ekuma.Error)(nil); !errors.As(err, &ex) {
-		t.Errorf("got %T, want *ekuma.Error", err)
+	if ex := (*ekuma.ScriptError)(nil); !errors.As(err, &ex) {
+		t.Errorf("got %T, want *ekuma.ScriptError", err)
 	}
 
-	// An Error describes any thrown value, including one that belongs to no VM.
+	// A ScriptError describes any thrown value, including one that belongs to no VM.
 	for _, v := range []ekuma.Value{ekuma.Undefined, vm.ValueOf(1), vm.ValueOf("s"), vm.Global()} {
-		if msg := (&ekuma.Error{Value: v}).Error(); msg == "" {
-			t.Errorf("the message of an Error for %v is empty", v)
+		if msg := (&ekuma.ScriptError{Value: v}).Error(); msg == "" {
+			t.Errorf("the message of a ScriptError for %v is empty", v)
 		}
 	}
 }
@@ -681,11 +681,11 @@ func TestErrorUnwrap(t *testing.T) {
 				t.Errorf("%s: got %v, want rejected", tc.name, st)
 				continue
 			}
-			err = &ekuma.Error{Value: r}
+			err = &ekuma.ScriptError{Value: r}
 		}
-		ex, ok := errors.AsType[*ekuma.Error](err)
+		ex, ok := errors.AsType[*ekuma.ScriptError](err)
 		if !ok {
-			t.Errorf("%s: got %T, want *ekuma.Error", tc.name, err)
+			t.Errorf("%s: got %T, want *ekuma.ScriptError", tc.name, err)
 			continue
 		}
 		if got := errors.Is(err, io.EOF); got != tc.wantIs {
@@ -707,8 +707,8 @@ func TestErrors(t *testing.T) {
 	}
 	if _, err := runScript(ctx, &vm, "throw", `null.x`); err == nil {
 		t.Errorf("an exception was not reported")
-	} else if ex := (*ekuma.Error)(nil); !errors.As(err, &ex) {
-		t.Errorf("got %T, want *ekuma.Error", err)
+	} else if ex := (*ekuma.ScriptError)(nil); !errors.As(err, &ex) {
+		t.Errorf("got %T, want *ekuma.ScriptError", err)
 	}
 	// The VM stays usable after an exception.
 	v, err := runScript(ctx, &vm, "after", `1 + 1`)
@@ -817,7 +817,7 @@ func TestHostJobBoundary(t *testing.T) {
 			})
 			err = tc.call(t.Context(), v)
 			if tc.throw {
-				var ex *ekuma.Error
+				var ex *ekuma.ScriptError
 				if !errors.As(err, &ex) || !ex.Value.Equal(sentinel) {
 					t.Errorf("got %v, want the original thrown value", err)
 				}
@@ -1190,6 +1190,129 @@ func TestCancelNestedContextUnobserved(t *testing.T) {
 	}
 }
 
+func TestInternalError(t *testing.T) {
+	var vm ekuma.VM
+	cause := errors.New("broken data")
+	if err := vm.Global().Set("fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runScript(t.Context(), &vm, "failure", `
+  var caught = false, finalized = false, jobRan = false;
+  function* work() { try { fail(); } catch (e) { caught = true; } finally { finalized = true; } }
+  var iterator = work();
+  Promise.resolve().then(() => { jobRan = true; });
+  iterator.next();
+ `)
+	var internal *ekuma.InternalError
+	if !errors.As(err, &internal) || !errors.Is(err, cause) {
+		t.Errorf("Evaluate: %T %v, want InternalError wrapping cause", err, err)
+	}
+	if _, ok := errors.AsType[*ekuma.ScriptError](err); ok {
+		t.Errorf("internal failure became a ScriptError: %v", err)
+	}
+	v, err := runScript(t.Context(), &vm, "after", `!caught && !finalized && !jobRan && iterator.next().done`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("abandoned execution resumed")
+	}
+}
+
+func TestInternalErrorReentrant(t *testing.T) {
+	var vm ekuma.VM
+	cause := errors.New("broken data")
+	fail := ekuma.InternalFailureFunc(&vm, cause)
+	var continued bool
+	if err := vm.Global().Set("host", vm.FuncOf("host", func(ekuma.Value, []ekuma.Value) (any, error) {
+		_, err := fail.Invoke(t.Context())
+		continued = true
+		return nil, err
+	})); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runScript(t.Context(), &vm, "nested", `try { host(); } catch (e) {}`)
+	if !errors.Is(err, cause) {
+		t.Errorf("Evaluate: %v, want cause", err)
+	}
+	if continued {
+		t.Error("host callback continued after internal failure")
+	}
+}
+
+func TestInternalErrorRecoveredByHost(t *testing.T) {
+	var vm ekuma.VM
+	cause := errors.New("broken data")
+	fail := ekuma.InternalFailureFunc(&vm, cause)
+	if err := vm.Global().Set("host", vm.FuncOf("host", func(ekuma.Value, []ekuma.Value) (any, error) {
+		recovered := recoverHostPanic(func() { _, _ = fail.Invoke(t.Context()) })
+		if recovered == nil {
+			t.Error("inner call did not unwind")
+		}
+		return 7, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runScript(t.Context(), &vm, "recovered", `
+  var jobRan = false;
+  Promise.resolve().then(() => { jobRan = true; });
+  host();
+ `)
+	if !errors.Is(err, cause) {
+		t.Errorf("Evaluate: %v, want recovered internal failure", err)
+	}
+	v, err := runScript(t.Context(), &vm, "after", `jobRan`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Bool() {
+		t.Error("jobs ran after a recovered internal failure")
+	}
+}
+
+func TestInternalErrorModule(t *testing.T) {
+	var vm ekuma.VM
+	cause := errors.New("broken data")
+	if err := vm.Global().Set("fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
+		t.Fatal(err)
+	}
+	m, err := vm.ParseModule("failure", `fail();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Evaluate(t.Context()); !errors.Is(err, cause) {
+		t.Errorf("Evaluate: %v, want cause", err)
+	}
+	p, err := m.Evaluate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, reason := p.PromiseState()
+	if state != ekuma.PromiseRejected {
+		t.Errorf("promise state: %v, want rejected", state)
+		return
+	}
+	var internal *ekuma.InternalError
+	exception := &ekuma.ScriptError{
+		Value: reason,
+	}
+	if err := exception.Unwrap(); !errors.As(err, &internal) || !errors.Is(err, cause) {
+		t.Errorf("rejection cause: %T %v, want InternalError wrapping cause", err, err)
+	}
+}
+
+func TestInternalErrorJob(t *testing.T) {
+	var vm ekuma.VM
+	cause := errors.New("broken data")
+	if err := vm.Global().Set("fail", ekuma.InternalFailureFunc(&vm, cause)); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runScript(t.Context(), &vm, "job", `Promise.resolve().then(fail);`)
+	if !errors.Is(err, cause) {
+		t.Errorf("job failure: %v, want cause", err)
+	}
+}
+
 // TestGoPanic checks that a Go panic that passes through the VM leaves it as usable as
 // an interruption does.
 func TestGoPanic(t *testing.T) {
@@ -1363,7 +1486,7 @@ func TestHostPanicReentrantModule(t *testing.T) {
 		if state != ekuma.PromiseRejected {
 			t.Errorf("importer state = %v, want rejected", state)
 		}
-		if err := (&ekuma.Error{Value: reason}); !errors.Is(err, marker) {
+		if err := (&ekuma.ScriptError{Value: reason}); !errors.Is(err, marker) {
 			t.Errorf("importer error = %v, want original cause", err)
 		}
 		return nil, nil
@@ -1675,7 +1798,7 @@ func TestCancelModule(t *testing.T) {
 					t.Errorf("%s: %s: got %v, want rejected", src, m.Name(), st)
 					continue
 				}
-				if err := (&ekuma.Error{Value: r}); !errors.Is(err, cause) {
+				if err := (&ekuma.ScriptError{Value: r}); !errors.Is(err, cause) {
 					t.Errorf("%s: %s: got reason %v, want an Error made from %v", src, m.Name(), err, cause)
 				}
 			}
@@ -1850,7 +1973,7 @@ func TestModuleSteps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Namespace: %v", err)
 	}
-	var ex *ekuma.Error
+	var ex *ekuma.ScriptError
 	if _, err := ns.Get("v"); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "ReferenceError") {
 		t.Errorf("reading an export before the evaluation: got %v, want a ReferenceError", err)
 	}
@@ -1928,8 +2051,8 @@ func TestModuleLoaderErrors(t *testing.T) {
 		ctor string
 	}{
 		{
-			name: "Error",
-			err:  &ekuma.Error{Value: thrown},
+			name: "ScriptError",
+			err:  &ekuma.ScriptError{Value: thrown},
 		},
 		{
 			name: "SyntaxError",
@@ -1963,13 +2086,13 @@ func TestModuleLoaderErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var ex *ekuma.Error
+			var ex *ekuma.ScriptError
 			if err := m.LoadRequestedModules(); !errors.As(err, &ex) {
-				t.Fatalf("got %v, want an *Error", err)
+				t.Fatalf("got %v, want a *ScriptError", err)
 			}
 			if tt.ctor == "" {
 				if !ex.Value.Equal(thrown) {
-					t.Errorf("got %v, want the value of the *Error", ex.Value)
+					t.Errorf("got %v, want the value of the *ScriptError", ex.Value)
 				}
 				return
 			}
@@ -2018,7 +2141,7 @@ func TestModuleLinkRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ex *ekuma.Error
+	var ex *ekuma.ScriptError
 	if err := bad.Link(); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
 		t.Errorf("got %v, want a SyntaxError", err)
 	}
@@ -2040,7 +2163,7 @@ func TestModuleLoaderReentry(t *testing.T) {
 	if err := m.Link(); err != nil {
 		t.Errorf("Link: %v", err)
 	}
-	var ex *ekuma.Error
+	var ex *ekuma.ScriptError
 	if !errors.As(reentryErr, &ex) || !isInstance(t, &vm, ex.Value, "TypeError") {
 		t.Errorf("got %v from the re-entrant Link, want a TypeError", reentryErr)
 	}
@@ -2099,7 +2222,7 @@ func TestSyntheticModules(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 
-	var ex *ekuma.Error
+	var ex *ekuma.ScriptError
 	if _, err := vm.ParseJSONModule("bad.json", `{`); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
 		t.Errorf("got %v, want a SyntaxError", err)
 	}

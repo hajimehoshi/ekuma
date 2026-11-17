@@ -118,7 +118,7 @@ func (r *Realm) ParseModule(name, src string) (*Module, error) {
 }
 
 // ParseJSONModule returns a JSON module of r: a module whose only export is default, with the
-// value that JSON.parse of r returns for src. The error is an [*Error] holding a JavaScript
+// value that JSON.parse of r returns for src. The error is a [*ScriptError] holding a JavaScript
 // SyntaxError when src is not valid JSON.
 func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 	m := r.newModule(name)

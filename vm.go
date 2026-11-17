@@ -229,9 +229,9 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 // args is only valid until the function returns. The result is converted with [Realm.ValueOf]
 // of the realm of the function.
 //
-// A non-nil error is thrown as a JavaScript exception: an [*Error] throws its value,
+// A non-nil error is thrown as a JavaScript exception: a [*ScriptError] throws its value,
 // and any other error throws a new Error object made from the error, with its message.
-// [Error.Unwrap] of an [*Error] holding that object returns the error.
+// [ScriptError.Unwrap] of a [*ScriptError] holding that object returns the error.
 type Func func(this Value, args []Value) (any, error)
 
 // FuncOf returns a JavaScript function of the initial realm that calls f. name is the name

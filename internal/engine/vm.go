@@ -380,8 +380,8 @@ type VM struct {
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int
 
-	// hostPanic defers job and module abandonment until the outermost call ends.
-	hostPanic *PanicError
+	// abortCause defers job and module abandonment until the outermost call ends.
+	abortCause error
 
 	// newTarget is the constructor a native function is being constructed for, and nil in a plain call.
 	newTarget *Object

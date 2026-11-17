@@ -682,7 +682,7 @@ func (vm *VM) promiseResolveThenableJob(p *Object, thenable, then Value) {
 // FinalizationRegistry objects. It does nothing unless it is called by the outermost call
 // into the engine, as jobs only run when no other JavaScript is running.
 func (vm *VM) runJobs() {
-	if vm.entered != 1 || vm.hostPanic != nil {
+	if vm.entered != 1 || vm.abortCause != nil {
 		return
 	}
 	for {
@@ -693,7 +693,7 @@ func (vm *VM) runJobs() {
 				}
 				j := vm.jobs.dequeue()
 				vm.runJob(&j)
-				if vm.hostPanic != nil {
+				if vm.abortCause != nil {
 					return
 				}
 				vm.clearKeptObjects()
@@ -709,11 +709,11 @@ func (vm *VM) runJobs() {
 			}
 		}
 		// The reports can queue jobs and reject promises.
-		if !vm.notifyRejectedPromises() || vm.hostPanic != nil {
+		if !vm.notifyRejectedPromises() || vm.abortCause != nil {
 			break
 		}
 	}
-	if vm.hostPanic == nil {
+	if vm.abortCause == nil {
 		vm.runFinalizationCleanups()
 	}
 }
@@ -744,7 +744,7 @@ func (vm *VM) notifyRejectedPromises() bool {
 			break
 		}
 		t.notify(vm, Value{o: p}, d.result)
-		if vm.hostPanic != nil {
+		if vm.abortCause != nil {
 			break
 		}
 	}

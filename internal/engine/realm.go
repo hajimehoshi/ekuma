@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/parser"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
 // initialStackSize is the number of values that the stack of a VM has room for from the start.
@@ -278,8 +279,8 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 // enter runs f as a call from Go and drains jobs at the outermost boundary, including
 // after a JavaScript exception.
 //
-// An interruption ends the outermost such call: when Go code that JavaScript called enters
-// the engine again, the interruption passes through that inner call and the Go code.
+// An interruption or internal failure ends the outermost such call. When a host callback
+// enters the engine again, the signal passes through that inner call and the Go code.
 //
 // A Go panic restores each boundary it escapes. The outermost boundary discards pending
 // jobs and rejects unfinished module evaluations, including after a recovered inner panic.
@@ -293,9 +294,12 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 		vm.entered--
 		if outermost {
 			defer func() {
-				if vm.hostPanic != nil {
-					cause := vm.hostPanic
-					vm.hostPanic = nil
+				if vm.abortCause != nil {
+					cause := vm.abortCause
+					vm.abortCause = nil
+					if internal, ok := cause.(*xerrors.InternalError); ok {
+						result, err = Undefined, internal
+					}
 					vm.abortModuleEvaluations(cause)
 					vm.dropJobs()
 				}
@@ -306,6 +310,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 		}
 		if r := recover(); r != nil {
 			sig, interrupted := r.(*interruptSignal)
+			internal, failed := r.(*xerrors.InternalError)
 			if interrupted && !outermost {
 				panic(r)
 			}
@@ -334,8 +339,14 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 				if cause == nil {
 					cause = err
 				}
+			} else if failed {
+				vm.abortCause = internal
+				if !outermost {
+					panic(r)
+				}
+				return
 			} else {
-				vm.hostPanic = &PanicError{
+				vm.abortCause = &PanicError{
 					Value: r,
 				}
 				panic(r)

@@ -15,6 +15,10 @@
 // and the [Func] does not continue. A context that is done after its call returned stops
 // nothing.
 //
+// Internal operation failures return an [*InternalError] from the outermost Go call
+// executing JavaScript. They stop execution without running JavaScript catch or finally
+// blocks, discard pending jobs, and reject unfinished module evaluations. Side effects remain.
+//
 // Pending promise jobs run before the outermost Go call that executes JavaScript returns,
 // including property operations and calls that throw. Calls reentered from host callbacks
 // leave jobs to the outermost call. An interruption discards pending jobs.
@@ -37,6 +41,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
 // ValueError is the error of an operation on a [Value] that does not support the value.
@@ -65,21 +70,36 @@ func (e *SyntaxError) Error() string {
 	return "SyntaxError: " + e.Message + " (" + e.File + ":" + strconv.Itoa(e.Line) + ")"
 }
 
-// Error is a JavaScript exception: one that reached Go, or one for a [Func] to throw.
-type Error struct {
+// InternalError is a failure of an internal engine operation.
+type InternalError struct {
+	// Err is the underlying failure.
+	Err error
+}
+
+func (e *InternalError) Error() string {
+	return e.Err.Error()
+}
+
+// Unwrap returns the underlying failure.
+func (e *InternalError) Unwrap() error {
+	return e.Err
+}
+
+// ScriptError is a JavaScript exception: one that reached Go, or one for a [Func] to throw.
+type ScriptError struct {
 	// Value is the thrown value.
 	Value Value
 }
 
 // Error returns the stack trace or the message of a thrown error object,
 // and a description of any other thrown value. It runs no JavaScript.
-func (e *Error) Error() string {
+func (e *ScriptError) Error() string {
 	return engine.ThrownMessage(e.Value.value)
 }
 
 // Unwrap returns the Go error that e.Value was made from, or nil when it was not.
-func (e *Error) Unwrap() error {
-	return engine.GoError(e.Value.value)
+func (e *ScriptError) Unwrap() error {
+	return publicInternalError(engine.GoError(e.Value.value))
 }
 
 // publicError converts an error of the engine to the error types of this package.
@@ -95,14 +115,23 @@ func (vm *VM) publicError(err error) error {
 		}
 	}
 	if ex, ok := errors.AsType[*engine.Error](err); ok {
-		return &Error{Value: fromEngine(ex.Value)}
+		return &ScriptError{Value: fromEngine(ex.Value)}
+	}
+	return publicInternalError(err)
+}
+
+func publicInternalError(err error) error {
+	if e, ok := err.(*xerrors.InternalError); ok {
+		return &InternalError{
+			Err: e,
+		}
 	}
 	return err
 }
 
 // thrownValue returns the JavaScript value that the error of a [Func] throws.
 func (vm *VM) thrownValue(err error) engine.Value {
-	if ex, ok := errors.AsType[*Error](err); ok {
+	if ex, ok := errors.AsType[*ScriptError](err); ok {
 		return vm.acceptValue(ex.Value)
 	}
 	return vm.e.NewGoError(err)
