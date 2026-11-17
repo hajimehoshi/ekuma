@@ -332,15 +332,7 @@ func (vm *VM) newTail(sb *strings.Builder, ascii bool) Value {
 	if ascii {
 		flags |= objASCII
 	}
-	return Value{
-		o: &Object{
-			kind:  kindString,
-			flags: flags,
-			shape: vm.shapes.string,
-			str:   sb.String(),
-			ext:   sb,
-		},
-	}
+	return vm.newBufferedString(sb.String(), flags, sb, nil)
 }
 
 // extendTail returns the contents of sb as the string that becomes its tail in place of the
@@ -373,15 +365,7 @@ func (vm *VM) newHead(rb *reversedBuilder, ascii bool) Value {
 	if ascii {
 		flags |= objASCII
 	}
-	return Value{
-		o: &Object{
-			kind:  kindString,
-			flags: flags,
-			shape: vm.shapes.string,
-			str:   rb.sb.String(),
-			ext:   rb,
-		},
-	}
+	return vm.newBufferedString(rb.sb.String(), flags, rb, nil)
 }
 
 // extendHead returns the reversed string whose str is the contents of rb, as the head of rb, after
