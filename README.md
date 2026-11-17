@@ -65,25 +65,26 @@ faster):
 ```
                      V8 benchmark  QuickJS
                      suite v7      microbench    Version
-Ekuma                 1.00         1.00          v0.0.0-20261117123730-0439f78112fd
-goja                  4.73         3.75          v0.0.0-20261117122431-0802ca125248
-Sobek                 4.76         3.76          v0.0.0-20261116133901-d070e0f1f200
-otto                 23.0 (9/10)    n/a          v0.5.1
-modernc.org/quickjs   3.47         2.63          v0.27.0
-QJS                   4.60 (6/10)  4.16 (69/74)  v0.0.6
-QuickJS (C)           1.07         0.703         v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.586        0.480         v0.44.0
-v8go                  0.0301       0.0900        v0.44.0
+Ekuma                 1.00         1.00          v0.0.0-20261117164559-24a1e5134647
+goja                  4.82         4.05          v0.0.0-20261117122431-0802ca125248
+Sobek                 4.82         4.08          v0.0.0-20261116133901-d070e0f1f200
+otto                 23.2 (9/10)    n/a          v0.5.1
+modernc.org/quickjs   3.52         2.82          v0.27.0
+QJS                   4.69 (6/10)  4.48 (69/74)  v0.0.6
+QuickJS (C)           1.08         0.755         v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.596        0.512         v0.44.0
+v8go                  0.0306       0.0987        v0.44.0
 ```
 
-Measured on 2026-11-17: Apple M3 Pro, macOS 27.2, go1.27.4.
+Measured on 2026-11-18: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
 - For reference, the results include QuickJS compiled from the C source used by
   modernc.org/quickjs, and v8go with and without V8's JIT compilers.
-- "(k/n)" means that the engine ran k of the n benchmarks and failed the others, and its mean is
-  over the ones it ran. otto cannot parse microbench.js, which uses ES2015 syntax.
+- "(k/n)" means that k of the n benchmarks had successful paired results for that engine and
+  Ekuma; the mean covers those benchmarks. otto cannot parse microbench.js, which uses ES2015
+  syntax. Failed rounds are excluded from timing ratios.
 - See [`_bench`](_bench/README.md) for the benchmarks, measurement methodology, and individual
   results.
 
