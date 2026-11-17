@@ -126,15 +126,15 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			n = 0
 		}
 		var buf [numberBufSize]byte
-		e := 0
 		if n != 0 {
 			es := appendHalfUp(buf[:0], n, 'e', int(p)-1)
-			e = exponent(es)
+			e := exponent(es)
 			if e < -6 || e >= int(p) {
 				return vm.NewString(string(fixExponent(es)))
 			}
+			return vm.NewString(string(precisionFixed(es, int(p), e)))
 		}
-		return vm.NewString(string(appendHalfUp(buf[:0], n, 'f', int(p)-1-e)))
+		return vm.NewString(string(appendHalfUp(buf[:0], n, 'f', int(p)-1)))
 	})
 	method(vm, proto, "toExponential", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toExponential")
@@ -236,6 +236,33 @@ func appendHalfUp(b []byte, n float64, fmt byte, prec int) []byte {
 		}
 	}
 	return append(b, exp...)
+}
+
+// precisionFixed rewrites p rounded exponential digits in fixed notation for -6 <= e < p.
+func precisionFixed(s []byte, p, e int) []byte {
+	var start int
+	if s[0] == '-' {
+		start = 1
+	}
+	// Remove the point and exponent, leaving only the sign and significant digits.
+	if p > 1 {
+		copy(s[start+1:], s[start+2:start+p+1])
+	}
+	s = s[:start+p]
+	if e < 0 {
+		s = s[:start+p+1-e]
+		copy(s[start+1-e:], s[start:start+p])
+		s[start], s[start+1] = '0', '.'
+		for i := start + 2; i < start+1-e; i++ {
+			s[i] = '0'
+		}
+	} else if e+1 < p {
+		s = s[:len(s)+1]
+		point := start + e + 1
+		copy(s[point+1:], s[point:len(s)-1])
+		s[point] = '.'
+	}
+	return s
 }
 
 // appendExponent appends the exponent e in the form of [strconv.AppendFloat] with the format 'e'.

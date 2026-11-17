@@ -1428,6 +1428,17 @@ func TestScripts(t *testing.T) {
 			want: "5.960464477539063e-8 0.45000000000000001110223024625156540423631668090820313 5.960464477539063e-8 -1e+1 100",
 		},
 		{
+			name: "toPrecision fixed rounding and exponent carry",
+			src: `[(1.25).toPrecision(2), (-9.95).toPrecision(2), (-9.999).toPrecision(3), (99.5).toPrecision(2),
+					(0.0000009999999).toPrecision(2)].join(" ")`,
+			want: "1.3 -9.9 -10.0 1.0e+2 0.0000010",
+		},
+		{
+			name: "toPrecision fixed maximum precision",
+			src:  `(-0.0000011).toPrecision(100)`,
+			want: "-0.000001100000000000000056102041415262426937715645181015133857727050781250000000000000000000000000000000000",
+		},
+		{
 			name: "remainder of negative zero by a register",
 			src:  `var x = -0, y = 1; 1 / (x % y)`,
 			want: "-Infinity",
