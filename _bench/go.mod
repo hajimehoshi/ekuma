@@ -3,9 +3,9 @@ module github.com/hajimehoshi/ekuma/_bench
 go 1.27
 
 require (
-	github.com/dop251/goja v0.0.0-20261110204830-f493a2b600d6
+	github.com/dop251/goja v0.0.0-20261117122431-0802ca125248
 	github.com/fastschema/qjs v0.0.6
-	github.com/grafana/sobek v0.0.0-20261105103427-a5b602015248
+	github.com/grafana/sobek v0.0.0-20261116133901-d070e0f1f200
 	github.com/hajimehoshi/ekuma v0.0.0-00010101000000-000000000000
 	github.com/robertkrimen/otto v0.5.1
 	github.com/tommie/v8go v0.44.0
