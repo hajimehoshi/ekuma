@@ -1822,6 +1822,15 @@ func TestDirectEval(t *testing.T) {
 			want: "functionnumber,1,2",
 		},
 		{
+			name: "eval declarations in parameter defaults shadow the name of a function expression",
+			src: `[
+					(function f(x = eval("var f = 3"), y = () => f) { return typeof f + y(); })(),
+					(function f(x = () => f, y = eval("var f = 4")) { return x(); })(),
+					(function f(x = eval("1"), y = () => typeof f) { return y(); })(),
+				].join()`,
+			want: "number3,4,function",
+		},
+		{
 			name: "a block-level function of eval code is hoisted over a catch parameter",
 			src: `(function () {
 					try { throw 1; } catch (g) { eval("{ function g() {} }"); }

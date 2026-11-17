@@ -300,7 +300,24 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		if selfName {
 			selfName = false
 			if n := node.Name.Name; !paramNames[n] && n != "arguments" {
-				self := f.declare(n, bindFuncName)
+				sc := f.scope
+				if evalInParams {
+					// The variables that the direct evals of the parameters declare shadow
+					// the name, so the name lives in a scope outside that of OpEvalScope.
+					sc = &scope{
+						parent:   f.scope.parent,
+						vars:     map[string]*binding{},
+						firstReg: f.top,
+						withs:    f.scope.withs - 1,
+					}
+					f.scope.parent = sc
+				}
+				self := &binding{
+					name: n,
+					reg:  f.newReg(),
+					kind: bindFuncName,
+				}
+				sc.vars[n] = self
 				self.initialized = true
 				f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
 			}
