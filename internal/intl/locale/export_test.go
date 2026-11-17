@@ -8,3 +8,5 @@ var FromHost = fromHost
 
 var HostLocale = hostLocale
 var LocaleFromConfig = localeFromConfig
+
+var LocaleFromAndroidProperties = localeFromAndroidProperties

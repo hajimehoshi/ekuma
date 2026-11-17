@@ -3,8 +3,6 @@
 Ekuma is a JavaScript engine written in pure Go and is almost `unsafe`-free.
 It uses `unsafe` only to access OS APIs.
 It is designed for fast execution without a JIT compiler.
-Its only dependency is [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text),
-for Unicode normalization and case mapping.
 
 The project is at an early stage and its API is unstable, though nearly all of the syntax and
 standard library up to ES2026 is implemented. See [Status](#status).
@@ -161,9 +159,14 @@ program grows from about 8.7 MB to 15.8 MB natively, and from 11.1 MB to 18.8 MB
 Set the VM default locale with `vm.SetLocale("ja-JP")`; `vm.SetLocale("")` restores
 the host default. Explicit JavaScript locale arguments take precedence, and existing
 Intl instances keep their locale. The host default comes from `LC_ALL`,
-`LC_MESSAGES` or `LANG`, in that order, then the OS locale (macOS and Windows user
-preferences or Linux system locale configuration). Browser builds use
+`LC_MESSAGES` or `LANG`, in that order, then the OS locale (macOS, iOS, and Windows
+user preferences, Android system properties, or Linux system locale configuration).
+FreeBSD, OpenBSD, NetBSD, and DragonFly BSD use the locale environment variables
+supplied by the login session or shell. Browser builds use
 `navigator.language`. Unavailable host locales, `C` and `POSIX` fall back to en-US.
+The native locale calls on Apple platforms and Android use purego. Android builds
+with `CGO_ENABLED=0` use only the locale environment variables. iOS builds require
+`CGO_ENABLED=1`; macOS supports `CGO_ENABLED=0`.
 The package brings locale data whose license notice a program must include: see [License](#license).
 
 ### Agents
