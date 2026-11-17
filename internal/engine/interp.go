@@ -1411,12 +1411,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						c.holder, c.next = proto.o, shape
 					}
 				}
-				callThis = Value{
-					o: &Object{
-						kind:  kindObject,
-						shape: shape,
-					},
-				}
+				callThis = Value{o: newInstance(shape)}
 				isNew, newTarget = true, f
 				goto call
 			}

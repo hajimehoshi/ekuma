@@ -29,6 +29,59 @@ func TestScripts(t *testing.T) {
 		want string
 	}{
 		{
+			name: "constructor storage follows conditional property order and prototype changes",
+			src: `function C(reverse) {
+				if (reverse) { this.b = 2; this.a = 1; }
+				else { this.a = 1; this.b = 2; }
+			}
+			function make(reverse) { return new C(reverse); }
+			let first = make(false), second = make(true);
+			let order = Object.keys(second);
+			let seen = [];
+			C.prototype = { set a(v) { seen.push(v); } };
+			let third = make(false);
+			delete second.b;
+			second.b = 3;
+			[Object.keys(first), order, Object.keys(second), Object.keys(third), seen,
+			 Object.getPrototypeOf(third) === C.prototype, first.b, second.b].join("|")`,
+			want: "a,b|b,a|a,b|b|1|true|2|3",
+		},
+		{
+			name: "constructor storage remains independent through reentrancy and alternate returns",
+			src: `let saved = [], replacement = {};
+			function C(depth, replace) {
+				this.before = depth;
+				saved.push(this);
+				if (depth) this.child = new C(depth - 1, false);
+				this.after = depth;
+				if (replace) return replacement;
+			}
+			new C(0, false);
+			let result = new C(2, true);
+			let later = new C(0, false);
+			saved[1].before = 9;
+			[result === replacement, saved.map(o => o.before), saved.map(o => o.after),
+			 Object.keys(later), saved[1].child === saved[2], saved[2].child === saved[3]].join("|")`,
+			want: "true|0,9,1,0,0|0,2,1,0,0|before,after|true|true",
+		},
+		{
+			name: "constructor storage grows beyond its hint and survives a thrown construction",
+			src: `let escaped;
+			function C(n, fail) {
+				for (let i = 0; i < n; i++) this["p" + i] = i;
+				if (fail) { escaped = this; throw 1; }
+			}
+			function make(n, fail) { return new C(n, fail); }
+			make(4, false);
+			let large = make(40, false);
+			try { make(20, true); } catch (_) {}
+			let empty = make(0, false), small = make(1, false);
+			small.p0 = 100;
+			[Object.keys(large).length, large.p39, Object.keys(escaped).length,
+			 escaped.p0, Object.keys(empty).length, small.p0].join()`,
+			want: "40,39,20,0,0,100",
+		},
+		{
 			name: "arithmetic",
 			src:  `1 + 2 * 3 - 4 / 2`,
 			want: "5",
