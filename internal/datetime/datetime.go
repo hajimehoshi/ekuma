@@ -107,27 +107,32 @@ func DayWithinYear(t float64) float64 {
 	return Day(t) - DayFromYear(YearFromTime(t))
 }
 
-// monthFromTime returns the month (0 to 11) of the time value t, the day within its year,
-// and whether its year is a leap year.
-func monthFromTime(t float64) (month int, day float64, leap bool) {
-	y := YearFromTime(t)
-	day = Day(t) - DayFromYear(y)
-	leap = DaysInYear(y) == 366
+// monthFromTime returns the year, month (0 to 11), day within the year, and leap status of t.
+func monthFromTime(t float64) (year float64, month int, day float64, leap bool) {
+	year = YearFromTime(t)
+	day = Day(t) - DayFromYear(year)
+	leap = DaysInYear(year) == 366
 	for month < 11 && day >= daysBeforeMonth(month+1, leap) {
 		month++
 	}
-	return month, day, leap
+	return year, month, day, leap
+}
+
+// calendarFromTime returns the year, month (0 to 11), and day of the month of t.
+func calendarFromTime(t float64) (year float64, month int, date float64) {
+	year, month, day, leap := monthFromTime(t)
+	return year, month, day - daysBeforeMonth(month, leap) + 1
 }
 
 // MonthFromTime implements MonthFromTime: a month from 0 to 11.
 func MonthFromTime(t float64) float64 {
-	m, _, _ := monthFromTime(t)
+	_, m, _, _ := monthFromTime(t)
 	return float64(m)
 }
 
 // DateFromTime implements DateFromTime: a day of the month from 1 to 31.
 func DateFromTime(t float64) float64 {
-	m, d, leap := monthFromTime(t)
+	_, m, d, leap := monthFromTime(t)
 	return d - daysBeforeMonth(m, leap) + 1
 }
 
