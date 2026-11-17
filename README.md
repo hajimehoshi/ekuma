@@ -43,15 +43,17 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 
 Ekuma uses the following techniques to improve performance:
 
-- Objects have hidden-class shapes, and every property access site has an inline cache.
+- Objects have hidden-class shapes, and named property accesses use inline caches.
+- Dense array elements use contiguous storage with direct indexed access.
 - The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
-- Calls between JavaScript functions allocate nothing and do not recurse in Go.
-- A value is two words, and numbers and BigInts that fit in 64 bits are never allocated.
-- Forwarding calls such as `f.apply(this, arguments)` do not create an arguments object.
+- Ordinary JavaScript calls reuse stack storage within the interpreter loop, without Go recursion.
+- Proper tail calls reuse the current frame for eligible strict-mode calls.
+- Values occupy two words on 64-bit platforms; numbers and signed 64-bit BigInts are stored inline.
+- Eligible forwarding calls such as `f.apply(this, arguments)` avoid creating an arguments object.
 - Memory is managed by Go's garbage collector, without reference counting.
-
-Strings are Go strings in [WTF-8](https://simonsapin.github.io/wtf-8/), with exact UTF-16 semantics.
-A well-formed string crosses the Go boundary without conversion.
+- Strings use [WTF-8](https://simonsapin.github.io/wtf-8/) with exact UTF-16 semantics;
+  well-formed strings cross the Go boundary without transcoding.
+- Repeated string appends and prepends can reuse growing buffers, preserving earlier string values.
 
 ## Performance
 
