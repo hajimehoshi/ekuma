@@ -607,7 +607,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						o.slots[e.slot] = regs[i.C]
 						continue
 					case cacheAdd:
-						if e.epoch == vm.protoEpoch && o.flags&objIsProto == 0 {
+						if o.objectProperties != nil && e.epoch == vm.protoEpoch && o.flags&objIsProto == 0 {
 							o.shape = e.next
 							o.slots = append(o.slots, regs[i.C])
 							continue
@@ -650,7 +650,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
-			if o := v.o; o != nil && k.o == nil {
+			if o := v.o; o != nil && o.objectProperties != nil && k.o == nil {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
 					if e := o.elems[j]; e.o != holeObject {
 						regs[i.A] = e
@@ -667,7 +667,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpGetIndexInt:
 			v := regs[i.B]
-			if o := v.o; o != nil && uint(i.C) < uint(len(o.elems)) {
+			if o := v.o; o != nil && o.objectProperties != nil && uint(i.C) < uint(len(o.elems)) {
 				if e := o.elems[i.C]; e.o != holeObject {
 					regs[i.A] = e
 					continue
@@ -682,7 +682,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
 			v, k := regs[i.A], regs[i.B]
-			if o := v.o; o != nil && k.o == nil {
+			if o := v.o; o != nil && o.objectProperties != nil && k.o == nil {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
 					if o.elems[j].o != holeObject {
 						o.elems[j] = regs[i.C]

@@ -20,7 +20,7 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 	if !target.IsObject() || !handler.IsObject() {
 		vm.ThrowTypeError("cannot create proxy with a non-object as target or handler")
 	}
-	p := &Object{
+	p := (&propertyObject{
 		kind:  kindObject,
 		class: classProxy,
 		flags: objExotic,
@@ -29,7 +29,7 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 			target:  target.o,
 			handler: handler.o,
 		},
-	}
+	}).init()
 	if target.o.fn != nil {
 		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
 		// of calling a function reaches them.

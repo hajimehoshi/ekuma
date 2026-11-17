@@ -5,6 +5,8 @@ package engine_test
 
 import (
 	"testing"
+
+	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
 // TestStringIndexKey tests reads and stores with string keys that are array indices. Each key is
@@ -65,5 +67,16 @@ func TestStringIndexKey(t *testing.T) {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestPrimitiveElements(t *testing.T) {
+	vm := engine.NewVM(nil)
+	o := vm.NewString("abc").Object()
+	if _, ok := o.Element(0); ok {
+		t.Error("Element reported a stored element for a primitive")
+	}
+	if o.SetElement(0, engine.True) {
+		t.Error("SetElement reported a stored element for a primitive")
 	}
 }

@@ -278,7 +278,7 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	} else if ko.kind == kindString {
 		// An element in elems is an own data property, whatever object v is.
 		if i, ok := ko.knownArrayIndex(); ok {
-			if o := v.o; o != nil && int64(i) < int64(len(o.elems)) {
+			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) {
 				if e := o.elems[i]; !e.isHole() {
 					return e, nil
 				}
@@ -308,7 +308,7 @@ func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 	} else if ko.kind == kindString {
 		// An element in elems is a writable own data property, whatever object v is.
 		if i, ok := ko.knownArrayIndex(); ok {
-			if o := v.o; o != nil && int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
+			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
 				o.elems[i] = val
 				return nil, true
 			}
@@ -1226,13 +1226,13 @@ func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
 	}
 	n.fn = &n.state
 	n.state.info = &n.info
-	return &n.Object
+	return n.init()
 }
 
 // nativeObject is a native function object together with its function state and description,
 // so that creating one is a single allocation.
 type nativeObject struct {
-	Object
+	propertyObject
 	state function
 	info  nativeInfo
 }
@@ -1347,13 +1347,13 @@ func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Obj
 	b.class = classFunction
 	b.shape = vm.shapeFor(vm.ProtoOf(target))
 	b.slots = b.props[:0]
-	return &b.Object
+	return b.init()
 }
 
 // boundObject is a bound function object together with its state and the storage of its
 // length and name properties, so that creating one is a single allocation.
 type boundObject struct {
-	Object
+	propertyObject
 	state function
 	bound boundFunc
 	props [2]Value

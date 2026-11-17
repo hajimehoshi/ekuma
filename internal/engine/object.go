@@ -122,11 +122,9 @@ type Object struct {
 
 	// shape is the layout of slots. Only the singletons and internal values have none.
 	shape *shape
-	slots []Value
 
-	// elems holds the properties whose keys are array indices, by index.
-	// An element that does not exist holds hole.
-	elems []Value
+	// Primitive values have no property storage.
+	*objectProperties
 
 	// fn is set for a callable object.
 	fn *function
@@ -142,6 +140,27 @@ type Object struct {
 	// ext is the internal state of a built-in object. For a string that is not interned
 	// it is the interned string with the same content, once that was looked up.
 	ext any
+}
+
+// objectProperties holds the own properties of a JavaScript object.
+type objectProperties struct {
+	slots []Value
+
+	// elems holds the properties whose keys are array indices, by index.
+	// An element that does not exist holds hole.
+	elems []Value
+}
+
+// propertyObject keeps an object's header and property storage in one allocation.
+// Primitive heap values use only Object.
+type propertyObject struct {
+	Object
+	objectProperties
+}
+
+func (o *propertyObject) init() *Object {
+	o.Object.objectProperties = &o.objectProperties
+	return &o.Object
 }
 
 // objectMeta is the side data of an object.
@@ -634,10 +653,10 @@ func (vm *VM) functionShapeFor(proto *Object) *shape {
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
 func (vm *VM) NewObject(proto *Object) *Object {
-	return &Object{
+	return (&propertyObject{
 		kind:  kindObject,
 		shape: vm.shapeFor(proto),
-	}
+	}).init()
 }
 
 // NewInstance returns a new empty ordinary instance with prototype proto, which may be nil.
@@ -672,21 +691,21 @@ func newInstance(s *shape) *Object {
 
 // NewOrdinaryObject returns a new empty ordinary object whose prototype is %Object.prototype%.
 func (vm *VM) NewOrdinaryObject() *Object {
-	return &Object{
+	return (&propertyObject{
 		kind:  kindObject,
 		shape: vm.shapes.object,
-	}
+	}).init()
 }
 
 // NewArray returns a new array with the given elements, which it keeps.
 func (vm *VM) NewArray(elems []Value) *Object {
-	return &Object{
+	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,
 		shape:  vm.shapes.array,
 		elems:  elems,
 		length: uint32(len(elems)),
-	}
+	}).init()
 }
 
 // NewArrayCopy returns a new array with a copy of elems as its elements.
@@ -704,13 +723,13 @@ func (vm *VM) NewArrayCopy(elems []Value) *Object {
 // pairArray is an array of two elements together with the storage of its elements,
 // so that creating one is a single allocation.
 type pairArray struct {
-	Object
+	propertyObject
 	pair [2]Value
 }
 
 // closureObject is a function object together with its function state.
 type closureObject struct {
-	Object
+	propertyObject
 	state function
 }
 
@@ -770,7 +789,7 @@ func newClosureObject(n, ncopied int) (*Object, []upvalue) {
 	}
 	c.state.upvals = upvals
 	c.fn = &c.state
-	return &c.Object, copies
+	return c.init(), copies
 }
 
 // newObjectWithStorage returns a zero object and storage for n values. For a small n, both are
@@ -778,38 +797,38 @@ func newClosureObject(n, ncopied int) (*Object, []upvalue) {
 func newObjectWithStorage(n int) (*Object, []Value) {
 	switch n {
 	case 0:
-		return &Object{}, nil
+		return (&propertyObject{}).init(), nil
 	case 1:
 		w := &objectWith[[1]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 2:
 		w := &objectWith[[2]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 3:
 		w := &objectWith[[3]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 4:
 		w := &objectWith[[4]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 5:
 		w := &objectWith[[5]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 6:
 		w := &objectWith[[6]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 7:
 		w := &objectWith[[7]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	case 8:
 		w := &objectWith[[8]Value]{}
-		return &w.Object, w.storage[:]
+		return w.init(), w.storage[:]
 	}
-	return &Object{}, make([]Value, n)
+	return (&propertyObject{}).init(), make([]Value, n)
 }
 
 // objectWith is an object together with storage for its slots or elements.
 type objectWith[S any] struct {
-	Object
+	propertyObject
 	storage S
 }
 
@@ -823,7 +842,7 @@ func (vm *VM) NewArrayPair(a, b Value) *Object {
 		pair:   [2]Value{a, b},
 	}
 	p.elems = p.pair[:]
-	return &p.Object
+	return p.init()
 }
 
 // NewArrayWithRoom returns an array of length undefined elements with room for n named properties.

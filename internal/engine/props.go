@@ -595,7 +595,7 @@ func (vm *VM) Index(v Value, i uint32) Value {
 func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 	start := vm.protoStart(v, PropKey{idx: i})
 	for h := start; h != nil; h = h.shape.proto {
-		if int64(i) < int64(len(h.elems)) {
+		if h.objectProperties != nil && int64(i) < int64(len(h.elems)) {
 			if e := h.elems[i]; !e.isHole() {
 				return e, nil
 			}
@@ -646,7 +646,7 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		return vm.namespaceGetOwnProperty(o, k)
 	}
 	if k.key == nil {
-		if int64(k.idx) < int64(len(o.elems)) {
+		if o.objectProperties != nil && int64(k.idx) < int64(len(o.elems)) {
 			if e := o.elems[k.idx]; !e.isHole() {
 				return dataDesc(e, FlagsData), true
 			}

@@ -199,10 +199,10 @@ func (vm *VM) continueDispose(dc *DisposeCapability, k AwaitHandler) {
 // creating it when d is undefined, and returns the new register value.
 func (vm *VM) addDisposableOp(v, d Value, hint DisposeHint) Value {
 	if d.IsUndefined() {
-		d = Value{o: &Object{
+		d = Value{o: (&propertyObject{
 			kind: kindObject,
 			ext:  NewDisposeCapability(),
-		}}
+		}).init()}
 	}
 	vm.AddDisposableResource(d.o.ext.(*DisposeCapability), v, hint, nil)
 	return d

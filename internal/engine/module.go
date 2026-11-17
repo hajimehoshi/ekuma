@@ -771,7 +771,7 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 	for j, d := range m.body.Upvals {
 		upvals[j] = m.env[d.Index]
 	}
-	m.fn = &Object{
+	m.fn = (&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
@@ -780,7 +780,7 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 			code:   m.body,
 			upvals: upvals,
 		},
-	}
+	}).init()
 	for _, f := range code.Funcs {
 		*m.env[f.Binding].p = Value{o: vm.newClosure(m.body.protos[f.Proto], upvals)}
 	}
@@ -806,13 +806,13 @@ func (vm *VM) newClosure(p *funcProto, upvals []*upvalue) *Object {
 		classConstructor: p.isClassConstructor,
 		derived:          p.isDerived,
 	}
-	o := &Object{
+	o := (&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
 		shape: vm.shapes.function,
 		fn:    fn,
-	}
+	}).init()
 	if p.isGenerator || p.isAsync {
 		o.shape = vm.functionShapeFor(vm.functionProtoFor(p))
 	}

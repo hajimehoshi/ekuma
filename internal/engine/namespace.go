@@ -73,13 +73,13 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		ns.targets[i] = e.r
 		ns.index[k] = i
 	}
-	o := &Object{
+	o := (&propertyObject{
 		kind:  kindObject,
 		class: classModuleNamespace,
 		flags: objExotic,
 		shape: vm.shapes.nullProto,
 		ext:   ns,
-	}
+	}).init()
 	tag := "Module"
 	if deferred {
 		tag = "Deferred Module"

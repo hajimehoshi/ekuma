@@ -73,12 +73,12 @@ type decorationState struct {
 
 // newClassDecoration returns a new state for the evaluation of the class with the name name.
 func (vm *VM) newClassDecoration(name Value) Value {
-	return Value{o: &Object{
+	return Value{o: (&propertyObject{
 		kind: kindObject,
 		ext: &classDecoration{
 			name: name,
 		},
-	}}
+	}).init()}
 }
 
 // autoAccessorOp performs the instruction i, an [bytecode.OpAutoAccessor], on the registers regs.

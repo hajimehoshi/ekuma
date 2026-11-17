@@ -336,7 +336,7 @@ func (vm *VM) appendIterable(o *Object, v Value) {
 // iterResult is an iterator result object together with the storage of its two properties,
 // so that creating one is a single allocation.
 type iterResult struct {
-	Object
+	propertyObject
 	props [2]Value
 }
 
@@ -348,13 +348,13 @@ func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
 		props: [2]Value{v, Bool(done)},
 	}
 	r.slots = r.props[:]
-	return Value{o: &r.Object}
+	return Value{o: r.init()}
 }
 
 // forIn is a for-in iterator object together with the state of its loop, so that creating
 // one is a single allocation.
 type forIn struct {
-	Object
+	propertyObject
 
 	// obj is the object whose keys come next, or nil when the loop is done.
 	obj *Object
@@ -385,7 +385,7 @@ func (vm *VM) newForIn(v Value) Value {
 		it.obj = vm.ToObject(v)
 		it.indices, it.length, it.keys = vm.forInOwnKeys(it.obj)
 	}
-	return Value{o: &it.Object}
+	return Value{o: it.init()}
 }
 
 // forInOwnKeys returns the own property keys of the receiver o of a for-in loop in the order of

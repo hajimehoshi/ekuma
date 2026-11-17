@@ -58,13 +58,13 @@ func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
 		storage: [3]Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}},
 	}
 	a.slots = a.storage[:2]
-	return &a.Object
+	return a.init()
 }
 
 // argumentsObject is an arguments object together with the storage of its length,
 // its iterator and its callee, so that creating one is a single allocation.
 type argumentsObject struct {
-	Object
+	propertyObject
 	storage [3]Value
 }
 

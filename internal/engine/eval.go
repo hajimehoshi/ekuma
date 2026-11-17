@@ -94,13 +94,13 @@ func (vm *VM) directEval(x Value, site int) Value {
 		}
 	}
 	fn.scopes = vm.openScopes(fr.cl)
-	return vm.Call(&Object{
+	return vm.Call((&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
 		shape: vm.shapes.function,
 		fn:    fn,
-	}, Undefined)
+	}).init(), Undefined)
 }
 
 // createLazyArguments creates the arguments object of the frame fr, whose direct eval at the

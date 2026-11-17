@@ -46,11 +46,11 @@ func NewVM(hostDefined any) *VM {
 		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
 	}
 	vm.initKeys()
-	vm.missHolder = &Object{
+	vm.missHolder = (&propertyObject{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
 		slots: []Value{Undefined},
-	}
+	}).init()
 	vm.initRealmGlobals()
 	vm.strings.keepNew = false
 	return vm
@@ -61,13 +61,13 @@ func NewVM(hostDefined any) *VM {
 func (vm *VM) initRealmPrototypes() {
 	vm.shapes.nullProto = vm.newShape(nil)
 	vm.shapes.proxy = vm.newShape(nil)
-	objectProto := &Object{
+	objectProto := (&propertyObject{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
-	}
+	}).init()
 	vm.intrinsics[IntrinsicObjectPrototype] = objectProto
 	vm.shapes.object = vm.shapeFor(objectProto)
-	functionProto := &Object{
+	functionProto := (&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
@@ -77,14 +77,14 @@ func (vm *VM) initRealmPrototypes() {
 				return Undefined
 			},
 		},
-	}
+	}).init()
 	vm.intrinsics[IntrinsicFunctionPrototype] = functionProto
 	vm.shapes.function = vm.functionShapeFor(functionProto)
-	arrayProto := &Object{
+	arrayProto := (&propertyObject{
 		kind:  kindArray,
 		class: classArray,
 		shape: vm.shapes.object,
-	}
+	}).init()
 	vm.intrinsics[IntrinsicArrayPrototype] = arrayProto
 	vm.shapes.array = vm.shapeFor(arrayProto)
 	stringProto := vm.NewObject(objectProto)
@@ -456,13 +456,13 @@ func toSyntaxError(file string, err error) error {
 
 // newScriptFunction returns the function that runs the script fp.
 func (vm *VM) newScriptFunction(fp *funcProto) *Object {
-	return &Object{
+	return (&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
 		shape: vm.shapes.function,
 		fn:    &function{code: fp},
-	}
+	}).init()
 }
 
 // PerformEval implements PerformEval for an indirect eval.
