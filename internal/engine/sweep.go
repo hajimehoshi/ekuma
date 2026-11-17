@@ -40,24 +40,29 @@ func (t *sweptTable[K, V]) get(key K) *V {
 }
 
 // put sets the value under key to v, which must not be nil. A table that has fewer than
-// minSweep entries is not swept.
-func (t *sweptTable[K, V]) put(key K, v *V, minSweep int) {
+// minSweep entries is not swept. The values for which keep reports true are kept alive by the
+// table; keep may be nil.
+func (t *sweptTable[K, V]) put(key K, v *V, minSweep int, keep func(*V) bool) {
 	if t.entries == nil {
 		t.entries = map[K]sweptRef[V]{}
 	}
 	if len(t.entries) >= max(t.sweepAt, minSweep) {
-		t.sweep()
+		t.sweep(keep)
 	}
 	t.entries[key] = sweptRef[V]{strong: v}
 }
 
-// sweep removes the entries whose values were collected and makes the others weak.
-func (t *sweptTable[K, V]) sweep() {
+// sweep removes the entries whose values were collected and makes the others weak, except
+// those for which keep reports true.
+func (t *sweptTable[K, V]) sweep(keep func(*V) bool) {
 	// A weak pointer costs far more to make than a lookup, so only the entries that live
 	// until a sweep get one.
 	n := len(t.entries)
 	for k, r := range t.entries {
 		if r.strong != nil {
+			if keep != nil && keep(r.strong) {
+				continue
+			}
 			t.entries[k] = sweptRef[V]{weak: weak.Make(r.strong)}
 			continue
 		}

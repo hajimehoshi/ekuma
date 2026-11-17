@@ -58,6 +58,10 @@ const (
 // contents themselves needs [Object.Str].
 const objReversed = objFrozenLength
 
+// objKept marks an interned string that the VM keeps alive for as long as it lives. Its bit is
+// that of objIsProto, which strings never use.
+const objKept = objIsProto
+
 // class distinguishes the built-in objects that have internal state or exotic behavior.
 type class uint8
 
@@ -269,12 +273,12 @@ func (t *transitionTable) put(s *shape) {
 		t.rest.put(shapeKey{
 			key:   only.key,
 			flags: only.flags,
-		}, only, transitionsMinSweep)
+		}, only, transitionsMinSweep, nil)
 	}
 	t.rest.put(shapeKey{
 		key:   s.key,
 		flags: s.flags,
-	}, s, transitionsMinSweep)
+	}, s, transitionsMinSweep, nil)
 }
 
 // empty reports whether no transition was ever added.
@@ -829,6 +833,10 @@ type stringTable struct {
 	// interned maps a string to its property key.
 	interned sweptTable[string, Object]
 
+	// keepNew is set while the VM and its built-in objects are created. The strings interned
+	// meanwhile are kept alive with the VM.
+	keepNew bool
+
 	// ascii are the strings of one ASCII character.
 	ascii [128]Value
 }
@@ -912,8 +920,16 @@ func (vm *VM) Intern(s string) *Object {
 		shape: vm.shapes.string,
 		str:   s,
 	}
-	vm.strings.interned.put(s, o, internedMinSweep)
+	if vm.strings.keepNew {
+		o.flags |= objKept
+	}
+	vm.strings.interned.put(s, o, internedMinSweep, isKept)
 	return o
+}
+
+// isKept reports whether the interned string o is kept alive with its VM.
+func isKept(o *Object) bool {
+	return o.flags&objKept != 0
 }
 
 // stringKey returns the property key for the string o.
@@ -1075,6 +1091,7 @@ type builtinLayout struct {
 // In between, objects should only get their initial properties.
 func (vm *VM) StartBuiltins() {
 	vm.builtins.building = true
+	vm.strings.keepNew = true
 }
 
 // FinishBuiltins ends the creation of the built-in objects.
@@ -1083,6 +1100,7 @@ func (vm *VM) FinishBuiltins() {
 		o.shareShape()
 	}
 	vm.builtins = builtinLayout{}
+	vm.strings.keepNew = false
 }
 
 // shareShape turns the private shape of o into a shared shape without parent that holds all
