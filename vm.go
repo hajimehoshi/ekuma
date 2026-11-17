@@ -118,7 +118,7 @@ func (vm *VM) initIfNeeded() {
 //	| map[string]any         | new object             |
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
-// ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil Func.
+// ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil [Func].
 // It panics for a string, symbol, object or function of another VM,
 // including values nested in arrays and maps.
 //
@@ -354,7 +354,7 @@ func (vm *VM) SetTimeZone(loc *time.Location) {
 
 // SetRandomSource sets src as the source of random numbers for Math.random. A nil src restores
 // the default, a source that is seeded randomly. The source applies to the later calls of
-// Math.random, which return the numbers that rand.New(src).Float64 would.
+// Math.random, which return the numbers that [rand.New](src).Float64 would.
 func (vm *VM) SetRandomSource(src rand.Source) {
 	vm.initIfNeeded()
 	vm.e.SetRandomSource(src)

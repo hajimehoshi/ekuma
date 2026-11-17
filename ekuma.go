@@ -33,7 +33,7 @@
 // Abandoned synchronous module evaluations are rejected before returning to the host.
 // Aborted generators are closed without running JavaScript catch or finally blocks.
 // Side effects remain, and promises for abandoned async work may remain pending.
-// Host callbacks must not call runtime.Goexit, which leaves the VM unusable.
+// Host callbacks must not call [runtime.Goexit], which leaves the VM unusable.
 package ekuma
 
 import (
@@ -45,7 +45,7 @@ import (
 )
 
 // ValueError reports an operation that is unsupported for a [Value]'s type.
-// Operations that do not return an error panic with a *ValueError instead.
+// Operations that do not return an error panic with a [*ValueError] instead.
 type ValueError struct {
 	Method string
 	Type   Type

@@ -22,8 +22,8 @@ func (vm *VM) ParseScript(name, src string) (*Script, error) {
 }
 
 // Evaluate evaluates s, runs the pending jobs, and returns the completion value of s. s may be
-// evaluated more than once, but evaluating it again throws a SyntaxError when s declares a
-// top-level let, const or class.
+// evaluated more than once, but evaluating it again throws a JavaScript SyntaxError when s
+// declares a top-level let, const or class.
 //
 // The error is a [*ScriptError] when the script throws. When ctx is done, the script stops at its
 // next loop iteration or call, and the error is the cause of ctx.
