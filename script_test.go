@@ -978,6 +978,16 @@ func TestScripts(t *testing.T) {
 			want: "3",
 		},
 		{
+			name: "a numeric next method throws a TypeError when called",
+			src: `var it = { [Symbol.iterator]() { return { next: 0 }; } };
+				var log = [];
+				try { var [a] = it; } catch (e) { log.push(e instanceof TypeError); }
+				try { for (var x of it); } catch (e) { log.push(e instanceof TypeError); }
+				try { [...it]; } catch (e) { log.push(e instanceof TypeError); }
+				log.join()`,
+			want: "true,true,true",
+		},
+		{
 			name: "built-ins close an iterator when their callback throws or they stop, not when next throws",
 			src: `var log = [];
 				function mk(nextThrows) { return { [Symbol.iterator]() { var i = 0; return { next() { if (nextThrows && i == 1) throw "next"; i++; return { done: i > 4, value: i }; }, return() { log.push("return"); throw "ret"; } }; } }; }

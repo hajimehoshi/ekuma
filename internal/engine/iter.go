@@ -28,7 +28,16 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 	if !it.IsObject() {
 		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	return it, vm.GetV(it, vm.Key(keyNext))
+	next = vm.GetV(it, vm.Key(keyNext))
+	if next.o == nil {
+		// A number in the next method slot of the bytecode marks a plain array iterated by
+		// index, so a numeric next method is held by a function that throws as calling it does.
+		n := next
+		next = Value{o: vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
+			return vm.CallValue(n, this, args...)
+		})}
+	}
+	return it, next
 }
 
 // GetIterator implements GetIterator for a sync iterator and returns the iterator and its next method.
