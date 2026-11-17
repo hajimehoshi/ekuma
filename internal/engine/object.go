@@ -786,6 +786,18 @@ func newObjectWithStorage(n int) (*Object, []Value) {
 	case 4:
 		w := &objectWith[[4]Value]{}
 		return &w.Object, w.storage[:]
+	case 5:
+		w := &objectWith[[5]Value]{}
+		return &w.Object, w.storage[:]
+	case 6:
+		w := &objectWith[[6]Value]{}
+		return &w.Object, w.storage[:]
+	case 7:
+		w := &objectWith[[7]Value]{}
+		return &w.Object, w.storage[:]
+	case 8:
+		w := &objectWith[[8]Value]{}
+		return &w.Object, w.storage[:]
 	}
 	return &Object{}, make([]Value, n)
 }
@@ -809,30 +821,20 @@ func (vm *VM) NewArrayPair(a, b Value) *Object {
 	return &p.Object
 }
 
-// roomyArray is an array together with the storage of a few named properties,
-// so that creating one and adding them is a single allocation.
-type roomyArray struct {
-	Object
-	props [4]Value
-}
-
-// NewArrayWithRoom returns a new array with the elements elems, which it keeps,
-// that has room for n named properties.
-func (vm *VM) NewArrayWithRoom(elems []Value, n int) *Object {
-	if n > len(roomyArray{}.props) {
-		a := vm.NewArray(elems)
-		a.slots = make([]Value, 0, n)
-		return a
+// NewArrayWithRoom returns an array of length undefined elements with room for n named properties.
+func (vm *VM) NewArrayWithRoom(length, n int) *Object {
+	a, storage := newObjectWithStorage(length + n)
+	a.kind = kindArray
+	a.class = classArray
+	a.shape = vm.shapes.array
+	// Appending elements must not overwrite the named properties.
+	a.elems = storage[:length:length]
+	for i := range a.elems {
+		a.elems[i] = Undefined
 	}
-	a := &roomyArray{
-		kind:   kindArray,
-		class:  classArray,
-		shape:  vm.shapes.array,
-		elems:  elems,
-		length: uint32(len(elems)),
-	}
-	a.slots = a.props[:0]
-	return &a.Object
+	a.length = uint32(length)
+	a.slots = storage[length:length]
+	return a
 }
 
 // NewObjectFromProperties returns a new ordinary object whose prototype is Object.prototype,

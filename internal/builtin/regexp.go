@@ -195,33 +195,35 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s *engine.Objec
 	}
 	re := r.RegExpMatcher()
 	n := re.GroupCount()
-	vals := make([]engine.Value, n+1)
-	for i := range vals {
-		vals[i] = capture(vm, s, caps, i)
+	nprops := 3
+	if re.Flags()&regexp.FlagHasIndices != 0 {
+		nprops = 4
+	}
+	a := vm.NewArrayWithRoom(n+1, nprops)
+	for i := 0; i <= n; i++ {
+		a.SetElement(int64(i), capture(vm, s, caps, i))
 	}
 	var pairs []engine.Value
 	if re.Flags()&regexp.FlagHasIndices != 0 {
 		pairs = make([]engine.Value, n+1)
 		for i := range pairs {
 			if caps[2*i] >= 0 {
-				pairs[i] = engine.ObjectValue(vm.NewArray([]engine.Value{
+				pairs[i] = engine.ObjectValue(vm.NewArrayPair(
 					engine.Number(float64(caps[2*i])),
 					engine.Number(float64(caps[2*i+1])),
-				}))
+				))
 			} else {
 				pairs[i] = engine.Undefined
 			}
 		}
 	}
 	index := caps[0]
-	nprops := 3
-	if pairs != nil {
-		nprops = 4
-	}
-	a := vm.NewArrayWithRoom(vals, nprops)
 	vm.CreateDataPropertyOrThrow(a, e.key(e.index), engine.Number(float64(index)))
 	vm.CreateDataPropertyOrThrow(a, e.key(e.input), engine.ObjectValue(s))
-	vm.CreateDataPropertyOrThrow(a, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value { return vals[i] }))
+	vm.CreateDataPropertyOrThrow(a, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value {
+		v, _ := a.Element(int64(i))
+		return v
+	}))
 	if pairs != nil {
 		ia := vm.NewArray(pairs)
 		vm.CreateDataPropertyOrThrow(ia, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value { return pairs[i] }))

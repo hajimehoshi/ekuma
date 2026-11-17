@@ -4675,3 +4675,34 @@ func TestUint8ArrayDecodeIntoResizableViews(t *testing.T) {
 		})
 	}
 }
+
+func TestRegExpResultStorage(t *testing.T) {
+	for _, captures := range []int{1, 16} {
+		t.Run(strconv.Itoa(captures), func(t *testing.T) {
+			var vm ekuma.VM
+			src := fmt.Sprintf(`
+				const re = new RegExp("(?<first>a)" + "(a)".repeat(%d - 1) + "(z)?", "dg");
+				const input = "a".repeat(%d);
+				const first = re.exec(input);
+				re.lastIndex = 0;
+				const second = re.exec(input);
+				second[1] = "changed";
+				second.indices[1][0] = 99;
+				first.push("tail");
+				first.indices.push([7, 8]);
+				for (let i = 0; i < 10; i++) first["extra" + i] = i;
+				[first[0] === input, first[1], first[%d + 1] === undefined,
+				 first.at(-1), first.index, first.input === input, first.groups.first,
+				 first.indices[1].join(), first.indices.groups.first === first.indices[1],
+				 first.indices[%d + 1] === undefined, first.indices.at(-1).join()].join("|");
+			`, captures, captures, captures, captures)
+			v, err := runScript(t.Context(), &vm, "test", src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := v.String(), "true|a|true|tail|0|true|a|0,1|true|true|7,8"; got != want {
+				t.Errorf("got %q, want %q", got, want)
+			}
+		})
+	}
+}
