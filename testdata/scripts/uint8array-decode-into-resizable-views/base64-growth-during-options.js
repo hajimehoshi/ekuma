@@ -14,4 +14,4 @@ const result = tracking.setFromBase64("AQID", {
 });
 const limited = fixed.setFromBase64("BA==");
 assert.sameValue(String([result.read, result.written, limited.read, limited.written,
- new Uint8Array(buffer).join()].join(";")), "4;3;4;1;0,4,2,3");
+	new Uint8Array(buffer).join()].join(";")), "4;3;4;1;0,4,2,3");

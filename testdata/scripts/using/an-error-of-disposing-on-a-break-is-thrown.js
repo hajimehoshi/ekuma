@@ -11,6 +11,6 @@ function res(name, error) {
 	return { [Symbol.dispose]() { log.push(name); if (error) throw error; } };
 }
 var r;
-		try { for (;;) { using a = res("a", "boom"); break; } } catch (e) { r = e; }
-		log.push(r);
-		assert.sameValue(String(log.join()), "a,boom");
+try { for (;;) { using a = res("a", "boom"); break; } } catch (e) { r = e; }
+log.push(r);
+assert.sameValue(String(log.join()), "a,boom");

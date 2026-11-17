@@ -19,4 +19,4 @@ let third = make(false);
 delete second.b;
 second.b = 3;
 assert.sameValue(String([Object.keys(first), order, Object.keys(second), Object.keys(third), seen,
- Object.getPrototypeOf(third) === C.prototype, first.b, second.b].join("|")), "a,b|b,a|a,b|b|1|true|2|3");
+	Object.getPrototypeOf(third) === C.prototype, first.b, second.b].join("|")), "a,b|b,a|a,b|b|1|true|2|3");

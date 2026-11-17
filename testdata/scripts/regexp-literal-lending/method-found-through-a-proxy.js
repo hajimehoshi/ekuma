@@ -16,7 +16,7 @@ function patchExec() {
 	RegExp.prototype.exec = function (s) { seen.push(this); RegExp.prototype.exec = exec; return exec.call(this, s); };
 }
 delete RegExp.prototype.exec;
-		Object.setPrototypeOf(RegExp.prototype, new Proxy({}, {get(t, k, r) { seen.push(r); return function () { return 1; }; }}));
-		var r = [];
-		for (var i = 0; i < 2; i++) r.push(/b/.exec("ab"));
-		assert.sameValue(String(r.join() + " " + check()), "1,1 2 true");
+Object.setPrototypeOf(RegExp.prototype, new Proxy({}, {get(t, k, r) { seen.push(r); return function () { return 1; }; }}));
+var r = [];
+for (var i = 0; i < 2; i++) r.push(/b/.exec("ab"));
+assert.sameValue(String(r.join() + " " + check()), "1,1 2 true");

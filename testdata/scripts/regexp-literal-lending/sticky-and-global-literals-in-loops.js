@@ -16,5 +16,5 @@ function patchExec() {
 	RegExp.prototype.exec = function (s) { seen.push(this); RegExp.prototype.exec = exec; return exec.call(this, s); };
 }
 var r = [];
-		for (var i = 0; i < 3; i++) r.push("aaa".replace(/a/y, "b"), "aXaX".match(/X/g).length, "aXa".search(/a/y), "aXa".split(/a/y).length);
-		assert.sameValue(String(r.join()), "baa,2,0,3,baa,2,0,3,baa,2,0,3");
+for (var i = 0; i < 3; i++) r.push("aaa".replace(/a/y, "b"), "aXaX".match(/X/g).length, "aXa".search(/a/y), "aXa".split(/a/y).length);
+assert.sameValue(String(r.join()), "baa,2,0,3,baa,2,0,3,baa,2,0,3");

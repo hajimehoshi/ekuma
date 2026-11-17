@@ -16,6 +16,6 @@ function patchExec() {
 	RegExp.prototype.exec = function (s) { seen.push(this); RegExp.prototype.exec = exec; return exec.call(this, s); };
 }
 var out = [];
-		function f(depth) { out.push(/a/g.test(depth > 0 ? (f(depth - 1), "a") : "a"), /a/y.exec("aa").index); }
-		f(2);
-		assert.sameValue(String(out.join()), "true,0,true,0,true,0");
+function f(depth) { out.push(/a/g.test(depth > 0 ? (f(depth - 1), "a") : "a"), /a/y.exec("aa").index); }
+f(2);
+assert.sameValue(String(out.join()), "true,0,true,0,true,0");

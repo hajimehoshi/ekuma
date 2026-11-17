@@ -8,4 +8,4 @@ flags: [noStrict]
 
 var s = "😀", h = "\ud83d", l = "\ude00";
 assert.sameValue(String([s.startsWith(h), s.startsWith(l, 1), s.endsWith(l), s.endsWith(h, 1),
- s.startsWith(s, 1), s.endsWith(s, 1)].join()), "true,true,true,true,false,false");
+	s.startsWith(s, 1), s.endsWith(s, 1)].join()), "true,true,true,true,false,false");

@@ -18,4 +18,4 @@ try { make(20, true); } catch (_) {}
 let empty = make(0, false), small = make(1, false);
 small.p0 = 100;
 assert.sameValue(String([Object.keys(large).length, large.p39, Object.keys(escaped).length,
- escaped.p0, Object.keys(empty).length, small.p0].join()), "40,39,20,0,0,100");
+	escaped.p0, Object.keys(empty).length, small.p0].join()), "40,39,20,0,0,100");

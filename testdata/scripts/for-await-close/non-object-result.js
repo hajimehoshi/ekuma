@@ -7,16 +7,16 @@ flags: [noStrict, async]
 ---*/
 
 var it = {
-    [Symbol.asyncIterator]() {
-        return {
-            next() { return { done: false }; },
-            return() { return 1; }
-        };
-    }
+	[Symbol.asyncIterator]() {
+		return {
+			next() { return { done: false }; },
+			return() { return 1; }
+		};
+	}
 };
 async function* g() { for await (var x of it) yield 1; }
 var r = g();
 r.next().then(() => r.return()).then(
-    () => { throw new Test262Error("Expected iterator closing to reject"); },
-    error => { assert.sameValue(error.constructor, TypeError); }
+	() => { throw new Test262Error("Expected iterator closing to reject"); },
+	error => { assert.sameValue(error.constructor, TypeError); }
 ).then(() => $DONE(), $DONE);

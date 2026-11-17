@@ -17,6 +17,6 @@ first.push("tail");
 first.indices.push([7, 8]);
 for (let i = 0; i < 10; i++) first["extra" + i] = i;
 assert.sameValue([first[0] === input, first[1], first[1 + 1] === undefined,
- first.at(-1), first.index, first.input === input, first.groups.first,
- first.indices[1].join(), first.indices.groups.first === first.indices[1],
- first.indices[1 + 1] === undefined, first.indices.at(-1).join()].join("|"), "true|a|true|tail|0|true|a|0,1|true|true|7,8");
+	first.at(-1), first.index, first.input === input, first.groups.first,
+	first.indices[1].join(), first.indices.groups.first === first.indices[1],
+	first.indices[1 + 1] === undefined, first.indices.at(-1).join()].join("|"), "true|a|true|tail|0|true|a|0,1|true|true|7,8");

@@ -16,6 +16,6 @@ function patchExec() {
 	RegExp.prototype.exec = function (s) { seen.push(this); RegExp.prototype.exec = exec; return exec.call(this, s); };
 }
 var s = new String("ab");
-		s.toString = function () { patchExec(); return "ab"; };
-		for (var i = 0; i < 2; i++) { s.replace(/b/g, "x"); s.match(/b/); }
-		assert.sameValue(String(check()), "4 true");
+s.toString = function () { patchExec(); return "ab"; };
+for (var i = 0; i < 2; i++) { s.replace(/b/g, "x"); s.match(/b/); }
+assert.sameValue(String(check()), "4 true");

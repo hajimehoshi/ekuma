@@ -19,4 +19,4 @@ let result = new C(2, true);
 let later = new C(0, false);
 saved[1].before = 9;
 assert.sameValue(String([result === replacement, saved.map(o => o.before), saved.map(o => o.after),
- Object.keys(later), saved[1].child === saved[2], saved[2].child === saved[3]].join("|")), "true|0,9,1,0,0|0,2,1,0,0|before,after|true|true");
+	Object.keys(later), saved[1].child === saved[2], saved[2].child === saved[3]].join("|")), "true|0,9,1,0,0|0,2,1,0,0|before,after|true|true");

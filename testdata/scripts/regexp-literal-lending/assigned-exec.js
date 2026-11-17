@@ -16,8 +16,8 @@ function patchExec() {
 	RegExp.prototype.exec = function (s) { seen.push(this); RegExp.prototype.exec = exec; return exec.call(this, s); };
 }
 RegExp.prototype.exec = function (s) { seen.push(this); return null; };
-		for (var i = 0; i < 2; i++) {
-			"ab".replace(/b/g, "x"); "ab".replace(/b/, function () { return "x"; });
-			"ab".match(/b/); "ab".search(/b/);
-		}
-		assert.sameValue(String(check()), "8 true");
+for (var i = 0; i < 2; i++) {
+	"ab".replace(/b/g, "x"); "ab".replace(/b/, function () { return "x"; });
+	"ab".match(/b/); "ab".search(/b/);
+}
+assert.sameValue(String(check()), "8 true");
