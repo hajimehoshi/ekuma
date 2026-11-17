@@ -280,6 +280,20 @@ func TestScripts(t *testing.T) {
 			want: "40 1 2 true true m true true true true true true true 8 48 1 987 210 8 30 true 5 8 36 4 true xyzxyzxyzxyzxyz 1.2345678901234568e+33 true true true 105 abcdefghij16",
 		},
 		{
+			name: "reading units and comparing a string while prepending to it",
+			src: `var s = "", t = "", bad = [];
+				for (var i = 0; i < 200; i++) {
+					var c = String.fromCharCode(97 + i % 26);
+					s = c + s;
+					t = c + t;
+					if (s[0] !== c || s.charCodeAt(s.length - 1) !== 97 || s.at(-2) !== (i ? "b" : undefined) ||
+						s !== t || s === "x" || s === "q".repeat(i)) bad.push(i);
+				}
+				s = "é" + s;
+				bad.length + " " + s.length + " " + s.slice(0, 4) + " " + s.charCodeAt(0).toString(16) + " " + (s === "é" + t)`,
+			want: "0 201 érqp e9 true",
+		},
+		{
 			name: "prepending non-ASCII strings while reading the length",
 			src: `var s = "", n = 0, bad = [];
 				for (var i = 0; i < 40; i++) { s = "a" + s; n++; }

@@ -1112,11 +1112,14 @@ func checkpointsOf(s string) []uint32 {
 
 // UnitAt returns the code unit i of the string o. i must be in range.
 func (o *Object) UnitAt(i int) uint16 {
-	s := o.Str()
 	if o.IsASCII() {
-		return uint16(s[i])
+		if o.flags&objReversed != 0 {
+			// Reading one unit leaves a string that is being prepended to reversed.
+			return uint16(o.str[len(o.str)-1-i])
+		}
+		return uint16(o.str[i])
 	}
-	return wtf8.At(s, o.seek(i))
+	return wtf8.At(o.Str(), o.seek(i))
 }
 
 // Substring returns the code units from start up to end of the string o.

@@ -242,7 +242,7 @@ func IsStrictlyEqual(a, b Value) bool {
 	}
 	switch a.o.kind {
 	case kindString:
-		return a.o.Str() == b.o.Str()
+		return sameStrings(a.o, b.o)
 	case kindBigInt:
 		// A BigInt that fits in an int64 never equals one that does not.
 		return a.o != bigInt64Object && b.o != bigInt64Object && a.o.ext.(*big.Int).Cmp(b.o.ext.(*big.Int)) == 0

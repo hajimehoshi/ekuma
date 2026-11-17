@@ -431,6 +431,18 @@ func (o *Object) unreverse() {
 	o.ext = nil
 }
 
+// sameStrings reports whether the strings a and b have the same contents.
+func sameStrings(a, b *Object) bool {
+	// A reversed string has as many bytes as its contents.
+	if len(a.str) != len(b.str) {
+		return false
+	}
+	if a.flags&b.flags&objReversed != 0 {
+		return a.str == b.str
+	}
+	return a.Str() == b.Str()
+}
+
 // joinsPair reports whether the contents of two strings form a surrogate pair where they meet,
 // so that their bytes do not simply concatenate. x and y are the str of the strings, and xr
 // and yr report whether they are reversed.
