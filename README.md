@@ -99,20 +99,25 @@ a script or call a function take a `context.Context` that can cancel execution.
 
 Use `VM.ParseModule` or `VM.ParseJSONModule` to parse a module, or `VM.NewSyntheticModule` to
 create a synthetic module. The host supplies imported modules through `VM.SetModuleLoader`,
-which also handles `import()`. `Module.Evaluate` loads, links and evaluates a module and returns
-a promise whose state can be read with `Value.PromiseState`. `Module.LoadRequestedModules`
-and `Module.Link` perform the loading and linking steps separately. `Module.Namespace` returns
-the module namespace, and `VM.SetImportMeta` sets the properties of `import.meta`. Module loading
-is synchronous.
+which also handles `import()`. Module loading is synchronous.
+
+`Module.Evaluate` loads, links and evaluates a module and returns a promise whose state can
+be read with `Value.PromiseState`. `Module.LoadRequestedModules`
+and `Module.Link` perform the loading and linking steps separately.
+
+`Module.Namespace` returns the module namespace, and `VM.SetImportMeta` sets the properties
+of `import.meta`.
 
 ### Realms
 
 `VM.NewRealm` creates a realm: a global object with its own built-in objects, in which
 `Realm.ParseScript`, `Realm.ParseModule`, `Realm.ValueOf` and `Realm.FuncOf` work. The methods
 of `VM` work in `VM.InitialRealm`. `ModuleRequest.Realm` tells the module loader the realm of
-an import, including that of a `ShadowRealm`. The realms of a VM share its jobs and settings,
-and values pass between them, so a realm is not a security boundary: an object of a realm
-gives access to its built-in objects. A separate `VM` isolates code.
+an import, including that of a `ShadowRealm`.
+
+The realms of a VM share its jobs and settings, and values pass between them, so a realm
+is not a security boundary: an object of a realm gives access to its built-in objects.
+A separate `VM` isolates code.
 
 ### Host environment
 
@@ -126,17 +131,24 @@ context.
 A context stops everything that runs under it. When a `Func` makes a call with another
 context and that context stops the call, the outermost call returns the cause of that context
 and the `Func` does not continue. A context that is done after its call returned stops
-nothing. A panic of a `Func` or of another host function passes through to the caller of the
+nothing.
+
+A panic of a `Func` or of another host function passes through to the caller of the
 Go call unchanged and leaves the VM usable. A host callback may also recover a panic from
-its reentrant call and continue. At the outermost boundary, pending jobs and unhandled
-rejection reports are discarded, and unfinished module evaluations are rejected, even if
+its reentrant call and continue.
+
+After a panic, pending jobs and unhandled rejection reports are discarded at the outermost
+boundary, and unfinished module evaluations are rejected, even if
 an inner panic was recovered. Synchronous module evaluations abandoned by a panic are
-rejected before control returns to the host. Aborted generators are closed without running JavaScript
-`catch` or `finally` blocks. Side effects are not rolled back. Promises for abandoned async
-functions, async generator requests, and discarded jobs may remain pending; later requests
+rejected before control returns to the host. Side effects are not rolled back.
+
+Aborted generators are closed without running JavaScript `catch` or `finally` blocks.
+Promises for abandoned async functions, async generator requests, and discarded jobs may
+remain pending; later requests
 on an aborted async generator see it as completed. Suspended generators outside the aborted
-call remain intact. Host callbacks must not call `runtime.Goexit`: it is not a panic and
-leaves the VM unusable.
+call remain intact.
+
+Host callbacks must not call `runtime.Goexit`: it is not a panic and leaves the VM unusable.
 
 `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
@@ -156,25 +168,33 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 
 Without the import, these features do not contribute to binary size. With it, a hello-world
 program grows from about 8.7 MB to 15.8 MB natively, and from 11.1 MB to 18.8 MB with `GOOS=js`.
+
 Set the VM default locale with `vm.SetLocale("ja-JP")`; `vm.SetLocale("")` restores
 the host default. Explicit JavaScript locale arguments take precedence, and existing
-Intl instances keep their locale. The host default comes from `LC_ALL`,
-`LC_MESSAGES` or `LANG`, in that order, then the OS locale (macOS, iOS, and Windows
-user preferences, Android system properties, or Linux system locale configuration).
+Intl instances keep their locale.
+
+The host default comes from `LC_ALL`, `LC_MESSAGES` or `LANG`, in that order, then
+the OS locale: user preferences on macOS, iOS, and Windows, system properties on
+Android, or system locale configuration on Linux.
 FreeBSD, OpenBSD, NetBSD, and DragonFly BSD use the locale environment variables
-supplied by the login session or shell. Browser builds use
-`navigator.language`. Unavailable host locales, `C` and `POSIX` fall back to en-US.
+supplied by the login session or shell. Browser builds use `navigator.language`.
+Unavailable host locales, `C` and `POSIX` fall back to en-US.
+
 The native locale calls on Apple platforms and Android use purego. Android builds
 with `CGO_ENABLED=0` use only the locale environment variables. iOS builds require
 `CGO_ENABLED=1`; macOS supports `CGO_ENABLED=0`.
-The package brings locale data whose license notice a program must include: see [License](#license).
+
+Programs using the package must include the license notice for its locale data:
+see [License](#license).
 
 ### Agents
 
 VMs on different goroutines share the memory of a `SharedArrayBuffer` as agents do:
 `Value.SharedDataBlock` returns the memory, which `VM.ValueOf` turns into a new
-`SharedArrayBuffer` of another VM. `Atomics.wait` throws unless `VM.SetCanBlock` lets the VM
-block. When another VM notifies a waiter of `Atomics.waitAsync`, its promise is settled by the
+`SharedArrayBuffer` of another VM.
+
+`Atomics.wait` throws unless `VM.SetCanBlock` lets the VM block. When another VM notifies
+a waiter of `Atomics.waitAsync`, its promise is settled by the
 jobs that the waiting VM runs at the end of its current or next outermost call from Go.
 `VM.AwaitJobs` blocks until such a waiter is notified or times out, and runs the jobs.
 
@@ -201,13 +221,13 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   compares code units after Unicode normalization, and `toLocaleUpperCase` and
   `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
-  and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root. `Intl.Segmenter`
-  follows UAX #29 without dictionaries, so it does not split Chinese, Japanese or Thai text into
-  words
+  and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root
+- `Intl.Segmenter` follows UAX #29 without dictionaries, so it does not split Chinese, Japanese
+  or Thai text into words
 - `Intl.DisplayNames` gives the code of a language, or `undefined` with `fallback: "none"`, when
-  one of its subtags has no name, where ICU names the other subtags. `Intl.DurationFormat`
-  separates the fields of the `digital` style as CLDR's duration patterns do, such as `1.02.03`
-  in Serbian, where ICU uses the time separator
+  one of its subtags has no name, where ICU names the other subtags
+- `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
+  do, such as `1.02.03` in Serbian, where ICU uses the time separator
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
