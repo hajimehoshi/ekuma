@@ -84,21 +84,23 @@ func (d *segmentsData) segmentAt(n int) (int, int) {
 
 // segmentData implements CreateSegmentDataObject for the runes from start to end.
 func (d *segmentsData) segmentData(vm *engine.VM, start, end int) engine.Value {
-	out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
-	set := func(name string, v engine.Value) {
-		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(name)), v)
-	}
 	var b []byte
 	for _, r := range d.runes[start:end] {
 		b = wtf8.AppendRune(b, r)
 	}
-	set("segment", vm.NewString(string(b)))
-	set("index", engine.Number(float64(d.units[start])))
-	set("input", d.str)
-	if d.segmenter.granularity == "word" {
-		set("isWordLike", engine.Bool(segment.IsWordLike(d.runes[start:end])))
+	keys := [4]engine.PropKey{
+		engine.NamedKey(vm.Intern("segment")),
+		engine.NamedKey(vm.Intern("index")),
+		engine.NamedKey(vm.Intern("input")),
 	}
-	return engine.ObjectValue(out)
+	vals := [4]engine.Value{vm.NewString(string(b)), engine.Number(float64(d.units[start])), d.str}
+	propertyCount := 3
+	if d.segmenter.granularity == "word" {
+		keys[3] = engine.NamedKey(vm.Intern("isWordLike"))
+		vals[3] = engine.Bool(segment.IsWordLike(d.runes[start:end]))
+		propertyCount++
+	}
+	return engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
 }
 
 // segmentIteratorData holds the internal slots of a Segment Iterator object.
@@ -159,9 +161,10 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 	}
 	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		sd := thisSegmenter(vm, this, "resolvedOptions")
-		out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
-		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern("locale")), vm.NewString(sd.locale))
-		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern("granularity")), vm.NewString(sd.granularity))
+		out := vm.NewObjectFromProperties(
+			[]engine.PropKey{engine.NamedKey(vm.Intern("locale")), engine.NamedKey(vm.Intern("granularity"))},
+			[]engine.Value{vm.NewString(sd.locale), vm.NewString(sd.granularity)},
+		)
 		return engine.ObjectValue(out)
 	})
 	method(vm, proto, "segment", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
