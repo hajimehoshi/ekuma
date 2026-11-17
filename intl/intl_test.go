@@ -68,6 +68,25 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 			want: "-1,1,0",
 		},
 		{
+			// The chunks of a long string end at 65536 bytes, inside the last run here.
+			name: "collation of long runs of combining marks",
+			src: `var below = "̖", acute = "́", grave = "̀", x = "x".repeat(65500);
+				var c = new Intl.Collator("en");
+				var cmp = (a, b) => [a.localeCompare(b), c.compare(a, b)].join("/");
+				[
+					cmp("e" + below.repeat(30) + acute, "é" + below.repeat(30)),
+					cmp("e" + below.repeat(31) + acute, "é" + below.repeat(31)),
+					cmp("e" + (acute + below).repeat(20), "é" + below.repeat(20) + acute.repeat(19)),
+					cmp("e" + (acute + below).repeat(2000), "é" + below.repeat(2000) + acute.repeat(1999)),
+					cmp("e" + (acute + below).repeat(2000), "é" + below.repeat(2000) + acute.repeat(1998)),
+					cmp(x + "e" + (acute + below).repeat(100), x + "é" + below.repeat(100) + acute.repeat(99)),
+					cmp(x + "e" + (grave + below).repeat(100), x + "é" + below.repeat(100) + acute.repeat(99)),
+					new Intl.Collator("en", {sensitivity: "accent"}).compare("E" + below.repeat(30) + acute, "é" + below.repeat(30)),
+					new Intl.Collator("en", {ignorePunctuation: true}).compare("-e" + below.repeat(30) + acute, "é" + below.repeat(30)),
+				].join()`,
+			want: "0/0,0/0,0/0,0/0,1/1,0/0,1/1,0,0",
+		},
+		{
 			name: "case mapping",
 			src:  `"i".toLocaleUpperCase("tr") + "I".toLocaleLowerCase("az-Latn") + "i".toLocaleUpperCase("en")`,
 			want: "İıI",

@@ -20,6 +20,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/unicode/collation"
+	"github.com/hajimehoshi/ekuma/internal/unorm"
 )
 
 // A CE is a collation element: the primary weight in bits 33 to 63, the secondary weight
@@ -424,7 +425,8 @@ var buffers = sync.Pool{
 	},
 }
 
-// Compare returns -1, 0 or 1 as a sorts before, the same as, or after b.
+// Compare returns -1, 0 or 1 as the well-formed string a sorts before, the same as, or after the
+// well-formed string b.
 func (c *Collator) Compare(a, b string) int {
 	return c.ComparePolled(a, b, nil)
 }
@@ -475,23 +477,19 @@ func (p *pacer) step(n int) {
 // nfdChunk is the number of bytes of a string that appendNFD normalizes in one step.
 const nfdChunk = 1 << 16
 
-// appendNFD appends the NFD of s to out, in steps that end at normalization boundaries.
+// appendNFD appends the NFD of the well-formed string s to out, in steps that end at
+// normalization boundaries.
 func appendNFD(out []byte, s string, p *pacer) []byte {
 	for len(s) > nfdChunk {
-		// A boundary is found near the end of the chunk, after the start of a character.
-		w := nfdChunk - 256
-		for w > 0 && s[w]&0xc0 == 0x80 {
-			w--
-		}
-		i := norm.NFD.LastBoundary([]byte(s[w:nfdChunk]))
-		if i < 0 || w+i == 0 {
+		i := unorm.LastBoundary(norm.NFD, s[:nfdChunk])
+		if i <= 0 {
 			break
 		}
-		out = norm.NFD.AppendString(out, s[:w+i])
-		s = s[w+i:]
+		out = append(out, unorm.String(norm.NFD, s[:i])...)
+		s = s[i:]
 		p.step(pollSteps)
 	}
-	return norm.NFD.AppendString(out, s)
+	return append(out, unorm.String(norm.NFD, s)...)
 }
 
 // appendCEs returns the CEs of s with the settings of c applied.
@@ -507,7 +505,7 @@ func (c *Collator) appendCEs(buf *buffer, s string, p *pacer) []ce {
 		if len(s) > nfdChunk {
 			s = string(appendNFD(nil, s, p))
 		} else {
-			s = norm.NFD.String(s)
+			s = unorm.String(norm.NFD, s)
 		}
 	}
 	for _, r := range s {
