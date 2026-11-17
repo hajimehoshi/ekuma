@@ -8,8 +8,8 @@ package engine
 const maxDepth = 300
 
 // maxNatives is the number of nested calls of native functions at which a RangeError is thrown.
-// It is lower than elsewhere, as the memory of a browser is smaller.
-const maxNatives = 3000
+// It is lower than elsewhere, as the stack of WebAssembly in browsers is smaller.
+const maxNatives = 1000
 
 // maxBufferLength is the largest length of an ArrayBuffer in bytes.
 // The memory of WebAssembly is limited to 4 GiB.
