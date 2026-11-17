@@ -46,7 +46,7 @@ func (r *realm) newPluralRules(vm *engine.VM, this engine.Value, args []engine.V
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
 	options := optionsObject(vm, arg(args, 1))
 	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, nil)
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
 	pr := &pluralRulesData{
 		locale:     res.Locale,
 		dataLocale: locale.DataLocale(res.DataLocale),

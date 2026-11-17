@@ -18,13 +18,13 @@ const maxAliasSteps = 16
 // parseReplacement parses the replacement of an alias rule, ignoring a private use part.
 func parseReplacement(s string) LanguageID {
 	s, _, _ = strings.Cut(s, "-x-")
-	id, _, _ := parseLanguageID(strings.Split(lower(s), "-"))
-	return id
+	t, _ := Parse(s)
+	return t.LanguageID
 }
 
-// apply replaces the fields of id that the alias rule with the type rule matches by the
+// applyAlias replaces the fields of id that the alias rule with the type rule matches by the
 // fields of repl. The other fields of repl fill the fields of id that are empty.
-func (id *LanguageID) apply(rule, repl LanguageID) {
+func applyAlias(id *LanguageID, rule, repl LanguageID) {
 	if rule.Language != "und" || id.Language == "und" {
 		id.Language = repl.Language
 	}
@@ -49,14 +49,14 @@ func (id *LanguageID) apply(rule, repl LanguageID) {
 // replaceLanguageAlias applies the first language alias rule that matches id, and reports
 // whether one did. Rules with more variants come first, then rules with a region, then the
 // rule for the language alone.
-func (id *LanguageID) replaceLanguageAlias() bool {
+func replaceLanguageAlias(id *LanguageID) bool {
 	try := func(key string) bool {
 		r, ok := cldr.LanguageAliases.Lookup(key)
 		if !ok {
 			return false
 		}
 		rule := parseReplacement(key)
-		id.apply(rule, parseReplacement(r))
+		applyAlias(id, rule, parseReplacement(r))
 		return true
 	}
 	langs := []string{id.Language}
@@ -86,9 +86,9 @@ func (id *LanguageID) replaceLanguageAlias() bool {
 }
 
 // replaceAliases replaces the aliases in id as the canonicalization of UTS 35 does.
-func (id *LanguageID) replaceAliases() {
+func replaceAliases(id *LanguageID) {
 	for range maxAliasSteps {
-		if id.replaceLanguageAlias() {
+		if replaceLanguageAlias(id) {
 			continue
 		}
 		if id.Script != "" {
@@ -99,7 +99,7 @@ func (id *LanguageID) replaceAliases() {
 		}
 		if id.Region != "" {
 			if r, ok := cldr.TerritoryAliases.Lookup(id.Region); ok {
-				id.Region = id.replacementRegion(strings.Fields(r))
+				id.Region = replacementRegion(*id, strings.Fields(r))
 				continue
 			}
 		}
@@ -124,7 +124,7 @@ func (id *LanguageID) replaceAliases() {
 
 // replacementRegion returns the region among regions, the replacements of a region alias,
 // that the language and script of id are most likely used in, or the first one.
-func (id LanguageID) replacementRegion(regions []string) string {
+func replacementRegion(id LanguageID, regions []string) string {
 	if len(regions) > 1 {
 		max, ok := AddLikelySubtags(LanguageID{
 			Language: id.Language,
@@ -137,11 +137,11 @@ func (id LanguageID) replacementRegion(regions []string) string {
 	return regions[0]
 }
 
-// canonicalize returns id in canonical form, with sorted variants and the aliases replaced.
-func (id LanguageID) canonicalize() LanguageID {
+// canonicalizeLanguageID returns id in canonical form, with sorted variants and the aliases replaced.
+func canonicalizeLanguageID(id LanguageID) LanguageID {
 	id.Variants = slices.Clone(id.Variants)
 	slices.Sort(id.Variants)
-	id.replaceAliases()
+	replaceAliases(&id)
 	return id
 }
 
@@ -161,7 +161,7 @@ func canonicalValue(key, v string) string {
 
 // Canonicalize returns t in the canonical form of ECMA-402's CanonicalizeUnicodeLocaleId.
 func (t Tag) Canonicalize() Tag {
-	t.LanguageID = t.LanguageID.canonicalize()
+	t.LanguageID = canonicalizeLanguageID(t.LanguageID)
 
 	attrs := slices.Clone(t.Attributes)
 	slices.Sort(attrs)
@@ -181,7 +181,7 @@ func (t Tag) Canonicalize() Tag {
 	t.Keywords = kws
 
 	if t.TLang.Language != "" {
-		t.TLang = t.TLang.canonicalize()
+		t.TLang = canonicalizeLanguageID(t.TLang)
 	}
 	var tfs []Keyword
 	for _, k := range t.TFields {

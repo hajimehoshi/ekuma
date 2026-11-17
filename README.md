@@ -1,6 +1,7 @@
 # Ekuma
 
-Ekuma is a JavaScript engine written in pure Go, without `unsafe`.
+Ekuma is a JavaScript engine written in pure Go and is almost `unsafe`-free.
+It uses `unsafe` only to access OS APIs.
 It is designed for fast execution without a JIT compiler.
 Its only dependency is [`golang.org/x/text`](https://pkg.go.dev/golang.org/x/text),
 for Unicode normalization and case mapping.
@@ -31,7 +32,7 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 | Implementation | Written in Go | Written in Go | Written in Go | Written in Go | QuickJS, translated from C to Go | QuickJS-ng, compiled to WebAssembly and run by wazero | Bindings to V8 |
 | Execution strategy | Bytecode interpreter | Bytecode interpreter | Bytecode interpreter | AST interpreter | Bytecode interpreter | Bytecode interpreter, compiled to machine code by wazero's AOT compiler on amd64 and arm64 | JIT compiler, or bytecode interpreter with `--jitless` |
 | Pure Go | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| `unsafe`-free | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `unsafe`-free | ⚠️ Except for OS API access | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | ECMAScript | ES2026 | ES5.1, and much of ES2015 and later | ES5.1, and much of ES2015 and later | ES5 | ES2023 | ES2023 | ES2025 |
 | Modules | ✅ | ❌ | ⚠️ Experimental | ❌ | ✅ | ✅ | ❌ |
 | `Intl` | ✅ | ❌ | ❌ | ❌ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ | ✅ |
@@ -157,9 +158,13 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 
 Without the import, these features do not contribute to binary size. With it, a hello-world
 program grows from about 8.7 MB to 15.8 MB natively, and from 11.1 MB to 18.8 MB with `GOOS=js`.
-The default locale is the one that `LC_ALL`, `LC_MESSAGES` or `LANG` names natively, or
-`navigator.language` with `GOOS=js`, and en-US otherwise. The package brings locale data whose
-license notice a program must include: see [License](#license).
+Set the VM default locale with `vm.SetLocale("ja-JP")`; `vm.SetLocale("")` restores
+the host default. Explicit JavaScript locale arguments take precedence, and existing
+Intl instances keep their locale. The host default comes from `LC_ALL`,
+`LC_MESSAGES` or `LANG`, in that order, then the OS locale (macOS and Windows user
+preferences or Linux system locale configuration). Browser builds use
+`navigator.language`. Unavailable host locales, `C` and `POSIX` fall back to en-US.
+The package brings locale data whose license notice a program must include: see [License](#license).
 
 ### Agents
 

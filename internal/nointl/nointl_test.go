@@ -24,6 +24,9 @@ func runScript(vm *ekuma.VM, src string) (ekuma.Value, error) {
 
 func TestNoIntl(t *testing.T) {
 	var vm ekuma.VM
+	if err := vm.SetLocale("ja-JP"); err != nil {
+		t.Fatal(err)
+	}
 	v, err := runScript(&vm, `"Intl" in globalThis`)
 	if err != nil {
 		t.Fatal(err)

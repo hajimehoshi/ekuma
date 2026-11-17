@@ -16,6 +16,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 )
 
 // VM is a JavaScript virtual machine with the standard built-in objects.
@@ -322,6 +323,22 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 		err = context.Cause(ctx)
 	}
 	return waited, err
+}
+
+// SetLocale sets the default locale for locale-sensitive operations in every realm.
+// An empty or unsupported locale uses the host default. Existing Intl instances keep
+// their locale. A malformed locale returns an error without changing the default.
+func (vm *VM) SetLocale(locale string) error {
+	vm.initIfNeeded()
+	if locale != "" {
+		t, ok := localetag.Parse(locale)
+		if !ok {
+			return fmt.Errorf("ekuma: invalid locale %q", locale)
+		}
+		locale = t.String()
+	}
+	vm.e.SetDefaultLocale(locale)
+	return nil
 }
 
 // SetTimeZone sets loc as the local time zone for Date, the system time zone for Temporal,

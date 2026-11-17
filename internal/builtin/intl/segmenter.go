@@ -127,7 +127,7 @@ func (r *realm) newSegmenter(vm *engine.VM, this engine.Value, args []engine.Val
 		vm.ThrowTypeError("the options of Intl.Segmenter must be an object")
 	}
 	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, nil)
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
 	sd := &segmenterData{
 		locale:      res.Locale,
 		granularity: getStringOption(vm, options, "granularity", "grapheme", "grapheme", "word", "sentence"),

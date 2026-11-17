@@ -17,6 +17,9 @@ type realm struct {
 	// ns is the Intl namespace, whose contents are created when they are first needed.
 	ns *engine.Object
 
+	defaultLocaleTag string
+	defaultLocale    string
+
 	localeProto *engine.Object
 	localeCtor  *engine.Object
 
@@ -32,7 +35,8 @@ type realm struct {
 	collatorCtor   *engine.Object
 	// defaultCollator is the collator of String.prototype.localeCompare without locales and
 	// options.
-	defaultCollator *collatorData
+	defaultCollator       *collatorData
+	defaultCollatorLocale string
 
 	listFormatProto         *engine.Object
 	relativeTimeFormatProto *engine.Object
@@ -215,4 +219,22 @@ func getOption(vm *engine.VM, options *engine.Object, name string, values ...str
 		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
 	}
 	return s, true
+}
+
+func defaultLocale(vm *engine.VM) string {
+	r := vm.RealmExtension(vm.CurrentRealm()).(*realm)
+	tag := vm.DefaultLocale()
+	if r.defaultLocale != "" && r.defaultLocaleTag == tag {
+		return r.defaultLocale
+	}
+	var resolved string
+	if t, ok := locale.Parse(tag); ok {
+		resolved, _ = locale.BestAvailableLocale(t.Canonicalize().WithoutUnicode().String())
+	}
+	if resolved == "" {
+		resolved = locale.Default()
+	}
+	r.defaultLocaleTag = tag
+	r.defaultLocale = resolved
+	return resolved
 }

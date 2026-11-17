@@ -9,13 +9,12 @@ import (
 	"os"
 )
 
-// hostLocale returns the locale that the POSIX environment variables name for messages, which
-// may be empty.
+// hostLocale returns the environment or system locale, which may be empty.
 func hostLocale() string {
 	for _, k := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
 		if v := os.Getenv(k); v != "" {
 			return v
 		}
 	}
-	return ""
+	return systemLocale()
 }

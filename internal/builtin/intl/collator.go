@@ -16,6 +16,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/collate"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -55,7 +56,7 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 	usage := getStringOption(vm, options, "usage", "sort", "sort", "search")
 	bestFit := localeMatcher(vm, options)
 	co, hasCo := getOption(vm, options, "collation")
-	if hasCo && !locale.IsType(co) {
+	if hasCo && !localetag.IsType(co) {
 		vm.ThrowRangeError("invalid collation: " + co)
 	}
 	var kn string
@@ -71,7 +72,7 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 	if usage == "search" {
 		typ = "search"
 	}
-	res := locale.ResolveLocale(requested, bestFit, []locale.ExtensionKey{
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{
 		{
 			Key:       "co",
 			Option:    co,
@@ -218,8 +219,9 @@ func initLocaleCompare(vm *engine.VM) {
 		var cd *collatorData
 		if locales.IsUndefined() && options.IsUndefined() {
 			r := vm.RealmExtension(vm.CurrentRealm()).(*realm)
-			if r.defaultCollator == nil {
+			if l := defaultLocale(vm); r.defaultCollator == nil || r.defaultCollatorLocale != l {
 				r.defaultCollator = createCollator(vm, engine.Undefined, engine.Undefined)
+				r.defaultCollatorLocale = l
 			}
 			cd = r.defaultCollator
 		} else {
@@ -256,7 +258,7 @@ func initLocaleCase(vm *engine.VM) {
 			if len(requested) > 0 {
 				tag = requested[0]
 			} else {
-				tag = locale.Default()
+				tag = defaultLocale(vm)
 			}
 			lang := ""
 			if t, ok := locale.Parse(tag); ok {

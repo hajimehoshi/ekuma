@@ -4,8 +4,6 @@
 package locale
 
 import (
-	"strings"
-
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
@@ -32,7 +30,8 @@ func AddLikelySubtags(id LanguageID) (LanguageID, bool) {
 		if !ok {
 			continue
 		}
-		m, _, _ := parseLanguageID(strings.Split(lower(v), "-"))
+		t, _ := Parse(v)
+		m := t.LanguageID
 		if l != "und" {
 			m.Language = l
 		}

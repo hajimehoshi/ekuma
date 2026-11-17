@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 )
 
 // localeData holds the internal slots of an Intl.Locale object.
@@ -71,7 +72,7 @@ func subtagOption(vm *engine.VM, options *engine.Object, name string, valid func
 func validVariants(s string) bool {
 	vs := strings.Split(s, "-")
 	for i, v := range vs {
-		if !locale.IsVariantSubtag(v) || slices.Contains(vs[:i], v) {
+		if !localetag.IsVariantSubtag(v) || slices.Contains(vs[:i], v) {
 			return false
 		}
 	}
@@ -129,11 +130,11 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	t = t.Canonicalize()
 
 	// UpdateLanguageId.
-	t.Language = subtagOption(vm, options, "language", locale.IsLanguageSubtag, t.Language)
-	if s := subtagOption(vm, options, "script", locale.IsScriptSubtag, strings.ToLower(t.Script)); s != "" {
+	t.Language = subtagOption(vm, options, "language", localetag.IsLanguageSubtag, t.Language)
+	if s := subtagOption(vm, options, "script", localetag.IsScriptSubtag, strings.ToLower(t.Script)); s != "" {
 		t.Script = strings.ToUpper(s[:1]) + s[1:]
 	}
-	t.Region = strings.ToUpper(subtagOption(vm, options, "region", locale.IsRegionSubtag, t.Region))
+	t.Region = strings.ToUpper(subtagOption(vm, options, "region", localetag.IsRegionSubtag, t.Region))
 	if vs := subtagOption(vm, options, "variants", validVariants, ""); vs != "" {
 		t.Variants = strings.Split(vs, "-")
 	}
@@ -149,7 +150,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 			s = conv(s)
 		}
 		l, ok := asciiLower(s)
-		if !ok || !locale.IsType(l) {
+		if !ok || !localetag.IsType(l) {
 			vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
 		}
 		kws = append(kws, locale.Keyword{

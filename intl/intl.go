@@ -14,9 +14,10 @@
 // the copyright and permission notice of that license, in internal/unicode/cldr/LICENSE and
 // internal/unicode/collation/LICENSE, with its copies or in their documentation.
 //
-// The default locale is that of the environment: the LC_ALL, LC_MESSAGES or LANG
-// environment variable natively, and navigator.language on GOOS=js. It is en-US when the
-// environment names no locale, names the C or POSIX locale, or names one without data.
+// VM.SetLocale overrides the default locale. Otherwise, the first nonempty LC_ALL,
+// LC_MESSAGES or LANG environment variable selects it. With none set, the default is
+// the user locale on macOS and Windows, or the system locale configuration on Linux.
+// Browser builds use navigator.language. An unavailable host locale, C or POSIX uses en-US.
 package intl
 
 import (

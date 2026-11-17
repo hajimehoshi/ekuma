@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/displaynames"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 )
 
 // displayNamesData holds the internal slots of an Intl.DisplayNames object.
@@ -36,7 +37,7 @@ func (r *realm) newDisplayNames(vm *engine.VM, this engine.Value, args []engine.
 	}
 	options := o.Object()
 	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, nil)
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
 	dn := &displayNamesData{
 		style: getStringOption(vm, options, "style", "long", "narrow", "short", "long"),
 	}
@@ -82,20 +83,20 @@ func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 		code = c
 		name, ok = dn.names.Language(ct.LanguageID, dn.languageDisplay == "dialect")
 	case "region":
-		if !locale.IsRegionSubtag(strings.ToLower(code)) {
+		if !localetag.IsRegionSubtag(strings.ToLower(code)) {
 			invalid()
 		}
 		code = strings.ToUpper(code)
 		name, ok = dn.names.Region(code)
 	case "script":
-		if !locale.IsScriptSubtag(strings.ToLower(code)) {
+		if !localetag.IsScriptSubtag(strings.ToLower(code)) {
 			invalid()
 		}
 		code = strings.ToUpper(code[:1]) + strings.ToLower(code[1:])
 		name, ok = dn.names.Script(code)
 	case "calendar":
 		c := strings.ToLower(code)
-		if !isASCII(code) || !locale.IsType(c) {
+		if !isASCII(code) || !localetag.IsType(c) {
 			invalid()
 		}
 		code = c

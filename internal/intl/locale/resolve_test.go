@@ -63,7 +63,7 @@ func TestResolveLocale(t *testing.T) {
 			wantValue:  "arab",
 		},
 	} {
-		r := locale.ResolveLocale(tc.requested, true, []locale.ExtensionKey{{
+		r := locale.ResolveLocale(tc.requested, "en-US", true, []locale.ExtensionKey{{
 			Key:       "nu",
 			Option:    tc.option,
 			HasOption: tc.hasOption,
@@ -77,7 +77,7 @@ func TestResolveLocale(t *testing.T) {
 
 func TestResolveLocaleNullOption(t *testing.T) {
 	// A null option, which hour12 makes of hourCycle, removes the keyword from the locale.
-	r := locale.ResolveLocale([]string{"en-u-hc-h12"}, true, []locale.ExtensionKey{{
+	r := locale.ResolveLocale([]string{"en-u-hc-h12"}, "en-US", true, []locale.ExtensionKey{{
 		Key:        "hc",
 		HasOption:  true,
 		OptionNull: true,

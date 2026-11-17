@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/date"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
 
@@ -74,7 +75,7 @@ func typeOption(vm *engine.VM, options *engine.Object, name string) (string, boo
 	if !ok {
 		return "", false
 	}
-	valid := locale.IsType(strings.ToLower(s))
+	valid := localetag.IsType(strings.ToLower(s))
 	for i := range len(s) {
 		if s[i] >= 0x80 {
 			valid = false
@@ -130,7 +131,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		hcKey.HasOption = true
 		hcKey.OptionNull = true
 	}
-	res := locale.ResolveLocale(requested, bestFit, []locale.ExtensionKey{{
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{{
 		Key:       "ca",
 		Option:    cal,
 		HasOption: hasCal,

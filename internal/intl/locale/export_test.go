@@ -5,3 +5,6 @@ package locale
 
 // FromHost exposes fromHost to the tests.
 var FromHost = fromHost
+
+var HostLocale = hostLocale
+var LocaleFromConfig = localeFromConfig

@@ -443,6 +443,8 @@ type VM struct {
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
 
+	defaultLocale string
+
 	// randomSource gives the numbers of Math.random, or is nil for the global source of
 	// math/rand/v2.
 	randomSource rand.Source

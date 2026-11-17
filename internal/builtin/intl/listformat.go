@@ -41,7 +41,7 @@ func (r *realm) newListFormat(vm *engine.VM, this engine.Value, args []engine.Va
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
 	options := getOptionsObject(vm, arg(args, 1), "Intl.ListFormat")
 	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, nil)
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
 	lf := &listFormatData{
 		locale: res.Locale,
 		typ:    getStringOption(vm, options, "type", "conjunction", "conjunction", "disjunction", "unit"),

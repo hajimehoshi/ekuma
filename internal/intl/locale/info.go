@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
@@ -37,10 +38,10 @@ func regionOfSubdivision(v string) (string, bool) {
 	if len(v) < 3 || len(v) > 7 {
 		return "", false
 	}
-	if isAlpha(v[:2]) {
+	if localetag.IsRegionSubtag(v[:2]) {
 		return strings.ToUpper(v[:2]), true
 	}
-	if len(v) >= 4 && isDigit(v[:3]) {
+	if len(v) >= 4 && localetag.IsRegionSubtag(v[:3]) {
 		return v[:3], true
 	}
 	return "", false

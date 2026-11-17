@@ -88,8 +88,8 @@ type Match struct {
 }
 
 // LookupMatcher implements LookupMatcher of ECMA-402 for the canonical language tags
-// requested.
-func LookupMatcher(requested []string) Match {
+// requested, falling back to the available locale defaultLocale.
+func LookupMatcher(requested []string, defaultLocale string) Match {
 	for _, r := range requested {
 		t, ok := Parse(r)
 		if !ok {
@@ -102,10 +102,9 @@ func LookupMatcher(requested []string) Match {
 			}
 		}
 	}
-	d := Default()
-	t, _ := Parse(d)
+	t, _ := Parse(defaultLocale)
 	return Match{
-		Locale:    d,
+		Locale:    defaultLocale,
 		Requested: t,
 	}
 }

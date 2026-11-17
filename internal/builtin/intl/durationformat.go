@@ -41,7 +41,7 @@ func createDurationFormat(vm *engine.VM, locales, opts engine.Value) *durationFo
 	options := getOptionsObject(vm, opts, "Intl.DurationFormat")
 	bestFit := localeMatcher(vm, options)
 	nu, hasNu := numberingSystemOption(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, []locale.ExtensionKey{{
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{{
 		Key:       "nu",
 		Option:    nu,
 		HasOption: hasNu,

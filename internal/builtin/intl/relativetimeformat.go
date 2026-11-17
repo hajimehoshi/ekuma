@@ -50,7 +50,7 @@ func (r *realm) newRelativeTimeFormat(vm *engine.VM, this engine.Value, args []e
 	options := optionsObject(vm, arg(args, 1))
 	bestFit := localeMatcher(vm, options)
 	nu, hasNu := numberingSystemOption(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, []locale.ExtensionKey{{
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{{
 		Key:       "nu",
 		Option:    nu,
 		HasOption: hasNu,

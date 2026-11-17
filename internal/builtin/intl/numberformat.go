@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 )
 
 // numberFormatData holds the internal slots of an Intl.NumberFormat object.
@@ -209,7 +210,7 @@ func numberingSystemsOf(l string) []string {
 // numberingSystemOption reads the numberingSystem option.
 func numberingSystemOption(vm *engine.VM, options *engine.Object) (string, bool) {
 	s, ok := getOption(vm, options, "numberingSystem")
-	if ok && !locale.IsType(strings.ToLower(s)) {
+	if ok && !localetag.IsType(strings.ToLower(s)) {
 		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for numberingSystem")
 	}
 	if ok {
@@ -229,7 +230,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 	options := optionsObject(vm, opts)
 	bestFit := localeMatcher(vm, options)
 	nu, hasNu := numberingSystemOption(vm, options)
-	res := locale.ResolveLocale(requested, bestFit, []locale.ExtensionKey{{
+	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{{
 		Key:       "nu",
 		Option:    nu,
 		HasOption: hasNu,
