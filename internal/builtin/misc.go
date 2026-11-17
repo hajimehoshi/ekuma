@@ -632,33 +632,64 @@ func exp(x float64) float64 {
 		h := math.Exp(x / 2)
 		return h * h
 	}
-	return math.Exp(x)
+	y := math.Exp(x)
+	// math.Exp on amd64 overflows from 1023.5·ln 2 on (go.dev/issue/81995).
+	// TODO: Remove this fallback once go.mod requires a Go release with the fix.
+	if math.IsInf(y, 1) && x <= expOverflow {
+		return expNearOverflow(x)
+	}
+	return y
+}
+
+// expNearOverflow returns e**x for 709 ≤ x ≤ expOverflow.
+func expNearOverflow(x float64) float64 {
+	// ln 2 = ln2Hi + ln2Lo, where 1024·ln2Hi has few enough bits to subtract from x exactly.
+	const (
+		ln2Hi = 6.93147180369123816490e-01
+		ln2Lo = 1.90821492927058770002e-10
+	)
+	// e**x = 2**1024 · e**(hi-lo), and hi-lo rounds to r with the error (hi-r)-lo.
+	hi := x - 1024*ln2Hi
+	lo := 1024 * ln2Lo
+	r := hi - lo
+	m := math.Expm1(r)
+	y := 1 + (m + (1+m)*((hi-r)-lo))
+	return y * 0x1p1023 * 2
 }
 
 // expm1 returns e**x - 1.
 func expm1(x float64) float64 {
 	if x >= expOverflow {
-		return math.Exp(x)
+		return exp(x)
 	}
 	return math.Expm1(x)
 }
 
 // cosh returns the hyperbolic cosine of x.
 func cosh(x float64) float64 {
-	if a := math.Abs(x); a > expOverflow {
-		h := math.Exp(a / 2)
-		return h * (h / 2)
+	// math.Cosh overflows wherever math.Exp does.
+	if a := math.Abs(x); a > 709 {
+		return halfExp(a)
 	}
 	return math.Cosh(x)
 }
 
 // sinh returns the hyperbolic sine of x.
 func sinh(x float64) float64 {
-	if a := math.Abs(x); a > expOverflow {
-		h := math.Exp(a / 2)
-		return math.Copysign(h*(h/2), x)
+	// math.Sinh overflows wherever math.Exp does.
+	if a := math.Abs(x); a > 709 {
+		return math.Copysign(halfExp(a), x)
 	}
 	return math.Sinh(x)
+}
+
+// halfExp returns e**a / 2 for a > 709, which is cosh(a) and sinh(a) to double precision.
+func halfExp(a float64) float64 {
+	if a > expOverflow {
+		h := math.Exp(a / 2)
+		return h * (h / 2)
+	}
+	return exp(a) / 2
 }
 
 // atan2 returns the arc tangent of y/x, using the signs of both to pick the quadrant.
