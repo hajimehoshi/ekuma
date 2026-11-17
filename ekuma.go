@@ -74,12 +74,12 @@ type Error struct {
 // Error returns the stack trace or the message of a thrown error object,
 // and a description of any other thrown value. It runs no JavaScript.
 func (e *Error) Error() string {
-	return engine.ThrownMessage(e.Value.engine())
+	return engine.ThrownMessage(e.Value.value)
 }
 
 // Unwrap returns the Go error that e.Value was made from, or nil when it was not.
 func (e *Error) Unwrap() error {
-	return engine.GoError(e.Value.engine())
+	return engine.GoError(e.Value.value)
 }
 
 // publicError converts an error of the engine to the error types of this package.

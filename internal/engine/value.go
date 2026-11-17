@@ -42,7 +42,11 @@ const (
 const kindFirstObject = kindHTMLDDA
 
 // Value is a JavaScript value. The zero value is undefined.
+// Values cannot be compared with ==; use [IsStrictlyEqual], [SameValue], or [SameValueZero].
 type Value struct {
+	// _ makes [Value] uncomparable.
+	_ [0]func()
+
 	n float64
 
 	// o is nil for undefined, numberObject for the number n, bigInt64Object for the BigInt

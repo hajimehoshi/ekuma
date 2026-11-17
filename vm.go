@@ -180,12 +180,12 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 
 // acceptValue checks ownership before passing v to the engine.
 func (vm *VM) acceptValue(v Value) engine.Value {
-	if v.o != nil {
-		if owner := v.o.VM(); owner != nil && owner != vm.e {
+	if o := v.value.Object(); o != nil {
+		if owner := o.VM(); owner != nil && owner != vm.e {
 			panic("ekuma: value belongs to another VM: " + v.String())
 		}
 	}
-	return v.engine()
+	return v.value
 }
 
 // objectOf implements [Realm.ValueOf] for the values that become objects, with r as the

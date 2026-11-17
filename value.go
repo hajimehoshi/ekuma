@@ -62,59 +62,17 @@ func (t Type) String() string {
 // host callback results and exceptions. Other primitives may pass between VMs.
 // To share SharedArrayBuffer memory, pass its [SharedDataBlock] to [VM.ValueOf].
 type Value struct {
-	// _ makes [Value] uncomparable.
-	_ [0]func()
-
-	n float64
-
-	// o is nil for undefined, numberTag for the number n, bigInt64Tag for the BigInt whose
-	// two's complement bits n holds, and the engine's object for anything else.
-	o *engine.Object
+	value engine.Value
 }
-
-var (
-	// numberTag marks a [Value] that is a number. It is never passed to the engine.
-	numberTag = &engine.Object{}
-
-	// bigInt64Tag marks a [Value] that is a BigInt that fits in an int64. It is never passed to
-	// the engine.
-	bigInt64Tag = &engine.Object{}
-)
 
 // canonicalNaN is the NaN that [Value.Float] returns.
 var canonicalNaN = math.Float64frombits(0x7ff8000000000000)
 
 // fromEngine converts a value of the engine to a [Value].
 func fromEngine(v engine.Value) Value {
-	switch {
-	case v.IsNumber():
-		return Value{
-			n: v.Number(),
-			o: numberTag,
-		}
-	case v.IsUndefined():
-		return Value{}
+	return Value{
+		value: v,
 	}
-	if i, ok := v.BigInt64(); ok {
-		return Value{
-			n: math.Float64frombits(uint64(i)),
-			o: bigInt64Tag,
-		}
-	}
-	return Value{o: v.Object()}
-}
-
-// engine converts v to a value of the engine.
-func (v Value) engine() engine.Value {
-	switch v.o {
-	case nil:
-		return engine.Undefined
-	case numberTag:
-		return engine.Number(v.n)
-	case bigInt64Tag:
-		return engine.BigIntFromInt64(int64(math.Float64bits(v.n)))
-	}
-	return engine.ObjectValue(v.o)
 }
 
 var (
@@ -127,14 +85,12 @@ var (
 
 // Type returns the type of v.
 func (v Value) Type() Type {
-	switch v.o {
-	case nil:
-		return TypeUndefined
-	case numberTag:
-		return TypeNumber
-	}
-	e := v.engine()
+	e := v.value
 	switch {
+	case e.IsUndefined():
+		return TypeUndefined
+	case e.IsNumber():
+		return TypeNumber
 	case e.IsNull():
 		return TypeNull
 	case e.IsBool():
@@ -153,76 +109,78 @@ func (v Value) Type() Type {
 
 // IsUndefined reports whether v is undefined.
 func (v Value) IsUndefined() bool {
-	return v.o == nil
+	return v.value.IsUndefined()
 }
 
 // IsNull reports whether v is null.
 func (v Value) IsNull() bool {
-	return v.o == Null.o
+	return v.value.IsNull()
 }
 
 // IsNaN reports whether v is the number NaN.
 func (v Value) IsNaN() bool {
-	return v.o == numberTag && v.n != v.n
+	return v.value.IsNumber() && math.IsNaN(v.value.Number())
 }
 
 // Truthy returns the boolean that v converts to.
 func (v Value) Truthy() bool {
-	return engine.ToBoolean(v.engine())
+	return engine.ToBoolean(v.value)
 }
 
 // Bool returns the boolean v. It panics with a [*ValueError] when v is not a boolean.
 func (v Value) Bool() bool {
-	e := v.engine()
+	e := v.value
 	if !e.IsBool() {
 		panic(&ValueError{
 			Method: "Value.Bool",
 			Type:   v.Type(),
 		})
 	}
-	return e == engine.True
+	return engine.ToBoolean(e)
 }
 
 // Float returns the number v. A NaN always has the bits 0x7ff8000000000000. Float panics with
 // a [*ValueError] when v is not a number.
 func (v Value) Float() float64 {
-	if v.o != numberTag {
+	if !v.value.IsNumber() {
 		panic(&ValueError{
 			Method: "Value.Float",
 			Type:   v.Type(),
 		})
 	}
-	if v.n != v.n {
+	n := v.value.Number()
+	if math.IsNaN(n) {
 		return canonicalNaN
 	}
-	return v.n
+	return n
 }
 
 // Int returns the number v truncated toward zero to an int. NaN gives 0, and a number below or
 // above the range of an int gives [math.MinInt] or [math.MaxInt]. It panics with a [*ValueError]
 // when v is not a number.
 func (v Value) Int() int {
-	if v.o != numberTag {
+	if !v.value.IsNumber() {
 		panic(&ValueError{
 			Method: "Value.Int",
 			Type:   v.Type(),
 		})
 	}
+	n := v.value.Number()
 	switch {
-	case v.n != v.n:
+	case math.IsNaN(n):
 		return 0
-	case v.n >= math.MaxInt:
+	case n >= math.MaxInt:
 		return math.MaxInt
-	case v.n <= math.MinInt:
+	case n <= math.MinInt:
 		return math.MinInt
 	}
-	return int(v.n)
+	return int(n)
 }
 
 // BigInt returns the BigInt v as a new [*big.Int]. It panics with a [*ValueError] when v is not
 // a BigInt.
 func (v Value) BigInt() *big.Int {
-	e := v.engine()
+	e := v.value
 	if !e.IsBigInt() {
 		panic(&ValueError{
 			Method: "Value.BigInt",
@@ -238,11 +196,11 @@ func (v Value) BigInt() *big.Int {
 func (v Value) String() string {
 	switch t := v.Type(); t {
 	case TypeString:
-		return engine.GoString(v.engine())
+		return engine.GoString(v.value)
 	case TypeBoolean:
 		return "<boolean: " + strconv.FormatBool(v.Bool()) + ">"
 	case TypeNumber:
-		return "<number: " + strconv.FormatFloat(v.n, 'g', -1, 64) + ">"
+		return "<number: " + strconv.FormatFloat(v.value.Number(), 'g', -1, 64) + ">"
 	default:
 		return "<" + t.String() + ">"
 	}
@@ -250,13 +208,13 @@ func (v Value) String() string {
 
 // Equal reports whether v and w are equal the way the JavaScript operator === compares.
 func (v Value) Equal(w Value) bool {
-	return engine.IsStrictlyEqual(v.engine(), w.engine())
+	return engine.IsStrictlyEqual(v.value, w.value)
 }
 
 // vm returns the [VM] that the object, function or string v belongs to.
 func (v Value) vm(method string) (*VM, error) {
-	if v.o != nil && v.o != numberTag && v.Type() != TypeSymbol {
-		if e := v.o.VM(); e != nil {
+	if o := v.value.Object(); o != nil && !v.value.IsSymbol() {
+		if e := o.VM(); e != nil {
 			return e.HostDefined().(*VM), nil
 		}
 	}
@@ -275,7 +233,7 @@ func (v Value) Get(name string) (Value, error) {
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.engine(), vm.e.StringFromGo(name))
+	r, err := vm.e.HostGet(v.value, vm.e.StringFromGo(name))
 	return fromEngine(r), vm.publicError(err)
 }
 
@@ -287,7 +245,7 @@ func (v Value) GetWithValueKey(key Value) (Value, error) {
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.engine(), vm.acceptValue(key))
+	r, err := vm.e.HostGet(v.value, vm.acceptValue(key))
 	return fromEngine(r), vm.publicError(err)
 }
 
@@ -298,7 +256,7 @@ func (v Value) Set(name string, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.engine(), vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
+	return vm.publicError(vm.e.HostSet(v.value, vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
 }
 
 // SetWithValueKey is like [Value.Set], but takes key as [Value.GetWithValueKey] does.
@@ -307,7 +265,7 @@ func (v Value) SetWithValueKey(key Value, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.engine(), vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
+	return vm.publicError(vm.e.HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Delete deletes the property name of v, the way the delete operator in strict mode code does.
@@ -317,7 +275,7 @@ func (v Value) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostDelete(v.engine(), vm.e.StringFromGo(name)))
+	return vm.publicError(vm.e.HostDelete(v.value, vm.e.StringFromGo(name)))
 }
 
 // DeleteWithValueKey is like [Value.Delete], but takes key as [Value.GetWithValueKey] does.
@@ -326,7 +284,7 @@ func (v Value) DeleteWithValueKey(key Value) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostDelete(v.engine(), vm.acceptValue(key)))
+	return vm.publicError(vm.e.HostDelete(v.value, vm.acceptValue(key)))
 }
 
 // Index returns the element i of v. The errors are those of [Value.Get].
@@ -335,7 +293,7 @@ func (v Value) Index(i int) (Value, error) {
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.engine(), engine.Number(float64(i)))
+	r, err := vm.e.HostGet(v.value, engine.Number(float64(i)))
 	return fromEngine(r), vm.publicError(err)
 }
 
@@ -345,7 +303,7 @@ func (v Value) SetIndex(i int, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.engine(), engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
+	return vm.publicError(vm.e.HostSet(v.value, engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Call calls the method name of v with v as this. The arguments are converted with [VM.ValueOf].
@@ -359,7 +317,7 @@ func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error
 	}
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
-			return vm.e.HostCallMethod(v.engine(), vm.e.StringFromGo(name), a)
+			return vm.e.HostCallMethod(v.value, vm.e.StringFromGo(name), a)
 		})
 	})
 }
@@ -373,7 +331,7 @@ func (v Value) CallWithValueKey(ctx context.Context, key Value, args ...any) (Va
 	k := vm.acceptValue(key)
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
-			return vm.e.HostCallMethod(v.engine(), k, a)
+			return vm.e.HostCallMethod(v.value, k, a)
 		})
 	})
 }
@@ -405,9 +363,9 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
 			if construct {
-				return vm.e.HostConstruct(v.engine(), a)
+				return vm.e.HostConstruct(v.value, a)
 			}
-			return vm.e.HostCall(v.engine(), engine.Undefined, a)
+			return vm.e.HostCall(v.value, engine.Undefined, a)
 		})
 	})
 }
@@ -420,7 +378,7 @@ func (v Value) InstanceOf(t Value) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	r, err := vm.e.HostInstanceOf(vm.acceptValue(v), t.engine())
+	r, err := vm.e.HostInstanceOf(vm.acceptValue(v), t.value)
 	return r, vm.publicError(err)
 }
 
@@ -447,7 +405,7 @@ func (s PromiseState) String() string {
 
 // IsPromise reports whether v is a promise: a Promise object, which a mere thenable is not.
 func (v Value) IsPromise() bool {
-	return engine.IsPromise(v.engine())
+	return engine.IsPromise(v.value)
 }
 
 // PromiseState returns the state of the promise v and, unless it is pending, its result: the
@@ -455,7 +413,7 @@ func (v Value) IsPromise() bool {
 // not mark a rejected promise as handled. It panics with a [*ValueError] when v is not
 // a promise.
 func (v Value) PromiseState() (PromiseState, Value) {
-	e := v.engine()
+	e := v.value
 	if !engine.IsPromise(e) {
 		panic(&ValueError{
 			Method: "Value.PromiseState",
@@ -480,7 +438,7 @@ type SharedDataBlock struct {
 // SharedDataBlock returns the data block of the SharedArrayBuffer v. It panics with
 // a [*ValueError] when v is not a SharedArrayBuffer.
 func (v Value) SharedDataBlock() *SharedDataBlock {
-	if b := engine.ArrayBufferData(v.engine()); b != nil && b.IsShared() {
+	if b := engine.ArrayBufferData(v.value); b != nil && b.IsShared() {
 		return &SharedDataBlock{b: b.SharedDataBlock()}
 	}
 	panic(&ValueError{
@@ -492,7 +450,7 @@ func (v Value) SharedDataBlock() *SharedDataBlock {
 // uint8ArrayData returns the state of v when v is a Uint8Array or a Uint8ClampedArray,
 // and panics with a [*ValueError] otherwise.
 func uint8ArrayData(v Value, method string) *engine.TypedArray {
-	if t := engine.TypedArrayData(v.engine()); t != nil {
+	if t := engine.TypedArrayData(v.value); t != nil {
 		if e := t.ElementType(); e == engine.ElementUint8 || e == engine.ElementUint8C {
 			return t
 		}

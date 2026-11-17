@@ -11,7 +11,7 @@ import (
 // that is not an ArrayBuffer or for an immutable ArrayBuffer.
 func DetachArrayBuffer(vm *VM, v Value) error {
 	vm.initIfNeeded()
-	e := v.engine()
+	e := v.value
 	b := engine.ArrayBufferData(e)
 	if b == nil || b.IsShared() {
 		return &Error{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "not an ArrayBuffer"))}
@@ -54,12 +54,12 @@ func NewSourceModule(vm *VM, name, className string) *Module {
 
 func ArgumentStorage(vm *VM) (argsLen, callArgsLen int, cleared bool) {
 	for _, v := range vm.args[len(vm.args):cap(vm.args)] {
-		if v.o != nil || v.n != 0 {
+		if !v.IsUndefined() {
 			return len(vm.args), len(vm.callArgs), false
 		}
 	}
 	for _, v := range vm.callArgs[len(vm.callArgs):cap(vm.callArgs)] {
-		if v != (engine.Value{}) {
+		if !v.IsUndefined() {
 			return len(vm.args), len(vm.callArgs), false
 		}
 	}

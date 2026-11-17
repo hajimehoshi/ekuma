@@ -117,7 +117,7 @@ func (vm *VM) HostInstanceOf(v, t Value) (bool, error) {
 	r, err := vm.enter(func() Value {
 		return Bool(vm.instanceOf(v, t))
 	})
-	return r == True, err
+	return ToBoolean(r), err
 }
 
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
+	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
 func TestForeignValueEntry(t *testing.T) {
@@ -208,6 +209,14 @@ func TestValueSize(t *testing.T) {
 	want := reflect.TypeFor[layout]().Size()
 	if got != want {
 		t.Errorf("got %d, want %d", got, want)
+	}
+}
+
+func TestValueNotComparable(t *testing.T) {
+	for _, typ := range []reflect.Type{reflect.TypeFor[ekuma.Value](), reflect.TypeFor[engine.Value]()} {
+		if typ.Comparable() {
+			t.Errorf("%v must not be comparable", typ)
+		}
 	}
 }
 
