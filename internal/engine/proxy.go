@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"math/bits"
 	"strconv"
 )
 
@@ -605,7 +606,10 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 
 // FromPropertyDescriptor implements FromPropertyDescriptor for a descriptor that is not undefined.
 func (vm *VM) FromPropertyDescriptor(d PropDesc) Value {
-	o := vm.NewOrdinaryObject()
+	o, slots := newObjectWithStorage(bits.OnesCount8(d.has))
+	o.kind = kindObject
+	o.shape = vm.shapes.object
+	o.slots = slots[:0]
 	fn := func(f *Object) Value {
 		if f == nil {
 			return Undefined

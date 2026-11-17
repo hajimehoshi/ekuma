@@ -885,3 +885,48 @@ func BenchmarkDateGetters(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkPropertyDescriptor measures retrieving or forwarding one property descriptor.
+func BenchmarkPropertyDescriptor(b *testing.B) {
+	for _, c := range []struct {
+		name  string
+		setup string
+		expr  string
+	}{
+		{
+			name:  "Data",
+			setup: `const o = {x: 1};`,
+			expr:  `Object.getOwnPropertyDescriptor(o, "x")`,
+		},
+		{
+			name:  "Accessor",
+			setup: `const o = {get x() { return 1; }};`,
+			expr:  `Reflect.getOwnPropertyDescriptor(o, "x")`,
+		},
+		{
+			name: "Partial",
+			setup: `const d = {value: 1};
+				const o = new Proxy({}, {defineProperty(target, key, desc) { last = desc; return true; }});`,
+			expr: `Reflect.defineProperty(o, "x", d)`,
+		},
+		{
+			name: "Empty",
+			setup: `const d = {};
+				const o = new Proxy({}, {defineProperty(target, key, desc) { last = desc; return true; }});`,
+			expr: `Reflect.defineProperty(o, "x", d)`,
+		},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			var vm ekuma.VM
+			src := `let last; ` + c.setup + ` function run(n) { for (let i = 0; i < n; i++) { ` + c.expr + `; } }`
+			if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
