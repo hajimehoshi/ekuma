@@ -311,7 +311,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	proto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(vm, "Object", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicObject) {
-			return engine.ObjectValue(vm.NewObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicObjectPrototype))))
+			return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicObjectPrototype))))
 		}
 		v := arg(args, 0)
 		if v.IsNullish() {

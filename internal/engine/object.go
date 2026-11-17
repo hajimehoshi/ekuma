@@ -640,6 +640,11 @@ func (vm *VM) NewObject(proto *Object) *Object {
 	}
 }
 
+// NewInstance returns a new empty ordinary instance with prototype proto, which may be nil.
+func (vm *VM) NewInstance(proto *Object) *Object {
+	return newInstance(vm.shapeFor(proto))
+}
+
 // maxInstanceSlots bounds the room for properties that newInstance gives an object.
 const maxInstanceSlots = 16
 

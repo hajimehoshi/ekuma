@@ -140,7 +140,7 @@ func initIteratorHelpers(vm *engine.VM) {
 		if nt == nil || nt == ctor {
 			vm.ThrowTypeError("Iterator cannot be constructed directly")
 		}
-		return engine.ObjectValue(vm.NewObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicIteratorPrototype))))
+		return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicIteratorPrototype))))
 	})
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Iterator"), engine.ObjectValue(ctor), engine.FlagsHidden)
