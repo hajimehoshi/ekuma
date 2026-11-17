@@ -76,6 +76,7 @@ func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
 	o.class = classRegExp
 	o.shape = s
 	o.slots = slots
+	o.slots[0] = Number(0)
 	o.ext = st
 	return o
 }
@@ -99,7 +100,7 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 		legacy:  o.ext.(*regExpState).legacy,
 		realm:   o.ext.(*regExpState).realm,
 	}
-	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Value{n: 0})
+	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Number(0))
 	return o
 }
 
@@ -196,7 +197,7 @@ func (vm *VM) resetLentRegExp(site *regExpSite) *Object {
 	}
 	// A borrower that runs script code may still hold o, but no longer uses it.
 	o.shape = vm.regExpShape()
-	o.slots[0] = Value{}
+	o.slots[0] = Number(0)
 	return o
 }
 

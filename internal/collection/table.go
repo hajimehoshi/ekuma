@@ -124,7 +124,7 @@ func (t *Table) find(k engine.Value) int {
 	return int(i)
 }
 
-// scan is find for a table that is not indexed. The key of a deleted entry is the number 0.
+// scan is find for a table that is not indexed.
 func (t *Table) scan(k engine.Value) int {
 	switch {
 	case k.IsNumber():
@@ -151,7 +151,7 @@ func (t *Table) scan(k engine.Value) int {
 	default:
 		o := k.Object()
 		for i := range t.entries {
-			if t.entries[i].key.Object() == o {
+			if e := &t.entries[i]; !e.deleted && !e.key.IsNumber() && e.key.Object() == o {
 				return i
 			}
 		}

@@ -212,8 +212,6 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s *engine.Objec
 					engine.Number(float64(caps[2*i])),
 					engine.Number(float64(caps[2*i+1])),
 				))
-			} else {
-				pairs[i] = engine.Undefined
 			}
 		}
 	}

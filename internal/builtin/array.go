@@ -1092,9 +1092,10 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 			vals = append(vals, v)
 		}
 		sortValues(vm, vals, cmp)
-		for range undefs {
-			vals = append(vals, engine.Undefined)
-		}
+		vals = slices.Grow(vals, undefs)
+		start := len(vals)
+		vals = vals[:start+undefs]
+		clear(vals[start:])
 		return vm.NewArrayOf(vals)
 	})
 	method(vm, proto, "toSpliced", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

@@ -168,8 +168,8 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 }
 
 func clearFrameRegs(regs []Value, first, end int) {
-	for i := first; i < end; i++ {
-		regs[i] = Undefined
+	if first < end {
+		clear(regs[first:end])
 	}
 }
 
@@ -399,7 +399,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpLoadK:
 			regs[i.A] = fp.consts[i.B]
 		case bytecode.OpLoadInt:
-			regs[i.A] = Value{n: float64(i.B)}
+			regs[i.A] = Number(float64(i.B))
 		case bytecode.OpLoadUndef:
 			regs[i.A] = Undefined
 		case bytecode.OpLoadNull:
@@ -638,7 +638,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetLength:
 			v := regs[i.B]
 			if o := v.o; o != nil && o.kind == kindArray {
-				regs[i.A] = Value{n: float64(o.length)}
+				regs[i.A] = Number(float64(o.length))
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -650,7 +650,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpGetIndex:
 			v, k := regs[i.B], regs[i.C]
-			if o := v.o; o != nil && o.objectProperties != nil && k.o == nil {
+			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
 					if e := o.elems[j]; e.o != holeObject {
 						regs[i.A] = e
@@ -682,7 +682,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = val
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
 			v, k := regs[i.A], regs[i.B]
-			if o := v.o; o != nil && o.objectProperties != nil && k.o == nil {
+			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
 					if o.elems[j].o != holeObject {
 						o.elems[j] = regs[i.C]
@@ -784,7 +784,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
 			// The read and the write of a compound assignment convert an index alike.
-			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) || v.o == nil && i.C != 0 && float64(uint32(v.n)) == v.n {
+			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) || v.o == numberObject && i.C != 0 && float64(uint32(v.n)) == v.n {
 				regs[i.A] = v
 				continue
 			}
@@ -800,8 +800,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpAdd:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: x.n + y.n}
+			if x.o == numberObject && y.o == numberObject {
+				regs[i.A] = Number(x.n + y.n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -814,90 +814,90 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSub:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: x.n - y.n}
+			if x.o == numberObject && y.o == numberObject {
+				regs[i.A] = Number(x.n - y.n)
 				continue
 			}
 			goto arith
 		case bytecode.OpMul:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: x.n * y.n}
+			if x.o == numberObject && y.o == numberObject {
+				regs[i.A] = Number(x.n * y.n)
 				continue
 			}
 			goto arith
 		case bytecode.OpDiv:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: x.n / y.n}
+			if x.o == numberObject && y.o == numberObject {
+				regs[i.A] = Number(x.n / y.n)
 				continue
 			}
 			goto arith
 		case bytecode.OpMod:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				xi, yi := int32(x.n), int32(y.n)
 				if xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
-					regs[i.A] = Value{n: float64(xi % yi)}
+					regs[i.A] = Number(float64(xi % yi))
 					continue
 				}
-				regs[i.A] = Value{n: math.Mod(x.n, y.n)}
+				regs[i.A] = Number(math.Mod(x.n, y.n))
 				continue
 			}
 			goto arith
 		case bytecode.OpBitOr:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) | int32(int64(y.n)))}
+			if x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) | int32(int64(y.n))))
 				continue
 			}
 			goto arith
 		case bytecode.OpBitAnd:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) & int32(int64(y.n)))}
+			if x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) & int32(int64(y.n))))
 				continue
 			}
 			goto arith
 		case bytecode.OpBitXor:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) ^ int32(int64(y.n)))}
+			if x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) ^ int32(int64(y.n))))
 				continue
 			}
 			goto arith
 		case bytecode.OpShl:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) << (uint32(int64(y.n)) & 31))}
+			if x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) << (uint32(int64(y.n)) & 31)))
 				continue
 			}
 			goto arith
 		case bytecode.OpShr:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) >> (uint32(int64(y.n)) & 31))}
+			if x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) >> (uint32(int64(y.n)) & 31)))
 				continue
 			}
 			goto arith
 		case bytecode.OpUShr:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Value{n: float64(uint32(int64(x.n)) >> (uint32(int64(y.n)) & 31))}
+			if x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
+				regs[i.A] = Number(float64(uint32(int64(x.n)) >> (uint32(int64(y.n)) & 31)))
 				continue
 			}
 			goto arith
 		case bytecode.OpExp:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
-				regs[i.A] = Value{n: NumberPow(x.n, y.n)}
+			if x.o == numberObject && y.o == numberObject {
+				regs[i.A] = Number(NumberPow(x.n, y.n))
 				continue
 			}
 			goto arith
 		case bytecode.OpAddK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: x.n + fp.consts[i.C].n}
+			if x.o == numberObject {
+				regs[i.A] = Number(x.n + fp.consts[i.C].n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -906,76 +906,76 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSubK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: x.n - fp.consts[i.C].n}
+			if x.o == numberObject {
+				regs[i.A] = Number(x.n - fp.consts[i.C].n)
 				continue
 			}
 			goto arithK
 		case bytecode.OpMulK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: x.n * fp.consts[i.C].n}
+			if x.o == numberObject {
+				regs[i.A] = Number(x.n * fp.consts[i.C].n)
 				continue
 			}
 			goto arithK
 		case bytecode.OpDivK:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: x.n / fp.consts[i.C].n}
+			if x.o == numberObject {
+				regs[i.A] = Number(x.n / fp.consts[i.C].n)
 				continue
 			}
 			goto arithK
 		case bytecode.OpModK:
 			x, y := regs[i.B], fp.consts[i.C]
-			if x.o == nil {
+			if x.o == numberObject {
 				xi, yi := int32(x.n), int32(y.n)
 				if xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
-					regs[i.A] = Value{n: float64(xi % yi)}
+					regs[i.A] = Number(float64(xi % yi))
 					continue
 				}
-				regs[i.A] = Value{n: math.Mod(x.n, y.n)}
+				regs[i.A] = Number(math.Mod(x.n, y.n))
 				continue
 			}
 			goto arithK
 		case bytecode.OpBitOrK:
 			x := regs[i.B]
-			if x.o == nil && numconv.InInt64Range(x.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) | int32(fp.consts[i.C].n))}
+			if x.o == numberObject && numconv.InInt64Range(x.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) | int32(fp.consts[i.C].n)))
 				continue
 			}
 			goto arithK
 		case bytecode.OpBitAndK:
 			x := regs[i.B]
-			if x.o == nil && numconv.InInt64Range(x.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) & int32(fp.consts[i.C].n))}
+			if x.o == numberObject && numconv.InInt64Range(x.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) & int32(fp.consts[i.C].n)))
 				continue
 			}
 			goto arithK
 		case bytecode.OpShlK:
 			x := regs[i.B]
-			if x.o == nil && numconv.InInt64Range(x.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) << (uint32(fp.consts[i.C].n) & 31))}
+			if x.o == numberObject && numconv.InInt64Range(x.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) << (uint32(fp.consts[i.C].n) & 31)))
 				continue
 			}
 			goto arithK
 		case bytecode.OpShrK:
 			x := regs[i.B]
-			if x.o == nil && numconv.InInt64Range(x.n) {
-				regs[i.A] = Value{n: float64(int32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31))}
+			if x.o == numberObject && numconv.InInt64Range(x.n) {
+				regs[i.A] = Number(float64(int32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31)))
 				continue
 			}
 			goto arithK
 		case bytecode.OpUShrK:
 			x := regs[i.B]
-			if x.o == nil && numconv.InInt64Range(x.n) {
-				regs[i.A] = Value{n: float64(uint32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31))}
+			if x.o == numberObject && numconv.InInt64Range(x.n) {
+				regs[i.A] = Number(float64(uint32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31)))
 				continue
 			}
 			goto arithK
 		case bytecode.OpNeg:
 			x := regs[i.B]
-			if x.o == nil {
-				regs[i.A] = Value{n: -x.n}
+			if x.o == numberObject {
+				regs[i.A] = Number(-x.n)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -984,20 +984,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpPlus:
 			x := regs[i.B]
-			if x.o == nil {
+			if x.o == numberObject {
 				regs[i.A] = x
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			n := vm.ToNumber(x)
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[i.A] = Value{n: n}
+			regs[i.A] = Number(n)
 		case bytecode.OpNot:
 			regs[i.A] = Bool(!ToBoolean(regs[i.B]))
 		case bytecode.OpBitNot:
 			x := regs[i.B]
-			if x.o == nil && numconv.InInt64Range(x.n) {
-				regs[i.A] = Value{n: float64(^int32(int64(x.n)))}
+			if x.o == numberObject && numconv.InInt64Range(x.n) {
+				regs[i.A] = Number(float64(^int32(int64(x.n))))
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1006,7 +1006,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpToNumeric:
 			x := regs[i.B]
-			if x.o == nil {
+			if x.o == numberObject {
 				regs[i.A] = x
 				continue
 			}
@@ -1031,11 +1031,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = vm.typeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:
 			x := regs[i.B]
-			if x.o == nil {
+			if x.o == numberObject {
 				if i.Op == bytecode.OpInc {
-					regs[i.A] = Value{n: x.n + 1}
+					regs[i.A] = Number(x.n + 1)
 				} else {
-					regs[i.A] = Value{n: x.n - 1}
+					regs[i.A] = Number(x.n - 1)
 				}
 				continue
 			}
@@ -1050,7 +1050,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpLt:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				regs[i.A] = Bool(x.n < y.n)
 				continue
 			}
@@ -1060,7 +1060,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(r)
 		case bytecode.OpLe:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				regs[i.A] = Bool(x.n <= y.n)
 				continue
 			}
@@ -1070,7 +1070,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpGt:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				regs[i.A] = Bool(x.n > y.n)
 				continue
 			}
@@ -1080,7 +1080,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(r)
 		case bytecode.OpGe:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				regs[i.A] = Bool(x.n >= y.n)
 				continue
 			}
@@ -1091,7 +1091,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpEq, bytecode.OpNe:
 			x, y := regs[i.B], regs[i.C]
 			var r bool
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				r = x.n == y.n
 			} else {
 				vm.frames[len(vm.frames)-1].pc = pc
@@ -1115,8 +1115,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			// ToBoolean, with the common cases inlined.
 			v := regs[i.B]
 			var t bool
-			if o := v.o; o == nil {
+			if o := v.o; o == numberObject {
 				t = v.n != 0 && v.n == v.n
+			} else if o == nil {
+				t = false
 			} else if k := o.kind; k == kindTrue {
 				t = true
 			} else if k <= kindFalse {
@@ -1139,16 +1141,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfUndef:
-			if regs[i.B].o == undefinedObject {
+			if regs[i.B].o == nil {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNotUndef:
-			if regs[i.B].o != undefinedObject {
+			if regs[i.B].o != nil {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotLt:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				if !(x.n < y.n) {
 					pc = int(i.A)
 				}
@@ -1162,7 +1164,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotLe:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				if !(x.n <= y.n) {
 					pc = int(i.A)
 				}
@@ -1176,7 +1178,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotGt:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				if !(x.n > y.n) {
 					pc = int(i.A)
 				}
@@ -1190,7 +1192,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotGe:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				if !(x.n >= y.n) {
 					pc = int(i.A)
 				}
@@ -1205,7 +1207,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpJumpNotEq, bytecode.OpJumpNotNe:
 			x, y := regs[i.B], regs[i.C]
 			var r bool
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				r = x.n == y.n
 			} else {
 				vm.frames[len(vm.frames)-1].pc = pc
@@ -1217,7 +1219,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotSEq:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				if x.n != y.n {
 					pc = int(i.A)
 				}
@@ -1228,7 +1230,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotSNe:
 			x, y := regs[i.B], regs[i.C]
-			if x.o == nil && y.o == nil {
+			if x.o == numberObject && y.o == numberObject {
 				if x.n == y.n {
 					pc = int(i.A)
 				}
@@ -1239,11 +1241,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotLtK:
 			x := regs[i.B]
-			if x.o != nil {
+			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.o != nil {
+				if x.o != numberObject {
 					if compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
 						pc = int(i.A)
 					}
@@ -1255,11 +1257,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotLeK:
 			x := regs[i.B]
-			if x.o != nil {
+			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.o != nil {
+				if x.o != numberObject {
 					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
 						pc = int(i.A)
 					}
@@ -1271,11 +1273,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotGtK:
 			x := regs[i.B]
-			if x.o != nil {
+			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.o != nil {
+				if x.o != numberObject {
 					if compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
 						pc = int(i.A)
 					}
@@ -1287,11 +1289,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotGeK:
 			x := regs[i.B]
-			if x.o != nil {
+			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
-				if x.o != nil {
+				if x.o != numberObject {
 					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
 						pc = int(i.A)
 					}
@@ -1302,15 +1304,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSEqK:
-			if x := regs[i.B]; x.o != nil || x.n != fp.consts[i.C].n {
+			if x := regs[i.B]; x.o != numberObject || x.n != fp.consts[i.C].n {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpNotSNeK:
-			if x := regs[i.B]; x.o == nil && x.n == fp.consts[i.C].n {
+			if x := regs[i.B]; x.o == numberObject && x.n == fp.consts[i.C].n {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfInt:
-			if x := regs[i.B]; x.o == nil && x.n == float64(i.C) {
+			if x := regs[i.B]; x.o == numberObject && x.n == float64(i.C) {
 				pc = int(i.A)
 			}
 
@@ -1579,7 +1581,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			return v, execYield
 		case bytecode.OpGenResumeMode:
 			g := vm.frames[len(vm.frames)-1].gen
-			regs[i.A] = Value{n: float64(g.mode)}
+			regs[i.A] = Number(float64(g.mode))
 			g.mode = ResumeNext
 		case bytecode.OpYieldDelegateResult:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1752,7 +1754,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if i.C == bytecode.IterSync && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
 				// Iterate a plain array by index: the next method slot holds the index.
 				regs[i.A] = v
-				regs[i.A+1] = Value{n: 0}
+				regs[i.A+1] = Number(0)
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1761,12 +1763,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = it
 			regs[i.A+1] = next
 		case bytecode.OpIterNext:
-			if regs[i.B].o == undefinedObject {
+			if regs[i.B].o == nil {
 				// The iterator finished earlier.
 				pc = int(i.C)
 				continue
 			}
-			if idx := regs[i.B+1]; idx.o == nil {
+			if idx := regs[i.B+1]; idx.o == numberObject {
 				o := regs[i.B].o
 				j := uint32(idx.n)
 				if j >= o.length {
@@ -1775,7 +1777,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					pc = int(i.C)
 					continue
 				}
-				regs[i.B+1] = Value{n: idx.n + 1}
+				regs[i.B+1] = Number(idx.n + 1)
 				if uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
 					regs[i.A] = o.elems[j]
 					continue
@@ -1805,7 +1807,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpIterClose:
 			it := regs[i.A]
-			if it.IsUndefined() || regs[i.A+1].o == nil {
+			if it.IsUndefined() || regs[i.A+1].o == numberObject {
 				continue
 			}
 			regs[i.A] = Undefined

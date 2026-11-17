@@ -853,9 +853,6 @@ func (vm *VM) NewArrayWithRoom(length, n int) *Object {
 	a.shape = vm.shapes.array
 	// Appending elements must not overwrite the named properties.
 	a.elems = storage[:length:length]
-	for i := range a.elems {
-		a.elems[i] = Undefined
-	}
 	a.length = uint32(length)
 	a.slots = storage[length:length]
 	return a

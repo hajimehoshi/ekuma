@@ -185,7 +185,7 @@ func IteratorState(v Value) any {
 
 // ThisNumberValue implements ThisNumberValue. It reports false when the specification throws.
 func ThisNumberValue(v Value) (float64, bool) {
-	if v.o == nil {
+	if v.o == numberObject {
 		return v.n, true
 	}
 	if v.IsObject() && v.o.class == classNumber {

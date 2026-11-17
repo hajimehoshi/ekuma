@@ -131,8 +131,7 @@ func (vm *VM) newGenerator(f *Object, this Value, args []Value) *generator {
 		argc: len(args),
 		regs: make([]Value, fp.nregs+1),
 	}
-	n := copy(g.regs[:fp.nparams], args)
-	clearFrameRegs(g.regs, n, fp.nclear)
+	copy(g.regs[:fp.nparams], args)
 	if len(args) > fp.nparams && fp.needsExtra {
 		g.extra = append(g.extra, args[fp.nparams:]...)
 	}

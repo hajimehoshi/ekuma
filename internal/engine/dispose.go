@@ -215,7 +215,7 @@ func beginDisposeOp(d, v, k Value) {
 	if d.IsUndefined() {
 		return
 	}
-	d.o.ext.(*DisposeCapability).beginDispose(v, k.o == nil && k.n == 1 && v.o != closeSignal)
+	d.o.ext.(*DisposeCapability).beginDispose(v, k.o == numberObject && k.n == 1 && v.o != closeSignal)
 }
 
 // disposeStepOp is disposeStep on the dispose capability that the register value d holds, if any.

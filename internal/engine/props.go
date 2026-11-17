@@ -73,11 +73,14 @@ func (vm *VM) KeyString(k PropKey) string {
 // ToPropertyKey implements ToPropertyKey.
 func (vm *VM) ToPropertyKey(v Value) PropKey {
 	o := v.o
-	if o == nil {
+	if o == numberObject {
 		if i, ok := numberIndex(v.n); ok {
 			return PropKey{idx: i}
 		}
 		return PropKey{key: vm.Intern(numconv.NumberToString(v.n))}
+	}
+	if o == nil {
+		return vm.KeyOfString("undefined")
 	}
 	switch o.kind {
 	case kindString:
@@ -370,8 +373,11 @@ func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 // It throws a TypeError for undefined and null.
 func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	o := v.o
-	if o == nil {
+	if o == numberObject {
 		return vm.Intrinsic(IntrinsicNumberPrototype)
+	}
+	if o == nil {
+		vm.ThrowTypeError("cannot read properties of undefined (reading '" + vm.KeyString(key) + "')")
 	}
 	switch o.kind {
 	case kindFalse, kindTrue:
@@ -380,7 +386,7 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 		return vm.Intrinsic(IntrinsicSymbolPrototype)
 	case kindBigInt:
 		return vm.Intrinsic(IntrinsicBigIntPrototype)
-	case kindUndefined, kindNull:
+	case kindNull:
 		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
 	case kindString:
 		if p := vm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {

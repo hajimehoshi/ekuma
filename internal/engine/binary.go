@@ -631,7 +631,7 @@ func (vm *VM) ToElementValue(t ElementType, v Value) Value {
 	if t.IsBigInt() {
 		return vm.ToBigInt(v)
 	}
-	if v.o == nil {
+	if v.o == numberObject {
 		return v
 	}
 	return Number(vm.ToNumber(v))
@@ -812,23 +812,23 @@ func (t *TypedArray) element(i uint32) ([]byte, bool) {
 func (vm *VM) loadElement(t ElementType, b []byte) Value {
 	switch t {
 	case ElementInt8:
-		return Value{n: float64(int8(b[0]))}
+		return Number(float64(int8(b[0])))
 	case ElementUint8, ElementUint8C:
-		return Value{n: float64(b[0])}
+		return Number(float64(b[0]))
 	case ElementInt16:
-		return Value{n: float64(int16(binary.LittleEndian.Uint16(b)))}
+		return Number(float64(int16(binary.LittleEndian.Uint16(b))))
 	case ElementUint16:
-		return Value{n: float64(binary.LittleEndian.Uint16(b))}
+		return Number(float64(binary.LittleEndian.Uint16(b)))
 	case ElementInt32:
-		return Value{n: float64(int32(binary.LittleEndian.Uint32(b)))}
+		return Number(float64(int32(binary.LittleEndian.Uint32(b))))
 	case ElementUint32:
-		return Value{n: float64(binary.LittleEndian.Uint32(b))}
+		return Number(float64(binary.LittleEndian.Uint32(b)))
 	case ElementFloat16:
-		return Value{n: float16FromBits(binary.LittleEndian.Uint16(b))}
+		return Number(float16FromBits(binary.LittleEndian.Uint16(b)))
 	case ElementFloat32:
-		return Value{n: float64(math.Float32frombits(binary.LittleEndian.Uint32(b)))}
+		return Number(float64(math.Float32frombits(binary.LittleEndian.Uint32(b))))
 	case ElementFloat64:
-		return Value{n: math.Float64frombits(binary.LittleEndian.Uint64(b))}
+		return Number(math.Float64frombits(binary.LittleEndian.Uint64(b)))
 	}
 	return vm.ElementFromBits(t, binary.LittleEndian.Uint64(b))
 }
@@ -894,7 +894,7 @@ func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
 // It reports false when the buffer is immutable.
 func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
 	t := o.ext.(*TypedArray)
-	if val.o == nil && t.numberStore {
+	if val.o == numberObject && t.numberStore {
 		if b, ok := t.element(i); ok {
 			storeNumber(t.typ, b, val.n)
 		}

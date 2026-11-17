@@ -29,7 +29,7 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
 	next = vm.GetV(it, vm.Key(keyNext))
-	if next.o == nil {
+	if next.o == numberObject {
 		// A number in the next method slot of the bytecode marks a plain array iterated by
 		// index, so a numeric next method is held by a function that throws as calling it does.
 		n := next

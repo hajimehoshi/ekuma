@@ -77,11 +77,12 @@ func (vm *VM) GetMethod(v Value, key *Object) *Object {
 func (vm *VM) ToNumber(v Value) float64 {
 	o := v.o
 	if o == nil {
+		return math.NaN()
+	}
+	if o == numberObject {
 		return v.n
 	}
 	switch o.kind {
-	case kindUndefined:
-		return math.NaN()
 	case kindNull, kindFalse:
 		return 0
 	case kindTrue:
@@ -98,21 +99,21 @@ func (vm *VM) ToNumber(v Value) float64 {
 
 // ToNumeric implements ToNumeric: the result is a number or a BigInt.
 func (vm *VM) ToNumeric(v Value) Value {
-	if v.o == nil {
+	if v.o == numberObject {
 		return v
 	}
-	if v.o.kind >= kindFirstObject {
+	if v.IsObject() {
 		v = vm.ToPrimitive(v, HintNumber)
 	}
 	if v.o != nil && v.o.kind == kindBigInt {
 		return v
 	}
-	return Value{n: vm.ToNumber(v)}
+	return Number(vm.ToNumber(v))
 }
 
 // ToIntegerOrInfinity implements ToIntegerOrInfinity.
 func (vm *VM) ToIntegerOrInfinity(v Value) float64 {
-	if v.o == nil {
+	if v.o == numberObject {
 		return numconv.ToIntegerOrInfinity(v.n)
 	}
 	return numconv.ToIntegerOrInfinity(vm.ToNumber(v))
@@ -120,7 +121,7 @@ func (vm *VM) ToIntegerOrInfinity(v Value) float64 {
 
 // ToInt32 implements ToInt32.
 func (vm *VM) ToInt32(v Value) int32 {
-	if v.o == nil {
+	if v.o == numberObject {
 		return numconv.ToInt32(v.n)
 	}
 	return numconv.ToInt32(vm.ToNumber(v))
@@ -128,7 +129,7 @@ func (vm *VM) ToInt32(v Value) int32 {
 
 // ToUint32 implements ToUint32.
 func (vm *VM) ToUint32(v Value) uint32 {
-	if v.o == nil {
+	if v.o == numberObject {
 		return numconv.ToUint32(v.n)
 	}
 	return numconv.ToUint32(vm.ToNumber(v))
@@ -138,13 +139,14 @@ func (vm *VM) ToUint32(v Value) uint32 {
 func (vm *VM) ToString(v Value) string {
 	o := v.o
 	if o == nil {
+		return "undefined"
+	}
+	if o == numberObject {
 		return numconv.NumberToString(v.n)
 	}
 	switch o.kind {
 	case kindString:
 		return o.Str()
-	case kindUndefined:
-		return "undefined"
 	case kindNull:
 		return "null"
 	case kindFalse:
@@ -174,13 +176,16 @@ func (vm *VM) ToObject(v Value) *Object {
 		return o
 	}
 	if o == nil {
+		vm.ThrowTypeError("cannot convert undefined or null to object")
+	}
+	if o == numberObject {
 		w := vm.NewObject(vm.Intrinsic(IntrinsicNumberPrototype))
 		w.class = classNumber
 		w.ext = v.n
 		return w
 	}
 	switch o.kind {
-	case kindUndefined, kindNull:
+	case kindNull:
 		vm.ThrowTypeError("cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicBooleanPrototype))
@@ -222,13 +227,16 @@ func (vm *VM) RequireObjectCoercible(v Value, what string) {
 // ToBigInt implements ToBigInt. The result is a BigInt.
 func (vm *VM) ToBigInt(v Value) Value {
 	p := vm.ToPrimitive(v, HintNumber)
-	if p.o == nil {
+	if p.o == numberObject {
 		vm.ThrowTypeError("cannot convert " + numconv.NumberToString(p.n) + " to a BigInt")
+	}
+	if p.IsUndefined() {
+		vm.ThrowTypeError("cannot convert undefined to a BigInt")
 	}
 	switch p.o.kind {
 	case kindBigInt:
 		return p
-	case kindUndefined, kindNull:
+	case kindNull:
 		vm.ThrowTypeError("cannot convert " + vm.ToString(p) + " to a BigInt")
 	case kindFalse:
 		return BigIntFromInt64(0)
@@ -249,7 +257,7 @@ func (vm *VM) ToBigInt(v Value) Value {
 // looseEquals implements IsLooselyEqual.
 func (vm *VM) looseEquals(a, b Value) bool {
 	for {
-		if a.o == nil && b.o == nil {
+		if a.o == numberObject && b.o == numberObject {
 			return a.n == b.n
 		}
 		if a.o != nil && b.o != nil && a.o.kind == b.o.kind {
@@ -260,7 +268,7 @@ func (vm *VM) looseEquals(a, b Value) bool {
 			// B.3.6.2: an object with [[IsHTMLDDA]] equals undefined and null.
 			return an && bn || a.isHTMLDDA() || b.isHTMLDDA()
 		}
-		ak, bk := kindNumber(a), kindNumber(b)
+		ak, bk := kindOf(a), kindOf(b)
 		switch {
 		case a.IsObject() && b.IsObject():
 			return a.o == b.o
@@ -269,9 +277,9 @@ func (vm *VM) looseEquals(a, b Value) bool {
 		case b.IsObject():
 			b = vm.ToPrimitive(b, HintDefault)
 		case a.IsBool():
-			a = Value{n: vm.ToNumber(a)}
+			a = Number(vm.ToNumber(a))
 		case b.IsBool():
-			b = Value{n: vm.ToNumber(b)}
+			b = Number(vm.ToNumber(b))
 		case ak == kindSymbol || bk == kindSymbol:
 			return false
 		case ak == kindBigInt || bk == kindBigInt:
@@ -283,10 +291,10 @@ func (vm *VM) looseEquals(a, b Value) bool {
 	}
 }
 
-// kindNumber returns the kind of v, with kindUndefined standing for a number never being asked about.
-func kindNumber(v Value) kind {
+// kindOf returns the kind of v.
+func kindOf(v Value) kind {
 	if v.o == nil {
-		return kindObject
+		return kindUndefined
 	}
 	return v.o.kind
 }
@@ -306,15 +314,18 @@ func compareBigIntMixed(a, b Value) cmpResult {
 		if y, ok := b.BigInt64(); ok {
 			return compareInt64s(x, y)
 		}
-		if b.o == nil {
+		if b.o == numberObject {
 			return compareInt64Number(x, b.n)
 		}
-	} else if y, ok := b.BigInt64(); ok && a.o == nil {
+	} else if y, ok := b.BigInt64(); ok && a.o == numberObject {
 		return compareInt64Number(y, a.n).reverse()
 	}
 	toBig := func(v Value) (*big.Int, float64, bool) {
-		if v.o == nil {
+		if v.o == numberObject {
 			return nil, v.n, true
+		}
+		if v.o == nil {
+			return nil, 0, false
 		}
 		switch v.o.kind {
 		case kindBigInt:
@@ -358,7 +369,7 @@ func compareBigFloat(x *big.Int, f float64) cmpResult {
 
 // compare implements IsLessThan for a and b, converting a first when leftFirst is set.
 func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
-	if a.o == nil && b.o == nil {
+	if a.o == numberObject && b.o == numberObject {
 		return compareNumbers(a.n, b.n)
 	}
 	if leftFirst {
@@ -371,12 +382,12 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 	if a.IsString() && b.IsString() {
 		return cmpResult(wtf8.Compare(a.o.Str(), b.o.Str()) + 1)
 	}
-	if kindNumber(a) == kindBigInt || kindNumber(b) == kindBigInt {
-		if a.o != nil && a.o.kind != kindBigInt && a.o.kind != kindString {
-			a = Value{n: vm.ToNumber(a)}
+	if kindOf(a) == kindBigInt || kindOf(b) == kindBigInt {
+		if !a.IsNumber() && !a.IsBigInt() && !a.IsString() {
+			a = Number(vm.ToNumber(a))
 		}
-		if b.o != nil && b.o.kind != kindBigInt && b.o.kind != kindString {
-			b = Value{n: vm.ToNumber(b)}
+		if !b.IsNumber() && !b.IsBigInt() && !b.IsString() {
+			b = Number(vm.ToNumber(b))
 		}
 		return compareBigIntMixed(a, b)
 	}
@@ -422,10 +433,10 @@ func (vm *VM) addValues(a, b Value) Value {
 		return vm.concat(a, x, b, y)
 	}
 	a, b = vm.ToNumeric(a), vm.ToNumeric(b)
-	if a.o == nil && b.o == nil {
-		return Value{n: a.n + b.n}
+	if a.o == numberObject && b.o == numberObject {
+		return Number(a.n + b.n)
 	}
-	if a.o == nil || b.o == nil {
+	if a.o == numberObject || b.o == numberObject {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
 	return vm.addBigInts(a, b)

@@ -423,9 +423,6 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 		}
 		if mode == zipLongest {
 			h.padding = make([]engine.Value, len(iters))
-			for i := range h.padding {
-				h.padding[i] = engine.Undefined
-			}
 		}
 		return h
 	}

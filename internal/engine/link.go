@@ -106,7 +106,7 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 	for i, c := range f.Consts {
 		switch c.Kind {
 		case bytecode.ConstNumber:
-			p.consts[i] = Value{n: c.Num}
+			p.consts[i] = Number(c.Num)
 		case bytecode.ConstString:
 			p.consts[i] = Value{o: vm.Intern(c.Str)}
 		case bytecode.ConstBigInt:
@@ -136,8 +136,6 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		for j, s := range t.Cooked {
 			if t.HasCooked[j] {
 				site.cooked[j] = vm.NewString(s)
-			} else {
-				site.cooked[j] = Undefined
 			}
 		}
 		for j, s := range t.Raw {

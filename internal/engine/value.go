@@ -16,6 +16,7 @@ type kind uint8
 
 const (
 	kindUndefined kind = iota
+	kindNumber
 	kindNull
 	kindFalse
 	kindTrue
@@ -40,29 +41,28 @@ const (
 // Every kind from kindFirstObject on is an object in the JavaScript sense.
 const kindFirstObject = kindHTMLDDA
 
-// Value is a JavaScript value.
-//
-// A nil o means the number n. An o of bigInt64Object means the BigInt whose two's complement
-// bits n holds. Every other value is identified by o, which makes a [Value] two words and keeps
-// numbers and BigInts that fit in an int64 off the heap.
+// Value is a JavaScript value. The zero value is undefined.
 type Value struct {
 	n float64
+
+	// o is nil for undefined, numberObject for the number n, bigInt64Object for the BigInt
+	// whose two's complement bits n holds, and the object for anything else.
 	o *Object
 }
 
 var (
-	undefinedObject = &Object{kind: kindUndefined}
-	nullObject      = &Object{kind: kindNull}
-	falseObject     = &Object{kind: kindFalse}
-	trueObject      = &Object{kind: kindTrue}
-	holeObject      = &Object{kind: kindHole}
+	numberObject = &Object{kind: kindNumber}
+	nullObject   = &Object{kind: kindNull}
+	falseObject  = &Object{kind: kindFalse}
+	trueObject   = &Object{kind: kindTrue}
+	holeObject   = &Object{kind: kindHole}
 
 	// bigInt64Object is the o of every BigInt that fits in an int64. Every other BigInt is an
 	// object of its own holding a *big.Int, so each BigInt has exactly one representation.
 	bigInt64Object = &Object{kind: kindBigInt}
 
 	// Undefined is the value undefined.
-	Undefined = Value{o: undefinedObject}
+	Undefined Value
 
 	// Null is the value null.
 	Null = Value{o: nullObject}
@@ -78,7 +78,10 @@ var (
 
 // Number returns the number n as a value.
 func Number(n float64) Value {
-	return Value{n: n}
+	return Value{
+		n: n,
+		o: numberObject,
+	}
 }
 
 // BigIntFromInt64 returns the BigInt i.
@@ -102,9 +105,12 @@ func ObjectValue(o *Object) Value {
 	return Value{o: o}
 }
 
-// Object returns the object, string, symbol or BigInt that v is. It returns nil for a number,
-// and the same object for every BigInt that fits in an int64.
+// Object returns the object, string, symbol or BigInt that v is. It returns nil for a number
+// or undefined, and the same object for every BigInt that fits in an int64.
 func (v Value) Object() *Object {
+	if v.IsNumber() {
+		return nil
+	}
 	return v.o
 }
 
@@ -115,12 +121,12 @@ func (v Value) Number() float64 {
 
 // IsNumber reports whether v is a number.
 func (v Value) IsNumber() bool {
-	return v.o == nil
+	return v.o == numberObject
 }
 
 // IsUndefined reports whether v is undefined.
 func (v Value) IsUndefined() bool {
-	return v.o == undefinedObject
+	return v.o == nil
 }
 
 // IsNull reports whether v is null.
@@ -171,7 +177,7 @@ func (v Value) IsObject() bool {
 
 // IsNullish reports whether v is undefined or null.
 func (v Value) IsNullish() bool {
-	return v.o == undefinedObject || v.o == nullObject
+	return v.o == nil || v.o == nullObject
 }
 
 func (v Value) isHTMLDDA() bool {
@@ -191,10 +197,13 @@ func (v Value) IsCallable() bool {
 func ToBoolean(v Value) bool {
 	o := v.o
 	if o == nil {
+		return false
+	}
+	if o == numberObject {
 		return v.n != 0 && v.n == v.n
 	}
 	switch o.kind {
-	case kindUndefined, kindNull, kindFalse, kindHTMLDDA:
+	case kindNull, kindFalse, kindHTMLDDA:
 		return false
 	case kindString:
 		return o.str != ""
@@ -209,10 +218,13 @@ func ToBoolean(v Value) bool {
 func typeOf(v Value) string {
 	o := v.o
 	if o == nil {
+		return "undefined"
+	}
+	if o == numberObject {
 		return "number"
 	}
 	switch o.kind {
-	case kindUndefined, kindHTMLDDA:
+	case kindHTMLDDA:
 		return "undefined"
 	case kindFalse, kindTrue:
 		return "boolean"
@@ -231,13 +243,13 @@ func typeOf(v Value) string {
 
 // IsStrictlyEqual implements IsStrictlyEqual.
 func IsStrictlyEqual(a, b Value) bool {
-	if a.o == nil || b.o == nil {
+	if a.o == numberObject || b.o == numberObject {
 		return a.o == b.o && a.n == b.n
 	}
 	if a.o == b.o {
 		return a.o != bigInt64Object || math.Float64bits(a.n) == math.Float64bits(b.n)
 	}
-	if a.o.kind != b.o.kind {
+	if a.o == nil || b.o == nil || a.o.kind != b.o.kind {
 		return false
 	}
 	switch a.o.kind {
@@ -252,7 +264,7 @@ func IsStrictlyEqual(a, b Value) bool {
 
 // SameValueZero implements SameValueZero.
 func SameValueZero(a, b Value) bool {
-	if a.o == nil && b.o == nil {
+	if a.o == numberObject && b.o == numberObject {
 		return a.n == b.n || (a.n != a.n && b.n != b.n)
 	}
 	return IsStrictlyEqual(a, b)
@@ -260,7 +272,7 @@ func SameValueZero(a, b Value) bool {
 
 // SameValue implements SameValue.
 func SameValue(a, b Value) bool {
-	if a.o == nil && b.o == nil {
+	if a.o == numberObject && b.o == numberObject {
 		if a.n != a.n {
 			return b.n != b.n
 		}

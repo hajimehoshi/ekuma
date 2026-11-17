@@ -268,14 +268,14 @@ func (vm *VM) initGlobalLex(key *Object, val Value) {
 
 // getValue returns v[k], or the getter to call.
 func (vm *VM) getValue(v, k Value) (Value, *Object) {
-	if ko := k.o; ko == nil {
+	if ko := k.o; ko == numberObject {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
 				return vm.typedArrayGet(o, i), nil
 			}
 			return vm.getIndex(v, i)
 		}
-	} else if ko.kind == kindString {
+	} else if ko != nil && ko.kind == kindString {
 		// An element in elems is an own data property, whatever object v is.
 		if i, ok := ko.knownArrayIndex(); ok {
 			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) {
@@ -298,14 +298,14 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 
 // setValue stores v[k] = val. The results are those of setNamed.
 func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
-	if ko := k.o; ko == nil {
+	if ko := k.o; ko == numberObject {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
 				return nil, vm.typedArraySet(o, i, val)
 			}
 			return vm.setIndex(v, i, val)
 		}
-	} else if ko.kind == kindString {
+	} else if ko != nil && ko.kind == kindString {
 		// An element in elems is a writable own data property, whatever object v is.
 		if i, ok := ko.knownArrayIndex(); ok {
 			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
@@ -497,35 +497,35 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	}
 	x = vm.ToNumeric(x)
 	y = vm.ToNumeric(y)
-	if x.o == nil && y.o == nil {
+	if x.o == numberObject && y.o == numberObject {
 		a, b := x.n, y.n
 		switch op {
 		case bytecode.OpSub:
-			return Value{n: a - b}
+			return Number(a - b)
 		case bytecode.OpMul:
-			return Value{n: a * b}
+			return Number(a * b)
 		case bytecode.OpDiv:
-			return Value{n: a / b}
+			return Number(a / b)
 		case bytecode.OpMod:
-			return Value{n: math.Mod(a, b)}
+			return Number(math.Mod(a, b))
 		case bytecode.OpExp:
-			return Value{n: NumberPow(a, b)}
+			return Number(NumberPow(a, b))
 		case bytecode.OpBitOr:
-			return Value{n: float64(numconv.ToInt32(a) | numconv.ToInt32(b))}
+			return Number(float64(numconv.ToInt32(a) | numconv.ToInt32(b)))
 		case bytecode.OpBitAnd:
-			return Value{n: float64(numconv.ToInt32(a) & numconv.ToInt32(b))}
+			return Number(float64(numconv.ToInt32(a) & numconv.ToInt32(b)))
 		case bytecode.OpBitXor:
-			return Value{n: float64(numconv.ToInt32(a) ^ numconv.ToInt32(b))}
+			return Number(float64(numconv.ToInt32(a) ^ numconv.ToInt32(b)))
 		case bytecode.OpShl:
-			return Value{n: float64(numconv.ToInt32(a) << (numconv.ToUint32(b) & 31))}
+			return Number(float64(numconv.ToInt32(a) << (numconv.ToUint32(b) & 31)))
 		case bytecode.OpShr:
-			return Value{n: float64(numconv.ToInt32(a) >> (numconv.ToUint32(b) & 31))}
+			return Number(float64(numconv.ToInt32(a) >> (numconv.ToUint32(b) & 31)))
 		case bytecode.OpUShr:
-			return Value{n: float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31))}
+			return Number(float64(numconv.ToUint32(a) >> (numconv.ToUint32(b) & 31)))
 		}
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	if x.o == nil || y.o == nil {
+	if x.o == numberObject || y.o == numberObject {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
 	// An operation on huge BigInts cannot stop once it starts.
@@ -605,8 +605,8 @@ func (vm *VM) negate(x Value) Value {
 		return BigIntFromInt64(-i)
 	}
 	x = vm.ToNumeric(x)
-	if x.o == nil {
-		return Value{n: -x.n}
+	if x.o == numberObject {
+		return Number(-x.n)
 	}
 	return vm.NewBigInt(new(big.Int).Neg(x.BigInt()))
 }
@@ -616,8 +616,8 @@ func (vm *VM) bitNot(x Value) Value {
 		return BigIntFromInt64(^i)
 	}
 	x = vm.ToNumeric(x)
-	if x.o == nil {
-		return Value{n: float64(^numconv.ToInt32(x.n))}
+	if x.o == numberObject {
+		return Number(float64(^numconv.ToInt32(x.n)))
 	}
 	return vm.NewBigInt(new(big.Int).Not(x.BigInt()))
 }
@@ -630,8 +630,8 @@ func (vm *VM) step(x Value, d int64) Value {
 		}
 	}
 	x = vm.ToNumeric(x)
-	if x.o == nil {
-		return Value{n: x.n + float64(d)}
+	if x.o == numberObject {
+		return Number(x.n + float64(d))
 	}
 	return vm.addBigInts(x, BigIntFromInt64(d))
 }

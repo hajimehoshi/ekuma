@@ -873,11 +873,12 @@ func (vm *VM) NewError(kind ErrorKind, msg string) Value {
 func (vm *VM) DisplayString(v Value) string {
 	o := v.o
 	if o == nil {
+		return "undefined"
+	}
+	if o == numberObject {
 		return numconv.NumberToString(v.n)
 	}
 	switch o.kind {
-	case kindUndefined:
-		return "undefined"
 	case kindNull:
 		return "null"
 	case kindFalse:
