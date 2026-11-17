@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"weak"
 )
 
 // This file holds the Atomics operations on shared data blocks and the waiters of Atomics.wait
@@ -21,8 +22,10 @@ import (
 // accesses are free of data races.
 //
 // The waiter lists are stored on their data block, so that a waiter that nothing can notify any
-// more is collected with its block. A waiter of Atomics.waitAsync with a finite timeout is also
-// held by its VM until it times out, as its promise is then resolved.
+// more is collected with its block. The lists refer to their waiters weakly, and the VM of a
+// waiter of Atomics.waitAsync holds it until its promise is resolved, so that a VM that is
+// dropped while waiting is collected even when its block lives on. Such a waiter leaves its
+// list without being notified.
 //
 // A waiter of Atomics.waitAsync that another agent notifies is posted to the mailbox of its VM,
 // which resolves its promise on its own goroutine: at its next poll for an interruption, when
@@ -255,7 +258,10 @@ func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) 
 	if !async {
 		return vm.suspend(w, timeout), false
 	}
-	vm.asyncWaiters++
+	if vm.asyncWaiters == nil {
+		vm.asyncWaiters = map[*waiter]struct{}{}
+	}
+	vm.asyncWaiters[w] = struct{}{}
 	// A timeout that a time.Duration cannot hold, about 292 years, never expires.
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
 		vm.timedWaiters.add(w, time.Now().Add(time.Duration(ns)))
@@ -273,12 +279,18 @@ func (blk *SharedDataBlock) compareAndAdd(w *waiter, t ElementType, v uint64, ad
 	}
 	if add {
 		if blk.waiterLists == nil {
-			blk.waiterLists = map[int][]*waiter{}
+			blk.waiterLists = map[int][]weak.Pointer[waiter]{}
 		}
-		blk.waiterLists[w.byteIndex] = append(blk.waiterLists[w.byteIndex], w)
+		l := slices.DeleteFunc(blk.waiterLists[w.byteIndex], isCollected)
+		blk.waiterLists[w.byteIndex] = append(l, weak.Make(w))
 		w.listed = true
 	}
 	return true
+}
+
+// isCollected reports whether the waiter that p refers to was collected.
+func isCollected(p weak.Pointer[waiter]) bool {
+	return p.Value() == nil
 }
 
 // unlist removes w from its waiter list and reports whether it was there.
@@ -290,7 +302,7 @@ func (blk *SharedDataBlock) unlist(w *waiter) bool {
 	}
 	w.listed = false
 	l := blk.waiterLists[w.byteIndex]
-	if i := slices.Index(l, w); i >= 0 {
+	if i := slices.Index(l, weak.Make(w)); i >= 0 {
 		l = slices.Delete(l, i, i+1)
 	}
 	if len(l) == 0 {
@@ -307,17 +319,13 @@ func (blk *SharedDataBlock) removeWaiters(byteIndex int, count float64) []*waite
 	blk.mu.Lock()
 	defer blk.mu.Unlock()
 	l := blk.waiterLists[byteIndex]
-	n := len(l)
-	if count < float64(n) {
-		n = int(count)
-	}
-	if n == 0 {
-		return nil
-	}
-	ws := make([]*waiter, n)
-	copy(ws, l)
-	for _, w := range ws {
-		w.listed = false
+	var ws []*waiter
+	n := 0
+	for ; n < len(l) && float64(len(ws)) < count; n++ {
+		if w := l[n].Value(); w != nil {
+			w.listed = false
+			ws = append(ws, w)
+		}
 	}
 	m := copy(l, l[n:])
 	clear(l[m:])
@@ -389,7 +397,7 @@ func (vm *VM) post(w *waiter) {
 // resolveWaiter implements EnqueueResolveInAgentJob for the asynchronous waiter w of vm, which is
 // no longer in its list.
 func (vm *VM) resolveWaiter(w *waiter, result string) {
-	vm.asyncWaiters--
+	delete(vm.asyncWaiters, w)
 	vm.enqueueResolveInAgentJob(w.promise, vm.NewString(result))
 }
 
@@ -418,7 +426,7 @@ func (vm *VM) AwaitJobs() bool {
 		if vm.finalizationPending() || vm.mailbox.count.Load() != 0 {
 			return true
 		}
-		if vm.asyncWaiters == 0 {
+		if len(vm.asyncWaiters) == 0 {
 			return false
 		}
 		if vm.awaitWake() {

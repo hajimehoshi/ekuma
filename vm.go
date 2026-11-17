@@ -118,8 +118,8 @@ func (vm *VM) initIfNeeded() {
 //	| map[string]any         | new object             |
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
-// ValueOf panics when x is not one of the expected types or is a nil pointer.
-// It panics for a string, object or function of another VM,
+// ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil Func.
+// It panics for a string, symbol, object or function of another VM,
 // including values nested in arrays and maps.
 //
 // The objects that ValueOf creates belong to the initial realm.
@@ -192,6 +192,9 @@ func (vm *VM) acceptValue(v Value) engine.Value {
 func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 	switch x := x.(type) {
 	case Func:
+		if x == nil {
+			panic("ekuma: ValueOf: nil Func")
+		}
 		return vm.funcOf(r, "", x)
 	case *SharedDataBlock:
 		if x == nil || x.b == nil {
@@ -231,7 +234,7 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 type Func func(this Value, args []Value) (any, error)
 
 // FuncOf returns a JavaScript function of the initial realm that calls f. name is the name
-// of the function, which stack traces show.
+// of the function, which stack traces show. FuncOf panics when f is nil.
 func (vm *VM) FuncOf(name string, f Func) Value {
 	vm.initIfNeeded()
 	return vm.initialRealm.FuncOf(name, f)
@@ -239,6 +242,9 @@ func (vm *VM) FuncOf(name string, f Func) Value {
 
 // funcOf implements [Realm.FuncOf] for the realm r, which is the current realm.
 func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
+	if f == nil {
+		panic("ekuma: FuncOf: nil Func")
+	}
 	return vm.e.NewFunction(name, func(_ *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := len(vm.args)
 		defer func() {

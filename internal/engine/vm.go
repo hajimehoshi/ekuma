@@ -293,6 +293,21 @@ type nativeCall struct {
 	isNew bool
 }
 
+// checkNatives throws a RangeError when maxNatives calls of native functions are running. It
+// precedes [VM.pushNative].
+func (vm *VM) checkNatives() {
+	if len(vm.natives) >= maxNatives {
+		vm.throwNativeOverflow()
+	}
+}
+
+// throwNativeOverflow throws the RangeError of too many nested calls of native functions.
+//
+//go:noinline
+func (vm *VM) throwNativeOverflow() {
+	vm.ThrowRangeError("maximum call stack size exceeded")
+}
+
 // pushNative records the start of the call of the native function f.
 func (vm *VM) pushNative(f *Object, this Value, isNew bool) {
 	vm.natives = append(vm.natives, nativeCall{
@@ -396,8 +411,10 @@ type VM struct {
 	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout.
 	timedWaiters timedWaiters
 
-	// asyncWaiters is the number of waiters of Atomics.waitAsync whose promise is not resolved.
-	asyncWaiters int
+	// asyncWaiters are the waiters of Atomics.waitAsync whose promise is not resolved. The waiter
+	// lists of the data blocks refer to them weakly, so that a VM that is dropped while waiting
+	// is collected.
+	asyncWaiters map[*waiter]struct{}
 
 	// mailbox receives the notifications of other agents.
 	mailbox *mailbox
@@ -436,6 +453,10 @@ type VM struct {
 	// indexStrings holds the strings of the array indices below indexStringCount that were
 	// made, by index, and nil for the others.
 	indexStrings []*Object
+
+	// symbolShape is the shape of the symbols of the VM. It records the VM that they belong
+	// to, and no lookup starts from it.
+	symbolShape *shape
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

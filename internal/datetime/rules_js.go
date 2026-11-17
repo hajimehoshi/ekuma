@@ -182,8 +182,9 @@ type loadedZone struct {
 	ok          bool
 }
 
-// loadedZones caches the results of loadZone by the lower-case name, as the results must not
-// change while a program runs.
+// loadedZones caches the time zones that loadZone found by the lower-case name, as the results
+// must not change while a program runs. Names that were not found are not cached, so that the
+// cache is bounded by the size of the time zone database.
 var loadedZones sync.Map
 
 func loadZone(name string) (string, string, Zone, bool) {
@@ -193,6 +194,9 @@ func loadZone(name string) (string, string, Zone, bool) {
 		return l.id, l.primary, l.zone, l.ok
 	}
 	l := findZone(name)
+	if !l.ok {
+		return "", "", nil, false
+	}
 	v, _ := loadedZones.LoadOrStore(key, l)
 	l = v.(loadedZone)
 	return l.id, l.primary, l.zone, l.ok

@@ -100,7 +100,7 @@ func TestForeignValueEntry(t *testing.T) {
 }
 
 func TestForeignValueKinds(t *testing.T) {
-	for _, src := range []string{`"key"`, `(() => {})`, `new SharedArrayBuffer(4)`} {
+	for _, src := range []string{`"key"`, `Symbol("key")`, `(() => {})`, `new SharedArrayBuffer(4)`} {
 		t.Run(src, func(t *testing.T) {
 			var a, b ekuma.VM
 			v, err := runScript(t.Context(), &a, "", src)
@@ -123,11 +123,11 @@ func TestForeignValueKinds(t *testing.T) {
 
 func TestVMIndependentValues(t *testing.T) {
 	var a, b ekuma.VM
-	values, err := runScript(t.Context(), &a, "", `[undefined, null, true, 42, 3n, 2n ** 100n, Symbol("key")]`)
+	values, err := runScript(t.Context(), &a, "", `[undefined, null, true, 42, 3n, 2n ** 100n]`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i := range 7 {
+	for i := range 6 {
 		v, err := values.Index(i)
 		if err != nil {
 			t.Fatal(err)
@@ -142,6 +142,50 @@ func TestVMIndependentValues(t *testing.T) {
 		if !got.Equal(v) {
 			t.Errorf("value %d did not survive transfer", i)
 		}
+	}
+}
+
+// TestValueIntOutOfRange checks the int of the numbers that an int cannot hold.
+func TestValueIntOutOfRange(t *testing.T) {
+	var vm ekuma.VM
+	for _, tt := range []struct {
+		x    float64
+		want int
+	}{
+		{
+			x:    math.NaN(),
+			want: 0,
+		},
+		{
+			x:    math.Inf(1),
+			want: math.MaxInt,
+		},
+		{
+			x:    -1e300,
+			want: math.MinInt,
+		},
+	} {
+		if got := vm.ValueOf(tt.x).Int(); got != tt.want {
+			t.Errorf("Int() of %v = %d, want %d", tt.x, got, tt.want)
+		}
+	}
+}
+
+// TestNilFunc checks that a nil Func panics when the function is created.
+func TestNilFunc(t *testing.T) {
+	for name, f := range map[string]func(vm *ekuma.VM){
+		"ValueOf": func(vm *ekuma.VM) { vm.ValueOf(ekuma.Func(nil)) },
+		"FuncOf":  func(vm *ekuma.VM) { vm.FuncOf("f", nil) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			var vm ekuma.VM
+			defer func() {
+				if recover() == nil {
+					t.Error("a nil Func was accepted without a panic")
+				}
+			}()
+			f(&vm)
+		})
 	}
 }
 
@@ -219,7 +263,7 @@ func TestValueString(t *testing.T) {
 		{in: ekuma.Undefined, want: "<undefined>"},
 		{in: ekuma.Null, want: "<null>"},
 		{in: vm.Global(), want: "<object>"},
-		{in: vm.FuncOf("f", nil), want: "<function>"},
+		{in: vm.FuncOf("f", func(this ekuma.Value, args []ekuma.Value) (any, error) { return nil, nil }), want: "<function>"},
 	}
 	for _, tt := range tests {
 		if got := tt.in.String(); got != tt.want {
@@ -2061,6 +2105,28 @@ func TestModuleLinkRetry(t *testing.T) {
 	var ex *ekuma.Error
 	if err := bad.Link(); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
 		t.Errorf("got %v, want a SyntaxError", err)
+	}
+}
+
+// TestModuleLoaderReentry checks that linking a module from inside the loader that loads it
+// is an error rather than a recursion.
+func TestModuleLoaderReentry(t *testing.T) {
+	var vm ekuma.VM
+	var reentryErr error
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		reentryErr = req.Referrer.Link()
+		return vm.ParseModule(req.Specifier, `export const v = 1;`)
+	})
+	m, err := vm.ParseModule("main", `import { v } from "dep";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Link(); err != nil {
+		t.Errorf("Link: %v", err)
+	}
+	var ex *ekuma.Error
+	if !errors.As(reentryErr, &ex) || !isInstance(t, &vm, ex.Value, "TypeError") {
+		t.Errorf("got %v from the re-entrant Link, want a TypeError", reentryErr)
 	}
 }
 

@@ -21,8 +21,9 @@ func (vm *VM) ParseScript(name, src string) (*Script, error) {
 	return vm.initialRealm.ParseScript(name, src)
 }
 
-// Evaluate evaluates s, runs the pending jobs, and returns the value of the last expression
-// statement of s. s may be evaluated more than once.
+// Evaluate evaluates s, runs the pending jobs, and returns the completion value of s. s may be
+// evaluated more than once, but evaluating it again throws a SyntaxError when s declares a
+// top-level let, const or class.
 //
 // The error is an [*Error] when the script throws. When ctx is done, the script stops at its
 // next loop iteration or call, and the error is the cause of ctx.

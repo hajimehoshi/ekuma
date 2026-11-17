@@ -193,6 +193,10 @@ type FinalizationRegistry struct {
 	// cells are the registrations by their identifiers.
 	cells map[uint64]*finalizationCell
 
+	// cleanups are the cleanups of the targets of cells. They are stopped when the registry is
+	// collected, as nothing can run its callback any more.
+	cleanups *cellCleanups
+
 	// tokens maps an unregister token to the identifiers of its cells.
 	tokens map[weak.Pointer[Object]][]uint64
 
@@ -204,7 +208,19 @@ type finalizationCell struct {
 	held     Value
 	token    weak.Pointer[Object]
 	hasToken bool
-	cleanup  runtime.Cleanup
+}
+
+// cellCleanups holds the cleanups of the targets of the cells of a FinalizationRegistry by the
+// identifiers of the cells. It refers to nothing else, so that it can outlive its registry.
+type cellCleanups struct {
+	m map[uint64]runtime.Cleanup
+}
+
+// stopAll stops the cleanups of the cells of a registry that was collected.
+func (c *cellCleanups) stopAll() {
+	for _, cleanup := range c.m {
+		cleanup.Stop()
+	}
 }
 
 // finalizationQueue holds the cells whose target was collected. The cleanup goroutine of the
@@ -251,8 +267,12 @@ func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Ob
 		callback: callback,
 		queue:    vm.weak.finalization,
 		cells:    map[uint64]*finalizationCell{},
+		cleanups: &cellCleanups{
+			m: map[uint64]runtime.Cleanup{},
+		},
 	}
 	r.self = weak.Make(r)
+	runtime.AddCleanup(r, (*cellCleanups).stopAll, r.cleanups)
 	o := vm.NewObject(proto)
 	o.class = classFinalizationRegistry
 	o.ext = r
@@ -284,7 +304,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 		r.tokens[c.token] = append(r.tokens[c.token], id)
 	}
 	q := r.queue
-	c.cleanup = runtime.AddCleanup(target.o, func(d deadCell) {
+	r.cleanups.m[id] = runtime.AddCleanup(target.o, func(d deadCell) {
 		q.push(d)
 	}, deadCell{
 		registry: r.self,
@@ -303,8 +323,9 @@ func (r *FinalizationRegistry) Unregister(token Value) bool {
 	}
 	delete(r.tokens, w)
 	for _, id := range ids {
-		if c, ok := r.cells[id]; ok {
-			c.cleanup.Stop()
+		if _, ok := r.cells[id]; ok {
+			r.cleanups.m[id].Stop()
+			delete(r.cleanups.m, id)
 			delete(r.cells, id)
 		}
 	}
@@ -314,6 +335,7 @@ func (r *FinalizationRegistry) Unregister(token Value) bool {
 // remove removes the cell id, whose target was collected.
 func (r *FinalizationRegistry) remove(id uint64, c *finalizationCell) {
 	delete(r.cells, id)
+	delete(r.cleanups.m, id)
 	if !c.hasToken {
 		return
 	}

@@ -57,8 +57,8 @@ func (t Type) String() string {
 // Values cannot be compared with ==. [Value.Equal] compares the way the JavaScript operator ===
 // does.
 //
-// Strings, objects and functions belong to their creating VM and may pass between its
-// realms. Passing them into another VM panics, including through
+// Strings, symbols, objects and functions belong to their creating VM and may pass between
+// its realms. Passing them into another VM panics, including through
 // host callback results and exceptions. Other primitives may pass between VMs.
 // To share SharedArrayBuffer memory, pass its [SharedDataBlock] to [VM.ValueOf].
 type Value struct {
@@ -198,14 +198,23 @@ func (v Value) Float() float64 {
 	return v.n
 }
 
-// Int returns the number v truncated to an int. It panics with a [*ValueError] when v is not
-// a number.
+// Int returns the number v truncated toward zero to an int. NaN gives 0, and a number below or
+// above the range of an int gives [math.MinInt] or [math.MaxInt]. It panics with a [*ValueError]
+// when v is not a number.
 func (v Value) Int() int {
 	if v.o != numberTag {
 		panic(&ValueError{
 			Method: "Value.Int",
 			Type:   v.Type(),
 		})
+	}
+	switch {
+	case v.n != v.n:
+		return 0
+	case v.n >= math.MaxInt:
+		return math.MaxInt
+	case v.n <= math.MinInt:
+		return math.MinInt
 	}
 	return int(v.n)
 }
@@ -244,9 +253,9 @@ func (v Value) Equal(w Value) bool {
 	return engine.IsStrictlyEqual(v.engine(), w.engine())
 }
 
-// vm returns the [VM] that the value belongs to. Only objects, functions and strings have one.
+// vm returns the [VM] that the object, function or string v belongs to.
 func (v Value) vm(method string) (*VM, error) {
-	if v.o != nil && v.o != numberTag {
+	if v.o != nil && v.o != numberTag && v.Type() != TypeSymbol {
 		if e := v.o.VM(); e != nil {
 			return e.HostDefined().(*VM), nil
 		}

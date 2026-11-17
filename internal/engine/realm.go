@@ -27,6 +27,7 @@ func NewVM(hostDefined any) *VM {
 		thrown:         Undefined,
 		mailbox:        newMailbox(),
 	}
+	vm.symbolShape = vm.newShape(nil)
 	vm.curRealm = &realm{}
 	vm.referrer = &scriptOrModule{realm: vm.curRealm}
 	vm.initRealmPrototypes()
@@ -146,8 +147,9 @@ func (vm *VM) InRealm(r *Realm, f func()) {
 // NewSymbol returns a new symbol. desc is its description when hasDesc is set.
 func (vm *VM) NewSymbol(desc string, hasDesc bool) *Object {
 	s := &Object{
-		kind: kindSymbol,
-		str:  desc,
+		kind:  kindSymbol,
+		shape: vm.symbolShape,
+		str:   desc,
 	}
 	if hasDesc {
 		s.ext = true

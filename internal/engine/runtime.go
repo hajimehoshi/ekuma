@@ -375,19 +375,23 @@ func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
 
 // instanceOf implements InstanceofOperator.
 func (vm *VM) instanceOf(v, c Value) bool {
-	if !c.IsObject() {
-		vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
-	}
-	if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
-		if m == vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
+	for {
+		if !c.IsObject() {
+			vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
+		}
+		if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
+			if m != vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
+				return ToBoolean(vm.Call(m, c, v))
+			}
+		} else if !c.IsCallable() {
+			vm.ThrowTypeError("right-hand side of 'instanceof' is not callable")
+		}
+		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
+		if !c.IsCallable() || c.o.fn.bound == nil {
 			return vm.OrdinaryHasInstance(c, v)
 		}
-		return ToBoolean(vm.Call(m, c, v))
+		c = Value{o: c.o.fn.bound.target}
 	}
-	if !c.IsCallable() {
-		vm.ThrowTypeError("right-hand side of 'instanceof' is not callable")
-	}
-	return vm.OrdinaryHasInstance(c, v)
 }
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
@@ -1057,11 +1061,8 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	if fn == nil {
 		vm.ThrowTypeError(vm.DisplayString(Value{o: f}) + " is not a function")
 	}
-	if b := fn.bound; b != nil {
-		if len(b.args) > 0 {
-			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
-		}
-		return vm.callSlow(b.target, b.this, args, false, nil)
+	if fn.bound != nil {
+		return vm.callBound(f, args)
 	}
 	if fn.native != nil {
 		if fn.info != nil && fn.info.realm != vm.curRealm {
@@ -1069,6 +1070,7 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 		}
 		saved := vm.newTarget
 		vm.newTarget = nil
+		vm.checkNatives()
 		vm.pushNative(f, this, false)
 		r := fn.native(vm, this, args)
 		vm.popNative()
@@ -1098,6 +1100,18 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	return r
 }
 
+// callBound calls the bound function f, unwrapping a chain of bound functions without recursion.
+func (vm *VM) callBound(f *Object, args []Value) Value {
+	var this Value
+	for b := f.fn.bound; b != nil; b = f.fn.bound {
+		if len(b.args) > 0 {
+			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
+		}
+		f, this = b.target, b.this
+	}
+	return vm.callSlow(f, this, args, false, nil)
+}
+
 // callNativeInRealm calls the native function f, whose realm is not the current one, in its realm.
 // newTarget is nil for a call and the new.target of a construction otherwise.
 func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *Object) Value {
@@ -1106,6 +1120,7 @@ func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *
 	vm.switchRealm(fn.info.realm)
 	defer vm.switchRealm(savedRealm)
 	vm.newTarget = newTarget
+	vm.checkNatives()
 	vm.pushNative(f, this, newTarget != nil)
 	r := fn.native(vm, this, args)
 	vm.popNative()
@@ -1116,14 +1131,15 @@ func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *
 // Construct implements Construct: new f(...args) with the given new.target.
 func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	fn := f.fn
-	if b := fn.bound; b != nil {
+	for b := fn.bound; b != nil; b = fn.bound {
 		if len(b.args) > 0 {
 			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
 		}
 		if newTarget == f {
 			newTarget = b.target
 		}
-		return vm.Construct(b.target, args, newTarget)
+		f = b.target
+		fn = f.fn
 	}
 	if fn.native != nil {
 		var r Value
@@ -1132,6 +1148,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 		} else {
 			saved := vm.newTarget
 			vm.newTarget = newTarget
+			vm.checkNatives()
 			vm.pushNative(f, Undefined, true)
 			r = fn.native(vm, Undefined, args)
 			vm.popNative()
@@ -1313,7 +1330,8 @@ func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Obj
 	b.state = function{
 		bound:        &b.bound,
 		materialized: true,
-		constructor:  vm.IsConstructor(target),
+		// The state of a bound target already says whether its own target is a constructor.
+		constructor: target.fn.constructor,
 	}
 	b.kind = kindFunction
 	b.class = classFunction

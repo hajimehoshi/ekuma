@@ -15,6 +15,7 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+	"weak"
 
 	"github.com/hajimehoshi/ekuma"
 	_ "github.com/hajimehoshi/ekuma/intl"
@@ -2786,6 +2787,77 @@ sab`)
 	// The resolved waiter is gone, so nothing is left to wait for.
 	if ok, err := vm.AwaitJobs(t.Context()); ok || err != nil {
 		t.Errorf("AwaitJobs without waiters: got %t, %v, want false, nil", ok, err)
+	}
+}
+
+// TestNativeRecursion checks that recursion through native functions, which runs no
+// interpreter loop, throws a RangeError.
+func TestNativeRecursion(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "native calls",
+			src: `var f = x => x;
+				for (let i = 0; i < 20000; i++) f = Function.prototype.call.bind(f, null);
+				f(1)`,
+		},
+		{
+			name: "iterator steps",
+			src: `var it = [1].values();
+				for (let i = 0; i < 20000; i++) it = it.map(Math.abs);
+				it.next()`,
+		},
+		{
+			name: "host functions",
+			src:  `invoke(invoke)`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var vm ekuma.VM
+			invoke := vm.FuncOf("invoke", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+				return args[0].Invoke(t.Context(), args[0])
+			})
+			if err := vm.Global().Set("invoke", invoke); err != nil {
+				t.Fatal(err)
+			}
+			_, err := runScript(t.Context(), &vm, "recursion", tt.src)
+			var ex *ekuma.Error
+			if !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "RangeError") {
+				t.Errorf("got %v, want a RangeError", err)
+			}
+		})
+	}
+}
+
+// TestAtomicsWaitAsyncDroppedVM checks that a VM with a pending waiter of Atomics.waitAsync is
+// collected while the data block that it waits on lives on.
+func TestAtomicsWaitAsyncDroppedVM(t *testing.T) {
+	var owner ekuma.VM
+	sab, err := runScript(t.Context(), &owner, "sab", `new SharedArrayBuffer(4)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blk := sab.SharedDataBlock()
+	dropped := func() weak.Pointer[ekuma.VM] {
+		vm := new(ekuma.VM)
+		if err := vm.Global().Set("sab", blk); err != nil {
+			t.Fatal(err)
+		}
+		run(t, vm, `Atomics.waitAsync(new Int32Array(sab), 0, 0).value.then(() => {});`)
+		return weak.Make(vm)
+	}()
+	deadline := time.Now().Add(10 * time.Second)
+	for dropped.Value() != nil {
+		if time.Now().After(deadline) {
+			t.Fatal("the dropped VM was not collected")
+		}
+		runtime.GC()
+		time.Sleep(time.Millisecond)
+	}
+	if got, want := runIn(t, sab, `String(Atomics.notify(new Int32Array(sab), 0))`), "0"; got != want {
+		t.Errorf("Atomics.notify: got %s, want %s", got, want)
 	}
 }
 

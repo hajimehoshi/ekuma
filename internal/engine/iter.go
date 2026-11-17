@@ -136,7 +136,10 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 			if vm.interrupt.Load() {
 				vm.Poll()
 			}
+			vm.checkNatives()
+			vm.pushNative(f, it, false)
 			_, ok := step(vm, it)
+			vm.popNative()
 			return ok
 		}
 	}
@@ -148,8 +151,20 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 }
 
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
+//
+// The step function of a built-in iterator, which counts as a native call here, may step
+// another iterator in turn.
 func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
-	v, st := vm.iterNext(it, next)
+	var v Value
+	var st int
+	if f := next.o; f != nil && f.fn != nil && f.fn.iteratorStep() != nil {
+		vm.checkNatives()
+		vm.pushNative(f, it, false)
+		v, st = vm.iterNext(it, next)
+		vm.popNative()
+	} else {
+		v, st = vm.iterNext(it, next)
+	}
 	if st == iterFailed {
 		panic(errThrow)
 	}

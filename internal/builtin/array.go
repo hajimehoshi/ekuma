@@ -889,18 +889,36 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		return engine.ObjectValue(o)
 	})
 	// flatten implements FlattenIntoArray for the first l elements of src without a mapper function.
-	var flatten func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64)
-	flatten = func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
-		for i := int64(0); i < l; i++ {
-			if i = vm.SkipHoles(src, i, l); i == l {
-				break
-			}
-			if !hasAt(vm, src, i) {
+	// The nested arrays are kept on an explicit stack, as their depth is unbounded.
+	flatten := func(a *engine.Object, src *engine.Object, l int64, depth float64, n *int64) {
+		type level struct {
+			src   *engine.Object
+			i, l  int64
+			depth float64
+		}
+		stack := []level{{
+			src:   src,
+			l:     l,
+			depth: depth,
+		}}
+		for len(stack) > 0 {
+			t := &stack[len(stack)-1]
+			if t.i = vm.SkipHoles(t.src, t.i, t.l); t.i >= t.l {
+				stack = stack[:len(stack)-1]
 				continue
 			}
-			v := getAt(vm, src, i)
-			if depth > 0 && vm.IsArray(v) {
-				flatten(a, v.Object(), vm.LengthOfArrayLike(v.Object()), depth-1, n)
+			i := t.i
+			t.i++
+			if !hasAt(vm, t.src, i) {
+				continue
+			}
+			v := getAt(vm, t.src, i)
+			if t.depth > 0 && vm.IsArray(v) {
+				stack = append(stack, level{
+					src:   v.Object(),
+					l:     vm.LengthOfArrayLike(v.Object()),
+					depth: t.depth - 1,
+				})
 				continue
 			}
 			vm.CreateDataPropertyOrThrow(a, bigKey(vm, *n), v)

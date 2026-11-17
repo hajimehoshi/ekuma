@@ -77,11 +77,45 @@ func (z locationZone) Transition(sec int64, next bool) (int64, bool) {
 // database and the primary identifier that name is a link to. It reports false when the
 // platform has no such time zone.
 func LoadZone(name string) (id, primary string, z Zone, ok bool) {
-	if name == "" || name[0] == '/' || name[0] == '.' || strings.Contains(name, "..") || strings.Contains(name, "\\") {
+	if !isZoneName(name) {
 		return "", "", nil, false
 	}
 	return loadZone(name)
 }
+
+// isZoneName reports whether name has the form of an identifier of the IANA time zone database:
+// at most maxZoneNameLength bytes of path components separated by slashes, each of at most
+// maxZoneComponentLength ASCII letters, digits, '.', '-', '_' or '+', and not starting with
+// '.' or '-'.
+func isZoneName(name string) bool {
+	if name == "" || len(name) > maxZoneNameLength {
+		return false
+	}
+	for c := range strings.SplitSeq(name, "/") {
+		if c == "" || len(c) > maxZoneComponentLength || c[0] == '.' || c[0] == '-' {
+			return false
+		}
+		for i := range len(c) {
+			switch b := c[i]; {
+			case 'a' <= b && b <= 'z', 'A' <= b && b <= 'Z', '0' <= b && b <= '9':
+			case b == '.', b == '-', b == '_', b == '+':
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
+
+const (
+	// maxZoneComponentLength is the longest path component of an identifier that the theory
+	// file of the IANA time zone database allows.
+	maxZoneComponentLength = 14
+
+	// maxZoneNameLength bounds the length of an identifier well above the longest one in the
+	// database, America/Argentina/ComodRivadavia.
+	maxZoneNameLength = 64
+)
 
 // ZoneOf returns tz as a [Zone], with its IANA time zone identifier when it is known.
 func ZoneOf(tz TimeZone) (id string, z Zone, ok bool) {

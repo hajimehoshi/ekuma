@@ -17,7 +17,8 @@ import (
 // Running a module takes three steps, each of which takes the earlier ones first when they
 // have not completed: [Module.LoadRequestedModules], [Module.Link] and [Module.Evaluate].
 // [Module.Namespace] takes the first two. Any order of calls is valid, and a step that has
-// completed does nothing when it is taken again.
+// completed does nothing when it is taken again. A call from inside the module loader that
+// has to load a module that is still being loaded returns an [*Error] holding a TypeError.
 type Module struct {
 	vm    *VM
 	realm *Realm
@@ -103,9 +104,10 @@ func (vm *VM) engineError(err error) error {
 }
 
 // SetImportMeta sets f as the implementation of HostGetImportMetaProperties: f returns the
-// properties, converted with [VM.ValueOf], that the import.meta object of the module m gets
-// when it is created. The object is created when the code of m first uses it, so f applies to
-// the import.meta objects that are created after the call. A nil f gives no properties.
+// properties, converted with [Realm.ValueOf] of the realm of m, that the import.meta object of
+// the module m gets when it is created. The object is created when the code of m first uses
+// it, so f applies to the import.meta objects that are created after the call. A nil f gives
+// no properties.
 func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 	vm.initIfNeeded()
 	if f == nil {

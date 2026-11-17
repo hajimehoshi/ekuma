@@ -144,6 +144,9 @@ type Module struct {
 
 	status moduleStatus
 
+	// loading reports whether a walk of loadModuleGraph has visited m and not finished.
+	loading bool
+
 	// evalError is the [[EvaluationError]] when hasError is set.
 	evalError Value
 	hasError  bool
@@ -379,6 +382,9 @@ func moduleRequest(r bytecode.ModuleRequest) ModuleRequest {
 // loadModuleGraph implements LoadRequestedModules and InnerModuleLoading for a host whose
 // loading completes synchronously. ok is false when loading fails, and the result is the
 // error that rejects the promise of LoadRequestedModules then.
+//
+// Loading fails when it reaches a module that an unfinished call, such as one that the
+// module loader of the host entered from, is loading.
 func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 	type frame struct {
 		m *Module
@@ -386,15 +392,28 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 	}
 	visited := map[*Module]bool{}
 	var order []*Module
-	var stack []frame
-	visit := func(m *Module) {
-		if m.isCyclic() && m.status == moduleNew && !visited[m] {
-			visited[m] = true
-			order = append(order, m)
-			stack = append(stack, frame{m: m})
+	defer func() {
+		for _, m := range order {
+			m.loading = false
 		}
+	}()
+	var stack []frame
+	visit := func(m *Module) bool {
+		if !m.isCyclic() || m.status != moduleNew || visited[m] {
+			return true
+		}
+		if m.loading {
+			return false
+		}
+		visited[m] = true
+		m.loading = true
+		order = append(order, m)
+		stack = append(stack, frame{m: m})
+		return true
 	}
-	visit(root)
+	if !visit(root) {
+		return vm.loadingError(root), false
+	}
 	for len(stack) > 0 {
 		top := &stack[len(stack)-1]
 		if top.i == len(top.m.code.Requests) {
@@ -412,7 +431,9 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 			return e, false
 		}
 		m.requested[i] = dep
-		visit(dep)
+		if !visit(dep) {
+			return vm.loadingError(dep), false
+		}
 	}
 	for _, m := range order {
 		if m.status == moduleNew {
@@ -420,6 +441,11 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		}
 	}
 	return Undefined, true
+}
+
+// loadingError returns the TypeError of loading m while an unfinished call is loading it.
+func (vm *VM) loadingError(m *Module) Value {
+	return vm.NewError(ErrorKindType, "cannot load '"+m.ref.file+"' while it is being loaded")
 }
 
 // loadRequestedModules implements LoadRequestedModules: it returns its promise.
