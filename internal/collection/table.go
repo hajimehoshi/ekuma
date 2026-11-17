@@ -53,10 +53,16 @@ type Table struct {
 	gen *generation
 }
 
+// deletedKey is private to this package and cannot be supplied as a collection key.
+var deletedKey = new(engine.Object)
+
 type entry struct {
-	key     engine.Value
-	value   engine.Value
-	deleted bool
+	key   engine.Value
+	value engine.Value
+}
+
+func (e *entry) deleted() bool {
+	return e.key.Object() == deletedKey
 }
 
 // generation is a period of the life of a table between two compactions.
@@ -131,7 +137,7 @@ func (t *Table) scan(k engine.Value) int {
 		n := numberKey(k.Number())
 		for i := range t.entries {
 			e := &t.entries[i]
-			if e.key.IsNumber() && numberKey(e.key.Number()) == n && !e.deleted {
+			if e.key.IsNumber() && numberKey(e.key.Number()) == n && !e.deleted() {
 				return i
 			}
 		}
@@ -151,7 +157,7 @@ func (t *Table) scan(k engine.Value) int {
 	default:
 		o := k.Object()
 		for i := range t.entries {
-			if e := &t.entries[i]; !e.deleted && !e.key.IsNumber() && e.key.Object() == o {
+			if e := &t.entries[i]; !e.deleted() && !e.key.IsNumber() && e.key.Object() == o {
 				return i
 			}
 		}
@@ -218,7 +224,7 @@ func (t *Table) reindex() {
 	clear(t.bigs)
 	clear(t.objs)
 	for i := range t.entries {
-		if e := &t.entries[i]; !e.deleted {
+		if e := &t.entries[i]; !e.deleted() {
 			t.index(e.key, i)
 		}
 	}
@@ -284,7 +290,9 @@ func (t *Table) deleteAt(i int) {
 	if t.indexed {
 		t.unindex(e.key)
 	}
-	*e = entry{deleted: true}
+	*e = entry{
+		key: engine.ObjectValue(deletedKey),
+	}
 	t.live--
 	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live {
 		t.compact()
@@ -299,7 +307,7 @@ func (t *Table) compact() {
 	}
 	n := 0
 	for i, e := range t.entries {
-		if e.deleted {
+		if e.deleted() {
 			if t.gen != nil {
 				removed = append(removed, int32(i))
 			}
@@ -355,7 +363,7 @@ func (t *Table) Clone() *Table {
 		entries: make([]entry, 0, t.live),
 	}
 	for _, e := range t.entries {
-		if !e.deleted {
+		if !e.deleted() {
 			c.entries = append(c.entries, e)
 		}
 	}
@@ -442,7 +450,7 @@ func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
 	for c.pos < len(t.entries) {
 		e := &t.entries[c.pos]
 		c.pos++
-		if !e.deleted {
+		if !e.deleted() {
 			return e.key, e.value, true
 		}
 	}

@@ -193,3 +193,37 @@ func TestStorageShrinks(t *testing.T) {
 		t.Errorf("Has(9995) = false, want true")
 	}
 }
+
+func TestDeletedUndefinedKey(t *testing.T) {
+	for _, filler := range []int{0, 20} {
+		var tab collection.Table
+		for i := range filler {
+			tab.Set(engine.Number(float64(i)), engine.Undefined)
+		}
+		tab.Set(engine.Undefined, engine.Undefined)
+		if !tab.Delete(engine.Undefined) {
+			t.Fatalf("filler %d: deleting undefined failed", filler)
+		}
+		if tab.Has(engine.Undefined) {
+			t.Errorf("filler %d: deleted undefined key is still present", filler)
+		}
+		clone := tab.Clone()
+		if clone.Has(engine.Undefined) {
+			t.Errorf("filler %d: clone contains deleted undefined key", filler)
+		}
+		tab.Set(engine.Undefined, engine.Undefined)
+		if v, ok := tab.Get(engine.Undefined); !ok || !v.IsUndefined() {
+			t.Errorf("filler %d: reinserted undefined key is missing or has the wrong value", filler)
+		}
+		c := tab.Start()
+		for range filler {
+			tab.Next(&c)
+		}
+		if k, v, ok := tab.Next(&c); !ok || !k.IsUndefined() || !v.IsUndefined() {
+			t.Errorf("filler %d: reinserted undefined entry is not last", filler)
+		}
+		if _, _, ok := tab.Next(&c); ok {
+			t.Errorf("filler %d: iteration returned a deleted entry", filler)
+		}
+	}
+}
