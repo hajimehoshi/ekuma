@@ -1628,7 +1628,7 @@ func appendElemRun(keys []PropKey, elems []Value, base int) []PropKey {
 // private shape s, to keys.
 func appendEnumerableNames(keys []PropKey, s *shape, names []*Object) []PropKey {
 	for _, k := range names {
-		if k.kind == kindString && s.table[k].flags&FlagEnumerable != 0 {
+		if k != nil && k.kind == kindString && s.table[k].flags&FlagEnumerable != 0 {
 			keys = append(keys, PropKey{key: k})
 		}
 	}

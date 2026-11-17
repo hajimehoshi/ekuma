@@ -260,7 +260,9 @@ type shape struct {
 	// more than smallShapeSize properties keeps a table from the start.
 	flatBased bool
 
-	// order lists the keys of a private shape in insertion order.
+	// order lists the keys of a private shape in insertion order, at the indices of their
+	// slots. A deleted key leaves nil behind until the shape is compacted, so count is the number
+	// of keys and len(order) the number of slots.
 	order []*Object
 }
 
@@ -356,6 +358,11 @@ func (s *shape) lookup(key *Object) (prop, bool) {
 // keys returns the property keys in insertion order. The result must not be modified.
 func (s *shape) keys() []*Object {
 	if s.private {
+		if len(s.order) != int(s.count) {
+			return slices.DeleteFunc(slices.Clone(s.order), func(k *Object) bool {
+				return k == nil
+			})
+		}
 		return s.order
 	}
 	keys := make([]*Object, s.count)
@@ -378,7 +385,7 @@ func (s *shape) stringKeys() []PropKey {
 	if s.private {
 		keys := make([]PropKey, 0, len(s.order))
 		for _, k := range s.order {
-			if k.kind == kindString {
+			if k != nil && k.kind == kindString {
 				keys = append(keys, PropKey{key: k})
 			}
 		}
@@ -502,19 +509,25 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 	return t
 }
 
-// privateCopy returns a private shape with the properties of s.
+// privateCopy returns a private shape with the properties of s in the same slots.
 func (s *shape) privateCopy() *shape {
+	order := s.order
+	if !s.private {
+		order = s.keys()
+	}
 	t := &shape{
 		vm:      s.vm,
 		proto:   s.proto,
 		count:   s.count,
 		table:   make(map[*Object]prop, s.count+8),
 		private: true,
-		order:   append([]*Object(nil), s.keys()...),
+		order:   slices.Clone(order),
 	}
 	for _, k := range t.order {
-		p, _ := s.lookup(k)
-		t.table[k] = p
+		if k != nil {
+			p, _ := s.lookup(k)
+			t.table[k] = p
+		}
 	}
 	return t
 }
@@ -1186,7 +1199,7 @@ func (vm *VM) add(o *Object, key *Object, val Value, flags uint8) {
 	}
 	if s.private {
 		s.table[key] = prop{
-			slot:  s.count,
+			slot:  int32(len(s.order)),
 			flags: flags,
 		}
 		s.order = append(s.order, key)
@@ -1230,6 +1243,8 @@ func (o *Object) shareShape() {
 	if !s.private || o.flags&objNotExtensible != 0 {
 		return
 	}
+	o.compact()
+	s = o.shape
 	// The keys of a private shape are in the order of their slots.
 	s.private = false
 	s.flatBased = true
@@ -1318,25 +1333,52 @@ func (vm *VM) remove(o *Object, key *Object) {
 // removeFromPrivate deletes the own named property key of o, which must exist, from the private
 // shape of o. The new shape takes over the storage of the old one, which only o has.
 func (vm *VM) removeFromPrivate(o *Object, key *Object) {
-	s := o.shape.handOver()
-	s.count--
-	// The keys of a private shape are in the order of their slots.
-	i := int(s.table[key].slot)
-	delete(s.table, key)
-	last := len(s.order) - 1
-	copy(s.order[i:], s.order[i+1:])
-	s.order[last] = nil
-	s.order = s.order[:last]
-	for _, k := range s.order[i:] {
-		p := s.table[k]
-		p.slot--
-		s.table[k] = p
-	}
-	copy(o.slots[i:], o.slots[i+1:])
-	o.slots[last] = Value{}
-	o.slots = o.slots[:last]
+	old := o.shape
+	s := old.handOver()
 	o.shape = s
+	s.count--
+	i := s.table[key].slot
+	delete(s.table, key)
+	s.order[i] = nil
+	o.slots[i] = Value{}
+	// Trailing deleted slots go at once, and the others once they outnumber the keys, which
+	// bounds the cost of compacting by that of the deletions.
+	n := len(s.order)
+	for n > 0 && s.order[n-1] == nil {
+		n--
+	}
+	clear(o.slots[n:])
+	s.order = s.order[:n]
+	o.slots = o.slots[:n]
+	if n-int(s.count) > int(s.count) {
+		o.compact()
+	}
+	vm.sparseIndices.remove(old, s, key)
 	vm.touchProto(o)
+}
+
+// compact removes the deleted slots of the private shape of o.
+func (o *Object) compact() {
+	s := o.shape
+	if !s.private || len(s.order) == int(s.count) {
+		return
+	}
+	n := 0
+	for i, k := range s.order {
+		if k == nil {
+			continue
+		}
+		p := s.table[k]
+		p.slot = int32(n)
+		s.table[k] = p
+		s.order[n] = k
+		o.slots[n] = o.slots[i]
+		n++
+	}
+	clear(s.order[n:])
+	clear(o.slots[n:])
+	s.order = s.order[:n]
+	o.slots = o.slots[:n]
 }
 
 // setProto changes the prototype of o.

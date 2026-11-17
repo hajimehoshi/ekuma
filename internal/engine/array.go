@@ -479,6 +479,22 @@ func (c *sparseIndexCache) list(o *Object) []uint32 {
 	return idxs
 }
 
+// remove updates the cache for the deletion of key from the shape old, which made the shape s.
+func (c *sparseIndexCache) remove(old, s *shape, key *Object) {
+	if c.shape != old || c.count != old.count {
+		return
+	}
+	if key.kind == kindString {
+		if i, ok := stringIndex(key.str); ok {
+			if p, found := slices.BinarySearch(c.indices, i); found {
+				c.indices = slices.Delete(c.indices, p, p+1)
+			}
+		}
+	}
+	c.shape = s
+	c.count = s.count
+}
+
 // maxSparseIndexInserts is the number of new keys above which sparseIndexCache.list rebuilds
 // the list instead of inserting each one.
 const maxSparseIndexInserts = 16
@@ -496,7 +512,8 @@ func (c *sparseIndexCache) addedKeys(s *shape, buf []*Object) ([]*Object, bool) 
 		if cached != s || s.count-n > maxSparseIndexInserts {
 			return nil, false
 		}
-		return s.order[n:], true
+		// Without deletions since, the added keys are the last ones.
+		return s.order[len(s.order)-int(s.count-n):], true
 	}
 	if cached.private {
 		return nil, false
