@@ -135,9 +135,10 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 						return engine.Undefined
 					}
 					called = true
-					o := vm.NewOrdinaryObject()
-					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(keyStatus), vm.NewString(status))
-					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(key), arg(args, 0))
+					o := vm.NewObjectFromProperties(
+						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
+						[]engine.Value{vm.NewString(status), arg(args, 0)},
+					)
 					e.values[i] = engine.ObjectValue(o)
 					e.resolveIfDone(vm, pc)
 					return engine.Undefined
@@ -232,9 +233,10 @@ func initPromise(vm *engine.VM) {
 						return engine.Undefined
 					}
 					called = true
-					o := vm.NewOrdinaryObject()
-					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(keyStatus), vm.NewString(status))
-					vm.CreateDataPropertyOrThrow(o, engine.NamedKey(key), arg(args, 0))
+					o := vm.NewObjectFromProperties(
+						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
+						[]engine.Value{vm.NewString(status), arg(args, 0)},
+					)
 					e.values[i] = engine.ObjectValue(o)
 					e.remaining--
 					if e.remaining == 0 {

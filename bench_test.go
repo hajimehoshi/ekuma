@@ -252,7 +252,7 @@ func BenchmarkEval(b *testing.B) {
 
 // BenchmarkAsync measures promises and async functions. One iteration is one await of
 // a resolved promise, one call of an async function that awaits once, one step of
-// a for-await loop over an async generator, or one awaited Promise.all of three promises.
+// a for-await loop over an async generator, or one awaited promise combinator of three promises.
 func BenchmarkAsync(b *testing.B) {
 	const src = `
 		const p = Promise.resolve(1);
@@ -275,8 +275,16 @@ func BenchmarkAsync(b *testing.B) {
 			const q = Promise.resolve(2), r = Promise.resolve(3);
 			for (let i = 0; i < n; i++) await Promise.all([p, q, r]);
 		}
+		async function allSettled(n) {
+			const q = Promise.reject(2);
+			for (let i = 0; i < n; i++) await Promise.allSettled([p, q, p]);
+		}
+		async function allSettledKeyed(n) {
+			const q = Promise.reject(2);
+			for (let i = 0; i < n; i++) await Promise.allSettledKeyed({a: p, b: q, c: p});
+		}
 	`
-	for _, name := range []string{"await", "call", "forAwait", "all"} {
+	for _, name := range []string{"await", "call", "forAwait", "all", "allSettled", "allSettledKeyed"} {
 		b.Run(name, func(b *testing.B) {
 			ctx := b.Context()
 			var vm ekuma.VM
