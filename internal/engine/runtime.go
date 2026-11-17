@@ -633,7 +633,7 @@ func (vm *VM) step(x Value, d int64) Value {
 	if x.o == nil {
 		return Value{n: x.n + float64(d)}
 	}
-	return vm.NewBigInt(new(big.Int).Add(x.BigInt(), big.NewInt(d)))
+	return vm.addBigInts(x, BigIntFromInt64(d))
 }
 
 // classElement is an element that the constructor of a class adds to every instance.

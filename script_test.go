@@ -864,6 +864,35 @@ func TestScripts(t *testing.T) {
 			want: "1,1,symbol,Symbol(k),1",
 		},
 		{
+			name: "BigInt addition retains operands and carry results",
+			src: `[63n, 64n, 127n, 255n, 256n, 257n].every(bits => {
+				let power = 1n << bits, x = power - 1n;
+				let carry = x + 1n, doubled = x + x, negative = -x + -x;
+				let retained = [x, carry, doubled, negative];
+				let next = carry + carry;
+				for (let i = 0; i < 20; i++) next = next + carry;
+				return retained[0] === power - 1n && retained[1] === power
+					&& retained[2] === x << 1n && retained[3] === -(x << 1n)
+					&& next === power * 22n && x + -x === 0n
+					&& -x + -1n === -power;
+			})`,
+			want: "true",
+		},
+		{
+			name: "BigInt steps retain prefix and postfix values",
+			src: `[63n, 64n, 255n, 256n, 257n].every(bits => {
+				let power = 1n << bits, positive = power - 1n, negative = -power;
+				let oldPositive = positive++, oldNegative = negative--;
+				let nextPositive = ++positive, nextNegative = --negative;
+				positive--;
+				negative++;
+				return oldPositive === power - 1n && oldNegative === -power
+					&& nextPositive === power - (-1n) && nextNegative === -power - 2n
+					&& positive === power && negative === -power - 1n;
+			})`,
+			want: "true",
+		},
+		{
 			name: "bigint",
 			src:  `(2n ** 64n + 1n).toString === undefined ? "" : String(2n ** 64n + 1n) + typeof 1n`,
 			want: "18446744073709551617bigint",

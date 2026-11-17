@@ -428,7 +428,7 @@ func (vm *VM) addValues(a, b Value) Value {
 	if a.o == nil || b.o == nil {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	return vm.NewBigInt(new(big.Int).Add(a.BigInt(), b.BigInt()))
+	return vm.addBigInts(a, b)
 }
 
 // MaxStringLength is the largest length a string may have, in bytes.

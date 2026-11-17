@@ -36,6 +36,31 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 	return Value{o: &o.Object}
 }
 
+const bigIntSumWords = 256 / bits.UintSize
+
+// addBigInts returns the sum of two BigInts.
+func (vm *VM) addBigInts(a, b Value) Value {
+	x, y := a.BigInt(), b.BigInt()
+	if a.o == bigInt64Object && b.o == bigInt64Object ||
+		x.Sign() != y.Sign() || len(x.Bits()) > bigIntSumWords || len(y.Bits()) > bigIntSumWords {
+		return vm.NewBigInt(new(big.Int).Add(x, y))
+	}
+	o := &struct {
+		bigIntObject
+		magnitude [bigIntSumWords + 1]big.Word
+	}{}
+	o.kind = kindBigInt
+	// Addition needs one extra word for a carry. The storage belongs only to
+	// this result and is never reused after the value is published.
+	o.integer.SetBits(o.magnitude[:0])
+	o.integer.Add(x, y)
+	if o.integer.IsInt64() {
+		return BigIntFromInt64(o.integer.Int64())
+	}
+	o.ext = &o.integer
+	return Value{o: &o.Object}
+}
+
 // bigIntString returns the BigInt v in the radix r. poll is as for [numconv.FormatBigInt].
 func bigIntString(v Value, r int, poll func()) string {
 	if i, ok := v.BigInt64(); ok {
