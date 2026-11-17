@@ -5,6 +5,7 @@ package intl
 
 import (
 	"slices"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -265,18 +266,21 @@ func initLocaleCase(vm *engine.VM) {
 					lang = t.Language
 				}
 			}
-			if lang == "lt" && !m.upper {
-				// The base lowercases the result.
+			// The rules of the language apply first, and then the base maps the case of the
+			// result. Greek has rules only for uppercasing.
+			switch {
+			case lang == "el" && m.upper:
+				return vm.NewString(mapWellFormed(s, greekUpper))
+			case lang == "lt" && m.upper:
+				s = mapWellFormed(s, lithuanianUndot)
+			case lang == "lt":
 				s = mapWellFormed(s, lithuanianDots)
+			case (lang == "tr" || lang == "az") && m.upper:
+				s = strings.ReplaceAll(s, "i", "\u0130")
+			case lang == "tr" || lang == "az":
+				s = mapWellFormed(s, turkicLowerI)
 			}
-			if lang == "" || lang == "lt" && !m.upper {
-				return vm.CallValue(base, vm.NewString(s))
-			}
-			c := cases.Lower(language.Make(lang))
-			if m.upper {
-				c = cases.Upper(language.Make(lang))
-			}
-			return vm.NewString(mapWellFormed(s, c.String))
+			return vm.CallValue(base, vm.NewString(s))
 		})
 	}
 }
@@ -329,13 +333,81 @@ func lithuanianDots(s string) string {
 	return string(out)
 }
 
+// greekUpper applies the Greek uppercasing of CLDR, which removes the diacritics of Greek
+// letters.
+func greekUpper(s string) string {
+	// cases keeps the diacritics of a letter whose uppercase in SpecialCasing.txt has several
+	// characters, so the letters are decomposed first. A letter with an iota subscript is kept
+	// for SpecialCasing.txt to turn the subscript into a capital iota.
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.Is(unicode.Greek, r) && unicode.IsLetter(r) {
+			if d := norm.NFD.String(string(r)); !strings.ContainsRune(d, '\u0345') {
+				b.WriteString(d)
+				continue
+			}
+		}
+		b.WriteRune(r)
+	}
+	return cases.Upper(language.Greek).String(b.String())
+}
+
+// lithuanianUndot applies the Lithuanian rule of SpecialCasing.txt for uppercasing that
+// removes a dot above after a soft-dotted character, leaving the rest to the default
+// uppercasing.
+func lithuanianUndot(s string) string {
+	var out []rune
+	afterSoftDotted := false
+	for _, r := range s {
+		c := combiningClass(r)
+		if r == '\u0307' && afterSoftDotted {
+			afterSoftDotted = false
+			continue
+		}
+		switch c {
+		case 0:
+			afterSoftDotted = unicode.Is(unicode.Soft_Dotted, r)
+		case 230:
+			afterSoftDotted = false
+		}
+		out = append(out, r)
+	}
+	return string(out)
+}
+
+// turkicLowerI applies the Turkish and Azerbaijani rules of SpecialCasing.txt for
+// lowercasing the dotted and dotless i, leaving the rest to the default lowercasing.
+func turkicLowerI(s string) string {
+	rs := []rune(s)
+	var out []rune
+	afterI := false
+	for i, r := range rs {
+		c := combiningClass(r)
+		switch {
+		case r == '\u0130':
+			out = append(out, 'i')
+		case r == 'I' && !beforeDot(rs[i+1:]):
+			out = append(out, '\u0131')
+		case r == '\u0307' && afterI:
+			// The dot above of an I is removed.
+		default:
+			out = append(out, r)
+		}
+		switch c {
+		case 0:
+			afterI = r == 'I'
+		case 230:
+			afterI = false
+		}
+	}
+	return string(out)
+}
+
 // moreAbove reports whether rs starts with combining marks that include one of the combining
 // class Above (230).
 func moreAbove(rs []rune) bool {
 	for _, r := range rs {
-		var b [utf8.UTFMax]byte
-		n := utf8.EncodeRune(b[:], r)
-		switch norm.NFD.Properties(b[:n]).CCC() {
+		switch combiningClass(r) {
 		case 0:
 			return false
 		case 230:
@@ -343,6 +415,28 @@ func moreAbove(rs []rune) bool {
 		}
 	}
 	return false
+}
+
+// beforeDot reports whether rs starts with combining marks that include U+0307 COMBINING DOT
+// ABOVE before any other of the combining class Above (230).
+func beforeDot(rs []rune) bool {
+	for _, r := range rs {
+		if r == '\u0307' {
+			return true
+		}
+		switch combiningClass(r) {
+		case 0, 230:
+			return false
+		}
+	}
+	return false
+}
+
+// combiningClass returns the canonical combining class of r.
+func combiningClass(r rune) uint8 {
+	var b [utf8.UTFMax]byte
+	n := utf8.EncodeRune(b[:], r)
+	return norm.NFD.Properties(b[:n]).CCC()
 }
 
 // initArrayToLocaleString replaces Array.prototype.toLocaleString and

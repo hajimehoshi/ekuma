@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"math/bits"
 	"strconv"
+	"sync"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -426,9 +427,9 @@ func initMath(vm *engine.VM) {
 	unary("cbrt", math.Cbrt)
 	unary("ceil", math.Ceil)
 	unary("cos", math.Cos)
-	unary("cosh", math.Cosh)
-	unary("exp", math.Exp)
-	unary("expm1", math.Expm1)
+	unary("cosh", cosh)
+	unary("exp", exp)
+	unary("expm1", expm1)
 	unary("floor", math.Floor)
 	unary("fround", func(x float64) float64 {
 		return float64(float32(x))
@@ -436,8 +437,8 @@ func initMath(vm *engine.VM) {
 	unary("f16round", f16round)
 	unary("log", math.Log)
 	unary("log1p", math.Log1p)
-	unary("log10", math.Log10)
-	unary("log2", math.Log2)
+	unary("log10", log10)
+	unary("log2", log2)
 	unary("round", func(x float64) float64 {
 		if x != x || math.IsInf(x, 0) || x == 0 {
 			return x
@@ -461,7 +462,7 @@ func initMath(vm *engine.VM) {
 		return x
 	})
 	unary("sin", math.Sin)
-	unary("sinh", math.Sinh)
+	unary("sinh", sinh)
 	unary("sqrt", math.Sqrt)
 	unary("tan", math.Tan)
 	unary("tanh", math.Tanh)
@@ -476,11 +477,15 @@ func initMath(vm *engine.VM) {
 	})
 	method(vm, m, "atan2", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		y := vm.ToNumber(arg(args, 0))
-		return engine.Number(math.Atan2(y, vm.ToNumber(arg(args, 1))))
+		return engine.Number(atan2(y, vm.ToNumber(arg(args, 1))))
 	})
 	method(vm, m, "pow", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x := vm.ToNumber(arg(args, 0))
-		return engine.Number(engine.NumberPow(x, vm.ToNumber(arg(args, 1))))
+		y := vm.ToNumber(arg(args, 1))
+		if x == 10 && math.Abs(y) <= 400 && y == math.Trunc(y) {
+			return engine.Number(pow10(int(y)))
+		}
+		return engine.Number(engine.NumberPow(x, y))
 	})
 	method(vm, m, "imul", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x := vm.ToInt32(arg(args, 0))
@@ -619,6 +624,95 @@ func initIterators(vm *engine.VM) {
 	vm.Define(gf, vm.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	vm.Define(gp, vm.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 	functionKindConstructor(vm, "GeneratorFunction", engine.GeneratorFunction, gf)
+}
+
+// expOverflow is the largest argument for which e**x is finite.
+const expOverflow = 7.09782712893383973096e+02
+
+// exp returns e**x.
+func exp(x float64) float64 {
+	// Halving the argument keeps the subnormal results from being flushed to zero.
+	if x < -708 {
+		h := math.Exp(x / 2)
+		return h * h
+	}
+	return math.Exp(x)
+}
+
+// expm1 returns e**x - 1.
+func expm1(x float64) float64 {
+	if x >= expOverflow {
+		return math.Exp(x)
+	}
+	return math.Expm1(x)
+}
+
+// cosh returns the hyperbolic cosine of x.
+func cosh(x float64) float64 {
+	if a := math.Abs(x); a > expOverflow {
+		h := math.Exp(a / 2)
+		return h * (h / 2)
+	}
+	return math.Cosh(x)
+}
+
+// sinh returns the hyperbolic sine of x.
+func sinh(x float64) float64 {
+	if a := math.Abs(x); a > expOverflow {
+		h := math.Exp(a / 2)
+		return math.Copysign(h*(h/2), x)
+	}
+	return math.Sinh(x)
+}
+
+// atan2 returns the arc tangent of y/x, using the signs of both to pick the quadrant.
+func atan2(y, x float64) float64 {
+	r := math.Atan2(y, x)
+	// With y < 0 and x < 0, a quotient that underflows to +0 must still give the third
+	// quadrant.
+	if r == math.Pi && y < 0 {
+		return -math.Pi
+	}
+	return r
+}
+
+// log10 returns the decimal logarithm of x, exactly n for the normal double nearest to 10**n.
+func log10(x float64) float64 {
+	r := math.Log10(x)
+	// A subnormal nearest to 10**n is too far from it for n to be its logarithm.
+	if n := math.Round(r); n != r && n >= -307 && math.Abs(r-n) < 1e-12 && x == pow10(int(n)) {
+		return n
+	}
+	return r
+}
+
+// log2 returns the binary logarithm of x.
+func log2(x float64) float64 {
+	// math.Log2 adds the exponent to the logarithm of the fraction, which cancels just above 1.
+	if x > 1 && x < 2 {
+		return math.Log(x) * (1 / math.Ln2)
+	}
+	return math.Log2(x)
+}
+
+// pow10Table holds the doubles nearest to 10**n for n from -323 to 308.
+var pow10Table = sync.OnceValue(func() []float64 {
+	t := make([]float64, 308+323+1)
+	for i := range t {
+		t[i], _ = strconv.ParseFloat("1e"+strconv.Itoa(i-323), 64)
+	}
+	return t
+})
+
+// pow10 returns the double nearest to 10**n.
+func pow10(n int) float64 {
+	switch {
+	case n < -323:
+		return 0
+	case n > 308:
+		return math.Inf(1)
+	}
+	return pow10Table()[n+323]
 }
 
 // f16round returns x rounded to the nearest binary16 value, ties to even.

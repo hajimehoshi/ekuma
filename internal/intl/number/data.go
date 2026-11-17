@@ -96,7 +96,7 @@ func (c compact) pattern(mag int, category string) (string, bool) {
 }
 
 // maxCompactMagnitude is the largest magnitude that CLDR has compact patterns for.
-const maxCompactMagnitude = 14
+const maxCompactMagnitude = 19
 
 // exponentForMagnitude implements ComputeExponentForMagnitude for compact notation. It also
 // returns the magnitude of the pattern to use, or -1 when no pattern applies.
@@ -106,7 +106,7 @@ func (c compact) exponentForMagnitude(mag int) (exponent, patternMag int) {
 		if !ok {
 			continue
 		}
-		zeros := strings.Count(p, "0")
+		zeros := strings.Count(positiveSubpattern(p), "0")
 		if zeros == 0 || isOnlyZeros(p) {
 			return 0, -1
 		}
@@ -115,10 +115,15 @@ func (c compact) exponentForMagnitude(mag int) (exponent, patternMag int) {
 	return 0, -1
 }
 
-// isOnlyZeros reports whether the pattern p has nothing but zeros, which means that
-// numbers are not compacted.
+// isOnlyZeros reports whether the positive subpattern of the pattern p has nothing but
+// zeros, which means that numbers are not compacted.
 func isOnlyZeros(p string) bool {
-	return strings.Trim(p, "0") == ""
+	return strings.Trim(positiveSubpattern(p), "0") == ""
+}
+
+// positiveSubpattern returns the positive subpattern of the pattern p.
+func positiveSubpattern(p string) string {
+	return splitUnquoted(p, ';')[0]
 }
 
 // CompactExponent returns the exponent of compact decimal notation for the absolute value
@@ -144,7 +149,7 @@ func (d *localeData) compactOf(kind string) compact {
 		d:    d,
 		kind: d.nu + "." + kind,
 	}
-	if _, ok := c.pattern(maxCompactMagnitude, "other"); !ok {
+	if _, ok := c.pattern(3, "other"); !ok {
 		c.kind = "latn." + kind
 	}
 	return c

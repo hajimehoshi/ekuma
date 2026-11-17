@@ -73,6 +73,24 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 			want: "İıI",
 		},
 		{
+			// Lithuanian removes the dot above of i without composing the rest.
+			name: "Lithuanian uppercasing",
+			src:  `"i\u0307\u0301".toLocaleUpperCase("lt")`,
+			want: "I\u0301",
+		},
+		{
+			// U+0345 is case-ignorable, so the sigma after it is not final.
+			name: "final sigma with a language",
+			src:  `"\u0345Σ".toLocaleLowerCase("tr") + "\u0345Σ".toLocaleLowerCase("el")`,
+			want: "\u0345σ\u0345σ",
+		},
+		{
+			// The uppercase of SpecialCasing.txt adds the breathing, which Greek removes.
+			name: "Greek uppercasing",
+			src:  `"ὐ".toLocaleUpperCase("el")`,
+			want: "Υ",
+		},
+		{
 			name: "array toLocaleString",
 			src:  `[1234.5, 1n].toLocaleString("de") + " " + new Float64Array([0.5]).toLocaleString("en", {style: "percent"})`,
 			want: "1.234,5,1 50%",
@@ -143,6 +161,32 @@ func TestFormatters(t *testing.T) {
 			name: "durations",
 			src:  `[new Intl.DurationFormat("ar", {style: "long"}).format({years: 1, months: 2}), new Intl.DurationFormat("sr", {style: "digital"}).format({hours: 1, minutes: 2, seconds: 3}), new Intl.DurationFormat("fr", {style: "long"}).format({hours: 1, minutes: 2, seconds: 3})].join("; ")`,
 			want: "سنة وشهران; 1.02.03; 1\u00a0heure, 2 minutes et 3\u00a0secondes",
+		},
+		{
+			name: "compact percent",
+			src:  `[12345, 1.5].map(x => new Intl.NumberFormat("de", {style: "percent", notation: "compact"}).format(x)).join("; ")`,
+			want: "1,2\u00A0Mio.\u00A0%; 150\u00A0%",
+		},
+		{
+			// Swahili has compact patterns with a negative subpattern.
+			name: "compact negative subpatterns",
+			src:  `[12345, -12345].map(x => new Intl.NumberFormat("sw", {notation: "compact"}).format(x)).join("; ")`,
+			want: "elfu\u00A012; elfu\u00A0-12",
+		},
+		{
+			name: "compact magnitudes above 10^14",
+			src:  `new Intl.NumberFormat("ja", {notation: "compact"}).format(1e16)`,
+			want: "1京",
+		},
+		{
+			name: "plural of scientific notation",
+			src:  `[1000, 0.002].map(x => new Intl.NumberFormat("ru", {style: "unit", unit: "meter", unitDisplay: "long", notation: "scientific"}).format(x)).join("; ")`,
+			want: "1E3 метров; 2E-3 метра",
+		},
+		{
+			name: "plural of infinity and not-a-number",
+			src:  `[new Intl.NumberFormat("ru", {style: "unit", unit: "meter", unitDisplay: "long"}).format(Infinity), new Intl.NumberFormat("fr", {style: "currency", currency: "USD", currencyDisplay: "name"}).format(NaN)].join("; ")`,
+			want: "∞ метра; NaN dollars des États-Unis",
 		},
 		{
 			name: "duration toLocaleString",

@@ -317,7 +317,8 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 			if strict {
 				break
 			}
-			if v := ev.vars[d.Name]; v != nil && (v.Place == bytecode.EvalPlaceInner || v.Place == bytecode.EvalPlaceCatch) {
+			// A catch parameter does not stop the hoisting (Annex B.3.4).
+			if v := ev.vars[d.Name]; v != nil && v.Place == bytecode.EvalPlaceInner {
 				break
 			}
 			ev.hoisted[d.Name] = true

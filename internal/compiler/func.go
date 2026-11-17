@@ -418,7 +418,24 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	}
 	if selfName {
 		if _, shadowed := f.scope.vars[node.Name.Name]; !shadowed {
-			self := f.declare(node.Name.Name, bindFuncName)
+			sc := f.scope
+			if evalInBody {
+				// The variables that the direct evals declare shadow the name, so the name
+				// lives in a scope outside that of OpEvalScope.
+				sc = &scope{
+					parent:   f.scope.parent,
+					vars:     map[string]*binding{},
+					firstReg: f.top,
+					withs:    f.scope.withs - 1,
+				}
+				f.scope.parent = sc
+			}
+			self := &binding{
+				name: node.Name.Name,
+				reg:  f.newReg(),
+				kind: bindFuncName,
+			}
+			sc.vars[self.name] = self
 			self.initialized = true
 			f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
 		}

@@ -245,7 +245,6 @@ func (f *Formatter) format(x Decimal, approximately bool) *formatted {
 			Type:  "nan",
 			Value: f.nan,
 		}}
-		r.pluralString = "0"
 		r.compactString = "0"
 		// Not-a-number has the pattern of positive zero.
 		rounded = Decimal{}
@@ -254,7 +253,6 @@ func (f *Formatter) format(x Decimal, approximately bool) *formatted {
 			Type:  "infinity",
 			Value: f.infinity,
 		}}
-		r.pluralString = "0"
 		r.compactString = "0"
 	default:
 		if f.o.Style == "percent" {
@@ -272,6 +270,8 @@ func (f *Formatter) format(x Decimal, approximately bool) *formatted {
 		}
 		if f.o.Notation == "scientific" || f.o.Notation == "engineering" {
 			r.exponent = f.exponentParts(exp)
+			// The plural form is that of the number that the notation stands for.
+			r.pluralString = shiftPoint(s, exp)
 		}
 	}
 	r.sign = f.signOf(rounded)
@@ -281,19 +281,35 @@ func (f *Formatter) format(x Decimal, approximately bool) *formatted {
 }
 
 // pluralOf returns the plural category of the formatted number s with the compact exponent
-// e.
+// e. An empty s, as for not-a-number and infinity, is of the category "other".
 func (f *Formatter) pluralOf(s string, e int) string {
+	if s == "" {
+		return "other"
+	}
 	if e > 0 {
 		// The operands are those of the number that the compact notation stands for.
-		i, frac, _ := strings.Cut(s, ".")
-		n := min(e, len(frac))
-		i += frac[:n] + strings.Repeat("0", e-n)
-		s = i
-		if frac = frac[n:]; frac != "" {
-			s += "." + frac
-		}
+		s = shiftPoint(s, e)
 	}
 	return plural.Select(f.pluralLocale, false, s, e)
+}
+
+// shiftPoint returns the decimal string s multiplied by 10**e.
+func shiftPoint(s string, e int) string {
+	i, frac, _ := strings.Cut(s, ".")
+	if e >= 0 {
+		n := min(e, len(frac))
+		i += frac[:n] + strings.Repeat("0", e-n)
+		if frac = frac[n:]; frac != "" {
+			return i + "." + frac
+		}
+		return i
+	}
+	n := min(-e, len(i))
+	frac = strings.Repeat("0", -e-n) + i[len(i)-n:] + frac
+	if i = i[:len(i)-n]; i == "" {
+		i = "0"
+	}
+	return i + "." + frac
 }
 
 // setMiddle sets the affix of the pattern of r. A non-empty category overrides the plural
@@ -307,10 +323,12 @@ func (f *Formatter) setMiddle(r *formatted, approximately bool, category string)
 		}
 		if s, ok := f.compact.pattern(r.compactMag, category); ok && !isOnlyZeros(s) {
 			cp := parsePattern(s)
-			if f.o.Style == "currency" && f.o.CurrencyDisplay != "name" && !cp.positive.has(tokenCurrency) {
-				cp = f.withCurrency(cp)
+			switch {
+			case f.o.Style == "currency" && f.o.CurrencyDisplay != "name" && !cp.positive.has(tokenCurrency):
+				cp = f.withStandardAffix(cp, tokenCurrency)
+			case f.o.Style == "percent" && !cp.positive.has(tokenPercent):
+				cp = f.withStandardAffix(cp, tokenPercent)
 			}
-			// Compact patterns have no negative subpattern.
 			p = cp
 			compactPattern = true
 		}
@@ -320,22 +338,33 @@ func (f *Formatter) setMiddle(r *formatted, approximately bool, category string)
 	r.middleKey = strconv.Itoa(int(r.sign)) + "/" + strconv.Itoa(r.compactMag) + "/" + strconv.FormatBool(approximately)
 }
 
-// withCurrency adds the currency of the standard pattern to the compact pattern cp.
-func (f *Formatter) withCurrency(cp *pattern) *pattern {
+// withStandardAffix adds the tokens of the kind of the standard pattern, with its literals,
+// to the compact pattern cp.
+func (f *Formatter) withStandardAffix(cp *pattern, kind tokenKind) *pattern {
 	out := *cp
-	if f.standard.positive.has(tokenCurrency) {
-		for _, t := range f.standard.positive.prefix {
-			if t.kind == tokenCurrency || t.kind == tokenLiteral {
-				out.positive.prefix = append(out.positive.prefix[:len(out.positive.prefix):len(out.positive.prefix)], t)
-			}
-		}
-		for _, t := range f.standard.positive.suffix {
-			if t.kind == tokenCurrency || t.kind == tokenLiteral {
-				out.positive.suffix = append(out.positive.suffix[:len(out.positive.suffix):len(out.positive.suffix)], t)
-			}
+	if f.standard.positive.has(kind) {
+		out.positive = withAffixOf(out.positive, f.standard.positive, kind)
+		if out.hasNegative {
+			out.negative = withAffixOf(out.negative, f.standard.positive, kind)
 		}
 	}
 	return &out
+}
+
+// withAffixOf returns the subpattern s with the tokens of the kind and the literals of the
+// subpattern std appended to its prefix and its suffix.
+func withAffixOf(s, std subpattern, kind tokenKind) subpattern {
+	for _, t := range std.prefix {
+		if t.kind == kind || t.kind == tokenLiteral {
+			s.prefix = append(s.prefix[:len(s.prefix):len(s.prefix)], t)
+		}
+	}
+	for _, t := range std.suffix {
+		if t.kind == kind || t.kind == tokenLiteral {
+			s.suffix = append(s.suffix[:len(s.suffix):len(s.suffix)], t)
+		}
+	}
+	return s
 }
 
 // affixParts converts the tokens of an affix to parts. In a compact pattern, literal text is

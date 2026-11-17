@@ -34,6 +34,40 @@ func TestScripts(t *testing.T) {
 			want: "5",
 		},
 		{
+			name: "Math.atan2 of negative arguments whose quotient underflows",
+			src:  `[Math.atan2(-5e-324, -2.5), Math.atan2(-1e-200, -1e200)].join()`,
+			want: "-3.141592653589793,-3.141592653589793",
+		},
+		{
+			name: "Math functions near the ends of the double range",
+			src: `[Math.cosh(710), Math.sinh(-710), Math.cosh(711), Math.expm1(709.782712893384),
+					Math.exp(-745)].join()`,
+			want: "1.1169973830808557e+308,-1.1169973830808557e+308,Infinity,1.7976931348622732e+308,5e-324",
+		},
+		{
+			name: "Math.log10 of powers of ten",
+			src: `var bad = [];
+				for (var e = -307; e <= 308; e++) {
+					if (Math.log10(Number("1e" + e)) !== e) bad.push(e);
+				}
+				bad.join()`,
+			want: "",
+		},
+		{
+			name: "Math.log2 just above 1",
+			src:  `Math.log2(1.0000000000000002)`,
+			want: "3.203426503814917e-16",
+		},
+		{
+			name: "Math.pow of 10 with an integer exponent",
+			src: `var bad = [];
+				for (var e = -330; e <= 310; e++) {
+					if (Math.pow(10, e) !== Number("1e" + e)) bad.push(e);
+				}
+				bad.join()`,
+			want: "",
+		},
+		{
 			name: "empty separator split counts UTF-16 units with uint32 limits",
 			src: `var s = "😀x";
 				[s.split("", 4294967297).map(c => c.charCodeAt(0)).join(),
@@ -1717,6 +1751,23 @@ func TestDirectEval(t *testing.T) {
 				}
 				r.join()`,
 			want: "true,true,true",
+		},
+		{
+			name: "eval declarations shadow the name of a function expression",
+			src: `[
+					(function f() { var before = typeof f; eval("var f = 1"); return before + typeof f; })(),
+					(function f() { eval("function f() { return 1; }"); return f(); })(),
+					(function f() { eval("var f"); f = 2; return f; })(),
+				].join()`,
+			want: "functionnumber,1,2",
+		},
+		{
+			name: "a block-level function of eval code is hoisted over a catch parameter",
+			src: `(function () {
+					try { throw 1; } catch (g) { eval("{ function g() {} }"); }
+					return typeof g;
+				})()`,
+			want: "function",
 		},
 	}
 	for _, tt := range tests {
