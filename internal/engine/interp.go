@@ -152,17 +152,26 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	for i := min(argc, fp.nparams); i < fp.nclear; i++ {
 		stack[base+i] = Undefined
 	}
-	vm.frames = append(vm.frames, frame{
-		fp:        fp,
-		cl:        f,
-		base:      base,
-		this:      this,
-		ret:       ret,
-		isNew:     isNew,
-		argc:      argc,
-		extraBase: extraBase,
-		newTarget: newTarget,
-	})
+	n := len(vm.frames)
+	if n == cap(vm.frames) {
+		vm.frames = append(vm.frames, frame{})
+	} else {
+		vm.frames = vm.frames[:n+1]
+	}
+	// Initialize every field: popped frames retain their contents.
+	fr := &vm.frames[n]
+	fr.fp = fp
+	fr.cl = f
+	fr.pc = 0
+	fr.base = base
+	fr.this = this
+	fr.ret = ret
+	fr.isNew = isNew
+	fr.argc = argc
+	fr.extraBase = extraBase
+	fr.newTarget = newTarget
+	fr.gen = nil
+	fr.scopes = nil
 	vm.framesHigh = max(vm.framesHigh, len(vm.frames))
 	vm.sp = base + fp.nregs + 1
 	return base
