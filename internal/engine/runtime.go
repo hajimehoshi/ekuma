@@ -538,7 +538,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	case bytecode.OpSub:
 		r.Sub(a, b)
 	case bytecode.OpMul:
-		r.Mul(a, b)
+		return vm.multiplyBigInts(a, b)
 	case bytecode.OpDiv:
 		if b.Sign() == 0 {
 			vm.ThrowRangeError("division by zero")

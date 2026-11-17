@@ -36,6 +36,32 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 	return Value{o: &o.Object}
 }
 
+const bigIntProductWords = 256 / bits.UintSize
+
+// multiplyBigInts returns the product of two BigInts.
+func (vm *VM) multiplyBigInts(x, y *big.Int) Value {
+	if x.Sign() == 0 || y.Sign() == 0 {
+		return BigIntFromInt64(0)
+	}
+	if len(x.Bits())+len(y.Bits()) > bigIntProductWords {
+		return vm.NewBigInt(new(big.Int).Mul(x, y))
+	}
+	o := &struct {
+		bigIntObject
+		magnitude [bigIntProductWords]big.Word
+	}{}
+	o.kind = kindBigInt
+	// A product needs at most the sum of its operands' word lengths.
+	// The buffer belongs only to this result and is immutable once published.
+	o.integer.SetBits(o.magnitude[:0])
+	o.integer.Mul(x, y)
+	if o.integer.IsInt64() {
+		return BigIntFromInt64(o.integer.Int64())
+	}
+	o.ext = &o.integer
+	return Value{o: &o.Object}
+}
+
 const bigIntSumWords = 256 / bits.UintSize
 
 // addBigInts returns the sum of two BigInts.
