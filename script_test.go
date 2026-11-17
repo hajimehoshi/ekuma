@@ -87,6 +87,45 @@ func TestScripts(t *testing.T) {
 			want: "5",
 		},
 		{
+			name: "prefix update operands convert once",
+			src: `(function () {
+				let calls = 0;
+				let i = { valueOf() { calls++; return "1"; } };
+				let j = 3n;
+				const a = [10, 20, 30];
+				return [a[++i], a[--j], i, j, calls].join();
+			})()`,
+			want: "30,30,2,2,1",
+		},
+		{
+			name: "prefix update result survives a setter",
+			src: `(function () {
+				let i = 1;
+				const o = { set x(v) { i = 9; } };
+				return [o.x = ++i, i].join();
+			})()`,
+			want: "2,9",
+		},
+		{
+			name: "prefix update result survives destructuring",
+			src: `(function () {
+				let i = 0, j;
+				const result = ({ constructor: i, toFixed: j } = ++i);
+				return [result, j === Number.prototype.toFixed].join();
+			})()`,
+			want: "1,true",
+		},
+		{
+			name: "prefix update member base survives right operand",
+			src: `(function () {
+				let i = 0;
+				const o = {};
+				(++i).x = (i = o, 1);
+				return o.x;
+			})()`,
+			want: "undefined",
+		},
+		{
 			name: "Math.atan2 of negative arguments whose quotient underflows",
 			src:  `[Math.atan2(-5e-324, -2.5), Math.atan2(-1e-200, -1e200)].join()`,
 			want: "-3.141592653589793,-3.141592653589793",

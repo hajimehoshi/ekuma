@@ -778,9 +778,24 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 			return
 		}
 	}
-	key := f.exprAny(n.Property)
+	key := f.indexOperand(n.Property)
 	f.setPos(n.Property.Start())
 	f.emit(bytecode.OpGetIndex, dst, obj, key)
+}
+
+// indexOperand compiles a key consumed by the next indexed property read.
+func (f *fn) indexOperand(e ast.Expr) int32 {
+	if update, ok := e.(*ast.UpdateExpr); ok && update.Prefix {
+		if id, ok := update.Arg.(*ast.Identifier); ok {
+			if r := f.localReg(id.Name); r >= 0 {
+				if b, _ := f.lookupLocal(id.Name); b.kind == bindVar || b.kind == bindLet {
+					f.expr(e, r)
+					return r
+				}
+			}
+		}
+	}
+	return f.exprAny(e)
 }
 
 // int32Index returns the array index whose canonical string form is s, if it fits in an int32.
