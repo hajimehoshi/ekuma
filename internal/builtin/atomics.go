@@ -90,9 +90,10 @@ func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 
 // waitResult returns the result object of Atomics.waitAsync.
 func waitResult(vm *engine.VM, async bool, value engine.Value) engine.Value {
-	o := vm.NewOrdinaryObject()
-	vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("async")), engine.Bool(async))
-	vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("value")), value)
+	o := vm.NewObjectFromProperties(
+		[]engine.PropKey{engine.NamedKey(vm.Intern("async")), engine.NamedKey(vm.Intern("value"))},
+		[]engine.Value{engine.Bool(async), value},
+	)
 	return engine.ObjectValue(o)
 }
 

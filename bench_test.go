@@ -930,3 +930,40 @@ func BenchmarkPropertyDescriptor(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkBuiltinResult measures creating a fixed-size result record.
+func BenchmarkBuiltinResult(b *testing.B) {
+	for _, c := range []struct {
+		name  string
+		setup string
+		expr  string
+	}{
+		{
+			name:  "ProxyRevocable",
+			setup: `const target = {}, handler = {};`,
+			expr:  `Proxy.revocable(target, handler)`,
+		},
+		{
+			name: "PromiseWithResolvers",
+			expr: `Promise.withResolvers()`,
+		},
+		{
+			name:  "AtomicsWaitAsync",
+			setup: `const a = new Int32Array(new SharedArrayBuffer(4));`,
+			expr:  `Atomics.waitAsync(a, 0, 1)`,
+		},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			var vm ekuma.VM
+			src := c.setup + ` let last; function run(n) { for (let i = 0; i < n; i++) last = ` + c.expr + `; }`
+			if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

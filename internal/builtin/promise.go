@@ -337,10 +337,14 @@ func initPromise(vm *engine.VM) {
 
 	method(vm, ctor, "withResolvers", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		pc := vm.NewPromiseCapability(this)
-		o := vm.NewOrdinaryObject()
-		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("promise")), pc.Promise())
-		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("resolve")), vm.CapabilityResolve(pc))
-		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern("reject")), vm.CapabilityReject(pc))
+		o := vm.NewObjectFromProperties(
+			[]engine.PropKey{
+				engine.NamedKey(vm.Intern("promise")),
+				engine.NamedKey(vm.Intern("resolve")),
+				engine.NamedKey(vm.Intern("reject")),
+			},
+			[]engine.Value{pc.Promise(), vm.CapabilityResolve(pc), vm.CapabilityReject(pc)},
+		)
 		return engine.ObjectValue(o)
 	})
 

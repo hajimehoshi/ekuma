@@ -26,9 +26,10 @@ func initProxy(vm *engine.VM) {
 			}
 			return engine.Undefined
 		})
-		r := vm.NewOrdinaryObject()
-		vm.CreateDataPropertyOrThrow(r, engine.NamedKey(vm.Intern("proxy")), engine.ObjectValue(p))
-		vm.CreateDataPropertyOrThrow(r, engine.NamedKey(vm.Intern("revoke")), engine.ObjectValue(revoke))
+		r := vm.NewObjectFromProperties(
+			[]engine.PropKey{engine.NamedKey(vm.Intern("proxy")), engine.NamedKey(vm.Intern("revoke"))},
+			[]engine.Value{engine.ObjectValue(p), engine.ObjectValue(revoke)},
+		)
 		return engine.ObjectValue(r)
 	})
 }
