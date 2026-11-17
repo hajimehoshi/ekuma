@@ -23,6 +23,7 @@ func TestForeignValueEntry(t *testing.T) {
 	for _, name := range []string{
 		"ValueOf", "RealmValueOf", "Nested", "Set", "SetIndex", "Invoke", "Call", "New",
 		"Result", "Exception", "SyntheticModule", "InstanceOf", "LoaderException", "ImportMeta",
+		"GetWithValueKey", "SetWithValueKey", "DeleteWithValueKey", "CallWithValueKey",
 	} {
 		t.Run(name, func(t *testing.T) {
 			var a, b ekuma.VM
@@ -94,6 +95,14 @@ func TestForeignValueEntry(t *testing.T) {
 					t.Fatal(err)
 				}
 				_, _ = m.Evaluate(t.Context())
+			case "GetWithValueKey":
+				_, _ = b.Global().GetWithValueKey(foreign)
+			case "SetWithValueKey":
+				_ = b.Global().SetWithValueKey(foreign, 1)
+			case "DeleteWithValueKey":
+				_ = b.Global().DeleteWithValueKey(foreign)
+			case "CallWithValueKey":
+				_, _ = b.Global().CallWithValueKey(t.Context(), foreign)
 			}
 		})
 	}
@@ -368,6 +377,57 @@ func TestValues(t *testing.T) {
 	// A lexical declaration is not a property of the global object.
 	if v, err := global.Get("lexical"); err != nil || !v.IsUndefined() {
 		t.Errorf("Get(lexical) = %v, %v, want undefined", v, err)
+	}
+}
+
+func TestValueKeys(t *testing.T) {
+	ctx := t.Context()
+	var vm ekuma.VM
+	keys, err := runScript(ctx, &vm, "keys", `({ sym: Symbol("k"), obj: { toString() { return "n"; } }, iter: Symbol.iterator })`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	sym, err := keys.Get("sym")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	o := vm.ValueOf(map[string]any{"n": 1})
+	if err := o.SetWithValueKey(sym, 2); err != nil {
+		t.Errorf("SetWithValueKey: %v", err)
+	}
+	if v, err := o.GetWithValueKey(sym); err != nil || v.Int() != 2 {
+		t.Errorf("o[sym] = %v, %v, want 2", v, err)
+	}
+	if err := o.DeleteWithValueKey(sym); err != nil {
+		t.Errorf("DeleteWithValueKey: %v", err)
+	}
+	if v, err := o.GetWithValueKey(sym); err != nil || !v.IsUndefined() {
+		t.Errorf("o[sym] after DeleteWithValueKey = %v, %v, want undefined", v, err)
+	}
+
+	// An object key is converted the way o[key] converts it.
+	obj, err := keys.Get("obj")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if v, err := o.GetWithValueKey(obj); err != nil || v.Int() != 1 {
+		t.Errorf("o[obj] = %v, %v, want 1", v, err)
+	}
+
+	iter, err := keys.Get("iter")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	it, err := vm.ValueOf([]any{"a"}).CallWithValueKey(ctx, iter)
+	if err != nil {
+		t.Fatalf("CallWithValueKey: %v", err)
+	}
+	next, err := it.Call(ctx, "next")
+	if err != nil {
+		t.Fatalf("Call: %v", err)
+	}
+	if v, err := next.Get("value"); err != nil || v.String() != "a" {
+		t.Errorf("first value = %v, %v, want a", v, err)
 	}
 }
 

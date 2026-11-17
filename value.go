@@ -279,6 +279,18 @@ func (v Value) Get(name string) (Value, error) {
 	return fromEngine(r), vm.publicError(err)
 }
 
+// GetWithValueKey is like [Value.Get], but key is converted to a property key the way the
+// expression v[key] converts it, and a conversion that throws is an [*Error]. It panics if key
+// belongs to a different VM from v.
+func (v Value) GetWithValueKey(key Value) (Value, error) {
+	vm, err := v.vm("Value.GetWithValueKey")
+	if err != nil {
+		return Undefined, err
+	}
+	r, err := vm.e.HostGet(v.engine(), vm.acceptValue(key))
+	return fromEngine(r), vm.publicError(err)
+}
+
 // Set stores [VM.ValueOf](x) as the property name of v, the way an assignment in strict mode code
 // does. The errors are those of [Value.Get].
 func (v Value) Set(name string, x any) error {
@@ -289,6 +301,15 @@ func (v Value) Set(name string, x any) error {
 	return vm.publicError(vm.e.HostSet(v.engine(), vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
 }
 
+// SetWithValueKey is like [Value.Set], but takes key as [Value.GetWithValueKey] does.
+func (v Value) SetWithValueKey(key Value, x any) error {
+	vm, err := v.vm("Value.SetWithValueKey")
+	if err != nil {
+		return err
+	}
+	return vm.publicError(vm.e.HostSet(v.engine(), vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
+}
+
 // Delete deletes the property name of v, the way the delete operator in strict mode code does.
 // The errors are those of [Value.Get].
 func (v Value) Delete(name string) error {
@@ -297,6 +318,15 @@ func (v Value) Delete(name string) error {
 		return err
 	}
 	return vm.publicError(vm.e.HostDelete(v.engine(), vm.e.StringFromGo(name)))
+}
+
+// DeleteWithValueKey is like [Value.Delete], but takes key as [Value.GetWithValueKey] does.
+func (v Value) DeleteWithValueKey(key Value) error {
+	vm, err := v.vm("Value.DeleteWithValueKey")
+	if err != nil {
+		return err
+	}
+	return vm.publicError(vm.e.HostDelete(v.engine(), vm.acceptValue(key)))
 }
 
 // Index returns the element i of v. The errors are those of [Value.Get].
@@ -330,6 +360,20 @@ func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
 			return vm.e.HostCallMethod(v.engine(), vm.e.StringFromGo(name), a)
+		})
+	})
+}
+
+// CallWithValueKey is like [Value.Call], but takes key as [Value.GetWithValueKey] does.
+func (v Value) CallWithValueKey(ctx context.Context, key Value, args ...any) (Value, error) {
+	vm, err := v.vm("Value.CallWithValueKey")
+	if err != nil {
+		return Undefined, err
+	}
+	k := vm.acceptValue(key)
+	return vm.run(ctx, func() (engine.Value, error) {
+		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
+			return vm.e.HostCallMethod(v.engine(), k, a)
 		})
 	})
 }

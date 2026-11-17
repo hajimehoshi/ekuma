@@ -93,6 +93,8 @@ The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
 `CopyBytesToGo`, `CopyBytesToJS`.
 Unlike `syscall/js`, a JavaScript exception is returned as an error, and the methods that run
 a script or call a function take a `context.Context` that can cancel execution.
+`Value.GetWithValueKey`, `Value.SetWithValueKey`, `Value.DeleteWithValueKey` and
+`Value.CallWithValueKey` take the property key as a value, such as a symbol.
 
 ### Modules
 
@@ -213,8 +215,7 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 - Host API for these, some of which the engine has and only the tests use:
   - Giving a module a module source
-  - Property keys other than strings: symbol keys, property descriptors, and listing the keys
-    of an object
+  - Property descriptors, and listing the keys of an object
   - Creating or awaiting a promise from Go other than through the `Promise` constructor and
     `then`
   - Sharing a Go byte slice with an `ArrayBuffer`, which `CopyBytesToGo` and `CopyBytesToJS`
