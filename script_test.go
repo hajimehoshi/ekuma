@@ -1054,6 +1054,18 @@ func TestScripts(t *testing.T) {
 			want: "e9.65e5,65.301.65e5,e9.65e5 e9,65.301,e9 d800.e9.dc00,d800.65.301.dc00,d800.e9.dc00 1e9b.323,17f.323.307,1e69",
 		},
 		{
+			name: "normalize of long runs of combining marks, also across the chunks of a long string",
+			src: `var below = "̖", acute = "́", x = "x".repeat(65500);
+				var a = "e" + (below + acute).repeat(20), b = x + "e" + (acute + below).repeat(100);
+				[
+					a.normalize("NFD") === "e" + below.repeat(20) + acute.repeat(20),
+					a.normalize("NFC") === "é" + below.repeat(20) + acute.repeat(19),
+					b.normalize("NFD") === x + "e" + below.repeat(100) + acute.repeat(100),
+					b.normalize("NFKC") === x + "é" + below.repeat(100) + acute.repeat(99),
+				].join()`,
+			want: "true,true,true,true",
+		},
+		{
 			name: "BigInt.asUintN and asIntN of at most 64 bits on values beyond 64 bits",
 			src: `var xs = [2n ** 64n + 5n, -(2n ** 64n) - 5n, 2n ** 100n - 1n, -(2n ** 70n) + 3n], bs = [1, 32, 63, 64];
 				xs.map(x => bs.map(b => BigInt.asUintN(b, x) + "/" + BigInt.asIntN(b, x)).join(" ")).join("|")`,
