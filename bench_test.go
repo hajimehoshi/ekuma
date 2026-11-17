@@ -250,6 +250,39 @@ func BenchmarkEval(b *testing.B) {
 	}
 }
 
+// BenchmarkGenerator measures generator creation and resumption.
+func BenchmarkGenerator(b *testing.B) {
+	const src = `
+		function* one() { yield 1; }
+		function* many(n) {
+			for (let i = 0; i < n; i++) yield 1;
+		}
+		function create(n) {
+			let sum = 0;
+			for (let i = 0; i < n; i++) sum += one().next().value;
+			if (sum !== n) throw new Error("incorrect result");
+		}
+		function resume(n) {
+			let sum = 0;
+			for (const x of many(n)) sum += x;
+			if (sum !== n) throw new Error("incorrect result");
+		}
+	`
+	for _, name := range []string{"create", "resume"} {
+		b.Run(name, func(b *testing.B) {
+			var vm ekuma.VM
+			if _, err := runScript(b.Context(), &vm, "generator.js", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("%s(%d)", name, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkAsync measures promises and async functions. One iteration is one await of
 // a resolved promise, one call of an async function that awaits once, one step of
 // a for-await loop over an async generator, or one awaited promise combinator of three promises.

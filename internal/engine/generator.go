@@ -174,20 +174,19 @@ func (vm *VM) newGeneratorObject(g *generator) *Object {
 func (vm *VM) pushGenFrame(g *generator, ret int32) {
 	base := vm.sp
 	g.f.fn.code.prepare()
-	vm.frames = append(vm.frames, frame{
-		fp:        g.f.fn.code,
-		cl:        g.f,
-		pc:        g.pc,
-		base:      base,
-		this:      g.this,
-		ret:       ret,
-		argc:      g.argc,
-		extraBase: -1,
-		newTarget: g.newTarget,
-		gen:       g,
-		scopes:    g.scopes,
-	})
-	vm.framesHigh = max(vm.framesHigh, len(vm.frames))
+	fr := vm.appendFrame()
+	fr.fp = g.f.fn.code
+	fr.cl = g.f
+	fr.pc = g.pc
+	fr.base = base
+	fr.this = g.this
+	fr.ret = ret
+	fr.isNew = false
+	fr.argc = g.argc
+	fr.extraBase = -1
+	fr.newTarget = g.newTarget
+	fr.gen = g
+	fr.scopes = g.scopes
 }
 
 // callCoroutine calls the generator, async function or async generator f from Go.

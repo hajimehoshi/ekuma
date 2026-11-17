@@ -128,6 +128,18 @@ func (vm *VM) clearStale() {
 	vm.framesHigh = n
 }
 
+// appendFrame appends a frame whose fields the caller must initialize.
+func (vm *VM) appendFrame() *frame {
+	n := len(vm.frames)
+	if n == cap(vm.frames) {
+		vm.frames = append(vm.frames, frame{})
+	} else {
+		vm.frames = vm.frames[:n+1]
+	}
+	vm.framesHigh = max(vm.framesHigh, len(vm.frames))
+	return &vm.frames[n]
+}
+
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
 // It returns the stack index of register 0 of the new frame.
 func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object) int {
@@ -152,14 +164,7 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	for i := min(argc, fp.nparams); i < fp.nclear; i++ {
 		stack[base+i] = Undefined
 	}
-	n := len(vm.frames)
-	if n == cap(vm.frames) {
-		vm.frames = append(vm.frames, frame{})
-	} else {
-		vm.frames = vm.frames[:n+1]
-	}
-	// Initialize every field: popped frames retain their contents.
-	fr := &vm.frames[n]
+	fr := vm.appendFrame()
 	fr.fp = fp
 	fr.cl = f
 	fr.pc = 0
@@ -172,7 +177,6 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	fr.newTarget = newTarget
 	fr.gen = nil
 	fr.scopes = nil
-	vm.framesHigh = max(vm.framesHigh, len(vm.frames))
 	vm.sp = base + fp.nregs + 1
 	return base
 }
