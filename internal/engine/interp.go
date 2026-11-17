@@ -160,25 +160,31 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	} else {
 		vm.ensureStack(base + max(argc, fp.nregs+1))
 	}
-	stack := vm.stack
-	for i := min(argc, fp.nparams); i < fp.nclear; i++ {
-		stack[base+i] = Undefined
-	}
+	clearFrameRegs(vm.stack[base:], min(argc, fp.nparams), fp.nclear)
 	fr := vm.appendFrame()
-	fr.fp = fp
-	fr.cl = f
-	fr.pc = 0
-	fr.base = base
-	fr.this = this
-	fr.ret = ret
-	fr.isNew = isNew
-	fr.argc = argc
-	fr.extraBase = extraBase
-	fr.newTarget = newTarget
-	fr.gen = nil
-	fr.scopes = nil
+	*fr = callFrame(fp, f, this, base, argc, ret, isNew, newTarget, extraBase)
 	vm.sp = base + fp.nregs + 1
 	return base
+}
+
+func clearFrameRegs(regs []Value, first, end int) {
+	for i := first; i < end; i++ {
+		regs[i] = Undefined
+	}
+}
+
+func callFrame(fp *funcProto, f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object, extraBase int) frame {
+	return frame{
+		fp:        fp,
+		cl:        f,
+		base:      base,
+		this:      this,
+		ret:       ret,
+		isNew:     isNew,
+		argc:      argc,
+		extraBase: extraBase,
+		newTarget: newTarget,
+	}
 }
 
 // extraArgs returns the arguments of the frame fr beyond its parameters.
@@ -1310,6 +1316,28 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpCall:
 			a := int(i.A)
+			if f := regs[a].o; !onHeap && f != nil && f.fn != nil && !f.fn.classConstructor {
+				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
+					argc := int(i.B)
+					argBase := base + a + 2
+					end := argBase + max(argc, c.nregs+1)
+					n := len(vm.frames)
+					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
+						// Reuse the available stack and frame storage for a prepared call.
+						this := regs[a+1]
+						vm.frames[n-1].pc = pc
+						vm.stackHigh = max(vm.stackHigh, end)
+						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
+						vm.frames = vm.frames[:n+1]
+						vm.framesHigh = max(vm.framesHigh, n+1)
+						vm.frames[n] = callFrame(c, f, this, argBase, argc, i.A, false, nil, -1)
+						vm.sp = argBase + c.nregs + 1
+						base, fp, cl, code, pc = argBase, c, f, c.code, 0
+						regs = vm.stack[base:vm.sp]
+						continue
+					}
+				}
+			}
 			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
 			goto callRegs
 		case bytecode.OpCallCall:
