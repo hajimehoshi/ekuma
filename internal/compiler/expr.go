@@ -99,6 +99,16 @@ func singleWrite(e ast.Expr) bool {
 		return true
 	case *ast.MemberExpr:
 		return !e.Optional
+	case *ast.AssignExpr:
+		if _, ok := e.Target.(*ast.MemberExpr); !ok {
+			return false
+		}
+		// For simple assignments, require a result held in a temporary register.
+		if e.Op == ast.OpNone {
+			_, identifier := e.Value.(*ast.Identifier)
+			return !identifier
+		}
+		return true
 	case *ast.UnaryExpr:
 		return e.Op != ast.OpDelete
 	}

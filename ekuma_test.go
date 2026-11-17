@@ -2727,3 +2727,71 @@ func TestURIEncodeSafePrefix(t *testing.T) {
 		})
 	}
 }
+
+func TestPropertyAssignmentResultLifetime(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "setter observes old destination",
+			src: `let x = 3, seen;
+				const o = {set p(v) { seen = [x, v]; x = 99; }};
+				x = o.p = x * 2;
+				return [x, ...seen].join();`,
+			want: "6,3,6",
+		},
+		{
+			name: "throwing setter preserves destination",
+			src: `let x = 3;
+				const marker = {}, o = {set p(v) { throw marker; }};
+				try { x = o.p = x + 1; } catch (e) {
+					if (e !== marker) throw e;
+				}
+				return String(x);`,
+			want: "3",
+		},
+		{
+			name: "compound coercion and setter",
+			src: `let x = 3, seen = [];
+				const o = {
+					get p() { seen.push(x); return {valueOf() { x = 7; return 5; }}; },
+					set p(v) { seen.push(x, v); x = 99; }
+				};
+				x = o.p += x;
+				return [x, ...seen].join();`,
+			want: "8,3,7,8",
+		},
+		{
+			name: "logical assignment paths",
+			src: `let x = 3, seen;
+				const o = {get p() { return 5; }, set p(v) { seen = x; x = 99; }};
+				x = o.p ||= 8;
+				const skipped = x;
+				x = o.p &&= x + 1;
+				return [skipped, x, seen].join();`,
+			want: "5,6,5",
+		},
+		{
+			name: "destructuring RHS retains result",
+			src: `let x = [2, 3], seen;
+				const o = {set p(v) { seen = x; x = [99]; }};
+				const source = [5, 7];
+				x = o.p = ([x] = source);
+				return [x === source, seen].join();`,
+			want: "true,5",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := runScript(t.Context(), &vm, "assignment.js", "(function() {"+tc.src+"})()")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := v.String(); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
