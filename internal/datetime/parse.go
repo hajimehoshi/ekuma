@@ -5,6 +5,7 @@ package datetime
 
 import (
 	"math"
+	"strings"
 )
 
 // Parse returns the time value that the string s represents, or NaN. It accepts the
@@ -13,6 +14,11 @@ import (
 func Parse(s string, tz TimeZone) float64 {
 	if f, ok := parseISO(s, tz); ok {
 		return f
+	}
+	if len(s) >= 29 && (s[3] == ' ' || s[3] == ',') {
+		if f, ok := parseFormatted(s, tz); ok {
+			return f
+		}
 	}
 	return parseLegacy(s, tz)
 }
@@ -220,6 +226,107 @@ func parseISO(s string, tz TimeZone) (float64, bool) {
 	return f.timeValue(tz), true
 }
 
+// parseFormatted parses the formats of String and UTCString.
+func parseFormatted(s string, tz TimeZone) (float64, bool) {
+	if len(s) < 29 {
+		return 0, false
+	}
+	// Only exact abbreviations enter this path.
+	if matchName(s[:3], weekdayNames[:]) < 0 {
+		return 0, false
+	}
+	var f fields
+	f.hasOffset = true
+	sc := scanner{
+		s:   s,
+		pos: 4,
+	}
+	var month string
+	var ok bool
+	utc := s[3] == ','
+	if utc {
+		if s[4] != ' ' {
+			return 0, false
+		}
+		sc.pos = 5
+		if f.day, ok = sc.fixed(2); !ok || !sc.accept(' ') {
+			return 0, false
+		}
+		month = s[8:11]
+		sc.pos = 11
+	} else {
+		if s[3] != ' ' || s[7] != ' ' {
+			return 0, false
+		}
+		month = s[4:7]
+		sc.pos = 8
+		if f.day, ok = sc.fixed(2); !ok {
+			return 0, false
+		}
+	}
+	m := matchName(month, monthNames[:])
+	// A leading number above 31 can be a year in the legacy grammar.
+	if m < 0 || f.day > 31 || !sc.accept(' ') {
+		return 0, false
+	}
+	f.month = float64(m + 1)
+	neg := sc.accept('-')
+	y, n := sc.number()
+	if n < 4 || n > 6 || !sc.accept(' ') {
+		return 0, false
+	}
+	f.year = y
+	if neg {
+		f.year = -y
+	}
+	if f.hour, ok = sc.fixed(2); !ok || !sc.accept(':') {
+		return 0, false
+	}
+	if f.minute, ok = sc.fixed(2); !ok || !sc.accept(':') {
+		return 0, false
+	}
+	if f.second, ok = sc.fixed(2); !ok {
+		return 0, false
+	}
+	if !strings.HasPrefix(s[sc.pos:], " GMT") {
+		return 0, false
+	}
+	sc.pos += 4
+	if !utc {
+		sign := sc.peek()
+		if sign != '+' && sign != '-' {
+			return 0, false
+		}
+		sc.pos++
+		h, ok := sc.fixed(2)
+		if !ok {
+			return 0, false
+		}
+		m, ok := sc.fixed(2)
+		if !ok {
+			return 0, false
+		}
+		f.offset = h*msPerHour + m*msPerMinute
+		if sign == '-' {
+			f.offset = -f.offset
+		}
+		if !sc.done() {
+			tail := s[sc.pos:]
+			if len(tail) < 3 || !strings.HasPrefix(tail, " (") || tail[len(tail)-1] != ')' || strings.ContainsAny(tail[2:len(tail)-1], "()") {
+				return 0, false
+			}
+			sc.pos = len(s)
+		}
+	}
+	if !sc.done() {
+		return 0, false
+	}
+	if f.day < 1 || !f.validTime() {
+		return math.NaN(), true
+	}
+	return f.timeValue(tz), true
+}
+
 var fullMonthNames = [12]string{"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
 
 var fullWeekdayNames = [7]string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
@@ -311,20 +418,24 @@ func parseLegacy(s string, tz TimeZone) float64 {
 				}
 				hasZone = true
 				f.hasOffset = true
-			case matchName(w, fullMonthNames[:]) >= 0:
-				if hasMonth || hasSlashDate {
-					return nan
-				}
-				hasMonth = true
-				f.month = float64(matchName(w, fullMonthNames[:]) + 1)
-				sc.accept('.')
-			case matchName(w, fullWeekdayNames[:]) >= 0:
-				if hasMonth || hasSlashDate || numCount > 0 {
-					return nan
-				}
-				sc.accept('.')
 			default:
-				return nan
+				month := matchName(w, fullMonthNames[:])
+				switch {
+				case month >= 0:
+					if hasMonth || hasSlashDate {
+						return nan
+					}
+					hasMonth = true
+					f.month = float64(month + 1)
+					sc.accept('.')
+				case matchName(w, fullWeekdayNames[:]) >= 0:
+					if hasMonth || hasSlashDate || numCount > 0 {
+						return nan
+					}
+					sc.accept('.')
+				default:
+					return nan
+				}
 			}
 
 		case (c == '+' || c == '-') && hasTime:
