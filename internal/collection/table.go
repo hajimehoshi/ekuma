@@ -6,6 +6,7 @@ package collection
 
 import (
 	"math"
+	"slices"
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -342,9 +343,60 @@ func (t *Table) Clone() *Table {
 	}
 	c.live = len(c.entries)
 	if c.live > smallSize {
+		// The maps of t hold the keys of its live entries only.
+		c.nums = withRoom(t.nums, len(t.nums))
+		c.strs = withRoom(t.strs, len(t.strs))
+		c.ints = withRoom(t.ints, len(t.ints))
+		c.bigs = withRoom(t.bigs, len(t.bigs))
+		c.objs = withRoom(t.objs, len(t.objs))
 		c.reindex()
 	}
 	return c
+}
+
+// Reserve makes room for n entries in all, for keys of the kinds of the present keys in the
+// same proportions.
+func (t *Table) Reserve(n int) {
+	if n <= len(t.entries) {
+		return
+	}
+	t.entries = slices.Grow(t.entries, n-len(t.entries))
+	if !t.indexed || t.live == 0 {
+		return
+	}
+	share := func(kind int) int {
+		return int(int64(n) * int64(kind) / int64(t.live))
+	}
+	t.nums = withRoom(t.nums, share(len(t.nums)))
+	t.strs = withRoom(t.strs, share(len(t.strs)))
+	t.ints = withRoom(t.ints, share(len(t.ints)))
+	t.bigs = withRoom(t.bigs, share(len(t.bigs)))
+	t.objs = withRoom(t.objs, share(len(t.objs)))
+	t.reindex()
+}
+
+// Trim gives up the room for entries that is mostly unused.
+func (t *Table) Trim() {
+	if cap(t.entries) < 2*len(t.entries)+minDeleted {
+		return
+	}
+	t.entries = slices.Clone(t.entries)
+	if t.indexed {
+		t.nums = withRoom(t.nums, len(t.nums))
+		t.strs = withRoom(t.strs, len(t.strs))
+		t.ints = withRoom(t.ints, len(t.ints))
+		t.bigs = withRoom(t.bigs, len(t.bigs))
+		t.objs = withRoom(t.objs, len(t.objs))
+		t.reindex()
+	}
+}
+
+// withRoom returns a new empty map with room for n keys when m has keys, and nil otherwise.
+func withRoom[K comparable](m map[K]int32, n int) map[K]int32 {
+	if len(m) == 0 {
+		return nil
+	}
+	return make(map[K]int32, n)
 }
 
 // Start returns a cursor at the first entry.

@@ -38,6 +38,29 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// TestLenAndIsASCIIAcrossWords checks code points and lone surrogates at every offset
+// from the start of a word.
+func TestLenAndIsASCIIAcrossWords(t *testing.T) {
+	for pad := range 17 {
+		for _, u := range samples {
+			units := make([]uint16, pad, pad+2*len(u))
+			for i := range units {
+				units[i] = 'a'
+			}
+			units = append(units, u...)
+			units = append(units, u...)
+			s := wtf8.FromUTF16(units)
+			if got, want := wtf8.Len(s), len(units); got != want {
+				t.Errorf("Len(FromUTF16(%x)) = %d, want %d", units, got, want)
+			}
+			ascii := !slices.ContainsFunc(units, func(c uint16) bool { return c >= 0x80 })
+			if got := wtf8.IsASCII(s); got != ascii {
+				t.Errorf("IsASCII(FromUTF16(%x)) = %t, want %t", units, got, ascii)
+			}
+		}
+	}
+}
+
 func TestSeekAtSlice(t *testing.T) {
 	for _, u := range samples {
 		s := wtf8.FromUTF16(u)

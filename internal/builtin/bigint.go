@@ -6,6 +6,7 @@ package builtin
 import (
 	"math"
 	"math/big"
+	"math/bits"
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -14,6 +15,22 @@ import (
 
 // maxBigIntBits is the largest number of bits that BigInt.asUintN creates a value of.
 const maxBigIntBits = 1 << 30
+
+// low64 returns i modulo 2^64.
+func low64(i *big.Int) uint64 {
+	var u uint64
+	for k, w := range i.Bits() {
+		if k*bits.UintSize >= 64 {
+			break
+		}
+		u |= uint64(w) << (k * bits.UintSize)
+	}
+	if i.Sign() < 0 {
+		// The low bits of the two's complement.
+		u = -u
+	}
+	return u
+}
 
 // initBigInt defines BigInt.
 func initBigInt(vm *engine.VM) {
@@ -47,6 +64,10 @@ func initBigInt(vm *engine.VM) {
 		if int64(i.BitLen()) < bits {
 			return x
 		}
+		if bits <= 64 {
+			s := 64 - bits
+			return engine.BigIntFromInt64(int64(low64(i)) << s >> s)
+		}
 		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
 		r := new(big.Int).Mod(i, m)
 		if r.Bit(int(bits-1)) != 0 {
@@ -70,6 +91,16 @@ func initBigInt(vm *engine.VM) {
 		i := x.BigInt()
 		if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
 			return x
+		}
+		if bits <= 64 {
+			u := low64(i)
+			if bits < 64 {
+				u &= 1<<bits - 1
+			}
+			if u <= math.MaxInt64 {
+				return engine.BigIntFromInt64(int64(u))
+			}
+			return vm.NewBigInt(new(big.Int).SetUint64(u))
 		}
 		if bits > maxBigIntBits {
 			vm.ThrowRangeError("maximum BigInt size exceeded")

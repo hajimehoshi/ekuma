@@ -12,6 +12,7 @@
 package wtf8
 
 import (
+	"math/bits"
 	"strings"
 	"unicode/utf8"
 )
@@ -28,12 +29,28 @@ const (
 
 // IsASCII reports whether every byte of s is below 0x80.
 func IsASCII(s string) bool {
+	for len(s) >= 8 {
+		if word(s)&highBits != 0 {
+			return false
+		}
+		s = s[8:]
+	}
 	for i := 0; i < len(s); i++ {
 		if s[i] >= 0x80 {
 			return false
 		}
 	}
 	return true
+}
+
+// highBits has the high bit of each byte of a word set.
+const highBits = 0x8080808080808080
+
+// word returns the first eight bytes of s as a little-endian word.
+func word(s string) uint64 {
+	_ = s[7]
+	return uint64(s[0]) | uint64(s[1])<<8 | uint64(s[2])<<16 | uint64(s[3])<<24 |
+		uint64(s[4])<<32 | uint64(s[5])<<40 | uint64(s[6])<<48 | uint64(s[7])<<56
 }
 
 // IsHighSurrogate reports whether r is a high (leading) surrogate.
@@ -88,13 +105,25 @@ func AppendRune(b []byte, r rune) []byte {
 
 // Len returns the length of s in UTF-16 code units.
 func Len(s string) int {
-	n := 0
+	// Every byte except a continuation byte starts a code point,
+	// and a four-byte sequence is two code units.
+	n := len(s)
+	for len(s) >= 8 {
+		w := word(s)
+		s = s[8:]
+		if w&highBits == 0 {
+			continue
+		}
+		// Bit 0 of a byte of continuations is set for a continuation byte (10xxxxxx), and bit 4
+		// of a byte of leads is set for a byte of the form 1111xxxx.
+		continuations := (w >> 7) &^ (w >> 6) & 0x0101010101010101
+		leads := w & (w >> 1) & (w >> 2) & (w >> 3) & 0x1010101010101010
+		n += bits.OnesCount64(leads) - bits.OnesCount64(continuations)
+	}
 	for i := 0; i < len(s); i++ {
 		b := s[i]
-		// Every byte except a continuation byte starts a code point,
-		// and a four-byte sequence is two code units.
-		if b&0xC0 != 0x80 {
-			n++
+		if b&0xC0 == 0x80 {
+			n--
 		}
 		if b >= 0xF0 {
 			n++

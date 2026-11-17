@@ -87,6 +87,24 @@ func TestScripts(t *testing.T) {
 			want: "0 120 true 40",
 		},
 		{
+			name: "random access to a long non-ASCII string with pairs across every 64th code unit",
+			src: `var s = "bc", u = [0x62, 0x63];
+				for (var i = 0; i < 300; i++) { s += "a\u{1F600}日"; u.push(0x61, 0xD83D, 0xDE00, 0x65E5); }
+				s += "\uD800"; u.push(0xD800);
+				var n = s.length, bad = 0;
+				for (var i = 0; i < n; i++) {
+					var j = (i * 7919) % n;
+					if (s.charCodeAt(j) !== u[j] || s.slice(j, j + 1).charCodeAt(0) !== u[j]) bad++;
+				}
+				for (var k = n; k >= 0; k -= 61) {
+					var want = -1;
+					for (var j = Math.min(k, n - 2); j >= 0 && want < 0; j--) if (u[j] === 0x61 && u[j + 1] === 0xD83D) want = j;
+					if (s.lastIndexOf("a\u{1F600}", k) !== want) bad++;
+				}
+				[n, bad, s.lastIndexOf("日"), s.lastIndexOf("日\uD800")].join(" ")`,
+			want: "1203 0 1201 1201",
+		},
+		{
 			name: "lone surrogates joined by concatenation",
 			src: `var h = "\uD83D", l = "\uDE00";
 				var s = "";
@@ -386,6 +404,22 @@ func TestScripts(t *testing.T) {
 			want: "true",
 		},
 		{
+			name: "many top-level declarations and private names",
+			src: strings.Repeat("var v0, v1, v2, v3, v4, v5, v6, v7, v8, v9;", 2) + `var w0, w1, w2, w3, w4, w5, w6, w7, w8, w9;
+				let lexA = 1; class K {} { function annexF() {} }
+				var r = [lexA, "lexA" in globalThis, typeof K, typeof annexF];
+				(function () {
+					"use strict";
+					w0 = String(1);
+					try { undeclaredU = String(1); } catch (e) { r.push(e.constructor.name); }
+				})();
+				var names = Array.from({length: 20}, (_, i) => "#p" + i + " = " + i + ";").join("");
+				r.push(eval("new (class { " + names + " get #q() { return 1; } set #q(v) {} m() { return this.#p19 + this.#q; } })().m()"));
+				try { eval("(class { " + names + " #p3; })"); } catch (e) { r.push(e.constructor.name); }
+				r.join()`,
+			want: "1,false,function,function,ReferenceError,20,SyntaxError",
+		},
+		{
 			name: "const assignment",
 			src:  `var r; const k = 1; try { k = 2; } catch (e) { r = e.constructor.name; } r + k`,
 			want: "TypeError1",
@@ -403,6 +437,15 @@ func TestScripts(t *testing.T) {
 				({ a: (log.push("target a"), o).x = (log.push("default"), 1), ...(log.push("target rest"), o).r } = src);
 				log.join() + "|" + o.x + o.r.b`,
 			want: "target a,get a,default,target rest,get b|12",
+		},
+		{
+			name: "object spread copies enumerable data properties into an independent object",
+			src: `var src = {a: 1, b: 2}, c = {...src};
+				c.a = 3; c.x = 4; src.y = 5;
+				var f = {...Object.freeze({p: 1, q: 2})}; f.p = 6; f.r = 7;
+				var n = {...Object.defineProperty({u: 1, v: 2}, "u", {enumerable: false})};
+				[src.a, "x" in src, "y" in c, Object.keys(c), Object.isFrozen(f), Object.keys(f), f.p, Object.keys(n)].join("|")`,
+			want: "1|false|false|a,b,x|false|p,q,r|6|v",
 		},
 		{
 			name: "spread and rest",
@@ -869,6 +912,20 @@ func TestScripts(t *testing.T) {
 			want: "3",
 		},
 		{
+			name: "built-ins close an iterator when their callback throws or they stop, not when next throws",
+			src: `var log = [];
+				function mk(nextThrows) { return { [Symbol.iterator]() { var i = 0; return { next() { if (nextThrows && i == 1) throw "next"; i++; return { done: i > 4, value: i }; }, return() { log.push("return"); throw "ret"; } }; } }; }
+				var add = Set.prototype.add;
+				Set.prototype.add = function (v) { if (v == 2) throw "add"; return add.call(this, v); };
+				try { new Set(mk(false)); } catch (e) { log.push(e); }
+				try { new Set(mk(true)); } catch (e) { log.push(e); }
+				Set.prototype.add = add;
+				var other = { size: 1, has() {}, keys() { return mk(false)[Symbol.iterator](); } };
+				try { new Set([1, 2, 3]).isSupersetOf(other); } catch (e) { log.push(e); }
+				log.join()`,
+			want: "return,add,next,return,ret",
+		},
+		{
 			name: "for-of reports a throwing return method when a generator returns",
 			src: `var it = { [Symbol.iterator]() { return { next() { return { done: false }; }, return() { throw "closed"; } }; } };
 				function* g() { for (var x of it) yield 1; }
@@ -894,6 +951,19 @@ func TestScripts(t *testing.T) {
 				A.prototype.apply = function(t, a) { return a.length; };
 				new B(5).x + "," + new B(5).m(1) + "," + new B(5).n(1, 2)`,
 			want: "5,6,2",
+		},
+		{
+			name: "normalize of normalized, unnormalized and ill-formed strings",
+			src: `["é日", "é", "\uD800é\uDC00", "ẛ̣"].map(s => ["NFC", "NFD", "NFKC"].map(f =>
+				[...s.normalize(f)].map(c => c.charCodeAt(0).toString(16)).join(".")).join(",")).join(" ")`,
+			want: "e9.65e5,65.301.65e5,e9.65e5 e9,65.301,e9 d800.e9.dc00,d800.65.301.dc00,d800.e9.dc00 1e9b.323,17f.323.307,1e69",
+		},
+		{
+			name: "BigInt.asUintN and asIntN of at most 64 bits on values beyond 64 bits",
+			src: `var xs = [2n ** 64n + 5n, -(2n ** 64n) - 5n, 2n ** 100n - 1n, -(2n ** 70n) + 3n], bs = [1, 32, 63, 64];
+				xs.map(x => bs.map(b => BigInt.asUintN(b, x) + "/" + BigInt.asIntN(b, x)).join(" ")).join("|")`,
+			want: "1/-1 5/5 5/5 5/5|1/-1 4294967291/-5 9223372036854775803/-5 18446744073709551611/-5|" +
+				"1/-1 4294967295/-1 9223372036854775807/-1 18446744073709551615/-1|1/-1 3/3 3/3 3/3",
 		},
 		{
 			name: "BigInt exponentiation by a huge exponent",
@@ -1035,6 +1105,23 @@ func TestScripts(t *testing.T) {
 				var other = { size: 0, has() {}, keys() { return { get next() { s.clear(); s.add(4); return () => ({ done: true }); } }; } };
 				[...s.union(other)].join() + "|" + [...s.symmetricDifference(other)].join()`,
 			want: "4|4",
+		},
+		{
+			name: "Set methods call a has method of a set other than the built-in one",
+			src: `var other = new Set([1, 2, 3]), calls = 0;
+				other.has = function (x) { calls++; return x === 2; };
+				var a = new Set([1, 2]).intersection(other), b = new Set([1, 2, 3, 4, 5, 6]).difference(new Set([2, 4]));
+				[...a].join() + "|" + calls + "|" + [...b].join()`,
+			want: "2|2|1,3,5,6",
+		},
+		{
+			name: "Map and Set from arrays with many distinct keys of several kinds and duplicates",
+			src: `var o = {}, src = [];
+				for (var i = 0; i < 16; i++) src.push(i);
+				for (var i = 0; i < 40; i++) src.push("k" + i % 20, i % 8, o, 10n ** 30n);
+				var s = new Set(src), m = new Map(src.map((k, i) => [k, i]));
+				[s.size, m.size, s.has("k19"), s.has(7), s.has(o), s.has(10n ** 30n), m.get("k0"), m.get(o), [...s].slice(14, 19).join()].join(" ")`,
+			want: "38 38 true true true true 96 174 14,15,k0,[object Object],1000000000000000000000000000000",
 		},
 		{
 			name: "DataView with a length whose conversion detaches the buffer",
@@ -1377,6 +1464,12 @@ func TestAllocationsPerOperation(t *testing.T) {
 			name:  "spread of an array",
 			setup: `var src = []; for (var j = 0; j < 16; j++) src.push(j);`,
 			body:  `[...src];`,
+			want:  2,
+		},
+		{
+			name:  "spread of an object into a literal",
+			setup: `var src = {a: 1, b: 2, c: 3, d: 4};`,
+			body:  `({...src});`,
 			want:  2,
 		},
 		{
@@ -2102,6 +2195,34 @@ func TestTypedArray(t *testing.T) {
 				try { a.setFromHex("00éa"); } catch (e) { syntaxError = e instanceof SyntaxError; }
 				[syntaxError, ...a].join()`,
 			want: "true,0,255",
+		},
+		{
+			name: "base64 and hex decoding around whole chunks",
+			src: `function r(f) { try { return f(); } catch (e) { return e.name; } }
+				var a = new Uint8Array(4), b = new Uint8Array(8);
+				[Uint8Array.fromBase64("AQID BAUG\nBw==").join(),
+					Uint8Array.fromBase64("AQIDBA-_", {alphabet: "base64url"}).join(),
+					JSON.stringify(a.setFromBase64("AQIDBAUG")), a.join(),
+					r(() => b.setFromBase64("AQIDBAUG*AAA")), b.join(),
+					Uint8Array.fromBase64("AQIDBA", {lastChunkHandling: "stop-before-partial"}).join(),
+					Uint8Array.fromHex("00ff10Ab").join(),
+					JSON.stringify(a.setFromHex("0102030405")), r(() => a.setFromHex("0102zz")), a.join()].join(" ")`,
+			want: `1,2,3,4,5,6,7 1,2,3,4,15,191 {"read":4,"written":3} 1,2,3,0 SyntaxError 1,2,3,4,5,6,0,0 1,2,3 0,255,16,171 {"read":8,"written":4} SyntaxError 1,2,3,4`,
+		},
+		{
+			name: "construction from arrays that start with numbers",
+			src: `var v = {valueOf() { return -1; }};
+				[new Int8Array([1, 300, "7", v, 2.9]), Int16Array.from([1, 70000, "7", v]), Float32Array.from([1, 2], x => x * 2),
+					new Uint8Array([1, , 3]), Uint8Array.from({length: 2, 0: 9})].join(" ")`,
+			want: "1,44,7,-1,2 1,4464,7,-1 2,4 1,0,3 9,0",
+		},
+		{
+			name: "searches for negative and out-of-range numbers",
+			src: `[Int8Array, Int16Array, Int32Array, Uint8Array, Uint16Array, Uint8ClampedArray, Float32Array].map(C => {
+				var a = new C([5, -1, 255, 65535, -129, 0.5, 7, -1, 0]);
+				return [a.indexOf(-1), a.lastIndexOf(-1), a.includes(255), a.indexOf(65535), a.indexOf(-129), a.indexOf(0.5), a.lastIndexOf(0), a.indexOf(-0)].join();
+			}).join(" ")`,
+			want: "1,7,false,-1,-1,-1,8,5 1,7,true,-1,4,-1,8,5 1,7,true,3,4,-1,8,5 -1,-1,true,-1,-1,-1,8,5 -1,-1,true,1,-1,-1,8,5 -1,-1,true,-1,-1,-1,8,1 1,7,true,3,4,5,8,8",
 		},
 		{
 			// The specification leaves the byte order of typed arrays to the platform.

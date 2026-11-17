@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -147,8 +148,14 @@ type Object struct {
 type objectMeta struct {
 	// length and cursor are the cached UTF-16 view of a string that is not ASCII:
 	// its length, or 0 before it is known, and the position of the most recent access.
-	length int
-	cursor wtf8.Pos
+	// Only a string of at most MaxStringLength bytes has them, so they fit in 32 bits.
+	length int32
+	cursor stringPos
+
+	// checkpoints holds the positions of the code units of such a string whose indices are
+	// multiples of checkpointInterval, once an access far from cursor needed one. See
+	// [checkpointsOf].
+	checkpoints *[]uint32
 
 	// weak holds the values that the weak collections associate with an object or a symbol,
 	// by collection. See [WeakTable].
@@ -162,6 +169,29 @@ type objectMeta struct {
 	// and whose initial properties are not stored yet, once one was made.
 	// See [VM.functionShapeFor].
 	functionProtoShape *shape
+}
+
+// stringPos is a [wtf8.Pos] in a string of at most MaxStringLength bytes.
+type stringPos struct {
+	unit int32
+	byte int32
+	low  bool
+}
+
+func (p stringPos) pos() wtf8.Pos {
+	return wtf8.Pos{
+		Unit: int(p.unit),
+		Byte: int(p.byte),
+		Low:  p.low,
+	}
+}
+
+func newStringPos(p wtf8.Pos) stringPos {
+	return stringPos{
+		unit: int32(p.Unit),
+		byte: int32(p.Byte),
+		low:  p.Low,
+	}
 }
 
 // ensureMeta returns the side data of o, creating it if needed.
@@ -948,12 +978,20 @@ func (vm *VM) stringKey(o *Object) *Object {
 // IsASCII reports whether the string o consists of ASCII characters only.
 func (o *Object) IsASCII() bool {
 	if o.flags&objASCIIKnown == 0 {
-		o.flags |= objASCIIKnown
-		if wtf8.IsASCII(o.str) {
-			o.flags |= objASCII
-		}
+		o.classifyASCII()
 	}
 	return o.flags&objASCII != 0
+}
+
+// classifyASCII records in the flags of the string o whether it is ASCII.
+// It stays out of line so that IsASCII can be inlined.
+//
+//go:noinline
+func (o *Object) classifyASCII() {
+	o.flags |= objASCIIKnown
+	if wtf8.IsASCII(o.str) {
+		o.flags |= objASCII
+	}
 }
 
 // StringLength returns the length of the string o in UTF-16 code units.
@@ -961,13 +999,29 @@ func (o *Object) StringLength() int {
 	if o.IsASCII() {
 		return len(o.str)
 	}
+	if !o.cachesUTF16() {
+		return wtf8.Len(o.str)
+	}
 	m := o.ensureMeta()
 	// A string that is not ASCII is never empty, so 0 means that the length is not known yet.
 	if m.length == 0 {
-		m.length = wtf8.Len(o.str)
+		m.length = int32(wtf8.Len(o.str))
 	}
-	return m.length
+	return int(m.length)
 }
+
+// cachesUTF16 reports whether the non-ASCII string o keeps its UTF-16 view in its side data.
+func (o *Object) cachesUTF16() bool {
+	if len(o.str) > MaxStringLength {
+		// Only a host can make such a string.
+		return false
+	}
+	return o.meta != nil || len(o.str) > maxUncachedLength
+}
+
+// maxUncachedLength is the length in bytes up to which a non-ASCII string without side data
+// computes its UTF-16 view at each use.
+const maxUncachedLength = 32
 
 // arrayIndex returns the array index whose canonical string form is the string o.
 func (o *Object) arrayIndex() (uint32, bool) {
@@ -990,10 +1044,70 @@ func (o *Object) knownArrayIndex() (uint32, bool) {
 // seek returns the position of the code unit i of the non-ASCII string o.
 func (o *Object) seek(i int) wtf8.Pos {
 	s := o.Str()
+	if !o.cachesUTF16() {
+		return wtf8.Seek(s, wtf8.Pos{}, i)
+	}
 	m := o.ensureMeta()
-	p := wtf8.Seek(s, m.cursor, i)
-	m.cursor = p
+	from := m.cursor.pos()
+	if d := i - from.Unit; (d > checkpointInterval || d < -checkpointInterval) && i >= checkpointInterval {
+		if m.checkpoints == nil && len(s) >= minCheckpointedLength {
+			cs := checkpointsOf(s)
+			m.checkpoints = &cs
+		}
+		if m.checkpoints != nil {
+			if k := i / checkpointInterval; k < len(*m.checkpoints) {
+				c := (*m.checkpoints)[k]
+				from = wtf8.Pos{
+					Unit: k * checkpointInterval,
+					Byte: int(c >> 1),
+					Low:  c&1 != 0,
+				}
+			}
+		}
+	}
+	p := wtf8.Seek(s, from, i)
+	m.cursor = newStringPos(p)
 	return p
+}
+
+const (
+	// checkpointInterval is the distance in code units between two checkpoints of a string.
+	checkpointInterval = 64
+
+	// minCheckpointedLength is the length in bytes from which a string gets checkpoints.
+	minCheckpointedLength = 4 * checkpointInterval
+)
+
+// checkpointsOf returns the positions of the code units of the non-ASCII string s whose
+// indices are multiples of checkpointInterval, in order. A position is the byte of the code
+// unit shifted left by one, with the low bit set when the code unit is the low surrogate of
+// the four-byte sequence at that byte.
+func checkpointsOf(s string) []uint32 {
+	cs := make([]uint32, 0, len(s)/(3*checkpointInterval)+1)
+	var unit int
+	for i := 0; i < len(s); {
+		if unit%checkpointInterval == 0 {
+			cs = append(cs, uint32(i)<<1)
+		}
+		switch b := s[i]; {
+		case b < 0x80:
+			i++
+			unit++
+		case b < 0xE0:
+			i += 2
+			unit++
+		case b < 0xF0:
+			i += 3
+			unit++
+		default:
+			if (unit+1)%checkpointInterval == 0 {
+				cs = append(cs, uint32(i)<<1|1)
+			}
+			i += 4
+			unit += 2
+		}
+	}
+	return cs
 }
 
 // UnitAt returns the code unit i of the string o. i must be in range.
@@ -1014,7 +1128,9 @@ func (o *Object) Substring(start, end int) string {
 	}
 	a := o.seek(start)
 	b := wtf8.Seek(s, a, end)
-	o.meta.cursor = b
+	if o.cachesUTF16() {
+		o.meta.cursor = newStringPos(b)
+	}
 	return wtf8.Slice(s, a, b)
 }
 
@@ -1023,11 +1139,12 @@ func (vm *VM) UnitString(u uint16) Value {
 	if u < 0x80 {
 		return vm.strings.ascii[u]
 	}
+	var buf [utf8.UTFMax]byte
 	return Value{
 		o: &Object{
 			kind:  kindString,
 			shape: vm.shapes.string,
-			str:   string(wtf8.AppendRune(nil, rune(u))),
+			str:   string(wtf8.AppendRune(buf[:0], rune(u))),
 		},
 	}
 }
@@ -1364,12 +1481,22 @@ func (o *Object) UnitLastIndexOf(sub string, from int) int {
 	if !o.IsASCII() && mayMatchInsidePair(sub) {
 		return o.findUnits(sub, from, true)
 	}
-	end := o.Substring(0, from+subLen)
-	i := strings.LastIndex(end, sub)
+	s := o.Str()
+	if o.IsASCII() {
+		return strings.LastIndex(s[:from+subLen], sub)
+	}
+	end := o.seek(from + subLen)
+	i := strings.LastIndex(s[:end.Byte], sub)
 	if i < 0 {
 		return -1
 	}
-	return wtf8.Len(end[:i])
+	// The match cannot end inside a pair, so the low surrogate of a pair at end stands for
+	// the start of the pair.
+	unit := end.Unit
+	if end.Low {
+		unit--
+	}
+	return unit - wtf8.Len(s[i:end.Byte])
 }
 
 func mayMatchInsidePair(sub string) bool {

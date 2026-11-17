@@ -97,6 +97,15 @@ func (o *Object) SetElement(i int64, v Value) bool {
 	return false
 }
 
+// ElementCount returns how many elements the array v holds in memory, holes included, or 0
+// when v is not an array.
+func ElementCount(v Value) int {
+	if v.o == nil || v.o.kind != kindArray {
+		return 0
+	}
+	return len(v.o.elems)
+}
+
 // ElementList returns a copy of the elements of the array o
 // when reading them cannot run any JavaScript.
 func (o *Object) ElementList() ([]Value, bool) {

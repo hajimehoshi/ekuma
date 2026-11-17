@@ -265,6 +265,52 @@ type compiler struct {
 	dynamic *ast.Function
 
 	scratch *scratch
+
+	// topDecls maps the names that the top level of a program with many declarations
+	// declares to what their declarations are, once a lookup needed it.
+	topDecls map[string]topDecl
+}
+
+// topDecl tells what the declarations of a name at the top level of a program are.
+type topDecl struct {
+	// lexical reports a let, const or class declaration.
+	lexical bool
+
+	// plain reports a declaration that is not an Annex B var.
+	plain bool
+}
+
+// lookupTopDecl returns what the declarations of name at the top level of the program are.
+func (c *compiler) lookupTopDecl(name string) topDecl {
+	decls := c.prog.Scope.Decls
+	if len(decls) > 16 {
+		if c.topDecls == nil {
+			c.topDecls = make(map[string]topDecl, len(decls))
+			for _, d := range decls {
+				c.topDecls[d.Name] = c.topDecls[d.Name].with(d.Kind)
+			}
+		}
+		return c.topDecls[name]
+	}
+	var t topDecl
+	for _, d := range decls {
+		if d.Name == name {
+			t = t.with(d.Kind)
+		}
+	}
+	return t
+}
+
+// with returns t with a declaration of the kind k added.
+func (t topDecl) with(k ast.DeclKind) topDecl {
+	switch k {
+	case ast.DeclLet, ast.DeclConst, ast.DeclClass:
+		t.lexical = true
+	}
+	if k != ast.DeclAnnexBVar {
+		t.plain = true
+	}
+	return t
 }
 
 // scratch is the storage that compilations reuse.
@@ -938,25 +984,12 @@ func (f *fn) undeclaredGlobal(name string) bool {
 	if f.resolve(name).kind != refGlobal {
 		return false
 	}
-	for _, d := range f.c.prog.Scope.Decls {
-		if d.Name == name && d.Kind != ast.DeclAnnexBVar {
-			return false
-		}
-	}
-	return true
+	return !f.c.lookupTopDecl(name).plain
 }
 
 // globalLexical reports whether name is a let, const or class declaration of the top level of the script.
 func (c *compiler) globalLexical(name string) bool {
-	for _, d := range c.prog.Scope.Decls {
-		if d.Name == name {
-			switch d.Kind {
-			case ast.DeclLet, ast.DeclConst, ast.DeclClass:
-				return true
-			}
-		}
-	}
-	return false
+	return c.lookupTopDecl(name).lexical
 }
 
 // localReg returns the register of the variable name when it is a local of f that can be

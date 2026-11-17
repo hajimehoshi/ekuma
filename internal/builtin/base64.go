@@ -41,6 +41,28 @@ func base64Value(c byte) int {
 	return -1
 }
 
+// base64Values holds the value of each byte as a character of the standard base64 alphabet,
+// or -1.
+var base64Values = func() [256]int8 {
+	var t [256]int8
+	for c := range t {
+		t[c] = int8(base64Value(byte(c)))
+	}
+	return t
+}()
+
+// hexValues holds the value of each byte as a hexadecimal digit, or -1.
+var hexValues = func() [256]int8 {
+	var t [256]int8
+	for c := range t {
+		t[c] = -1
+		if v := numconv.DigitValue(byte(c)); v >= 0 && v < 16 {
+			t[c] = int8(v)
+		}
+	}
+	return t
+}()
+
 // skipASCIIWhitespace implements SkipAsciiWhitespace.
 func skipASCIIWhitespace(s string, i int) int {
 	for i < len(s) {
@@ -78,9 +100,27 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 	if maxLength == 0 {
 		return r
 	}
+	r.bytes = make([]byte, 0, min(maxLength, len(s)/4*3+3))
 	chunk := make([]int, 0, 4)
 	i := 0
 	for {
+		if len(chunk) == 0 && !url {
+			// Whole chunks of four characters of the alphabet decode as the state machine
+			// below does while three bytes or more remain.
+			for i+4 <= len(s) && maxLength-len(r.bytes) >= 3 {
+				a, b, c, d := base64Values[s[i]], base64Values[s[i+1]], base64Values[s[i+2]], base64Values[s[i+3]]
+				if a|b|c|d < 0 {
+					break
+				}
+				v := uint32(a)<<18 | uint32(b)<<12 | uint32(c)<<6 | uint32(d)
+				r.bytes = append(r.bytes, byte(v>>16), byte(v>>8), byte(v))
+				i += 4
+				r.read = i
+			}
+			if len(r.bytes) == maxLength {
+				return r
+			}
+		}
 		i = skipASCIIWhitespace(s, i)
 		if i == len(s) {
 			if len(chunk) > 0 {
@@ -176,14 +216,18 @@ func fromHex(s string, maxLength int) decodeResult {
 		r.err = "the hex string has an odd length"
 		return r
 	}
-	for r.read < len(s) && len(r.bytes) < maxLength {
-		hi, lo := numconv.DigitValue(s[r.read]), numconv.DigitValue(s[r.read+1])
-		if hi < 0 || hi >= 16 || lo < 0 || lo >= 16 {
+	// A character that is not ASCII starts within the first len(s)/2 pairs of bytes, and none
+	// of its bytes is a digit.
+	r.bytes = make([]byte, min(maxLength, len(s)/2))
+	for i := range r.bytes {
+		hi, lo := hexValues[s[2*i]], hexValues[s[2*i+1]]
+		if hi|lo < 0 {
+			r.bytes = r.bytes[:i]
 			r.err = "invalid character in the hex string"
 			return r
 		}
+		r.bytes[i] = byte(hi<<4 | lo)
 		r.read += 2
-		r.bytes = append(r.bytes, byte(hi<<4|lo))
 	}
 	return r
 }

@@ -355,7 +355,7 @@ func (vm *VM) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
 			cursor: m.cursor,
 		}
 		if m.length != 0 {
-			meta.length = m.length + wtf8.Len(s[len(a.str):])
+			meta.length = m.length + int32(wtf8.Len(s[len(a.str):]))
 		}
 	}
 	return Value{
@@ -401,7 +401,7 @@ func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
 	} else if m := b.meta; m != nil && m.length != 0 {
 		// Carrying the length over keeps a loop that prepends and reads the length linear.
 		meta = &objectMeta{
-			length: m.length + wtf8.Len(s[len(b.str):]),
+			length: m.length + int32(wtf8.Len(s[len(b.str):])),
 		}
 	}
 	return Value{

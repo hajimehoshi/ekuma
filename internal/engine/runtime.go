@@ -827,6 +827,9 @@ func (vm *VM) copyDataProperties(dst *Object, src Value, excluded []Value) {
 		return
 	}
 	from := vm.ToObject(src)
+	if len(excluded) == 0 && takeDataProperties(dst, from) {
+		return
+	}
 	var skip []PropKey
 	for _, e := range excluded {
 		skip = append(skip, vm.ToPropertyKey(e))
@@ -857,6 +860,38 @@ keys:
 		}
 		vm.CreateDataPropertyOrThrow(dst, k, val)
 	}
+}
+
+// takeDataProperties gives the empty ordinary object dst the properties of from and reports
+// true when creating them on dst one by one would give dst the shape of from. Otherwise it
+// does nothing and reports false.
+func takeDataProperties(dst, from *Object) bool {
+	if dst.kind != kindObject || dst.class != classObject || dst.flags&(objNotExtensible|objIsProto|objExotic|objSparse) != 0 || dst.shape.count != 0 || len(dst.elems) != 0 {
+		return false
+	}
+	// An ordinary object without elements and not sparse has no property with an array index
+	// key, so its keys are in insertion order, which is the order of its slots.
+	if from.kind != kindObject || from.class != classObject || from.flags&(objExotic|objSparse) != 0 || len(from.elems) != 0 {
+		return false
+	}
+	s := from.shape
+	if s.private || s.flatBased || s.count == 0 {
+		return false
+	}
+	t := s
+	for ; t.parent != nil; t = t.parent {
+		if t.flags != FlagsData || t.key.kind != kindString {
+			return false
+		}
+	}
+	// The root fixes the prototype, so the shape of dst would be reached through the same
+	// transitions.
+	if t != dst.shape {
+		return false
+	}
+	dst.shape = s
+	dst.slots = append(dst.slots[:0], from.slots[:s.count]...)
+	return true
 }
 
 // setupClass makes the function ctor a class constructor that extends parent,

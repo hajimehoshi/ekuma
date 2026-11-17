@@ -376,7 +376,14 @@ func initString(vm *engine.VM) {
 		if s.IsASCII() {
 			return engine.ObjectValue(s)
 		}
-		return vm.NewString(mapWellFormed(s.Str(), form.String))
+		str := s.Str()
+		if !wtf8.IsWellFormed(str) {
+			return vm.NewString(mapWellFormed(str, form.String))
+		}
+		if form.QuickSpanString(str) == len(str) {
+			return engine.ObjectValue(s)
+		}
+		return vm.NewString(form.String(str))
 	})
 	method(vm, proto, "isWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(wtf8.IsWellFormed(thisString(vm, this, "isWellFormed").Str()))
@@ -475,6 +482,12 @@ func initString(vm *engine.VM) {
 				return engine.ObjectValue(s)
 			}
 			var b wtf8.Builder
+			if !functional {
+				// The size of the result when repStr has no substitutions. A larger one throws below.
+				if size := int64(len(s.Str())) + int64(len(positions))*int64(len(repStr)-len(search)); size <= engine.MaxStringLength {
+					b.Grow(int(size))
+				}
+			}
 			end := 0
 			for _, p := range positions {
 				writeLimited(vm, &b, s.Substring(end, p))

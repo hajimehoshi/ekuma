@@ -268,23 +268,33 @@ func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
 // IterateRecord is [VM.Iterate] for the iterator record of the iterator it and its next method
 // next.
 func (vm *VM) IterateRecord(it, next Value, f func(Value) bool) {
-	for {
-		e, ok := vm.iteratorStep(it, next)
-		if !ok {
-			return
+	// inF is set while f runs: an exception that f throws closes the iterator, and one
+	// that the iterator throws does not.
+	var inF, stopped bool
+	if vm.protect(func() {
+		for {
+			e, ok := vm.iteratorStep(it, next)
+			if !ok {
+				return
+			}
+			inF = true
+			more := f(e)
+			inF = false
+			if !more {
+				stopped = true
+				return
+			}
 		}
-		var more bool
-		if !vm.protect(func() {
-			more = f(e)
-		}) {
-			vm.iteratorClose(it, true)
-			panic(errThrow)
-		}
-		if !more {
+	}) {
+		if stopped {
 			vm.iteratorClose(it, false)
-			return
 		}
+		return
 	}
+	if inF {
+		vm.iteratorClose(it, true)
+	}
+	panic(errThrow)
 }
 
 // appendIterable appends the values that iterating v yields to the array o.
@@ -549,6 +559,9 @@ func (vm *VM) iterResultValue(r Value) (Value, bool) {
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (vm *VM) IteratorToList(v Value, method *Object) []Value {
 	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+		if n := int(v.o.length); n <= len(v.o.elems) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
+			return slices.Clone(v.o.elems[:n])
+		}
 		// The length of a sparse array says nothing about the memory it holds.
 		vals := make([]Value, 0, len(v.o.elems))
 		vm.iteratePlainArray(v.o, func(e Value) bool {

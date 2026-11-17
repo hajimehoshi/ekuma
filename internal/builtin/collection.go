@@ -58,6 +58,18 @@ func addEntriesFromIterable(vm *engine.VM, target *engine.Object, iterable engin
 	})
 }
 
+// reserveProbe is the number of elements of an array after which a collection made from the
+// array makes room for all of them, if they all had different keys.
+const reserveProbe = 16
+
+// reserveAfter makes room in t for the entries of an array of n elements after the first i
+// elements were added, when those had different keys.
+func reserveAfter(t *collection.Table, i, n int) {
+	if i == reserveProbe && t.Size() == reserveProbe && n >= 2*reserveProbe {
+		t.Reserve(n)
+	}
+}
+
 // adderOf returns the method name of the new collection o, or throws a TypeError.
 func adderOf(vm *engine.VM, o *engine.Object, name *engine.Object) *engine.Object {
 	adder := vm.Get(o, engine.NamedKey(name))
@@ -121,9 +133,18 @@ func initMap(vm *engine.VM) {
 		adder := adderOf(vm, m, setKey)
 		var fast func(k, v engine.Value)
 		if adder == mapSet {
-			fast = t.Set
+			n := engine.ElementCount(iterable)
+			var i int
+			fast = func(k, v engine.Value) {
+				t.Set(k, v)
+				i++
+				reserveAfter(t, i, n)
+			}
 		}
 		addEntriesFromIterable(vm, m, iterable, adder, fast)
+		if fast != nil {
+			t.Trim()
+		}
 		return engine.ObjectValue(m)
 	})
 	speciesGetter(vm, ctor)
@@ -256,11 +277,18 @@ type setRecord struct {
 
 	// next is the property key "next".
 	next *engine.Object
+
+	// table is the [[SetData]] of obj when obj is a Set and has is %Set.prototype.has%,
+	// so that a lookup in table gives the result of calling has.
+	table *collection.Table
 }
 
 // setLikeKeys are the property keys that the Set methods read from their argument.
 type setLikeKeys struct {
 	size, has, keys, next *engine.Object
+
+	// setHas is %Set.prototype.has%.
+	setHas *engine.Object
 }
 
 // getSetRecord implements GetSetRecord.
@@ -285,17 +313,24 @@ func getSetRecord(vm *engine.VM, v engine.Value, k *setLikeKeys) setRecord {
 	if !keys.IsCallable() {
 		vm.ThrowTypeError("the keys method of a set-like object must be a function")
 	}
-	return setRecord{
+	r := setRecord{
 		obj:  o,
 		size: size,
 		has:  has.Object(),
 		keys: keys.Object(),
 		next: k.next,
 	}
+	if r.has == k.setHas {
+		r.table, _ = engine.SetData(v).(*collection.Table)
+	}
+	return r
 }
 
 // otherHas returns ToBoolean(Call(r.[[Has]], r.[[SetObject]], « e »)).
 func (r *setRecord) otherHas(vm *engine.VM, e engine.Value) bool {
+	if r.table != nil {
+		return r.table.Has(e)
+	}
 	return engine.ToBoolean(vm.Call(r.has, engine.ObjectValue(r.obj), e))
 }
 
@@ -342,10 +377,15 @@ func initSet(vm *engine.VM) {
 		}
 		adder := adderOf(vm, s, addKey)
 		if adder == setAdd {
+			n := engine.ElementCount(iterable)
+			var i int
 			vm.Iterate(iterable, func(e engine.Value) bool {
 				t.Set(e, e)
+				i++
+				reserveAfter(t, i, n)
 				return true
 			})
+			t.Trim()
 			return engine.ObjectValue(s)
 		}
 		vm.Iterate(iterable, func(e engine.Value) bool {
@@ -375,7 +415,7 @@ func initSet(vm *engine.VM) {
 	method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(vm, this, "delete").Delete(arg(args, 0)))
 	})
-	method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	keys.setHas = method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(vm, this, "has").Has(arg(args, 0)))
 	})
 	method(vm, proto, "forEach", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

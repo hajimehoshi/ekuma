@@ -878,6 +878,9 @@ type classState struct {
 	outer *classState
 	names []privateEntry
 	refs  []privateRef
+
+	// index maps the names in names to their indices once there are many.
+	index map[string]int
 }
 
 type privateEntry struct {
@@ -898,6 +901,12 @@ type privateRef struct {
 }
 
 func (c *classState) declared(name string) int {
+	if c.index != nil {
+		if i, ok := c.index[name]; ok {
+			return i
+		}
+		return -1
+	}
 	for i := range c.names {
 		if c.names[i].name == name {
 			return i
@@ -942,4 +951,14 @@ func (p *parser) privateDecl(name string, pos int32, flags uint8) {
 		name:  name,
 		flags: flags,
 	})
+	if c.index != nil {
+		c.index[name] = len(c.names) - 1
+		return
+	}
+	if len(c.names) > 16 {
+		c.index = make(map[string]int, 64)
+		for i := range c.names {
+			c.index[c.names[i].name] = i
+		}
+	}
 }

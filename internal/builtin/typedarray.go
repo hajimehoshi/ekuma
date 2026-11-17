@@ -4,6 +4,7 @@
 package builtin
 
 import (
+	"bytes"
 	"math"
 	"slices"
 
@@ -163,6 +164,26 @@ func storeNumbers(t *engine.TypedArray, offset int, src *engine.Object, n int64)
 	return i
 }
 
+// storeNumberValues stores the leading numbers of vals in the elements of t from 0 on, as far as
+// they reach, and returns how many it stored. It stores nothing in a typed array of BigInts.
+func storeNumberValues(t *engine.TypedArray, vals []engine.Value) int {
+	typ := t.ElementType()
+	if typ.IsBigInt() {
+		return 0
+	}
+	b := t.Lock()
+	defer t.Unlock()
+	size := typ.Size()
+	n := min(len(vals), len(b)/size)
+	for i, v := range vals[:n] {
+		if !v.IsNumber() {
+			return i
+		}
+		engine.StoreElementBits(b[i*size:], typ, engine.ElementBits(typ, v))
+	}
+	return n
+}
+
 // newTypedArray returns a new typed array of n elements of the type typ on a new ArrayBuffer.
 func (bi *binaryIntrinsics) newTypedArray(vm *engine.VM, proto *engine.Object, typ engine.ElementType, n int64) *engine.Object {
 	buf := vm.NewArrayBufferObject(bi.arrayBufferProto, n*int64(typ.Size()), -1, false)
@@ -285,8 +306,8 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 		vals := vm.IteratorToList(first, m)
 		o := bi.newTypedArray(vm, proto, typ, int64(len(vals)))
 		t := engine.TypedArrayData(engine.ObjectValue(o))
-		for i, v := range vals {
-			storeAt(vm, o, t, i, v)
+		for i := storeNumberValues(t, vals); i < len(vals); i++ {
+			storeAt(vm, o, t, i, vals[i])
 		}
 		return engine.ObjectValue(o)
 	}
@@ -374,6 +395,21 @@ func sortElements(b []byte, typ engine.ElementType) {
 // (downward from from to to when backward is set) that equals x, or -1. sameValueZero selects
 // SameValueZero instead of IsStrictlyEqual.
 func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to int, backward, sameValueZero bool) int {
+	if typ.IsBigInt() != x.IsBigInt() || !typ.IsBigInt() && !x.IsNumber() {
+		return -1
+	}
+	if !typ.IsBigInt() {
+		isFloat := typ == engine.ElementFloat16 || typ == engine.ElementFloat32 || typ == engine.ElementFloat64
+		// A number other than NaN, and other than a zero for a floating-point type, has at
+		// most one encoding, which the elements equal to it have.
+		if f := x.Number(); f == f && (f != 0 || !isFloat) {
+			bits := engine.ElementBits(typ, x)
+			if engine.ElementNumber(typ, bits) != f {
+				return -1
+			}
+			return searchBits(b, typ, bits, from, to, backward)
+		}
+	}
 	size := typ.Size()
 	match := func(i int) bool {
 		bits := engine.LoadElementBits(b[i*size:], typ)
@@ -391,9 +427,6 @@ func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to i
 		f := engine.ElementNumber(typ, bits)
 		return f == x.Number() || sameValueZero && f != f && x.Number() != x.Number()
 	}
-	if typ.IsBigInt() != x.IsBigInt() || !typ.IsBigInt() && !x.IsNumber() {
-		return -1
-	}
 	if backward {
 		for i := from; i >= to; i-- {
 			if match(i) {
@@ -404,6 +437,45 @@ func searchElements(b []byte, typ engine.ElementType, x engine.Value, from, to i
 	}
 	for i := from; i < to; i++ {
 		if match(i) {
+			return i
+		}
+	}
+	return -1
+}
+
+// searchBits is searchElements for the elements whose encoding is bits.
+func searchBits(b []byte, typ engine.ElementType, bits uint64, from, to int, backward bool) int {
+	size := typ.Size()
+	// A loaded encoding has no bits above the element size.
+	bits &= 1<<(8*size) - 1
+	if size == 1 {
+		if backward {
+			if from < to {
+				return -1
+			}
+			if i := bytes.LastIndexByte(b[to:from+1], byte(bits)); i >= 0 {
+				return to + i
+			}
+			return -1
+		}
+		if from >= to {
+			return -1
+		}
+		if i := bytes.IndexByte(b[from:to], byte(bits)); i >= 0 {
+			return from + i
+		}
+		return -1
+	}
+	if backward {
+		for i := from; i >= to; i-- {
+			if engine.LoadElementBits(b[i*size:], typ) == bits {
+				return i
+			}
+		}
+		return -1
+	}
+	for i := from; i < to; i++ {
+		if engine.LoadElementBits(b[i*size:], typ) == bits {
 			return i
 		}
 	}
@@ -462,8 +534,12 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		if m := vm.GetMethod(source, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 			vals := vm.IteratorToList(source, m)
 			o, t := createFromConstructor(vm, c, []engine.Value{engine.Number(float64(len(vals)))}, true)
-			for i, v := range vals {
-				storeAt(vm, o, t, i, mapped(v, i))
+			var i int
+			if mapFn.IsUndefined() {
+				i = storeNumberValues(t, vals)
+			}
+			for ; i < len(vals); i++ {
+				storeAt(vm, o, t, i, mapped(vals[i], i))
 			}
 			return engine.ObjectValue(o)
 		}
@@ -717,7 +793,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 				b.WriteString(sep)
 			}
 			if e := getAt(vm, o, int64(i)); !e.IsUndefined() {
-				b.WriteString(vm.ToString(e))
+				writeString(vm, &b, e)
 			}
 			if b.Len() > engine.MaxStringLength {
 				vm.ThrowRangeError("invalid string length")

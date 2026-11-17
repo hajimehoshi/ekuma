@@ -150,12 +150,23 @@ func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep strin
 		return vm.NewString("")
 	}
 	defer g.leave()
-	return joinElements(vm, o, n, sep, vm.ToString)
+	return joinElements(vm, o, n, sep, nil)
 }
 
-// joinElements joins str of each of the first n elements of the object o that is neither
-// undefined nor null, with sep between elements.
-func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, str func(engine.Value) string) engine.Value {
+// writeString writes ToString(v) to b.
+func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
+	if v.IsNumber() {
+		var buf [32]byte
+		b.WriteString(string(numconv.AppendNumber(buf[:0], v.Number())))
+		return
+	}
+	b.WriteString(vm.ToString(v))
+}
+
+// joinElements joins the strings of the first n elements of the object o that are neither
+// undefined nor null, with sep between elements. The string of an element e is ToString(e),
+// or ToString(Invoke(e, method)) when method is not nil.
+func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *engine.Object) engine.Value {
 	var b wtf8.Builder
 	for i := int64(0); i < n; i++ {
 		if i > 0 {
@@ -172,8 +183,12 @@ func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, str func
 				e = getAt(vm, o, i)
 			}
 		}
-		if !e.IsNullish() {
-			b.WriteString(str(e))
+		switch {
+		case e.IsNullish():
+		case method != nil:
+			b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, method), e)))
+		default:
+			writeString(vm, &b, e)
 		}
 		if b.Len() > engine.MaxStringLength {
 			vm.ThrowRangeError("invalid string length")
@@ -992,9 +1007,7 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 		}
 		defer joins.leave()
 		n := vm.LengthOfArrayLike(o)
-		return joinElements(vm, o, n, ",", func(e engine.Value) string {
-			return vm.ToString(vm.CallValue(vm.GetV(e, toLocaleStringKey), e))
-		})
+		return joinElements(vm, o, n, ",", toLocaleStringKey)
 	})
 	method(vm, proto, "toReversed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
