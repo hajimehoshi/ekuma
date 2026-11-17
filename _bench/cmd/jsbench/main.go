@@ -188,6 +188,7 @@ func runSuites(ctx context.Context, suites []suite, filter *regexp.Regexp, engin
 		return err
 	}
 
+	var failures []error
 	for _, s := range suites {
 		names, err := benchmarkNames(s, root)
 		if err != nil {
@@ -206,10 +207,14 @@ func runSuites(ctx context.Context, suites []suite, filter *regexp.Regexp, engin
 			rounds = *flagRounds
 		}
 		if err := runSuite(ctx, bin, s, names, engines, rounds, env, *flagResults); err != nil {
+			if errors.Is(err, errBaselineFailed) {
+				failures = append(failures, err)
+				continue
+			}
 			return err
 		}
 	}
-	return nil
+	return errors.Join(failures...)
 }
 
 // setUp fetches the third-party benchmark programs and builds QuickJS in C, unless they are

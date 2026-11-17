@@ -332,15 +332,25 @@ func missingList(suites []suite, rs map[string]*results) string {
 			var reasons []string
 			byReason := map[string][]string{}
 			for _, bm := range r.benchmarks {
-				if r.cell(bm, e).ok {
-					continue
-				}
-				reason := r.reasons[key{
+				k := key{
 					benchmark: bm,
 					engine:    e,
-				}]
+				}
+				reason := r.reasons[k]
+				var missing int
+				for _, t := range r.times[k] {
+					if math.IsNaN(t) {
+						missing++
+					}
+				}
+				if missing == 0 && r.cell(bm, e).ok {
+					continue
+				}
 				if reason == "" {
 					reason = "no result"
+				}
+				if missing > 0 && missing < len(r.times[k]) {
+					reason = fmt.Sprintf("%d/%d rounds missing: %s", missing, len(r.times[k]), reason)
 				}
 				if _, ok := byReason[reason]; !ok {
 					reasons = append(reasons, reason)

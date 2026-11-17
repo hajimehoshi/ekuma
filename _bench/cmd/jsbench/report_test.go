@@ -34,6 +34,8 @@ BenchmarkV8/Richards/goja-12 	 10	 300 ns/op
 BenchmarkV8/DeltaBlue/ekuma-12 	 10	 100 ns/op
 --- SKIP: BenchmarkV8/DeltaBlue/otto: SyntaxError: unexpected token
 BenchmarkV8/DeltaBlue/goja-12 	 10	 400 ns/op
+--- FAIL: BenchmarkV8/Richards/ekuma:
+BenchmarkV8/Richards/goja-12 10 1000 ns/op
 `
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "V8.txt"), []byte(results), 0o644); err != nil {
@@ -69,6 +71,9 @@ BenchmarkV8/DeltaBlue/goja-12 	 10	 400 ns/op
 	const missing = "- otto in V8 benchmark suite v7 (DeltaBlue): `SyntaxError: unexpected token`\n"
 	if !strings.Contains(sections["missing"], missing) {
 		t.Errorf("section missing:\n%s\nwant the line\n%s", sections["missing"], missing)
+	}
+	if !strings.Contains(sections["missing"], "- Ekuma in V8 benchmark suite v7 (Richards): `1/3 rounds missing: no result`") {
+		t.Errorf("section missing does not report the failed baseline round:\n%s", sections["missing"])
 	}
 }
 

@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -39,6 +40,8 @@ var engineModules = map[string]string{
 
 // runTimeout limits the process of one run of a benchmark.
 const runTimeout = 10 * time.Minute
+
+var errBaselineFailed = errors.New("Ekuma benchmark failed")
 
 // buildTest builds the test binary of the module into dir and returns its path.
 func buildTest(ctx context.Context, dir string) (string, error) {
@@ -183,6 +186,7 @@ func runSuite(ctx context.Context, bin string, s suite, names, engines []string,
 	// testHeader holds the configuration lines that go test prints.
 	var testHeader []string
 	var records []string
+	var failures int
 	start := time.Now()
 	for round := range rounds {
 		for i, name := range names {
@@ -193,7 +197,8 @@ func runSuite(ctx context.Context, bin string, s suite, names, engines []string,
 					return err
 				}
 				if r.failed && engine == comparison.Baseline {
-					return fmt.Errorf("%s: %s", full, r.record)
+					failures++
+					log.Print(r.record)
 				}
 				if testHeader == nil {
 					testHeader = r.header
@@ -212,7 +217,13 @@ func runSuite(ctx context.Context, bin string, s suite, names, engines []string,
 		return err
 	}
 	text := strings.Join(header, "\n") + "\n" + strings.Join(records, "\n") + "\n"
-	return os.WriteFile(filepath.Join(dir, s.name+".txt"), []byte(text), 0o644)
+	if err := os.WriteFile(filepath.Join(dir, s.name+".txt"), []byte(text), 0o644); err != nil {
+		return err
+	}
+	if failures > 0 {
+		return fmt.Errorf("%w: %s (%d benchmark runs failed)", errBaselineFailed, s.name, failures)
+	}
+	return nil
 }
 
 // rotate returns a copy of s rotated left by k elements.
