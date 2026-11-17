@@ -222,6 +222,10 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		}
 	}()
 	var vm ekuma.VM
+	// Tests that use the default locale expect en-US, not the host's locale.
+	if err := vm.SetLocale("en-US"); err != nil {
+		return "harness: " + err.Error(), false
+	}
 	loader := &moduleLoader{
 		vm:      &vm,
 		dir:     filepath.Dir(path),
