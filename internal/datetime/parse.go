@@ -12,7 +12,7 @@ import (
 // date time string format of ECMAScript, the formats of [String] and [UTCString], and some
 // common legacy formats. A time without an offset is a local time of tz.
 func Parse(s string, tz TimeZone) float64 {
-	if f, ok := parseISO(s, tz); ok {
+	if f, ok := parseDateTime(s, tz); ok {
 		return f
 	}
 	if len(s) >= 29 && (s[3] == ' ' || s[3] == ',') {
@@ -107,6 +107,15 @@ func (sc *scanner) number() (float64, int) {
 	return v, sc.pos - start
 }
 
+// timeField reads a two-digit field, allowing a single digit when relaxed.
+func (sc *scanner) timeField(relaxed bool) (float64, bool) {
+	if !relaxed {
+		return sc.fixed(2)
+	}
+	v, n := sc.number()
+	return v, n >= 1 && n <= 2
+}
+
 // fraction reads the digits after a decimal point as milliseconds, truncated.
 func (sc *scanner) fraction() (float64, bool) {
 	var ms float64
@@ -140,10 +149,15 @@ func (f *fields) validTime() bool {
 	return f.hour <= 23 && f.minute <= 59 && f.second <= 59
 }
 
-// parseISO parses the date time string format.
-func parseISO(s string, tz TimeZone) (float64, bool) {
-	sc := scanner{s: s}
-	f := fields{month: 1, day: 1}
+// parseDateTime parses ISO and space-separated date-time strings.
+func parseDateTime(s string, tz TimeZone) (float64, bool) {
+	sc := scanner{
+		s: s,
+	}
+	f := fields{
+		month: 1,
+		day:   1,
+	}
 	var ok bool
 	switch c := sc.peek(); {
 	case c == '+' || c == '-':
@@ -162,32 +176,50 @@ func parseISO(s string, tz TimeZone) (float64, bool) {
 			return 0, false
 		}
 	}
+	isoDate := true
+	var hasDay bool
 	if sc.accept('-') {
-		if f.month, ok = sc.fixed(2); !ok || f.month < 1 || f.month > 12 {
+		var n int
+		f.month, n = sc.number()
+		if n < 1 || n > 2 || f.month < 1 || f.month > 12 {
 			return 0, false
 		}
+		isoDate = n == 2
 		if sc.accept('-') {
-			if f.day, ok = sc.fixed(2); !ok || f.day < 1 || f.day > daysInMonth(f.year, f.month) {
+			f.day, n = sc.number()
+			if n < 1 || n > 2 || f.day < 1 || f.day > daysInMonth(f.year, f.month) {
 				return 0, false
 			}
+			isoDate = isoDate && n == 2
+			hasDay = true
 		}
 	}
 	if sc.done() {
+		if !isoDate {
+			return 0, false
+		}
 		// A date-only form is UTC.
 		f.hasOffset = true
 		return f.timeValue(tz), true
 	}
-	if !sc.accept('T') {
+	var relaxed bool
+	if sc.accept('T') {
+		if !isoDate {
+			return 0, false
+		}
+	} else if sc.accept(' ') && hasDay {
+		relaxed = true
+	} else {
 		return 0, false
 	}
-	if f.hour, ok = sc.fixed(2); !ok || !sc.accept(':') {
+	if f.hour, ok = sc.timeField(relaxed); !ok || !sc.accept(':') {
 		return 0, false
 	}
-	if f.minute, ok = sc.fixed(2); !ok {
+	if f.minute, ok = sc.timeField(relaxed); !ok {
 		return 0, false
 	}
 	if sc.accept(':') {
-		if f.second, ok = sc.fixed(2); !ok {
+		if f.second, ok = sc.timeField(relaxed); !ok {
 			return 0, false
 		}
 		if sc.accept('.') {
@@ -207,12 +239,17 @@ func parseISO(s string, tz TimeZone) (float64, bool) {
 	case c == '+' || c == '-':
 		sc.pos++
 		h, ok := sc.fixed(2)
-		if !ok || h > 23 || !sc.accept(':') {
+		if !ok || h > 23 {
 			return 0, false
 		}
-		m, ok := sc.fixed(2)
-		if !ok || m > 59 {
-			return 0, false
+		var m float64
+		if !relaxed || !sc.done() {
+			if !sc.accept(':') && !relaxed {
+				return 0, false
+			}
+			if m, ok = sc.fixed(2); !ok || m > 59 {
+				return 0, false
+			}
 		}
 		f.offset = h*msPerHour + m*msPerMinute
 		if c == '-' {
@@ -511,8 +548,8 @@ func parseLegacy(s string, tz TimeZone) float64 {
 					}
 					parts[i], lens[i] = sc.number()
 				}
-				if lens[0] >= 3 {
-					f.year, f.month, f.day = parts[0], parts[1], parts[2]
+				if lens[0] >= 3 || parts[0] > 31 {
+					f.year, f.month, f.day = legacyYear(parts[0], lens[0]), parts[1], parts[2]
 				} else {
 					f.month, f.day, f.year = parts[0], parts[1], legacyYear(parts[2], lens[2])
 				}

@@ -8,11 +8,6 @@
 # test is stale. Remove this line when test262 updates the test.
 test/intl402/Temporal/ZonedDateTime/links.js
 
-# The tests expect Date.parse to accept formats that the specification leaves to the
-# implementation, such as 1997-3-8 1:1:1 and the two-digit year of 3/8/97.
-test/staging/sm/Date/non-iso.js
-test/staging/sm/Date/two-digit-years.js
-
 # The test expects Math.sinh to be as precise as fdlibm's, while the specification leaves the
 # precision to the implementation.
 test/staging/sm/Math/sinh-approx.js

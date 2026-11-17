@@ -97,3 +97,44 @@ func TestParseFormattedFallback(t *testing.T) {
 		}
 	}
 }
+
+func TestParseSpaceSeparated(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	zone := datetime.LocationZone(loc)
+	for _, tc := range []struct{ input, equivalent string }{
+		{
+			input:      "2021-3-14 2:30",
+			equivalent: "2021-03-14T02:30:00",
+		},
+		{
+			input:      "-000001-1-2 3:4:5.678+0130",
+			equivalent: "-000001-01-02T03:04:05.678+01:30",
+		},
+		{
+			input:      "1997-3-8 1:1:1-07",
+			equivalent: "1997-03-08T01:01:01-07:00",
+		},
+		{
+			input:      "1997-3-8 1:1Z",
+			equivalent: "1997-03-08T01:01:00Z",
+		},
+	} {
+		if got, want := datetime.Parse(tc.input, zone), datetime.Parse(tc.equivalent, zone); got != want {
+			t.Errorf("Parse(%q) = %v, want %v", tc.input, got, want)
+		}
+	}
+	for _, s := range []string{
+		"1997-003-8 1:1",
+		"1997-3-008 1:1",
+		"1997-3 1:1",
+		"1997-3-8 1:001",
+		"1997-3-8 1:1+0160",
+	} {
+		if got := datetime.Parse(s, zone); !math.IsNaN(got) {
+			t.Errorf("Parse(%q) = %v, want NaN", s, got)
+		}
+	}
+}

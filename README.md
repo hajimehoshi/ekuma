@@ -200,8 +200,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-53,789 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
-6 fail for known reasons, which [`testdata/test262-skips.txt`](testdata/test262-skips.txt) lists.
+53,791 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
+4 fail for known reasons, which [`testdata/test262-skips.txt`](testdata/test262-skips.txt) lists.
 
 ### Implemented
 
