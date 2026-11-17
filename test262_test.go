@@ -145,7 +145,7 @@ func parseMetadata(src string) metadata {
 
 // harness caches the files of the harness directory of the suite.
 type harness struct {
-	dir   string
+	fs    fs.FS
 	mu    sync.Mutex
 	files map[string]string
 
@@ -179,7 +179,7 @@ func (h *harness) file(name string) (string, error) {
 	if s, ok := h.files[name]; ok {
 		return s, nil
 	}
-	b, err := os.ReadFile(filepath.Join(h.dir, "harness", name))
+	b, err := fs.ReadFile(h.fs, name)
 	if err != nil {
 		return "", err
 	}
@@ -685,7 +685,7 @@ func TestTest262(t *testing.T) {
 	}
 
 	h := &harness{
-		dir:     dir,
+		fs:      os.DirFS(filepath.Join(dir, "harness")),
 		files:   map[string]string{},
 		scripts: map[string]*ekuma.CompiledScript{},
 	}

@@ -260,6 +260,11 @@ go test ./...
 The test262 run is skipped unless a checkout of the suite is found in `ekuma/test262`
 under the user cache directory, or in the directory specified by `EKUMA_TEST262`.
 
+Local JavaScript regression tests in [`testdata/scripts`](testdata/scripts) use the
+same runner as Test262 with an original 0BSD harness. The scripts and harness are read
+from `testdata` and run without a Test262 checkout, including with
+`go test -short ./...`.
+
 ## License
 
 Ekuma is under [0BSD](LICENSE), except for the data of the
