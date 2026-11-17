@@ -119,11 +119,15 @@ func (r *realm) initListFormat(vm *engine.VM) {
 // resolvedOptions returns a new object with the string properties of the pairs of names and
 // values kv, in order, leaving out the empty values.
 func resolvedOptions(vm *engine.VM, kv ...string) engine.Value {
-	out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	var keyStorage [32]engine.PropKey
+	var valueStorage [32]engine.Value
+	keys := keyStorage[:0]
+	vals := valueStorage[:0]
 	for i := 0; i < len(kv); i += 2 {
 		if kv[i+1] != "" {
-			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(kv[i])), vm.NewString(kv[i+1]))
+			keys = append(keys, engine.NamedKey(vm.Intern(kv[i])))
+			vals = append(vals, vm.NewString(kv[i+1]))
 		}
 	}
-	return engine.ObjectValue(out)
+	return engine.ObjectValue(vm.NewObjectFromProperties(keys, vals))
 }

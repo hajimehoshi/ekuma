@@ -1043,3 +1043,46 @@ func BenchmarkIntlSegmentRecords(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkIntlResolvedOptions measures creating Intl resolved-options records.
+func BenchmarkIntlResolvedOptions(b *testing.B) {
+	for _, c := range []struct {
+		name  string
+		setup string
+		expr  string
+	}{
+		{
+			name:  "List",
+			setup: `const f = new Intl.ListFormat("en");`,
+			expr:  `f.resolvedOptions()`,
+		},
+		{
+			name:  "DisplayLanguage",
+			setup: `const f = new Intl.DisplayNames("en", {type:"language"});`,
+			expr:  `f.resolvedOptions()`,
+		},
+		{
+			name:  "DisplayRegion",
+			setup: `const f = new Intl.DisplayNames("en", {type:"region"});`,
+			expr:  `f.resolvedOptions()`,
+		},
+		{
+			name:  "Duration",
+			setup: `const f = new Intl.DurationFormat("en");`,
+			expr:  `f.resolvedOptions()`,
+		},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			var vm ekuma.VM
+			src := c.setup + ` let last; function run(n) { for (let i = 0; i < n; i++) last = ` + c.expr + `; }`
+			if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
