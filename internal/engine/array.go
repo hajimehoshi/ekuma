@@ -172,6 +172,16 @@ func (o *Object) isDense() bool {
 	return true
 }
 
+// elemsMovable reports whether moving the elements of the array o by index, holes included,
+// does what moving them one by one with HasProperty, Set and DeletePropertyOrThrow does, and
+// whether o accepts changes to its elements and its length.
+func (vm *VM) elemsMovable(o *Object) bool {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
+		return false
+	}
+	return vm.holesAreAbsent(o) || o.isDense()
+}
+
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
 func (vm *VM) arrayCtorPlain(o *Object) bool {
@@ -205,7 +215,7 @@ func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
 
 // PrependElements adds vals at the start of the array o and returns the new length.
 func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
-	if !o.isDense() || !vm.newElementsPlain(o) {
+	if !vm.elemsMovable(o) || !vm.newElementsPlain(o) {
 		return 0, false
 	}
 	n, k := len(o.elems), len(vals)
@@ -377,17 +387,26 @@ func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value)
 	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
-	if !o.isDense() || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() {
+	if !vm.elemsMovable(o) || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() {
 		return nil, false
 	}
 	removed := appendPolled(vm, nil, o.elems[start:start+del])
-	tail := appendPolled(vm, nil, o.elems[start+del:])
-	o.elems = append(append(o.elems[:start], items...), tail...)
-	if int64(len(o.elems)) < length {
-		// The removed elements stay out of reach in the storage that the elements keep.
-		clear(o.elems[len(o.elems):length])
+	n, k := int(length), len(items)
+	newLen := n - int(del) + k
+	if n-int(start+del) > pollChunk {
+		vm.Poll()
 	}
-	o.length = uint32(len(o.elems))
+	elems := o.elems
+	if newLen > n {
+		elems = slices.Grow(elems, newLen-n)
+	}
+	elems = elems[:max(n, newLen)]
+	copy(elems[int(start)+k:], elems[start+del:n])
+	copy(elems[start:], items)
+	// The removed elements stay out of reach in the storage that the elements keep.
+	clear(elems[newLen:])
+	o.elems = elems[:newLen]
+	o.length = uint32(newLen)
 	if o.elemsOversized() {
 		vm.reallocElems(o)
 	}
