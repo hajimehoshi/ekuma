@@ -6,8 +6,9 @@
 //
 //	import _ "github.com/hajimehoshi/ekuma/intl"
 //
-// The global object of every VM then has Intl, with the data of every locale of the Unicode
-// Common Locale Data Repository, and Temporal has the calendars of ECMA-402 besides ISO 8601.
+// The global object of every VM then has Intl, with data for every locale in the Unicode
+// Common Locale Data Repository, and Temporal supports the ECMA-402 calendars in
+// addition to ISO 8601.
 // Without the import, a VM has no Intl, and Temporal has only the ISO 8601 calendar.
 //
 // That data is under the Unicode License v3. A program that imports the package must include
@@ -19,7 +20,8 @@
 // the user locale on macOS, iOS and Windows, the system locale on Android, or the
 // system locale configuration on Linux. BSD systems and Android builds without Cgo
 // use the locale environment variables.
-// Browser builds use navigator.language. An unavailable host locale, C or POSIX uses en-US.
+// Browser builds use navigator.language. If the host locale is unavailable, C or POSIX,
+// the default is en-US.
 package intl
 
 import (

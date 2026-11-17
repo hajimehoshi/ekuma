@@ -21,8 +21,7 @@ import (
 
 // VM is a JavaScript virtual machine with the standard built-in objects.
 // The zero value is ready to use. A VM must not be copied after first use.
-// It must not be used from more than one goroutine at a time, and neither must its values
-// and realms.
+// A VM and its values and realms must not be used from more than one goroutine at a time.
 type VM struct {
 	e *engine.VM
 
@@ -226,7 +225,7 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 
 // Func is a function implemented in Go.
 //
-// args is only valid until the function returns. The result is converted with [Realm.ValueOf]
+// args is valid only until the function returns. The result is converted with [Realm.ValueOf]
 // of the realm of the function.
 //
 // A non-nil error is thrown as a JavaScript exception: a [*ScriptError] throws its value,
@@ -299,7 +298,7 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 	return fromEngine(v), vm.publicError(err)
 }
 
-// ErrRunning is the error of [VM.AwaitJobs] called while the VM runs JavaScript.
+// ErrRunning is returned by [VM.AwaitJobs] when the VM is running JavaScript.
 var ErrRunning = errors.New("ekuma: AwaitJobs called while JavaScript runs")
 
 // AwaitJobs runs pending jobs, waiting for an Atomics.waitAsync waiter to be
@@ -353,7 +352,7 @@ func (vm *VM) SetTimeZone(loc *time.Location) {
 	vm.e.SetDefaultTimeZone(datetime.LocationZone(loc))
 }
 
-// SetRandomSource sets src as the source of the numbers of Math.random. A nil src restores
+// SetRandomSource sets src as the source of random numbers for Math.random. A nil src restores
 // the default, a source that is seeded randomly. The source applies to the later calls of
 // Math.random, which return the numbers that rand.New(src).Float64 would.
 func (vm *VM) SetRandomSource(src rand.Source) {
@@ -367,8 +366,8 @@ func (vm *VM) SetCanBlock(canBlock bool) {
 	vm.e.SetAgentCanSuspend(canBlock)
 }
 
-// SetUnhandledRejection sets f as the function that is told about each promise that was
-// rejected with reason and has no handler. f is called when the outermost call from Go into
+// SetUnhandledRejection sets f as the callback for each promise rejected with reason
+// that has no rejection handler. f is called when the outermost call from Go into
 // vm has run the pending jobs, once for each such promise, in the order of rejection. A
 // promise is reported once, and a handler added later does not undo the report. This
 // includes the promise that [Module.Evaluate] returns for a module that throws.

@@ -10,15 +10,15 @@ import (
 
 // Realm is a realm of a [VM]: a global object with its own standard built-in objects.
 //
-// The realms of a VM share its state other than their globals and built-in objects, such as
-// the promise jobs and the settings of the VM. Values may pass between them. A realm is not a
+// The realms of a VM share its promise jobs, settings and other state, except for their
+// global objects and built-in objects. Values may pass between realms. A realm is not a
 // security boundary: an object of a realm gives access to the built-in objects of its realm.
 type Realm struct {
 	vm *VM
 	r  *engine.Realm
 }
 
-// InitialRealm returns the realm that vm is created with, in which the methods of vm work.
+// InitialRealm returns the realm created with vm, in which the methods of vm operate.
 func (vm *VM) InitialRealm() *Realm {
 	vm.initIfNeeded()
 	return vm.initialRealm
@@ -82,7 +82,7 @@ func (r *Realm) FuncOf(name string, f Func) Value {
 	return fromEngine(v)
 }
 
-// ParseScript parses src as the source text of a script of r. name names the script in error
+// ParseScript parses src as the source text of a script of r. name identifies the script in error
 // messages and stack traces, and in the [ModuleRequest.ReferrerName] of its import() calls.
 // The error is a [*SyntaxError] when src is not a valid script.
 func (r *Realm) ParseScript(name, src string) (*Script, error) {
@@ -100,7 +100,7 @@ func (r *Realm) ParseScript(name, src string) (*Script, error) {
 	}, nil
 }
 
-// ParseModule parses src as the source text of a module of r. name names the module in error
+// ParseModule parses src as the source text of a module of r. name identifies the module in error
 // messages and stack traces, and in the [ModuleRequest.ReferrerName] of its imports.
 // The error is a [*SyntaxError] when src is not a valid module.
 func (r *Realm) ParseModule(name, src string) (*Module, error) {
@@ -118,7 +118,7 @@ func (r *Realm) ParseModule(name, src string) (*Module, error) {
 }
 
 // ParseJSONModule returns a JSON module of r: a module whose only export is default, with the
-// value that JSON.parse of r returns for src. The error is a [*ScriptError] holding a JavaScript
+// value returned by JSON.parse in r for src. The error is a [*ScriptError] holding a JavaScript
 // SyntaxError when src is not valid JSON.
 func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 	m := r.newModule(name)

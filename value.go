@@ -54,8 +54,8 @@ func (t Type) String() string {
 
 // Value is a JavaScript value. The zero value is undefined.
 //
-// Values cannot be compared with ==. [Value.Equal] compares the way the JavaScript operator ===
-// does.
+// Values cannot be compared with ==. Use [Value.Equal] to compare them with JavaScript
+// === semantics.
 //
 // Strings, symbols, objects and functions belong to their creating VM and may pass between
 // its realms. Passing them into another VM panics, including through
@@ -156,7 +156,8 @@ func (v Value) Float() float64 {
 }
 
 // Int returns the number v truncated toward zero to an int. NaN gives 0, and a number below or
-// above the range of an int gives [math.MinInt] or [math.MaxInt]. It panics with a [*ValueError]
+// above the range of an int gives [math.MinInt] or [math.MaxInt]. It panics with a
+// [*ValueError]
 // when v is not a number.
 func (v Value) Int() int {
 	if !v.value.IsNumber() {
@@ -206,7 +207,7 @@ func (v Value) String() string {
 	}
 }
 
-// Equal reports whether v and w are equal the way the JavaScript operator === compares.
+// Equal reports whether v and w are equal according to the JavaScript === operator.
 func (v Value) Equal(w Value) bool {
 	return engine.IsStrictlyEqual(v.value, w.value)
 }
@@ -224,7 +225,7 @@ func (v Value) vm(method string) (*VM, error) {
 	}
 }
 
-// Get returns the property name of v.
+// Get returns the value of the property named name on v.
 //
 // The error is a [*ValueError] when v is not an object, a function or a string,
 // and a [*ScriptError] when a getter throws.
@@ -249,8 +250,8 @@ func (v Value) GetWithValueKey(key Value) (Value, error) {
 	return fromEngine(r), vm.publicError(err)
 }
 
-// Set stores [VM.ValueOf](x) as the property name of v, the way an assignment in strict mode code
-// does. The errors are those of [Value.Get].
+// Set sets the property named name on v to [VM.ValueOf](x), as an assignment in strict
+// mode does. The errors are those of [Value.Get].
 func (v Value) Set(name string, x any) error {
 	vm, err := v.vm("Value.Set")
 	if err != nil {
@@ -268,7 +269,7 @@ func (v Value) SetWithValueKey(key Value, x any) error {
 	return vm.publicError(vm.e.HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
 }
 
-// Delete deletes the property name of v, the way the delete operator in strict mode code does.
+// Delete deletes the property named name from v, as the delete operator in strict mode does.
 // The errors are those of [Value.Get].
 func (v Value) Delete(name string) error {
 	vm, err := v.vm("Value.Delete")
@@ -306,10 +307,11 @@ func (v Value) SetIndex(i int, x any) error {
 	return vm.publicError(vm.e.HostSet(v.value, engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
 }
 
-// Call calls the method name of v with v as this. The arguments are converted with [VM.ValueOf].
+// Call calls the method named name on v with v as this. The arguments are converted with
+// [VM.ValueOf].
 // The errors are those of [Value.Get], and a method that does not exist is a [*ScriptError] holding
-// a TypeError. When ctx is done, the call stops at its next loop iteration or call, and the error
-// is the cause of ctx.
+// a TypeError. When ctx is done, the call stops at its next loop iteration or call,
+// and the error is the cause of ctx.
 func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error) {
 	vm, err := v.vm("Value.Call")
 	if err != nil {
@@ -370,7 +372,8 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 	})
 }
 
-// InstanceOf reports whether v is an instance of the constructor t, as the instanceof operator does.
+// InstanceOf reports whether v is an instance of the constructor t, as the instanceof
+// operator does.
 // The errors are those of [Value.Get], for t. It panics if v
 // belongs to a different VM from t.
 func (v Value) InstanceOf(t Value) (bool, error) {
@@ -403,13 +406,14 @@ func (s PromiseState) String() string {
 	return "PromiseState(" + strconv.Itoa(int(s)) + ")"
 }
 
-// IsPromise reports whether v is a promise: a Promise object, which a mere thenable is not.
+// IsPromise reports whether v is a Promise object. A mere thenable is not a Promise object.
 func (v Value) IsPromise() bool {
 	return engine.IsPromise(v.value)
 }
 
 // PromiseState returns the state of the promise v and, unless it is pending, its result: the
-// value it was fulfilled with or the reason it was rejected with. It runs no JavaScript and does
+// value it was fulfilled with or the reason it was rejected with. It runs no JavaScript
+// and does
 // not mark a rejected promise as handled. It panics with a [*ValueError] when v is not
 // a promise.
 func (v Value) PromiseState() (PromiseState, Value) {

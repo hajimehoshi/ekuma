@@ -14,10 +14,10 @@ import (
 
 // Module is a module record of a [VM].
 //
-// Running a module takes three steps, each of which takes the earlier ones first when they
-// have not completed: [Module.LoadRequestedModules], [Module.Link] and [Module.Evaluate].
-// [Module.Namespace] takes the first two. Any order of calls is valid, and a step that has
-// completed does nothing when it is taken again. A call from inside the module loader that
+// Running a module involves three steps: [Module.LoadRequestedModules], [Module.Link] and
+// [Module.Evaluate]. Each step first completes any unfinished prerequisites.
+// [Module.Namespace] performs the first two steps. These methods may be called in any order;
+// completed steps are not repeated. A call from inside the module loader that
 // has to load a module that is still being loaded returns a [*ScriptError] holding a TypeError.
 type Module struct {
 	vm    *VM
@@ -28,10 +28,10 @@ type Module struct {
 
 // ModuleRequest is a request to load a module.
 type ModuleRequest struct {
-	// Realm is the realm of the importing script or module, or of the code that has neither.
+	// Realm is the realm of the code requesting the import.
 	Realm *Realm
 
-	// Referrer is the importing module, or nil for a script or for code that has neither.
+	// Referrer is the importing module, or nil if the import is not requested by a module.
 	Referrer *Module
 
 	// ReferrerName is the name of the importing script or module, or empty.
@@ -45,16 +45,15 @@ type ModuleRequest struct {
 }
 
 // SetModuleLoader sets f as the implementation of HostLoadImportedModule, which import
-// declarations and import() use. f must return the same [*Module] for the same module, and
-// a [*Module] of vm.
+// declarations and import() use. f must return a [*Module] belonging to vm and return the
+// same [*Module] for repeated requests for the same module.
 //
 // The error of f is thrown the way the error of a [Func] is, except that a [*SyntaxError]
 // throws a JavaScript SyntaxError. import() rejects its promise with it, and the methods of
 // [Module] return it as a [*ScriptError].
 //
 // Without a loader, or with a nil f, every import fails with a TypeError. The loader applies
-// to the modules that are loaded after the call: a module that loaded keeps the modules that
-// it loaded.
+// to subsequent module loads. Already loaded modules retain their loaded dependencies.
 func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 	vm.initIfNeeded()
 	if f == nil {
@@ -169,14 +168,14 @@ func (m *Module) LoadRequestedModules() error {
 // It calls [Module.LoadRequestedModules] first. [Module.Evaluate] and [Module.Namespace] call
 // it, so calling it is needed only to link before evaluating. The error is the error of
 // [Module.LoadRequestedModules], or a [*ScriptError] holding a JavaScript SyntaxError for an import
-// that does not resolve. A failed Link can be taken again.
+// that does not resolve. Link may be retried after a failure.
 func (m *Module) Link() error {
 	m.vm.initIfNeeded()
 	return m.vm.publicError(m.vm.e.Link(m.m))
 }
 
-// Evaluate evaluates m and its dependencies, runs the pending jobs, and returns the promise
-// of the evaluation. It calls [Module.Link] first. An exception of a module rejects the
+// Evaluate evaluates m and its dependencies, runs the pending jobs, and returns a promise
+// for the evaluation. It calls [Module.Link] first. An exception thrown by a module rejects the
 // promise, and evaluating m again returns the same promise.
 //
 // The error is the error of [Module.Link]. When ctx is done, the evaluation stops at its next

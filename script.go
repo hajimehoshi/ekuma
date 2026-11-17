@@ -9,7 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-// Script is a script that [Realm.ParseScript] parsed.
+// Script is a script parsed by [Realm.ParseScript].
 type Script struct {
 	vm *VM
 	s  *engine.Script

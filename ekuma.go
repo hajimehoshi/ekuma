@@ -3,7 +3,7 @@
 
 // Package ekuma is a JavaScript engine written in pure Go.
 //
-// The API follows the one of [syscall/js] where it can. The differences come from JavaScript
+// The API follows [syscall/js] where possible. The differences come from JavaScript
 // running inside the process: there can be several VMs, an exception is returned as an error
 // and not thrown as a panic, and the methods that run a script or call a function take
 // a [context.Context] that stops them.
@@ -12,8 +12,8 @@
 // a function, that is stopped by the context of the call that led to the [Func]. When
 // a [Func] makes a call with another context and that context stops the call, everything
 // stops: the outermost Go call that executes JavaScript returns the cause of that context,
-// and the [Func] does not continue. A context that is done after its call returned stops
-// nothing.
+// and the [Func] does not continue. A context that becomes done after its call returns
+// has no effect.
 //
 // Internal operation failures return an [*InternalError] from the outermost Go call
 // executing JavaScript. They stop execution without running JavaScript catch or finally
@@ -26,7 +26,7 @@
 // unless reentered under a call with a context.
 // [VM.AwaitJobs] waits for asynchronous notifications and runs their jobs.
 //
-// A panic of a [Func], or of another function of the host that JavaScript calls, passes
+// A panic in a [Func], or in another host function called by JavaScript, passes
 // through Go calls unchanged after restoring the VM's execution state. Host callbacks
 // may recover panics from reentrant calls. At the outermost boundary, pending jobs and
 // unhandled rejection reports are discarded and unfinished module evaluations are rejected.
@@ -44,8 +44,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
-// ValueError is the error of an operation on a [Value] that does not support the value.
-// The operations that return no error panic with it.
+// ValueError reports an operation that is unsupported for a [Value]'s type.
+// Operations that do not return an error panic with a *ValueError instead.
 type ValueError struct {
 	Method string
 	Type   Type
@@ -55,12 +55,12 @@ func (e *ValueError) Error() string {
 	return "ekuma: call of " + e.Method + " on " + e.Type.String()
 }
 
-// SyntaxError is a script that could not be parsed or compiled.
+// SyntaxError reports a failure to parse or compile a script or module.
 type SyntaxError struct {
 	// File is the name of the script.
 	File string
 
-	// Line is the 1-based line of the error.
+	// Line is the 1-based line number of the error.
 	Line int
 
 	Message string
