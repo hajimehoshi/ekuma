@@ -363,16 +363,7 @@ func (vm *VM) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
 			meta.length = m.length + int32(wtf8.Len(s[len(a.str):]))
 		}
 	}
-	return Value{
-		o: &Object{
-			kind:  kindString,
-			flags: flags,
-			shape: vm.shapes.string,
-			str:   s,
-			meta:  meta,
-			ext:   sb,
-		},
-	}
+	return vm.newBufferedString(s, flags, sb, meta)
 }
 
 // newHead returns the reversed string whose str is the contents of rb, as the head of rb.
@@ -409,16 +400,38 @@ func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
 			length: m.length + int32(wtf8.Len(s[len(b.str):])),
 		}
 	}
-	return Value{
-		o: &Object{
+	return vm.newBufferedString(s, flags, rb, meta)
+}
+
+// newBufferedString returns a string with its builder and optional UTF-16 metadata.
+func (vm *VM) newBufferedString(s string, flags uint8, builder any, meta *objectMeta) Value {
+	if meta == nil {
+		return Value{
+			o: &Object{
+				kind:  kindString,
+				flags: flags,
+				shape: vm.shapes.string,
+				str:   s,
+				ext:   builder,
+			},
+		}
+	}
+	// The metadata belongs only to this string, so both have the same lifetime.
+	p := &struct {
+		object Object
+		meta   objectMeta
+	}{
+		object: Object{
 			kind:  kindString,
 			flags: flags,
 			shape: vm.shapes.string,
 			str:   s,
-			meta:  meta,
-			ext:   rb,
+			ext:   builder,
 		},
+		meta: *meta,
 	}
+	p.object.meta = &p.meta
+	return Value{o: &p.object}
 }
 
 // unreverse makes the reversed string o hold its contents in order.

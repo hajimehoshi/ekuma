@@ -1874,6 +1874,34 @@ func TestPrependedStringsToGo(t *testing.T) {
 	}
 }
 
+// TestBufferedStringMetadataSnapshots checks retained strings after their builder advances.
+func TestBufferedStringMetadataSnapshots(t *testing.T) {
+	for _, expression := range []string{"s + chunk", "chunk + s"} {
+		t.Run(expression, func(t *testing.T) {
+			var vm ekuma.VM
+			value, err := runScript(t.Context(), &vm, "snapshots", `
+				const chunk = "é😀";
+				let s = "", saved = [];
+				for (let i = 0; i < 100; i++) {
+					s = `+expression+`;
+					if (s.length !== 3 * (i + 1)) throw new Error("length");
+					saved.push(s);
+				}
+				for (let i = saved.length - 1; i >= 0; i--) {
+					if (saved[i].length !== 3 * (i + 1)) throw new Error("saved length");
+					if (saved[i].charCodeAt(3 * i + 2) !== 0xDE00) throw new Error("saved code unit");
+				}
+				saved[39];`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := value.String(), strings.Repeat("é😀", 40); got != want {
+				t.Errorf("retained string: got %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 // TestAnnexBGlobalSkip covers the block-level functions of sloppy code that get no global
 // variable, which test262 does not.
 func TestAnnexBGlobalSkip(t *testing.T) {

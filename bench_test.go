@@ -1086,3 +1086,35 @@ func BenchmarkIntlResolvedOptions(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkStringBuildLength builds a string while reading its UTF-16 length.
+func BenchmarkStringBuildLength(b *testing.B) {
+	for _, direction := range []string{"Append", "Prepend"} {
+		for _, chunk := range []string{"abcdef", "é😀"} {
+			b.Run(direction+"/"+chunk, func(b *testing.B) {
+				expression := "s + chunk"
+				if direction == "Prepend" {
+					expression = "chunk + s"
+				}
+				var vm ekuma.VM
+				src := fmt.Sprintf(`function run(n) {
+						const chunk = %q;
+						let sum = 0;
+						for (let j = 0; j < n; j++) {
+							let s = "";
+							for (let i = 0; i < 20000; i++) { s = %s; sum += s.length; }
+						}
+						return sum;
+					}`, chunk, expression)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}
