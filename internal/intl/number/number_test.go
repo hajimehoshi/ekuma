@@ -216,6 +216,89 @@ func TestFormat(t *testing.T) {
 			want: "-CHF 1",
 		},
 		{
+			// de-AT groups currency amounts with a symbol of its own.
+			name: "currency group",
+			o: number.Options{
+				Locale:          "de-AT",
+				NumberingSystem: "latn",
+				Style:           "currency",
+				Currency:        "EUR",
+				CurrencyDisplay: "symbol",
+				CurrencySign:    "standard",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "1234567.5",
+			want: "€\u00a01.234.567,5",
+		},
+		{
+			// The currency symbols apply to currency names too.
+			name: "currency decimal",
+			o: number.Options{
+				Locale:          "fr-CH",
+				NumberingSystem: "latn",
+				Style:           "currency",
+				Currency:        "EUR",
+				CurrencyDisplay: "name",
+				CurrencySign:    "standard",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "1234567.5",
+			want: "1'234'567.5 euros",
+		},
+		{
+			// en-DE has a pattern of its own for EUR, which replaces the accounting pattern.
+			// The separators stay those of en-DE.
+			name: "currency pattern",
+			o: number.Options{
+				Locale:          "en-DE",
+				NumberingSystem: "latn",
+				Style:           "currency",
+				Currency:        "EUR",
+				CurrencyDisplay: "symbol",
+				CurrencySign:    "accounting",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "-1234567.5",
+			want: "-€1.234.567,5",
+		},
+		{
+			// kea has a decimal separator of its own for CVE.
+			name: "currency separator",
+			o: number.Options{
+				Locale:          "kea",
+				NumberingSystem: "latn",
+				Style:           "currency",
+				Currency:        "CVE",
+				CurrencyDisplay: "symbol",
+				CurrencySign:    "standard",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "1234567.5",
+			want: "1\u00a0234\u00a0567$5\u00a0\u200b",
+		},
+		{
+			name: "plain group outside currency",
+			o: number.Options{
+				Locale:          "de-AT",
+				NumberingSystem: "latn",
+				Style:           "decimal",
+				Notation:        "standard",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "1234567.5",
+			want: "1\u00a0234\u00a0567,5",
+		},
+		{
 			// en has no symbols for arab, which come from the root locale.
 			name: "symbols of the root locale",
 			o: number.Options{

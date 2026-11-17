@@ -805,7 +805,7 @@ func main() {
 		currencyData[l] = currencyFields(object(decode(numbers, name, "main", l, "numbers", "currencies")))
 	}
 	f = newFile("currencies.go", jsonSource)
-	f.records("maps locales to the names and symbols of currencies, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "CurrencyData", tree.records(currencyData))
+	f.records("maps locales to the names and symbols of currencies and their own patterns and separators, as records in the form of [Field]. A record that a locale shares with its parent is left out.", "CurrencyData", tree.records(currencyData))
 	f.write()
 
 	// Unit patterns.
@@ -1431,6 +1431,13 @@ var numberSymbols = map[string]string{
 	"nan":               "n",
 }
 
+// currencySymbols maps the names of the number symbols in CLDR that override decimal and
+// group for currency formats to the keys of the records of NumberData. Few locales have them.
+var currencySymbols = map[string]string{
+	"currencyDecimal": "$d",
+	"currencyGroup":   "$g",
+}
+
 // rootSymbols returns the fields of NumberData of the number symbols that root.xml, the root
 // locale of the XML data, has for numbering systems other than "latn". cldr-json leaves them
 // out of the root locale.
@@ -1496,6 +1503,11 @@ func numberFields(n map[string]any) map[string]string {
 			for name, key := range numberSymbols {
 				out[nu+"."+key] = str(v[name])
 			}
+			for name, key := range currencySymbols {
+				if s, ok := v[name]; ok {
+					out[nu+"."+key] = str(s)
+				}
+			}
 		case "decimalFormats":
 			out[nu+".D"] = str(v["standard"])
 			compact(nu+".l", object(object(v["long"])["decimalFormat"]))
@@ -1541,6 +1553,12 @@ func currencyFields(cs map[string]any) map[string]string {
 				out[code+"n"] = str(s)
 			case "displayName":
 				out[code+"d"] = str(s)
+			case "pattern":
+				out[code+"p"] = str(s)
+			case "decimal":
+				out[code+"."] = str(s)
+			case "group":
+				out[code+","] = str(s)
 			default:
 				if count, ok := strings.CutPrefix(k, "displayName-count-"); ok {
 					if c, ok := pluralCategories[count]; ok {

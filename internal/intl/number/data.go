@@ -54,6 +54,28 @@ func (d *localeData) number(field string) string {
 	return v
 }
 
+// currencySymbol returns the number symbol of the field "d" or "g" for formatting the
+// currency c. The locale's separator of the currency comes first, then its currency symbol of
+// the field, then the plain symbol. It falls back to "latn" like [localeData.number].
+func (d *localeData) currencySymbol(c, field string) string {
+	key := c + "."
+	if field == "g" {
+		key = c + ","
+	}
+	if v, ok := d.lookup(cldr.CurrencyData, key); ok {
+		return v
+	}
+	for _, nu := range []string{d.nu, "latn"} {
+		if v, ok := d.lookup(cldr.NumberData, nu+".$"+field); ok {
+			return v
+		}
+		if v, ok := d.lookup(cldr.NumberData, nu+"."+field); ok {
+			return v
+		}
+	}
+	return ""
+}
+
 // minimumGroupingDigits returns the minimum grouping digits of the locale.
 func (d *localeData) minimumGroupingDigits() int {
 	v, _ := d.lookup(cldr.NumberData, "g")

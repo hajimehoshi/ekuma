@@ -85,6 +85,10 @@ func NewFormatter(o *Options) *Formatter {
 		infinity:      d.number("i"),
 		nan:           d.number("n"),
 	}
+	if o.Style == "currency" {
+		f.decimal = d.currencySymbol(o.Currency, "d")
+		f.group = d.currencySymbol(o.Currency, "g")
+	}
 	f.digits = DigitsOf(o.NumberingSystem)
 	switch o.UseGrouping {
 	case "always":
@@ -99,7 +103,11 @@ func NewFormatter(o *Options) *Formatter {
 	case o.Style == "percent":
 		p = d.number("P")
 	case o.Style == "currency" && o.CurrencyDisplay != "name":
-		if o.CurrencySign == "accounting" {
+		// The locale's own pattern of the currency replaces both standard and accounting
+		// patterns.
+		if cp, ok := d.lookup(cldr.CurrencyData, o.Currency+"p"); ok {
+			p = cp
+		} else if o.CurrencySign == "accounting" {
 			p = d.number("A")
 		} else {
 			p = d.number("C")
