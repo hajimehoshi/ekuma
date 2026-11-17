@@ -107,6 +107,13 @@ func hasLoneSurrogate(s string) bool {
 // next advances to the next token.
 func (p *parser) next() {
 	p.prevEnd = p.t.end
+	p.tokens++
+	if p.tokens >= pollTokens {
+		p.tokens = 0
+		if p.opts.Poll != nil {
+			p.opts.Poll()
+		}
+	}
 	p.scan()
 }
 

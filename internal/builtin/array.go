@@ -21,16 +21,22 @@ func bigKey(vm *engine.VM, i int64) engine.PropKey {
 	return engine.NamedKey(vm.Intern(numconv.NumberToString(float64(i))))
 }
 
+// getAt returns the property of o with the integer index i. A loop over consecutive indices
+// that calls it checks for an interruption regularly.
 func getAt(vm *engine.VM, o *engine.Object, i int64) engine.Value {
 	if e, ok := o.Element(i); ok {
+		vm.PollAt(i)
 		return e
 	}
 	vm.Poll()
 	return vm.Get(o, bigKey(vm, i))
 }
 
+// hasAt reports whether o has a property with the integer index i. A loop over consecutive
+// indices that calls it checks for an interruption regularly.
 func hasAt(vm *engine.VM, o *engine.Object, i int64) bool {
 	if _, ok := o.Element(i); ok {
+		vm.PollAt(i)
 		return true
 	}
 	vm.Poll()
@@ -72,6 +78,7 @@ func moveSteps(vm *engine.VM, o *engine.Object, src, dst, count, dir int64) int6
 
 func putAt(vm *engine.VM, o *engine.Object, i int64, v engine.Value) {
 	if o.SetElement(i, v) {
+		vm.PollAt(i)
 		return
 	}
 	vm.Set(o, bigKey(vm, i), v)
@@ -168,7 +175,17 @@ func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
 // or ToString(Invoke(e, method)) when method is not nil.
 func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *engine.Object) engine.Value {
 	var b wtf8.Builder
-	for i := int64(0); i < n; i++ {
+	for i := int64(0); i < n; {
+		i = joinRun(vm, &b, o, i, min(n, i+engine.PollInterval), n, sep, method)
+		vm.Poll()
+	}
+	return vm.NewString(b.String())
+}
+
+// joinRun writes the elements of o from i up to end, or further when holes follow, to b as
+// joinElements joins the first n elements, and returns the index after the last one it wrote.
+func joinRun(vm *engine.VM, b *wtf8.Builder, o *engine.Object, i, end, n int64, sep string, method *engine.Object) int64 {
+	for ; i < end; i++ {
 		if i > 0 {
 			b.WriteString(sep)
 		}
@@ -176,7 +193,7 @@ func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *
 		if !ok {
 			if j := vm.SkipHoles(o, i, n); j > i {
 				// The indices from i to j-1 read as undefined.
-				writeSeparators(vm, &b, sep, j-1-i)
+				writeSeparators(vm, b, sep, j-1-i)
 				i = j - 1
 				e = engine.Undefined
 			} else {
@@ -188,13 +205,13 @@ func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *
 		case method != nil:
 			b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, method), e)))
 		default:
-			writeString(vm, &b, e)
+			writeString(vm, b, e)
 		}
 		if b.Len() > engine.MaxStringLength {
 			vm.ThrowRangeError("invalid string length")
 		}
 	}
-	return vm.NewString(b.String())
+	return i
 }
 
 // writeSeparators writes sep count times to b, and throws a RangeError instead when b would get
@@ -209,7 +226,7 @@ func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep string, count int64) {
 	if int64(b.Len())+count*per-2 > engine.MaxStringLength {
 		vm.ThrowRangeError("invalid string length")
 	}
-	b.WriteRepeated(sep, int(count))
+	writeRepeated(vm, b, sep, int(count))
 	if b.Len() > engine.MaxStringLength {
 		vm.ThrowRangeError("invalid string length")
 	}
@@ -549,7 +566,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	method(vm, proto, "reverse", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		n := vm.LengthOfArrayLike(o)
-		if o.ReverseElements() {
+		if vm.ReverseElements(o) {
 			return engine.ObjectValue(o)
 		}
 		for lo, hi := int64(0), n-1; lo < hi; lo, hi = lo+1, hi-1 {
@@ -610,6 +627,14 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 					}
 				}
 				for i := from; i >= 0; i-- {
+					f, next := vm.SearchElements(o, i, -1, target, false)
+					if f >= 0 {
+						return engine.Number(float64(f))
+					}
+					if i = next; i < 0 {
+						break
+					}
+					vm.PollAt(i)
 					if e, ok := o.Element(i); ok {
 						if eq(e, target) {
 							return engine.Number(float64(i))
@@ -627,6 +652,17 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 			}
 			from := relIndex(vm.ToIntegerOrInfinity(arg(args, 1)), n)
 			for i := from; i < n; i++ {
+				f, next := vm.SearchElements(o, i, n, target, same)
+				if f >= 0 {
+					if same {
+						return engine.True
+					}
+					return engine.Number(float64(f))
+				}
+				if i = next; i == n {
+					break
+				}
+				vm.PollAt(i)
 				if same {
 					e, ok := o.Element(i)
 					if !ok {
@@ -1140,19 +1176,24 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 			}
 		}
 		if allNumbersOrStrings {
-			sort.SliceStable(vals, func(i, j int) bool {
-				return wtf8.Compare(vals[i].Object().Str(), vals[j].Object().Str()) < 0
-			})
+			sortPolled(vm, vals, sortRunLength, func(s []engine.Value) {
+				slices.SortStableFunc(s, compareStringValues)
+			}, compareStringValues)
 			return
 		}
-		strs := make([]string, len(vals))
-		for i, v := range vals {
-			strs[i] = vm.ToString(v)
+		keyed := make([]keyedValue, len(vals))
+		for i := 0; i < len(vals); i += engine.PollInterval {
+			if i > 0 {
+				vm.Poll()
+			}
+			keyValues(vm, keyed[i:], vals[i:min(i+engine.PollInterval, len(vals))])
 		}
-		sort.Stable(&byString{
-			vals: vals,
-			strs: strs,
-		})
+		sortPolled(vm, keyed, sortRunLength, func(s []keyedValue) {
+			slices.SortStableFunc(s, compareKeyedValues)
+		}, compareKeyedValues)
+		for i := range vals {
+			vals[i] = keyed[i].v
+		}
 		return
 	}
 	sort.SliceStable(vals, func(i, j int) bool {
@@ -1161,22 +1202,94 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 	})
 }
 
-type byString struct {
-	vals []engine.Value
-	strs []string
+// compareStringValues compares the strings a and b by their code units.
+func compareStringValues(a, b engine.Value) int {
+	return wtf8.Compare(a.Object().Str(), b.Object().Str())
 }
 
-func (s *byString) Len() int {
-	return len(s.vals)
+// keyedValue is a value with the string it sorts by.
+type keyedValue struct {
+	v   engine.Value
+	key string
 }
 
-func (s *byString) Less(i, j int) bool {
-	return wtf8.Compare(s.strs[i], s.strs[j]) < 0
+// compareKeyedValues compares the keys of a and b by their code units.
+func compareKeyedValues(a, b keyedValue) int {
+	return wtf8.Compare(a.key, b.key)
 }
 
-func (s *byString) Swap(i, j int) {
-	s.vals[i], s.vals[j] = s.vals[j], s.vals[i]
-	s.strs[i], s.strs[j] = s.strs[j], s.strs[i]
+// keyValues sets the elements of keyed to vals with their strings.
+func keyValues(vm *engine.VM, keyed []keyedValue, vals []engine.Value) {
+	for i, v := range vals {
+		keyed[i] = keyedValue{
+			v:   v,
+			key: vm.ToString(v),
+		}
+	}
+}
+
+// Run lengths of sortPolled.
+const (
+	// sortRunLength is the run length for elements that are slow to compare, such as strings.
+	sortRunLength = 1 << 16
+
+	// numberSortRunLength is the run length for numbers.
+	numberSortRunLength = 1 << 18
+)
+
+// sortPolled sorts s, stably when sortRun is stable, checking for an interruption now and then.
+// sortRun sorts a slice of up to run elements in the order of compare.
+func sortPolled[E any](vm *engine.VM, s []E, run int, sortRun func(s []E), compare func(a, b E) int) {
+	n := len(s)
+	if n <= run {
+		sortRun(s)
+		return
+	}
+	for i := 0; i < n; i += run {
+		vm.Poll()
+		sortRun(s[i:min(i+run, n)])
+	}
+	src, dst := s, make([]E, n)
+	var inBuf bool
+	for w := run; w < n; w *= 2 {
+		for i := 0; i < n; i += 2 * w {
+			mergeRuns(vm, dst[i:min(i+2*w, n)], src[i:min(i+w, n)], src[min(i+w, n):min(i+2*w, n)], compare)
+		}
+		src, dst = dst, src
+		inBuf = !inBuf
+	}
+	if inBuf {
+		engine.CopyPolled(vm, s, src)
+	}
+}
+
+// mergeRuns merges the sorted a and b into dst, which has room for both, taking the elements of a
+// first among equal ones. It checks for an interruption now and then.
+func mergeRuns[E any](vm *engine.VM, dst, a, b []E, compare func(a, b E) int) {
+	for len(a) > 0 && len(b) > 0 {
+		var k int
+		k, a, b = mergeSome(dst, a, b, engine.PollInterval, compare)
+		dst = dst[k:]
+		vm.Poll()
+	}
+	k := copy(dst, a)
+	copy(dst[k:], b)
+}
+
+// mergeSome merges up to max elements of the sorted a and b into dst as mergeRuns does, and
+// returns how many it merged and what is left of a and b.
+func mergeSome[E any](dst, a, b []E, max int, compare func(a, b E) int) (int, []E, []E) {
+	k := 0
+	for ; k < max && len(a) > 0 && len(b) > 0; k++ {
+		if compare(b[0], a[0]) < 0 {
+			dst[k] = b[0]
+			b = b[1:]
+		} else {
+			dst[k] = a[0]
+			a = a[1:]
+		}
+	}
+	return k, a, b
 }
 
 // Kinds of array iterators.

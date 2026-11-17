@@ -426,8 +426,17 @@ var buffers = sync.Pool{
 
 // Compare returns -1, 0 or 1 as a sorts before, the same as, or after b.
 func (c *Collator) Compare(a, b string) int {
+	return c.ComparePolled(a, b, nil)
+}
+
+// ComparePolled is [Collator.Compare] that calls poll, which may be nil, now and then during a
+// long comparison. poll may stop the comparison by panicking.
+func (c *Collator) ComparePolled(a, b string, poll func()) int {
 	if a == b {
 		return 0
+	}
+	p := &pacer{
+		poll: poll,
 	}
 	ba := buffers.Get().(*buffer)
 	bb := buffers.Get().(*buffer)
@@ -437,13 +446,56 @@ func (c *Collator) Compare(a, b string) int {
 		buffers.Put(ba)
 		buffers.Put(bb)
 	}()
-	ca := c.appendCEs(ba, a)
-	cb := c.appendCEs(bb, b)
-	return c.compareCEs(ca, cb)
+	ca := c.appendCEs(ba, a, p)
+	cb := c.appendCEs(bb, b, p)
+	return c.compareCEs(ca, cb, p)
+}
+
+// pollSteps is the number of steps, such as converting a code point or comparing a weight, between
+// two calls of the poll function of a comparison.
+const pollSteps = 1 << 14
+
+// pacer calls the poll function of a comparison every pollSteps steps.
+type pacer struct {
+	poll  func()
+	steps int
+}
+
+// step counts n steps.
+func (p *pacer) step(n int) {
+	p.steps += n
+	if p.steps >= pollSteps {
+		p.steps = 0
+		if p.poll != nil {
+			p.poll()
+		}
+	}
+}
+
+// nfdChunk is the number of bytes of a string that appendNFD normalizes in one step.
+const nfdChunk = 1 << 16
+
+// appendNFD appends the NFD of s to out, in steps that end at normalization boundaries.
+func appendNFD(out []byte, s string, p *pacer) []byte {
+	for len(s) > nfdChunk {
+		// A boundary is found near the end of the chunk, after the start of a character.
+		w := nfdChunk - 256
+		for w > 0 && s[w]&0xc0 == 0x80 {
+			w--
+		}
+		i := norm.NFD.LastBoundary([]byte(s[w:nfdChunk]))
+		if i < 0 || w+i == 0 {
+			break
+		}
+		out = norm.NFD.AppendString(out, s[:w+i])
+		s = s[w+i:]
+		p.step(pollSteps)
+	}
+	return norm.NFD.AppendString(out, s)
 }
 
 // appendCEs returns the CEs of s with the settings of c applied.
-func (c *Collator) appendCEs(buf *buffer, s string) []ce {
+func (c *Collator) appendCEs(buf *buffer, s string, p *pacer) []ce {
 	ascii := true
 	for i := 0; i < len(s); i++ {
 		if s[i] >= utf8.RuneSelf {
@@ -452,12 +504,17 @@ func (c *Collator) appendCEs(buf *buffer, s string) []ce {
 		}
 	}
 	if !ascii {
-		s = norm.NFD.String(s)
+		if len(s) > nfdChunk {
+			s = string(appendNFD(nil, s, p))
+		} else {
+			s = norm.NFD.String(s)
+		}
 	}
 	for _, r := range s {
+		p.step(1)
 		buf.runes = append(buf.runes, r)
 	}
-	ces := c.generate(buf.ces, buf.runes)
+	ces := c.generate(buf.ces, buf.runes, p)
 	if c.t != nil && len(c.t.reorder) > 0 {
 		for i, e := range ces {
 			if e.primary() != 0 && !e.continuation() {
@@ -484,10 +541,11 @@ func (t *tailoring) reorderCE(e ce) ce {
 }
 
 // generate appends the CEs of the NFD code points rs to ces, before variable weighting.
-func (c *Collator) generate(ces []ce, rs []rune) []ce {
+func (c *Collator) generate(ces []ce, rs []rune, p *pacer) []ce {
 	t := c.t
 	afterVariable := false
 	for i := 0; i < len(rs); {
+		p.step(1)
 		start := len(ces)
 		r := rs[i]
 		if c.numeric {
@@ -750,8 +808,8 @@ func matchComplex(es *complexEntries, rs []rune, i int) ([]ce, int, []rune) {
 }
 
 // compareCEs compares the CEs of two strings level by level.
-func (c *Collator) compareCEs(a, b []ce) int {
-	if r := compareLevel(a, b, func(e ce) uint32 { return e.primary() }); r != 0 {
+func (c *Collator) compareCEs(a, b []ce, p *pacer) int {
+	if r := compareLevel(a, b, func(e ce) uint32 { return e.primary() }, p); r != 0 {
 		return r
 	}
 	if c.strength >= 2 {
@@ -759,7 +817,7 @@ func (c *Collator) compareCEs(a, b []ce) int {
 		if c.backwards {
 			sa, sb = reversed(a), reversed(b)
 		}
-		if r := compareLevel(sa, sb, func(e ce) uint32 { return e.secondary() }); r != 0 {
+		if r := compareLevel(sa, sb, func(e ce) uint32 { return e.secondary() }, p); r != 0 {
 			return r
 		}
 	}
@@ -774,7 +832,7 @@ func (c *Collator) compareCEs(a, b []ce) int {
 			}
 			return cb + 1
 		}
-		if r := compareLevel(a, b, key); r != 0 {
+		if r := compareLevel(a, b, key, p); r != 0 {
 			return r
 		}
 	}
@@ -792,7 +850,7 @@ func (c *Collator) compareCEs(a, b []ce) int {
 			}
 			return t
 		}
-		if r := compareLevel(a, b, key); r != 0 {
+		if r := compareLevel(a, b, key, p); r != 0 {
 			return r
 		}
 	}
@@ -806,9 +864,10 @@ func reversed(ces []ce) []ce {
 }
 
 // compareLevel compares the non-zero weights that key returns.
-func compareLevel(a, b []ce, key func(ce) uint32) int {
+func compareLevel(a, b []ce, key func(ce) uint32, p *pacer) int {
 	i, j := 0, 0
 	for {
+		p.step(1)
 		var wa, wb uint32
 		for i < len(a) {
 			if wa = key(a[i]); wa != 0 {

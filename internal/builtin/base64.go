@@ -94,20 +94,41 @@ func decodeChunk(dst []byte, chunk []int, strict bool) ([]byte, bool) {
 	return append(dst, b[:n]...), true
 }
 
+// decodeRun is the number of bytes of the input that a decoder reads between two checks for an
+// interruption.
+const decodeRun = 1 << 16
+
 // fromBase64 implements FromBase64 for the string s, which may contain any bytes of WTF-8.
-func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) decodeResult {
+func fromBase64(vm *engine.VM, s string, url bool, lastChunkHandling string, maxLength int) decodeResult {
 	var r decodeResult
 	if maxLength == 0 {
 		return r
 	}
 	r.bytes = make([]byte, 0, min(maxLength, len(s)/4*3+3))
 	chunk := make([]int, 0, 4)
-	i := 0
+	var i int
 	for {
+		var done bool
+		i, chunk, done = fromBase64Run(s, i, i+decodeRun, url, lastChunkHandling, maxLength, &r, chunk)
+		if done {
+			return r
+		}
+		vm.Poll()
+	}
+}
+
+// fromBase64Run is fromBase64 from the index i, with the chunk of values read so far, up to about
+// the index stop. It returns where it stopped and the chunk then, and reports whether r is the
+// result.
+func fromBase64Run(s string, i, stop int, url bool, lastChunkHandling string, maxLength int, r *decodeResult, chunk []int) (int, []int, bool) {
+	for {
+		if i >= stop {
+			return i, chunk, false
+		}
 		if len(chunk) == 0 && !url {
 			// Whole chunks of four characters of the alphabet decode as the state machine
 			// below does while three bytes or more remain.
-			for i+4 <= len(s) && maxLength-len(r.bytes) >= 3 {
+			for i+4 <= len(s) && i < stop && maxLength-len(r.bytes) >= 3 {
 				a, b, c, d := base64Values[s[i]], base64Values[s[i+1]], base64Values[s[i+2]], base64Values[s[i+3]]
 				if a|b|c|d < 0 {
 					break
@@ -118,7 +139,7 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 				r.read = i
 			}
 			if len(r.bytes) == maxLength {
-				return r
+				return i, chunk, true
 			}
 		}
 		i = skipASCIIWhitespace(s, i)
@@ -126,36 +147,36 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 			if len(chunk) > 0 {
 				switch lastChunkHandling {
 				case "stop-before-partial":
-					return r
+					return i, chunk, true
 				case "loose":
 					if len(chunk) == 1 {
 						r.err = "the base64 string ends with a single character"
-						return r
+						return i, chunk, true
 					}
 					r.bytes, _ = decodeChunk(r.bytes, chunk, false)
 				default:
 					r.err = "the base64 string ends with an incomplete chunk"
-					return r
+					return i, chunk, true
 				}
 			}
 			r.read = len(s)
-			return r
+			return i, chunk, true
 		}
 		c := s[i]
 		i++
 		if c == '=' {
 			if len(chunk) < 2 {
 				r.err = "unexpected padding in the base64 string"
-				return r
+				return i, chunk, true
 			}
 			i = skipASCIIWhitespace(s, i)
 			if len(chunk) == 2 {
 				if i == len(s) {
 					if lastChunkHandling == "stop-before-partial" {
-						return r
+						return i, chunk, true
 					}
 					r.err = "incomplete padding in the base64 string"
-					return r
+					return i, chunk, true
 				}
 				if s[i] == '=' {
 					i = skipASCIIWhitespace(s, i+1)
@@ -163,16 +184,16 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 			}
 			if i < len(s) {
 				r.err = "unexpected characters after the padding of the base64 string"
-				return r
+				return i, chunk, true
 			}
 			var ok bool
 			r.bytes, ok = decodeChunk(r.bytes, chunk, lastChunkHandling == "strict")
 			if !ok {
 				r.err = "the base64 string has nonzero padding bits"
-				return r
+				return i, chunk, true
 			}
 			r.read = len(s)
-			return r
+			return i, chunk, true
 		}
 		if url {
 			switch c {
@@ -187,11 +208,11 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 		v := base64Value(c)
 		if v < 0 {
 			r.err = "invalid character in the base64 string"
-			return r
+			return i, chunk, true
 		}
 		remaining := maxLength - len(r.bytes)
 		if remaining == 1 && len(chunk) == 2 || remaining == 2 && len(chunk) == 3 {
-			return r
+			return i, chunk, true
 		}
 		chunk = append(chunk, v)
 		if len(chunk) == 4 {
@@ -199,14 +220,14 @@ func fromBase64(s string, url bool, lastChunkHandling string, maxLength int) dec
 			chunk = chunk[:0]
 			r.read = i
 			if len(r.bytes) == maxLength {
-				return r
+				return i, chunk, true
 			}
 		}
 	}
 }
 
 // fromHex implements FromHex for the string s.
-func fromHex(s string, maxLength int) decodeResult {
+func fromHex(vm *engine.VM, s string, maxLength int) decodeResult {
 	var r decodeResult
 	length := len(s)
 	if !wtf8.IsASCII(s) {
@@ -218,18 +239,25 @@ func fromHex(s string, maxLength int) decodeResult {
 	}
 	// A character that is not ASCII starts within the first len(s)/2 pairs of bytes, and none
 	// of its bytes is a digit.
-	r.bytes = make([]byte, min(maxLength, len(s)/2))
-	for i := range r.bytes {
-		hi, lo := hexValues[s[2*i]], hexValues[s[2*i+1]]
-		if hi|lo < 0 {
-			r.bytes = r.bytes[:i]
-			r.err = "invalid character in the hex string"
-			return r
-		}
-		r.bytes[i] = byte(hi<<4 | lo)
-		r.read += 2
+	r.bytes = make([]byte, 0, min(maxLength, len(s)/2))
+	for r.read < len(s) && len(r.bytes) < maxLength && r.err == "" {
+		fromHexRun(s, r.read+decodeRun, maxLength, &r)
+		vm.Poll()
 	}
 	return r
+}
+
+// fromHexRun is fromHex from the index r.read up to stop.
+func fromHexRun(s string, stop, maxLength int, r *decodeResult) {
+	for r.read < len(s) && r.read < stop && len(r.bytes) < maxLength {
+		hi, lo := hexValues[s[r.read]], hexValues[s[r.read+1]]
+		if hi|lo < 0 {
+			r.err = "invalid character in the hex string"
+			return
+		}
+		r.read += 2
+		r.bytes = append(r.bytes, byte(hi<<4|lo))
+	}
 }
 
 // optionsObject implements GetOptionsObject.
@@ -322,14 +350,14 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, ctor, "fromBase64", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := stringArg(vm, args)
 		url, last := base64Options(vm, arg(args, 1))
-		r := fromBase64(s, url, last, math.MaxInt)
+		r := fromBase64(vm, s, url, last, math.MaxInt)
 		if r.err != "" {
 			throwSyntaxError(vm, r.err)
 		}
 		return newUint8Array(vm, r.bytes)
 	})
 	method(vm, ctor, "fromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		r := fromHex(stringArg(vm, args), math.MaxInt)
+		r := fromHex(vm, stringArg(vm, args), math.MaxInt)
 		if r.err != "" {
 			throwSyntaxError(vm, r.err)
 		}
@@ -340,13 +368,13 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		s := stringArg(vm, args)
 		url, last := base64Options(vm, arg(args, 1))
 		n := lengthOf(vm, t, "setFromBase64")
-		return setResult(vm, t, fromBase64(s, url, last, n))
+		return setResult(vm, t, fromBase64(vm, s, url, last, n))
 	})
 	method(vm, proto, "setFromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(vm, this, true, "setFromHex")
 		s := stringArg(vm, args)
 		n := lengthOf(vm, t, "setFromHex")
-		return setResult(vm, t, fromHex(s, n))
+		return setResult(vm, t, fromHex(vm, s, n))
 	})
 	method(vm, proto, "toBase64", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(vm, this, false, "toBase64")
@@ -361,10 +389,29 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		if omitPadding {
 			enc = enc.WithPadding(base64.NoPadding)
 		}
-		return vm.NewString(enc.EncodeToString(b))
+		// Every chunk but the last is a whole number of 3-byte groups, which encode without
+		// padding.
+		return vm.NewString(encodeInChunks(vm, b, 3, enc.EncodedLen, enc.AppendEncode))
 	})
 	method(vm, proto, "toHex", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(vm, this, false, "toHex")
-		return vm.NewString(hex.EncodeToString(bytesOf(vm, t, "toHex")))
+		return vm.NewString(encodeInChunks(vm, bytesOf(vm, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode))
 	})
+}
+
+// encodeChunk is the number of bytes that encodeInChunks encodes between two checks for an
+// interruption.
+const encodeChunk = 1 << 20
+
+// encodeInChunks returns the encoding of b by appendEncode, whose length encodedLen returns,
+// encoding a multiple of group bytes at a time.
+func encodeInChunks(vm *engine.VM, b []byte, group int, encodedLen func(n int) int, appendEncode func(dst, src []byte) []byte) string {
+	out := make([]byte, 0, encodedLen(len(b)))
+	n := encodeChunk / group * group
+	for len(b) > n {
+		out = appendEncode(out, b[:n])
+		b = b[n:]
+		vm.Poll()
+	}
+	return string(appendEncode(out, b))
 }

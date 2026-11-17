@@ -1652,6 +1652,113 @@ func TestCancelJSON(t *testing.T) {
 	}
 }
 
+// TestCancelBuiltins checks that a long call of a built-in function that runs no script code
+// stops soon after its context is done.
+func TestCancelBuiltins(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup string
+		src   string
+	}{
+		{
+			name:  "bulk copy",
+			setup: `var a = new Array(1 << 22).fill(0);`,
+			src:   `a.concat(a, a, a)`,
+		},
+		{
+			name:  "sort",
+			setup: `var a = []; for (let i = 0; i < 1 << 20; i++) a.push(Math.random());`,
+			src:   `a.sort()`,
+		},
+		{
+			name:  "sort in runs",
+			setup: `var a = new Float64Array(1 << 23); for (let i = 0; i < a.length; i++) a[i] = Math.random();`,
+			src:   `a.sort()`,
+		},
+		{
+			name:  "string building",
+			setup: `var s = "x".repeat(1 << 24);`,
+			src:   `s.replaceAll("x", "yy")`,
+		},
+		{
+			name:  "BigInt conversion",
+			setup: `var s = "9".repeat(2e6);`,
+			src:   `BigInt(s)`,
+		},
+		{
+			name:  "property enumeration",
+			setup: `var o = {}; for (let i = 0; i < 1 << 20; i++) o["k" + i] = i;`,
+			src:   `Object.assign({}, o)`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			if _, err := runScript(t.Context(), &vm, "setup", tc.setup); err != nil {
+				t.Fatalf("runScript: %v", err)
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+			defer cancel()
+			start := time.Now()
+			_, err := runScript(ctx, &vm, "call", tc.src)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("got %v, want context.DeadlineExceeded", err)
+			}
+			if d := time.Since(start); d > 5*time.Second {
+				t.Errorf("the call stopped after %v", d)
+			}
+		})
+	}
+}
+
+// TestLongStringMappings checks the case mappings and normalizations of strings long enough to
+// be mapped in parts.
+func TestLongStringMappings(t *testing.T) {
+	var vm ekuma.VM
+	for _, src := range []string{
+		// Every combining mark joins the letter before it, wherever the parts end.
+		`"e\u0301".repeat(50000).normalize("NFC") === "\u00e9".repeat(50000)`,
+		// Only the last sigma is final, as the context reaches across parts.
+		`"\u0391\u03a3".repeat(50000).toLowerCase() === "\u03b1\u03c3".repeat(49999) + "\u03b1\u03c2"`,
+		`"\u00df".repeat(50000).toUpperCase() === "SS".repeat(50000)`,
+		`"x".repeat(1 << 17).toUpperCase() === "X".repeat(1 << 17)`,
+	} {
+		v, err := runScript(t.Context(), &vm, "map", src)
+		if err != nil {
+			t.Errorf("%s: %v", src, err)
+			continue
+		}
+		if !v.Bool() {
+			t.Errorf("%s: got false", src)
+		}
+	}
+}
+
+// TestLongTypedArraySort checks the order of a typed array long enough to be sorted in runs.
+func TestLongTypedArraySort(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "sort", `
+		const a = new Float64Array(200001);
+		for (let i = 0; i < a.length; i++) {
+			a[i] = i % 1000 === 0 ? NaN : i % 1000 === 1 ? -0 : Math.round(Math.random() * 1000) - 500;
+		}
+		a.sort();
+		let ok = true;
+		for (let i = 1; i < a.length; i++) {
+			const x = a[i - 1], y = a[i];
+			if (x > y || x !== x && y === y || Object.is(x, 0) && Object.is(y, -0)) {
+				ok = false;
+			}
+		}
+		ok && Number.isNaN(a[a.length - 1]) && !Number.isNaN(a[a.length - 202]);
+	`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if !v.Bool() {
+		t.Error("the elements are out of order")
+	}
+}
+
 // TestCancelJobs checks that a context stops a script whose jobs never run out, and that
 // the jobs that were pending then are dropped without affecting later calls.
 func TestCancelJobs(t *testing.T) {

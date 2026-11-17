@@ -193,7 +193,12 @@ func ParseRadixDigits(s string, radix int) (f float64, ok bool) {
 	if exact {
 		return float64(n), true
 	}
-	i, ok := new(big.Int).SetString(s, radix)
+	// A value of at least 2^1025 is beyond the numbers.
+	s = strings.TrimLeft(s, "0")
+	if float64(len(s)-1)*math.Log2(float64(radix)) > 1025 {
+		return math.Inf(1), true
+	}
+	i, ok := ParseBigInt(s, radix, nil)
 	if !ok {
 		return 0, false
 	}
@@ -437,7 +442,9 @@ func ToLength(f float64) int64 {
 }
 
 // StringToBigInt implements StringToBigInt. It returns nil when s is not a BigInt literal.
-func StringToBigInt(s string) *big.Int {
+// poll, which may be nil, is called between the steps of a long conversion and may stop it by
+// panicking.
+func StringToBigInt(s string, poll func()) *big.Int {
 	s = TrimWhiteSpace(s, true, true)
 	if s == "" {
 		return new(big.Int)
@@ -456,21 +463,17 @@ func StringToBigInt(s string) *big.Int {
 			s = s[2:]
 		}
 	}
-	digits := s
+	var neg bool
 	if radix == 10 && (s[0] == '+' || s[0] == '-') {
-		digits = s[1:]
+		neg = s[0] == '-'
+		s = s[1:]
 	}
-	if digits == "" {
-		return nil
-	}
-	for i := 0; i < len(digits); i++ {
-		if DigitValue(digits[i]) >= radix {
-			return nil
-		}
-	}
-	i, ok := new(big.Int).SetString(s, radix)
+	i, ok := ParseBigInt(s, radix, poll)
 	if !ok {
 		return nil
+	}
+	if neg {
+		i.Neg(i)
 	}
 	return i
 }

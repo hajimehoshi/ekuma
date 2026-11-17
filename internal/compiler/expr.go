@@ -164,6 +164,7 @@ func (f *fn) effect(e ast.Expr) {
 
 // expr compiles e and leaves its value in the register dst.
 func (f *fn) expr(e ast.Expr, dst int32) {
+	f.c.step()
 	switch e := e.(type) {
 	case *ast.NumberLit:
 		f.number(e.Value, dst)

@@ -392,8 +392,10 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 	}
 	const name = "ownKeys"
 	keys := vm.propertyKeyList(vm.callTrap(trap, handler, Value{o: target}))
+	var p Pacer
 	unchecked := make(map[PropKey]struct{}, len(keys))
 	for _, k := range keys {
+		p.Step(vm)
 		if _, dup := unchecked[k]; dup {
 			vm.throwTrapError(name, "trap returned duplicate entries")
 		}
@@ -402,6 +404,7 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 	extensible := vm.IsExtensible(target)
 	var configurable, nonconfigurable []PropKey
 	for _, k := range vm.OwnKeys(target) {
+		p.Step(vm)
 		if d, ok := vm.GetOwnProperty(target, k); ok && d.flags&FlagConfigurable == 0 {
 			nonconfigurable = append(nonconfigurable, k)
 		} else {
@@ -412,6 +415,7 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 		return keys
 	}
 	for _, k := range nonconfigurable {
+		p.Step(vm)
 		if _, ok := unchecked[k]; !ok {
 			vm.throwTrapError(name, "trap result did not include '"+vm.KeyString(k)+"'")
 		}
@@ -421,6 +425,7 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 		return keys
 	}
 	for _, k := range configurable {
+		p.Step(vm)
 		if _, ok := unchecked[k]; !ok {
 			vm.throwTrapError(name, "trap result did not include '"+vm.KeyString(k)+"'")
 		}
@@ -440,6 +445,7 @@ func (vm *VM) propertyKeyList(v Value) []PropKey {
 	n := vm.LengthOfArrayLike(v.o)
 	var keys []PropKey
 	for i := range n {
+		vm.PollAt(i)
 		k := PropKey{idx: uint32(i)}
 		if i > MaxArrayIndex {
 			k = vm.KeyOfString(strconv.FormatInt(i, 10))

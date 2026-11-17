@@ -34,8 +34,8 @@ type collatorData struct {
 }
 
 // compare implements CompareStrings.
-func (cd *collatorData) compare(x, y string) int {
-	return cd.c.Compare(wtf8.ToValidUTF8(x), wtf8.ToValidUTF8(y))
+func (cd *collatorData) compare(vm *engine.VM, x, y string) int {
+	return cd.c.ComparePolled(wtf8.ToValidUTF8(x), wtf8.ToValidUTF8(y), vm.Poll)
 }
 
 // collationTypes returns the collation types of the locale l other than "standard" and
@@ -182,7 +182,7 @@ func (r *realm) initCollator(vm *engine.VM) {
 			cd.boundCompare = vm.NewNative("", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				x := vm.ToString(arg(args, 0))
 				y := vm.ToString(arg(args, 1))
-				return engine.Number(float64(cd.compare(x, y)))
+				return engine.Number(float64(cd.compare(vm, x, y)))
 			})
 		}
 		return engine.ObjectValue(cd.boundCompare)
@@ -225,7 +225,7 @@ func initLocaleCompare(vm *engine.VM) {
 		} else {
 			cd = createCollator(vm, locales, options)
 		}
-		return engine.Number(float64(cd.compare(s, that)))
+		return engine.Number(float64(cd.compare(vm, s, that)))
 	})
 }
 

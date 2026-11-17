@@ -931,7 +931,9 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 			}
 		}
 		slices.Sort(idxs)
+		var p Pacer
 		for _, idx := range slices.Backward(idxs) {
+			p.Step(vm)
 			k := vm.indexName(idx)
 			if p, _ := o.shape.lookup(k); p.flags&FlagConfigurable == 0 {
 				n = idx + 1
@@ -942,8 +944,14 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 		}
 	}
 	if int64(n) < int64(len(o.elems)) {
-		clear(o.elems[n:])
+		tail := o.elems[n:]
 		o.elems = o.elems[:n]
+		if len(tail) > pollChunk {
+			// The tail, which may be left uncleared, stays out of reach of later growth.
+			o.elems = o.elems[:n:n]
+		}
+		o.length = n
+		clearPolled(vm, tail)
 	}
 	o.length = n
 	return ok
@@ -1403,19 +1411,11 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 	keys := make([]PropKey, 0, len(o.elems)+int(o.shape.count)+1)
 	switch o.class {
 	case classString:
-		for i := range o.ext.(*Object).StringLength() {
-			keys = append(keys, PropKey{idx: uint32(i)})
-		}
+		keys = vm.appendIndexKeys(keys, o.ext.(*Object).StringLength())
 	case classTypedArray:
-		for i := range vm.typedArrayLength(o) {
-			keys = append(keys, PropKey{idx: uint32(i)})
-		}
+		keys = vm.appendIndexKeys(keys, vm.typedArrayLength(o))
 	}
-	for i, e := range o.elems {
-		if !e.isHole() {
-			keys = append(keys, PropKey{idx: uint32(i)})
-		}
-	}
+	keys = vm.appendElemKeys(keys, o.elems)
 	names := o.shape.keys()
 	if o.flags&objSparse != 0 {
 		sorted := true
@@ -1581,6 +1581,60 @@ func enumerableKey(key *Object, flags uint8) PropKey {
 	return PropKey{}
 }
 
+// appendIndexKeys appends the keys of the indices from 0 up to n to keys, checking for an
+// interruption while it appends many.
+func (vm *VM) appendIndexKeys(keys []PropKey, n int) []PropKey {
+	for i := 0; i < n; i += PollInterval {
+		if i > 0 {
+			vm.Poll()
+		}
+		keys = appendIndexRun(keys, i, min(i+PollInterval, n))
+	}
+	return keys
+}
+
+// appendIndexRun appends the keys of the indices from i up to j to keys.
+func appendIndexRun(keys []PropKey, i, j int) []PropKey {
+	for ; i < j; i++ {
+		keys = append(keys, PropKey{idx: uint32(i)})
+	}
+	return keys
+}
+
+// appendElemKeys appends the keys of the elements in elems to keys, checking for an
+// interruption while it appends many.
+func (vm *VM) appendElemKeys(keys []PropKey, elems []Value) []PropKey {
+	for i := 0; i < len(elems); i += PollInterval {
+		if i > 0 {
+			vm.Poll()
+		}
+		keys = appendElemRun(keys, elems[i:min(i+PollInterval, len(elems))], i)
+	}
+	return keys
+}
+
+// appendElemRun appends the keys of the elements in elems, the first of which has the index
+// base, to keys.
+func appendElemRun(keys []PropKey, elems []Value, base int) []PropKey {
+	for i, e := range elems {
+		if !e.isHole() {
+			keys = append(keys, PropKey{idx: uint32(base + i)})
+		}
+	}
+	return keys
+}
+
+// appendEnumerableNames appends the enumerable string keys among names, which are keys of the
+// private shape s, to keys.
+func appendEnumerableNames(keys []PropKey, s *shape, names []*Object) []PropKey {
+	for _, k := range names {
+		if k.kind == kindString && s.table[k].flags&FlagEnumerable != 0 {
+			keys = append(keys, PropKey{key: k})
+		}
+	}
+	return keys
+}
+
 // EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
 // It appends the keys to keys and returns the extended slice.
 func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
@@ -1598,17 +1652,14 @@ func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
 		}
 		return keys
 	}
-	for i, e := range o.elems {
-		if !e.isHole() {
-			keys = append(keys, PropKey{idx: uint32(i)})
-		}
-	}
+	keys = vm.appendElemKeys(keys, o.elems)
 	s := o.shape
 	if s.private {
-		for _, k := range s.order {
-			if k.kind == kindString && s.table[k].flags&FlagEnumerable != 0 {
-				keys = append(keys, PropKey{key: k})
+		for i := 0; i < len(s.order); i += PollInterval {
+			if i > 0 {
+				vm.Poll()
 			}
+			keys = appendEnumerableNames(keys, s, s.order[i:min(i+PollInterval, len(s.order))])
 		}
 		return keys
 	}

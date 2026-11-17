@@ -43,10 +43,10 @@ func initURIFunctions(vm *engine.VM) {
 		return uriEncode(vm, s, uriUnescaped)
 	})
 	uriFunc("escape", func(vm *engine.VM, s string) string {
-		return escape(s)
+		return escape(vm, s)
 	})
 	uriFunc("unescape", func(vm *engine.VM, s string) string {
-		return unescape(s)
+		return unescape(vm, s)
 	})
 }
 
@@ -57,8 +57,13 @@ func throwURIError(vm *engine.VM, msg string) {
 // uriEncode implements Encode. The ASCII characters in extraUnescaped are not escaped.
 func uriEncode(vm *engine.VM, s string, extraUnescaped string) string {
 	var i int
-	for i < len(s) && s[i] < 0x80 && strings.IndexByte(extraUnescaped, s[i]) >= 0 {
-		i++
+	for {
+		end := min(len(s), i+uriRun)
+		i += unescapedLen(s[i:end], extraUnescaped)
+		if i < end || i == len(s) {
+			break
+		}
+		vm.Poll()
 	}
 	if i == len(s) {
 		return s
@@ -66,8 +71,37 @@ func uriEncode(vm *engine.VM, s string, extraUnescaped string) string {
 	var b strings.Builder
 	b.Grow(len(s))
 	b.WriteString(s[:i])
-	var buf [utf8.UTFMax]byte
 	for i < len(s) {
+		// A part ends before the first byte of a character.
+		n := min(len(s), i+uriRun)
+		for n < len(s) && s[n]&0xc0 == 0x80 {
+			n++
+		}
+		uriEncodeRun(vm, &b, s[i:n], extraUnescaped)
+		i = n
+		vm.Poll()
+	}
+	return b.String()
+}
+
+// uriRun is the number of bytes of a string that the URI functions convert between two checks
+// for an interruption.
+const uriRun = 1 << 16
+
+// unescapedLen returns the length of the longest prefix of s of the ASCII characters in
+// extraUnescaped.
+func unescapedLen(s string, extraUnescaped string) int {
+	var i int
+	for i < len(s) && s[i] < 0x80 && strings.IndexByte(extraUnescaped, s[i]) >= 0 {
+		i++
+	}
+	return i
+}
+
+// uriEncodeRun writes s to b as uriEncode encodes it.
+func uriEncodeRun(vm *engine.VM, b *strings.Builder, s string, extraUnescaped string) {
+	var buf [utf8.UTFMax]byte
+	for i := 0; i < len(s); {
 		if c := s[i]; c < 0x80 && strings.IndexByte(extraUnescaped, c) >= 0 {
 			b.WriteByte(c)
 			i++
@@ -85,7 +119,6 @@ func uriEncode(vm *engine.VM, s string, extraUnescaped string) string {
 			b.WriteByte(upperHex[o&0xF])
 		}
 	}
-	return b.String()
 }
 
 // hexByte returns the byte that the two hexadecimal digits at s[i:i+2] denote.
@@ -117,12 +150,22 @@ func uriDecode(vm *engine.VM, s string, preserveEscapeSet string) string {
 	}
 	var b wtf8.Builder
 	b.Grow(len(s))
-	var octets [utf8.UTFMax]byte
 	for i := 0; i < len(s); {
+		i = uriDecodeRun(vm, &b, s, i, i+uriRun, preserveEscapeSet)
+		vm.Poll()
+	}
+	return b.String()
+}
+
+// uriDecodeRun writes s to b from the index i on as uriDecode decodes it, up to about the index
+// stop, and returns the index after the part it decoded.
+func uriDecodeRun(vm *engine.VM, b *wtf8.Builder, s string, i, stop int, preserveEscapeSet string) int {
+	var octets [utf8.UTFMax]byte
+	for i < len(s) && i < stop {
 		j := strings.IndexByte(s[i:], '%')
 		if j < 0 {
 			b.WriteString(s[i:])
-			break
+			return len(s)
 		}
 		b.WriteString(s[i : i+j])
 		i += j
@@ -169,14 +212,35 @@ func uriDecode(vm *engine.VM, s string, preserveEscapeSet string) string {
 		}
 		b.WriteRune(r)
 	}
-	return b.String()
+	return i
 }
 
 // escape implements the Annex B function escape.
-func escape(s string) string {
+func escape(vm *engine.VM, s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
-	for _, u := range wtf8.AppendUTF16(nil, s) {
+	var units []uint16
+	for len(s) > 0 {
+		// A part ends before the first byte of a character.
+		n := min(len(s), escapeRun)
+		for n < len(s) && s[n]&0xc0 == 0x80 {
+			n++
+		}
+		units = wtf8.AppendUTF16(units[:0], s[:n])
+		escapeUnits(&b, units)
+		s = s[n:]
+		vm.Poll()
+	}
+	return b.String()
+}
+
+// escapeRun is the number of bytes of a string that escape converts between two checks for an
+// interruption.
+const escapeRun = 1 << 16
+
+// escapeUnits writes the escapes of the code units us to b.
+func escapeUnits(b *strings.Builder, us []uint16) {
+	for _, u := range us {
 		switch {
 		case u < 0x80 && strings.IndexByte(escapeUnescaped, byte(u)) >= 0:
 			b.WriteByte(byte(u))
@@ -192,21 +256,30 @@ func escape(s string) string {
 			b.WriteByte(upperHex[u&0xF])
 		}
 	}
-	return b.String()
 }
 
 // unescape implements the Annex B function unescape.
-func unescape(s string) string {
+func unescape(vm *engine.VM, s string) string {
 	if strings.IndexByte(s, '%') < 0 {
 		return s
 	}
 	var b wtf8.Builder
 	b.Grow(len(s))
 	for i := 0; i < len(s); {
+		i = unescapeRun(&b, s, i, i+uriRun)
+		vm.Poll()
+	}
+	return b.String()
+}
+
+// unescapeRun writes s to b from the index i on as unescape converts it, up to about the index
+// stop, and returns the index after the part it converted.
+func unescapeRun(b *wtf8.Builder, s string, i, stop int) int {
+	for i < len(s) && i < stop {
 		j := strings.IndexByte(s[i:], '%')
 		if j < 0 {
 			b.WriteString(s[i:])
-			break
+			return len(s)
 		}
 		b.WriteString(s[i : i+j])
 		i += j
@@ -227,5 +300,5 @@ func unescape(s string) string {
 		_ = b.WriteByte('%')
 		i++
 	}
-	return b.String()
+	return i
 }

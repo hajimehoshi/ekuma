@@ -528,6 +528,10 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	if x.o == nil || y.o == nil {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
+	// An operation on huge BigInts cannot stop once it starts.
+	if vm.interrupt.Load() {
+		vm.Poll()
+	}
 	a, b := x.BigInt(), y.BigInt()
 	r := new(big.Int)
 	switch op {
@@ -555,7 +559,11 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 			(!b.IsInt64() || b.Int64() > maxExpBits || int64(a.BitLen())*b.Int64() > maxExpBits) {
 			vm.ThrowRangeError("maximum BigInt size exceeded")
 		}
-		r.Exp(a, b, nil)
+		if a.CmpAbs(big.NewInt(1)) > 0 && int64(a.BitLen())*b.Int64() > bigExpStepBits {
+			vm.bigExp(r, a, b.Int64())
+		} else {
+			r.Exp(a, b, nil)
+		}
 	case bytecode.OpBitOr:
 		r.Or(a, b)
 	case bytecode.OpBitAnd:
@@ -847,8 +855,10 @@ func (vm *VM) copyDataProperties(dst *Object, src Value, excluded []Value) {
 		}
 		dst.slots = slices.Grow(dst.slots, len(ks)-elems)
 	}
+	var pacer Pacer
 keys:
 	for _, k := range ks {
+		pacer.Step(vm)
 		for _, s := range skip {
 			if s == k {
 				continue keys

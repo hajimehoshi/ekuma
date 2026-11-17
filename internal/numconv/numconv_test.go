@@ -5,6 +5,9 @@ package numconv_test
 
 import (
 	"math"
+	"math/big"
+	"math/rand/v2"
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -127,6 +130,35 @@ func TestParseInt(t *testing.T) {
 	for _, tt := range tests {
 		if got := numconv.ParseInt(tt.in, tt.radix); got != tt.want {
 			t.Errorf("ParseInt(%q, %d) = %v, want %v", tt.in, tt.radix, got, tt.want)
+		}
+	}
+}
+
+// TestBigIntConversions checks the conversions of integers that take several steps against
+// math/big.
+func TestBigIntConversions(t *testing.T) {
+	r := rand.New(rand.NewPCG(1, 2))
+	const symbols = "0123456789abcdefghijklmnopqrstuvwxyz"
+	for _, radix := range []int{3, 10, 16, 36} {
+		for _, n := range []int{1, 8192, 8193, 40000, 100000} {
+			var sb strings.Builder
+			sb.WriteByte(symbols[1+r.IntN(radix-1)])
+			for range n - 1 {
+				sb.WriteByte(symbols[r.IntN(radix)])
+			}
+			// Runs of zeros fall on the boundaries of the steps.
+			s := sb.String()[:(n+1)/2] + strings.Repeat("0", n/2)
+			want, _ := new(big.Int).SetString(s, radix)
+			got, ok := numconv.ParseBigInt(s, radix, nil)
+			if !ok || got.Cmp(want) != 0 {
+				t.Errorf("ParseBigInt of %d symbols in radix %d: got %v, %t", n, radix, got, ok)
+				continue
+			}
+			x := new(big.Int).Neg(want)
+			x.Add(x, big.NewInt(1))
+			if got, want := numconv.FormatBigInt(x, radix, nil), x.Text(radix); got != want {
+				t.Errorf("FormatBigInt of %d symbols in radix %d differs from Text", n, radix)
+			}
 		}
 	}
 }

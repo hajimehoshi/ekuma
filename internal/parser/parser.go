@@ -32,7 +32,14 @@ type Options struct {
 
 	// PrivateNames lists the private names, without '#', declared by the classes enclosing a direct eval.
 	PrivateNames []string
+
+	// Poll, when not nil, is called now and then during a long parse, and may stop it by
+	// panicking.
+	Poll func()
 }
+
+// pollTokens is the number of tokens between two calls of [Options.Poll].
+const pollTokens = 1 << 14
 
 // FunctionKind is the kind of function that [ParseFunction] creates.
 type FunctionKind uint8
@@ -184,6 +191,9 @@ type parser struct {
 
 	// prevEnd is the end offset of the token before the current one.
 	prevEnd int32
+
+	// tokens counts the tokens toward the next call of the Poll option.
+	tokens int
 
 	f     fnState
 	scope *scope

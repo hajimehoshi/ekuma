@@ -173,6 +173,7 @@ func (vm *VM) compileEval(fp *funcProto, site int, src string) *bytecode.Func {
 		AllowSuperProperty: es.SuperProperty,
 		AllowSuperCall:     es.SuperCall,
 		InClassFieldInit:   es.InFieldInit,
+		Poll:               vm.Poll,
 	}
 	for _, v := range es.Vars {
 		if name, ok := strings.CutPrefix(v.Name, "#"); ok {
@@ -183,7 +184,7 @@ func (vm *VM) compileEval(fp *funcProto, site int, src string) *bytecode.Func {
 	if err != nil {
 		vm.throwCompileError("<eval>", err)
 	}
-	bc, err := compiler.CompileEval(prog, "<eval>", es)
+	bc, err := compiler.CompileEval(prog, "<eval>", es, vm.Poll)
 	if err != nil {
 		vm.throwCompileError("<eval>", err)
 	}

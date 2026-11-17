@@ -269,6 +269,11 @@ type compiler struct {
 	// topDecls maps the names that the top level of a program with many declarations
 	// declares to what their declarations are, once a lookup needed it.
 	topDecls map[string]topDecl
+
+	// poll, when not nil, is called every pollNodes nodes, and may stop the compilation by
+	// panicking. nodes counts the nodes toward the next call.
+	poll  func()
+	nodes int
 }
 
 // topDecl tells what the declarations of a name at the top level of a program are.
@@ -311,6 +316,21 @@ func (t topDecl) with(k ast.DeclKind) topDecl {
 		t.plain = true
 	}
 	return t
+}
+
+// pollNodes is the number of statements and expressions between two calls of the poll function
+// of a compilation.
+const pollNodes = 1 << 14
+
+// step counts a statement or an expression toward the next call of the poll function.
+func (c *compiler) step() {
+	c.nodes++
+	if c.nodes >= pollNodes {
+		c.nodes = 0
+		if c.poll != nil {
+			c.poll()
+		}
+	}
 }
 
 // scratch is the storage that compilations reuse.
@@ -361,19 +381,22 @@ func releaseBuf[T any](bufs *[][]T, work []T) []T {
 
 // CompileScript compiles the script prog. file names the source in stack traces.
 func CompileScript(prog *ast.Program, file string) (*bytecode.Func, error) {
-	return compile(prog, file, nil)
+	return compile(prog, file, nil, nil)
 }
 
 // CompileFunction compiles the program prog from parser.ParseFunction. The returned script
 // evaluates to the function, which runs in the global scope and does not see its own name.
-func CompileFunction(prog *ast.Program, file string) (*bytecode.Func, error) {
-	return compile(prog, file, prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function))
+// poll, when not nil, is called now and then during a long compilation, and may stop it by
+// panicking.
+func CompileFunction(prog *ast.Program, file string, poll func()) (*bytecode.Func, error) {
+	return compile(prog, file, prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function), poll)
 }
 
-func compile(prog *ast.Program, file string, dynamic *ast.Function) (f *bytecode.Func, err error) {
+func compile(prog *ast.Program, file string, dynamic *ast.Function, poll func()) (f *bytecode.Func, err error) {
 	c := newCompiler(prog, file)
 	defer c.release()
 	c.dynamic = dynamic
+	c.poll = poll
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(*Error)

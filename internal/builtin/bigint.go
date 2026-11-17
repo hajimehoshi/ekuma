@@ -128,7 +128,7 @@ func initBigInt(vm *engine.VM) {
 		if n, ok := x.BigInt64(); ok {
 			return vm.NewString(strconv.FormatInt(n, int(radix)))
 		}
-		return vm.NewString(x.BigInt().Text(int(radix)))
+		return vm.NewString(numconv.FormatBigInt(x.BigInt(), int(radix), vm.Poll))
 	})
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x := thisBigInt(vm, this, "toLocaleString")

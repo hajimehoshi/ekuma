@@ -419,11 +419,13 @@ func (vm *VM) LinkScript(c *CompiledScript) *Script {
 // compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
 // to it.
 func (vm *VM) compileFunction(file, params, body string, kind parser.FunctionKind) (*funcProto, error) {
-	prog, err := parser.ParseFunction(params, body, kind, parser.Options{})
+	prog, err := parser.ParseFunction(params, body, kind, parser.Options{
+		Poll: vm.Poll,
+	})
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
-	bc, err := compiler.CompileFunction(prog, file)
+	bc, err := compiler.CompileFunction(prog, file, vm.Poll)
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}

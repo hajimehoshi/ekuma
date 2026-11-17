@@ -245,12 +245,10 @@ func initString(vm *engine.VM) {
 		}
 		if wtf8.JoinsPair(s.Str(), s.Str()) {
 			var b wtf8.Builder
-			for i := 0; i < int(n); i++ {
-				b.WriteString(s.Str())
-			}
+			writeRepeated(vm, &b, s.Str(), int(n))
 			return vm.NewString(b.String())
 		}
-		return vm.NewString(strings.Repeat(s.Str(), int(n)))
+		return vm.NewString(repeatString(vm, s.Str(), int(n)))
 	})
 	pad := func(name string, atStart bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -271,9 +269,7 @@ func initString(vm *engine.VM) {
 			fl := int64(fo.StringLength())
 			need := target - n
 			var b wtf8.Builder
-			for i := int64(0); i < need/fl; i++ {
-				b.WriteString(fill)
-			}
+			writeRepeated(vm, &b, fill, int(need/fl))
 			b.WriteString(fo.Substring(0, int(need%fl)))
 			if atStart {
 				b.WriteString(s.Str())
@@ -331,23 +327,31 @@ func initString(vm *engine.VM) {
 		})
 	}
 	// mapCase defines a case mapping method that applies ascii to ASCII-only strings and f to other strings.
-	mapCase := func(name string, ascii, f func(string) string) {
+	mapCase := func(name string, ascii func(string) string, f stringMapping) {
+		asciiMap := contextFree(ascii)
 		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisString(vm, this, name)
 			if s.IsASCII() {
-				return vm.NewString(ascii(s.Str()))
+				return vm.NewString(mapInChunks(vm, s.Str(), asciiMap, anyBoundary))
 			}
-			return vm.NewString(mapWellFormed(s.Str(), f))
+			return vm.NewString(mapWellFormed(vm, s.Str(), f))
 		})
 	}
-	upper := func(s string) string {
-		return cases.Upper(language.Und).String(s)
+	upper := stringMapping{
+		f: contextFree(func(s string) string {
+			return cases.Upper(language.Und).String(s)
+		}),
+		boundary: lastBoundary(norm.NFD),
 	}
-	lower := toLowerCase
+	lower := stringMapping{
+		f:        toLowerCase,
+		boundary: runeBoundary,
+	}
 	mapCase("toUpperCase", strings.ToUpper, upper)
 	mapCase("toLowerCase", strings.ToLower, lower)
 	mapCase("toLocaleUpperCase", strings.ToUpper, upper)
 	mapCase("toLocaleLowerCase", strings.ToLower, lower)
+	nfc, nfd, nfkc, nfkd := normalization(norm.NFC), normalization(norm.NFD), normalization(norm.NFKC), normalization(norm.NFKD)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "localeCompare")
 		that := vm.ToString(arg(args, 0))
@@ -355,20 +359,20 @@ func initString(vm *engine.VM) {
 			// An ASCII string is in every normalization form.
 			return engine.Number(float64(wtf8.Compare(s.Str(), that)))
 		}
-		return engine.Number(float64(wtf8.Compare(mapWellFormed(s.Str(), norm.NFC.String), mapWellFormed(that, norm.NFC.String))))
+		return engine.Number(float64(wtf8.Compare(mapWellFormed(vm, s.Str(), nfc), mapWellFormed(vm, that, nfc))))
 	})
 	method(vm, proto, "normalize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisString(vm, this, "normalize")
-		form := norm.NFC
+		form, quick := nfc, norm.NFC
 		if f := arg(args, 0); !f.IsUndefined() {
 			switch vm.ToString(f) {
 			case "NFC":
 			case "NFD":
-				form = norm.NFD
+				form, quick = nfd, norm.NFD
 			case "NFKC":
-				form = norm.NFKC
+				form, quick = nfkc, norm.NFKC
 			case "NFKD":
-				form = norm.NFKD
+				form, quick = nfkd, norm.NFKD
 			default:
 				vm.ThrowRangeError("the normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
@@ -377,13 +381,10 @@ func initString(vm *engine.VM) {
 			return engine.ObjectValue(s)
 		}
 		str := s.Str()
-		if !wtf8.IsWellFormed(str) {
-			return vm.NewString(mapWellFormed(str, form.String))
-		}
-		if form.QuickSpanString(str) == len(str) {
+		if wtf8.IsWellFormed(str) && quick.QuickSpanString(str) == len(str) {
 			return engine.ObjectValue(s)
 		}
-		return vm.NewString(form.String(str))
+		return vm.NewString(mapWellFormed(vm, str, form))
 	})
 	method(vm, proto, "isWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(wtf8.IsWellFormed(thisString(vm, this, "isWellFormed").Str()))
@@ -422,15 +423,20 @@ func initString(vm *engine.VM) {
 		if sep == "" {
 			n := int(min(uint64(s.StringLength()), uint64(limit)))
 			out := make([]engine.Value, n)
-			for i := range out {
-				out[i] = vm.UnitString(s.UnitAt(i))
+			for i := 0; i < n; i += engine.PollInterval {
+				if i > 0 {
+					vm.Poll()
+				}
+				unitStrings(vm, out[i:min(i+engine.PollInterval, n)], s, i)
 			}
 			return engine.ObjectValue(vm.NewArray(out))
 		}
 		var out []engine.Value
 		sepLen := wtf8.Len(sep)
 		var start int
+		var pacer engine.Pacer
 		for uint32(len(out)) < limit {
+			pacer.Step(vm)
 			pos := s.UnitIndexOf(sep, start)
 			if pos < 0 {
 				out = append(out, vm.NewString(s.Substring(start, s.StringLength())))
@@ -471,7 +477,9 @@ func initString(vm *engine.VM) {
 			if !all {
 				positions = firstPosition[:0]
 			}
+			var pacer engine.Pacer
 			for pos := s.UnitIndexOf(search, 0); pos >= 0; {
+				pacer.Step(vm)
 				positions = append(positions, pos)
 				if !all || pos+advance > n {
 					break
@@ -490,6 +498,7 @@ func initString(vm *engine.VM) {
 			}
 			end := 0
 			for _, p := range positions {
+				pacer.Step(vm)
 				writeLimited(vm, &b, s.Substring(end, p))
 				if functional {
 					writeLimited(vm, &b, vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
@@ -551,11 +560,13 @@ type stringIterator struct {
 	pos int
 }
 
-// toLowerCase converts s to lowercase with the root locale's full case mapping.
-func toLowerCase(s string) string {
+// toLowerCase converts s[start:end] to lowercase with the root locale's full case mapping, in the
+// context of the rest of s.
+func toLowerCase(s string, start, end int) string {
 	var b strings.Builder
-	b.Grow(len(s))
-	for i, r := range s {
+	b.Grow(end - start)
+	for k, r := range s[start:end] {
+		i := start + k
 		switch r {
 		case '\u0130':
 			// LATIN CAPITAL LETTER I WITH DOT ABOVE keeps the dot as a combining character.
@@ -617,19 +628,103 @@ func isCaseIgnorable(r rune) bool {
 	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf, unicode.Lm, unicode.Sk)
 }
 
-// mapWellFormed applies f to each maximal run of s without lone surrogates and keeps the lone surrogates as they are.
-func mapWellFormed(s string, f func(string) string) string {
+// unitStrings sets the elements of out to the strings of the code units of s from the index start
+// on.
+func unitStrings(vm *engine.VM, out []engine.Value, s *engine.Object, start int) {
+	for i := range out {
+		out[i] = vm.UnitString(s.UnitAt(start + i))
+	}
+}
+
+// stringMapping is a mapping of the well-formed strings.
+type stringMapping struct {
+	// f maps s[start:end], which begins and ends at boundaries, in the context of the rest of s.
+	f func(s string, start, end int) string
+
+	// boundary returns the offset of the last boundary in s other than its start, or a number
+	// below 1 when there is none. The parts of a string between boundaries map independently.
+	boundary func(s string) int
+}
+
+// contextFree returns f as the function of a stringMapping.
+func contextFree(f func(string) string) func(s string, start, end int) string {
+	return func(s string, start, end int) string {
+		return f(s[start:end])
+	}
+}
+
+// normalization returns the mapping to the normalization form.
+func normalization(form norm.Form) stringMapping {
+	return stringMapping{
+		f:        contextFree(form.String),
+		boundary: lastBoundary(form),
+	}
+}
+
+// boundaryWindow is the number of bytes at the end of a string in which lastBoundary looks for a
+// boundary.
+const boundaryWindow = 256
+
+// lastBoundary returns a boundary function for the normalization form: the parts of a string
+// between its boundaries normalize independently.
+func lastBoundary(form norm.Form) func(s string) int {
+	return func(s string) int {
+		w := max(0, len(s)-boundaryWindow)
+		for w > 0 && s[w]&0xc0 == 0x80 {
+			w--
+		}
+		i := form.LastBoundary([]byte(s[w:]))
+		if i < 0 {
+			return -1
+		}
+		return w + i
+	}
+}
+
+// anyBoundary is the boundary function of a mapping of ASCII strings.
+func anyBoundary(s string) int {
+	return len(s)
+}
+
+// runeBoundary returns the offset of the start of the last character of s.
+func runeBoundary(s string) int {
+	_, size := utf8.DecodeLastRuneInString(s)
+	return len(s) - size
+}
+
+// mapChunk is the number of bytes of a string that a mapping maps between two checks for an
+// interruption.
+const mapChunk = 1 << 16
+
+// mapInChunks maps s with f, checking for an interruption between the parts of a long string,
+// which end at boundaries that boundary finds.
+func mapInChunks(vm *engine.VM, s string, f func(s string, start, end int) string, boundary func(s string) int) string {
+	if len(s) <= mapChunk {
+		return f(s, 0, len(s))
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	start := 0
+	for len(s)-start > mapChunk {
+		n := boundary(s[start : start+mapChunk])
+		if n <= 0 {
+			break
+		}
+		b.WriteString(f(s, start, start+n))
+		start += n
+		vm.Poll()
+	}
+	b.WriteString(f(s, start, len(s)))
+	return b.String()
+}
+
+// mapWellFormed applies m to each maximal run of s without lone surrogates and keeps the lone
+// surrogates as they are.
+func mapWellFormed(vm *engine.VM, s string, m stringMapping) string {
 	var b wtf8.Builder
 	for len(s) > 0 {
-		var i int
-		for i < len(s) {
-			r, size := wtf8.DecodeRune(s[i:])
-			if r >= 0xD800 && r <= 0xDFFF {
-				break
-			}
-			i += size
-		}
-		b.WriteString(f(s[:i]))
+		i := loneSurrogateIndex(s)
+		b.WriteString(mapInChunks(vm, s[:i], m.f, m.boundary))
 		s = s[i:]
 		if len(s) > 0 {
 			r, size := wtf8.DecodeRune(s)
@@ -638,4 +733,61 @@ func mapWellFormed(s string, f func(string) string) string {
 		}
 	}
 	return b.String()
+}
+
+// loneSurrogateIndex returns the offset of the first lone surrogate in s, or len(s).
+func loneSurrogateIndex(s string) int {
+	// A surrogate is ED A0..BF xx, and a well-formed character never starts with ED followed by
+	// A0 or more.
+	for i := 0; ; {
+		j := strings.IndexByte(s[i:], 0xED)
+		if j < 0 {
+			return len(s)
+		}
+		i += j
+		if i+1 < len(s) && s[i+1] >= 0xA0 {
+			return i
+		}
+		i++
+	}
+}
+
+// repeatChunk is the number of bytes of repeated copies of a string that writeRepeated writes
+// between two checks for an interruption.
+const repeatChunk = 1 << 20
+
+// repeatString returns count copies of s, which does not join a surrogate pair with itself,
+// checking for an interruption while it writes many bytes.
+func repeatString(vm *engine.VM, s string, count int) string {
+	total := len(s) * count
+	if total <= repeatChunk {
+		return strings.Repeat(s, count)
+	}
+	var b strings.Builder
+	b.Grow(total)
+	b.WriteString(s)
+	// The copies written so far are copied in steps of whole copies.
+	step := max(len(s), repeatChunk/len(s)*len(s))
+	for b.Len() < total {
+		vm.Poll()
+		b.WriteString(b.String()[:min(b.Len(), total-b.Len(), step)])
+	}
+	return b.String()
+}
+
+// writeRepeated is b.WriteRepeated(s, count), checking for an interruption while it writes many
+// bytes.
+func writeRepeated(vm *engine.VM, b *wtf8.Builder, s string, count int) {
+	per := max(1, repeatChunk/max(1, len(s)))
+	if count > per {
+		b.Grow(count * len(s))
+	}
+	for count > 0 {
+		k := min(count, per)
+		b.WriteRepeated(s, k)
+		count -= k
+		if count > 0 {
+			vm.Poll()
+		}
+	}
 }

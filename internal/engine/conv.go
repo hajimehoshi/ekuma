@@ -154,7 +154,7 @@ func (vm *VM) ToString(v Value) string {
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a string")
 	case kindBigInt:
-		return bigIntString(v, 10)
+		return bigIntString(v, 10, vm.Poll)
 	}
 	return vm.ToString(vm.ToPrimitive(v, HintString))
 }
@@ -235,7 +235,7 @@ func (vm *VM) ToBigInt(v Value) Value {
 	case kindTrue:
 		return BigIntFromInt64(1)
 	case kindString:
-		i := numconv.StringToBigInt(p.o.Str())
+		i := numconv.StringToBigInt(p.o.Str(), vm.Poll)
 		if i == nil {
 			vm.throwSyntaxError("cannot convert " + vm.DisplayString(p) + " to a BigInt")
 		}
@@ -320,7 +320,7 @@ func compareBigIntMixed(a, b Value) cmpResult {
 		case kindBigInt:
 			return v.BigInt(), 0, true
 		case kindString:
-			i := numconv.StringToBigInt(v.o.Str())
+			i := numconv.StringToBigInt(v.o.Str(), nil)
 			return i, 0, i != nil
 		}
 		return nil, 0, false

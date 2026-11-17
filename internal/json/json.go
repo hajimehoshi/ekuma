@@ -312,6 +312,13 @@ var plain = func() (t [256]bool) {
 // AppendQuote implements QuoteJSONString for the string s in canonical WTF-8 and appends the result to dst.
 func AppendQuote(dst []byte, s string) []byte {
 	dst = append(dst, '"')
+	dst = appendEscaped(dst, s)
+	return append(dst, '"')
+}
+
+// appendEscaped appends the string s in canonical WTF-8 to dst as QuoteJSONString escapes it,
+// without the quotes.
+func appendEscaped(dst []byte, s string) []byte {
 	run := 0
 	for i := 0; i < len(s); {
 		if plain[s[i]] {
@@ -355,6 +362,5 @@ func AppendQuote(dst []byte, s string) []byte {
 		i++
 		run = i
 	}
-	dst = append(dst, s[run:]...)
-	return append(dst, '"')
+	return append(dst, s[run:]...)
 }

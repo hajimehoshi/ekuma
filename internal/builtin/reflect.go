@@ -89,7 +89,9 @@ func initReflect(vm *engine.VM) {
 	})
 	method(vm, r, "ownKeys", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
+		var pacer engine.Pacer
 		for _, k := range vm.OwnKeys(target(vm, arg(args, 0), "ownKeys")) {
+			pacer.Step(vm)
 			out = append(out, vm.KeyValue(k))
 		}
 		return engine.ObjectValue(vm.NewArray(out))

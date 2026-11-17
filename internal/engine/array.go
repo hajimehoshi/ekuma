@@ -266,12 +266,56 @@ func (vm *VM) FillElements(o *Object, n, start, end int64, v Value) bool {
 	return true
 }
 
+// SearchElements returns the first index of the elements of o from i toward end, which is
+// excluded and may be below i, whose element equals target, comparing with SameValueZero when
+// sameValueZero is set and with IsStrictlyEqual otherwise. It looks only at a run of elements
+// that reading runs no JavaScript for, and returns -1 and the index after the run when the run
+// has no such element.
+func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+	eq := IsStrictlyEqual
+	if sameValueZero {
+		eq = SameValueZero
+	}
+	elems := o.elems
+	if end < i {
+		for i > end && i < int64(len(elems)) {
+			stop := max(end, i-PollInterval)
+			for ; i > stop; i-- {
+				e := elems[i]
+				if e.isHole() {
+					return -1, i
+				}
+				if eq(e, target) {
+					return i, i
+				}
+			}
+			vm.Poll()
+		}
+		return -1, i
+	}
+	for i < end && i < int64(len(elems)) {
+		stop := min(end, int64(len(elems)), i+PollInterval)
+		for ; i < stop; i++ {
+			e := elems[i]
+			if e.isHole() {
+				return -1, i
+			}
+			if eq(e, target) {
+				return i, i
+			}
+		}
+		vm.Poll()
+	}
+	return -1, i
+}
+
 // ReverseElements reverses the order of the elements of the array o.
-func (o *Object) ReverseElements() bool {
+func (vm *VM) ReverseElements(o *Object) bool {
 	if !o.isDense() {
 		return false
 	}
 	for i, j := 0, len(o.elems)-1; i < j; i, j = i+1, j-1 {
+		vm.PollAt(int64(i))
 		o.elems[i], o.elems[j] = o.elems[j], o.elems[i]
 	}
 	return true
@@ -286,7 +330,7 @@ func (vm *VM) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
 	if start >= end {
 		return vm.NewArray(nil), true
 	}
-	return vm.NewArray(append([]Value(nil), o.elems[start:end]...)), true
+	return vm.NewArray(appendPolled(vm, nil, o.elems[start:end])), true
 }
 
 // SpliceElements replaces del elements of the array o from start on with items, and returns
@@ -299,8 +343,8 @@ func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value)
 	if !o.isDense() || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() {
 		return nil, false
 	}
-	removed := append([]Value(nil), o.elems[start:start+del]...)
-	tail := append([]Value(nil), o.elems[start+del:]...)
+	removed := appendPolled(vm, nil, o.elems[start:start+del])
+	tail := appendPolled(vm, nil, o.elems[start+del:])
 	o.elems = append(append(o.elems[:start], items...), tail...)
 	o.length = uint32(len(o.elems))
 	return vm.NewArray(removed), true
@@ -315,7 +359,7 @@ func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {
 		return false
 	}
-	dst.elems = append(dst.elems, src.elems...)
+	dst.elems = appendPolled(vm, dst.elems, src.elems)
 	dst.length = uint32(len(dst.elems))
 	return true
 }

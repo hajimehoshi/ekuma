@@ -238,7 +238,9 @@ func setIntegrity(vm *engine.VM, o *engine.Object, frozen bool) {
 	if !vm.PreventExtensions(o) {
 		vm.ThrowTypeError("cannot prevent extensions")
 	}
+	var pacer engine.Pacer
 	for _, k := range vm.OwnKeys(o) {
+		pacer.Step(vm)
 		var d engine.PropDesc
 		d.SetConfigurable(false)
 		if frozen {
@@ -259,7 +261,9 @@ func testIntegrity(vm *engine.VM, o *engine.Object, frozen bool) bool {
 	if vm.IsExtensible(o) {
 		return false
 	}
+	var pacer engine.Pacer
 	for _, k := range vm.OwnKeys(o) {
+		pacer.Step(vm)
 		d, ok := vm.GetOwnProperty(o, k)
 		if !ok {
 			continue
@@ -278,7 +282,9 @@ func testIntegrity(vm *engine.VM, o *engine.Object, frozen bool) bool {
 func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.Value {
 	ks := vm.OwnKeys(o)
 	out := make([]engine.Value, 0, len(ks))
+	var pacer engine.Pacer
 	for _, k := range ks {
+		pacer.Step(vm)
 		if k.IsSymbol() {
 			continue
 		}
@@ -453,7 +459,9 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 			d engine.PropDesc
 		}
 		var list []entry
+		var pacer engine.Pacer
 		for _, k := range vm.OwnKeys(src) {
+			pacer.Step(vm)
 			d, ok := vm.GetOwnProperty(src, k)
 			if !ok || !d.Enumerable() {
 				continue
@@ -464,6 +472,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 			})
 		}
 		for _, e := range list {
+			pacer.Step(vm)
 			vm.DefinePropertyOrThrow(o, e.k, e.d)
 		}
 	}
@@ -510,7 +519,9 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	method(vm, ctor, "getOwnPropertyDescriptors", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(arg(args, 0))
 		out := vm.NewOrdinaryObject()
+		var pacer engine.Pacer
 		for _, k := range vm.OwnKeys(o) {
+			pacer.Step(vm)
 			if d, ok := vm.GetOwnProperty(o, k); ok {
 				vm.CreateDataPropertyOrThrow(out, k, vm.FromPropertyDescriptor(d))
 			}
@@ -519,7 +530,9 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	})
 	method(vm, ctor, "getOwnPropertyNames", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
+		var pacer engine.Pacer
 		for _, k := range vm.OwnKeys(vm.ToObject(arg(args, 0))) {
+			pacer.Step(vm)
 			if !k.IsSymbol() {
 				out = append(out, vm.KeyValue(k))
 			}
@@ -528,7 +541,9 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	})
 	method(vm, ctor, "getOwnPropertySymbols", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var out []engine.Value
+		var pacer engine.Pacer
 		for _, k := range vm.OwnKeys(vm.ToObject(arg(args, 0))) {
+			pacer.Step(vm)
 			if k.IsSymbol() {
 				out = append(out, vm.KeyValue(k))
 			}
@@ -551,7 +566,9 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 				continue
 			}
 			from := vm.ToObject(src)
+			var pacer engine.Pacer
 			for _, k := range vm.OwnKeys(from) {
+				pacer.Step(vm)
 				d, ok := vm.GetOwnProperty(from, k)
 				if !ok || !d.Enumerable() {
 					continue
@@ -631,10 +648,20 @@ func listFromArrayLike(vm *engine.VM, v engine.Value) []engine.Value {
 		vm.ThrowRangeError("too many arguments")
 	}
 	list := make([]engine.Value, n)
-	for i := range list {
-		list[i] = vm.Index(v, uint32(i))
+	for i := 0; i < len(list); i += engine.PollInterval {
+		if i > 0 {
+			vm.Poll()
+		}
+		indexValues(vm, list[i:min(i+engine.PollInterval, len(list))], v, i)
 	}
 	return list
+}
+
+// indexValues sets the elements of out to the properties of v from the index start on.
+func indexValues(vm *engine.VM, out []engine.Value, v engine.Value, start int) {
+	for i := range out {
+		out[i] = vm.Index(v, uint32(start+i))
+	}
 }
 
 func initFunction(vm *engine.VM) {

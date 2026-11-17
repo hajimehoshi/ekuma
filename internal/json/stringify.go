@@ -104,6 +104,7 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 		for i := range n {
 			var v engine.Value
 			if e, ok := r.Element(i); ok {
+				vm.PollAt(i)
 				v = e
 			} else {
 				v = vm.Get(r, indexKey(vm, i))
@@ -168,6 +169,31 @@ func (w *writer) checkLength() {
 	}
 }
 
+// quoteChunk is the number of bytes of a string that appendQuote escapes between two checks for
+// an interruption.
+const quoteChunk = 1 << 20
+
+// appendQuote is [AppendQuote] to the output.
+func (w *writer) appendQuote(s string) {
+	if len(s) <= quoteChunk {
+		w.buf = AppendQuote(w.buf, s)
+		return
+	}
+	w.buf = append(w.buf, '"')
+	for len(s) > 0 {
+		// A chunk ends before the first byte of a character.
+		n := min(quoteChunk, len(s))
+		for n < len(s) && s[n]&0xc0 == 0x80 {
+			n++
+		}
+		w.buf = appendEscaped(w.buf, s[:n])
+		s = s[n:]
+		w.vm.Poll()
+		w.checkLength()
+	}
+	w.buf = append(w.buf, '"')
+}
+
 // serialize implements SerializeJSONProperty for the value of the property key of holder,
 // which is value. It reports false, having written nothing, when the result is undefined.
 func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engine.Value) bool {
@@ -207,7 +233,7 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 			w.buf = append(w.buf, "false"...)
 		}
 	case value.IsString():
-		w.buf = AppendQuote(w.buf, value.Object().Str())
+		w.appendQuote(value.Object().Str())
 	case value.IsNumber():
 		n := value.Number()
 		if math.IsInf(n, 0) || n != n {
@@ -282,6 +308,10 @@ func (w *writer) serializeObject(o *engine.Object) {
 	w.buf = append(w.buf, '{')
 	empty := true
 	for i := base; i < end; i++ {
+		if j := i - base; j > 0 && j&0x3ff == 0 {
+			vm.Poll()
+			w.checkLength()
+		}
 		k := w.keys[i]
 		v := vm.GetVCached(engine.ObjectValue(o), k, cacheAt(&w.getCaches, i))
 		mark := len(w.buf)

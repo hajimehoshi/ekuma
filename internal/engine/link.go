@@ -4,9 +4,8 @@
 package engine
 
 import (
-	"math/big"
-
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
 // funcProto is the compiled code of a function in the form the interpreter runs,
@@ -111,7 +110,7 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		case bytecode.ConstString:
 			p.consts[i] = Value{o: vm.Intern(c.Str)}
 		case bytecode.ConstBigInt:
-			n, _ := new(big.Int).SetString(c.Str, 10)
+			n, _ := numconv.ParseBigInt(c.Str, 10, nil)
 			p.consts[i] = vm.NewBigInt(n)
 		}
 	}

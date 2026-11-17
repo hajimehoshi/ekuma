@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
 // NewBigInt returns the BigInt i, which must not be modified afterward.
@@ -25,12 +26,12 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 	}
 }
 
-// bigIntString returns the BigInt v in the radix r.
-func bigIntString(v Value, r int) string {
+// bigIntString returns the BigInt v in the radix r. poll is as for [numconv.FormatBigInt].
+func bigIntString(v Value, r int, poll func()) string {
 	if i, ok := v.BigInt64(); ok {
 		return strconv.FormatInt(i, r)
 	}
-	return v.BigInt().Text(r)
+	return numconv.FormatBigInt(v.BigInt(), r, poll)
 }
 
 // add64 returns x + y, and reports whether it does not overflow.
@@ -164,4 +165,20 @@ func (c cmpResult) reverse() cmpResult {
 		return cmpLess
 	}
 	return c
+}
+
+// bigExpStepBits is the size in bits of a power above which bigExp computes it.
+const bigExpStepBits = 1 << 16
+
+// bigExp sets r to a to the power of the non-negative n, checking for an interruption between
+// the multiplications.
+func (vm *VM) bigExp(r, a *big.Int, n int64) {
+	r.SetInt64(1)
+	for i := bits.Len64(uint64(n)) - 1; i >= 0; i-- {
+		vm.Poll()
+		r.Mul(r, r)
+		if n>>i&1 != 0 {
+			r.Mul(r, a)
+		}
+	}
 }

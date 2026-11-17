@@ -15,10 +15,12 @@ import (
 // CompileEval compiles the program prog as the eval code of a direct eval at the call site
 // that scope describes, or of an indirect eval when scope describes no variables. The returned
 // function reaches the variables of the call site as its upvalues and returns the completion
-// value of the code.
-func CompileEval(prog *ast.Program, file string, scope *bytecode.EvalScope) (f *bytecode.Func, err error) {
+// value of the code. poll, when not nil, is called now and then during a long compilation, and
+// may stop it by panicking.
+func CompileEval(prog *ast.Program, file string, scope *bytecode.EvalScope, poll func()) (f *bytecode.Func, err error) {
 	c := newCompiler(prog, file)
 	defer c.release()
+	c.poll = poll
 	defer func() {
 		if r := recover(); r != nil {
 			e, ok := r.(*Error)

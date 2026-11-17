@@ -380,6 +380,7 @@ func (f *fn) addHandler(start, end, target, reg int32, finally bool) {
 
 // stmt compiles the statement s. labels are the labels directly in front of it.
 func (f *fn) stmt(s ast.Stmt, labels []string) {
+	f.c.step()
 	mark := f.top
 	defer f.free(mark)
 	f.setPos(s.Start())
