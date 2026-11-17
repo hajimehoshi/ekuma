@@ -59,13 +59,43 @@ func TestScripts(t *testing.T) {
 			want: "3.203426503814917e-16",
 		},
 		{
-			name: "Math.pow of 10 with an integer exponent",
+			name: "10 to an integer power",
 			src: `var bad = [];
 				for (var e = -330; e <= 310; e++) {
-					if (Math.pow(10, e) !== Number("1e" + e)) bad.push(e);
+					if (Math.pow(10, e) !== Number("1e" + e) || 10 ** e !== Number("1e" + e)) bad.push(e);
 				}
 				bad.join()`,
 			want: "",
+		},
+		{
+			name: "bitwise and shift operators with a literal outside the int32 range",
+			src: `var h = -123456789, v = 5, w = 7;
+				w |= 0x80000000;
+				[h & 0xFFFFFFFF, h | 0x80000000, h << 1e21, h >> 33, h >>> 32, v | 1e21, v & 1e21,
+				 0 | 4294967301, v | 1e400, w].join()`,
+			want: "-123456789,-123456789,-123456789,-61728395,4171510507,-559939579,0,5,5,-2147483641",
+		},
+		{
+			name: "a parenthesized destructuring target does not name its default",
+			src: `var y, z;
+				({a: (y) = function() {}} = {});
+				[(z) = function() {}] = [];
+				JSON.stringify([y.name, z.name])`,
+			want: `["",""]`,
+		},
+		{
+			name: "typed array set from an overlapping long view of the same type",
+			src: `var a = new Uint8Array(70000);
+				for (var i = 0; i < a.length; i++) a[i] = i & 0xff;
+				a.set(a.subarray(0, 69999), 1);
+				[a[0], a[1], a[65536], a[65537], a[69999]].join()`,
+			want: "0,0,255,0,110",
+		},
+		{
+			name: "toLowerCase of a long string keeps its characters whole",
+			src: `var s = "\u00e9" + "a".repeat(65532) + "\u20ac" + "b".repeat(10);
+				s.toLowerCase() === s`,
+			want: "true",
 		},
 		{
 			name: "empty separator split counts UTF-16 units with uint32 limits",

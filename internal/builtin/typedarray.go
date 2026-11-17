@@ -1121,7 +1121,12 @@ func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *eng
 			vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
 		sb := elementsOf(src)
-		if srcType != typ && src.ArrayBuffer() == t.ArrayBuffer() {
+		if src.ArrayBuffer() == t.ArrayBuffer() {
+			if srcType == typ {
+				// The elements may overlap, and one copy moves them correctly.
+				writeElements(t, int(offset), sb[:srcLen*typ.Size()])
+				return
+			}
 			// The source is cloned first, as the elements may overlap.
 			sb = slices.Clone(sb)
 		}

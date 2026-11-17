@@ -686,10 +686,14 @@ func anyBoundary(s string) int {
 	return len(s)
 }
 
-// runeBoundary returns the offset of the start of the last character of s.
+// runeBoundary returns the offset of the start of the last character of s, which may be cut
+// short.
 func runeBoundary(s string) int {
-	_, size := utf8.DecodeLastRuneInString(s)
-	return len(s) - size
+	i := len(s) - 1
+	for i > 0 && !utf8.RuneStart(s[i]) {
+		i--
+	}
+	return i
 }
 
 // mapChunk is the number of bytes of a string that a mapping maps between two checks for an

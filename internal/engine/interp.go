@@ -2210,5 +2210,9 @@ func NumberPow(x, y float64) float64 {
 	if y != y || (math.IsInf(y, 0) && (x == 1 || x == -1)) {
 		return math.NaN()
 	}
+	// math.Pow is off by a unit in the last place for some powers of ten.
+	if x == 10 && y == math.Trunc(y) && math.Abs(y) <= 400 {
+		return numconv.Pow10(int(y))
+	}
 	return math.Pow(x, y)
 }

@@ -46,7 +46,7 @@ func (f *fn) destructure(p ast.Pattern, src int32, mode patMode) {
 		v := f.newReg()
 		f.emit(bytecode.OpMove, v, src, 0)
 		skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
-		if id, ok := p.Target.(*ast.Identifier); ok {
+		if id, ok := p.Target.(*ast.Identifier); ok && !id.Parenthesized {
 			f.named(p.Default, v, id.Name)
 		} else {
 			f.expr(p.Default, v)
@@ -226,7 +226,7 @@ func (f *fn) elementRef(e ast.Pattern, mode patMode) (ref elementRef, ok bool) {
 func (f *fn) storeElement(ref elementRef, v int32) {
 	if ref.def != nil {
 		skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
-		if ref.isMember {
+		if ref.isMember || ref.id.Parenthesized {
 			f.expr(ref.def, v)
 		} else {
 			f.named(ref.def, v, ref.id.Name)

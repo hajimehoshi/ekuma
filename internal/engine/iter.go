@@ -574,7 +574,7 @@ func (vm *VM) iterResultValue(r Value) (Value, bool) {
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (vm *VM) IteratorToList(v Value, method *Object) []Value {
 	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
-		if n := int(v.o.length); n <= len(v.o.elems) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
+		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
 			return slices.Clone(v.o.elems[:n])
 		}
 		// The length of a sparse array says nothing about the memory it holds.

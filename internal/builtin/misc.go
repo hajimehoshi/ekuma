@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"math/bits"
 	"strconv"
-	"sync"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -482,9 +481,6 @@ func initMath(vm *engine.VM) {
 	method(vm, m, "pow", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x := vm.ToNumber(arg(args, 0))
 		y := vm.ToNumber(arg(args, 1))
-		if x == 10 && math.Abs(y) <= 400 && y == math.Trunc(y) {
-			return engine.Number(pow10(int(y)))
-		}
 		return engine.Number(engine.NumberPow(x, y))
 	})
 	method(vm, m, "imul", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -680,7 +676,7 @@ func atan2(y, x float64) float64 {
 func log10(x float64) float64 {
 	r := math.Log10(x)
 	// A subnormal nearest to 10**n is too far from it for n to be its logarithm.
-	if n := math.Round(r); n != r && n >= -307 && math.Abs(r-n) < 1e-12 && x == pow10(int(n)) {
+	if n := math.Round(r); n != r && n >= -307 && math.Abs(r-n) < 1e-12 && x == numconv.Pow10(int(n)) {
 		return n
 	}
 	return r
@@ -693,26 +689,6 @@ func log2(x float64) float64 {
 		return math.Log(x) * (1 / math.Ln2)
 	}
 	return math.Log2(x)
-}
-
-// pow10Table holds the doubles nearest to 10**n for n from -323 to 308.
-var pow10Table = sync.OnceValue(func() []float64 {
-	t := make([]float64, 308+323+1)
-	for i := range t {
-		t[i], _ = strconv.ParseFloat("1e"+strconv.Itoa(i-323), 64)
-	}
-	return t
-})
-
-// pow10 returns the double nearest to 10**n.
-func pow10(n int) float64 {
-	switch {
-	case n < -323:
-		return 0
-	case n > 308:
-		return math.Inf(1)
-	}
-	return pow10Table()[n+323]
 }
 
 // f16round returns x rounded to the nearest binary16 value, ties to even.

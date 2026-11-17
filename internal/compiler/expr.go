@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
 var binaryOps = map[ast.Op]bytecode.Opcode{
@@ -48,6 +49,19 @@ var constOps = map[ast.Op]bytecode.Opcode{
 	ast.OpShl:    bytecode.OpShlK,
 	ast.OpShr:    bytecode.OpShrK,
 	ast.OpUShr:   bytecode.OpUShrK,
+}
+
+// constOperand returns the constant that the operator op takes for the right operand k: the
+// operand as the operator converts it, so that the constant of a bitwise operator is an int32
+// and that of a shift is a count below 32.
+func constOperand(op bytecode.Opcode, k float64) float64 {
+	switch op {
+	case bytecode.OpBitOrK, bytecode.OpBitAndK:
+		return float64(numconv.ToInt32(k))
+	case bytecode.OpShlK, bytecode.OpShrK, bytecode.OpUShrK:
+		return float64(numconv.ToUint32(k) & 31)
+	}
+	return k
 }
 
 // numberLit returns the value of e when it is a numeric literal, possibly negated.
@@ -291,7 +305,7 @@ func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
 	l := f.operand(n.Left, n.Right)
 	if k, ok := numberLit(n.Right); ok {
 		if op, ok := constOps[n.Op]; ok {
-			f.emit(op, dst, l, f.constNum(k))
+			f.emit(op, dst, l, f.constNum(constOperand(op, k)))
 			f.free(mark)
 			return
 		}
@@ -1455,7 +1469,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			if local >= 0 && !f.clobbers(name, n.Value) {
 				if k, ok := numberLit(n.Value); ok {
 					if op, ok := constOps[n.Op]; ok {
-						f.emit(op, local, local, f.constNum(k))
+						f.emit(op, local, local, f.constNum(constOperand(op, k)))
 						if dst >= 0 && dst != local {
 							f.emit(bytecode.OpMove, dst, local, 0)
 						}
