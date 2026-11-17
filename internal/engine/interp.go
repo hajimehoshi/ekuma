@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/xmath"
 )
 
 // frame is the activation of a function written in JavaScript.
@@ -2214,5 +2215,5 @@ func NumberPow(x, y float64) float64 {
 	if x == 10 && y == math.Trunc(y) && math.Abs(y) <= 400 {
 		return numconv.Pow10(int(y))
 	}
-	return math.Pow(x, y)
+	return xmath.Pow(x, y)
 }
