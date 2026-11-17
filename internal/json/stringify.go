@@ -34,6 +34,9 @@ type writer struct {
 	// stack holds the objects being serialized, to detect cycles.
 	stack []*engine.Object
 
+	// entered is the number of objects entered, which paces the checks for an interruption.
+	entered int
+
 	// keys is scratch storage for the keys of the objects being serialized.
 	keys []engine.PropKey
 
@@ -265,7 +268,10 @@ func isClass[T any](_ T, ok bool) bool {
 // enter pushes o on the stack of objects being serialized, and throws for a cycle or too deep a nesting.
 func (w *writer) enter(o *engine.Object) {
 	vm := w.vm
-	vm.Poll()
+	w.entered++
+	if w.entered&0x3ff == 0 {
+		vm.Poll()
+	}
 	for _, s := range w.stack {
 		if s == o {
 			vm.ThrowTypeError("converting circular structure to JSON")

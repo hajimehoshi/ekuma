@@ -10,5 +10,5 @@ import "sync/atomic"
 // interruptFlag is the flag of a pending interruption.
 type interruptFlag = atomic.Bool
 
-// pollTick accounts for a call of [VM.Poll].
-func (vm *VM) pollTick() {}
+// pollYield does nothing, as the other goroutines run without waiting for a yield.
+func (vm *VM) pollYield() {}

@@ -176,8 +176,10 @@ func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
 func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *engine.Object) engine.Value {
 	var b wtf8.Builder
 	for i := int64(0); i < n; {
+		if i > 0 {
+			vm.Poll()
+		}
 		i = joinRun(vm, &b, o, i, min(n, i+engine.PollInterval), n, sep, method)
-		vm.Poll()
 	}
 	return vm.NewString(b.String())
 }

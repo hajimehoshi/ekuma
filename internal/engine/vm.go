@@ -262,9 +262,10 @@ func (vm *VM) ClearInterrupt() {
 }
 
 // Poll stops the script when an interruption was requested. It also takes the notifications of
-// other agents, which raise the interrupt flag too.
+// other agents, which raise the interrupt flag too. A loop calls it only between runs of many
+// steps, such as [PollInterval] steps.
 func (vm *VM) Poll() {
-	vm.pollTick()
+	vm.pollYield()
 	if vm.interrupt.Load() {
 		vm.interrupt.Store(false)
 		vm.receiveNotifications()

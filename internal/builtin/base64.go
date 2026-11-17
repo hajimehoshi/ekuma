@@ -241,8 +241,10 @@ func fromHex(vm *engine.VM, s string, maxLength int) decodeResult {
 	// of its bytes is a digit.
 	r.bytes = make([]byte, 0, min(maxLength, len(s)/2))
 	for r.read < len(s) && len(r.bytes) < maxLength && r.err == "" {
+		if r.read > 0 {
+			vm.Poll()
+		}
 		fromHexRun(s, r.read+decodeRun, maxLength, &r)
-		vm.Poll()
 	}
 	return r
 }

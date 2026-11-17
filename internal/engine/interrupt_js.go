@@ -10,14 +10,9 @@ import (
 
 // js/wasm runs one goroutine at a time and switches only when the running one yields.
 // A busy script yields now and then, so that the goroutine that calls [VM.Interrupt] can run.
-const (
-	// yieldTicks is the number of ticks between two yields.
-	yieldTicks = 1 << 12
 
-	// pollTicks is the number of ticks that a call of [VM.Poll] counts for, as its callers call it
-	// only every so many steps.
-	pollTicks = 1 << 8
-)
+// yieldTicks is the number of ticks between two yields.
+const yieldTicks = 1 << 12
 
 // interruptFlag is the flag of a pending interruption.
 // Each Load counts a tick and yields every yieldTicks ticks.
@@ -28,7 +23,10 @@ type interruptFlag struct {
 
 // Load reports whether the flag is set.
 func (f *interruptFlag) Load() bool {
-	f.tick(1)
+	f.ticks++
+	if f.ticks >= yieldTicks {
+		f.yield()
+	}
 	return f.b.Load()
 }
 
@@ -37,15 +35,14 @@ func (f *interruptFlag) Store(v bool) {
 	f.b.Store(v)
 }
 
-func (f *interruptFlag) tick(n uint32) {
-	f.ticks += n
-	if f.ticks >= yieldTicks {
-		f.ticks = 0
-		runtime.Gosched()
-	}
+// yield lets the other goroutines run, and starts counting the ticks again.
+func (f *interruptFlag) yield() {
+	f.ticks = 0
+	runtime.Gosched()
 }
 
-// pollTick accounts for a call of [VM.Poll].
-func (vm *VM) pollTick() {
-	vm.interrupt.tick(pollTicks - 1)
+// pollYield yields at each call of [VM.Poll], as its callers call it only between runs of many
+// steps. The goroutines that request an interruption may need more than one yield to run.
+func (vm *VM) pollYield() {
+	vm.interrupt.yield()
 }

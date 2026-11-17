@@ -324,9 +324,11 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 		eq = SameValueZero
 	}
 	elems := o.elems
+	// The runs between two checks for an interruption end at multiples of PollInterval, so that
+	// the checks keep their pace when the callers resume a search after a hole.
 	if end < i {
 		for i > end && i < int64(len(elems)) {
-			stop := max(end, i-PollInterval)
+			stop := max(end, (i&^(PollInterval-1))-1)
 			for ; i > stop; i-- {
 				e := elems[i]
 				if e.isHole() {
@@ -336,12 +338,14 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 					return i, i
 				}
 			}
-			vm.Poll()
+			if i > end && i&(PollInterval-1) == PollInterval-1 {
+				vm.Poll()
+			}
 		}
 		return -1, i
 	}
 	for i < end && i < int64(len(elems)) {
-		stop := min(end, int64(len(elems)), i+PollInterval)
+		stop := min(end, int64(len(elems)), (i|(PollInterval-1))+1)
 		for ; i < stop; i++ {
 			e := elems[i]
 			if e.isHole() {
@@ -351,7 +355,9 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 				return i, i
 			}
 		}
-		vm.Poll()
+		if i < end && i&(PollInterval-1) == 0 {
+			vm.Poll()
+		}
 	}
 	return -1, i
 }
