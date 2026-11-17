@@ -13,17 +13,27 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
+// bigIntObject holds a BigInt and its integer header in one allocation.
+type bigIntObject struct {
+	Object
+	integer big.Int
+}
+
 // NewBigInt returns the BigInt i, which must not be modified afterward.
 func (vm *VM) NewBigInt(i *big.Int) Value {
 	if i.IsInt64() {
 		return BigIntFromInt64(i.Int64())
 	}
-	return Value{
-		o: &Object{
-			kind: kindBigInt,
-			ext:  i,
-		},
+	o := &bigIntObject{
+		kind: kindBigInt,
 	}
+	// SetBits shares the immutable magnitude without retaining i's header.
+	o.integer.SetBits(i.Bits())
+	if i.Sign() < 0 {
+		o.integer.Neg(&o.integer)
+	}
+	o.ext = &o.integer
+	return Value{o: &o.Object}
 }
 
 // bigIntString returns the BigInt v in the radix r. poll is as for [numconv.FormatBigInt].

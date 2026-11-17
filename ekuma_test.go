@@ -495,6 +495,26 @@ func TestBigInt(t *testing.T) {
 	vm.ValueOf(1).BigInt()
 }
 
+func TestBigIntArithmeticAliases(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "bigint aliases", `
+		let x = -(1n << 120n);
+		const saved = [], text = [];
+		for (let i = 0; i < 32; i++) {
+			saved.push(x);
+			text.push(String(x));
+			x = x * -3n + 1n;
+		}
+		saved.every((value, i) => String(value) === text[i]);
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("arithmetic changed a retained BigInt")
+	}
+}
+
 // TestBigIntInt64Boundaries tests BigInt operations whose operands or results lie at the ends of
 // the range of int64 or just outside it.
 func TestBigIntInt64Boundaries(t *testing.T) {
