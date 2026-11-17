@@ -516,6 +516,13 @@ func TestScripts(t *testing.T) {
 			want: "n,done,ret|n,done,val,n,done,ret|n,done,n,done,val,ret|n,done,ret|caught|3",
 		},
 		{
+			name: "a long chain of bound functions",
+			src: `var f = function g() {}, a = f.bind(null), b = a.bind(null), c = a.bind(null);
+				for (var i = 0; i < 200000; i++) f = f.bind(null);
+				[f.name.length, f.name.slice(0, 12), f.name.slice(-7), a.name, b.name, c.name].join()`,
+			want: "1200001,bound bound ,bound g,bound g,bound bound g,bound bound g",
+		},
+		{
 			name: "object destructuring assignment evaluates property targets first",
 			src: `var log = [], o = {};
 				var src = { get a() { log.push("get a"); }, get b() { log.push("get b"); return 2; } };

@@ -731,12 +731,13 @@ func copyNameAndLength(vm *engine.VM, f, target *engine.Object, prefix string, a
 			length = math.Max(0, numconv.ToIntegerOrInfinity(l.Number())-float64(argCount))
 		}
 	}
-	name := ""
+	name := vm.NewString(prefix)
 	if n := vm.GetV(engine.ObjectValue(target), vm.Key(engine.KeyName)); n.IsString() {
-		name = n.Object().Str()
+		// Concatenating the values keeps a chain of bound functions linear in its length.
+		name = vm.Concat(name, n)
 	}
 	vm.Define(f, vm.Key(engine.KeyLength), engine.Number(length), engine.FlagConfigurable)
-	vm.Define(f, vm.Key(engine.KeyName), vm.NewString(prefix+name), engine.FlagConfigurable)
+	vm.Define(f, vm.Key(engine.KeyName), name, engine.FlagConfigurable)
 }
 
 func initError(vm *engine.VM) {

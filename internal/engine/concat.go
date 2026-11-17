@@ -64,6 +64,11 @@ type reversedBuilder struct {
 	sb strings.Builder
 }
 
+// Concat returns the concatenation of the strings a and b.
+func (vm *VM) Concat(a, b Value) Value {
+	return vm.concat(a, a.o.str, b, b.o.str)
+}
+
 // concat returns the concatenation of a and b. x and y are the str of a and b when those are
 // strings, and their string forms otherwise.
 func (vm *VM) concat(a Value, x string, b Value, y string) Value {
