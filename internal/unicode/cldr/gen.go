@@ -649,12 +649,26 @@ func main() {
 		}
 	}
 	defaults := map[string]string{}
+	numberTree := newLocaleTree(likely, parents)
 	for l := range locales {
-		name := "main/" + l + "/numbers.json"
+		// A locale without its own numbers, such as a default content locale, inherits the
+		// numbering system of its nearest ancestor that has them.
+		src := l
+		for {
+			if _, ok := numbers["main/"+src+"/numbers.json"]; ok {
+				break
+			}
+			p, ok := numberTree.parent(src)
+			if !ok {
+				break
+			}
+			src = p
+		}
+		name := "main/" + src + "/numbers.json"
 		if _, ok := numbers[name]; !ok {
 			continue
 		}
-		nu := str(decode(numbers, name, "main", l, "numbers", "defaultNumberingSystem"))
+		nu := str(decode(numbers, name, "main", src, "numbers", "defaultNumberingSystem"))
 		if _, ok := digits[nu]; !ok {
 			log.Fatalf("%s: the numbering system %s has no digits", l, nu)
 		}

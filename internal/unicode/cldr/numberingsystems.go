@@ -63,28 +63,33 @@ var NumberingSystemDigits = Map{
 var DefaultNumberingSystems = Map{
 	keys: Strings{
 		data: "ar-BHar-DJar-EGar-ERar-ILar-IQar-JOar-KMar-KWar-LBar-MRar-OMar-PSar-QAar-SAar-SDar-SOar-SSar-SYa" +
-			"r-TDar-YEasbgcbhobnccpccp-INckbckb-IRdzfafa-AFff-Adlmff-Adlm-BFff-Adlm-CMff-Adlm-GHff-Adlm-GMff-" +
-			"Adlm-GWff-Adlm-LRff-Adlm-MRff-Adlm-NEff-Adlm-NGff-Adlm-SLff-Adlm-SNksks-Arablrclrc-IQmnimni-Beng" +
-			"mrmymznnene-INnqopa-Arabpsps-PKrajsasatsat-Olcksdsd-Arabur-INuz-Arab",
+			"r-TDar-YEasas-INbgcbgc-INbhobho-INbnbn-BDccpccp-BDccp-INckbckb-IQckb-IRdzdz-BTfafa-AFfa-IRff-Adl" +
+			"mff-Adlm-BFff-Adlm-CMff-Adlm-GHff-Adlm-GMff-Adlm-GNff-Adlm-GWff-Adlm-LRff-Adlm-MRff-Adlm-NEff-Ad" +
+			"lm-NGff-Adlm-SLff-Adlm-SNksks-Arabks-Arab-INlrclrc-IQlrc-IRmnimni-Bengmni-Beng-INmrmr-INmymy-MMm" +
+			"znmzn-IRnene-INne-NPnqonqo-GNpa-Arabpa-Arab-PKpsps-AFps-PKrajraj-INsasa-INsatsat-Olcksat-Olck-IN" +
+			"sdsd-Arabsd-Arab-PKur-INuz-Arabuz-Arab-AF",
 		ends: []uint32{
 			5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80,
-			85, 90, 95, 100, 105, 107, 110, 113, 115, 118, 124, 127, 133, 135, 137, 142,
-			149, 159, 169, 179, 189, 199, 209, 219, 229, 239, 249, 259, 261, 268, 271, 277,
-			280, 288, 290, 292, 295, 297, 302, 305, 312, 314, 319, 322, 324, 327, 335, 337,
-			344, 349, 356,
+			85, 90, 95, 100, 105, 107, 112, 115, 121, 124, 130, 132, 137, 140, 146, 152,
+			155, 161, 167, 169, 174, 176, 181, 186, 193, 203, 213, 223, 233, 243, 253, 263,
+			273, 283, 293, 303, 313, 315, 322, 332, 335, 341, 347, 350, 358, 369, 371, 376,
+			378, 383, 386, 392, 394, 399, 404, 407, 413, 420, 430, 432, 437, 442, 445, 451,
+			453, 458, 461, 469, 480, 482, 489, 499, 504, 511, 521,
 		},
 	},
 	values: Strings{
-		data: "arabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabbengdevadeva" +
-			"bengcakmcakmarabarabtibtarabextarabextadlmadlmadlmadlmadlmadlmadlmadlmadlmadlmadlmadlmarabextara" +
-			"bextarabextarabextbengbengdevamymrarabextdevadevankooarabextarabextarabextdevadevaolckolckarabar" +
-			"abarabextarabext",
+		data: "arabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabarabbengbengdeva" +
+			"devadevadevabengbengcakmcakmcakmarabarabarabtibttibtarabextarabextarabextadlmadlmadlmadlmadlmadl" +
+			"madlmadlmadlmadlmadlmadlmadlmarabextarabextarabextarabextarabextarabextbengbengbengdevadevamymrm" +
+			"ymrarabextarabextdevadevadevankoonkooarabextarabextarabextarabextarabextdevadevadevadevaolckolck" +
+			"olckarabarabarabarabextarabextarabext",
 		ends: []uint32{
 			4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64,
-			68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 127, 134,
-			138, 142, 146, 150, 154, 158, 162, 166, 170, 174, 178, 182, 189, 196, 203, 210,
-			214, 218, 222, 226, 233, 237, 241, 245, 252, 259, 266, 270, 274, 278, 282, 286,
-			290, 297, 304,
+			68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128,
+			132, 136, 140, 144, 148, 155, 162, 169, 173, 177, 181, 185, 189, 193, 197, 201,
+			205, 209, 213, 217, 221, 228, 235, 242, 249, 256, 263, 267, 271, 275, 279, 283,
+			287, 291, 298, 305, 309, 313, 317, 321, 325, 332, 339, 346, 353, 360, 364, 368,
+			372, 376, 380, 384, 388, 392, 396, 400, 407, 414, 421,
 		},
 	},
 }
