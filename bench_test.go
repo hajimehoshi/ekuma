@@ -967,3 +967,41 @@ func BenchmarkBuiltinResult(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkIntlParts measures formatting one value or range as part records.
+func BenchmarkIntlParts(b *testing.B) {
+	for _, c := range []struct {
+		name  string
+		setup string
+		expr  string
+	}{
+		{
+			name:  "Number",
+			setup: `const f = new Intl.NumberFormat("en-US");`,
+			expr:  `f.formatToParts(1234567.89)`,
+		},
+		{
+			name:  "NumberRange",
+			setup: `const f = new Intl.NumberFormat("en-US");`,
+			expr:  `f.formatRangeToParts(1234.5, 6789.5)`,
+		},
+		{
+			name:  "RelativeTime",
+			setup: `const f = new Intl.RelativeTimeFormat("en-US");`,
+			expr:  `f.formatToParts(1234, "day")`,
+		},
+	} {
+		b.Run(c.name, func(b *testing.B) {
+			var vm ekuma.VM
+			src := c.setup + ` let last; function run(n) { for (let i = 0; i < n; i++) last = ` + c.expr + `; }`
+			if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

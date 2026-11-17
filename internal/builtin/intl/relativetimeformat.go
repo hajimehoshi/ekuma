@@ -179,20 +179,21 @@ func (r *realm) initRelativeTimeFormat(vm *engine.VM) {
 // unitPartsArray returns the parts as an array of objects with the properties "type" and
 // "value", and "unit" for the parts with a unit.
 func unitPartsArray(vm *engine.VM, n int, part func(i int) (typ, value, unit string)) engine.Value {
-	typeKey := engine.NamedKey(vm.Intern("type"))
-	valueKey := engine.NamedKey(vm.Intern("value"))
-	unitKey := engine.NamedKey(vm.Intern("unit"))
-	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
+	keys := [...]engine.PropKey{
+		engine.NamedKey(vm.Intern("type")),
+		engine.NamedKey(vm.Intern("value")),
+		engine.NamedKey(vm.Intern("unit")),
+	}
 	vals := make([]engine.Value, n)
 	for i := range n {
 		typ, value, unit := part(i)
-		o := vm.NewObject(objectProto)
-		vm.CreateDataPropertyOrThrow(o, typeKey, vm.NewString(typ))
-		vm.CreateDataPropertyOrThrow(o, valueKey, vm.NewString(value))
+		props := [3]engine.Value{vm.NewString(typ), vm.NewString(value)}
+		propertyCount := 2
 		if unit != "" {
-			vm.CreateDataPropertyOrThrow(o, unitKey, vm.NewString(unit))
+			props[2] = vm.NewString(unit)
+			propertyCount++
 		}
-		vals[i] = engine.ObjectValue(o)
+		vals[i] = engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
 	}
 	return vm.NewArrayOf(vals)
 }
