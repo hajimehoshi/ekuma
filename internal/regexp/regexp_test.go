@@ -201,6 +201,53 @@ func TestSyntaxErrors(t *testing.T) {
 	}
 }
 
+// FuzzValidate checks that Validate reports the error that Compile reports.
+func FuzzValidate(f *testing.F) {
+	for _, p := range []string{
+		// Valid in some modes.
+		"", "abc", "a|b|", `^a$\b\B`, ".", "a*?b+c?d{2}e{2,}f{2,3}?", "a{", "{", "}", "]",
+		"(a)(?:b)(?=c)(?!d)(?<=e)(?<!f)", "(?=a)*", "(?i:a)(?-i:b)(?im-s:c)",
+		`(?<n>a)\k<n>`, `(?<n>a)|(?<n>b)\k<n>`, `(a)\1`, `\2(a)`, `\k`, `\k<a>`, `(?<a>a)`,
+		`[a-z\d\W-]`, `[^\s]`, `[\b\-]`, `[\w-a]`, `\c`, `[\c1]`, `[\c]`, `\0\01\8`, `\x41A`,
+		`\u{1F600}`, `😀`, "😀[😀-😁]", units(0xD83D, '[', 0xDE00, ']'),
+		`\p{L}`, `\P{Script=Greek}`, `\p{Script_Extensions=Latin}`, `\p{RGI_Emoji}`, `\w\W\d\D\s\S`,
+		`[\p{RGI_Emoji}--\q{x}]`, `[[a-z]&&[aeiou]]`, `[\q{abc|d|}]`, `[^[a-z]--b]`, `[\P{L}a]`,
+		// Invalid in every mode.
+		"a**", "*", "(", ")", `\`, "[", "a{2,1}", "a{2147483648,2147483647}", "[b-a]",
+		"(?<n>a)(?<n>b)", `\k<m>(?<n>a)`, "(?<1>a)", "(?<a", "(?<=a)*", "(?ii:a)", "(?-:a)", "(?x)",
+		strings.Repeat("(?:", 100000) + "a" + strings.Repeat(")", 100000),
+		strings.Repeat("[", 100000) + "a" + strings.Repeat("]", 100000),
+		// Invalid with the u or v flag.
+		`\u{110000}`, `\x`, `\p{Foo}`, `\p{Script=Foo}`, `\P{RGI_Emoji}`,
+		`[^\q{ab}]`, `[^\p{RGI_Emoji}]`, `[a&&&b]`, `[a-z&&b]`, `[a--b&&c]`, `[\q{a]`, `[(]`,
+		`[a!!b]`, `[\q{a|b]`,
+	} {
+		f.Add(p)
+	}
+	flagSets := []string{"", "i", "m", "s", "u", "iu", "v", "iv", "uv"}
+	f.Fuzz(func(t *testing.T, pattern string) {
+		for _, flags := range flagSets {
+			got := regexp.Validate(pattern, flags)
+			fl, want := regexp.ParseFlags(flags)
+			if want == nil {
+				_, want = regexp.Compile(pattern, fl)
+			}
+			if !sameError(got, want) {
+				t.Errorf("Validate(%.40q, %q): got %v, want %v", pattern, flags, got, want)
+			}
+		}
+	})
+}
+
+// sameError reports whether a and b are both nil or both equal values of *regexp.Error.
+func sameError(a, b error) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	var ea, eb *regexp.Error
+	return errors.As(a, &ea) && errors.As(b, &eb) && *ea == *eb
+}
+
 type countPoller struct {
 	n int
 }

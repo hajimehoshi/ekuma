@@ -257,3 +257,8 @@ func lookupStringProperty(name string) ([][]rune, bool) {
 }
 
 var idStart, idContinue = derivedProperties["ID_Start"], derivedProperties["ID_Continue"]
+
+// isStringProperty reports whether name is a property of strings.
+func isStringProperty(name string) bool {
+	return stringPropertyNames[name]
+}

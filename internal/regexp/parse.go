@@ -77,16 +77,25 @@ type parser struct {
 	unicodeSets bool // v
 	named       bool // the NamedCaptureGroups parameter of the grammar
 
+	// validateOnly makes the parser check the pattern without building nodes or character sets.
+	validateOnly bool
+
 	groupCount  int // the total, from the prescan
 	nextGroup   int
-	groupNames  []string
-	groupPaths  []groupPath
+	groupNames  []string    // by group index, or nil before the first named group
+	groupPaths  []groupPath // by group index, for the named groups
 	path        groupPath
 	disjCounter int
-	backrefs    []*node
+	namedRefs   []namedRef
 	depth       int
 
 	err *Error
+}
+
+// namedRef is a backreference by name. node is nil when the parser only validates.
+type namedRef struct {
+	name string
+	node *node
 }
 
 type syntaxPanic struct{}
@@ -97,12 +106,28 @@ func (p *parser) fail(msg string) {
 }
 
 // parse parses the pattern source, a WTF-8 string, with the flags.
-func parse(source string, flags Flags) (t *tree, err error) {
-	p := &parser{
-		flags:       flags,
-		unicode:     flags&(FlagUnicode|FlagUnicodeSets) != 0,
-		unicodeSets: flags&FlagUnicodeSets != 0,
+func parse(source string, flags Flags) (*tree, error) {
+	var p parser
+	p.init(source, flags)
+	return p.parsePattern()
+}
+
+// validate reports the error that parse reports for the pattern source with the flags, if any.
+func validate(source string, flags Flags) error {
+	p := parser{
+		validateOnly: true,
 	}
+	p.init(source, flags)
+	_, err := p.parsePattern()
+	return err
+}
+
+func (p *parser) init(source string, flags Flags) {
+	p.flags = flags
+	p.unicode = flags&(FlagUnicode|FlagUnicodeSets) != 0
+	p.unicodeSets = flags&FlagUnicodeSets != 0
+	// A WTF-8 string has at least as many bytes as code units.
+	p.src = make([]rune, 0, len(source))
 	for i := 0; i < len(source); {
 		r, size := wtf8.DecodeRune(source[i:])
 		i += size
@@ -116,16 +141,6 @@ func parse(source string, flags Flags) (t *tree, err error) {
 	count, hasNames := p.prescan()
 	p.groupCount = count
 	p.named = p.unicode || hasNames
-	defer func() {
-		if r := recover(); r != nil {
-			if _, ok := r.(syntaxPanic); !ok {
-				panic(r)
-			}
-			t, err = nil, p.err
-		}
-	}()
-	t = p.parsePattern()
-	return t, nil
 }
 
 // prescan counts the capturing groups and reports whether there is a group name.
@@ -191,9 +206,16 @@ func (p *parser) lookingAt(s string) bool {
 	return true
 }
 
-func (p *parser) parsePattern() *tree {
-	p.groupNames = make([]string, p.groupCount+1)
-	p.groupPaths = make([]groupPath, p.groupCount+1)
+// parsePattern parses the whole pattern. The tree is nil when the parser only validates.
+func (p *parser) parsePattern() (t *tree, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if _, ok := r.(syntaxPanic); !ok {
+				panic(r)
+			}
+			t, err = nil, p.err
+		}
+	}()
 	root := p.parseDisjunction()
 	if !p.eof() {
 		if p.peek() == ')' {
@@ -213,15 +235,14 @@ func (p *parser) parsePattern() *tree {
 		}
 		byName[n] = append(byName[n], i)
 	}
-	for _, b := range p.backrefs {
-		if b.name == "" {
-			continue
-		}
-		refs, ok := byName[b.name]
+	for _, r := range p.namedRefs {
+		refs, ok := byName[r.name]
 		if !ok {
 			p.fail("invalid named capture referenced")
 		}
-		b.refs = refs
+		if r.node != nil {
+			r.node.refs = refs
+		}
 	}
 	for _, list := range byName {
 		for i, a := range list {
@@ -232,12 +253,29 @@ func (p *parser) parsePattern() *tree {
 			}
 		}
 	}
+	if p.validateOnly {
+		return nil, nil
+	}
+	groupNames := p.groupNames
+	if groupNames == nil {
+		groupNames = make([]string, p.groupCount+1)
+	}
 	return &tree{
 		root:       root,
 		groupCount: p.groupCount,
-		groupNames: p.groupNames,
+		groupNames: groupNames,
 		names:      names,
+	}, nil
+}
+
+// nameGroup records the name of the capturing group idx and the path to it.
+func (p *parser) nameGroup(idx int, name string) {
+	if p.groupNames == nil {
+		p.groupNames = make([]string, p.groupCount+1)
+		p.groupPaths = make([]groupPath, p.groupCount+1)
 	}
+	p.groupNames[idx] = name
+	p.groupPaths[idx] = slices.Clone(p.path)
 }
 
 // mightBothParticipate reports whether the groups at the paths a and b are not in different
@@ -275,15 +313,21 @@ func (p *parser) parseDisjunction() *node {
 	p.disjCounter++
 	p.path = append(p.path, pathStep{disj: id})
 	var alts []*node
-	for {
-		p.path[len(p.path)-1].alt = len(alts)
-		alts = append(alts, p.parseAlternative())
+	for i := 0; ; i++ {
+		p.path[len(p.path)-1].alt = i
+		alt := p.parseAlternative()
+		if !p.validateOnly {
+			alts = append(alts, alt)
+		}
 		if p.peek() != '|' {
 			break
 		}
 		p.pos++
 	}
 	p.path = p.path[:len(p.path)-1]
+	if p.validateOnly {
+		return nil
+	}
 	if len(alts) == 1 {
 		return alts[0]
 	}
@@ -295,7 +339,13 @@ func (p *parser) parseDisjunction() *node {
 func (p *parser) parseAlternative() *node {
 	var terms []*node
 	for !p.eof() && p.peek() != '|' && p.peek() != ')' {
-		terms = append(terms, p.parseTerm())
+		term := p.parseTerm()
+		if !p.validateOnly {
+			terms = append(terms, term)
+		}
+	}
+	if p.validateOnly {
+		return nil
 	}
 	switch len(terms) {
 	case 0:
@@ -316,13 +366,22 @@ func (p *parser) parseTerm() *node {
 	switch c {
 	case '^':
 		p.pos++
+		if p.validateOnly {
+			return nil
+		}
 		return p.newNode(opLineStart)
 	case '$':
 		p.pos++
+		if p.validateOnly {
+			return nil
+		}
 		return p.newNode(opLineEnd)
 	case '\\':
 		if p.peekAt(1) == 'b' || p.peekAt(1) == 'B' {
 			p.pos += 2
+			if p.validateOnly {
+				return nil
+			}
 			n := p.newNode(opWordB)
 			n.neg = p.src[p.pos-1] == 'B'
 			return n
@@ -332,12 +391,7 @@ func (p *parser) parseTerm() *node {
 		atom, quantifiable = p.parseGroup()
 	case '.':
 		p.pos++
-		atom = p.newNode(opClass)
-		if p.flags&FlagDotAll != 0 {
-			atom.set = charSet{0, p.top()}
-		} else {
-			atom.set = lineTerminators.complement(p.top())
-		}
+		atom = p.dotNode()
 	case '[':
 		atom = p.parseClass()
 	case '*', '+', '?':
@@ -371,7 +425,22 @@ func (p *parser) top() rune {
 	return 0xFFFF
 }
 
+// dotNode returns the node of '.', or nil when the parser only validates.
+func (p *parser) dotNode() *node {
+	if p.validateOnly {
+		return nil
+	}
+	if p.flags&FlagDotAll != 0 {
+		return p.classNode(charSet{0, p.top()})
+	}
+	return p.classNode(lineTerminators.complement(p.top()))
+}
+
+// charNode returns the node of c, or nil when the parser only validates.
 func (p *parser) charNode(c rune) *node {
+	if p.validateOnly {
+		return nil
+	}
 	n := p.newNode(opChar)
 	n.r = c
 	return n
@@ -467,13 +536,17 @@ func (p *parser) parseQuantifier(atom *node, quantifiable bool, groups int) *nod
 	if !quantifiable {
 		p.fail("nothing to repeat")
 	}
-	n := p.newNode(opRepeat)
-	n.min, n.max = lo, hi
-	n.greedy = true
+	greedy := true
 	if p.peek() == '?' {
 		p.pos++
-		n.greedy = false
+		greedy = false
 	}
+	if p.validateOnly {
+		return nil
+	}
+	n := p.newNode(opRepeat)
+	n.min, n.max = lo, hi
+	n.greedy = greedy
 	n.subs = []*node{atom}
 	// The groups of atom are numbered from groups+1 up to p.nextGroup.
 	if p.nextGroup > groups {
@@ -487,54 +560,78 @@ func (p *parser) parseGroup() (*node, bool) {
 	if p.peek() != '?' {
 		p.nextGroup++
 		idx := p.nextGroup
-		p.groupPaths[idx] = slices.Clone(p.path)
-		n := p.newNode(opCapture)
-		n.cap = idx
-		n.subs = []*node{p.parseDisjunction()}
+		sub := p.parseDisjunction()
 		p.expect(')')
-		return n, true
+		return p.captureNode(idx, "", sub), true
 	}
 	p.pos++ // ?
 	switch c := p.peek(); c {
 	case ':':
 		p.pos++
-		n := p.newNode(opGroup)
-		n.subs = []*node{p.parseDisjunction()}
+		sub := p.parseDisjunction()
 		p.expect(')')
-		return n, true
+		return p.groupNode(sub), true
 	case '=', '!':
 		p.pos++
-		n := p.newNode(opLook)
-		n.neg = c == '!'
-		n.subs = []*node{p.parseDisjunction()}
+		sub := p.parseDisjunction()
 		p.expect(')')
 		// Annex B allows quantifying a lookahead without the u and v flags.
-		return n, !p.unicode
+		return p.lookNode(sub, c == '!', false), !p.unicode
 	case '<':
 		if p.peekAt(1) == '=' || p.peekAt(1) == '!' {
-			n := p.newNode(opLook)
-			n.neg = p.peekAt(1) == '!'
-			n.behind = true
+			neg := p.peekAt(1) == '!'
 			p.pos += 2
-			n.subs = []*node{p.parseDisjunction()}
+			sub := p.parseDisjunction()
 			p.expect(')')
-			return n, false
+			return p.lookNode(sub, neg, true), false
 		}
 		p.pos++
 		name := p.parseGroupName()
 		p.nextGroup++
 		idx := p.nextGroup
-		p.groupNames[idx] = name
-		p.groupPaths[idx] = slices.Clone(p.path)
-		n := p.newNode(opCapture)
-		n.cap = idx
-		n.name = name
-		n.subs = []*node{p.parseDisjunction()}
+		p.nameGroup(idx, name)
+		sub := p.parseDisjunction()
 		p.expect(')')
-		return n, true
+		return p.captureNode(idx, name, sub), true
 	default:
 		return p.parseModifiers(), true
 	}
+}
+
+// captureNode returns the node of the capturing group idx over sub, or nil when the parser only
+// validates.
+func (p *parser) captureNode(idx int, name string, sub *node) *node {
+	if p.validateOnly {
+		return nil
+	}
+	n := p.newNode(opCapture)
+	n.cap = idx
+	n.name = name
+	n.subs = []*node{sub}
+	return n
+}
+
+// groupNode returns the node of a non-capturing group over sub, or nil when the parser only
+// validates.
+func (p *parser) groupNode(sub *node) *node {
+	if p.validateOnly {
+		return nil
+	}
+	n := p.newNode(opGroup)
+	n.subs = []*node{sub}
+	return n
+}
+
+// lookNode returns the node of a lookaround over sub, or nil when the parser only validates.
+func (p *parser) lookNode(sub *node, neg, behind bool) *node {
+	if p.validateOnly {
+		return nil
+	}
+	n := p.newNode(opLook)
+	n.neg = neg
+	n.behind = behind
+	n.subs = []*node{sub}
+	return n
 }
 
 // parseModifiers parses the modifiers of (?ims-ims: ...) after the question mark.
@@ -593,8 +690,8 @@ func (p *parser) parseModifiers() *node {
 	p.pos++
 	saved := p.flags
 	p.flags = p.flags&^remove | add
-	n := p.newNode(opGroup)
-	n.subs = []*node{p.parseDisjunction()}
+	// The group has the flags of its contents.
+	n := p.groupNode(p.parseDisjunction())
 	p.flags = saved
 	p.expect(')')
 	return n
@@ -776,9 +873,11 @@ func (p *parser) parseAtomEscape() *node {
 		v, end, _ := p.decimal(p.pos)
 		if v <= p.groupCount {
 			p.pos = end
+			if p.validateOnly {
+				return nil
+			}
 			n := p.newNode(opBackref)
 			n.refs = []int{v}
-			p.backrefs = append(p.backrefs, n)
 			return n
 		}
 		if p.unicode {
@@ -797,12 +896,21 @@ func (p *parser) parseAtomEscape() *node {
 		}
 		p.pos++
 		name := p.parseGroupName()
-		n := p.newNode(opBackref)
-		n.name = name
-		p.backrefs = append(p.backrefs, n)
+		var n *node
+		if !p.validateOnly {
+			n = p.newNode(opBackref)
+			n.name = name
+		}
+		p.namedRefs = append(p.namedRefs, namedRef{
+			name: name,
+			node: n,
+		})
 		return n
 	}
 	if set, ok := p.classEscape(); ok {
+		if p.validateOnly {
+			return nil
+		}
 		n := p.newNode(opClass)
 		n.set = set
 		if p.flags&FlagIgnoreCase != 0 {
@@ -812,8 +920,10 @@ func (p *parser) parseAtomEscape() *node {
 	}
 	if p.unicodeSets && c == 'p' {
 		// A property of strings.
-		strs := p.stringProperty()
-		if strs != nil {
+		if strs, ok := p.stringProperty(); ok {
+			if p.validateOnly {
+				return nil
+			}
 			return p.classNodeFromStrings(strs)
 		}
 	}
@@ -826,6 +936,7 @@ func (p *parser) parseAtomEscape() *node {
 
 // classEscape parses \d \D \s \S \w \W \p{...} \P{...} after the backslash.
 // It consumes nothing and reports false for any other escape and for a property of strings.
+// The set is nil when the parser only validates.
 func (p *parser) classEscape() (charSet, bool) {
 	c := p.peek()
 	var s charSet
@@ -836,9 +947,6 @@ func (p *parser) classEscape() (charSet, bool) {
 		s = spaceSet
 	case 'w', 'W':
 		s = wordSet
-		if p.unicode && p.flags&FlagIgnoreCase != 0 {
-			s = s.union(charSet{0x17F, 0x17F, 0x212A, 0x212A})
-		}
 	case 'p', 'P':
 		if !p.unicode {
 			return nil, false
@@ -848,18 +956,17 @@ func (p *parser) classEscape() (charSet, bool) {
 		name, value := p.propertyExpression()
 		set, ok := lookupProperty(name, value)
 		if !ok {
-			if c == 'p' && p.unicodeSets && value == "" {
-				if _, ok := lookupStringProperty(name); ok {
-					p.pos = save
-					return nil, false
-				}
+			if c == 'p' && p.unicodeSets && value == "" && isStringProperty(name) {
+				p.pos = save
+				return nil, false
 			}
-			if c == 'P' && p.unicodeSets && value == "" {
-				if _, ok := lookupStringProperty(name); ok {
-					p.fail("negated property of strings")
-				}
+			if c == 'P' && p.unicodeSets && value == "" && isStringProperty(name) {
+				p.fail("negated property of strings")
 			}
 			p.fail("invalid property name")
+		}
+		if p.validateOnly {
+			return nil, true
 		}
 		if c == 'P' {
 			if p.unicodeSets && p.flags&FlagIgnoreCase != 0 {
@@ -872,6 +979,12 @@ func (p *parser) classEscape() (charSet, bool) {
 		return nil, false
 	}
 	p.pos++
+	if p.validateOnly {
+		return nil, true
+	}
+	if (c == 'w' || c == 'W') && p.unicode && p.flags&FlagIgnoreCase != 0 {
+		s = s.union(charSet{0x17F, 0x17F, 0x212A, 0x212A})
+	}
 	if c >= 'A' && c <= 'Z' {
 		if p.flags&FlagIgnoreCase != 0 {
 			s = foldClosure(s, p.unicode)
@@ -910,18 +1023,21 @@ func (p *parser) propertyExpression() (string, string) {
 	return name, value
 }
 
-// stringProperty parses \p{Name} at the p for a property of strings, or returns nil.
-func (p *parser) stringProperty() [][]rune {
+// stringProperty parses \p{Name} at the p for a property of strings and reports whether there is
+// one. It consumes nothing when there is none. The strings are nil when the parser only
+// validates.
+func (p *parser) stringProperty() ([][]rune, bool) {
 	save := p.pos
 	p.pos++
 	name, value := p.propertyExpression()
-	if value == "" {
-		if strs, ok := lookupStringProperty(name); ok {
-			return strs
+	if value == "" && isStringProperty(name) {
+		if p.validateOnly {
+			return nil, true
 		}
+		return lookupStringProperty(name)
 	}
 	p.pos = save
-	return nil
+	return nil, false
 }
 
 // characterEscape parses a CharacterEscape after the backslash and returns its value.
@@ -1013,10 +1129,13 @@ func (p *parser) parseClass() *node {
 	}
 	if p.unicodeSets {
 		v := p.parseClassSetExpression()
+		if neg && v.mayContainStrings {
+			p.fail("negated character class may contain strings")
+		}
+		if p.validateOnly {
+			return nil
+		}
 		if neg {
-			if v.mayContainStrings {
-				p.fail("negated character class may contain strings")
-			}
 			v.set = v.set.complement(maxRune)
 			v.strs = nil
 		}
@@ -1031,26 +1150,29 @@ func (p *parser) parseClass() *node {
 			p.pos++
 			break
 		}
-		a, aIsClass := p.classAtom()
+		a := p.classAtom()
 		if p.peek() == '-' && p.peekAt(1) != ']' && p.peekAt(1) >= 0 {
 			p.pos++
-			b, bIsClass := p.classAtom()
-			if aIsClass || bIsClass {
+			b := p.classAtom()
+			if a.isClass || b.isClass {
 				if p.unicode {
 					p.fail("invalid character class")
 				}
-				set = append(set, a...)
-				set = append(set, '-', '-')
-				set = append(set, b...)
+				set = p.addClassAtom(set, a)
+				set = p.addClassAtom(set, classAtomValue{c: '-'})
+				set = p.addClassAtom(set, b)
 				continue
 			}
-			if a[0] > b[0] {
+			if a.c > b.c {
 				p.fail("range out of order in character class")
 			}
-			set = append(set, a[0], b[0])
+			set = p.addClassRange(set, a.c, b.c)
 			continue
 		}
-		set = append(set, a...)
+		set = p.addClassAtom(set, a)
+	}
+	if p.validateOnly {
+		return nil
 	}
 	set = set.normalize()
 	if p.flags&FlagIgnoreCase != 0 {
@@ -1062,16 +1184,48 @@ func (p *parser) parseClass() *node {
 	return p.classNode(set)
 }
 
-// classAtom parses a ClassAtom of a class without the v flag. It reports whether the atom is
-// a class escape such as \d, and otherwise returns the character as a single-character set.
-func (p *parser) classAtom() (charSet, bool) {
+// classAtomValue is the value of a ClassAtom of a class without the v flag.
+type classAtomValue struct {
+	// isClass reports whether the atom is a class escape such as \d.
+	isClass bool
+
+	// set is the set of a class escape. It is nil when the parser only validates.
+	set charSet
+
+	// c is the character of any other atom.
+	c rune
+}
+
+// addClassAtom returns set with the characters of a added, or set itself when the parser only
+// validates.
+func (p *parser) addClassAtom(set charSet, a classAtomValue) charSet {
+	if p.validateOnly {
+		return set
+	}
+	if a.isClass {
+		return append(set, a.set...)
+	}
+	return append(set, a.c, a.c)
+}
+
+// addClassRange returns set with the characters from lo to hi added, or set itself when the
+// parser only validates.
+func (p *parser) addClassRange(set charSet, lo, hi rune) charSet {
+	if p.validateOnly {
+		return set
+	}
+	return append(set, lo, hi)
+}
+
+// classAtom parses a ClassAtom of a class without the v flag.
+func (p *parser) classAtom() classAtomValue {
 	c := p.peek()
 	if c < 0 {
 		p.fail("unterminated character class")
 	}
 	p.pos++
 	if c != '\\' {
-		return charSet{c, c}, false
+		return classAtomValue{c: c}
 	}
 	if p.eof() {
 		p.fail("\\ at end of pattern")
@@ -1079,29 +1233,32 @@ func (p *parser) classAtom() (charSet, bool) {
 	switch e := p.peek(); {
 	case e == 'b':
 		p.pos++
-		return charSet{8, 8}, false
+		return classAtomValue{c: 8}
 	case e == '-' && p.unicode:
 		p.pos++
-		return charSet{'-', '-'}, false
+		return classAtomValue{c: '-'}
 	case e == 'c' && !p.unicode:
 		if d := p.peekAt(1); d >= '0' && d <= '9' || d == '_' {
 			p.pos += 2
-			return charSet{d % 32, d % 32}, false
+			return classAtomValue{c: d % 32}
 		}
 		if !isASCIILetter(p.peekAt(1)) {
-			return charSet{'\\', '\\'}, false
+			return classAtomValue{c: '\\'}
 		}
 	case e == 'B' && p.unicode:
 		p.fail("invalid class escape")
 	}
 	if s, ok := p.classEscape(); ok {
-		return s, true
+		return classAtomValue{
+			isClass: true,
+			set:     s,
+		}
 	}
-	r := p.characterEscape(true)
-	return charSet{r, r}, false
+	return classAtomValue{c: p.characterEscape(true)}
 }
 
 // classValue is the value of a class with the v flag: characters and strings of other lengths.
+// The set and the strings are nil when the parser only validates.
 type classValue struct {
 	set               charSet
 	strs              map[string][]rune
@@ -1148,7 +1305,7 @@ func (p *parser) parseClassSetExpression() classValue {
 				p.fail("invalid set operation in character class")
 			}
 			b := p.classSetOperand()
-			acc = intersectValues(acc, b)
+			acc = p.intersectValues(acc, b)
 		}
 		p.expectClassEnd()
 		return acc
@@ -1160,7 +1317,7 @@ func (p *parser) parseClassSetExpression() classValue {
 		for p.lookingAt("--") {
 			p.pos += 2
 			b := p.classSetOperand()
-			acc = subtractValues(acc, b)
+			acc = p.subtractValues(acc, b)
 		}
 		p.expectClassEnd()
 		return acc
@@ -1174,7 +1331,7 @@ func (p *parser) parseClassSetExpression() classValue {
 			p.fail("invalid set operation in character class")
 		}
 		b, _ := p.classSetOperandOrRange()
-		acc = unionValues(acc, b)
+		acc = p.unionValues(acc, b)
 	}
 	p.pos++
 	acc.set = acc.set.normalize()
@@ -1188,11 +1345,14 @@ func (p *parser) expectClassEnd() {
 	p.pos++
 }
 
-func unionValues(a, b classValue) classValue {
+func (p *parser) unionValues(a, b classValue) classValue {
 	out := classValue{
-		set:               a.set.union(b.set),
 		mayContainStrings: a.mayContainStrings || b.mayContainStrings,
 	}
+	if p.validateOnly {
+		return out
+	}
+	out.set = a.set.union(b.set)
 	for _, s := range a.strs {
 		out.addString(s)
 	}
@@ -1202,11 +1362,14 @@ func unionValues(a, b classValue) classValue {
 	return out
 }
 
-func intersectValues(a, b classValue) classValue {
+func (p *parser) intersectValues(a, b classValue) classValue {
 	out := classValue{
-		set:               a.set.normalize().intersect(b.set.normalize()),
 		mayContainStrings: a.mayContainStrings && b.mayContainStrings,
 	}
+	if p.validateOnly {
+		return out
+	}
+	out.set = a.set.normalize().intersect(b.set.normalize())
 	for k, s := range a.strs {
 		if _, ok := b.strs[k]; ok {
 			out.addString(s)
@@ -1215,11 +1378,14 @@ func intersectValues(a, b classValue) classValue {
 	return out
 }
 
-func subtractValues(a, b classValue) classValue {
+func (p *parser) subtractValues(a, b classValue) classValue {
 	out := classValue{
-		set:               a.set.normalize().subtract(b.set.normalize()),
 		mayContainStrings: a.mayContainStrings,
 	}
+	if p.validateOnly {
+		return out
+	}
+	out.set = a.set.normalize().subtract(b.set.normalize())
 	for k, s := range a.strs {
 		if _, ok := b.strs[k]; !ok {
 			out.addString(s)
@@ -1247,16 +1413,24 @@ func (p *parser) classSetOperandOrRange() (classValue, bool) {
 			if c > d {
 				p.fail("range out of order in character class")
 			}
-			return p.foldValue(classValue{set: charSet{c, d}}), true
+			return p.rangeValue(c, d), true
 		}
-		return p.foldValue(classValue{set: charSet{c, c}}), false
+		return p.rangeValue(c, c), false
 	}
 	return p.classSetOperand(), false
 }
 
+// rangeValue returns the value of the characters from lo to hi.
+func (p *parser) rangeValue(lo, hi rune) classValue {
+	if p.validateOnly {
+		return classValue{}
+	}
+	return p.foldValue(classValue{set: charSet{lo, hi}})
+}
+
 // foldValue closes v over case equivalence when the i flag applies.
 func (p *parser) foldValue(v classValue) classValue {
-	if !p.fold() {
+	if !p.fold() || p.validateOnly {
 		return v
 	}
 	v.set = foldClosure(v.set.normalize(), true)
@@ -1292,6 +1466,9 @@ func (p *parser) classSetOperand() classValue {
 			if v.mayContainStrings {
 				p.fail("negated character class may contain strings")
 			}
+			if p.validateOnly {
+				return classValue{}
+			}
 			return classValue{set: v.set.normalize().complement(maxRune)}
 		}
 		return v
@@ -1303,8 +1480,11 @@ func (p *parser) classSetOperand() classValue {
 		save := p.pos
 		p.pos++
 		if p.peek() == 'p' {
-			if strs := p.stringProperty(); strs != nil {
+			if strs, ok := p.stringProperty(); ok {
 				v := classValue{mayContainStrings: true}
+				if p.validateOnly {
+					return v
+				}
 				for _, s := range strs {
 					v.addString(s)
 				}
@@ -1313,7 +1493,7 @@ func (p *parser) classSetOperand() classValue {
 			}
 		}
 		if s, ok := p.classEscape(); ok {
-			if p.fold() {
+			if p.fold() && !p.validateOnly {
 				s = foldClosure(s, true)
 			}
 			return classValue{set: s}
@@ -1324,7 +1504,7 @@ func (p *parser) classSetOperand() classValue {
 	if !ok {
 		p.fail("invalid character in character class")
 	}
-	return p.foldValue(classValue{set: charSet{c, c}})
+	return p.rangeValue(c, c)
 }
 
 // classStringDisjunction parses the rest of \q{...} after the q.
@@ -1334,7 +1514,10 @@ func (p *parser) classStringDisjunction() classValue {
 	}
 	p.pos++
 	var v classValue
+	// cur is the current string, which stays nil when the parser only validates, and n is its
+	// length.
 	var cur []rune
+	var n int
 	for {
 		if p.eof() {
 			p.fail("unterminated class string disjunction")
@@ -1342,26 +1525,34 @@ func (p *parser) classStringDisjunction() classValue {
 		switch p.peek() {
 		case '}':
 			p.pos++
-			if len(cur) != 1 {
-				v.mayContainStrings = true
-			}
-			v.addString(cur)
+			p.addClassString(&v, cur, n)
 			v.set = v.set.normalize()
 			return v
 		case '|':
 			p.pos++
-			if len(cur) != 1 {
-				v.mayContainStrings = true
-			}
-			v.addString(cur)
-			cur = nil
+			p.addClassString(&v, cur, n)
+			cur, n = nil, 0
 			continue
 		}
 		c, ok := p.tryClassSetCharacter()
 		if !ok {
 			p.fail("invalid character in class string disjunction")
 		}
-		cur = append(cur, c)
+		if !p.validateOnly {
+			cur = append(cur, c)
+		}
+		n++
+	}
+}
+
+// addClassString adds the string s of length n of a class string disjunction to v.
+// s is nil when the parser only validates.
+func (p *parser) addClassString(v *classValue, s []rune, n int) {
+	if n != 1 {
+		v.mayContainStrings = true
+	}
+	if !p.validateOnly {
+		v.addString(s)
 	}
 }
 

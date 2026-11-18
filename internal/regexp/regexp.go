@@ -114,8 +114,7 @@ func Validate(pattern, flags string) error {
 	if err != nil {
 		return err
 	}
-	_, err = parse(pattern, f)
-	return err
+	return validate(pattern, f)
 }
 
 // Flags returns the flags that re was compiled with.
