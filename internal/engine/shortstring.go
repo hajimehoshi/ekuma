@@ -425,6 +425,20 @@ func CompareStrings(a, b Value) int {
 	return wtf8.Compare(a.Str(), b.Str())
 }
 
+// NewStringBytes returns a string value containing the canonical WTF-8 bytes s.
+func (vm *VM) NewStringBytes(s []byte) Value {
+	if len(s) == 0 {
+		return vm.emptyString
+	}
+	if len(s) == 1 && s[0] < 0x80 {
+		return vm.strings.ascii[s[0]]
+	}
+	if len(s) <= shortstrings.MaxBytes {
+		return vm.shortString(string(s))
+	}
+	return vm.NewString(string(s))
+}
+
 func equalShortStrings(a, b Value) bool {
 	if !a.isShortString() {
 		a, b = b, a

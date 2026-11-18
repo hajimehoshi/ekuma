@@ -93,7 +93,7 @@ func (d *segmentsData) segmentData(vm *engine.VM, start, end int) engine.Value {
 		engine.NamedKey(vm.Intern("index")),
 		engine.NamedKey(vm.Intern("input")),
 	}
-	vals := [4]engine.Value{vm.NewString(string(b)), engine.Number(float64(d.units[start])), d.str}
+	vals := [4]engine.Value{vm.NewStringBytes(b), engine.Number(float64(d.units[start])), d.str}
 	propertyCount := 3
 	if d.segmenter.granularity == "word" {
 		keys[3] = engine.NamedKey(vm.Intern("isWordLike"))

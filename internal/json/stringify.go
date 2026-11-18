@@ -164,7 +164,7 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 		return engine.Undefined
 	}
 	w.checkLength()
-	return vm.NewString(string(w.buf))
+	return vm.NewStringBytes(w.buf)
 }
 
 func (w *writer) checkLength() {

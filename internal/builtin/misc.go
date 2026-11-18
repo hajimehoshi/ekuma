@@ -85,12 +85,12 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			vm.ThrowRangeError("toString() radix must be between 2 and 36")
 		}
 		if radix == 10 {
-			return vm.NewString(numconv.NumberToString(n))
+			return vm.ToStringValue(engine.Number(n))
 		}
 		return vm.NewString(numconv.NumberToRadixString(n, int(radix)))
 	})
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(numconv.NumberToString(thisNumber(vm, this, "toLocaleString")))
+		return vm.ToStringValue(engine.Number(thisNumber(vm, this, "toLocaleString")))
 	})
 	method(vm, proto, "toFixed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toFixed")
@@ -99,7 +99,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			vm.ThrowRangeError("toFixed() digits argument must be between 0 and 100")
 		}
 		if n != n || math.IsInf(n, 0) || math.Abs(n) >= 1e21 {
-			return vm.NewString(numconv.NumberToString(n))
+			return vm.ToStringValue(engine.Number(n))
 		}
 		var buf [numberBufSize]byte
 		s := appendHalfUp(buf[:0], n, 'f', int(d))
@@ -107,16 +107,16 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			// -0 is formatted as 0.
 			s = s[1:]
 		}
-		return vm.NewString(string(s))
+		return vm.NewStringBytes(s)
 	})
 	method(vm, proto, "toPrecision", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toPrecision")
 		if arg(args, 0).IsUndefined() {
-			return vm.NewString(numconv.NumberToString(n))
+			return vm.ToStringValue(engine.Number(n))
 		}
 		p := vm.ToIntegerOrInfinity(args[0])
 		if n != n || math.IsInf(n, 0) {
-			return vm.NewString(numconv.NumberToString(n))
+			return vm.ToStringValue(engine.Number(n))
 		}
 		if p < 1 || p > 100 {
 			vm.ThrowRangeError("toPrecision() argument must be between 1 and 100")
@@ -130,17 +130,17 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			es := appendHalfUp(buf[:0], n, 'e', int(p)-1)
 			e := exponent(es)
 			if e < -6 || e >= int(p) {
-				return vm.NewString(string(fixExponent(es)))
+				return vm.NewStringBytes(fixExponent(es))
 			}
-			return vm.NewString(string(precisionFixed(es, int(p), e)))
+			return vm.NewStringBytes(precisionFixed(es, int(p), e))
 		}
-		return vm.NewString(string(appendHalfUp(buf[:0], n, 'f', int(p)-1)))
+		return vm.NewStringBytes(appendHalfUp(buf[:0], n, 'f', int(p)-1))
 	})
 	method(vm, proto, "toExponential", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := thisNumber(vm, this, "toExponential")
 		d := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n != n || math.IsInf(n, 0) {
-			return vm.NewString(numconv.NumberToString(n))
+			return vm.ToStringValue(engine.Number(n))
 		}
 		if d < 0 || d > 100 {
 			vm.ThrowRangeError("toExponential() argument must be between 0 and 100")
@@ -151,9 +151,9 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		}
 		var buf [numberBufSize]byte
 		if arg(args, 0).IsUndefined() {
-			return vm.NewString(string(fixExponent(strconv.AppendFloat(buf[:0], n, 'e', -1, 64))))
+			return vm.NewStringBytes(fixExponent(strconv.AppendFloat(buf[:0], n, 'e', -1, 64)))
 		}
-		return vm.NewString(string(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d)))))
+		return vm.NewStringBytes(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d))))
 	})
 
 	bproto := vm.Intrinsic(engine.IntrinsicBooleanPrototype)

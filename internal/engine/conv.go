@@ -167,6 +167,24 @@ func (vm *VM) ToStringValue(v Value) Value {
 	if v.o != nil && v.o.kind == kindString {
 		return v
 	}
+	return vm.toStringValue(v)
+}
+
+func (vm *VM) toStringValue(v Value) Value {
+	if v.IsObject() {
+		return vm.ToStringValue(vm.ToPrimitive(v, HintString))
+	}
+	if v.IsNumber() {
+		var buf [32]byte
+		text := numconv.AppendNumber(buf[:0], v.n)
+		if len(text) == 1 {
+			return vm.strings.ascii[text[0]]
+		}
+		if len(text) <= shortstrings.MaxBytes {
+			return vm.shortString(string(text))
+		}
+		return vm.NewString(string(text))
+	}
 	return vm.NewString(vm.ToString(v))
 }
 
