@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"crypto/subtle"
 	"errors"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -285,6 +286,19 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 // A Go panic restores each boundary it escapes. The outermost boundary discards pending
 // jobs and rejects unfinished module evaluations, including after a recovered inner panic.
 func (vm *VM) enter(f func() Value) (result Value, err error) {
+	if vm.entered > 0 {
+		return vm.enterBoundary(f)
+	}
+	// Data independent timing stays enabled for the goroutine across rescheduling, so the
+	// nested calls need nothing more.
+	subtle.WithDataIndependentTiming(func() {
+		result, err = vm.enterBoundary(f)
+	})
+	return result, err
+}
+
+// enterBoundary implements [VM.enter].
+func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
 	thrown := vm.thrown
