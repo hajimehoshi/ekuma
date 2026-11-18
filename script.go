@@ -9,16 +9,41 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-// Script is a script parsed by [Realm.ParseScript].
+// Script is a script of a realm, from [Realm.ParseScript] or [Realm.BindScript].
 type Script struct {
 	vm *VM
 	s  *engine.Script
+}
+
+// UnboundScript is a script parsed for no particular VM, which [Realm.BindScript] binds to a
+// realm. An UnboundScript is immutable: any number of VMs and realms may bind it, also from
+// different goroutines at the same time.
+type UnboundScript struct {
+	s *engine.UnboundScript
+}
+
+// ParseUnboundScript parses src as the source text of a script, as [Realm.ParseScript] does,
+// but for no particular VM. The error is a [*SyntaxError] when src is not a valid script.
+func ParseUnboundScript(name, src string) (*UnboundScript, error) {
+	s, err := engine.ParseUnboundScript(name, src)
+	if err != nil {
+		return nil, publicError(err)
+	}
+	return &UnboundScript{
+		s: s,
+	}, nil
 }
 
 // ParseScript is [Realm.ParseScript] of the initial realm.
 func (vm *VM) ParseScript(name, src string) (*Script, error) {
 	vm.initIfNeeded()
 	return vm.initialRealm.ParseScript(name, src)
+}
+
+// BindScript is [Realm.BindScript] of the initial realm.
+func (vm *VM) BindScript(u *UnboundScript) *Script {
+	vm.initIfNeeded()
+	return vm.initialRealm.BindScript(u)
 }
 
 // Evaluate evaluates s, runs the pending jobs, and returns the completion value of s. s may be

@@ -103,7 +103,7 @@ func (e *ScriptError) Unwrap() error {
 }
 
 // publicError converts an error of the engine to the error types of this package.
-func (vm *VM) publicError(err error) error {
+func publicError(err error) error {
 	if err == nil {
 		return nil
 	}

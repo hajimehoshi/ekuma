@@ -161,7 +161,7 @@ func (m *Module) Name() string {
 // loader, or a [*ScriptError] holding a TypeError when there is no loader.
 func (m *Module) LoadRequestedModules() error {
 	m.vm.initIfNeeded()
-	return m.vm.publicError(m.vm.e.LoadRequestedModules(m.m))
+	return publicError(m.vm.e.LoadRequestedModules(m.m))
 }
 
 // Link links m and its dependencies: it resolves their imports without evaluating module code.
@@ -171,7 +171,7 @@ func (m *Module) LoadRequestedModules() error {
 // that does not resolve. Link may be retried after a failure.
 func (m *Module) Link() error {
 	m.vm.initIfNeeded()
-	return m.vm.publicError(m.vm.e.Link(m.m))
+	return publicError(m.vm.e.Link(m.m))
 }
 
 // Evaluate evaluates m and its dependencies, runs the pending jobs, and returns a promise
@@ -197,5 +197,5 @@ func (m *Module) Evaluate(ctx context.Context) (Value, error) {
 func (m *Module) Namespace() (Value, error) {
 	m.vm.initIfNeeded()
 	v, err := m.vm.e.GetModuleNamespace(m.m)
-	return fromEngine(v), m.vm.publicError(err)
+	return fromEngine(v), publicError(err)
 }

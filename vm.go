@@ -295,7 +295,7 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 	if interrupted, ok := errors.AsType[*engine.InterruptedError](err); ok && interrupted.Cause != nil {
 		return Undefined, interrupted.Cause
 	}
-	return fromEngine(v), vm.publicError(err)
+	return fromEngine(v), publicError(err)
 }
 
 // ErrRunning is returned by [VM.AwaitJobs] when the VM is running JavaScript.

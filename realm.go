@@ -105,12 +105,25 @@ func (r *Realm) ParseScript(name, src string) (*Script, error) {
 		es, err = r.vm.e.ParseScript(name, src)
 	})
 	if err != nil {
-		return nil, r.vm.publicError(err)
+		return nil, publicError(err)
 	}
 	return &Script{
 		vm: r.vm,
 		s:  es,
 	}, nil
+}
+
+// BindScript returns the script of u for r: the script that [Realm.ParseScript] of r returns
+// for the name and source text of u.
+func (r *Realm) BindScript(u *UnboundScript) *Script {
+	var es *engine.Script
+	r.in(func() {
+		es = r.vm.e.BindScript(u.s)
+	})
+	return &Script{
+		vm: r.vm,
+		s:  es,
+	}
 }
 
 // ParseModule parses src as the source text of a module of r. name identifies the module in error
@@ -124,7 +137,7 @@ func (r *Realm) ParseModule(name, src string) (*Module, error) {
 		em, err = r.vm.e.ParseModule(name, src, m)
 	})
 	if err != nil {
-		return nil, r.vm.publicError(err)
+		return nil, publicError(err)
 	}
 	m.m = em
 	return m, nil
@@ -141,7 +154,7 @@ func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 		em, err = r.vm.e.ParseJSONModule(src, m)
 	})
 	if err != nil {
-		return nil, r.vm.publicError(err)
+		return nil, publicError(err)
 	}
 	m.m = em
 	return m, nil

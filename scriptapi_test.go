@@ -1310,3 +1310,78 @@ func TestScriptCompletionValues(t *testing.T) {
 		})
 	}
 }
+
+// TestUnboundScript checks that VMs binding the same unbound script, each on its own goroutine,
+// keep their own globals.
+func TestUnboundScript(t *testing.T) {
+	u, err := ekuma.ParseUnboundScript("count.js", `globalThis.count = (globalThis.count ?? 0) + 1;
+globalThis.count;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Go(func() {
+			var vm ekuma.VM
+			s := vm.BindScript(u)
+			for want := 1; want <= 2; want++ {
+				v, err := s.Evaluate(t.Context())
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				if got := v.Int(); got != want {
+					t.Errorf("evaluation %d: got %d, want %d", want, got, want)
+				}
+			}
+		})
+	}
+	wg.Wait()
+}
+
+// TestUnboundScriptNames checks that the name of an unbound script is in its syntax errors and in
+// the stack traces of its bound scripts.
+func TestUnboundScriptNames(t *testing.T) {
+	_, err := ekuma.ParseUnboundScript("bad.js", "\n\nlet x = ;")
+	se, ok := errors.AsType[*ekuma.SyntaxError](err)
+	if !ok {
+		t.Fatalf("got %v, want a *SyntaxError", err)
+	}
+	if se.File != "bad.js" || se.Line != 3 {
+		t.Errorf("got %s:%d, want bad.js:3", se.File, se.Line)
+	}
+
+	u, err := ekuma.ParseUnboundScript("app.js", `function f() {
+  throw new Error("boom");
+}
+try { f(); } catch (e) { e.stack; }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vm ekuma.VM
+	v, err := vm.BindScript(u).Evaluate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Error: boom\n    at f (app.js:2:9)\n    at app.js:4:7"
+	if got := v.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestBindScriptRealm checks that a script bound to a realm runs in that realm.
+func TestBindScriptRealm(t *testing.T) {
+	u, err := ekuma.ParseUnboundScript("global.js", `globalThis`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	v, err := r.BindScript(u).Evaluate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Equal(r.Global()) {
+		t.Error("the script did not run in the realm that it is bound to")
+	}
+}

@@ -54,40 +54,6 @@ func ArgumentStorage(vm *VM) (argsLen, callArgsLen int, cleared bool) {
 // MaxStringLength is the largest length a string may have, in bytes.
 const MaxStringLength = engine.MaxStringLength
 
-// CompiledScript is a script compiled once for any number of VMs. The test262 runner creates a
-// VM for every test and mode and runs the same harness files in each, so compiling them once
-// saves most of the parsing and compiling of a run. It is test-only because the public API has
-// no VM-independent compiled script.
-type CompiledScript struct {
-	c *engine.CompiledScript
-}
-
-// CompileScript compiles src as the source text of a script named name, as [VM.ParseScript] does,
-// but for no particular VM. The error is a [*SyntaxError] when src is not a valid script.
-func CompileScript(name, src string) (*CompiledScript, error) {
-	c, err := engine.CompileScript(name, src)
-	if err != nil {
-		var vm VM
-		return nil, vm.publicError(err)
-	}
-	return &CompiledScript{
-		c: c,
-	}, nil
-}
-
-// LinkScript returns the script of c for the initial realm of vm.
-func LinkScript(vm *VM, c *CompiledScript) *Script {
-	vm.initIfNeeded()
-	var s *engine.Script
-	vm.initialRealm.in(func() {
-		s = vm.e.LinkScript(c.c)
-	})
-	return &Script{
-		vm: vm,
-		s:  s,
-	}
-}
-
 // InternalFailureFunc returns a native function that fails with cause.
 func InternalFailureFunc(vm *VM, cause error) Value {
 	vm.initIfNeeded()

@@ -149,13 +149,13 @@ type harness struct {
 	mu    sync.Mutex
 	files map[string]string
 
-	// scripts are the compiled files, by name. Every VM of the run links the same compiled
-	// harness files instead of parsing and compiling them again.
-	scripts map[string]*ekuma.CompiledScript
+	// scripts are the files parsed as unbound scripts, by name. Every VM of the run binds the
+	// same harness scripts instead of parsing them again.
+	scripts map[string]*ekuma.UnboundScript
 }
 
-// script returns the file name compiled as a script.
-func (h *harness) script(name string) (*ekuma.CompiledScript, error) {
+// script returns the file name parsed as an unbound script.
+func (h *harness) script(name string) (*ekuma.UnboundScript, error) {
 	text, err := h.file(name)
 	if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (h *harness) script(name string) (*ekuma.CompiledScript, error) {
 	if s, ok := h.scripts[name]; ok {
 		return s, nil
 	}
-	s, err := ekuma.CompileScript(name, text)
+	s, err := ekuma.ParseUnboundScript(name, text)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 			if err != nil {
 				return "harness: " + err.Error(), false
 			}
-			if _, err := ekuma.LinkScript(&vm, s).Evaluate(ctx); err != nil {
+			if _, err := vm.BindScript(s).Evaluate(ctx); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					return "timeout in harness " + name, true
 				}
@@ -714,7 +714,7 @@ func TestTest262(t *testing.T) {
 	h := &harness{
 		fs:      os.DirFS(filepath.Join(dir, "harness")),
 		files:   map[string]string{},
-		scripts: map[string]*ekuma.CompiledScript{},
+		scripts: map[string]*ekuma.UnboundScript{},
 	}
 	reasons := make([]string, len(paths))
 	timedOut := make([]bool, len(paths))

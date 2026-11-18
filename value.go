@@ -235,7 +235,7 @@ func (v Value) Get(name string) (Value, error) {
 		return Undefined, err
 	}
 	r, err := vm.e.HostGet(v.value, vm.e.StringFromGo(name))
-	return fromEngine(r), vm.publicError(err)
+	return fromEngine(r), publicError(err)
 }
 
 // GetWithValueKey is like [Value.Get], but key is converted to a property key the way the
@@ -247,7 +247,7 @@ func (v Value) GetWithValueKey(key Value) (Value, error) {
 		return Undefined, err
 	}
 	r, err := vm.e.HostGet(v.value, vm.acceptValue(key))
-	return fromEngine(r), vm.publicError(err)
+	return fromEngine(r), publicError(err)
 }
 
 // Set sets the property named name on v to [VM.ValueOf](x), as an assignment in strict
@@ -257,7 +257,7 @@ func (v Value) Set(name string, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.value, vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.e.HostSet(v.value, vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
 }
 
 // SetWithValueKey is like [Value.Set], but takes key as [Value.GetWithValueKey] does.
@@ -266,7 +266,7 @@ func (v Value) SetWithValueKey(key Value, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.e.HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Delete deletes the property named name from v, as the delete operator in strict mode does.
@@ -276,7 +276,7 @@ func (v Value) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostDelete(v.value, vm.e.StringFromGo(name)))
+	return publicError(vm.e.HostDelete(v.value, vm.e.StringFromGo(name)))
 }
 
 // DeleteWithValueKey is like [Value.Delete], but takes key as [Value.GetWithValueKey] does.
@@ -285,7 +285,7 @@ func (v Value) DeleteWithValueKey(key Value) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostDelete(v.value, vm.acceptValue(key)))
+	return publicError(vm.e.HostDelete(v.value, vm.acceptValue(key)))
 }
 
 // Index returns the element i of v. The errors are those of [Value.Get].
@@ -295,7 +295,7 @@ func (v Value) Index(i int) (Value, error) {
 		return Undefined, err
 	}
 	r, err := vm.e.HostGet(v.value, engine.Number(float64(i)))
-	return fromEngine(r), vm.publicError(err)
+	return fromEngine(r), publicError(err)
 }
 
 // SetIndex stores [VM.ValueOf](x) as the element i of v. The errors are those of [Value.Get].
@@ -304,7 +304,7 @@ func (v Value) SetIndex(i int, x any) error {
 	if err != nil {
 		return err
 	}
-	return vm.publicError(vm.e.HostSet(v.value, engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.e.HostSet(v.value, engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Call calls the method named name on v with v as this. The arguments are converted with
@@ -382,7 +382,7 @@ func (v Value) InstanceOf(t Value) (bool, error) {
 		return false, err
 	}
 	r, err := vm.e.HostInstanceOf(vm.acceptValue(v), t.value)
-	return r, vm.publicError(err)
+	return r, publicError(err)
 }
 
 // PromiseState is the state of a promise.

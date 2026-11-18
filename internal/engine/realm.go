@@ -422,33 +422,32 @@ func compileScriptCode(file, src string) (*bytecode.Func, error) {
 	return bc, nil
 }
 
-// CompiledScript is a script compiled for no particular VM. Any number of VMs may use it, also at
-// the same time. It lets a host that runs the same source in many VMs parse and compile it only
-// once, and link it into each VM with [VM.LinkScript].
-type CompiledScript struct {
+// UnboundScript is a script parsed for no particular VM. Any number of VMs may bind it with
+// [VM.BindScript], also at the same time.
+type UnboundScript struct {
 	file string
 	code *bytecode.Func
 }
 
-// CompileScript compiles src as the source text of a script. file names the script in error
-// messages. The error is a [*SyntaxError] when src is not a valid script.
-func CompileScript(file, src string) (*CompiledScript, error) {
+// ParseUnboundScript parses src as the source text of a script for no particular VM. file names
+// the script in error messages. The error is a [*SyntaxError] when src is not a valid script.
+func ParseUnboundScript(file, src string) (*UnboundScript, error) {
 	bc, err := compileScriptCode(file, src)
 	if err != nil {
 		return nil, err
 	}
-	return &CompiledScript{
+	return &UnboundScript{
 		file: file,
 		code: bc,
 	}, nil
 }
 
-// LinkScript returns the script of c for the current realm, as [VM.ParseScript] returns it for
-// the source of c.
-func (vm *VM) LinkScript(c *CompiledScript) *Script {
+// BindScript returns the script of u for the current realm, as [VM.ParseScript] returns it for
+// the source of u.
+func (vm *VM) BindScript(u *UnboundScript) *Script {
 	return &Script{
-		code: vm.linkShared(c.code, &scriptOrModule{
-			file:  c.file,
+		code: vm.linkShared(u.code, &scriptOrModule{
+			file:  u.file,
 			realm: vm.curRealm,
 		}),
 	}

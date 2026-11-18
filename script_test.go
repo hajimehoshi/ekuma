@@ -16,7 +16,7 @@ func TestScripts(t *testing.T) {
 	h := &harness{
 		fs:      os.DirFS("testdata/harness"),
 		files:   map[string]string{},
-		scripts: map[string]*ekuma.CompiledScript{},
+		scripts: map[string]*ekuma.UnboundScript{},
 	}
 	scriptFS := os.DirFS(".")
 	err := fs.WalkDir(scriptFS, "testdata/scripts", func(path string, entry fs.DirEntry, err error) error {
@@ -56,7 +56,7 @@ func TestLocalScriptHarness(t *testing.T) {
 	h := &harness{
 		fs:      os.DirFS("testdata/harness"),
 		files:   map[string]string{},
-		scripts: map[string]*ekuma.CompiledScript{},
+		scripts: map[string]*ekuma.UnboundScript{},
 	}
 	for _, tt := range []struct {
 		name         string

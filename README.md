@@ -105,6 +105,14 @@ a script or call a function take a `context.Context` that can cancel execution.
 `VM.NewArrayBuffer` makes an `ArrayBuffer` over a Go byte slice without copying, which only
 `VM.DetachArrayBuffer` detaches, as WebAssembly memory needs when it grows.
 
+### Scripts
+
+`VM.ParseScript` parses a script for a VM, and `Script.Evaluate` evaluates it, as often as
+needed. A host that runs the same script in many VMs can parse it once with
+`ParseUnboundScript` and give each VM its own `Script` with `VM.BindScript`, which does not
+parse it again. An `UnboundScript` is immutable, and VMs on different goroutines may bind it
+at the same time.
+
 ### Modules
 
 Use `VM.ParseModule` or `VM.ParseJSONModule` to parse a module, or `VM.NewSyntheticModule` to
@@ -121,9 +129,9 @@ of `import.meta`.
 ### Realms
 
 `VM.NewRealm` creates a realm: a global object with its own built-in objects, in which
-`Realm.ParseScript`, `Realm.ParseModule`, `Realm.ValueOf` and `Realm.FuncOf` work. The methods
-of `VM` work in `VM.InitialRealm`. `ModuleRequest.Realm` tells the module loader the realm of
-an import, including that of a `ShadowRealm`.
+`Realm.ParseScript`, `Realm.BindScript`, `Realm.ParseModule`, `Realm.ValueOf` and
+`Realm.FuncOf` work. The methods of `VM` work in `VM.InitialRealm`. `ModuleRequest.Realm`
+tells the module loader the realm of an import, including that of a `ShadowRealm`.
 
 The realms of a VM share its jobs and settings, and values pass between them, so a realm
 is not a security boundary: an object of a realm gives access to its built-in objects.
