@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 func (v Value) isShortString() bool {
@@ -451,6 +452,33 @@ func equalShortStrings(a, b Value) bool {
 		return false
 	}
 	return math.Float64bits(a.n) == shortstrings.Pack(b.o.Str())
+}
+
+// WriteToBuilder appends the string value v to b.
+func (v Value) WriteToBuilder(b *xstrings.Builder) {
+	if v.isShortString() {
+		b.WritePacked(math.Float64bits(v.n), int(v.o.shortStringBytes))
+		return
+	}
+	b.WriteString(v.o.Str())
+}
+
+// StringFromBuilder returns b's string in vm's realm.
+func (vm *VM) StringFromBuilder(b *xstrings.Builder) Value {
+	data, n, ok := b.Packed()
+	if !ok {
+		return vm.NewString(b.String())
+	}
+	if n == 0 {
+		return vm.emptyString
+	}
+	if n == 1 && byte(data) < 0x80 {
+		return vm.strings.ascii[byte(data)]
+	}
+	return Value{
+		n: math.Float64frombits(data),
+		o: &vm.shapes.shortStrings[n],
+	}
 }
 
 // AppendStringBytes appends the string value's canonical WTF-8 bytes to dst.

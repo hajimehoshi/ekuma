@@ -268,7 +268,7 @@ func (vm *VM) concatStrings(parts []Value) Value {
 		if previousBytes >= 3 && nbytes >= 3 && wtf8.JoinsPair(parts[last].rawString(), p.rawString()) {
 			acc := parts[0]
 			for _, p := range parts[1:] {
-				acc = vm.concat(acc, acc.rawString(), p, p.rawString())
+				acc = vm.Concat(acc, p)
 			}
 			return acc
 		}

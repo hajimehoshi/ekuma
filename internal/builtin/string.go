@@ -15,8 +15,10 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // thisString implements the receiver conversion of the String.prototype methods.
@@ -56,14 +58,17 @@ func initString(vm *engine.VM) {
 		if len(args) == 1 {
 			return vm.UnitString(uint16(vm.ToUint32(args[0])))
 		}
-		var b wtf8.Builder
+		if len(args) > shortstrings.MaxBytes {
+			return stringFromCharCodes(vm, args)
+		}
+		var b xstrings.Builder
 		for _, a := range args {
 			b.WriteUnit(uint16(vm.ToUint32(a)))
 		}
-		return vm.NewString(b.String())
+		return vm.StringFromBuilder(&b)
 	})
 	method(vm, ctor, "fromCodePoint", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		var b wtf8.Builder
+		var b xstrings.Builder
 		for _, a := range args {
 			n := vm.ToNumber(a)
 			if n != math.Trunc(n) || n < 0 || n > 0x10FFFF {
@@ -71,20 +76,20 @@ func initString(vm *engine.VM) {
 			}
 			b.WriteRune(rune(n))
 		}
-		return vm.NewString(b.String())
+		return vm.StringFromBuilder(&b)
 	})
 	method(vm, ctor, "raw", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cooked := vm.ToObject(arg(args, 0))
 		raw := vm.ToObject(vm.GetV(engine.ObjectValue(cooked), vm.Key(engine.KeyRaw)))
 		n := vm.LengthOfArrayLike(raw)
-		var b wtf8.Builder
+		var b xstrings.Builder
 		for i := range n {
-			b.WriteString(vm.ToString(getAt(vm, raw, i)))
+			vm.ToStringValue(getAt(vm, raw, i)).WriteToBuilder(&b)
 			if i+1 < n && int(i)+1 < len(args) {
-				b.WriteString(vm.ToString(args[i+1]))
+				vm.ToStringValue(args[i+1]).WriteToBuilder(&b)
 			}
 		}
-		return vm.NewString(b.String())
+		return vm.StringFromBuilder(&b)
 	})
 
 	thisValue := func(vm *engine.VM, this engine.Value, what string) engine.Value {
@@ -243,15 +248,24 @@ func initString(vm *engine.VM) {
 			}
 			byteLength += n
 		}
-		var b wtf8.Builder
-		if reserve {
-			b.Grow(byteLength)
+		// Two surrogate pairs can occupy twelve input bytes and fit after joining.
+		if byteLength > 12 {
+			var b wtf8.Builder
+			if reserve {
+				b.Grow(byteLength)
+			}
+			s.WriteStringTo(&b)
+			for _, a := range args {
+				writeString(vm, &b, a)
+			}
+			return vm.NewString(b.String())
 		}
-		s.WriteStringTo(&b)
+		var b xstrings.Builder
+		s.WriteToBuilder(&b)
 		for _, a := range args {
-			writeString(vm, &b, a)
+			writeBuiltString(vm, &b, a)
 		}
-		return vm.NewString(b.String())
+		return vm.StringFromBuilder(&b)
 	})
 	method(vm, proto, "repeat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "repeat")
@@ -590,6 +604,28 @@ func initString(vm *engine.VM) {
 		s := thisStringValue(vm, this, "[Symbol.iterator]")
 		return engine.ObjectValue(vm.NewIteratorObject(vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), &stringIterator{str: s.Str()}))
 	})
+}
+
+// writeBuiltString writes ToString(v) to b.
+func writeBuiltString(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
+	if v.IsString() {
+		v.WriteToBuilder(b)
+		return
+	}
+	if v.IsNumber() {
+		var buf [32]byte
+		b.WriteString(string(numconv.AppendNumber(buf[:0], v.Number())))
+		return
+	}
+	b.WriteString(vm.ToString(v))
+}
+
+func stringFromCharCodes(vm *engine.VM, args []engine.Value) engine.Value {
+	var b wtf8.Builder
+	for _, a := range args {
+		b.WriteUnit(uint16(vm.ToUint32(a)))
+	}
+	return vm.NewString(b.String())
 }
 
 type stringIterator struct {
