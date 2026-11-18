@@ -28,6 +28,15 @@ func thisString(vm *engine.VM, this engine.Value, what string) *engine.Object {
 	return vm.ToStringValue(this).Object()
 }
 
+// thisStringValue converts a String.prototype receiver to a string value.
+func thisStringValue(vm *engine.VM, this engine.Value, what string) engine.Value {
+	if this.IsString() {
+		return this
+	}
+	vm.RequireObjectCoercible(this, "String.prototype."+what)
+	return vm.ToStringValue(this)
+}
+
 func initString(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicStringPrototype)
 	ctor := constructor(vm, "String", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -92,7 +101,7 @@ func initString(vm *engine.VM) {
 		return thisValue(vm, this, "valueOf")
 	})
 	method(vm, proto, "charAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "charAt")
+		s := thisStringValue(vm, this, "charAt")
 		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 || i >= float64(s.StringLength()) {
 			return vm.NewString("")
@@ -100,7 +109,7 @@ func initString(vm *engine.VM) {
 		return vm.UnitString(s.UnitAt(int(i)))
 	})
 	method(vm, proto, "at", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "at")
+		s := thisStringValue(vm, this, "at")
 		n := float64(s.StringLength())
 		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 {
@@ -112,7 +121,7 @@ func initString(vm *engine.VM) {
 		return vm.UnitString(s.UnitAt(int(i)))
 	})
 	method(vm, proto, "charCodeAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "charCodeAt")
+		s := thisStringValue(vm, this, "charCodeAt")
 		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		if i < 0 || i >= float64(s.StringLength()) {
 			return engine.Number(math.NaN())
@@ -120,7 +129,7 @@ func initString(vm *engine.VM) {
 		return engine.Number(float64(s.UnitAt(int(i))))
 	})
 	method(vm, proto, "codePointAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "codePointAt")
+		s := thisStringValue(vm, this, "codePointAt")
 		i := vm.ToIntegerOrInfinity(arg(args, 0))
 		n := s.StringLength()
 		if i < 0 || i >= float64(n) {

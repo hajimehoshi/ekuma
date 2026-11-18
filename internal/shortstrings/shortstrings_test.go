@@ -46,3 +46,35 @@ func TestUnitAt(t *testing.T) {
 		})
 	}
 }
+
+func TestLen(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want int
+	}{
+		{
+			text: "",
+			want: 0,
+		},
+		{
+			text: "abcdefgh",
+			want: 8,
+		},
+		{
+			text: "\x00é日",
+			want: 3,
+		},
+		{
+			text: "😀😀",
+			want: 4,
+		},
+		{
+			text: "\xed\xa0\x80",
+			want: 1,
+		},
+	} {
+		if got := shortstrings.Len(shortstrings.Pack(tc.text), len(tc.text)); got != tc.want {
+			t.Errorf("Len(%q) = %d, want %d", tc.text, got, tc.want)
+		}
+	}
+}

@@ -4,7 +4,10 @@
 // Package shortstrings operates on packed canonical WTF-8 strings.
 package shortstrings
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"math/bits"
+)
 
 // MaxBytes is the maximum byte length of a packed string.
 const MaxBytes = 8
@@ -33,6 +36,22 @@ func String(data uint64, n int) string {
 // IsASCII reports whether every byte of the packed string is below 0x80.
 func IsASCII(data uint64) bool {
 	return data&0x8080808080808080 == 0
+}
+
+// Len returns the UTF-16 length of the packed string whose byte length is n.
+func Len(data uint64, n int) int {
+	if IsASCII(data) {
+		return n
+	}
+	return lenSlow(data, n)
+}
+
+func lenSlow(data uint64, n int) int {
+	// Continuation bytes add no code units; four-byte sequences add a second unit.
+	// Zero padding contributes to neither mask.
+	continuations := (data >> 7) &^ (data >> 6) & 0x0101010101010101
+	leads := data & (data >> 1) & (data >> 2) & (data >> 3) & 0x1010101010101010
+	return n - bits.OnesCount64(continuations) + bits.OnesCount64(leads)
 }
 
 // UnitAt returns the UTF-16 code unit at i in the packed string. i must be in range.

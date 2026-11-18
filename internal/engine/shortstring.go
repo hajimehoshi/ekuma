@@ -59,10 +59,7 @@ func (v Value) StringLength() int {
 
 func (v Value) stringLengthSlow() int {
 	if v.isShortString() {
-		if shortstrings.IsASCII(math.Float64bits(v.n)) {
-			return int(v.o.shortStringBytes)
-		}
-		return wtf8.Len(v.shortText())
+		return shortstrings.Len(math.Float64bits(v.n), int(v.o.shortStringBytes))
 	}
 	return v.o.StringLength()
 }
