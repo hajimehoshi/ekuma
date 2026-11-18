@@ -78,3 +78,84 @@ func TestLen(t *testing.T) {
 		}
 	}
 }
+
+func TestSlice(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		start int
+		end   int
+		want  string
+	}{
+		{
+			name:  "ASCII with NUL",
+			text:  "ab\x00cdefg",
+			start: 1,
+			end:   4,
+			want:  "b\x00c",
+		},
+		{
+			name:  "full payload",
+			text:  "abcdefgh",
+			start: 0,
+			end:   8,
+			want:  "abcdefgh",
+		},
+		{
+			name:  "empty inside pair",
+			text:  "😀",
+			start: 1,
+			end:   1,
+			want:  "",
+		},
+		{
+			name:  "multibyte boundaries",
+			text:  "é日a",
+			start: 1,
+			end:   3,
+			want:  "日a",
+		},
+		{
+			name:  "high surrogate",
+			text:  "a😀日",
+			start: 1,
+			end:   2,
+			want:  "\xed\xa0\xbd",
+		},
+		{
+			name:  "low surrogate and suffix",
+			text:  "a😀日",
+			start: 2,
+			end:   4,
+			want:  "\xed\xb8\x80日",
+		},
+		{
+			name:  "whole pair",
+			text:  "😀😀",
+			start: 0,
+			end:   2,
+			want:  "😀",
+		},
+		{
+			name:  "both boundaries split pairs",
+			text:  "😀😀",
+			start: 1,
+			end:   3,
+			want:  "\xed\xb8\x80\xed\xa0\xbd",
+		},
+		{
+			name:  "existing lone surrogate",
+			text:  "\xed\xa0\x80x",
+			start: 0,
+			end:   1,
+			want:  "\xed\xa0\x80",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, n := shortstrings.Slice(shortstrings.Pack(tc.text), tc.start, tc.end)
+			if data != shortstrings.Pack(tc.want) || n != len(tc.want) {
+				t.Errorf("Slice() = (%#x, %d), want (%#x, %d)", data, n, shortstrings.Pack(tc.want), len(tc.want))
+			}
+		})
+	}
+}

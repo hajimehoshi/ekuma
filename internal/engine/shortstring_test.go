@@ -44,3 +44,22 @@ func BenchmarkShortString(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkShortStringSubstring(b *testing.B) {
+	vm := engine.NewVM(nil)
+	for _, s := range []string{"abcdefgh", "é日a", "😀😀"} {
+		b.Run(s, func(b *testing.B) {
+			v := vm.NewString(s)
+			b.Run("Value", func(b *testing.B) {
+				for b.Loop() {
+					vm.Substring(v, 1, 3)
+				}
+			})
+			b.Run("String", func(b *testing.B) {
+				for b.Loop() {
+					v.Substring(1, 3)
+				}
+			})
+		})
+	}
+}

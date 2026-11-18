@@ -193,7 +193,7 @@ func initString(vm *engine.VM) {
 		return engine.Bool(start >= 0 && s.Substring(start, end) == sub)
 	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "slice")
+		s := thisStringValue(vm, this, "slice")
 		n := s.StringLength()
 		start := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		end := n
@@ -203,10 +203,10 @@ func initString(vm *engine.VM) {
 		if start >= end {
 			return vm.NewString("")
 		}
-		return vm.NewString(s.Substring(start, end))
+		return vm.Substring(s, start, end)
 	})
 	method(vm, proto, "substring", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "substring")
+		s := thisStringValue(vm, this, "substring")
 		n := s.StringLength()
 		start := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 0)), 0), n)
 		end := n
@@ -216,10 +216,10 @@ func initString(vm *engine.VM) {
 		if start > end {
 			start, end = end, start
 		}
-		return vm.NewString(s.Substring(start, end))
+		return vm.Substring(s, start, end)
 	})
 	method(vm, proto, "substr", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "substr")
+		s := thisStringValue(vm, this, "substr")
 		n := s.StringLength()
 		start := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
 		length := float64(n)
@@ -230,7 +230,7 @@ func initString(vm *engine.VM) {
 		if start >= end {
 			return vm.NewString("")
 		}
-		return vm.NewString(s.Substring(start, end))
+		return vm.Substring(s, start, end)
 	})
 	method(vm, proto, "concat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.RequireObjectCoercible(this, "String.prototype.concat")

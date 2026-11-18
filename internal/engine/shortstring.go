@@ -105,10 +105,8 @@ func (v Value) substringSlow(start, end int) string {
 	if !v.isShortString() {
 		return v.o.Substring(start, end)
 	}
-	s := v.shortText()
-	a := wtf8.Seek(s, wtf8.Pos{}, start)
-	b := wtf8.Seek(s, a, end)
-	return wtf8.Slice(s, a, b)
+	data, n := shortstrings.Slice(math.Float64bits(v.n), start, end)
+	return shortstrings.String(data, n)
 }
 
 func (v Value) writeShortString(b *strings.Builder) {
@@ -119,19 +117,19 @@ func (v Value) writeShortString(b *strings.Builder) {
 // Substring returns the code units of s from start up to end, which must be in range and in order.
 func (vm *VM) Substring(s Value, start, end int) Value {
 	if !s.isShortString() {
-		return vm.NewString(s.Substring(start, end))
+		return vm.NewString(s.o.Substring(start, end))
 	}
 	if start == end {
 		return vm.emptyString
 	}
-	text := s.shortText()
-	a := wtf8.Seek(text, wtf8.Pos{}, start)
-	b := wtf8.Seek(text, a, end)
-	part := wtf8.Slice(text, a, b)
-	if len(part) == 1 && part[0] < 0x80 {
-		return vm.strings.ascii[part[0]]
+	data, n := shortstrings.Slice(math.Float64bits(s.n), start, end)
+	if n == 1 && byte(data) < 0x80 {
+		return vm.strings.ascii[byte(data)]
 	}
-	return vm.shortString(part)
+	return Value{
+		n: math.Float64frombits(data),
+		o: &vm.shapes.shortStrings[n],
+	}
 }
 
 // StringByteLength returns the byte length of the string's canonical WTF-8 encoding.

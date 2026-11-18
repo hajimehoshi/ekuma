@@ -1177,3 +1177,29 @@ func BenchmarkStringCharacterAccess(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringSubstring measures one substring operation.
+func BenchmarkStringSubstring(b *testing.B) {
+	for _, s := range []string{"abcdefgh", "é日a", "😀😀", "abcdefghijklmnopqrstuvwxyz", "日本語の長い文字列"} {
+		for _, form := range []string{"Literal", "Created"} {
+			for _, expr := range []string{"s.slice(1, 3)", "s.substring(1, 3)", "s.substr(1, 2)"} {
+				b.Run(form+"/"+s+"/"+expr, func(b *testing.B) {
+					var vm ekuma.VM
+					expression := fmt.Sprintf("%q", s)
+					if form == "Created" {
+						expression = fmt.Sprintf("%q.slice(0, -1)", s+"!")
+					}
+					src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = %s; return result; }`, expression, expr)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}
