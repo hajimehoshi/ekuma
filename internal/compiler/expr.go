@@ -236,6 +236,9 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 		if e.Name != nil {
 			name = e.Name.Name
 			if e != f.c.dynamic {
+				if f.c.isExpression == nil {
+					f.c.isExpression = map[*ast.Function]bool{}
+				}
 				f.c.isExpression[e] = true
 			}
 		}

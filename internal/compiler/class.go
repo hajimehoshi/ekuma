@@ -126,6 +126,9 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 		}
 		v := "%fieldkey" + strconv.Itoa(i)
 		f.declare(v, bindPseudo)
+		if f.c.fieldKeys == nil {
+			f.c.fieldKeys = map[*ast.Function]string{}
+		}
 		f.c.fieldKeys[m.Value] = v
 	}
 
@@ -309,9 +312,9 @@ func (f *fn) fieldInit(m *ast.ClassMember, obj, k int32, private bool) int32 {
 	}
 	v := f.newReg()
 	if fname, ok := keyName(m.Key, m.Computed); ok {
-		f.c.fieldNames[m.Value] = fname
+		f.c.nameField(m.Value, fname)
 	} else if private {
-		f.c.fieldNames[m.Value] = "#" + m.Key.(*ast.PrivateName).Name
+		f.c.nameField(m.Value, "#"+m.Key.(*ast.PrivateName).Name)
 	} else if name, ok := f.c.fieldKeys[m.Value]; ok {
 		b, _ := f.lookupLocal(name)
 		f.emit(bytecode.OpMove, b.reg, k, 0)

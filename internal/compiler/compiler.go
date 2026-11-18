@@ -629,14 +629,20 @@ func compile(prog *ast.Program, file string, dynamic *ast.Function, poll func())
 // newCompiler returns a compiler of prog. The compiler must be released when it is done.
 func newCompiler(prog *ast.Program, file string) *compiler {
 	return &compiler{
-		prog:         prog,
-		file:         file,
-		lines:        srcpos.NewTable(prog.Source),
-		isExpression: map[*ast.Function]bool{},
-		fieldNames:   map[*ast.Function]string{},
-		fieldKeys:    map[*ast.Function]string{},
-		scratch:      getScratch(),
+		prog:    prog,
+		file:    file,
+		lines:   srcpos.NewTable(prog.Source),
+		scratch: getScratch(),
 	}
+}
+
+// nameField records name as the name that the anonymous function of the class field
+// initializer init gets.
+func (c *compiler) nameField(init *ast.Function, name string) {
+	if c.fieldNames == nil {
+		c.fieldNames = map[*ast.Function]string{}
+	}
+	c.fieldNames[init] = name
 }
 
 // release gives back the storage of c for reuse.
