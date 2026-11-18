@@ -302,6 +302,9 @@ type assignIndex struct {
 
 	// ticks is the last number given.
 	ticks int32
+
+	// mapsPeak is the largest number of entries that spans or exits held when x was reset.
+	mapsPeak int
 }
 
 // funcSpan holds the numbers of the entry into a function and of the exit from it. The zero
@@ -377,11 +380,25 @@ func (x *assignIndex) newList() []int32 {
 	return x.lists[n : n : n+2]
 }
 
-// reset empties x and drops its references to the syntax tree, keeping its storage.
+// reset empties x and drops its references to the syntax tree, keeping its storage within the
+// limits of a scratch set.
 func (x *assignIndex) reset() {
-	clear(x.spans)
-	clear(x.exits)
+	if n := max(len(x.spans), len(x.exits)); keepMaps(n, x.mapsPeak) {
+		clear(x.spans)
+		clear(x.exits)
+		x.mapsPeak = max(x.mapsPeak, n)
+	} else {
+		x.spans = nil
+		x.exits = nil
+		x.mapsPeak = 0
+	}
+	if cap(x.lists) > maxFreeExits {
+		x.lists = nil
+	}
 	x.lists = x.lists[:0]
+	if cap(x.names) > maxFreeNames {
+		x.names = nil
+	}
 	clear(x.names[:cap(x.names)])
 	x.names = x.names[:0]
 	x.ticks = 0

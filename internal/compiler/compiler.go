@@ -7,6 +7,7 @@ package compiler
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -200,6 +201,10 @@ type fn struct {
 	// span is the span of node in the assignIndex of the compilation.
 	span funcSpan
 
+	// mapsPeak is the largest number of entries that one of the maps of this state held when a
+	// function compiled with it finished.
+	mapsPeak int
+
 	isScript bool
 
 	// module is set for the function of a module, whose top-level bindings are upvalues.
@@ -351,10 +356,87 @@ type scratch struct {
 	assigns assignIndex
 }
 
-var scratchPool = sync.Pool{
-	New: func() any {
-		return &scratch{}
-	},
+// Limits of what is kept for later compilations, so that compiling a large program does not keep
+// its memory alive: the number of scratch sets in freeScratch, and what each set holds. A buffer
+// limit counts the elements of all the buffers of its kind together.
+const (
+	maxFreeScratch   = 4
+	maxFreeFns       = 16
+	maxFreeMapLen    = 1024
+	maxSparseMapLen  = 256
+	maxFreeCode      = 1 << 15
+	maxFreePositions = 1 << 15
+	maxFreeKeys      = 1 << 14
+	maxFreeConsts    = 1 << 12
+	maxFreeExits     = 1 << 12
+	maxFreeNames     = 1 << 8
+)
+
+// freeScratch holds scratch sets for reuse, which garbage collection does not take away. An
+// empty slot is nil.
+var freeScratch [maxFreeScratch]atomic.Pointer[scratch]
+
+// scratchPool holds the scratch sets for reuse that do not fit in freeScratch.
+var scratchPool sync.Pool
+
+// getScratch returns a scratch set that no other compilation uses.
+func getScratch() *scratch {
+	for i := range freeScratch {
+		if s := freeScratch[i].Load(); s != nil && freeScratch[i].CompareAndSwap(s, nil) {
+			return s
+		}
+	}
+	if s, ok := scratchPool.Get().(*scratch); ok {
+		return s
+	}
+	return &scratch{}
+}
+
+// putScratch gives back the scratch set s for reuse.
+func putScratch(s *scratch) {
+	s.trim()
+	for i := range freeScratch {
+		if freeScratch[i].Load() == nil && freeScratch[i].CompareAndSwap(nil, s) {
+			return
+		}
+	}
+	scratchPool.Put(s)
+}
+
+// trim empties s for reuse and drops what it holds beyond the limits.
+func (s *scratch) trim() {
+	s.assigns.reset()
+	s.codeBufs = trimBufs(s.codeBufs, maxFreeCode)
+	s.posBufs = trimBufs(s.posBufs, maxFreePositions)
+	s.keyBufs = trimBufs(s.keyBufs, maxFreeKeys)
+	s.constBufs = trimBufs(s.constBufs, maxFreeConsts)
+	if len(s.fns) > maxFreeFns {
+		clear(s.fns[maxFreeFns:])
+		s.fns = s.fns[:maxFreeFns]
+	}
+}
+
+// trimBufs drops buffers from bufs so that their capacities add up to at most limit.
+func trimBufs[T any](bufs [][]T, limit int) [][]T {
+	kept := bufs[:0]
+	var total int
+	for _, b := range bufs {
+		if total+cap(b) > limit {
+			continue
+		}
+		total += cap(b)
+		kept = append(kept, b)
+	}
+	clear(bufs[len(kept):])
+	return kept
+}
+
+// keepMaps reports whether maps are kept for reuse when the fullest of them holds n entries and
+// once held peak.
+func keepMaps(n, peak int) bool {
+	// A cleared map keeps its capacity. Clearing it takes time in proportion to that capacity,
+	// unless it is empty.
+	return n == 0 || (n <= maxFreeMapLen && peak <= max(4*n, maxSparseMapLen))
 }
 
 // takeBuf removes a scratch buffer from bufs and returns it empty, or returns nil when bufs has none.
@@ -423,14 +505,13 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 		isExpression: map[*ast.Function]bool{},
 		fieldNames:   map[*ast.Function]string{},
 		fieldKeys:    map[*ast.Function]string{},
-		scratch:      scratchPool.Get().(*scratch),
+		scratch:      getScratch(),
 	}
 }
 
 // release gives back the storage of c for reuse.
 func (c *compiler) release() {
-	c.scratch.assigns.reset()
-	scratchPool.Put(c.scratch)
+	putScratch(c.scratch)
 	c.scratch = nil
 }
 
@@ -456,6 +537,7 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 			mutated:  f.mutated,
 			scope:    f.scope,
 			varScope: f.scope,
+			mapsPeak: f.mapsPeak,
 		}
 	} else {
 		f = &fn{
@@ -498,6 +580,10 @@ func (f *fn) finish() *bytecode.Func {
 	for root.parent != nil {
 		root = root.parent
 	}
+	n := max(len(root.vars), len(f.consts), len(f.keys), len(f.mutated))
+	if !keepMaps(n, f.mapsPeak) {
+		return b
+	}
 	*root = scope{
 		vars: root.vars,
 	}
@@ -506,10 +592,11 @@ func (f *fn) finish() *bytecode.Func {
 	clear(f.keys)
 	clear(f.mutated)
 	*f = fn{
-		consts:  f.consts,
-		keys:    f.keys,
-		mutated: f.mutated,
-		scope:   root,
+		consts:   f.consts,
+		keys:     f.keys,
+		mutated:  f.mutated,
+		scope:    root,
+		mapsPeak: max(f.mapsPeak, n),
 	}
 	sc.fns = append(sc.fns, f)
 	return b
