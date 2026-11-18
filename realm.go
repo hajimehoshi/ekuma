@@ -82,6 +82,19 @@ func (r *Realm) FuncOf(name string, f Func) Value {
 	return fromEngine(v)
 }
 
+// NewArrayBuffer is like [VM.NewArrayBuffer], but the ArrayBuffer belongs to r.
+func (r *Realm) NewArrayBuffer(b []byte) Value {
+	if len(b) > engine.MaxBufferLength {
+		panic("ekuma: NewArrayBuffer: the slice is too long for an ArrayBuffer")
+	}
+	var v engine.Value
+	r.in(func() {
+		proto := r.vm.e.Intrinsic(engine.IntrinsicArrayBufferPrototype)
+		v = engine.ObjectValue(r.vm.e.NewHostArrayBufferObject(proto, b))
+	})
+	return fromEngine(v)
+}
+
 // ParseScript parses src as the source text of a script of r. name identifies the script in error
 // messages and stack traces, and in the [ModuleRequest.ReferrerName] of its import() calls.
 // The error is a [*SyntaxError] when src is not a valid script.

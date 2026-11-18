@@ -8,22 +8,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
-// DetachArrayBuffer detaches the ArrayBuffer v. The error is a TypeError for a value
-// that is not an ArrayBuffer or for an immutable ArrayBuffer.
-func DetachArrayBuffer(vm *VM, v Value) error {
-	vm.initIfNeeded()
-	e := v.value
-	b := engine.ArrayBufferData(e)
-	if b == nil || b.IsShared() {
-		return &ScriptError{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "not an ArrayBuffer"))}
-	}
-	if b.IsImmutable() {
-		return &ScriptError{Value: fromEngine(vm.e.NewError(engine.ErrorKindType, "cannot detach an immutable ArrayBuffer"))}
-	}
-	vm.e.DetachArrayBuffer(e.Object())
-	return nil
-}
-
 // NewHTMLDDA returns an object of r with the [[IsHTMLDDA]] internal slot, which returns null when called.
 func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value

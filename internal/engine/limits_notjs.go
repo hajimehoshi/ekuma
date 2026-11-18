@@ -13,6 +13,6 @@ const maxDepth = 400
 // maxNatives is the number of nested calls of native functions at which a RangeError is thrown.
 const maxNatives = 10000
 
-// maxBufferLength is the largest length of an ArrayBuffer in bytes. It keeps every valid
+// MaxBufferLength is the largest length of an ArrayBuffer in bytes. It keeps every valid
 // integer index of a typed array an array index, and every length an int.
-const maxBufferLength = min(1<<32-1, math.MaxInt)
+const MaxBufferLength = min(1<<32-1, math.MaxInt)

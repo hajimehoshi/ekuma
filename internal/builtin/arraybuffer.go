@@ -206,6 +206,9 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 			if b.IsImmutable() {
 				vm.ThrowTypeError("cannot transfer an immutable ArrayBuffer")
 			}
+			if b.HasDetachKey() {
+				vm.ThrowTypeError("cannot transfer an ArrayBuffer that only the host can detach")
+			}
 			m := int64(-1)
 			if preserve && b.IsResizable() {
 				m = int64(b.MaxByteLength())

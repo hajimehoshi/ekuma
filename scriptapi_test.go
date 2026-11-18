@@ -272,21 +272,6 @@ func TestAnnexBGlobalSkip(t *testing.T) {
 	}
 }
 
-// TestDetachImmutableArrayBuffer tests that $262.detachArrayBuffer refuses an immutable buffer.
-func TestDetachImmutableArrayBuffer(t *testing.T) {
-	var vm ekuma.VM
-	b, err := runScript(t.Context(), &vm, "test", "new ArrayBuffer(1).transferToImmutable()")
-	if err != nil {
-		t.Fatalf("runScript: %v", err)
-	}
-	if err := ekuma.DetachArrayBuffer(&vm, b); err == nil {
-		t.Errorf("DetachArrayBuffer: got no error")
-	}
-	if got, err := b.Get("detached"); err != nil || got.Bool() {
-		t.Errorf("detached: got %v, %v, want false", got, err)
-	}
-}
-
 // TestAtomicsNotifyWaitAsync checks that Atomics.notify wakes the waiters of its index in
 // order, as many as its count, and returns how many it woke.
 func TestAtomicsNotifyWaitAsync(t *testing.T) {

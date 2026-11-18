@@ -35,6 +35,10 @@ type ArrayBuffer struct {
 
 	immutable bool
 
+	// hasDetachKey reports whether [[ArrayBufferDetachKey]] is set, which only the host's buffers
+	// have, so that JavaScript cannot detach them.
+	hasDetachKey bool
+
 	// slowLength is the length of a buffer whose state is not bufferPlain: that of its shared
 	// data block, or -1 when it is detached.
 	slowLength *atomic.Int64
@@ -116,6 +120,11 @@ func (b *ArrayBuffer) IsShared() bool {
 // IsImmutable implements IsImmutableBuffer.
 func (b *ArrayBuffer) IsImmutable() bool {
 	return b.immutable
+}
+
+// HasDetachKey reports whether [[ArrayBufferDetachKey]] of b is not empty.
+func (b *ArrayBuffer) HasDetachKey() bool {
+	return b.hasDetachKey
 }
 
 // SameDataBlock reports whether b and c have the same data block.
@@ -231,7 +240,7 @@ func copyWithin(b *ArrayBuffer, dstOffset, srcOffset, n int) {
 
 // checkBufferLength throws a RangeError when a data block of n bytes cannot be created.
 func (vm *VM) checkBufferLength(n int64) {
-	if n > maxBufferLength {
+	if n > MaxBufferLength {
 		vm.ThrowRangeError("array buffer allocation failed")
 	}
 }
@@ -298,13 +307,19 @@ func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object 
 	return o
 }
 
-// DetachArrayBuffer implements DetachArrayBuffer without a key. The buffer object o must not
-// be shared. It throws a TypeError when o is immutable.
-func (vm *VM) DetachArrayBuffer(o *Object) {
-	b := o.ext.(*ArrayBuffer)
-	if b.immutable {
-		vm.ThrowTypeError("cannot detach an immutable ArrayBuffer")
-	}
+// NewHostArrayBufferObject returns an ArrayBuffer of fixed length with the prototype proto whose
+// data block is b, which it keeps. Its [[ArrayBufferDetachKey]] is set, so that only the host
+// detaches it. len(b) must not exceed [MaxBufferLength].
+func (vm *VM) NewHostArrayBufferObject(proto *Object, b []byte) *Object {
+	// The capacity is cut, so that no operation reaches the bytes of the host beyond len(b).
+	o := vm.newArrayBufferFromBytes(proto, b[:len(b):len(b)], -1)
+	o.ext.(*ArrayBuffer).hasDetachKey = true
+	return o
+}
+
+// Detach implements the steps of DetachArrayBuffer that follow its checks: b has no data block
+// afterwards. b must be neither shared nor immutable. Detaching a detached b does nothing.
+func (b *ArrayBuffer) Detach() {
 	b.data = nil
 	b.state = bufferDetached
 	b.slowLength = detachedLength
@@ -313,8 +328,8 @@ func (vm *VM) DetachArrayBuffer(o *Object) {
 // TransferArrayBuffer implements the end of ArrayBufferCopyAndDetach: it returns a new ArrayBuffer
 // with the prototype proto that has the first newByteLength bytes of the buffer object o,
 // zero-filled beyond its length, and detaches o. maxByteLength is -1 for a buffer whose length is fixed.
-// The new buffer is immutable when immutable is set. o must be mutable. It throws a RangeError when
-// the lengths are too large.
+// The new buffer is immutable when immutable is set. o must be mutable and have no detach key.
+// It throws a RangeError when the lengths are too large.
 func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
 	vm.checkBufferLength(newByteLength)
 	vm.checkBufferLength(maxByteLength)
@@ -331,7 +346,7 @@ func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxBy
 		data = make([]byte, n)
 		copy(data, b.data)
 	}
-	vm.DetachArrayBuffer(o)
+	b.Detach()
 	r := vm.newArrayBufferFromBytes(proto, data, int(maxByteLength))
 	r.ext.(*ArrayBuffer).immutable = immutable
 	return r

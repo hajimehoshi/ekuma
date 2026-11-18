@@ -97,6 +97,8 @@ Unlike `syscall/js`, a JavaScript exception is returned as an error, and the met
 a script or call a function take a `context.Context` that can cancel execution.
 `Value.GetWithValueKey`, `Value.SetWithValueKey`, `Value.DeleteWithValueKey` and
 `Value.CallWithValueKey` take the property key as a value, such as a symbol.
+`VM.NewArrayBuffer` makes an `ArrayBuffer` over a Go byte slice without copying, which only
+`VM.DetachArrayBuffer` detaches, as WebAssembly memory needs when it grows.
 
 ### Modules
 
@@ -249,8 +251,6 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   - Property descriptors, and listing the keys of an object
   - Creating or awaiting a promise from Go other than through the `Promise` constructor and
     `then`
-  - Sharing a Go byte slice with an `ArrayBuffer`, which `CopyBytesToGo` and `CopyBytesToJS`
-    copy
   - Replacing the clock of `Date.now`, which `testing/synctest` fakes in Go tests
   - Limits on stack depth or memory, and statistics of the memory that a VM uses
 

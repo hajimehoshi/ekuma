@@ -493,7 +493,19 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 		if len(args) > 0 {
 			v = args[0]
 		}
-		return ekuma.Undefined, ekuma.DetachArrayBuffer(vm, v)
+		if detachArrayBuffer(vm, v) {
+			return ekuma.Undefined, nil
+		}
+		// DetachArrayBuffer throws a TypeError for a buffer that cannot be detached.
+		c, err := r.Global().Get("TypeError")
+		if err != nil {
+			return nil, err
+		}
+		e, err := c.New(ctx, "cannot detach "+v.String())
+		if err != nil {
+			return nil, err
+		}
+		return nil, &ekuma.ScriptError{Value: e}
 	})
 	if err := o.Set("detachArrayBuffer", detach); err != nil {
 		return ekuma.Undefined, err
@@ -538,6 +550,21 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 		return ekuma.Undefined, err
 	}
 	return o, nil
+}
+
+// detachArrayBuffer detaches the ArrayBuffer v of vm, and reports false when [ekuma.VM.DetachArrayBuffer]
+// refuses v.
+func detachArrayBuffer(vm *ekuma.VM, v ekuma.Value) (ok bool) {
+	defer func() {
+		if x := recover(); x != nil {
+			if _, isValueError := x.(*ekuma.ValueError); !isValueError {
+				panic(x)
+			}
+			ok = false
+		}
+	}()
+	vm.DetachArrayBuffer(v)
+	return true
 }
 
 func firstLine(s string) string {

@@ -11,6 +11,6 @@ const maxDepth = 300
 // It is lower than elsewhere, as the stack of WebAssembly in browsers is smaller.
 const maxNatives = 1000
 
-// maxBufferLength is the largest length of an ArrayBuffer in bytes.
+// MaxBufferLength is the largest length of an ArrayBuffer in bytes.
 // The memory of WebAssembly is limited to 4 GiB.
-const maxBufferLength = 1 << 30
+const MaxBufferLength = 1 << 30

@@ -572,6 +572,162 @@ func TestCopyBytes(t *testing.T) {
 	}
 }
 
+// TestNewArrayBuffer tests that Go and JavaScript see the writes of each other at once through
+// views of an ArrayBuffer over a Go slice at different byte offsets.
+func TestNewArrayBuffer(t *testing.T) {
+	var vm ekuma.VM
+	b := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	if err := vm.Global().Set("buf", vm.NewArrayBuffer(b)); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	// poke writes b while JavaScript runs, as WebAssembly code does.
+	poke := vm.FuncOf("poke", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		b[args[0].Int()] = byte(args[1].Int())
+		return nil, nil
+	})
+	if err := vm.Global().Set("poke", poke); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	b[0] = 99
+	got := run(t, &vm, `
+		var u8 = new Uint8Array(buf);
+		var tail = new Uint8Array(buf, 4, 2);
+		var dv = new DataView(buf, 2);
+		u8[1] = 88;
+		tail[1] = 77;
+		dv.setUint16(4, 0x0102, true);
+		poke(3, 66);
+		[buf.byteLength, u8[0], dv.getUint8(1)].join()`)
+	if want := "8,99,66"; got != want {
+		t.Errorf("JavaScript reads: got %s, want %s", got, want)
+	}
+	if want := []byte{99, 88, 3, 66, 5, 77, 2, 1}; !slices.Equal(b, want) {
+		t.Errorf("Go reads: got %v, want %v", b, want)
+	}
+
+	// A view created before a write from Go sees it.
+	b[4] = 55
+	if got, want := run(t, &vm, "tail[0]"), "55"; got != want {
+		t.Errorf("tail[0]: got %s, want %s", got, want)
+	}
+}
+
+// TestRealmNewArrayBuffer tests that an ArrayBuffer of a realm is an instance of the ArrayBuffer
+// of that realm, and that an empty one is not detached.
+func TestRealmNewArrayBuffer(t *testing.T) {
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	buf := r.NewArrayBuffer(nil)
+	ctor, err := r.Global().Get("ArrayBuffer")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if ok, err := buf.InstanceOf(ctor); err != nil || !ok {
+		t.Errorf("InstanceOf: got %v, %v, want true", ok, err)
+	}
+	if got, err := buf.Get("detached"); err != nil || got.Bool() {
+		t.Errorf("detached: got %v, %v, want false", got, err)
+	}
+}
+
+// TestDetachArrayBuffer tests that detaching an ArrayBuffer over a Go slice from a Go function,
+// as WebAssembly memory grows, leaves every view without bytes, and that the replacement buffer
+// has the new storage.
+func TestDetachArrayBuffer(t *testing.T) {
+	var vm ekuma.VM
+	mem := []byte{1, 2, 3, 4}
+	buf := vm.NewArrayBuffer(mem)
+	if err := vm.Global().Set("buf", buf); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	grow := vm.FuncOf("grow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		vm.DetachArrayBuffer(buf)
+		// Detaching a detached buffer does nothing.
+		vm.DetachArrayBuffer(buf)
+		mem = append(mem, 0, 0, 0, 0)
+		buf = vm.NewArrayBuffer(mem)
+		return buf, nil
+	})
+	if err := vm.Global().Set("grow", grow); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	got := run(t, &vm, `
+		var old = buf;
+		var u8 = new Uint8Array(old);
+		var tracking = new Uint8Array(old, 1);
+		var dv = new DataView(old);
+		u8[0] = 10;
+		var nu = grow();
+		u8[1] = 20;
+		var dvError;
+		try {
+			dv.getUint8(0);
+		} catch (e) {
+			dvError = e.constructor.name;
+		}
+		new Uint8Array(nu)[4] = 30;
+		[old.detached, old.byteLength, u8.length, u8[0], tracking.length, dvError, nu.detached, nu.byteLength].join()`)
+	if want := "true,0,0,,0,TypeError,false,8"; got != want {
+		t.Errorf("JavaScript reads: got %s, want %s", got, want)
+	}
+	if want := []byte{10, 2, 3, 4, 30, 0, 0, 0}; !slices.Equal(mem, want) {
+		t.Errorf("Go reads: got %v, want %v", mem, want)
+	}
+
+	// An immutable buffer cannot be detached.
+	im, err := runScript(t.Context(), &vm, "test", "new ArrayBuffer(1).transferToImmutable()")
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	func() {
+		defer func() {
+			if x := recover(); x == nil {
+				t.Errorf("DetachArrayBuffer of an immutable buffer: got no panic")
+			} else if _, ok := x.(*ekuma.ValueError); !ok {
+				t.Errorf("DetachArrayBuffer of an immutable buffer: got panic %v, want a *ValueError", x)
+			}
+		}()
+		vm.DetachArrayBuffer(im)
+	}()
+	if got, err := im.Get("detached"); err != nil || got.Bool() {
+		t.Errorf("detached: got %v, %v, want false", got, err)
+	}
+}
+
+// TestNewArrayBufferTransfer tests that JavaScript can neither transfer nor resize an ArrayBuffer
+// over a Go slice, and that its views keep the slice.
+func TestNewArrayBufferTransfer(t *testing.T) {
+	var vm ekuma.VM
+	b := []byte{1, 2}
+	if err := vm.Global().Set("buf", vm.NewArrayBuffer(b)); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	got := run(t, &vm, `
+		var u8 = new Uint8Array(buf);
+		var errors = [];
+		for (const f of [
+			() => buf.transfer(),
+			() => buf.transferToFixedLength(),
+			() => buf.transferToImmutable(),
+			() => buf.resize(1),
+		]) {
+			try {
+				f();
+				errors.push("none");
+			} catch (e) {
+				errors.push(e.constructor.name);
+			}
+		}
+		u8[1] = 3;
+		[errors, buf.detached, buf.resizable].join()`)
+	if want := "TypeError,TypeError,TypeError,TypeError,false,false"; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+	if want := []byte{1, 3}; !slices.Equal(b, want) {
+		t.Errorf("Go reads: got %v, want %v", b, want)
+	}
+}
+
 func TestFuncErrors(t *testing.T) {
 	ctx := t.Context()
 	var vm ekuma.VM

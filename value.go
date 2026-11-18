@@ -492,3 +492,33 @@ func CopyBytesToJS(dst Value, src []byte) int {
 	defer t.Unlock()
 	return copy(b, src)
 }
+
+// NewArrayBuffer returns an ArrayBuffer of the initial realm whose bytes are b, without copying.
+// Its length is len(b) and does not change.
+//
+// The VM reads and writes b only during calls into this package, and never after the ArrayBuffer
+// is detached with [VM.DetachArrayBuffer]. Go may read and write b whenever it may call the VM,
+// including in a [Func], and either side sees the writes of the other at once.
+//
+// JavaScript cannot detach the ArrayBuffer: its transfer, transferToFixedLength and
+// transferToImmutable methods throw a TypeError. NewArrayBuffer panics when b is longer than an
+// ArrayBuffer may be.
+func (vm *VM) NewArrayBuffer(b []byte) Value {
+	vm.initIfNeeded()
+	return vm.initialRealm.NewArrayBuffer(b)
+}
+
+// DetachArrayBuffer detaches the ArrayBuffer v, so that v and its views have no bytes.
+// Detaching a detached ArrayBuffer does nothing. DetachArrayBuffer panics with a [*ValueError]
+// when v is not a mutable ArrayBuffer.
+func (vm *VM) DetachArrayBuffer(v Value) {
+	vm.acceptValue(v)
+	if b := engine.ArrayBufferData(v.value); b != nil && !b.IsShared() && !b.IsImmutable() {
+		b.Detach()
+		return
+	}
+	panic(&ValueError{
+		Method: "VM.DetachArrayBuffer",
+		Type:   v.Type(),
+	})
+}
