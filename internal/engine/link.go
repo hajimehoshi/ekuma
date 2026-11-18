@@ -108,7 +108,7 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		case bytecode.ConstNumber:
 			p.consts[i] = Number(c.Num)
 		case bytecode.ConstString:
-			p.consts[i] = Value{o: vm.Intern(c.Str)}
+			p.consts[i] = ObjectValue(vm.Intern(c.Str))
 		case bytecode.ConstBigInt:
 			n, _ := numconv.ParseBigInt(c.Str, 10, nil)
 			p.consts[i] = vm.NewBigInt(n)

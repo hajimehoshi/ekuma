@@ -75,7 +75,6 @@ const (
 	classBoolean
 	classNumber
 	classString
-	classShortString
 	classSymbol
 	classBigInt
 	classArguments
@@ -118,9 +117,6 @@ type Object struct {
 	class class
 	flags uint8
 
-	// shortStringBytes is the byte length of a packed string.
-	shortStringBytes uint8
-
 	// length is the length of an array, which is at least len(elems). For a string it is 0,
 	// or the array index that the string stands for plus one. See [Object.arrayIndex].
 	length uint32
@@ -135,6 +131,7 @@ type Object struct {
 	fn *function
 
 	// str is the content of a string or the description of a symbol.
+	// Packed-string sentinels use zero bytes to carry only the byte length.
 	str string
 
 	// meta is the side data that few objects need: what indexing a non-ASCII string needs,
@@ -938,7 +935,7 @@ func (vm *VM) indexString(i uint32) Value {
 		vm.indexStrings = t
 	}
 	if o := t[i]; o != nil {
-		return Value{o: o}
+		return ObjectValue(o)
 	}
 	v := vm.newIndexString(i)
 	o := v.stringObject()
@@ -990,7 +987,7 @@ func (vm *VM) NewString(s string) Value {
 // the same object as a property key with the same contents.
 func (vm *VM) SharedString(s string) Value {
 	if o := vm.strings.interned.get(s); o != nil {
-		return Value{o: o}
+		return ObjectValue(o)
 	}
 	return vm.NewString(s)
 }

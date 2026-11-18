@@ -10,6 +10,7 @@ import (
 	"math/big"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 )
 
 type kind uint8
@@ -50,8 +51,9 @@ type Value struct {
 	n float64
 
 	// o is nil for undefined, numberObject for the number n, bigInt64Object for the BigInt
-	// whose two's complement bits n holds, a short-string sentinel for packed bytes,
-	// and the object for anything else.
+	// whose two's complement bits n holds, and the object for anything else.
+	// Every string of at most shortstrings.MaxBytes bytes holds its bytes in n.
+	// Its object carries the byte length and realm, and may also be an interned key.
 	o *Object
 }
 
@@ -107,7 +109,13 @@ func Bool(b bool) Value {
 
 // ObjectValue returns o as a value.
 func ObjectValue(o *Object) Value {
-	return Value{o: o}
+	v := Value{
+		o: o,
+	}
+	if v.isShortString() {
+		v.n = math.Float64frombits(shortstrings.Pack(o.Str()))
+	}
+	return v
 }
 
 // Object returns the object, string, symbol or BigInt that v is. It returns nil for a number
@@ -212,7 +220,7 @@ func ToBoolean(v Value) bool {
 	case kindNull, kindFalse, kindHTMLDDA:
 		return false
 	case kindString:
-		return v.isShortString() && o.shortStringBytes != 0 || o.str != ""
+		return len(o.str) != 0
 	case kindBigInt:
 		// Zero fits in an int64.
 		return o != bigInt64Object || math.Float64bits(v.n) != 0
@@ -253,13 +261,7 @@ func IsStrictlyEqual(a, b Value) bool {
 		return a.o == b.o && a.n == b.n
 	}
 	if a.isShortString() || b.isShortString() {
-		if !a.IsString() || !b.IsString() {
-			return false
-		}
-		if a.isShortString() && b.isShortString() {
-			return a.o.shortStringBytes == b.o.shortStringBytes && math.Float64bits(a.n) == math.Float64bits(b.n)
-		}
-		return equalShortStrings(a, b)
+		return a.IsString() && b.IsString() && len(a.o.str) == len(b.o.str) && math.Float64bits(a.n) == math.Float64bits(b.n)
 	}
 	if a.o == b.o {
 		return a.o != bigInt64Object || math.Float64bits(a.n) == math.Float64bits(b.n)

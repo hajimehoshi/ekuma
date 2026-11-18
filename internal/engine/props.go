@@ -56,7 +56,7 @@ func (vm *VM) KeyValue(k PropKey) Value {
 	if k.key == nil {
 		return vm.indexString(k.idx)
 	}
-	return Value{o: k.key}
+	return ObjectValue(k.key)
 }
 
 // KeyString describes the key k for messages.
@@ -72,7 +72,7 @@ func (vm *VM) KeyString(k PropKey) string {
 
 // ToPropertyKey implements ToPropertyKey.
 func (vm *VM) ToPropertyKey(v Value) PropKey {
-	if v.isShortString() {
+	if v.isShortString() && v.o.flags&objInterned == 0 {
 		return vm.KeyOfString(v.shortText())
 	}
 	o := v.o
@@ -105,7 +105,7 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 // QueryKey returns ToPropertyKey(v) for an operation that only reads properties. The key is
 // valid only for that operation and must not be used to create a property.
 func (vm *VM) QueryKey(v Value) PropKey {
-	if v.isShortString() {
+	if v.isShortString() && v.o.flags&objInterned == 0 {
 		s := v.shortText()
 		if i, ok := stringIndex(s); ok {
 			return PropKey{idx: i}
@@ -402,7 +402,7 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	case kindNull:
 		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
 	case kindString:
-		if o.class == classShortString {
+		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
 		}
 		if p := vm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {

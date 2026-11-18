@@ -46,7 +46,7 @@ func NewVM(hostDefined any) *VM {
 	vm.strings.keepNew = true
 	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep, isKept)
 	for i := range vm.strings.ascii {
-		vm.strings.ascii[i] = Value{o: vm.Intern(string(rune(i)))}
+		vm.strings.ascii[i] = ObjectValue(vm.Intern(string(rune(i))))
 	}
 	vm.initKeys()
 	vm.missHolder = (&propertyObject{
@@ -96,10 +96,9 @@ func (vm *VM) initRealmPrototypes() {
 	vm.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
 	for i := range vm.shapes.shortStrings {
 		vm.shapes.shortStrings[i] = Object{
-			kind:             kindString,
-			class:            classShortString,
-			shape:            vm.shapes.string,
-			shortStringBytes: uint8(i),
+			kind:  kindString,
+			shape: vm.shapes.string,
+			str:   "\x00\x00\x00\x00\x00\x00\x00\x00"[:i],
 		}
 	}
 }

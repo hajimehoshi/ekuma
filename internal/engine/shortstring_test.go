@@ -101,7 +101,7 @@ func TestSubstringEquals(t *testing.T) {
 			want:    false,
 		},
 		{
-			name:          "object pattern",
+			name:          "interned pattern",
 			text:          "😀a",
 			pattern:       "\xed\xa0\xbd",
 			start:         0,
@@ -110,7 +110,7 @@ func TestSubstringEquals(t *testing.T) {
 			want:          true,
 		},
 		{
-			name:          "oversized object pattern",
+			name:          "oversized interned pattern",
 			text:          "abcdefgh",
 			pattern:       "日日日",
 			start:         0,
@@ -151,7 +151,7 @@ func TestShortStringOrdering(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !engine.ToBoolean(v) {
-		t.Error("mixed packed and object strings did not follow UTF-16 ordering")
+		t.Error("strings did not follow UTF-16 ordering")
 	}
 }
 
@@ -183,5 +183,93 @@ func TestCodePointAtCachedLowSurrogate(t *testing.T) {
 	}
 	if got := v.CodePointAt(prefixUnits); got != 0x1f600 {
 		t.Errorf("CodePointAt(lead) = %#x, want %#x", got, 0x1f600)
+	}
+}
+
+func TestStringValueBoundaries(t *testing.T) {
+	vm := newVM(t)
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "empty",
+			src:  `""`,
+			want: "",
+		},
+		{
+			name: "ASCII",
+			src:  `String.fromCharCode(120)`,
+			want: "x",
+		},
+		{
+			name: "literal at byte limit",
+			src:  `"abc\0defg"`,
+			want: "abc\x00defg",
+		},
+		{
+			name: "boxed string",
+			src:  `new String("😀😀").valueOf()`,
+			want: "😀😀",
+		},
+		{
+			name: "named key",
+			src:  `Object.keys({"ab\0": 1})[0]`,
+			want: "ab\x00",
+		},
+		{
+			name: "cached index key",
+			src:  `Object.keys({123: 1}); Object.keys({123: 2})[0]`,
+			want: "123",
+		},
+		{
+			name: "typeof",
+			src:  `typeof 1`,
+			want: "number",
+		},
+		{
+			name: "above byte limit",
+			src:  `"日日日"`,
+			want: "日日日",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v, err := runScript(vm, tc.name, tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := v.Str(); got != tc.want {
+				t.Errorf("Str() = %q, want %q", got, tc.want)
+			}
+			if !engine.IsStrictlyEqual(v, vm.NewString(tc.want)) {
+				t.Error("value differs from NewString")
+			}
+		})
+	}
+}
+
+func TestInternedStringValue(t *testing.T) {
+	vm := engine.NewVM(nil)
+	const text = "\xed\xa0\xbdabc"
+	v := vm.NewString(text)
+	for _, tc := range []struct {
+		name  string
+		value engine.Value
+	}{
+		{
+			name:  "interned",
+			value: engine.ObjectValue(vm.Intern(text)),
+		},
+		{
+			name:  "shared",
+			value: vm.SharedString(text),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if !engine.IsStrictlyEqual(tc.value, v) {
+				t.Error("interned value differs from NewString")
+			}
+		})
 	}
 }

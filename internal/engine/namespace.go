@@ -68,7 +68,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		deferred: deferred,
 	}
 	for i, e := range exports {
-		k := vm.ToPropertyKey(Value{o: vm.Intern(e.name)})
+		k := vm.ToPropertyKey(ObjectValue(vm.Intern(e.name)))
 		ns.keys[i] = k
 		ns.targets[i] = e.r
 		ns.index[k] = i

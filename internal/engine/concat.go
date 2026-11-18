@@ -106,7 +106,6 @@ func (vm *VM) Concat(a, b Value) Value {
 			return a
 		}
 		if bN <= shortstrings.MaxBytes && aN+bN <= shortstrings.MaxBytes+2 &&
-			(a.o.flags|b.o.flags)&objReversed == 0 &&
 			(aN+bN <= shortstrings.MaxBytes || shortStringsJoinPair(a, aN, b, bN)) {
 			if v, ok := vm.concatShort(a, aN, b, bN); ok {
 				return v
@@ -121,32 +120,12 @@ func shortStringsJoinPair(a Value, aN int, b Value, bN int) bool {
 	if aN < 3 || bN < 3 {
 		return false
 	}
-	if a.isShortString() {
-		tail := math.Float64bits(a.n) >> (8 * (aN - 3))
-		if tail&0xf0ff != 0xa0ed {
-			return false
-		}
-	} else if a.o.str[aN-3] != 0xed || a.o.str[aN-2]&0xf0 != 0xa0 {
-		return false
-	}
-	if b.isShortString() {
-		return math.Float64bits(b.n)&0xf0ff == 0xb0ed
-	}
-	return b.o.str[0] == 0xed && b.o.str[1]&0xf0 == 0xb0
+	tail := math.Float64bits(a.n) >> (8 * (aN - 3))
+	return tail&0xf0ff == 0xa0ed && math.Float64bits(b.n)&0xf0ff == 0xb0ed
 }
 
 func (vm *VM) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
-	var x, y uint64
-	if a.isShortString() {
-		x = math.Float64bits(a.n)
-	} else {
-		x = shortstrings.Pack(a.o.str)
-	}
-	if b.isShortString() {
-		y = math.Float64bits(b.n)
-	} else {
-		y = shortstrings.Pack(b.o.str)
-	}
+	x, y := math.Float64bits(a.n), math.Float64bits(b.n)
 	data, n, ok := shortstrings.Concat(x, aN, y, bN)
 	if !ok {
 		return Value{}, false
@@ -251,16 +230,12 @@ func (vm *VM) concatReversed(a Value, x string, b Value, y string) Value {
 // concatStrings returns the concatenation of the strings parts.
 func (vm *VM) concatStrings(parts []Value) Value {
 	var n, nonEmpty, previousBytes int
-	var hasShortString bool
+	var needsUnpacking bool
 	var flags uint8
 	last := -1
 	for i, p := range parts {
 		nbytes := len(p.o.str)
-		// An inline string's Object has no string data.
-		if nbytes == 0 && p.o.class == classShortString {
-			nbytes = int(p.o.shortStringBytes)
-			hasShortString = true
-		}
+		needsUnpacking = needsUnpacking || nbytes <= shortstrings.MaxBytes && p.o.flags&objInterned == 0
 		if nbytes == 0 {
 			continue
 		}
@@ -304,13 +279,13 @@ func (vm *VM) concatStrings(parts []Value) Value {
 	cb, _ := parts[len(parts)-1].o.ext.(concatCount)
 	if n < minBufferedLength || ca.appends() < bufferAfter && cb.prepends() < bufferAfter {
 		if n <= maxStackConcatBytes {
-			return vm.concatSmall(parts, n, nextCount(ca, cb), hasShortString)
+			return vm.concatSmall(parts, n, nextCount(ca, cb), needsUnpacking)
 		}
 		var sb strings.Builder
 		sb.Grow(n)
-		if hasShortString {
+		if needsUnpacking {
 			for _, p := range parts {
-				if p.o.class == classShortString {
+				if p.isShortString() {
 					p.writeShortString(&sb)
 				} else {
 					sb.WriteString(p.o.str)
@@ -328,10 +303,10 @@ func (vm *VM) concatStrings(parts []Value) Value {
 
 // concatSmall joins parts with total byte length n, at most maxStackConcatBytes.
 // No part is reversed and no boundary forms a surrogate pair.
-func (vm *VM) concatSmall(parts []Value, n int, count concatCount, hasShortString bool) Value {
+func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpacking bool) Value {
 	var buf [maxStackConcatBytes]byte
 	var written int
-	if hasShortString {
+	if needsUnpacking {
 		for _, p := range parts {
 			written += copy(buf[written:], p.rawString())
 		}

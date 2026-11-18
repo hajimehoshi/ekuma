@@ -211,7 +211,7 @@ func ThisStringValue(v Value) (Value, bool) {
 		return v, true
 	}
 	if v.IsObject() && v.o.class == classString {
-		return Value{o: v.o.ext.(*Object)}, true
+		return ObjectValue(v.o.ext.(*Object)), true
 	}
 	return Undefined, false
 }
