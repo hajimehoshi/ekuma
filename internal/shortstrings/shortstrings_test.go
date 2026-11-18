@@ -4,6 +4,7 @@
 package shortstrings_test
 
 import (
+	"math"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
@@ -590,6 +591,87 @@ func TestTrimASCII(t *testing.T) {
 			data, n := shortstrings.TrimASCII(shortstrings.Pack(tc.text), len(tc.text), tc.start, tc.end)
 			if data != shortstrings.Pack(tc.want) || n != len(tc.want) {
 				t.Errorf("TrimASCII() = (%#x, %d), want (%#x, %d)", data, n, shortstrings.Pack(tc.want), len(tc.want))
+			}
+		})
+	}
+}
+
+func TestRepeat(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		count int
+		want  string
+		fits  bool
+	}{
+		{
+			name:  "zero count",
+			text:  "abcdefgh",
+			count: 0,
+			want:  "",
+			fits:  true,
+		},
+		{
+			name:  "empty input",
+			text:  "",
+			count: math.MaxInt,
+			want:  "",
+			fits:  true,
+		},
+		{
+			name:  "one copy",
+			text:  "😀",
+			count: 1,
+			want:  "😀",
+			fits:  true,
+		},
+		{
+			name:  "full payload",
+			text:  "ab",
+			count: 4,
+			want:  "abababab",
+			fits:  true,
+		},
+		{
+			name:  "NUL content",
+			text:  "\x00",
+			count: 3,
+			want:  "\x00\x00\x00",
+			fits:  true,
+		},
+		{
+			name:  "Unicode with padding",
+			text:  "é",
+			count: 3,
+			want:  "ééé",
+			fits:  true,
+		},
+		{
+			name:  "overflow",
+			text:  "abc",
+			count: 3,
+			fits:  false,
+		},
+		{
+			name:  "huge count",
+			text:  "ab",
+			count: math.MaxInt,
+			fits:  false,
+		},
+		{
+			name:  "surrogate join still exceeds capacity",
+			text:  "\xed\xb0\x80\xed\xa0\x80",
+			count: 2,
+			fits:  false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, n, ok := shortstrings.Repeat(shortstrings.Pack(tc.text), len(tc.text), tc.count)
+			if ok != tc.fits {
+				t.Errorf("Repeat() fits = %t, want %t", ok, tc.fits)
+			}
+			if ok && tc.fits && (data != shortstrings.Pack(tc.want) || n != len(tc.want)) {
+				t.Errorf("Repeat() = (%#x, %d), want (%#x, %d)", data, n, shortstrings.Pack(tc.want), len(tc.want))
 			}
 		})
 	}

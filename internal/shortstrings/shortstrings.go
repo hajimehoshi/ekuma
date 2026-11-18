@@ -331,3 +331,23 @@ func TrimASCII(data uint64, n int, start, end bool) (uint64, int) {
 func isASCIIWhitespace(b byte) bool {
 	return b == ' ' || b >= '\t' && b <= '\r'
 }
+
+// Repeat returns count copies of the packed string and their byte length, or false if they do not fit.
+// n is the string's byte length, and count must be nonnegative.
+func Repeat(data uint64, n, count int) (uint64, int, bool) {
+	if count == 0 || n == 0 {
+		return 0, 0, true
+	}
+	// A self-joining surrogate boundary requires at least six bytes per copy;
+	// even two copies produce ten bytes after joining and cannot fit.
+	if count > MaxBytes/n {
+		return 0, 0, false
+	}
+	result := data
+	byteLen := n
+	for copies := 1; copies < count; copies++ {
+		result |= data << (8 * byteLen)
+		byteLen += n
+	}
+	return result, byteLen, true
+}

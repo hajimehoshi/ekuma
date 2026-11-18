@@ -254,23 +254,34 @@ func initString(vm *engine.VM) {
 		return vm.NewString(b.String())
 	})
 	method(vm, proto, "repeat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "repeat")
+		s := thisStringValue(vm, this, "repeat")
 		n := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || math.IsInf(n, 0) {
 			vm.ThrowRangeError("invalid count value: " + vm.ToString(arg(args, 0)))
 		}
-		if n == 0 || s.Str() == "" {
+		if n == 0 {
 			return vm.NewString("")
 		}
-		if n*float64(len(s.Str())) > engine.MaxStringLength {
+		byteLength := s.StringByteLength()
+		if byteLength == 0 {
+			return vm.NewString("")
+		}
+		if n*float64(byteLength) > engine.MaxStringLength {
 			vm.ThrowRangeError("invalid string length")
 		}
-		if wtf8.JoinsPair(s.Str(), s.Str()) {
+		if n == 1 {
+			return s
+		}
+		if repeated, ok := vm.RepeatShort(s, int(n)); ok {
+			return repeated
+		}
+		text := s.Str()
+		if wtf8.JoinsPair(text, text) {
 			var b wtf8.Builder
-			writeRepeated(vm, &b, s.Str(), int(n))
+			writeRepeated(vm, &b, text, int(n))
 			return vm.NewString(b.String())
 		}
-		return vm.NewString(repeatString(vm, s.Str(), int(n)))
+		return vm.NewString(repeatString(vm, text, int(n)))
 	})
 	pad := func(name string, atStart bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

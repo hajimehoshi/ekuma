@@ -327,3 +327,44 @@ func (vm *VM) trimShortString(s Value, start, end bool) Value {
 		o: &vm.shapes.shortStrings[trimmedN],
 	}
 }
+
+// RepeatShort returns count copies of s and reports whether the result fits a packed string.
+// s must be a string, and count must be nonnegative.
+func (vm *VM) RepeatShort(s Value, count int) (repeated Value, ok bool) {
+	// Packed sentinels have no string data.
+	if len(s.o.str) > shortstrings.MaxBytes && count != 0 {
+		return
+	}
+	repeated, ok = vm.repeatShort(s, count)
+	return
+}
+
+func (vm *VM) repeatShort(s Value, count int) (Value, bool) {
+	if count == 0 {
+		return vm.emptyString, true
+	}
+	n := s.StringByteLength()
+	if n == 0 {
+		return vm.emptyString, true
+	}
+	if count > shortstrings.MaxBytes/n {
+		return Value{}, false
+	}
+	if count == 1 {
+		return s, true
+	}
+	var data uint64
+	if s.isShortString() {
+		data = math.Float64bits(s.n)
+	} else {
+		data = shortstrings.Pack(s.o.Str())
+	}
+	repeated, repeatedN, ok := shortstrings.Repeat(data, n, count)
+	if !ok {
+		return Value{}, false
+	}
+	return Value{
+		n: math.Float64frombits(repeated),
+		o: &vm.shapes.shortStrings[repeatedN],
+	}, true
+}

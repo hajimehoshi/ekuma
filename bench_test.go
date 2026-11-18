@@ -1739,3 +1739,87 @@ func BenchmarkStringTrim(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringRepeat measures trivial counts, packed results and fallback repetition.
+func BenchmarkStringRepeat(b *testing.B) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		count int
+	}{
+		{
+			name:  "Zero",
+			text:  `"abc"`,
+			count: 0,
+		},
+		{
+			name:  "One",
+			text:  `"abc"`,
+			count: 1,
+		},
+		{
+			name:  "ASCII",
+			text:  `"ab"`,
+			count: 4,
+		},
+		{
+			name:  "OneByte",
+			text:  `"x"`,
+			count: 8,
+		},
+		{
+			name:  "Unicode",
+			text:  `"é"`,
+			count: 3,
+		},
+		{
+			name:  "Supplementary",
+			text:  `"😀"`,
+			count: 2,
+		},
+		{
+			name:  "SelfJoin",
+			text:  `"\ude00\ud83d"`,
+			count: 2,
+		},
+		{
+			name:  "Overflow",
+			text:  `"abc"`,
+			count: 3,
+		},
+		{
+			name:  "LongResult",
+			text:  `"abc"`,
+			count: 16,
+		},
+		{
+			name:  "LongOne",
+			text:  `"abcdefghijklmnopqrstuvwxyz"`,
+			count: 1,
+		},
+		{
+			name:  "LongInput",
+			text:  `"abcdefghijklmnopqrstuvwxyz"`,
+			count: 2,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			b.Run(form+"/"+tc.name, func(b *testing.B) {
+				var vm ekuma.VM
+				receiver := tc.text
+				if form == "Created" {
+					receiver = "(" + receiver + " + '!').slice(0, -1)"
+				}
+				src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.repeat(%d); return result; }`, receiver, tc.count)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}
