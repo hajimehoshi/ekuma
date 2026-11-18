@@ -74,6 +74,9 @@ func (v Value) StringLength() int {
 
 func (v Value) stringLengthSlow() int {
 	if v.isShortString() {
+		if math.Float64bits(v.n)&0x8080808080808080 == 0 {
+			return int(v.o.shortStringBytes)
+		}
 		return wtf8.Len(v.shortText())
 	}
 	return v.o.StringLength()
@@ -105,6 +108,10 @@ func (v Value) WriteStringTo(b *wtf8.Builder) {
 func (v Value) UnitAt(i int) uint16 {
 	if !v.isShortString() {
 		return v.o.UnitAt(i)
+	}
+	data := math.Float64bits(v.n)
+	if data&0x8080808080808080 == 0 {
+		return uint16(byte(data >> (8 * i)))
 	}
 	s := v.shortText()
 	return wtf8.At(s, wtf8.Seek(s, wtf8.Pos{}, i))

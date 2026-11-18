@@ -2934,3 +2934,32 @@ func TestInlineStringIndexAllocations(t *testing.T) {
 		t.Errorf("packed string index allocations = %v, want 0", got)
 	}
 }
+
+func TestInlineStringCodeUnits(t *testing.T) {
+	vm := engine.NewVM(nil)
+	for _, tc := range []struct {
+		text  string
+		units []uint16
+	}{
+		{
+			text:  "ab\x00defgh",
+			units: []uint16{'a', 'b', 0, 'd', 'e', 'f', 'g', 'h'},
+		},
+		{
+			text:  "ab😀cd",
+			units: []uint16{'a', 'b', 0xd83d, 0xde00, 'c', 'd'},
+		},
+	} {
+		t.Run(fmt.Sprintf("%x", tc.text), func(t *testing.T) {
+			v := vm.NewString(tc.text)
+			if got := v.StringLength(); got != len(tc.units) {
+				t.Errorf("StringLength = %d, want %d", got, len(tc.units))
+			}
+			for i, want := range tc.units {
+				if got := v.UnitAt(i); got != want {
+					t.Errorf("UnitAt(%d) = %#x, want %#x", i, got, want)
+				}
+			}
+		})
+	}
+}
