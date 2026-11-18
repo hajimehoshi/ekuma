@@ -359,6 +359,21 @@ func initString(vm *engine.VM) {
 			return vm.NewString(mapWellFormed(vm, s.Str(), f))
 		})
 	}
+	// mapShortCase registers the non-locale methods with packed ASCII conversion.
+	mapShortCase := func(name string, toUpper bool, ascii func(string) string, f stringMapping) {
+		asciiMap := contextFree(ascii)
+		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			s := thisStringValue(vm, this, name)
+			if mapped, ok := vm.MapASCII(s, toUpper); ok {
+				return mapped
+			}
+			o := s.Object()
+			if o.IsASCII() {
+				return vm.NewString(mapInChunks(vm, o.Str(), asciiMap, anyBoundary))
+			}
+			return vm.NewString(mapWellFormed(vm, o.Str(), f))
+		})
+	}
 	upper := stringMapping{
 		f: contextFree(func(s string) string {
 			return cases.Upper(language.Und).String(s)
@@ -369,8 +384,8 @@ func initString(vm *engine.VM) {
 		f:        toLowerCase,
 		boundary: runeBoundary,
 	}
-	mapCase("toUpperCase", strings.ToUpper, upper)
-	mapCase("toLowerCase", strings.ToLower, lower)
+	mapShortCase("toUpperCase", true, strings.ToUpper, upper)
+	mapShortCase("toLowerCase", false, strings.ToLower, lower)
 	mapCase("toLocaleUpperCase", strings.ToUpper, upper)
 	mapCase("toLocaleLowerCase", strings.ToLower, lower)
 	nfc, nfd, nfkc, nfkd := normalization(norm.NFC), normalization(norm.NFD), normalization(norm.NFKC), normalization(norm.NFKD)

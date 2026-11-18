@@ -236,3 +236,49 @@ func (vm *VM) toWellFormedShort(s Value, data uint64, n int) Value {
 		o: &vm.shapes.shortStrings[n],
 	}
 }
+
+// MapASCII converts s to uppercase if upper is true, or lowercase otherwise.
+// s must be a string; false means it is non-ASCII or too long to pack.
+func (vm *VM) MapASCII(s Value, upper bool) (mapped Value, ok bool) {
+	// Packed sentinels have no string data.
+	if len(s.o.str) > shortstrings.MaxBytes {
+		return
+	}
+	mapped, ok = vm.mapASCII(s, upper)
+	return
+}
+
+func (vm *VM) mapASCII(s Value, upper bool) (Value, bool) {
+	var data uint64
+	var n int
+	if s.isShortString() {
+		data = math.Float64bits(s.n)
+		if !shortstrings.IsASCII(data) {
+			return Value{}, false
+		}
+		n = int(s.o.shortStringBytes)
+	} else {
+		if !s.o.IsASCII() {
+			return Value{}, false
+		}
+		text := s.o.Str()
+		data = shortstrings.Pack(text)
+		n = len(text)
+	}
+	var mapped uint64
+	if upper {
+		mapped = shortstrings.ToUpperASCII(data)
+	} else {
+		mapped = shortstrings.ToLowerASCII(data)
+	}
+	if mapped == data {
+		return s, true
+	}
+	if n == 1 {
+		return vm.strings.ascii[byte(mapped)], true
+	}
+	return Value{
+		n: math.Float64frombits(mapped),
+		o: &vm.shapes.shortStrings[n],
+	}, true
+}

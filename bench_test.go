@@ -1603,3 +1603,73 @@ func BenchmarkStringCodePointAt(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringASCIICase measures ASCII case conversion and Unicode fallbacks.
+func BenchmarkStringASCIICase(b *testing.B) {
+	for _, tc := range []struct {
+		name string
+		text string
+	}{
+		{
+			name: "Mixed",
+			text: `"aBcDeFgH"`,
+		},
+		{
+			name: "Upper",
+			text: `"ABCDEFGH"`,
+		},
+		{
+			name: "Lower",
+			text: `"abcdefgh"`,
+		},
+		{
+			name: "Symbols",
+			text: `"aZ09!_"`,
+		},
+		{
+			name: "NUL",
+			text: `"a\u0000Z"`,
+		},
+		{
+			name: "Unicode",
+			text: `"Straße"`,
+		},
+		{
+			name: "FinalSigma",
+			text: `"ΟΣ"`,
+		},
+		{
+			name: "LoneSurrogate",
+			text: `"a\ud800"`,
+		},
+		{
+			name: "LongASCII",
+			text: `"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"`,
+		},
+		{
+			name: "LongLower",
+			text: `"abcdefghijklmnopqrstuvwxyz"`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			for _, method := range []string{"toUpperCase", "toLowerCase"} {
+				b.Run(form+"/"+tc.name+"/"+method, func(b *testing.B) {
+					var vm ekuma.VM
+					receiver := tc.text
+					if form == "Created" {
+						receiver = "(" + receiver + " + '!').slice(0, -1)"
+					}
+					src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.%s(); return result; }`, receiver, method)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}

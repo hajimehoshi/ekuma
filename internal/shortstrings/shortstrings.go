@@ -297,3 +297,16 @@ func loneSurrogateMask(data uint64) uint64 {
 	// A 0xed lead followed by a continuation byte with bit 5 set encodes a lone surrogate.
 	return leads & (data >> 6)
 }
+
+// ToUpperASCII converts data to uppercase. data must be a packed ASCII string.
+func ToUpperASCII(data uint64) uint64 {
+	// ASCII bytes leave room for these additions without carrying between bytes.
+	letters := (data + 0x1f1f1f1f1f1f1f1f) &^ (data + 0x0505050505050505) & 0x8080808080808080
+	return data &^ (letters >> 2)
+}
+
+// ToLowerASCII converts data to lowercase. data must be a packed ASCII string.
+func ToLowerASCII(data uint64) uint64 {
+	letters := (data + 0x3f3f3f3f3f3f3f3f) &^ (data + 0x2525252525252525) & 0x8080808080808080
+	return data | (letters >> 2)
+}

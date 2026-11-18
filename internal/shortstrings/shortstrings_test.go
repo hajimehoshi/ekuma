@@ -489,3 +489,41 @@ func TestCodePointAt(t *testing.T) {
 		})
 	}
 }
+
+func TestASCIICase(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		upper string
+		lower string
+	}{
+		{
+			name:  "letter boundaries",
+			text:  "@AZ[`az{",
+			upper: "@AZ[`AZ{",
+			lower: "@az[`az{",
+		},
+		{
+			name:  "NUL and padding",
+			text:  "a\x00Z\t",
+			upper: "A\x00Z\t",
+			lower: "a\x00z\t",
+		},
+		{
+			name:  "maximum ASCII byte",
+			text:  "\x7faZ",
+			upper: "\x7fAZ",
+			lower: "\x7faz",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := shortstrings.Pack(tc.text)
+			if got, want := shortstrings.ToUpperASCII(data), shortstrings.Pack(tc.upper); got != want {
+				t.Errorf("ToUpperASCII() = %#x, want %#x", got, want)
+			}
+			if got, want := shortstrings.ToLowerASCII(data), shortstrings.Pack(tc.lower); got != want {
+				t.Errorf("ToLowerASCII() = %#x, want %#x", got, want)
+			}
+		})
+	}
+}
