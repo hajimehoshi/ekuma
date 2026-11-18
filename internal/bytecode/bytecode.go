@@ -6,6 +6,8 @@ package bytecode
 
 import (
 	"sort"
+
+	"github.com/hajimehoshi/ekuma/internal/srcpos"
 )
 
 // Opcode is the operation of an instruction.
@@ -369,12 +371,11 @@ type UpvalDesc struct {
 	ByValue bool
 }
 
-// Pos says that the instructions from [Pos.PC] on belong to the source position at [Pos.Line] and
-// [Pos.Column].
+// Pos says that the instructions from [Pos.PC] on belong to the source position at the byte offset
+// [Pos.Offset] of the text of [Func.Lines].
 type Pos struct {
 	PC     int32
-	Line   int32
-	Column int32
+	Offset int32
 }
 
 // ConstKind is the type of a constant.
@@ -437,6 +438,10 @@ type Func struct {
 
 	// Positions maps instructions to source positions, ordered by PC.
 	Positions []Pos
+
+	// Lines converts the offsets of [Func.Positions] into lines and columns. It may be nil when
+	// there are no positions.
+	Lines *srcpos.Table
 
 	// Length is the value of the length property of the function.
 	Length int
@@ -558,8 +563,7 @@ func (f *Func) Position(pc int) (line, column int) {
 	if i < 0 {
 		return 0, 0
 	}
-	p := f.Positions[i]
-	return int(p.Line), int(p.Column)
+	return f.Lines.Position(f.Positions[i].Offset)
 }
 
 // Module describes what a module imports and exports, and the bindings of its top level.

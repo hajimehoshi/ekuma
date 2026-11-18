@@ -1369,6 +1369,34 @@ try { f(); } catch (e) { e.stack; }`)
 	}
 }
 
+// TestUnboundScriptStackTraces checks that VMs binding the same unbound script, each on its own
+// goroutine, get the positions of its code in their stack traces.
+func TestUnboundScriptStackTraces(t *testing.T) {
+	// The throw is more than 512 bytes into a line with non-ASCII characters.
+	src := `const s = "` + strings.Repeat("é", 300) + `"; function f() { throw new Error("boom"); }
+try { f(); } catch (e) { e.stack; }`
+	u, err := ekuma.ParseUnboundScript("app.js", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Error: boom\n    at f (app.js:1:336)\n    at app.js:2:7"
+	var wg sync.WaitGroup
+	for range 4 {
+		wg.Go(func() {
+			var vm ekuma.VM
+			v, err := vm.BindScript(u).Evaluate(t.Context())
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if got := v.String(); got != want {
+				t.Errorf("got %q, want %q", got, want)
+			}
+		})
+	}
+	wg.Wait()
+}
+
 // TestBindScriptRealm checks that a script bound to a realm runs in that realm.
 func TestBindScriptRealm(t *testing.T) {
 	u, err := ekuma.ParseUnboundScript("global.js", `globalThis`)

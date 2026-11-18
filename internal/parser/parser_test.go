@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/srcpos"
 )
 
 type mode uint8
@@ -2565,17 +2566,18 @@ func TestPosition(t *testing.T) {
 	if got, want := prog.Text(s), "b"; got != want {
 		t.Errorf("Text: got %q, want %q", got, want)
 	}
-	if line, col := prog.Position(s.Start()); line != 2 || col != 5 {
+	lines := srcpos.NewTable(prog.Source)
+	if line, col := lines.Position(s.Start()); line != 2 || col != 5 {
 		t.Errorf("Position of b: got %d:%d, want 2:5", line, col)
 	}
-	if line, col := prog.Position(prog.Body[3].Start()); line != 3 || col != 3 {
+	if line, col := lines.Position(prog.Body[3].Start()); line != 3 || col != 3 {
 		t.Errorf("Position of c: got %d:%d, want 3:3", line, col)
 	}
 
 	// A lone surrogate, in WTF-8, is one code point, also on a line longer than the blocks
 	// that the code points are counted in.
 	prog = mustParse(t, "a;\n'\xed\xa0\x80"+strings.Repeat("x", 300)+"'; d", script)
-	if line, col := prog.Position(prog.Body[2].Start()); line != 2 || col != 306 {
+	if line, col := srcpos.NewTable(prog.Source).Position(prog.Body[2].Start()); line != 2 || col != 306 {
 		t.Errorf("Position of d: got %d:%d, want 2:306", line, col)
 	}
 }

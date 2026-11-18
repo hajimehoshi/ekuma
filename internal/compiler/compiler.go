@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/srcpos"
 )
 
 // Error is a construct that the compiler cannot translate.
@@ -248,8 +249,9 @@ type compiler struct {
 	prog *ast.Program
 	file string
 
-	// positioner converts the offsets of prog for the positions of the compiled code.
-	positioner *ast.Positioner
+	// lines converts the offsets of prog into lines and columns, for the compiled code and for
+	// errors.
+	lines *srcpos.Table
 
 	// isExpression holds the named function expressions, whose names are bound inside them.
 	isExpression map[*ast.Function]bool
@@ -414,7 +416,7 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 	return &compiler{
 		prog:         prog,
 		file:         file,
-		positioner:   ast.NewPositioner(prog),
+		lines:        srcpos.NewTable(prog.Source),
 		isExpression: map[*ast.Function]bool{},
 		fieldNames:   map[*ast.Function]string{},
 		fieldKeys:    map[*ast.Function]string{},
@@ -430,7 +432,7 @@ func (c *compiler) release() {
 
 // fail aborts the compilation with an error at the node n.
 func (c *compiler) fail(n ast.Node, format string, args ...any) {
-	line, _ := c.prog.Position(n.Start())
+	line, _ := c.lines.Position(n.Start())
 	panic(&Error{
 		Offset:  int(n.Start()),
 		Line:    line,
@@ -473,6 +475,7 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 		File:      c.file,
 		Code:      takeBuf(&sc.codeBufs),
 		Positions: takeBuf(&sc.posBufs),
+		Lines:     c.lines,
 		Keys:      takeBuf(&sc.keyBufs),
 		Consts:    takeBuf(&sc.constBufs),
 	}
@@ -553,14 +556,12 @@ func (f *fn) jumpTo(pc int32) {
 
 // setPos records the source position at offset for the instructions that follow.
 func (f *fn) setPos(offset int32) {
-	line, column := f.c.positioner.Position(offset)
 	pos := bytecode.Pos{
 		PC:     f.pc(),
-		Line:   int32(line),
-		Column: int32(column),
+		Offset: offset,
 	}
 	k := len(f.f.Positions)
-	if k > 0 && f.f.Positions[k-1].Line == pos.Line && f.f.Positions[k-1].Column == pos.Column {
+	if k > 0 && f.f.Positions[k-1].Offset == pos.Offset {
 		return
 	}
 	if k > 0 && f.f.Positions[k-1].PC == pos.PC {

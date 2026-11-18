@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"slices"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -38,9 +39,9 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
-// TestLenAndIsASCIIAcrossWords checks code points and lone surrogates at every offset
-// from the start of a word.
-func TestLenAndIsASCIIAcrossWords(t *testing.T) {
+// TestWordScans checks the functions that scan a word at a time with code points and lone
+// surrogates at every offset from the start of a word.
+func TestWordScans(t *testing.T) {
 	for pad := range 17 {
 		for _, u := range samples {
 			units := make([]uint16, pad, pad+2*len(u))
@@ -52,6 +53,10 @@ func TestLenAndIsASCIIAcrossWords(t *testing.T) {
 			s := wtf8.FromUTF16(units)
 			if got, want := wtf8.Len(s), len(units); got != want {
 				t.Errorf("Len(FromUTF16(%x)) = %d, want %d", units, got, want)
+			}
+			// Decode makes one rune of each pair and of each lone surrogate.
+			if got, want := wtf8.CountCodePoints(s), len(utf16.Decode(units)); got != want {
+				t.Errorf("CountCodePoints(FromUTF16(%x)) = %d, want %d", units, got, want)
 			}
 			ascii := !slices.ContainsFunc(units, func(c uint16) bool { return c >= 0x80 })
 			if got := wtf8.IsASCII(s); got != ascii {

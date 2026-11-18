@@ -132,6 +132,28 @@ func Len(s string) int {
 	return n
 }
 
+// CountCodePoints returns the number of code points in s.
+func CountCodePoints(s string) int {
+	// Every byte except a continuation byte starts a code point.
+	n := len(s)
+	for len(s) >= 8 {
+		w := word(s)
+		s = s[8:]
+		if w&highBits == 0 {
+			continue
+		}
+		// Bit 0 of a byte of continuations is set for a continuation byte (10xxxxxx).
+		continuations := (w >> 7) &^ (w >> 6) & 0x0101010101010101
+		n -= bits.OnesCount64(continuations)
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i]&0xC0 == 0x80 {
+			n--
+		}
+	}
+	return n
+}
+
 // Pos is a position in a string: the code unit [Pos.Unit] starts at the byte [Pos.Byte].
 // Low is set when the code unit is the low surrogate of the four-byte sequence at [Pos.Byte].
 type Pos struct {

@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
+	"github.com/hajimehoshi/ekuma/internal/srcpos"
 )
 
 // Options describes the context that source text is parsed in.
@@ -254,7 +255,7 @@ func (p *parser) fail(pos int, msg string) {
 		src = p.fullSrc
 	}
 	pos += p.offset
-	line, col := ast.Position(src, pos)
+	line, col := srcpos.Position(src, pos)
 	panic(&abort{
 		err: &Error{
 			Offset:  pos,
