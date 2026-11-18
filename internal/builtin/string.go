@@ -139,13 +139,13 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, proto, "indexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "indexOf")
-		sub := vm.ToString(arg(args, 0))
+		sub := vm.ToStringValue(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Number(float64(s.UnitIndexOf(sub, from)))
 	})
 	method(vm, proto, "lastIndexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "lastIndexOf")
-		sub := vm.ToString(arg(args, 0))
+		sub := vm.ToStringValue(arg(args, 0))
 		n := s.StringLength()
 		from := n
 		if p := vm.ToNumber(arg(args, 1)); p == p {
@@ -161,7 +161,7 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "includes", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "includes")
 		noRegExp(vm, arg(args, 0), "includes")
-		sub := vm.ToString(arg(args, 0))
+		sub := vm.ToStringValue(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Bool(s.UnitIndexOf(sub, from) >= 0)
 	})
@@ -341,7 +341,7 @@ func initString(vm *engine.VM) {
 		}
 		method(vm, proto, e.name, length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			// CreateHTML.
-			s := thisString(vm, this, e.name)
+			s := thisStringValue(vm, this, e.name)
 			var b wtf8.Builder
 			b.WriteString("<" + e.tag)
 			if e.attr != "" {
@@ -351,23 +351,12 @@ func initString(vm *engine.VM) {
 				b.WriteString("\"")
 			}
 			b.WriteString(">")
-			b.WriteString(s.Str())
+			s.WriteStringTo(&b)
 			b.WriteString("</" + e.tag + ">")
 			if b.Len() > engine.MaxStringLength {
 				vm.ThrowRangeError("invalid string length")
 			}
 			return vm.NewString(b.String())
-		})
-	}
-	// mapCase defines a case mapping method that applies ascii to ASCII-only strings and f to other strings.
-	mapCase := func(name string, ascii func(string) string, f stringMapping) {
-		asciiMap := contextFree(ascii)
-		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			s := thisString(vm, this, name)
-			if s.IsASCII() {
-				return vm.NewString(mapInChunks(vm, s.Str(), asciiMap, anyBoundary))
-			}
-			return vm.NewString(mapWellFormed(vm, s.Str(), f))
 		})
 	}
 	// mapShortCase registers the non-locale methods with packed ASCII conversion.
@@ -397,20 +386,20 @@ func initString(vm *engine.VM) {
 	}
 	mapShortCase("toUpperCase", true, strings.ToUpper, upper)
 	mapShortCase("toLowerCase", false, strings.ToLower, lower)
-	mapCase("toLocaleUpperCase", strings.ToUpper, upper)
-	mapCase("toLocaleLowerCase", strings.ToLower, lower)
+	mapShortCase("toLocaleUpperCase", true, strings.ToUpper, upper)
+	mapShortCase("toLocaleLowerCase", false, strings.ToLower, lower)
 	nfc, nfd, nfkc, nfkd := normalization(norm.NFC), normalization(norm.NFD), normalization(norm.NFKC), normalization(norm.NFKD)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "localeCompare")
-		that := vm.ToString(arg(args, 0))
-		if s.IsASCII() && wtf8.IsASCII(that) {
+		s := thisStringValue(vm, this, "localeCompare")
+		that := vm.ToStringValue(arg(args, 0))
+		if s.IsASCII() && that.IsASCII() {
 			// An ASCII string is in every normalization form.
-			return engine.Number(float64(wtf8.Compare(s.Str(), that)))
+			return engine.Number(float64(engine.CompareStrings(s, that)))
 		}
-		return engine.Number(float64(wtf8.Compare(mapWellFormed(vm, s.Str(), nfc), mapWellFormed(vm, that, nfc))))
+		return engine.Number(float64(wtf8.Compare(mapWellFormed(vm, s.Str(), nfc), mapWellFormed(vm, that.Str(), nfc))))
 	})
 	method(vm, proto, "normalize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "normalize")
+		s := thisStringValue(vm, this, "normalize")
 		form, quick := nfc, norm.NFC
 		if f := arg(args, 0); !f.IsUndefined() {
 			switch vm.ToString(f) {
@@ -426,11 +415,11 @@ func initString(vm *engine.VM) {
 			}
 		}
 		if s.IsASCII() {
-			return engine.ObjectValue(s)
+			return s
 		}
 		str := s.Str()
 		if wtf8.IsWellFormed(str) && quick.QuickSpanString(str) == len(str) {
-			return engine.ObjectValue(s)
+			return s
 		}
 		return vm.NewString(mapWellFormed(vm, str, form))
 	})
@@ -456,19 +445,19 @@ func initString(vm *engine.VM) {
 				return vm.Call(m, sepArg, this, limArg)
 			}
 		}
-		s := vm.ToStringValue(this).Object()
+		s := vm.ToStringValue(this)
 		limit := uint32(math.MaxUint32)
 		if !limArg.IsUndefined() {
 			limit = vm.ToUint32(limArg)
 		}
-		sep := vm.ToString(sepArg)
+		sep := vm.ToStringValue(sepArg)
 		if limit == 0 {
 			return engine.ObjectValue(vm.NewArray(nil))
 		}
 		if sepArg.IsUndefined() {
-			return engine.ObjectValue(vm.NewArray([]engine.Value{engine.ObjectValue(s)}))
+			return engine.ObjectValue(vm.NewArray([]engine.Value{s}))
 		}
-		if sep == "" {
+		if sep.StringByteLength() == 0 {
 			n := int(min(uint64(s.StringLength()), uint64(limit)))
 			out := make([]engine.Value, n)
 			for i := 0; i < n; i += engine.PollInterval {
@@ -480,17 +469,17 @@ func initString(vm *engine.VM) {
 			return engine.ObjectValue(vm.NewArray(out))
 		}
 		var out []engine.Value
-		sepLen := wtf8.Len(sep)
+		sepLen := sep.StringLength()
 		var start int
 		var pacer engine.Pacer
 		for uint32(len(out)) < limit {
 			pacer.Step(vm)
 			pos := s.UnitIndexOf(sep, start)
 			if pos < 0 {
-				out = append(out, vm.NewString(s.Substring(start, s.StringLength())))
+				out = append(out, vm.Substring(s, start, s.StringLength()))
 				break
 			}
-			out = append(out, vm.NewString(s.Substring(start, pos)))
+			out = append(out, vm.Substring(s, start, pos))
 			start = pos + sepLen
 		}
 		return engine.ObjectValue(vm.NewArray(out))
@@ -510,15 +499,15 @@ func initString(vm *engine.VM) {
 					return vm.Call(m, pat, this, rep)
 				}
 			}
-			s := vm.ToStringValue(this).Object()
-			search := vm.ToString(pat)
+			s := vm.ToStringValue(this)
+			search := vm.ToStringValue(pat)
 			functional := rep.IsCallable()
 			var repStr string
 			if !functional {
 				repStr = vm.ToString(rep)
 			}
 			n := s.StringLength()
-			searchLen := wtf8.Len(search)
+			searchLen := search.StringLength()
 			advance := max(1, searchLen)
 			var firstPosition [1]int
 			var positions []int
@@ -535,12 +524,12 @@ func initString(vm *engine.VM) {
 				pos = s.UnitIndexOf(search, pos+advance)
 			}
 			if len(positions) == 0 {
-				return engine.ObjectValue(s)
+				return s
 			}
 			var b wtf8.Builder
 			if !functional {
 				// The size of the result when repStr has no substitutions. A larger one throws below.
-				if size := int64(len(s.Str())) + int64(len(positions))*int64(len(repStr)-len(search)); size <= engine.MaxStringLength {
+				if size := int64(s.StringByteLength()) + int64(len(positions))*int64(len(repStr)-search.StringByteLength()); size <= engine.MaxStringLength {
 					b.Grow(int(size))
 				}
 			}
@@ -549,9 +538,9 @@ func initString(vm *engine.VM) {
 				pacer.Step(vm)
 				writeLimited(vm, &b, s.Substring(end, p))
 				if functional {
-					writeLimited(vm, &b, vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
+					writeLimited(vm, &b, vm.ToString(vm.Call(rep.Object(), engine.Undefined, search, engine.Number(float64(p)), s)))
 				} else {
-					writeSubstitution(vm, &b, search, engine.ObjectValue(s), p, substCaptures{}, engine.Undefined, repStr)
+					writeSubstitution(vm, &b, search.Str(), s, p, substCaptures{}, engine.Undefined, repStr)
 				}
 				end = p + searchLen
 			}
@@ -598,7 +587,7 @@ func initString(vm *engine.VM) {
 		}
 	}
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "[Symbol.iterator]")
+		s := thisStringValue(vm, this, "[Symbol.iterator]")
 		return engine.ObjectValue(vm.NewIteratorObject(vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), &stringIterator{str: s.Str()}))
 	})
 }
@@ -678,7 +667,7 @@ func isCaseIgnorable(r rune) bool {
 
 // unitStrings sets the elements of out to the strings of the code units of s from the index start
 // on.
-func unitStrings(vm *engine.VM, out []engine.Value, s *engine.Object, start int) {
+func unitStrings(vm *engine.VM, out []engine.Value, s engine.Value, start int) {
 	for i := range out {
 		out[i] = vm.UnitString(s.UnitAt(start + i))
 	}

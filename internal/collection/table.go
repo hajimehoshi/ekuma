@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 )
 
 // smallSize is the number of live entries up to which a table finds keys by a linear scan.
@@ -114,7 +115,12 @@ func (t *Table) find(k engine.Value) int {
 	case k.IsNumber():
 		i, ok = t.nums[numberKey(k.Number())]
 	case k.IsString():
-		i, ok = t.strs[k.Str()]
+		if k.StringByteLength() <= shortstrings.MaxBytes {
+			var buf [shortstrings.MaxBytes]byte
+			i, ok = t.strs[string(k.AppendStringBytes(buf[:0]))]
+		} else {
+			i, ok = t.strs[k.Str()]
+		}
 	case k.IsBigInt():
 		if n, ok64 := k.BigInt64(); ok64 {
 			i, ok = t.ints[n]
@@ -142,9 +148,8 @@ func (t *Table) scan(k engine.Value) int {
 			}
 		}
 	case k.IsString():
-		s := k.Str()
 		for i := range t.entries {
-			if e := &t.entries[i]; e.key.IsString() && e.key.Str() == s {
+			if e := &t.entries[i]; engine.IsStrictlyEqual(e.key, k) {
 				return i
 			}
 		}

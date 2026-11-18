@@ -1211,7 +1211,7 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 
 // compareStringValues compares the strings a and b by their code units.
 func compareStringValues(a, b engine.Value) int {
-	return wtf8.Compare(a.Object().Str(), b.Object().Str())
+	return engine.CompareStrings(a, b)
 }
 
 // keyedValue is a value with the string it sorts by.

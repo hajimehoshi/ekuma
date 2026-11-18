@@ -13,7 +13,7 @@ import (
 // RawJSON implements JSON.rawJSON.
 func RawJSON(vm *engine.VM, text engine.Value) engine.Value {
 	s := vm.ToStringValue(text)
-	str := s.Object().Str()
+	str := s.Str()
 	if str == "" || IsSpace(str[0]) || IsSpace(str[len(str)-1]) {
 		throwSyntaxError(vm, "JSON.rawJSON: the text must not be empty or start or end with whitespace")
 	}

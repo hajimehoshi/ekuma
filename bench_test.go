@@ -1823,3 +1823,218 @@ func BenchmarkStringRepeat(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkShortStringCandidates measures remaining materialization candidates and controls.
+func BenchmarkShortStringCandidates(b *testing.B) {
+	for _, tc := range []struct {
+		name, text, fill, expression, setup string
+	}{
+		{
+			name:       "Index",
+			text:       `"abcabc"`,
+			fill:       `"bc"`,
+			expression: `s.indexOf(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "LastIndex",
+			text:       `"abcabc"`,
+			fill:       `"bc"`,
+			expression: `s.lastIndexOf(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "Includes",
+			text:       `"abcabc"`,
+			fill:       `"bc"`,
+			expression: `s.includes(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "LongIndex",
+			text:       `"abcdefghijklmnopqrstuvwxyz"`,
+			fill:       `"xyz"`,
+			expression: `s.indexOf(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "Split",
+			text:       `"a,b,c"`,
+			fill:       `","`,
+			expression: `s.split(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "SplitUnits",
+			text:       `"ab😀"`,
+			fill:       `""`,
+			expression: `s.split(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "LongSplit",
+			text:       `"ab,cd,ef,gh,ij,kl,mn,op"`,
+			fill:       `","`,
+			expression: `s.split(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "Replace",
+			text:       `"abcabc"`,
+			fill:       `"bc"`,
+			expression: `s.replace(f, "x")`,
+			setup:      ``,
+		},
+		{
+			name:       "ReplaceAll",
+			text:       `"abcabc"`,
+			fill:       `"bc"`,
+			expression: `s.replaceAll(f, "x")`,
+			setup:      ``,
+		},
+		{
+			name:       "ReplaceMiss",
+			text:       `"abcabc"`,
+			fill:       `"z"`,
+			expression: `s.replace(f, "x")`,
+			setup:      ``,
+		},
+		{
+			name:       "LongReplace",
+			text:       `"abcdefghijklmnopqrstuvwxyz"`,
+			fill:       `"abc"`,
+			expression: `s.replace(f, "x")`,
+			setup:      ``,
+		},
+		{
+			name:       "Normalize",
+			text:       `"abcdef"`,
+			fill:       `"NFC"`,
+			expression: `s.normalize(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "NormalizeUnicode",
+			text:       `"é日"`,
+			fill:       `"NFD"`,
+			expression: `s.normalize(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "LongNormalize",
+			text:       `"abcdefghijklmnopqrstuvwxyz"`,
+			fill:       `"NFC"`,
+			expression: `s.normalize(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "LocaleUpper",
+			text:       `"abc"`,
+			fill:       `""`,
+			expression: `s.toLocaleUpperCase()`,
+			setup:      ``,
+		},
+		{
+			name:       "LocaleLower",
+			text:       `"ABC"`,
+			fill:       `""`,
+			expression: `s.toLocaleLowerCase()`,
+			setup:      ``,
+		},
+		{
+			name:       "LocaleCompare",
+			text:       `"abc"`,
+			fill:       `"abd"`,
+			expression: `s.localeCompare(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "MixedEquality",
+			text:       `"abcdef"`,
+			fill:       `"abcdef"`,
+			expression: `s === "abcdef"`,
+			setup:      ``,
+		},
+		{
+			name:       "StartsWith",
+			text:       `"abcdef"`,
+			fill:       `"abc"`,
+			expression: `s.startsWith(f)`,
+			setup:      ``,
+		},
+		{
+			name:       "Sort",
+			text:       `"ab"`,
+			fill:       `"cd"`,
+			expression: `a.toSorted()`,
+			setup:      `var a = [f, s, "a", f, s];`,
+		},
+		{
+			name:       "Iterator",
+			text:       `"ab😀"`,
+			fill:       `""`,
+			expression: `Array.from(s)`,
+			setup:      ``,
+		},
+		{
+			name:       "PropertyRead",
+			text:       `"abc"`,
+			fill:       `""`,
+			expression: `o[s]`,
+			setup:      `var o = {abc: 1};`,
+		},
+		{
+			name:       "MapReadSmall",
+			text:       `"abc"`,
+			fill:       `""`,
+			expression: `m.get(s)`,
+			setup:      `var m = new Map([["abc", 1], ["def", 2]]);`,
+		},
+		{
+			name:       "MapReadIndexed",
+			text:       `"abc"`,
+			fill:       `""`,
+			expression: `m.get(s)`,
+			setup:      `var m = new Map([["abc", 1]]); for (var j = 0; j < 40; j++) m.set("k"+j, j);`,
+		},
+		{
+			name:       "PropertyWrite",
+			text:       `"abc"`,
+			fill:       `""`,
+			expression: `o[s] = i`,
+			setup:      `var o = {abc: 1};`,
+		},
+		{
+			name:       "HTMLBold",
+			text:       `"x"`,
+			fill:       `""`,
+			expression: "s.bold()",
+		},
+		{
+			name:       "HTMLLong",
+			text:       `"abcdefghijklmnopqrstuvwxyz"`,
+			fill:       `""`,
+			expression: "s.bold()",
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			b.Run(form+"/"+tc.name, func(b *testing.B) {
+				var vm ekuma.VM
+				receiver, fill := tc.text, tc.fill
+				if form == "Created" {
+					receiver = "(" + receiver + " + '!').slice(0, -1)"
+					fill = "(" + fill + " + '!').slice(0, -1)"
+				}
+				src := fmt.Sprintf(`var s = %s, f = %s; %s function run(n) { var result; for (var i = 0; i < n; i++) result = %s; return result; }`, receiver, fill, tc.setup, tc.expression)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

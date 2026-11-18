@@ -202,7 +202,7 @@ func (s *objectStrings) toString(vm *engine.VM, v engine.Value) engine.Value {
 		// @@toStringTag runs.
 		if t, ok := vm.GetVWithoutCall(v, vm.WellKnownSymbol(engine.SymbolToStringTag)); ok {
 			if t.IsString() {
-				return s.forTag(vm, t.Object().Str())
+				return s.forTag(vm, t.Str())
 			}
 			return s.forTag(vm, primitiveTag(v))
 		}
@@ -228,7 +228,7 @@ func primitiveTag(v engine.Value) string {
 func (s *objectStrings) objectToString(vm *engine.VM, o *engine.Object) engine.Value {
 	tag := vm.BuiltinTag(o)
 	if t := vm.GetV(engine.ObjectValue(o), vm.WellKnownSymbol(engine.SymbolToStringTag)); t.IsString() {
-		tag = t.Object().Str()
+		tag = t.Str()
 	}
 	return s.forTag(vm, tag)
 }

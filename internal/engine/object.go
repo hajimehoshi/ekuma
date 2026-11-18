@@ -1220,7 +1220,7 @@ func (vm *VM) UnitString(u uint16) Value {
 		return vm.strings.ascii[u]
 	}
 	var buf [utf8.UTFMax]byte
-	return vm.NewString(string(wtf8.AppendRune(buf[:0], rune(u))))
+	return vm.shortString(string(wtf8.AppendRune(buf[:0], rune(u))))
 }
 
 // getOwn returns the own named property key of o.

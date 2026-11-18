@@ -27,7 +27,7 @@ func initShadowRealm(vm *engine.VM) {
 		if !src.IsString() {
 			vm.ThrowTypeError("ShadowRealm.prototype.evaluate requires a string")
 		}
-		return performShadowRealmEval(vm, src.Object().Str(), r)
+		return performShadowRealmEval(vm, src.Str(), r)
 	})
 	method(vm, proto, "importValue", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := vm.ValidateShadowRealmObject(this)
@@ -59,7 +59,7 @@ func shadowRealmImportValue(vm *engine.VM, specifier string, exportName engine.V
 		exports := arg(args, 0).Object()
 		k := vm.ToPropertyKey(exportName)
 		if !vm.HasOwnProperty(exports, k) {
-			vm.ThrowTypeError("the module '" + specifier + "' has no export named '" + exportName.Object().Str() + "'")
+			vm.ThrowTypeError("the module '" + specifier + "' has no export named '" + exportName.Str() + "'")
 		}
 		return getWrappedValue(vm, vm.Get(exports, k))
 	})

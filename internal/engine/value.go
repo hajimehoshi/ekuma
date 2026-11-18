@@ -259,7 +259,7 @@ func IsStrictlyEqual(a, b Value) bool {
 		if a.isShortString() && b.isShortString() {
 			return a.o.shortStringBytes == b.o.shortStringBytes && math.Float64bits(a.n) == math.Float64bits(b.n)
 		}
-		return a.Str() == b.Str()
+		return equalShortStrings(a, b)
 	}
 	if a.o == b.o {
 		return a.o != bigInt64Object || math.Float64bits(a.n) == math.Float64bits(b.n)

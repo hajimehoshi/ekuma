@@ -122,7 +122,11 @@ func (v Value) substringSlow(start, end int) string {
 // Both values must be strings, and the UTF-16 indices must be in range and in order.
 func (v Value) SubstringEquals(start, end int, other Value) bool {
 	if !v.isShortString() {
-		return v.o.Substring(start, end) == other.Str()
+		part := v.o.Substring(start, end)
+		if other.isShortString() {
+			return len(part) == int(other.o.shortStringBytes) && shortstrings.Pack(part) == math.Float64bits(other.n)
+		}
+		return part == other.o.Str()
 	}
 	data, n := shortstrings.Slice(math.Float64bits(v.n), start, end)
 	if other.isShortString() {
@@ -164,27 +168,67 @@ func (v Value) StringByteLength() int {
 }
 
 // UnitIndexOf returns the first UTF-16 index of sub at or after from, or -1.
-// from must be nonnegative.
-func (v Value) UnitIndexOf(sub string, from int) int {
-	if !v.isShortString() {
-		return v.o.UnitIndexOf(sub, from)
+// Both values must be strings, and from must be nonnegative.
+func (v Value) UnitIndexOf(sub Value, from int) int {
+	if !v.isShortString() && !sub.isShortString() {
+		return v.o.UnitIndexOf(sub.o.Str(), from)
 	}
-	if len(sub) > shortstrings.MaxBytes {
-		return -1
-	}
-	return shortstrings.Index(math.Float64bits(v.n), int(v.o.shortStringBytes), shortstrings.Pack(sub), len(sub), from)
+	return v.shortStringIndex(sub, from, false)
 }
 
 // UnitLastIndexOf returns the last UTF-16 index of sub at or before from, or -1.
-// from must be nonnegative.
-func (v Value) UnitLastIndexOf(sub string, from int) int {
-	if !v.isShortString() {
-		return v.o.UnitLastIndexOf(sub, from)
+// Both values must be strings, and from must be nonnegative.
+func (v Value) UnitLastIndexOf(sub Value, from int) int {
+	if !v.isShortString() && !sub.isShortString() {
+		return v.o.UnitLastIndexOf(sub.o.Str(), from)
 	}
-	if len(sub) > shortstrings.MaxBytes {
+	return v.shortStringIndex(sub, from, true)
+}
+
+func (v Value) shortStringIndex(sub Value, from int, backward bool) int {
+	n, subN := v.StringByteLength(), sub.StringByteLength()
+	if n > shortstrings.MaxBytes {
+		// The dispatch requires a packed operand, so sub is packed here.
+		data := shortstrings.Bytes(math.Float64bits(sub.n))
+		text := string(data[:subN])
+		if backward {
+			return v.o.UnitLastIndexOf(text, from)
+		}
+		return v.o.UnitIndexOf(text, from)
+	}
+	if subN > shortstrings.MaxBytes {
 		return -1
 	}
-	return shortstrings.LastIndex(math.Float64bits(v.n), int(v.o.shortStringBytes), shortstrings.Pack(sub), len(sub), from)
+	var data, pattern uint64
+	if v.isShortString() {
+		data = math.Float64bits(v.n)
+	} else {
+		data = shortstrings.Pack(v.o.Str())
+	}
+	if sub.isShortString() {
+		pattern = math.Float64bits(sub.n)
+	} else {
+		pattern = shortstrings.Pack(sub.o.Str())
+	}
+	if backward {
+		return shortstrings.LastIndex(data, n, pattern, subN, from)
+	}
+	return shortstrings.Index(data, n, pattern, subN, from)
+}
+
+// IsASCII reports whether s contains only ASCII code units. s must be a string.
+func (s Value) IsASCII() bool {
+	if s.o.flags&objASCIIKnown != 0 {
+		return s.o.flags&objASCII != 0
+	}
+	return s.isASCIISlow()
+}
+
+func (s Value) isASCIISlow() bool {
+	if s.isShortString() {
+		return shortstrings.IsASCII(math.Float64bits(s.n))
+	}
+	return s.o.IsASCII()
 }
 
 // compareShortStrings compares unreversed strings whose byte lengths fit a packed payload.
@@ -367,4 +411,39 @@ func (vm *VM) repeatShort(s Value, count int) (Value, bool) {
 		n: math.Float64frombits(repeated),
 		o: &vm.shapes.shortStrings[repeatedN],
 	}, true
+}
+
+// CompareStrings orders a and b by UTF-16 code units and returns -1, 0, or 1.
+// Both values must be strings.
+func CompareStrings(a, b Value) int {
+	if a.isShortString() || b.isShortString() {
+		aN, bN := a.StringByteLength(), b.StringByteLength()
+		if aN <= shortstrings.MaxBytes && bN <= shortstrings.MaxBytes && (a.o.flags|b.o.flags)&objReversed == 0 {
+			return compareShortStrings(a, aN, b, bN)
+		}
+	}
+	return wtf8.Compare(a.Str(), b.Str())
+}
+
+func equalShortStrings(a, b Value) bool {
+	if !a.isShortString() {
+		a, b = b, a
+	}
+	n := int(a.o.shortStringBytes)
+	if b.isShortString() {
+		return n == int(b.o.shortStringBytes) && math.Float64bits(a.n) == math.Float64bits(b.n)
+	}
+	if n != len(b.o.str) {
+		return false
+	}
+	return math.Float64bits(a.n) == shortstrings.Pack(b.o.Str())
+}
+
+// AppendStringBytes appends the string value's canonical WTF-8 bytes to dst.
+func (v Value) AppendStringBytes(dst []byte) []byte {
+	if v.isShortString() {
+		data := shortstrings.Bytes(math.Float64bits(v.n))
+		return append(dst, data[:v.o.shortStringBytes]...)
+	}
+	return append(dst, v.o.Str()...)
 }

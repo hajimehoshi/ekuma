@@ -251,7 +251,7 @@ func initLocaleCase(vm *engine.VM) {
 			if this.IsNullish() {
 				vm.ThrowTypeError("String.prototype." + m.name + " called on null or undefined")
 			}
-			s := vm.ToString(this)
+			value := vm.ToStringValue(this)
 			// TransformCase.
 			requested := canonicalizeLocaleList(vm, arg(args, 0))
 			var tag string
@@ -268,6 +268,13 @@ func initLocaleCase(vm *engine.VM) {
 					lang = t.Language
 				}
 			}
+			if lang == "" || lang == "el" && !m.upper {
+				if mapped, ok := vm.MapASCII(value, m.upper); ok {
+					return mapped
+				}
+				return vm.CallValue(base, value)
+			}
+			s := value.Str()
 			// The rules of the language apply first, and then the base maps the case of the
 			// result. Greek has rules only for uppercasing.
 			switch {

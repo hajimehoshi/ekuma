@@ -398,10 +398,10 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 		mode := zipShortest
 		switch m := vm.GetV(opts, modeKey); {
 		case m.IsUndefined():
-		case m.IsString() && m.Object().Str() == "shortest":
-		case m.IsString() && m.Object().Str() == "longest":
+		case m.IsString() && m.Str() == "shortest":
+		case m.IsString() && m.Str() == "longest":
 			mode = zipLongest
-		case m.IsString() && m.Object().Str() == "strict":
+		case m.IsString() && m.Str() == "strict":
 			mode = zipStrict
 		default:
 			vm.ThrowTypeError("the mode must be \"shortest\", \"longest\" or \"strict\"")
@@ -826,8 +826,8 @@ func initLazyIteratorMethods(vm *engine.VM, k *iteratorKeys, newHelper func(help
 		allowPartial := false
 		switch u := arg(args, 1); {
 		case u.IsUndefined():
-		case u.IsString() && u.Object().Str() == "only-full":
-		case u.IsString() && u.Object().Str() == "allow-partial":
+		case u.IsString() && u.Str() == "only-full":
+		case u.IsString() && u.Str() == "allow-partial":
 			allowPartial = true
 		default:
 			closeAndThrowTypeError(vm, it, "undersized must be \"only-full\" or \"allow-partial\"")

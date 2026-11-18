@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -236,7 +237,12 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 			w.buf = append(w.buf, "false"...)
 		}
 	case value.IsString():
-		w.appendQuote(value.Object().Str())
+		if value.StringByteLength() <= shortstrings.MaxBytes {
+			var buf [shortstrings.MaxBytes]byte
+			w.appendQuote(string(value.AppendStringBytes(buf[:0])))
+		} else {
+			w.appendQuote(value.Str())
+		}
 	case value.IsNumber():
 		n := value.Number()
 		if math.IsInf(n, 0) || n != n {

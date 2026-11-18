@@ -314,7 +314,7 @@ func initDate(vm *engine.VM) {
 		o := thisObject(vm, this, "Date.prototype[Symbol.toPrimitive]")
 		h := arg(args, 0)
 		if h.IsString() {
-			switch h.Object().Str() {
+			switch h.Str() {
 			case "string", "default":
 				return vm.OrdinaryToPrimitive(o, engine.HintString)
 			case "number":

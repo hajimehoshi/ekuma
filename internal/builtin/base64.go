@@ -280,7 +280,7 @@ func stringOption(vm *engine.VM, opts engine.Value, name string, choices ...stri
 		return choices[0]
 	}
 	if v.IsString() {
-		s := v.Object().Str()
+		s := v.Str()
 		if slices.Contains(choices, s) {
 			return s
 		}
@@ -321,7 +321,7 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		if !s.IsString() {
 			vm.ThrowTypeError("the argument must be a string")
 		}
-		return s.Object().Str()
+		return s.Str()
 	}
 	base64Options := func(vm *engine.VM, options engine.Value) (bool, string) {
 		opts := optionsObject(vm, options)
