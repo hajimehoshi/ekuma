@@ -255,3 +255,30 @@ func compareUnits(a uint64, aN int, b uint64, bN int) int {
 	}
 	return cmp.Compare(aLen, bLen)
 }
+
+// IsWellFormed reports whether the packed string contains no lone surrogates.
+func IsWellFormed(data uint64) bool {
+	return loneSurrogateMask(data) == 0
+}
+
+// ToWellFormed replaces lone surrogates with U+FFFD in the packed string, preserving its byte length.
+func ToWellFormed(data uint64) uint64 {
+	for mask := loneSurrogateMask(data); mask != 0; mask &= mask - 1 {
+		shift := bits.TrailingZeros64(mask) - 7
+		data = data&^(uint64(0xffffff)<<shift) | uint64(0xbdbfef)<<shift
+	}
+	return data
+}
+
+// loneSurrogateMask marks bit 7 of each lone surrogate's leading byte.
+func loneSurrogateMask(data uint64) uint64 {
+	if IsASCII(data) {
+		return 0
+	}
+	const lowBits = 0x7f7f7f7f7f7f7f7f
+	x := data ^ 0xedededededededed
+	// Masking before the addition prevents carries between bytes.
+	leads := ^((x & lowBits) + lowBits | x) & 0x8080808080808080
+	// A 0xed lead followed by a continuation byte with bit 5 set encodes a lone surrogate.
+	return leads & (data >> 6)
+}

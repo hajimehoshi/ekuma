@@ -193,3 +193,38 @@ func compareShortStrings(a Value, aN int, b Value, bN int) int {
 	}
 	return shortstrings.Compare(x, aN, y, bN)
 }
+
+// IsWellFormed reports whether the string value contains no lone surrogates.
+func (v Value) IsWellFormed() bool {
+	if v.isShortString() {
+		return shortstrings.IsWellFormed(math.Float64bits(v.n))
+	}
+	return wtf8.IsWellFormed(v.o.Str())
+}
+
+// ToWellFormed returns s with lone surrogates replaced by U+FFFD.
+func (vm *VM) ToWellFormed(s Value) Value {
+	if s.isShortString() {
+		return vm.toWellFormedShort(s, math.Float64bits(s.n), int(s.o.shortStringBytes))
+	}
+	text := s.o.Str()
+	if len(text) <= shortstrings.MaxBytes {
+		return vm.toWellFormedShort(s, shortstrings.Pack(text), len(text))
+	}
+	repaired := wtf8.ToValidUTF8(text)
+	if repaired == text {
+		return s
+	}
+	return vm.NewString(repaired)
+}
+
+func (vm *VM) toWellFormedShort(s Value, data uint64, n int) Value {
+	repaired := shortstrings.ToWellFormed(data)
+	if repaired == data {
+		return s
+	}
+	return Value{
+		n: math.Float64frombits(repaired),
+		o: &vm.shapes.shortStrings[n],
+	}
+}

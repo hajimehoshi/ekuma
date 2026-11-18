@@ -1471,3 +1471,61 @@ func BenchmarkStringCompare(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringWellFormed measures well-formedness checking and repair.
+func BenchmarkStringWellFormed(b *testing.B) {
+	for _, tc := range []struct {
+		name string
+		text string
+	}{
+		{
+			name: "ASCII",
+			text: `"abcdefgh"`,
+		},
+		{
+			name: "Unicode",
+			text: `"\ud7ff日"`,
+		},
+		{
+			name: "Paired",
+			text: `"😀😀"`,
+		},
+		{
+			name: "LoneAtEnd",
+			text: `"abcde\ud800"`,
+		},
+		{
+			name: "TwoLone",
+			text: `"\udfff\udbff"`,
+		},
+		{
+			name: "LongValid",
+			text: `"日本語の長い文字列"`,
+		},
+		{
+			name: "LongInvalid",
+			text: `"日本語\ud800の長い文字列"`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			for _, method := range []string{"isWellFormed", "toWellFormed"} {
+				b.Run(form+"/"+tc.name+"/"+method, func(b *testing.B) {
+					var vm ekuma.VM
+					receiver := tc.text
+					if form == "Created" {
+						receiver = "(" + receiver + " + '!').slice(0, -1)"
+					}
+					src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.%s(); return result; }`, receiver, method)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}

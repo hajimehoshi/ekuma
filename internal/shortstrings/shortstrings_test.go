@@ -405,3 +405,47 @@ func TestCompare(t *testing.T) {
 		})
 	}
 }
+
+func TestWellFormed(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		text       string
+		wellFormed bool
+		repaired   string
+	}{
+		{
+			name:       "ASCII with NUL",
+			text:       "ab\x00cdefg",
+			wellFormed: true,
+			repaired:   "ab\x00cdefg",
+		},
+		{
+			name:       "BMP before surrogates",
+			text:       "\ud7ff日",
+			wellFormed: true,
+			repaired:   "\ud7ff日",
+		},
+		{
+			name:       "supplementary pairs",
+			text:       "😀😀",
+			wellFormed: true,
+			repaired:   "😀😀",
+		},
+		{
+			name:       "lone surrogate at end",
+			text:       "abcde\xed\xa0\x80",
+			wellFormed: false,
+			repaired:   "abcde�",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := shortstrings.Pack(tc.text)
+			if got := shortstrings.IsWellFormed(data); got != tc.wellFormed {
+				t.Errorf("IsWellFormed() = %t, want %t", got, tc.wellFormed)
+			}
+			if got, want := shortstrings.ToWellFormed(data), shortstrings.Pack(tc.repaired); got != want {
+				t.Errorf("ToWellFormed() = %#x, want %#x", got, want)
+			}
+		})
+	}
+}

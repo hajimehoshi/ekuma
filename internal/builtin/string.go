@@ -415,10 +415,10 @@ func initString(vm *engine.VM) {
 		return vm.NewString(mapWellFormed(vm, str, form))
 	})
 	method(vm, proto, "isWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(wtf8.IsWellFormed(thisString(vm, this, "isWellFormed").Str()))
+		return engine.Bool(thisStringValue(vm, this, "isWellFormed").IsWellFormed())
 	})
 	method(vm, proto, "toWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(wtf8.ToValidUTF8(thisString(vm, this, "toWellFormed").Str()))
+		return vm.ToWellFormed(thisStringValue(vm, this, "toWellFormed"))
 	})
 	// split, replace, replaceAll, match and search borrow the RegExp object of a literal separator
 	// or pattern. RegExp.prototype[@@split] and the others reach it only through IsUnmodifiedRegExp,

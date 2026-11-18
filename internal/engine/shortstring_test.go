@@ -153,3 +153,14 @@ func TestShortStringOrdering(t *testing.T) {
 		t.Error("mixed packed and object strings did not follow UTF-16 ordering")
 	}
 }
+
+func TestToWellFormedLiteral(t *testing.T) {
+	vm := newVM(t)
+	v, err := runScript(vm, "well-formed-literal", `"\udfff\udbff".toWellFormed();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.Str(), "��"; got != want {
+		t.Errorf("toWellFormed() = %q, want %q", got, want)
+	}
+}
