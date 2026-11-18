@@ -29,9 +29,17 @@ func (vm *VM) shortString(s string) Value {
 }
 
 func (v Value) shortText() string {
+	// The conversion stays here and the byte fill in shortData, so that
+	// shortText inlines even where encoding/binary is costly to inline (wasm)
+	// and a caller's non-escaping conversion uses its stack.
+	data := v.shortData()
+	return string(data[:v.o.shortStringBytes])
+}
+
+func (v Value) shortData() [maxShortStringBytes]byte {
 	var data [maxShortStringBytes]byte
 	binary.LittleEndian.PutUint64(data[:], math.Float64bits(v.n))
-	return string(data[:v.o.shortStringBytes])
+	return data
 }
 
 // Str returns the string value in canonical WTF-8.
