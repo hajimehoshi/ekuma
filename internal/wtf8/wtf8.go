@@ -436,6 +436,18 @@ func (b *Builder) WriteString(s string) {
 	b.buf = append(b.buf, s...)
 }
 
+// WriteStringBytes appends a JavaScript string encoded in WTF-8.
+func (b *Builder) WriteStringBytes(s []byte) {
+	if len(s) >= 3 && s[0] == 0xED && s[1] >= 0xB0 {
+		if hi, ok := b.endsWithHigh(); ok {
+			lo := 0xD000 | rune(s[1]&0x3F)<<6 | rune(s[2]&0x3F)
+			b.buf = utf8.AppendRune(b.buf[:len(b.buf)-3], combine(hi, lo))
+			s = s[3:]
+		}
+	}
+	b.buf = append(b.buf, s...)
+}
+
 // WriteRepeated appends the JavaScript string s count times.
 func (b *Builder) WriteRepeated(s string, count int) {
 	if count <= 0 {

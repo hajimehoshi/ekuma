@@ -92,6 +92,15 @@ func (vm *VM) initRealmPrototypes() {
 	stringProto := vm.NewObject(objectProto)
 	vm.intrinsics[IntrinsicStringPrototype] = stringProto
 	vm.shapes.string = vm.shapeFor(stringProto)
+	vm.shapes.shortStrings = new([maxShortStringBytes + 1]Object)
+	for i := range vm.shapes.shortStrings {
+		vm.shapes.shortStrings[i] = Object{
+			kind:             kindString,
+			class:            classShortString,
+			shape:            vm.shapes.string,
+			shortStringBytes: uint8(i),
+		}
+	}
 }
 
 // initRealmGlobals finishes the prototypes of the current realm and creates its global object.
@@ -497,7 +506,7 @@ func (vm *VM) PerformEval(x Value) Value {
 	if !x.IsString() {
 		return x
 	}
-	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.o.Str())), Value{o: vm.global})
+	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.Str())), Value{o: vm.global})
 }
 
 // FunctionKind is the kind of function that CreateDynamicFunction creates.

@@ -74,6 +74,7 @@ const (
 	classBoolean
 	classNumber
 	classString
+	classShortString
 	classSymbol
 	classBigInt
 	classArguments
@@ -115,6 +116,9 @@ type Object struct {
 	kind  kind
 	class class
 	flags uint8
+
+	// shortStringBytes is the byte length of a packed string.
+	shortStringBytes uint8
 
 	// length is the length of an array, which is at least len(elems). For a string it is 0,
 	// or the array index that the string stands for plus one. See [Object.arrayIndex].
@@ -597,13 +601,15 @@ func (v Value) accessor() *accessorPair {
 
 // shapeTable holds the shapes that new objects start with.
 type shapeTable struct {
-	nullProto  *shape
-	object     *shape
-	array      *shape
-	function   *shape
-	string     *shape
-	iterResult *shape
-	arguments  *shape
+	// shortStrings are immutable sentinels. Per-string caches belong to materialized objects.
+	shortStrings *[maxShortStringBytes + 1]Object
+	nullProto    *shape
+	object       *shape
+	array        *shape
+	function     *shape
+	string       *shape
+	iterResult   *shape
+	arguments    *shape
 
 	// regExp is the shape of a new RegExp object whose prototype is %RegExp.prototype%,
 	// once one was made.
@@ -934,14 +940,18 @@ func (vm *VM) indexString(i uint32) Value {
 		return Value{o: o}
 	}
 	v := vm.newIndexString(i)
-	t[i] = v.o
+	o := v.stringObject()
+	o.length = i + 1
+	t[i] = o
 	return v
 }
 
 // newIndexString returns a new string of the array index i, which is at least 10.
 func (vm *VM) newIndexString(i uint32) Value {
 	v := vm.NewString(strconv.FormatUint(uint64(i), 10))
-	v.o.length = i + 1
+	if !v.isShortString() {
+		v.o.length = i + 1
+	}
 	return v
 }
 
@@ -955,13 +965,16 @@ const internedInitialSize = 896
 
 // NewString returns the string s, which must be in canonical WTF-8, as a value.
 func (vm *VM) NewString(s string) Value {
-	if len(s) <= 1 {
-		if s == "" {
-			return vm.emptyString
+	switch len(s) {
+	case 0:
+		return vm.emptyString
+	case 1:
+		if s[0] < 0x80 {
+			return vm.strings.ascii[s[0]]
 		}
-		if c := s[0]; c < 0x80 {
-			return vm.strings.ascii[c]
-		}
+	}
+	if len(s) <= maxShortStringBytes {
+		return vm.shortString(s)
 	}
 	return Value{
 		o: &Object{
@@ -1185,13 +1198,7 @@ func (vm *VM) UnitString(u uint16) Value {
 		return vm.strings.ascii[u]
 	}
 	var buf [utf8.UTFMax]byte
-	return Value{
-		o: &Object{
-			kind:  kindString,
-			shape: vm.shapes.string,
-			str:   string(wtf8.AppendRune(buf[:0], rune(u))),
-		},
-	}
+	return vm.NewString(string(wtf8.AppendRune(buf[:0], rune(u))))
 }
 
 // getOwn returns the own named property key of o.

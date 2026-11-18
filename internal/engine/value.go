@@ -50,7 +50,8 @@ type Value struct {
 	n float64
 
 	// o is nil for undefined, numberObject for the number n, bigInt64Object for the BigInt
-	// whose two's complement bits n holds, and the object for anything else.
+	// whose two's complement bits n holds, a short-string sentinel for packed bytes,
+	// and the object for anything else.
 	o *Object
 }
 
@@ -111,11 +112,12 @@ func ObjectValue(o *Object) Value {
 
 // Object returns the object, string, symbol or BigInt that v is. It returns nil for a number
 // or undefined, and the same object for every BigInt that fits in an int64.
+// For primitive strings, the returned object's identity is not guaranteed.
 func (v Value) Object() *Object {
 	if v.IsNumber() {
 		return nil
 	}
-	return v.o
+	return v.stringObject()
 }
 
 // Number returns the number v. v must be a number.
@@ -210,7 +212,7 @@ func ToBoolean(v Value) bool {
 	case kindNull, kindFalse, kindHTMLDDA:
 		return false
 	case kindString:
-		return o.str != ""
+		return v.isShortString() && o.shortStringBytes != 0 || o.str != ""
 	case kindBigInt:
 		// Zero fits in an int64.
 		return o != bigInt64Object || math.Float64bits(v.n) != 0
@@ -249,6 +251,15 @@ func typeOf(v Value) string {
 func IsStrictlyEqual(a, b Value) bool {
 	if a.o == numberObject || b.o == numberObject {
 		return a.o == b.o && a.n == b.n
+	}
+	if a.isShortString() || b.isShortString() {
+		if !a.IsString() || !b.IsString() {
+			return false
+		}
+		if a.isShortString() && b.isShortString() {
+			return a.o.shortStringBytes == b.o.shortStringBytes && math.Float64bits(a.n) == math.Float64bits(b.n)
+		}
+		return a.Str() == b.Str()
 	}
 	if a.o == b.o {
 		return a.o != bigInt64Object || math.Float64bits(a.n) == math.Float64bits(b.n)

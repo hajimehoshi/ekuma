@@ -49,11 +49,16 @@ Ekuma uses the following techniques to improve performance:
 - Ordinary JavaScript calls reuse stack storage within the interpreter loop, without Go recursion.
 - Proper tail calls reuse the current frame for eligible strict-mode calls.
 - Values occupy two words on 64-bit platforms; numbers and signed 64-bit BigInts are stored inline.
+  Short primitive strings can also store up to eight WTF-8 bytes inline, avoiding a separate
+  heap object.
 - Eligible forwarding calls such as `f.apply(this, arguments)` avoid creating an arguments object.
 - Memory is managed by Go's garbage collector, without reference counting.
 - Strings use [WTF-8](https://simonsapin.github.io/wtf-8/) with exact UTF-16 semantics;
   well-formed strings cross the Go boundary without transcoding.
 - Repeated string appends and prepends can reuse growing buffers, preserving earlier string values.
+  Known ASCII operands can extend those buffers directly.
+- Multi-part string concatenation sizes its output before copying and can assemble small results
+  in stack scratch space.
 
 ## Performance
 

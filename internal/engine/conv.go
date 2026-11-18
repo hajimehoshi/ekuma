@@ -88,7 +88,7 @@ func (vm *VM) ToNumber(v Value) float64 {
 	case kindTrue:
 		return 1
 	case kindString:
-		return numconv.StringToNumber(o.Str())
+		return numconv.StringToNumber(v.Str())
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a number")
 	case kindBigInt:
@@ -146,7 +146,7 @@ func (vm *VM) ToString(v Value) string {
 	}
 	switch o.kind {
 	case kindString:
-		return o.Str()
+		return v.Str()
 	case kindNull:
 		return "null"
 	case kindFalse:
@@ -193,7 +193,7 @@ func (vm *VM) ToObject(v Value) *Object {
 		w.ext = o.kind == kindTrue
 		return w
 	case kindString:
-		return vm.NewStringObject(o, vm.Intrinsic(IntrinsicStringPrototype))
+		return vm.NewStringObject(v.stringObject(), vm.Intrinsic(IntrinsicStringPrototype))
 	case kindSymbol:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicSymbolPrototype))
 		w.class = classSymbol
@@ -243,7 +243,7 @@ func (vm *VM) ToBigInt(v Value) Value {
 	case kindTrue:
 		return BigIntFromInt64(1)
 	case kindString:
-		i := numconv.StringToBigInt(p.o.Str(), vm.Poll)
+		i := numconv.StringToBigInt(p.Str(), vm.Poll)
 		if i == nil {
 			vm.throwSyntaxError("cannot convert " + vm.DisplayString(p) + " to a BigInt")
 		}
@@ -331,7 +331,7 @@ func compareBigIntMixed(a, b Value) cmpResult {
 		case kindBigInt:
 			return v.BigInt(), 0, true
 		case kindString:
-			i := numconv.StringToBigInt(v.o.Str(), nil)
+			i := numconv.StringToBigInt(v.Str(), nil)
 			return i, 0, i != nil
 		}
 		return nil, 0, false
@@ -380,7 +380,7 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 		a = vm.ToPrimitive(a, HintNumber)
 	}
 	if a.IsString() && b.IsString() {
-		return cmpResult(wtf8.Compare(a.o.Str(), b.o.Str()) + 1)
+		return cmpResult(wtf8.Compare(a.Str(), b.Str()) + 1)
 	}
 	if kindOf(a) == kindBigInt || kindOf(b) == kindBigInt {
 		if !a.IsNumber() && !a.IsBigInt() && !a.IsString() {
@@ -421,12 +421,12 @@ func (vm *VM) addValues(a, b Value) Value {
 	if as || bs {
 		var x, y string
 		if as {
-			x = a.o.str
+			x = a.rawString()
 		} else {
 			x = vm.ToString(a)
 		}
 		if bs {
-			y = b.o.str
+			y = b.rawString()
 		} else {
 			y = vm.ToString(b)
 		}

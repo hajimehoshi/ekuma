@@ -147,3 +147,26 @@ func TestToValidUTF8(t *testing.T) {
 		t.Errorf("ToValidUTF8 = %q, want %q", got, want)
 	}
 }
+
+func TestWriteStringBytes(t *testing.T) {
+	for _, tc := range []struct {
+		prefix string
+		want   string
+	}{
+		{
+			prefix: "\xed\xa0\xbd",
+			want:   "😀x",
+		},
+		{
+			prefix: "a",
+			want:   "a\xed\xb8\x80x",
+		},
+	} {
+		var b wtf8.Builder
+		b.WriteString(tc.prefix)
+		b.WriteStringBytes([]byte("\xed\xb8\x80x"))
+		if got := b.String(); got != tc.want {
+			t.Errorf("WriteStringBytes after %q = %q, want %q", tc.prefix, got, tc.want)
+		}
+	}
+}

@@ -44,7 +44,7 @@ func (vm *VM) NewArrayOf(elems []Value) Value {
 
 // GoString returns the content of the string v as UTF-8, with lone surrogates replaced by U+FFFD.
 func GoString(v Value) string {
-	return wtf8.ToValidUTF8(v.o.Str())
+	return wtf8.ToValidUTF8(v.Str())
 }
 
 // HostGet returns v[key].

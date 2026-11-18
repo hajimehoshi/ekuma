@@ -162,6 +162,10 @@ func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep strin
 
 // writeString writes ToString(v) to b.
 func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
+	if v.IsString() {
+		v.WriteStringTo(b)
+		return
+	}
 	if v.IsNumber() {
 		var buf [32]byte
 		b.WriteString(string(numconv.AppendNumber(buf[:0], v.Number())))

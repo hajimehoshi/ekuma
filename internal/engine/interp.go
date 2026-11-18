@@ -422,6 +422,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.ThrowTypeError("assignment to constant variable '" + fp.keys[i.A].str + "'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
+			// Error text is an interned constant.
 			vm.throwError(thrownErrorKinds[i.A], fp.consts[i.B].o.str)
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalOrUndef:
@@ -806,7 +807,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			if x.o != nil && y.o != nil && x.o.kind == kindString && y.o.kind == kindString {
-				regs[i.A] = vm.concat(x, x.o.str, y, y.o.str)
+				regs[i.A] = vm.Concat(x, y)
 				continue
 			}
 			v := vm.addValues(x, y)

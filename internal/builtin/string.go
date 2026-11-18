@@ -224,11 +224,29 @@ func initString(vm *engine.VM) {
 		return vm.NewString(s.Substring(start, end))
 	})
 	method(vm, proto, "concat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "concat")
-		var b wtf8.Builder
-		b.WriteString(s.Str())
+		vm.RequireObjectCoercible(this, "String.prototype.concat")
+		s := vm.ToStringValue(this)
+		byteLength := s.StringByteLength()
+		reserve := byteLength <= engine.MaxStringLength
 		for _, a := range args {
-			b.WriteString(vm.ToString(a))
+			if !a.IsString() {
+				reserve = false
+				break
+			}
+			n := a.StringByteLength()
+			if n > engine.MaxStringLength-byteLength {
+				reserve = false
+				break
+			}
+			byteLength += n
+		}
+		var b wtf8.Builder
+		if reserve {
+			b.Grow(byteLength)
+		}
+		s.WriteStringTo(&b)
+		for _, a := range args {
+			writeString(vm, &b, a)
 		}
 		return vm.NewString(b.String())
 	})
@@ -504,7 +522,7 @@ func initString(vm *engine.VM) {
 				if functional {
 					writeLimited(vm, &b, vm.ToString(vm.Call(rep.Object(), engine.Undefined, vm.NewString(search), engine.Number(float64(p)), engine.ObjectValue(s))))
 				} else {
-					writeSubstitution(vm, &b, search, s, p, substCaptures{}, engine.Undefined, repStr)
+					writeSubstitution(vm, &b, search, engine.ObjectValue(s), p, substCaptures{}, engine.Undefined, repStr)
 				}
 				end = p + searchLen
 			}

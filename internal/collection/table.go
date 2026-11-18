@@ -62,7 +62,7 @@ type entry struct {
 }
 
 func (e *entry) deleted() bool {
-	return e.key.Object() == deletedKey
+	return !e.key.IsString() && e.key.Object() == deletedKey
 }
 
 // generation is a period of the life of a table between two compactions.
@@ -114,7 +114,7 @@ func (t *Table) find(k engine.Value) int {
 	case k.IsNumber():
 		i, ok = t.nums[numberKey(k.Number())]
 	case k.IsString():
-		i, ok = t.strs[k.Object().Str()]
+		i, ok = t.strs[k.Str()]
 	case k.IsBigInt():
 		if n, ok64 := k.BigInt64(); ok64 {
 			i, ok = t.ints[n]
@@ -142,9 +142,9 @@ func (t *Table) scan(k engine.Value) int {
 			}
 		}
 	case k.IsString():
-		s := k.Object().Str()
+		s := k.Str()
 		for i := range t.entries {
-			if e := &t.entries[i]; e.key.IsString() && e.key.Object().Str() == s {
+			if e := &t.entries[i]; e.key.IsString() && e.key.Str() == s {
 				return i
 			}
 		}
@@ -157,7 +157,7 @@ func (t *Table) scan(k engine.Value) int {
 	default:
 		o := k.Object()
 		for i := range t.entries {
-			if e := &t.entries[i]; !e.deleted() && !e.key.IsNumber() && e.key.Object() == o {
+			if e := &t.entries[i]; !e.deleted() && !e.key.IsNumber() && !e.key.IsString() && e.key.Object() == o {
 				return i
 			}
 		}
@@ -177,7 +177,7 @@ func (t *Table) index(k engine.Value, i int) {
 		if t.strs == nil {
 			t.strs = map[string]int32{}
 		}
-		t.strs[k.Object().Str()] = int32(i)
+		t.strs[k.Str()] = int32(i)
 	case k.IsBigInt():
 		if n, ok := k.BigInt64(); ok {
 			if t.ints == nil {
@@ -204,7 +204,7 @@ func (t *Table) unindex(k engine.Value) {
 	case k.IsNumber():
 		delete(t.nums, numberKey(k.Number()))
 	case k.IsString():
-		delete(t.strs, k.Object().Str())
+		delete(t.strs, k.Str())
 	case k.IsBigInt():
 		if n, ok := k.BigInt64(); ok {
 			delete(t.ints, n)

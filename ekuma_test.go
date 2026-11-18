@@ -2708,3 +2708,229 @@ func TestRealmRestored(t *testing.T) {
 	}
 	check("an interruption")
 }
+
+var inlineStringSink engine.Value
+var inlineTextSink string
+
+func BenchmarkInlineString(b *testing.B) {
+	for _, text := range []string{"abcdefgh", "abcdefghi"} {
+		b.Run(fmt.Sprintf("construct/%d", len(text)), func(b *testing.B) {
+			vm := engine.NewVM(nil)
+			b.ReportAllocs()
+			for b.Loop() {
+				inlineStringSink = vm.NewString(text)
+			}
+		})
+		b.Run(fmt.Sprintf("roundtrip/%d", len(text)), func(b *testing.B) {
+			vm := engine.NewVM(nil)
+			b.ReportAllocs()
+			for b.Loop() {
+				inlineTextSink = vm.ToString(vm.NewString(text))
+			}
+		})
+	}
+	for _, tc := range []struct{ name, body string }{
+		{
+			name: "retain",
+			body: `let a = new Array(1000); for (let i=0;i<1000;i++) a[i] = "id" + i; return a[999] === "id999";`,
+		},
+		{
+			name: "keys",
+			body: `let o = {}; for (let i=0;i<1000;i++) o["id" + i] = i; let s=0; for (let i=0;i<1000;i++) s+=o["id" + i]; return s===499500;`,
+		},
+		{
+			name: "slice",
+			body: `let s="abcdefghijklmno", n=0; for (let i=0;i<1000;i++) n+=s.slice(i%8,i%8+4).length; return n===4000;`,
+		},
+		{
+			name: "map",
+			body: `let m=new Map(); for(let i=0;i<1000;i++) m.set("id"+i,i); let n=0; for(let i=0;i<1000;i++) n+=m.get("id"+i); return n===499500;`,
+		},
+		{
+			name: "compare",
+			body: `let n=0; for(let i=0;i<1000;i++) {let a="id"+i,b="id"+i; if(a===b) n++;} return n===1000;`,
+		},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			var vm ekuma.VM
+			if _, err := runScript(b.Context(), &vm, "setup", "function runInline(){"+tc.body+"}"); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				v, err := vm.Global().Call(b.Context(), "runInline")
+				if err != nil {
+					b.Fatal(err)
+				}
+				if !v.Bool() {
+					b.Error("incorrect result")
+				}
+			}
+		})
+	}
+}
+
+func TestInlineStringBoundaries(t *testing.T) {
+	vm := engine.NewVM(nil)
+	otherVM := engine.NewVM(nil)
+	for _, s := range []string{"", "a", "ab", "abcdefgh", "abcdefghi", "ab\x00", "\x00\x00\x00\x00\x00\x00\xc2\x80", "日本", "\xed\xa0\x80"} {
+		t.Run(fmt.Sprintf("%x", s), func(t *testing.T) {
+			v := vm.NewString(s)
+			if got := vm.ToString(v); got != s {
+				t.Errorf("ToString = %q, want %q", got, s)
+			}
+			if !engine.IsStrictlyEqual(v, otherVM.NewString(s)) {
+				t.Error("equal strings from different VMs differ")
+			}
+			if len(s) > 0 {
+				different := []byte(s)
+				different[0] ^= 1
+				if engine.IsStrictlyEqual(v, vm.NewString(string(different))) {
+					t.Error("different payloads compare equal")
+				}
+			}
+			boxed := engine.ObjectValue(v.Object())
+			if !engine.IsStrictlyEqual(v, boxed) {
+				t.Error("materialized value differs")
+			}
+			if engine.IsStrictlyEqual(v, vm.NewString(s+"\x00")) {
+				t.Error("different lengths compare equal")
+			}
+			if got := engine.ToBoolean(v); got != (s != "") {
+				t.Errorf("ToBoolean = %v", got)
+			}
+		})
+	}
+}
+
+func TestInlineStringMissingProxyKey(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "proxy-key", `
+  const key = "ab" + "cd";
+  const p = new Proxy({}, {
+   get(target, k) {
+    if (k !== key) throw new Error("wrong key");
+    Object.defineProperty(target, k, {value: 42, configurable: false, writable: false});
+    return 42;
+   }
+  });
+  p[key] === 42;
+ `)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("proxy lookup failed")
+	}
+}
+
+func TestInlineStringTemplate(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "inline-template",
+		"function combine(a, b, c) { return `${a}${b}${c}`; }\n"+
+			`const hi = String.fromCharCode(0xd83d);
+		const lo = String.fromCharCode(0xde00);
+		combine(hi, "", lo) === "😀" &&
+		combine(String(12), "", String(34)) === "1234" &&
+		combine("long-prefix", String(12345678), hi) === "long-prefix12345678\ud83d";
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("template changed the string contents")
+	}
+}
+
+func TestInlineStringPrependTemplate(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup string
+		want  string
+	}{
+		{
+			name:  "packed prefix",
+			setup: `const prefix = String(12);`,
+			want:  `"1212" + "z".repeat(64)`,
+		},
+		{
+			name:  "surrogate boundary",
+			setup: `const prefix = String.fromCharCode(0xd83d); tail = String.fromCharCode(0xde00) + tail;`,
+			want:  `"\ud83d😀" + "z".repeat(64)`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := runScript(t.Context(), &vm, "prepend-template",
+				`let tail = ""; for (let i = 0; i < 64; i++) tail = "z" + tail;`+
+					tc.setup+"\nconst result = `${prefix}${prefix}${tail}`;\nresult === "+tc.want+";")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !v.Bool() {
+				t.Error("template lost or changed the packed prefix")
+			}
+		})
+	}
+}
+
+func TestInlineStringRegExpSlices(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "regexp-slices", `
+		const s = String(12345678);
+		const m = /^12(3)(45)678$/.exec(s);
+		m[1] === "3" && m[2] === "45" && RegExp.lastMatch === s;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("RegExp changed the packed capture or full match")
+	}
+}
+
+func TestInlineStringConcatReversedSuffix(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		prefix string
+	}{
+		{
+			name:   "forward prefix",
+			prefix: `a += "ab";`,
+		},
+		{
+			name:   "reversed prefix",
+			prefix: `a = "ab" + a;`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := runScript(t.Context(), &vm, "reversed-suffix", `
+    let a = "", b = "!";
+    const parts = [];
+    for (let i = 0; i < 32; i++) {`+tc.prefix+`}
+    for (let i = 0; i < 40; i++) {
+     const c = String(i % 10);
+     b = c + b;
+     parts.push(c);
+    }
+    const result = a + b;
+    result === "ab".repeat(32) + parts.reverse().join("") + "!";
+   `)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !v.Bool() {
+				t.Error("concatenation changed the reversed suffix")
+			}
+		})
+	}
+}
+
+func TestInlineStringIndexAllocations(t *testing.T) {
+	vm := engine.NewVM(nil)
+	s := vm.NewString("abc")
+	if got := testing.AllocsPerRun(100, func() { vm.Index(s, 1) }); got != 0 {
+		t.Errorf("packed string index allocations = %v, want 0", got)
+	}
+}

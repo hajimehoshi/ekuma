@@ -72,6 +72,9 @@ func (vm *VM) KeyString(k PropKey) string {
 
 // ToPropertyKey implements ToPropertyKey.
 func (vm *VM) ToPropertyKey(v Value) PropKey {
+	if v.isShortString() {
+		return vm.KeyOfString(v.shortText())
+	}
 	o := v.o
 	if o == numberObject {
 		if i, ok := numberIndex(v.n); ok {
@@ -102,6 +105,16 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 // QueryKey returns ToPropertyKey(v) for an operation that only reads properties. The key is
 // valid only for that operation and must not be used to create a property.
 func (vm *VM) QueryKey(v Value) PropKey {
+	if v.isShortString() {
+		s := v.shortText()
+		if i, ok := stringIndex(s); ok {
+			return PropKey{idx: i}
+		}
+		if o := vm.strings.interned.get(s); o != nil {
+			return PropKey{key: o}
+		}
+		return PropKey{key: v.stringObject()}
+	}
 	if o := v.o; o != nil && o.kind == kindString {
 		return vm.queryStringKey(o)
 	}
@@ -389,6 +402,9 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	case kindNull:
 		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.KeyString(key) + "')")
 	case kindString:
+		if o.class == classShortString {
+			o = v.stringObject()
+		}
 		if p := vm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {
 			// The shape of a string made in another realm leads to the String.prototype of
 			// that realm.
@@ -403,6 +419,9 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 // getNamed returns the getter instead and the caller has to call it with v as this.
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
 func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *Object) {
+	if key == vm.Key(KeyLength) && v.IsString() {
+		return Number(float64(v.StringLength())), nil
+	}
 	start := vm.protoStart(v, PropKey{key: key})
 	if start.kind == kindString && key == vm.Key(KeyLength) {
 		return Number(float64(start.StringLength())), nil
@@ -599,6 +618,9 @@ func (vm *VM) Index(v Value, i uint32) Value {
 
 // getIndex returns the property of v whose key is the array index i, or the getter to call.
 func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
+	if v.isShortString() && uint(i) < uint(v.StringLength()) {
+		return vm.UnitString(v.UnitAt(int(i))), nil
+	}
 	start := vm.protoStart(v, PropKey{idx: i})
 	for h := start; h != nil; h = h.shape.proto {
 		if h.objectProperties != nil && int64(i) < int64(len(h.elems)) {
@@ -1096,7 +1118,7 @@ func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 		if v.IsNullish() {
 			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.KeyString(PropKey{idx: i}) + "')")
 		}
-		if o != nil && o.kind == kindString && int64(i) < int64(o.StringLength()) {
+		if o != nil && o.kind == kindString && int64(i) < int64(v.StringLength()) {
 			return nil, false
 		}
 		// Only an inherited setter or a proxy can observe the store.

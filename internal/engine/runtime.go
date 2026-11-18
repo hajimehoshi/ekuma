@@ -800,7 +800,7 @@ func (vm *VM) funcNameOfKey(k Value) string {
 		}
 		return ""
 	case k.IsString():
-		return k.o.Str()
+		return k.Str()
 	}
 	return vm.ToString(k)
 }
@@ -820,7 +820,7 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 	o := f.o
 	if o.fn.materialized {
 		if _, ok := o.shape.lookup(vm.Key(KeyName)); ok {
-			if d, _ := vm.GetOwnProperty(o, PropKey{key: vm.Key(KeyName)}); d.flags&FlagAccessor != 0 || !d.value.IsString() || d.value.o.str != "" {
+			if d, _ := vm.GetOwnProperty(o, PropKey{key: vm.Key(KeyName)}); d.flags&FlagAccessor != 0 || !d.value.IsString() || d.value.rawString() != "" {
 				return
 			}
 		}
