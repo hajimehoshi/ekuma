@@ -1273,3 +1273,57 @@ func BenchmarkStringAffixes(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringSearch measures one string search.
+func BenchmarkStringSearch(b *testing.B) {
+	for _, tc := range []struct {
+		text    string
+		pattern string
+	}{
+		{
+			text:    "abababab",
+			pattern: `"ba"`,
+		},
+		{
+			text:    "abcdefgh",
+			pattern: `"zz"`,
+		},
+		{
+			text:    "é日é",
+			pattern: `"é"`,
+		},
+		{
+			text:    "😀😀",
+			pattern: `"\ude00"`,
+		},
+		{
+			text:    "abababababababababab",
+			pattern: `"ba"`,
+		},
+		{
+			text:    "日本語の長い文字列",
+			pattern: `"語"`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			for _, expr := range []string{"s.indexOf(p, 1)", "s.lastIndexOf(p)", "s.includes(p, 1)"} {
+				b.Run(form+"/"+tc.text+"/"+expr, func(b *testing.B) {
+					var vm ekuma.VM
+					receiver := fmt.Sprintf("%q", tc.text)
+					if form == "Created" {
+						receiver = fmt.Sprintf("%q.slice(0, -1)", tc.text+"!")
+					}
+					src := fmt.Sprintf(`var s = %s, p = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = %s; return result; }`, receiver, tc.pattern, expr)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}

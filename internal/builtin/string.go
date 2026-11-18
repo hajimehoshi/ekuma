@@ -144,13 +144,13 @@ func initString(vm *engine.VM) {
 		return engine.Number(float64(u))
 	})
 	method(vm, proto, "indexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "indexOf")
+		s := thisStringValue(vm, this, "indexOf")
 		sub := vm.ToString(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Number(float64(s.UnitIndexOf(sub, from)))
 	})
 	method(vm, proto, "lastIndexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "lastIndexOf")
+		s := thisStringValue(vm, this, "lastIndexOf")
 		sub := vm.ToString(arg(args, 0))
 		n := s.StringLength()
 		from := n
@@ -165,7 +165,7 @@ func initString(vm *engine.VM) {
 		}
 	}
 	method(vm, proto, "includes", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "includes")
+		s := thisStringValue(vm, this, "includes")
 		noRegExp(vm, arg(args, 0), "includes")
 		sub := vm.ToString(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())

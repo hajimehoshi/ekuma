@@ -142,3 +142,62 @@ func sliceSlow(data uint64, start, end int) (uint64, int) {
 	}
 	return result, n
 }
+
+// Index returns the first UTF-16 index of sub at or after from, or -1.
+// n and subN are byte lengths, and from must be nonnegative.
+func Index(data uint64, n int, sub uint64, subN int, from int) int {
+	return index(data, n, sub, subN, from, false)
+}
+
+// LastIndex returns the last UTF-16 index of sub at or before from, or -1.
+// n and subN are byte lengths, and from must be nonnegative.
+func LastIndex(data uint64, n int, sub uint64, subN int, from int) int {
+	return index(data, n, sub, subN, from, true)
+}
+
+func index(data uint64, n int, sub uint64, subN int, from int, backward bool) int {
+	// A canonical substring cannot use more bytes than its source.
+	if subN > n {
+		return -1
+	}
+	ascii := IsASCII(data)
+	length, subLen := n, subN
+	if ascii {
+		if !IsASCII(sub) {
+			return -1
+		}
+	} else {
+		length = Len(data, n)
+		subLen = Len(sub, subN)
+	}
+	last := length - subLen
+	if backward {
+		from = min(from, last)
+	}
+	if from < 0 || from > last {
+		return -1
+	}
+	if subN == 0 {
+		return from
+	}
+	step := 1
+	if backward {
+		step = -1
+	}
+	if ascii {
+		mask := uint64(1)<<(8*subN) - 1
+		for i := from; i >= 0 && i <= last; i += step {
+			if data>>(8*i)&mask == sub {
+				return i
+			}
+		}
+		return -1
+	}
+	for i := from; i >= 0 && i <= last; i += step {
+		part, size := Slice(data, i, i+subLen)
+		if size == subN && part == sub {
+			return i
+		}
+	}
+	return -1
+}

@@ -159,3 +159,97 @@ func TestSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestSearch(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		text      string
+		pattern   string
+		from      int
+		wantIndex int
+		wantLast  int
+	}{
+		{
+			name:      "repeated ASCII",
+			text:      "ababa",
+			pattern:   "ba",
+			from:      2,
+			wantIndex: 3,
+			wantLast:  1,
+		},
+		{
+			name:      "full payload",
+			text:      "abcdefgh",
+			pattern:   "abcdefgh",
+			from:      8,
+			wantIndex: -1,
+			wantLast:  0,
+		},
+		{
+			name:      "padding is not content",
+			text:      "a\x00",
+			pattern:   "\x00\x00",
+			from:      0,
+			wantIndex: -1,
+			wantLast:  -1,
+		},
+		{
+			name:      "empty at end",
+			text:      "é",
+			pattern:   "",
+			from:      1,
+			wantIndex: 1,
+			wantLast:  1,
+		},
+		{
+			name:      "multibyte offsets",
+			text:      "é日é",
+			pattern:   "é",
+			from:      1,
+			wantIndex: 2,
+			wantLast:  0,
+		},
+		{
+			name:      "whole pair from low surrogate",
+			text:      "😀😀",
+			pattern:   "😀",
+			from:      1,
+			wantIndex: 2,
+			wantLast:  0,
+		},
+		{
+			name:      "high surrogate",
+			text:      "😀😀",
+			pattern:   "\xed\xa0\xbd",
+			from:      1,
+			wantIndex: 2,
+			wantLast:  0,
+		},
+		{
+			name:      "low surrogate",
+			text:      "😀😀",
+			pattern:   "\xed\xb8\x80",
+			from:      1,
+			wantIndex: 1,
+			wantLast:  1,
+		},
+		{
+			name:      "both boundaries split pairs",
+			text:      "😀😀",
+			pattern:   "\xed\xb8\x80\xed\xa0\xbd",
+			from:      1,
+			wantIndex: 1,
+			wantLast:  1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, sub := shortstrings.Pack(tc.text), shortstrings.Pack(tc.pattern)
+			if got := shortstrings.Index(data, len(tc.text), sub, len(tc.pattern), tc.from); got != tc.wantIndex {
+				t.Errorf("Index() = %d, want %d", got, tc.wantIndex)
+			}
+			if got := shortstrings.LastIndex(data, len(tc.text), sub, len(tc.pattern), tc.from); got != tc.wantLast {
+				t.Errorf("LastIndex() = %d, want %d", got, tc.wantLast)
+			}
+		})
+	}
+}

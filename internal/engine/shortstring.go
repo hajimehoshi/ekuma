@@ -153,3 +153,27 @@ func (v Value) StringByteLength() int {
 	}
 	return len(v.o.str)
 }
+
+// UnitIndexOf returns the first UTF-16 index of sub at or after from, or -1.
+// from must be nonnegative.
+func (v Value) UnitIndexOf(sub string, from int) int {
+	if !v.isShortString() {
+		return v.o.UnitIndexOf(sub, from)
+	}
+	if len(sub) > shortstrings.MaxBytes {
+		return -1
+	}
+	return shortstrings.Index(math.Float64bits(v.n), int(v.o.shortStringBytes), shortstrings.Pack(sub), len(sub), from)
+}
+
+// UnitLastIndexOf returns the last UTF-16 index of sub at or before from, or -1.
+// from must be nonnegative.
+func (v Value) UnitLastIndexOf(sub string, from int) int {
+	if !v.isShortString() {
+		return v.o.UnitLastIndexOf(sub, from)
+	}
+	if len(sub) > shortstrings.MaxBytes {
+		return -1
+	}
+	return shortstrings.LastIndex(math.Float64bits(v.n), int(v.o.shortStringBytes), shortstrings.Pack(sub), len(sub), from)
+}
