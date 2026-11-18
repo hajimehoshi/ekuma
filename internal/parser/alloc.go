@@ -61,7 +61,18 @@ type nodeSlabs struct {
 // continues.
 type listStack[T any] struct {
 	items []T
+
+	// free is the unused part of the chunk that taken lists are copied into, and next is the
+	// length of the latest chunk.
+	free []T
+	next int
 }
+
+// The lengths of the first and of the longest chunks of a listStack.
+const (
+	minListStackChunk = 4
+	maxListStackChunk = 256
+)
 
 // mark returns the position where a list that starts now begins.
 func (s *listStack[T]) mark() int {
@@ -72,16 +83,34 @@ func (s *listStack[T]) push(v T) {
 	s.items = append(s.items, v)
 }
 
-// take removes the items from mark on and returns them in a slice of their own, or nil when
-// there are none.
+// take removes the items from mark on and returns them in a slice with no spare capacity, or
+// nil when there are none.
 func (s *listStack[T]) take(mark int) []T {
 	items := s.items[mark:]
-	var list []T
-	if len(items) > 0 {
-		list = make([]T, len(items))
-		copy(list, items)
-	}
+	list := s.alloc(len(items))
+	copy(list, items)
 	clear(items)
 	s.items = s.items[:mark]
+	return list
+}
+
+// alloc returns a slice of n zero values with no spare capacity, or nil when n is 0.
+func (s *listStack[T]) alloc(n int) []T {
+	if n == 0 {
+		return nil
+	}
+	if n > len(s.free) {
+		// The chunks start small so that a short source does not pay for large ones.
+		size := min(max(s.next*2, minListStackChunk), maxListStackChunk)
+		if n > size {
+			return make([]T, n)
+		}
+		s.next = size
+		// slices.Grow rounds the capacity up to what the allocation can hold.
+		s.free = slices.Grow([]T(nil), size)
+		s.free = s.free[:cap(s.free)]
+	}
+	list := s.free[:n:n]
+	s.free = s.free[n:]
 	return list
 }

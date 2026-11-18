@@ -2678,3 +2678,41 @@ func FuzzParse(f *testing.F) {
 		_, _ = parser.ParseFunction(src, src, parser.AsyncGeneratorFunction, parser.Options{})
 	})
 }
+
+// TestListCapacity checks that lists have no spare capacity, so that appending to one cannot
+// change another list that shares its allocation.
+func TestListCapacity(t *testing.T) {
+	prog := mustParse(t, "f(1, 2);\ng([3, 4], 5);\n", script)
+	f := prog.Body[0].(*ast.ExprStmt).Expr.(*ast.CallExpr)
+	g := prog.Body[1].(*ast.ExprStmt).Expr.(*ast.CallExpr)
+	arr := g.Args[0].(*ast.ArrayLit)
+	for _, l := range []struct {
+		name     string
+		len, cap int
+	}{
+		{
+			name: "statements",
+			len:  len(prog.Body),
+			cap:  cap(prog.Body),
+		},
+		{
+			name: "arguments of f",
+			len:  len(f.Args),
+			cap:  cap(f.Args),
+		},
+		{
+			name: "arguments of g",
+			len:  len(g.Args),
+			cap:  cap(g.Args),
+		},
+		{
+			name: "elements",
+			len:  len(arr.Elements),
+			cap:  cap(arr.Elements),
+		},
+	} {
+		if l.cap != l.len {
+			t.Errorf("%s: got capacity %d, want %d", l.name, l.cap, l.len)
+		}
+	}
+}
