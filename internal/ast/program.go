@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Program is a parsed script or module.
@@ -27,6 +29,9 @@ type Program struct {
 	lineOnce   sync.Once
 	lineStarts []int32
 
+	// ascii reports whether [Program.Source] consists of ASCII characters only.
+	ascii bool
+
 	codePointsOnce sync.Once
 
 	// codePoints holds the number of code points before each multiple of codePointBlock in
@@ -42,12 +47,14 @@ func (p *Program) Text(n Node) string {
 	return p.Source[n.Start():n.End()]
 }
 
-// lines returns the offsets at which the lines of [Program.Source] start.
-func (p *Program) lines() []int32 {
+// lines returns the offsets at which the lines of [Program.Source] start, and whether the source
+// consists of ASCII characters only.
+func (p *Program) lines() (starts []int32, ascii bool) {
 	p.lineOnce.Do(func() {
 		p.lineStarts = lineStarts(p.Source)
+		p.ascii = wtf8.IsASCII(p.Source)
 	})
-	return p.lineStarts
+	return p.lineStarts, p.ascii
 }
 
 // clampOffset returns offset limited to the range of [Program.Source].
@@ -58,15 +65,19 @@ func (p *Program) clampOffset(offset int32) int32 {
 // Position converts a byte offset into a 1-based line and a 1-based column counted in code points.
 func (p *Program) Position(offset int32) (line, column int) {
 	offset = p.clampOffset(offset)
-	starts := p.lines()
+	starts, ascii := p.lines()
 	i := sort.Search(len(starts), func(i int) bool {
 		return starts[i] > offset
 	}) - 1
-	return i + 1, p.column(starts[i], offset)
+	return i + 1, p.column(starts[i], offset, ascii)
 }
 
-// column returns the 1-based column of offset on the line starting at lineStart.
-func (p *Program) column(lineStart, offset int32) int {
+// column returns the 1-based column of offset on the line starting at lineStart. ascii reports
+// whether [Program.Source] consists of ASCII characters only.
+func (p *Program) column(lineStart, offset int32, ascii bool) int {
+	if ascii {
+		return int(offset-lineStart) + 1
+	}
 	if offset-lineStart <= 2*codePointBlock {
 		return countCodePoints(p.Source[lineStart:offset]) + 1
 	}
@@ -114,7 +125,7 @@ func (r *Positioner) Position(offset int32) (line, column int) {
 	if r.valid && offset == r.offset {
 		return r.line + 1, r.column
 	}
-	starts := p.lines()
+	starts, ascii := p.lines()
 	i := 0
 	if r.valid {
 		i = r.line
@@ -138,10 +149,10 @@ func (r *Positioner) Position(offset int32) (line, column int) {
 			return starts[j] > offset
 		}) - 1
 	}
-	if r.valid && i == r.line && offset > r.offset && offset-r.offset <= 2*codePointBlock {
+	if !ascii && r.valid && i == r.line && offset > r.offset && offset-r.offset <= 2*codePointBlock {
 		column = r.column + countCodePoints(p.Source[r.offset:offset])
 	} else {
-		column = p.column(starts[i], offset)
+		column = p.column(starts[i], offset, ascii)
 	}
 	r.valid = true
 	r.offset = offset
@@ -173,8 +184,20 @@ func countCodePoints(s string) int {
 	return n
 }
 
+// lineStarts returns the offsets at which the lines of src start.
 func lineStarts(src string) []int32 {
 	starts := make([]int32, 1, 1+strings.Count(src, "\n"))
+	if strings.IndexByte(src, '\r') < 0 && !hasLineSeparator(src) {
+		// Every line ends with LF.
+		for i := 0; ; {
+			j := strings.IndexByte(src[i:], '\n')
+			if j < 0 {
+				return starts
+			}
+			i += j + 1
+			starts = append(starts, int32(i))
+		}
+	}
 	for i := 0; i < len(src); i++ {
 		switch c := src[i]; {
 		case c == '\n':
@@ -190,4 +213,18 @@ func lineStarts(src string) []int32 {
 		}
 	}
 	return starts
+}
+
+// hasLineSeparator reports whether s contains U+2028 or U+2029.
+func hasLineSeparator(s string) bool {
+	for {
+		i := strings.IndexByte(s, 0xe2)
+		if i < 0 || i+2 >= len(s) {
+			return false
+		}
+		if s[i+1] == 0x80 && (s[i+2] == 0xa8 || s[i+2] == 0xa9) {
+			return true
+		}
+		s = s[i+1:]
+	}
 }
