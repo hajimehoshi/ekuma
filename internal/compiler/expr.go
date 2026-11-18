@@ -121,7 +121,7 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 		if e == nil || pure(e) {
 			continue
 		}
-		if f.mutated[name] || f.anyMutated {
+		if f.mutated[name] || f.anyMutated || f.nestedAssigns(name) {
 			return true
 		}
 		found := false

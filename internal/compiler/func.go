@@ -17,28 +17,19 @@ func (f *fn) closure(node *ast.Function, dst int32, name string) {
 	f.captureScopes(dst)
 }
 
-// forwardsArguments reports whether the function node uses its arguments only by passing
+// forwardsArguments reports whether the function f uses its arguments only by passing
 // all of them on, as in g.apply(this, arguments) and g(...arguments), and never assigns
 // to a parameter, so that the arguments can be forwarded without creating an object.
-func forwardsArguments(node *ast.Function) bool {
+func (f *fn) forwardsArguments() bool {
+	node := f.node
 	// The parameter registers hold the arguments only while no parameter code has run.
-	if !node.SimpleParams {
+	if !node.SimpleParams || f.assigns("arguments") {
 		return false
 	}
-	params := map[string]bool{}
 	for _, p := range node.Params {
-		patternNames(p, func(id *ast.Identifier) {
-			params[id.Name] = true
-		})
-	}
-	ok := true
-	assignedNames(node, func(name string) {
-		if params[name] || name == "arguments" {
-			ok = false
+		if f.assigns(p.(*ast.Identifier).Name) {
+			return false
 		}
-	})
-	if !ok {
-		return false
 	}
 	for _, d := range node.Scope.Decls {
 		if d.Name == "arguments" {
@@ -48,6 +39,7 @@ func forwardsArguments(node *ast.Function) bool {
 
 	// allowed holds the references to arguments that are in a forwarding position.
 	allowed := map[*ast.Identifier]bool{}
+	ok := true
 	depth := 0
 	var visit func(ast.Node) bool
 	visit = func(n ast.Node) bool {
@@ -135,12 +127,12 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	b.Source = c.prog.Text(node)
 	f.setPos(node.Start())
 
-	assignments(node, func(s string, nested bool) {
-		f.assigned[s] = true
-		if nested {
-			f.mutated[s] = true
-		}
-	})
+	assigns := &c.scratch.assigns
+	span, ok := assigns.spans[node]
+	if !ok {
+		span = assigns.add(node)
+	}
+	f.span = span
 	if node.UsesArguments && mappedArguments(node) != 0 {
 		// The arguments object can change the parameters.
 		for _, p := range node.Params {
@@ -266,7 +258,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
 			if _, shadowed := f.scope.vars["arguments"]; !shadowed {
 				switch {
-				case !node.HasDirectEval && forwardsArguments(node):
+				case !node.HasDirectEval && f.forwardsArguments():
 					f.forwardsArgs = true
 				case !node.UsesArguments && mappedArguments(node) != 0 &&
 					!arrowsHaveDirectEval(node):

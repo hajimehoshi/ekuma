@@ -43,6 +43,11 @@ func TestUpvalByValue(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "parameter named like variables that functions around it assign",
+			src:  `function outer() { function g() { a = 1; } function f(a) { const inner = () => a; return inner; } a = 2; }`,
+			want: true,
+		},
+		{
 			name: "parameter declared again by var",
 			src:  `function f(a) { const inner = () => a; var a; return inner; }`,
 			want: false,

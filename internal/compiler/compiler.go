@@ -194,12 +194,11 @@ type fn struct {
 	control   []*ctl
 	withDepth int
 
-	// mutated holds the names that functions nested in this one assign to, and the parameters
-	// that an arguments object can change.
+	// mutated holds the parameters that an arguments object can change.
 	mutated map[string]bool
 
-	// assigned holds the names that the function or the functions nested in it assign to.
-	assigned map[string]bool
+	// span is the span of node in the assignIndex of the compilation.
+	span funcSpan
 
 	isScript bool
 
@@ -346,6 +345,10 @@ type scratch struct {
 
 	// fns are the states of finished functions, with their maps emptied.
 	fns []*fn
+
+	// assigns tells which of the functions compiled so far, and of the functions nested in
+	// them, assign to a name.
+	assigns assignIndex
 }
 
 var scratchPool = sync.Pool{
@@ -426,6 +429,7 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 
 // release gives back the storage of c for reuse.
 func (c *compiler) release() {
+	c.scratch.assigns.reset()
 	scratchPool.Put(c.scratch)
 	c.scratch = nil
 }
@@ -450,16 +454,14 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 			consts:   f.consts,
 			keys:     f.keys,
 			mutated:  f.mutated,
-			assigned: f.assigned,
 			scope:    f.scope,
 			varScope: f.scope,
 		}
 	} else {
 		f = &fn{
-			consts:   map[bytecode.Const]int32{},
-			keys:     map[string]int32{},
-			mutated:  map[string]bool{},
-			assigned: map[string]bool{},
+			consts:  map[bytecode.Const]int32{},
+			keys:    map[string]int32{},
+			mutated: map[string]bool{},
 			scope: &scope{
 				vars: map[string]*binding{},
 			},
@@ -503,13 +505,11 @@ func (f *fn) finish() *bytecode.Func {
 	clear(f.consts)
 	clear(f.keys)
 	clear(f.mutated)
-	clear(f.assigned)
 	*f = fn{
-		consts:   f.consts,
-		keys:     f.keys,
-		mutated:  f.mutated,
-		assigned: f.assigned,
-		scope:    root,
+		consts:  f.consts,
+		keys:    f.keys,
+		mutated: f.mutated,
+		scope:   root,
 	}
 	sc.fns = append(sc.fns, f)
 	return b
@@ -764,7 +764,7 @@ func (f *fn) isFinal(b *binding) bool {
 	if f.node == nil || f.anyMutated || !b.initialized || b.alwaysCheck {
 		return false
 	}
-	if f.assigned[b.name] || f.mutated[b.name] {
+	if f.assigns(b.name) || f.mutated[b.name] {
 		return false
 	}
 	if b.kind == bindVar {

@@ -4,6 +4,8 @@
 package compiler
 
 import (
+	"slices"
+
 	"github.com/hajimehoshi/ekuma/internal/ast"
 )
 
@@ -252,55 +254,155 @@ func patternNames(p ast.Pattern, f func(*ast.Identifier)) {
 	}
 }
 
+// assignTarget returns the pattern whose variables the node n assigns to, or nil.
+func assignTarget(n ast.Node) ast.Pattern {
+	switch n := n.(type) {
+	case *ast.AssignExpr:
+		return n.Target
+	case *ast.UpdateExpr:
+		if id, ok := n.Arg.(*ast.Identifier); ok {
+			return id
+		}
+	case *ast.ForInStmt:
+		return n.Target
+	case *ast.ForOfStmt:
+		return n.Target
+	}
+	return nil
+}
+
 // assignedNames calls f for the name of every variable that the code below n assigns to.
 func assignedNames(n ast.Node, f func(string)) {
-	assignments(n, func(name string, nested bool) {
-		f(name)
+	name := func(id *ast.Identifier) {
+		f(id.Name)
+	}
+	walk(n, func(m ast.Node) bool {
+		if p := assignTarget(m); p != nil {
+			patternNames(p, name)
+		}
+		return true
 	})
 }
 
-// assignments calls f for the name of every variable that the code below n assigns to.
-// nested says whether the assignment is inside a function nested in n.
-func assignments(n ast.Node, f func(name string, nested bool)) {
-	depth := 0
-	var visit func(ast.Node) bool
-	target := func(p ast.Pattern) {
-		patternNames(p, func(id *ast.Identifier) {
-			f(id.Name, depth > 0)
-		})
+// assignIndex tells which functions assign to a variable name. A walk of the syntax tree
+// numbers every entry into a function and every exit from it, so that the span of a function
+// holds the spans of the functions nested in it.
+type assignIndex struct {
+	spans map[*ast.Function]funcSpan
+
+	// exits maps a name to the exit numbers of the functions whose own code assigns to it,
+	// in ascending order.
+	exits map[string][]int32
+
+	// lists is the storage that new lists of exits are taken from. Its length is the part in use.
+	lists []int32
+
+	// names holds the names that the functions being walked assign to, innermost last.
+	names []string
+
+	// ticks is the last number given.
+	ticks int32
+}
+
+// funcSpan holds the numbers of the entry into a function and of the exit from it. The zero
+// value is the span of no function.
+type funcSpan struct {
+	enter int32
+	exit  int32
+}
+
+// add numbers the function node and the functions nested in it, which must not be numbered
+// yet, and returns the span of node.
+func (x *assignIndex) add(node *ast.Function) funcSpan {
+	if x.spans == nil {
+		x.spans = map[*ast.Function]funcSpan{}
+		x.exits = map[string][]int32{}
 	}
-	visit = func(m ast.Node) bool {
-		switch m := m.(type) {
-		case *ast.Function:
-			if m == n {
-				return true
-			}
-			depth++
-			for _, p := range m.Params {
-				walk(p, visit)
-			}
-			for _, s := range m.Body {
-				walk(s, visit)
-			}
-			walk(m.ExprBody, visit)
-			depth--
+
+	name := func(id *ast.Identifier) {
+		x.names = append(x.names, id.Name)
+	}
+	var function func(*ast.Function) funcSpan
+	visit := func(n ast.Node) bool {
+		if g, ok := n.(*ast.Function); ok {
+			function(g)
 			return false
-		case *ast.AssignExpr:
-			target(m.Target)
-		case *ast.UpdateExpr:
-			if id, ok := m.Arg.(*ast.Identifier); ok {
-				target(id)
-			}
-		case *ast.ForInStmt:
-			if m.Target != nil {
-				target(m.Target)
-			}
-		case *ast.ForOfStmt:
-			if m.Target != nil {
-				target(m.Target)
-			}
+		}
+		if p := assignTarget(n); p != nil {
+			patternNames(p, name)
 		}
 		return true
 	}
-	walk(n, visit)
+	function = func(g *ast.Function) funcSpan {
+		x.ticks++
+		enter := x.ticks
+		own := len(x.names)
+		for _, p := range g.Params {
+			walk(p, visit)
+		}
+		for _, s := range g.Body {
+			walk(s, visit)
+		}
+		walk(g.ExprBody, visit)
+		x.ticks++
+		s := funcSpan{
+			enter: enter,
+			exit:  x.ticks,
+		}
+		for _, n := range x.names[own:] {
+			e := x.exits[n]
+			if len(e) > 0 && e[len(e)-1] == s.exit {
+				continue
+			}
+			if e == nil {
+				e = x.newList()
+			}
+			x.exits[n] = append(e, s.exit)
+		}
+		x.names = x.names[:own]
+		x.spans[g] = s
+		return s
+	}
+	return function(node)
+}
+
+// newList returns an empty list of exits with room for two, taken from x.lists.
+func (x *assignIndex) newList() []int32 {
+	n := len(x.lists)
+	if cap(x.lists)-n < 2 {
+		x.lists = make([]int32, 0, max(64, 2*cap(x.lists)))
+		n = 0
+	}
+	x.lists = x.lists[:n+2]
+	return x.lists[n : n : n+2]
+}
+
+// reset empties x and drops its references to the syntax tree, keeping its storage.
+func (x *assignIndex) reset() {
+	clear(x.spans)
+	clear(x.exits)
+	x.lists = x.lists[:0]
+	clear(x.names[:cap(x.names)])
+	x.names = x.names[:0]
+	x.ticks = 0
+}
+
+// assignedIn reports whether the code of a function whose exit number is in (lo, hi] assigns
+// to name.
+func (x *assignIndex) assignedIn(name string, lo, hi int32) bool {
+	e := x.exits[name]
+	i, _ := slices.BinarySearch(e, lo+1)
+	return i < len(e) && e[i] <= hi
+}
+
+// assigns reports whether the code of the function f, or of a function nested in it, assigns
+// to the variable name. It is false for a script, a module or eval code.
+func (f *fn) assigns(name string) bool {
+	return f.c.scratch.assigns.assignedIn(name, f.span.enter, f.span.exit)
+}
+
+// nestedAssigns reports whether the code of a function nested in the function f assigns to the
+// variable name. It is false for a script, a module or eval code.
+func (f *fn) nestedAssigns(name string) bool {
+	return f.c.scratch.assigns.assignedIn(name, f.span.enter, f.span.exit-1)
 }
