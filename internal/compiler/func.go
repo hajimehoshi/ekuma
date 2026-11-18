@@ -23,7 +23,7 @@ func (f *fn) closure(node *ast.Function, dst int32, name string) {
 func (f *fn) forwardsArguments() bool {
 	node := f.node
 	// The parameter registers hold the arguments only while no parameter code has run.
-	if !node.SimpleParams || f.assigns("arguments") {
+	if !node.SimpleParams {
 		return false
 	}
 	for _, p := range node.Params {
