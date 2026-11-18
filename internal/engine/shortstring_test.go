@@ -63,3 +63,78 @@ func BenchmarkShortStringSubstring(b *testing.B) {
 		})
 	}
 }
+
+func TestSubstringEquals(t *testing.T) {
+	vm := engine.NewVM(nil)
+	for _, tc := range []struct {
+		name          string
+		text          string
+		pattern       string
+		start         int
+		end           int
+		internPattern bool
+		want          bool
+	}{
+		{
+			name:    "packed equality",
+			text:    "ab\x00c",
+			pattern: "ab\x00",
+			start:   0,
+			end:     3,
+			want:    true,
+		},
+		{
+			name:    "trailing NUL",
+			text:    "ab\x00c",
+			pattern: "ab\x00",
+			start:   0,
+			end:     2,
+			want:    false,
+		},
+		{
+			name:    "payload mismatch",
+			text:    "abcd",
+			pattern: "ac",
+			start:   0,
+			end:     2,
+			want:    false,
+		},
+		{
+			name:          "object pattern",
+			text:          "😀a",
+			pattern:       "\xed\xa0\xbd",
+			start:         0,
+			end:           1,
+			internPattern: true,
+			want:          true,
+		},
+		{
+			name:          "oversized object pattern",
+			text:          "abcdefgh",
+			pattern:       "日日日",
+			start:         0,
+			end:           3,
+			internPattern: true,
+			want:          false,
+		},
+		{
+			name:    "long receiver",
+			text:    "abcdefghijk",
+			pattern: "bc",
+			start:   1,
+			end:     3,
+			want:    true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v := vm.NewString(tc.text)
+			pattern := vm.NewString(tc.pattern)
+			if tc.internPattern {
+				pattern = engine.ObjectValue(vm.Intern(tc.pattern))
+			}
+			if got := v.SubstringEquals(tc.start, tc.end, pattern); got != tc.want {
+				t.Errorf("SubstringEquals() = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}

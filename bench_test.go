@@ -1203,3 +1203,73 @@ func BenchmarkStringSubstring(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringAffixes measures one prefix or suffix check.
+func BenchmarkStringAffixes(b *testing.B) {
+	for _, tc := range []struct {
+		text    string
+		pattern string
+		start   int
+		end     int
+	}{
+		{
+			text:    "abcdefgh",
+			pattern: `"bc"`,
+			start:   1,
+			end:     3,
+		},
+		{
+			text:    "é日a",
+			pattern: `"日"`,
+			start:   1,
+			end:     2,
+		},
+		{
+			text:    "😀😀",
+			pattern: `"\ud83d"`,
+			start:   0,
+			end:     1,
+		},
+		{
+			text:    "abcdefghijklmnopqrstuvwxyz",
+			pattern: `"bc"`,
+			start:   1,
+			end:     3,
+		},
+		{
+			text:    "日本語の長い文字列",
+			pattern: `"本語"`,
+			start:   1,
+			end:     3,
+		},
+	} {
+		for _, form := range []string{"Literal", "CreatedReceiver", "CreatedBoth"} {
+			for _, method := range []string{"startsWith", "endsWith"} {
+				b.Run(form+"/"+tc.text+"/"+method, func(b *testing.B) {
+					var vm ekuma.VM
+					receiver := fmt.Sprintf("%q", tc.text)
+					pattern := tc.pattern
+					if form != "Literal" {
+						receiver = fmt.Sprintf("%q.slice(0, -1)", tc.text+"!")
+					}
+					if form == "CreatedBoth" {
+						pattern = "(" + pattern + " + '!').slice(0, -1)"
+					}
+					position := tc.start
+					if method == "endsWith" {
+						position = tc.end
+					}
+					src := fmt.Sprintf(`var s = %s, p = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.%s(p, %d); return result; }`, receiver, pattern, method, position)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}

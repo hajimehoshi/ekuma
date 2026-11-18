@@ -172,25 +172,25 @@ func initString(vm *engine.VM) {
 		return engine.Bool(s.UnitIndexOf(sub, from) >= 0)
 	})
 	method(vm, proto, "startsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "startsWith")
+		s := thisStringValue(vm, this, "startsWith")
 		noRegExp(vm, arg(args, 0), "startsWith")
-		sub := vm.ToString(arg(args, 0))
+		sub := vm.ToStringValue(arg(args, 0))
 		n := s.StringLength()
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), n)
-		end := from + wtf8.Len(sub)
-		return engine.Bool(end <= n && s.Substring(from, end) == sub)
+		end := from + sub.StringLength()
+		return engine.Bool(end <= n && s.SubstringEquals(from, end, sub))
 	})
 	method(vm, proto, "endsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisString(vm, this, "endsWith")
+		s := thisStringValue(vm, this, "endsWith")
 		noRegExp(vm, arg(args, 0), "endsWith")
-		sub := vm.ToString(arg(args, 0))
+		sub := vm.ToStringValue(arg(args, 0))
 		n := s.StringLength()
 		end := n
 		if e := arg(args, 1); !e.IsUndefined() {
 			end = engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(e), 0), n)
 		}
-		start := end - wtf8.Len(sub)
-		return engine.Bool(start >= 0 && s.Substring(start, end) == sub)
+		start := end - sub.StringLength()
+		return engine.Bool(start >= 0 && s.SubstringEquals(start, end, sub))
 	})
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "slice")

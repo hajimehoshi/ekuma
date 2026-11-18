@@ -109,6 +109,20 @@ func (v Value) substringSlow(start, end int) string {
 	return shortstrings.String(data, n)
 }
 
+// SubstringEquals reports whether the substring from start up to end equals other.
+// Both values must be strings, and the UTF-16 indices must be in range and in order.
+func (v Value) SubstringEquals(start, end int, other Value) bool {
+	if !v.isShortString() {
+		return v.o.Substring(start, end) == other.Str()
+	}
+	data, n := shortstrings.Slice(math.Float64bits(v.n), start, end)
+	if other.isShortString() {
+		return n == int(other.o.shortStringBytes) && data == math.Float64bits(other.n)
+	}
+	s := other.Str()
+	return n == len(s) && data == shortstrings.Pack(s)
+}
+
 func (v Value) writeShortString(b *strings.Builder) {
 	data := shortstrings.Bytes(math.Float64bits(v.n))
 	b.Write(data[:v.o.shortStringBytes])
