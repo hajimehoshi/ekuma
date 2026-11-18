@@ -4,6 +4,7 @@
 package engine_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -162,5 +163,25 @@ func TestToWellFormedLiteral(t *testing.T) {
 	}
 	if got, want := v.Str(), "��"; got != want {
 		t.Errorf("toWellFormed() = %q, want %q", got, want)
+	}
+}
+
+func BenchmarkShortStringLeadingSurrogate(b *testing.B) {
+	vm := engine.NewVM(nil)
+	v := vm.NewString("😀😀")
+	for b.Loop() {
+		v.UnitAt(0)
+	}
+}
+
+func TestCodePointAtCachedLowSurrogate(t *testing.T) {
+	vm := engine.NewVM(nil)
+	const prefixUnits = 90
+	v := vm.NewString(strings.Repeat("日", prefixUnits) + "😀")
+	if got := v.CodePointAt(prefixUnits + 1); got != 0xde00 {
+		t.Errorf("CodePointAt(low) = %#x, want %#x", got, 0xde00)
+	}
+	if got := v.CodePointAt(prefixUnits); got != 0x1f600 {
+		t.Errorf("CodePointAt(lead) = %#x, want %#x", got, 0x1f600)
 	}
 }

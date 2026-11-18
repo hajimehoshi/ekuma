@@ -449,3 +449,43 @@ func TestWellFormed(t *testing.T) {
 		})
 	}
 }
+
+func TestCodePointAt(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		index int
+		want  rune
+	}{
+		{
+			name:  "ASCII",
+			text:  "ab",
+			index: 1,
+			want:  'b',
+		},
+		{
+			name:  "lone high surrogate",
+			text:  "\xed\xa0\x80日",
+			index: 0,
+			want:  0xd800,
+		},
+		{
+			name:  "pair after multibyte prefix",
+			text:  "é😀",
+			index: 1,
+			want:  0x1f600,
+		},
+		{
+			name:  "low surrogate of later pair",
+			text:  "😀😀",
+			index: 3,
+			want:  0xde00,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := shortstrings.CodePointAt(shortstrings.Pack(tc.text), tc.index); got != tc.want {
+				t.Errorf("CodePointAt() = %#x, want %#x", got, tc.want)
+			}
+		})
+	}
+}

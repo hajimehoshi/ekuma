@@ -93,6 +93,14 @@ func (v Value) UnitAt(i int) uint16 {
 	return shortstrings.UnitAt(math.Float64bits(v.n), i)
 }
 
+// CodePointAt returns the code point starting at UTF-16 index i. i must be in range.
+func (v Value) CodePointAt(i int) rune {
+	if !v.isShortString() {
+		return v.o.CodePointAt(i)
+	}
+	return shortstrings.CodePointAt(math.Float64bits(v.n), i)
+}
+
 // Substring returns the string's code units from start up to end, which must be in range and in order.
 func (v Value) Substring(start, end int) string {
 	if v.o.flags&(objASCIIKnown|objASCII|objReversed) == objASCIIKnown|objASCII {

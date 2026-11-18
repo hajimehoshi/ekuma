@@ -56,40 +56,54 @@ func lenSlow(data uint64, n int) int {
 }
 
 // UnitAt returns the UTF-16 code unit at i in the packed string. i must be in range.
-func UnitAt(data uint64, i int) uint16 {
-	if IsASCII(data) {
+func UnitAt(data uint64, i int) (u uint16) {
+	// Keep the ASCII check and result projection small enough to inline.
+	if data&0x8080808080808080 == 0 {
 		return uint16(byte(data >> (8 * i)))
 	}
-	return unitAtSlow(data, i)
+	u, _ = decodeAt(data, i)
+	return
 }
 
-func unitAtSlow(data uint64, i int) uint16 {
+// CodePointAt returns the code point starting at UTF-16 index i. i must be in range.
+func CodePointAt(data uint64, i int) (r rune) {
+	if data&0x8080808080808080 == 0 {
+		return rune(byte(data >> (8 * i)))
+	}
+	_, r = decodeAt(data, i)
+	return
+}
+
+// decodeAt returns the code unit and forward code point at UTF-16 index i.
+func decodeAt(data uint64, i int) (uint16, rune) {
 	for {
 		b := byte(data)
 		switch {
 		case b < 0x80:
 			if i == 0 {
-				return uint16(b)
+				return uint16(b), rune(b)
 			}
 			data >>= 8
 		case b < 0xe0:
 			if i == 0 {
-				return uint16(b&0x1f)<<6 | uint16(data>>8&0x3f)
+				u := uint16(b&0x1f)<<6 | uint16(data>>8&0x3f)
+				return u, rune(u)
 			}
 			data >>= 16
 		case b < 0xf0:
 			if i == 0 {
-				return uint16(b&0x0f)<<12 | uint16(data>>8&0x3f)<<6 | uint16(data>>16&0x3f)
+				u := uint16(b&0x0f)<<12 | uint16(data>>8&0x3f)<<6 | uint16(data>>16&0x3f)
+				return u, rune(u)
 			}
 			data >>= 24
 		default:
 			if i < 2 {
-				r := uint32(b&7)<<18 | uint32(data>>8&0x3f)<<12 | uint32(data>>16&0x3f)<<6 | uint32(data>>24&0x3f)
-				r -= 0x10000
+				r := rune(b&7)<<18 | rune(data>>8&0x3f)<<12 | rune(data>>16&0x3f)<<6 | rune(data>>24&0x3f)
 				if i == 0 {
-					return 0xd800 + uint16(r>>10)
+					return 0xd800 + uint16((r-0x10000)>>10), r
 				}
-				return 0xdc00 + uint16(r&0x3ff)
+				u := 0xdc00 + uint16((r-0x10000)&0x3ff)
+				return u, rune(u)
 			}
 			data >>= 32
 			i--
@@ -131,7 +145,7 @@ func sliceSlow(data uint64, start, end int) (uint64, int) {
 				if unit < start {
 					half = 1
 				}
-				u := unitAtSlow(data, half)
+				u, _ := decodeAt(data, half)
 				part = 0x8080ed | uint64(u>>6&0x3f)<<8 | uint64(u&0x3f)<<16
 				partSize = 3
 			}
@@ -214,9 +228,9 @@ func Concat(a uint64, aN int, b uint64, bN int) (uint64, int, bool) {
 		tail := a >> (8 * (aN - 3))
 		if tail&0xf0ff == 0xa0ed && b&0xf0ff == 0xb0ed {
 			// Joining the boundary surrogates replaces six bytes with four.
-			high := uint32(unitAtSlow(tail, 0) - 0xd800)
-			low := uint32(unitAtSlow(b, 0) - 0xdc00)
-			r := 0x10000 + high<<10 + low
+			high, _ := decodeAt(tail, 0)
+			low, _ := decodeAt(b, 0)
+			r := 0x10000 + uint32(high-0xd800)<<10 + uint32(low-0xdc00)
 			pair := uint64(0xf0|r>>18) | uint64(0x80|r>>12&0x3f)<<8 |
 				uint64(0x80|r>>6&0x3f)<<16 | uint64(0x80|r&0x3f)<<24
 			prefix := a & (uint64(1)<<(8*(aN-3)) - 1)
@@ -248,7 +262,8 @@ func Compare(a uint64, aN int, b uint64, bN int) int {
 func compareUnits(a uint64, aN int, b uint64, bN int) int {
 	aLen, bLen := Len(a, aN), Len(b, bN)
 	for i := range min(aLen, bLen) {
-		x, y := unitAtSlow(a, i), unitAtSlow(b, i)
+		x, _ := decodeAt(a, i)
+		y, _ := decodeAt(b, i)
 		if x != y {
 			return cmp.Compare(x, y)
 		}

@@ -1529,3 +1529,77 @@ func BenchmarkStringWellFormed(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringCodePointAt measures one code point lookup.
+func BenchmarkStringCodePointAt(b *testing.B) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		index int
+	}{
+		{
+			name:  "ASCII",
+			text:  `"abcdefgh"`,
+			index: 3,
+		},
+		{
+			name:  "BMP",
+			text:  `"é日"`,
+			index: 1,
+		},
+		{
+			name:  "FirstPair",
+			text:  `"😀😀"`,
+			index: 0,
+		},
+		{
+			name:  "LaterPair",
+			text:  `"😀😀"`,
+			index: 2,
+		},
+		{
+			name:  "LowSurrogate",
+			text:  `"😀😀"`,
+			index: 1,
+		},
+		{
+			name:  "LoneSurrogate",
+			text:  `"\ud800x"`,
+			index: 0,
+		},
+		{
+			name:  "LongASCII",
+			text:  `"abcdefghijklmnopqrstuvwxyz"`,
+			index: 10,
+		},
+		{
+			name:  "LongPair",
+			text:  `"日本語😀の長い文字列abcdefgh"`,
+			index: 3,
+		},
+		{
+			name:  "LongMixedASCII",
+			text:  `"日本語😀の長い文字列abcdefgh"`,
+			index: 12,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			b.Run(form+"/"+tc.name, func(b *testing.B) {
+				var vm ekuma.VM
+				receiver := tc.text
+				if form == "Created" {
+					receiver = "(" + receiver + " + '!').slice(0, -1)"
+				}
+				src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.codePointAt(%d); return result; }`, receiver, tc.index)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

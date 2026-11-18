@@ -1169,13 +1169,34 @@ func checkpointsOf(s string) []uint32 {
 // UnitAt returns the code unit i of the string o. i must be in range.
 func (o *Object) UnitAt(i int) uint16 {
 	if o.IsASCII() {
-		if o.flags&objReversed != 0 {
-			// Reading one unit leaves a string that is being prepended to reversed.
-			return uint16(o.str[len(o.str)-1-i])
-		}
-		return uint16(o.str[i])
+		return o.asciiUnitAt(i)
 	}
 	return wtf8.At(o.Str(), o.seek(i))
+}
+
+func (o *Object) asciiUnitAt(i int) uint16 {
+	if o.flags&objReversed != 0 {
+		// Reading one unit leaves a string that is being prepended to reversed.
+		return uint16(o.str[len(o.str)-1-i])
+	}
+	return uint16(o.str[i])
+}
+
+// CodePointAt returns the code point starting at UTF-16 index i. i must be in range.
+func (o *Object) CodePointAt(i int) rune {
+	if o.IsASCII() {
+		return rune(o.asciiUnitAt(i))
+	}
+	s := o.Str()
+	p := o.seek(i)
+	if b := s[p.Byte]; b < 0x80 {
+		return rune(b)
+	}
+	r, _ := wtf8.DecodeRune(s[p.Byte:])
+	if p.Low {
+		return 0xdc00 + (r-0x10000)&0x3ff
+	}
+	return r
 }
 
 // Substring returns the code units from start up to end of the string o.

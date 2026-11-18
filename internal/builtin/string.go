@@ -135,13 +135,7 @@ func initString(vm *engine.VM) {
 		if i < 0 || i >= float64(n) {
 			return engine.Undefined
 		}
-		u := s.UnitAt(int(i))
-		if wtf8.IsHighSurrogate(rune(u)) && int(i)+1 < n {
-			if lo := s.UnitAt(int(i) + 1); wtf8.IsLowSurrogate(rune(lo)) {
-				return engine.Number(float64(0x10000 + (rune(u)-0xD800)<<10 + (rune(lo) - 0xDC00)))
-			}
-		}
-		return engine.Number(float64(u))
+		return engine.Number(float64(s.CodePointAt(int(i))))
 	})
 	method(vm, proto, "indexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "indexOf")
