@@ -4,6 +4,7 @@
 package engine_test
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -269,6 +270,80 @@ func TestInternedStringValue(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if !engine.IsStrictlyEqual(tc.value, v) {
 				t.Error("interned value differs from NewString")
+			}
+		})
+	}
+}
+
+func TestShortStringToNumber(t *testing.T) {
+	vm := engine.NewVM(nil)
+	for _, tc := range []struct {
+		text string
+		want float64
+	}{
+		{
+			text: "99999999",
+			want: 99999999,
+		},
+		{
+			text: "00001234",
+			want: 1234,
+		},
+		{
+			text: "0",
+			want: 0,
+		},
+		{
+			text: "",
+			want: 0,
+		},
+		{
+			text: "-0",
+			want: math.Copysign(0, -1),
+		},
+		{
+			text: "12.5",
+			want: 12.5,
+		},
+		{
+			text: "1e3",
+			want: 1000,
+		},
+		{
+			text: " 12 ",
+			want: 12,
+		},
+		{
+			text: "0x2a",
+			want: 42,
+		},
+		{
+			text: "1234567x",
+			want: math.NaN(),
+		},
+		{
+			text: "1\x00",
+			want: math.NaN(),
+		},
+		{
+			text: "１２",
+			want: math.NaN(),
+		},
+		{
+			text: "123456789",
+			want: 123456789,
+		},
+	} {
+		t.Run(tc.text, func(t *testing.T) {
+			for _, value := range []engine.Value{vm.NewString(tc.text), engine.ObjectValue(vm.Intern(tc.text))} {
+				got := vm.ToNumber(value)
+				if math.IsNaN(tc.want) {
+					if !math.IsNaN(got) {
+						t.Errorf("ToNumber(%q) = %v, want NaN", tc.text, got)
+					}
+				} else if math.Float64bits(got) != math.Float64bits(tc.want) {
+					t.Errorf("ToNumber(%q) = %v, want %v", tc.text, got, tc.want)
+				}
 			}
 		})
 	}

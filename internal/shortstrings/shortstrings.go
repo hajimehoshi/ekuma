@@ -351,3 +351,21 @@ func Repeat(data uint64, n, count int) (uint64, int, bool) {
 	}
 	return result, byteLen, true
 }
+
+// ParseDecimal parses a nonempty sequence of ASCII decimal digits, or returns false.
+// n is the packed string's byte length.
+func ParseDecimal(data uint64, n int) (uint32, bool) {
+	if n == 0 {
+		return 0, false
+	}
+	var value uint32
+	for range n {
+		digit := byte(data) - '0'
+		if digit > 9 {
+			return 0, false
+		}
+		value = value*10 + uint32(digit)
+		data >>= 8
+	}
+	return value, true
+}

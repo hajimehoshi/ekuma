@@ -88,6 +88,11 @@ func (vm *VM) ToNumber(v Value) float64 {
 	case kindTrue:
 		return 1
 	case kindString:
+		if len(o.str) <= shortstrings.MaxBytes {
+			if n, ok := shortstrings.ParseDecimal(math.Float64bits(v.n), len(o.str)); ok {
+				return float64(n)
+			}
+		}
 		return numconv.StringToNumber(v.Str())
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a number")

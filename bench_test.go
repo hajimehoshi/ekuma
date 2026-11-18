@@ -2270,3 +2270,86 @@ func BenchmarkShortStringCandidates(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringToNumber measures decimal conversion and general-parser controls.
+func BenchmarkStringToNumber(b *testing.B) {
+	for _, tc := range []struct {
+		name string
+		text string
+	}{
+		{
+			name: "Digits",
+			text: `"123456"`,
+		},
+		{
+			name: "EightDigits",
+			text: `"99999999"`,
+		},
+		{
+			name: "OneDigit",
+			text: `"7"`,
+		},
+		{
+			name: "LeadingZeros",
+			text: `"00001234"`,
+		},
+		{
+			name: "Signed",
+			text: `"-123456"`,
+		},
+		{
+			name: "Fraction",
+			text: `"123.456"`,
+		},
+		{
+			name: "Exponent",
+			text: `"12.34e2"`,
+		},
+		{
+			name: "Whitespace",
+			text: `" 123456 "`,
+		},
+		{
+			name: "Empty",
+			text: `""`,
+		},
+		{
+			name: "InvalidSuffix",
+			text: `"1234567x"`,
+		},
+		{
+			name: "Radix",
+			text: `"0x1234"`,
+		},
+		{
+			name: "LongDigits",
+			text: `"123456789012345"`,
+		},
+		{
+			name: "Number",
+			text: `123456`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			if tc.name == "Number" && form == "Created" {
+				continue
+			}
+			b.Run(form+"/"+tc.name, func(b *testing.B) {
+				var vm ekuma.VM
+				receiver := tc.text
+				if form == "Created" {
+					receiver = "(" + receiver + " + '!').slice(0, -1)"
+				}
+				src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = +s; return result; }`, receiver)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}
