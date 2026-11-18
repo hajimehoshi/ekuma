@@ -21,15 +21,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
-// thisString implements the receiver conversion of the String.prototype methods.
-func thisString(vm *engine.VM, this engine.Value, what string) *engine.Object {
-	if this.IsString() {
-		return this.Object()
-	}
-	vm.RequireObjectCoercible(this, "String.prototype."+what)
-	return vm.ToStringValue(this).Object()
-}
-
 // thisStringValue converts a String.prototype receiver to a string value.
 func thisStringValue(vm *engine.VM, this engine.Value, what string) engine.Value {
 	if this.IsString() {
@@ -299,24 +290,31 @@ func initString(vm *engine.VM) {
 	})
 	pad := func(name string, atStart bool) {
 		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			s := thisString(vm, this, name)
+			s := thisStringValue(vm, this, name)
 			target := numconv.ToLength(vm.ToNumber(arg(args, 0)))
 			n := int64(s.StringLength())
-			fill := " "
-			if f := arg(args, 1); !f.IsUndefined() {
-				fill = vm.ToString(f)
+			if target <= n {
+				return s
 			}
-			if target <= n || fill == "" {
-				return engine.ObjectValue(s)
+			fill := vm.NewString(" ")
+			if f := arg(args, 1); !f.IsUndefined() {
+				fill = vm.ToStringValue(f)
+			}
+			if fill.StringByteLength() == 0 {
+				return s
 			}
 			if target > engine.MaxStringLength {
 				vm.ThrowRangeError("invalid string length")
 			}
-			fo := vm.NewString(fill).Object()
-			fl := int64(fo.StringLength())
 			need := target - n
+			if padded, ok := vm.PadShort(s, fill, int(target), int(need), atStart); ok {
+				return padded
+			}
+			text := fill.Str()
+			fo := fill.Object()
+			fl := int64(fo.StringLength())
 			var b wtf8.Builder
-			writeRepeated(vm, &b, fill, int(need/fl))
+			writeRepeated(vm, &b, text, int(need/fl))
 			b.WriteString(fo.Substring(0, int(need%fl)))
 			if atStart {
 				b.WriteString(s.Str())

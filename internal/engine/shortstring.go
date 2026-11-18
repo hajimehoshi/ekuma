@@ -414,6 +414,85 @@ func (vm *VM) repeatShort(s Value, count int) (Value, bool) {
 	}, true
 }
 
+// PadShort pads s with fill to target UTF-16 units and reports whether the result fits.
+// s and fill must be strings, fill must be nonempty, and need must be positive and equal target minus s's length.
+func (vm *VM) PadShort(s, fill Value, target, need int, atStart bool) (padded Value, ok bool) {
+	if target > shortstrings.MaxBytes {
+		return
+	}
+	padded, ok = vm.padShort(s, fill, need, atStart)
+	return
+}
+
+func (vm *VM) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
+	n := s.StringByteLength()
+	if n > shortstrings.MaxBytes {
+		return Value{}, false
+	}
+	var data uint64
+	if s.isShortString() {
+		data = math.Float64bits(s.n)
+	} else {
+		data = shortstrings.Pack(s.o.Str())
+	}
+	var fillData uint64
+	fillN := fill.StringByteLength()
+	var fillLen int
+	if fillN > shortstrings.MaxBytes {
+		// Only the required prefix contributes to the result.
+		text := fill.o.Str()
+		end := wtf8.Seek(text, wtf8.Pos{}, need)
+		fillN = end.Byte
+		if end.Low {
+			fillN += 3
+		}
+		if fillN > shortstrings.MaxBytes {
+			return Value{}, false
+		}
+		fillData = shortstrings.Pack(text[:end.Byte])
+		if end.Low {
+			var buf [3]byte
+			high := wtf8.At(text, wtf8.Pos{Byte: end.Byte})
+			tail := shortstrings.Pack(string(wtf8.AppendRune(buf[:0], rune(high))))
+			fillData |= tail << (8 * end.Byte)
+		}
+		fillLen = end.Unit
+	} else {
+		if fill.isShortString() {
+			fillData = math.Float64bits(fill.n)
+		} else {
+			fillData = shortstrings.Pack(fill.o.Str())
+		}
+		fillLen = shortstrings.Len(fillData, fillN)
+	}
+	padding, paddingN, ok := shortstrings.Repeat(fillData, fillN, need/fillLen)
+	if !ok {
+		return Value{}, false
+	}
+	if tailLen := need % fillLen; tailLen != 0 {
+		tail, tailN := shortstrings.Slice(fillData, 0, tailLen)
+		padding, paddingN, ok = shortstrings.Concat(padding, paddingN, tail, tailN)
+		if !ok {
+			return Value{}, false
+		}
+	}
+	if atStart {
+		data, n, ok = shortstrings.Concat(padding, paddingN, data, n)
+	} else {
+		data, n, ok = shortstrings.Concat(data, n, padding, paddingN)
+	}
+	if !ok {
+		return Value{}, false
+	}
+	if n == 1 && byte(data) < 0x80 {
+		return vm.strings.ascii[byte(data)], true
+	}
+	return Value{
+		n: math.Float64frombits(data),
+		o: &vm.shapes.shortStrings[n],
+	}, true
+}
+
 // CompareStrings orders a and b by UTF-16 code units and returns -1, 0, or 1.
 // Both values must be strings.
 func CompareStrings(a, b Value) int {

@@ -2963,3 +2963,43 @@ func TestInlineStringCodeUnits(t *testing.T) {
 		})
 	}
 }
+
+func TestInlineStringPadding(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "padding", `(function() {
+		function created(s) { return (s + "!").slice(0, -1); }
+		var cases = [
+			["ab", "xy", 8, "xyxyxyab", "abxyxyxy"],
+			["\ude00", "abc\ud83d", 5, "abc😀", "\ude00abc\ud83d"],
+			["\ud83d", "\ude00abc", 5, "\ude00abc\ud83d", "😀abc"],
+			["x", "😀abcdefgh", 2, "\ud83dx", "x\ud83d"],
+			["x", "\ude00\ud83d", 4, "\ude00😀x", "x\ude00😀"],
+			["é", "日", 4, "日日日é", "é日日日"],
+			["", "\u0000", 1, "\u0000", "\u0000"]
+		];
+		for (var c of cases) {
+			for (var dynamic of [false, true]) {
+				var s = dynamic ? created(c[0]) : c[0];
+				var f = dynamic ? created(c[1]) : c[1];
+				if (s.padStart(c[2], f) !== c[3] || s.padEnd(c[2], f) !== c[4]) return false;
+			}
+		}
+		for (var method of ["padStart", "padEnd"]) {
+			var log = "";
+			var receiver = { toString() { log += "s"; return created("ab"); } };
+			var target = { valueOf() { log += "n"; return 4; } };
+			var fill = { toString() { log += "f"; return created("x"); } };
+			String.prototype[method].call(receiver, target, fill);
+			if (log !== "snf") return false;
+			if (created("ab")[method](1, Symbol()) !== "ab") return false;
+			if (created("ab")[method](Infinity, "") !== "ab") return false;
+		}
+		return true;
+	})()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("padding changed UTF-16 content or coercion ordering")
+	}
+}

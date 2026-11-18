@@ -1824,6 +1824,101 @@ func BenchmarkStringRepeat(b *testing.B) {
 	}
 }
 
+// BenchmarkStringPad measures short padding, mixed representations and fallback results.
+func BenchmarkStringPad(b *testing.B) {
+	for _, tc := range []struct {
+		name   string
+		text   string
+		fill   string
+		target int
+	}{
+		{
+			name:   "ASCII",
+			text:   `"ab"`,
+			fill:   `"xy"`,
+			target: 8,
+		},
+		{
+			name:   "Unicode",
+			text:   `"é"`,
+			fill:   `"日"`,
+			target: 3,
+		},
+		{
+			name:   "TruncatedPair",
+			text:   `"x"`,
+			fill:   `"😀"`,
+			target: 2,
+		},
+		{
+			name:   "BoundaryJoin",
+			text:   `"\ude00"`,
+			fill:   `"\ud83d"`,
+			target: 2,
+		},
+		{
+			name:   "LongFill",
+			text:   `"ab"`,
+			fill:   `"abcdefghijklmnopqrstuvwxyz"`,
+			target: 8,
+		},
+		{
+			name:   "Default",
+			text:   `"ab"`,
+			fill:   `undefined`,
+			target: 8,
+		},
+		{
+			name:   "Empty",
+			text:   `"ab"`,
+			fill:   `""`,
+			target: 8,
+		},
+		{
+			name:   "NoOp",
+			text:   `"abcdefgh"`,
+			fill:   `"x"`,
+			target: 4,
+		},
+		{
+			name:   "LongResult",
+			text:   `"ab"`,
+			fill:   `"xy"`,
+			target: 64,
+		},
+		{
+			name:   "LongInput",
+			text:   `"abcdefghijklmnopqrstuvwxyz"`,
+			fill:   `"xy"`,
+			target: 32,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created", "Mixed"} {
+			for _, method := range []string{"padStart", "padEnd"} {
+				b.Run(form+"/"+tc.name+"/"+method, func(b *testing.B) {
+					var vm ekuma.VM
+					receiver, fill := tc.text, tc.fill
+					if form != "Literal" {
+						receiver = "(" + receiver + " + '!').slice(0, -1)"
+					}
+					if form == "Created" && fill != "undefined" {
+						fill = "(" + fill + " + '!').slice(0, -1)"
+					}
+					src := fmt.Sprintf(`var s = %s, f = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.%s(%d, f); return result; }`, receiver, fill, method, tc.target)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}
+
 // BenchmarkShortStringCandidates measures remaining materialization candidates and controls.
 func BenchmarkShortStringCandidates(b *testing.B) {
 	for _, tc := range []struct {
