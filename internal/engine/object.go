@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -602,7 +603,7 @@ func (v Value) accessor() *accessorPair {
 // shapeTable holds the shapes that new objects start with.
 type shapeTable struct {
 	// shortStrings are immutable sentinels. Per-string caches belong to materialized objects.
-	shortStrings *[maxShortStringBytes + 1]Object
+	shortStrings *[shortstrings.MaxBytes + 1]Object
 	nullProto    *shape
 	object       *shape
 	array        *shape
@@ -973,7 +974,7 @@ func (vm *VM) NewString(s string) Value {
 			return vm.strings.ascii[s[0]]
 		}
 	}
-	if len(s) <= maxShortStringBytes {
+	if len(s) <= shortstrings.MaxBytes {
 		return vm.shortString(s)
 	}
 	return Value{

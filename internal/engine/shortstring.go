@@ -4,14 +4,12 @@
 package engine
 
 import (
-	"encoding/binary"
 	"math"
 	"strings"
 
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
-
-const maxShortStringBytes = 8
 
 func (v Value) isShortString() bool {
 	return v.o != nil && v.o.class == classShortString
@@ -19,27 +17,14 @@ func (v Value) isShortString() bool {
 
 func (vm *VM) shortString(s string) Value {
 	// The immutable sentinel carries the byte length and the originating realm.
-	// Unused payload bytes are zero, so equality can compare all 64 bits.
-	var data [maxShortStringBytes]byte
-	copy(data[:], s)
 	return Value{
-		n: math.Float64frombits(binary.LittleEndian.Uint64(data[:])),
+		n: math.Float64frombits(shortstrings.Pack(s)),
 		o: &vm.shapes.shortStrings[len(s)],
 	}
 }
 
 func (v Value) shortText() string {
-	// The conversion stays here and the byte fill in shortData, so that
-	// shortText inlines even where encoding/binary is costly to inline (wasm)
-	// and a caller's non-escaping conversion uses its stack.
-	data := v.shortData()
-	return string(data[:v.o.shortStringBytes])
-}
-
-func (v Value) shortData() [maxShortStringBytes]byte {
-	var data [maxShortStringBytes]byte
-	binary.LittleEndian.PutUint64(data[:], math.Float64bits(v.n))
-	return data
+	return shortstrings.String(math.Float64bits(v.n), int(v.o.shortStringBytes))
 }
 
 // Str returns the string value in canonical WTF-8.
@@ -74,7 +59,7 @@ func (v Value) StringLength() int {
 
 func (v Value) stringLengthSlow() int {
 	if v.isShortString() {
-		if math.Float64bits(v.n)&0x8080808080808080 == 0 {
+		if shortstrings.IsASCII(math.Float64bits(v.n)) {
 			return int(v.o.shortStringBytes)
 		}
 		return wtf8.Len(v.shortText())
@@ -96,8 +81,7 @@ func (v Value) stringObject() *Object {
 // WriteStringTo appends the string value to b.
 func (v Value) WriteStringTo(b *wtf8.Builder) {
 	if v.isShortString() {
-		var data [maxShortStringBytes]byte
-		binary.LittleEndian.PutUint64(data[:], math.Float64bits(v.n))
+		data := shortstrings.Bytes(math.Float64bits(v.n))
 		b.WriteStringBytes(data[:v.o.shortStringBytes])
 		return
 	}
@@ -109,12 +93,7 @@ func (v Value) UnitAt(i int) uint16 {
 	if !v.isShortString() {
 		return v.o.UnitAt(i)
 	}
-	data := math.Float64bits(v.n)
-	if data&0x8080808080808080 == 0 {
-		return uint16(byte(data >> (8 * i)))
-	}
-	s := v.shortText()
-	return wtf8.At(s, wtf8.Seek(s, wtf8.Pos{}, i))
+	return shortstrings.UnitAt(math.Float64bits(v.n), i)
 }
 
 // Substring returns the string's code units from start up to end, which must be in range and in order.
@@ -136,8 +115,7 @@ func (v Value) substringSlow(start, end int) string {
 }
 
 func (v Value) writeShortString(b *strings.Builder) {
-	var data [maxShortStringBytes]byte
-	binary.LittleEndian.PutUint64(data[:], math.Float64bits(v.n))
+	data := shortstrings.Bytes(math.Float64bits(v.n))
 	b.Write(data[:v.o.shortStringBytes])
 }
 

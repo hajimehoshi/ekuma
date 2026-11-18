@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
@@ -92,7 +93,7 @@ func (vm *VM) initRealmPrototypes() {
 	stringProto := vm.NewObject(objectProto)
 	vm.intrinsics[IntrinsicStringPrototype] = stringProto
 	vm.shapes.string = vm.shapeFor(stringProto)
-	vm.shapes.shortStrings = new([maxShortStringBytes + 1]Object)
+	vm.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
 	for i := range vm.shapes.shortStrings {
 		vm.shapes.shortStrings[i] = Object{
 			kind:             kindString,

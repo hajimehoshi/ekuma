@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -150,8 +151,8 @@ func (vm *VM) concat(a Value, x string, b Value, y string) Value {
 			return vm.newHead(rb, isASCII(a, x) && isASCII(b, y))
 		}
 	}
-	if n <= maxShortStringBytes {
-		var data [maxShortStringBytes]byte
+	if n <= shortstrings.MaxBytes {
+		var data [shortstrings.MaxBytes]byte
 		copy(data[:], x)
 		copy(data[len(x):], y)
 		return vm.shortString(string(data[:n]))
@@ -280,7 +281,7 @@ func (vm *VM) concatSmall(parts []Value, n int, count concatCount, hasShortStrin
 			written += copy(buf[written:], p.o.str)
 		}
 	}
-	if n <= maxShortStringBytes {
+	if n <= shortstrings.MaxBytes {
 		return vm.shortString(string(buf[:n]))
 	}
 	return vm.concatenated(string(buf[:n]), count)
@@ -365,7 +366,7 @@ func (vm *VM) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Val
 // concatenated returns s, the result of a concatenation without a builder, whose
 // [concatCount] is count.
 func (vm *VM) concatenated(s string, count concatCount) Value {
-	if len(s) <= maxShortStringBytes {
+	if len(s) <= shortstrings.MaxBytes {
 		return vm.NewString(s)
 	}
 	return Value{
