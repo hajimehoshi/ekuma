@@ -235,9 +235,6 @@ type fn struct {
 	// mutated holds the parameters that an arguments object can change.
 	mutated map[string]bool
 
-	// span is the span of node in the assignIndex of the compilation.
-	span funcSpan
-
 	// mapsPeak is the largest number of entries that one of the maps of this state held when a
 	// function compiled with it finished.
 	mapsPeak int
@@ -396,10 +393,6 @@ type scratch struct {
 	// fns are the states of finished functions, with their maps emptied.
 	fns []*fn
 
-	// assigns tells which of the functions compiled so far, and of the functions nested in
-	// them, assign to a name.
-	assigns assignIndex
-
 	// syms maps the names of the compilation to their symbols, which come from symChunks.
 	// symsUsed is the number of symbols handed out, and symsPeak the most entries that syms
 	// held when a compilation ended.
@@ -425,8 +418,6 @@ const (
 	maxFreePositions = 1 << 15
 	maxFreeKeys      = 1 << 14
 	maxFreeConsts    = 1 << 12
-	maxFreeExits     = 1 << 12
-	maxFreeNames     = 1 << 8
 	maxFreeChunks    = 4
 )
 
@@ -524,7 +515,6 @@ func trimChunks[T any](chunks []*[chunkSize]T, n int) []*[chunkSize]T {
 
 // trim empties s for reuse and drops what it holds beyond the limits.
 func (s *scratch) trim() {
-	s.assigns.reset()
 	if n := len(s.syms); keepMaps(n, s.symsPeak) {
 		clear(s.syms)
 		s.symsPeak = max(s.symsPeak, n)
@@ -1150,6 +1140,28 @@ func (f *fn) addUpval(b *binding, d bytecode.UpvalDesc) int32 {
 	b.capFn = f
 	b.capIndex = i
 	return i
+}
+
+// assigns reports whether the code of the function f, or of a function nested in it, assigns
+// to the variable name. It is false for a script, a module or eval code.
+func (f *fn) assigns(name string) bool {
+	n := f.node
+	return n != nil && f.c.assignedIn(name, n.Order-n.Nested, n.Order)
+}
+
+// nestedAssigns reports whether the code of a function nested in the function f assigns to the
+// variable name. It is false for a script, a module or eval code.
+func (f *fn) nestedAssigns(name string) bool {
+	n := f.node
+	return n != nil && f.c.assignedIn(name, n.Order-n.Nested, n.Order-1)
+}
+
+// assignedIn reports whether the own code of a function whose [ast.Function.Order] is from lo
+// to hi assigns to the variable name.
+func (c *compiler) assignedIn(name string, lo, hi int32) bool {
+	orders := c.prog.Assigned[name]
+	i, _ := slices.BinarySearch(orders, lo)
+	return i < len(orders) && orders[i] <= hi
 }
 
 // isFinal reports whether the local binding b of f holds its final value from now on, so that

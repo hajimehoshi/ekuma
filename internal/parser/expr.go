@@ -51,16 +51,20 @@ func (p *parser) parseAssignIn() ast.Expr {
 
 // parseAssign parses an assignment expression.
 func (p *parser) parseAssign() ast.Expr {
-	e, cover := p.parseAssignCover()
+	deferred := len(p.deferred)
+	e, cover := p.parseAssignCover(false)
 	if cover != 0 {
 		p.fail(int(cover-1), "invalid shorthand property initializer")
 	}
+	p.commitDeferred(deferred)
 	return e
 }
 
 // parseAssignCover parses an assignment expression that may turn out to be a pattern.
 // A non-zero cover is the offset plus one of an error that applies unless the result is converted to a pattern.
-func (p *parser) parseAssignCover() (result ast.Expr, cover int32) {
+// inPattern reports that the result can become part of a pattern, which defers the names that it
+// assigns to.
+func (p *parser) parseAssignCover(inPattern bool) (result ast.Expr, cover int32) {
 	p.enter()
 	savedCover, savedCoverNode := p.cover, p.coverNode
 	p.cover, p.coverNode = 0, nil
@@ -92,6 +96,11 @@ func (p *parser) parseAssignCover() (result ast.Expr, cover int32) {
 				Target: target,
 				Value:  value,
 			})
+			if inPattern {
+				p.deferred = appendTargetNames(p.deferred, target)
+			} else {
+				p.noteAssigned(target)
+			}
 		}
 	}
 
@@ -279,6 +288,7 @@ func (p *parser) parseUnary() ast.Expr {
 		arg := p.parseUnary()
 		p.leave()
 		p.checkUpdateTarget(arg)
+		p.noteUpdate(arg)
 		return &ast.UpdateExpr{
 			Span:   span(start, p.prevEnd),
 			Op:     op,
@@ -340,6 +350,7 @@ func (p *parser) parsePostfix() ast.Expr {
 		return e
 	}
 	p.checkUpdateTarget(e)
+	p.noteUpdate(e)
 	op := ast.OpInc
 	if p.t.kind == tDec {
 		op = ast.OpDec
@@ -364,6 +375,13 @@ func (p *parser) checkUpdateTarget(e ast.Expr) {
 			return
 		}
 		p.fail(int(e.Start()), "invalid operand of an increment or decrement")
+	}
+}
+
+// noteUpdate notes the variable that an update expression of the operand e assigns to.
+func (p *parser) noteUpdate(e ast.Expr) {
+	if id, ok := e.(*ast.Identifier); ok {
+		p.noteAssigned(id)
 	}
 }
 
@@ -538,8 +556,15 @@ func (p *parser) parseArguments() []ast.Expr {
 
 // arrowHead is the state saved around a construct that can turn out to be an arrow function head.
 type arrowHead struct {
-	base          *scope
-	mark          int
+	base *scope
+	mark int
+
+	// assigned and deferred are the lengths of parser.assigned and parser.deferred, and funcs is
+	// parser.funcs, at the start of the construct.
+	assigned int
+	deferred int
+	funcs    int32
+
 	use           usage
 	yieldPos      int32
 	awaitPos      int32
@@ -551,6 +576,9 @@ func (p *parser) beginArrowHead() arrowHead {
 	h := arrowHead{
 		base:          p.arrowBase,
 		mark:          len(p.pending),
+		assigned:      len(p.assigned),
+		deferred:      len(p.deferred),
+		funcs:         p.funcs,
 		use:           p.f.use,
 		yieldPos:      p.f.yieldPos,
 		awaitPos:      p.f.awaitPos,
@@ -625,7 +653,7 @@ func (p *parser) parseAsyncCall(id *ast.Identifier) (e ast.Expr, arrow bool) {
 		if p.t.kind == tEllipsis {
 			start := p.t.start
 			p.next()
-			arg, c := p.parseAssignCover()
+			arg, c := p.parseAssignCover(true)
 			if cover == 0 {
 				cover = c
 			}
@@ -640,7 +668,7 @@ func (p *parser) parseAsyncCall(id *ast.Identifier) (e ast.Expr, arrow bool) {
 				patErr = p.t.start + 1
 			}
 		} else {
-			arg, c := p.parseAssignCover()
+			arg, c := p.parseAssignCover(true)
 			if cover == 0 {
 				cover = c
 			}
@@ -685,7 +713,7 @@ func (p *parser) parseAsyncCall(id *ast.Identifier) (e ast.Expr, arrow bool) {
 		}
 		params[i] = p.toElement(a, true)
 	}
-	return p.parseArrow(id.StartOff, params, true, inner, h.mark), true
+	return p.parseArrow(id.StartOff, params, true, inner, &h), true
 }
 
 func (p *parser) parseParen() ast.Expr {
@@ -712,7 +740,7 @@ func (p *parser) parseParen() ast.Expr {
 			}
 			break
 		}
-		e, c := p.parseAssignCover()
+		e, c := p.parseAssignCover(true)
 		if cover == 0 {
 			cover = c
 		}
@@ -756,7 +784,7 @@ func (p *parser) parseParen() ast.Expr {
 		if rest != nil {
 			params = append(params, rest)
 		}
-		return p.parseArrow(start, params, false, inner, h.mark)
+		return p.parseArrow(start, params, false, inner, &h)
 	}
 
 	p.endArrowHead(&h, false, false)
@@ -787,9 +815,9 @@ func (p *parser) parseParen() ast.Expr {
 }
 
 // parseArrow parses an arrow function from its '=>' token on.
-// use is the usage collected in the parameters, and mark is the index in p.pending of the first scope
-// created in the parameters, or a negative value when the parameters cannot contain scopes.
-func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use usage, mark int) ast.Expr {
+// use is the usage collected in the parameters, and h is the state saved around them, or nil when they
+// are a single identifier.
+func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use usage, h *arrowHead) ast.Expr {
 	fn := newNode(&p.nodes.function, ast.Function{
 		Params: params,
 		Arrow:  true,
@@ -801,22 +829,28 @@ func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use u
 	outer := p.scope
 	noIn := p.f.noIn
 	saved := p.enterFunction(fn)
-	if mark >= 0 {
+	if h != nil {
 		n := len(p.pending)
 		registered := outer == p.arrowBase
 		if registered {
 			n--
 		}
-		for _, s := range p.pending[mark:n] {
+		for _, s := range p.pending[h.mark:n] {
 			s.Parent = fn.Scope
 			if s.ContainsDirectEval {
 				fn.Scope.ContainsDirectEval = true
 			}
 		}
-		p.pending = p.pending[:mark]
+		p.pending = p.pending[:h.mark]
 		if registered {
 			p.pending = append(p.pending, fn.Scope)
 		}
+
+		// The parameters are code of the arrow function. The assignment expressions that became
+		// parameters assign to nothing.
+		p.f.assignedBase = h.assigned
+		p.f.funcsBefore = h.funcs
+		p.deferred = p.deferred[:h.deferred]
 	}
 	p.f.use = use
 	if use&useDirectEval != 0 {
@@ -1162,12 +1196,12 @@ func (p *parser) parseIdentPrimary() ast.Expr {
 			if p.t.kind != tArrow || p.t.nl {
 				p.unexpected()
 			}
-			return p.parseArrow(start, []ast.Pattern{param}, true, 0, -1)
+			return p.parseArrow(start, []ast.Pattern{param}, true, 0, nil)
 		}
 	}
 	if canArrow && p.t.kind == tArrow && !p.t.nl {
 		p.noteAwaitIdent(id.Name, start)
-		return p.parseArrow(start, []ast.Pattern{id}, false, 0, -1)
+		return p.parseArrow(start, []ast.Pattern{id}, false, 0, nil)
 	}
 	p.checkIdent(id.Name, start, false)
 	if id.Name == "arguments" {
@@ -1224,7 +1258,7 @@ func (p *parser) parseArray() ast.Expr {
 		if p.t.kind == tEllipsis {
 			start := p.t.start
 			p.next()
-			arg, c := p.parseAssignCover()
+			arg, c := p.parseAssignCover(true)
 			if cover == 0 {
 				cover = c
 			}
@@ -1239,7 +1273,7 @@ func (p *parser) parseArray() ast.Expr {
 				patErr = p.t.start + 1
 			}
 		} else {
-			e, c := p.parseAssignCover()
+			e, c := p.parseAssignCover(true)
 			if cover == 0 {
 				cover = c
 			}
@@ -1349,7 +1383,7 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 	start := p.t.start
 	if p.t.kind == tEllipsis {
 		p.next()
-		arg, c := p.parseAssignCover()
+		arg, c := p.parseAssignCover(true)
 		if *cover == 0 {
 			*cover = c
 		}
@@ -1405,7 +1439,7 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 		prop.Value = fn
 	case p.t.kind == tColon:
 		p.next()
-		value, c := p.parseAssignCover()
+		value, c := p.parseAssignCover(true)
 		if *cover == 0 {
 			*cover = c
 		}

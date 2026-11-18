@@ -321,6 +321,11 @@ type Function struct {
 	// Length is the number of parameters before the first one with a default value or the rest parameter.
 	Length int
 
+	// Order is the position of the function, from 1, in the order in which the functions of the
+	// program end. The functions nested in it are those whose Order is from Order-Nested to Order-1.
+	Order  int32
+	Nested int32
+
 	Arrow     bool
 	Async     bool
 	Generator bool

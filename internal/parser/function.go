@@ -15,11 +15,13 @@ func (p *parser) enterFunction(fn *ast.Function) fnState {
 	p.enter()
 	saved := p.f
 	f := fnState{
-		strict:     saved.strict,
-		labelBase:  len(p.labels),
-		inFunction: !fn.FieldInit && !fn.StaticBlock,
-		yield:      fn.Generator,
-		await:      fn.Async,
+		strict:       saved.strict,
+		labelBase:    len(p.labels),
+		assignedBase: len(p.assigned),
+		funcsBefore:  p.funcs,
+		inFunction:   !fn.FieldInit && !fn.StaticBlock,
+		yield:        fn.Generator,
+		await:        fn.Async,
 	}
 	if fn.Arrow {
 		f.superProp = saved.superProp
@@ -60,6 +62,7 @@ func (p *parser) leaveFunction(fn *ast.Function, saved fnState) {
 	fn.UsesSuperProperty = use&useSuperProp != 0
 	fn.UsesSuperCall = use&useSuperCall != 0
 	fn.UsesNewTarget = use&useNewTarget != 0
+	p.endAssigned(fn)
 	p.f = saved
 	if fn.Arrow {
 		p.f.use |= use
@@ -376,7 +379,9 @@ func (p *parser) parseClass(decl, anonymous bool) *ast.Class {
 		})
 	}
 	if p.eat(tExtends) {
+		deferred := len(p.deferred)
 		cls.Super = p.parseLeftHandSide()
+		p.commitDeferred(deferred)
 	}
 	p.expect(tLBrace)
 

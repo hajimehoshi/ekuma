@@ -5,6 +5,7 @@ package parser_test
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -2300,6 +2301,78 @@ var j = (x = function () { eval(''); }) => x;
 	}
 	if j.HasDirectEval || !j.Scope.ContainsDirectEval || !inner.HasDirectEval {
 		t.Errorf("j: wrong direct eval facts")
+	}
+}
+
+// ownAssigned returns the names that the own code of the function fn of prog assigns to, sorted
+// and joined by commas.
+func ownAssigned(prog *ast.Program, fn *ast.Function) string {
+	var names []string
+	for name, orders := range prog.Assigned {
+		if slices.Contains(orders, fn.Order) {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	return strings.Join(names, ",")
+}
+
+func TestAssigned(t *testing.T) {
+	testCases := []struct {
+		name string
+
+		// src declares a function outer. When outer starts with a return statement, the returned
+		// function is inner.
+		src   string
+		outer string
+		inner string
+	}{
+		{
+			name:  "arrow function head",
+			src:   `function outer() { return (a = b = 1, [c = d = 1] = e, {f = g = 1}, ...[h = i = 1]) => j = 1; }`,
+			inner: "b,d,g,i,j",
+		},
+		{
+			name:  "async arrow function head",
+			src:   `function outer() { return async (a = b = 1) => 0; }`,
+			inner: "b",
+		},
+		{
+			name:  "expressions where a pattern may stand",
+			src:   `function outer() { (a = 1); async(b = 1); [c = d = 1] = e; f([g = 1], {h: i = 1}); }`,
+			outer: "a,b,c,d,g,i",
+		},
+		{
+			name:  "statements",
+			src:   `function outer() { a++; --b; for ((c = 1); ; ); for (d in o); for ([e] of o); class C extends [f = 1].constructor {} }`,
+			outer: "a,b,c,d,e,f",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			prog := mustParse(t, tc.src, script)
+			outer := prog.Body[0].(*ast.FuncDecl).Func
+			if got := ownAssigned(prog, outer); got != tc.outer {
+				t.Errorf("outer: got %q, want %q", got, tc.outer)
+			}
+			if r, ok := outer.Body[0].(*ast.ReturnStmt); ok {
+				if got := ownAssigned(prog, r.Arg.(*ast.Function)); got != tc.inner {
+					t.Errorf("inner: got %q, want %q", got, tc.inner)
+				}
+			}
+		})
+	}
+
+	// At the top level too, the parameters of an arrow function are its own code, and a function
+	// in them is nested in it.
+	prog := mustParse(t, `(a = () => {}, b = c = 1) => {};`, script)
+	arrow := prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function)
+	if got, want := ownAssigned(prog, arrow), "c"; got != want {
+		t.Errorf("top-level arrow function: got %q, want %q", got, want)
+	}
+	param := arrow.Params[0].(*ast.AssignPattern).Default.(*ast.Function)
+	if lo, hi := arrow.Order-arrow.Nested, arrow.Order-1; param.Order < lo || param.Order > hi {
+		t.Errorf("Order of the function in the parameters: got %d, want from %d to %d", param.Order, lo, hi)
 	}
 }
 

@@ -444,6 +444,7 @@ func (p *parser) parseFor() ast.Stmt {
 	var init ast.Expr
 	var cover int32
 	var startsWithLet, asyncOf bool
+	deferred := len(p.deferred)
 	p.f.noIn = true
 	switch {
 	case p.t.kind == tSemi:
@@ -460,7 +461,7 @@ func (p *parser) parseFor() ast.Stmt {
 			decl = p.parseVarDecl(declLet, true)
 		} else {
 			startsWithLet = true
-			init, cover = p.parseAssignCover()
+			init, cover = p.parseAssignCover(false)
 		}
 	case isAwait && p.isWord("async"):
 		if pk := p.peek(); pk.kind == tIdent && !pk.esc && pk.str == "of" {
@@ -470,11 +471,11 @@ func (p *parser) parseFor() ast.Stmt {
 			})
 			p.next()
 		} else {
-			init, cover = p.parseAssignCover()
+			init, cover = p.parseAssignCover(false)
 		}
 	default:
 		asyncStart := p.isWord("async")
-		init, cover = p.parseAssignCover()
+		init, cover = p.parseAssignCover(false)
 		if id, ok := init.(*ast.Identifier); ok && asyncStart && !id.Parenthesized {
 			asyncOf = true
 		}
@@ -493,6 +494,7 @@ func (p *parser) parseFor() ast.Stmt {
 		}
 	}
 	p.f.noIn = false
+	p.commitDeferred(deferred)
 
 	isOf := p.isWord("of")
 	if (isOf || p.t.kind == tIn) && (decl != nil || init != nil) {
@@ -519,6 +521,7 @@ func (p *parser) parseFor() ast.Stmt {
 				p.fail(int(init.Start()), "the left side of a for-of statement cannot start with let or be async")
 			}
 			target = p.toAssignTarget(init)
+			p.noteAssigned(target)
 		}
 		p.next()
 		var right ast.Expr

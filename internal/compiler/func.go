@@ -127,12 +127,6 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	b.Source = c.prog.Text(node)
 	f.setPos(node.Start())
 
-	assigns := &c.scratch.assigns
-	span, ok := assigns.spans[node]
-	if !ok {
-		span = assigns.add(node)
-	}
-	f.span = span
 	if node.UsesArguments && mappedArguments(node) != 0 {
 		// The arguments object can change the parameters.
 		for _, p := range node.Params {

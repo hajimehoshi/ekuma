@@ -140,6 +140,9 @@ type fnState struct {
 	// inFunction reports whether a return statement is allowed.
 	inFunction bool
 
+	// topLevel reports the top level of a script or a module.
+	topLevel bool
+
 	// yield and await report whether the words are operators.
 	yield bool
 	await bool
@@ -162,6 +165,13 @@ type fnState struct {
 
 	// labelBase is the index in parser.labels of the first label of the function.
 	labelBase int
+
+	// assignedBase is the index in parser.assigned of the first name that the own code of the
+	// function assigns to.
+	assignedBase int
+
+	// funcsBefore is the number of functions that end before the function starts.
+	funcsBefore int32
 
 	loopDepth  int
 	breakDepth int
@@ -238,6 +248,22 @@ type parser struct {
 
 	exported     map[string]struct{}
 	exportLocals []exportLocal
+
+	// assigned holds the names that the own code of the functions being parsed assigns to,
+	// innermost function last.
+	assigned []string
+
+	// deferred holds the names that assignment expressions assign to while the expressions may
+	// still become part of a pattern, which assigns to nothing.
+	deferred []string
+
+	// funcs is the number of functions that have ended.
+	funcs int32
+
+	// assignedIn becomes [ast.Program.Assigned]. lists is the storage that its lists are taken
+	// from; its length is the part in use.
+	assignedIn map[string][]int32
+	lists      []int32
 
 	nodes nodeSlabs
 	stmts listStack[ast.Stmt]
@@ -398,6 +424,7 @@ func (p *parser) init(src string, opts *Options, module bool) {
 		}
 	}
 	p.f = fnState{
+		topLevel:      true,
 		strict:        opts.Strict || module,
 		await:         module,
 		awaitReserved: module,
@@ -473,6 +500,7 @@ func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, er
 		Strict:   p.f.strict,
 		Body:     body,
 		Scope:    s.ast,
+		Assigned: p.assignedIn,
 	}
 	p.popScope()
 	return prog, nil
@@ -538,7 +566,8 @@ func parseFunctionSource(src string, opts *Options) (prog *ast.Program, err erro
 				Expr:     fn,
 			},
 		},
-		Scope: s.ast,
+		Scope:    s.ast,
+		Assigned: p.assignedIn,
 	}
 	p.popScope()
 	return prog, nil
