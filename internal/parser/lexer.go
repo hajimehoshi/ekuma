@@ -17,6 +17,18 @@ const (
 	charIDStart = 1 << iota
 	charIDPart
 	charDigit
+	// charBlank is an ASCII white space that is not a line terminator.
+	charBlank
+	// charLine is an ASCII line terminator.
+	charLine
+	// charMaybeSkip is a byte that can start a comment or a non-ASCII white space or line terminator.
+	charMaybeSkip
+	// charQuote is a quote or a backslash.
+	charQuote
+
+	charSkip = charBlank | charLine | charMaybeSkip
+	// charStringStop is a byte that ends a run of plain characters of a string literal.
+	charStringStop = charLine | charQuote
 )
 
 var charClass = func() (t [256]uint8) {
@@ -28,6 +40,20 @@ var charClass = func() (t [256]uint8) {
 	t['_'] = charIDStart | charIDPart
 	for c := '0'; c <= '9'; c++ {
 		t[c] = charIDPart | charDigit
+	}
+	for _, c := range " \t\v\f" {
+		t[c] = charBlank
+	}
+	t['\n'] = charLine
+	t['\r'] = charLine
+	for _, c := range "/<-" {
+		t[c] = charMaybeSkip
+	}
+	for c := utf8.RuneSelf; c < len(t); c++ {
+		t[c] = charMaybeSkip
+	}
+	for _, c := range "\"'\\" {
+		t[c] = charQuote
 	}
 	return
 }()
@@ -142,12 +168,20 @@ func (p *parser) scan() {
 skip:
 	for pos < len(src) {
 		c := src[pos]
-		switch c {
-		case ' ', '\t', '\v', '\f':
+		class := charClass[c]
+		if class&charSkip == 0 {
+			break
+		}
+		if class&charBlank != 0 {
 			pos++
-		case '\n', '\r':
+			continue
+		}
+		if class&charLine != 0 {
 			nl = true
 			pos++
+			continue
+		}
+		switch c {
 		case '/':
 			if pos+1 >= len(src) {
 				break skip
@@ -179,9 +213,6 @@ skip:
 			}
 			pos = p.skipLine(pos + 3)
 		default:
-			if c < utf8.RuneSelf {
-				break skip
-			}
 			r, size := utf8.DecodeRuneInString(src[pos:])
 			switch {
 			case r == 0x2028 || r == 0x2029:
@@ -206,6 +237,23 @@ skip:
 	}
 
 	c := src[pos]
+	if charClass[c]&charIDStart != 0 {
+		end := pos + 1
+		for end < len(src) && charClass[src[end]]&charIDPart != 0 {
+			end++
+		}
+		if end >= len(src) || src[end] != '\\' && src[end] < utf8.RuneSelf {
+			name := src[pos:end]
+			t.str = name
+			t.end = int32(end)
+			p.pos = end
+			t.kind = tIdent
+			if len(name) >= 2 && len(name) <= 10 {
+				t.kind = keywordKind(name)
+			}
+			return
+		}
+	}
 	var c1, c2 byte
 	if pos+1 < len(src) {
 		c1 = src[pos+1]
@@ -736,13 +784,17 @@ func (p *parser) scanString(start int, quote byte) {
 	pos := start + 1
 	for pos < len(src) {
 		c := src[pos]
+		if charClass[c]&charStringStop == 0 {
+			pos++
+			continue
+		}
 		if c == quote {
 			t.str = src[start+1 : pos]
 			p.pos = pos + 1
 			t.end = int32(p.pos)
 			return
 		}
-		if c == '\\' || c == '\n' || c == '\r' {
+		if c != '"' && c != '\'' {
 			break
 		}
 		pos++
@@ -770,8 +822,15 @@ func (p *parser) scanString(start int, quote byte) {
 			pos = p.pos
 		case '\n', '\r':
 			p.fail(start, "unterminated string literal")
-		default:
+		case 0xed:
 			buf, pos = appendSourceByte(buf, src, pos)
+		default:
+			end := pos + 1
+			for end < len(src) && charClass[src[end]]&charStringStop == 0 && src[end] != 0xed {
+				end++
+			}
+			buf = append(buf, src[pos:end]...)
+			pos = end
 		}
 	}
 }
