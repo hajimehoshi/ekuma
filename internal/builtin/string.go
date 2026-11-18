@@ -304,8 +304,8 @@ func initString(vm *engine.VM) {
 	pad("padEnd", false)
 	trim := func(name string, start, end bool) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			s := thisString(vm, this, name)
-			return vm.NewString(numconv.TrimWhiteSpace(s.Str(), start, end))
+			s := thisStringValue(vm, this, name)
+			return vm.TrimString(s, start, end)
 		})
 	}
 	trim("trim", true, true)

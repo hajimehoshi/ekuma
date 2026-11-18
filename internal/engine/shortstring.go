@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -281,4 +282,48 @@ func (vm *VM) mapASCII(s Value, upper bool) (Value, bool) {
 		n: math.Float64frombits(mapped),
 		o: &vm.shapes.shortStrings[n],
 	}, true
+}
+
+// TrimString trims whitespace from the selected ends of the string s.
+func (vm *VM) TrimString(s Value, start, end bool) Value {
+	if s.isShortString() {
+		return vm.trimShortString(s, start, end)
+	}
+	text := s.o.Str()
+	trimmed := numconv.TrimWhiteSpace(text, start, end)
+	if len(trimmed) == len(text) {
+		return s
+	}
+	return vm.NewString(trimmed)
+}
+
+func (vm *VM) trimShortString(s Value, start, end bool) Value {
+	data := math.Float64bits(s.n)
+	n := int(s.o.shortStringBytes)
+	var trimmed uint64
+	var trimmedN int
+	if shortstrings.IsASCII(data) {
+		trimmed, trimmedN = shortstrings.TrimASCII(data, n, start, end)
+	} else {
+		text := shortstrings.String(data, n)
+		part := numconv.TrimWhiteSpace(text, start, end)
+		trimmedN = len(part)
+		if trimmedN == n {
+			return s
+		}
+		trimmed = shortstrings.Pack(part)
+	}
+	if trimmedN == n {
+		return s
+	}
+	if trimmedN == 0 {
+		return vm.emptyString
+	}
+	if trimmedN == 1 && byte(trimmed) < 0x80 {
+		return vm.strings.ascii[byte(trimmed)]
+	}
+	return Value{
+		n: math.Float64frombits(trimmed),
+		o: &vm.shapes.shortStrings[trimmedN],
+	}
 }

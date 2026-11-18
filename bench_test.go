@@ -1673,3 +1673,69 @@ func BenchmarkStringASCIICase(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringTrim measures trimming and its Unicode and long-string fallbacks.
+func BenchmarkStringTrim(b *testing.B) {
+	for _, tc := range []struct {
+		name string
+		text string
+	}{
+		{
+			name: "Whitespace",
+			text: `" \tfoo \r\n"`,
+		},
+		{
+			name: "Unchanged",
+			text: `"abcdefgh"`,
+		},
+		{
+			name: "AllWhitespace",
+			text: `"\t\n\v\f\r "`,
+		},
+		{
+			name: "NUL",
+			text: `" \u0000 "`,
+		},
+		{
+			name: "UnicodeWhitespace",
+			text: `"\u00a0日　"`,
+		},
+		{
+			name: "UnicodeUnchanged",
+			text: `"é日"`,
+		},
+		{
+			name: "LoneSurrogate",
+			text: `" \ud800 "`,
+		},
+		{
+			name: "LongWhitespace",
+			text: `"  abcdefghijklmnopqrstuvwxyz  "`,
+		},
+		{
+			name: "LongUnchanged",
+			text: `"abcdefghijklmnopqrstuvwxyz"`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created"} {
+			for _, method := range []string{"trim", "trimStart", "trimEnd"} {
+				b.Run(form+"/"+tc.name+"/"+method, func(b *testing.B) {
+					var vm ekuma.VM
+					receiver := tc.text
+					if form == "Created" {
+						receiver = "(" + receiver + " + '!').slice(0, -1)"
+					}
+					src := fmt.Sprintf(`var s = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = s.%s(); return result; }`, receiver, method)
+					if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+						b.Fatal(err)
+					}
+					b.ReportAllocs()
+					b.ResetTimer()
+					if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+						b.Fatal(err)
+					}
+				})
+			}
+		}
+	}
+}

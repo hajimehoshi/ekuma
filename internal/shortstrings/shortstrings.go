@@ -310,3 +310,24 @@ func ToLowerASCII(data uint64) uint64 {
 	letters := (data + 0x3f3f3f3f3f3f3f3f) &^ (data + 0x2525252525252525) & 0x8080808080808080
 	return data | (letters >> 2)
 }
+
+// TrimASCII returns the trimmed packed string and its byte length.
+// data must be ASCII; n is its byte length, and start and end select the sides to trim.
+func TrimASCII(data uint64, n int, start, end bool) (uint64, int) {
+	if start {
+		for n > 0 && isASCIIWhitespace(byte(data)) {
+			data >>= 8
+			n--
+		}
+	}
+	if end {
+		for n > 0 && isASCIIWhitespace(byte(data>>(8*(n-1)))) {
+			n--
+		}
+	}
+	return data & (uint64(1)<<(8*n) - 1), n
+}
+
+func isASCIIWhitespace(b byte) bool {
+	return b == ' ' || b >= '\t' && b <= '\r'
+}

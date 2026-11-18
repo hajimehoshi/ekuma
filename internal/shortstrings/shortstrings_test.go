@@ -527,3 +527,70 @@ func TestASCIICase(t *testing.T) {
 		})
 	}
 }
+
+func TestTrimASCII(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		start bool
+		end   bool
+		want  string
+	}{
+		{
+			name:  "both ends",
+			text:  " \tfoo \r\n",
+			start: true,
+			end:   true,
+			want:  "foo",
+		},
+		{
+			name:  "all whitespace",
+			text:  "\t\n\v\f\r ",
+			start: true,
+			end:   true,
+			want:  "",
+		},
+		{
+			name:  "prefix only",
+			text:  "\tfoo\r ",
+			start: true,
+			end:   false,
+			want:  "foo\r ",
+		},
+		{
+			name:  "suffix only",
+			text:  "\tfoo\r ",
+			start: false,
+			end:   true,
+			want:  "\tfoo",
+		},
+		{
+			name:  "unchanged full payload",
+			text:  "abcdefgh",
+			start: true,
+			end:   true,
+			want:  "abcdefgh",
+		},
+		{
+			name:  "NUL is content",
+			text:  " \x00 ",
+			start: true,
+			end:   true,
+			want:  "\x00",
+		},
+		{
+			name:  "controls outside whitespace range",
+			text:  "\x08A\x0e",
+			start: true,
+			end:   true,
+			want:  "\x08A\x0e",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, n := shortstrings.TrimASCII(shortstrings.Pack(tc.text), len(tc.text), tc.start, tc.end)
+			if data != shortstrings.Pack(tc.want) || n != len(tc.want) {
+				t.Errorf("TrimASCII() = (%#x, %d), want (%#x, %d)", data, n, shortstrings.Pack(tc.want), len(tc.want))
+			}
+		})
+	}
+}
