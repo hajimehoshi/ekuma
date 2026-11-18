@@ -388,3 +388,25 @@ func (vm *VM) SetUnhandledRejection(f func(promise, reason Value)) {
 		f(fromEngine(promise), fromEngine(reason))
 	})
 }
+
+// WithContinuationData calls f with data as the continuation data, and restores the previous
+// continuation data when f returns or panics.
+//
+// A promise job runs with the continuation data that was current when it was registered: when
+// then was called, await was reached, or a promise was resolved with a thenable. The cleanup
+// callback of a FinalizationRegistry runs with the continuation data that was current when the
+// registry was made.
+func (vm *VM) WithContinuationData(data any, f func()) {
+	vm.initIfNeeded()
+	prev := vm.e.ContinuationData()
+	vm.e.SetContinuationData(data)
+	defer vm.e.SetContinuationData(prev)
+	f()
+}
+
+// ContinuationData returns the continuation data set by the innermost [VM.WithContinuationData]
+// call or running job, or nil if there is none.
+func (vm *VM) ContinuationData() any {
+	vm.initIfNeeded()
+	return vm.e.ContinuationData()
+}

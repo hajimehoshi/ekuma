@@ -44,8 +44,9 @@ const (
 	reactionAsyncGeneratorReturn
 
 	// reactionUnwrap resolves the capability with an iterator result of the value with done,
-	// as AsyncFromSyncIteratorContinuation does. A rejection closes iterator first when it is
-	// an object.
+	// as AsyncFromSyncIteratorContinuation does. A rejection first closes onRejected when it is
+	// an object, which is the iterator that the reject handler of AsyncFromSyncIteratorContinuation
+	// closes.
 	reactionUnwrap
 
 	// reactionNative calls native.
@@ -64,9 +65,12 @@ type promiseReaction struct {
 	// onFulfilled and onRejected are the handlers, whose o is nil when the handler is empty.
 	onFulfilled, onRejected Value
 
-	gen      *generator
-	iterator Value
-	native   AwaitHandler
+	gen    *generator
+	native AwaitHandler
+
+	// continuationData is the continuation data that was current when the reaction was made,
+	// which its job runs with.
+	continuationData any
 }
 
 // AwaitHandler continues a built-in async function after an Await: v is the value of
@@ -107,6 +111,8 @@ type job struct {
 	// rejected selects the reject reaction of a reaction job.
 	rejected bool
 
+	// reaction is the reaction of a reaction job. The continuation data of a thenable job is
+	// reaction.continuationData too.
 	reaction promiseReaction
 
 	// argument is the value of a reaction job, or the thenable of a thenable job.
@@ -298,9 +304,18 @@ func (vm *VM) resolvePromise(p *Object, resolution Value) {
 		vm.fulfillPromise(p, resolution)
 		return
 	}
+	vm.enqueueThenableJob(p, resolution, then)
+}
+
+// enqueueThenableJob enqueues the job of NewPromiseResolveThenableJob, which runs with the
+// current continuation data.
+func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
 	vm.enqueueJob(job{
-		kind:     jobThenable,
-		argument: resolution,
+		kind: jobThenable,
+		reaction: promiseReaction{
+			continuationData: vm.continuationData,
+		},
+		argument: thenable,
 		promise:  p,
 		then:     then,
 	})
@@ -362,7 +377,9 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 }
 
 // addReaction is the part of PerformPromiseThen after the reaction records are created.
+// The reaction captures the current continuation data, as HostMakeJobCallback does.
 func (vm *VM) addReaction(p *Object, r promiseReaction) {
+	r.continuationData = vm.continuationData
 	d := promiseOf(p)
 	switch d.state {
 	case PromisePending:
@@ -421,6 +438,8 @@ func (vm *VM) await(g *generator, v Value, kind reactionKind) {
 
 // awaitValue performs PromiseResolve(%Promise%, v) and PerformPromiseThen with the reaction r.
 func (vm *VM) awaitValue(v Value, r promiseReaction) {
+	// The jobs enqueued here run r without addReaction.
+	r.continuationData = vm.continuationData
 	// The promise that PromiseResolve creates is only needed for a thenable: any other value
 	// would settle it at once, so the reaction job can be enqueued directly.
 	switch {
@@ -458,12 +477,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 			return
 		}
 		p := vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
-		vm.enqueueJob(job{
-			kind:     jobThenable,
-			argument: v,
-			promise:  p,
-			then:     then,
-		})
+		vm.enqueueThenableJob(p, v, then)
 		vm.addReaction(p, r)
 		return
 	}
@@ -636,8 +650,8 @@ func (vm *VM) promiseReactionJob(r *promiseReaction, arg Value, rejected bool) {
 			vm.ResolveCapability(r.capability, vm.CreateIterResultObject(arg, r.done))
 			return
 		}
-		if r.iterator.IsObject() {
-			vm.iteratorClose(r.iterator, true)
+		if r.onRejected.IsObject() {
+			vm.iteratorClose(r.onRejected, true)
 		}
 		vm.RejectCapability(r.capability, arg)
 		return
@@ -692,7 +706,12 @@ func (vm *VM) runJobs() {
 					vm.Poll()
 				}
 				j := vm.jobs.dequeue()
+				// A job runs with the continuation data that it captured, as HostCallJobCallback
+				// does. A panic or an interruption leaves it to enter to restore the data.
+				data := vm.continuationData
+				vm.continuationData = j.reaction.continuationData
 				vm.runJob(&j)
+				vm.continuationData = data
 				if vm.abortCause != nil {
 					return
 				}

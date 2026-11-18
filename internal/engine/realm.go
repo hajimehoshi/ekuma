@@ -302,6 +302,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
 	thrown := vm.thrown
+	continuationData := vm.continuationData
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
@@ -328,6 +329,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			if interrupted && !outermost {
 				panic(r)
 			}
+			vm.continuationData = continuationData
 			// Only activations belonging to this boundary have lost their Go callers.
 			if vm.curRealm != curRealm {
 				vm.switchRealm(curRealm)

@@ -402,10 +402,10 @@ func (vm *VM) asyncFromSyncIteratorContinuation(result Value, c *PromiseCapabili
 		kind:       reactionUnwrap,
 		done:       done,
 		capability: c,
-		iterator:   Undefined,
+		onRejected: Undefined,
 	}
 	if !done && closeOnRejection {
-		r.iterator = it
+		r.onRejected = it
 	}
 	if !vm.protect(func() {
 		vm.awaitValue(value, r)

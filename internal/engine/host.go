@@ -132,3 +132,15 @@ func ThrownMessage(v Value) string {
 	}
 	return vm.errorOf(v).Error()
 }
+
+// ContinuationData returns the continuation data, the value of the host that promise
+// reactions, awaits and FinalizationRegistry objects capture when they are made, and that
+// their jobs run with.
+func (vm *VM) ContinuationData() any {
+	return vm.continuationData
+}
+
+// SetContinuationData sets data as the continuation data.
+func (vm *VM) SetContinuationData(data any) {
+	vm.continuationData = data
+}

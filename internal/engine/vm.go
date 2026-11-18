@@ -460,6 +460,9 @@ type VM struct {
 	// symbolShape is the shape of the symbols of the VM. It records the VM that they belong
 	// to, and no lookup starts from it.
 	symbolShape *shape
+
+	// continuationData is the value that [VM.ContinuationData] returns.
+	continuationData any
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

@@ -124,19 +124,27 @@ The realms of a VM share its jobs and settings, and values pass between them, so
 is not a security boundary: an object of a realm gives access to its built-in objects.
 A separate `VM` isolates code.
 
-### Host environment
+### Jobs
 
 Pending promise jobs run before the outermost Go call that executes JavaScript returns,
 including property operations and calls that throw. Calls reentered from host callbacks leave
 jobs to the outermost call. An interruption discards pending jobs. Rejections still unhandled
-after draining are reported to `VM.SetUnhandledRejection`. Operations without a context can
-run JavaScript and jobs without a cancellation limit, unless reentered under a call with a
-context.
+after draining are reported to `VM.SetUnhandledRejection`.
+
+`VM.WithContinuationData` calls a function with a host value as the continuation data, which
+`VM.ContinuationData` returns. A promise job, including the continuation of an `await`, runs
+with the continuation data that was current when it was registered, so the host can carry
+request-scoped state such as an AsyncLocalStorage frame across asynchronous code.
+
+### Cancellation
 
 A context stops everything that runs under it. When a `Func` makes a call with another
 context and that context stops the call, the outermost call returns the cause of that context
 and the `Func` does not continue. A context that is done after its call returned stops
-nothing.
+nothing. Operations without a context can run JavaScript and jobs without a cancellation
+limit, unless reentered under a call with a context.
+
+### Panics
 
 A panic of a `Func` or of another host function passes through to the caller of the
 Go call unchanged and leaves the VM usable. A host callback may also recover a panic from
@@ -154,6 +162,8 @@ on an aborted async generator see it as completed. Suspended generators outside 
 call remain intact.
 
 Host callbacks must not call `runtime.Goexit`: it is not a panic and leaves the VM unusable.
+
+### Time and randomness
 
 `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
