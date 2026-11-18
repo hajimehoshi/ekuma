@@ -169,7 +169,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		for i, p := range node.Params[:nparams] {
 			// With duplicate names, the last parameter wins.
 			name := p.(*ast.Identifier).Name
-			if prev, ok := f.scope.vars[name]; ok && prev.reg >= slots {
+			if prev := f.scope.lookup(name); prev != nil && prev.reg >= slots {
 				if b.ShadowedParams == nil {
 					b.ShadowedParams = make([]bool, nparams)
 				}
@@ -256,7 +256,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			}
 		}
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
-			if _, shadowed := f.scope.vars["arguments"]; !shadowed {
+			if f.scope.lookup("arguments") == nil {
 				switch {
 				case !node.HasDirectEval && f.forwardsArguments():
 					f.forwardsArgs = true
@@ -297,19 +297,18 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 					// The variables that the direct evals of the parameters declare shadow
 					// the name, so the name lives in a scope outside that of OpEvalScope.
 					sc = &scope{
+						fn:       f,
 						parent:   f.scope.parent,
-						vars:     map[string]*binding{},
 						firstReg: f.top,
 						withs:    f.scope.withs - 1,
 					}
 					f.scope.parent = sc
 				}
-				self := &binding{
-					name: n,
-					reg:  f.newReg(),
-					kind: bindFuncName,
-				}
-				sc.vars[n] = self
+				self := c.newBinding()
+				self.name = n
+				self.reg = f.newReg()
+				self.kind = bindFuncName
+				sc.bind(c.symbol(n), self)
 				self.initialized = true
 				f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
 			}
@@ -317,8 +316,8 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		// The registers of the body's declarations are reserved before the parameter code
 		// so that they start cleared.
 		f.varScope = &scope{
+			fn:       f,
 			parent:   paramScope,
-			vars:     map[string]*binding{},
 			firstReg: f.top,
 			withs:    f.withDepth,
 		}
@@ -364,6 +363,8 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	// Parameters that are patterns or have defaults bind after the registers above are
 	// reserved, because their code can contain closures that capture any of them.
 	if !node.SimpleParams {
+		// The parameter code cannot see the body's declarations.
+		f.varScope.close()
 		f.scope = paramScope
 		for _, p := range node.Params {
 			switch p := p.(type) {
@@ -410,41 +411,41 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		}
 		// A variable of the body starts with the value of the parameter of the same name.
 		f.scope = f.varScope
+		f.varScope.reopen()
 		moved := map[string]bool{}
 		for _, d := range node.Scope.Decls {
 			if d.Kind != ast.DeclVar && d.Kind != ast.DeclAnnexBVar || funcs[d.Name] != nil || moved[d.Name] {
 				continue
 			}
-			vb, ok := f.varScope.vars[d.Name]
-			if !ok {
+			vb := f.varScope.lookup(d.Name)
+			if vb == nil {
 				continue
 			}
-			if pb, ok := paramScope.vars[d.Name]; ok && pb.kind == bindVar {
+			if pb := paramScope.lookup(d.Name); pb != nil && pb.kind == bindVar {
 				f.emit(bytecode.OpMove, vb.reg, pb.reg, 0)
 				moved[d.Name] = true
 			}
 		}
 	}
 	if selfName {
-		if _, shadowed := f.scope.vars[node.Name.Name]; !shadowed {
+		if f.scope.lookup(node.Name.Name) == nil {
 			sc := f.scope
 			if evalInBody {
 				// The variables that the direct evals declare shadow the name, so the name
 				// lives in a scope outside that of OpEvalScope.
 				sc = &scope{
+					fn:       f,
 					parent:   f.scope.parent,
-					vars:     map[string]*binding{},
 					firstReg: f.top,
 					withs:    f.scope.withs - 1,
 				}
 				f.scope.parent = sc
 			}
-			self := &binding{
-				name: node.Name.Name,
-				reg:  f.newReg(),
-				kind: bindFuncName,
-			}
-			sc.vars[self.name] = self
+			self := c.newBinding()
+			self.name = node.Name.Name
+			self.reg = f.newReg()
+			self.kind = bindFuncName
+			sc.bind(c.symbol(self.name), self)
 			self.initialized = true
 			f.emit(bytecode.OpLoadCallee, self.reg, 0, 0)
 		}

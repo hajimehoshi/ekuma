@@ -101,7 +101,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 		if !ok || m.Computed {
 			continue
 		}
-		if _, exists := f.scope.vars["#"+p.Name]; exists {
+		if f.scope.lookup("#"+p.Name) != nil {
 			continue
 		}
 		b := f.declare("#"+p.Name, bindPseudo)

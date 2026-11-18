@@ -573,7 +573,7 @@ func (f *fn) annexBHoist(s *ast.FuncDecl) {
 		f.storeEvalVar(name, inner.reg)
 		return
 	}
-	if outer, ok := f.varScope.vars[name]; ok {
+	if outer := f.varScope.lookup(name); outer != nil {
 		if outer != inner {
 			f.emit(bytecode.OpMove, outer.reg, inner.reg, 0)
 		}

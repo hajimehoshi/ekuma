@@ -66,9 +66,15 @@ func TestScratchLimits(t *testing.T) {
 				}
 				progs = append(progs, prog)
 			}
-			code, fns := compiler.KeptScratch(progs...)
+			code, fns, symChunks, bindChunks := compiler.KeptScratch(progs...)
 			if code > compiler.MaxFreeCode {
 				t.Errorf("code buffers: got %d elements, want at most %d", code, compiler.MaxFreeCode)
+			}
+			if symChunks > compiler.MaxFreeChunks {
+				t.Errorf("symbol chunks: got %d, want at most %d", symChunks, compiler.MaxFreeChunks)
+			}
+			if bindChunks > compiler.MaxFreeChunks {
+				t.Errorf("binding chunks: got %d, want at most %d", bindChunks, compiler.MaxFreeChunks)
 			}
 			if fns != tc.wantFns {
 				t.Errorf("function states: got %d, want %d", fns, tc.wantFns)

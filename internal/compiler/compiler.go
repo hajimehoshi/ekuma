@@ -6,6 +6,9 @@ package compiler
 
 import (
 	"fmt"
+	"math"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -50,6 +53,19 @@ type binding struct {
 	reg  int32
 	kind bindKind
 
+	// sym is the symbol of name, and scope is the scope that declares the binding. Both are nil
+	// for a binding that stands for a variable of the call site of eval code.
+	sym   *symbol
+	scope *scope
+
+	// shadowed is the binding of the same name that this one hides, while scope is open.
+	shadowed *binding
+
+	// capFn is the innermost function being compiled that has an upvalue for the binding, and
+	// capIndex is the index of that upvalue.
+	capFn    *fn
+	capIndex int32
+
 	// tdz is set while the binding may be read before its declaration was evaluated.
 	tdz bool
 
@@ -68,10 +84,20 @@ type binding struct {
 	initialized bool
 }
 
+// symbol is a variable name of the program being compiled.
+type symbol struct {
+	// top is the innermost binding of the name among the open scopes, or nil.
+	top *binding
+}
+
 // scope is a block scope.
 type scope struct {
+	fn     *fn
 	parent *scope
-	vars   map[string]*binding
+
+	// binds are the bindings that the scope declares, in declaration order.
+	binds  []*binding
+	inline [4]*binding
 
 	// firstReg is the first register of the scope's own variables.
 	firstReg int32
@@ -186,11 +212,22 @@ type fn struct {
 	// varScope is the scope of the var and function declarations of the function or script.
 	varScope *scope
 
+	// depth is the number of functions around f.
+	depth int
+
 	// top is the first register that is not in use.
 	top int32
 
-	upvals    []*binding
-	consts    map[bytecode.Const]int32
+	upvals []*binding
+
+	// upvalSaves holds, for every binding in upvals, its capFn and capIndex before f captured it.
+	upvalSaves []capture
+
+	// numConsts and strConsts map the bits of the number constants and the strings of the string
+	// constants to their indices. bigConsts does so for the digits of the BigInt constants.
+	numConsts map[uint64]int32
+	strConsts map[string]int32
+	bigConsts map[string]int32
 	keys      map[string]int32
 	control   []*ctl
 	withDepth int
@@ -271,6 +308,14 @@ type compiler struct {
 	dynamic *ast.Function
 
 	scratch *scratch
+
+	// evalCode is set while eval code is compiled, whose free names can be variables of
+	// the call site.
+	evalCode bool
+
+	// lastName and lastSym are the most recent result of symbol.
+	lastName string
+	lastSym  *symbol
 
 	// topDecls maps the names that the top level of a program with many declarations
 	// declares to what their declarations are, once a lookup needed it.
@@ -354,6 +399,18 @@ type scratch struct {
 	// assigns tells which of the functions compiled so far, and of the functions nested in
 	// them, assign to a name.
 	assigns assignIndex
+
+	// syms maps the names of the compilation to their symbols, which come from symChunks.
+	// symsUsed is the number of symbols handed out, and symsPeak the most entries that syms
+	// held when a compilation ended.
+	syms      map[string]*symbol
+	symChunks []*[chunkSize]symbol
+	symsUsed  int
+	symsPeak  int
+
+	// bindChunks hold the bindings of the compilation, of which bindsUsed are handed out.
+	bindChunks []*[chunkSize]binding
+	bindsUsed  int
 }
 
 // Limits of what is kept for later compilations, so that compiling a large program does not keep
@@ -370,7 +427,11 @@ const (
 	maxFreeConsts    = 1 << 12
 	maxFreeExits     = 1 << 12
 	maxFreeNames     = 1 << 8
+	maxFreeChunks    = 4
 )
+
+// chunkSize is the number of symbols or bindings that one allocation holds.
+const chunkSize = 256
 
 // freeScratch holds scratch sets for reuse, which garbage collection does not take away. An
 // empty slot is nil.
@@ -403,9 +464,78 @@ func putScratch(s *scratch) {
 	scratchPool.Put(s)
 }
 
+// capture is the upvalue of a binding in the innermost function that has one.
+type capture struct {
+	fn    *fn
+	index int32
+}
+
+// symbol returns the symbol of name.
+func (c *compiler) symbol(name string) *symbol {
+	if c.lastSym != nil && name == c.lastName {
+		return c.lastSym
+	}
+	sc := c.scratch
+	s, ok := sc.syms[name]
+	if !ok {
+		i := sc.symsUsed
+		if i/chunkSize == len(sc.symChunks) {
+			sc.symChunks = append(sc.symChunks, new([chunkSize]symbol))
+		}
+		s = &sc.symChunks[i/chunkSize][i%chunkSize]
+		sc.symsUsed++
+		if sc.syms == nil {
+			sc.syms = map[string]*symbol{}
+		}
+		sc.syms[name] = s
+	}
+	c.lastName = name
+	c.lastSym = s
+	return s
+}
+
+// newBinding returns a zero binding that lives until the compilation ends.
+func (c *compiler) newBinding() *binding {
+	sc := c.scratch
+	i := sc.bindsUsed
+	if i/chunkSize == len(sc.bindChunks) {
+		sc.bindChunks = append(sc.bindChunks, new([chunkSize]binding))
+	}
+	b := &sc.bindChunks[i/chunkSize][i%chunkSize]
+	sc.bindsUsed++
+	return b
+}
+
+// trimChunks zeroes the first n elements of chunks, and drops the chunks beyond maxFreeChunks.
+func trimChunks[T any](chunks []*[chunkSize]T, n int) []*[chunkSize]T {
+	for _, ch := range chunks {
+		if n <= 0 {
+			break
+		}
+		clear(ch[:min(n, len(ch))])
+		n -= len(ch)
+	}
+	if len(chunks) > maxFreeChunks {
+		clear(chunks[maxFreeChunks:])
+		chunks = chunks[:maxFreeChunks]
+	}
+	return chunks
+}
+
 // trim empties s for reuse and drops what it holds beyond the limits.
 func (s *scratch) trim() {
 	s.assigns.reset()
+	if n := len(s.syms); keepMaps(n, s.symsPeak) {
+		clear(s.syms)
+		s.symsPeak = max(s.symsPeak, n)
+	} else {
+		s.syms = nil
+		s.symsPeak = 0
+	}
+	s.symChunks = trimChunks(s.symChunks, s.symsUsed)
+	s.bindChunks = trimChunks(s.bindChunks, s.bindsUsed)
+	s.symsUsed = 0
+	s.bindsUsed = 0
 	s.codeBufs = trimBufs(s.codeBufs, maxFreeCode)
 	s.posBufs = trimBufs(s.posBufs, maxFreePositions)
 	s.keyBufs = trimBufs(s.keyBufs, maxFreeKeys)
@@ -513,6 +643,8 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 func (c *compiler) release() {
 	putScratch(c.scratch)
 	c.scratch = nil
+	c.lastSym = nil
+	c.lastName = ""
 }
 
 // fail aborts the compilation with an error at the node n.
@@ -532,26 +664,34 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 		f = sc.fns[n-1]
 		sc.fns = sc.fns[:n-1]
 		*f = fn{
-			consts:   f.consts,
-			keys:     f.keys,
-			mutated:  f.mutated,
-			scope:    f.scope,
-			varScope: f.scope,
-			mapsPeak: f.mapsPeak,
+			numConsts:  f.numConsts,
+			strConsts:  f.strConsts,
+			bigConsts:  f.bigConsts,
+			keys:       f.keys,
+			mutated:    f.mutated,
+			scope:      f.scope,
+			varScope:   f.scope,
+			upvals:     f.upvals,
+			upvalSaves: f.upvalSaves,
+			mapsPeak:   f.mapsPeak,
 		}
 	} else {
 		f = &fn{
-			consts:  map[bytecode.Const]int32{},
-			keys:    map[string]int32{},
-			mutated: map[string]bool{},
-			scope: &scope{
-				vars: map[string]*binding{},
-			},
+			numConsts: map[uint64]int32{},
+			strConsts: map[string]int32{},
+			bigConsts: map[string]int32{},
+			keys:      map[string]int32{},
+			mutated:   map[string]bool{},
+			scope:     &scope{},
 		}
 		f.varScope = f.scope
 	}
+	f.scope.fn = f
 	f.c = c
 	f.parent = parent
+	if parent != nil {
+		f.depth = parent.depth + 1
+	}
 	f.node = node
 	f.completion = -1
 	f.f = &bytecode.Func{
@@ -575,28 +715,49 @@ func (f *fn) finish() *bytecode.Func {
 	b.Keys = releaseBuf(&sc.keyBufs, b.Keys)
 	b.Consts = releaseBuf(&sc.constBufs, b.Consts)
 
+	// Give the upvalues of the bindings of outer functions back to those functions.
+	for i, u := range slices.Backward(f.upvals) {
+		if u.capFn == f {
+			s := f.upvalSaves[i]
+			u.capFn = s.fn
+			u.capIndex = s.index
+		}
+	}
+
 	// The scope that newFn created is the outermost one of the function.
 	root := f.scope
-	for root.parent != nil {
+	for {
+		root.close()
+		if root.parent == nil {
+			break
+		}
 		root = root.parent
 	}
-	n := max(len(root.vars), len(f.consts), len(f.keys), len(f.mutated))
+	n := max(len(root.binds), len(f.numConsts), len(f.strConsts), len(f.bigConsts), len(f.keys), len(f.mutated))
 	if !keepMaps(n, f.mapsPeak) {
 		return b
 	}
+	clear(root.binds)
 	*root = scope{
-		vars: root.vars,
+		binds: root.binds[:0],
 	}
-	clear(root.vars)
-	clear(f.consts)
+	clear(f.numConsts)
+	clear(f.strConsts)
+	clear(f.bigConsts)
 	clear(f.keys)
 	clear(f.mutated)
+	clear(f.upvals)
+	clear(f.upvalSaves)
 	*f = fn{
-		consts:   f.consts,
-		keys:     f.keys,
-		mutated:  f.mutated,
-		scope:    root,
-		mapsPeak: max(f.mapsPeak, n),
+		numConsts:  f.numConsts,
+		strConsts:  f.strConsts,
+		bigConsts:  f.bigConsts,
+		keys:       f.keys,
+		mutated:    f.mutated,
+		scope:      root,
+		upvals:     f.upvals[:0],
+		upvalSaves: f.upvalSaves[:0],
+		mapsPeak:   max(f.mapsPeak, n),
 	}
 	sc.fns = append(sc.fns, f)
 	return b
@@ -707,17 +868,34 @@ func (f *fn) constStr(s string) int32 {
 }
 
 func (f *fn) constant(c bytecode.Const) int32 {
-	// NaN is not equal to itself, and -0 equals 0: neither is worth sharing through the map.
-	if c.Kind == bytecode.ConstNumber && (c.Num != c.Num || c.Num == 0) {
+	var m map[string]int32
+	var k string
+	switch c.Kind {
+	case bytecode.ConstNumber:
+		// NaN is not equal to itself, and -0 equals 0: neither is worth sharing through the map.
+		if c.Num != c.Num || c.Num == 0 {
+			f.f.Consts = append(f.f.Consts, c)
+			return int32(len(f.f.Consts) - 1)
+		}
+		bits := math.Float64bits(c.Num)
+		if i, ok := f.numConsts[bits]; ok {
+			return i
+		}
+		i := int32(len(f.f.Consts))
 		f.f.Consts = append(f.f.Consts, c)
-		return int32(len(f.f.Consts) - 1)
+		f.numConsts[bits] = i
+		return i
+	case bytecode.ConstString:
+		m, k = f.strConsts, c.Str
+	default:
+		m, k = f.bigConsts, c.Str
 	}
-	if i, ok := f.consts[c]; ok {
+	if i, ok := m[k]; ok {
 		return i
 	}
 	i := int32(len(f.f.Consts))
 	f.f.Consts = append(f.f.Consts, c)
-	f.consts[c] = i
+	m[k] = i
 	return i
 }
 
@@ -742,33 +920,112 @@ func (f *fn) site(s string) int32 {
 
 // declare creates a variable in the current scope and gives it a register.
 func (f *fn) declare(name string, kind bindKind) *binding {
-	if b, ok := f.scope.vars[name]; ok {
+	sym := f.c.symbol(name)
+	if b := sym.top; b != nil && b.scope == f.scope {
 		return b
 	}
-	b := &binding{
-		name: name,
-		reg:  f.newReg(),
-		kind: kind,
-	}
-	f.scope.vars[name] = b
+	b := f.c.newBinding()
+	b.name = name
+	b.reg = f.newReg()
+	b.kind = kind
+	f.scope.bind(sym, b)
 	return b
 }
 
 // declareAt creates a variable in the current scope that lives in the existing register reg.
+// It replaces a variable of the same name in the scope.
 func (f *fn) declareAt(name string, kind bindKind, reg int32) *binding {
-	b := &binding{
-		name: name,
-		reg:  reg,
-		kind: kind,
+	sym := f.c.symbol(name)
+	if old := sym.top; old != nil && old.scope == f.scope {
+		f.scope.unbind(old)
 	}
-	f.scope.vars[name] = b
+	b := f.c.newBinding()
+	b.name = name
+	b.reg = reg
+	b.kind = kind
+	f.scope.bind(sym, b)
 	return b
+}
+
+// bind adds the binding b of the symbol sym to s. Every scope nested in s that is open must not
+// have a binding of the same name.
+func (s *scope) bind(sym *symbol, b *binding) {
+	b.sym = sym
+	b.scope = s
+	b.shadowed = sym.top
+	sym.top = b
+	if s.binds == nil {
+		s.binds = s.inline[:0]
+	}
+	s.binds = append(s.binds, b)
+}
+
+// unbind removes the binding b from s.
+func (s *scope) unbind(b *binding) {
+	b.unlink()
+	i := len(s.binds) - 1
+	for s.binds[i] != b {
+		i--
+	}
+	s.binds = slices.Delete(s.binds, i, i+1)
+}
+
+// unlink removes the binding b from the bindings of its name.
+func (b *binding) unlink() {
+	sym := b.sym
+	if sym.top == b {
+		sym.top = b.shadowed
+		return
+	}
+	p := sym.top
+	for p.shadowed != b {
+		p = p.shadowed
+	}
+	p.shadowed = b.shadowed
+}
+
+// close hides the bindings of s, whose code was compiled.
+func (s *scope) close() {
+	for _, b := range slices.Backward(s.binds) {
+		b.unlink()
+	}
+}
+
+// reopen makes the bindings of s visible again after close. Every scope nested in s that is
+// open must not have a binding of a name of s.
+func (s *scope) reopen() {
+	for _, b := range s.binds {
+		b.shadowed = b.sym.top
+		b.sym.top = b
+	}
+}
+
+// lookup returns the binding of name that s declares, or nil. s must be open.
+func (s *scope) lookup(name string) *binding {
+	for b := s.fn.c.symbol(name).top; b != nil; b = b.shadowed {
+		if b.scope == s {
+			return b
+		}
+		if b.scope.fn.depth < s.fn.depth {
+			break
+		}
+	}
+	return nil
+}
+
+// sortedBinds returns the bindings of s sorted by name.
+func (s *scope) sortedBinds() []*binding {
+	bs := slices.Clone(s.binds)
+	slices.SortFunc(bs, func(a, b *binding) int {
+		return strings.Compare(a.name, b.name)
+	})
+	return bs
 }
 
 func (f *fn) pushScope() *scope {
 	s := &scope{
+		fn:       f,
 		parent:   f.scope,
-		vars:     map[string]*binding{},
 		firstReg: f.top,
 		withs:    f.withDepth,
 	}
@@ -782,15 +1039,20 @@ func (f *fn) popScope() {
 	if s.captured {
 		f.emit(bytecode.OpCloseUpvals, s.firstReg, 0, 0)
 	}
+	s.close()
 	f.scope = s.parent
 	f.free(s.firstReg)
 }
 
 // lookupLocal finds the variable name in the scopes of f.
 func (f *fn) lookupLocal(name string) (*binding, *scope) {
-	for s := f.scope; s != nil; s = s.parent {
-		if b, ok := s.vars[name]; ok {
-			return b, s
+	for b := f.c.symbol(name).top; b != nil; b = b.shadowed {
+		g := b.scope.fn
+		if g == f {
+			return b, b.scope
+		}
+		if g.depth < f.depth {
+			break
 		}
 	}
 	return nil, nil
@@ -798,11 +1060,27 @@ func (f *fn) lookupLocal(name string) (*binding, *scope) {
 
 // resolve finds the variable that name refers to.
 func (f *fn) resolve(name string) ref {
-	if b, _ := f.lookupLocal(name); b != nil {
+	return f.resolveSym(f.c.symbol(name), name)
+}
+
+// resolveSym is resolve for the symbol sym of name. f must be the innermost function being
+// compiled, or one that the innermost function's resolveSym asks.
+func (f *fn) resolveSym(sym *symbol, name string) ref {
+	b := sym.top
+	switch {
+	case b != nil && b.scope.fn == f:
 		return ref{
 			kind: refLocal,
 			b:    b,
 		}
+	case b != nil && b.capFn == f:
+		return ref{
+			kind:  refUpval,
+			b:     b,
+			index: b.capIndex,
+		}
+	case b == nil && !f.c.evalCode:
+		return ref{kind: refGlobal}
 	}
 	if f.parent == nil {
 		if f.eval != nil {
@@ -812,17 +1090,15 @@ func (f *fn) resolve(name string) ref {
 		}
 		return ref{kind: refGlobal}
 	}
-	r := f.parent.resolve(name)
+	r := f.parent.resolveSym(sym, name)
 	if r.kind == refGlobal {
 		return r
 	}
-	for i, b := range f.upvals {
-		if b == r.b {
-			return ref{
-				kind:  refUpval,
-				b:     r.b,
-				index: int32(i),
-			}
+	if i, ok := f.upvalIndex(r.b); ok {
+		return ref{
+			kind:  refUpval,
+			b:     r.b,
+			index: i,
 		}
 	}
 	d := bytecode.UpvalDesc{Index: r.index}
@@ -832,17 +1108,42 @@ func (f *fn) resolve(name string) ref {
 		if f.parent.isFinal(r.b) {
 			d.ByValue = true
 		} else {
-			_, s := f.parent.lookupLocal(name)
-			s.captured = true
+			r.b.scope.captured = true
 		}
 	}
-	f.upvals = append(f.upvals, r.b)
-	f.f.Upvals = append(f.f.Upvals, d)
 	return ref{
 		kind:  refUpval,
 		b:     r.b,
-		index: int32(len(f.upvals) - 1),
+		index: f.addUpval(r.b, d),
 	}
+}
+
+// upvalIndex returns the index of the upvalue of f for the binding b, if f has one.
+func (f *fn) upvalIndex(b *binding) (int32, bool) {
+	// The upvalues of b form a chain from the innermost function that has one outwards.
+	g, i := b.capFn, b.capIndex
+	for g != nil && g.depth > f.depth {
+		s := g.upvalSaves[i]
+		g, i = s.fn, s.index
+	}
+	if g == f {
+		return i, true
+	}
+	return 0, false
+}
+
+// addUpval adds an upvalue described by d for the binding b to f, and returns its index.
+func (f *fn) addUpval(b *binding, d bytecode.UpvalDesc) int32 {
+	i := int32(len(f.upvals))
+	f.upvals = append(f.upvals, b)
+	f.upvalSaves = append(f.upvalSaves, capture{
+		fn:    b.capFn,
+		index: b.capIndex,
+	})
+	f.f.Upvals = append(f.f.Upvals, d)
+	b.capFn = f
+	b.capIndex = i
+	return i
 }
 
 // isFinal reports whether the local binding b of f holds its final value from now on, so that

@@ -78,24 +78,20 @@ func (e *evalOuter) resolve(f *fn, name string) (ref, bool) {
 		}
 		e.binds[name] = b
 	}
-	for i, u := range f.upvals {
-		if u == b {
-			return ref{
-				kind:  refUpval,
-				b:     b,
-				index: int32(i),
-			}, true
-		}
+	if i, ok := f.upvalIndex(b); ok {
+		return ref{
+			kind:  refUpval,
+			b:     b,
+			index: i,
+		}, true
 	}
-	f.upvals = append(f.upvals, b)
-	f.f.Upvals = append(f.f.Upvals, bytecode.UpvalDesc{
-		Local: v.Local,
-		Index: v.Index,
-	})
 	return ref{
-		kind:  refUpval,
-		b:     b,
-		index: int32(len(f.upvals) - 1),
+		kind: refUpval,
+		b:    b,
+		index: f.addUpval(b, bytecode.UpvalDesc{
+			Local: v.Local,
+			Index: v.Index,
+		}),
 	}, true
 }
 
@@ -233,11 +229,11 @@ func (f *fn) evalSite() int32 {
 			if g == f {
 				s.captured = true
 			}
-			for _, name := range slices.Sorted(maps.Keys(s.vars)) {
+			for _, b := range s.sortedBinds() {
+				name := b.name
 				if seen[name] {
 					continue
 				}
-				b := s.vars[name]
 				place := bytecode.EvalPlaceOuter
 				switch {
 				case g != f:
@@ -288,6 +284,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 		ev.vars[es.Vars[i].Name] = &es.Vars[i]
 	}
 	f.eval = ev
+	c.evalCode = true
 	f.f.Strict = prog.Strict
 	f.f.IsArrow = true
 	f.f.IsEval = true
