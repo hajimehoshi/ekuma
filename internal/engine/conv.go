@@ -418,6 +418,9 @@ func (vm *VM) addValues(a, b Value) Value {
 	a = vm.ToPrimitive(a, HintDefault)
 	b = vm.ToPrimitive(b, HintDefault)
 	as, bs := a.IsString(), b.IsString()
+	if as && bs {
+		return vm.Concat(a, b)
+	}
 	if as || bs {
 		var x, y string
 		if as {

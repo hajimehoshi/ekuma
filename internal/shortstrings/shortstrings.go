@@ -201,3 +201,29 @@ func index(data uint64, n int, sub uint64, subN int, from int, backward bool) in
 	}
 	return -1
 }
+
+// Concat returns the packed concatenation and its byte length, or false if it does not fit.
+// aN and bN are the operands' byte lengths.
+func Concat(a uint64, aN int, b uint64, bN int) (uint64, int, bool) {
+	n := aN + bN
+	if n > MaxBytes+2 {
+		return 0, 0, false
+	}
+	if aN >= 3 && bN >= 3 {
+		tail := a >> (8 * (aN - 3))
+		if tail&0xf0ff == 0xa0ed && b&0xf0ff == 0xb0ed {
+			// Joining the boundary surrogates replaces six bytes with four.
+			high := uint32(unitAtSlow(tail, 0) - 0xd800)
+			low := uint32(unitAtSlow(b, 0) - 0xdc00)
+			r := 0x10000 + high<<10 + low
+			pair := uint64(0xf0|r>>18) | uint64(0x80|r>>12&0x3f)<<8 |
+				uint64(0x80|r>>6&0x3f)<<16 | uint64(0x80|r&0x3f)<<24
+			prefix := a & (uint64(1)<<(8*(aN-3)) - 1)
+			return prefix | pair<<(8*(aN-3)) | (b>>24)<<(8*(aN+1)), n - 2, true
+		}
+	}
+	if n > MaxBytes {
+		return 0, 0, false
+	}
+	return a | b<<(8*aN), n, true
+}

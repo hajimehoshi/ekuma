@@ -1327,3 +1327,70 @@ func BenchmarkStringSearch(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringConcat measures one binary string concatenation.
+func BenchmarkStringConcat(b *testing.B) {
+	for _, tc := range []struct {
+		name  string
+		left  string
+		right string
+	}{
+		{
+			name:  "ASCII",
+			left:  `"foo"`,
+			right: `"bar"`,
+		},
+		{
+			name:  "OneByte",
+			left:  `"tag"`,
+			right: `":"`,
+		},
+		{
+			name:  "Unicode",
+			left:  `"é"`,
+			right: `"日"`,
+		},
+		{
+			name:  "JoinPair",
+			left:  `"\ud83d"`,
+			right: `"\ude00"`,
+		},
+		{
+			name:  "JoinFits",
+			left:  `"ab\ud83d"`,
+			right: `"\ude00cd"`,
+		},
+		{
+			name:  "Overflow",
+			left:  `"abcde"`,
+			right: `"fghi"`,
+		},
+		{
+			name:  "Long",
+			left:  `"abcdefghijklmnop"`,
+			right: `"qrstuvwxyz"`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created", "Mixed"} {
+			b.Run(form+"/"+tc.name, func(b *testing.B) {
+				var vm ekuma.VM
+				left, right := tc.left, tc.right
+				if form != "Literal" {
+					left = "(" + left + " + '!').slice(0, -1)"
+				}
+				if form == "Created" {
+					right = "(" + right + " + '!').slice(0, -1)"
+				}
+				src := fmt.Sprintf(`var a = %s, b = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = a + b; return result; }`, left, right)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

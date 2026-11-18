@@ -253,3 +253,85 @@ func TestSearch(t *testing.T) {
 		})
 	}
 }
+
+func TestConcat(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		left  string
+		right string
+		want  string
+		fits  bool
+	}{
+		{
+			name:  "NUL",
+			left:  "ab\x00",
+			right: "cd",
+			want:  "ab\x00cd",
+			fits:  true,
+		},
+		{
+			name:  "full payload",
+			left:  "abcd",
+			right: "efgh",
+			want:  "abcdefgh",
+			fits:  true,
+		},
+		{
+			name:  "empty after full payload",
+			left:  "abcdefgh",
+			right: "",
+			want:  "abcdefgh",
+			fits:  true,
+		},
+		{
+			name:  "join fills payload",
+			left:  "ab\xed\xa0\xbd",
+			right: "\xed\xb8\x80cd",
+			want:  "ab😀cd",
+			fits:  true,
+		},
+		{
+			name:  "unpaired boundary",
+			left:  "ab\xed\xa0\xbd",
+			right: "\xed\xa0\xbd",
+			want:  "ab\xed\xa0\xbd\xed\xa0\xbd",
+			fits:  true,
+		},
+		{
+			name:  "overflow without join",
+			left:  "abcde",
+			right: "fghi",
+			fits:  false,
+		},
+		{
+			name:  "overflow even with join",
+			left:  "abc\xed\xa0\xbd",
+			right: "\xed\xb8\x80def",
+			fits:  false,
+		},
+		{
+			name:  "minimum pair",
+			left:  "\xed\xa0\x80",
+			right: "\xed\xb0\x80",
+			want:  "\U00010000",
+			fits:  true,
+		},
+		{
+			name:  "maximum pair",
+			left:  "\xed\xaf\xbf",
+			right: "\xed\xbf\xbf",
+			want:  "\U0010ffff",
+			fits:  true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, n, ok := shortstrings.Concat(shortstrings.Pack(tc.left), len(tc.left), shortstrings.Pack(tc.right), len(tc.right))
+			if ok != tc.fits {
+				t.Errorf("Concat() fits = %t, want %t", ok, tc.fits)
+			}
+			if ok && tc.fits && (data != shortstrings.Pack(tc.want) || n != len(tc.want)) {
+				t.Errorf("Concat() = (%#x, %d), want (%#x, %d)", data, n, shortstrings.Pack(tc.want), len(tc.want))
+			}
+		})
+	}
+}

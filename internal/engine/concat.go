@@ -5,6 +5,7 @@ package engine
 
 import (
 	"encoding/binary"
+	"math"
 	"slices"
 	"strings"
 
@@ -95,7 +96,65 @@ func (vm *VM) Concat(a, b Value) Value {
 			return vm.extendHead(b.o, rb, true)
 		}
 	}
+	aN := a.StringByteLength()
+	if aN <= shortstrings.MaxBytes {
+		if aN == 0 {
+			return b
+		}
+		bN := b.StringByteLength()
+		if bN == 0 {
+			return a
+		}
+		if bN <= shortstrings.MaxBytes && aN+bN <= shortstrings.MaxBytes+2 &&
+			(a.o.flags|b.o.flags)&objReversed == 0 &&
+			(aN+bN <= shortstrings.MaxBytes || shortStringsJoinPair(a, aN, b, bN)) {
+			if v, ok := vm.concatShort(a, aN, b, bN); ok {
+				return v
+			}
+		}
+	}
 	return vm.concat(a, a.rawString(), b, b.rawString())
+}
+
+// shortStringsJoinPair reports whether the unreversed strings form a surrogate pair at their join.
+func shortStringsJoinPair(a Value, aN int, b Value, bN int) bool {
+	if aN < 3 || bN < 3 {
+		return false
+	}
+	if a.isShortString() {
+		tail := math.Float64bits(a.n) >> (8 * (aN - 3))
+		if tail&0xf0ff != 0xa0ed {
+			return false
+		}
+	} else if a.o.str[aN-3] != 0xed || a.o.str[aN-2]&0xf0 != 0xa0 {
+		return false
+	}
+	if b.isShortString() {
+		return math.Float64bits(b.n)&0xf0ff == 0xb0ed
+	}
+	return b.o.str[0] == 0xed && b.o.str[1]&0xf0 == 0xb0
+}
+
+func (vm *VM) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
+	var x, y uint64
+	if a.isShortString() {
+		x = math.Float64bits(a.n)
+	} else {
+		x = shortstrings.Pack(a.o.str)
+	}
+	if b.isShortString() {
+		y = math.Float64bits(b.n)
+	} else {
+		y = shortstrings.Pack(b.o.str)
+	}
+	data, n, ok := shortstrings.Concat(x, aN, y, bN)
+	if !ok {
+		return Value{}, false
+	}
+	return Value{
+		n: math.Float64frombits(data),
+		o: &vm.shapes.shortStrings[n],
+	}, true
 }
 
 // concat returns the concatenation of a and b. x and y are the str of a and b when those are
