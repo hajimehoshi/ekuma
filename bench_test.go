@@ -1394,3 +1394,80 @@ func BenchmarkStringConcat(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkStringCompare measures one relational string comparison.
+func BenchmarkStringCompare(b *testing.B) {
+	for _, tc := range []struct {
+		name  string
+		left  string
+		right string
+	}{
+		{
+			name:  "ASCII",
+			left:  `"abc"`,
+			right: `"abd"`,
+		},
+		{
+			name:  "CommonPrefix",
+			left:  `"abcdefgx"`,
+			right: `"abcdefgy"`,
+		},
+		{
+			name:  "Equal",
+			left:  `"abcdefgh"`,
+			right: `"abcdefgh"`,
+		},
+		{
+			name:  "NULPrefix",
+			left:  `"abc"`,
+			right: `"abc\u0000"`,
+		},
+		{
+			name:  "Unicode",
+			left:  `"é日"`,
+			right: `"é月"`,
+		},
+		{
+			name:  "SurrogateOrder",
+			left:  `"\ue000"`,
+			right: `"😀"`,
+		},
+		{
+			name:  "SharedSurrogate",
+			left:  `"\ud83d\ue000"`,
+			right: `"😀"`,
+		},
+		{
+			name:  "Long",
+			left:  `"abcdefghijklmnopqrstuvwxya"`,
+			right: `"abcdefghijklmnopqrstuvwxyb"`,
+		},
+		{
+			name:  "ShortLong",
+			left:  `"abcdefg"`,
+			right: `"abcdefghijklmnopqrstuvwxyz"`,
+		},
+	} {
+		for _, form := range []string{"Literal", "Created", "Mixed"} {
+			b.Run(form+"/"+tc.name, func(b *testing.B) {
+				var vm ekuma.VM
+				left, right := tc.left, tc.right
+				if form != "Literal" {
+					left = "(" + left + " + '!').slice(0, -1)"
+				}
+				if form == "Created" {
+					right = "(" + right + " + '!').slice(0, -1)"
+				}
+				src := fmt.Sprintf(`var a = %s, b = %s; function run(n) { var result; for (var i = 0; i < n; i++) result = a < b; return result; }`, left, right)
+				if _, err := runScript(b.Context(), &vm, "setup", src); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(b.Context(), &vm, "run", fmt.Sprintf("run(%d)", b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

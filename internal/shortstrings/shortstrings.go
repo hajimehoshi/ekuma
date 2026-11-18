@@ -5,6 +5,7 @@
 package shortstrings
 
 import (
+	"cmp"
 	"encoding/binary"
 	"math/bits"
 )
@@ -226,4 +227,31 @@ func Concat(a uint64, aN int, b uint64, bN int) (uint64, int, bool) {
 		return 0, 0, false
 	}
 	return a | b<<(8*aN), n, true
+}
+
+// Compare orders the packed strings by UTF-16 code units and returns -1, 0, or 1.
+// aN and bN are their byte lengths.
+func Compare(a uint64, aN int, b uint64, bN int) int {
+	i := bits.TrailingZeros64(a^b) / 8
+	if i >= min(aN, bN) {
+		return cmp.Compare(aN, bN)
+	}
+	x, y := byte(a>>(8*i)), byte(b>>(8*i))
+	if (x >= 0xf0 && y >= 0xed && y < 0xf0) || (y >= 0xf0 && x >= 0xed && x < 0xf0) {
+		// These differing lead bytes are code point boundaries. Supplementary
+		// characters sort by their surrogate units among these BMP characters.
+		return compareUnits(a>>(8*i), aN-i, b>>(8*i), bN-i)
+	}
+	return cmp.Compare(x, y)
+}
+
+func compareUnits(a uint64, aN int, b uint64, bN int) int {
+	aLen, bLen := Len(a, aN), Len(b, bN)
+	for i := range min(aLen, bLen) {
+		x, y := unitAtSlow(a, i), unitAtSlow(b, i)
+		if x != y {
+			return cmp.Compare(x, y)
+		}
+	}
+	return cmp.Compare(aLen, bLen)
 }

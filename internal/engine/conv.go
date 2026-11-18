@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -380,6 +381,12 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 		a = vm.ToPrimitive(a, HintNumber)
 	}
 	if a.IsString() && b.IsString() {
+		if a.isShortString() || b.isShortString() {
+			aN, bN := a.StringByteLength(), b.StringByteLength()
+			if aN <= shortstrings.MaxBytes && bN <= shortstrings.MaxBytes && (a.o.flags|b.o.flags)&objReversed == 0 {
+				return cmpResult(compareShortStrings(a, aN, b, bN) + 1)
+			}
+		}
 		return cmpResult(wtf8.Compare(a.Str(), b.Str()) + 1)
 	}
 	if kindOf(a) == kindBigInt || kindOf(b) == kindBigInt {

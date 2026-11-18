@@ -138,3 +138,18 @@ func TestSubstringEquals(t *testing.T) {
 		})
 	}
 }
+
+func TestShortStringOrdering(t *testing.T) {
+	vm := newVM(t)
+	v, err := runScript(vm, "ordering", `
+  const a = "\ud83d\ue000";
+  const b = "😀!".slice(0, -1);
+  a > b && b < a && a >= b && b <= a;
+ `)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !engine.ToBoolean(v) {
+		t.Error("mixed packed and object strings did not follow UTF-16 ordering")
+	}
+}

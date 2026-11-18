@@ -335,3 +335,73 @@ func TestConcat(t *testing.T) {
 		})
 	}
 }
+
+func TestCompare(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		left  string
+		right string
+		want  int
+	}{
+		{
+			name:  "equal full payload",
+			left:  "abcdefgh",
+			right: "abcdefgh",
+			want:  0,
+		},
+		{
+			name:  "empty prefix",
+			left:  "",
+			right: "z",
+			want:  -1,
+		},
+		{
+			name:  "NUL prefix",
+			left:  "a",
+			right: "a\x00",
+			want:  -1,
+		},
+		{
+			name:  "last byte",
+			left:  "abcdefgz",
+			right: "abcdefgh",
+			want:  1,
+		},
+		{
+			name:  "continuation byte",
+			left:  "é",
+			right: "ê",
+			want:  -1,
+		},
+		{
+			name:  "BMP after supplementary",
+			left:  "\ue000",
+			right: "😀",
+			want:  1,
+		},
+		{
+			name:  "supplementary before low surrogate",
+			left:  "😀",
+			right: "\xed\xb0\x80",
+			want:  -1,
+		},
+		{
+			name:  "high surrogate prefix",
+			left:  "\xed\xa0\xbd",
+			right: "😀",
+			want:  -1,
+		},
+		{
+			name:  "different supplementary leads",
+			left:  "\U00010000",
+			right: "\U0010ffff",
+			want:  -1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := shortstrings.Compare(shortstrings.Pack(tc.left), len(tc.left), shortstrings.Pack(tc.right), len(tc.right)); got != tc.want {
+				t.Errorf("Compare() = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

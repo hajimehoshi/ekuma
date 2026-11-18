@@ -177,3 +177,19 @@ func (v Value) UnitLastIndexOf(sub string, from int) int {
 	}
 	return shortstrings.LastIndex(math.Float64bits(v.n), int(v.o.shortStringBytes), shortstrings.Pack(sub), len(sub), from)
 }
+
+// compareShortStrings compares unreversed strings whose byte lengths fit a packed payload.
+func compareShortStrings(a Value, aN int, b Value, bN int) int {
+	var x, y uint64
+	if a.isShortString() {
+		x = math.Float64bits(a.n)
+	} else {
+		x = shortstrings.Pack(a.o.str)
+	}
+	if b.isShortString() {
+		y = math.Float64bits(b.n)
+	} else {
+		y = shortstrings.Pack(b.o.str)
+	}
+	return shortstrings.Compare(x, aN, y, bN)
+}
