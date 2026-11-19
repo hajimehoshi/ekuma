@@ -2978,3 +2978,40 @@ func TestInlineStringCodeUnits(t *testing.T) {
 		})
 	}
 }
+
+func TestBigIntSizeLimit(t *testing.T) {
+	// Every result is at most 2^30 bits.
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "bitwise operators",
+			src:  `var x = BigInt.asUintN(2 ** 30, -1n), r = []; for (var f of [() => ~x, () => x ^ -1n, () => -x & -2n, () => -x | x]) { try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); } } r.join()`,
+			want: "true,true,true,no error",
+		},
+		{
+			name: "powers of two",
+			src:  `[2n ** 40000000n === 1n << 40000000n, 4n ** 20000000n === 1n << 40000000n, (-2n) ** 33554433n === -(1n << 33554433n)].join()`,
+			want: "true,true,true",
+		},
+		{
+			name: "power of more than 2^25 bits",
+			src:  `(3n ** 22000000n).toString(16).length`,
+			want: "8717294",
+		},
+		{
+			name: "powers beyond the limit",
+			src:  `var r = []; for (var f of [() => 2n ** (2n ** 30n), () => 3n ** 700000000n, () => (2n ** 64n + 1n) ** 20000000n, () => 2n ** (2n ** 64n)]) { try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); } } r.join()`,
+			want: "true,true,true,true",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			if got := run(t, &vm, tc.src); got != tc.want {
+				t.Errorf("got %s, want %s", got, tc.want)
+			}
+		})
+	}
+}

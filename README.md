@@ -258,8 +258,7 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
   do, such as `1.02.03` in Serbian, where ICU uses the time separator
 - A BigInt has at most 2^30 bits, as in V8: an operation or a conversion whose result would be
-  larger throws a RangeError, and a larger literal is a SyntaxError. `**` throws a RangeError
-  when the bit length of a base other than 0, 1 and -1 times the exponent exceeds 2^25
+  larger throws a RangeError, and a larger literal is a SyntaxError
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
