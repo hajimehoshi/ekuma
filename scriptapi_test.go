@@ -272,7 +272,7 @@ func TestAtomicsWaitAsyncTimeout(t *testing.T) {
 // time linear in their number, in order.
 func TestAtomicsWaitAsyncManyWaiters(t *testing.T) {
 	var vm ekuma.VM
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), linearTimeDeadline())
 	defer cancel()
 	v, err := runScript(ctx, &vm, "wait", `
 		var log = [];
@@ -350,6 +350,15 @@ func TestAtomicsWaitAsyncTimeoutsAmongWaiters(t *testing.T) {
 			t.Errorf("woken waiters: got %q, want %q", got, want)
 		}
 	})
+}
+
+// linearTimeDeadline returns a deadline that linear handling meets by far and quadratic handling
+// misses. It is looser on js, where wasm in a browser runs slower and shares the CPU.
+func linearTimeDeadline() time.Duration {
+	if runtime.GOOS == "js" {
+		return 30 * time.Second
+	}
+	return 5 * time.Second
 }
 
 // skipAgents skips a test that runs agents on several goroutines, which a single thread cannot.

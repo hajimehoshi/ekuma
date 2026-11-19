@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hajimehoshi/ekuma"
 )
@@ -112,7 +111,7 @@ func TestLargeModuleGraphs(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), linearTimeDeadline())
 			defer cancel()
 			p, err := root.Evaluate(ctx)
 			if err != nil {

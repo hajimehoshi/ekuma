@@ -134,8 +134,19 @@ func (vm *VM) BigIntToString(v Value, radix int) string {
 		return strconv.FormatInt(i, radix)
 	}
 	x := v.BigInt()
-	// x has more than (BitLen(x)-1)/log2(radix) digits.
-	if float64(x.BitLen()-1)/math.Log2(float64(radix)) > MaxStringLength {
+	n := x.BitLen()
+	// In a power-of-two radix 2^k, x has ceil(BitLen(x)/k) digits. In any other radix, it has
+	// more than (BitLen(x)-1)/log2(radix) digits.
+	if bits.OnesCount(uint(radix)) == 1 {
+		k := bits.TrailingZeros(uint(radix))
+		var sign int
+		if x.Sign() < 0 {
+			sign = 1
+		}
+		if sign+(n+k-1)/k > MaxStringLength {
+			vm.ThrowRangeError("invalid string length")
+		}
+	} else if float64(n-1)/math.Log2(float64(radix)) > MaxStringLength {
 		vm.ThrowRangeError("invalid string length")
 	}
 	s := numconv.FormatBigInt(x, radix, vm.Poll)
