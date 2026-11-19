@@ -69,7 +69,7 @@ func toTemporalDuration(vm *engine.VM, item engine.Value) temporal.Duration {
 	}
 	if !item.IsObject() {
 		str := requireString(vm, item, "duration")
-		d := must(temporal.ParseTemporalDurationString(str))
+		d := must(temporal.ParseTemporalDurationString(str, vm.Poll))
 		if !temporal.IsValidDuration(&d) {
 			vm.ThrowRangeError("duration is out of range")
 		}
@@ -134,7 +134,7 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 		}
 	} else {
 		str := requireString(vm, v, "relativeTo")
-		p := must(temporal.ParseISODateTime(str, temporal.GoalZonedDateTime, temporal.GoalDateTime))
+		p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalZonedDateTime, temporal.GoalDateTime))
 		if p.TimeZoneAnnotation != "" {
 			tz = toTimeZone(vm, vm.NewString(p.TimeZoneAnnotation))
 			hasTZ = true

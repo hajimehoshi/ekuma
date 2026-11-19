@@ -5,7 +5,9 @@ package temporal_test
 
 import (
 	"encoding/binary"
+	"math"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -374,5 +376,75 @@ func TestNamedZoneAtLimit(t *testing.T) {
 	want := temporal.Mul64(-100000000, temporal.NsPerDay)
 	if err != nil || len(got) != 1 || got[0].Cmp(want) != 0 {
 		t.Errorf("PossibleEpochNanoseconds(%v): got %v, %v, want [%v]", dt, got, err, want)
+	}
+}
+
+func TestParsePolled(t *testing.T) {
+	// The parsers poll over each long run of the grammar that they read.
+	long := strings.Repeat("a", 1<<20)
+	for _, tc := range []struct {
+		name  string
+		parse func(poll func()) error
+	}{
+		{
+			name: "annotation value",
+			parse: func(poll func()) error {
+				_, err := temporal.ParseISODateTime("2020-01-01[u-ca="+long+"]", poll, temporal.GoalDateTime)
+				return err
+			},
+		},
+		{
+			name: "annotation key",
+			parse: func(poll func()) error {
+				_, err := temporal.ParseISODateTime("2020-01-01["+long+"=b]", poll, temporal.GoalDateTime)
+				return err
+			},
+		},
+		{
+			name: "annotations",
+			parse: func(poll func()) error {
+				_, err := temporal.ParseISODateTime("2020-01-01"+strings.Repeat("[a=b]", 1<<18), poll, temporal.GoalDateTime)
+				return err
+			},
+		},
+		{
+			name: "time zone annotation",
+			parse: func(poll func()) error {
+				_, err := temporal.ParseISODateTime("2020-01-01T00:00["+long+"]", poll, temporal.GoalZonedDateTime)
+				return err
+			},
+		},
+		{
+			name: "time zone identifier",
+			parse: func(poll func()) error {
+				_, _, _, err := temporal.ParseTimeZoneIdentifier(long, poll)
+				return err
+			},
+		},
+		{
+			name: "duration",
+			parse: func(poll func()) error {
+				d, err := temporal.ParseTemporalDurationString("P"+strings.Repeat("1", 1<<20)+"D", poll)
+				if err == nil && !math.IsInf(d.Days, 1) {
+					t.Errorf("duration: got %v days, want +Inf", d.Days)
+				}
+				return err
+			},
+		},
+		{
+			name: "annotation value check",
+			parse: func(poll func()) error {
+				temporal.IsAnnotationValue(long, poll)
+				return nil
+			},
+		},
+	} {
+		var polls int
+		if err := tc.parse(func() { polls++ }); err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+		}
+		if polls < 8 {
+			t.Errorf("%s: got %d polls, want at least 8", tc.name, polls)
+		}
 	}
 }

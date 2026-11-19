@@ -37,7 +37,7 @@ func toTemporalInstant(vm *engine.VM, item engine.Value) temporal.Int128 {
 		item = vm.ToPrimitive(item, engine.HintString)
 	}
 	str := requireString(vm, item, "instant")
-	p := must(temporal.ParseISODateTime(str, temporal.GoalInstant))
+	p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalInstant))
 	var offsetNs int64
 	if !p.Z {
 		offsetNs = must(temporal.ParseDateTimeUTCOffset(p.Offset))

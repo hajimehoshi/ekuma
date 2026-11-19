@@ -172,7 +172,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 			vm.ThrowTypeError("the timeZone option is not allowed in Temporal.ZonedDateTime.prototype.toLocaleString")
 		}
 		name := vm.ToString(tzv)
-		id, offset, isOffset, err := temporal.ParseTimeZoneIdentifier(name)
+		id, offset, isOffset, err := temporal.ParseTimeZoneIdentifier(name, vm.Poll)
 		switch {
 		case err != nil:
 			vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(name)))

@@ -71,7 +71,7 @@ func SystemTimeZone(tz datetime.TimeZone) (TimeZone, bool) {
 	if strings.EqualFold(id, "UTC") || strings.EqualFold(id, "Etc/UTC") || strings.EqualFold(id, "Etc/GMT") || strings.EqualFold(id, "GMT") {
 		return UTC, true
 	}
-	name, offset, isOffset, err := ParseTimeZoneIdentifier(id)
+	name, offset, isOffset, err := ParseTimeZoneIdentifier(id, nil)
 	if err != nil {
 		return TimeZone{}, false
 	}

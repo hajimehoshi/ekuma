@@ -59,7 +59,7 @@ func toTemporalZonedDateTime(vm *engine.VM, item, options engine.Value) zonedDat
 		date, t = dt.Date, dt.Time
 	} else {
 		str := requireString(vm, item, "zoned date-time")
-		p := must(temporal.ParseISODateTime(str, temporal.GoalZonedDateTime))
+		p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalZonedDateTime))
 		tz = toTimeZone(vm, vm.NewString(p.TimeZoneAnnotation))
 		offset, hasOffset = p.Offset, p.Offset != ""
 		z = p.Z
@@ -101,7 +101,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		nt := newTarget(vm, "Temporal.ZonedDateTime")
 		epochNs := bigIntToEpochNs(vm, arg(args, 0))
 		id := requireString(vm, arg(args, 1), "time zone")
-		name, off, isOff, err := temporal.ParseTimeZoneIdentifier(id)
+		name, off, isOff, err := temporal.ParseTimeZoneIdentifier(id, vm.Poll)
 		check(err)
 		var system temporal.TimeZone
 		if !isOff && name != "UTC" {

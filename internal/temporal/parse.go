@@ -4,6 +4,7 @@
 package temporal
 
 import (
+	"math"
 	"strconv"
 	"strings"
 )
@@ -45,10 +46,28 @@ type ParseResult struct {
 	Calendar string
 }
 
+// pollSteps is the number of bytes that a scanner reads between two calls of its poll function.
+const pollSteps = 1 << 16
+
 // scanner reads a string by the productions of the grammar.
 type scanner struct {
 	s string
 	i int
+
+	// poll, which may be nil, is called every pollSteps steps.
+	poll  func()
+	steps int
+}
+
+// step counts a step of a loop over the string.
+func (p *scanner) step() {
+	p.steps++
+	if p.steps == pollSteps {
+		p.steps = 0
+		if p.poll != nil {
+			p.poll()
+		}
+	}
 }
 
 func (p *scanner) eof() bool {
@@ -318,6 +337,7 @@ func (p *scanner) tzIANAName() bool {
 		}
 		p.i++
 		for p.i < len(p.s) && isTZChar(p.s[p.i]) {
+			p.step()
 			p.i++
 		}
 		if p.peek() != '/' || p.eof() {
@@ -338,7 +358,7 @@ func (p *scanner) timeZoneIdentifier() bool {
 // annotations reads TimeZoneAnnotation (when allowed) and Annotations into r. It reports an
 // error for a critical unknown annotation or for an invalid calendar annotation.
 func (p *scanner) annotations(r *ParseResult, timeZone bool) (bool, error) {
-	if timeZone && p.peek() == '[' && !strings.Contains(p.s[p.i:min(len(p.s), strings.IndexByte(p.s[p.i:]+"]", ']')+p.i)], "=") {
+	if timeZone && p.peek() == '[' && !p.annotationHasKey() {
 		save := p.i
 		p.i++
 		p.accept('!')
@@ -352,6 +372,7 @@ func (p *scanner) annotations(r *ParseResult, timeZone bool) (bool, error) {
 	calendarCritical := false
 	hasCalendar := false
 	for !p.eof() {
+		p.step()
 		if !p.accept('[') {
 			return false, nil
 		}
@@ -362,6 +383,7 @@ func (p *scanner) annotations(r *ParseResult, timeZone bool) (bool, error) {
 		}
 		p.i++
 		for p.i < len(p.s) {
+			p.step()
 			c := p.s[p.i]
 			if (c >= 'a' && c <= 'z') || c == '_' || isDigit(c) || c == '-' {
 				p.i++
@@ -377,6 +399,7 @@ func (p *scanner) annotations(r *ParseResult, timeZone bool) (bool, error) {
 		for {
 			n := p.i
 			for p.i < len(p.s) && (isAlpha(p.s[p.i]) || isDigit(p.s[p.i])) {
+				p.step()
 				p.i++
 			}
 			if p.i == n {
@@ -406,11 +429,27 @@ func (p *scanner) annotations(r *ParseResult, timeZone bool) (bool, error) {
 	return true, nil
 }
 
+// annotationHasKey reports whether the bracketed annotation at the position, up to its closing
+// bracket or the end, has an equals sign, which a time zone annotation does not.
+func (p *scanner) annotationHasKey() bool {
+	for i := p.i; i < len(p.s); i++ {
+		p.step()
+		switch p.s[i] {
+		case ']':
+			return false
+		case '=':
+			return true
+		}
+	}
+	return false
+}
+
 // parseAnnotatedDateTime reads AnnotatedDateTime[Zoned, TimeRequired], or TemporalInstantString
-// when instant is true.
-func parseAnnotatedDateTime(s string, zoned, timeRequired, instant bool) (ParseResult, bool, error) {
+// when instant is true. poll is as for [ParseISODateTime].
+func parseAnnotatedDateTime(s string, zoned, timeRequired, instant bool, poll func()) (ParseResult, bool, error) {
 	p := scanner{
-		s: s,
+		s:    s,
+		poll: poll,
 	}
 	var r ParseResult
 	y, m, d, ok := p.date()
@@ -443,10 +482,11 @@ func parseAnnotatedDateTime(s string, zoned, timeRequired, instant bool) (ParseR
 	return r, true, nil
 }
 
-// parseAnnotatedTime reads AnnotatedTime.
-func parseAnnotatedTime(s string) (ParseResult, bool, error) {
+// parseAnnotatedTime reads AnnotatedTime. poll is as for [ParseISODateTime].
+func parseAnnotatedTime(s string, poll func()) (ParseResult, bool, error) {
 	p := scanner{
-		s: s,
+		s:    s,
+		poll: poll,
 	}
 	var r ParseResult
 	designator := p.accept('T') || p.accept('t')
@@ -528,23 +568,25 @@ func (p *scanner) yearMonthSpec() (int, int, bool) {
 	return y, m, true
 }
 
-// parseGoal parses s as goal. It reports false when s is not of the goal.
-func parseGoal(s string, goal Goal) (ParseResult, bool, error) {
+// parseGoal parses s as goal. It reports false when s is not of the goal. poll is as for
+// [ParseISODateTime].
+func parseGoal(s string, goal Goal, poll func()) (ParseResult, bool, error) {
 	switch goal {
 	case GoalZonedDateTime:
-		return parseAnnotatedDateTime(s, true, false, false)
+		return parseAnnotatedDateTime(s, true, false, false, poll)
 	case GoalDateTime:
-		return parseAnnotatedDateTime(s, false, false, false)
+		return parseAnnotatedDateTime(s, false, false, false, poll)
 	case GoalInstant:
-		return parseAnnotatedDateTime(s, false, false, true)
+		return parseAnnotatedDateTime(s, false, false, true, poll)
 	case GoalTime:
-		if r, ok, err := parseAnnotatedTime(s); ok || err != nil {
+		if r, ok, err := parseAnnotatedTime(s, poll); ok || err != nil {
 			return r, ok, err
 		}
-		return parseAnnotatedDateTime(s, false, true, false)
+		return parseAnnotatedDateTime(s, false, true, false, poll)
 	case GoalMonthDay:
 		p := scanner{
-			s: s,
+			s:    s,
+			poll: poll,
 		}
 		if md, ok := p.monthDaySpec(); ok {
 			var r ParseResult
@@ -562,10 +604,11 @@ func parseGoal(s string, goal Goal) (ParseResult, bool, error) {
 				return r, true, nil
 			}
 		}
-		return parseAnnotatedDateTime(s, false, false, false)
+		return parseAnnotatedDateTime(s, false, false, false, poll)
 	case GoalYearMonth:
 		p := scanner{
-			s: s,
+			s:    s,
+			poll: poll,
 		}
 		if y, m, ok := p.yearMonthSpec(); ok {
 			var r ParseResult
@@ -582,15 +625,16 @@ func parseGoal(s string, goal Goal) (ParseResult, bool, error) {
 				return r, true, nil
 			}
 		}
-		return parseAnnotatedDateTime(s, false, false, false)
+		return parseAnnotatedDateTime(s, false, false, false, poll)
 	}
 	return ParseResult{}, false, nil
 }
 
-// ParseISODateTime implements ParseISODateTime.
-func ParseISODateTime(s string, goals ...Goal) (ParseResult, error) {
+// ParseISODateTime implements ParseISODateTime. poll, which may be nil, is called now and then
+// over a long s and may stop the parsing by panicking.
+func ParseISODateTime(s string, poll func(), goals ...Goal) (ParseResult, error) {
 	for _, g := range goals {
-		r, ok, err := parseGoal(s, g)
+		r, ok, err := parseGoal(s, g, poll)
 		if err != nil {
 			return ParseResult{}, err
 		}
@@ -601,8 +645,9 @@ func ParseISODateTime(s string, goals ...Goal) (ParseResult, error) {
 	return ParseResult{}, rangeErrorf("invalid ISO 8601 string: %s", s)
 }
 
-// ParseTimeZoneIdentifier implements ParseTimeZoneIdentifier.
-func ParseTimeZoneIdentifier(s string) (name string, offsetMinutes int, isOffset bool, err error) {
+// ParseTimeZoneIdentifier implements ParseTimeZoneIdentifier. poll is as for
+// [ParseISODateTime].
+func ParseTimeZoneIdentifier(s string, poll func()) (name string, offsetMinutes int, isOffset bool, err error) {
 	p := scanner{
 		s: s,
 	}
@@ -611,7 +656,8 @@ func ParseTimeZoneIdentifier(s string) (name string, offsetMinutes int, isOffset
 		return "", int(ns / NsPerMinute), true, nil
 	}
 	p = scanner{
-		s: s,
+		s:    s,
+		poll: poll,
 	}
 	if p.tzIANAName() && p.eof() {
 		return s, 0, false, nil
@@ -619,22 +665,23 @@ func ParseTimeZoneIdentifier(s string) (name string, offsetMinutes int, isOffset
 	return "", 0, false, rangeErrorf("invalid time zone identifier: %s", s)
 }
 
-// ParseTemporalTimeZoneString implements ParseTemporalTimeZoneString.
-func ParseTemporalTimeZoneString(s string) (name string, offsetMinutes int, isOffset bool, err error) {
-	if name, off, isOff, err := ParseTimeZoneIdentifier(s); err == nil {
+// ParseTemporalTimeZoneString implements ParseTemporalTimeZoneString. poll is as for
+// [ParseISODateTime].
+func ParseTemporalTimeZoneString(s string, poll func()) (name string, offsetMinutes int, isOffset bool, err error) {
+	if name, off, isOff, err := ParseTimeZoneIdentifier(s, poll); err == nil {
 		return name, off, isOff, nil
 	}
-	r, err := ParseISODateTime(s, AnyGoal...)
+	r, err := ParseISODateTime(s, poll, AnyGoal...)
 	if err != nil {
 		return "", 0, false, err
 	}
 	switch {
 	case r.TimeZoneAnnotation != "":
-		return ParseTimeZoneIdentifier(r.TimeZoneAnnotation)
+		return ParseTimeZoneIdentifier(r.TimeZoneAnnotation, poll)
 	case r.Z:
 		return "UTC", 0, false, nil
 	case r.Offset != "":
-		return ParseTimeZoneIdentifier(r.Offset)
+		return ParseTimeZoneIdentifier(r.Offset, poll)
 	}
 	return "", 0, false, rangeErrorf("no time zone in %s", s)
 }
@@ -676,13 +723,17 @@ func IsOffsetWithoutSubMinutes(s string) bool {
 	return ok && p.eof()
 }
 
-// IsAnnotationValue reports whether s is an AnnotationValue.
-func IsAnnotationValue(s string) bool {
+// IsAnnotationValue reports whether s is an AnnotationValue. poll is as for [ParseISODateTime].
+func IsAnnotationValue(s string, poll func()) bool {
+	p := scanner{
+		poll: poll,
+	}
 	for part := range strings.SplitSeq(s, "-") {
 		if part == "" {
 			return false
 		}
 		for i := 0; i < len(part); i++ {
+			p.step()
 			if !isAlpha(part[i]) && !isDigit(part[i]) {
 				return false
 			}
@@ -692,11 +743,13 @@ func IsAnnotationValue(s string) bool {
 }
 
 // ParseTemporalDurationString implements ParseTemporalDurationString, without the creation of
-// the Temporal.Duration. The fields still have to be validated with IsValidDuration.
-func ParseTemporalDurationString(s string) (Duration, error) {
+// the Temporal.Duration. The fields still have to be validated with IsValidDuration. poll is as
+// for [ParseISODateTime].
+func ParseTemporalDurationString(s string, poll func()) (Duration, error) {
 	var d Duration
 	p := scanner{
-		s: s,
+		s:    s,
+		poll: poll,
 	}
 	negative := false
 	if p.accept('-') {
@@ -714,6 +767,7 @@ func ParseTemporalDurationString(s string) (Duration, error) {
 	number := func(allowFraction bool) (string, string, bool, bool) {
 		start := p.i
 		for p.i < len(p.s) && isDigit(p.s[p.i]) {
+			p.step()
 			p.i++
 		}
 		if p.i == start {
@@ -728,6 +782,10 @@ func ParseTemporalDurationString(s string) (Duration, error) {
 		return digits, "", false, true
 	}
 	toNumber := func(digits string) float64 {
+		// More than 309 significant digits are beyond the numbers.
+		if digits = strings.TrimLeft(digits, "0"); len(digits) > 309 {
+			return math.Inf(1)
+		}
 		v, _ := strconv.ParseFloat(digits, 64)
 		return v
 	}

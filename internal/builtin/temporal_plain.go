@@ -93,7 +93,7 @@ func toTemporalDate(vm *engine.VM, item, options engine.Value) plainDateSlots {
 		}
 	}
 	str := requireString(vm, item, "date")
-	p := must(temporal.ParseISODateTime(str, temporal.GoalDateTime))
+	p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalDateTime))
 	cal := canonicalizeParsedCalendar(vm, p.Calendar)
 	getOverflowOption(vm, getOptionsObject(vm, options))
 	d := temporal.ISODate{Year: p.Year, Month: p.Month, Day: p.Day}
@@ -143,7 +143,7 @@ func toTemporalDateTime(vm *engine.VM, item, options engine.Value) plainDateTime
 		}
 	}
 	str := requireString(vm, item, "date-time")
-	p := must(temporal.ParseISODateTime(str, temporal.GoalDateTime))
+	p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalDateTime))
 	cal := canonicalizeParsedCalendar(vm, p.Calendar)
 	getOverflowOption(vm, getOptionsObject(vm, options))
 	dt := temporal.ISODateTime{
@@ -180,7 +180,7 @@ func toTemporalTime(vm *engine.VM, item, options engine.Value) temporal.Time {
 		return must(temporal.RegulateTime(v[0], v[1], v[2], v[3], v[4], v[5], overflow))
 	}
 	str := requireString(vm, item, "time")
-	p := must(temporal.ParseISODateTime(str, temporal.GoalTime))
+	p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalTime))
 	getOverflowOption(vm, getOptionsObject(vm, options))
 	return p.Time
 }

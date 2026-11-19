@@ -385,7 +385,7 @@ func toTimeZone(vm *engine.VM, v engine.Value) temporal.TimeZone {
 	if str == "UTC" {
 		return temporal.UTC
 	}
-	name, off, isOff, err := temporal.ParseTemporalTimeZoneString(str)
+	name, off, isOff, err := temporal.ParseTemporalTimeZoneString(str, vm.Poll)
 	check(err)
 	var system temporal.TimeZone
 	if !isOff {
@@ -422,13 +422,13 @@ func toCalendar(vm *engine.VM, v engine.Value) string {
 
 // parseCalendarString implements ParseTemporalCalendarString.
 func parseCalendarString(vm *engine.VM, s string) string {
-	if r, err := temporal.ParseISODateTime(s, temporal.AnyGoal...); err == nil {
+	if r, err := temporal.ParseISODateTime(s, vm.Poll, temporal.AnyGoal...); err == nil {
 		if r.Calendar == "" {
 			return temporal.ISO8601
 		}
 		return r.Calendar
 	}
-	if !temporal.IsAnnotationValue(s) {
+	if !temporal.IsAnnotationValue(s, vm.Poll) {
 		vm.ThrowRangeError("invalid calendar: " + vm.DisplayString(vm.NewString(s)))
 	}
 	return s

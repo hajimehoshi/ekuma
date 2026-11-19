@@ -128,7 +128,7 @@ func toDurationRecord(vm *engine.VM, v engine.Value) duration.Duration {
 		if !v.IsString() {
 			vm.ThrowTypeError("a duration must be an object or a string")
 		}
-		d, err := temporal.ParseTemporalDurationString(vm.ToString(v))
+		d, err := temporal.ParseTemporalDurationString(vm.ToString(v), vm.Poll)
 		if err != nil {
 			vm.ThrowRangeError("invalid duration: " + vm.DisplayString(v))
 		}

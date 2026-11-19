@@ -64,7 +64,7 @@ func toTemporalYearMonth(vm *engine.VM, item, options engine.Value) plainYearMon
 		}
 	}
 	str := requireString(vm, item, "year-month")
-	p := must(temporal.ParseISODateTime(str, temporal.GoalYearMonth))
+	p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalYearMonth))
 	cal := canonicalizeParsedCalendar(vm, p.Calendar)
 	getOverflowOption(vm, getOptionsObject(vm, options))
 	d := temporal.ISODate{Year: p.Year, Month: p.Month, Day: p.Day}
@@ -94,7 +94,7 @@ func toTemporalMonthDay(vm *engine.VM, item, options engine.Value) plainMonthDay
 		}
 	}
 	str := requireString(vm, item, "month-day")
-	p := must(temporal.ParseISODateTime(str, temporal.GoalMonthDay))
+	p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalMonthDay))
 	cal := canonicalizeParsedCalendar(vm, p.Calendar)
 	getOverflowOption(vm, getOptionsObject(vm, options))
 	if cal == temporal.ISO8601 {
