@@ -6,6 +6,7 @@ package collection
 
 import (
 	"math"
+	"math/big"
 	"slices"
 	"sort"
 
@@ -45,7 +46,7 @@ type Table struct {
 
 	// nums, strs, ints, bigs and objs map the keys to their indices in entries: numbers by the
 	// bits of the canonical value, strings by their contents, BigInts by their values (as an
-	// int64 when they fit in one and as a decimal string otherwise), and everything else by
+	// int64 when they fit in one and by [bigKey] otherwise), and everything else by
 	// identity.
 	nums map[uint64]int32
 	strs map[string]int32
@@ -102,6 +103,16 @@ func numberKey(n float64) uint64 {
 	return math.Float64bits(n)
 }
 
+// bigKey appends the map key of x to buf and returns the result: its sign and the bytes of its
+// magnitude.
+func bigKey(buf []byte, x *big.Int) []byte {
+	n := (x.BitLen() + 7) / 8
+	buf = slices.Grow(buf, 1+n)[:1+n]
+	buf[0] = byte(x.Sign() + 1)
+	x.FillBytes(buf[1:])
+	return buf
+}
+
 // Size returns the number of entries.
 func (t *Table) Size() int {
 	return t.live
@@ -128,7 +139,8 @@ func (t *Table) find(k engine.Value) int {
 		if n, ok64 := k.BigInt64(); ok64 {
 			i, ok = t.ints[n]
 		} else {
-			i, ok = t.bigs[k.BigInt().String()]
+			var buf [64]byte
+			i, ok = t.bigs[string(bigKey(buf[:0], k.BigInt()))]
 		}
 	default:
 		i, ok = t.objs[k.Object()]
@@ -197,7 +209,7 @@ func (t *Table) index(k engine.Value, i int) {
 		if t.bigs == nil {
 			t.bigs = map[string]int32{}
 		}
-		t.bigs[k.BigInt().String()] = int32(i)
+		t.bigs[string(bigKey(nil, k.BigInt()))] = int32(i)
 	default:
 		if t.objs == nil {
 			t.objs = map[*engine.Object]int32{}
@@ -217,7 +229,8 @@ func (t *Table) unindex(k engine.Value) {
 		if n, ok := k.BigInt64(); ok {
 			delete(t.ints, n)
 		} else {
-			delete(t.bigs, k.BigInt().String())
+			var buf [64]byte
+			delete(t.bigs, string(bigKey(buf[:0], k.BigInt())))
 		}
 	default:
 		delete(t.objs, k.Object())
