@@ -28,13 +28,11 @@ func (f *fn) destructure(p ast.Pattern, src int32, mode patMode) {
 			f.initBinding(p, p.Name, src)
 			return
 		}
-		if r := f.localReg(p.Name); r >= 0 {
-			if b, _ := f.lookupLocal(p.Name); b.kind == bindVar || b.kind == bindLet {
-				if r != src {
-					f.emit(bytecode.OpMove, r, src, 0)
-				}
-				return
+		if r := f.assignableReg(p.Name); r >= 0 {
+			if r != src {
+				f.emit(bytecode.OpMove, r, src, 0)
 			}
+			return
 		}
 		f.storeVar(p, p.Name, src, false)
 	case *ast.MemberExpr:
@@ -98,7 +96,13 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 		}
 		// A reference as the target is evaluated after the key and before the get.
 		ref, ok := f.elementRef(prop.Value, mode)
-		v := f.newReg()
+		v := int32(-1)
+		if !ok {
+			v = f.targetReg(prop.Value, mode)
+		}
+		if v < 0 {
+			v = f.newReg()
+		}
 		f.setPos(prop.Key.Start())
 		if static {
 			f.emit(bytecode.OpGetProp, v, src, f.site(name))
@@ -157,11 +161,13 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 			f.free(mark)
 			continue
 		}
-		done := f.emit(bytecode.OpIterNext, v, it, 0)
-		ok := f.jump()
-		f.patchC(done)
-		f.emit(bytecode.OpLoadUndef, v, 0, 0)
-		f.patch(ok)
+		if !member {
+			if r := f.targetReg(e, mode); r >= 0 {
+				v = r
+			}
+		}
+		// The step stores undefined when the iterator is done.
+		f.emit(bytecode.OpIterNext, v, it, f.pc()+1)
 		if member {
 			f.storeElement(ref, v)
 		} else {
@@ -180,6 +186,35 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	f.emit(bytecode.OpIterClose, it, exc, 0)
 	f.emit(bytecode.OpRethrow, exc, -1, 0)
 	f.patch(skip)
+}
+
+// targetReg returns the register that destructuring stores to for the target e when that
+// store is a plain register write, or -1.
+func (f *fn) targetReg(e ast.Pattern, mode patMode) int32 {
+	id, ok := e.(*ast.Identifier)
+	if !ok {
+		return -1
+	}
+	if mode == patInit {
+		if b, _ := f.lookupLocal(id.Name); b != nil {
+			return b.reg
+		}
+		return -1
+	}
+	return f.assignableReg(id.Name)
+}
+
+// assignableReg returns the register of the local variable name when an assignment to it is a
+// plain register write, or -1.
+func (f *fn) assignableReg(name string) int32 {
+	r := f.localReg(name)
+	if r < 0 {
+		return -1
+	}
+	if b, _ := f.lookupLocal(name); b.kind != bindVar && b.kind != bindLet {
+		return -1
+	}
+	return r
 }
 
 // elision steps the iterator it, it+1 without reading the value of the iterator result, as

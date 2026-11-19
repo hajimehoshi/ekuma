@@ -253,7 +253,7 @@ const (
 	OpForIn           // a = the for-in iterator over b
 	OpForInNext       // a = the next key of the for-in iterator b; jump to c when it is exhausted
 	OpGetIterator     // a, a+1 = the iterator of b and its next method; c is one of the Iter kinds
-	OpIterNext        // a = the next value of the iterator b, b+1; jump to c when it is done
+	OpIterNext        // a = the next value of the iterator b, b+1; a = undefined and jump to c when it is done
 	OpIterClose       // close the iterator a, a+1, and set a to undefined; b is -1 or holds the pending exception, which is kept unless it makes a generator return
 	OpIterCall        // a, a+1 = the result of calling the method Keys[c] of the iterator b with the argument a and true, or undefined and false when there is no such method
 	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined

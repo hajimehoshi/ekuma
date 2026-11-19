@@ -1755,6 +1755,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpIterNext:
 			if regs[i.B].o == nil {
 				// The iterator finished earlier.
+				regs[i.A] = Undefined
 				pc = int(i.C)
 				continue
 			}
@@ -1764,6 +1765,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				if j >= o.length {
 					// Mark the iterator as finished, so that closing it does nothing.
 					regs[i.B] = Undefined
+					regs[i.A] = Undefined
 					pc = int(i.C)
 					continue
 				}
@@ -1790,6 +1792,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					regs[i.B] = it
 					regs[i.A] = v
 				case iterDone:
+					regs[i.A] = Undefined
 					pc = int(i.C)
 				default:
 					goto throw
