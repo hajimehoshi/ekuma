@@ -178,8 +178,8 @@ const (
 	OpJumpNotSEqK // if !(b === Consts[c]) then pc = a
 	OpJumpNotSNeK // if !(b !== Consts[c]) then pc = a
 
-	// Calls. The callee is in b and the this value in b+1. The result goes to a, which is -1 when
-	// the result is not used, once the call returns: a call that throws leaves a as it is.
+	// Calls. The callee is in b and the this value in b+1. The result goes to a, which may be b,
+	// once the call returns: a call that throws leaves a as it is.
 	OpCall       // a = b(this b+1, args b+2...), c arguments
 	OpCallCall   // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
 	OpApplyFwd   // a = b.apply(...) where b+1 is the function and c the this value, forwarding the arguments of the running function; the flag x.a says whether an arguments object made for them is mapped. A callee b other than Function.prototype.apply gets its arguments in b+2 and b+3

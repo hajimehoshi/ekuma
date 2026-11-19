@@ -1129,7 +1129,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 					if f.isTail(n) {
 						op = bytecode.OpTailApplyFwd
 					}
-					f.emit(op, dst, base, this)
+					f.emit(op, callDst(dst, base), base, this)
 					f.emit(bytecode.OpExtra, mappedArguments(f.node), 0, 0)
 					return
 				}
@@ -1184,7 +1184,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			if f.isTail(n) {
 				op = bytecode.OpTailCallFwd
 			}
-			f.emit(op, dst, base, 0)
+			f.emit(op, callDst(dst, base), base, 0)
 			return
 		}
 	}
@@ -1197,10 +1197,10 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		}
 		if op == bytecode.OpCallEval {
 			site := f.evalSite()
-			f.emit(evalOp, dst, base, -1)
+			f.emit(evalOp, callDst(dst, base), base, -1)
 			f.emit(bytecode.OpExtra, site, 0, 0)
 		}
-		f.emit(spreadOp, dst, base, 0)
+		f.emit(spreadOp, callDst(dst, base), base, 0)
 		return
 	}
 	for i, a := range n.Args {
@@ -1229,7 +1229,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if receiver >= 0 {
 		f.emit(bytecode.OpRegExpArg, base, receiver, 1)
 	}
-	f.emit(op, dst, base, int32(len(n.Args)))
+	f.emit(op, callDst(dst, base), base, int32(len(n.Args)))
 	if site >= 0 {
 		f.emit(bytecode.OpExtra, site, 0, 0)
 	}
@@ -1242,6 +1242,16 @@ func (f *fn) regExpSite(e *ast.RegExpLit) int32 {
 		Flags:   e.Flags,
 	})
 	return int32(len(f.f.RegExps) - 1)
+}
+
+// callDst returns the destination operand of a call with its window at base whose result goes to
+// dst, or is dropped when dst is -1.
+func callDst(dst, base int32) int32 {
+	if dst < 0 {
+		// A dropped result replaces the callee, whose register is free after the call.
+		return base
+	}
+	return dst
 }
 
 // result moves the value of the register src to dst, unless dst is -1 or src itself.
@@ -1301,14 +1311,14 @@ func (f *fn) newExpr(n *ast.NewExpr, dst int32) {
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
 		f.setPos(n.Start())
-		f.emit(bytecode.OpNewSpread, dst, base, 0)
+		f.emit(bytecode.OpNewSpread, callDst(dst, base), base, 0)
 		return
 	}
 	for _, a := range n.Args {
 		f.exprNew(a)
 	}
 	f.setPos(n.Start())
-	f.emit(bytecode.OpNew, dst, base, int32(len(n.Args)))
+	f.emit(bytecode.OpNew, callDst(dst, base), base, int32(len(n.Args)))
 	f.emit(bytecode.OpExtra, f.site("prototype"), 0, 0)
 }
 
@@ -1375,7 +1385,7 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	if f.isTail(n) {
 		op = bytecode.OpTailCall
 	}
-	f.emit(op, dst, base, int32(len(n.Quasi.Exprs)+1))
+	f.emit(op, callDst(dst, base), base, int32(len(n.Quasi.Exprs)+1))
 }
 
 func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
