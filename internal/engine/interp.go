@@ -1369,6 +1369,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						vm.sp = argBase + c.nregs + 1
 						base, fp, cl, code, pc = argBase, c, f, c.code, 0
 						regs = vm.stack[base:vm.sp]
+						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
+							// Do what the first instruction does, and start after it.
+							regs[r] = this
+							pc = 1
+						}
 						continue
 					}
 				}
@@ -2074,6 +2079,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				onHeap = false
 				regs = vm.stack[base : base+c.nregs+1]
 				pc = 0
+				if r := c.thisReg; r >= 0 {
+					// Do what the first instruction does, and start after it.
+					if t := vm.frames[len(vm.frames)-1].this; !c.thisSloppy || t.o != nil && t.o.kind >= kindFirstObject {
+						regs[r] = t
+						pc = 1
+					}
+				}
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc

@@ -51,6 +51,12 @@ type funcProto struct {
 
 	// realm is the [[Realm]] of the functions.
 	realm *realm
+
+	// thisReg is the register that the first instruction loads this into, or -1 when the
+	// first instruction does not load this. thisSloppy says whether it converts this the way
+	// a non-strict function sees it.
+	thisReg    int32
+	thisSloppy bool
 }
 
 type templateSite struct {
@@ -102,6 +108,16 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 
 		script: script,
 		realm:  vm.curRealm,
+
+		thisReg: -1,
+	}
+	if len(f.Code) > 0 {
+		switch i := f.Code[0]; i.Op {
+		case bytecode.OpLoadThis:
+			p.thisReg = i.A
+		case bytecode.OpLoadThisSloppy:
+			p.thisReg, p.thisSloppy = i.A, true
+		}
 	}
 	for i, c := range f.Consts {
 		switch c.Kind {
