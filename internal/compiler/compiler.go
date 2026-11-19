@@ -1157,10 +1157,13 @@ func (f *fn) assigns(name string) bool {
 }
 
 // nestedAssigns reports whether the code of a function nested in the function f assigns to the
-// variable name. It is false for a script, a module or eval code.
+// variable name. For a script, a module or eval code, every function of the program is nested.
 func (f *fn) nestedAssigns(name string) bool {
 	n := f.node
-	return n != nil && f.c.assignedIn(name, n.Order-n.Nested, n.Order-1)
+	if n == nil {
+		return len(f.c.prog.Assigned[name]) > 0
+	}
+	return f.c.assignedIn(name, n.Order-n.Nested, n.Order-1)
 }
 
 // assignedIn reports whether the own code of a function whose [ast.Function.Order] is from lo

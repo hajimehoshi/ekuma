@@ -124,8 +124,8 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 		if f.otherCodeAssigns(name) {
 			return true
 		}
-		// nestedAssigns covers the functions nested in a function, so only its own code is left.
-		if assignsTo(e, name, f.node != nil) {
+		// nestedAssigns covers the nested functions, so only the own code is left.
+		if assignsTo(e, name) {
 			return true
 		}
 	}

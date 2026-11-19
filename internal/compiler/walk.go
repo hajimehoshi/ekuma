@@ -269,9 +269,9 @@ func assignTarget(n ast.Node) ast.Pattern {
 	return nil
 }
 
-// assignsTo reports whether the code below n assigns to the variable name.
-// With ownCode, the code of the functions in n is left out.
-func assignsTo(n ast.Node, name string, ownCode bool) bool {
+// assignsTo reports whether the code below n, outside the functions in n, assigns to the variable
+// name.
+func assignsTo(n ast.Node, name string) bool {
 	found := false
 	match := func(id *ast.Identifier) {
 		if id.Name == name {
@@ -279,7 +279,7 @@ func assignsTo(n ast.Node, name string, ownCode bool) bool {
 		}
 	}
 	walk(n, func(m ast.Node) bool {
-		if _, ok := m.(*ast.Function); ok && ownCode {
+		if _, ok := m.(*ast.Function); ok {
 			return false
 		}
 		if p := assignTarget(m); p != nil {
