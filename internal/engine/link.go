@@ -34,6 +34,10 @@ type funcProto struct {
 	nclear  int
 	nregs   int
 
+	// clearFrom is the first register from nparams on that a new frame clears. The first
+	// instructions write the registers between nparams and clearFrom before anything reads them.
+	clearFrom int
+
 	strict             bool
 	isGenerator        bool
 	isAsync            bool
@@ -124,6 +128,17 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 			p.thisReg, p.thisSloppy = i.A, true
 		}
 	}
+	p.clearFrom = f.NumParams
+	for _, i := range f.Code {
+		switch i.Op {
+		case bytecode.OpLoadThis, bytecode.OpLoadThisSloppy, bytecode.OpLoadNewTarget, bytecode.OpLoadHome, bytecode.OpLoadCallee, bytecode.OpLoadTDZ:
+			if int(i.A) == p.clearFrom {
+				p.clearFrom++
+				continue
+			}
+		}
+		break
+	}
 	for i, c := range f.Consts {
 		switch c.Kind {
 		case bytecode.ConstNumber:
@@ -176,6 +191,14 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		f.Keys = nil
 	}
 	return p
+}
+
+// firstCleared returns the first register that a new frame of p for argc arguments clears.
+func (p *funcProto) firstCleared(argc int) int {
+	if argc < p.nparams {
+		return argc
+	}
+	return p.clearFrom
 }
 
 // prepare allocates the inline caches of p, which a frame of p needs.

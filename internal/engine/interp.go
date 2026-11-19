@@ -172,7 +172,7 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	} else {
 		vm.ensureStack(base + max(argc, fp.nregs+1))
 	}
-	clearFrameRegs(vm.stack[base:], min(argc, fp.nparams), fp.nclear)
+	clearFrameRegs(vm.stack[base:], fp.firstCleared(argc), fp.nclear)
 	fr := vm.appendFrame()
 	fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = fp, f, 0, base, this, ret, isNew
 	fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, extraBase, newTarget, nil, nil
@@ -943,7 +943,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						}
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
-						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
+						clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]
@@ -985,7 +985,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						this := regs[i.C]
 						cur.pc = pc + 1
 						vm.stackHigh = max(vm.stackHigh, end)
-						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
+						clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]

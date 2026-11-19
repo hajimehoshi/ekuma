@@ -38,8 +38,9 @@ var fastPathCalls = map[string]bool{
 
 // fastPathMethods are the methods that the fast paths may call on a value of any name.
 var fastPathMethods = map[string]bool{
-	"IsNullish": true,
-	"isHTMLDDA": true,
+	"IsNullish":    true,
+	"firstCleared": true,
+	"isHTMLDDA":    true,
 }
 
 // TestExecFastPathsCallNothing tests that the first switch of the interpreter loop calls no
