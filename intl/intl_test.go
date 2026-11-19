@@ -292,6 +292,15 @@ func TestCancelFormatting(t *testing.T) {
 			name: "Lithuanian lowercasing",
 			src:  `"I\u0300a".repeat(2 ** 23).toLocaleLowerCase("lt")`,
 		},
+		{
+			// The marks have no boundary of a normalization form between them.
+			name: "Lithuanian uppercasing of a run of marks",
+			src:  `("a" + "\u0327\u0328\u0301".repeat(2 ** 22)).toLocaleUpperCase("lt")`,
+		},
+		{
+			name: "collation of a run of marks",
+			src:  `new Intl.Collator().compare("a" + "\u0327\u0328\u0301".repeat(2 ** 22), "b")`,
+		},
 	} {
 		var vm ekuma.VM
 		s, err := vm.ParseScript("test.js", tc.src)

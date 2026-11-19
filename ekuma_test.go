@@ -1873,6 +1873,12 @@ func TestCancelBuiltins(t *testing.T) {
 			src:   `BigInt(s)`,
 		},
 		{
+			// The marks have no boundary of a normalization form between them.
+			name:  "normalization of a run of marks",
+			setup: `var s = "a" + "\u0327\u0328\u0301".repeat(2 ** 22);`,
+			src:   `s.normalize()`,
+		},
+		{
 			name:  "property enumeration",
 			setup: `var o = {}; for (let i = 0; i < 1 << 20; i++) o["k" + i] = i;`,
 			src:   `Object.assign({}, o)`,

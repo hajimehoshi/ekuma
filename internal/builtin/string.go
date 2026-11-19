@@ -391,14 +391,17 @@ func initString(vm *engine.VM) {
 			return vm.NewString(mapLimited(vm, o.Str(), f))
 		})
 	}
+	// The uppercase mapping without a language maps each character on its own.
 	upper := stringMapping{
 		f: contextFree(func(s string) string {
 			return cases.Upper(language.Und).String(s)
 		}),
-		boundary: lastBoundary(norm.NFD),
+		boundary: runeBoundary,
 	}
 	lower := stringMapping{
-		f:        xstrings.ToLowerCase,
+		f: func(s string, start, end int, poll func()) string {
+			return xstrings.ToLowerCase(s, start, end)
+		},
 		boundary: runeBoundary,
 	}
 	mapShortCase("toUpperCase", true, strings.ToUpper, upper)
@@ -674,7 +677,8 @@ func unitStrings(vm *engine.VM, out []engine.Value, s engine.Value, start int) {
 // stringMapping is a mapping of the well-formed strings.
 type stringMapping struct {
 	// f maps s[start:end], which begins and ends at boundaries, in the context of the rest of s.
-	f func(s string, start, end int) string
+	// poll is called now and then while f maps a long part.
+	f func(s string, start, end int, poll func()) string
 
 	// boundary returns the offset of the last boundary in s other than its start, or a number
 	// below 1 when there is none. The parts of a string between boundaries map independently.
@@ -682,8 +686,8 @@ type stringMapping struct {
 }
 
 // contextFree returns f as the function of a stringMapping.
-func contextFree(f func(string) string) func(s string, start, end int) string {
-	return func(s string, start, end int) string {
+func contextFree(f func(string) string) func(s string, start, end int, poll func()) string {
+	return func(s string, start, end int, poll func()) string {
 		return f(s[start:end])
 	}
 }
@@ -691,9 +695,9 @@ func contextFree(f func(string) string) func(s string, start, end int) string {
 // normalization returns the mapping to the normalization form.
 func normalization(form norm.Form) stringMapping {
 	return stringMapping{
-		f: contextFree(func(s string) string {
-			return unorm.String(form, s)
-		}),
+		f: func(s string, start, end int, poll func()) string {
+			return unorm.String(form, s[start:end], poll)
+		},
 		boundary: lastBoundary(form),
 	}
 }
@@ -727,24 +731,34 @@ const mapChunk = 1 << 16
 
 // mapInChunks maps s with f, checking for an interruption between the parts of a long string,
 // which end at boundaries that boundary finds.
-func mapInChunks(vm *engine.VM, s string, f func(s string, start, end int) string, boundary func(s string) int) string {
+func mapInChunks(vm *engine.VM, s string, f func(s string, start, end int, poll func()) string, boundary func(s string) int) string {
 	if len(s) <= mapChunk {
-		return f(s, 0, len(s))
+		return f(s, 0, len(s), vm.Poll)
 	}
 	var b strings.Builder
 	b.Grow(len(s))
 	start := 0
 	for len(s)-start > mapChunk {
-		n := boundary(s[start : start+mapChunk])
-		if n <= 0 {
-			break
-		}
-		b.WriteString(f(s, start, start+n))
+		n := nextBoundary(s[start:], boundary)
+		b.WriteString(f(s, start, start+n, vm.Poll))
 		start += n
 		vm.Poll()
 	}
-	b.WriteString(f(s, start, len(s)))
+	b.WriteString(f(s, start, len(s), vm.Poll))
 	return b.String()
+}
+
+// nextBoundary returns the offset of a boundary in s, which is longer than mapChunk, other than
+// its start: one in the first mapChunk bytes, or else one at most about twice as far as the
+// first one after them, or len(s).
+func nextBoundary(s string, boundary func(s string) int) int {
+	// A boundary function looks only near the end of the part that it is given.
+	for n := mapChunk; n < len(s); n *= 2 {
+		if i := boundary(s[:n]); i > 0 {
+			return i
+		}
+	}
+	return len(s)
 }
 
 // mapLimited is mapWellFormed, throwing a RangeError instead when the result would be longer than
@@ -752,8 +766,8 @@ func mapInChunks(vm *engine.VM, s string, f func(s string, start, end int) strin
 func mapLimited(vm *engine.VM, s string, m stringMapping) string {
 	var n int
 	f := m.f
-	m.f = func(s string, start, end int) string {
-		mapped := f(s, start, end)
+	m.f = func(s string, start, end int, poll func()) string {
+		mapped := f(s, start, end, poll)
 		// The mapped parts make up the result, apart from the lone surrogates between them.
 		n += len(mapped)
 		checkStringLength(vm, n)

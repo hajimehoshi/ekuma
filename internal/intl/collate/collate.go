@@ -505,24 +505,6 @@ func (p *pacer) step(n int) {
 	}
 }
 
-// nfdChunk is the number of bytes of a string that appendNFD normalizes in one step.
-const nfdChunk = 1 << 16
-
-// appendNFD appends the NFD of the well-formed string s to out, in steps that end at
-// normalization boundaries.
-func appendNFD(out []byte, s string, p *pacer) []byte {
-	for len(s) > nfdChunk {
-		i := unorm.LastBoundary(norm.NFD, s[:nfdChunk])
-		if i <= 0 {
-			break
-		}
-		out = append(out, unorm.String(norm.NFD, s[:i])...)
-		s = s[i:]
-		p.step(pollSteps)
-	}
-	return append(out, unorm.String(norm.NFD, s)...)
-}
-
 // appendCEs returns the CEs of s with the settings of c applied.
 func (c *Collator) appendCEs(buf *buffer, s string, p *pacer) []ce {
 	ascii := true
@@ -533,11 +515,7 @@ func (c *Collator) appendCEs(buf *buffer, s string, p *pacer) []ce {
 		}
 	}
 	if !ascii {
-		if len(s) > nfdChunk {
-			s = string(appendNFD(nil, s, p))
-		} else {
-			s = unorm.String(norm.NFD, s)
-		}
+		s = unorm.String(norm.NFD, s, p.poll)
 	}
 	for _, r := range s {
 		p.step(1)

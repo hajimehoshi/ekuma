@@ -287,7 +287,7 @@ func initLocaleCase(vm *engine.VM) {
 			case lang == "lt":
 				s = mapAtStarters(vm, s, lithuanianDots)
 			case (lang == "tr" || lang == "az") && m.upper:
-				s = mapAtStarters(vm, s, func(s string) string {
+				s = mapAtStarters(vm, s, func(s string, poll func()) string {
 					return strings.ReplaceAll(s, "i", "\u0130")
 				})
 			case lang == "tr" || lang == "az":
@@ -305,70 +305,105 @@ const caseChunk = 1 << 16
 
 // mapAtStarters applies f to the runs of s without lone surrogates, in parts that end before a
 // character of the canonical combining class 0, checking for an interruption between the parts
-// of a long string. f looks at no character beyond such a part.
-func mapAtStarters(vm *engine.VM, s string, f func(string) string) string {
+// of a long string. f looks at no character beyond such a part, and calls poll now and then
+// over a long part.
+func mapAtStarters(vm *engine.VM, s string, f func(s string, poll func()) string) string {
 	return wtf8.MapWellFormed(s, func(s string) string {
 		if len(s) <= caseChunk {
-			return f(s)
+			return f(s, vm.Poll)
 		}
 		var b strings.Builder
+		b.Grow(len(s))
 		for len(s) > caseChunk {
-			// The last starter of the chunk begins the next part.
-			i := caseChunk
-			for i > 0 {
-				for i > 0 && !utf8.RuneStart(s[i]) {
-					i--
-				}
-				if r, _ := utf8.DecodeRuneInString(s[i:]); combiningClass(r) == 0 {
-					break
-				}
-				i--
-			}
+			i := lastStarter(s[:caseChunk])
 			if i <= 0 {
-				break
+				i = nextStarter(s, caseChunk, vm.Poll)
 			}
-			b.WriteString(f(s[:i]))
+			b.WriteString(f(s[:i], vm.Poll))
 			s = s[i:]
 			vm.Poll()
 		}
-		b.WriteString(f(s))
+		b.WriteString(f(s, vm.Poll))
 		return b.String()
 	})
 }
 
-// lithuanianDots applies the Lithuanian rules of SpecialCasing.txt for lowercasing that add a
-// dot above to i and j, leaving the rest to the default lowercasing.
-func lithuanianDots(s string) string {
-	rs := []rune(s)
-	var out []rune
-	for i, r := range rs {
-		switch r {
-		case 'I', 'J', '\u012E':
-			out = append(out, unicode.ToLower(r))
-			if moreAbove(rs[i+1:]) {
-				out = append(out, '\u0307')
-			}
-		case '\u00CC':
-			out = append(out, 'i', '\u0307', '\u0300')
-		case '\u00CD':
-			out = append(out, 'i', '\u0307', '\u0301')
-		case '\u0128':
-			out = append(out, 'i', '\u0307', '\u0303')
-		default:
-			out = append(out, r)
+// lastStarter returns the offset of the last character of the combining class 0 in s other
+// than its first, or -1.
+func lastStarter(s string) int {
+	for i := len(s) - 1; i > 0; i-- {
+		if !utf8.RuneStart(s[i]) {
+			continue
+		}
+		if r, _ := utf8.DecodeRuneInString(s[i:]); combiningClass(r) == 0 {
+			return i
 		}
 	}
-	return string(out)
+	return -1
+}
+
+// nextStarter returns the offset of the first character of the combining class 0 in s at or
+// after the offset i, or len(s). poll is called now and then.
+func nextStarter(s string, i int, poll func()) int {
+	for k := 0; i < len(s); k++ {
+		if k%pollRunes == 0 {
+			poll()
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if utf8.RuneStart(s[i]) && combiningClass(r) == 0 {
+			return i
+		}
+		i += size
+	}
+	return len(s)
+}
+
+// pollRunes is the number of characters that a language-sensitive case mapping maps between
+// two calls of its poll function.
+const pollRunes = 1 << 14
+
+// lithuanianDots applies the Lithuanian rules of SpecialCasing.txt for lowercasing that add a
+// dot above to i and j, leaving the rest to the default lowercasing.
+func lithuanianDots(s string, poll func()) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	k := 0
+	for i, r := range s {
+		if k++; k%pollRunes == 0 {
+			poll()
+		}
+		switch r {
+		case 'I', 'J', '\u012E':
+			b.WriteRune(unicode.ToLower(r))
+			if moreAbove(s[i+utf8.RuneLen(r):]) {
+				b.WriteRune('\u0307')
+			}
+		case '\u00CC':
+			b.WriteString("i\u0307\u0300")
+		case '\u00CD':
+			b.WriteString("i\u0307\u0301")
+		case '\u0128':
+			b.WriteString("i\u0307\u0303")
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // greekUpper applies the Greek uppercasing of CLDR, which removes the diacritics of Greek
 // letters.
-func greekUpper(s string) string {
+func greekUpper(s string, poll func()) string {
 	// cases keeps the diacritics of a letter whose uppercase in SpecialCasing.txt has several
 	// characters, so the letters are decomposed first. A letter with an iota subscript is kept
 	// for SpecialCasing.txt to turn the subscript into a capital iota.
 	var b strings.Builder
+	b.Grow(len(s))
+	k := 0
 	for _, r := range s {
+		if k++; k%pollRunes == 0 {
+			poll()
+		}
 		if unicode.Is(unicode.Greek, r) && unicode.IsLetter(r) {
 			if d := norm.NFD.String(string(r)); !strings.ContainsRune(d, '\u0345') {
 				b.WriteString(d)
@@ -383,10 +418,15 @@ func greekUpper(s string) string {
 // lithuanianUndot applies the Lithuanian rule of SpecialCasing.txt for uppercasing that
 // removes a dot above after a soft-dotted character, leaving the rest to the default
 // uppercasing.
-func lithuanianUndot(s string) string {
-	var out []rune
+func lithuanianUndot(s string, poll func()) string {
+	var b strings.Builder
+	b.Grow(len(s))
 	afterSoftDotted := false
+	k := 0
 	for _, r := range s {
+		if k++; k%pollRunes == 0 {
+			poll()
+		}
 		c := combiningClass(r)
 		if r == '\u0307' && afterSoftDotted {
 			afterSoftDotted = false
@@ -398,28 +438,32 @@ func lithuanianUndot(s string) string {
 		case 230:
 			afterSoftDotted = false
 		}
-		out = append(out, r)
+		b.WriteRune(r)
 	}
-	return string(out)
+	return b.String()
 }
 
 // turkicLowerI applies the Turkish and Azerbaijani rules of SpecialCasing.txt for
 // lowercasing the dotted and dotless i, leaving the rest to the default lowercasing.
-func turkicLowerI(s string) string {
-	rs := []rune(s)
-	var out []rune
+func turkicLowerI(s string, poll func()) string {
+	var b strings.Builder
+	b.Grow(len(s))
 	afterI := false
-	for i, r := range rs {
+	k := 0
+	for i, r := range s {
+		if k++; k%pollRunes == 0 {
+			poll()
+		}
 		c := combiningClass(r)
 		switch {
 		case r == '\u0130':
-			out = append(out, 'i')
-		case r == 'I' && !beforeDot(rs[i+1:]):
-			out = append(out, '\u0131')
+			b.WriteByte('i')
+		case r == 'I' && !beforeDot(s[i+1:]):
+			b.WriteRune('\u0131')
 		case r == '\u0307' && afterI:
 			// The dot above of an I is removed.
 		default:
-			out = append(out, r)
+			b.WriteRune(r)
 		}
 		switch c {
 		case 0:
@@ -428,13 +472,13 @@ func turkicLowerI(s string) string {
 			afterI = false
 		}
 	}
-	return string(out)
+	return b.String()
 }
 
-// moreAbove reports whether rs starts with combining marks that include one of the combining
+// moreAbove reports whether s starts with combining marks that include one of the combining
 // class Above (230).
-func moreAbove(rs []rune) bool {
-	for _, r := range rs {
+func moreAbove(s string) bool {
+	for _, r := range s {
 		switch combiningClass(r) {
 		case 0:
 			return false
@@ -445,10 +489,10 @@ func moreAbove(rs []rune) bool {
 	return false
 }
 
-// beforeDot reports whether rs starts with combining marks that include U+0307 COMBINING DOT
+// beforeDot reports whether s starts with combining marks that include U+0307 COMBINING DOT
 // ABOVE before any other of the combining class Above (230).
-func beforeDot(rs []rune) bool {
-	for _, r := range rs {
+func beforeDot(s string) bool {
+	for _, r := range s {
 		if r == '\u0307' {
 			return true
 		}
