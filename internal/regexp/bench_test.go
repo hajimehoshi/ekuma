@@ -29,7 +29,7 @@ func BenchmarkMatch(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		re, err := regexp.Compile(c.pattern, f)
+		re, err := regexp.Compile(c.pattern, f, nil)
 		if err != nil {
 			b.Fatal(err)
 		}

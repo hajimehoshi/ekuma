@@ -102,15 +102,22 @@ type program struct {
 type compiler struct {
 	prog    *program
 	unicode bool
+	poller  Poller
+	steps   int
+
+	// foldClasses are the classes of the characters that match their case variants, by the
+	// character.
+	foldClasses map[rune]*class
 }
 
-func compile(t *tree, flags Flags) *program {
+func compile(t *tree, flags Flags, poller Poller) *program {
 	c := &compiler{
 		prog: &program{
 			ncaps:   2 * (t.groupCount + 1),
 			unicode: flags&(FlagUnicode|FlagUnicodeSets) != 0,
 		},
 		unicode: flags&(FlagUnicode|FlagUnicodeSets) != 0,
+		poller:  poller,
 	}
 	c.emit(inst{op: iSave, n: 0})
 	c.node(t.root, false)
@@ -118,6 +125,17 @@ func compile(t *tree, flags Flags) *program {
 	c.emit(inst{op: iMatch})
 	c.analyze(t.root)
 	return c.prog
+}
+
+// step counts n steps of the compiler, and calls the poller every pollSteps steps.
+func (c *compiler) step(n int) {
+	c.steps += n
+	if c.steps >= pollSteps {
+		c.steps = 0
+		if c.poller != nil {
+			c.poller.Poll()
+		}
+	}
 }
 
 func (c *compiler) emit(i inst) int {
@@ -137,30 +155,54 @@ func (c *compiler) newReg() int {
 // charInst returns the instruction that matches the character r of the node n.
 func (c *compiler) charInst(n *node, r rune, back bool) inst {
 	if n.flags&FlagIgnoreCase != 0 {
+		if cls, ok := c.foldClasses[r]; ok {
+			return inst{op: iSet, cls: cls, back: back}
+		}
 		eq := foldEquivalents(r, c.unicode)
 		if len(eq) > 1 {
-			return inst{op: iSet, cls: newClass(setOf(eq...)), back: back}
+			cls := newClass(setOf(eq...))
+			if c.foldClasses == nil {
+				c.foldClasses = map[rune]*class{}
+			}
+			c.foldClasses[r] = cls
+			return inst{op: iSet, cls: cls, back: back}
 		}
 	}
 	return inst{op: iChar, r: r, back: back}
 }
 
-// literal reports whether n matches exactly one character, which it returns.
-func (c *compiler) literal(n *node) (rune, bool) {
-	if n.op != opChar {
-		return 0, false
+// literal reports whether the character r of a node with the flags matches only r.
+func (c *compiler) literal(flags Flags, r rune) bool {
+	return flags&FlagIgnoreCase == 0 || len(foldEquivalents(r, c.unicode)) <= 1
+}
+
+// chars returns the characters that n matches one after another, when n is a character or a
+// literal.
+func chars(n *node) ([]rune, bool) {
+	switch n.op {
+	case opChar:
+		return []rune{n.r}, true
+	case opLit:
+		return n.set, true
 	}
-	if n.flags&FlagIgnoreCase != 0 && len(foldEquivalents(n.r, c.unicode)) > 1 {
-		return 0, false
-	}
-	return n.r, true
+	return nil, false
 }
 
 func (c *compiler) node(n *node, back bool) {
+	c.step(1)
 	switch n.op {
 	case opEmpty:
 	case opChar:
 		c.emit(c.charInst(n, n.r, back))
+	case opLit:
+		if back {
+			for _, r := range slices.Backward(n.set) {
+				c.step(1)
+				c.emit(c.charInst(n, r, true))
+			}
+			return
+		}
+		c.seq([]*node{n})
 	case opClass:
 		c.emit(inst{op: iSet, cls: newClass(n.set), back: back})
 	case opSeq:
@@ -224,24 +266,27 @@ func boolInt(b bool) int {
 
 // seq compiles a sequence forward, joining runs of literal characters into strings.
 func (c *compiler) seq(subs []*node) {
-	for i := 0; i < len(subs); {
-		var run []rune
-		j := i
-		for ; j < len(subs); j++ {
-			r, ok := c.literal(subs[j])
-			if !ok {
-				break
-			}
-			run = append(run, r)
-		}
-		if len(run) < 2 {
-			c.node(subs[i], false)
-			i++
+	var run []rune
+	for _, n := range subs {
+		rs, ok := chars(n)
+		if !ok {
+			c.literalRun(run)
+			run = run[:0]
+			c.node(n, false)
 			continue
 		}
-		c.literalRun(run)
-		i = j
+		for _, r := range rs {
+			c.step(1)
+			if c.literal(n.flags, r) {
+				run = append(run, r)
+				continue
+			}
+			c.literalRun(run)
+			run = run[:0]
+			c.emit(c.charInst(n, r, false))
+		}
 	}
+	c.literalRun(run)
 }
 
 // literalRun compiles a run of literal characters (code units without the u flag).
@@ -347,11 +392,15 @@ func (c *compiler) first(n *node) firstInfo {
 	switch n.op {
 	case opEmpty, opLineStart, opLineEnd, opWordB:
 		return firstInfo{empty: true}
-	case opChar:
-		if n.flags&FlagIgnoreCase != 0 {
-			return firstInfo{set: setOf(foldEquivalents(n.r, c.unicode)...)}
+	case opChar, opLit:
+		r := n.r
+		if n.op == opLit {
+			r = n.set[0]
 		}
-		return firstInfo{set: charSet{n.r, n.r}}
+		if n.flags&FlagIgnoreCase != 0 {
+			return firstInfo{set: setOf(foldEquivalents(r, c.unicode)...)}
+		}
+		return firstInfo{set: charSet{r, r}}
 	case opClass:
 		return firstInfo{set: n.set}
 	case opSeq:
@@ -439,31 +488,39 @@ func (c *compiler) analyze(root *node) {
 // analyzeNeed finds the longest literal that every match contains in its top-level sequence.
 func (c *compiler) analyzeNeed(root *node) {
 	nodes := appendSeq(nil, root)
-	var lo, hi int
+	// lo and hi are the bounds of the offset of the current character from the start of a
+	// match, and runLo and runHi those of the start of the literal b.
+	var lo, hi, runLo, runHi int
 	var b []byte
-	for i := 0; i < len(nodes); {
-		b = b[:0]
-		j := i
-		for ; j < len(nodes); j++ {
-			r, ok := c.literal(nodes[j])
-			// A lone surrogate cannot be found as bytes, since it can be half of a pair.
-			if !ok || r >= 0xD800 && r <= 0xDFFF {
-				break
-			}
-			b = wtf8.AppendRune(b, r)
-		}
+	end := func() {
 		if len(b) > len(c.prog.need) {
-			c.prog.need, c.prog.needMin, c.prog.needMax = string(b), lo, hi
+			c.prog.need, c.prog.needMin, c.prog.needMax = string(b), runLo, runHi
 		}
-		if j == i {
-			j++
-		}
-		for _, n := range nodes[i:j] {
+		b = b[:0]
+	}
+	for _, n := range nodes {
+		rs, ok := chars(n)
+		if !ok {
+			end()
 			l, h := width(n)
 			lo, hi = addMin(lo, l), addMax(hi, h)
+			continue
 		}
-		i = j
+		for _, r := range rs {
+			c.step(1)
+			// A lone surrogate cannot be found as bytes, since it can be half of a pair.
+			if !c.literal(n.flags, r) || r >= 0xD800 && r <= 0xDFFF {
+				end()
+			} else {
+				if len(b) == 0 {
+					runLo, runHi = lo, hi
+				}
+				b = wtf8.AppendRune(b, r)
+			}
+			lo, hi = addMin(lo, 1), addMax(hi, 1)
+		}
 	}
+	end()
 }
 
 // appendSeq appends the nodes that every match of n matches one after another.
@@ -490,6 +547,8 @@ func width(n *node) (lo, hi int) {
 	switch n.op {
 	case opChar, opClass:
 		return 1, 1
+	case opLit:
+		return mulMin(1, len(n.set)), mulMax(1, len(n.set))
 	case opSeq:
 		for _, s := range n.subs {
 			l, h := width(s)

@@ -16,6 +16,7 @@ type nodeOp uint8
 const (
 	opEmpty     nodeOp = iota
 	opChar             // r
+	opLit              // the characters of set one after another, at least two
 	opClass            // set
 	opSeq              // subs
 	opAlt              // subs
@@ -89,6 +90,12 @@ type parser struct {
 	namedRefs   []namedRef
 	depth       int
 
+	// spare is a node of a character that a literal took over, for the next character.
+	spare *node
+
+	poller Poller
+	steps  int
+
 	err *Error
 }
 
@@ -105,9 +112,12 @@ func (p *parser) fail(msg string) {
 	panic(syntaxPanic{})
 }
 
-// parse parses the pattern source, a WTF-8 string, with the flags.
-func parse(source string, flags Flags) (*tree, error) {
-	var p parser
+// parse parses the pattern source, a WTF-8 string, with the flags. poller, which may be nil,
+// is called now and then during a long pattern.
+func parse(source string, flags Flags, poller Poller) (*tree, error) {
+	p := parser{
+		poller: poller,
+	}
 	p.init(source, flags)
 	return p.parsePattern()
 }
@@ -129,6 +139,7 @@ func (p *parser) init(source string, flags Flags) {
 	// A WTF-8 string has at least as many bytes as code units.
 	p.src = make([]rune, 0, len(source))
 	for i := 0; i < len(source); {
+		p.step()
 		r, size := wtf8.DecodeRune(source[i:])
 		i += size
 		if !p.unicode && r >= 0x10000 {
@@ -175,6 +186,17 @@ func (p *parser) prescan() (int, bool) {
 		}
 	}
 	return n, named
+}
+
+// step counts a step of the parser, and calls the poller every pollSteps steps.
+func (p *parser) step() {
+	p.steps++
+	if p.steps >= pollSteps {
+		p.steps = 0
+		if p.poller != nil {
+			p.poller.Poll()
+		}
+	}
 }
 
 func (p *parser) eof() bool {
@@ -356,10 +378,25 @@ func (p *parser) parseDisjunction() *node {
 func (p *parser) parseAlternative() *node {
 	var terms []*node
 	for !p.eof() && p.peek() != '|' && p.peek() != ')' {
+		p.step()
 		term := p.parseTerm()
-		if !p.validateOnly {
-			terms = append(terms, term)
+		if p.validateOnly {
+			continue
 		}
+		// Characters one after another make one literal.
+		if n := len(terms); n > 0 && term.op == opChar {
+			if last := terms[n-1]; (last.op == opChar || last.op == opLit) && last.flags == term.flags {
+				if last.op == opChar {
+					last.op = opLit
+					last.set = charSet{last.r, term.r}
+				} else {
+					last.set = append(last.set, term.r)
+				}
+				p.spare = term
+				continue
+			}
+		}
+		terms = append(terms, term)
 	}
 	if p.validateOnly {
 		return nil
@@ -458,7 +495,13 @@ func (p *parser) charNode(c rune) *node {
 	if p.validateOnly {
 		return nil
 	}
-	n := p.newNode(opChar)
+	n := p.spare
+	if n == nil {
+		n = p.newNode(opChar)
+	} else {
+		p.spare = nil
+		*n = node{op: opChar, flags: p.flags}
+	}
 	n.r = c
 	return n
 }

@@ -20,7 +20,7 @@ func mustCompile(t *testing.T, pattern, flags string) *regexp.Regexp {
 	if err != nil {
 		t.Fatalf("ParseFlags(%q): %v", flags, err)
 	}
-	re, err := regexp.Compile(pattern, f)
+	re, err := regexp.Compile(pattern, f, nil)
 	if err != nil {
 		t.Fatalf("Compile(%q, %q): %v", pattern, flags, err)
 	}
@@ -194,7 +194,7 @@ func TestSyntaxErrors(t *testing.T) {
 	for _, tc := range tests {
 		f, err := regexp.ParseFlags(tc.flags)
 		if err == nil {
-			_, err = regexp.Compile(tc.pattern, f)
+			_, err = regexp.Compile(tc.pattern, f, nil)
 		}
 		if !errors.Is(err, regexp.ErrSyntax) {
 			t.Errorf("/%.40s/%s: got %v, want a syntax error", tc.pattern, tc.flags, err)
@@ -249,7 +249,7 @@ func FuzzValidate(f *testing.F) {
 			got := regexp.Validate(pattern, flags)
 			fl, want := regexp.ParseFlags(flags)
 			if want == nil {
-				_, want = regexp.Compile(pattern, fl)
+				_, want = regexp.Compile(pattern, fl, nil)
 			}
 			if !sameError(got, want) {
 				t.Errorf("Validate(%.40q, %q): got %v, want %v", pattern, flags, got, want)
@@ -276,6 +276,29 @@ type stop struct{}
 func (p *countPoller) Poll() {
 	p.n++
 	panic(stop{})
+}
+
+// TestCompilePoll checks that the compilation of a long pattern can be stopped.
+func TestCompilePoll(t *testing.T) {
+	for _, pattern := range []string{
+		strings.Repeat("a", 1<<20),
+		strings.Repeat("(?:a|b)", 1<<17),
+	} {
+		p := &countPoller{}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if _, ok := r.(stop); !ok {
+						panic(r)
+					}
+				}
+			}()
+			regexp.Compile(pattern, 0, p)
+		}()
+		if p.n != 1 {
+			t.Errorf("/%.20s.../: Poll was called %d times, want 1", pattern, p.n)
+		}
+	}
 }
 
 // TestPoll checks that a catastrophic pattern can be stopped.
@@ -349,11 +372,11 @@ func FuzzRequiredLiteral(f *testing.F) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			re, err := regexp.Compile(pattern, fl)
+			re, err := regexp.Compile(pattern, fl, nil)
 			if err != nil {
 				continue
 			}
-			ref, err := regexp.Compile("(?:"+pattern+`)|[^\s\S]`, fl)
+			ref, err := regexp.Compile("(?:"+pattern+`)|[^\s\S]`, fl, nil)
 			if err != nil {
 				continue
 			}

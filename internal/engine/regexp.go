@@ -114,7 +114,7 @@ func (vm *VM) compileRegExp(p, f string) *regexp.Regexp {
 	if err != nil {
 		vm.throwSyntaxError(err.Error())
 	}
-	re, err := regexp.Compile(p, flags)
+	re, err := regexp.Compile(p, flags, vm)
 	if err != nil {
 		vm.throwSyntaxError(err.Error())
 	}

@@ -92,9 +92,14 @@ type Regexp struct {
 	names []string
 }
 
-// Compile parses a pattern with flags and compiles it.
-func Compile(pattern string, flags Flags) (*Regexp, error) {
-	tree, err := parse(pattern, flags)
+// pollSteps is the number of steps, such as parsing a character of a pattern or compiling a
+// node, between two calls of the poller of [Compile].
+const pollSteps = 1 << 16
+
+// Compile parses a pattern with flags and compiles it. poller, which may be nil, is called now
+// and then during a long pattern; it may stop the compilation by panicking.
+func Compile(pattern string, flags Flags, poller Poller) (*Regexp, error) {
+	tree, err := parse(pattern, flags, poller)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +109,7 @@ func Compile(pattern string, flags Flags) (*Regexp, error) {
 		groupNames: tree.groupNames,
 		names:      tree.names,
 	}
-	re.prog = compile(tree, flags)
+	re.prog = compile(tree, flags, poller)
 	return re, nil
 }
 
