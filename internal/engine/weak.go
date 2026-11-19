@@ -25,11 +25,16 @@ type WeakTable struct {
 }
 
 // weakEntries are the entries of the weak collections whose key is one object or symbol.
+// One entry is held in first, and only the entries of the other collections are in rest.
 type weakEntries struct {
-	vals map[weak.Pointer[WeakTable]]Value
+	// firstTable is the collection of the entry in first, or zero when first holds none.
+	firstTable weak.Pointer[WeakTable]
+	first      Value
 
-	// sweepAt is the number of entries at which an insertion first drops the entries
-	// of the collections that were collected.
+	rest map[weak.Pointer[WeakTable]]Value
+
+	// sweepAt is the number of entries in rest at which an insertion into rest first drops
+	// the entries of the collections that were collected.
 	sweepAt int
 }
 
@@ -89,7 +94,11 @@ func (t *WeakTable) Get(k Value) (Value, bool) {
 	if m == nil {
 		return Undefined, false
 	}
-	v, ok := m.weak.vals[t.self]
+	w := &m.weak
+	if w.firstTable == t.self {
+		return w.first, true
+	}
+	v, ok := w.rest[t.self]
 	if !ok {
 		return Undefined, false
 	}
@@ -105,18 +114,32 @@ func (t *WeakTable) Has(k Value) bool {
 // Set sets the value of the entry with the key k.
 func (t *WeakTable) Set(k, v Value) {
 	w := &k.o.ensureMeta().weak
-	if w.vals == nil {
-		w.vals = map[weak.Pointer[WeakTable]]Value{}
+	if w.firstTable == t.self {
+		w.first = v
+		return
 	}
-	if _, ok := w.vals[t.self]; !ok && len(w.vals) >= w.sweepAt {
-		for c := range w.vals {
+	if _, ok := w.rest[t.self]; ok {
+		w.rest[t.self] = v
+		return
+	}
+	// first is free when it holds no entry or the entry of a collection that was collected.
+	if w.firstTable.Value() == nil {
+		w.firstTable = t.self
+		w.first = v
+		return
+	}
+	if w.rest == nil {
+		w.rest = map[weak.Pointer[WeakTable]]Value{}
+	}
+	if len(w.rest) >= w.sweepAt {
+		for c := range w.rest {
 			if c.Value() == nil {
-				delete(w.vals, c)
+				delete(w.rest, c)
 			}
 		}
-		w.sweepAt = max(8, 2*len(w.vals))
+		w.sweepAt = max(8, 2*len(w.rest))
 	}
-	w.vals[t.self] = v
+	w.rest[t.self] = v
 }
 
 // Delete deletes the entry with the key k and reports whether there was one.
@@ -125,10 +148,16 @@ func (t *WeakTable) Delete(k Value) bool {
 	if m == nil {
 		return false
 	}
-	if _, ok := m.weak.vals[t.self]; !ok {
+	w := &m.weak
+	if w.firstTable == t.self {
+		w.firstTable = weak.Pointer[WeakTable]{}
+		w.first = Undefined
+		return true
+	}
+	if _, ok := w.rest[t.self]; !ok {
 		return false
 	}
-	delete(m.weak.vals, t.self)
+	delete(w.rest, t.self)
 	return true
 }
 

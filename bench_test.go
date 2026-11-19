@@ -209,6 +209,71 @@ func BenchmarkCollection(b *testing.B) {
 	}
 }
 
+const weakMapBenchJS = `
+var a = new WeakMap(), b = new WeakMap(), keys = [];
+for (var i = 0; i < 1024; i++) {
+	keys.push({});
+	a.set(keys[i], i);
+}
+var both = [];
+for (var i = 0; i < 1024; i++) {
+	both.push({});
+	a.set(both[i], i);
+	b.set(both[i], i);
+}
+function run(op, n) {
+	var sum = 0, i;
+	switch (op) {
+	case "set":
+		for (i = 0; i < n; i++) a.set({}, i);
+		break;
+	case "get":
+		for (i = 0; i < n; i++) sum += a.get(keys[i & 1023]);
+		break;
+	case "has":
+		for (i = 0; i < n; i++) if (a.has(keys[i & 1023])) sum++;
+		break;
+	case "delete":
+		for (i = 0; i < n; i++) {
+			a.delete(keys[i & 1023]);
+			a.set(keys[i & 1023], i);
+		}
+		break;
+	case "set2":
+		for (i = 0; i < n; i++) {
+			var k = {};
+			a.set(k, i);
+			b.set(k, i);
+		}
+		break;
+	case "get2":
+		for (i = 0; i < n; i++) sum += a.get(both[i & 1023]) + b.get(both[i & 1023]);
+		break;
+	}
+	return sum;
+}
+`
+
+// BenchmarkWeakMap measures WeakMap operations. One iteration is one operation: set adds a fresh
+// key, delete deletes a key and adds it again, and set2 and get2 use a key of two WeakMaps,
+// setting a fresh key in both and getting a key from both.
+func BenchmarkWeakMap(b *testing.B) {
+	for _, op := range []string{"set", "get", "has", "delete", "set2", "get2"} {
+		b.Run(op, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			if _, err := runScript(ctx, &vm, "weakmap.js", weakMapBenchJS); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %d)", op, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkEval measures eval. One iteration is one call: eval evaluates a short expression
 // at one call site, whose compiled code is reused; marked calls a function that contains a
 // direct eval it does not reach, and unmarked the same function without the eval; function
