@@ -384,7 +384,9 @@ func partsArray(vm *engine.VM, n int, part func(i int) (typ, value, source strin
 		engine.NamedKey(vm.Intern("source")),
 	}
 	vals := make([]engine.Value, n)
+	var p engine.Pacer
 	for i := range n {
+		p.Step(vm)
 		typ, value, source := part(i)
 		props := [3]engine.Value{vm.NewString(typ), vm.NewString(value)}
 		propertyCount := 2
@@ -408,7 +410,7 @@ func (nf *numberFormatData) formatRange(vm *engine.VM, args []engine.Value) []nu
 	if x.IsNaN() || y.IsNaN() {
 		vm.ThrowRangeError("the start or the end of a range is NaN")
 	}
-	return nf.f.FormatRange(x, y)
+	return nf.f.FormatRange(x, y, vm.Poll)
 }
 
 // initNumberFormat defines Intl.NumberFormat.
@@ -433,7 +435,7 @@ func (r *realm) initNumberFormat(vm *engine.VM) {
 		if nf.boundFormat == nil {
 			nf.boundFormat = vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				x := toIntlMathematicalValue(vm, arg(args, 0))
-				return formattedString(vm, nf.f.Format(x))
+				return formattedString(vm, nf.f.FormatToString(x, vm.Poll))
 			})
 		}
 		return engine.ObjectValue(nf.boundFormat)
@@ -456,7 +458,7 @@ func (r *realm) initNumberFormat(vm *engine.VM) {
 	})
 	method(vm, proto, "formatToParts", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nf := thisNumberFormat(vm, this, "formatToParts")
-		parts := nf.f.Format(toIntlMathematicalValue(vm, arg(args, 0)))
+		parts := nf.f.Format(toIntlMathematicalValue(vm, arg(args, 0)), vm.Poll)
 		return partsArray(vm, len(parts), func(i int) (string, string, string) {
 			return parts[i].Type, parts[i].Value, ""
 		})
@@ -516,10 +518,9 @@ func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 	return engine.ObjectValue(out)
 }
 
-// formattedString returns the string of the formatted parts ps, and throws a RangeError instead
-// when it would be longer than MaxStringLength.
-func formattedString(vm *engine.VM, ps []number.Part) engine.Value {
-	s := number.String(ps)
+// formattedString returns the formatted string s, and throws a RangeError instead when it is
+// longer than MaxStringLength.
+func formattedString(vm *engine.VM, s string) engine.Value {
 	checkStringLength(vm, len(s))
 	return vm.NewString(s)
 }
@@ -529,7 +530,7 @@ func formattedString(vm *engine.VM, ps []number.Part) engine.Value {
 func initToLocaleString(vm *engine.VM) {
 	format := func(vm *engine.VM, args []engine.Value, x number.Decimal) engine.Value {
 		nf := createNumberFormat(vm, arg(args, 0), arg(args, 1))
-		return formattedString(vm, nf.f.Format(x))
+		return formattedString(vm, nf.f.FormatToString(x, vm.Poll))
 	}
 	method(vm, vm.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)

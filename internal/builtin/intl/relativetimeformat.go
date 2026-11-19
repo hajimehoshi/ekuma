@@ -116,7 +116,7 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 	s, _ := rtf.pluralDigits.FormatToString(x)
 	category := plural.Select(locale.DataLocale(rtf.dataLocale), false, s, 0)
 	pattern := patterns.Pattern(past, category)
-	formatted := rtf.nf.Format(x)
+	formatted := rtf.nf.Format(x, nil)
 	var out []relativeTimePart
 	for pattern != "" {
 		before, after, ok := strings.Cut(pattern, "{0}")

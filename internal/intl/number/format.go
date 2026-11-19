@@ -241,8 +241,10 @@ func (f *Formatter) exponentForMagnitude(mag int) (int, int) {
 	return 0, -1
 }
 
-// format formats x into its layers. approximately adds the approximately sign.
-func (f *Formatter) format(x Decimal, approximately bool) *formatted {
+// format formats x into its layers. approximately adds the approximately sign. joined makes
+// the integer digits and their group separators one part, for a formatted string. poll, which
+// may be nil, is called now and then during a long number.
+func (f *Formatter) format(x Decimal, approximately, joined bool, poll func()) *formatted {
 	r := &formatted{
 		compactMag: -1,
 	}
@@ -269,7 +271,7 @@ func (f *Formatter) format(x Decimal, approximately bool) *formatted {
 		exp, pmag := f.computeExponent(x)
 		s, rx := f.o.Digits.FormatToString(x.scale(-exp))
 		rounded = rx
-		r.number = f.digitParts(s)
+		r.number = f.digitParts(s, joined, poll)
 		r.compactString = s
 		r.pluralString = s
 		if f.o.Notation == "compact" {
@@ -586,32 +588,61 @@ func Transliterate(digits []string, s string) string {
 	return b.String()
 }
 
-// digitParts returns the parts of the formatted string s of ASCII digits and a full stop.
-func (f *Formatter) digitParts(s string) []Part {
+// pollGroups is the number of digit groups between two calls of the poll function of a
+// formatting.
+const pollGroups = 1 << 14
+
+// digitParts returns the parts of the formatted string s of ASCII digits and a full stop. joined
+// makes the integer digits and their group separators one part. poll, which may be nil, is
+// called now and then during a long number.
+func (f *Formatter) digitParts(s string, joined bool, poll func()) []Part {
 	intDigits, frac, hasFrac := strings.Cut(s, ".")
 	var parts []Part
 	p := f.standard
 	n := len(intDigits)
 	if f.o.UseGrouping != "" && p.primary > 0 && n-p.primary >= f.minGrouping {
+		// The groups from the least significant one.
 		var groups []string
 		rest := intDigits
 		size := p.primary
 		for len(rest) > size {
+			if poll != nil && len(groups)%pollGroups == pollGroups-1 {
+				poll()
+			}
 			groups = append(groups, rest[len(rest)-size:])
 			rest = rest[:len(rest)-size]
 			size = p.secondary
 		}
 		groups = append(groups, rest)
-		for i, group := range slices.Backward(groups) {
+		if joined {
+			var b strings.Builder
+			b.Grow(n + (len(groups)-1)*len(f.group))
+			for i, group := range slices.Backward(groups) {
+				b.WriteString(group)
+				if i > 0 {
+					b.WriteString(f.group)
+				}
+			}
 			parts = append(parts, Part{
 				Type:  "integer",
-				Value: f.transliterate(group),
+				Value: f.transliterate(b.String()),
 			})
-			if i > 0 {
+		} else {
+			parts = slices.Grow(parts, 2*len(groups))
+			for i, group := range slices.Backward(groups) {
+				if poll != nil && i%pollGroups == 0 {
+					poll()
+				}
 				parts = append(parts, Part{
-					Type:  "group",
-					Value: f.group,
+					Type:  "integer",
+					Value: f.transliterate(group),
 				})
+				if i > 0 {
+					parts = append(parts, Part{
+						Type:  "group",
+						Value: f.group,
+					})
+				}
 			}
 		}
 	} else {
@@ -722,9 +753,15 @@ func mergeLiterals(parts []Part) []Part {
 	return out
 }
 
-// Format implements PartitionNumberPattern.
-func (f *Formatter) Format(x Decimal) []Part {
-	return f.parts(f.format(x, false))
+// Format implements PartitionNumberPattern. poll, which may be nil, is called now and then
+// during a long number, and may stop the formatting by panicking.
+func (f *Formatter) Format(x Decimal, poll func()) []Part {
+	return f.parts(f.format(x, false, false, poll))
+}
+
+// FormatToString implements FormatNumeric: it returns the string of the parts of [Formatter.Format].
+func (f *Formatter) FormatToString(x Decimal, poll func()) string {
+	return String(f.parts(f.format(x, false, true, poll)))
 }
 
 // String returns the concatenation of the values of parts.

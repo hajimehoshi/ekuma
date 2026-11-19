@@ -181,6 +181,22 @@ func TestFormat(t *testing.T) {
 			want: "1.2萬",
 		},
 		{
+			// Indian grouping has groups of two digits above the first three, and the
+			// digits are transliterated.
+			name: "groups of the integer digits",
+			o: number.Options{
+				Locale:          "hi-IN",
+				NumberingSystem: "deva",
+				Style:           "decimal",
+				Notation:        "standard",
+				UseGrouping:     "auto",
+				SignDisplay:     "auto",
+				Digits:          digits,
+			},
+			in:   "123456789.5",
+			want: "१२,३४,५६,७८९.५",
+		},
+		{
 			// CLDR has no liter-per-hour, but a pattern for "per hour".
 			name: "per unit pattern",
 			o: number.Options{
@@ -328,9 +344,44 @@ func TestFormat(t *testing.T) {
 			want: "١٫٥",
 		},
 	} {
-		got := number.String(number.NewFormatter(&tc.o).Format(number.Parse(tc.in)))
-		if got != tc.want {
+		f := number.NewFormatter(&tc.o)
+		x := number.Parse(tc.in)
+		if got := f.FormatToString(x, nil); got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
+		if got := number.String(f.Format(x, nil)); got != tc.want {
+			t.Errorf("%s: the parts make %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestFormatPoll checks that the poll function can stop the formatting of a long number.
+func TestFormatPoll(t *testing.T) {
+	type stop struct{}
+	f := number.NewFormatter(&number.Options{
+		Locale:               "en",
+		NumberingSystem:      "latn",
+		Style:                "decimal",
+		Notation:             "standard",
+		UseGrouping:          "auto",
+		SignDisplay:          "auto",
+		MinimumIntegerDigits: 1,
+		RoundingType:         number.FractionDigits,
+		RoundingIncrement:    1,
+		RoundingMode:         "halfExpand",
+	})
+	x := number.FromInteger(strings.Repeat("9", 1<<20))
+	for _, format := range []func(func()){
+		func(poll func()) { f.Format(x, poll) },
+		func(poll func()) { f.FormatToString(x, poll) },
+	} {
+		func() {
+			defer func() {
+				if _, ok := recover().(stop); !ok {
+					t.Errorf("the formatting did not stop")
+				}
+			}()
+			format(func() { panic(stop{}) })
+		}()
 	}
 }

@@ -42,12 +42,13 @@ func codePoints(parts ...[]Part) int {
 }
 
 // FormatRange implements PartitionNumberRangePattern for x and y, which are not
-// not-a-number.
-func (f *Formatter) FormatRange(x, y Decimal) []RangePart {
-	xf := f.format(x, false)
-	yf := f.format(y, false)
+// not-a-number. poll, which may be nil, is called now and then during a long number, and may
+// stop the formatting by panicking.
+func (f *Formatter) FormatRange(x, y Decimal, poll func()) []RangePart {
+	xf := f.format(x, false, false, poll)
+	yf := f.format(y, false, false, poll)
 	if String(f.parts(xf)) == String(f.parts(yf)) {
-		return withSource(f.parts(f.format(x, true)), "shared")
+		return withSource(f.parts(f.format(x, true, false, poll)), "shared")
 	}
 
 	// The unit or currency name is the same on both sides, so it is shown once.

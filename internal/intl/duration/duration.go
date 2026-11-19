@@ -241,7 +241,7 @@ func (o *Options) formatNumeric(i int, x number.Decimal, separator string, signD
 	if i == Seconds {
 		o.setFractionDigits(no)
 	}
-	return append(out, withUnit(number.NewFormatter(no).Format(x), singular(i))...)
+	return append(out, withUnit(number.NewFormatter(no).Format(x, nil), singular(i))...)
 }
 
 // negativeZero is -0.
@@ -322,7 +322,7 @@ func (o *Options) Format(d *Duration) []Part {
 			no.Style = "unit"
 			no.Unit = singular(i)
 			no.UnitDisplay = uo.Style
-			result = append(result, withUnit(number.NewFormatter(no).Format(x), singular(i)))
+			result = append(result, withUnit(number.NewFormatter(no).Format(x, nil), singular(i)))
 		}
 		if last {
 			break
