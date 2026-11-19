@@ -238,9 +238,6 @@ func (v *validator) instr(pc int, in Instr) error {
 		if !ops.Extra && field >= FieldXA {
 			break
 		}
-		if v.optional(in, field) {
-			continue
-		}
 		if err := v.operand(pc, ops.kind(field), field, operand(in, x, field)); err != nil {
 			return err
 		}
@@ -256,20 +253,6 @@ func (v *validator) instr(pc int, in Instr) error {
 		}
 	}
 	return v.special(pc, in, x)
-}
-
-// optional reports whether the operand field of the instruction in is unused because another
-// operand selects a form of the instruction without it.
-func (v *validator) optional(in Instr, field Field) bool {
-	switch {
-	case in.Op == OpImport && field == FieldC:
-		// import.meta.
-		return in.B == -1 && in.C == 0
-	case (in.Op == OpCallEval || in.Op == OpTailCallEval) && field == FieldC:
-		// The arguments are in an array.
-		return in.C == -1
-	}
-	return false
 }
 
 // operand validates the value of the operand field of the kind k of the instruction at pc.
@@ -369,9 +352,6 @@ func (v *validator) operand(pc int, k OperandKind, field Field, val int32) error
 
 // regs validates the run of registers r of the instruction in at pc, followed by x.
 func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
-	if v.optional(in, r.At) {
-		return nil
-	}
 	start := operand(in, x, r.At)
 	if start == -1 && ops.kind(r.At) == OperandOptReg {
 		return nil
@@ -379,9 +359,6 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 	first := int(start) + r.Offset
 	n := r.Len
 	switch {
-	case (in.Op == OpCallEval || in.Op == OpTailCallEval) && in.C == -1 && r.Counted:
-		// The arguments are in an array in b+2.
-		n = 3
 	case r.Len == RegsToEnd:
 		n = v.f.NumRegs - first
 	case r.Counted:
@@ -410,21 +387,6 @@ func (v *validator) special(pc int, in, x Instr) error {
 		// The RegExp object is the this value or the first argument of the call.
 		if in.A != in.C+1 && in.A != in.C+2 {
 			return v.errorf(pc, ErrValue, "a is %d for the call of %d", in.A, in.C)
-		}
-	case OpCallEval, OpTailCallEval:
-		if in.C == -1 {
-			// A call of another function than eval goes on to the spread call.
-			spread := OpCallSpread
-			if in.Op == OpTailCallEval {
-				spread = OpTailCallSpread
-			}
-			if pc+2 >= len(code) || code[pc+2].Op != spread || code[pc+2].A != in.A || code[pc+2].B != in.B {
-				return v.errorf(pc, ErrSequence, "not followed by its %s", spread)
-			}
-		}
-	case OpImport:
-		if in.B == -1 && in.C != 0 {
-			return v.errorf(pc, ErrValue, "c is %d for import.meta", in.C)
 		}
 	case OpDecorate:
 		step := x.A

@@ -185,14 +185,15 @@ const (
 
 	// Calls. The callee is in b and the this value in b+1. The result goes to a, which may be b,
 	// once the call returns: a call that throws leaves a as it is.
-	OpCall       // a = b(this b+1, args b+2...), c arguments
-	OpCallUndef  // like [OpCall], with the this value undefined; b+1 becomes undefined
-	OpCallCall   // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
-	OpApplyFwd   // a = b.apply(...) where b+1 is the function and c the this value, forwarding the arguments of the running function; the flag x.a says whether an arguments object made for them is mapped. A callee b other than Function.prototype.apply gets its arguments in b+2 and b+3
-	OpCallFwd    // a = b(this b+1, the arguments of the running function)
-	OpCallSpread // a = b(this b+1, ...the array b+2)
-	OpCallEval   // like [OpCall]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]. With c = -1, b+2 is the array of the arguments, and the extra is followed by the [OpCallSpread] for any other function, which a direct eval skips
-	OpSpreadArgs // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
+	OpCall           // a = b(this b+1, args b+2...), c arguments
+	OpCallUndef      // like [OpCall], with the this value undefined; b+1 becomes undefined
+	OpCallCall       // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
+	OpApplyFwd       // a = b.apply(...) where b+1 is the function and c the this value, forwarding the arguments of the running function; the flag x.a says whether an arguments object made for them is mapped. A callee b other than Function.prototype.apply gets its arguments in b+2 and b+3
+	OpCallFwd        // a = b(this b+1, the arguments of the running function)
+	OpCallSpread     // a = b(this b+1, ...the array b+2)
+	OpCallEval       // like [OpCall]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]
+	OpCallEvalSpread // like [OpCallSpread]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]
+	OpSpreadArgs     // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
 
 	// The calls in tail position of strict functions. When the callee is a function written in
 	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
@@ -201,12 +202,13 @@ const (
 	// Function.prototype.apply for its this value when its argument list can be made without
 	// running JavaScript. Otherwise they are the ordinary calls, and the next instructions return
 	// the result.
-	OpTailCall       // like [OpCall]
-	OpTailCallUndef  // like [OpCallUndef]
-	OpTailCallSpread // like [OpCallSpread]
-	OpTailCallEval   // like [OpCallEval], where the extra of one with c = -1 is followed by [OpTailCallSpread]
-	OpTailApplyFwd   // like [OpApplyFwd]
-	OpTailCallFwd    // like [OpCallFwd]
+	OpTailCall           // like [OpCall]
+	OpTailCallUndef      // like [OpCallUndef]
+	OpTailCallSpread     // like [OpCallSpread]
+	OpTailCallEval       // like [OpCallEval]
+	OpTailCallEvalSpread // like [OpCallEvalSpread]
+	OpTailApplyFwd       // like [OpApplyFwd]
+	OpTailCallFwd        // like [OpCallFwd]
 
 	// Constructor calls, which take their operands as the calls do.
 	OpNew             // a = new b(args b+2...), c arguments; x.a is a site for the prototype property of b
@@ -291,7 +293,8 @@ const (
 	OpDeclareEvalVar  // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
 
 	// Modules.
-	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
+	OpImport     // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer
+	OpImportMeta // a = import.meta
 
 	// Others.
 	OpExtra // the operands of the instruction before it that do not fit in it; it is never executed

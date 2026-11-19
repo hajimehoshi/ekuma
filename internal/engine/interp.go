@@ -1728,6 +1728,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			f, callThis = regs[b].o, regs[b+1]
 			goto forward
+		case bytecode.OpCallEvalSpread:
+			// A direct eval, or the spread call of the case below for any other function.
+			pc++
+			vm.frames[len(vm.frames)-1].pc = pc
+			if v, ok := vm.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
+				regs = vm.reload(regs, vm.frameBase(), fp)
+				regs[i.A] = v
+				continue
+			}
+			fallthrough
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
 			b := int(i.B)
 			f, callThis, ret, isNew, newTarget = regs[b].o, regs[b+1], i.A, false, nil
@@ -1746,19 +1756,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto call
 		case bytecode.OpCallEval, bytecode.OpTailCallEval:
 			b := int(i.B)
-			site := int(fp.code[pc].A)
 			pc++
-			if regs[b].o == vm.Intrinsic(IntrinsicEval) {
-				vm.frames[len(vm.frames)-1].pc = pc
-				v := vm.directEval(evalArg(slices.Clip(regs)[b+2:], int(i.C)), site)
+			vm.frames[len(vm.frames)-1].pc = pc
+			if v, ok := vm.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), int(i.C)); ok {
 				regs = vm.reload(regs, vm.frameBase(), fp)
 				regs[i.A] = v
-				if i.C < 0 {
-					pc++
-				}
-				continue
-			}
-			if i.C < 0 {
 				continue
 			}
 			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
@@ -1774,6 +1776,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], vm.frameBase()+b+2, int(i.C), i.A, false, nil
 			goto tailCall
+		case bytecode.OpTailCallEvalSpread:
+			// A direct eval, or the spread call of the case below for any other function.
+			pc++
+			vm.frames[len(vm.frames)-1].pc = pc
+			if v, ok := vm.callEval(slices.Clip(regs), i, int(fp.code[pc-1].A), -1); ok {
+				regs = vm.reload(regs, vm.frameBase(), fp)
+				regs[i.A] = v
+				continue
+			}
+			fallthrough
 		case bytecode.OpTailCallSpread:
 			b := int(i.B)
 			f, callThis, ret, isNew, newTarget = regs[b].o, regs[b+1], i.A, false, nil
@@ -2291,9 +2303,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDeclareEvalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.declareEvalVar(cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
-		case bytecode.OpImport:
+		case bytecode.OpImport, bytecode.OpImportMeta:
 			vm.frames[len(vm.frames)-1].pc = pc
-			v := vm.importOp(slices.Clip(regs), i.B, i.C)
+			v := vm.importOp(slices.Clip(regs), i)
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpAutoAccessor:

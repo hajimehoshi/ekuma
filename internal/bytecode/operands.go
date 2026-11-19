@@ -324,7 +324,6 @@ var (
 		Reads:  spreadReads,
 		Writes: regA,
 	}
-	// callEvalOperands covers c = -1, which takes the array of the arguments in b+2.
 	callEvalOperands = Operands{
 		A:      OperandReg,
 		B:      OperandReg,
@@ -333,6 +332,14 @@ var (
 		XA:     OperandEvalScope,
 		Reads:  callReads,
 		Writes: callWrites,
+	}
+	callEvalSpreadOperands = Operands{
+		A:      OperandReg,
+		B:      OperandReg,
+		Extra:  true,
+		XA:     OperandEvalScope,
+		Reads:  spreadReads,
+		Writes: regA,
 	}
 	getScopedOperands = Operands{
 		A:      OperandReg,
@@ -1023,6 +1030,10 @@ var opcodes = [...]struct {
 		name:     "OpCallEval",
 		operands: callEvalOperands,
 	},
+	OpCallEvalSpread: {
+		name:     "OpCallEvalSpread",
+		operands: callEvalSpreadOperands,
+	},
 	OpSpreadArgs: {
 		name:     "OpSpreadArgs",
 		operands: unaryOperands,
@@ -1043,6 +1054,10 @@ var opcodes = [...]struct {
 	OpTailCallEval: {
 		name:     "OpTailCallEval",
 		operands: callEvalOperands,
+	},
+	OpTailCallEvalSpread: {
+		name:     "OpTailCallEvalSpread",
+		operands: callEvalSpreadOperands,
 	},
 	OpTailApplyFwd: {
 		name:     "OpTailApplyFwd",
@@ -1461,15 +1476,18 @@ var opcodes = [...]struct {
 	},
 
 	OpImport: {
-		// With b = -1, c is unused.
 		name: "OpImport",
 		operands: Operands{
 			A:      OperandReg,
-			B:      OperandOptReg,
+			B:      OperandReg,
 			C:      OperandReg,
 			Reads:  []Regs{{At: FieldB, Len: 1}, {At: FieldC, Len: 2}},
 			Writes: regA,
 		},
+	},
+	OpImportMeta: {
+		name:     "OpImportMeta",
+		operands: loadOperands,
 	},
 
 	OpExtra: {

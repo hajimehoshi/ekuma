@@ -314,7 +314,7 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 	case *ast.ImportCall:
 		f.importCall(e, dst)
 	case *ast.ImportMetaExpr:
-		f.emit(bytecode.OpImport, dst, -1, 0)
+		f.emit(bytecode.OpImportMeta, dst, 0, 0)
 	default:
 		f.c.fail(e, "unsupported expression %T", e)
 	}
@@ -1263,14 +1263,15 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
 		f.setPos(pos)
-		evalOp, spreadOp := bytecode.OpCallEval, bytecode.OpCallSpread
+		evalOp, spreadOp := bytecode.OpCallEvalSpread, bytecode.OpCallSpread
 		if f.isTail(n) {
-			evalOp, spreadOp = bytecode.OpTailCallEval, bytecode.OpTailCallSpread
+			evalOp, spreadOp = bytecode.OpTailCallEvalSpread, bytecode.OpTailCallSpread
 		}
 		if op == bytecode.OpCallEval {
 			site := f.evalSite()
-			f.emit(evalOp, callDst(dst, base), base, -1)
+			f.emit(evalOp, callDst(dst, base), base, 0)
 			f.emit(bytecode.OpExtra, site, 0, 0)
+			return
 		}
 		f.emit(spreadOp, callDst(dst, base), base, 0)
 		return

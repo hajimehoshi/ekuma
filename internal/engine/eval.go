@@ -66,6 +66,16 @@ func evalArg(args []Value, argc int) Value {
 	return Undefined
 }
 
+// callEval performs the call instruction i of a function named eval as a direct eval with the
+// call site site, when the callee is the eval function, and reports whether it did. argc is as
+// for evalArg. The registers may move when it returns.
+func (vm *VM) callEval(regs []Value, i *bytecode.Instr, site, argc int) (Value, bool) {
+	if regs[i.B].o != vm.Intrinsic(IntrinsicEval) {
+		return Undefined, false
+	}
+	return vm.directEval(evalArg(regs[i.B+2:], argc), site), true
+}
+
 // directEval implements PerformEval for a direct eval of x by the running function at its
 // call site site.
 func (vm *VM) directEval(x Value, site int) Value {

@@ -1442,10 +1442,11 @@ func (vm *VM) importMeta() Value {
 	return Value{o: m.meta}
 }
 
-// importOp implements OpImport with the operands b and c.
-func (vm *VM) importOp(regs []Value, b, c int32) Value {
-	if b < 0 {
+// importOp performs the instruction i, an [bytecode.OpImport] or an [bytecode.OpImportMeta], on
+// the registers regs.
+func (vm *VM) importOp(regs []Value, i *bytecode.Instr) Value {
+	if i.Op == bytecode.OpImportMeta {
 		return vm.importMeta()
 	}
-	return vm.importCall(regs[b], regs[c], bytecode.Phase(regs[c+1].n))
+	return vm.importCall(regs[i.B], regs[i.C], bytecode.Phase(regs[i.C+1].n))
 }
