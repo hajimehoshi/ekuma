@@ -1326,7 +1326,12 @@ func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
 	mark := f.top
 	defer f.free(mark)
 	arr := f.newReg()
-	f.emit(bytecode.OpNewArray, arr, 0, int32(len(n.Elements)))
+	room := int32(len(n.Elements))
+	if room == 0 {
+		// An empty literal usually gets elements pushed onto it.
+		room = 4
+	}
+	f.emit(bytecode.OpNewArray, arr, 0, room)
 	for _, e := range n.Elements {
 		m := f.top
 		switch e := e.(type) {

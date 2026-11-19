@@ -69,7 +69,7 @@ func TestAllocationsPerOperation(t *testing.T) {
 		{
 			name: "push onto an empty array",
 			body: `var a = []; for (var j = 0; j < 16; j++) a.push(j);`,
-			want: 4,
+			want: 3,
 		},
 		{
 			name:  "concatenation of two long strings",

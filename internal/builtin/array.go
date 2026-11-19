@@ -261,7 +261,12 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 				return engine.ObjectValue(vm.ArrayCreate(u, proto))
 			}
 		}
-		a := vm.NewArray(append([]engine.Value(nil), args...))
+		var a *engine.Object
+		if len(args) == 0 {
+			a = vm.NewEmptyArrayWithRoom(4)
+		} else {
+			a = vm.NewArray(append([]engine.Value(nil), args...))
+		}
 		if proto != vm.Intrinsic(engine.IntrinsicArrayPrototype) {
 			vm.SetPrototypeOf(a, proto)
 		}

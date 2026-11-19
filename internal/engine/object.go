@@ -795,6 +795,16 @@ func (vm *VM) NewArrayCopy(elems []Value) *Object {
 	return a
 }
 
+// NewEmptyArrayWithRoom returns a new empty array with room for n elements.
+func (vm *VM) NewEmptyArrayWithRoom(n int) *Object {
+	a, storage := newObjectWithStorage(n)
+	a.kind = kindArray
+	a.class = classArray
+	a.shape = vm.shapes.array
+	a.elems = storage[:0]
+	return a
+}
+
 // pairArray is an array of two elements together with the storage of its elements,
 // so that creating one is a single allocation.
 type pairArray struct {
