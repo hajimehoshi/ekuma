@@ -6,7 +6,6 @@ package builtin
 import (
 	"math"
 	"slices"
-	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -1184,7 +1183,7 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 		}
 		if allNumbersOrStrings {
 			sortPolled(vm, vals, sortRunLength, func(s []engine.Value) {
-				slices.SortStableFunc(s, compareStringValues)
+				mergeSort(s, compareStringValues)
 			}, compareStringValues)
 			return
 		}
@@ -1196,17 +1195,84 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 			keyValues(vm, keyed[i:], vals[i:min(i+engine.PollInterval, len(vals))])
 		}
 		sortPolled(vm, keyed, sortRunLength, func(s []keyedValue) {
-			slices.SortStableFunc(s, compareKeyedValues)
+			mergeSort(s, compareKeyedValues)
 		}, compareKeyedValues)
 		for i := range vals {
 			vals[i] = keyed[i].v
 		}
 		return
 	}
-	sort.SliceStable(vals, func(i, j int) bool {
-		r := vm.Call(cmp.Object(), engine.Undefined, vals[i], vals[j])
-		return vm.ToNumber(r) < 0
+	mergeSort(vals, func(a, b engine.Value) int {
+		if vm.ToNumber(vm.Call(cmp.Object(), engine.Undefined, a, b)) < 0 {
+			return -1
+		}
+		return 0
 	})
+}
+
+// insertionSortLength is the length up to which mergeSort sorts by insertion.
+const insertionSortLength = 12
+
+// mergeSort sorts s stably in the order of compare, which only needs to tell whether its first
+// argument goes before its second. An inconsistent compare leaves s in some order of its elements.
+func mergeSort[E any](s []E, compare func(a, b E) int) {
+	if len(s) <= insertionSortLength {
+		insertionSort(s, compare)
+		return
+	}
+	mergeSortBuf(s, make([]E, len(s)/2), compare)
+}
+
+// mergeSortBuf is mergeSort with buf, which has room for half of s, as scratch.
+func mergeSortBuf[E any](s, buf []E, compare func(a, b E) int) {
+	if len(s) <= insertionSortLength {
+		insertionSort(s, compare)
+		return
+	}
+	mid := len(s) / 2
+	mergeSortBuf(s[:mid], buf, compare)
+	mergeSortBuf(s[mid:], buf, compare)
+	if compare(s[mid], s[mid-1]) >= 0 {
+		return
+	}
+	// Every element of the left half is taken from the copy in buf. The index i in s it is
+	// taken to never passes the index j in s of the next right element, so no right element
+	// is overwritten before it is taken.
+	left := buf[:copy(buf, s[:mid])]
+	i, j := 0, mid
+	for len(left) > 0 && j < len(s) {
+		if compare(s[j], left[0]) < 0 {
+			s[i] = s[j]
+			j++
+		} else {
+			s[i] = left[0]
+			left = left[1:]
+		}
+		i++
+	}
+	copy(s[i:], left)
+}
+
+// insertionSort sorts s stably in the order of compare by binary insertion.
+func insertionSort[E any](s []E, compare func(a, b E) int) {
+	for i := 1; i < len(s); i++ {
+		x := s[i]
+		if compare(x, s[i-1]) >= 0 {
+			continue
+		}
+		// Find the first element that x goes before.
+		lo, hi := 0, i-1
+		for lo < hi {
+			m := int(uint(lo+hi) >> 1)
+			if compare(x, s[m]) < 0 {
+				hi = m
+			} else {
+				lo = m + 1
+			}
+		}
+		copy(s[lo+1:i+1], s[lo:i])
+		s[lo] = x
+	}
 }
 
 // compareStringValues compares the strings a and b by their code units.

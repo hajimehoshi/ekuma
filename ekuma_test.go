@@ -1769,6 +1769,91 @@ func TestCancelArrayIteration(t *testing.T) {
 	}
 }
 
+// TestSortLong checks the results of sorts much longer than a run of insertion.
+func TestSortLong(t *testing.T) {
+	const setup = `
+var seed = 1;
+function next() {
+	seed = (seed * 1103515245 + 12345) % 2147483648;
+	return seed;
+}
+function items(n) {
+	var a = [];
+	for (var i = 0; i < n; i++) {
+		a.push({key: next() % 7, id: i});
+	}
+	return a;
+}
+function stable(a) {
+	for (var i = 1; i < a.length; i++) {
+		var p = a[i - 1], q = a[i];
+		if (p.key > q.key || p.key === q.key && p.id > q.id) {
+			return "out of order at " + i;
+		}
+	}
+	return "stable";
+}
+`
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "stable with a comparison function",
+			src:  `stable(items(1000).sort((x, y) => x.key - y.key))`,
+			want: "stable",
+		},
+		{
+			name: "stable in the default order",
+			src: `var a = items(1000);
+for (var x of a) {
+	x.toString = function () { return String(this.key); };
+}
+stable(a.sort())`,
+			want: "stable",
+		},
+		{
+			name: "untouched by a throwing comparison function",
+			src: `var a = items(1000), before = a.map(x => x.id).join(), calls = 0;
+try {
+	a.sort((x, y) => {
+		if (++calls === 3000) {
+			throw new Error("stop");
+		}
+		return x.key - y.key;
+	});
+} catch (e) {
+}
+String(calls) + " " + (a.map(x => x.id).join() === before)`,
+			want: "3000 true",
+		},
+		{
+			name: "a permutation with an inconsistent comparison function",
+			src: `var a = items(1000);
+a.sort(() => next() % 3 - 1);
+var ids = a.map(x => x.id).sort((x, y) => x - y);
+String(ids.every((x, i) => x === i))`,
+			want: "true",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			if _, err := runScript(t.Context(), &vm, "setup", setup); err != nil {
+				t.Fatalf("runScript: %v", err)
+			}
+			v, err := runScript(t.Context(), &vm, "sort", tc.src)
+			if err != nil {
+				t.Fatalf("runScript: %v", err)
+			}
+			if got := v.String(); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestCancelJSON checks that parsing a long text can be stopped.
 func TestCancelJSON(t *testing.T) {
 	var vm ekuma.VM

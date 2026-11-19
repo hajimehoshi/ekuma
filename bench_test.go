@@ -2515,3 +2515,77 @@ func BenchmarkObjectCopy(b *testing.B) {
 		}
 	}
 }
+
+const sortBenchJS = `
+var src;
+function setup(kind, n) {
+	var seed = 1;
+	src = kind === "Array" || kind === "String" ? [] : new globalThis[kind](n);
+	for (var i = 0; i < n; i++) {
+		seed = (seed * 1103515245 + 12345) % 2147483648;
+		var v = seed % 100000;
+		src[i] = kind === "String" ? "k" + v : v;
+	}
+}
+function byNumber(a, b) {
+	return a - b;
+}
+function run(withComparator, n) {
+	for (var i = 0; i < n; i++) {
+		if (withComparator) {
+			src.slice().sort(byNumber);
+		} else {
+			src.slice().sort();
+		}
+	}
+}
+`
+
+// BenchmarkSort sorts 1000 pseudo-random elements, with a comparison function or in the default
+// order. One iteration is one copy and sort.
+func BenchmarkSort(b *testing.B) {
+	for _, bc := range []struct {
+		name           string
+		kind           string
+		withComparator bool
+	}{
+		{
+			name:           "comparator/Array",
+			kind:           "Array",
+			withComparator: true,
+		},
+		{
+			name: "default/Array",
+			kind: "Array",
+		},
+		{
+			name: "default/String",
+			kind: "String",
+		},
+		{
+			name:           "comparator/Float64Array",
+			kind:           "Float64Array",
+			withComparator: true,
+		},
+		{
+			name: "default/Float64Array",
+			kind: "Float64Array",
+		},
+	} {
+		b.Run(bc.name, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			if _, err := runScript(ctx, &vm, "sort.js", sortBenchJS); err != nil {
+				b.Fatal(err)
+			}
+			if _, err := runScript(ctx, &vm, "setup", fmt.Sprintf("setup(%q, 1000)", bc.kind)); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%t, %d)", bc.withComparator, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
