@@ -24,9 +24,10 @@ func (vm *VM) NewPromise() (Value, *PromiseResolver) {
 	return vm.initialRealm.NewPromise()
 }
 
-// Resolve resolves the promise with [Realm.ValueOf](v) of the realm of the promise. A thenable
-// is adopted, and reading its then property can run JavaScript. The pending jobs run before
-// Resolve returns, unless it is called from a host callback.
+// Resolve resolves the promise with [VM.ValueOf](v), or with [Realm.ValueOf](v) of its realm for
+// a promise of another realm. A thenable is adopted, and reading its then property can run
+// JavaScript. The pending jobs run before Resolve returns, unless it is called from a host
+// callback.
 //
 // When ctx is done, the JavaScript stops at its next loop iteration or call, the pending jobs are
 // discarded, and the error is the cause of ctx. The promise stays pending if it was not settled
@@ -36,9 +37,9 @@ func (r *PromiseResolver) Resolve(ctx context.Context, v any) error {
 	return r.settle(ctx, v, false)
 }
 
-// Reject rejects the promise with [Realm.ValueOf](v) of the realm of the promise, and is
-// otherwise like [PromiseResolver.Resolve]. A rejected promise without a handler is reported
-// to the callback of [VM.SetUnhandledRejection] after the jobs ran, unless ctx stops them.
+// Reject is like [PromiseResolver.Resolve], but rejects the promise with v. A rejected promise
+// without a handler is reported to the callback of [VM.SetUnhandledRejection] after the jobs ran,
+// unless ctx stops them.
 func (r *PromiseResolver) Reject(ctx context.Context, v any) error {
 	return r.settle(ctx, v, true)
 }
