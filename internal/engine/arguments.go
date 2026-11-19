@@ -50,15 +50,42 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 // newArgumentsObject returns an arguments object without callee whose elements are the arguments
 // of the frame fr, whose registers are regs.
 func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
-	a := &argumentsObject{
-		kind:    kindObject,
-		class:   classArguments,
-		shape:   vm.shapes.arguments,
-		elems:   vm.frameArgs(fr, regs),
-		storage: [3]Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}},
+	var a *argumentsObject
+	var elems []Value
+	switch fr.argc {
+	case 0:
+		a, elems = &argumentsObject{}, []Value{}
+	case 1:
+		w := &argumentsObjectWith[[1]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	case 2:
+		w := &argumentsObjectWith[[2]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	case 3:
+		w := &argumentsObjectWith[[3]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	case 4:
+		w := &argumentsObjectWith[[4]Value]{}
+		a, elems = &w.argumentsObject, w.elems[:0]
+	default:
+		a, elems = &argumentsObject{}, make([]Value, 0, fr.argc)
 	}
+	n := min(fr.argc, fr.fp.nparams)
+	elems = append(elems, regs[:n]...)
+	elems = append(elems, vm.extraArgs(fr)...)
+	a.kind = kindObject
+	a.class = classArguments
+	a.shape = vm.shapes.arguments
+	a.elems = elems
+	a.storage = [3]Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]
 	return a.init()
+}
+
+// argumentsObjectWith is an arguments object together with the storage S of its elements.
+type argumentsObjectWith[S any] struct {
+	argumentsObject
+	elems S
 }
 
 // argumentsObject is an arguments object together with the storage of its length,
