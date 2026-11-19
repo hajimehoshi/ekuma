@@ -95,7 +95,8 @@ func pure(e ast.Expr) bool {
 func singleWrite(e ast.Expr) bool {
 	switch e := e.(type) {
 	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.Identifier, *ast.ThisExpr,
-		*ast.BigIntLit, *ast.BinaryExpr, *ast.CallExpr, *ast.NewExpr, *ast.Function, *ast.RegExpLit:
+		*ast.BigIntLit, *ast.BinaryExpr, *ast.CallExpr, *ast.NewExpr, *ast.Function, *ast.RegExpLit,
+		*ast.ObjectLit, *ast.ArrayLit, *ast.TemplateLit:
 		return true
 	case *ast.MemberExpr:
 		return !e.Optional
@@ -1486,8 +1487,13 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 				v := f.exprAny(p.Value)
 				f.emit(bytecode.OpSetProto, obj, v, 0)
 			case static && !isIndexString(name):
-				v := f.newReg()
-				f.named(p.Value, v, name)
+				var v int32
+				if _, ok := p.Value.(*ast.Identifier); ok {
+					v = f.exprAny(p.Value)
+				} else {
+					v = f.newReg()
+					f.named(p.Value, v, name)
+				}
 				f.emit(bytecode.OpDefineFieldK, obj, f.site(name), v)
 			default:
 				k := f.propertyKey(p.Key, p.Computed)
@@ -1588,12 +1594,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		if !target.Parenthesized {
 			inferred = name
 		}
-		local := f.localReg(name)
-		if local >= 0 {
-			if b, _ := f.lookupLocal(name); b.kind != bindVar && b.kind != bindLet {
-				local = -1
-			}
-		}
+		local := f.assignableReg(name)
 		switch {
 		case n.Op == ast.OpNone:
 			if local >= 0 {
