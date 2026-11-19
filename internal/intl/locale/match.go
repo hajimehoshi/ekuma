@@ -31,6 +31,18 @@ var defaultRegionLocales = sync.OnceValue(func() map[string]string {
 	return m
 })
 
+// maxAvailableLen is the length of the longest available locale.
+var maxAvailableLen = sync.OnceValue(func() int {
+	n := 0
+	for i := range cldr.AvailableLocales.Len() {
+		n = max(n, len(cldr.AvailableLocales.At(i)))
+	}
+	for s := range defaultRegionLocales() {
+		n = max(n, len(s))
+	}
+	return n
+})
+
 // IsAvailable reports whether the canonical language tag s is an available locale.
 func IsAvailable(s string) bool {
 	if cldr.AvailableLocales.Contains(s) {
@@ -65,7 +77,7 @@ func CollationParent(s string) (string, bool) {
 // tag s and the available locales. It reports false when no available locale matches.
 func BestAvailableLocale(s string) (string, bool) {
 	for {
-		if IsAvailable(s) {
+		if len(s) <= maxAvailableLen() && IsAvailable(s) {
 			return s, true
 		}
 		pos := strings.LastIndexByte(s, '-')
