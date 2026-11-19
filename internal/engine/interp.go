@@ -2041,6 +2041,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
+			if fn.bound != nil && !isNew && newTarget == nil && len(fn.bound.args) == 0 {
+				f, callThis = vm.unbindPlain(f)
+				goto call
+			}
 			if c := fn.code; c != nil && c.isGenerator && !c.isAsync && fn.bound == nil {
 				// Run the generator up to its initial suspension as an ordinary frame.
 				vm.pushGenerator(f, callThis, vm.stack[argBase:argBase+argc], ret)
@@ -2145,6 +2149,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		}
 	}
+}
+
+// unbindPlain returns the target and the this value that a call of the bound function f
+// passes its arguments to, following bound functions without bound arguments.
+func (vm *VM) unbindPlain(f *Object) (*Object, Value) {
+	var this Value
+	for b := f.fn.bound; b != nil && len(b.args) == 0; b = f.fn.bound {
+		f, this = b.target, b.this
+	}
+	return f, this
 }
 
 // unbind returns the function that a tail call of f ends up calling, with its this value and
