@@ -243,3 +243,25 @@ func TestStringToBigIntLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestBigIntDigitsTooLarge(t *testing.T) {
+	// 2^28 hexadecimal digits have 2^30 bits when the first is at least 8.
+	s := "1" + strings.Repeat("0", 1<<28)
+	for _, tc := range []struct {
+		digits string
+		want   bool
+	}{
+		{
+			digits: "8" + s[1:len(s)-1],
+			want:   false,
+		},
+		{
+			digits: s,
+			want:   true,
+		},
+	} {
+		if got := numconv.BigIntDigitsTooLarge(tc.digits, 16, nil); got != tc.want {
+			t.Errorf("BigIntDigitsTooLarge of %d digits: got %t, want %t", len(tc.digits), got, tc.want)
+		}
+	}
+}

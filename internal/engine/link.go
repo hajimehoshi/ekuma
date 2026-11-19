@@ -110,7 +110,13 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		case bytecode.ConstString:
 			p.consts[i] = ObjectValue(vm.Intern(c.Str))
 		case bytecode.ConstBigInt:
-			n, _ := numconv.ParseBigInt(c.Str, 10, nil)
+			// A script may be linked when no JavaScript runs, which an interruption
+			// cannot stop.
+			var poll func()
+			if vm.Running() {
+				poll = vm.Poll
+			}
+			n, _ := numconv.ParseBigInt(c.Str, 10, poll)
 			p.consts[i] = vm.NewBigInt(n)
 		}
 	}

@@ -1977,6 +1977,8 @@ func TestBigIntInterrupt(t *testing.T) {
 		`x * x`,
 		`z / y`,
 		`z % y`,
+		// The lexer converts the digits to decimal.
+		`eval("0x" + "f".repeat(2 ** 23) + "n")`,
 	} {
 		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 		start := time.Now()

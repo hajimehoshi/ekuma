@@ -4,9 +4,39 @@
 package numconv
 
 import (
+	"math"
 	"math/big"
 	"math/bits"
+	"strings"
 )
+
+// MaxBigIntBits is the largest number of bits of the magnitude of a BigInt.
+const MaxBigIntBits = 1 << 30
+
+// BigIntDigitsTooLarge reports whether the integer of the valid digits s in the radix, which is
+// from 2 to 36, has more than MaxBigIntBits bits. poll, which may be nil, is called between the
+// steps of a long check and may stop it by panicking.
+func BigIntDigitsTooLarge(s string, radix int, poll func()) bool {
+	s = strings.TrimLeft(s, "0")
+	if s == "" {
+		return false
+	}
+	if bits.OnesCount(uint(radix)) == 1 {
+		k := bits.TrailingZeros(uint(radix))
+		return (len(s)-1)*k+bits.Len(uint(DigitValue(s[0]))) > MaxBigIntBits
+	}
+	// n digits have more than (n-1) log2(radix) and at most n log2(radix) bits. The margin of
+	// a bit covers the rounding of the logarithm.
+	l := math.Log2(float64(radix))
+	switch {
+	case float64(len(s)-1)*l > MaxBigIntBits+1:
+		return true
+	case float64(len(s))*l < MaxBigIntBits-1:
+		return false
+	}
+	i, _ := ParseBigInt(s, radix, poll)
+	return i.BitLen() > MaxBigIntBits
+}
 
 // arithLeafWords is the size in words up to which MulBigInt multiplies, and QuoRemBigInt divides
 // by, an integer in one step of math/big.

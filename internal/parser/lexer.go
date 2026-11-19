@@ -10,6 +10,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -676,6 +677,9 @@ func (p *parser) scanNumber(start int) {
 		if sep {
 			digits = strings.ReplaceAll(digits, "_", "")
 		}
+		if numconv.BigIntDigitsTooLarge(digits, 10, p.opts.Poll) {
+			p.fail(start, "maximum BigInt size exceeded")
+		}
 		t.str = digits
 		p.finishNumber(pos + 1)
 		return
@@ -749,10 +753,13 @@ func (p *parser) scanRadix(start int, base int) {
 		digits = strings.ReplaceAll(digits, "_", "")
 	}
 	if pos < len(src) && src[pos] == 'n' {
+		if numconv.BigIntDigitsTooLarge(digits, base, p.opts.Poll) {
+			p.fail(start, "maximum BigInt size exceeded")
+		}
 		var i big.Int
 		i.SetString(digits, base)
 		t.kind = tBigInt
-		t.str = i.String()
+		t.str = numconv.FormatBigInt(&i, 10, p.opts.Poll)
 		p.finishNumber(pos + 1)
 		return
 	}
