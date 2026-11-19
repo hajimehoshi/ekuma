@@ -691,9 +691,9 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 	mark := f.top
 	defer f.free(mark)
-	op := bytecode.OpInc
+	op, postOp := bytecode.OpInc, bytecode.OpPostInc
 	if n.Op == ast.OpDec {
-		op = bytecode.OpDec
+		op, postOp = bytecode.OpDec, bytecode.OpPostDec
 	}
 	switch arg := n.Arg.(type) {
 	case *ast.Identifier:
@@ -706,8 +706,7 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 					f.emit(op, r, r, 0)
 					f.emit(bytecode.OpMove, dst, r, 0)
 				default:
-					f.emit(bytecode.OpToNumeric, dst, r, 0)
-					f.emit(op, r, dst, 0)
+					f.emit(postOp, dst, r, 0)
 				}
 				return
 			}

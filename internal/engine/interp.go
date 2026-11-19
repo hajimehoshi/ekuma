@@ -1016,6 +1016,27 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := vm.ToNumeric(x)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
+		case bytecode.OpPostInc, bytecode.OpPostDec:
+			x := regs[i.B]
+			if x.o == numberObject {
+				regs[i.A] = x
+				if i.Op == bytecode.OpPostInc {
+					regs[i.B] = Number(x.n + 1)
+				} else {
+					regs[i.B] = Number(x.n - 1)
+				}
+				continue
+			}
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.ToNumeric(x)
+			regs = vm.reload(regs, onHeap, base, fp)
+			regs[i.A] = v
+			d := int64(1)
+			if i.Op == bytecode.OpPostDec {
+				d = -1
+			}
+			// Stepping a number or a BigInt runs no JavaScript.
+			regs[i.B] = vm.step(v, d)
 		case bytecode.OpToString:
 			x := regs[i.B]
 			if x.o != nil && x.o.kind == kindString {

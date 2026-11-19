@@ -139,6 +139,8 @@ const (
 	OpInc       // a = b + 1, where b is already numeric
 	OpDec       // a = b - 1, where b is already numeric
 	OpToNumeric // a = b converted to a number or BigInt
+	OpPostInc   // a = b converted to a number or BigInt, then b = a + 1
+	OpPostDec   // a = b converted to a number or BigInt, then b = a - 1
 	OpToString  // a = b converted to a string
 	OpConcat    // a = the concatenation of the c strings from b on
 
