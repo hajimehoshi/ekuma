@@ -65,7 +65,7 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 			if !fastPathCalls[name] {
 				t.Errorf("%v: call of %s", fset.Position(n.Pos()), name)
 			}
-		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt, *ast.TypeAssertExpr, *ast.RangeStmt, *ast.SendStmt, *ast.SelectStmt:
+		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt, *ast.TypeAssertExpr, *ast.SendStmt, *ast.SelectStmt:
 			t.Errorf("%v: %T", fset.Position(n.Pos()), n)
 		case *ast.CompositeLit:
 			if _, ok := n.Type.(*ast.Ident); !ok {

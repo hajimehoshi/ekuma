@@ -924,6 +924,46 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
+		case bytecode.OpApplyFwd:
+			// f.apply(this, arguments) for an ordinary function f written in JavaScript: the
+			// arguments of the running function go above its registers, and it resumes after
+			// the OpExtra that follows the instruction.
+			b := int(i.B)
+			if f := regs[b+1].o; regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeApply) && !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
+				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
+					n := len(vm.frames)
+					cur := &vm.frames[n-1]
+					argc := cur.argc
+					argBase := cur.base + fp.nregs + 1
+					end := argBase + max(argc, c.nregs+1)
+					if (argc <= fp.nparams || cur.extraBase >= 0) && (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
+						k := min(argc, fp.nparams)
+						for j := range k {
+							vm.stack[argBase+j] = regs[j]
+						}
+						for j := k; j < argc; j++ {
+							vm.stack[argBase+j] = vm.stack[cur.extraBase+j-k]
+						}
+						this := regs[i.C]
+						cur.pc = pc + 1
+						vm.stackHigh = max(vm.stackHigh, end)
+						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
+						vm.frames = vm.frames[:n+1]
+						vm.framesHigh = max(vm.framesHigh, n+1)
+						fr := &vm.frames[n]
+						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, i.A, false
+						fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, -1, nil, nil, nil
+						vm.sp = argBase + c.nregs + 1
+						fp, cl, pc = c, f, 0
+						regs = vm.stack[argBase:vm.sp]
+						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
+							regs[r] = this
+							pc = 1
+						}
+						continue
+					}
+				}
+			}
 		case bytecode.OpReturn, bytecode.OpReturnUndef:
 			n := len(vm.frames) - 1
 			if done := &vm.frames[n]; done.gen == nil && len(vm.openUpvals) == 0 && n != stop && vm.frames[n-1].fp.realm == vm.curRealm {
