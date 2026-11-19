@@ -915,7 +915,7 @@ func (vm *VM) DisplayString(v Value) string {
 	case kindSymbol:
 		return "Symbol(" + o.str + ")"
 	case kindBigInt:
-		return bigIntString(v, 10, nil)
+		return displayBigInt(v)
 	case kindArray:
 		return "[object Array]"
 	}

@@ -87,12 +87,27 @@ func (vm *VM) addBigInts(a, b Value) Value {
 	return Value{o: &o.Object}
 }
 
-// bigIntString returns the BigInt v in the radix r. poll is as for [numconv.FormatBigInt].
-func bigIntString(v Value, r int, poll func()) string {
+// maxDisplayBigIntBits is the number of bits up to which a message shows every digit of a BigInt.
+const maxDisplayBigIntBits = 1 << 12
+
+// displayBigInt describes the BigInt v for messages. A long one is shown as its leading
+// hexadecimal digits and its number of bits, which take no division to find.
+func displayBigInt(v Value) string {
 	if i, ok := v.BigInt64(); ok {
-		return strconv.FormatInt(i, r)
+		return strconv.FormatInt(i, 10)
 	}
-	return numconv.FormatBigInt(v.BigInt(), r, poll)
+	x := v.BigInt()
+	n := x.BitLen()
+	if n <= maxDisplayBigIntBits {
+		return numconv.FormatBigInt(x, 10, nil)
+	}
+	// The shift is a multiple of 4, so the digits are those of x.
+	lead := new(big.Int).Rsh(new(big.Int).Abs(x), uint(n-64)&^3)
+	sign := ""
+	if x.Sign() < 0 {
+		sign = "-"
+	}
+	return sign + "0x" + lead.Text(16) + "... (" + strconv.Itoa(n) + " bits)"
 }
 
 // BigIntToString implements BigInt::toString. It throws a RangeError when the result would be

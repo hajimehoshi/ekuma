@@ -1757,6 +1757,21 @@ func TestCancelRegExp(t *testing.T) {
 	}
 }
 
+// TestErrorWithLongBigInt checks that an error whose message shows a long BigInt is thrown
+// without formatting all of its digits, which would take far longer than the deadline.
+func TestErrorWithLongBigInt(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	v, err := runScript(ctx, &vm, "call", `try { (1n << 2n ** 30n)(); "no error"; } catch (e) { String(e instanceof TypeError); }`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got, want := v.String(), "true"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 // TestCancelArrayIteration checks that iterating or filling a long array can be stopped.
 func TestCancelArrayIteration(t *testing.T) {
 	var vm ekuma.VM
