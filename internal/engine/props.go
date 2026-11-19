@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"cmp"
 	"math/bits"
 	"slices"
 	"strconv"
@@ -1453,7 +1454,8 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 	names := o.shape.keys()
 	if o.flags&objSparse != 0 {
 		sorted := true
-		for _, k := range names {
+		for j, k := range names {
+			vm.pollAt(j)
 			if k.kind != kindString {
 				continue
 			}
@@ -1465,21 +1467,14 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 			}
 		}
 		if !sorted {
-			slices.SortFunc(keys, func(a, b PropKey) int {
-				switch {
-				case a.idx < b.idx:
-					return -1
-				case a.idx > b.idx:
-					return 1
-				}
-				return 0
-			})
+			vm.sortIndexKeys(keys)
 		}
 	}
 	if o.kind == kindArray {
 		keys = append(keys, PropKey{key: vm.Key(KeyLength)})
 	}
-	for _, k := range names {
+	for j, k := range names {
+		vm.pollAt(j)
 		if k.kind != kindString {
 			continue
 		}
@@ -1490,12 +1485,54 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 		}
 		keys = append(keys, PropKey{key: k})
 	}
-	for _, k := range names {
+	for j, k := range names {
+		vm.pollAt(j)
 		if k.kind == kindSymbol && k.class != classPrivateName {
 			keys = append(keys, PropKey{key: k})
 		}
 	}
 	return keys
+}
+
+// pollAt checks for an interruption at every PollInterval-th step i of a loop, other than the
+// first.
+func (vm *VM) pollAt(i int) {
+	if i > 0 && i%PollInterval == 0 {
+		vm.Poll()
+	}
+}
+
+// sortIndexKeys sorts the index keys keys in ascending order, checking for an interruption while
+// it sorts many.
+func (vm *VM) sortIndexKeys(keys []PropKey) {
+	if len(keys) <= PollInterval {
+		slices.SortFunc(keys, func(a, b PropKey) int {
+			return cmp.Compare(a.idx, b.idx)
+		})
+		return
+	}
+	// A radix sort by 16 bits at a time, which ends with the keys back in keys.
+	src, dst := keys, make([]PropKey, len(keys))
+	count := make([]int, 1<<16)
+	for shift := 0; shift < 32; shift += 16 {
+		clear(count)
+		for i, k := range src {
+			vm.pollAt(i)
+			count[k.idx>>shift&0xFFFF]++
+		}
+		sum := 0
+		for d, c := range count {
+			count[d] = sum
+			sum += c
+		}
+		for i, k := range src {
+			vm.pollAt(i)
+			d := k.idx >> shift & 0xFFFF
+			dst[count[d]] = k
+			count[d]++
+		}
+		src, dst = dst, src
+	}
 }
 
 // IsExtensible implements [[IsExtensible]].
@@ -1681,7 +1718,8 @@ func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
 		vm.resolve(o)
 	}
 	if (o.class != classObject && o.class != classArray && o.class != classFunction) || o.flags&(objSparse|objExotic) != 0 {
-		for _, k := range vm.OwnKeys(o) {
+		for i, k := range vm.OwnKeys(o) {
+			vm.pollAt(i)
 			if k.IsSymbol() {
 				continue
 			}
