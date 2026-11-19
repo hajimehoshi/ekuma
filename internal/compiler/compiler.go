@@ -102,7 +102,8 @@ type scope struct {
 	// firstReg is the first register of the scope's own variables.
 	firstReg int32
 
-	// captured is set when a closure refers to a variable of the scope.
+	// captured is set when a closure refers to a variable of the scope or a direct eval is
+	// in it.
 	captured bool
 
 	// withs is the number of with statements that the scope is nested in, within the function.
@@ -1198,8 +1199,8 @@ func (f *fn) redeclares(name string) bool {
 	return false
 }
 
-// withsAround returns the number of with statements around the code being compiled,
-// including those around the enclosing functions.
+// withsAround returns the number of with statements and dynamic scopes of eval code around
+// the code being compiled, including those around the enclosing functions.
 func (f *fn) withsAround() int {
 	n := f.withDepth + f.outerWiths
 	if f.eval != nil {

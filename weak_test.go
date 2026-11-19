@@ -67,8 +67,7 @@ func TestFinalizationRegistrySharedToken(t *testing.T) {
 	`); err != nil {
 		t.Fatal(err)
 	}
-	// Removing each cleaned cell from the cells of the token took time proportional to their
-	// number, which made this take minutes.
+	// The cleanup of all the cells finishes well within the timeout.
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	defer cancel()
 	for {

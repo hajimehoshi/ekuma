@@ -147,8 +147,7 @@ func TestSameValueZeroBigInts(t *testing.T) {
 		tab.Set(engine.BigIntFromInt64(math.MinInt64), engine.Number(2))
 		tab.Set(big64(), engine.Number(3))
 		tab.Set(vm.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))), engine.Number(4))
-		// A key of many bits is found without a conversion to decimal, which would take
-		// seconds.
+		// A key of many bits is stored and found quickly.
 		huge := new(big.Int).Lsh(big.NewInt(3), 1<<26)
 		tab.Set(vm.NewBigInt(huge), engine.Number(5))
 

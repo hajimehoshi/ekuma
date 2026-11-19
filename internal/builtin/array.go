@@ -1249,9 +1249,9 @@ func mergeSortBuf[E any](s, buf []E, compare func(a, b E) int) {
 	if compare(s[mid], s[mid-1]) >= 0 {
 		return
 	}
-	// Every element of the left half is taken from the copy in buf. The index i in s it is
-	// taken to never passes the index j in s of the next right element, so no right element
-	// is overwritten before it is taken.
+	// Every element of the left half is taken from the copy in buf, and the index i in s that it
+	// is written to never passes the index j of the next right element, so no right element is
+	// overwritten before it is taken.
 	left := buf[:copy(buf, s[:mid])]
 	i, j := 0, mid
 	for len(left) > 0 && j < len(s) {

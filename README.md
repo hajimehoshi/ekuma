@@ -196,7 +196,7 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
 Without the import, these features do not contribute to binary size. With it, a hello-world
-program grows from about 8.7 MB to 15.9 MB natively, and from 11.2 MB to 18.5 MB with `GOOS=js`.
+program grows from about 8.8 MB to 16.0 MB natively, and from 11.3 MB to 18.7 MB with `GOOS=js`.
 
 Set the VM default locale with `vm.SetLocale("ja-JP")`; `vm.SetLocale("")` restores
 the host default. Explicit JavaScript locale arguments take precedence, and existing

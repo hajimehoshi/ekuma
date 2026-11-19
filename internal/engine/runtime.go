@@ -563,7 +563,8 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	if x.o == numberObject || y.o == numberObject {
 		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	// An operation on huge BigInts cannot stop once it starts.
+	// Subtraction, the bitwise operations and the shifts on huge BigInts cannot stop once they
+	// start, so a pending interruption is taken before them.
 	if vm.interrupt.Load() {
 		vm.Poll()
 	}

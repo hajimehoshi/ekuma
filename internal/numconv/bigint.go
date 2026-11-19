@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-// parseLeafDigits is the number of digits up to which ParseBigInt converts digits in one step.
+// parseLeafDigits is the number of digits up to which ParseBigInt converts digits of a radix
+// other than a power of two in one step, and the number of digits between polls otherwise.
 const parseLeafDigits = 1 << 13
 
 // formatLeafBits is the size in bits up to which FormatBigInt converts an integer in one step.

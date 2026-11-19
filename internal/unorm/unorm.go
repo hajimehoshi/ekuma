@@ -48,8 +48,8 @@ func String(form norm.Form, s string, poll func()) string {
 }
 
 // cut returns the offset of a boundary of the normalization form in s, which is longer than
-// chunk, other than its start: one at most chunk bytes in, or else the first one after them, or
-// len(s) when there is none.
+// chunk, other than its start: the last one in the boundaryWindow bytes before chunk, or else
+// the first one from chunk on, or len(s) when there is none.
 func cut(form norm.Form, s string, poll func()) int {
 	if i := LastBoundary(form, s[:chunk]); i > 0 {
 		return i
