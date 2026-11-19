@@ -65,6 +65,11 @@ type funcProto struct {
 	// heapRegs says whether the frames of the functions keep their registers in their
 	// generator instead of on the stack.
 	heapRegs bool
+
+	// inlineFrames says whether the fast paths of the interpreter loop may push frames of the
+	// functions: the inline caches exist, and the functions are neither generators, async
+	// functions nor class constructors.
+	inlineFrames bool
 }
 
 type templateSite struct {
@@ -205,5 +210,6 @@ func (p *funcProto) firstCleared(argc int) int {
 func (p *funcProto) prepare() {
 	if p.caches == nil {
 		p.caches = make([]propCache, p.NumCaches)
+		p.inlineFrames = !p.heapRegs && !p.isClassConstructor
 	}
 }

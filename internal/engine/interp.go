@@ -930,8 +930,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					this, argc = Value{}, 0
 				}
 			}
-			if !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
-				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
+			if !fp.heapRegs && f != nil && f.fn != nil {
+				if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
 					n := len(vm.frames)
 					argBase := vm.frames[n-1].base + first
 					end := argBase + max(argc, c.nregs+1)
@@ -968,8 +968,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			// arguments of the running function go above its registers, and it resumes after
 			// the OpExtra that follows the instruction.
 			b := int(i.B)
-			if f := regs[b+1].o; regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeApply) && !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
-				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
+			if f := regs[b+1].o; regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeApply) && !fp.heapRegs && f != nil && f.fn != nil {
+				if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
 					n := len(vm.frames)
 					cur := &vm.frames[n-1]
 					argc := cur.argc
