@@ -135,7 +135,8 @@ type Object struct {
 	str string
 
 	// ext is the internal state of a built-in object. For a string that is not interned
-	// it is the interned string with the same content, once that was looked up.
+	// it is the interned string with the same content, once that was looked up, or the state
+	// of concatenations onto it (see concat.go).
 	// When the object has side data, ext is its *objectMeta, which holds the internal state
 	// instead. See [Object.extState] and [Object.meta].
 	ext any

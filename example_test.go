@@ -127,7 +127,8 @@ func ExampleVM_NewRealm() {
 }
 
 // This example hands the memory of a SharedArrayBuffer to a VM on another goroutine, whose
-// store wakes the Atomics.wait of the first VM.
+// store the first VM reads after Atomics.wait: the wait blocks until the notification, or
+// returns at once when the store came first.
 func Example_sharedArrayBuffer() {
 	ctx := context.Background()
 	blocks := make(chan *ekuma.SharedDataBlock)

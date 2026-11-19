@@ -52,8 +52,11 @@ type ModuleRequest struct {
 // throws a JavaScript SyntaxError. import() rejects its promise with it, and the methods of
 // [Module] return it as a [*ScriptError].
 //
-// Without a loader, or with a nil f, every import fails with a TypeError. The loader applies
-// to subsequent module loads. Already loaded modules retain their loaded dependencies.
+// Without a loader, or with a nil f, every import fails with a TypeError. An import also fails
+// with a SyntaxError when its attributes are not supported, and with a TypeError when f returns
+// a nil [*Module] without an error or when the module is being loaded by a call that has not
+// finished. The loader applies to subsequent module loads. Already loaded modules retain their
+// loaded dependencies.
 func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 	vm.initIfNeeded()
 	if f == nil {
@@ -158,7 +161,8 @@ func (m *Module) Name() string {
 // LoadRequestedModules loads the modules that m and its dependencies import, with the loader
 // of the VM (see [VM.SetModuleLoader]). [Module.Link], [Module.Evaluate] and [Module.Namespace]
 // call it, so calling it is needed only to load before linking. The error is the error of the
-// loader, or a [*ScriptError] holding a TypeError when there is no loader.
+// loader, or a [*ScriptError] holding the SyntaxError or TypeError of a failed import (see
+// [VM.SetModuleLoader]).
 func (m *Module) LoadRequestedModules() error {
 	m.vm.initIfNeeded()
 	return publicError(m.vm.e.LoadRequestedModules(m.m))
@@ -176,7 +180,8 @@ func (m *Module) Link() error {
 
 // Evaluate evaluates m and its dependencies, runs the pending jobs, and returns a promise
 // for the evaluation. It calls [Module.Link] first. An exception thrown by a module rejects the
-// promise, and evaluating m again returns the same promise.
+// promise. Evaluating a source text module again returns the same promise; a synthetic or JSON
+// module returns a new fulfilled promise each time.
 //
 // The error is the error of [Module.Link]. When ctx is done, the evaluation stops at its next
 // loop iteration or call, and the error is the cause of ctx. Any call that a context stops

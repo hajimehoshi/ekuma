@@ -13,7 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// The ext of a string that a concatenation made tells how a concatenation onto it proceeds.
+// The internal state (see [Object.extState]) of a string that a concatenation made tells how a concatenation onto it proceeds.
 //
 // A *strings.Builder whose contents are the string makes the string the tail of its builder: a
 // concatenation onto it appends to the builder, and the result becomes the tail in its place.
@@ -24,8 +24,8 @@ import (
 // A *reversedBuilder whose contents are the str of a reversed string (see [objReversed]) makes
 // the string the head of its builder in the same way: a concatenation that prepends to it
 // appends the prepended bytes in reverse order to the builder, and the result becomes the head
-// in its place. Only a head refers to its builder, so the ext of a reversed string is its
-// builder or nil.
+// in its place. Only a head refers to its builder, so the internal state of a reversed
+// string is its builder or nil.
 //
 // A concatCount counts the concatenations in a row that made the string without a builder.
 

@@ -228,7 +228,7 @@ func (v Value) vm(method string) (*VM, error) {
 // Get returns the value of the property named name on v.
 //
 // The error is a [*ValueError] when v is not an object, a function or a string,
-// and a [*ScriptError] when a getter throws.
+// and a [*ScriptError] when the operation throws a JavaScript exception.
 func (v Value) Get(name string) (Value, error) {
 	vm, err := v.vm("Value.Get")
 	if err != nil {

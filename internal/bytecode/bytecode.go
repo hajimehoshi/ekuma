@@ -18,7 +18,7 @@ type Opcode uint8
 //
 //   - An operand is a register unless its comment says otherwise. An operand that may name no
 //     register is -1 then.
-//   - K is an index into [Func.Consts] and N an index into [Func.Keys].
+//   - Consts[x] and Keys[x] are the elements of [Func.Consts] and [Func.Keys] at the index x.
 //   - A site is an index into [Func.Keys] that also names an inline cache of its own.
 //   - A flag is 0 or 1.
 //   - An instruction writes the value that it produces to a. A jump has its target in a, or in
@@ -188,9 +188,11 @@ const (
 
 	// The calls in tail position of strict functions. When the callee is a function written in
 	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
-	// callee returns to the caller of the running function. A callee that is Function.prototype.call
-	// stands for its this value. Otherwise they are the ordinary calls, and the next instructions
-	// return the result.
+	// callee returns to the caller of the running function. A bound function stands for its target
+	// with its bound arguments, Function.prototype.call for its this value, and
+	// Function.prototype.apply for its this value when its argument list can be made without
+	// running JavaScript. Otherwise they are the ordinary calls, and the next instructions return
+	// the result.
 	OpTailCall       // like [OpCall]
 	OpTailCallSpread // like [OpCallSpread]
 	OpTailCallEval   // like [OpCallEval], where the instruction after one with b = -1 is [OpTailCallSpread]
@@ -214,7 +216,7 @@ const (
 	// Generators and async functions.
 	OpInitialYield        // suspend a generator before its body
 	OpYield               // suspend the generator with the value b; a receives the value sent on resume. The flag c, set for yield*, leaves every resume kind to the code that follows and passes the result b through
-	OpAwait               // suspend until the promise b settles; a receives its value
+	OpAwait               // suspend until the value b, as a promise, settles; a receives its value
 	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
 	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
 
@@ -261,7 +263,7 @@ const (
 
 	// Disposal of resources.
 	OpUsing        // add the resource a with the Dispose hint c to the dispose capability b, which is created when b is undefined
-	OpDisposeBegin // start disposing the capability a for the completion b, which is a throw when c is the integer 1
+	OpDisposeBegin // start disposing the capability a for the completion b, which is a throw when c holds the integer 1
 	OpDisposeStep  // a = the next value to await in disposing the capability b; jump to c when there is none
 	OpDisposeError // record that disposing a resource of the capability a threw b
 	OpDisposeEnd   // end disposing the capability a and throw its completion when it is a throw; a becomes undefined

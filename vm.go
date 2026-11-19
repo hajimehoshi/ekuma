@@ -376,8 +376,9 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 }
 
 // SetLocale sets the default locale for locale-sensitive operations in every realm.
-// An empty or unsupported locale uses the host default. Existing Intl instances keep
-// their locale. A malformed locale returns an error without changing the default.
+// A locale that is not available uses its longest available prefix, such as "ja" for "ja-XX",
+// and an empty locale or one without an available prefix uses the host default. Existing Intl
+// instances keep their locale. A malformed locale returns an error without changing the default.
 func (vm *VM) SetLocale(locale string) error {
 	vm.initIfNeeded()
 	if locale != "" {
