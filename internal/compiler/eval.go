@@ -126,6 +126,23 @@ func hasDirectEval(nested int, nodes ...ast.Node) bool {
 	return found
 }
 
+// mayCapture reports whether e can create a closure or run a direct eval.
+func mayCapture(e ast.Expr) bool {
+	found := false
+	walk(e, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.Function, *ast.Class:
+			found = true
+		case *ast.CallExpr:
+			if id, ok := n.Callee.(*ast.Identifier); ok && id.Name == "eval" && !n.Optional {
+				found = true
+			}
+		}
+		return !found
+	})
+	return found
+}
+
 // arrowsHaveDirectEval reports whether a direct eval call occurs in an arrow function
 // nested in the function node, or in one nested in such an arrow function.
 func arrowsHaveDirectEval(node *ast.Function) bool {

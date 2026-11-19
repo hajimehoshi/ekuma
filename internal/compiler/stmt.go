@@ -636,7 +636,9 @@ func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 	}
 	f.stmt(s.Body, nil)
 	f.patchAll(c.continues)
-	if scoped {
+	// The update is compiled after the copy, so the closures and direct evals in it are not
+	// known from the scope yet.
+	if scoped && (f.scope.captured || mayCapture(s.Update)) {
 		// Every iteration has its own copy of the loop variables.
 		f.emit(bytecode.OpCloseUpvals, f.scope.firstReg, 0, 0)
 	}
