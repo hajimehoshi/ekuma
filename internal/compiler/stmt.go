@@ -200,6 +200,16 @@ func (f *fn) findTarget(n ast.Node, label *ast.Identifier, isContinue bool) *ctl
 	return nil
 }
 
+// closesIterators reports whether a return from the current position closes an iterator.
+func (f *fn) closesIterators() bool {
+	for _, c := range f.control {
+		if c.kind == ctlLoop && c.hasIter {
+			return true
+		}
+	}
+	return false
+}
+
 // exit emits the jump out of the constructs above target on the control stack.
 // For exitReturn, target is nil and value is the register of the result.
 func (f *fn) exit(kind exitKind, target *ctl, value int32) {
@@ -456,17 +466,25 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.patchAll(exit)
 		f.popLoop(c)
 	case *ast.ReturnStmt:
-		v := f.newReg()
+		var v int32
 		if s.Arg != nil {
 			if f.canTailCall() {
 				f.markTails(s.Arg)
 			}
-			f.expr(s.Arg, v)
+			awaits := f.f.IsAsync && f.f.IsGenerator
+			if awaits {
+				v = f.newReg()
+				f.expr(s.Arg, v)
+			} else {
+				// Closing an iterator on the way out runs other code before the return.
+				v = f.heldOperand(s.Arg, f.closesIterators())
+			}
 			f.tails = f.tails[:0]
-			if f.f.IsAsync && f.f.IsGenerator {
+			if awaits {
 				f.emit(bytecode.OpAwait, v, v, 0)
 			}
 		} else {
+			v = f.newReg()
 			f.emit(bytecode.OpLoadUndef, v, 0, 0)
 		}
 		f.exit(exitReturn, nil, v)
