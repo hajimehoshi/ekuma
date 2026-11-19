@@ -1218,13 +1218,25 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 // callBound calls the bound function f, unwrapping a chain of bound functions without recursion.
 func (vm *VM) callBound(f *Object, args []Value) Value {
 	var this Value
+	base := vm.sp
 	for b := f.fn.bound; b != nil; b = f.fn.bound {
-		if len(b.args) > 0 {
-			args = append(append(make([]Value, 0, len(b.args)+len(args)), b.args...), args...)
+		if k := len(b.args); k > 0 {
+			// The combined arguments go on the stack above its top. args may start at the top,
+			// so it moves up before the bound arguments are written.
+			top := vm.sp
+			n := k + len(args)
+			vm.ensureStack(top + n)
+			s := vm.stack[top : top+n : top+n]
+			copy(s[k:], args)
+			copy(s, b.args)
+			vm.sp = top + n
+			args = s
 		}
 		f, this = b.target, b.this
 	}
-	return vm.callSlow(f, this, args, false, nil)
+	r := vm.callSlow(f, this, args, false, nil)
+	vm.sp = base
+	return r
 }
 
 // callNativeInRealm calls the native function f, whose realm is not the current one, in its realm.
