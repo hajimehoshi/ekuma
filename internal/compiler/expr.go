@@ -343,6 +343,9 @@ func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
 	}
 	r := f.immediateOperand(n.Right)
 	f.emit(binaryOps[n.Op], dst, l, r)
+	if n.Op == ast.OpInstanceof {
+		f.emit(bytecode.OpExtra, f.site("prototype"), 0, 0)
+	}
 	f.free(mark)
 }
 

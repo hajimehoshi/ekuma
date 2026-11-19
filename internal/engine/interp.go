@@ -861,6 +861,38 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 			continue
+		case bytecode.OpInstanceof:
+			// An ordinary function whose prototype property the cache holds, with the
+			// @@hasInstance of %Function.prototype%: OrdinaryHasInstance walks the prototype
+			// chain of b, unless a proxy is on it.
+			if co := regs[i.C].o; co != nil {
+				c := &fp.caches[fp.code[pc].A]
+				if co.shape == c.shape && c.kind == cacheOwn && c.epoch == vm.protoEpoch && co.class == classFunction && co.fn != nil && co.fn.bound == nil {
+					if p := co.slots[c.slot].o; p != nil && p.kind >= kindFirstObject {
+						r, known := false, true
+						if o := regs[i.B].o; o != nil && o.kind >= kindFirstObject {
+							for h := o; ; {
+								if h.class == classProxy {
+									known = false
+									break
+								}
+								if h = h.shape.proto; h == nil {
+									break
+								}
+								if h == p {
+									r = true
+									break
+								}
+							}
+						}
+						if known {
+							regs[i.A] = Bool(r)
+							pc++
+							continue
+						}
+					}
+				}
+			}
 		case bytecode.OpArrayPush:
 			if o := regs[i.A].o; len(o.elems) < cap(o.elems) {
 				n := len(o.elems)
@@ -1289,8 +1321,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpInstanceof:
+			site := &fp.caches[fp.code[pc].A]
+			pc++
 			vm.frames[len(vm.frames)-1].pc = pc
-			r := vm.instanceOf(regs[i.B], regs[i.C])
+			r := vm.instanceOf(regs[i.B], regs[i.C], site)
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpHasPrivate:

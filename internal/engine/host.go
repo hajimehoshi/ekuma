@@ -129,7 +129,7 @@ func (vm *VM) HostReject(c *PromiseCapability, v Value) error {
 // HostInstanceOf implements v instanceof t.
 func (vm *VM) HostInstanceOf(v, t Value) (bool, error) {
 	r, err := vm.enter(func() Value {
-		return Bool(vm.instanceOf(v, t))
+		return Bool(vm.instanceOf(v, t, nil))
 	})
 	return ToBoolean(r), err
 }

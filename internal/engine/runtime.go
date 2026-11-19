@@ -405,13 +405,15 @@ func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
 	}
 }
 
-// instanceOf implements InstanceofOperator.
-func (vm *VM) instanceOf(v, c Value) bool {
+// instanceOf implements InstanceofOperator. site is the inline cache of the OpInstanceof that
+// evaluates it, or nil.
+func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
 	for {
 		if !c.IsObject() {
 			vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 		}
 		if !vm.inheritsHasInstance(c.o) {
+			site = nil
 			if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
 				if m != vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
 					return ToBoolean(vm.Call(m, c, v))
@@ -422,9 +424,9 @@ func (vm *VM) instanceOf(v, c Value) bool {
 		}
 		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
 		if !c.IsCallable() || c.o.fn.bound == nil {
-			return vm.OrdinaryHasInstance(c, v)
+			return vm.ordinaryHasInstance(c, v, site)
 		}
-		c = Value{o: c.o.fn.bound.target}
+		c, site = Value{o: c.o.fn.bound.target}, nil
 	}
 }
 
@@ -463,11 +465,17 @@ func (vm *VM) functionPrototype(c *Object) Value {
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
 func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
+	return vm.ordinaryHasInstance(c, v, nil)
+}
+
+// ordinaryHasInstance implements OrdinaryHasInstance for the instanceof operator with the inline
+// cache site, which is nil unless the @@hasInstance of c is that of %Function.prototype%.
+func (vm *VM) ordinaryHasInstance(c, v Value, site *propCache) bool {
 	if !c.IsCallable() {
 		return false
 	}
 	if b := c.o.fn.bound; b != nil {
-		return vm.instanceOf(v, Value{o: b.target})
+		return vm.instanceOf(v, Value{o: b.target}, nil)
 	}
 	if !v.IsObject() {
 		return false
@@ -475,6 +483,13 @@ func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 	p := vm.functionPrototype(c.o)
 	if !p.IsObject() {
 		vm.ThrowTypeError("function has non-object prototype in instanceof check")
+	}
+	if site != nil && c.o.class == classFunction && c.o.flags&objExotic == 0 {
+		// The fast path of OpInstanceof reads the prototype property from its slot while c
+		// keeps its shape and no prototype changes, so that @@hasInstance stays inherited.
+		if s, ok := c.o.shape.lookup(vm.Key(KeyPrototype)); ok && s.flags&FlagAccessor == 0 {
+			site.cacheEntry = cacheEntry{shape: c.o.shape, kind: cacheOwn, slot: s.slot, epoch: vm.protoEpoch}
+		}
 	}
 	for o := vm.ProtoOf(v.o); o != nil; o = vm.ProtoOf(o) {
 		if o == p.o {

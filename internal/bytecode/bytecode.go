@@ -90,7 +90,7 @@ const (
 	OpDeleteProp       // a = delete b[c]
 	OpDeletePropStrict // like [OpDeleteProp], in strict code
 	OpIn               // a = b in c
-	OpInstanceof       // a = b instanceof c
+	OpInstanceof       // a = b instanceof c; x.a is a site for the prototype property of c
 	OpToPropertyKey    // a = b converted to a property key. c is -1, or the object of a compound assignment to its property b: then a key that is an integer from 0 to 2^32-1 stays a number, and a key that needs converting first throws a TypeError when c is undefined or null
 
 	// Super properties.
