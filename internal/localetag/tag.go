@@ -156,8 +156,9 @@ func parseLanguageID(subtags []string) (LanguageID, int, bool) {
 		id.Region = strings.ToUpper(subtags[i])
 		i++
 	}
+	var seen map[string]struct{}
 	for i < len(subtags) && IsVariantSubtag(subtags[i]) {
-		if slices.Contains(id.Variants, subtags[i]) {
+		if HasDuplicate(&seen, id.Variants, subtags[i]) {
 			return id, 0, false
 		}
 		id.Variants = append(id.Variants, subtags[i])
@@ -378,4 +379,24 @@ func (t Tag) WithoutUnicode() Tag {
 // BaseName returns the unicode_language_id of t as a language tag.
 func (t Tag) BaseName() string {
 	return t.LanguageID.String()
+}
+
+// HasDuplicate reports whether v is in list, for the calls that check the strings of one list
+// in order and share seen, which starts as nil.
+func HasDuplicate(seen *map[string]struct{}, list []string, v string) bool {
+	const short = 8
+	if *seen == nil {
+		if len(list) < short {
+			return slices.Contains(list, v)
+		}
+		*seen = make(map[string]struct{}, len(list))
+		for _, w := range list {
+			(*seen)[w] = struct{}{}
+		}
+	}
+	if _, ok := (*seen)[v]; ok {
+		return true
+	}
+	(*seen)[v] = struct{}{}
+	return false
 }

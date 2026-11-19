@@ -447,6 +447,7 @@ func initArrayToLocaleString(vm *engine.VM) {
 		locales, options := arg(args, 0), arg(args, 1)
 		var b wtf8.Builder
 		for k := range n {
+			vm.PollAt(k)
 			if k > 0 {
 				b.WriteString(",")
 			}

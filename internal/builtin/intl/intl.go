@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
@@ -145,7 +146,9 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 	}
 	n := vm.LengthOfArrayLike(o)
 	var seen []string
+	var seenSet map[string]struct{}
 	for k := range n {
+		vm.PollAt(k)
 		pk := vm.ToPropertyKey(engine.Number(float64(k)))
 		if !vm.HasProperty(o, pk) {
 			continue
@@ -164,7 +167,7 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 		if !ok {
 			vm.ThrowRangeError("invalid language tag: " + tag)
 		}
-		if !slices.Contains(seen, c) {
+		if !localetag.HasDuplicate(&seenSet, seen, c) {
 			seen = append(seen, c)
 		}
 	}

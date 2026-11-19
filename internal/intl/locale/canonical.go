@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
@@ -46,6 +47,21 @@ func applyAlias(id *LanguageID, rule, repl LanguageID) {
 	id.Variants = vs
 }
 
+// aliasSubtags returns the set of the subtags after the language of the keys of the
+// language alias rules.
+var aliasSubtags = sync.OnceValue(func() map[string]struct{} {
+	m := map[string]struct{}{}
+	for i := range cldr.LanguageAliases.Len() {
+		_, rest, _ := strings.Cut(cldr.LanguageAliases.Key(i), "-")
+		for t := range strings.SplitSeq(rest, "-") {
+			if t != "" {
+				m[t] = struct{}{}
+			}
+		}
+	}
+	return m
+})
+
 // replaceLanguageAlias applies the first language alias rule that matches id, and reports
 // whether one did. Rules with more variants come first, then rules with a region, then the
 // rule for the language alone.
@@ -63,8 +79,16 @@ func replaceLanguageAlias(id *LanguageID) bool {
 	if id.Language != "und" {
 		langs = append(langs, "und")
 	}
-	for i, v := range id.Variants {
-		for _, w := range id.Variants[i+1:] {
+	// Only the variants of the rules can match, which keeps the pairs few.
+	aliased := aliasSubtags()
+	var variants []string
+	for _, v := range id.Variants {
+		if _, ok := aliased[v]; ok {
+			variants = append(variants, v)
+		}
+	}
+	for i, v := range variants {
+		for _, w := range variants[i+1:] {
 			for _, l := range langs {
 				if try(l + "-" + v + "-" + w) {
 					return true
@@ -72,7 +96,7 @@ func replaceLanguageAlias(id *LanguageID) bool {
 			}
 		}
 	}
-	for _, v := range id.Variants {
+	for _, v := range variants {
 		for _, l := range langs {
 			if try(l + "-" + v) {
 				return true

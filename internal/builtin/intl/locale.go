@@ -71,8 +71,9 @@ func subtagOption(vm *engine.VM, options *engine.Object, name string, valid func
 // duplicates.
 func validVariants(s string) bool {
 	vs := strings.Split(s, "-")
+	var seen map[string]struct{}
 	for i, v := range vs {
-		if !localetag.IsVariantSubtag(v) || slices.Contains(vs[:i], v) {
+		if !localetag.IsVariantSubtag(v) || localetag.HasDuplicate(&seen, vs[:i], v) {
 			return false
 		}
 	}

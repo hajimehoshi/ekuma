@@ -161,6 +161,12 @@ func TestFormatters(t *testing.T) {
 			want: "true",
 		},
 		{
+			// The variants are not compared in pairs.
+			name: "many variants",
+			src:  `var v = []; for (let i = 0; i < 100000; i++) v.push("v" + i.toString(36).padStart(4, "0")); String(Intl.getCanonicalLocales("en-" + v.join("-"))[0].length)`,
+			want: "600002",
+		},
+		{
 			name: "relative time",
 			src:  `[new Intl.RelativeTimeFormat("ja", {numeric: "auto"}).format(-1, "day"), new Intl.RelativeTimeFormat("ar-u-nu-arab").format(3, "hours")].join("; ")`,
 			want: "昨日; خلال ٣ ساعات",
@@ -238,7 +244,7 @@ func TestFormatters(t *testing.T) {
 	}
 }
 
-// TestCancelFormatting checks that a context stops formatting a long value.
+// TestCancelFormatting checks that a context stops formatting a long value or a long list.
 func TestCancelFormatting(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -251,6 +257,14 @@ func TestCancelFormatting(t *testing.T) {
 		{
 			name: "Intl.NumberFormat.prototype.format with a BigInt",
 			src:  `new Intl.NumberFormat().format((1n << (1n << 23n)) - 1n)`,
+		},
+		{
+			name: "a list of locales without elements",
+			src:  `Intl.getCanonicalLocales({length: 2 ** 53})`,
+		},
+		{
+			name: "Array.prototype.toLocaleString of holes",
+			src:  `var a = []; a.length = 2 ** 32 - 1; a.toLocaleString()`,
 		},
 	} {
 		var vm ekuma.VM
