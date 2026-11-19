@@ -371,8 +371,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		vm.switchRealm(fp.realm)
 	}
 	var regs []Value
-	onHeap := fr.gen != nil
-	if onHeap {
+	if fp.heapRegs {
 		regs = fr.gen.regs
 	} else {
 		regs = vm.stack[base : base+fp.nregs+1]
@@ -450,7 +449,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.resolveGlobal(fp.keys[i.B], c)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpDeclareGlobalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -476,7 +475,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetUpval:
 			*cl.fn.upvals[i.B].p = regs[i.A]
 		case bytecode.OpCloseUpvals:
-			if onHeap {
+			if fp.heapRegs {
 				vm.frames[len(vm.frames)-1].gen.closeUpvals(int(i.A))
 			} else if len(vm.openUpvals) > 0 {
 				vm.closeUpvals(base + int(i.A))
@@ -506,7 +505,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					u.val = regs[d.Index]
 					u.p = &u.val
 					fn.upvals[j] = u
-				case onHeap:
+				case fp.heapRegs:
 					fn.upvals[j] = vm.frames[len(vm.frames)-1].gen.findUpval(int(d.Index))
 				default:
 					fn.upvals[j] = vm.findUpval(base + int(d.Index))
@@ -767,12 +766,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			pc++
 			if ext.B == 0 {
 				v, _ := vm.getSuper(vm.superBase(regs[ext.A]), regs[i.C], regs[i.B])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.A] = v
 				continue
 			}
 			v, key := vm.getSuper(regs[ext.A], regs[i.C], regs[i.B])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.C] = vm.KeyValue(key)
 			regs[i.A] = v
 		case bytecode.OpSetSuper, bytecode.OpSetSuperStrict:
@@ -780,11 +779,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			superBase := regs[code[pc].A]
 			pc++
 			vm.setSuper(superBase, regs[i.B], regs[i.C], regs[i.A], i.Op == bytecode.OpSetSuperStrict)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpDeleteProp, bytecode.OpDeletePropStrict:
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.deleteValue(regs[i.B], regs[i.C], i.Op == bytecode.OpDeletePropStrict)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpIn:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -793,12 +792,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
 			r := vm.HasProperty(c.o, vm.QueryKey(regs[i.B]))
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpInstanceof:
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := vm.instanceOf(regs[i.B], regs[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpHasPrivate:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -842,7 +841,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			k := vm.KeyValue(vm.ToPropertyKey(v))
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = k
 
 		case bytecode.OpAdd:
@@ -857,7 +856,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			v := vm.addValues(x, y)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpSub:
 			x, y := regs[i.B], regs[i.C]
@@ -949,7 +948,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.addValues(x, fp.consts[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpSubK:
 			x := regs[i.B]
@@ -1027,7 +1026,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.negate(x)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpPlus:
 			x := regs[i.B]
@@ -1037,7 +1036,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			n := vm.ToNumber(x)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Number(n)
 		case bytecode.OpNot:
 			regs[i.A] = Bool(!ToBoolean(regs[i.B]))
@@ -1049,7 +1048,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.bitNot(x)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpToNumeric:
 			x := regs[i.B]
@@ -1059,7 +1058,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.ToNumeric(x)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpPostInc, bytecode.OpPostDec:
 			x := regs[i.B]
@@ -1074,7 +1073,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.ToNumeric(x)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 			d := int64(1)
 			if i.Op == bytecode.OpPostDec {
@@ -1090,7 +1089,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.ToStringValue(x)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpConcat:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1113,7 +1112,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				d = -1
 			}
 			v := vm.step(x, d)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 
 		case bytecode.OpLt:
@@ -1124,7 +1123,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := vm.compare(x, y, true) == cmpLess
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpLe:
 			x, y := regs[i.B], regs[i.C]
@@ -1134,7 +1133,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			c := vm.compare(y, x, false)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpGt:
 			x, y := regs[i.B], regs[i.C]
@@ -1144,7 +1143,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := vm.compare(y, x, false) == cmpLess
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpGe:
 			x, y := regs[i.B], regs[i.C]
@@ -1154,7 +1153,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			c := vm.compare(x, y, true)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(c == cmpGreater || c == cmpEqual)
 		case bytecode.OpEq, bytecode.OpNe:
 			x, y := regs[i.B], regs[i.C]
@@ -1164,7 +1163,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else {
 				vm.frames[len(vm.frames)-1].pc = pc
 				r = vm.looseEquals(x, y)
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 			}
 			regs[i.A] = Bool(r == (i.Op == bytecode.OpEq))
 		case bytecode.OpStrictEq:
@@ -1226,7 +1225,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := vm.compare(x, y, true) == cmpLess
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if !r {
 				pc = int(i.A)
 			}
@@ -1240,7 +1239,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			c := vm.compare(y, x, false)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if !(c == cmpGreater || c == cmpEqual) {
 				pc = int(i.A)
 			}
@@ -1254,7 +1253,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := vm.compare(y, x, false) == cmpLess
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if !r {
 				pc = int(i.A)
 			}
@@ -1268,7 +1267,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			c := vm.compare(x, y, true)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if !(c == cmpGreater || c == cmpEqual) {
 				pc = int(i.A)
 			}
@@ -1280,7 +1279,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else {
 				vm.frames[len(vm.frames)-1].pc = pc
 				r = vm.looseEquals(x, y)
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 			}
 			if r != (i.Op == bytecode.OpJumpNotEq) {
 				pc = int(i.A)
@@ -1312,7 +1311,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if x.o != numberObject {
 					if vm.compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
 						pc = int(i.A)
@@ -1328,7 +1327,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if x.o != numberObject {
 					if c := vm.compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
 						pc = int(i.A)
@@ -1344,7 +1343,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if x.o != numberObject {
 					if vm.compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
 						pc = int(i.A)
@@ -1360,7 +1359,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if x.o != numberObject {
 				vm.frames[len(vm.frames)-1].pc = pc
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if x.o != numberObject {
 					if c := vm.compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
 						pc = int(i.A)
@@ -1397,7 +1396,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			fallthrough
 		case bytecode.OpCall:
 			b := int(i.B)
-			if f := regs[b].o; !onHeap && f != nil && f.fn != nil && !f.fn.classConstructor {
+			if f := regs[b].o; !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
 				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
 					argc := int(i.C)
 					argBase := base + b + 2
@@ -1483,7 +1482,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if regs[b].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
 				v := vm.directEval(evalArg(regs[b+2:], int(i.C)), site)
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.A] = v
 				if i.C < 0 {
 					pc++
@@ -1520,7 +1519,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			site := code[pc].A
 			pc++
 			f, argBase, argc, ret = regs[b].o, b+2, int(i.C), i.A
-			if onHeap {
+			if fp.heapRegs {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
 				copy(vm.stack[top:], regs[argBase:argBase+argc])
@@ -1558,7 +1557,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSuperCall:
 			b := int(i.B)
 			argBase, argc, ret = b+2, int(i.C), i.A
-			if onHeap {
+			if fp.heapRegs {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
 				copy(vm.stack[top:], regs[argBase:argBase+argc])
@@ -1609,8 +1608,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			code = fp.code
 			base = fr.base
 			pc = fr.pc
-			onHeap = fr.gen != nil
-			if onHeap {
+			if fp.heapRegs {
 				regs = fr.gen.regs
 				vm.sp = base
 			} else {
@@ -1651,8 +1649,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			code = fp.code
 			base = fr.base
 			pc = fr.pc
-			onHeap = fr.gen != nil
-			if onHeap {
+			if fp.heapRegs {
 				regs = fr.gen.regs
 				vm.sp = base
 			} else {
@@ -1686,13 +1683,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 			}
 			done := ToBoolean(vm.GetV(r, vm.Key(keyDone)))
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if !done {
 				pc = int(i.C)
 				continue
 			}
 			v := vm.GetV(r, vm.Key(KeyValue))
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 
 		case bytecode.OpNewObject:
@@ -1720,11 +1717,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := regs[i.A].o
 			vm.appendIterable(o, regs[i.B])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpSpreadArgs:
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := vm.spreadArgs(regs[i.B])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Value{o: o}
 		case bytecode.OpRegExp:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -1735,14 +1732,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpRegExpMethod:
 			vm.frames[len(vm.frames)-1].pc = pc
 			m, this := vm.regExpLiteralMethod(&fp.regExps[i.B], fp.keys[i.C], &fp.caches[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A], regs[i.A+1] = m, Value{o: this}
 		case bytecode.OpTemplate:
 			regs[i.A] = Value{o: vm.templateObject(&fp.templates[i.B])}
 		case bytecode.OpDefineField:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.defineField(regs[i.A].o, regs[i.B], regs[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpDefineFieldK:
 			o := regs[i.A].o
 			c := &fp.caches[i.B]
@@ -1756,13 +1753,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDefineMethod:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.defineMethod(regs[i.A].o, regs[i.B], regs[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpDefineGetter, bytecode.OpDefineSetter:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			enumerable := code[pc].A != 0
 			pc++
 			vm.defineAccessor(regs[i.A].o, regs[i.B], regs[i.C].o, i.Op == bytecode.OpDefineSetter, enumerable)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpSetFuncName:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setFuncName(regs[i.A], regs[i.B], int(i.C))
@@ -1771,7 +1768,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCopyProps:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.copyDataProperties(regs[i.A].o, regs[i.B], nil)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpCopyPropsExcept:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			n := int(code[pc].A)
@@ -1779,7 +1776,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			o := vm.NewOrdinaryObject()
 			excluded := append([]Value(nil), regs[i.C:int(i.C)+n]...)
 			vm.copyDataProperties(o, regs[i.B], excluded)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Value{o: o}
 		case bytecode.OpSetProto:
 			if p := regs[i.B]; p.IsObject() {
@@ -1794,7 +1791,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				parent = regs[i.C]
 			}
 			proto := vm.setupClass(regs[i.A].o, parent)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A+1] = Value{o: proto}
 		case bytecode.OpPrivateName:
 			name := &Object{
@@ -1810,14 +1807,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if regs[i.A].o.fn.fields != nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				vm.initFields(regs[i.A].o, regs[i.B])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 			}
 		case bytecode.OpAddField:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			kind := int(code[pc].A)
 			pc++
 			vm.addClassElement(regs[i.A].o, regs[i.B], regs[i.C], kind)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
@@ -1832,12 +1829,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpForIn:
 			vm.frames[len(vm.frames)-1].pc = pc
 			it := vm.newForIn(regs[i.B])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = it
 		case bytecode.OpForInNext:
 			vm.frames[len(vm.frames)-1].pc = pc
 			k, ok := vm.forInNext(regs[i.B].o)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if !ok {
 				pc = int(i.C)
 				continue
@@ -1853,7 +1850,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			it, next := vm.getIterator(v, i.C == bytecode.IterAsync)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = it
 			regs[i.A+1] = next
 		case bytecode.OpIterNext:
@@ -1880,7 +1877,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
 				v := vm.Index(Value{o: o}, j)
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.A] = v
 				continue
 			}
@@ -1890,7 +1887,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				it := regs[i.B]
 				regs[i.B] = Undefined
 				v, st := vm.iterNext(it, regs[i.B+1])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				switch st {
 				case iterValue:
 					regs[i.B] = it
@@ -1910,20 +1907,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Undefined
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.iteratorClose(it, i.B >= 0 && regs[i.B].o != closeSignal)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpIterCall:
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
 				it := regs[i.B]
 				m := vm.GetMethod(it, fp.keys[i.C])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if m == nil {
 					regs[i.A] = Undefined
 					regs[i.A+1] = False
 					continue
 				}
 				r := vm.Call(m, it, regs[i.A])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.A] = r
 				regs[i.A+1] = True
 			}
@@ -1933,7 +1930,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				it := regs[i.B]
 				regs[i.B] = Undefined
 				r, ok := vm.iterReturn(it)
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.A] = r
 				regs[i.A+1] = Bool(ok)
 			}
@@ -1946,7 +1943,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
 				v, done := vm.iterResultValue(regs[i.B])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if done {
 					pc = int(i.C)
 					continue
@@ -1958,7 +1955,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
 				dc := vm.addDisposableOp(regs[i.A], regs[i.B], DisposeHint(i.C))
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.B] = dc
 			}
 		case bytecode.OpDisposeBegin:
@@ -1967,7 +1964,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
 				v, await := vm.disposeStepOp(regs[i.B])
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				if !await {
 					pc = int(i.C)
 					continue
@@ -1995,7 +1992,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpResolveName:
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := vm.findScope(cl, fp.keys[i.B], int(i.C))
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			if o != nil {
 				regs[i.A] = Value{o: o}
 			} else {
@@ -2004,16 +2001,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetScoped, bytecode.OpGetScopedStrict:
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.getScoped(regs[i.B].o, fp.keys[i.C], i.Op == bytecode.OpGetScopedStrict)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpSetScoped, bytecode.OpSetScopedStrict:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], i.Op == bytecode.OpSetScopedStrict)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		case bytecode.OpDeleteScoped:
 			vm.frames[len(vm.frames)-1].pc = pc
 			ok := vm.DeleteProp(regs[i.B].o, PropKey{key: fp.keys[i.C]})
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpDeleteName:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -2030,7 +2027,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpImport:
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.importOp(regs, i.B, i.C)
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 		case bytecode.OpAutoAccessor:
 			vm.autoAccessorOp(regs, i)
@@ -2038,10 +2035,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			pc++
 			if v, ok := vm.decorateOp(regs, i, &code[pc-1]); ok {
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 				regs[i.C] = v
 			} else {
-				regs = vm.reload(regs, onHeap, base, fp)
+				regs = vm.reload(regs, base, fp)
 			}
 
 		default:
@@ -2053,7 +2050,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.arith(i.Op, regs[i.B], regs[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 			continue
 		}
@@ -2062,7 +2059,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.arith(i.Op.RegOperand(), regs[i.B], fp.consts[i.C])
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[i.A] = v
 			continue
 		}
@@ -2094,7 +2091,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			argc, ret, isNew, newTarget = vm.iterateArguments(), i.A, false, nil
 			argBase = vm.frames[len(vm.frames)-1].top()
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 		} else {
 			cur := &vm.frames[len(vm.frames)-1]
 			argc, ret, isNew, newTarget = cur.argc, i.A, false, nil
@@ -2111,7 +2108,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 	callRegs:
 		// The arguments are in the registers from argBase on.
-		if onHeap {
+		if fp.heapRegs {
 			top := vm.frames[len(vm.frames)-1].top()
 			vm.ensureStack(top + argc)
 			copy(vm.stack[top:], regs[argBase:argBase+argc])
@@ -2141,7 +2138,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				fp = c
 				cl = f
 				code = c.code
-				onHeap = false
 				regs = vm.stack[base : base+c.nregs+1]
 				pc = 0
 				if r := c.thisReg; r >= 0 {
@@ -2169,7 +2165,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				cl = f
 				code = c.code
 				base = fr.base
-				onHeap = true
 				regs = fr.gen.regs
 				pc = 0
 				continue
@@ -2179,7 +2174,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.sp = argBase + argc
 			r := vm.callSlow(f, callThis, vm.stack[argBase:argBase+argc:argBase+argc], isNew, newTarget)
 			vm.sp = saved
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[ret] = r
 			continue
 		}
@@ -2216,7 +2211,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.sp = argBase + argc
 			r := vm.Construct(f, vm.stack[argBase:argBase+argc:argBase+argc], f)
 			vm.sp = saved
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[ret] = Value{o: r}
 			continue
 		}
@@ -2234,7 +2229,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.sp = argBase + argc
 			r := vm.Construct(parent, vm.stack[argBase:argBase+argc:argBase+argc], newTarget)
 			vm.sp = saved
-			regs = vm.reload(regs, onHeap, base, fp)
+			regs = vm.reload(regs, base, fp)
 			regs[ret] = Value{o: r}
 			continue
 		}
@@ -2254,8 +2249,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			code = fp.code
 			base = fr.base
 			pc = fr.pc
-			onHeap = fr.gen != nil
-			if onHeap {
+			if fp.heapRegs {
 				regs = fr.gen.regs
 			} else {
 				regs = vm.stack[base : base+fp.nregs+1]
@@ -2387,8 +2381,8 @@ func (vm *VM) iterateArguments() int {
 }
 
 // reload returns the registers of the running frame after a call that may have moved the stack.
-func (vm *VM) reload(regs []Value, onHeap bool, base int, fp *funcProto) []Value {
-	if onHeap {
+func (vm *VM) reload(regs []Value, base int, fp *funcProto) []Value {
+	if fp.heapRegs {
 		return regs
 	}
 	return vm.stack[base : base+fp.nregs+1]

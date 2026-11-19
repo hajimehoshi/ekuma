@@ -57,6 +57,10 @@ type funcProto struct {
 	// a non-strict function sees it.
 	thisReg    int32
 	thisSloppy bool
+
+	// heapRegs says whether the frames of the functions keep their registers in their
+	// generator instead of on the stack.
+	heapRegs bool
 }
 
 type templateSite struct {
@@ -109,7 +113,8 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		script: script,
 		realm:  vm.curRealm,
 
-		thisReg: -1,
+		thisReg:  -1,
+		heapRegs: f.IsGenerator || f.IsAsync,
 	}
 	if len(f.Code) > 0 {
 		switch i := f.Code[0]; i.Op {
