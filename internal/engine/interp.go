@@ -13,7 +13,8 @@ import (
 )
 
 // frame is the activation of a function written in JavaScript.
-// Frames are reused in place, so the code that pushes one assigns every field.
+// Frames are reused in place, so the code that pushes one assigns every field. It assigns the
+// pointer fields in one statement, which lets the compiler test for a write barrier once.
 type frame struct {
 	fp *funcProto
 	cl *Object
@@ -174,8 +175,8 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	}
 	clearFrameRegs(vm.stack[base:], fp.firstCleared(argc), fp.nclear)
 	fr := vm.appendFrame()
-	fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = fp, f, 0, base, this, ret, isNew
-	fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, extraBase, newTarget, nil, nil
+	fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = fp, f, this, newTarget, nil, nil
+	fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, base, ret, isNew, argc, extraBase
 	vm.sp = base + fp.nregs + 1
 	return base
 }
@@ -947,8 +948,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]
-						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, i.A, false
-						fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, -1, nil, nil, nil
+						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
+						fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
 						vm.sp = argBase + c.nregs + 1
 						fp, cl, pc = c, f, 0
 						regs = vm.stack[argBase:vm.sp]
@@ -989,8 +990,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]
-						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, i.A, false
-						fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, -1, nil, nil, nil
+						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
+						fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
 						vm.sp = argBase + c.nregs + 1
 						fp, cl, pc = c, f, 0
 						regs = vm.stack[argBase:vm.sp]
