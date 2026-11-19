@@ -19,7 +19,7 @@ func (f *fn) closure(node *ast.Function, dst int32, name string) {
 
 // forwardsArguments reports whether the function f uses its arguments only by passing
 // all of them on, as in g.apply(this, arguments) and g(...arguments), and never assigns
-// to a parameter, so that the arguments can be forwarded without creating an object.
+// to or redeclares a parameter, so that the arguments can be forwarded without creating an object.
 func (f *fn) forwardsArguments() bool {
 	node := f.node
 	// The parameter registers hold the arguments only while no parameter code has run.
@@ -27,7 +27,8 @@ func (f *fn) forwardsArguments() bool {
 		return false
 	}
 	for _, p := range node.Params {
-		if f.assigns(p.(*ast.Identifier).Name) {
+		// A var or function declaration of a parameter's name assigns to the parameter.
+		if name := p.(*ast.Identifier).Name; f.assigns(name) || f.redeclares(name) {
 			return false
 		}
 	}

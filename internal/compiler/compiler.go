@@ -1173,15 +1173,23 @@ func (f *fn) isFinal(b *binding) bool {
 	if f.assigns(b.name) || f.mutated[b.name] {
 		return false
 	}
-	if b.kind == bindVar {
-		// A parameter can also be declared by var or function declarations, which assign to it.
-		for _, d := range f.node.Scope.Decls {
-			if d.Name == b.name && d.Kind != ast.DeclParam {
-				return false
-			}
-		}
+	// A parameter can also be declared by var or function declarations, and a catch parameter
+	// by var declarations in the catch block (Annex B.3.4), which assign to it.
+	if (b.kind == bindVar || b.catch) && f.redeclares(b.name) {
+		return false
 	}
 	return true
+}
+
+// redeclares reports whether the function scope of f has a declaration of name other than a
+// parameter.
+func (f *fn) redeclares(name string) bool {
+	for _, d := range f.node.Scope.Decls {
+		if d.Name == name && d.Kind != ast.DeclParam {
+			return true
+		}
+	}
+	return false
 }
 
 // withsAround returns the number of with statements around the code being compiled,
