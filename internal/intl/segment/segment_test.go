@@ -5,6 +5,7 @@ package segment_test
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/intl/segment"
@@ -56,7 +57,7 @@ func TestBoundaries(t *testing.T) {
 	} {
 		rs := []rune(tc.in)
 		var got []string
-		bs := segment.Boundaries(tc.g, rs)
+		bs := segment.Boundaries(tc.g, rs, nil)
 		for i := 1; i < len(bs); i++ {
 			got = append(got, string(rs[bs[i-1]:bs[i]]))
 		}
@@ -96,4 +97,62 @@ func TestIsWordLike(t *testing.T) {
 			t.Errorf("IsWordLike(%q): got %t, want %t", tc.in, got, tc.want)
 		}
 	}
+}
+
+// TestBoundariesLongRuns checks inputs whose rules look over long runs of code points.
+func TestBoundariesLongRuns(t *testing.T) {
+	const n = 1 << 20
+	ri := []rune(strings.Repeat("\U0001F1E6", n))
+	pairs := make([]int32, 0, n/2+1)
+	for i := 0; i <= n; i += 2 {
+		pairs = append(pairs, int32(i))
+	}
+	for _, tc := range []struct {
+		name string
+		g    segment.Granularity
+		in   []rune
+		want []int32
+	}{
+		{
+			name: "regional indicators as graphemes",
+			g:    segment.Grapheme,
+			in:   ri,
+			want: pairs,
+		},
+		{
+			name: "regional indicators as words",
+			g:    segment.Word,
+			in:   ri,
+			want: pairs,
+		},
+		{
+			name: "spaces before an upper-case letter",
+			g:    segment.Sentence,
+			in:   []rune("a." + strings.Repeat(" ", n) + "A"),
+			want: []int32{0, n + 2, n + 3},
+		},
+		{
+			name: "spaces and digits before a lower-case letter",
+			g:    segment.Sentence,
+			in:   []rune("a." + strings.Repeat(" ", n) + strings.Repeat("1", n) + "a"),
+			want: []int32{0, 2*n + 3},
+		},
+	} {
+		if got := segment.Boundaries(tc.g, tc.in, nil); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: got %d boundaries, want %d", tc.name, len(got), len(tc.want))
+		}
+	}
+}
+
+// TestBoundariesPoll checks that the poll function can stop a long input.
+func TestBoundariesPoll(t *testing.T) {
+	type stop struct{}
+	defer func() {
+		if _, ok := recover().(stop); !ok {
+			t.Errorf("Boundaries did not stop")
+		}
+	}()
+	segment.Boundaries(segment.Sentence, []rune(strings.Repeat(" ", 1<<20)), func() {
+		panic(stop{})
+	})
 }

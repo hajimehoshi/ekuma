@@ -4,7 +4,7 @@
 package intl
 
 import (
-	"sort"
+	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
@@ -34,18 +34,29 @@ type segmentsData struct {
 	str       engine.Value
 	runes     []rune
 	// units are the code unit indices of the runes, with the length of the string last.
-	units []int
+	units []int32
 	// bounds are the boundaries of the segments as indices of runes, computed on first use.
-	bounds []int
+	bounds []int32
 }
 
-func newSegmentsData(sd *segmenterData, str engine.Value, s string) *segmentsData {
+func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s string) *segmentsData {
+	// Every code point starts with a byte that is not a continuation byte.
+	var n int
+	for i := 0; i < len(s); i++ {
+		if s[i]&0xC0 != 0x80 {
+			n++
+		}
+	}
 	d := &segmentsData{
 		segmenter: sd,
 		str:       str,
+		runes:     make([]rune, 0, n),
+		units:     make([]int32, 0, n+1),
 	}
-	u := 0
+	var u int32
+	var p engine.Pacer
 	for len(s) > 0 {
+		p.Step(vm)
 		r, size := wtf8.DecodeRune(s)
 		s = s[size:]
 		d.runes = append(d.runes, r)
@@ -60,32 +71,40 @@ func newSegmentsData(sd *segmenterData, str engine.Value, s string) *segmentsDat
 	return d
 }
 
-func (d *segmentsData) boundaries() []int {
+func (d *segmentsData) boundaries(vm *engine.VM) []int32 {
 	if d.bounds == nil {
-		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes)
+		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes, vm.Poll)
 	}
 	return d.bounds
 }
 
 // length returns the number of the code units of the string.
 func (d *segmentsData) length() int {
-	return d.units[len(d.units)-1]
+	return int(d.units[len(d.units)-1])
 }
 
 // segmentAt returns the start and the end of the segment that contains the code unit n, as
 // indices of runes.
-func (d *segmentsData) segmentAt(n int) (int, int) {
+func (d *segmentsData) segmentAt(vm *engine.VM, n int) (int, int) {
 	// The rune that contains the code unit n.
-	ri := sort.SearchInts(d.units, n+1) - 1
-	bs := d.boundaries()
-	k := sort.SearchInts(bs, ri+1) - 1
-	return bs[k], bs[k+1]
+	ri, found := slices.BinarySearch(d.units, int32(n))
+	if !found {
+		ri--
+	}
+	bs := d.boundaries(vm)
+	k, found := slices.BinarySearch(bs, int32(ri))
+	if !found {
+		k--
+	}
+	return int(bs[k]), int(bs[k+1])
 }
 
 // segmentData implements CreateSegmentDataObject for the runes from start to end.
 func (d *segmentsData) segmentData(vm *engine.VM, start, end int) engine.Value {
-	var b []byte
+	b := make([]byte, 0, int(d.units[end]-d.units[start]))
+	var p engine.Pacer
 	for _, r := range d.runes[start:end] {
+		p.Step(vm)
 		b = wtf8.AppendRune(b, r)
 	}
 	keys := [4]engine.PropKey{
@@ -171,7 +190,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		sd := thisSegmenter(vm, this, "segment")
 		s := vm.ToString(arg(args, 0))
 		str := vm.NewString(s)
-		return engine.ObjectValue(vm.NewIntlObject(segmentsProto, newSegmentsData(sd, str, s)))
+		return engine.ObjectValue(vm.NewIntlObject(segmentsProto, newSegmentsData(vm, sd, str, s)))
 	})
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
@@ -188,7 +207,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		if n < 0 || n >= float64(d.length()) {
 			return engine.Undefined
 		}
-		start, end := d.segmentAt(int(n))
+		start, end := d.segmentAt(vm, int(n))
 		return d.segmentData(vm, start, end)
 	})
 	vm.Define(segmentsProto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.NewNative("[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -208,9 +227,12 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 			return vm.CreateIterResultObject(engine.Undefined, true)
 		}
 		start := it.pos
-		bs := d.boundaries()
-		k := sort.SearchInts(bs, start+1)
-		end := bs[k]
+		bs := d.boundaries(vm)
+		k, found := slices.BinarySearch(bs, int32(start))
+		if found {
+			k++
+		}
+		end := int(bs[k])
 		it.pos = end
 		return vm.CreateIterResultObject(d.segmentData(vm, start, end), false)
 	})

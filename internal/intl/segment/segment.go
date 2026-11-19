@@ -108,9 +108,14 @@ func sentenceOf(p uint16) int    { return int(p >> 9 & 0xF) }
 func pictographic(p uint16) bool { return p&(1<<13) != 0 }
 func incbOf(p uint16) int        { return int(p >> 14) }
 
+// pollSteps is the number of code points between two calls of the poll function of
+// [Boundaries].
+const pollSteps = 1 << 14
+
 // Boundaries returns the boundaries of the segments of rs as indices of rs, from 0 to
-// len(rs). An empty rs has no boundaries.
-func Boundaries(g Granularity, rs []rune) []int {
+// len(rs), which must be less than 2^31. An empty rs has no boundaries. Boundaries calls poll, which may be nil, now and
+// then during a long input; poll may stop Boundaries by panicking.
+func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 	if len(rs) == 0 {
 		return nil
 	}
@@ -118,26 +123,88 @@ func Boundaries(g Granularity, rs []rune) []int {
 	for i, r := range rs {
 		ps[i] = props(r)
 	}
-	bs := []int{0}
+	var gs graphemeState
+	var ws wordState
+	var ss sentenceState
+	switch g {
+	case Grapheme:
+		gs.advance(ps[0])
+	case Word:
+		ws.advance(ps[0])
+	case Sentence:
+		ss.advance(ps, 0)
+	}
+	bs := []int32{0}
 	for i := 1; i < len(rs); i++ {
+		if poll != nil && i%pollSteps == 0 {
+			poll()
+		}
 		var brk bool
 		switch g {
 		case Grapheme:
-			brk = graphemeBreak(ps, i)
+			brk = graphemeBreak(ps, i, &gs)
+			gs.advance(ps[i])
 		case Word:
-			brk = wordBreak(ps, i)
+			brk = wordBreak(ps, i, &ws)
+			ws.advance(ps[i])
 		case Sentence:
-			brk = sentenceBreak(ps, i)
+			brk = sentenceBreak(ps, i, &ss)
+			ss.advance(ps, i)
 		}
 		if brk {
-			bs = append(bs, i)
+			bs = append(bs, int32(i))
 		}
 	}
-	return append(bs, len(rs))
+	return append(bs, int32(len(rs)))
 }
 
-// graphemeBreak reports whether there is a boundary before ps[i].
-func graphemeBreak(ps []uint16, i int) bool {
+// Indic conjunct states of graphemeState.
+const (
+	conjNone = iota
+	// conjConsonant is after Consonant [Extend Linker]* without a Linker.
+	conjConsonant
+	// conjLinked is after Consonant [Extend Linker]* with a Linker.
+	conjLinked
+)
+
+// graphemeState summarizes the code points before a position for the rules of
+// graphemeBreak that look back over runs.
+type graphemeState struct {
+	conj int
+	// pict and prevPict report whether the code points up to the last and up to the one
+	// before the last end in ExtPict Extend*.
+	pict     bool
+	prevPict bool
+	// ri is the number of the regional indicators that end the code points.
+	ri int
+}
+
+// advance appends the code point of the properties p.
+func (s *graphemeState) advance(p uint16) {
+	switch incbOf(p) {
+	case incbConsonant:
+		s.conj = conjConsonant
+	case incbLinker:
+		if s.conj != conjNone {
+			s.conj = conjLinked
+		}
+	case incbExtend:
+	default:
+		s.conj = conjNone
+	}
+	s.prevPict = s.pict
+	if graphemeOf(p) != gExtend {
+		s.pict = pictographic(p)
+	}
+	if graphemeOf(p) == gRI {
+		s.ri++
+	} else {
+		s.ri = 0
+	}
+}
+
+// graphemeBreak reports whether there is a boundary before ps[i]. s summarizes ps[:i].
+func graphemeBreak(ps []uint16, i int, s *graphemeState) bool {
 	a, b := graphemeOf(ps[i-1]), graphemeOf(ps[i])
 	switch {
 	case a == gCR && b == gLF:
@@ -154,40 +221,16 @@ func graphemeBreak(ps []uint16, i int) bool {
 		return false
 	}
 	// GB9c: Consonant [Extend Linker]* Linker [Extend Linker]* × Consonant.
-	if incbOf(ps[i]) == incbConsonant {
-		linker := false
-		for j := i - 1; j >= 0; j-- {
-			switch incbOf(ps[j]) {
-			case incbLinker:
-				linker = true
-				continue
-			case incbExtend:
-				continue
-			case incbConsonant:
-				if linker {
-					return false
-				}
-			}
-			break
-		}
+	if incbOf(ps[i]) == incbConsonant && s.conj == conjLinked {
+		return false
 	}
 	// GB11: ExtPict Extend* ZWJ × ExtPict.
-	if a == gZWJ && pictographic(ps[i]) {
-		j := i - 2
-		for j >= 0 && graphemeOf(ps[j]) == gExtend {
-			j--
-		}
-		if j >= 0 && pictographic(ps[j]) {
-			return false
-		}
+	if a == gZWJ && pictographic(ps[i]) && s.prevPict {
+		return false
 	}
 	// GB12, GB13: pairs of regional indicators.
 	if a == gRI && b == gRI {
-		n := 0
-		for j := i - 1; j >= 0 && graphemeOf(ps[j]) == gRI; j-- {
-			n++
-		}
-		return n%2 == 0
+		return s.ri%2 == 0
 	}
 	return true
 }
@@ -204,8 +247,27 @@ func isMidNumLetQ(w int) bool {
 	return w == wMidNumLet || w == wSingleQuote
 }
 
-// wordBreak reports whether there is a boundary before ps[i].
-func wordBreak(ps []uint16, i int) bool {
+// wordState summarizes the code points before a position for the rules of wordBreak that
+// look back over runs.
+type wordState struct {
+	// ri is the number of the regional indicators that end the code points, not counting the
+	// ignorable ones.
+	ri int
+}
+
+// advance appends the code point of the properties p.
+func (s *wordState) advance(p uint16) {
+	switch w := wordOf(p); {
+	case wordIgnorable(w):
+	case w == wRI:
+		s.ri++
+	default:
+		s.ri = 0
+	}
+}
+
+// wordBreak reports whether there is a boundary before ps[i]. s summarizes ps[:i].
+func wordBreak(ps []uint16, i int, s *wordState) bool {
 	a, b := wordOf(ps[i-1]), wordOf(ps[i])
 	switch {
 	case a == wCR && b == wLF:
@@ -219,7 +281,8 @@ func wordBreak(ps []uint16, i int) bool {
 	case wordIgnorable(b):
 		return false
 	}
-	// WB4: the ignorable characters belong to the character before them.
+	// WB4: the ignorable characters belong to the character before them. Each run of them is
+	// skipped from a bounded number of positions, as b is not ignorable.
 	prev := func(j int) int {
 		for j >= 0 && wordIgnorable(wordOf(ps[j])) {
 			j--
@@ -272,14 +335,7 @@ func wordBreak(ps []uint16, i int) bool {
 	case a == wExtendNumLet && (isAHLetter(b) || b == wNumeric || b == wKatakana):
 		return false
 	case a == wRI && b == wRI:
-		n := 0
-		for j := pi; j >= 0; j = prev(j - 1) {
-			if wordOf(ps[j]) != wRI {
-				break
-			}
-			n++
-		}
-		return n%2 == 0
+		return s.ri%2 == 0
 	}
 	return true
 }
@@ -296,8 +352,59 @@ func isSATerm(s int) bool {
 	return s == sSTerm || s == sATerm
 }
 
-// sentenceBreak reports whether there is a boundary before ps[i].
-func sentenceBreak(ps []uint16, i int) bool {
+// sentenceState summarizes the code points before a position for the rules of sentenceBreak
+// that look over runs.
+type sentenceState struct {
+	// term is the SATerm of SATerm Close* Sp* that ends the code points, not counting the
+	// ignorable ones, or -1.
+	term int
+	// sp reports whether that match has spaces.
+	sp bool
+	// lowerFrom and lowerAt cache the scan of SB8: the first code point at lowerFrom or
+	// later that is OLetter, Upper, Lower, ParaSep or SATerm is at lowerAt.
+	lowerFrom int
+	lowerAt   int
+}
+
+// advance appends the code point ps[i].
+func (s *sentenceState) advance(ps []uint16, i int) {
+	if i == 0 {
+		s.term = -1
+		s.lowerFrom = -1
+	}
+	switch c := sentenceOf(ps[i]); {
+	case sentenceIgnorable(c):
+	case isSATerm(c):
+		s.term = c
+		s.sp = false
+	case c == sClose && s.term >= 0 && !s.sp:
+	case c == sSp && s.term >= 0:
+		s.sp = true
+	default:
+		s.term = -1
+	}
+}
+
+// lowerAfter returns the index of the first code point at i or later that is OLetter, Upper,
+// Lower, ParaSep or SATerm, or len(ps).
+func (s *sentenceState) lowerAfter(ps []uint16, i int) int {
+	if s.lowerFrom >= 0 && s.lowerFrom <= i && i <= s.lowerAt {
+		return s.lowerAt
+	}
+	k := i
+	for k < len(ps) {
+		c := sentenceOf(ps[k])
+		if c == sOLetter || c == sUpper || c == sLower || isParaSep(c) || isSATerm(c) {
+			break
+		}
+		k++
+	}
+	s.lowerFrom, s.lowerAt = i, k
+	return k
+}
+
+// sentenceBreak reports whether there is a boundary before ps[i]. s summarizes ps[:i].
+func sentenceBreak(ps []uint16, i int, s *sentenceState) bool {
 	a, b := sentenceOf(ps[i-1]), sentenceOf(ps[i])
 	switch {
 	case a == sCR && b == sLF:
@@ -307,7 +414,8 @@ func sentenceBreak(ps []uint16, i int) bool {
 	case sentenceIgnorable(b):
 		return false
 	}
-	// SB5: the ignorable characters belong to the character before them.
+	// SB5: the ignorable characters belong to the character before them. Each run of them is
+	// skipped from a bounded number of positions, as b is not ignorable.
 	prev := func(j int) int {
 		for j >= 0 && sentenceIgnorable(sentenceOf(ps[j])) {
 			j--
@@ -329,45 +437,25 @@ func sentenceBreak(ps []uint16, i int) bool {
 	if (aa == sUpper || aa == sLower) && a == sATerm && b == sUpper {
 		return false
 	}
-	// Match SATerm Close* Sp* backwards from pi, noting where the spaces and the closes are.
-	j := pi
-	sp := false
-	for j >= 0 && at(j) == sSp {
-		sp = true
-		j = prev(j - 1)
+	if s.term < 0 {
+		return false
 	}
-	closeOnly := !sp
-	for j >= 0 && at(j) == sClose {
-		j = prev(j - 1)
-	}
-	term := at(j)
-	if isSATerm(term) {
-		if term == sATerm {
-			// SB8.
-			k := i
-			for k < len(ps) {
-				s := sentenceOf(ps[k])
-				if s == sOLetter || s == sUpper || s == sLower || isParaSep(s) || isSATerm(s) {
-					break
-				}
-				k++
-			}
-			if k < len(ps) && sentenceOf(ps[k]) == sLower {
-				return false
-			}
-		}
-		if b == sSContinue || isSATerm(b) {
+	if s.term == sATerm {
+		// SB8.
+		if k := s.lowerAfter(ps, i); k < len(ps) && sentenceOf(ps[k]) == sLower {
 			return false
 		}
-		if closeOnly && (b == sClose || b == sSp || isParaSep(b)) {
-			return false
-		}
-		if b == sSp || isParaSep(b) {
-			return false
-		}
-		return true
 	}
-	return false
+	if b == sSContinue || isSATerm(b) {
+		return false
+	}
+	if !s.sp && (b == sClose || b == sSp || isParaSep(b)) {
+		return false
+	}
+	if b == sSp || isParaSep(b) {
+		return false
+	}
+	return true
 }
 
 // IsWordLike reports whether a word segment is word-like: whether it has letters, digits or
