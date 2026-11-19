@@ -224,6 +224,13 @@ func TestFormatters(t *testing.T) {
 			want: "-1E1; -9E0; -1E1; -9E0; -1M; -1K; -1E3; -1E1; ~-1E1",
 		},
 		{
+			// A run of marks longer than a step is uppercased as a whole: the first 30
+			// Greek modifiers after a letter are removed.
+			name: "Greek uppercasing of a long run of marks",
+			src:  `String(("\u03b1" + "\u0301\u0308".repeat(2 ** 16)).toLocaleUpperCase("el") === "\u0391" + "\u0301\u0308".repeat(2 ** 16 - 15))`,
+			want: "true",
+		},
+		{
 			name: "compact magnitudes above 10^14",
 			src:  `new Intl.NumberFormat("ja", {notation: "compact"}).format(1e16)`,
 			want: "1京",
@@ -296,6 +303,10 @@ func TestCancelFormatting(t *testing.T) {
 			// The marks have no boundary of a normalization form between them.
 			name: "Lithuanian uppercasing of a run of marks",
 			src:  `("a" + "\u0327\u0328\u0301".repeat(2 ** 22)).toLocaleUpperCase("lt")`,
+		},
+		{
+			name: "Greek uppercasing of a run of marks",
+			src:  `("\u03b1" + "\u0301\u0308".repeat(2 ** 22)).toLocaleUpperCase("el")`,
 		},
 		{
 			name: "collation of a run of marks",

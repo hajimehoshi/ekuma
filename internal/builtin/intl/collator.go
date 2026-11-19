@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -412,7 +413,23 @@ func greekUpper(s string, poll func()) string {
 		}
 		b.WriteRune(r)
 	}
-	return cases.Upper(language.Greek).String(b.String())
+	if b.Len() <= caseChunk {
+		return cases.Upper(language.Greek).String(b.String())
+	}
+	// The caser streams, so that a long part is uppercased in steps with polls between them.
+	r := transform.NewReader(strings.NewReader(b.String()), cases.Upper(language.Greek))
+	var out strings.Builder
+	out.Grow(b.Len())
+	buf := make([]byte, 1<<16)
+	for {
+		n, err := r.Read(buf)
+		out.Write(buf[:n])
+		if err != nil {
+			// A Reader of a string fails only at its end, and the caser accepts any input.
+			return out.String()
+		}
+		poll()
+	}
 }
 
 // lithuanianUndot applies the Lithuanian rule of SpecialCasing.txt for uppercasing that
