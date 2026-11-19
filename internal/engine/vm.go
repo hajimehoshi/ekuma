@@ -463,6 +463,9 @@ type VM struct {
 
 	// continuationData is the value that [VM.ContinuationData] returns.
 	continuationData any
+
+	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
+	matchResultShapes matchResultShapes
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

@@ -23,7 +23,7 @@ type regexpEnv struct {
 	// the algorithms that call it use the matcher directly, without creating match arrays.
 	exec *engine.Object
 
-	lastIndex, index, input, groups, indices, flags, source, execKey *engine.Object
+	lastIndex, index, groups, flags, source, execKey *engine.Object
 
 	// flagStrings holds the value of the flags getter for each set of the 8 flags, once computed.
 	flagStrings *[1 << 8]engine.Value
@@ -215,18 +215,18 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s engine.Value)
 			}
 		}
 	}
-	index := caps[0]
-	vm.CreateDataPropertyOrThrow(a, e.key(e.index), engine.Number(float64(index)))
-	vm.CreateDataPropertyOrThrow(a, e.key(e.input), s)
-	vm.CreateDataPropertyOrThrow(a, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value {
+	index := engine.Number(float64(caps[0]))
+	groups := groupsObject(vm, re, func(i int) engine.Value {
 		v, _ := a.Element(int64(i))
 		return v
-	}))
-	if pairs != nil {
-		ia := vm.NewArray(pairs)
-		vm.CreateDataPropertyOrThrow(ia, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value { return pairs[i] }))
-		vm.CreateDataPropertyOrThrow(a, e.key(e.indices), engine.ObjectValue(ia))
+	})
+	if pairs == nil {
+		vm.DefineMatchResultProperties(a, index, s, groups)
+		return engine.ObjectValue(a)
 	}
+	ia := vm.NewArray(pairs)
+	vm.CreateDataPropertyOrThrow(ia, e.key(e.groups), groupsObject(vm, re, func(i int) engine.Value { return pairs[i] }))
+	vm.DefineMatchResultPropertiesWithIndices(a, index, s, groups, engine.ObjectValue(ia))
 	return engine.ObjectValue(a)
 }
 
@@ -430,9 +430,7 @@ func initRegExp(vm *engine.VM) {
 	env := &regexpEnv{
 		lastIndex: vm.Intern("lastIndex"),
 		index:     vm.Intern("index"),
-		input:     vm.Intern("input"),
 		groups:    vm.Intern("groups"),
-		indices:   vm.Intern("indices"),
 		flags:     vm.Intern("flags"),
 		source:    vm.Intern("source"),
 		execKey:   vm.Intern("exec"),

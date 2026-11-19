@@ -2499,6 +2499,28 @@ func TestScriptRealm(t *testing.T) {
 	}
 }
 
+// TestRegExpMatchRealm checks that match results made in turn by two realms get the properties
+// and the Array.prototype of the realm of exec.
+func TestRegExpMatchRealm(t *testing.T) {
+	var vm ekuma.VM
+	if err := vm.Global().Set("other", vm.NewRealm().Global()); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	v, err := runScript(t.Context(), &vm, "check", `
+		function check(g, flags) {
+			const m = g.RegExp.prototype.exec.call(new g.RegExp("(?<x>b)", flags), "ab");
+			return (Object.getPrototypeOf(m) === g.Array.prototype) + ":" + Object.keys(m);
+		}
+		[check(globalThis, ""), check(other, ""), check(globalThis, "d"), check(other, "d"), check(globalThis, "")].join(" ")`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	const want = "true:0,1,index,input,groups true:0,1,index,input,groups true:0,1,index,input,groups,indices true:0,1,index,input,groups,indices true:0,1,index,input,groups"
+	if got := v.String(); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 // TestRealmValues checks which realm the values that Go creates belong to.
 func TestRealmValues(t *testing.T) {
 	var vm ekuma.VM

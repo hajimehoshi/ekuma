@@ -398,3 +398,49 @@ func (vm *VM) SetRegExpLastIndex(o *Object, v Value) bool {
 	vm.touchProto(o)
 	return true
 }
+
+// matchResultShapes are the shapes that a match result array has after
+// [VM.DefineMatchResultProperties] or [VM.DefineMatchResultPropertiesWithIndices].
+type matchResultShapes struct {
+	// array is the shape of a new array that the others derive from.
+	array *shape
+
+	// plain has index, input and groups, and withIndices also indices.
+	plain, withIndices *shape
+}
+
+// matchResultShapesFor returns the match result shapes that derive from the shape array of a
+// new array of the current realm.
+func (vm *VM) matchResultShapesFor(array *shape) *matchResultShapes {
+	m := &vm.matchResultShapes
+	if m.array != array {
+		plain := array.with(vm.Key(keyIndex), FlagsData).with(vm.Key(keyInput), FlagsData).with(vm.Key(keyGroups), FlagsData)
+		*m = matchResultShapes{
+			array:       array,
+			plain:       plain,
+			withIndices: plain.with(vm.Intern("indices"), FlagsData),
+		}
+	}
+	return m
+}
+
+// DefineMatchResultProperties creates the data properties index, input and groups of a match
+// result on a, in that order, as CreateDataPropertyOrThrow does. a must be an array from
+// [VM.NewArrayWithRoom] that has no named properties.
+func (vm *VM) DefineMatchResultProperties(a *Object, index, input, groups Value) {
+	if a.shape != vm.shapes.array || len(a.slots) != 0 {
+		panic("engine: DefineMatchResultProperties on an array that is not new")
+	}
+	a.shape = vm.matchResultShapesFor(a.shape).plain
+	a.slots = append(a.slots, index, input, groups)
+}
+
+// DefineMatchResultPropertiesWithIndices is like [VM.DefineMatchResultProperties] and creates
+// the data property indices after groups.
+func (vm *VM) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
+	if a.shape != vm.shapes.array || len(a.slots) != 0 {
+		panic("engine: DefineMatchResultPropertiesWithIndices on an array that is not new")
+	}
+	a.shape = vm.matchResultShapesFor(a.shape).withIndices
+	a.slots = append(a.slots, index, input, groups, indices)
+}
