@@ -103,7 +103,7 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 		unit = strings.TrimSuffix(unit, "s")
 	case "second", "minute", "hour", "day", "week", "month", "quarter", "year":
 	default:
-		vm.ThrowRangeError("invalid unit of a relative time: " + unit)
+		vm.ThrowRangeError("invalid unit of a relative time: " + vm.DisplayString(vm.NewString(unit)))
 	}
 	patterns := reltime.PatternsOf(rtf.dataLocale, unit, rtf.style)
 	if rtf.numeric == "auto" {

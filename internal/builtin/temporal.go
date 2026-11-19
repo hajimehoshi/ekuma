@@ -429,7 +429,7 @@ func parseCalendarString(vm *engine.VM, s string) string {
 		return r.Calendar
 	}
 	if !temporal.IsAnnotationValue(s) {
-		vm.ThrowRangeError("invalid calendar: " + s)
+		vm.ThrowRangeError("invalid calendar: " + vm.DisplayString(vm.NewString(s)))
 	}
 	return s
 }

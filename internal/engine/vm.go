@@ -937,7 +937,11 @@ func (vm *VM) NewError(kind ErrorKind, msg string) Value {
 	return Value{o: vm.newError(kind, msg)}
 }
 
-// DisplayString describes v for messages, without running any JavaScript.
+// maxDisplayString is the length in bytes up to which a message shows a string.
+const maxDisplayString = 1 << 10
+
+// DisplayString describes v for messages, without running any JavaScript. A long string is
+// shortened.
 func (vm *VM) DisplayString(v Value) string {
 	o := v.o
 	if o == nil {
@@ -954,7 +958,7 @@ func (vm *VM) DisplayString(v Value) string {
 	case kindTrue:
 		return "true"
 	case kindString:
-		return v.Str()
+		return clip(v.Str(), maxDisplayString, "...")
 	case kindSymbol:
 		return "Symbol(" + o.str + ")"
 	case kindBigInt:

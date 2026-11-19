@@ -5,6 +5,7 @@ package temporal
 
 import (
 	"fmt"
+	"unicode/utf8"
 )
 
 // ErrorKind is the kind of ECMAScript error that an [Error] stands for.
@@ -28,15 +29,35 @@ func (e *Error) Error() string {
 func rangeErrorf(format string, args ...any) error {
 	return &Error{
 		Kind:    RangeError,
-		Message: fmt.Sprintf(format, args...),
+		Message: fmt.Sprintf(format, clipArgs(args)...),
 	}
 }
 
 func typeErrorf(format string, args ...any) error {
 	return &Error{
 		Kind:    TypeError,
-		Message: fmt.Sprintf(format, args...),
+		Message: fmt.Sprintf(format, clipArgs(args)...),
 	}
+}
+
+// maxMessageArg is the length in bytes up to which a message shows a string, such as the input
+// that failed to parse.
+const maxMessageArg = 1 << 10
+
+// clipArgs shortens the long strings of args in place and returns args.
+func clipArgs(args []any) []any {
+	for i, a := range args {
+		s, ok := a.(string)
+		if !ok || len(s) <= maxMessageArg {
+			continue
+		}
+		n := maxMessageArg
+		for n > 0 && !utf8.RuneStart(s[n]) {
+			n--
+		}
+		args[i] = s[:n] + "..."
+	}
+	return args
 }
 
 // Overflow is the value of the overflow option.

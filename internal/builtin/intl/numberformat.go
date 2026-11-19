@@ -251,7 +251,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 			vm.ThrowTypeError("currency is required with the currency style")
 		}
 	} else if !isWellFormedCurrencyCode(currency) {
-		vm.ThrowRangeError("invalid currency code: " + currency)
+		vm.ThrowRangeError("invalid currency code: " + vm.DisplayString(vm.NewString(currency)))
 	}
 	currencyDisplay := getStringOption(vm, options, "currencyDisplay", "symbol", "code", "symbol", "narrowSymbol", "name")
 	currencySign := getStringOption(vm, options, "currencySign", "standard", "standard", "accounting")
@@ -261,7 +261,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 			vm.ThrowTypeError("unit is required with the unit style")
 		}
 	} else if !isWellFormedUnitIdentifier(unit) {
-		vm.ThrowRangeError("invalid unit: " + unit)
+		vm.ThrowRangeError("invalid unit: " + vm.DisplayString(vm.NewString(unit)))
 	}
 	unitDisplay := getStringOption(vm, options, "unitDisplay", "short", "short", "narrow", "long")
 	if o.Style == "currency" {

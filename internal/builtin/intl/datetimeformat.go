@@ -175,13 +175,13 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		id, offset, isOffset, err := temporal.ParseTimeZoneIdentifier(name)
 		switch {
 		case err != nil:
-			vm.ThrowRangeError("invalid time zone: " + name)
+			vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(name)))
 		case isOffset:
 			dtf.tz = temporal.OffsetTimeZone(offset)
 		default:
 			z, ok := temporal.GetAvailableNamedTimeZone(id, builtin.SystemTimeZone(vm))
 			if !ok {
-				vm.ThrowRangeError("invalid time zone: " + name)
+				vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(name)))
 			}
 			dtf.tz = z
 		}

@@ -165,7 +165,7 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 		}
 		c, ok := locale.Canonicalize(tag, vm.Poll)
 		if !ok {
-			vm.ThrowRangeError("invalid language tag: " + tag)
+			vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(tag)))
 		}
 		if !localetag.HasDuplicate(&seenSet, seen, c) {
 			seen = append(seen, c)

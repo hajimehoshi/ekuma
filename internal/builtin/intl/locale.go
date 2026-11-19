@@ -126,7 +126,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	}
 	t, ok := locale.Parse(tag)
 	if !ok {
-		vm.ThrowRangeError("invalid language tag: " + tag)
+		vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(tag)))
 	}
 	t = t.CanonicalizePolled(vm.Poll)
 

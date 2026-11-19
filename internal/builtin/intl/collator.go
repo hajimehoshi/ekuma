@@ -57,7 +57,7 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 	bestFit := localeMatcher(vm, options)
 	co, hasCo := getOption(vm, options, "collation")
 	if hasCo && !localetag.IsType(co) {
-		vm.ThrowRangeError("invalid collation: " + co)
+		vm.ThrowRangeError("invalid collation: " + vm.DisplayString(vm.NewString(co)))
 	}
 	var kn string
 	hasKn := false
