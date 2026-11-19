@@ -1804,8 +1804,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.iteratorClose(it, i.B >= 0 && regs[i.B].o != closeSignal)
 			regs = vm.reload(regs, onHeap, base, fp)
-		case bytecode.OpIterResult:
-			regs[i.A] = vm.CreateIterResultObject(regs[i.B], i.C != 0)
 		case bytecode.OpIterCall:
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
@@ -1939,7 +1937,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs = vm.reload(regs, onHeap, base, fp)
 			}
 
-		case bytecode.OpDebugger:
 		default:
 			panic("ekuma: unknown bytecode.Opcode")
 		}

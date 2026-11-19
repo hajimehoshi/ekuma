@@ -255,7 +255,6 @@ const (
 	OpGetIterator     // a, a+1 = the iterator of b and its next method; c is one of the Iter kinds
 	OpIterNext        // a = the next value of the iterator b, b+1; jump to c when it is done
 	OpIterClose       // close the iterator a, a+1, and set a to undefined; b is -1 or holds the pending exception, which is kept unless it makes a generator return
-	OpIterResult      // a = the iterator result object with the value b and the done flag c
 	OpIterCall        // a, a+1 = the result of calling the method Keys[c] of the iterator b with the argument a and true, or undefined and false when there is no such method
 	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
 	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
@@ -286,8 +285,7 @@ const (
 	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
 
 	// Others.
-	OpDebugger // do nothing, for a debugger statement
-	OpExtra    // the operands of the instruction before it that do not fit in it; it is never executed
+	OpExtra // the operands of the instruction before it that do not fit in it; it is never executed
 )
 
 var regOperandOps = [...]Opcode{
