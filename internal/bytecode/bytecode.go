@@ -78,7 +78,7 @@ const (
 
 	// Properties.
 	OpGetProp          // a = b.Keys[c]; c is a site
-	OpGetMethod        // a = b.Keys[c] and a+1 = b; c is a site
+	OpGetMethod        // a, a+1 = b.Keys[c], b; c is a site
 	OpGetLength        // a = b.length; c is a site
 	OpGetIndex         // a = b[c]
 	OpGetIndexInt      // a = b[the integer c]
