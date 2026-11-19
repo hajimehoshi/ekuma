@@ -163,7 +163,7 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 		} else {
 			tag = vm.ToString(v)
 		}
-		c, ok := locale.Canonicalize(tag)
+		c, ok := locale.Canonicalize(tag, vm.Poll)
 		if !ok {
 			vm.ThrowRangeError("invalid language tag: " + tag)
 		}

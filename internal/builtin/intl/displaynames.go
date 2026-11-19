@@ -78,7 +78,7 @@ func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 		if !valid || t.HasUnicode || t.HasTransformed || len(t.Others) > 0 || t.PrivateUse != "" {
 			invalid()
 		}
-		c, _ := locale.Canonicalize(code)
+		c, _ := locale.Canonicalize(code, vm.Poll)
 		ct, _ := locale.Parse(c)
 		code = c
 		name, ok = dn.names.Language(ct.LanguageID, dn.languageDisplay == "dialect")

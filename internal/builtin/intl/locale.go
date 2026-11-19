@@ -128,7 +128,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	if !ok {
 		vm.ThrowRangeError("invalid language tag: " + tag)
 	}
-	t = t.Canonicalize()
+	t = t.CanonicalizePolled(vm.Poll)
 
 	// UpdateLanguageId.
 	t.Language = subtagOption(vm, options, "language", localetag.IsLanguageSubtag, t.Language)
@@ -196,7 +196,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 			}
 		}
 	}
-	return engine.ObjectValue(vm.NewIntlObject(proto, newLocaleData(t.Canonicalize())))
+	return engine.ObjectValue(vm.NewIntlObject(proto, newLocaleData(t.CanonicalizePolled(vm.Poll))))
 }
 
 // initLocale defines Intl.Locale.

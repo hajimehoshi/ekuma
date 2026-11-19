@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
 )
 
@@ -185,16 +186,25 @@ func canonicalValue(key, v string) string {
 
 // Canonicalize returns t in the canonical form of ECMA-402's CanonicalizeUnicodeLocaleId.
 func (t Tag) Canonicalize() Tag {
+	return t.CanonicalizePolled(nil)
+}
+
+// CanonicalizePolled is [Tag.Canonicalize] that calls poll, which may be nil, now and then
+// for a tag of many subtags. poll may stop the canonicalization by panicking.
+func (t Tag) CanonicalizePolled(poll func()) Tag {
 	t.LanguageID = canonicalizeLanguageID(t.LanguageID)
 
 	attrs := slices.Clone(t.Attributes)
-	slices.Sort(attrs)
+	sortPolled(attrs, poll)
 	t.Attributes = slices.Compact(attrs)
 	var kws []Keyword
+	var keys []string
+	var seen map[string]struct{}
 	for _, k := range t.Keywords {
-		if slices.ContainsFunc(kws, func(e Keyword) bool { return e.Key == k.Key }) {
+		if localetag.HasDuplicate(&seen, keys, k.Key) {
 			continue
 		}
+		keys = append(keys, k.Key)
 		k.Value = canonicalValue(k.Key, k.Value)
 		if k.Value == "true" {
 			k.Value = ""
@@ -208,10 +218,12 @@ func (t Tag) Canonicalize() Tag {
 		t.TLang = canonicalizeLanguageID(t.TLang)
 	}
 	var tfs []Keyword
+	keys, seen = keys[:0], nil
 	for _, k := range t.TFields {
-		if slices.ContainsFunc(tfs, func(e Keyword) bool { return e.Key == k.Key }) {
+		if localetag.HasDuplicate(&seen, keys, k.Key) {
 			continue
 		}
+		keys = append(keys, k.Key)
 		k.Value = canonicalValue(k.Key, k.Value)
 		tfs = append(tfs, k)
 	}
@@ -224,11 +236,52 @@ func (t Tag) Canonicalize() Tag {
 }
 
 // Canonicalize returns the canonical form of the language tag s, and reports whether s is a
-// structurally valid language tag.
-func Canonicalize(s string) (string, bool) {
+// structurally valid language tag. poll, which may be nil, is called now and then for a tag
+// of many subtags, and may stop the canonicalization by panicking.
+func Canonicalize(s string, poll func()) (string, bool) {
 	t, ok := Parse(s)
 	if !ok {
 		return "", false
 	}
-	return t.Canonicalize().String(), true
+	return t.CanonicalizePolled(poll).String(), true
+}
+
+// sortChunk is the number of strings that sortPolled sorts or merges between two calls of its
+// poll function.
+const sortChunk = 1 << 14
+
+// sortPolled sorts s, calling poll, which may be nil, now and then for a long s.
+func sortPolled(s []string, poll func()) {
+	if poll == nil || len(s) <= sortChunk {
+		slices.Sort(s)
+		return
+	}
+	for i := 0; i < len(s); i += sortChunk {
+		poll()
+		slices.Sort(s[i:min(i+sortChunk, len(s))])
+	}
+	// The sorted runs of width w are merged in pairs from src into dst.
+	src, dst := s, make([]string, len(s))
+	var steps int
+	for w := sortChunk; w < len(s); w *= 2 {
+		for lo := 0; lo < len(s); lo += 2 * w {
+			mid, hi := min(lo+w, len(s)), min(lo+2*w, len(s))
+			i, j := lo, mid
+			for k := lo; k < hi; k++ {
+				if steps++; steps == sortChunk {
+					steps = 0
+					poll()
+				}
+				if j >= hi || i < mid && src[i] <= src[j] {
+					dst[k] = src[i]
+					i++
+				} else {
+					dst[k] = src[j]
+					j++
+				}
+			}
+		}
+		src, dst = dst, src
+	}
+	copy(s, src)
 }
