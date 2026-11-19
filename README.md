@@ -137,6 +137,14 @@ The realms of a VM share its jobs and settings, and values pass between them, so
 is not a security boundary: an object of a realm gives access to its built-in objects.
 A separate `VM` isolates code.
 
+### Promises
+
+`VM.NewPromise` returns a pending promise and a `PromiseResolver`, which the host keeps to
+settle the promise later, for example when a goroutine posts the result of I/O back to the
+goroutine that uses the VM. `PromiseResolver.Resolve` and `PromiseResolver.Reject` settle it as
+the resolving functions of a JavaScript promise do, and run the pending jobs like other calls
+from Go. `Value.PromiseState` reads the state of any promise.
+
 ### Jobs
 
 Pending promise jobs run before the outermost Go call that executes JavaScript returns,
@@ -274,12 +282,11 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ### Missing
 
-- Host API for these, some of which the engine has and only the tests use:
-  - Giving a module a module source
-  - Property descriptors, and listing the keys of an object
-  - Creating or awaiting a promise from Go other than through the `Promise` constructor and
-    `then`
-  - Limits on stack depth or memory, and statistics of the memory that a VM uses
+Host API for these, some of which the engine has and only the tests use:
+
+- Giving a module a module source
+- Property descriptors, and listing the keys of an object
+- Limits on stack depth or memory, and statistics of the memory that a VM uses
 
 ## Running the tests
 

@@ -95,6 +95,18 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 	return fromEngine(v)
 }
 
+// NewPromise returns a new pending promise of r and the resolver that settles it.
+func (r *Realm) NewPromise() (Value, *PromiseResolver) {
+	var c *engine.PromiseCapability
+	r.in(func() {
+		c = r.vm.e.NewPromiseCapability(engine.ObjectValue(r.vm.e.Intrinsic(engine.IntrinsicPromise)))
+	})
+	return fromEngine(c.Promise()), &PromiseResolver{
+		realm: r,
+		c:     c,
+	}
+}
+
 // ParseScript parses src as the source text of a script of r. name identifies the script in error
 // messages and stack traces, and in the [ModuleRequest.ReferrerName] of its import() calls.
 // The error is a [*SyntaxError] when src is not a valid script.

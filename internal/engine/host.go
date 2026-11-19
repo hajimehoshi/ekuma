@@ -108,6 +108,24 @@ func (vm *VM) HostConstruct(f Value, args []Value) (Value, error) {
 	})
 }
 
+// HostResolve resolves the promise of c with v, as the [[Resolve]] function of c does.
+func (vm *VM) HostResolve(c *PromiseCapability, v Value) error {
+	_, err := vm.enter(func() Value {
+		vm.ResolveCapability(c, v)
+		return Undefined
+	})
+	return err
+}
+
+// HostReject rejects the promise of c with v, as the [[Reject]] function of c does.
+func (vm *VM) HostReject(c *PromiseCapability, v Value) error {
+	_, err := vm.enter(func() Value {
+		vm.RejectCapability(c, v)
+		return Undefined
+	})
+	return err
+}
+
 // HostInstanceOf implements v instanceof t.
 func (vm *VM) HostInstanceOf(v, t Value) (bool, error) {
 	r, err := vm.enter(func() Value {
