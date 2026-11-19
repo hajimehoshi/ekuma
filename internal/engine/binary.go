@@ -907,6 +907,22 @@ func storeNumber(t ElementType, b []byte, f float64) {
 // typedArrayGet implements TypedArrayGetElement. It returns undefined when i is not a valid integer index.
 func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
 	t := o.ext.(*TypedArray)
+	if data := t.data.data; !t.tracking && uint(i) < uint(t.length) {
+		switch t.typ {
+		case ElementInt32:
+			if p := t.offset + int(i)*4; t.offset+t.length*4 <= len(data) {
+				return Number(float64(int32(binary.LittleEndian.Uint32(data[p:]))))
+			}
+		case ElementFloat64:
+			if p := t.offset + int(i)*8; t.offset+t.length*8 <= len(data) {
+				return Number(math.Float64frombits(binary.LittleEndian.Uint64(data[p:])))
+			}
+		case ElementUint8, ElementUint8C:
+			if p := t.offset + int(i); t.offset+t.length <= len(data) {
+				return Number(float64(data[p]))
+			}
+		}
+	}
 	b, ok := t.element(i)
 	if !ok {
 		return vm.typedArrayGetSlow(o, i)
@@ -934,6 +950,25 @@ func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
 func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
 	t := o.ext.(*TypedArray)
 	if val.o == numberObject && t.numberStore {
+		if data, f := t.data.data, val.n; !t.tracking && uint(i) < uint(t.length) {
+			switch t.typ {
+			case ElementInt32:
+				if p := t.offset + int(i)*4; t.offset+t.length*4 <= len(data) && f >= -2147483648 && f <= 2147483647 {
+					binary.LittleEndian.PutUint32(data[p:], uint32(int32(f)))
+					return true
+				}
+			case ElementFloat64:
+				if p := t.offset + int(i)*8; t.offset+t.length*8 <= len(data) {
+					binary.LittleEndian.PutUint64(data[p:], math.Float64bits(f))
+					return true
+				}
+			case ElementUint8:
+				if p := t.offset + int(i); t.offset+t.length <= len(data) && f >= -2147483648 && f <= 2147483647 {
+					data[p] = byte(int32(f))
+					return true
+				}
+			}
+		}
 		if b, ok := t.element(i); ok {
 			storeNumber(t.typ, b, val.n)
 		}
