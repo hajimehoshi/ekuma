@@ -141,6 +141,13 @@ func (f *fn) otherCodeAssigns(name string) bool {
 // operand compiles e and returns the register that holds its value until the expressions rest,
 // which are evaluated afterwards, are done.
 func (f *fn) operand(e ast.Expr, rest ...ast.Expr) int32 {
+	if _, ok := e.(*ast.ThisExpr); ok {
+		// Only super() assigns this, and localReg has no register for the this that
+		// super() initializes.
+		if r := f.localReg("this"); r >= 0 {
+			return r
+		}
+	}
 	if id, ok := e.(*ast.Identifier); ok {
 		if r := f.localReg(id.Name); r >= 0 {
 			if !f.clobbers(id.Name, rest...) {
