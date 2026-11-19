@@ -81,7 +81,8 @@ func trimWhiteSpace(s string, start, end bool, poll func()) string {
 
 // maxDecimalDigits is the number of significant digits that ParseDecimal keeps. Together with a
 // sticky digit for the rest, they decide the rounding of any value to a number, and they stay
-// below the length from which strconv.ParseFloat misplaces the decimal point.
+// below the length from which strconv.ParseFloat misplaces the decimal point before Go 1.28
+// (go.dev/issue/82118).
 const maxDecimalDigits = 780
 
 // ParseDecimal returns the value of s, a StrDecimalLiteral other than Infinity, rounded to the
