@@ -129,7 +129,8 @@ func (vm *VM) initIfNeeded() {
 //	| map[string]any         | new object             |
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
-// ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil [Func].
+// ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil [Func],
+// or a *big.Int of more than 2^30 bits, the largest BigInt.
 // It panics for a string, symbol, object or function of another VM,
 // including values nested in arrays and maps, and for a map or slice that contains itself.
 //
@@ -175,6 +176,9 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 	case float64:
 		return engine.Number(x)
 	case *big.Int:
+		if x != nil && x.BitLen() > engine.MaxBigIntBits {
+			panic(fmt.Sprintf("ekuma: ValueOf: BigInt of %d bits, more than %d", x.BitLen(), engine.MaxBigIntBits))
+		}
 		return vm.e.NewBigInt(new(big.Int).Set(x))
 	case string:
 		return vm.e.StringFromGo(x)
@@ -259,7 +263,8 @@ func (vm *VM) leaveContainer(i int) {
 // Func is a function implemented in Go.
 //
 // args is valid only until the function returns. The result is converted with [Realm.ValueOf]
-// of the realm of the function.
+// of the realm of the function, except that a *big.Int result of more than 2^30 bits throws a
+// RangeError, as a BigInt operation of JavaScript with such a result does.
 //
 // A non-nil error is thrown as a JavaScript exception: a [*ScriptError] throws its value,
 // and any other error throws a new Error object made from the error, with its message.
@@ -290,6 +295,9 @@ func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
 		if err != nil {
 			vm.e.Throw(vm.thrownValue(err))
+		}
+		if b, ok := res.(*big.Int); ok && b != nil && b.BitLen() > engine.MaxBigIntBits {
+			vm.e.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		return vm.valueOf(r, res)
 	})

@@ -258,7 +258,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
   do, such as `1.02.03` in Serbian, where ICU uses the time separator
 - A BigInt has at most 2^30 bits, as in V8: an operation or a conversion whose result would be
-  larger throws a RangeError, and a larger literal is a SyntaxError
+  larger throws a RangeError, and a larger literal is a SyntaxError. `ValueOf` panics for a
+  larger `*big.Int`, and a `Func` that returns one throws a RangeError
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
@@ -268,7 +269,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   specification leaves to implementations, are accessors of each function. Browsers instead
   change the accessors of `Function.prototype`, which the specification defines to throw. As in
   SpiderMonkey, `caller` is `null` for a call from strict code, a generator, an async function or
-  a built-in function
+  a built-in function. A proper tail call from strict code leaves no frame of the strict
+  function, so the function that it calls sees the caller of the strict function instead
 
 ### Missing
 

@@ -51,7 +51,7 @@ func (vm *VM) callArguments(i int) *Object {
 
 // callerOf returns the function that made the call of frames[i], or null when the call came
 // from a native function or from script code, or when the caller is strict, a generator or an
-// async function.
+// async function. After a proper tail call, the caller is that of the function that made it.
 func (vm *VM) callerOf(i int) Value {
 	// Eval code runs on behalf of the code that calls eval.
 	j := i - 1

@@ -479,6 +479,24 @@ func TestFloatNaN(t *testing.T) {
 	}
 }
 
+// TestBigIntTooLarge checks that a Go BigInt beyond the largest BigInt of 2^30 bits does not
+// enter the VM.
+func TestBigIntTooLarge(t *testing.T) {
+	var vm ekuma.VM
+	tooLarge := new(big.Int).Lsh(big.NewInt(1), 1<<30)
+	if got := recoverHostPanic(func() { vm.ValueOf(tooLarge) }); got == nil {
+		t.Errorf("ValueOf of a BigInt of 2^30+1 bits did not panic")
+	}
+	if err := vm.Global().Set("tooLarge", vm.FuncOf("tooLarge", func(ekuma.Value, []ekuma.Value) (any, error) {
+		return tooLarge, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	if got := run(t, &vm, `try { tooLarge(); "no error"; } catch (e) { e instanceof RangeError; }`); got != "true" {
+		t.Errorf("a Func result of 2^30+1 bits: got %s, want a RangeError", got)
+	}
+}
+
 func TestBigInt(t *testing.T) {
 	var vm ekuma.VM
 	for _, want := range []string{
