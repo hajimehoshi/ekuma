@@ -231,7 +231,7 @@ func roundedToNumber(d Decimal, s string) Decimal {
 			neg: d.neg,
 		}
 	}
-	f := numconv.StringToNumber(s)
+	f := numconv.StringToNumber(s, nil)
 	switch {
 	case math.IsInf(f, 0):
 		return Inf(d.neg)

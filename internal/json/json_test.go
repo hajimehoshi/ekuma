@@ -4,6 +4,7 @@
 package json_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/json"
@@ -88,8 +89,25 @@ func TestValid(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if pos, ok := json.Valid(tt.text); pos != tt.pos || ok != tt.ok {
+		if pos, ok := json.Valid(tt.text, nil); pos != tt.pos || ok != tt.ok {
 			t.Errorf("Valid(%q): got %d, %v, want %d, %v", tt.text, pos, ok, tt.pos, tt.ok)
+		}
+	}
+}
+
+func TestScanNumberPolls(t *testing.T) {
+	for _, s := range []string{
+		strings.Repeat("1", 1<<20),
+		"0." + strings.Repeat("1", 1<<20),
+		"1e" + strings.Repeat("0", 1<<20) + "1",
+	} {
+		polls := 0
+		f, end, ok := json.ScanNumber(s, 0, func() { polls++ })
+		if !ok || end != len(s) || f == 0 {
+			t.Errorf("ScanNumber(%.8q...) = %v, %d, %v", s, f, end, ok)
+		}
+		if polls == 0 {
+			t.Errorf("ScanNumber(%.8q...): no polls", s)
 		}
 	}
 }

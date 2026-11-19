@@ -44,8 +44,9 @@ func isDigit(c byte) bool {
 	return c >= '0' && c <= '9'
 }
 
-// ScanNumber scans a number at i and returns its value.
-func ScanNumber(s string, i int) (float64, int, bool) {
+// ScanNumber scans a number at i and returns its value. poll, which may be nil, is called now and
+// then while a long number is scanned, and may stop the scan by panicking.
+func ScanNumber(s string, i int, poll func()) (float64, int, bool) {
 	start := i
 	neg := false
 	if i < len(s) && s[i] == '-' {
@@ -61,12 +62,15 @@ func ScanNumber(s string, i int) (float64, int, bool) {
 		i++
 		digits = 1
 	} else {
-		for i < len(s) && isDigit(s[i]) {
-			if digits < 15 {
-				n = n*10 + int64(s[i]-'0')
-			}
+		for i < len(s) && isDigit(s[i]) && digits < 15 {
+			n = n*10 + int64(s[i]-'0')
 			i++
 			digits++
+		}
+		if i < len(s) && isDigit(s[i]) {
+			end := skipDigits(s, i, poll)
+			digits += end - i
+			i = end
 		}
 	}
 	exact := digits <= 15
@@ -75,9 +79,7 @@ func ScanNumber(s string, i int) (float64, int, bool) {
 		if i >= len(s) || !isDigit(s[i]) {
 			return 0, i, false
 		}
-		for i < len(s) && isDigit(s[i]) {
-			i++
-		}
+		i = skipDigits(s, i, poll)
 		exact = false
 	}
 	if i < len(s) && (s[i] == 'e' || s[i] == 'E') {
@@ -88,19 +90,38 @@ func ScanNumber(s string, i int) (float64, int, bool) {
 		if i >= len(s) || !isDigit(s[i]) {
 			return 0, i, false
 		}
-		for i < len(s) && isDigit(s[i]) {
-			i++
-		}
+		i = skipDigits(s, i, poll)
 		exact = false
 	}
 	if !exact {
-		return numconv.StringToNumber(s[start:i]), i, true
+		return numconv.StringToNumber(s[start:i], poll), i, true
 	}
 	f := float64(n)
 	if neg {
 		f = -f
 	}
 	return f, i, true
+}
+
+// scanStep is the number of bytes of a long number that ScanNumber scans between two calls of
+// its poll function.
+const scanStep = 1 << 16
+
+// skipDigits returns the end of the run of digits in s from i, calling poll between the steps of
+// a long run.
+func skipDigits(s string, i int, poll func()) int {
+	for {
+		end := min(len(s), i+scanStep)
+		for i < end && isDigit(s[i]) {
+			i++
+		}
+		if i < end || i == len(s) {
+			return i
+		}
+		if poll != nil {
+			poll()
+		}
+	}
 }
 
 // ScanString scans a string whose opening quote is at i and returns its contents in canonical WTF-8.
@@ -207,8 +228,8 @@ func skipString(s string, i int) (int, bool) {
 }
 
 // Valid reports whether s is a JSON text. When it is not, it also returns the index at which
-// the grammar fails.
-func Valid(s string) (int, bool) {
+// the grammar fails. poll is as for [ScanNumber].
+func Valid(s string, poll func()) (int, bool) {
 	// closers holds the closing bracket of every array and object that is open.
 	var closers []byte
 	i := 0
@@ -248,7 +269,7 @@ func Valid(s string) (int, bool) {
 		case 'n':
 			i, ok = ScanLiteral(s, i, "null")
 		default:
-			_, i, ok = ScanNumber(s, i)
+			_, i, ok = ScanNumber(s, i, poll)
 		}
 		if !ok {
 			return i, false

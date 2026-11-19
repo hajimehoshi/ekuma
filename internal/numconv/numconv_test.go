@@ -66,7 +66,7 @@ func TestStringToNumber(t *testing.T) {
 		{in: "0x20000000000001", want: 9007199254740992},
 	}
 	for _, tt := range tests {
-		got := numconv.StringToNumber(tt.in)
+		got := numconv.StringToNumber(tt.in, nil)
 		if got != tt.want && !(got != got && tt.want != tt.want) {
 			t.Errorf("StringToNumber(%q) = %v, want %v", tt.in, got, tt.want)
 		}
@@ -129,7 +129,7 @@ func TestParseInt(t *testing.T) {
 		{in: "12", radix: 2, want: 1},
 	}
 	for _, tt := range tests {
-		if got := numconv.ParseInt(tt.in, tt.radix); got != tt.want {
+		if got := numconv.ParseInt(tt.in, tt.radix, nil); got != tt.want {
 			t.Errorf("ParseInt(%q, %d) = %v, want %v", tt.in, tt.radix, got, tt.want)
 		}
 	}
@@ -276,6 +276,117 @@ func TestBigIntDigitsTooLarge(t *testing.T) {
 	} {
 		if got := numconv.BigIntDigitsTooLarge(tc.digits, 16, nil); got != tc.want {
 			t.Errorf("BigIntDigitsTooLarge of %d digits: got %t, want %t", len(tc.digits), got, tc.want)
+		}
+	}
+}
+
+func TestStringToNumberLong(t *testing.T) {
+	zeros := strings.Repeat("0", 70000)
+	for _, s := range []string{
+		// Halfway between two numbers up to a digit far away.
+		"9007199254740993" + zeros,
+		"9007199254740993" + zeros + "1",
+		"9007199254740993" + zeros + "e-70000",
+		"9007199254740993" + zeros + "1e-70001",
+		"-9007199254740993." + zeros + "1",
+		"9007199254740992.5" + zeros + "1",
+		"0." + zeros + "12345678901234567890123",
+		"-0." + zeros,
+		zeros + "." + zeros + "e999999",
+		zeros + "1.5",
+		"1" + zeros + "e-70000",
+		"1" + zeros,
+		strings.Repeat("123456789", 9000) + "e-80000",
+		"2.4703282292062327" + zeros + "1e-324",
+		"9007199254740993" + strings.Repeat("0", 790) + "1e-791",
+	} {
+		// A rational number holds the exact value, which strconv.ParseFloat misplaces for
+		// more than 800 digits.
+		r, ok := new(big.Rat).SetString(s)
+		if !ok {
+			t.Fatalf("big.Rat.SetString(%.24q...) failed", s)
+		}
+		want, _ := r.Float64()
+		if strings.HasPrefix(s, "-") {
+			want = math.Copysign(want, -1)
+		}
+		if got := numconv.StringToNumber(s, nil); got != want || math.Signbit(got) != math.Signbit(want) {
+			t.Errorf("StringToNumber(%.24q...) = %v, want %v", s, got, want)
+		}
+	}
+}
+
+func TestStringToNumberManyDigits(t *testing.T) {
+	r := rand.New(rand.NewPCG(3, 4))
+	for range 300 {
+		// The halfway point between two numbers, with a digit perturbing it far away.
+		f := math.Float64frombits(r.Uint64() &^ (1 << 63))
+		if math.IsInf(f, 0) || math.IsNaN(f) {
+			continue
+		}
+		next := math.Nextafter(f, math.Inf(1))
+		if math.IsInf(next, 0) {
+			continue
+		}
+		mid := new(big.Rat).Add(new(big.Rat).SetFloat64(f), new(big.Rat).SetFloat64(next))
+		mid.Quo(mid, big.NewRat(2, 1))
+		digits := mid.FloatString(700 + r.IntN(1800))
+		switch r.IntN(3) {
+		case 0:
+			digits += "1"
+		case 1:
+			digits = digits[:len(digits)-r.IntN(40)]
+		}
+		want, _ := new(big.Rat).SetString(digits)
+		w, _ := want.Float64()
+		if got := numconv.StringToNumber(digits, nil); got != w {
+			t.Errorf("StringToNumber(%.40q...) = %v, want %v", digits, got, w)
+		}
+	}
+}
+
+func TestStringToNumberPolls(t *testing.T) {
+	long := strings.Repeat("1", 1<<20)
+	for _, tc := range []struct {
+		name string
+		conv func(poll func()) float64
+	}{
+		{
+			name: "digits",
+			conv: func(poll func()) float64 { return numconv.StringToNumber(long, poll) },
+		},
+		{
+			name: "leading white space",
+			conv: func(poll func()) float64 { return numconv.StringToNumber(strings.Repeat(" ", 1<<20)+"1", poll) },
+		},
+		{
+			name: "trailing white space",
+			conv: func(poll func()) float64 { return numconv.StringToNumber("1"+strings.Repeat("　", 1<<18), poll) },
+		},
+		{
+			name: "leading zeros",
+			conv: func(poll func()) float64 { return numconv.StringToNumber(strings.Repeat("0", 1<<20)+"1", poll) },
+		},
+		{
+			name: "hexadecimal",
+			conv: func(poll func()) float64 { return numconv.StringToNumber("0x"+strings.Repeat("0", 1<<20)+"1", poll) },
+		},
+		{
+			name: "parseFloat",
+			conv: func(poll func()) float64 { return numconv.ParseFloat(long+"x", poll) },
+		},
+		{
+			name: "parseInt",
+			conv: func(poll func()) float64 { return numconv.ParseInt(long+"x", 10, poll) },
+		},
+	} {
+		polls := 0
+		got := tc.conv(func() { polls++ })
+		if got != got || got == 0 {
+			t.Errorf("%s: got %v", tc.name, got)
+		}
+		if polls == 0 {
+			t.Errorf("%s: no polls", tc.name)
 		}
 	}
 }

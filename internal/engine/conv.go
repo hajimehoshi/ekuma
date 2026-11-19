@@ -94,7 +94,7 @@ func (vm *VM) ToNumber(v Value) float64 {
 				return float64(n)
 			}
 		}
-		return numconv.StringToNumber(v.Str())
+		return numconv.StringToNumber(v.Str(), vm.Poll)
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a number")
 	case kindBigInt:

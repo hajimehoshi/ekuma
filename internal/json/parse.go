@@ -236,7 +236,7 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			p.literal("null")
 			v = engine.Null
 		default:
-			n, end, ok := ScanNumber(src, p.pos)
+			n, end, ok := ScanNumber(src, p.pos, vm.Poll)
 			p.pos = end
 			if !ok {
 				p.fail()

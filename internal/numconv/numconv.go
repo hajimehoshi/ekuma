@@ -126,10 +126,20 @@ func DigitValue(c byte) int {
 }
 
 // ParseRadixDigits returns the value of s, which consists of digits of the given radix,
-// rounded to the nearest number. ok is false when s is empty or has another character.
-func ParseRadixDigits(s string, radix int) (f float64, ok bool) {
+// rounded to the nearest number. ok is false when s is empty or has another character. poll is
+// as for [StringToNumber].
+func ParseRadixDigits(s string, radix int, poll func()) (f float64, ok bool) {
 	if s == "" {
 		return 0, false
+	}
+	if len(s) > scanStep {
+		if skipRadixDigits(s, 0, radix, poll) < len(s) {
+			return 0, false
+		}
+		// The leading zeros add nothing to the value.
+		if s = s[skipZeros(s, 0, poll):]; s == "" {
+			return 0, true
+		}
 	}
 	var n uint64
 	exact := true
@@ -163,19 +173,14 @@ func ParseRadixDigits(s string, radix int) (f float64, ok bool) {
 }
 
 // isDecimalLiteral reports whether s matches StrUnsignedDecimalLiteral, other than Infinity.
-func isDecimalLiteral(s string) bool {
-	i := 0
-	digits := 0
-	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-		i++
-		digits++
-	}
+// poll is called between the steps of a long s.
+func isDecimalLiteral(s string, poll func()) bool {
+	i := skipRadixDigits(s, 0, 10, poll)
+	digits := i
 	if i < len(s) && s[i] == '.' {
-		i++
-		for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-			i++
-			digits++
-		}
+		j := skipRadixDigits(s, i+1, 10, poll)
+		digits += j - i - 1
+		i = j
 	}
 	if digits == 0 {
 		return false
@@ -186,9 +191,7 @@ func isDecimalLiteral(s string) bool {
 			i++
 		}
 		start := i
-		for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-			i++
-		}
+		i = skipRadixDigits(s, i, 10, poll)
 		if i == start {
 			return false
 		}
@@ -196,8 +199,9 @@ func isDecimalLiteral(s string) bool {
 	return i == len(s)
 }
 
-// StringToNumber implements StringToNumber.
-func StringToNumber(s string) float64 {
+// StringToNumber implements StringToNumber. poll, which may be nil, is called now and then during
+// the conversion of a long string, and may stop it by panicking.
+func StringToNumber(s string, poll func()) float64 {
 	// The common case is a short run of digits.
 	if len(s) > 0 && len(s) <= 15 {
 		var n int64
@@ -214,7 +218,7 @@ func StringToNumber(s string) float64 {
 		}
 	}
 
-	s = xstrings.TrimWhiteSpace(s, true, true)
+	s = trimWhiteSpace(s, true, true, poll)
 	if s == "" {
 		return 0
 	}
@@ -229,7 +233,7 @@ func StringToNumber(s string) float64 {
 			radix = 2
 		}
 		if radix != 0 {
-			f, ok := ParseRadixDigits(s[2:], radix)
+			f, ok := ParseRadixDigits(s[2:], radix, poll)
 			if !ok {
 				return math.NaN()
 			}
@@ -246,12 +250,10 @@ func StringToNumber(s string) float64 {
 		}
 		return math.Inf(1)
 	}
-	if !isDecimalLiteral(u) {
+	if !isDecimalLiteral(u, poll) {
 		return math.NaN()
 	}
-	// ParseFloat rounds correctly and returns an infinity when the value is out of range.
-	f, _ := strconv.ParseFloat(s, 64)
-	return f
+	return ParseDecimal(s, poll)
 }
 
 // NumberToRadixString implements Number::toString for a radix other than 10.
@@ -453,9 +455,10 @@ func StringToBigInt(s string, maxBits int, poll func()) (*big.Int, error) {
 	return i, nil
 }
 
-// ParseFloat implements parseFloat: the longest prefix of s that is a decimal literal.
-func ParseFloat(s string) float64 {
-	s = xstrings.TrimWhiteSpace(s, true, false)
+// ParseFloat implements parseFloat: the longest prefix of s that is a decimal literal. poll is as
+// for [StringToNumber].
+func ParseFloat(s string, poll func()) float64 {
+	s = trimWhiteSpace(s, true, false, poll)
 	i := 0
 	if i < len(s) && (s[i] == '+' || s[i] == '-') {
 		i++
@@ -466,17 +469,12 @@ func ParseFloat(s string) float64 {
 		}
 		return math.Inf(1)
 	}
-	digits := 0
-	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
-		i++
-		digits++
-	}
+	start := i
+	i = skipRadixDigits(s, i, 10, poll)
+	digits := i - start
 	if i < len(s) && s[i] == '.' {
-		j := i + 1
-		for j < len(s) && s[j] >= '0' && s[j] <= '9' {
-			j++
-			digits++
-		}
+		j := skipRadixDigits(s, i+1, 10, poll)
+		digits += j - i - 1
 		if digits > 0 {
 			i = j
 		}
@@ -489,20 +487,16 @@ func ParseFloat(s string) float64 {
 		if j < len(s) && (s[j] == '+' || s[j] == '-') {
 			j++
 		}
-		k := j
-		for k < len(s) && s[k] >= '0' && s[k] <= '9' {
-			k++
-		}
-		if k > j {
+		if k := skipRadixDigits(s, j, 10, poll); k > j {
 			i = k
 		}
 	}
-	return StringToNumber(s[:i])
+	return StringToNumber(s[:i], poll)
 }
 
-// ParseInt implements parseInt.
-func ParseInt(s string, radix int) float64 {
-	s = xstrings.TrimWhiteSpace(s, true, false)
+// ParseInt implements parseInt. poll is as for [StringToNumber].
+func ParseInt(s string, radix int, poll func()) float64 {
+	s = trimWhiteSpace(s, true, false, poll)
 	neg := false
 	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
 		neg = s[0] == '-'
@@ -521,19 +515,16 @@ func ParseInt(s string, radix int) float64 {
 		s = s[2:]
 		radix = 16
 	}
-	end := 0
-	for end < len(s) && DigitValue(s[end]) < radix {
-		end++
-	}
+	end := skipRadixDigits(s, 0, radix, poll)
 	if end == 0 {
 		return math.NaN()
 	}
 	var n float64
 	if radix == 10 {
 		// The decimal parser rounds correctly for any number of digits.
-		n = StringToNumber(s[:end])
+		n = StringToNumber(s[:end], poll)
 	} else {
-		n, _ = ParseRadixDigits(s[:end], radix)
+		n, _ = ParseRadixDigits(s[:end], radix, poll)
 	}
 	if neg {
 		return -n

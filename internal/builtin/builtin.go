@@ -866,11 +866,11 @@ func initError(vm *engine.VM) {
 // newParseFunctions creates the functions parseFloat and parseInt.
 func newParseFunctions(vm *engine.VM) (parseFloat, parseInt *engine.Object) {
 	parseFloat = vm.NewNative("parseFloat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(numconv.ParseFloat(vm.ToString(arg(args, 0))))
+		return engine.Number(numconv.ParseFloat(vm.ToString(arg(args, 0)), vm.Poll))
 	})
 	parseInt = vm.NewNative("parseInt", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := vm.ToString(arg(args, 0))
-		return engine.Number(numconv.ParseInt(s, int(vm.ToInt32(arg(args, 1)))))
+		return engine.Number(numconv.ParseInt(s, int(vm.ToInt32(arg(args, 1))), vm.Poll))
 	})
 	return parseFloat, parseInt
 }

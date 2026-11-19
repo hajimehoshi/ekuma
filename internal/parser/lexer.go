@@ -714,8 +714,7 @@ func (p *parser) scanNumber(start int) {
 		if sep {
 			text = strings.ReplaceAll(text, "_", "")
 		}
-		// An out of range value yields an infinity together with an error, which is the wanted value.
-		t.num, _ = strconv.ParseFloat(text, 64)
+		t.num = numconv.ParseDecimal(text, nil)
 	}
 	p.finishNumber(pos)
 }
@@ -775,7 +774,7 @@ func (p *parser) scanRadix(start int, base int) {
 		}
 		t.num = float64(v)
 	} else {
-		t.num, _ = numconv.ParseRadixDigits(digits, base)
+		t.num, _ = numconv.ParseRadixDigits(digits, base, nil)
 	}
 	p.finishNumber(pos)
 }

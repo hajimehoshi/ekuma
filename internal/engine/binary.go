@@ -1072,6 +1072,10 @@ func (vm *VM) typedArraySetNamed(o *Object, val Value, receiver Value) {
 	}
 }
 
+// maxNumberStringLen bounds the length of the string of a number, such as
+// "-1.2345678901234567e-308".
+const maxNumberStringLen = 32
+
 // isCanonicalNumericString reports whether CanonicalNumericIndexString returns a number for the string key.
 // The array indices are not named keys, so they are not considered.
 func isCanonicalNumericString(key *Object) bool {
@@ -1088,7 +1092,11 @@ func isCanonicalNumericString(key *Object) bool {
 	if s == "-0" {
 		return true
 	}
-	return numconv.NumberToString(numconv.StringToNumber(s)) == s
+	// The string of a number is short.
+	if len(s) > maxNumberStringLen {
+		return false
+	}
+	return numconv.NumberToString(numconv.StringToNumber(s, nil)) == s
 }
 
 // isNumericKey reports whether k is an array index or a canonical numeric string,
