@@ -240,6 +240,21 @@ func TestManyAlternatives(t *testing.T) {
 	}
 }
 
+// TestManyClassStrings checks a class of the v flag with many strings.
+func TestManyClassStrings(t *testing.T) {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i := range 100000 {
+		fmt.Fprintf(&b, "\\q{x%d}", i)
+	}
+	b.WriteString("a]")
+	re := mustCompile(t, b.String(), "v")
+	var m regexp.Matcher
+	if got := re.Find(&m, "-x99999-", 0, nil); !slices.Equal(got, []int{1, 7}) {
+		t.Errorf("got %v, want [1 7]", got)
+	}
+}
+
 // FuzzValidate checks that Validate reports the error that Compile reports.
 func FuzzValidate(f *testing.F) {
 	for _, p := range []string{

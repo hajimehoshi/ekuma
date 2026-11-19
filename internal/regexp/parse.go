@@ -5,6 +5,7 @@ package regexp
 
 import (
 	"cmp"
+	"maps"
 	"math"
 	"slices"
 
@@ -1384,7 +1385,12 @@ func (p *parser) parseClassSetExpression() classValue {
 		p.expectClassEnd()
 		return acc
 	}
+	// The union accumulates into its own copy of the first operand, which may be shared.
 	acc := first
+	if !p.validateOnly {
+		acc.set = slices.Clone(acc.set)
+		acc.strs = maps.Clone(acc.strs)
+	}
 	for p.peek() != ']' {
 		if p.eof() {
 			p.fail("unterminated character class")
@@ -1393,7 +1399,13 @@ func (p *parser) parseClassSetExpression() classValue {
 			p.fail("invalid set operation in character class")
 		}
 		b, _ := p.classSetOperandOrRange()
-		acc = p.unionValues(acc, b)
+		acc.mayContainStrings = acc.mayContainStrings || b.mayContainStrings
+		if !p.validateOnly {
+			acc.set = append(acc.set, b.set...)
+			for _, s := range b.strs {
+				acc.addString(s)
+			}
+		}
 	}
 	p.pos++
 	acc.set = acc.set.normalize()
@@ -1405,23 +1417,6 @@ func (p *parser) expectClassEnd() {
 		p.fail("invalid set operation in character class")
 	}
 	p.pos++
-}
-
-func (p *parser) unionValues(a, b classValue) classValue {
-	out := classValue{
-		mayContainStrings: a.mayContainStrings || b.mayContainStrings,
-	}
-	if p.validateOnly {
-		return out
-	}
-	out.set = a.set.union(b.set)
-	for _, s := range a.strs {
-		out.addString(s)
-	}
-	for _, s := range b.strs {
-		out.addString(s)
-	}
-	return out
 }
 
 func (p *parser) intersectValues(a, b classValue) classValue {
