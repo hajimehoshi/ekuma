@@ -269,15 +269,23 @@ func assignTarget(n ast.Node) ast.Pattern {
 	return nil
 }
 
-// assignedNames calls f for the name of every variable that the code below n assigns to.
-func assignedNames(n ast.Node, f func(string)) {
-	name := func(id *ast.Identifier) {
-		f(id.Name)
+// assignsTo reports whether the code below n assigns to the variable name.
+// With ownCode, the code of the functions in n is left out.
+func assignsTo(n ast.Node, name string, ownCode bool) bool {
+	found := false
+	match := func(id *ast.Identifier) {
+		if id.Name == name {
+			found = true
+		}
 	}
 	walk(n, func(m ast.Node) bool {
-		if p := assignTarget(m); p != nil {
-			patternNames(p, name)
+		if _, ok := m.(*ast.Function); ok && ownCode {
+			return false
 		}
-		return true
+		if p := assignTarget(m); p != nil {
+			patternNames(p, match)
+		}
+		return !found
 	})
+	return found
 }

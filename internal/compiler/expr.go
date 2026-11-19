@@ -124,13 +124,8 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 		if f.mutated[name] || f.anyMutated || f.nestedAssigns(name) {
 			return true
 		}
-		found := false
-		assignedNames(e, func(s string) {
-			if s == name {
-				found = true
-			}
-		})
-		if found {
+		// nestedAssigns covers the functions nested in a function, so only its own code is left.
+		if assignsTo(e, name, f.node != nil) {
 			return true
 		}
 	}
@@ -642,6 +637,13 @@ type memberTarget struct {
 // target evaluates the object and the key of the property reference n for a read.
 // The key of a super property is converted by the read.
 func (f *fn) target(n *ast.MemberExpr) memberTarget {
+	return f.targetBefore(n, nil, false)
+}
+
+// targetBefore is like target for a reference that stays in use while the expressions rest are
+// evaluated. With storeOnly, the reference is only stored to, so a computed key is not converted
+// before the store and may stay in the register of a local variable.
+func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly bool) memberTarget {
 	t := memberTarget{
 		node: n,
 		key:  -1,
@@ -661,24 +663,33 @@ func (f *fn) target(n *ast.MemberExpr) memberTarget {
 		return t
 	}
 	if p, ok := n.Property.(*ast.PrivateName); ok && !n.Computed {
-		t.obj = f.operand(n.Object)
+		t.obj = f.operand(n.Object, rest...)
 		t.key = f.newReg()
 		f.loadVar("#"+p.Name, t.key, false)
 		return t
 	}
 	if n.Computed {
-		t.obj = f.operand(n.Object, n.Property)
+		t.obj = f.operand(n.Object, append([]ast.Expr{n.Property}, rest...)...)
+		if storeOnly {
+			t.key = f.operand(n.Property, rest...)
+			return t
+		}
 		t.key = f.newReg()
 		f.expr(n.Property, t.key)
 		return t
 	}
-	t.obj = f.operand(n.Object)
+	t.obj = f.operand(n.Object, rest...)
 	return t
 }
 
 // assignTarget evaluates the property reference n for a store, which may follow a read.
 func (f *fn) assignTarget(n *ast.MemberExpr) memberTarget {
-	t := f.target(n)
+	return f.assignTargetBefore(n, nil, false)
+}
+
+// assignTargetBefore is like assignTarget, with rest and storeOnly as for targetBefore.
+func (f *fn) assignTargetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly bool) memberTarget {
+	t := f.targetBefore(n, rest, storeOnly)
 	if t.super {
 		// The reference holds the super base from its evaluation on.
 		f.emit(bytecode.OpSuperBase, t.home, t.home, 0)
@@ -1532,7 +1543,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.storeVarTo(n, name, t, false, scope)
 		}
 	case *ast.MemberExpr:
-		t := f.assignTarget(target)
+		t := f.assignTargetBefore(target, []ast.Expr{n.Value}, n.Op == ast.OpNone)
 		switch {
 		case n.Op == ast.OpNone:
 			v := f.exprAny(n.Value)
