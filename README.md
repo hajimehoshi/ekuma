@@ -92,7 +92,6 @@ Measured on 2026-11-20: Apple M3 Pro, macOS 27.2, go1.27.4.
   syntax. Failed rounds are excluded from timing ratios.
 - See [`_bench`](_bench/README.md) for the benchmarks, measurement methodology, and individual
   results.
-- See [CPU profiling](_bench/PROFILING.md) for capturing and interpreting an Ekuma CPU profile.
 
 ## Host API
 
