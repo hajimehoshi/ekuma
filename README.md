@@ -245,7 +245,7 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 ### Notes on behavior
 
 - Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar. Named time zones require
-  the system's time zone database
+  the system's time zone database, or one in the directory that `ZONEINFO` names
 - Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
   compares code units after Unicode normalization, and `toLocaleUpperCase` and
   `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
@@ -257,8 +257,9 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   one of its subtags has no name, where ICU names the other subtags
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
   do, such as `1.02.03` in Serbian, where ICU uses the time separator
-- A BigInt has at most 2^30 bits, as in V8, and an operation or a conversion whose result would
-  be larger throws a RangeError. `**` throws for a result of more than 2^25 bits
+- A BigInt has at most 2^30 bits, as in V8: an operation or a conversion whose result would be
+  larger throws a RangeError, and a larger literal is a SyntaxError. `**` throws a RangeError
+  when the bit length of a base other than 0, 1 and -1 times the exponent exceeds 2^25
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
@@ -287,6 +288,8 @@ go test ./...
 
 The test262 run is skipped unless a checkout of the suite is found in `ekuma/test262`
 under the user cache directory, or in the directory specified by `EKUMA_TEST262`.
+The flags `-test262.filter`, `-test262.dir` and `-test262.shuffle` of the root package select and
+order its tests, and `-test262.report` writes the failing tests with their reasons to a file.
 
 Local JavaScript regression tests in [`testdata/scripts`](testdata/scripts) use the
 same runner as Test262 with an original 0BSD harness. The scripts and harness are read

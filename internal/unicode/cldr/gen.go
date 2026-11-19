@@ -6,8 +6,8 @@
 // This program generates the tables of package cldr from a CLDR release, and LICENSE, the
 // license of the CLDR data that the tables carry. Run it with go generate.
 //
-// It reads the JSON data of the release (cldr-json, as published on npm) and, for collation,
-// the XML data of the release.
+// It reads the JSON data of the release (cldr-json, as published on npm) and, for collation and
+// the number symbols that cldr-json leaves out of the root locale, the XML data of the release.
 package main
 
 import (

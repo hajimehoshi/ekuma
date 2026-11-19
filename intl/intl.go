@@ -19,8 +19,8 @@
 // Otherwise, the first nonempty LC_ALL,
 // LC_MESSAGES or LANG environment variable selects it. With none set, the default is
 // the user locale on macOS, iOS and Windows, the system locale on Android, or the
-// system locale configuration on Linux. BSD systems and Android builds without Cgo
-// use the locale environment variables.
+// system locale configuration on Linux. Other systems and Android builds without Cgo
+// use the locale environment variables only.
 // Browser builds use navigator.language. If the host locale is unavailable, C or POSIX,
 // the default is en-US.
 package intl

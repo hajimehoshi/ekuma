@@ -22,8 +22,8 @@ type pluralRulesData struct {
 	slots          digitSlots
 }
 
-// resolvePlural implements ResolvePlural for n, which is finite. It returns the plural
-// category and the formatted string.
+// resolvePlural implements ResolvePlural for n. It returns the plural category and the
+// formatted string.
 func (pr *pluralRulesData) resolvePlural(n number.Decimal) (string, string) {
 	if n.IsNaN() || n.IsInf() {
 		return "other", ""

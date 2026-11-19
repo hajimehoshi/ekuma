@@ -17,7 +17,7 @@ type nodeOp uint8
 const (
 	opEmpty     nodeOp = iota
 	opChar             // r
-	opLit              // the characters of set one after another, at least two
+	opLit              // the characters of set one after another, not ranges, at least two
 	opClass            // set
 	opSeq              // subs
 	opAlt              // subs
@@ -50,10 +50,11 @@ type node struct {
 	name   string
 }
 
-// unbounded is the max of a quantifier without an upper bound. Counts beyond it are clamped,
-// which cannot be observed since no string is that long.
+// unbounded is the max of a quantifier without an upper bound.
 const unbounded = -1
 
+// countLimit is the largest count of a quantifier. Larger counts are clamped to it, which
+// cannot be observed since no string is that long.
 const countLimit = math.MaxInt32
 
 type tree struct {

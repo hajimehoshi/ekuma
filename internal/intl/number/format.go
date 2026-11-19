@@ -759,7 +759,8 @@ func (f *Formatter) Format(x Decimal, poll func()) []Part {
 	return f.parts(f.format(x, false, false, poll))
 }
 
-// FormatToString implements FormatNumeric: it returns the string of the parts of [Formatter.Format].
+// FormatToString implements FormatNumeric: it returns the string of the parts of
+// [Formatter.Format]. poll is as for [Formatter.Format].
 func (f *Formatter) FormatToString(x Decimal, poll func()) string {
 	return String(f.parts(f.format(x, false, true, poll)))
 }

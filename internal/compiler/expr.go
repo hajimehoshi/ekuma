@@ -857,7 +857,7 @@ func hasSpread(args []ast.Expr) bool {
 	return false
 }
 
-// spreadArgs builds the array of the arguments args in the register dst.
+// spreadArgs puts an array of the values of the arguments args in the register dst.
 func (f *fn) spreadArgs(args []ast.Expr, dst int32) {
 	if len(args) == 1 {
 		if s, ok := args[0].(*ast.SpreadElement); ok {

@@ -49,8 +49,8 @@ func test262Dir() string {
 	return filepath.Join(c, "ekuma", "test262")
 }
 
-// skippedTestsFile lists the test262 tests that are not run, one path per line, each with a
-// comment that says why. A line that starts with "#" is a comment.
+// skippedTestsFile lists the test262 tests that are expected to fail, one path per line, each
+// with a comment that says why. A line that starts with "#" is a comment.
 const skippedTestsFile = "testdata/test262-skips.txt"
 
 // readLines returns the lines of the file name other than the empty lines and the comments,

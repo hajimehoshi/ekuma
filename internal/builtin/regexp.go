@@ -230,8 +230,8 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s engine.Value)
 	return engine.ObjectValue(a)
 }
 
-// fastExec reports whether RegExpExec on r would call the original exec, and so whether
-// builtinExecRaw can stand for it.
+// fastExec returns the exec method of r, and reports whether RegExpExec on r would call the
+// original exec, and so whether builtinExecRaw can stand for it.
 func (e *regexpEnv) fastExec(vm *engine.VM, r *engine.Object) (engine.Value, bool) {
 	if vm.IsUnmodifiedRegExp(r) {
 		return engine.ObjectValue(e.exec), true

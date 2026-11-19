@@ -93,7 +93,7 @@ type Regexp struct {
 }
 
 // pollSteps is the number of steps, such as parsing a character of a pattern or compiling a
-// node, between two calls of the poller of [Compile].
+// node, between two calls of the poller of [Compile] or [Validate].
 const pollSteps = 1 << 16
 
 // Compile parses a pattern with flags and compiles it. poller, which may be nil, is called now
@@ -146,8 +146,8 @@ func (re *Regexp) Names() []string {
 	return re.names
 }
 
-// Poller is what a long match calls now and then, so that it can be stopped.
-// [Poller.Poll] stops the match by panicking.
+// Poller is what a long match, compilation or validation calls now and then, so that it can
+// be stopped. [Poller.Poll] stops it by panicking.
 type Poller interface {
 	Poll()
 }

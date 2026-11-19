@@ -27,8 +27,8 @@ type relativeTimeFormatData struct {
 	pluralDigits number.Digits
 }
 
-// defaultDigits returns the digit options of a NumberFormat or PluralRules constructed without
-// digit options.
+// defaultDigits returns the digit options of a PluralRules, or of a decimal NumberFormat in
+// standard notation, constructed without digit options.
 func defaultDigits() number.Digits {
 	return number.Digits{
 		MinimumIntegerDigits:  1,

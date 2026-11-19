@@ -208,7 +208,7 @@ func stringArray(vm *engine.VM, ss []string) engine.Value {
 	return vm.NewArrayOf(vals)
 }
 
-// stringOrUndefined returns s as a String, or undefined when s is empty.
+// stringOrUndefined returns s as a String when ok is true, or undefined otherwise.
 func stringOrUndefined(vm *engine.VM, s string, ok bool) engine.Value {
 	if !ok {
 		return engine.Undefined

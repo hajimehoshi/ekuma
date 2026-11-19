@@ -399,7 +399,8 @@ func partsArray(vm *engine.VM, n int, part func(i int) (typ, value, source strin
 	return vm.NewArrayOf(vals)
 }
 
-// formatRange implements PartitionNumberRangePattern after the conversion of the arguments.
+// formatRange checks and converts the arguments start and end of formatRange and
+// formatRangeToParts, and implements PartitionNumberRangePattern for them.
 func (nf *numberFormatData) formatRange(vm *engine.VM, args []engine.Value) []number.RangePart {
 	start, end := arg(args, 0), arg(args, 1)
 	if start.IsUndefined() || end.IsUndefined() {

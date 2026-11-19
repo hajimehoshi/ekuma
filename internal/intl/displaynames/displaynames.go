@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-// Package displaynames provides the display names of Intl.DisplayNames, as ICU's
-// LocaleDisplayNames does.
+// Package displaynames provides the display names of Intl.DisplayNames.
 package displaynames
 
 import (

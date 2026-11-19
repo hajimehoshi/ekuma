@@ -6,7 +6,7 @@
 // This program generates testdata/pow.txt, powers with their exact values for the tests of
 // Pow. Run it with go generate. It needs bc.
 //
-// Each line holds x and y as hexadecimal floats and x**y to 40 significant digits. bc
+// Each line holds x and y as hexadecimal floats and x**y to 41 significant digits. bc
 // computes x**y as e(y l(x)) at scale=200 from the exact binary values of x and y.
 package main
 

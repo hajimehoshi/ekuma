@@ -1,6 +1,6 @@
-# The test262 tests that are not run, one path per line, each with the reason in a comment above
-# it. A skipped test still runs, and the test suite fails when it passes, so that its line is
-# removed.
+# The test262 tests that are expected to fail, one path per line, each with the reason in a
+# comment above it. A skipped test still runs, and the test suite fails when it passes, so that
+# its line is removed.
 
 # The test expects the links of the IANA time zone database 2024b to 2026c from CST6CDT, EST5EDT,
 # MST7MDT and PST8PDT to America/Chicago, America/New_York, America/Denver and

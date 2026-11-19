@@ -26,7 +26,7 @@ func getPromiseResolve(vm *engine.VM, c engine.Value) engine.Value {
 // promiseCombinator implements the steps that Promise.all, Promise.allSettled, Promise.any
 // and Promise.race share. perform is called for every value of the iterable with the result
 // of the resolve method of c, as their Perform operations do, and done when the iterator is
-// exhausted. The iterator is closed when perform throws.
+// exhausted. The iterator is closed when the call of the resolve method or perform throws.
 func promiseCombinator(vm *engine.VM, c, iterable engine.Value, perform func(c *engine.PromiseCapability, next engine.Value), done func(c *engine.PromiseCapability)) engine.Value {
 	pc := vm.NewPromiseCapability(c)
 	var resolve engine.Value
