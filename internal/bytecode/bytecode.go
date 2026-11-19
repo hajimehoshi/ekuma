@@ -13,8 +13,8 @@ import (
 // Opcode is the operation of an instruction.
 type Opcode uint8
 
-// The comments of the opcodes give the meaning of the operands a, b and c, with these
-// conventions:
+// The comments of the opcodes give the meaning of the operands a, b and c, which
+// [Opcode.Operands] describes as data, with these conventions:
 //
 //   - An operand is a register unless its comment says otherwise. An operand that may name no
 //     register is -1 then.
@@ -22,13 +22,18 @@ type Opcode uint8
 //   - A site is an index into [Func.Keys] that also names an inline cache of its own.
 //   - A flag is 0 or 1.
 //   - An instruction writes the value that it produces to a. A jump has its target in a, or in
-//     c when it also produces a value.
+//     c when it also produces a value. Some instructions also update registers that they read,
+//     such as the variable of [OpPostInc] and the iterator of [OpIterNext].
 //   - A property read takes the object and the key in b and c, and a property store takes the
 //     object, the key and the value in a, b and c. A variable store takes the value in a.
 //   - An instruction that behaves differently in strict code has a variant for strict code,
-//     whose name ends in Strict.
+//     whose name ends in Strict. [OpLoadThisSloppy] is the other way around: the variant of
+//     [OpLoadThis] for non-strict functions.
 //   - An instruction whose operands do not fit in a, b and c is followed by an [OpExtra] with
 //     the rest, written x.a and x.b.
+//   - Some instructions work together with the instruction after them: [OpGetPropChain] may
+//     run the [OpGetProp] that follows it, and [OpRegExpArg] and [OpSpreadArgs] prepare the
+//     call that follows them.
 const (
 	// Loads and moves.
 	OpLoadK     Opcode = iota // a = Consts[b]
@@ -184,7 +189,9 @@ const (
 	OpJumpNotSNeP // if !(b !== c) then pc = a, where c is one of [PrimUndefined] through [PrimTrue]
 
 	// Calls. The callee is in b and the this value in b+1. The result goes to a, which may be b,
-	// once the call returns: a call that throws leaves a as it is.
+	// once the call returns: a call that throws leaves a as it is. The frame of the callee can
+	// start at b+2, so a call can overwrite every register from there on; [Operands.Writes]
+	// says which calls can.
 	OpCall           // a = b(this b+1, args b+2...), c arguments
 	OpCallUndef      // like [OpCall], with the this value undefined; b+1 becomes undefined
 	OpCallCall       // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
