@@ -670,6 +670,57 @@ func BenchmarkProxy(b *testing.B) {
 	}
 }
 
+const instanceofBenchJS = `
+function F() {}
+class A {}
+class B extends A {}
+const values = {
+	function: [new F(), {}],
+	subclass: [new B(), new A()],
+};
+function run(kind, c, n) {
+	const [hit, miss] = values[kind];
+	let count = 0;
+	for (let i = 0; i < n; i++) {
+		if ((i & 1 ? miss : hit) instanceof c) {
+			count++;
+		}
+	}
+	return count;
+}
+`
+
+// BenchmarkInstanceof evaluates instanceof with an ordinary function and with a derived class
+// on the right-hand side. One iteration is one instanceof.
+func BenchmarkInstanceof(b *testing.B) {
+	for _, kind := range []struct {
+		name string
+		ctor string
+	}{
+		{
+			name: "function",
+			ctor: "F",
+		},
+		{
+			name: "subclass",
+			ctor: "B",
+		},
+	} {
+		b.Run(kind.name, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			if _, err := runScript(ctx, &vm, "instanceof.js", instanceofBenchJS); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %s, %d)", kind.name, kind.ctor, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkImportedCall calls, in a loop, a function that another module exports, and compares
 // that with the same code in a script. One iteration is one call.
 func BenchmarkImportedCall(b *testing.B) {

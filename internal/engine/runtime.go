@@ -379,12 +379,14 @@ func (vm *VM) instanceOf(v, c Value) bool {
 		if !c.IsObject() {
 			vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 		}
-		if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
-			if m != vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
-				return ToBoolean(vm.Call(m, c, v))
+		if !vm.inheritsHasInstance(c.o) {
+			if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
+				if m != vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
+					return ToBoolean(vm.Call(m, c, v))
+				}
+			} else if !c.IsCallable() {
+				vm.ThrowTypeError("right-hand side of 'instanceof' is not callable")
 			}
-		} else if !c.IsCallable() {
-			vm.ThrowTypeError("right-hand side of 'instanceof' is not callable")
 		}
 		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
 		if !c.IsCallable() || c.o.fn.bound == nil {
@@ -392,6 +394,39 @@ func (vm *VM) instanceOf(v, c Value) bool {
 		}
 		c = Value{o: c.o.fn.bound.target}
 	}
+}
+
+// inheritsHasInstance reports whether c is a function whose @@hasInstance property is the one
+// that it inherits from %Function.prototype% of the current realm. A false result does not
+// mean the opposite.
+func (vm *VM) inheritsHasInstance(c *Object) bool {
+	// The property of %Function.prototype% is neither writable nor configurable, so only the
+	// objects before it on the chain can hide it.
+	fp := vm.Intrinsic(IntrinsicFunctionPrototype)
+	key := vm.WellKnownSymbol(SymbolHasInstance)
+	for h := c; h != fp; h = h.shape.proto {
+		// The properties that an unmaterialized function lacks have string keys.
+		if h == nil || h.class != classFunction && (h.class != classObject || h.flags&objExotic != 0) {
+			return false
+		}
+		if _, ok := h.shape.lookup(key); ok {
+			return false
+		}
+	}
+	return true
+}
+
+// functionPrototype returns Get(c, "prototype") for the function c.
+func (vm *VM) functionPrototype(c *Object) Value {
+	if c.class == classFunction {
+		if c.flags&objExotic != 0 {
+			vm.resolve(c)
+		}
+		if p, ok := c.shape.lookup(vm.Key(KeyPrototype)); ok && p.flags&FlagAccessor == 0 {
+			return c.slots[p.slot]
+		}
+	}
+	return vm.GetV(Value{o: c}, vm.Key(KeyPrototype))
 }
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
@@ -405,7 +440,7 @@ func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
 	if !v.IsObject() {
 		return false
 	}
-	p := vm.GetV(c, vm.Key(KeyPrototype))
+	p := vm.functionPrototype(c.o)
 	if !p.IsObject() {
 		vm.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
