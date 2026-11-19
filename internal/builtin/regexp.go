@@ -715,9 +715,7 @@ func initRegExp(vm *engine.VM) {
 		if !v.IsString() {
 			vm.ThrowTypeError("RegExp.escape requires a string")
 		}
-		escaped := regExpEscape(v.Str())
-		checkStringLength(vm, len(escaped))
-		return vm.NewString(escaped)
+		return vm.NewString(regExpEscape(vm, v.Str()))
 	})
 
 	initLegacyStatics(vm, ctor, env)
@@ -1156,8 +1154,9 @@ func writeSubstitution(vm *engine.VM, b *wtf8.Builder, matched string, str engin
 	}
 }
 
-// regExpEscape implements RegExp.escape.
-func regExpEscape(s string) string {
+// regExpEscape implements RegExp.escape, checking for an interruption while it escapes a long
+// string.
+func regExpEscape(vm *engine.VM, s string) string {
 	var b wtf8.Builder
 	hex := func(prefix string, v rune, n int) {
 		b.WriteString(prefix)
@@ -1167,7 +1166,13 @@ func regExpEscape(s string) string {
 		}
 		b.WriteString(h)
 	}
+	next := escapeRun
 	for i := 0; i < len(s); {
+		if i >= next {
+			checkStringLength(vm, b.Len())
+			vm.Poll()
+			next = i + escapeRun
+		}
 		r, size := wtf8.DecodeRune(s[i:])
 		first := i == 0
 		i += size
@@ -1197,6 +1202,7 @@ func regExpEscape(s string) string {
 			b.WriteRune(r)
 		}
 	}
+	checkStringLength(vm, b.Len())
 	return b.String()
 }
 

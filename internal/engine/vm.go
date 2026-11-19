@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"math/rand/v2"
 	"sync/atomic"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -665,7 +666,8 @@ func (vm *VM) Throw(v Value) {
 func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e := vm.NewObject(vm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	e.class = classError
-	vm.Define(e, vm.Key(KeyMessage), vm.NewString(wtf8.FromValidUTF8(msg)), FlagsHidden)
+	// A message that quotes a value of the script can be longer than a string may be.
+	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
 	e.ext = &errorData{
 		stack: vm.stackTrace(e, msg, len(vm.frames), len(vm.natives)),
 	}
@@ -749,7 +751,23 @@ func (vm *VM) stackTrace(e *Object, msg string, frames, natives int) string {
 		vm.writeFrame(&b, &vm.frames[i])
 		n++
 	}
-	return b.String()
+	return clip(b.String(), MaxStringLength, "")
+}
+
+// maxFrameName is the length in bytes up to which a stack trace shows a name.
+const maxFrameName = 1 << 10
+
+// clip returns s, or its longest prefix that ends at a character boundary and leaves room for
+// the suffix within max bytes, followed by the suffix.
+func clip(s string, max int, suffix string) string {
+	if len(s) <= max {
+		return s
+	}
+	i := max - len(suffix)
+	for i > 0 && !utf8.RuneStart(s[i]) {
+		i--
+	}
+	return s[:i] + suffix
 }
 
 // writeFrame writes the line of the stack trace for the frame fr to b.
@@ -778,13 +796,14 @@ func (vm *VM) writeFrame(b *wtf8.Builder, fr *frame) {
 // loc is where the function runs, or empty when it is unknown.
 func (vm *VM) writeCall(b *wtf8.Builder, name string, isNew bool, this Value, loc string) {
 	b.WriteString("\n    at ")
+	name = clip(name, maxFrameName, "...")
 	desc := name
 	switch {
 	case isNew:
 		desc = "new " + cmp.Or(name, "<anonymous>")
 	case this.IsObject() && this.o == vm.global, this.IsNullish():
 	default:
-		desc = vm.typeName(this) + "." + cmp.Or(name, "<anonymous>")
+		desc = clip(vm.typeName(this), maxFrameName, "...") + "." + cmp.Or(name, "<anonymous>")
 	}
 	switch {
 	case desc == "":

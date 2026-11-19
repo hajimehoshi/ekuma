@@ -831,6 +831,9 @@ func (vm *VM) funcNameOfKey(k Value) string {
 			return "#" + k.o.str
 		}
 		if k.o.ext != nil {
+			if len(k.o.str)+2 > MaxStringLength {
+				vm.ThrowRangeError("invalid string length")
+			}
 			return "[" + k.o.str + "]"
 		}
 		return ""
@@ -851,6 +854,9 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 		name = "get " + name
 	case bytecode.NamePrefixSet:
 		name = "set " + name
+	}
+	if len(name) > MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
 	}
 	o := f.o
 	if o.fn.materialized {

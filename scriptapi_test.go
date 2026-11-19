@@ -1230,6 +1230,22 @@ outer()`)
 	}
 }
 
+// TestStackTraceLongNames checks that a stack trace cuts the long names that it shows.
+func TestStackTraceLongNames(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "names.js", `var name = "x".repeat(1 << 20);
+var o = {[Symbol.toStringTag]: name, f() { throw new Error(); }};
+var s;
+try { o.f(); } catch (e) { s = e.stack; }
+s.length`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got := v.Int(); got > 1<<12 {
+		t.Errorf("got a stack trace of %d code units, want at most %d", got, 1<<12)
+	}
+}
+
 // runScript parses src as a script of vm and evaluates it.
 func runScript(ctx context.Context, vm *ekuma.VM, name, src string) (ekuma.Value, error) {
 	s, err := vm.ParseScript(name, src)
@@ -1259,11 +1275,12 @@ func TestStringLengthLimits(t *testing.T) {
 					() => Symbol(s).toString(),
 					() => Object.prototype.toString.call({get [Symbol.toStringTag]() { return s; }}),
 					() => Function("x", s, ""),
+					() => ({[Symbol(s)]: function () {}}),
 				]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
 				}
 				r.join()`,
-			want: "true,true,true,true,true,true,true,true,true",
+			want: "true,true,true,true,true,true,true,true,true,true",
 		},
 		{
 			name: "BigInt strings longer than the string length limit",

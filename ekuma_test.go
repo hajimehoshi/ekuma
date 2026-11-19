@@ -1743,6 +1743,11 @@ func TestCancelRegExp(t *testing.T) {
 	if _, err := runScript(ctx, &vm, "global", `"x".repeat(1 << 26).replace(/x/g, "y")`); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("global replace: got %v, want context.DeadlineExceeded", err)
 	}
+	ctx, cancel = context.WithTimeout(t.Context(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := runScript(ctx, &vm, "escape", `RegExp.escape(",".repeat(1 << 26))`); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("escape: got %v, want context.DeadlineExceeded", err)
+	}
 	v, err := runScript(t.Context(), &vm, "after", `"a1b22".replace(/\d+/g, function(m) { return "<" + m + ">"; })`)
 	if err != nil {
 		t.Fatalf("runScript: %v", err)

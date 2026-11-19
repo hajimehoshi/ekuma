@@ -147,6 +147,9 @@ func (vm *VM) decorate(st *classDecoration, step int, b, c Value, elem int) Valu
 // auto-accessor with the key k, which is a property key or a private name.
 func (vm *VM) makeAutoAccessor(k Value) (storage, getter, setter *Object) {
 	name := vm.funcNameOfKey(k)
+	if len("get ")+len(name) > MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
 	storage = &Object{
 		kind:  kindSymbol,
 		class: classPrivateName,
