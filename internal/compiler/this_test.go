@@ -55,3 +55,41 @@ func TestThisForwardedApply(t *testing.T) {
 		t.Errorf("register of the this value: got %d, want %d, the register of this", passed, this)
 	}
 }
+
+// TestMethodReceiverRegister tests that a method call reads the object from the register of a
+// local variable or of this, with no copy of it into the call window.
+func TestMethodReceiverRegister(t *testing.T) {
+	testCases := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "local",
+			src:  `function f(o) { o.m(); }`,
+		},
+		{
+			name: "this",
+			src:  `function f() { this.m(); }`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := compileF(t, tc.src)
+			// The parameter o is in register 0.
+			recv, obj := int32(0), int32(-1)
+			for _, i := range f.Code {
+				switch i.Op {
+				case bytecode.OpLoadThisSloppy:
+					recv = i.A
+				case bytecode.OpGetMethod:
+					obj = i.B
+				case bytecode.OpMove:
+					t.Errorf("register %d is copied to register %d", i.B, i.A)
+				}
+			}
+			if obj != recv {
+				t.Errorf("object register of the method read: got %d, want %d", obj, recv)
+			}
+		})
+	}
+}

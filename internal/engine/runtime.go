@@ -34,7 +34,7 @@ func (vm *VM) calleeName(fp *funcProto, pc int) string {
 			continue
 		}
 		switch in.Op {
-		case bytecode.OpGetProp:
+		case bytecode.OpGetProp, bytecode.OpGetMethod:
 			return fp.keys[in.C].str
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict:
 			return fp.keys[in.B].str

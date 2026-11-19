@@ -1073,8 +1073,23 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 				break
 			}
 		}
-		f.expr(c.Object, base+1)
-		f.chainCheck(c.Optional, base+1)
+		// obj is the register of the local variable or of the this value that is the object of
+		// a named method, and -1 otherwise.
+		obj := int32(-1)
+		if _, ok := c.Property.(*ast.Identifier); ok && !c.Computed {
+			switch o := c.Object.(type) {
+			case *ast.Identifier:
+				obj = f.localReg(o.Name)
+			case *ast.ThisExpr:
+				obj = f.localReg("this")
+			}
+		}
+		if obj >= 0 {
+			f.chainCheck(c.Optional, obj)
+		} else {
+			f.expr(c.Object, base+1)
+			f.chainCheck(c.Optional, base+1)
+		}
 		switch {
 		case !c.Computed:
 			if p, ok := c.Property.(*ast.PrivateName); ok {
@@ -1087,7 +1102,13 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			}
 			name := c.Property.(*ast.Identifier).Name
 			f.setPos(pos)
-			f.emit(bytecode.OpGetProp, base, base+1, f.site(name))
+			if obj >= 0 {
+				// The this value is a copy, which the arguments cannot change by assigning
+				// the variable.
+				f.emit(bytecode.OpGetMethod, base, obj, f.site(name))
+			} else {
+				f.emit(bytecode.OpGetProp, base, base+1, f.site(name))
+			}
 			switch name {
 			case "call":
 				if !hasSpread(n.Args) {

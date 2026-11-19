@@ -546,6 +546,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			regs[i.A] = Value{o: vm.NewArray(rest)}
 
+		case bytecode.OpGetMethod:
+			// The this value is in place before a getter runs.
+			regs[i.A+1] = regs[i.B]
+			fallthrough
 		case bytecode.OpGetProp:
 			v := regs[i.B]
 			c := &fp.caches[i.C]
