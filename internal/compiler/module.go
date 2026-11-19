@@ -30,7 +30,7 @@ func CompileModule(prog *ast.Program, file string) (f *bytecode.Func, m *bytecod
 		}
 	}()
 	f, m = c.compileModule()
-	return f, m, nil
+	return validated(f), m, nil
 }
 
 // moduleRequests collects the module requests of a module.

@@ -320,11 +320,10 @@ func (f *fn) disposing(async bool, body func()) {
 	}
 	v := f.newReg()
 	f.control = append(f.control, fin)
-	base := f.top
 	start := f.pc()
 	body()
 	f.control = f.control[:len(f.control)-1]
-	f.enterFinally(fin, start, base, nil)
+	f.enterFinally(fin, start, nil)
 
 	f.emit(bytecode.OpDisposeBegin, sc.dispose, fin.valueReg, fin.kindReg)
 	top := f.pc()
@@ -345,17 +344,17 @@ func (f *fn) disposing(async bool, body func()) {
 }
 
 // enterFinally ends the region that the finally block of fin covers, which starts at start, and
-// starts the code that runs for every completion of the region. base is the first register of
-// the region. done lists the jumps that complete the region normally.
-func (f *fn) enterFinally(fin *ctl, start int32, base int32, done []int) {
+// starts the code that runs for every completion of the region. The registers of the region
+// come after those of fin. done lists the jumps that complete the region normally.
+func (f *fn) enterFinally(fin *ctl, start int32, done []int) {
 	covered := f.pc()
 	f.patchAll(done)
 	f.emit(bytecode.OpLoadInt, fin.kindReg, 0, 0)
 	normal := f.jump()
 
-	// An exception from the region: remember it and run the finally block.
+	// An exception from the region: remember it and run the finally block. Unwinding to the
+	// handler detaches the upvalues from fin.valueReg on, which include those of the region.
 	f.addHandler(start, covered, f.pc(), fin.valueReg, true)
-	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
 	f.emit(bytecode.OpLoadInt, fin.kindReg, 1, 0)
 
 	f.patch(normal)
@@ -923,7 +922,7 @@ func (f *fn) try(s *ast.TryStmt) {
 	}
 
 	f.control = f.control[:len(f.control)-1]
-	f.enterFinally(fin, start, base, done)
+	f.enterFinally(fin, start, done)
 	saved := f.completion
 	if saved >= 0 {
 		// The value of a finally block is the value of the statement only when the block

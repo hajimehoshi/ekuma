@@ -30,7 +30,7 @@ func CompileEval(prog *ast.Program, file string, scope *bytecode.EvalScope, poll
 			f, err = nil, e
 		}
 	}()
-	return c.compileEval(scope), nil
+	return validated(c.compileEval(scope)), nil
 }
 
 // evalOuter is what the eval code being compiled sees of its call site.

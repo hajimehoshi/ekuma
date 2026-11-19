@@ -618,7 +618,17 @@ func compile(prog *ast.Program, file string, dynamic *ast.Function, poll func())
 			f, err = nil, e
 		}
 	}()
-	return c.compileScript(), nil
+	return validated(c.compileScript()), nil
+}
+
+// validated returns f. With the build tag ekuma_validate, it panics first when f is not valid.
+func validated(f *bytecode.Func) *bytecode.Func {
+	if validateCode {
+		if err := f.Validate(); err != nil {
+			panic(err)
+		}
+	}
+	return f
 }
 
 // newCompiler returns a compiler of prog. The compiler must be released when it is done.

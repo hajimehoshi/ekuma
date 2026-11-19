@@ -1,0 +1,490 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package bytecode
+
+import (
+	"errors"
+	"fmt"
+)
+
+// The errors that [Func.Validate] reports in a [ValidationError].
+var (
+	// ErrOpcode is an instruction whose opcode does not exist.
+	ErrOpcode = errors.New("bytecode: unknown opcode")
+
+	// ErrRegister is a register outside the registers of the function.
+	ErrRegister = errors.New("bytecode: register out of range")
+
+	// ErrIndex is an index outside the elements of the function that it indexes.
+	ErrIndex = errors.New("bytecode: index out of range")
+
+	// ErrValue is an operand with a value that its kind does not allow.
+	ErrValue = errors.New("bytecode: invalid operand")
+
+	// ErrTarget is a jump target outside the code or at an [OpExtra].
+	ErrTarget = errors.New("bytecode: invalid jump target")
+
+	// ErrExtra is an [OpExtra] that no instruction takes, or an instruction without its OpExtra.
+	ErrExtra = errors.New("bytecode: misplaced OpExtra")
+
+	// ErrSequence is an instruction without the instruction that has to follow it.
+	ErrSequence = errors.New("bytecode: invalid instruction sequence")
+
+	// ErrSite is a site that two instructions share.
+	ErrSite = errors.New("bytecode: shared site")
+
+	// ErrHandler is an element of [Func.Handlers] outside the code or out of order.
+	ErrHandler = errors.New("bytecode: invalid handler")
+
+	// ErrPosition is an element of [Func.Positions] outside the code or out of order.
+	ErrPosition = errors.New("bytecode: invalid position")
+)
+
+// ValidationError is an error that [Func.Validate] reports.
+type ValidationError struct {
+	// Func is the function with the error, which is the validated one or one nested in it.
+	Func *Func
+
+	// PC is the index of the instruction in [Func.Code], or -1 for an error outside the code.
+	PC int
+
+	// Op is the opcode at PC, when PC is not -1.
+	Op Opcode
+
+	// Err is one of the errors that Validate reports, such as [ErrRegister].
+	Err error
+
+	detail string
+}
+
+func (e *ValidationError) Error() string {
+	name := e.Func.Name
+	if name == "" {
+		name = "<anonymous>"
+	}
+	where := fmt.Sprintf("function %s of %s", name, e.Func.File)
+	if e.PC >= 0 {
+		where += fmt.Sprintf(" at %d (%s)", e.PC, e.Op)
+	}
+	return fmt.Sprintf("%v: %s: %s", e.Err, where, e.detail)
+}
+
+func (e *ValidationError) Unwrap() error {
+	return e.Err
+}
+
+// Validate reports whether the code of f and of the functions nested in it uses its operands as
+// [Opcode.Operands] describes them. It returns nil or a [*ValidationError].
+func (f *Func) Validate() error {
+	return validate(f, nil)
+}
+
+func validate(f, parent *Func) error {
+	if err := validateFunc(f, parent); err != nil {
+		return err
+	}
+	for _, p := range f.Protos {
+		if err := validate(p, f); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validator validates the code of one function.
+type validator struct {
+	f *Func
+
+	// extra marks the indices in f.Code of the OpExtra words that follow their instructions.
+	extra []bool
+
+	// siteUsers maps a site to the index of the instruction that uses it.
+	siteUsers map[int32]int
+}
+
+func validateFunc(f, parent *Func) error {
+	v := &validator{
+		f:     f,
+		extra: make([]bool, len(f.Code)),
+	}
+	if err := v.funcFields(parent); err != nil {
+		return err
+	}
+	for pc := 0; pc < len(f.Code); pc++ {
+		op := f.Code[pc].Op
+		if int(op) >= len(opcodes) || opcodes[op].name == "" {
+			return v.errorf(pc, ErrOpcode, "opcode %d", op)
+		}
+		if op == OpExtra {
+			return v.errorf(pc, ErrExtra, "no instruction takes it")
+		}
+		if !opcodes[op].operands.Extra {
+			continue
+		}
+		if pc+1 >= len(f.Code) || f.Code[pc+1].Op != OpExtra {
+			return v.errorf(pc, ErrExtra, "the instruction is not followed by its OpExtra")
+		}
+		pc++
+		v.extra[pc] = true
+	}
+	for pc, in := range f.Code {
+		if v.extra[pc] {
+			continue
+		}
+		if err := v.instr(pc, in); err != nil {
+			return err
+		}
+	}
+	if err := v.handlers(); err != nil {
+		return err
+	}
+	return v.positions()
+}
+
+func (v *validator) errorf(pc int, err error, format string, args ...any) error {
+	e := &ValidationError{
+		Func:   v.f,
+		PC:     pc,
+		Err:    err,
+		detail: fmt.Sprintf(format, args...),
+	}
+	if pc >= 0 {
+		e.Op = v.f.Code[pc].Op
+	}
+	return e
+}
+
+// funcFields validates the fields of the function other than its code.
+func (v *validator) funcFields(parent *Func) error {
+	f := v.f
+	if f.NumParams < 0 || f.NumParams > f.NumRegs {
+		return v.errorf(-1, ErrRegister, "%d parameters with %d registers", f.NumParams, f.NumRegs)
+	}
+	if f.NumClear < 0 || f.NumClear > f.NumRegs {
+		return v.errorf(-1, ErrRegister, "%d registers to clear with %d registers", f.NumClear, f.NumRegs)
+	}
+	if f.NumCaches > len(f.Keys) {
+		return v.errorf(-1, ErrIndex, "%d inline caches with %d keys", f.NumCaches, len(f.Keys))
+	}
+	if parent == nil {
+		return nil
+	}
+	for i, u := range f.Upvals {
+		switch {
+		case u.Local && (u.Index < 0 || int(u.Index) >= parent.NumRegs):
+			return v.errorf(-1, ErrRegister, "upvalue %d is register %d of a function with %d registers", i, u.Index, parent.NumRegs)
+		case !u.Local && (u.Index < 0 || int(u.Index) >= len(parent.Upvals)):
+			return v.errorf(-1, ErrIndex, "upvalue %d is upvalue %d of a function with %d upvalues", i, u.Index, len(parent.Upvals))
+		case u.ByValue && !u.Local:
+			return v.errorf(-1, ErrValue, "upvalue %d is by value but not local", i)
+		}
+	}
+	return nil
+}
+
+// operand returns the operand field of the instruction in, followed by x when it takes an
+// OpExtra.
+func operand(in, x Instr, field Field) int32 {
+	switch field {
+	case FieldA:
+		return in.A
+	case FieldB:
+		return in.B
+	case FieldC:
+		return in.C
+	case FieldXA:
+		return x.A
+	default:
+		return x.B
+	}
+}
+
+// kind returns the kind of the operand field in ops.
+func (ops *Operands) kind(field Field) OperandKind {
+	switch field {
+	case FieldA:
+		return ops.A
+	case FieldB:
+		return ops.B
+	case FieldC:
+		return ops.C
+	case FieldXA:
+		return ops.XA
+	default:
+		return ops.XB
+	}
+}
+
+var fieldNames = [...]string{
+	FieldA:  "a",
+	FieldB:  "b",
+	FieldC:  "c",
+	FieldXA: "x.a",
+	FieldXB: "x.b",
+}
+
+// instr validates the instruction in at pc.
+func (v *validator) instr(pc int, in Instr) error {
+	ops := &opcodes[in.Op].operands
+	var x Instr
+	if ops.Extra {
+		x = v.f.Code[pc+1]
+		if x.C != 0 {
+			return v.errorf(pc, ErrValue, "x.c is %d, not 0", x.C)
+		}
+	}
+	for field := FieldA; field <= FieldXB; field++ {
+		if !ops.Extra && field >= FieldXA {
+			break
+		}
+		if v.optional(in, field) {
+			continue
+		}
+		if err := v.operand(pc, ops.kind(field), field, operand(in, x, field)); err != nil {
+			return err
+		}
+	}
+	for _, r := range ops.Reads {
+		if err := v.regs(pc, in, x, ops, r); err != nil {
+			return err
+		}
+	}
+	for _, r := range ops.Writes {
+		if err := v.regs(pc, in, x, ops, r); err != nil {
+			return err
+		}
+	}
+	return v.special(pc, in, x)
+}
+
+// optional reports whether the operand field of the instruction in is unused because another
+// operand selects a form of the instruction without it.
+func (v *validator) optional(in Instr, field Field) bool {
+	switch {
+	case in.Op == OpImport && field == FieldC:
+		// import.meta.
+		return in.B == -1 && in.C == 0
+	case (in.Op == OpCallEval || in.Op == OpTailCallEval) && field == FieldC:
+		// The arguments are in an array.
+		return in.C == -1
+	}
+	return false
+}
+
+// operand validates the value of the operand field of the kind k of the instruction at pc.
+func (v *validator) operand(pc int, k OperandKind, field Field, val int32) error {
+	f := v.f
+	name := fieldNames[field]
+	inRange := func(n int, what string) error {
+		if val < 0 || int(val) >= n {
+			return v.errorf(pc, ErrIndex, "%s is %d with %d %s", name, val, n, what)
+		}
+		return nil
+	}
+	inEnum := func(max int32) error {
+		if val < 0 || val > max {
+			return v.errorf(pc, ErrValue, "%s is %d, not from 0 to %d", name, val, max)
+		}
+		return nil
+	}
+	switch k {
+	case OperandUnused:
+		if val != 0 {
+			return v.errorf(pc, ErrValue, "%s is unused but %d", name, val)
+		}
+	case OperandReg:
+		if val < 0 || int(val) >= f.NumRegs {
+			return v.errorf(pc, ErrRegister, "%s is %d with %d registers", name, val, f.NumRegs)
+		}
+	case OperandOptReg:
+		if val < -1 || int(val) >= f.NumRegs {
+			return v.errorf(pc, ErrRegister, "%s is %d with %d registers", name, val, f.NumRegs)
+		}
+	case OperandConst:
+		return inRange(len(f.Consts), "constants")
+	case OperandKey:
+		return inRange(len(f.Keys), "keys")
+	case OperandSite:
+		if err := inRange(min(len(f.Keys), f.NumCaches), "sites"); err != nil {
+			return err
+		}
+		if v.siteUsers == nil {
+			v.siteUsers = map[int32]int{}
+		}
+		if other, ok := v.siteUsers[val]; ok {
+			return v.errorf(pc, ErrSite, "%s is the site %d of the instruction at %d too", name, val, other)
+		}
+		v.siteUsers[val] = pc
+	case OperandTarget:
+		if val < 0 || int(val) >= len(f.Code) {
+			return v.errorf(pc, ErrTarget, "%s is %d with %d instructions", name, val, len(f.Code))
+		}
+		if v.extra[val] {
+			return v.errorf(pc, ErrTarget, "%s is %d, an OpExtra", name, val)
+		}
+	case OperandInt:
+	case OperandCount:
+		if val < 0 {
+			return v.errorf(pc, ErrValue, "%s is the count %d", name, val)
+		}
+	case OperandFlag:
+		return inEnum(1)
+	case OperandUpval:
+		return inRange(len(f.Upvals), "upvalues")
+	case OperandProto:
+		return inRange(len(f.Protos), "prototypes")
+	case OperandRegExp:
+		return inRange(len(f.RegExps), "regular expressions")
+	case OperandTemplate:
+		return inRange(len(f.Templates), "templates")
+	case OperandEvalScope:
+		return inRange(len(f.EvalScopes), "eval scopes")
+	case OperandThrow:
+		return inEnum(ThrowReferenceError)
+	case OperandDecl:
+		return inEnum(DeclFunction)
+	case OperandIter:
+		return inEnum(IterSyncNext)
+	case OperandElem:
+		base := val &^ (ElemStatic | ElemValue)
+		if val < 0 || base > ElemStaticBlock || val&ElemValue != 0 && base != ElemField {
+			return v.errorf(pc, ErrValue, "%s is the Elem kind %d", name, val)
+		}
+	case OperandDec:
+		return inEnum(DecFinish)
+	case OperandDispose:
+		return inEnum(DisposeAsync)
+	case OperandNamePrefix:
+		return inEnum(NamePrefixSet)
+	case OperandPrim:
+		return inEnum(PrimTrue)
+	case OperandGlobalVar:
+		return inEnum(GlobalVarFunc | GlobalVarDeletable)
+	default:
+		panic("bytecode: unknown OperandKind")
+	}
+	return nil
+}
+
+// regs validates the run of registers r of the instruction in at pc, followed by x.
+func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
+	if v.optional(in, r.At) {
+		return nil
+	}
+	start := operand(in, x, r.At)
+	if start == -1 && ops.kind(r.At) == OperandOptReg {
+		return nil
+	}
+	first := int(start) + r.Offset
+	n := r.Len
+	switch {
+	case in.Op == OpRegExpArg:
+		// The flag c selects a+1 over a+2.
+		if r.Offset > 0 {
+			first, n = int(in.A)+2-int(in.C), 1
+		} else {
+			n = 1 + int(in.C)
+		}
+	case (in.Op == OpCallEval || in.Op == OpTailCallEval) && in.C == -1 && r.Counted:
+		// The arguments are in an array in b+2.
+		n = 3
+	case r.Len == RegsToEnd:
+		n = v.f.NumRegs - first
+	case r.Counted:
+		for field := FieldA; field <= FieldXB; field++ {
+			if ops.kind(field) == OperandCount {
+				n += int(operand(in, x, field))
+			}
+		}
+	}
+	if n < 0 || first < 0 || first+n > v.f.NumRegs {
+		return v.errorf(pc, ErrRegister, "%d registers from %d with %d registers", n, first, v.f.NumRegs)
+	}
+	return nil
+}
+
+// special validates what is particular to the instruction in at pc, followed by x.
+func (v *validator) special(pc int, in, x Instr) error {
+	code := v.f.Code
+	switch in.Op {
+	case OpGetPropChain:
+		// The instruction may run the next one.
+		if pc+1 >= len(code) || code[pc+1].Op != OpGetProp && code[pc+1].Op != OpGetPropChain || code[pc+1].B != in.A {
+			return v.errorf(pc, ErrSequence, "not followed by an OpGetProp of a")
+		}
+	case OpCallEval, OpTailCallEval:
+		if in.C == -1 {
+			// A call of another function than eval goes on to the spread call.
+			spread := OpCallSpread
+			if in.Op == OpTailCallEval {
+				spread = OpTailCallSpread
+			}
+			if pc+2 >= len(code) || code[pc+2].Op != spread || code[pc+2].A != in.A || code[pc+2].B != in.B {
+				return v.errorf(pc, ErrSequence, "not followed by its %s", spread)
+			}
+		}
+	case OpImport:
+		if in.B == -1 && in.C != 0 {
+			return v.errorf(pc, ErrValue, "c is %d for import.meta", in.C)
+		}
+	case OpDecorate:
+		step := x.A
+		switch {
+		case step != DecBegin && in.A == -1:
+			return v.errorf(pc, ErrRegister, "a is -1 for the Dec kind %d", step)
+		case (step == DecBegin || step == DecApply) && in.C == -1:
+			return v.errorf(pc, ErrRegister, "c is -1 for the Dec kind %d", step)
+		case step != DecElement && x.B != 0:
+			return v.errorf(pc, ErrValue, "x.b is %d for the Dec kind %d", x.B, step)
+		}
+	}
+	return nil
+}
+
+// boundary reports whether pc is the index of an instruction or the end of the code.
+func (v *validator) boundary(pc int32) bool {
+	return pc >= 0 && int(pc) <= len(v.f.Code) && (int(pc) == len(v.f.Code) || !v.extra[pc])
+}
+
+func (v *validator) handlers() error {
+	f := v.f
+	for i, h := range f.Handlers {
+		switch {
+		case !v.boundary(h.Start) || !v.boundary(h.End) || h.Start > h.End:
+			return v.errorf(-1, ErrHandler, "handler %d covers %d to %d of %d instructions", i, h.Start, h.End, len(f.Code))
+		case !v.boundary(h.Target) || int(h.Target) == len(f.Code):
+			return v.errorf(-1, ErrHandler, "handler %d jumps to %d", i, h.Target)
+		case h.Reg < 0 || int(h.Reg) >= f.NumRegs:
+			return v.errorf(-1, ErrRegister, "handler %d receives the exception in register %d with %d registers", i, h.Reg, f.NumRegs)
+		case h.Scopes < 0:
+			return v.errorf(-1, ErrHandler, "handler %d keeps %d scopes", i, h.Scopes)
+		}
+		// The first handler that covers an instruction catches its exceptions, so an inner
+		// handler comes before the handlers around it.
+		for j, g := range f.Handlers[:i] {
+			if g.Start < h.End && h.Start < g.End && (g.Start < h.Start || g.End > h.End) {
+				return v.errorf(-1, ErrHandler, "handler %d covers %d to %d, which overlaps handler %d from %d to %d without being in it", j, g.Start, g.End, i, h.Start, h.End)
+			}
+		}
+	}
+	return nil
+}
+
+func (v *validator) positions() error {
+	f := v.f
+	if len(f.Positions) > 0 && f.Lines == nil {
+		return v.errorf(-1, ErrPosition, "%d positions without lines", len(f.Positions))
+	}
+	for i, p := range f.Positions {
+		switch {
+		case !v.boundary(p.PC) || int(p.PC) == len(f.Code):
+			return v.errorf(-1, ErrPosition, "position %d is at %d of %d instructions", i, p.PC, len(f.Code))
+		case i > 0 && p.PC <= f.Positions[i-1].PC:
+			return v.errorf(-1, ErrPosition, "position %d is at %d, after position %d at %d", i, p.PC, i-1, f.Positions[i-1].PC)
+		case p.Offset < 0:
+			return v.errorf(-1, ErrPosition, "position %d has the offset %d", i, p.Offset)
+		}
+	}
+	return nil
+}
