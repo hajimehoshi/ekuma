@@ -2861,6 +2861,31 @@ func TestValueOfMapOwnProperties(t *testing.T) {
 	}
 }
 
+func TestValueOfUnnamedFunc(t *testing.T) {
+	var vm ekuma.VM
+	v := vm.ValueOf([]any{func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return 7, nil
+	}})
+	f, err := v.Get("0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := f.Invoke(t.Context()); err != nil || got.Int() != 7 {
+		t.Errorf("Invoke: %v, %v, want 7", got, err)
+	}
+}
+
+func TestValueOfNilBigInt(t *testing.T) {
+	var vm ekuma.VM
+	r := recoverHostPanic(func() { vm.ValueOf((*big.Int)(nil)) })
+	if r == nil {
+		t.Fatal("ValueOf did not panic")
+	}
+	if _, ok := r.(runtime.Error); ok {
+		t.Errorf("ValueOf panicked with a runtime error: %v", r)
+	}
+}
+
 func TestValueOfCycles(t *testing.T) {
 	var vm ekuma.VM
 	cyclicMap := map[string]any{}

@@ -129,6 +129,7 @@ func (vm *VM) initIfNeeded() {
 //	| map[string]any         | new object             |
 //
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
+// A function of the type underlying [Func] is taken as a [Func].
 // ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil [Func],
 // or a *big.Int of more than 2^30 bits, the largest BigInt.
 // It panics for a string, symbol, object or function of another VM,
@@ -176,12 +177,17 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 	case float64:
 		return engine.Number(x)
 	case *big.Int:
-		if x != nil && x.BitLen() > engine.MaxBigIntBits {
+		if x == nil {
+			panic("ekuma: ValueOf: nil *big.Int")
+		}
+		if x.BitLen() > engine.MaxBigIntBits {
 			panic(fmt.Sprintf("ekuma: ValueOf: BigInt of %d bits, more than %d", x.BitLen(), engine.MaxBigIntBits))
 		}
 		return vm.e.NewBigInt(new(big.Int).Set(x))
 	case string:
 		return vm.e.StringFromGo(x)
+	case func(Value, []Value) (any, error):
+		return vm.valueOf(r, Func(x))
 	case Func, *SharedDataBlock, []any, map[string]any:
 		var v engine.Value
 		vm.e.InRealm(r.r, func() {
