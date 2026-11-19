@@ -450,15 +450,19 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				e := &c.cacheEntry
 				if o.shape != e.shape {
 					e = &c.second
-				}
-				if o.shape == e.shape && (e.kind == cacheOwn || e.kind == cacheProto && e.epoch == vm.protoEpoch) {
-					h := o
-					if e.kind == cacheProto {
-						h = e.holder
+					if o.shape != e.shape {
+						break
 					}
-					regs[i.A] = h.slots[e.slot]
-					continue
 				}
+				h := o
+				if e.kind != cacheOwn {
+					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
+						break
+					}
+					h = e.holder
+				}
+				regs[i.A] = h.slots[e.slot]
+				continue
 			}
 		case bytecode.OpGetPropChain:
 			if o := regs[i.B].o; o != nil {
@@ -466,34 +470,42 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				e := &c.cacheEntry
 				if o.shape != e.shape {
 					e = &c.second
+					if o.shape != e.shape {
+						break
+					}
 				}
-				if o.shape == e.shape && (e.kind == cacheOwn || e.kind == cacheProto && e.epoch == vm.protoEpoch) {
+				h := o
+				if e.kind != cacheOwn {
+					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
+						break
+					}
+					h = e.holder
+				}
+				w := h.slots[e.slot]
+				regs[i.A] = w
+				// The next instruction is an OpGetProp of w. It runs here only when it reads a
+				// data property through its cache, and runs on its own otherwise.
+				if o := w.o; o != nil {
+					n := &fp.code[pc]
+					c := &fp.caches[n.C]
+					e := &c.cacheEntry
+					if o.shape != e.shape {
+						e = &c.second
+						if o.shape != e.shape {
+							continue
+						}
+					}
 					h := o
-					if e.kind == cacheProto {
+					if e.kind != cacheOwn {
+						if e.kind != cacheProto || e.epoch != vm.protoEpoch {
+							continue
+						}
 						h = e.holder
 					}
-					w := h.slots[e.slot]
-					regs[i.A] = w
-					// The next instruction is an OpGetProp of w. It runs here only when it
-					// reads a data property through its cache, and runs on its own otherwise.
-					if o := w.o; o != nil {
-						n := &fp.code[pc]
-						c := &fp.caches[n.C]
-						e := &c.cacheEntry
-						if o.shape != e.shape {
-							e = &c.second
-						}
-						if o.shape == e.shape && (e.kind == cacheOwn || e.kind == cacheProto && e.epoch == vm.protoEpoch) {
-							h := o
-							if e.kind == cacheProto {
-								h = e.holder
-							}
-							regs[n.A] = h.slots[e.slot]
-							pc++
-						}
-					}
-					continue
+					regs[n.A] = h.slots[e.slot]
+					pc++
 				}
+				continue
 			}
 		case bytecode.OpSetProp, bytecode.OpSetPropStrict:
 			if o := regs[i.A].o; o != nil {
@@ -501,19 +513,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				e := &c.cacheEntry
 				if o.shape != e.shape {
 					e = &c.second
-				}
-				if o.shape == e.shape {
-					if e.kind == cacheOwn {
-						o.slots[e.slot] = regs[i.C]
-						continue
+					if o.shape != e.shape {
+						break
 					}
-					if e.kind == cacheAdd && o.objectProperties != nil && e.epoch == vm.protoEpoch && o.flags&objIsProto == 0 {
-						if n := len(o.slots); n < cap(o.slots) {
-							o.shape = e.next
-							o.slots = o.slots[:n+1]
-							o.slots[n] = regs[i.C]
-							continue
-						}
+				}
+				if e.kind == cacheOwn {
+					o.slots[e.slot] = regs[i.C]
+					continue
+				}
+				if e.kind == cacheAdd && o.objectProperties != nil && e.epoch == vm.protoEpoch && o.flags&objIsProto == 0 {
+					if n := len(o.slots); n < cap(o.slots) {
+						o.shape = e.next
+						o.slots = o.slots[:n+1]
+						o.slots[n] = regs[i.C]
+						continue
 					}
 				}
 			}
@@ -922,12 +935,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				e := &c.cacheEntry
 				if o.shape != e.shape {
 					e = &c.second
-				}
-				if o.shape != e.shape || e.kind != cacheOwn && (e.kind != cacheProto || e.epoch != vm.protoEpoch) {
-					break
+					if o.shape != e.shape {
+						break
+					}
 				}
 				h := o
-				if e.kind == cacheProto {
+				if e.kind != cacheOwn {
+					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
+						break
+					}
 					h = e.holder
 				}
 				a, n := i.A, &fp.code[pc]
