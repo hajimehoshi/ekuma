@@ -140,7 +140,7 @@ func TestParseInt(t *testing.T) {
 func TestBigIntConversions(t *testing.T) {
 	r := rand.New(rand.NewPCG(1, 2))
 	const symbols = "0123456789abcdefghijklmnopqrstuvwxyz"
-	for _, radix := range []int{3, 10, 16, 36} {
+	for _, radix := range []int{2, 3, 8, 10, 16, 32, 36} {
 		for _, n := range []int{1, 8192, 8193, 40000, 100000} {
 			var sb strings.Builder
 			sb.WriteByte(symbols[1+r.IntN(radix-1)])
@@ -160,6 +160,20 @@ func TestBigIntConversions(t *testing.T) {
 			if got, want := numconv.FormatBigInt(x, radix, nil), x.Text(radix); got != want {
 				t.Errorf("FormatBigInt of %d symbols in radix %d differs from Text", n, radix)
 			}
+		}
+	}
+}
+
+func TestParseBigIntPoll(t *testing.T) {
+	// A long string of digits in a power-of-two radix is converted in polled steps.
+	for _, radix := range []int{2, 8, 16} {
+		var polls int
+		s := strings.Repeat("1", 1<<20)
+		if _, ok := numconv.ParseBigInt(s, radix, func() { polls++ }); !ok {
+			t.Errorf("ParseBigInt in radix %d: not an integer", radix)
+		}
+		if polls < 16 {
+			t.Errorf("ParseBigInt in radix %d: got %d polls, want at least 16", radix, polls)
 		}
 	}
 }

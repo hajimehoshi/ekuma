@@ -4,7 +4,6 @@
 package parser
 
 import (
-	"math/big"
 	"strconv"
 	"strings"
 	"unicode"
@@ -756,10 +755,9 @@ func (p *parser) scanRadix(start int, base int) {
 		if numconv.BigIntDigitsTooLarge(digits, base, p.opts.Poll) {
 			p.fail(start, "maximum BigInt size exceeded")
 		}
-		var i big.Int
-		i.SetString(digits, base)
+		i, _ := numconv.ParseBigInt(digits, base, p.opts.Poll)
 		t.kind = tBigInt
-		t.str = numconv.FormatBigInt(&i, 10, p.opts.Poll)
+		t.str = numconv.FormatBigInt(i, 10, p.opts.Poll)
 		p.finishNumber(pos + 1)
 		return
 	}
@@ -777,9 +775,7 @@ func (p *parser) scanRadix(start int, base int) {
 		}
 		t.num = float64(v)
 	} else {
-		var i big.Int
-		i.SetString(digits, base)
-		t.num, _ = new(big.Float).SetInt(&i).Float64()
+		t.num, _ = numconv.ParseRadixDigits(digits, base)
 	}
 	p.finishNumber(pos)
 }

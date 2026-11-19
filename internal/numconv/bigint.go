@@ -19,10 +19,13 @@ const formatLeafBits = 1 << 15
 // It reports false when s is empty or has a character other than such a digit. poll, which may
 // be nil, is called between the steps of a long conversion and may stop it by panicking.
 func ParseBigInt(s string, radix int, poll func()) (*big.Int, bool) {
-	if !validDigits(s, radix) {
+	if !validDigits(s, radix, poll) {
 		return nil, false
 	}
-	if len(s) <= parseLeafDigits || bits.OnesCount(uint(radix)) == 1 {
+	if bits.OnesCount(uint(radix)) == 1 {
+		return parsePow2Digits(s, bits.TrailingZeros(uint(radix)), poll), true
+	}
+	if len(s) <= parseLeafDigits {
 		return new(big.Int).SetString(s, radix)
 	}
 	// pows[k] is radix to the power parseLeafDigits<<k.
@@ -30,17 +33,48 @@ func ParseBigInt(s string, radix int, poll func()) (*big.Int, bool) {
 	return parseBigDigits(s, radix, &pows, poll), true
 }
 
-// validDigits reports whether s is a non-empty string of the digits of the radix.
-func validDigits(s string, radix int) bool {
+// validDigits reports whether s is a non-empty string of the digits of the radix. poll, which
+// may be nil, is called now and then over a long s.
+func validDigits(s string, radix int, poll func()) bool {
 	if s == "" {
 		return false
 	}
 	for i := 0; i < len(s); i++ {
+		if poll != nil && i%(1<<20) == 0 {
+			poll()
+		}
 		if DigitValue(s[i]) >= radix {
 			return false
 		}
 	}
 	return true
+}
+
+// parsePow2Digits returns the integer that the valid digits s denote in the radix 2 to the
+// power shift.
+func parsePow2Digits(s string, shift int, poll func()) *big.Int {
+	words := make([]big.Word, (len(s)*shift+bits.UintSize-1)/bits.UintSize)
+	var w big.Word
+	var n, wi int
+	for i := len(s) - 1; i >= 0; i-- {
+		if poll != nil && i%parseLeafDigits == 0 {
+			poll()
+		}
+		d := big.Word(DigitValue(s[i]))
+		w |= d << n
+		n += shift
+		if n >= bits.UintSize {
+			words[wi] = w
+			wi++
+			n -= bits.UintSize
+			// The bits of d above the word start the next word.
+			w = d >> (shift - n)
+		}
+	}
+	if n > 0 {
+		words[wi] = w
+	}
+	return new(big.Int).SetBits(words)
 }
 
 // parseBigDigits returns the integer that the valid digits s denote in the radix.

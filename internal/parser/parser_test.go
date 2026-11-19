@@ -5,6 +5,7 @@ package parser_test
 
 import (
 	"errors"
+	"math"
 	"slices"
 	"strings"
 	"testing"
@@ -1904,6 +1905,15 @@ func TestLiterals(t *testing.T) {
 			src:  "9007199254740993",
 			want: 9007199254740992,
 		},
+		{
+			// Only the leading digits are converted, however many follow.
+			src:  "0o" + strings.Repeat("7", 1<<23),
+			want: math.Inf(1),
+		},
+		{
+			src:  "0o1" + strings.Repeat("0", 340),
+			want: math.Ldexp(1, 1020),
+		},
 	}
 	for _, tc := range numbers {
 		lit, ok := exprOf(t, tc.src, script).(*ast.NumberLit)
@@ -1912,7 +1922,7 @@ func TestLiterals(t *testing.T) {
 			continue
 		}
 		if lit.Value != tc.want {
-			t.Errorf("%s: got %v, want %v", tc.src, lit.Value, tc.want)
+			t.Errorf("%.20s: got %v, want %v", tc.src, lit.Value, tc.want)
 		}
 	}
 

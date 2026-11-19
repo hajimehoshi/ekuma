@@ -433,7 +433,7 @@ func StringToBigInt(s string, maxBits int, poll func()) (*big.Int, error) {
 		neg = s[0] == '-'
 		s = s[1:]
 	}
-	if !validDigits(s, radix) {
+	if !validDigits(s, radix, poll) {
 		return nil, ErrNotBigInt
 	}
 	// A value of n digits has more than (n-1) log2(radix) bits.
