@@ -2756,6 +2756,61 @@ func TestValueOfMapOwnProperties(t *testing.T) {
 	}
 }
 
+func TestValueOfCycles(t *testing.T) {
+	var vm ekuma.VM
+	cyclicMap := map[string]any{}
+	cyclicMap["a"] = []any{cyclicMap}
+	cyclicSlice := []any{1, nil}
+	cyclicSlice[1] = map[string]any{"s": cyclicSlice}
+	for _, tc := range []struct {
+		name string
+		x    any
+	}{
+		{
+			name: "map",
+			x:    cyclicMap,
+		},
+		{
+			name: "slice",
+			x:    cyclicSlice,
+		},
+	} {
+		if recoverHostPanic(func() { vm.ValueOf(tc.x) }) == nil {
+			t.Errorf("%s: ValueOf did not panic", tc.name)
+		}
+	}
+
+	// A shared subtree, and a prefix of a slice inside that slice, are not cycles.
+	shared := []any{1, 2}
+	prefix := []any{3, nil}
+	prefix[1] = prefix[:1]
+	v := vm.ValueOf(map[string]any{
+		"a":      shared,
+		"b":      shared,
+		"prefix": prefix,
+	})
+	if err := vm.Global().Set("converted", v); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		src  string
+		want string
+	}{
+		{
+			src:  `converted.a.join() + ";" + converted.b.join() + ";" + (converted.a === converted.b)`,
+			want: "1,2;1,2;false",
+		},
+		{
+			src:  `JSON.stringify(converted.prefix)`,
+			want: "[3,[3]]",
+		},
+	} {
+		if got := run(t, &vm, tc.src); got != tc.want {
+			t.Errorf("%s: got %s, want %s", tc.src, got, tc.want)
+		}
+	}
+}
+
 // TestRealmModules checks that modules belong to their realms, and that the module loader is
 // told the realm of each import.
 func TestRealmModules(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand/v2"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -34,6 +35,16 @@ type VM struct {
 	callArgs []engine.Value
 
 	interrupts *interruptRequests
+
+	// valuePath holds the maps and slices that ValueOf is converting, from the outermost one.
+	valuePath []containerID
+}
+
+// containerID identifies a map by its pointer, or a slice by its first element and length.
+type containerID struct {
+	mapPtr uintptr
+	elem0  *any
+	len    int
 }
 
 // interruptRequest is the request of a call to stop, which the context of the call makes when
@@ -120,7 +131,7 @@ func (vm *VM) initIfNeeded() {
 // A string is taken to be UTF-8. The keys of a map become properties in sorted order.
 // ValueOf panics when x is not one of the expected types, or is a nil pointer or a nil [Func].
 // It panics for a string, symbol, object or function of another VM,
-// including values nested in arrays and maps.
+// including values nested in arrays and maps, and for a map or slice that contains itself.
 //
 // The objects that ValueOf creates belong to the initial realm.
 func (vm *VM) ValueOf(x any) Value {
@@ -203,12 +214,18 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 		proto := vm.e.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
 		return engine.ObjectValue(vm.e.NewSharedArrayBufferObject(proto, x.b))
 	case []any:
+		if len(x) > 0 {
+			defer vm.leaveContainer(vm.enterContainer(containerID{elem0: &x[0], len: len(x)}))
+		}
 		elems := make([]engine.Value, len(x))
 		for i, e := range x {
 			elems[i] = vm.valueOf(r, e)
 		}
 		return vm.e.NewArrayOf(elems)
 	case map[string]any:
+		if len(x) > 0 {
+			defer vm.leaveContainer(vm.enterContainer(containerID{mapPtr: reflect.ValueOf(x).Pointer()}))
+		}
 		keys := make([]string, 0, len(x))
 		for k := range x {
 			keys = append(keys, k)
@@ -221,6 +238,22 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 		return o
 	}
 	panic("not reached")
+}
+
+// enterContainer adds id to vm.valuePath and returns its index there. It panics when id is
+// already on the path.
+func (vm *VM) enterContainer(id containerID) int {
+	if slices.Contains(vm.valuePath, id) {
+		panic("ekuma: ValueOf: cyclic value")
+	}
+	vm.valuePath = append(vm.valuePath, id)
+	return len(vm.valuePath) - 1
+}
+
+// leaveContainer removes the entries of vm.valuePath from the index i.
+func (vm *VM) leaveContainer(i int) {
+	clear(vm.valuePath[i:])
+	vm.valuePath = vm.valuePath[:i]
 }
 
 // Func is a function implemented in Go.
