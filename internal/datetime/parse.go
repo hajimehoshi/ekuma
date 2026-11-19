@@ -12,15 +12,21 @@ import (
 // date time string format of ECMAScript, the formats of [String] and [UTCString], and some
 // common legacy formats. A time without an offset is a local time of tz.
 func Parse(s string, tz TimeZone) float64 {
-	if f, ok := parseDateTime(s, tz); ok {
+	return ParsePolled(s, tz, nil)
+}
+
+// ParsePolled is like [Parse]. poll, which may be nil, is called now and then over a long s and
+// may stop the parsing by panicking.
+func ParsePolled(s string, tz TimeZone, poll func()) float64 {
+	if f, ok := parseDateTime(s, tz, poll); ok {
 		return f
 	}
 	if len(s) >= 29 && (s[3] == ' ' || s[3] == ',') {
-		if f, ok := parseFormatted(s, tz); ok {
+		if f, ok := parseFormatted(s, tz, poll); ok {
 			return f
 		}
 	}
-	return parseLegacy(s, tz)
+	return parseLegacy(s, tz, poll)
 }
 
 // fields are the components of a parsed date. month is from 1 to 12.
@@ -53,10 +59,28 @@ func isLetter(c byte) bool {
 	return 'a' <= c|0x20 && c|0x20 <= 'z'
 }
 
+// pollSteps is the number of bytes that a scanner reads between two calls of its poll function.
+const pollSteps = 1 << 16
+
 // scanner reads a string byte by byte.
 type scanner struct {
 	s   string
 	pos int
+
+	// poll, which may be nil, is called every pollSteps steps.
+	poll  func()
+	steps int
+}
+
+// step counts a step of a loop over the string.
+func (sc *scanner) step() {
+	sc.steps++
+	if sc.steps == pollSteps {
+		sc.steps = 0
+		if sc.poll != nil {
+			sc.poll()
+		}
+	}
 }
 
 func (sc *scanner) done() bool {
@@ -101,6 +125,7 @@ func (sc *scanner) number() (float64, int) {
 	start := sc.pos
 	var v float64
 	for !sc.done() && isDigit(sc.s[sc.pos]) {
+		sc.step()
 		v = v*10 + float64(sc.s[sc.pos]-'0')
 		sc.pos++
 	}
@@ -121,6 +146,7 @@ func (sc *scanner) fraction() (float64, bool) {
 	var ms float64
 	n := 0
 	for !sc.done() && isDigit(sc.s[sc.pos]) {
+		sc.step()
 		if n < 3 {
 			ms = ms*10 + float64(sc.s[sc.pos]-'0')
 		}
@@ -150,9 +176,10 @@ func (f *fields) validTime() bool {
 }
 
 // parseDateTime parses ISO and space-separated date-time strings.
-func parseDateTime(s string, tz TimeZone) (float64, bool) {
+func parseDateTime(s string, tz TimeZone, poll func()) (float64, bool) {
 	sc := scanner{
-		s: s,
+		s:    s,
+		poll: poll,
 	}
 	f := fields{
 		month: 1,
@@ -264,7 +291,7 @@ func parseDateTime(s string, tz TimeZone) (float64, bool) {
 }
 
 // parseFormatted parses the formats of String and UTCString.
-func parseFormatted(s string, tz TimeZone) (float64, bool) {
+func parseFormatted(s string, tz TimeZone, poll func()) (float64, bool) {
 	if len(s) < 29 {
 		return 0, false
 	}
@@ -275,8 +302,9 @@ func parseFormatted(s string, tz TimeZone) (float64, bool) {
 	var f fields
 	f.hasOffset = true
 	sc := scanner{
-		s:   s,
-		pos: 4,
+		s:    s,
+		pos:  4,
+		poll: poll,
 	}
 	var month string
 	var ok bool
@@ -349,8 +377,15 @@ func parseFormatted(s string, tz TimeZone) (float64, bool) {
 		}
 		if !sc.done() {
 			tail := s[sc.pos:]
-			if len(tail) < 3 || !strings.HasPrefix(tail, " (") || tail[len(tail)-1] != ')' || strings.ContainsAny(tail[2:len(tail)-1], "()") {
+			if len(tail) < 3 || !strings.HasPrefix(tail, " (") || tail[len(tail)-1] != ')' {
 				return 0, false
+			}
+			// The comment has no parentheses of its own.
+			for sc.pos += 2; sc.pos < len(s)-1; sc.pos++ {
+				sc.step()
+				if c := s[sc.pos]; c == '(' || c == ')' {
+					return 0, false
+				}
 			}
 			sc.pos = len(s)
 		}
@@ -391,9 +426,12 @@ func legacyYear(y float64, n int) float64 {
 }
 
 // parseLegacy parses the formats of [String] and [UTCString] and some common legacy formats.
-func parseLegacy(s string, tz TimeZone) float64 {
+func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 	nan := math.NaN()
-	sc := scanner{s: s}
+	sc := scanner{
+		s:    s,
+		poll: poll,
+	}
 	f := fields{}
 
 	// nums are the numbers that are not part of a time or a slash date, with their digit counts.
@@ -406,6 +444,7 @@ func parseLegacy(s string, tz TimeZone) float64 {
 	ampm := 0 // 1 for AM and 2 for PM.
 
 	for !sc.done() {
+		sc.step()
 		c := sc.peek()
 		switch {
 		case c == ' ' || c == ',' || c == '\t' || c == '\n' || c == '\r':
@@ -418,6 +457,7 @@ func parseLegacy(s string, tz TimeZone) float64 {
 				if sc.done() {
 					return nan
 				}
+				sc.step()
 				switch sc.s[sc.pos] {
 				case '(':
 					depth++
@@ -434,6 +474,10 @@ func parseLegacy(s string, tz TimeZone) float64 {
 			start := sc.pos
 			for !sc.done() && isLetter(sc.s[sc.pos]) {
 				sc.pos++
+				// No name is longer than "september".
+				if sc.pos-start > len("september") {
+					return nan
+				}
 			}
 			word := make([]byte, sc.pos-start)
 			for i := range word {

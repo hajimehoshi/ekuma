@@ -70,7 +70,7 @@ func initDate(vm *engine.VM) {
 			}
 			v := vm.ToPrimitive(args[0], engine.HintDefault)
 			if v.IsString() {
-				tv = datetime.Parse(vm.ToString(v), tz)
+				tv = datetime.ParsePolled(vm.ToString(v), tz, vm.Poll)
 			} else {
 				tv = datetime.TimeClip(vm.ToNumber(v))
 			}
@@ -89,7 +89,7 @@ func initDate(vm *engine.VM) {
 		return engine.Number(vm.SystemUTCEpochMilliseconds())
 	})
 	method(vm, ctor, "parse", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(datetime.Parse(vm.ToString(arg(args, 0)), vm.DefaultTimeZone()))
+		return engine.Number(datetime.ParsePolled(vm.ToString(arg(args, 0)), vm.DefaultTimeZone(), vm.Poll))
 	})
 	method(vm, ctor, "UTC", 7, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		c := [dateComponentCount]float64{dateDay: 1}

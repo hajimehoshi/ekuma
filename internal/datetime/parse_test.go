@@ -5,6 +5,7 @@ package datetime_test
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -135,6 +136,52 @@ func TestParseSpaceSeparated(t *testing.T) {
 	} {
 		if got := datetime.Parse(s, zone); !math.IsNaN(got) {
 			t.Errorf("Parse(%q) = %v, want NaN", s, got)
+		}
+	}
+}
+
+func TestParsePolled(t *testing.T) {
+	// Each of the formats polls over a long run that it reads, and the long run does not
+	// change the result.
+	zone := datetime.LocationZone(time.UTC)
+	long := 1 << 20
+	for _, tc := range []struct {
+		name  string
+		input string
+		want  float64
+	}{
+		{
+			name:  "fraction",
+			input: "2020-01-01T00:00:00.123" + strings.Repeat("9", long) + "Z",
+			want:  1577836800123,
+		},
+		{
+			name:  "comment of a formatted date",
+			input: "Wed Jan 01 2020 00:00:00 GMT+0000 (" + strings.Repeat("x", long) + ")",
+			want:  1577836800000,
+		},
+		{
+			name:  "spaces",
+			input: "Jan 1 2020" + strings.Repeat(" ", long),
+			want:  1577836800000,
+		},
+		{
+			name:  "comment",
+			input: "Jan 1 2020 (" + strings.Repeat("x", long) + ")",
+			want:  1577836800000,
+		},
+		{
+			name:  "number",
+			input: "Jan 1 " + strings.Repeat("0", long) + "2020",
+			want:  1577836800000,
+		},
+	} {
+		var polls int
+		if got := datetime.ParsePolled(tc.input, zone, func() { polls++ }); got != tc.want {
+			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
+		}
+		if polls < 8 {
+			t.Errorf("%s: got %d polls, want at least 8", tc.name, polls)
 		}
 	}
 }
