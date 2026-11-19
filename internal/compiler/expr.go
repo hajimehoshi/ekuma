@@ -121,7 +121,7 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 		if e == nil || pure(e) {
 			continue
 		}
-		if f.mutated[name] || f.anyMutated || f.nestedAssigns(name) {
+		if f.otherCodeAssigns(name) {
 			return true
 		}
 		// nestedAssigns covers the functions nested in a function, so only its own code is left.
@@ -130,6 +130,12 @@ func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 		}
 	}
 	return false
+}
+
+// otherCodeAssigns reports whether code run by an operation, such as a getter or a function
+// called from it, can change the local variable name.
+func (f *fn) otherCodeAssigns(name string) bool {
+	return f.mutated[name] || f.anyMutated || f.nestedAssigns(name)
 }
 
 // operand compiles e and returns the register that holds its value until the expressions rest,
@@ -588,7 +594,8 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 		f.storeVarTo(n, arg.Name, res, false, scope)
 		f.emit(bytecode.OpMove, dst, old, 0)
 	case *ast.MemberExpr:
-		t := f.assignTarget(arg)
+		// The getter and ToNumeric can run code.
+		t := f.assignTargetBefore(arg, nil, false, true)
 		old := f.newReg()
 		f.loadTarget(t, old)
 		res := f.newReg()
@@ -637,13 +644,14 @@ type memberTarget struct {
 // target evaluates the object and the key of the property reference n for a read.
 // The key of a super property is converted by the read.
 func (f *fn) target(n *ast.MemberExpr) memberTarget {
-	return f.targetBefore(n, nil, false)
+	return f.targetBefore(n, nil, false, false)
 }
 
 // targetBefore is like target for a reference that stays in use while the expressions rest are
 // evaluated. With storeOnly, the reference is only stored to, so a computed key is not converted
-// before the store and may stay in the register of a local variable.
-func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly bool) memberTarget {
+// before the store and may stay in the register of a local variable. opaque reports whether
+// other code, such as a getter, also runs while the reference is in use.
+func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque bool) memberTarget {
 	t := memberTarget{
 		node: n,
 		key:  -1,
@@ -663,13 +671,13 @@ func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly bool) me
 		return t
 	}
 	if p, ok := n.Property.(*ast.PrivateName); ok && !n.Computed {
-		t.obj = f.operand(n.Object, rest...)
+		t.obj = f.heldOperand(n.Object, opaque, rest...)
 		t.key = f.newReg()
 		f.loadVar("#"+p.Name, t.key, false)
 		return t
 	}
 	if n.Computed {
-		t.obj = f.operand(n.Object, append([]ast.Expr{n.Property}, rest...)...)
+		t.obj = f.heldOperand(n.Object, opaque, append([]ast.Expr{n.Property}, rest...)...)
 		if storeOnly {
 			t.key = f.operand(n.Property, rest...)
 			return t
@@ -678,18 +686,31 @@ func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly bool) me
 		f.expr(n.Property, t.key)
 		return t
 	}
-	t.obj = f.operand(n.Object, rest...)
+	t.obj = f.heldOperand(n.Object, opaque, rest...)
 	return t
+}
+
+// heldOperand is like operand, and the register also holds the value while other code runs
+// when opaque is set.
+func (f *fn) heldOperand(e ast.Expr, opaque bool, rest ...ast.Expr) int32 {
+	if id, ok := e.(*ast.Identifier); ok && opaque {
+		if r := f.localReg(id.Name); r >= 0 && f.otherCodeAssigns(id.Name) {
+			t := f.newReg()
+			f.emit(bytecode.OpMove, t, r, 0)
+			return t
+		}
+	}
+	return f.operand(e, rest...)
 }
 
 // assignTarget evaluates the property reference n for a store, which may follow a read.
 func (f *fn) assignTarget(n *ast.MemberExpr) memberTarget {
-	return f.assignTargetBefore(n, nil, false)
+	return f.assignTargetBefore(n, nil, false, false)
 }
 
-// assignTargetBefore is like assignTarget, with rest and storeOnly as for targetBefore.
-func (f *fn) assignTargetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly bool) memberTarget {
-	t := f.targetBefore(n, rest, storeOnly)
+// assignTargetBefore is like assignTarget, with rest, storeOnly and opaque as for targetBefore.
+func (f *fn) assignTargetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque bool) memberTarget {
+	t := f.targetBefore(n, rest, storeOnly, opaque)
 	if t.super {
 		// The reference holds the super base from its evaluation on.
 		f.emit(bytecode.OpSuperBase, t.home, t.home, 0)
@@ -1543,7 +1564,8 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.storeVarTo(n, name, t, false, scope)
 		}
 	case *ast.MemberExpr:
-		t := f.assignTargetBefore(target, []ast.Expr{n.Value}, n.Op == ast.OpNone)
+		// A compound or logical assignment runs the getter after the reference.
+		t := f.assignTargetBefore(target, []ast.Expr{n.Value}, n.Op == ast.OpNone, n.Op != ast.OpNone)
 		switch {
 		case n.Op == ast.OpNone:
 			v := f.exprAny(n.Value)

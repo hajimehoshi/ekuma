@@ -242,7 +242,8 @@ func (f *fn) elementRef(e ast.Pattern, mode patMode) (ref elementRef, ok bool) {
 	}
 	switch t := t.(type) {
 	case *ast.MemberExpr:
-		ref.member = f.assignTarget(t)
+		// Reading the value, which can run code, and the initializer follow the reference.
+		ref.member = f.assignTargetBefore(t, []ast.Expr{ref.def}, false, true)
 		ref.isMember = true
 		return ref, true
 	case *ast.Identifier:
