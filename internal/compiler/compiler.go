@@ -232,6 +232,10 @@ type fn struct {
 	control   []*ctl
 	withDepth int
 
+	// outerWiths is the number of with statements and dynamic scopes of eval code around f,
+	// outside its own code, which stays the same while f is compiled.
+	outerWiths int
+
 	// mutated holds the parameters that an arguments object can change.
 	mutated map[string]bool
 
@@ -687,6 +691,7 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 	f.parent = parent
 	if parent != nil {
 		f.depth = parent.depth + 1
+		f.outerWiths = parent.withsAround()
 	}
 	f.node = node
 	f.completion = -1
@@ -1196,12 +1201,9 @@ func (f *fn) redeclares(name string) bool {
 // withsAround returns the number of with statements around the code being compiled,
 // including those around the enclosing functions.
 func (f *fn) withsAround() int {
-	n := 0
-	for g := f; g != nil; g = g.parent {
-		n += g.withDepth
-		if g.eval != nil {
-			n += int(g.eval.scope.Depth)
-		}
+	n := f.withDepth + f.outerWiths
+	if f.eval != nil {
+		n += int(f.eval.scope.Depth)
 	}
 	return n
 }
