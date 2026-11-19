@@ -1004,10 +1004,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpReturn, bytecode.OpReturnUndef:
 			// The frame is popped as in the OpReturn case below, which handles generators,
-			// open upvalues, the return out of the loop and a change of realm; a change to
-			// the popping belongs in both.
+			// upvalues to close, the return out of the loop and a change of realm; a change to
+			// the popping belongs in both. The open upvalues are sorted by stack index, so
+			// none refers to the registers of the frame when the last one lies below them.
 			n := len(vm.frames) - 1
-			if done := &vm.frames[n]; done.gen == nil && len(vm.openUpvals) == 0 && n != stop && vm.frames[n-1].fp.realm == vm.curRealm {
+			if done := &vm.frames[n]; done.gen == nil && n != stop && vm.frames[n-1].fp.realm == vm.curRealm && (len(vm.openUpvals) == 0 || vm.openUpvals[len(vm.openUpvals)-1].index < done.base) {
 				r := Undefined
 				if i.Op == bytecode.OpReturn {
 					r = regs[i.A]
