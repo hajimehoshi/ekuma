@@ -873,7 +873,7 @@ func (f *fn) spreadArgs(args []ast.Expr, dst int32) {
 	}
 }
 
-// isArguments reports whether e is a reference to the arguments of the function f itself,
+// isForwardedArguments reports whether e is a reference to the arguments of the function f itself,
 // which f only forwards.
 func (f *fn) isForwardedArguments(e ast.Expr) bool {
 	id, ok := e.(*ast.Identifier)

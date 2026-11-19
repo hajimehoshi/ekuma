@@ -81,8 +81,7 @@ func Example_modules() {
 	// Hello, modules
 }
 
-// This example hands the memory of a SharedArrayBuffer to a VM on another goroutine, whose
-// store wakes the Atomics.wait of the first VM.
+// This example parses a script once and evaluates it several times.
 func ExampleVM_ParseScript() {
 	var vm ekuma.VM
 	s, err := vm.ParseScript("count.js", `globalThis.n = (globalThis.n ?? 0) + 1`)
@@ -127,6 +126,8 @@ func ExampleVM_NewRealm() {
 	// Output: function,undefined,false
 }
 
+// This example hands the memory of a SharedArrayBuffer to a VM on another goroutine, whose
+// store wakes the Atomics.wait of the first VM.
 func Example_sharedArrayBuffer() {
 	ctx := context.Background()
 	blocks := make(chan *ekuma.SharedDataBlock)

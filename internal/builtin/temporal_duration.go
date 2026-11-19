@@ -213,7 +213,7 @@ func plainRelativeEnd(vm *engine.VM, d *temporal.Duration, rel *plainDateSlots) 
 	}
 }
 
-// maximumDurationRoundIncrements are the limits of the rounding increments of the time units.
+// validateDifferenceIncrement throws a RangeError when increment is not a valid rounding increment for unit.
 func validateDifferenceIncrement(vm *engine.VM, unit temporal.Unit, increment int64) {
 	if maximum, ok := temporal.MaximumTemporalDurationRoundingIncrement(unit); ok {
 		check(temporal.ValidateTemporalRoundingIncrement(increment, maximum, false))

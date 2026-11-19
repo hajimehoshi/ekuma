@@ -397,7 +397,7 @@ func TotalTimeDuration(d Int128, unit Unit) float64 {
 	return DivToFloat64(d, I128(unit.Nanoseconds()))
 }
 
-// roundInt128ToIncrement implements RoundNumberToIncrement for integers in an Int128.
+// RoundInt128ToIncrement implements RoundNumberToIncrement for integers in an Int128.
 func RoundInt128ToIncrement(x, increment Int128, mode RoundingMode) Int128 {
 	q, r := x.QuoRem(increment)
 	if r.IsZero() {

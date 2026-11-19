@@ -179,7 +179,7 @@ type skeleton struct {
 	// chars and lens are the letters and lengths of the fields as given, or 0.
 	chars [fieldCount]byte
 	lens  [fieldCount]int
-	// baseLens are the minimum lengths of the kinds of the fields.
+	// baseChars and baseLens are the letters and minimum lengths of the kinds of the fields.
 	baseChars [fieldCount]byte
 	baseLens  [fieldCount]int
 	// types are the kinds of the fields, or 0 for an absent field.
