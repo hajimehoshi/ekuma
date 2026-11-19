@@ -153,6 +153,8 @@ func (vm *VM) appendFrame() *frame {
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
 // It returns the stack index of register 0 of the new frame.
 func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object) int {
+	// The fast switch of exec builds the same frame inline for OpCall, OpCallCall and
+	// OpApplyFwd when the callee needs no surplus arguments; a change here belongs there too.
 	fp := f.fn.code
 	fp.prepare()
 	extraBase := -1
@@ -900,7 +902,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					argBase := vm.frames[n-1].base + first
 					end := argBase + max(argc, c.nregs+1)
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
-						// Reuse the available stack and frame storage for a prepared call.
+						// Reuse the available stack and frame storage for a prepared call. This builds
+						// the frame that pushFrame would, without calling it, as nothing in this
+						// switch may call; OpApplyFwd's case below builds it the same way, and a
+						// change to one of the three belongs in the others.
 						if i.Op == bytecode.OpCallUndef {
 							regs[b+1] = Undefined
 						}
@@ -944,6 +949,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						for j := k; j < argc; j++ {
 							vm.stack[argBase+j] = vm.stack[cur.extraBase+j-k]
 						}
+						// The frame is pushed as in OpCall's case above.
 						this := regs[i.C]
 						cur.pc = pc + 1
 						vm.stackHigh = max(vm.stackHigh, end)
@@ -965,6 +971,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 		case bytecode.OpReturn, bytecode.OpReturnUndef:
+			// The frame is popped as in the OpReturn case below, which handles generators,
+			// open upvalues, the return out of the loop and a change of realm; a change to
+			// the popping belongs in both.
 			n := len(vm.frames) - 1
 			if done := &vm.frames[n]; done.gen == nil && len(vm.openUpvals) == 0 && n != stop && vm.frames[n-1].fp.realm == vm.curRealm {
 				r := Undefined
@@ -1751,6 +1760,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto superCall
 
 		case bytecode.OpReturn, bytecode.OpReturnUndef, bytecode.OpReturnDerived:
+			// The fast switch above pops the frame the same way for the returns that need none
+			// of the calls here.
 			r := Undefined
 			if i.Op != bytecode.OpReturnUndef {
 				r = regs[i.A]
