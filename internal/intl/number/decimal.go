@@ -9,6 +9,7 @@ package number
 import (
 	"math"
 	"math/big"
+	"math/bits"
 	"strconv"
 	"strings"
 
@@ -100,9 +101,9 @@ func FromFloat(f float64) Decimal {
 	return newDecimal(f < 0, whole+frac, exp-len(frac))
 }
 
-// FromBigInt returns the Intl mathematical value of the BigInt i.
-func FromBigInt(i *big.Int) Decimal {
-	s := i.String()
+// FromInteger returns the Intl mathematical value of the integer whose decimal digits are s,
+// which may start with a minus sign.
+func FromInteger(s string) Decimal {
 	neg := strings.HasPrefix(s, "-")
 	return newDecimal(neg, strings.TrimPrefix(s, "-"), 0)
 }
@@ -131,11 +132,17 @@ func Parse(s string) Decimal {
 					return NaN()
 				}
 			}
-			i, ok := new(big.Int).SetString(t[2:], radix)
+			// A value of more bits than this is beyond the largest finite Number.
+			const maxBits = 1100
+			digits := strings.TrimLeft(t[2:], "0")
+			if (len(digits)-1)*bits.Len(uint(radix-1)) > maxBits {
+				return Inf(false)
+			}
+			i, ok := new(big.Int).SetString("0"+digits, radix)
 			if !ok {
 				return NaN()
 			}
-			return roundedToNumber(FromBigInt(i), s)
+			return roundedToNumber(FromInteger(i.String()), s)
 		}
 	}
 	neg := false

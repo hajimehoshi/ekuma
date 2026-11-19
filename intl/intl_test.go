@@ -5,7 +5,9 @@ package intl_test
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/hajimehoshi/ekuma"
 	_ "github.com/hajimehoshi/ekuma/intl"
@@ -233,5 +235,34 @@ func TestFormatters(t *testing.T) {
 		if got := v.String(); got != tc.want {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
 		}
+	}
+}
+
+// TestCancelFormatting checks that a context stops formatting a long value.
+func TestCancelFormatting(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "BigInt.prototype.toLocaleString",
+			src:  `((1n << (1n << 23n)) - 1n).toLocaleString()`,
+		},
+		{
+			name: "Intl.NumberFormat.prototype.format with a BigInt",
+			src:  `new Intl.NumberFormat().format((1n << (1n << 23n)) - 1n)`,
+		},
+	} {
+		var vm ekuma.VM
+		s, err := vm.ParseScript("test.js", tc.src)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		if _, err := s.Evaluate(ctx); !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("%s: got %v, want context.DeadlineExceeded", tc.name, err)
+		}
+		cancel()
 	}
 }
