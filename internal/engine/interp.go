@@ -687,10 +687,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			setter, ok := vm.setValue(v, k, regs[i.C])
-			if !ok && i.Op == bytecode.OpSetIndexStrict {
-				vm.throwReadOnly(v, vm.ToPropertyKey(k))
-			}
+			setter := vm.setValue(v, k, regs[i.C], i.Op == bytecode.OpSetIndexStrict)
 			if setter != nil {
 				val := regs[i.C]
 				argBase = vm.frames[len(vm.frames)-1].top()

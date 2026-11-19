@@ -423,6 +423,27 @@ func TestValueKeys(t *testing.T) {
 		t.Errorf("o[obj] = %v, %v, want 1", v, err)
 	}
 
+	// A store that fails converts its key once.
+	counted, err := runScript(ctx, &vm, "counted", `var n = 0; ({ frozen: Object.freeze({}), key: { toString() { n++; return "x"; } }, count() { return n; } })`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	frozen, err := counted.Get("frozen")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	key, err := counted.Get("key")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	var serr *ekuma.ScriptError
+	if err := frozen.SetWithValueKey(key, 1); !errors.As(err, &serr) {
+		t.Errorf("SetWithValueKey on a frozen object: got %v, want *ekuma.ScriptError", err)
+	}
+	if v, err := counted.Call(ctx, "count"); err != nil || v.Int() != 1 {
+		t.Errorf("key conversions = %v, %v, want 1", v, err)
+	}
+
 	iter, err := keys.Get("iter")
 	if err != nil {
 		t.Fatalf("Get: %v", err)

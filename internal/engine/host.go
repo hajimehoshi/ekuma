@@ -61,12 +61,8 @@ func (vm *VM) HostGet(v, key Value) (Value, error) {
 // HostSet stores v[key] = val the way strict mode code does.
 func (vm *VM) HostSet(v, key, val Value) error {
 	_, err := vm.enter(func() Value {
-		setter, ok := vm.setValue(v, key, val)
-		switch {
-		case setter != nil:
+		if setter := vm.setValue(v, key, val, true); setter != nil {
 			vm.Call(setter, v, val)
-		case !ok:
-			vm.throwReadOnly(v, vm.ToPropertyKey(key))
 		}
 		return Undefined
 	})

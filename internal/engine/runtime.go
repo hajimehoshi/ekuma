@@ -296,21 +296,33 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	return vm.getNamed(v, key.key, nil)
 }
 
-// setValue stores v[k] = val. The results are those of setNamed.
-func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
+// setValue stores v[k] = val and returns the setter to call, if any. A store that fails throws
+// a TypeError in strict mode.
+func (vm *VM) setValue(v, k, val Value, strict bool) *Object {
+	setter, ok, key := vm.storeValue(v, k, val)
+	if !ok && strict {
+		vm.throwReadOnly(v, key)
+	}
+	return setter
+}
+
+// storeValue stores v[k] = val. The first two results are those of setNamed, and the last is k
+// converted to a property key when the store fails.
+func (vm *VM) storeValue(v, k, val Value) (*Object, bool, PropKey) {
 	if ko := k.o; ko == numberObject {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
-				return nil, vm.typedArraySet(o, i, val)
+				return nil, vm.typedArraySet(o, i, val), IndexKey(i)
 			}
-			return vm.setIndex(v, i, val)
+			setter, ok := vm.setIndex(v, i, val)
+			return setter, ok, IndexKey(i)
 		}
 	} else if ko != nil && ko.kind == kindString {
 		// An element in elems is a writable own data property, whatever object v is.
 		if i, ok := ko.knownArrayIndex(); ok {
 			if o := v.o; o != nil && o.objectProperties != nil && int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
 				o.elems[i] = val
-				return nil, true
+				return nil, true, PropKey{}
 			}
 		}
 	}
@@ -319,9 +331,11 @@ func (vm *VM) setValue(v, k, val Value) (*Object, bool) {
 	}
 	key := vm.ToPropertyKey(k)
 	if key.key == nil {
-		return vm.setIndex(v, key.idx, val)
+		setter, ok := vm.setIndex(v, key.idx, val)
+		return setter, ok, key
 	}
-	return vm.setNamed(v, key.key, val, nil)
+	setter, ok := vm.setNamed(v, key.key, val, nil)
+	return setter, ok, key
 }
 
 // deleteValue implements the delete operator on a property.
