@@ -12,6 +12,10 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
+// maxArrayFromPresize is the largest number of elements that Array.from reserves for the values
+// of an iterator before it has them.
+const maxArrayFromPresize = 1 << 16
+
 // bigKey returns the property key for an integer index, which may be beyond the array indices.
 func bigKey(vm *engine.VM, i int64) engine.PropKey {
 	if i >= 0 && i <= engine.MaxArrayIndex {
@@ -307,11 +311,13 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 			if custom {
 				st.a = vm.Construct(this.Object(), nil, this.Object())
 			}
-			// The size of the source is only a guess of how many values the iterator gives.
+			// The size of the source is only a guess of how many values the iterator gives,
+			// which a replaced iterator may not give at all.
 			size := engine.ElementCount(items)
 			if items.IsString() {
 				size = items.StringLength()
 			}
+			size = min(size, maxArrayFromPresize)
 			vm.IterateFromMethod(items, m, func(v engine.Value) bool {
 				v = mapped(v, st.i)
 				if st.a == nil && st.i <= engine.MaxArrayIndex {
