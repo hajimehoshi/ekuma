@@ -394,6 +394,7 @@ func (vm *VM) loadImportedModule(ref *scriptOrModule, req ModuleRequest) (m *Mod
 		return nil, vm.NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
 	}
 	m, err := vm.modules.load(vm, ref.module, ref.file, (*Realm)(ref.realm), req)
+	vm.ResumeInterruption()
 	if err != nil {
 		return nil, vm.errorValue(err), false
 	}
@@ -1430,7 +1431,9 @@ func (vm *VM) importMeta() Value {
 	if m.meta == nil {
 		meta := vm.NewObject(nil)
 		if vm.modules.meta != nil {
-			for _, p := range vm.modules.meta(vm, m) {
+			props := vm.modules.meta(vm, m)
+			vm.ResumeInterruption()
+			for _, p := range props {
 				vm.CreateDataPropertyOrThrow(meta, p.Key, p.Value)
 			}
 		}

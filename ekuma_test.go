@@ -1430,6 +1430,85 @@ func TestCancelNestedContextUnobserved(t *testing.T) {
 	}
 }
 
+// TestCancelNestedRecovered checks that a Func that recovers the interruption of a nested call
+// does not stop it, whether the outer or the inner context stopped the call.
+func TestCancelNestedRecovered(t *testing.T) {
+	cause := errors.New("inner cancellation")
+	for _, tc := range []struct {
+		name     string
+		outerCtx func(t *testing.T) context.Context
+		innerCtx func(t *testing.T) context.Context
+		want     error
+	}{
+		{
+			name: "outer",
+			outerCtx: func(t *testing.T) context.Context {
+				ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+				t.Cleanup(cancel)
+				return ctx
+			},
+			innerCtx: func(t *testing.T) context.Context { return t.Context() },
+			want:     context.DeadlineExceeded,
+		},
+		{
+			name:     "inner",
+			outerCtx: func(t *testing.T) context.Context { return t.Context() },
+			innerCtx: func(t *testing.T) context.Context {
+				ctx, cancel := context.WithTimeoutCause(t.Context(), 20*time.Millisecond, cause)
+				t.Cleanup(cancel)
+				return ctx
+			},
+			want: cause,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			var recovered, ranAgain bool
+			loop, err := runScript(t.Context(), &vm, "loop", `() => { for (;;) {} }`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			again := vm.FuncOf("again", func(ekuma.Value, []ekuma.Value) (any, error) {
+				ranAgain = true
+				return nil, nil
+			})
+			invoke := vm.FuncOf("invoke", func(ekuma.Value, []ekuma.Value) (res any, err error) {
+				defer func() {
+					if r := recover(); r != nil {
+						recovered = true
+						// A recovered interruption stops the later calls too.
+						func() {
+							defer func() { _ = recover() }()
+							_, _ = again.Invoke(t.Context())
+						}()
+						res, err = nil, fmt.Errorf("recovered: %v", r)
+					}
+				}()
+				return loop.Invoke(tc.innerCtx(t))
+			})
+			if err := vm.Global().Set("invoke", invoke); err != nil {
+				t.Fatal(err)
+			}
+			_, err = runScript(tc.outerCtx(t), &vm, "nested", `
+				var caught = false, after = false;
+				try { invoke(); } catch (e) { caught = true; }
+				after = true;`)
+			if !errors.Is(err, tc.want) {
+				t.Errorf("got %v, want %v", err, tc.want)
+			}
+			if !recovered {
+				t.Error("the Func did not recover the interruption")
+			}
+			if ranAgain {
+				t.Error("a call after the recovered interruption ran")
+			}
+			if v, err := runScript(t.Context(), &vm, "after", `caught || after ? 0 : 1 + 1`); err != nil || v.Int() != 2 {
+				t.Errorf("after the interruption: %v, %v, want 2", v, err)
+			}
+		})
+	}
+}
+
 func TestInternalError(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")

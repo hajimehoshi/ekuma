@@ -268,14 +268,24 @@ func (vm *VM) ClearInterrupt() {
 // steps, such as [PollInterval] steps.
 func (vm *VM) Poll() {
 	vm.pollYield()
+	vm.ResumeInterruption()
 	if vm.interrupt.Load() {
 		vm.interrupt.Store(false)
 		vm.receiveNotifications()
 		if c := vm.interruptCause.Swap(nil); c != nil {
-			panic(&interruptSignal{
+			vm.raised = &interruptSignal{
 				cause: *c,
-			})
+			}
+			panic(vm.raised)
 		}
+	}
+}
+
+// ResumeInterruption panics again with an interruption that a host callback recovered before
+// the interruption reached the outermost call from Go.
+func (vm *VM) ResumeInterruption() {
+	if vm.raised != nil {
+		panic(vm.raised)
 	}
 }
 
@@ -378,6 +388,9 @@ type VM struct {
 
 	// interruptCause is the cause of the pending interruption.
 	interruptCause atomic.Pointer[error]
+
+	// raised is the interruption that is unwinding to the outermost call from Go.
+	raised *interruptSignal
 
 	// entered is the number of calls from Go code outside the engine that are running.
 	entered int

@@ -12,7 +12,8 @@
 // a function, that is stopped by the context of the call that led to the [Func]. When
 // a [Func] makes a call with another context and that context stops the call, everything
 // stops: the outermost Go call that executes JavaScript returns the cause of that context,
-// and the [Func] does not continue. A context that becomes done after its call returns
+// and the [Func] does not continue. A [Func] that recovers the stop runs no more JavaScript,
+// and the stop continues when it returns. A context that becomes done after its call returns
 // has no effect.
 //
 // Internal operation failures return an [*InternalError] from the outermost Go call

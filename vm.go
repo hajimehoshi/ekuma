@@ -293,6 +293,7 @@ func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 			vm.args = append(vm.args, fromEngine(a))
 		}
 		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
+		vm.e.ResumeInterruption()
 		if err != nil {
 			vm.e.Throw(vm.thrownValue(err))
 		}

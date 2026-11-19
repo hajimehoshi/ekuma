@@ -308,6 +308,8 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 
 // enterBoundary implements [VM.enter].
 func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
+	// A host callback that recovered an interruption runs no more JavaScript.
+	vm.ResumeInterruption()
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
 	thrown := vm.thrown
@@ -327,6 +329,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 					vm.abortModuleEvaluations(cause)
 					vm.dropJobs()
 				}
+				vm.raised = nil
 				vm.clearKeptObjects()
 				vm.clearStale()
 				vm.releaseStack()
@@ -385,6 +388,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 		ok := vm.protect(func() {
 			result = f()
 		})
+		vm.ResumeInterruption()
 		thrown := vm.takeThrown()
 		vm.runJobs()
 		if !ok {
