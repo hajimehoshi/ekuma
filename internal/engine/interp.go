@@ -12,6 +12,7 @@ import (
 )
 
 // frame is the activation of a function written in JavaScript.
+// Frames are reused in place, so the code that pushes one assigns every field.
 type frame struct {
 	fp *funcProto
 	cl *Object
@@ -162,7 +163,8 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	}
 	clearFrameRegs(vm.stack[base:], min(argc, fp.nparams), fp.nclear)
 	fr := vm.appendFrame()
-	*fr = callFrame(fp, f, this, base, argc, ret, isNew, newTarget, extraBase)
+	fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = fp, f, 0, base, this, ret, isNew
+	fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, extraBase, newTarget, nil, nil
 	vm.sp = base + fp.nregs + 1
 	return base
 }
@@ -170,20 +172,6 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 func clearFrameRegs(regs []Value, first, end int) {
 	for j := first; j < end; j++ {
 		regs[j] = Value{}
-	}
-}
-
-func callFrame(fp *funcProto, f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object, extraBase int) frame {
-	return frame{
-		fp:        fp,
-		cl:        f,
-		base:      base,
-		this:      this,
-		ret:       ret,
-		isNew:     isNew,
-		argc:      argc,
-		extraBase: extraBase,
-		newTarget: newTarget,
 	}
 }
 
@@ -1333,7 +1321,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
-						vm.frames[n] = callFrame(c, f, this, argBase, argc, i.A, false, nil, -1)
+						fr := &vm.frames[n]
+						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, i.A, false
+						fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, -1, nil, nil, nil
 						vm.sp = argBase + c.nregs + 1
 						base, fp, cl, code, pc = argBase, c, f, c.code, 0
 						regs = vm.stack[base:vm.sp]
