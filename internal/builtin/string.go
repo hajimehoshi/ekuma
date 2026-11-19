@@ -400,7 +400,7 @@ func initString(vm *engine.VM) {
 	}
 	lower := stringMapping{
 		f: func(s string, start, end int, poll func()) string {
-			return xstrings.ToLowerCase(s, start, end)
+			return xstrings.ToLowerCase(s, start, end, poll)
 		},
 		boundary: runeBoundary,
 	}
