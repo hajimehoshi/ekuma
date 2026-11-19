@@ -315,6 +315,9 @@ func (f *fn) number(n float64, dst int32) {
 }
 
 func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
+	if f.stringChain(n, dst) {
+		return
+	}
 	mark := f.top
 	l := f.operand(n.Left, n.Right)
 	if k, ok := numberLit(n.Right); ok {
@@ -327,6 +330,67 @@ func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
 	r := f.exprAny(n.Right)
 	f.emit(binaryOps[n.Op], dst, l, r)
 	f.free(mark)
+}
+
+// stringChain compiles a chain of at least two additions whose leftmost operand is a string
+// literal, such as "a" + x + "b", as one concatenation, and reports whether n is such a chain.
+func (f *fn) stringChain(n *ast.BinaryExpr, dst int32) bool {
+	adds := 0
+	var hasExpr bool
+	e := ast.Expr(n)
+	for {
+		b, ok := e.(*ast.BinaryExpr)
+		if !ok || b.Op != ast.OpAdd {
+			break
+		}
+		if _, ok := b.Right.(*ast.StringLit); !ok {
+			hasExpr = true
+		}
+		adds++
+		e = b.Left
+	}
+	if _, ok := e.(*ast.StringLit); !ok || adds < 2 {
+		return false
+	}
+	mark := f.top
+	defer f.free(mark)
+	// Every intermediate sum is a string, so each other operand is converted as an addition to
+	// a string converts it, right after it is evaluated. The parts go into consecutive
+	// registers and are concatenated at once.
+	var empty int32
+	if hasExpr {
+		empty = f.newReg()
+		f.emit(bytecode.OpLoadK, empty, f.constStr(""), 0)
+	}
+	first := f.top
+	f.stringChainParts(n, empty)
+	switch f.top - first {
+	case 0:
+		f.emit(bytecode.OpLoadK, dst, f.constStr(""), 0)
+	case 1:
+		f.emit(bytecode.OpMove, dst, first, 0)
+	default:
+		f.emit(bytecode.OpConcat, dst, first, f.top-first)
+	}
+	return true
+}
+
+// stringChainParts puts the operands of the string chain e into consecutive registers from
+// f.top on, leaving out empty literals. empty holds the empty string.
+func (f *fn) stringChainParts(e ast.Expr, empty int32) {
+	if b, ok := e.(*ast.BinaryExpr); ok && b.Op == ast.OpAdd {
+		f.stringChainParts(b.Left, empty)
+		e = b.Right
+	}
+	if s, ok := e.(*ast.StringLit); ok {
+		if s.Value != "" {
+			f.emit(bytecode.OpLoadK, f.newReg(), f.constStr(s.Value), 0)
+		}
+		return
+	}
+	t := f.newReg()
+	f.expr(e, t)
+	f.emit(bytecode.OpAdd, t, empty, t)
 }
 
 func (f *fn) logical(n *ast.LogicalExpr, dst int32) {

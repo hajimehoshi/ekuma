@@ -1147,6 +1147,29 @@ func runScript(ctx context.Context, vm *ekuma.VM, name, src string) (ekuma.Value
 	return s.Evaluate(ctx)
 }
 
+func TestStringConcatenationChain(t *testing.T) {
+	// A chain of additions led by a string literal converts each operand right after evaluating
+	// it, with the default hint, and stops at the first conversion that throws.
+	const src = `var log = [];
+		function f(name, v) { log.push(name); return v; }
+		var o = {valueOf() { log.push("valueOf"); return 1; }, toString() { return "T"; }};
+		var p = {[Symbol.toPrimitive](hint) { log.push(hint); return 2; }};
+		var d = new Date(0);
+		d.toString = () => "D";
+		var r = ["a" + f("o", o) + "-" + f("p", p) + d + 10n + "" + 1.5];
+		try { "a" + f("x", 1) + f("s", Symbol()) + f("y", 2); } catch (e) { r.push(e instanceof TypeError); }
+		r.push(log.join(), "" + "" + "", "x" + "" + "");
+		r.join("|")`
+	var vm ekuma.VM
+	v, err := runScript(t.Context(), &vm, "chain.js", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "a1-2D101.5|true|o,valueOf,p,default,x,s||x"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 func TestStringLengthLimits(t *testing.T) {
 	tests := []struct {
 		name string
@@ -1188,11 +1211,11 @@ func TestStringLengthLimits(t *testing.T) {
 			name: "concatenations longer than the string length limit",
 			src: `var s = "x".repeat(` + strconv.Itoa((ekuma.MaxStringLength+1)/2) + `);
 				var r = [];
-				for (var f of [() => s + s, () => ` + "`${s}${s}`" + `]) {
+				for (var f of [() => s + s, () => ` + "`${s}${s}`" + `, () => "" + s + s]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
 				}
 				r.join()`,
-			want: "true,true",
+			want: "true,true,true",
 		},
 	}
 	for _, tt := range tests {
