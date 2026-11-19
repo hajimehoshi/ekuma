@@ -227,3 +227,27 @@ func TestDeletedUndefinedKey(t *testing.T) {
 		}
 	}
 }
+
+func TestCursorAfterFrontDeletes(t *testing.T) {
+	var tab collection.Table
+	for i := range 20 {
+		tab.Set(engine.Number(float64(i)), engine.Undefined)
+	}
+	c := tab.Start()
+	tab.Next(&c)
+	tab.Next(&c)
+	// Too few deletions to compact the table: the deleted entries stay in place.
+	for _, k := range []float64{0, 1, 2, 3, 4, 7, 5, 6} {
+		tab.Delete(engine.Number(k))
+	}
+	if got, want := rest(&tab, &c), seq(8, 20); !slices.Equal(got, want) {
+		t.Errorf("after deleting the first entries: got %v, want %v", got, want)
+	}
+	tab.Clear()
+	tab.Set(engine.Number(1), engine.Undefined)
+	tab.Set(engine.Number(2), engine.Undefined)
+	c = tab.Start()
+	if got, want := rest(&tab, &c), []float64{1, 2}; !slices.Equal(got, want) {
+		t.Errorf("after Clear: got %v, want %v", got, want)
+	}
+}

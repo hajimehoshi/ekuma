@@ -37,6 +37,9 @@ type Table struct {
 	// live is the number of entries that are not deleted.
 	live int
 
+	// head is the number of leading entries that are all deleted.
+	head int
+
 	// indexed says that the maps below locate every live entry by its key.
 	indexed bool
 
@@ -299,6 +302,11 @@ func (t *Table) deleteAt(i int) {
 		key: engine.ObjectValue(deletedKey),
 	}
 	t.live--
+	if i == t.head {
+		for t.head < len(t.entries) && t.entries[t.head].deleted() {
+			t.head++
+		}
+	}
 	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live {
 		t.compact()
 	}
@@ -323,6 +331,7 @@ func (t *Table) compact() {
 	}
 	clear(t.entries[n:])
 	t.entries = t.entries[:n]
+	t.head = 0
 	// The maps keep their room until they are rebuilt.
 	shrink := cap(t.entries) > minShrinkEntries && n < cap(t.entries)/4
 	if shrink {
@@ -352,6 +361,7 @@ func (t *Table) compact() {
 func (t *Table) Clear() {
 	t.entries = nil
 	t.live = 0
+	t.head = 0
 	t.indexed = false
 	t.nums, t.strs, t.ints, t.bigs, t.objs = nil, nil, nil, nil, nil
 	if t.gen != nil {
@@ -452,6 +462,8 @@ func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
 		}
 		c.gen = g.next
 	}
+	// The entries before head are deleted.
+	c.pos = max(c.pos, t.head)
 	for c.pos < len(t.entries) {
 		e := &t.entries[c.pos]
 		c.pos++
