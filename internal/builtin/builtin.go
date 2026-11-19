@@ -278,8 +278,9 @@ func testIntegrity(vm *engine.VM, o *engine.Object, frozen bool) bool {
 	return true
 }
 
-// enumerableOwn returns the enumerable own string keys of o and, when wanted, their values.
-func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.Value {
+// enumerableOwn returns the values of the enumerable own string-keyed properties of o, or their
+// key-value pairs when entries is set.
+func enumerableOwn(vm *engine.VM, o *engine.Object, entries bool) []engine.Value {
 	ks := vm.OwnKeys(o)
 	out := make([]engine.Value, 0, len(ks))
 	var pacer engine.Pacer
@@ -292,17 +293,11 @@ func enumerableOwn(vm *engine.VM, o *engine.Object, keys, values bool) []engine.
 		if !ok || !d.Enumerable() {
 			continue
 		}
-		kv := vm.KeyValue(k)
-		if !values {
-			out = append(out, kv)
-			continue
-		}
 		v := vm.Get(o, k)
-		if keys {
-			out = append(out, engine.ObjectValue(vm.NewArrayPair(kv, v)))
-		} else {
-			out = append(out, v)
+		if entries {
+			v = engine.ObjectValue(vm.NewArrayPair(vm.KeyValue(k), v))
 		}
+		out = append(out, v)
 	}
 	return out
 }
@@ -551,13 +546,20 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 		return engine.ObjectValue(vm.NewArray(out))
 	})
 	method(vm, ctor, "keys", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true, false)))
+		ks := vm.EnumerableOwnKeys(vm.ToObject(arg(args, 0)), nil)
+		out := make([]engine.Value, len(ks))
+		var pacer engine.Pacer
+		for i, k := range ks {
+			pacer.Step(vm)
+			out[i] = vm.KeyValue(k)
+		}
+		return engine.ObjectValue(vm.NewArray(out))
 	})
 	method(vm, ctor, "values", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), false, true)))
+		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), false)))
 	})
 	method(vm, ctor, "entries", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true, true)))
+		return engine.ObjectValue(vm.NewArray(enumerableOwn(vm, vm.ToObject(arg(args, 0)), true)))
 	})
 	method(vm, ctor, "assign", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		to := vm.ToObject(arg(args, 0))
@@ -566,6 +568,9 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 				continue
 			}
 			from := vm.ToObject(src)
+			if vm.AssignDataProperties(to, from) {
+				continue
+			}
 			var pacer engine.Pacer
 			for _, k := range vm.OwnKeys(from) {
 				pacer.Step(vm)

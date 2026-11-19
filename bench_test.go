@@ -2469,3 +2469,49 @@ func BenchmarkStringToNumber(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkObjectCopy copies the properties of an object literal in a loop with Object.assign
+// or a spread, or lists its keys. One iteration is one operation.
+func BenchmarkObjectCopy(b *testing.B) {
+	const js = `
+		function source(n) {
+			const o = {};
+			for (let i = 0; i < n; i++) o["k" + i] = i;
+			return o;
+		}
+		function run(op, n, count) {
+			const src = source(n);
+			let r;
+			switch (op) {
+			case "assign":
+				for (let i = 0; i < count; i++) r = Object.assign({}, src);
+				break;
+			case "assignOnto":
+				for (let i = 0; i < count; i++) r = Object.assign({a: 1}, src);
+				break;
+			case "spread":
+				for (let i = 0; i < count; i++) r = {...src};
+				break;
+			case "keys":
+				for (let i = 0; i < count; i++) r = Object.keys(src);
+				break;
+			}
+			return r;
+		}`
+	for _, op := range []string{"assign", "assignOnto", "spread", "keys"} {
+		for _, n := range []int{8, 64} {
+			b.Run(fmt.Sprintf("%s/%d", op, n), func(b *testing.B) {
+				ctx := b.Context()
+				var vm ekuma.VM
+				if _, err := runScript(ctx, &vm, "copy.js", js); err != nil {
+					b.Fatal(err)
+				}
+				b.ReportAllocs()
+				b.ResetTimer()
+				if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%q, %d, %d)", op, n, b.N)); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}

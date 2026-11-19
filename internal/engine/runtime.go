@@ -915,32 +915,70 @@ keys:
 // true when creating them on dst one by one would give dst the shape of from. Otherwise it
 // does nothing and reports false.
 func takeDataProperties(dst, from *Object) bool {
-	if dst.kind != kindObject || dst.class != classObject || dst.flags&(objNotExtensible|objIsProto|objExotic|objSparse) != 0 || dst.shape.count != 0 || len(dst.elems) != 0 {
-		return false
-	}
-	// An ordinary object without elements and not sparse has no property with an array index
-	// key, so its keys are in insertion order, which is the order of its slots.
-	if from.kind != kindObject || from.class != classObject || from.flags&(objExotic|objSparse) != 0 || len(from.elems) != 0 {
-		return false
-	}
-	s := from.shape
-	if s.private || s.flatBased || s.count == 0 {
-		return false
-	}
-	t := s
-	for ; t.parent != nil; t = t.parent {
-		if t.flags != FlagsData || t.key.kind != kindString {
-			return false
-		}
-	}
-	// The root fixes the prototype, so the shape of dst would be reached through the same
-	// transitions.
-	if t != dst.shape {
+	s := takenShape(dst, from)
+	if s == nil {
 		return false
 	}
 	dst.shape = s
 	dst.slots = append(dst.slots[:0], from.slots[:s.count]...)
 	return true
+}
+
+// AssignDataProperties copies the own enumerable properties of from to the empty object to as
+// Object.assign does and reports true, when that cannot run any code. Otherwise it does nothing
+// and reports false.
+func (vm *VM) AssignDataProperties(to, from *Object) bool {
+	s := takenShape(to, from)
+	if s == nil {
+		return false
+	}
+	// Set creates an own data property on to unless the first property of the same key on
+	// the prototype chain is an accessor or read-only. The keys of s are strings that are not
+	// array indices, which only an ordinary object is known to look up in its shape alone.
+	for h := to.shape.proto; h != nil; h = h.shape.proto {
+		if h.kind != kindObject || h.class != classObject || h.flags&objExotic != 0 {
+			return false
+		}
+	}
+	for t := s; t.parent != nil; t = t.parent {
+		if _, p, ok := find(to.shape.proto, t.key); ok && p.flags&(FlagAccessor|FlagWritable) != FlagWritable {
+			return false
+		}
+	}
+	to.shape = s
+	to.slots = append(to.slots[:0], from.slots[:s.count]...)
+	return true
+}
+
+// takenShape returns the shape that dst, an empty ordinary object, would have after creating
+// the properties of from on it one by one, when that shape is the shape of from and from has
+// only enumerable, writable and configurable data properties with string keys. Otherwise it
+// returns nil.
+func takenShape(dst, from *Object) *shape {
+	if dst.kind != kindObject || dst.class != classObject || dst.flags&(objNotExtensible|objIsProto|objExotic|objSparse) != 0 || dst.shape.count != 0 || len(dst.elems) != 0 {
+		return nil
+	}
+	// An ordinary object without elements and not sparse has no property with an array index
+	// key, so its keys are in insertion order, which is the order of its slots.
+	if from.kind != kindObject || from.class != classObject || from.flags&(objExotic|objSparse) != 0 || len(from.elems) != 0 {
+		return nil
+	}
+	s := from.shape
+	if s.private || s.flatBased || s.count == 0 {
+		return nil
+	}
+	t := s
+	for ; t.parent != nil; t = t.parent {
+		if t.flags != FlagsData || t.key.kind != kindString {
+			return nil
+		}
+	}
+	// The root fixes the prototype, so the shape of dst would be reached through the same
+	// transitions.
+	if t != dst.shape {
+		return nil
+	}
+	return s
 }
 
 // setupClass makes the function ctor a class constructor that extends parent,

@@ -3025,3 +3025,65 @@ func TestInlineStringPadding(t *testing.T) {
 		t.Error("padding changed UTF-16 content or coercion ordering")
 	}
 }
+
+func TestObjectAssignDataProperties(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "inherited setter",
+			src: `const log = [];
+				Object.defineProperty(Object.prototype, "b", {set(v) { log.push(v); }, configurable: true});
+				const r = Object.assign({}, {a: 1, b: 2});
+				Object.keys(r).join() + "|" + log.join();`,
+			want: "a|2",
+		},
+		{
+			name: "inherited read-only",
+			src: `Object.defineProperty(Object.prototype, "b", {value: 0, configurable: true});
+				let r;
+				try { Object.assign({}, {a: 1, b: 2}); r = "no error"; } catch (e) { r = e.constructor.name; }
+				r;`,
+			want: "TypeError",
+		},
+		{
+			name: "proto key",
+			src: `const r = Object.assign({}, {a: 1, ["__proto__"]: {z: 3}});
+				Object.getPrototypeOf(r).z + "," + Object.hasOwn(r, "__proto__") + "," + Object.keys(r).join();`,
+			want: "3,false,a",
+		},
+		{
+			name: "getter mutating the source",
+			src: `const src = {a: 1, get b() { delete src.c; src.d = 4; return 2; }, c: 3};
+				JSON.stringify(Object.assign({}, src));`,
+			want: `{"a":1,"b":2}`,
+		},
+		{
+			name: "key order",
+			src: `const s = Symbol("s");
+				const src = {b: 1, 2: 2, [s]: 3, a: 4, 1: 5};
+				Reflect.ownKeys(Object.assign({}, src)).map(String).join() + "|" + Object.keys(src).join();`,
+			want: "1,2,b,a,Symbol(s)|1,2,b,a",
+		},
+		{
+			name: "later source onto the taken shape",
+			src: `const first = {a: 1, b: 2};
+				const r = Object.assign({}, first, {b: 3, c: 4});
+				JSON.stringify(r) + JSON.stringify(first);`,
+			want: `{"a":1,"b":3,"c":4}{"a":1,"b":2}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			v, err := runScript(t.Context(), &vm, "assign", tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := v.String(); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
