@@ -175,6 +175,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 	// The static fields and blocks run after everything else is defined.
 	type static struct {
 		key, value int32
+		elem       int32
 		block      bool
 	}
 	var statics []static
@@ -227,22 +228,35 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 		case ast.MemberField:
 			// The key and the initializer stay in registers until the static fields run.
 			k := f.propertyKey(m.Key, m.Computed)
-			v := f.fieldInit(m, obj, k, private)
+			elem := int32(bytecode.ElemField)
+			v, ok := f.fieldValue(m)
+			if ok {
+				elem |= bytecode.ElemValue
+			} else {
+				v = f.fieldInit(m, obj, k, private)
+			}
 			if m.Static {
 				statics = append(statics, static{
 					key:   k,
 					value: v,
+					elem:  elem,
 				})
 				break
 			}
 			f.emit(bytecode.OpAddField, ctor, k, v)
-			f.emit(bytecode.OpNop, bytecode.ElemField, 0, 0)
+			f.emit(bytecode.OpNop, elem, 0, 0)
 		case ast.MemberAccessor:
 			mm := f.top
 			k := f.propertyKey(m.Key, m.Computed)
 			acc := f.newRegs(3)
 			f.emit(bytecode.OpAutoAccessor, acc, k, 0)
+			fieldElem := int32(bytecode.ElemField)
 			v := f.fieldInit(m, obj, k, private)
+			if v < 0 {
+				v = f.newReg()
+				f.emit(bytecode.OpLoadUndef, v, 0, 0)
+				fieldElem |= bytecode.ElemValue
+			}
 			if private {
 				elem := int32(0)
 				if m.Static {
@@ -263,11 +277,12 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 				statics = append(statics, static{
 					key:   acc,
 					value: v,
+					elem:  fieldElem,
 				})
 				break
 			}
 			f.emit(bytecode.OpAddField, ctor, acc, v)
-			f.emit(bytecode.OpNop, bytecode.ElemField, 0, 0)
+			f.emit(bytecode.OpNop, fieldElem, 0, 0)
 			f.free(mm)
 		case ast.MemberStaticBlock:
 			v := f.newReg()
@@ -295,12 +310,36 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 			continue
 		}
 		f.emit(bytecode.OpAddField, ctor, s.key, s.value)
-		f.emit(bytecode.OpNop, bytecode.ElemField|bytecode.ElemStatic, 0, 0)
+		f.emit(bytecode.OpNop, s.elem|bytecode.ElemStatic, 0, 0)
 	}
 
 	f.emit(bytecode.OpMove, dst, ctor, 0)
 	f.control = f.control[:len(f.control)-1]
 	f.popScope()
+}
+
+// fieldValue loads the initial value of the field m into a fresh register and returns the
+// register when m has no initializer or one that is a literal, which evaluates to the same
+// value every time without running any code. It reports false otherwise.
+func (f *fn) fieldValue(m *ast.ClassMember) (int32, bool) {
+	if m.Value == nil {
+		v := f.newReg()
+		f.emit(bytecode.OpLoadUndef, v, 0, 0)
+		return v, true
+	}
+	switch e := m.Value.ExprBody.(type) {
+	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit:
+	case *ast.Identifier:
+		// The global undefined cannot be changed.
+		if e.Name != "undefined" || f.resolve(e.Name).kind != refGlobal || f.dynDepth(e.Name) != 0 {
+			return -1, false
+		}
+	default:
+		return -1, false
+	}
+	v := f.newReg()
+	f.expr(m.Value.ExprBody, v)
+	return v, true
 }
 
 // fieldInit compiles the initializer of the field or auto-accessor m with the home object obj

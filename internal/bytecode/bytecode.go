@@ -180,7 +180,7 @@ const (
 	OpClass            // make the function a a class constructor with the parent c; a+1 receives the prototype. c is -1 without an extends clause
 	OpPrivateName      // a = a new private name described by Keys[b]; c says whether it names a method
 	OpInitFields       // define the instance elements of the class a on the instance b
-	OpAddField         // add the class element with the key b and the value or initializer c to the class a; the next instruction's a is an Elem kind
+	OpAddField         // add the class element with the key b and the value, initializer or initial value in c to the class a; the next instruction's a is an Elem kind
 	OpCheckThisUninit  // throw when a is initialized: super was called twice
 	OpRequireCoercible // throw a TypeError when a is undefined or null
 
@@ -291,13 +291,15 @@ const (
 )
 
 // The kinds of class element that [OpAddField] adds. [ElemStatic] may be combined with any of the
-// others.
+// others, and [ElemValue] with [ElemField].
 const (
 	ElemField = iota
 	ElemMethod
 	ElemGetter
 	ElemSetter
 	ElemStatic = 8
+	// ElemValue makes c the initial value of the field instead of its initializer.
+	ElemValue = 16
 )
 
 // The kinds of class element that only classes with decorators add with [OpDecorate].

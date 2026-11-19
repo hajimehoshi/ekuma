@@ -2614,3 +2614,30 @@ func BenchmarkArrayFrom(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkClassFields constructs an instance of a class with four properties, set by its
+// constructor or defined by fields. One iteration is one construction.
+func BenchmarkClassFields(b *testing.B) {
+	const js = `
+		class Assigned { constructor() { this.a = 0; this.b = 0; this.c = 0; this.d = 0; } }
+		class Bare { a; b; c; d; }
+		class Literal { a = 0; b = ""; c = null; d = true; }
+		class Computed { a = 0; b = 1 + 1; c = []; d = {}; }
+		function run(C, n) {
+			for (var i = 0; i < n; i++) new C();
+		}`
+	for _, c := range []string{"Assigned", "Bare", "Literal", "Computed"} {
+		b.Run(c, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			if _, err := runScript(ctx, &vm, "fields.js", js); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%s, %d)", c, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

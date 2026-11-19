@@ -1719,11 +1719,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			kind := int(code[pc].A)
 			pc++
-			var init *Object
-			if i.C >= 0 {
-				init = regs[i.C].o
-			}
-			vm.addClassElement(regs[i.A].o, regs[i.B], init, kind)
+			vm.addClassElement(regs[i.A].o, regs[i.B], regs[i.C], kind)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {

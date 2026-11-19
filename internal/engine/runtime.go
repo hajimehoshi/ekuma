@@ -677,20 +677,31 @@ type classElement struct {
 	key  Value
 	val  *Object
 
+	// init is the initial value of a field without an initializer function.
+	init Value
+
 	// dec is what the decorators of a field add to it, or nil.
 	dec *fieldDecoration
+
+	// cache is the shape transition that defining a public field takes.
+	cache propCache
 }
 
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
-// For a field, val is the function that computes the initial value, or nil.
-func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
+// For a field, v is the function that computes the initial value, or undefined when there is none;
+// with [bytecode.ElemValue] in kind, v is the initial value itself.
+func (vm *VM) addClassElement(ctor *Object, key Value, v Value, kind int) {
 	e := classElement{
-		kind: kind &^ bytecode.ElemStatic,
+		kind: kind &^ (bytecode.ElemStatic | bytecode.ElemValue),
 		key:  key,
-		val:  val,
+	}
+	if kind&bytecode.ElemValue != 0 {
+		e.init = v
+	} else {
+		e.val = v.o
 	}
 	if kind&bytecode.ElemStatic != 0 {
-		vm.defineClassElement(Value{o: ctor}, e)
+		vm.defineClassElement(Value{o: ctor}, &e)
 		return
 	}
 	if ctor.fn.fields == nil {
@@ -701,10 +712,11 @@ func (vm *VM) addClassElement(ctor *Object, key Value, val *Object, kind int) {
 
 // initFields defines the instance elements of the class ctor on this.
 func (vm *VM) initFields(ctor *Object, this Value) {
+	fields := *ctor.fn.fields
 	// Private methods and accessors exist before any field initializer runs.
 	checked := false
-	for _, e := range *ctor.fn.fields {
-		if e.kind != bytecode.ElemField && e.kind != elemInitializer {
+	for i := range fields {
+		if e := &fields[i]; e.kind != bytecode.ElemField && e.kind != elemInitializer {
 			if !checked {
 				vm.ensureCanAddPrivate(this, e.key.o)
 				checked = true
@@ -712,8 +724,8 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 			vm.defineClassElement(this, e)
 		}
 	}
-	for _, e := range *ctor.fn.fields {
-		switch e.kind {
+	for i := range fields {
+		switch e := &fields[i]; e.kind {
 		case bytecode.ElemField:
 			vm.defineClassElement(this, e)
 		case elemInitializer:
@@ -722,11 +734,11 @@ func (vm *VM) initFields(ctor *Object, this Value) {
 	}
 }
 
-func (vm *VM) defineClassElement(this Value, e classElement) {
+func (vm *VM) defineClassElement(this Value, e *classElement) {
 	private := e.key.o != nil && e.key.o.class == classPrivateName
 	switch e.kind {
 	case bytecode.ElemField:
-		v := Undefined
+		v := e.init
 		if e.val != nil {
 			v = vm.Call(e.val, this)
 		}
@@ -739,7 +751,7 @@ func (vm *VM) defineClassElement(this Value, e classElement) {
 			vm.ensureCanAddPrivate(this, e.key.o)
 			vm.definePrivate(this, e.key.o, v)
 		} else {
-			vm.CreateDataPropertyOrThrow(this.o, vm.ToPropertyKey(e.key), v)
+			vm.definePublicField(this.o, e.key, v, &e.cache)
 		}
 		if e.dec != nil {
 			for _, init := range e.dec.extra {
@@ -795,6 +807,21 @@ func (vm *VM) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
 		}
 	}
 	vm.CreateDataPropertyOrThrow(o, PropKey{key: key}, val)
+}
+
+// definePublicField implements CreateDataPropertyOrThrow for the public class field k of o.
+// c caches the shape transition of the field, whose key is always k.
+func (vm *VM) definePublicField(o *Object, k, val Value, c *propCache) {
+	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.shape == c.shape && c.kind == cacheAdd {
+		o.shape = c.next
+		o.slots = append(o.slots, val)
+		return
+	}
+	if pk := vm.ToPropertyKey(k); pk.key != nil {
+		vm.defineFieldK(o, pk.key, val, c)
+		return
+	}
+	vm.defineField(o, k, val)
 }
 
 // defineMethod defines the method f under the key k of o.

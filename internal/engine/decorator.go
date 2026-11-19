@@ -259,7 +259,7 @@ func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 		}
 		for _, c := range e.appendElements(nil) {
 			if c.kind != bytecode.ElemField {
-				vm.defineClassElement(Value{o: f}, c)
+				vm.defineClassElement(Value{o: f}, &c)
 			}
 		}
 	}
@@ -433,7 +433,7 @@ func (vm *VM) finishClass(st *classDecoration, f Value) {
 		case bytecode.ElemField, bytecode.ElemAccessor:
 			for _, c := range e.appendElements(nil) {
 				if c.kind == bytecode.ElemField {
-					vm.defineClassElement(f, c)
+					vm.defineClassElement(f, &c)
 				}
 			}
 		case bytecode.ElemStaticBlock:
