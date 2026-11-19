@@ -287,6 +287,10 @@ type shape struct {
 	// more than smallShapeSize properties keeps a table from the start.
 	flatBased bool
 
+	// branchSlots is, for a shared shape with more than one transition, the largest number of
+	// properties that objects were given after its own, up to maxInstanceSlots.
+	branchSlots uint8
+
 	// order lists the keys of a private shape in insertion order, at the indices of their
 	// slots. A deleted key leaves nil behind until the shape is compacted, so count is the number
 	// of keys and len(order) the number of slots.
@@ -533,6 +537,13 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 		}
 	}
 	s.transitions.put(t)
+	d := 1
+	for p := s; p != nil && d <= maxInstanceSlots; p = p.parent {
+		if p.transitions.only == nil {
+			p.branchSlots = max(p.branchSlots, uint8(d))
+		}
+		d++
+	}
 	return t
 }
 
@@ -676,17 +687,26 @@ const maxInstanceSlots = 16
 const branchedInstanceSlots = 4
 
 // newInstance returns a new empty ordinary object with the shape s, with room for the
-// properties that the objects with s have been given one after another so far.
+// properties that the objects with s have been given one after another so far, and for some
+// more when they went on with different properties.
 func newInstance(s *shape) *Object {
 	n := 0
-	if s.transitions.only == nil && !s.transitions.empty() {
-		// The prototype of a subclass also starts with s.
-		n = branchedInstanceSlots
-	}
-	for t := s.transitions.only; t != nil && n < maxInstanceSlots; t = t.transitions.only {
+	for t := s; n < maxInstanceSlots; t = t.transitions.only {
+		if t.transitions.only == nil {
+			switch {
+			case t.transitions.empty():
+			case t == s:
+				// The prototype of a subclass also starts with s.
+				n = branchedInstanceSlots
+			default:
+				// The objects with s have gone on with different properties from t on.
+				n += int(t.branchSlots)
+			}
+			break
+		}
 		n++
 	}
-	o, slots := newObjectWithStorage(n)
+	o, slots := newObjectWithStorage(min(n, maxInstanceSlots))
 	o.kind = kindObject
 	o.shape = s
 	o.slots = slots[:0]

@@ -96,6 +96,12 @@ func TestAllocationsPerOperation(t *testing.T) {
 			want:  0,
 		},
 		{
+			name:  "construction of instances whose properties differ after the first",
+			setup: `function V(k) { this.a = 1; if (k) { this.b = 1; this.c = 1; this.d = 1; this.e = 1; this.f = 1; } else { this.f = 1; this.e = 1; this.d = 1; this.c = 1; this.b = 1; } }`,
+			body:  `new V(0); new V(1);`,
+			want:  2,
+		},
+		{
 			name:  "construction of an instance of a subclass",
 			setup: `class P { constructor(x, y) { this.x = x; this.y = y; } } class Q extends P { constructor(x) { super(x, 2); } }`,
 			body:  `new Q(1);`,
