@@ -165,13 +165,13 @@ func (vm *VM) concat(a Value, x string, b Value, y string) Value {
 		if a.o.flags&objReversed != 0 {
 			return vm.concatReversed(a, x, b, y)
 		}
-		ca, _ = a.o.ext.(concatCount)
+		ca = a.o.extConcatCount()
 	}
 	if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {
 		return vm.NewString(wtf8.Concat(x, y))
 	}
 	if b.IsString() {
-		cb, _ = b.o.ext.(concatCount)
+		cb = b.o.extConcatCount()
 	}
 	if n >= minBufferedLength {
 		if ca.appends() >= bufferAfter {
@@ -275,8 +275,8 @@ func (vm *VM) concatStrings(parts []Value) Value {
 		}
 		return vm.extendTail(first, sb, ascii)
 	}
-	ca, _ := first.ext.(concatCount)
-	cb, _ := parts[len(parts)-1].o.ext.(concatCount)
+	ca := first.extConcatCount()
+	cb := parts[len(parts)-1].o.extConcatCount()
 	if n < minBufferedLength || ca.appends() < bufferAfter && cb.prepends() < bufferAfter {
 		if n <= maxStackConcatBytes {
 			return vm.concatSmall(parts, n, nextCount(ca, cb), needsUnpacking)
@@ -421,7 +421,7 @@ func nextCount(ca, cb concatCount) concatCount {
 
 // tailBuilder returns the builder whose tail the string o is, or nil.
 func tailBuilder(o *Object) *strings.Builder {
-	if sb, ok := o.ext.(*strings.Builder); ok && sb.Len() == len(o.str) {
+	if sb, ok := o.extState().(*strings.Builder); ok && sb.Len() == len(o.str) {
 		return sb
 	}
 	return nil
@@ -429,7 +429,7 @@ func tailBuilder(o *Object) *strings.Builder {
 
 // headBuilder returns the builder whose head the string o is, or nil.
 func headBuilder(o *Object) *reversedBuilder {
-	if rb, ok := o.ext.(*reversedBuilder); ok && rb.sb.Len() == len(o.str) {
+	if rb, ok := o.extState().(*reversedBuilder); ok && rb.sb.Len() == len(o.str) {
 		return rb
 	}
 	return nil
@@ -449,13 +449,13 @@ func (vm *VM) newTail(sb *strings.Builder, ascii bool) Value {
 // string a, after strings were appended to the contents of a. ascii reports whether the
 // appended strings are ASCII.
 func (vm *VM) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
-	a.ext = nil
+	a.setExtState(nil)
 	s := sb.String()
 	flags := objASCIIKnown
 	var meta *objectMeta
 	if ascii && a.IsASCII() {
 		flags |= objASCII
-	} else if m := a.meta; m != nil {
+	} else if m := a.meta(); m != nil {
 		// The UTF-16 view of a stays valid for its prefix of s. Carrying it over keeps
 		// a loop that appends and reads the length or the last code units linear.
 		meta = &objectMeta{
@@ -482,13 +482,13 @@ func (vm *VM) newHead(rb *reversedBuilder, ascii bool) Value {
 // strings were prepended to the reversed string b by writing them to rb. ascii reports whether
 // the prepended strings are ASCII.
 func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
-	b.ext = nil
+	b.setExtState(nil)
 	s := rb.sb.String()
 	flags := objASCIIKnown | objReversed
 	var meta *objectMeta
 	if ascii && b.IsASCII() {
 		flags |= objASCII
-	} else if m := b.meta; m != nil && m.length != 0 {
+	} else if m := b.meta(); m != nil && m.length != 0 {
 		// Carrying the length over keeps a loop that prepends and reads the length linear.
 		meta = &objectMeta{
 			length: m.length + int32(wtf8.Len(s[len(b.str):])),
@@ -520,11 +520,11 @@ func (vm *VM) newBufferedString(s string, flags uint8, builder any, meta *object
 			flags: flags,
 			shape: vm.shapes.string,
 			str:   s,
-			ext:   builder,
 		},
 		meta: *meta,
 	}
-	p.object.meta = &p.meta
+	p.meta.ext = builder
+	p.object.ext = &p.meta
 	return Value{o: &p.object}
 }
 
@@ -535,7 +535,7 @@ func (o *Object) unreverse() {
 	writeReversed(&sb, o.str)
 	o.str = sb.String()
 	o.flags &^= objReversed
-	o.ext = nil
+	o.setExtState(nil)
 }
 
 // sameStrings reports whether the strings a and b have the same contents.

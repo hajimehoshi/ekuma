@@ -50,14 +50,14 @@ func newWeakTable() *WeakTable {
 func (vm *VM) NewWeakMapObject(proto *Object) *Object {
 	o := vm.NewObject(proto)
 	o.class = classWeakMap
-	o.ext = newWeakTable()
+	o.setExtState(newWeakTable())
 	return o
 }
 
 // WeakMapData returns the [[WeakMapData]] of the WeakMap object v, or nil when v is not a WeakMap object.
 func WeakMapData(v Value) *WeakTable {
 	if v.IsObject() && v.o.class == classWeakMap {
-		return v.o.ext.(*WeakTable)
+		return v.o.extState().(*WeakTable)
 	}
 	return nil
 }
@@ -66,14 +66,14 @@ func WeakMapData(v Value) *WeakTable {
 func (vm *VM) NewWeakSetObject(proto *Object) *Object {
 	o := vm.NewObject(proto)
 	o.class = classWeakSet
-	o.ext = newWeakTable()
+	o.setExtState(newWeakTable())
 	return o
 }
 
 // WeakSetData returns the [[WeakSetData]] of the WeakSet object v, or nil when v is not a WeakSet object.
 func WeakSetData(v Value) *WeakTable {
 	if v.IsObject() && v.o.class == classWeakSet {
-		return v.o.ext.(*WeakTable)
+		return v.o.extState().(*WeakTable)
 	}
 	return nil
 }
@@ -92,7 +92,7 @@ func (vm *VM) CanBeHeldWeakly(v Value) bool {
 
 // Get returns the value of the entry with the key k.
 func (t *WeakTable) Get(k Value) (Value, bool) {
-	m := k.o.meta
+	m := k.o.meta()
 	if m == nil {
 		return Undefined, false
 	}
@@ -146,7 +146,7 @@ func (t *WeakTable) Set(k, v Value) {
 
 // Delete deletes the entry with the key k and reports whether there was one.
 func (t *WeakTable) Delete(k Value) bool {
-	m := k.o.meta
+	m := k.o.meta()
 	if m == nil {
 		return false
 	}
@@ -168,7 +168,7 @@ func (t *WeakTable) Delete(k Value) bool {
 func (vm *VM) NewWeakRefObject(proto *Object, v Value) *Object {
 	o := vm.NewObject(proto)
 	o.class = classWeakRef
-	o.ext = weak.Make(v.o)
+	o.setExtState(weak.Make(v.o))
 	return o
 }
 
@@ -178,7 +178,7 @@ func (vm *VM) WeakRefDeref(v Value) (Value, bool) {
 	if !v.IsObject() || v.o.class != classWeakRef {
 		return Undefined, false
 	}
-	t := v.o.ext.(weak.Pointer[Object]).Value()
+	t := v.o.extState().(weak.Pointer[Object]).Value()
 	if t == nil {
 		return Undefined, true
 	}
@@ -314,7 +314,7 @@ func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Ob
 	runtime.AddCleanup(r, (*cellCleanups).stopAll, r.cleanups)
 	o := vm.NewObject(proto)
 	o.class = classFinalizationRegistry
-	o.ext = r
+	o.setExtState(r)
 	return o
 }
 
@@ -322,7 +322,7 @@ func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Ob
 // or nil when v is not a FinalizationRegistry object.
 func FinalizationRegistryData(v Value) *FinalizationRegistry {
 	if v.IsObject() && v.o.class == classFinalizationRegistry {
-		return v.o.ext.(*FinalizationRegistry)
+		return v.o.extState().(*FinalizationRegistry)
 	}
 	return nil
 }

@@ -32,7 +32,7 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 	if i.Sign() < 0 {
 		o.integer.Neg(&o.integer)
 	}
-	o.ext = &o.integer
+	o.setExtState(&o.integer)
 	return Value{o: &o.Object}
 }
 
@@ -73,7 +73,7 @@ func (vm *VM) multiplyBigInts(x, y *big.Int) Value {
 	if o.integer.IsInt64() {
 		return BigIntFromInt64(o.integer.Int64())
 	}
-	o.ext = &o.integer
+	o.setExtState(&o.integer)
 	return Value{o: &o.Object}
 }
 
@@ -100,7 +100,7 @@ func (vm *VM) addBigInts(a, b Value) Value {
 	if o.integer.IsInt64() {
 		return BigIntFromInt64(o.integer.Int64())
 	}
-	o.ext = &o.integer
+	o.setExtState(&o.integer)
 	return Value{o: &o.Object}
 }
 

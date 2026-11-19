@@ -209,7 +209,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 	c := vm.newIntrinsicCapability()
 	var g *generator
 	if gen.IsObject() {
-		g, _ = gen.o.ext.(*generator)
+		g, _ = gen.o.extState().(*generator)
 	}
 	if g == nil || g.async == nil || g.async == asyncFunction {
 		vm.RejectCapability(c, vm.NewError(ErrorKindType, "method called on an object that is not an async generator"))
@@ -297,7 +297,7 @@ func (vm *VM) CreateAsyncFromSyncIterator(it, next Value) (Value, Value) {
 func (vm *VM) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
 	var s *asyncFromSyncIterator
 	if this.IsObject() {
-		s, _ = this.o.ext.(*asyncFromSyncIterator)
+		s, _ = this.o.extState().(*asyncFromSyncIterator)
 	}
 	if s == nil {
 		vm.ThrowTypeError("method called on an object that is not an async-from-sync iterator")

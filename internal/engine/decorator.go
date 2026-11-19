@@ -107,7 +107,7 @@ func (vm *VM) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
 			c = regs[i.C]
 		}
 	}
-	v := vm.decorate(regs[i.A].o.ext.(*classDecoration), step, b, c, int(x.B))
+	v := vm.decorate(regs[i.A].o.extState().(*classDecoration), step, b, c, int(x.B))
 	return v, step == bytecode.DecApply
 }
 

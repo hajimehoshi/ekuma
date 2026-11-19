@@ -49,7 +49,7 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 
 // RevokeProxy revokes the proxy p: every internal method of p throws a TypeError from then on.
 func RevokeProxy(p *Object) {
-	st := p.ext.(*proxyState)
+	st := p.extState().(*proxyState)
 	st.target = nil
 	st.handler = nil
 }
@@ -61,7 +61,7 @@ func (vm *VM) IsArray(v Value) bool {
 		return false
 	}
 	for o.class == classProxy {
-		st := o.ext.(*proxyState)
+		st := o.extState().(*proxyState)
 		if st.handler == nil {
 			vm.throwRevoked("IsArray")
 		}
@@ -77,7 +77,7 @@ func (vm *VM) getFunctionRealm(f *Object) *realm {
 		case f.fn != nil && f.fn.bound != nil:
 			f = f.fn.bound.target
 		case f.class == classProxy:
-			st := f.ext.(*proxyState)
+			st := f.extState().(*proxyState)
 			if st.handler == nil {
 				vm.throwRevoked("GetFunctionRealm")
 			}
@@ -102,7 +102,7 @@ func (vm *VM) throwRevoked(op string) {
 // The internal methods of a proxy whose target is a proxy call each other without running
 // any JavaScript, so they count as nested interpreter loops and poll for interruptions.
 func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
-	st := o.ext.(*proxyState)
+	st := o.extState().(*proxyState)
 	if st.handler == nil {
 		vm.throwRevoked(op)
 	}

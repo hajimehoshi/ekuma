@@ -9,7 +9,7 @@ package engine
 func (vm *VM) NewNumberObject(n float64, proto *Object) *Object {
 	w := vm.NewObject(proto)
 	w.class = classNumber
-	w.ext = n
+	w.setExtState(n)
 	return w
 }
 
@@ -17,7 +17,7 @@ func (vm *VM) NewNumberObject(n float64, proto *Object) *Object {
 func (vm *VM) NewBooleanObject(b bool, proto *Object) *Object {
 	w := vm.NewObject(proto)
 	w.class = classBoolean
-	w.ext = b
+	w.setExtState(b)
 	return w
 }
 
@@ -54,7 +54,7 @@ func ErrorStack(v Value) (string, bool) {
 	if !IsError(v) {
 		return "", false
 	}
-	d, ok := v.o.ext.(*errorData)
+	d, ok := v.o.extState().(*errorData)
 	if !ok {
 		return "", false
 	}
@@ -75,7 +75,7 @@ func (vm *VM) NewGoError(err error) Value {
 // newGoError returns a new Error object whose message is msg and that [GoError] maps to err.
 func (vm *VM) newGoError(msg string, err error) Value {
 	e := vm.newError(ErrorKindError, msg)
-	e.ext.(*errorData).goErr = err
+	e.extState().(*errorData).goErr = err
 	return Value{o: e}
 }
 
@@ -84,7 +84,7 @@ func GoError(v Value) error {
 	if !IsError(v) {
 		return nil
 	}
-	if d, ok := v.o.ext.(*errorData); ok {
+	if d, ok := v.o.extState().(*errorData); ok {
 		return d.goErr
 	}
 	return nil
@@ -95,7 +95,7 @@ func GoError(v Value) error {
 func (vm *VM) NewIteratorObject(proto *Object, state any) *Object {
 	it := vm.NewObject(proto)
 	it.class = classIterator
-	it.ext = state
+	it.setExtState(state)
 	return it
 }
 
@@ -103,14 +103,14 @@ func (vm *VM) NewIteratorObject(proto *Object, state any) *Object {
 func (vm *VM) NewMapObject(proto *Object, data any) *Object {
 	o := vm.NewObject(proto)
 	o.class = classMap
-	o.ext = data
+	o.setExtState(data)
 	return o
 }
 
 // MapData returns the [[MapData]] of the Map object v, or nil when v is not a Map object.
 func MapData(v Value) any {
 	if v.IsObject() && v.o.class == classMap {
-		return v.o.ext
+		return v.o.extState()
 	}
 	return nil
 }
@@ -119,14 +119,14 @@ func MapData(v Value) any {
 func (vm *VM) NewSetObject(proto *Object, data any) *Object {
 	o := vm.NewObject(proto)
 	o.class = classSet
-	o.ext = data
+	o.setExtState(data)
 	return o
 }
 
 // SetData returns the [[SetData]] of the Set object v, or nil when v is not a Set object.
 func SetData(v Value) any {
 	if v.IsObject() && v.o.class == classSet {
-		return v.o.ext
+		return v.o.extState()
 	}
 	return nil
 }
@@ -136,14 +136,14 @@ func SetData(v Value) any {
 func (vm *VM) NewTemporalObject(proto *Object, data any) *Object {
 	o := vm.NewObject(proto)
 	o.class = classTemporal
-	o.ext = data
+	o.setExtState(data)
 	return o
 }
 
 // TemporalData returns the internal slots of the Temporal object v, or nil when v is not one.
 func TemporalData(v Value) any {
 	if v.IsObject() && v.o.class == classTemporal {
-		return v.o.ext
+		return v.o.extState()
 	}
 	return nil
 }
@@ -153,14 +153,14 @@ func TemporalData(v Value) any {
 func (vm *VM) NewIntlObject(proto *Object, data any) *Object {
 	o := vm.NewObject(proto)
 	o.class = classIntl
-	o.ext = data
+	o.setExtState(data)
 	return o
 }
 
 // IntlData returns the internal slots of the Intl object v, or nil when v is not one.
 func IntlData(v Value) any {
 	if v.IsObject() && v.o.class == classIntl {
-		return v.o.ext
+		return v.o.extState()
 	}
 	return nil
 }
@@ -169,28 +169,28 @@ func IntlData(v Value) any {
 func (vm *VM) NewDateObject(proto *Object, tv float64) *Object {
 	o := vm.NewObject(proto)
 	o.class = classDate
-	o.ext = tv
+	o.setExtState(tv)
 	return o
 }
 
 // ThisTimeValue implements thisTimeValue. It reports false when the specification throws.
 func ThisTimeValue(v Value) (float64, bool) {
 	if v.IsObject() && v.o.class == classDate {
-		return v.o.ext.(float64), true
+		return v.o.extState().(float64), true
 	}
 	return 0, false
 }
 
 // SetDateValue sets the [[DateValue]] of the Date object v to tv.
 func SetDateValue(v Value, tv float64) {
-	v.o.ext = tv
+	v.o.setExtState(tv)
 }
 
 // IteratorState returns the state of the built-in iterator object v,
 // or nil when v is not such an object.
 func IteratorState(v Value) any {
 	if v.IsObject() && v.o.class == classIterator {
-		return v.o.ext
+		return v.o.extState()
 	}
 	return nil
 }
@@ -201,7 +201,7 @@ func ThisNumberValue(v Value) (float64, bool) {
 		return v.n, true
 	}
 	if v.IsObject() && v.o.class == classNumber {
-		return v.o.ext.(float64), true
+		return v.o.extState().(float64), true
 	}
 	return 0, false
 }
@@ -212,7 +212,7 @@ func ThisBooleanValue(v Value) (bool, bool) {
 		return v.o == trueObject, true
 	}
 	if v.IsObject() && v.o.class == classBoolean {
-		return v.o.ext.(bool), true
+		return v.o.extState().(bool), true
 	}
 	return false, false
 }
@@ -223,7 +223,7 @@ func ThisStringValue(v Value) (Value, bool) {
 		return v, true
 	}
 	if v.IsObject() && v.o.class == classString {
-		return ObjectValue(v.o.ext.(*Object)), true
+		return ObjectValue(v.o.extState().(*Object)), true
 	}
 	return Undefined, false
 }
@@ -234,7 +234,7 @@ func ThisBigIntValue(v Value) (Value, bool) {
 		return v, true
 	}
 	if v.IsObject() && v.o.class == classBigInt {
-		return v.o.ext.(Value), true
+		return v.o.extState().(Value), true
 	}
 	return Undefined, false
 }
@@ -245,14 +245,14 @@ func ThisSymbolValue(v Value) (*Object, bool) {
 		return v.o, true
 	}
 	if v.IsObject() && v.o.class == classSymbol {
-		return v.o.ext.(*Object), true
+		return v.o.extState().(*Object), true
 	}
 	return nil, false
 }
 
 // SymbolDescription returns the description of the symbol sym and whether it has one.
 func SymbolDescription(sym *Object) (string, bool) {
-	return sym.str, sym.ext != nil
+	return sym.str, sym.extState() != nil
 }
 
 // BuiltinTag returns the name that Object.prototype.toString uses for o
@@ -309,7 +309,7 @@ func (vm *VM) NewDisposableStackObject(proto *Object, async bool, state any) *Ob
 	if async {
 		o.class = classAsyncDisposableStack
 	}
-	o.ext = state
+	o.setExtState(state)
 	return o
 }
 
@@ -321,7 +321,7 @@ func DisposableStackState(v Value, async bool) any {
 		c = classAsyncDisposableStack
 	}
 	if v.IsObject() && v.o.class == c {
-		return v.o.ext
+		return v.o.extState()
 	}
 	return nil
 }

@@ -134,13 +134,10 @@ type Object struct {
 	// Packed-string sentinels use zero bytes to carry only the byte length.
 	str string
 
-	// meta is the side data that few objects need: what indexing a non-ASCII string needs,
-	// the entries in weak collections of an object or a symbol, and the empty shapes of
-	// the objects whose prototype is this object.
-	meta *objectMeta
-
 	// ext is the internal state of a built-in object. For a string that is not interned
 	// it is the interned string with the same content, once that was looked up.
+	// When the object has side data, ext is its *objectMeta, which holds the internal state
+	// instead. See [Object.extState] and [Object.meta].
 	ext any
 }
 
@@ -165,7 +162,9 @@ func (o *propertyObject) init() *Object {
 	return &o.Object
 }
 
-// objectMeta is the side data of an object.
+// objectMeta is the side data that few objects need: what indexing a non-ASCII string needs,
+// the entries in weak collections of an object or a symbol, and the empty shapes of the
+// objects whose prototype is this object.
 type objectMeta struct {
 	// length and cursor are the cached UTF-16 view of a string that is not ASCII:
 	// its length, or 0 before it is known, and the position of the most recent access.
@@ -196,6 +195,56 @@ type objectMeta struct {
 	// capacity shiftedCap. See [Object.elemsStorage].
 	shiftedElems int
 	shiftedCap   int
+
+	// ext is the internal state of the object that has this side data.
+	ext any
+}
+
+// extState returns the internal state of o.
+func (o *Object) extState() any {
+	if m, ok := o.ext.(*objectMeta); ok {
+		return m.ext
+	}
+	return o.ext
+}
+
+// setExtState sets the internal state of o to v.
+func (o *Object) setExtState(v any) {
+	if m, ok := o.ext.(*objectMeta); ok {
+		m.ext = v
+		return
+	}
+	o.ext = v
+}
+
+// extConcatCount returns the concatenation count in the internal state of the string o, or 0.
+func (o *Object) extConcatCount() concatCount {
+	if c, ok := o.ext.(concatCount); ok {
+		return c
+	}
+	if m, ok := o.ext.(*objectMeta); ok {
+		c, _ := m.ext.(concatCount)
+		return c
+	}
+	return 0
+}
+
+// extObject returns the object in the internal state of o, and reports whether there is one.
+func (o *Object) extObject() (*Object, bool) {
+	if k, ok := o.ext.(*Object); ok {
+		return k, true
+	}
+	if m, ok := o.ext.(*objectMeta); ok {
+		k, ok := m.ext.(*Object)
+		return k, ok
+	}
+	return nil, false
+}
+
+// meta returns the side data of o, or nil when it has none.
+func (o *Object) meta() *objectMeta {
+	m, _ := o.ext.(*objectMeta)
+	return m
 }
 
 // stringPos is a [wtf8.Pos] in a string of at most MaxStringLength bytes.
@@ -223,10 +272,12 @@ func newStringPos(p wtf8.Pos) stringPos {
 
 // ensureMeta returns the side data of o, creating it if needed.
 func (o *Object) ensureMeta() *objectMeta {
-	if o.meta == nil {
-		o.meta = &objectMeta{}
+	if m := o.meta(); m != nil {
+		return m
 	}
-	return o.meta
+	m := &objectMeta{ext: o.ext}
+	o.ext = m
+	return m
 }
 
 type prop struct {
@@ -1040,11 +1091,11 @@ func (vm *VM) stringKey(o *Object) *Object {
 	if o.flags&objInterned != 0 {
 		return o
 	}
-	if k, ok := o.ext.(*Object); ok {
+	if k, ok := o.extObject(); ok {
 		return k
 	}
 	k := vm.Intern(o.Str())
-	o.ext = k
+	o.setExtState(k)
 	return k
 }
 
@@ -1089,7 +1140,7 @@ func (o *Object) cachesUTF16() bool {
 		// Only a host can make such a string.
 		return false
 	}
-	return o.meta != nil || len(o.str) > maxUncachedLength
+	return o.meta() != nil || len(o.str) > maxUncachedLength
 }
 
 // maxUncachedLength is the length in bytes up to which a non-ASCII string without side data
@@ -1226,7 +1277,7 @@ func (o *Object) Substring(start, end int) string {
 	a := o.seek(start)
 	b := wtf8.Seek(s, a, end)
 	if o.cachesUTF16() {
-		o.meta.cursor = newStringPos(b)
+		o.meta().cursor = newStringPos(b)
 	}
 	return wtf8.Slice(s, a, b)
 }

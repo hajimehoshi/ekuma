@@ -162,7 +162,7 @@ func (vm *VM) newGeneratorObject(g *generator) *Object {
 	}
 	o := vm.NewObject(proto)
 	o.class = classGenerator
-	o.ext = g
+	o.setExtState(g)
 	g.object = o
 	return o
 }
@@ -279,7 +279,7 @@ func isSyncGenerator(v Value) bool {
 	if !v.IsObject() {
 		return false
 	}
-	g, _ := v.o.ext.(*generator)
+	g, _ := v.o.extState().(*generator)
 	return g != nil && g.async == nil
 }
 
@@ -288,7 +288,7 @@ func isSyncGenerator(v Value) bool {
 func (vm *VM) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {
 	var g *generator
 	if gen.IsObject() {
-		g, _ = gen.o.ext.(*generator)
+		g, _ = gen.o.extState().(*generator)
 	}
 	if g == nil || g.async != nil {
 		return Undefined, false

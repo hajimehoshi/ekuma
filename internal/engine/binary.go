@@ -291,7 +291,7 @@ func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int
 	w.shape = vm.shapeFor(proto)
 	o := w.init()
 	o.class = classArrayBuffer
-	o.ext = &w.state
+	o.setExtState(&w.state)
 	return o
 }
 
@@ -306,7 +306,7 @@ type arrayBufferObject struct {
 // nor a SharedArrayBuffer object.
 func ArrayBufferData(v Value) *ArrayBuffer {
 	if v.IsObject() && v.o.class == classArrayBuffer {
-		return v.o.ext.(*ArrayBuffer)
+		return v.o.extState().(*ArrayBuffer)
 	}
 	return nil
 }
@@ -315,7 +315,7 @@ func ArrayBufferData(v Value) *ArrayBuffer {
 // whose data is b, which it keeps. b must not be modified afterwards.
 func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
 	o := vm.newArrayBufferFromBytes(proto, b, -1)
-	o.ext.(*ArrayBuffer).immutable = true
+	o.extState().(*ArrayBuffer).immutable = true
 	return o
 }
 
@@ -325,7 +325,7 @@ func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object 
 func (vm *VM) NewHostArrayBufferObject(proto *Object, b []byte) *Object {
 	// The capacity is cut, so that no operation reaches the bytes of the host beyond len(b).
 	o := vm.newArrayBufferFromBytes(proto, b[:len(b):len(b)], -1)
-	o.ext.(*ArrayBuffer).hasDetachKey = true
+	o.extState().(*ArrayBuffer).hasDetachKey = true
 	return o
 }
 
@@ -345,7 +345,7 @@ func (b *ArrayBuffer) Detach() {
 func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
 	vm.checkBufferLength(newByteLength)
 	vm.checkBufferLength(maxByteLength)
-	b := o.ext.(*ArrayBuffer)
+	b := o.extState().(*ArrayBuffer)
 	n := int(newByteLength)
 	var data []byte
 	if old := len(b.data); n <= cap(b.data) && n >= cap(b.data)/2 {
@@ -360,7 +360,7 @@ func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxBy
 	}
 	b.Detach()
 	r := vm.newArrayBufferFromBytes(proto, data, int(maxByteLength))
-	r.ext.(*ArrayBuffer).immutable = immutable
+	r.extState().(*ArrayBuffer).immutable = immutable
 	return r
 }
 
@@ -687,7 +687,7 @@ type TypedArray struct {
 // are stored in the buffer object buffer from byteOffset on. length is the number of elements, or -1
 // for a typed array whose length tracks the length of the buffer.
 func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, byteOffset, length int) *Object {
-	data := buffer.ext.(*ArrayBuffer)
+	data := buffer.extState().(*ArrayBuffer)
 	w := &typedArrayObject{
 		state: TypedArray{
 			buffer:      buffer,
@@ -704,7 +704,7 @@ func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, 
 	o := w.init()
 	o.class = classTypedArray
 	o.flags |= objExotic
-	o.ext = &w.state
+	o.setExtState(&w.state)
 	return o
 }
 
@@ -718,7 +718,7 @@ type typedArrayObject struct {
 // TypedArrayData returns the state of the typed array v, or nil when v is not a typed array.
 func TypedArrayData(v Value) *TypedArray {
 	if v.IsObject() && v.o.class == classTypedArray {
-		return v.o.ext.(*TypedArray)
+		return v.o.extState().(*TypedArray)
 	}
 	return nil
 }
@@ -906,7 +906,7 @@ func storeNumber(t ElementType, b []byte, f float64) {
 
 // typedArrayGet implements TypedArrayGetElement. It returns undefined when i is not a valid integer index.
 func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
-	t := o.ext.(*TypedArray)
+	t := o.extState().(*TypedArray)
 	if data := t.data.data; !t.tracking && uint(i) < uint(t.length) {
 		switch t.typ {
 		case ElementInt32:
@@ -934,7 +934,7 @@ func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
 // element i are not in the data of its buffer: when the buffer is shared or i is not a valid
 // integer index.
 func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
-	t := o.ext.(*TypedArray)
+	t := o.extState().(*TypedArray)
 	if t.data.block == nil {
 		return Undefined
 	}
@@ -948,7 +948,7 @@ func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
 // It reports false when the buffer is immutable.
 func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
-	t := o.ext.(*TypedArray)
+	t := o.extState().(*TypedArray)
 	if val.o == numberObject && t.numberStore {
 		if data, f := t.data.data, val.n; !t.tracking && uint(i) < uint(t.length) {
 			switch t.typ {
@@ -996,7 +996,7 @@ func (vm *VM) typedArraySetElement(t *TypedArray, i uint32, val Value) {
 
 // typedArrayImmutable reports whether the buffer of the typed array o is immutable.
 func typedArrayImmutable(o *Object) bool {
-	return o.ext.(*TypedArray).data.immutable
+	return o.extState().(*TypedArray).data.immutable
 }
 
 // typedArrayFlags returns the attributes of the elements of the typed array o.
@@ -1009,7 +1009,7 @@ func typedArrayFlags(o *Object) uint8 {
 
 // typedArrayHas implements IsValidIntegerIndex for an array index.
 func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
-	t := o.ext.(*TypedArray)
+	t := o.extState().(*TypedArray)
 	if _, ok := t.element(i); ok {
 		return true
 	}
@@ -1022,7 +1022,7 @@ func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
 
 // typedArrayLength returns the length of o, or 0 when o is out of bounds.
 func (vm *VM) typedArrayLength(o *Object) int {
-	n, _ := o.ext.(*TypedArray).Length()
+	n, _ := o.extState().(*TypedArray).Length()
 	return n
 }
 
@@ -1060,7 +1060,7 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 		return false
 	}
 	if d.has&HasValue != 0 {
-		vm.typedArraySetElement(o.ext.(*TypedArray), i, d.value)
+		vm.typedArraySetElement(o.extState().(*TypedArray), i, d.value)
 	}
 	return true
 }
@@ -1069,7 +1069,7 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 // not an array index, which is never a valid integer index.
 func (vm *VM) typedArraySetNamed(o *Object, val Value, receiver Value) {
 	if receiver.o == o {
-		vm.ToElementValue(o.ext.(*TypedArray).typ, val)
+		vm.ToElementValue(o.extState().(*TypedArray).typ, val)
 	}
 }
 
@@ -1105,7 +1105,7 @@ func (vm *VM) NewDataViewObject(proto *Object, buffer *Object, byteOffset, byteL
 	o.class = classDataView
 	o.ext = &DataView{
 		buffer:   buffer,
-		data:     buffer.ext.(*ArrayBuffer),
+		data:     buffer.extState().(*ArrayBuffer),
 		offset:   byteOffset,
 		length:   max(byteLength, 0),
 		tracking: byteLength < 0,
@@ -1125,7 +1125,7 @@ type DataView struct {
 // DataViewData returns the state of the DataView v, or nil when v is not a DataView.
 func DataViewData(v Value) *DataView {
 	if v.IsObject() && v.o.class == classDataView {
-		return v.o.ext.(*DataView)
+		return v.o.extState().(*DataView)
 	}
 	return nil
 }

@@ -70,7 +70,7 @@ func appendElem(elems []Value, v Value) []Value {
 // for, counting those before the elements that removing the first elements left unused.
 func (o *Object) elemsStorage() int {
 	n := cap(o.elems)
-	if m := o.meta; m != nil && m.shiftedCap == n {
+	if m := o.meta(); m != nil && m.shiftedCap == n {
 		n += m.shiftedElems
 	}
 	return n
@@ -107,7 +107,7 @@ func (o *Object) Element(i int64) (Value, bool) {
 		}
 	}
 	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
-		t := o.ext.(*TypedArray)
+		t := o.extState().(*TypedArray)
 		if b, ok := t.element(uint32(i)); ok {
 			return o.shape.vm.loadElement(t.typ, b), true
 		}

@@ -151,7 +151,7 @@ func (vm *VM) disposeError(dc *DisposeCapability, e Value) {
 	s := vm.NewErrorObject(vm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
 	vm.Define(s, vm.Key(KeyError), e, FlagsHidden)
 	vm.Define(s, vm.Key(KeySuppressed), dc.completion, FlagsHidden)
-	s.ext = vm.newErrorData(s, "", len(vm.frames), len(vm.natives))
+	s.setExtState(vm.newErrorData(s, "", len(vm.frames), len(vm.natives)))
 	dc.completion = Value{o: s}
 }
 
@@ -202,7 +202,7 @@ func (vm *VM) addDisposableOp(v, d Value, hint DisposeHint) Value {
 			ext:  NewDisposeCapability(),
 		}).init()}
 	}
-	vm.AddDisposableResource(d.o.ext.(*DisposeCapability), v, hint, nil)
+	vm.AddDisposableResource(d.o.extState().(*DisposeCapability), v, hint, nil)
 	return d
 }
 
@@ -213,7 +213,7 @@ func beginDisposeOp(d, v, k Value) {
 	if d.IsUndefined() {
 		return
 	}
-	d.o.ext.(*DisposeCapability).beginDispose(v, k.o == numberObject && k.n == 1 && v.o != closeSignal)
+	d.o.extState().(*DisposeCapability).beginDispose(v, k.o == numberObject && k.n == 1 && v.o != closeSignal)
 }
 
 // disposeStepOp is disposeStep on the dispose capability that the register value d holds, if any.
@@ -221,7 +221,7 @@ func (vm *VM) disposeStepOp(d Value) (Value, bool) {
 	if d.IsUndefined() {
 		return Undefined, false
 	}
-	return vm.disposeStep(d.o.ext.(*DisposeCapability))
+	return vm.disposeStep(d.o.extState().(*DisposeCapability))
 }
 
 // endDisposeOp is endDispose on the dispose capability that the register value d holds.
@@ -230,5 +230,5 @@ func endDisposeOp(d Value) (Value, bool) {
 	if d.IsUndefined() {
 		return Undefined, false
 	}
-	return d.o.ext.(*DisposeCapability).endDispose()
+	return d.o.extState().(*DisposeCapability).endDispose()
 }

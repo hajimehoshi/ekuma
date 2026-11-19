@@ -99,7 +99,7 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 		if vm.interrupt.Load() {
 			vm.Poll()
 		}
-		g := it.o.ext.(*generator)
+		g := it.o.extState().(*generator)
 		v, done := vm.resume(g, ResumeNext, Undefined)
 		if done {
 			return Undefined, iterDone
@@ -394,7 +394,7 @@ func (vm *VM) newForIn(v Value) Value {
 		kind:  kindObject,
 		class: classForIn,
 	}
-	it.ext = it
+	it.setExtState(it)
 	if !v.IsNullish() {
 		it.obj = vm.ToObject(v)
 		it.indices, it.length, it.keys = vm.forInOwnKeys(it.obj)
@@ -422,7 +422,7 @@ func (vm *VM) forInOwnKeys(o *Object) (indices uint32, length bool, keys []PropK
 
 // forInNext returns the next key of the for-in iterator o.
 func (vm *VM) forInNext(o *Object) (Value, bool) {
-	it := o.ext.(*forIn)
+	it := o.extState().(*forIn)
 	for it.obj != nil {
 		for it.index < it.indices {
 			i := it.index
@@ -503,7 +503,7 @@ func (vm *VM) forInMayVisit(o *Object) bool {
 				return true
 			}
 		}
-		if o.class == classString && o.ext.(*Object).StringLength() > 0 {
+		if o.class == classString && o.extState().(*Object).StringLength() > 0 {
 			return true
 		}
 		if slices.ContainsFunc(o.elems, func(e Value) bool { return !e.isHole() }) {

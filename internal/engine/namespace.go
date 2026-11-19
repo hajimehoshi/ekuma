@@ -92,7 +92,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 }
 
 func namespaceOf(o *Object) *moduleNamespace {
-	return o.ext.(*moduleNamespace)
+	return o.extState().(*moduleNamespace)
 }
 
 // isNamespaceExportKey reports whether k is a key that the module namespace object o

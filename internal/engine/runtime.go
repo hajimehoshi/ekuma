@@ -873,7 +873,7 @@ func (vm *VM) funcNameOfKey(k Value) string {
 		if k.o.class == classPrivateName {
 			return "#" + k.o.str
 		}
-		if k.o.ext != nil {
+		if k.o.extState() != nil {
 			if len(k.o.str)+2 > MaxStringLength {
 				vm.ThrowRangeError("invalid string length")
 			}

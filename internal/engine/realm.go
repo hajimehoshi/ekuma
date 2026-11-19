@@ -107,7 +107,7 @@ func (vm *VM) initRealmPrototypes() {
 func (vm *VM) initRealmGlobals() {
 	stringProto := vm.intrinsics[IntrinsicStringPrototype]
 	stringProto.class = classString
-	stringProto.ext = vm.emptyString.o
+	stringProto.setExtState(vm.emptyString.o)
 	vm.add(stringProto, vm.Key(KeyLength), Number(0), 0)
 	vm.shapes.iterResult = vm.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
 	vm.shapes.arguments = vm.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
@@ -163,7 +163,7 @@ func (vm *VM) NewSymbol(desc string, hasDesc bool) *Object {
 		str:   desc,
 	}
 	if hasDesc {
-		s.ext = true
+		s.setExtState(true)
 	}
 	return s
 }

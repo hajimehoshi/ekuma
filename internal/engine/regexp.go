@@ -77,7 +77,7 @@ func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
 	o.shape = s
 	o.slots = slots
 	o.slots[0] = Number(0)
-	o.ext = st
+	o.setExtState(st)
 	return o
 }
 
@@ -93,13 +93,13 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 		f = vm.ToString(flags)
 	}
 	re := vm.compileRegExp(p, f)
-	o.ext = &regExpState{
+	o.setExtState(&regExpState{
 		matcher: re,
 		source:  p,
 		flags:   f,
-		legacy:  o.ext.(*regExpState).legacy,
-		realm:   o.ext.(*regExpState).realm,
-	}
+		legacy:  o.extState().(*regExpState).legacy,
+		realm:   o.extState().(*regExpState).realm,
+	})
 	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Number(0))
 	return o
 }
@@ -225,7 +225,7 @@ func (vm *VM) regExpLiteralMethod(site *regExpSite, key *Object, c *propCache) (
 // lent by [VM.LendRegExpLiterals]. v must not have been used since it was lent.
 func (vm *VM) OwnRegExp(v Value) Value {
 	if o := v.o; o != nil && o.class == classRegExp {
-		if st := o.ext.(*regExpState); st.lent {
+		if st := o.extState().(*regExpState); st.lent {
 			own := *st
 			own.lent = false
 			return Value{o: vm.newRegExpObject(vm.regExpShape(), &own)}
@@ -240,24 +240,24 @@ func (o *Object) RegExpMatcher() *regexp.Regexp {
 	if o.class != classRegExp {
 		return nil
 	}
-	return o.ext.(*regExpState).matcher
+	return o.extState().(*regExpState).matcher
 }
 
 // RegExpOriginal returns the original source and flags of the RegExp object o.
 func (o *Object) RegExpOriginal() (source, flags string) {
-	st := o.ext.(*regExpState)
+	st := o.extState().(*regExpState)
 	return st.source, st.flags
 }
 
 // RegExpLegacyFeaturesEnabled implements the [[LegacyFeaturesEnabled]] slot of the RegExp
 // object o: whether o was created for the RegExp constructor itself.
 func (o *Object) RegExpLegacyFeaturesEnabled() bool {
-	return o.ext.(*regExpState).legacy
+	return o.extState().(*regExpState).legacy
 }
 
 // IsRegExpOfCurrentRealm reports whether the [[Realm]] of the RegExp object o is the current realm.
 func (vm *VM) IsRegExpOfCurrentRealm(o *Object) bool {
-	return o.ext.(*regExpState).realm == vm.curRealm
+	return o.extState().(*regExpState).realm == vm.curRealm
 }
 
 // regExpOriginals is what [VM.IsUnmodifiedRegExp] compares against.
@@ -345,7 +345,7 @@ func (vm *VM) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 // recorded by [VM.RecordRegExpOriginals] are unchanged. Then those properties are the only
 // ones that reading the recorded keys from o finds, and lastIndex is an ordinary data property.
 func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
-	if o.class != classRegExp || !vm.hasRegExpShape(o) || o.ext.(*regExpState).matcher == nil {
+	if o.class != classRegExp || !vm.hasRegExpShape(o) || o.extState().(*regExpState).matcher == nil {
 		return false
 	}
 	r := &vm.regExpOriginals

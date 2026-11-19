@@ -182,7 +182,7 @@ func (v Value) BigInt() *big.Int {
 	if i, ok := v.BigInt64(); ok {
 		return big.NewInt(i)
 	}
-	return v.o.ext.(*big.Int)
+	return v.o.extState().(*big.Int)
 }
 
 // IsObject reports whether v is an object, which includes functions and arrays.
@@ -275,7 +275,7 @@ func IsStrictlyEqual(a, b Value) bool {
 		return sameStrings(a.o, b.o)
 	case kindBigInt:
 		// A BigInt that fits in an int64 never equals one that does not.
-		return a.o != bigInt64Object && b.o != bigInt64Object && a.o.ext.(*big.Int).Cmp(b.o.ext.(*big.Int)) == 0
+		return a.o != bigInt64Object && b.o != bigInt64Object && a.o.extState().(*big.Int).Cmp(b.o.extState().(*big.Int)) == 0
 	}
 	return false
 }

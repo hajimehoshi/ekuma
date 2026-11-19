@@ -672,7 +672,7 @@ func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e.class = classError
 	// A message that quotes a value of the script can be longer than a string may be.
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
-	e.ext = vm.newErrorData(e, msg, len(vm.frames), len(vm.natives))
+	e.setExtState(vm.newErrorData(e, msg, len(vm.frames), len(vm.natives)))
 	return e
 }
 
@@ -713,7 +713,7 @@ func (vm *VM) RecordStack(e *Object, msg string, newTarget *Object) {
 			break
 		}
 	}
-	e.ext = vm.newErrorData(e, msg, frames, natives)
+	e.setExtState(vm.newErrorData(e, msg, frames, natives))
 }
 
 // maxStackFrames is the number of calls that a stack trace shows.

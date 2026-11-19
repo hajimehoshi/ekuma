@@ -8,7 +8,7 @@ package engine
 func (vm *VM) NewModuleSourceObject(proto *Object, className string) *Object {
 	o := vm.NewObject(proto)
 	o.class = classModuleSource
-	o.ext = className
+	o.setExtState(className)
 	return o
 }
 
@@ -18,5 +18,5 @@ func (vm *VM) ModuleSourceClassName(v Value) (name string, ok bool) {
 	if !v.IsObject() || v.o.class != classModuleSource {
 		return "", false
 	}
-	return v.o.ext.(string), true
+	return v.o.extState().(string), true
 }

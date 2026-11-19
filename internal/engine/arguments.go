@@ -41,7 +41,7 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 			o.elems[i] = hole
 		}
 		o.flags |= objSparse
-		o.ext = m
+		o.setExtState(m)
 	}
 	vm.add(o, vm.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
 	return o
@@ -101,7 +101,7 @@ func mappedParam(o *Object, i uint32) *upvalue {
 	if o.class != classArguments {
 		return nil
 	}
-	m, _ := o.ext.(*argumentsMap)
+	m, _ := o.extState().(*argumentsMap)
 	if m == nil || int64(i) >= int64(len(m.params)) {
 		return nil
 	}
@@ -111,7 +111,7 @@ func mappedParam(o *Object, i uint32) *upvalue {
 // defineMappedArgument implements [[DefineOwnProperty]] of an arguments exotic object
 // for the index i, which is mapped to the parameter u.
 func (vm *VM) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) bool {
-	m := o.ext.(*argumentsMap)
+	m := o.extState().(*argumentsMap)
 	// The stored value is brought up to date, as the ordinary definition validates against it.
 	p, _ := o.shape.lookup(vm.indexName(i))
 	o.slots[p.slot] = *u.p
@@ -145,6 +145,6 @@ func (vm *VM) deleteMappedArgument(o *Object, i uint32) bool {
 		return false
 	}
 	vm.remove(o, key)
-	o.ext.(*argumentsMap).params[i] = nil
+	o.extState().(*argumentsMap).params[i] = nil
 	return true
 }

@@ -205,7 +205,7 @@ func (vm *VM) ToObject(v Value) *Object {
 	if o == numberObject {
 		w := vm.NewObject(vm.Intrinsic(IntrinsicNumberPrototype))
 		w.class = classNumber
-		w.ext = v.n
+		w.setExtState(v.n)
 		return w
 	}
 	switch o.kind {
@@ -214,19 +214,19 @@ func (vm *VM) ToObject(v Value) *Object {
 	case kindFalse, kindTrue:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicBooleanPrototype))
 		w.class = classBoolean
-		w.ext = o.kind == kindTrue
+		w.setExtState(o.kind == kindTrue)
 		return w
 	case kindString:
 		return vm.NewStringObject(v.stringObject(), vm.Intrinsic(IntrinsicStringPrototype))
 	case kindSymbol:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicSymbolPrototype))
 		w.class = classSymbol
-		w.ext = o
+		w.setExtState(o)
 		return w
 	case kindBigInt:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicBigIntPrototype))
 		w.class = classBigInt
-		w.ext = v
+		w.setExtState(v)
 		return w
 	}
 	panic("ekuma: internal value reached ToObject")
@@ -236,7 +236,7 @@ func (vm *VM) ToObject(v Value) *Object {
 func (vm *VM) NewStringObject(s *Object, proto *Object) *Object {
 	w := vm.NewObject(proto)
 	w.class = classString
-	w.ext = s
+	w.setExtState(s)
 	vm.add(w, vm.Key(KeyLength), Number(float64(s.StringLength())), 0)
 	return w
 }

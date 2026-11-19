@@ -10,7 +10,7 @@ import "github.com/hajimehoshi/ekuma/internal/bytecode"
 func (vm *VM) NewShadowRealmObject(proto *Object, r *Realm) *Object {
 	o := vm.NewObject(proto)
 	o.class = classShadowRealm
-	o.ext = r
+	o.setExtState(r)
 	return o
 }
 
@@ -20,7 +20,7 @@ func (vm *VM) ValidateShadowRealmObject(o Value) *Realm {
 	if !o.IsObject() || o.o.class != classShadowRealm {
 		vm.ThrowTypeError("the receiver is not a ShadowRealm")
 	}
-	return o.o.ext.(*Realm)
+	return o.o.extState().(*Realm)
 }
 
 // GetFunctionRealm implements GetFunctionRealm.

@@ -133,11 +133,11 @@ func (vm *VM) queryStringKey(o *Object) PropKey {
 	if o.flags&objInterned != 0 {
 		return PropKey{key: o}
 	}
-	if k, ok := o.ext.(*Object); ok {
+	if k, ok := o.extObject(); ok {
 		return PropKey{key: k}
 	}
 	if k := vm.strings.interned.get(c); k != nil {
-		o.ext = k
+		o.setExtState(k)
 		return PropKey{key: k}
 	}
 	// Every property key of every object is interned, so o differs from all of them. Not
@@ -334,7 +334,7 @@ func (vm *VM) NewLazyObject(proto *Object, init func(o *Object)) *Object {
 	o := vm.NewObject(proto)
 	o.class = classLazy
 	o.flags |= objExotic
-	o.ext = init
+	o.setExtState(init)
 	return o
 }
 
@@ -344,9 +344,9 @@ func (vm *VM) InitLazyObject(o *Object) {
 	if o.class != classLazy {
 		return
 	}
-	init := o.ext.(func(*Object))
+	init := o.extState().(func(*Object))
 	o.class = classObject
-	o.ext = nil
+	o.setExtState(nil)
 	o.flags &^= objExotic
 	init(o)
 }
@@ -643,7 +643,7 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 		if h.kind == kindString || h.class == classString {
 			s := h
 			if h.class == classString {
-				s = h.ext.(*Object)
+				s = h.extState().(*Object)
 			}
 			if uint(i) < uint(s.StringLength()) {
 				return vm.UnitString(s.UnitAt(int(i))), nil
@@ -686,7 +686,7 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 			}
 			return PropDesc{}, false
 		case classString:
-			s := o.ext.(*Object)
+			s := o.extState().(*Object)
 			if uint(k.idx) < uint(s.StringLength()) {
 				return dataDesc(vm.UnitString(s.UnitAt(int(k.idx))), FlagEnumerable), true
 			}
@@ -1167,7 +1167,7 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 				return true
 			}
 			if receiver.o == h {
-				vm.typedArraySetElement(h.ext.(*TypedArray), k.idx, val)
+				vm.typedArraySetElement(h.extState().(*TypedArray), k.idx, val)
 				return true
 			}
 			if !vm.typedArrayHas(h, k.idx) {
@@ -1391,7 +1391,7 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 		case classTypedArray:
 			return !vm.typedArrayHas(o, k.idx)
 		case classString:
-			if uint(k.idx) < uint(o.ext.(*Object).StringLength()) {
+			if uint(k.idx) < uint(o.extState().(*Object).StringLength()) {
 				return false
 			}
 		}
@@ -1445,7 +1445,7 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 	keys := make([]PropKey, 0, len(o.elems)+int(o.shape.count)+1)
 	switch o.class {
 	case classString:
-		keys = vm.appendIndexKeys(keys, o.ext.(*Object).StringLength())
+		keys = vm.appendIndexKeys(keys, o.extState().(*Object).StringLength())
 	case classTypedArray:
 		keys = vm.appendIndexKeys(keys, vm.typedArrayLength(o))
 	}
@@ -1511,7 +1511,7 @@ func (vm *VM) PreventExtensions(o *Object) bool {
 	if o.class == classProxy {
 		return vm.proxyPreventExtensions(o)
 	}
-	if o.class == classTypedArray && !o.ext.(*TypedArray).isTypedArrayFixedLength() {
+	if o.class == classTypedArray && !o.extState().(*TypedArray).isTypedArrayFixedLength() {
 		return false
 	}
 	if o.flags&objNotExtensible == 0 {
