@@ -2641,3 +2641,39 @@ func BenchmarkClassFields(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkError creates an Error three calls deep, and reads its stack in the read case.
+// One iteration is one creation.
+func BenchmarkError(b *testing.B) {
+	const js = `
+		class Thing {
+			make(read) {
+				const e = new Error("x");
+				if (read) e.stack;
+				return e;
+			}
+		}
+		const thing = new Thing();
+		function inner(read) { return thing.make(read); }
+		function run(read, n) {
+			for (var i = 0; i < n; i++) inner(read);
+		}`
+	for _, read := range []bool{false, true} {
+		name := "create"
+		if read {
+			name = "read"
+		}
+		b.Run(name, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			if _, err := runScript(ctx, &vm, "error.js", js); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%t, %d)", read, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

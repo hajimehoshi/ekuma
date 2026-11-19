@@ -25,6 +25,13 @@ func (vm *VM) NewBooleanObject(b bool, proto *Object) *Object {
 type errorData struct {
 	stack string
 
+	// pending is set until stack is formatted from name, msg and calls.
+	pending bool
+
+	// name and msg in UTF-8 begin the stack trace, and calls are its lines.
+	name, msg string
+	calls     []stackCall
+
 	// goErr is the Go error that the error object was made from, or nil.
 	goErr error
 }
@@ -50,6 +57,11 @@ func ErrorStack(v Value) (string, bool) {
 	d, ok := v.o.ext.(*errorData)
 	if !ok {
 		return "", false
+	}
+	if d.pending {
+		d.stack = formatStack(d.name, d.msg, d.calls)
+		d.pending = false
+		d.name, d.msg, d.calls = "", "", nil
 	}
 	return d.stack, true
 }

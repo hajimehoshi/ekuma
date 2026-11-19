@@ -672,9 +672,7 @@ func (vm *VM) newError(kind ErrorKind, msg string) *Object {
 	e.class = classError
 	// A message that quotes a value of the script can be longer than a string may be.
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
-	e.ext = &errorData{
-		stack: vm.stackTrace(e, msg, len(vm.frames), len(vm.natives)),
-	}
+	e.ext = vm.newErrorData(e, msg, len(vm.frames), len(vm.natives))
 	return e
 }
 
@@ -715,45 +713,99 @@ func (vm *VM) RecordStack(e *Object, msg string, newTarget *Object) {
 			break
 		}
 	}
-	e.ext = &errorData{
-		stack: vm.stackTrace(e, msg, frames, natives),
-	}
+	e.ext = vm.newErrorData(e, msg, frames, natives)
 }
 
 // maxStackFrames is the number of calls that a stack trace shows.
 const maxStackFrames = 16
 
-// stackTrace returns the stack trace of a new error, which shows the first frames frames and
-// the first natives calls of native functions.
-func (vm *VM) stackTrace(e *Object, msg string, frames, natives int) string {
-	var b wtf8.Builder
-	name := "Error"
+// newErrorData returns the error data of the new error e, whose stack trace shows the first
+// frames frames and the first natives calls of native functions. The names that the trace
+// shows are read now, and the trace is formatted when it is first read.
+func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorData {
+	d := &errorData{
+		name:    "Error",
+		msg:     msg,
+		pending: true,
+	}
 	if v, ok := vm.lookupData(e, vm.Key(KeyName)); ok && v.IsString() {
-		name = v.Str()
+		d.name = v.Str()
 	}
-	b.WriteString(name)
-	if msg != "" {
-		b.WriteString(": ")
-		b.WriteString(wtf8.FromValidUTF8(msg))
+	if n := min(frames+natives, maxStackFrames); n > 0 {
+		d.calls = make([]stackCall, 0, n)
 	}
-	n := 0
 	j := natives - 1
-	for i := frames - 1; n < maxStackFrames; i-- {
+	for i := frames - 1; len(d.calls) < maxStackFrames; i-- {
 		// A native function called from the frame i runs inside it.
-		for ; j >= 0 && vm.natives[j].frames > i && n < maxStackFrames; j-- {
+		for ; j >= 0 && vm.natives[j].frames > i && len(d.calls) < maxStackFrames; j-- {
 			c := &vm.natives[j]
 			if c.f.class == classProxy {
 				// Calling a proxy calls its target or its trap, which the trace shows instead.
 				continue
 			}
-			vm.writeCall(&b, c.f.fn.nativeName(), c.isNew, c.this, "<anonymous>")
-			n++
+			d.calls = append(d.calls, stackCall{
+				name:  c.f.fn.nativeName(),
+				recv:  vm.receiverName(c.isNew, c.this),
+				isNew: c.isNew,
+			})
 		}
-		if i < 0 || n >= maxStackFrames {
+		if i < 0 || len(d.calls) >= maxStackFrames {
 			break
 		}
-		vm.writeFrame(&b, &vm.frames[i])
-		n++
+		fr := &vm.frames[i]
+		c := stackCall{
+			fp:    fr.fp,
+			name:  fr.fp.name,
+			pc:    fr.pc,
+			isNew: fr.newTarget != nil,
+		}
+		if fr.fp.IsEval {
+			c.name = "eval"
+		} else {
+			c.recv = vm.receiverName(c.isNew, fr.this)
+		}
+		d.calls = append(d.calls, c)
+	}
+	return d
+}
+
+// receiverName returns the type name that a stack trace shows for a call with this, or an
+// empty string when the call shows no receiver.
+func (vm *VM) receiverName(isNew bool, this Value) string {
+	if isNew || this.IsObject() && this.o == vm.global || this.IsNullish() {
+		return ""
+	}
+	return vm.typeName(this)
+}
+
+// stackCall is a line of a stack trace.
+type stackCall struct {
+	// fp is the function that runs, or nil for a native function.
+	fp *funcProto
+
+	// name is the name of the function.
+	name string
+
+	// recv is the type name of the receiver of a method call, or empty.
+	recv string
+
+	// pc is past the instruction of fp that is running.
+	pc int
+
+	isNew bool
+}
+
+// formatStack returns the stack trace of an error with the name name and the message msg in
+// UTF-8 whose lines are calls.
+func formatStack(name, msg string, calls []stackCall) string {
+	var b wtf8.Builder
+	b.WriteString(name)
+	if msg != "" {
+		b.WriteString(": ")
+		b.WriteString(wtf8.FromValidUTF8(msg))
+	}
+	for i := range calls {
+		calls[i].write(&b)
 	}
 	return clip(b.String(), MaxStringLength, "")
 }
@@ -774,40 +826,27 @@ func clip(s string, max int, suffix string) string {
 	return s[:i] + suffix
 }
 
-// writeFrame writes the line of the stack trace for the frame fr to b.
-func (vm *VM) writeFrame(b *wtf8.Builder, fr *frame) {
-	fp := fr.fp
-	name := fp.name
-	if fp.IsEval {
-		name = "eval"
-	}
-	var loc string
-	if fp.File != "" {
-		loc = wtf8.FromValidUTF8(fp.File)
-		// pc is past the instruction that is running.
-		if line, column := fp.Position(max(fr.pc-1, 0)); line > 0 {
-			loc += ":" + itoa(line) + ":" + itoa(column)
-		}
-	}
-	this := fr.this
-	if fp.IsEval {
-		this = Undefined
-	}
-	vm.writeCall(b, name, fr.newTarget != nil, this, loc)
-}
-
-// writeCall writes the line of the stack trace for a call of the function name with this to b.
-// loc is where the function runs, or empty when it is unknown.
-func (vm *VM) writeCall(b *wtf8.Builder, name string, isNew bool, this Value, loc string) {
+// write writes the line of the stack trace for c to b.
+func (c *stackCall) write(b *wtf8.Builder) {
 	b.WriteString("\n    at ")
-	name = clip(name, maxFrameName, "...")
+	name := clip(c.name, maxFrameName, "...")
 	desc := name
 	switch {
-	case isNew:
+	case c.isNew:
 		desc = "new " + cmp.Or(name, "<anonymous>")
-	case this.IsObject() && this.o == vm.global, this.IsNullish():
-	default:
-		desc = clip(vm.typeName(this), maxFrameName, "...") + "." + cmp.Or(name, "<anonymous>")
+	case c.recv != "":
+		desc = clip(c.recv, maxFrameName, "...") + "." + cmp.Or(name, "<anonymous>")
+	}
+	// loc is where the function runs, or empty when it is unknown.
+	loc := "<anonymous>"
+	if fp := c.fp; fp != nil {
+		loc = ""
+		if fp.File != "" {
+			loc = wtf8.FromValidUTF8(fp.File)
+			if line, column := fp.Position(max(c.pc-1, 0)); line > 0 {
+				loc += ":" + itoa(line) + ":" + itoa(column)
+			}
+		}
 	}
 	switch {
 	case desc == "":
