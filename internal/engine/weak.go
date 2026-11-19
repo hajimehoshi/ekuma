@@ -5,6 +5,7 @@ package engine
 
 import (
 	"runtime"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"weak"
@@ -242,6 +243,9 @@ type finalizationCell struct {
 	held     Value
 	token    weak.Pointer[Object]
 	hasToken bool
+
+	// tokenIndex is the index of the cell in the identifiers of the cells of its token.
+	tokenIndex int
 }
 
 // cellCleanups holds the cleanups of the targets of the cells of a FinalizationRegistry by the
@@ -336,6 +340,7 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 		if r.tokens == nil {
 			r.tokens = map[weak.Pointer[Object]][]uint64{}
 		}
+		c.tokenIndex = len(r.tokens[c.token])
 		r.tokens[c.token] = append(r.tokens[c.token], id)
 	}
 	q := r.queue
@@ -349,22 +354,26 @@ func (r *FinalizationRegistry) Register(target, held, token Value) {
 }
 
 // Unregister removes the cells whose unregister token is token and reports whether there was any.
-// token must be a value for which CanBeHeldWeakly holds.
-func (r *FinalizationRegistry) Unregister(token Value) bool {
+// token must be a value for which CanBeHeldWeakly holds. poll, which may be nil, is called now
+// and then over many cells and may stop the removal by panicking, leaving the cells that were
+// not removed yet.
+func (r *FinalizationRegistry) Unregister(token Value, poll func()) bool {
 	w := weak.Make(token.o)
 	ids, ok := r.tokens[w]
 	if !ok {
 		return false
 	}
-	delete(r.tokens, w)
-	for _, id := range ids {
-		if _, ok := r.cells[id]; ok {
-			r.cleanups.m[id].Stop()
-			delete(r.cleanups.m, id)
-			delete(r.cells, id)
+	for i, id := range slices.Backward(ids) {
+		if poll != nil && i%(1<<12) == 0 {
+			poll()
 		}
+		r.cleanups.m[id].Stop()
+		delete(r.cleanups.m, id)
+		delete(r.cells, id)
+		r.tokens[w] = ids[:i]
 	}
-	return len(ids) > 0
+	delete(r.tokens, w)
+	return true
 }
 
 // remove removes the cell id, whose target was collected.
@@ -374,17 +383,18 @@ func (r *FinalizationRegistry) remove(id uint64, c *finalizationCell) {
 	if !c.hasToken {
 		return
 	}
+	// The last cell of the token takes the place of the removed one.
 	ids := r.tokens[c.token]
-	for i, x := range ids {
-		if x == id {
-			ids = append(ids[:i], ids[i+1:]...)
-			break
-		}
+	last := len(ids) - 1
+	if moved := ids[last]; moved != id {
+		ids[c.tokenIndex] = moved
+		r.cells[moved].tokenIndex = c.tokenIndex
 	}
-	if len(ids) == 0 {
+	ids[last] = 0
+	if last == 0 {
 		delete(r.tokens, c.token)
 	} else {
-		r.tokens[c.token] = ids
+		r.tokens[c.token] = ids[:last]
 	}
 }
 

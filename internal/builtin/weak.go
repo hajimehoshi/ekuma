@@ -230,7 +230,7 @@ func initFinalizationRegistry(vm *engine.VM) {
 		r := thisRegistry(vm, this, "unregister")
 		token := arg(args, 0)
 		requireHoldable(vm, token, "as unregister token")
-		return engine.Bool(r.Unregister(token))
+		return engine.Bool(r.Unregister(token, vm.Poll))
 	})
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("FinalizationRegistry"), engine.FlagConfigurable)
 }
