@@ -590,13 +590,60 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.getNamed(v, fp.keys[i.C], c)
-			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
-				goto callAbove
+			goto getNamed
+		case bytecode.OpGetPropChain:
+			v := regs[i.B]
+			c := &fp.caches[i.C]
+			if o := v.o; o != nil {
+				e := &c.cacheEntry
+				if o.shape != e.shape {
+					e = &c.second
+				}
+				if o.shape == e.shape {
+					if e.kind == cacheOwn || e.kind == cacheProto && e.epoch == vm.protoEpoch {
+						h := o
+						if e.kind == cacheProto {
+							h = e.holder
+						}
+						w := h.slots[e.slot]
+						regs[i.A] = w
+						// The next instruction is an OpGetProp of w. It runs here only when
+						// it reads a data property through its cache, and runs on its own
+						// otherwise.
+						if o := w.o; o != nil {
+							n := &code[pc]
+							c := &fp.caches[n.C]
+							e := &c.cacheEntry
+							if o.shape != e.shape {
+								e = &c.second
+							}
+							if o.shape == e.shape && (e.kind == cacheOwn || e.kind == cacheProto && e.epoch == vm.protoEpoch) {
+								h := o
+								if e.kind == cacheProto {
+									h = e.holder
+								}
+								regs[n.A] = h.slots[e.slot]
+								pc++
+							}
+						}
+						continue
+					}
+					if e.epoch == vm.protoEpoch && e.kind == cacheGetter {
+						f, callThis, argc, ret = e.holder, v, 0, i.A
+						goto callAbove
+					}
+					if e.kind == cacheOwnGetter {
+						g := o.slots[e.slot].accessor().getter
+						if g == nil {
+							regs[i.A] = Undefined
+							continue
+						}
+						f, callThis, argc, ret = g, v, 0, i.A
+						goto callAbove
+					}
+				}
 			}
-			regs[i.A] = val
+			goto getNamed
 		case bytecode.OpSetProp, bytecode.OpSetPropStrict:
 			v := regs[i.A]
 			c := &fp.caches[i.B]
@@ -2017,6 +2064,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := vm.arith(i.Op.RegOperand(), regs[i.B], fp.consts[i.C])
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
+			continue
+		}
+
+	getNamed:
+		// The generic path of OpGetProp and OpGetPropChain.
+		{
+			v := regs[i.B]
+			vm.frames[len(vm.frames)-1].pc = pc
+			val, getter := vm.getNamed(v, fp.keys[i.C], &fp.caches[i.C])
+			if getter != nil {
+				f, callThis, argc, ret = getter, v, 0, i.A
+				goto callAbove
+			}
+			regs[i.A] = val
 			continue
 		}
 

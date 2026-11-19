@@ -881,7 +881,7 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 		f.emit(bytecode.OpExtra, t.home, superBase, 0)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
-		f.emit(bytecode.OpGetProp, dst, t.obj, f.site(name))
+		f.emitGetProp(dst, t.obj, f.site(name))
 	case !n.Computed:
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
@@ -951,7 +951,7 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 			f.emit(bytecode.OpGetLength, dst, obj, f.site(name))
 			return
 		}
-		f.emit(bytecode.OpGetProp, dst, obj, f.site(name))
+		f.emitGetProp(dst, obj, f.site(name))
 		return
 	}
 	obj := f.operand(n.Object, n.Property)
@@ -971,7 +971,7 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		}
 		if !isIndexString(s.Value) {
 			f.setPos(n.Property.Start())
-			f.emit(bytecode.OpGetProp, dst, obj, f.site(s.Value))
+			f.emitGetProp(dst, obj, f.site(s.Value))
 			return
 		}
 	}
@@ -1160,7 +1160,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 				// the variable.
 				f.emit(bytecode.OpGetMethod, base, obj, f.site(name))
 			} else {
-				f.emit(bytecode.OpGetProp, base, base+1, f.site(name))
+				f.emitGetProp(base, base+1, f.site(name))
 			}
 			switch name {
 			case "call":
@@ -1963,7 +1963,7 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 	end := f.jump()
 	f.patchC(done)
 	f.patchC(notDone)
-	f.emit(bytecode.OpGetProp, recv, res, f.site("value"))
+	f.emitGetProp(recv, res, f.site("value"))
 	f.emit(bytecode.OpYield, recv, recv, 1)
 	f.emit(bytecode.OpGenResumeMode, mode, 0, 0)
 	f.jumpTo(loop)

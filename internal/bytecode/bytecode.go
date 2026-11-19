@@ -78,6 +78,7 @@ const (
 
 	// Properties.
 	OpGetProp          // a = b.Keys[c]; c is a site
+	OpGetPropChain     // like [OpGetProp], followed by an [OpGetProp] or [OpGetPropChain] of a, which it may run too
 	OpGetMethod        // a, a+1 = b.Keys[c], b; c is a site
 	OpGetLength        // a = b.length; c is a site
 	OpGetIndex         // a = b[c]

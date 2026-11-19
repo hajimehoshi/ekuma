@@ -775,6 +775,18 @@ func (f *fn) emit(op bytecode.Opcode, a, b, c int32) int {
 	return len(f.f.Code) - 1
 }
 
+// emitGetProp emits OpGetProp dst, obj, site.
+func (f *fn) emitGetProp(dst, obj, site int32) {
+	// An OpGetProp right before it that writes obj becomes an OpGetPropChain, which may run
+	// both. A jump to the new instruction still runs it on its own.
+	if n := len(f.f.Code); n > 0 {
+		if p := &f.f.Code[n-1]; p.Op == bytecode.OpGetProp && p.A == obj {
+			p.Op = bytecode.OpGetPropChain
+		}
+	}
+	f.emit(bytecode.OpGetProp, dst, obj, site)
+}
+
 // pc returns the index of the next instruction.
 func (f *fn) pc() int32 {
 	return int32(len(f.f.Code))

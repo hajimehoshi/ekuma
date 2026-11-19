@@ -388,7 +388,7 @@ func (f *fn) decorator(state int32, e ast.Expr) {
 			f.emit(bytecode.OpGetPrivate, base, base+1, name)
 			break
 		}
-		f.emit(bytecode.OpGetProp, base, base+1, f.site(e.Property.(*ast.Identifier).Name))
+		f.emitGetProp(base, base+1, f.site(e.Property.(*ast.Identifier).Name))
 	case *ast.Identifier:
 		if scope := f.resolveName(e.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
