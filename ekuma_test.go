@@ -1281,6 +1281,51 @@ func TestCancelNestedContext(t *testing.T) {
 	}
 }
 
+// TestCancelNestedDoneContext checks that a nested call with a context that is already done
+// stops everything, as a context that becomes done during the call does.
+func TestCancelNestedDoneContext(t *testing.T) {
+	cause := errors.New("done before the call")
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	for _, call := range []func(ekuma.Value) error{
+		func(f ekuma.Value) error {
+			_, err := f.Invoke(ctx)
+			return err
+		},
+		func(f ekuma.Value) error {
+			_, err := f.Call(ctx, "toString")
+			return err
+		},
+	} {
+		var vm ekuma.VM
+		var returned bool
+		if err := vm.Global().Set("h", vm.FuncOf("h", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+			err := call(args[0])
+			returned = true
+			return nil, err
+		})); err != nil {
+			t.Fatalf("Set: %v", err)
+		}
+		v, err := runScript(t.Context(), &vm, "nested", `var caught = false; try { h(() => {}); } catch (e) { caught = true; } 1`)
+		if !errors.Is(err, cause) {
+			t.Errorf("got %v, %v, want %v", v, err, cause)
+		}
+		if returned {
+			t.Error("the Func continued after the interruption")
+		}
+		if v, err := runScript(t.Context(), &vm, "after", `caught ? 0 : 1 + 1`); err != nil || v.Int() != 2 {
+			t.Errorf("after the interruption: %v, %v, want 2", v, err)
+		}
+		// The outermost call returns the cause without running.
+		if _, err := runScript(ctx, &vm, "outermost", `caught = true`); !errors.Is(err, cause) {
+			t.Errorf("outermost call: got %v, want %v", err, cause)
+		}
+		if v, err := runScript(t.Context(), &vm, "after", `caught ? 0 : 1 + 1`); err != nil || v.Int() != 2 {
+			t.Errorf("after the outermost call: %v, %v, want 2", v, err)
+		}
+	}
+}
+
 // TestCancelNestedUnobserved checks that a nested call that returns without observing the
 // cancellation of its context leaves the cancellation to the calls around it.
 func TestCancelNestedUnobserved(t *testing.T) {

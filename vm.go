@@ -311,7 +311,17 @@ func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, er
 // run calls f, which executes JavaScript, and stops it when ctx is done.
 func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, error) {
 	if err := ctx.Err(); err != nil {
-		return Undefined, context.Cause(ctx)
+		cause := context.Cause(ctx)
+		if vm.e.Running() {
+			// Inside running JavaScript, the call stops everything, as when ctx becomes done
+			// during the call: the interruption unwinds through the callers to the outermost
+			// call.
+			var req interruptRequest
+			vm.interrupts.request(vm.e, &req, cause)
+			defer vm.interrupts.release(vm.e, &req)
+			vm.e.Poll()
+		}
+		return Undefined, cause
 	}
 	if ctx.Done() != nil {
 		var req interruptRequest
