@@ -5,6 +5,7 @@ package engine
 
 import (
 	"math"
+	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -368,6 +369,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	if fp.realm != vm.curRealm {
 		vm.switchRealm(fp.realm)
 	}
+	// The capacity of regs is never read: it is sliced and passed on only through slices.Clip,
+	// so that the loop does not carry it from one instruction to the next.
 	var regs []Value
 	if fp.heapRegs {
 		regs = fr.gen.regs
@@ -539,12 +542,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpArguments:
 			cur := &vm.frames[len(vm.frames)-1]
-			regs[i.A] = Value{o: vm.newArguments(cur, regs, i.B != 0)}
+			regs[i.A] = Value{o: vm.newArguments(cur, slices.Clip(regs), i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &vm.frames[len(vm.frames)-1]
 			var rest []Value
 			if int(i.B) < cur.argc {
-				all := vm.frameArgs(cur, regs)
+				all := vm.frameArgs(cur, slices.Clip(regs))
 				rest = all[i.B:]
 			}
 			regs[i.A] = Value{o: vm.NewArray(rest)}
@@ -1091,7 +1094,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpConcat:
 			vm.frames[len(vm.frames)-1].pc = pc
-			regs[i.A] = vm.concatStrings(regs[i.B : i.B+i.C])
+			regs[i.A] = vm.concatStrings(slices.Clip(regs)[i.B : i.B+i.C])
 		case bytecode.OpTypeof:
 			regs[i.A] = vm.typeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:
@@ -1443,7 +1446,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// Something else is called apply here: pass it the this value and a real
 				// arguments object.
 				regs[b+2] = regs[i.C]
-				regs[b+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, fp.code[pc-1].A != 0)}
+				regs[b+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], slices.Clip(regs), fp.code[pc-1].A != 0)}
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
 					argBase += vm.frameBase()
@@ -1479,7 +1482,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			pc++
 			if regs[b].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
-				v := vm.directEval(evalArg(regs[b+2:], int(i.C)), site)
+				v := vm.directEval(evalArg(slices.Clip(regs)[b+2:], int(i.C)), site)
 				regs = vm.reload(regs, vm.frameBase(), fp)
 				regs[i.A] = v
 				if i.C < 0 {
@@ -1520,7 +1523,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if fp.heapRegs {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
-				copy(vm.stack[top:], regs[argBase:argBase+argc])
+				copy(vm.stack[top:], slices.Clip(regs)[argBase:argBase+argc])
 				argBase = top
 			} else {
 				argBase += vm.frameBase()
@@ -1558,7 +1561,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if fp.heapRegs {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
-				copy(vm.stack[top:], regs[argBase:argBase+argc])
+				copy(vm.stack[top:], slices.Clip(regs)[argBase:argBase+argc])
 				argBase = top
 			} else {
 				argBase += vm.frameBase()
@@ -1722,7 +1725,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Value{o: vm.newRegExpLiteral(&fp.regExps[i.B])}
 		case bytecode.OpRegExpArg:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.lendRegExpLiteral(regs[i.A:], &fp.regExps[i.B], i.C != 0)
+			vm.lendRegExpLiteral(slices.Clip(regs)[i.A:], &fp.regExps[i.B], i.C != 0)
 		case bytecode.OpRegExpMethod:
 			vm.frames[len(vm.frames)-1].pc = pc
 			m, this := vm.regExpLiteralMethod(&fp.regExps[i.B], fp.keys[i.C], &fp.caches[i.C])
@@ -1768,7 +1771,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			n := int(fp.code[pc].A)
 			pc++
 			o := vm.NewOrdinaryObject()
-			excluded := append([]Value(nil), regs[i.C:int(i.C)+n]...)
+			excluded := append([]Value(nil), slices.Clip(regs)[i.C:int(i.C)+n]...)
 			vm.copyDataProperties(o, regs[i.B], excluded)
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = Value{o: o}
@@ -2017,18 +2020,18 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = scopeThis(regs[i.B])
 		case bytecode.OpDeclareEvalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.declareEvalVar(cl, fp.keys[i.A], int(i.B), regs, int(i.C))
+			vm.declareEvalVar(cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
 		case bytecode.OpImport:
 			vm.frames[len(vm.frames)-1].pc = pc
-			v := vm.importOp(regs, i.B, i.C)
+			v := vm.importOp(slices.Clip(regs), i.B, i.C)
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpAutoAccessor:
-			vm.autoAccessorOp(regs, i)
+			vm.autoAccessorOp(slices.Clip(regs), i)
 		case bytecode.OpDecorate:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			pc++
-			if v, ok := vm.decorateOp(regs, i, &fp.code[pc-1]); ok {
+			if v, ok := vm.decorateOp(slices.Clip(regs), i, &fp.code[pc-1]); ok {
 				regs = vm.reload(regs, vm.frameBase(), fp)
 				regs[i.C] = v
 			} else {
@@ -2092,7 +2095,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			argBase = cur.top()
 			vm.ensureStack(argBase + argc)
 			n := min(argc, fp.nparams)
-			copy(vm.stack[argBase:], regs[:n])
+			copy(vm.stack[argBase:], slices.Clip(regs)[:n])
 			copy(vm.stack[argBase+n:], vm.extraArgs(&vm.frames[len(vm.frames)-1]))
 		}
 		if i.Op == bytecode.OpTailApplyFwd || i.Op == bytecode.OpTailCallFwd {
@@ -2105,7 +2108,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		if fp.heapRegs {
 			top := vm.frames[len(vm.frames)-1].top()
 			vm.ensureStack(top + argc)
-			copy(vm.stack[top:], regs[argBase:argBase+argc])
+			copy(vm.stack[top:], slices.Clip(regs)[argBase:argBase+argc])
 			argBase = top
 		} else {
 			argBase += vm.frameBase()
@@ -2116,7 +2119,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			if f == nil || f.fn == nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwNotCallable(fp, pc, regs)
+				vm.throwNotCallable(fp, pc, slices.Clip(regs))
 			}
 			fn := f.fn
 			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
@@ -2193,7 +2196,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
 			if f == nil || f.fn == nil || !vm.IsConstructor(f) {
-				vm.throwNotConstructor(fp, pc, regs)
+				vm.throwNotConstructor(fp, pc, slices.Clip(regs))
 			}
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp
