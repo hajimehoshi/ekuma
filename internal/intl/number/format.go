@@ -214,7 +214,7 @@ func (f *Formatter) computeExponent(x Decimal) (int, int) {
 	}
 	mag := x.magnitude()
 	exp, pmag := f.exponentForMagnitude(mag)
-	_, r := f.o.Digits.FormatToString(x.abs().scale(-exp))
+	_, r := f.o.Digits.FormatToString(x.scale(-exp))
 	if r.IsZero() {
 		return exp, pmag
 	}

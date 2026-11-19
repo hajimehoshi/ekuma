@@ -213,6 +213,17 @@ func TestFormatters(t *testing.T) {
 			want: "elfu\u00A012; elfu\u00A0-12",
 		},
 		{
+			// The exponent is chosen with the rounding direction of the sign.
+			name: "exponent of negative numbers under directional rounding",
+			src: `var f = (o, x) => new Intl.NumberFormat("en", o).format(x), s = m => ({notation: "scientific", maximumFractionDigits: 0, roundingMode: m}); ` +
+				`[f(s("floor"), -9.6), f(s("ceil"), -9.6), f(s("halfFloor"), -9.5), f(s("halfCeil"), -9.5), ` +
+				`f({notation: "compact", roundingMode: "floor"}, -999999), f({notation: "compact", roundingMode: "floor"}, -999.5), ` +
+				`f({notation: "engineering", maximumFractionDigits: 0, roundingMode: "floor"}, -999.5), ` +
+				`new Intl.NumberFormat("en", {notation: "scientific", maximumFractionDigits: 0, roundingMode: "floor"}).formatToParts(-9.6).map(p => p.value).join(""), ` +
+				`new Intl.NumberFormat("en", {notation: "scientific", maximumFractionDigits: 0, roundingMode: "floor"}).formatRange(-9.6, -9.6)].join("; ")`,
+			want: "-1E1; -9E0; -1E1; -9E0; -1M; -1K; -1E3; -1E1; ~-1E1",
+		},
+		{
 			name: "compact magnitudes above 10^14",
 			src:  `new Intl.NumberFormat("ja", {notation: "compact"}).format(1e16)`,
 			want: "1京",
