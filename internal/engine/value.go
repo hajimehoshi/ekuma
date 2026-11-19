@@ -101,10 +101,11 @@ func BigIntFromInt64(i int64) Value {
 
 // Bool returns the boolean b as a value.
 func Bool(b bool) Value {
+	o := falseObject
 	if b {
-		return True
+		o = trueObject
 	}
-	return False
+	return Value{o: o}
 }
 
 // ObjectValue returns o as a value.

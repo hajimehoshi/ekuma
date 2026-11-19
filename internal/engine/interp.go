@@ -397,7 +397,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		// The fast paths of the common instructions. Nothing in this switch calls a function
 		// (TestExecFastPathsCallNothing checks it), so the values that the loop carries need
 		// no stack copies on these paths. An instruction that leaves it runs in the switch
-		// below, which handles every case of it.
+		// below, which handles every case of it. Undefined is written as Value{}, which needs
+		// no load.
 		switch i.Op {
 		case bytecode.OpLoadK:
 			regs[i.A] = fp.consts[i.B]
@@ -406,7 +407,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Number(float64(i.B))
 			continue
 		case bytecode.OpLoadUndef:
-			regs[i.A] = Undefined
+			regs[i.A] = Value{}
 			continue
 		case bytecode.OpLoadNull:
 			regs[i.A] = Null
@@ -918,7 +919,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			f, this, first, argc := regs[b].o, regs[b+1], b+2, int(i.C)
 			switch i.Op {
 			case bytecode.OpCallUndef:
-				this = Undefined
+				this = Value{}
 			case bytecode.OpCallCall:
 				if f != vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
 					f = nil
@@ -926,7 +927,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				f, this, first, argc = regs[b+1].o, regs[b+2], b+3, argc-1
 				if argc < 0 {
-					this, argc = Undefined, 0
+					this, argc = Value{}, 0
 				}
 			}
 			if !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
@@ -940,7 +941,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						// switch may call; OpApplyFwd's case below builds it the same way, and a
 						// change to one of the three belongs in the others.
 						if i.Op == bytecode.OpCallUndef {
-							regs[b+1] = Undefined
+							regs[b+1] = Value{}
 						}
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
@@ -1010,7 +1011,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			// none refers to the registers of the frame when the last one lies below them.
 			n := len(vm.frames) - 1
 			if done := &vm.frames[n]; done.gen == nil && n != stop && vm.frames[n-1].fp.realm == vm.curRealm && (len(vm.openUpvals) == 0 || vm.openUpvals[len(vm.openUpvals)-1].index < done.base) {
-				r := Undefined
+				r := Value{}
 				if i.Op == bytecode.OpReturn {
 					r = regs[i.A]
 				}
