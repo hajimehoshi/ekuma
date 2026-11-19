@@ -402,11 +402,20 @@ func (vm *VM) SetLocale(locale string) error {
 // SetTimeZone sets loc as the local time zone for Date, the system time zone for Temporal,
 // and the default time zone for new Intl.DateTimeFormat instances.
 // A nil loc restores the local time zone of the host.
+// When the name of loc is a time zone identifier that the platform knows, the platform's rules
+// for that zone apply instead of those of loc. Otherwise Temporal and Intl take the offset of
+// loc at the current time as the time zone.
 func (vm *VM) SetTimeZone(loc *time.Location) {
 	vm.initIfNeeded()
 	if loc == nil {
 		vm.e.SetDefaultTimeZone(nil)
 		return
+	}
+	if loc != time.Local {
+		if _, _, z, ok := datetime.LoadZone(loc.String()); ok {
+			vm.e.SetDefaultTimeZone(z)
+			return
+		}
 	}
 	vm.e.SetDefaultTimeZone(datetime.LocationZone(loc))
 }

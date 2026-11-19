@@ -64,7 +64,7 @@ func OffsetTimeZone(offsetMinutes int) TimeZone {
 // SystemTimeZoneIdentifier. It reports false for a zone without a usable identifier, whose time
 // zone [SystemOffsetTimeZone] gives.
 func SystemTimeZone(tz datetime.TimeZone) (TimeZone, bool) {
-	id, z, ok := datetime.ZoneOf(tz)
+	id, _, ok := datetime.ZoneOf(tz)
 	if !ok || id == "" {
 		return TimeZone{}, false
 	}
@@ -78,18 +78,16 @@ func SystemTimeZone(tz datetime.TimeZone) (TimeZone, bool) {
 	if isOffset {
 		return OffsetTimeZone(offset), true
 	}
-	// A zone that the platform knows by the same name is the same zone.
-	if lid, primary, lz, ok := datetime.LoadZone(name); ok {
-		return TimeZone{
-			id:      lid,
-			primary: primary,
-			zone:    lz,
-		}, true
+	// A zone that the platform knows by the same name is the same zone. Any other name is not
+	// an available named time zone.
+	lid, primary, lz, ok := datetime.LoadZone(name)
+	if !ok {
+		return TimeZone{}, false
 	}
 	return TimeZone{
-		id:      name,
-		primary: name,
-		zone:    z,
+		id:      lid,
+		primary: primary,
+		zone:    lz,
 	}, true
 }
 

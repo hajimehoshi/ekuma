@@ -778,48 +778,43 @@ func TestDateOffsetTransitions(t *testing.T) {
 	}
 }
 
-// TestTemporalTimeZone checks that Temporal takes the system time zone from VM.SetTimeZone, both
-// as Temporal.Now.timeZoneId and as a named time zone, with its transitions.
+// TestTemporalTimeZone checks that Temporal and Intl take a system time zone whose name the
+// platform does not know from VM.SetTimeZone as the offset time zone of its current offset,
+// which Date agrees with, and that the name is not a time zone identifier.
 func TestTemporalTimeZone(t *testing.T) {
 	var vm ekuma.VM
 	vm.SetTimeZone(daylightSavingZone(t, zoneType{offset: 1 * 3600, abbr: "CET"}, zoneType{offset: 2 * 3600, abbr: "CEST"},
 		1616893200, // 2021-03-28T01:00:00Z
 		1635642000, // 2021-10-31T01:00:00Z
 	))
-	tests := []struct {
-		src  string
+	const src = `[
+		Temporal.Now.timeZoneId(),
+		Temporal.Now.zonedDateTimeISO().offset,
+		new Date().getTimezoneOffset(),
+		new Intl.DateTimeFormat("en", { timeZoneName: "longOffset" }).formatToParts().find(p => p.type === "timeZoneName").value,
+		(() => { try { Temporal.ZonedDateTime.from("2021-06-01T12:00[Test/CET]"); } catch (e) { return e instanceof RangeError; } })(),
+	].join()`
+	for _, tc := range []struct {
+		now  time.Time
 		want string
 	}{
 		{
-			src:  `Temporal.Now.timeZoneId()`,
-			want: "Test/CET",
+			now:  time.Date(2021, 6, 1, 0, 0, 0, 0, time.UTC),
+			want: "+02:00,+02:00,-120,GMT+02:00,true",
 		},
 		{
-			src:  `Temporal.Now.zonedDateTimeISO().timeZoneId`,
-			want: "Test/CET",
+			now:  time.Date(2021, 12, 1, 0, 0, 0, 0, time.UTC),
+			want: "+01:00,+01:00,-60,GMT+01:00,true",
 		},
-		{
-			// A skipped local time moves forward by the length of the gap.
-			src:  `Temporal.ZonedDateTime.from("2021-03-28T02:30[test/cet]").toString()`,
-			want: "2021-03-28T03:30:00+02:00[Test/CET]",
-		},
-		{
-			src:  `Temporal.ZonedDateTime.from("2021-06-01T12:00[Test/CET]").getTimeZoneTransition("next").toString()`,
-			want: "2021-10-31T02:00:00+01:00[Test/CET]",
-		},
-		{
-			src:  `Temporal.PlainDateTime.from("2021-10-31T02:30").toZonedDateTime("Test/CET", { disambiguation: "later" }).offset`,
-			want: "+01:00",
-		},
-	}
-	for _, tc := range tests {
-		v, err := runScript(t.Context(), &vm, "temporal", tc.src)
+	} {
+		vm.SetClock(func() time.Time { return tc.now })
+		v, err := runScript(t.Context(), &vm, "temporal", src)
 		if err != nil {
-			t.Errorf("%s: %v", tc.src, err)
+			t.Errorf("%v: %v", tc.now, err)
 			continue
 		}
 		if got := toString(t, &vm, v); got != tc.want {
-			t.Errorf("%s: got %q, want %q", tc.src, got, tc.want)
+			t.Errorf("%v: got %q, want %q", tc.now, got, tc.want)
 		}
 	}
 }

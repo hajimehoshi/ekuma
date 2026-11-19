@@ -212,11 +212,11 @@ func daylightSavingZone(t *testing.T, std, dst zoneType, start, end uint32) temp
 	if err != nil {
 		t.Fatalf("LoadLocationFromTZData: %v", err)
 	}
-	z, ok := temporal.SystemTimeZone(datetime.LocationZone(loc))
+	_, z, ok := datetime.ZoneOf(datetime.LocationZone(loc))
 	if !ok {
-		t.Fatalf("SystemTimeZone(%v): no identifier", loc)
+		t.Fatalf("ZoneOf(%v): not a zone", loc)
 	}
-	return z
+	return temporal.NamedTimeZone(loc.String(), z)
 }
 
 func dateTime(y, mo, d, h, mi int) temporal.ISODateTime {

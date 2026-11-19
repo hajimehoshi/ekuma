@@ -96,6 +96,22 @@ func TestTimeZone(t *testing.T) {
 	}
 }
 
+// TestTimeZoneName checks that Date, Temporal and Intl agree on a location whose name is a
+// known time zone identifier with other rules.
+func TestTimeZoneName(t *testing.T) {
+	if _, err := time.LoadLocation("Europe/Berlin"); err != nil {
+		t.Skipf("no time zone database: %v", err)
+	}
+	var vm ekuma.VM
+	const instant = `var ms = Date.UTC(2026, 6, 1), id = Temporal.Now.timeZoneId();
+		[id, new Date(ms).getTimezoneOffset(), Temporal.Instant.fromEpochMilliseconds(ms).toZonedDateTimeISO(id).offset,
+			new Intl.DateTimeFormat("en", { timeZoneName: "longOffset" }).formatToParts(ms).find(p => p.type === "timeZoneName").value].join()`
+	vm.SetTimeZone(time.FixedZone("Europe/Berlin", 3600))
+	if got, want := run(t, &vm, instant), "Europe/Berlin,-120,+02:00,GMT+02:00"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 // TestClock checks that Date and Temporal read the current time from the clock, the time
 // value rounded down, and both clamped to the range of Date.
 func TestClock(t *testing.T) {
