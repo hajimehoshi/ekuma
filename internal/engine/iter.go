@@ -321,6 +321,20 @@ func (vm *VM) IterateRecord(it, next Value, f func(Value) bool) {
 	panic(errThrow)
 }
 
+// spreadArgs returns an array of the values that iterating v yields, for a spread call that
+// copies them before running any JavaScript. The array is v itself when iterating v reads its
+// elements without running JavaScript.
+func (vm *VM) spreadArgs(v Value) *Object {
+	if s := v.o; s != nil && s.kind == kindArray && vm.arrayIterationPlain(s) {
+		if _, ok := s.plainElems(); ok {
+			return s
+		}
+	}
+	o := vm.NewArray(nil)
+	vm.appendIterable(o, v)
+	return o
+}
+
 // appendIterable appends the values that iterating v yields to the array o.
 func (vm *VM) appendIterable(o *Object, v Value) {
 	if s := v.o; s != nil && s.kind == kindArray {

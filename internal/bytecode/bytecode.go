@@ -163,6 +163,7 @@ const (
 	OpArrayPush        // append b to the array a
 	OpArrayHole        // append a hole to the array a
 	OpArraySpread      // append the elements of the iterable b to the array a
+	OpSpreadArgs       // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
 	OpRegExp           // a = a new RegExp object for the literal RegExps[b]
 	OpRegExpArg        // a+2, or a+1 when c is 1, = the RegExp object for the literal RegExps[b] as the first argument or this value of the call of a that follows
 	OpRegExpMethod     // a = the property Keys[c] of a RegExp object a+1 for the literal RegExps[b], cache c; [OpRegExpArg] with c = 1 replaces a+1 before the call

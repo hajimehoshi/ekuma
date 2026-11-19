@@ -1629,6 +1629,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			o := regs[i.A].o
 			vm.appendIterable(o, regs[i.B])
 			regs = vm.reload(regs, onHeap, base, fp)
+		case bytecode.OpSpreadArgs:
+			vm.frames[len(vm.frames)-1].pc = pc
+			o := vm.spreadArgs(regs[i.B])
+			regs = vm.reload(regs, onHeap, base, fp)
+			regs[i.A] = Value{o: o}
 		case bytecode.OpRegExp:
 			vm.frames[len(vm.frames)-1].pc = pc
 			regs[i.A] = Value{o: vm.newRegExpLiteral(&fp.regExps[i.B])}

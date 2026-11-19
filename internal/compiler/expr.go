@@ -859,6 +859,15 @@ func hasSpread(args []ast.Expr) bool {
 
 // spreadArgs builds the array of the arguments args in the register dst.
 func (f *fn) spreadArgs(args []ast.Expr, dst int32) {
+	if len(args) == 1 {
+		if s, ok := args[0].(*ast.SpreadElement); ok {
+			mark := f.top
+			v := f.exprAny(s.Arg)
+			f.emit(bytecode.OpSpreadArgs, dst, v, 0)
+			f.free(mark)
+			return
+		}
+	}
 	f.emit(bytecode.OpNewArray, dst, 0, int32(len(args)))
 	for _, a := range args {
 		mark := f.top
