@@ -149,10 +149,7 @@ func TestJumpTargetConvention(t *testing.T) {
 func TestResultConvention(t *testing.T) {
 	// notInA are the opcodes that write registers but not a.
 	notInA := map[string]bool{
-		"OpClass":     true,
-		"OpRegExpArg": true,
-		"OpDecorate":  true,
-		"OpUsing":     true,
+		"OpDecorate": true,
 	}
 	// alsoOthers are the opcodes that write a and other registers as well.
 	alsoOthers := map[string]bool{

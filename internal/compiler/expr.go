@@ -1298,10 +1298,10 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	}
 	f.setPos(pos)
 	if regExpArg != nil {
-		f.emit(bytecode.OpRegExpArg, base, f.regExpSite(regExpArg), 0)
+		f.emit(bytecode.OpRegExpArg, base+2, f.regExpSite(regExpArg), base)
 	}
 	if receiver >= 0 {
-		f.emit(bytecode.OpRegExpArg, base, receiver, 1)
+		f.emit(bytecode.OpRegExpArg, base+1, receiver, base)
 	}
 	f.emit(op, callDst(dst, base), base, int32(len(n.Args)))
 	if site >= 0 {

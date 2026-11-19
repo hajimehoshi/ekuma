@@ -138,6 +138,19 @@ func TestValidate(t *testing.T) {
 			pc:  5,
 		},
 		{
+			name: "RegExp argument outside the call",
+			breakFunc: func(f *bytecode.Func) {
+				f.RegExps = []bytecode.RegExp{
+					{
+						Pattern: "a",
+					},
+				}
+				f.Code[0] = bytecode.Instr{Op: bytecode.OpRegExpArg, A: 3, B: 0, C: 0}
+			},
+			err: bytecode.ErrValue,
+			pc:  0,
+		},
+		{
 			name: "chain without its next read",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[3].B = 0

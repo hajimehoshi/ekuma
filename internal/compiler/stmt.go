@@ -162,7 +162,7 @@ func (f *fn) initUsing(n ast.Node, k ast.DeclKind, name string, src int32) {
 	if k == ast.DeclAwaitUsing {
 		hint = bytecode.DisposeAsync
 	}
-	f.emit(bytecode.OpUsing, src, sc.dispose, hint)
+	f.emit(bytecode.OpUsing, sc.dispose, src, hint)
 	sc.used = true
 	if b == nil {
 		f.storeVar(n, name, src, true)

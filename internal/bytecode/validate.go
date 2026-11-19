@@ -379,13 +379,6 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 	first := int(start) + r.Offset
 	n := r.Len
 	switch {
-	case in.Op == OpRegExpArg:
-		// The flag c selects a+1 over a+2.
-		if r.Offset > 0 {
-			first, n = int(in.A)+2-int(in.C), 1
-		} else {
-			n = 1 + int(in.C)
-		}
 	case (in.Op == OpCallEval || in.Op == OpTailCallEval) && in.C == -1 && r.Counted:
 		// The arguments are in an array in b+2.
 		n = 3
@@ -412,6 +405,11 @@ func (v *validator) special(pc int, in, x Instr) error {
 		// The instruction may run the next one.
 		if pc+1 >= len(code) || code[pc+1].Op != OpGetProp && code[pc+1].Op != OpGetPropChain || code[pc+1].B != in.A {
 			return v.errorf(pc, ErrSequence, "not followed by an OpGetProp of a")
+		}
+	case OpRegExpArg:
+		// The RegExp object is the this value or the first argument of the call.
+		if in.A != in.C+1 && in.A != in.C+2 {
+			return v.errorf(pc, ErrValue, "a is %d for the call of %d", in.A, in.C)
 		}
 	case OpCallEval, OpTailCallEval:
 		if in.C == -1 {

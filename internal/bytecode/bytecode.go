@@ -240,8 +240,8 @@ const (
 	OpSetProto        // set the prototype of the object literal a to b when b is an object or null
 	OpTemplate        // a = the template object b of the function
 	OpRegExp          // a = a new RegExp object for the literal RegExps[b]
-	OpRegExpArg       // a+2, or a+1 with the flag c, = the RegExp object for the literal RegExps[b] as the first argument or this value of the call of a that follows
-	OpRegExpMethod    // a = the property Keys[c] of a RegExp object a+1 for the literal RegExps[b]; c is a site. [OpRegExpArg] with c = 1 replaces a+1 before the call
+	OpRegExpArg       // a = the RegExp object for the literal RegExps[b] as the this value, when a is c+1, or the first argument, when a is c+2, of the call of c that follows
+	OpRegExpMethod    // a = the property Keys[c] of a RegExp object a+1 for the literal RegExps[b]; c is a site. An [OpRegExpArg] for the this value replaces a+1 before the call
 
 	// Definitions of properties and classes.
 	OpDefineField  // define the enumerable data property b of a as c
@@ -251,7 +251,7 @@ const (
 	OpDefineSetter // define the setter c for the property b of a, enumerable with the flag x.a
 	OpSetFuncName  // set the name of the anonymous function a to the property key b, with the NamePrefix kind c
 	OpSetHome      // set the home object of the function a to b
-	OpClass        // make the function a a class constructor with the parent c, or with no extends clause when c is -1; a+1 receives the prototype
+	OpClass        // a = the prototype of the function b, which becomes a class constructor with the parent c, or with no extends clause when c is -1
 	OpPrivateName  // a = a new private name described by Keys[b]; the flag c says whether it names a method
 	OpInitFields   // define the instance elements of the class a on the instance b
 	OpAddField     // add the class element with the key b and the value, initializer or initial value in c to the class a; x.a is an Elem kind
@@ -270,7 +270,7 @@ const (
 	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
 
 	// Disposal of resources.
-	OpUsing        // add the resource a with the Dispose hint c to the dispose capability b, which is created when b is undefined
+	OpUsing        // add the resource b with the Dispose hint c to the dispose capability a, which is created when a is undefined
 	OpDisposeBegin // start disposing the capability a for the completion b, which is a throw when c holds the integer 1
 	OpDisposeStep  // a = the next value to await in disposing the capability b; jump to c when there is none
 	OpDisposeError // record that disposing a resource of the capability a threw b

@@ -151,7 +151,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 	f.f.Protos = append(f.f.Protos, code)
 	f.emit(bytecode.OpClosure, ctor, int32(len(f.f.Protos)-1), 0)
 	f.captureScopes(ctor)
-	f.emit(bytecode.OpClass, ctor, 0, parent)
+	f.emit(bytecode.OpClass, ctor+1, ctor, parent)
 	if nameKey >= 0 {
 		f.emit(bytecode.OpSetFuncName, ctor, nameKey, bytecode.NamePrefixNone)
 	}

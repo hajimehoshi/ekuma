@@ -1197,14 +1197,13 @@ var opcodes = [...]struct {
 		},
 	},
 	OpRegExpArg: {
-		// The flag c selects a+1 over a+2.
 		name: "OpRegExpArg",
 		operands: Operands{
 			A:      OperandReg,
 			B:      OperandRegExp,
-			C:      OperandFlag,
-			Reads:  regPairA,
-			Writes: []Regs{{At: FieldA, Offset: 1, Len: 2}},
+			C:      OperandReg,
+			Reads:  regAC,
+			Writes: regA,
 		},
 	},
 	OpRegExpMethod: {
@@ -1254,9 +1253,10 @@ var opcodes = [...]struct {
 		name: "OpClass",
 		operands: Operands{
 			A:      OperandReg,
+			B:      OperandReg,
 			C:      OperandOptReg,
-			Reads:  regAC,
-			Writes: []Regs{{At: FieldA, Offset: 1, Len: 1}},
+			Reads:  regBC,
+			Writes: regA,
 		},
 	},
 	OpPrivateName: {
@@ -1379,7 +1379,7 @@ var opcodes = [...]struct {
 			B:      OperandReg,
 			C:      OperandDispose,
 			Reads:  regAB,
-			Writes: regB,
+			Writes: regA,
 		},
 	},
 	OpDisposeBegin: {

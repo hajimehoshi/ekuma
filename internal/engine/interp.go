@@ -1995,7 +1995,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Value{o: vm.newRegExpLiteral(&fp.regExps[i.B])}
 		case bytecode.OpRegExpArg:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.lendRegExpLiteral(slices.Clip(regs)[i.A:], &fp.regExps[i.B], i.C != 0)
+			vm.lendRegExpLiteral(slices.Clip(regs), i.A, i.C, &fp.regExps[i.B])
 		case bytecode.OpRegExpMethod:
 			vm.frames[len(vm.frames)-1].pc = pc
 			m, this := vm.regExpLiteralMethod(&fp.regExps[i.B], fp.keys[i.C], &fp.caches[i.C])
@@ -2057,9 +2057,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if i.C >= 0 {
 				parent = regs[i.C]
 			}
-			proto := vm.setupClass(regs[i.A].o, parent)
+			proto := vm.setupClass(regs[i.B].o, parent)
 			regs = vm.reload(regs, vm.frameBase(), fp)
-			regs[i.A+1] = Value{o: proto}
+			regs[i.A] = Value{o: proto}
 		case bytecode.OpPrivateName:
 			name := &Object{
 				kind:  kindSymbol,
@@ -2221,9 +2221,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpUsing:
 			vm.frames[len(vm.frames)-1].pc = pc
 			{
-				dc := vm.addDisposableOp(regs[i.A], regs[i.B], DisposeHint(i.C))
+				dc := vm.addDisposableOp(regs[i.B], regs[i.A], DisposeHint(i.C))
 				regs = vm.reload(regs, vm.frameBase(), fp)
-				regs[i.B] = dc
+				regs[i.A] = dc
 			}
 		case bytecode.OpDisposeBegin:
 			beginDisposeOp(regs[i.A], regs[i.B], regs[i.C])

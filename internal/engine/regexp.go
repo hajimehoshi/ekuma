@@ -159,16 +159,17 @@ func (vm *VM) LendRegExpLiteralReceivers(f *Object) {
 	vm.regExpReceiverBorrowers = append(vm.regExpReceiverBorrowers, f)
 }
 
-// lendRegExpLiteral evaluates the regular expression literal site for the call whose callee,
-// this value and arguments are in call: it sets the first argument, or the this value when
-// receiver is true and [VM.regExpLiteralMethod] left the lent object there.
-func (vm *VM) lendRegExpLiteral(call []Value, site *regExpSite, receiver bool) {
-	if !receiver {
-		call[2] = Value{o: vm.regExpLiteralFor(call[0].o, site, vm.regExpBorrowers)}
+// lendRegExpLiteral evaluates the regular expression literal site into the register dst of
+// regs for the call of the callee in the register callee: dst is the first argument, or the
+// this value, which it sets only when [VM.regExpLiteralMethod] left the lent object there.
+func (vm *VM) lendRegExpLiteral(regs []Value, dst, callee int32, site *regExpSite) {
+	f := regs[callee].o
+	if dst == callee+2 {
+		regs[dst] = Value{o: vm.regExpLiteralFor(f, site, vm.regExpBorrowers)}
 		return
 	}
-	if o := call[1].o; o != nil && o == site.lent {
-		call[1] = Value{o: vm.regExpLiteralFor(call[0].o, site, vm.regExpReceiverBorrowers)}
+	if o := regs[dst].o; o != nil && o == site.lent {
+		regs[dst] = Value{o: vm.regExpLiteralFor(f, site, vm.regExpReceiverBorrowers)}
 	}
 }
 
