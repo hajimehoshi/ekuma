@@ -1347,6 +1347,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 
+		case bytecode.OpCallUndef:
+			regs[i.B+1] = Undefined
+			fallthrough
 		case bytecode.OpCall:
 			b := int(i.B)
 			if f := regs[b].o; !onHeap && f != nil && f.fn != nil && !f.fn.classConstructor {
@@ -1451,6 +1454,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				goto tailCall
 			}
 			goto callRegs
+		case bytecode.OpTailCallUndef:
+			regs[i.B+1] = Undefined
+			fallthrough
 		case bytecode.OpTailCall:
 			b := int(i.B)
 			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], base+b+2, int(i.C), i.A, false, nil

@@ -33,7 +33,7 @@ func TestPosition(t *testing.T) {
 		{
 			name:   "call after a call in its arguments",
 			src:    "f(\n  g())",
-			op:     bytecode.OpCall,
+			op:     bytecode.OpCallUndef,
 			last:   true,
 			line:   1,
 			column: 1,
@@ -41,7 +41,7 @@ func TestPosition(t *testing.T) {
 		{
 			name:   "call of a call",
 			src:    "f()()",
-			op:     bytecode.OpCall,
+			op:     bytecode.OpCallUndef,
 			last:   true,
 			line:   1,
 			column: 4,

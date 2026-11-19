@@ -56,7 +56,7 @@ func TestCallResultInPlace(t *testing.T) {
 			f := compileF(t, `function f(g) { `+tc.body+` }`)
 			calls := 0
 			for pc, i := range f.Code {
-				if i.Op != bytecode.OpCall {
+				if i.Op != bytecode.OpCallUndef {
 					continue
 				}
 				calls++
@@ -86,7 +86,7 @@ func TestCallResultToLocal(t *testing.T) {
 		{
 			name: "declaration",
 			body: `var c = g(); return c;`,
-			op:   bytecode.OpCall,
+			op:   bytecode.OpCallUndef,
 		},
 		{
 			name: "assignment",

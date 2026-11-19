@@ -1201,6 +1201,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			f.free(base + 2)
 		}
 	case *ast.Identifier:
+		eval := c.Name == "eval" && !n.Optional
 		mark := f.top
 		if scope := f.resolveName(c.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
@@ -1218,15 +1219,19 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			f.free(mark)
 		} else {
 			f.expr(callee, base)
-			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+			if eval {
+				f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+			} else {
+				op = f.undefinedThis(n.Args, base)
+			}
 		}
-		if c.Name == "eval" && !n.Optional {
+		if eval {
 			op = bytecode.OpCallEval
 		}
 	default:
 		pos = callee.End()
 		f.expr(callee, base)
-		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+		op = f.undefinedThis(n.Args, base)
 	}
 	if chained {
 		end := f.jump()
@@ -1278,6 +1283,8 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		switch op {
 		case bytecode.OpCall, bytecode.OpCallCall:
 			op = bytecode.OpTailCall
+		case bytecode.OpCallUndef:
+			op = bytecode.OpTailCallUndef
 		case bytecode.OpCallEval:
 			op = bytecode.OpTailCallEval
 		}
@@ -1293,6 +1300,16 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if site >= 0 {
 		f.emit(bytecode.OpExtra, site, 0, 0)
 	}
+}
+
+// undefinedThis returns the opcode of a call with the arguments args and its window at base, whose
+// this value is undefined. It loads undefined into base+1 unless the opcode does so itself.
+func (f *fn) undefinedThis(args []ast.Expr, base int32) bytecode.Opcode {
+	if hasSpread(args) {
+		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+		return bytecode.OpCall
+	}
+	return bytecode.OpCallUndef
 }
 
 // regExpSite adds the regular expression literal e to the function and returns its index.
@@ -1413,6 +1430,7 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	mark := f.top
 	defer f.free(mark)
 	base := f.newRegs(2)
+	op, tailOp := bytecode.OpCall, bytecode.OpTailCall
 	switch c := n.Tag.(type) {
 	case *ast.MemberExpr:
 		if _, ok := c.Object.(*ast.SuperExpr); ok {
@@ -1428,7 +1446,7 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 		f.free(base + 2)
 	default:
 		f.expr(n.Tag, base)
-		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+		op, tailOp = bytecode.OpCallUndef, bytecode.OpTailCallUndef
 	}
 	var site bytecode.Template
 	for _, q := range n.Quasi.Quasis {
@@ -1441,9 +1459,8 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	for _, e := range n.Quasi.Exprs {
 		f.expr(e, f.newReg())
 	}
-	op := bytecode.OpCall
 	if f.isTail(n) {
-		op = bytecode.OpTailCall
+		op = tailOp
 	}
 	f.emit(op, callDst(dst, base), base, int32(len(n.Quasi.Exprs)+1))
 }
