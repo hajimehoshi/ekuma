@@ -856,10 +856,29 @@ func newClosureObject(n, ncopied int) (*Object, []upvalue) {
 		w := &closureObjectWith[[3]*upvalue, [3]upvalue]{}
 		c, upvals, copies = &w.closureObject, w.upvals[:], w.copies[:]
 	default:
-		c = &closureObject{}
-		upvals = make([]*upvalue, n)
-		if ncopied > 0 {
-			copies = make([]upvalue, ncopied)
+		// The capacities fill an allocation size class.
+		switch {
+		case n <= 5 && ncopied == 0:
+			w := &closureObjectWith[[5]*upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 7 && ncopied == 0:
+			w := &closureObjectWith[[7]*upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 11 && ncopied == 0:
+			w := &closureObjectWith[[11]*upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 15 && ncopied == 0:
+			w := &closureObjectWith[[15]*upvalue, struct{}]{}
+			c, upvals = &w.closureObject, w.upvals[:n:n]
+		case n <= 15 && ncopied > 4 && ncopied <= 8:
+			w := &closureObjectWith[[15]*upvalue, [8]upvalue]{}
+			c, upvals, copies = &w.closureObject, w.upvals[:n:n], w.copies[:ncopied:ncopied]
+		default:
+			c = &closureObject{}
+			upvals = make([]*upvalue, n)
+			if ncopied > 0 {
+				copies = make([]upvalue, ncopied)
+			}
 		}
 	}
 	c.state.upvals = upvals
