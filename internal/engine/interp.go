@@ -444,9 +444,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetUpval:
 			*cl.fn.upvals[i.B].p = regs[i.A]
 			continue
-		case bytecode.OpGetProp, bytecode.OpGetMethod:
-			v := regs[i.B]
-			if o := v.o; o != nil {
+		case bytecode.OpGetProp:
+			if o := regs[i.B].o; o != nil {
 				c := &fp.caches[i.C]
 				e := &c.cacheEntry
 				if o.shape != e.shape {
@@ -456,9 +455,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					h := o
 					if e.kind == cacheProto {
 						h = e.holder
-					}
-					if i.Op == bytecode.OpGetMethod {
-						regs[i.A+1] = v
 					}
 					regs[i.A] = h.slots[e.slot]
 					continue
@@ -913,7 +909,36 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 			}
-		case bytecode.OpCall, bytecode.OpCallUndef, bytecode.OpCallCall:
+		case bytecode.OpGetMethod, bytecode.OpCall, bytecode.OpCallUndef, bytecode.OpCallCall:
+			if i.Op == bytecode.OpGetMethod {
+				// A data property read through the cache, as in OpGetProp's case. The call of
+				// the method without arguments, when it is the next instruction, runs here too.
+				v := regs[i.B]
+				o := v.o
+				if o == nil {
+					break
+				}
+				c := &fp.caches[i.C]
+				e := &c.cacheEntry
+				if o.shape != e.shape {
+					e = &c.second
+				}
+				if o.shape != e.shape || e.kind != cacheOwn && (e.kind != cacheProto || e.epoch != vm.protoEpoch) {
+					break
+				}
+				h := o
+				if e.kind == cacheProto {
+					h = e.holder
+				}
+				a, n := i.A, &fp.code[pc]
+				regs[a+1] = v
+				regs[a] = h.slots[e.slot]
+				if n.Op != bytecode.OpCall || n.B != a {
+					continue
+				}
+				i = n
+				pc++
+			}
 			// f is the callee and first the register of its first argument.
 			b := int(i.B)
 			f, this, first, argc := regs[b].o, regs[b+1], b+2, int(i.C)
