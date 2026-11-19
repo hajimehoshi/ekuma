@@ -180,7 +180,7 @@ const (
 	// Calls. The callee is in a and the this value in a+1, and the result replaces the callee.
 	OpCall       // a = a(this a+1, args a+2...), b arguments
 	OpCallCall   // a = a.call(...) where a+1 is the function and a+2... the b arguments of call, the first of which is the this value
-	OpApplyFwd   // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; the flag b says whether an arguments object made for them is mapped
+	OpApplyFwd   // a = a.apply(...) where a+1 is the function and c the this value, forwarding the arguments of the running function; the flag b says whether an arguments object made for them is mapped. A callee a other than Function.prototype.apply gets its arguments in a+2 and a+3
 	OpCallFwd    // a = a(this a+1, the arguments of the running function)
 	OpCallSpread // a = a(this a+1, ...the array a+2)
 	OpCallEval   // like [OpCall]; a direct eval when a is the eval function. c indexes [Func.EvalScopes]. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the [OpCallSpread] for any other function

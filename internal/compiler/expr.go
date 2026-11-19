@@ -1104,15 +1104,18 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 				}
 			case "apply":
 				if len(n.Args) == 2 && f.isForwardedArguments(n.Args[1]) && !chained {
-					f.expr(n.Args[0], f.newReg())
-					// One more register for the arguments object of the general case.
-					f.newReg()
+					this := f.operand(n.Args[0])
+					// The general case passes the this value and an arguments object in
+					// base+2 and base+3.
+					for f.top < base+4 {
+						f.newReg()
+					}
 					f.setPos(pos)
 					op := bytecode.OpApplyFwd
 					if f.isTail(n) {
 						op = bytecode.OpTailApplyFwd
 					}
-					f.emit(op, base, mappedArguments(f.node), 0)
+					f.emit(op, base, mappedArguments(f.node), this)
 					f.result(dst, base)
 					return
 				}

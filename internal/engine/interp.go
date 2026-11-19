@@ -1348,7 +1348,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
 			a := int(i.A)
 			if regs[a].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
-				// Something else is called apply here: pass it a real arguments object.
+				// Something else is called apply here: pass it the this value and a real
+				// arguments object.
+				regs[a+2] = regs[i.C]
 				regs[a+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, i.B != 0)}
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
@@ -1357,7 +1359,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				goto callRegs
 			}
-			f, callThis = regs[a+1].o, regs[a+2]
+			f, callThis = regs[a+1].o, regs[i.C]
 			goto forward
 		case bytecode.OpCallFwd, bytecode.OpTailCallFwd:
 			a := int(i.A)
