@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // Decimal is an Intl mathematical value: a decimal number, negative zero, an infinity or
@@ -110,7 +111,7 @@ func FromBigInt(i *big.Int) Decimal {
 // converts it: the exact value of a StringNumericLiteral, not-a-number for any other string,
 // and an infinity or zero for a value that rounds to one as a Number.
 func Parse(s string) Decimal {
-	t := numconv.TrimWhiteSpace(s, true, true)
+	t := xstrings.TrimWhiteSpace(s, true, true)
 	if t == "" {
 		return Decimal{}
 	}

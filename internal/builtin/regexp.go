@@ -7,12 +7,12 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // regexpEnv is the state that the RegExp built-ins of one VM share.
@@ -1184,7 +1184,7 @@ func regExpEscape(s string) string {
 			b.WriteString("\\f")
 		case r == '\r':
 			b.WriteString("\\r")
-		case strings.ContainsRune(",-=<>#&!%:;@~'`\"", r) || isWhiteSpaceOrLineTerminator(r) || r >= 0xD800 && r <= 0xDFFF:
+		case strings.ContainsRune(",-=<>#&!%:;@~'`\"", r) || xstrings.IsWhiteSpaceOrLineTerminator(r) || r >= 0xD800 && r <= 0xDFFF:
 			if r <= 0xFF {
 				hex("\\x", r, 2)
 			} else {
@@ -1195,14 +1195,6 @@ func regExpEscape(s string) string {
 		}
 	}
 	return b.String()
-}
-
-func isWhiteSpaceOrLineTerminator(r rune) bool {
-	switch r {
-	case '\t', '\v', '\f', ' ', 0xA0, 0xFEFF, '\n', '\r', 0x2028, 0x2029:
-		return true
-	}
-	return r > 0x7F && unicode.Is(unicode.Zs, r)
 }
 
 // initLegacyStatics defines the legacy static properties of RegExp.

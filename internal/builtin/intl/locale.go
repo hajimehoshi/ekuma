@@ -10,6 +10,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // localeData holds the internal slots of an Intl.Locale object.
@@ -44,12 +46,10 @@ func thisLocale(vm *engine.VM, this engine.Value, name string) *localeData {
 
 // asciiLower returns s in lower case, and reports whether s is ASCII.
 func asciiLower(s string) (string, bool) {
-	for i := range len(s) {
-		if s[i] >= 0x80 {
-			return "", false
-		}
+	if !wtf8.IsASCII(s) {
+		return "", false
 	}
-	return strings.ToLower(s), true
+	return xstrings.ToLowerASCII(s), true
 }
 
 // subtagOption returns the option name of options in lower case if it is a subtag that valid

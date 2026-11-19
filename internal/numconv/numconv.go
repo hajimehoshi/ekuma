@@ -10,7 +10,8 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	"unicode/utf8"
+
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // MaxSafeInteger is 2**53 - 1.
@@ -109,52 +110,6 @@ func AppendNumber(dst []byte, n float64) []byte {
 		out = strconv.AppendInt(out, int64(pos-1), 10)
 	}
 	return out
-}
-
-// isWhiteSpaceOrLineTerminator reports whether r is WhiteSpace or LineTerminator.
-func isWhiteSpaceOrLineTerminator(r rune) bool {
-	switch r {
-	case '\t', '\n', '\v', '\f', '\r', ' ', 0xA0, 0x1680, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF:
-		return true
-	}
-	return r >= 0x2000 && r <= 0x200A
-}
-
-// TrimWhiteSpace implements TrimString. start and end select the sides to trim.
-func TrimWhiteSpace(s string, start, end bool) string {
-	if start {
-		for len(s) > 0 {
-			if c := s[0]; c < utf8.RuneSelf {
-				if !isWhiteSpaceOrLineTerminator(rune(c)) {
-					break
-				}
-				s = s[1:]
-				continue
-			}
-			r, size := utf8.DecodeRuneInString(s)
-			if !isWhiteSpaceOrLineTerminator(r) {
-				break
-			}
-			s = s[size:]
-		}
-	}
-	if end {
-		for len(s) > 0 {
-			if c := s[len(s)-1]; c < utf8.RuneSelf {
-				if !isWhiteSpaceOrLineTerminator(rune(c)) {
-					break
-				}
-				s = s[:len(s)-1]
-				continue
-			}
-			r, size := utf8.DecodeLastRuneInString(s)
-			if !isWhiteSpaceOrLineTerminator(r) {
-				break
-			}
-			s = s[:len(s)-size]
-		}
-	}
-	return s
 }
 
 func DigitValue(c byte) int {
@@ -258,7 +213,7 @@ func StringToNumber(s string) float64 {
 		}
 	}
 
-	s = TrimWhiteSpace(s, true, true)
+	s = xstrings.TrimWhiteSpace(s, true, true)
 	if s == "" {
 		return 0
 	}
@@ -445,7 +400,7 @@ func ToLength(f float64) int64 {
 // poll, which may be nil, is called between the steps of a long conversion and may stop it by
 // panicking.
 func StringToBigInt(s string, poll func()) *big.Int {
-	s = TrimWhiteSpace(s, true, true)
+	s = xstrings.TrimWhiteSpace(s, true, true)
 	if s == "" {
 		return new(big.Int)
 	}
@@ -480,7 +435,7 @@ func StringToBigInt(s string, poll func()) *big.Int {
 
 // ParseFloat implements parseFloat: the longest prefix of s that is a decimal literal.
 func ParseFloat(s string) float64 {
-	s = TrimWhiteSpace(s, true, false)
+	s = xstrings.TrimWhiteSpace(s, true, false)
 	i := 0
 	if i < len(s) && (s[i] == '+' || s[i] == '-') {
 		i++
@@ -527,7 +482,7 @@ func ParseFloat(s string) float64 {
 
 // ParseInt implements parseInt.
 func ParseInt(s string, radix int) float64 {
-	s = TrimWhiteSpace(s, true, false)
+	s = xstrings.TrimWhiteSpace(s, true, false)
 	neg := false
 	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
 		neg = s[0] == '-'

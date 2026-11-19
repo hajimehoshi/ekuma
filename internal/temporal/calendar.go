@@ -3,9 +3,7 @@
 
 package temporal
 
-import (
-	"strings"
-)
+import "github.com/hajimehoshi/ekuma/internal/xstrings"
 
 // ISO8601 is the identifier of the ISO 8601 calendar.
 const ISO8601 = "iso8601"
@@ -48,7 +46,7 @@ func SetCalendars(c Calendars) {
 
 // CanonicalizeCalendar implements CanonicalizeCalendar.
 func CanonicalizeCalendar(id string) (string, error) {
-	l := asciiLower(id)
+	l := xstrings.ToLowerASCII(id)
 	if l == ISO8601 {
 		return ISO8601, nil
 	}
@@ -115,16 +113,6 @@ func CalendarISOToDate(cal string, d ISODate) CalendarDate {
 func CalendarSupportsEra(cal string) bool {
 	c := nonISO(cal)
 	return c != nil && c.HasEras()
-}
-
-// asciiLower returns s with the ASCII upper-case letters in lower case.
-func asciiLower(s string) string {
-	return strings.Map(func(r rune) rune {
-		if r >= 'A' && r <= 'Z' {
-			return r + 'a' - 'A'
-		}
-		return r
-	}, s)
 }
 
 // CalendarFields is a Calendar Fields Record. A field is unset when its Has flag is false.

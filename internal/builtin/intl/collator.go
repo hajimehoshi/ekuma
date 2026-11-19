@@ -279,42 +279,19 @@ func initLocaleCase(vm *engine.VM) {
 			// result. Greek has rules only for uppercasing.
 			switch {
 			case lang == "el" && m.upper:
-				return vm.NewString(mapWellFormed(s, greekUpper))
+				return vm.NewString(wtf8.MapWellFormed(s, greekUpper))
 			case lang == "lt" && m.upper:
-				s = mapWellFormed(s, lithuanianUndot)
+				s = wtf8.MapWellFormed(s, lithuanianUndot)
 			case lang == "lt":
-				s = mapWellFormed(s, lithuanianDots)
+				s = wtf8.MapWellFormed(s, lithuanianDots)
 			case (lang == "tr" || lang == "az") && m.upper:
 				s = strings.ReplaceAll(s, "i", "\u0130")
 			case lang == "tr" || lang == "az":
-				s = mapWellFormed(s, turkicLowerI)
+				s = wtf8.MapWellFormed(s, turkicLowerI)
 			}
 			return vm.CallValue(base, vm.NewString(s))
 		})
 	}
-}
-
-// mapWellFormed applies f to the parts of s between lone surrogates.
-func mapWellFormed(s string, f func(string) string) string {
-	var b wtf8.Builder
-	for len(s) > 0 {
-		i := 0
-		for i < len(s) {
-			r, size := wtf8.DecodeRune(s[i:])
-			if r >= 0xD800 && r <= 0xDFFF {
-				break
-			}
-			i += size
-		}
-		b.WriteString(f(s[:i]))
-		s = s[i:]
-		if len(s) > 0 {
-			r, size := wtf8.DecodeRune(s)
-			b.WriteRune(r)
-			s = s[size:]
-		}
-	}
-	return b.String()
 }
 
 // lithuanianDots applies the Lithuanian rules of SpecialCasing.txt for lowercasing that add a

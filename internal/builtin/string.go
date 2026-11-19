@@ -6,7 +6,6 @@ package builtin
 import (
 	"math"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/text/cases"
@@ -393,7 +392,7 @@ func initString(vm *engine.VM) {
 		boundary: lastBoundary(norm.NFD),
 	}
 	lower := stringMapping{
-		f:        toLowerCase,
+		f:        xstrings.ToLowerCase,
 		boundary: runeBoundary,
 	}
 	mapShortCase("toUpperCase", true, strings.ToUpper, upper)
@@ -631,74 +630,6 @@ type stringIterator struct {
 	pos int
 }
 
-// toLowerCase converts s[start:end] to lowercase with the root locale's full case mapping, in the
-// context of the rest of s.
-func toLowerCase(s string, start, end int) string {
-	var b strings.Builder
-	b.Grow(end - start)
-	for k, r := range s[start:end] {
-		i := start + k
-		switch r {
-		case '\u0130':
-			// LATIN CAPITAL LETTER I WITH DOT ABOVE keeps the dot as a combining character.
-			b.WriteString("i\u0307")
-		case '\u03A3':
-			if isFinalSigma(s, i) {
-				b.WriteRune('\u03C2')
-			} else {
-				b.WriteRune('\u03C3')
-			}
-		default:
-			b.WriteRune(unicode.ToLower(r))
-		}
-	}
-	return b.String()
-}
-
-// isFinalSigma reports whether the character at byte offset i of s satisfies the Final_Sigma casing context.
-func isFinalSigma(s string, i int) bool {
-	// Before: a cased letter followed by zero or more case-ignorable characters.
-	// A character that is both cased and case-ignorable counts as case-ignorable.
-	var before bool
-	for j := i; j > 0; {
-		r, size := utf8.DecodeLastRuneInString(s[:j])
-		j -= size
-		if isCaseIgnorable(r) {
-			continue
-		}
-		before = isCased(r)
-		break
-	}
-	if !before {
-		return false
-	}
-	// After: not zero or more case-ignorable characters followed by a cased letter.
-	_, size := utf8.DecodeRuneInString(s[i:])
-	for _, r := range s[i+size:] {
-		if isCaseIgnorable(r) {
-			continue
-		}
-		return !isCased(r)
-	}
-	return true
-}
-
-// isCased reports whether r has the Unicode Cased property.
-func isCased(r rune) bool {
-	return unicode.In(r, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Other_Lowercase, unicode.Other_Uppercase)
-}
-
-// isCaseIgnorable reports whether r has the Unicode Case_Ignorable property.
-func isCaseIgnorable(r rune) bool {
-	switch r {
-	// Word_Break values MidLetter, MidNumLet and Single_Quote.
-	case '\'', '.', ':', '\u00B7', '\u0387', '\u055F', '\u05F4', '\u2018', '\u2019', '\u2024', '\u2027',
-		'\uFE13', '\uFE52', '\uFE55', '\uFF07', '\uFF0E', '\uFF1A':
-		return true
-	}
-	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf, unicode.Lm, unicode.Sk)
-}
-
 // unitStrings sets the elements of out to the strings of the code units of s from the index start
 // on.
 func unitStrings(vm *engine.VM, out []engine.Value, s engine.Value, start int) {
@@ -783,38 +714,10 @@ func mapInChunks(vm *engine.VM, s string, f func(s string, start, end int) strin
 	return b.String()
 }
 
-// mapWellFormed applies m to each maximal run of s without lone surrogates and keeps the lone
-// surrogates as they are.
 func mapWellFormed(vm *engine.VM, s string, m stringMapping) string {
-	var b wtf8.Builder
-	for len(s) > 0 {
-		i := loneSurrogateIndex(s)
-		b.WriteString(mapInChunks(vm, s[:i], m.f, m.boundary))
-		s = s[i:]
-		if len(s) > 0 {
-			r, size := wtf8.DecodeRune(s)
-			b.WriteRune(r)
-			s = s[size:]
-		}
-	}
-	return b.String()
-}
-
-// loneSurrogateIndex returns the offset of the first lone surrogate in s, or len(s).
-func loneSurrogateIndex(s string) int {
-	// A surrogate is ED A0..BF xx, and a well-formed character never starts with ED followed by
-	// A0 or more.
-	for i := 0; ; {
-		j := strings.IndexByte(s[i:], 0xED)
-		if j < 0 {
-			return len(s)
-		}
-		i += j
-		if i+1 < len(s) && s[i+1] >= 0xA0 {
-			return i
-		}
-		i++
-	}
+	return wtf8.MapWellFormed(s, func(s string) string {
+		return mapInChunks(vm, s, m.f, m.boundary)
+	})
 }
 
 // repeatChunk is the number of bytes of repeated copies of a string that writeRepeated writes

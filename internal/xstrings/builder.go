@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-// Package xstrings provides builders for JavaScript strings.
+// Package xstrings provides operations on JavaScript strings.
 package xstrings
 
 import (

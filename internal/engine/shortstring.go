@@ -7,7 +7,6 @@ import (
 	"math"
 	"strings"
 
-	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
@@ -296,7 +295,7 @@ func (vm *VM) TrimString(s Value, start, end bool) Value {
 		return vm.trimShortString(s, start, end)
 	}
 	text := s.o.Str()
-	trimmed := numconv.TrimWhiteSpace(text, start, end)
+	trimmed := xstrings.TrimWhiteSpace(text, start, end)
 	if len(trimmed) == len(text) {
 		return s
 	}
@@ -312,7 +311,7 @@ func (vm *VM) trimShortString(s Value, start, end bool) Value {
 		trimmed, trimmedN = shortstrings.TrimASCII(data, n, start, end)
 	} else {
 		text := shortstrings.String(data, n)
-		part := numconv.TrimWhiteSpace(text, start, end)
+		part := xstrings.TrimWhiteSpace(text, start, end)
 		trimmedN = len(part)
 		if trimmedN == n {
 			return s
