@@ -33,6 +33,7 @@ var fastPathCalls = map[string]bool{
 	"clearFrameRegs":       true,
 	"numconv.InInt64Range": true,
 	"vm.interrupt.Load":    true,
+	"vm.Intrinsic":         true,
 }
 
 // fastPathMethods are the methods that the fast paths may call on a value of any name.

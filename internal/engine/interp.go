@@ -877,20 +877,33 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 			}
-		case bytecode.OpCall, bytecode.OpCallUndef:
+		case bytecode.OpCall, bytecode.OpCallUndef, bytecode.OpCallCall:
+			// f is the callee and first the register of its first argument.
 			b := int(i.B)
-			if f := regs[b].o; !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
+			f, this, first, argc := regs[b].o, regs[b+1], b+2, int(i.C)
+			switch i.Op {
+			case bytecode.OpCallUndef:
+				this = Undefined
+			case bytecode.OpCallCall:
+				if f != vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
+					f = nil
+					break
+				}
+				f, this, first, argc = regs[b+1].o, regs[b+2], b+3, argc-1
+				if argc < 0 {
+					this, argc = Undefined, 0
+				}
+			}
+			if !fp.heapRegs && f != nil && f.fn != nil && !f.fn.classConstructor {
 				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
-					argc := int(i.C)
 					n := len(vm.frames)
-					argBase := vm.frames[n-1].base + b + 2
+					argBase := vm.frames[n-1].base + first
 					end := argBase + max(argc, c.nregs+1)
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
 						// Reuse the available stack and frame storage for a prepared call.
 						if i.Op == bytecode.OpCallUndef {
 							regs[b+1] = Undefined
 						}
-						this := regs[b+1]
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
 						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
