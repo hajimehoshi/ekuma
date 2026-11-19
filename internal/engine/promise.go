@@ -141,12 +141,24 @@ func promiseOf(o *Object) *promiseData {
 
 // NewPromiseObject returns a pending Promise object with the prototype proto.
 func (vm *VM) NewPromiseObject(proto *Object) *Object {
-	o := vm.NewObject(proto)
-	o.class = classPromise
-	o.ext = &promiseData{
-		result: Undefined,
+	w := &promiseObject{
+		state: promiseData{
+			result: Undefined,
+		},
 	}
+	w.kind = kindObject
+	w.shape = vm.shapeFor(proto)
+	o := w.init()
+	o.class = classPromise
+	o.ext = &w.state
 	return o
+}
+
+// promiseObject is a Promise object together with its state, so that creating one is a single
+// allocation.
+type promiseObject struct {
+	propertyObject
+	state promiseData
 }
 
 // newIntrinsicCapability returns the capability of a new promise of %Promise%,
