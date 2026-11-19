@@ -113,13 +113,15 @@ func Compile(pattern string, flags Flags, poller Poller) (*Regexp, error) {
 	return re, nil
 }
 
-// Validate reports the syntax error of pattern with the flags in flags, if any.
-func Validate(pattern, flags string) error {
+// Validate reports the syntax error of pattern with the flags in flags, if any. poller, which
+// may be nil, is called now and then during a long pattern; it may stop the validation by
+// panicking.
+func Validate(pattern, flags string, poller Poller) error {
 	f, err := ParseFlags(flags)
 	if err != nil {
 		return err
 	}
-	return validate(pattern, f)
+	return validate(pattern, f, poller)
 }
 
 // Flags returns the flags that re was compiled with.

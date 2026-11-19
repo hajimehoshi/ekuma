@@ -404,25 +404,31 @@ func (c *compiler) first(n *node) firstInfo {
 	case opClass:
 		return firstInfo{set: n.set}
 	case opSeq:
+		// The ranges are collected first and normalized once.
 		var acc firstInfo
+		acc.empty = true
 		for _, s := range n.subs {
+			c.step(1)
 			f := c.first(s)
-			acc.set = acc.set.union(f.set)
+			acc.set = append(acc.set, f.set...)
 			acc.any = acc.any || f.any
 			if !f.empty {
-				return acc
+				acc.empty = false
+				break
 			}
 		}
-		acc.empty = true
+		acc.set = acc.set.normalize()
 		return acc
 	case opAlt:
 		var acc firstInfo
 		for _, s := range n.subs {
+			c.step(1)
 			f := c.first(s)
-			acc.set = acc.set.union(f.set)
+			acc.set = append(acc.set, f.set...)
 			acc.any = acc.any || f.any
 			acc.empty = acc.empty || f.empty
 		}
+		acc.set = acc.set.normalize()
 		return acc
 	case opCapture, opGroup:
 		return c.first(n.subs[0])

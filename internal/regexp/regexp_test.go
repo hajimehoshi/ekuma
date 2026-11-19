@@ -212,11 +212,31 @@ func TestManyDuplicateNames(t *testing.T) {
 		fmt.Fprintf(&b, "(?<g>a%d)", i)
 	}
 	alts := b.String()
-	if err := regexp.Validate(alts, ""); err != nil {
+	if err := regexp.Validate(alts, "", nil); err != nil {
 		t.Errorf("groups in different alternatives: got %v, want nil", err)
 	}
-	if err := regexp.Validate("(?:"+alts+")(?<g>b)", ""); !errors.Is(err, regexp.ErrSyntax) {
+	if err := regexp.Validate("(?:"+alts+")(?<g>b)", "", nil); !errors.Is(err, regexp.ErrSyntax) {
 		t.Errorf("a group after the alternatives: got %v, want a syntax error", err)
+	}
+}
+
+// TestManyAlternatives checks a pattern of many alternatives that start with different
+// characters.
+func TestManyAlternatives(t *testing.T) {
+	var b strings.Builder
+	for i := range 1 << 17 {
+		if i > 0 {
+			b.WriteByte('|')
+		}
+		fmt.Fprintf(&b, "%c%d", 0x4E00+2*(i%10000), i)
+	}
+	re := mustCompile(t, b.String(), "")
+	var m regexp.Matcher
+	if got := re.Find(&m, "x\u4E022y", 0, nil); got != nil {
+		t.Errorf("got %v, want no match", got)
+	}
+	if got := re.Find(&m, "x\u4E021", 0, nil); !slices.Equal(got, []int{1, 3}) {
+		t.Errorf("got %v, want [1 3]", got)
 	}
 }
 
@@ -246,7 +266,7 @@ func FuzzValidate(f *testing.F) {
 	flagSets := []string{"", "i", "m", "s", "u", "iu", "v", "iv", "uv"}
 	f.Fuzz(func(t *testing.T, pattern string) {
 		for _, flags := range flagSets {
-			got := regexp.Validate(pattern, flags)
+			got := regexp.Validate(pattern, flags, nil)
 			fl, want := regexp.ParseFlags(flags)
 			if want == nil {
 				_, want = regexp.Compile(pattern, fl, nil)
@@ -278,7 +298,8 @@ func (p *countPoller) Poll() {
 	panic(stop{})
 }
 
-// TestCompilePoll checks that the compilation of a long pattern can be stopped.
+// TestCompilePoll checks that the compilation and the validation of a long pattern can be
+// stopped.
 func TestCompilePoll(t *testing.T) {
 	for _, pattern := range []string{
 		strings.Repeat("a", 1<<20),
@@ -298,6 +319,20 @@ func TestCompilePoll(t *testing.T) {
 		if p.n != 1 {
 			t.Errorf("/%.20s.../: Poll was called %d times, want 1", pattern, p.n)
 		}
+	}
+	p := &countPoller{}
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				if _, ok := r.(stop); !ok {
+					panic(r)
+				}
+			}
+		}()
+		regexp.Validate(strings.Repeat("a", 1<<20), "", p)
+	}()
+	if p.n != 1 {
+		t.Errorf("Validate: Poll was called %d times, want 1", p.n)
 	}
 }
 

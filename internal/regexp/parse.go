@@ -123,9 +123,11 @@ func parse(source string, flags Flags, poller Poller) (*tree, error) {
 }
 
 // validate reports the error that parse reports for the pattern source with the flags, if any.
-func validate(source string, flags Flags) error {
+// poller, which may be nil, is called now and then during a long pattern.
+func validate(source string, flags Flags, poller Poller) error {
 	p := parser{
 		validateOnly: true,
+		poller:       poller,
 	}
 	p.init(source, flags)
 	_, err := p.parsePattern()

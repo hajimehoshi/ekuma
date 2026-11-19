@@ -1121,7 +1121,11 @@ func (p *parser) parsePrimary() ast.Expr {
 		return p.parseTemplate(false)
 	case tDiv, tDivAssign:
 		p.rescanRegExp()
-		if err := regexp.Validate(p.t.str, p.t.raw); err != nil {
+		var poller regexp.Poller
+		if p.opts.Poll != nil {
+			poller = pollFunc(p.opts.Poll)
+		}
+		if err := regexp.Validate(p.t.str, p.t.raw, poller); err != nil {
 			p.fail(int(start), err.Error())
 		}
 		lit := &ast.RegExpLit{
@@ -1493,4 +1497,11 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 		}
 	}
 	prop.Span = span(start, p.prevEnd)
+}
+
+// pollFunc is a [regexp.Poller] that calls the function.
+type pollFunc func()
+
+func (f pollFunc) Poll() {
+	f()
 }
