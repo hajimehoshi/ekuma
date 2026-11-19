@@ -424,10 +424,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.caches[i.B]
 			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
-				if v := h.slots[c.slot]; v.o != tdzObject {
-					regs[i.A] = v
-					continue
-				}
+				// A cached binding is initialized.
+				regs[i.A] = h.slots[c.slot]
+				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
@@ -437,10 +436,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			c := &fp.caches[i.B]
 			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch && c.kind == cacheOwn {
-				if h.slots[c.slot].o != tdzObject {
-					h.slots[c.slot] = regs[i.A]
-					continue
-				}
+				// A cached binding is initialized.
+				h.slots[c.slot] = regs[i.A]
+				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)

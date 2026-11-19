@@ -83,6 +83,8 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef, strict bool) Value {
 		if v.o == tdzObject {
 			vm.throwTDZ(key)
 		}
+		// c refers only to initialized bindings, which stay initialized, so a hit needs no
+		// check.
 		c.holder = vm.globalLex
 		c.shape = vm.globalLex.shape
 		c.slot = p.slot
@@ -154,6 +156,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 			vm.ThrowTypeError("assignment to constant variable '" + key.str + "'")
 		}
 		vm.globalLex.slots[p.slot] = val
+		// As in getGlobal, c refers only to initialized bindings.
 		c.holder = vm.globalLex
 		c.shape = vm.globalLex.shape
 		c.slot = p.slot
