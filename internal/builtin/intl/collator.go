@@ -279,22 +279,61 @@ func initLocaleCase(vm *engine.VM) {
 			// result. Greek has rules only for uppercasing.
 			switch {
 			case lang == "el" && m.upper:
-				s = wtf8.MapWellFormed(s, greekUpper)
+				s = mapAtStarters(vm, s, greekUpper)
 				checkStringLength(vm, len(s))
 				return vm.NewString(s)
 			case lang == "lt" && m.upper:
-				s = wtf8.MapWellFormed(s, lithuanianUndot)
+				s = mapAtStarters(vm, s, lithuanianUndot)
 			case lang == "lt":
-				s = wtf8.MapWellFormed(s, lithuanianDots)
+				s = mapAtStarters(vm, s, lithuanianDots)
 			case (lang == "tr" || lang == "az") && m.upper:
-				s = strings.ReplaceAll(s, "i", "\u0130")
+				s = mapAtStarters(vm, s, func(s string) string {
+					return strings.ReplaceAll(s, "i", "\u0130")
+				})
 			case lang == "tr" || lang == "az":
-				s = wtf8.MapWellFormed(s, turkicLowerI)
+				s = mapAtStarters(vm, s, turkicLowerI)
 			}
 			checkStringLength(vm, len(s))
 			return vm.CallValue(base, vm.NewString(s))
 		})
 	}
+}
+
+// caseChunk is the number of bytes of a string that a language-sensitive case mapping maps
+// between two checks for an interruption.
+const caseChunk = 1 << 16
+
+// mapAtStarters applies f to the runs of s without lone surrogates, in parts that end before a
+// character of the canonical combining class 0, checking for an interruption between the parts
+// of a long string. f looks at no character beyond such a part.
+func mapAtStarters(vm *engine.VM, s string, f func(string) string) string {
+	return wtf8.MapWellFormed(s, func(s string) string {
+		if len(s) <= caseChunk {
+			return f(s)
+		}
+		var b strings.Builder
+		for len(s) > caseChunk {
+			// The last starter of the chunk begins the next part.
+			i := caseChunk
+			for i > 0 {
+				for i > 0 && !utf8.RuneStart(s[i]) {
+					i--
+				}
+				if r, _ := utf8.DecodeRuneInString(s[i:]); combiningClass(r) == 0 {
+					break
+				}
+				i--
+			}
+			if i <= 0 {
+				break
+			}
+			b.WriteString(f(s[:i]))
+			s = s[i:]
+			vm.Poll()
+		}
+		b.WriteString(f(s))
+		return b.String()
+	})
 }
 
 // lithuanianDots applies the Lithuanian rules of SpecialCasing.txt for lowercasing that add a

@@ -250,7 +250,8 @@ func TestFormatters(t *testing.T) {
 	}
 }
 
-// TestCancelFormatting checks that a context stops formatting a long value or a long list.
+// TestCancelFormatting checks that a context stops formatting or mapping a long value or a long
+// list.
 func TestCancelFormatting(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -271,6 +272,14 @@ func TestCancelFormatting(t *testing.T) {
 		{
 			name: "Array.prototype.toLocaleString of holes",
 			src:  `var a = []; a.length = 2 ** 32 - 1; a.toLocaleString()`,
+		},
+		{
+			name: "Greek uppercasing",
+			src:  `"I\u0300a".repeat(2 ** 23).toLocaleUpperCase("el")`,
+		},
+		{
+			name: "Lithuanian lowercasing",
+			src:  `"I\u0300a".repeat(2 ** 23).toLocaleLowerCase("lt")`,
 		},
 	} {
 		var vm ekuma.VM
