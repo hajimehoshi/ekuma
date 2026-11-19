@@ -78,6 +78,7 @@ func uriEncode(vm *engine.VM, s string, extraUnescaped string) string {
 			n++
 		}
 		uriEncodeRun(vm, &b, s[i:n], extraUnescaped)
+		checkStringLength(vm, b.Len())
 		i = n
 		vm.Poll()
 	}
@@ -228,6 +229,7 @@ func escape(vm *engine.VM, s string) string {
 		}
 		units = wtf8.AppendUTF16(units[:0], s[:n])
 		escapeUnits(&b, units)
+		checkStringLength(vm, b.Len())
 		s = s[n:]
 		vm.Poll()
 	}

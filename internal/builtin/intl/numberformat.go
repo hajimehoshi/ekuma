@@ -433,7 +433,7 @@ func (r *realm) initNumberFormat(vm *engine.VM) {
 		if nf.boundFormat == nil {
 			nf.boundFormat = vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				x := toIntlMathematicalValue(vm, arg(args, 0))
-				return vm.NewString(number.String(nf.f.Format(x)))
+				return formattedString(vm, nf.f.Format(x))
 			})
 		}
 		return engine.ObjectValue(nf.boundFormat)
@@ -444,6 +444,7 @@ func (r *realm) initNumberFormat(vm *engine.VM) {
 		for _, p := range nf.formatRange(vm, args) {
 			b.WriteString(p.Value)
 		}
+		checkStringLength(vm, b.Len())
 		return vm.NewString(b.String())
 	})
 	method(vm, proto, "formatRangeToParts", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -515,12 +516,20 @@ func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 	return engine.ObjectValue(out)
 }
 
+// formattedString returns the string of the formatted parts ps, and throws a RangeError instead
+// when it would be longer than MaxStringLength.
+func formattedString(vm *engine.VM, ps []number.Part) engine.Value {
+	s := number.String(ps)
+	checkStringLength(vm, len(s))
+	return vm.NewString(s)
+}
+
 // initToLocaleString replaces Number.prototype.toLocaleString and
 // BigInt.prototype.toLocaleString with the versions of ECMA-402.
 func initToLocaleString(vm *engine.VM) {
 	format := func(vm *engine.VM, args []engine.Value, x number.Decimal) engine.Value {
 		nf := createNumberFormat(vm, arg(args, 0), arg(args, 1))
-		return vm.NewString(number.String(nf.f.Format(x)))
+		return formattedString(vm, nf.f.Format(x))
 	}
 	method(vm, vm.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)

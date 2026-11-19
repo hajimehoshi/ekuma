@@ -1246,14 +1246,34 @@ func TestStringLengthLimits(t *testing.T) {
 		want string
 	}{
 		{
-			name: "replace results longer than the string length limit",
+			name: "built-in results longer than the string length limit",
 			src: `var s = "x".repeat(` + strconv.Itoa(ekuma.MaxStringLength) + `);
 				var r = [];
-				for (var f of [() => s.replace(/x/, "xx$'"), () => s.replace("x", () => "xx")]) {
+				for (var f of [
+					() => s.replace(/x/, "xx$'"),
+					() => s.replace("x", () => "xx"),
+					() => String.raw({raw: {length: 2 ** 53 - 1, 0: "x", 1: s}}),
+					() => "x".concat(s),
+					() => Error.prototype.toString.call({name: s, message: "x"}),
+					() => RegExp.prototype.toString.call({source: s, flags: ""}),
+					() => Symbol(s).toString(),
+					() => Object.prototype.toString.call({get [Symbol.toStringTag]() { return s; }}),
+					() => Function("x", s, ""),
+				]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
 				}
 				r.join()`,
-			want: "true,true",
+			want: "true,true,true,true,true,true,true,true,true",
+		},
+		{
+			name: "BigInt strings longer than the string length limit",
+			src:  `try { (1n << 2n ** 30n).toString(2); "no error"; } catch (e) { e instanceof RangeError; }`,
+			want: "true",
+		},
+		{
+			name: "hexadecimal strings longer than the string length limit",
+			src:  `try { new Uint8Array(` + strconv.Itoa((ekuma.MaxStringLength+1)/2) + `).toHex(); "no error"; } catch (e) { e instanceof RangeError; }`,
+			want: "true",
 		},
 		{
 			name: "concatenations longer than the string length limit",

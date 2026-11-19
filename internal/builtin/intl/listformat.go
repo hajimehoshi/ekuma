@@ -96,7 +96,13 @@ func (r *realm) initListFormat(vm *engine.VM) {
 	method(vm, proto, "format", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		lf := thisListFormat(vm, this, "format")
 		parts := lf.f.Format(stringListFromIterable(vm, arg(args, 0)))
+		var n int
+		for _, p := range parts {
+			n += len(p.Value)
+			checkStringLength(vm, n)
+		}
 		var b strings.Builder
+		b.Grow(n)
 		for _, p := range parts {
 			b.WriteString(p.Value)
 		}

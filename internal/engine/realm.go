@@ -531,7 +531,11 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 			if i > 0 {
 				sb = append(sb, ',')
 			}
-			sb = append(sb, vm.ToString(a)...)
+			p := vm.ToString(a)
+			if len(sb)+len(p) > MaxStringLength {
+				vm.ThrowRangeError("invalid string length")
+			}
+			sb = append(sb, p...)
 		}
 		params = string(sb)
 		body = vm.ToString(args[len(args)-1])

@@ -511,6 +511,7 @@ func initRegExp(vm *engine.VM) {
 		r := thisObject(vm, this, "RegExp.prototype.toString")
 		src := vm.ToString(vm.Get(r, env.key(env.source)))
 		fl := vm.ToString(vm.Get(r, env.key(env.flags)))
+		checkStringLength(vm, len(src)+len(fl)+2)
 		return vm.NewString(wtf8.Concat(wtf8.Concat("/"+src, "/"), fl))
 	})
 	method(vm, proto, "compile", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -576,7 +577,9 @@ func initRegExp(vm *engine.VM) {
 			vm.ThrowTypeError("RegExp.prototype.source getter called on non-RegExp object")
 		}
 		src, _ := o.RegExpOriginal()
-		return vm.NewString(escapeRegExpPattern(src))
+		escaped := escapeRegExpPattern(src)
+		checkStringLength(vm, len(escaped))
+		return vm.NewString(escaped)
 	})
 
 	symMethod(vm, proto, vm.WellKnownSymbol(engine.SymbolMatch), "[Symbol.match]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -712,7 +715,9 @@ func initRegExp(vm *engine.VM) {
 		if !v.IsString() {
 			vm.ThrowTypeError("RegExp.escape requires a string")
 		}
-		return vm.NewString(regExpEscape(v.Str()))
+		escaped := regExpEscape(v.Str())
+		checkStringLength(vm, len(escaped))
+		return vm.NewString(escaped)
 	})
 
 	initLegacyStatics(vm, ctor, env)

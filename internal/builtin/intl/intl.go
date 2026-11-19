@@ -179,6 +179,13 @@ func arg(args []engine.Value, i int) engine.Value {
 	return engine.Undefined
 }
 
+// checkStringLength throws a RangeError when n is more bytes than a string may have.
+func checkStringLength(vm *engine.VM, n int) {
+	if n > engine.MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
+}
+
 // method defines the non-enumerable function name on o.
 func method(vm *engine.VM, o *engine.Object, name string, length int, f engine.NativeFunc) {
 	vm.Define(o, vm.Intern(name), engine.ObjectValue(vm.NewNative(name, length, f)), engine.FlagsHidden)

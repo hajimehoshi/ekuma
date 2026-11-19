@@ -185,6 +185,7 @@ func (s *objectStrings) forTag(vm *engine.VM, tag string) engine.Value {
 	if v, ok := s.byTag[tag]; ok {
 		return v
 	}
+	checkStringLength(vm, len(tag)+9)
 	v := vm.NewString("[object " + tag + "]")
 	if len(s.byTag) < objectStringsLimit {
 		if s.byTag == nil {
@@ -704,7 +705,9 @@ func initFunction(vm *engine.VM) {
 		if !this.IsCallable() {
 			vm.ThrowTypeError("Function.prototype.toString requires that 'this' be a Function")
 		}
-		return vm.NewString(this.Object().SourceText())
+		src := this.Object().SourceText()
+		checkStringLength(vm, len(src))
+		return vm.NewString(src)
 	})
 	hasInstance := vm.NewNative("[Symbol.hasInstance]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(vm.OrdinaryHasInstance(this, arg(args, 0)))
@@ -855,6 +858,7 @@ func initError(vm *engine.VM) {
 		case msg == "":
 			return vm.NewString(name)
 		}
+		checkStringLength(vm, len(name)+2+len(msg))
 		return vm.NewString(name + ": " + msg)
 	})
 }

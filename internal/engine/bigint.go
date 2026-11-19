@@ -95,6 +95,24 @@ func bigIntString(v Value, r int, poll func()) string {
 	return numconv.FormatBigInt(v.BigInt(), r, poll)
 }
 
+// BigIntToString implements BigInt::toString. It throws a RangeError when the result would be
+// longer than MaxStringLength.
+func (vm *VM) BigIntToString(v Value, radix int) string {
+	if i, ok := v.BigInt64(); ok {
+		return strconv.FormatInt(i, radix)
+	}
+	x := v.BigInt()
+	// x has more than (BitLen(x)-1)/log2(radix) digits.
+	if float64(x.BitLen()-1)/math.Log2(float64(radix)) > MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
+	s := numconv.FormatBigInt(x, radix, vm.Poll)
+	if len(s) > MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
+	return s
+}
+
 // add64 returns x + y, and reports whether it does not overflow.
 func add64(x, y int64) (int64, bool) {
 	s := x + y

@@ -80,6 +80,14 @@ func (b *Builder) WriteUnit(u uint16) {
 	b.WriteRune(rune(u))
 }
 
+// Len returns the number of bytes written so far.
+func (b *Builder) Len() int {
+	if b.long {
+		return b.text.Len()
+	}
+	return b.n
+}
+
 // Packed returns the string and its byte length in packed form when available.
 func (b *Builder) Packed() (uint64, int, bool) {
 	return b.data, b.n, !b.long

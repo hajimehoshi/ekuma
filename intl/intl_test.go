@@ -153,6 +153,12 @@ func TestFormatters(t *testing.T) {
 			want: "agua e iglesia; siete u ocho; שלום ו-abc",
 		},
 		{
+			// The elements are a megabyte each, and together longer than a string may be.
+			name: "list longer than the string length limit",
+			src:  `var s = "x".repeat(1 << 20); try { new Intl.ListFormat("en").format(Array(1100).fill(s)); "no error"; } catch (e) { String(e instanceof RangeError); }`,
+			want: "true",
+		},
+		{
 			name: "relative time",
 			src:  `[new Intl.RelativeTimeFormat("ja", {numeric: "auto"}).format(-1, "day"), new Intl.RelativeTimeFormat("ar-u-nu-arab").format(3, "hours")].join("; ")`,
 			want: "昨日; خلال ٣ ساعات",

@@ -279,7 +279,9 @@ func initLocaleCase(vm *engine.VM) {
 			// result. Greek has rules only for uppercasing.
 			switch {
 			case lang == "el" && m.upper:
-				return vm.NewString(wtf8.MapWellFormed(s, greekUpper))
+				s = wtf8.MapWellFormed(s, greekUpper)
+				checkStringLength(vm, len(s))
+				return vm.NewString(s)
 			case lang == "lt" && m.upper:
 				s = wtf8.MapWellFormed(s, lithuanianUndot)
 			case lang == "lt":
@@ -289,6 +291,7 @@ func initLocaleCase(vm *engine.VM) {
 			case lang == "tr" || lang == "az":
 				s = wtf8.MapWellFormed(s, turkicLowerI)
 			}
+			checkStringLength(vm, len(s))
 			return vm.CallValue(base, vm.NewString(s))
 		})
 	}

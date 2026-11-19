@@ -409,7 +409,9 @@ const encodeChunk = 1 << 20
 // encodeInChunks returns the encoding of b by appendEncode, whose length encodedLen returns,
 // encoding a multiple of group bytes at a time.
 func encodeInChunks(vm *engine.VM, b []byte, group int, encodedLen func(n int) int, appendEncode func(dst, src []byte) []byte) string {
-	out := make([]byte, 0, encodedLen(len(b)))
+	size := encodedLen(len(b))
+	checkStringLength(vm, size)
+	out := make([]byte, 0, size)
 	n := encodeChunk / group * group
 	for len(b) > n {
 		out = appendEncode(out, b[:n])

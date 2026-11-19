@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
-	"strconv"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -125,10 +124,7 @@ func initBigInt(vm *engine.VM) {
 		if radix < 2 || radix > 36 {
 			vm.ThrowRangeError("toString() radix must be between 2 and 36")
 		}
-		if n, ok := x.BigInt64(); ok {
-			return vm.NewString(strconv.FormatInt(n, int(radix)))
-		}
-		return vm.NewString(numconv.FormatBigInt(x.BigInt(), int(radix), vm.Poll))
+		return vm.NewString(vm.BigIntToString(x, int(radix)))
 	})
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x := thisBigInt(vm, this, "toLocaleString")

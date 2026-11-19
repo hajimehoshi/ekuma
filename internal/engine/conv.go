@@ -161,7 +161,7 @@ func (vm *VM) ToString(v Value) string {
 	case kindSymbol:
 		vm.ThrowTypeError("cannot convert a Symbol value to a string")
 	case kindBigInt:
-		return bigIntString(v, 10, vm.Poll)
+		return vm.BigIntToString(v, 10)
 	}
 	return vm.ToString(vm.ToPrimitive(v, HintString))
 }

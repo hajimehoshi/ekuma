@@ -397,6 +397,7 @@ func initSymbol(vm *engine.VM) {
 	}
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		desc, _ := engine.SymbolDescription(thisSymbol(vm, this, "toString"))
+		checkStringLength(vm, len(desc)+8)
 		return vm.NewString("Symbol(" + desc + ")")
 	})
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

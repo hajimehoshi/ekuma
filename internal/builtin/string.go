@@ -66,6 +66,7 @@ func initString(vm *engine.VM) {
 			}
 			b.WriteRune(rune(n))
 		}
+		checkStringLength(vm, b.Len())
 		return vm.StringFromBuilder(&b)
 	})
 	method(vm, ctor, "raw", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -74,9 +75,9 @@ func initString(vm *engine.VM) {
 		n := vm.LengthOfArrayLike(raw)
 		var b xstrings.Builder
 		for i := range n {
-			vm.ToStringValue(getAt(vm, raw, i)).WriteToBuilder(&b)
+			writeBuiltLimited(vm, &b, vm.ToStringValue(getAt(vm, raw, i)))
 			if i+1 < n && int(i)+1 < len(args) {
-				vm.ToStringValue(args[i+1]).WriteToBuilder(&b)
+				writeBuiltLimited(vm, &b, vm.ToStringValue(args[i+1]))
 			}
 		}
 		return vm.StringFromBuilder(&b)
@@ -246,14 +247,19 @@ func initString(vm *engine.VM) {
 			}
 			s.WriteStringTo(&b)
 			for _, a := range args {
-				writeString(vm, &b, a)
+				writeStringLimited(vm, &b, a)
 			}
 			return vm.NewString(b.String())
 		}
 		var b xstrings.Builder
 		s.WriteToBuilder(&b)
 		for _, a := range args {
+			if a.IsString() {
+				writeBuiltLimited(vm, &b, a)
+				continue
+			}
 			writeBuiltString(vm, &b, a)
+			checkStringLength(vm, b.Len())
 		}
 		return vm.StringFromBuilder(&b)
 	})
@@ -382,7 +388,7 @@ func initString(vm *engine.VM) {
 			if o.IsASCII() {
 				return vm.NewString(mapInChunks(vm, o.Str(), asciiMap, anyBoundary))
 			}
-			return vm.NewString(mapWellFormed(vm, o.Str(), f))
+			return vm.NewString(mapLimited(vm, o.Str(), f))
 		})
 	}
 	upper := stringMapping{
@@ -432,7 +438,7 @@ func initString(vm *engine.VM) {
 		if wtf8.IsWellFormed(str) && quick.QuickSpanString(str) == len(str) {
 			return s
 		}
-		return vm.NewString(mapWellFormed(vm, str, form))
+		return vm.NewString(mapLimited(vm, str, form))
 	})
 	method(vm, proto, "isWellFormed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisStringValue(vm, this, "isWellFormed").IsWellFormed())
@@ -622,7 +628,34 @@ func stringFromCharCodes(vm *engine.VM, args []engine.Value) engine.Value {
 	for _, a := range args {
 		b.WriteUnit(uint16(vm.ToUint32(a)))
 	}
+	checkStringLength(vm, b.Len())
 	return vm.NewString(b.String())
+}
+
+// checkStringLength throws a RangeError when n is more bytes than a string may have.
+func checkStringLength(vm *engine.VM, n int) {
+	if n > engine.MaxStringLength {
+		vm.ThrowRangeError("invalid string length")
+	}
+}
+
+// writeBuiltLimited writes the string v to b, and throws a RangeError instead when b would get
+// longer than MaxStringLength.
+func writeBuiltLimited(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
+	checkStringLength(vm, b.Len()+v.StringByteLength())
+	v.WriteToBuilder(b)
+}
+
+// writeStringLimited writes ToString(v) to b, and throws a RangeError when b gets longer than
+// MaxStringLength. A string v that would make b too long is not written.
+func writeStringLimited(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
+	if v.IsString() {
+		checkStringLength(vm, b.Len()+v.StringByteLength())
+		v.WriteStringTo(b)
+		return
+	}
+	writeString(vm, b, v)
+	checkStringLength(vm, b.Len())
 }
 
 type stringIterator struct {
@@ -712,6 +745,23 @@ func mapInChunks(vm *engine.VM, s string, f func(s string, start, end int) strin
 	}
 	b.WriteString(f(s, start, len(s)))
 	return b.String()
+}
+
+// mapLimited is mapWellFormed, throwing a RangeError instead when the result would be longer than
+// MaxStringLength.
+func mapLimited(vm *engine.VM, s string, m stringMapping) string {
+	var n int
+	f := m.f
+	m.f = func(s string, start, end int) string {
+		mapped := f(s, start, end)
+		// The mapped parts make up the result, apart from the lone surrogates between them.
+		n += len(mapped)
+		checkStringLength(vm, n)
+		return mapped
+	}
+	mapped := mapWellFormed(vm, s, m)
+	checkStringLength(vm, len(mapped))
+	return mapped
 }
 
 func mapWellFormed(vm *engine.VM, s string, m stringMapping) string {
