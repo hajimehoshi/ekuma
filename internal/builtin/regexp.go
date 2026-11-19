@@ -770,7 +770,7 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 		e.setLastIndex(vm, rx, 0)
 	}
 	length := s.StringLength()
-	var b wtf8.Builder
+	var b wtf8.StringBuilder
 	next := 0
 	found := false
 	// results holds the matches whose replacements are computed after the last match.
@@ -865,7 +865,7 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 			}
 			if position < next {
 				// The replacement is unused, but computing it can run JavaScript.
-				var rb wtf8.Builder
+				var rb wtf8.StringBuilder
 				writeSubstitution(vm, &rb, matched, s, position, substCaptures{vals: captures}, named, template)
 				continue
 			}
@@ -897,7 +897,7 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 
 // substituteMatch writes to b the part of s from next up to a match of re with the capture
 // indices caps, followed by its replacement by template. It returns the index after the match.
-func substituteMatch(vm *engine.VM, b *wtf8.Builder, re *regexp.Regexp, s engine.Value, caps []int, template string, next int) int {
+func substituteMatch(vm *engine.VM, b *wtf8.StringBuilder, re *regexp.Regexp, s engine.Value, caps []int, template string, next int) int {
 	position := caps[0]
 	if position < next {
 		return next
@@ -1077,7 +1077,7 @@ func (c *substCaptures) get(i int) (string, bool) {
 
 // writeLimited writes s to b, and throws a RangeError instead when b would get longer than
 // MaxStringLength.
-func writeLimited(vm *engine.VM, b *wtf8.Builder, s string) {
+func writeLimited(vm *engine.VM, b *wtf8.StringBuilder, s string) {
 	if b.Len()+len(s) > engine.MaxStringLength {
 		vm.ThrowRangeError("invalid string length")
 	}
@@ -1085,7 +1085,7 @@ func writeLimited(vm *engine.VM, b *wtf8.Builder, s string) {
 }
 
 // writeSubstitution implements GetSubstitution, writing the result to b.
-func writeSubstitution(vm *engine.VM, b *wtf8.Builder, matched string, str engine.Value, position int, captures substCaptures, named engine.Value, template string) {
+func writeSubstitution(vm *engine.VM, b *wtf8.StringBuilder, matched string, str engine.Value, position int, captures substCaptures, named engine.Value, template string) {
 	length := str.StringLength()
 	ncaps := captures.count()
 	for i := 0; i < len(template); {

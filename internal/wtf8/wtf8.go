@@ -499,6 +499,85 @@ func (b *Builder) String() string {
 	return string(b.buf)
 }
 
+// StringBuilder builds a string from code points and strings, like [Builder], and returns it
+// without copying. The zero value is an empty builder. A StringBuilder must not be copied after
+// its first use.
+type StringBuilder struct {
+	sb strings.Builder
+
+	// high is the lone high surrogate that ends the contents when hasHigh is set. It is not in
+	// sb yet, so that a low surrogate written next can combine with it.
+	high    rune
+	hasHigh bool
+}
+
+// Grow reserves room for n more bytes.
+func (b *StringBuilder) Grow(n int) {
+	b.sb.Grow(n)
+}
+
+// Len returns the number of bytes written so far.
+func (b *StringBuilder) Len() int {
+	if b.hasHigh {
+		return b.sb.Len() + 3
+	}
+	return b.sb.Len()
+}
+
+func (b *StringBuilder) flushHigh() {
+	if b.hasHigh {
+		var buf [utf8.UTFMax]byte
+		b.sb.Write(AppendRune(buf[:0], b.high))
+		b.hasHigh = false
+	}
+}
+
+// WriteRune appends the code point r, which may be a surrogate.
+func (b *StringBuilder) WriteRune(r rune) {
+	if b.hasHigh && IsLowSurrogate(r) {
+		b.hasHigh = false
+		b.sb.WriteRune(combine(b.high, r))
+		return
+	}
+	b.flushHigh()
+	if r >= 0xD800 && r < 0xDC00 {
+		b.high, b.hasHigh = r, true
+		return
+	}
+	var buf [utf8.UTFMax]byte
+	b.sb.Write(AppendRune(buf[:0], r))
+}
+
+// WriteString appends the JavaScript string s.
+func (b *StringBuilder) WriteString(s string) {
+	if s == "" {
+		return
+	}
+	if b.hasHigh {
+		if startsWithLow(s) {
+			lo, _ := DecodeRune(s)
+			b.hasHigh = false
+			b.sb.WriteRune(combine(b.high, lo))
+			s = s[3:]
+		} else {
+			b.flushHigh()
+		}
+	}
+	if n := len(s); n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 && s[n-2] < 0xB0 {
+		b.sb.WriteString(s[:n-3])
+		b.high = 0xD000 | rune(s[n-2]&0x3F)<<6 | rune(s[n-1]&0x3F)
+		b.hasHigh = true
+		return
+	}
+	b.sb.WriteString(s)
+}
+
+// String returns the built string.
+func (b *StringBuilder) String() string {
+	b.flushHigh()
+	return b.sb.String()
+}
+
 // FromUTF16 returns the string with the code units u.
 func FromUTF16(u []uint16) string {
 	var b Builder

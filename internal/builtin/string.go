@@ -546,7 +546,7 @@ func initString(vm *engine.VM) {
 			if len(positions) == 0 {
 				return s
 			}
-			var b wtf8.Builder
+			var b wtf8.StringBuilder
 			if !functional {
 				// The size of the result when repStr has no substitutions. A larger one throws below.
 				if size := int64(s.StringByteLength()) + int64(len(positions))*int64(len(repStr)-search.StringByteLength()); size <= engine.MaxStringLength {
