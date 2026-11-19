@@ -258,7 +258,14 @@ const (
 	OpInitFields   // define the instance elements of the class a on the instance b
 	OpAddField     // add the class element with the key b and the value, initializer or initial value in c to the class a; x.a is an Elem kind
 	OpAutoAccessor // a, a+1, a+2 = the backing private name, the getter and the setter of an auto-accessor with the key b
-	OpDecorate     // a step of evaluating a class with decorators; x.a is the Dec kind, which gives the operands
+
+	// The steps of evaluating a class with decorators, which share the state of the evaluation.
+	OpDecorateBegin   // a = a new state for the class with the name b
+	OpDecorateAdd     // add the decorator b with the receiver c to the decorators of the next element of the state a
+	OpDecorateClass   // make the decorators that the state a has so far the decorators of the class
+	OpDecorateElement // add to the state a the class element with the key b and the value or initializer c, each of which may be -1; x.a is its Elem kind
+	OpDecorateApply   // apply the decorators of the elements of the state b, define the elements on the class c and its prototype, and set a to the result of the decorators of the class
+	OpDecorateFinish  // run the static elements and the initializers of the class b of the state a
 
 	// Iteration.
 	OpForIn           // a = the for-in iterator over b
@@ -375,28 +382,10 @@ const (
 	ElemValue = 16
 )
 
-// The kinds of class element that only classes with decorators add with [OpDecorate].
+// The kinds of class element that only classes with decorators add with [OpDecorateElement].
 const (
 	ElemAccessor = ElemSetter + 1 + iota
 	ElemStaticBlock
-)
-
-// The steps of [OpDecorate]. a holds the state of the class evaluation.
-const (
-	// DecBegin sets c to a new state for the class with the name b.
-	DecBegin = iota
-	// DecAdd adds the decorator b with the receiver c to the decorators of the next element.
-	DecAdd
-	// DecClass makes the decorators added so far the decorators of the class.
-	DecClass
-	// DecElement adds the class element with the key b and the value or initializer c,
-	// which is -1 when there is none; x.b is its Elem kind.
-	DecElement
-	// DecApply applies the decorators of the elements, defines the elements on the class b
-	// and its prototype, and sets c to the result of the decorators of the class.
-	DecApply
-	// DecFinish runs the static elements and the initializers of the class b.
-	DecFinish
 )
 
 // The hints of the resources that [OpUsing] adds.

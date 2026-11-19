@@ -2310,12 +2310,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpAutoAccessor:
 			vm.autoAccessorOp(slices.Clip(regs), i)
-		case bytecode.OpDecorate:
-			vm.frames[len(vm.frames)-1].pc = pc + 1
-			pc++
+		case bytecode.OpDecorateBegin, bytecode.OpDecorateAdd, bytecode.OpDecorateClass, bytecode.OpDecorateElement, bytecode.OpDecorateApply, bytecode.OpDecorateFinish:
+			if i.Op == bytecode.OpDecorateElement {
+				// Past the OpExtra, which holds the Elem kind.
+				pc++
+			}
+			vm.frames[len(vm.frames)-1].pc = pc
 			if v, ok := vm.decorateOp(slices.Clip(regs), i, &fp.code[pc-1]); ok {
 				regs = vm.reload(regs, vm.frameBase(), fp)
-				regs[i.C] = v
+				regs[i.A] = v
 			} else {
 				regs = vm.reload(regs, vm.frameBase(), fp)
 			}

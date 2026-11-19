@@ -252,7 +252,7 @@ func (v *validator) instr(pc int, in Instr) error {
 			return err
 		}
 	}
-	return v.special(pc, in, x)
+	return v.special(pc, in)
 }
 
 // operand validates the value of the operand field of the kind k of the instruction at pc.
@@ -334,8 +334,6 @@ func (v *validator) operand(pc int, k OperandKind, field Field, val int32) error
 		if val < 0 || base > ElemStaticBlock || val&ElemValue != 0 && base != ElemField {
 			return v.errorf(pc, ErrValue, "%s is the Elem kind %d", name, val)
 		}
-	case OperandDec:
-		return inEnum(DecFinish)
 	case OperandDispose:
 		return inEnum(DisposeAsync)
 	case OperandNamePrefix:
@@ -374,8 +372,8 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 	return nil
 }
 
-// special validates what is particular to the instruction in at pc, followed by x.
-func (v *validator) special(pc int, in, x Instr) error {
+// special validates what is particular to the instruction in at pc.
+func (v *validator) special(pc int, in Instr) error {
 	code := v.f.Code
 	switch in.Op {
 	case OpGetPropChain:
@@ -387,16 +385,6 @@ func (v *validator) special(pc int, in, x Instr) error {
 		// The RegExp object is the this value or the first argument of the call.
 		if in.A != in.C+1 && in.A != in.C+2 {
 			return v.errorf(pc, ErrValue, "a is %d for the call of %d", in.A, in.C)
-		}
-	case OpDecorate:
-		step := x.A
-		switch {
-		case step != DecBegin && in.A == -1:
-			return v.errorf(pc, ErrRegister, "a is -1 for the Dec kind %d", step)
-		case (step == DecBegin || step == DecApply) && in.C == -1:
-			return v.errorf(pc, ErrRegister, "c is -1 for the Dec kind %d", step)
-		case step != DecElement && x.B != 0:
-			return v.errorf(pc, ErrValue, "x.b is %d for the Dec kind %d", x.B, step)
 		}
 	}
 	return nil

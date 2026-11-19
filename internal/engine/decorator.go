@@ -89,58 +89,57 @@ func (vm *VM) autoAccessorOp(regs []Value, i *bytecode.Instr) {
 	regs[i.A+2] = Value{o: setter}
 }
 
-// decorateOp performs the instruction i, an [bytecode.OpDecorate] followed by the
-// [bytecode.OpExtra] x, on the registers regs. It returns the value for the register c of a step
-// that has one. The registers may move when it returns.
+// decorateOp performs the instruction i, one of [bytecode.OpDecorateBegin] through
+// [bytecode.OpDecorateFinish], on the registers regs; x is the [bytecode.OpExtra] after an
+// [bytecode.OpDecorateElement]. It returns the value for the register a of a step that has one.
+// The registers may move when it returns.
 func (vm *VM) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
-	var b, c Value
-	if i.B >= 0 {
-		b = regs[i.B]
+	switch i.Op {
+	case bytecode.OpDecorateBegin:
+		return vm.newClassDecoration(regs[i.B]), true
+	case bytecode.OpDecorateApply:
+		return vm.applyClassDecorators(regs[i.B].o.extState().(*classDecoration), regs[i.C].o), true
 	}
-	step := int(x.A)
-	switch step {
-	case bytecode.DecBegin:
-		return vm.newClassDecoration(b), true
-	case bytecode.DecApply:
-	default:
-		if i.C >= 0 {
-			c = regs[i.C]
-		}
-	}
-	v := vm.decorate(regs[i.A].o.extState().(*classDecoration), step, b, c, int(x.B))
-	return v, step == bytecode.DecApply
-}
-
-// decorate performs the step of [bytecode.OpDecorate] with the Dec kind step on the state st.
-func (vm *VM) decorate(st *classDecoration, step int, b, c Value, elem int) Value {
-	switch step {
-	case bytecode.DecAdd:
+	st := regs[i.A].o.extState().(*classDecoration)
+	switch i.Op {
+	case bytecode.OpDecorateAdd:
 		st.pending = append(st.pending, decoratorDef{
-			decorator: b,
-			receiver:  c,
+			decorator: regs[i.B],
+			receiver:  regs[i.C],
 		})
-	case bytecode.DecClass:
+	case bytecode.OpDecorateClass:
 		st.classDecorators = st.pending
 		st.pending = nil
-	case bytecode.DecElement:
-		e := &elementDef{
-			kind:       elem &^ bytecode.ElemStatic,
-			static:     elem&bytecode.ElemStatic != 0,
-			key:        b,
-			value:      c.o,
-			decorators: st.pending,
+	case bytecode.OpDecorateElement:
+		var k, v Value
+		if i.B >= 0 {
+			k = regs[i.B]
 		}
-		st.pending = nil
-		if e.kind == bytecode.ElemAccessor {
-			e.storage, e.getter, e.setter = vm.makeAutoAccessor(b)
+		if i.C >= 0 {
+			v = regs[i.C]
 		}
-		st.elements = append(st.elements, e)
-	case bytecode.DecApply:
-		return vm.applyClassDecorators(st, b.o)
-	case bytecode.DecFinish:
-		vm.finishClass(st, b)
+		vm.addDecoratedElement(st, int(x.A), k, v.o)
+	case bytecode.OpDecorateFinish:
+		vm.finishClass(st, regs[i.B])
 	}
-	return Undefined
+	return Undefined, false
+}
+
+// addDecoratedElement adds the class element of the Elem kind elem with the key k and the value
+// or initializer v, which may be nil, to the state st, with the decorators added so far.
+func (vm *VM) addDecoratedElement(st *classDecoration, elem int, k Value, v *Object) {
+	e := &elementDef{
+		kind:       elem &^ bytecode.ElemStatic,
+		static:     elem&bytecode.ElemStatic != 0,
+		key:        k,
+		value:      v,
+		decorators: st.pending,
+	}
+	st.pending = nil
+	if e.kind == bytecode.ElemAccessor {
+		e.storage, e.getter, e.setter = vm.makeAutoAccessor(k)
+	}
+	st.elements = append(st.elements, e)
 }
 
 // makeAutoAccessor returns the backing private name, the getter and the setter of an

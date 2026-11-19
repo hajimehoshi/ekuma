@@ -147,10 +147,6 @@ func TestJumpTargetConvention(t *testing.T) {
 // TestResultConvention tests that an instruction that writes a register writes its value to a,
 // and writes no other register than the ones from a on, apart from the frames of callees.
 func TestResultConvention(t *testing.T) {
-	// notInA are the opcodes that write registers but not a.
-	notInA := map[string]bool{
-		"OpDecorate": true,
-	}
 	// alsoOthers are the opcodes that write a and other registers as well.
 	alsoOthers := map[string]bool{
 		"OpGetSuper":      true,
@@ -166,8 +162,8 @@ func TestResultConvention(t *testing.T) {
 		if len(ops.Writes) == 0 {
 			continue
 		}
-		if got := writesA(ops); got == notInA[name] {
-			t.Errorf("%s: writes a: %t, want %t", name, got, !notInA[name])
+		if !writesA(ops) {
+			t.Errorf("%s: writes registers but not a", name)
 		}
 		others := slices.ContainsFunc(ops.Writes, func(r bytecode.Regs) bool {
 			// The frame of a callee takes the place of the registers from its arguments on.
@@ -176,7 +172,7 @@ func TestResultConvention(t *testing.T) {
 			}
 			return r.At != bytecode.FieldA
 		})
-		if others != alsoOthers[name] && !notInA[name] {
+		if others != alsoOthers[name] {
 			t.Errorf("%s: writes other registers than a: %t, want %t", name, others, alsoOthers[name])
 		}
 	}

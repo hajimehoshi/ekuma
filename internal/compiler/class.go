@@ -66,17 +66,17 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 	if n.Decorators != nil || n.MemberDecorators {
 		state = f.newReg()
 		if nameKey >= 0 {
-			f.decorateStep(bytecode.DecBegin, -1, nameKey, state, 0)
+			f.emit(bytecode.OpDecorateBegin, state, nameKey, 0)
 		} else {
 			r := f.newReg()
 			f.emit(bytecode.OpLoadK, r, f.constStr(name), 0)
-			f.decorateStep(bytecode.DecBegin, -1, r, state, 0)
+			f.emit(bytecode.OpDecorateBegin, state, r, 0)
 			f.free(r)
 		}
 		for _, d := range n.Decorators {
 			f.decorator(state, d)
 		}
-		f.decorateStep(bytecode.DecClass, state, -1, -1, 0)
+		f.emit(bytecode.OpDecorateClass, state, 0, 0)
 	}
 
 	f.classDepth++
@@ -159,13 +159,13 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 
 	if state >= 0 {
 		f.decoratedMembers(n, state, ctor)
-		f.decorateStep(bytecode.DecApply, state, ctor, ctor, 0)
+		f.emit(bytecode.OpDecorateApply, ctor, state, ctor)
 		if inner != nil {
 			f.emit(bytecode.OpMove, inner.reg, ctor, 0)
 			inner.tdz = false
 			inner.initialized = true
 		}
-		f.decorateStep(bytecode.DecFinish, state, ctor, -1, 0)
+		f.emit(bytecode.OpDecorateFinish, state, ctor, 0)
 		f.emit(bytecode.OpMove, dst, ctor, 0)
 		f.control = f.control[:len(f.control)-1]
 		f.popScope()
@@ -363,13 +363,6 @@ func (f *fn) fieldInit(m *ast.ClassMember, obj, k int32, private bool) int32 {
 	return v
 }
 
-// decorateStep emits the [bytecode.OpDecorate] step of the Dec kind step with the
-// operands a, b and c, and the Elem kind elem.
-func (f *fn) decorateStep(step int32, a, b, c, elem int32) {
-	f.emit(bytecode.OpDecorate, a, b, c)
-	f.emit(bytecode.OpExtra, step, elem, 0)
-}
-
 // decorator evaluates the decorator e and adds it to the decorators of the next element of
 // the class whose evaluation state is in the register state.
 func (f *fn) decorator(state int32, e ast.Expr) {
@@ -411,7 +404,7 @@ func (f *fn) decorator(state int32, e ast.Expr) {
 		f.expr(e, base)
 		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
 	}
-	f.decorateStep(bytecode.DecAdd, state, base, base+1, 0)
+	f.emit(bytecode.OpDecorateAdd, state, base, base+1)
 }
 
 // decoratedMembers compiles the members of the class n, which has decorators, into steps of
@@ -476,7 +469,8 @@ func (f *fn) decoratedMembers(n *ast.Class, state, ctor int32) {
 			f.emit(bytecode.OpSetHome, v, ctor, 0)
 			elem |= bytecode.ElemStaticBlock
 		}
-		f.decorateStep(bytecode.DecElement, state, k, v, elem)
+		f.emit(bytecode.OpDecorateElement, state, k, v)
+		f.emit(bytecode.OpExtra, elem, 0, 0)
 		f.free(mark)
 	}
 }

@@ -68,9 +68,6 @@ const (
 	// OperandElem is an Elem kind, such as [ElemField], combined as [ElemStatic] and [ElemValue] allow.
 	OperandElem
 
-	// OperandDec is one of the Dec kinds, such as [DecBegin].
-	OperandDec
-
 	// OperandDispose is one of the Dispose hints, such as [DisposeSync].
 	OperandDispose
 
@@ -111,7 +108,6 @@ type Regs struct {
 const RegsToEnd = -1
 
 // Operands describes the operands of an opcode and the registers that its instructions use.
-// Where an operand selects among forms of an instruction, the description covers every form.
 type Operands struct {
 	// A, B and C are what the operands a, b and c hold.
 	A, B, C OperandKind
@@ -1307,19 +1303,37 @@ var opcodes = [...]struct {
 			Writes: []Regs{{At: FieldA, Len: 3}},
 		},
 	},
-	OpDecorate: {
-		// The Dec kind x.a says which of a, b and c are registers.
-		name: "OpDecorate",
+
+	OpDecorateBegin: {
+		name:     "OpDecorateBegin",
+		operands: unaryOperands,
+	},
+	OpDecorateAdd: {
+		name:     "OpDecorateAdd",
+		operands: storeOperands,
+	},
+	OpDecorateClass: {
+		name:     "OpDecorateClass",
+		operands: useOperands,
+	},
+	OpDecorateElement: {
+		name: "OpDecorateElement",
 		operands: Operands{
-			A:      OperandOptReg,
-			B:      OperandOptReg,
-			C:      OperandOptReg,
-			Extra:  true,
-			XA:     OperandDec,
-			XB:     OperandElem,
-			Reads:  regABC,
-			Writes: regC,
+			A:     OperandReg,
+			B:     OperandOptReg,
+			C:     OperandOptReg,
+			Extra: true,
+			XA:    OperandElem,
+			Reads: regABC,
 		},
+	},
+	OpDecorateApply: {
+		name:     "OpDecorateApply",
+		operands: binaryOperands,
+	},
+	OpDecorateFinish: {
+		name:     "OpDecorateFinish",
+		operands: usePairOperands,
 	},
 
 	OpForIn: {
