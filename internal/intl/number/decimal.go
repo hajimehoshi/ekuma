@@ -281,18 +281,6 @@ func (d Decimal) plain() string {
 	return "0." + strings.Repeat("0", -n) + d.digits
 }
 
-// bigInt returns the coefficient of d.
-func (d Decimal) bigInt() *big.Int {
-	i, _ := new(big.Int).SetString("0"+d.digits, 10)
-	return i
-}
-
-var bigTen = big.NewInt(10)
-
-func pow10(n int) *big.Int {
-	return new(big.Int).Exp(bigTen, big.NewInt(int64(n)), nil)
-}
-
 // unsignedRoundingMode is an unsigned rounding mode of ECMA-402.
 type unsignedRoundingMode int
 
@@ -340,23 +328,28 @@ func unsignedRoundingModeOf(mode string, neg bool) unsignedRoundingMode {
 }
 
 // roundTo returns the non-negative finite x rounded to a multiple of inc times ten to the
-// power of mag with the mode m, as the coefficient of that multiple.
-func roundTo(x Decimal, mag int, inc int64, m unsignedRoundingMode) *big.Int {
+// power of mag with the mode m, as the decimal digits of the coefficient of that multiple
+// without leading zeros. inc is from 1 to 5000.
+func roundTo(x Decimal, mag int, inc int64, m unsignedRoundingMode) string {
 	if x.digits == "" {
-		return new(big.Int)
+		return "0"
 	}
-	// x / (inc × 10^mag) = a / u with integers a and u.
-	s := min(x.exp, mag)
-	a := x.bigInt()
-	if x.exp > s {
-		a.Mul(a, pow10(x.exp-s))
+	// x / 10^mag = n + f with the digits n of an integer and the digits f of a fraction below 1
+	// without trailing zeros. lead is the number of the zeros between the point and f.
+	var n, f string
+	var lead int
+	switch e := x.exp - mag; {
+	case e >= 0:
+		n = x.digits + strings.Repeat("0", e)
+	case len(x.digits)+e > 0:
+		k := len(x.digits) + e
+		n, f = x.digits[:k], x.digits[k:]
+	default:
+		n, f = "0", x.digits
+		lead = -(len(x.digits) + e)
 	}
-	u := big.NewInt(inc)
-	if mag > s {
-		u.Mul(u, pow10(mag-s))
-	}
-	q, r := new(big.Int).QuoRem(a, u, new(big.Int))
-	if r.Sign() == 0 {
+	q, rem := divSmall(n, inc)
+	if rem == 0 && f == "" {
 		return q
 	}
 	up := false
@@ -365,7 +358,22 @@ func roundTo(x Decimal, mag int, inc int64, m unsignedRoundingMode) *big.Int {
 	case roundInfinity:
 		up = true
 	default:
-		c := new(big.Int).Lsh(r, 1).Cmp(u)
+		// c is the sign of 2 × (rem + f) - inc, where f is below 1.
+		var c int
+		switch k := inc - 2*rem; {
+		case f == "":
+			c = -cmpInt(k, 0)
+		case k <= 0:
+			c = 1
+		case k >= 2:
+			c = -1
+		case lead > 0 || f < "5":
+			c = -1
+		case f == "5":
+			c = 0
+		default:
+			c = 1
+		}
 		switch {
 		case c > 0:
 			up = true
@@ -374,14 +382,81 @@ func roundTo(x Decimal, mag int, inc int64, m unsignedRoundingMode) *big.Int {
 			case roundHalfInfinity:
 				up = true
 			case roundHalfEven:
-				up = q.Bit(0) == 1
+				up = (q[len(q)-1]-'0')%2 == 1
 			}
 		}
 	}
 	if up {
-		q.Add(q, big.NewInt(1))
+		q = addOne(q)
 	}
 	return q
+}
+
+func cmpInt(a, b int64) int {
+	switch {
+	case a < b:
+		return -1
+	case a > b:
+		return 1
+	}
+	return 0
+}
+
+// divSmall returns the quotient and the remainder of the non-negative integer of the decimal
+// digits n divided by d, which is from 1 to 5000. The quotient has no leading zeros.
+func divSmall(n string, d int64) (string, int64) {
+	if d == 1 {
+		return n, 0
+	}
+	q := make([]byte, 0, len(n))
+	var r int64
+	for i := 0; i < len(n); i++ {
+		r = r*10 + int64(n[i]-'0')
+		if len(q) > 0 || r >= d {
+			q = append(q, byte('0'+r/d))
+		}
+		r %= d
+	}
+	if len(q) == 0 {
+		return "0", r
+	}
+	return string(q), r
+}
+
+// mulSmall returns the decimal digits of the non-negative integer of the decimal digits n
+// without leading zeros times m, which is from 1 to 5000.
+func mulSmall(n string, m int64) string {
+	if m == 1 || n == "0" {
+		return n
+	}
+	out := make([]byte, len(n)+4)
+	var carry int64
+	for i := len(n) - 1; i >= 0; i-- {
+		p := int64(n[i]-'0')*m + carry
+		out[i+4] = byte('0' + p%10)
+		carry = p / 10
+	}
+	i := 4
+	for carry > 0 {
+		i--
+		out[i] = byte('0' + carry%10)
+		carry /= 10
+	}
+	return string(out[i:])
+}
+
+// addOne returns the decimal digits of the non-negative integer of the decimal digits n plus
+// one.
+func addOne(n string) string {
+	b := []byte(n)
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] != '9' {
+			b[i]++
+			return string(b)
+		}
+		b[i] = '0'
+	}
+	return "1" + string(b)
 }
 
 // rawResult is the result of ToRawPrecision or ToRawFixed.
@@ -402,8 +477,7 @@ func toRawPrecision(x Decimal, minP, maxP int, m unsignedRoundingMode) rawResult
 		digits = strings.Repeat("0", p)
 	} else {
 		e = x.magnitude()
-		q := roundTo(x, e-p+1, 1, m)
-		digits = q.String()
+		digits = roundTo(x, e-p+1, 1, m)
 		if len(digits) > p {
 			// The value rounded up to the next power of ten.
 			e++
@@ -443,9 +517,7 @@ func toRawPrecision(x Decimal, minP, maxP int, m unsignedRoundingMode) rawResult
 // toRawFixed implements ToRawFixed for the non-negative finite x.
 func toRawFixed(x Decimal, minF, maxF, inc int, m unsignedRoundingMode) rawResult {
 	f := maxF
-	q := roundTo(x, -f, int64(inc), m)
-	q.Mul(q, big.NewInt(int64(inc)))
-	s := q.String()
+	s := mulSmall(roundTo(x, -f, int64(inc), m), int64(inc))
 	final := newDecimal(false, s, -f)
 	var intDigits int
 	if f != 0 {

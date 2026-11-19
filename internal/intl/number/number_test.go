@@ -4,6 +4,7 @@
 package number_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
@@ -126,6 +127,19 @@ func TestFormatToString(t *testing.T) {
 				RoundingMode:          "floor",
 			},
 			want: "1.1",
+		},
+		{
+			// Only the digits near the rounding position matter, however long the input is.
+			name: "long fraction above a tie",
+			in:   "1.005" + strings.Repeat("0", 1<<23) + "1",
+			digits: number.Digits{
+				MinimumIntegerDigits:  1,
+				MaximumFractionDigits: 2,
+				RoundingType:          number.FractionDigits,
+				RoundingIncrement:     1,
+				RoundingMode:          "halfTrunc",
+			},
+			want: "1.01",
 		},
 	} {
 		got, _ := tc.digits.FormatToString(number.Parse(tc.in))
