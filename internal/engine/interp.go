@@ -51,6 +51,14 @@ var thrownErrorKinds = [...]ErrorKind{
 	bytecode.ThrowReferenceError: ErrorKindReference,
 }
 
+// primObjects maps the values that OpJumpNotSEqP compares with to their o.
+var primObjects = [...]*Object{
+	bytecode.PrimUndefined: nil,
+	bytecode.PrimNull:      nullObject,
+	bytecode.PrimFalse:     falseObject,
+	bytecode.PrimTrue:      trueObject,
+}
+
 // maxFrames is the call depth at which a RangeError is thrown.
 const maxFrames = 10000
 
@@ -1127,11 +1135,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNullish:
-			if regs[i.B].IsNullish() {
+			if x := regs[i.B]; x.IsNullish() || i.C != 0 && x.isHTMLDDA() {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfNotNullish:
-			if !regs[i.B].IsNullish() {
+			if x := regs[i.B]; !x.IsNullish() && (i.C == 0 || !x.isHTMLDDA()) {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfUndef:
@@ -1303,6 +1311,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpJumpNotSNeK:
 			if x := regs[i.B]; x.o == numberObject && x.n == fp.consts[i.C].n {
+				pc = int(i.A)
+			}
+		case bytecode.OpJumpNotSEqP:
+			if regs[i.B].o != primObjects[i.C] {
+				pc = int(i.A)
+			}
+		case bytecode.OpJumpNotSNeP:
+			if regs[i.B].o == primObjects[i.C] {
 				pc = int(i.A)
 			}
 		case bytecode.OpJumpIfInt:

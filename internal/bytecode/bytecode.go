@@ -156,8 +156,8 @@ const (
 	OpJump             // pc = a
 	OpJumpIf           // if b then pc = a
 	OpJumpIfNot        // if !b then pc = a
-	OpJumpIfNullish    // if b is null or undefined then pc = a
-	OpJumpIfNotNullish // if b is neither null nor undefined then pc = a
+	OpJumpIfNullish    // if b is null or undefined then pc = a; with the flag c, also if b has [[IsHTMLDDA]], as b == null
+	OpJumpIfNotNullish // if b is neither null nor undefined then pc = a; with the flag c, also not with [[IsHTMLDDA]], as b != null
 	OpJumpIfUndef      // if b is undefined then pc = a
 	OpJumpIfNotUndef   // if b is not undefined then pc = a
 	OpJumpIfInt        // if b is the integer c then pc = a
@@ -177,6 +177,8 @@ const (
 	OpJumpNotGeK  // if !(b >= Consts[c]) then pc = a
 	OpJumpNotSEqK // if !(b === Consts[c]) then pc = a
 	OpJumpNotSNeK // if !(b !== Consts[c]) then pc = a
+	OpJumpNotSEqP // if !(b === c) then pc = a, where c is one of [PrimUndefined] through [PrimTrue]
+	OpJumpNotSNeP // if !(b !== c) then pc = a, where c is one of [PrimUndefined] through [PrimTrue]
 
 	// Calls. The callee is in b and the this value in b+1. The result goes to a, which may be b,
 	// once the call returns: a call that throws leaves a as it is.
@@ -313,6 +315,14 @@ func (op Opcode) RegOperand() Opcode {
 const (
 	ThrowTypeError = iota
 	ThrowReferenceError
+)
+
+// The values that [OpJumpNotSEqP] and [OpJumpNotSNeP] compare with.
+const (
+	PrimUndefined = iota
+	PrimNull
+	PrimFalse
+	PrimTrue
 )
 
 // The flags of [OpDeclareGlobalVar].

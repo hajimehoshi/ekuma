@@ -442,12 +442,70 @@ var compareConstJumps = map[ast.Op]bytecode.Opcode{
 	ast.OpStrictNe: bytecode.OpJumpNotSNeK,
 }
 
+// primLiteral returns the operand c of OpJumpNotSEqP for e when e is undefined, null or a boolean
+// literal, and -1 otherwise.
+func (f *fn) primLiteral(e ast.Expr) int32 {
+	switch e := e.(type) {
+	case *ast.NullLit:
+		return bytecode.PrimNull
+	case *ast.BoolLit:
+		if e.Value {
+			return bytecode.PrimTrue
+		}
+		return bytecode.PrimFalse
+	case *ast.Identifier:
+		// The global undefined cannot be changed.
+		if e.Name == "undefined" && f.resolve(e.Name).kind == refGlobal && f.dynDepth(e.Name) == 0 {
+			return bytecode.PrimUndefined
+		}
+	case *ast.UnaryExpr:
+		if _, ok := e.Arg.(*ast.NumberLit); ok && e.Op == ast.OpVoid {
+			return bytecode.PrimUndefined
+		}
+	}
+	return -1
+}
+
+// literalJump compiles the comparison n of a value with undefined, null or a boolean as a jump
+// that is taken when the result of n is want, and reports whether n is such a comparison.
+func (f *fn) literalJump(n *ast.BinaryExpr, want bool) (int, bool) {
+	x, p := n.Left, f.primLiteral(n.Right)
+	if p < 0 {
+		x, p = n.Right, f.primLiteral(n.Left)
+	}
+	if p < 0 {
+		return 0, false
+	}
+	switch n.Op {
+	case ast.OpStrictEq, ast.OpStrictNe:
+		op := bytecode.OpJumpNotSNeP
+		if (n.Op == ast.OpStrictEq) != want {
+			op = bytecode.OpJumpNotSEqP
+		}
+		return f.emit(op, 0, f.immediateOperand(x), p), true
+	case ast.OpEq, ast.OpNe:
+		if p != bytecode.PrimUndefined && p != bytecode.PrimNull {
+			return 0, false
+		}
+		op := bytecode.OpJumpIfNotNullish
+		if (n.Op == ast.OpEq) == want {
+			op = bytecode.OpJumpIfNullish
+		}
+		// An object with [[IsHTMLDDA]] is loosely equal to null.
+		return f.emit(op, 0, f.immediateOperand(x), 1), true
+	}
+	return 0, false
+}
+
 // jumpIfFalse compiles the condition e and returns the jumps that are taken when it is false.
 func (f *fn) jumpIfFalse(e ast.Expr) []int {
 	mark := f.top
 	defer f.free(mark)
 	switch n := e.(type) {
 	case *ast.BinaryExpr:
+		if j, ok := f.literalJump(n, false); ok {
+			return []int{j}
+		}
 		if op, ok := compareJumps[n.Op]; ok {
 			l := f.immediateOperand(n.Left, n.Right)
 			if k, isNum := numberLit(n.Right); isNum {
@@ -502,6 +560,9 @@ func (f *fn) jumpIfTrue(e ast.Expr) []int {
 			return f.jumpIfFalse(n.Arg)
 		}
 	case *ast.BinaryExpr:
+		if j, ok := f.literalJump(n, true); ok {
+			return []int{j}
+		}
 		if _, ok := compareJumps[n.Op]; ok {
 			// Jump over a jump: the fused instructions only exist for the false case.
 			no := f.jumpIfFalse(e)
