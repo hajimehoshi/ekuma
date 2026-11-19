@@ -121,6 +121,9 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 	}
 	ps := make([]uint16, len(rs))
 	for i, r := range rs {
+		if poll != nil && i%pollSteps == pollSteps-1 {
+			poll()
+		}
 		ps[i] = props(r)
 	}
 	var gs graphemeState
