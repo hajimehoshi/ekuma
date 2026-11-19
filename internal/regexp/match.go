@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // Positions.
@@ -111,7 +112,7 @@ func (re *Regexp) match(m *Matcher, s string, start int, sticky bool, poller Pol
 			if from > len(s) {
 				return nil
 			}
-			i := strings.Index(s[from:], prog.need)
+			i := xstrings.Index(s[from:], prog.need, m.searchPoll())
 			if i < 0 {
 				return nil
 			}
@@ -136,7 +137,7 @@ func (re *Regexp) match(m *Matcher, s string, start int, sticky bool, poller Pol
 func (m *Matcher) skip(prog *program, pos int) int {
 	s := m.s
 	if prog.prefix != "" {
-		i := strings.Index(s[pos:], prog.prefix)
+		i := xstrings.Index(s[pos:], prog.prefix, m.searchPoll())
 		if i < 0 {
 			return -1
 		}
@@ -362,6 +363,14 @@ func (m *Matcher) setCap(i, pos int) {
 func (m *Matcher) setReg(i, v int) {
 	m.stack = append(m.stack, frame{kind: fReg, n: i, pos: m.regs[i]})
 	m.regs[i] = v
+}
+
+// searchPoll returns the poll function for a search of the subject, or nil.
+func (m *Matcher) searchPoll() func() {
+	if m.poller == nil {
+		return nil
+	}
+	return m.poller.Poll
 }
 
 func (m *Matcher) poll() {

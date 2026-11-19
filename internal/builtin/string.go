@@ -137,7 +137,7 @@ func initString(vm *engine.VM) {
 		s := thisStringValue(vm, this, "indexOf")
 		sub := vm.ToStringValue(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
-		return engine.Number(float64(s.UnitIndexOf(sub, from)))
+		return engine.Number(float64(s.UnitIndexOf(sub, from, vm.Poll)))
 	})
 	method(vm, proto, "lastIndexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "lastIndexOf")
@@ -147,7 +147,7 @@ func initString(vm *engine.VM) {
 		if p := vm.ToNumber(arg(args, 1)); p == p {
 			from = engine.RelativeIndex(math.Max(numconv.ToIntegerOrInfinity(p), 0), n)
 		}
-		return engine.Number(float64(s.UnitLastIndexOf(sub, from)))
+		return engine.Number(float64(s.UnitLastIndexOf(sub, from, vm.Poll)))
 	})
 	noRegExp := func(vm *engine.VM, v engine.Value, what string) {
 		if isRegExp(vm, v) {
@@ -159,7 +159,7 @@ func initString(vm *engine.VM) {
 		noRegExp(vm, arg(args, 0), "includes")
 		sub := vm.ToStringValue(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
-		return engine.Bool(s.UnitIndexOf(sub, from) >= 0)
+		return engine.Bool(s.UnitIndexOf(sub, from, vm.Poll) >= 0)
 	})
 	method(vm, proto, "startsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "startsWith")
@@ -494,7 +494,7 @@ func initString(vm *engine.VM) {
 		var pacer engine.Pacer
 		for uint32(len(out)) < limit {
 			pacer.Step(vm)
-			pos := s.UnitIndexOf(sep, start)
+			pos := s.UnitIndexOf(sep, start, vm.Poll)
 			if pos < 0 {
 				out = append(out, vm.Substring(s, start, s.StringLength()))
 				break
@@ -535,13 +535,13 @@ func initString(vm *engine.VM) {
 				positions = firstPosition[:0]
 			}
 			var pacer engine.Pacer
-			for pos := s.UnitIndexOf(search, 0); pos >= 0; {
+			for pos := s.UnitIndexOf(search, 0, vm.Poll); pos >= 0; {
 				pacer.Step(vm)
 				positions = append(positions, pos)
 				if !all || pos+advance > n {
 					break
 				}
-				pos = s.UnitIndexOf(search, pos+advance)
+				pos = s.UnitIndexOf(search, pos+advance, vm.Poll)
 			}
 			if len(positions) == 0 {
 				return s

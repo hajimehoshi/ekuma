@@ -7,11 +7,11 @@ import (
 	"maps"
 	"slices"
 	"strconv"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
+	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // Property attributes.
@@ -1634,8 +1634,8 @@ func (o *Object) Str() string {
 }
 
 // UnitIndexOf returns the index in code units of the first occurrence of sub in the string o
-// at or after from, or -1.
-func (o *Object) UnitIndexOf(sub string, from int) int {
+// at or after from, or -1. poll, which may be nil, is called now and then during a long search.
+func (o *Object) UnitIndexOf(sub string, from int, poll func()) int {
 	s := o.Str()
 	n := o.StringLength()
 	if from > n {
@@ -1645,21 +1645,21 @@ func (o *Object) UnitIndexOf(sub string, from int) int {
 		return from
 	}
 	if o.IsASCII() {
-		i := strings.Index(s[from:], sub)
+		i := xstrings.Index(s[from:], sub, poll)
 		if i < 0 {
 			return -1
 		}
 		return from + i
 	}
 	if mayMatchInsidePair(sub) {
-		return o.findUnits(sub, from, false)
+		return o.findUnits(sub, from, false, poll)
 	}
 	p := o.seek(from)
 	if p.Low {
 		// This pattern can only start at a code point boundary.
 		p = wtf8.Seek(s, p, from+1)
 	}
-	i := strings.Index(s[p.Byte:], sub)
+	i := xstrings.Index(s[p.Byte:], sub, poll)
 	if i < 0 {
 		return -1
 	}
@@ -1667,8 +1667,8 @@ func (o *Object) UnitIndexOf(sub string, from int) int {
 }
 
 // UnitLastIndexOf returns the index in code units of the last occurrence of sub in the string o
-// that starts at or before from, or -1.
-func (o *Object) UnitLastIndexOf(sub string, from int) int {
+// that starts at or before from, or -1. poll is as for [Object.UnitIndexOf].
+func (o *Object) UnitLastIndexOf(sub string, from int, poll func()) int {
 	n := o.StringLength()
 	subLen := wtf8.Len(sub)
 	from = min(from, n-subLen)
@@ -1679,14 +1679,14 @@ func (o *Object) UnitLastIndexOf(sub string, from int) int {
 		return from
 	}
 	if !o.IsASCII() && mayMatchInsidePair(sub) {
-		return o.findUnits(sub, from, true)
+		return o.findUnits(sub, from, true, poll)
 	}
 	s := o.Str()
 	if o.IsASCII() {
-		return strings.LastIndex(s[:from+subLen], sub)
+		return xstrings.LastIndex(s[:from+subLen], sub, poll)
 	}
 	end := o.seek(from + subLen)
-	i := strings.LastIndex(s[:end.Byte], sub)
+	i := xstrings.LastIndex(s[:end.Byte], sub, poll)
 	if i < 0 {
 		return -1
 	}
@@ -1706,29 +1706,55 @@ func mayMatchInsidePair(sub string) bool {
 	return wtf8.IsLowSurrogate(first) || wtf8.IsHighSurrogate(last)
 }
 
-// findUnits returns the nearest match to from in the given direction, or -1.
-func (o *Object) findUnits(sub string, from int, backward bool) int {
+// findUnitsPollSteps is the number of code units that findUnits reads between two calls of its
+// poll function.
+const findUnitsPollSteps = 1 << 16
+
+// findUnits returns the start of the match of sub nearest to from in the given direction, or -1,
+// comparing code units by the Knuth-Morris-Pratt algorithm.
+func (o *Object) findUnits(sub string, from int, backward bool, poll func()) int {
 	units := wtf8.AppendUTF16(nil, sub)
-	last := o.StringLength() - len(units)
-	step := 1
+	m := len(units)
 	if backward {
-		step = -1
+		slices.Reverse(units)
+	}
+	// border[j] is the length of the longest proper border of units[:j+1].
+	border := make([]int32, m)
+	for j, k := 1, 0; j < m; j++ {
+		for k > 0 && units[k] != units[j] {
+			k = int(border[k-1])
+		}
+		if units[k] == units[j] {
+			k++
+		}
+		border[j] = int32(k)
 	}
 	s := o.Str()
-	p := o.seek(from)
-	for i := from; i >= 0 && i <= last; i += step {
-		p = wtf8.Seek(s, p, i)
-		q := p
-		matched := true
-		for j, unit := range units {
-			q = wtf8.Seek(s, q, i+j)
-			if wtf8.At(s, q) != unit {
-				matched = false
-				break
-			}
+	n := o.StringLength()
+	// i runs over the code units of o from from, or backwards from the last unit of a match
+	// that starts at from.
+	i, step := from, 1
+	if backward {
+		i, step = min(from+m, n)-1, -1
+	}
+	p := o.seek(i)
+	for k, steps := 0, 0; i >= 0 && i < n; i += step {
+		if steps++; steps%findUnitsPollSteps == 0 && poll != nil {
+			poll()
 		}
-		if matched {
-			return i
+		p = wtf8.Seek(s, p, i)
+		c := wtf8.At(s, p)
+		for k > 0 && units[k] != c {
+			k = int(border[k-1])
+		}
+		if units[k] == c {
+			k++
+		}
+		if k == m {
+			if backward {
+				return i
+			}
+			return i - m + 1
 		}
 	}
 	return -1

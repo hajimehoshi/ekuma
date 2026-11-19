@@ -169,33 +169,34 @@ func (v Value) StringByteLength() int {
 }
 
 // UnitIndexOf returns the first UTF-16 index of sub at or after from, or -1.
-// Both values must be strings, and from must be nonnegative.
-func (v Value) UnitIndexOf(sub Value, from int) int {
+// Both values must be strings, and from must be nonnegative. poll, which may be nil, is called
+// now and then during a long search.
+func (v Value) UnitIndexOf(sub Value, from int, poll func()) int {
 	if len(v.o.str) > shortstrings.MaxBytes && (len(sub.o.str) > shortstrings.MaxBytes || sub.o.flags&objInterned != 0) {
-		return v.o.UnitIndexOf(sub.o.Str(), from)
+		return v.o.UnitIndexOf(sub.o.Str(), from, poll)
 	}
-	return v.shortStringIndex(sub, from, false)
+	return v.shortStringIndex(sub, from, false, poll)
 }
 
 // UnitLastIndexOf returns the last UTF-16 index of sub at or before from, or -1.
-// Both values must be strings, and from must be nonnegative.
-func (v Value) UnitLastIndexOf(sub Value, from int) int {
+// Both values must be strings, and from must be nonnegative. poll is as for [Value.UnitIndexOf].
+func (v Value) UnitLastIndexOf(sub Value, from int, poll func()) int {
 	if len(v.o.str) > shortstrings.MaxBytes && (len(sub.o.str) > shortstrings.MaxBytes || sub.o.flags&objInterned != 0) {
-		return v.o.UnitLastIndexOf(sub.o.Str(), from)
+		return v.o.UnitLastIndexOf(sub.o.Str(), from, poll)
 	}
-	return v.shortStringIndex(sub, from, true)
+	return v.shortStringIndex(sub, from, true, poll)
 }
 
-func (v Value) shortStringIndex(sub Value, from int, backward bool) int {
+func (v Value) shortStringIndex(sub Value, from int, backward bool, poll func()) int {
 	n, subN := v.StringByteLength(), sub.StringByteLength()
 	if n > shortstrings.MaxBytes {
 		// The dispatch requires a packed operand, so sub is packed here.
 		data := shortstrings.Bytes(math.Float64bits(sub.n))
 		text := string(data[:subN])
 		if backward {
-			return v.o.UnitLastIndexOf(text, from)
+			return v.o.UnitLastIndexOf(text, from, poll)
 		}
-		return v.o.UnitIndexOf(text, from)
+		return v.o.UnitIndexOf(text, from, poll)
 	}
 	if subN > shortstrings.MaxBytes {
 		return -1
