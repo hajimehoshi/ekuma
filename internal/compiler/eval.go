@@ -413,7 +413,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 		}
 		for _, name := range varNames {
 			if funcs[name] == nil && !annexBOnly[name] {
-				f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarDeletable, 0)
+				f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarDeletable, -1)
 			}
 		}
 	default:

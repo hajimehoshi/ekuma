@@ -448,7 +448,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpDeclareGlobalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.declareGlobalVar(fp.keys[i.A], int(i.B), regs[i.C])
+			var fn Value
+			if i.C >= 0 {
+				fn = regs[i.C]
+			}
+			vm.declareGlobalVar(fp.keys[i.A], int(i.B), fn)
 		case bytecode.OpDeclareGlobalLex:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.declareGlobalLex(fp.keys[i.A], i.B != 0)

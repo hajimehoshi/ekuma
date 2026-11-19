@@ -55,7 +55,7 @@ const (
 	OpSetGlobalStrict        // like [OpSetGlobal], but a ReferenceError when the global does not exist
 	OpResolveGlobal          // a = whether the global variable Keys[b] exists; b is a site
 	OpDeleteName             // a = delete the global variable Keys[b]
-	OpDeclareGlobalVar       // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
+	OpDeclareGlobalVar       // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function with GlobalVarFunc and is -1 otherwise
 	OpDeclareGlobalLex       // declare the global lexical binding Keys[a], constant with the flag b
 	OpInitGlobalLex          // initialize the global lexical binding Keys[b] with a
 	OpCheckGlobalDecl        // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds

@@ -1542,7 +1542,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 	for _, d := range prog.Scope.Decls {
 		if d.Kind == ast.DeclVar {
 			if _, ok := funcs[d.Name]; !ok {
-				f.emit(bytecode.OpDeclareGlobalVar, f.key(d.Name), 0, 0)
+				f.emit(bytecode.OpDeclareGlobalVar, f.key(d.Name), 0, -1)
 			}
 		}
 	}
