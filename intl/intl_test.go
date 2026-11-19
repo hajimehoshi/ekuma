@@ -112,6 +112,27 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 			want: "Υ",
 		},
 		{
+			// A string longer than 65536 bytes is mapped in parts, and the language rules
+			// need the context of the characters around a part's end.
+			name: "case mapping around the end of a part",
+			src: `var failed = [];
+				for (var n = 65528; n < 65544; n++) {
+					var p = "a".repeat(n);
+					for (var [lang, c, upper] of [
+						["tr", "İ", false], ["az", "İ", false], ["tr", "İ", false],
+						["lt", "i̇", true], ["lt", "İ̀", false],
+						["el", "ᾳ", true], ["el", "Ά", true],
+					]) {
+						var map = s => upper ? s.toLocaleUpperCase(lang) : s.toLocaleLowerCase(lang);
+						if (map(p + c).slice(n) !== map(c)) {
+							failed.push(lang + " " + n);
+						}
+					}
+				}
+				failed.join()`,
+			want: "",
+		},
+		{
 			name: "array toLocaleString",
 			src:  `[1234.5, 1n].toLocaleString("de") + " " + new Float64Array([0.5]).toLocaleString("en", {style: "percent"})`,
 			want: "1.234,5,1 50%",

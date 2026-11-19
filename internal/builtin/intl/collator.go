@@ -329,11 +329,11 @@ func mapAtStarters(vm *engine.VM, s string, f func(s string, poll func()) string
 	})
 }
 
-// lastStarter returns the offset of the last character of the combining class 0 in s other
-// than its first, or -1.
+// lastStarter returns the offset of the last whole character of the combining class 0 in s
+// other than its first, or -1. s may end inside a character.
 func lastStarter(s string) int {
 	for i := len(s) - 1; i > 0; i-- {
-		if !utf8.RuneStart(s[i]) {
+		if !utf8.RuneStart(s[i]) || !utf8.FullRuneInString(s[i:]) {
 			continue
 		}
 		if r, _ := utf8.DecodeRuneInString(s[i:]); combiningClass(r) == 0 {
