@@ -1357,11 +1357,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpIn:
 			vm.frames[len(vm.frames)-1].pc = pc
-			c := regs[i.C]
-			if !c.IsObject() {
+			o := regs[i.B]
+			if !o.IsObject() {
 				vm.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
-			r := vm.HasProperty(c.o, vm.QueryKey(regs[i.B]))
+			r := vm.HasProperty(o.o, vm.QueryKey(regs[i.C]))
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = Bool(r)
 		case bytecode.OpInstanceof:
@@ -1373,11 +1373,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(r)
 		case bytecode.OpHasPrivate:
 			vm.frames[len(vm.frames)-1].pc = pc
-			c := regs[i.C]
-			if !c.IsObject() {
+			o := regs[i.B]
+			if !o.IsObject() {
 				vm.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
-			_, ok := c.o.shape.lookup(regs[i.B].o)
+			_, ok := o.o.shape.lookup(regs[i.C].o)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpGetPrivate:
 			v := regs[i.B]

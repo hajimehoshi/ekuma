@@ -273,7 +273,7 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 		name := f.newReg()
 		f.loadVar("#"+e.Name.Name, name, false)
 		obj := f.exprAny(e.Right)
-		f.emit(bytecode.OpHasPrivate, dst, name, obj)
+		f.emit(bytecode.OpHasPrivate, dst, obj, name)
 		f.free(mark)
 	case *ast.AssignExpr:
 		f.assign(e, dst)
@@ -342,6 +342,10 @@ func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
 		}
 	}
 	r := f.immediateOperand(n.Right)
+	if n.Op == ast.OpIn {
+		// OpIn takes the object before the key.
+		l, r = r, l
+	}
 	f.emit(binaryOps[n.Op], dst, l, r)
 	if n.Op == ast.OpInstanceof {
 		f.emit(bytecode.OpExtra, f.site("prototype"), 0, 0)
