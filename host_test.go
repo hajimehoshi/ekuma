@@ -7,7 +7,9 @@ import (
 	"math"
 	"math/rand/v2"
 	"strconv"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
@@ -92,4 +94,156 @@ func TestTimeZone(t *testing.T) {
 	if got, want := run(t, &vm, `new Date().getTimezoneOffset()`), strconv.Itoa(-off/60); got != want {
 		t.Errorf("nil: got %q, want %q", got, want)
 	}
+}
+
+// TestClock checks that Date and Temporal read the current time from the clock, the time
+// value rounded down, and both clamped to the range of Date.
+func TestClock(t *testing.T) {
+	var vm ekuma.VM
+	for _, tc := range []struct {
+		now  time.Time
+		want string
+	}{
+		{
+			now:  time.Unix(0, -1),
+			want: "-1 -1",
+		},
+		{
+			now:  time.Unix(1e13, 0),
+			want: "8640000000000000 8640000000000000000000",
+		},
+		{
+			now:  time.Unix(-1e13, 0),
+			want: "-8640000000000000 -8640000000000000000000",
+		},
+	} {
+		vm.SetClock(func() time.Time {
+			return tc.now
+		})
+		if got := run(t, &vm, `Date.now() + " " + Temporal.Now.instant().epochNanoseconds`); got != tc.want {
+			t.Errorf("%v: got %q, want %q", tc.now, got, tc.want)
+		}
+	}
+}
+
+func TestClockNil(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetClock(func() time.Time {
+		return time.Unix(0, 0)
+	})
+	vm.SetClock(nil)
+	before := time.Now().UnixMilli()
+	got, err := strconv.ParseFloat(run(t, &vm, `Date.now()`), 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := time.Now().UnixMilli()
+	if got < float64(before) || got > float64(after) {
+		t.Errorf("got %v, want a time in [%d, %d]", got, before, after)
+	}
+}
+
+// TestClockSystemTimeZone checks that a system time zone without an identifier becomes the
+// offset time zone of its offset at the time of the clock.
+func TestClockSystemTimeZone(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetTimeZone(namedDaylightSavingZone(t, "", zoneType{offset: 1 * 3600, abbr: "CET"}, zoneType{offset: 2 * 3600, abbr: "CEST"},
+		1616893200, // 2021-03-28T01:00:00Z
+		1635642000, // 2021-10-31T01:00:00Z
+	))
+	for _, tc := range []struct {
+		now  time.Time
+		want string
+	}{
+		{
+			now:  time.Date(2021, 1, 1, 0, 0, 0, 0, time.UTC),
+			want: "+01:00",
+		},
+		{
+			now:  time.Date(2021, 7, 1, 0, 0, 0, 0, time.UTC),
+			want: "+02:00",
+		},
+	} {
+		vm.SetClock(func() time.Time {
+			return tc.now
+		})
+		if got := run(t, &vm, `Temporal.Now.timeZoneId()`); got != tc.want {
+			t.Errorf("%v: got %q, want %q", tc.now, got, tc.want)
+		}
+	}
+}
+
+// TestClockReads checks that Temporal.Now reads the clock once when the system time zone has
+// an identifier.
+func TestClockReads(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetTimeZone(time.UTC)
+	var reads int
+	vm.SetClock(func() time.Time {
+		reads++
+		return time.Unix(0, 0)
+	})
+	run(t, &vm, `void Temporal.Now.plainDateTimeISO()`)
+	if reads != 1 {
+		t.Errorf("reads: got %d, want 1", reads)
+	}
+}
+
+// TestClockAtomicsWait checks that a synchronous wait lasts until the clock passes its
+// timeout, however long the real time it takes.
+func TestClockAtomicsWait(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var ms atomic.Int64
+		var vm ekuma.VM
+		vm.SetCanBlock(true)
+		vm.SetClock(func() time.Time {
+			return time.UnixMilli(ms.Load())
+		})
+		start := time.Now()
+		go func() {
+			time.Sleep(time.Second)
+			ms.Store(10)
+		}()
+		if got, want := run(t, &vm, `Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10)`), "timed-out"; got != want {
+			t.Errorf("Atomics.wait: got %q, want %q", got, want)
+		}
+		if d := time.Since(start); d < time.Second {
+			t.Errorf("Atomics.wait returned after %v, before the clock reached its timeout", d)
+		}
+	})
+}
+
+// TestClockAtomicsWaitAsync checks that the timeout of an asynchronous wait ends when the
+// clock passes it, both when the jobs run and in [ekuma.VM.AwaitJobs].
+func TestClockAtomicsWaitAsync(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var ms atomic.Int64
+		var vm ekuma.VM
+		vm.SetClock(func() time.Time {
+			return time.UnixMilli(ms.Load())
+		})
+		run(t, &vm, `
+			var log = [];
+			Atomics.waitAsync(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10).value.then(r => log.push(r));
+		`)
+		// The real time passes the timeout, and the clock does not.
+		time.Sleep(time.Second)
+		if got, want := run(t, &vm, `log.join()`), ""; got != want {
+			t.Errorf("log before the clock reached the timeout: got %q, want %q", got, want)
+		}
+		start := time.Now()
+		go func() {
+			time.Sleep(time.Second)
+			ms.Store(10)
+		}()
+		if ok, err := vm.AwaitJobs(t.Context()); err != nil || !ok {
+			t.Errorf("AwaitJobs: got %t, %v, want true, nil", ok, err)
+		}
+		if d := time.Since(start); d < time.Second {
+			t.Errorf("AwaitJobs returned after %v, before the clock reached the timeout", d)
+		}
+		if got, want := run(t, &vm, `log.join()`), "timed-out"; got != want {
+			t.Errorf("log: got %q, want %q", got, want)
+		}
+	})
 }

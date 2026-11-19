@@ -367,9 +367,13 @@ func roundToOptions(vm *engine.VM, v engine.Value, key string) *engine.Object {
 	return getOptionsObject(vm, v)
 }
 
-// systemTimeZone returns the time zone of the host for Temporal.
-func systemTimeZone(vm *engine.VM) temporal.TimeZone {
-	return temporal.SystemTimeZone(vm.DefaultTimeZone())
+// SystemTimeZone returns the time zone of the host for Temporal and Intl.DateTimeFormat.
+func SystemTimeZone(vm *engine.VM) temporal.TimeZone {
+	tz := vm.DefaultTimeZone()
+	if z, ok := temporal.SystemTimeZone(tz); ok {
+		return z
+	}
+	return temporal.SystemOffsetTimeZone(tz, vm.SystemUTCEpochMilliseconds())
 }
 
 // toTimeZone implements ToTemporalTimeZoneIdentifier, returning the time zone.
@@ -385,7 +389,7 @@ func toTimeZone(vm *engine.VM, v engine.Value) temporal.TimeZone {
 	check(err)
 	var system temporal.TimeZone
 	if !isOff {
-		system = systemTimeZone(vm)
+		system = SystemTimeZone(vm)
 	}
 	return must(temporal.TimeZoneFromIdentifier(name, off, isOff, system))
 }

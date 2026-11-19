@@ -25,9 +25,40 @@ func (vm *VM) SetDefaultTimeZone(tz datetime.TimeZone) {
 	vm.timeZone = tz
 }
 
+// SetClock sets now as the clock of [VM.Now]. A nil now restores [time.Now].
+func (vm *VM) SetClock(now func() time.Time) {
+	vm.clock = now
+}
+
+// The limits of the current time: the limits of time values, and of epoch nanoseconds of
+// Temporal.Instant.
+var (
+	maxSystemTime = time.Unix(8.64e12, 0)
+	minSystemTime = time.Unix(-8.64e12, 0)
+)
+
+// Now returns the current time of the clock, clamped to the range of time values. It
+// implements HostSystemUTCEpochNanoseconds.
+func (vm *VM) Now() time.Time {
+	var t time.Time
+	if vm.clock == nil {
+		t = time.Now()
+	} else {
+		t = vm.clock()
+	}
+	if t.After(maxSystemTime) {
+		return maxSystemTime
+	}
+	if t.Before(minSystemTime) {
+		return minSystemTime
+	}
+	return t
+}
+
 // SystemUTCEpochMilliseconds returns the current time as a time value.
 func (vm *VM) SystemUTCEpochMilliseconds() float64 {
-	return float64(time.Now().UnixMilli())
+	// UnixMilli rounds toward negative infinity, as the floor of the specification does.
+	return float64(vm.Now().UnixMilli())
 }
 
 // SetRandomSource sets src as the source of [VM.RandomNumber]. A nil src restores the global

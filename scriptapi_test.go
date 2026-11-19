@@ -665,6 +665,12 @@ type zoneType struct {
 // the time zone database of the machine.
 func daylightSavingZone(t *testing.T, std, dst zoneType, start, end uint32) *time.Location {
 	t.Helper()
+	return namedDaylightSavingZone(t, "Test/"+std.abbr, std, dst, start, end)
+}
+
+// namedDaylightSavingZone is [daylightSavingZone] with the name name.
+func namedDaylightSavingZone(t *testing.T, name string, std, dst zoneType, start, end uint32) *time.Location {
+	t.Helper()
 	be := binary.BigEndian
 	var b []byte
 	b = append(b, "TZif"...)
@@ -681,7 +687,7 @@ func daylightSavingZone(t *testing.T, std, dst zoneType, start, end uint32) *tim
 	b = be.AppendUint32(b, uint32(dst.offset))
 	b = append(b, 1, byte(len(std.abbr)+1))
 	b = append(b, std.abbr+"\x00"+dst.abbr+"\x00"...)
-	loc, err := time.LoadLocationFromTZData("Test/"+std.abbr, b)
+	loc, err := time.LoadLocationFromTZData(name, b)
 	if err != nil {
 		t.Fatalf("LoadLocationFromTZData: %v", err)
 	}

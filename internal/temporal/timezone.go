@@ -4,9 +4,9 @@
 package temporal
 
 import (
+	"math"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 )
@@ -61,38 +61,46 @@ func OffsetTimeZone(offsetMinutes int) TimeZone {
 }
 
 // SystemTimeZone returns the time zone tz of the host as a TimeZone, implementing
-// SystemTimeZoneIdentifier. A zone without a usable identifier becomes the offset time zone of
-// its current offset.
-func SystemTimeZone(tz datetime.TimeZone) TimeZone {
+// SystemTimeZoneIdentifier. It reports false for a zone without a usable identifier, whose time
+// zone [SystemOffsetTimeZone] gives.
+func SystemTimeZone(tz datetime.TimeZone) (TimeZone, bool) {
 	id, z, ok := datetime.ZoneOf(tz)
-	if ok && id != "" {
-		if strings.EqualFold(id, "UTC") || strings.EqualFold(id, "Etc/UTC") || strings.EqualFold(id, "Etc/GMT") || strings.EqualFold(id, "GMT") {
-			return UTC
-		}
-		if name, offset, isOffset, err := ParseTimeZoneIdentifier(id); err == nil {
-			if isOffset {
-				return OffsetTimeZone(offset)
-			}
-			// A zone that the platform knows by the same name is the same zone.
-			if lid, primary, lz, ok := datetime.LoadZone(name); ok {
-				return TimeZone{
-					id:      lid,
-					primary: primary,
-					zone:    lz,
-				}
-			}
-			return TimeZone{
-				id:      name,
-				primary: name,
-				zone:    z,
-			}
-		}
+	if !ok || id == "" {
+		return TimeZone{}, false
 	}
+	if strings.EqualFold(id, "UTC") || strings.EqualFold(id, "Etc/UTC") || strings.EqualFold(id, "Etc/GMT") || strings.EqualFold(id, "GMT") {
+		return UTC, true
+	}
+	name, offset, isOffset, err := ParseTimeZoneIdentifier(id)
+	if err != nil {
+		return TimeZone{}, false
+	}
+	if isOffset {
+		return OffsetTimeZone(offset), true
+	}
+	// A zone that the platform knows by the same name is the same zone.
+	if lid, primary, lz, ok := datetime.LoadZone(name); ok {
+		return TimeZone{
+			id:      lid,
+			primary: primary,
+			zone:    lz,
+		}, true
+	}
+	return TimeZone{
+		id:      name,
+		primary: name,
+		zone:    z,
+	}, true
+}
+
+// SystemOffsetTimeZone returns the time zone of the host tz that has no usable identifier: the
+// offset time zone of its offset at now, the current time value.
+func SystemOffsetTimeZone(tz datetime.TimeZone, now float64) TimeZone {
 	var off int
-	if ok {
-		off = z.OffsetSeconds(time.Now().Unix())
+	if _, z, ok := datetime.ZoneOf(tz); ok {
+		off = z.OffsetSeconds(int64(math.Floor(now / 1000)))
 	} else {
-		o, _ := tz.Offset(float64(time.Now().UnixMilli()))
+		o, _ := tz.Offset(now)
 		off = int(o / 1000)
 	}
 	if off == 0 {

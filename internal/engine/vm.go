@@ -7,6 +7,7 @@ import (
 	"cmp"
 	"math/rand/v2"
 	"sync/atomic"
+	"time"
 	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
@@ -467,6 +468,9 @@ type VM struct {
 
 	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
 	matchResultShapes matchResultShapes
+
+	// clock gives the current time, or is nil for time.Now.
+	clock func() time.Time
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

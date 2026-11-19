@@ -264,7 +264,7 @@ func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) 
 	vm.asyncWaiters[w] = struct{}{}
 	// A timeout that a time.Duration cannot hold, about 292 years, never expires.
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
-		vm.timedWaiters.add(w, time.Now().Add(time.Duration(ns)))
+		vm.timedWaiters.add(w, vm.Now().Add(time.Duration(ns)))
 	}
 	return Value{o: w.promise}, true
 }
@@ -342,17 +342,25 @@ func (blk *SharedDataBlock) removeWaiters(byteIndex int, count float64) []*waite
 func (vm *VM) suspend(w *waiter, timeout float64) Value {
 	// An interruption leaves the list.
 	defer w.block.unlist(w)
+	var deadline time.Time
+	var timer *time.Timer
 	var expired <-chan time.Time
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
-		t := time.NewTimer(time.Duration(ns))
-		defer t.Stop()
-		expired = t.C
+		deadline = vm.Now().Add(time.Duration(ns))
+		timer = time.NewTimer(time.Duration(ns))
+		defer timer.Stop()
+		expired = timer.C
 	}
 	for {
 		select {
 		case <-w.done:
 			return vm.NewString("ok")
 		case <-expired:
+			// The timer measures real time, which the clock may run behind.
+			if d := deadline.Sub(vm.Now()); d > 0 {
+				timer.Reset(d)
+				continue
+			}
 			if w.block.unlist(w) {
 				return vm.NewString("timed-out")
 			}
@@ -438,9 +446,11 @@ func (vm *VM) AwaitJobs() bool {
 // awaitWake blocks until the mailbox of vm is poked or the earliest timeout of its waiters
 // passes, and reports whether the timeout passed.
 func (vm *VM) awaitWake() bool {
+	var deadline time.Time
 	var expired <-chan time.Time
 	if !vm.timedWaiters.isEmpty() {
-		d := time.Until(vm.timedWaiters.heap[0].deadline)
+		deadline = vm.timedWaiters.heap[0].deadline
+		d := deadline.Sub(vm.Now())
 		if d <= 0 {
 			return true
 		}
@@ -450,7 +460,8 @@ func (vm *VM) awaitWake() bool {
 	}
 	select {
 	case <-expired:
-		return true
+		// The timer measures real time, which the clock may run behind.
+		return !deadline.After(vm.Now())
 	case <-vm.mailbox.wake:
 		return false
 	}
@@ -477,7 +488,7 @@ func (vm *VM) expireWaiters() bool {
 	if vm.timedWaiters.isEmpty() {
 		return false
 	}
-	now := time.Now()
+	now := vm.Now()
 	var expired bool
 	for {
 		w, ok := vm.timedWaiters.popExpired(now)

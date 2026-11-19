@@ -166,7 +166,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 	case tzv.IsUndefined() && toLocaleStringTZ != nil:
 		dtf.tz = *toLocaleStringTZ
 	case tzv.IsUndefined():
-		dtf.tz = temporal.SystemTimeZone(vm.DefaultTimeZone())
+		dtf.tz = builtin.SystemTimeZone(vm)
 	default:
 		if toLocaleStringTZ != nil {
 			vm.ThrowTypeError("the timeZone option is not allowed in Temporal.ZonedDateTime.prototype.toLocaleString")
@@ -179,7 +179,7 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		case isOffset:
 			dtf.tz = temporal.OffsetTimeZone(offset)
 		default:
-			z, ok := temporal.GetAvailableNamedTimeZone(id, temporal.SystemTimeZone(vm.DefaultTimeZone()))
+			z, ok := temporal.GetAvailableNamedTimeZone(id, builtin.SystemTimeZone(vm))
 			if !ok {
 				vm.ThrowRangeError("invalid time zone: " + name)
 			}

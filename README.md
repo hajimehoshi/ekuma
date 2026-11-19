@@ -180,7 +180,8 @@ Host callbacks must not call `runtime.Goexit`: it is not a panic and leaves the 
 
 `Date` and `Temporal` use
 the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
-`VM.SetTimeZone` sets one. `VM.SetRandomSource` sets the source of `Math.random`.
+`VM.SetTimeZone` sets one. `VM.SetClock` sets the clock of the current time, and
+`VM.SetRandomSource` the source of `Math.random`.
 
 ### Intl
 
@@ -274,7 +275,6 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   - Property descriptors, and listing the keys of an object
   - Creating or awaiting a promise from Go other than through the `Promise` constructor and
     `then`
-  - Replacing the clock of `Date.now`, which `testing/synctest` fakes in Go tests
   - Limits on stack depth or memory, and statistics of the memory that a VM uses
 
 ## Running the tests
