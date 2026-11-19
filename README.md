@@ -70,18 +70,18 @@ faster):
 ```
                      V8 benchmark  QuickJS
                      suite v7      microbench    Version
-Ekuma                 1.00         1.00          v0.0.0-20261118193413-b9d4e40e8453
-goja                  4.80         4.03          v0.0.0-20261117122431-0802ca125248
-Sobek                 4.75         4.00          v0.0.0-20261116133901-d070e0f1f200
-otto                 23.0 (9/10)    n/a          v0.5.1
-modernc.org/quickjs   3.49         2.84          v0.27.0
-QJS                   4.64 (6/10)  4.46 (69/74)  v0.0.6
-QuickJS (C)           1.07         0.754         v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.596        0.511         v0.44.0
-v8go                  0.0304       0.0983        v0.44.0
+Ekuma                 1.00         1.00          v0.0.0-20261119181810-eb2d4fe68006
+goja                  6.62         4.60          v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 6.62         4.61          v0.0.0-20261119094010-6eceb967bb5b
+otto                 33.0 (9/10)    n/a          v0.5.1
+modernc.org/quickjs   4.83         3.19          v0.27.0
+QJS                   6.31 (6/10)  5.08 (69/74)  v0.0.6
+QuickJS (C)           1.48         0.858         v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.821        0.582         v0.44.0
+v8go                  0.0418       0.101         v0.44.0
 ```
 
-Measured on 2026-11-19: Apple M3 Pro, macOS 27.2, go1.27.4.
+Measured on 2026-11-20: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
@@ -92,6 +92,7 @@ Measured on 2026-11-19: Apple M3 Pro, macOS 27.2, go1.27.4.
   syntax. Failed rounds are excluded from timing ratios.
 - See [`_bench`](_bench/README.md) for the benchmarks, measurement methodology, and individual
   results.
+- See [CPU profiling](_bench/PROFILING.md) for capturing and interpreting an Ekuma CPU profile.
 
 ## Host API
 

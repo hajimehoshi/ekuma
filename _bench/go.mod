@@ -3,9 +3,9 @@ module github.com/hajimehoshi/ekuma/_bench
 go 1.27
 
 require (
-	github.com/dop251/goja v0.0.0-20261117122431-0802ca125248
+	github.com/dop251/goja v0.0.0-20261118204651-8dfece3d1e1d
 	github.com/fastschema/qjs v0.0.6
-	github.com/grafana/sobek v0.0.0-20261116133901-d070e0f1f200
+	github.com/grafana/sobek v0.0.0-20261119094010-6eceb967bb5b
 	github.com/hajimehoshi/ekuma v0.0.0-00010101000000-000000000000
 	github.com/robertkrimen/otto v0.5.1
 	github.com/tommie/v8go v0.44.0
@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/dlclark/regexp2/v2 v2.11.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.13.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
