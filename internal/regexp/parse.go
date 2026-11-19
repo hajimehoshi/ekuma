@@ -244,12 +244,22 @@ func (p *parser) parsePattern() (t *tree, err error) {
 			r.node.refs = refs
 		}
 	}
+	// Two of the paths of a name might both participate exactly when two that are adjacent in
+	// the lexicographic order might: a path between two such paths shares their common prefix,
+	// and it might participate with one of the two.
+	var paths []groupPath
 	for _, list := range byName {
-		for i, a := range list {
-			for _, b := range list[:i] {
-				if mightBothParticipate(p.groupPaths[a], p.groupPaths[b]) {
-					p.fail("duplicate capture group name")
-				}
+		if len(list) < 2 {
+			continue
+		}
+		paths = paths[:0]
+		for _, g := range list {
+			paths = append(paths, p.groupPaths[g])
+		}
+		slices.SortFunc(paths, comparePaths)
+		for i := 1; i < len(paths); i++ {
+			if mightBothParticipate(paths[i-1], paths[i]) {
+				p.fail("duplicate capture group name")
 			}
 		}
 	}
@@ -288,6 +298,13 @@ func mightBothParticipate(a, b groupPath) bool {
 		return a[i].disj != b[i].disj
 	}
 	return true
+}
+
+// comparePaths compares the paths a and b lexicographically, by the disjunctions first.
+func comparePaths(a, b groupPath) int {
+	return slices.CompareFunc(a, b, func(x, y pathStep) int {
+		return cmp.Or(cmp.Compare(x.disj, y.disj), cmp.Compare(x.alt, y.alt))
+	})
 }
 
 func (p *parser) newNode(op nodeOp) *node {

@@ -5,6 +5,7 @@ package regexp_test
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -198,6 +199,24 @@ func TestSyntaxErrors(t *testing.T) {
 		if !errors.Is(err, regexp.ErrSyntax) {
 			t.Errorf("/%.40s/%s: got %v, want a syntax error", tc.pattern, tc.flags, err)
 		}
+	}
+}
+
+// TestManyDuplicateNames checks patterns with many groups of one name.
+func TestManyDuplicateNames(t *testing.T) {
+	var b strings.Builder
+	for i := range 1 << 18 {
+		if i > 0 {
+			b.WriteByte('|')
+		}
+		fmt.Fprintf(&b, "(?<g>a%d)", i)
+	}
+	alts := b.String()
+	if err := regexp.Validate(alts, ""); err != nil {
+		t.Errorf("groups in different alternatives: got %v, want nil", err)
+	}
+	if err := regexp.Validate("(?:"+alts+")(?<g>b)", ""); !errors.Is(err, regexp.ErrSyntax) {
+		t.Errorf("a group after the alternatives: got %v, want a syntax error", err)
 	}
 }
 
