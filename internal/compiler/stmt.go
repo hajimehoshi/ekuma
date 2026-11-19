@@ -815,8 +815,16 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 }
 
 func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {
-	d := f.newReg()
-	f.expr(s.Discriminant, d)
+	var tests []ast.Expr
+	if _, ok := s.Discriminant.(*ast.Identifier); ok {
+		for i := range s.Cases {
+			if t := s.Cases[i].Test; t != nil {
+				tests = append(tests, t)
+			}
+		}
+	}
+	// All the case tests run before any case body.
+	d := f.operand(s.Discriminant, tests...)
 	c := &ctl{
 		kind:     ctlLoop,
 		labels:   labels,
@@ -834,10 +842,11 @@ func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {
 			continue
 		}
 		mark := f.top
-		t := f.exprAny(cs.Test)
-		eq := f.newReg()
-		f.emit(bytecode.OpStrictEq, eq, d, t)
-		jumps[i] = f.emit(bytecode.OpJumpIf, 0, eq, 0)
+		if k, isNum := numberLit(cs.Test); isNum {
+			jumps[i] = f.emit(bytecode.OpJumpNotSNeK, 0, d, f.constNum(k))
+		} else {
+			jumps[i] = f.emit(bytecode.OpJumpNotSNe, 0, d, f.exprAny(cs.Test))
+		}
 		f.free(mark)
 	}
 	miss := f.jump()
