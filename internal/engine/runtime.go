@@ -25,12 +25,21 @@ func (vm *VM) throwReadOnly(v Value, k PropKey) {
 	vm.ThrowTypeError("cannot assign to read only property '" + vm.KeyString(k) + "' of " + vm.DisplayString(v))
 }
 
-// callee names the function that the call instruction at pc calls, for an error message.
+// callAt returns the index of the call instruction of fp that ends before pc, past its extra.
+func callAt(fp *funcProto, pc int) int {
+	pc--
+	for fp.code[pc].Op == bytecode.OpExtra {
+		pc--
+	}
+	return pc
+}
+
+// calleeName names the function that the call instruction at pc calls, for an error message.
 func (vm *VM) calleeName(fp *funcProto, pc int) string {
-	target := fp.code[pc].A
+	target := fp.code[pc].B
 	for j := pc - 1; j >= 0 && j >= pc-64; j-- {
 		in := fp.code[j]
-		if in.A != target {
+		if in.Op == bytecode.OpExtra || in.A != target {
 			continue
 		}
 		switch in.Op {
@@ -44,18 +53,24 @@ func (vm *VM) calleeName(fp *funcProto, pc int) string {
 	return ""
 }
 
+// throwNotCallable throws the TypeError for the call instruction of fp that ends before pc,
+// whose callee is not a function.
 func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
+	pc = callAt(fp, pc)
 	name := vm.calleeName(fp, pc)
 	if name == "" {
-		name = vm.DisplayString(regs[fp.code[pc].A])
+		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
 	vm.ThrowTypeError(name + " is not a function")
 }
 
+// throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
+// whose callee is not a constructor.
 func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
+	pc = callAt(fp, pc)
 	name := vm.calleeName(fp, pc)
 	if name == "" {
-		name = vm.DisplayString(regs[fp.code[pc].A])
+		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
 	vm.ThrowTypeError(name + " is not a constructor")
 }

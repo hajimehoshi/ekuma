@@ -164,14 +164,8 @@ func (f *fn) operand(e ast.Expr, rest ...ast.Expr) int32 {
 
 // exprNew compiles e into a newly allocated register and returns it.
 func (f *fn) exprNew(e ast.Expr) int32 {
-	r := f.top
-	switch e.(type) {
-	case *ast.CallExpr, *ast.NewExpr:
-		// The call window starts at r, the first free register, and the result is left there.
-		f.expr(e, r)
-		return f.newReg()
-	}
-	f.expr(e, f.newReg())
+	r := f.newReg()
+	f.expr(e, r)
 	return r
 }
 
@@ -1021,8 +1015,7 @@ func (f *fn) isForwardedArguments(e ast.Expr) bool {
 	return ok && id.Name == "arguments" && f.forwardsArgs
 }
 
-// call compiles the call n and leaves its result in dst, or drops it when dst is -1. A dst that
-// is the first free register becomes the first register of the call window.
+// call compiles the call n and leaves its result in dst, or drops it when dst is -1.
 func (f *fn) call(n *ast.CallExpr, dst int32) {
 	mark := f.top
 	defer f.free(mark)
@@ -1136,8 +1129,8 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 					if f.isTail(n) {
 						op = bytecode.OpTailApplyFwd
 					}
-					f.emit(op, base, mappedArguments(f.node), this)
-					f.result(dst, base)
+					f.emit(op, dst, base, this)
+					f.emit(bytecode.OpExtra, mappedArguments(f.node), 0, 0)
 					return
 				}
 			}
@@ -1191,8 +1184,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			if f.isTail(n) {
 				op = bytecode.OpTailCallFwd
 			}
-			f.emit(op, base, 0, 0)
-			f.result(dst, base)
+			f.emit(op, dst, base, 0)
 			return
 		}
 	}
@@ -1204,10 +1196,11 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			evalOp, spreadOp = bytecode.OpTailCallEval, bytecode.OpTailCallSpread
 		}
 		if op == bytecode.OpCallEval {
-			f.emit(evalOp, base, -1, f.evalSite())
+			site := f.evalSite()
+			f.emit(evalOp, dst, base, -1)
+			f.emit(bytecode.OpExtra, site, 0, 0)
 		}
-		f.emit(spreadOp, base, 0, 0)
-		f.result(dst, base)
+		f.emit(spreadOp, dst, base, 0)
 		return
 	}
 	for i, a := range n.Args {
@@ -1217,7 +1210,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		}
 		f.exprNew(a)
 	}
-	site := int32(0)
+	site := int32(-1)
 	if op == bytecode.OpCallEval {
 		site = f.evalSite()
 	}
@@ -1236,8 +1229,10 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if receiver >= 0 {
 		f.emit(bytecode.OpRegExpArg, base, receiver, 1)
 	}
-	f.emit(op, base, int32(len(n.Args)), site)
-	f.result(dst, base)
+	f.emit(op, dst, base, int32(len(n.Args)))
+	if site >= 0 {
+		f.emit(bytecode.OpExtra, site, 0, 0)
+	}
 }
 
 // regExpSite adds the regular expression literal e to the function and returns its index.
@@ -1249,7 +1244,7 @@ func (f *fn) regExpSite(e *ast.RegExpLit) int32 {
 	return int32(len(f.f.RegExps) - 1)
 }
 
-// result moves the result of a call from the register src to dst, unless dst is -1.
+// result moves the value of the register src to dst, unless dst is -1 or src itself.
 func (f *fn) result(dst, src int32) {
 	if dst >= 0 && dst != src {
 		f.emit(bytecode.OpMove, dst, src, 0)
@@ -1265,15 +1260,16 @@ func (f *fn) superCall(n *ast.CallExpr, dst int32) {
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
 		f.setPos(n.Start())
-		f.emit(bytecode.OpSuperSpread, base, 0, 0)
+		f.emit(bytecode.OpSuperSpread, base, base, 0)
 	} else {
 		for _, a := range n.Args {
 			f.exprNew(a)
 		}
 		f.setPos(n.Start())
-		f.emit(bytecode.OpSuperCall, base, int32(len(n.Args)), 0)
+		f.emit(bytecode.OpSuperCall, base, base, int32(len(n.Args)))
 	}
-	// The result becomes this, which must not be initialized yet.
+	// The result becomes this, which must not be initialized yet, so it reaches dst only
+	// after the check.
 	r := f.resolve("this")
 	t := f.newReg()
 	switch r.kind {
@@ -1305,16 +1301,15 @@ func (f *fn) newExpr(n *ast.NewExpr, dst int32) {
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())
 		f.setPos(n.Start())
-		f.emit(bytecode.OpNewSpread, base, 0, 0)
-		f.result(dst, base)
+		f.emit(bytecode.OpNewSpread, dst, base, 0)
 		return
 	}
 	for _, a := range n.Args {
 		f.exprNew(a)
 	}
 	f.setPos(n.Start())
-	f.emit(bytecode.OpNew, base, int32(len(n.Args)), f.site("prototype"))
-	f.result(dst, base)
+	f.emit(bytecode.OpNew, dst, base, int32(len(n.Args)))
+	f.emit(bytecode.OpExtra, f.site("prototype"), 0, 0)
 }
 
 func (f *fn) template(n *ast.TemplateLit, dst int32) {
@@ -1380,8 +1375,7 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	if f.isTail(n) {
 		op = bytecode.OpTailCall
 	}
-	f.emit(op, base, int32(len(n.Quasi.Exprs)+1), 0)
-	f.result(dst, base)
+	f.emit(op, dst, base, int32(len(n.Quasi.Exprs)+1))
 }
 
 func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
@@ -1783,8 +1777,7 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.emit(bytecode.OpMove, callBase, it+1, 0)
 	f.emit(bytecode.OpMove, callBase+1, it, 0)
 	f.emit(bytecode.OpMove, callBase+2, recv, 0)
-	f.emit(bytecode.OpCall, callBase, 1, 0)
-	f.emit(bytecode.OpMove, res, callBase, 0)
+	f.emit(bytecode.OpCall, res, callBase, 1)
 	f.free(callBase)
 	step := f.jump()
 
@@ -1847,7 +1840,7 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.emit(bytecode.OpMove, callBase, it+1, 0)
 	f.emit(bytecode.OpMove, callBase+1, it, 0)
 	f.emit(bytecode.OpMove, callBase+2, recv, 0)
-	f.emit(bytecode.OpCall, callBase, 1, 0)
+	f.emit(bytecode.OpCall, callBase, callBase, 1)
 	f.emit(bytecode.OpAwait, res, callBase, 0)
 	f.free(callBase)
 	step := f.jump()

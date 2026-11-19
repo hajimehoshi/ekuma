@@ -235,7 +235,7 @@ func (f *fn) elision(it int32) {
 	f.emit(bytecode.OpLoadUndef, it, 0, 0)
 	f.emit(bytecode.OpMove, t+1, it+1, 0)
 	f.emit(bytecode.OpMove, t+2, t, 0)
-	f.emit(bytecode.OpCall, t+1, 0, 0)
+	f.emit(bytecode.OpCall, t+1, t+1, 0)
 	f.emit(bytecode.OpIterCheckResult, t+1, 0, 0)
 	f.emit(bytecode.OpGetProp, t+1, t+1, f.site("done"))
 	done := f.emit(bytecode.OpJumpIf, 0, t+1, 0)

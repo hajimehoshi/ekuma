@@ -305,7 +305,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 			base := f.newRegs(2)
 			f.emit(bytecode.OpMove, base, s.value, 0)
 			f.emit(bytecode.OpMove, base+1, ctor, 0)
-			f.emit(bytecode.OpCall, base, 0, 0)
+			f.emit(bytecode.OpCall, -1, base, 0)
 			f.free(base)
 			continue
 		}

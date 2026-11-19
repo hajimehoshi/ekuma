@@ -273,6 +273,15 @@ func (fr *frame) top() int {
 	return fr.base + fr.fp.nregs + 1
 }
 
+// resultReg returns the register of a frame of fp that receives the result of the call
+// instruction i. When i drops the result, it is the spare register past the others.
+func resultReg(i *bytecode.Instr, fp *funcProto) int32 {
+	if i.A < 0 {
+		return int32(fp.nregs)
+	}
+	return i.A
+}
+
 // run executes the top frame until the frame at index stop returns, and returns its value.
 // An exception that leaves that frame is thrown to the Go caller.
 func (vm *VM) run(stop int) Value {
@@ -1311,23 +1320,23 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 
 		case bytecode.OpCall:
-			a := int(i.A)
-			if f := regs[a].o; !onHeap && f != nil && f.fn != nil && !f.fn.classConstructor {
+			b := int(i.B)
+			if f := regs[b].o; !onHeap && f != nil && f.fn != nil && !f.fn.classConstructor {
 				if c := f.fn.code; c != nil && !c.isGenerator && !c.isAsync && c.realm == vm.curRealm && c.caches != nil {
-					argc := int(i.B)
-					argBase := base + a + 2
+					argc := int(i.C)
+					argBase := base + b + 2
 					end := argBase + max(argc, c.nregs+1)
 					n := len(vm.frames)
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
 						// Reuse the available stack and frame storage for a prepared call.
-						this := regs[a+1]
+						this := regs[b+1]
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
 						clearFrameRegs(vm.stack[argBase:], min(argc, c.nparams), c.nclear)
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]
-						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, i.A, false
+						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, resultReg(i, fp), false
 						fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, -1, nil, nil, nil
 						vm.sp = argBase + c.nregs + 1
 						base, fp, cl, code, pc = argBase, c, f, c.code, 0
@@ -1336,43 +1345,44 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), resultReg(i, fp), false, nil
 			goto callRegs
 		case bytecode.OpCallCall:
-			a := int(i.A)
-			if regs[a].o == vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a+1].o, regs[a+2], a+3, int(i.B)-1, i.A, false, nil
+			b := int(i.B)
+			if regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b+1].o, regs[b+2], b+3, int(i.C)-1, resultReg(i, fp), false, nil
 				if argc < 0 {
 					callThis, argc = Undefined, 0
 				}
 			} else {
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), resultReg(i, fp), false, nil
 			}
 			goto callRegs
 		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
-			a := int(i.A)
-			if regs[a].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
+			b := int(i.B)
+			pc++
+			if regs[b].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
 				// Something else is called apply here: pass it the this value and a real
 				// arguments object.
-				regs[a+2] = regs[i.C]
-				regs[a+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, i.B != 0)}
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, 2, i.A, false, nil
+				regs[b+2] = regs[i.C]
+				regs[b+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, code[pc-1].A != 0)}
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, resultReg(i, fp), false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
 					argBase += base
 					goto tailCall
 				}
 				goto callRegs
 			}
-			f, callThis = regs[a+1].o, regs[i.C]
+			f, callThis = regs[b+1].o, regs[i.C]
 			goto forward
 		case bytecode.OpCallFwd, bytecode.OpTailCallFwd:
-			a := int(i.A)
-			f, callThis = regs[a].o, regs[a+1]
+			b := int(i.B)
+			f, callThis = regs[b].o, regs[b+1]
 			goto forward
 		case bytecode.OpCallSpread, bytecode.OpNewSpread, bytecode.OpSuperSpread:
-			a := int(i.A)
-			f, callThis, ret, isNew, newTarget = regs[a].o, regs[a+1], i.A, false, nil
-			args := regs[a+2].o.elems
+			b := int(i.B)
+			f, callThis, ret, isNew, newTarget = regs[b].o, regs[b+1], resultReg(i, fp), false, nil
+			args := regs[b+2].o.elems
 			argc = len(args)
 			argBase = vm.frames[len(vm.frames)-1].top()
 			vm.ensureStack(argBase + argc)
@@ -1381,47 +1391,51 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			case bytecode.OpNewSpread:
 				goto construct
 			case bytecode.OpSuperSpread:
-				newTarget = regs[a+1].o
+				newTarget = regs[b+1].o
 				goto superCall
 			}
 			goto call
 		case bytecode.OpCallEval, bytecode.OpTailCallEval:
-			a := int(i.A)
-			if regs[a].o == vm.Intrinsic(IntrinsicEval) {
+			b := int(i.B)
+			site := int(code[pc].A)
+			pc++
+			if regs[b].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
-				v := vm.directEval(evalArg(regs[a+2:], int(i.B)), int(i.C))
+				v := vm.directEval(evalArg(regs[b+2:], int(i.C)), site)
 				regs = vm.reload(regs, onHeap, base, fp)
-				regs[a] = v
-				if i.B < 0 {
+				regs[resultReg(i, fp)] = v
+				if i.C < 0 {
 					pc++
 				}
 				continue
 			}
-			if i.B < 0 {
+			if i.C < 0 {
 				continue
 			}
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], a+2, int(i.B), i.A, false, nil
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), resultReg(i, fp), false, nil
 			if i.Op == bytecode.OpTailCallEval {
 				argBase += base
 				goto tailCall
 			}
 			goto callRegs
 		case bytecode.OpTailCall:
-			a := int(i.A)
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[a].o, regs[a+1], base+a+2, int(i.B), i.A, false, nil
+			b := int(i.B)
+			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], base+b+2, int(i.C), resultReg(i, fp), false, nil
 			goto tailCall
 		case bytecode.OpTailCallSpread:
-			a := int(i.A)
-			f, callThis, ret, isNew, newTarget = regs[a].o, regs[a+1], i.A, false, nil
-			args := regs[a+2].o.elems
+			b := int(i.B)
+			f, callThis, ret, isNew, newTarget = regs[b].o, regs[b+1], resultReg(i, fp), false, nil
+			args := regs[b+2].o.elems
 			argc = len(args)
 			argBase = vm.sp
 			vm.ensureStack(argBase + argc)
 			copy(vm.stack[argBase:], args)
 			goto tailCall
 		case bytecode.OpNew:
-			a := int(i.A)
-			f, argBase, argc, ret = regs[a].o, a+2, int(i.B), i.A
+			b := int(i.B)
+			site := code[pc].A
+			pc++
+			f, argBase, argc, ret = regs[b].o, b+2, int(i.C), resultReg(i, fp)
 			if onHeap {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
@@ -1432,7 +1446,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			if f != nil && f.fn != nil && f.fn.code != nil && f.fn.constructor && !f.fn.derived {
 				// The common case: a plain constructor function, whose prototype property is cached.
-				c := &fp.caches[i.C]
+				c := &fp.caches[site]
 				var proto Value
 				if f.shape == c.shape && c.kind == cacheOwn {
 					proto = f.slots[c.slot]
@@ -1458,8 +1472,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			goto construct
 		case bytecode.OpSuperCall:
-			a := int(i.A)
-			argBase, argc, ret = a+2, int(i.B), i.A
+			b := int(i.B)
+			argBase, argc, ret = b+2, int(i.C), resultReg(i, fp)
 			if onHeap {
 				top := vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(top + argc)
@@ -1468,7 +1482,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else {
 				argBase += base
 			}
-			f, newTarget = regs[a].o, regs[a+1].o
+			f, newTarget = regs[b].o, regs[b+1].o
 			goto superCall
 
 		case bytecode.OpReturn, bytecode.OpReturnUndef, bytecode.OpReturnDerived:
@@ -1980,12 +1994,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && !vm.arrayIterationUnmodified() {
 			// The spread runs the modified iteration.
 			vm.frames[len(vm.frames)-1].pc = pc
-			argc, ret, isNew, newTarget = vm.iterateArguments(), i.A, false, nil
+			argc, ret, isNew, newTarget = vm.iterateArguments(), resultReg(i, fp), false, nil
 			argBase = vm.frames[len(vm.frames)-1].top()
 			regs = vm.reload(regs, onHeap, base, fp)
 		} else {
 			cur := &vm.frames[len(vm.frames)-1]
-			argc, ret, isNew, newTarget = cur.argc, i.A, false, nil
+			argc, ret, isNew, newTarget = cur.argc, resultReg(i, fp), false, nil
 			argBase = cur.top()
 			vm.ensureStack(argBase + argc)
 			n := min(argc, fp.nparams)
@@ -2013,7 +2027,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			if f == nil || f.fn == nil {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwNotCallable(fp, pc-1, regs)
+				vm.throwNotCallable(fp, pc, regs)
 			}
 			fn := f.fn
 			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
@@ -2090,7 +2104,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			vm.frames[len(vm.frames)-1].pc = pc
 			if f == nil || f.fn == nil || !vm.IsConstructor(f) {
-				vm.throwNotConstructor(fp, pc-1, regs)
+				vm.throwNotConstructor(fp, pc, regs)
 			}
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp

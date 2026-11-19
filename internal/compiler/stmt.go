@@ -784,7 +784,7 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 	call := f.newRegs(2)
 	f.emit(bytecode.OpMove, call, it+1, 0)
 	f.emit(bytecode.OpMove, call+1, it, 0)
-	f.emit(bytecode.OpCall, call, 0, 0)
+	f.emit(bytecode.OpCall, call, call, 0)
 	f.emit(bytecode.OpAwait, call, call, 0)
 	next := f.emit(bytecode.OpIterResultValue, v, call, 0)
 	f.free(call)

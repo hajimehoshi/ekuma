@@ -178,13 +178,14 @@ const (
 	OpJumpNotSEqK // if !(b === Consts[c]) then pc = a
 	OpJumpNotSNeK // if !(b !== Consts[c]) then pc = a
 
-	// Calls. The callee is in a and the this value in a+1, and the result replaces the callee.
-	OpCall       // a = a(this a+1, args a+2...), b arguments
-	OpCallCall   // a = a.call(...) where a+1 is the function and a+2... the b arguments of call, the first of which is the this value
-	OpApplyFwd   // a = a.apply(...) where a+1 is the function and c the this value, forwarding the arguments of the running function; the flag b says whether an arguments object made for them is mapped. A callee a other than Function.prototype.apply gets its arguments in a+2 and a+3
-	OpCallFwd    // a = a(this a+1, the arguments of the running function)
-	OpCallSpread // a = a(this a+1, ...the array a+2)
-	OpCallEval   // like [OpCall]; a direct eval when a is the eval function. c indexes [Func.EvalScopes]. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the [OpCallSpread] for any other function
+	// Calls. The callee is in b and the this value in b+1. The result goes to a, which is -1 when
+	// the result is not used, once the call returns: a call that throws leaves a as it is.
+	OpCall       // a = b(this b+1, args b+2...), c arguments
+	OpCallCall   // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
+	OpApplyFwd   // a = b.apply(...) where b+1 is the function and c the this value, forwarding the arguments of the running function; the flag x.a says whether an arguments object made for them is mapped. A callee b other than Function.prototype.apply gets its arguments in b+2 and b+3
+	OpCallFwd    // a = b(this b+1, the arguments of the running function)
+	OpCallSpread // a = b(this b+1, ...the array b+2)
+	OpCallEval   // like [OpCall]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]. With c = -1, b+2 is the array of the arguments, and the extra is followed by the [OpCallSpread] for any other function, which a direct eval skips
 	OpSpreadArgs // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
 
 	// The calls in tail position of strict functions. When the callee is a function written in
@@ -196,15 +197,15 @@ const (
 	// the result.
 	OpTailCall       // like [OpCall]
 	OpTailCallSpread // like [OpCallSpread]
-	OpTailCallEval   // like [OpCallEval], where the instruction after one with b = -1 is [OpTailCallSpread]
+	OpTailCallEval   // like [OpCallEval], where the extra of one with c = -1 is followed by [OpTailCallSpread]
 	OpTailApplyFwd   // like [OpApplyFwd]
 	OpTailCallFwd    // like [OpCallFwd]
 
-	// Constructor calls.
-	OpNew             // a = new a(args a+2...), b arguments; c is a site for the prototype property of a
-	OpNewSpread       // a = new a(...the array a+2)
-	OpSuperCall       // a = super(args a+2...), b arguments, where a is the super constructor and a+1 new.target
-	OpSuperSpread     // a = super(...the array a+2)
+	// Constructor calls, which take their operands as the calls do.
+	OpNew             // a = new b(args b+2...), c arguments; x.a is a site for the prototype property of b
+	OpNewSpread       // a = new b(...the array b+2)
+	OpSuperCall       // a = super(args b+2...), c arguments, where b is the super constructor and b+1 new.target
+	OpSuperSpread     // a = super(...the array b+2)
 	OpCheckThisUninit // throw when a is initialized: super was called twice
 
 	// Returns and exceptions.
