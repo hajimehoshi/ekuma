@@ -2589,3 +2589,28 @@ func BenchmarkSort(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkArrayFrom copies a 100-element source with Array.from. One iteration is one copy.
+func BenchmarkArrayFrom(b *testing.B) {
+	const js = `
+		var arr = [];
+		for (var i = 0; i < 100; i++) arr.push(i);
+		var str = "abcdefghij".repeat(10);
+		function run(src, n) {
+			for (var i = 0; i < n; i++) Array.from(src);
+		}`
+	for _, src := range []string{"arr", "str"} {
+		b.Run(src, func(b *testing.B) {
+			ctx := b.Context()
+			var vm ekuma.VM
+			if _, err := runScript(ctx, &vm, "from.js", js); err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := runScript(ctx, &vm, "run", fmt.Sprintf("run(%s, %d)", src, b.N)); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}

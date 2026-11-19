@@ -304,11 +304,16 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 			if custom {
 				st.a = vm.Construct(this.Object(), nil, this.Object())
 			}
+			// The size of the source is only a guess of how many values the iterator gives.
+			size := engine.ElementCount(items)
+			if items.IsString() {
+				size = items.StringLength()
+			}
 			vm.IterateFromMethod(items, m, func(v engine.Value) bool {
 				v = mapped(v, st.i)
 				if st.a == nil && st.i <= engine.MaxArrayIndex {
 					if st.vals == nil {
-						st.vals = make([]engine.Value, 0, 8)
+						st.vals = make([]engine.Value, 0, max(size, 8))
 					}
 					st.vals = append(st.vals, v)
 				} else {
