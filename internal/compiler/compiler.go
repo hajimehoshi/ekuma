@@ -1281,12 +1281,20 @@ func (f *fn) loadVar(name string, dst int32, orUndef bool) {
 	f.free(mark)
 }
 
+// getScopedOp returns the opcode that reads a variable of a dynamic scope in the code being compiled.
+func (f *fn) getScopedOp() bytecode.Opcode {
+	if f.strict() {
+		return bytecode.OpGetScopedStrict
+	}
+	return bytecode.OpGetScoped
+}
+
 // loadVarFrom is loadVar for the variable whose dynamic scope resolveName put in the register scope.
 func (f *fn) loadVarFrom(name string, dst int32, orUndef bool, scope int32) {
 	end := -1
 	if scope >= 0 {
 		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-		f.emit(bytecode.OpGetScoped, dst, scope, f.key(name))
+		f.emit(f.getScopedOp(), dst, scope, f.key(name))
 		end = f.jump()
 		f.patch(skip)
 	}
@@ -1318,8 +1326,13 @@ func (f *fn) loadStatic(name string, dst int32, orUndef bool) {
 		}
 	case refGlobal:
 		op := bytecode.OpGetGlobal
-		if orUndef {
+		switch {
+		case orUndef && f.strict():
+			op = bytecode.OpGetGlobalOrUndefStrict
+		case orUndef:
 			op = bytecode.OpGetGlobalOrUndef
+		case f.strict():
+			op = bytecode.OpGetGlobalStrict
 		}
 		k := f.site(name)
 		f.emit(op, dst, k, 0)
@@ -1346,7 +1359,11 @@ func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int
 	end := -1
 	if scope >= 0 {
 		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-		f.emit(bytecode.OpSetScoped, src, scope, f.key(name))
+		op := bytecode.OpSetScoped
+		if f.strict() {
+			op = bytecode.OpSetScopedStrict
+		}
+		f.emit(op, src, scope, f.key(name))
 		end = f.jump()
 		f.patch(skip)
 	}

@@ -1026,7 +1026,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		mark := f.top
 		if scope := f.resolveName(c.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(bytecode.OpGetScoped, base, scope, f.key(c.Name))
+			f.emit(f.getScopedOp(), base, scope, f.key(c.Name))
 			if f.evalScopesAround() {
 				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
 			} else {

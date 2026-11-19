@@ -25,7 +25,7 @@ type Opcode uint8
 //     c when it also produces a value.
 //   - A property read takes the object and the key in b and c, and a property store takes the
 //     object, the key and the value in a, b and c. A variable store takes the value in a.
-//   - A store or a delete that behaves differently in strict code has a variant for strict code,
+//   - An instruction that behaves differently in strict code has a variant for strict code,
 //     whose name ends in Strict.
 //   - An instruction whose operands do not fit in a, b and c is followed by an [OpExtra] with
 //     the rest, written x.a and x.b.
@@ -47,17 +47,19 @@ const (
 	OpThrowError       // throw an error of the Throw kind a with the message Consts[b]
 
 	// Global variables.
-	OpGetGlobal        // a = the global variable Keys[b]; b is a site
-	OpGetGlobalOrUndef // like [OpGetGlobal], but undefined when the global does not exist
-	OpSetGlobal        // the global variable Keys[b] = a, creating it when it does not exist; b is a site
-	OpSetGlobalStrict  // like [OpSetGlobal], but a ReferenceError when the global does not exist
-	OpResolveGlobal    // a = whether the global variable Keys[b] exists; b is a site
-	OpDeleteName       // a = delete the global variable Keys[b]
-	OpDeclareGlobalVar // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
-	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant with the flag b
-	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
-	OpCheckGlobalDecl  // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds
-	OpDeclareAnnexB    // a = whether the global variable Keys[b] of a block-level function is declared; c is a set of GlobalVar flags
+	OpGetGlobal              // a = the global variable Keys[b]; b is a site
+	OpGetGlobalStrict        // like [OpGetGlobal], in strict code
+	OpGetGlobalOrUndef       // like [OpGetGlobal], but undefined when the global does not exist
+	OpGetGlobalOrUndefStrict // like [OpGetGlobalOrUndef], in strict code
+	OpSetGlobal              // the global variable Keys[b] = a, creating it when it does not exist; b is a site
+	OpSetGlobalStrict        // like [OpSetGlobal], but a ReferenceError when the global does not exist
+	OpResolveGlobal          // a = whether the global variable Keys[b] exists; b is a site
+	OpDeleteName             // a = delete the global variable Keys[b]
+	OpDeclareGlobalVar       // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
+	OpDeclareGlobalLex       // declare the global lexical binding Keys[a], constant with the flag b
+	OpInitGlobalLex          // initialize the global lexical binding Keys[b] with a
+	OpCheckGlobalDecl        // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds
+	OpDeclareAnnexB          // a = whether the global variable Keys[b] of a block-level function is declared; c is a set of GlobalVar flags
 
 	// Upvalues and closures.
 	OpGetUpval    // a = upvalue b
@@ -265,16 +267,18 @@ const (
 	OpDisposeEnd   // end disposing the capability a and throw its completion when it is a throw; a becomes undefined
 
 	// Dynamic scopes, which with statements and direct evals open.
-	OpWith           // push the object a as a with scope
-	OpPopScope       // pop the innermost dynamic scope
-	OpResolveName    // a = the innermost of the c innermost dynamic scopes that has the variable Keys[b], or undefined
-	OpGetScoped      // a = the variable Keys[c] of the dynamic scope b, read with the strictness of the running function
-	OpSetScoped      // the variable Keys[c] of the dynamic scope b = a, assigned with the strictness of the running function
-	OpDeleteScoped   // a = delete the variable Keys[c] of the dynamic scope b
-	OpCaptureScopes  // the closure a sees the dynamic scopes that are open
-	OpEvalScope      // push a new scope for the variables that direct evals declare
-	OpScopeThis      // a = the this value of a call of a function found in the dynamic scope b
-	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
+	OpWith            // push the object a as a with scope
+	OpPopScope        // pop the innermost dynamic scope
+	OpResolveName     // a = the innermost of the c innermost dynamic scopes that has the variable Keys[b], or undefined
+	OpGetScoped       // a = the variable Keys[c] of the dynamic scope b
+	OpGetScopedStrict // like [OpGetScoped], in strict code
+	OpSetScoped       // the variable Keys[c] of the dynamic scope b = a
+	OpSetScopedStrict // like [OpSetScoped], in strict code
+	OpDeleteScoped    // a = delete the variable Keys[c] of the dynamic scope b
+	OpCaptureScopes   // the closure a sees the dynamic scopes that are open
+	OpEvalScope       // push a new scope for the variables that direct evals declare
+	OpScopeThis       // a = the this value of a call of a function found in the dynamic scope b
+	OpDeclareEvalVar  // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
 
 	// Modules.
 	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta

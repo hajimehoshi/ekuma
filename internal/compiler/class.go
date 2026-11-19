@@ -392,7 +392,7 @@ func (f *fn) decorator(state int32, e ast.Expr) {
 	case *ast.Identifier:
 		if scope := f.resolveName(e.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(bytecode.OpGetScoped, base, scope, f.key(e.Name))
+			f.emit(f.getScopedOp(), base, scope, f.key(e.Name))
 			if f.evalScopesAround() {
 				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
 			} else {

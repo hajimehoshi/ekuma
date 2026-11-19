@@ -36,7 +36,7 @@ func (vm *VM) calleeName(fp *funcProto, pc int) string {
 		switch in.Op {
 		case bytecode.OpGetProp:
 			return fp.keys[in.C].str
-		case bytecode.OpGetGlobal:
+		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict:
 			return fp.keys[in.B].str
 		}
 		break
@@ -60,9 +60,9 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	vm.ThrowTypeError(name + " is not a constructor")
 }
 
-// getGlobal returns the global variable key. When it does not exist, it throws a ReferenceError
-// unless orUndef is set.
-func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
+// getGlobal reads the global variable key, as strict code does when strict is set. When it does
+// not exist, it throws a ReferenceError unless orUndef is set.
+func (vm *VM) getGlobal(key *Object, c *propCache, orUndef, strict bool) Value {
 	if p, ok := vm.globalLex.shape.lookup(key); ok {
 		v := vm.globalLex.slots[p.slot]
 		if v.o == tdzObject {
@@ -99,7 +99,7 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef bool) Value {
 	}
 	// GetBindingValue checks for the property again, which only a proxy can observe.
 	if proxyOnChain(g) != nil && !vm.HasProperty(g, k) {
-		if vm.frames[len(vm.frames)-1].fp.strict {
+		if strict {
 			vm.ThrowReferenceError(key.str + " is not defined")
 		}
 		return Undefined

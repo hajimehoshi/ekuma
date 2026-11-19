@@ -413,7 +413,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			// Error text is an interned constant.
 			vm.throwError(thrownErrorKinds[i.A], fp.consts[i.B].o.str)
 
-		case bytecode.OpGetGlobal, bytecode.OpGetGlobalOrUndef:
+		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.caches[i.B]
 			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
 				if v := h.slots[c.slot]; v.o != tdzObject {
@@ -422,7 +422,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			v := vm.getGlobal(fp.keys[i.B], c, i.Op == bytecode.OpGetGlobalOrUndef)
+			orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
+			strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
+			v := vm.getGlobal(fp.keys[i.B], c, orUndef, strict)
 			regs[i.A] = v
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			c := &fp.caches[i.B]
@@ -1892,14 +1894,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			} else {
 				regs[i.A] = Undefined
 			}
-		case bytecode.OpGetScoped:
+		case bytecode.OpGetScoped, bytecode.OpGetScopedStrict:
 			vm.frames[len(vm.frames)-1].pc = pc
-			v := vm.getScoped(regs[i.B].o, fp.keys[i.C], fp.strict)
+			v := vm.getScoped(regs[i.B].o, fp.keys[i.C], i.Op == bytecode.OpGetScopedStrict)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
-		case bytecode.OpSetScoped:
+		case bytecode.OpSetScoped, bytecode.OpSetScopedStrict:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], fp.strict)
+			vm.setScoped(regs[i.B].o, fp.keys[i.C], regs[i.A], i.Op == bytecode.OpSetScopedStrict)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpDeleteScoped:
 			vm.frames[len(vm.frames)-1].pc = pc
