@@ -1143,7 +1143,8 @@ func (f *fn) addUpval(b *binding, d bytecode.UpvalDesc) int32 {
 }
 
 // assigns reports whether the code of the function f, or of a function nested in it, assigns
-// to the variable name. It is false for a script, a module or eval code.
+// to the variable name other than by a declaration, as recorded in [ast.Program.Assigned]. It is
+// false for a script, a module or eval code.
 func (f *fn) assigns(name string) bool {
 	n := f.node
 	return n != nil && f.c.assignedIn(name, n.Order-n.Nested, n.Order)

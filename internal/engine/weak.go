@@ -27,7 +27,8 @@ type WeakTable struct {
 // weakEntries are the entries of the weak collections whose key is one object or symbol.
 // One entry is held in first, and only the entries of the other collections are in rest.
 type weakEntries struct {
-	// firstTable is the collection of the entry in first, or zero when first holds none.
+	// firstTable is the collection of the entry in first. first holds no entry when firstTable is
+	// zero or its collection was collected.
 	firstTable weak.Pointer[WeakTable]
 	first      Value
 

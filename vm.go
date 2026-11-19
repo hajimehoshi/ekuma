@@ -388,9 +388,10 @@ func (vm *VM) SetTimeZone(loc *time.Location) {
 // SetClock sets now as the clock that gives the current time to Date, Temporal.Now, the
 // default date of Intl.DateTimeFormat, and the timeouts of Atomics.wait and Atomics.waitAsync.
 // A nil now restores [time.Now]. Only the instant of a time matters, not its location;
-// [VM.SetTimeZone] sets the time zone. A timeout, including one that has already started, ends
-// once the clock has passed it. A time outside the range of Date reads as the nearest end of the
-// range. now is called on the goroutine that runs JavaScript in the VM.
+// [VM.SetTimeZone] sets the time zone. A timeout ends no earlier than the clock passes it, and
+// for Atomics.wait no earlier than its duration in real time. A time outside the range of Date
+// reads as the nearest end of the range. now is called on the goroutine that runs JavaScript in
+// the VM.
 func (vm *VM) SetClock(now func() time.Time) {
 	vm.initIfNeeded()
 	vm.e.SetClock(now)

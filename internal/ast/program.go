@@ -19,8 +19,9 @@ type Program struct {
 	Scope *Scope
 
 	// Assigned maps a variable name to the [Function.Order] of each function whose own code, outside
-	// the functions nested in it, assigns to the name, in increasing order. The names in the
-	// targets of assignment expressions, update expressions and for-in and for-of heads count.
+	// the functions nested in it, assigns to the name, in increasing order. Only the names in the
+	// targets of assignment expressions, update expressions and for-in and for-of heads without
+	// a declaration count.
 	Assigned map[string][]int32
 }
 

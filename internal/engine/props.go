@@ -538,8 +538,8 @@ func (vm *VM) GetV(v Value, key *Object) Value {
 	return val
 }
 
-// GetVWithoutCall returns GetV(v, key) when that runs no code, that is when it reaches neither
-// a getter nor a proxy. Otherwise ok is false.
+// GetVWithoutCall returns GetV(v, key) when that runs no code, that is when it reaches no
+// getter, proxy or module namespace object. Otherwise ok is false.
 func (vm *VM) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
 	start := vm.protoStart(v, PropKey{key: key})
 	if start.kind == kindString && key == vm.Key(KeyLength) {

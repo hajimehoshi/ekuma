@@ -27,9 +27,8 @@ its own, so the engines that it compares are not dependencies of Ekuma.
 
 The comparison uses the dependency versions checked on 2026-11-17, when goja and Sobek were
 at their latest upstream commits and the other engines at their latest releases. These
-versions were kept for the 2026-11-19 measurement of the current Ekuma checkout. The summary in
-[Results](#results) gives the version of each engine, and [Environment](#environment) the rest
-of the setup.
+versions were kept for the 2026-11-19 measurement of Ekuma. The summary in [Results](#results)
+gives the version of each engine, and [Environment](#environment) the rest of the setup.
 
 ## Suites
 

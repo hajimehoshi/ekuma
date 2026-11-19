@@ -396,9 +396,9 @@ func (vm *VM) instanceOf(v, c Value) bool {
 	}
 }
 
-// inheritsHasInstance reports whether c is a function whose @@hasInstance property is the one
-// that it inherits from %Function.prototype% of the current realm. A false result does not
-// mean the opposite.
+// inheritsHasInstance reports whether the @@hasInstance property of c is the one that it
+// inherits from %Function.prototype% of the current realm. A false result does not mean the
+// opposite.
 func (vm *VM) inheritsHasInstance(c *Object) bool {
 	// The property of %Function.prototype% is neither writable nor configurable, so only the
 	// objects before it on the chain can hide it.
@@ -688,8 +688,8 @@ type classElement struct {
 }
 
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
-// For a field, v is the function that computes the initial value, or undefined when there is none;
-// with [bytecode.ElemValue] in kind, v is the initial value itself.
+// For a field, v is the function that computes the initial value, or with [bytecode.ElemValue]
+// in kind, the initial value itself.
 func (vm *VM) addClassElement(ctor *Object, key Value, v Value, kind int) {
 	e := classElement{
 		kind: kind &^ (bytecode.ElemStatic | bytecode.ElemValue),
@@ -958,8 +958,7 @@ func takeDataProperties(dst, from *Object) bool {
 }
 
 // AssignDataProperties copies the own enumerable properties of from to the empty object to as
-// Object.assign does and reports true, when that cannot run any code. Otherwise it does nothing
-// and reports false.
+// Object.assign does, when that is known to run no code, and reports whether it did.
 func (vm *VM) AssignDataProperties(to, from *Object) bool {
 	s := takenShape(to, from)
 	if s == nil {

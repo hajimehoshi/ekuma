@@ -119,7 +119,8 @@ func ObjectValue(o *Object) Value {
 }
 
 // Object returns the object, string, symbol or BigInt that v is. It returns nil for a number
-// or undefined, and the same object for every BigInt that fits in an int64.
+// or undefined, and one shared object for null, for each boolean, and for every BigInt that
+// fits in an int64.
 // For primitive strings, the returned object's identity is not guaranteed.
 func (v Value) Object() *Object {
 	if v.IsNumber() {

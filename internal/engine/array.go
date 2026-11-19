@@ -116,7 +116,7 @@ func (o *Object) Element(i int64) (Value, bool) {
 }
 
 // SetElement stores v as the own property of o with the integer index i when
-// [Object.Element] returns that property, and reports whether it did.
+// [Object.Element] returns that property and o is not a typed array, and reports whether it did.
 func (o *Object) SetElement(i int64, v Value) bool {
 	if o.objectProperties != nil && i >= 0 && i < int64(len(o.elems)) && !o.elems[i].isHole() {
 		o.elems[i] = v
@@ -233,7 +233,7 @@ func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
 }
 
 // RemoveLastElement removes the last element of the array o and returns it.
-// It reports false for an empty array.
+// It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveLastElement() (Value, bool) {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || len(o.elems) == 0 {
 		return Value{}, false
@@ -254,7 +254,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 }
 
 // RemoveFirstElement removes the first element of the array o and returns it.
-// It reports false for an empty array.
+// It reports false and does nothing when o is empty or needs the generic algorithm.
 func (o *Object) RemoveFirstElement() (Value, bool) {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || len(o.elems) == 0 {
 		return Value{}, false
@@ -433,7 +433,7 @@ func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
 	return true
 }
 
-// SkipHoles returns the least index j with i <= j <= end such that neither o nor its prototypes
+// SkipHoles returns the greatest index j with i <= j <= end such that neither o nor its prototypes
 // have a property with an integer index from i to j-1. It returns i when that is not known
 // without running JavaScript.
 func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
@@ -456,7 +456,7 @@ func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
 	return j
 }
 
-// SkipHolesBackward returns the greatest index j with end <= j <= i such that neither o nor its
+// SkipHolesBackward returns the least index j with end <= j <= i such that neither o nor its
 // prototypes have a property with an integer index from j+1 to i. It returns i when that is not
 // known without running JavaScript.
 func (vm *VM) SkipHolesBackward(o *Object, i, end int64) int64 {

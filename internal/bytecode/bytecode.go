@@ -69,7 +69,7 @@ const (
 	OpHasPrivate    // a = the private name b is in c
 	OpGetPrivate    // a = b.#c, where c holds the private name
 	OpSetPrivate    // a.#b = c, where b holds the private name
-	OpToPropertyKey // a = b converted to a property key; when c is nonzero, a TypeError is thrown first if c-1 is undefined or null
+	OpToPropertyKey // a = b converted to a property key; when c is nonzero and b needs converting, a TypeError is thrown first if c-1 is undefined or null
 
 	OpAdd
 	OpSub
@@ -137,7 +137,7 @@ const (
 	OpJumpIfInt // if b is the integer c then pc = a
 
 	OpCall          // a = a(this a+1, args a+2...), b arguments
-	OpCallCall      // a = a.call(...) where a+1 is the function, a+2 the this value and a+3... b arguments
+	OpCallCall      // a = a.call(...) where a+1 is the function and a+2... the b arguments of call, the first of which is the this value
 	OpApplyFwd      // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; b says whether an arguments object made for them is mapped
 	OpCallFwd       // a = a(this a+1, the arguments of the running function)
 	OpCallSpread    // a = a(this a+1, ...the array a+2)
@@ -153,7 +153,7 @@ const (
 	OpRethrow       // throw a again, as the completion of a finally block; when b is nonzero and a makes a generator return, throw b-1 instead
 
 	OpInitialYield        // suspend a generator before its body
-	OpYield               // suspend the generator with the value b; a receives the value sent on resume
+	OpYield               // suspend the generator with the value b; a receives the value sent on resume. A nonzero c, for yield*, leaves every resume kind to the code that follows and passes the result b through
 	OpAwait               // suspend until the promise b settles; a receives its value
 	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
 	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
@@ -171,7 +171,7 @@ const (
 	OpDefineFieldK     // define the enumerable data property Keys[b] of a as c, cache b
 	OpDefineMethod     // define the non-enumerable method b of a as c, setting its home object
 	OpDefineGetter     // define the getter c for the property b of a; the next instruction's a says whether it is enumerable
-	OpDefineSetter     // define the setter c for the property b of a
+	OpDefineSetter     // define the setter c for the property b of a; the next instruction's a says whether it is enumerable
 	OpSetFuncName      // set the name of the anonymous function a to the property key b, with the NamePrefix kind c
 	OpSetHome          // set the home object of the function a to b
 	OpCopyProps        // copy the own enumerable properties of b to a, as an object spread
@@ -190,7 +190,7 @@ const (
 	OpIterNext    // a = the next value of the iterator b, b+1; jump to c when it is done
 	OpIterClose   // close the iterator a, a+1; when b is nonzero, b-1 holds the pending exception, which is kept unless it makes a generator return; a becomes undefined
 	OpIterResult  // a = the iterator result object with the value b and done c
-	OpIterCall    // a = the result of calling the method Keys[c] of the iterator b with the argument a; a becomes undefined when there is none
+	OpIterCall    // a, a+1 = the result of calling the method Keys[c] of the iterator b with the argument a and true, or undefined and false when there is no such method
 
 	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
 	OpIterCheckResult // throw a TypeError when the iterator result a is not an object

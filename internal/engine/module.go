@@ -251,7 +251,7 @@ func (m *Module) isCyclic() bool {
 
 // LoadRequestedModules implements LoadRequestedModules for a host whose loading completes
 // synchronously: it loads the modules that m and its dependencies request. Once it has
-// completed for m, it does nothing. The error is an [*Error].
+// completed for m, it does nothing. A thrown exception is reported as an [*Error].
 func (vm *VM) LoadRequestedModules(m *Module) error {
 	_, err := vm.enter(func() Value {
 		if e, ok := vm.loadModuleGraph(m); !ok {
@@ -263,7 +263,7 @@ func (vm *VM) LoadRequestedModules(m *Module) error {
 }
 
 // Link implements Link, after [VM.LoadRequestedModules] when m is not loaded. Once m is
-// linked, it does nothing. The error is an [*Error].
+// linked, it does nothing. A thrown exception is reported as an [*Error].
 func (vm *VM) Link(m *Module) error {
 	_, err := vm.enter(func() Value {
 		vm.loadAndLink(m)
@@ -282,8 +282,8 @@ func (vm *VM) loadAndLink(m *Module) {
 	}
 }
 
-// Evaluate implements Evaluate, after [VM.Link] when m is not linked. It returns the promise of the evaluation. The error is an [*Error] when
-// loading or linking fails, which is before any module code runs.
+// Evaluate implements Evaluate, after [VM.Link] when m is not linked. It returns the promise of the evaluation. A failure to load or
+// link, which comes before any module code runs, is reported as an [*Error].
 func (vm *VM) Evaluate(m *Module) (Value, error) {
 	return vm.enter(func() Value {
 		vm.loadAndLink(m)
@@ -292,7 +292,7 @@ func (vm *VM) Evaluate(m *Module) (Value, error) {
 }
 
 // GetModuleNamespace implements GetModuleNamespace for the evaluation phase, after [VM.Link]
-// when m is not linked. The error is an [*Error].
+// when m is not linked. A thrown exception is reported as an [*Error].
 func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
 	return vm.enter(func() Value {
 		vm.loadAndLink(m)
@@ -301,8 +301,8 @@ func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
 }
 
 // ParseJSONModule implements ParseJSONModule for the source text src. hostDefined is the
-// [[HostDefined]]. The error is an [*Error] holding the JavaScript SyntaxError of a src that
-// is not JSON.
+// [[HostDefined]]. A src that is not JSON is reported as an [*Error] holding the JavaScript
+// SyntaxError.
 func (vm *VM) ParseJSONModule(src string, hostDefined any) (*Module, error) {
 	v, err := vm.enter(func() Value {
 		return vm.Call(vm.Intrinsic(IntrinsicJSONParse), Undefined, vm.StringFromGo(src))
