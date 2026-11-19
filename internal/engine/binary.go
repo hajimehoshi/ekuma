@@ -281,13 +281,25 @@ func (vm *VM) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *O
 // which it keeps. maxByteLength is -1 for a buffer whose length is fixed and must not be
 // smaller than len(b) otherwise.
 func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int) *Object {
-	o := vm.NewObject(proto)
-	o.class = classArrayBuffer
-	o.ext = &ArrayBuffer{
-		data: b,
-		max:  maxByteLength,
+	w := &arrayBufferObject{
+		state: ArrayBuffer{
+			data: b,
+			max:  maxByteLength,
+		},
 	}
+	w.kind = kindObject
+	w.shape = vm.shapeFor(proto)
+	o := w.init()
+	o.class = classArrayBuffer
+	o.ext = &w.state
 	return o
+}
+
+// arrayBufferObject is an ArrayBuffer object together with its state, so that creating one is
+// a single allocation.
+type arrayBufferObject struct {
+	propertyObject
+	state ArrayBuffer
 }
 
 // ArrayBufferData returns the [[ArrayBufferData]] of v, or nil when v is neither an ArrayBuffer
@@ -675,20 +687,32 @@ type TypedArray struct {
 // are stored in the buffer object buffer from byteOffset on. length is the number of elements, or -1
 // for a typed array whose length tracks the length of the buffer.
 func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, byteOffset, length int) *Object {
-	o := vm.NewObject(proto)
+	data := buffer.ext.(*ArrayBuffer)
+	w := &typedArrayObject{
+		state: TypedArray{
+			buffer:      buffer,
+			data:        data,
+			offset:      byteOffset,
+			length:      max(length, 0),
+			tracking:    length < 0,
+			typ:         t,
+			numberStore: !t.IsBigInt() && !data.immutable && data.block == nil,
+		},
+	}
+	w.kind = kindObject
+	w.shape = vm.shapeFor(proto)
+	o := w.init()
 	o.class = classTypedArray
 	o.flags |= objExotic
-	data := buffer.ext.(*ArrayBuffer)
-	o.ext = &TypedArray{
-		buffer:      buffer,
-		data:        data,
-		offset:      byteOffset,
-		length:      max(length, 0),
-		tracking:    length < 0,
-		typ:         t,
-		numberStore: !t.IsBigInt() && !data.immutable && data.block == nil,
-	}
+	o.ext = &w.state
 	return o
+}
+
+// typedArrayObject is a typed array object together with its state, so that creating one is
+// a single allocation.
+type typedArrayObject struct {
+	propertyObject
+	state TypedArray
 }
 
 // TypedArrayData returns the state of the typed array v, or nil when v is not a typed array.
