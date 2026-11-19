@@ -1175,6 +1175,16 @@ func (vm *VM) CallValue(f, this Value, args ...Value) Value {
 func (vm *VM) callOnStack(f *Object, this Value, args []Value) Value {
 	base := vm.sp
 	n := len(args)
+	if fn := f.fn; fn != nil && fn.bound == nil && fn.native == nil && !fn.classConstructor &&
+		!fn.code.isGenerator && !fn.code.isAsync && !vm.interrupt.Load() && len(vm.frames) < maxFrames {
+		// A plain closure gets its arguments written once, where its frame starts.
+		vm.ensureStack(base + n + fn.code.nregs + 1)
+		copy(vm.stack[base:], args)
+		vm.pushFrame(f, this, base, n, 0, false, nil)
+		r := vm.run(len(vm.frames) - 1)
+		vm.sp = base
+		return r
+	}
 	vm.ensureStack(base + n)
 	copy(vm.stack[base:], args)
 	vm.sp = base + n
