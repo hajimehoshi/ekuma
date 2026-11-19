@@ -8,7 +8,7 @@ flags: [noStrict]
 
 var caught;
 try {
-	(1n << 2n ** 30n)();
+	(1n << (2n ** 30n - 1n))();
 } catch (e) {
 	caught = e;
 }

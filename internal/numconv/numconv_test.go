@@ -4,6 +4,7 @@
 package numconv_test
 
 import (
+	"errors"
 	"math"
 	"math/big"
 	"math/rand/v2"
@@ -159,6 +160,86 @@ func TestBigIntConversions(t *testing.T) {
 			if got, want := numconv.FormatBigInt(x, radix, nil), x.Text(radix); got != want {
 				t.Errorf("FormatBigInt of %d symbols in radix %d differs from Text", n, radix)
 			}
+		}
+	}
+}
+
+// TestBigIntArithmetic checks MulBigInt and QuoRemBigInt with steps of a few words, so that
+// small integers take many steps.
+func TestBigIntArithmetic(t *testing.T) {
+	defer numconv.SetArithLeafWords(3)()
+	r := rand.New(rand.NewPCG(3, 4))
+	random := func() *big.Int {
+		x := new(big.Int)
+		for range r.IntN(40) {
+			x.Lsh(x, 64)
+			// Words of all ones or zeros make carries and borrows.
+			switch r.IntN(4) {
+			case 0:
+			case 1:
+				x.Or(x, new(big.Int).SetUint64(math.MaxUint64))
+			default:
+				x.Or(x, new(big.Int).SetUint64(r.Uint64()))
+			}
+		}
+		x.Rsh(x, uint(r.IntN(64)))
+		if r.IntN(2) == 0 {
+			x.Neg(x)
+		}
+		return x
+	}
+	for range 20000 {
+		x, y := random(), random()
+		if got, want := numconv.MulBigInt(x, y, nil), new(big.Int).Mul(x, y); got.Cmp(want) != 0 {
+			t.Errorf("MulBigInt(%v, %v): got %v, want %v", x, y, got, want)
+		}
+		if y.Sign() == 0 {
+			continue
+		}
+		q, rem := numconv.QuoRemBigInt(x, y, nil)
+		wq, wr := new(big.Int).QuoRem(x, y, new(big.Int))
+		if q.Cmp(wq) != 0 || rem.Cmp(wr) != 0 {
+			t.Errorf("QuoRemBigInt(%v, %v): got %v, %v, want %v, %v", x, y, q, rem, wq, wr)
+		}
+	}
+	// The conversions divide and multiply by powers in many steps.
+	for _, n := range []int{1 << 16, 1<<17 + 12345} {
+		x := new(big.Int)
+		for range n / 64 {
+			x.Lsh(x, 64)
+			x.Or(x, new(big.Int).SetUint64(r.Uint64()))
+		}
+		s := numconv.FormatBigInt(x, 10, nil)
+		if s != x.Text(10) {
+			t.Errorf("FormatBigInt of %d bits differs from Text", n)
+		}
+		if y, ok := numconv.ParseBigInt(s, 10, nil); !ok || y.Cmp(x) != 0 {
+			t.Errorf("ParseBigInt of %d bits: got %t, want the integer", n, ok)
+		}
+	}
+}
+
+func TestStringToBigIntLimit(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want error
+	}{
+		{
+			in:   "0xff",
+			want: nil,
+		},
+		{
+			in:   "-256",
+			want: numconv.ErrBigIntTooLarge,
+		},
+		{
+			// The digits are checked before the size.
+			in:   "1" + strings.Repeat("0", 100) + "x",
+			want: numconv.ErrNotBigInt,
+		},
+	} {
+		if _, err := numconv.StringToBigInt(tc.in, 8, nil); !errors.Is(err, tc.want) {
+			t.Errorf("StringToBigInt(%q, 8): got %v, want %v", tc.in, err, tc.want)
 		}
 	}
 }

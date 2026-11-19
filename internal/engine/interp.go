@@ -1247,7 +1247,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != numberObject {
-					if compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
+					if vm.compareBigIntMixed(x, fp.consts[i.C]) != cmpLess {
 						pc = int(i.A)
 					}
 					continue
@@ -1263,7 +1263,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != numberObject {
-					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
+					if c := vm.compareBigIntMixed(x, fp.consts[i.C]); c != cmpLess && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue
@@ -1279,7 +1279,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != numberObject {
-					if compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
+					if vm.compareBigIntMixed(x, fp.consts[i.C]) != cmpGreater {
 						pc = int(i.A)
 					}
 					continue
@@ -1295,7 +1295,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
 				regs = vm.reload(regs, onHeap, base, fp)
 				if x.o != numberObject {
-					if c := compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
+					if c := vm.compareBigIntMixed(x, fp.consts[i.C]); c != cmpGreater && c != cmpEqual {
 						pc = int(i.A)
 					}
 					continue

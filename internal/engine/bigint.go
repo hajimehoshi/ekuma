@@ -36,6 +36,17 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 	return Value{o: &o.Object}
 }
 
+// MaxBigIntBits is the largest number of bits of the magnitude of a BigInt.
+const MaxBigIntBits = 1 << 30
+
+// checkBigIntBits throws a RangeError when n, a number of bits of a BigInt, is greater than
+// MaxBigIntBits.
+func (vm *VM) checkBigIntBits(n int64) {
+	if n > MaxBigIntBits {
+		vm.ThrowRangeError("maximum BigInt size exceeded")
+	}
+}
+
 const bigIntProductWords = 256 / bits.UintSize
 
 // multiplyBigInts returns the product of two BigInts.
@@ -44,7 +55,11 @@ func (vm *VM) multiplyBigInts(x, y *big.Int) Value {
 		return BigIntFromInt64(0)
 	}
 	if len(x.Bits())+len(y.Bits()) > bigIntProductWords {
-		return vm.NewBigInt(new(big.Int).Mul(x, y))
+		// The product has the sum of the bits of x and y, or one less.
+		vm.checkBigIntBits(int64(x.BitLen()) + int64(y.BitLen()) - 1)
+		z := numconv.MulBigInt(x, y, vm.Poll)
+		vm.checkBigIntBits(int64(z.BitLen()))
+		return vm.NewBigInt(z)
 	}
 	o := &struct {
 		bigIntObject
@@ -69,7 +84,9 @@ func (vm *VM) addBigInts(a, b Value) Value {
 	x, y := a.BigInt(), b.BigInt()
 	if a.o == bigInt64Object && b.o == bigInt64Object ||
 		x.Sign() != y.Sign() || len(x.Bits()) > bigIntSumWords || len(y.Bits()) > bigIntSumWords {
-		return vm.NewBigInt(new(big.Int).Add(x, y))
+		z := new(big.Int).Add(x, y)
+		vm.checkBigIntBits(int64(z.BitLen()))
+		return vm.NewBigInt(z)
 	}
 	o := &struct {
 		bigIntObject
@@ -270,9 +287,9 @@ func (vm *VM) bigExp(r, a *big.Int, n int64) {
 	r.SetInt64(1)
 	for i := bits.Len64(uint64(n)) - 1; i >= 0; i-- {
 		vm.Poll()
-		r.Mul(r, r)
+		r.Set(numconv.MulBigInt(r, r, vm.Poll))
 		if n>>i&1 != 0 {
-			r.Mul(r, a)
+			r.Set(numconv.MulBigInt(r, a, vm.Poll))
 		}
 	}
 }

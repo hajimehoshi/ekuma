@@ -12,9 +12,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
 
-// maxBigIntBits is the largest number of bits that BigInt.asUintN creates a value of.
-const maxBigIntBits = 1 << 30
-
 // low64 returns i modulo 2^64.
 func low64(i *big.Int) uint64 {
 	var u uint64
@@ -67,8 +64,9 @@ func initBigInt(vm *engine.VM) {
 			s := 64 - bits
 			return engine.BigIntFromInt64(int64(low64(i)) << s >> s)
 		}
+		// The low bits of the two's complement of i.
 		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-		r := new(big.Int).Mod(i, m)
+		r := new(big.Int).And(i, new(big.Int).Sub(m, big.NewInt(1)))
 		if r.Bit(int(bits-1)) != 0 {
 			r.Sub(r, m)
 		}
@@ -101,11 +99,12 @@ func initBigInt(vm *engine.VM) {
 			}
 			return vm.NewBigInt(new(big.Int).SetUint64(u))
 		}
-		if bits > maxBigIntBits {
+		if bits > engine.MaxBigIntBits {
 			vm.ThrowRangeError("maximum BigInt size exceeded")
 		}
+		// The low bits of the two's complement of i.
 		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-		return vm.NewBigInt(new(big.Int).Mod(i, m))
+		return vm.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
 	})
 
 	thisBigInt := func(vm *engine.VM, this engine.Value, what string) engine.Value {

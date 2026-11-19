@@ -4,6 +4,7 @@
 package engine
 
 import (
+	"errors"
 	"math"
 	"math/big"
 	"strconv"
@@ -266,9 +267,12 @@ func (vm *VM) ToBigInt(v Value) Value {
 	case kindTrue:
 		return BigIntFromInt64(1)
 	case kindString:
-		i := numconv.StringToBigInt(p.Str(), vm.Poll)
-		if i == nil {
+		i, err := numconv.StringToBigInt(p.Str(), MaxBigIntBits, vm.Poll)
+		switch {
+		case errors.Is(err, numconv.ErrNotBigInt):
 			vm.throwSyntaxError("cannot convert " + vm.DisplayString(p) + " to a BigInt")
+		case errors.Is(err, numconv.ErrBigIntTooLarge):
+			vm.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		return vm.NewBigInt(i)
 	case kindSymbol:
@@ -306,7 +310,7 @@ func (vm *VM) looseEquals(a, b Value) bool {
 		case ak == kindSymbol || bk == kindSymbol:
 			return false
 		case ak == kindBigInt || bk == kindBigInt:
-			return compareBigIntMixed(a, b) == cmpEqual
+			return vm.compareBigIntMixed(a, b) == cmpEqual
 		default:
 			// A number and a string.
 			return vm.ToNumber(a) == vm.ToNumber(b)
@@ -332,7 +336,7 @@ const (
 )
 
 // compareBigIntMixed compares a BigInt with a BigInt, a number or a string, in either order.
-func compareBigIntMixed(a, b Value) cmpResult {
+func (vm *VM) compareBigIntMixed(a, b Value) cmpResult {
 	if x, ok := a.BigInt64(); ok {
 		if y, ok := b.BigInt64(); ok {
 			return compareInt64s(x, y)
@@ -343,29 +347,44 @@ func compareBigIntMixed(a, b Value) cmpResult {
 	} else if y, ok := b.BigInt64(); ok && a.o == numberObject {
 		return compareInt64Number(y, a.n).reverse()
 	}
-	toBig := func(v Value) (*big.Int, float64, bool) {
+	// toBig converts v to a BigInt or a number. huge is the sign of a string whose value is
+	// beyond the size of BigInts, or 0.
+	toBig := func(v Value) (i *big.Int, f float64, huge int, ok bool) {
 		if v.o == numberObject {
-			return nil, v.n, true
+			return nil, v.n, 0, true
 		}
 		if v.o == nil {
-			return nil, 0, false
+			return nil, 0, 0, false
 		}
 		switch v.o.kind {
 		case kindBigInt:
-			return v.BigInt(), 0, true
+			return v.BigInt(), 0, 0, true
 		case kindString:
-			i := numconv.StringToBigInt(v.Str(), nil)
-			return i, 0, i != nil
+			i, err := numconv.StringToBigInt(v.Str(), MaxBigIntBits, vm.Poll)
+			switch {
+			case errors.Is(err, numconv.ErrNotBigInt):
+				return nil, 0, 0, false
+			case errors.Is(err, numconv.ErrBigIntTooLarge):
+				return nil, 0, i.Sign(), true
+			}
+			return i, 0, 0, true
 		}
-		return nil, 0, false
+		return nil, 0, 0, false
 	}
-	x, xf, ok := toBig(a)
+	x, xf, xHuge, ok := toBig(a)
 	if !ok {
 		return cmpUndefined
 	}
-	y, yf, ok := toBig(b)
+	y, yf, yHuge, ok := toBig(b)
 	if !ok {
 		return cmpUndefined
+	}
+	// The other operand of a string is a BigInt, which is smaller in magnitude.
+	switch {
+	case xHuge != 0:
+		return cmpResult(xHuge + 1)
+	case yHuge != 0:
+		return cmpResult(-yHuge + 1)
 	}
 	switch {
 	case x != nil && y != nil:
@@ -412,7 +431,7 @@ func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
 		if !b.IsNumber() && !b.IsBigInt() && !b.IsString() {
 			b = Number(vm.ToNumber(b))
 		}
-		return compareBigIntMixed(a, b)
+		return vm.compareBigIntMixed(a, b)
 	}
 	return compareNumbers(vm.ToNumber(a), vm.ToNumber(b))
 }

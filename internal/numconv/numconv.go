@@ -6,6 +6,7 @@
 package numconv
 
 import (
+	"errors"
 	"math"
 	"math/big"
 	"strconv"
@@ -396,13 +397,22 @@ func ToLength(f float64) int64 {
 	return int64(f)
 }
 
-// StringToBigInt implements StringToBigInt. It returns nil when s is not a BigInt literal.
-// poll, which may be nil, is called between the steps of a long conversion and may stop it by
-// panicking.
-func StringToBigInt(s string, poll func()) *big.Int {
+// Errors of StringToBigInt.
+var (
+	// ErrNotBigInt is the error of a string that is not a BigInt literal.
+	ErrNotBigInt = errors.New("numconv: not a BigInt literal")
+	// ErrBigIntTooLarge is the error of a BigInt literal with too many bits.
+	ErrBigIntTooLarge = errors.New("numconv: BigInt too large")
+)
+
+// StringToBigInt implements StringToBigInt. It returns [ErrNotBigInt] when s is not a BigInt
+// literal, and -1 or 1, the sign of the value, with [ErrBigIntTooLarge] when the value has more
+// than maxBits bits. poll, which may be nil, is called between the steps of a long conversion
+// and may stop it by panicking.
+func StringToBigInt(s string, maxBits int, poll func()) (*big.Int, error) {
 	s = xstrings.TrimWhiteSpace(s, true, true)
 	if s == "" {
-		return new(big.Int)
+		return new(big.Int), nil
 	}
 	radix := 10
 	if len(s) > 2 && s[0] == '0' {
@@ -423,14 +433,24 @@ func StringToBigInt(s string, poll func()) *big.Int {
 		neg = s[0] == '-'
 		s = s[1:]
 	}
-	i, ok := ParseBigInt(s, radix, poll)
-	if !ok {
-		return nil
+	if !validDigits(s, radix) {
+		return nil, ErrNotBigInt
 	}
+	// A value of n digits has more than (n-1) log2(radix) bits.
+	if d := strings.TrimLeft(s, "0"); float64(len(d)-1)*math.Log2(float64(radix)) > float64(maxBits) {
+		if neg {
+			return big.NewInt(-1), ErrBigIntTooLarge
+		}
+		return big.NewInt(1), ErrBigIntTooLarge
+	}
+	i, _ := ParseBigInt(s, radix, poll)
 	if neg {
 		i.Neg(i)
 	}
-	return i
+	if i.BitLen() > maxBits {
+		return big.NewInt(int64(i.Sign())), ErrBigIntTooLarge
+	}
+	return i, nil
 }
 
 // ParseFloat implements parseFloat: the longest prefix of s that is a decimal literal.

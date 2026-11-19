@@ -1170,7 +1170,7 @@ func TestStringLengthLimits(t *testing.T) {
 		},
 		{
 			name: "BigInt strings longer than the string length limit",
-			src:  `try { (1n << 2n ** 30n).toString(2); "no error"; } catch (e) { e instanceof RangeError; }`,
+			src:  `try { (1n << (2n ** 30n - 1n)).toString(2); "no error"; } catch (e) { e instanceof RangeError; }`,
 			want: "true",
 		},
 		{

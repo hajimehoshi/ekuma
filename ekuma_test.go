@@ -1921,6 +1921,32 @@ func TestProxyInterrupt(t *testing.T) {
 	}
 }
 
+// TestBigIntInterrupt checks that a context stops long operations on huge BigInts promptly.
+func TestBigIntInterrupt(t *testing.T) {
+	var vm ekuma.VM
+	// Powers of three have dense bits, which math/big takes long to multiply and divide.
+	if _, err := runScript(t.Context(), &vm, "prefix", `var y = 3n ** 16000000n, x = y * y, z = (x << 25400000n) + y;`); err != nil {
+		t.Fatal(err)
+	}
+	for _, src := range []string{
+		`x * x`,
+		`z / y`,
+		`z % y`,
+	} {
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		start := time.Now()
+		_, err := runScript(ctx, &vm, src, src)
+		// Each of these takes seconds in one step of math/big.
+		if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
+			t.Errorf("%s: stopped after %v", src, elapsed)
+		}
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
+		}
+		cancel()
+	}
+}
+
 // TestCancelModule checks that a context stops a module whose top level loops forever.
 func TestCancelModule(t *testing.T) {
 	errStop := errors.New("stop")

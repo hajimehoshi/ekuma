@@ -572,18 +572,19 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 	switch op {
 	case bytecode.OpSub:
 		r.Sub(a, b)
+		vm.checkBigIntBits(int64(r.BitLen()))
 	case bytecode.OpMul:
 		return vm.multiplyBigInts(a, b)
 	case bytecode.OpDiv:
 		if b.Sign() == 0 {
 			vm.ThrowRangeError("division by zero")
 		}
-		r.Quo(a, b)
+		r, _ = numconv.QuoRemBigInt(a, b, vm.Poll)
 	case bytecode.OpMod:
 		if b.Sign() == 0 {
 			vm.ThrowRangeError("division by zero")
 		}
-		r.Rem(a, b)
+		_, r = numconv.QuoRemBigInt(a, b, vm.Poll)
 	case bytecode.OpExp:
 		if b.Sign() < 0 {
 			vm.ThrowRangeError("exponent must be non-negative")
@@ -619,6 +620,9 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 				r.SetInt64(-1)
 			}
 		case n.Sign() >= 0:
+			if a.Sign() != 0 {
+				vm.checkBigIntBits(int64(a.BitLen()) + n.Int64())
+			}
 			r.Lsh(a, uint(n.Int64()))
 		case -n.Int64() > 1<<30:
 			if a.Sign() < 0 {
@@ -654,7 +658,9 @@ func (vm *VM) bitNot(x Value) Value {
 	if x.o == numberObject {
 		return Number(float64(^numconv.ToInt32(x.n)))
 	}
-	return vm.NewBigInt(new(big.Int).Not(x.BigInt()))
+	r := new(big.Int).Not(x.BigInt())
+	vm.checkBigIntBits(int64(r.BitLen()))
+	return vm.NewBigInt(r)
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.

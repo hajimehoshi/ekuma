@@ -257,6 +257,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   one of its subtags has no name, where ICU names the other subtags
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
   do, such as `1.02.03` in Serbian, where ICU uses the time separator
+- A BigInt has at most 2^30 bits, as in V8, and an operation or a conversion whose result would
+  be larger throws a RangeError. `**` throws for a result of more than 2^25 bits
 - Source phase imports and `%AbstractModuleSource%` exist, but importing the source of any
   module throws a SyntaxError, since no host API gives a module a module source
 - `Function.prototype[Symbol.metadata]` is `null`, as the spec text of the decorator metadata
