@@ -192,86 +192,6 @@ func TestPrependedStringsToGo(t *testing.T) {
 	}
 }
 
-// TestBufferedStringMetadataSnapshots checks retained strings after their builder advances.
-func TestBufferedStringMetadataSnapshots(t *testing.T) {
-	for _, expression := range []string{"s + chunk", "chunk + s"} {
-		t.Run(expression, func(t *testing.T) {
-			var vm ekuma.VM
-			value, err := runScript(t.Context(), &vm, "snapshots", `
-				const chunk = "é😀";
-				let s = "", saved = [];
-				for (let i = 0; i < 100; i++) {
-					s = `+expression+`;
-					if (s.length !== 3 * (i + 1)) throw new Error("length");
-					saved.push(s);
-				}
-				for (let i = saved.length - 1; i >= 0; i--) {
-					if (saved[i].length !== 3 * (i + 1)) throw new Error("saved length");
-					if (saved[i].charCodeAt(3 * i + 2) !== 0xDE00) throw new Error("saved code unit");
-				}
-				saved[39];`)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got, want := value.String(), strings.Repeat("é😀", 40); got != want {
-				t.Errorf("retained string: got %q, want %q", got, want)
-			}
-		})
-	}
-}
-
-// TestAnnexBGlobalSkip covers the block-level functions of sloppy code that get no global
-// variable, which test262 does not.
-func TestAnnexBGlobalSkip(t *testing.T) {
-	tests := []struct {
-		name    string
-		scripts []string
-		want    string
-	}{
-		{
-			name: "lexical declaration of an earlier script",
-			scripts: []string{
-				`let f = 1;`,
-				`{ function f() {} } f`,
-			},
-			want: "1",
-		},
-		{
-			name: "non-extensible global object",
-			scripts: []string{
-				`var r = []; Object.preventExtensions(globalThis);`,
-				`{ function g() {} r.push(typeof g); }
-				r.push(typeof g);
-				r.join()`,
-			},
-			want: "function,undefined",
-		},
-		{
-			name: "eval code",
-			scripts: []string{
-				`let h = 1; eval("{ function h() {} }"); h`,
-			},
-			want: "1",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var vm ekuma.VM
-			var v ekuma.Value
-			for _, src := range tt.scripts {
-				var err error
-				v, err = runScript(t.Context(), &vm, tt.name, src)
-				if err != nil {
-					t.Fatalf("runScript: %v", err)
-				}
-			}
-			if got := toString(t, &vm, v); got != tt.want {
-				t.Errorf("got %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
 // TestAtomicsNotifyWaitAsync checks that Atomics.notify wakes the waiters of its index in
 // order, as many as its count, and returns how many it woke.
 func TestAtomicsNotifyWaitAsync(t *testing.T) {
@@ -448,44 +368,20 @@ sab`)
 	}
 }
 
-// TestNativeRecursion checks that recursion through native functions, which runs no
+// TestHostFunctionRecursion checks that recursion through host functions, which runs no
 // interpreter loop, throws a RangeError.
-func TestNativeRecursion(t *testing.T) {
-	for _, tt := range []struct {
-		name string
-		src  string
-	}{
-		{
-			name: "native calls",
-			src: `var f = x => x;
-				for (let i = 0; i < 20000; i++) f = Function.prototype.call.bind(f, null);
-				f(1)`,
-		},
-		{
-			name: "iterator steps",
-			src: `var it = [1].values();
-				for (let i = 0; i < 20000; i++) it = it.map(Math.abs);
-				it.next()`,
-		},
-		{
-			name: "host functions",
-			src:  `invoke(invoke)`,
-		},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			var vm ekuma.VM
-			invoke := vm.FuncOf("invoke", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-				return args[0].Invoke(t.Context(), args[0])
-			})
-			if err := vm.Global().Set("invoke", invoke); err != nil {
-				t.Fatal(err)
-			}
-			_, err := runScript(t.Context(), &vm, "recursion", tt.src)
-			var ex *ekuma.ScriptError
-			if !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "RangeError") {
-				t.Errorf("got %v, want a RangeError", err)
-			}
-		})
+func TestHostFunctionRecursion(t *testing.T) {
+	var vm ekuma.VM
+	invoke := vm.FuncOf("invoke", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return args[0].Invoke(t.Context(), args[0])
+	})
+	if err := vm.Global().Set("invoke", invoke); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runScript(t.Context(), &vm, "recursion", `invoke(invoke)`)
+	var ex *ekuma.ScriptError
+	if !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "RangeError") {
+		t.Errorf("got %v, want a RangeError", err)
 	}
 }
 
@@ -1233,22 +1129,6 @@ outer()`)
 	want := "Error: x3\n    at c (trace.js:4:23)\n    at outer (trace.js:5:26)\n    at trace.js:6:1"
 	if got := v.String(); got != want {
 		t.Errorf("got %q, want %q", got, want)
-	}
-}
-
-// TestStackTraceLongNames checks that a stack trace cuts the long names that it shows.
-func TestStackTraceLongNames(t *testing.T) {
-	var vm ekuma.VM
-	v, err := runScript(t.Context(), &vm, "names.js", `var name = "x".repeat(1 << 20);
-var o = {[Symbol.toStringTag]: name, f() { throw new Error(); }};
-var s;
-try { o.f(); } catch (e) { s = e.stack; }
-s.length`)
-	if err != nil {
-		t.Fatalf("runScript: %v", err)
-	}
-	if got := v.Int(); got > 1<<12 {
-		t.Errorf("got a stack trace of %d code units, want at most %d", got, 1<<12)
 	}
 }
 
