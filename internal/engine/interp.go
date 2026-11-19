@@ -364,7 +364,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	fr := &vm.frames[len(vm.frames)-1]
 	fp := fr.fp
 	cl := fr.cl
-	code := fp.code
 	base := fr.base
 	pc := fr.pc
 	if fp.realm != vm.curRealm {
@@ -388,7 +387,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	)
 
 	for {
-		i := &code[pc]
+		i := &fp.code[pc]
 		pc++
 		switch i.Op {
 		case bytecode.OpLoadK:
@@ -610,7 +609,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						// it reads a data property through its cache, and runs on its own
 						// otherwise.
 						if o := w.o; o != nil {
-							n := &code[pc]
+							n := &fp.code[pc]
 							c := &fp.caches[n.C]
 							e := &c.cacheEntry
 							if o.shape != e.shape {
@@ -762,7 +761,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = vm.superBase(regs[i.B])
 		case bytecode.OpGetSuper:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			ext := code[pc]
+			ext := fp.code[pc]
 			pc++
 			if ext.B == 0 {
 				v, _ := vm.getSuper(vm.superBase(regs[ext.A]), regs[i.C], regs[i.B])
@@ -776,7 +775,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpSetSuper, bytecode.OpSetSuperStrict:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			superBase := regs[code[pc].A]
+			superBase := regs[fp.code[pc].A]
 			pc++
 			vm.setSuper(superBase, regs[i.B], regs[i.C], regs[i.A], i.Op == bytecode.OpSetSuperStrict)
 			regs = vm.reload(regs, base, fp)
@@ -1414,7 +1413,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						fr.fp, fr.cl, fr.pc, fr.base, fr.this, fr.ret, fr.isNew = c, f, 0, argBase, this, i.A, false
 						fr.argc, fr.extraBase, fr.newTarget, fr.gen, fr.scopes = argc, -1, nil, nil, nil
 						vm.sp = argBase + c.nregs + 1
-						base, fp, cl, code, pc = argBase, c, f, c.code, 0
+						base, fp, cl, pc = argBase, c, f, 0
 						regs = vm.stack[base:vm.sp]
 						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
 							// Do what the first instruction does, and start after it.
@@ -1445,7 +1444,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// Something else is called apply here: pass it the this value and a real
 				// arguments object.
 				regs[b+2] = regs[i.C]
-				regs[b+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, code[pc-1].A != 0)}
+				regs[b+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], regs, fp.code[pc-1].A != 0)}
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
 					argBase += base
@@ -1477,7 +1476,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto call
 		case bytecode.OpCallEval, bytecode.OpTailCallEval:
 			b := int(i.B)
-			site := int(code[pc].A)
+			site := int(fp.code[pc].A)
 			pc++
 			if regs[b].o == vm.Intrinsic(IntrinsicEval) {
 				vm.frames[len(vm.frames)-1].pc = pc
@@ -1516,7 +1515,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto tailCall
 		case bytecode.OpNew:
 			b := int(i.B)
-			site := code[pc].A
+			site := fp.code[pc].A
 			pc++
 			f, argBase, argc, ret = regs[b].o, b+2, int(i.C), i.A
 			if fp.heapRegs {
@@ -1605,7 +1604,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.switchRealm(fp.realm)
 			}
 			cl = fr.cl
-			code = fp.code
 			base = fr.base
 			pc = fr.pc
 			if fp.heapRegs {
@@ -1646,7 +1644,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.switchRealm(fp.realm)
 			}
 			cl = fr.cl
-			code = fp.code
 			base = fr.base
 			pc = fr.pc
 			if fp.heapRegs {
@@ -1756,7 +1753,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs = vm.reload(regs, base, fp)
 		case bytecode.OpDefineGetter, bytecode.OpDefineSetter:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			enumerable := code[pc].A != 0
+			enumerable := fp.code[pc].A != 0
 			pc++
 			vm.defineAccessor(regs[i.A].o, regs[i.B], regs[i.C].o, i.Op == bytecode.OpDefineSetter, enumerable)
 			regs = vm.reload(regs, base, fp)
@@ -1771,7 +1768,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs = vm.reload(regs, base, fp)
 		case bytecode.OpCopyPropsExcept:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			n := int(code[pc].A)
+			n := int(fp.code[pc].A)
 			pc++
 			o := vm.NewOrdinaryObject()
 			excluded := append([]Value(nil), regs[i.C:int(i.C)+n]...)
@@ -1811,7 +1808,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpAddField:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			kind := int(code[pc].A)
+			kind := int(fp.code[pc].A)
 			pc++
 			vm.addClassElement(regs[i.A].o, regs[i.B], regs[i.C], kind)
 			regs = vm.reload(regs, base, fp)
@@ -2034,7 +2031,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDecorate:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
 			pc++
-			if v, ok := vm.decorateOp(regs, i, &code[pc-1]); ok {
+			if v, ok := vm.decorateOp(regs, i, &fp.code[pc-1]); ok {
 				regs = vm.reload(regs, base, fp)
 				regs[i.C] = v
 			} else {
@@ -2137,7 +2134,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				fp = c
 				cl = f
-				code = c.code
 				regs = vm.stack[base : base+c.nregs+1]
 				pc = 0
 				if r := c.thisReg; r >= 0 {
@@ -2163,7 +2159,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				fr := &vm.frames[len(vm.frames)-1]
 				fp = c
 				cl = f
-				code = c.code
 				base = fr.base
 				regs = fr.gen.regs
 				pc = 0
@@ -2192,7 +2187,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.switchRealm(fp.realm)
 			}
 			cl = f
-			code = fp.code
 			base = fr.base
 			regs = vm.stack[base : base+fp.nregs+1]
 			pc = 0
@@ -2246,7 +2240,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.switchRealm(fp.realm)
 			}
 			cl = fr.cl
-			code = fp.code
 			base = fr.base
 			pc = fr.pc
 			if fp.heapRegs {
