@@ -91,7 +91,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 		id, isID := d.Target.(*ast.Identifier)
 		switch {
 		case !isID:
-			v := f.exprAny(d.Init)
+			v := f.sourceOperand(d.Init, d.Target)
 			f.destructure(d.Target, v, declMode(n.Kind))
 		case n.Kind == ast.DeclVar:
 			if d.Init == nil {

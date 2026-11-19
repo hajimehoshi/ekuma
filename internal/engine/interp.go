@@ -691,9 +691,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			setter := vm.setValue(v, k, regs[i.C], i.Op == bytecode.OpSetIndexStrict)
+			// Converting the key can run code that changes the register of the value.
+			val := regs[i.C]
+			setter := vm.setValue(v, k, val, i.Op == bytecode.OpSetIndexStrict)
 			if setter != nil {
-				val := regs[i.C]
 				argBase = vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(argBase + 1)
 				vm.stack[argBase] = val

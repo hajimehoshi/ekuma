@@ -289,3 +289,15 @@ func assignsTo(n ast.Node, name string) bool {
 	})
 	return found
 }
+
+// patternAssigns reports whether destructuring to the pattern p, outside the functions in p,
+// assigns to the variable name.
+func patternAssigns(p ast.Pattern, name string) bool {
+	found := false
+	patternNames(p, func(id *ast.Identifier) {
+		if id.Name == name {
+			found = true
+		}
+	})
+	return found || assignsTo(p, name)
+}
