@@ -414,7 +414,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.throwError(thrownErrorKinds[i.A], fp.consts[i.B].o.str)
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalOrUndef:
-			c := &fp.caches[i.C]
+			c := &fp.caches[i.B]
 			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
 				if v := h.slots[c.slot]; v.o != tdzObject {
 					regs[i.A] = v
@@ -425,7 +425,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := vm.getGlobal(fp.keys[i.B], c, i.Op == bytecode.OpGetGlobalOrUndef)
 			regs[i.A] = v
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
-			c := &fp.caches[i.C]
+			c := &fp.caches[i.B]
 			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch && c.kind == cacheOwn {
 				if h.slots[c.slot].o != tdzObject {
 					h.slots[c.slot] = regs[i.A]
@@ -435,7 +435,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)
 		case bytecode.OpResolveGlobal:
-			c := &fp.caches[i.C]
+			c := &fp.caches[i.B]
 			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
 				regs[i.A] = True
 				continue
@@ -705,27 +705,24 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			ext := code[pc]
 			pc++
 			if ext.B == 0 {
-				v, _ := vm.getSuper(vm.superBase(regs[ext.A]), regs[i.B], regs[i.C])
+				v, _ := vm.getSuper(vm.superBase(regs[ext.A]), regs[i.C], regs[i.B])
 				regs = vm.reload(regs, onHeap, base, fp)
 				regs[i.A] = v
 				continue
 			}
-			v, key := vm.getSuper(regs[ext.A], regs[i.B], regs[i.C])
+			v, key := vm.getSuper(regs[ext.A], regs[i.C], regs[i.B])
 			regs = vm.reload(regs, onHeap, base, fp)
-			regs[i.B] = vm.KeyValue(key)
+			regs[i.C] = vm.KeyValue(key)
 			regs[i.A] = v
-		case bytecode.OpSetSuper:
+		case bytecode.OpSetSuper, bytecode.OpSetSuperStrict:
 			vm.frames[len(vm.frames)-1].pc = pc + 1
-			strict := code[pc].A != 0
-			superBase := regs[code[pc].B]
+			superBase := regs[code[pc].A]
 			pc++
-			vm.setSuper(superBase, regs[i.A], regs[i.B], regs[i.C], strict)
+			vm.setSuper(superBase, regs[i.B], regs[i.C], regs[i.A], i.Op == bytecode.OpSetSuperStrict)
 			regs = vm.reload(regs, onHeap, base, fp)
-		case bytecode.OpDeleteProp:
-			vm.frames[len(vm.frames)-1].pc = pc + 1
-			strict := code[pc].A != 0
-			pc++
-			v := vm.deleteValue(regs[i.B], regs[i.C], strict)
+		case bytecode.OpDeleteProp, bytecode.OpDeletePropStrict:
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.deleteValue(regs[i.B], regs[i.C], i.Op == bytecode.OpDeletePropStrict)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = v
 		case bytecode.OpIn:
@@ -773,13 +770,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpToPropertyKey:
 			v := regs[i.B]
 			// The read and the write of a compound assignment convert an index alike.
-			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) || v.o == numberObject && i.C != 0 && float64(uint32(v.n)) == v.n {
+			if v.o != nil && (v.o.kind == kindString || v.o.kind == kindSymbol) || v.o == numberObject && i.C >= 0 && float64(uint32(v.n)) == v.n {
 				regs[i.A] = v
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
-			if i.C != 0 {
-				if b := regs[i.C-1]; b.IsNullish() {
+			if i.C >= 0 {
+				if b := regs[i.C]; b.IsNullish() {
 					vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(b) + " (reading '" + vm.DisplayString(v) + "')")
 				}
 			}
@@ -1518,8 +1515,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto throw
 		case bytecode.OpRethrow:
 			vm.thrown = regs[i.A]
-			if i.B != 0 && vm.thrown.o == closeSignal {
-				vm.thrown = regs[i.B-1]
+			if i.B >= 0 && vm.thrown.o == closeSignal {
+				vm.thrown = regs[i.B]
 			}
 			goto throw
 
@@ -1597,14 +1594,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			o.slots = slots[:0]
 			regs[i.A] = Value{o: o}
 		case bytecode.OpNewArray:
-			o, elems := newObjectWithStorage(int(max(i.B, i.C)))
-			elems = elems[:i.B]
-			copy(elems, regs[i.A+1:])
+			o, elems := newObjectWithStorage(int(i.C))
 			o.kind = kindArray
 			o.class = classArray
 			o.shape = vm.shapes.array
-			o.elems = elems
-			o.length = uint32(len(elems))
+			o.elems = elems[:0]
 			regs[i.A] = Value{o: o}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].o
@@ -1675,7 +1669,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			n := int(code[pc].A)
 			pc++
 			o := vm.NewOrdinaryObject()
-			excluded := append([]Value(nil), regs[int(i.C)+1:int(i.C)+1+n]...)
+			excluded := append([]Value(nil), regs[i.C:int(i.C)+n]...)
 			vm.copyDataProperties(o, regs[i.B], excluded)
 			regs = vm.reload(regs, onHeap, base, fp)
 			regs[i.A] = Value{o: o}
@@ -1804,7 +1798,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			regs[i.A] = Undefined
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.iteratorClose(it, i.B != 0 && regs[i.B-1].o != closeSignal)
+			vm.iteratorClose(it, i.B >= 0 && regs[i.B].o != closeSignal)
 			regs = vm.reload(regs, onHeap, base, fp)
 		case bytecode.OpIterResult:
 			regs[i.A] = vm.CreateIterResultObject(regs[i.B], i.C != 0)
@@ -1941,7 +1935,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs = vm.reload(regs, onHeap, base, fp)
 			}
 
-		case bytecode.OpDebugger, bytecode.OpNop:
+		case bytecode.OpDebugger:
 		default:
 			panic("ekuma: unknown bytecode.Opcode")
 		}
@@ -1988,7 +1982,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			copy(vm.stack[argBase:], regs[:n])
 			copy(vm.stack[argBase+n:], vm.extraArgs(&vm.frames[len(vm.frames)-1]))
 		}
-		if i.Op >= bytecode.OpTailApplyFwd {
+		if i.Op == bytecode.OpTailApplyFwd || i.Op == bytecode.OpTailCallFwd {
 			goto tailCall
 		}
 		goto call

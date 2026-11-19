@@ -223,7 +223,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 				elem |= bytecode.ElemStatic
 			}
 			f.emit(bytecode.OpAddField, ctor, k, v)
-			f.emit(bytecode.OpNop, elem, 0, 0)
+			f.emit(bytecode.OpExtra, elem, 0, 0)
 			f.free(mm)
 		case ast.MemberField:
 			// The key and the initializer stay in registers until the static fields run.
@@ -244,7 +244,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 				break
 			}
 			f.emit(bytecode.OpAddField, ctor, k, v)
-			f.emit(bytecode.OpNop, elem, 0, 0)
+			f.emit(bytecode.OpExtra, elem, 0, 0)
 		case ast.MemberAccessor:
 			mm := f.top
 			k := f.propertyKey(m.Key, m.Computed)
@@ -263,14 +263,14 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 					elem = bytecode.ElemStatic
 				}
 				f.emit(bytecode.OpAddField, ctor, k, acc+1)
-				f.emit(bytecode.OpNop, bytecode.ElemGetter|elem, 0, 0)
+				f.emit(bytecode.OpExtra, bytecode.ElemGetter|elem, 0, 0)
 				f.emit(bytecode.OpAddField, ctor, k, acc+2)
-				f.emit(bytecode.OpNop, bytecode.ElemSetter|elem, 0, 0)
+				f.emit(bytecode.OpExtra, bytecode.ElemSetter|elem, 0, 0)
 			} else {
 				f.emit(bytecode.OpDefineGetter, obj, k, acc+1)
-				f.emit(bytecode.OpNop, 0, 0, 0)
+				f.emit(bytecode.OpExtra, 0, 0, 0)
 				f.emit(bytecode.OpDefineSetter, obj, k, acc+2)
-				f.emit(bytecode.OpNop, 0, 0, 0)
+				f.emit(bytecode.OpExtra, 0, 0, 0)
 			}
 			if m.Static {
 				// The backing storage and the initializer stay in registers until the static fields run.
@@ -282,7 +282,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 				break
 			}
 			f.emit(bytecode.OpAddField, ctor, acc, v)
-			f.emit(bytecode.OpNop, fieldElem, 0, 0)
+			f.emit(bytecode.OpExtra, fieldElem, 0, 0)
 			f.free(mm)
 		case ast.MemberStaticBlock:
 			v := f.newReg()
@@ -310,7 +310,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 			continue
 		}
 		f.emit(bytecode.OpAddField, ctor, s.key, s.value)
-		f.emit(bytecode.OpNop, s.elem|bytecode.ElemStatic, 0, 0)
+		f.emit(bytecode.OpExtra, s.elem|bytecode.ElemStatic, 0, 0)
 	}
 
 	f.emit(bytecode.OpMove, dst, ctor, 0)
@@ -367,7 +367,7 @@ func (f *fn) fieldInit(m *ast.ClassMember, obj, k int32, private bool) int32 {
 // operands a, b and c, and the Elem kind elem.
 func (f *fn) decorateStep(step int32, a, b, c, elem int32) {
 	f.emit(bytecode.OpDecorate, a, b, c)
-	f.emit(bytecode.OpNop, step, elem, 0)
+	f.emit(bytecode.OpExtra, step, elem, 0)
 }
 
 // decorator evaluates the decorator e and adds it to the decorators of the next element of

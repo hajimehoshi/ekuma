@@ -89,15 +89,15 @@ func (vm *VM) autoAccessorOp(regs []Value, i *bytecode.Instr) {
 	regs[i.A+2] = Value{o: setter}
 }
 
-// decorateOp performs the instruction i, an [bytecode.OpDecorate] followed by the instruction
-// next, on the registers regs. It returns the value for the register c of a step that has one.
-// The registers may move when it returns.
-func (vm *VM) decorateOp(regs []Value, i, next *bytecode.Instr) (Value, bool) {
+// decorateOp performs the instruction i, an [bytecode.OpDecorate] followed by the
+// [bytecode.OpExtra] x, on the registers regs. It returns the value for the register c of a step
+// that has one. The registers may move when it returns.
+func (vm *VM) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
 	var b, c Value
 	if i.B >= 0 {
 		b = regs[i.B]
 	}
-	step := int(next.A)
+	step := int(x.A)
 	switch step {
 	case bytecode.DecBegin:
 		return vm.newClassDecoration(b), true
@@ -107,7 +107,7 @@ func (vm *VM) decorateOp(regs []Value, i, next *bytecode.Instr) (Value, bool) {
 			c = regs[i.C]
 		}
 	}
-	v := vm.decorate(regs[i.A].o.ext.(*classDecoration), step, b, c, int(next.B))
+	v := vm.decorate(regs[i.A].o.ext.(*classDecoration), step, b, c, int(x.B))
 	return v, step == bytecode.DecApply
 }
 

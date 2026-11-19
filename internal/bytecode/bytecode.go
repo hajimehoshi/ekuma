@@ -13,216 +13,176 @@ import (
 // Opcode is the operation of an instruction.
 type Opcode uint8
 
-// The comments give the operands. Registers are written a, b and c; K means an index into
-// the constants, N an index into the property keys, and "cache" an index into the inline caches.
+// The comments of the opcodes give the meaning of the operands a, b and c, with these
+// conventions:
+//
+//   - An operand is a register unless its comment says otherwise. An operand that may name no
+//     register is -1 then.
+//   - K is an index into [Func.Consts] and N an index into [Func.Keys].
+//   - A site is an index into [Func.Keys] that also names an inline cache of its own.
+//   - A flag is 0 or 1.
+//   - An instruction writes the value that it produces to a. A jump has its target in a, or in
+//     c when it also produces a value.
+//   - A property read takes the object and the key in b and c, and a property store takes the
+//     object, the key and the value in a, b and c. A variable store takes the value in a.
+//   - A store or a delete that behaves differently in strict code has a variant for strict code,
+//     whose name ends in Strict.
+//   - An instruction whose operands do not fit in a, b and c is followed by an [OpExtra] with
+//     the rest, written x.a and x.b.
 const (
-	OpLoadK            Opcode = iota // a = Consts[b]
-	OpLoadInt                        // a = the integer b
-	OpLoadUndef                      // a = undefined
-	OpLoadNull                       // a = null
-	OpLoadTrue                       // a = true
-	OpLoadFalse                      // a = false
-	OpLoadTDZ                        // a = the marker of an uninitialized binding
-	OpMove                           // a = b
-	OpCheckTDZ                       // throw a ReferenceError naming Keys[b] when a is uninitialized
-	OpThrowConstAssign               // throw the TypeError for assigning to the constant Keys[a]
-	OpThrowError                     // throw an error of the Throw kind a with the message Consts[b]
+	// Loads and moves.
+	OpLoadK     Opcode = iota // a = Consts[b]
+	OpLoadInt                 // a = the integer b
+	OpLoadUndef               // a = undefined
+	OpLoadNull                // a = null
+	OpLoadTrue                // a = true
+	OpLoadFalse               // a = false
+	OpLoadTDZ                 // a = the marker of an uninitialized binding
+	OpMove                    // a = b
 
-	OpGetGlobal        // a = global Keys[b], cache c
+	// Checks and errors.
+	OpCheckTDZ         // throw a ReferenceError naming Keys[b] when a is uninitialized
+	OpRequireCoercible // throw a TypeError when a is undefined or null
+	OpThrowConstAssign // throw the TypeError for assigning to the constant Keys[a]
+	OpThrowError       // throw an error of the Throw kind a with the message Consts[b]
+
+	// Global variables.
+	OpGetGlobal        // a = the global variable Keys[b]; b is a site
 	OpGetGlobalOrUndef // like [OpGetGlobal], but undefined when the global does not exist
-	OpSetGlobal        // global Keys[b] = a, cache c; creates the global when it does not exist
+	OpSetGlobal        // the global variable Keys[b] = a, creating it when it does not exist; b is a site
 	OpSetGlobalStrict  // like [OpSetGlobal], but a ReferenceError when the global does not exist
-	OpResolveGlobal    // a = whether the global Keys[b] exists, cache c
+	OpResolveGlobal    // a = whether the global variable Keys[b] exists; b is a site
+	OpDeleteName       // a = delete the global variable Keys[b]
 	OpDeclareGlobalVar // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function
-	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant when b is set
+	OpDeclareGlobalLex // declare the global lexical binding Keys[a], constant with the flag b
 	OpInitGlobalLex    // initialize the global lexical binding Keys[b] with a
 	OpCheckGlobalDecl  // throw when declaring Keys[a] at the top level would conflict; b is one of the Decl kinds
 	OpDeclareAnnexB    // a = whether the global variable Keys[b] of a block-level function is declared; c is a set of GlobalVar flags
 
+	// Upvalues and closures.
 	OpGetUpval    // a = upvalue b
 	OpSetUpval    // upvalue b = a
 	OpCloseUpvals // detach the upvalues that refer to the registers from a on
 	OpClosure     // a = closure of Protos[b]
 
+	// The values that the running function provides.
 	OpLoadThis       // a = this
 	OpLoadThisSloppy // a = this, converted the way a sloppy function sees it
 	OpLoadCallee     // a = the running function
 	OpLoadNewTarget  // a = new.target
 	OpLoadHome       // a = the home object of the running function
-	OpArguments      // a = the arguments object; b says whether it is mapped to the parameters
+	OpArguments      // a = the arguments object, mapped to the parameters with the flag b
 	OpRestArgs       // a = the arguments from index b on, as an array
 
-	OpGetProp // a = b.Keys[c], cache c
-	OpSetProp // a.Keys[b] = c, cache b
-	OpSetPropStrict
-	OpGetLength // a = b.length, cache c
-	OpGetIndex  // a = b[c]
-	OpSetIndex  // a[b] = c
-	OpSetIndexStrict
-	OpGetIndexInt   // a = b[the integer c]
-	OpSuperBase     // a = the super base of the home object b, which is its prototype
-	OpGetSuper      // a = super[b], with this c; the next instruction's a is the home object, or the super base with the key converted in place when its b is nonzero
-	OpSetSuper      // super[a] = b, with this c; the next instruction's a says whether the code is strict, and its b is the super base
-	OpDeleteProp    // a = delete b[c]; the next instruction's a says whether the code is strict
-	OpIn            // a = b in c
-	OpInstanceof    // a = b instanceof c
-	OpHasPrivate    // a = the private name b is in c
-	OpGetPrivate    // a = b.#c, where c holds the private name
-	OpSetPrivate    // a.#b = c, where b holds the private name
-	OpToPropertyKey // a = b converted to a property key; when c is nonzero and b needs converting, a TypeError is thrown first if c-1 is undefined or null
+	// Properties.
+	OpGetProp          // a = b.Keys[c]; c is a site
+	OpGetLength        // a = b.length; c is a site
+	OpGetIndex         // a = b[c]
+	OpGetIndexInt      // a = b[the integer c]
+	OpSetProp          // a.Keys[b] = c; b is a site
+	OpSetPropStrict    // like [OpSetProp], in strict code
+	OpSetIndex         // a[b] = c
+	OpSetIndexStrict   // like [OpSetIndex], in strict code
+	OpDeleteProp       // a = delete b[c]
+	OpDeletePropStrict // like [OpDeleteProp], in strict code
+	OpIn               // a = b in c
+	OpInstanceof       // a = b instanceof c
+	OpToPropertyKey    // a = b converted to a property key. c is -1, or the object of a compound assignment to its property b: then a key that is an integer from 0 to 2^32-1 stays a number, and a key that needs converting first throws a TypeError when c is undefined or null
 
-	OpAdd
-	OpSub
-	OpMul
-	OpDiv
-	OpMod
-	OpExp
-	OpBitOr
-	OpBitAnd
-	OpBitXor
-	OpShl
-	OpShr
-	OpUShr
-	OpAddK // a = b + Consts[c], which is a number
-	OpSubK
-	OpMulK
-	OpDivK
-	OpModK
-	OpBitOrK
-	OpBitAndK
-	OpShlK
-	OpShrK
-	OpUShrK
-	OpNeg
-	OpPlus // a = +b
-	OpNot
-	OpBitNot
+	// Super properties.
+	OpSuperBase      // a = the super base of the home object b, which is its prototype
+	OpGetSuper       // a = super[c] with the this value b; x.a is the home object, or with the flag x.b the super base, and then c is converted to a property key in place
+	OpSetSuper       // super[b] = c with the this value a; x.a is the super base
+	OpSetSuperStrict // like [OpSetSuper], in strict code
+
+	// Private names.
+	OpHasPrivate // a = the private name b is in c
+	OpGetPrivate // a = b.#c, where c holds the private name
+	OpSetPrivate // a.#b = c, where b holds the private name
+
+	// Arithmetic.
+	OpAdd    // a = b + c
+	OpSub    // a = b - c
+	OpMul    // a = b * c
+	OpDiv    // a = b / c
+	OpMod    // a = b % c
+	OpExp    // a = b ** c
+	OpBitOr  // a = b | c
+	OpBitAnd // a = b & c
+	OpBitXor // a = b ^ c
+	OpShl    // a = b << c
+	OpShr    // a = b >> c
+	OpUShr   // a = b >>> c
+
+	// Arithmetic with a constant number Consts[c], which is an int32 for a bitwise operator and
+	// below 32 for a shift. [Opcode.RegOperand] gives the opcode that takes a register instead.
+	OpAddK    // a = b + Consts[c]
+	OpSubK    // a = b - Consts[c]
+	OpMulK    // a = b * Consts[c]
+	OpDivK    // a = b / Consts[c]
+	OpModK    // a = b % Consts[c]
+	OpBitOrK  // a = b | Consts[c]
+	OpBitAndK // a = b & Consts[c]
+	OpShlK    // a = b << Consts[c]
+	OpShrK    // a = b >> Consts[c]
+	OpUShrK   // a = b >>> Consts[c]
+
+	// Unary operators and conversions.
+	OpNeg       // a = -b
+	OpPlus      // a = +b
+	OpNot       // a = !b
+	OpBitNot    // a = ~b
+	OpTypeof    // a = typeof b
+	OpInc       // a = b + 1, where b is already numeric
+	OpDec       // a = b - 1, where b is already numeric
 	OpToNumeric // a = b converted to a number or BigInt
 	OpToString  // a = b converted to a string
 	OpConcat    // a = the concatenation of the c strings from b on
-	OpTypeof
-	OpInc // a = b + 1, where b is already numeric
-	OpDec // a = b - 1, where b is already numeric
 
-	OpLt
-	OpLe
-	OpGt
-	OpGe
-	OpEq
-	OpNe
-	OpStrictEq
-	OpStrictNe
+	// Comparisons.
+	OpLt       // a = b < c
+	OpLe       // a = b <= c
+	OpGt       // a = b > c
+	OpGe       // a = b >= c
+	OpEq       // a = b == c
+	OpNe       // a = b != c
+	OpStrictEq // a = b === c
+	OpStrictNe // a = b !== c
 
-	OpJump          // pc = a
-	OpJumpIf        // if b then pc = a
-	OpJumpIfNot     // if !b then pc = a
-	OpJumpIfNullish // if b is null or undefined then pc = a
-	OpJumpIfNotNullish
-	OpJumpIfUndef    // if b is undefined then pc = a
-	OpJumpIfNotUndef // if b is not undefined then pc = a
-	OpJumpNotLt      // if !(b < c) then pc = a
-	OpJumpNotLe
-	OpJumpNotGt
-	OpJumpNotGe
-	OpJumpNotEq
-	OpJumpNotNe
-	OpJumpNotSEq
-	OpJumpNotSNe
-	OpJumpNotLtK // if !(b < Consts[c]) then pc = a, where Consts[c] is a number
-	OpJumpNotLeK
-	OpJumpNotGtK
-	OpJumpNotGeK
-	OpJumpNotSEqK
-	OpJumpNotSNeK
-	OpJumpIfInt // if b is the integer c then pc = a
+	// Jumps.
+	OpJump             // pc = a
+	OpJumpIf           // if b then pc = a
+	OpJumpIfNot        // if !b then pc = a
+	OpJumpIfNullish    // if b is null or undefined then pc = a
+	OpJumpIfNotNullish // if b is neither null nor undefined then pc = a
+	OpJumpIfUndef      // if b is undefined then pc = a
+	OpJumpIfNotUndef   // if b is not undefined then pc = a
+	OpJumpIfInt        // if b is the integer c then pc = a
 
-	OpCall          // a = a(this a+1, args a+2...), b arguments
-	OpCallCall      // a = a.call(...) where a+1 is the function and a+2... the b arguments of call, the first of which is the this value
-	OpApplyFwd      // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; b says whether an arguments object made for them is mapped
-	OpCallFwd       // a = a(this a+1, the arguments of the running function)
-	OpCallSpread    // a = a(this a+1, ...the array a+2)
-	OpCallEval      // like [OpCall]; a direct eval when a is the eval function. c indexes [Func.EvalScopes]. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the [OpCallSpread] for any other function
-	OpNew           // a = new a(args a+2...), b arguments, cache c
-	OpNewSpread     // a = new a(...the array a+2)
-	OpSuperCall     // a = super(args a+2...), b arguments, where a is the super constructor and a+1 new.target
-	OpSuperSpread   // a = super(...the array a+2)
-	OpReturn        // return a
-	OpReturnUndef   // return undefined
-	OpReturnDerived // return a from a derived constructor whose this is in b
-	OpThrow         // throw a
-	OpRethrow       // throw a again, as the completion of a finally block; when b is nonzero and a makes a generator return, throw b-1 instead
+	// Jumps when a comparison fails. The constant Consts[c] of the K forms is a number.
+	OpJumpNotLt   // if !(b < c) then pc = a
+	OpJumpNotLe   // if !(b <= c) then pc = a
+	OpJumpNotGt   // if !(b > c) then pc = a
+	OpJumpNotGe   // if !(b >= c) then pc = a
+	OpJumpNotEq   // if !(b == c) then pc = a
+	OpJumpNotNe   // if !(b != c) then pc = a
+	OpJumpNotSEq  // if !(b === c) then pc = a
+	OpJumpNotSNe  // if !(b !== c) then pc = a
+	OpJumpNotLtK  // if !(b < Consts[c]) then pc = a
+	OpJumpNotLeK  // if !(b <= Consts[c]) then pc = a
+	OpJumpNotGtK  // if !(b > Consts[c]) then pc = a
+	OpJumpNotGeK  // if !(b >= Consts[c]) then pc = a
+	OpJumpNotSEqK // if !(b === Consts[c]) then pc = a
+	OpJumpNotSNeK // if !(b !== Consts[c]) then pc = a
 
-	OpInitialYield        // suspend a generator before its body
-	OpYield               // suspend the generator with the value b; a receives the value sent on resume. A nonzero c, for yield*, leaves every resume kind to the code that follows and passes the result b through
-	OpAwait               // suspend until the promise b settles; a receives its value
-	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
-	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
-
-	OpNewObject        // a = {}, with room for c properties
-	OpNewArray         // a = [a+1 ... a+b]
-	OpArrayPush        // append b to the array a
-	OpArrayHole        // append a hole to the array a
-	OpArraySpread      // append the elements of the iterable b to the array a
-	OpSpreadArgs       // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
-	OpRegExp           // a = a new RegExp object for the literal RegExps[b]
-	OpRegExpArg        // a+2, or a+1 when c is 1, = the RegExp object for the literal RegExps[b] as the first argument or this value of the call of a that follows
-	OpRegExpMethod     // a = the property Keys[c] of a RegExp object a+1 for the literal RegExps[b], cache c; [OpRegExpArg] with c = 1 replaces a+1 before the call
-	OpTemplate         // a = the template object b of the function
-	OpDefineField      // define the enumerable data property b of a as c
-	OpDefineFieldK     // define the enumerable data property Keys[b] of a as c, cache b
-	OpDefineMethod     // define the non-enumerable method b of a as c, setting its home object
-	OpDefineGetter     // define the getter c for the property b of a; the next instruction's a says whether it is enumerable
-	OpDefineSetter     // define the setter c for the property b of a; the next instruction's a says whether it is enumerable
-	OpSetFuncName      // set the name of the anonymous function a to the property key b, with the NamePrefix kind c
-	OpSetHome          // set the home object of the function a to b
-	OpCopyProps        // copy the own enumerable properties of b to a, as an object spread
-	OpCopyPropsExcept  // a = an object with the own enumerable properties of b except the keys in c+1...c+N, N in the next instruction's a
-	OpSetProto         // set the prototype of the object literal a to b when b is an object or null
-	OpClass            // make the function a a class constructor with the parent c; a+1 receives the prototype. c is -1 without an extends clause
-	OpPrivateName      // a = a new private name described by Keys[b]; c says whether it names a method
-	OpInitFields       // define the instance elements of the class a on the instance b
-	OpAddField         // add the class element with the key b and the value, initializer or initial value in c to the class a; the next instruction's a is an Elem kind
-	OpCheckThisUninit  // throw when a is initialized: super was called twice
-	OpRequireCoercible // throw a TypeError when a is undefined or null
-
-	OpForIn       // a = the for-in iterator over b
-	OpForInNext   // a = the next key of the for-in iterator b, or jump to c when it is exhausted
-	OpGetIterator // a, a+1 = the iterator of b and its next method; c is one of the Iter kinds
-	OpIterNext    // a = the next value of the iterator b, b+1; jump to c when it is done
-	OpIterClose   // close the iterator a, a+1; when b is nonzero, b-1 holds the pending exception, which is kept unless it makes a generator return; a becomes undefined
-	OpIterResult  // a = the iterator result object with the value b and done c
-	OpIterCall    // a, a+1 = the result of calling the method Keys[c] of the iterator b with the argument a and true, or undefined and false when there is no such method
-
-	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
-	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
-	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
-
-	OpWith          // push the object a as a with scope
-	OpPopScope      // pop the innermost dynamic scope
-	OpResolveName   // a = the innermost of the c innermost dynamic scopes that has the variable Keys[b], or undefined
-	OpGetScoped     // a = the variable Keys[c] of the dynamic scope b
-	OpSetScoped     // the variable Keys[c] of the dynamic scope b = a
-	OpDeleteScoped  // a = delete the variable Keys[c] of the dynamic scope b
-	OpDeleteName    // a = delete the global variable Keys[b]
-	OpCaptureScopes // the closure a sees the dynamic scopes that are open
-
-	OpDebugger
-	OpNop
-
-	OpUsing        // add the resource a with the Dispose hint c to the dispose capability b, which is created when b is undefined
-	OpDisposeBegin // start disposing the capability a for the completion b, which is a throw when c is the integer 1
-	OpDisposeStep  // a = the next value to await in disposing the capability b; jump to c when there is none
-	OpDisposeError // record that disposing a resource of the capability a threw b
-	OpDisposeEnd   // end disposing the capability a and throw its completion when it is a throw; a becomes undefined
-
-	OpEvalScope      // push a new scope for the variables that direct evals declare
-	OpScopeThis      // a = the this value of a call of a function found in the dynamic scope b
-	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
-
-	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
-
-	OpAutoAccessor // a, a+1, a+2 = the backing private name, the getter and the setter of an auto-accessor with the key b
-	OpDecorate     // a step of evaluating a class with decorators; the next instruction's a is the Dec kind, which gives the operands
+	// Calls. The callee is in a and the this value in a+1, and the result replaces the callee.
+	OpCall       // a = a(this a+1, args a+2...), b arguments
+	OpCallCall   // a = a.call(...) where a+1 is the function and a+2... the b arguments of call, the first of which is the this value
+	OpApplyFwd   // a = a.apply(...) where a+1 is the function, a+2 the this value, forwarding the arguments of the running function; the flag b says whether an arguments object made for them is mapped
+	OpCallFwd    // a = a(this a+1, the arguments of the running function)
+	OpCallSpread // a = a(this a+1, ...the array a+2)
+	OpCallEval   // like [OpCall]; a direct eval when a is the eval function. c indexes [Func.EvalScopes]. With b = -1, a+2 is the array of the arguments: a direct eval skips the next instruction, which is the [OpCallSpread] for any other function
+	OpSpreadArgs // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
 
 	// The calls in tail position of strict functions. When the callee is a function written in
 	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
@@ -234,6 +194,94 @@ const (
 	OpTailCallEval   // like [OpCallEval], where the instruction after one with b = -1 is [OpTailCallSpread]
 	OpTailApplyFwd   // like [OpApplyFwd]
 	OpTailCallFwd    // like [OpCallFwd]
+
+	// Constructor calls.
+	OpNew             // a = new a(args a+2...), b arguments; c is a site for the prototype property of a
+	OpNewSpread       // a = new a(...the array a+2)
+	OpSuperCall       // a = super(args a+2...), b arguments, where a is the super constructor and a+1 new.target
+	OpSuperSpread     // a = super(...the array a+2)
+	OpCheckThisUninit // throw when a is initialized: super was called twice
+
+	// Returns and exceptions.
+	OpReturn        // return a
+	OpReturnUndef   // return undefined
+	OpReturnDerived // return a from a derived constructor whose this is in b
+	OpThrow         // throw a
+	OpRethrow       // throw a again, as the completion of a finally block; when a makes a generator return and b is not -1, throw b instead
+
+	// Generators and async functions.
+	OpInitialYield        // suspend a generator before its body
+	OpYield               // suspend the generator with the value b; a receives the value sent on resume. The flag c, set for yield*, leaves every resume kind to the code that follows and passes the result b through
+	OpAwait               // suspend until the promise b settles; a receives its value
+	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
+	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
+
+	// Literals.
+	OpNewObject       // a = {}, with room for c properties
+	OpNewArray        // a = [], with room for c elements
+	OpArrayPush       // append b to the array a
+	OpArrayHole       // append a hole to the array a
+	OpArraySpread     // append the elements of the iterable b to the array a
+	OpCopyProps       // copy the own enumerable properties of b to a, as an object spread
+	OpCopyPropsExcept // a = an object with the own enumerable properties of b except the x.a keys from c on
+	OpSetProto        // set the prototype of the object literal a to b when b is an object or null
+	OpTemplate        // a = the template object b of the function
+	OpRegExp          // a = a new RegExp object for the literal RegExps[b]
+	OpRegExpArg       // a+2, or a+1 with the flag c, = the RegExp object for the literal RegExps[b] as the first argument or this value of the call of a that follows
+	OpRegExpMethod    // a = the property Keys[c] of a RegExp object a+1 for the literal RegExps[b]; c is a site. [OpRegExpArg] with c = 1 replaces a+1 before the call
+
+	// Definitions of properties and classes.
+	OpDefineField  // define the enumerable data property b of a as c
+	OpDefineFieldK // define the enumerable data property Keys[b] of a as c; b is a site
+	OpDefineMethod // define the non-enumerable method b of a as c, setting its home object
+	OpDefineGetter // define the getter c for the property b of a, enumerable with the flag x.a
+	OpDefineSetter // define the setter c for the property b of a, enumerable with the flag x.a
+	OpSetFuncName  // set the name of the anonymous function a to the property key b, with the NamePrefix kind c
+	OpSetHome      // set the home object of the function a to b
+	OpClass        // make the function a a class constructor with the parent c, or with no extends clause when c is -1; a+1 receives the prototype
+	OpPrivateName  // a = a new private name described by Keys[b]; the flag c says whether it names a method
+	OpInitFields   // define the instance elements of the class a on the instance b
+	OpAddField     // add the class element with the key b and the value, initializer or initial value in c to the class a; x.a is an Elem kind
+	OpAutoAccessor // a, a+1, a+2 = the backing private name, the getter and the setter of an auto-accessor with the key b
+	OpDecorate     // a step of evaluating a class with decorators; x.a is the Dec kind, which gives the operands
+
+	// Iteration.
+	OpForIn           // a = the for-in iterator over b
+	OpForInNext       // a = the next key of the for-in iterator b; jump to c when it is exhausted
+	OpGetIterator     // a, a+1 = the iterator of b and its next method; c is one of the Iter kinds
+	OpIterNext        // a = the next value of the iterator b, b+1; jump to c when it is done
+	OpIterClose       // close the iterator a, a+1, and set a to undefined; b is -1 or holds the pending exception, which is kept unless it makes a generator return
+	OpIterResult      // a = the iterator result object with the value b and the done flag c
+	OpIterCall        // a, a+1 = the result of calling the method Keys[c] of the iterator b with the argument a and true, or undefined and false when there is no such method
+	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
+	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
+	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
+
+	// Disposal of resources.
+	OpUsing        // add the resource a with the Dispose hint c to the dispose capability b, which is created when b is undefined
+	OpDisposeBegin // start disposing the capability a for the completion b, which is a throw when c is the integer 1
+	OpDisposeStep  // a = the next value to await in disposing the capability b; jump to c when there is none
+	OpDisposeError // record that disposing a resource of the capability a threw b
+	OpDisposeEnd   // end disposing the capability a and throw its completion when it is a throw; a becomes undefined
+
+	// Dynamic scopes, which with statements and direct evals open.
+	OpWith           // push the object a as a with scope
+	OpPopScope       // pop the innermost dynamic scope
+	OpResolveName    // a = the innermost of the c innermost dynamic scopes that has the variable Keys[b], or undefined
+	OpGetScoped      // a = the variable Keys[c] of the dynamic scope b, read with the strictness of the running function
+	OpSetScoped      // the variable Keys[c] of the dynamic scope b = a, assigned with the strictness of the running function
+	OpDeleteScoped   // a = delete the variable Keys[c] of the dynamic scope b
+	OpCaptureScopes  // the closure a sees the dynamic scopes that are open
+	OpEvalScope      // push a new scope for the variables that direct evals declare
+	OpScopeThis      // a = the this value of a call of a function found in the dynamic scope b
+	OpDeclareEvalVar // declare the variable Keys[a] in the b-th innermost dynamic scope, a scope of [OpEvalScope]; it is a function when c is not -1, and c holds it
+
+	// Modules.
+	OpImport // a = the promise of a dynamic import of b with the options c in the [Phase] c+1, an integer; with b = -1, a = import.meta
+
+	// Others.
+	OpDebugger // do nothing, for a debugger statement
+	OpExtra    // the operands of the instruction before it that do not fit in it; it is never executed
 )
 
 var regOperandOps = [...]Opcode{
@@ -318,7 +366,7 @@ const (
 	// DecClass makes the decorators added so far the decorators of the class.
 	DecClass
 	// DecElement adds the class element with the key b and the value or initializer c,
-	// which is -1 when there is none; the next instruction's b is its Elem kind.
+	// which is -1 when there is none; x.b is its Elem kind.
 	DecElement
 	// DecApply applies the decorators of the elements, defines the elements on the class b
 	// and its prototype, and sets c to the result of the decorators of the class.

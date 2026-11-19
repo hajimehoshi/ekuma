@@ -75,7 +75,7 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 	// With a rest element, the keys that were read are kept in consecutive registers.
 	keys := int32(-1)
 	if p.Rest != nil {
-		keys = f.newRegs(len(p.Properties) + 1)
+		keys = f.newRegs(len(p.Properties))
 	}
 	for i := range p.Properties {
 		prop := &p.Properties[i]
@@ -86,15 +86,15 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 		switch {
 		case static:
 			if keys >= 0 {
-				f.emit(bytecode.OpLoadK, keys+1+int32(i), f.constStr(name), 0)
+				f.emit(bytecode.OpLoadK, keys+int32(i), f.constStr(name), 0)
 			}
 		default:
 			k = f.newReg()
 			if keys >= 0 {
-				k = keys + 1 + int32(i)
+				k = keys + int32(i)
 			}
 			f.expr(prop.Key, k)
-			f.emit(bytecode.OpToPropertyKey, k, k, 0)
+			f.emit(bytecode.OpToPropertyKey, k, k, -1)
 		}
 		// A reference as the target is evaluated after the key and before the get.
 		ref, ok := f.elementRef(prop.Value, mode)
@@ -117,7 +117,7 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 		ref, ok := f.elementRef(p.Rest, mode)
 		v := f.newReg()
 		f.emit(bytecode.OpCopyPropsExcept, v, src, keys)
-		f.emit(bytecode.OpNop, int32(len(p.Properties)), 0, 0)
+		f.emit(bytecode.OpExtra, int32(len(p.Properties)), 0, 0)
 		if ok {
 			f.storeElement(ref, v)
 		} else {
@@ -170,15 +170,15 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 		f.free(mark)
 	}
 	end := f.pc()
-	f.emit(bytecode.OpIterClose, it, 0, 0)
+	f.emit(bytecode.OpIterClose, it, -1, 0)
 	skip := f.jump()
 
 	// An exception while the iterator is not exhausted closes it.
 	exc := f.newReg()
 	f.addHandler(start, end, f.pc(), exc, true)
 	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
-	f.emit(bytecode.OpIterClose, it, exc+1, 0)
-	f.emit(bytecode.OpRethrow, exc, 0, 0)
+	f.emit(bytecode.OpIterClose, it, exc, 0)
+	f.emit(bytecode.OpRethrow, exc, -1, 0)
 	f.patch(skip)
 }
 

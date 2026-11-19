@@ -1322,7 +1322,7 @@ func (f *fn) loadStatic(name string, dst int32, orUndef bool) {
 			op = bytecode.OpGetGlobalOrUndef
 		}
 		k := f.site(name)
-		f.emit(op, dst, k, k)
+		f.emit(op, dst, k, 0)
 	}
 }
 
@@ -1392,10 +1392,10 @@ func (f *fn) storeStatic(n ast.Node, name string, src int32, init bool) {
 			f.emit(bytecode.OpInitGlobalLex, src, f.key(name), 0)
 		case f.strict():
 			k := f.site(name)
-			f.emit(bytecode.OpSetGlobalStrict, src, k, k)
+			f.emit(bytecode.OpSetGlobalStrict, src, k, 0)
 		default:
 			k := f.site(name)
-			f.emit(bytecode.OpSetGlobal, src, k, k)
+			f.emit(bytecode.OpSetGlobal, src, k, 0)
 		}
 	}
 }

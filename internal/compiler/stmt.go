@@ -261,7 +261,7 @@ func (f *fn) iterClose(c *ctl) {
 		f.asyncIterClose(c.reg)
 		return
 	}
-	f.emit(bytecode.OpIterClose, c.reg, 0, 0)
+	f.emit(bytecode.OpIterClose, c.reg, -1, 0)
 }
 
 // asyncIterClose closes the async iterator it, it+1 for a normal completion, as
@@ -359,7 +359,7 @@ func (f *fn) leaveFinally(fin *ctl) {
 	for i, p := range fin.pending {
 		dispatch[i] = f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, p.id)
 	}
-	f.emit(bytecode.OpRethrow, fin.valueReg, 0, 0)
+	f.emit(bytecode.OpRethrow, fin.valueReg, -1, 0)
 	for i, p := range fin.pending {
 		f.patch(dispatch[i])
 		f.exit(p.kind, p.target, fin.valueReg)
@@ -592,7 +592,7 @@ func (f *fn) setAnnexBGlobal(name string, src int32) {
 		j = f.emit(bytecode.OpJumpIfNot, 0, r, 0)
 	}
 	k := f.site(name)
-	f.emit(bytecode.OpSetGlobal, src, k, k)
+	f.emit(bytecode.OpSetGlobal, src, k, 0)
 	if j >= 0 {
 		f.patch(j)
 	}
@@ -733,8 +733,8 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	exc := f.newReg()
 	f.addHandler(start, end, f.pc(), exc, true)
 	f.emit(bytecode.OpCloseUpvals, base, 0, 0)
-	f.emit(bytecode.OpIterClose, it, exc+1, 0)
-	f.emit(bytecode.OpRethrow, exc, 0, 0)
+	f.emit(bytecode.OpIterClose, it, exc, 0)
+	f.emit(bytecode.OpRethrow, exc, -1, 0)
 
 	f.patchC(next)
 	f.popLoop(c)
@@ -788,9 +788,9 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 	closeStart := f.pc()
 	f.asyncIterClose(it)
 	closeEnd := f.pc()
-	f.emit(bytecode.OpRethrow, exc, 0, 0)
+	f.emit(bytecode.OpRethrow, exc, -1, 0)
 	f.addHandler(closeStart, closeEnd, f.pc(), closeExc, false)
-	f.emit(bytecode.OpRethrow, exc, closeExc+1, 0)
+	f.emit(bytecode.OpRethrow, exc, closeExc, 0)
 
 	f.patchC(next)
 	f.popLoop(c)

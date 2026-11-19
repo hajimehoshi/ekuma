@@ -482,13 +482,6 @@ func (f *fn) strict() bool {
 	return f.f.Strict || f.classDepth > 0
 }
 
-func (f *fn) strictFlag() int32 {
-	if f.strict() {
-		return 1
-	}
-	return 0
-}
-
 func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 	switch arg := n.Arg.(type) {
 	case *ast.MemberExpr:
@@ -510,8 +503,11 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 			f.emit(bytecode.OpLoadK, key, f.constStr(arg.Property.(*ast.Identifier).Name), 0)
 		}
 		f.setPos(arg.Property.Start())
-		f.emit(bytecode.OpDeleteProp, dst, obj, key)
-		f.emit(bytecode.OpNop, f.strictFlag(), 0, 0)
+		op := bytecode.OpDeleteProp
+		if f.strict() {
+			op = bytecode.OpDeletePropStrict
+		}
+		f.emit(op, dst, obj, key)
 	case *ast.OptionalChain:
 		// delete a?.b: the result is true when the chain short-circuits.
 		f.chains = append(f.chains, nil)
@@ -729,8 +725,8 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 		if t.superBase {
 			superBase = 1
 		}
-		f.emit(bytecode.OpGetSuper, dst, t.key, t.this)
-		f.emit(bytecode.OpNop, t.home, superBase, 0)
+		f.emit(bytecode.OpGetSuper, dst, t.this, t.key)
+		f.emit(bytecode.OpExtra, t.home, superBase, 0)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
 		f.emit(bytecode.OpGetProp, dst, t.obj, f.site(name))
@@ -738,7 +734,7 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
 		// A compound assignment converts the key once, before the read and after the base is checked.
-		f.emit(bytecode.OpToPropertyKey, t.key, t.key, t.obj+1)
+		f.emit(bytecode.OpToPropertyKey, t.key, t.key, t.obj)
 		f.emit(bytecode.OpGetIndex, dst, t.obj, t.key)
 	}
 }
@@ -752,8 +748,12 @@ func (f *fn) storeTarget(t memberTarget, src int32) {
 		if !t.superBase {
 			panic("compiler: store to a super property without its super base")
 		}
-		f.emit(bytecode.OpSetSuper, t.key, src, t.this)
-		f.emit(bytecode.OpNop, f.strictFlag(), t.home, 0)
+		op := bytecode.OpSetSuper
+		if f.strict() {
+			op = bytecode.OpSetSuperStrict
+		}
+		f.emit(op, t.this, t.key, src)
+		f.emit(bytecode.OpExtra, t.home, 0, 0)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
 		op := bytecode.OpSetProp
@@ -1346,7 +1346,7 @@ func (f *fn) propertyKey(key ast.Expr, computed bool) int32 {
 	k := f.newReg()
 	if computed {
 		f.expr(key, k)
-		f.emit(bytecode.OpToPropertyKey, k, k, 0)
+		f.emit(bytecode.OpToPropertyKey, k, k, -1)
 		return k
 	}
 	switch key := key.(type) {
@@ -1356,7 +1356,7 @@ func (f *fn) propertyKey(key ast.Expr, computed bool) int32 {
 		f.loadVar("#"+key.Name, k, false)
 	default:
 		f.expr(key, k)
-		f.emit(bytecode.OpToPropertyKey, k, k, 0)
+		f.emit(bytecode.OpToPropertyKey, k, k, -1)
 	}
 	return k
 }
@@ -1440,10 +1440,10 @@ func (f *fn) method(obj int32, key ast.Expr, computed bool, fnNode *ast.Function
 	switch kind {
 	case ast.PropertyGet:
 		f.emit(bytecode.OpDefineGetter, obj, k, v)
-		f.emit(bytecode.OpNop, flag, 0, 0)
+		f.emit(bytecode.OpExtra, flag, 0, 0)
 	case ast.PropertySet:
 		f.emit(bytecode.OpDefineSetter, obj, k, v)
-		f.emit(bytecode.OpNop, flag, 0, 0)
+		f.emit(bytecode.OpExtra, flag, 0, 0)
 	default:
 		if enumerable {
 			f.emit(bytecode.OpSetHome, v, obj, 0)
@@ -1510,7 +1510,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			if scope < 0 && f.strict() && !pure(n.Value) && f.undeclaredGlobal(name) {
 				resolved = f.newReg()
 				k := f.site(name)
-				f.emit(bytecode.OpResolveGlobal, resolved, k, k)
+				f.emit(bytecode.OpResolveGlobal, resolved, k, 0)
 			}
 			t := dst
 			if t < 0 {
@@ -1660,7 +1660,7 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.patch(onThrow)
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
-	f.emit(bytecode.OpIterClose, it, 0, 0)
+	f.emit(bytecode.OpIterClose, it, -1, 0)
 	f.emit(bytecode.OpThrowError, bytecode.ThrowTypeError, f.constStr("the iterator does not provide a 'throw' method"), 0)
 	f.patch(hasThrow)
 	f.emit(bytecode.OpMove, res, recv, 0)
