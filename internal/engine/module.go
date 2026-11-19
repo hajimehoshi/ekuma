@@ -169,6 +169,54 @@ type Module struct {
 
 	// source is the [[ModuleSource]], or nil when m has none.
 	source *Object
+
+	// exportIndex maps the name of each local export to its index in code.LocalExports, and
+	// that of each indirect export i to -1-i, once a lookup in a long list has built it.
+	exportIndex map[string]int
+}
+
+// minExportIndex is the number of exports from which ownExport looks them up in a map.
+const minExportIndex = 16
+
+// hasOwnExport reports whether the source text module m has a local or indirect export name.
+func (m *Module) hasOwnExport(name string) bool {
+	local, indirect := m.ownExport(name)
+	return local >= 0 || indirect >= 0
+}
+
+// ownExport returns the index of the local export name of m in code.LocalExports and -1, or -1
+// and the index of the indirect export name in code.IndirectExports, or -1 and -1.
+func (m *Module) ownExport(name string) (local, indirect int) {
+	code := m.code
+	if len(code.LocalExports)+len(code.IndirectExports) < minExportIndex {
+		if i := slices.IndexFunc(code.LocalExports, func(e bytecode.LocalExport) bool {
+			return e.Name == name
+		}); i >= 0 {
+			return i, -1
+		}
+		return -1, slices.IndexFunc(code.IndirectExports, func(e bytecode.IndirectExport) bool {
+			return e.Name == name
+		})
+	}
+	if m.exportIndex == nil {
+		m.exportIndex = make(map[string]int, len(code.LocalExports)+len(code.IndirectExports))
+		// An export name is unique in a module.
+		for i, e := range code.LocalExports {
+			m.exportIndex[e.Name] = i
+		}
+		for i, e := range code.IndirectExports {
+			m.exportIndex[e.Name] = -1 - i
+		}
+	}
+	i, ok := m.exportIndex[name]
+	switch {
+	case !ok:
+		return -1, -1
+	case i >= 0:
+		return i, -1
+	default:
+		return -1, -1 - i
+	}
 }
 
 // HostDefined returns the [[HostDefined]] of m.
@@ -605,20 +653,17 @@ func (m *Module) resolveExport(name string) resolution {
 				continue
 			}
 			resolveSet[p] = true
-			if j := slices.IndexFunc(mod.code.LocalExports, func(e bytecode.LocalExport) bool {
-				return e.Name == fr.name
-			}); j >= 0 {
+			local, indirect := mod.ownExport(fr.name)
+			if local >= 0 {
 				ret = resolution{
 					kind:   resolutionFound,
 					module: mod,
-					index:  int(mod.code.LocalExports[j].Binding),
+					index:  int(mod.code.LocalExports[local].Binding),
 				}
 				frames = frames[:len(frames)-1]
 				continue
 			}
-			if j := slices.IndexFunc(mod.code.IndirectExports, func(e bytecode.IndirectExport) bool {
-				return e.Name == fr.name
-			}); j >= 0 {
+			if j := indirect; j >= 0 {
 				e := mod.code.IndirectExports[j]
 				imported := mod.requested[e.Request]
 				if e.All || e.Source {
@@ -989,13 +1034,31 @@ func (vm *VM) innerModuleEvaluation(root *Module, stack *[]*Module) (Value, bool
 	return Undefined, true
 }
 
+// minListedSet is the length from which evaluationList checks for duplicates in a set.
+const minListedSet = 16
+
 // evaluationList returns the modules that the evaluation of m evaluates first: those that it
 // requests, except that for a deferred import, only the asynchronous modules that the
 // deferred module depends on.
 func (m *Module) evaluationList() []*Module {
 	var list []*Module
+	// listed holds the modules of list once it is long.
+	var listed map[*Module]bool
 	add := func(dep *Module) {
-		if !slices.Contains(list, dep) {
+		if listed == nil && len(list) < minListedSet {
+			if !slices.Contains(list, dep) {
+				list = append(list, dep)
+			}
+			return
+		}
+		if listed == nil {
+			listed = make(map[*Module]bool, 2*len(list))
+			for _, m := range list {
+				listed[m] = true
+			}
+		}
+		if !listed[dep] {
+			listed[dep] = true
 			list = append(list, dep)
 		}
 	}
@@ -1040,9 +1103,8 @@ func (m *Module) asyncTransitiveDependencies() []*Module {
 			return
 		}
 		if m.code.HasTLA {
-			if !slices.Contains(result, m) {
-				result = append(result, m)
-			}
+			// seen keeps m from being added twice.
+			result = append(result, m)
 			return
 		}
 		frames = append(frames, frame{m: m})

@@ -36,6 +36,9 @@ func CompileModule(prog *ast.Program, file string) (f *bytecode.Func, m *bytecod
 // moduleRequests collects the module requests of a module.
 type moduleRequests struct {
 	list []bytecode.ModuleRequest
+
+	// bySpecifier maps a specifier to the indices in list of the requests of it.
+	bySpecifier map[string][]int32
 }
 
 // add returns the index of the request of the source s with the attributes attrs in the phase.
@@ -53,13 +56,19 @@ func (r *moduleRequests) add(s *ast.StringLit, attrs []ast.ImportAttribute, phas
 	slices.SortFunc(req.Attributes, func(a, b bytecode.ImportAttribute) int {
 		return strings.Compare(a.Key, b.Key)
 	})
-	for i, q := range r.list {
-		if q.Specifier == req.Specifier && slices.Equal(q.Attributes, req.Attributes) && q.Phase == req.Phase {
-			return int32(i)
+	indices := r.bySpecifier[req.Specifier]
+	for _, i := range indices {
+		if q := r.list[i]; slices.Equal(q.Attributes, req.Attributes) && q.Phase == req.Phase {
+			return i
 		}
 	}
+	i := int32(len(r.list))
 	r.list = append(r.list, req)
-	return int32(len(r.list) - 1)
+	if r.bySpecifier == nil {
+		r.bySpecifier = map[string][]int32{}
+	}
+	r.bySpecifier[req.Specifier] = append(indices, i)
+	return i
 }
 
 // hasTopLevelAwait reports whether the statements contain await outside of functions.
