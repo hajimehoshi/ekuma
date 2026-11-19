@@ -168,8 +168,8 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 }
 
 func clearFrameRegs(regs []Value, first, end int) {
-	if first < end {
-		clear(regs[first:end])
+	for j := first; j < end; j++ {
+		regs[j] = Value{}
 	}
 }
 
