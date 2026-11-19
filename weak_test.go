@@ -88,8 +88,9 @@ func TestFinalizationRegistrySharedToken(t *testing.T) {
 	if err := ctx.Err(); err != nil {
 		t.Errorf("the cleanup ended after the deadline: %v", err)
 	}
-	var want int
-	for i := range n {
+	// The sum does not fit in 32 bits.
+	var want int64
+	for i := range int64(n) {
 		if i%3 != 0 {
 			want += i
 		}
@@ -98,7 +99,7 @@ func TestFinalizationRegistrySharedToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := v.String(), strconv.Itoa(want)+",true,false"; got != want {
+	if got, want := v.String(), strconv.FormatInt(want, 10)+",true,false"; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
 }
