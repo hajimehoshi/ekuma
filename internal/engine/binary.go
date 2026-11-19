@@ -10,7 +10,6 @@ import (
 	"slices"
 	"sync"
 	"sync/atomic"
-	"weak"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 )
@@ -192,7 +191,7 @@ type SharedDataBlock struct {
 
 	// waiterLists are the waiter lists by byte index. A waiter is held by its agent: by the
 	// suspended call of a synchronous wait, and by the VM of an asynchronous one.
-	waiterLists map[int][]weak.Pointer[waiter]
+	waiterLists map[int]*waiterList
 }
 
 func (blk *SharedDataBlock) byteLength() int {

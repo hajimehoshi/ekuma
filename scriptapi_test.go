@@ -268,6 +268,90 @@ func TestAtomicsWaitAsyncTimeout(t *testing.T) {
 	})
 }
 
+// TestAtomicsWaitAsyncManyWaiters checks that the waiters of one index are added and woken in
+// time linear in their number, in order.
+func TestAtomicsWaitAsyncManyWaiters(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	v, err := runScript(ctx, &vm, "wait", `
+		var log = [];
+		var ia = new Int32Array(new SharedArrayBuffer(16));
+		for (var i = 0; i < 80000; i++) {
+			let n = i;
+			Atomics.waitAsync(ia, 0, 0).value.then(() => { if (n < 3 || n >= 79998) log.push(n); });
+		}
+		[Atomics.notify(ia, 0, 2), Atomics.notify(ia, 0, 1), Atomics.notify(ia, 0)].join();
+	`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got, want := v.String(), "2,1,79997"; got != want {
+		t.Errorf("notify results: got %q, want %q", got, want)
+	}
+	v, err = runScript(ctx, &vm, "log", `log.join()`)
+	if err != nil {
+		t.Fatalf("runScript: %v", err)
+	}
+	if got, want := v.String(), "0,1,2,79998,79999"; got != want {
+		t.Errorf("woken waiters: got %q, want %q", got, want)
+	}
+}
+
+// TestAtomicsWaitAsyncTimeoutsAmongWaiters checks that waiters that time out leave their list
+// and the others are woken in order.
+func TestAtomicsWaitAsyncTimeoutsAmongWaiters(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		_, err := runScript(t.Context(), &vm, "wait", `
+			var log = [];
+			var ia = new Int32Array(new SharedArrayBuffer(16));
+			for (var i = 0; i < 200; i++) {
+				let n = i;
+				// Every third waiter times out.
+				Atomics.waitAsync(ia, 0, 0, i % 3 == 0 ? 1 : Infinity).value.then(r => { if (r == "ok") log.push(n); });
+			}
+		`)
+		if err != nil {
+			t.Fatalf("runScript: %v", err)
+		}
+		// The fake clock of the bubble reaches the deadline, and the next run expires the waiters.
+		time.Sleep(time.Millisecond)
+		if _, err := runScript(t.Context(), &vm, "expire", ``); err != nil {
+			t.Fatalf("runScript: %v", err)
+		}
+		// The waiters added after the timeouts sweep the list.
+		v, err := runScript(t.Context(), &vm, "notify", `
+			for (var i = 200; i < 300; i++) {
+				let n = i;
+				Atomics.waitAsync(ia, 0, 0).value.then(() => log.push(n));
+			}
+			String(Atomics.notify(ia, 0, 5));
+		`)
+		if err != nil {
+			t.Fatalf("runScript: %v", err)
+		}
+		if got, want := v.String(), "5"; got != want {
+			t.Errorf("first notify: got %q, want %q", got, want)
+		}
+		// 133 of the first 200 waiters stay, and 100 more come after them.
+		v, err = runScript(t.Context(), &vm, "rest", `String(Atomics.notify(ia, 0))`)
+		if err != nil {
+			t.Fatalf("runScript: %v", err)
+		}
+		if got, want := v.String(), "228"; got != want {
+			t.Errorf("second notify: got %q, want %q", got, want)
+		}
+		v, err = runScript(t.Context(), &vm, "log", `log.slice(0, 5).join() + " " + log.slice(128, 135).join() + " " + log.length`)
+		if err != nil {
+			t.Fatalf("runScript: %v", err)
+		}
+		if got, want := v.String(), "1,2,4,5,7 193,194,196,197,199,200,201 233"; got != want {
+			t.Errorf("woken waiters: got %q, want %q", got, want)
+		}
+	})
+}
+
 // skipAgents skips a test that runs agents on several goroutines, which a single thread cannot.
 func skipAgents(t *testing.T) {
 	t.Helper()

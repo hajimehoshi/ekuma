@@ -6,7 +6,6 @@ package engine
 import (
 	"container/heap"
 	"math"
-	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,8 +48,10 @@ type waiter struct {
 	block     *SharedDataBlock
 	byteIndex int
 
-	// listed reports whether the waiter is in its waiter list. It is guarded by block.mu.
+	// listed reports whether the waiter is in its waiter list, and pos is its position there.
+	// They are guarded by block.mu.
 	listed bool
+	pos    int
 
 	// deadline is [[TimeoutTime]] of a waiter with a finite timeout.
 	deadline time.Time
@@ -279,18 +280,16 @@ func (blk *SharedDataBlock) compareAndAdd(w *waiter, t ElementType, v uint64, ad
 	}
 	if add {
 		if blk.waiterLists == nil {
-			blk.waiterLists = map[int][]weak.Pointer[waiter]{}
+			blk.waiterLists = map[int]*waiterList{}
 		}
-		l := slices.DeleteFunc(blk.waiterLists[w.byteIndex], isCollected)
-		blk.waiterLists[w.byteIndex] = append(l, weak.Make(w))
-		w.listed = true
+		l := blk.waiterLists[w.byteIndex]
+		if l == nil {
+			l = &waiterList{}
+			blk.waiterLists[w.byteIndex] = l
+		}
+		l.add(w)
 	}
 	return true
-}
-
-// isCollected reports whether the waiter that p refers to was collected.
-func isCollected(p weak.Pointer[waiter]) bool {
-	return p.Value() == nil
 }
 
 // unlist removes w from its waiter list and reports whether it was there.
@@ -300,15 +299,10 @@ func (blk *SharedDataBlock) unlist(w *waiter) bool {
 	if !w.listed {
 		return false
 	}
-	w.listed = false
 	l := blk.waiterLists[w.byteIndex]
-	if i := slices.Index(l, weak.Make(w)); i >= 0 {
-		l = slices.Delete(l, i, i+1)
-	}
-	if len(l) == 0 {
+	l.remove(w)
+	if l.listed == 0 {
 		delete(blk.waiterLists, w.byteIndex)
-	} else {
-		blk.waiterLists[w.byteIndex] = l
 	}
 	return true
 }
@@ -319,22 +313,93 @@ func (blk *SharedDataBlock) removeWaiters(byteIndex int, count float64) []*waite
 	blk.mu.Lock()
 	defer blk.mu.Unlock()
 	l := blk.waiterLists[byteIndex]
+	if l == nil {
+		return nil
+	}
+	ws := l.removeFirst(count)
+	if l.listed == 0 {
+		delete(blk.waiterLists, byteIndex)
+	}
+	return ws
+}
+
+// minWaiterSweep is the length of a waiter list from which adding to it may sweep it.
+const minWaiterSweep = 16
+
+// waiterList is a waiter list, in the order in which the waiters were added. A removed or
+// collected waiter leaves an empty entry until a sweep, which runs when the list has doubled
+// since the last one.
+type waiterList struct {
+	// entries holds the waiters from the position base on.
+	entries []weak.Pointer[waiter]
+	base    int
+
+	// listed is the number of the waiters in entries that are listed, collected ones included.
+	listed int
+
+	// swept is the length of entries after the last sweep.
+	swept int
+}
+
+// add adds w at the end of l.
+func (l *waiterList) add(w *waiter) {
+	if len(l.entries) >= 2*max(l.swept, minWaiterSweep) {
+		l.sweep()
+	}
+	w.listed = true
+	w.pos = l.base + len(l.entries)
+	l.entries = append(l.entries, weak.Make(w))
+	l.listed++
+}
+
+// remove removes the listed waiter w from l.
+func (l *waiterList) remove(w *waiter) {
+	w.listed = false
+	l.entries[w.pos-l.base] = weak.Pointer[waiter]{}
+	l.listed--
+}
+
+// removeFirst removes and returns the first count waiters of l that are not collected. count
+// must not be negative and may be +Inf.
+func (l *waiterList) removeFirst(count float64) []*waiter {
 	var ws []*waiter
 	n := 0
-	for ; n < len(l) && float64(len(ws)) < count; n++ {
-		if w := l[n].Value(); w != nil {
+	for ; n < len(l.entries) && float64(len(ws)) < count; n++ {
+		e := l.entries[n]
+		if e == (weak.Pointer[waiter]{}) {
+			continue
+		}
+		l.listed--
+		if w := e.Value(); w != nil {
 			w.listed = false
 			ws = append(ws, w)
 		}
 	}
-	m := copy(l, l[n:])
-	clear(l[m:])
-	if m == 0 {
-		delete(blk.waiterLists, byteIndex)
-	} else {
-		blk.waiterLists[byteIndex] = l[:m]
-	}
+	clear(l.entries[:n])
+	l.entries = l.entries[n:]
+	l.base += n
 	return ws
+}
+
+// sweep removes the empty entries and those of the collected waiters from l.
+func (l *waiterList) sweep() {
+	n := 0
+	for _, e := range l.entries {
+		if e == (weak.Pointer[waiter]{}) {
+			continue
+		}
+		w := e.Value()
+		if w == nil {
+			l.listed--
+			continue
+		}
+		w.pos = l.base + n
+		l.entries[n] = e
+		n++
+	}
+	clear(l.entries[n:])
+	l.entries = l.entries[:n]
+	l.swept = n
 }
 
 // suspend implements SuspendThisAgent for the synchronous waiter w, which is in its list,
