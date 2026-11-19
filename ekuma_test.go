@@ -1509,6 +1509,36 @@ func TestCancelNestedRecovered(t *testing.T) {
 	}
 }
 
+// TestCancelFillGeneric checks that Array.prototype.fill on an object that is not an array stops
+// when its context is done.
+func TestCancelFillGeneric(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+		cancel()
+		// The cancellation is requested on another goroutine.
+		time.Sleep(50 * time.Millisecond)
+		return nil, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	// Writes through the typed array prototype store nothing, and the length is small enough
+	// for the loop to end quickly when it does not stop.
+	_, err := runScript(ctx, &vm, "fill", `
+		var o = Object.create(new Uint8Array(0));
+		Object.defineProperty(o, "length", { value: 4 * 65536 });
+		var after = false;
+		Array.prototype.fill.call(o, 0, { valueOf() { cancel(); return 0; } });
+		after = true;`)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("got %v, want context.Canceled", err)
+	}
+	if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+		t.Errorf("after = %v, %v: the script continued after fill", v, err)
+	}
+}
+
 func TestInternalError(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")

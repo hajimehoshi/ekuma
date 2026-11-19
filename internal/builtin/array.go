@@ -79,15 +79,21 @@ func moveSteps(vm *engine.VM, o *engine.Object, src, dst, count, dir int64) int6
 	return min(m, holeSteps(vm, o, dst, m, dir))
 }
 
+// putAt sets the property of o with the integer index i to v. A loop over consecutive indices
+// that calls it checks for an interruption regularly.
 func putAt(vm *engine.VM, o *engine.Object, i int64, v engine.Value) {
 	if o.SetElement(i, v) {
 		vm.PollAt(i)
 		return
 	}
+	vm.Poll()
 	vm.Set(o, bigKey(vm, i), v)
 }
 
+// deleteAt deletes the property of o with the integer index i. A loop over consecutive indices
+// that calls it checks for an interruption regularly.
 func deleteAt(vm *engine.VM, o *engine.Object, i int64) {
+	vm.Poll()
 	k := bigKey(vm, i)
 	if !vm.DeleteProp(o, k) {
 		vm.ThrowTypeError("cannot delete property '" + vm.KeyString(k) + "'")
