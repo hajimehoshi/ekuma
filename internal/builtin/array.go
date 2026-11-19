@@ -96,6 +96,9 @@ func setLength(vm *engine.VM, o *engine.Object, n int64) {
 
 // arraySpeciesCreate implements ArraySpeciesCreate.
 func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Object {
+	if a, ok := vm.ArraySpeciesCreatePlain(orig, n); ok {
+		return a
+	}
 	if vm.IsArray(engine.ObjectValue(orig)) {
 		c := vm.GetV(engine.ObjectValue(orig), vm.Key(engine.KeyConstructor))
 		if c.IsObject() {

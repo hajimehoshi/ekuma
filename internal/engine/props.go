@@ -1554,13 +1554,18 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 
 // CreateDataPropertyOrThrow implements CreateDataPropertyOrThrow.
 func (vm *VM) CreateDataPropertyOrThrow(o *Object, k PropKey, val Value) {
-	if !vm.defineOwnProperty(o, k, dataDesc(val, FlagsData)) {
+	if !vm.CreateDataProperty(o, k, val) {
 		vm.ThrowTypeError("cannot define property '" + vm.KeyString(k) + "'")
 	}
 }
 
 // CreateDataProperty implements CreateDataProperty. It reports false when the definition is refused.
 func (vm *VM) CreateDataProperty(o *Object, k PropKey, val Value) bool {
+	// An array whose index properties are all in its elements has none at the index just
+	// past them.
+	if k.key == nil && o.kind == kindArray && int(k.idx) == len(o.elems) && o.flags&(objSparse|objExotic) == 0 {
+		return vm.addIndex(o, k.idx, val, FlagsData)
+	}
 	return vm.defineOwnProperty(o, k, dataDesc(val, FlagsData))
 }
 

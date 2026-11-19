@@ -196,6 +196,16 @@ func (vm *VM) arrayCtorPlain(o *Object) bool {
 	return found && p.flags&FlagAccessor != 0 && vm.Intrinsic(IntrinsicArray).slots[p.slot].accessor().getter == vm.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
+// ArraySpeciesCreatePlain returns a new array of the length n with the prototype
+// %Array.prototype% when that is what ArraySpeciesCreate for o creates, because o is an array
+// with the original constructor of the current realm. It reports false otherwise.
+func (vm *VM) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
+	if o.kind != kindArray || n > MaxArrayIndex+1 || !vm.arrayCtorPlain(o) {
+		return nil, false
+	}
+	return vm.ArrayCreate(uint32(n), vm.Intrinsic(IntrinsicArrayPrototype)), true
+}
+
 // newElementsPlain reports whether storing a new element in the array o defines it as an own
 // data property without consulting a prototype.
 func (vm *VM) newElementsPlain(o *Object) bool {
