@@ -5,6 +5,7 @@
 package list
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -55,20 +56,67 @@ func (f *Formatter) Format(list []string) []Part {
 	case 2:
 		return deconstruct(f.contextual(f.pair, list[1]), []Part{{Type: "element", Value: list[0]}}, []Part{{Type: "element", Value: list[1]}})
 	}
-	parts := []Part{{Type: "element", Value: list[len(list)-1]}}
-	for i := len(list) - 2; i >= 0; i-- {
-		var p string
+	pattern := func(i int) string {
 		switch {
 		case i == 0:
-			p = f.start
+			return f.start
 		case i < len(list)-2:
-			p = f.middle
-		default:
-			p = f.contextual(f.end, list[i+1])
+			return f.middle
 		}
-		parts = deconstruct(p, []Part{{Type: "element", Value: list[i]}}, parts)
+		return f.contextual(f.end, list[i+1])
+	}
+	// Each pattern nests the parts of the elements after i in its {1}. When {0} comes first in
+	// every pattern, the parts are written from the front, and the ends of the patterns after
+	// the last element.
+	var parts []Part
+	var ends []string
+	for i := range len(list) - 1 {
+		pre, mid, post, ok := splitPattern(pattern(i))
+		if !ok {
+			return f.formatNested(list, pattern)
+		}
+		parts = appendLiteral(parts, pre)
+		parts = append(parts, Part{Type: "element", Value: list[i]})
+		parts = appendLiteral(parts, mid)
+		ends = append(ends, post)
+	}
+	parts = append(parts, Part{Type: "element", Value: list[len(list)-1]})
+	for _, post := range slices.Backward(ends) {
+		parts = appendLiteral(parts, post)
 	}
 	return parts
+}
+
+// formatNested is Format for any patterns, which the function pattern gives for each element
+// but the last.
+func (f *Formatter) formatNested(list []string, pattern func(i int) string) []Part {
+	parts := []Part{{Type: "element", Value: list[len(list)-1]}}
+	for i := len(list) - 2; i >= 0; i-- {
+		parts = deconstruct(pattern(i), []Part{{Type: "element", Value: list[i]}}, parts)
+	}
+	return parts
+}
+
+// splitPattern splits the pattern p into the text before {0}, between {0} and {1}, and after
+// {1}, and reports whether p has {0} and then {1} as its only placeables.
+func splitPattern(p string) (pre, mid, post string, ok bool) {
+	pre, rest, ok := strings.Cut(p, "{0}")
+	if !ok || strings.Contains(pre, "{") {
+		return "", "", "", false
+	}
+	mid, post, ok = strings.Cut(rest, "{1}")
+	if !ok || strings.Contains(mid, "{") || strings.Contains(post, "{") {
+		return "", "", "", false
+	}
+	return pre, mid, post, true
+}
+
+// appendLiteral appends a literal part of s to parts unless s is empty.
+func appendLiteral(parts []Part, s string) []Part {
+	if s == "" {
+		return parts
+	}
+	return append(parts, Part{Type: "literal", Value: s})
 }
 
 // contextual returns the pattern p adjusted for next, the element that follows the

@@ -167,6 +167,12 @@ func TestFormatters(t *testing.T) {
 			want: "600002",
 		},
 		{
+			// The parts of each element are made once, however many elements follow.
+			name: "long list",
+			src:  `String(new Intl.ListFormat("en").format(Array(100000).fill("a")).length)`,
+			want: "300002",
+		},
+		{
 			name: "relative time",
 			src:  `[new Intl.RelativeTimeFormat("ja", {numeric: "auto"}).format(-1, "day"), new Intl.RelativeTimeFormat("ar-u-nu-arab").format(3, "hours")].join("; ")`,
 			want: "昨日; خلال ٣ ساعات",
