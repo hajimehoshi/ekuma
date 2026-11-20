@@ -226,6 +226,10 @@ type fn struct {
 	// upvalSaves holds, for every binding in upvals, its capFn and capIndex before f captured it.
 	upvalSaves []capture
 
+	// copyCands are the variables of f that closures capture as shared upvalues because the
+	// variables were not known to hold their final values where the closures were compiled.
+	copyCands []copyCandidate
+
 	// numConsts and strConsts map the bits of the number constants and the strings of the string
 	// constants to their indices. bigConsts does so for the digits of the BigInt constants.
 	numConsts map[uint64]int32
@@ -406,6 +410,9 @@ type scratch struct {
 	keyBufs   [][]string
 	constBufs [][]bytecode.Const
 
+	// candBufs are the free buffers of [fn.copyCands].
+	candBufs [][]copyCandidate
+
 	// fns are the states of finished functions, with their maps emptied.
 	fns []*fn
 
@@ -420,6 +427,8 @@ type scratch struct {
 	// bindChunks hold the bindings of the compilation, of which bindsUsed are handed out.
 	bindChunks []*[chunkSize]binding
 	bindsUsed  int
+
+	copies copyScratch
 }
 
 // Limits of what is kept for later compilations, so that compiling a large program does not keep
@@ -434,6 +443,7 @@ const (
 	maxFreePositions = 1 << 15
 	maxFreeKeys      = 1 << 14
 	maxFreeConsts    = 1 << 12
+	maxFreeCands     = 1 << 12
 	maxFreeChunks    = 4
 )
 
@@ -541,12 +551,14 @@ func (s *scratch) trim() {
 	}
 	s.symChunks = trimChunks(s.symChunks, s.symsUsed)
 	s.bindChunks = trimChunks(s.bindChunks, s.bindsUsed)
+	s.copies.trim()
 	s.symsUsed = 0
 	s.bindsUsed = 0
 	s.codeBufs = trimBufs(s.codeBufs, maxFreeCode)
 	s.posBufs = trimBufs(s.posBufs, maxFreePositions)
 	s.keyBufs = trimBufs(s.keyBufs, maxFreeKeys)
 	s.constBufs = trimBufs(s.constBufs, maxFreeConsts)
+	s.candBufs = trimBufs(s.candBufs, maxFreeCands)
 	if len(s.fns) > maxFreeFns {
 		clear(s.fns[maxFreeFns:])
 		s.fns = s.fns[:maxFreeFns]
@@ -705,6 +717,9 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 		}
 		f.varScope = f.scope
 	}
+	if f.copyCands == nil {
+		f.copyCands = takeBuf(&sc.candBufs)
+	}
 	f.scope.fn = f
 	f.c = c
 	f.parent = parent
@@ -734,6 +749,7 @@ func (f *fn) finish() *bytecode.Func {
 	b.Positions = releasePlainBuf(&sc.posBufs, b.Positions)
 	b.Keys = releaseBuf(&sc.keyBufs, b.Keys)
 	b.Consts = releaseBuf(&sc.constBufs, b.Consts)
+	f.promoteCopies()
 
 	// Give the upvalues of the bindings of outer functions back to those functions.
 	for i, u := range slices.Backward(f.upvals) {
@@ -753,8 +769,12 @@ func (f *fn) finish() *bytecode.Func {
 		}
 		root = root.parent
 	}
+	clear(f.copyCands)
 	n := max(len(root.binds), len(f.numConsts), len(f.strConsts), len(f.bigConsts), len(f.keys), len(f.mutated))
 	if !keepMaps(n, f.mapsPeak) {
+		if cap(f.copyCands) > 0 {
+			sc.candBufs = append(sc.candBufs, f.copyCands[:0])
+		}
 		return b
 	}
 	clear(root.binds)
@@ -779,6 +799,7 @@ func (f *fn) finish() *bytecode.Func {
 		scope:      root,
 		upvals:     f.upvals[:0],
 		upvalSaves: f.upvalSaves[:0],
+		copyCands:  f.copyCands[:0],
 		control:    f.control[:0],
 		mapsPeak:   max(f.mapsPeak, n),
 	}
@@ -1247,6 +1268,7 @@ func (f *fn) resolveSym(sym *symbol, name string) ref {
 		}
 	}
 	d := bytecode.UpvalDesc{Index: r.index}
+	shared := false
 	if r.kind == refLocal {
 		d.Local = true
 		d.Index = r.b.reg
@@ -1254,12 +1276,21 @@ func (f *fn) resolveSym(sym *symbol, name string) ref {
 			d.ByValue = true
 		} else {
 			r.b.scope.captured = true
+			shared = !r.b.alwaysCheck
 		}
+	}
+	i := f.addUpval(r.b, d)
+	if shared {
+		f.parent.copyCands = append(f.parent.copyCands, copyCandidate{
+			fn:    f.f,
+			b:     r.b,
+			index: i,
+		})
 	}
 	return ref{
 		kind:  refUpval,
 		b:     r.b,
-		index: f.addUpval(r.b, d),
+		index: i,
 	}
 }
 

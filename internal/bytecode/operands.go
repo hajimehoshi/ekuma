@@ -137,6 +137,30 @@ func (op Opcode) Operands() Operands {
 	return opcodes[op].operands
 }
 
+// Flow says where an instruction can continue within its function, besides its jump targets
+// and the handlers of the exceptions that it throws. The next instruction is the one after the
+// instruction and its [OpExtra].
+type Flow uint8
+
+const (
+	// FlowNext continues with the next instruction.
+	FlowNext Flow = iota + 1
+
+	// FlowEnd never continues with the next instruction, as a jump, a return or a throw.
+	FlowEnd
+
+	// FlowNextOrSkip continues with the next instruction or with the one after it.
+	FlowNextOrSkip
+)
+
+// Flow returns where an instruction of op can continue, or 0 when op is not an opcode.
+func (op Opcode) Flow() Flow {
+	if int(op) < len(opcodes) {
+		return opcodes[op].flow
+	}
+	return 0
+}
+
 // String returns the name of op.
 func (op Opcode) String() string {
 	if int(op) < len(opcodes) {
@@ -373,10 +397,11 @@ var (
 	}
 )
 
-// opcodes holds the name and the operands of every opcode.
+// opcodes holds the name, the operands and the flow of every opcode.
 var opcodes = [...]struct {
 	name     string
 	operands Operands
+	flow     Flow
 }{
 	OpLoadK: {
 		name: "OpLoadK",
@@ -385,6 +410,7 @@ var opcodes = [...]struct {
 			B:      OperandConst,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpLoadInt: {
 		name: "OpLoadInt",
@@ -393,30 +419,37 @@ var opcodes = [...]struct {
 			B:      OperandInt,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpLoadUndef: {
 		name:     "OpLoadUndef",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadNull: {
 		name:     "OpLoadNull",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadTrue: {
 		name:     "OpLoadTrue",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadFalse: {
 		name:     "OpLoadFalse",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadTDZ: {
 		name:     "OpLoadTDZ",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpMove: {
 		name:     "OpMove",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 
 	OpCheckTDZ: {
@@ -426,16 +459,19 @@ var opcodes = [...]struct {
 			B:     OperandKey,
 			Reads: regA,
 		},
+		flow: FlowNext,
 	},
 	OpRequireCoercible: {
 		name:     "OpRequireCoercible",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 	OpThrowConstAssign: {
 		name: "OpThrowConstAssign",
 		operands: Operands{
 			A: OperandKey,
 		},
+		flow: FlowEnd,
 	},
 	OpThrowError: {
 		name: "OpThrowError",
@@ -443,35 +479,43 @@ var opcodes = [...]struct {
 			A: OperandThrow,
 			B: OperandConst,
 		},
+		flow: FlowEnd,
 	},
 
 	OpGetGlobal: {
 		name:     "OpGetGlobal",
 		operands: getGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpGetGlobalStrict: {
 		name:     "OpGetGlobalStrict",
 		operands: getGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpGetGlobalOrUndef: {
 		name:     "OpGetGlobalOrUndef",
 		operands: getGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpGetGlobalOrUndefStrict: {
 		name:     "OpGetGlobalOrUndefStrict",
 		operands: getGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpSetGlobal: {
 		name:     "OpSetGlobal",
 		operands: setGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpSetGlobalStrict: {
 		name:     "OpSetGlobalStrict",
 		operands: setGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpResolveGlobal: {
 		name:     "OpResolveGlobal",
 		operands: getGlobalOperands,
+		flow:     FlowNext,
 	},
 	OpDeleteName: {
 		name: "OpDeleteName",
@@ -480,6 +524,7 @@ var opcodes = [...]struct {
 			B:      OperandKey,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpDeclareGlobalVar: {
 		name: "OpDeclareGlobalVar",
@@ -489,6 +534,7 @@ var opcodes = [...]struct {
 			C:     OperandOptReg,
 			Reads: regC,
 		},
+		flow: FlowNext,
 	},
 	OpDeclareGlobalLex: {
 		name: "OpDeclareGlobalLex",
@@ -496,6 +542,7 @@ var opcodes = [...]struct {
 			A: OperandKey,
 			B: OperandFlag,
 		},
+		flow: FlowNext,
 	},
 	OpInitGlobalLex: {
 		name: "OpInitGlobalLex",
@@ -504,6 +551,7 @@ var opcodes = [...]struct {
 			B:     OperandKey,
 			Reads: regA,
 		},
+		flow: FlowNext,
 	},
 	OpCheckGlobalDecl: {
 		name: "OpCheckGlobalDecl",
@@ -511,6 +559,7 @@ var opcodes = [...]struct {
 			A: OperandKey,
 			B: OperandDecl,
 		},
+		flow: FlowNext,
 	},
 	OpDeclareAnnexB: {
 		name: "OpDeclareAnnexB",
@@ -520,6 +569,7 @@ var opcodes = [...]struct {
 			C:      OperandGlobalVar,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 
 	OpGetUpval: {
@@ -529,6 +579,7 @@ var opcodes = [...]struct {
 			B:      OperandUpval,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpSetUpval: {
 		name: "OpSetUpval",
@@ -537,6 +588,7 @@ var opcodes = [...]struct {
 			B:     OperandUpval,
 			Reads: regA,
 		},
+		flow: FlowNext,
 	},
 	OpCloseUpvals: {
 		name: "OpCloseUpvals",
@@ -544,6 +596,7 @@ var opcodes = [...]struct {
 			A:     OperandReg,
 			Reads: []Regs{{At: FieldA, Len: RegsToEnd}},
 		},
+		flow: FlowNext,
 	},
 	OpClosure: {
 		name: "OpClosure",
@@ -552,27 +605,33 @@ var opcodes = [...]struct {
 			B:      OperandProto,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 
 	OpLoadThis: {
 		name:     "OpLoadThis",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadThisSloppy: {
 		name:     "OpLoadThisSloppy",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadCallee: {
 		name:     "OpLoadCallee",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadNewTarget: {
 		name:     "OpLoadNewTarget",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpLoadHome: {
 		name:     "OpLoadHome",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 	OpArguments: {
 		name: "OpArguments",
@@ -581,6 +640,7 @@ var opcodes = [...]struct {
 			B:      OperandFlag,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpRestArgs: {
 		name: "OpRestArgs",
@@ -589,15 +649,18 @@ var opcodes = [...]struct {
 			B:      OperandInt,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 
 	OpGetProp: {
 		name:     "OpGetProp",
 		operands: getPropOperands,
+		flow:     FlowNext,
 	},
 	OpGetPropChain: {
 		name:     "OpGetPropChain",
 		operands: getPropOperands,
+		flow:     FlowNextOrSkip,
 	},
 	OpGetMethod: {
 		name: "OpGetMethod",
@@ -608,14 +671,17 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: regPairA,
 		},
+		flow: FlowNext,
 	},
 	OpGetLength: {
 		name:     "OpGetLength",
 		operands: getPropOperands,
+		flow:     FlowNext,
 	},
 	OpGetIndex: {
 		name:     "OpGetIndex",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpGetIndexInt: {
 		name: "OpGetIndexInt",
@@ -626,34 +692,42 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpSetProp: {
 		name:     "OpSetProp",
 		operands: setPropOperands,
+		flow:     FlowNext,
 	},
 	OpSetPropStrict: {
 		name:     "OpSetPropStrict",
 		operands: setPropOperands,
+		flow:     FlowNext,
 	},
 	OpSetIndex: {
 		name:     "OpSetIndex",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 	OpSetIndexStrict: {
 		name:     "OpSetIndexStrict",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 	OpDeleteProp: {
 		name:     "OpDeleteProp",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpDeletePropStrict: {
 		name:     "OpDeletePropStrict",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpIn: {
 		name:     "OpIn",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpInstanceof: {
 		name: "OpInstanceof",
@@ -666,6 +740,7 @@ var opcodes = [...]struct {
 			Reads:  regBC,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpToPropertyKey: {
 		name: "OpToPropertyKey",
@@ -676,11 +751,13 @@ var opcodes = [...]struct {
 			Reads:  regBC,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 
 	OpSuperBase: {
 		name:     "OpSuperBase",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpGetSuper: {
 		name: "OpGetSuper",
@@ -694,150 +771,186 @@ var opcodes = [...]struct {
 			Reads:  []Regs{{At: FieldB, Len: 1}, {At: FieldC, Len: 1}, {At: FieldXA, Len: 1}},
 			Writes: regAC,
 		},
+		flow: FlowNext,
 	},
 	OpSetSuper: {
 		name:     "OpSetSuper",
 		operands: superStoreOperands,
+		flow:     FlowNext,
 	},
 	OpSetSuperStrict: {
 		name:     "OpSetSuperStrict",
 		operands: superStoreOperands,
+		flow:     FlowNext,
 	},
 
 	OpHasPrivate: {
 		name:     "OpHasPrivate",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpGetPrivate: {
 		name:     "OpGetPrivate",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpSetPrivate: {
 		name:     "OpSetPrivate",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 
 	OpAdd: {
 		name:     "OpAdd",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpSub: {
 		name:     "OpSub",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpMul: {
 		name:     "OpMul",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpDiv: {
 		name:     "OpDiv",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpMod: {
 		name:     "OpMod",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpExp: {
 		name:     "OpExp",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpBitOr: {
 		name:     "OpBitOr",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpBitAnd: {
 		name:     "OpBitAnd",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpBitXor: {
 		name:     "OpBitXor",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpShl: {
 		name:     "OpShl",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpShr: {
 		name:     "OpShr",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpUShr: {
 		name:     "OpUShr",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 
 	OpAddK: {
 		name:     "OpAddK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpSubK: {
 		name:     "OpSubK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpMulK: {
 		name:     "OpMulK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpDivK: {
 		name:     "OpDivK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpModK: {
 		name:     "OpModK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpBitOrK: {
 		name:     "OpBitOrK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpBitAndK: {
 		name:     "OpBitAndK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpShlK: {
 		name:     "OpShlK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpShrK: {
 		name:     "OpShrK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 	OpUShrK: {
 		name:     "OpUShrK",
 		operands: binaryKOperands,
+		flow:     FlowNext,
 	},
 
 	OpNeg: {
 		name:     "OpNeg",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpPlus: {
 		name:     "OpPlus",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpNot: {
 		name:     "OpNot",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpBitNot: {
 		name:     "OpBitNot",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpTypeof: {
 		name:     "OpTypeof",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpInc: {
 		name:     "OpInc",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpDec: {
 		name:     "OpDec",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpToNumeric: {
 		name:     "OpToNumeric",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpPostInc: {
 		name: "OpPostInc",
@@ -847,6 +960,7 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: regAB,
 		},
+		flow: FlowNext,
 	},
 	OpPostDec: {
 		name: "OpPostDec",
@@ -856,10 +970,12 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: regAB,
 		},
+		flow: FlowNext,
 	},
 	OpToString: {
 		name:     "OpToString",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpConcat: {
 		name: "OpConcat",
@@ -870,39 +986,48 @@ var opcodes = [...]struct {
 			Reads:  []Regs{{At: FieldB, Counted: true}},
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 
 	OpLt: {
 		name:     "OpLt",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpLe: {
 		name:     "OpLe",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpGt: {
 		name:     "OpGt",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpGe: {
 		name:     "OpGe",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpEq: {
 		name:     "OpEq",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpNe: {
 		name:     "OpNe",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpStrictEq: {
 		name:     "OpStrictEq",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpStrictNe: {
 		name:     "OpStrictNe",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 
 	OpJump: {
@@ -910,30 +1035,37 @@ var opcodes = [...]struct {
 		operands: Operands{
 			A: OperandTarget,
 		},
+		flow: FlowEnd,
 	},
 	OpJumpIf: {
 		name:     "OpJumpIf",
 		operands: jumpIfOperands,
+		flow:     FlowNext,
 	},
 	OpJumpIfNot: {
 		name:     "OpJumpIfNot",
 		operands: jumpIfOperands,
+		flow:     FlowNext,
 	},
 	OpJumpIfNullish: {
 		name:     "OpJumpIfNullish",
 		operands: jumpNullishOperands,
+		flow:     FlowNext,
 	},
 	OpJumpIfNotNullish: {
 		name:     "OpJumpIfNotNullish",
 		operands: jumpNullishOperands,
+		flow:     FlowNext,
 	},
 	OpJumpIfUndef: {
 		name:     "OpJumpIfUndef",
 		operands: jumpIfOperands,
+		flow:     FlowNext,
 	},
 	OpJumpIfNotUndef: {
 		name:     "OpJumpIfNotUndef",
 		operands: jumpIfOperands,
+		flow:     FlowNext,
 	},
 	OpJumpIfInt: {
 		name: "OpJumpIfInt",
@@ -943,137 +1075,170 @@ var opcodes = [...]struct {
 			C:     OperandInt,
 			Reads: regB,
 		},
+		flow: FlowNext,
 	},
 
 	OpJumpNotLt: {
 		name:     "OpJumpNotLt",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotLe: {
 		name:     "OpJumpNotLe",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotGt: {
 		name:     "OpJumpNotGt",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotGe: {
 		name:     "OpJumpNotGe",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotEq: {
 		name:     "OpJumpNotEq",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotNe: {
 		name:     "OpJumpNotNe",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotSEq: {
 		name:     "OpJumpNotSEq",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotSNe: {
 		name:     "OpJumpNotSNe",
 		operands: jumpCmpOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotLtK: {
 		name:     "OpJumpNotLtK",
 		operands: jumpCmpKOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotLeK: {
 		name:     "OpJumpNotLeK",
 		operands: jumpCmpKOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotGtK: {
 		name:     "OpJumpNotGtK",
 		operands: jumpCmpKOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotGeK: {
 		name:     "OpJumpNotGeK",
 		operands: jumpCmpKOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotSEqK: {
 		name:     "OpJumpNotSEqK",
 		operands: jumpCmpKOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotSNeK: {
 		name:     "OpJumpNotSNeK",
 		operands: jumpCmpKOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotSEqP: {
 		name:     "OpJumpNotSEqP",
 		operands: jumpCmpPOperands,
+		flow:     FlowNext,
 	},
 	OpJumpNotSNeP: {
 		name:     "OpJumpNotSNeP",
 		operands: jumpCmpPOperands,
+		flow:     FlowNext,
 	},
 
 	OpCall: {
 		name:     "OpCall",
 		operands: callOperands,
+		flow:     FlowNext,
 	},
 	OpCallUndef: {
 		name:     "OpCallUndef",
 		operands: callUndefOperands,
+		flow:     FlowNext,
 	},
 	OpCallCall: {
 		name:     "OpCallCall",
 		operands: callOperands,
+		flow:     FlowNext,
 	},
 	OpApplyFwd: {
 		name:     "OpApplyFwd",
 		operands: applyFwdOperands,
+		flow:     FlowNext,
 	},
 	OpCallFwd: {
 		name:     "OpCallFwd",
 		operands: callFwdOperands,
+		flow:     FlowNext,
 	},
 	OpCallSpread: {
 		name:     "OpCallSpread",
 		operands: callSpreadOperands,
+		flow:     FlowNext,
 	},
 	OpCallEval: {
 		name:     "OpCallEval",
 		operands: callEvalOperands,
+		flow:     FlowNext,
 	},
 	OpCallEvalSpread: {
 		name:     "OpCallEvalSpread",
 		operands: callEvalSpreadOperands,
+		flow:     FlowNext,
 	},
 	OpSpreadArgs: {
 		name:     "OpSpreadArgs",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 
 	OpTailCall: {
 		name:     "OpTailCall",
 		operands: callOperands,
+		flow:     FlowNext,
 	},
 	OpTailCallUndef: {
 		name:     "OpTailCallUndef",
 		operands: callUndefOperands,
+		flow:     FlowNext,
 	},
 	OpTailCallSpread: {
 		name:     "OpTailCallSpread",
 		operands: callSpreadOperands,
+		flow:     FlowNext,
 	},
 	OpTailCallEval: {
 		name:     "OpTailCallEval",
 		operands: callEvalOperands,
+		flow:     FlowNext,
 	},
 	OpTailCallEvalSpread: {
 		name:     "OpTailCallEvalSpread",
 		operands: callEvalSpreadOperands,
+		flow:     FlowNext,
 	},
 	OpTailApplyFwd: {
 		name:     "OpTailApplyFwd",
 		operands: applyFwdOperands,
+		flow:     FlowNext,
 	},
 	OpTailCallFwd: {
 		name:     "OpTailCallFwd",
 		operands: callFwdOperands,
+		flow:     FlowNext,
 	},
 
 	OpNew: {
@@ -1087,38 +1252,47 @@ var opcodes = [...]struct {
 			Reads:  callUndefReads,
 			Writes: callWrites,
 		},
+		flow: FlowNext,
 	},
 	OpNewSpread: {
 		name:     "OpNewSpread",
 		operands: callSpreadOperands,
+		flow:     FlowNext,
 	},
 	OpSuperCall: {
 		name:     "OpSuperCall",
 		operands: callOperands,
+		flow:     FlowNext,
 	},
 	OpSuperSpread: {
 		name:     "OpSuperSpread",
 		operands: callSpreadOperands,
+		flow:     FlowNext,
 	},
 	OpCheckThisUninit: {
 		name:     "OpCheckThisUninit",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 
 	OpReturn: {
 		name:     "OpReturn",
 		operands: useOperands,
+		flow:     FlowEnd,
 	},
 	OpReturnUndef: {
 		name: "OpReturnUndef",
+		flow: FlowEnd,
 	},
 	OpReturnDerived: {
 		name:     "OpReturnDerived",
 		operands: usePairOperands,
+		flow:     FlowEnd,
 	},
 	OpThrow: {
 		name:     "OpThrow",
 		operands: useOperands,
+		flow:     FlowEnd,
 	},
 	OpRethrow: {
 		name: "OpRethrow",
@@ -1127,10 +1301,12 @@ var opcodes = [...]struct {
 			B:     OperandOptReg,
 			Reads: regAB,
 		},
+		flow: FlowEnd,
 	},
 
 	OpInitialYield: {
 		name: "OpInitialYield",
+		flow: FlowNext,
 	},
 	OpYield: {
 		name: "OpYield",
@@ -1141,18 +1317,22 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpAwait: {
 		name:     "OpAwait",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpYieldDelegateResult: {
 		name:     "OpYieldDelegateResult",
 		operands: valueOrJumpOperands,
+		flow:     FlowNext,
 	},
 	OpGenResumeMode: {
 		name:     "OpGenResumeMode",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 
 	OpNewObject: {
@@ -1162,6 +1342,7 @@ var opcodes = [...]struct {
 			C:      OperandInt,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpNewArray: {
 		name: "OpNewArray",
@@ -1170,6 +1351,7 @@ var opcodes = [...]struct {
 			C:      OperandInt,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpNewArrayK: {
 		name: "OpNewArrayK",
@@ -1179,22 +1361,27 @@ var opcodes = [...]struct {
 			C:      OperandInt,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpArrayPush: {
 		name:     "OpArrayPush",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpArrayHole: {
 		name:     "OpArrayHole",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 	OpArraySpread: {
 		name:     "OpArraySpread",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpCopyProps: {
 		name:     "OpCopyProps",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpCopyPropsExcept: {
 		name: "OpCopyPropsExcept",
@@ -1207,10 +1394,12 @@ var opcodes = [...]struct {
 			Reads:  []Regs{{At: FieldB, Len: 1}, {At: FieldC, Counted: true}},
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpSetProto: {
 		name:     "OpSetProto",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpTemplate: {
 		name: "OpTemplate",
@@ -1219,6 +1408,7 @@ var opcodes = [...]struct {
 			B:      OperandTemplate,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpRegExp: {
 		name: "OpRegExp",
@@ -1227,6 +1417,7 @@ var opcodes = [...]struct {
 			B:      OperandRegExp,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpRegExpArg: {
 		name: "OpRegExpArg",
@@ -1237,6 +1428,7 @@ var opcodes = [...]struct {
 			Reads:  regAC,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpRegExpMethod: {
 		name: "OpRegExpMethod",
@@ -1246,27 +1438,33 @@ var opcodes = [...]struct {
 			C:      OperandSite,
 			Writes: regPairA,
 		},
+		flow: FlowNext,
 	},
 
 	OpDefineField: {
 		name:     "OpDefineField",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 	OpDefineFieldK: {
 		name:     "OpDefineFieldK",
 		operands: setPropOperands,
+		flow:     FlowNext,
 	},
 	OpDefineMethod: {
 		name:     "OpDefineMethod",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 	OpDefineGetter: {
 		name:     "OpDefineGetter",
 		operands: accessorOperands,
+		flow:     FlowNext,
 	},
 	OpDefineSetter: {
 		name:     "OpDefineSetter",
 		operands: accessorOperands,
+		flow:     FlowNext,
 	},
 	OpSetFuncName: {
 		name: "OpSetFuncName",
@@ -1276,10 +1474,12 @@ var opcodes = [...]struct {
 			C:     OperandNamePrefix,
 			Reads: regAB,
 		},
+		flow: FlowNext,
 	},
 	OpSetHome: {
 		name:     "OpSetHome",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpClass: {
 		name: "OpClass",
@@ -1290,6 +1490,7 @@ var opcodes = [...]struct {
 			Reads:  regBC,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpPrivateName: {
 		name: "OpPrivateName",
@@ -1299,10 +1500,12 @@ var opcodes = [...]struct {
 			C:      OperandFlag,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpInitFields: {
 		name:     "OpInitFields",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpAddField: {
 		name: "OpAddField",
@@ -1314,6 +1517,7 @@ var opcodes = [...]struct {
 			XA:    OperandElem,
 			Reads: regABC,
 		},
+		flow: FlowNext,
 	},
 	OpAutoAccessor: {
 		name: "OpAutoAccessor",
@@ -1323,19 +1527,23 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: []Regs{{At: FieldA, Len: 3}},
 		},
+		flow: FlowNext,
 	},
 
 	OpDecorateBegin: {
 		name:     "OpDecorateBegin",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpDecorateAdd: {
 		name:     "OpDecorateAdd",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 	OpDecorateClass: {
 		name:     "OpDecorateClass",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 	OpDecorateElement: {
 		name: "OpDecorateElement",
@@ -1347,23 +1555,28 @@ var opcodes = [...]struct {
 			XA:    OperandElem,
 			Reads: regABC,
 		},
+		flow: FlowNext,
 	},
 	OpDecorateApply: {
 		name:     "OpDecorateApply",
 		operands: binaryOperands,
+		flow:     FlowNext,
 	},
 	OpDecorateFinish: {
 		name:     "OpDecorateFinish",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 
 	OpForIn: {
 		name:     "OpForIn",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpForInNext: {
 		name:     "OpForInNext",
 		operands: valueOrJumpOperands,
+		flow:     FlowNext,
 	},
 	OpGetIterator: {
 		name: "OpGetIterator",
@@ -1374,6 +1587,7 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: regPairA,
 		},
+		flow: FlowNext,
 	},
 	OpIterNext: {
 		name: "OpIterNext",
@@ -1384,6 +1598,7 @@ var opcodes = [...]struct {
 			Reads:  []Regs{{At: FieldB, Len: 2}},
 			Writes: []Regs{{At: FieldA, Len: 1}, {At: FieldB, Len: 2}},
 		},
+		flow: FlowNext,
 	},
 	OpIterClose: {
 		name: "OpIterClose",
@@ -1393,6 +1608,7 @@ var opcodes = [...]struct {
 			Reads:  []Regs{{At: FieldA, Len: 2}, {At: FieldB, Len: 1}},
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpIterCall: {
 		name: "OpIterCall",
@@ -1403,6 +1619,7 @@ var opcodes = [...]struct {
 			Reads:  regAB,
 			Writes: regPairA,
 		},
+		flow: FlowNext,
 	},
 	OpIterReturn: {
 		name: "OpIterReturn",
@@ -1412,14 +1629,17 @@ var opcodes = [...]struct {
 			Reads:  regB,
 			Writes: []Regs{{At: FieldA, Len: 2}, {At: FieldB, Len: 1}},
 		},
+		flow: FlowNext,
 	},
 	OpIterCheckResult: {
 		name:     "OpIterCheckResult",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 	OpIterResultValue: {
 		name:     "OpIterResultValue",
 		operands: valueOrJumpOperands,
+		flow:     FlowNext,
 	},
 
 	OpUsing: {
@@ -1431,18 +1651,22 @@ var opcodes = [...]struct {
 			Reads:  regAB,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpDisposeBegin: {
 		name:     "OpDisposeBegin",
 		operands: storeOperands,
+		flow:     FlowNext,
 	},
 	OpDisposeStep: {
 		name:     "OpDisposeStep",
 		operands: valueOrJumpOperands,
+		flow:     FlowNext,
 	},
 	OpDisposeError: {
 		name:     "OpDisposeError",
 		operands: usePairOperands,
+		flow:     FlowNext,
 	},
 	OpDisposeEnd: {
 		name: "OpDisposeEnd",
@@ -1451,14 +1675,17 @@ var opcodes = [...]struct {
 			Reads:  regA,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 
 	OpWith: {
 		name:     "OpWith",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 	OpPopScope: {
 		name: "OpPopScope",
+		flow: FlowNext,
 	},
 	OpResolveName: {
 		name: "OpResolveName",
@@ -1468,37 +1695,46 @@ var opcodes = [...]struct {
 			C:      OperandInt,
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpGetScoped: {
 		name:     "OpGetScoped",
 		operands: getScopedOperands,
+		flow:     FlowNext,
 	},
 	OpGetScopedStrict: {
 		name:     "OpGetScopedStrict",
 		operands: getScopedOperands,
+		flow:     FlowNext,
 	},
 	OpSetScoped: {
 		name:     "OpSetScoped",
 		operands: setScopedOperands,
+		flow:     FlowNext,
 	},
 	OpSetScopedStrict: {
 		name:     "OpSetScopedStrict",
 		operands: setScopedOperands,
+		flow:     FlowNext,
 	},
 	OpDeleteScoped: {
 		name:     "OpDeleteScoped",
 		operands: getScopedOperands,
+		flow:     FlowNext,
 	},
 	OpCaptureScopes: {
 		name:     "OpCaptureScopes",
 		operands: useOperands,
+		flow:     FlowNext,
 	},
 	OpEvalScope: {
 		name: "OpEvalScope",
+		flow: FlowNext,
 	},
 	OpScopeThis: {
 		name:     "OpScopeThis",
 		operands: unaryOperands,
+		flow:     FlowNext,
 	},
 	OpDeclareEvalVar: {
 		name: "OpDeclareEvalVar",
@@ -1508,6 +1744,7 @@ var opcodes = [...]struct {
 			C:     OperandOptReg,
 			Reads: regC,
 		},
+		flow: FlowNext,
 	},
 
 	OpImport: {
@@ -1519,13 +1756,16 @@ var opcodes = [...]struct {
 			Reads:  []Regs{{At: FieldB, Len: 1}, {At: FieldC, Len: 2}},
 			Writes: regA,
 		},
+		flow: FlowNext,
 	},
 	OpImportMeta: {
 		name:     "OpImportMeta",
 		operands: loadOperands,
+		flow:     FlowNext,
 	},
 
 	OpExtra: {
 		name: "OpExtra",
+		flow: FlowNext,
 	},
 }

@@ -43,12 +43,16 @@ func opcodeNames(t *testing.T) []string {
 	return names
 }
 
-// TestOpcodeTable tests that the table has an entry for every opcode and no other.
+// TestOpcodeTable tests that the table has an entry with a flow for every opcode and no other.
 func TestOpcodeTable(t *testing.T) {
 	names := opcodeNames(t)
 	for i, name := range names {
-		if got := bytecode.Opcode(i).String(); got != name {
+		op := bytecode.Opcode(i)
+		if got := op.String(); got != name {
 			t.Errorf("opcode %d: the table has %q, want %q", i, got, name)
+		}
+		if op.Flow() == 0 {
+			t.Errorf("%s: the table has no flow", name)
 		}
 	}
 	if n := len(names); n < 256 {

@@ -4,6 +4,8 @@
 package compiler_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -22,6 +24,16 @@ func findFunc(f *bytecode.Func, name string) *bytecode.Func {
 		}
 	}
 	return nil
+}
+
+// manyCaptured returns statements that declare n variables and a closure that captures them.
+func manyCaptured(n int) string {
+	var decls, uses []string
+	for i := range n {
+		decls = append(decls, fmt.Sprintf("w%d = %d", i, i))
+		uses = append(uses, fmt.Sprintf("w%d", i))
+	}
+	return "var " + strings.Join(decls, ", ") + "; const all = () => " + strings.Join(uses, " + ") + ";"
 }
 
 func TestUpvalByValue(t *testing.T) {
@@ -50,7 +62,7 @@ func TestUpvalByValue(t *testing.T) {
 		{
 			name: "parameter declared again by var",
 			src:  `function f(a) { const inner = () => a; var a; return inner; }`,
-			want: false,
+			want: true,
 		},
 		{
 			name: "parameter mapped by the arguments object",
@@ -60,6 +72,41 @@ func TestUpvalByValue(t *testing.T) {
 		{
 			name: "var",
 			src:  `function f() { var v = 1; const inner = () => v; return inner; }`,
+			want: true,
+		},
+		{
+			name: "var assigned before the closure is created",
+			src:  `function f(x) { var v; while (x) { v = x; if (x.y) { const inner = () => v; return inner; } x = x.next; } }`,
+			want: true,
+		},
+		{
+			name: "var assigned in a loop that creates the closure",
+			src:  `function f(xs) { var v; var fs = []; for (var i = 0; i < xs.length; i++) { v = xs[i]; const inner = () => v; fs.push(inner); } return fs; }`,
+			want: false,
+		},
+		{
+			name: "var that holds the closure",
+			src:  `function f() { var inner; inner = function () { return inner; }; return inner; }`,
+			want: false,
+		},
+		{
+			name: "var captured by a hoisted function",
+			src:  `function f() { function inner() { return v; } var v = 1; return inner; }`,
+			want: false,
+		},
+		{
+			name: "var after more than 64 other captured variables",
+			src:  `function f() { ` + manyCaptured(70) + ` var v = 1; const inner = () => v; return [all, inner]; }`,
+			want: true,
+		},
+		{
+			name: "var assigned in a loop that creates the closure, after more than 64 other captured variables",
+			src:  `function f(xs) { ` + manyCaptured(70) + ` var v; var fs = [all]; for (var i = 0; i < xs.length; i++) { v = xs[i]; const inner = () => v; fs.push(inner); } return fs; }`,
+			want: false,
+		},
+		{
+			name: "var assigned in a handler",
+			src:  `function f(g) { var v = 1; const inner = () => v; try { g(); } catch (e) { v = 2; } return inner; }`,
 			want: false,
 		},
 		{
