@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"math/rand/v2"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -656,6 +657,13 @@ func TestTest262(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "harness", "assert.js")); err != nil {
 		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
 	}
+	// A custom suite can be inside another repository. Read only the suite's own HEAD.
+	head := "unavailable"
+	cmd := exec.CommandContext(t.Context(), "git", "-C", dir, "--git-dir=.git", "rev-parse", "--verify", "HEAD")
+	if out, err := cmd.Output(); err == nil {
+		head = strings.TrimSpace(string(out))
+	}
+	t.Logf("test262 suite %q (Git HEAD: %s, expected pin: %s)", dir, head, test262Commit)
 
 	// testDir is the directory of the suite whose tests run.
 	testDir := "test"
@@ -773,7 +781,6 @@ func TestTest262(t *testing.T) {
 		}
 		byArea[area] = c
 	}
-	t.Logf("test262 at %s", test262Commit)
 	t.Logf("test262: %d of %d tests pass (%.1f%%)", len(paths)-len(failed), len(paths), 100*float64(len(paths)-len(failed))/float64(max(len(paths), 1)))
 	if len(skipped) > 0 {
 		t.Logf("test262: %d tests skipped, as %s lists", len(skipped), skippedTestsFile)
