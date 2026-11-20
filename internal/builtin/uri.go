@@ -21,6 +21,20 @@ const (
 	upperHex = "0123456789ABCDEF"
 )
 
+func byteSet(chars string) [256]bool {
+	var set [256]bool
+	for i := range len(chars) {
+		set[chars[i]] = true
+	}
+	return set
+}
+
+var (
+	uriEncodeSet    = byteSet(uriReserved + uriUnescaped + "#")
+	uriComponentSet = byteSet(uriUnescaped)
+	escapeSet       = byteSet(escapeUnescaped)
+)
+
 // initURIFunctions defines the URI handling functions and the Annex B functions escape and
 // unescape on the global object.
 func initURIFunctions(vm *engine.VM) {
@@ -37,10 +51,10 @@ func initURIFunctions(vm *engine.VM) {
 		return uriDecode(vm, s, "")
 	})
 	uriFunc("encodeURI", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return uriEncode(vm, s, uriReserved+uriUnescaped+"#")
+		return uriEncode(vm, s, &uriEncodeSet)
 	})
 	uriFunc("encodeURIComponent", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return uriEncode(vm, s, uriUnescaped)
+		return uriEncode(vm, s, &uriComponentSet)
 	})
 	uriFunc("escape", func(vm *engine.VM, s wtf8.String) wtf8.String {
 		return escape(vm, s)
@@ -55,7 +69,7 @@ func throwURIError(vm *engine.VM, msg string) {
 }
 
 // uriEncode implements Encode. The ASCII characters in extraUnescaped are not escaped.
-func uriEncode(vm *engine.VM, s wtf8.String, extraUnescaped string) wtf8.String {
+func uriEncode(vm *engine.VM, s wtf8.String, extraUnescaped *[256]bool) wtf8.String {
 	var i int
 	for {
 		end := min(len(s), i+uriRun)
@@ -91,19 +105,19 @@ const uriRun = 1 << 16
 
 // unescapedLen returns the length of the longest prefix of s of the ASCII characters in
 // extraUnescaped.
-func unescapedLen(s wtf8.String, extraUnescaped string) int {
+func unescapedLen(s wtf8.String, extraUnescaped *[256]bool) int {
 	var i int
-	for i < len(s) && s[i] < 0x80 && strings.IndexByte(extraUnescaped, s[i]) >= 0 {
+	for i < len(s) && extraUnescaped[s[i]] {
 		i++
 	}
 	return i
 }
 
 // uriEncodeRun writes s to b as uriEncode encodes it.
-func uriEncodeRun(vm *engine.VM, b *strings.Builder, s wtf8.String, extraUnescaped string) {
+func uriEncodeRun(vm *engine.VM, b *strings.Builder, s wtf8.String, extraUnescaped *[256]bool) {
 	var buf [utf8.UTFMax]byte
 	for i := 0; i < len(s); {
-		if c := s[i]; c < 0x80 && strings.IndexByte(extraUnescaped, c) >= 0 {
+		if c := s[i]; extraUnescaped[c] {
 			b.WriteByte(c)
 			i++
 			continue
@@ -244,7 +258,7 @@ const escapeRun = 1 << 16
 func escapeUnits(b *strings.Builder, us []uint16) {
 	for _, u := range us {
 		switch {
-		case u < 0x80 && strings.IndexByte(escapeUnescaped, byte(u)) >= 0:
+		case u < 0x80 && escapeSet[u]:
 			b.WriteByte(byte(u))
 		case u < 0x100:
 			b.WriteByte('%')
