@@ -194,7 +194,7 @@ type parser struct {
 	pos    int
 	t      token
 	module bool
-	opts   *Options
+	opts   Options
 
 	// offset is added to error offsets. src is then a part of fullSrc.
 	offset  int
@@ -268,6 +268,9 @@ type parser struct {
 	nodes nodeSlabs
 	stmts listStack[ast.Stmt]
 	exprs listStack[ast.Expr]
+
+	// scratch is the set that the storage of the parse outside the tree came from.
+	scratch *scratch
 }
 
 type exportLocal struct {
@@ -413,7 +416,7 @@ func (p *parser) consumeSemicolon() {
 
 func (p *parser) init(src string, opts *Options, module bool) {
 	p.src = src
-	p.opts = opts
+	p.opts = *opts
 	p.module = module
 	if len(src) > math.MaxInt32-1 {
 		p.fail(0, "source text is too large")
@@ -433,6 +436,7 @@ func (p *parser) init(src string, opts *Options, module bool) {
 		newTarget:     opts.AllowNewTarget,
 		noArguments:   opts.InClassFieldInit,
 	}
+	p.takeScratch(getScratch())
 }
 
 // invalidWTF8 returns the offset of the first byte of src that is not part of a code point
@@ -470,6 +474,7 @@ func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, er
 
 	var p parser
 	p.init(src, opts, module)
+	defer p.release()
 	if len(src) >= 2 && src[0] == '#' && src[1] == '!' {
 		p.pos = p.skipLine(2)
 	}
@@ -519,6 +524,7 @@ func parseFunctionPart(full string, offset int, part string, kind FunctionKind, 
 	p.offset = offset
 	p.fullSrc = full
 	p.init(part, opts, false)
+	defer p.release()
 	p.scan()
 
 	fn := &ast.Function{
@@ -546,6 +552,7 @@ func parseFunctionSource(src string, opts *Options) (prog *ast.Program, err erro
 
 	var p parser
 	p.init(src, opts, false)
+	defer p.release()
 	p.scan()
 	s := p.pushScope(ast.ScopeScript, true)
 	start := p.t.start
