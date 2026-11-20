@@ -16,9 +16,9 @@ const (
 )
 
 // KeptScratch compiles the scripts progs in turn with one scratch set and returns the total
-// capacity of the code buffers, the number of function states, and the numbers of chunks of
-// symbols and of bindings that the set keeps for later compilations.
-func KeptScratch(progs ...*ast.Program) (code, fns, symChunks, bindChunks int) {
+// capacity of the code buffers and counts of retained function states, symbol and binding
+// chunks, and references to closure bytecode in the copy runs.
+func KeptScratch(progs ...*ast.Program) (code, fns, symChunks, bindChunks, copyFuncs int) {
 	s := &scratch{}
 	for _, prog := range progs {
 		c := newCompiler(prog, "test.js")
@@ -30,5 +30,10 @@ func KeptScratch(progs ...*ast.Program) (code, fns, symChunks, bindChunks int) {
 	for _, b := range s.codeBufs {
 		code += cap(b)
 	}
-	return code, len(s.fns), len(s.symChunks), len(s.bindChunks)
+	for _, r := range s.copies.runs[:cap(s.copies.runs)] {
+		if r.fn != nil {
+			copyFuncs++
+		}
+	}
+	return code, len(s.fns), len(s.symChunks), len(s.bindChunks), copyFuncs
 }

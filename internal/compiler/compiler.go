@@ -595,6 +595,7 @@ func takeBuf[T any](bufs *[][]T) []T {
 		return nil
 	}
 	b := (*bufs)[n-1]
+	(*bufs)[n-1] = nil
 	*bufs = (*bufs)[:n-1]
 	return b
 }
@@ -703,6 +704,7 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 	var f *fn
 	if n := len(sc.fns); n > 0 {
 		f = sc.fns[n-1]
+		sc.fns[n-1] = nil
 		sc.fns = sc.fns[:n-1]
 		// finish reset the state for reuse.
 		f.varScope = f.scope

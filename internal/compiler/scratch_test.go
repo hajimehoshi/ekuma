@@ -34,6 +34,15 @@ func TestScratchLimits(t *testing.T) {
 		wantFns int
 	}{
 		{
+			name: "shorter closure run list",
+			srcs: []string{
+				`function f(x) { const a = () => x, b = () => x; x = 1; return [a, b]; }
+				 function g(y) { const c = () => y; y = 2; return c; }`,
+				"42",
+			},
+			wantFns: 3,
+		},
+		{
 			name: "large function",
 			srcs: []string{
 				function(compiler.MaxFreeMapLen+1, strings.Repeat("x = 1;\n", compiler.MaxFreeCode)),
@@ -66,7 +75,10 @@ func TestScratchLimits(t *testing.T) {
 				}
 				progs = append(progs, prog)
 			}
-			code, fns, symChunks, bindChunks := compiler.KeptScratch(progs...)
+			code, fns, symChunks, bindChunks, copyFuncs := compiler.KeptScratch(progs...)
+			if copyFuncs != 0 {
+				t.Errorf("closure functions retained by copy runs: got %d, want 0", copyFuncs)
+			}
 			if code > compiler.MaxFreeCode {
 				t.Errorf("code buffers: got %d elements, want at most %d", code, compiler.MaxFreeCode)
 			}

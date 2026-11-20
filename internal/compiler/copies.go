@@ -158,7 +158,10 @@ func (f *fn) promoteCopies() {
 
 	s.present = resize(s.present, (f.f.NumRegs+63)/64)
 	clear(s.present)
-	s.runs = s.runs[:0]
+	defer func() {
+		clear(s.runs)
+		s.runs = s.runs[:0]
+	}()
 	for i, c := range cands {
 		s.present[c.b.reg>>6] |= 1 << (c.b.reg & 63)
 		if len(s.runs) > 0 && s.runs[len(s.runs)-1].fn == c.fn {
@@ -210,6 +213,7 @@ func (f *fn) promoteCopies() {
 	}
 
 	s.checked = resize(s.checked, len(s.regs))
+	defer clear(s.checked)
 	s.nameOK = resize(s.nameOK, len(s.regs))
 	for i, c := range cands {
 		if s.states[i] != copyFinal {
@@ -227,7 +231,6 @@ func (f *fn) promoteCopies() {
 			c.fn.Upvals[c.index].ByValue = true
 		}
 	}
-	clear(s.checked)
 }
 
 // The flow functions fill s.after for the instructions of code that can run after the
