@@ -86,6 +86,8 @@ type binding struct {
 
 // symbol is a variable name of the program being compiled.
 type symbol struct {
+	name string
+
 	// top is the innermost binding of the name among the open scopes, or nil.
 	top *binding
 }
@@ -325,9 +327,8 @@ type compiler struct {
 	// the call site.
 	evalCode bool
 
-	// lastName and lastSym are the most recent result of symbol.
-	lastName string
-	lastSym  *symbol
+	// lastSym is the most recent result of symbol.
+	lastSym *symbol
 
 	// topDecls maps the names that the top level of a program with many declarations
 	// declares to what their declarations are, once a lookup needed it.
@@ -478,8 +479,8 @@ type capture struct {
 
 // symbol returns the symbol of name.
 func (c *compiler) symbol(name string) *symbol {
-	if c.lastSym != nil && name == c.lastName {
-		return c.lastSym
+	if s := c.lastSym; s != nil && s.name == name {
+		return s
 	}
 	sc := c.scratch
 	s, ok := sc.syms[name]
@@ -489,13 +490,14 @@ func (c *compiler) symbol(name string) *symbol {
 			sc.symChunks = append(sc.symChunks, new([chunkSize]symbol))
 		}
 		s = &sc.symChunks[i/chunkSize][i%chunkSize]
+		s.name = name
 		sc.symsUsed++
 		if sc.syms == nil {
 			sc.syms = map[string]*symbol{}
 		}
 		sc.syms[name] = s
 	}
-	c.lastName = name
+	// The symbol knows its name, so the cache is a single pointer.
 	c.lastSym = s
 	return s
 }
@@ -672,7 +674,6 @@ func (c *compiler) release() {
 	putScratch(c.scratch)
 	c.scratch = nil
 	c.lastSym = nil
-	c.lastName = ""
 }
 
 // fail aborts the compilation with an error at the node n.
@@ -691,19 +692,8 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 	if n := len(sc.fns); n > 0 {
 		f = sc.fns[n-1]
 		sc.fns = sc.fns[:n-1]
-		*f = fn{
-			numConsts:  f.numConsts,
-			strConsts:  f.strConsts,
-			bigConsts:  f.bigConsts,
-			keys:       f.keys,
-			mutated:    f.mutated,
-			scope:      f.scope,
-			varScope:   f.scope,
-			upvals:     f.upvals,
-			upvalSaves: f.upvalSaves,
-			control:    f.control,
-			mapsPeak:   f.mapsPeak,
-		}
+		// finish reset the state for reuse.
+		f.varScope = f.scope
 	} else {
 		f = &fn{
 			numConsts: map[uint64]int32{},
