@@ -84,19 +84,18 @@ func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
 // RegExpInitialize implements RegExpInitialize for the RegExp object o and returns o.
 // It throws a SyntaxError for an invalid pattern or invalid flags.
 func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
-	p := ""
+	var r bytecode.RegExp
 	if !pattern.IsUndefined() {
-		p = vm.ToString(pattern)
+		r.Pattern = vm.ToString(pattern)
 	}
-	f := ""
 	if !flags.IsUndefined() {
-		f = vm.ToString(flags)
+		r.Flags = vm.ToString(flags)
 	}
-	re := vm.compileRegExp(p, f)
+	re := vm.compileRegExp(r)
 	o.setExtState(&regExpState{
 		matcher: re,
-		source:  p,
-		flags:   f,
+		source:  r.Pattern,
+		flags:   r.Flags,
 		legacy:  o.extState().(*regExpState).legacy,
 		realm:   o.extState().(*regExpState).realm,
 	})
@@ -104,24 +103,23 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 	return o
 }
 
-// compileRegExp compiles the pattern p with the flags f, or throws a SyntaxError.
-func (vm *VM) compileRegExp(p, f string) *regexp.Regexp {
-	key := f + "/" + p
-	if re, ok := vm.regExps[key]; ok {
+// compileRegExp compiles r or throws a SyntaxError.
+func (vm *VM) compileRegExp(r bytecode.RegExp) *regexp.Regexp {
+	if re, ok := vm.regExps[r]; ok {
 		return re
 	}
-	flags, err := regexp.ParseFlags(f)
+	flags, err := regexp.ParseFlags(r.Flags)
 	if err != nil {
 		vm.throwSyntaxError(err.Error())
 	}
-	re, err := regexp.Compile(p, flags, vm)
+	re, err := regexp.Compile(r.Pattern, flags, vm)
 	if err != nil {
 		vm.throwSyntaxError(err.Error())
 	}
 	if vm.regExps == nil || len(vm.regExps) >= regExpCacheLimit {
-		vm.regExps = map[string]*regexp.Regexp{}
+		vm.regExps = map[bytecode.RegExp]*regexp.Regexp{}
 	}
-	vm.regExps[key] = re
+	vm.regExps[r] = re
 	return re
 }
 
@@ -134,7 +132,7 @@ func (vm *VM) newRegExpLiteral(site *regExpSite) *Object {
 func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
 	if site.state == nil {
 		site.state = &regExpState{
-			matcher: vm.compileRegExp(site.literal.Pattern, site.literal.Flags),
+			matcher: vm.compileRegExp(site.literal),
 			source:  site.literal.Pattern,
 			flags:   site.literal.Flags,
 			legacy:  true,

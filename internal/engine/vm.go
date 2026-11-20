@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
@@ -452,7 +453,7 @@ type VM struct {
 	symbolRegistry map[string]*Object
 
 	// regExps caches compiled patterns by their flags and source.
-	regExps map[string]*regexp.Regexp
+	regExps map[bytecode.RegExp]*regexp.Regexp
 
 	// realm is the state of the current realm, whose record is curRealm. The record of the
 	// current realm is stale: the state lives here until another realm becomes current.
