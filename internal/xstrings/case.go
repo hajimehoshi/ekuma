@@ -94,26 +94,3 @@ func isCaseIgnorable(r rune) bool {
 	}
 	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf, unicode.Lm, unicode.Sk)
 }
-
-// ToLowerASCII returns s with the ASCII upper-case letters in lower case.
-func ToLowerASCII(s string) string {
-	var b strings.Builder
-	var start int
-	for i := range len(s) {
-		c := s[i]
-		if c < 'A' || c > 'Z' {
-			continue
-		}
-		if start == 0 {
-			b.Grow(len(s))
-		}
-		b.WriteString(s[start:i])
-		b.WriteByte(c + ('a' - 'A'))
-		start = i + 1
-	}
-	if start == 0 {
-		return s
-	}
-	b.WriteString(s[start:])
-	return b.String()
-}

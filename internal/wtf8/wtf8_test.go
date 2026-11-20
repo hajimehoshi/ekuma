@@ -66,6 +66,14 @@ func TestWordScans(t *testing.T) {
 	}
 }
 
+func TestToLowerASCII(t *testing.T) {
+	const s = "ÉA\xed\xa0\x80Z\xff"
+	const want = "Éa\xed\xa0\x80z\xff"
+	if got := wtf8.ToLowerASCII(s); got != want {
+		t.Errorf("ToLowerASCII(%q) = %q, want %q", s, got, want)
+	}
+}
+
 func TestSeekAtSlice(t *testing.T) {
 	for _, u := range samples {
 		s := wtf8.FromUTF16(u)

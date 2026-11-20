@@ -8,7 +8,7 @@
 // is encoded as a three-byte sequence. A high surrogate followed by a low surrogate is never
 // stored as two three-byte sequences, so every JavaScript string has exactly one encoding.
 //
-// Every function expects its string arguments in that canonical form.
+// Unless documented otherwise, functions expect their string arguments in that canonical form.
 package wtf8
 
 import (
@@ -41,6 +41,29 @@ func IsASCII(s string) bool {
 		}
 	}
 	return true
+}
+
+// ToLowerASCII lowercases ASCII letters in any byte string, preserving all other bytes.
+func ToLowerASCII(s string) string {
+	var b strings.Builder
+	var start int
+	for i := range len(s) {
+		c := s[i]
+		if c < 'A' || c > 'Z' {
+			continue
+		}
+		if start == 0 {
+			b.Grow(len(s))
+		}
+		b.WriteString(s[start:i])
+		b.WriteByte(c + ('a' - 'A'))
+		start = i + 1
+	}
+	if start == 0 {
+		return s
+	}
+	b.WriteString(s[start:])
+	return b.String()
 }
 
 // highBits has the high bit of each byte of a word set.

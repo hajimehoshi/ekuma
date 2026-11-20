@@ -3,7 +3,7 @@
 
 package temporal
 
-import "github.com/hajimehoshi/ekuma/internal/xstrings"
+import "github.com/hajimehoshi/ekuma/internal/wtf8"
 
 // ISO8601 is the identifier of the ISO 8601 calendar.
 const ISO8601 = "iso8601"
@@ -46,7 +46,7 @@ func SetCalendars(c Calendars) {
 
 // CanonicalizeCalendar implements CanonicalizeCalendar.
 func CanonicalizeCalendar(id string) (string, error) {
-	l := xstrings.ToLowerASCII(id)
+	l := wtf8.ToLowerASCII(id)
 	if l == ISO8601 {
 		return ISO8601, nil
 	}
