@@ -90,8 +90,8 @@ Measured on 2026-11-20: Apple M3 Pro, macOS 27.2, go1.27.4.
 - "(k/n)" means that k of the n benchmarks had successful paired results for that engine and
   Ekuma; the mean covers those benchmarks. otto cannot parse microbench.js, which uses ES2015
   syntax. Failed rounds are excluded from timing ratios.
-- See [`_bench`](_bench/README.md) for the benchmarks, measurement methodology, and individual
-  results.
+- See [`_bench`](_bench/README.md) for the benchmarks and measurement methodology, and
+  [`_bench/RESULTS.md`](_bench/RESULTS.md) for individual results.
 
 ## Host API
 
