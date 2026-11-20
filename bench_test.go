@@ -315,6 +315,51 @@ func BenchmarkEval(b *testing.B) {
 	}
 }
 
+// BenchmarkOpenUpvalues measures creating a reader closure for the middle of a set of open upvalues.
+func BenchmarkOpenUpvalues(b *testing.B) {
+	for _, kind := range []string{"ordinary", "generator"} {
+		for _, slots := range []int{4, 4096} {
+			b.Run(fmt.Sprintf("%s/open=%d", kind, slots), func(b *testing.B) {
+				var vm ekuma.VM
+				timeCaptures := vm.FuncOf("timeCaptures", func(_ ekuma.Value, args []ekuma.Value) (any, error) {
+					if args[0].Bool() {
+						b.ResetTimer()
+					} else {
+						b.StopTimer()
+					}
+					return nil, nil
+				})
+				if err := vm.Global().Set("timeCaptures", timeCaptures); err != nil {
+					b.Fatal(err)
+				}
+
+				decl, call := "function capture()", "capture()"
+				if kind == "generator" {
+					decl, call = "function* capture()", "capture().next()"
+				}
+				var src strings.Builder
+				fmt.Fprintf(&src, "%s {\nconst writers = [];\n", decl)
+				for i := range slots {
+					fmt.Fprintf(&src, "let v%[1]d = 0; writers.push(() => ++v%[1]d);\n", i)
+				}
+				fmt.Fprintf(&src, `
+					let read;
+					timeCaptures(true);
+					for (let i = 0; i < %d; i++) read = () => v%d;
+					timeCaptures(false);
+					writers[%d]();
+					if (read() !== 1) throw new Error("reader did not see the write");
+				}
+				%s;`, b.N, slots/2, slots/2, call)
+				b.ReportAllocs()
+				if _, err := runScript(b.Context(), &vm, "upvalues.js", src.String()); err != nil {
+					b.Fatal(err)
+				}
+			})
+		}
+	}
+}
+
 // BenchmarkGenerator measures generator creation and resumption.
 func BenchmarkGenerator(b *testing.B) {
 	const src = `

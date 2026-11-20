@@ -4,6 +4,9 @@
 package engine
 
 import (
+	"slices"
+	"sort"
+
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
 
@@ -62,7 +65,7 @@ type generator struct {
 
 	closeValue Value
 
-	// openUpvals are the upvalues that point into regs.
+	// openUpvals are the upvalues that point into regs, ordered by register index.
 	openUpvals []*upvalue
 
 	// async is the state of an async function or async generator.
@@ -93,28 +96,29 @@ func (g *generator) abort() {
 }
 
 func (g *generator) findUpval(index int) *upvalue {
-	for _, u := range g.openUpvals {
-		if u.index == index {
-			return u
-		}
+	i := len(g.openUpvals)
+	if i > 0 && g.openUpvals[i-1].index > index {
+		i = sort.Search(i-1, func(j int) bool {
+			return g.openUpvals[j].index > index
+		})
+	}
+	if i > 0 && g.openUpvals[i-1].index == index {
+		return g.openUpvals[i-1]
 	}
 	u := &upvalue{
 		p:     &g.regs[index],
 		index: index,
 	}
-	g.openUpvals = append(g.openUpvals, u)
+	g.openUpvals = slices.Insert(g.openUpvals, i, u)
 	return u
 }
 
 // closeUpvals detaches the upvalues that refer to the registers from index from on.
 func (g *generator) closeUpvals(from int) {
-	n := 0
-	for _, u := range g.openUpvals {
-		if u.index < from {
-			g.openUpvals[n] = u
-			n++
-			continue
-		}
+	n := len(g.openUpvals)
+	for n > 0 && g.openUpvals[n-1].index >= from {
+		n--
+		u := g.openUpvals[n]
 		u.val = *u.p
 		u.p = &u.val
 	}
