@@ -159,10 +159,10 @@ func (m *Module) Name() string {
 }
 
 // LoadRequestedModules loads the modules that m and its dependencies import, with the loader
-// of the VM (see [VM.SetModuleLoader]). [Module.Link], [Module.Evaluate] and [Module.Namespace]
-// call it, so calling it is needed only to load before linking. The error is the error of the
-// loader, or a [*ScriptError] holding the SyntaxError or TypeError of a failed import (see
-// [VM.SetModuleLoader]).
+// of the VM. [Module.Link], [Module.Evaluate] and [Module.Namespace] call it, so calling it
+// is needed only to load before linking. A failed import returns a [*ScriptError] holding
+// the value thrown as described by [VM.SetModuleLoader]. When the loader returns an ordinary
+// Go error, [errors.Is] matches that error through the returned [*ScriptError].
 func (m *Module) LoadRequestedModules() error {
 	m.vm.initIfNeeded()
 	return publicError(m.vm.e.LoadRequestedModules(m.m))
