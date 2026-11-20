@@ -863,7 +863,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		if s := arg(args, 0); !s.IsUndefined() {
 			sep = vm.ToString(s)
 		}
-		var b wtf8.Builder
+		var b wtf8.Buffer
 		for i := range n {
 			if i > 0 {
 				b.WriteString(sep)
@@ -1014,7 +1014,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	toLocaleStringKey := vm.Intern("toLocaleString")
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o, _, n := validateTypedArray(vm, this, "%TypedArray%.prototype.toLocaleString")
-		var b wtf8.Builder
+		var b wtf8.Buffer
 		for i := range n {
 			if i > 0 {
 				b.WriteString(",")

@@ -773,7 +773,7 @@ func (p *parser) expect(c rune) {
 
 // parseGroupName parses a RegExpIdentifierName followed by '>'.
 func (p *parser) parseGroupName() wtf8.String {
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	first := true
 	for {
 		c := p.peek()

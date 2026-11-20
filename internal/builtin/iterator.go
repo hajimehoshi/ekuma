@@ -956,7 +956,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 			})
 		}
 		r := k.getIteratorDirect(vm, it)
-		var sb wtf8.Builder
+		var sb wtf8.Buffer
 		first := true
 		for {
 			v, ok := r.stepValue(vm)

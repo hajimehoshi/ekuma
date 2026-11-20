@@ -44,7 +44,7 @@ func TestScanString(t *testing.T) {
 			want: wtf8Of(0xDE00, 'x', 0xD83D),
 		},
 	}
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	for _, tt := range tests {
 		got, end, ok := json.ScanString(tt.text, 0, &b)
 		if !ok || end != len(tt.text) || got != tt.want {

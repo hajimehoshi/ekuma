@@ -114,8 +114,8 @@ func TestConcat(t *testing.T) {
 	}
 }
 
-func TestStringBuilderSnapshot(t *testing.T) {
-	var b wtf8.StringBuilder
+func TestBuilderSnapshot(t *testing.T) {
+	var b wtf8.Builder
 	b.WriteString("x")
 	b.WriteRune(0xD83D)
 	snapshot := b.String()
@@ -132,7 +132,7 @@ func TestWriteRepeated(t *testing.T) {
 	for _, a := range samples {
 		for _, s := range samples {
 			for _, count := range []int{1, 5} {
-				var b wtf8.Builder
+				var b wtf8.Buffer
 				b.WriteString(wtf8.FromUTF16(a))
 				b.WriteRepeated(wtf8.FromUTF16(s), count)
 				want := slices.Clone(a)
@@ -190,7 +190,7 @@ func TestWriteStringBytes(t *testing.T) {
 			want:   "a\xed\xb8\x80x",
 		},
 	} {
-		var b wtf8.Builder
+		var b wtf8.Buffer
 		b.WriteString(tc.prefix)
 		b.WriteStringBytes([]byte("\xed\xb8\x80x"))
 		if got := b.String(); got != tc.want {

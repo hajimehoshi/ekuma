@@ -149,7 +149,7 @@ func uriDecode(vm *engine.VM, s wtf8.String, preserveEscapeSet string) wtf8.Stri
 	if strings.IndexByte(string(s), '%') < 0 {
 		return s
 	}
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	b.Grow(len(s))
 	for i := 0; i < len(s); {
 		i = uriDecodeRun(vm, &b, s, i, i+uriRun, preserveEscapeSet)
@@ -160,7 +160,7 @@ func uriDecode(vm *engine.VM, s wtf8.String, preserveEscapeSet string) wtf8.Stri
 
 // uriDecodeRun writes s to b from the index i on as uriDecode decodes it, up to about the index
 // stop, and returns the index after the part it decoded.
-func uriDecodeRun(vm *engine.VM, b *wtf8.Builder, s wtf8.String, i, stop int, preserveEscapeSet string) int {
+func uriDecodeRun(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, i, stop int, preserveEscapeSet string) int {
 	var octets [utf8.UTFMax]byte
 	for i < len(s) && i < stop {
 		j := strings.IndexByte(string(s[i:]), '%')
@@ -265,7 +265,7 @@ func unescape(vm *engine.VM, s wtf8.String) wtf8.String {
 	if strings.IndexByte(string(s), '%') < 0 {
 		return s
 	}
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	b.Grow(len(s))
 	for i := 0; i < len(s); {
 		i = unescapeRun(&b, s, i, i+uriRun)
@@ -276,7 +276,7 @@ func unescape(vm *engine.VM, s wtf8.String) wtf8.String {
 
 // unescapeRun writes s to b from the index i on as unescape converts it, up to about the index
 // stop, and returns the index after the part it converted.
-func unescapeRun(b *wtf8.Builder, s wtf8.String, i, stop int) int {
+func unescapeRun(b *wtf8.Buffer, s wtf8.String, i, stop int) int {
 	for i < len(s) && i < stop {
 		j := strings.IndexByte(string(s[i:]), '%')
 		if j < 0 {

@@ -173,7 +173,7 @@ func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep wtf8.
 }
 
 // writeString writes ToString(v) to b.
-func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
+func writeString(vm *engine.VM, b *wtf8.Buffer, v engine.Value) {
 	if v.IsString() {
 		v.WriteStringTo(b)
 		return
@@ -190,7 +190,7 @@ func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
 // undefined nor null, with sep between elements. The string of an element e is ToString(e),
 // or ToString(Invoke(e, method)) when method is not nil.
 func joinElements(vm *engine.VM, o *engine.Object, n int64, sep wtf8.String, method *engine.Object) engine.Value {
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	for i := int64(0); i < n; {
 		if i > 0 {
 			vm.Poll()
@@ -202,7 +202,7 @@ func joinElements(vm *engine.VM, o *engine.Object, n int64, sep wtf8.String, met
 
 // joinRun writes the elements of o from i up to end, or further when holes follow, to b as
 // joinElements joins the first n elements, and returns the index after the last one it wrote.
-func joinRun(vm *engine.VM, b *wtf8.Builder, o *engine.Object, i, end, n int64, sep wtf8.String, method *engine.Object) int64 {
+func joinRun(vm *engine.VM, b *wtf8.Buffer, o *engine.Object, i, end, n int64, sep wtf8.String, method *engine.Object) int64 {
 	for ; i < end; i++ {
 		if i > 0 {
 			b.WriteString(sep)
@@ -234,7 +234,7 @@ func joinRun(vm *engine.VM, b *wtf8.Builder, o *engine.Object, i, end, n int64, 
 
 // writeSeparators writes sep count times to b, and throws a RangeError instead when b would get
 // longer than MaxStringLength.
-func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep wtf8.String, count int64) {
+func writeSeparators(vm *engine.VM, b *wtf8.Buffer, sep wtf8.String, count int64) {
 	// A separator after another one adds len(sep) bytes, or len(sep)-2 when the two join a
 	// surrogate pair. The first one may also join a pair with what b ends with.
 	per := int64(len(sep))

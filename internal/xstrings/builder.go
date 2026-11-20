@@ -16,7 +16,7 @@ type Builder struct {
 	data uint64
 	n    int
 	long bool
-	text wtf8.Builder
+	text wtf8.Buffer
 }
 
 func (b *Builder) appendPacked(data uint64, n int) bool {

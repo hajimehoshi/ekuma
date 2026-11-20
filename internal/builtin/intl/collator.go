@@ -541,7 +541,7 @@ func initArrayToLocaleString(vm *engine.VM) {
 			joining = joining[:len(joining)-1]
 		}()
 		locales, options := arg(args, 0), arg(args, 1)
-		var b wtf8.Builder
+		var b wtf8.Buffer
 		for k := range n {
 			vm.PollAt(k)
 			if k > 0 {

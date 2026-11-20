@@ -82,7 +82,7 @@ func (v Value) stringObject() *Object {
 }
 
 // WriteStringTo appends the string value to b.
-func (v Value) WriteStringTo(b *wtf8.Builder) {
+func (v Value) WriteStringTo(b *wtf8.Buffer) {
 	if v.isShortString() {
 		data := shortstrings.Bytes(math.Float64bits(v.n))
 		b.WriteStringBytes(data[:len(v.o.str)])

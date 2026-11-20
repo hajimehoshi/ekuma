@@ -244,7 +244,7 @@ func initString(vm *engine.VM) {
 		}
 		// Two surrogate pairs can occupy twelve input bytes and fit after joining.
 		if byteLength > 12 {
-			var b wtf8.Builder
+			var b wtf8.Buffer
 			if reserve {
 				b.Grow(byteLength)
 			}
@@ -290,7 +290,7 @@ func initString(vm *engine.VM) {
 		}
 		text := s.Str()
 		if wtf8.JoinsPair(text, text) {
-			var b wtf8.Builder
+			var b wtf8.Buffer
 			writeRepeated(vm, &b, text, int(n))
 			return vm.NewString(b.String())
 		}
@@ -321,7 +321,7 @@ func initString(vm *engine.VM) {
 			text := fill.Str()
 			fo := fill.Object()
 			fl := int64(fo.StringLength())
-			var b wtf8.Builder
+			var b wtf8.Buffer
 			writeRepeated(vm, &b, text, int(need/fl))
 			b.WriteString(fo.Substring(0, int(need%fl)))
 			if atStart {
@@ -362,7 +362,7 @@ func initString(vm *engine.VM) {
 		method(vm, proto, wtf8.String(e.name), length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			// CreateHTML.
 			s := thisStringValue(vm, this, e.name)
-			var b wtf8.Builder
+			var b wtf8.Buffer
 			b.WriteString("<" + e.tag)
 			if e.attr != "" {
 				v := vm.ToString(arg(args, 0))
@@ -549,7 +549,7 @@ func initString(vm *engine.VM) {
 			if len(positions) == 0 {
 				return s
 			}
-			var b wtf8.StringBuilder
+			var b wtf8.Builder
 			if !functional {
 				// The size of the result when repStr has no substitutions. A larger one throws below.
 				if size := int64(s.StringByteLength()) + int64(len(positions))*int64(len(repStr)-search.StringByteLength()); size <= engine.MaxStringLength {
@@ -630,7 +630,7 @@ func writeBuiltString(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
 }
 
 func stringFromCharCodes(vm *engine.VM, args []engine.Value) engine.Value {
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	for _, a := range args {
 		b.WriteUnit(uint16(vm.ToUint32(a)))
 	}
@@ -654,7 +654,7 @@ func writeBuiltLimited(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
 
 // writeStringLimited writes ToString(v) to b, and throws a RangeError when b gets longer than
 // MaxStringLength. A string v that would make b too long is not written.
-func writeStringLimited(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
+func writeStringLimited(vm *engine.VM, b *wtf8.Buffer, v engine.Value) {
 	if v.IsString() {
 		checkStringLength(vm, b.Len()+v.StringByteLength())
 		v.WriteStringTo(b)
@@ -812,7 +812,7 @@ func repeatString(vm *engine.VM, s wtf8.String, count int) wtf8.String {
 
 // writeRepeated is b.WriteRepeated(s, count), checking for an interruption while it writes many
 // bytes.
-func writeRepeated(vm *engine.VM, b *wtf8.Builder, s wtf8.String, count int) {
+func writeRepeated(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, count int) {
 	per := max(1, repeatChunk/max(1, len(s)))
 	if count > per {
 		b.Grow(count * len(s))

@@ -111,7 +111,7 @@ func (r *realm) initListFormat(vm *engine.VM) {
 			checkStringLength(vm, n)
 			previous = v
 		}
-		var b wtf8.StringBuilder
+		var b wtf8.Builder
 		b.Grow(n)
 		for _, p := range parts {
 			b.WriteString(wtf8.String(p.Value))

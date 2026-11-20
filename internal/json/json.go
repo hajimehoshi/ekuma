@@ -127,7 +127,7 @@ func skipDigits(s wtf8.String, i int, poll func()) int {
 // ScanString scans a string whose opening quote is at i and returns its contents.
 // The contents of a string without escapes are a substring of s. Otherwise they are built in b,
 // which [ScanString] resets first.
-func ScanString(s wtf8.String, i int, b *wtf8.Builder) (wtf8.String, int, bool) {
+func ScanString(s wtf8.String, i int, b *wtf8.Buffer) (wtf8.String, int, bool) {
 	start := i + 1
 	i = start
 	for i < len(s) {

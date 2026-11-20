@@ -299,7 +299,7 @@ func (w *writer) newline(n int) {
 		}
 		return
 	}
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	for range n {
 		b.WriteString(w.gap)
 	}

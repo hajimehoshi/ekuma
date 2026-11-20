@@ -411,14 +411,15 @@ func FromValidUTF8(s string) String {
 	return String(strings.ToValidUTF8(s, "�"))
 }
 
-// Builder builds a string from code units, code points and strings.
-// The zero value is an empty builder.
-type Builder struct {
+// Buffer is a reusable buffer for building a string from code units, code points and strings.
+// [Buffer.String] returns a copy of the contents that keeps no spare capacity. For a string built
+// only once, [Builder] avoids that copy. The zero value is an empty buffer.
+type Buffer struct {
 	buf []byte
 }
 
 // Grow reserves room for n more bytes.
-func (b *Builder) Grow(n int) {
+func (b *Buffer) Grow(n int) {
 	if cap(b.buf)-len(b.buf) < n {
 		buf := make([]byte, len(b.buf), 2*cap(b.buf)+n)
 		copy(buf, b.buf)
@@ -427,16 +428,16 @@ func (b *Builder) Grow(n int) {
 }
 
 // Len returns the number of bytes written so far.
-func (b *Builder) Len() int {
+func (b *Buffer) Len() int {
 	return len(b.buf)
 }
 
-// Reset empties the builder.
-func (b *Builder) Reset() {
+// Reset empties the buffer.
+func (b *Buffer) Reset() {
 	b.buf = b.buf[:0]
 }
 
-func (b *Builder) endsWithHigh() (rune, bool) {
+func (b *Buffer) endsWithHigh() (rune, bool) {
 	n := len(b.buf)
 	if n >= 3 && b.buf[n-3] == 0xED && b.buf[n-2] >= 0xA0 && b.buf[n-2] < 0xB0 {
 		return 0xD000 | rune(b.buf[n-2]&0x3F)<<6 | rune(b.buf[n-1]&0x3F), true
@@ -445,13 +446,13 @@ func (b *Builder) endsWithHigh() (rune, bool) {
 }
 
 // WriteByte appends the ASCII character c.
-func (b *Builder) WriteByte(c byte) error {
+func (b *Buffer) WriteByte(c byte) error {
 	b.buf = append(b.buf, c)
 	return nil
 }
 
 // WriteRune appends the code point r, which may be a surrogate.
-func (b *Builder) WriteRune(r rune) {
+func (b *Buffer) WriteRune(r rune) {
 	if IsLowSurrogate(r) {
 		if hi, ok := b.endsWithHigh(); ok {
 			b.buf = utf8.AppendRune(b.buf[:len(b.buf)-3], combine(hi, r))
@@ -462,7 +463,7 @@ func (b *Builder) WriteRune(r rune) {
 }
 
 // WriteUnit appends the code unit u.
-func (b *Builder) WriteUnit(u uint16) {
+func (b *Buffer) WriteUnit(u uint16) {
 	if u < 0x80 {
 		b.buf = append(b.buf, byte(u))
 		return
@@ -471,7 +472,7 @@ func (b *Builder) WriteUnit(u uint16) {
 }
 
 // WriteString appends the JavaScript string s.
-func (b *Builder) WriteString(s String) {
+func (b *Buffer) WriteString(s String) {
 	if startsWithLow(s) {
 		if hi, ok := b.endsWithHigh(); ok {
 			lo, _ := DecodeRune(s)
@@ -483,7 +484,7 @@ func (b *Builder) WriteString(s String) {
 }
 
 // WriteStringBytes appends a JavaScript string encoded in WTF-8.
-func (b *Builder) WriteStringBytes(s []byte) {
+func (b *Buffer) WriteStringBytes(s []byte) {
 	if len(s) >= 3 && s[0] == 0xED && s[1] >= 0xB0 {
 		if hi, ok := b.endsWithHigh(); ok {
 			lo := 0xD000 | rune(s[1]&0x3F)<<6 | rune(s[2]&0x3F)
@@ -495,7 +496,7 @@ func (b *Builder) WriteStringBytes(s []byte) {
 }
 
 // WriteRepeated appends the JavaScript string s count times.
-func (b *Builder) WriteRepeated(s String, count int) {
+func (b *Buffer) WriteRepeated(s String, count int) {
 	if count <= 0 {
 		return
 	}
@@ -519,13 +520,15 @@ func (b *Builder) WriteRepeated(s String, count int) {
 }
 
 // String returns the built string.
-func (b *Builder) String() String {
+func (b *Buffer) String() String {
 	return String(b.buf)
 }
 
-// StringBuilder builds a string from code points and strings. The zero value is an empty
-// builder. A StringBuilder must not be copied after its first use.
-type StringBuilder struct {
+// Builder builds a string from code points and strings. [Builder.String] avoids copying the
+// contents, but the string may keep the builder's spare capacity, and a Builder cannot be reset
+// for reuse as a [Buffer] can. The zero value is an empty builder. A Builder must not be copied
+// after its first use.
+type Builder struct {
 	sb strings.Builder
 
 	// high is the lone high surrogate that ends the contents when hasHigh is set. It is not in
@@ -535,19 +538,19 @@ type StringBuilder struct {
 }
 
 // Grow reserves room for n more bytes.
-func (b *StringBuilder) Grow(n int) {
+func (b *Builder) Grow(n int) {
 	b.sb.Grow(n)
 }
 
 // Len returns the number of bytes written so far.
-func (b *StringBuilder) Len() int {
+func (b *Builder) Len() int {
 	if b.hasHigh {
 		return b.sb.Len() + 3
 	}
 	return b.sb.Len()
 }
 
-func (b *StringBuilder) flushHigh() {
+func (b *Builder) flushHigh() {
 	if b.hasHigh {
 		var buf [utf8.UTFMax]byte
 		b.sb.Write(AppendRune(buf[:0], b.high))
@@ -556,7 +559,7 @@ func (b *StringBuilder) flushHigh() {
 }
 
 // WriteRune appends the code point r, which may be a surrogate.
-func (b *StringBuilder) WriteRune(r rune) {
+func (b *Builder) WriteRune(r rune) {
 	if b.hasHigh && IsLowSurrogate(r) {
 		b.hasHigh = false
 		b.sb.WriteRune(combine(b.high, r))
@@ -572,7 +575,7 @@ func (b *StringBuilder) WriteRune(r rune) {
 }
 
 // WriteString appends the JavaScript string s.
-func (b *StringBuilder) WriteString(s String) {
+func (b *Builder) WriteString(s String) {
 	if s == "" {
 		return
 	}
@@ -596,7 +599,7 @@ func (b *StringBuilder) WriteString(s String) {
 }
 
 // String returns the built string.
-func (b *StringBuilder) String() String {
+func (b *Builder) String() String {
 	if b.hasHigh {
 		var buf [utf8.UTFMax]byte
 		return String(b.sb.String() + string(AppendRune(buf[:0], b.high)))
@@ -606,7 +609,7 @@ func (b *StringBuilder) String() String {
 
 // FromUTF16 returns the string with the code units u.
 func FromUTF16(u []uint16) String {
-	var b Builder
+	var b Buffer
 	b.Grow(len(u))
 	for _, c := range u {
 		b.WriteUnit(c)

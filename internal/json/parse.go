@@ -89,7 +89,7 @@ type Parser struct {
 	// recs runs parallel to vals when the parse records are wanted.
 	recs []*Record
 
-	buf   wtf8.Builder
+	buf   wtf8.Buffer
 	ticks int
 }
 
@@ -121,7 +121,7 @@ func (p *Parser) release() {
 	p.recs = releaseScratch(p.recs)
 	p.frames = releaseScratch(p.frames)
 	if p.buf.Len() > maxRetainedBuffer {
-		p.buf = wtf8.Builder{}
+		p.buf = wtf8.Buffer{}
 	}
 	p.buf.Reset()
 }

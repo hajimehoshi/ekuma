@@ -8,7 +8,7 @@ import "strings"
 // MapWellFormed applies f to each maximal run without lone surrogates, preserving the lone surrogates.
 // f must return valid UTF-8.
 func MapWellFormed(s String, f func(string) string) String {
-	var b Builder
+	var b Buffer
 	for len(s) > 0 {
 		i := loneSurrogateIndex(s)
 		b.WriteString(String(f(string(s[:i]))))

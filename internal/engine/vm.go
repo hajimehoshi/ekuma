@@ -824,7 +824,7 @@ type stackCall struct {
 // formatStack returns the stack trace of an error with the name name and the message msg in
 // UTF-8 whose lines are calls.
 func formatStack(name wtf8.String, msg string, calls []stackCall) wtf8.String {
-	var b wtf8.Builder
+	var b wtf8.Buffer
 	b.WriteString(name)
 	if msg != "" {
 		b.WriteString(": ")
@@ -853,7 +853,7 @@ func clip[S ~string](s S, max int, suffix S) S {
 }
 
 // write writes the line of the stack trace for c to b.
-func (c *stackCall) write(b *wtf8.Builder) {
+func (c *stackCall) write(b *wtf8.Buffer) {
 	b.WriteString("\n    at ")
 	name := clip(c.name, maxFrameName, "...")
 	desc := name
