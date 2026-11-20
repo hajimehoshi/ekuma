@@ -232,10 +232,9 @@ func (p *parser) parseFunctionRest(fn *ast.Function, outerStrict bool) {
 // parseFunctionExpr parses a function expression. The current token is the function keyword.
 func (p *parser) parseFunctionExpr(start int32, async bool) ast.Expr {
 	p.next()
-	fn := newNode(&p.nodes.function, ast.Function{
-		Async:     async,
-		Generator: p.eat(tMul),
-	})
+	fn := alloc(&p.nodes.function)
+	fn.Async = async
+	fn.Generator = p.eat(tMul)
 	fn.StartOff = start
 	outerStrict := p.f.strict
 	saved := p.enterFunction(fn)
@@ -287,10 +286,9 @@ func (p *parser) parseMethod(fn *ast.Function, start int32) {
 // ctx is the statement context, and anonymous permits a missing name, as in a default export.
 func (p *parser) parseFunctionDecl(start int32, async bool, ctx stmtCtx, anonymous bool) *ast.FuncDecl {
 	p.next()
-	fn := newNode(&p.nodes.function, ast.Function{
-		Async:     async,
-		Generator: p.eat(tMul),
-	})
+	fn := alloc(&p.nodes.function)
+	fn.Async = async
+	fn.Generator = p.eat(tMul)
 	fn.StartOff = start
 	plain := !fn.Async && !fn.Generator
 	if ctx != ctxList && !plain {
@@ -463,19 +461,19 @@ func (p *parser) parseDecorator() ast.Expr {
 	for p.t.kind == tDot {
 		p.next()
 		prop := p.parseMemberName()
-		e = newNode(&p.nodes.member, ast.MemberExpr{
-			Span:     span(start, p.prevEnd),
-			Object:   e,
-			Property: prop,
-		})
+		node := alloc(&p.nodes.member)
+		node.Span = span(start, p.prevEnd)
+		node.Object = e
+		node.Property = prop
+		e = node
 	}
 	if p.t.kind == tLParen {
 		args := p.parseArguments()
-		e = newNode(&p.nodes.call, ast.CallExpr{
-			Span:   span(start, p.prevEnd),
-			Callee: e,
-			Args:   args,
-		})
+		node := alloc(&p.nodes.call)
+		node.Span = span(start, p.prevEnd)
+		node.Callee = e
+		node.Args = args
+		e = node
 	}
 	return e
 }
@@ -518,9 +516,8 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		if m.Decorators != nil {
 			p.failTok("a static block cannot be decorated")
 		}
-		fn := newNode(&p.nodes.function, ast.Function{
-			StaticBlock: true,
-		})
+		fn := alloc(&p.nodes.function)
+		fn.StaticBlock = true
 		fn.StartOff = start
 		saved := p.enterFunction(fn)
 		p.next()
@@ -598,9 +595,8 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 			p.privateDecl(private.Name, private.StartOff, flags)
 		}
 		if p.eat(tAssign) {
-			fn := newNode(&p.nodes.function, ast.Function{
-				FieldInit: true,
-			})
+			fn := alloc(&p.nodes.function)
+			fn.FieldInit = true
 			fn.StartOff = p.t.start
 			saved := p.enterFunction(fn)
 			fn.ExprBody = p.parseAssignIn()
@@ -613,13 +609,12 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		return
 	}
 
-	fn := newNode(&p.nodes.function, ast.Function{
-		Method:    true,
-		Async:     async,
-		Generator: generator,
-		Getter:    m.Kind == ast.MemberGetter,
-		Setter:    m.Kind == ast.MemberSetter,
-	})
+	fn := alloc(&p.nodes.function)
+	fn.Method = true
+	fn.Async = async
+	fn.Generator = generator
+	fn.Getter = m.Kind == ast.MemberGetter
+	fn.Setter = m.Kind == ast.MemberSetter
 	switch {
 	case private != nil:
 		flags := uint8(privOther)

@@ -82,11 +82,11 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 		scope := p.pushScope(ast.ScopeBlock, false).ast
 		d := p.parseFunctionDecl(start, false, ctx, false)
 		p.popScope()
-		return newNode(&p.nodes.block, ast.BlockStmt{
-			Span:  d.Span,
-			Body:  []ast.Stmt{d},
-			Scope: scope,
-		})
+		node := alloc(&p.nodes.block)
+		node.Span = d.Span
+		node.Body = []ast.Stmt{d}
+		node.Scope = scope
+		return node
 	case tClass:
 		if ctx != ctxList {
 			p.failTok("class declaration is not allowed here")
@@ -124,12 +124,12 @@ func (p *parser) parseStatementInner(ctx stmtCtx) ast.Stmt {
 		if p.eat(tElse) {
 			alt = p.parseStatement(ctxIf)
 		}
-		return newNode(&p.nodes.ifStmt, ast.IfStmt{
-			Span:       span(start, p.prevEnd),
-			Test:       test,
-			Consequent: cons,
-			Alternate:  alt,
-		})
+		node := alloc(&p.nodes.ifStmt)
+		node.Span = span(start, p.prevEnd)
+		node.Test = test
+		node.Consequent = cons
+		node.Alternate = alt
+		return node
 	case tFor:
 		p.markLoopLabels(run)
 		return p.parseFor()
@@ -359,9 +359,8 @@ func (p *parser) parseBlock(catchBody bool) *ast.BlockStmt {
 	s := p.pushScope(ast.ScopeBlock, false)
 	s.catchBody = catchBody
 	p.next()
-	b := newNode(&p.nodes.block, ast.BlockStmt{
-		Scope: s.ast,
-	})
+	b := alloc(&p.nodes.block)
+	b.Scope = s.ast
 	b.Body = p.parseStatementList(nil, tRBrace)
 	p.popScope()
 	p.next()
@@ -372,7 +371,7 @@ func (p *parser) parseBlock(catchBody bool) *ast.BlockStmt {
 // parseVarDecl parses a var, let or const declaration without its semicolon.
 // inFor reports the head of a for statement, where the caller checks the initializers.
 func (p *parser) parseVarDecl(mode declMode, inFor bool) *ast.VarDecl {
-	d := newNode(&p.nodes.varDecl, ast.VarDecl{})
+	d := alloc(&p.nodes.varDecl)
 	d.StartOff = p.t.start
 	switch mode {
 	case declVar:

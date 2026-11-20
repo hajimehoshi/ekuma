@@ -90,12 +90,12 @@ func (p *parser) parseAssignCover(inPattern bool) (result ast.Expr, cover int32)
 			}
 			p.next()
 			value := p.parseAssign()
-			result = newNode(&p.nodes.assign, ast.AssignExpr{
-				Span:   span(left.Start(), p.prevEnd),
-				Op:     op,
-				Target: target,
-				Value:  value,
-			})
+			node := alloc(&p.nodes.assign)
+			node.Span = span(left.Start(), p.prevEnd)
+			node.Op = op
+			node.Target = target
+			node.Value = value
+			result = node
 			if inPattern {
 				p.deferred = appendTargetNames(p.deferred, target)
 			} else {
@@ -218,20 +218,20 @@ func (p *parser) parseBinary(minPrec int) ast.Expr {
 				p.fail(int(left.Start()), "?? cannot be mixed with || or && without parentheses")
 			}
 		default:
-			left = newNode(&p.nodes.binary, ast.BinaryExpr{
-				Span:  span(left.Start(), p.prevEnd),
-				Op:    info.op,
-				Left:  left,
-				Right: right,
-			})
+			node := alloc(&p.nodes.binary)
+			node.Span = span(left.Start(), p.prevEnd)
+			node.Op = info.op
+			node.Left = left
+			node.Right = right
+			left = node
 			continue
 		}
-		left = newNode(&p.nodes.logical, ast.LogicalExpr{
-			Span:  span(left.Start(), p.prevEnd),
-			Op:    info.op,
-			Left:  left,
-			Right: right,
-		})
+		node := alloc(&p.nodes.logical)
+		node.Span = span(left.Start(), p.prevEnd)
+		node.Op = info.op
+		node.Left = left
+		node.Right = right
+		left = node
 	}
 	p.links = links
 	return left
@@ -252,12 +252,12 @@ func (p *parser) parseExponent() ast.Expr {
 	p.enter()
 	right := p.parseExponent()
 	p.leave()
-	return newNode(&p.nodes.binary, ast.BinaryExpr{
-		Span:  span(e.Start(), p.prevEnd),
-		Op:    ast.OpExp,
-		Left:  e,
-		Right: right,
-	})
+	node := alloc(&p.nodes.binary)
+	node.Span = span(e.Start(), p.prevEnd)
+	node.Op = ast.OpExp
+	node.Left = e
+	node.Right = right
+	return node
 }
 
 func (p *parser) parseUnary() ast.Expr {
@@ -436,55 +436,55 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 		case tDot:
 			p.next()
 			prop := p.parseMemberName()
-			e = newNode(&p.nodes.member, ast.MemberExpr{
-				Span:     span(start, p.prevEnd),
-				Object:   e,
-				Property: prop,
-			})
+			node := alloc(&p.nodes.member)
+			node.Span = span(start, p.prevEnd)
+			node.Object = e
+			node.Property = prop
+			e = node
 		case tQuestionDot:
 			chain = true
 			p.next()
 			switch p.t.kind {
 			case tLParen:
 				args := p.parseArguments()
-				e = newNode(&p.nodes.call, ast.CallExpr{
-					Span:     span(start, p.prevEnd),
-					Callee:   e,
-					Args:     args,
-					Optional: true,
-				})
+				node := alloc(&p.nodes.call)
+				node.Span = span(start, p.prevEnd)
+				node.Callee = e
+				node.Args = args
+				node.Optional = true
+				e = node
 			case tLBrack:
 				p.next()
 				prop := p.parseExpressionIn()
 				p.expect(tRBrack)
-				e = newNode(&p.nodes.member, ast.MemberExpr{
-					Span:     span(start, p.prevEnd),
-					Object:   e,
-					Property: prop,
-					Computed: true,
-					Optional: true,
-				})
+				node := alloc(&p.nodes.member)
+				node.Span = span(start, p.prevEnd)
+				node.Object = e
+				node.Property = prop
+				node.Computed = true
+				node.Optional = true
+				e = node
 			case tTemplate:
 				p.failTok("tagged template cannot be used in an optional chain")
 			default:
 				prop := p.parseMemberName()
-				e = newNode(&p.nodes.member, ast.MemberExpr{
-					Span:     span(start, p.prevEnd),
-					Object:   e,
-					Property: prop,
-					Optional: true,
-				})
+				node := alloc(&p.nodes.member)
+				node.Span = span(start, p.prevEnd)
+				node.Object = e
+				node.Property = prop
+				node.Optional = true
+				e = node
 			}
 		case tLBrack:
 			p.next()
 			prop := p.parseExpressionIn()
 			p.expect(tRBrack)
-			e = newNode(&p.nodes.member, ast.MemberExpr{
-				Span:     span(start, p.prevEnd),
-				Object:   e,
-				Property: prop,
-				Computed: true,
-			})
+			node := alloc(&p.nodes.member)
+			node.Span = span(start, p.prevEnd)
+			node.Object = e
+			node.Property = prop
+			node.Computed = true
+			e = node
 		case tLParen:
 			if id, ok := e.(*ast.Identifier); ok && id == p.plainAsync && start == p.arrowStart && !id.Parenthesized && !p.t.nl {
 				var arrow bool
@@ -500,11 +500,11 @@ func (p *parser) parseLeftHandSide() ast.Expr {
 				p.f.use |= useDirectEval
 				p.scope.ast.ContainsDirectEval = true
 			}
-			e = newNode(&p.nodes.call, ast.CallExpr{
-				Span:   span(start, p.prevEnd),
-				Callee: e,
-				Args:   args,
-			})
+			node := alloc(&p.nodes.call)
+			node.Span = span(start, p.prevEnd)
+			node.Callee = e
+			node.Args = args
+			e = node
 		case tTemplate:
 			if chain {
 				p.failTok("tagged template cannot be used in an optional chain")
@@ -688,11 +688,11 @@ func (p *parser) parseAsyncCall(id *ast.Identifier) (e ast.Expr, arrow bool) {
 		if cover != 0 {
 			p.fail(int(cover-1), "invalid shorthand property initializer")
 		}
-		return newNode(&p.nodes.call, ast.CallExpr{
-			Span:   span(id.StartOff, p.prevEnd),
-			Callee: id,
-			Args:   args,
-		}), false
+		node := alloc(&p.nodes.call)
+		node.Span = span(id.StartOff, p.prevEnd)
+		node.Callee = id
+		node.Args = args
+		return node, false
 	}
 
 	inner := p.endArrowHead(&h, true, true)
@@ -818,11 +818,10 @@ func (p *parser) parseParen() ast.Expr {
 // use is the usage collected in the parameters, and h is the state saved around them, or nil when they
 // are a single identifier.
 func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use usage, h *arrowHead) ast.Expr {
-	fn := newNode(&p.nodes.function, ast.Function{
-		Params: params,
-		Arrow:  true,
-		Async:  async,
-	})
+	fn := alloc(&p.nodes.function)
+	fn.Params = params
+	fn.Arrow = true
+	fn.Async = async
 	fn.StartOff = start
 	setParamInfo(fn)
 
@@ -927,21 +926,21 @@ loop:
 		case tDot:
 			p.next()
 			prop := p.parseMemberName()
-			callee = newNode(&p.nodes.member, ast.MemberExpr{
-				Span:     span(calleeStart, p.prevEnd),
-				Object:   callee,
-				Property: prop,
-			})
+			node := alloc(&p.nodes.member)
+			node.Span = span(calleeStart, p.prevEnd)
+			node.Object = callee
+			node.Property = prop
+			callee = node
 		case tLBrack:
 			p.next()
 			prop := p.parseExpressionIn()
 			p.expect(tRBrack)
-			callee = newNode(&p.nodes.member, ast.MemberExpr{
-				Span:     span(calleeStart, p.prevEnd),
-				Object:   callee,
-				Property: prop,
-				Computed: true,
-			})
+			node := alloc(&p.nodes.member)
+			node.Span = span(calleeStart, p.prevEnd)
+			node.Object = callee
+			node.Property = prop
+			node.Computed = true
+			callee = node
 		case tTemplate:
 			quasi := p.parseTemplate(true)
 			callee = &ast.TaggedTemplate{
@@ -961,11 +960,11 @@ loop:
 		args = p.parseArguments()
 	}
 	p.leave()
-	return newNode(&p.nodes.newExpr, ast.NewExpr{
-		Span:   span(start, p.prevEnd),
-		Callee: callee,
-		Args:   args,
-	})
+	node := alloc(&p.nodes.newExpr)
+	node.Span = span(start, p.prevEnd)
+	node.Callee = callee
+	node.Args = args
+	return node
 }
 
 // parseSuper parses super together with the property access or call that must follow it.
@@ -982,11 +981,11 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 		}
 		p.f.use |= useSuperCall
 		args := p.parseArguments()
-		return newNode(&p.nodes.call, ast.CallExpr{
-			Span:   span(start, p.prevEnd),
-			Callee: sup,
-			Args:   args,
-		})
+		node := alloc(&p.nodes.call)
+		node.Span = span(start, p.prevEnd)
+		node.Callee = sup
+		node.Args = args
+		return node
 	case tDot:
 		if !p.f.superProp {
 			p.fail(int(start), "super property access is not allowed here")
@@ -998,11 +997,11 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 			p.unexpected()
 		}
 		prop := p.parseMemberName()
-		return newNode(&p.nodes.member, ast.MemberExpr{
-			Span:     span(start, p.prevEnd),
-			Object:   sup,
-			Property: prop,
-		})
+		node := alloc(&p.nodes.member)
+		node.Span = span(start, p.prevEnd)
+		node.Object = sup
+		node.Property = prop
+		return node
 	case tLBrack:
 		if !p.f.superProp {
 			p.fail(int(start), "super property access is not allowed here")
@@ -1012,12 +1011,12 @@ func (p *parser) parseSuper(allowCall bool) ast.Expr {
 		p.next()
 		prop := p.parseExpressionIn()
 		p.expect(tRBrack)
-		return newNode(&p.nodes.member, ast.MemberExpr{
-			Span:     span(start, p.prevEnd),
-			Object:   sup,
-			Property: prop,
-			Computed: true,
-		})
+		node := alloc(&p.nodes.member)
+		node.Span = span(start, p.prevEnd)
+		node.Object = sup
+		node.Property = prop
+		node.Computed = true
+		return node
 	}
 	p.fail(int(start), "super must be followed by a property access or a call")
 	return nil
@@ -1429,13 +1428,12 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 
 	switch {
 	case prop.Kind != ast.PropertyInit || async || generator || p.t.kind == tLParen:
-		fn := newNode(&p.nodes.function, ast.Function{
-			Method:    true,
-			Async:     async,
-			Generator: generator,
-			Getter:    prop.Kind == ast.PropertyGet,
-			Setter:    prop.Kind == ast.PropertySet,
-		})
+		fn := alloc(&p.nodes.function)
+		fn.Method = true
+		fn.Async = async
+		fn.Generator = generator
+		fn.Getter = prop.Kind == ast.PropertyGet
+		fn.Setter = prop.Kind == ast.PropertySet
 		if prop.Kind == ast.PropertyInit {
 			prop.Kind = ast.PropertyMethod
 		}
@@ -1489,11 +1487,11 @@ func (p *parser) parseProperty(prop *ast.Property, cover, patErr *int32, hasProt
 			}
 			p.next()
 			def := p.parseAssignIn()
-			prop.Value = newNode(&p.nodes.assign, ast.AssignExpr{
-				Span:   span(id.StartOff, p.prevEnd),
-				Target: p.toSimpleTarget(id),
-				Value:  def,
-			})
+			node := alloc(&p.nodes.assign)
+			node.Span = span(id.StartOff, p.prevEnd)
+			node.Target = p.toSimpleTarget(id)
+			node.Value = def
+			prop.Value = node
 		}
 	}
 	prop.Span = span(start, p.prevEnd)

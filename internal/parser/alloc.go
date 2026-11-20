@@ -12,8 +12,11 @@ import (
 // slab hands out values of T from shared chunks, so that the many small nodes of a syntax
 // tree do not need an allocation each.
 type slab[T any] struct {
-	free []T
-	next int
+	// chunk is the latest chunk, whose first used values are handed out, and next is the length
+	// it was asked for.
+	chunk []T
+	used  int
+	next  int
 }
 
 const (
@@ -23,16 +26,24 @@ const (
 
 // newNode returns a pointer to a value of s that holds v.
 func newNode[T any](s *slab[T], v T) *T {
-	if len(s.free) == 0 {
+	n := alloc(s)
+	*n = v
+	return n
+}
+
+// alloc returns a pointer to a zero value of s.
+func alloc[T any](s *slab[T]) *T {
+	if s.used == len(s.chunk) {
 		// The chunks start small so that a short source does not pay for large ones.
 		s.next = min(max(s.next*2, minSlabChunk), maxSlabChunk)
 		// slices.Grow rounds the capacity up to what the allocation can hold.
-		s.free = slices.Grow([]T(nil), s.next)
-		s.free = s.free[:cap(s.free)]
+		s.chunk = slices.Grow([]T(nil), s.next)
+		s.chunk = s.chunk[:cap(s.chunk)]
+		s.used = 0
 	}
-	n := &s.free[0]
-	s.free = s.free[1:]
-	*n = v
+	// Handing out a value changes only the count, so it stores no pointer.
+	n := &s.chunk[s.used]
+	s.used++
 	return n
 }
 
@@ -65,10 +76,11 @@ type nodeSlabs struct {
 type listStack[T any] struct {
 	items []T
 
-	// free is the unused part of the chunk that taken lists are copied into, and next is the
-	// length of the latest chunk.
-	free []T
-	next int
+	// chunk is the latest chunk that taken lists are copied into, whose first used elements are
+	// handed out, and next is the length it was asked for.
+	chunk []T
+	used  int
+	next  int
 }
 
 // The lengths of the first and of the longest chunks of a listStack.
@@ -102,7 +114,7 @@ func (s *listStack[T]) alloc(n int) []T {
 	if n == 0 {
 		return nil
 	}
-	if n > len(s.free) {
+	if n > len(s.chunk)-s.used {
 		// The chunks start small so that a short source does not pay for large ones.
 		size := min(max(s.next*2, minListStackChunk), maxListStackChunk)
 		if n > size {
@@ -110,10 +122,11 @@ func (s *listStack[T]) alloc(n int) []T {
 		}
 		s.next = size
 		// slices.Grow rounds the capacity up to what the allocation can hold.
-		s.free = slices.Grow([]T(nil), size)
-		s.free = s.free[:cap(s.free)]
+		s.chunk = slices.Grow([]T(nil), size)
+		s.chunk = s.chunk[:cap(s.chunk)]
+		s.used = 0
 	}
-	list := s.free[:n:n]
-	s.free = s.free[n:]
+	list := s.chunk[s.used : s.used+n : s.used+n]
+	s.used += n
 	return list
 }
