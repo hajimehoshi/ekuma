@@ -155,8 +155,9 @@ func (vm *VM) appendFrame() *frame {
 // pushFrame starts the activation of the closure f, whose argc arguments are already at base.
 // It returns the stack index of register 0 of the new frame.
 func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew bool, newTarget *Object) int {
-	// The fast switch of exec builds the same frame inline for OpCall, OpCallCall and
-	// OpApplyFwd when the callee needs no surplus arguments; a change here belongs there too.
+	// exec builds the same frame inline for OpCall and OpCallCall in its fast switch, and for
+	// OpApplyFwd in the switch after it, when the callee needs no surplus arguments; a change
+	// here belongs there too.
 	fp := f.fn.code
 	fp.prepare()
 	extraBase := -1
@@ -464,7 +465,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			*vm.frames[len(vm.frames)-1].cl.fn.upvals[i.B].p = regs[i.A]
 			continue
 		case bytecode.OpGetProp:
-			if o := regs[i.B].o; o != nil {
+			// The destination is read first, so that the instruction need not stay in
+			// registers across the tests of the cache.
+			if a, o := i.A, regs[i.B].o; o != nil {
 				c := &fp.caches[i.C]
 				e := &c.cacheEntry
 				if o.shape != e.shape {
@@ -477,14 +480,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
 						break
 					}
-					regs[i.A] = *e.ref
+					regs[a] = *e.ref
 					continue
 				}
-				regs[i.A] = o.slots[e.slot]
+				regs[a] = o.slots[e.slot]
 				continue
 			}
 		case bytecode.OpGetPropChain:
-			if o := regs[i.B].o; o != nil {
+			if a, o := i.A, regs[i.B].o; o != nil {
 				c := &fp.caches[i.C]
 				e := &c.cacheEntry
 				if o.shape != e.shape {
@@ -502,7 +505,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				} else {
 					w = o.slots[e.slot]
 				}
-				regs[i.A] = w
+				regs[a] = w
 				// The next instruction is an OpGetProp of w. It runs here only when it reads a
 				// data property through its cache, and runs on its own otherwise.
 				if o := w.o; o != nil {
@@ -946,7 +949,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if i.Op == bytecode.OpGetMethod {
 				// A data property read through the cache, as in OpGetProp's case. The call of
 				// the method without arguments, when it is the next instruction, runs here too.
+				// The this value goes in place first, as the case below does too, so that it
+				// does not stay in registers across the tests of the cache.
+				a := i.A
 				v := regs[i.B]
+				regs[a+1] = v
 				o := v.o
 				if o == nil {
 					break
@@ -968,8 +975,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				} else {
 					m = o.slots[e.slot]
 				}
-				a, n := i.A, &fp.code[pc]
-				regs[a+1] = v
+				n := &fp.code[pc]
 				regs[a] = m
 				if n.Op != bytecode.OpCall || n.B != a {
 					continue
@@ -977,20 +983,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				i = n
 				pc++
 			}
-			// f is the callee and first the register of its first argument.
+			// f is the callee and first the register of its first argument. The this value is in
+			// the register before first, and is read only once the frame is certain, so that it
+			// takes no registers while the frame is checked.
 			b := int(i.B)
-			f, this, first, argc := regs[b].o, regs[b+1], b+2, int(i.C)
-			switch i.Op {
-			case bytecode.OpCallUndef:
-				this = Value{}
-			case bytecode.OpCallCall:
+			f, first, argc := regs[b].o, b+2, int(i.C)
+			if i.Op == bytecode.OpCallCall {
 				if f != vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
 					f = nil
-					break
-				}
-				f, this, first, argc = regs[b+1].o, regs[b+2], b+3, argc-1
-				if argc < 0 {
-					this, argc = Value{}, 0
+				} else {
+					f, first, argc = regs[b+1].o, b+3, max(argc-1, 0)
 				}
 			}
 			if !fp.heapRegs && f != nil && f.fn != nil {
@@ -1001,10 +1003,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
 						// Reuse the available stack and frame storage for a prepared call. This builds
 						// the frame that pushFrame would, without calling it, as nothing in this
-						// switch may call; OpApplyFwd's case below builds it the same way, and a
-						// change to one of the three belongs in the others.
-						if i.Op == bytecode.OpCallUndef {
-							regs[b+1] = Value{}
+						// switch may call; OpApplyFwd's case in the switch below builds it the same
+						// way, and a change to one of the three belongs in the others.
+						var this Value
+						switch {
+						case i.Op == bytecode.OpCallUndef:
+							regs[first-1] = Value{}
+						case i.Op != bytecode.OpCallCall || i.C > 0:
+							this = regs[first-1]
 						}
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
@@ -1026,58 +1032,19 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-		case bytecode.OpApplyFwd:
-			// f.apply(this, arguments) for an ordinary function f written in JavaScript: the
-			// arguments of the running function go above its registers, and it resumes after
-			// the OpExtra that follows the instruction.
-			b := int(i.B)
-			if f := regs[b+1].o; regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeApply) && !fp.heapRegs && f != nil && f.fn != nil {
-				if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
-					n := len(vm.frames)
-					cur := &vm.frames[n-1]
-					argc := cur.argc
-					argBase := cur.base + fp.nregs + 1
-					end := argBase + max(argc, c.nregs+1)
-					if (argc <= fp.nparams || cur.extraBase >= 0) && (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
-						k := min(argc, fp.nparams)
-						for j := range k {
-							vm.stack[argBase+j] = regs[j]
-						}
-						for j := k; j < argc; j++ {
-							vm.stack[argBase+j] = vm.stack[cur.extraBase+j-k]
-						}
-						// The frame is pushed as in OpCall's case above.
-						this := regs[i.C]
-						cur.pc = pc + 1
-						vm.stackHigh = max(vm.stackHigh, end)
-						clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
-						vm.frames = vm.frames[:n+1]
-						vm.framesHigh = max(vm.framesHigh, n+1)
-						fr := &vm.frames[n]
-						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
-						fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
-						vm.sp = argBase + c.nregs + 1
-						fp, pc = c, 0
-						regs = vm.stack[argBase:vm.sp]
-						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
-							regs[r] = this
-							pc = 1
-						}
-						continue
-					}
-				}
-			}
 		case bytecode.OpReturn, bytecode.OpReturnUndef:
 			// The frame is popped as in the OpReturn case below, which handles generators,
 			// upvalues to close, the return out of the loop and a change of realm; a change to
 			// the popping belongs in both. The open upvalues are sorted by stack index, so
 			// none refers to the registers of the frame when the last one lies below them.
+			// The value is read before the tests, so that the instruction need not stay in
+			// registers across them.
+			r := Value{}
+			if i.Op == bytecode.OpReturn {
+				r = regs[i.A]
+			}
 			n := len(vm.frames) - 1
 			if done := &vm.frames[n]; done.gen == nil && n != stop && vm.frames[n-1].fp.realm == vm.curRealm && (len(vm.openUpvals) == 0 || vm.openUpvals[len(vm.openUpvals)-1].index < done.base) {
-				r := Value{}
-				if i.Op == bytecode.OpReturn {
-					r = regs[i.A]
-				}
 				if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {
 					r = done.this
 				}
@@ -1729,6 +1696,50 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			goto callRegs
 		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
+			if i.Op == bytecode.OpApplyFwd {
+				// f.apply(this, arguments) for an ordinary function f written in JavaScript: the
+				// arguments of the running function go above its registers, and it resumes after
+				// the OpExtra that follows the instruction. This is not a fast path above, as the
+				// registers its tests take there made the loop store the values it carries
+				// before every instruction where registers are few, as on amd64.
+				b := int(i.B)
+				if f := regs[b+1].o; regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeApply) && !fp.heapRegs && f != nil && f.fn != nil {
+					if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
+						n := len(vm.frames)
+						cur := &vm.frames[n-1]
+						argc := cur.argc
+						argBase := cur.base + fp.nregs + 1
+						end := argBase + max(argc, c.nregs+1)
+						if (argc <= fp.nparams || cur.extraBase >= 0) && (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
+							k := min(argc, fp.nparams)
+							for j := range k {
+								vm.stack[argBase+j] = regs[j]
+							}
+							for j := k; j < argc; j++ {
+								vm.stack[argBase+j] = vm.stack[cur.extraBase+j-k]
+							}
+							// The frame is pushed as in OpCall's case in the fast switch.
+							this := regs[i.C]
+							cur.pc = pc + 1
+							vm.stackHigh = max(vm.stackHigh, end)
+							clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
+							vm.frames = vm.frames[:n+1]
+							vm.framesHigh = max(vm.framesHigh, n+1)
+							fr := &vm.frames[n]
+							fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
+							fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
+							vm.sp = argBase + c.nregs + 1
+							fp, pc = c, 0
+							regs = vm.stack[argBase:vm.sp]
+							if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
+								regs[r] = this
+								pc = 1
+							}
+							continue
+						}
+					}
+				}
+			}
 			b := int(i.B)
 			pc++
 			if regs[b].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
