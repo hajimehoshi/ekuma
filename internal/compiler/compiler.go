@@ -653,7 +653,7 @@ func compile(prog *ast.Program, file string, dynamic *ast.Function, poll func())
 	return validated(c.compileScript()), nil
 }
 
-// validated returns f. With the build tag ekuma_validate, it panics first when f is not valid.
+// validated returns f. With the build tag ekumavalidate, it panics first when f is not valid.
 func validated(f *bytecode.Func) *bytecode.Func {
 	if validateCode {
 		if err := f.Validate(); err != nil {

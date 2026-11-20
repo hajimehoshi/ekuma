@@ -35,6 +35,9 @@
 // Aborted generators are closed without running JavaScript catch or finally blocks.
 // Side effects remain, and promises for abandoned async work may remain pending.
 // Host callbacks must not call [runtime.Goexit], which leaves the VM unusable.
+//
+// The ekumavalidate build tag enables internal checks on the bytecode the compiler emits
+// and on its execution by the VM.
 package ekuma
 
 import (

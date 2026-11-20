@@ -301,6 +301,9 @@ Host API for these, some of which the engine has and only the tests use:
 go test ./...
 ```
 
+Run `go test -tags=ekumavalidate ./...` to check the bytecode the compiler emits and verify
+that the interpreter's register writes and control flow agree with the opcode definitions.
+
 The test262 run is skipped unless a checkout of the suite is found in `ekuma/test262`
 under the user cache directory, or in the directory specified by `EKUMA_TEST262`.
 The flags `-test262.filter`, `-test262.dir` and `-test262.shuffle` of the root package select and

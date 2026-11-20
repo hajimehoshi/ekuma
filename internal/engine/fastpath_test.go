@@ -89,7 +89,7 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 }
 
 // testFastPathSource tests that the fast path s calls only the functions that fastPathCalls and
-// fastPathMethods list, apart from the checks of builds with the build tag ekuma_validate.
+// fastPathMethods list, apart from the checks of builds with the build tag ekumavalidate.
 func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
 	ast.Inspect(s, func(n ast.Node) bool {
 		switch n := n.(type) {

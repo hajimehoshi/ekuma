@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-//go:build ekuma_validate
+//go:build ekumavalidate
 
 package engine
 
@@ -268,7 +268,7 @@ func (vm *VM) hasOpenUpval(s *execStep, r int) bool {
 // failure returns the message of a failed check of the instruction of s.
 func (vm *VM) failure(s *execStep, msg string) string {
 	in := s.fp.code[s.pc]
-	return fmt.Sprintf("ekuma_validate: %s at %d of %s (%s): %s", in.Op, s.pc, s.fp.name, s.fp.File, msg)
+	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, s.pc, s.fp.name, s.fp.File, msg)
 }
 
 // sameBits reports whether a and b are the same bits.
