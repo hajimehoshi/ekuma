@@ -108,10 +108,11 @@ func writeElements(t *engine.TypedArray, offset int, src []byte) {
 	}
 }
 
-// copyElements copies the first n elements of src to dst, which have the same element type.
-// Both must have at least n elements.
-func copyElements(dst, src *engine.TypedArray, n int) {
-	engine.CopyBufferBytes(dst.ArrayBuffer(), dst.ByteOffset(), src.ArrayBuffer(), src.ByteOffset(), n*src.ElementType().Size())
+// copyElements copies the first n elements of src to the element offset in dst.
+// The element types must match and both ranges must be in bounds.
+func copyElements(dst *engine.TypedArray, offset int, src *engine.TypedArray, n int) {
+	size := src.ElementType().Size()
+	engine.CopyBufferBytes(dst.ArrayBuffer(), dst.ByteOffset()+offset*size, src.ArrayBuffer(), src.ByteOffset(), n*size)
 }
 
 // storeConverted stores the n elements of the type from in src as elements of t from the element
@@ -1030,7 +1031,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "toReversed", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		_, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.toReversed")
 		a, at := bi.createSameType(vm, t, n)
-		copyElements(at, t, n)
+		copyElements(at, 0, t, n)
 		reverseFirst(vm, at, n)
 		return engine.ObjectValue(a)
 	})
@@ -1042,7 +1043,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.toSorted")
 		a, at := bi.createSameType(vm, t, n)
 		if cmp.IsUndefined() {
-			copyElements(at, t, n)
+			copyElements(at, 0, t, n)
 			sortFirst(vm, at, n)
 			return engine.ObjectValue(a)
 		}
@@ -1071,7 +1072,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		a, at := bi.createSameType(vm, t, n)
 		copied := min(n, cur)
-		copyElements(at, t, copied)
+		copyElements(at, 0, t, copied)
 		for i := copied; i < n; i++ {
 			storeAt(vm, a, at, i, getAt(vm, o, int64(i)))
 		}
@@ -1120,14 +1121,13 @@ func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *eng
 		if typ.IsBigInt() != srcType.IsBigInt() {
 			vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 		}
+		if srcType == typ && src.ArrayBuffer().SameDataBlock(t.ArrayBuffer()) {
+			copyElements(t, int(offset), src, srcLen)
+			return
+		}
 		sb := elementsOf(src)
-		if src.ArrayBuffer() == t.ArrayBuffer() {
-			if srcType == typ {
-				// The elements may overlap, and one copy moves them correctly.
-				writeElements(t, int(offset), sb[:srcLen*typ.Size()])
-				return
-			}
-			// The source is cloned first, as the elements may overlap.
+		if src.ArrayBuffer() == t.ArrayBuffer() && !src.ArrayBuffer().IsShared() {
+			// Conversion needs the original elements when the views overlap.
 			sb = slices.Clone(sb)
 		}
 		storeConverted(vm, t, int(offset), sb, srcType, srcLen)

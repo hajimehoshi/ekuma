@@ -632,6 +632,31 @@ func BenchmarkSharedTypedArray(b *testing.B) {
 	}
 }
 
+// BenchmarkTypedArraySetOverlap copies 8 KiB between Uint8Array views one byte apart.
+func BenchmarkTypedArraySetOverlap(b *testing.B) {
+	for _, buffer := range []string{"ArrayBuffer", "SharedArrayBuffer"} {
+		b.Run(buffer, func(b *testing.B) {
+			var vm ekuma.VM
+			ctx := b.Context()
+			fn, err := runScript(ctx, &vm, "set.js", fmt.Sprintf(`
+				const bytes = new Uint8Array(new %s(8193));
+				const src = bytes.subarray(0, 8192);
+				const dst = bytes.subarray(1);
+				() => dst.set(src);
+			`, buffer))
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := fn.Invoke(ctx); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 // BenchmarkSparseArray measures the array methods that skip or read holes on a sparse array of
 // length 100000 that has 10 elements. One iteration is one call of the method. The methods that
 // change the array run on a new array in each iteration.
