@@ -38,7 +38,7 @@ BenchmarkV8/DeltaBlue/goja-12 	 10	 400 ns/op
 BenchmarkV8/Richards/goja-12 10 1000 ns/op
 `
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "V8.txt"), []byte(results), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "v8.txt"), []byte(results), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	sections, err := jsbench.Report(dir)
@@ -80,7 +80,7 @@ BenchmarkV8/Richards/goja-12 10 1000 ns/op
 func TestReportWithoutBaseline(t *testing.T) {
 	dir := t.TempDir()
 	const result = "BenchmarkV8/Richards/goja-4 100 250 ns/op\n"
-	if err := os.WriteFile(filepath.Join(dir, "V8.txt"), []byte(result), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "v8.txt"), []byte(result), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	sections, err := jsbench.Report(dir)

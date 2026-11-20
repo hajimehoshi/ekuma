@@ -50,7 +50,7 @@ func TestRunSuitePreservesFailures(t *testing.T) {
 			} else if err != nil {
 				t.Errorf("RunSuite error = %v, want nil", err)
 			}
-			data, err := os.ReadFile(filepath.Join(dir, "Example.txt"))
+			data, err := os.ReadFile(filepath.Join(dir, "example.txt"))
 			if err != nil {
 				t.Fatal(err)
 			}

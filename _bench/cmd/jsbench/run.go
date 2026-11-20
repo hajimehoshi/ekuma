@@ -217,7 +217,7 @@ func runSuite(ctx context.Context, bin string, s suite, names, engines []string,
 		return err
 	}
 	text := strings.Join(header, "\n") + "\n" + strings.Join(records, "\n") + "\n"
-	if err := os.WriteFile(filepath.Join(dir, s.name+".txt"), []byte(text), 0o644); err != nil {
+	if err := os.WriteFile(s.resultsPath(dir), []byte(text), 0o644); err != nil {
 		return err
 	}
 	if failures > 0 {

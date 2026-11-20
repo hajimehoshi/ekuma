@@ -12,8 +12,9 @@
 // which go test -bench runs the benchmarks directly.
 //
 // A round runs each benchmark once on every engine, each in a process of its own, in an order
-// that rotates with the round and the benchmark. The output of a suite goes to SUITE.txt in the
-// results directory, in the format of go test, and the report is made from the files there.
+// that rotates with the round and the benchmark. Each suite writes its output in go test format
+// to the results directory, using the lowercase suite name with a .txt extension.
+// The report reads these files.
 // For each benchmark and engine, the report gives the median over the rounds of the time
 // relative to Ekuma's in the same round, and for each suite and engine, the geometric mean of
 // these over the benchmarks that the engine ran.
@@ -53,6 +54,10 @@ type suite struct {
 
 	// rounds is the number of rounds by default.
 	rounds int
+}
+
+func (s suite) resultsPath(dir string) string {
+	return filepath.Join(dir, strings.ToLower(s.name)+".txt")
 }
 
 var suites = []suite{

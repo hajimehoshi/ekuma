@@ -9,7 +9,7 @@ On 2026-11-21, Ekuma's interpreter loop (`(*VM).exec`) accounted for 46.7% of CP
 directly and 64.0% including its callees. The profile covers all ten V8 benchmarks at
 `f130b4d6c37d` on an Apple M3 Pro running macOS 27.2 and go1.27.4. It includes parsing,
 setup, benchmark calibration, and garbage collection. See the
-[profile summary](results/darwin_arm64/Ekuma-V8-cpu.txt).
+[profile summary](results/darwin_arm64/ekuma-v8-cpu.txt).
 
 For setup requirements, see [Running](README.md#running). To capture another profile, run
 the following commands from `_bench`:

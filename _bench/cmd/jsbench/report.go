@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"math"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -196,7 +195,8 @@ func report(dir string) (map[string]string, error) {
 	var found []suite
 	rs := map[string]*results{}
 	for _, s := range suites {
-		b, err := os.ReadFile(filepath.Join(dir, s.name+".txt"))
+		path := s.resultsPath(dir)
+		b, err := os.ReadFile(path)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -205,7 +205,7 @@ func report(dir string) (map[string]string, error) {
 		}
 		r, err := parseResults(s.name, string(b))
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", filepath.Join(dir, s.name+".txt"), err)
+			return nil, fmt.Errorf("%s: %w", path, err)
 		}
 		found = append(found, s)
 		rs[s.name] = r
