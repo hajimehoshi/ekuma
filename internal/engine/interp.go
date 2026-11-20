@@ -1205,7 +1205,17 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			// that ends up here, the next instruction runs on its own.
 			v := regs[i.B]
 			c := &fp.caches[i.C]
-			if o := v.o; o != nil {
+			o := v.o
+			if o == numberObject {
+				// getNamed starts at Number.prototype for a number. Its own slot
+				// stays valid for its shape, and the method receives v as this.
+				o = vm.Intrinsic(IntrinsicNumberPrototype)
+				if c.kind == cacheOwn && c.shape == o.shape {
+					regs[i.A] = o.slots[c.slot]
+					continue
+				}
+			}
+			if o != nil {
 				e := &c.cacheEntry
 				if o.shape != e.shape {
 					e = &c.second

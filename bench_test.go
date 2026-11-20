@@ -1160,6 +1160,47 @@ func BenchmarkMegamorphicRead(b *testing.B) {
 	}
 }
 
+// BenchmarkPrimitiveMethod calls a prototype method with a primitive receiver.
+func BenchmarkPrimitiveMethod(b *testing.B) {
+	for _, tc := range []struct {
+		name     string
+		proto    string
+		receiver string
+	}{
+		{
+			name:     "number",
+			proto:    "Number.prototype",
+			receiver: "i",
+		},
+		{
+			name:     "string",
+			proto:    "String.prototype",
+			receiver: "'str'",
+		},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			var vm ekuma.VM
+			f, err := runScript(b.Context(), &vm, "primitive-method", tc.proto+`.value = function () {
+				"use strict";
+				return this;
+			};
+			(function (n) {
+				var result;
+				for (var i = 0; i < n; i++) result = (`+tc.receiver+`).value();
+				return result;
+			})`)
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := f.Invoke(b.Context(), b.N); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkPropertyDescriptor measures retrieving or forwarding one property descriptor.
 func BenchmarkPropertyDescriptor(b *testing.B) {
 	for _, c := range []struct {
