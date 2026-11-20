@@ -1,30 +1,30 @@
-Ekuma: eb2d4fe68006
+Ekuma: f130b4d6c37d
 OS: macOS 27.2, darwin/arm64
 CPU: Apple M3 Pro
 Go: go1.27.4
-Suite: BenchmarkV8, all 10 benchmarks, Ekuma only, benchtime 1s
+Suite: BenchmarkV8, all 10 benchmarks, Ekuma only, benchtime 1s, GOMAXPROCS=2
 Scope: whole test process, separate from comparison measurements
 
 File: ekuma-v8-profile.test
 Type: cpu
-Time: 2026-11-20 04:09:44 JST
-Duration: 13.82s, Total samples = 14.46s (104.60%)
-Showing nodes accounting for 12.29s, 84.99% of 14.46s total
-Dropped 274 nodes (cum <= 0.07s)
-Showing top 15 nodes out of 100
+Time: 2026-11-21 01:19:56 JST
+Duration: 14.58s, Total samples = 14.63s (100.36%)
+Showing nodes accounting for 12.50s, 85.44% of 14.63s total
+Dropped 209 nodes (cum <= 0.07s)
+Showing top 15 nodes out of 107
       flat  flat%   sum%        cum   cum%
-     6.65s 45.99% 45.99%      9.12s 63.07%  github.com/hajimehoshi/ekuma/internal/engine.(*VM).exec
-     1.50s 10.37% 56.36%      1.50s 10.37%  runtime.madvise
-     1.08s  7.47% 63.83%      1.08s  7.47%  runtime.kevent
-     0.65s  4.50% 68.33%      0.65s  4.50%  runtime.pthread_cond_wait
-     0.41s  2.84% 71.16%      0.41s  2.84%  runtime.pthread_cond_signal
-     0.39s  2.70% 73.86%      0.76s  5.26%  runtime.scanObjectsSmall
-     0.31s  2.14% 76.00%      0.31s  2.14%  runtime.memclrNoHeapPointers
-     0.30s  2.07% 78.08%      0.35s  2.42%  runtime.tryDeferToSpanScan
-     0.28s  1.94% 80.01%      0.28s  1.94%  runtime.usleep
-     0.21s  1.45% 81.47%      0.21s  1.45%  runtime.pthread_kill
-     0.13s   0.9% 82.37%      0.13s   0.9%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
-     0.11s  0.76% 83.13%      0.80s  5.53%  runtime.mallocgcSmallScanNoHeader
-     0.10s  0.69% 83.82%      0.10s  0.69%  runtime.asyncPreempt
-     0.09s  0.62% 84.44%      0.18s  1.24%  github.com/hajimehoshi/ekuma/internal/regexp.(*Matcher).run
-     0.08s  0.55% 84.99%      0.08s  0.55%  github.com/hajimehoshi/ekuma/internal/engine.clearFrameRegs (inline)
+     6.83s 46.68% 46.68%      9.36s 63.98%  github.com/hajimehoshi/ekuma/internal/engine.(*VM).exec
+     1.61s 11.00% 57.69%      1.61s 11.00%  runtime.madvise
+     1.19s  8.13% 65.82%      1.19s  8.13%  runtime.kevent
+     0.94s  6.43% 72.25%      0.94s  6.43%  runtime.pthread_kill
+     0.48s  3.28% 75.53%      0.61s  4.17%  runtime.tryDeferToSpanScan
+     0.31s  2.12% 77.65%      0.31s  2.12%  runtime.usleep
+     0.22s  1.50% 79.15%      0.57s  3.90%  runtime.scanObjectsSmall
+     0.19s  1.30% 80.45%      0.21s  1.44%  github.com/hajimehoshi/ekuma/internal/engine.setNumber (inline)
+     0.14s  0.96% 81.41%      0.14s  0.96%  runtime.asyncPreempt
+     0.14s  0.96% 82.37%      0.14s  0.96%  runtime.memclrNoHeapPointers
+     0.10s  0.68% 83.05%      0.49s  3.35%  runtime.mallocgcSmallScanNoHeader
+     0.09s  0.62% 83.66%      0.09s  0.62%  runtime.procyieldAsm
+     0.09s  0.62% 84.28%      0.09s  0.62%  runtime.pthread_cond_wait
+     0.09s  0.62% 84.89%      0.35s  2.39%  runtime.wbBufFlush1
+     0.08s  0.55% 85.44%      0.16s  1.09%  github.com/hajimehoshi/ekuma/internal/regexp.(*Matcher).run

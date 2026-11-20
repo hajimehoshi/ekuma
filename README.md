@@ -70,18 +70,18 @@ faster):
 ```
                      V8 benchmark  QuickJS
                      suite v7      microbench    Version
-Ekuma                 1.00         1.00          v0.0.0-20261119181810-eb2d4fe68006
-goja                  6.62         4.60          v0.0.0-20261118204651-8dfece3d1e1d
-Sobek                 6.62         4.61          v0.0.0-20261119094010-6eceb967bb5b
-otto                 33.0 (9/10)    n/a          v0.5.1
-modernc.org/quickjs   4.83         3.19          v0.27.0
-QJS                   6.31 (6/10)  5.08 (69/74)  v0.0.6
-QuickJS (C)           1.48         0.858         v0.0.0-20260604125329-3d5e064e9dd6
-v8go --jitless        0.821        0.582         v0.44.0
-v8go                  0.0418       0.101         v0.44.0
+Ekuma                 1.00         1.00          v0.0.0-20261120154757-f130b4d6c37d
+goja                  6.89         4.58          v0.0.0-20261118204651-8dfece3d1e1d
+Sobek                 6.94         4.59          v0.0.0-20261119094010-6eceb967bb5b
+otto                 34.9 (9/10)    n/a          v0.5.1
+modernc.org/quickjs   4.77         3.14          v0.27.0
+QJS                   6.24 (6/10)  5.00 (69/74)  v0.0.6
+QuickJS (C)           1.46         0.841         v0.0.0-20260604125329-3d5e064e9dd6
+v8go --jitless        0.814        0.569         v0.44.0
+v8go                  0.0411       0.108         v0.44.0
 ```
 
-Measured on 2026-11-20: Apple M3 Pro, macOS 27.2, go1.27.4.
+Measured on 2026-11-21: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
@@ -90,8 +90,8 @@ Measured on 2026-11-20: Apple M3 Pro, macOS 27.2, go1.27.4.
 - "(k/n)" means that k of the n benchmarks had successful paired results for that engine and
   Ekuma; the mean covers those benchmarks. otto cannot parse microbench.js, which uses ES2015
   syntax. Failed rounds are excluded from timing ratios.
-- See [`_bench`](_bench/README.md) for the benchmarks and measurement methodology, and
-  [`_bench/RESULTS.md`](_bench/RESULTS.md) for individual results.
+- See the [benchmark method](_bench/README.md#method), [individual results](_bench/RESULTS.md),
+  and [Ekuma CPU profile](_bench/TUNING.md#cpu-profiling).
 
 ## Host API
 
