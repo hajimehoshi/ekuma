@@ -2192,8 +2192,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
+				// A getter that throws finishes the iterator.
+				regs[i.B] = Undefined
 				v := vm.Index(Value{o: o}, j)
 				regs = vm.reload(regs, vm.frameBase(), fp)
+				regs[i.B] = Value{o: o}
 				regs[i.A] = v
 				continue
 			}
@@ -2217,12 +2220,17 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpIterClose:
 			it := regs[i.A]
-			if it.IsUndefined() || regs[i.A+1].o == numberObject {
+			if it.IsUndefined() {
 				continue
 			}
 			regs[i.A] = Undefined
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.iteratorClose(it, i.B >= 0 && regs[i.B].o != closeSignal)
+			pending := i.B >= 0 && regs[i.B].o != closeSignal
+			if index := regs[i.A+1]; index.o == numberObject {
+				vm.closePlainArrayIterator(it.o, uint32(index.n), pending)
+			} else {
+				vm.iteratorClose(it, pending)
+			}
 			regs = vm.reload(regs, vm.frameBase(), fp)
 		case bytecode.OpIterCall:
 			vm.frames[len(vm.frames)-1].pc = pc

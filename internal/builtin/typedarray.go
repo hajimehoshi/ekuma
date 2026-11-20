@@ -703,15 +703,15 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		return engine.ObjectValue(o)
 	})
-	iterMethod := func(name string, kind int) *engine.Object {
+	iterMethod := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o, _, _ := validateTypedArray(vm, this, "%TypedArray%.prototype."+name)
-			return engine.ObjectValue(newArrayIterator(vm, o, kind))
+			return engine.ObjectValue(vm.NewArrayIterator(o, kind))
 		})
 	}
-	iterMethod("entries", iterEntries)
-	iterMethod("keys", iterKeys)
-	values := iterMethod("values", iterValues)
+	iterMethod("entries", engine.IterateEntries)
+	iterMethod("keys", engine.IterateKeys)
+	values := iterMethod("values", engine.IterateValues)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
 
 	// predicate defines the methods that call a callback for the elements in order until it returns true.

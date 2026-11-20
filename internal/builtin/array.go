@@ -1027,14 +1027,14 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		return engine.ObjectValue(a)
 	})
 
-	iter := func(name string, kind int) *engine.Object {
+	iter := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return engine.ObjectValue(newArrayIterator(vm, vm.ToObject(this), kind))
+			return engine.ObjectValue(vm.NewArrayIterator(vm.ToObject(this), kind))
 		})
 	}
-	iter("keys", iterKeys)
-	iter("entries", iterEntries)
-	vm.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, iter("values", iterValues))
+	iter("keys", engine.IterateKeys)
+	iter("entries", engine.IterateEntries)
+	vm.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, iter("values", engine.IterateValues))
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
 	initArrayAdditions(vm, proto, &joins)
 }
@@ -1398,26 +1398,6 @@ func mergeSome[E any](dst, a, b []E, max int, compare func(a, b E) int) (int, []
 		}
 	}
 	return k, a, b
-}
-
-// Kinds of array iterators.
-const (
-	iterKeys = iota
-	iterValues
-	iterEntries
-)
-
-type arrayIterator struct {
-	obj  *engine.Object
-	pos  int64
-	kind int
-}
-
-func newArrayIterator(vm *engine.VM, o *engine.Object, kind int) *engine.Object {
-	return vm.NewIteratorObject(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), &arrayIterator{
-		obj:  o,
-		kind: kind,
-	})
 }
 
 // eachLoop is the loop of an iteration method such as forEach, which calls a callback with

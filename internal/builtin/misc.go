@@ -578,38 +578,7 @@ func initIterators(vm *engine.VM) {
 		return this
 	})
 
-	arrayIterNext := iteratorNext(vm, vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-		it, _ := engine.IteratorState(this).(*arrayIterator)
-		if it == nil {
-			vm.ThrowTypeError("next method called on an object that is not an array iterator")
-		}
-		if it.obj == nil {
-			return engine.Undefined, false
-		}
-		var n int64
-		if t := engine.TypedArrayData(engine.ObjectValue(it.obj)); t != nil {
-			l, ok := t.Length()
-			if !ok {
-				vm.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
-			}
-			n = int64(l)
-		} else {
-			n = vm.LengthOfArrayLike(it.obj)
-		}
-		i := it.pos
-		if i >= n {
-			it.obj = nil
-			return engine.Undefined, false
-		}
-		it.pos++
-		switch it.kind {
-		case iterKeys:
-			return engine.Number(float64(i)), true
-		case iterValues:
-			return getAt(vm, it.obj, i), true
-		}
-		return engine.ObjectValue(vm.NewArrayPair(engine.Number(float64(i)), getAt(vm, it.obj, i))), true
-	})
+	arrayIterNext := iteratorNext(vm, vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), (*engine.VM).ArrayIteratorStep)
 	vm.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
 	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Array Iterator"), engine.FlagConfigurable)
 

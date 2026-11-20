@@ -64,6 +64,76 @@ func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
 	return o
 }
 
+// IterationKind identifies what an iterator yields.
+type IterationKind uint8
+
+const (
+	IterateKeys IterationKind = iota
+	IterateValues
+	IterateEntries
+)
+
+type arrayIterator struct {
+	object    *Object
+	nextIndex int64
+	kind      IterationKind
+}
+
+// NewArrayIterator returns an array iterator over the array-like object o.
+func (vm *VM) NewArrayIterator(o *Object, kind IterationKind) *Object {
+	return vm.newArrayIterator(o, kind, 0)
+}
+
+func (vm *VM) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *Object {
+	return vm.NewIteratorObject(vm.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
+		object:    o,
+		nextIndex: nextIndex,
+		kind:      kind,
+	})
+}
+
+// ArrayIteratorStep advances the array iterator this and reports whether it yielded a value.
+func (vm *VM) ArrayIteratorStep(this Value) (Value, bool) {
+	it, _ := IteratorState(this).(*arrayIterator)
+	if it == nil {
+		vm.ThrowTypeError("next method called on an object that is not an array iterator")
+	}
+	if it.object == nil {
+		return Undefined, false
+	}
+	var length int64
+	if t := TypedArrayData(Value{o: it.object}); t != nil {
+		n, ok := t.Length()
+		if !ok {
+			vm.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
+		}
+		length = int64(n)
+	} else {
+		length = vm.LengthOfArrayLike(it.object)
+	}
+	i := it.nextIndex
+	if i >= length {
+		it.object = nil
+		return Undefined, false
+	}
+	it.nextIndex++
+	key := Number(float64(i))
+	if it.kind == IterateKeys {
+		return key, true
+	}
+	v, ok := it.object.Element(i)
+	if ok {
+		vm.PollAt(i)
+	} else {
+		vm.Poll()
+		v = vm.Get(it.object, vm.ToPropertyKey(key))
+	}
+	if it.kind == IterateValues {
+		return v, true
+	}
+	return Value{o: vm.NewArrayPair(key, v)}, true
+}
+
 // Outcomes of iterNext.
 const (
 	iterValue = iota
@@ -245,6 +315,19 @@ func (vm *VM) IfAbruptCloseIterators(its []Value, f func()) {
 	panic(errThrow)
 }
 
+// closePlainArrayIterator materializes an array iterator at nextIndex if looking up return
+// can expose it to JavaScript.
+func (vm *VM) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
+	key := vm.Key(keyReturn)
+	for p := vm.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
+		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
+			it := vm.newArrayIterator(o, IterateValues, int64(nextIndex))
+			vm.iteratorClose(Value{o: it}, pending)
+			return
+		}
+	}
+}
+
 // Iterate calls f for every value that iterating v yields. When f returns false,
 // the iteration stops and the iterator is closed.
 func (vm *VM) Iterate(v Value, f func(Value) bool) {
@@ -270,55 +353,59 @@ func (vm *VM) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
 	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), f)
 }
 
-// iteratePlainArray is [VM.Iterate] for the array o, whose iteration [VM.arrayIterationPlain]
-// reports to run no JavaScript.
+// iteratePlainArray iterates o by index with the original array values and next methods.
 func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
-	for i := uint32(0); i < o.length; i++ {
+	var nextIndex uint32
+	vm.iterate(func() (Value, bool) {
+		i := nextIndex
+		if i >= o.length {
+			return Undefined, false
+		}
 		if vm.interrupt.Load() {
 			vm.Poll()
 		}
-		e := Undefined
+		nextIndex++
 		if uint(i) < uint(len(o.elems)) && !o.elems[i].isHole() {
-			e = o.elems[i]
-		} else {
-			e = vm.Index(Value{o: o}, i)
+			return o.elems[i], true
 		}
-		if !f(e) {
-			return
-		}
-	}
+		return vm.Index(Value{o: o}, i), true
+	}, func(pending bool) {
+		vm.closePlainArrayIterator(o, nextIndex, pending)
+	}, f)
 }
 
 // IterateRecord is [VM.Iterate] for the iterator record of the iterator it and its next method
 // next.
 func (vm *VM) IterateRecord(it, next Value, f func(Value) bool) {
-	// inF is set while f runs: an exception that f throws closes the iterator, and one
-	// that the iterator throws does not.
-	var inF, stopped bool
-	if vm.protect(func() {
+	vm.iterate(func() (Value, bool) {
+		return vm.iteratorStep(it, next)
+	}, func(pending bool) {
+		vm.iteratorClose(it, pending)
+	}, f)
+}
+
+func (vm *VM) iterate(step func() (Value, bool), closeIterator func(pending bool), f func(Value) bool) {
+	// Only a callback that stops or throws closes the iterator.
+	var closeNeeded bool
+	ok := vm.protect(func() {
 		for {
-			e, ok := vm.iteratorStep(it, next)
+			e, ok := step()
 			if !ok {
 				return
 			}
-			inF = true
-			more := f(e)
-			inF = false
-			if !more {
-				stopped = true
+			closeNeeded = true
+			if !f(e) {
 				return
 			}
+			closeNeeded = false
 		}
-	}) {
-		if stopped {
-			vm.iteratorClose(it, false)
-		}
-		return
+	})
+	if closeNeeded {
+		closeIterator(!ok)
 	}
-	if inF {
-		vm.iteratorClose(it, true)
+	if !ok {
+		panic(errThrow)
 	}
-	panic(errThrow)
 }
 
 // spreadArgs returns an array of the values that iterating v yields, for a spread call that

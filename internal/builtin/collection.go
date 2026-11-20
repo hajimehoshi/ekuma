@@ -13,7 +13,7 @@ type mapIterator struct {
 	// table is nil once the iterator is done.
 	table  *collection.Table
 	cursor collection.Cursor
-	kind   int
+	kind   engine.IterationKind
 }
 
 // setIterator is the state of a Set Iterator object.
@@ -21,7 +21,7 @@ type setIterator struct {
 	// table is nil once the iterator is done.
 	table  *collection.Table
 	cursor collection.Cursor
-	kind   int
+	kind   engine.IterationKind
 }
 
 func thisMap(vm *engine.VM, this engine.Value, name string) *collection.Table {
@@ -228,7 +228,7 @@ func initMap(vm *engine.VM) {
 	})
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
-	iterate := func(name string, kind int) *engine.Object {
+	iterate := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisMap(vm, this, name)
 			return engine.ObjectValue(vm.NewIteratorObject(iterProto, &mapIterator{
@@ -238,9 +238,9 @@ func initMap(vm *engine.VM) {
 			}))
 		})
 	}
-	iterate("keys", iterKeys)
-	iterate("values", iterValues)
-	entries := iterate("entries", iterEntries)
+	iterate("keys", engine.IterateKeys)
+	iterate("values", engine.IterateValues)
+	entries := iterate("entries", engine.IterateEntries)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(entries), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map"), engine.FlagConfigurable)
 
@@ -258,9 +258,9 @@ func initMap(vm *engine.VM) {
 			return engine.Undefined, false
 		}
 		switch it.kind {
-		case iterKeys:
+		case engine.IterateKeys:
 			return k, true
-		case iterValues:
+		case engine.IterateValues:
 			return v, true
 		}
 		return engine.ObjectValue(vm.NewArrayPair(k, v)), true
@@ -578,7 +578,7 @@ func initSet(vm *engine.VM) {
 	})
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
-	iterate := func(name string, kind int) *engine.Object {
+	iterate := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisSet(vm, this, name)
 			return engine.ObjectValue(vm.NewIteratorObject(iterProto, &setIterator{
@@ -588,8 +588,8 @@ func initSet(vm *engine.VM) {
 			}))
 		})
 	}
-	iterate("entries", iterEntries)
-	values := iterate("values", iterValues)
+	iterate("entries", engine.IterateEntries)
+	values := iterate("values", engine.IterateValues)
 	vm.Define(proto, keys.keys, engine.ObjectValue(values), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set"), engine.FlagConfigurable)
@@ -607,7 +607,7 @@ func initSet(vm *engine.VM) {
 			it.table = nil
 			return engine.Undefined, false
 		}
-		if it.kind == iterEntries {
+		if it.kind == engine.IterateEntries {
 			return engine.ObjectValue(vm.NewArrayPair(k, k)), true
 		}
 		return k, true
