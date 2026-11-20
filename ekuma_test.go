@@ -733,6 +733,23 @@ func TestDetachArrayBuffer(t *testing.T) {
 	}
 }
 
+func TestDetachArrayBufferCopiedVM(t *testing.T) {
+	var vm ekuma.VM
+	buf := vm.NewArrayBuffer([]byte{1})
+	copied := vm
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("DetachArrayBuffer on a copy of a used VM did not panic")
+			}
+		}()
+		copied.DetachArrayBuffer(buf)
+	}()
+	if got, err := buf.Get("detached"); err != nil || got.Bool() {
+		t.Errorf("detached after using the copy: got %v, %v, want false", got, err)
+	}
+}
+
 // TestNewArrayBufferTransfer tests that JavaScript can neither transfer nor resize an ArrayBuffer
 // over a Go slice, and that its views keep the slice.
 func TestNewArrayBufferTransfer(t *testing.T) {

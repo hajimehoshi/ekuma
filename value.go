@@ -513,6 +513,7 @@ func (vm *VM) NewArrayBuffer(b []byte) Value {
 // Detaching a detached ArrayBuffer does nothing. DetachArrayBuffer panics with a [*ValueError]
 // when v is not a mutable ArrayBuffer.
 func (vm *VM) DetachArrayBuffer(v Value) {
+	vm.initIfNeeded()
 	vm.acceptValue(v)
 	if b := engine.ArrayBufferData(v.value); b != nil && !b.IsShared() && !b.IsImmutable() {
 		b.Detach()
