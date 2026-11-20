@@ -485,7 +485,7 @@ func initSet(vm *engine.VM) {
 		result := t.Clone()
 		if float64(t.Size()) <= r.size {
 			// The result is not visible to JavaScript yet, so its keys can be taken in advance.
-			var keys []engine.Value
+			keys := make([]engine.Value, 0, result.Size())
 			c := result.Start()
 			for {
 				e, _, ok := result.Next(&c)
