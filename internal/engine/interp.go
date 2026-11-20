@@ -181,6 +181,16 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	return base
 }
 
+// setNumber stores the number n in the register r.
+func setNumber(r *Value, n float64) {
+	// Over a number only n changes. Leaving the object pointer as it is needs no write barrier
+	// while the garbage collector marks.
+	if r.o != numberObject {
+		r.o = numberObject
+	}
+	r.n = n
+}
+
 func clearFrameRegs(regs []Value, first, end int) {
 	for j := first; j < end; j++ {
 		regs[j] = Value{}
@@ -404,7 +414,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = fp.consts[i.B]
 			continue
 		case bytecode.OpLoadInt:
-			regs[i.A] = Number(float64(i.B))
+			setNumber(&regs[i.A], float64(i.B))
 			continue
 		case bytecode.OpLoadUndef:
 			regs[i.A] = Value{}
@@ -532,7 +542,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpGetLength:
 			if o := regs[i.B].o; o != nil && o.kind == kindArray {
-				regs[i.A] = Number(float64(o.length))
+				setNumber(&regs[i.A], float64(o.length))
 				continue
 			}
 		case bytecode.OpGetIndex:
@@ -562,138 +572,138 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpAdd:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(x.n + y.n)
+				setNumber(&regs[i.A], x.n+y.n)
 				continue
 			}
 		case bytecode.OpSub:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(x.n - y.n)
+				setNumber(&regs[i.A], x.n-y.n)
 				continue
 			}
 		case bytecode.OpMul:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(x.n * y.n)
+				setNumber(&regs[i.A], x.n*y.n)
 				continue
 			}
 		case bytecode.OpDiv:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(x.n / y.n)
+				setNumber(&regs[i.A], x.n/y.n)
 				continue
 			}
 		case bytecode.OpMod:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
 				if xi, yi := int32(x.n), int32(y.n); xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
-					regs[i.A] = Number(float64(xi % yi))
+					setNumber(&regs[i.A], float64(xi%yi))
 					continue
 				}
 			}
 		case bytecode.OpBitAnd:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) & int32(int64(y.n))))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))&int32(int64(y.n))))
 				continue
 			}
 		case bytecode.OpBitOr:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) | int32(int64(y.n))))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))|int32(int64(y.n))))
 				continue
 			}
 		case bytecode.OpBitXor:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) ^ int32(int64(y.n))))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))^int32(int64(y.n))))
 				continue
 			}
 		case bytecode.OpShl:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) << (uint32(int64(y.n)) & 31)))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))<<(uint32(int64(y.n))&31)))
 				continue
 			}
 		case bytecode.OpShr:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) >> (uint32(int64(y.n)) & 31)))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))>>(uint32(int64(y.n))&31)))
 				continue
 			}
 		case bytecode.OpUShr:
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject && numconv.InInt64Range(x.n) && numconv.InInt64Range(y.n) {
-				regs[i.A] = Number(float64(uint32(int64(x.n)) >> (uint32(int64(y.n)) & 31)))
+				setNumber(&regs[i.A], float64(uint32(int64(x.n))>>(uint32(int64(y.n))&31)))
 				continue
 			}
 		case bytecode.OpAddK:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(x.n + fp.consts[i.C].n)
+				setNumber(&regs[i.A], x.n+fp.consts[i.C].n)
 				continue
 			}
 		case bytecode.OpSubK:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(x.n - fp.consts[i.C].n)
+				setNumber(&regs[i.A], x.n-fp.consts[i.C].n)
 				continue
 			}
 		case bytecode.OpMulK:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(x.n * fp.consts[i.C].n)
+				setNumber(&regs[i.A], x.n*fp.consts[i.C].n)
 				continue
 			}
 		case bytecode.OpDivK:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(x.n / fp.consts[i.C].n)
+				setNumber(&regs[i.A], x.n/fp.consts[i.C].n)
 				continue
 			}
 		case bytecode.OpModK:
 			if x, y := regs[i.B], fp.consts[i.C]; x.o == numberObject {
 				if xi, yi := int32(x.n), int32(y.n); xi > 0 && yi > 0 && float64(xi) == x.n && float64(yi) == y.n {
-					regs[i.A] = Number(float64(xi % yi))
+					setNumber(&regs[i.A], float64(xi%yi))
 					continue
 				}
 			}
 		case bytecode.OpBitAndK:
 			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) & int32(fp.consts[i.C].n)))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))&int32(fp.consts[i.C].n)))
 				continue
 			}
 		case bytecode.OpBitOrK:
 			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) | int32(fp.consts[i.C].n)))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))|int32(fp.consts[i.C].n)))
 				continue
 			}
 		case bytecode.OpShlK:
 			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) << (uint32(fp.consts[i.C].n) & 31)))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))<<(uint32(fp.consts[i.C].n)&31)))
 				continue
 			}
 		case bytecode.OpShrK:
 			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				regs[i.A] = Number(float64(int32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31)))
+				setNumber(&regs[i.A], float64(int32(int64(x.n))>>(uint32(fp.consts[i.C].n)&31)))
 				continue
 			}
 		case bytecode.OpUShrK:
 			if x := regs[i.B]; x.o == numberObject && numconv.InInt64Range(x.n) {
-				regs[i.A] = Number(float64(uint32(int64(x.n)) >> (uint32(fp.consts[i.C].n) & 31)))
+				setNumber(&regs[i.A], float64(uint32(int64(x.n))>>(uint32(fp.consts[i.C].n)&31)))
 				continue
 			}
 		case bytecode.OpNeg:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(-x.n)
+				setNumber(&regs[i.A], -x.n)
 				continue
 			}
 		case bytecode.OpInc:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(x.n + 1)
+				setNumber(&regs[i.A], x.n+1)
 				continue
 			}
 		case bytecode.OpDec:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = Number(x.n - 1)
+				setNumber(&regs[i.A], x.n-1)
 				continue
 			}
 		case bytecode.OpPostInc:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = x
-				regs[i.B] = Number(x.n + 1)
+				setNumber(&regs[i.A], x.n)
+				setNumber(&regs[i.B], x.n+1)
 				continue
 			}
 		case bytecode.OpPostDec:
 			if x := regs[i.B]; x.o == numberObject {
-				regs[i.A] = x
-				regs[i.B] = Number(x.n - 1)
+				setNumber(&regs[i.A], x.n)
+				setNumber(&regs[i.B], x.n-1)
 				continue
 			}
 		case bytecode.OpLt:

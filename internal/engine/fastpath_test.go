@@ -31,6 +31,7 @@ var fastPathCalls = map[string]bool{
 	"Number":               true,
 	"Bool":                 true,
 	"clearFrameRegs":       true,
+	"setNumber":            true,
 	"numconv.InInt64Range": true,
 	"vm.interrupt.Load":    true,
 	"vm.Intrinsic":         true,
