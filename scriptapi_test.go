@@ -1244,16 +1244,17 @@ func TestStringConcatenationChain(t *testing.T) {
 		var p = {[Symbol.toPrimitive](hint) { log.push(hint); return 2; }};
 		var d = new Date(0);
 		d.toString = () => "D";
+		function mixed(x) { return x + (x = 2) + ("[" + x + "]"); }
 		var r = ["a" + f("o", o) + "-" + f("p", p) + d + 10n + "" + 1.5];
 		try { "a" + f("x", 1) + f("s", Symbol()) + f("y", 2); } catch (e) { r.push(e instanceof TypeError); }
-		r.push(log.join(), "" + "" + "", "x" + "" + "");
+		r.push(log.join(), "" + "" + "", "x" + "" + "", mixed(1));
 		r.join("|")`
 	var vm ekuma.VM
 	v, err := runScript(t.Context(), &vm, "chain.js", src)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := v.String(), "a1-2D101.5|true|o,valueOf,p,default,x,s||x"; got != want {
+	if got, want := v.String(), "a1-2D101.5|true|o,valueOf,p,default,x,s||x|3[2]"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

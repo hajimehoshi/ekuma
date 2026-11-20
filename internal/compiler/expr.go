@@ -323,7 +323,9 @@ func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 	case *ast.UpdateExpr:
 		f.update(e, dst)
 	case *ast.BinaryExpr:
-		f.binary(e, dst)
+		if !f.stringChain(e, dst) {
+			f.binary(e, dst)
+		}
 	case *ast.LogicalExpr:
 		f.logical(e, dst)
 	case *ast.PrivateInExpr:
@@ -389,12 +391,19 @@ func (f *fn) number(n float64, dst int32) {
 	f.emit(bytecode.OpLoadK, dst, f.constNum(n), 0)
 }
 
+// binary compiles n after stringChain has ruled out concatenating it in one instruction.
 func (f *fn) binary(n *ast.BinaryExpr, dst int32) {
-	if f.stringChain(n, dst) {
-		return
-	}
 	mark := f.top
-	l := f.immediateOperand(n.Left, n.Right)
+	var l int32
+	if left, ok := n.Left.(*ast.BinaryExpr); ok && n.Op == ast.OpAdd && left.Op == ast.OpAdd {
+		// Every addition on the left has the same head. Compile the prefix without
+		// walking it again to check for a string literal.
+		l = f.newReg()
+		f.c.step()
+		f.binary(left, l)
+	} else {
+		l = f.immediateOperand(n.Left, n.Right)
+	}
 	if k, ok := numberLit(n.Right); ok {
 		if op, ok := constOps[n.Op]; ok {
 			f.emit(op, dst, l, f.constNum(constOperand(op, k)))

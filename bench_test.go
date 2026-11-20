@@ -61,6 +61,21 @@ func BenchmarkParseTranslationTable(b *testing.B) {
 	}
 }
 
+func BenchmarkParseAdditionChain(b *testing.B) {
+	for _, terms := range []int{64, 512, 1024} {
+		for _, head := range []string{"x", `"s"`} {
+			b.Run(fmt.Sprintf("terms=%d/head=%s", terms, head), func(b *testing.B) {
+				src := "function f(x) { return " + head + strings.Repeat(" + x", terms-1) + "; }"
+				for b.Loop() {
+					if _, err := ekuma.ParseUnboundScript("chain.js", src); err != nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
+	}
+}
+
 // gameDataJSON returns JSON text shaped like the data files of a 2D role-playing game:
 // an array of n records with mixed fields, nested arrays of numbers and some non-ASCII strings.
 func gameDataJSON(n int) string {
