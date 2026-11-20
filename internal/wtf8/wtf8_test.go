@@ -106,6 +106,20 @@ func TestConcat(t *testing.T) {
 	}
 }
 
+func TestStringBuilderSnapshot(t *testing.T) {
+	var b wtf8.StringBuilder
+	b.WriteString("x")
+	b.WriteRune(0xD83D)
+	snapshot := b.String()
+	b.WriteRune(0xDE00)
+	if got, want := b.String(), "x😀"; got != want {
+		t.Errorf("String() after the low surrogate = %q, want %q", got, want)
+	}
+	if want := "x\xed\xa0\xbd"; snapshot != want {
+		t.Errorf("snapshot = %q, want %q", snapshot, want)
+	}
+}
+
 func TestWriteRepeated(t *testing.T) {
 	for _, a := range samples {
 		for _, s := range samples {

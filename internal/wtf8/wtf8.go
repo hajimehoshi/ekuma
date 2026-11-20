@@ -499,9 +499,8 @@ func (b *Builder) String() string {
 	return string(b.buf)
 }
 
-// StringBuilder builds a string from code points and strings, like [Builder], and returns it
-// without copying. The zero value is an empty builder. A StringBuilder must not be copied after
-// its first use.
+// StringBuilder builds a string from code points and strings. The zero value is an empty
+// builder. A StringBuilder must not be copied after its first use.
 type StringBuilder struct {
 	sb strings.Builder
 
@@ -574,7 +573,10 @@ func (b *StringBuilder) WriteString(s string) {
 
 // String returns the built string.
 func (b *StringBuilder) String() string {
-	b.flushHigh()
+	if b.hasHigh {
+		var buf [utf8.UTFMax]byte
+		return b.sb.String() + string(AppendRune(buf[:0], b.high))
+	}
 	return b.sb.String()
 }
 
