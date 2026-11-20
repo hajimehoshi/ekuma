@@ -1080,6 +1080,44 @@ func BenchmarkDateGetters(b *testing.B) {
 	}
 }
 
+// BenchmarkMethodAfterDelete measures one call to an inherited method.
+func BenchmarkMethodAfterDelete(b *testing.B) {
+	for _, name := range []string{"intact", "deleted"} {
+		b.Run(name, func(b *testing.B) {
+			var vm ekuma.VM
+			ctx := b.Context()
+			if _, err := runScript(ctx, &vm, "setup", `
+				const object = Object.create({ method() { return 1; } });
+				for (let i = 0; i < 32; i++) object["field" + i] = i;
+				function run(o, n) {
+					let result = 0;
+					for (let i = 0; i < n; i++) result += o.method();
+					return result;
+				}
+			`); err != nil {
+				b.Fatal(err)
+			}
+			if name == "deleted" {
+				if _, err := runScript(ctx, &vm, "delete", `
+					object.temporary = true;
+					delete object.temporary;
+				`); err != nil {
+					b.Fatal(err)
+				}
+			}
+			o, err := runScript(ctx, &vm, "receiver", "object")
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := vm.Global().Call(ctx, "run", o, b.N); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkPropertyDescriptor measures retrieving or forwarding one property descriptor.
 func BenchmarkPropertyDescriptor(b *testing.B) {
 	for _, c := range []struct {

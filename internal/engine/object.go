@@ -334,6 +334,10 @@ type shape struct {
 
 	private bool
 
+	// renewOnAdd is set on a private shape when a cache relies on a key being absent.
+	// Adding a property must then give the object a new shape.
+	renewOnAdd bool
+
 	// flatBased is set for a shared shape without parent that has properties of its own
 	// (see [VM.FinishBuiltins]) and for the shapes that add properties to it. Such a shape with
 	// more than smallShapeSize properties keeps a table from the start.
@@ -1355,10 +1359,9 @@ func (vm *VM) add(o *Object, key *Object, val Value, flags uint8) {
 		}
 	}
 	if s.private {
-		if len(o.slots) == cap(o.slots) && !vm.builtins.building {
-			// The slots are about to move. The inline caches of global variables point into
-			// the slots of the global object for as long as it keeps its shape, so o gets
-			// another one. No code runs while the built-ins are created.
+		// Growing the slots moves the addresses held by global variable caches, which
+		// rely on the shape. No code runs while the built-ins are created.
+		if s.renewOnAdd || len(o.slots) == cap(o.slots) && !vm.builtins.building {
 			s = s.handOver()
 			o.shape = s
 		}
@@ -1617,6 +1620,16 @@ type cacheEntry struct {
 	next *shape
 
 	ref *Value
+}
+
+// setInherited records a lookup that depends on the receiver having no own property of that name.
+func (e *cacheEntry) setInherited(s *shape, kind uint8, epoch uint32) {
+	e.shape = s
+	e.kind = kind
+	e.epoch = epoch
+	if s.private {
+		s.renewOnAdd = true
+	}
 }
 
 // propCache is the inline cache of one property access site. It remembers two receiver shapes,

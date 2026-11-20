@@ -448,19 +448,16 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	}
 	holder, p, ok := vm.lookup(start, key)
 	if !ok {
-		if c != nil && !start.shape.private && !hasProxyOnChain(start) {
-			// Cache the miss as a hit on an object that holds undefined. A private shape can
-			// gain the property without changing, so only shared shapes qualify.
-			c.shape = start.shape
-			c.kind = cacheProto
-			c.ref = &vm.missHolder.slots[0]
-			c.epoch = vm.protoEpoch
-		}
 		if h := proxyOnChain(start); h != nil {
 			if h.class == classModuleNamespace {
 				return vm.getProp(h, PropKey{key: key}, v), nil
 			}
 			return vm.proxyGet(h, PropKey{key: key}, v), nil
+		}
+		if c != nil {
+			// Cache the miss as a hit on an object that holds undefined.
+			c.setInherited(start.shape, cacheProto, vm.protoEpoch)
+			c.ref = &vm.missHolder.slots[0]
 		}
 		return Undefined, nil
 	}
@@ -480,11 +477,9 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 		if g == nil {
 			return Undefined, nil
 		}
-		if c != nil && holder != start && !start.shape.private {
-			c.shape = start.shape
-			c.kind = cacheGetter
+		if c != nil && holder != start {
+			c.setInherited(start.shape, cacheGetter, vm.protoEpoch)
 			c.holder = g
-			c.epoch = vm.protoEpoch
 		}
 		return Undefined, g
 	}
@@ -493,11 +488,9 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 			c.shape = start.shape
 			c.slot = p.slot
 			c.kind = cacheOwn
-		} else if !start.shape.private {
-			c.shape = start.shape
-			c.kind = cacheProto
+		} else {
+			c.setInherited(start.shape, cacheProto, vm.protoEpoch)
 			c.ref = &holder.slots[p.slot]
-			c.epoch = vm.protoEpoch
 		}
 	}
 	return val, nil
