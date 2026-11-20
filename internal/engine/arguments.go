@@ -10,6 +10,16 @@ type argumentsMap struct {
 	params []*upvalue
 }
 
+// forwardedArguments returns the arguments object shared by forwarding calls in the running frame.
+func (vm *VM) forwardedArguments(regs []Value, argsReg int32) Value {
+	if regs[argsReg].IsUndefined() {
+		fr := &vm.frames[len(vm.frames)-1]
+		// Only functions with a simple parameter list forward their arguments.
+		regs[argsReg] = Value{o: vm.newArguments(fr, regs, !fr.fp.strict)}
+	}
+	return regs[argsReg]
+}
+
 // newArguments returns the arguments object of the frame fr, whose registers are regs.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
 func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {

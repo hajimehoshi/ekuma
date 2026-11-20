@@ -1188,11 +1188,28 @@ func (f *fn) spreadArgs(args []ast.Expr, dst int32) {
 	}
 }
 
-// isForwardedArguments reports whether e is a reference to the arguments of the function f itself,
-// which f only forwards.
-func (f *fn) isForwardedArguments(e ast.Expr) bool {
-	id, ok := e.(*ast.Identifier)
-	return ok && id.Name == "arguments" && f.forwardsArgs
+// forwardedArgument returns the arguments identifier of a forwarding call, or nil.
+func forwardedArgument(n *ast.CallExpr) *ast.Identifier {
+	if isSuperCallee(n.Callee) {
+		return nil
+	}
+	var arg ast.Expr
+	switch len(n.Args) {
+	case 1:
+		if s, ok := n.Args[0].(*ast.SpreadElement); ok {
+			arg = s.Arg
+		}
+	case 2:
+		if m, ok := n.Callee.(*ast.MemberExpr); ok && !m.Computed && !hasSpread(n.Args) {
+			if p, ok := m.Property.(*ast.Identifier); ok && p.Name == "apply" {
+				arg = n.Args[1]
+			}
+		}
+	}
+	if id, ok := arg.(*ast.Identifier); ok && id.Name == "arguments" {
+		return id
+	}
+	return nil
 }
 
 // call compiles the call n and leaves its result in dst, or drops it when dst is -1.
@@ -1305,23 +1322,6 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 						regExpArg = lit
 					}
 				}
-			case "apply":
-				if len(n.Args) == 2 && f.isForwardedArguments(n.Args[1]) && !chained {
-					this := f.operand(n.Args[0])
-					// The general case passes the this value and an arguments object in
-					// base+2 and base+3.
-					for f.top < base+4 {
-						f.newReg()
-					}
-					f.setPos(pos)
-					op := bytecode.OpApplyFwd
-					if f.isTail(n) {
-						op = bytecode.OpTailApplyFwd
-					}
-					f.emit(op, callDst(dst, base), base, this)
-					f.emit(bytecode.OpExtra, mappedArguments(f.node), 0, 0)
-					return
-				}
 			}
 		default:
 			key := f.exprAny(c.Property)
@@ -1371,16 +1371,29 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	}
 	f.chainCheck(n.Optional, base)
 
-	if len(n.Args) == 1 && op != bytecode.OpCallEval {
-		if s, ok := n.Args[0].(*ast.SpreadElement); ok && f.isForwardedArguments(s.Arg) {
+	if args := f.forwardedArgs; args != nil && forwardedArgument(n) != nil && f.localReg("arguments") == args.reg {
+		if len(n.Args) == 1 {
 			f.setPos(pos)
 			op := bytecode.OpCallFwd
 			if f.isTail(n) {
 				op = bytecode.OpTailCallFwd
 			}
-			f.emit(op, callDst(dst, base), base, 0)
+			f.emit(op, callDst(dst, base), base, args.reg)
 			return
 		}
+		this := f.operand(n.Args[0])
+		// An ordinary apply call takes its two arguments in base+2 and base+3.
+		for f.top < base+4 {
+			f.newReg()
+		}
+		f.setPos(pos)
+		op := bytecode.OpApplyFwd
+		if f.isTail(n) {
+			op = bytecode.OpTailApplyFwd
+		}
+		f.emit(op, callDst(dst, base), base, this)
+		f.emit(bytecode.OpExtra, args.reg, 0, 0)
+		return
 	}
 	if hasSpread(n.Args) {
 		f.spreadArgs(n.Args, f.newReg())

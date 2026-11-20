@@ -1696,14 +1696,27 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			goto callRegs
 		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
+			argsReg := fp.code[pc].A
+			pc++
+			b := int(i.B)
+			if !regs[argsReg].IsUndefined() || regs[b].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
+				// Once exposed, the arguments object's length and indexed properties can change.
+				regs[b+2] = regs[i.C]
+				regs[b+3] = vm.forwardedArguments(slices.Clip(regs), argsReg)
+				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
+				if i.Op == bytecode.OpTailApplyFwd {
+					argBase += vm.frameBase()
+					goto tailCall
+				}
+				goto callRegs
+			}
 			if i.Op == bytecode.OpApplyFwd {
 				// f.apply(this, arguments) for an ordinary function f written in JavaScript: the
 				// arguments of the running function go above its registers, and it resumes after
 				// the OpExtra that follows the instruction. This is not a fast path above, as the
 				// registers its tests take there made the loop store the values it carries
 				// before every instruction where registers are few, as on amd64.
-				b := int(i.B)
-				if f := regs[b+1].o; regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeApply) && !fp.heapRegs && f != nil && f.fn != nil {
+				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil {
 					if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
 						n := len(vm.frames)
 						cur := &vm.frames[n-1]
@@ -1720,7 +1733,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 							}
 							// The frame is pushed as in OpCall's case in the fast switch.
 							this := regs[i.C]
-							cur.pc = pc + 1
+							cur.pc = pc
 							vm.stackHigh = max(vm.stackHigh, end)
 							clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
 							vm.frames = vm.frames[:n+1]
@@ -1739,20 +1752,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						}
 					}
 				}
-			}
-			b := int(i.B)
-			pc++
-			if regs[b].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
-				// Something else is called apply here: pass it the this value and a real
-				// arguments object.
-				regs[b+2] = regs[i.C]
-				regs[b+3] = Value{o: vm.newArguments(&vm.frames[len(vm.frames)-1], slices.Clip(regs), fp.code[pc-1].A != 0)}
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
-				if i.Op == bytecode.OpTailApplyFwd {
-					argBase += vm.frameBase()
-					goto tailCall
-				}
-				goto callRegs
 			}
 			f, callThis = regs[b+1].o, regs[i.C]
 			goto forward
@@ -2400,11 +2399,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && !vm.arrayIterationUnmodified() {
-			// The spread runs the modified iteration.
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !vm.arrayIterationUnmodified()) {
 			vm.frames[len(vm.frames)-1].pc = pc
-			argc, ret, isNew, newTarget = vm.iterateArguments(), i.A, false, nil
+			args := vm.spreadArgs(vm.forwardedArguments(slices.Clip(regs), i.C)).elems
+			argc, ret, isNew, newTarget = len(args), i.A, false, nil
 			argBase = vm.frames[len(vm.frames)-1].top()
+			vm.ensureStack(argBase + argc)
+			copy(vm.stack[argBase:], args)
 			regs = vm.reload(regs, vm.frameBase(), fp)
 		} else {
 			cur := &vm.frames[len(vm.frames)-1]
@@ -2662,25 +2663,6 @@ func (vm *VM) replaceFrame(f *Object, this Value, argBase, argc int) bool {
 		clear(vm.stack[vm.sp:end])
 	}
 	return true
-}
-
-// iterateArguments spreads the arguments of the running function, which is called through a
-// modified array iteration, onto the stack above its frame, and returns their number.
-func (vm *VM) iterateArguments() int {
-	fr := &vm.frames[len(vm.frames)-1]
-	regs := vm.stack[fr.base:]
-	if fr.gen != nil {
-		regs = fr.gen.regs
-	}
-	n := min(fr.argc, fr.fp.nparams)
-	args := make([]Value, 0, fr.argc)
-	args = append(args, regs[:n]...)
-	args = append(args, vm.extraArgs(fr)...)
-	list := vm.IteratorToList(Value{o: vm.NewArray(args)}, vm.Intrinsic(IntrinsicArrayPrototypeValues))
-	top := vm.frames[len(vm.frames)-1].top()
-	vm.ensureStack(top + len(list))
-	copy(vm.stack[top:], list)
-	return len(list)
 }
 
 // frameBase returns the stack index of the registers of the running frame.

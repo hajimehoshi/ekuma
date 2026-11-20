@@ -178,11 +178,12 @@ var (
 	// spreadReads holds the callee, the this value and the array of the arguments.
 	spreadReads = []Regs{{At: FieldB, Len: 3}}
 
-	// fwdReads holds the callee and the this value.
-	fwdReads = []Regs{{At: FieldB, Len: 2}}
+	// fwdReads holds the callee, the this value and the arguments object in c.
+	fwdReads = []Regs{{At: FieldB, Len: 2}, {At: FieldC, Len: 1}}
 
-	// applyFwdReads holds the callee, the function and the this value in c.
-	applyFwdReads = []Regs{{At: FieldB, Len: 2}, {At: FieldC, Len: 1}}
+	// applyFwdReads holds the callee, the function, the this value and the arguments object.
+	applyFwdReads  = []Regs{{At: FieldB, Len: 2}, {At: FieldC, Len: 1}, {At: FieldXA, Len: 1}}
+	applyFwdWrites = []Regs{{At: FieldA, Len: 1}, {At: FieldB, Offset: 2, Len: RegsToEnd}, {At: FieldXA, Len: 1}}
 )
 
 // The operands of the families of opcodes.
@@ -314,15 +315,16 @@ var (
 		B:      OperandReg,
 		C:      OperandReg,
 		Extra:  true,
-		XA:     OperandFlag,
+		XA:     OperandReg,
 		Reads:  applyFwdReads,
-		Writes: callWrites,
+		Writes: applyFwdWrites,
 	}
 	callFwdOperands = Operands{
 		A:      OperandReg,
 		B:      OperandReg,
+		C:      OperandReg,
 		Reads:  fwdReads,
-		Writes: regA,
+		Writes: regAC,
 	}
 	callSpreadOperands = Operands{
 		A:      OperandReg,

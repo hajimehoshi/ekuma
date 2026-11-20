@@ -17,9 +17,7 @@ func (f *fn) closure(node *ast.Function, dst int32, name string) {
 	f.captureScopes(dst)
 }
 
-// forwardsArguments reports whether the function f uses its arguments only by passing
-// all of them on, as in g.apply(this, arguments) and g(...arguments), and never assigns
-// to or redeclares a parameter, so that the arguments can be forwarded without creating an object.
+// forwardsArguments reports whether f can forward its arguments from its parameter registers.
 func (f *fn) forwardsArguments() bool {
 	node := f.node
 	// The parameter registers hold the arguments only while no parameter code has run.
@@ -64,23 +62,17 @@ func (f *fn) forwardsArguments() bool {
 			walk(n.ExprBody, visit)
 			depth--
 			return false
+		case *ast.WithStmt:
+			walk(n.Object, visit)
+			// The with object can supply the arguments binding in the body.
+			depth++
+			walk(n.Body, visit)
+			depth--
+			return false
 		case *ast.CallExpr:
-			// A super call and a call of a method of super build their arguments as usual.
-			if depth > 0 || isSuperCallee(n.Callee) {
-				break
-			}
-			if m, isMember := n.Callee.(*ast.MemberExpr); isMember && !m.Computed && len(n.Args) == 2 {
-				if p, isID := m.Property.(*ast.Identifier); isID && p.Name == "apply" {
-					if id, isID := n.Args[1].(*ast.Identifier); isID && id.Name == "arguments" {
-						allowed[id] = true
-					}
-				}
-			}
-			if len(n.Args) == 1 {
-				if s, isSpread := n.Args[0].(*ast.SpreadElement); isSpread {
-					if id, isID := s.Arg.(*ast.Identifier); isID && id.Name == "arguments" {
-						allowed[id] = true
-					}
+			if depth == 0 {
+				if id := forwardedArgument(n); id != nil {
+					allowed[id] = true
 				}
 			}
 		case *ast.Identifier:
@@ -94,7 +86,7 @@ func (f *fn) forwardsArguments() bool {
 	return ok
 }
 
-// mappedArguments returns the operand of OpArguments and OpApplyFwd that says whether
+// mappedArguments returns the operand of OpArguments that says whether
 // the arguments object of the function node is mapped to its parameters.
 func mappedArguments(node *ast.Function) int32 {
 	if !node.Strict && node.SimpleParams {
@@ -253,8 +245,8 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
 			if f.scope.lookup("arguments") == nil {
 				switch {
-				case !node.HasDirectEval && f.forwardsArguments():
-					f.forwardsArgs = true
+				case !node.Scope.ContainsDirectEval && f.forwardsArguments():
+					f.forwardedArgs = f.declare("arguments", bindVar)
 				case !node.UsesArguments && mappedArguments(node) != 0 &&
 					!arrowsHaveDirectEval(node):
 					// Only the direct evals of the function itself can see the arguments object,

@@ -154,6 +154,10 @@ func TestResultConvention(t *testing.T) {
 		"OpPostDec":       true,
 		"OpCallUndef":     true,
 		"OpTailCallUndef": true,
+		"OpApplyFwd":      true,
+		"OpTailApplyFwd":  true,
+		"OpCallFwd":       true,
+		"OpTailCallFwd":   true,
 		"OpIterNext":      true,
 		"OpIterReturn":    true,
 	}

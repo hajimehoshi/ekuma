@@ -197,8 +197,8 @@ const (
 	OpCall           // a = b(this b+1, args b+2...), c arguments
 	OpCallUndef      // like [OpCall], with the this value undefined; b+1 becomes undefined
 	OpCallCall       // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
-	OpApplyFwd       // a = b.apply(...) where b+1 is the function and c the this value, forwarding the arguments of the running function; the flag x.a says whether an arguments object made for them is mapped. A callee b other than Function.prototype.apply gets its arguments in b+2 and b+3
-	OpCallFwd        // a = b(this b+1, the arguments of the running function)
+	OpApplyFwd       // a = b(this b+1, c, arguments). x.a holds the arguments object once materialized. An ordinary call passes c and the object in b+2 and b+3
+	OpCallFwd        // a = b(this b+1, ...arguments). c holds the arguments object once materialized
 	OpCallSpread     // a = b(this b+1, ...the array b+2)
 	OpCallEval       // like [OpCall]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]
 	OpCallEvalSpread // like [OpCallSpread]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]

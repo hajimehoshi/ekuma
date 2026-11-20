@@ -262,9 +262,9 @@ type fn struct {
 	// completion is the register of the completion value of a script, or -1.
 	completion int32
 
-	// forwardsArgs is set when the function only ever passes its arguments on,
-	// so that no arguments object is needed.
-	forwardsArgs bool
+	// forwardedArgs holds the arguments object once a forwarding call needs it.
+	// Its register starts out undefined.
+	forwardedArgs *binding
 
 	// chains holds, for every optional chain being compiled, the jumps of its short circuits.
 	chains [][]int
