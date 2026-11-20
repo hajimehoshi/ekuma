@@ -6,6 +6,7 @@ package engine
 import (
 	"math"
 	"slices"
+	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -212,8 +213,16 @@ func (vm *VM) extraArgs(fr *frame) []Value {
 // findUpval returns the upvalue for the stack slot index.
 func (vm *VM) findUpval(index int) *upvalue {
 	i := len(vm.openUpvals)
-	for i > 0 && vm.openUpvals[i-1].index > index {
-		i--
+	const tail = 4
+	if i > 2*tail && vm.openUpvals[i-tail].index > index {
+		// Every slot in the tail is above index.
+		i = sort.Search(i-tail, func(j int) bool {
+			return vm.openUpvals[j].index > index
+		})
+	} else {
+		for i > 0 && vm.openUpvals[i-1].index > index {
+			i--
+		}
 	}
 	if i > 0 && vm.openUpvals[i-1].index == index {
 		return vm.openUpvals[i-1]
