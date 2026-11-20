@@ -297,12 +297,7 @@ func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 	case *ast.TaggedTemplate:
 		f.taggedTemplate(e, dst)
 	case *ast.ArrayLit:
-		// A literal is built in a fresh register itself.
-		if fresh {
-			f.arrayLitIn(e, dst)
-		} else {
-			f.arrayLit(e, dst)
-		}
+		f.arrayLit(e, dst, fresh)
 	case *ast.ObjectLit:
 		if fresh {
 			f.objectLitIn(e, dst)
@@ -1636,25 +1631,18 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	f.emit(op, callDst(dst, base), base, int32(len(n.Quasi.Exprs)+1))
 }
 
-func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
+func (f *fn) arrayLit(n *ast.ArrayLit, dst int32, fresh bool) {
 	// Constants read no register, so dst can receive the array right away.
 	if f.constArray(n, dst) {
 		return
 	}
 	mark := f.top
 	defer f.free(mark)
-	arr := f.newReg()
-	f.arrayLitIn(n, arr)
-	f.emit(bytecode.OpMove, dst, arr, 0)
-}
-
-// arrayLitIn builds the array of n in the register arr.
-func (f *fn) arrayLitIn(n *ast.ArrayLit, arr int32) {
-	if f.constArray(n, arr) {
-		return
+	arr := dst
+	if !fresh {
+		// An element can read the previous value of dst.
+		arr = f.newReg()
 	}
-	mark := f.top
-	defer f.free(mark)
 	room := int32(len(n.Elements))
 	if room == 0 {
 		// An empty literal usually gets elements pushed onto it.
@@ -1675,6 +1663,7 @@ func (f *fn) arrayLitIn(n *ast.ArrayLit, arr int32) {
 		}
 		f.free(m)
 	}
+	f.result(dst, arr)
 }
 
 // constArray builds the array of n in the register dst from a run of constants, and reports
