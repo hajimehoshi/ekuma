@@ -961,11 +961,11 @@ loop:
 		args = p.parseArguments()
 	}
 	p.leave()
-	return &ast.NewExpr{
+	return newNode(&p.nodes.newExpr, ast.NewExpr{
 		Span:   span(start, p.prevEnd),
 		Callee: callee,
 		Args:   args,
-	}
+	})
 }
 
 // parseSuper parses super together with the property access or call that must follow it.
@@ -1246,7 +1246,7 @@ func (p *parser) parseTemplate(tagged bool) *ast.TemplateLit {
 }
 
 func (p *parser) parseArray() ast.Expr {
-	arr := &ast.ArrayLit{}
+	arr := newNode(&p.nodes.array, ast.ArrayLit{})
 	arr.StartOff = p.t.start
 	p.next()
 	noIn := p.f.noIn
@@ -1302,7 +1302,7 @@ func (p *parser) parseArray() ast.Expr {
 }
 
 func (p *parser) parseObject() ast.Expr {
-	obj := &ast.ObjectLit{}
+	obj := newNode(&p.nodes.object, ast.ObjectLit{})
 	obj.StartOff = p.t.start
 	p.next()
 	noIn := p.f.noIn

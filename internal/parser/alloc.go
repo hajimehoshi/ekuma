@@ -54,6 +54,9 @@ type nodeSlabs struct {
 	block      slab[ast.BlockStmt]
 	logical    slab[ast.LogicalExpr]
 	ret        slab[ast.ReturnStmt]
+	newExpr    slab[ast.NewExpr]
+	array      slab[ast.ArrayLit]
+	object     slab[ast.ObjectLit]
 }
 
 // listStack holds the items of lists being parsed, whose lengths are not known in advance.
