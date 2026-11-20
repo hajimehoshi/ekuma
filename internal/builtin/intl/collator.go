@@ -17,7 +17,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/collate"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
-	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -56,10 +55,7 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 	options := optionsObject(vm, opts)
 	usage := getStringOption(vm, options, "usage", "sort", "sort", "search")
 	bestFit := localeMatcher(vm, options)
-	co, hasCo := getOption(vm, options, "collation")
-	if hasCo && !localetag.IsType(co) {
-		vm.ThrowRangeError("invalid collation: " + vm.DisplayString(vm.NewString(co)))
-	}
+	co, hasCo := typeOption(vm, options, "collation")
 	var kn string
 	hasKn := false
 	if v := vm.Get(options, engine.NamedKey(vm.Intern("numeric"))); !v.IsUndefined() {

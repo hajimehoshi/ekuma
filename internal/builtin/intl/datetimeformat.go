@@ -14,6 +14,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // dateTimeFormatData holds the internal slots of an Intl.DateTimeFormat object.
@@ -75,13 +76,7 @@ func typeOption(vm *engine.VM, options *engine.Object, name string) (string, boo
 	if !ok {
 		return "", false
 	}
-	valid := localetag.IsType(strings.ToLower(s))
-	for i := range len(s) {
-		if s[i] >= 0x80 {
-			valid = false
-		}
-	}
-	if !valid {
+	if !localetag.IsType(wtf8.ToLowerASCII(s)) {
 		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
 	}
 	return s, true
