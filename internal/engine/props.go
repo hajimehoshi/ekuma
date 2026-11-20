@@ -416,6 +416,56 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	return o
 }
 
+// getNamedAtSite reads a named property through the additional shapes recorded at the site.
+func (vm *VM) getNamedAtSite(v Value, key *Object, c *propCache) (Value, *Object) {
+	if r := c.reads; r != nil && r.vm == vm && r.epoch == vm.protoEpoch {
+		if o := v.o; o != nil && o.kind == kindObject && o.class == classObject && o.flags&objExotic == 0 && o.shape.vm == vm {
+			if e, ok := r.shapes[o.shape.readID]; ok && e.count == o.shape.count {
+				h := o
+				for range e.depth {
+					h = h.shape.proto
+				}
+				c.keep(o.shape)
+				return vm.readNamedSlot(o, h, e.prop, c)
+			}
+		}
+	}
+	return vm.getNamed(v, key, c)
+}
+
+// rememberRead records the location of p for subsequent reads from start's shape.
+func (c *propCache) rememberRead(vm *VM, start, holder *Object, p prop) {
+	s := start.shape
+	if s.readID == 0 {
+		if vm.lastReadShapeID == ^uint32(0) {
+			return
+		}
+		vm.lastReadShapeID++
+		s.readID = vm.lastReadShapeID
+	}
+	r := c.reads
+	if r == nil {
+		r = &namedReads{
+			shapes: make(map[uint32]namedRead),
+		}
+		c.reads = r
+	}
+	if r.vm != vm || r.epoch != vm.protoEpoch || len(r.shapes) >= 64 {
+		clear(r.shapes)
+		r.vm = vm
+		r.epoch = vm.protoEpoch
+	}
+	var depth int32
+	for h := start; h != holder; h = h.shape.proto {
+		depth++
+	}
+	r.shapes[s.readID] = namedRead{
+		depth: depth,
+		count: s.count,
+		prop:  p,
+	}
+}
+
 // getNamed returns the named property key of v. When the property is an accessor with a getter,
 // getNamed returns the getter instead and the caller has to call it with v as this.
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
@@ -443,8 +493,10 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 			return Number(float64(vm.typedArrayLength(start))), nil
 		}
 	}
+	s, epoch := start.shape, vm.protoEpoch
+	var evicted bool
 	if c != nil {
-		c.keep(start.shape)
+		evicted = c.keep(s)
 	}
 	holder, p, ok := vm.lookup(start, key)
 	if !ok {
@@ -464,6 +516,15 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	if p.slot < 0 {
 		return Number(float64(holder.length)), nil
 	}
+	if evicted && start == v.o && start.kind == kindObject && start.class == classObject && start.flags&objExotic == 0 &&
+		s == start.shape && s.vm == vm && epoch == vm.protoEpoch {
+		c.rememberRead(vm, start, holder, p)
+	}
+	return vm.readNamedSlot(start, holder, p, c)
+}
+
+// readNamedSlot reads p and returns its getter separately for the caller to invoke.
+func (vm *VM) readNamedSlot(start, holder *Object, p prop, c *propCache) (val Value, getter *Object) {
 	val = holder.slots[p.slot]
 	if p.flags&FlagAccessor != 0 {
 		// Objects of one shape can hold different own accessors, and replacing an own accessor
@@ -592,7 +653,7 @@ func (vm *VM) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
 			}
 		}
 	}
-	val, getter := vm.getNamed(v, k.key, &c.c)
+	val, getter := vm.getNamedAtSite(v, k.key, &c.c)
 	if getter != nil {
 		return vm.Call(getter, v)
 	}

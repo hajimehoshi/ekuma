@@ -416,6 +416,8 @@ type VM struct {
 	// or its slots move.
 	protoEpoch uint32
 
+	lastReadShapeID uint32
+
 	sparseIndices sparseIndexCache
 
 	jobs jobQueue

@@ -1118,6 +1118,48 @@ func BenchmarkMethodAfterDelete(b *testing.B) {
 	}
 }
 
+// BenchmarkMegamorphicRead reads an own or inherited property across 20 receiver shapes.
+func BenchmarkMegamorphicRead(b *testing.B) {
+	const setup = `
+		const base = {visible: 1};
+		const nodes = [];
+		for (let i = 0; i < 20; i++) {
+			const proto = Object.create(base);
+			const node = Object.create(proto);
+			for (let j = 0; j < 12; j++) node["field" + j] = j;
+			node.alpha = i;
+			nodes.push(node);
+		}
+		function own(nodes, n) {
+			let sum = 0;
+			for (let i = 0; i < n; i++) sum += nodes[i % 20].alpha;
+			return sum;
+		}
+		function inherited(nodes, n) {
+			let sum = 0;
+			for (let i = 0; i < n; i++) sum += nodes[i % 20].visible;
+			return sum;
+		}`
+	var vm ekuma.VM
+	ctx := b.Context()
+	if _, err := runScript(ctx, &vm, "setup", setup); err != nil {
+		b.Fatal(err)
+	}
+	nodes, err := runScript(ctx, &vm, "nodes", "nodes")
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, name := range []string{"own", "inherited"} {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			if _, err := vm.Global().Call(ctx, name, nodes, b.N); err != nil {
+				b.Fatal(err)
+			}
+		})
+	}
+}
+
 // BenchmarkPropertyDescriptor measures retrieving or forwarding one property descriptor.
 func BenchmarkPropertyDescriptor(b *testing.B) {
 	for _, c := range []struct {

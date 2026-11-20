@@ -1270,7 +1270,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetLength:
 			v := regs[i.B]
 			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.getNamed(v, vm.Key(KeyLength), &fp.caches[i.C])
+			val, getter := vm.getNamedAtSite(v, vm.Key(KeyLength), &fp.caches[i.C])
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -2382,7 +2382,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			v := regs[i.B]
 			vm.frames[len(vm.frames)-1].pc = pc
-			val, getter := vm.getNamed(v, fp.keys[i.C], &fp.caches[i.C])
+			val, getter := vm.getNamedAtSite(v, fp.keys[i.C], &fp.caches[i.C])
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove

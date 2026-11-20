@@ -347,6 +347,9 @@ type shape struct {
 	// properties that objects were given after its own, up to maxInstanceSlots.
 	branchSlots uint8
 
+	// readID identifies this shape in its VM's megamorphic read caches. Zero is unassigned.
+	readID uint32
+
 	// order lists the keys of a private shape in insertion order, at the indices of their
 	// slots. A deleted key leaves nil behind until the shape is compacted, so count is the number
 	// of keys and len(order) the number of slots.
@@ -1632,11 +1635,28 @@ func (e *cacheEntry) setInherited(s *shape, kind uint8, epoch uint32) {
 	}
 }
 
-// propCache is the inline cache of one property access site. It remembers two receiver shapes,
-// because code that is shared by objects of two classes is common.
+// propCache holds two inline entries for a property access site and records additional
+// receiver shapes for named reads.
 type propCache struct {
 	cacheEntry
 	second cacheEntry
+	reads  *namedReads
+}
+
+// namedReads holds the locations of properties read at a site with several receiver shapes.
+// Its entries do not keep the shapes, their prototypes or their property values alive.
+type namedReads struct {
+	vm     *VM
+	epoch  uint32
+	shapes map[uint32]namedRead
+}
+
+type namedRead struct {
+	// depth counts the prototype links to the holder. count detects properties added
+	// to the receiver while it keeps its private shape.
+	depth int32
+	count int32
+	prop
 }
 
 // globalCache is the inline cache of an instruction that accesses a global variable. holder is
@@ -1652,11 +1672,15 @@ type globalCache struct {
 	holder *Object
 }
 
-// keep saves the current entry as the second one before c is filled for another shape.
-func (c *propCache) keep(shape *shape) {
-	if c.shape != nil && c.shape != shape {
-		c.second = c.cacheEntry
+// keep saves the current entry before c is filled for shape. It reports whether this
+// displaces an entry for a third distinct shape.
+func (c *propCache) keep(shape *shape) bool {
+	if c.shape == nil || c.shape == shape {
+		return false
 	}
+	previous := c.second.shape
+	c.second = c.cacheEntry
+	return previous != nil && previous != shape && previous != c.shape
 }
 
 // VM returns the [VM] that o belongs to, or nil for a value that is shared by all VMs.
