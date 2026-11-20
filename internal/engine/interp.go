@@ -1522,7 +1522,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = v
 		case bytecode.OpConcat:
 			vm.frames[len(vm.frames)-1].pc = pc
-			regs[i.A] = vm.concatStrings(slices.Clip(regs)[i.B : i.B+i.C])
+			regs[i.A] = vm.ConcatStrings(slices.Clip(regs)[i.B : i.B+i.C])
 		case bytecode.OpTypeof:
 			regs[i.A] = vm.typeofValue(regs[i.B])
 		case bytecode.OpInc, bytecode.OpDec:

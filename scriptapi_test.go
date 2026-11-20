@@ -1298,7 +1298,7 @@ func TestStringLengthLimits(t *testing.T) {
 					() => s.replace(/x/, "xx$'"),
 					() => s.replace("x", () => "xx"),
 					() => String.raw({raw: {length: 2 ** 53 - 1, 0: "x", 1: s}}),
-					() => "x".concat(s),
+					() => "x".concat(s, {toString() { throw 0; }}),
 					() => Error.prototype.toString.call({name: s, message: "x"}),
 					() => RegExp.prototype.toString.call({source: s, flags: ""}),
 					() => Symbol(s).toString(),

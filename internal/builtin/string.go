@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -14,7 +15,6 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
-	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
@@ -51,39 +51,43 @@ func initString(vm *engine.VM) {
 		if len(args) == 1 {
 			return vm.UnitString(uint16(vm.ToUint32(args[0])))
 		}
-		if len(args) > shortstrings.MaxBytes {
-			return stringFromCharCodes(vm, args)
-		}
-		var b xstrings.Builder
+		var buf [charactersOnStack]uint16
+		units := slices.Grow(buf[:0], len(args))
 		for _, a := range args {
-			b.WriteUnit(uint16(vm.ToUint32(a)))
+			units = append(units, uint16(vm.ToUint32(a)))
 		}
-		return vm.StringFromBuilder(&b)
+		s := vm.StringFromCodeUnits(units)
+		checkStringLength(vm, s.StringByteLength())
+		return s
 	})
 	method(vm, ctor, "fromCodePoint", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		var b xstrings.Builder
+		var buf [charactersOnStack]rune
+		points := slices.Grow(buf[:0], len(args))
 		for _, a := range args {
 			n := vm.ToNumber(a)
 			if n != math.Trunc(n) || n < 0 || n > 0x10FFFF {
 				vm.ThrowRangeError("invalid code point " + wtf8.ToValidUTF8(vm.ToString(a)))
 			}
-			b.WriteRune(rune(n))
+			points = append(points, rune(n))
 		}
-		checkStringLength(vm, b.Len())
-		return vm.StringFromBuilder(&b)
+		s := vm.CodePointsToString(points)
+		checkStringLength(vm, s.StringByteLength())
+		return s
 	})
 	method(vm, ctor, "raw", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cooked := vm.ToObject(arg(args, 0))
 		raw := vm.ToObject(vm.GetV(engine.ObjectValue(cooked), vm.Key(engine.KeyRaw)))
 		n := vm.LengthOfArrayLike(raw)
-		var b xstrings.Builder
+		var buf [stringPartsOnStack]engine.Value
+		parts := buf[:0]
+		var length int
 		for i := range n {
-			writeBuiltLimited(vm, &b, vm.ToStringValue(getAt(vm, raw, i)))
+			parts, length = appendStringPart(vm, parts, length, vm.ToStringValue(getAt(vm, raw, i)))
 			if i+1 < n && int(i)+1 < len(args) {
-				writeBuiltLimited(vm, &b, vm.ToStringValue(args[i+1]))
+				parts, length = appendStringPart(vm, parts, length, vm.ToStringValue(args[i+1]))
 			}
 		}
-		return vm.StringFromBuilder(&b)
+		return vm.ConcatStrings(parts)
 	})
 
 	thisValue := func(vm *engine.VM, this engine.Value, what string) engine.Value {
@@ -254,17 +258,12 @@ func initString(vm *engine.VM) {
 			}
 			return vm.NewString(b.String())
 		}
-		var b xstrings.Builder
-		s.WriteToBuilder(&b)
+		var buf [stringPartsOnStack]engine.Value
+		parts, length := append(buf[:0], s), s.StringByteLength()
 		for _, a := range args {
-			if a.IsString() {
-				writeBuiltLimited(vm, &b, a)
-				continue
-			}
-			writeBuiltString(vm, &b, a)
-			checkStringLength(vm, b.Len())
+			parts, length = appendStringPart(vm, parts, length, vm.ToStringValue(a))
 		}
-		return vm.StringFromBuilder(&b)
+		return vm.ConcatStrings(parts)
 	})
 	method(vm, proto, "repeat", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "repeat")
@@ -615,28 +614,15 @@ func initString(vm *engine.VM) {
 	})
 }
 
-// writeBuiltString writes ToString(v) to b.
-func writeBuiltString(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
-	if v.IsString() {
-		v.WriteToBuilder(b)
-		return
-	}
-	if v.IsNumber() {
-		var buf [32]byte
-		b.WriteString(wtf8.String(numconv.AppendNumber(buf[:0], v.Number())))
-		return
-	}
-	b.WriteString(vm.ToString(v))
-}
+const (
+	// charactersOnStack is the number of code units or code points a built-in collects without
+	// allocating.
+	charactersOnStack = 32
 
-func stringFromCharCodes(vm *engine.VM, args []engine.Value) engine.Value {
-	var b wtf8.Buffer
-	for _, a := range args {
-		b.WriteUnit(uint16(vm.ToUint32(a)))
-	}
-	checkStringLength(vm, b.Len())
-	return vm.NewString(b.String())
-}
+	// stringPartsOnStack is the number of strings a built-in collects for concatenation before
+	// it joins them.
+	stringPartsOnStack = 16
+)
 
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
 func checkStringLength(vm *engine.VM, n int) {
@@ -645,11 +631,17 @@ func checkStringLength(vm *engine.VM, n int) {
 	}
 }
 
-// writeBuiltLimited writes the string v to b, and throws a RangeError instead when b would get
-// longer than MaxStringLength.
-func writeBuiltLimited(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
-	checkStringLength(vm, b.Len()+v.StringByteLength())
-	v.WriteToBuilder(b)
+// appendStringPart appends the string s to parts, whose strings have length bytes in all, and
+// returns the new parts and length. It throws a RangeError instead when the length would pass
+// MaxStringLength. The strings of a full parts are first joined into one, so parts never grows
+// beyond its capacity.
+func appendStringPart(vm *engine.VM, parts []engine.Value, length int, s engine.Value) ([]engine.Value, int) {
+	length += s.StringByteLength()
+	checkStringLength(vm, length)
+	if len(parts) == cap(parts) {
+		parts = append(parts[:0], vm.ConcatStrings(parts))
+	}
+	return append(parts, s), length
 }
 
 // writeStringLimited writes ToString(v) to b, and throws a RangeError when b gets longer than

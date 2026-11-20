@@ -227,8 +227,8 @@ func (vm *VM) concatReversed(a Value, x wtf8.String, b Value, y wtf8.String) Val
 	return vm.extendHead(b.o, rb, asciiX)
 }
 
-// concatStrings returns the concatenation of the strings parts.
-func (vm *VM) concatStrings(parts []Value) Value {
+// ConcatStrings returns the concatenation of the strings parts.
+func (vm *VM) ConcatStrings(parts []Value) Value {
 	var n, nonEmpty, previousBytes int
 	var needsUnpacking bool
 	var flags uint8
@@ -304,6 +304,19 @@ func (vm *VM) concatStrings(parts []Value) Value {
 // concatSmall joins parts with total byte length n, at most maxStackConcatBytes.
 // No part is reversed and no boundary forms a surrogate pair.
 func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpacking bool) Value {
+	if n <= shortstrings.MaxBytes {
+		// Every part is a short string, whose value holds its bytes packed.
+		var data uint64
+		var shift int
+		for _, p := range parts {
+			data |= math.Float64bits(p.n) << shift
+			shift += 8 * len(p.o.str)
+		}
+		return Value{
+			n: math.Float64frombits(data),
+			o: &vm.shapes.shortStrings[n],
+		}
+	}
 	var buf [maxStackConcatBytes]byte
 	var written int
 	if needsUnpacking {
@@ -315,13 +328,10 @@ func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpackin
 			written += copy(buf[written:], p.o.str)
 		}
 	}
-	if n <= shortstrings.MaxBytes {
-		return vm.shortString(wtf8.String(buf[:n]))
-	}
 	return vm.concatenated(wtf8.String(buf[:n]), count)
 }
 
-// concatReversedStrings is [VM.concatStrings] for parts one or more of which are reversed
+// concatReversedStrings is [VM.ConcatStrings] for parts one or more of which are reversed
 // strings.
 func (vm *VM) concatReversedStrings(parts []Value) Value {
 	for _, p := range parts[:len(parts)-1] {
@@ -339,7 +349,7 @@ func (vm *VM) concatReversedStrings(parts []Value) Value {
 		}
 		end.unreverse()
 	}
-	return vm.concatStrings(parts)
+	return vm.ConcatStrings(parts)
 }
 
 // newBuffered returns the concatenation of the strings parts, none of which is reversed, as the
