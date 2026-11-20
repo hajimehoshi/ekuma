@@ -83,6 +83,10 @@ const (
 
 	// OperandGlobalVar is a set of GlobalVar flags, such as [GlobalVarFunc].
 	OperandGlobalVar
+
+	// OperandGlobalCache is the index of an inline cache of a global variable, below
+	// [Func.NumGlobalCaches].
+	OperandGlobalCache
 )
 
 // Field names an operand: a, b or c of an instruction, or x.a or x.b of the [OpExtra] after it.
@@ -209,12 +213,14 @@ var (
 	}
 	getGlobalOperands = Operands{
 		A:      OperandReg,
-		B:      OperandSite,
+		B:      OperandKey,
+		C:      OperandGlobalCache,
 		Writes: regA,
 	}
 	setGlobalOperands = Operands{
 		A:     OperandReg,
-		B:     OperandSite,
+		B:     OperandKey,
+		C:     OperandGlobalCache,
 		Reads: regA,
 	}
 	getPropOperands = Operands{

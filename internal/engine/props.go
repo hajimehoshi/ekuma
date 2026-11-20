@@ -931,6 +931,12 @@ func (vm *VM) densify(o *Object) {
 	}
 	o.elems = elems
 	o.flags &^= objSparse
+	if o.kind != kindArray {
+		// The shape may be one that o had before, with other slots. The inline caches of
+		// global variables point into the slots of the global object while it keeps its
+		// shape, so o gets a new one.
+		o.makePrivate()
+	}
 	vm.touchProto(o)
 }
 

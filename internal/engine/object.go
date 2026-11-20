@@ -1354,6 +1354,13 @@ func (vm *VM) add(o *Object, key *Object, val Value, flags uint8) {
 		}
 	}
 	if s.private {
+		if len(o.slots) == cap(o.slots) && !vm.builtins.building {
+			// The slots are about to move. The inline caches of global variables point into
+			// the slots of the global object for as long as it keeps its shape, so o gets
+			// another one. No code runs while the built-ins are created.
+			s = s.handOver()
+			o.shape = s
+		}
 		s.table[key] = prop{
 			slot:  int32(len(s.order)),
 			flags: flags,
@@ -1439,18 +1446,22 @@ func (vm *VM) Define(o *Object, key *Object, val Value, flags uint8) {
 // setFlags changes the attributes of the existing own property key of o.
 func (vm *VM) setFlags(o *Object, key *Object, p prop, flags uint8) {
 	// An inline cache may remember the shape, so the changed layout needs another one.
-	var s *shape
-	if o.shape.private {
-		s = o.shape.handOver()
-	} else {
-		s = o.shape.privateCopy()
-	}
-	s.table[key] = prop{
+	o.renewShape()
+	o.shape.table[key] = prop{
 		slot:  p.slot,
 		flags: flags,
 	}
-	o.shape = s
 	vm.touchProto(o)
+}
+
+// renewShape gives o a private shape with the properties of its shape, which no inline cache
+// has seen.
+func (o *Object) renewShape() {
+	if o.shape.private {
+		o.shape = o.shape.handOver()
+	} else {
+		o.shape = o.shape.privateCopy()
+	}
 }
 
 // remove deletes the own named property key of o, which must exist.
@@ -1609,6 +1620,19 @@ type cacheEntry struct {
 type propCache struct {
 	cacheEntry
 	second cacheEntry
+}
+
+// globalCache is the inline cache of an instruction that accesses a global variable. holder is
+// the global object of the realm, or nil. While holder has the shape shape, ref points at the
+// value of the variable, which is initialized and, for an instruction that assigns, writable.
+//
+// The global object gets another shape whenever a global lexical binding is declared, and
+// whenever its own properties or the storage of their values change (see [VM.add] and
+// [VM.densify]).
+type globalCache struct {
+	shape  *shape
+	ref    *Value
+	holder *Object
 }
 
 // keep saves the current entry as the second one before c is filled for another shape.

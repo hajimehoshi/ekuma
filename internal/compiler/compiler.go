@@ -942,6 +942,13 @@ func (f *fn) site(s string) int32 {
 	return i
 }
 
+// globalCache returns a fresh inline cache of a global variable.
+func (f *fn) globalCache() int32 {
+	i := int32(f.f.NumGlobalCaches)
+	f.f.NumGlobalCaches++
+	return i
+}
+
 // declare creates a variable in the current scope and gives it a register.
 func (f *fn) declare(name string, kind bindKind) *binding {
 	sym := f.c.symbol(name)
@@ -1359,8 +1366,7 @@ func (f *fn) loadStatic(name string, dst int32, orUndef bool) {
 		case f.strict():
 			op = bytecode.OpGetGlobalStrict
 		}
-		k := f.site(name)
-		f.emit(op, dst, k, 0)
+		f.emit(op, dst, f.key(name), f.globalCache())
 	}
 }
 
@@ -1433,11 +1439,9 @@ func (f *fn) storeStatic(n ast.Node, name string, src int32, init bool) {
 		case init && f.isScript && f.c.globalLexical(name):
 			f.emit(bytecode.OpInitGlobalLex, src, f.key(name), 0)
 		case f.strict():
-			k := f.site(name)
-			f.emit(bytecode.OpSetGlobalStrict, src, k, 0)
+			f.emit(bytecode.OpSetGlobalStrict, src, f.key(name), f.globalCache())
 		default:
-			k := f.site(name)
-			f.emit(bytecode.OpSetGlobal, src, k, 0)
+			f.emit(bytecode.OpSetGlobal, src, f.key(name), f.globalCache())
 		}
 	}
 }

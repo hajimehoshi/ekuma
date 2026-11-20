@@ -20,6 +20,8 @@ type Opcode uint8
 //     register is -1 then.
 //   - Consts[x] and Keys[x] are the elements of [Func.Consts] and [Func.Keys] at the index x.
 //   - A site is an index into [Func.Keys] that also names an inline cache of its own.
+//   - A global cache is an index of an inline cache of a global variable, which only its
+//     instruction uses.
 //   - A flag is 0 or 1.
 //   - An instruction writes the value that it produces to a. A jump has its target in a, or in
 //     c when it also produces a value. Some instructions also update registers that they read,
@@ -52,13 +54,13 @@ const (
 	OpThrowError       // throw an error of the Throw kind a with the message Consts[b]
 
 	// Global variables.
-	OpGetGlobal              // a = the global variable Keys[b]; b is a site
+	OpGetGlobal              // a = the global variable Keys[b]; c is a global cache
 	OpGetGlobalStrict        // like [OpGetGlobal], in strict code
 	OpGetGlobalOrUndef       // like [OpGetGlobal], but undefined when the global does not exist
 	OpGetGlobalOrUndefStrict // like [OpGetGlobalOrUndef], in strict code
-	OpSetGlobal              // the global variable Keys[b] = a, creating it when it does not exist; b is a site
+	OpSetGlobal              // the global variable Keys[b] = a, creating it when it does not exist; c is a global cache
 	OpSetGlobalStrict        // like [OpSetGlobal], but a ReferenceError when the global does not exist
-	OpResolveGlobal          // a = whether the global variable Keys[b] exists; b is a site
+	OpResolveGlobal          // a = whether the global variable Keys[b] exists; c is a global cache
 	OpDeleteName             // a = delete the global variable Keys[b]
 	OpDeclareGlobalVar       // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function with GlobalVarFunc and is -1 otherwise
 	OpDeclareGlobalLex       // declare the global lexical binding Keys[a], constant with the flag b
@@ -504,6 +506,10 @@ type Func struct {
 
 	// NumCaches is the number of inline caches that the instructions refer to.
 	NumCaches int
+
+	// NumGlobalCaches is the number of inline caches of global variables that the
+	// instructions refer to.
+	NumGlobalCaches int
 
 	Templates []Template
 

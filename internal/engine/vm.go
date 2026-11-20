@@ -414,9 +414,6 @@ type VM struct {
 	// protoEpoch changes whenever the properties or the prototype of a prototype object change.
 	protoEpoch uint32
 
-	// globalEpoch changes whenever a global lexical binding is declared.
-	globalEpoch uint32
-
 	sparseIndices sparseIndexCache
 
 	jobs jobQueue

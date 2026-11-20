@@ -1950,8 +1950,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			resolved := int32(-1)
 			if scope < 0 && f.strict() && !pure(n.Value) && f.undeclaredGlobal(name) {
 				resolved = f.newReg()
-				k := f.site(name)
-				f.emit(bytecode.OpResolveGlobal, resolved, k, 0)
+				f.emit(bytecode.OpResolveGlobal, resolved, f.key(name), f.globalCache())
 			}
 			t := dst
 			if t < 0 {

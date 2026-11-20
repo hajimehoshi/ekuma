@@ -77,7 +77,8 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
 // not exist, it throws a ReferenceError unless orUndef is set.
-func (vm *VM) getGlobal(key *Object, c *propCache, orUndef, strict bool) Value {
+func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
+	g := vm.global
 	if p, ok := vm.globalLex.shape.lookup(key); ok {
 		v := vm.globalLex.slots[p.slot]
 		if v.o == tdzObject {
@@ -85,26 +86,15 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef, strict bool) Value {
 		}
 		// c refers only to initialized bindings, which stay initialized, so a hit needs no
 		// check.
-		c.holder = vm.globalLex
-		c.shape = vm.globalLex.shape
-		c.slot = p.slot
-		c.kind = cacheOwn
-		if p.flags&FlagWritable == 0 {
-			c.kind = cacheProto
-		}
-		c.epoch = vm.globalEpoch
+		c.holder = g
+		c.shape = g.shape
+		c.ref = &vm.globalLex.slots[p.slot]
 		return v
 	}
-	g := vm.global
 	if p, ok := g.shape.lookup(key); ok && p.flags&FlagAccessor == 0 {
 		c.holder = g
 		c.shape = g.shape
-		c.slot = p.slot
-		c.kind = cacheOwn
-		if p.flags&FlagWritable == 0 {
-			c.kind = cacheProto
-		}
-		c.epoch = vm.globalEpoch
+		c.ref = &g.slots[p.slot]
 		return g.slots[p.slot]
 	}
 	k := PropKey{key: key}
@@ -125,29 +115,20 @@ func (vm *VM) getGlobal(key *Object, c *propCache, orUndef, strict bool) Value {
 }
 
 // resolveGlobal returns whether the global variable key exists.
-func (vm *VM) resolveGlobal(key *Object, c *propCache) Value {
-	if p, ok := vm.globalLex.shape.lookup(key); ok {
-		c.holder = vm.globalLex
-		c.shape = vm.globalLex.shape
-		c.slot = p.slot
-		c.kind = cacheProto
-		c.epoch = vm.globalEpoch
-		return True
-	}
+func (vm *VM) resolveGlobal(key *Object, c *globalCache) Value {
 	g := vm.global
-	if p, ok := g.shape.lookup(key); ok {
+	_, lex := vm.globalLex.shape.lookup(key)
+	if _, own := g.shape.lookup(key); lex || own {
 		c.holder = g
 		c.shape = g.shape
-		c.slot = p.slot
-		c.kind = cacheProto
-		c.epoch = vm.globalEpoch
 		return True
 	}
 	return Bool(vm.HasProperty(g, PropKey{key: key}))
 }
 
 // setGlobal assigns to the global variable key.
-func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
+func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
+	g := vm.global
 	if p, ok := vm.globalLex.shape.lookup(key); ok {
 		if vm.globalLex.slots[p.slot].o == tdzObject {
 			vm.throwTDZ(key)
@@ -157,21 +138,16 @@ func (vm *VM) setGlobal(key *Object, val Value, c *propCache, strict bool) {
 		}
 		vm.globalLex.slots[p.slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
-		c.holder = vm.globalLex
-		c.shape = vm.globalLex.shape
-		c.slot = p.slot
-		c.kind = cacheOwn
-		c.epoch = vm.globalEpoch
+		c.holder = g
+		c.shape = g.shape
+		c.ref = &vm.globalLex.slots[p.slot]
 		return
 	}
-	g := vm.global
 	if p, ok := g.shape.lookup(key); ok && p.flags&(FlagAccessor|FlagWritable) == FlagWritable {
 		g.slots[p.slot] = val
 		c.holder = g
 		c.shape = g.shape
-		c.slot = p.slot
-		c.kind = cacheOwn
-		c.epoch = vm.globalEpoch
+		c.ref = &g.slots[p.slot]
 		return
 	}
 	k := PropKey{key: key}
@@ -276,7 +252,9 @@ func (vm *VM) declareGlobalLex(key *Object, isConst bool) {
 		flags = FlagEnumerable | FlagConfigurable
 	}
 	vm.add(vm.globalLex, key, tdz, flags)
-	vm.globalEpoch++
+	// The binding may hide a property of the global object, and the bindings may have moved,
+	// so the global variable caches must not apply any longer.
+	vm.global.renewShape()
 }
 
 func (vm *VM) initGlobalLex(key *Object, val Value) {

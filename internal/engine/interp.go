@@ -435,17 +435,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = regs[i.B]
 			continue
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
-			c := &fp.caches[i.B]
-			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
-				// A cached binding is initialized.
-				regs[i.A] = h.slots[c.slot]
+			c := &fp.globals[i.C]
+			if h := c.holder; h != nil && h.shape == c.shape {
+				regs[i.A] = *c.ref
 				continue
 			}
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
-			c := &fp.caches[i.B]
-			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch && c.kind == cacheOwn {
-				// A cached binding is initialized.
-				h.slots[c.slot] = regs[i.A]
+			// Only setGlobal fills the cache of an assignment.
+			c := &fp.globals[i.C]
+			if h := c.holder; h != nil && h.shape == c.shape {
+				*c.ref = regs[i.A]
 				continue
 			}
 		case bytecode.OpGetUpval:
@@ -1102,19 +1101,19 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.throwError(thrownErrorKinds[i.A], fp.consts[i.B].o.str)
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
-			c := &fp.caches[i.B]
+			c := &fp.globals[i.C]
 			vm.frames[len(vm.frames)-1].pc = pc
 			orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
 			strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
 			v := vm.getGlobal(fp.keys[i.B], c, orUndef, strict)
 			regs[i.A] = v
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
-			c := &fp.caches[i.B]
+			c := &fp.globals[i.C]
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)
 		case bytecode.OpResolveGlobal:
-			c := &fp.caches[i.B]
-			if h := c.holder; h != nil && h.shape == c.shape && c.epoch == vm.globalEpoch {
+			c := &fp.globals[i.C]
+			if h := c.holder; h != nil && h.shape == c.shape {
 				regs[i.A] = True
 				continue
 			}

@@ -330,6 +330,11 @@ func (d *disassembler) operand(k OperandKind, v int32, in Instr) {
 		if !inRange(v, len(f.EvalScopes)) {
 			d.b = append(d.b, '?')
 		}
+	case OperandGlobalCache:
+		d.b = fmt.Appendf(d.b, "globalcache %d", v)
+		if !inRange(v, f.NumGlobalCaches) {
+			d.b = append(d.b, '?')
+		}
 	case OperandThrow:
 		d.enum(throwNames[:], v)
 	case OperandDecl:

@@ -70,6 +70,10 @@ type funcProto struct {
 	// functions: the inline caches exist, and the functions are neither generators, async
 	// functions nor class constructors.
 	inlineFrames bool
+
+	// globals holds the inline caches of global variables, which prepare allocates with
+	// caches. It comes after the fields that calls read.
+	globals []globalCache
 }
 
 type templateSite struct {
@@ -218,6 +222,7 @@ func (p *funcProto) firstCleared(argc int) int {
 func (p *funcProto) prepare() {
 	if p.caches == nil {
 		p.caches = make([]propCache, p.NumCaches)
+		p.globals = make([]globalCache, p.NumGlobalCaches)
 		p.inlineFrames = !p.heapRegs && !p.isClassConstructor
 	}
 }

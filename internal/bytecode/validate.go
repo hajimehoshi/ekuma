@@ -31,7 +31,7 @@ var (
 	// ErrSequence is an instruction without the instruction that has to follow it.
 	ErrSequence = errors.New("bytecode: invalid instruction sequence")
 
-	// ErrSite is a site that two instructions share.
+	// ErrSite is a site or a global cache that two instructions share.
 	ErrSite = errors.New("bytecode: shared site")
 
 	// ErrHandler is an element of [Func.Handlers] outside the code or out of order.
@@ -101,6 +101,9 @@ type validator struct {
 
 	// siteUsers maps a site to the index of the instruction that uses it.
 	siteUsers map[int32]int
+
+	// globalCacheUsers maps a global cache to the index of the instruction that uses it.
+	globalCacheUsers map[int32]int
 }
 
 func validateFunc(f, parent *Func) error {
@@ -304,6 +307,17 @@ func (v *validator) operand(pc int, k OperandKind, field Field, val int32) error
 			return v.errorf(pc, ErrSite, "%s is the site %d of the instruction at %d too", name, val, other)
 		}
 		v.siteUsers[val] = pc
+	case OperandGlobalCache:
+		if err := inRange(f.NumGlobalCaches, "global caches"); err != nil {
+			return err
+		}
+		if v.globalCacheUsers == nil {
+			v.globalCacheUsers = map[int32]int{}
+		}
+		if other, ok := v.globalCacheUsers[val]; ok {
+			return v.errorf(pc, ErrSite, "%s is the global cache %d of the instruction at %d too", name, val, other)
+		}
+		v.globalCacheUsers[val] = pc
 	case OperandTarget:
 		if val < 0 || int(val) >= len(f.Code) {
 			return v.errorf(pc, ErrTarget, "%s is %d with %d instructions", name, val, len(f.Code))

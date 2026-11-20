@@ -608,8 +608,7 @@ func (f *fn) setAnnexBGlobal(name string, src int32) {
 	if r, ok := f.annexBRegs[name]; ok {
 		j = f.emit(bytecode.OpJumpIfNot, 0, r, 0)
 	}
-	k := f.site(name)
-	f.emit(bytecode.OpSetGlobal, src, k, 0)
+	f.emit(bytecode.OpSetGlobal, src, f.key(name), f.globalCache())
 	if j >= 0 {
 		f.patch(j)
 	}

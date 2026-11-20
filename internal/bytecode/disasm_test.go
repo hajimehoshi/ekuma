@@ -138,10 +138,11 @@ func TestDisassembleOpcodes(t *testing.T) {
 				Kind: bytecode.ConstNumber,
 			},
 		},
-		Keys:      []string{"k"},
-		NumCaches: 1,
-		Upvals:    []bytecode.UpvalDesc{{}},
-		Protos:    []*bytecode.Func{{}},
+		Keys:            []string{"k"},
+		NumCaches:       1,
+		NumGlobalCaches: 1,
+		Upvals:          []bytecode.UpvalDesc{{}},
+		Protos:          []*bytecode.Func{{}},
 		Templates: []bytecode.Template{
 			{
 				Raw: []string{""},

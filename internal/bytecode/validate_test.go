@@ -180,6 +180,18 @@ func TestValidate(t *testing.T) {
 			pc:  3,
 		},
 		{
+			name: "shared global cache",
+			breakFunc: func(f *bytecode.Func) {
+				f.NumGlobalCaches = 1
+				f.Code = append(f.Code,
+					bytecode.Instr{Op: bytecode.OpGetGlobal, A: 1, B: 0, C: 0},
+					bytecode.Instr{Op: bytecode.OpSetGlobal, A: 1, B: 0, C: 0},
+				)
+			},
+			err: bytecode.ErrSite,
+			pc:  9,
+		},
+		{
 			name: "handler after the handler around it",
 			breakFunc: func(f *bytecode.Func) {
 				f.Handlers[0], f.Handlers[1] = f.Handlers[1], f.Handlers[0]
