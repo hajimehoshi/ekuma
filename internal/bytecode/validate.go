@@ -292,7 +292,7 @@ func (v *validator) operand(pc int, k OperandKind, field Field, val int32) error
 	case OperandConstRun:
 		n := f.Code[pc].C
 		if val < 0 || n < 0 || int64(val)+int64(n) > int64(len(f.Consts)) {
-			return v.errorf(pc, ErrIndex, "%s is the start of %d constants with %d constants", name, n, len(f.Consts))
+			return v.errorf(pc, ErrIndex, "%s is %d, the start of a run of %d with %d constants", name, val, n, len(f.Consts))
 		}
 	case OperandKey:
 		return inRange(len(f.Keys), "keys")
