@@ -180,7 +180,7 @@ func writeString(vm *engine.VM, b *wtf8.Buffer, v engine.Value) {
 	}
 	if v.IsNumber() {
 		var buf [32]byte
-		b.WriteString(wtf8.String(numconv.AppendNumber(buf[:0], v.Number())))
+		b.WriteStringBytes(numconv.AppendNumber(buf[:0], v.Number()))
 		return
 	}
 	b.WriteString(vm.ToString(v))
