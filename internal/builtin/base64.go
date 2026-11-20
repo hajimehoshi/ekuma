@@ -51,6 +51,13 @@ var base64Values = func() [256]int8 {
 	return t
 }()
 
+var base64URLValues = func() [256]int8 {
+	t := base64Values
+	t['-'], t['_'] = 62, 63
+	t['+'], t['/'] = -1, -1
+	return t
+}()
+
 // hexValues holds the value of each byte as a hexadecimal digit, or -1.
 var hexValues = func() [256]int8 {
 	var t [256]int8
@@ -105,11 +112,15 @@ func fromBase64(vm *engine.VM, s wtf8.String, url bool, lastChunkHandling wtf8.S
 		return r
 	}
 	r.bytes = make([]byte, 0, min(maxLength, len(s)/4*3+3))
+	values := &base64Values
+	if url {
+		values = &base64URLValues
+	}
 	chunk := make([]int, 0, 4)
 	var i int
 	for {
 		var done bool
-		i, chunk, done = fromBase64Run(s, i, i+decodeRun, url, lastChunkHandling, maxLength, &r, chunk)
+		i, chunk, done = fromBase64Run(s, i, i+decodeRun, values, lastChunkHandling, maxLength, &r, chunk)
 		if done {
 			return r
 		}
@@ -120,16 +131,16 @@ func fromBase64(vm *engine.VM, s wtf8.String, url bool, lastChunkHandling wtf8.S
 // fromBase64Run is fromBase64 from the index i, with the chunk of values read so far, up to about
 // the index stop. It returns where it stopped and the chunk then, and reports whether r is the
 // result.
-func fromBase64Run(s wtf8.String, i, stop int, url bool, lastChunkHandling wtf8.String, maxLength int, r *decodeResult, chunk []int) (int, []int, bool) {
+func fromBase64Run(s wtf8.String, i, stop int, values *[256]int8, lastChunkHandling wtf8.String, maxLength int, r *decodeResult, chunk []int) (int, []int, bool) {
 	for {
 		if i >= stop {
 			return i, chunk, false
 		}
-		if len(chunk) == 0 && !url {
+		if len(chunk) == 0 {
 			// Whole chunks of four characters of the alphabet decode as the state machine
 			// below does while three bytes or more remain.
 			for i+4 <= len(s) && i < stop && maxLength-len(r.bytes) >= 3 {
-				a, b, c, d := base64Values[s[i]], base64Values[s[i+1]], base64Values[s[i+2]], base64Values[s[i+3]]
+				a, b, c, d := values[s[i]], values[s[i+1]], values[s[i+2]], values[s[i+3]]
 				if a|b|c|d < 0 {
 					break
 				}
@@ -195,17 +206,7 @@ func fromBase64Run(s wtf8.String, i, stop int, url bool, lastChunkHandling wtf8.
 			r.read = len(s)
 			return i, chunk, true
 		}
-		if url {
-			switch c {
-			case '+', '/':
-				c = 0
-			case '-':
-				c = '+'
-			case '_':
-				c = '/'
-			}
-		}
-		v := base64Value(c)
+		v := int(values[c])
 		if v < 0 {
 			r.err = "invalid character in the base64 string"
 			return i, chunk, true
