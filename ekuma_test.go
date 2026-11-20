@@ -3160,11 +3160,6 @@ func TestBigIntSizeLimit(t *testing.T) {
 		want string
 	}{
 		{
-			name: "bitwise operators",
-			src:  `var x = BigInt.asUintN(2 ** 30, -1n), r = []; for (var f of [() => ~x, () => x ^ -1n, () => -x & -2n, () => -x | x]) { try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); } } r.join()`,
-			want: "true,true,true,no error",
-		},
-		{
 			name: "powers of two",
 			src:  `[2n ** 40000000n === 1n << 40000000n, 4n ** 20000000n === 1n << 40000000n, (-2n) ** 33554433n === -(1n << 33554433n)].join()`,
 			want: "true,true,true",

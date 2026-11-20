@@ -24,11 +24,12 @@ const initialStackSize = 1 << 12
 // NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
 func NewVM(hostDefined any) *VM {
 	vm := &VM{
-		hostDefined:    hostDefined,
-		stack:          make([]Value, initialStackSize),
-		symbolRegistry: map[string]*Object{},
-		thrown:         Undefined,
-		mailbox:        newMailbox(),
+		hostDefined:         hostDefined,
+		stack:               make([]Value, initialStackSize),
+		symbolRegistry:      map[string]*Object{},
+		thrown:              Undefined,
+		mailbox:             newMailbox(),
+		maxBigIntResultBits: MaxBigIntBits,
 	}
 	vm.symbolShape = vm.newShape(nil)
 	vm.curRealm = &realm{}

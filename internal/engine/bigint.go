@@ -39,10 +39,9 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 // MaxBigIntBits is the largest number of bits of the magnitude of a BigInt.
 const MaxBigIntBits = numconv.MaxBigIntBits
 
-// checkBigIntBits throws a RangeError when n, a number of bits of a BigInt, is greater than
-// MaxBigIntBits.
+// checkBigIntBits throws a RangeError when a BigInt result of n bits exceeds the limit.
 func (vm *VM) checkBigIntBits(n int64) {
-	if n > MaxBigIntBits {
+	if n > vm.maxBigIntResultBits {
 		vm.ThrowRangeError("maximum BigInt size exceeded")
 	}
 }

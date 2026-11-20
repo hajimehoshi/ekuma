@@ -488,6 +488,10 @@ type VM struct {
 
 	// clock gives the current time, or is nil for time.Now.
 	clock func() time.Time
+
+	// maxBigIntResultBits is the bit limit for checked BigInt arithmetic results.
+	// Tests lower it to exercise overflow with small operands.
+	maxBigIntResultBits int64
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

@@ -3,6 +3,13 @@
 
 package engine
 
+// NewVMWithBigIntResultLimit returns a [VM] that allows up to maxBits bits in checked BigInt results.
+func NewVMWithBigIntResultLimit(maxBits int64) *VM {
+	vm := NewVM(nil)
+	vm.maxBigIntResultBits = maxBits
+	return vm
+}
+
 // InternedCount returns the number of entries in the table of interned strings of vm.
 func InternedCount(vm *VM) int {
 	return len(vm.strings.interned.entries)
