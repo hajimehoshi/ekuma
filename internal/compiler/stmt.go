@@ -517,14 +517,10 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.emit(bytecode.OpWith, v, 0, 0)
 		f.withDepth++
 		f.control = append(f.control, &ctl{kind: ctlWith})
-		start := f.pc()
 		f.stmt(s.Body, nil)
-		end := f.pc()
 		f.control = f.control[:len(f.control)-1]
 		f.withDepth--
 		f.emit(bytecode.OpPopScope, 0, 0, 0)
-		_ = start
-		_ = end
 	default:
 		f.c.fail(s, "unsupported statement %T", s)
 	}

@@ -149,9 +149,6 @@ const (
 	// ctlScope is a block scope that has variables.
 	ctlScope
 
-	// ctlIter is a for-of loop whose iterator must be closed when the loop is left.
-	ctlIter
-
 	// ctlWith is a with statement.
 	ctlWith
 
@@ -178,15 +175,13 @@ type pendingExit struct {
 type ctl struct {
 	kind ctlKind
 
-	labels      []string
-	isLoop      bool
-	isSwitch    bool
-	hasIter     bool
-	asyncIter   bool
-	breaks      []int
-	continues   []int
-	continuePC  int32
-	hasContinue bool
+	labels    []string
+	isLoop    bool
+	isSwitch  bool
+	hasIter   bool
+	asyncIter bool
+	breaks    []int
+	continues []int
 
 	// For ctlFinally: the registers of the completion and the jumps to the finally block.
 	kindReg  int32
@@ -197,7 +192,8 @@ type ctl struct {
 	// For ctlFinally: the scope whose using declarations it disposes, or nil for a try statement.
 	disposes *scope
 
-	// For ctlScope and ctlIter: the first register of the scope, or the iterator.
+	// For ctlScope: the first register of the scope.
+	// For ctlLoop with hasIter: the register holding the iterator.
 	// For ctlFinalizer: the register of the completion value of the finally block, and
 	// valueReg is the register of the completion value of the code around the try statement.
 	reg int32
