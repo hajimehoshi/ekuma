@@ -1207,6 +1207,106 @@ func forwardedArgument(n *ast.CallExpr) *ast.Identifier {
 	return nil
 }
 
+// callMember returns the member that supplies the receiver, and whether its optional chain
+// ends before the call.
+func callMember(callee ast.Expr) (*ast.MemberExpr, bool) {
+	if chain, ok := callee.(*ast.OptionalChain); ok {
+		m, ok := chain.Expr.(*ast.MemberExpr)
+		return m, ok
+	}
+	m, _ := callee.(*ast.MemberExpr)
+	return m, false
+}
+
+// localReceiver returns the local register holding the object of a named method, or -1.
+func (f *fn) localReceiver(object ast.Expr) int32 {
+	switch o := object.(type) {
+	case *ast.Identifier:
+		return f.localReg(o.Name)
+	case *ast.ThisExpr:
+		return f.localReg("this")
+	}
+	return -1
+}
+
+// callReference evaluates the callee into base. It reports whether it put a receiver in base+1.
+func (f *fn) callReference(callee ast.Expr, base int32) bool {
+	if c, chained := callMember(callee); c != nil {
+		if chained {
+			f.chains = append(f.chains, nil)
+		}
+		f.methodReference(c, base)
+		if chained {
+			end := f.jump()
+			f.patchAll(f.chains[len(f.chains)-1])
+			f.chains = f.chains[:len(f.chains)-1]
+			f.emit(bytecode.OpLoadUndef, base, 0, 0)
+			f.patch(end)
+		}
+		return true
+	}
+	if id, ok := callee.(*ast.Identifier); ok {
+		mark := f.top
+		if scope := f.resolveName(id.Name); scope >= 0 {
+			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
+			f.emit(f.getScopedOp(), base, scope, f.key(id.Name))
+			if f.evalScopesAround() {
+				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
+			} else {
+				f.emit(bytecode.OpMove, base+1, scope, 0)
+			}
+			end := f.jump()
+			f.patch(skip)
+			f.loadStatic(id.Name, f.resolve(id.Name), base, false)
+			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+			f.patch(end)
+			f.free(mark)
+			return true
+		}
+	}
+	f.expr(callee, base)
+	return false
+}
+
+// methodReference puts the method and its receiver in base and base+1.
+func (f *fn) methodReference(c *ast.MemberExpr, base int32) {
+	mark := f.top
+	defer f.free(mark)
+	if _, ok := c.Object.(*ast.SuperExpr); ok {
+		t := f.target(c)
+		f.loadTarget(t, base)
+		f.emit(bytecode.OpMove, base+1, t.this, 0)
+		return
+	}
+	if p, ok := c.Property.(*ast.Identifier); ok && !c.Computed {
+		if obj := f.localReceiver(c.Object); obj >= 0 {
+			f.chainCheck(c.Optional, obj)
+			f.setPos(p.Start())
+			f.emit(bytecode.OpGetMethod, base, obj, f.site(p.Name))
+			return
+		}
+	}
+	f.expr(c.Object, base+1)
+	f.chainCheck(c.Optional, base+1)
+	switch p := c.Property.(type) {
+	case *ast.PrivateName:
+		name := f.newReg()
+		f.loadVar("#"+p.Name, name, false)
+		f.setPos(p.Start())
+		f.emit(bytecode.OpGetPrivate, base, base+1, name)
+		return
+	case *ast.Identifier:
+		if !c.Computed {
+			f.setPos(p.Start())
+			f.emitGetProp(base, base+1, f.site(p.Name))
+			return
+		}
+	}
+	key := f.exprAny(c.Property)
+	f.setPos(c.Property.Start())
+	f.emit(bytecode.OpGetIndex, base, base+1, key)
+}
+
 // call compiles the call n and leaves its result in dst, or drops it when dst is -1.
 func (f *fn) call(n *ast.CallExpr, dst int32) {
 	mark := f.top
@@ -1221,148 +1321,55 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	// The callee goes to base, the this value to base+1 and the arguments follow.
 	base := f.newRegs(2)
 	op := bytecode.OpCall
-	// argsFirst is set when the arguments were put in place before the method was read.
-	argsFirst := false
+	var argsFirst bool
 	var regExpArg *ast.RegExpLit
 	// receiver is the site of a regular expression literal that is the this value, or -1.
 	receiver := int32(-1)
-	// pos is the position of the call: the property name of a method call, the name of
-	// the function, or the arguments after any other callee.
-	pos := n.Start()
-	callee := n.Callee
-	// A parenthesized optional chain that ends in a property access, as in (a?.b)(), keeps
-	// its object as the this value.
-	chained := false
-	if oc, ok := callee.(*ast.OptionalChain); ok {
-		if m, ok := oc.Expr.(*ast.MemberExpr); ok {
-			callee = m
-			chained = true
-			f.chains = append(f.chains, nil)
-		}
-	}
-	switch c := callee.(type) {
-	case *ast.MemberExpr:
-		if _, ok := c.Object.(*ast.SuperExpr); ok {
-			t := f.target(c)
-			f.loadTarget(t, base)
-			f.emit(bytecode.OpMove, base+1, t.this, 0)
-			f.free(base + 2)
-			break
-		}
+	pos := n.Callee.End()
+	var eval bool
+	if c, chained := callMember(n.Callee); c != nil {
 		pos = c.Property.Start()
-		if lit, ok := c.Object.(*ast.RegExpLit); ok && !c.Computed && !hasSpread(n.Args) {
-			if p, ok := c.Property.(*ast.Identifier); ok && (p.Name == "exec" || p.Name == "test") {
-				// The RegExp object never escapes from the original method, so the call
-				// decides whether to make it.
+		if _, super := c.Object.(*ast.SuperExpr); super {
+			pos = n.Start()
+		} else if p, ok := c.Property.(*ast.Identifier); ok && !c.Computed {
+			if lit, ok := c.Object.(*ast.RegExpLit); ok && !hasSpread(n.Args) && (p.Name == "exec" || p.Name == "test") {
+				// The call decides whether the literal's object needs to be made.
 				receiver = f.regExpSite(lit)
 				f.setPos(pos)
 				f.emit(bytecode.OpRegExpMethod, base, receiver, f.site(p.Name))
-				break
 			}
-		}
-		// obj is the register of the local variable or of the this value that is the object of
-		// a named method, and -1 otherwise.
-		obj := int32(-1)
-		if _, ok := c.Property.(*ast.Identifier); ok && !c.Computed {
-			switch o := c.Object.(type) {
-			case *ast.Identifier:
-				obj = f.localReg(o.Name)
-			case *ast.ThisExpr:
-				obj = f.localReg("this")
-			}
-		}
-		if obj >= 0 {
-			f.chainCheck(c.Optional, obj)
-		} else {
-			f.expr(c.Object, base+1)
-			f.chainCheck(c.Optional, base+1)
-		}
-		switch {
-		case !c.Computed:
-			if p, ok := c.Property.(*ast.PrivateName); ok {
-				name := f.newReg()
-				f.loadVar("#"+p.Name, name, false)
-				f.setPos(pos)
-				f.emit(bytecode.OpGetPrivate, base, base+1, name)
-				f.free(name)
-				break
-			}
-			name := c.Property.(*ast.Identifier).Name
-			f.setPos(pos)
-			if obj >= 0 {
-				// The call can then follow the method read right away.
-				if !c.Optional && !n.Optional && !chained && name != "call" && name != "apply" && f.top == base+2 && f.earlyArgs(n) {
-					for _, a := range n.Args {
-						f.expr(a, f.newReg())
-					}
-					argsFirst = true
+			if !c.Optional && !n.Optional && !chained && p.Name != "call" && p.Name != "apply" && f.localReceiver(c.Object) >= 0 && f.earlyArgs(n) {
+				// The call can follow the method read right away.
+				for _, a := range n.Args {
+					f.expr(a, f.newReg())
 				}
-				// The this value is a copy, which the arguments cannot change by assigning
-				// the variable.
-				f.emit(bytecode.OpGetMethod, base, obj, f.site(name))
-			} else {
-				f.emitGetProp(base, base+1, f.site(name))
+				argsFirst = true
 			}
-			switch name {
+			switch p.Name {
 			case "call":
 				if !hasSpread(n.Args) {
 					op = bytecode.OpCallCall
 				}
 			case "match", "replace", "replaceAll", "search", "split":
-				// The callee may be a String method that the RegExp object for a literal
-				// first argument never escapes from, so the object is made right before
-				// the call, once the callee is known.
+				// The call decides whether its first argument's RegExp object can escape.
 				if len(n.Args) > 0 && !hasSpread(n.Args) {
-					if lit, ok := n.Args[0].(*ast.RegExpLit); ok {
-						regExpArg = lit
-					}
+					regExpArg, _ = n.Args[0].(*ast.RegExpLit)
 				}
 			}
-		default:
-			key := f.exprAny(c.Property)
-			f.setPos(pos)
-			f.emit(bytecode.OpGetIndex, base, base+1, key)
-			f.free(base + 2)
 		}
-	case *ast.Identifier:
-		eval := c.Name == "eval" && !n.Optional
-		mark := f.top
-		if scope := f.resolveName(c.Name); scope >= 0 {
-			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(f.getScopedOp(), base, scope, f.key(c.Name))
-			if f.evalScopesAround() {
-				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
-			} else {
-				f.emit(bytecode.OpMove, base+1, scope, 0)
-			}
-			end := f.jump()
-			f.patch(skip)
-			f.loadStatic(c.Name, f.resolve(c.Name), base, false)
-			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
-			f.patch(end)
-			f.free(mark)
-		} else {
-			f.expr(callee, base)
-			if eval {
-				f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
-			} else {
-				op = f.undefinedThis(n.Args, base)
-			}
-		}
-		if eval {
-			op = bytecode.OpCallEval
-		}
-	default:
-		pos = callee.End()
-		f.expr(callee, base)
-		op = f.undefinedThis(n.Args, base)
+	} else if id, ok := n.Callee.(*ast.Identifier); ok {
+		pos = n.Start()
+		eval = id.Name == "eval" && !n.Optional
 	}
-	if chained {
-		end := f.jump()
-		f.patchAll(f.chains[len(f.chains)-1])
-		f.chains = f.chains[:len(f.chains)-1]
-		f.emit(bytecode.OpLoadUndef, base, 0, 0)
-		f.patch(end)
+	if receiver < 0 && !f.callReference(n.Callee, base) {
+		if eval {
+			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
+		} else {
+			op = f.undefinedThis(n.Args, base)
+		}
+	}
+	if eval {
+		op = bytecode.OpCallEval
 	}
 	f.chainCheck(n.Optional, base)
 
@@ -1597,21 +1604,7 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 	defer f.free(mark)
 	base := f.newRegs(2)
 	op, tailOp := bytecode.OpCall, bytecode.OpTailCall
-	switch c := n.Tag.(type) {
-	case *ast.MemberExpr:
-		if _, ok := c.Object.(*ast.SuperExpr); ok {
-			t := f.target(c)
-			f.loadTarget(t, base)
-			f.emit(bytecode.OpMove, base+1, t.this, 0)
-			f.free(base + 2)
-			break
-		}
-		t := f.target(c)
-		f.loadTarget(t, base)
-		f.emit(bytecode.OpMove, base+1, t.obj, 0)
-		f.free(base + 2)
-	default:
-		f.expr(n.Tag, base)
+	if !f.callReference(n.Tag, base) {
 		op, tailOp = bytecode.OpCallUndef, bytecode.OpTailCallUndef
 	}
 	var site bytecode.Template
