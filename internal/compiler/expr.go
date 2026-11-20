@@ -1824,6 +1824,12 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		switch {
 		case n.Op == ast.OpNone:
 			if local >= 0 {
+				if f.chainedStore(n.Value, name, local) {
+					if dst >= 0 && dst != local {
+						f.emit(bytecode.OpMove, dst, local, 0)
+					}
+					return
+				}
 				if f.singleWrite(n.Value) {
 					f.named(n.Value, local, inferred)
 				} else {
@@ -1937,6 +1943,83 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.result(dst, v)
 		}
 	}
+}
+
+// chainedStore compiles e, the value assigned to the local variable name in the register local,
+// when e is a property assignment whose value can be computed straight into local, and reports
+// whether it did.
+func (f *fn) chainedStore(e ast.Expr, name string, local int32) bool {
+	inner, ok := e.(*ast.AssignExpr)
+	if !ok || inner.Op != ast.OpNone {
+		return false
+	}
+	m, ok := inner.Target.(*ast.MemberExpr)
+	if !ok || m.Optional {
+		return false
+	}
+	if _, ok := m.Object.(*ast.SuperExpr); ok {
+		return false
+	}
+	if _, ok := m.Property.(*ast.PrivateName); ok {
+		return false
+	}
+	// The variable gets the value before the store, which can throw, so only code that cannot
+	// see the variable may run between them, and the reference must not read the variable.
+	if !f.unobserved(name) || mentions(m, name) || !f.singleWrite(inner.Value) {
+		return false
+	}
+	mark := f.top
+	defer f.free(mark)
+	t := f.assignTargetBefore(m, []ast.Expr{inner.Value}, true, false, false)
+	f.expr(inner.Value, local)
+	f.storeTarget(t, local)
+	return true
+}
+
+// unobserved reports whether the local variable name can be read only by the code of f outside
+// exception handlers.
+func (f *fn) unobserved(name string) bool {
+	// Other code reads a register only through the closures of the function, which read the
+	// registers of the variables they capture, a direct eval, and the arguments object or
+	// Function.prototype.arguments for a parameter. Code run after a throw reads it only in
+	// a catch or finally block of the function.
+	if f.node == nil || f.node.Nested != 0 || f.anyMutated || f.catchDepth > 0 {
+		return false
+	}
+	if name == "arguments" || f.isParam(name) {
+		return false
+	}
+	for _, c := range f.control {
+		if c.kind == ctlFinally {
+			return false
+		}
+	}
+	return true
+}
+
+// isParam reports whether name is a parameter of f.
+func (f *fn) isParam(name string) bool {
+	found := false
+	for _, p := range f.node.Params {
+		patternNames(p, func(id *ast.Identifier) {
+			if id.Name == name {
+				found = true
+			}
+		})
+	}
+	return found
+}
+
+// mentions reports whether the identifier name occurs in n.
+func mentions(n ast.Node, name string) bool {
+	found := false
+	walk(n, func(m ast.Node) bool {
+		if id, ok := m.(*ast.Identifier); ok && id.Name == name {
+			found = true
+		}
+		return !found
+	})
+	return found
 }
 
 func (f *fn) yield(n *ast.YieldExpr, dst int32) {

@@ -54,6 +54,12 @@ func TestValuesWithoutCopies(t *testing.T) {
 			want: 1,
 		},
 		{
+			name: "property store assigned to a local",
+			src:  `function f(a, i) { var v; v = a[i] = i * 2; return v; }`,
+			op:   bytecode.OpMove,
+			want: 0,
+		},
+		{
 			name: "keys of compound assignments and updates",
 			src:  `function f(o, i) { o[i] += 1; o[++i]++; }`,
 			op:   bytecode.OpMove,
