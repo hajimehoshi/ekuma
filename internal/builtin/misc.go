@@ -543,20 +543,21 @@ func initMath(vm *engine.VM) {
 		return engine.Number(sumPrecise(vm, arg(args, 0)))
 	})
 	method(vm, m, "hypot", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nums := make([]float64, len(args))
-		for i, a := range args {
-			nums[i] = vm.ToNumber(a)
-		}
-		r := 0.0
-		nan := false
-		for _, n := range nums {
-			if math.IsInf(n, 0) {
-				return engine.Number(math.Inf(1))
-			}
-			if n != n {
+		var r float64
+		var inf, nan bool
+		for _, a := range args {
+			n := vm.ToNumber(a)
+			switch {
+			case math.IsInf(n, 0):
+				inf = true
+			case math.IsNaN(n):
 				nan = true
+			default:
+				r = math.Hypot(r, n)
 			}
-			r = math.Hypot(r, n)
+		}
+		if inf {
+			return engine.Number(math.Inf(1))
 		}
 		if nan {
 			return engine.Number(math.NaN())
