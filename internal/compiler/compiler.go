@@ -1637,14 +1637,21 @@ func (c *compiler) globalLexical(name string) bool {
 // localReg returns the register of the variable name when it is a local of f that can be
 // read without a check, and -1 otherwise.
 func (f *fn) localReg(name string) int32 {
+	if b := f.uncheckedLocal(name); b != nil {
+		return b.reg
+	}
+	return -1
+}
+
+func (f *fn) uncheckedLocal(name string) *binding {
 	if f.dynDepth(name) > 0 {
-		return -1
+		return nil
 	}
 	b, _ := f.lookupLocal(name)
 	if b == nil || b.tdz || b.alwaysCheck {
-		return -1
+		return nil
 	}
-	return b.reg
+	return b
 }
 
 // declareAnnexBGlobal declares the global variable name of a block-level function when it can,

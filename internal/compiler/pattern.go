@@ -208,14 +208,10 @@ func (f *fn) targetReg(e ast.Pattern, mode patMode) int32 {
 // assignableReg returns the register of the local variable name when an assignment to it is a
 // plain register write, or -1.
 func (f *fn) assignableReg(name string) int32 {
-	r := f.localReg(name)
-	if r < 0 {
-		return -1
+	if b := f.uncheckedLocal(name); b != nil && (b.kind == bindVar || b.kind == bindLet) {
+		return b.reg
 	}
-	if b, _ := f.lookupLocal(name); b.kind != bindVar && b.kind != bindLet {
-		return -1
-	}
-	return r
+	return -1
 }
 
 // elision steps the iterator it, it+1 without reading the value of the iterator result, as

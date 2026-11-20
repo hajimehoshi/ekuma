@@ -787,19 +787,17 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 	}
 	switch arg := n.Arg.(type) {
 	case *ast.Identifier:
-		if r := f.localReg(arg.Name); r >= 0 {
-			if b, _ := f.lookupLocal(arg.Name); b.kind == bindVar || b.kind == bindLet {
-				switch {
-				case dst < 0 || dst == r:
-					f.emit(op, r, r, 0)
-				case n.Prefix:
-					f.emit(op, r, r, 0)
-					f.emit(bytecode.OpMove, dst, r, 0)
-				default:
-					f.emit(postOp, dst, r, 0)
-				}
-				return
+		if r := f.assignableReg(arg.Name); r >= 0 {
+			switch {
+			case dst < 0 || dst == r:
+				f.emit(op, r, r, 0)
+			case n.Prefix:
+				f.emit(op, r, r, 0)
+				f.emit(bytecode.OpMove, dst, r, 0)
+			default:
+				f.emit(postOp, dst, r, 0)
 			}
+			return
 		}
 		scope := f.resolveName(arg.Name)
 		old := f.newReg()
@@ -1111,11 +1109,9 @@ func (f *fn) immediateOperand(e ast.Expr, rest ...ast.Expr) int32 {
 	// A prefix update of a local variable leaves its result in the variable.
 	if update, ok := e.(*ast.UpdateExpr); ok && update.Prefix {
 		if id, ok := update.Arg.(*ast.Identifier); ok {
-			if r := f.localReg(id.Name); r >= 0 && !f.clobbers(id.Name, rest...) {
-				if b, _ := f.lookupLocal(id.Name); b.kind == bindVar || b.kind == bindLet {
-					f.expr(e, r)
-					return r
-				}
+			if r := f.assignableReg(id.Name); r >= 0 && !f.clobbers(id.Name, rest...) {
+				f.expr(e, r)
+				return r
 			}
 		}
 	}
