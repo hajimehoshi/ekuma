@@ -1192,6 +1192,9 @@ func (f *fn) nestedAssigns(name string) bool {
 	if n == nil {
 		return len(f.c.prog.Assigned[name]) > 0
 	}
+	if n.Nested == 0 {
+		return false
+	}
 	return f.c.assignedIn(name, n.Order-n.Nested, n.Order-1)
 }
 

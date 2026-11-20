@@ -192,23 +192,13 @@ func (f *fn) operand(e ast.Expr, rest ...ast.Expr) int32 {
 // exprNew compiles e into a newly allocated register and returns it.
 func (f *fn) exprNew(e ast.Expr) int32 {
 	r := f.newReg()
-	// Nothing else reads r before e is done, so a literal can be built in r itself.
-	switch e := e.(type) {
-	case *ast.ArrayLit:
-		f.arrayLitIn(e, r)
-	case *ast.ObjectLit:
-		f.objectLitIn(e, r)
-	case *ast.CondExpr:
-		f.condNew(e, r)
-	default:
-		f.expr(e, r)
-	}
+	f.exprInto(e, r, true)
 	return r
 }
 
 // condNew compiles the conditional n into the register dst, which nothing else reads before n is
-// done.
-func (f *fn) condNew(n *ast.CondExpr, dst int32) {
+// done, when n is x ? x : y for a local variable x, and reports whether it did.
+func (f *fn) condNew(n *ast.CondExpr, dst int32) bool {
 	if t, ok := n.Test.(*ast.Identifier); ok {
 		// Reading a local variable twice is reading it once, so x ? x : y is x || y. y cannot
 		// read dst, which x is written to first.
@@ -217,10 +207,10 @@ func (f *fn) condNew(n *ast.CondExpr, dst int32) {
 			skip := f.emit(bytecode.OpJumpIf, 0, dst, 0)
 			f.expr(n.Alternate, dst)
 			f.patch(skip)
-			return
+			return true
 		}
 	}
-	f.expr(n, dst)
+	return false
 }
 
 // exprAny compiles e and returns the register that holds its value.
@@ -257,6 +247,11 @@ func (f *fn) effect(e ast.Expr) {
 
 // expr compiles e and leaves its value in the register dst.
 func (f *fn) expr(e ast.Expr, dst int32) {
+	f.exprInto(e, dst, false)
+}
+
+// exprInto is like expr. With fresh, nothing else reads dst before e is done.
+func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 	f.c.step()
 	switch e := e.(type) {
 	case *ast.NumberLit:
@@ -297,9 +292,18 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 	case *ast.TaggedTemplate:
 		f.taggedTemplate(e, dst)
 	case *ast.ArrayLit:
-		f.arrayLit(e, dst)
+		// A literal is built in a fresh register itself.
+		if fresh {
+			f.arrayLitIn(e, dst)
+		} else {
+			f.arrayLit(e, dst)
+		}
 	case *ast.ObjectLit:
-		f.objectLit(e, dst)
+		if fresh {
+			f.objectLitIn(e, dst)
+		} else {
+			f.objectLit(e, dst)
+		}
 	case *ast.Function:
 		name := ""
 		if e.Name != nil {
@@ -332,6 +336,9 @@ func (f *fn) expr(e ast.Expr, dst int32) {
 	case *ast.AssignExpr:
 		f.assign(e, dst)
 	case *ast.CondExpr:
+		if fresh && f.condNew(e, dst) {
+			return
+		}
 		no := f.jumpIfFalse(e.Test)
 		f.expr(e.Consequent, dst)
 		end := f.jump()
