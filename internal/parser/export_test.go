@@ -30,12 +30,12 @@ func KeptScratch(srcs ...string) (scopes, names, items int, cleared bool) {
 		p.popScope()
 		p.giveBack()
 	}
-	cleared = zero(s.stmts) && zero(s.exprs) && zero(s.pending) && zero(s.assigned) && zero(s.deferred) && zero(s.labels)
+	cleared = zero(s.stmts) && zero(s.exprs) && zero(s.props) && zero(s.pending) && zero(s.assigned) && zero(s.deferred) && zero(s.labels)
 	for _, sc := range s.scopes {
 		names = max(names, cap(sc.names))
 		cleared = cleared && zero(sc.names) && zero(sc.hoist) && sc.ast == nil && sc.parent == nil && sc.index == nil
 	}
-	return len(s.scopes), names, max(cap(s.stmts), cap(s.exprs)), cleared
+	return len(s.scopes), names, max(cap(s.stmts), cap(s.exprs), cap(s.props)), cleared
 }
 
 // zero reports whether every element of list up to its capacity is the zero value.

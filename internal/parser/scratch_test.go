@@ -45,7 +45,7 @@ func TestScratchLimits(t *testing.T) {
 		{
 			name: "labels, arrow functions and assignments",
 			srcs: []string{
-				"a: for (;;) { x = 1; break a; }\nvar f = (p, [q] = [1]) => { p = q; };\nfunction g() { { let y; y = 2; } }\n",
+				"a: for (;;) { x = {a: 1}; break a; }\nvar f = (p, [q] = [1]) => { p = q; };\nfunction g() { { let y; y = 2; } }\n",
 			},
 			wantScopes: -1,
 		},

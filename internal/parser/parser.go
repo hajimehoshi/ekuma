@@ -268,6 +268,10 @@ type parser struct {
 	nodes nodeSlabs
 	stmts listStack[ast.Stmt]
 	exprs listStack[ast.Expr]
+	props listStack[ast.Property]
+
+	// stringBuf is the temporary storage for decoding escaped string literals.
+	stringBuf []byte
 
 	// scratch is the set that the storage of the parse outside the tree came from.
 	scratch *scratch

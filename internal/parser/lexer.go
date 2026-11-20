@@ -802,7 +802,7 @@ func (p *parser) scanString(start int, quote byte) {
 		pos++
 	}
 
-	buf := append(make([]byte, 0, pos-start+16), src[start+1:pos]...)
+	buf := append(p.stringBuf[:0], src[start+1:pos]...)
 	for {
 		if pos >= len(src) {
 			p.fail(start, "unterminated string literal")
@@ -811,6 +811,7 @@ func (p *parser) scanString(start int, quote byte) {
 		switch c {
 		case quote:
 			t.str = string(buf)
+			p.stringBuf = buf[:0]
 			p.pos = pos + 1
 			t.end = int32(p.pos)
 			return

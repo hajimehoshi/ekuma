@@ -38,6 +38,29 @@ func BenchmarkWorkload(b *testing.B) {
 	}
 }
 
+// BenchmarkParseTranslationTable parses a nested object literal containing escaped strings.
+func BenchmarkParseTranslationTable(b *testing.B) {
+	var src strings.Builder
+	src.WriteString("var messages = {\n")
+	for i := range 1024 {
+		fmt.Fprintf(&src, "\"message%d\": {\n", i)
+		for j := range 12 {
+			fmt.Fprintf(&src, "\"language%d\": \"Line %d\\nMessage %d\",\n", j, j, i)
+		}
+		src.WriteString("},\n")
+	}
+	src.WriteString("};")
+	text := src.String()
+	b.SetBytes(int64(len(text)))
+	b.ReportAllocs()
+	for b.Loop() {
+		var vm ekuma.VM
+		if _, err := vm.ParseScript("messages.js", text); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 // gameDataJSON returns JSON text shaped like the data files of a 2D role-playing game:
 // an array of n records with mixed fields, nested arrays of numbers and some non-ASCII strings.
 func gameDataJSON(n int) string {

@@ -1308,10 +1308,11 @@ func (p *parser) parseObject() ast.Expr {
 	p.f.noIn = false
 	var cover, patErr int32
 	var hasProto bool
+	mark := p.props.mark()
 	for p.t.kind != tRBrace {
-		obj.Properties = append(obj.Properties, ast.Property{})
-		prop := &obj.Properties[len(obj.Properties)-1]
-		p.parseProperty(prop, &cover, &patErr, &hasProto)
+		var prop ast.Property
+		p.parseProperty(&prop, &cover, &patErr, &hasProto)
+		p.props.push(prop)
 		if p.t.kind != tRBrace {
 			if prop.Kind == ast.PropertySpread && p.t.kind == tComma && patErr == 0 {
 				patErr = p.t.start + 1
@@ -1321,6 +1322,7 @@ func (p *parser) parseObject() ast.Expr {
 	}
 	p.next()
 	p.f.noIn = noIn
+	obj.Properties = p.props.take(mark)
 	obj.EndOff = p.prevEnd
 	if cover != 0 {
 		p.cover, p.coverNode = cover, obj

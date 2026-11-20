@@ -18,6 +18,7 @@ type scratch struct {
 
 	stmts    []ast.Stmt
 	exprs    []ast.Expr
+	props    []ast.Property
 	pending  []*ast.Scope
 	assigned []string
 	deferred []string
@@ -72,6 +73,7 @@ func (p *parser) takeScratch(s *scratch) {
 	p.pool = s.scopes
 	p.stmts.items = s.stmts
 	p.exprs.items = s.exprs
+	p.props.items = s.props
 	p.pending = s.pending
 	p.assigned = s.assigned
 	p.deferred = s.deferred
@@ -98,6 +100,7 @@ func (p *parser) giveBack() *scratch {
 		scopes:   keptScopes(p.pool),
 		stmts:    kept(p.stmts.items, maxFreeItems),
 		exprs:    kept(p.exprs.items, maxFreeItems),
+		props:    kept(p.props.items, maxFreeList),
 		pending:  kept(p.pending, maxFreeList),
 		assigned: kept(p.assigned, maxFreeList),
 		deferred: kept(p.deferred, maxFreeList),
