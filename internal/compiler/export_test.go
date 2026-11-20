@@ -13,6 +13,7 @@ const (
 	MaxSparseMapLen = maxSparseMapLen
 	MaxFreeCode     = maxFreeCode
 	MaxFreeChunks   = maxFreeChunks
+	MaxSearches     = maxSearches
 )
 
 // KeptScratch compiles the scripts progs in turn with one scratch set and returns the total

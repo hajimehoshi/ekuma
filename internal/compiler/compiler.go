@@ -1285,8 +1285,9 @@ func (f *fn) resolveSym(sym *symbol, name string) ref {
 	if shared {
 		f.parent.copyCands = append(f.parent.copyCands, copyCandidate{
 			fn:    f.f,
-			b:     r.b,
 			index: i,
+			reg:   r.b.reg,
+			b:     r.b,
 		})
 	}
 	return ref{

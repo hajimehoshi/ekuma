@@ -36,6 +36,21 @@ func manyCaptured(n int) string {
 	return "var " + strings.Join(decls, ", ") + "; const all = () => " + strings.Join(uses, " + ") + ";"
 }
 
+// closuresInLoop returns a function that assigns n variables in a loop and then returns n
+// closures, one for each variable, of which inner captures the first.
+func closuresInLoop(n int) string {
+	var vars, assigns, closures []string
+	for i := range n {
+		vars = append(vars, fmt.Sprintf("v%d", i))
+		assigns = append(assigns, fmt.Sprintf("v%d = x;", i))
+		if i > 0 {
+			closures = append(closures, fmt.Sprintf("() => v%d", i))
+		}
+	}
+	return "function f(x) { var " + strings.Join(vars, ", ") + "; while (x) { " + strings.Join(assigns, " ") +
+		" if (x.y) { const inner = () => v0; return [inner, " + strings.Join(closures, ", ") + "]; } x = x.next; } }"
+}
+
 func TestUpvalByValue(t *testing.T) {
 	testCases := []struct {
 		name string
@@ -102,6 +117,16 @@ func TestUpvalByValue(t *testing.T) {
 		{
 			name: "var assigned in a loop that creates the closure, after more than 64 other captured variables",
 			src:  `function f(xs) { ` + manyCaptured(70) + ` var v; var fs = [all]; for (var i = 0; i < xs.length; i++) { v = xs[i]; const inner = () => v; fs.push(inner); } return fs; }`,
+			want: false,
+		},
+		{
+			name: "var assigned in a loop before as many closures are created as are searched",
+			src:  closuresInLoop(compiler.MaxSearches),
+			want: true,
+		},
+		{
+			name: "var assigned in a loop before more closures are created than are searched",
+			src:  closuresInLoop(compiler.MaxSearches + 1),
 			want: false,
 		},
 		{
