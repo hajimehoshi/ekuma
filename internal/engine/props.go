@@ -1518,7 +1518,7 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 			if k.kind != kindString {
 				continue
 			}
-			if i, ok := stringIndex(k.str); ok {
+			if i, ok := k.arrayIndex(); ok {
 				if n := len(keys); n > 0 && keys[n-1].idx > i {
 					sorted = false
 				}
@@ -1538,7 +1538,7 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 			continue
 		}
 		if o.flags&objSparse != 0 {
-			if _, ok := stringIndex(k.str); ok {
+			if _, ok := k.knownArrayIndex(); ok {
 				continue
 			}
 		}
