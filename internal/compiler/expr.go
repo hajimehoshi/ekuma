@@ -80,12 +80,18 @@ func numberLit(e ast.Expr) (float64, bool) {
 }
 
 // pure reports whether evaluating e cannot run any other code.
-func pure(e ast.Expr) bool {
+func (f *fn) pure(e ast.Expr) bool {
 	switch e := e.(type) {
-	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.Identifier, *ast.ThisExpr, *ast.BigIntLit:
+	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.ThisExpr, *ast.BigIntLit:
 		return true
+	case *ast.Identifier:
+		return f.localReg(e.Name) >= 0
 	case *ast.UnaryExpr:
-		return (e.Op == ast.OpNeg || e.Op == ast.OpNot) && pure(e.Arg)
+		if e.Op == ast.OpNot {
+			return f.pure(e.Arg)
+		}
+		_, ok := numberLit(e)
+		return ok
 	}
 	return false
 }
@@ -138,7 +144,7 @@ func (f *fn) singleWrite(e ast.Expr) bool {
 // clobbers reports whether evaluating the expressions rest can change the local variable name.
 func (f *fn) clobbers(name string, rest ...ast.Expr) bool {
 	for _, e := range rest {
-		if e == nil || pure(e) {
+		if e == nil || f.pure(e) {
 			continue
 		}
 		if f.otherCodeAssigns(name) {
@@ -949,15 +955,15 @@ func (f *fn) heldOperand(e ast.Expr, opaque bool, rest ...ast.Expr) int32 {
 // sourceOperand compiles the source e of a destructuring to the pattern p and returns the
 // register that holds its value until the destructuring is done.
 func (f *fn) sourceOperand(e ast.Expr, p ast.Pattern) int32 {
-	if id, ok := e.(*ast.Identifier); ok {
-		if r := f.localReg(id.Name); r >= 0 && patternAssigns(p, id.Name) {
-			t := f.newReg()
-			f.emit(bytecode.OpMove, t, r, 0)
-			return t
+	switch e := e.(type) {
+	case *ast.Identifier:
+		if r := f.localReg(e.Name); r >= 0 && !patternAssigns(p, e.Name) && !f.otherCodeAssigns(e.Name) {
+			return r
 		}
+	case *ast.ThisExpr:
+		return f.operand(e)
 	}
-	// Getters, iterators and proxy traps run while the source is in use.
-	return f.heldOperand(e, true)
+	return f.exprNew(e)
 }
 
 // assignTarget evaluates the property reference n for a store, which may follow a read.
@@ -1956,7 +1962,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			// A strict assignment to a global that does not exist yet throws even when the
 			// value creates the global.
 			resolved := int32(-1)
-			if scope < 0 && f.strict() && !pure(n.Value) && f.undeclaredGlobal(name) {
+			if scope < 0 && f.strict() && !f.pure(n.Value) && f.undeclaredGlobal(name) {
 				resolved = f.newReg()
 				f.emit(bytecode.OpResolveGlobal, resolved, f.key(name), f.globalCache())
 			}
