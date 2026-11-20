@@ -7,7 +7,34 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
+
+func TestDisplayStringLoneSurrogates(t *testing.T) {
+	vm := engine.NewVM(nil)
+	// A low surrogate before a high one makes two lone surrogates in a row.
+	s := wtf8.FromUTF16([]uint16{'a', 0xDE00, 0xD83D})
+	for _, tc := range []struct {
+		name string
+		v    engine.Value
+		want string
+	}{
+		{
+			name: "string",
+			v:    vm.NewString(s),
+			want: "a��",
+		},
+		{
+			name: "symbol",
+			v:    engine.ObjectValue(vm.NewSymbol(s, true)),
+			want: "Symbol(a��)",
+		},
+	} {
+		if got := vm.DisplayString(tc.v); got != tc.want {
+			t.Errorf("%s: DisplayString = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
 
 func TestZeroValueUndefined(t *testing.T) {
 	var v engine.Value

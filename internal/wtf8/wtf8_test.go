@@ -168,8 +168,9 @@ func TestCompare(t *testing.T) {
 }
 
 func TestToValidUTF8(t *testing.T) {
-	got := wtf8.ToValidUTF8(wtf8.FromUTF16([]uint16{'a', 0xD83D, 'b', 0xD83D, 0xDE00, 0xDE00}))
-	want := "a�b\U0001F600�"
+	// The last two lone surrogates are in a row, and each becomes a U+FFFD of its own.
+	got := wtf8.ToValidUTF8(wtf8.FromUTF16([]uint16{'a', 0xD83D, 'b', 0xD83D, 0xDE00, 0xDE00, 0xD83D}))
+	want := "a�b\U0001F600��"
 	if got != want {
 		t.Errorf("ToValidUTF8 = %q, want %q", got, want)
 	}
