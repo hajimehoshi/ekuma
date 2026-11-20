@@ -691,6 +691,7 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 			varScope:   f.scope,
 			upvals:     f.upvals,
 			upvalSaves: f.upvalSaves,
+			control:    f.control,
 			mapsPeak:   f.mapsPeak,
 		}
 	} else {
@@ -767,6 +768,8 @@ func (f *fn) finish() *bytecode.Func {
 	clear(f.mutated)
 	clear(f.upvals)
 	clear(f.upvalSaves)
+	// The constructs that were popped off the control stack are still in its storage.
+	clear(f.control[:cap(f.control)])
 	*f = fn{
 		numConsts:  f.numConsts,
 		strConsts:  f.strConsts,
@@ -776,6 +779,7 @@ func (f *fn) finish() *bytecode.Func {
 		scope:      root,
 		upvals:     f.upvals[:0],
 		upvalSaves: f.upvalSaves[:0],
+		control:    f.control[:0],
 		mapsPeak:   max(f.mapsPeak, n),
 	}
 	sc.fns = append(sc.fns, f)
