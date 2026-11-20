@@ -1022,7 +1022,7 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 		var p Pacer
 		for _, idx := range slices.Backward(idxs) {
 			p.Step(vm)
-			k := vm.indexName(idx)
+			k := vm.indexKey(idx)
 			if p, _ := o.shape.lookup(k); p.flags&FlagConfigurable == 0 {
 				n = idx + 1
 				ok = false
