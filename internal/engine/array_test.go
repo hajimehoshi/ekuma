@@ -21,3 +21,34 @@ func TestArrayWithLengthFilledFromEnd(t *testing.T) {
 		t.Errorf("got %d interned strings, want %d", got, before)
 	}
 }
+
+func TestPushCapacityAfterLongRuns(t *testing.T) {
+	vm := newVM(t)
+	v, err := runScript(vm, "build", `
+		function build(n, a = []) {
+			while (a.length < n) a.push(a.length);
+			return a;
+		}
+		build(256);
+		build(256);
+		// Leave a 64-element shifted prefix in the old backing storage.
+		const shifted = new Array(128).fill(0);
+		for (let i = 0; i < 64; i++) shifted.shift();
+		shifted.length = 0;
+		build(8, shifted);
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Filling the first grown buffer can reserve space based on past runs.
+	if got := engine.ElementStorage(v); got <= 8 || got > 64 {
+		t.Errorf("capacity after long runs: got %d, want more than 8 and at most 64", got)
+	}
+	v, err = runScript(vm, "short", "build(8)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := engine.ElementStorage(v); got > 8 {
+		t.Errorf("capacity after a short run: got %d, want at most 8", got)
+	}
+}

@@ -657,6 +657,45 @@ func BenchmarkTypedArraySetOverlap(b *testing.B) {
 	}
 }
 
+// BenchmarkCollectArray measures collecting the truthy entries of a holey array.
+func BenchmarkCollectArray(b *testing.B) {
+	const setup = `
+		const source = {
+			entries: [],
+			collect() {
+				var result = [];
+				for (var i = 0; i < this.entries.length; i++) {
+					var entry = this.entries[i];
+					if (!!entry) result.push(entry);
+				}
+				return result;
+			}
+		};
+		for (let i = 1; i < 79; i++) {
+			if (i !== 57 && i !== 71) source.entries[i] = { id: i };
+		}
+		function run(n) {
+			let count = 0;
+			for (let i = 0; i < n; i++) count += source.collect().length;
+			return count;
+		}
+	`
+	var vm ekuma.VM
+	ctx := b.Context()
+	if _, err := runScript(ctx, &vm, "collect.js", setup); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	v, err := vm.Global().Call(ctx, "run", b.N)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if got, want := v.Int(), 76*b.N; got != want {
+		b.Errorf("entry count: got %d, want %d", got, want)
+	}
+}
+
 // BenchmarkSparseArray measures the array methods that skip or read holes on a sparse array of
 // length 100000 that has 10 elements. One iteration is one call of the method. The methods that
 // change the array run on a new array in each iteration.

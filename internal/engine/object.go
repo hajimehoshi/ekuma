@@ -134,9 +134,9 @@ type Object struct {
 	// Packed-string sentinels use zero bytes to carry only the byte length.
 	str string
 
-	// ext is the internal state of a built-in object. For a string that is not interned
-	// it is the interned string with the same content, once that was looked up, or the state
-	// of concatenations onto it (see concat.go).
+	// ext is the internal state of a built-in object or the push size hint of a closure.
+	// For a string that is not interned it is the interned string with the same content,
+	// once that was looked up, or the state of concatenations onto it (see concat.go).
 	// When the object has side data, ext is its *objectMeta, which holds the internal state
 	// instead. See [Object.extState] and [Object.meta].
 	ext any

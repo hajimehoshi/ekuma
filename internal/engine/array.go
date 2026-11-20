@@ -223,6 +223,76 @@ func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
 	return o.length, true
 }
 
+const pushSampleInterval = 8
+
+// pushSizeHint tracks single-element pushes at one call site in a JavaScript closure.
+type pushSizeHint struct {
+	pc int
+	// previous and current are the sampled sizes of successive runs at pc.
+	// A push reaching minElems+1 starts a new run.
+	previous uint16
+	current  uint16
+	// target is the smaller of the two completed samples when a run starts.
+	target uint16
+}
+
+// PushElements is the ordinary-array fast path for the built-in Array.prototype.push.
+// It returns the new length on success and may reserve space based on earlier pushes at the calling site.
+func (vm *VM) PushElements(o *Object, vals []Value) (uint32, bool) {
+	n, ok := vm.AppendElements(o, vals)
+	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
+		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
+			vm.observePush(o)
+		}
+	}
+	return n, ok
+}
+
+// observePush samples the array after a single-element push at the calling frame's pc.
+func (vm *VM) observePush(o *Object) {
+	if len(vm.frames) == 0 {
+		return
+	}
+	n := len(o.elems)
+	fr := &vm.frames[len(vm.frames)-1]
+	state := fr.cl.extState()
+	h, _ := state.(*pushSizeHint)
+	if h == nil || h.pc != fr.pc {
+		if n < 2*pushSampleInterval {
+			return
+		}
+		if h == nil {
+			if state != nil {
+				return
+			}
+			h = new(pushSizeHint)
+			fr.cl.setExtState(h)
+		}
+		*h = pushSizeHint{
+			pc: fr.pc,
+		}
+	}
+	if n == minElems+1 {
+		h.target, h.previous, h.current = min(h.previous, h.current), h.current, 0
+	}
+	if n >= 2*pushSampleInterval {
+		// The final length can fall between samples. Limit the allowance
+		// to space the array already acquired.
+		h.current = uint16(min(n+pushSampleInterval-1, cap(o.elems), maxPresizedElems))
+	}
+	if n == cap(o.elems) {
+		// Bound the cost of a short result following larger ones.
+		if room := min(int(h.target), 8*n); room > n {
+			elems := make([]Value, n, room)
+			copy(elems, o.elems)
+			o.elems = elems
+			if m := o.meta(); m != nil {
+				m.shiftedElems, m.shiftedCap = 0, 0
+			}
+		}
+	}
+}
+
 // PrependElements adds vals at the start of the array o and returns the new length.
 func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
 	if !vm.elemsMovable(o) || !vm.newElementsPlain(o) {

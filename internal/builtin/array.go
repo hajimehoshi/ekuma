@@ -371,7 +371,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 
 	method(vm, proto, "push", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if n, ok := vm.AppendElements(o, args); ok {
+		if n, ok := vm.PushElements(o, args); ok {
 			return engine.Number(float64(n))
 		}
 		n := vm.LengthOfArrayLike(o)
