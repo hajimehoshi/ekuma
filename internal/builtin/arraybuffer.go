@@ -274,8 +274,8 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		if nb == nil || !nb.IsShared() {
 			vm.ThrowTypeError("species constructor did not return a SharedArrayBuffer")
 		}
-		if r == this.Object() {
-			vm.ThrowTypeError("species constructor returned the same SharedArrayBuffer")
+		if b.SameDataBlock(nb) {
+			vm.ThrowTypeError("species constructor returned a SharedArrayBuffer with the same data block")
 		}
 		if nb.ByteLength() < newLen {
 			vm.ThrowTypeError("species constructor returned a too small SharedArrayBuffer")

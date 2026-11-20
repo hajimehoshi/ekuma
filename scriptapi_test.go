@@ -403,6 +403,31 @@ func TestAtomicsWaitCannotBlock(t *testing.T) {
 	}
 }
 
+func TestSharedArrayBufferSliceSameDataBlock(t *testing.T) {
+	var vm ekuma.VM
+	source, err := runScript(t.Context(), &vm, "source", `
+		const source = new SharedArrayBuffer(4);
+		const bytes = new Uint8Array(source);
+		bytes.set([10, 20, 30, 40]);
+		source.constructor = { [Symbol.species]: function () { return alias; } };
+		source;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := vm.Global().Set("alias", source.SharedDataBlock()); err != nil {
+		t.Fatal(err)
+	}
+	_, err = source.Call(t.Context(), "slice", 1, 3)
+	var ex *ekuma.ScriptError
+	if !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "TypeError") {
+		t.Errorf("slice: got %v, want a TypeError", err)
+	}
+	if got, want := run(t, &vm, `bytes.join()`), "10,20,30,40"; got != want {
+		t.Errorf("source bytes after slice: got %s, want %s", got, want)
+	}
+}
+
 func TestSharedDataBlockOfNonShared(t *testing.T) {
 	var vm ekuma.VM
 	ab, err := runScript(t.Context(), &vm, "ab", `new ArrayBuffer(4)`)
