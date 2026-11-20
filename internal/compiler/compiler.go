@@ -824,6 +824,43 @@ func (f *fn) patchAll(list []int) {
 	}
 }
 
+// jumps is a list of jump instructions that go to the same place.
+type jumps struct {
+	// first is the index of a jump when ok is set, and rest holds the indices of the others.
+	ok    bool
+	first int
+	rest  []int
+}
+
+// jumpAt returns the list of the jump instruction at index i.
+func jumpAt(i int) jumps {
+	return jumps{
+		ok:    true,
+		first: i,
+	}
+}
+
+// join returns the jumps of l and m together.
+func (l jumps) join(m jumps) jumps {
+	switch {
+	case !m.ok:
+		return l
+	case !l.ok:
+		return m
+	}
+	l.rest = append(l.rest, m.first)
+	l.rest = append(l.rest, m.rest...)
+	return l
+}
+
+// patchJumps makes the jumps of l jump to the next instruction.
+func (f *fn) patchJumps(l jumps) {
+	if l.ok {
+		f.patch(l.first)
+	}
+	f.patchAll(l.rest)
+}
+
 // patchC is patch for the instructions that jump to their C operand.
 func (f *fn) patchC(i int) {
 	f.f.Code[i].C = f.pc()

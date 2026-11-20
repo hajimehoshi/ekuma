@@ -342,7 +342,7 @@ func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 		no := f.jumpIfFalse(e.Test)
 		f.expr(e.Consequent, dst)
 		end := f.jump()
-		f.patchAll(no)
+		f.patchJumps(no)
 		f.expr(e.Alternate, dst)
 		f.patch(end)
 	case *ast.CallExpr:
@@ -576,32 +576,33 @@ func (f *fn) literalJump(n *ast.BinaryExpr, want bool) (int, bool) {
 }
 
 // jumpIfFalse compiles the condition e and returns the jumps that are taken when it is false.
-func (f *fn) jumpIfFalse(e ast.Expr) []int {
+func (f *fn) jumpIfFalse(e ast.Expr) jumps {
 	mark := f.top
 	defer f.free(mark)
 	switch n := e.(type) {
 	case *ast.BinaryExpr:
 		if j, ok := f.literalJump(n, false); ok {
-			return []int{j}
+			return jumpAt(j)
 		}
 		if op, ok := compareJumps[n.Op]; ok {
 			l := f.immediateOperand(n.Left, n.Right)
 			if k, isNum := numberLit(n.Right); isNum {
 				if kop, ok := compareConstJumps[n.Op]; ok {
-					return []int{f.emit(kop, 0, l, f.constNum(k))}
+					return jumpAt(f.emit(kop, 0, l, f.constNum(k)))
 				}
 			}
 			r := f.immediateOperand(n.Right)
-			return []int{f.emit(op, 0, l, r)}
+			return jumpAt(f.emit(op, 0, l, r))
 		}
 	case *ast.LogicalExpr:
 		switch n.Op {
 		case ast.OpAnd:
-			return append(f.jumpIfFalse(n.Left), f.jumpIfFalse(n.Right)...)
+			left := f.jumpIfFalse(n.Left)
+			return left.join(f.jumpIfFalse(n.Right))
 		case ast.OpOr:
 			yes := f.jumpIfTrue(n.Left)
 			no := f.jumpIfFalse(n.Right)
-			f.patchAll(yes)
+			f.patchJumps(yes)
 			return no
 		}
 	case *ast.UnaryExpr:
@@ -610,27 +611,28 @@ func (f *fn) jumpIfFalse(e ast.Expr) []int {
 		}
 	case *ast.BoolLit:
 		if n.Value {
-			return nil
+			return jumps{}
 		}
-		return []int{f.jump()}
+		return jumpAt(f.jump())
 	}
 	r := f.exprAny(e)
-	return []int{f.emit(bytecode.OpJumpIfNot, 0, r, 0)}
+	return jumpAt(f.emit(bytecode.OpJumpIfNot, 0, r, 0))
 }
 
 // jumpIfTrue compiles the condition e and returns the jumps that are taken when it is true.
-func (f *fn) jumpIfTrue(e ast.Expr) []int {
+func (f *fn) jumpIfTrue(e ast.Expr) jumps {
 	mark := f.top
 	defer f.free(mark)
 	switch n := e.(type) {
 	case *ast.LogicalExpr:
 		switch n.Op {
 		case ast.OpOr:
-			return append(f.jumpIfTrue(n.Left), f.jumpIfTrue(n.Right)...)
+			left := f.jumpIfTrue(n.Left)
+			return left.join(f.jumpIfTrue(n.Right))
 		case ast.OpAnd:
 			no := f.jumpIfFalse(n.Left)
 			yes := f.jumpIfTrue(n.Right)
-			f.patchAll(no)
+			f.patchJumps(no)
 			return yes
 		}
 	case *ast.UnaryExpr:
@@ -639,18 +641,18 @@ func (f *fn) jumpIfTrue(e ast.Expr) []int {
 		}
 	case *ast.BinaryExpr:
 		if j, ok := f.literalJump(n, true); ok {
-			return []int{j}
+			return jumpAt(j)
 		}
 		if _, ok := compareJumps[n.Op]; ok {
 			// Jump over a jump: the fused instructions only exist for the false case.
 			no := f.jumpIfFalse(e)
 			yes := f.jump()
-			f.patchAll(no)
-			return []int{yes}
+			f.patchJumps(no)
+			return jumpAt(yes)
 		}
 	}
 	r := f.exprAny(e)
-	return []int{f.emit(bytecode.OpJumpIf, 0, r, 0)}
+	return jumpAt(f.emit(bytecode.OpJumpIf, 0, r, 0))
 }
 
 func (f *fn) unary(n *ast.UnaryExpr, dst int32) {

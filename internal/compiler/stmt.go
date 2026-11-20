@@ -433,11 +433,11 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		no := f.jumpIfFalse(s.Test)
 		f.stmt(s.Consequent, nil)
 		if s.Alternate == nil {
-			f.patchAll(no)
+			f.patchJumps(no)
 			break
 		}
 		end := f.jump()
-		f.patchAll(no)
+		f.patchJumps(no)
 		f.stmt(s.Alternate, nil)
 		f.patch(end)
 	case *ast.ForStmt:
@@ -453,7 +453,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.stmt(s.Body, nil)
 		f.patchAll(c.continues)
 		f.jumpTo(top)
-		f.patchAll(exit)
+		f.patchJumps(exit)
 		f.popLoop(c)
 	case *ast.DoWhileStmt:
 		c := f.pushLoop(labels)
@@ -462,7 +462,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.patchAll(c.continues)
 		exit := f.jumpIfFalse(s.Test)
 		f.jumpTo(top)
-		f.patchAll(exit)
+		f.patchJumps(exit)
 		f.popLoop(c)
 	case *ast.ReturnStmt:
 		var v int32
@@ -646,7 +646,7 @@ func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 	}
 	c := f.pushLoop(labels)
 	top := f.pc()
-	var exit []int
+	var exit jumps
 	if s.Test != nil {
 		exit = f.jumpIfFalse(s.Test)
 	}
@@ -662,7 +662,7 @@ func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 		f.effect(s.Update)
 	}
 	f.jumpTo(top)
-	f.patchAll(exit)
+	f.patchJumps(exit)
 	f.popLoop(c)
 }
 
