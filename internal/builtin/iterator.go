@@ -881,8 +881,8 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 		})
 		return engine.Undefined
 	})
-	// search calls f for the values of the iterator this until f returns true,
-	// and returns the value for which it did.
+	// search stops at the first value for which the predicate's truth value equals want.
+	// It returns that value and true, or undefined and false if the iterator is exhausted.
 	search := func(vm *engine.VM, this engine.Value, args []engine.Value, name string, want bool) (engine.Value, bool) {
 		it := receiver(vm, this, name)
 		f := callableArg(vm, it, arg(args, 0))
