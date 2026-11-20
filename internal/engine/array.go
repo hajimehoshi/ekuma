@@ -387,13 +387,20 @@ func (vm *VM) ReverseElements(o *Object) bool {
 // CopyElementRange returns a new array with the elements of the array o from start up to end,
 // as Array.prototype.slice creates it. A range that ends before it starts is empty.
 func (vm *VM) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
-	if start < 0 || end > int64(len(o.elems)) || !o.isDense() || !vm.arrayCtorPlain(o) {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return nil, false
 	}
-	if start >= end {
-		return vm.NewArray(nil), true
+	if start < 0 || end > int64(len(o.elems)) {
+		return nil, false
 	}
-	return vm.NewArray(appendPolled(vm, nil, o.elems[start:end])), true
+	var elems []Value
+	if start < end {
+		elems = o.elems[start:end]
+	}
+	if slices.ContainsFunc(elems, Value.isHole) || !vm.arrayCtorPlain(o) {
+		return nil, false
+	}
+	return vm.NewArray(appendPolled(vm, nil, elems)), true
 }
 
 // SpliceElements replaces del elements of the array o from start on with items, and returns
