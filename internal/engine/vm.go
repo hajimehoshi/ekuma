@@ -86,9 +86,9 @@ func (f *function) nativeName() string {
 	return f.info.name
 }
 
-// iteratorStep returns the step function of the next method f of a built-in iterator, or nil.
-func (f *function) iteratorStep() IteratorStepFunc {
-	if f.info == nil {
+// iteratorStep returns the step function of the next method f of a built-in iterator in realm r, or nil.
+func (f *function) iteratorStep(r *realm) IteratorStepFunc {
+	if f.info == nil || f.info.realm != r {
 		return nil
 	}
 	return f.info.step

@@ -152,7 +152,7 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 	f := next.o
 	var step IteratorStepFunc
 	if f != nil && f.fn != nil {
-		step = f.fn.iteratorStep()
+		step = f.fn.iteratorStep(vm.curRealm)
 	}
 	var r Value
 	switch {
@@ -211,7 +211,7 @@ func (vm *VM) IteratorStepValue(it, next Value) (Value, bool) {
 // without the result: it reports false when the iterator is done.
 func (vm *VM) IteratorStep(it, next Value) bool {
 	if f := next.o; f != nil && f.fn != nil {
-		if step := f.fn.iteratorStep(); step != nil {
+		if step := f.fn.iteratorStep(vm.curRealm); step != nil {
 			if vm.interrupt.Load() {
 				vm.Poll()
 			}
@@ -236,7 +236,7 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 	var v Value
 	var st int
-	if f := next.o; f != nil && f.fn != nil && f.fn.iteratorStep() != nil {
+	if f := next.o; f != nil && f.fn != nil && f.fn.iteratorStep(vm.curRealm) != nil {
 		vm.checkNatives()
 		vm.pushNative(f, it, false)
 		v, st = vm.iterNext(it, next)
