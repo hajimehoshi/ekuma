@@ -361,6 +361,10 @@ func (vm *VM) dropNatives(frames int) {
 // VM is a JavaScript virtual machine, which is an agent of the specification. It must not be used
 // from more than one goroutine at a time.
 type VM struct {
+	// checks is the state of the checks of the interpreter in builds with the build tag
+	// ekuma_validate. Being first, it changes no offset in other builds, where it is empty.
+	checks execChecks
+
 	// hostDefined is the value that [VM.HostDefined] returns.
 	hostDefined any
 

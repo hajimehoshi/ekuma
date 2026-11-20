@@ -89,10 +89,15 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 }
 
 // testFastPathSource tests that the fast path s calls only the functions that fastPathCalls and
-// fastPathMethods list.
+// fastPathMethods list, apart from the checks of builds with the build tag ekuma_validate.
 func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
 	ast.Inspect(s, func(n ast.Node) bool {
 		switch n := n.(type) {
+		case *ast.IfStmt:
+			// validateExec is false in the build that the compiled code is tested in.
+			if id, ok := n.Cond.(*ast.Ident); ok && id.Name == "validateExec" && n.Else == nil {
+				return false
+			}
 		case *ast.CallExpr:
 			name := types.ExprString(n.Fun)
 			if sel, ok := n.Fun.(*ast.SelectorExpr); ok && fastPathMethods[sel.Sel.Name] {

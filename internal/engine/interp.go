@@ -318,6 +318,9 @@ func (vm *VM) run(stop int) Value {
 	vm.callerRealm = saved
 	for {
 		v, st := vm.exec(stop)
+		if validateExec {
+			vm.leaveChecks()
+		}
 		switch st {
 		case execReturn, execYield:
 			vm.depth--
@@ -393,6 +396,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	if fp.realm != vm.curRealm {
 		vm.switchRealm(fp.realm)
 	}
+	if validateExec {
+		vm.enterChecks()
+	}
 	// The capacity of regs is never read: it is sliced and passed on only through slices.Clip,
 	// so that the loop does not carry it from one instruction to the next.
 	var regs []Value
@@ -413,6 +419,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	)
 
 	for {
+		if validateExec {
+			vm.checkStep(fp, pc, slices.Clip(regs))
+		}
 		i := &fp.code[pc]
 		pc++
 		// The fast paths of the common instructions. Nothing in this switch calls a function
