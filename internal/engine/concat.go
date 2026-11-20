@@ -270,8 +270,9 @@ func (vm *VM) ConcatStrings(parts []Value) Value {
 	if sb := tailBuilder(first); sb != nil {
 		ascii := true
 		for _, p := range parts[1:] {
-			sb.WriteString(string(p.rawString()))
-			ascii = ascii && isASCII(p, p.rawString())
+			s := p.rawString()
+			sb.WriteString(string(s))
+			ascii = ascii && isASCII(p, s)
 		}
 		return vm.extendTail(first, sb, ascii)
 	}
@@ -361,16 +362,18 @@ func (vm *VM) newBuffered(parts []Value, n int, tail bool) Value {
 		sb := new(strings.Builder)
 		sb.Grow(n)
 		for _, p := range parts {
-			sb.WriteString(string(p.rawString()))
-			ascii = ascii && isASCII(p, p.rawString())
+			s := p.rawString()
+			sb.WriteString(string(s))
+			ascii = ascii && isASCII(p, s)
 		}
 		return vm.newTail(sb, ascii)
 	}
 	rb := new(reversedBuilder)
 	rb.sb.Grow(n)
 	for _, p := range slices.Backward(parts) {
-		writeReversed(&rb.sb, p.rawString())
-		ascii = ascii && isASCII(p, p.rawString())
+		s := p.rawString()
+		writeReversed(&rb.sb, s)
+		ascii = ascii && isASCII(p, s)
 	}
 	return vm.newHead(rb, ascii)
 }
