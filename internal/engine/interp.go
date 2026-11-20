@@ -125,11 +125,6 @@ func (vm *VM) releaseStack() {
 	}
 }
 
-// top returns the first stack index that is not in use.
-func (vm *VM) top() int {
-	return vm.sp
-}
-
 // clearStale clears the stack slots and frames above the ones in use, which the calls since the
 // outermost call into the engine started may have left values in.
 func (vm *VM) clearStale() {
