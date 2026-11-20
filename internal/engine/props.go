@@ -453,8 +453,7 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 			// gain the property without changing, so only shared shapes qualify.
 			c.shape = start.shape
 			c.kind = cacheProto
-			c.holder = vm.missHolder
-			c.slot = 0
+			c.ref = &vm.missHolder.slots[0]
 			c.epoch = vm.protoEpoch
 		}
 		if h := proxyOnChain(start); h != nil {
@@ -496,9 +495,8 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 			c.kind = cacheOwn
 		} else if !start.shape.private {
 			c.shape = start.shape
-			c.slot = p.slot
 			c.kind = cacheProto
-			c.holder = holder
+			c.ref = &holder.slots[p.slot]
 			c.epoch = vm.protoEpoch
 		}
 	}
@@ -588,7 +586,7 @@ func (vm *VM) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
 			if e.epoch == vm.protoEpoch {
 				switch e.kind {
 				case cacheProto:
-					return e.holder.slots[e.slot]
+					return *e.ref
 				case cacheGetter:
 					return vm.Call(e.holder, v)
 				}

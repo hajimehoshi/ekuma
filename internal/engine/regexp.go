@@ -212,7 +212,7 @@ func (vm *VM) regExpLiteralMethod(site *regExpSite, key *Object, c *propCache) (
 		e = &c.second
 	}
 	if o.shape == e.shape && e.kind == cacheProto && e.epoch == vm.protoEpoch {
-		return e.holder.slots[e.slot], o
+		return *e.ref, o
 	}
 	if _, ok := vm.GetVWithoutCall(Value{o: o}, key); ok {
 		v, _ := vm.getNamed(Value{o: o}, key, c)

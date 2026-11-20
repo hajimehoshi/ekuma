@@ -463,14 +463,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				h := o
 				if e.kind != cacheOwn {
 					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
 						break
 					}
-					h = e.holder
+					regs[i.A] = *e.ref
+					continue
 				}
-				regs[i.A] = h.slots[e.slot]
+				regs[i.A] = o.slots[e.slot]
 				continue
 			}
 		case bytecode.OpGetPropChain:
@@ -483,14 +483,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				h := o
+				var w Value
 				if e.kind != cacheOwn {
 					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
 						break
 					}
-					h = e.holder
+					w = *e.ref
+				} else {
+					w = o.slots[e.slot]
 				}
-				w := h.slots[e.slot]
 				regs[i.A] = w
 				// The next instruction is an OpGetProp of w. It runs here only when it reads a
 				// data property through its cache, and runs on its own otherwise.
@@ -504,14 +505,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 							continue
 						}
 					}
-					h := o
 					if e.kind != cacheOwn {
 						if e.kind != cacheProto || e.epoch != vm.protoEpoch {
 							continue
 						}
-						h = e.holder
+						regs[n.A] = *e.ref
+					} else {
+						regs[n.A] = o.slots[e.slot]
 					}
-					regs[n.A] = h.slots[e.slot]
 					pc++
 				}
 				continue
@@ -948,16 +949,18 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						break
 					}
 				}
-				h := o
+				var m Value
 				if e.kind != cacheOwn {
 					if e.kind != cacheProto || e.epoch != vm.protoEpoch {
 						break
 					}
-					h = e.holder
+					m = *e.ref
+				} else {
+					m = o.slots[e.slot]
 				}
 				a, n := i.A, &fp.code[pc]
 				regs[a+1] = v
-				regs[a] = h.slots[e.slot]
+				regs[a] = m
 				if n.Op != bytecode.OpCall || n.B != a {
 					continue
 				}

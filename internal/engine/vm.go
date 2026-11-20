@@ -408,10 +408,12 @@ type VM struct {
 	strings     stringTable
 	emptyString Value
 
-	// missHolder stands in as the holder of a property that was not found.
+	// missHolder holds undefined in its one slot, where the cache entries of properties that
+	// were not found point.
 	missHolder *Object
 
-	// protoEpoch changes whenever the properties or the prototype of a prototype object change.
+	// protoEpoch changes whenever the properties or the prototype of a prototype object change,
+	// or its slots move.
 	protoEpoch uint32
 
 	sparseIndices sparseIndexCache

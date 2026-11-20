@@ -1336,7 +1336,8 @@ func find(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 	return nil, prop{}, false
 }
 
-// touchProto records that the properties of o changed, if o is a prototype.
+// touchProto records that the properties of o changed, if o is a prototype. Whatever moves the
+// slots of a prototype calls it too, because cacheProto entries point into them.
 func (vm *VM) touchProto(o *Object) {
 	if o.flags&objIsProto != 0 {
 		vm.protoEpoch++
@@ -1586,7 +1587,8 @@ const (
 	// cacheOwn: the property is in slot of the receiver.
 	cacheOwn
 
-	// cacheProto: the property is in slot of holder, which is on the prototype chain.
+	// cacheProto: ref points at the property, which is in the slots of an object on the
+	// prototype chain.
 	cacheProto
 
 	// cacheGetter and cacheSetter: holder is the function to call.
@@ -1613,6 +1615,8 @@ type cacheEntry struct {
 	epoch uint32
 
 	next *shape
+
+	ref *Value
 }
 
 // propCache is the inline cache of one property access site. It remembers two receiver shapes,
