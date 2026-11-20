@@ -463,10 +463,10 @@ func (vm *VM) ordinaryHasInstance(c, v Value, site *propCache) bool {
 		vm.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
 	if site != nil && c.o.class == classFunction && c.o.flags&objExotic == 0 {
-		// The fast path of OpInstanceof reads the prototype property from its slot while c
-		// keeps its shape and no prototype changes, so that @@hasInstance stays inherited.
 		if s, ok := c.o.shape.lookup(vm.Key(KeyPrototype)); ok && s.flags&FlagAccessor == 0 {
-			site.cacheEntry = cacheEntry{shape: c.o.shape, kind: cacheOwn, slot: s.slot, epoch: vm.protoEpoch}
+			// Caching the constructor's own prototype slot also relies on @@hasInstance staying inherited.
+			site.setInherited(c.o.shape, cacheOwn, vm.protoEpoch)
+			site.slot = s.slot
 		}
 	}
 	for o := vm.ProtoOf(v.o); o != nil; o = vm.ProtoOf(o) {

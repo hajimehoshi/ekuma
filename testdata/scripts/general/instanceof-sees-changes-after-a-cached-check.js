@@ -20,6 +20,14 @@ assert.sameValue(warm(d, D), true);
 Object.defineProperty(D, Symbol.hasInstance, { value: function () { return false; } });
 assert.sameValue(check(d, D), false, "an own @@hasInstance");
 
+function PrivateShape() {}
+PrivateShape.spare = 1;
+delete PrivateShape.spare;
+var x = new PrivateShape();
+assert.sameValue(check(x, PrivateShape), true);
+Object.defineProperty(PrivateShape, Symbol.hasInstance, { value: function () { return false; } });
+assert.sameValue(check(x, PrivateShape), false, "an own @@hasInstance after deleting a property");
+
 class A {}
 class B extends A {}
 var b = new B();
