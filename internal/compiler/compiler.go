@@ -15,6 +15,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Error is a construct that the compiler cannot translate.
@@ -229,9 +230,9 @@ type fn struct {
 	// numConsts and strConsts map the bits of the number constants and the strings of the string
 	// constants to their indices. bigConsts does so for the digits of the BigInt constants.
 	numConsts map[uint64]int32
-	strConsts map[string]int32
-	bigConsts map[string]int32
-	keys      map[string]int32
+	strConsts map[wtf8.String]int32
+	bigConsts map[wtf8.String]int32
+	keys      map[wtf8.String]int32
 	control   []*ctl
 	withDepth int
 
@@ -312,7 +313,7 @@ type compiler struct {
 	isExpression map[*ast.Function]bool
 
 	// fieldNames holds the names that the anonymous functions of class field initializers get.
-	fieldNames map[*ast.Function]string
+	fieldNames map[*ast.Function]wtf8.String
 
 	// fieldKeys holds the variables of the property keys whose names the anonymous functions
 	// of class field initializers get, when the names are known only at run time.
@@ -403,7 +404,7 @@ type scratch struct {
 	// and constants in. A finished function gets copies of exactly the used length.
 	codeBufs  [][]bytecode.Instr
 	posBufs   [][]bytecode.Pos
-	keyBufs   [][]string
+	keyBufs   [][]wtf8.String
 	constBufs [][]bytecode.Const
 
 	// candBufs are the free buffers of [fn.copyCands].
@@ -671,9 +672,9 @@ func newCompiler(prog *ast.Program, file string) *compiler {
 
 // nameField records name as the name that the anonymous function of the class field
 // initializer init gets.
-func (c *compiler) nameField(init *ast.Function, name string) {
+func (c *compiler) nameField(init *ast.Function, name wtf8.String) {
 	if c.fieldNames == nil {
-		c.fieldNames = map[*ast.Function]string{}
+		c.fieldNames = map[*ast.Function]wtf8.String{}
 	}
 	c.fieldNames[init] = name
 }
@@ -695,7 +696,7 @@ func (c *compiler) fail(n ast.Node, format string, args ...any) {
 	})
 }
 
-func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
+func (c *compiler) newFn(parent *fn, node *ast.Function, name wtf8.String) *fn {
 	sc := c.scratch
 	var f *fn
 	if n := len(sc.fns); n > 0 {
@@ -707,9 +708,9 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 	} else {
 		f = &fn{
 			numConsts: map[uint64]int32{},
-			strConsts: map[string]int32{},
-			bigConsts: map[string]int32{},
-			keys:      map[string]int32{},
+			strConsts: map[wtf8.String]int32{},
+			bigConsts: map[wtf8.String]int32{},
+			keys:      map[wtf8.String]int32{},
 			mutated:   map[string]bool{},
 			scope:     &scope{},
 		}
@@ -950,7 +951,7 @@ func (f *fn) constNum(n float64) int32 {
 	})
 }
 
-func (f *fn) constStr(s string) int32 {
+func (f *fn) constStr(s wtf8.String) int32 {
 	return f.constant(bytecode.Const{
 		Kind: bytecode.ConstString,
 		Str:  s,
@@ -1038,7 +1039,7 @@ func (f *fn) mapConst(c bytecode.Const, i int32) {
 }
 
 // key returns the index of the property or variable name s.
-func (f *fn) key(s string) int32 {
+func (f *fn) key(s wtf8.String) int32 {
 	if !f.keysMapped {
 		for _, i := range f.scannedKeys[:f.numScannedKeys] {
 			if f.f.Keys[i] == s {
@@ -1068,7 +1069,7 @@ func (f *fn) key(s string) int32 {
 
 // site returns a fresh index for the name s. The index also names an inline cache,
 // so every instruction that caches gets a site of its own.
-func (f *fn) site(s string) int32 {
+func (f *fn) site(s wtf8.String) int32 {
 	i := int32(len(f.f.Keys))
 	f.f.Keys = append(f.f.Keys, s)
 	f.f.NumCaches = len(f.f.Keys)
@@ -1430,7 +1431,7 @@ func (f *fn) resolveName(name string) int32 {
 		return -1
 	}
 	s := f.newReg()
-	f.emit(bytecode.OpResolveName, s, f.key(name), d)
+	f.emit(bytecode.OpResolveName, s, f.key(wtf8.String(name)), d)
 	return s
 }
 
@@ -1479,7 +1480,7 @@ func (f *fn) loadVarFrom(name string, r ref, dst int32, orUndef bool, scope int3
 	end := -1
 	if scope >= 0 {
 		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-		f.emit(f.getScopedOp(), dst, scope, f.key(name))
+		f.emit(f.getScopedOp(), dst, scope, f.key(wtf8.String(name)))
 		end = f.jump()
 		f.patch(skip)
 	}
@@ -1499,7 +1500,7 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 			break
 		}
 		if r.needsCheck() {
-			f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(name), 0)
+			f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(wtf8.String(name)), 0)
 		}
 		if r.b.reg != dst {
 			f.emit(bytecode.OpMove, dst, r.b.reg, 0)
@@ -1507,7 +1508,7 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 	case refUpval:
 		f.emit(bytecode.OpGetUpval, dst, r.index, 0)
 		if r.needsCheck() {
-			f.emit(bytecode.OpCheckTDZ, dst, f.key(name), 0)
+			f.emit(bytecode.OpCheckTDZ, dst, f.key(wtf8.String(name)), 0)
 		}
 	case refGlobal:
 		op := bytecode.OpGetGlobal
@@ -1519,7 +1520,7 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 		case f.strict():
 			op = bytecode.OpGetGlobalStrict
 		}
-		f.emit(op, dst, f.key(name), f.globalCache())
+		f.emit(op, dst, f.key(wtf8.String(name)), f.globalCache())
 	}
 }
 
@@ -1548,7 +1549,7 @@ func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int
 		if f.strict() {
 			op = bytecode.OpSetScopedStrict
 		}
-		f.emit(op, src, scope, f.key(name))
+		f.emit(op, src, scope, f.key(wtf8.String(name)))
 		end = f.jump()
 		f.patch(skip)
 	}
@@ -1567,12 +1568,12 @@ func (f *fn) storeStatic(n ast.Node, name string, r ref, src int32, init bool) {
 			if r.needsCheck() {
 				f.checkTDZ(r, name)
 			}
-			f.emit(bytecode.OpThrowConstAssign, f.key(name), 0, 0)
+			f.emit(bytecode.OpThrowConstAssign, f.key(wtf8.String(name)), 0, 0)
 			return
 		case bindFuncName:
 			// Assigning to the name of a function expression is an error in strict code only.
 			if f.strict() {
-				f.emit(bytecode.OpThrowConstAssign, f.key(name), 0, 0)
+				f.emit(bytecode.OpThrowConstAssign, f.key(wtf8.String(name)), 0, 0)
 			}
 			return
 		}
@@ -1590,11 +1591,11 @@ func (f *fn) storeStatic(n ast.Node, name string, r ref, src int32, init bool) {
 	case refGlobal:
 		switch {
 		case init && f.isScript && f.c.globalLexical(name):
-			f.emit(bytecode.OpInitGlobalLex, src, f.key(name), 0)
+			f.emit(bytecode.OpInitGlobalLex, src, f.key(wtf8.String(name)), 0)
 		case f.strict():
-			f.emit(bytecode.OpSetGlobalStrict, src, f.key(name), f.globalCache())
+			f.emit(bytecode.OpSetGlobalStrict, src, f.key(wtf8.String(name)), f.globalCache())
 		default:
-			f.emit(bytecode.OpSetGlobal, src, f.key(name), f.globalCache())
+			f.emit(bytecode.OpSetGlobal, src, f.key(wtf8.String(name)), f.globalCache())
 		}
 	}
 }
@@ -1606,15 +1607,15 @@ func (f *fn) checkTDZ(r ref, name string) {
 		if r.b.unset {
 			t := f.newReg()
 			f.emit(bytecode.OpLoadTDZ, t, 0, 0)
-			f.emit(bytecode.OpCheckTDZ, t, f.key(name), 0)
+			f.emit(bytecode.OpCheckTDZ, t, f.key(wtf8.String(name)), 0)
 			f.free(t)
 			break
 		}
-		f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(name), 0)
+		f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(wtf8.String(name)), 0)
 	case refUpval:
 		t := f.newReg()
 		f.emit(bytecode.OpGetUpval, t, r.index, 0)
-		f.emit(bytecode.OpCheckTDZ, t, f.key(name), 0)
+		f.emit(bytecode.OpCheckTDZ, t, f.key(wtf8.String(name)), 0)
 		f.free(t)
 	}
 }
@@ -1651,7 +1652,7 @@ func (f *fn) localReg(name string) int32 {
 // flags is a set of the bytecode GlobalVar flags.
 func (f *fn) declareAnnexBGlobal(name string, flags int32) {
 	r := f.newReg()
-	f.emit(bytecode.OpDeclareAnnexB, r, f.key(name), flags)
+	f.emit(bytecode.OpDeclareAnnexB, r, f.key(wtf8.String(name)), flags)
 	if f.annexBRegs == nil {
 		f.annexBRegs = map[string]int32{}
 	}
@@ -1679,7 +1680,7 @@ func (c *compiler) compileScript() *bytecode.Func {
 	for _, d := range prog.Scope.Decls {
 		switch d.Kind {
 		case ast.DeclLet, ast.DeclConst, ast.DeclClass:
-			f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), bytecode.DeclLexical, 0)
+			f.emit(bytecode.OpCheckGlobalDecl, f.key(wtf8.String(d.Name)), bytecode.DeclLexical, 0)
 		case ast.DeclFunction:
 			if _, ok := funcs[d.Name]; !ok {
 				funcOrder = append(funcOrder, d.Name)
@@ -1688,14 +1689,14 @@ func (c *compiler) compileScript() *bytecode.Func {
 		}
 	}
 	for _, name := range funcOrder {
-		f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclFunction, 0)
+		f.emit(bytecode.OpCheckGlobalDecl, f.key(wtf8.String(name)), bytecode.DeclFunction, 0)
 	}
 	vars := map[string]bool{}
 	for _, d := range prog.Scope.Decls {
 		if d.Kind == ast.DeclVar {
 			vars[d.Name] = true
 			if _, ok := funcs[d.Name]; !ok {
-				f.emit(bytecode.OpCheckGlobalDecl, f.key(d.Name), bytecode.DeclVar, 0)
+				f.emit(bytecode.OpCheckGlobalDecl, f.key(wtf8.String(d.Name)), bytecode.DeclVar, 0)
 			}
 		}
 	}
@@ -1707,21 +1708,21 @@ func (c *compiler) compileScript() *bytecode.Func {
 	for _, d := range prog.Scope.Decls {
 		switch d.Kind {
 		case ast.DeclLet, ast.DeclClass:
-			f.emit(bytecode.OpDeclareGlobalLex, f.key(d.Name), 0, 0)
+			f.emit(bytecode.OpDeclareGlobalLex, f.key(wtf8.String(d.Name)), 0, 0)
 		case ast.DeclConst:
-			f.emit(bytecode.OpDeclareGlobalLex, f.key(d.Name), 1, 0)
+			f.emit(bytecode.OpDeclareGlobalLex, f.key(wtf8.String(d.Name)), 1, 0)
 		}
 	}
 	for _, name := range funcOrder {
 		t := f.newReg()
-		f.closure(funcs[name], t, name)
-		f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarFunc, t)
+		f.closure(funcs[name], t, wtf8.String(name))
+		f.emit(bytecode.OpDeclareGlobalVar, f.key(wtf8.String(name)), bytecode.GlobalVarFunc, t)
 		f.free(t)
 	}
 	for _, d := range prog.Scope.Decls {
 		if d.Kind == ast.DeclVar {
 			if _, ok := funcs[d.Name]; !ok {
-				f.emit(bytecode.OpDeclareGlobalVar, f.key(d.Name), 0, -1)
+				f.emit(bytecode.OpDeclareGlobalVar, f.key(wtf8.String(d.Name)), 0, -1)
 			}
 		}
 	}

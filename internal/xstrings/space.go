@@ -3,7 +3,11 @@
 
 package xstrings
 
-import "unicode/utf8"
+import (
+	"unicode/utf8"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
+)
 
 // IsWhiteSpaceOrLineTerminator reports whether r is WhiteSpace or LineTerminator.
 func IsWhiteSpaceOrLineTerminator(r rune) bool {
@@ -15,7 +19,7 @@ func IsWhiteSpaceOrLineTerminator(r rune) bool {
 }
 
 // TrimWhiteSpace implements TrimString. start and end select the sides to trim.
-func TrimWhiteSpace(s string, start, end bool) string {
+func TrimWhiteSpace(s wtf8.String, start, end bool) wtf8.String {
 	if start {
 		for len(s) > 0 {
 			if c := s[0]; c < utf8.RuneSelf {
@@ -25,7 +29,7 @@ func TrimWhiteSpace(s string, start, end bool) string {
 				s = s[1:]
 				continue
 			}
-			r, size := utf8.DecodeRuneInString(s)
+			r, size := wtf8.DecodeRune(s)
 			if !IsWhiteSpaceOrLineTerminator(r) {
 				break
 			}
@@ -41,7 +45,7 @@ func TrimWhiteSpace(s string, start, end bool) string {
 				s = s[:len(s)-1]
 				continue
 			}
-			r, size := utf8.DecodeLastRuneInString(s)
+			r, size := wtf8.DecodeLastRune(s)
 			if !IsWhiteSpaceOrLineTerminator(r) {
 				break
 			}

@@ -6,11 +6,12 @@ package compiler
 import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // closure compiles the function node and emits the creation of its closure into dst.
 // name is the value of the name property.
-func (f *fn) closure(node *ast.Function, dst int32, name string) {
+func (f *fn) closure(node *ast.Function, dst int32, name wtf8.String) {
 	p := f.c.compileFunction(f, node, name)
 	f.f.Protos = append(f.f.Protos, p)
 	f.emit(bytecode.OpClosure, dst, int32(len(f.f.Protos)-1), 0)
@@ -104,7 +105,7 @@ func isSuperCallee(e ast.Expr) bool {
 	return ok
 }
 
-func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) *bytecode.Func {
+func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.String) *bytecode.Func {
 	f := c.newFn(parent, node, name)
 	b := f.f
 	b.Strict = node.Strict
@@ -374,7 +375,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 			case *ast.AssignPattern:
 				if id, ok := p.Target.(*ast.Identifier); ok {
 					skip := f.emit(bytecode.OpJumpIfNotUndef, 0, slot, 0)
-					f.named(p.Default, slot, id.Name)
+					f.named(p.Default, slot, wtf8.String(id.Name))
 					f.patch(skip)
 					f.initBinding(id, id.Name, slot)
 					break
@@ -443,7 +444,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name string) 
 	}
 	for _, fname := range funcOrder {
 		fb, _ := f.lookupLocal(fname)
-		f.closure(funcs[fname], fb.reg, fname)
+		f.closure(funcs[fname], fb.reg, wtf8.String(fname))
 	}
 	if node.Generator {
 		f.emit(bytecode.OpInitialYield, 0, 0, 0)

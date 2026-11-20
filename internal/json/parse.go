@@ -23,7 +23,7 @@ type Record struct {
 	value engine.Value
 
 	// source is the text of a primitive value.
-	source string
+	source wtf8.String
 
 	// elems are the records of the elements of an array.
 	elems []*Record
@@ -79,7 +79,7 @@ type frame struct {
 // A Parser keeps scratch storage between calls but no references to values.
 type Parser struct {
 	vm  *engine.VM
-	src string
+	src wtf8.String
 	pos int
 
 	frames []frame
@@ -94,17 +94,17 @@ type Parser struct {
 }
 
 // Parse parses the JSON text src into a value of vm. It throws a SyntaxError when src is not a JSON text.
-func (p *Parser) Parse(vm *engine.VM, src string) engine.Value {
+func (p *Parser) Parse(vm *engine.VM, src wtf8.String) engine.Value {
 	v, _ := p.parse(vm, src, false)
 	return v
 }
 
 // ParseWithRecord is like [Parser.Parse], and also returns the parse record of the value.
-func (p *Parser) ParseWithRecord(vm *engine.VM, src string) (engine.Value, *Record) {
+func (p *Parser) ParseWithRecord(vm *engine.VM, src wtf8.String) (engine.Value, *Record) {
 	return p.parse(vm, src, true)
 }
 
-func (p *Parser) parse(vm *engine.VM, src string, withRecords bool) (engine.Value, *Record) {
+func (p *Parser) parse(vm *engine.VM, src wtf8.String, withRecords bool) (engine.Value, *Record) {
 	p.vm = vm
 	p.src = src
 	p.pos = 0
@@ -155,7 +155,7 @@ func (p *Parser) skipSpace() {
 }
 
 // parseString parses a string, whose opening quote is at the current position, and returns its contents.
-func (p *Parser) parseString() string {
+func (p *Parser) parseString() wtf8.String {
 	str, end, ok := ScanString(p.src, p.pos, &p.buf)
 	p.pos = end
 	if !ok {
@@ -164,7 +164,7 @@ func (p *Parser) parseString() string {
 	return str
 }
 
-func (p *Parser) literal(word string) {
+func (p *Parser) literal(word wtf8.String) {
 	end, ok := ScanLiteral(p.src, p.pos, word)
 	p.pos = end
 	if !ok {

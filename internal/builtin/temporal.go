@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // The internal slots of the objects of the Temporal types.
@@ -117,18 +118,18 @@ func temporalNative(f engine.NativeFunc) engine.NativeFunc {
 }
 
 // tmethod is method for the functions of Temporal.
-func tmethod(vm *engine.VM, o *engine.Object, name string, length int, f engine.NativeFunc) *engine.Object {
+func tmethod(vm *engine.VM, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
 	return method(vm, o, name, length, temporalNative(f))
 }
 
 // tgetter is getter for the functions of Temporal.
-func tgetter(vm *engine.VM, o *engine.Object, key *engine.Object, name string, f engine.NativeFunc) {
+func tgetter(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) {
 	getter(vm, o, key, name, temporalNative(f))
 }
 
 // get returns the property name of o.
 func get(vm *engine.VM, o *engine.Object, name string) engine.Value {
-	return vm.Get(o, engine.NamedKey(vm.Intern(name)))
+	return vm.Get(o, engine.NamedKey(vm.Intern(wtf8.String(name))))
 }
 
 // requireString returns v as a Go string, or throws a TypeError when it is not a String.
@@ -136,7 +137,7 @@ func requireString(vm *engine.VM, v engine.Value, what string) string {
 	if !v.IsString() {
 		vm.ThrowTypeError(what + " must be a string, not " + vm.DisplayString(v))
 	}
-	return vm.ToString(v)
+	return wtf8.ToValidUTF8(vm.ToString(v))
 }
 
 // toIntegerWithTruncation implements ToIntegerWithTruncation.
@@ -189,11 +190,11 @@ func temporalOption(vm *engine.VM, opts *engine.Object, name string, values []st
 		}
 		return fallback
 	}
-	s := vm.ToString(v)
+	s := wtf8.ToValidUTF8(vm.ToString(v))
 	if i := slices.Index(values, s); i >= 0 {
 		return i
 	}
-	vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
+	vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	return 0
 }
 
@@ -272,10 +273,10 @@ func getUnitOption(vm *engine.VM, opts *engine.Object, key string, required bool
 		}
 		return temporal.UnitUnset
 	}
-	s := vm.ToString(v)
+	s := wtf8.ToValidUTF8(vm.ToString(v))
 	u, ok := temporal.UnitFromString(s)
 	if !ok {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + key)
+		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + key)
 	}
 	return u
 }
@@ -361,7 +362,7 @@ func roundToOptions(vm *engine.VM, v engine.Value, key string) *engine.Object {
 	}
 	if v.IsString() {
 		o := vm.NewObject(nil)
-		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern(key)), v)
+		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern(wtf8.String(key))), v)
 		return o
 	}
 	return getOptionsObject(vm, v)
@@ -429,7 +430,7 @@ func parseCalendarString(vm *engine.VM, s string) string {
 		return r.Calendar
 	}
 	if !temporal.IsAnnotationValue(s, vm.Poll) {
-		vm.ThrowRangeError("invalid calendar: " + vm.DisplayString(vm.NewString(s)))
+		vm.ThrowRangeError("invalid calendar: " + vm.DisplayString(vm.NewString(wtf8.String(s))))
 	}
 	return s
 }
@@ -495,7 +496,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 		any = true
 		switch name {
 		case "era":
-			f.Era, f.HasEra = vm.ToString(v), true
+			f.Era, f.HasEra = wtf8.ToValidUTF8(vm.ToString(v)), true
 		case "eraYear":
 			f.EraYear, f.HasEraYear = toIntegerWithTruncation(vm, v, name), true
 		case "year":
@@ -509,7 +510,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 			if !p.IsString() {
 				vm.ThrowTypeError("monthCode must be a string")
 			}
-			s := vm.ToString(p)
+			s := wtf8.ToValidUTF8(vm.ToString(p))
 			n, leap := must2(temporal.ParseMonthCode(s))
 			f.MonthCode, f.HasMonthCode = temporal.CreateMonthCode(n, leap), true
 		case "hour":
@@ -529,7 +530,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 			if !p.IsString() {
 				vm.ThrowTypeError("offset must be a string")
 			}
-			s := vm.ToString(p)
+			s := wtf8.ToValidUTF8(vm.ToString(p))
 			must(temporal.ParseDateTimeUTCOffset(s))
 			f.Offset, f.HasOffset = s, true
 		case "timeZone":
@@ -622,7 +623,7 @@ func protoFor(vm *engine.VM, nt *engine.Object, proto *engine.Object) *engine.Ob
 
 // temporalConstructor defines the constructor name of the Temporal namespace ns with the
 // prototype proto and the Symbol.toStringTag of the prototype.
-func temporalConstructor(vm *engine.VM, ns *engine.Object, name string, length int, proto *engine.Object, f engine.NativeFunc) *engine.Object {
+func temporalConstructor(vm *engine.VM, ns *engine.Object, name wtf8.String, length int, proto *engine.Object, f engine.NativeFunc) *engine.Object {
 	c := vm.NewNativeConstructor(name, length, temporalNative(f))
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)

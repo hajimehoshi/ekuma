@@ -148,10 +148,10 @@ func initIteratorHelpers(vm *engine.VM) {
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters
 	// ignore the prototype.
 	ignoringAccessor := func(key *engine.Object, name string, v engine.Value) {
-		g := vm.NewNative("get "+name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		g := vm.NewNative(wtf8.String("get "+name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return v
 		})
-		s := vm.NewNative("set "+name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		s := vm.NewNative(wtf8.String("set "+name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			setterThatIgnoresPrototypeProperties(vm, this, proto, engine.NamedKey(key), arg(args, 0), "Iterator.prototype setter")
 			return engine.Undefined
 		})
@@ -949,7 +949,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 	})
 	method(vm, proto, "join", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(vm, this, "join")
-		sep := ","
+		sep := wtf8.String(",")
 		if s := arg(args, 0); !s.IsUndefined() {
 			vm.IfAbruptCloseIterator(it, func() {
 				sep = vm.ToString(s)

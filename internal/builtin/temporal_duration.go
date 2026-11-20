@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // durationFieldNames are the names of the fields of a duration, from years to nanoseconds.
@@ -136,7 +137,7 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 		str := requireString(vm, v, "relativeTo")
 		p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalZonedDateTime, temporal.GoalDateTime))
 		if p.TimeZoneAnnotation != "" {
-			tz = toTimeZone(vm, vm.NewString(p.TimeZoneAnnotation))
+			tz = toTimeZone(vm, vm.NewString(wtf8.String(p.TimeZoneAnnotation)))
 			hasTZ = true
 			switch {
 			case p.Z:
@@ -267,7 +268,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 	})
 
 	for i, name := range durationFieldNames {
-		tgetter(vm, proto, vm.Intern(name), name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tgetter(vm, proto, vm.Intern(wtf8.String(name)), wtf8.String(name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			f := thisDuration(vm, this, name).d.Fields()
 			return engine.Number(f[i])
 		})
@@ -300,7 +301,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return r.newDuration(vm, temporal.DurationFromFields(f), nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisDuration(vm, this, name)
 			return r.newDuration(vm, addDurations(vm, s.d, arg(args, 0), name == "subtract"), nil)
 		})
@@ -403,18 +404,18 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		}
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		if p.Unit == temporal.UnitNanosecond && p.Increment == 1 {
-			return vm.NewString(temporal.TemporalDurationToString(&d, p.Precision))
+			return vm.NewString(wtf8.String(temporal.TemporalDurationToString(&d, p.Precision)))
 		}
 		largest := temporal.DefaultTemporalLargestUnit(&d)
 		id := temporal.ToInternalDurationRecord(&d)
 		t := must(temporal.RoundTimeDuration(id.Time, p.Increment, p.Unit, mode))
 		id = temporal.CombineDateAndTimeDuration(id.Date, t)
 		rd := must(temporal.TemporalDurationFromInternal(id, temporal.LargerOfTwoTemporalUnits(largest, temporal.UnitSecond)))
-		return vm.NewString(temporal.TemporalDurationToString(&rd, p.Precision))
+		return vm.NewString(wtf8.String(temporal.TemporalDurationToString(&rd, p.Precision)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return vm.NewString(temporal.TemporalDurationToString(&thisDuration(vm, this, name).d, temporal.PrecisionAuto))
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			return vm.NewString(wtf8.String(temporal.TemporalDurationToString(&thisDuration(vm, this, name).d, temporal.PrecisionAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "Duration")

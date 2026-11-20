@@ -6,11 +6,12 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // functionKindConstructor creates the constructor name of the functions of kind whose prototype
 // object is proto, such as GeneratorFunction. It is not a global.
-func functionKindConstructor(vm *engine.VM, name string, kind engine.FunctionKind, proto *engine.Object) {
+func functionKindConstructor(vm *engine.VM, name wtf8.String, kind engine.FunctionKind, proto *engine.Object) {
 	var c *engine.Object
 	c = vm.NewNativeConstructor(name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.CreateDynamicFunction(c, vm.GetNewTarget(), kind, args)
@@ -27,7 +28,7 @@ func initAsync(vm *engine.VM) {
 
 	gp := vm.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) {
-		method(vm, gp, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return vm.ResumeAsyncGenerator(this, mode, arg(args, 0))
 		})
 	}

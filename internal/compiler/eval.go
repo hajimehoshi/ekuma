@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // CompileEval compiles the program prog as the eval code of a direct eval at the call site
@@ -385,16 +386,16 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 		}
 		for _, name := range funcOrder {
 			fb, _ := f.lookupLocal(name)
-			f.closure(funcs[name], fb.reg, name)
+			f.closure(funcs[name], fb.reg, wtf8.String(name))
 		}
 	case es.VarDepth == 0:
 		f.f.NumClear = int(f.top)
 		for _, name := range funcOrder {
-			f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclFunction, 0)
+			f.emit(bytecode.OpCheckGlobalDecl, f.key(wtf8.String(name)), bytecode.DeclFunction, 0)
 		}
 		for _, name := range varNames {
 			if funcs[name] == nil && !annexBOnly[name] {
-				f.emit(bytecode.OpCheckGlobalDecl, f.key(name), bytecode.DeclVar, 0)
+				f.emit(bytecode.OpCheckGlobalDecl, f.key(wtf8.String(name)), bytecode.DeclVar, 0)
 			}
 		}
 		for _, name := range varNames {
@@ -407,13 +408,13 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 		}
 		for _, name := range funcOrder {
 			t := f.newReg()
-			f.closure(funcs[name], t, name)
-			f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarFunc|bytecode.GlobalVarDeletable, t)
+			f.closure(funcs[name], t, wtf8.String(name))
+			f.emit(bytecode.OpDeclareGlobalVar, f.key(wtf8.String(name)), bytecode.GlobalVarFunc|bytecode.GlobalVarDeletable, t)
 			f.free(t)
 		}
 		for _, name := range varNames {
 			if funcs[name] == nil && !annexBOnly[name] {
-				f.emit(bytecode.OpDeclareGlobalVar, f.key(name), bytecode.GlobalVarDeletable, -1)
+				f.emit(bytecode.OpDeclareGlobalVar, f.key(wtf8.String(name)), bytecode.GlobalVarDeletable, -1)
 			}
 		}
 	default:
@@ -423,7 +424,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 		}
 		for _, name := range funcOrder {
 			t := f.newReg()
-			f.closure(funcs[name], t, name)
+			f.closure(funcs[name], t, wtf8.String(name))
 			f.storeEvalVar(name, t)
 			f.free(t)
 		}
@@ -434,7 +435,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 			if v := ev.vars[name]; v != nil && v.Place == bytecode.EvalPlaceVarEnv {
 				continue
 			}
-			f.emit(bytecode.OpDeclareEvalVar, f.key(name), es.VarDepth, -1)
+			f.emit(bytecode.OpDeclareEvalVar, f.key(wtf8.String(name)), es.VarDepth, -1)
 		}
 	}
 
@@ -452,7 +453,7 @@ func (f *fn) storeEvalVar(name string, src int32) {
 		f.emit(bytecode.OpSetUpval, src, r.index, 0)
 		return
 	}
-	f.emit(bytecode.OpDeclareEvalVar, f.key(name), int32(f.withDepth)+f.eval.scope.VarDepth, src)
+	f.emit(bytecode.OpDeclareEvalVar, f.key(wtf8.String(name)), int32(f.withDepth)+f.eval.scope.VarDepth, src)
 }
 
 // failAt aborts the compilation with an error at the byte offset pos.

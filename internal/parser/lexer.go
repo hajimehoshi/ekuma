@@ -756,7 +756,7 @@ func (p *parser) scanRadix(start int, base int) {
 		}
 		i, _ := numconv.ParseBigInt(digits, base, p.opts.Poll)
 		t.kind = tBigInt
-		t.str = numconv.FormatBigInt(i, 10, p.opts.Poll)
+		t.str = string(numconv.FormatBigInt(i, 10, p.opts.Poll))
 		p.finishNumber(pos + 1)
 		return
 	}
@@ -842,7 +842,7 @@ func (p *parser) scanString(start int, quote byte) {
 // A lone low surrogate in the source is combined with a high surrogate that ends buf.
 func appendSourceByte(buf []byte, src string, pos int) ([]byte, int) {
 	if src[pos] == 0xed && src[pos+1] >= 0xb0 {
-		r, size := wtf8.DecodeRune(src[pos:])
+		r, size := wtf8.DecodeRune(wtf8.String(src[pos:]))
 		return appendWTF8(buf, r), pos + size
 	}
 	return append(buf, src[pos]), pos + 1
@@ -939,7 +939,7 @@ func (p *parser) scanEscape(buf []byte, template bool) ([]byte, escStatus) {
 	if c < utf8.RuneSelf {
 		return append(buf, c), escOK
 	}
-	r, size := wtf8.DecodeRune(src[pos:])
+	r, size := wtf8.DecodeRune(wtf8.String(src[pos:]))
 	p.pos = pos + size
 	if r == 0x2028 || r == 0x2029 {
 		return buf, escOK

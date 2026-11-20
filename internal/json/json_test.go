@@ -12,7 +12,7 @@ import (
 )
 
 // wtf8Of returns the WTF-8 string with the code units u.
-func wtf8Of(u ...uint16) string {
+func wtf8Of(u ...uint16) wtf8.String {
 	return wtf8.FromUTF16(u)
 }
 
@@ -20,8 +20,8 @@ func TestScanString(t *testing.T) {
 	pair := wtf8Of(0xD83D, 0xDE00)
 	tests := []struct {
 		name string
-		text string
-		want string
+		text wtf8.String
+		want wtf8.String
 	}{
 		{
 			name: "escaped pair",
@@ -55,14 +55,14 @@ func TestScanString(t *testing.T) {
 
 func TestAppendQuote(t *testing.T) {
 	s := wtf8Of(0xDE00, 0xD83D, 0xDE00, 0x1F, '"', 0xD83D)
-	if got, want := string(json.AppendQuote(nil, s)), `"\ude00`+wtf8Of(0xD83D, 0xDE00)+`\u001f\"\ud83d"`; got != want {
+	if got, want := wtf8.String(json.AppendQuote(nil, s)), `"\ude00`+wtf8Of(0xD83D, 0xDE00)+`\u001f\"\ud83d"`; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
 func TestValid(t *testing.T) {
 	tests := []struct {
-		text string
+		text wtf8.String
 		pos  int
 		ok   bool
 	}{
@@ -102,7 +102,7 @@ func TestScanNumberPolls(t *testing.T) {
 		"1e" + strings.Repeat("0", 1<<20) + "1",
 	} {
 		polls := 0
-		f, end, ok := json.ScanNumber(s, 0, func() { polls++ })
+		f, end, ok := json.ScanNumber(wtf8.String(s), 0, func() { polls++ })
 		if !ok || end != len(s) || f == 0 {
 			t.Errorf("ScanNumber(%.8q...) = %v, %d, %v", s, f, end, ok)
 		}

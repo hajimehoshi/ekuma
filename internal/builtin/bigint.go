@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // low64 returns i modulo 2^64.
@@ -138,7 +139,7 @@ func initBigInt(vm *engine.VM) {
 // numberToBigInt implements NumberToBigInt.
 func numberToBigInt(vm *engine.VM, n float64) engine.Value {
 	if n != math.Trunc(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError("the number " + numconv.NumberToString(n) + " cannot be converted to a BigInt because it is not an integer")
+		vm.ThrowRangeError("the number " + wtf8.ToValidUTF8(numconv.NumberToString(n)) + " cannot be converted to a BigInt because it is not an integer")
 	}
 	if n >= -1<<63 && n < 1<<63 {
 		return engine.BigIntFromInt64(int64(n))

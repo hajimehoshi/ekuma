@@ -70,7 +70,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		}
 	}
 	slices.SortFunc(exports, func(a, b export) int {
-		return wtf8.Compare(a.name, b.name)
+		return wtf8.Compare(wtf8.String(a.name), wtf8.String(b.name))
 	})
 	ns := &moduleNamespace{
 		module:   m,
@@ -80,7 +80,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		deferred: deferred,
 	}
 	for i, e := range exports {
-		k := vm.ToPropertyKey(ObjectValue(vm.Intern(e.name)))
+		k := vm.ToPropertyKey(ObjectValue(vm.Intern(wtf8.String(e.name))))
 		ns.keys[i] = k
 		ns.targets[i] = e.r
 		ns.index[k] = i
@@ -92,7 +92,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		shape: vm.shapes.nullProto,
 		ext:   ns,
 	}).init()
-	tag := "Module"
+	tag := wtf8.String("Module")
 	if deferred {
 		tag = "Deferred Module"
 	}
@@ -139,13 +139,13 @@ func (vm *VM) namespaceGet(o *Object, k PropKey) Value {
 		return Value{o: vm.moduleNamespace(r.module)}
 	case resolutionSource:
 		if r.module.source == nil {
-			vm.ThrowReferenceError("the module source of '" + vm.KeyString(k) + "' is not available")
+			vm.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' is not available")
 		}
 		return Value{o: r.module.source}
 	}
 	v := *r.module.env[r.index].p
 	if v.o == tdzObject {
-		vm.ThrowReferenceError("cannot access '" + vm.KeyString(k) + "' before initialization")
+		vm.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' before initialization")
 	}
 	return v
 }

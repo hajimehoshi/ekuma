@@ -77,7 +77,7 @@ func typeOption(vm *engine.VM, options *engine.Object, name string) (string, boo
 		return "", false
 	}
 	if !localetag.IsType(wtf8.ToLowerASCII(s)) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
+		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	}
 	return s, true
 }
@@ -166,17 +166,17 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		if toLocaleStringTZ != nil {
 			vm.ThrowTypeError("the timeZone option is not allowed in Temporal.ZonedDateTime.prototype.toLocaleString")
 		}
-		name := vm.ToString(tzv)
+		name := wtf8.ToValidUTF8(vm.ToString(tzv))
 		id, offset, isOffset, err := temporal.ParseTimeZoneIdentifier(name, vm.Poll)
 		switch {
 		case err != nil:
-			vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(name)))
+			vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(wtf8.String(name))))
 		case isOffset:
 			dtf.tz = temporal.OffsetTimeZone(offset)
 		default:
 			z, ok := temporal.GetAvailableNamedTimeZone(id, builtin.SystemTimeZone(vm))
 			if !ok {
-				vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(name)))
+				vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(wtf8.String(name))))
 			}
 			dtf.tz = z
 		}
@@ -482,7 +482,7 @@ func (dtf *dateTimeFormatData) formatDateTime(vm *engine.VM, x formattable) engi
 	for _, p := range dtf.partitionDateTimePattern(vm, x) {
 		b.WriteString(p.Value)
 	}
-	return vm.NewString(b.String())
+	return vm.NewString(wtf8.String(b.String()))
 }
 
 // partitionDateTimeRangePattern implements PartitionDateTimeRangePattern.
@@ -595,7 +595,7 @@ func (r *realm) initDateTimeFormat(vm *engine.VM) {
 		for _, p := range dtf.partitionDateTimeRangePattern(vm, x, y) {
 			b.WriteString(p.Value)
 		}
-		return vm.NewString(b.String())
+		return vm.NewString(wtf8.String(b.String()))
 	})
 	method(vm, proto, "formatRangeToParts", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		dtf := thisDateTimeFormat(vm, this, "formatRangeToParts")
@@ -613,11 +613,11 @@ func (r *realm) initDateTimeFormat(vm *engine.VM) {
 func (dtf *dateTimeFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 	out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(name)), v)
+		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 	}
 	str := func(name, v string) {
 		if v != "" {
-			set(name, vm.NewString(v))
+			set(name, vm.NewString(wtf8.String(v)))
 		}
 	}
 	str("locale", dtf.locale)
@@ -679,7 +679,7 @@ func initTemporalToLocaleString(vm *engine.VM) {
 			{"PlainYearMonth", temporalPlainYearMonth},
 			{"ZonedDateTime", temporalZonedDateTime},
 		} {
-			ctor := vm.Get(ns, engine.NamedKey(vm.Intern(c.name)))
+			ctor := vm.Get(ns, engine.NamedKey(vm.Intern(wtf8.String(c.name))))
 			proto := vm.Get(ctor.Object(), engine.NamedKey(vm.Key(engine.KeyPrototype))).Object()
 			method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				tv, ok := temporalValueOf(this)

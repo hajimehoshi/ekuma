@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // bigIntObject holds a BigInt and its integer header in one allocation.
@@ -115,7 +116,7 @@ func displayBigInt(v Value) string {
 	x := v.BigInt()
 	n := x.BitLen()
 	if n <= maxDisplayBigIntBits {
-		return numconv.FormatBigInt(x, 10, nil)
+		return string(numconv.FormatBigInt(x, 10, nil))
 	}
 	// The shift is a multiple of 4, so the digits are those of x.
 	lead := new(big.Int).Rsh(new(big.Int).Abs(x), uint(n-64)&^3)
@@ -128,9 +129,9 @@ func displayBigInt(v Value) string {
 
 // BigIntToString implements BigInt::toString. It throws a RangeError when the result would be
 // longer than MaxStringLength.
-func (vm *VM) BigIntToString(v Value, radix int) string {
+func (vm *VM) BigIntToString(v Value, radix int) wtf8.String {
 	if i, ok := v.BigInt64(); ok {
-		return strconv.FormatInt(i, radix)
+		return wtf8.String(strconv.FormatInt(i, radix))
 	}
 	x := v.BigInt()
 	n := x.BitLen()

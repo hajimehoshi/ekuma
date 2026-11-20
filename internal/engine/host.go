@@ -142,7 +142,7 @@ func ThrownMessage(v Value) string {
 	}
 	if vm == nil {
 		// A primitive other than a string: its description needs no VM.
-		return "uncaught " + wtf8.ToValidUTF8(vm.DisplayString(v))
+		return "uncaught " + vm.DisplayString(v)
 	}
 	return vm.errorOf(v).Error()
 }

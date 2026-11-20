@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // createPlainYearMonth implements CreateTemporalYearMonth.
@@ -155,7 +156,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 		return r.createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(s.cal, f, overflow)), s.cal, nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainYearMonth(vm, this, name)
 			d := toTemporalDuration(vm, arg(args, 0))
 			if name == "subtract" {
@@ -175,7 +176,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 		})
 	}
 	for _, name := range []string{"until", "since"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainYearMonth(vm, this, name)
 			other := toTemporalYearMonth(vm, arg(args, 0), engine.Undefined)
 			checkSameCalendar(vm, s.cal, other.cal)
@@ -220,12 +221,12 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 	tmethod(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainYearMonth(vm, this, "toString")
 		show := getShowCalendarOption(vm, getOptionsObject(vm, arg(args, 0)))
-		return vm.NewString(temporal.TemporalYearMonthToString(s.date, s.cal, show))
+		return vm.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, show)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainYearMonth(vm, this, name)
-			return vm.NewString(temporal.TemporalYearMonthToString(s.date, s.cal, temporal.ShowCalendarAuto))
+			return vm.NewString(wtf8.String(temporal.TemporalYearMonthToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "PlainYearMonth")
@@ -284,12 +285,12 @@ func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object, r *temporalReal
 	tmethod(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainMonthDay(vm, this, "toString")
 		show := getShowCalendarOption(vm, getOptionsObject(vm, arg(args, 0)))
-		return vm.NewString(temporal.TemporalMonthDayToString(s.date, s.cal, show))
+		return vm.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, show)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainMonthDay(vm, this, name)
-			return vm.NewString(temporal.TemporalMonthDayToString(s.date, s.cal, temporal.ShowCalendarAuto))
+			return vm.NewString(wtf8.String(temporal.TemporalMonthDayToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "PlainMonthDay")

@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // TestAssignedLocalRegister tests that an assignment whose result is used reads a local variable
@@ -31,7 +32,7 @@ func TestAssignedLocalRegister(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prog, err := parser.ParseScript(`function f(o) { let i = 1; `+tc.body+` }`, parser.Options{})
+			prog, err := parser.ParseScript(wtf8.String(`function f(o) { let i = 1; `+tc.body+` }`), parser.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

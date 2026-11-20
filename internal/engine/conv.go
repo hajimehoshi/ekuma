@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Hint is the preferred type of ToPrimitive.
@@ -28,7 +29,7 @@ func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 		return v
 	}
 	if m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolToPrimitive)); m != nil {
-		name := "default"
+		var name wtf8.String = "default"
 		switch h {
 		case HintNumber:
 			name = "number"
@@ -69,7 +70,7 @@ func (vm *VM) GetMethod(v Value, key *Object) *Object {
 		return nil
 	}
 	if !m.IsCallable() {
-		vm.ThrowTypeError(vm.KeyString(PropKey{key: key}) + " is not a function")
+		vm.ThrowTypeError(wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key})) + " is not a function")
 	}
 	return m.o
 }
@@ -142,7 +143,7 @@ func (vm *VM) ToUint32(v Value) uint32 {
 }
 
 // ToString implements ToString.
-func (vm *VM) ToString(v Value) string {
+func (vm *VM) ToString(v Value) wtf8.String {
 	o := v.o
 	if o == nil {
 		return "undefined"
@@ -186,9 +187,9 @@ func (vm *VM) toStringValue(v Value) Value {
 			return vm.strings.ascii[text[0]]
 		}
 		if len(text) <= shortstrings.MaxBytes {
-			return vm.shortString(string(text))
+			return vm.shortString(wtf8.String(text))
 		}
-		return vm.NewString(string(text))
+		return vm.NewString(wtf8.String(text))
 	}
 	return vm.NewString(vm.ToString(v))
 }
@@ -252,7 +253,7 @@ func (vm *VM) RequireObjectCoercible(v Value, what string) {
 func (vm *VM) ToBigInt(v Value) Value {
 	p := vm.ToPrimitive(v, HintNumber)
 	if p.o == numberObject {
-		vm.ThrowTypeError("cannot convert " + numconv.NumberToString(p.n) + " to a BigInt")
+		vm.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(numconv.NumberToString(p.n)) + " to a BigInt")
 	}
 	if p.IsUndefined() {
 		vm.ThrowTypeError("cannot convert undefined to a BigInt")
@@ -261,7 +262,7 @@ func (vm *VM) ToBigInt(v Value) Value {
 	case kindBigInt:
 		return p
 	case kindNull:
-		vm.ThrowTypeError("cannot convert " + vm.ToString(p) + " to a BigInt")
+		vm.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(vm.ToString(p)) + " to a BigInt")
 	case kindFalse:
 		return BigIntFromInt64(0)
 	case kindTrue:
@@ -464,7 +465,7 @@ func (vm *VM) addValues(a, b Value) Value {
 		return vm.Concat(a, b)
 	}
 	if as || bs {
-		var x, y string
+		var x, y wtf8.String
 		if as {
 			x = a.rawString()
 		} else {

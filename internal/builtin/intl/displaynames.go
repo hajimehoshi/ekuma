@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/displaynames"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // displayNamesData holds the internal slots of an Intl.DisplayNames object.
@@ -68,7 +69,7 @@ func thisDisplayNames(vm *engine.VM, this engine.Value, name string) *displayNam
 // of implements Intl.DisplayNames.prototype.of after the conversion of code to a String.
 func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 	invalid := func() {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(code)) + " is not a valid code for the type " + dn.typ)
+		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(code))) + " is not a valid code for the type " + dn.typ)
 	}
 	var name string
 	var ok bool
@@ -115,9 +116,9 @@ func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 	}
 	switch {
 	case ok:
-		return vm.NewString(name)
+		return vm.NewString(wtf8.String(name))
 	case dn.fallback == "code":
-		return vm.NewString(code)
+		return vm.NewString(wtf8.String(code))
 	}
 	return engine.Undefined
 }
@@ -146,7 +147,7 @@ func (r *realm) initDisplayNames(vm *engine.VM) {
 	})
 	method(vm, proto, "of", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		dn := thisDisplayNames(vm, this, "of")
-		return dn.of(vm, vm.ToString(arg(args, 0)))
+		return dn.of(vm, wtf8.ToValidUTF8(vm.ToString(arg(args, 0))))
 	})
 	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		dn := thisDisplayNames(vm, this, "resolvedOptions")

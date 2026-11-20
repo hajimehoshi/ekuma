@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // disposableStack holds the internal slots of a DisposableStack or AsyncDisposableStack object.
@@ -59,7 +60,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		}
 		return engine.ObjectValue(vm.NewDisposableStackObject(vm.GetPrototypeFromConstructor(nt, proto), async, s))
 	}
-	ctor = constructor(vm, name, 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor = constructor(vm, wtf8.String(name), 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor " + name + " requires 'new'")
@@ -163,5 +164,5 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		vm.AddDisposableResource(s.dc, v, hint, nil)
 		return v
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString(name), engine.FlagConfigurable)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString(wtf8.String(name)), engine.FlagConfigurable)
 }

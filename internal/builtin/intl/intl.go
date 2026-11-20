@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldr"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // realm holds the Intl objects of a realm.
@@ -161,11 +162,11 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 		if l, ok := engine.IntlData(v).(*localeData); ok {
 			tag = l.String()
 		} else {
-			tag = vm.ToString(v)
+			tag = wtf8.ToValidUTF8(vm.ToString(v))
 		}
 		c, ok := locale.Canonicalize(tag, vm.Poll)
 		if !ok {
-			vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(tag)))
+			vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(wtf8.String(tag))))
 		}
 		if !localetag.HasDuplicate(&seenSet, seen, c) {
 			seen = append(seen, c)
@@ -191,19 +192,19 @@ func checkStringLength(vm *engine.VM, n int) {
 
 // method defines the non-enumerable function name on o.
 func method(vm *engine.VM, o *engine.Object, name string, length int, f engine.NativeFunc) {
-	vm.Define(o, vm.Intern(name), engine.ObjectValue(vm.NewNative(name, length, f)), engine.FlagsHidden)
+	vm.Define(o, vm.Intern(wtf8.String(name)), engine.ObjectValue(vm.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
 }
 
 // getter defines the accessor property name on o with the getter f.
 func getter(vm *engine.VM, o *engine.Object, name string, f engine.NativeFunc) {
-	vm.DefineAccessor(o, vm.Intern(name), vm.NewNative("get "+name, 0, f), nil, engine.FlagConfigurable)
+	vm.DefineAccessor(o, vm.Intern(wtf8.String(name)), vm.NewNative(wtf8.String("get "+name), 0, f), nil, engine.FlagConfigurable)
 }
 
 // stringArray returns a new array of the strings ss.
 func stringArray(vm *engine.VM, ss []string) engine.Value {
 	vals := make([]engine.Value, len(ss))
 	for i, s := range ss {
-		vals[i] = vm.NewString(s)
+		vals[i] = vm.NewString(wtf8.String(s))
 	}
 	return vm.NewArrayOf(vals)
 }
@@ -213,20 +214,20 @@ func stringOrUndefined(vm *engine.VM, s string, ok bool) engine.Value {
 	if !ok {
 		return engine.Undefined
 	}
-	return vm.NewString(s)
+	return vm.NewString(wtf8.String(s))
 }
 
 // getOption implements GetOption for an option of the type string without a default: it
 // returns the option name of options converted to a String, and reports false when it is
 // undefined. A non-empty values lists the allowed values.
 func getOption(vm *engine.VM, options *engine.Object, name string, values ...string) (string, bool) {
-	v := vm.Get(options, engine.NamedKey(vm.Intern(name)))
+	v := vm.Get(options, engine.NamedKey(vm.Intern(wtf8.String(name))))
 	if v.IsUndefined() {
 		return "", false
 	}
-	s := vm.ToString(v)
+	s := wtf8.ToValidUTF8(vm.ToString(v))
 	if len(values) > 0 && !slices.Contains(values, s) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
+		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	}
 	return s, true
 }

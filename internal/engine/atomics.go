@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 	"weak"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // This file holds the Atomics operations on shared data blocks and the waiters of Atomics.wait
@@ -469,7 +471,7 @@ func (vm *VM) post(w *waiter) {
 
 // resolveWaiter implements EnqueueResolveInAgentJob for the asynchronous waiter w of vm, which is
 // no longer in its list.
-func (vm *VM) resolveWaiter(w *waiter, result string) {
+func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
 	delete(vm.asyncWaiters, w)
 	vm.enqueueResolveInAgentJob(w.promise, vm.NewString(result))
 }

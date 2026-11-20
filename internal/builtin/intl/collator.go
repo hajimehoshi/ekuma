@@ -35,7 +35,7 @@ type collatorData struct {
 }
 
 // compare implements CompareStrings.
-func (cd *collatorData) compare(vm *engine.VM, x, y string) int {
+func (cd *collatorData) compare(vm *engine.VM, x, y wtf8.String) int {
 	return cd.c.ComparePolled(wtf8.ToValidUTF8(x), wtf8.ToValidUTF8(y), vm.Poll)
 }
 
@@ -189,15 +189,15 @@ func (r *realm) initCollator(vm *engine.VM) {
 		cd := thisCollator(vm, this, "resolvedOptions")
 		out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
 		set := func(name string, v engine.Value) {
-			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(name)), v)
+			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 		}
-		set("locale", vm.NewString(cd.locale))
-		set("usage", vm.NewString(cd.usage))
-		set("sensitivity", vm.NewString(cd.sensitivity))
+		set("locale", vm.NewString(wtf8.String(cd.locale)))
+		set("usage", vm.NewString(wtf8.String(cd.usage)))
+		set("sensitivity", vm.NewString(wtf8.String(cd.sensitivity)))
 		set("ignorePunctuation", engine.Bool(cd.ignorePunctuation))
-		set("collation", vm.NewString(cd.collation))
+		set("collation", vm.NewString(wtf8.String(cd.collation)))
 		set("numeric", engine.Bool(cd.numeric))
-		set("caseFirst", vm.NewString(cd.caseFirst))
+		set("caseFirst", vm.NewString(wtf8.String(cd.caseFirst)))
 		return engine.ObjectValue(out)
 	})
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.Collator"), engine.FlagConfigurable)
@@ -243,7 +243,7 @@ func initLocaleCase(vm *engine.VM) {
 		{"toLocaleLowerCase", false},
 	} {
 		// The methods of the base map the case without a language.
-		base := vm.Get(proto, engine.NamedKey(vm.Intern(m.name)))
+		base := vm.Get(proto, engine.NamedKey(vm.Intern(wtf8.String(m.name))))
 		method(vm, proto, m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if this.IsNullish() {
 				vm.ThrowTypeError("String.prototype." + m.name + " called on null or undefined")
@@ -304,7 +304,7 @@ const caseChunk = 1 << 16
 // character of the canonical combining class 0, checking for an interruption between the parts
 // of a long string. f looks at no character beyond such a part, and calls poll now and then
 // over a long part.
-func mapAtStarters(vm *engine.VM, s string, f func(s string, poll func()) string) string {
+func mapAtStarters(vm *engine.VM, s wtf8.String, f func(s string, poll func()) string) wtf8.String {
 	return wtf8.MapWellFormed(s, func(s string) string {
 		if len(s) <= caseChunk {
 			return f(s, vm.Poll)

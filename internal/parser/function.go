@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // enterFunction switches the parser state to the function fn, pushes its scope,
@@ -565,11 +566,11 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 	m.Key = key
 
 	// name is the property name when it is known statically.
-	var name string
+	var name wtf8.String
 	if !m.Computed {
 		switch k := key.(type) {
 		case *ast.Identifier:
-			name = k.Name
+			name = wtf8.String(k.Name)
 		case *ast.StringLit:
 			name = k.Value
 		}
@@ -585,7 +586,7 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 			m.Kind = ast.MemberAccessor
 		}
 		if name == "constructor" || m.Static && name == "prototype" {
-			p.fail(int(key.Start()), "invalid class field name '"+name+"'")
+			p.fail(int(key.Start()), "invalid class field name '"+wtf8.ToValidUTF8(name)+"'")
 		}
 		if private != nil {
 			flags := uint8(privOther)

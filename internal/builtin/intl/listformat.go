@@ -76,7 +76,8 @@ func stringListFromIterable(vm *engine.VM, v engine.Value) []string {
 				vm.ThrowTypeError("an element of the list is not a string: " + vm.DisplayString(e))
 			})
 		}
-		out = append(out, vm.ToString(e))
+		// The formatter copies the elements into its parts as they are, lone surrogates included.
+		out = append(out, string(vm.ToString(e)))
 	}
 }
 
@@ -96,23 +97,24 @@ func (r *realm) initListFormat(vm *engine.VM) {
 		lf := thisListFormat(vm, this, "format")
 		parts := lf.f.Format(stringListFromIterable(vm, arg(args, 0)))
 		var n int
-		var previous string
+		var previous wtf8.String
 		for _, p := range parts {
-			if p.Value == "" {
+			v := wtf8.String(p.Value)
+			if v == "" {
 				continue
 			}
-			n += len(p.Value)
-			if wtf8.JoinsPair(previous, p.Value) {
+			n += len(v)
+			if wtf8.JoinsPair(previous, v) {
 				// Two three-byte surrogates form a four-byte code point.
 				n -= 2
 			}
 			checkStringLength(vm, n)
-			previous = p.Value
+			previous = v
 		}
 		var b wtf8.StringBuilder
 		b.Grow(n)
 		for _, p := range parts {
-			b.WriteString(p.Value)
+			b.WriteString(wtf8.String(p.Value))
 		}
 		return vm.NewString(b.String())
 	})
@@ -139,8 +141,8 @@ func resolvedOptions(vm *engine.VM, kv ...string) engine.Value {
 	vals := valueStorage[:0]
 	for i := 0; i < len(kv); i += 2 {
 		if kv[i+1] != "" {
-			keys = append(keys, engine.NamedKey(vm.Intern(kv[i])))
-			vals = append(vals, vm.NewString(kv[i+1]))
+			keys = append(keys, engine.NamedKey(vm.Intern(wtf8.String(kv[i]))))
+			vals = append(vals, vm.NewString(wtf8.String(kv[i+1])))
 		}
 	}
 	return engine.ObjectValue(vm.NewObjectFromProperties(keys, vals))

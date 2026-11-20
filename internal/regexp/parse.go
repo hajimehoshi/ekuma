@@ -47,7 +47,7 @@ type node struct {
 	cap    int
 	capEnd int
 	refs   []int
-	name   string
+	name   wtf8.String
 }
 
 // unbounded is the max of a quantifier without an upper bound.
@@ -60,8 +60,8 @@ const countLimit = math.MaxInt32
 type tree struct {
 	root       *node
 	groupCount int
-	groupNames []string
-	names      []string
+	groupNames []wtf8.String
+	names      []wtf8.String
 }
 
 type groupPath []pathStep
@@ -85,8 +85,8 @@ type parser struct {
 
 	groupCount  int // the total, from the prescan
 	nextGroup   int
-	groupNames  []string    // by group index, or nil before the first named group
-	groupPaths  []groupPath // by group index, for the named groups
+	groupNames  []wtf8.String // by group index, or nil before the first named group
+	groupPaths  []groupPath   // by group index, for the named groups
 	path        groupPath
 	disjCounter int
 	namedRefs   []namedRef
@@ -103,7 +103,7 @@ type parser struct {
 
 // namedRef is a backreference by name. node is nil when the parser only validates.
 type namedRef struct {
-	name string
+	name wtf8.String
 	node *node
 }
 
@@ -114,9 +114,9 @@ func (p *parser) fail(msg string) {
 	panic(syntaxPanic{})
 }
 
-// parse parses the pattern source, a WTF-8 string, with the flags. poller, which may be nil,
+// parse parses the pattern source with the flags. poller, which may be nil,
 // is called now and then during a long pattern.
-func parse(source string, flags Flags, poller Poller) (*tree, error) {
+func parse(source wtf8.String, flags Flags, poller Poller) (*tree, error) {
 	p := parser{
 		poller: poller,
 	}
@@ -126,7 +126,7 @@ func parse(source string, flags Flags, poller Poller) (*tree, error) {
 
 // validate reports the error that parse reports for the pattern source with the flags, if any.
 // poller, which may be nil, is called now and then during a long pattern.
-func validate(source string, flags Flags, poller Poller) error {
+func validate(source wtf8.String, flags Flags, poller Poller) error {
 	p := parser{
 		validateOnly: true,
 		poller:       poller,
@@ -136,7 +136,7 @@ func validate(source string, flags Flags, poller Poller) error {
 	return err
 }
 
-func (p *parser) init(source string, flags Flags) {
+func (p *parser) init(source wtf8.String, flags Flags) {
 	p.flags = flags
 	p.unicode = flags&(FlagUnicode|FlagUnicodeSets) != 0
 	p.unicodeSets = flags&FlagUnicodeSets != 0
@@ -250,8 +250,8 @@ func (p *parser) parsePattern() (t *tree, err error) {
 		p.fail("unexpected character")
 	}
 	// Resolve the named backreferences.
-	byName := map[string][]int{}
-	var names []string
+	byName := map[wtf8.String][]int{}
+	var names []wtf8.String
 	for i, n := range p.groupNames {
 		if n == "" {
 			continue
@@ -294,7 +294,7 @@ func (p *parser) parsePattern() (t *tree, err error) {
 	}
 	groupNames := p.groupNames
 	if groupNames == nil {
-		groupNames = make([]string, p.groupCount+1)
+		groupNames = make([]wtf8.String, p.groupCount+1)
 	}
 	return &tree{
 		root:       root,
@@ -305,9 +305,9 @@ func (p *parser) parsePattern() (t *tree, err error) {
 }
 
 // nameGroup records the name of the capturing group idx and the path to it.
-func (p *parser) nameGroup(idx int, name string) {
+func (p *parser) nameGroup(idx int, name wtf8.String) {
 	if p.groupNames == nil {
-		p.groupNames = make([]string, p.groupCount+1)
+		p.groupNames = make([]wtf8.String, p.groupCount+1)
 		p.groupPaths = make([]groupPath, p.groupCount+1)
 	}
 	p.groupNames[idx] = name
@@ -664,7 +664,7 @@ func (p *parser) parseGroup() (*node, bool) {
 
 // captureNode returns the node of the capturing group idx over sub, or nil when the parser only
 // validates.
-func (p *parser) captureNode(idx int, name string, sub *node) *node {
+func (p *parser) captureNode(idx int, name wtf8.String, sub *node) *node {
 	if p.validateOnly {
 		return nil
 	}
@@ -772,7 +772,7 @@ func (p *parser) expect(c rune) {
 }
 
 // parseGroupName parses a RegExpIdentifierName followed by '>'.
-func (p *parser) parseGroupName() string {
+func (p *parser) parseGroupName() wtf8.String {
 	var b wtf8.Builder
 	first := true
 	for {

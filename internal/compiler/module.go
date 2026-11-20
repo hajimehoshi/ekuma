@@ -5,10 +5,10 @@ package compiler
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // defaultBinding is the name of the binding of a default export without a name.
@@ -38,7 +38,7 @@ type moduleRequests struct {
 	list []bytecode.ModuleRequest
 
 	// bySpecifier maps a specifier to the indices in list of the requests of it.
-	bySpecifier map[string][]int32
+	bySpecifier map[wtf8.String][]int32
 }
 
 // add returns the index of the request of the source s with the attributes attrs in the phase.
@@ -54,7 +54,7 @@ func (r *moduleRequests) add(s *ast.StringLit, attrs []ast.ImportAttribute, phas
 		})
 	}
 	slices.SortFunc(req.Attributes, func(a, b bytecode.ImportAttribute) int {
-		return strings.Compare(a.Key, b.Key)
+		return wtf8.Compare(a.Key, b.Key)
 	})
 	indices := r.bySpecifier[req.Specifier]
 	for _, i := range indices {
@@ -65,7 +65,7 @@ func (r *moduleRequests) add(s *ast.StringLit, attrs []ast.ImportAttribute, phas
 	i := int32(len(r.list))
 	r.list = append(r.list, req)
 	if r.bySpecifier == nil {
-		r.bySpecifier = map[string][]int32{}
+		r.bySpecifier = map[wtf8.String][]int32{}
 	}
 	r.bySpecifier[req.Specifier] = append(indices, i)
 	return i
@@ -290,7 +290,7 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 	f.f.NumClear = int(f.top)
 
 	for _, d := range funcs {
-		name := d.Name
+		name := wtf8.String(d.Name)
 		if name == defaultBinding {
 			name = "default"
 		}

@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/parser"
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 type mode uint8
@@ -23,7 +24,7 @@ const (
 	module
 )
 
-func parse(src string, m mode) (*ast.Program, error) {
+func parse(src wtf8.String, m mode) (*ast.Program, error) {
 	switch m {
 	case strict:
 		return parser.ParseScript(src, parser.Options{
@@ -35,7 +36,7 @@ func parse(src string, m mode) (*ast.Program, error) {
 	return parser.ParseScript(src, parser.Options{})
 }
 
-func mustParse(t *testing.T, src string, m mode) *ast.Program {
+func mustParse(t *testing.T, src wtf8.String, m mode) *ast.Program {
 	t.Helper()
 	prog, err := parse(src, m)
 	if err != nil {
@@ -46,7 +47,7 @@ func mustParse(t *testing.T, src string, m mode) *ast.Program {
 
 func TestValid(t *testing.T) {
 	testCases := []struct {
-		src  string
+		src  wtf8.String
 		mode mode
 	}{
 		// Lexical grammar.
@@ -297,7 +298,7 @@ func TestValid(t *testing.T) {
 
 func TestInvalid(t *testing.T) {
 	testCases := []struct {
-		src  string
+		src  wtf8.String
 		mode mode
 	}{
 		// Lexical grammar.
@@ -1598,7 +1599,7 @@ func TestDeepNesting(t *testing.T) {
 		strings.Repeat("a**", 100000) + "a",
 		strings.Repeat("function f(a=", 100000),
 	} {
-		_, err := parse(src, script)
+		_, err := parse(wtf8.String(src), script)
 		if _, ok := errors.AsType[*parser.Error](err); !ok {
 			t.Errorf("parse(%.20q...): got error %v, want *parser.Error", src, err)
 		}
@@ -1606,7 +1607,7 @@ func TestDeepNesting(t *testing.T) {
 
 	// A long chain is not nested syntax, but its length is limited, also across chains in
 	// the operands of a chain.
-	if _, err := parse(strings.Repeat("a+", parser.MaxLinks)+"a", script); err != nil {
+	if _, err := parse(wtf8.String(strings.Repeat("a+", parser.MaxLinks)+"a"), script); err != nil {
 		t.Errorf("parse of a long binary chain failed: %v", err)
 	}
 	for _, src := range []string{
@@ -1615,14 +1616,14 @@ func TestDeepNesting(t *testing.T) {
 		"new a" + strings.Repeat(".a", parser.MaxLinks+1),
 		"a+(a" + strings.Repeat("()", parser.MaxLinks) + ")",
 	} {
-		_, err := parse(src, script)
+		_, err := parse(wtf8.String(src), script)
 		if _, ok := errors.AsType[*parser.Error](err); !ok {
 			t.Errorf("parse(%.20q...): got error %v, want *parser.Error", src, err)
 		}
 	}
 }
 
-func exprOf(t *testing.T, src string, m mode) ast.Expr {
+func exprOf(t *testing.T, src wtf8.String, m mode) ast.Expr {
 	t.Helper()
 	prog := mustParse(t, src, m)
 	if len(prog.Body) == 0 {
@@ -1814,8 +1815,8 @@ func TestExpressionShape(t *testing.T) {
 
 func TestLiterals(t *testing.T) {
 	testCases := []struct {
-		src  string
-		want string
+		src  wtf8.String
+		want wtf8.String
 	}{
 		{
 			src:  `'a\x41\u00e9\n'`,
@@ -1866,7 +1867,7 @@ func TestLiterals(t *testing.T) {
 	}
 
 	numbers := []struct {
-		src  string
+		src  wtf8.String
 		want float64
 	}{
 		{
@@ -1907,11 +1908,11 @@ func TestLiterals(t *testing.T) {
 		},
 		{
 			// Only the leading digits are converted, however many follow.
-			src:  "0o" + strings.Repeat("7", 1<<23),
+			src:  wtf8.String("0o" + strings.Repeat("7", 1<<23)),
 			want: math.Inf(1),
 		},
 		{
-			src:  "0o1" + strings.Repeat("0", 340),
+			src:  wtf8.String("0o1" + strings.Repeat("0", 340)),
 			want: math.Ldexp(1, 1020),
 		},
 	}
@@ -1948,7 +1949,7 @@ func TestLiterals(t *testing.T) {
 
 func TestASI(t *testing.T) {
 	testCases := []struct {
-		src  string
+		src  wtf8.String
 		want int
 	}{
 		{
@@ -2131,7 +2132,7 @@ if (a) function z() {}
 
 func TestAnnexBHoisting(t *testing.T) {
 	testCases := []struct {
-		src  string
+		src  wtf8.String
 		want bool
 	}{
 		{
@@ -2293,7 +2294,7 @@ var j = (x = function () { eval(''); }) => x;
 	if h := cls.Members[5].Value; !h.Async || !h.Generator {
 		t.Errorf("E.h: wrong facts")
 	}
-	if got, want := prog.Text(cls.Members[5].Value), "async *h() {}"; got != want {
+	if got, want := prog.Text(cls.Members[5].Value), wtf8.String("async *h() {}"); got != want {
 		t.Errorf("E.h source text: got %q, want %q", got, want)
 	}
 
@@ -2333,7 +2334,7 @@ func TestAssigned(t *testing.T) {
 
 		// src declares a function outer. When outer starts with a return statement, the returned
 		// function is inner.
-		src   string
+		src   wtf8.String
 		outer string
 		inner string
 	}{
@@ -2408,7 +2409,7 @@ func TestModuleDecls(t *testing.T) {
 
 func TestOptions(t *testing.T) {
 	testCases := []struct {
-		src  string
+		src  wtf8.String
 		opts parser.Options
 		ok   bool
 	}{
@@ -2510,7 +2511,7 @@ func TestParseFunction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseFunction failed: %v", err)
 	}
-	if got, want := prog.Source, "function anonymous(a, b = 1\n) {\nreturn a + b\n}"; got != want {
+	if got, want := prog.Source, wtf8.String("function anonymous(a, b = 1\n) {\nreturn a + b\n}"); got != want {
 		t.Errorf("Source: got %q, want %q", got, want)
 	}
 	fn, ok := prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function)
@@ -2522,8 +2523,8 @@ func TestParseFunction(t *testing.T) {
 	}
 
 	testCases := []struct {
-		params string
-		body   string
+		params wtf8.String
+		body   wtf8.String
 		kind   parser.FunctionKind
 		ok     bool
 	}{
@@ -2646,7 +2647,7 @@ func TestParseFunction(t *testing.T) {
 func TestPosition(t *testing.T) {
 	prog := mustParse(t, "a;\néé; b\r\n  c", script)
 	s := prog.Body[2]
-	if got, want := prog.Text(s), "b"; got != want {
+	if got, want := prog.Text(s), wtf8.String("b"); got != want {
 		t.Errorf("Text: got %q, want %q", got, want)
 	}
 	lines := srcpos.NewTable(prog.Source)
@@ -2659,7 +2660,7 @@ func TestPosition(t *testing.T) {
 
 	// A lone surrogate, in WTF-8, is one code point, also on a line longer than the blocks
 	// that the code points are counted in.
-	prog = mustParse(t, "a;\n'\xed\xa0\x80"+strings.Repeat("x", 300)+"'; d", script)
+	prog = mustParse(t, wtf8.String("a;\n'\xed\xa0\x80"+strings.Repeat("x", 300)+"'; d"), script)
 	if line, col := srcpos.NewTable(prog.Source).Position(prog.Body[2].Start()); line != 2 || col != 306 {
 		t.Errorf("Position of d: got %d:%d, want 2:306", line, col)
 	}
@@ -2681,8 +2682,10 @@ func FuzzParse(f *testing.F) {
 	for _, s := range seeds {
 		f.Add(s)
 	}
-	f.Fuzz(func(t *testing.T, src string) {
-		// Only the absence of a panic is checked.
+	f.Fuzz(func(t *testing.T, text string) {
+		// Only the absence of a panic is checked. The parser rejects bytes that are not canonical
+		// WTF-8, so any bytes are fed.
+		src := wtf8.String(text)
 		_, _ = parser.ParseScript(src, parser.Options{})
 		_, _ = parser.ParseModule(src, parser.Options{})
 		_, _ = parser.ParseFunction(src, src, parser.AsyncGeneratorFunction, parser.Options{})

@@ -11,6 +11,8 @@ package regexp
 import (
 	"errors"
 	"strings"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Flags is a set of regular expression flags.
@@ -48,17 +50,17 @@ func (e *Error) Is(target error) bool {
 }
 
 // ParseFlags parses the flags of a regular expression literal or of the RegExp constructor.
-func ParseFlags(s string) (Flags, error) {
+func ParseFlags(s wtf8.String) (Flags, error) {
 	var f Flags
 	for i := 0; i < len(s); i++ {
 		j := strings.IndexByte(flagLetters, s[i])
 		if j < 0 || f&(1<<j) != 0 {
-			return 0, &Error{Msg: "invalid flags '" + s + "'"}
+			return 0, &Error{Msg: "invalid flags '" + wtf8.ToValidUTF8(s) + "'"}
 		}
 		f |= 1 << j
 	}
 	if f&FlagUnicode != 0 && f&FlagUnicodeSets != 0 {
-		return 0, &Error{Msg: "invalid flags '" + s + "'"}
+		return 0, &Error{Msg: "invalid flags '" + wtf8.ToValidUTF8(s) + "'"}
 	}
 	return f, nil
 }
@@ -86,10 +88,10 @@ type Regexp struct {
 	groupCount int
 
 	// groupNames maps each capturing group index from 1 to its name, or "".
-	groupNames []string
+	groupNames []wtf8.String
 
 	// names lists the distinct group names in the order of their first group.
-	names []string
+	names []wtf8.String
 }
 
 // pollSteps is the number of steps, such as parsing a character of a pattern or compiling a
@@ -98,7 +100,7 @@ const pollSteps = 1 << 16
 
 // Compile parses a pattern with flags and compiles it. poller, which may be nil, is called now
 // and then during a long pattern; it may stop the compilation by panicking.
-func Compile(pattern string, flags Flags, poller Poller) (*Regexp, error) {
+func Compile(pattern wtf8.String, flags Flags, poller Poller) (*Regexp, error) {
 	tree, err := parse(pattern, flags, poller)
 	if err != nil {
 		return nil, err
@@ -116,7 +118,7 @@ func Compile(pattern string, flags Flags, poller Poller) (*Regexp, error) {
 // Validate reports the syntax error of pattern with the flags in flags, if any. poller, which
 // may be nil, is called now and then during a long pattern; it may stop the validation by
 // panicking.
-func Validate(pattern, flags string, poller Poller) error {
+func Validate(pattern, flags wtf8.String, poller Poller) error {
 	f, err := ParseFlags(flags)
 	if err != nil {
 		return err
@@ -136,13 +138,13 @@ func (re *Regexp) GroupCount() int {
 
 // GroupName returns the name of the capturing group i, which is from 1 to [Regexp.GroupCount], or
 // "".
-func (re *Regexp) GroupName(i int) string {
+func (re *Regexp) GroupName(i int) wtf8.String {
 	return re.groupNames[i]
 }
 
 // Names returns the distinct group names of re in the order of their first appearance.
 // The caller must not modify the result.
-func (re *Regexp) Names() []string {
+func (re *Regexp) Names() []wtf8.String {
 	return re.names
 }
 

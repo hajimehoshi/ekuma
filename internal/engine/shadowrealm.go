@@ -3,7 +3,10 @@
 
 package engine
 
-import "github.com/hajimehoshi/ekuma/internal/bytecode"
+import (
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
+)
 
 // NewShadowRealmObject returns a ShadowRealm object with the prototype proto whose
 // [[ShadowRealm]] is r.
@@ -31,7 +34,7 @@ func (vm *VM) GetFunctionRealm(f *Object) *Realm {
 // EvalInRealm evaluates the script src in the realm r as an indirect eval there would, as code
 // without a ScriptOrModule. It throws a SyntaxError of the current realm when src is not a valid
 // script. It reports false when the evaluation throws, and the result is the exception then.
-func (vm *VM) EvalInRealm(r *Realm, src string) (Value, bool) {
+func (vm *VM) EvalInRealm(r *Realm, src wtf8.String) (Value, bool) {
 	bc := vm.compileEval(nil, 0, src)
 	var result, e Value
 	var ok bool
@@ -49,7 +52,7 @@ func (vm *VM) EvalInRealm(r *Realm, src string) (Value, bool) {
 
 // ImportInRealm loads the module specifier with the realm r as the referrer, as import() in code
 // of r without a ScriptOrModule does, and returns a promise of r for its module namespace.
-func (vm *VM) ImportInRealm(r *Realm, specifier string) *Object {
+func (vm *VM) ImportInRealm(r *Realm, specifier wtf8.String) *Object {
 	var p *Object
 	vm.InRealm(r, func() {
 		c := vm.newIntrinsicCapability()

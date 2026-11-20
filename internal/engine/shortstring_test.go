@@ -9,12 +9,13 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func BenchmarkShortString(b *testing.B) {
 	vm := engine.NewVM(nil)
-	for _, s := range []string{"abc", "abcdefgh", "é日", "😀😀"} {
-		b.Run(s, func(b *testing.B) {
+	for _, s := range []wtf8.String{"abc", "abcdefgh", "é日", "😀😀"} {
+		b.Run(string(s), func(b *testing.B) {
 			v := vm.NewString(s)
 			b.Run("New", func(b *testing.B) {
 				for b.Loop() {
@@ -49,8 +50,8 @@ func BenchmarkShortString(b *testing.B) {
 
 func BenchmarkShortStringSubstring(b *testing.B) {
 	vm := engine.NewVM(nil)
-	for _, s := range []string{"abcdefgh", "é日a", "😀😀"} {
-		b.Run(s, func(b *testing.B) {
+	for _, s := range []wtf8.String{"abcdefgh", "é日a", "😀😀"} {
+		b.Run(string(s), func(b *testing.B) {
 			v := vm.NewString(s)
 			b.Run("Value", func(b *testing.B) {
 				for b.Loop() {
@@ -70,8 +71,8 @@ func TestSubstringEquals(t *testing.T) {
 	vm := engine.NewVM(nil)
 	for _, tc := range []struct {
 		name          string
-		text          string
-		pattern       string
+		text          wtf8.String
+		pattern       wtf8.String
 		start         int
 		end           int
 		internPattern bool
@@ -162,7 +163,7 @@ func TestToWellFormedLiteral(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := v.Str(), "��"; got != want {
+	if got, want := v.Str(), wtf8.String("��"); got != want {
 		t.Errorf("toWellFormed() = %q, want %q", got, want)
 	}
 }
@@ -178,7 +179,7 @@ func BenchmarkShortStringLeadingSurrogate(b *testing.B) {
 func TestCodePointAtCachedLowSurrogate(t *testing.T) {
 	vm := engine.NewVM(nil)
 	const prefixUnits = 90
-	v := vm.NewString(strings.Repeat("日", prefixUnits) + "😀")
+	v := vm.NewString(wtf8.String(strings.Repeat("日", prefixUnits) + "😀"))
 	if got := v.CodePointAt(prefixUnits + 1); got != 0xde00 {
 		t.Errorf("CodePointAt(low) = %#x, want %#x", got, 0xde00)
 	}
@@ -192,7 +193,7 @@ func TestStringValueBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		src  string
-		want string
+		want wtf8.String
 	}{
 		{
 			name: "empty",
@@ -278,7 +279,7 @@ func TestInternedStringValue(t *testing.T) {
 func TestShortStringToNumber(t *testing.T) {
 	vm := engine.NewVM(nil)
 	for _, tc := range []struct {
-		text string
+		text wtf8.String
 		want float64
 	}{
 		{
@@ -334,7 +335,7 @@ func TestShortStringToNumber(t *testing.T) {
 			want: 123456789,
 		},
 	} {
-		t.Run(tc.text, func(t *testing.T) {
+		t.Run(string(tc.text), func(t *testing.T) {
 			for _, value := range []engine.Value{vm.NewString(tc.text), engine.ObjectValue(vm.Intern(tc.text))} {
 				got := vm.ToNumber(value)
 				if math.IsNaN(tc.want) {

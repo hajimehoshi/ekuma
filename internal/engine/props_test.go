@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // TestStringIndexKey tests reads and stores with string keys that are array indices. Each key is
@@ -15,7 +16,7 @@ func TestStringIndexKey(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		src  string
-		want string
+		want wtf8.String
 	}{
 		{
 			name: "get",

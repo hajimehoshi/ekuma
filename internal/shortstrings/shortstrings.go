@@ -8,13 +8,15 @@ import (
 	"cmp"
 	"encoding/binary"
 	"math/bits"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // MaxBytes is the maximum byte length of a packed string.
 const MaxBytes = 8
 
 // Pack returns the zero-padded payload of s, which must contain at most MaxBytes bytes.
-func Pack(s string) uint64 {
+func Pack(s wtf8.String) uint64 {
 	var data [MaxBytes]byte
 	copy(data[:], s)
 	return binary.LittleEndian.Uint64(data[:])
@@ -28,10 +30,10 @@ func Bytes(data uint64) [MaxBytes]byte {
 }
 
 // String returns the packed string whose byte length is n.
-func String(data uint64, n int) string {
+func String(data uint64, n int) wtf8.String {
 	// Keep the conversion separate from the byte fill so callers can inline it on wasm.
 	b := Bytes(data)
-	return string(b[:n])
+	return wtf8.String(b[:n])
 }
 
 // IsASCII reports whether every byte of the packed string is below 0x80.

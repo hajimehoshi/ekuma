@@ -8,10 +8,11 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // defaultConstructor returns the code of the constructor of a class that does not write one.
-func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func {
+func (c *compiler) defaultConstructor(name wtf8.String, derived bool) *bytecode.Func {
 	b := &bytecode.Func{
 		Name:               name,
 		File:               c.file,
@@ -52,11 +53,11 @@ func (c *compiler) defaultConstructor(name string, derived bool) *bytecode.Func 
 
 // class compiles the class n into dst. name is the value of the name property. When the
 // register nameKey is not -1 and n has no name, the name is that of the property key in it.
-func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
+func (f *fn) class(n *ast.Class, dst int32, name wtf8.String, nameKey int32) {
 	mark := f.top
 	defer f.free(mark)
 	if n.Name != nil {
-		name = n.Name.Name
+		name = wtf8.String(n.Name.Name)
 		nameKey = -1
 	}
 
@@ -109,7 +110,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 		if m.Kind == ast.MemberMethod {
 			isMethod = 1
 		}
-		f.emit(bytecode.OpPrivateName, b.reg, f.key(p.Name), isMethod)
+		f.emit(bytecode.OpPrivateName, b.reg, f.key(wtf8.String(p.Name)), isMethod)
 	}
 	// The key of a field whose name is known only at run time is a variable of the class
 	// scope, so that its initializer can name an anonymous function after it.
@@ -210,7 +211,7 @@ func (f *fn) class(n *ast.Class, dst int32, name string, nameKey int32) {
 			mm := f.top
 			k := f.propertyKey(m.Key, false)
 			v := f.newReg()
-			fname := "#" + m.Key.(*ast.PrivateName).Name
+			fname := wtf8.String("#" + m.Key.(*ast.PrivateName).Name)
 			switch m.Kind {
 			case ast.MemberGetter:
 				fname = "get " + fname
@@ -353,7 +354,7 @@ func (f *fn) fieldInit(m *ast.ClassMember, obj, k int32, private bool) int32 {
 	if fname, ok := keyName(m.Key, m.Computed); ok {
 		f.c.nameField(m.Value, fname)
 	} else if private {
-		f.c.nameField(m.Value, "#"+m.Key.(*ast.PrivateName).Name)
+		f.c.nameField(m.Value, wtf8.String("#"+m.Key.(*ast.PrivateName).Name))
 	} else if name, ok := f.c.fieldKeys[m.Value]; ok {
 		b, _ := f.lookupLocal(name)
 		f.emit(bytecode.OpMove, b.reg, k, 0)
@@ -381,11 +382,11 @@ func (f *fn) decorator(state int32, e ast.Expr) {
 			f.emit(bytecode.OpGetPrivate, base, base+1, name)
 			break
 		}
-		f.emitGetProp(base, base+1, f.site(e.Property.(*ast.Identifier).Name))
+		f.emitGetProp(base, base+1, f.site(wtf8.String(e.Property.(*ast.Identifier).Name)))
 	case *ast.Identifier:
 		if scope := f.resolveName(e.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(f.getScopedOp(), base, scope, f.key(e.Name))
+			f.emit(f.getScopedOp(), base, scope, f.key(wtf8.String(e.Name)))
 			if f.evalScopesAround() {
 				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
 			} else {
@@ -435,7 +436,7 @@ func (f *fn) decoratedMembers(n *ast.Class, state, ctor int32) {
 			v = f.newReg()
 			name, static := keyName(m.Key, m.Computed)
 			if private {
-				name, static = "#"+m.Key.(*ast.PrivateName).Name, true
+				name, static = wtf8.String("#"+m.Key.(*ast.PrivateName).Name), true
 			}
 			prefix := int32(bytecode.NamePrefixNone)
 			kind := int32(bytecode.ElemMethod)

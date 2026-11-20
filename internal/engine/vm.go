@@ -68,7 +68,7 @@ type function struct {
 // nativeInfo is the description of a native function.
 type nativeInfo struct {
 	// name and length are the initial values of the properties name and length.
-	name   string
+	name   wtf8.String
 	length int32
 
 	// step is set for the next method of a built-in iterator. It is what the function does
@@ -80,7 +80,7 @@ type nativeInfo struct {
 }
 
 // nativeName returns the initial value of the property name of the native function f.
-func (f *function) nativeName() string {
+func (f *function) nativeName() wtf8.String {
 	if f.info == nil {
 		return ""
 	}
@@ -450,7 +450,7 @@ type VM struct {
 	weak weakState
 
 	// symbolRegistry is the GlobalSymbolRegistry List, by key.
-	symbolRegistry map[string]*Object
+	symbolRegistry map[wtf8.String]*Object
 
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[bytecode.RegExp]*regexp.Regexp
@@ -797,7 +797,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 
 // receiverName returns the type name that a stack trace shows for a call with this, or an
 // empty string when the call shows no receiver.
-func (vm *VM) receiverName(isNew bool, this Value) string {
+func (vm *VM) receiverName(isNew bool, this Value) wtf8.String {
 	if isNew || this.IsObject() && this.o == vm.global || this.IsNullish() {
 		return ""
 	}
@@ -810,10 +810,10 @@ type stackCall struct {
 	fp *funcProto
 
 	// name is the name of the function.
-	name string
+	name wtf8.String
 
 	// recv is the type name of the receiver of a method call, or empty.
-	recv string
+	recv wtf8.String
 
 	// pc is past the instruction of fp that is running.
 	pc int
@@ -823,7 +823,7 @@ type stackCall struct {
 
 // formatStack returns the stack trace of an error with the name name and the message msg in
 // UTF-8 whose lines are calls.
-func formatStack(name, msg string, calls []stackCall) string {
+func formatStack(name wtf8.String, msg string, calls []stackCall) wtf8.String {
 	var b wtf8.Builder
 	b.WriteString(name)
 	if msg != "" {
@@ -841,7 +841,7 @@ const maxFrameName = 1 << 10
 
 // clip returns s, or its longest prefix that ends at a character boundary and leaves room for
 // the suffix within max bytes, followed by the suffix.
-func clip(s string, max int, suffix string) string {
+func clip[S ~string](s S, max int, suffix S) S {
 	if len(s) <= max {
 		return s
 	}
@@ -868,7 +868,7 @@ func (c *stackCall) write(b *wtf8.Builder) {
 	if fp := c.fp; fp != nil {
 		loc = ""
 		if fp.File != "" {
-			loc = wtf8.FromValidUTF8(fp.File)
+			loc = fp.File
 			if line, column := fp.Position(max(c.pc-1, 0)); line > 0 {
 				loc += ":" + itoa(line) + ":" + itoa(column)
 			}
@@ -876,20 +876,20 @@ func (c *stackCall) write(b *wtf8.Builder) {
 	}
 	switch {
 	case desc == "":
-		b.WriteString(cmp.Or(loc, "<anonymous>"))
+		b.WriteString(wtf8.FromValidUTF8(cmp.Or(loc, "<anonymous>")))
 	case loc == "":
 		b.WriteString(desc)
 	default:
 		b.WriteString(desc)
 		b.WriteString(" (")
-		b.WriteString(loc)
+		b.WriteString(wtf8.FromValidUTF8(loc))
 		b.WriteString(")")
 	}
 }
 
 // typeName returns the name of the type of v that a stack trace shows for a method called on v.
 // It runs no JavaScript.
-func (vm *VM) typeName(v Value) string {
+func (vm *VM) typeName(v Value) wtf8.String {
 	switch {
 	case v.IsString():
 		return "String"
@@ -938,23 +938,23 @@ func (vm *VM) takeException() error {
 
 // errorOf returns the Go error for the thrown value v.
 func (vm *VM) errorOf(v Value) *Error {
-	msg := ""
+	var msg string
 	if v.IsObject() {
 		if s, ok := vm.lookupData(v.o, vm.Key(KeyStack)); ok && s.IsString() {
-			msg = s.Str()
+			msg = wtf8.ToValidUTF8(s.Str())
 		} else if s, ok := ErrorStack(v); ok {
-			msg = s
+			msg = wtf8.ToValidUTF8(s)
 		} else if s, ok := vm.lookupData(v.o, vm.Key(KeyMessage)); ok && s.IsString() {
-			msg = s.Str()
+			msg = wtf8.ToValidUTF8(s.Str())
 		} else {
 			msg = "uncaught exception"
 		}
 	} else {
-		msg = "uncaught " + wtf8.ToValidUTF8(vm.DisplayString(v))
+		msg = "uncaught " + vm.DisplayString(v)
 	}
 	return &Error{
 		Value: v,
-		msg:   wtf8.ToValidUTF8(msg),
+		msg:   msg,
 	}
 }
 
@@ -974,7 +974,7 @@ func (vm *VM) DisplayString(v Value) string {
 		return "undefined"
 	}
 	if o == numberObject {
-		return numconv.NumberToString(v.n)
+		return string(numconv.NumberToString(v.n))
 	}
 	switch o.kind {
 	case kindNull:
@@ -984,9 +984,9 @@ func (vm *VM) DisplayString(v Value) string {
 	case kindTrue:
 		return "true"
 	case kindString:
-		return clip(v.Str(), maxDisplayString, "...")
+		return wtf8.ToValidUTF8(clip(v.Str(), maxDisplayString, "..."))
 	case kindSymbol:
-		return "Symbol(" + o.str + ")"
+		return "Symbol(" + wtf8.ToValidUTF8(o.str) + ")"
 	case kindBigInt:
 		return displayBigInt(v)
 	case kindArray:

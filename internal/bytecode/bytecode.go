@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Opcode is the operation of an instruction.
@@ -465,35 +466,35 @@ const (
 	ConstBigInt
 )
 
-// Const is a constant of a function. Strings are in WTF-8, and a BigInt is its decimal digits in
-// [Const.Str]. The kinds before [ConstNumber] have no other fields.
+// Const is a constant of a function. A string is in [Const.Str], and so are the decimal digits of
+// a BigInt. The kinds before [ConstNumber] have no other fields.
 type Const struct {
 	Kind ConstKind
 	Num  float64
-	Str  string
+	Str  wtf8.String
 }
 
 // Template is the site of a tagged template. A cooked string is absent where [Template.HasCooked]
 // is false.
 type Template struct {
-	Cooked    []string
+	Cooked    []wtf8.String
 	HasCooked []bool
-	Raw       []string
+	Raw       []wtf8.String
 }
 
 // RegExp is a regular expression literal.
 type RegExp struct {
-	Pattern string
-	Flags   string
+	Pattern wtf8.String
+	Flags   wtf8.String
 }
 
 // Func is the compiled code of a function.
 type Func struct {
-	Name string
+	Name wtf8.String
 	File string
 
 	// Source is the text of the function.
-	Source string
+	Source wtf8.String
 
 	Code     []Instr
 	Consts   []Const
@@ -501,8 +502,8 @@ type Func struct {
 	Upvals   []UpvalDesc
 	Protos   []*Func
 
-	// Keys are the property names and variable names that instructions refer to, in WTF-8.
-	Keys []string
+	// Keys are the property names and variable names that instructions refer to.
+	Keys []wtf8.String
 
 	// NumCaches is the number of inline caches that the instructions refer to.
 	NumCaches int
@@ -678,7 +679,7 @@ type Module struct {
 
 // ModuleRequest is a ModuleRequest Record. [ModuleRequest.Attributes] are sorted by key.
 type ModuleRequest struct {
-	Specifier  string
+	Specifier  wtf8.String
 	Attributes []ImportAttribute
 	Phase      Phase
 }
@@ -694,8 +695,8 @@ const (
 
 // ImportAttribute is an ImportAttribute Record.
 type ImportAttribute struct {
-	Key   string
-	Value string
+	Key   wtf8.String
+	Value wtf8.String
 }
 
 // ModuleBindingKind is the kind of a binding of the top level of a module.

@@ -12,12 +12,13 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func TestNumberToString(t *testing.T) {
 	tests := []struct {
 		in   float64
-		want string
+		want wtf8.String
 	}{
 		{in: 0, want: "0"},
 		{in: math.Copysign(0, -1), want: "0"},
@@ -66,7 +67,7 @@ func TestStringToNumber(t *testing.T) {
 		{in: "0x20000000000001", want: 9007199254740992},
 	}
 	for _, tt := range tests {
-		got := numconv.StringToNumber(tt.in, nil)
+		got := numconv.StringToNumber(wtf8.String(tt.in), nil)
 		if got != tt.want && !(got != got && tt.want != tt.want) {
 			t.Errorf("StringToNumber(%q) = %v, want %v", tt.in, got, tt.want)
 		}
@@ -129,7 +130,7 @@ func TestParseInt(t *testing.T) {
 		{in: "12", radix: 2, want: 1},
 	}
 	for _, tt := range tests {
-		if got := numconv.ParseInt(tt.in, tt.radix, nil); got != tt.want {
+		if got := numconv.ParseInt(wtf8.String(tt.in), tt.radix, nil); got != tt.want {
 			t.Errorf("ParseInt(%q, %d) = %v, want %v", tt.in, tt.radix, got, tt.want)
 		}
 	}
@@ -157,7 +158,7 @@ func TestBigIntConversions(t *testing.T) {
 			}
 			x := new(big.Int).Neg(want)
 			x.Add(x, big.NewInt(1))
-			if got, want := numconv.FormatBigInt(x, radix, nil), x.Text(radix); got != want {
+			if got, want := numconv.FormatBigInt(x, radix, nil), wtf8.String(x.Text(radix)); got != want {
 				t.Errorf("FormatBigInt of %d symbols in radix %d differs from Text", n, radix)
 			}
 		}
@@ -224,10 +225,10 @@ func TestBigIntArithmetic(t *testing.T) {
 			x.Or(x, new(big.Int).SetUint64(r.Uint64()))
 		}
 		s := numconv.FormatBigInt(x, 10, nil)
-		if s != x.Text(10) {
+		if s != wtf8.String(x.Text(10)) {
 			t.Errorf("FormatBigInt of %d bits differs from Text", n)
 		}
-		if y, ok := numconv.ParseBigInt(s, 10, nil); !ok || y.Cmp(x) != 0 {
+		if y, ok := numconv.ParseBigInt(string(s), 10, nil); !ok || y.Cmp(x) != 0 {
 			t.Errorf("ParseBigInt of %d bits: got %t, want the integer", n, ok)
 		}
 	}
@@ -252,7 +253,7 @@ func TestStringToBigIntLimit(t *testing.T) {
 			want: numconv.ErrNotBigInt,
 		},
 	} {
-		if _, err := numconv.StringToBigInt(tc.in, 8, nil); !errors.Is(err, tc.want) {
+		if _, err := numconv.StringToBigInt(wtf8.String(tc.in), 8, nil); !errors.Is(err, tc.want) {
 			t.Errorf("StringToBigInt(%q, 8): got %v, want %v", tc.in, err, tc.want)
 		}
 	}
@@ -310,7 +311,7 @@ func TestStringToNumberLong(t *testing.T) {
 		if strings.HasPrefix(s, "-") {
 			want = math.Copysign(want, -1)
 		}
-		if got := numconv.StringToNumber(s, nil); got != want || math.Signbit(got) != math.Signbit(want) {
+		if got := numconv.StringToNumber(wtf8.String(s), nil); got != want || math.Signbit(got) != math.Signbit(want) {
 			t.Errorf("StringToNumber(%.24q...) = %v, want %v", s, got, want)
 		}
 	}
@@ -339,14 +340,14 @@ func TestStringToNumberManyDigits(t *testing.T) {
 		}
 		want, _ := new(big.Rat).SetString(digits)
 		w, _ := want.Float64()
-		if got := numconv.StringToNumber(digits, nil); got != w {
+		if got := numconv.StringToNumber(wtf8.String(digits), nil); got != w {
 			t.Errorf("StringToNumber(%.40q...) = %v, want %v", digits, got, w)
 		}
 	}
 }
 
 func TestStringToNumberPolls(t *testing.T) {
-	long := strings.Repeat("1", 1<<20)
+	long := wtf8.String(strings.Repeat("1", 1<<20))
 	for _, tc := range []struct {
 		name string
 		conv func(poll func()) float64
@@ -357,19 +358,27 @@ func TestStringToNumberPolls(t *testing.T) {
 		},
 		{
 			name: "leading white space",
-			conv: func(poll func()) float64 { return numconv.StringToNumber(strings.Repeat(" ", 1<<20)+"1", poll) },
+			conv: func(poll func()) float64 {
+				return numconv.StringToNumber(wtf8.String(strings.Repeat(" ", 1<<20)+"1"), poll)
+			},
 		},
 		{
 			name: "trailing white space",
-			conv: func(poll func()) float64 { return numconv.StringToNumber("1"+strings.Repeat("　", 1<<18), poll) },
+			conv: func(poll func()) float64 {
+				return numconv.StringToNumber(wtf8.String("1"+strings.Repeat("　", 1<<18)), poll)
+			},
 		},
 		{
 			name: "leading zeros",
-			conv: func(poll func()) float64 { return numconv.StringToNumber(strings.Repeat("0", 1<<20)+"1", poll) },
+			conv: func(poll func()) float64 {
+				return numconv.StringToNumber(wtf8.String(strings.Repeat("0", 1<<20)+"1"), poll)
+			},
 		},
 		{
 			name: "hexadecimal",
-			conv: func(poll func()) float64 { return numconv.StringToNumber("0x"+strings.Repeat("0", 1<<20)+"1", poll) },
+			conv: func(poll func()) float64 {
+				return numconv.StringToNumber(wtf8.String("0x"+strings.Repeat("0", 1<<20)+"1"), poll)
+			},
 		},
 		{
 			name: "parseFloat",

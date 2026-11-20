@@ -16,7 +16,7 @@ func (v Value) isShortString() bool {
 	return v.IsString() && len(v.o.str) <= shortstrings.MaxBytes
 }
 
-func (vm *VM) shortString(s string) Value {
+func (vm *VM) shortString(s wtf8.String) Value {
 	// The immutable sentinel carries the byte length and the originating realm.
 	return Value{
 		n: math.Float64frombits(shortstrings.Pack(s)),
@@ -24,12 +24,12 @@ func (vm *VM) shortString(s string) Value {
 	}
 }
 
-func (v Value) shortText() string {
+func (v Value) shortText() wtf8.String {
 	return shortstrings.String(math.Float64bits(v.n), len(v.o.str))
 }
 
-// Str returns the string value in canonical WTF-8.
-func (v Value) Str() string {
+// Str returns the content of the string value.
+func (v Value) Str() wtf8.String {
 	// Keep the cached-text path small enough to inline.
 	if v.o.flags&objInterned != 0 {
 		return v.o.str
@@ -37,14 +37,14 @@ func (v Value) Str() string {
 	return v.stringSlow()
 }
 
-func (v Value) stringSlow() string {
+func (v Value) stringSlow() wtf8.String {
 	if v.isShortString() {
 		return v.shortText()
 	}
 	return v.o.Str()
 }
 
-func (v Value) rawString() string {
+func (v Value) rawString() wtf8.String {
 	if v.isShortString() && v.o.flags&objInterned == 0 {
 		return v.shortText()
 	}
@@ -108,14 +108,14 @@ func (v Value) CodePointAt(i int) rune {
 }
 
 // Substring returns the string's code units from start up to end, which must be in range and in order.
-func (v Value) Substring(start, end int) string {
+func (v Value) Substring(start, end int) wtf8.String {
 	if v.o.flags&(objASCIIKnown|objASCII|objReversed) == objASCIIKnown|objASCII {
 		return v.o.str[start:end]
 	}
 	return v.substringSlow(start, end)
 }
 
-func (v Value) substringSlow(start, end int) string {
+func (v Value) substringSlow(start, end int) wtf8.String {
 	if !v.isShortString() {
 		return v.o.Substring(start, end)
 	}
@@ -192,7 +192,7 @@ func (v Value) shortStringIndex(sub Value, from int, backward bool, poll func())
 	if n > shortstrings.MaxBytes {
 		// The dispatch requires a packed operand, so sub is packed here.
 		data := shortstrings.Bytes(math.Float64bits(sub.n))
-		text := string(data[:subN])
+		text := wtf8.String(data[:subN])
 		if backward {
 			return v.o.UnitLastIndexOf(text, from, poll)
 		}
@@ -238,7 +238,7 @@ func (vm *VM) ToWellFormed(s Value) Value {
 		return vm.toWellFormedShort(s, math.Float64bits(s.n), len(s.o.str))
 	}
 	text := s.o.Str()
-	repaired := wtf8.ToValidUTF8(text)
+	repaired := wtf8.String(wtf8.ToValidUTF8(text))
 	if repaired == text {
 		return s
 	}
@@ -403,7 +403,7 @@ func (vm *VM) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
 		if end.Low {
 			var buf [3]byte
 			high := wtf8.At(text, wtf8.Pos{Byte: end.Byte})
-			tail := shortstrings.Pack(string(wtf8.AppendRune(buf[:0], rune(high))))
+			tail := shortstrings.Pack(wtf8.String(wtf8.AppendRune(buf[:0], rune(high))))
 			fillData |= tail << (8 * end.Byte)
 		}
 		fillLen = end.Unit
@@ -458,9 +458,9 @@ func (vm *VM) NewStringBytes(s []byte) Value {
 		return vm.strings.ascii[s[0]]
 	}
 	if len(s) <= shortstrings.MaxBytes {
-		return vm.shortString(string(s))
+		return vm.shortString(wtf8.String(s))
 	}
-	return vm.NewString(string(s))
+	return vm.NewString(wtf8.String(s))
 }
 
 // WriteToBuilder appends the string value v to b.

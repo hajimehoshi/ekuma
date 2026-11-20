@@ -9,12 +9,13 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // compileF compiles the script src and returns its function f.
 func compileF(t *testing.T, src string) *bytecode.Func {
 	t.Helper()
-	prog, err := parser.ParseScript(src, parser.Options{})
+	prog, err := parser.ParseScript(wtf8.String(src), parser.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

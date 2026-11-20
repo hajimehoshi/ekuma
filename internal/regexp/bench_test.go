@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/regexp"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // BenchmarkMatch measures typical patterns of game scripts on short strings:
@@ -14,9 +15,9 @@ import (
 func BenchmarkMatch(b *testing.B) {
 	cases := []struct {
 		name    string
-		pattern string
-		flags   string
-		input   string
+		pattern wtf8.String
+		flags   wtf8.String
+		input   wtf8.String
 	}{
 		{name: "escape", pattern: `\\V\[(\d+)\]`, flags: "gi", input: `Gold: \V[12] / \V[7] pieces`},
 		{name: "notetag", pattern: `<(\w+):\s*(\d+)>`, flags: "", input: "<Price: 120>\n<Weight: 3>"},

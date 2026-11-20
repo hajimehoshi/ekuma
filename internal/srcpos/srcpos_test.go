@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func TestPosition(t *testing.T) {
@@ -18,7 +19,7 @@ func TestPosition(t *testing.T) {
 	}
 	for _, tc := range []struct {
 		name      string
-		src       string
+		src       wtf8.String
 		positions []position
 	}{
 		{
@@ -61,11 +62,11 @@ func TestPosition(t *testing.T) {
 }
 
 func TestTable(t *testing.T) {
-	long := strings.Repeat("aé𝒜", 200)
-	longASCII := strings.Repeat("abc", 400)
+	long := wtf8.String(strings.Repeat("aé𝒜", 200))
+	longASCII := wtf8.String(strings.Repeat("abc", 400))
 	for _, tc := range []struct {
 		name string
-		src  string
+		src  wtf8.String
 	}{
 		{
 			name: "CR and non-ASCII",

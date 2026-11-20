@@ -37,8 +37,8 @@ func (b *Builder) materialize() {
 	b.text.WriteStringBytes(data[:b.n])
 }
 
-// WriteString appends s, which must be canonical WTF-8.
-func (b *Builder) WriteString(s string) {
+// WriteString appends s.
+func (b *Builder) WriteString(s wtf8.String) {
 	if b.long {
 		b.text.WriteString(s)
 		return
@@ -72,7 +72,7 @@ func (b *Builder) WriteRune(r rune) {
 		return
 	}
 	var buf [utf8.UTFMax]byte
-	b.WriteString(string(wtf8.AppendRune(buf[:0], r)))
+	b.WriteString(wtf8.String(wtf8.AppendRune(buf[:0], r)))
 }
 
 // WriteUnit appends the UTF-16 code unit u.
@@ -93,8 +93,8 @@ func (b *Builder) Packed() (uint64, int, bool) {
 	return b.data, b.n, !b.long
 }
 
-// String returns the built string in canonical WTF-8.
-func (b *Builder) String() string {
+// String returns the built string.
+func (b *Builder) String() wtf8.String {
 	if b.long {
 		return b.text.String()
 	}

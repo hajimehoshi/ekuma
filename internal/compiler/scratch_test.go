@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // function returns a script that calls a function declaring n variables, whose body ends with body.
@@ -69,7 +70,7 @@ func TestScratchLimits(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var progs []*ast.Program
 			for _, src := range tc.srcs {
-				prog, err := parser.ParseScript(src, parser.Options{})
+				prog, err := parser.ParseScript(wtf8.String(src), parser.Options{})
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -130,9 +130,10 @@ type Object struct {
 	// fn is set for a callable object. A closure must call ownFunction before changing its state.
 	fn *function
 
-	// str is the content of a string or the description of a symbol.
-	// Packed-string sentinels use zero bytes to carry only the byte length.
-	str string
+	// str is the content of a string or the description of a symbol. A string marked objReversed
+	// holds its bytes in reverse order. Packed-string sentinels use zero bytes to carry only the
+	// byte length.
+	str wtf8.String
 
 	// ext is the internal state of a built-in object or the push size hint of a closure.
 	// For a string that is not interned it is the interned string with the same content,
@@ -1047,7 +1048,7 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 // stringTable holds the strings that are shared.
 type stringTable struct {
 	// interned maps a string to its property key.
-	interned sweptTable[string, Object]
+	interned sweptTable[wtf8.String, Object]
 
 	// keepNew is set while the VM and its built-in objects are created. The strings interned
 	// meanwhile are kept alive with the VM.
@@ -1086,7 +1087,7 @@ func (vm *VM) indexString(i uint32) Value {
 
 // newIndexString returns a new string of the array index i, which is at least 10.
 func (vm *VM) newIndexString(i uint32) Value {
-	v := vm.NewString(strconv.FormatUint(uint64(i), 10))
+	v := vm.NewString(wtf8.String(strconv.FormatUint(uint64(i), 10)))
 	if !v.isShortString() {
 		v.o.length = i + 1
 	}
@@ -1101,8 +1102,8 @@ const internedMinSweep = 1 << 10
 // which is more than the built-ins need.
 const internedInitialSize = 896
 
-// NewString returns the string s, which must be in canonical WTF-8, as a value.
-func (vm *VM) NewString(s string) Value {
+// NewString returns the string s as a value.
+func (vm *VM) NewString(s wtf8.String) Value {
 	switch len(s) {
 	case 0:
 		return vm.emptyString
@@ -1123,9 +1124,9 @@ func (vm *VM) NewString(s string) Value {
 	}
 }
 
-// SharedString returns the string s, which must be in canonical WTF-8, as a value that may be
-// the same object as a property key with the same contents.
-func (vm *VM) SharedString(s string) Value {
+// SharedString returns the string s as a value that may be the same object as a property key
+// with the same contents.
+func (vm *VM) SharedString(s wtf8.String) Value {
 	if o := vm.strings.interned.get(s); o != nil {
 		return ObjectValue(o)
 	}
@@ -1133,7 +1134,7 @@ func (vm *VM) SharedString(s string) Value {
 }
 
 // Intern returns the string s as a property key.
-func (vm *VM) Intern(s string) *Object {
+func (vm *VM) Intern(s wtf8.String) *Object {
 	if o := vm.strings.interned.get(s); o != nil {
 		return o
 	}
@@ -1275,7 +1276,7 @@ const (
 // indices are multiples of checkpointInterval, in order. A position is the byte of the code
 // unit shifted left by one, with the low bit set when the code unit is the low surrogate of
 // the four-byte sequence at that byte.
-func checkpointsOf(s string) []uint32 {
+func checkpointsOf(s wtf8.String) []uint32 {
 	cs := make([]uint32, 0, len(s)/(3*checkpointInterval)+1)
 	var unit int
 	for i := 0; i < len(s); {
@@ -1338,7 +1339,7 @@ func (o *Object) CodePointAt(i int) rune {
 
 // Substring returns the code units from start up to end of the string o.
 // The indices must be in range and in order.
-func (o *Object) Substring(start, end int) string {
+func (o *Object) Substring(start, end int) wtf8.String {
 	s := o.Str()
 	if o.IsASCII() {
 		return s[start:end]
@@ -1357,7 +1358,7 @@ func (vm *VM) UnitString(u uint16) Value {
 		return vm.strings.ascii[u]
 	}
 	var buf [utf8.UTFMax]byte
-	return vm.shortString(string(wtf8.AppendRune(buf[:0], rune(u))))
+	return vm.shortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
 }
 
 // getOwn returns the own named property key of o.
@@ -1735,7 +1736,7 @@ func (o *Object) VM() *VM {
 }
 
 // Str returns the content of the string o in WTF-8.
-func (o *Object) Str() string {
+func (o *Object) Str() wtf8.String {
 	if o.flags&objReversed != 0 {
 		o.unreverse()
 	}
@@ -1744,7 +1745,7 @@ func (o *Object) Str() string {
 
 // UnitIndexOf returns the index in code units of the first occurrence of sub in the string o
 // at or after from, or -1. poll, which may be nil, is called now and then during a long search.
-func (o *Object) UnitIndexOf(sub string, from int, poll func()) int {
+func (o *Object) UnitIndexOf(sub wtf8.String, from int, poll func()) int {
 	s := o.Str()
 	n := o.StringLength()
 	if from > n {
@@ -1777,7 +1778,7 @@ func (o *Object) UnitIndexOf(sub string, from int, poll func()) int {
 
 // UnitLastIndexOf returns the index in code units of the last occurrence of sub in the string o
 // that starts at or before from, or -1. poll is as for [Object.UnitIndexOf].
-func (o *Object) UnitLastIndexOf(sub string, from int, poll func()) int {
+func (o *Object) UnitLastIndexOf(sub wtf8.String, from int, poll func()) int {
 	n := o.StringLength()
 	subLen := wtf8.Len(sub)
 	from = min(from, n-subLen)
@@ -1808,7 +1809,7 @@ func (o *Object) UnitLastIndexOf(sub string, from int, poll func()) int {
 	return unit - wtf8.Len(s[i:end.Byte])
 }
 
-func mayMatchInsidePair(sub string) bool {
+func mayMatchInsidePair(sub wtf8.String) bool {
 	// A canonical pattern can split a pair only at its outer boundaries.
 	first, _ := wtf8.DecodeRune(sub)
 	last, _ := wtf8.DecodeLastRune(sub)
@@ -1821,7 +1822,7 @@ const findUnitsPollSteps = 1 << 16
 
 // findUnits returns the start of the match of sub nearest to from in the given direction, or -1,
 // comparing code units by the Knuth-Morris-Pratt algorithm.
-func (o *Object) findUnits(sub string, from int, backward bool, poll func()) int {
+func (o *Object) findUnits(sub wtf8.String, from int, backward bool, poll func()) int {
 	units := wtf8.AppendUTF16(nil, sub)
 	m := len(units)
 	if backward {

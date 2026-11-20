@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // newInstant implements CreateTemporalInstant for valid epoch nanoseconds.
@@ -98,7 +99,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return epochNsValue(vm, thisInstant(vm, this, "epochNanoseconds").ns)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisInstant(vm, this, name)
 			d := toTemporalDuration(vm, arg(args, 0))
 			if name == "subtract" {
@@ -112,7 +113,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		})
 	}
 	for _, name := range []string{"until", "since"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisInstant(vm, this, name)
 			other := toTemporalInstant(vm, arg(args, 0))
 			opts := getOptionsObject(vm, arg(args, 1))
@@ -157,12 +158,12 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		}
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		rounded := temporal.RoundTemporalInstant(s.ns, p.Increment, p.Unit, mode)
-		return vm.NewString(temporal.TemporalInstantToString(rounded, tz, p.Precision))
+		return vm.NewString(wtf8.String(temporal.TemporalInstantToString(rounded, tz, p.Precision)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisInstant(vm, this, name)
-			return vm.NewString(temporal.TemporalInstantToString(s.ns, nil, temporal.PrecisionAuto))
+			return vm.NewString(wtf8.String(temporal.TemporalInstantToString(s.ns, nil, temporal.PrecisionAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "Instant")

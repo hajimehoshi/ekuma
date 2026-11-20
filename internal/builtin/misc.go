@@ -372,7 +372,7 @@ func initSymbol(vm *engine.VM) {
 		engine.SymbolDispose: "dispose", engine.SymbolAsyncDispose: "asyncDispose",
 		engine.SymbolMetadata: "metadata",
 	} {
-		constant(vm, ctor, name, engine.ObjectValue(vm.WellKnownSymbol(engine.WellKnownSymbol(sym))))
+		constant(vm, ctor, wtf8.String(name), engine.ObjectValue(vm.WellKnownSymbol(engine.WellKnownSymbol(sym))))
 	}
 	method(vm, ctor, "for", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.ObjectValue(vm.RegisteredSymbol(vm.ToString(arg(args, 0))))
@@ -434,10 +434,10 @@ func initMath(vm *engine.VM) {
 		{name: "SQRT1_2", value: math.Sqrt2 / 2},
 		{name: "SQRT2", value: math.Sqrt2},
 	} {
-		constant(vm, m, c.name, engine.Number(c.value))
+		constant(vm, m, wtf8.String(c.name), engine.Number(c.value))
 	}
 	unary := func(name string, f func(float64) float64) {
-		method(vm, m, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, m, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if len(args) > 0 && args[0].IsNumber() {
 				return engine.Number(f(args[0].Number()))
 			}
@@ -519,7 +519,7 @@ func initMath(vm *engine.VM) {
 		return engine.Number(vm.RandomNumber())
 	})
 	minmax := func(name string, start float64, pick func(a, b float64) bool) {
-		method(vm, m, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, m, wtf8.String(name), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			r := start
 			nan := false
 			for _, a := range args {
@@ -599,7 +599,7 @@ func initIterators(vm *engine.VM) {
 
 	gp := vm.Intrinsic(engine.IntrinsicGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) *engine.Object {
-		return method(vm, gp, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			r, ok := vm.ResumeGenerator(this, mode, arg(args, 0))
 			if !ok {
 				vm.ThrowTypeError(name + " method called on an object that is not a generator")

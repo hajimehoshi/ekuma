@@ -3,9 +3,11 @@
 
 // Package ast defines the syntax tree and the scope records of ECMAScript source text.
 //
-// String values (string literals and template strings) are Go strings in WTF-8:
-// UTF-8 in which a lone surrogate is encoded as its three-byte sequence.
+// The source text and the string values (string literals, template strings and regular expression
+// literals) are [wtf8.String] values. Names are Go strings, which are valid UTF-8.
 package ast
+
+import "github.com/hajimehoshi/ekuma/internal/wtf8"
 
 // Node is a syntax tree node.
 type Node interface {
@@ -181,26 +183,25 @@ type BigIntLit struct {
 	Value string
 }
 
-// StringLit is a string literal. [StringLit.Value] is in WTF-8.
+// StringLit is a string literal.
 type StringLit struct {
 	Span
-	Value string
+	Value wtf8.String
 }
 
 // RegExpLit is a regular expression literal. [RegExpLit.Pattern] and [RegExpLit.Flags] are source
 // text.
 type RegExpLit struct {
 	Span
-	Pattern string
-	Flags   string
+	Pattern wtf8.String
+	Flags   wtf8.String
 }
 
-// TemplateElement is a string part of a template literal. [TemplateElement.Cooked] and
-// [TemplateElement.Raw] are in WTF-8.
+// TemplateElement is a string part of a template literal.
 type TemplateElement struct {
 	Span
-	Cooked string
-	Raw    string
+	Cooked wtf8.String
+	Raw    wtf8.String
 
 	// HasCooked is false when the part contains an invalid escape, which only a tagged template permits.
 	HasCooked bool
@@ -790,7 +791,7 @@ type ImportSpecifier struct {
 // ImportAttribute is one entry of a with clause.
 type ImportAttribute struct {
 	Span
-	Key   string
+	Key   wtf8.String
 	Value *StringLit
 }
 

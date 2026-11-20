@@ -12,17 +12,18 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func (vm *VM) throwTDZ(name *Object) {
 	if name.str == "this" {
 		vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	vm.ThrowReferenceError("cannot access '" + name.str + "' before initialization")
+	vm.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.str) + "' before initialization")
 }
 
 func (vm *VM) throwReadOnly(v Value, k PropKey) {
-	vm.ThrowTypeError("cannot assign to read only property '" + vm.KeyString(k) + "' of " + vm.DisplayString(v))
+	vm.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' of " + vm.DisplayString(v))
 }
 
 // callAt returns the index of the call instruction of fp that ends before pc, past its extra.
@@ -35,7 +36,7 @@ func callAt(fp *funcProto, pc int) int {
 }
 
 // calleeName names the function that the call instruction at pc calls, for an error message.
-func (vm *VM) calleeName(fp *funcProto, pc int) string {
+func (vm *VM) calleeName(fp *funcProto, pc int) wtf8.String {
 	target := fp.code[pc].B
 	for j := pc - 1; j >= 0 && j >= pc-64; j-- {
 		in := fp.code[j]
@@ -57,7 +58,7 @@ func (vm *VM) calleeName(fp *funcProto, pc int) string {
 // whose callee is not a function.
 func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 	pc = callAt(fp, pc)
-	name := vm.calleeName(fp, pc)
+	name := wtf8.ToValidUTF8(vm.calleeName(fp, pc))
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
@@ -68,7 +69,7 @@ func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 // whose callee is not a constructor.
 func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	pc = callAt(fp, pc)
-	name := vm.calleeName(fp, pc)
+	name := wtf8.ToValidUTF8(vm.calleeName(fp, pc))
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
@@ -102,12 +103,12 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 		if orUndef {
 			return Undefined
 		}
-		vm.ThrowReferenceError(key.str + " is not defined")
+		vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
 	// GetBindingValue checks for the property again, which only a proxy can observe.
 	if proxyOnChain(g) != nil && !vm.HasProperty(g, k) {
 		if strict {
-			vm.ThrowReferenceError(key.str + " is not defined")
+			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 		return Undefined
 	}
@@ -134,7 +135,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 			vm.throwTDZ(key)
 		}
 		if p.flags&FlagWritable == 0 {
-			vm.ThrowTypeError("assignment to constant variable '" + key.str + "'")
+			vm.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 		vm.globalLex.slots[p.slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
@@ -159,7 +160,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 			found = vm.HasProperty(g, k)
 		}
 		if !found && strict {
-			vm.ThrowReferenceError(key.str + " is not defined")
+			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 	}
 	if !vm.setProp(g, k, val, Value{o: g}) && strict {
@@ -174,32 +175,32 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
-			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 		if !vm.HasOwnProperty(vm.global, PropKey{key: key}) && !vm.IsExtensible(vm.global) {
-			vm.ThrowTypeError("cannot declare global variable '" + key.str + "'")
+			vm.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 	case bytecode.DeclLexical:
 		if lex {
-			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
 		if d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
-			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
-			vm.throwSyntaxError("identifier '" + key.str + "' has already been declared")
+			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 		d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key})
 		switch {
 		case !ok:
 			if !vm.IsExtensible(vm.global) {
-				vm.ThrowTypeError("cannot declare global function '" + key.str + "'")
+				vm.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
 			}
 		case d.flags&FlagConfigurable != 0:
 		case d.flags&FlagAccessor != 0 || d.flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
-			vm.ThrowTypeError("cannot declare global function '" + key.str + "'")
+			vm.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 	}
 }
@@ -343,7 +344,7 @@ func (vm *VM) deleteValue(v, k Value, strict bool) Value {
 	o := vm.ToObject(v)
 	ok := vm.DeleteProp(o, key)
 	if !ok && strict {
-		vm.ThrowTypeError("cannot delete property '" + vm.KeyString(key) + "' of " + vm.DisplayString(v))
+		vm.ThrowTypeError("cannot delete property '" + wtf8.ToValidUTF8(vm.KeyString(key)) + "' of " + vm.DisplayString(v))
 	}
 	return Bool(ok)
 }
@@ -485,14 +486,14 @@ func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
 			if p.flags&FlagAccessor != 0 {
 				g := val.accessor().getter
 				if g == nil {
-					vm.ThrowTypeError("'#" + name.str + "' was defined without a getter")
+					vm.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a getter")
 				}
 				return Undefined, g
 			}
 			return val, nil
 		}
 	}
-	vm.ThrowTypeError("cannot read private member #" + name.str + " from an object whose class did not declare it")
+	vm.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.str) + " from an object whose class did not declare it")
 	return Undefined, nil
 }
 
@@ -503,18 +504,18 @@ func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
 			if p.flags&FlagAccessor != 0 {
 				s := v.o.slots[p.slot].accessor().setter
 				if s == nil {
-					vm.ThrowTypeError("'#" + name.str + "' was defined without a setter")
+					vm.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a setter")
 				}
 				return s
 			}
 			if p.flags&FlagWritable == 0 {
-				vm.ThrowTypeError("private method '#" + name.str + "' is not writable")
+				vm.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.str) + "' is not writable")
 			}
 			v.o.slots[p.slot] = val
 			return nil
 		}
 	}
-	vm.ThrowTypeError("cannot write private member #" + name.str + " to an object whose class did not declare it")
+	vm.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.str) + " to an object whose class did not declare it")
 	return nil
 }
 
@@ -525,7 +526,7 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 	}
 	o := v.o
 	if _, ok := o.shape.lookup(name); ok {
-		vm.ThrowTypeError("cannot initialize #" + name.str + " twice on the same object")
+		vm.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.str) + " twice on the same object")
 	}
 	flags := FlagWritable
 	switch {
@@ -542,7 +543,7 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 // because v is not extensible.
 func (vm *VM) ensureCanAddPrivate(v Value, name *Object) {
 	if v.IsObject() && !vm.IsExtensible(v.o) {
-		vm.ThrowTypeError("cannot define private member #" + name.str + " on an object that is not extensible")
+		vm.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.str) + " on an object that is not extensible")
 	}
 }
 
@@ -892,7 +893,7 @@ func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable
 }
 
 // funcNameOfKey returns the name that SetFunctionName gives a function for the property key or private name k.
-func (vm *VM) funcNameOfKey(k Value) string {
+func (vm *VM) funcNameOfKey(k Value) wtf8.String {
 	switch {
 	case k.IsSymbol():
 		if k.o.class == classPrivateName {
@@ -1249,7 +1250,7 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 		if c.realm != vm.curRealm {
 			vm.switchRealm(c.realm)
 		}
-		vm.ThrowTypeError("class constructor " + c.name + " cannot be invoked without 'new'")
+		vm.ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return vm.callCoroutine(f, this, args)
@@ -1377,7 +1378,7 @@ func (vm *VM) intrinsicOfRealm(r *realm, o *Object) *Object {
 }
 
 // NewNative returns a function implemented in Go.
-func (vm *VM) NewNative(name string, length int, f NativeFunc) *Object {
+func (vm *VM) NewNative(name wtf8.String, length int, f NativeFunc) *Object {
 	n := &nativeObject{
 		kind:  kindFunction,
 		class: classFunction,
@@ -1407,7 +1408,7 @@ type nativeObject struct {
 
 // NewNativeConstructor returns a function implemented in Go that can be called with new.
 // f learns the constructor it is constructing for from [VM.GetNewTarget].
-func (vm *VM) NewNativeConstructor(name string, length int, f NativeFunc) *Object {
+func (vm *VM) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *Object {
 	o := vm.NewNative(name, length, f)
 	o.fn.constructor = true
 	return o
@@ -1469,7 +1470,7 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 	k := PropKey{key: key}
 	if !vm.HasProperty(o, k) {
 		if strict {
-			vm.ThrowReferenceError(key.str + " is not defined")
+			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 		return Undefined
 	}
@@ -1480,7 +1481,7 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
 	if !vm.HasProperty(o, k) && strict {
-		vm.ThrowReferenceError(key.str + " is not defined")
+		vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
 	if !vm.setProp(o, k, val, Value{o: o}) && strict {
 		vm.throwReadOnly(Value{o: o}, k)
@@ -1528,7 +1529,7 @@ type boundObject struct {
 }
 
 // SourceText returns the result of Function.prototype.toString for the function f.
-func (f *Object) SourceText() string {
+func (f *Object) SourceText() wtf8.String {
 	fn := f.fn
 	if fn.code != nil && fn.code.Source != "" {
 		return fn.code.Source
@@ -1538,7 +1539,7 @@ func (f *Object) SourceText() string {
 		name = fn.code.name
 	}
 	// The name is a PropertyName after an optional accessor word, and is left out when it is not.
-	n := strings.TrimPrefix(strings.TrimPrefix(name, "get "), "set ")
+	n := strings.TrimPrefix(strings.TrimPrefix(string(name), "get "), "set ")
 	if !parser.IsIdentifierName(n) && !strings.HasPrefix(n, "[") {
 		name = ""
 	}

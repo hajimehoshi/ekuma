@@ -8,8 +8,6 @@ package regexp
 import (
 	"sync"
 	"unicode"
-
-	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // binaryAliases maps the names of the binary properties that property escapes accept,
@@ -245,13 +243,7 @@ func lookupStringProperty(name string) ([][]rune, bool) {
 	}
 	out := make([][]rune, 0, len(list))
 	for _, s := range list {
-		var rs []rune
-		for i := 0; i < len(s); {
-			r, size := wtf8.DecodeRune(s[i:])
-			rs = append(rs, r)
-			i += size
-		}
-		out = append(out, rs)
+		out = append(out, []rune(s))
 	}
 	return out, true
 }

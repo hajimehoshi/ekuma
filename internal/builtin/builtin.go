@@ -20,14 +20,14 @@ func arg(args []engine.Value, i int) engine.Value {
 }
 
 // method defines the non-enumerable function name on o.
-func method(vm *engine.VM, o *engine.Object, name string, length int, f engine.NativeFunc) *engine.Object {
+func method(vm *engine.VM, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
 	fn := vm.NewNative(name, length, f)
 	vm.Define(o, vm.Intern(name), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // symMethod defines the non-enumerable function under the symbol key on o.
-func symMethod(vm *engine.VM, o *engine.Object, key *engine.Object, name string, length int, f engine.NativeFunc) *engine.Object {
+func symMethod(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
 	fn := vm.NewNative(name, length, f)
 	vm.Define(o, key, engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
@@ -42,19 +42,19 @@ func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStepF
 }
 
 // getter defines the accessor property key on o with the getter f, named "get " + name.
-func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name string, f engine.NativeFunc) {
+func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) {
 	g := vm.NewNative("get "+name, 0, f)
 	vm.DefineAccessor(o, key, g, nil, engine.FlagConfigurable)
 }
 
 // constant defines the property name of o that cannot be changed.
-func constant(vm *engine.VM, o *engine.Object, name string, v engine.Value) {
+func constant(vm *engine.VM, o *engine.Object, name wtf8.String, v engine.Value) {
 	vm.Define(o, vm.Intern(name), v, 0)
 }
 
 // constructor creates the constructor function name with the prototype object proto,
 // and defines it as a global.
-func constructor(vm *engine.VM, name string, length int, proto *engine.Object, f engine.NativeFunc) *engine.Object {
+func constructor(vm *engine.VM, name wtf8.String, length int, proto *engine.Object, f engine.NativeFunc) *engine.Object {
 	c := vm.NewNativeConstructor(name, length, f)
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
@@ -78,7 +78,7 @@ func setterThatIgnoresPrototypeProperties(vm *engine.VM, this engine.Value, home
 	}
 	o := this.Object()
 	if o == home {
-		vm.ThrowTypeError("cannot assign to read only property '" + vm.KeyString(key) + "'")
+		vm.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(vm.KeyString(key)) + "'")
 	}
 	if _, ok := vm.GetOwnProperty(o, key); !ok {
 		vm.CreateDataPropertyOrThrow(o, key, v)
@@ -174,14 +174,14 @@ func Install(vm *engine.VM) {
 
 // objectStrings holds the results of Object.prototype.toString of a [engine.VM] by tag.
 type objectStrings struct {
-	byTag map[string]engine.Value
+	byTag map[wtf8.String]engine.Value
 }
 
 // objectStringsLimit bounds the number of tags that an objectStrings keeps.
 const objectStringsLimit = 64
 
 // forTag returns the string "[object tag]".
-func (s *objectStrings) forTag(vm *engine.VM, tag string) engine.Value {
+func (s *objectStrings) forTag(vm *engine.VM, tag wtf8.String) engine.Value {
 	if v, ok := s.byTag[tag]; ok {
 		return v
 	}
@@ -189,7 +189,7 @@ func (s *objectStrings) forTag(vm *engine.VM, tag string) engine.Value {
 	v := vm.NewString("[object " + tag + "]")
 	if len(s.byTag) < objectStringsLimit {
 		if s.byTag == nil {
-			s.byTag = map[string]engine.Value{}
+			s.byTag = map[wtf8.String]engine.Value{}
 		}
 		s.byTag[tag] = v
 	}
@@ -213,7 +213,7 @@ func (s *objectStrings) toString(vm *engine.VM, v engine.Value) engine.Value {
 
 // primitiveTag returns the builtinTag of Object.prototype.toString for the object that
 // ToObject makes of the primitive v.
-func primitiveTag(v engine.Value) string {
+func primitiveTag(v engine.Value) wtf8.String {
 	switch {
 	case v.IsString():
 		return "String"
@@ -380,7 +380,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 		engine.FlagConfigurable)
 
 	defineAccessor := func(name string, setter bool) {
-		method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
 			f := arg(args, 1)
 			if !f.IsCallable() {
@@ -401,7 +401,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	defineAccessor("__defineGetter__", false)
 	defineAccessor("__defineSetter__", true)
 	lookupAccessor := func(name string, setter bool) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
 			k := vm.ToPropertyKey(arg(args, 0))
 			for ; o != nil; o = vm.ProtoOf(o) {
@@ -732,7 +732,7 @@ func initFunction(vm *engine.VM) {
 }
 
 // copyNameAndLength implements CopyNameAndLength.
-func copyNameAndLength(vm *engine.VM, f, target *engine.Object, prefix string, argCount int) {
+func copyNameAndLength(vm *engine.VM, f, target *engine.Object, prefix wtf8.String, argCount int) {
 	length := 0.0
 	if vm.HasOwnProperty(target, engine.NamedKey(vm.Key(engine.KeyLength))) {
 		if l := vm.GetV(engine.ObjectValue(target), vm.Key(engine.KeyLength)); l.IsNumber() {
@@ -775,7 +775,7 @@ func initError(vm *engine.VM) {
 		case engine.ErrorKindSuppressed:
 			length = 3
 		}
-		ctor := constructor(vm, name, length, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		ctor := constructor(vm, wtf8.String(name), length, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			nt := vm.GetNewTarget()
 			e := vm.NewErrorObject(vm.GetPrototypeFromConstructor(nt, proto))
 			msgArg, optArg := arg(args, 0), arg(args, 1)
@@ -785,7 +785,7 @@ func initError(vm *engine.VM) {
 			case engine.ErrorKindSuppressed:
 				msgArg, optArg = arg(args, 2), engine.Undefined
 			}
-			msg := ""
+			var msg wtf8.String
 			if !msgArg.IsUndefined() {
 				msg = vm.ToString(msgArg)
 				vm.Define(e, vm.Key(engine.KeyMessage), vm.NewString(msg), engine.FlagsHidden)
@@ -808,7 +808,7 @@ func initError(vm *engine.VM) {
 			vm.RecordStack(e, wtf8.ToValidUTF8(msg), nt)
 			return engine.ObjectValue(e)
 		})
-		vm.Define(proto, vm.Key(engine.KeyName), vm.SharedString(name), engine.FlagsHidden)
+		vm.Define(proto, vm.Key(engine.KeyName), vm.SharedString(wtf8.String(name)), engine.FlagsHidden)
 		vm.Define(proto, vm.Key(engine.KeyMessage), vm.NewString(""), engine.FlagsHidden)
 		if kind == engine.ErrorKindError {
 			base = ctor
@@ -844,11 +844,11 @@ func initError(vm *engine.VM) {
 		engine.FlagConfigurable)
 	method(vm, vm.Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := thisObject(vm, this, "Error.prototype.toString")
-		name := "Error"
+		name := wtf8.String("Error")
 		if n := vm.GetV(engine.ObjectValue(o), vm.Key(engine.KeyName)); !n.IsUndefined() {
 			name = vm.ToString(n)
 		}
-		msg := ""
+		var msg wtf8.String
 		if m := vm.GetV(engine.ObjectValue(o), vm.Key(engine.KeyMessage)); !m.IsUndefined() {
 			msg = vm.ToString(m)
 		}

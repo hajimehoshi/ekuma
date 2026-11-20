@@ -15,7 +15,7 @@ import (
 // Table converts byte offsets in a source text into positions. A Table may be used by multiple
 // goroutines at the same time.
 type Table struct {
-	src string
+	src wtf8.String
 
 	linesOnce  sync.Once
 	lineStarts []int32
@@ -32,8 +32,8 @@ type Table struct {
 // codePointBlock is the interval in bytes at which a [Table] counts the code points of its source.
 const codePointBlock = 256
 
-// NewTable returns a Table for the WTF-8 text src.
-func NewTable(src string) *Table {
+// NewTable returns a Table for the text src.
+func NewTable(src wtf8.String) *Table {
 	return &Table{
 		src: src,
 	}
@@ -84,19 +84,19 @@ func (t *Table) codePointsBefore(offset int32) int {
 }
 
 // Position converts a byte offset in src into a 1-based line and a 1-based column counted in code points.
-func Position(src string, offset int) (line, column int) {
+func Position(src wtf8.String, offset int) (line, column int) {
 	offset = min(max(offset, 0), len(src))
 	starts := lineStarts(src[:offset])
 	return len(starts), wtf8.CountCodePoints(src[starts[len(starts)-1]:offset]) + 1
 }
 
 // lineStarts returns the offsets at which the lines of src start.
-func lineStarts(src string) []int32 {
-	starts := make([]int32, 1, 1+strings.Count(src, "\n"))
-	if strings.IndexByte(src, '\r') < 0 && !hasLineSeparator(src) {
+func lineStarts(src wtf8.String) []int32 {
+	starts := make([]int32, 1, 1+strings.Count(string(src), "\n"))
+	if strings.IndexByte(string(src), '\r') < 0 && !hasLineSeparator(src) {
 		// Every line ends with LF.
 		for i := 0; ; {
-			j := strings.IndexByte(src[i:], '\n')
+			j := strings.IndexByte(string(src[i:]), '\n')
 			if j < 0 {
 				return starts
 			}
@@ -122,9 +122,9 @@ func lineStarts(src string) []int32 {
 }
 
 // hasLineSeparator reports whether s contains U+2028 or U+2029.
-func hasLineSeparator(s string) bool {
+func hasLineSeparator(s wtf8.String) bool {
 	for {
-		i := strings.IndexByte(s, 0xe2)
+		i := strings.IndexByte(string(s), 0xe2)
 		if i < 0 || i+2 >= len(s) {
 			return false
 		}

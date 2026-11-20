@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // invoke implements Invoke for the property key of v.
@@ -137,7 +138,7 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 					called = true
 					o := vm.NewObjectFromProperties(
 						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
-						[]engine.Value{vm.NewString(status), arg(args, 0)},
+						[]engine.Value{vm.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
 					e.resolveIfDone(vm, pc)
@@ -235,7 +236,7 @@ func initPromise(vm *engine.VM) {
 					called = true
 					o := vm.NewObjectFromProperties(
 						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
-						[]engine.Value{vm.NewString(status), arg(args, 0)},
+						[]engine.Value{vm.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
 					e.remaining--

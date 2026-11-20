@@ -8,14 +8,15 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // regExpState holds the internal slots of a RegExp object. It does not change once it is
 // set, so objects can share it.
 type regExpState struct {
 	matcher *regexp.Regexp
-	source  string
-	flags   string
+	source  wtf8.String
+	flags   wtf8.String
 	legacy  bool
 	// lent marks the state of a RegExp object that [VM.LendRegExpLiterals] lends.
 	lent bool
@@ -243,7 +244,7 @@ func (o *Object) RegExpMatcher() *regexp.Regexp {
 }
 
 // RegExpOriginal returns the original source and flags of the RegExp object o.
-func (o *Object) RegExpOriginal() (source, flags string) {
+func (o *Object) RegExpOriginal() (source, flags wtf8.String) {
 	st := o.extState().(*regExpState)
 	return st.source, st.flags
 }

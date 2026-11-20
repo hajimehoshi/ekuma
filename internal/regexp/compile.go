@@ -45,7 +45,7 @@ type inst struct {
 	max    int
 	r      rune
 	cls    *class
-	str    string
+	str    wtf8.String
 	refs   []int
 }
 
@@ -89,12 +89,12 @@ type program struct {
 	first *[256]bool
 
 	// prefix, when not empty, is a literal that every match starts with.
-	prefix string
+	prefix wtf8.String
 
 	// need, when not empty, is a literal that every match contains, starting at least
 	// needMin and at most needMax characters after the start of the match. needMax is
 	// unbounded when there is no upper bound.
-	need    string
+	need    wtf8.String
 	needMin int
 	needMax int
 }
@@ -301,7 +301,7 @@ func (c *compiler) literalRun(run []rune) {
 		case 1:
 			c.emit(inst{op: iChar, r: first})
 		default:
-			c.emit(inst{op: iStr, str: string(b)})
+			c.emit(inst{op: iStr, str: wtf8.String(b)})
 		}
 		b = b[:0]
 		nchars = 0
@@ -500,7 +500,7 @@ func (c *compiler) analyzeNeed(root *node) {
 	var b []byte
 	end := func() {
 		if len(b) > len(c.prog.need) {
-			c.prog.need, c.prog.needMin, c.prog.needMax = string(b), runLo, runHi
+			c.prog.need, c.prog.needMin, c.prog.needMax = wtf8.String(b), runLo, runHi
 		}
 		b = b[:0]
 	}

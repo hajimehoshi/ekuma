@@ -14,7 +14,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func mustCompile(t *testing.T, pattern, flags string) *regexp.Regexp {
+func mustCompile(t *testing.T, pattern, flags wtf8.String) *regexp.Regexp {
 	t.Helper()
 	f, err := regexp.ParseFlags(flags)
 	if err != nil {
@@ -28,15 +28,15 @@ func mustCompile(t *testing.T, pattern, flags string) *regexp.Regexp {
 }
 
 // units builds a WTF-8 string from UTF-16 code units, so that tests can use lone surrogates.
-func units(u ...uint16) string {
+func units(u ...uint16) wtf8.String {
 	return wtf8.FromUTF16(u)
 }
 
 func TestMatch(t *testing.T) {
 	tests := []struct {
-		pattern string
-		flags   string
-		input   string
+		pattern wtf8.String
+		flags   wtf8.String
+		input   wtf8.String
 		start   int
 		want    []int
 	}{
@@ -116,11 +116,11 @@ func TestMatch(t *testing.T) {
 
 // TestUTF16 checks the code unit semantics over WTF-8 subjects.
 func TestUTF16(t *testing.T) {
-	pair := "\U0001F600" // the code units D83D DE00
+	const pair = "\U0001F600" // the code units D83D DE00
 	tests := []struct {
-		pattern string
-		flags   string
-		input   string
+		pattern wtf8.String
+		flags   wtf8.String
+		input   wtf8.String
 		start   int
 		want    []int
 	}{
@@ -141,7 +141,7 @@ func TestUTF16(t *testing.T) {
 		{pattern: `^[😀]+$`, input: pair, want: []int{0, 2}},
 		{pattern: `^[😀]$`, flags: "u", input: pair, want: []int{0, 2}},
 		// A class repetition over a long subject of characters of every length.
-		{pattern: `[^x]+`, flags: "u", input: "x" + strings.Repeat("aé日"+pair, 4) + "x", want: []int{1, 21}},
+		{pattern: `[^x]+`, flags: "u", input: "x" + wtf8.String(strings.Repeat("aé日"+pair, 4)) + "x", want: []int{1, 21}},
 		// Literal runs of the pattern that hold surrogates.
 		{pattern: pair, input: "x" + pair, want: []int{1, 3}},
 		{pattern: pair + "+", input: units(0xD83D, 0xDE00, 0xDE00), want: []int{0, 3}},
@@ -167,8 +167,8 @@ func TestUTF16(t *testing.T) {
 
 func TestSyntaxErrors(t *testing.T) {
 	tests := []struct {
-		pattern string
-		flags   string
+		pattern wtf8.String
+		flags   wtf8.String
 	}{
 		{pattern: "a**"},
 		{pattern: "(?<n>a)(?<n>b)"},
@@ -188,8 +188,8 @@ func TestSyntaxErrors(t *testing.T) {
 		{pattern: `(?-:a)`},
 		{pattern: `(`},
 		{pattern: `\`},
-		{pattern: strings.Repeat("(?:", 100000) + "a" + strings.Repeat(")", 100000)},
-		{pattern: strings.Repeat("[", 100000) + "a" + strings.Repeat("]", 100000), flags: "v"},
+		{pattern: wtf8.String(strings.Repeat("(?:", 100000) + "a" + strings.Repeat(")", 100000))},
+		{pattern: wtf8.String(strings.Repeat("[", 100000) + "a" + strings.Repeat("]", 100000)), flags: "v"},
 	}
 	for _, tc := range tests {
 		f, err := regexp.ParseFlags(tc.flags)
@@ -211,7 +211,7 @@ func TestManyDuplicateNames(t *testing.T) {
 		}
 		fmt.Fprintf(&b, "(?<g>a%d)", i)
 	}
-	alts := b.String()
+	alts := wtf8.String(b.String())
 	if err := regexp.Validate(alts, "", nil); err != nil {
 		t.Errorf("groups in different alternatives: got %v, want nil", err)
 	}
@@ -230,7 +230,7 @@ func TestManyAlternatives(t *testing.T) {
 		}
 		fmt.Fprintf(&b, "%c%d", 0x4E00+2*(i%10000), i)
 	}
-	re := mustCompile(t, b.String(), "")
+	re := mustCompile(t, wtf8.String(b.String()), "")
 	var m regexp.Matcher
 	if got := re.Find(&m, "x\u4E022y", 0, nil); got != nil {
 		t.Errorf("got %v, want no match", got)
@@ -248,7 +248,7 @@ func TestManyClassStrings(t *testing.T) {
 		fmt.Fprintf(&b, "\\q{x%d}", i)
 	}
 	b.WriteString("a]")
-	re := mustCompile(t, b.String(), "v")
+	re := mustCompile(t, wtf8.String(b.String()), "v")
 	var m regexp.Matcher
 	if got := re.Find(&m, "-x99999-", 0, nil); !slices.Equal(got, []int{1, 7}) {
 		t.Errorf("got %v, want [1 7]", got)
@@ -263,7 +263,7 @@ func FuzzValidate(f *testing.F) {
 		"(a)(?:b)(?=c)(?!d)(?<=e)(?<!f)", "(?=a)*", "(?i:a)(?-i:b)(?im-s:c)",
 		`(?<n>a)\k<n>`, `(?<n>a)|(?<n>b)\k<n>`, `(a)\1`, `\2(a)`, `\k`, `\k<a>`, `(?<a>a)`,
 		`[a-z\d\W-]`, `[^\s]`, `[\b\-]`, `[\w-a]`, `\c`, `[\c1]`, `[\c]`, `\0\01\8`, `\x41A`,
-		`\u{1F600}`, `😀`, "😀[😀-😁]", units(0xD83D, '[', 0xDE00, ']'),
+		`\u{1F600}`, `😀`, "😀[😀-😁]", string(units(0xD83D, '[', 0xDE00, ']')),
 		`\p{L}`, `\P{Script=Greek}`, `\p{Script_Extensions=Latin}`, `\p{RGI_Emoji}`, `\w\W\d\D\s\S`,
 		`[\p{RGI_Emoji}--\q{x}]`, `[[a-z]&&[aeiou]]`, `[\q{abc|d|}]`, `[^[a-z]--b]`, `[\P{L}a]`,
 		// Invalid in every mode.
@@ -278,13 +278,14 @@ func FuzzValidate(f *testing.F) {
 	} {
 		f.Add(p)
 	}
-	flagSets := []string{"", "i", "m", "s", "u", "iu", "v", "iv", "uv"}
+	flagSets := []wtf8.String{"", "i", "m", "s", "u", "iu", "v", "iv", "uv"}
 	f.Fuzz(func(t *testing.T, pattern string) {
+		p := wtf8.FromValidUTF8(pattern)
 		for _, flags := range flagSets {
-			got := regexp.Validate(pattern, flags, nil)
+			got := regexp.Validate(p, flags, nil)
 			fl, want := regexp.ParseFlags(flags)
 			if want == nil {
-				_, want = regexp.Compile(pattern, fl, nil)
+				_, want = regexp.Compile(p, fl, nil)
 			}
 			if !sameError(got, want) {
 				t.Errorf("Validate(%.40q, %q): got %v, want %v", pattern, flags, got, want)
@@ -316,9 +317,9 @@ func (p *countPoller) Poll() {
 // TestCompilePoll checks that the compilation and the validation of a long pattern can be
 // stopped.
 func TestCompilePoll(t *testing.T) {
-	for _, pattern := range []string{
-		strings.Repeat("a", 1<<20),
-		strings.Repeat("(?:a|b)", 1<<17),
+	for _, pattern := range []wtf8.String{
+		wtf8.String(strings.Repeat("a", 1<<20)),
+		wtf8.String(strings.Repeat("(?:a|b)", 1<<17)),
 	} {
 		p := &countPoller{}
 		func() {
@@ -344,7 +345,7 @@ func TestCompilePoll(t *testing.T) {
 				}
 			}
 		}()
-		regexp.Validate(strings.Repeat("a", 1<<20), "", p)
+		regexp.Validate(wtf8.String(strings.Repeat("a", 1<<20)), "", p)
 	}()
 	if p.n != 1 {
 		t.Errorf("Validate: Poll was called %d times, want 1", p.n)
@@ -354,7 +355,7 @@ func TestCompilePoll(t *testing.T) {
 // TestPoll checks that a catastrophic pattern can be stopped.
 func TestPoll(t *testing.T) {
 	re := mustCompile(t, "^(a+)+$", "")
-	input := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
+	var input wtf8.String = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab"
 	p := &countPoller{}
 	func() {
 		defer func() {
@@ -396,8 +397,9 @@ func FuzzRequiredLiteral(f *testing.F) {
 	f.Add(".{2}xyz", "a\nbxyz")
 	f.Add(`\d{1,3}(?:a|bc)x`, "1234bcx")
 	f.Add(`(?<=b)(?:a|日本)x`, "b日本x")
-	flagSets := []string{"", "g", "i", "m", "s", "u", "y", "iu", "uy", "v", "iv"}
+	flagSets := []wtf8.String{"", "g", "i", "m", "s", "u", "y", "iu", "uy", "v", "iv"}
 	f.Fuzz(func(t *testing.T, pattern, input string) {
+		p := wtf8.FromValidUTF8(pattern)
 		// \x01 and \x02 stand for lone surrogates.
 		var us []uint16
 		for _, r := range input {
@@ -422,11 +424,11 @@ func FuzzRequiredLiteral(f *testing.F) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			re, err := regexp.Compile(pattern, fl, nil)
+			re, err := regexp.Compile(p, fl, nil)
 			if err != nil {
 				continue
 			}
-			ref, err := regexp.Compile("(?:"+pattern+`)|[^\s\S]`, fl, nil)
+			ref, err := regexp.Compile("(?:"+p+`)|[^\s\S]`, fl, nil)
 			if err != nil {
 				continue
 			}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // smallSize is the number of live entries up to which a table finds keys by a linear scan.
@@ -49,7 +50,7 @@ type Table struct {
 	// int64 when they fit in one and by [bigKey] otherwise), and everything else by
 	// identity.
 	nums map[uint64]int32
-	strs map[string]int32
+	strs map[wtf8.String]int32
 	ints map[int64]int32
 	bigs map[string]int32
 	objs map[*engine.Object]int32
@@ -131,7 +132,7 @@ func (t *Table) find(k engine.Value) int {
 	case k.IsString():
 		if k.StringByteLength() <= shortstrings.MaxBytes {
 			var buf [shortstrings.MaxBytes]byte
-			i, ok = t.strs[string(k.AppendStringBytes(buf[:0]))]
+			i, ok = t.strs[wtf8.String(k.AppendStringBytes(buf[:0]))]
 		} else {
 			i, ok = t.strs[k.Str()]
 		}
@@ -195,7 +196,7 @@ func (t *Table) index(k engine.Value, i int) {
 		t.nums[numberKey(k.Number())] = int32(i)
 	case k.IsString():
 		if t.strs == nil {
-			t.strs = map[string]int32{}
+			t.strs = map[wtf8.String]int32{}
 		}
 		t.strs[k.Str()] = int32(i)
 	case k.IsBigInt():

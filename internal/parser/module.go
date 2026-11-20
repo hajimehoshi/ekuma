@@ -5,6 +5,7 @@ package parser
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // parseModuleName parses an import or export name: an IdentifierName or a string literal.
@@ -68,12 +69,12 @@ func (p *parser) parseImportAttributes() []ast.ImportAttribute {
 			p.unexpected()
 		}
 		a := ast.ImportAttribute{
-			Key:      p.t.str,
+			Key:      wtf8.String(p.t.str),
 			StartOff: p.t.start,
 		}
 		for i := range attrs {
 			if attrs[i].Key == a.Key {
-				p.failTok("duplicate import attribute '" + a.Key + "'")
+				p.failTok("duplicate import attribute '" + wtf8.ToValidUTF8(a.Key) + "'")
 			}
 		}
 		p.next()

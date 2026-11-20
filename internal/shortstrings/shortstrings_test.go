@@ -8,11 +8,12 @@ import (
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func TestUnitAt(t *testing.T) {
 	cases := []struct {
-		text  string
+		text  wtf8.String
 		units []uint16
 	}{
 		{
@@ -37,7 +38,7 @@ func TestUnitAt(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(tc.text, func(t *testing.T) {
+		t.Run(string(tc.text), func(t *testing.T) {
 			data := shortstrings.Pack(tc.text)
 			for i, want := range tc.units {
 				if got := shortstrings.UnitAt(data, i); got != want {
@@ -50,7 +51,7 @@ func TestUnitAt(t *testing.T) {
 
 func TestLen(t *testing.T) {
 	for _, tc := range []struct {
-		text string
+		text wtf8.String
 		want int
 	}{
 		{
@@ -83,10 +84,10 @@ func TestLen(t *testing.T) {
 func TestSlice(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		text  string
+		text  wtf8.String
 		start int
 		end   int
-		want  string
+		want  wtf8.String
 	}{
 		{
 			name:  "ASCII with NUL",
@@ -164,8 +165,8 @@ func TestSlice(t *testing.T) {
 func TestSearch(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
-		text      string
-		pattern   string
+		text      wtf8.String
+		pattern   wtf8.String
 		from      int
 		wantIndex int
 		wantLast  int
@@ -258,9 +259,9 @@ func TestSearch(t *testing.T) {
 func TestConcat(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		left  string
-		right string
-		want  string
+		left  wtf8.String
+		right wtf8.String
+		want  wtf8.String
 		fits  bool
 	}{
 		{
@@ -340,8 +341,8 @@ func TestConcat(t *testing.T) {
 func TestCompare(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		left  string
-		right string
+		left  wtf8.String
+		right wtf8.String
 		want  int
 	}{
 		{
@@ -410,9 +411,9 @@ func TestCompare(t *testing.T) {
 func TestWellFormed(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
-		text       string
+		text       wtf8.String
 		wellFormed bool
-		repaired   string
+		repaired   wtf8.String
 	}{
 		{
 			name:       "ASCII with NUL",
@@ -454,7 +455,7 @@ func TestWellFormed(t *testing.T) {
 func TestCodePointAt(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		text  string
+		text  wtf8.String
 		index int
 		want  rune
 	}{
@@ -494,9 +495,9 @@ func TestCodePointAt(t *testing.T) {
 func TestASCIICase(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		text  string
-		upper string
-		lower string
+		text  wtf8.String
+		upper wtf8.String
+		lower wtf8.String
 	}{
 		{
 			name:  "letter boundaries",
@@ -532,10 +533,10 @@ func TestASCIICase(t *testing.T) {
 func TestTrimASCII(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		text  string
+		text  wtf8.String
 		start bool
 		end   bool
-		want  string
+		want  wtf8.String
 	}{
 		{
 			name:  "both ends",
@@ -599,9 +600,9 @@ func TestTrimASCII(t *testing.T) {
 func TestRepeat(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		text  string
+		text  wtf8.String
 		count int
-		want  string
+		want  wtf8.String
 		fits  bool
 	}{
 		{

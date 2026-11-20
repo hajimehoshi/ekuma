@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
@@ -53,7 +54,7 @@ func skipZeros(s string, i int, poll func()) int {
 
 // trimWhiteSpace is [xstrings.TrimWhiteSpace], calling poll between the steps over long runs of
 // white space.
-func trimWhiteSpace(s string, start, end bool, poll func()) string {
+func trimWhiteSpace(s wtf8.String, start, end bool, poll func()) wtf8.String {
 	if start {
 		for len(s) > scanStep {
 			w := s[:scanStep]

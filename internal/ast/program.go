@@ -3,12 +3,14 @@
 
 package ast
 
+import "github.com/hajimehoshi/ekuma/internal/wtf8"
+
 // Program is a parsed script or module.
 type Program struct {
 	Span
 
 	// Source is the source text that all node offsets refer to.
-	Source string
+	Source wtf8.String
 
 	Module bool
 
@@ -26,6 +28,6 @@ type Program struct {
 }
 
 // Text returns the source text of n.
-func (p *Program) Text(n Node) string {
+func (p *Program) Text(n Node) wtf8.String {
 	return p.Source[n.Start():n.End()]
 }

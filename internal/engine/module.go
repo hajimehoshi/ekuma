@@ -34,23 +34,23 @@ type scriptOrModule struct {
 
 // ImportAttribute is an ImportAttribute Record.
 type ImportAttribute struct {
-	Key   string
-	Value string
+	Key   wtf8.String
+	Value wtf8.String
 }
 
 // ModuleRequest is a ModuleRequest Record. [ModuleRequest.Attributes] are sorted by key.
 type ModuleRequest struct {
-	Specifier  string
+	Specifier  wtf8.String
 	Attributes []ImportAttribute
 }
 
 // requestKey returns the key of r in [[LoadedModules]]: requests are equal when their keys are.
 func requestKey(r ModuleRequest) string {
 	var b strings.Builder
-	add := func(s string) {
+	add := func(s wtf8.String) {
 		b.WriteString(strconv.Itoa(len(s)))
 		b.WriteByte(':')
-		b.WriteString(s)
+		b.WriteString(string(s))
 	}
 	add(r.Specifier)
 	for _, a := range r.Attributes {
@@ -836,8 +836,7 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 
 // resolutionError returns the SyntaxError of the import or export name of m that did not
 // resolve to r.
-func (vm *VM) resolutionError(m *Module, name string, r resolution) Value {
-	n := wtf8.ToValidUTF8(name)
+func (vm *VM) resolutionError(m *Module, n string, r resolution) Value {
 	if r.kind == resolutionAmbiguous {
 		return vm.NewError(ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
 	}
@@ -1326,7 +1325,7 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 		}
 		for i, k := range keys {
 			if !values[i].IsString() {
-				vm.ThrowTypeError("the value of the import attribute '" + vm.KeyString(k) + "' must be a string")
+				vm.ThrowTypeError("the value of the import attribute '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' must be a string")
 			}
 			req.Attributes = append(req.Attributes, ImportAttribute{
 				Key:   vm.ToString(vm.KeyValue(k)),
@@ -1337,7 +1336,7 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 			vm.ThrowTypeError("unsupported import attribute")
 		}
 		slices.SortFunc(req.Attributes, func(a, b ImportAttribute) int {
-			return strings.Compare(a.Key, b.Key)
+			return wtf8.Compare(a.Key, b.Key)
 		})
 	})
 	if !ok {

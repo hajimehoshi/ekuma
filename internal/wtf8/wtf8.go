@@ -4,11 +4,9 @@
 // Package wtf8 implements JavaScript string semantics on Go strings.
 //
 // A JavaScript string is a sequence of UTF-16 code units. This package keeps such a string
-// in a Go string as WTF-8: UTF-8 in which a surrogate code point that is not part of a pair
+// in a [String] as WTF-8: UTF-8 in which a surrogate code point that is not part of a pair
 // is encoded as a three-byte sequence. A high surrogate followed by a low surrogate is never
 // stored as two three-byte sequences, so every JavaScript string has exactly one encoding.
-//
-// Unless documented otherwise, functions expect their string arguments in that canonical form.
 package wtf8
 
 import (
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"unicode/utf8"
 )
+
+// String is a JavaScript string in canonical WTF-8, of which valid UTF-8 is a subset.
+type String string
 
 const (
 	surrogateMin     = 0xD800
@@ -28,7 +29,7 @@ const (
 )
 
 // IsASCII reports whether every byte of s is below 0x80.
-func IsASCII(s string) bool {
+func IsASCII(s String) bool {
 	for len(s) >= 8 {
 		if word(s)&highBits != 0 {
 			return false
@@ -43,8 +44,8 @@ func IsASCII(s string) bool {
 	return true
 }
 
-// ToLowerASCII lowercases ASCII letters in any byte string, preserving all other bytes.
-func ToLowerASCII(s string) string {
+// ToLowerASCII lowercases the ASCII letters of s, preserving all other bytes.
+func ToLowerASCII[S ~string](s S) S {
 	var b strings.Builder
 	var start int
 	for i := range len(s) {
@@ -55,22 +56,22 @@ func ToLowerASCII(s string) string {
 		if start == 0 {
 			b.Grow(len(s))
 		}
-		b.WriteString(s[start:i])
+		b.WriteString(string(s[start:i]))
 		b.WriteByte(c + ('a' - 'A'))
 		start = i + 1
 	}
 	if start == 0 {
 		return s
 	}
-	b.WriteString(s[start:])
-	return b.String()
+	b.WriteString(string(s[start:]))
+	return S(b.String())
 }
 
 // highBits has the high bit of each byte of a word set.
 const highBits = 0x8080808080808080
 
 // word returns the first eight bytes of s as a little-endian word.
-func word(s string) uint64 {
+func word(s String) uint64 {
 	_ = s[7]
 	return uint64(s[0]) | uint64(s[1])<<8 | uint64(s[2])<<16 | uint64(s[3])<<24 |
 		uint64(s[4])<<32 | uint64(s[5])<<40 | uint64(s[6])<<48 | uint64(s[7])<<56
@@ -88,7 +89,7 @@ func IsLowSurrogate(r rune) bool {
 
 // DecodeRune returns the first code point of s and its size in bytes.
 // The code point is a surrogate when s starts with a lone surrogate.
-func DecodeRune(s string) (rune, int) {
+func DecodeRune(s String) (rune, int) {
 	if len(s) == 0 {
 		return utf8.RuneError, 0
 	}
@@ -99,11 +100,11 @@ func DecodeRune(s string) (rune, int) {
 	if b == 0xED && len(s) >= 3 && s[1] >= 0xA0 {
 		return 0xD000 | rune(s[1]&0x3F)<<6 | rune(s[2]&0x3F), 3
 	}
-	return utf8.DecodeRuneInString(s)
+	return utf8.DecodeRuneInString(string(s))
 }
 
 // DecodeLastRune returns the last code point of s and its size in bytes.
-func DecodeLastRune(s string) (rune, int) {
+func DecodeLastRune(s String) (rune, int) {
 	n := len(s)
 	if n == 0 {
 		return utf8.RuneError, 0
@@ -114,7 +115,7 @@ func DecodeLastRune(s string) (rune, int) {
 	if n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 {
 		return 0xD000 | rune(s[n-2]&0x3F)<<6 | rune(s[n-1]&0x3F), 3
 	}
-	return utf8.DecodeLastRuneInString(s)
+	return utf8.DecodeLastRuneInString(string(s))
 }
 
 // AppendRune appends the encoding of r, which may be a surrogate, to b.
@@ -127,7 +128,7 @@ func AppendRune(b []byte, r rune) []byte {
 }
 
 // Len returns the length of s in UTF-16 code units.
-func Len(s string) int {
+func Len(s String) int {
 	// Every byte except a continuation byte starts a code point,
 	// and a four-byte sequence is two code units.
 	n := len(s)
@@ -156,7 +157,7 @@ func Len(s string) int {
 }
 
 // CountCodePoints returns the number of code points in s.
-func CountCodePoints(s string) int {
+func CountCodePoints(s String) int {
 	// Every byte except a continuation byte starts a code point.
 	n := len(s)
 	for len(s) >= 8 {
@@ -187,7 +188,7 @@ type Pos struct {
 
 // Seek returns the position of the code unit unit of s, starting the search at from,
 // which must be a position in s. unit is clamped to the range from 0 to the length of s.
-func Seek(s string, from Pos, unit int) Pos {
+func Seek(s String, from Pos, unit int) Pos {
 	if unit <= 0 {
 		return Pos{}
 	}
@@ -242,7 +243,7 @@ func Seek(s string, from Pos, unit int) Pos {
 }
 
 // At returns the code unit at p, which must be a position before the end of s.
-func At(s string, p Pos) uint16 {
+func At(s String, p Pos) uint16 {
 	b := s[p.Byte]
 	if b < 0x80 {
 		return uint16(b)
@@ -259,7 +260,7 @@ func At(s string, p Pos) uint16 {
 }
 
 // Slice returns the code units of s from a up to b. a must not be after b.
-func Slice(s string, a, b Pos) string {
+func Slice(s String, a, b Pos) String {
 	if !a.Low && !b.Low {
 		return s[a.Byte:b.Byte]
 	}
@@ -273,29 +274,29 @@ func Slice(s string, a, b Pos) string {
 		start += 4
 	}
 	if !b.Low {
-		return string(append(buf, s[start:b.Byte]...))
+		return String(append(buf, s[start:b.Byte]...))
 	}
 	if start <= b.Byte {
 		buf = append(buf, s[start:b.Byte]...)
 	}
 	buf = AppendRune(buf, rune(At(s, Pos{Byte: b.Byte})))
-	return string(buf)
+	return String(buf)
 }
 
 // endsWithHigh reports whether s ends with a lone high surrogate.
-func endsWithHigh(s string) bool {
+func endsWithHigh(s String) bool {
 	n := len(s)
 	return n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 && s[n-2] < 0xB0
 }
 
 // startsWithLow reports whether s starts with a lone low surrogate.
-func startsWithLow(s string) bool {
+func startsWithLow(s String) bool {
 	return len(s) >= 3 && s[0] == 0xED && s[1] >= 0xB0
 }
 
 // JoinsPair reports whether concatenating a and b forms a surrogate pair at the boundary,
 // in which case the plain concatenation of the bytes is not canonical.
-func JoinsPair(a, b string) bool {
+func JoinsPair(a, b String) bool {
 	return endsWithHigh(a) && startsWithLow(b)
 }
 
@@ -304,7 +305,7 @@ func combine(hi, lo rune) rune {
 }
 
 // Concat returns the concatenation of a and b.
-func Concat(a, b string) string {
+func Concat(a, b String) String {
 	if !JoinsPair(a, b) {
 		return a + b
 	}
@@ -314,11 +315,11 @@ func Concat(a, b string) string {
 	buf = append(buf, a[:len(a)-3]...)
 	buf = utf8.AppendRune(buf, combine(hi, lo))
 	buf = append(buf, b[3:]...)
-	return string(buf)
+	return String(buf)
 }
 
 // Compare compares a and b by their UTF-16 code units and returns -1, 0 or 1.
-func Compare(a, b string) int {
+func Compare(a, b String) int {
 	n := min(len(a), len(b))
 	// Skip the common prefix chunk by chunk first.
 	const chunk = 32
@@ -351,7 +352,7 @@ func Compare(a, b string) int {
 }
 
 // compareUnits compares a and b code unit by code unit. Both must start at a code point.
-func compareUnits(a, b string) int {
+func compareUnits(a, b String) int {
 	var pa, pb Pos
 	for pa.Byte < len(a) && pb.Byte < len(b) {
 		x, y := At(a, pa), At(b, pb)
@@ -374,7 +375,7 @@ func compareUnits(a, b string) int {
 }
 
 // IsWellFormed reports whether s contains no lone surrogate.
-func IsWellFormed(s string) bool {
+func IsWellFormed(s String) bool {
 	for i := 0; i+2 < len(s); i++ {
 		if s[i] == 0xED && s[i+1] >= 0xA0 {
 			return false
@@ -384,9 +385,9 @@ func IsWellFormed(s string) bool {
 }
 
 // ToValidUTF8 returns s with every lone surrogate replaced by U+FFFD.
-func ToValidUTF8(s string) string {
+func ToValidUTF8(s String) string {
 	if IsWellFormed(s) {
-		return s
+		return string(s)
 	}
 	var sb strings.Builder
 	sb.Grow(len(s))
@@ -403,11 +404,11 @@ func ToValidUTF8(s string) string {
 }
 
 // FromValidUTF8 returns s as a JavaScript string. Invalid UTF-8 is replaced by U+FFFD.
-func FromValidUTF8(s string) string {
-	if IsASCII(s) || utf8.ValidString(s) {
-		return s
+func FromValidUTF8(s string) String {
+	if IsASCII(String(s)) || utf8.ValidString(s) {
+		return String(s)
 	}
-	return strings.ToValidUTF8(s, "�")
+	return String(strings.ToValidUTF8(s, "�"))
 }
 
 // Builder builds a string from code units, code points and strings.
@@ -470,7 +471,7 @@ func (b *Builder) WriteUnit(u uint16) {
 }
 
 // WriteString appends the JavaScript string s.
-func (b *Builder) WriteString(s string) {
+func (b *Builder) WriteString(s String) {
 	if startsWithLow(s) {
 		if hi, ok := b.endsWithHigh(); ok {
 			lo, _ := DecodeRune(s)
@@ -494,7 +495,7 @@ func (b *Builder) WriteStringBytes(s []byte) {
 }
 
 // WriteRepeated appends the JavaScript string s count times.
-func (b *Builder) WriteRepeated(s string, count int) {
+func (b *Builder) WriteRepeated(s String, count int) {
 	if count <= 0 {
 		return
 	}
@@ -518,8 +519,8 @@ func (b *Builder) WriteRepeated(s string, count int) {
 }
 
 // String returns the built string.
-func (b *Builder) String() string {
-	return string(b.buf)
+func (b *Builder) String() String {
+	return String(b.buf)
 }
 
 // StringBuilder builds a string from code points and strings. The zero value is an empty
@@ -571,7 +572,7 @@ func (b *StringBuilder) WriteRune(r rune) {
 }
 
 // WriteString appends the JavaScript string s.
-func (b *StringBuilder) WriteString(s string) {
+func (b *StringBuilder) WriteString(s String) {
 	if s == "" {
 		return
 	}
@@ -586,25 +587,25 @@ func (b *StringBuilder) WriteString(s string) {
 		}
 	}
 	if n := len(s); n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 && s[n-2] < 0xB0 {
-		b.sb.WriteString(s[:n-3])
+		b.sb.WriteString(string(s[:n-3]))
 		b.high = 0xD000 | rune(s[n-2]&0x3F)<<6 | rune(s[n-1]&0x3F)
 		b.hasHigh = true
 		return
 	}
-	b.sb.WriteString(s)
+	b.sb.WriteString(string(s))
 }
 
 // String returns the built string.
-func (b *StringBuilder) String() string {
+func (b *StringBuilder) String() String {
 	if b.hasHigh {
 		var buf [utf8.UTFMax]byte
-		return b.sb.String() + string(AppendRune(buf[:0], b.high))
+		return String(b.sb.String() + string(AppendRune(buf[:0], b.high)))
 	}
-	return b.sb.String()
+	return String(b.sb.String())
 }
 
 // FromUTF16 returns the string with the code units u.
-func FromUTF16(u []uint16) string {
+func FromUTF16(u []uint16) String {
 	var b Builder
 	b.Grow(len(u))
 	for _, c := range u {
@@ -614,7 +615,7 @@ func FromUTF16(u []uint16) string {
 }
 
 // AppendUTF16 appends the code units of s to u.
-func AppendUTF16(u []uint16, s string) []uint16 {
+func AppendUTF16(u []uint16, s String) []uint16 {
 	for i := 0; i < len(s); {
 		if b := s[i]; b < 0x80 {
 			u = append(u, uint16(b))

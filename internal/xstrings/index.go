@@ -5,6 +5,8 @@ package xstrings
 
 import (
 	"strings"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // shortSub is the length up to which strings.Index and strings.LastIndex spend at most a
@@ -18,7 +20,7 @@ const searchChunk = 1 << 20
 // Index returns the index of the first instance of sub in s, or -1, in time linear in the lengths
 // of s and sub. poll, which may be nil, is called now and then during a long search, and may stop
 // the search by panicking.
-func Index(s, sub string, poll func()) int {
+func Index(s, sub wtf8.String, poll func()) int {
 	n := len(sub)
 	if n > len(s) {
 		return -1
@@ -30,7 +32,7 @@ func Index(s, sub string, poll func()) int {
 				poll()
 			}
 			end := min(len(s), i+searchChunk+n-1)
-			if j := strings.Index(s[i:end], sub); j >= 0 {
+			if j := strings.Index(string(s[i:end]), string(sub)); j >= 0 {
 				return i + j
 			}
 			if end == len(s) {
@@ -73,7 +75,7 @@ func Index(s, sub string, poll func()) int {
 
 // LastIndex returns the index of the last instance of sub in s, or -1, in time linear in the
 // lengths of s and sub. poll is as for [Index].
-func LastIndex(s, sub string, poll func()) int {
+func LastIndex(s, sub wtf8.String, poll func()) int {
 	n := len(sub)
 	if n > len(s) {
 		return -1
@@ -85,7 +87,7 @@ func LastIndex(s, sub string, poll func()) int {
 				poll()
 			}
 			start := max(0, end-searchChunk-n+1)
-			if j := strings.LastIndex(s[start:end], sub); j >= 0 {
+			if j := strings.LastIndex(string(s[start:end]), string(sub)); j >= 0 {
 				return start + j
 			}
 			if start == 0 {
@@ -127,12 +129,12 @@ func LastIndex(s, sub string, poll func()) int {
 }
 
 // indexByte is strings.IndexByte, calling poll between the chunks of a long s.
-func indexByte(s string, c byte, poll func()) int {
+func indexByte(s wtf8.String, c byte, poll func()) int {
 	for i := 0; i < len(s); i += searchChunk {
 		if i > 0 && poll != nil {
 			poll()
 		}
-		if j := strings.IndexByte(s[i:min(len(s), i+searchChunk)], c); j >= 0 {
+		if j := strings.IndexByte(string(s[i:min(len(s), i+searchChunk)]), c); j >= 0 {
 			return i + j
 		}
 	}
@@ -140,13 +142,13 @@ func indexByte(s string, c byte, poll func()) int {
 }
 
 // lastIndexByte is strings.LastIndexByte, calling poll between the chunks of a long s.
-func lastIndexByte(s string, c byte, poll func()) int {
+func lastIndexByte(s wtf8.String, c byte, poll func()) int {
 	for end := len(s); end > 0; end -= searchChunk {
 		if end < len(s) && poll != nil {
 			poll()
 		}
 		start := max(0, end-searchChunk)
-		if j := strings.LastIndexByte(s[start:end], c); j >= 0 {
+		if j := strings.LastIndexByte(string(s[start:end]), c); j >= 0 {
 			return start + j
 		}
 	}
@@ -154,7 +156,7 @@ func lastIndexByte(s string, c byte, poll func()) int {
 }
 
 // at returns the byte i of s, counted from the end with rev.
-func at(s string, i int, rev bool) byte {
+func at(s wtf8.String, i int, rev bool) byte {
 	if rev {
 		return s[len(s)-1-i]
 	}
@@ -164,7 +166,7 @@ func at(s string, i int, rev bool) byte {
 // kmpIndex returns the index of the first instance of sub in s by the Knuth-Morris-Pratt
 // algorithm, or -1. With rev, both s and sub are read from their ends, and the index is the
 // number of bytes after the instance. poll is as for [Index].
-func kmpIndex(s, sub string, rev bool, poll func()) int {
+func kmpIndex(s, sub wtf8.String, rev bool, poll func()) int {
 	n := len(sub)
 	// border[j] is the length of the longest proper border of the first j+1 bytes of sub.
 	border := make([]int32, n)

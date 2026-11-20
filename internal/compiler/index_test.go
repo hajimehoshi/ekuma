@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // TestStringLiteralIndex tests that a string literal key is read as an integer index only when it
@@ -39,7 +40,7 @@ func TestStringLiteralIndex(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prog, err := parser.ParseScript(`o[`+tc.key+`];`, parser.Options{})
+			prog, err := parser.ParseScript(wtf8.String(`o[`+tc.key+`];`), parser.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

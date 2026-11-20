@@ -120,10 +120,10 @@ func TestStringBuilderSnapshot(t *testing.T) {
 	b.WriteRune(0xD83D)
 	snapshot := b.String()
 	b.WriteRune(0xDE00)
-	if got, want := b.String(), "x😀"; got != want {
+	if got, want := b.String(), wtf8.String("x😀"); got != want {
 		t.Errorf("String() after the low surrogate = %q, want %q", got, want)
 	}
-	if want := "x\xed\xa0\xbd"; snapshot != want {
+	if want := wtf8.String("x\xed\xa0\xbd"); snapshot != want {
 		t.Errorf("snapshot = %q, want %q", snapshot, want)
 	}
 }
@@ -177,8 +177,8 @@ func TestToValidUTF8(t *testing.T) {
 
 func TestWriteStringBytes(t *testing.T) {
 	for _, tc := range []struct {
-		prefix string
-		want   string
+		prefix wtf8.String
+		want   wtf8.String
 	}{
 		{
 			prefix: "\xed\xa0\xbd",

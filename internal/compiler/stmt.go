@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func (f *fn) stmts(list []ast.Stmt) {
@@ -65,7 +66,7 @@ func (f *fn) declareLexical(s *ast.Scope, alwaysCheck bool) {
 	}
 	for _, name := range order {
 		b, _ := f.lookupLocal(name)
-		f.closure(funcs[name], b.reg, name)
+		f.closure(funcs[name], b.reg, wtf8.String(name))
 	}
 }
 
@@ -99,21 +100,21 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 			}
 			if r := f.localReg(id.Name); r >= 0 {
 				if f.singleWrite(d.Init) {
-					f.named(d.Init, r, id.Name)
+					f.named(d.Init, r, wtf8.String(id.Name))
 				} else {
 					t := f.newReg()
-					f.named(d.Init, t, id.Name)
+					f.named(d.Init, t, wtf8.String(id.Name))
 					f.emit(bytecode.OpMove, r, t, 0)
 				}
 				break
 			}
 			scope := f.resolveName(id.Name)
 			t := f.newReg()
-			f.named(d.Init, t, id.Name)
+			f.named(d.Init, t, wtf8.String(id.Name))
 			f.storeVarTo(d, id.Name, t, false, scope)
 		case n.Kind == ast.DeclUsing || n.Kind == ast.DeclAwaitUsing:
 			t := f.newReg()
-			f.named(d.Init, t, id.Name)
+			f.named(d.Init, t, wtf8.String(id.Name))
 			f.initUsing(d, n.Kind, id.Name, t)
 		default:
 			b, _ := f.lookupLocal(id.Name)
@@ -122,7 +123,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				// A lexical declaration at the top level of a script.
 				t := f.newReg()
 				if d.Init != nil {
-					f.named(d.Init, t, id.Name)
+					f.named(d.Init, t, wtf8.String(id.Name))
 				} else {
 					f.emit(bytecode.OpLoadUndef, t, 0, 0)
 				}
@@ -132,12 +133,12 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				b.tdz = false
 				b.initialized = true
 			case f.singleWrite(d.Init):
-				f.named(d.Init, b.reg, id.Name)
+				f.named(d.Init, b.reg, wtf8.String(id.Name))
 				b.tdz = false
 				b.initialized = true
 			default:
 				t := f.newReg()
-				f.named(d.Init, t, id.Name)
+				f.named(d.Init, t, wtf8.String(id.Name))
 				f.emit(bytecode.OpMove, b.reg, t, 0)
 				b.tdz = false
 				b.initialized = true
@@ -417,7 +418,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 	case *ast.ClassDecl:
 		name := s.Class.Name.Name
 		t := f.newReg()
-		f.class(s.Class, t, name, -1)
+		f.class(s.Class, t, wtf8.String(name), -1)
 		f.initBinding(s, name, t)
 	case *ast.ImportDecl, *ast.ExportAllDecl:
 	case *ast.ExportNamedDecl:
@@ -604,7 +605,7 @@ func (f *fn) setAnnexBGlobal(name string, src int32) {
 	if r, ok := f.annexBRegs[name]; ok {
 		j = f.emit(bytecode.OpJumpIfNot, 0, r, 0)
 	}
-	f.emit(bytecode.OpSetGlobal, src, f.key(name), f.globalCache())
+	f.emit(bytecode.OpSetGlobal, src, f.key(wtf8.String(name)), f.globalCache())
 	if j >= 0 {
 		f.patch(j)
 	}

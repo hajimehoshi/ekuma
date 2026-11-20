@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // validFunc returns a valid function, which the cases of TestValidate break.
@@ -26,7 +27,7 @@ func validFunc() *bytecode.Func {
 			{Op: bytecode.OpCall, A: 1, B: 1, C: 1},
 			{Op: bytecode.OpReturn, A: 1},
 		},
-		Keys:      []string{"x", "y", "prototype"},
+		Keys:      []wtf8.String{"x", "y", "prototype"},
 		NumCaches: 3,
 		NumRegs:   4,
 		Handlers: []bytecode.Handler{

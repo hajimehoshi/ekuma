@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/intl/plural"
 	"github.com/hajimehoshi/ekuma/internal/intl/reltime"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // relativeTimeFormatData holds the internal slots of an Intl.RelativeTimeFormat object.
@@ -103,11 +104,11 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 		unit = strings.TrimSuffix(unit, "s")
 	case "second", "minute", "hour", "day", "week", "month", "quarter", "year":
 	default:
-		vm.ThrowRangeError("invalid unit of a relative time: " + vm.DisplayString(vm.NewString(unit)))
+		vm.ThrowRangeError("invalid unit of a relative time: " + vm.DisplayString(vm.NewString(wtf8.String(unit))))
 	}
 	patterns := reltime.PatternsOf(rtf.dataLocale, unit, rtf.style)
 	if rtf.numeric == "auto" {
-		if s, ok := patterns.Named(vm.ToString(engine.Number(value))); ok {
+		if s, ok := patterns.Named(string(vm.ToString(engine.Number(value)))); ok {
 			return []relativeTimePart{{typ: "literal", value: s}}
 		}
 	}
@@ -138,7 +139,7 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 // formatToParts, converting them first.
 func (rtf *relativeTimeFormatData) partitionArgs(vm *engine.VM, args []engine.Value) []relativeTimePart {
 	value := vm.ToNumber(arg(args, 0))
-	unit := vm.ToString(arg(args, 1))
+	unit := wtf8.ToValidUTF8(vm.ToString(arg(args, 1)))
 	return rtf.partition(vm, value, unit)
 }
 
@@ -160,7 +161,7 @@ func (r *realm) initRelativeTimeFormat(vm *engine.VM) {
 		for _, p := range rtf.partitionArgs(vm, args) {
 			b.WriteString(p.value)
 		}
-		return vm.NewString(b.String())
+		return vm.NewString(wtf8.String(b.String()))
 	})
 	method(vm, proto, "formatToParts", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		rtf := thisRelativeTimeFormat(vm, this, "formatToParts")
@@ -187,10 +188,10 @@ func unitPartsArray(vm *engine.VM, n int, part func(i int) (typ, value, unit str
 	vals := make([]engine.Value, n)
 	for i := range n {
 		typ, value, unit := part(i)
-		props := [3]engine.Value{vm.NewString(typ), vm.NewString(value)}
+		props := [3]engine.Value{vm.NewString(wtf8.String(typ)), vm.NewString(wtf8.String(value))}
 		propertyCount := 2
 		if unit != "" {
-			props[2] = vm.NewString(unit)
+			props[2] = vm.NewString(wtf8.String(unit))
 			propertyCount++
 		}
 		vals[i] = engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))

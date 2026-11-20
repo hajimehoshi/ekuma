@@ -64,7 +64,7 @@ var hexValues = func() [256]int8 {
 }()
 
 // skipASCIIWhitespace implements SkipAsciiWhitespace.
-func skipASCIIWhitespace(s string, i int) int {
+func skipASCIIWhitespace(s wtf8.String, i int) int {
 	for i < len(s) {
 		switch s[i] {
 		case '\t', '\n', '\f', '\r', ' ':
@@ -99,7 +99,7 @@ func decodeChunk(dst []byte, chunk []int, strict bool) ([]byte, bool) {
 const decodeRun = 1 << 16
 
 // fromBase64 implements FromBase64 for the string s, which may contain any bytes of WTF-8.
-func fromBase64(vm *engine.VM, s string, url bool, lastChunkHandling string, maxLength int) decodeResult {
+func fromBase64(vm *engine.VM, s wtf8.String, url bool, lastChunkHandling wtf8.String, maxLength int) decodeResult {
 	var r decodeResult
 	if maxLength == 0 {
 		return r
@@ -120,7 +120,7 @@ func fromBase64(vm *engine.VM, s string, url bool, lastChunkHandling string, max
 // fromBase64Run is fromBase64 from the index i, with the chunk of values read so far, up to about
 // the index stop. It returns where it stopped and the chunk then, and reports whether r is the
 // result.
-func fromBase64Run(s string, i, stop int, url bool, lastChunkHandling string, maxLength int, r *decodeResult, chunk []int) (int, []int, bool) {
+func fromBase64Run(s wtf8.String, i, stop int, url bool, lastChunkHandling wtf8.String, maxLength int, r *decodeResult, chunk []int) (int, []int, bool) {
 	for {
 		if i >= stop {
 			return i, chunk, false
@@ -227,7 +227,7 @@ func fromBase64Run(s string, i, stop int, url bool, lastChunkHandling string, ma
 }
 
 // fromHex implements FromHex for the string s.
-func fromHex(vm *engine.VM, s string, maxLength int) decodeResult {
+func fromHex(vm *engine.VM, s wtf8.String, maxLength int) decodeResult {
 	var r decodeResult
 	length := len(s)
 	if !wtf8.IsASCII(s) {
@@ -250,7 +250,7 @@ func fromHex(vm *engine.VM, s string, maxLength int) decodeResult {
 }
 
 // fromHexRun is fromHex from the index r.read up to stop.
-func fromHexRun(s string, stop, maxLength int, r *decodeResult) {
+func fromHexRun(s wtf8.String, stop, maxLength int, r *decodeResult) {
 	for r.read < len(s) && r.read < stop && len(r.bytes) < maxLength {
 		hi, lo := hexValues[s[r.read]], hexValues[s[r.read+1]]
 		if hi|lo < 0 {
@@ -274,8 +274,8 @@ func optionsObject(vm *engine.VM, options engine.Value) engine.Value {
 }
 
 // stringOption returns the option name of opts, which must be one of choices; undefined stands for choices[0].
-func stringOption(vm *engine.VM, opts engine.Value, name string, choices ...string) string {
-	v := vm.GetV(opts, vm.Intern(name))
+func stringOption(vm *engine.VM, opts engine.Value, name string, choices ...wtf8.String) wtf8.String {
+	v := vm.GetV(opts, vm.Intern(wtf8.String(name)))
 	if v.IsUndefined() {
 		return choices[0]
 	}
@@ -316,14 +316,14 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		lengthOf(vm, t, what)
 		return elementsOf(t)
 	}
-	stringArg := func(vm *engine.VM, args []engine.Value) string {
+	stringArg := func(vm *engine.VM, args []engine.Value) wtf8.String {
 		s := arg(args, 0)
 		if !s.IsString() {
 			vm.ThrowTypeError("the argument must be a string")
 		}
 		return s.Str()
 	}
-	base64Options := func(vm *engine.VM, options engine.Value) (bool, string) {
+	base64Options := func(vm *engine.VM, options engine.Value) (bool, wtf8.String) {
 		opts := optionsObject(vm, options)
 		alphabet := stringOption(vm, opts, "alphabet", "base64", "base64url")
 		last := stringOption(vm, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
@@ -394,11 +394,11 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		// Every chunk but the last is a whole number of 3-byte groups, which encode without
 		// padding.
-		return vm.NewString(encodeInChunks(vm, b, 3, enc.EncodedLen, enc.AppendEncode))
+		return vm.NewString(wtf8.String(encodeInChunks(vm, b, 3, enc.EncodedLen, enc.AppendEncode)))
 	})
 	method(vm, proto, "toHex", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisUint8Array(vm, this, false, "toHex")
-		return vm.NewString(encodeInChunks(vm, bytesOf(vm, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode))
+		return vm.NewString(wtf8.String(encodeInChunks(vm, bytesOf(vm, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
 	})
 }
 

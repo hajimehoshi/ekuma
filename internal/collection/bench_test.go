@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func BenchmarkTableSet(b *testing.B) {
@@ -23,7 +24,7 @@ func BenchmarkTableSet(b *testing.B) {
 					case "number":
 						keys[i] = engine.Number(float64(i))
 					case "string":
-						keys[i] = vm.NewString(strconv.Itoa(i))
+						keys[i] = vm.NewString(wtf8.String(strconv.Itoa(i)))
 					case "bigint":
 						keys[i] = engine.BigIntFromInt64(int64(i))
 					case "object":

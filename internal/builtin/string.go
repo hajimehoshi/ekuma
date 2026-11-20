@@ -35,7 +35,10 @@ func initString(vm *engine.VM) {
 		s := vm.NewString("")
 		if len(args) > 0 {
 			if vm.GetNewTarget() == nil && args[0].IsSymbol() {
-				return vm.NewString(vm.DisplayString(args[0]))
+				sym, _ := engine.ThisSymbolValue(args[0])
+				desc, _ := engine.SymbolDescription(sym)
+				checkStringLength(vm, len(desc)+8)
+				return vm.NewString("Symbol(" + desc + ")")
 			}
 			s = vm.ToStringValue(args[0])
 		}
@@ -62,7 +65,7 @@ func initString(vm *engine.VM) {
 		for _, a := range args {
 			n := vm.ToNumber(a)
 			if n != math.Trunc(n) || n < 0 || n > 0x10FFFF {
-				vm.ThrowRangeError("invalid code point " + vm.ToString(a))
+				vm.ThrowRangeError("invalid code point " + wtf8.ToValidUTF8(vm.ToString(a)))
 			}
 			b.WriteRune(rune(n))
 		}
@@ -267,7 +270,7 @@ func initString(vm *engine.VM) {
 		s := thisStringValue(vm, this, "repeat")
 		n := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || math.IsInf(n, 0) {
-			vm.ThrowRangeError("invalid count value: " + vm.ToString(arg(args, 0)))
+			vm.ThrowRangeError("invalid count value: " + wtf8.ToValidUTF8(vm.ToString(arg(args, 0))))
 		}
 		if n == 0 {
 			return vm.NewString("")
@@ -294,7 +297,7 @@ func initString(vm *engine.VM) {
 		return vm.NewString(repeatString(vm, text, int(n)))
 	})
 	pad := func(name string, atStart bool) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisStringValue(vm, this, name)
 			target := numconv.ToLength(vm.ToNumber(arg(args, 0)))
 			n := int64(s.StringLength())
@@ -331,7 +334,7 @@ func initString(vm *engine.VM) {
 	pad("padStart", true)
 	pad("padEnd", false)
 	trim := func(name string, start, end bool) *engine.Object {
-		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisStringValue(vm, this, name)
 			return vm.TrimString(s, start, end)
 		})
@@ -344,8 +347,8 @@ func initString(vm *engine.VM) {
 	// The HTML methods of Annex B.
 	for _, e := range []struct {
 		name string
-		tag  string
-		attr string
+		tag  wtf8.String
+		attr wtf8.String
 	}{
 		{"anchor", "a", "name"}, {"big", "big", ""}, {"blink", "blink", ""}, {"bold", "b", ""},
 		{"fixed", "tt", ""}, {"fontcolor", "font", "color"}, {"fontsize", "font", "size"},
@@ -356,7 +359,7 @@ func initString(vm *engine.VM) {
 		if e.attr != "" {
 			length = 1
 		}
-		method(vm, proto, e.name, length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(e.name), length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			// CreateHTML.
 			s := thisStringValue(vm, this, e.name)
 			var b wtf8.Builder
@@ -364,7 +367,7 @@ func initString(vm *engine.VM) {
 			if e.attr != "" {
 				v := vm.ToString(arg(args, 0))
 				b.WriteString(" " + e.attr + "=\"")
-				b.WriteString(strings.ReplaceAll(v, "\"", "&quot;"))
+				b.WriteString(wtf8.String(strings.ReplaceAll(string(v), "\"", "&quot;")))
 				b.WriteString("\"")
 			}
 			b.WriteString(">")
@@ -379,14 +382,14 @@ func initString(vm *engine.VM) {
 	// mapShortCase registers the non-locale methods with packed ASCII conversion.
 	mapShortCase := func(name string, toUpper bool, ascii func(string) string, f stringMapping) {
 		asciiMap := contextFree(ascii)
-		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisStringValue(vm, this, name)
 			if mapped, ok := vm.MapASCII(s, toUpper); ok {
 				return mapped
 			}
 			o := s.Object()
 			if o.IsASCII() {
-				return vm.NewString(mapInChunks(vm, o.Str(), asciiMap, anyBoundary))
+				return vm.NewString(wtf8.String(mapInChunks(vm, string(o.Str()), asciiMap, anyBoundary)))
 			}
 			return vm.NewString(mapLimited(vm, o.Str(), f))
 		})
@@ -438,7 +441,7 @@ func initString(vm *engine.VM) {
 			return s
 		}
 		str := s.Str()
-		if wtf8.IsWellFormed(str) && quick.QuickSpanString(str) == len(str) {
+		if wtf8.IsWellFormed(str) && quick.QuickSpanString(string(str)) == len(str) {
 			return s
 		}
 		return vm.NewString(mapLimited(vm, str, form))
@@ -505,7 +508,7 @@ func initString(vm *engine.VM) {
 		return engine.ObjectValue(vm.NewArray(out))
 	}))
 	replace := func(name string, all bool) {
-		vm.LendRegExpLiterals(method(vm, proto, name, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		vm.LendRegExpLiterals(method(vm, proto, wtf8.String(name), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+name)
 			pat, rep := arg(args, 0), arg(args, 1)
 			if !this.IsString() || rep.IsObject() && !rep.IsCallable() {
@@ -522,7 +525,7 @@ func initString(vm *engine.VM) {
 			s := vm.ToStringValue(this)
 			search := vm.ToStringValue(pat)
 			functional := rep.IsCallable()
-			var repStr string
+			var repStr wtf8.String
 			if !functional {
 				repStr = vm.ToString(rep)
 			}
@@ -580,7 +583,7 @@ func initString(vm *engine.VM) {
 		{"matchAll", vm.WellKnownSymbol(engine.SymbolMatchAll)},
 		{"search", vm.WellKnownSymbol(engine.SymbolSearch)},
 	} {
-		fn := method(vm, proto, e.name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		fn := method(vm, proto, wtf8.String(e.name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			vm.RequireObjectCoercible(this, "String.prototype."+e.name)
 			pat := arg(args, 0)
 			if !this.IsString() {
@@ -620,7 +623,7 @@ func writeBuiltString(vm *engine.VM, b *xstrings.Builder, v engine.Value) {
 	}
 	if v.IsNumber() {
 		var buf [32]byte
-		b.WriteString(string(numconv.AppendNumber(buf[:0], v.Number())))
+		b.WriteString(wtf8.String(numconv.AppendNumber(buf[:0], v.Number())))
 		return
 	}
 	b.WriteString(vm.ToString(v))
@@ -662,7 +665,7 @@ func writeStringLimited(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
 }
 
 type stringIterator struct {
-	str string
+	str wtf8.String
 	pos int
 }
 
@@ -763,7 +766,7 @@ func nextBoundary(s string, boundary func(s string) int) int {
 
 // mapLimited is mapWellFormed, throwing a RangeError instead when the result would be longer than
 // MaxStringLength.
-func mapLimited(vm *engine.VM, s string, m stringMapping) string {
+func mapLimited(vm *engine.VM, s wtf8.String, m stringMapping) wtf8.String {
 	var n int
 	f := m.f
 	m.f = func(s string, start, end int, poll func()) string {
@@ -778,7 +781,7 @@ func mapLimited(vm *engine.VM, s string, m stringMapping) string {
 	return mapped
 }
 
-func mapWellFormed(vm *engine.VM, s string, m stringMapping) string {
+func mapWellFormed(vm *engine.VM, s wtf8.String, m stringMapping) wtf8.String {
 	return wtf8.MapWellFormed(s, func(s string) string {
 		return mapInChunks(vm, s, m.f, m.boundary)
 	})
@@ -790,26 +793,26 @@ const repeatChunk = 1 << 20
 
 // repeatString returns count copies of s, which does not join a surrogate pair with itself,
 // checking for an interruption while it writes many bytes.
-func repeatString(vm *engine.VM, s string, count int) string {
+func repeatString(vm *engine.VM, s wtf8.String, count int) wtf8.String {
 	total := len(s) * count
 	if total <= repeatChunk {
-		return strings.Repeat(s, count)
+		return wtf8.String(strings.Repeat(string(s), count))
 	}
 	var b strings.Builder
 	b.Grow(total)
-	b.WriteString(s)
+	b.WriteString(string(s))
 	// The copies written so far are copied in steps of whole copies.
 	step := max(len(s), repeatChunk/len(s)*len(s))
 	for b.Len() < total {
 		vm.Poll()
 		b.WriteString(b.String()[:min(b.Len(), total-b.Len(), step)])
 	}
-	return b.String()
+	return wtf8.String(b.String())
 }
 
 // writeRepeated is b.WriteRepeated(s, count), checking for an interruption while it writes many
 // bytes.
-func writeRepeated(vm *engine.VM, b *wtf8.Builder, s string, count int) {
+func writeRepeated(vm *engine.VM, b *wtf8.Builder, s wtf8.String, count int) {
 	per := max(1, repeatChunk/max(1, len(s)))
 	if count > per {
 		b.Grow(count * len(s))

@@ -80,7 +80,7 @@ func (vm *VM) Concat(a, b Value) Value {
 			vm.ThrowRangeError("invalid string length")
 		}
 		// An ASCII suffix cannot join a surrogate pair.
-		sb.WriteString(y)
+		sb.WriteString(string(y))
 		return vm.extendTail(a.o, sb, true)
 	}
 	if b.o.flags&objReversed != 0 && a.o.flags&(objASCIIKnown|objASCII|objReversed) == objASCIIKnown|objASCII {
@@ -138,7 +138,7 @@ func (vm *VM) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
 
 // concat returns the concatenation of a and b. x and y are the str of a and b when those are
 // strings, and their string forms otherwise.
-func (vm *VM) concat(a Value, x string, b Value, y string) Value {
+func (vm *VM) concat(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 	if x == "" && b.IsString() {
 		return b
 	}
@@ -159,7 +159,7 @@ func (vm *VM) concat(a Value, x string, b Value, y string) Value {
 			if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {
 				return vm.NewString(wtf8.Concat(x, y))
 			}
-			sb.WriteString(y)
+			sb.WriteString(string(y))
 			return vm.extendTail(a.o, sb, isASCII(b, y))
 		}
 		if a.o.flags&objReversed != 0 {
@@ -177,8 +177,8 @@ func (vm *VM) concat(a Value, x string, b Value, y string) Value {
 		if ca.appends() >= bufferAfter {
 			sb := new(strings.Builder)
 			sb.Grow(n)
-			sb.WriteString(x)
-			sb.WriteString(y)
+			sb.WriteString(string(x))
+			sb.WriteString(string(y))
 			return vm.newTail(sb, isASCII(a, x) && isASCII(b, y))
 		}
 		if cb.prepends() >= bufferAfter {
@@ -193,13 +193,13 @@ func (vm *VM) concat(a Value, x string, b Value, y string) Value {
 		var data [shortstrings.MaxBytes]byte
 		copy(data[:], x)
 		copy(data[len(x):], y)
-		return vm.shortString(string(data[:n]))
+		return vm.shortString(wtf8.String(data[:n]))
 	}
 	return vm.concatenated(x+y, nextCount(ca, cb))
 }
 
 // concatReversed is [VM.concat] for operands one or both of which are reversed strings.
-func (vm *VM) concatReversed(a Value, x string, b Value, y string) Value {
+func (vm *VM) concatReversed(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 	ar := a.IsString() && a.o.flags&objReversed != 0
 	br := b.IsString() && b.o.flags&objReversed != 0
 	asciiX := isASCII(a, x)
@@ -217,10 +217,10 @@ func (vm *VM) concatReversed(a Value, x string, b Value, y string) Value {
 	if rb == nil {
 		rb = new(reversedBuilder)
 		rb.sb.Grow(len(x) + len(y))
-		rb.sb.WriteString(y)
+		rb.sb.WriteString(string(y))
 	}
 	if ar {
-		rb.sb.WriteString(x)
+		rb.sb.WriteString(string(x))
 	} else {
 		writeReversed(&rb.sb, x)
 	}
@@ -270,7 +270,7 @@ func (vm *VM) concatStrings(parts []Value) Value {
 	if sb := tailBuilder(first); sb != nil {
 		ascii := true
 		for _, p := range parts[1:] {
-			sb.WriteString(p.rawString())
+			sb.WriteString(string(p.rawString()))
 			ascii = ascii && isASCII(p, p.rawString())
 		}
 		return vm.extendTail(first, sb, ascii)
@@ -288,15 +288,15 @@ func (vm *VM) concatStrings(parts []Value) Value {
 				if p.isShortString() {
 					p.writeShortString(&sb)
 				} else {
-					sb.WriteString(p.o.str)
+					sb.WriteString(string(p.o.str))
 				}
 			}
 		} else {
 			for _, p := range parts {
-				sb.WriteString(p.o.str)
+				sb.WriteString(string(p.o.str))
 			}
 		}
-		return vm.concatenated(sb.String(), nextCount(ca, cb))
+		return vm.concatenated(wtf8.String(sb.String()), nextCount(ca, cb))
 	}
 	return vm.newBuffered(parts, n, ca.appends() >= bufferAfter)
 }
@@ -316,9 +316,9 @@ func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpackin
 		}
 	}
 	if n <= shortstrings.MaxBytes {
-		return vm.shortString(string(buf[:n]))
+		return vm.shortString(wtf8.String(buf[:n]))
 	}
-	return vm.concatenated(string(buf[:n]), count)
+	return vm.concatenated(wtf8.String(buf[:n]), count)
 }
 
 // concatReversedStrings is [VM.concatStrings] for parts one or more of which are reversed
@@ -351,7 +351,7 @@ func (vm *VM) newBuffered(parts []Value, n int, tail bool) Value {
 		sb := new(strings.Builder)
 		sb.Grow(n)
 		for _, p := range parts {
-			sb.WriteString(p.rawString())
+			sb.WriteString(string(p.rawString()))
 			ascii = ascii && isASCII(p, p.rawString())
 		}
 		return vm.newTail(sb, ascii)
@@ -399,7 +399,7 @@ func (vm *VM) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Val
 
 // concatenated returns s, the result of a concatenation without a builder, whose
 // [concatCount] is count.
-func (vm *VM) concatenated(s string, count concatCount) Value {
+func (vm *VM) concatenated(s wtf8.String, count concatCount) Value {
 	if len(s) <= shortstrings.MaxBytes {
 		return vm.NewString(s)
 	}
@@ -442,7 +442,7 @@ func (vm *VM) newTail(sb *strings.Builder, ascii bool) Value {
 	if ascii {
 		flags |= objASCII
 	}
-	return vm.newBufferedString(sb.String(), flags, sb, nil)
+	return vm.newBufferedString(wtf8.String(sb.String()), flags, sb, nil)
 }
 
 // extendTail returns the contents of sb as the string that becomes its tail in place of the
@@ -450,7 +450,7 @@ func (vm *VM) newTail(sb *strings.Builder, ascii bool) Value {
 // appended strings are ASCII.
 func (vm *VM) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
 	a.setExtState(nil)
-	s := sb.String()
+	s := wtf8.String(sb.String())
 	flags := objASCIIKnown
 	var meta *objectMeta
 	if ascii && a.IsASCII() {
@@ -475,7 +475,7 @@ func (vm *VM) newHead(rb *reversedBuilder, ascii bool) Value {
 	if ascii {
 		flags |= objASCII
 	}
-	return vm.newBufferedString(rb.sb.String(), flags, rb, nil)
+	return vm.newBufferedString(wtf8.String(rb.sb.String()), flags, rb, nil)
 }
 
 // extendHead returns the reversed string whose str is the contents of rb, as the head of rb, after
@@ -483,7 +483,7 @@ func (vm *VM) newHead(rb *reversedBuilder, ascii bool) Value {
 // the prepended strings are ASCII.
 func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
 	b.setExtState(nil)
-	s := rb.sb.String()
+	s := wtf8.String(rb.sb.String())
 	flags := objASCIIKnown | objReversed
 	var meta *objectMeta
 	if ascii && b.IsASCII() {
@@ -498,7 +498,7 @@ func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
 }
 
 // newBufferedString returns a string with its builder and optional UTF-16 metadata.
-func (vm *VM) newBufferedString(s string, flags uint8, builder any, meta *objectMeta) Value {
+func (vm *VM) newBufferedString(s wtf8.String, flags uint8, builder any, meta *objectMeta) Value {
 	if meta == nil {
 		return Value{
 			o: &Object{
@@ -533,7 +533,7 @@ func (o *Object) unreverse() {
 	var sb strings.Builder
 	sb.Grow(len(o.str))
 	writeReversed(&sb, o.str)
-	o.str = sb.String()
+	o.str = wtf8.String(sb.String())
 	o.flags &^= objReversed
 	o.setExtState(nil)
 }
@@ -553,7 +553,7 @@ func sameStrings(a, b *Object) bool {
 // joinsPair reports whether the contents of two strings form a surrogate pair where they meet,
 // so that their bytes do not simply concatenate. x and y are the str of the strings, and xr
 // and yr report whether they are reversed.
-func joinsPair(x string, xr bool, y string, yr bool) bool {
+func joinsPair(x wtf8.String, xr bool, y wtf8.String, yr bool) bool {
 	if len(x) < 3 || len(y) < 3 {
 		return false
 	}
@@ -565,11 +565,11 @@ func joinsPair(x string, xr bool, y string, yr bool) bool {
 	if yr {
 		start = [3]byte{y[len(y)-1], y[len(y)-2], y[len(y)-3]}
 	}
-	return wtf8.JoinsPair(string(end[:]), string(start[:]))
+	return wtf8.JoinsPair(wtf8.String(end[:]), wtf8.String(start[:]))
 }
 
 // writeReversed appends the bytes of s to sb in reverse order.
-func writeReversed(sb *strings.Builder, s string) {
+func writeReversed(sb *strings.Builder, s wtf8.String) {
 	var buf [256]byte
 	for len(s) > 0 {
 		n := min(len(s), len(buf))
@@ -580,7 +580,7 @@ func writeReversed(sb *strings.Builder, s string) {
 }
 
 // reverseBytes sets dst to the bytes of src in reverse order. dst and src have the same length.
-func reverseBytes(dst []byte, src string) {
+func reverseBytes(dst []byte, src wtf8.String) {
 	n := len(src)
 	i := 0
 	for ; i+8 <= n; i += 8 {
@@ -595,7 +595,7 @@ func reverseBytes(dst []byte, src string) {
 
 // isASCII reports whether s, which is the str of v when v is a string, consists of ASCII
 // characters only.
-func isASCII(v Value, s string) bool {
+func isASCII(v Value, s wtf8.String) bool {
 	if v.IsString() && !v.isShortString() {
 		return v.o.IsASCII()
 	}

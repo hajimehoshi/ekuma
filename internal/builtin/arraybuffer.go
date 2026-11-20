@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // binaryIntrinsics are the intrinsic objects of the binary data built-ins of one VM.
@@ -192,7 +193,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	// transfer implements ArrayBufferCopyAndDetach as the method name.
 	// preserve is ~preserve-resizability~, and immutable is ~immutable~.
 	transfer := func(name string, preserve, immutable bool) {
-		method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			b := thisArrayBuffer(vm, this, false, name)
 			var n int64
 			if l := arg(args, 0); l.IsUndefined() {

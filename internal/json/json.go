@@ -22,7 +22,7 @@ func IsSpace(c byte) bool {
 }
 
 // SkipSpace returns the index of the first byte at or after i that is not whitespace.
-func SkipSpace(s string, i int) int {
+func SkipSpace(s wtf8.String, i int) int {
 	for i < len(s) && IsSpace(s[i]) {
 		i++
 	}
@@ -30,8 +30,8 @@ func SkipSpace(s string, i int) int {
 }
 
 // ScanLiteral scans the literal word, such as true, at i.
-func ScanLiteral(s string, i int, word string) (int, bool) {
-	if strings.HasPrefix(s[i:], word) {
+func ScanLiteral(s wtf8.String, i int, word wtf8.String) (int, bool) {
+	if strings.HasPrefix(string(s[i:]), string(word)) {
 		return i + len(word), true
 	}
 	for k := 0; k < len(word) && i < len(s) && s[i] == word[k]; k++ {
@@ -46,7 +46,7 @@ func isDigit(c byte) bool {
 
 // ScanNumber scans a number at i and returns its value. poll, which may be nil, is called now and
 // then while a long number is scanned, and may stop the scan by panicking.
-func ScanNumber(s string, i int, poll func()) (float64, int, bool) {
+func ScanNumber(s wtf8.String, i int, poll func()) (float64, int, bool) {
 	start := i
 	neg := false
 	if i < len(s) && s[i] == '-' {
@@ -109,7 +109,7 @@ const scanStep = 1 << 16
 
 // skipDigits returns the end of the run of digits in s from i, calling poll between the steps of
 // a long run.
-func skipDigits(s string, i int, poll func()) int {
+func skipDigits(s wtf8.String, i int, poll func()) int {
 	for {
 		end := min(len(s), i+scanStep)
 		for i < end && isDigit(s[i]) {
@@ -124,10 +124,10 @@ func skipDigits(s string, i int, poll func()) int {
 	}
 }
 
-// ScanString scans a string whose opening quote is at i and returns its contents in canonical WTF-8.
+// ScanString scans a string whose opening quote is at i and returns its contents.
 // The contents of a string without escapes are a substring of s. Otherwise they are built in b,
 // which [ScanString] resets first.
-func ScanString(s string, i int, b *wtf8.Builder) (string, int, bool) {
+func ScanString(s wtf8.String, i int, b *wtf8.Builder) (wtf8.String, int, bool) {
 	start := i + 1
 	i = start
 	for i < len(s) {
@@ -196,7 +196,7 @@ func ScanString(s string, i int, b *wtf8.Builder) (string, int, bool) {
 }
 
 // skipString scans a string whose opening quote is at i without building its contents.
-func skipString(s string, i int) (int, bool) {
+func skipString(s wtf8.String, i int) (int, bool) {
 	i++
 	for i < len(s) {
 		switch c := s[i]; {
@@ -229,7 +229,7 @@ func skipString(s string, i int) (int, bool) {
 
 // Valid reports whether s is a JSON text. When it is not, it also returns the index at which
 // the grammar fails. poll is as for [ScanNumber].
-func Valid(s string, poll func()) (int, bool) {
+func Valid(s wtf8.String, poll func()) (int, bool) {
 	// closers holds the closing bracket of every array and object that is open.
 	var closers []byte
 	i := 0
@@ -304,7 +304,7 @@ func Valid(s string, poll func()) (int, bool) {
 }
 
 // validKey scans the key of an object member at i and the colon after it.
-func validKey(s string, i int) (int, bool) {
+func validKey(s wtf8.String, i int) (int, bool) {
 	if i >= len(s) || s[i] != '"' {
 		return i, false
 	}
@@ -330,16 +330,16 @@ var plain = func() (t [256]bool) {
 	return t
 }()
 
-// AppendQuote implements QuoteJSONString for the string s in canonical WTF-8 and appends the result to dst.
-func AppendQuote(dst []byte, s string) []byte {
+// AppendQuote implements QuoteJSONString for the string s and appends the result to dst.
+func AppendQuote(dst []byte, s wtf8.String) []byte {
 	dst = append(dst, '"')
 	dst = appendEscaped(dst, s)
 	return append(dst, '"')
 }
 
-// appendEscaped appends the string s in canonical WTF-8 to dst as QuoteJSONString escapes it,
+// appendEscaped appends the string s to dst as QuoteJSONString escapes it,
 // without the quotes.
-func appendEscaped(dst []byte, s string) []byte {
+func appendEscaped(dst []byte, s wtf8.String) []byte {
 	run := 0
 	for i := 0; i < len(s); {
 		if plain[s[i]] {

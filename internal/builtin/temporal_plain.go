@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // createPlainDate implements CreateTemporalDate.
@@ -197,10 +198,10 @@ func toTimeRecordOrMidnight(vm *engine.VM, item engine.Value) temporal.Time {
 // returns the ISO date and the calendar of a receiver, or throws a TypeError.
 func defineCalendarGetters(vm *engine.VM, proto *engine.Object, names []string, dateOf func(vm *engine.VM, this engine.Value, name string) (temporal.ISODate, string)) {
 	for _, name := range names {
-		tgetter(vm, proto, vm.Intern(name), name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tgetter(vm, proto, vm.Intern(wtf8.String(name)), wtf8.String(name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d, cal := dateOf(vm, this, name)
 			if name == "calendarId" {
-				return vm.NewString(cal)
+				return vm.NewString(wtf8.String(cal))
 			}
 			c := temporal.CalendarISOToDate(cal, d)
 			switch name {
@@ -208,7 +209,7 @@ func defineCalendarGetters(vm *engine.VM, proto *engine.Object, names []string, 
 				if c.Era == "" {
 					return engine.Undefined
 				}
-				return vm.NewString(c.Era)
+				return vm.NewString(wtf8.String(c.Era))
 			case "eraYear":
 				if c.Era == "" {
 					return engine.Undefined
@@ -219,7 +220,7 @@ func defineCalendarGetters(vm *engine.VM, proto *engine.Object, names []string, 
 			case "month":
 				return engine.Number(float64(c.Month))
 			case "monthCode":
-				return vm.NewString(c.MonthCode)
+				return vm.NewString(wtf8.String(c.MonthCode))
 			case "day":
 				return engine.Number(float64(c.Day))
 			case "dayOfWeek":
@@ -377,7 +378,7 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return r.createPlainDate(vm, s.date, cal, nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainDate(vm, this, name)
 			d := toTemporalDuration(vm, arg(args, 0))
 			if name == "subtract" {
@@ -389,7 +390,7 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		})
 	}
 	for _, name := range []string{"until", "since"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainDate(vm, this, name)
 			other := toTemporalDate(vm, arg(args, 0), engine.Undefined)
 			checkSameCalendar(vm, s.cal, other.cal)
@@ -427,12 +428,12 @@ func initTemporalPlainDate(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 	tmethod(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainDate(vm, this, "toString")
 		show := getShowCalendarOption(vm, getOptionsObject(vm, arg(args, 0)))
-		return vm.NewString(temporal.TemporalDateToString(s.date, s.cal, show))
+		return vm.NewString(wtf8.String(temporal.TemporalDateToString(s.date, s.cal, show)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainDate(vm, this, name)
-			return vm.NewString(temporal.TemporalDateToString(s.date, s.cal, temporal.ShowCalendarAuto))
+			return vm.NewString(wtf8.String(temporal.TemporalDateToString(s.date, s.cal, temporal.ShowCalendarAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "PlainDate")
@@ -505,7 +506,7 @@ func initTemporalPlainTime(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return compareResult(temporal.CompareTimeRecord(one, two))
 	})
 	for _, name := range timeGetterNames {
-		tgetter(vm, proto, vm.Intern(name), name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tgetter(vm, proto, vm.Intern(wtf8.String(name)), wtf8.String(name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return engine.Number(float64(timeField(thisPlainTime(vm, this, name).t, name)))
 		})
 	}
@@ -524,7 +525,7 @@ func initTemporalPlainTime(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return r.newPlainTime(vm, must(temporal.RegulateTime(v[0], v[1], v[2], v[3], v[4], v[5], overflow)), nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainTime(vm, this, name)
 			d := toTemporalDuration(vm, arg(args, 0))
 			if name == "subtract" {
@@ -536,7 +537,7 @@ func initTemporalPlainTime(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		})
 	}
 	for _, name := range []string{"until", "since"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainTime(vm, this, name)
 			other := toTemporalTime(vm, arg(args, 0), engine.Undefined)
 			opts := getOptionsObject(vm, arg(args, 1))
@@ -565,11 +566,11 @@ func initTemporalPlainTime(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		checkToStringUnit(vm, unit)
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		t, _ := temporal.RoundTime(s.t, p.Increment, p.Unit, mode)
-		return vm.NewString(temporal.TimeRecordToString(t, p.Precision))
+		return vm.NewString(wtf8.String(temporal.TimeRecordToString(t, p.Precision)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return vm.NewString(temporal.TimeRecordToString(thisPlainTime(vm, this, name).t, temporal.PrecisionAuto))
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			return vm.NewString(wtf8.String(temporal.TimeRecordToString(thisPlainTime(vm, this, name).t, temporal.PrecisionAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "PlainTime")
@@ -614,7 +615,7 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		return s.dt.Date, s.cal
 	})
 	for _, name := range timeGetterNames {
-		tgetter(vm, proto, vm.Intern(name), name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tgetter(vm, proto, vm.Intern(wtf8.String(name)), wtf8.String(name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return engine.Number(float64(timeField(thisPlainDateTime(vm, this, name).dt.Time, name)))
 		})
 	}
@@ -642,7 +643,7 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		return r.createPlainDateTime(vm, s.dt, cal, nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainDateTime(vm, this, name)
 			d := toTemporalDuration(vm, arg(args, 0))
 			if name == "subtract" {
@@ -660,7 +661,7 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		})
 	}
 	for _, name := range []string{"until", "since"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainDateTime(vm, this, name)
 			other := toTemporalDateTime(vm, arg(args, 0), engine.Undefined)
 			checkSameCalendar(vm, s.cal, other.cal)
@@ -701,12 +702,12 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		if !temporal.ISODateTimeWithinLimits(dt) {
 			vm.ThrowRangeError("date-time is out of range")
 		}
-		return vm.NewString(temporal.ISODateTimeToString(dt, s.cal, p.Precision, show))
+		return vm.NewString(wtf8.String(temporal.ISODateTimeToString(dt, s.cal, p.Precision, show)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisPlainDateTime(vm, this, name)
-			return vm.NewString(temporal.ISODateTimeToString(s.dt, s.cal, temporal.PrecisionAuto, temporal.ShowCalendarAuto))
+			return vm.NewString(wtf8.String(temporal.ISODateTimeToString(s.dt, s.cal, temporal.PrecisionAuto, temporal.ShowCalendarAuto)))
 		})
 	}
 	valueOfThrows(vm, proto, "PlainDateTime")

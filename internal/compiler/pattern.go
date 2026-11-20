@@ -6,6 +6,7 @@ package compiler
 import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 type patMode uint8
@@ -45,7 +46,7 @@ func (f *fn) destructure(p ast.Pattern, src int32, mode patMode) {
 		f.emit(bytecode.OpMove, v, src, 0)
 		skip := f.emit(bytecode.OpJumpIfNotUndef, 0, v, 0)
 		if id, ok := p.Target.(*ast.Identifier); ok && !id.Parenthesized {
-			f.named(p.Default, v, id.Name)
+			f.named(p.Default, v, wtf8.String(id.Name))
 		} else {
 			f.expr(p.Default, v)
 		}
@@ -299,7 +300,7 @@ func (f *fn) storeElement(ref elementRef, v int32) {
 		if ref.isMember || ref.id.Parenthesized {
 			f.expr(ref.def, v)
 		} else {
-			f.named(ref.def, v, ref.id.Name)
+			f.named(ref.def, v, wtf8.String(ref.id.Name))
 		}
 		f.patch(skip)
 	}

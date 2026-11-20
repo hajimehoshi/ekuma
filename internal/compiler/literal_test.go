@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // TestLiteralStores tests that a literal stored to a local variable is moved once, and that
@@ -39,7 +40,7 @@ func TestLiteralStores(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prog, err := parser.ParseScript(tc.src, parser.Options{})
+			prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -116,7 +117,7 @@ func TestConstantArrayLiteral(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prog, err := parser.ParseScript(tc.src, parser.Options{})
+			prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

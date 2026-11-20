@@ -7,6 +7,7 @@ import (
 	"math"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // The engine makes the accesses to a shared data block atomic, as other agents may access it.
@@ -104,7 +105,7 @@ func initAtomics(vm *engine.VM) {
 
 	// readModifyWrite implements AtomicReadModifyWrite with op on the encodings of the elements.
 	readModifyWrite := func(name string, op engine.AtomicOp) {
-		method(vm, atomics, name, 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, atomics, wtf8.String(name), 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t, n := validateIntegerTypedArray(vm, arg(args, 0), false, true, name)
 			i := validateAtomicAccess(vm, n, arg(args, 1))
 			typ := t.ElementType()

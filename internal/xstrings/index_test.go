@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
@@ -34,10 +35,10 @@ func TestIndex(t *testing.T) {
 		if sub == "" {
 			continue
 		}
-		if got, want := xstrings.Index(s, sub, nil), strings.Index(s, sub); got != want {
+		if got, want := xstrings.Index(wtf8.String(s), wtf8.String(sub), nil), strings.Index(s, sub); got != want {
 			t.Errorf("Index(%q, %q) = %d, want %d", s, sub, got, want)
 		}
-		if got, want := xstrings.LastIndex(s, sub, nil), strings.LastIndex(s, sub); got != want {
+		if got, want := xstrings.LastIndex(wtf8.String(s), wtf8.String(sub), nil), strings.LastIndex(s, sub); got != want {
 			t.Errorf("LastIndex(%q, %q) = %d, want %d", s, sub, got, want)
 		}
 	}
@@ -58,10 +59,10 @@ func TestIndexCollisions(t *testing.T) {
 	s := strings.Repeat("b", 1<<23)
 	polls := 0
 	poll := func() { polls++ }
-	if got := xstrings.Index(s, sub, poll); got != -1 {
+	if got := xstrings.Index(wtf8.String(s), wtf8.String(sub), poll); got != -1 {
 		t.Errorf("Index = %d, want -1", got)
 	}
-	if got := xstrings.LastIndex(s, sub, poll); got != -1 {
+	if got := xstrings.LastIndex(wtf8.String(s), wtf8.String(sub), poll); got != -1 {
 		t.Errorf("LastIndex = %d, want -1", got)
 	}
 	if polls == 0 {
@@ -74,8 +75,8 @@ func TestIndexPolls(t *testing.T) {
 	for _, sub := range []string{"éz", "z" + strings.Repeat("é", 40)} {
 		polls := 0
 		poll := func() { polls++ }
-		xstrings.Index(s, sub, poll)
-		xstrings.LastIndex(s, sub, poll)
+		xstrings.Index(wtf8.String(s), wtf8.String(sub), poll)
+		xstrings.LastIndex(wtf8.String(s), wtf8.String(sub), poll)
 		if polls == 0 {
 			t.Errorf("no polls while searching for %q", sub[:min(len(sub), 8)])
 		}

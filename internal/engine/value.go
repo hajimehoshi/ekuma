@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 type kind uint8
@@ -231,7 +232,7 @@ func ToBoolean(v Value) bool {
 }
 
 // typeOf implements the typeof operator.
-func typeOf(v Value) string {
+func typeOf(v Value) wtf8.String {
 	o := v.o
 	if o == nil {
 		return "undefined"
@@ -327,7 +328,7 @@ func numberIndex(n float64) (uint32, bool) {
 }
 
 // stringIndex returns the array index whose canonical string form is s.
-func stringIndex(s string) (uint32, bool) {
+func stringIndex(s wtf8.String) (uint32, bool) {
 	if len(s) == 0 || len(s) > 10 || s[0] < '0' || s[0] > '9' || (len(s) > 1 && s[0] == '0') {
 		return 0, false
 	}

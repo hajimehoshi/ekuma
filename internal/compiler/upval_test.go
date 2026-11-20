@@ -11,10 +11,11 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // findFunc returns the function named name among the functions nested in f.
-func findFunc(f *bytecode.Func, name string) *bytecode.Func {
+func findFunc(f *bytecode.Func, name wtf8.String) *bytecode.Func {
 	for _, p := range f.Protos {
 		if p.Name == name {
 			return p
@@ -162,7 +163,7 @@ func TestUpvalByValue(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prog, err := parser.ParseScript(tc.src, parser.Options{})
+			prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

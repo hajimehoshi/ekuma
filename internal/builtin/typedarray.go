@@ -448,7 +448,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 }
 
 func itoa(n int64) string {
-	return numconv.NumberToString(float64(n))
+	return string(numconv.NumberToString(float64(n)))
 }
 
 // compareNumbers orders numbers as the default comparison of typed arrays does: -0 before +0 and NaN last.
@@ -671,7 +671,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		if t == nil {
 			return engine.Undefined
 		}
-		return vm.NewString(typedArrayNames[t.ElementType()])
+		return vm.NewString(wtf8.String(typedArrayNames[t.ElementType()]))
 	})
 
 	method(vm, proto, "at", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -705,7 +705,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		return engine.ObjectValue(o)
 	})
 	iterMethod := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o, _, _ := validateTypedArray(vm, this, "%TypedArray%.prototype."+name)
 			return engine.ObjectValue(vm.NewArrayIterator(o, kind))
 		})
@@ -717,7 +717,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 
 	// predicate defines the methods that call a callback for the elements in order until it returns true.
 	predicate := func(name string, backward bool, result func(found bool, i int, v engine.Value) engine.Value) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o, _, n := validateTypedArray(vm, this, "%TypedArray%.prototype."+name)
 			f := callback(vm, args, name)
 			thisArg := arg(args, 1)
@@ -804,7 +804,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		return engine.ObjectValue(a)
 	})
 	search := func(name string, backward, sameValueZero bool) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			notFound := engine.Number(-1)
 			if sameValueZero {
 				notFound = engine.False
@@ -859,7 +859,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	search("lastIndexOf", true, false)
 	method(vm, proto, "join", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o, _, n := validateTypedArray(vm, this, "%TypedArray%.prototype.join")
-		sep := ","
+		sep := wtf8.String(",")
 		if s := arg(args, 0); !s.IsUndefined() {
 			sep = vm.ToString(s)
 		}
@@ -889,7 +889,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		return engine.ObjectValue(a)
 	})
 	reduce := func(name string, backward bool) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o, _, n := validateTypedArray(vm, this, "%TypedArray%.prototype."+name)
 			f := callback(vm, args, name)
 			index := func(j int) int {
@@ -1086,13 +1086,13 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		name := typedArrayNames[typ]
 		p := vm.NewObject(proto)
 		vm.SetIntrinsic(engine.IntrinsicInt8ArrayPrototype+engine.Intrinsic(typ), p)
-		c := vm.NewNativeConstructor(name, 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		c := vm.NewNativeConstructor(wtf8.String(name), 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return bi.construct(vm, typ, args)
 		})
 		vm.SetPrototypeOf(c, ctor)
 		vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(p), 0)
 		vm.Define(p, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
-		vm.Define(vm.GlobalObject().Object(), vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
+		vm.Define(vm.GlobalObject().Object(), vm.Intern(wtf8.String(name)), engine.ObjectValue(c), engine.FlagsHidden)
 		bpe := engine.Number(float64(typ.Size()))
 		constant(vm, c, "BYTES_PER_ELEMENT", bpe)
 		constant(vm, p, "BYTES_PER_ELEMENT", bpe)

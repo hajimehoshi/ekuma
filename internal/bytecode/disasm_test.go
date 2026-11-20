@@ -9,11 +9,12 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // TestDisassemble tests the text of a small function.
 func TestDisassemble(t *testing.T) {
-	src := "function f(o) {\n  return o.x;\n}"
+	var src wtf8.String = "function f(o) {\n  return o.x;\n}"
 	f := &bytecode.Func{
 		Name: "f",
 		File: "test.js",
@@ -33,7 +34,7 @@ func TestDisassemble(t *testing.T) {
 				Str:  "a\n",
 			},
 		},
-		Keys:      []string{"x", "prototype"},
+		Keys:      []wtf8.String{"x", "prototype"},
 		NumCaches: 2,
 		Handlers: []bytecode.Handler{
 			{
@@ -138,14 +139,14 @@ func TestDisassembleOpcodes(t *testing.T) {
 				Kind: bytecode.ConstNumber,
 			},
 		},
-		Keys:            []string{"k"},
+		Keys:            []wtf8.String{"k"},
 		NumCaches:       1,
 		NumGlobalCaches: 1,
 		Upvals:          []bytecode.UpvalDesc{{}},
 		Protos:          []*bytecode.Func{{}},
 		Templates: []bytecode.Template{
 			{
-				Raw: []string{""},
+				Raw: []wtf8.String{""},
 			},
 		},
 		RegExps:    []bytecode.RegExp{{}},

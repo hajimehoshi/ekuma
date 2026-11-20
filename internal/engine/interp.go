@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xmath"
 )
 
@@ -1083,11 +1084,11 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpThrowConstAssign:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.ThrowTypeError("assignment to constant variable '" + fp.keys[i.A].str + "'")
+			vm.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.keys[i.A].str) + "'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
 			// Error text is an interned constant.
-			vm.throwError(thrownErrorKinds[i.A], fp.consts[i.B].o.str)
+			vm.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.globals[i.C]

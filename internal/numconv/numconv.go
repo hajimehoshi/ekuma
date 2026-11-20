@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
@@ -19,13 +20,13 @@ import (
 const MaxSafeInteger = 1<<53 - 1
 
 // NumberToString implements Number::toString for radix 10.
-func NumberToString(n float64) string {
+func NumberToString(n float64) wtf8.String {
 	if i := int64(n); float64(i) == n && i > -1e15 && i < 1e15 {
 		// This also turns -0 into "0".
-		return strconv.FormatInt(i, 10)
+		return wtf8.String(strconv.FormatInt(i, 10))
 	}
 	var buf [32]byte
-	return string(AppendNumber(buf[:0], n))
+	return wtf8.String(AppendNumber(buf[:0], n))
 }
 
 // AppendNumber appends the result of Number::toString for radix 10 to dst.
@@ -201,24 +202,24 @@ func isDecimalLiteral(s string, poll func()) bool {
 
 // StringToNumber implements StringToNumber. poll, which may be nil, is called now and then during
 // the conversion of a long string, and may stop it by panicking.
-func StringToNumber(s string, poll func()) float64 {
+func StringToNumber(str wtf8.String, poll func()) float64 {
 	// The common case is a short run of digits.
-	if len(s) > 0 && len(s) <= 15 {
+	if len(str) > 0 && len(str) <= 15 {
 		var n int64
 		i := 0
-		for ; i < len(s); i++ {
-			c := s[i]
+		for ; i < len(str); i++ {
+			c := str[i]
 			if c < '0' || c > '9' {
 				break
 			}
 			n = n*10 + int64(c-'0')
 		}
-		if i == len(s) {
+		if i == len(str) {
 			return float64(n)
 		}
 	}
 
-	s = trimWhiteSpace(s, true, true, poll)
+	s := string(trimWhiteSpace(str, true, true, poll))
 	if s == "" {
 		return 0
 	}
@@ -257,7 +258,7 @@ func StringToNumber(s string, poll func()) float64 {
 }
 
 // NumberToRadixString implements Number::toString for a radix other than 10.
-func NumberToRadixString(n float64, radix int) string {
+func NumberToRadixString(n float64, radix int) wtf8.String {
 	switch {
 	case n != n:
 		return "NaN"
@@ -301,7 +302,7 @@ func NumberToRadixString(n float64, radix int) string {
 			if fp > 0.5 || (fp == 0.5 && d&1 != 0) {
 				if fp+delta > 1 {
 					// Round up, carrying into the digits already written.
-					return roundUpRadix(sb.String(), radix)
+					return wtf8.String(roundUpRadix(sb.String(), radix))
 				}
 			}
 			if fp < delta {
@@ -309,7 +310,7 @@ func NumberToRadixString(n float64, radix int) string {
 			}
 		}
 	}
-	return sb.String()
+	return wtf8.String(sb.String())
 }
 
 // roundUpRadix adds one unit in the last place to the radix string s.
@@ -407,12 +408,12 @@ var (
 	ErrBigIntTooLarge = errors.New("numconv: BigInt too large")
 )
 
-// StringToBigInt implements StringToBigInt. It returns [ErrNotBigInt] when s is not a BigInt
+// StringToBigInt implements StringToBigInt. It returns [ErrNotBigInt] when str is not a BigInt
 // literal, and -1 or 1, the sign of the value, with [ErrBigIntTooLarge] when the value has more
 // than maxBits bits. poll, which may be nil, is called between the steps of a long conversion
 // and may stop it by panicking.
-func StringToBigInt(s string, maxBits int, poll func()) (*big.Int, error) {
-	s = xstrings.TrimWhiteSpace(s, true, true)
+func StringToBigInt(str wtf8.String, maxBits int, poll func()) (*big.Int, error) {
+	s := string(xstrings.TrimWhiteSpace(str, true, true))
 	if s == "" {
 		return new(big.Int), nil
 	}
@@ -455,10 +456,10 @@ func StringToBigInt(s string, maxBits int, poll func()) (*big.Int, error) {
 	return i, nil
 }
 
-// ParseFloat implements parseFloat: the longest prefix of s that is a decimal literal. poll is as
-// for [StringToNumber].
-func ParseFloat(s string, poll func()) float64 {
-	s = trimWhiteSpace(s, true, false, poll)
+// ParseFloat implements parseFloat: the longest prefix of str that is a decimal literal. poll is
+// as for [StringToNumber].
+func ParseFloat(str wtf8.String, poll func()) float64 {
+	s := string(trimWhiteSpace(str, true, false, poll))
 	i := 0
 	if i < len(s) && (s[i] == '+' || s[i] == '-') {
 		i++
@@ -491,12 +492,12 @@ func ParseFloat(s string, poll func()) float64 {
 			i = k
 		}
 	}
-	return StringToNumber(s[:i], poll)
+	return StringToNumber(wtf8.String(s[:i]), poll)
 }
 
 // ParseInt implements parseInt. poll is as for [StringToNumber].
-func ParseInt(s string, radix int, poll func()) float64 {
-	s = trimWhiteSpace(s, true, false, poll)
+func ParseInt(str wtf8.String, radix int, poll func()) float64 {
+	s := string(trimWhiteSpace(str, true, false, poll))
 	neg := false
 	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
 		neg = s[0] == '-'
@@ -522,7 +523,7 @@ func ParseInt(s string, radix int, poll func()) float64 {
 	var n float64
 	if radix == 10 {
 		// The decimal parser rounds correctly for any number of digits.
-		n = StringToNumber(s[:end], poll)
+		n = StringToNumber(wtf8.String(s[:end]), poll)
 	} else {
 		n, _ = ParseRadixDigits(s[:end], radix, poll)
 	}

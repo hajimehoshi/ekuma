@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"math/bits"
 	"strings"
+
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // parseLeafDigits is the number of digits up to which ParseBigInt converts digits of a radix
@@ -120,9 +122,9 @@ func radixPower(radix, digits, k int, pows *[]*big.Int, poll func()) *big.Int {
 // FormatBigInt returns the digits of x in the radix, which is from 2 to 36, as
 // [big.Int.Text] does. poll, which may be nil, is called between the steps of a long conversion
 // and may stop it by panicking.
-func FormatBigInt(x *big.Int, radix int, poll func()) string {
+func FormatBigInt(x *big.Int, radix int, poll func()) wtf8.String {
 	if x.BitLen() <= formatLeafBits || bits.OnesCount(uint(radix)) == 1 {
-		return x.Text(radix)
+		return wtf8.String(x.Text(radix))
 	}
 	var sb strings.Builder
 	if x.Sign() < 0 {
@@ -133,7 +135,7 @@ func FormatBigInt(x *big.Int, radix int, poll func()) string {
 	digits := formatLeafBits / bits.Len(uint(radix-1))
 	var pows, recips []*big.Int
 	formatBigDigits(&sb, new(big.Int).Abs(x), radix, digits, 0, &pows, &recips, poll)
-	return sb.String()
+	return wtf8.String(sb.String())
 }
 
 // formatBigDigits writes the digits of the non-negative x in the radix to sb, padded with zeros

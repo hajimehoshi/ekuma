@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // The indices of the components of a date, in the order of the arguments of the Date constructor.
@@ -70,7 +71,7 @@ func initDate(vm *engine.VM) {
 			}
 			v := vm.ToPrimitive(args[0], engine.HintDefault)
 			if v.IsString() {
-				tv = datetime.ParsePolled(vm.ToString(v), tz, vm.Poll)
+				tv = datetime.ParsePolled(string(vm.ToString(v)), tz, vm.Poll)
 			} else {
 				tv = datetime.TimeClip(vm.ToNumber(v))
 			}
@@ -89,7 +90,7 @@ func initDate(vm *engine.VM) {
 		return engine.Number(vm.SystemUTCEpochMilliseconds())
 	})
 	method(vm, ctor, "parse", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(datetime.ParsePolled(vm.ToString(arg(args, 0)), vm.DefaultTimeZone(), vm.Poll))
+		return engine.Number(datetime.ParsePolled(string(vm.ToString(arg(args, 0))), vm.DefaultTimeZone(), vm.Poll))
 	})
 	method(vm, ctor, "UTC", 7, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		c := [dateComponentCount]float64{dateDay: 1}
@@ -148,7 +149,7 @@ func initDate(vm *engine.VM) {
 			if local {
 				name = g.local
 			}
-			method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				t := thisDate(vm, this, name)
 				if math.IsNaN(t) {
 					return engine.Number(t)
@@ -216,7 +217,7 @@ func initDate(vm *engine.VM) {
 				name = s.local
 			}
 			first, count := s.first, s.count
-			method(vm, proto, name, count, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			method(vm, proto, wtf8.String(name), count, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				t := thisDate(vm, this, name)
 				var vals [dateComponentCount]float64
 				n := max(1, min(len(args), count))
@@ -280,7 +281,7 @@ func initDate(vm *engine.VM) {
 		{"toLocaleTimeString", datetime.LocaleTimeString},
 	}
 	for _, f := range formats {
-		fn := method(vm, proto, f.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		fn := method(vm, proto, wtf8.String(f.name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			tv := thisDate(vm, this, f.name)
 			if math.IsNaN(tv) {
 				return vm.NewString("Invalid Date")
@@ -296,7 +297,7 @@ func initDate(vm *engine.VM) {
 		if math.IsNaN(tv) {
 			vm.ThrowRangeError("invalid time value")
 		}
-		return vm.NewString(datetime.ISOString(tv))
+		return vm.NewString(wtf8.String(datetime.ISOString(tv)))
 	})
 	toISOString := vm.Intern("toISOString")
 	method(vm, proto, "toJSON", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

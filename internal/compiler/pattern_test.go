@@ -9,6 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // TestDestructuringIntoBindings tests that object and array patterns of local bindings read each
@@ -29,7 +30,7 @@ func TestDestructuringIntoBindings(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prog, err := parser.ParseScript(tc.src, parser.Options{})
+			prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/srcpos"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Options describes the context that source text is parsed in.
@@ -72,12 +73,12 @@ func (e *Error) Error() string {
 }
 
 // ParseScript parses src as a Script. The returned error is an [*Error].
-func ParseScript(src string, opts Options) (*ast.Program, error) {
+func ParseScript(src wtf8.String, opts Options) (*ast.Program, error) {
 	return parseProgram(src, &opts, false)
 }
 
 // ParseModule parses src as a Module. The returned error is an [*Error].
-func ParseModule(src string, opts Options) (*ast.Program, error) {
+func ParseModule(src wtf8.String, opts Options) (*ast.Program, error) {
 	return parseProgram(src, &opts, true)
 }
 
@@ -86,7 +87,7 @@ func ParseModule(src string, opts Options) (*ast.Program, error) {
 //
 // The source of the returned program is the synthesized function text.
 // Its body is one expression statement holding the function. The returned error is an [*Error].
-func ParseFunction(params, body string, kind FunctionKind, opts Options) (*ast.Program, error) {
+func ParseFunction(params, body wtf8.String, kind FunctionKind, opts Options) (*ast.Program, error) {
 	prefix := "function"
 	switch kind {
 	case GeneratorFunction:
@@ -98,7 +99,8 @@ func ParseFunction(params, body string, kind FunctionKind, opts Options) (*ast.P
 	}
 	prefix += " anonymous("
 	const mid = "\n) {\n"
-	src := prefix + params + mid + body + "\n}"
+	// Every join has an ASCII side, so the plain concatenation is canonical.
+	src := wtf8.String(prefix) + params + mid + body + "\n}"
 
 	if err := parseFunctionPart(src, len(prefix), params, kind, &opts, true); err != nil {
 		return nil, err
@@ -198,7 +200,7 @@ type parser struct {
 
 	// offset is added to error offsets. src is then a part of fullSrc.
 	offset  int
-	fullSrc string
+	fullSrc wtf8.String
 
 	// prevEnd is the end offset of the token before the current one.
 	prevEnd int32
@@ -283,7 +285,7 @@ type exportLocal struct {
 }
 
 func (p *parser) fail(pos int, msg string) {
-	src := p.src
+	src := wtf8.String(p.src)
 	if p.fullSrc != "" {
 		src = p.fullSrc
 	}
@@ -469,7 +471,7 @@ func invalidWTF8(src string) int {
 	return -1
 }
 
-func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, err error) {
+func parseProgram(src wtf8.String, opts *Options, module bool) (prog *ast.Program, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			prog, err = nil, recovered(r)
@@ -477,7 +479,7 @@ func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, er
 	}()
 
 	var p parser
-	p.init(src, opts, module)
+	p.init(string(src), opts, module)
 	defer p.release()
 	if len(src) >= 2 && src[0] == '#' && src[1] == '!' {
 		p.pos = p.skipLine(2)
@@ -517,7 +519,7 @@ func parseProgram(src string, opts *Options, module bool) (prog *ast.Program, er
 
 // parseFunctionPart checks that part, which is at offset in the function text full,
 // is on its own a parameter list or a function body.
-func parseFunctionPart(full string, offset int, part string, kind FunctionKind, opts *Options, params bool) (err error) {
+func parseFunctionPart(full wtf8.String, offset int, part wtf8.String, kind FunctionKind, opts *Options, params bool) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = recovered(r)
@@ -527,7 +529,7 @@ func parseFunctionPart(full string, offset int, part string, kind FunctionKind, 
 	var p parser
 	p.offset = offset
 	p.fullSrc = full
-	p.init(part, opts, false)
+	p.init(string(part), opts, false)
 	defer p.release()
 	p.scan()
 
@@ -547,7 +549,7 @@ func parseFunctionPart(full string, offset int, part string, kind FunctionKind, 
 	return nil
 }
 
-func parseFunctionSource(src string, opts *Options) (prog *ast.Program, err error) {
+func parseFunctionSource(src wtf8.String, opts *Options) (prog *ast.Program, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			prog, err = nil, recovered(r)
@@ -555,7 +557,7 @@ func parseFunctionSource(src string, opts *Options) (prog *ast.Program, err erro
 	}()
 
 	var p parser
-	p.init(src, opts, false)
+	p.init(string(src), opts, false)
 	defer p.release()
 	p.scan()
 	s := p.pushScope(ast.ScopeScript, true)

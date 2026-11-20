@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func initShadowRealm(vm *engine.VM) {
@@ -43,7 +44,7 @@ func initShadowRealm(vm *engine.VM) {
 
 // performShadowRealmEval implements PerformShadowRealmEval with the current realm as the
 // caller realm.
-func performShadowRealmEval(vm *engine.VM, src string, evalRealm *engine.Realm) engine.Value {
+func performShadowRealmEval(vm *engine.VM, src wtf8.String, evalRealm *engine.Realm) engine.Value {
 	v, ok := vm.EvalInRealm(evalRealm, src)
 	if !ok {
 		vm.ThrowTypeError("the evaluation in the ShadowRealm threw")
@@ -53,18 +54,18 @@ func performShadowRealmEval(vm *engine.VM, src string, evalRealm *engine.Realm) 
 
 // shadowRealmImportValue implements ShadowRealmImportValue with the current realm as the
 // caller realm.
-func shadowRealmImportValue(vm *engine.VM, specifier string, exportName engine.Value, evalRealm *engine.Realm) engine.Value {
+func shadowRealmImportValue(vm *engine.VM, specifier wtf8.String, exportName engine.Value, evalRealm *engine.Realm) engine.Value {
 	inner := vm.ImportInRealm(evalRealm, specifier)
 	onFulfilled := vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		exports := arg(args, 0).Object()
 		k := vm.ToPropertyKey(exportName)
 		if !vm.HasOwnProperty(exports, k) {
-			vm.ThrowTypeError("the module '" + specifier + "' has no export named '" + exportName.Str() + "'")
+			vm.ThrowTypeError("the module '" + wtf8.ToValidUTF8(specifier) + "' has no export named '" + wtf8.ToValidUTF8(exportName.Str()) + "'")
 		}
 		return getWrappedValue(vm, vm.Get(exports, k))
 	})
 	onRejected := vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError("cannot import '" + specifier + "' in the ShadowRealm")
+		vm.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(specifier) + "' in the ShadowRealm")
 		return engine.Undefined
 	})
 	c := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))

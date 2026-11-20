@@ -6,6 +6,7 @@ package parser
 import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/regexp"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func span(start, end int32) ast.Span {
@@ -1088,7 +1089,7 @@ func (p *parser) parseStringLit() *ast.StringLit {
 	p.checkOctal()
 	lit := newNode(&p.nodes.str, ast.StringLit{
 		Span:  span(p.t.start, p.t.end),
-		Value: p.t.str,
+		Value: wtf8.String(p.t.str),
 	})
 	p.next()
 	return lit
@@ -1124,13 +1125,14 @@ func (p *parser) parsePrimary() ast.Expr {
 		if p.opts.Poll != nil {
 			poller = pollFunc(p.opts.Poll)
 		}
-		if err := regexp.Validate(p.t.str, p.t.raw, poller); err != nil {
+		pattern, flags := wtf8.String(p.t.str), wtf8.String(p.t.raw)
+		if err := regexp.Validate(pattern, flags, poller); err != nil {
 			p.fail(int(start), err.Error())
 		}
 		lit := &ast.RegExpLit{
 			Span:    span(start, p.t.end),
-			Pattern: p.t.str,
-			Flags:   p.t.raw,
+			Pattern: pattern,
+			Flags:   flags,
 		}
 		p.next()
 		return lit
@@ -1225,8 +1227,8 @@ func (p *parser) parseTemplate(tagged bool) *ast.TemplateLit {
 		}
 		t.Quasis = append(t.Quasis, ast.TemplateElement{
 			Span:      span(p.t.start, p.t.end),
-			Cooked:    p.t.str,
-			Raw:       p.t.raw,
+			Cooked:    wtf8.String(p.t.str),
+			Raw:       wtf8.String(p.t.raw),
 			HasCooked: p.t.cooked,
 		})
 		tail := p.t.tail

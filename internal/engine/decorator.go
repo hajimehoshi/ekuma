@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // This file implements the decorators proposal (https://github.com/tc39/proposal-decorators):
@@ -396,7 +397,7 @@ func (vm *VM) decoratorResultFunction(o Value, key *Object) *Object {
 		return v.o
 	}
 	if !v.IsUndefined() {
-		vm.ThrowTypeError("the " + key.str + " property that an accessor decorator returned must be a function or undefined")
+		vm.ThrowTypeError("the " + wtf8.ToValidUTF8(key.str) + " property that an accessor decorator returned must be a function or undefined")
 	}
 	return nil
 }
@@ -448,7 +449,7 @@ func (vm *VM) finishClass(st *classDecoration, f Value) {
 // Elem kind, which isClass overrides.
 func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[]*Object, state *decorationState, metadata *Object, static, isClass bool) Value {
 	ctx := vm.NewOrdinaryObject()
-	var kindStr string
+	var kindStr wtf8.String
 	switch {
 	case isClass:
 		kindStr = "class"
@@ -463,7 +464,7 @@ func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[
 	default:
 		kindStr = "field"
 	}
-	def := func(key string, v Value) {
+	def := func(key wtf8.String, v Value) {
 		vm.CreateDataPropertyOrThrow(ctx, PropKey{key: vm.Intern(key)}, v)
 	}
 	def("kind", vm.NewString(kindStr))

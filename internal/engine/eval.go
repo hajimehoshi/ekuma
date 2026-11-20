@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // maxEvalCache is the number of compiled eval codes that evalCache keeps.
@@ -20,7 +21,7 @@ const maxEvalCache = 256
 type evalKey struct {
 	fp     *funcProto
 	site   int
-	src    string
+	src    wtf8.String
 	script *scriptOrModule
 }
 
@@ -143,7 +144,7 @@ var indirectEvalScope bytecode.EvalScope
 
 // evalCode returns the compiled code of the eval code src at the call site site of fp,
 // or of an indirect eval when fp is nil.
-func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
+func (vm *VM) evalCode(fp *funcProto, site int, src wtf8.String) *funcProto {
 	// The eval code has the ScriptOrModule of the code that calls eval: the caller of a direct
 	// eval, and the active one for an indirect eval.
 	var script *scriptOrModule
@@ -172,7 +173,7 @@ func (vm *VM) evalCode(fp *funcProto, site int, src string) *funcProto {
 
 // compileEval compiles the eval code src of the call site site of fp, or of an indirect eval
 // when fp is nil. It throws a SyntaxError when src is not valid.
-func (vm *VM) compileEval(fp *funcProto, site int, src string) *bytecode.Func {
+func (vm *VM) compileEval(fp *funcProto, site int, src wtf8.String) *bytecode.Func {
 	es := &indirectEvalScope
 	if fp != nil {
 		es = &fp.EvalScopes[site]

@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // numberFormatData holds the internal slots of an Intl.NumberFormat object.
@@ -43,7 +44,7 @@ func optionsObject(vm *engine.VM, v engine.Value) *engine.Object {
 
 // getNumberOption implements GetNumberOption, with -1 for an undefined fallback.
 func getNumberOption(vm *engine.VM, options *engine.Object, name string, minimum, maximum, fallback int) int {
-	return defaultNumberOption(vm, vm.Get(options, engine.NamedKey(vm.Intern(name))), name, minimum, maximum, fallback)
+	return defaultNumberOption(vm, vm.Get(options, engine.NamedKey(vm.Intern(wtf8.String(name)))), name, minimum, maximum, fallback)
 }
 
 // defaultNumberOption implements DefaultNumberOption, with -1 for an undefined fallback.
@@ -81,7 +82,7 @@ func supportedLocalesOf(vm *engine.VM, args []engine.Value) engine.Value {
 // setDigitOptions implements SetNumberFormatDigitOptions.
 func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options *engine.Object, minFDDefault, maxFDDefault int, notation string) {
 	get := func(name string) engine.Value {
-		return vm.Get(options, engine.NamedKey(vm.Intern(name)))
+		return vm.Get(options, engine.NamedKey(vm.Intern(wtf8.String(name))))
 	}
 	minInt := getNumberOption(vm, options, "minimumIntegerDigits", 1, 21, 1)
 	minFD := get("minimumFractionDigits")
@@ -211,12 +212,12 @@ func numberingSystemsOf(l string) []string {
 func numberingSystemOption(vm *engine.VM, options *engine.Object) (string, bool) {
 	s, ok := getOption(vm, options, "numberingSystem")
 	if ok && !localetag.IsType(strings.ToLower(s)) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for numberingSystem")
+		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for numberingSystem")
 	}
 	if ok {
 		for i := range len(s) {
 			if s[i] >= 0x80 {
-				vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for numberingSystem")
+				vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for numberingSystem")
 			}
 		}
 	}
@@ -251,7 +252,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 			vm.ThrowTypeError("currency is required with the currency style")
 		}
 	} else if !isWellFormedCurrencyCode(currency) {
-		vm.ThrowRangeError("invalid currency code: " + vm.DisplayString(vm.NewString(currency)))
+		vm.ThrowRangeError("invalid currency code: " + vm.DisplayString(vm.NewString(wtf8.String(currency))))
 	}
 	currencyDisplay := getStringOption(vm, options, "currencyDisplay", "symbol", "code", "symbol", "narrowSymbol", "name")
 	currencySign := getStringOption(vm, options, "currencySign", "standard", "standard", "accounting")
@@ -261,7 +262,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 			vm.ThrowTypeError("unit is required with the unit style")
 		}
 	} else if !isWellFormedUnitIdentifier(unit) {
-		vm.ThrowRangeError("invalid unit: " + vm.DisplayString(vm.NewString(unit)))
+		vm.ThrowRangeError("invalid unit: " + vm.DisplayString(vm.NewString(wtf8.String(unit))))
 	}
 	unitDisplay := getStringOption(vm, options, "unitDisplay", "short", "short", "narrow", "long")
 	if o.Style == "currency" {
@@ -300,9 +301,9 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 			o.UseGrouping = ""
 			nf.useGrouping = false
 		default:
-			s := vm.ToString(v)
+			s := wtf8.ToValidUTF8(vm.ToString(v))
 			if !slices.Contains([]string{"min2", "auto", "always", "true", "false"}, s) {
-				vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for useGrouping")
+				vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for useGrouping")
 			}
 			if s != "true" && s != "false" {
 				o.UseGrouping = s
@@ -319,9 +320,9 @@ func toIntlMathematicalValue(vm *engine.VM, v engine.Value) number.Decimal {
 	p := vm.ToPrimitive(v, engine.HintNumber)
 	switch {
 	case p.IsBigInt():
-		return number.FromInteger(vm.BigIntToString(p, 10))
+		return number.FromInteger(string(vm.BigIntToString(p, 10)))
 	case p.IsString():
-		return number.Parse(vm.ToString(p))
+		return number.Parse(wtf8.ToValidUTF8(vm.ToString(p)))
 	}
 	return number.FromFloat(vm.ToNumber(p))
 }
@@ -388,10 +389,10 @@ func partsArray(vm *engine.VM, n int, part func(i int) (typ, value, source strin
 	for i := range n {
 		p.Step(vm)
 		typ, value, source := part(i)
-		props := [3]engine.Value{vm.NewString(typ), vm.NewString(value)}
+		props := [3]engine.Value{vm.NewString(wtf8.String(typ)), vm.NewString(wtf8.String(value))}
 		propertyCount := 2
 		if source != "" {
-			props[2] = vm.NewString(source)
+			props[2] = vm.NewString(wtf8.String(source))
 			propertyCount++
 		}
 		vals[i] = engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
@@ -448,7 +449,7 @@ func (r *realm) initNumberFormat(vm *engine.VM) {
 			b.WriteString(p.Value)
 		}
 		checkStringLength(vm, b.Len())
-		return vm.NewString(b.String())
+		return vm.NewString(wtf8.String(b.String()))
 	})
 	method(vm, proto, "formatRangeToParts", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nf := thisNumberFormat(vm, this, "formatRangeToParts")
@@ -473,11 +474,11 @@ func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 	o := &nf.opts
 	out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(name)), v)
+		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 	}
 	str := func(name, v string) {
 		if v != "" {
-			set(name, vm.NewString(v))
+			set(name, vm.NewString(wtf8.String(v)))
 		}
 	}
 	num := func(name string, v int) {
@@ -523,7 +524,7 @@ func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 // longer than MaxStringLength.
 func formattedString(vm *engine.VM, s string) engine.Value {
 	checkStringLength(vm, len(s))
-	return vm.NewString(s)
+	return vm.NewString(wtf8.String(s))
 }
 
 // initToLocaleString replaces Number.prototype.toLocaleString and
@@ -545,6 +546,6 @@ func initToLocaleString(vm *engine.VM) {
 		if !ok {
 			vm.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
 		}
-		return format(vm, args, number.FromInteger(vm.BigIntToString(x, 10)))
+		return format(vm, args, number.FromInteger(string(vm.BigIntToString(x, 10))))
 	})
 }

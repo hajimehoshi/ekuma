@@ -18,6 +18,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func TestForeignValueEntry(t *testing.T) {
@@ -3039,10 +3040,10 @@ func TestRealmRestored(t *testing.T) {
 }
 
 var inlineStringSink engine.Value
-var inlineTextSink string
+var inlineTextSink wtf8.String
 
 func BenchmarkInlineString(b *testing.B) {
-	for _, text := range []string{"abcdefgh", "abcdefghi"} {
+	for _, text := range []wtf8.String{"abcdefgh", "abcdefghi"} {
 		b.Run(fmt.Sprintf("construct/%d", len(text)), func(b *testing.B) {
 			vm := engine.NewVM(nil)
 			b.ReportAllocs()
@@ -3102,7 +3103,7 @@ func BenchmarkInlineString(b *testing.B) {
 func TestInlineStringBoundaries(t *testing.T) {
 	vm := engine.NewVM(nil)
 	otherVM := engine.NewVM(nil)
-	for _, s := range []string{"", "a", "ab", "abcdefgh", "abcdefghi", "ab\x00", "\x00\x00\x00\x00\x00\x00\xc2\x80", "日本", "\xed\xa0\x80"} {
+	for _, s := range []wtf8.String{"", "a", "ab", "abcdefgh", "abcdefghi", "ab\x00", "\x00\x00\x00\x00\x00\x00\xc2\x80", "日本", "\xed\xa0\x80"} {
 		t.Run(fmt.Sprintf("%x", s), func(t *testing.T) {
 			v := vm.NewString(s)
 			if got := vm.ToString(v); got != s {
@@ -3114,7 +3115,7 @@ func TestInlineStringBoundaries(t *testing.T) {
 			if len(s) > 0 {
 				different := []byte(s)
 				different[0] ^= 1
-				if engine.IsStrictlyEqual(v, vm.NewString(string(different))) {
+				if engine.IsStrictlyEqual(v, vm.NewString(wtf8.String(different))) {
 					t.Error("different payloads compare equal")
 				}
 			}
@@ -3143,7 +3144,7 @@ func TestInlineStringIndexAllocations(t *testing.T) {
 func TestInlineStringCodeUnits(t *testing.T) {
 	vm := engine.NewVM(nil)
 	for _, tc := range []struct {
-		text  string
+		text  wtf8.String
 		units []uint16
 	}{
 		{

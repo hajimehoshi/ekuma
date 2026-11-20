@@ -10,6 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 var binaryOps = map[ast.Op]bytecode.Opcode{
@@ -267,7 +268,7 @@ func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 	case *ast.BigIntLit:
 		f.emit(bytecode.OpLoadK, dst, f.constant(bytecode.Const{
 			Kind: bytecode.ConstBigInt,
-			Str:  e.Value,
+			Str:  wtf8.String(e.Value),
 		}), 0)
 	case *ast.BoolLit:
 		if e.Value {
@@ -315,7 +316,7 @@ func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 				f.c.isExpression[e] = true
 			}
 		}
-		f.closure(e, dst, name)
+		f.closure(e, dst, wtf8.String(name))
 	case *ast.Class:
 		f.class(e, dst, "", -1)
 	case *ast.UnaryExpr:
@@ -728,7 +729,7 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 		if arg.Computed {
 			f.expr(arg.Property, key)
 		} else {
-			f.emit(bytecode.OpLoadK, key, f.constStr(arg.Property.(*ast.Identifier).Name), 0)
+			f.emit(bytecode.OpLoadK, key, f.constStr(wtf8.String(arg.Property.(*ast.Identifier).Name)), 0)
 		}
 		f.setPos(arg.Property.Start())
 		op := bytecode.OpDeleteProp
@@ -758,14 +759,14 @@ func (f *fn) delete(n *ast.UnaryExpr, dst int32) {
 		end := -1
 		if scope := f.resolveName(arg.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(bytecode.OpDeleteScoped, dst, scope, f.key(arg.Name))
+			f.emit(bytecode.OpDeleteScoped, dst, scope, f.key(wtf8.String(arg.Name)))
 			end = f.jump()
 			f.patch(skip)
 		}
 		if r := f.resolve(arg.Name); r.kind != refGlobal {
 			f.emit(bytecode.OpLoadFalse, dst, 0, 0)
 		} else {
-			f.emit(bytecode.OpDeleteName, dst, f.key(arg.Name), 0)
+			f.emit(bytecode.OpDeleteName, dst, f.key(wtf8.String(arg.Name)), 0)
 		}
 		if end >= 0 {
 			f.patch(end)
@@ -893,7 +894,7 @@ func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque,
 		if n.Computed {
 			f.expr(n.Property, t.key)
 		} else {
-			f.emit(bytecode.OpLoadK, t.key, f.constStr(n.Property.(*ast.Identifier).Name), 0)
+			f.emit(bytecode.OpLoadK, t.key, f.constStr(wtf8.String(n.Property.(*ast.Identifier).Name)), 0)
 		}
 		t.home = f.newReg()
 		f.loadVar("%home", t.home, false)
@@ -1001,7 +1002,7 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 		f.emit(bytecode.OpExtra, t.home, superBase, 0)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
-		f.emitGetProp(dst, t.obj, f.site(name))
+		f.emitGetProp(dst, t.obj, f.site(wtf8.String(name)))
 	case !n.Computed:
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
@@ -1036,7 +1037,7 @@ func (f *fn) storeTarget(t memberTarget, src int32) {
 		if f.strict() {
 			op = bytecode.OpSetPropStrict
 		}
-		f.emit(op, t.obj, f.site(name), src)
+		f.emit(op, t.obj, f.site(wtf8.String(name)), src)
 	case !n.Computed:
 		f.emit(bytecode.OpSetPrivate, t.obj, t.key, src)
 	default:
@@ -1072,10 +1073,10 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		name := n.Property.(*ast.Identifier).Name
 		f.setPos(n.Property.Start())
 		if name == "length" {
-			f.emit(bytecode.OpGetLength, dst, obj, f.site(name))
+			f.emit(bytecode.OpGetLength, dst, obj, f.site(wtf8.String(name)))
 			return
 		}
-		f.emitGetProp(dst, obj, f.site(name))
+		f.emitGetProp(dst, obj, f.site(wtf8.String(name)))
 		return
 	}
 	obj := f.operand(n.Object, n.Property)
@@ -1122,16 +1123,16 @@ func (f *fn) immediateOperand(e ast.Expr, rest ...ast.Expr) int32 {
 }
 
 // int32Index returns the array index whose canonical string form is s, if it fits in an int32.
-func int32Index(s string) (int32, bool) {
-	i, err := strconv.ParseInt(s, 10, 32)
-	if err != nil || i < 0 || strconv.FormatInt(i, 10) != s {
+func int32Index(s wtf8.String) (int32, bool) {
+	i, err := strconv.ParseInt(string(s), 10, 32)
+	if err != nil || i < 0 || strconv.FormatInt(i, 10) != string(s) {
 		return 0, false
 	}
 	return int32(i), true
 }
 
 // isIndexString reports whether s may be the canonical form of an array index.
-func isIndexString(s string) bool {
+func isIndexString(s wtf8.String) bool {
 	return len(s) > 0 && s[0] >= '0' && s[0] <= '9'
 }
 
@@ -1258,7 +1259,7 @@ func (f *fn) callReference(callee ast.Expr, base int32) bool {
 		mark := f.top
 		if scope := f.resolveName(id.Name); scope >= 0 {
 			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(f.getScopedOp(), base, scope, f.key(id.Name))
+			f.emit(f.getScopedOp(), base, scope, f.key(wtf8.String(id.Name)))
 			if f.evalScopesAround() {
 				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
 			} else {
@@ -1291,7 +1292,7 @@ func (f *fn) methodReference(c *ast.MemberExpr, base int32) {
 		if obj := f.localReceiver(c.Object); obj >= 0 {
 			f.chainCheck(c.Optional, obj)
 			f.setPos(p.Start())
-			f.emit(bytecode.OpGetMethod, base, obj, f.site(p.Name))
+			f.emit(bytecode.OpGetMethod, base, obj, f.site(wtf8.String(p.Name)))
 			return
 		}
 	}
@@ -1307,7 +1308,7 @@ func (f *fn) methodReference(c *ast.MemberExpr, base int32) {
 	case *ast.Identifier:
 		if !c.Computed {
 			f.setPos(p.Start())
-			f.emitGetProp(base, base+1, f.site(p.Name))
+			f.emitGetProp(base, base+1, f.site(wtf8.String(p.Name)))
 			return
 		}
 	}
@@ -1345,7 +1346,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 				// The call decides whether the literal's object needs to be made.
 				receiver = f.regExpSite(lit)
 				f.setPos(pos)
-				f.emit(bytecode.OpRegExpMethod, base, receiver, f.site(p.Name))
+				f.emit(bytecode.OpRegExpMethod, base, receiver, f.site(wtf8.String(p.Name)))
 			}
 			if !c.Optional && !n.Optional && !chained && p.Name != "call" && p.Name != "apply" && f.localReceiver(c.Object) >= 0 && f.earlyArgs(n) {
 				// The call can follow the method read right away.
@@ -1707,7 +1708,7 @@ func (f *fn) literalConst(e ast.Expr) (bytecode.Const, bool) {
 	case *ast.BigIntLit:
 		return bytecode.Const{
 			Kind: bytecode.ConstBigInt,
-			Str:  e.Value,
+			Str:  wtf8.String(e.Value),
 		}, true
 	}
 	if p := f.primLiteral(e); p >= 0 {
@@ -1727,13 +1728,13 @@ var primConsts = [...]bytecode.ConstKind{
 }
 
 // keyName returns the name of a property key that is known at compile time.
-func keyName(key ast.Expr, computed bool) (string, bool) {
+func keyName(key ast.Expr, computed bool) (wtf8.String, bool) {
 	if computed {
 		return "", false
 	}
 	switch k := key.(type) {
 	case *ast.Identifier:
-		return k.Name, true
+		return wtf8.String(k.Name), true
 	case *ast.StringLit:
 		return k.Value, true
 	}
@@ -1752,7 +1753,7 @@ func isAnonymousFunction(e ast.Expr) bool {
 }
 
 // named compiles e into dst. When e is an anonymous function or class, it gets the name name.
-func (f *fn) named(e ast.Expr, dst int32, name string) {
+func (f *fn) named(e ast.Expr, dst int32, name wtf8.String) {
 	switch e := e.(type) {
 	case *ast.Function:
 		if e.Name == nil {
@@ -1797,7 +1798,7 @@ func (f *fn) propertyKey(key ast.Expr, computed bool) int32 {
 	}
 	switch key := key.(type) {
 	case *ast.Identifier:
-		f.emit(bytecode.OpLoadK, k, f.constStr(key.Name), 0)
+		f.emit(bytecode.OpLoadK, k, f.constStr(wtf8.String(key.Name)), 0)
 	case *ast.PrivateName:
 		f.loadVar("#"+key.Name, k, false)
 	default:
@@ -1876,7 +1877,7 @@ func (f *fn) method(obj int32, key ast.Expr, computed bool, fnNode *ast.Function
 	v := f.newReg()
 	name, static := keyName(key, computed)
 	if p, ok := key.(*ast.PrivateName); ok && !computed {
-		name, static = "#"+p.Name, true
+		name, static = wtf8.String("#"+p.Name), true
 	}
 	prefix := int32(bytecode.NamePrefixNone)
 	switch kind {
@@ -1951,10 +1952,10 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 					return
 				}
 				if f.singleWrite(n.Value) {
-					f.named(n.Value, local, inferred)
+					f.named(n.Value, local, wtf8.String(inferred))
 				} else {
 					t := f.newReg()
-					f.named(n.Value, t, inferred)
+					f.named(n.Value, t, wtf8.String(inferred))
 					f.emit(bytecode.OpMove, local, t, 0)
 				}
 				if dst >= 0 && dst != local {
@@ -1968,16 +1969,16 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			resolved := int32(-1)
 			if scope < 0 && f.strict() && !f.pure(n.Value) && f.undeclaredGlobal(name) {
 				resolved = f.newReg()
-				f.emit(bytecode.OpResolveGlobal, resolved, f.key(name), f.globalCache())
+				f.emit(bytecode.OpResolveGlobal, resolved, f.key(wtf8.String(name)), f.globalCache())
 			}
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
-			f.named(n.Value, t, inferred)
+			f.named(n.Value, t, wtf8.String(inferred))
 			if resolved >= 0 {
 				ok := f.emit(bytecode.OpJumpIf, 0, resolved, 0)
-				f.emit(bytecode.OpThrowError, bytecode.ThrowReferenceError, f.constStr(name+" is not defined"), 0)
+				f.emit(bytecode.OpThrowError, bytecode.ThrowReferenceError, f.constStr(wtf8.String(name+" is not defined")), 0)
 				f.patch(ok)
 			}
 			f.storeVarTo(n, name, t, false, scope)
@@ -1989,7 +1990,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			}
 			f.loadVarFrom(name, f.resolve(name), t, false, scope)
 			skip := shortCircuit(t)
-			f.named(n.Value, t, inferred)
+			f.named(n.Value, t, wtf8.String(inferred))
 			f.storeVarTo(n, name, t, false, scope)
 			f.patch(skip)
 		default:

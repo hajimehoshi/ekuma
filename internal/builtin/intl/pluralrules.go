@@ -8,6 +8,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/intl/number"
 	"github.com/hajimehoshi/ekuma/internal/intl/plural"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // pluralRulesData holds the internal slots of an Intl.PluralRules object.
@@ -86,20 +87,20 @@ func (r *realm) initPluralRules(vm *engine.VM) {
 		pr := thisPluralRules(vm, this, "resolvedOptions")
 		out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
 		set := func(name string, v engine.Value) {
-			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(name)), v)
+			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 		}
 		num := func(name string, v int) {
 			set(name, engine.Number(float64(v)))
 		}
-		set("locale", vm.NewString(pr.locale))
+		set("locale", vm.NewString(wtf8.String(pr.locale)))
 		typ := "cardinal"
 		if pr.ordinal {
 			typ = "ordinal"
 		}
-		set("type", vm.NewString(typ))
-		set("notation", vm.NewString(pr.notation))
+		set("type", vm.NewString(wtf8.String(typ)))
+		set("notation", vm.NewString(wtf8.String(pr.notation)))
 		if pr.compactDisplay != "" {
-			set("compactDisplay", vm.NewString(pr.compactDisplay))
+			set("compactDisplay", vm.NewString(wtf8.String(pr.compactDisplay)))
 		}
 		d := &pr.digits
 		num("minimumIntegerDigits", d.MinimumIntegerDigits)
@@ -113,19 +114,19 @@ func (r *realm) initPluralRules(vm *engine.VM) {
 		}
 		set("pluralCategories", stringArray(vm, plural.Categories(pr.dataLocale, pr.ordinal)))
 		num("roundingIncrement", d.RoundingIncrement)
-		set("roundingMode", vm.NewString(d.RoundingMode))
-		set("roundingPriority", vm.NewString(pr.slots.priority))
+		set("roundingMode", vm.NewString(wtf8.String(d.RoundingMode)))
+		set("roundingPriority", vm.NewString(wtf8.String(pr.slots.priority)))
 		tzd := "auto"
 		if d.StripIfInteger {
 			tzd = "stripIfInteger"
 		}
-		set("trailingZeroDisplay", vm.NewString(tzd))
+		set("trailingZeroDisplay", vm.NewString(wtf8.String(tzd)))
 		return engine.ObjectValue(out)
 	})
 	method(vm, proto, "select", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		pr := thisPluralRules(vm, this, "select")
 		c, _ := pr.resolvePlural(toIntlMathematicalValue(vm, arg(args, 0)))
-		return vm.NewString(c)
+		return vm.NewString(wtf8.String(c))
 	})
 	method(vm, proto, "selectRange", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		pr := thisPluralRules(vm, this, "selectRange")
@@ -141,9 +142,9 @@ func (r *realm) initPluralRules(vm *engine.VM) {
 		xc, xs := pr.resolvePlural(x)
 		yc, ys := pr.resolvePlural(y)
 		if xs == ys && !x.IsInf() && !y.IsInf() {
-			return vm.NewString(xc)
+			return vm.NewString(wtf8.String(xc))
 		}
-		return vm.NewString(plural.SelectRange(pr.dataLocale, xc, yc))
+		return vm.NewString(wtf8.String(plural.SelectRange(pr.dataLocale, xc, yc)))
 	})
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.PluralRules"), engine.FlagConfigurable)
 }

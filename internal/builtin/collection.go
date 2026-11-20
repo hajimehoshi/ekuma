@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // mapIterator is the state of a Map Iterator object.
@@ -74,7 +75,7 @@ func reserveAfter(t *collection.Table, i, n int) {
 func adderOf(vm *engine.VM, o *engine.Object, name *engine.Object) *engine.Object {
 	adder := vm.Get(o, engine.NamedKey(name))
 	if !adder.IsCallable() {
-		vm.ThrowTypeError("the " + name.Str() + " method of the new collection is not a function")
+		vm.ThrowTypeError("the " + wtf8.ToValidUTF8(name.Str()) + " method of the new collection is not a function")
 	}
 	return adder.Object()
 }
@@ -229,7 +230,7 @@ func initMap(vm *engine.VM) {
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisMap(vm, this, name)
 			return engine.ObjectValue(vm.NewIteratorObject(iterProto, &mapIterator{
 				table:  t,
@@ -579,7 +580,7 @@ func initSet(vm *engine.VM) {
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisSet(vm, this, name)
 			return engine.ObjectValue(vm.NewIteratorObject(iterProto, &setIterator{
 				table:  t,

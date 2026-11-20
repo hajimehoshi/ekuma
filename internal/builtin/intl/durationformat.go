@@ -12,6 +12,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/intl/duration"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // durationFormatData holds the internal slots of an Intl.DurationFormat object.
@@ -128,7 +129,7 @@ func toDurationRecord(vm *engine.VM, v engine.Value) duration.Duration {
 		if !v.IsString() {
 			vm.ThrowTypeError("a duration must be an object or a string")
 		}
-		d, err := temporal.ParseTemporalDurationString(vm.ToString(v), vm.Poll)
+		d, err := temporal.ParseTemporalDurationString(wtf8.ToValidUTF8(vm.ToString(v)), vm.Poll)
 		if err != nil {
 			vm.ThrowRangeError("invalid duration: " + vm.DisplayString(v))
 		}
@@ -142,7 +143,7 @@ func toDurationRecord(vm *engine.VM, v engine.Value) duration.Duration {
 	any := false
 	// The fields in the alphabetical order of their names.
 	for _, i := range []int{duration.Days, duration.Hours, duration.Microseconds, duration.Milliseconds, duration.Minutes, duration.Months, duration.Nanoseconds, duration.Seconds, duration.Weeks, duration.Years} {
-		x := vm.Get(o, engine.NamedKey(vm.Intern(duration.Units[i])))
+		x := vm.Get(o, engine.NamedKey(vm.Intern(wtf8.String(duration.Units[i]))))
 		if x.IsUndefined() {
 			continue
 		}
@@ -222,7 +223,7 @@ func (r *realm) initDurationFormat(vm *engine.VM) {
 	})
 	method(vm, proto, "format", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		df := thisDurationFormat(vm, this, "format")
-		return vm.NewString(df.format(toDurationRecord(vm, arg(args, 0))))
+		return vm.NewString(wtf8.String(df.format(toDurationRecord(vm, arg(args, 0)))))
 	})
 	method(vm, proto, "formatToParts", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		df := thisDurationFormat(vm, this, "formatToParts")
@@ -242,5 +243,5 @@ func durationToLocaleString(vm *engine.VM, this engine.Value, args []engine.Valu
 		vm.ThrowTypeError("Temporal.Duration.prototype.toLocaleString called on an object that is not a Temporal.Duration")
 	}
 	df := createDurationFormat(vm, arg(args, 0), arg(args, 1))
-	return vm.NewString(df.format(d.Fields()))
+	return vm.NewString(wtf8.String(df.format(d.Fields())))
 }

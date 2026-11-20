@@ -26,7 +26,7 @@ func NewVM(hostDefined any) *VM {
 	vm := &VM{
 		hostDefined:         hostDefined,
 		stack:               make([]Value, initialStackSize),
-		symbolRegistry:      map[string]*Object{},
+		symbolRegistry:      map[wtf8.String]*Object{},
 		thrown:              Undefined,
 		mailbox:             newMailbox(),
 		maxBigIntResultBits: MaxBigIntBits,
@@ -43,11 +43,11 @@ func NewVM(hostDefined any) *VM {
 			shape: vm.shapes.string,
 		},
 	}
-	vm.strings.interned.entries = make(map[string]sweptRef[Object], internedInitialSize)
+	vm.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
 	vm.strings.keepNew = true
 	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep, isKept)
 	for i := range vm.strings.ascii {
-		vm.strings.ascii[i] = ObjectValue(vm.Intern(string(rune(i))))
+		vm.strings.ascii[i] = ObjectValue(vm.Intern(wtf8.String(rune(i))))
 	}
 	vm.initKeys()
 	vm.missHolder = (&propertyObject{
@@ -99,7 +99,7 @@ func (vm *VM) initRealmPrototypes() {
 		vm.shapes.shortStrings[i] = Object{
 			kind:  kindString,
 			shape: vm.shapes.string,
-			str:   "\x00\x00\x00\x00\x00\x00\x00\x00"[:i],
+			str:   wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
 		}
 	}
 }
@@ -157,7 +157,7 @@ func (vm *VM) InRealm(r *Realm, f func()) {
 }
 
 // NewSymbol returns a new symbol. desc is its description when hasDesc is set.
-func (vm *VM) NewSymbol(desc string, hasDesc bool) *Object {
+func (vm *VM) NewSymbol(desc wtf8.String, hasDesc bool) *Object {
 	s := &Object{
 		kind:  kindSymbol,
 		shape: vm.symbolShape,
@@ -171,7 +171,7 @@ func (vm *VM) NewSymbol(desc string, hasDesc bool) *Object {
 
 // RegisteredSymbol returns the symbol of the GlobalSymbolRegistry List with the key key,
 // which it adds when there is none.
-func (vm *VM) RegisteredSymbol(key string) *Object {
+func (vm *VM) RegisteredSymbol(key wtf8.String) *Object {
 	if s, ok := vm.symbolRegistry[key]; ok {
 		return s
 	}
@@ -182,7 +182,7 @@ func (vm *VM) RegisteredSymbol(key string) *Object {
 
 // KeyForSymbol implements KeyForSymbol: it returns the key of the symbol sym in the
 // GlobalSymbolRegistry List, and reports whether sym is in it.
-func (vm *VM) KeyForSymbol(sym *Object) (string, bool) {
+func (vm *VM) KeyForSymbol(sym *Object) (wtf8.String, bool) {
 	if r, ok := vm.symbolRegistry[sym.str]; !ok || r != sym {
 		return "", false
 	}
@@ -190,7 +190,7 @@ func (vm *VM) KeyForSymbol(sym *Object) (string, bool) {
 }
 
 func (vm *VM) initKeys() {
-	for k, name := range [commonKeyCount]string{
+	for k, name := range [commonKeyCount]wtf8.String{
 		KeyLength: "length", KeyPrototype: "prototype", KeyConstructor: "constructor", KeyName: "name",
 		KeyMessage: "message", KeyStack: "stack", KeyCause: "cause", KeyErrors: "errors",
 		KeyError: "error", KeySuppressed: "suppressed",
@@ -209,7 +209,7 @@ func (vm *VM) initKeys() {
 	} {
 		vm.keys.common[k] = vm.Intern(name)
 	}
-	for s, name := range [wellKnownSymbolCount]string{
+	for s, name := range [wellKnownSymbolCount]wtf8.String{
 		SymbolIterator: "Symbol.iterator", SymbolAsyncIterator: "Symbol.asyncIterator",
 		SymbolHasInstance: "Symbol.hasInstance", SymbolToPrimitive: "Symbol.toPrimitive",
 		SymbolToStringTag: "Symbol.toStringTag", SymbolSpecies: "Symbol.species",
@@ -252,7 +252,7 @@ func (vm *VM) throwCompileError(file string, err error) {
 }
 
 func itoa(n int) string {
-	return numconv.NumberToString(float64(n))
+	return string(numconv.NumberToString(float64(n)))
 }
 
 // Script is a Script Record.
@@ -459,7 +459,7 @@ func (vm *VM) BindScript(u *UnboundScript) *Script {
 
 // compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
 // to it.
-func (vm *VM) compileFunction(file, params, body string, kind parser.FunctionKind) (*funcProto, error) {
+func (vm *VM) compileFunction(file string, params, body wtf8.String, kind parser.FunctionKind) (*funcProto, error) {
 	prog, err := parser.ParseFunction(params, body, kind, parser.Options{
 		Poll: vm.Poll,
 	})
@@ -529,7 +529,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	if newTarget == nil {
 		newTarget = ctor
 	}
-	var params, body string
+	var params, body wtf8.String
 	if len(args) > 0 {
 		var sb []byte
 		for i, a := range args[:len(args)-1] {
@@ -542,7 +542,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 			}
 			sb = append(sb, p...)
 		}
-		params = string(sb)
+		params = wtf8.String(sb)
 		body = vm.ToString(args[len(args)-1])
 	}
 

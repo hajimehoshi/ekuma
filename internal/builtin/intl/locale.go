@@ -45,7 +45,7 @@ func thisLocale(vm *engine.VM, this engine.Value, name string) *localeData {
 
 // asciiLower returns s in lower case, and reports whether s is ASCII.
 func asciiLower(s string) (string, bool) {
-	if !wtf8.IsASCII(s) {
+	if !wtf8.IsASCII(wtf8.String(s)) {
 		return "", false
 	}
 	return wtf8.ToLowerASCII(s), true
@@ -61,7 +61,7 @@ func subtagOption(vm *engine.VM, options *engine.Object, name string, valid func
 	}
 	l, ok := asciiLower(s)
 	if !ok || !valid(l) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
+		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	}
 	return l
 }
@@ -115,7 +115,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	if l, ok := engine.IntlData(tagV).(*localeData); ok {
 		tag = l.String()
 	} else {
-		tag = vm.ToString(tagV)
+		tag = wtf8.ToValidUTF8(vm.ToString(tagV))
 	}
 	var options *engine.Object
 	if o := arg(args, 1); o.IsUndefined() {
@@ -125,7 +125,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	}
 	t, ok := locale.Parse(tag)
 	if !ok {
-		vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(tag)))
+		vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(wtf8.String(tag))))
 	}
 	t = t.CanonicalizePolled(vm.Poll)
 
@@ -151,7 +151,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 		}
 		l, ok := asciiLower(s)
 		if !ok || !localetag.IsType(l) {
-			vm.ThrowRangeError(vm.DisplayString(vm.NewString(s)) + " is not a valid value for " + name)
+			vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 		}
 		kws = append(kws, locale.Keyword{
 			Key:   key,
@@ -227,10 +227,10 @@ func (r *realm) initLocale(vm *engine.VM) {
 		return newLocale(t)
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(thisLocale(vm, this, "toString").String())
+		return vm.NewString(wtf8.String(thisLocale(vm, this, "toString").String()))
 	})
 	getter(vm, proto, "baseName", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(thisLocale(vm, this, "baseName").tag.BaseName())
+		return vm.NewString(wtf8.String(thisLocale(vm, this, "baseName").tag.BaseName()))
 	})
 	for _, k := range []struct {
 		name, key string
@@ -252,7 +252,7 @@ func (r *realm) initLocale(vm *engine.VM) {
 		return engine.Bool(ok && (v == "" || v == "true"))
 	})
 	getter(vm, proto, "language", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(thisLocale(vm, this, "language").tag.Language)
+		return vm.NewString(wtf8.String(thisLocale(vm, this, "language").tag.Language))
 	})
 	getter(vm, proto, "script", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisLocale(vm, this, "script").tag.Script

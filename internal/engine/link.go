@@ -6,6 +6,7 @@ package engine
 import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // funcProto is the compiled code of a function in the form the interpreter runs,
@@ -13,7 +14,7 @@ import (
 type funcProto struct {
 	*bytecode.Func
 
-	name   string
+	name   wtf8.String
 	code   []bytecode.Instr
 	consts []Value
 	keys   []*Object
@@ -175,7 +176,7 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 			if vm.Running() {
 				poll = vm.Poll
 			}
-			n, _ := numconv.ParseBigInt(c.Str, 10, poll)
+			n, _ := numconv.ParseBigInt(string(c.Str), 10, poll)
 			p.consts[i] = vm.NewBigInt(n)
 		}
 	}

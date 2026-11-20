@@ -11,6 +11,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/collection"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // rest returns the keys from the cursor c on as numbers.
@@ -98,7 +99,7 @@ func TestSameValueZero(t *testing.T) {
 			},
 			{
 				// A string with the same contents that is another object.
-				key:  vm.NewString(string([]byte("key"))),
+				key:  vm.NewString(wtf8.String([]byte("key"))),
 				want: 3,
 			},
 			{

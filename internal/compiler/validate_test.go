@@ -50,11 +50,11 @@ func testFlags(src string) map[string]bool {
 	return flags
 }
 
-// compileSource compiles the test src at path in every mode that its flags ask for, and returns
+// compileSource compiles the test text at path in every mode that its flags ask for, and returns
 // the compiled code of each mode that compiles. A source that does not compile is a negative test.
-func compileSource(path, src string) []*bytecode.Func {
-	src = wtf8.FromValidUTF8(src)
-	flags := testFlags(src)
+func compileSource(path, text string) []*bytecode.Func {
+	src := wtf8.FromValidUTF8(text)
+	flags := testFlags(text)
 	if flags["module"] {
 		prog, err := parser.ParseModule(src, parser.Options{})
 		if err != nil {
@@ -66,7 +66,7 @@ func compileSource(path, src string) []*bytecode.Func {
 		}
 		return []*bytecode.Func{f}
 	}
-	var srcs []string
+	var srcs []wtf8.String
 	if !flags["onlyStrict"] {
 		srcs = append(srcs, src)
 	}

@@ -5,6 +5,7 @@ package builtin
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
@@ -120,14 +121,14 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 			engine.SetValueInBuffer(view(vm, b, i, what), typ, v, le)
 		}
 		get := "get" + e.name
-		method(vm, proto, get, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(get), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d := thisView(vm, this, get)
 			i := toIndex(vm, arg(args, 0))
 			le := engine.ToBoolean(arg(args, 1))
 			return load(vm, d, i, le, get)
 		})
 		set := "set" + e.name
-		method(vm, proto, set, 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(set), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d := thisView(vm, this, set)
 			if engine.ArrayBufferData(engine.ObjectValue(d.Buffer())).IsImmutable() {
 				vm.ThrowTypeError("DataView.prototype." + set + ": the DataView is backed by an immutable ArrayBuffer")

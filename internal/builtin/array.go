@@ -96,7 +96,7 @@ func deleteAt(vm *engine.VM, o *engine.Object, i int64) {
 	vm.Poll()
 	k := bigKey(vm, i)
 	if !vm.DeleteProp(o, k) {
-		vm.ThrowTypeError("cannot delete property '" + vm.KeyString(k) + "'")
+		vm.ThrowTypeError("cannot delete property '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "'")
 	}
 }
 
@@ -164,7 +164,7 @@ func (g *joinGuard) leave() {
 }
 
 // joinArray implements Array.prototype.join for the first n elements of the object o.
-func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep string) engine.Value {
+func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep wtf8.String) engine.Value {
 	if !g.enter(o) {
 		return vm.NewString("")
 	}
@@ -180,7 +180,7 @@ func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
 	}
 	if v.IsNumber() {
 		var buf [32]byte
-		b.WriteString(string(numconv.AppendNumber(buf[:0], v.Number())))
+		b.WriteString(wtf8.String(numconv.AppendNumber(buf[:0], v.Number())))
 		return
 	}
 	b.WriteString(vm.ToString(v))
@@ -189,7 +189,7 @@ func writeString(vm *engine.VM, b *wtf8.Builder, v engine.Value) {
 // joinElements joins the strings of the first n elements of the object o that are neither
 // undefined nor null, with sep between elements. The string of an element e is ToString(e),
 // or ToString(Invoke(e, method)) when method is not nil.
-func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *engine.Object) engine.Value {
+func joinElements(vm *engine.VM, o *engine.Object, n int64, sep wtf8.String, method *engine.Object) engine.Value {
 	var b wtf8.Builder
 	for i := int64(0); i < n; {
 		if i > 0 {
@@ -202,7 +202,7 @@ func joinElements(vm *engine.VM, o *engine.Object, n int64, sep string, method *
 
 // joinRun writes the elements of o from i up to end, or further when holes follow, to b as
 // joinElements joins the first n elements, and returns the index after the last one it wrote.
-func joinRun(vm *engine.VM, b *wtf8.Builder, o *engine.Object, i, end, n int64, sep string, method *engine.Object) int64 {
+func joinRun(vm *engine.VM, b *wtf8.Builder, o *engine.Object, i, end, n int64, sep wtf8.String, method *engine.Object) int64 {
 	for ; i < end; i++ {
 		if i > 0 {
 			b.WriteString(sep)
@@ -234,7 +234,7 @@ func joinRun(vm *engine.VM, b *wtf8.Builder, o *engine.Object, i, end, n int64, 
 
 // writeSeparators writes sep count times to b, and throws a RangeError instead when b would get
 // longer than MaxStringLength.
-func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep string, count int64) {
+func writeSeparators(vm *engine.VM, b *wtf8.Builder, sep wtf8.String, count int64) {
 	// A separator after another one adds len(sep) bytes, or len(sep)-2 when the two join a
 	// surrogate pair. The first one may also join a pair with what b ends with.
 	per := int64(len(sep))
@@ -580,7 +580,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	method(vm, proto, "join", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		n := vm.LengthOfArrayLike(o)
-		sep := ","
+		sep := wtf8.String(",")
 		if s := arg(args, 0); !s.IsUndefined() {
 			sep = vm.ToString(s)
 		}
@@ -632,7 +632,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 
 	search := func(name string, fromEnd, same bool) {
 		length := 1
-		method(vm, proto, name, length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
 			n := vm.LengthOfArrayLike(o)
 			target := arg(args, 0)
@@ -817,7 +817,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		}
 	})
 	findLast := func(name string, index bool) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
 			n := vm.LengthOfArrayLike(o)
 			cb := callback(vm, args, name)
@@ -840,7 +840,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	findLast("findLastIndex", true)
 
 	reduce := func(name string, right bool) {
-		method(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
 			n := vm.LengthOfArrayLike(o)
 			cb := callback(vm, args, name)
@@ -1028,7 +1028,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	})
 
 	iter := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return engine.ObjectValue(vm.NewArrayIterator(vm.ToObject(this), kind))
 		})
 	}
@@ -1179,7 +1179,7 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 	})
 
 	unscopables := vm.NewObject(nil)
-	for _, name := range []string{
+	for _, name := range []wtf8.String{
 		"at", "copyWithin", "entries", "fill", "find", "findIndex", "findLast", "findLastIndex",
 		"flat", "flatMap", "includes", "keys", "toReversed", "toSorted", "toSpliced", "values",
 	} {
@@ -1318,7 +1318,7 @@ func compareStringValues(a, b engine.Value) int {
 // keyedValue is a value with the string it sorts by.
 type keyedValue struct {
 	v   engine.Value
-	key string
+	key wtf8.String
 }
 
 // compareKeyedValues compares the keys of a and b by their code units.

@@ -107,7 +107,7 @@ func (d *disassembler) function() {
 	}
 }
 
-func funcName(f *Func) string {
+func funcName(f *Func) wtf8.String {
 	if f.Name == "" {
 		return "<anonymous>"
 	}
@@ -471,16 +471,16 @@ var (
 	}
 )
 
-// appendQuoted appends the WTF-8 string s to b as a double-quoted string.
-func appendQuoted(b []byte, s string) []byte {
+// appendQuoted appends s to b as a double-quoted string.
+func appendQuoted(b []byte, s wtf8.String) []byte {
 	b = append(b, '"')
 	b = appendEscaped(b, s, true)
 	return append(b, '"')
 }
 
-// appendEscaped appends the WTF-8 string s to b, escaping the code points that are not graphic
+// appendEscaped appends s to b, escaping the code points that are not graphic
 // and the lone surrogates. With quoted, it also escapes double quotes and backslashes.
-func appendEscaped(b []byte, s string, quoted bool) []byte {
+func appendEscaped(b []byte, s wtf8.String, quoted bool) []byte {
 	for len(s) > 0 {
 		r, n := wtf8.DecodeRune(s)
 		switch {

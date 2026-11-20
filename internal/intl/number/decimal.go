@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
@@ -112,7 +113,7 @@ func FromInteger(s string) Decimal {
 // converts it: the exact value of a StringNumericLiteral, not-a-number for any other string,
 // and an infinity or zero for a value that rounds to one as a Number.
 func Parse(s string) Decimal {
-	t := xstrings.TrimWhiteSpace(s, true, true)
+	t := string(xstrings.TrimWhiteSpace(wtf8.String(s), true, true))
 	if t == "" {
 		return Decimal{}
 	}
@@ -231,7 +232,7 @@ func roundedToNumber(d Decimal, s string) Decimal {
 			neg: d.neg,
 		}
 	}
-	f := numconv.StringToNumber(s, nil)
+	f := numconv.StringToNumber(wtf8.String(s), nil)
 	switch {
 	case math.IsInf(f, 0):
 		return Inf(d.neg)

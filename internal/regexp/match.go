@@ -45,14 +45,14 @@ type Matcher struct {
 	looks []int
 	out   []int
 
-	s      string
+	s      wtf8.String
 	ascii  bool
-	asciiS string // the subject ascii was computed for
+	asciiS wtf8.String // the subject ascii was computed for
 	poller Poller
 	steps  int
 
 	// last is a known position of s, which speeds up the conversions of indices.
-	lastS string
+	lastS wtf8.String
 	last  wtf8.Pos
 }
 
@@ -62,17 +62,17 @@ const pollInterval = 1 << 14
 // It returns the start and end code unit indices of the whole match and of each capturing
 // group, -1 for the groups that did not participate, or nil when there is no match.
 // The result is valid until the next use of m. poller may be nil.
-func (re *Regexp) Match(m *Matcher, s string, start int, poller Poller) []int {
+func (re *Regexp) Match(m *Matcher, s wtf8.String, start int, poller Poller) []int {
 	return re.match(m, s, start, re.flags&FlagSticky != 0, poller)
 }
 
 // Find is like [Regexp.Match], but it finds the first match at start or after it even when re is
 // sticky.
-func (re *Regexp) Find(m *Matcher, s string, start int, poller Poller) []int {
+func (re *Regexp) Find(m *Matcher, s wtf8.String, start int, poller Poller) []int {
 	return re.match(m, s, start, false, poller)
 }
 
-func (re *Regexp) match(m *Matcher, s string, start int, sticky bool, poller Poller) []int {
+func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, poller Poller) []int {
 	prog := re.prog
 	m.s = s
 	if s != m.asciiS || len(s) == 0 {
@@ -230,7 +230,7 @@ func (m *Matcher) unitIndex(pos int) int {
 }
 
 // countUnits returns the number of code units of s, which holds whole characters.
-func countUnits(s string) int {
+func countUnits(s wtf8.String) int {
 	const high = 0x8080808080808080
 	// Each byte is one code unit, except that a continuation byte is none and the first byte
 	// of a four-byte sequence is two.
@@ -334,7 +334,7 @@ func (m *Matcher) prev(pos int, unicodeMode bool) (rune, int) {
 	return r, q
 }
 
-func decode4(s string) rune {
+func decode4(s wtf8.String) rune {
 	return rune(s[0]&0x07)<<18 | rune(s[1]&0x3F)<<12 | rune(s[2]&0x3F)<<6 | rune(s[3]&0x3F)
 }
 
@@ -430,7 +430,7 @@ func (m *Matcher) run(prog *program, pos int) bool {
 			pos = p
 			pc++
 		case iStr:
-			if !strings.HasPrefix(s[pos:], in.str) {
+			if !strings.HasPrefix(string(s[pos:]), string(in.str)) {
 				goto fail
 			}
 			pos += len(in.str)
@@ -751,7 +751,7 @@ func (m *Matcher) backref(in *inst, pos int, uni bool) (int, bool) {
 	if !in.fold && !in.back && !m.isMiddle(start) && !m.isMiddle(end) && !m.isMiddle(pos) &&
 		!endsWithHighSurrogate(s[start:end]) && !startsWithLowSurrogate(s[start:end]) {
 		// Whole characters compare equal exactly when their bytes do.
-		if strings.HasPrefix(s[pos:], s[start:end]) {
+		if strings.HasPrefix(string(s[pos:]), string(s[start:end])) {
 			return pos + end - start, true
 		}
 		return 0, false
@@ -784,11 +784,11 @@ func (m *Matcher) backref(in *inst, pos int, uni bool) (int, bool) {
 	return pos, true
 }
 
-func endsWithHighSurrogate(s string) bool {
+func endsWithHighSurrogate(s wtf8.String) bool {
 	n := len(s)
 	return n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 && s[n-2] < 0xB0
 }
 
-func startsWithLowSurrogate(s string) bool {
+func startsWithLowSurrogate(s wtf8.String) bool {
 	return len(s) >= 3 && s[0] == 0xED && s[1] >= 0xB0
 }

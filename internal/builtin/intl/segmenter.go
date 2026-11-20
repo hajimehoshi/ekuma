@@ -39,7 +39,7 @@ type segmentsData struct {
 	bounds []int32
 }
 
-func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s string) *segmentsData {
+func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s wtf8.String) *segmentsData {
 	// Every code point starts with a byte that is not a continuation byte.
 	var n int
 	for i := 0; i < len(s); i++ {
@@ -182,7 +182,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		sd := thisSegmenter(vm, this, "resolvedOptions")
 		out := vm.NewObjectFromProperties(
 			[]engine.PropKey{engine.NamedKey(vm.Intern("locale")), engine.NamedKey(vm.Intern("granularity"))},
-			[]engine.Value{vm.NewString(sd.locale), vm.NewString(sd.granularity)},
+			[]engine.Value{vm.NewString(wtf8.String(sd.locale)), vm.NewString(wtf8.String(sd.granularity))},
 		)
 		return engine.ObjectValue(out)
 	})

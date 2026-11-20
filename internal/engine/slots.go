@@ -3,6 +3,8 @@
 
 package engine
 
+import "github.com/hajimehoshi/ekuma/internal/wtf8"
+
 // This file holds the operations on the internal slots of the built-in objects.
 
 // NewNumberObject returns a Number object for n with the prototype proto.
@@ -23,14 +25,15 @@ func (vm *VM) NewBooleanObject(b bool, proto *Object) *Object {
 
 // errorData is the internal state of an error object that has a recorded stack trace.
 type errorData struct {
-	stack string
+	stack wtf8.String
 
 	// pending is set until stack is formatted from name, msg and calls.
 	pending bool
 
-	// name in WTF-8 and msg in UTF-8 begin the stack trace, and calls are its lines.
-	name, msg string
-	calls     []stackCall
+	// name and msg in UTF-8 begin the stack trace, and calls are its lines.
+	name  wtf8.String
+	msg   string
+	calls []stackCall
 
 	// goErr is the Go error that the error object was made from, or nil.
 	goErr error
@@ -50,7 +53,7 @@ func IsError(v Value) bool {
 
 // ErrorStack returns the stack trace that [VM.RecordStack] recorded for the error object v.
 // It reports false when v has no [[ErrorData]] internal slot or no recorded stack trace.
-func ErrorStack(v Value) (string, bool) {
+func ErrorStack(v Value) (wtf8.String, bool) {
 	if !IsError(v) {
 		return "", false
 	}
@@ -251,13 +254,13 @@ func ThisSymbolValue(v Value) (*Object, bool) {
 }
 
 // SymbolDescription returns the description of the symbol sym and whether it has one.
-func SymbolDescription(sym *Object) (string, bool) {
+func SymbolDescription(sym *Object) (wtf8.String, bool) {
 	return sym.str, sym.extState() != nil
 }
 
 // BuiltinTag returns the name that Object.prototype.toString uses for o
 // when o has no Symbol.toStringTag property.
-func (vm *VM) BuiltinTag(o *Object) string {
+func (vm *VM) BuiltinTag(o *Object) wtf8.String {
 	switch {
 	case vm.IsArray(Value{o: o}):
 		return "Array"

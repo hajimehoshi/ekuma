@@ -6,6 +6,7 @@ package builtin
 import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // newZonedDateTime implements CreateTemporalZonedDateTime for valid epoch nanoseconds.
@@ -60,7 +61,7 @@ func toTemporalZonedDateTime(vm *engine.VM, item, options engine.Value) zonedDat
 	} else {
 		str := requireString(vm, item, "zoned date-time")
 		p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalZonedDateTime))
-		tz = toTimeZone(vm, vm.NewString(p.TimeZoneAnnotation))
+		tz = toTimeZone(vm, vm.NewString(wtf8.String(p.TimeZoneAnnotation)))
 		offset, hasOffset = p.Offset, p.Offset != ""
 		z = p.Z
 		cal = canonicalizeParsedCalendar(vm, p.Calendar)
@@ -134,13 +135,13 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		return dt.Date, s.cal
 	})
 	for _, name := range timeGetterNames {
-		tgetter(vm, proto, vm.Intern(name), name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tgetter(vm, proto, vm.Intern(wtf8.String(name)), wtf8.String(name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			_, dt := dateTimeOf(vm, this, name)
 			return engine.Number(float64(timeField(dt.Time, name)))
 		})
 	}
 	tgetter(vm, proto, vm.Intern("timeZoneId"), "timeZoneId", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(thisZonedDateTime(vm, this, "timeZoneId").tz.ID())
+		return vm.NewString(wtf8.String(thisZonedDateTime(vm, this, "timeZoneId").tz.ID()))
 	})
 	tgetter(vm, proto, vm.Intern("epochMilliseconds"), "epochMilliseconds", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return epochMilliseconds(thisZonedDateTime(vm, this, "epochMilliseconds").ns)
@@ -162,7 +163,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 	})
 	tgetter(vm, proto, vm.Intern("offset"), "offset", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisZonedDateTime(vm, this, "offset")
-		return vm.NewString(temporal.FormatUTCOffsetNanoseconds(s.tz.OffsetNanosecondsFor(s.ns)))
+		return vm.NewString(wtf8.String(temporal.FormatUTCOffsetNanoseconds(s.tz.OffsetNanosecondsFor(s.ns))))
 	})
 	tmethod(vm, proto, "with", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s, dt := dateTimeOf(vm, this, "with")
@@ -208,7 +209,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		return r.newZonedDateTime(vm, s.ns, s.tz, cal, nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisZonedDateTime(vm, this, name)
 			d := toTemporalDuration(vm, arg(args, 0))
 			if name == "subtract" {
@@ -221,7 +222,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		})
 	}
 	for _, name := range []string{"until", "since"} {
-		tmethod(vm, proto, name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisZonedDateTime(vm, this, name)
 			other := toTemporalZonedDateTime(vm, arg(args, 0), engine.Undefined)
 			checkSameCalendar(vm, s.cal, other.cal)
@@ -288,12 +289,12 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		checkToStringUnit(vm, unit)
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		epochNs := temporal.RoundTemporalInstant(s.ns, p.Increment, p.Unit, mode)
-		return vm.NewString(temporal.TemporalZonedDateTimeToString(epochNs, s.tz, s.cal, p.Precision, showCalendar, showTimeZone, showOffset))
+		return vm.NewString(wtf8.String(temporal.TemporalZonedDateTimeToString(epochNs, s.tz, s.cal, p.Precision, showCalendar, showTimeZone, showOffset)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisZonedDateTime(vm, this, name)
-			return vm.NewString(temporal.TemporalZonedDateTimeToString(s.ns, s.tz, s.cal, temporal.PrecisionAuto, temporal.ShowCalendarAuto, temporal.ShowTimeZoneAuto, true))
+			return vm.NewString(wtf8.String(temporal.TemporalZonedDateTimeToString(s.ns, s.tz, s.cal, temporal.PrecisionAuto, temporal.ShowCalendarAuto, temporal.ShowTimeZoneAuto, true)))
 		})
 	}
 	valueOfThrows(vm, proto, "ZonedDateTime")
@@ -346,7 +347,7 @@ func initTemporalNow(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return toTimeZone(vm, v)
 	}
 	tmethod(vm, now, "timeZoneId", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(SystemTimeZone(vm).ID())
+		return vm.NewString(wtf8.String(SystemTimeZone(vm).ID()))
 	})
 	tmethod(vm, now, "instant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return r.newInstant(vm, systemUTCEpochNanoseconds(vm), nil)

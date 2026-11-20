@@ -27,7 +27,7 @@ type writer struct {
 	props    []engine.PropKey
 	hasProps bool
 
-	gap string
+	gap wtf8.String
 
 	// gapJoins says whether two copies of gap next to each other form a surrogate pair.
 	gapJoins bool
@@ -147,7 +147,7 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 	if space.IsNumber() {
 		n := min(10, numconv.ToIntegerOrInfinity(space.Number()))
 		if n >= 1 {
-			w.gap = strings.Repeat(" ", int(n))
+			w.gap = wtf8.String(strings.Repeat(" ", int(n)))
 		}
 	} else if space.IsString() {
 		s := space.Object()
@@ -178,7 +178,7 @@ func (w *writer) checkLength() {
 const quoteChunk = 1 << 20
 
 // appendQuote is [AppendQuote] to the output.
-func (w *writer) appendQuote(s string) {
+func (w *writer) appendQuote(s wtf8.String) {
 	if len(s) <= quoteChunk {
 		w.buf = AppendQuote(w.buf, s)
 		return
@@ -239,7 +239,7 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 	case value.IsString():
 		if value.StringByteLength() <= shortstrings.MaxBytes {
 			var buf [shortstrings.MaxBytes]byte
-			w.appendQuote(string(value.AppendStringBytes(buf[:0])))
+			w.appendQuote(wtf8.String(value.AppendStringBytes(buf[:0])))
 		} else {
 			w.appendQuote(value.Str())
 		}
