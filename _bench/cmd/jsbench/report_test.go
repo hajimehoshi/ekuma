@@ -77,6 +77,27 @@ BenchmarkV8/Richards/goja-12 10 1000 ns/op
 	}
 }
 
+func TestReportWithoutBaseline(t *testing.T) {
+	dir := t.TempDir()
+	const result = "BenchmarkV8/Richards/goja-4 100 250 ns/op\n"
+	if err := os.WriteFile(filepath.Join(dir, "V8.txt"), []byte(result), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sections, err := jsbench.Report(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rowFields(sections["V8.time"], "Richards"); len(got) < 4 || got[1] != "ns" || got[3] != "250" {
+		t.Errorf("absolute time row = %q, want 250 ns for goja", got)
+	}
+	if got := rowFields(sections["V8.relative"], "Richards"); len(got) < 3 || got[2] != "n/a" {
+		t.Errorf("relative time row = %q, want n/a for goja", got)
+	}
+	if strings.Contains(sections["missing"], "- goja in ") {
+		t.Errorf("goja listed as missing:\n%s", sections["missing"])
+	}
+}
+
 // rowFields returns the fields of the first line of section whose first field is label.
 func rowFields(section, label string) []string {
 	for line := range strings.Lines(section) {

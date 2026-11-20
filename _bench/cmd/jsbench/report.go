@@ -118,12 +118,14 @@ func parseResults(name, text string) (*results, error) {
 
 // A cell is the summary of the runs of a benchmark on an engine.
 type cell struct {
-	// ok reports whether a round has the results of both the engine and the baseline.
-	ok bool
+	// paired reports whether a round has the results of both the engine and the baseline.
+	paired bool
 
-	// ratio is the median over the rounds of the time relative to the baseline's in the same
-	// round.
+	// ratio is the median over the paired rounds of the time relative to the baseline's.
 	ratio float64
+
+	// hasTime reports whether the engine has a result in any round.
+	hasTime bool
 
 	// time is the median time in nanoseconds per iteration.
 	time float64
@@ -147,23 +149,25 @@ func (r *results) cell(benchmark, engine string) cell {
 			ratios = append(ratios, t/base[i])
 		}
 	}
-	if len(ratios) == 0 {
-		return cell{}
+	var c cell
+	if len(times) > 0 {
+		c.hasTime = true
+		c.time = median(times)
 	}
-	return cell{
-		ok:    true,
-		ratio: median(ratios),
-		time:  median(times),
+	if len(ratios) > 0 {
+		c.paired = true
+		c.ratio = median(ratios)
 	}
+	return c
 }
 
-// geomean returns the geometric mean of the ratios of engine over the benchmarks that it ran,
-// and the number of these benchmarks.
+// geomean returns the geometric mean of engine's median ratios over benchmarks with paired
+// results and the number of such benchmarks.
 func (r *results) geomean(engine string) (float64, int) {
 	var sum float64
 	var n int
 	for _, b := range r.benchmarks {
-		if c := r.cell(b, engine); c.ok {
+		if c := r.cell(b, engine); c.paired {
 			sum += math.Log(c.ratio)
 			n++
 		}
@@ -174,8 +178,8 @@ func (r *results) geomean(engine string) (float64, int) {
 	return math.Exp(sum / float64(n)), n
 }
 
-// geomeanCell formats the geometric mean of engine, with the number of the benchmarks that it
-// ran if it did not run all of them.
+// geomeanCell formats the geometric mean for engine, with a count when only some benchmarks
+// have paired results.
 func (r *results) geomeanCell(engine string) string {
 	g, n := r.geomean(engine)
 	if n == 0 {
@@ -248,18 +252,21 @@ func report(dir string) (map[string]string, error) {
 			t := []string{b, unit}
 			for _, e := range comparison.Engines {
 				c := r.cell(b, e)
-				if !c.ok {
+				if c.paired {
+					rel = append(rel, sig3(c.ratio))
+				} else {
 					rel = append(rel, "n/a")
-					t = append(t, "n/a")
-					continue
 				}
-				rel = append(rel, sig3(c.ratio))
-				t = append(t, sig3(c.time/size))
+				if c.hasTime {
+					t = append(t, sig3(c.time/size))
+				} else {
+					t = append(t, "n/a")
+				}
 			}
 			relative = append(relative, rel)
 			times = append(times, t)
 		}
-		// The rows above show the benchmarks that an engine did not run.
+		// The rows above show which benchmarks have paired results for each engine.
 		geomean := []string{"Geomean"}
 		for _, e := range comparison.Engines {
 			if g, n := r.geomean(e); n > 0 {
@@ -337,20 +344,21 @@ func missingList(suites []suite, rs map[string]*results) string {
 					engine:    e,
 				}
 				reason := r.reasons[k]
+				runs := r.times[k]
 				var missing int
-				for _, t := range r.times[k] {
+				for _, t := range runs {
 					if math.IsNaN(t) {
 						missing++
 					}
 				}
-				if missing == 0 && r.cell(bm, e).ok {
+				if missing == 0 && len(runs) > 0 {
 					continue
 				}
 				if reason == "" {
 					reason = "no result"
 				}
-				if missing > 0 && missing < len(r.times[k]) {
-					reason = fmt.Sprintf("%d/%d rounds missing: %s", missing, len(r.times[k]), reason)
+				if missing > 0 && missing < len(runs) {
+					reason = fmt.Sprintf("%d/%d rounds missing: %s", missing, len(runs), reason)
 				}
 				if _, ok := byReason[reason]; !ok {
 					reasons = append(reasons, reason)
