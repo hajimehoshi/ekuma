@@ -256,8 +256,11 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   `1890-01-01T00:00:00Z` in `Europe/Paris`, `Date` uses `+00:09` for the historical
   offset of `+00:09:21`, so `getSeconds()` returns `0`. `Temporal.ZonedDateTime` uses
   the full offset supplied by the platform for a named time zone, giving `21` seconds here
-- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar. Named time zones require
-  the system's time zone database, or one in the directory that `ZONEINFO` names
+- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar
+- Native builds can load named time zones from system zoneinfo directories and from the sources
+  available to Go's `time.LoadLocation`. These include a directory or uncompressed zip file named
+  by `ZONEINFO`, Go's `$GOROOT/lib/time/zoneinfo.zip`, and embedded data from `time/tzdata` when
+  imported. With `GOOS=js`, named time zones come from the host's `Intl.DateTimeFormat`
 - Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
   compares code units after Unicode normalization, and `toLocaleUpperCase` and
   `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
