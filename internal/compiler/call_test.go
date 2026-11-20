@@ -59,3 +59,22 @@ func TestUndefinedThisCall(t *testing.T) {
 		})
 	}
 }
+
+// TestMethodCallAfterRead tests that a method call whose arguments are local variables, literals or
+// this follows the read of the method right away.
+func TestMethodCallAfterRead(t *testing.T) {
+	f := compileF(t, `function f(o, x) { o.m(x, 1, this); }`)
+	reads := 0
+	for pc, i := range f.Code {
+		if i.Op != bytecode.OpGetMethod {
+			continue
+		}
+		reads++
+		if next := f.Code[pc+1]; next.Op != bytecode.OpCall {
+			t.Errorf("instruction after the method read: got %v, want %v", next.Op, bytecode.OpCall)
+		}
+	}
+	if reads != 1 {
+		t.Errorf("method reads: got %d, want 1", reads)
+	}
+}

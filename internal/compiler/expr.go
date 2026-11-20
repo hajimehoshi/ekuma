@@ -1195,6 +1195,8 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	// The callee goes to base, the this value to base+1 and the arguments follow.
 	base := f.newRegs(2)
 	op := bytecode.OpCall
+	// argsFirst is set when the arguments were put in place before the method was read.
+	argsFirst := false
 	var regExpArg *ast.RegExpLit
 	// receiver is the site of a regular expression literal that is the this value, or -1.
 	receiver := int32(-1)
@@ -1262,6 +1264,13 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			name := c.Property.(*ast.Identifier).Name
 			f.setPos(pos)
 			if obj >= 0 {
+				// The call can then follow the method read right away.
+				if !c.Optional && !n.Optional && !chained && name != "call" && name != "apply" && f.top == base+2 && f.earlyArgs(n) {
+					for _, a := range n.Args {
+						f.expr(a, f.newReg())
+					}
+					argsFirst = true
+				}
 				// The this value is a copy, which the arguments cannot change by assigning
 				// the variable.
 				f.emit(bytecode.OpGetMethod, base, obj, f.site(name))
@@ -1376,6 +1385,9 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 		return
 	}
 	for i, a := range n.Args {
+		if argsFirst {
+			break
+		}
 		if i == 0 && regExpArg != nil {
 			f.newReg()
 			continue
@@ -1407,6 +1419,31 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 	if site >= 0 {
 		f.emit(bytecode.OpExtra, site, 0, 0)
 	}
+}
+
+// earlyArgs reports whether the arguments of the call n can be evaluated before its callee is read,
+// as they are literals, the this value or local variables that no getter can assign, and n is not
+// a tail call.
+func (f *fn) earlyArgs(n *ast.CallExpr) bool {
+	if len(n.Args) == 0 || f.isTail(n) {
+		return false
+	}
+	for _, a := range n.Args {
+		switch a := a.(type) {
+		case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit:
+		case *ast.ThisExpr:
+			if f.localReg("this") < 0 {
+				return false
+			}
+		case *ast.Identifier:
+			if f.localReg(a.Name) < 0 || f.otherCodeAssigns(a.Name) {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // undefinedThis returns the opcode of a call with the arguments args and its window at base, whose
