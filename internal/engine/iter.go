@@ -98,35 +98,37 @@ func (vm *VM) ArrayIteratorStep(this Value) (Value, bool) {
 	if it == nil {
 		vm.ThrowTypeError("next method called on an object that is not an array iterator")
 	}
-	if it.object == nil {
+	o := it.object
+	if o == nil {
 		return Undefined, false
 	}
+	// Reading length can call next on this iterator again.
+	i := it.nextIndex
 	var length int64
-	if t := TypedArrayData(Value{o: it.object}); t != nil {
+	if t := TypedArrayData(Value{o: o}); t != nil {
 		n, ok := t.Length()
 		if !ok {
 			vm.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
 		}
 		length = int64(n)
 	} else {
-		length = vm.LengthOfArrayLike(it.object)
+		length = vm.LengthOfArrayLike(o)
 	}
-	i := it.nextIndex
 	if i >= length {
 		it.object = nil
 		return Undefined, false
 	}
-	it.nextIndex++
+	it.nextIndex = i + 1
 	key := Number(float64(i))
 	if it.kind == IterateKeys {
 		return key, true
 	}
-	v, ok := it.object.Element(i)
+	v, ok := o.Element(i)
 	if ok {
 		vm.PollAt(i)
 	} else {
 		vm.Poll()
-		v = vm.Get(it.object, vm.ToPropertyKey(key))
+		v = vm.Get(o, vm.ToPropertyKey(key))
 	}
 	if it.kind == IterateValues {
 		return v, true
