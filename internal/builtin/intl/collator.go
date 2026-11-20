@@ -519,6 +519,9 @@ func beforeDot(s string) bool {
 
 // combiningClass returns the canonical combining class of r.
 func combiningClass(r rune) uint8 {
+	if r < utf8.RuneSelf {
+		return 0
+	}
 	var b [utf8.UTFMax]byte
 	n := utf8.EncodeRune(b[:], r)
 	return norm.NFD.Properties(b[:n]).CCC()
