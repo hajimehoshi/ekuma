@@ -287,83 +287,26 @@ const (
 
 // zipHelper is the helper that Iterator.zip and Iterator.zipKeyed return. It implements IteratorZip.
 type zipHelper struct {
-	iters []iterRecord
-	// closed reports for each iterator whether it was removed from the open iterators.
-	closed  []bool
+	// open and next hold the iterators and their next methods in input order.
+	// An open entry is undefined while stepping that iterator and after it finishes.
+	open    []engine.Value
+	next    []engine.Value
 	mode    zipMode
 	padding []engine.Value
 
 	// keys are the property keys of the results of Iterator.zipKeyed. The results of Iterator.zip
 	// are arrays when keys is nil.
 	keys []engine.PropKey
-
-	// scratch is the buffer that openIters fills.
-	scratch []engine.Value
-}
-
-// openIters returns the iterators that are still open, in order.
-// The result is valid until the next call.
-func (h *zipHelper) openIters() []engine.Value {
-	h.scratch = h.scratch[:0]
-	for i, r := range h.iters {
-		if !h.closed[i] {
-			h.scratch = append(h.scratch, r.it)
-		}
-	}
-	return h.scratch
 }
 
 func (h *zipHelper) step(vm *engine.VM) (engine.Value, bool) {
-	n := len(h.iters)
-	if n == 0 {
+	var results []engine.Value
+	vm.IfAbruptCloseIterators(h.open, func() {
+		results = h.nextRow(vm)
+	})
+	if results == nil {
+		h.close(vm)
 		return engine.Undefined, false
-	}
-	results := make([]engine.Value, n)
-	for i := range h.iters {
-		if h.closed[i] {
-			results[i] = h.padding[i]
-			continue
-		}
-		var v engine.Value
-		var ok bool
-		h.closed[i] = true
-		vm.IfAbruptCloseIterators(h.openIters(), func() {
-			v, ok = h.iters[i].stepValue(vm)
-		})
-		if ok {
-			h.closed[i] = false
-			results[i] = v
-			continue
-		}
-		switch h.mode {
-		case zipShortest:
-			vm.IteratorCloseAll(h.openIters())
-			return engine.Undefined, false
-		case zipStrict:
-			if i != 0 {
-				vm.IfAbruptCloseIterators(h.openIters(), func() {
-					vm.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
-				})
-			}
-			for j := 1; j < n; j++ {
-				var more bool
-				h.closed[j] = true
-				vm.IfAbruptCloseIterators(h.openIters(), func() {
-					more = vm.IteratorStep(h.iters[j].it, h.iters[j].next)
-				})
-				if more {
-					h.closed[j] = false
-					vm.IfAbruptCloseIterators(h.openIters(), func() {
-						vm.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
-					})
-				}
-			}
-			return engine.Undefined, false
-		}
-		if len(h.openIters()) == 0 {
-			return engine.Undefined, false
-		}
-		results[i] = h.padding[i]
 	}
 	if h.keys == nil {
 		return vm.NewArrayOf(results), true
@@ -375,8 +318,55 @@ func (h *zipHelper) step(vm *engine.VM) (engine.Value, bool) {
 	return engine.ObjectValue(o), true
 }
 
+// nextRow returns the next row, or nil when iteration is done.
+func (h *zipHelper) nextRow(vm *engine.VM) []engine.Value {
+	results := make([]engine.Value, len(h.open))
+	var yielded bool
+	for i, it := range h.open {
+		if it.IsUndefined() {
+			results[i] = h.padding[i]
+			continue
+		}
+		h.open[i] = engine.Undefined
+		v, ok := vm.IteratorStepValue(it, h.next[i])
+		if ok {
+			h.open[i] = it
+			results[i] = v
+			yielded = true
+			continue
+		}
+		switch h.mode {
+		case zipShortest:
+			return nil
+		case zipStrict:
+			if i == 0 && h.remainingDone(vm) {
+				return nil
+			}
+			vm.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
+		}
+		results[i] = h.padding[i]
+	}
+	if !yielded {
+		return nil
+	}
+	return results
+}
+
+// remainingDone checks the remaining iterators when the first finishes in strict mode.
+func (h *zipHelper) remainingDone(vm *engine.VM) bool {
+	for i := 1; i < len(h.open); i++ {
+		it := h.open[i]
+		h.open[i] = engine.Undefined
+		if vm.IteratorStep(it, h.next[i]) {
+			h.open[i] = it
+			return false
+		}
+	}
+	return true
+}
+
 func (h *zipHelper) close(vm *engine.VM) {
-	vm.IteratorCloseAll(h.openIters())
+	vm.IteratorCloseAll(h.open)
 }
 
 func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHelper func(helperBody) engine.Value) {
@@ -415,14 +405,14 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 		}
 		return mode, pad
 	}
-	newZip := func(iters []iterRecord, mode zipMode) *zipHelper {
+	newZip := func(open, next []engine.Value, mode zipMode) *zipHelper {
 		h := &zipHelper{
-			iters:  iters,
-			closed: make([]bool, len(iters)),
-			mode:   mode,
+			open: open,
+			next: next,
+			mode: mode,
 		}
 		if mode == zipLongest {
-			h.padding = make([]engine.Value, len(iters))
+			h.padding = make([]engine.Value, len(open))
 		}
 		return h
 	}
@@ -430,35 +420,36 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 	method(vm, ctor, "zip", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		iterables := arg(args, 0)
 		mode, pad := options(vm, iterables, arg(args, 1))
-		var iters []iterRecord
-		var its []engine.Value
 		input, inputNext := vm.GetIterator(iterables)
+		open := []engine.Value{input}
+		var next []engine.Value
 		for {
 			var v engine.Value
 			var ok bool
-			vm.IfAbruptCloseIterators(its, func() {
+			vm.IfAbruptCloseIterators(open[1:], func() {
 				v, ok = vm.IteratorStepValue(input, inputNext)
 			})
 			if !ok {
 				break
 			}
 			var r iterRecord
-			vm.IfAbruptCloseIterators(append([]engine.Value{input}, its...), func() {
+			vm.IfAbruptCloseIterators(open, func() {
 				r = k.getIteratorFlattenable(vm, v, false)
 			})
-			iters = append(iters, r)
-			its = append(its, r.it)
+			open = append(open, r.it)
+			next = append(next, r.next)
 		}
-		h := newZip(iters, mode)
+		open[0] = engine.Undefined
+		h := newZip(open[1:], next, mode)
 		if mode == zipLongest && !pad.IsUndefined() {
 			var padIt, padNext engine.Value
-			vm.IfAbruptCloseIterators(its, func() {
+			vm.IfAbruptCloseIterators(h.open, func() {
 				padIt, padNext = vm.GetIterator(pad)
 			})
 			using := true
 			for i := range h.padding {
 				var v engine.Value
-				vm.IfAbruptCloseIterators(its, func() {
+				vm.IfAbruptCloseIterators(h.open, func() {
 					v, using = vm.IteratorStepValue(padIt, padNext)
 				})
 				if !using {
@@ -467,7 +458,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 				h.padding[i] = v
 			}
 			if using {
-				vm.IfAbruptCloseIterators(its, func() {
+				vm.IfAbruptCloseIterators(h.open, func() {
 					vm.IteratorClose(padIt)
 				})
 			}
@@ -479,13 +470,12 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 		iterables := arg(args, 0)
 		mode, pad := options(vm, iterables, arg(args, 1))
 		o := iterables.Object()
-		var iters []iterRecord
-		var its []engine.Value
+		var open, next []engine.Value
 		var keys []engine.PropKey
 		for _, key := range vm.OwnKeys(o) {
 			var r iterRecord
 			var add bool
-			vm.IfAbruptCloseIterators(its, func() {
+			vm.IfAbruptCloseIterators(open, func() {
 				d, ok := vm.GetOwnProperty(o, key)
 				if !ok || !d.Enumerable() {
 					return
@@ -499,11 +489,11 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 			})
 			if add {
 				keys = append(keys, key)
-				iters = append(iters, r)
-				its = append(its, r.it)
+				open = append(open, r.it)
+				next = append(next, r.next)
 			}
 		}
-		h := newZip(iters, mode)
+		h := newZip(open, next, mode)
 		h.keys = keys
 		if keys == nil {
 			h.keys = []engine.PropKey{}
@@ -511,7 +501,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 		if mode == zipLongest && !pad.IsUndefined() {
 			p := pad.Object()
 			for i, key := range keys {
-				vm.IfAbruptCloseIterators(its, func() {
+				vm.IfAbruptCloseIterators(h.open, func() {
 					h.padding[i] = vm.Get(p, key)
 				})
 			}

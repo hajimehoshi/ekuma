@@ -280,18 +280,9 @@ func (vm *VM) IteratorClose(it Value) {
 }
 
 // IteratorCloseAll implements IteratorCloseAll for a normal completion:
-// it closes the iterators its in reverse order.
+// it closes the iterators its in reverse order, skipping undefined entries.
 func (vm *VM) IteratorCloseAll(its []Value) {
-	for i, it := range slices.Backward(its) {
-		if !vm.protect(func() {
-			vm.iteratorClose(it, false)
-		}) {
-			for j := i - 1; j >= 0; j-- {
-				vm.iteratorClose(its[j], true)
-			}
-			panic(errThrow)
-		}
-	}
+	vm.iteratorCloseAll(its, false)
 }
 
 // IfAbruptCloseIterator implements IfAbruptCloseIterator for what f does: when f throws,
@@ -305,16 +296,31 @@ func (vm *VM) IfAbruptCloseIterator(it Value, f func()) {
 }
 
 // IfAbruptCloseIterators implements IfAbruptCloseIterators for what f does: when f throws,
-// it closes the iterators its in reverse order, ignoring any error of closing, and throws
-// the exception again.
+// it closes the iterators its in reverse order, skipping undefined entries, and rethrows
+// the original exception.
 func (vm *VM) IfAbruptCloseIterators(its []Value, f func()) {
 	if vm.protect(f) {
 		return
 	}
+	vm.iteratorCloseAll(its, true)
+}
+
+func (vm *VM) iteratorCloseAll(its []Value, pending bool) {
 	for _, it := range slices.Backward(its) {
-		vm.iteratorClose(it, true)
+		if it.IsUndefined() {
+			continue
+		}
+		if pending {
+			vm.iteratorClose(it, true)
+		} else {
+			pending = !vm.protect(func() {
+				vm.iteratorClose(it, false)
+			})
+		}
 	}
-	panic(errThrow)
+	if pending {
+		panic(errThrow)
+	}
 }
 
 // closePlainArrayIterator materializes an array iterator at nextIndex if looking up return

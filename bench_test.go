@@ -451,6 +451,29 @@ func BenchmarkGenerator(b *testing.B) {
 	}
 }
 
+// BenchmarkIteratorZip creates a zip iterator and reads its first row.
+func BenchmarkIteratorZip(b *testing.B) {
+	for _, n := range []int{2, 128} {
+		b.Run(fmt.Sprintf("inputs=%d", n), func(b *testing.B) {
+			var vm ekuma.VM
+			ctx := b.Context()
+			fn, err := runScript(ctx, &vm, "zip.js", fmt.Sprintf(`
+				const inputs = Array.from({length: %d}, (_, i) => [i]);
+				() => Iterator.zip(inputs).next().value;
+			`, n))
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			for b.Loop() {
+				if _, err := fn.Invoke(ctx); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 // BenchmarkAsync measures promises and async functions. One iteration is one await of
 // a resolved promise, one call of an async function that awaits once, one step of
 // a for-await loop over an async generator, or one awaited promise combinator of three promises.
