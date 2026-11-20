@@ -29,10 +29,14 @@ func (vm *VM) NewPromise() (Value, *PromiseResolver) {
 // JavaScript. The pending jobs run before Resolve returns, unless it is called from a host
 // callback.
 //
-// When ctx is done, the JavaScript stops at its next loop iteration or call, the pending jobs are
-// discarded, and the error is the cause of ctx. The promise stays pending if it was not settled
-// before the stop, and later calls still have no effect. A call whose ctx is already done only
-// returns the cause. Internal operation failures return an [*InternalError].
+// If ctx is already done, Resolve does not attempt to settle the promise. If ctx stops
+// JavaScript at a loop iteration or call, pending jobs are discarded. An interruption
+// after resolution begins can leave the promise pending even though later calls to the
+// resolver have no effect.
+//
+// If ctx stops an outermost call to Resolve, Resolve returns the cause of ctx. If ctx
+// stops a call from a host callback, the interruption unwinds the callback and the
+// outermost call reports the cause. Internal operation failures return an [*InternalError].
 func (r *PromiseResolver) Resolve(ctx context.Context, v any) error {
 	return r.settle(ctx, v, false)
 }
