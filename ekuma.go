@@ -61,7 +61,7 @@ func (e *ValueError) Error() string {
 
 // SyntaxError reports a failure to parse or compile a script or module.
 type SyntaxError struct {
-	// File is the name of the script.
+	// File is the name of the script or module.
 	File string
 
 	// Line is the 1-based line number of the error.

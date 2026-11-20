@@ -340,7 +340,8 @@ func (v Value) CallWithValueKey(ctx context.Context, key Value, args ...any) (Va
 
 // Invoke calls the function v with undefined as this. The arguments are converted with
 // [VM.ValueOf]. The error is a [*ValueError] when v is not a function, and a [*ScriptError] when it
-// throws.
+// throws. When ctx is done, the call stops at its next loop iteration or call,
+// and the error is the cause of ctx.
 func (v Value) Invoke(ctx context.Context, args ...any) (Value, error) {
 	return v.invoke(ctx, "Value.Invoke", false, args)
 }
