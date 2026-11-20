@@ -37,8 +37,8 @@ jumps back to, to the jump through the table of the first switch: `JMP 0(R10)(DX
 amd64, `JMP (R27)` on arm64. From the repository root:
 
 ```sh
-go test -c -o /tmp/ekuma.test . && \
-  go tool objdump -s 'engine\.\(\*VM\)\.exec$' /tmp/ekuma.test
+GOARCH=amd64 go test -c -o /tmp/ekuma-amd64.test . && \
+  go tool objdump -s 'engine\.\(\*VM\)\.exec$' /tmp/ekuma-amd64.test
 GOARCH=arm64 go test -c -o /tmp/ekuma-arm64.test . && \
   go tool objdump -s 'engine\.\(\*VM\)\.exec$' /tmp/ekuma-arm64.test
 ```

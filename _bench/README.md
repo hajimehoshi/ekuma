@@ -50,10 +50,12 @@ sums.
 
 ## Method
 
-- Each run of a benchmark on an engine is a process of its own, which `go test -bench` times for
-  1 second for the V8 suite and 200 milliseconds for microbench.js. Parsing and setting up are
-  not timed, and the instance of the engine is kept while `go test` raises the number of
-  iterations, so a JIT warms up.
+- Each benchmark runs in its own process for each engine, with a target duration of 1 second
+  for the V8 suite and 200 milliseconds for microbench.js. The harness loads the benchmark
+  programs and creates the VM. Timing starts after the VM parses the programs and runs their setup.
+  Once per timed batch, the harness formats a short script with the iteration count (`b.N`).
+  The engine parses and evaluates that script to run all `b.N` iterations. The same VM is
+  reused as `go test` increases `b.N`, so a JIT can warm up.
 - A round runs each benchmark once on every engine, in an order that rotates with the round and
   the benchmark. The V8 suite runs 5 rounds, and microbench.js 3.
 - The tables give the median over the rounds of the time relative to Ekuma's in the same round

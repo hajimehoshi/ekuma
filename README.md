@@ -252,6 +252,10 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ### Notes on behavior
 
+- `Date` truncates UTC offsets to whole minutes when calculating local time. At
+  `1890-01-01T00:00:00Z` in `Europe/Paris`, `Date` uses `+00:09` for the historical
+  offset of `+00:09:21`, so `getSeconds()` returns `0`. `Temporal.ZonedDateTime` uses
+  the full offset supplied by the platform for a named time zone, giving `21` seconds here
 - Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar. Named time zones require
   the system's time zone database, or one in the directory that `ZONEINFO` names
 - Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
@@ -297,7 +301,9 @@ go test ./...
 The test262 run is skipped unless a checkout of the suite is found in `ekuma/test262`
 under the user cache directory, or in the directory specified by `EKUMA_TEST262`.
 The flags `-test262.filter`, `-test262.dir` and `-test262.shuffle` of the root package select and
-order its tests, and `-test262.report` writes the failing tests with their reasons to a file.
+order its tests. `-test262.report FILE` writes one line per unexpected failure to `FILE`, with
+the test path and reason separated by a tab. The runner separately checks that selected tests
+in the [skip list](testdata/test262-skips.txt) still fail.
 
 Local JavaScript regression tests in [`testdata/scripts`](testdata/scripts) use the
 same runner as Test262 with an original 0BSD harness. The scripts and harness are read

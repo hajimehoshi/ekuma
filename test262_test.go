@@ -28,7 +28,7 @@ import (
 
 var (
 	flagTest262Filter  = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
-	flagTest262Report  = flag.String("test262.report", "", "write every failing test262 test with its reason to this file")
+	flagTest262Report  = flag.String("test262.report", "", "write the path and reason for each unexpected test262 failure to this file")
 	flagTest262Shuffle = flag.String("test262.shuffle", "off", "run the test262 tests in random order: off, on, or a seed; a replay is exact only with GOMAXPROCS=1")
 	flagTest262Dir     = flag.String("test262.dir", "", "only run the test262 tests in this directory of the suite")
 )
@@ -647,7 +647,7 @@ func test262ShuffleSeed(value string) (seed int64, ok bool, err error) {
 	return seed, true, nil
 }
 
-// TestTest262 runs the ECMAScript conformance suite. Every test must pass.
+// TestTest262 runs the ECMAScript conformance suite and checks its failures against the skip list.
 func TestTest262(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test262 in short mode")
@@ -778,7 +778,7 @@ func TestTest262(t *testing.T) {
 	if len(skipped) > 0 {
 		t.Logf("test262: %d tests skipped, as %s lists", len(skipped), skippedTestsFile)
 	}
-	// A skipped test still runs, so that the list loses a test that passes again.
+	// Run the selected tests on the skip list separately to flag any that now pass.
 	for _, p := range skipped {
 		if r, _ := runTest(h, filepath.Join(dir, filepath.FromSlash(p)), testTimeout); r == "" {
 			t.Errorf("%s passes now: remove it from %s", p, skippedTestsFile)
