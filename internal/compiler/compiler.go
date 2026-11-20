@@ -233,6 +233,16 @@ type fn struct {
 	control   []*ctl
 	withDepth int
 
+	// Until a function has more than maxScanned keys, the first numScannedKeys elements of
+	// scannedKeys are the indices of its keys, and keys is empty. keysMapped is set once keys
+	// holds them all. The constants and their maps go the same way.
+	scannedKeys      [maxScanned]int32
+	numScannedKeys   int
+	keysMapped       bool
+	scannedConsts    [maxScanned]int32
+	numScannedConsts int
+	constsMapped     bool
+
 	// outerWiths is the number of with statements and dynamic scopes of eval code around f,
 	// outside its own code, which stays the same while f is compiled.
 	outerWiths int
@@ -939,40 +949,107 @@ func (f *fn) constStr(s string) int32 {
 	})
 }
 
+// maxScanned is the number of keys, and of constants, that a function finds by a scan before
+// maps take over.
+const maxScanned = 16
+
+// constant returns the index of a constant with the value of c, which is a number, a string or
+// a BigInt.
 func (f *fn) constant(c bytecode.Const) int32 {
-	var m map[string]int32
-	var k string
-	switch c.Kind {
-	case bytecode.ConstNumber:
-		// NaN is not equal to itself, and -0 equals 0: neither is worth sharing through the map.
-		if c.Num != c.Num || c.Num == 0 {
-			f.f.Consts = append(f.f.Consts, c)
-			return int32(len(f.f.Consts) - 1)
-		}
-		bits := math.Float64bits(c.Num)
-		if i, ok := f.numConsts[bits]; ok {
-			return i
+	// NaN is not equal to itself, and -0 equals 0: neither is worth sharing.
+	if c.Kind == bytecode.ConstNumber && (c.Num != c.Num || c.Num == 0) {
+		f.f.Consts = append(f.f.Consts, c)
+		return int32(len(f.f.Consts) - 1)
+	}
+	if !f.constsMapped {
+		for _, i := range f.scannedConsts[:f.numScannedConsts] {
+			if sameConst(f.f.Consts[i], c) {
+				return i
+			}
 		}
 		i := int32(len(f.f.Consts))
 		f.f.Consts = append(f.f.Consts, c)
-		f.numConsts[bits] = i
+		if f.numScannedConsts < maxScanned {
+			f.scannedConsts[f.numScannedConsts] = i
+			f.numScannedConsts++
+			return i
+		}
+		for _, j := range f.scannedConsts {
+			f.mapConst(f.f.Consts[j], j)
+		}
+		f.mapConst(c, i)
+		f.constsMapped = true
 		return i
-	case bytecode.ConstString:
-		m, k = f.strConsts, c.Str
-	default:
-		m, k = f.bigConsts, c.Str
 	}
-	if i, ok := m[k]; ok {
+	if i, ok := f.mappedConst(c); ok {
 		return i
 	}
 	i := int32(len(f.f.Consts))
 	f.f.Consts = append(f.f.Consts, c)
-	m[k] = i
+	f.mapConst(c, i)
 	return i
+}
+
+// sameConst reports whether the constants a and b, which are numbers, strings or BigInts, can
+// share an index.
+func sameConst(a, b bytecode.Const) bool {
+	if a.Kind != b.Kind {
+		return false
+	}
+	if a.Kind == bytecode.ConstNumber {
+		return math.Float64bits(a.Num) == math.Float64bits(b.Num)
+	}
+	return a.Str == b.Str
+}
+
+// mappedConst returns the index of the constant c in the constant maps, if they have it.
+func (f *fn) mappedConst(c bytecode.Const) (int32, bool) {
+	var i int32
+	var ok bool
+	switch c.Kind {
+	case bytecode.ConstNumber:
+		i, ok = f.numConsts[math.Float64bits(c.Num)]
+	case bytecode.ConstString:
+		i, ok = f.strConsts[c.Str]
+	default:
+		i, ok = f.bigConsts[c.Str]
+	}
+	return i, ok
+}
+
+// mapConst records in the constant maps that the constant c is at index i.
+func (f *fn) mapConst(c bytecode.Const, i int32) {
+	switch c.Kind {
+	case bytecode.ConstNumber:
+		f.numConsts[math.Float64bits(c.Num)] = i
+	case bytecode.ConstString:
+		f.strConsts[c.Str] = i
+	default:
+		f.bigConsts[c.Str] = i
+	}
 }
 
 // key returns the index of the property or variable name s.
 func (f *fn) key(s string) int32 {
+	if !f.keysMapped {
+		for _, i := range f.scannedKeys[:f.numScannedKeys] {
+			if f.f.Keys[i] == s {
+				return i
+			}
+		}
+		i := f.site(s)
+		if f.numScannedKeys < maxScanned {
+			f.scannedKeys[f.numScannedKeys] = i
+			f.numScannedKeys++
+			return i
+		}
+		for _, j := range f.scannedKeys {
+			f.keys[f.f.Keys[j]] = j
+		}
+		f.keys[s] = i
+		f.keysMapped = true
+		return i
+	}
 	if i, ok := f.keys[s]; ok {
 		return i
 	}
