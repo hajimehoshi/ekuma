@@ -1198,18 +1198,24 @@ func relIndex(f float64, n int64) int64 {
 
 // sortValues sorts vals with the comparison function cmp, or as strings when cmp is undefined.
 func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
+	if len(vals) < 2 {
+		return
+	}
 	if cmp.IsUndefined() {
-		allNumbersOrStrings := true
-		for _, v := range vals {
-			if !v.IsString() {
-				allNumbersOrStrings = false
-				break
+		allStrings := true
+		for i, v := range vals {
+			vm.PollAt(int64(i))
+			if v.IsObject() || v.IsSymbol() {
+				// Object conversion can run code and symbol conversion throws.
+				mergeSortPolled(vm, vals, func(a, b engine.Value) int {
+					return wtf8.Compare(vm.ToString(a), vm.ToString(b))
+				})
+				return
 			}
+			allStrings = allStrings && v.IsString()
 		}
-		if allNumbersOrStrings {
-			sortPolled(vm, vals, sortRunLength, func(s []engine.Value) {
-				mergeSort(s, compareStringValues)
-			}, compareStringValues)
+		if allStrings {
+			mergeSortPolled(vm, vals, compareStringValues)
 			return
 		}
 		keyed := make([]keyedValue, len(vals))
@@ -1219,9 +1225,7 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 			}
 			keyValues(vm, keyed[i:], vals[i:min(i+engine.PollInterval, len(vals))])
 		}
-		sortPolled(vm, keyed, sortRunLength, func(s []keyedValue) {
-			mergeSort(s, compareKeyedValues)
-		}, compareKeyedValues)
+		mergeSortPolled(vm, keyed, compareKeyedValues)
 		for i := range vals {
 			vals[i] = keyed[i].v
 		}
@@ -1233,6 +1237,12 @@ func sortValues(vm *engine.VM, vals []engine.Value, cmp engine.Value) {
 		}
 		return 0
 	})
+}
+
+func mergeSortPolled[E any](vm *engine.VM, s []E, compare func(a, b E) int) {
+	sortPolled(vm, s, sortRunLength, func(run []E) {
+		mergeSort(run, compare)
+	}, compare)
 }
 
 // insertionSortLength is the length up to which mergeSort sorts by insertion.
