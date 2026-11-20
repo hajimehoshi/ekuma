@@ -10,6 +10,14 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
+func TestToLowerASCII(t *testing.T) {
+	const s = "ÉA\xed\xa0\x80Z\xff"
+	const want = "Éa\xed\xa0\x80z\xff"
+	if got := xstrings.ToLowerASCII(s); got != want {
+		t.Errorf("ToLowerASCII(%q) = %q, want %q", s, got, want)
+	}
+}
+
 func TestToLowerCasePollsFinalSigmaContext(t *testing.T) {
 	marks := strings.Repeat("́", 1<<16)
 	for _, tc := range []struct {
