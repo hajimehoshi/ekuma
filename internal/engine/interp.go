@@ -363,13 +363,17 @@ func (vm *VM) throwReturnError(stop, n, pc int, kind ErrorKind, msg string) {
 	vm.Throw(Value{o: e})
 }
 
-// arguments returns the arguments of the frame fr as a fresh slice.
-func (vm *VM) frameArgs(fr *frame, regs []Value) []Value {
+// restArray returns the arguments of fr starting at index start as a fresh array.
+func (vm *VM) restArray(fr *frame, regs []Value, start int) *Object {
 	n := min(fr.argc, fr.fp.nparams)
-	args := make([]Value, 0, fr.argc)
-	args = append(args, regs[:n]...)
-	args = append(args, vm.extraArgs(fr)...)
-	return args
+	extra := vm.extraArgs(fr)
+	if start >= n {
+		return vm.NewArrayCopy(extra[start-n:])
+	}
+	args := make([]Value, 0, fr.argc-start)
+	args = append(args, regs[start:n]...)
+	args = append(args, extra...)
+	return vm.NewArray(args)
 }
 
 // exec is the interpreter loop. See run.
@@ -1196,12 +1200,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Value{o: vm.newArguments(cur, slices.Clip(regs), i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &vm.frames[len(vm.frames)-1]
-			var rest []Value
+			var rest *Object
 			if int(i.B) < cur.argc {
-				all := vm.frameArgs(cur, slices.Clip(regs))
-				rest = all[i.B:]
+				rest = vm.restArray(cur, slices.Clip(regs), int(i.B))
+			} else {
+				rest = vm.NewArray(nil)
 			}
-			regs[i.A] = Value{o: vm.NewArray(rest)}
+			regs[i.A] = Value{o: rest}
 
 		case bytecode.OpGetMethod:
 			// The this value is in place before a getter runs.
