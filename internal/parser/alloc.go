@@ -89,7 +89,7 @@ func (s *listStack[T]) take(mark int) []T {
 	items := s.items[mark:]
 	list := s.alloc(len(items))
 	copy(list, items)
-	clear(items)
+	// The items from mark on stay in the storage, which goes away with the parser.
 	s.items = s.items[:mark]
 	return list
 }
