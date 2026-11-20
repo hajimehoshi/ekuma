@@ -1610,6 +1610,10 @@ func (f *fn) taggedTemplate(n *ast.TaggedTemplate, dst int32) {
 }
 
 func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
+	// Constants read no register, so dst can receive the array right away.
+	if f.constArray(n, dst) {
+		return
+	}
 	mark := f.top
 	defer f.free(mark)
 	arr := f.newReg()
@@ -1619,6 +1623,9 @@ func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
 
 // arrayLitIn builds the array of n in the register arr.
 func (f *fn) arrayLitIn(n *ast.ArrayLit, arr int32) {
+	if f.constArray(n, arr) {
+		return
+	}
 	mark := f.top
 	defer f.free(mark)
 	room := int32(len(n.Elements))
@@ -1641,6 +1648,64 @@ func (f *fn) arrayLitIn(n *ast.ArrayLit, arr int32) {
 		}
 		f.free(m)
 	}
+}
+
+// constArray builds the array of n in the register dst from a run of constants, and reports
+// whether it did, which it does when there is at least one element and [fn.literalConst] knows
+// the value of each. Otherwise it leaves the constants unchanged.
+func (f *fn) constArray(n *ast.ArrayLit, dst int32) bool {
+	if len(n.Elements) == 0 {
+		return false
+	}
+	start := len(f.f.Consts)
+	for _, e := range n.Elements {
+		f.c.step()
+		c, ok := f.literalConst(e)
+		if !ok {
+			clear(f.f.Consts[start:])
+			f.f.Consts = f.f.Consts[:start]
+			return false
+		}
+		f.f.Consts = append(f.f.Consts, c)
+	}
+	f.emit(bytecode.OpNewArrayK, dst, int32(start), int32(len(n.Elements)))
+	return true
+}
+
+// literalConst returns the value of e when it is a primitive value that the compiler knows.
+func (f *fn) literalConst(e ast.Expr) (bytecode.Const, bool) {
+	if n, ok := numberLit(e); ok {
+		return bytecode.Const{
+			Kind: bytecode.ConstNumber,
+			Num:  n,
+		}, true
+	}
+	switch e := e.(type) {
+	case *ast.StringLit:
+		return bytecode.Const{
+			Kind: bytecode.ConstString,
+			Str:  e.Value,
+		}, true
+	case *ast.BigIntLit:
+		return bytecode.Const{
+			Kind: bytecode.ConstBigInt,
+			Str:  e.Value,
+		}, true
+	}
+	if p := f.primLiteral(e); p >= 0 {
+		return bytecode.Const{
+			Kind: primConsts[p],
+		}, true
+	}
+	return bytecode.Const{}, false
+}
+
+// primConsts maps the results of [fn.primLiteral] to the kinds of their constants.
+var primConsts = [...]bytecode.ConstKind{
+	bytecode.PrimUndefined: bytecode.ConstUndefined,
+	bytecode.PrimNull:      bytecode.ConstNull,
+	bytecode.PrimFalse:     bytecode.ConstFalse,
+	bytecode.PrimTrue:      bytecode.ConstTrue,
 }
 
 // keyName returns the name of a property key that is known at compile time.

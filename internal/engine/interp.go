@@ -1994,6 +1994,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			o.shape = vm.shapes.array
 			o.elems = elems[:0]
 			regs[i.A] = Value{o: o}
+		case bytecode.OpNewArrayK:
+			regs[i.A] = Value{o: vm.NewArrayCopy(fp.consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].o
 			o.elems = appendElem(o.elems, regs[i.B])

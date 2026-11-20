@@ -201,6 +201,10 @@ func (d *disassembler) operands(pc int) {
 		if k == OperandUnused && v == 0 {
 			continue
 		}
+		if field == FieldC && ops.B == OperandConstRun {
+			// The run of b shows its length.
+			continue
+		}
 		if len(d.b) > start {
 			d.b = append(d.b, ", "...)
 		}
@@ -209,12 +213,12 @@ func (d *disassembler) operands(pc int) {
 			d.b = append(d.b, '?')
 			continue
 		}
-		d.operand(k, v)
+		d.operand(k, v, in)
 	}
 }
 
-// operand appends the operand v of the kind k.
-func (d *disassembler) operand(k OperandKind, v int32) {
+// operand appends the operand v of the kind k of the instruction in.
+func (d *disassembler) operand(k OperandKind, v int32, in Instr) {
 	f := d.f
 	switch k {
 	case OperandUnused:
@@ -233,6 +237,19 @@ func (d *disassembler) operand(k OperandKind, v int32) {
 			return
 		}
 		d.constant(f.Consts[v], v)
+	case OperandConstRun:
+		if v < 0 || in.C < 0 || int64(v)+int64(in.C) > int64(len(f.Consts)) {
+			d.bad(v)
+			return
+		}
+		d.b = append(d.b, '[')
+		for i := v; i < v+in.C; i++ {
+			if i > v {
+				d.b = append(d.b, ", "...)
+			}
+			d.constant(f.Consts[i], i)
+		}
+		d.b = append(d.b, ']')
 	case OperandKey:
 		if !inRange(v, len(f.Keys)) {
 			d.bad(v)
@@ -376,6 +393,14 @@ func (d *disassembler) reg(v int32) {
 // constant appends the value of the constant c at the index v.
 func (d *disassembler) constant(c Const, v int32) {
 	switch c.Kind {
+	case ConstUndefined:
+		d.b = append(d.b, "undefined"...)
+	case ConstNull:
+		d.b = append(d.b, "null"...)
+	case ConstFalse:
+		d.b = append(d.b, "false"...)
+	case ConstTrue:
+		d.b = append(d.b, "true"...)
 	case ConstNumber:
 		if c.Num == 0 && math.Signbit(c.Num) {
 			d.b = append(d.b, "-0"...)

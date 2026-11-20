@@ -286,6 +286,11 @@ func (v *validator) operand(pc int, k OperandKind, field Field, val int32) error
 		}
 	case OperandConst:
 		return inRange(len(f.Consts), "constants")
+	case OperandConstRun:
+		n := f.Code[pc].C
+		if val < 0 || n < 0 || int64(val)+int64(n) > int64(len(f.Consts)) {
+			return v.errorf(pc, ErrIndex, "%s is the start of %d constants with %d constants", name, n, len(f.Consts))
+		}
 	case OperandKey:
 		return inRange(len(f.Keys), "keys")
 	case OperandSite:

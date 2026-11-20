@@ -241,6 +241,7 @@ const (
 	// Literals.
 	OpNewObject       // a = {}, with room for c properties
 	OpNewArray        // a = [], with room for c elements
+	OpNewArrayK       // a = a new array of the c constants from Consts[b] on
 	OpArrayPush       // append b to the array a
 	OpArrayHole       // append a hole to the array a
 	OpArraySpread     // append the elements of the iterable b to the array a
@@ -453,13 +454,17 @@ type Pos struct {
 type ConstKind uint8
 
 const (
-	ConstNumber ConstKind = iota
+	ConstUndefined ConstKind = iota
+	ConstNull
+	ConstFalse
+	ConstTrue
+	ConstNumber
 	ConstString
 	ConstBigInt
 )
 
 // Const is a constant of a function. Strings are in WTF-8, and a BigInt is its decimal digits in
-// [Const.Str].
+// [Const.Str]. The kinds before [ConstNumber] have no other fields.
 type Const struct {
 	Kind ConstKind
 	Num  float64

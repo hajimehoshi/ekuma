@@ -51,7 +51,34 @@ func TestDisassemble(t *testing.T) {
 				File: "test.js",
 				Code: []bytecode.Instr{
 					{Op: bytecode.OpGetUpval, A: 0, B: 0},
+					{Op: bytecode.OpNewArrayK, A: 1, B: 0, C: 7},
 					{Op: bytecode.OpReturn, A: 0},
+				},
+				Consts: []bytecode.Const{
+					{
+						Kind: bytecode.ConstNumber,
+						Num:  1.5,
+					},
+					{
+						Kind: bytecode.ConstString,
+						Str:  "b",
+					},
+					{
+						Kind: bytecode.ConstBigInt,
+						Str:  "2",
+					},
+					{
+						Kind: bytecode.ConstUndefined,
+					},
+					{
+						Kind: bytecode.ConstNull,
+					},
+					{
+						Kind: bytecode.ConstFalse,
+					},
+					{
+						Kind: bytecode.ConstTrue,
+					},
 				},
 				Upvals: []bytecode.UpvalDesc{
 					{
@@ -60,7 +87,7 @@ func TestDisassemble(t *testing.T) {
 						ByValue: true,
 					},
 				},
-				NumRegs: 1,
+				NumRegs: 2,
 			},
 		},
 		Positions: []bytecode.Pos{
@@ -87,10 +114,11 @@ func TestDisassemble(t *testing.T) {
      7        OpReturnUndef
   handler [1, 5) -> 6, r1, finally, 1 scope
 
-function g [0] (test.js): 1 register, 0 parameters
+function g [0] (test.js): 2 registers, 0 parameters
   upvalue u0 = r1, by value
-     0  OpGetUpval  r0, u0
-     1  OpReturn    r0
+     0  OpGetUpval   r0, u0
+     1  OpNewArrayK  r1, [1.5, "b", 2n, undefined, null, false, true]
+     2  OpReturn     r0
 `
 	var b strings.Builder
 	if err := f.Disassemble(&b); err != nil {

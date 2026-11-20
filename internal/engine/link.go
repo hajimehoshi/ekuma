@@ -146,6 +146,14 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 	}
 	for i, c := range f.Consts {
 		switch c.Kind {
+		case bytecode.ConstUndefined:
+			p.consts[i] = Undefined
+		case bytecode.ConstNull:
+			p.consts[i] = Null
+		case bytecode.ConstFalse:
+			p.consts[i] = False
+		case bytecode.ConstTrue:
+			p.consts[i] = True
 		case bytecode.ConstNumber:
 			p.consts[i] = Number(c.Num)
 		case bytecode.ConstString:

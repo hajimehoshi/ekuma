@@ -23,6 +23,10 @@ const (
 	// OperandConst is an index into [Func.Consts].
 	OperandConst
 
+	// OperandConstRun is an index into [Func.Consts] at which a run of constants starts. It is
+	// the operand b of an instruction whose operand c, an [OperandInt], is the length of the run.
+	OperandConstRun
+
 	// OperandKey is an index into [Func.Keys].
 	OperandKey
 
@@ -1155,6 +1159,15 @@ var opcodes = [...]struct {
 		name: "OpNewArray",
 		operands: Operands{
 			A:      OperandReg,
+			C:      OperandInt,
+			Writes: regA,
+		},
+	},
+	OpNewArrayK: {
+		name: "OpNewArrayK",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandConstRun,
 			C:      OperandInt,
 			Writes: regA,
 		},

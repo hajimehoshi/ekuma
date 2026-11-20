@@ -151,6 +151,19 @@ func TestValidate(t *testing.T) {
 			pc:  0,
 		},
 		{
+			name: "constant run past the constants",
+			breakFunc: func(f *bytecode.Func) {
+				f.Consts = []bytecode.Const{
+					{
+						Kind: bytecode.ConstNull,
+					},
+				}
+				f.Code[0] = bytecode.Instr{Op: bytecode.OpNewArrayK, A: 0, B: 0, C: 2}
+			},
+			err: bytecode.ErrIndex,
+			pc:  0,
+		},
+		{
 			name: "chain without its next read",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[3].B = 0
