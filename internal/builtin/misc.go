@@ -495,12 +495,7 @@ func initMath(vm *engine.VM) {
 	unary("tanh", math.Tanh)
 	unary("trunc", math.Trunc)
 	unary("clz32", func(x float64) float64 {
-		n := numconv.ToUint32(x)
-		c := 0
-		for ; c < 32 && n&(1<<31) == 0; c++ {
-			n <<= 1
-		}
-		return float64(c)
+		return float64(bits.LeadingZeros32(numconv.ToUint32(x)))
 	})
 	method(vm, m, "atan2", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		y := vm.ToNumber(arg(args, 0))
