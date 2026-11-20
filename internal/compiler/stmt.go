@@ -98,7 +98,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				break
 			}
 			if r := f.localReg(id.Name); r >= 0 {
-				if singleWrite(d.Init) {
+				if f.singleWrite(d.Init) {
 					f.named(d.Init, r, id.Name)
 				} else {
 					t := f.newReg()
@@ -131,7 +131,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				f.emit(bytecode.OpLoadUndef, b.reg, 0, 0)
 				b.tdz = false
 				b.initialized = true
-			case singleWrite(d.Init):
+			case f.singleWrite(d.Init):
 				f.named(d.Init, b.reg, id.Name)
 				b.tdz = false
 				b.initialized = true

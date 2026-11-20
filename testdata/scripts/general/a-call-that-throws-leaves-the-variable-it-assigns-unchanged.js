@@ -60,6 +60,33 @@ assert.sameValue((function () {
 
 assert.sameValue((function () {
 	var x = 1;
+	try {
+		x = x > 0 ? thrower() : 2;
+	} catch (e) {
+		return x;
+	}
+})(), 1, "a conditional");
+
+assert.sameValue((function () {
+	var x = 1;
+	try {
+		x = (x++, thrower());
+	} catch (e) {
+		return x;
+	}
+})(), 2, "a sequence");
+
+assert.sameValue((function () {
+	var x = 1, y = 1;
+	try {
+		x = y = thrower();
+	} catch (e) {
+		return [x, y].join();
+	}
+})(), "1,1", "an assignment to another variable");
+
+assert.sameValue((function () {
+	var x = 1;
 	x = eval("x + 1");
 	return x;
 })(), 2, "a direct eval that reads the variable");

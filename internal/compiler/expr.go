@@ -92,7 +92,7 @@ func pure(e ast.Expr) bool {
 
 // singleWrite reports whether compiling e into a register writes that register only
 // after everything e reads was read, so that the register may be one that e reads.
-func singleWrite(e ast.Expr) bool {
+func (f *fn) singleWrite(e ast.Expr) bool {
 	switch e := e.(type) {
 	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.Identifier, *ast.ThisExpr,
 		*ast.BigIntLit, *ast.BinaryExpr, *ast.CallExpr, *ast.NewExpr, *ast.Function, *ast.RegExpLit,
@@ -100,16 +100,35 @@ func singleWrite(e ast.Expr) bool {
 		return true
 	case *ast.MemberExpr:
 		return !e.Optional
+	case *ast.SequenceExpr:
+		// The expressions before the last one are evaluated for their effects only.
+		return f.singleWrite(e.Exprs[len(e.Exprs)-1])
+	case *ast.CondExpr:
+		return f.singleWrite(e.Consequent) && f.singleWrite(e.Alternate)
 	case *ast.AssignExpr:
-		if _, ok := e.Target.(*ast.MemberExpr); !ok {
-			return false
+		switch target := e.Target.(type) {
+		case *ast.MemberExpr:
+			// For simple assignments, require a result held in a temporary register.
+			if e.Op == ast.OpNone {
+				_, identifier := e.Value.(*ast.Identifier)
+				return !identifier
+			}
+			return true
+		case *ast.Identifier:
+			// The assignment writes the local variable, and writes the register only when it
+			// copies the variable to it at the end.
+			if f.assignableReg(target.Name) < 0 {
+				return false
+			}
+			switch e.Op {
+			case ast.OpNone:
+				return true
+			case ast.OpAnd, ast.OpOr, ast.OpCoalesce:
+				return false
+			}
+			return !f.clobbers(target.Name, e.Value)
 		}
-		// For simple assignments, require a result held in a temporary register.
-		if e.Op == ast.OpNone {
-			_, identifier := e.Value.(*ast.Identifier)
-			return !identifier
-		}
-		return true
+		return false
 	case *ast.UnaryExpr:
 		return e.Op != ast.OpDelete
 	}
@@ -142,21 +161,29 @@ func (f *fn) otherCodeAssigns(name string) bool {
 // operand compiles e and returns the register that holds its value until the expressions rest,
 // which are evaluated afterwards, are done.
 func (f *fn) operand(e ast.Expr, rest ...ast.Expr) int32 {
-	if _, ok := e.(*ast.ThisExpr); ok {
+	switch e := e.(type) {
+	case *ast.ThisExpr:
 		// Only super() assigns this, and localReg has no register for the this that
 		// super() initializes.
 		if r := f.localReg("this"); r >= 0 {
 			return r
 		}
-	}
-	if id, ok := e.(*ast.Identifier); ok {
-		if r := f.localReg(id.Name); r >= 0 {
-			if !f.clobbers(id.Name, rest...) {
+	case *ast.Identifier:
+		if r := f.localReg(e.Name); r >= 0 {
+			if !f.clobbers(e.Name, rest...) {
 				return r
 			}
 			t := f.newReg()
 			f.emit(bytecode.OpMove, t, r, 0)
 			return t
+		}
+	case *ast.AssignExpr:
+		// An assignment to a local variable leaves its value in the variable.
+		if id, ok := e.Target.(*ast.Identifier); ok {
+			if r := f.assignableReg(id.Name); r >= 0 && !f.otherCodeAssigns(id.Name) && !f.clobbers(id.Name, rest...) {
+				f.assign(e, -1)
+				return r
+			}
 		}
 	}
 	return f.exprNew(e)
@@ -165,8 +192,35 @@ func (f *fn) operand(e ast.Expr, rest ...ast.Expr) int32 {
 // exprNew compiles e into a newly allocated register and returns it.
 func (f *fn) exprNew(e ast.Expr) int32 {
 	r := f.newReg()
-	f.expr(e, r)
+	// Nothing else reads r before e is done, so a literal can be built in r itself.
+	switch e := e.(type) {
+	case *ast.ArrayLit:
+		f.arrayLitIn(e, r)
+	case *ast.ObjectLit:
+		f.objectLitIn(e, r)
+	case *ast.CondExpr:
+		f.condNew(e, r)
+	default:
+		f.expr(e, r)
+	}
 	return r
+}
+
+// condNew compiles the conditional n into the register dst, which nothing else reads before n is
+// done.
+func (f *fn) condNew(n *ast.CondExpr, dst int32) {
+	if t, ok := n.Test.(*ast.Identifier); ok {
+		// Reading a local variable twice is reading it once, so x ? x : y is x || y. y cannot
+		// read dst, which x is written to first.
+		if c, ok := n.Consequent.(*ast.Identifier); ok && c.Name == t.Name && f.localReg(t.Name) >= 0 {
+			f.expr(n.Test, dst)
+			skip := f.emit(bytecode.OpJumpIf, 0, dst, 0)
+			f.expr(n.Alternate, dst)
+			f.patch(skip)
+			return
+		}
+	}
+	f.expr(n, dst)
 }
 
 // exprAny compiles e and returns the register that holds its value.
@@ -410,8 +464,18 @@ func (f *fn) stringChainParts(e ast.Expr, empty int32) {
 		return
 	}
 	t := f.newReg()
-	f.expr(e, t)
-	f.emit(bytecode.OpAdd, t, empty, t)
+	r := int32(-1)
+	switch e := e.(type) {
+	case *ast.Identifier:
+		r = f.localReg(e.Name)
+	case *ast.ThisExpr:
+		r = f.localReg("this")
+	}
+	if r < 0 {
+		f.expr(e, t)
+		r = t
+	}
+	f.emit(bytecode.OpAdd, t, empty, r)
 }
 
 func (f *fn) logical(n *ast.LogicalExpr, dst int32) {
@@ -736,7 +800,7 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 		f.emit(bytecode.OpMove, dst, old, 0)
 	case *ast.MemberExpr:
 		// The getter and ToNumeric can run code.
-		t := f.assignTargetBefore(arg, nil, false, true)
+		t := f.assignTargetBefore(arg, nil, false, true, true)
 		old := f.newReg()
 		f.loadTarget(t, old)
 		res := f.newReg()
@@ -774,6 +838,9 @@ type memberTarget struct {
 	// key is the register of a computed key or of a private name, and -1 for a named property.
 	key int32
 
+	// keySrc is the register that loadTarget converts into key, or -1 when key holds the key.
+	keySrc int32
+
 	// For a super property: the registers of this and of the home object,
 	// or of the super base when superBase is set.
 	super     bool
@@ -785,17 +852,20 @@ type memberTarget struct {
 // target evaluates the object and the key of the property reference n for a read.
 // The key of a super property is converted by the read.
 func (f *fn) target(n *ast.MemberExpr) memberTarget {
-	return f.targetBefore(n, nil, false, false)
+	return f.targetBefore(n, nil, false, false, false)
 }
 
 // targetBefore is like target for a reference that stays in use while the expressions rest are
 // evaluated. With storeOnly, the reference is only stored to, so a computed key is not converted
 // before the store and may stay in the register of a local variable. opaque reports whether
-// other code, such as a getter, also runs while the reference is in use.
-func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque bool) memberTarget {
+// other code, such as a getter, also runs while the reference is in use. With readNext, loadTarget
+// reads the reference right away, so a computed key may stay in the register of a local variable
+// until then.
+func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque, readNext bool) memberTarget {
 	t := memberTarget{
-		node: n,
-		key:  -1,
+		node:   n,
+		key:    -1,
+		keySrc: -1,
 	}
 	if _, ok := n.Object.(*ast.SuperExpr); ok {
 		t.super = true
@@ -820,15 +890,39 @@ func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque 
 	if n.Computed {
 		t.obj = f.heldOperand(n.Object, opaque, append([]ast.Expr{n.Property}, rest...)...)
 		if storeOnly {
-			t.key = f.operand(n.Property, rest...)
+			// The store reads the key right after rest.
+			t.key = f.immediateOperand(n.Property, rest...)
 			return t
 		}
 		t.key = f.newReg()
+		if readNext {
+			t.keySrc = f.localKey(n.Property)
+			if t.keySrc >= 0 {
+				return t
+			}
+		}
 		f.expr(n.Property, t.key)
 		return t
 	}
 	t.obj = f.heldOperand(n.Object, opaque, rest...)
 	return t
+}
+
+// localKey compiles the key e when its value ends up in the register of a local variable and
+// returns that register, and returns -1 without compiling e otherwise.
+func (f *fn) localKey(e ast.Expr) int32 {
+	switch e := e.(type) {
+	case *ast.Identifier:
+		return f.localReg(e.Name)
+	case *ast.UpdateExpr:
+		if id, ok := e.Arg.(*ast.Identifier); ok && e.Prefix {
+			if r := f.assignableReg(id.Name); r >= 0 {
+				f.expr(e, r)
+				return r
+			}
+		}
+	}
+	return -1
 }
 
 // heldOperand is like operand, and the register also holds the value while other code runs
@@ -860,12 +954,13 @@ func (f *fn) sourceOperand(e ast.Expr, p ast.Pattern) int32 {
 
 // assignTarget evaluates the property reference n for a store, which may follow a read.
 func (f *fn) assignTarget(n *ast.MemberExpr) memberTarget {
-	return f.assignTargetBefore(n, nil, false, false)
+	return f.assignTargetBefore(n, nil, false, false, false)
 }
 
-// assignTargetBefore is like assignTarget, with rest, storeOnly and opaque as for targetBefore.
-func (f *fn) assignTargetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque bool) memberTarget {
-	t := f.targetBefore(n, rest, storeOnly, opaque)
+// assignTargetBefore is like assignTarget, with rest, storeOnly, opaque and readNext as for
+// targetBefore.
+func (f *fn) assignTargetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque, readNext bool) memberTarget {
+	t := f.targetBefore(n, rest, storeOnly, opaque, readNext)
 	if t.super {
 		// The reference holds the super base from its evaluation on.
 		f.emit(bytecode.OpSuperBase, t.home, t.home, 0)
@@ -893,7 +988,11 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
 		// A compound assignment converts the key once, before the read and after the base is checked.
-		f.emit(bytecode.OpToPropertyKey, t.key, t.key, t.obj)
+		src := t.key
+		if t.keySrc >= 0 {
+			src = t.keySrc
+		}
+		f.emit(bytecode.OpToPropertyKey, t.key, src, t.obj)
 		f.emit(bytecode.OpGetIndex, dst, t.obj, t.key)
 	}
 }
@@ -1477,6 +1576,14 @@ func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
 	mark := f.top
 	defer f.free(mark)
 	arr := f.newReg()
+	f.arrayLitIn(n, arr)
+	f.emit(bytecode.OpMove, dst, arr, 0)
+}
+
+// arrayLitIn builds the array of n in the register arr.
+func (f *fn) arrayLitIn(n *ast.ArrayLit, arr int32) {
+	mark := f.top
+	defer f.free(mark)
 	room := int32(len(n.Elements))
 	if room == 0 {
 		// An empty literal usually gets elements pushed onto it.
@@ -1497,7 +1604,6 @@ func (f *fn) arrayLit(n *ast.ArrayLit, dst int32) {
 		}
 		f.free(m)
 	}
-	f.emit(bytecode.OpMove, dst, arr, 0)
 }
 
 // keyName returns the name of a property key that is known at compile time.
@@ -1585,6 +1691,14 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 	mark := f.top
 	defer f.free(mark)
 	obj := f.newReg()
+	f.objectLitIn(n, obj)
+	f.emit(bytecode.OpMove, dst, obj, 0)
+}
+
+// objectLitIn builds the object of n in the register obj.
+func (f *fn) objectLitIn(n *ast.ObjectLit, obj int32) {
+	mark := f.top
+	defer f.free(mark)
 	f.emit(bytecode.OpNewObject, obj, 0, int32(namedProperties(n)))
 	for i := range n.Properties {
 		p := &n.Properties[i]
@@ -1601,11 +1715,11 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 				f.emit(bytecode.OpSetProto, obj, v, 0)
 			case static && !isIndexString(name):
 				var v int32
-				if _, ok := p.Value.(*ast.Identifier); ok {
-					v = f.exprAny(p.Value)
-				} else {
+				if isAnonymousFunction(p.Value) {
 					v = f.newReg()
 					f.named(p.Value, v, name)
+				} else {
+					v = f.exprAny(p.Value)
 				}
 				f.emit(bytecode.OpDefineFieldK, obj, f.site(name), v)
 			default:
@@ -1619,7 +1733,6 @@ func (f *fn) objectLit(n *ast.ObjectLit, dst int32) {
 		}
 		f.free(m)
 	}
-	f.emit(bytecode.OpMove, dst, obj, 0)
 }
 
 // namedProperties returns the number of properties of n that have a name known at compile time.
@@ -1711,7 +1824,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		switch {
 		case n.Op == ast.OpNone:
 			if local >= 0 {
-				if singleWrite(n.Value) {
+				if f.singleWrite(n.Value) {
 					f.named(n.Value, local, inferred)
 				} else {
 					t := f.newReg()
@@ -1785,7 +1898,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 		}
 	case *ast.MemberExpr:
 		// A compound or logical assignment runs the getter after the reference.
-		t := f.assignTargetBefore(target, []ast.Expr{n.Value}, n.Op == ast.OpNone, n.Op != ast.OpNone)
+		t := f.assignTargetBefore(target, []ast.Expr{n.Value}, n.Op == ast.OpNone, n.Op != ast.OpNone, n.Op != ast.OpNone)
 		switch {
 		case n.Op == ast.OpNone:
 			// The result is the value read before the store, which can run code.
