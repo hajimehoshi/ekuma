@@ -4,11 +4,10 @@
 package intl
 
 import (
-	"strings"
-
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/list"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // listFormatData holds the internal slots of an Intl.ListFormat object.
@@ -97,11 +96,20 @@ func (r *realm) initListFormat(vm *engine.VM) {
 		lf := thisListFormat(vm, this, "format")
 		parts := lf.f.Format(stringListFromIterable(vm, arg(args, 0)))
 		var n int
+		var previous string
 		for _, p := range parts {
+			if p.Value == "" {
+				continue
+			}
 			n += len(p.Value)
+			if wtf8.JoinsPair(previous, p.Value) {
+				// Two three-byte surrogates form a four-byte code point.
+				n -= 2
+			}
 			checkStringLength(vm, n)
+			previous = p.Value
 		}
-		var b strings.Builder
+		var b wtf8.StringBuilder
 		b.Grow(n)
 		for _, p := range parts {
 			b.WriteString(p.Value)
