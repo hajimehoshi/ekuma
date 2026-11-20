@@ -578,6 +578,14 @@ func takeBuf[T any](bufs *[][]T) []T {
 // releaseBuf returns a copy of work with no spare capacity, or nil when work is empty, and
 // puts work back into bufs for reuse.
 func releaseBuf[T any](bufs *[][]T, work []T) []T {
+	out := releasePlainBuf(bufs, work)
+	// A free buffer must not keep what its elements point to alive.
+	clear(work)
+	return out
+}
+
+// releasePlainBuf is releaseBuf for elements that hold no pointers.
+func releasePlainBuf[T any](bufs *[][]T, work []T) []T {
 	if cap(work) == 0 {
 		return nil
 	}
@@ -586,7 +594,6 @@ func releaseBuf[T any](bufs *[][]T, work []T) []T {
 		out = make([]T, len(work))
 		copy(out, work)
 	}
-	clear(work)
 	*bufs = append(*bufs, work[:0])
 	return out
 }
@@ -722,8 +729,8 @@ func (c *compiler) newFn(parent *fn, node *ast.Function, name string) *fn {
 func (f *fn) finish() *bytecode.Func {
 	b := f.f
 	sc := f.c.scratch
-	b.Code = releaseBuf(&sc.codeBufs, b.Code)
-	b.Positions = releaseBuf(&sc.posBufs, b.Positions)
+	b.Code = releasePlainBuf(&sc.codeBufs, b.Code)
+	b.Positions = releasePlainBuf(&sc.posBufs, b.Positions)
 	b.Keys = releaseBuf(&sc.keyBufs, b.Keys)
 	b.Consts = releaseBuf(&sc.constBufs, b.Consts)
 
