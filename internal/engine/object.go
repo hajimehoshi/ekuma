@@ -1675,6 +1675,17 @@ type propCache struct {
 	reads  *namedReads
 }
 
+// entry returns the inline entry for s, or nil on a miss.
+func (c *propCache) entry(s *shape) *cacheEntry {
+	if c.shape == s {
+		return &c.cacheEntry
+	}
+	if c.second.shape == s {
+		return &c.second
+	}
+	return nil
+}
+
 // namedReads holds the locations of properties read at a site with several receiver shapes.
 // Its entries do not keep the shapes, their prototypes or their property values alive.
 type namedReads struct {

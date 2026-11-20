@@ -47,6 +47,8 @@ var fastPathCalls = map[string]bool{
 	"uint32":               true,
 	"Number":               true,
 	"Bool":                 true,
+	"site.entry":           true,
+	"this.IsObject":        true,
 	"clearFrameRegs":       true,
 	"setNumber":            true,
 	"numconv.InInt64Range": true,

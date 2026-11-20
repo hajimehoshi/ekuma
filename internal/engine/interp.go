@@ -1001,10 +1001,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					argBase := vm.frames[n-1].base + first
 					end := argBase + max(argc, c.nregs+1)
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
-						// Reuse the available stack and frame storage for a prepared call. This builds
-						// the frame that pushFrame would, without calling it, as nothing in this
-						// switch may call; OpApplyFwd's case in the switch below builds it the same
-						// way, and a change to one of the three belongs in the others.
 						var this Value
 						switch {
 						case i.Op == bytecode.OpCallUndef:
@@ -1012,6 +1008,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						case i.Op != bytecode.OpCallCall || i.C > 0:
 							this = regs[first-1]
 						}
+						if site := c.returnedProperty; site != nil && this.IsObject() {
+							if e := site.entry(this.o.shape); e != nil && e.kind == cacheOwn {
+								regs[i.A] = this.o.slots[e.slot]
+								continue
+							}
+						}
+						// Reuse the available stack and frame storage for a prepared call. This builds
+						// the frame that pushFrame would, without calling it, as nothing in this
+						// switch may call; OpApplyFwd's case in the switch below builds it the same
+						// way, and a change to one of the three belongs in the others.
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
 						clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
@@ -2458,6 +2464,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				if len(vm.frames) >= maxFrames {
 					vm.frames[len(vm.frames)-1].pc = pc
 					vm.ThrowRangeError("maximum call stack size exceeded")
+				}
+				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.realm == vm.curRealm && callThis.IsObject() {
+					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
+						// Preparing the arguments may have grown the stack.
+						regs = vm.reload(regs, vm.frameBase(), fp)
+						regs[ret] = callThis.o.slots[e.slot]
+						continue
+					}
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
 				base := vm.pushFrame(f, callThis, argBase, argc, ret, isNew, newTarget)

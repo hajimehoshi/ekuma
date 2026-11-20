@@ -71,6 +71,9 @@ type funcProto struct {
 	// functions nor class constructors.
 	inlineFrames bool
 
+	// returnedProperty is the cache for x when the function starts with return this.x.
+	returnedProperty *propCache
+
 	// globals holds the inline caches of global variables, which prepare allocates with
 	// caches. It comes after the fields that calls read.
 	globals []globalCache
@@ -227,5 +230,11 @@ func (p *funcProto) prepare() {
 		p.caches = make([]propCache, p.NumCaches)
 		p.globals = make([]globalCache, p.NumGlobalCaches)
 		p.inlineFrames = !p.heapRegs && !p.isClassConstructor
+		if p.inlineFrames && p.thisReg >= 0 && len(p.code) >= 3 {
+			get, ret := p.code[1], p.code[2]
+			if get.Op == bytecode.OpGetProp && get.B == p.thisReg && ret.Op == bytecode.OpReturn && ret.A == get.A {
+				p.returnedProperty = &p.caches[get.C]
+			}
+		}
 	}
 }

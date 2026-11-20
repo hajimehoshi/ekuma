@@ -1161,6 +1161,43 @@ func BenchmarkMethodAfterDelete(b *testing.B) {
 	}
 }
 
+// BenchmarkReturnProperty calls a method or getter that returns a field of its receiver.
+func BenchmarkReturnProperty(b *testing.B) {
+	const setup = `
+		const object = { x: 1, read() { return this.x; }, get value() { return this.x; } };
+		function method(o, n) {
+			let sum = 0;
+			for (let i = 0; i < n; i++) sum += o.read();
+			return sum;
+		}
+		function getter(o, n) {
+			let sum = 0;
+			for (let i = 0; i < n; i++) sum += o.value;
+			return sum;
+		}
+		object;
+	`
+	for _, name := range []string{"method", "getter"} {
+		b.Run(name, func(b *testing.B) {
+			var vm ekuma.VM
+			ctx := b.Context()
+			o, err := runScript(ctx, &vm, "setup", setup)
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			v, err := vm.Global().Call(ctx, name, o, b.N)
+			if err != nil {
+				b.Fatal(err)
+			}
+			if got := v.Int(); got != b.N {
+				b.Errorf("sum: got %d, want %d", got, b.N)
+			}
+		})
+	}
+}
+
 // BenchmarkMegamorphicRead reads an own or inherited property across 20 receiver shapes.
 func BenchmarkMegamorphicRead(b *testing.B) {
 	const setup = `
