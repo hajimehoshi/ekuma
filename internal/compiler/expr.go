@@ -272,15 +272,14 @@ func (f *fn) exprInto(e ast.Expr, dst int32, fresh bool) {
 	case *ast.NullLit:
 		f.emit(bytecode.OpLoadNull, dst, 0, 0)
 	case *ast.Identifier:
-		if e.Name == "undefined" {
-			if r := f.resolve(e.Name); r.kind == refGlobal && f.dynDepth(e.Name) == 0 {
-				// The global undefined cannot be changed.
-				f.emit(bytecode.OpLoadUndef, dst, 0, 0)
-				return
-			}
+		r := f.resolve(e.Name)
+		if e.Name == "undefined" && r.kind == refGlobal && f.dynDepth(e.Name) == 0 {
+			// The global undefined cannot be changed.
+			f.emit(bytecode.OpLoadUndef, dst, 0, 0)
+			return
 		}
-		f.setRefPos(e, e.Name)
-		f.loadVar(e.Name, dst, false)
+		f.setRefPos(e, e.Name, r)
+		f.loadVarRef(e.Name, r, dst, false)
 	case *ast.ThisExpr:
 		f.loadVar("this", dst, false)
 	case *ast.NewTargetExpr:
@@ -793,7 +792,7 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 		}
 		scope := f.resolveName(arg.Name)
 		old := f.newReg()
-		f.loadVarFrom(arg.Name, old, false, scope)
+		f.loadVarFrom(arg.Name, f.resolve(arg.Name), old, false, scope)
 		res := f.newReg()
 		if n.Prefix || dst < 0 {
 			f.emit(op, res, old, 0)
@@ -1337,7 +1336,7 @@ func (f *fn) call(n *ast.CallExpr, dst int32) {
 			}
 			end := f.jump()
 			f.patch(skip)
-			f.loadStatic(c.Name, base, false)
+			f.loadStatic(c.Name, f.resolve(c.Name), base, false)
 			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
 			f.patch(end)
 			f.free(mark)
@@ -1978,7 +1977,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			if t < 0 {
 				t = f.newReg()
 			}
-			f.loadVarFrom(name, t, false, scope)
+			f.loadVarFrom(name, f.resolve(name), t, false, scope)
 			skip := shortCircuit(t)
 			f.named(n.Value, t, inferred)
 			f.storeVarTo(n, name, t, false, scope)
@@ -2003,7 +2002,7 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			}
 			scope := f.resolveName(name)
 			old := f.newReg()
-			f.loadVarFrom(name, old, false, scope)
+			f.loadVarFrom(name, f.resolve(name), old, false, scope)
 			r := f.exprAny(n.Value)
 			t := dst
 			if t < 0 {

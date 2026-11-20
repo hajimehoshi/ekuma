@@ -393,7 +393,7 @@ func (f *fn) decorator(state int32, e ast.Expr) {
 			}
 			end := f.jump()
 			f.patch(skip)
-			f.loadStatic(e.Name, base, false)
+			f.loadStatic(e.Name, f.resolve(e.Name), base, false)
 			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
 			f.patch(end)
 			break

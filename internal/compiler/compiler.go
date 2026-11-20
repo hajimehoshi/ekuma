@@ -901,10 +901,9 @@ func (f *fn) setPos(offset int32) {
 	f.f.Positions = append(f.f.Positions, pos)
 }
 
-// setRefPos records the position of n, a reference to the variable name, when using the
-// reference may throw.
-func (f *fn) setRefPos(n ast.Node, name string) {
-	r := f.resolve(name)
+// setRefPos records the position of n, a reference to the variable name that resolve returned r
+// for, when using the reference may throw.
+func (f *fn) setRefPos(n ast.Node, name string, r ref) {
 	if r.kind == refGlobal || r.needsCheck() || (r.kind == refLocal && r.b.unset) || f.dynDepth(name) > 0 {
 		f.setPos(n.Start())
 	}
@@ -1436,8 +1435,13 @@ func (r ref) needsCheck() bool {
 // loadVar emits the read of the variable name into dst. orUndef makes an unresolvable
 // reference read as undefined.
 func (f *fn) loadVar(name string, dst int32, orUndef bool) {
+	f.loadVarRef(name, f.resolve(name), dst, orUndef)
+}
+
+// loadVarRef is loadVar for the reference r that resolve returned for name.
+func (f *fn) loadVarRef(name string, r ref, dst int32, orUndef bool) {
 	mark := f.top
-	f.loadVarFrom(name, dst, orUndef, f.resolveName(name))
+	f.loadVarFrom(name, r, dst, orUndef, f.resolveName(name))
 	f.free(mark)
 }
 
@@ -1449,8 +1453,9 @@ func (f *fn) getScopedOp() bytecode.Opcode {
 	return bytecode.OpGetScoped
 }
 
-// loadVarFrom is loadVar for the variable whose dynamic scope resolveName put in the register scope.
-func (f *fn) loadVarFrom(name string, dst int32, orUndef bool, scope int32) {
+// loadVarFrom is loadVarRef for the variable whose dynamic scope resolveName put in the register
+// scope.
+func (f *fn) loadVarFrom(name string, r ref, dst int32, orUndef bool, scope int32) {
 	end := -1
 	if scope >= 0 {
 		skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
@@ -1458,15 +1463,15 @@ func (f *fn) loadVarFrom(name string, dst int32, orUndef bool, scope int32) {
 		end = f.jump()
 		f.patch(skip)
 	}
-	f.loadStatic(name, dst, orUndef)
+	f.loadStatic(name, r, dst, orUndef)
 	if end >= 0 {
 		f.patch(end)
 	}
 }
 
-// loadStatic emits the read of the binding of the variable name outside the dynamic scopes into dst.
-func (f *fn) loadStatic(name string, dst int32, orUndef bool) {
-	r := f.resolve(name)
+// loadStatic emits the read of the binding of the variable name, which resolve returned r for,
+// outside the dynamic scopes into dst.
+func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 	switch r.kind {
 	case refLocal:
 		if r.b.unset {
@@ -1512,8 +1517,9 @@ func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 
 // storeVarTo is storeVar for the variable whose dynamic scope resolveName put in the register scope.
 func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int32) {
+	r := f.resolve(name)
 	if !init {
-		f.setRefPos(n, name)
+		f.setRefPos(n, name, r)
 	}
 	end := -1
 	if scope >= 0 {
@@ -1526,16 +1532,15 @@ func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int
 		end = f.jump()
 		f.patch(skip)
 	}
-	f.storeStatic(n, name, src, init)
+	f.storeStatic(n, name, r, src, init)
 	if end >= 0 {
 		f.patch(end)
 	}
 }
 
-// storeStatic emits the assignment of the register src to the binding of the variable name
-// outside the dynamic scopes.
-func (f *fn) storeStatic(n ast.Node, name string, src int32, init bool) {
-	r := f.resolve(name)
+// storeStatic emits the assignment of the register src to the binding of the variable name,
+// which resolve returned r for, outside the dynamic scopes.
+func (f *fn) storeStatic(n ast.Node, name string, r ref, src int32, init bool) {
 	if r.b != nil && !init {
 		switch r.b.kind {
 		case bindConst:
