@@ -83,13 +83,13 @@ func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 		code = c
 		name, ok = dn.names.Language(ct.LanguageID, dn.languageDisplay == "dialect")
 	case "region":
-		if !localetag.IsRegionSubtag(strings.ToLower(code)) {
+		if !isASCII(code) || !localetag.IsRegionSubtag(strings.ToLower(code)) {
 			invalid()
 		}
 		code = strings.ToUpper(code)
 		name, ok = dn.names.Region(code)
 	case "script":
-		if !localetag.IsScriptSubtag(strings.ToLower(code)) {
+		if !isASCII(code) || !localetag.IsScriptSubtag(strings.ToLower(code)) {
 			invalid()
 		}
 		code = strings.ToUpper(code[:1]) + strings.ToLower(code[1:])
