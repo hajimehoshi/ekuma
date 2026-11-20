@@ -88,11 +88,12 @@ func initReflect(vm *engine.VM) {
 		return engine.Bool(vm.IsExtensible(target(vm, arg(args, 0), "isExtensible")))
 	})
 	method(vm, r, "ownKeys", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		var out []engine.Value
+		keys := vm.OwnKeys(target(vm, arg(args, 0), "ownKeys"))
+		out := make([]engine.Value, len(keys))
 		var pacer engine.Pacer
-		for _, k := range vm.OwnKeys(target(vm, arg(args, 0), "ownKeys")) {
+		for i, k := range keys {
 			pacer.Step(vm)
-			out = append(out, vm.KeyValue(k))
+			out[i] = vm.KeyValue(k)
 		}
 		return engine.ObjectValue(vm.NewArray(out))
 	})
