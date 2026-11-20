@@ -128,6 +128,19 @@ func TestBuilderSnapshot(t *testing.T) {
 	}
 }
 
+func TestBuilderWriteString(t *testing.T) {
+	for _, a := range samples {
+		for _, s := range samples {
+			var b wtf8.Builder
+			b.WriteString(wtf8.FromUTF16(a))
+			b.WriteString(wtf8.FromUTF16(s))
+			if got, want := b.String(), wtf8.FromUTF16(slices.Concat(a, s)); got != want {
+				t.Errorf("WriteString(%x) after %x = %x, want %x", s, a, got, want)
+			}
+		}
+	}
+}
+
 func TestWriteRepeated(t *testing.T) {
 	for _, a := range samples {
 		for _, s := range samples {

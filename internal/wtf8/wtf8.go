@@ -87,6 +87,11 @@ func IsLowSurrogate(r rune) bool {
 	return r >= lowSurrogateMin && r <= surrogateMax
 }
 
+// decodeSurrogate returns the surrogate encoded as 0xED followed by b1 and b2.
+func decodeSurrogate(b1, b2 byte) rune {
+	return 0xD000 | rune(b1&0x3F)<<6 | rune(b2&0x3F)
+}
+
 // DecodeRune returns the first code point of s and its size in bytes.
 // The code point is a surrogate when s starts with a lone surrogate.
 func DecodeRune(s String) (rune, int) {
@@ -98,7 +103,7 @@ func DecodeRune(s String) (rune, int) {
 		return rune(b), 1
 	}
 	if b == 0xED && len(s) >= 3 && s[1] >= 0xA0 {
-		return 0xD000 | rune(s[1]&0x3F)<<6 | rune(s[2]&0x3F), 3
+		return decodeSurrogate(s[1], s[2]), 3
 	}
 	return utf8.DecodeRuneInString(string(s))
 }
@@ -113,7 +118,7 @@ func DecodeLastRune(s String) (rune, int) {
 		return rune(s[n-1]), 1
 	}
 	if n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 {
-		return 0xD000 | rune(s[n-2]&0x3F)<<6 | rune(s[n-1]&0x3F), 3
+		return decodeSurrogate(s[n-2], s[n-1]), 3
 	}
 	return utf8.DecodeLastRuneInString(string(s))
 }
@@ -284,13 +289,13 @@ func Slice(s String, a, b Pos) String {
 }
 
 // endsWithHigh reports whether s ends with a lone high surrogate.
-func endsWithHigh(s String) bool {
+func endsWithHigh[S ~string | ~[]byte](s S) bool {
 	n := len(s)
 	return n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 && s[n-2] < 0xB0
 }
 
 // startsWithLow reports whether s starts with a lone low surrogate.
-func startsWithLow(s String) bool {
+func startsWithLow[S ~string | ~[]byte](s S) bool {
 	return len(s) >= 3 && s[0] == 0xED && s[1] >= 0xB0
 }
 
@@ -309,8 +314,8 @@ func Concat(a, b String) String {
 	if !JoinsPair(a, b) {
 		return a + b
 	}
-	hi, _ := DecodeLastRune(a)
-	lo, _ := DecodeRune(b)
+	hi := decodeSurrogate(a[len(a)-2], a[len(a)-1])
+	lo := decodeSurrogate(b[1], b[2])
 	buf := make([]byte, 0, len(a)+len(b)-2)
 	buf = append(buf, a[:len(a)-3]...)
 	buf = utf8.AppendRune(buf, combine(hi, lo))
@@ -438,11 +443,17 @@ func (b *Buffer) Reset() {
 }
 
 func (b *Buffer) endsWithHigh() (rune, bool) {
-	n := len(b.buf)
-	if n >= 3 && b.buf[n-3] == 0xED && b.buf[n-2] >= 0xA0 && b.buf[n-2] < 0xB0 {
-		return 0xD000 | rune(b.buf[n-2]&0x3F)<<6 | rune(b.buf[n-1]&0x3F), true
+	if endsWithHigh(b.buf) {
+		return decodeSurrogate(b.buf[len(b.buf)-2], b.buf[len(b.buf)-1]), true
 	}
 	return 0, false
+}
+
+// completePair replaces the lone high surrogate hi that ends the buffer with the pair of hi and lo.
+func (b *Buffer) completePair(hi, lo rune) {
+	r := combine(hi, lo)
+	b.buf = append(b.buf[:len(b.buf)-3],
+		0xF0|byte(r>>18), 0x80|byte(r>>12)&0x3F, 0x80|byte(r>>6)&0x3F, 0x80|byte(r)&0x3F)
 }
 
 // WriteByte appends the ASCII character c.
@@ -455,7 +466,7 @@ func (b *Buffer) WriteByte(c byte) error {
 func (b *Buffer) WriteRune(r rune) {
 	if IsLowSurrogate(r) {
 		if hi, ok := b.endsWithHigh(); ok {
-			b.buf = utf8.AppendRune(b.buf[:len(b.buf)-3], combine(hi, r))
+			b.completePair(hi, r)
 			return
 		}
 	}
@@ -475,8 +486,8 @@ func (b *Buffer) WriteUnit(u uint16) {
 func (b *Buffer) WriteString(s String) {
 	if startsWithLow(s) {
 		if hi, ok := b.endsWithHigh(); ok {
-			lo, _ := DecodeRune(s)
-			b.buf = utf8.AppendRune(b.buf[:len(b.buf)-3], combine(hi, lo))
+			lo := decodeSurrogate(s[1], s[2])
+			b.completePair(hi, lo)
 			s = s[3:]
 		}
 	}
@@ -485,10 +496,10 @@ func (b *Buffer) WriteString(s String) {
 
 // WriteStringBytes appends a JavaScript string encoded in WTF-8.
 func (b *Buffer) WriteStringBytes(s []byte) {
-	if len(s) >= 3 && s[0] == 0xED && s[1] >= 0xB0 {
+	if startsWithLow(s) {
 		if hi, ok := b.endsWithHigh(); ok {
-			lo := 0xD000 | rune(s[1]&0x3F)<<6 | rune(s[2]&0x3F)
-			b.buf = utf8.AppendRune(b.buf[:len(b.buf)-3], combine(hi, lo))
+			lo := decodeSurrogate(s[1], s[2])
+			b.completePair(hi, lo)
 			s = s[3:]
 		}
 	}
@@ -566,7 +577,7 @@ func (b *Builder) WriteRune(r rune) {
 		return
 	}
 	b.flushHigh()
-	if r >= 0xD800 && r < 0xDC00 {
+	if IsHighSurrogate(r) {
 		b.high, b.hasHigh = r, true
 		return
 	}
@@ -581,7 +592,7 @@ func (b *Builder) WriteString(s String) {
 	}
 	if b.hasHigh {
 		if startsWithLow(s) {
-			lo, _ := DecodeRune(s)
+			lo := decodeSurrogate(s[1], s[2])
 			b.hasHigh = false
 			b.sb.WriteRune(combine(b.high, lo))
 			s = s[3:]
@@ -589,9 +600,10 @@ func (b *Builder) WriteString(s String) {
 			b.flushHigh()
 		}
 	}
-	if n := len(s); n >= 3 && s[n-3] == 0xED && s[n-2] >= 0xA0 && s[n-2] < 0xB0 {
+	if endsWithHigh(s) {
+		n := len(s)
 		b.sb.WriteString(string(s[:n-3]))
-		b.high = 0xD000 | rune(s[n-2]&0x3F)<<6 | rune(s[n-1]&0x3F)
+		b.high = decodeSurrogate(s[n-2], s[n-1])
 		b.hasHigh = true
 		return
 	}
