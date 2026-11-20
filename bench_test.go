@@ -315,6 +315,26 @@ func BenchmarkEval(b *testing.B) {
 	}
 }
 
+// BenchmarkClosureCreation times one evaluation of a function expression with no captured variables.
+func BenchmarkClosureCreation(b *testing.B) {
+	var vm ekuma.VM
+	f, err := runScript(b.Context(), &vm, "closures", `
+		(function (n) {
+			var f;
+			for (var i = 0; i < n; i++) f = function (child) { return child; };
+			return f;
+		})
+	`)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	if _, err := f.Invoke(b.Context(), b.N); err != nil {
+		b.Fatal(err)
+	}
+}
+
 // BenchmarkOpenUpvalues measures creating a reader closure for the middle of a set of open upvalues.
 func BenchmarkOpenUpvalues(b *testing.B) {
 	for _, kind := range []string{"ordinary", "generator"} {

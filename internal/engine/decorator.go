@@ -248,7 +248,7 @@ func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 		}
 	}
 	if fields != nil {
-		f.fn.fields = &fields
+		f.ownFunction().fields = &fields
 	}
 
 	// InitializePrivateMethods(F, staticElements).

@@ -1127,12 +1127,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpClosure:
 			p := fp.protos[i.B]
-			o, copies := newClosureObject(len(p.Upvals), p.ncopied)
+			o, copies := newClosure(p)
 			fn := o.fn
-			fn.code = p
-			fn.constructor = p.isConstructor
-			fn.classConstructor = p.isClassConstructor
-			fn.derived = p.isDerived
 			o.kind = kindFunction
 			o.class = classFunction
 			o.flags = objExotic
@@ -2084,7 +2080,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setFuncName(regs[i.A], regs[i.B], int(i.C))
 		case bytecode.OpSetHome:
-			regs[i.A].o.fn.home = regs[i.B].o
+			regs[i.A].o.ownFunction().home = regs[i.B].o
 		case bytecode.OpCopyProps:
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.copyDataProperties(regs[i.A].o, regs[i.B], nil)
@@ -2336,7 +2332,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			regs[i.A] = Bool(vm.deleteName(fp.keys[i.B]))
 		case bytecode.OpCaptureScopes:
-			regs[i.A].o.fn.scopes = vm.openScopes(vm.frames[len(vm.frames)-1].cl)
+			regs[i.A].o.ownFunction().scopes = vm.openScopes(vm.frames[len(vm.frames)-1].cl)
 		case bytecode.OpEvalScope:
 			vm.pushEvalScope()
 		case bytecode.OpScopeThis:

@@ -127,7 +127,7 @@ type Object struct {
 	// Primitive values have no property storage.
 	*objectProperties
 
-	// fn is set for a callable object.
+	// fn is set for a callable object. A closure must call ownFunction before changing its state.
 	fn *function
 
 	// str is the content of a string or the description of a symbol.
@@ -834,6 +834,38 @@ type closureObjectWith[U, C any] struct {
 	// copies comes first so that an empty C adds no padding at the end.
 	copies C
 	upvals U
+}
+
+// newClosure returns a fresh function object and the storage for its copied upvalues.
+func newClosure(p *funcProto) (*Object, []upvalue) {
+	if len(p.Upvals) == 0 && !p.IsMethod && !p.isClassConstructor {
+		if p.plainFunction == nil {
+			p.plainFunction = &function{
+				code:        p,
+				constructor: p.isConstructor,
+				shared:      true,
+			}
+		}
+		return (&propertyObject{
+			fn: p.plainFunction,
+		}).init(), nil
+	}
+	o, copies := newClosureObject(len(p.Upvals), p.ncopied)
+	o.fn.code = p
+	o.fn.constructor = p.isConstructor
+	o.fn.classConstructor = p.isClassConstructor
+	o.fn.derived = p.isDerived
+	return o, copies
+}
+
+// ownFunction gives o its own function state before an instance-specific change.
+func (o *Object) ownFunction() *function {
+	if o.fn.shared {
+		f := *o.fn
+		f.shared = false
+		o.fn = &f
+	}
+	return o.fn
 }
 
 // newClosureObject returns a zero object whose function state has n nil upvalues, and

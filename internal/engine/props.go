@@ -271,10 +271,10 @@ func dataDesc(v Value, flags uint8) PropDesc {
 // materialize creates the properties that a function has from the start but that are only
 // stored once something looks at them.
 func (vm *VM) materialize(o *Object) {
-	f := o.fn
-	if f.materialized {
+	if o.fn.materialized {
 		return
 	}
+	f := o.ownFunction()
 	f.materialized = true
 	o.flags &^= objExotic
 	if c := f.code; c != nil {

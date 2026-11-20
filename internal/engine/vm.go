@@ -44,6 +44,9 @@ type function struct {
 	// there are none.
 	fields *[]classElement
 
+	// shared marks the initial state shared by closures of the same function.
+	shared bool
+
 	// materialized is set once the initial properties, such as length and name, exist as slots.
 	materialized bool
 

@@ -74,6 +74,9 @@ type funcProto struct {
 	// globals holds the inline caches of global variables, which prepare allocates with
 	// caches. It comes after the fields that calls read.
 	globals []globalCache
+
+	// plainFunction is the initial state of ordinary closures without upvalues.
+	plainFunction *function
 }
 
 type templateSite struct {

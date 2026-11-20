@@ -746,7 +746,7 @@ func (vm *VM) addClassElement(ctor *Object, key Value, v Value, kind int) {
 		return
 	}
 	if ctor.fn.fields == nil {
-		ctor.fn.fields = &[]classElement{}
+		ctor.ownFunction().fields = &[]classElement{}
 	}
 	*ctor.fn.fields = append(*ctor.fn.fields, e)
 }
@@ -867,13 +867,13 @@ func (vm *VM) definePublicField(o *Object, k, val Value, c *propCache) {
 
 // defineMethod defines the method f under the key k of o.
 func (vm *VM) defineMethod(o *Object, k, f Value) {
-	f.o.fn.home = o
+	f.o.ownFunction().home = o
 	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), dataDesc(f, FlagsHidden))
 }
 
 // defineAccessor defines the getter or setter f under the key k of o.
 func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
-	f.fn.home = o
+	f.ownFunction().home = o
 	d := PropDesc{
 		flags: FlagConfigurable,
 		has:   HasEnumerable | HasConfigurable,
@@ -1079,7 +1079,7 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 		}
 	}
 	proto := vm.NewObject(protoParent)
-	fn := ctor.fn
+	fn := ctor.ownFunction()
 	fn.materialized = true
 	fn.home = proto
 	ctor.flags &^= objExotic
