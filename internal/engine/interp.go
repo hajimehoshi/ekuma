@@ -384,9 +384,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		}
 	}()
 
+	// The closure of the running function is read from its frame where it is needed, so that
+	// the loop does not carry it from one instruction to the next.
 	fr := &vm.frames[len(vm.frames)-1]
 	fp := fr.fp
-	cl := fr.cl
 	pc := fr.pc
 	if fp.realm != vm.curRealm {
 		vm.switchRealm(fp.realm)
@@ -457,10 +458,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		case bytecode.OpGetUpval:
-			regs[i.A] = *cl.fn.upvals[i.B].p
+			regs[i.A] = *vm.frames[len(vm.frames)-1].cl.fn.upvals[i.B].p
 			continue
 		case bytecode.OpSetUpval:
-			*cl.fn.upvals[i.B].p = regs[i.A]
+			*vm.frames[len(vm.frames)-1].cl.fn.upvals[i.B].p = regs[i.A]
 			continue
 		case bytecode.OpGetProp:
 			if o := regs[i.B].o; o != nil {
@@ -1014,7 +1015,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
 						fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
 						vm.sp = argBase + c.nregs + 1
-						fp, cl, pc = c, f, 0
+						fp, pc = c, 0
 						regs = vm.stack[argBase:vm.sp]
 						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
 							// Do what the first instruction does, and start after it.
@@ -1056,7 +1057,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
 						fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
 						vm.sp = argBase + c.nregs + 1
-						fp, cl, pc = c, f, 0
+						fp, pc = c, 0
 						regs = vm.stack[argBase:vm.sp]
 						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
 							regs[r] = this
@@ -1084,7 +1085,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.frames = vm.frames[:n]
 				fr := &vm.frames[n-1]
 				fp = fr.fp
-				cl = fr.cl
 				pc = fr.pc
 				if fp.heapRegs {
 					regs = fr.gen.regs
@@ -1176,7 +1176,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			for j, d := range p.Upvals {
 				switch {
 				case !d.Local:
-					fn.upvals[j] = cl.fn.upvals[d.Index]
+					fn.upvals[j] = vm.frames[len(vm.frames)-1].cl.fn.upvals[d.Index]
 				case d.ByValue:
 					u := &copies[0]
 					copies = copies[1:]
@@ -1204,7 +1204,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			regs[i.A] = t
 		case bytecode.OpLoadCallee:
-			regs[i.A] = Value{o: cl}
+			regs[i.A] = Value{o: vm.frames[len(vm.frames)-1].cl}
 		case bytecode.OpLoadNewTarget:
 			if nt := vm.frames[len(vm.frames)-1].newTarget; nt != nil {
 				regs[i.A] = Value{o: nt}
@@ -1212,7 +1212,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = Undefined
 			}
 		case bytecode.OpLoadHome:
-			if h := cl.fn.home; h != nil {
+			if h := vm.frames[len(vm.frames)-1].cl.fn.home; h != nil {
 				regs[i.A] = Value{o: h}
 			} else {
 				regs[i.A] = Undefined
@@ -1908,7 +1908,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if fp.realm != vm.curRealm {
 				vm.switchRealm(fp.realm)
 			}
-			cl = fr.cl
 			pc = fr.pc
 			if fp.heapRegs {
 				regs = fr.gen.regs
@@ -1947,7 +1946,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if fp.realm != vm.curRealm {
 				vm.switchRealm(fp.realm)
 			}
-			cl = fr.cl
 			pc = fr.pc
 			if fp.heapRegs {
 				regs = fr.gen.regs
@@ -2293,7 +2291,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			cur.scopes = cur.scopes[:len(cur.scopes)-1]
 		case bytecode.OpResolveName:
 			vm.frames[len(vm.frames)-1].pc = pc
-			o := vm.findScope(cl, fp.keys[i.B], int(i.C))
+			o := vm.findScope(vm.frames[len(vm.frames)-1].cl, fp.keys[i.B], int(i.C))
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			if o != nil {
 				regs[i.A] = Value{o: o}
@@ -2318,14 +2316,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			regs[i.A] = Bool(vm.deleteName(fp.keys[i.B]))
 		case bytecode.OpCaptureScopes:
-			regs[i.A].o.fn.scopes = vm.openScopes(cl)
+			regs[i.A].o.fn.scopes = vm.openScopes(vm.frames[len(vm.frames)-1].cl)
 		case bytecode.OpEvalScope:
 			vm.pushEvalScope()
 		case bytecode.OpScopeThis:
 			regs[i.A] = scopeThis(regs[i.B])
 		case bytecode.OpDeclareEvalVar:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.declareEvalVar(cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
+			vm.declareEvalVar(vm.frames[len(vm.frames)-1].cl, fp.keys[i.A], int(i.B), slices.Clip(regs), int(i.C))
 		case bytecode.OpImport, bytecode.OpImportMeta:
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.importOp(slices.Clip(regs), i)
@@ -2441,7 +2439,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					vm.switchRealm(c.realm)
 				}
 				fp = c
-				cl = f
 				regs = vm.stack[base : base+c.nregs+1]
 				pc = 0
 				if r := c.thisReg; r >= 0 {
@@ -2466,7 +2463,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				fr := &vm.frames[len(vm.frames)-1]
 				fp = c
-				cl = f
 				regs = fr.gen.regs
 				pc = 0
 				continue
@@ -2493,7 +2489,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if fp.realm != vm.curRealm {
 				vm.switchRealm(fp.realm)
 			}
-			cl = f
 			regs = vm.stack[fr.base : fr.base+fp.nregs+1]
 			pc = 0
 			continue
@@ -2545,7 +2540,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if fp.realm != vm.curRealm {
 				vm.switchRealm(fp.realm)
 			}
-			cl = fr.cl
 			pc = fr.pc
 			if fp.heapRegs {
 				regs = fr.gen.regs
