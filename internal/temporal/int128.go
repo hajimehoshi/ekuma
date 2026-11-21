@@ -78,6 +78,7 @@ func (x Int128) Cmp(y Int128) int {
 }
 
 // Abs returns |x|.
+// For -2^127, it returns x because 2^127 is outside the Int128 range.
 func (x Int128) Abs() Int128 {
 	if x.hi < 0 {
 		return x.Neg()
@@ -177,7 +178,13 @@ func (x Int128) Big() *big.Int {
 
 // Int128FromBig returns b as an Int128, and whether it fits.
 func Int128FromBig(b *big.Int) (Int128, bool) {
-	if b.BitLen() > 127 {
+	if n := b.BitLen(); n > 127 {
+		// Only -2^127 fits with a 128-bit magnitude.
+		if n == 128 && b.Sign() < 0 && b.TrailingZeroBits() == 127 {
+			return Int128{
+				hi: -1 << 63,
+			}, true
+		}
 		return Int128{}, false
 	}
 	a := new(big.Int).Abs(b)

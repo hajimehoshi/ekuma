@@ -27,6 +27,41 @@ func i128(s string) temporal.Int128 {
 	return x
 }
 
+func TestInt128FromBigBounds(t *testing.T) {
+	limit := new(big.Int).Lsh(big.NewInt(1), 127)
+	min := new(big.Int).Neg(limit)
+	for _, tc := range []struct {
+		value *big.Int
+		fits  bool
+	}{
+		{
+			value: new(big.Int).Sub(min, big.NewInt(1)),
+		},
+		{
+			value: min,
+			fits:  true,
+		},
+		{
+			value: new(big.Int).Sub(limit, big.NewInt(1)),
+			fits:  true,
+		},
+		{
+			value: limit,
+		},
+	} {
+		b := new(big.Int).Set(tc.value)
+		got, ok := temporal.Int128FromBig(b)
+		if b.Cmp(tc.value) != 0 {
+			t.Errorf("Int128FromBig(%v) changed its input to %v", tc.value, b)
+		}
+		if ok != tc.fits {
+			t.Errorf("Int128FromBig(%v): got ok = %v, want %v", tc.value, ok, tc.fits)
+		} else if ok && got.Big().Cmp(tc.value) != 0 {
+			t.Errorf("Int128FromBig(%v).Big(): got %v, want %v", tc.value, got.Big(), tc.value)
+		}
+	}
+}
+
 // TestRangeLimits checks the limits of instants, date-times and year-months, and the values
 // just beyond them.
 func TestRangeLimits(t *testing.T) {
@@ -178,6 +213,15 @@ func TestRoundingAtBoundaries(t *testing.T) {
 	d := temporal.Mul64(1<<53+1, temporal.NsPerSecond).Add(temporal.I128(500_000_000))
 	if got, want := temporal.TotalTimeDuration(d, temporal.UnitSecond), float64(1<<53+2); got != want {
 		t.Errorf("TotalTimeDuration(%v, second): got %v, want %v", d, got, want)
+	}
+}
+
+func TestRoundInt128ToIncrementMinimum(t *testing.T) {
+	increment := temporal.Mul64(math.MinInt64, math.MinInt64) // 2^126
+	min := increment.MulInt64(-2)
+	x := min.Add(temporal.I128(1))
+	if got := temporal.RoundInt128ToIncrement(x, increment, temporal.RoundFloor); got.Cmp(min) != 0 {
+		t.Errorf("RoundInt128ToIncrement(%v, %v, floor): got %v, want %v", x, increment, got, min)
 	}
 }
 
