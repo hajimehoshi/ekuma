@@ -579,34 +579,44 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						continue
 					}
 				}
-				// The common elements of a typed array whose bytes are all in the data of its
-				// buffer, as in typedArrayGet. The data is loaded after the last check: a path to
-				// the switch below that needs a register the load took makes the compiler store
-				// loop values at the head of the loop on amd64. The functions of encoding/binary
-				// do not inline into exec, so the bytes are combined here.
-				if t, ok := o.ext.(*TypedArray); ok {
+				// The elements of a typed array of numbers other than Float16 whose bytes are all in
+				// the data of its buffer, as in typedArrayGet. The checks and the destination come
+				// before the data is loaded: a path to the switch below, or a use of i, that needs
+				// a register the load took makes the compiler store loop values at the head of the
+				// loop on amd64. The functions of encoding/binary do not inline into exec, so the
+				// bytes are combined here.
+				if t, ok := o.ext.(*TypedArray); ok && t.typ < ElementBigInt64 && t.typ != ElementFloat16 {
 					if j := int(k.n); float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) {
-						switch t.typ {
-						case ElementInt32:
-							if t.offset+t.length*4 <= len(t.data.data) {
-								b := t.data.data[t.offset+j*4:]
+						if r, s := &regs[i.A], t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
+							b := t.data.data[t.offset+j*s:]
+							var x float64
+							switch t.typ {
+							case ElementInt8:
+								x = float64(int8(b[0]))
+							case ElementUint8, ElementUint8C:
+								x = float64(b[0])
+							case ElementInt16:
+								_ = b[1]
+								x = float64(int16(uint16(b[0]) | uint16(b[1])<<8))
+							case ElementUint16:
+								_ = b[1]
+								x = float64(uint16(b[0]) | uint16(b[1])<<8)
+							case ElementInt32:
 								_ = b[3]
-								setNumber(&regs[i.A], float64(int32(uint32(b[0])|uint32(b[1])<<8|uint32(b[2])<<16|uint32(b[3])<<24)))
-								continue
-							}
-						case ElementFloat64:
-							if t.offset+t.length*8 <= len(t.data.data) {
-								b := t.data.data[t.offset+j*8:]
+								x = float64(int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
+							case ElementUint32:
+								_ = b[3]
+								x = float64(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
+							case ElementFloat32:
+								_ = b[3]
+								x = float64(math.Float32frombits(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
+							default:
 								_ = b[7]
-								setNumber(&regs[i.A], math.Float64frombits(uint64(b[0])|uint64(b[1])<<8|uint64(b[2])<<16|uint64(b[3])<<24|
-									uint64(b[4])<<32|uint64(b[5])<<40|uint64(b[6])<<48|uint64(b[7])<<56))
-								continue
+								x = math.Float64frombits(uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+									uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56)
 							}
-						case ElementUint8, ElementUint8C:
-							if t.offset+t.length <= len(t.data.data) {
-								setNumber(&regs[i.A], float64(t.data.data[t.offset+j]))
-								continue
-							}
+							setNumber(r, x)
+							continue
 						}
 					}
 				}
@@ -620,28 +630,37 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			// The same as OpGetIndex for a typed array.
 			if o := regs[i.B].o; o != nil {
-				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && uint(i.C) < uint(t.length) {
-					switch j := int(i.C); t.typ {
-					case ElementInt32:
-						if t.offset+t.length*4 <= len(t.data.data) {
-							b := t.data.data[t.offset+j*4:]
+				if t, ok := o.ext.(*TypedArray); ok && t.typ < ElementBigInt64 && t.typ != ElementFloat16 && !t.tracking && uint(i.C) < uint(t.length) {
+					if j, r, s := int(i.C), &regs[i.A], t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
+						b := t.data.data[t.offset+j*s:]
+						var x float64
+						switch t.typ {
+						case ElementInt8:
+							x = float64(int8(b[0]))
+						case ElementUint8, ElementUint8C:
+							x = float64(b[0])
+						case ElementInt16:
+							_ = b[1]
+							x = float64(int16(uint16(b[0]) | uint16(b[1])<<8))
+						case ElementUint16:
+							_ = b[1]
+							x = float64(uint16(b[0]) | uint16(b[1])<<8)
+						case ElementInt32:
 							_ = b[3]
-							setNumber(&regs[i.A], float64(int32(uint32(b[0])|uint32(b[1])<<8|uint32(b[2])<<16|uint32(b[3])<<24)))
-							continue
-						}
-					case ElementFloat64:
-						if t.offset+t.length*8 <= len(t.data.data) {
-							b := t.data.data[t.offset+j*8:]
+							x = float64(int32(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
+						case ElementUint32:
+							_ = b[3]
+							x = float64(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24)
+						case ElementFloat32:
+							_ = b[3]
+							x = float64(math.Float32frombits(uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24))
+						default:
 							_ = b[7]
-							setNumber(&regs[i.A], math.Float64frombits(uint64(b[0])|uint64(b[1])<<8|uint64(b[2])<<16|uint64(b[3])<<24|
-								uint64(b[4])<<32|uint64(b[5])<<40|uint64(b[6])<<48|uint64(b[7])<<56))
-							continue
+							x = math.Float64frombits(uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24 |
+								uint64(b[4])<<32 | uint64(b[5])<<40 | uint64(b[6])<<48 | uint64(b[7])<<56)
 						}
-					case ElementUint8, ElementUint8C:
-						if t.offset+t.length <= len(t.data.data) {
-							setNumber(&regs[i.A], float64(t.data.data[t.offset+j]))
-							continue
-						}
+						setNumber(r, x)
+						continue
 					}
 				}
 			}
@@ -652,40 +671,59 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					o.elems[j] = regs[i.C]
 					continue
 				}
-				// The common stores of a number into a typed array, as in typedArraySet, with the
-				// data loaded after the last check as in OpGetIndex.
-				if t, ok := o.ext.(*TypedArray); ok && t.numberStore {
-					if j, x := int(k.n), regs[i.C]; x.o == numberObject && float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) {
-						switch f := x.n; t.typ {
-						case ElementInt32:
-							if t.offset+t.length*4 <= len(t.data.data) && f >= -2147483648 && f <= 2147483647 {
-								b, u := t.data.data[t.offset+j*4:], uint32(int32(f))
+				// The stores of a number into a typed array of numbers other than Float16, as in
+				// typedArraySet, with every check before the data is loaded as in OpGetIndex. A
+				// number beyond the range of int64, NaN included, goes to the switch below, so that
+				// an integer element takes the low bytes of int64(f).
+				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != ElementFloat16 {
+					if j, x := int(k.n), regs[i.C]; x.o == numberObject && float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.n) {
+						if s := t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
+							b, f := t.data.data[t.offset+j*s:], x.n
+							// The most common types are tested first.
+							if u := uint64(int64(f)); t.typ == ElementInt32 || t.typ == ElementUint32 {
 								_ = b[3]
 								b[0] = byte(u)
 								b[1] = byte(u >> 8)
 								b[2] = byte(u >> 16)
 								b[3] = byte(u >> 24)
-								continue
-							}
-						case ElementFloat64:
-							if t.offset+t.length*8 <= len(t.data.data) {
-								b, u := t.data.data[t.offset+j*8:], math.Float64bits(f)
+							} else if t.typ == ElementFloat64 {
+								bits := math.Float64bits(f)
 								_ = b[7]
+								b[0] = byte(bits)
+								b[1] = byte(bits >> 8)
+								b[2] = byte(bits >> 16)
+								b[3] = byte(bits >> 24)
+								b[4] = byte(bits >> 32)
+								b[5] = byte(bits >> 40)
+								b[6] = byte(bits >> 48)
+								b[7] = byte(bits >> 56)
+							} else if t.typ == ElementInt8 || t.typ == ElementUint8 {
+								b[0] = byte(u)
+							} else if t.typ == ElementFloat32 {
+								bits := math.Float32bits(float32(f))
+								_ = b[3]
+								b[0] = byte(bits)
+								b[1] = byte(bits >> 8)
+								b[2] = byte(bits >> 16)
+								b[3] = byte(bits >> 24)
+							} else if t.typ == ElementUint8C {
+								// ToUint8Clamp, which rounds half to even.
+								c := byte(0)
+								if f >= 255 {
+									c = 255
+								} else if f > 0 {
+									c = byte(f)
+									if r := f - float64(c); r > 0.5 || r == 0.5 && c&1 != 0 {
+										c++
+									}
+								}
+								b[0] = c
+							} else {
+								_ = b[1]
 								b[0] = byte(u)
 								b[1] = byte(u >> 8)
-								b[2] = byte(u >> 16)
-								b[3] = byte(u >> 24)
-								b[4] = byte(u >> 32)
-								b[5] = byte(u >> 40)
-								b[6] = byte(u >> 48)
-								b[7] = byte(u >> 56)
-								continue
 							}
-						case ElementUint8:
-							if t.offset+t.length <= len(t.data.data) && f >= -2147483648 && f <= 2147483647 {
-								t.data.data[t.offset+j] = byte(int32(f))
-								continue
-							}
+							continue
 						}
 					}
 				}

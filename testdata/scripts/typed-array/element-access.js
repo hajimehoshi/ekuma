@@ -14,14 +14,19 @@ function show(x) {
 	return Object.is(x, -0) ? "-0" : String(x);
 }
 
-// Each kind of element, and Int16Array for those that are read another way.
+// Each kind of element, and Float16Array for those that are read another way.
 assert.sameValue([
-	get(new Int32Array([-5, 7]), 1),
-	get(new Float64Array([1.5, -0.25]), 1),
+	get(new Int8Array([-5, 7]), 1),
 	get(new Uint8Array([200, 3]), 1),
 	get(new Uint8ClampedArray([255, 4]), 1),
 	get(new Int16Array([-2, 9]), 1),
-].join(" "), "-5,7,7,, 1.5,-0.25,-0.25,, 200,3,3,, 255,4,4,, -2,9,9,,");
+	get(new Uint16Array([65535, 9]), 1),
+	get(new Int32Array([-5, 7]), 1),
+	get(new Uint32Array([2 ** 32 - 1, 7]), 1),
+	get(new Float32Array([1.5, -0.25]), 1),
+	get(new Float64Array([1.5, -0.25]), 1),
+	get(new Float16Array([1.5, -0.25]), 1),
+].join(" "), "-5,7,7,, 200,3,3,, 255,4,4,, -2,9,9,, 65535,9,9,, -5,7,7,, 4294967295,7,7,, 1.5,-0.25,-0.25,, 1.5,-0.25,-0.25,, 1.5,-0.25,-0.25,,");
 
 // Views that start after the beginning of their buffer.
 function viewRead(T) {
@@ -70,9 +75,25 @@ function store(a, values) {
 	}
 	return out.join();
 }
+// The integers include some beyond 32 bits, and one beyond 64 bits.
 assert.sameValue([
-	store(new Int32Array(2), [-1.5, 2 ** 31, -(2 ** 31) - 1, NaN, "6", 7.9]),
+	store(new Int8Array(2), [128, -129, 1.9, 2 ** 40 + 5]),
 	store(new Uint8Array(2), [256, -1, 1.9, 255]),
-	store(new Uint8ClampedArray(2), [300, 1.5, -3]),
+	store(new Uint8ClampedArray(2), [300, 1.5, -3, 2.5, 0.5, 254.5, 254.6, 0.7, NaN]),
+	store(new Int16Array(2), [32768, -32769]),
+	store(new Uint16Array(2), [65543, -1, 2 ** 53 + 2]),
+	store(new Int32Array(2), [-1.5, 2 ** 31, -(2 ** 31) - 1, NaN, "6", 7.9]),
+	store(new Uint32Array(2), [2 ** 32 - 1, -1, 2 ** 32 + 3, 2 ** 64]),
+	store(new Float32Array(2), [0.1, 2 ** 24 + 1, -0, 2 ** 128]),
 	store(new Float64Array(2), [0.1, -0, NaN]),
-].join(" "), "-1,-2147483648,2147483647,0,6,7 0,255,1,255 255,2,0 0.1,-0,NaN");
+].join(" "), [
+	"-128,127,1,5",
+	"0,255,1,255",
+	"255,2,0,2,0,254,255,1,0",
+	"-32768,32767",
+	"7,65535,2",
+	"-1,-2147483648,2147483647,0,6,7",
+	"4294967295,4294967295,3,0",
+	"0.10000000149011612,16777216,-0,Infinity",
+	"0.1,-0,NaN",
+].join(" "));
