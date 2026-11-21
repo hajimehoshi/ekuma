@@ -16,9 +16,6 @@ test/intl/date-format/en-format-range-to-parts.js
 test/intl/date-format/format-range.js
 test/intl/regress-9912.js
 
-# V8 accepts localized US dates with a narrow no-break space before AM or PM.
-test/intl/regress-13494.js
-
 # Greek uppercasing of άόύώ produces ΑΟΥΩ where V8 expects ΑΟΫΩ.
 test/intl/general/case-mapping.js
 

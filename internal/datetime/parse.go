@@ -447,6 +447,10 @@ func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 		case c == ' ' || c == ',' || c == '\t' || c == '\n' || c == '\r':
 			sc.pos++
 
+		case strings.HasPrefix(sc.s[sc.pos:], "\u202f"):
+			// Localized times can separate AM or PM with a narrow no-break space.
+			sc.pos += len("\u202f")
+
 		case c == '(':
 			// A comment, such as the name of the time zone.
 			depth := 0
