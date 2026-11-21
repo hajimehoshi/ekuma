@@ -653,11 +653,7 @@ func (p *parser) scanNumber(start int) {
 				pos++
 			}
 			if octal {
-				var v float64
-				for _, d := range []byte(src[start:pos]) {
-					v = v*8 + float64(d-'0')
-				}
-				t.num = v
+				t.num, _ = numconv.ParseRadixDigits(src[start:pos], 8, nil)
 				p.finishNumber(pos)
 				return
 			}

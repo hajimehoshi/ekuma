@@ -1887,6 +1887,11 @@ func TestLiterals(t *testing.T) {
 			want: 15,
 		},
 		{
+			// 2^64 + 2049 is just above the rounding midpoint.
+			src:  "02000000000000000004001",
+			want: 1<<64 + 4096,
+		},
+		{
 			src:  "089",
 			want: 89,
 		},

@@ -777,7 +777,3 @@ test/webkit/fast/js/Object-defineProperty.js
 # Array.prototype.sort writes the sorted element back with Set. V8 leaves
 # index 0 inherited when sorting an array-like object with one element.
 test/webkit/fast/js/array-functions-non-arrays.js
-
-# Ekuma rounds while accumulating the digits of a legacy octal literal.
-# V8 rounds the full integer to the nearest representable Number.
-test/webkit/numeric-conversion.js
