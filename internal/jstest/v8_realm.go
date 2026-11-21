@@ -465,7 +465,7 @@ func (host *V8) CheckRealmNavigation(t *testing.T) {
 		if (read(saved) !== 17) throw Error("lost default access group");
 	`
 	host.checkRealmScript(t, "test/mjsunit/navigation.js", source, fstest.MapFS{
-		"test/mjsunit/module.mjs": {
+		"module.mjs": {
 			Data: []byte("export default 1"),
 		},
 	})

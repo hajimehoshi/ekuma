@@ -548,9 +548,6 @@ test/mjsunit/harmony/regress-auto-accessor-tostring.js
 # V8 expects a stack-overflow RangeError.
 test/mjsunit/harmony/shadowrealm-wrapped-function-props-stack.js
 
-# The module expects the d8 host to supply import.meta.url.
-test/mjsunit/harmony/modules-import-meta.mjs
-
 # These tests require V8's stack trace API.
 test/mjsunit/cross-realm-callsite.js
 test/mjsunit/error-constructors.js

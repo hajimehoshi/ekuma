@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -137,7 +138,9 @@ func (host *V8) Run(t *testing.T) {
 	results := make([]suiteResult, len(tests))
 	ctx := t.Context()
 	run := func(i int, timeout time.Duration) suiteResult {
-		return tests[i].run(ctx, host, checkout, timeout)
+		test := tests[i]
+		test.checkoutDir = dir
+		return test.run(ctx, host, checkout, timeout)
 	}
 	v8Flags.run(t, len(tests), func(i int) {
 		results[i] = run(i, testTimeout)
@@ -338,9 +341,10 @@ func (host *V8) CheckScriptLoader(t *testing.T) {
 // CheckDataURL checks module identity and relative imports from a data URL.
 func (host *V8) CheckDataURL(t *testing.T) {
 	const src = `
-		const payload = "export { token } from './dep.mjs'; // %20+#";
+		const payload = "export const url = import.meta.url; export { token } from './dep.mjs'; // %20+#\\raw";
 		const url = "data:text/javascript," + payload;
 		const ns = await import(url);
+		if (ns.url !== url) throw Error(ns.url);
 		if (ns !== await import(url + "\0suffix")) throw Error("module identity");
 		const text = await import(url, {with: {type: "text"}});
 		if (text.default !== payload) throw Error("text payload");
@@ -422,6 +426,7 @@ func readV8Skips(t *testing.T) skipList {
 }
 
 type v8Test struct {
+	checkoutDir string
 	file        string
 	helpers     []*ekuma.UnboundScript
 	flags       []string
@@ -617,7 +622,12 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	loop := v8EventLoop{
 		host: host,
 	}
-	scripts := newV8Scripts(host, vm.InitialRealm(), checkout, filepath.Dir(filepath.FromSlash(v.file)))
+	cwd, err := filepath.Abs(v.checkoutDir)
+	if err != nil {
+		return suiteBroken.result(err.Error()), ""
+	}
+	scripts := newV8Scripts(host, vm.InitialRealm(), checkout, cwd)
+	scripts.entry = v.file
 	if directives.bundle {
 		scripts.bundle = &v8Bundle{
 			modules: map[string]string{},
@@ -662,6 +672,9 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		}
 	}
 	vm.SetModuleLoader(scripts.loadModule)
+	vm.SetImportMeta(func(m *ekuma.Module) map[string]any {
+		return map[string]any{"url": m.Name()}
+	})
 	for _, name := range directives.files {
 		result = scripts.runFile(ctx, &loop, name, nil)
 		if result.outcome != suitePassed {
@@ -691,7 +704,8 @@ type v8Scripts struct {
 	current  *ekuma.Realm
 	next     *ekuma.Realm
 	checkout fs.FS
-	dir      string
+	cwd      string
+	entry    string
 	contexts map[*ekuma.Realm]*v8ScriptContext
 	bundle   *v8Bundle
 }
@@ -702,13 +716,13 @@ type v8ScriptContext struct {
 	syntaxErrorCtor ekuma.Value
 }
 
-func newV8Scripts(host *V8, r *ekuma.Realm, checkout fs.FS, dir string) *v8Scripts {
+func newV8Scripts(host *V8, r *ekuma.Realm, checkout fs.FS, cwd string) *v8Scripts {
 	return &v8Scripts{
 		host:     host,
 		current:  r,
 		next:     r,
 		checkout: checkout,
-		dir:      dir,
+		cwd:      cwd,
 		contexts: map[*ekuma.Realm]*v8ScriptContext{},
 	}
 }
@@ -720,7 +734,6 @@ func (s *v8Scripts) contextFor(r *ekuma.Realm) *v8ScriptContext {
 	c := &v8ScriptContext{
 		modules: moduleLoader{
 			realm:    r,
-			dir:      s.dir,
 			modules:  map[string]*ekuma.Module{},
 			readFile: s.readModuleFile,
 		},
@@ -739,20 +752,16 @@ func v8ModuleName(dir, name string) string {
 	if v8ModuleURL(name) {
 		return name
 	}
-	if filepath.IsAbs(name) {
+	// d8 tests for an absolute path before replacing backslashes. On Windows
+	// it recognizes only paths starting with a drive and a separator.
+	absolute := strings.HasPrefix(name, "/")
+	if runtime.GOOS == "windows" {
+		absolute = len(name) >= 3 && name[1] == ':' && os.IsPathSeparator(name[2])
+	}
+	if absolute {
 		dir = ""
 	}
-	// d8 determines whether a path is absolute before replacing backslashes.
-	return v8FileModuleName(filepath.Join(dir, strings.ReplaceAll(name, `\`, "/")))
-}
-
-func v8FileModuleName(path string) string {
-	// d8 has absolute filenames. Keep a checkout-relative filename distinct
-	// from a data URL with the same spelling in the module map.
-	if strings.HasPrefix(path, v8DataURLPrefix) {
-		return "./" + path
-	}
-	return path
+	return filepath.ToSlash(filepath.Join(dir, strings.ReplaceAll(name, `\`, "/")))
 }
 
 func (s *v8Scripts) readModuleFile(name string) ([]byte, error) {
@@ -764,7 +773,11 @@ func (s *v8Scripts) readModuleFile(name string) ([]byte, error) {
 	if src, ok := strings.CutPrefix(name, v8DataURLPrefix); ok {
 		return []byte(src), nil
 	}
-	return fs.ReadFile(s.checkout, strings.TrimPrefix(filepath.ToSlash(name), "./"))
+	file, err := filepath.Rel(s.cwd, name)
+	if err != nil {
+		return nil, err
+	}
+	return fs.ReadFile(s.checkout, filepath.ToSlash(file))
 }
 
 func (s *v8Scripts) loadModule(req ekuma.ModuleRequest) (*ekuma.Module, error) {
@@ -782,14 +795,12 @@ func (s *v8Scripts) loadModule(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		}
 		return loader.loadFile(name, typ)
 	}
-	if v8ModuleURL(req.ReferrerName) {
-		// d8 resolves relative imports from URL modules in its working directory.
-		return loader.loadFile(v8ModuleName(".", req.Specifier), typ)
+	dir := s.cwd
+	if !v8ModuleURL(req.ReferrerName) {
+		referrer := cmp.Or(req.ReferrerName, s.entry)
+		dir = filepath.Dir(v8ModuleName(s.cwd, referrer))
 	}
-	if s.bundle != nil {
-		return loader.loadFile(v8ModuleName(filepath.Dir(req.ReferrerName), req.Specifier), typ)
-	}
-	return loader.loadFile(v8FileModuleName(loader.resolveFile(req)), typ)
+	return loader.loadFile(v8ModuleName(dir, req.Specifier), typ)
 }
 
 func (s *v8Scripts) evaluate(ctx context.Context, script *ekuma.Script) (bool, error) {
@@ -924,7 +935,7 @@ func v8FileExists(checkout fs.FS, name string) bool {
 
 func (s *v8Scripts) runFile(ctx context.Context, loop *v8EventLoop, name string, src []byte) suiteResult {
 	if path.Ext(name) == ".mjs" {
-		return s.runModule(ctx, loop, v8ModuleName(".", name))
+		return s.runModule(ctx, loop, v8ModuleName(s.cwd, name))
 	}
 	file := filepath.FromSlash(name)
 	if src == nil {

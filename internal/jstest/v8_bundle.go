@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -67,7 +68,7 @@ type v8BundleEntry struct {
 	module string
 }
 
-func (b *v8Bundle) register(parts iter.Seq2[string, string]) ([]v8BundleEntry, error) {
+func (b *v8Bundle) register(cwd string, parts iter.Seq2[string, string]) ([]v8BundleEntry, error) {
 	var order []v8BundleEntry
 	for header, src := range parts {
 		// d8 passes each part to V8 as a NUL-terminated string.
@@ -92,7 +93,7 @@ func (b *v8Bundle) register(parts iter.Seq2[string, string]) ([]v8BundleEntry, e
 		default:
 			continue
 		}
-		name = v8ModuleName(".", name)
+		name = v8ModuleName(cwd, name)
 		if _, exists := b.modules[name]; exists {
 			return nil, fmt.Errorf("duplicate bundle module: %s", name)
 		}
@@ -107,7 +108,7 @@ func (b *v8Bundle) register(parts iter.Seq2[string, string]) ([]v8BundleEntry, e
 }
 
 func (s *v8Scripts) runBundle(ctx context.Context, loop *v8EventLoop, file string, parts iter.Seq2[string, string]) suiteResult {
-	order, err := s.bundle.register(parts)
+	order, err := s.bundle.register(s.cwd, parts)
 	if err != nil {
 		return suiteFailed.result(err.Error())
 	}
@@ -135,34 +136,42 @@ func (s *v8Scripts) runBundle(ctx context.Context, loop *v8EventLoop, file strin
 // CheckBundle checks module identity and execution order across bundle and file boundaries.
 func (host *V8) CheckBundle(t *testing.T) {
 	test := v8Test{
-		file:  "test/mjsunit/bundle.js",
-		flags: []string{"--bundle"},
+		checkoutDir: filepath.Join(t.TempDir(), "v8 checkout"),
+		file:        "test/mjsunit/bundle.js",
+		flags:       []string{"--bundle"},
 	}
 	checkout := fstest.MapFS{
 		"test/mjsunit/helper.js": {
-			Data: []byte(`/* preamble */
+			Data: []byte(fmt.Sprintf(`/* preamble */
 // JS_BUNDLE_SCRIPT
+const cwd = %q;
 let order = 'S';
 let fromScript;
 import('./sub/entry.mjs').then(ns => { fromScript = ns; });
 // JS_BUNDLE_MODULE_ENTRYPOINT:test/mjsunit/sub/entry.mjs
-export { value } from '\\dep.mjs';
+export { value } from '\\\\deps\\bundle.mjs';
+export const url = import.meta.url;
 order += 'E';
 // JS_BUNDLE_SCRIPT
 order += 'T';
 // JS_BUNDLE_MODULE_ENTRYPOINT
 import * as entry from 'test/mjsunit/sub/entry.mjs';
+if (import.meta.url !== cwd + '/entrypoint_0.mjs') throw Error(import.meta.url);
 if (entry !== fromScript || entry.value !== 42) throw Error('module identity');
 order += 'A';
-// JS_BUNDLE_MODULE:test/mjsunit/sub/dep.mjs
+// JS_BUNDLE_MODULE:test/mjsunit/sub/deps/bundle.mjs
 export { value } from 'https://bundle.test/dep';
 // JS_BUNDLE_MODULE:https://bundle.test/dep
+if (import.meta.url !== 'https://bundle.test/dep') throw Error(import.meta.url);
 export { value } from 'data:text/javascript,export const value = 0';
 // JS_BUNDLE_MODULE:data:text/javascript,export const value = 0
-export const value = 42;`),
+export const value = 42;`, filepath.ToSlash(test.checkoutDir))),
 		},
 		"plain.mjs": {
-			Data: []byte("// JS_BUNDLE_SCRIPT\nexport const value = (order += 'M');"),
+			Data: []byte(`// JS_BUNDLE_SCRIPT
+if (import.meta.url !== cwd + '/plain.mjs') throw Error(import.meta.url);
+if (await import(fromScript.url) !== fromScript) throw Error('absolute import');
+export const value = (order += 'M');`),
 		},
 		test.file: {
 			Data: []byte(`// Flags: --bundle
