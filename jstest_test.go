@@ -17,9 +17,12 @@ var test262Runner = jstest.Test262{
 }
 
 var v8Runner = jstest.V8{
-	ParseScriptValue:   ekuma.ParseScriptValue,
-	InstallGlobalProxy: ekuma.InstallGlobalProxy,
-	DetachGlobalProxy:  ekuma.DetachGlobalProxy,
+	ParseScriptValue:         ekuma.ParseScriptValue,
+	InstallGlobalProxy:       ekuma.InstallGlobalProxy,
+	DetachGlobalProxy:        ekuma.DetachGlobalProxy,
+	InvokeInRealm:            ekuma.InvokeInRealm,
+	DeferUnhandledRejections: ekuma.DeferUnhandledRejections,
+	TakeUnhandledRejection:   ekuma.TakeUnhandledRejection,
 }
 
 func TestTest262(t *testing.T) {
@@ -64,6 +67,10 @@ func TestV8ShellOutput(t *testing.T) {
 
 func TestV8Quit(t *testing.T) {
 	v8Runner.CheckQuit(t)
+}
+
+func TestV8Timeouts(t *testing.T) {
+	v8Runner.CheckTimeouts(t)
 }
 
 func TestV8Realm(t *testing.T) {

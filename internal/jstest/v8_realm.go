@@ -29,6 +29,7 @@ type v8Realms struct {
 	checkout fs.FS
 	print    ekuma.Func
 	shell    v8Shell
+	timeouts *v8Timeouts
 	entries  []ekuma.Value
 }
 
@@ -45,6 +46,9 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 		return 0, err
 	}
 	if err := h.shell.install(h.ctx, r, h.checkout); err != nil {
+		return 0, err
+	}
+	if err := h.timeouts.install(r); err != nil {
 		return 0, err
 	}
 	create := r.FuncOf("create", func(this ekuma.Value, args []ekuma.Value) (any, error) {

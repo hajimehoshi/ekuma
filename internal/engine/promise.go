@@ -548,6 +548,23 @@ func (vm *VM) SetHostUnhandledRejection(f UnhandledRejectionFunc) {
 	vm.rejections.notify = f
 }
 
+// DeferUnhandledRejections postpones rejection reports across job checkpoints.
+func (vm *VM) DeferUnhandledRejections() {
+	vm.rejections.deferred = true
+}
+
+// TakeUnhandledRejection ends deferral, returning the first unhandled reason and clearing all reports.
+func (vm *VM) TakeUnhandledRejection() (Value, bool) {
+	t := &vm.rejections
+	t.deferred = false
+	if len(t.promises) == 0 {
+		return Undefined, false
+	}
+	reason := promiseOf(t.promises[0]).result
+	t.reset()
+	return reason, true
+}
+
 // rejectionTracker holds the rejected promises without a handler.
 type rejectionTracker struct {
 	// promises are the rejected promises without a handler, in the order of rejection.
@@ -555,6 +572,9 @@ type rejectionTracker struct {
 
 	// notify is the function that is told about the unhandled rejections, or nil.
 	notify UnhandledRejectionFunc
+
+	// deferred keeps pending rejections across job checkpoints.
+	deferred bool
 }
 
 func (t *rejectionTracker) add(p *Object) {
@@ -811,7 +831,7 @@ func (vm *VM) runJobs() {
 // report.
 func (vm *VM) notifyRejectedPromises() bool {
 	t := &vm.rejections
-	if len(t.promises) == 0 {
+	if len(t.promises) == 0 || t.deferred {
 		return false
 	}
 	if t.notify == nil {

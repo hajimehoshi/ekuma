@@ -4,9 +4,37 @@
 package ekuma
 
 import (
+	"context"
+
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
+
+// InvokeInRealm calls f with r as the entered realm.
+func InvokeInRealm(ctx context.Context, r *Realm, f Value) error {
+	var err error
+	r.in(func() {
+		_, err = f.Invoke(ctx)
+	})
+	return err
+}
+
+// DeferUnhandledRejections postpones rejection reports until TakeUnhandledRejection.
+func DeferUnhandledRejections(vm *VM) {
+	vm.initIfNeeded()
+	vm.e.DeferUnhandledRejections()
+}
+
+// TakeUnhandledRejection returns the first deferred rejection still unhandled, if any.
+func TakeUnhandledRejection(vm *VM) error {
+	reason, ok := vm.e.TakeUnhandledRejection()
+	if !ok {
+		return nil
+	}
+	return &ScriptError{
+		Value: fromEngine(reason),
+	}
+}
 
 // ParseScriptValue parses the JavaScript string src as a script of r.
 func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {

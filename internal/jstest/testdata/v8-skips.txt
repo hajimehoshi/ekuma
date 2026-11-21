@@ -649,12 +649,11 @@ test/mjsunit/d8/d8-os.js
 test/mjsunit/d8/performance-mark.js
 test/mjsunit/regress/regress-371237560.js
 
-# These tests require the setTimeout global.
+# These tests require d8 to report uncaught timer exceptions to onerror.
 test/mjsunit/d8/d8-realm-onerror.js
-test/mjsunit/d8/d8-unhandled-promise-handler-added.js
-test/mjsunit/es6/promise-resolve-thenable-job.js
-test/mjsunit/harmony/modules-import-top-level-await-8.mjs
 test/mjsunit/math-sum-precise/uncaught-error-message.js
+
+# This test requires d8.terminate.
 test/mjsunit/regress/regress-576644328.js
 
 # These tests require the version global.

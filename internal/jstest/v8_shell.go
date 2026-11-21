@@ -168,6 +168,11 @@ func (host *V8) CheckQuit(t *testing.T) {
 			helper: `quit({valueOf() { throw new Error(); }});`,
 			want:   suitePassed,
 		},
+		{
+			name:   "timer quits after a script error",
+			helper: `setTimeout(() => quit()); throw new Error("before the timer");`,
+			want:   suitePassed,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			test := v8Test{

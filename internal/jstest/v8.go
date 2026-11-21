@@ -27,9 +27,12 @@ import (
 
 // V8 runs the V8 conformance suites with the supplied realm operations.
 type V8 struct {
-	ParseScriptValue   func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
-	InstallGlobalProxy func(*ekuma.Realm, ekuma.Value, bool) ekuma.Value
-	DetachGlobalProxy  func(*ekuma.Realm)
+	ParseScriptValue         func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
+	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, bool) ekuma.Value
+	DetachGlobalProxy        func(*ekuma.Realm)
+	InvokeInRealm            func(context.Context, *ekuma.Realm, ekuma.Value) error
+	DeferUnhandledRejections func(*ekuma.VM)
+	TakeUnhandledRejection   func(*ekuma.VM) error
 }
 
 const v8SkipsFile = testdataDir + "/v8-skips.txt"
@@ -420,7 +423,9 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		switch r := recover().(type) {
 		case nil:
 		case v8ExitCode:
-			if r != 0 {
+			if r == 0 {
+				result = suiteResult{}
+			} else {
 				result = suiteFailed.result(fmt.Sprintf("quit(%d)", r))
 			}
 		default:
@@ -458,6 +463,9 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		lastPrint = firstLine(fmt.Sprint(args))
 		return ekuma.Undefined, nil
 	}
+	timeouts := v8Timeouts{
+		invoke: host.InvokeInRealm,
+	}
 	if inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
 			host:     host,
@@ -466,6 +474,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			checkout: checkout,
 			print:    print,
 			shell:    newV8Shell(io.Discard, io.Discard),
+			timeouts: &timeouts,
 		}
 		if _, err := realms.add(vm.InitialRealm(), false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
@@ -473,6 +482,8 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	} else if err := vm.Global().Set("print", vm.FuncOf("print", print)); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
+	// A later timer can attach a handler before d8 reports unhandled rejections.
+	host.DeferUnhandledRejections(&vm)
 	helpers := v.helpers
 	if directives.noHarness {
 		helpers = nil
@@ -495,29 +506,26 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		},
 	}
 	vm.SetModuleLoader(loader.load)
-	var rejection *ekuma.ScriptError
-	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
-		if rejection == nil {
-			rejection = &ekuma.ScriptError{
-				Value: reason,
-			}
-		}
-	})
 	for _, name := range directives.files {
 		b, err := fs.ReadFile(checkout, name)
 		if err != nil {
 			return suiteBroken.result(fmt.Sprintf("V8 Files: %s: %v", name, err)), lastPrint
 		}
-		if result := runV8File(ctx, &loader, name, string(b)); result.outcome != suitePassed {
+		result = runV8File(ctx, &loader, &timeouts, name, string(b))
+		if result.outcome != suitePassed {
 			result.reason = name + ": " + result.reason
-			return result, lastPrint
+			break
 		}
 	}
-	if result := runV8File(ctx, &loader, v.file, source); result.outcome != suitePassed {
+	if result.outcome == suitePassed {
+		result = runV8File(ctx, &loader, &timeouts, v.file, source)
+	}
+	result = timeouts.drain(ctx, result)
+	if result.outcome != suitePassed {
 		return result, lastPrint
 	}
-	if rejection != nil {
-		return scriptErrorResult(rejection), lastPrint
+	if err := host.TakeUnhandledRejection(&vm); err != nil {
+		return scriptErrorResult(err), lastPrint
 	}
 	return suiteResult{}, lastPrint
 }
@@ -576,15 +584,25 @@ func installV8ScriptLoader(ctx context.Context, realm *ekuma.Realm, checkout fs.
 	}))
 }
 
-func runV8File(ctx context.Context, loader *moduleLoader, name, src string) suiteResult {
+func runV8File(ctx context.Context, loader *moduleLoader, timeouts *v8Timeouts, name, src string) suiteResult {
 	file := filepath.FromSlash(name)
 	if path.Ext(name) == ".mjs" {
 		p, _, err := loader.evaluate(ctx, file, src)
 		if err != nil {
 			return scriptErrorResult(err)
 		}
-		if state, _ := p.PromiseState(); state == ekuma.PromisePending {
+		// d8 pumps tasks before checking the module's evaluation promise. A
+		// timer exception during this checkpoint does not fail the module.
+		if result := timeouts.drain(ctx, suiteResult{}); result.outcome == suiteBroken {
+			return result
+		}
+		switch state, reason := p.PromiseState(); state {
+		case ekuma.PromisePending:
 			return suiteFailed.result("module evaluation is still pending")
+		case ekuma.PromiseRejected:
+			return scriptErrorResult(&ekuma.ScriptError{
+				Value: reason,
+			})
 		}
 	} else if _, err := runScript(ctx, loader.vm, file, src); err != nil {
 		return scriptErrorResult(err)
