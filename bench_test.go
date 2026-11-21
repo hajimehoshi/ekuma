@@ -1465,6 +1465,24 @@ func BenchmarkBuiltinResult(b *testing.B) {
 	}
 }
 
+func BenchmarkIntlSupportedCollations(b *testing.B) {
+	var vm ekuma.VM
+	s, err := vm.ParseScript("bench", `Intl.supportedValuesOf("collation")`)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ctx := b.Context()
+	if _, err := s.Evaluate(ctx); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := s.Evaluate(ctx); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 // BenchmarkIntlParts measures formatting one value or range as part records.
 func BenchmarkIntlParts(b *testing.B) {
 	for _, c := range []struct {

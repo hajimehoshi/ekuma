@@ -6,6 +6,7 @@ package locale
 import (
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 	"github.com/hajimehoshi/ekuma/internal/localetag"
@@ -135,8 +136,7 @@ func CollationsOf(t Tag) []string {
 	return collationsOf(t.BaseName())
 }
 
-// Collations returns the collation types of all the locales, sorted.
-func Collations() []string {
+var allCollations = sync.OnceValue(func() []string {
 	var types []string
 	for i := range cldr.Collations.Len() {
 		for c := range strings.FieldsSeq(cldr.Collations.Value(i)) {
@@ -147,6 +147,11 @@ func Collations() []string {
 	}
 	slices.Sort(types)
 	return types
+})
+
+// Collations returns a new slice containing the collation types of all locales, sorted.
+func Collations() []string {
+	return slices.Clone(allCollations())
 }
 
 // HourCyclesOf implements HourCyclesOfLocale of ECMA-402 for t, which is in canonical form.

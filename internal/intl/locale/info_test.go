@@ -4,10 +4,22 @@
 package locale_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 )
+
+func TestCollations(t *testing.T) {
+	clear(locale.Collations())
+	want := []string{
+		"compat", "dict", "emoji", "eor", "phonebk", "phonetic",
+		"pinyin", "searchjl", "stroke", "trad", "unihan", "zhuyin",
+	}
+	if got := locale.Collations(); !slices.Equal(got, want) {
+		t.Errorf("Collations() after clearing a previous result = %q, want %q", got, want)
+	}
+}
 
 func TestNumberingSystemOf(t *testing.T) {
 	for _, tc := range []struct {
