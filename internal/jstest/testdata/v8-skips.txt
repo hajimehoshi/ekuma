@@ -296,6 +296,31 @@ test/mjsunit/es8/async-await-interleaved.js
 # SKIP: requires d8.serializer to exercise the rejection
 test/mjsunit/harmony/regress/regress-418103036.js
 
+# SKIP: requires an asynchronous V8 GC task
+test/mjsunit/regress-432143539.js
+
+# SKIP: requires an asynchronous major GC before observing the WeakRef target
+test/mjsunit/regress/regress-crbug-42213031.js
+
+# The setter in regress-crbug-986187 passes 0. At the pinned revision any
+# argument with no recognized options selects a minor collection.
+# SKIP: requires V8's young-generation collection
+test/mjsunit/regress/regress-621869.js
+test/mjsunit/regress/regress-crbug-986187.js
+
+# SKIP: requires a major collection to promote a WeakSet and its key to old space
+test/mjsunit/regress/regress-948307.js
+
+# SKIP: requires reading the GC options through a throwing proxy
+test/mjsunit/regress/regress-1006640.js
+
+# SKIP: the performance.measureMemory guard bypasses all assertions
+test/mjsunit/measure-memory-multiple-realms.js
+test/mjsunit/measure-memory.js
+
+# Ekuma reaches its call stack limit in the generated class hierarchy.
+test/mjsunit/regress/regress-crbug-808192.js
+
 # The generated expression exceeds Ekuma's parser nesting limit.
 test/mjsunit/compiler/conditional-chain.js
 
@@ -622,6 +647,7 @@ test/mjsunit/d8/regress-511626668.js
 test/mjsunit/d8/regress-517967108.js
 test/mjsunit/harmony/atomics-value-check.js
 test/mjsunit/harmony/atomics-waitasync-1thread-2timeout.js
+test/mjsunit/harmony/atomics-waitasync-1thread-buffer-out-of-scope-timeout.js
 test/mjsunit/harmony/atomics-waitasync-1thread-timeout.js
 test/mjsunit/harmony/atomics-waitasync-1thread-timeouts-and-no-timeouts.js
 test/mjsunit/harmony/error-cause.js
@@ -682,7 +708,8 @@ test/mjsunit/regress/regress-crbug-1381404.js
 test/mjsunit/regress/regress-crbug-1402139.js
 test/mjsunit/value-serializer.js
 
-# These tests require d8.debugger.enable to run with the debugger active.
+# These tests require d8.debugger to run with the debugger active.
+test/mjsunit/regress/regress-13652.js
 test/mjsunit/regress/regress-562529689.js
 test/mjsunit/regress/regress-577255778.js
 

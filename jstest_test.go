@@ -57,6 +57,10 @@ func TestV8(t *testing.T) {
 	v8Runner.Run(t)
 }
 
+func TestV8ExposeGC(t *testing.T) {
+	v8Runner.CheckExposeGC(t)
+}
+
 func TestV8FixedTime(t *testing.T) {
 	v8Runner.CheckFixedTime(t)
 }

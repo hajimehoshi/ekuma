@@ -68,6 +68,8 @@ var v8Suites = []v8Suite{
 		helpers: []string{"mjsunit.js"},
 		exclude: []string{"mjsunit_numfuzz.js"},
 		flags: []string{
+			"--expose-gc",
+
 			// Ekuma enables these language features by default.
 			"--harmony-shadow-realm",
 			"--harmony-top-level-await",
@@ -426,6 +428,7 @@ type v8Directives struct {
 	zone                    string
 	files                   []string
 	noHarness               bool
+	exposeGC                bool
 	ignoreUnhandledPromises bool
 }
 
@@ -449,6 +452,8 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 					directives.ignoreUnhandledPromises = true
 				} else if !slices.Contains(enabledFlags, normalized) {
 					return v8Directives{}, "requires V8 flag " + flag
+				} else if normalized == "--expose-gc" {
+					directives.exposeGC = true
 				}
 			}
 		case "Environment Variables":
@@ -478,6 +483,8 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	defer func() {
 		switch r := recover().(type) {
 		case nil:
+		case v8GCWithArguments:
+			result = suiteSkipped.result("requires V8 gc with arguments")
 		case v8ExitCode:
 			if r == 0 {
 				result = suiteResult{}
@@ -503,6 +510,10 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var vm ekuma.VM
+	if directives.exposeGC {
+		v8GCEnabled.Store(&vm, struct{}{})
+		defer v8GCEnabled.Delete(&vm)
+	}
 	if err := vm.SetLocale(directives.locale); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
