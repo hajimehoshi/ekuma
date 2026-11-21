@@ -183,10 +183,29 @@ func (host *V8) CheckRealm(t *testing.T) {
 		if (!Realm.eval(r, 'console.log instanceof Function && printErr instanceof Function')) {
 			throw Error("shell helpers installed in the wrong realm");
 		}
-		const tag = Realm.eval(r, "Object.getOwnPropertyDescriptor(globalThis, Symbol.toStringTag)");
-		if (!tag || tag.value !== "global" || !tag.writable || !tag.enumerable || !tag.configurable) {
-			throw Error("wrong global tag descriptor in child realm");
+		function checkGlobalPrototype() {
+			const proto = Object.getPrototypeOf(globalThis);
+			const keys = Reflect.ownKeys(proto);
+			if (Object.getPrototypeOf(proto) !== Object.prototype || keys.length !== 1 || keys[0] !== "constructor") {
+				throw Error("wrong global prototype");
+			}
+			const ctor = globalThis.constructor;
+			const desc = Object.getOwnPropertyDescriptor(proto, "constructor");
+			if (Object.hasOwn(globalThis, "constructor") || desc.value !== ctor || !desc.writable ||
+				desc.enumerable || !desc.configurable || ctor.prototype !== proto || ctor.name !== "" ||
+				Reflect.ownKeys(ctor).join() !== "length,name,prototype") {
+				throw Error("wrong global constructor");
+			}
+			if (ctor() !== globalThis || ctor.call(proto) !== proto || Object.getPrototypeOf(new ctor()) !== proto) {
+				throw Error("wrong global constructor receiver");
+			}
+			const tag = Object.getOwnPropertyDescriptor(globalThis, Symbol.toStringTag);
+			if (!tag || tag.value !== "global" || !tag.writable || !tag.enumerable || !tag.configurable) {
+				throw Error("wrong global tag descriptor");
+			}
 		}
+		checkGlobalPrototype();
+		Realm.eval(r, "(" + checkGlobalPrototype + ")()");
 		const Div = Realm.eval(r, "d8.dom.Div");
 		if (Div() !== Realm.global(r)) throw Error("wrong global receiver for Div()");
 		const unbranded = Object.create(Div.prototype);

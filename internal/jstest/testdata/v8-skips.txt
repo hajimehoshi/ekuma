@@ -441,11 +441,9 @@ test/mjsunit/regress/regress-4640.js
 test/mjsunit/regress/regress-857.js
 test/mjsunit/regress/regress-crbug-422858.js
 
-# Ekuma's global object inherits directly from Object.prototype. Installing a
-# property on the global prototype also makes it visible to an ordinary with
-# object. Assignment to an inherited writable data property on the global
-# creates an own property.
-test/mjsunit/regress/regress-1170.js
+# Object Environment Record HasBinding includes inherited properties. Ekuma's
+# strict assignment to the inherited writable binding creates an own global
+# property. d8 throws ReferenceError and leaves the property inherited.
 test/mjsunit/regress/regress-crbug-1105383.js
 
 # Annex B.3.2.1 preserves the arguments binding outside a block declaring a
@@ -717,6 +715,7 @@ test/webkit/dfg-peephole-compare-final-object-to-final-object-or-other-when-both
 test/webkit/dfg-peephole-compare-final-object-to-final-object-or-other-when-proven-final-object.js
 test/webkit/exception-for-nonobject.js
 test/webkit/fast/js/JSON-parse-reviver.js
+test/webkit/fast/js/Object-defineProperty.js
 test/webkit/fast/js/Promise-resolve-with-itself.js
 test/webkit/fast/js/arguments.js
 test/webkit/fast/js/array-prototype-properties.js
@@ -761,10 +760,6 @@ test/webkit/fast/js/basic-strict-mode.js
 # Ekuma parses "1 January -1 UTC" as year -1. V8 expects an invalid date
 # and a RangeError from toISOString().
 test/webkit/fast/js/date-toisostring.js
-
-# The test defines a non-configurable accessor on Object.prototype and then
-# on the global object's prototype. In Ekuma these are the same object.
-test/webkit/fast/js/Object-defineProperty.js
 
 # Array.prototype.sort writes the sorted element back with Set. V8 leaves
 # index 0 inherited when sorting an array-like object with one element.

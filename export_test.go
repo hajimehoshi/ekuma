@@ -102,7 +102,7 @@ func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
 	return r.parseScript(name, src.value.Str())
 }
 
-// InstallGlobalProxy installs a global proxy in r, reusing the proxy of previous if supplied.
+// InstallGlobalProxy installs a d8 global proxy in r, reusing the proxy of previous if supplied.
 func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAccess bool) Value {
 	var prev *engine.Realm
 	if previous != nil {
@@ -110,9 +110,28 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 	}
 	var proxy engine.Value
 	r.in(func() {
-		proxy = r.vm.e.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
+		vm := r.vm.e
+		proxy = vm.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
+		vm.SetPrototypeOf(vm.GlobalObject().Object(), newV8GlobalPrototype(vm, proxy))
 	})
 	return fromEngine(proxy)
+}
+
+func newV8GlobalPrototype(vm *engine.VM, globalThis engine.Value) *engine.Object {
+	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := vm.NewNativeConstructor("", 0, func(vm *engine.VM, this engine.Value, _ []engine.Value) engine.Value {
+		if target := vm.GetNewTarget(); target != nil {
+			instanceProto := vm.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)
+			return engine.ObjectValue(vm.NewObject(instanceProto))
+		}
+		if this.IsNullish() {
+			return globalThis
+		}
+		return engine.ObjectValue(vm.ToObject(this))
+	})
+	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), engine.FlagWritable)
+	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	return proto
 }
 
 // NewRealmShared provides operations to install and update Realm.shared in vm.
