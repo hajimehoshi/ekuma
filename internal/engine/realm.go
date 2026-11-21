@@ -113,6 +113,7 @@ func (vm *VM) initRealmGlobals() {
 	vm.shapes.iterResult = vm.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
 	vm.shapes.arguments = vm.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
 	vm.global = vm.NewObject(vm.intrinsics[IntrinsicObjectPrototype])
+	vm.globalThis = vm.global
 	vm.globalLex = vm.NewObject(nil)
 }
 
@@ -262,7 +263,7 @@ type Script struct {
 
 // ParseScript implements ParseScript for the current realm. file names the script in error
 // messages. The error is a [*SyntaxError] when src is not a valid script.
-func (vm *VM) ParseScript(file, src string) (*Script, error) {
+func (vm *VM) ParseScript(file string, src wtf8.String) (*Script, error) {
 	fp, err := vm.compileScript(file, src)
 	if err != nil {
 		return nil, err
@@ -283,7 +284,7 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 	}
 	f := vm.newScriptFunction(s.code)
 	return vm.enter(func() Value {
-		return vm.Call(f, Value{o: vm.global})
+		return vm.Call(f, Value{o: vm.globalThis})
 	})
 }
 
@@ -401,7 +402,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	return result, nil
 }
 
-func (vm *VM) compileScript(file, src string) (*funcProto, error) {
+func (vm *VM) compileScript(file string, src wtf8.String) (*funcProto, error) {
 	bc, err := compileScriptCode(file, src)
 	if err != nil {
 		return nil, err
@@ -414,8 +415,8 @@ func (vm *VM) compileScript(file, src string) (*funcProto, error) {
 
 // compileScriptCode parses and compiles the script src. The error is a [*SyntaxError] when src is
 // not a valid script.
-func compileScriptCode(file, src string) (*bytecode.Func, error) {
-	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), parser.Options{})
+func compileScriptCode(file string, src wtf8.String) (*bytecode.Func, error) {
+	prog, err := parser.ParseScript(src, parser.Options{})
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
@@ -436,7 +437,7 @@ type UnboundScript struct {
 // ParseUnboundScript parses src as the source text of a script for no particular VM. file names
 // the script in error messages. The error is a [*SyntaxError] when src is not a valid script.
 func ParseUnboundScript(file, src string) (*UnboundScript, error) {
-	bc, err := compileScriptCode(file, src)
+	bc, err := compileScriptCode(file, wtf8.FromValidUTF8(src))
 	if err != nil {
 		return nil, err
 	}
@@ -510,7 +511,7 @@ func (vm *VM) PerformEval(x Value) Value {
 	if !x.IsString() {
 		return x
 	}
-	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.Str())), Value{o: vm.global})
+	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.Str())), Value{o: vm.globalThis})
 }
 
 // FunctionKind is the kind of function that CreateDynamicFunction creates.
@@ -564,7 +565,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 		vm.throwCompileError("<anonymous>", err)
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
-	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.global})
+	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.globalThis})
 	if proto != fallback {
 		vm.SetPrototypeOf(f.o, proto)
 	}

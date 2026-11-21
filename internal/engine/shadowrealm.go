@@ -41,7 +41,7 @@ func (vm *VM) EvalInRealm(r *Realm, src wtf8.String) (Value, bool) {
 	vm.InRealm(r, func() {
 		f := vm.newScriptFunction(vm.link(bc, vm.referrer))
 		e, ok = vm.Completion(func() {
-			result = vm.Call(f, Value{o: vm.global})
+			result = vm.Call(f, Value{o: vm.globalThis})
 		})
 	})
 	if !ok {

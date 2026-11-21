@@ -369,6 +369,9 @@ type VM struct {
 	// hostDefined is the value that [VM.HostDefined] returns.
 	hostDefined any
 
+	// globalProxyHandler identifies proxies whose target depends on the accessing realm.
+	globalProxyHandler *Object
+
 	stack  []Value
 	frames []frame
 
@@ -507,6 +510,12 @@ type realm struct {
 	asyncFromSyncProto *Object
 
 	global *Object
+
+	// globalThis is the global this value, which a host can set to a global proxy.
+	globalThis *Object
+
+	// foreignGlobalView handles this realm's property access on foreign global proxies.
+	foreignGlobalView *Object
 
 	// globalLex holds the top-level let, const and class declarations.
 	globalLex *Object
@@ -798,7 +807,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 // receiverName returns the type name that a stack trace shows for a call with this, or an
 // empty string when the call shows no receiver.
 func (vm *VM) receiverName(isNew bool, this Value) wtf8.String {
-	if isNew || this.IsObject() && this.o == vm.global || this.IsNullish() {
+	if isNew || this.IsObject() && this.o == vm.globalThis || this.IsNullish() {
 		return ""
 	}
 	return vm.typeName(this)

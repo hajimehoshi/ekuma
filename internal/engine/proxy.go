@@ -49,6 +49,19 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 	return p
 }
 
+// InstallGlobalProxy makes a proxy the global this value of the current realm.
+// In this realm, property operations on other realms' global proxies use foreignView.
+func (vm *VM) InstallGlobalProxy(foreignView *Object) Value {
+	if vm.globalProxyHandler == nil {
+		vm.globalProxyHandler = vm.NewObject(nil)
+	}
+	vm.foreignGlobalView = foreignView
+	vm.globalThis = vm.ProxyCreate(ObjectValue(vm.global), ObjectValue(vm.globalProxyHandler))
+	proxy := ObjectValue(vm.globalThis)
+	vm.Define(vm.global, vm.Intern("globalThis"), proxy, FlagsHidden)
+	return proxy
+}
+
 // RevokeProxy revokes the proxy p: every internal method of p throws a TypeError from then on.
 func RevokeProxy(p *Object) {
 	st := p.extState().(*proxyState)
@@ -99,6 +112,7 @@ func (vm *VM) throwRevoked(op string) {
 }
 
 // proxyEnter starts an internal method of the proxy o and returns its target and handler.
+// A foreign global proxy uses the accessing realm's view as its target.
 // The caller has to call proxyLeave when the method ends.
 //
 // The internal methods of a proxy whose target is a proxy call each other without running
@@ -114,8 +128,15 @@ func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
 	if vm.depth >= maxDepth {
 		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
+	target = st.target
+	if st.handler == vm.globalProxyHandler && target != vm.global {
+		target = vm.foreignGlobalView
+		if target == nil {
+			vm.ThrowTypeError("no access")
+		}
+	}
 	vm.depth++
-	return st.target, st.handler
+	return target, st.handler
 }
 
 func (vm *VM) proxyLeave() {

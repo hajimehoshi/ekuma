@@ -112,7 +112,7 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 		}
 		return Undefined
 	}
-	return vm.getProp(g, k, Value{o: g})
+	return vm.getProp(g, k, Value{o: vm.globalThis})
 }
 
 // resolveGlobal returns whether the global variable key exists.
@@ -163,7 +163,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 	}
-	if !vm.setProp(g, k, val, Value{o: g}) && strict {
+	if !vm.setProp(g, k, val, Value{o: vm.globalThis}) && strict {
 		vm.throwReadOnly(Value{o: g}, k)
 	}
 }

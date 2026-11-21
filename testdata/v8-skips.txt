@@ -653,10 +653,14 @@ test/mjsunit/wasm/wasm-object-api.js
 test/mjsunit/weakrefs/basics.js
 
 # These tests require V8's stack trace API.
+test/mjsunit/cross-realm-callsite.js
 test/mjsunit/regress/regress-3718.js
 test/mjsunit/regress/regress-450328966.js
 test/mjsunit/regress/regress-5245.js
 test/mjsunit/regress/regress-5342.js
+test/mjsunit/regress/regress-547027738.js
+test/mjsunit/regress/regress-561672123.js
+test/mjsunit/regress/regress-576225189.js
 test/mjsunit/regress/regress-596718.js
 test/mjsunit/regress/regress-693500.js
 test/mjsunit/regress/regress-crbug-1440685.js
@@ -665,66 +669,54 @@ test/mjsunit/regress/regress-crbug-435825.js
 test/mjsunit/regress/regress-crbug-489597.js
 test/mjsunit/regress/regress-crbug-505370.js
 test/mjsunit/regress/regress-crbug-599067.js
+test/mjsunit/regress/regress-v8-7848.js
 
-# These tests require the Realm global.
-test/mjsunit/array-constructor.js
-test/mjsunit/call-cross-realm.js
+# These tests require Realm.createAllowCrossRealmAccess.
 test/mjsunit/compiler/regress-1250216.js
-test/mjsunit/contextual-calls.js
-test/mjsunit/cross-realm-callsite.js
-test/mjsunit/d8/d8-realm-explicit-scope.js
-test/mjsunit/d8/d8-realm-microtask-queue.js
 test/mjsunit/d8/d8-realm-onerror.js
-test/mjsunit/d8/d8-realm-shared-templates.js
-test/mjsunit/d8/regress-516209551.js
 test/mjsunit/d8/regress-517967108.js
-test/mjsunit/es6/array-species.js
-test/mjsunit/es6/proxies-accesschecks.js
-test/mjsunit/es6/proxies-construct.js
-test/mjsunit/es6/regress-rewriter-completion-values.js
-test/mjsunit/es6/regress/regress-576662.js
-test/mjsunit/harmony/global.js
-test/mjsunit/lookup-behind-property.js
 test/mjsunit/realm-property-access.js
-test/mjsunit/regress/redeclaration-error-types.js
 test/mjsunit/regress/regress-1033966.js
 test/mjsunit/regress/regress-1069964.js
 test/mjsunit/regress/regress-1494164.js
-test/mjsunit/regress/regress-280531.js
 test/mjsunit/regress/regress-396460426.js
-test/mjsunit/regress/regress-4509-Class-constructor-typeerror-realm.js
 test/mjsunit/regress/regress-463593768.js
 test/mjsunit/regress/regress-464961493.js
 test/mjsunit/regress/regress-493269623.js
 test/mjsunit/regress/regress-495503781.js
-test/mjsunit/regress/regress-523431532.js
 test/mjsunit/regress/regress-524921880.js
-test/mjsunit/regress/regress-547027738.js
-test/mjsunit/regress/regress-561672123.js
 test/mjsunit/regress/regress-572400584.js
-test/mjsunit/regress/regress-574222006.js
 test/mjsunit/regress/regress-575524702.js
-test/mjsunit/regress/regress-576225189.js
-test/mjsunit/regress/regress-586878505.js
-test/mjsunit/regress/regress-6733.js
-test/mjsunit/regress/regress-681984.js
-test/mjsunit/regress/regress-889722.js
 test/mjsunit/regress/regress-crbug-1130213.js
 test/mjsunit/regress/regress-crbug-1321899-1.js
 test/mjsunit/regress/regress-crbug-1321899-3.js
-test/mjsunit/regress/regress-crbug-1321899-5.js
 test/mjsunit/regress/regress-crbug-1339722-3.js
-test/mjsunit/regress/regress-crbug-1339722-5.js
 test/mjsunit/regress/regress-crbug-1339722-7.js
-test/mjsunit/regress/regress-crbug-1339722.js
-test/mjsunit/regress/regress-crbug-364422411.js
-test/mjsunit/regress/regress-crbug-501808.js
-test/mjsunit/regress/regress-crbug-702798.js
-test/mjsunit/regress/regress-crbug-768875.js
 test/mjsunit/regress/regress-crbug-959727.js
-test/mjsunit/regress/regress-v8-12705.js
-test/mjsunit/regress/regress-v8-7848.js
 test/mjsunit/wasm/jspi-import-wrapper-receiver.js
+
+# These tests require access checks on private elements of foreign globals.
+test/mjsunit/regress/regress-crbug-1321899-5.js
+test/mjsunit/regress/regress-crbug-1339722-5.js
+test/mjsunit/regress/regress-crbug-1339722.js
+
+# These tests require Realm.current.
+test/mjsunit/contextual-calls.js
+test/mjsunit/regress/regress-6733.js
+test/mjsunit/regress/regress-crbug-768875.js
+
+# These tests require Realm.dispose.
+test/mjsunit/d8/regress-516209551.js
+test/mjsunit/regress/redeclaration-error-types.js
+
+# This test requires Realm.shared.
+test/mjsunit/regress/regress-523431532.js
+
+# This test requires V8's cross-realm Promise constructor access check.
+test/mjsunit/regress/regress-v8-12705.js
+
+# This test requires a separate microtask queue and Realm.shared.
+test/mjsunit/d8/d8-realm-microtask-queue.js
 
 # These tests require the WebAssembly global.
 test/mjsunit/regress/wasm/condition-change-during-branch-elimination.js
@@ -1357,6 +1349,7 @@ test/mjsunit/regress/wasm/regress-827806.js
 test/mjsunit/regress/wasm/regress-crbug-1502180.js
 
 # These tests require other d8 shell APIs.
+test/mjsunit/d8/d8-realm-shared-templates.js
 test/mjsunit/d8/d8-test-access-check.js
 test/mjsunit/d8/d8-test-access-checked-interceptor-object.js
 test/mjsunit/d8/d8-test-interceptor.js
@@ -1409,7 +1402,6 @@ test/mjsunit/harmony/modules-import-meta.mjs
 test/mjsunit/regress/regress-3404.js
 test/mjsunit/regress/regress-381390367.js
 test/mjsunit/regress/regress-523435063.js
-test/mjsunit/regress/regress-533926191.js
 test/mjsunit/test-builtins-setup.js
 
 # This test requires Intl.v8BreakIterator.

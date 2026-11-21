@@ -1637,11 +1637,17 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 		vm.resolve(o)
 	}
 	for p := proto; p != nil; p = p.shape.proto {
+		if p.class == classProxy {
+			st := p.extState().(*proxyState)
+			if st.handler == nil || st.handler != vm.globalProxyHandler {
+				break
+			}
+			// Global proxies forward to the same backing global for cycle
+			// detection regardless of the realm setting the prototype.
+			p = st.target
+		}
 		if p == o {
 			return false
-		}
-		if p.class == classProxy {
-			break
 		}
 	}
 	vm.setProto(o, proto)

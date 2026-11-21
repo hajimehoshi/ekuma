@@ -9,11 +9,12 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // runScript parses src as a script of vm and evaluates it.
 func runScript(vm *engine.VM, file, src string) (engine.Value, error) {
-	s, err := vm.ParseScript(file, src)
+	s, err := vm.ParseScript(file, wtf8.FromValidUTF8(src))
 	if err != nil {
 		return engine.Undefined, err
 	}

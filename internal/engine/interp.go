@@ -1175,7 +1175,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			t := vm.frames[len(vm.frames)-1].this
 			if t.o == nil || t.o.kind < kindFirstObject {
 				if t.IsNullish() {
-					t = Value{o: vm.global}
+					t = Value{o: vm.globalThis}
 				} else {
 					t = Value{o: vm.ToObject(t)}
 				}

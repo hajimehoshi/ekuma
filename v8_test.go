@@ -435,17 +435,22 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 		vm.SetClock(func() time.Time { return now })
 	}
 	var lastPrint string
-	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	print := func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		lastPrint = firstLine(fmt.Sprint(args))
 		return ekuma.Undefined, nil
-	})
-	if err := vm.Global().Set("print", print); err != nil {
-		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	if inSuiteDir(v.file, "test/mjsunit") {
-		if err := installV8ScriptLoader(ctx, vm.InitialRealm(), checkout); err != nil {
+		realms := v8Realms{
+			vm:       &vm,
+			ctx:      ctx,
+			checkout: checkout,
+			print:    print,
+		}
+		if _, err := realms.add(vm.InitialRealm()); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
 		}
+	} else if err := vm.Global().Set("print", vm.FuncOf("print", print)); err != nil {
+		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	helpers := v.helpers
 	if directives.noHarness {

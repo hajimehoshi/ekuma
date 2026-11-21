@@ -6,6 +6,7 @@ package ekuma
 import (
 	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // Realm is a realm of a [VM]: a global object with its own standard built-in objects.
@@ -111,6 +112,10 @@ func (r *Realm) NewPromise() (Value, *PromiseResolver) {
 // messages and stack traces, and in the [ModuleRequest.ReferrerName] of its import() calls.
 // The error is a [*SyntaxError] when src is not a valid script.
 func (r *Realm) ParseScript(name, src string) (*Script, error) {
+	return r.parseScript(name, wtf8.FromValidUTF8(src))
+}
+
+func (r *Realm) parseScript(name string, src wtf8.String) (*Script, error) {
 	var es *engine.Script
 	var err error
 	r.in(func() {

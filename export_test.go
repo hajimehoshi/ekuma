@@ -8,6 +8,21 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
+// ParseScriptValue parses the JavaScript string src as a script of r.
+func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
+	return r.parseScript(name, src.value.Str())
+}
+
+// InstallGlobalProxy installs and returns a global proxy in r. Property access in r
+// on another realm's global proxy goes through foreignView.
+func InstallGlobalProxy(r *Realm, foreignView Value) Value {
+	var proxy engine.Value
+	r.in(func() {
+		proxy = r.vm.e.InstallGlobalProxy(foreignView.value.Object())
+	})
+	return fromEngine(proxy)
+}
+
 // NewHTMLDDA returns an object of r with the [[IsHTMLDDA]] internal slot, which returns null when called.
 func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value
