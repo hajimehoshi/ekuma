@@ -661,15 +661,13 @@ func (dtf *dateTimeFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 // Temporal objects without the namespace, makes the namespace get its properties first.
 func initTemporalToLocaleString(vm *engine.VM) {
 	global := vm.GlobalObject().Object()
-	key := engine.NamedKey(vm.Intern("Temporal"))
-	orig := vm.Get(global, key)
-	if !orig.IsObject() {
+	orig := vm.Intrinsic(engine.IntrinsicTemporal)
+	if orig == nil {
 		return
 	}
 	ns := vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
-		o := orig.Object()
-		for _, k := range vm.OwnKeys(o) {
-			d, _ := vm.GetOwnProperty(o, k)
+		for _, k := range vm.OwnKeys(orig) {
+			d, _ := vm.GetOwnProperty(orig, k)
 			vm.DefineOwnProperty(ns, k, d)
 		}
 		for _, c := range []struct {
@@ -698,6 +696,7 @@ func initTemporalToLocaleString(vm *engine.VM) {
 		proto := vm.Get(ctor.Object(), engine.NamedKey(vm.Key(engine.KeyPrototype))).Object()
 		method(vm, proto, "toLocaleString", 0, durationToLocaleString)
 	})
+	vm.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	vm.Define(global, vm.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 	dateProto := vm.Intrinsic(engine.IntrinsicDatePrototype)
 	toInstant := vm.Get(dateProto, engine.NamedKey(vm.Intern("toTemporalInstant")))

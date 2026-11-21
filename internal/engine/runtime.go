@@ -1371,13 +1371,17 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Objec
 // intrinsicOfRealm returns the intrinsic of the realm r that corresponds to the intrinsic o of
 // the current realm, or o when o is not one.
 func (vm *VM) intrinsicOfRealm(r *realm, o *Object) *Object {
-	for i, p := range vm.intrinsics {
-		if p == o {
-			if q := r.intrinsics[i]; q != nil {
-				return q
-			}
-			break
+	id := slices.Index(vm.intrinsics[:], o)
+	if id < 0 {
+		return o
+	}
+	if IntrinsicTemporalInstantPrototype <= Intrinsic(id) && Intrinsic(id) <= IntrinsicTemporalZonedDateTimePrototype {
+		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {
+			vm.InitLazyObject(ns)
 		}
+	}
+	if q := r.intrinsics[id]; q != nil {
+		return q
 	}
 	return o
 }

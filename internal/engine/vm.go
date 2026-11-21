@@ -649,6 +649,18 @@ const (
 	IntrinsicRegExp
 	IntrinsicAbstractModuleSource
 
+	IntrinsicTemporal
+
+	// intrinsicOfRealm initializes the Temporal namespace for this range of prototypes.
+	IntrinsicTemporalInstantPrototype
+	IntrinsicTemporalDurationPrototype
+	IntrinsicTemporalPlainDatePrototype
+	IntrinsicTemporalPlainTimePrototype
+	IntrinsicTemporalPlainDateTimePrototype
+	IntrinsicTemporalPlainYearMonthPrototype
+	IntrinsicTemporalPlainMonthDayPrototype
+	IntrinsicTemporalZonedDateTimePrototype
+
 	// The prototypes of the native error types are in the order of [ErrorKind].
 	IntrinsicErrorPrototype
 	IntrinsicTypeErrorPrototype

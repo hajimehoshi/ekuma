@@ -679,6 +679,7 @@ func initTemporal(vm *engine.VM) {
 	ns := vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
 		r = newTemporalRealm(vm, ns)
 	})
+	vm.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 
 	tmethod(vm, vm.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -695,15 +696,20 @@ func initTemporal(vm *engine.VM) {
 func newTemporalRealm(vm *engine.VM, ns *engine.Object) *temporalRealm {
 	vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal"), engine.FlagConfigurable)
 	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
+	newPrototype := func(id engine.Intrinsic) *engine.Object {
+		proto := vm.NewObject(objectProto)
+		vm.SetIntrinsic(id, proto)
+		return proto
+	}
 	r := &temporalRealm{
-		instant:        vm.NewObject(objectProto),
-		duration:       vm.NewObject(objectProto),
-		plainDate:      vm.NewObject(objectProto),
-		plainTime:      vm.NewObject(objectProto),
-		plainDateTime:  vm.NewObject(objectProto),
-		plainYearMonth: vm.NewObject(objectProto),
-		plainMonthDay:  vm.NewObject(objectProto),
-		zonedDateTime:  vm.NewObject(objectProto),
+		instant:        newPrototype(engine.IntrinsicTemporalInstantPrototype),
+		duration:       newPrototype(engine.IntrinsicTemporalDurationPrototype),
+		plainDate:      newPrototype(engine.IntrinsicTemporalPlainDatePrototype),
+		plainTime:      newPrototype(engine.IntrinsicTemporalPlainTimePrototype),
+		plainDateTime:  newPrototype(engine.IntrinsicTemporalPlainDateTimePrototype),
+		plainYearMonth: newPrototype(engine.IntrinsicTemporalPlainYearMonthPrototype),
+		plainMonthDay:  newPrototype(engine.IntrinsicTemporalPlainMonthDayPrototype),
+		zonedDateTime:  newPrototype(engine.IntrinsicTemporalZonedDateTimePrototype),
 	}
 	initTemporalInstant(vm, ns, r)
 	initTemporalDuration(vm, ns, r)

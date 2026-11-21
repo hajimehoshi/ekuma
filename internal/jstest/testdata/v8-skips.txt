@@ -586,9 +586,6 @@ test/mjsunit/stack-traces.js
 # V8 throws a SyntaxError for a global function declaration named NaN.
 test/mjsunit/regress/redeclaration-error-types.js
 
-# Temporal.Instant needs its default prototype from the realm of new.target.
-test/mjsunit/regress/regress-495503781.js
-
 # This test requires V8's cross-realm Promise constructor access check.
 test/mjsunit/regress/regress-v8-12705.js
 
