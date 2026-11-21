@@ -679,6 +679,9 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 	if v.isShortString() && uint(i) < uint(v.StringLength()) {
 		return vm.UnitString(v.UnitAt(int(i))), nil
 	}
+	if o := v.o; o != nil && o.class == classTypedArray {
+		return vm.typedArrayGet(o, i), nil
+	}
 	start := vm.protoStart(v, PropKey{idx: i})
 	for h := start; h != nil; h = h.shape.proto {
 		if h.objectProperties != nil && int64(i) < int64(len(h.elems)) {

@@ -39,12 +39,14 @@ var fastPathCalls = map[string]bool{
 	"cap":                  true,
 	"min":                  true,
 	"max":                  true,
+	"byte":                 true,
 	"float64":              true,
 	"int":                  true,
 	"int32":                true,
 	"int64":                true,
 	"uint":                 true,
 	"uint32":               true,
+	"uint64":               true,
 	"Number":               true,
 	"Bool":                 true,
 	"site.entry":           true,
@@ -54,6 +56,8 @@ var fastPathCalls = map[string]bool{
 	"numconv.InInt64Range": true,
 	"vm.interrupt.Load":    true,
 	"vm.Intrinsic":         true,
+	"math.Float64frombits": true,
+	"math.Float64bits":     true,
 }
 
 // fastPathMethods are the methods that the fast paths may call on a value of any name.
@@ -91,8 +95,23 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 // testFastPathSource tests that the fast path s calls only the functions that fastPathCalls and
 // fastPathMethods list, apart from the checks of builds with the build tag ekumavalidate.
 func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
+	// An assertion to a pointer type that reports its success compiles to a comparison of the
+	// type word.
+	commaOK := map[*ast.TypeAssertExpr]bool{}
 	ast.Inspect(s, func(n ast.Node) bool {
 		switch n := n.(type) {
+		case *ast.AssignStmt:
+			if len(n.Lhs) == 2 && len(n.Rhs) == 1 {
+				if a, ok := n.Rhs[0].(*ast.TypeAssertExpr); ok {
+					if _, ok := a.Type.(*ast.StarExpr); ok {
+						commaOK[a] = true
+					}
+				}
+			}
+		case *ast.TypeAssertExpr:
+			if !commaOK[n] {
+				t.Errorf("%v: %T", fset.Position(n.Pos()), n)
+			}
 		case *ast.IfStmt:
 			// validateExec is false in the build that the compiled code is tested in.
 			if id, ok := n.Cond.(*ast.Ident); ok && id.Name == "validateExec" && n.Else == nil {
@@ -106,7 +125,7 @@ func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
 			if !fastPathCalls[name] {
 				t.Errorf("%v: call of %s", fset.Position(n.Pos()), name)
 			}
-		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt, *ast.TypeAssertExpr, *ast.SendStmt, *ast.SelectStmt:
+		case *ast.FuncLit, *ast.GoStmt, *ast.DeferStmt, *ast.SendStmt, *ast.SelectStmt:
 			t.Errorf("%v: %T", fset.Position(n.Pos()), n)
 		case *ast.CompositeLit:
 			if _, ok := n.Type.(*ast.Ident); !ok {

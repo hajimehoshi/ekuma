@@ -576,6 +576,37 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						continue
 					}
 				}
+				// The common elements of a typed array whose bytes are all in the data of its
+				// buffer, as in typedArrayGet. The data is loaded after the last check: a path to
+				// the switch below that needs a register the load took makes the compiler store
+				// loop values at the head of the loop on amd64. The functions of encoding/binary
+				// do not inline into exec, so the bytes are combined here.
+				if t, ok := o.ext.(*TypedArray); ok {
+					if j := int(k.n); float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) {
+						switch t.typ {
+						case ElementInt32:
+							if t.offset+t.length*4 <= len(t.data.data) {
+								b := t.data.data[t.offset+j*4:]
+								_ = b[3]
+								setNumber(&regs[i.A], float64(int32(uint32(b[0])|uint32(b[1])<<8|uint32(b[2])<<16|uint32(b[3])<<24)))
+								continue
+							}
+						case ElementFloat64:
+							if t.offset+t.length*8 <= len(t.data.data) {
+								b := t.data.data[t.offset+j*8:]
+								_ = b[7]
+								setNumber(&regs[i.A], math.Float64frombits(uint64(b[0])|uint64(b[1])<<8|uint64(b[2])<<16|uint64(b[3])<<24|
+									uint64(b[4])<<32|uint64(b[5])<<40|uint64(b[6])<<48|uint64(b[7])<<56))
+								continue
+							}
+						case ElementUint8, ElementUint8C:
+							if t.offset+t.length <= len(t.data.data) {
+								setNumber(&regs[i.A], float64(t.data.data[t.offset+j]))
+								continue
+							}
+						}
+					}
+				}
 			}
 		case bytecode.OpGetIndexInt:
 			if o := regs[i.B].o; o != nil && o.objectProperties != nil && uint(i.C) < uint(len(o.elems)) {
@@ -584,12 +615,76 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 			}
+			// The same as OpGetIndex for a typed array.
+			if o := regs[i.B].o; o != nil {
+				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && uint(i.C) < uint(t.length) {
+					switch j := int(i.C); t.typ {
+					case ElementInt32:
+						if t.offset+t.length*4 <= len(t.data.data) {
+							b := t.data.data[t.offset+j*4:]
+							_ = b[3]
+							setNumber(&regs[i.A], float64(int32(uint32(b[0])|uint32(b[1])<<8|uint32(b[2])<<16|uint32(b[3])<<24)))
+							continue
+						}
+					case ElementFloat64:
+						if t.offset+t.length*8 <= len(t.data.data) {
+							b := t.data.data[t.offset+j*8:]
+							_ = b[7]
+							setNumber(&regs[i.A], math.Float64frombits(uint64(b[0])|uint64(b[1])<<8|uint64(b[2])<<16|uint64(b[3])<<24|
+								uint64(b[4])<<32|uint64(b[5])<<40|uint64(b[6])<<48|uint64(b[7])<<56))
+							continue
+						}
+					case ElementUint8, ElementUint8C:
+						if t.offset+t.length <= len(t.data.data) {
+							setNumber(&regs[i.A], float64(t.data.data[t.offset+j]))
+							continue
+						}
+					}
+				}
+			}
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
 			v, k := regs[i.A], regs[i.B]
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
 					o.elems[j] = regs[i.C]
 					continue
+				}
+				// The common stores of a number into a typed array, as in typedArraySet, with the
+				// data loaded after the last check as in OpGetIndex.
+				if t, ok := o.ext.(*TypedArray); ok && t.numberStore {
+					if j, x := int(k.n), regs[i.C]; x.o == numberObject && float64(j) == k.n && !t.tracking && uint(j) < uint(t.length) {
+						switch f := x.n; t.typ {
+						case ElementInt32:
+							if t.offset+t.length*4 <= len(t.data.data) && f >= -2147483648 && f <= 2147483647 {
+								b, u := t.data.data[t.offset+j*4:], uint32(int32(f))
+								_ = b[3]
+								b[0] = byte(u)
+								b[1] = byte(u >> 8)
+								b[2] = byte(u >> 16)
+								b[3] = byte(u >> 24)
+								continue
+							}
+						case ElementFloat64:
+							if t.offset+t.length*8 <= len(t.data.data) {
+								b, u := t.data.data[t.offset+j*8:], math.Float64bits(f)
+								_ = b[7]
+								b[0] = byte(u)
+								b[1] = byte(u >> 8)
+								b[2] = byte(u >> 16)
+								b[3] = byte(u >> 24)
+								b[4] = byte(u >> 32)
+								b[5] = byte(u >> 40)
+								b[6] = byte(u >> 48)
+								b[7] = byte(u >> 56)
+								continue
+							}
+						case ElementUint8:
+							if t.offset+t.length <= len(t.data.data) && f >= -2147483648 && f <= 2147483647 {
+								t.data.data[t.offset+j] = byte(int32(f))
+								continue
+							}
+						}
+					}
 				}
 			}
 		case bytecode.OpAdd:
