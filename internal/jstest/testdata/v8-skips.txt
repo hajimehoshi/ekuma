@@ -546,19 +546,11 @@ test/mjsunit/stack-traces-class-fields.js
 test/mjsunit/stack-traces-custom-lazy.js
 test/mjsunit/stack-traces.js
 
-# These tests require Realm.dispose.
-test/mjsunit/d8/regress-516209551.js
+# V8 throws a SyntaxError for a global function declaration named NaN.
 test/mjsunit/regress/redeclaration-error-types.js
-test/mjsunit/regress/regress-1494164.js
 
-# These tests require Realm.navigate.
-test/mjsunit/regress/regress-493269623.js
+# Temporal.Instant needs its default prototype from the realm of new.target.
 test/mjsunit/regress/regress-495503781.js
-test/mjsunit/regress/regress-575524702.js
-
-# These tests require Realm.navigateSameOrigin.
-test/mjsunit/regress/regress-463593768.js
-test/mjsunit/regress/regress-524921880.js
 
 # This test requires Realm.owner.
 test/mjsunit/regress/regress-crbug-1130213.js
@@ -566,9 +558,6 @@ test/mjsunit/regress/regress-crbug-1130213.js
 # These tests require Realm.shared.
 test/mjsunit/contextual-calls.js
 test/mjsunit/regress/regress-523431532.js
-
-# This test requires Realm.switch.
-test/mjsunit/d8/regress-517967108.js
 
 # This test requires V8's cross-realm Promise constructor access check.
 test/mjsunit/regress/regress-v8-12705.js
@@ -590,6 +579,7 @@ test/mjsunit/d8/d8-worker-onerror.js
 test/mjsunit/d8/d8-worker-onmessage-ping-pong.js
 test/mjsunit/d8/regress-389573438.js
 test/mjsunit/d8/regress-511626668.js
+test/mjsunit/d8/regress-517967108.js
 test/mjsunit/harmony/atomics-value-check.js
 test/mjsunit/harmony/atomics-waitasync-1thread-2timeout.js
 test/mjsunit/harmony/atomics-waitasync-1thread-timeout.js
@@ -639,7 +629,9 @@ test/mjsunit/regress/regress-crbug-1381404.js
 test/mjsunit/regress/regress-crbug-1402139.js
 test/mjsunit/regress/regress-crbug-1509910.js
 
-# This test requires asynchronous promise resolution by performance.measureMemory().
+# These tests require performance.measureMemory(). regress-371237560 also
+# depends on asynchronous promise resolution.
+test/mjsunit/regress/regress-1494164.js
 test/mjsunit/regress/regress-371237560.js
 
 # These tests require d8 to report uncaught timer exceptions to onerror.

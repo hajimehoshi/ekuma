@@ -333,6 +333,11 @@ func (vm *VM) loadAndLink(m *Module) {
 // Evaluate implements Evaluate, after [VM.Link] when m is not linked. It returns the promise of the evaluation. A failure to load or
 // link, which comes before any module code runs, is reported as an [*Error].
 func (vm *VM) Evaluate(m *Module) (Value, error) {
+	saved := vm.curRealm
+	if r := m.ref.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
 	return vm.enter(func() Value {
 		vm.loadAndLink(m)
 		return vm.evaluateModule(m)
@@ -1340,6 +1345,10 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 		})
 	})
 	if !ok {
+		return Value{o: c.promise}
+	}
+	if vm.hasDetachedGlobal(vm.curRealm) {
+		vm.RejectCapability(c, vm.NewError(ErrorKindError, "Cannot import module from an inactive context"))
 		return Value{o: c.promise}
 	}
 	m, e, ok := vm.loadImportedModule(ref, req)

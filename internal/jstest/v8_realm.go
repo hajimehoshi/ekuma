@@ -7,7 +7,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
-	"io/fs"
+	"slices"
 	"sync"
 	"testing"
 	"testing/fstest"
@@ -26,11 +26,14 @@ type v8Realms struct {
 	host     *V8
 	vm       *ekuma.VM
 	ctx      context.Context
-	checkout fs.FS
 	print    ekuma.Func
 	shell    v8Shell
 	timeouts *v8Timeouts
-	entries  []v8RealmEntry
+	scripts  *v8Scripts
+	entries  []*v8RealmEntry
+
+	// Each Realm.eval protects its caller until the evaluation returns.
+	stack []*ekuma.Realm
 }
 
 type v8RealmEntry struct {
@@ -39,36 +42,46 @@ type v8RealmEntry struct {
 }
 
 func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
-	s, err := v8RealmScript()
+	index := len(h.entries)
+	entry, err := h.newEntry(index, r, nil, shareAccess)
 	if err != nil {
 		return 0, err
+	}
+	h.entries = append(h.entries, entry)
+	return index, nil
+}
+
+func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess bool) (*v8RealmEntry, error) {
+	s, err := v8RealmScript()
+	if err != nil {
+		return nil, err
 	}
 	init, err := r.BindScript(s).Evaluate(h.ctx)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	if err := r.Global().Set("print", r.FuncOf("print", h.print)); err != nil {
-		return 0, err
+		return nil, err
 	}
-	if err := h.shell.install(h.ctx, r, h.checkout, h.host.CanAccessReceiver); err != nil {
-		return 0, err
+	if err := h.shell.install(h.ctx, r, h.scripts, h.host.CanAccessReceiver); err != nil {
+		return nil, err
 	}
 	if err := h.timeouts.install(r); err != nil {
-		return 0, err
+		return nil, err
 	}
 	create := r.FuncOf("create", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return h.add(h.vm.NewRealm(), args[0].Bool())
 	})
 	lookup := r.FuncOf("lookup", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		i := args[0].Int()
-		if i < 0 || i >= len(h.entries) {
+		if i < 0 || i >= len(h.entries) || h.entries[i] == nil {
 			return ekuma.Undefined, nil
 		}
 		return h.entries[i].object, nil
 	})
 	current := r.FuncOf("current", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		for i, entry := range h.entries {
-			if h.host.IsEnteredRealm(entry.realm) {
+			if entry != nil && h.host.IsEnteredRealm(entry.realm) {
 				return i, nil
 			}
 		}
@@ -76,9 +89,8 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 	})
 	view, err := init.Invoke(h.ctx, create, lookup, current)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	var evalDepth int
 	evaluate := r.FuncOf("evaluate", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		s, err := h.host.ParseScriptValue(r, "(d8)", args[0])
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
@@ -94,28 +106,55 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 		if err != nil {
 			return nil, err
 		}
-		evalDepth++
-		defer func() { evalDepth-- }()
+		caller := h.scripts.current
+		h.stack = append(h.stack, caller)
+		h.scripts.current, h.scripts.next = r, r
+		defer func() {
+			h.scripts.current, h.scripts.next = caller, caller
+			h.stack = slices.Delete(h.stack, len(h.stack)-1, len(h.stack))
+		}()
 		return s.Evaluate(h.ctx)
 	})
-	index := len(h.entries)
-	detach := r.FuncOf("detachGlobal", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		// d8 keeps the main realm and every realm on the Realm.eval stack attached.
-		if index == 0 || evalDepth != 0 {
-			return false, nil
-		}
-		h.host.DetachGlobalProxy(r)
-		return true, nil
+	change := r.FuncOf("change", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return h.change(index, args[0].String())
 	})
-	h.entries = append(h.entries, v8RealmEntry{
+	return &v8RealmEntry{
 		realm: r,
 		object: r.ValueOf(map[string]any{
-			"global":       h.host.InstallGlobalProxy(r, view, shareAccess),
-			"evaluate":     evaluate,
-			"detachGlobal": detach,
+			"global":   h.host.InstallGlobalProxy(r, view, previous, shareAccess),
+			"evaluate": evaluate,
+			"change":   change,
 		}),
-	})
-	return index, nil
+	}, nil
+}
+
+func (h *v8Realms) change(index int, operation string) (bool, error) {
+	r := h.entries[index].realm
+	if operation == "switch" {
+		h.scripts.next = r
+		return true, nil
+	}
+	if index == 0 || r == h.scripts.current || r == h.scripts.next || slices.Contains(h.stack, r) {
+		return false, nil
+	}
+	switch operation {
+	case "detachGlobal":
+		h.host.DetachGlobalProxy(r)
+		return true, nil
+	case "dispose":
+		h.host.DetachGlobalProxy(r)
+		h.entries[index] = nil
+	case "navigate", "navigateSameOrigin":
+		entry, err := h.newEntry(index, h.vm.NewRealm(), r, operation == "navigateSameOrigin")
+		if err != nil {
+			return false, err
+		}
+		h.entries[index] = entry
+	default:
+		panic("unknown realm operation: " + operation)
+	}
+	delete(h.scripts.contexts, r)
+	return true, nil
 }
 
 // CheckRealm checks script evaluation and global object access across V8 realms.
@@ -253,6 +292,117 @@ func (host *V8) CheckRealmDetachGlobal(t *testing.T) {
 		if (await waiting !== "ok" || await childWaiting !== "ok") throw Error("waiter was not notified");
 	`
 	host.checkRealmScript(t, "test/mjsunit/detach-waiters.mjs", waiters, fstest.MapFS{})
+}
+
+// CheckRealmNavigation checks a replacement realm and references retained by its predecessor.
+func (host *V8) CheckRealmNavigation(t *testing.T) {
+	const source = `
+		const peer = Realm.createAllowCrossRealmAccess();
+		const r = Realm.createAllowCrossRealmAccess();
+		const proxy = Realm.global(r);
+		const old = Realm.eval(r, 'var marker = "old"; (' + function () {
+			return {
+				read: () => globalThis.marker,
+				binding: () => marker,
+				importModule: () => import("./module.mjs"),
+				enqueue: f => Promise.resolve().then(() => f()),
+				Error
+			};
+		} + ')()');
+		const mark = () => { throw Error("ran a job in a replaced realm"); };
+		old.enqueue(mark);
+		if (Realm.navigateSameOrigin(r) !== r) throw Error("changed realm ID");
+		if (proxy !== Realm.global(r)) throw Error("replaced the global proxy");
+		if (Realm.eval(r, 'typeof marker') !== "undefined") throw Error("retained a global");
+		Realm.eval(r, 'var marker = "new"');
+		if (old.binding() !== "old" || old.read() !== "new") throw Error("wrong old binding or proxy");
+		// Same-origin navigation uses the old realm's default group after detachment.
+		try { proxy.marker; throw Error("retained the creator's access"); }
+		catch (e) { if (!(e instanceof TypeError)) throw e; }
+		old.enqueue(mark);
+		old.importModule().then(mark, e => {
+			if (e.constructor !== old.Error) throw Error("wrong import rejection");
+		});
+
+		const replaced = Realm.eval(r, '() => globalThis.marker');
+		const replacedTypeError = Realm.eval(r, 'TypeError');
+		const fresh = Realm.eval(r, 'typeof marker', {
+			get type() {
+				if (Realm.navigate(r) !== r) throw Error("wrong navigation ID");
+				return "string";
+			}
+		});
+		if (fresh !== "undefined" || Realm.global(r) !== proxy) throw Error("selected stale realm");
+		try { replaced(); throw Error("old function retained cross-origin access"); }
+		catch (e) { if (!(e instanceof replacedTypeError)) throw e; }
+
+		try {
+			Realm.eval(r, "1", {get type() { Realm.dispose(r); return "string"; }});
+			throw "evaluated in disposed realm";
+		} catch (e) { if (e.constructor !== Error) throw e; }
+		if (Realm.create() <= r) throw Error("reused disposed ID");
+		Realm.global(peer).marker = 42;
+		if (Realm.eval(peer, "marker") !== 42) throw Error("lost live peer");
+
+		const isolated = Realm.create();
+		const sibling = Realm.eval(isolated, "Realm.createAllowCrossRealmAccess()");
+		const saved = Realm.global(isolated);
+		Realm.detachGlobal(isolated);
+		Realm.navigateSameOrigin(isolated);
+		Realm.eval(isolated, "var marker = 17");
+		const read = Realm.eval(sibling, "g => g.marker");
+		if (read(saved) !== 17) throw Error("lost default access group");
+	`
+	host.checkRealmScript(t, "test/mjsunit/navigation.js", source, fstest.MapFS{
+		"test/mjsunit/module.mjs": {
+			Data: []byte("export default 1"),
+		},
+	})
+}
+
+// CheckRealmSwitch checks realm selection across eval, nested loads, and shell inputs.
+func (host *V8) CheckRealmSwitch(t *testing.T) {
+	const source = `// Files: setup.js selected.mjs
+		if (Realm.current() !== 1) throw Error("wrong realm for the next input");
+		if (moduleRealm !== globalThis) throw Error("module ran in a different realm");
+		Realm.switch(0);
+		try { Realm.dispose(1); throw "disposed current"; }
+		catch (e) { if (!(e instanceof Error)) throw e; }
+		// The first nested script finishes the switch, so the second runs in main.
+		load("first.js", "second.js");
+		if (!Realm.global(0).finished) throw Error("switch did not apply between loads");
+		try { load("missing.js"); throw "loaded missing file"; }
+		catch (e) { if (e.constructor !== Realm.global(0).Error) throw e; }
+	`
+	host.checkRealmScript(t, "test/mjsunit/switch.js", source, fstest.MapFS{
+		"setup.js": {
+			Data: []byte(`
+				const r = Realm.createAllowCrossRealmAccess(), temporary = Realm.create();
+				Realm.switch(temporary);
+				Realm.eval(r, "Realm.switch(" + temporary + ")");
+				Realm.dispose(temporary);
+				if (Realm.switch(r) !== undefined || Realm.current() !== 0) throw Error("early switch");
+				try { Realm.navigate(r); throw "navigated scheduled realm"; }
+				catch (e) { if (!(e instanceof Error)) throw e; }
+			`),
+		},
+		"selected.mjs": {
+			Data: []byte(`
+				import {g} from "./dep.mjs";
+				if (Realm.current() !== 1) throw Error("wrong entered module realm");
+				globalThis.moduleRealm = g;
+			`),
+		},
+		"dep.mjs": {
+			Data: []byte("export const g = globalThis;"),
+		},
+		"first.js": {
+			Data: []byte(`if (Realm.current() !== 1) throw Error("early switch in load");`),
+		},
+		"second.js": {
+			Data: []byte(`if (Realm.current() !== 0) throw Error("late switch in load"); globalThis.finished = true;`),
+		},
+	})
 }
 
 func (host *V8) checkRealmScript(t *testing.T, file, source string, checkout fstest.MapFS) {

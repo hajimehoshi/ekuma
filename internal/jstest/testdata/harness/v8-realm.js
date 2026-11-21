@@ -15,6 +15,10 @@
     return realm;
   }
 
+  function change(i, operation) {
+    if (!select(i).change(operation)) throw new Error("Invalid realm index");
+  }
+
   globalThis.Realm = {
     current,
     create(options) {
@@ -33,10 +37,24 @@
       return create(true);
     },
     detachGlobal(i) {
-      if (!select(i).detachGlobal()) throw new Error("Invalid realm index");
+      change(i, "detachGlobal");
+    },
+    dispose(i) {
+      change(i, "dispose");
+    },
+    switch(i) {
+      change(i, "switch");
+    },
+    navigate(i) {
+      change(i, "navigate");
+      return i | 0;
+    },
+    navigateSameOrigin(i) {
+      change(i, "navigateSameOrigin");
+      return i | 0;
     },
     eval(i, source, options) {
-      const realm = select(i);
+      let realm = select(i);
       let type = "string";
       if (isObject(options)) {
         type = options.type;
@@ -44,6 +62,8 @@
           // d8 reads the arguments option even for string sources.
           void options.arguments;
         }
+        // Reading the options can dispose or replace the selected realm.
+        realm = select(i);
       }
       if (type !== "string" || typeof source !== "string") {
         throw new Error("Invalid argument");

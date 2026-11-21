@@ -29,7 +29,7 @@ import (
 type V8 struct {
 	IsEnteredRealm           func(*ekuma.Realm) bool
 	ParseScriptValue         func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
-	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, bool) ekuma.Value
+	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, *ekuma.Realm, bool) ekuma.Value
 	DetachGlobalProxy        func(*ekuma.Realm)
 	CanAccessReceiver        func(*ekuma.Realm, ekuma.Value) bool
 	InvokeInRealm            func(context.Context, *ekuma.Realm, ekuma.Value) error
@@ -216,7 +216,8 @@ func CheckV8ScriptLoader(t *testing.T) {
 	var vm ekuma.VM
 	realm := vm.NewRealm()
 	ctx := t.Context()
-	if err := installV8ScriptLoader(ctx, realm, checkout); err != nil {
+	scripts := newV8Scripts(realm, checkout, ".")
+	if err := scripts.installLoader(ctx, realm); err != nil {
 		t.Fatal(err)
 	}
 	const src = `
@@ -468,17 +469,18 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	timeouts := v8Timeouts{
 		invoke: host.InvokeInRealm,
 	}
+	scripts := newV8Scripts(vm.InitialRealm(), checkout, filepath.Dir(filepath.FromSlash(v.file)))
 	if inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
 			host:     host,
 			vm:       &vm,
 			ctx:      ctx,
-			checkout: checkout,
 			print:    print,
 			shell:    newV8Shell(io.Discard, io.Discard),
 			timeouts: &timeouts,
+			scripts:  scripts,
 		}
-		if _, err := realms.add(vm.InitialRealm(), false); err != nil {
+		if _, err := realms.add(scripts.current, false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
 		}
 	} else if err := vm.Global().Set("print", vm.FuncOf("print", print)); err != nil {
@@ -491,7 +493,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		helpers = nil
 	}
 	for _, helper := range helpers {
-		if _, err := vm.BindScript(helper).Evaluate(ctx); err != nil {
+		if _, err := scripts.evaluate(ctx, scripts.current.BindScript(helper)); err != nil {
 			reason := firstLine("V8 harness: " + err.Error())
 			if errors.Is(err, context.DeadlineExceeded) {
 				return timedOut(reason), ""
@@ -499,28 +501,22 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			return suiteBroken.result(reason), ""
 		}
 	}
-	loader := moduleLoader{
-		vm:      &vm,
-		dir:     filepath.Dir(filepath.FromSlash(v.file)),
-		modules: map[string]*ekuma.Module{},
-		readFile: func(name string) ([]byte, error) {
-			return fs.ReadFile(checkout, filepath.ToSlash(name))
-		},
-	}
-	vm.SetModuleLoader(loader.load)
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		return scripts.contextFor(req.Realm).modules.load(req)
+	})
 	for _, name := range directives.files {
 		b, err := fs.ReadFile(checkout, name)
 		if err != nil {
 			return suiteBroken.result(fmt.Sprintf("V8 Files: %s: %v", name, err)), lastPrint
 		}
-		result = runV8File(ctx, &loader, &timeouts, name, string(b))
+		result = scripts.runFile(ctx, &timeouts, name, string(b))
 		if result.outcome != suitePassed {
 			result.reason = name + ": " + result.reason
 			break
 		}
 	}
 	if result.outcome == suitePassed {
-		result = runV8File(ctx, &loader, &timeouts, v.file, source)
+		result = scripts.runFile(ctx, &timeouts, v.file, source)
 	}
 	result = timeouts.drain(ctx, result)
 	if result.outcome != suitePassed {
@@ -532,7 +528,64 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	return suiteResult{}, lastPrint
 }
 
-func installV8ScriptLoader(ctx context.Context, realm *ekuma.Realm, checkout fs.FS) error {
+// v8Scripts tracks d8's selection across classic script execution boundaries.
+type v8Scripts struct {
+	current  *ekuma.Realm
+	next     *ekuma.Realm
+	checkout fs.FS
+	dir      string
+	contexts map[*ekuma.Realm]*v8ScriptContext
+}
+
+type v8ScriptContext struct {
+	modules         moduleLoader
+	errorCtor       ekuma.Value
+	syntaxErrorCtor ekuma.Value
+}
+
+func newV8Scripts(r *ekuma.Realm, checkout fs.FS, dir string) *v8Scripts {
+	return &v8Scripts{
+		current:  r,
+		next:     r,
+		checkout: checkout,
+		dir:      dir,
+		contexts: map[*ekuma.Realm]*v8ScriptContext{},
+	}
+}
+
+func (s *v8Scripts) contextFor(r *ekuma.Realm) *v8ScriptContext {
+	if c := s.contexts[r]; c != nil {
+		return c
+	}
+	c := &v8ScriptContext{
+		modules: moduleLoader{
+			realm:   r,
+			dir:     s.dir,
+			modules: map[string]*ekuma.Module{},
+			readFile: func(name string) ([]byte, error) {
+				return fs.ReadFile(s.checkout, filepath.ToSlash(name))
+			},
+		},
+	}
+	s.contexts[r] = c
+	return c
+}
+
+func (s *v8Scripts) run(ctx context.Context, name, source string) (ekuma.Value, error) {
+	script, err := s.current.ParseScript(name, source)
+	if err != nil {
+		return ekuma.Undefined, err
+	}
+	return s.evaluate(ctx, script)
+}
+
+func (s *v8Scripts) evaluate(ctx context.Context, script *ekuma.Script) (ekuma.Value, error) {
+	v, err := script.Evaluate(ctx)
+	s.current = s.next
+	return v, err
+}
+
+func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error {
 	global := realm.Global()
 	errorCtor, err := global.Get("Error")
 	if err != nil {
@@ -542,6 +595,9 @@ func installV8ScriptLoader(ctx context.Context, realm *ekuma.Realm, checkout fs.
 	if err != nil {
 		return err
 	}
+	c := s.contextFor(realm)
+	c.errorCtor = errorCtor
+	c.syntaxErrorCtor = syntaxErrorCtor
 	toString, err := runScriptInRealm(ctx, realm, "d8", "name => `${name}`")
 	if err != nil {
 		return err
@@ -562,14 +618,15 @@ func installV8ScriptLoader(ctx context.Context, realm *ekuma.Realm, checkout fs.
 				return nil, err
 			}
 			name := str.String()
-			src, err := fs.ReadFile(checkout, path.Clean(filepath.ToSlash(name)))
+			selected := s.contextFor(s.current)
+			src, err := fs.ReadFile(s.checkout, path.Clean(filepath.ToSlash(name)))
 			if err != nil {
-				return nil, throw(errorCtor, "Error loading file: "+name)
+				return nil, throw(selected.errorCtor, "Error loading file: "+name)
 			}
 			// d8 executes a classic script even when its name ends in .mjs.
-			if _, err := runScriptInRealm(ctx, realm, filepath.FromSlash(name), string(src)); err != nil {
+			if _, err := s.run(ctx, filepath.FromSlash(name), string(src)); err != nil {
 				if se, ok := err.(*ekuma.SyntaxError); ok {
-					return nil, throw(syntaxErrorCtor, se.Message)
+					return nil, throw(selected.syntaxErrorCtor, se.Message)
 				}
 				return nil, err
 			}
@@ -586,10 +643,10 @@ func installV8ScriptLoader(ctx context.Context, realm *ekuma.Realm, checkout fs.
 	}))
 }
 
-func runV8File(ctx context.Context, loader *moduleLoader, timeouts *v8Timeouts, name, src string) suiteResult {
+func (s *v8Scripts) runFile(ctx context.Context, timeouts *v8Timeouts, name, src string) suiteResult {
 	file := filepath.FromSlash(name)
 	if path.Ext(name) == ".mjs" {
-		p, _, err := loader.evaluate(ctx, file, src)
+		p, _, err := s.contextFor(s.current).modules.evaluate(ctx, file, src)
 		if err != nil {
 			return scriptErrorResult(err)
 		}
@@ -606,7 +663,7 @@ func runV8File(ctx context.Context, loader *moduleLoader, timeouts *v8Timeouts, 
 				Value: reason,
 			})
 		}
-	} else if _, err := runScript(ctx, loader.vm, file, src); err != nil {
+	} else if _, err := s.run(ctx, file, src); err != nil {
 		return scriptErrorResult(err)
 	}
 	return suiteResult{}

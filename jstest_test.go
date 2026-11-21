@@ -82,3 +82,11 @@ func TestV8Realm(t *testing.T) {
 func TestV8RealmDetachGlobal(t *testing.T) {
 	v8Runner.CheckRealmDetachGlobal(t)
 }
+
+func TestV8RealmNavigation(t *testing.T) {
+	v8Runner.CheckRealmNavigation(t)
+}
+
+func TestV8RealmSwitch(t *testing.T) {
+	v8Runner.CheckRealmSwitch(t)
+}

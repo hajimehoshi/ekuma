@@ -70,11 +70,21 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 }
 
 // InstallGlobalProxy makes a proxy the global this value of the current realm.
-// If shareAccess is true, the new proxy shares the entered realm's access group.
+// A previous realm supplies its proxy after detachment. If shareAccess is true,
+// the realm joins the previous realm's group after detachment, or the entered
+// realm's group when previous is nil.
 // Property operations on globals outside the group use foreignView.
-func (vm *VM) InstallGlobalProxy(foreignView *Object, shareAccess bool) Value {
-	var handler *Object
-	if shareAccess && vm.enteredRealm != nil {
+func (vm *VM) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAccess bool) Value {
+	var proxy, handler *Object
+	if previous != nil {
+		vm.InRealm(previous, func() {
+			vm.DetachGlobalProxy()
+			proxy = vm.globalThis
+			if shareAccess {
+				handler = vm.globalProxyHandler
+			}
+		})
+	} else if shareAccess && vm.enteredRealm != nil {
 		entered := vm.enteredRealm
 		if entered == vm.curRealm {
 			entered = &vm.realm
@@ -82,38 +92,47 @@ func (vm *VM) InstallGlobalProxy(foreignView *Object, shareAccess bool) Value {
 		handler = entered.globalProxyHandler
 	}
 	if handler == nil {
-		handler = vm.newGlobalProxyHandler()
+		handler = vm.defaultGlobalHandler()
 	}
 	vm.hasGlobalProxies = true
 	vm.globalProxyHandler = handler
 	vm.foreignGlobalView = foreignView
-	vm.globalThis = vm.ProxyCreate(ObjectValue(vm.global), ObjectValue(vm.globalProxyHandler))
-	proxy := ObjectValue(vm.globalThis)
-	vm.Define(vm.global, vm.Intern("globalThis"), proxy, FlagsHidden)
-	return proxy
+	if proxy == nil {
+		proxy = vm.ProxyCreate(ObjectValue(vm.global), ObjectValue(handler))
+	} else {
+		state := proxy.extState().(*proxyState)
+		state.target = vm.global
+		state.handler = handler
+	}
+	vm.globalThis = proxy
+	vm.Define(vm.global, vm.Intern("globalThis"), ObjectValue(proxy), FlagsHidden)
+	return ObjectValue(proxy)
 }
 
-func (vm *VM) newGlobalProxyHandler() *Object {
-	h := vm.NewObject(nil)
-	h.class = classGlobalProxyHandler
-	return h
+func (vm *VM) defaultGlobalHandler() *Object {
+	if vm.defaultGlobalProxyHandler == nil {
+		h := vm.NewObject(nil)
+		h.class = classGlobalProxyHandler
+		vm.defaultGlobalProxyHandler = h
+	}
+	return vm.defaultGlobalProxyHandler
 }
 
 // DetachGlobalProxy disconnects the current realm's installed global proxy.
 func (vm *VM) DetachGlobalProxy() {
 	st := vm.globalThis.extState().(*proxyState)
-	if st.target == nil {
+	if st.target != vm.global {
 		return
 	}
 	st.target = nil
-	vm.globalProxyHandler = vm.newGlobalProxyHandler()
+	vm.globalProxyHandler = vm.defaultGlobalHandler()
 }
 
 func (vm *VM) hasDetachedGlobal(r *realm) bool {
 	if r == vm.curRealm {
 		r = &vm.realm
 	}
-	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target == nil
+	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target != r.global
 }
 
 // RevokeProxy revokes the proxy p: every internal method of p throws a TypeError from then on.

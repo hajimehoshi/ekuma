@@ -47,13 +47,15 @@ func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
 	return r.parseScript(name, src.value.Str())
 }
 
-// InstallGlobalProxy installs and returns a global proxy in r. Property access in r
-// on globals outside its access group goes through foreignView. When shareAccess
-// is true, r joins the entered realm's group.
-func InstallGlobalProxy(r *Realm, foreignView Value, shareAccess bool) Value {
+// InstallGlobalProxy installs a global proxy in r, reusing the proxy of previous if supplied.
+func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAccess bool) Value {
+	var prev *engine.Realm
+	if previous != nil {
+		prev = previous.r
+	}
 	var proxy engine.Value
 	r.in(func() {
-		proxy = r.vm.e.InstallGlobalProxy(foreignView.value.Object(), shareAccess)
+		proxy = r.vm.e.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
 	})
 	return fromEngine(proxy)
 }

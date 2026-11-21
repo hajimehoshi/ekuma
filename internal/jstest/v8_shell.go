@@ -51,8 +51,8 @@ func newV8Shell(stdout, stderr io.Writer) v8Shell {
 	}
 }
 
-func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS, canAccessReceiver func(*ekuma.Realm, ekuma.Value) bool) error {
-	if err := installV8ScriptLoader(ctx, r, checkout); err != nil {
+func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, scripts *v8Scripts, canAccessReceiver func(*ekuma.Realm, ekuma.Value) bool) error {
+	if err := scripts.installLoader(ctx, r); err != nil {
 		return err
 	}
 	script, err := v8ShellScript()
@@ -66,7 +66,7 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS, c
 	readFile := func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		name := args[0].String()
 		filename, _, _ := strings.Cut(name, "\x00")
-		data, err := fs.ReadFile(checkout, path.Clean(filepath.ToSlash(filename)))
+		data, err := fs.ReadFile(scripts.checkout, path.Clean(filepath.ToSlash(filename)))
 		if err != nil {
 			if len(name) > 50 {
 				name = name[:50] + "[...]"
@@ -181,7 +181,8 @@ func (host *V8) CheckShellOutput(t *testing.T) {
 	var vm ekuma.VM
 	var stdout, stderr strings.Builder
 	shell := newV8Shell(&stdout, &stderr)
-	if err := shell.install(t.Context(), vm.InitialRealm(), nil, host.CanAccessReceiver); err != nil {
+	scripts := newV8Scripts(vm.InitialRealm(), nil, ".")
+	if err := shell.install(t.Context(), scripts.current, scripts, host.CanAccessReceiver); err != nil {
 		t.Fatal(err)
 	}
 	const source = `

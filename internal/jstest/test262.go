@@ -236,12 +236,12 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		return suiteBroken.result("harness: " + err.Error())
 	}
 	loader := &moduleLoader{
-		vm:       &vm,
+		realm:    vm.InitialRealm(),
 		dir:      filepath.Dir(path),
 		readFile: os.ReadFile,
 		modules:  map[string]*ekuma.Module{},
 	}
-	h.suite.setModuleLoader(loader)
+	h.suite.setModuleLoader(&vm, loader)
 	// An async test reports its outcome by printing it.
 	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -304,7 +304,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 // moduleLoader loads the modules of a test from the suite checkout, resolving a specifier
 // relative to the directory of the importing file. It keeps one module record per file and type.
 type moduleLoader struct {
-	vm *ekuma.VM
+	realm *ekuma.Realm
 
 	// dir is the directory of the test, for the code that has no file.
 	dir string
@@ -316,14 +316,14 @@ type moduleLoader struct {
 // moduleSourceSpecifier is the specifier that test262 resolves to a module with a module source.
 const moduleSourceSpecifier = "<module source>"
 
-func (suite *Test262) setModuleLoader(l *moduleLoader) {
+func (suite *Test262) setModuleLoader(vm *ekuma.VM, l *moduleLoader) {
 	var source *ekuma.Module
-	l.vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		if req.Specifier != moduleSourceSpecifier {
 			return l.load(req)
 		}
 		if source == nil {
-			source = suite.NewSourceModule(l.vm, req.Specifier, "Test262ModuleSource")
+			source = suite.NewSourceModule(vm, req.Specifier, "Test262ModuleSource")
 		}
 		return source, nil
 	})
@@ -347,11 +347,11 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 	var m *ekuma.Module
 	switch typ {
 	case "":
-		m, err = l.vm.ParseModule(path, string(b))
+		m, err = l.realm.ParseModule(path, string(b))
 	case "json":
-		m, err = l.vm.ParseJSONModule(path, string(b))
+		m, err = l.realm.ParseJSONModule(path, string(b))
 	case "text":
-		m = l.vm.NewSyntheticModule(path, l.vm.ValueOf(string(b)))
+		m = l.realm.NewSyntheticModule(path, l.realm.ValueOf(string(b)))
 	case "bytes":
 		var v ekuma.Value
 		v, err = l.call("(n => new Uint8Array(n))", len(b))
@@ -359,7 +359,7 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 			ekuma.CopyBytesToJS(v, b)
 			v, err = l.call("(a => new Uint8Array(a.buffer.transferToImmutable()))", v)
 		}
-		m = l.vm.NewSyntheticModule(path, v)
+		m = l.realm.NewSyntheticModule(path, v)
 	default:
 		return nil, fmt.Errorf("unsupported module type %q", typ)
 	}
@@ -372,7 +372,7 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 
 // call calls the function that the script fn evaluates to with arg.
 func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
-	f, err := runScript(context.Background(), l.vm, "loader", fn)
+	f, err := runScriptInRealm(context.Background(), l.realm, "loader", fn)
 	if err != nil {
 		return ekuma.Undefined, err
 	}
@@ -381,7 +381,7 @@ func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
 
 // evaluate returns the module's evaluation promise or the phase and error that stopped it.
 func (l *moduleLoader) evaluate(ctx context.Context, path, src string) (promise ekuma.Value, phase string, err error) {
-	mod, err := l.vm.ParseModule(path, src)
+	mod, err := l.realm.ParseModule(path, src)
 	if err != nil {
 		return ekuma.Undefined, "parse", err
 	}

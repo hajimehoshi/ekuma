@@ -518,6 +518,9 @@ type realm struct {
 	// can access each other's global objects.
 	globalProxyHandler *Object
 
+	// defaultGlobalProxyHandler is the realm's own access group, restored on detachment.
+	defaultGlobalProxyHandler *Object
+
 	// foreignGlobalView handles this realm's property access on foreign global proxies.
 	foreignGlobalView *Object
 
