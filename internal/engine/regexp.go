@@ -49,7 +49,7 @@ func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
 		// The prototype property of %RegExp% is neither writable nor configurable.
 		s = vm.regExpShape()
 	} else {
-		proto := vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicRegExpPrototype))
+		proto := vm.GetPrototypeFromConstructor(newTarget, IntrinsicRegExpPrototype)
 		s = vm.shapeFor(proto).with(vm.Key(keyLastIndex), FlagWritable)
 	}
 	return vm.newRegExpObject(s, &regExpState{

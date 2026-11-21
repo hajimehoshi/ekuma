@@ -584,17 +584,17 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 
 	var pkind parser.FunctionKind
-	fallback := vm.Intrinsic(IntrinsicFunctionPrototype)
+	fallback := IntrinsicFunctionPrototype
 	switch kind {
 	case GeneratorFunction:
 		pkind = parser.GeneratorFunction
-		fallback = vm.Intrinsic(IntrinsicGeneratorFunctionPrototype)
+		fallback = IntrinsicGeneratorFunctionPrototype
 	case AsyncFunction:
 		pkind = parser.AsyncFunction
-		fallback = vm.Intrinsic(IntrinsicAsyncFunctionPrototype)
+		fallback = IntrinsicAsyncFunctionPrototype
 	case AsyncGeneratorFunction:
 		pkind = parser.AsyncGeneratorFunction
-		fallback = vm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
+		fallback = IntrinsicAsyncGeneratorFunctionPrototype
 	}
 	fp, err := vm.compileFunction("<anonymous>", params, body, pkind)
 	if err != nil {
@@ -602,7 +602,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
 	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.globalThis})
-	if proto != fallback {
+	if proto != vm.Intrinsic(fallback) {
 		vm.SetPrototypeOf(f.o, proto)
 	}
 	return f

@@ -44,7 +44,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 				vm.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 			}
 		}
-		p := vm.GetPrototypeFromConstructor(nt, proto)
+		p := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDataViewPrototype)
 		// Getting the prototype may have detached or shrunk the buffer.
 		if b.IsDetached() {
 			vm.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")

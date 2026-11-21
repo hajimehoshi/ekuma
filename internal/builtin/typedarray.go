@@ -366,7 +366,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 	if nt == nil {
 		vm.ThrowTypeError("constructor " + name + " requires 'new'")
 	}
-	defProto := bi.protos[typ]
+	defaultProto := engine.TypedArrayPrototypeIntrinsic(typ)
 	size := typ.Size()
 	first := arg(args, 0)
 	if !first.IsObject() {
@@ -374,10 +374,10 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 		if len(args) > 0 {
 			n = toIndex(vm, first)
 		}
-		proto := vm.GetPrototypeFromConstructor(nt, defProto)
+		proto := vm.GetPrototypeFromConstructor(nt, defaultProto)
 		return engine.ObjectValue(bi.newTypedArray(vm, proto, typ, n))
 	}
-	proto := vm.GetPrototypeFromConstructor(nt, defProto)
+	proto := vm.GetPrototypeFromConstructor(nt, defaultProto)
 	if src := engine.TypedArrayData(first); src != nil {
 		n, ok := src.Length()
 		if !ok {
@@ -1085,7 +1085,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	for typ := range engine.ElementTypeCount {
 		name := typedArrayNames[typ]
 		p := vm.NewObject(proto)
-		vm.SetIntrinsic(engine.IntrinsicInt8ArrayPrototype+engine.Intrinsic(typ), p)
+		vm.SetIntrinsic(engine.TypedArrayPrototypeIntrinsic(typ), p)
 		c := vm.NewNativeConstructor(wtf8.String(name), 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return bi.construct(vm, typ, args)
 		})

@@ -176,7 +176,7 @@ func initPromise(vm *engine.VM) {
 		if !executor.IsCallable() {
 			vm.ThrowTypeError("Promise resolver " + vm.DisplayString(executor) + " is not a function")
 		}
-		p := vm.NewPromiseObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicPromisePrototype)))
+		p := vm.NewPromiseObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
 		rf := vm.CreateResolvingFunctions(p)
 		vm.IfAbruptRejectPromise(rf, func() {
 			vm.Call(executor.Object(), engine.Undefined, vm.CapabilityResolve(rf), vm.CapabilityReject(rf))

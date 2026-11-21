@@ -47,18 +47,6 @@ type (
 	}
 )
 
-// temporalRealm holds the prototypes of the Temporal types of a VM.
-type temporalRealm struct {
-	instant        *engine.Object
-	duration       *engine.Object
-	plainDate      *engine.Object
-	plainTime      *engine.Object
-	plainDateTime  *engine.Object
-	plainYearMonth *engine.Object
-	plainMonthDay  *engine.Object
-	zonedDateTime  *engine.Object
-}
-
 // throwTemporal throws err, an error of the temporal package, as the error it stands for.
 func throwTemporal(vm *engine.VM, err error) {
 	if te, ok := errors.AsType[*temporal.Error](err); ok && te.Kind == temporal.TypeError {
@@ -613,23 +601,16 @@ func newTarget(vm *engine.VM, name string) *engine.Object {
 	return nt
 }
 
-// protoFor returns the prototype of a new object for newTarget, or proto when newTarget is nil.
-func protoFor(vm *engine.VM, nt *engine.Object, proto *engine.Object) *engine.Object {
-	if nt == nil {
-		return proto
-	}
-	return vm.GetPrototypeFromConstructor(nt, proto)
-}
-
-// temporalConstructor defines the constructor name of the Temporal namespace ns with the
-// prototype proto and the Symbol.toStringTag of the prototype.
-func temporalConstructor(vm *engine.VM, ns *engine.Object, name wtf8.String, length int, proto *engine.Object, f engine.NativeFunc) *engine.Object {
+// temporalConstructor defines a Temporal constructor and returns it and its intrinsic prototype.
+func temporalConstructor(vm *engine.VM, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (*engine.Object, *engine.Object) {
+	proto := vm.NewOrdinaryObject()
+	vm.SetIntrinsic(protoID, proto)
 	c := vm.NewNativeConstructor(name, length, temporalNative(f))
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 	vm.Define(ns, vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal."+name), engine.FlagConfigurable)
-	return c
+	return c, proto
 }
 
 // valueOfThrows defines the valueOf method of the prototype of the type name, which throws.
@@ -675,9 +656,17 @@ func compareResult(c int) engine.Value {
 // initTemporal defines the Temporal namespace and Date.prototype.toTemporalInstant. The
 // contents of the namespace are created when they are first needed.
 func initTemporal(vm *engine.VM) {
-	var r *temporalRealm
 	ns := vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
-		r = newTemporalRealm(vm, ns)
+		vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal"), engine.FlagConfigurable)
+		initTemporalInstant(vm, ns)
+		initTemporalDuration(vm, ns)
+		initTemporalPlainDate(vm, ns)
+		initTemporalPlainTime(vm, ns)
+		initTemporalPlainDateTime(vm, ns)
+		initTemporalPlainYearMonth(vm, ns)
+		initTemporalPlainMonthDay(vm, ns)
+		initTemporalZonedDateTime(vm, ns)
+		initTemporalNow(vm, ns)
 	})
 	vm.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
@@ -687,40 +676,8 @@ func initTemporal(vm *engine.VM) {
 		if math.IsNaN(tv) {
 			vm.ThrowRangeError("invalid time value")
 		}
-		vm.InitLazyObject(ns)
-		return r.newInstant(vm, temporal.Mul64(int64(tv), 1_000_000), nil)
+		return newInstant(vm, temporal.Mul64(int64(tv), 1_000_000), nil)
 	})
-}
-
-// newTemporalRealm defines the properties of the Temporal namespace ns.
-func newTemporalRealm(vm *engine.VM, ns *engine.Object) *temporalRealm {
-	vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal"), engine.FlagConfigurable)
-	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
-	newPrototype := func(id engine.Intrinsic) *engine.Object {
-		proto := vm.NewObject(objectProto)
-		vm.SetIntrinsic(id, proto)
-		return proto
-	}
-	r := &temporalRealm{
-		instant:        newPrototype(engine.IntrinsicTemporalInstantPrototype),
-		duration:       newPrototype(engine.IntrinsicTemporalDurationPrototype),
-		plainDate:      newPrototype(engine.IntrinsicTemporalPlainDatePrototype),
-		plainTime:      newPrototype(engine.IntrinsicTemporalPlainTimePrototype),
-		plainDateTime:  newPrototype(engine.IntrinsicTemporalPlainDateTimePrototype),
-		plainYearMonth: newPrototype(engine.IntrinsicTemporalPlainYearMonthPrototype),
-		plainMonthDay:  newPrototype(engine.IntrinsicTemporalPlainMonthDayPrototype),
-		zonedDateTime:  newPrototype(engine.IntrinsicTemporalZonedDateTimePrototype),
-	}
-	initTemporalInstant(vm, ns, r)
-	initTemporalDuration(vm, ns, r)
-	initTemporalPlainDate(vm, ns, r)
-	initTemporalPlainTime(vm, ns, r)
-	initTemporalPlainDateTime(vm, ns, r)
-	initTemporalPlainYearMonth(vm, ns, r)
-	initTemporalPlainMonthDay(vm, ns, r)
-	initTemporalZonedDateTime(vm, ns, r)
-	initTemporalNow(vm, ns, r)
-	return r
 }
 
 // TemporalPlainDateOf returns the ISO date and the calendar of v, and reports whether v is a

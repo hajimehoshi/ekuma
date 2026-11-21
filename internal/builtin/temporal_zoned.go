@@ -10,8 +10,9 @@ import (
 )
 
 // newZonedDateTime implements CreateTemporalZonedDateTime for valid epoch nanoseconds.
-func (r *temporalRealm) newZonedDateTime(vm *engine.VM, ns temporal.Int128, tz temporal.TimeZone, cal string, nt *engine.Object) engine.Value {
-	return engine.ObjectValue(vm.NewTemporalObject(protoFor(vm, nt, r.zonedDateTime), &zonedDateTimeSlots{
+func newZonedDateTime(vm *engine.VM, ns temporal.Int128, tz temporal.TimeZone, cal string, nt *engine.Object) engine.Value {
+	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalZonedDateTimePrototype)
+	return engine.ObjectValue(vm.NewTemporalObject(proto, &zonedDateTimeSlots{
 		ns:  ns,
 		tz:  tz,
 		cal: cal,
@@ -96,9 +97,8 @@ func toTemporalZonedDateTime(vm *engine.VM, item, options engine.Value) zonedDat
 	}
 }
 
-func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
-	proto := r.zonedDateTime
-	ctor := temporalConstructor(vm, ns, "ZonedDateTime", 2, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object) {
+	ctor, proto := temporalConstructor(vm, ns, "ZonedDateTime", 2, engine.IntrinsicTemporalZonedDateTimePrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := newTarget(vm, "Temporal.ZonedDateTime")
 		epochNs := bigIntToEpochNs(vm, arg(args, 0))
 		id := requireString(vm, arg(args, 1), "time zone")
@@ -113,11 +113,11 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		if c := arg(args, 2); !c.IsUndefined() {
 			cal = must(temporal.CanonicalizeCalendar(requireString(vm, c, "calendar")))
 		}
-		return r.newZonedDateTime(vm, epochNs, tz, cal, nt)
+		return newZonedDateTime(vm, epochNs, tz, cal, nt)
 	})
 	tmethod(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := toTemporalZonedDateTime(vm, arg(args, 0), arg(args, 1))
-		return r.newZonedDateTime(vm, s.ns, s.tz, s.cal, nil)
+		return newZonedDateTime(vm, s.ns, s.tz, s.cal, nil)
 	})
 	tmethod(vm, ctor, "compare", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		one := toTemporalZonedDateTime(vm, arg(args, 0), engine.Undefined)
@@ -182,7 +182,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		ndt := interpretDateTimeFields(vm, s.cal, f, overflow)
 		newOffsetNs := must(temporal.ParseDateTimeUTCOffset(f.Offset))
 		epochNs := must(temporal.InterpretISODateTimeOffset(ndt.Date, ndt.Time, false, temporal.OffsetBehaviourOption, newOffsetNs, s.tz, disambiguation, offsetOption, temporal.MatchExactly))
-		return r.newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
+		return newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
 	})
 	tmethod(vm, proto, "withPlainTime", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s, dt := dateTimeOf(vm, this, "withPlainTime")
@@ -196,17 +196,17 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 				Time: tt,
 			}, temporal.DisambiguationCompatible))
 		}
-		return r.newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
+		return newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
 	})
 	tmethod(vm, proto, "withTimeZone", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisZonedDateTime(vm, this, "withTimeZone")
 		tz := toTimeZone(vm, arg(args, 0))
-		return r.newZonedDateTime(vm, s.ns, tz, s.cal, nil)
+		return newZonedDateTime(vm, s.ns, tz, s.cal, nil)
 	})
 	tmethod(vm, proto, "withCalendar", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisZonedDateTime(vm, this, "withCalendar")
 		cal := toCalendar(vm, arg(args, 0))
-		return r.newZonedDateTime(vm, s.ns, s.tz, cal, nil)
+		return newZonedDateTime(vm, s.ns, s.tz, cal, nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
 		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -218,7 +218,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 			overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
 			id := temporal.ToInternalDurationRecord(&d)
 			epochNs := must(temporal.AddZonedDateTime(s.ns, s.tz, s.cal, id, overflow))
-			return r.newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
+			return newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
 		})
 	}
 	for _, name := range []string{"until", "since"} {
@@ -237,7 +237,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 					vm.ThrowRangeError("the time zones differ, so the largestUnit must be hours or smaller")
 				}
 				if s.ns.Cmp(other.ns) == 0 {
-					return r.newDuration(vm, temporal.Duration{}, nil)
+					return newDuration(vm, temporal.Duration{}, nil)
 				}
 				id := must(temporal.DifferenceZonedDateTimeWithRounding(s.ns, other.ns, s.tz, s.cal, settings.largestUnit, settings.increment, settings.smallestUnit, settings.mode))
 				d = must(temporal.TemporalDurationFromInternal(id, temporal.UnitHour))
@@ -245,14 +245,14 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 			if name == "since" {
 				d = d.Negated()
 			}
-			return r.newDuration(vm, d, nil)
+			return newDuration(vm, d, nil)
 		})
 	}
 	tmethod(vm, proto, "round", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s, dt := dateTimeOf(vm, this, "round")
 		increment, mode, unit := roundOptions(vm, arg(args, 0), true)
 		if unit == temporal.UnitNanosecond && increment == 1 {
-			return r.newZonedDateTime(vm, s.ns, s.tz, s.cal, nil)
+			return newZonedDateTime(vm, s.ns, s.tz, s.cal, nil)
 		}
 		var epochNs temporal.Int128
 		if unit == temporal.UnitDay {
@@ -270,7 +270,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 			offsetNs := s.tz.OffsetNanosecondsFor(s.ns)
 			epochNs = must(temporal.InterpretISODateTimeOffset(rdt.Date, rdt.Time, false, temporal.OffsetBehaviourOption, offsetNs, s.tz, temporal.DisambiguationCompatible, temporal.OffsetPrefer, temporal.MatchExactly))
 		}
-		return r.newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
+		return newZonedDateTime(vm, epochNs, s.tz, s.cal, nil)
 	})
 	tmethod(vm, proto, "equals", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisZonedDateTime(vm, this, "equals")
@@ -300,7 +300,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 	valueOfThrows(vm, proto, "ZonedDateTime")
 	tmethod(vm, proto, "startOfDay", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s, dt := dateTimeOf(vm, this, "startOfDay")
-		return r.newZonedDateTime(vm, must(s.tz.StartOfDay(dt.Date)), s.tz, s.cal, nil)
+		return newZonedDateTime(vm, must(s.tz.StartOfDay(dt.Date)), s.tz, s.cal, nil)
 	})
 	tmethod(vm, proto, "getTimeZoneTransition", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisZonedDateTime(vm, this, "getTimeZoneTransition")
@@ -310,22 +310,22 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object, r *temporalReal
 		if !ok {
 			return engine.Null
 		}
-		return r.newZonedDateTime(vm, t, s.tz, s.cal, nil)
+		return newZonedDateTime(vm, t, s.tz, s.cal, nil)
 	})
 	tmethod(vm, proto, "toInstant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return r.newInstant(vm, thisZonedDateTime(vm, this, "toInstant").ns, nil)
+		return newInstant(vm, thisZonedDateTime(vm, this, "toInstant").ns, nil)
 	})
 	tmethod(vm, proto, "toPlainDate", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s, dt := dateTimeOf(vm, this, "toPlainDate")
-		return r.createPlainDate(vm, dt.Date, s.cal, nil)
+		return createPlainDate(vm, dt.Date, s.cal, nil)
 	})
 	tmethod(vm, proto, "toPlainTime", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		_, dt := dateTimeOf(vm, this, "toPlainTime")
-		return r.newPlainTime(vm, dt.Time, nil)
+		return newPlainTime(vm, dt.Time, nil)
 	})
 	tmethod(vm, proto, "toPlainDateTime", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s, dt := dateTimeOf(vm, this, "toPlainDateTime")
-		return r.createPlainDateTime(vm, dt, s.cal, nil)
+		return createPlainDateTime(vm, dt, s.cal, nil)
 	})
 }
 
@@ -335,7 +335,7 @@ func systemUTCEpochNanoseconds(vm *engine.VM) temporal.Int128 {
 	return temporal.Mul64(t.Unix(), temporal.NsPerSecond).Add(temporal.I128(int64(t.Nanosecond())))
 }
 
-func initTemporalNow(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
+func initTemporalNow(vm *engine.VM, ns *engine.Object) {
 	now := vm.NewOrdinaryObject()
 	vm.Define(ns, vm.Intern("Now"), engine.ObjectValue(now), engine.FlagsHidden)
 	vm.Define(now, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal.Now"), engine.FlagConfigurable)
@@ -350,22 +350,22 @@ func initTemporalNow(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		return vm.NewString(wtf8.String(SystemTimeZone(vm).ID()))
 	})
 	tmethod(vm, now, "instant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return r.newInstant(vm, systemUTCEpochNanoseconds(vm), nil)
+		return newInstant(vm, systemUTCEpochNanoseconds(vm), nil)
 	})
 	tmethod(vm, now, "plainDateTimeISO", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tz := nowTimeZone(vm, arg(args, 0))
-		return r.createPlainDateTime(vm, tz.ISODateTimeFor(systemUTCEpochNanoseconds(vm)), temporal.ISO8601, nil)
+		return createPlainDateTime(vm, tz.ISODateTimeFor(systemUTCEpochNanoseconds(vm)), temporal.ISO8601, nil)
 	})
 	tmethod(vm, now, "zonedDateTimeISO", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tz := nowTimeZone(vm, arg(args, 0))
-		return r.newZonedDateTime(vm, systemUTCEpochNanoseconds(vm), tz, temporal.ISO8601, nil)
+		return newZonedDateTime(vm, systemUTCEpochNanoseconds(vm), tz, temporal.ISO8601, nil)
 	})
 	tmethod(vm, now, "plainDateISO", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tz := nowTimeZone(vm, arg(args, 0))
-		return r.createPlainDate(vm, tz.ISODateTimeFor(systemUTCEpochNanoseconds(vm)).Date, temporal.ISO8601, nil)
+		return createPlainDate(vm, tz.ISODateTimeFor(systemUTCEpochNanoseconds(vm)).Date, temporal.ISO8601, nil)
 	})
 	tmethod(vm, now, "plainTimeISO", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tz := nowTimeZone(vm, arg(args, 0))
-		return r.newPlainTime(vm, tz.ISODateTimeFor(systemUTCEpochNanoseconds(vm)).Time, nil)
+		return newPlainTime(vm, tz.ISODateTimeFor(systemUTCEpochNanoseconds(vm)).Time, nil)
 	})
 }

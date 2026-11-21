@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
@@ -1344,7 +1345,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	}
 	this := tdz
 	if !fn.derived {
-		proto := vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicObjectPrototype))
+		proto := vm.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
 		this = Value{o: newInstance(vm.shapeForRealm(proto, fn.code.realm))}
 	}
 	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
@@ -1355,35 +1356,24 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 }
 
 // GetPrototypeFromConstructor implements GetPrototypeFromConstructor.
-func (vm *VM) GetPrototypeFromConstructor(ctor *Object, fallback *Object) *Object {
-	if ctor == nil {
-		return fallback
+// A nil ctor selects defaultProto in the current realm.
+func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) *Object {
+	r := vm.curRealm
+	if ctor != nil {
+		if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
+			return p.o
+		}
+		r = vm.getFunctionRealm(ctor)
 	}
-	if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
-		return p.o
-	}
-	if r := vm.getFunctionRealm(ctor); r != vm.curRealm {
-		return vm.intrinsicOfRealm(r, fallback)
-	}
-	return fallback
-}
-
-// intrinsicOfRealm returns the intrinsic of the realm r that corresponds to the intrinsic o of
-// the current realm, or o when o is not one.
-func (vm *VM) intrinsicOfRealm(r *realm, o *Object) *Object {
-	id := slices.Index(vm.intrinsics[:], o)
-	if id < 0 {
-		return o
-	}
-	if IntrinsicTemporalInstantPrototype <= Intrinsic(id) && Intrinsic(id) <= IntrinsicTemporalZonedDateTimePrototype {
-		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {
+	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicTemporalZonedDateTimePrototype {
+		if ns := vm.realmIntrinsic(r, IntrinsicTemporal); ns != nil {
 			vm.InitLazyObject(ns)
 		}
 	}
-	if q := r.intrinsics[id]; q != nil {
-		return q
+	if proto := vm.realmIntrinsic(r, defaultProto); proto != nil {
+		return proto
 	}
-	return o
+	panic("engine: uninitialized intrinsic prototype " + strconv.Itoa(int(defaultProto)))
 }
 
 // NewNative returns a function implemented in Go.

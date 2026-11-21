@@ -651,7 +651,7 @@ const (
 
 	IntrinsicTemporal
 
-	// intrinsicOfRealm initializes the Temporal namespace for this range of prototypes.
+	// The Temporal namespace initializes this range of prototypes.
 	IntrinsicTemporalInstantPrototype
 	IntrinsicTemporalDurationPrototype
 	IntrinsicTemporalPlainDatePrototype
@@ -712,6 +712,11 @@ const (
 // ErrorPrototypeIntrinsic returns the intrinsic that is the prototype of the native error type k.
 func ErrorPrototypeIntrinsic(k ErrorKind) Intrinsic {
 	return IntrinsicErrorPrototype + Intrinsic(k)
+}
+
+// TypedArrayPrototypeIntrinsic returns the intrinsic prototype for the element type t.
+func TypedArrayPrototypeIntrinsic(t ElementType) Intrinsic {
+	return IntrinsicInt8ArrayPrototype + Intrinsic(t)
 }
 
 // Intrinsic returns the intrinsic object id, or nil before it is set.

@@ -43,22 +43,20 @@ func initDisposableStacks(vm *engine.VM) {
 func initDisposableStack(vm *engine.VM, async bool) {
 	name := "DisposableStack"
 	hint := engine.SyncDispose
+	protoID := engine.IntrinsicDisposableStackPrototype
 	if async {
 		name = "AsyncDisposableStack"
 		hint = engine.AsyncDispose
+		protoID = engine.IntrinsicAsyncDisposableStackPrototype
 	}
 	proto := vm.NewOrdinaryObject()
-	if async {
-		vm.SetIntrinsic(engine.IntrinsicAsyncDisposableStackPrototype, proto)
-	} else {
-		vm.SetIntrinsic(engine.IntrinsicDisposableStackPrototype, proto)
-	}
+	vm.SetIntrinsic(protoID, proto)
 	var ctor *engine.Object
 	newStack := func(nt *engine.Object, dc *engine.DisposeCapability) engine.Value {
 		s := &disposableStack{
 			dc: dc,
 		}
-		return engine.ObjectValue(vm.NewDisposableStackObject(vm.GetPrototypeFromConstructor(nt, proto), async, s))
+		return engine.ObjectValue(vm.NewDisposableStackObject(vm.GetPrototypeFromConstructor(nt, protoID), async, s))
 	}
 	ctor = constructor(vm, wtf8.String(name), 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()

@@ -58,9 +58,13 @@ func thisArrayBuffer(vm *engine.VM, this engine.Value, shared bool, what string)
 }
 
 // allocateArrayBuffer implements AllocateArrayBuffer and AllocateSharedArrayBuffer for the constructor newTarget.
-func allocateArrayBuffer(vm *engine.VM, newTarget, defaultProto *engine.Object, byteLength, maxByteLength int64, shared bool) *engine.Object {
+func allocateArrayBuffer(vm *engine.VM, newTarget *engine.Object, byteLength, maxByteLength int64, shared bool) *engine.Object {
 	if maxByteLength >= 0 && byteLength > maxByteLength {
 		vm.ThrowRangeError("byte length exceeds maxByteLength")
+	}
+	defaultProto := engine.IntrinsicArrayBufferPrototype
+	if shared {
+		defaultProto = engine.IntrinsicSharedArrayBufferPrototype
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, defaultProto)
 	return vm.NewArrayBufferObject(proto, byteLength, maxByteLength, shared)
@@ -88,7 +92,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		n := toIndex(vm, arg(args, 0))
 		m := maxByteLengthOption(vm, arg(args, 1))
-		return engine.ObjectValue(allocateArrayBuffer(vm, nt, proto, n, m, false))
+		return engine.ObjectValue(allocateArrayBuffer(vm, nt, n, m, false))
 	})
 	bi.arrayBufferCtor = ctor
 	speciesGetter(vm, ctor)
@@ -237,7 +241,7 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		n := toIndex(vm, arg(args, 0))
 		m := maxByteLengthOption(vm, arg(args, 1))
-		return engine.ObjectValue(allocateArrayBuffer(vm, nt, proto, n, m, true))
+		return engine.ObjectValue(allocateArrayBuffer(vm, nt, n, m, true))
 	})
 	bi.sharedArrayBufferCtor = ctor
 	speciesGetter(vm, ctor)

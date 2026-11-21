@@ -10,22 +10,24 @@ import (
 )
 
 // createPlainYearMonth implements CreateTemporalYearMonth.
-func (r *temporalRealm) createPlainYearMonth(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
+func createPlainYearMonth(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
 	if !temporal.ISOYearMonthWithinLimits(d) {
 		vm.ThrowRangeError("year and month are out of range")
 	}
-	return engine.ObjectValue(vm.NewTemporalObject(protoFor(vm, nt, r.plainYearMonth), &plainYearMonthSlots{
+	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainYearMonthPrototype)
+	return engine.ObjectValue(vm.NewTemporalObject(proto, &plainYearMonthSlots{
 		date: d,
 		cal:  cal,
 	}))
 }
 
 // createPlainMonthDay implements CreateTemporalMonthDay.
-func (r *temporalRealm) createPlainMonthDay(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
+func createPlainMonthDay(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
 	if !temporal.ISODateWithinLimits(d) {
 		vm.ThrowRangeError("date is out of range")
 	}
-	return engine.ObjectValue(vm.NewTemporalObject(protoFor(vm, nt, r.plainMonthDay), &plainMonthDaySlots{
+	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainMonthDayPrototype)
+	return engine.ObjectValue(vm.NewTemporalObject(proto, &plainMonthDaySlots{
 		date: d,
 		cal:  cal,
 	}))
@@ -115,9 +117,8 @@ func toTemporalMonthDay(vm *engine.VM, item, options engine.Value) plainMonthDay
 	}
 }
 
-func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
-	proto := r.plainYearMonth
-	ctor := temporalConstructor(vm, ns, "PlainYearMonth", 2, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object) {
+	ctor, proto := temporalConstructor(vm, ns, "PlainYearMonth", 2, engine.IntrinsicTemporalPlainYearMonthPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := newTarget(vm, "Temporal.PlainYearMonth")
 		y := toIntegerWithTruncation(vm, arg(args, 0), "year")
 		m := toIntegerWithTruncation(vm, arg(args, 1), "month")
@@ -130,11 +131,11 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 			day = toIntegerWithTruncation(vm, d, "referenceISODay")
 		}
 		date := must(temporal.CreateISODateRecord(y, m, day))
-		return r.createPlainYearMonth(vm, date, cal, nt)
+		return createPlainYearMonth(vm, date, cal, nt)
 	})
 	tmethod(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := toTemporalYearMonth(vm, arg(args, 0), arg(args, 1))
-		return r.createPlainYearMonth(vm, s.date, s.cal, nil)
+		return createPlainYearMonth(vm, s.date, s.cal, nil)
 	})
 	tmethod(vm, ctor, "compare", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		one := toTemporalYearMonth(vm, arg(args, 0), engine.Undefined)
@@ -153,7 +154,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 		partial := prepareCalendarFields(vm, s.cal, bag, yearMonthFieldNames, fieldsPartial)
 		f = temporal.CalendarMergeFields(s.cal, f, partial)
 		overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
-		return r.createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(s.cal, f, overflow)), s.cal, nil)
+		return createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(s.cal, f, overflow)), s.cal, nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
 		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -172,7 +173,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 			date := must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain))
 			added := must(temporal.CalendarDateAdd(s.cal, date, id.Date, overflow))
 			af := temporal.ISODateToFields(s.cal, added, temporal.FieldsYearMonth)
-			return r.createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(s.cal, af, overflow)), s.cal, nil)
+			return createPlainYearMonth(vm, must(temporal.CalendarYearMonthFromFields(s.cal, af, overflow)), s.cal, nil)
 		})
 	}
 	for _, name := range []string{"until", "since"} {
@@ -183,7 +184,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 			opts := getOptionsObject(vm, arg(args, 1))
 			settings := getDifferenceSettings(vm, name == "since", opts, unitGroupDate, []temporal.Unit{temporal.UnitWeek, temporal.UnitDay}, temporal.UnitMonth, temporal.UnitYear)
 			if temporal.CompareISODate(s.date, other.date) == 0 {
-				return r.newDuration(vm, temporal.Duration{}, nil)
+				return newDuration(vm, temporal.Duration{}, nil)
 			}
 			tf := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
 			tf.Day, tf.HasDay = 1, true
@@ -210,7 +211,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 			if name == "since" {
 				d = d.Negated()
 			}
-			return r.newDuration(vm, d, nil)
+			return newDuration(vm, d, nil)
 		})
 	}
 	tmethod(vm, proto, "equals", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -239,13 +240,12 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object, r *temporalRea
 		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
 		in := prepareCalendarFields(vm, s.cal, item.Object(), []string{"day"}, fieldsNoneRequired)
 		f = temporal.CalendarMergeFields(s.cal, f, in)
-		return r.createPlainDate(vm, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
+		return createPlainDate(vm, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 	})
 }
 
-func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
-	proto := r.plainMonthDay
-	ctor := temporalConstructor(vm, ns, "PlainMonthDay", 2, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object) {
+	ctor, proto := temporalConstructor(vm, ns, "PlainMonthDay", 2, engine.IntrinsicTemporalPlainMonthDayPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := newTarget(vm, "Temporal.PlainMonthDay")
 		m := toIntegerWithTruncation(vm, arg(args, 0), "month")
 		d := toIntegerWithTruncation(vm, arg(args, 1), "day")
@@ -258,11 +258,11 @@ func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object, r *temporalReal
 			year = toIntegerWithTruncation(vm, y, "referenceISOYear")
 		}
 		date := must(temporal.CreateISODateRecord(year, m, d))
-		return r.createPlainMonthDay(vm, date, cal, nt)
+		return createPlainMonthDay(vm, date, cal, nt)
 	})
 	tmethod(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := toTemporalMonthDay(vm, arg(args, 0), arg(args, 1))
-		return r.createPlainMonthDay(vm, s.date, s.cal, nil)
+		return createPlainMonthDay(vm, s.date, s.cal, nil)
 	})
 	defineCalendarGetters(vm, proto, []string{"calendarId", "monthCode", "day"}, func(vm *engine.VM, this engine.Value, name string) (temporal.ISODate, string) {
 		s := thisPlainMonthDay(vm, this, name)
@@ -275,7 +275,7 @@ func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object, r *temporalReal
 		partial := prepareCalendarFields(vm, s.cal, bag, dateFieldNames, fieldsPartial)
 		f = temporal.CalendarMergeFields(s.cal, f, partial)
 		overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
-		return r.createPlainMonthDay(vm, must(temporal.CalendarMonthDayFromFields(s.cal, f, overflow)), s.cal, nil)
+		return createPlainMonthDay(vm, must(temporal.CalendarMonthDayFromFields(s.cal, f, overflow)), s.cal, nil)
 	})
 	tmethod(vm, proto, "equals", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisPlainMonthDay(vm, this, "equals")
@@ -303,6 +303,6 @@ func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object, r *temporalReal
 		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
 		in := prepareCalendarFields(vm, s.cal, item.Object(), []string{"year"}, fieldsNoneRequired)
 		f = temporal.CalendarMergeFields(s.cal, f, in)
-		return r.createPlainDate(vm, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
+		return createPlainDate(vm, must(temporal.CalendarDateFromFields(s.cal, f, temporal.OverflowConstrain)), s.cal, nil)
 	})
 }

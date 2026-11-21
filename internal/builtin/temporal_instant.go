@@ -12,8 +12,9 @@ import (
 )
 
 // newInstant implements CreateTemporalInstant for valid epoch nanoseconds.
-func (r *temporalRealm) newInstant(vm *engine.VM, ns temporal.Int128, nt *engine.Object) engine.Value {
-	return engine.ObjectValue(vm.NewTemporalObject(protoFor(vm, nt, r.instant), &instantSlots{
+func newInstant(vm *engine.VM, ns temporal.Int128, nt *engine.Object) engine.Value {
+	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalInstantPrototype)
+	return engine.ObjectValue(vm.NewTemporalObject(proto, &instantSlots{
 		ns: ns,
 	}))
 }
@@ -64,14 +65,13 @@ var maximumInstantIncrements = map[temporal.Unit]int64{
 	temporal.UnitNanosecond:  86400e9,
 }
 
-func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
-	proto := r.instant
-	ctor := temporalConstructor(vm, ns, "Instant", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initTemporalInstant(vm *engine.VM, ns *engine.Object) {
+	ctor, proto := temporalConstructor(vm, ns, "Instant", 1, engine.IntrinsicTemporalInstantPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := newTarget(vm, "Temporal.Instant")
-		return r.newInstant(vm, bigIntToEpochNs(vm, arg(args, 0)), nt)
+		return newInstant(vm, bigIntToEpochNs(vm, arg(args, 0)), nt)
 	})
 	tmethod(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return r.newInstant(vm, toTemporalInstant(vm, arg(args, 0)), nil)
+		return newInstant(vm, toTemporalInstant(vm, arg(args, 0)), nil)
 	})
 	tmethod(vm, ctor, "fromEpochMilliseconds", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := vm.ToNumber(arg(args, 0))
@@ -81,10 +81,10 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		if math.Abs(n) > 8.64e15 {
 			vm.ThrowRangeError("epoch milliseconds are out of range")
 		}
-		return r.newInstant(vm, temporal.Mul64(int64(n), 1_000_000), nil)
+		return newInstant(vm, temporal.Mul64(int64(n), 1_000_000), nil)
 	})
 	tmethod(vm, ctor, "fromEpochNanoseconds", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return r.newInstant(vm, bigIntToEpochNs(vm, arg(args, 0)), nil)
+		return newInstant(vm, bigIntToEpochNs(vm, arg(args, 0)), nil)
 	})
 	tmethod(vm, ctor, "compare", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		one := toTemporalInstant(vm, arg(args, 0))
@@ -109,7 +109,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 				vm.ThrowRangeError("years, months, weeks and days cannot be added to an instant")
 			}
 			id := temporal.ToInternalDurationRecordWith24HourDays(&d)
-			return r.newInstant(vm, must(temporal.AddInstant(s.ns, id.Time)), nil)
+			return newInstant(vm, must(temporal.AddInstant(s.ns, id.Time)), nil)
 		})
 	}
 	for _, name := range []string{"until", "since"} {
@@ -123,7 +123,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 			if name == "since" {
 				d = d.Negated()
 			}
-			return r.newDuration(vm, d, nil)
+			return newDuration(vm, d, nil)
 		})
 	}
 	tmethod(vm, proto, "round", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -134,7 +134,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 		unit := getUnitOption(vm, opts, "smallestUnit", true)
 		validateUnit(vm, unit, unitGroupTime)
 		check(temporal.ValidateTemporalRoundingIncrement(increment, maximumInstantIncrements[unit], true))
-		return r.newInstant(vm, temporal.RoundTemporalInstant(s.ns, increment, unit, mode), nil)
+		return newInstant(vm, temporal.RoundTemporalInstant(s.ns, increment, unit, mode), nil)
 	})
 	tmethod(vm, proto, "equals", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisInstant(vm, this, "equals")
@@ -170,6 +170,6 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 	tmethod(vm, proto, "toZonedDateTimeISO", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisInstant(vm, this, "toZonedDateTimeISO")
 		tz := toTimeZone(vm, arg(args, 0))
-		return r.newZonedDateTime(vm, s.ns, tz, temporal.ISO8601, nil)
+		return newZonedDateTime(vm, s.ns, tz, temporal.ISO8601, nil)
 	})
 }

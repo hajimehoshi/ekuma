@@ -256,7 +256,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	ctor := constructor(vm, "Array", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
 		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicArray) {
-			proto = vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicArrayPrototype))
+			proto = vm.GetPrototypeFromConstructor(nt, engine.IntrinsicArrayPrototype)
 		}
 		if len(args) == 1 {
 			if n := args[0]; n.IsNumber() {

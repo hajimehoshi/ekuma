@@ -81,3 +81,23 @@ func TestPrimitiveElements(t *testing.T) {
 		t.Error("SetElement reported a stored element for a primitive")
 	}
 }
+
+func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
+	vm := newVM(t)
+	var target engine.Value
+	vm.CreateRealm(func() {
+		var err error
+		target, err = runScript(vm, "target", `function Target() {} Target.prototype = null; Target;`)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// Only the initial realm has the Date built-in.
+	defer func() {
+		if recover() == nil {
+			t.Error("expected a panic for the missing Date prototype in the target's realm")
+		}
+	}()
+	vm.GetPrototypeFromConstructor(target.Object(), engine.IntrinsicDatePrototype)
+}

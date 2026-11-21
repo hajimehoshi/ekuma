@@ -15,18 +15,19 @@ import (
 var durationFieldNames = [10]string{"years", "months", "weeks", "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds"}
 
 // newDuration implements CreateTemporalDuration for a valid duration.
-func (r *temporalRealm) newDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
-	return engine.ObjectValue(vm.NewTemporalObject(protoFor(vm, nt, r.duration), &durationSlots{
+func newDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
+	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalDurationPrototype)
+	return engine.ObjectValue(vm.NewTemporalObject(proto, &durationSlots{
 		d: d,
 	}))
 }
 
 // createDuration implements CreateTemporalDuration.
-func (r *temporalRealm) createDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
+func createDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
 	if !temporal.IsValidDuration(&d) {
 		vm.ThrowRangeError("duration is out of range")
 	}
-	return r.newDuration(vm, d, nt)
+	return newDuration(vm, d, nt)
 }
 
 func thisDuration(vm *engine.VM, this engine.Value, name string) *durationSlots {
@@ -221,9 +222,8 @@ func validateDifferenceIncrement(vm *engine.VM, unit temporal.Unit, increment in
 	}
 }
 
-func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
-	proto := r.duration
-	ctor := temporalConstructor(vm, ns, "Duration", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
+	ctor, proto := temporalConstructor(vm, ns, "Duration", 0, engine.IntrinsicTemporalDurationPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := newTarget(vm, "Temporal.Duration")
 		var f [10]float64
 		for i := range f {
@@ -231,10 +231,10 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 				f[i] = toIntegerIfIntegral(vm, v, durationFieldNames[i])
 			}
 		}
-		return r.createDuration(vm, temporal.DurationFromFields(f), nt)
+		return createDuration(vm, temporal.DurationFromFields(f), nt)
 	})
 	tmethod(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return r.newDuration(vm, toTemporalDuration(vm, arg(args, 0)), nil)
+		return newDuration(vm, toTemporalDuration(vm, arg(args, 0)), nil)
 	})
 	tmethod(vm, ctor, "compare", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		one := toTemporalDuration(vm, arg(args, 0))
@@ -288,22 +288,22 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 				f[i] = pf[i]
 			}
 		}
-		return r.createDuration(vm, temporal.DurationFromFields(f), nil)
+		return createDuration(vm, temporal.DurationFromFields(f), nil)
 	})
 	tmethod(vm, proto, "negated", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return r.newDuration(vm, thisDuration(vm, this, "negated").d.Negated(), nil)
+		return newDuration(vm, thisDuration(vm, this, "negated").d.Negated(), nil)
 	})
 	tmethod(vm, proto, "abs", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		f := thisDuration(vm, this, "abs").d.Fields()
 		for i := range f {
 			f[i] = math.Abs(f[i])
 		}
-		return r.newDuration(vm, temporal.DurationFromFields(f), nil)
+		return newDuration(vm, temporal.DurationFromFields(f), nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
 		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			s := thisDuration(vm, this, name)
-			return r.newDuration(vm, addDurations(vm, s.d, arg(args, 0), name == "subtract"), nil)
+			return newDuration(vm, addDurations(vm, s.d, arg(args, 0), name == "subtract"), nil)
 		})
 	}
 	tmethod(vm, proto, "round", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -344,12 +344,12 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 			if largest.IsDateUnit() {
 				largest = temporal.UnitHour
 			}
-			return r.newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
+			return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 		}
 		if p := rel.plain; p != nil {
 			_, from, to := plainRelativeEnd(vm, &d, p)
 			id := must(temporal.DifferencePlainDateTimeWithRounding(from, to, p.cal, largest, increment, smallest, mode))
-			return r.newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
+			return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 		}
 		if existingLargest.IsCalendarUnit() || largest.IsCalendarUnit() {
 			vm.ThrowRangeError("durations with years, months or weeks need a relativeTo to be rounded")
@@ -366,7 +366,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object, r *temporalRealm) {
 			t := must(temporal.RoundTimeDuration(id.Time, increment, smallest, mode))
 			id = temporal.CombineDateAndTimeDuration(temporal.DateDuration{}, t)
 		}
-		return r.newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
+		return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 	})
 	tmethod(vm, proto, "total", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisDuration(vm, this, "total")

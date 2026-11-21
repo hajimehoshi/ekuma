@@ -43,7 +43,7 @@ func initString(vm *engine.VM) {
 			s = vm.ToStringValue(args[0])
 		}
 		if nt := vm.GetNewTarget(); nt != nil {
-			return engine.ObjectValue(vm.NewStringObject(s.Object(), vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicStringPrototype))))
+			return engine.ObjectValue(vm.NewStringObject(s.Object(), vm.GetPrototypeFromConstructor(nt, engine.IntrinsicStringPrototype)))
 		}
 		return s
 	})

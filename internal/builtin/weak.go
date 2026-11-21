@@ -31,7 +31,7 @@ func initWeakMap(vm *engine.VM) {
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakMap requires 'new'")
 		}
-		m := vm.NewWeakMapObject(vm.GetPrototypeFromConstructor(nt, proto))
+		m := vm.NewWeakMapObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakMapPrototype))
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
@@ -119,7 +119,7 @@ func initWeakSet(vm *engine.VM) {
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakSet requires 'new'")
 		}
-		s := vm.NewWeakSetObject(vm.GetPrototypeFromConstructor(nt, proto))
+		s := vm.NewWeakSetObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakSetPrototype))
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
@@ -175,7 +175,7 @@ func initWeakRef(vm *engine.VM) {
 		}
 		target := arg(args, 0)
 		requireHoldable(vm, target, "as WeakRef target")
-		r := vm.NewWeakRefObject(vm.GetPrototypeFromConstructor(nt, proto), target)
+		r := vm.NewWeakRefObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakRefPrototype), target)
 		vm.AddToKeptObjects(target.Object())
 		return engine.ObjectValue(r)
 	})
@@ -201,7 +201,7 @@ func initFinalizationRegistry(vm *engine.VM) {
 		if !cb.IsCallable() {
 			vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
 		}
-		return engine.ObjectValue(vm.NewFinalizationRegistryObject(vm.GetPrototypeFromConstructor(nt, proto), cb.Object()))
+		return engine.ObjectValue(vm.NewFinalizationRegistryObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
 	})
 
 	thisRegistry := func(vm *engine.VM, this engine.Value, name string) *engine.FinalizationRegistry {

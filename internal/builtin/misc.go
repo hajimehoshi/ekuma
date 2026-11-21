@@ -32,7 +32,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			}
 		}
 		if nt := vm.GetNewTarget(); nt != nil {
-			return engine.ObjectValue(vm.NewNumberObject(n, vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicNumberPrototype))))
+			return engine.ObjectValue(vm.NewNumberObject(n, vm.GetPrototypeFromConstructor(nt, engine.IntrinsicNumberPrototype)))
 		}
 		return engine.Number(n)
 	})
@@ -160,7 +160,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	constructor(vm, "Boolean", 1, bproto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ToBoolean(arg(args, 0))
 		if nt := vm.GetNewTarget(); nt != nil {
-			return engine.ObjectValue(vm.NewBooleanObject(b, vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicBooleanPrototype))))
+			return engine.ObjectValue(vm.NewBooleanObject(b, vm.GetPrototypeFromConstructor(nt, engine.IntrinsicBooleanPrototype)))
 		}
 		return engine.Bool(b)
 	})

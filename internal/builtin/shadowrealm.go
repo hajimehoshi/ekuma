@@ -16,7 +16,7 @@ func initShadowRealm(vm *engine.VM) {
 		if nt == nil {
 			vm.ThrowTypeError("constructor ShadowRealm requires 'new'")
 		}
-		p := vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicShadowRealmPrototype))
+		p := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicShadowRealmPrototype)
 		r := vm.CreateRealm(func() {
 			Install(vm)
 		})

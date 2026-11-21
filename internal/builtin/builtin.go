@@ -307,7 +307,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	proto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(vm, "Object", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicObject) {
-			return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicObjectPrototype))))
+			return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicObjectPrototype)))
 		}
 		v := arg(args, 0)
 		if v.IsNullish() {
@@ -763,10 +763,11 @@ func initError(vm *engine.VM) {
 	var base *engine.Object
 	for kind, name := range names {
 		kind := engine.ErrorKind(kind)
+		protoID := engine.ErrorPrototypeIntrinsic(kind)
 		proto := vm.Intrinsic(engine.IntrinsicErrorPrototype)
 		if kind != engine.ErrorKindError {
 			proto = vm.NewObject(proto)
-			vm.SetIntrinsic(engine.ErrorPrototypeIntrinsic(kind), proto)
+			vm.SetIntrinsic(protoID, proto)
 		}
 		length := 1
 		switch kind {
@@ -777,7 +778,7 @@ func initError(vm *engine.VM) {
 		}
 		ctor := constructor(vm, wtf8.String(name), length, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			nt := vm.GetNewTarget()
-			e := vm.NewErrorObject(vm.GetPrototypeFromConstructor(nt, proto))
+			e := vm.NewErrorObject(vm.GetPrototypeFromConstructor(nt, protoID))
 			msgArg, optArg := arg(args, 0), arg(args, 1)
 			switch kind {
 			case engine.ErrorKindAggregate:

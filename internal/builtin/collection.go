@@ -126,7 +126,7 @@ func initMap(vm *engine.VM) {
 			vm.ThrowTypeError("constructor Map requires 'new'")
 		}
 		t := &collection.Table{}
-		m := vm.NewMapObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicMapPrototype)), t)
+		m := vm.NewMapObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype), t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
@@ -371,7 +371,7 @@ func initSet(vm *engine.VM) {
 			vm.ThrowTypeError("constructor Set requires 'new'")
 		}
 		t := &collection.Table{}
-		s := vm.NewSetObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicSetPrototype)), t)
+		s := vm.NewSetObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype), t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)

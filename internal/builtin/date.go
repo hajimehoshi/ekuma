@@ -100,7 +100,7 @@ func initDate(vm *engine.VM) {
 			c[dateYear] = datetime.MakeFullYear(c[dateYear])
 			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), tz))
 		}
-		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, vm.Intrinsic(engine.IntrinsicDatePrototype)), tv))
+		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDatePrototype), tv))
 	})
 
 	method(vm, ctor, "now", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
