@@ -50,6 +50,9 @@ func NewVM(hostDefined any) *VM {
 		vm.strings.ascii[i] = ObjectValue(vm.Intern(wtf8.String(rune(i))))
 	}
 	vm.initKeys()
+	for t, name := range typeofNames {
+		vm.typeofs[t] = ObjectValue(vm.Intern(name))
+	}
 	vm.missHolder = (&propertyObject{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,

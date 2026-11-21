@@ -1010,17 +1010,42 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		case bytecode.OpJumpNotSEq:
+			// The cases of IsStrictlyEqual that need no call: two numbers, one value twice, and two
+			// interned strings, which differ in content when they are different objects.
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
 				if x.n != y.n {
 					pc = int(i.A)
 				}
 				continue
+			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+				continue
+			} else if x.o != y.o && x.o != nil && y.o != nil && x.o.flags&y.o.flags&objInterned != 0 {
+				pc = int(i.A)
+				continue
 			}
 		case bytecode.OpJumpNotSNe:
+			// The same cases as OpJumpNotSEq.
 			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
 				if x.n == y.n {
 					pc = int(i.A)
 				}
+				continue
+			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+				pc = int(i.A)
+				continue
+			} else if x.o != y.o && x.o != nil && y.o != nil && x.o.flags&y.o.flags&objInterned != 0 {
+				continue
+			}
+		case bytecode.OpStrictEq, bytecode.OpStrictNe:
+			// The same cases as OpJumpNotSEq.
+			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
+				regs[i.A] = Bool((x.n == y.n) == (i.Op == bytecode.OpStrictEq))
+				continue
+			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+				regs[i.A] = Bool(i.Op == bytecode.OpStrictEq)
+				continue
+			} else if x.o != y.o && x.o != nil && y.o != nil && x.o.flags&y.o.flags&objInterned != 0 {
+				regs[i.A] = Bool(i.Op != bytecode.OpStrictEq)
 				continue
 			}
 		case bytecode.OpJumpNotLtK:

@@ -504,6 +504,9 @@ type VM struct {
 	// maxBigIntResultBits is the bit limit for checked BigInt arithmetic results.
 	// Tests lower it to exercise overflow with small operands.
 	maxBigIntResultBits int64
+
+	// typeofs are the interned results of the typeof operator, indexed by the typeof constants.
+	typeofs [typeofCount]Value
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

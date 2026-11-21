@@ -231,31 +231,56 @@ func ToBoolean(v Value) bool {
 	return true
 }
 
-// typeOf implements the typeof operator.
-func typeOf(v Value) wtf8.String {
+// The results of the typeof operator.
+const (
+	typeofUndefined = iota
+	typeofNumber
+	typeofBoolean
+	typeofString
+	typeofSymbol
+	typeofBigInt
+	typeofFunction
+	typeofObject
+	typeofCount
+)
+
+// typeofNames are the results of the typeof operator, indexed by the typeof constants.
+var typeofNames = [typeofCount]wtf8.String{
+	typeofUndefined: "undefined",
+	typeofNumber:    "number",
+	typeofBoolean:   "boolean",
+	typeofString:    "string",
+	typeofSymbol:    "symbol",
+	typeofBigInt:    "bigint",
+	typeofFunction:  "function",
+	typeofObject:    "object",
+}
+
+// typeOf returns the typeof constant of the result of the typeof operator for v.
+func typeOf(v Value) int {
 	o := v.o
 	if o == nil {
-		return "undefined"
+		return typeofUndefined
 	}
 	if o == numberObject {
-		return "number"
+		return typeofNumber
 	}
 	switch o.kind {
 	case kindHTMLDDA:
-		return "undefined"
+		return typeofUndefined
 	case kindFalse, kindTrue:
-		return "boolean"
+		return typeofBoolean
 	case kindString:
-		return "string"
+		return typeofString
 	case kindSymbol:
-		return "symbol"
+		return typeofSymbol
 	case kindBigInt:
-		return "bigint"
+		return typeofBigInt
 	}
 	if o.fn != nil {
-		return "function"
+		return typeofFunction
 	}
-	return "object"
+	return typeofObject
 }
 
 // IsStrictlyEqual implements IsStrictlyEqual.

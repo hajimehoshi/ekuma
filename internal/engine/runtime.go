@@ -842,7 +842,7 @@ func (vm *VM) defineClassElement(this Value, e *classElement) {
 }
 
 func (vm *VM) typeofValue(v Value) Value {
-	return ObjectValue(vm.Intern(typeOf(v)))
+	return vm.typeofs[typeOf(v)]
 }
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals
