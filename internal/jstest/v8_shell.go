@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
@@ -25,6 +26,9 @@ var v8ShellSource string
 var v8ShellScript = sync.OnceValues(func() (*ekuma.UnboundScript, error) {
 	return ekuma.ParseUnboundScript("v8-shell.js", v8ShellSource)
 })
+
+// A host panic carries the exit code past JavaScript catch and finally blocks.
+type v8ExitCode int32
 
 type v8Shell struct {
 	stdout io.Writer
@@ -43,6 +47,9 @@ func newV8Shell(stdout, stderr io.Writer) v8Shell {
 }
 
 func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS) error {
+	if err := installV8ScriptLoader(ctx, r, checkout); err != nil {
+		return err
+	}
 	script, err := v8ShellScript()
 	if err != nil {
 		return err
@@ -75,8 +82,11 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS) e
 			return ekuma.Undefined, err
 		}
 	}
+	exit := r.FuncOf("exit", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		panic(v8ExitCode(args[0].Int()))
+	})
 	_, err = init.Invoke(ctx, r.FuncOf("readFile", readFile), r.FuncOf("stdout", write(s.stdout)),
-		r.FuncOf("stderr", write(s.stderr)), r.FuncOf("timer", s.timer))
+		r.FuncOf("stderr", write(s.stderr)), r.FuncOf("timer", s.timer), exit)
 	return err
 }
 
@@ -130,5 +140,54 @@ func CheckV8ShellOutput(t *testing.T) {
 	}
 	if got, want := stderr.String(), "partial \nconsole.error: done\n"; got != want {
 		t.Errorf("stderr = %q, want %q", got, want)
+	}
+}
+
+// CheckQuit checks that quitting from a helper ends the test with the requested status.
+func (host *V8) CheckQuit(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		helper string
+		want   suiteOutcome
+	}{
+		{
+			name: "nonzero exit from a child realm",
+			helper: `
+				Promise.resolve().then(() => print("ran a queued job"));
+				try {
+					Realm.eval(Realm.create(), 'd8.quit("1.5")');
+				} catch {
+					print("caught quit");
+				} finally {
+					print("ran finally");
+				}`,
+			want: suiteFailed,
+		},
+		{
+			name:   "exit code conversion throws",
+			helper: `quit({valueOf() { throw new Error(); }});`,
+			want:   suitePassed,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			test := v8Test{
+				file: "test/mjsunit/quit.js",
+			}
+			checkout := fstest.MapFS{
+				"helper.js": {
+					Data: []byte(tc.helper),
+				},
+				test.file: {
+					Data: []byte("// Files: helper.js\nprint('ran the test body');"),
+				},
+			}
+			result, lastPrint := test.execute(t.Context(), host, checkout, testTimeout)
+			if result.outcome != tc.want {
+				t.Errorf("outcome = %v, want %v (%s)", result.outcome, tc.want, result.reason)
+			}
+			if lastPrint != "" {
+				t.Errorf("execution continued after quit: %s", lastPrint)
+			}
+		})
 	}
 }

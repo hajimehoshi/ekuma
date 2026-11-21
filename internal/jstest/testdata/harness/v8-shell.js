@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-(function (readFile, stdout, stderr, timer) {
+(function (readFile, stdout, stderr, timer, exit) {
   "use strict";
   const {Error, Uint8Array} = globalThis;
   function getter(proto, name) {
@@ -12,6 +12,17 @@
   const stackOf = getter(Error.prototype, "stack");
   const indexOf = Function.call.bind(String.prototype.indexOf);
   const slice = Function.call.bind(String.prototype.slice);
+
+  for (const target of [globalThis, d8]) {
+    target.quit = function quit(code = 0) {
+      try {
+        code |= 0;
+      } catch {
+        code = 0;
+      }
+      exit(code);
+    };
+  }
 
   globalThis.readbuffer = function readbuffer(name = undefined) {
     const view = readFile(`${name}`, Uint8Array);

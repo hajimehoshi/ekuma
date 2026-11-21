@@ -44,9 +44,6 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 	if err := r.Global().Set("print", r.FuncOf("print", h.print)); err != nil {
 		return 0, err
 	}
-	if err := installV8ScriptLoader(h.ctx, r, h.checkout); err != nil {
-		return 0, err
-	}
 	if err := h.shell.install(h.ctx, r, h.checkout); err != nil {
 		return 0, err
 	}

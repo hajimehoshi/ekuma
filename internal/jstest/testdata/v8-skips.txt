@@ -1257,10 +1257,6 @@ test/mjsunit/d8/d8-os.js
 test/mjsunit/d8/performance-mark.js
 test/mjsunit/regress/regress-371237560.js
 
-# These tests require the quit global.
-test/mjsunit/regress/regress-crbug-1373770.js
-test/mjsunit/weakrefs/clearkeptobjects-on-quit.js
-
 # These tests require the setTimeout global.
 test/mjsunit/d8/d8-realm-onerror.js
 test/mjsunit/d8/d8-unhandled-promise-handler-added.js

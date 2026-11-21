@@ -352,12 +352,7 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 	return tests
 }
 
-func (v *v8Test) run(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (result suiteResult) {
-	defer func() {
-		if r := recover(); r != nil {
-			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
-		}
-	}()
+func (v *v8Test) run(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) suiteResult {
 	result, lastPrint := v.execute(ctx, host, checkout, timeout)
 	if v.wantFailure {
 		result = result.expectFailure(v.file, v8SkipsFile)
@@ -419,7 +414,18 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 	return directives, ""
 }
 
-func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (suiteResult, string) {
+func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (result suiteResult, lastPrint string) {
+	defer func() {
+		switch r := recover().(type) {
+		case nil:
+		case v8ExitCode:
+			if r != 0 {
+				result = suiteFailed.result(fmt.Sprintf("quit(%d)", r))
+			}
+		default:
+			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
+		}
+	}()
 	if v.skipReason != "" {
 		return suiteSkipped.result(v.skipReason), ""
 	}
@@ -447,7 +453,6 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		now := *v.environment.FixedTime
 		vm.SetClock(func() time.Time { return now })
 	}
-	var lastPrint string
 	print := func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		lastPrint = firstLine(fmt.Sprint(args))
 		return ekuma.Undefined, nil

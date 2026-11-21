@@ -57,6 +57,10 @@ func TestV8ShellOutput(t *testing.T) {
 	jstest.CheckV8ShellOutput(t)
 }
 
+func TestV8Quit(t *testing.T) {
+	v8Runner.CheckQuit(t)
+}
+
 func TestV8Realm(t *testing.T) {
 	v8Runner.CheckRealm(t)
 }
