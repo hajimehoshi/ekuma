@@ -30,8 +30,8 @@ type ExceptionLocation struct {
 }
 
 // SetExceptionReporter sets the current realm's handler for exceptions escaping
-// an outermost host call. The handler receives the thrown value and its source
-// location before the microtask checkpoint.
+// an outermost host call or a queued callback. The handler receives the thrown
+// value and its source location before the next microtask runs.
 func (vm *VM) SetExceptionReporter(report func(Value, ExceptionLocation)) {
 	vm.exceptionReporter = report
 }

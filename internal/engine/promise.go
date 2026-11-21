@@ -130,9 +130,10 @@ const (
 	jobReaction jobKind = iota
 	jobThenable
 	jobResolve
+	jobCallback
 )
 
-// job is a pending promise job.
+// job is a pending microtask.
 type job struct {
 	kind jobKind
 
@@ -145,10 +146,11 @@ type job struct {
 	// argument is the value of a reaction job, or the thenable of a thenable job.
 	argument Value
 
-	// promise and then are the promise to resolve and the then method of a thenable job.
-	// A resolve job resolves promise with argument.
+	// promise is the promise to resolve in a thenable or resolve job.
 	promise *Object
-	then    Value
+
+	// callback is the then method of a thenable job or the function of a callback job.
+	callback Value
 }
 
 // IsPromise implements IsPromise.
@@ -359,7 +361,7 @@ func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
 		},
 		argument: thenable,
 		promise:  p,
-		then:     then,
+		callback: then,
 	})
 }
 
@@ -608,7 +610,7 @@ func (t *rejectionTracker) reset() {
 // queue drains.
 const maxIdleJobs = 1024
 
-// jobQueue is a queue of pending promise jobs.
+// jobQueue is a queue of pending microtasks.
 type jobQueue struct {
 	// jobs holds the pending jobs from head on.
 	jobs []job
@@ -662,13 +664,34 @@ func (vm *VM) enqueueMicrotask(j job) {
 	vm.jobs.enqueue(j)
 }
 
+// QueueMicrotask queues a call to callback with no arguments and reports an exception
+// in the callback's creation realm.
+// It throws a TypeError if callback is not callable.
+func (vm *VM) QueueMicrotask(callback Value) {
+	if !callback.IsCallable() {
+		vm.ThrowTypeError(vm.DisplayString(callback) + " is not a function")
+	}
+	if vm.hasDetachedGlobal(vm.curRealm) {
+		return
+	}
+	context := vm.captureJobContext()
+	context.enteredRealm = (*realm)(callback.o.CreationRealm())
+	vm.jobs.enqueue(job{
+		kind: jobCallback,
+		reaction: promiseReaction{
+			context: context,
+		},
+		callback: callback,
+	})
+}
+
 // jobRealm returns the realm entered for a job. A missing or revoked handler
 // falls back to the other reaction handler and then to the enqueueing realm.
 func (vm *VM) jobRealm(j *job) *realm {
 	primary, secondary := j.reaction.onFulfilled, j.reaction.onRejected
 	switch {
 	case j.kind == jobThenable:
-		primary = j.then
+		primary = j.callback
 	case j.reaction.kind == reactionAwait:
 		// The await handler resumes code in the suspended function's realm.
 		return j.reaction.gen.f.fn.code.realm
@@ -687,16 +710,21 @@ func (vm *VM) jobRealm(j *job) *realm {
 	return vm.curRealm
 }
 
-// runJob runs the job j. An exception that leaves the job is dropped, as the host would
-// only report it.
 func (vm *VM) runJob(j *job) {
-	if j.kind == jobResolve {
+	switch j.kind {
+	case jobCallback:
+		if thrown, ok := vm.Completion(func() {
+			vm.Call(j.callback.o, Undefined)
+		}); !ok {
+			vm.reportUncaughtException(thrown, vm.thrownAt)
+		}
+		return
+	case jobResolve:
 		vm.resolvePromise(j.promise, j.argument)
 		return
-	}
-	if j.kind == jobThenable {
+	case jobThenable:
 		vm.protect(func() {
-			vm.promiseResolveThenableJob(j.promise, j.argument, j.then)
+			vm.promiseResolveThenableJob(j.promise, j.argument, j.callback)
 		})
 		vm.thrown = Undefined
 		return

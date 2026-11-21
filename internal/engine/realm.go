@@ -421,11 +421,8 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 		vm.ResumeInterruption()
 		thrown := vm.takeThrown()
 		site := vm.thrownAt
-		if !ok && outermost && vm.exceptionReporter != nil {
-			vm.protect(func() {
-				vm.exceptionReporter(thrown, site.location())
-			})
-			vm.thrown = Undefined
+		if !ok && outermost {
+			vm.reportUncaughtException(thrown, site)
 		}
 		vm.runJobs()
 		if !ok {
@@ -436,6 +433,15 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 		return Undefined, vm.takeException()
 	}
 	return result, nil
+}
+
+func (vm *VM) reportUncaughtException(thrown Value, site throwSite) {
+	if vm.exceptionReporter != nil {
+		vm.protect(func() {
+			vm.exceptionReporter(thrown, site.location())
+		})
+		vm.thrown = Undefined
+	}
 }
 
 func (vm *VM) compileScript(file string, src wtf8.String) (*funcProto, error) {
@@ -628,7 +634,7 @@ func (o *Object) CreationRealm() *Realm {
 }
 
 // IsEnteredRealm reports whether r is the VM's entered realm.
-// Jobs record an entered realm only in VMs with global proxies.
+// Promise jobs record an entered realm only in VMs with global proxies.
 func (vm *VM) IsEnteredRealm(r *Realm) bool {
 	return r != nil && (*realm)(r) == vm.enteredRealm
 }

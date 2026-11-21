@@ -5,38 +5,26 @@ package jstest
 
 import (
 	"runtime"
-	"sync"
 	"testing"
 	"testing/fstest"
 
-	"github.com/hajimehoshi/ekuma"
-	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
-
-// v8GCEnabled contains the test VMs running with --expose-gc.
-var v8GCEnabled sync.Map
 
 // An unsupported call ends the test even if its script catches exceptions.
 type v8GCWithArguments struct{}
 
-func init() {
-	builtin.RegisterExtension(func(vm *engine.VM) {
-		host, _ := vm.HostDefined().(*ekuma.VM)
-		if _, ok := v8GCEnabled.Load(host); !ok {
-			return
+func installV8GC(vm *engine.VM) {
+	gc := vm.NewFunction("gc", func(vm *engine.VM, _ engine.Value, args []engine.Value) engine.Value {
+		if len(args) != 0 {
+			readV8GCOptions(vm, args[0])
+			panic(v8GCWithArguments{})
 		}
-		gc := vm.NewFunction("gc", func(vm *engine.VM, _ engine.Value, args []engine.Value) engine.Value {
-			if len(args) != 0 {
-				readV8GCOptions(vm, args[0])
-				panic(v8GCWithArguments{})
-			}
-			runtime.GC()
-			return engine.Undefined
-		})
-		// The V8 extension declares gc as a global var.
-		vm.Define(vm.GlobalObject().Object(), vm.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)
+		runtime.GC()
+		return engine.Undefined
 	})
+	// The V8 extension declares gc as a global var.
+	vm.Define(vm.GlobalObject().Object(), vm.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)
 }
 
 // d8 reads these properties in order before selecting a collection. A getter

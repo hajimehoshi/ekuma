@@ -81,7 +81,7 @@ func TakeUnhandledRejection(vm *VM) error {
 }
 
 // IsEnteredRealm reports whether r is the VM's entered realm.
-// Jobs record an entered realm only in VMs with global proxies.
+// Promise jobs record an entered realm only in VMs with global proxies.
 func IsEnteredRealm(r *Realm) bool {
 	return r.vm.e.IsEnteredRealm(r.r)
 }

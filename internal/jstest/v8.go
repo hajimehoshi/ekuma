@@ -19,11 +19,14 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
+	"github.com/hajimehoshi/ekuma/internal/builtin"
+	"github.com/hajimehoshi/ekuma/internal/engine"
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
@@ -72,6 +75,7 @@ var v8Suites = []v8Suite{
 		exclude: []string{"mjsunit_numfuzz.js"},
 		flags: []string{
 			"--bundle",
+			"--enable-queue-microtask",
 			"--expose-gc",
 			"--throws",
 
@@ -510,8 +514,29 @@ type v8Directives struct {
 	bundle                  bool
 	noHarness               bool
 	exposeGC                bool
+	enableQueueMicrotask    bool
 	throws                  bool
 	ignoreUnhandledPromises bool
+}
+
+// v8VMDirectives holds the directives for VMs that need optional builtins.
+var v8VMDirectives sync.Map
+
+func init() {
+	builtin.RegisterExtension(func(vm *engine.VM) {
+		host, _ := vm.HostDefined().(*ekuma.VM)
+		d, ok := v8VMDirectives.Load(host)
+		if !ok {
+			return
+		}
+		directives := d.(v8Directives)
+		if directives.exposeGC {
+			installV8GC(vm)
+		}
+		if directives.enableQueueMicrotask {
+			installV8QueueMicrotask(vm)
+		}
+	})
 }
 
 func parseV8Directives(src string, enabledFlags []string) (v8Directives, string) {
@@ -536,6 +561,8 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 					return v8Directives{}, "requires V8 flag " + flag
 				} else if normalized == "--bundle" {
 					directives.bundle = true
+				} else if normalized == "--enable-queue-microtask" {
+					directives.enableQueueMicrotask = true
 				} else if normalized == "--expose-gc" {
 					directives.exposeGC = true
 				} else if normalized == "--throws" {
@@ -622,9 +649,9 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var vm ekuma.VM
-	if directives.exposeGC {
-		v8GCEnabled.Store(&vm, struct{}{})
-		defer v8GCEnabled.Delete(&vm)
+	if directives.exposeGC || directives.enableQueueMicrotask {
+		v8VMDirectives.Store(&vm, directives)
+		defer v8VMDirectives.Delete(&vm)
 	}
 	if err := vm.SetLocale(directives.locale); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""

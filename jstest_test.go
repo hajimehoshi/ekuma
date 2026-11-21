@@ -74,6 +74,10 @@ func TestV8ExposeGC(t *testing.T) {
 	v8Runner.CheckExposeGC(t)
 }
 
+func TestV8QueueMicrotask(t *testing.T) {
+	v8Runner.CheckQueueMicrotask(t)
+}
+
 func TestV8FixedTime(t *testing.T) {
 	v8Runner.CheckFixedTime(t)
 }
