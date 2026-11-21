@@ -26,8 +26,9 @@ func init() {
 		if _, ok := v8GCEnabled.Load(host); !ok {
 			return
 		}
-		gc := vm.NewFunction("gc", func(_ *engine.VM, _ engine.Value, args []engine.Value) engine.Value {
+		gc := vm.NewFunction("gc", func(vm *engine.VM, _ engine.Value, args []engine.Value) engine.Value {
 			if len(args) != 0 {
+				readV8GCOptions(vm, args[0])
 				panic(v8GCWithArguments{})
 			}
 			runtime.GC()
@@ -36,6 +37,20 @@ func init() {
 		// The V8 extension declares gc as a global var.
 		vm.Define(vm.GlobalObject().Object(), vm.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)
 	})
+}
+
+// d8 reads these properties in order before selecting a collection. A getter
+// can throw even when the collection itself would be unsupported.
+func readV8GCOptions(vm *engine.VM, options engine.Value) {
+	if !options.IsObject() {
+		return
+	}
+	typ := vm.GetV(options, vm.Intern("type"))
+	vm.GetV(options, vm.Intern("execution"))
+	vm.GetV(options, vm.Intern("flavor"))
+	if typ.IsString() && typ.Str() == "major-snapshot" {
+		vm.GetV(options, vm.Intern("filename"))
+	}
 }
 
 // CheckExposeGC checks the flag and the gc binding in d8 contexts.
@@ -68,5 +83,23 @@ func (host *V8) CheckExposeGC(t *testing.T) {
 	check(`// Flags: --expose-gc --allow-natives-syntax
 		throw Error("ran with an unsupported flag");`, suiteSkipped)
 	check(`// Flags: --expose-gc
-		try { gc({execution: "async"}); } catch {}`, suiteSkipped)
+		const token = {};
+		const reads = [];
+		let caught;
+		try {
+			gc({
+				get type() { reads.push("type"); return "major-snapshot"; },
+				get execution() { reads.push("execution"); return "async"; },
+				get flavor() { reads.push("flavor"); },
+				get filename() { reads.push("filename"); throw token; },
+			});
+		} catch (e) { caught = e; }
+		if (caught !== token) throw Error("expected the filename getter's exception");
+		if (reads.join() !== "type,execution,flavor,filename") throw Error("gc option reads: " + reads);
+	`, suitePassed)
+	check(`// Flags: --expose-gc
+		try {
+			gc({type: new String("major-snapshot"), execution: "async", get filename() { throw 0; }});
+		} catch {}
+	`, suiteSkipped)
 }

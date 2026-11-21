@@ -288,9 +288,6 @@ test/mjsunit/regress/regress-crbug-986187.js
 # SKIP: requires a major collection to promote a WeakSet and its key to old space
 test/mjsunit/regress/regress-948307.js
 
-# SKIP: requires reading the GC options through a throwing proxy
-test/mjsunit/regress/regress-1006640.js
-
 # SKIP: the performance.measureMemory guard bypasses all assertions
 test/mjsunit/measure-memory-multiple-realms.js
 test/mjsunit/measure-memory.js
