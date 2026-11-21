@@ -59,7 +59,7 @@ func (n Names) Script(code string) (string, bool) {
 
 // Calendar returns the name of the Unicode calendar type code.
 func (n Names) Calendar(code string) (string, bool) {
-	return n.field(cldr.LocaleDisplayNames, "c"+code)
+	return n.field(cldr.LocaleDisplayNames, "c"+locale.CanonicalizeUValue("ca", code))
 }
 
 // Currency returns the name of the currency code in upper case.
