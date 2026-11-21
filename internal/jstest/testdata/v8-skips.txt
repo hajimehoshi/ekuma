@@ -919,6 +919,7 @@ test/mjsunit/regress/wasm/regress-375959770.js
 test/mjsunit/regress/wasm/regress-378014602.js
 test/mjsunit/regress/wasm/regress-378779897.js
 test/mjsunit/regress/wasm/regress-380397544.js
+test/mjsunit/regress/wasm/regress-381696874.js
 test/mjsunit/regress/wasm/regress-382291459.js
 test/mjsunit/regress/wasm/regress-382547695.js
 test/mjsunit/regress/wasm/regress-384565015.js
@@ -1030,6 +1031,7 @@ test/mjsunit/regress/wasm/regress-819869.js
 test/mjsunit/regress/wasm/regress-820802.js
 test/mjsunit/regress/wasm/regress-825087a.js
 test/mjsunit/regress/wasm/regress-825087b.js
+test/mjsunit/regress/wasm/regress-827806.js
 test/mjsunit/regress/wasm/regress-834693.js
 test/mjsunit/regress/wasm/regress-836141.js
 test/mjsunit/regress/wasm/regress-837417.js
@@ -1128,6 +1130,7 @@ test/mjsunit/wasm/data-segments.js
 test/mjsunit/wasm/drumbrake/memory-grow.js
 test/mjsunit/wasm/drumbrake/memory64-simd-lanes.js
 test/mjsunit/wasm/element-segments-with-reftypes.js
+test/mjsunit/wasm/ensure-wasm-binaries-up-to-date.js
 test/mjsunit/wasm/exceptions-api.js
 test/mjsunit/wasm/exceptions-export.js
 test/mjsunit/wasm/exceptions-import.js
@@ -1341,16 +1344,6 @@ test/mjsunit/wasm/shared-memory-worker-gc-stress.js
 test/mjsunit/wasm/shared-memory-worker-stress.js
 test/mjsunit/wasm/worker-memory.js
 
-# These tests require the console global.
-test/mjsunit/clone-ic-regression-crbug-1466315.js
-test/mjsunit/console.js
-test/mjsunit/regress/regress-566243375.js
-test/mjsunit/regress/regress-crbug-1329234.js
-test/mjsunit/regress/regress-crbug-1373770.js
-test/mjsunit/regress/wasm/regress-381696874.js
-test/mjsunit/regress/wasm/regress-827806.js
-test/mjsunit/regress/wasm/regress-crbug-1502180.js
-
 # These tests require other d8 shell APIs.
 test/mjsunit/d8/d8-realm-shared-templates.js
 test/mjsunit/d8/d8-test-access-check.js
@@ -1380,12 +1373,8 @@ test/mjsunit/d8/performance-mark.js
 test/mjsunit/regress/regress-371237560.js
 
 # These tests require the quit global.
+test/mjsunit/regress/regress-crbug-1373770.js
 test/mjsunit/weakrefs/clearkeptobjects-on-quit.js
-
-# These tests require the readbuffer global.
-test/mjsunit/regress/d8-readbuffer.js
-test/mjsunit/regress/regress-571565364.js
-test/mjsunit/wasm/ensure-wasm-binaries-up-to-date.js
 
 # These tests require the setTimeout global.
 test/mjsunit/d8/d8-realm-onerror.js
@@ -1411,9 +1400,6 @@ test/mjsunit/test-builtins-setup.js
 
 # This test requires Intl.v8BreakIterator.
 test/mjsunit/regress/regress-crbug-714696.js
-
-# This test requires d8's printErr global.
-test/mjsunit/print.js
 
 # V8 marks the bugs directory as expected to fail.
 test/mjsunit/bugs/bug-1344252.js

@@ -28,6 +28,7 @@ type v8Realms struct {
 	ctx      context.Context
 	checkout fs.FS
 	print    ekuma.Func
+	shell    v8Shell
 	entries  []ekuma.Value
 }
 
@@ -44,6 +45,9 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 		return 0, err
 	}
 	if err := installV8ScriptLoader(h.ctx, r, h.checkout); err != nil {
+		return 0, err
+	}
+	if err := h.shell.install(h.ctx, r, h.checkout); err != nil {
 		return 0, err
 	}
 	create := r.FuncOf("create", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -92,6 +96,14 @@ func (host *V8) CheckRealm(t *testing.T) {
 		if (Realm.eval(r, 'd8.file.execute("helper.js"); loadedIn') !== Realm.global(r)) {
 			throw Error("script loaded in the wrong realm");
 		}
+		if (!Realm.eval(r, 'console.log instanceof Function && printErr instanceof Function')) {
+			throw Error("shell helpers installed in the wrong realm");
+		}
+		const buffer = Realm.eval(r, 'readbuffer("./bytes.bin")');
+		if (!(buffer instanceof Realm.eval(r, "ArrayBuffer"))) throw Error("wrong buffer realm");
+		if (new Uint8Array(buffer.transfer())[0] !== 0xff) throw Error("file byte changed");
+		const childError = Realm.eval(r, 'try { readbuffer("missing"); } catch (e) { e.constructor === Error; }');
+		if (childError !== true) throw Error("expected a file error from the child realm");
 		const unit = "\ud800";
 		let readArguments = false;
 		const options = {type: "string", get arguments() { readArguments = true; }};
@@ -141,6 +153,9 @@ func (host *V8) CheckRealm(t *testing.T) {
 		file: "test/mjsunit/realm.js",
 	}
 	checkout := fstest.MapFS{
+		"bytes.bin": {
+			Data: []byte{0xff},
+		},
 		"helper.js": {
 			Data: []byte("var loadedIn = globalThis"),
 		},

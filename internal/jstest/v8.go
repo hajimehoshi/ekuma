@@ -9,6 +9,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"maps"
 	"os"
@@ -456,6 +457,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			ctx:      ctx,
 			checkout: checkout,
 			print:    print,
+			shell:    newV8Shell(io.Discard, io.Discard),
 		}
 		if _, err := realms.add(vm.InitialRealm(), false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""

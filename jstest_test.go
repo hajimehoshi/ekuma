@@ -53,6 +53,10 @@ func TestV8ScriptLoader(t *testing.T) {
 	jstest.CheckV8ScriptLoader(t)
 }
 
+func TestV8ShellOutput(t *testing.T) {
+	jstest.CheckV8ShellOutput(t)
+}
+
 func TestV8Realm(t *testing.T) {
 	v8Runner.CheckRealm(t)
 }
