@@ -73,9 +73,15 @@ func newIntervalInfo(d *localeData) *intervalInfo {
 		formats: map[string]*[calCount]string{},
 	}
 	fields := d.calendarFields("I")
+	lang, _, _ := strings.Cut(d.chain[0], "-")
 	for _, k := range sortedKeys(fields) {
+		pattern := fields[k]
+		if lang == "en" {
+			// English date ranges use ordinary spaces around the en dash for web compatibility.
+			pattern = strings.ReplaceAll(pattern, "\u2009–\u2009", " – ")
+		}
 		if k == "" {
-			info.fallback = fields[k]
+			info.fallback = pattern
 			continue
 		}
 		skel, letter, ok := strings.Cut(k, "/")
@@ -93,7 +99,7 @@ func newIntervalInfo(d *localeData) *intervalInfo {
 			info.skeletons = append(info.skeletons, skel)
 		}
 		if ps[f] == "" {
-			ps[f] = fields[k]
+			ps[f] = pattern
 		}
 	}
 	if info.fallback == "" {

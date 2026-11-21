@@ -11,11 +11,6 @@ test/intl/overrides/caching.js
 # SKIP: requires a catchable stack limit
 test/intl/regress-1130489.js
 
-# Ekuma uses thin spaces around the en dash in English date ranges.
-test/intl/date-format/en-format-range-to-parts.js
-test/intl/date-format/format-range.js
-test/intl/regress-9912.js
-
 # These tests use V8's nonstandard Intl.v8BreakIterator constructor.
 test/intl/break-iterator/default-locale.js
 test/intl/break-iterator/en-break.js

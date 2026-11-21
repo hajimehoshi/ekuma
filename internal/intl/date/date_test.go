@@ -352,12 +352,14 @@ func TestFormatRange(t *testing.T) {
 		return time.Date(y, time.Month(m), d, h, 0, 0, 0, time.UTC).UnixMilli()
 	}
 	for _, tc := range []struct {
-		c    date.Components
-		x, y int64
-		want string
+		locale string
+		c      date.Components
+		x, y   int64
+		want   string
 	}{
 		// Only the fields that differ come from both dates.
 		{
+			locale: "en-US",
 			c: date.Components{
 				Year:  "numeric",
 				Month: "short",
@@ -365,10 +367,11 @@ func TestFormatRange(t *testing.T) {
 			},
 			x:    day(2019, 1, 3, 0),
 			y:    day(2019, 1, 5, 0),
-			want: "Jan [3] – (5), 2019",
+			want: "Jan [3] – (5), 2019",
 		},
 		// A time range on the same day has the date once.
 		{
+			locale: "en-US",
 			c: date.Components{
 				Year:   "numeric",
 				Month:  "short",
@@ -378,11 +381,12 @@ func TestFormatRange(t *testing.T) {
 			},
 			x:    day(2019, 1, 3, 10),
 			y:    day(2019, 1, 3, 11),
-			want: "Jan 3, 2019, [10:00] – (11:00) AM",
+			want: "Jan 3, 2019, [10:00] – (11:00) AM",
 		},
 		// A date and a time without an interval format fall back to the whole pattern, era
 		// included.
 		{
+			locale: "en-US",
 			c: date.Components{
 				Era:    "narrow",
 				Year:   "numeric",
@@ -394,10 +398,20 @@ func TestFormatRange(t *testing.T) {
 			},
 			x:    day(2025, 11, 4, 14),
 			y:    day(2025, 11, 15, 14),
-			want: "[11/4/2025 A, 2:00:00 PM]\u2009–\u2009(11/15/2025 A, 2:00:00 PM",
+			want: "[11/4/2025 A, 2:00:00 PM] – (11/15/2025 A, 2:00:00 PM",
+		},
+		{
+			locale: "pt",
+			c: date.Components{
+				Year: "numeric",
+			},
+			x:    day(2019, 1, 1, 0),
+			y:    day(2020, 1, 1, 0),
+			want: "[2019]\u2009–\u2009(2020",
 		},
 		// Dates that do not differ in the fields of the format are one date.
 		{
+			locale: "en-US",
 			c: date.Components{
 				Year:  "numeric",
 				Month: "numeric",
@@ -407,7 +421,7 @@ func TestFormatRange(t *testing.T) {
 			want: "1/2019",
 		},
 	} {
-		f := date.NewFormat("en-US", "gregory", "h12", tc.c)
+		f := date.NewFormat(tc.locale, "gregory", "h12", tc.c)
 		var b strings.Builder
 		src := "shared"
 		for _, p := range date.NewFormatter(f, "latn", temporal.UTC).FormatRange(tc.x, tc.y, false) {
@@ -429,7 +443,7 @@ func TestFormatRange(t *testing.T) {
 			b.WriteString(p.Value)
 		}
 		if got := b.String(); got != tc.want {
-			t.Errorf("%+v: got %q, want %q", tc.c, got, tc.want)
+			t.Errorf("%s %+v: got %q, want %q", tc.locale, tc.c, got, tc.want)
 		}
 	}
 }
