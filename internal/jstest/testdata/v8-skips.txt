@@ -554,7 +554,12 @@ test/mjsunit/harmony/modules-import-defer-non-existant-field-that-throws.mjs
 test/mjsunit/harmony/modules-import-defer-nonexistent-on-prototype-that-throws.mjs
 test/mjsunit/harmony/modules-import-defer-on-prototype-that-throws.mjs
 test/mjsunit/harmony/modules-import-defer-prototype-swap-for-in-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-stack-overflow-on-sync-eval.js
 test/mjsunit/harmony/modules-import-defer-that-throws.mjs
+
+# Reflect.ownKeys includes the exported "then" on Ekuma's deferred module
+# namespace. V8 expects that key to be absent after evaluation.
+test/mjsunit/regress/regress-564879562.js
 
 # d8 print converts its argument to a string, triggering deferred module
 # evaluation. Ekuma's print records the object without evaluating the module.
@@ -635,6 +640,7 @@ test/mjsunit/d8/d8-worker-onmessage-ping-pong.js
 test/mjsunit/d8/regress-389573438.js
 test/mjsunit/d8/regress-511626668.js
 test/mjsunit/d8/regress-517967108.js
+test/mjsunit/d8/regress-564550564.js
 test/mjsunit/harmony/atomics-value-check.js
 test/mjsunit/harmony/atomics-waitasync-1thread-2timeout.js
 test/mjsunit/harmony/atomics-waitasync-1thread-buffer-out-of-scope-timeout.js

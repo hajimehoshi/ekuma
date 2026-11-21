@@ -335,7 +335,10 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		dir = filepath.Dir(req.ReferrerName)
 	}
 	path := filepath.Join(dir, filepath.FromSlash(req.Specifier))
-	typ := req.Attributes["type"]
+	return l.loadFile(path, req.Attributes["type"])
+}
+
+func (l *moduleLoader) loadFile(path, typ string) (*ekuma.Module, error) {
 	key := path + "\x00" + typ
 	if m, ok := l.modules[key]; ok {
 		return m, nil

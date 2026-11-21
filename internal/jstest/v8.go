@@ -68,6 +68,7 @@ var v8Suites = []v8Suite{
 		helpers: []string{"mjsunit.js"},
 		exclude: []string{"mjsunit_numfuzz.js"},
 		flags: []string{
+			"--bundle",
 			"--expose-gc",
 
 			// Ekuma enables these language features by default.
@@ -427,6 +428,7 @@ type v8Directives struct {
 	locale                  string
 	zone                    string
 	files                   []string
+	bundle                  bool
 	noHarness               bool
 	exposeGC                bool
 	ignoreUnhandledPromises bool
@@ -452,6 +454,8 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 					directives.ignoreUnhandledPromises = true
 				} else if !slices.Contains(enabledFlags, normalized) {
 					return v8Directives{}, "requires V8 flag " + flag
+				} else if normalized == "--bundle" {
+					directives.bundle = true
 				} else if normalized == "--expose-gc" {
 					directives.exposeGC = true
 				}
@@ -502,8 +506,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	if err != nil {
 		return suiteBroken.result(err.Error()), ""
 	}
-	source := string(src)
-	directives, unsupported := parseV8Directives(source, v.flags)
+	directives, unsupported := parseV8Directives(string(src), v.flags)
 	if unsupported != "" {
 		return suiteSkipped.result(unsupported), ""
 	}
@@ -534,6 +537,11 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		host: host,
 	}
 	scripts := newV8Scripts(host, vm.InitialRealm(), checkout, filepath.Dir(filepath.FromSlash(v.file)))
+	if directives.bundle {
+		scripts.bundle = &v8Bundle{
+			modules: map[string]string{},
+		}
+	}
 	if inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
 			host:    host,
@@ -572,15 +580,9 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			return suiteBroken.result(reason), ""
 		}
 	}
-	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
-		return scripts.contextFor(req.Realm).modules.load(req)
-	})
+	vm.SetModuleLoader(scripts.loadModule)
 	for _, name := range directives.files {
-		b, err := fs.ReadFile(checkout, name)
-		if err != nil {
-			return suiteBroken.result(fmt.Sprintf("V8 Files: %s: %v", name, err)), lastPrint
-		}
-		result = scripts.runFile(ctx, &loop, name, string(b))
+		result = scripts.runFile(ctx, &loop, name, nil)
 		if result.outcome != suitePassed {
 			result.reason = name + ": " + result.reason
 			break
@@ -590,7 +592,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		}
 	}
 	if result.outcome == suitePassed {
-		result = scripts.runFile(ctx, &loop, v.file, source)
+		result = scripts.runFile(ctx, &loop, v.file, src)
 	}
 	result = loop.drain(ctx, result)
 	if loop.terminated || result.outcome != suitePassed || directives.ignoreUnhandledPromises {
@@ -610,6 +612,7 @@ type v8Scripts struct {
 	checkout fs.FS
 	dir      string
 	contexts map[*ekuma.Realm]*v8ScriptContext
+	bundle   *v8Bundle
 }
 
 type v8ScriptContext struct {
@@ -635,16 +638,35 @@ func (s *v8Scripts) contextFor(r *ekuma.Realm) *v8ScriptContext {
 	}
 	c := &v8ScriptContext{
 		modules: moduleLoader{
-			realm:   r,
-			dir:     s.dir,
-			modules: map[string]*ekuma.Module{},
-			readFile: func(name string) ([]byte, error) {
-				return fs.ReadFile(s.checkout, filepath.ToSlash(name))
-			},
+			realm:    r,
+			dir:      s.dir,
+			modules:  map[string]*ekuma.Module{},
+			readFile: s.readModuleFile,
 		},
 	}
 	s.contexts[r] = c
 	return c
+}
+
+func (s *v8Scripts) readModuleFile(name string) ([]byte, error) {
+	if s.bundle != nil {
+		if src, ok := s.bundle.modules[name]; ok {
+			return []byte(src), nil
+		}
+	}
+	return fs.ReadFile(s.checkout, filepath.ToSlash(name))
+}
+
+func (s *v8Scripts) loadModule(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+	loader := &s.contextFor(req.Realm).modules
+	if s.bundle == nil {
+		return loader.load(req)
+	}
+	dir := filepath.Dir(req.ReferrerName)
+	if v8BundleURL(req.ReferrerName) {
+		dir = "."
+	}
+	return loader.loadFile(v8BundleName(dir, req.Specifier), req.Attributes["type"])
 }
 
 func (s *v8Scripts) evaluate(ctx context.Context, script *ekuma.Script) (bool, error) {
@@ -777,40 +799,65 @@ func v8FileExists(checkout fs.FS, name string) bool {
 	}
 }
 
-func (s *v8Scripts) runFile(ctx context.Context, loop *v8EventLoop, name, src string) suiteResult {
-	file := filepath.FromSlash(name)
+func (s *v8Scripts) runFile(ctx context.Context, loop *v8EventLoop, name string, src []byte) suiteResult {
 	if path.Ext(name) == ".mjs" {
-		p, _, err := s.contextFor(s.current).modules.evaluate(ctx, file, src)
+		return s.runModule(ctx, loop, v8BundleName(".", name))
+	}
+	file := filepath.FromSlash(name)
+	if src == nil {
+		var err error
+		src, err = fs.ReadFile(s.checkout, name)
 		if err != nil {
-			return loop.scriptError(ctx, err)
+			return suiteBroken.result(err.Error())
 		}
-		// d8 pumps tasks before checking the module's evaluation promise. A
-		// timer exception during this checkpoint does not fail the module.
-		if result := loop.drain(ctx, suiteResult{}); result.outcome == suiteBroken {
-			return result
+	}
+	source := string(src)
+	if s.bundle != nil {
+		if parts := splitV8Bundle(source); parts != nil {
+			return s.runBundle(ctx, loop, file, parts)
 		}
-		if loop.terminated {
-			return suiteResult{}
+	}
+	return s.runScript(ctx, loop, file, source)
+}
+
+func (s *v8Scripts) runScript(ctx context.Context, loop *v8EventLoop, file, src string) suiteResult {
+	script, err := s.current.ParseScript(file, src)
+	if err != nil {
+		return scriptErrorResult(err)
+	}
+	if completed, err := s.evaluate(ctx, script); err != nil {
+		if errors.Is(err, errV8Termination) {
+			return loop.terminationResult(ctx, completed)
 		}
-		switch state, reason := p.PromiseState(); state {
-		case ekuma.PromisePending:
-			return suiteFailed.result("module evaluation is still pending")
-		case ekuma.PromiseRejected:
-			return scriptErrorResult(&ekuma.ScriptError{
-				Value: reason,
-			})
-		}
-	} else {
-		script, err := s.current.ParseScript(file, src)
-		if err != nil {
-			return scriptErrorResult(err)
-		}
-		if completed, err := s.evaluate(ctx, script); err != nil {
-			if errors.Is(err, errV8Termination) {
-				return loop.terminationResult(ctx, completed)
-			}
-			return scriptErrorResult(err)
-		}
+		return scriptErrorResult(err)
+	}
+	return suiteResult{}
+}
+
+func (s *v8Scripts) runModule(ctx context.Context, loop *v8EventLoop, name string) suiteResult {
+	mod, err := s.contextFor(s.current).modules.loadFile(name, "")
+	if err != nil {
+		return loop.scriptError(ctx, err)
+	}
+	p, err := mod.Evaluate(ctx)
+	if err != nil {
+		return loop.scriptError(ctx, err)
+	}
+	// d8 pumps tasks before checking the module's evaluation promise. A
+	// timer exception during this checkpoint does not fail the module.
+	if result := loop.drain(ctx, suiteResult{}); result.outcome == suiteBroken {
+		return result
+	}
+	if loop.terminated {
+		return suiteResult{}
+	}
+	switch state, reason := p.PromiseState(); state {
+	case ekuma.PromisePending:
+		return suiteFailed.result("module evaluation is still pending")
+	case ekuma.PromiseRejected:
+		return loop.scriptError(ctx, &ekuma.ScriptError{
+			Value: reason,
+		})
 	}
 	return suiteResult{}
 }

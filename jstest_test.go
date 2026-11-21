@@ -69,6 +69,10 @@ func TestV8FilesOrder(t *testing.T) {
 	v8Runner.CheckFilesOrder(t)
 }
 
+func TestV8Bundle(t *testing.T) {
+	v8Runner.CheckBundle(t)
+}
+
 func TestV8ScriptLoader(t *testing.T) {
 	v8Runner.CheckScriptLoader(t)
 }
