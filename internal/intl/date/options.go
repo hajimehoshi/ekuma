@@ -33,6 +33,8 @@ type Format struct {
 	hourCycle string
 	pattern   string
 	items     []item
+	// numbers is the date style's field-specific numbering system, if any.
+	numbers string
 }
 
 // hourLetters maps the hour cycles to their pattern letters.
@@ -190,7 +192,11 @@ func NewStyleFormat(l, cal, hc, dateStyle, timeStyle string) *Format {
 			hourLength: true,
 		}), hc)
 	}
-	return newFormat(l, cal, p)
+	f := newFormat(l, cal, p)
+	if dateStyle != "" {
+		f.numbers, _ = d.calendar("N" + styleLetter(dateStyle))
+	}
+	return f
 }
 
 // Pattern returns the pattern of f.

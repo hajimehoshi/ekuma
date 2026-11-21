@@ -255,6 +255,11 @@ func TestFormatters(t *testing.T) {
 			want: "-1E1; -9E0; -1E1; -9E0; -1M; -1K; -1E3; -1E1; ~-1E1",
 		},
 		{
+			name: "regional date style clears inherited day numbering",
+			src:  `new Intl.DateTimeFormat("zh-Hant-MO", {calendar: "chinese", dateStyle: "long", timeZone: "UTC"}).formatToParts(Date.UTC(2020, 4, 23)).find(p => p.type === "day").value`,
+			want: "1",
+		},
+		{
 			// All the marks belong to the same vowel, even across interruption checks.
 			name: "Greek uppercasing of a long run of marks",
 			src:  `String(("α" + "\u0301\u0308".repeat(2 ** 16)).toLocaleUpperCase("el") === "Α\u0308")`,

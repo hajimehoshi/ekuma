@@ -803,7 +803,7 @@ func (fm *Formatter) fieldParts(p string, t int64, plain bool) []fieldPart {
 		}
 	}
 	li := 0
-	for _, part := range fm.formatItems(items, t, plain) {
+	for _, part := range fm.formatItems(items, t, plain, "") {
 		fp := fieldPart{Part: part}
 		if part.Type != "literal" {
 			fp.letter = letters[li]

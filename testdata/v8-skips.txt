@@ -24,7 +24,8 @@ test/intl/default_locale.js
 test/intl/general/constructor.js
 test/intl/general/supported-locales-of.js
 
-# Ekuma drops the islamic-rgsa calendar extension from the resolved locale.
+# islamic-rgsa is the Saudi sighting calendar. Ekuma has no calendar of that
+# type, so ResolveLocale drops the extension for both en and ar.
 test/intl/date-format/check-ca-option.js
 
 # V8 canonicalizes GMT and Zulu to UTC.
@@ -58,15 +59,9 @@ test/intl/regress-10527.js
 # V8's English short time zone name at offset zero is GMT+0.
 test/intl/regress-1074578.js
 
-# V8 formats the first year of the Reiwa era as 元年.
-test/intl/regress-10960.js
-
 # Ekuma accepts the language tag de-u-22300-true-x-true.
 test/intl/regress-1427932.js
 test/intl/regress-412149700.js
-
-# Ekuma uses the en-US date field order with the ISO calendar.
-test/intl/regress-1451943.js
 
 # Ekuma rejects the obsolete US/Pacific-New time zone.
 test/intl/regress-364374.js

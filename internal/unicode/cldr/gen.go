@@ -801,7 +801,8 @@ func main() {
 		}
 		numberData[l] = numberFields(object(decode(numbers, name, "main", l, "numbers")))
 	}
-	for k, v := range rootSymbols(xmlFiles("common/main")["root.xml"]) {
+	mainXML := xmlFiles("common/main")
+	for k, v := range rootSymbols(mainXML["root.xml"]) {
 		if _, ok := numberData["und"][k]; !ok {
 			numberData["und"][k] = v
 		}
@@ -916,6 +917,11 @@ func main() {
 		f.records("maps locales to the names and patterns of the "+c.calendar+" calendar that differ from the tables it falls back to, as records in the form of [Field] with the keys that calendarFields in gen.go describes. A field that the calendar does not have has the value [Absent].", c.name, tree.diffRecords(data, fallback, keys))
 		f.write()
 	}
+
+	// cldr-json omits the ISO 8601 calendar.
+	f = newFile("iso8601.go", "CLDR "+xmlVersion+" (common/main)")
+	f.records("maps locales to the date, time and interval patterns of the ISO 8601 calendar.", "ISO8601Patterns", tree.records(iso8601Patterns(mainXML)))
+	f.write()
 
 	// Names of date fields.
 	fieldData := map[string]map[string]string{}
@@ -1651,6 +1657,84 @@ func mainData(files map[string][]byte, name string) map[string]any {
 	return nil
 }
 
+// iso8601Patterns reads the ISO calendar patterns using the record keys of calendarFields.
+func iso8601Patterns(files map[string][]byte) map[string]map[string]string {
+	type pattern struct {
+		ID    string `xml:"id,attr"`
+		Count string `xml:"count,attr"`
+		Draft string `xml:"draft,attr"`
+		Value string `xml:",chardata"`
+	}
+	type style struct {
+		Style   string `xml:"type,attr"`
+		Formats []struct {
+			Type    string `xml:"type,attr"`
+			Pattern string `xml:"pattern"`
+		} `xml:",any"`
+	}
+	data := map[string]map[string]string{}
+	for name, b := range files {
+		if !bytes.Contains(b, []byte(`<calendar type="iso8601">`)) {
+			continue
+		}
+		var doc struct {
+			Calendars []struct {
+				Type      string    `xml:"type,attr"`
+				Date      []style   `xml:"dateFormats>dateFormatLength"`
+				Time      []style   `xml:"timeFormats>timeFormatLength"`
+				DateTime  []style   `xml:"dateTimeFormats>dateTimeFormatLength"`
+				Available []pattern `xml:"dateTimeFormats>availableFormats>dateFormatItem"`
+				Fallback  string    `xml:"dateTimeFormats>intervalFormats>intervalFormatFallback"`
+				Intervals []struct {
+					ID          string    `xml:"id,attr"`
+					Differences []pattern `xml:"greatestDifference"`
+				} `xml:"dateTimeFormats>intervalFormats>intervalFormatItem"`
+			} `xml:"dates>calendars>calendar"`
+		}
+		if err := xml.Unmarshal(b, &doc); err != nil {
+			log.Fatal(err)
+		}
+		for _, cal := range doc.Calendars {
+			if cal.Type != "iso8601" {
+				continue
+			}
+			fields := map[string]string{}
+			for prefix, lengths := range map[string][]style{"F": cal.Date, "T": cal.Time, "C": cal.DateTime} {
+				for _, length := range lengths {
+					for _, f := range length.Formats {
+						key := prefix
+						if f.Type == "atTime" {
+							key = "A"
+						}
+						if f.Pattern != "" {
+							fields[key+styles[length.Style]] = f.Pattern
+						}
+					}
+				}
+			}
+			for _, p := range cal.Available {
+				if (p.Count == "" || p.Count == "other") && p.Draft != "unconfirmed" {
+					fields["S"+p.ID] = p.Value
+				}
+			}
+			if cal.Fallback != "" {
+				fields["I"] = cal.Fallback
+			}
+			for _, interval := range cal.Intervals {
+				for _, p := range interval.Differences {
+					fields["I"+interval.ID+"/"+p.ID] = p.Value
+				}
+			}
+			l := strings.ReplaceAll(strings.TrimSuffix(name, ".xml"), "_", "-")
+			if l == "root" {
+				l = "und"
+			}
+			data[l] = fields
+		}
+	}
+	return data
+}
+
 // widths maps the widths of names in CLDR to the letters that the records of calendar data
 // use for them.
 var widths = map[string]string{
@@ -1694,6 +1778,7 @@ func pattern(v any) string {
 //     and the CLDR key of an era;
 //   - "F", "T", "C" and "A" followed by a style for the date, time, date-time and "at time"
 //     date-time patterns;
+//   - "N" followed by a style for the date pattern's field numbering override;
 //   - "S" followed by a skeleton for an available format;
 //   - "I" followed by a skeleton, "/" and a pattern letter for an interval format, and "I"
 //     alone for the fallback of interval formats;
@@ -1782,6 +1867,16 @@ func calendarFields(cal map[string]any) map[string]string {
 		for k, p := range object(v) {
 			if s, ok := styles[k]; ok {
 				out[prefix+s] = pattern(p)
+				if prefix == "F" {
+					// A date style with ordinary digits must clear any inherited override.
+					out["N"+s] = ""
+					if m, ok := p.(map[string]any); ok {
+						switch n := m["_numbers"]; n {
+						case "y=jpanyear", "d=hanidays":
+							out["N"+s] = str(n)
+						}
+					}
+				}
 			}
 		}
 	}

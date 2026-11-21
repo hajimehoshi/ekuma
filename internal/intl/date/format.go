@@ -192,7 +192,7 @@ func NewFormatter(f *Format, nu string, tz temporal.TimeZone) *Formatter {
 // Format returns the parts of the date t milliseconds since the epoch. A plain date is
 // formatted as wall-clock time, without a time zone.
 func (fm *Formatter) Format(t int64, plain bool) []Part {
-	return fm.formatItems(fm.f.items, t, plain)
+	return fm.formatItems(fm.f.items, t, plain, fm.f.numbers)
 }
 
 // zoneAt returns the time zone at t, which is UTC for a plain date.
@@ -208,7 +208,7 @@ func (fm *Formatter) zoneAt(t int64, plain bool) zoneAt {
 	}
 }
 
-func (fm *Formatter) formatItems(items []item, t int64, plain bool) []Part {
+func (fm *Formatter) formatItems(items []item, t int64, plain bool, numbers string) []Part {
 	za := fm.zoneAt(t, plain)
 	lt := fm.localTime(t + za.offset)
 	hasMinute, hasSecond := false, false
@@ -233,7 +233,7 @@ func (fm *Formatter) formatItems(items []item, t int64, plain bool) []Part {
 			lit(it.lit)
 			continue
 		}
-		typ, v := fm.field(it, lt, za, hasMinute, hasSecond)
+		typ, v := fm.field(it, lt, za, hasMinute, hasSecond, numbers)
 		if typ == "literal" {
 			lit(v)
 			continue
@@ -308,7 +308,7 @@ func nameWidth(n int) string {
 	return "a"
 }
 
-func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecond bool) (string, string) {
+func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecond bool, numbers string) (string, string) {
 	n := it.n
 	switch it.ch {
 	case 'G':
@@ -333,6 +333,12 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 		return "era", v
 	case 'y':
 		y := lt.eraYear
+		if numbers == "y=jpanyear" {
+			if y == 1 {
+				return "year", "元"
+			}
+			return "year", strconv.FormatInt(y, 10)
+		}
 		if n == 2 {
 			return "year", fm.num(floorMod(y, 100), 2)
 		}
@@ -377,6 +383,9 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 		}
 		return "month", fm.leapMonth(lt, ctx, nameWidth(n), fm.name("M", ctx, nameWidth(n), key))
 	case 'd':
+		if numbers == "d=hanidays" {
+			return "day", hanDays[lt.day-1]
+		}
 		return "day", fm.num(int64(lt.day), n)
 	case 'E', 'c', 'e':
 		if it.ch != 'E' && n <= 2 {
@@ -445,6 +454,13 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 		return "timeZoneName", fm.zones.format(it.ch, n, za)
 	}
 	return "unknown", strings.Repeat(string(it.ch), n)
+}
+
+// hanDays are the days of a lunar month in CLDR's hanidays numbering system.
+var hanDays = [...]string{
+	"初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
+	"十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
+	"廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十",
 }
 
 // leapMonth returns the month name or number v with the pattern of leap months of the context

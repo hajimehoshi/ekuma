@@ -17,6 +17,7 @@ type localeData struct {
 	chain []string
 	// calendars are the tables of the calendar, the first one that has a field winning.
 	calendars []cldr.Map
+	iso8601   bool
 }
 
 // calendarTables returns the tables of the data of the calendar cal, each falling back to the
@@ -65,6 +66,7 @@ func newLocaleData(l, cal string) *localeData {
 	return &localeData{
 		chain:     chain,
 		calendars: calendarTables(cal),
+		iso8601:   cal == "iso8601",
 	}
 }
 
@@ -82,9 +84,18 @@ func (d *localeData) lookup(m cldr.Map, key string) (string, bool) {
 	return "", false
 }
 
+// tables returns the calendar tables supplying the field key or prefix.
+func (d *localeData) tables(key string) []cldr.Map {
+	// ISO 8601 has its own patterns and inherits names and append items from Gregorian.
+	if d.iso8601 && strings.ContainsRune("FTCASIN", rune(key[0])) {
+		return []cldr.Map{cldr.ISO8601Patterns}
+	}
+	return d.calendars
+}
+
 // calendar returns the field key of the calendar data.
 func (d *localeData) calendar(key string) (string, bool) {
-	for _, m := range d.calendars {
+	for _, m := range d.tables(key) {
 		if v, ok := d.lookup(m, key); ok {
 			return v, v != cldr.Absent
 		}
@@ -96,7 +107,7 @@ func (d *localeData) calendar(key string) (string, bool) {
 // their keys without the prefix.
 func (d *localeData) calendarFields(prefix string) map[string]string {
 	out := map[string]string{}
-	for _, m := range d.calendars {
+	for _, m := range d.tables(prefix) {
 		for _, l := range d.chain {
 			r, ok := m.Lookup(l)
 			if !ok {

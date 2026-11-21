@@ -32,12 +32,12 @@ var recordSums = []struct {
 	{
 		name: "GregorianData",
 		m:    cldr.GregorianData,
-		sum:  "8666e64515cf006c20c9b66ef91dbad18e670eb0d0f44c2453f8e76195d41b4e",
+		sum:  "d1270422336e3c7b890945aeabeb336c87d2e92dfbea19fd8e1c88fc22b1bc33",
 	},
 	{
 		name: "GenericData",
 		m:    cldr.GenericData,
-		sum:  "9a17800aaf52138c98c181ad3720e2407647e06f50d34edbbb9497d530640ec2",
+		sum:  "c4d754c40e65a03c640920686cc9cdaa5cb617c4d16ca33d71299f0dae354c23",
 	},
 	{
 		name: "BuddhistData",
@@ -47,7 +47,7 @@ var recordSums = []struct {
 	{
 		name: "ChineseData",
 		m:    cldr.ChineseData,
-		sum:  "0aff141041a4203a9bba77d6bd59565561c71fda20d62e84c13d7286bbd96bd3",
+		sum:  "b697591855f3f3bc8f9339ddbc5186d3f5646c5128e752ea1fed552428741edc",
 	},
 	{
 		name: "CopticData",
@@ -57,7 +57,7 @@ var recordSums = []struct {
 	{
 		name: "DangiData",
 		m:    cldr.DangiData,
-		sum:  "1b301263d7088178791fabbc718eca606f40d408007961ed17da39c65254e516",
+		sum:  "4e659e4bab067570130cd2d33c9a994912c5320b5c6c29b7c885fcf0e03ad9d9",
 	},
 	{
 		name: "EthiopicData",
@@ -102,7 +102,7 @@ var recordSums = []struct {
 	{
 		name: "JapaneseData",
 		m:    cldr.JapaneseData,
-		sum:  "ceecdbc3c84924c7fbacb5c922e9adf56ccedc20320ffd2e6f6ca306bd5fcd3b",
+		sum:  "712e2ddbb32356156f9696512e910e746440bc2b1c1d91b127c21cfcf9057485",
 	},
 	{
 		name: "PersianData",
@@ -113,6 +113,11 @@ var recordSums = []struct {
 		name: "ROCData",
 		m:    cldr.ROCData,
 		sum:  "3c855bc95c047eee90b8f5b3324e5ad4ccf1ee380fe254c20390ce7a8c144a4c",
+	},
+	{
+		name: "ISO8601Patterns",
+		m:    cldr.ISO8601Patterns,
+		sum:  "a21592d27fc156d48ce63e014a6fecaff6cdf60895f04ef83a5495ac8e8e2731",
 	},
 	{
 		name: "DateFieldNames",
