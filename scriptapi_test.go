@@ -953,6 +953,19 @@ func TestModules(t *testing.T) {
 			want: "0,1",
 		},
 		{
+			name: "assignment before an exported const is initialized",
+			sources: map[string]string{
+				"main": `import { value as alias } from "main";
+					const errors = [];
+					for (const assign of [() => alias = 1, () => eval("alias = 1"), () => value = 1]) {
+						try { assign(); } catch (e) { errors.push(e.constructor.name); }
+					}
+					export const value = 2;
+					globalThis.result = errors.join();`,
+			},
+			want: "TypeError,TypeError,ReferenceError",
+		},
+		{
 			// a finished its asynchronous evaluation as a dependency of c before import()
 			// asks to evaluate it.
 			name: "import of an asynchronous module evaluated as a dependency",

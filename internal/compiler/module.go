@@ -133,8 +133,8 @@ func (c *compiler) compileModule() (*bytecode.Func, *bytecode.Module) {
 			declare(d.Name, bindVar, bytecode.ModuleFunction)
 			funcs = append(funcs, d)
 		case ast.DeclImport:
-			// An imported binding is immutable, and reading it checks that it is initialized.
-			declare(d.Name, bindConst, bytecode.ModuleImport)
+			// The import is initialized at linking, but a read can reach an uninitialized export.
+			declare(d.Name, bindImport, bytecode.ModuleImport).tdz = true
 		}
 	}
 

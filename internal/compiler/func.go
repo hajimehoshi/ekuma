@@ -180,7 +180,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 	}
 	if !node.SimpleParams {
 		early = earlyCaptures(node.Params)
-		if node.HasDirectEval && hasDirectEval(evalAll, paramNodes(node.Params)...) {
+		if node.Scope.ContainsDirectEval && hasDirectEval(evalAll, paramNodes(node.Params)...) {
 			// Eval code can see any parameter before it is bound.
 			for _, p := range node.Params {
 				patternNames(p, func(id *ast.Identifier) {

@@ -538,30 +538,57 @@ test/mjsunit/regress/regress-v8-12729.mjs
 test/mjsunit/regress/regress-v8-13037.js
 test/mjsunit/set-prototype-of-Object_prototype.js
 
-# These tests expect a different exception type.
+# V8 expects a stack-overflow RangeError and its message when eval cannot
+# handle a deeply nested object literal. Ekuma's parser reports a SyntaxError
+# at its nesting limit.
 test/mjsunit/big-object-literal.js
+
+# CreateListFromArrayLike reads the ownKeys result in order. Index 3 is
+# missing, so undefined triggers a TypeError. V8 expects its allocation
+# limit to trigger a RangeError first because length is 2**33.
 test/mjsunit/es6/proxies-ownkeys.js
+
+# SetMutableBinding throws ReferenceError on assignment to the module's own
+# uninitialized const z. V8 expects TypeError as it does for an import.
 test/mjsunit/modules-init3.mjs
 
-# These tests expect an exception from an operation that completes in Ekuma.
+# IsArray follows each live proxy to the target array. V8 expects its stack
+# limit to trigger a RangeError along the way.
 test/mjsunit/array-isarray.js
-test/mjsunit/regress-crbug-370694832.js
+
+# These tests expect V8's implementation limits on parameter or argument
+# counts. Ekuma accepts the generated function and arrow parameter lists,
+# spread arguments to bind and ordinary calls, and the captures passed to a
+# RegExp replacement function.
 test/mjsunit/regress/regress-1122.js
 test/mjsunit/regress/regress-344664770.js
-test/mjsunit/regress/regress-438523582.js
-test/mjsunit/regress/regress-503097371.js
-test/mjsunit/regress/regress-5178.js
-test/mjsunit/regress/regress-557076207.js
-test/mjsunit/regress/regress-567827593.js
-test/mjsunit/regress/regress-573263262.js
-test/mjsunit/regress/regress-578481635.js
 test/mjsunit/regress/regress-689016.js
 test/mjsunit/regress/regress-786573.js
-test/mjsunit/regress/regress-crbug-1459172.js
-test/mjsunit/regress/regress-crbug-669540.js
 test/mjsunit/regress/regress-crbug-902610-2.js
 test/mjsunit/regress/regress-crbug-902610.js
+
+# V8 expects its regexp compiler to reject these large lookbehinds,
+# lookaheads and case-insensitive alternatives during exec or replace.
+# Ekuma can match these patterns.
+test/mjsunit/regress/regress-438523582.js
+test/mjsunit/regress/regress-503097371.js
+test/mjsunit/regress/regress-573263262.js
+test/mjsunit/regress/regress-578481635.js
 test/mjsunit/regress/regress-v8-12472.js
+
+# ECMA-402 UpdateLanguageId accepts the distinct, well-formed variant
+# subtags. Their combined length exceeds V8's 179-character ICU limit.
+test/mjsunit/regress/regress-557076207.js
+
+# V8 expects TypeError above its ICU formatting input limit. ECMA-402
+# ToIntlMathematicalValue accepts these BigInt and decimal string inputs.
+# It also rounds the string "1e-400" to zero. V8 expects "1E-400".
+test/mjsunit/regress/regress-567827593.js
+
+# TypedArray.prototype.map writes the callback result with TypedArraySetElement.
+# Shrinking the result buffer makes that index invalid and the write has no
+# effect. V8 expects an exception when the species returns the source array.
+test/mjsunit/regress/regress-crbug-1459172.js
 
 # These tests fail an mjsunit assertion.
 test/mjsunit/arguments-indirect.js

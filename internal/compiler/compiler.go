@@ -40,6 +40,7 @@ const (
 	bindLet
 	bindConst
 	bindClass
+	bindImport
 
 	// bindFuncName is the name of a named function expression inside that function.
 	bindFuncName
@@ -1564,8 +1565,8 @@ func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int
 func (f *fn) storeStatic(n ast.Node, name string, r ref, src int32, init bool) {
 	if r.b != nil && !init {
 		switch r.b.kind {
-		case bindConst:
-			if r.needsCheck() {
+		case bindConst, bindImport:
+			if r.b.kind == bindConst && r.needsCheck() {
 				f.checkTDZ(r, name)
 			}
 			f.emit(bytecode.OpThrowConstAssign, f.key(wtf8.String(name)), 0, 0)

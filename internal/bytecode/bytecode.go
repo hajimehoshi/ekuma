@@ -595,6 +595,7 @@ const (
 	EvalVarLet
 	EvalVarConst
 	EvalVarClass
+	EvalVarImport
 
 	// EvalVarFuncName is the name of a named function expression inside that function.
 	EvalVarFuncName
@@ -603,28 +604,17 @@ const (
 	EvalVarPseudo
 )
 
-// EvalPlace says where a variable is relative to the variable environment of non-strict eval code.
-type EvalPlace uint8
-
-const (
-	// EvalPlaceOuter is a variable outside the variable environment.
-	EvalPlaceOuter EvalPlace = iota
-
-	// EvalPlaceVarEnv is a var-scoped variable of the variable environment itself.
-	EvalPlaceVarEnv
-
-	// EvalPlaceInner is a variable of a scope between the call and the variable environment.
-	EvalPlaceInner
-
-	// EvalPlaceCatch is a catch parameter between the call and the variable environment.
-	EvalPlaceCatch
-)
-
 // EvalVar is a variable that eval code sees.
 type EvalVar struct {
-	Name  string
-	Kind  EvalVarKind
-	Place EvalPlace
+	Name string
+	Kind EvalVarKind
+
+	// InVarEnv says whether this binding belongs to the variable environment of non-strict eval.
+	InVarEnv bool
+
+	// BlocksVar says whether a lexical declaration between the call and its variable
+	// environment forbids var declarations of this name, even if a catch parameter hides it.
+	BlocksVar bool
 
 	// Check says whether a read can find the variable uninitialized.
 	Check bool

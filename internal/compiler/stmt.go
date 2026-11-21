@@ -897,10 +897,14 @@ func (f *fn) try(s *ast.TryStmt) {
 		f.emit(bytecode.OpCloseUpvals, base, 0, 0)
 		if s.Param != nil {
 			if s.CatchScope != nil {
+				_, simple := s.Param.(*ast.Identifier)
 				for _, d := range s.CatchScope.Decls {
 					b := f.declare(d.Name, bindLet)
-					b.tdz = false
 					b.catch = true
+					if !simple {
+						b.tdz = true
+						f.emit(bytecode.OpLoadTDZ, b.reg, 0, 0)
+					}
 				}
 			}
 			f.destructure(s.Param, exc, patInit)

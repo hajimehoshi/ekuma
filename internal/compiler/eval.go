@@ -51,6 +51,7 @@ var evalBindKinds = [...]bindKind{
 	bytecode.EvalVarLet:      bindLet,
 	bytecode.EvalVarConst:    bindConst,
 	bytecode.EvalVarClass:    bindClass,
+	bytecode.EvalVarImport:   bindImport,
 	bytecode.EvalVarFuncName: bindFuncName,
 	bytecode.EvalVarPseudo:   bindPseudo,
 }
@@ -60,6 +61,7 @@ var evalVarKinds = [...]bytecode.EvalVarKind{
 	bindLet:      bytecode.EvalVarLet,
 	bindConst:    bytecode.EvalVarConst,
 	bindClass:    bytecode.EvalVarClass,
+	bindImport:   bytecode.EvalVarImport,
 	bindFuncName: bytecode.EvalVarFuncName,
 	bindPseudo:   bytecode.EvalVarPseudo,
 }
@@ -221,16 +223,22 @@ func (f *fn) evalSite() int32 {
 		}
 	}
 
-	seen := map[string]bool{}
-	add := func(name string, kind bindKind, place bytecode.EvalPlace) {
-		seen[name] = true
+	evalVarIndex := map[string]int{}
+	add := func(name string, kind bindKind, inVarEnv, blocksVar bool) {
+		if i, ok := evalVarIndex[name]; ok {
+			// References use the innermost binding, but a hidden lexical binding can still block a declaration.
+			es.Vars[i].BlocksVar = es.Vars[i].BlocksVar || blocksVar
+			return
+		}
+		evalVarIndex[name] = len(es.Vars)
 		r := f.resolve(name)
 		v := bytecode.EvalVar{
-			Name:  name,
-			Kind:  evalVarKinds[kind],
-			Place: place,
-			Check: r.needsCheck() || kind == bindLet || kind == bindConst || kind == bindClass,
-			Depth: f.dynDepth(name),
+			Name:      name,
+			Kind:      evalVarKinds[kind],
+			InVarEnv:  inVarEnv,
+			BlocksVar: blocksVar,
+			Check:     r.needsCheck() || kind == bindLet || kind == bindConst || kind == bindClass,
+			Depth:     f.dynDepth(name),
 		}
 		switch r.kind {
 		case refLocal:
@@ -248,26 +256,9 @@ func (f *fn) evalSite() int32 {
 				s.captured = true
 			}
 			for _, b := range s.sortedBinds() {
-				name := b.name
-				if seen[name] {
-					continue
-				}
-				place := bytecode.EvalPlaceOuter
-				switch {
-				case g != f:
-				case b.kind == bindFuncName:
-				case s == varEnv:
-					place = bytecode.EvalPlaceInner
-					if b.kind == bindVar {
-						place = bytecode.EvalPlaceVarEnv
-					}
-				case !inner:
-				case b.catch:
-					place = bytecode.EvalPlaceCatch
-				default:
-					place = bytecode.EvalPlaceInner
-				}
-				add(name, b.kind, place)
+				inVarEnv := g == f && s == varEnv && b.kind == bindVar
+				blocksVar := g == f && inner && !inVarEnv && !b.catch && b.kind != bindFuncName
+				add(b.name, b.kind, inVarEnv, blocksVar)
 			}
 			if s == varEnv {
 				inner = false
@@ -275,10 +266,8 @@ func (f *fn) evalSite() int32 {
 		}
 		if g.eval != nil {
 			for _, name := range slices.Sorted(maps.Keys(g.eval.vars)) {
-				if !seen[name] {
-					v := g.eval.vars[name]
-					add(name, evalBindKinds[v.Kind], v.Place)
-				}
+				v := g.eval.vars[name]
+				add(name, evalBindKinds[v.Kind], g == f && v.InVarEnv, g == f && v.BlocksVar)
 			}
 		}
 	}
@@ -335,7 +324,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 				break
 			}
 			// A catch parameter does not stop the hoisting (Annex B.3.4).
-			if v := ev.vars[d.Name]; v != nil && v.Place == bytecode.EvalPlaceInner {
+			if v := ev.vars[d.Name]; v != nil && v.BlocksVar {
 				break
 			}
 			ev.hoisted[d.Name] = true
@@ -366,7 +355,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 			if d.Kind != ast.DeclVar && d.Kind != ast.DeclFunction {
 				continue
 			}
-			if v := ev.vars[d.Name]; v != nil && v.Place == bytecode.EvalPlaceInner {
+			if v := ev.vars[d.Name]; v != nil && v.BlocksVar {
 				c.failAt(d.Pos, "identifier '%s' has already been declared", d.Name)
 			}
 		}
@@ -432,7 +421,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 			if funcs[name] != nil {
 				continue
 			}
-			if v := ev.vars[name]; v != nil && v.Place == bytecode.EvalPlaceVarEnv {
+			if v := ev.vars[name]; v != nil && v.InVarEnv {
 				continue
 			}
 			f.emit(bytecode.OpDeclareEvalVar, f.key(wtf8.String(name)), es.VarDepth, -1)
@@ -448,7 +437,7 @@ func (c *compiler) compileEval(es *bytecode.EvalScope) *bytecode.Func {
 // environment of the non-strict eval code f, which a scope of OpEvalScope holds unless the
 // variable is one of the call site, and declares the variable when it is not.
 func (f *fn) storeEvalVar(name string, src int32) {
-	if v := f.eval.vars[name]; v != nil && v.Place == bytecode.EvalPlaceVarEnv {
+	if v := f.eval.vars[name]; v != nil && v.InVarEnv {
 		r, _ := f.eval.resolve(f, name)
 		f.emit(bytecode.OpSetUpval, src, r.index, 0)
 		return
