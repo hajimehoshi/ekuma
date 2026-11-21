@@ -3,7 +3,9 @@
 # An unexpected pass or a missing path fails the suite.
 # When Ekuma follows a specification, name the rule and what the test expects.
 
-# SKIP: timing-sensitive benchmark skipped by V8
+# A fixed clock makes all three elapsed times zero. V8 skips this benchmark
+# as flaky and slow (v8:13649).
+# SKIP: requires collatorTime < cachedTime < nonCachedTime
 test/intl/overrides/caching.js
 
 # Ekuma implements the ECMA-402 Intl constructors. These tests also use
