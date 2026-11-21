@@ -47,7 +47,7 @@ func initString(vm *engine.VM) {
 		}
 		return s
 	})
-	method(vm, ctor, "fromCharCode", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	fromCharCode := method(vm, ctor, "fromCharCode", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if len(args) == 1 {
 			return vm.UnitString(uint16(vm.ToUint32(args[0])))
 		}
@@ -60,6 +60,12 @@ func initString(vm *engine.VM) {
 		checkStringLength(vm, s.StringByteLength())
 		return s
 	})
+	vm.SetMethodKernels(fromCharCode, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
+		if !x.IsNumber() {
+			return engine.Undefined, false
+		}
+		return vm.UnitString(uint16(vm.ToUint32(x))), true
+	}, nil)
 	method(vm, ctor, "fromCodePoint", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var buf [charactersOnStack]rune
 		points := slices.Grow(buf[:0], len(args))
@@ -103,14 +109,18 @@ func initString(vm *engine.VM) {
 	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return thisValue(vm, this, "valueOf")
 	})
-	method(vm, proto, "charAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	// The kernels of the methods below are the methods for a string and arguments whose
+	// conversions run no code.
+	charAt := method(vm, proto, "charAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "charAt")
-		i := vm.ToIntegerOrInfinity(arg(args, 0))
-		if i < 0 || i >= float64(s.StringLength()) {
-			return vm.NewString("")
-		}
-		return vm.UnitString(s.UnitAt(int(i)))
+		return unitStringAt(vm, s, vm.ToIntegerOrInfinity(arg(args, 0)))
 	})
+	vm.SetMethodKernels(charAt, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !x.IsNumber() {
+			return engine.Undefined, false
+		}
+		return unitStringAt(vm, this, vm.ToIntegerOrInfinity(x)), true
+	}, nil)
 	method(vm, proto, "at", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "at")
 		n := float64(s.StringLength())
@@ -127,7 +137,6 @@ func initString(vm *engine.VM) {
 		s := thisStringValue(vm, this, "charCodeAt")
 		return codeUnitAt(s, vm.ToIntegerOrInfinity(arg(args, 0)))
 	})
-	// The kernel is the method for a string and a number, whose conversions run no code.
 	vm.SetMethodKernels(charCodeAt, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
 		if !this.IsString() || !x.IsNumber() {
 			return engine.Undefined, false
@@ -143,12 +152,18 @@ func initString(vm *engine.VM) {
 		}
 		return engine.Number(float64(s.CodePointAt(int(i))))
 	})
-	method(vm, proto, "indexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	indexOf := method(vm, proto, "indexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "indexOf")
 		sub := vm.ToStringValue(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Number(float64(s.UnitIndexOf(sub, from, vm.Poll)))
 	})
+	vm.SetMethodKernels(indexOf, nil, func(vm *engine.VM, this, sub engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !sub.IsString() {
+			return engine.Undefined, false
+		}
+		return engine.Number(float64(this.UnitIndexOf(sub, 0, vm.Poll))), true
+	}, nil)
 	method(vm, proto, "lastIndexOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "lastIndexOf")
 		sub := vm.ToStringValue(arg(args, 0))
@@ -164,13 +179,19 @@ func initString(vm *engine.VM) {
 			vm.ThrowTypeError("first argument to String.prototype." + what + " must not be a regular expression")
 		}
 	}
-	method(vm, proto, "includes", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	includes := method(vm, proto, "includes", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "includes")
 		noRegExp(vm, arg(args, 0), "includes")
 		sub := vm.ToStringValue(arg(args, 0))
 		from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Bool(s.UnitIndexOf(sub, from, vm.Poll) >= 0)
 	})
+	vm.SetMethodKernels(includes, nil, func(vm *engine.VM, this, sub engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !sub.IsString() {
+			return engine.Undefined, false
+		}
+		return engine.Bool(this.UnitIndexOf(sub, 0, vm.Poll) >= 0), true
+	}, nil)
 	method(vm, proto, "startsWith", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "startsWith")
 		noRegExp(vm, arg(args, 0), "startsWith")
@@ -192,31 +213,35 @@ func initString(vm *engine.VM) {
 		start := end - sub.StringLength()
 		return engine.Bool(start >= 0 && s.SubstringEquals(start, end, sub))
 	})
-	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	slice := method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "slice")
-		n := s.StringLength()
-		start := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
-		end := n
-		if e := arg(args, 1); !e.IsUndefined() {
-			end = engine.RelativeIndex(vm.ToIntegerOrInfinity(e), n)
-		}
-		if start >= end {
-			return vm.NewString("")
-		}
-		return vm.Substring(s, start, end)
+		return sliceString(vm, s, arg(args, 0), arg(args, 1))
 	})
-	method(vm, proto, "substring", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetMethodKernels(slice, nil, func(vm *engine.VM, this, start engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !start.IsNumber() {
+			return engine.Undefined, false
+		}
+		return sliceString(vm, this, start, engine.Undefined), true
+	}, func(vm *engine.VM, this, start, end engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !start.IsNumber() || !end.IsNumber() {
+			return engine.Undefined, false
+		}
+		return sliceString(vm, this, start, end), true
+	})
+	substring := method(vm, proto, "substring", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "substring")
-		n := s.StringLength()
-		start := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(arg(args, 0)), 0), n)
-		end := n
-		if e := arg(args, 1); !e.IsUndefined() {
-			end = engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(e), 0), n)
+		return substringOf(vm, s, arg(args, 0), arg(args, 1))
+	})
+	vm.SetMethodKernels(substring, nil, func(vm *engine.VM, this, start engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !start.IsNumber() {
+			return engine.Undefined, false
 		}
-		if start > end {
-			start, end = end, start
+		return substringOf(vm, this, start, engine.Undefined), true
+	}, func(vm *engine.VM, this, start, end engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !start.IsNumber() || !end.IsNumber() {
+			return engine.Undefined, false
 		}
-		return vm.Substring(s, start, end)
+		return substringOf(vm, this, start, end), true
 	})
 	method(vm, proto, "substr", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "substr")
@@ -828,4 +853,42 @@ func codeUnitAt(s engine.Value, i float64) engine.Value {
 		return engine.Number(math.NaN())
 	}
 	return engine.Number(float64(s.UnitAt(int(i))))
+}
+
+// unitStringAt returns the code unit of the string s at the index i as a string, or the empty
+// string when s has none there.
+func unitStringAt(vm *engine.VM, s engine.Value, i float64) engine.Value {
+	if i < 0 || i >= float64(s.StringLength()) {
+		return vm.NewString("")
+	}
+	return vm.UnitString(s.UnitAt(int(i)))
+}
+
+// sliceString implements String.prototype.slice for the string s and the arguments start and end.
+func sliceString(vm *engine.VM, s, start, end engine.Value) engine.Value {
+	n := s.StringLength()
+	from := engine.RelativeIndex(vm.ToIntegerOrInfinity(start), n)
+	to := n
+	if !end.IsUndefined() {
+		to = engine.RelativeIndex(vm.ToIntegerOrInfinity(end), n)
+	}
+	if from >= to {
+		return vm.NewString("")
+	}
+	return vm.Substring(s, from, to)
+}
+
+// substringOf implements String.prototype.substring for the string s and the arguments start and
+// end.
+func substringOf(vm *engine.VM, s, start, end engine.Value) engine.Value {
+	n := s.StringLength()
+	from := engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(start), 0), n)
+	to := n
+	if !end.IsUndefined() {
+		to = engine.RelativeIndex(math.Max(vm.ToIntegerOrInfinity(end), 0), n)
+	}
+	if from > to {
+		from, to = to, from
+	}
+	return vm.Substring(s, from, to)
 }

@@ -803,6 +803,15 @@ func (vm *VM) HasOwnProperty(o *Object, k PropKey) bool {
 	return ok
 }
 
+// HasOwnPropertyPlain is HasOwnProperty of o and the key k when k is a primitive and finding out
+// neither throws nor runs JavaScript. It reports false as ok otherwise.
+func (vm *VM) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
+	if k.IsObject() || o.class == classProxy || o.class == classModuleNamespace {
+		return false, false
+	}
+	return vm.HasOwnProperty(o, vm.QueryKey(k)), true
+}
+
 // HasProperty implements [[HasProperty]].
 func (vm *VM) HasProperty(o *Object, k PropKey) bool {
 	for h := o; h != nil; h = vm.ProtoOf(h) {

@@ -393,6 +393,22 @@ func (vm *VM) FillElements(o *Object, n, start, end int64, v Value) bool {
 	return true
 }
 
+// SearchArray returns the index of the first element of the Array v that equals target, or -1,
+// comparing with SameValueZero when sameValueZero is set and with IsStrictlyEqual otherwise. It
+// reports false when v is not an Array or reading one of its elements could run JavaScript.
+func (vm *VM) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
+	o := v.o
+	if o == nil || o.kind != kindArray {
+		return -1, false
+	}
+	n := int64(o.length)
+	found, next := vm.SearchElements(o, 0, n, target, sameValueZero)
+	if found < 0 && next < n {
+		return -1, false
+	}
+	return found, true
+}
+
 // SearchElements returns the first index of the elements of o from i toward end, which is
 // excluded and may be below i, whose element equals target, comparing with SameValueZero when
 // sameValueZero is set and with IsStrictlyEqual otherwise. It looks only at a run of elements

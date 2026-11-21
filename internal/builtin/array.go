@@ -285,9 +285,13 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	vm.SetIntrinsic(engine.IntrinsicArraySpeciesGetter, speciesGetter)
 	vm.DefineAccessor(ctor, vm.WellKnownSymbol(engine.SymbolSpecies), speciesGetter, nil, engine.FlagConfigurable)
 
-	method(vm, ctor, "isArray", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	isArray := method(vm, ctor, "isArray", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(vm.IsArray(arg(args, 0)))
 	})
+	vm.SetMethodKernels(isArray, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+		is, ok := engine.IsArrayPlain(v)
+		return engine.Bool(is), ok
+	}, nil)
 	method(vm, ctor, "of", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.Intrinsic(engine.IntrinsicArray) {
 			a := vm.Construct(this.Object(), []engine.Value{engine.Number(float64(len(args)))}, this.Object())
@@ -650,7 +654,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 
 	search := func(name string, fromEnd, same bool) {
 		length := 1
-		method(vm, proto, wtf8.String(name), length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		fn := method(vm, proto, wtf8.String(name), length, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			o := vm.ToObject(this)
 			n := vm.LengthOfArrayLike(o)
 			target := arg(args, 0)
@@ -747,6 +751,17 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 			}
 			return engine.Number(-1)
 		})
+		if fromEnd {
+			return
+		}
+		// The kernel is the search of an Array from its start.
+		vm.SetMethodKernels(fn, nil, func(vm *engine.VM, this, target engine.Value) (engine.Value, bool) {
+			found, ok := vm.SearchArray(this, target, same)
+			if same {
+				return engine.Bool(found >= 0), ok
+			}
+			return engine.Number(float64(found)), ok
+		}, nil)
 	}
 	search("indexOf", false, false)
 	search("lastIndexOf", true, false)

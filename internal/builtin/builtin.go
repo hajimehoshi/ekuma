@@ -319,10 +319,17 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	})
 	vm.SetIntrinsic(engine.IntrinsicObject, ctor)
 
-	method(vm, proto, "hasOwnProperty", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	hasOwn := method(vm, proto, "hasOwnProperty", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		k := vm.QueryKey(arg(args, 0))
 		return engine.Bool(vm.HasOwnProperty(vm.ToObject(this), k))
 	})
+	vm.SetMethodKernels(hasOwn, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+		if !this.IsObject() {
+			return engine.Undefined, false
+		}
+		has, ok := vm.HasOwnPropertyPlain(this.Object(), k)
+		return engine.Bool(has), ok
+	}, nil)
 	method(vm, proto, "isPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
 		if !v.IsObject() {
