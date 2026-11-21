@@ -5,13 +5,16 @@
 package collection
 
 import (
+	"encoding/binary"
+	"hash/maphash"
 	"math"
 	"math/big"
+	"math/bits"
+	"math/rand/v2"
 	"slices"
 	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
-	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -25,8 +28,20 @@ const minDeleted = 8
 // few entries remain.
 const minShrinkEntries = 64
 
+// minSlots is the smallest number of slots of an indexed table.
+const minSlots = 8
+
+// shortKeyBytes is the length in bytes up to which the slots locate a string key.
+const shortKeyBytes = 16
+
 // canonicalNaN is the key of every NaN.
 const canonicalNaN = 0x7ff8000000000001
+
+// The seeds of the hashes of keys, which differ from process to process.
+var (
+	seed         = maphash.MakeSeed()
+	seed0, seed1 = rand.Uint64(), rand.Uint64() | 1
+)
 
 // Table is the list of entries of a Map or a Set, the [[MapData]] or [[SetData]] internal slot.
 // Keys are compared with SameValueZero, and entries are kept in insertion order.
@@ -42,17 +57,18 @@ type Table struct {
 	// head is the number of leading entries that are all deleted.
 	head int
 
-	// indexed says that the maps below locate every live entry by its key.
+	// indexed says that slots, strs and objs locate every live entry by its key.
 	indexed bool
 
-	// nums, strs, ints, bigs and objs map the keys to their indices in entries: numbers by the
-	// bits of the canonical value, strings by their contents, BigInts by their values (as an
-	// int64 when they fit in one and by [bigKey] otherwise), and everything else by
-	// identity.
-	nums map[uint64]int32
+	// slots is an open-addressing table of the entries whose keys are numbers, strings of at
+	// most shortKeyBytes bytes or BigInts, probed linearly from the hash of a key. Its length
+	// is a power of two of at least twice the capacity of entries. The slot of a deleted entry
+	// stays until the slots are rebuilt.
+	slots []slot
+
+	// strs maps the longer strings to their indices in entries by their contents, and objs
+	// every other key by identity.
 	strs map[wtf8.String]int32
-	ints map[int64]int32
-	bigs map[string]int32
 	objs map[*engine.Object]int32
 
 	// gen is the generation that cursors start in, or nil when no cursor was ever created.
@@ -65,6 +81,13 @@ var deletedKey = new(engine.Object)
 type entry struct {
 	key   engine.Value
 	value engine.Value
+}
+
+// slot locates the entry at index in entries, whose key has the hash hash. An empty slot has the
+// index -1.
+type slot struct {
+	hash  uint32
+	index int32
 }
 
 func (e *entry) deleted() bool {
@@ -121,35 +144,156 @@ func (t *Table) Size() int {
 
 // find returns the index in entries of the live entry with the key k, or -1.
 func (t *Table) find(k engine.Value) int {
-	if !t.indexed {
+	switch {
+	case !t.indexed:
 		return t.scan(k)
+	case k.IsNumber():
+		n := numberKey(k.Number())
+		i, _ := t.probeNumber(n, hashNumber(n))
+		return i
+	case hashed(k):
+		i, _ := t.probe(k, hashKey(k))
+		return i
 	}
 	var i int32
 	var ok bool
-	switch {
-	case k.IsNumber():
-		i, ok = t.nums[numberKey(k.Number())]
-	case k.IsString():
-		if k.StringByteLength() <= shortstrings.MaxBytes {
-			var buf [shortstrings.MaxBytes]byte
-			i, ok = t.strs[wtf8.String(k.AppendStringBytes(buf[:0]))]
-		} else {
-			i, ok = t.strs[k.Str()]
-		}
-	case k.IsBigInt():
-		if n, ok64 := k.BigInt64(); ok64 {
-			i, ok = t.ints[n]
-		} else {
-			var buf [64]byte
-			i, ok = t.bigs[string(bigKey(buf[:0], k.BigInt()))]
-		}
-	default:
+	if k.IsString() {
+		i, ok = t.strs[k.Str()]
+	} else {
 		i, ok = t.objs[k.Object()]
 	}
 	if !ok {
 		return -1
 	}
 	return int(i)
+}
+
+// locate returns the hash of the key k, which the slots locate, and what a probe for k returns.
+func (t *Table) locate(k engine.Value) (h uint32, i int, s uint32) {
+	if k.IsNumber() {
+		n := numberKey(k.Number())
+		h = hashNumber(n)
+		i, s = t.probeNumber(n, h)
+		return h, i, s
+	}
+	h = hashKey(k)
+	i, s = t.probe(k, h)
+	return h, i, s
+}
+
+// hashed reports whether the slots, rather than strs or objs, locate the key k.
+func hashed(k engine.Value) bool {
+	return k.IsNumber() || k.IsBigInt() || k.IsString() && k.StringByteLength() <= shortKeyBytes
+}
+
+// mapIndex records that the key k, which the slots do not locate, is at the index i of entries.
+func (t *Table) mapIndex(k engine.Value, i int) {
+	if k.IsString() {
+		if t.strs == nil {
+			t.strs = map[wtf8.String]int32{}
+		}
+		t.strs[k.Str()] = int32(i)
+		return
+	}
+	if t.objs == nil {
+		t.objs = map[*engine.Object]int32{}
+	}
+	t.objs[k.Object()] = int32(i)
+}
+
+// mapUnindex forgets the location of the key k, which the slots do not locate.
+func (t *Table) mapUnindex(k engine.Value) {
+	if k.IsString() {
+		delete(t.strs, k.Str())
+		return
+	}
+	delete(t.objs, k.Object())
+}
+
+// mix mixes a and b into a hash.
+func mix(a, b uint64) uint64 {
+	hi, lo := bits.Mul64(a, b)
+	return hi ^ lo
+}
+
+// hashNumber returns the hash of a number key whose [numberKey] is n.
+func hashNumber(n uint64) uint32 {
+	return uint32(mix(n^seed0, seed1))
+}
+
+// hashKey returns the hash of the key k, which the slots locate. Keys that are the same for
+// SameValueZero have the same hash.
+func hashKey(k engine.Value) uint32 {
+	switch {
+	case k.IsNumber():
+		return hashNumber(numberKey(k.Number()))
+	case k.IsString():
+		n := k.StringByteLength()
+		// The bytes after the string stay zero, and the length tells the strings apart that
+		// differ only in trailing zero bytes.
+		var buf [shortKeyBytes]byte
+		k.AppendStringBytes(buf[:0])
+		a, b := binary.LittleEndian.Uint64(buf[:8]), binary.LittleEndian.Uint64(buf[8:])
+		return uint32(mix(a^seed0, b^seed1^uint64(n)))
+	default:
+		if n, ok := k.BigInt64(); ok {
+			return uint32(mix(uint64(n)^seed1, seed0))
+		}
+		var buf [64]byte
+		return uint32(maphash.Bytes(seed, bigKey(buf[:0], k.BigInt())))
+	}
+}
+
+// probeNumber looks for the live entry with the number key whose [numberKey] is n and whose
+// hash is h. It returns the index of the entry in entries, or -1 and the empty slot where the
+// probe ended.
+func (t *Table) probeNumber(n uint64, h uint32) (int, uint32) {
+	slots, entries := t.slots, t.entries
+	mask := uint32(len(slots) - 1)
+	// The hash is compared first, so that a probe reads the entries only for a likely match.
+	// The number keys are stored as numberKey returns them.
+	for s := h & mask; ; s = (s + 1) & mask {
+		sl := slots[s]
+		if sl.index < 0 {
+			return -1, s
+		}
+		if sl.hash != h {
+			continue
+		}
+		if a := entries[sl.index].key; a.IsNumber() && math.Float64bits(a.Number()) == n {
+			return int(sl.index), 0
+		}
+	}
+}
+
+// probe is probeNumber for the key k, which is a string or a BigInt that the slots locate.
+func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
+	slots, entries := t.slots, t.entries
+	mask := uint32(len(slots) - 1)
+	s := h & mask
+	if k.IsString() {
+		for ; ; s = (s + 1) & mask {
+			sl := slots[s]
+			if sl.index < 0 {
+				return -1, s
+			}
+			if sl.hash == h && engine.IsStrictlyEqual(entries[sl.index].key, k) {
+				return int(sl.index), 0
+			}
+		}
+	}
+	for ; ; s = (s + 1) & mask {
+		sl := slots[s]
+		if sl.index < 0 {
+			return -1, s
+		}
+		if sl.hash != h {
+			continue
+		}
+		if a := entries[sl.index].key; a.IsBigInt() && engine.SameValueZero(a, k) {
+			return int(sl.index), 0
+		}
+	}
 }
 
 // scan is find for a table that is not indexed.
@@ -186,71 +330,75 @@ func (t *Table) scan(k engine.Value) int {
 	return -1
 }
 
-// index records that the key k is at the index i of entries.
-func (t *Table) index(k engine.Value, i int) {
-	switch {
-	case k.IsNumber():
-		if t.nums == nil {
-			t.nums = map[uint64]int32{}
-		}
-		t.nums[numberKey(k.Number())] = int32(i)
-	case k.IsString():
-		if t.strs == nil {
-			t.strs = map[wtf8.String]int32{}
-		}
-		t.strs[k.Str()] = int32(i)
-	case k.IsBigInt():
-		if n, ok := k.BigInt64(); ok {
-			if t.ints == nil {
-				t.ints = map[int64]int32{}
-			}
-			t.ints[n] = int32(i)
-			return
-		}
-		if t.bigs == nil {
-			t.bigs = map[string]int32{}
-		}
-		t.bigs[string(bigKey(nil, k.BigInt()))] = int32(i)
-	default:
-		if t.objs == nil {
-			t.objs = map[*engine.Object]int32{}
-		}
-		t.objs[k.Object()] = int32(i)
+// slotCount returns the number of slots for entries with the capacity n.
+func slotCount(n int) int {
+	c := minSlots
+	for c < 2*n {
+		c *= 2
 	}
+	return c
 }
 
-// unindex forgets the location of the key k.
-func (t *Table) unindex(k engine.Value) {
-	switch {
-	case k.IsNumber():
-		delete(t.nums, numberKey(k.Number()))
-	case k.IsString():
-		delete(t.strs, k.Str())
-	case k.IsBigInt():
-		if n, ok := k.BigInt64(); ok {
-			delete(t.ints, n)
-		} else {
-			var buf [64]byte
-			delete(t.bigs, string(bigKey(buf[:0], k.BigInt())))
-		}
-	default:
-		delete(t.objs, k.Object())
-	}
-}
-
-// reindex rebuilds the maps from entries.
+// reindex locates every live entry again, with as many slots as the capacity of entries calls
+// for.
 func (t *Table) reindex() {
-	clear(t.nums)
 	clear(t.strs)
-	clear(t.ints)
-	clear(t.bigs)
 	clear(t.objs)
+	t.slots = emptySlots(t.slots, slotCount(cap(t.entries)))
+	mask := uint32(len(t.slots) - 1)
 	for i := range t.entries {
-		if e := &t.entries[i]; !e.deleted() {
-			t.index(e.key, i)
+		e := &t.entries[i]
+		switch {
+		case e.deleted():
+		case hashed(e.key):
+			h := hashKey(e.key)
+			s := h & mask
+			for t.slots[s].index >= 0 {
+				s = (s + 1) & mask
+			}
+			t.slots[s] = slot{
+				hash:  h,
+				index: int32(i),
+			}
+		default:
+			t.mapIndex(e.key, i)
 		}
 	}
 	t.indexed = true
+}
+
+// growSlots moves the slots of the live entries into as many slots as the capacity of entries
+// calls for.
+func (t *Table) growSlots() {
+	old := t.slots
+	t.slots = emptySlots(nil, slotCount(cap(t.entries)))
+	mask := uint32(len(t.slots) - 1)
+	for _, sl := range old {
+		if sl.index < 0 || t.entries[sl.index].deleted() {
+			continue
+		}
+		s := sl.hash & mask
+		for t.slots[s].index >= 0 {
+			s = (s + 1) & mask
+		}
+		t.slots[s] = sl
+	}
+}
+
+// emptySlots returns n empty slots, in the storage of slots when it is large enough and not
+// much larger.
+func emptySlots(slots []slot, n int) []slot {
+	if cap(slots) >= n && cap(slots) <= 2*n {
+		slots = slots[:n]
+	} else {
+		slots = make([]slot, n)
+	}
+	for i := range slots {
+		slots[i] = slot{
+			index: -1,
+		}
+	}
+	return slots
 }
 
 // Get returns the value of the entry with the key k.
@@ -270,18 +418,32 @@ func (t *Table) Has(k engine.Value) bool {
 // Set sets the value of the entry with the key k, appending a new entry when there is none.
 // A key -0 is stored as +0.
 func (t *Table) Set(k, v engine.Value) {
-	if i := t.find(k); i >= 0 {
+	if !t.indexed || !hashed(k) {
+		if i := t.find(k); i >= 0 {
+			t.entries[i].value = v
+			return
+		}
+		t.Append(k, v)
+		return
+	}
+	h, i, s := t.locate(k)
+	if i >= 0 {
 		t.entries[i].value = v
 		return
 	}
-	t.Append(k, v)
+	t.appendHashed(k, v, h, s)
 }
 
 // Append appends an entry with the key k, which the table must not have yet.
 // A key -0 is stored as +0.
 func (t *Table) Append(k, v engine.Value) {
-	if k.IsNumber() && k.Number() == 0 {
-		k = engine.Number(0)
+	if t.indexed && hashed(k) {
+		h, _, s := t.locate(k)
+		t.appendHashed(k, v, h, s)
+		return
+	}
+	if k.IsNumber() {
+		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
 	}
 	t.entries = append(t.entries, entry{
 		key:   k,
@@ -290,10 +452,35 @@ func (t *Table) Append(k, v engine.Value) {
 	t.live++
 	switch {
 	case t.indexed:
-		t.index(k, len(t.entries)-1)
+		t.mapIndex(k, len(t.entries)-1)
 	case t.live > smallSize:
 		t.reindex()
 	}
+}
+
+// appendHashed appends an entry with the key k of the hash h, which the table must not have
+// yet and whose probe ended at the slot s.
+func (t *Table) appendHashed(k, v engine.Value, h, s uint32) {
+	if k.IsNumber() {
+		// probeNumber compares the stored bits.
+		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
+	}
+	if len(t.entries) == cap(t.entries) {
+		t.entries = slices.Grow(t.entries, 1)
+		if slotCount(cap(t.entries)) > len(t.slots) {
+			t.growSlots()
+			_, _, s = t.locate(k)
+		}
+	}
+	t.entries = append(t.entries, entry{
+		key:   k,
+		value: v,
+	})
+	t.slots[s] = slot{
+		hash:  h,
+		index: int32(len(t.entries) - 1),
+	}
+	t.live++
 }
 
 // Delete deletes the entry with the key k and reports whether there was one.
@@ -309,8 +496,8 @@ func (t *Table) Delete(k engine.Value) bool {
 // deleteAt deletes the live entry at the index i of entries.
 func (t *Table) deleteAt(i int) {
 	e := &t.entries[i]
-	if t.indexed {
-		t.unindex(e.key)
+	if t.indexed && !hashed(e.key) {
+		t.mapUnindex(e.key)
 	}
 	*e = entry{
 		key: engine.ObjectValue(deletedKey),
@@ -361,10 +548,7 @@ func (t *Table) compact() {
 	}
 	if t.indexed {
 		if shrink {
-			t.nums = withRoom(t.nums, len(t.nums))
 			t.strs = withRoom(t.strs, len(t.strs))
-			t.ints = withRoom(t.ints, len(t.ints))
-			t.bigs = withRoom(t.bigs, len(t.bigs))
 			t.objs = withRoom(t.objs, len(t.objs))
 		}
 		t.reindex()
@@ -377,7 +561,7 @@ func (t *Table) Clear() {
 	t.live = 0
 	t.head = 0
 	t.indexed = false
-	t.nums, t.strs, t.ints, t.bigs, t.objs = nil, nil, nil, nil, nil
+	t.slots, t.strs, t.objs = nil, nil, nil
 	if t.gen != nil {
 		next := &generation{}
 		t.gen.cleared = true
@@ -399,10 +583,7 @@ func (t *Table) Clone() *Table {
 	c.live = len(c.entries)
 	if c.live > smallSize {
 		// The maps of t hold the keys of its live entries only.
-		c.nums = withRoom(t.nums, len(t.nums))
 		c.strs = withRoom(t.strs, len(t.strs))
-		c.ints = withRoom(t.ints, len(t.ints))
-		c.bigs = withRoom(t.bigs, len(t.bigs))
 		c.objs = withRoom(t.objs, len(t.objs))
 		c.reindex()
 	}
@@ -422,10 +603,7 @@ func (t *Table) Reserve(n int) {
 	share := func(kind int) int {
 		return int(int64(n) * int64(kind) / int64(t.live))
 	}
-	t.nums = withRoom(t.nums, share(len(t.nums)))
 	t.strs = withRoom(t.strs, share(len(t.strs)))
-	t.ints = withRoom(t.ints, share(len(t.ints)))
-	t.bigs = withRoom(t.bigs, share(len(t.bigs)))
 	t.objs = withRoom(t.objs, share(len(t.objs)))
 	t.reindex()
 }
@@ -437,10 +615,7 @@ func (t *Table) Trim() {
 	}
 	t.entries = slices.Clone(t.entries)
 	if t.indexed {
-		t.nums = withRoom(t.nums, len(t.nums))
 		t.strs = withRoom(t.strs, len(t.strs))
-		t.ints = withRoom(t.ints, len(t.ints))
-		t.bigs = withRoom(t.bigs, len(t.bigs))
 		t.objs = withRoom(t.objs, len(t.objs))
 		t.reindex()
 	}

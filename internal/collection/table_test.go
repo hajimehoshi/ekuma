@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/big"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/collection"
@@ -187,6 +188,45 @@ func TestSameValueZeroBigInts(t *testing.T) {
 			t.Errorf("filler %d: 0n is found", filler)
 		}
 	}
+}
+
+// TestFindAfterDeletes tests that every live key is found while deleted entries are in the
+// table, after the table grows, and in a clone.
+func TestFindAfterDeletes(t *testing.T) {
+	vm := engine.NewVM(nil)
+	// A new string for every call, so that keys are found by their contents.
+	key := func(i int) engine.Value {
+		switch i % 3 {
+		case 0:
+			return engine.Number(float64(i))
+		case 1:
+			return vm.NewString(wtf8.String(strconv.Itoa(i)))
+		default:
+			return vm.NewString(wtf8.String("a key longer than sixteen bytes " + strconv.Itoa(i)))
+		}
+	}
+	check := func(name string, tab *collection.Table, n int) {
+		for i := range n {
+			deleted := i < 300 && i%4 == 0
+			if v, ok := tab.Get(key(i)); ok == deleted || ok && v.Number() != float64(i) {
+				t.Errorf("%s: Get(%d) = %s, %t", name, i, vm.DisplayString(v), ok)
+			}
+		}
+	}
+	var tab collection.Table
+	for i := range 300 {
+		tab.Set(key(i), engine.Number(float64(i)))
+	}
+	// Too few deletions to compact the table.
+	for i := 0; i < 300; i += 4 {
+		tab.Delete(key(i))
+	}
+	check("after deletes", &tab, 300)
+	for i := 300; i < 1000; i++ {
+		tab.Set(key(i), engine.Number(float64(i)))
+	}
+	check("after growth", &tab, 1000)
+	check("clone", tab.Clone(), 1000)
 }
 
 // TestStorageShrinks tests that deleting most entries gives up the storage that they used.
