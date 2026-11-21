@@ -63,6 +63,15 @@ func DetachGlobalProxy(r *Realm) {
 	r.in(r.vm.e.DetachGlobalProxy)
 }
 
+// CanAccessReceiver reports whether r may use receiver in a checked host call.
+func CanAccessReceiver(r *Realm, receiver Value) bool {
+	var allowed bool
+	r.in(func() {
+		allowed = r.vm.e.CanAccessReceiver(receiver.value)
+	})
+	return allowed
+}
+
 // NewHTMLDDA returns an object of r with the [[IsHTMLDDA]] internal slot, which returns null when called.
 func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value

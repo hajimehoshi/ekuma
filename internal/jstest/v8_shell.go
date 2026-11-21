@@ -6,11 +6,14 @@ package jstest
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -35,6 +38,7 @@ type v8Shell struct {
 	stderr io.Writer
 	origin time.Time
 	timers map[string]time.Time
+	marks  map[string]float64
 }
 
 func newV8Shell(stdout, stderr io.Writer) v8Shell {
@@ -43,10 +47,11 @@ func newV8Shell(stdout, stderr io.Writer) v8Shell {
 		stderr: stderr,
 		origin: time.Now(),
 		timers: make(map[string]time.Time),
+		marks:  make(map[string]float64),
 	}
 }
 
-func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS) error {
+func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS, canAccessReceiver func(*ekuma.Realm, ekuma.Value) bool) error {
 	if err := installV8ScriptLoader(ctx, r, checkout); err != nil {
 		return err
 	}
@@ -85,9 +90,65 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, checkout fs.FS) e
 	exit := r.FuncOf("exit", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		panic(v8ExitCode(args[0].Int()))
 	})
-	_, err = init.Invoke(ctx, r.FuncOf("readFile", readFile), r.FuncOf("stdout", write(s.stdout)),
-		r.FuncOf("stderr", write(s.stderr)), r.FuncOf("timer", s.timer), exit)
+	checkReceiver := r.FuncOf("canAccessReceiver", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return canAccessReceiver(r, args[0]), nil
+	})
+	now := r.FuncOf("now", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		return s.timestamp(), nil
+	})
+	_, err = init.Invoke(ctx, map[string]any{
+		"readFile":          r.FuncOf("readFile", readFile),
+		"stdout":            r.FuncOf("stdout", write(s.stdout)),
+		"stderr":            r.FuncOf("stderr", write(s.stderr)),
+		"timer":             r.FuncOf("timer", s.timer),
+		"exit":              exit,
+		"canAccessReceiver": checkReceiver,
+		"now":               now,
+		"recordMark":        r.FuncOf("recordMark", s.mark),
+		"lookupMark":        r.FuncOf("lookupMark", s.lookupMark),
+		"osName":            v8OSName(),
+		"d8Path":            os.Args[0],
+	})
 	return err
+}
+
+func v8OSName() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "macos"
+	case "android", "ios", "linux", "windows":
+		return runtime.GOOS
+	default:
+		return "unknown"
+	}
+}
+
+func (s *v8Shell) timestamp() float64 {
+	return float64(time.Since(s.origin)) / float64(time.Millisecond)
+}
+
+// d8 keys its per-isolate mark table by NUL-terminated UTF-8 names.
+func v8MarkKey(name ekuma.Value) string {
+	key, _, _ := strings.Cut(name.String(), "\x00")
+	return key
+}
+
+func (s *v8Shell) mark(this ekuma.Value, args []ekuma.Value) (any, error) {
+	timestamp := s.timestamp()
+	// A stored key can outlive the full name, including any suffix after NUL.
+	s.marks[strings.Clone(v8MarkKey(args[0]))] = timestamp
+	return timestamp, nil
+}
+
+func (s *v8Shell) lookupMark(this ekuma.Value, args []ekuma.Value) (any, error) {
+	key := v8MarkKey(args[0])
+	timestamp, ok := s.marks[key]
+	if !ok {
+		const maxMessage = 1024
+		message := `Invalid performance.mark "` + key[:min(len(key), maxMessage)] + `" does not exist`
+		return nil, errors.New(message[:min(len(message), maxMessage)])
+	}
+	return timestamp, nil
 }
 
 func (s *v8Shell) timer(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -115,12 +176,12 @@ func (s *v8Shell) timer(this ekuma.Value, args []ekuma.Value) (any, error) {
 	return ekuma.Undefined, err
 }
 
-// CheckV8ShellOutput checks output streams and partial writes when coercion throws.
-func CheckV8ShellOutput(t *testing.T) {
+// CheckShellOutput checks output streams and partial writes when coercion throws.
+func (host *V8) CheckShellOutput(t *testing.T) {
 	var vm ekuma.VM
 	var stdout, stderr strings.Builder
 	shell := newV8Shell(&stdout, &stderr)
-	if err := shell.install(t.Context(), vm.InitialRealm(), nil); err != nil {
+	if err := shell.install(t.Context(), vm.InitialRealm(), nil, host.CanAccessReceiver); err != nil {
 		t.Fatal(err)
 	}
 	const source = `

@@ -554,6 +554,7 @@ test/mjsunit/regress/regress-1494164.js
 # These tests require Realm.navigate.
 test/mjsunit/regress/regress-493269623.js
 test/mjsunit/regress/regress-495503781.js
+test/mjsunit/regress/regress-575524702.js
 
 # These tests require Realm.navigateSameOrigin.
 test/mjsunit/regress/regress-463593768.js
@@ -638,11 +639,7 @@ test/mjsunit/regress/regress-crbug-1381404.js
 test/mjsunit/regress/regress-crbug-1402139.js
 test/mjsunit/regress/regress-crbug-1509910.js
 
-# These tests require the os global.
-test/mjsunit/d8/d8-os.js
-
-# These tests require the performance global.
-test/mjsunit/d8/performance-mark.js
+# This test requires asynchronous promise resolution by performance.measureMemory().
 test/mjsunit/regress/regress-371237560.js
 
 # These tests require d8 to report uncaught timer exceptions to onerror.
@@ -651,10 +648,6 @@ test/mjsunit/math-sum-precise/uncaught-error-message.js
 
 # This test requires d8.terminate.
 test/mjsunit/regress/regress-576644328.js
-
-# These tests require the version global.
-test/mjsunit/regress/regress-575524702.js
-test/mjsunit/regress/regress-v8-5009.js
 
 # These tests require Intl.v8BreakIterator.
 test/mjsunit/regress/regress-crbug-714696.js

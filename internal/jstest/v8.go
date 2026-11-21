@@ -31,6 +31,7 @@ type V8 struct {
 	ParseScriptValue         func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
 	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, bool) ekuma.Value
 	DetachGlobalProxy        func(*ekuma.Realm)
+	CanAccessReceiver        func(*ekuma.Realm, ekuma.Value) bool
 	InvokeInRealm            func(context.Context, *ekuma.Realm, ekuma.Value) error
 	DeferUnhandledRejections func(*ekuma.VM)
 	TakeUnhandledRejection   func(*ekuma.VM) error

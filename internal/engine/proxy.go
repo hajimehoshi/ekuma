@@ -25,6 +25,18 @@ func (s *proxyState) allowsGlobalAccess(group *Object) bool {
 	return s.target != nil && s.handler == group
 }
 
+// CanAccessReceiver reports whether a non-strict host call may use receiver in the current realm.
+func (vm *VM) CanAccessReceiver(receiver Value) bool {
+	if receiver.IsNullish() {
+		receiver = ObjectValue(vm.globalThis)
+	}
+	if !receiver.IsObject() || receiver.o.class != classProxy {
+		return true
+	}
+	st := receiver.o.extState().(*proxyState)
+	return !st.isGlobal() || st.allowsGlobalAccess(vm.globalProxyHandler)
+}
+
 // ProxyCreate implements ProxyCreate.
 func (vm *VM) ProxyCreate(target, handler Value) *Object {
 	if !target.IsObject() || !handler.IsObject() {

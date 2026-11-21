@@ -21,6 +21,7 @@ var v8Runner = jstest.V8{
 	ParseScriptValue:         ekuma.ParseScriptValue,
 	InstallGlobalProxy:       ekuma.InstallGlobalProxy,
 	DetachGlobalProxy:        ekuma.DetachGlobalProxy,
+	CanAccessReceiver:        ekuma.CanAccessReceiver,
 	InvokeInRealm:            ekuma.InvokeInRealm,
 	DeferUnhandledRejections: ekuma.DeferUnhandledRejections,
 	TakeUnhandledRejection:   ekuma.TakeUnhandledRejection,
@@ -63,7 +64,7 @@ func TestV8ScriptLoader(t *testing.T) {
 }
 
 func TestV8ShellOutput(t *testing.T) {
-	jstest.CheckV8ShellOutput(t)
+	v8Runner.CheckShellOutput(t)
 }
 
 func TestV8Quit(t *testing.T) {

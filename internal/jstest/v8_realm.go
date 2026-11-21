@@ -50,7 +50,7 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 	if err := r.Global().Set("print", r.FuncOf("print", h.print)); err != nil {
 		return 0, err
 	}
-	if err := h.shell.install(h.ctx, r, h.checkout); err != nil {
+	if err := h.shell.install(h.ctx, r, h.checkout, h.host.CanAccessReceiver); err != nil {
 		return 0, err
 	}
 	if err := h.timeouts.install(r); err != nil {
@@ -133,6 +133,15 @@ func (host *V8) CheckRealm(t *testing.T) {
 		if (!Realm.eval(r, 'console.log instanceof Function && printErr instanceof Function')) {
 			throw Error("shell helpers installed in the wrong realm");
 		}
+		const mark = Realm.eval(r, 'performance.mark("child")');
+		if (performance.measure("elapsed", "child").startTime !== mark.startTime) {
+			throw Error("performance mark lost across realms");
+		}
+		if (typeof version() !== "string") throw Error("expected a version string");
+		try {
+			version.call(Realm.global(r));
+			throw Error("version accepted a foreign global");
+		} catch (e) { if (!(e instanceof TypeError)) throw e; }
 		const buffer = Realm.eval(r, 'readbuffer("./bytes.bin")');
 		if (!(buffer instanceof Realm.eval(r, "ArrayBuffer"))) throw Error("wrong buffer realm");
 		if (new Uint8Array(buffer.transfer())[0] !== 0xff) throw Error("file byte changed");

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-(function (readFile, stdout, stderr, timer, exit) {
+(function (shell) {
   "use strict";
-  const {Error, Uint8Array} = globalThis;
+  const {readFile, stdout, stderr, timer, exit, canAccessReceiver} = shell;
+  const {now: timestamp, recordMark, lookupMark} = shell;
+  const {Error, TypeError, Uint8Array} = globalThis;
+  const {defineProperty} = Object;
   function getter(proto, name) {
     return Function.call.bind(Object.getOwnPropertyDescriptor(proto, name).get);
   }
@@ -12,6 +15,60 @@
   const stackOf = getter(Error.prototype, "stack");
   const indexOf = Function.call.bind(String.prototype.indexOf);
   const slice = Function.call.bind(String.prototype.slice);
+
+  globalThis.version = function version() {
+    if (!canAccessReceiver(this)) throw new TypeError("no access");
+    // V8_VERSION_STRING at the revision in v8-revision.txt.
+    return "16.0.0 (candidate)";
+  };
+
+  function readOnly(object, key, value) {
+    defineProperty(object, key, {__proto__: null, value, enumerable: true, configurable: true});
+  }
+  // d8 exposes os.system only with --enable-os-system.
+  const os = {};
+  readOnly(os, "name", shell.osName);
+  readOnly(os, "d8Path", shell.d8Path);
+  globalThis.os = os;
+
+  function entry(entryType, name, startTime, duration) {
+    const result = {};
+    readOnly(result, "entryType", entryType);
+    readOnly(result, "name", name);
+    readOnly(result, "startTime", startTime);
+    readOnly(result, "duration", duration);
+    return result;
+  }
+  globalThis.performance = {
+    now: function now() { return timestamp(); },
+    mark: function mark(name = undefined) {
+      if (typeof name !== "string") throw new Error("Invalid 'name' argument");
+      return entry("mark", name, recordMark(name), 0);
+    },
+    measure: function measure(name = undefined, startMark, endMark) {
+      if (typeof name !== "string") throw new Error("Invalid 'name' argument");
+      let start = 0;
+      let end = timestamp();
+      if (typeof startMark === "string") {
+        start = lookupMark(startMark);
+        if (arguments.length === 3) {
+          if (typeof endMark !== "string") throw new Error("Expect string as end mark.");
+          end = lookupMark(endMark);
+        }
+      } else if (startMark !== undefined) {
+        if (startMark === null || (typeof startMark !== "object" && typeof startMark !== "function")) {
+          throw new Error("Invalid 'startMark' argument: Not an Object");
+        }
+        if (arguments.length > 2) throw new Error("Too many arguments");
+        // Legacy d8 accepts a mark-like object with a numeric startTime.
+        start = startMark.startTime;
+        if (typeof start !== "number") {
+          throw new Error("Invalid 'startMark' argument: No numeric 'startTime' field");
+        }
+      }
+      return entry("measure", name, start, end - start);
+    },
+  };
 
   for (const target of [globalThis, d8]) {
     target.quit = function quit(code = 0) {
