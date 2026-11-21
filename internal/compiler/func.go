@@ -18,7 +18,8 @@ func (f *fn) closure(node *ast.Function, dst int32, name wtf8.String) {
 	f.captureScopes(dst)
 }
 
-// forwardsArguments reports whether f can forward its arguments from its parameter registers.
+// forwardsArguments reports whether f can forward its arguments, and read their count and
+// elements, from its parameter registers.
 func (f *fn) forwardsArguments() bool {
 	node := f.node
 	// The parameter registers hold the arguments only while no parameter code has run.
@@ -37,8 +38,24 @@ func (f *fn) forwardsArguments() bool {
 		}
 	}
 
-	// allowed holds the references to arguments that are in a forwarding position.
+	// allowed holds the references to arguments that are in a forwarding position, or that are
+	// the object of a read of length or of a computed key.
 	allowed := map[*ast.Identifier]bool{}
+	// notRead holds the member expressions that can be more than a read of their property:
+	// assignment targets, operands of updates and delete, and callees and tags, which receive
+	// their object as the this value. Every member expression of a target counts.
+	notRead := map[*ast.MemberExpr]bool{}
+	markNotRead := func(n ast.Node) {
+		walk(n, func(n ast.Node) bool {
+			if m, isMember := n.(*ast.MemberExpr); isMember {
+				notRead[m] = true
+			}
+			return true
+		})
+	}
+	// The registers of a generator or an async function do not live on the stack, where a read
+	// finds the arguments.
+	reads := !node.Generator && !node.Async
 	ok := true
 	depth := 0
 	var visit func(ast.Node) bool
@@ -75,6 +92,33 @@ func (f *fn) forwardsArguments() bool {
 				if id := forwardedArgument(n); id != nil {
 					allowed[id] = true
 				}
+			}
+			if m, isMember := n.Callee.(*ast.MemberExpr); isMember {
+				notRead[m] = true
+			}
+		case *ast.TaggedTemplate:
+			if m, isMember := n.Tag.(*ast.MemberExpr); isMember {
+				notRead[m] = true
+			}
+		case *ast.AssignExpr:
+			markNotRead(n.Target)
+		case *ast.UpdateExpr:
+			markNotRead(n.Arg)
+		case *ast.UnaryExpr:
+			if n.Op == ast.OpDelete {
+				markNotRead(n.Arg)
+			}
+		case *ast.ForInStmt:
+			markNotRead(n.Target)
+		case *ast.ForOfStmt:
+			markNotRead(n.Target)
+		case *ast.MemberExpr:
+			id, isID := n.Object.(*ast.Identifier)
+			if !isID || id.Name != "arguments" || depth > 0 || !reads || n.Optional || notRead[n] {
+				break
+			}
+			if p, named := n.Property.(*ast.Identifier); n.Computed || named && p.Name == "length" {
+				allowed[id] = true
 			}
 		case *ast.Identifier:
 			if n.Name == "arguments" && !allowed[n] {

@@ -266,7 +266,7 @@ type fn struct {
 	// completion is the register of the completion value of a script, or -1.
 	completion int32
 
-	// forwardedArgs holds the arguments object once a forwarding call needs it.
+	// forwardedArgs holds the arguments object once a forwarding call or a read needs it.
 	// Its register starts out undefined.
 	forwardedArgs *binding
 

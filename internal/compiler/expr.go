@@ -1065,6 +1065,20 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 		f.emit(bytecode.OpGetPrivate, dst, obj, name)
 		return
 	}
+	if id, ok := n.Object.(*ast.Identifier); ok && id.Name == "arguments" && !n.Optional {
+		// forwardsArguments allows only reads of length and computed keys.
+		if args := f.forwardedArgs; args != nil && f.localReg("arguments") == args.reg {
+			if !n.Computed {
+				f.setPos(n.Property.Start())
+				f.emit(bytecode.OpGetArgsLength, dst, args.reg, 0)
+				return
+			}
+			key := f.immediateOperand(n.Property)
+			f.setPos(n.Property.Start())
+			f.emit(bytecode.OpGetArgsIndex, dst, args.reg, key)
+			return
+		}
+	}
 	if !n.Computed {
 		obj := f.operand(n.Object)
 		f.chainCheck(n.Optional, obj)

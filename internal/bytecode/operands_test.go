@@ -161,6 +161,8 @@ func TestResultConvention(t *testing.T) {
 		"OpApplyFwd":      true,
 		"OpTailApplyFwd":  true,
 		"OpCallFwd":       true,
+		"OpGetArgsLength": true,
+		"OpGetArgsIndex":  true,
 		"OpTailCallFwd":   true,
 		"OpIterNext":      true,
 		"OpIterReturn":    true,

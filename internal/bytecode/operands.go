@@ -651,6 +651,27 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpGetArgsLength: {
+		name: "OpGetArgsLength",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			Reads:  regB,
+			Writes: regAB,
+		},
+		flow: FlowNext,
+	},
+	OpGetArgsIndex: {
+		name: "OpGetArgsIndex",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			C:      OperandReg,
+			Reads:  regBC,
+			Writes: regAB,
+		},
+		flow: FlowNext,
+	},
 
 	OpGetProp: {
 		name:     "OpGetProp",

@@ -1335,6 +1335,28 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[ret] = r
 				continue
 			}
+		case bytecode.OpGetArgsLength:
+			// The argument count, while the arguments object is not materialized.
+			if a := &regs[i.A]; regs[i.B].o == nil {
+				setNumber(a, float64(vm.frames[len(vm.frames)-1].argc))
+				continue
+			}
+		case bytecode.OpGetArgsIndex:
+			// An argument, while the arguments object is not materialized, where the call left
+			// it: in a parameter register, or among the surplus arguments below the registers.
+			// The destination is read before the tests and the argument after them, as in
+			// OpGetIndex.
+			if a, k := &regs[i.A], regs[i.C]; regs[i.B].o == nil && k.o == numberObject {
+				fr := &vm.frames[len(vm.frames)-1]
+				if j := int(k.n); float64(j) == k.n && uint(j) < uint(fr.argc) {
+					if n := fp.nparams; j < n {
+						*a = regs[j]
+					} else {
+						*a = vm.stack[fr.extraBase+j-n]
+					}
+					continue
+				}
+			}
 		}
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
@@ -1464,6 +1486,26 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				rest = vm.NewArray(nil)
 			}
 			regs[i.A] = Value{o: rest}
+		case bytecode.OpGetArgsLength:
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.forwardedArguments(slices.Clip(regs), i.B)
+			val, getter := vm.getNamed(v, vm.Key(KeyLength), nil)
+			if getter != nil {
+				f, callThis, argc, ret = getter, v, 0, i.A
+				goto callAbove
+			}
+			regs[i.A] = val
+		case bytecode.OpGetArgsIndex:
+			// Any other key materializes the arguments object, so that a getter of a prototype
+			// sees the object that later reads use.
+			vm.frames[len(vm.frames)-1].pc = pc
+			v := vm.forwardedArguments(slices.Clip(regs), i.B)
+			val, getter := vm.getValue(v, regs[i.C])
+			if getter != nil {
+				f, callThis, argc, ret = getter, v, 0, i.A
+				goto callAbove
+			}
+			regs[i.A] = val
 
 		case bytecode.OpGetMethod:
 			// The this value is in place before a getter runs.

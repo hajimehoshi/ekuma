@@ -83,6 +83,8 @@ const (
 	OpLoadHome       // a = the home object of the running function
 	OpArguments      // a = the arguments object, mapped to the parameters with the flag b
 	OpRestArgs       // a = the arguments from index b on, as an array
+	OpGetArgsLength  // a = arguments.length. b holds the arguments object once materialized
+	OpGetArgsIndex   // a = arguments[c]. b holds the arguments object once materialized
 
 	// Properties.
 	OpGetProp          // a = b.Keys[c]; c is a site
