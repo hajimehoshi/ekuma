@@ -3,14 +3,8 @@
 # An unexpected pass or a missing path fails the suite.
 # When Ekuma follows a specification, name the rule and what the test expects.
 
-# SKIP: requires a catchable stack limit
-test/intl/general/empty-handle.js
-
 # SKIP: timing-sensitive benchmark skipped by V8
 test/intl/overrides/caching.js
-
-# SKIP: requires a catchable stack limit
-test/intl/regress-1130489.js
 
 # Ekuma implements the ECMA-402 Intl constructors. These tests also use
 # Intl.v8BreakIterator, a V8 extension.
