@@ -195,8 +195,9 @@ func inSuiteDir(file, dir string) bool {
 }
 
 type skipEntry struct {
-	reason string // An empty reason marks an expected failure that still runs.
-	seen   bool
+	reason   string // An empty reason marks an expected failure that still runs.
+	seen     bool
+	inactive bool // The entry applies only to other platforms.
 }
 
 type skipList map[string]*skipEntry
@@ -208,7 +209,9 @@ func (s skipList) match(file string) (reason string, listed bool) {
 		end += len(part)
 		if entry := s[file[:end]]; entry != nil {
 			entry.seen = true
-			reason, listed = entry.reason, true
+			if !entry.inactive {
+				reason, listed = entry.reason, true
+			}
 		}
 	}
 	return reason, listed
@@ -227,6 +230,9 @@ func CheckSkipDirectories(t *testing.T) {
 	skips := skipList{
 		"test/wasm/": {
 			reason: "requires WebAssembly",
+		},
+		"test/wasm/nested/example.js": {
+			inactive: true,
 		},
 		"test/wasm/nested/fail.js": {},
 		"test/missing/":            {},

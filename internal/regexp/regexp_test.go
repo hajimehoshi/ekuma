@@ -62,6 +62,11 @@ func TestMatch(t *testing.T) {
 		{pattern: `(?<x>.)\k<x>`, input: "abb", want: []int{1, 3, 1, 2}},
 		{pattern: `(?:(?<x>a)|(?<x>b))\k<x>`, input: "bb", want: []int{0, 2, -1, -1, 0, 1}},
 		// Lookarounds, and captures in them.
+		{
+			pattern: `(?!^a)a`,
+			input:   "aa",
+			want:    []int{1, 2},
+		},
 		{pattern: `a(?=(b))`, input: "ab", want: []int{0, 1, 1, 2}},
 		{pattern: `a(?!b)`, input: "abac", want: []int{2, 3}},
 		{pattern: `(?<=\$)\d+`, input: "a1 $23", want: []int{4, 6}},

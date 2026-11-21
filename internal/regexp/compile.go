@@ -462,6 +462,8 @@ func anchoredAtStart(n *node) bool {
 		return true
 	case opCapture, opGroup:
 		return anchoredAtStart(n.subs[0])
+	case opLook:
+		return !n.neg && !n.behind && anchoredAtStart(n.subs[0])
 	}
 	return false
 }

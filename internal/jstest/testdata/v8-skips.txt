@@ -77,9 +77,6 @@ test/intl/regress-364374.js
 
 # mjsunit
 
-# SKIP: regular expression benchmark exceeds the isolated timeout on Windows/386
-test/mjsunit/ascii-regexp-subject.js
-
 # SKIP: exceeds the isolated test timeout
 test/mjsunit/array-concat.js
 test/mjsunit/es6/proxies-prototype-target-stackoverflow.js
@@ -90,21 +87,23 @@ test/mjsunit/regress/regress-578775.js
 test/mjsunit/regress/regress-crbug-482998.js
 
 # SKIP: exceeds the memory budget for parallel tests
-test/mjsunit/compiler/regress-445907.js
 test/mjsunit/es6/proxies-json.js
 test/mjsunit/regress/regress-1006670.js
 test/mjsunit/regress/regress-10931.js
 test/mjsunit/regress/regress-1432470.js
 test/mjsunit/regress/regress-331074427.js
 test/mjsunit/regress/regress-500980.js
-test/mjsunit/regress/regress-558568713.js
 test/mjsunit/regress/regress-599414-array-concat-fast-path.js
 test/mjsunit/regress/regress-7558019.js
 test/mjsunit/regress/regress-crbug-357052.js
 test/mjsunit/regress/regress-crbug-627934.js
 test/mjsunit/regress/regress-crbug-902672.js
-test/mjsunit/regress/regress-crbug-918301.js
 test/mjsunit/string-oom-concat.js
+
+# SKIP(64-bit): the requested string fits the 64-bit length limit and exceeds the parallel memory budget
+test/mjsunit/compiler/regress-445907.js
+test/mjsunit/regress/regress-558568713.js
+test/mjsunit/regress/regress-crbug-918301.js
 
 # SKIP: excluded by mjsunit.status
 test/mjsunit/regress/regress-2073.js

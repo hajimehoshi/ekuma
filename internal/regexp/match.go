@@ -94,12 +94,15 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 	if prog.unicode && m.isMiddle(pos) {
 		pos -= 2
 	}
+	if prog.anchored {
+		if pos != 0 {
+			return nil
+		}
+		sticky = true
+	}
 	// need is the position of the first prog.need at or after an earlier pos+prog.needMin.
 	need := -1
 	for {
-		if prog.anchored && pos != 0 {
-			return nil
-		}
 		if !sticky {
 			pos = m.skip(prog, pos)
 			if pos < 0 {

@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -321,22 +322,29 @@ func readV8Skips(t *testing.T) skipList {
 	}
 	skips := skipList{}
 	lines := strings.Split(string(data), "\n")
-	var reason string
+	var group skipEntry
 	for i := 0; i < len(lines); i++ {
 		file := strings.TrimSpace(lines[i])
 		if file == "" {
-			reason = ""
+			group = skipEntry{}
 			continue
 		}
 		if comment, ok := strings.CutPrefix(file, "#"); ok {
-			value, ok := strings.CutPrefix(strings.TrimSpace(comment), "SKIP:")
+			group = skipEntry{}
+			directive, value, ok := strings.Cut(strings.TrimSpace(comment), ":")
 			if !ok {
-				reason = ""
 				continue
 			}
-			reason = strings.TrimSpace(value)
-			if reason == "" || i+1 >= len(lines) {
-				t.Fatalf("%s:%d: SKIP needs a reason and a test path on the next line", v8SkipsFile, i+1)
+			switch directive {
+			case "SKIP":
+			case "SKIP(64-bit)":
+				group.inactive = strconv.IntSize != 64
+			default:
+				continue
+			}
+			group.reason = strings.TrimSpace(value)
+			if group.reason == "" || i+1 >= len(lines) {
+				t.Fatalf("%s:%d: %s needs a reason and a test path on the next line", v8SkipsFile, i+1, directive)
 			}
 			i++
 			file = strings.TrimSpace(lines[i])
@@ -347,9 +355,8 @@ func readV8Skips(t *testing.T) skipList {
 		if _, exists := skips[file]; exists {
 			t.Fatalf("duplicate path %s in %s", file, v8SkipsFile)
 		}
-		skips[file] = &skipEntry{
-			reason: reason,
-		}
+		entry := group
+		skips[file] = &entry
 	}
 	return skips
 }
