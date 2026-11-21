@@ -637,6 +637,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						}
 					}
 				}
+			} else if o != nil && o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && k.o == numberObject {
+				// A unit of a string known to be ASCII, as in asciiUnitAt. An index in its range is an
+				// own property that nothing shadows.
+				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.str)) {
+					if o.flags&objReversed != 0 {
+						j = len(o.str) - 1 - j
+					}
+					regs[i.A] = vm.strings.ascii[o.str[j]]
+					continue
+				}
 			}
 		case bytecode.OpGetIndexInt:
 			if o := regs[i.B].o; o != nil && o.objectProperties != nil && uint(i.C) < uint(len(o.elems)) {
@@ -679,6 +689,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						setNumber(r, x)
 						continue
 					}
+				}
+				// The same as OpGetIndex for a string.
+				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII && uint(i.C) < uint(len(o.str)) {
+					j := int(i.C)
+					if o.flags&objReversed != 0 {
+						j = len(o.str) - 1 - j
+					}
+					regs[i.A] = vm.strings.ascii[o.str[j]]
+					continue
 				}
 			}
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
