@@ -29,6 +29,7 @@ var v8Runner = jstest.V8{
 	InvokeInRealm:            ekuma.InvokeInRealm,
 	SetExceptionReporter:     ekuma.SetExceptionReporter,
 	RequestInterrupt:         ekuma.RequestInterrupt,
+	InterruptNow:             ekuma.InterruptNow,
 	DeferUnhandledRejections: ekuma.DeferUnhandledRejections,
 	TakeUnhandledRejection:   ekuma.TakeUnhandledRejection,
 }

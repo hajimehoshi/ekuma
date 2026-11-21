@@ -40,6 +40,7 @@ type V8 struct {
 	InvokeInRealm            func(context.Context, *ekuma.Realm, ekuma.Value) error
 	SetExceptionReporter     func(*ekuma.Realm, ekuma.Value)
 	RequestInterrupt         func(*ekuma.Realm, error) func()
+	InterruptNow             func(*ekuma.Realm, error)
 	DeferUnhandledRejections func(*ekuma.VM)
 	TakeUnhandledRejection   func(*ekuma.VM) error
 }

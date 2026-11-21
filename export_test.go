@@ -56,6 +56,13 @@ func RequestInterrupt(r *Realm, cause error) func() {
 	return func() { r.vm.interrupts.release(r.vm.e, &req) }
 }
 
+// InterruptNow interrupts the running JavaScript call with cause.
+func InterruptNow(r *Realm, cause error) {
+	withdraw := RequestInterrupt(r, cause)
+	defer withdraw()
+	r.vm.e.Poll()
+}
+
 // DeferUnhandledRejections postpones rejection reports until TakeUnhandledRejection.
 func DeferUnhandledRejections(vm *VM) {
 	vm.initIfNeeded()

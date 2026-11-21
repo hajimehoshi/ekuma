@@ -665,9 +665,6 @@ test/mjsunit/d8/d8-test-interceptor.js
 # This test requires d8.test.verifySourcePositions on a wrapped function.
 test/mjsunit/regress/regress-500174491.js
 
-# The dynamically imported module calls d8.terminateNow() for immediate termination.
-test/mjsunit/regress/regress-495503057.mjs
-
 # d8.profiler.setOnProfileEndListener registers a callback for the CPU profile
 # produced by console.profileEnd.
 test/mjsunit/regress/regress-1394663.js

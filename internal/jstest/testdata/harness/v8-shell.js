@@ -37,7 +37,7 @@
   };
 })(function (shell) {
   "use strict";
-  const {readFile, stdout, stderr, timer, exit, terminate, canAccessReceiver} = shell;
+  const {readFile, stdout, stderr, timer, exit, terminate, terminateNow, canAccessReceiver} = shell;
   const {now: timestamp, recordMark, lookupMark} = shell;
   const global = globalThis;
   const {Error, String, TypeError, Uint8Array} = global;
@@ -118,6 +118,7 @@
     };
   }
   d8.terminate = terminate;
+  d8.terminateNow = terminateNow;
   global.onerror = null;
 
   globalThis.readbuffer = function readbuffer(name = undefined) {

@@ -108,6 +108,10 @@ func (s *v8Shell) install(ctx context.Context, host *V8, r *ekuma.Realm, scripts
 		}
 		return ekuma.Undefined, nil
 	})
+	terminateNow := r.FuncOf("terminateNow", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		host.InterruptNow(r, errV8Termination)
+		return ekuma.Undefined, nil
+	})
 	checkReceiver := r.FuncOf("canAccessReceiver", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return host.CanAccessReceiver(r, args[0]), nil
 	})
@@ -121,6 +125,7 @@ func (s *v8Shell) install(ctx context.Context, host *V8, r *ekuma.Realm, scripts
 		"timer":             r.FuncOf("timer", s.timer),
 		"exit":              exit,
 		"terminate":         terminate,
+		"terminateNow":      terminateNow,
 		"canAccessReceiver": checkReceiver,
 		"now":               now,
 		"recordMark":        r.FuncOf("recordMark", s.mark),
@@ -318,9 +323,10 @@ func (host *V8) CheckTermination(t *testing.T) {
 		}
 	})
 	for _, tc := range []struct {
-		name   string
-		script string
-		want   suiteOutcome
+		name      string
+		script    string
+		want      suiteOutcome
+		wantPrint string
 	}{
 		{
 			name: "exception reporting before jobs",
@@ -341,6 +347,30 @@ func (host *V8) CheckTermination(t *testing.T) {
 				Promise.resolve().then(() => print("ran a job"));
 				d8.terminate();`,
 			want: suiteFailed,
+		},
+		{
+			name: "immediate termination at script end",
+			script: `
+				Promise.resolve().then(() => print("ran a job"));
+				d8.terminateNow();`,
+			want: suitePassed,
+		},
+		{
+			name: "immediate termination during dynamic import checkpoint",
+			script: `
+				function stop() {
+					setTimeout(() => print("ran a timer"));
+					Promise.resolve().then(() => print("ran a job"));
+					print("entered module");
+					try {
+						d8.terminateNow();
+						print("returned");
+					} catch { print("caught"); }
+					finally { print("ran finally"); }
+				}
+				import("data:text/javascript,stop()");`,
+			want:      suiteFailed,
+			wantPrint: "[entered module]",
 		},
 		{
 			name: "timer preserves earlier failure",
@@ -367,8 +397,8 @@ func (host *V8) CheckTermination(t *testing.T) {
 			if result.outcome != tc.want {
 				t.Errorf("outcome = %v, want %v (%s)", result.outcome, tc.want, result.reason)
 			}
-			if printed != "" {
-				t.Errorf("unexpected print: %q", printed)
+			if printed != tc.wantPrint {
+				t.Errorf("last print = %q, want %q", printed, tc.wantPrint)
 			}
 		})
 	}
