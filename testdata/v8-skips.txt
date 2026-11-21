@@ -604,7 +604,6 @@ test/mjsunit/regress/regress-2564.js
 test/mjsunit/regress/regress-437956096.js
 test/mjsunit/regress/regress-4640.js
 test/mjsunit/regress/regress-484904778.js
-test/mjsunit/regress/regress-499672315.js
 test/mjsunit/regress/regress-549231120.js
 test/mjsunit/regress/regress-5566.js
 test/mjsunit/regress/regress-6142.js
