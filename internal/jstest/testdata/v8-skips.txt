@@ -302,6 +302,10 @@ test/mjsunit/harmony/regexp-property-binary.js
 test/mjsunit/harmony/modules-import-attributes-4.mjs
 
 # These tests assert on V8's exception messages.
+test/mjsunit/duplicate-parameters.js
+test/mjsunit/error-tostring-omit.js
+test/mjsunit/es6/iteration-semantics.js
+test/mjsunit/es6/regexp-tostring.js
 test/mjsunit/es6/regress-arrow-cover-grammar-scope.js
 test/mjsunit/es6/regress-arrow-head-pattern-error-order.js
 test/mjsunit/es6/regress-arrow-reparse-strict-param.js
@@ -320,8 +324,12 @@ test/mjsunit/es6/regress-strict-param-error-order.js
 test/mjsunit/es6/regress-subpattern-validate-expression.js
 test/mjsunit/es6/regress-super-optional-chain.js
 test/mjsunit/es6/regress-yield-expression-scope.js
+test/mjsunit/es6/string-endswith.js
 test/mjsunit/es6/string-replace.js
+test/mjsunit/function-call.js
 test/mjsunit/harmony/array-sort-comparefn.js
+test/mjsunit/harmony/async-for-of-non-iterable.js
+test/mjsunit/harmony/bigint/tostring-toolong.js
 test/mjsunit/harmony/dataview-accessors.js
 test/mjsunit/harmony/index-fields-nonextensible-global-proxy.js
 test/mjsunit/harmony/private-accessors.js
@@ -333,13 +341,20 @@ test/mjsunit/harmony/set-intersection.js
 test/mjsunit/harmony/set-is-disjoint-from.js
 test/mjsunit/harmony/set-is-subset-of.js
 test/mjsunit/harmony/set-is-superset-of.js
+test/mjsunit/json-errors.js
+test/mjsunit/object-create.js
 test/mjsunit/object-define-property-length.js
+test/mjsunit/object-get-own-property-names.js
 test/mjsunit/parser/array-literal-fast-path.js
 test/mjsunit/regexp-static.js
 test/mjsunit/regexp-unicode-sets.js
+test/mjsunit/regress/regress-136048.js
 test/mjsunit/regress/regress-1494681.js
+test/mjsunit/regress/regress-1980.js
 test/mjsunit/regress/regress-375748220.js
 test/mjsunit/regress/regress-559408989.js
+test/mjsunit/regress/regress-6142.js
+test/mjsunit/regress/regress-633998.js
 test/mjsunit/regress/regress-852765.js
 test/mjsunit/regress/regress-crbug-1259950.js
 test/mjsunit/regress/regress-crbug-1278086.js
@@ -355,11 +370,12 @@ test/mjsunit/regress/regress-v8-12729-1.mjs
 test/mjsunit/regress/regress-v8-12729.mjs
 test/mjsunit/regress/regress-v8-13037.js
 test/mjsunit/set-prototype-of-Object_prototype.js
+test/mjsunit/weakrefs/basics.js
 
-# V8 expects a stack-overflow RangeError and its message when eval cannot
-# handle a deeply nested object literal. Ekuma's parser reports a SyntaxError
-# at its nesting limit.
+# Ekuma reports a SyntaxError at its parser nesting limit for eval source.
+# V8 expects a stack-overflow RangeError. big-object-literal also checks its message.
 test/mjsunit/big-object-literal.js
+test/mjsunit/regress/regress-1215653.js
 
 # CreateListFromArrayLike reads the ownKeys result in order. Index 3 is
 # missing, so undefined triggers a TypeError. V8 expects its allocation
@@ -408,70 +424,116 @@ test/mjsunit/regress/regress-567827593.js
 # effect. V8 expects an exception when the species returns the source array.
 test/mjsunit/regress/regress-crbug-1459172.js
 
-# These tests fail an mjsunit assertion.
-test/mjsunit/arguments-indirect.js
-test/mjsunit/array-tolocalestring.js
+# Date.parse uses implementation-defined fallback formats for these inputs. V8
+# accepts legacy dates with UT or GMT, padded fields, unsigned six-digit
+# years, and offsets without a colon.
 test/mjsunit/date-parse.js
-test/mjsunit/duplicate-parameters.js
-test/mjsunit/error-tostring-omit.js
-test/mjsunit/es6/block-sloppy-function.js
-test/mjsunit/es6/iteration-semantics.js
-test/mjsunit/es6/iterator-prototype.js
-test/mjsunit/es6/math-hypot.js
-test/mjsunit/es6/object-tostring.js
-test/mjsunit/es6/proxies-for.js
-test/mjsunit/es6/proxies-with-unscopables.js
-test/mjsunit/es6/regexp-tostring.js
-test/mjsunit/es6/string-endswith.js
-test/mjsunit/es6/unicode-regexp-ignore-case-noi18n.js
-test/mjsunit/eval-origin.js
-test/mjsunit/eval-stack-trace.js
-test/mjsunit/function-call.js
-test/mjsunit/harmony/async-for-of-non-iterable.js
-test/mjsunit/harmony/bigint/tostring-toolong.js
-test/mjsunit/harmony/function-tostring.js
-test/mjsunit/intl-numberformat-formattoparts.js
-test/mjsunit/json-errors.js
 test/mjsunit/json.js
-test/mjsunit/keyed-call-ic.js
-test/mjsunit/keyed-load-null-receiver.js
-test/mjsunit/mjsunit-assertion-error.js
-test/mjsunit/number-tostring-big-integer.js
-test/mjsunit/object-create.js
-test/mjsunit/object-get-own-property-names.js
-test/mjsunit/regress/regress-1170.js
-test/mjsunit/regress/regress-1215653.js
 test/mjsunit/regress/regress-12256.js
-test/mjsunit/regress/regress-124.js
-test/mjsunit/regress/regress-136048.js
-test/mjsunit/regress/regress-1980.js
-test/mjsunit/regress/regress-2564.js
-test/mjsunit/regress/regress-437956096.js
 test/mjsunit/regress/regress-4640.js
-test/mjsunit/regress/regress-484904778.js
-test/mjsunit/regress/regress-549231120.js
-test/mjsunit/regress/regress-5566.js
-test/mjsunit/regress/regress-6142.js
-test/mjsunit/regress/regress-633998.js
 test/mjsunit/regress/regress-857.js
-test/mjsunit/regress/regress-crbug-109362.js
-test/mjsunit/regress/regress-crbug-1105383.js
-test/mjsunit/regress/regress-crbug-364374.js
 test/mjsunit/regress/regress-crbug-422858.js
-test/mjsunit/regress/regress-crbug-487322.js
-test/mjsunit/regress/regress-declare-arguments-maybe-assigned.js
-test/mjsunit/regress/wasm/regress-1033948.js
-test/mjsunit/regress/wasm/regress-985154.js
-test/mjsunit/stack-traces-class-fields.js
-test/mjsunit/stack-traces-custom-lazy.js
-test/mjsunit/stack-traces.js
+
+# These tests expect d8's global object to stringify as [object global].
+# Object.prototype.toString gives Ekuma's global object the default Object
+# tag.
+test/mjsunit/es6/object-tostring.js
+test/mjsunit/keyed-call-ic.js
+test/mjsunit/regress/regress-124.js
 test/mjsunit/this.js
-test/mjsunit/wasm/wasm-default.js
-test/mjsunit/wasm/wasm-object-api.js
-test/mjsunit/weakrefs/basics.js
+
+# Ekuma's global object inherits directly from Object.prototype. Installing a
+# property on the global prototype also makes it visible to an ordinary with
+# object. Assignment to an inherited writable data property on the global
+# creates an own property.
+test/mjsunit/regress/regress-1170.js
+test/mjsunit/regress/regress-crbug-1105383.js
+
+# Annex B.3.2.1 preserves the arguments binding outside a block declaring a
+# function named arguments. V8 expects the function to replace the arguments
+# object.
+test/mjsunit/es6/block-sloppy-function.js
+test/mjsunit/regress/regress-declare-arguments-maybe-assigned.js
+
+# Sloppy functions have implementation-defined legacy arguments and caller
+# properties. V8 expects the original argument value through f.arguments and
+# omits these properties from the function's own keys.
+test/mjsunit/arguments-indirect.js
+test/mjsunit/regress/wasm/regress-985154.js
+
+# The element's toLocaleString returns an array. ToString of that result calls
+# join, which can finish by converting the element to [object Object]. V8
+# elides the nested array as a cycle.
+test/mjsunit/array-tolocalestring.js
+
+# Number::toString uses the shortest significand that rounds to the original
+# Number. V8's expected base-5 string rounds to a different Number.
+test/mjsunit/number-tostring-big-integer.js
+
+# Iterator.prototype has 16 own string keys in Ekuma. V8 expects 14.
+test/mjsunit/es6/iterator-prototype.js
+
+# EnumerateObjectProperties collects enumerable keys from the proxy's
+# prototype. V8 rechecks their enumerability through the proxy's descriptor
+# trap.
+test/mjsunit/es6/proxies-for.js
+
+# HasBinding and GetBindingValue each check the with object's property. V8
+# expects a single has trap before get.
+test/mjsunit/es6/proxies-with-unscopables.js
+
+# GetValue caches the converted property key in the reference used by
+# PutValue. V8 expects compound assignment to convert the key twice.
+test/mjsunit/keyed-load-null-receiver.js
+
+# Canonicalize uses Unicode simple case folding with the u and i flags. This
+# test expects V8's behavior when built without internationalization.
+test/mjsunit/es6/unicode-regexp-ignore-case-noi18n.js
+
+# Function.prototype.toString returns the available source text. V8 falls back
+# to native function syntax for a large source offset.
+test/mjsunit/harmony/function-tostring.js
+
+# ECMA-402 leaves number symbols to the locale data. Ekuma includes the Arabic
+# letter marks in the minus and percent sign parts. V8 expects separate
+# literal parts.
+test/mjsunit/intl-numberformat-formattoparts.js
+
+# CreateDateTimeFormat as amended by Temporal preserves the supplied IANA
+# identifier. V8 expects aliases for the same zone to resolve to one spelling.
+test/mjsunit/regress/regress-crbug-364374.js
+test/mjsunit/regress/regress-crbug-487322.js
+
+# UpdateLanguageId accepts the posix variant. UTS 35 maps POSIX to the va
+# extension during locale identifier conversion. V8 expects that conversion
+# when constructing Intl.Locale.
+test/mjsunit/regress/regress-549231120.js
+
+# The RegExp legacy static accessors check their receiver, and only input and
+# its alias have setters. V8 accepts other receivers and expects setters on
+# the read-only captures.
+test/mjsunit/fuzz-accessors.js
+test/mjsunit/regress/regress-5566.js
+
+# Ekuma rejects the pattern at its regexp nesting limit. V8 expects its own
+# regexp compiler's error text.
+test/mjsunit/regress/regress-484904778.js
+
+# The module expects the d8 host to supply import.meta.url.
+test/mjsunit/harmony/modules-import-meta.mjs
+
+# The test throws an object whose toString expects d8.terminate to stop
+# execution while the host reports the exception.
+test/mjsunit/regress/regress-523435063.js
 
 # These tests require V8's stack trace API.
 test/mjsunit/cross-realm-callsite.js
+test/mjsunit/error-constructors.js
+test/mjsunit/eval-origin.js
+test/mjsunit/eval-stack-trace.js
+test/mjsunit/mjsunit-assertion-error.js
+test/mjsunit/regress/regress-2564.js
+test/mjsunit/regress/regress-3404.js
 test/mjsunit/regress/regress-3718.js
 test/mjsunit/regress/regress-450328966.js
 test/mjsunit/regress/regress-5245.js
@@ -481,6 +543,7 @@ test/mjsunit/regress/regress-561672123.js
 test/mjsunit/regress/regress-576225189.js
 test/mjsunit/regress/regress-596718.js
 test/mjsunit/regress/regress-693500.js
+test/mjsunit/regress/regress-crbug-109362.js
 test/mjsunit/regress/regress-crbug-1440685.js
 test/mjsunit/regress/regress-crbug-393988.js
 test/mjsunit/regress/regress-crbug-435825.js
@@ -488,6 +551,9 @@ test/mjsunit/regress/regress-crbug-489597.js
 test/mjsunit/regress/regress-crbug-505370.js
 test/mjsunit/regress/regress-crbug-599067.js
 test/mjsunit/regress/regress-v8-7848.js
+test/mjsunit/stack-traces-class-fields.js
+test/mjsunit/stack-traces-custom-lazy.js
+test/mjsunit/stack-traces.js
 
 # These tests require access checks on private elements of foreign globals.
 test/mjsunit/regress/regress-crbug-1321899-5.js
@@ -545,6 +611,7 @@ test/mjsunit/regress/wasm/regress-1026680.js
 test/mjsunit/regress/wasm/regress-1027410.js
 test/mjsunit/regress/wasm/regress-1029642.js
 test/mjsunit/regress/wasm/regress-10309.js
+test/mjsunit/regress/wasm/regress-1033948.js
 test/mjsunit/regress/wasm/regress-1034394.js
 test/mjsunit/regress/wasm/regress-1045225.js
 test/mjsunit/regress/wasm/regress-1045737.js
@@ -1099,10 +1166,12 @@ test/mjsunit/wasm/unicode.js
 test/mjsunit/wasm/unreachable-validation.js
 test/mjsunit/wasm/unreachable.js
 test/mjsunit/wasm/wasm-api-overloading.js
+test/mjsunit/wasm/wasm-default.js
 test/mjsunit/wasm/wasm-gc-externalize-internalize.js
 test/mjsunit/wasm/wasm-gc-js-ref.js
 test/mjsunit/wasm/wasm-gc-source-location.js
 test/mjsunit/wasm/wasm-invalid-local.js
+test/mjsunit/wasm/wasm-object-api.js
 test/mjsunit/wasm/wasm-to-js-i32-cond.js
 test/mjsunit/wasm/worker-module.js
 test/mjsunit/wasm/worker-running-empty-loop-interruptible.js
@@ -1132,6 +1201,7 @@ test/mjsunit/regress/regress-1353555.js
 test/mjsunit/regress/regress-1415210.js
 test/mjsunit/regress/regress-1502014.js
 test/mjsunit/regress/regress-368467195.js
+test/mjsunit/regress/regress-437956096.js
 test/mjsunit/regress/regress-439522866.js
 test/mjsunit/regress/regress-558005441.js
 test/mjsunit/regress/regress-566974863.js
@@ -1204,16 +1274,9 @@ test/mjsunit/wasm/async-compile.js
 test/mjsunit/regress/regress-575524702.js
 test/mjsunit/regress/regress-v8-5009.js
 
-# These tests throw before completing their assertions.
-test/mjsunit/error-constructors.js
-test/mjsunit/fuzz-accessors.js
-test/mjsunit/harmony/modules-import-meta.mjs
-test/mjsunit/regress/regress-3404.js
-test/mjsunit/regress/regress-523435063.js
-test/mjsunit/test-builtins-setup.js
-
-# This test requires Intl.v8BreakIterator.
+# These tests require Intl.v8BreakIterator.
 test/mjsunit/regress/regress-crbug-714696.js
+test/mjsunit/test-builtins-setup.js
 
 # V8 marks the bugs directory as expected to fail.
 test/mjsunit/bugs/bug-1344252.js

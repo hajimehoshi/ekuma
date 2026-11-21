@@ -1036,7 +1036,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	iter("entries", engine.IterateEntries)
 	vm.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, iter("values", engine.IterateValues))
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
-	initArrayAdditions(vm, proto, &joins)
+	initArrayAdditions(vm, proto)
 }
 
 // newArrayOfLength checks that n is a valid array length as ArrayCreate does, and returns the storage
@@ -1051,7 +1051,7 @@ func newArrayOfLength(vm *engine.VM, n int64) []engine.Value {
 
 // initArrayAdditions defines copyWithin, toLocaleString, the methods that change an array by copy,
 // and Symbol.unscopables on Array.prototype.
-func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
+func initArrayAdditions(vm *engine.VM, proto *engine.Object) {
 	method(vm, proto, "copyWithin", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		n := vm.LengthOfArrayLike(o)
@@ -1084,12 +1084,13 @@ func initArrayAdditions(vm *engine.VM, proto *engine.Object, joins *joinGuard) {
 		return engine.ObjectValue(o)
 	})
 	toLocaleStringKey := vm.Intern("toLocaleString")
+	var localeJoins joinGuard
 	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
-		if !joins.enter(o) {
+		if !localeJoins.enter(o) {
 			return vm.NewString("")
 		}
-		defer joins.leave()
+		defer localeJoins.leave()
 		n := vm.LengthOfArrayLike(o)
 		return joinElements(vm, o, n, ",", toLocaleStringKey)
 	})

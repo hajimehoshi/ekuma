@@ -269,84 +269,66 @@ func NumberToRadixString(n float64, radix int) wtf8.String {
 	case n == 0:
 		return "0"
 	}
-	const digits = "0123456789abcdefghijklmnopqrstuvwxyz"
-	neg := n < 0
-	if neg {
-		n = -n
+	if n < 0 {
+		return "-" + NumberToRadixString(-n, radix)
 	}
-	ip := math.Floor(n)
-	fp := n - ip
+	if n <= MaxSafeInteger && math.Trunc(n) == n {
+		return wtf8.String(strconv.FormatUint(uint64(n), radix))
+	}
+	digits, exponent := shortestRadixDigits(n, radix)
+	if exponent >= 0 {
+		return wtf8.String(digits + strings.Repeat("0", exponent))
+	}
+	point := len(digits) + exponent
+	if point <= 0 {
+		return wtf8.String("0." + strings.Repeat("0", -point) + digits)
+	}
+	return wtf8.String(digits[:point] + "." + digits[point:])
+}
 
-	var sb strings.Builder
-	if neg {
-		sb.WriteByte('-')
-	}
-	if ip < 1<<63 {
-		sb.WriteString(strconv.FormatUint(uint64(ip), radix))
+// shortestRadixDigits returns the digits and exponent of the closest shortest radix representation of n.
+func shortestRadixDigits(n float64, radix int) (string, int) {
+	// Start with a grid coarser than the entire rounding interval, including
+	// at subnormal values. Each finer grid contains all the preceding points.
+	ulpExponent := max(math.Ilogb(n)-52, -1074)
+	exponent := int(math.Floor(float64(ulpExponent)/math.Log2(float64(radix)))) + 2
+	base := big.NewRat(int64(radix), 1)
+	var quantum big.Rat
+	if exponent >= 0 {
+		quantum.SetInt(new(big.Int).Exp(base.Num(), big.NewInt(int64(exponent)), nil))
 	} else {
-		i, _ := new(big.Float).SetFloat64(ip).Int(nil)
-		sb.WriteString(i.Text(radix))
+		quantum.SetFrac(big.NewInt(1), new(big.Int).Exp(base.Num(), big.NewInt(int64(-exponent)), nil))
 	}
-	if fp > 0 {
-		sb.WriteByte('.')
-		// Emit digits until the remaining fraction is below half of the distance to the next number.
-		delta := 0.5 * (math.Nextafter(n, math.Inf(1)) - n)
-		delta = math.Max(math.Nextafter(0, 1), delta)
-		r := float64(radix)
-		for {
-			fp *= r
-			delta *= r
-			d := int(fp)
-			sb.WriteByte(digits[d])
-			fp -= float64(d)
-			if fp > 0.5 || (fp == 0.5 && d&1 != 0) {
-				if fp+delta > 1 {
-					// Round up, carrying into the digits already written.
-					return wtf8.String(roundUpRadix(sb.String(), radix))
+	var scaled big.Rat
+	scaled.Quo(scaled.SetFloat64(n), &quantum)
+	one := big.NewInt(1)
+	var below, above, remainder big.Int
+	var candidate big.Rat
+	for {
+		below.QuoRem(scaled.Num(), scaled.Denom(), &remainder)
+		// A subnormal can round from one digit on either side of a radix
+		// power. Compare both at the position of its first nonzero digit.
+		if below.Sign() > 0 {
+			above.Add(&below, one)
+			near, far := &below, &above
+			half := remainder.Lsh(&remainder, 1).Cmp(scaled.Denom())
+			if half > 0 || half == 0 && below.Bit(0) != 0 {
+				near, far = far, near
+			}
+			// At a power of two the rounding interval can be asymmetric.
+			for _, significand := range [...]*big.Int{near, far} {
+				candidate.Mul(candidate.SetInt(significand), &quantum)
+				if rounded, _ := candidate.Float64(); rounded == n {
+					digits := significand.Text(radix)
+					significant := strings.TrimRight(digits, "0")
+					return significant, exponent + len(digits) - len(significant)
 				}
 			}
-			if fp < delta {
-				break
-			}
 		}
+		exponent--
+		quantum.Quo(&quantum, base)
+		scaled.Mul(&scaled, base)
 	}
-	return wtf8.String(sb.String())
-}
-
-// roundUpRadix adds one unit in the last place to the radix string s.
-func roundUpRadix(s string, radix int) string {
-	const digits = "0123456789abcdefghijklmnopqrstuvwxyz"
-	b := []byte(s)
-	for i := len(b) - 1; i >= 0; i-- {
-		c := b[i]
-		if c == '.' || c == '-' {
-			continue
-		}
-		d := DigitValue(c) + 1
-		if d < radix {
-			b[i] = digits[d]
-			return strings.TrimRight(trimFraction(string(b)), ".")
-		}
-		b[i] = '0'
-	}
-	// Every digit carried.
-	neg := len(b) > 0 && b[0] == '-'
-	if neg {
-		b = b[1:]
-	}
-	out := "1" + string(b)
-	if neg {
-		out = "-" + out
-	}
-	return strings.TrimRight(trimFraction(out), ".")
-}
-
-// trimFraction removes trailing zeros after the radix point of s.
-func trimFraction(s string) string {
-	if !strings.Contains(s, ".") {
-		return s
-	}
-	return strings.TrimRight(s, "0")
 }
 
 // ToInt32 implements ToInt32 for a number.

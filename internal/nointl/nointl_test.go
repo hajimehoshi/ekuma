@@ -47,6 +47,24 @@ func TestToLocaleStringWithoutIntl(t *testing.T) {
 	}
 }
 
+func TestArrayToLocaleStringCallsJoinWithoutIntl(t *testing.T) {
+	var vm ekuma.VM
+	v, err := runScript(&vm, `
+		const element = {
+			toLocaleString() { return array; },
+			toString() { return "element"; }
+		};
+		const array = [element];
+		array.toLocaleString();
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "element"; got != want {
+		t.Errorf("array.toLocaleString() = %q, want %q", got, want)
+	}
+}
+
 func TestDateAndTemporalToLocaleStringWithoutIntl(t *testing.T) {
 	var vm ekuma.VM
 	vm.SetTimeZone(time.UTC)

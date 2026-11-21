@@ -543,17 +543,28 @@ func initMath(vm *engine.VM) {
 		return engine.Number(sumPrecise(vm, arg(args, 0)))
 	})
 	method(vm, m, "hypot", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		var r float64
+		var scale, sum, correction float64
 		var inf, nan bool
 		for _, a := range args {
-			n := vm.ToNumber(a)
+			n := math.Abs(vm.ToNumber(a))
 			switch {
 			case math.IsInf(n, 0):
 				inf = true
 			case math.IsNaN(n):
 				nan = true
-			default:
-				r = math.Hypot(r, n)
+			case n != 0:
+				// The sum and its rounding correction are in units of scale².
+				if n > scale {
+					ratio := scale / n
+					sum = sum * ratio * ratio
+					correction = correction * ratio * ratio
+					scale = n
+				}
+				scaled := n / scale
+				term := scaled*scaled - correction
+				next := sum + term
+				correction = (next - sum) - term
+				sum = next
 			}
 		}
 		if inf {
@@ -562,7 +573,7 @@ func initMath(vm *engine.VM) {
 		if nan {
 			return engine.Number(math.NaN())
 		}
-		return engine.Number(r)
+		return engine.Number(scale * math.Sqrt(sum))
 	})
 }
 
