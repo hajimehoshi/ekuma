@@ -1005,15 +1005,20 @@ keys:
 }
 
 // takeDataProperties gives the empty ordinary object dst the properties of from and reports
-// true when creating them on dst one by one would give dst the shape of from. Otherwise it
-// does nothing and reports false.
+// true when creating them on dst one by one would give dst the shape and the elements of from.
+// Otherwise it does nothing and reports false.
 func takeDataProperties(dst, from *Object) bool {
 	s := takenShape(dst, from)
-	if s == nil {
+	if s == nil || slices.ContainsFunc(from.elems, Value.isHole) {
 		return false
 	}
 	dst.shape = s
 	dst.slots = append(dst.slots[:0], from.slots[:s.count]...)
+	// The keys of the elements come first, in index order, so the elements of dst are those of
+	// from.
+	if len(from.elems) != 0 {
+		dst.elems = slices.Clone(from.elems)
+	}
 	return true
 }
 
@@ -1021,7 +1026,7 @@ func takeDataProperties(dst, from *Object) bool {
 // Object.assign does, when that is known to run no code, and reports whether it did.
 func (vm *VM) AssignDataProperties(to, from *Object) bool {
 	s := takenShape(to, from)
-	if s == nil {
+	if s == nil || len(from.elems) != 0 {
 		return false
 	}
 	// Set creates an own data property on to unless the first property of the same key on
@@ -1043,16 +1048,16 @@ func (vm *VM) AssignDataProperties(to, from *Object) bool {
 }
 
 // takenShape returns the shape that dst, an empty ordinary object, would have after creating
-// the properties of from on it one by one, when that shape is the shape of from and from has
-// only enumerable, writable and configurable data properties with string keys. Otherwise it
-// returns nil.
+// the properties of from other than its elements on it one by one, when that shape is the shape
+// of from and from has only enumerable, writable and configurable data properties with string
+// keys besides its elements. Otherwise it returns nil.
 func takenShape(dst, from *Object) *shape {
 	if dst.kind != kindObject || dst.class != classObject || dst.flags&(objNotExtensible|objIsProto|objExotic|objSparse) != 0 || dst.shape.count != 0 || len(dst.elems) != 0 {
 		return nil
 	}
-	// An ordinary object without elements and not sparse has no property with an array index
-	// key, so its keys are in insertion order, which is the order of its slots.
-	if from.kind != kindObject || from.class != classObject || from.flags&(objExotic|objSparse) != 0 || len(from.elems) != 0 {
+	// An ordinary object that is not sparse has the properties with array index keys in its
+	// elements, and the others in insertion order, which is the order of its slots.
+	if from.kind != kindObject || from.class != classObject || from.flags&(objExotic|objSparse) != 0 {
 		return nil
 	}
 	s := from.shape
