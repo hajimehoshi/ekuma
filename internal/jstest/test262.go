@@ -602,8 +602,8 @@ func runTest(h *harness, path string, timeout time.Duration) suiteResult {
 }
 
 // CheckExpectedFailureWithMissingInclude checks that an expected failure still requires a working harness.
-func (suite *Test262) CheckExpectedFailureWithMissingInclude(t *testing.T, harnessFS fs.FS) {
-	h := suite.newHarness(harnessFS)
+func (suite *Test262) CheckExpectedFailureWithMissingInclude(t *testing.T) {
+	h := suite.newHarness(localTest262HarnessFS{})
 	test := test262Test{
 		path: "missing-include.js",
 		src:  "throw new Error();",

@@ -4,7 +4,6 @@
 package ekuma_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma"
@@ -22,22 +21,20 @@ var v8Runner = jstest.V8{
 	InstallGlobalProxy: ekuma.InstallGlobalProxy,
 }
 
-var localHarness = os.DirFS("testdata/harness")
-
 func TestTest262(t *testing.T) {
 	test262Runner.Run(t)
 }
 
 func TestScripts(t *testing.T) {
-	test262Runner.RunScripts(t, "testdata/scripts", localHarness)
+	test262Runner.RunScripts(t, "testdata/scripts")
 }
 
 func TestLocalScriptHarness(t *testing.T) {
-	test262Runner.CheckLocalScriptHarness(t, localHarness)
+	test262Runner.CheckLocalScriptHarness(t)
 }
 
 func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
-	test262Runner.CheckExpectedFailureWithMissingInclude(t, localHarness)
+	test262Runner.CheckExpectedFailureWithMissingInclude(t)
 }
 
 func TestV8(t *testing.T) {

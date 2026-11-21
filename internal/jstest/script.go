@@ -10,9 +10,19 @@ import (
 	"testing"
 )
 
-// RunScripts runs the JavaScript files under the repository-relative scriptsDir using harnessFS.
-func (suite *Test262) RunScripts(t *testing.T, scriptsDir string, harnessFS fs.FS) {
-	h := suite.newHarness(harnessFS)
+// localTest262HarnessFS resolves upstream Test262 include names to Ekuma's local helpers.
+type localTest262HarnessFS struct{}
+
+func (localTest262HarnessFS) Open(name string) (fs.File, error) {
+	if name == "doneprintHandle.js" {
+		name = "done-print-handle.js"
+	}
+	return os.DirFS(testdataDir + "/harness").Open("test262-" + name)
+}
+
+// RunScripts runs the JavaScript files under the repository-relative scriptsDir.
+func (suite *Test262) RunScripts(t *testing.T, scriptsDir string) {
+	h := suite.newHarness(localTest262HarnessFS{})
 	scriptFS := os.DirFS(".")
 	err := fs.WalkDir(scriptFS, scriptsDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -48,8 +58,8 @@ func (suite *Test262) RunScripts(t *testing.T, scriptsDir string, harnessFS fs.F
 }
 
 // CheckLocalScriptHarness checks the local harness's assertions and asynchronous completion.
-func (suite *Test262) CheckLocalScriptHarness(t *testing.T, harnessFS fs.FS) {
-	h := suite.newHarness(harnessFS)
+func (suite *Test262) CheckLocalScriptHarness(t *testing.T) {
+	h := suite.newHarness(localTest262HarnessFS{})
 	for _, tt := range []struct {
 		name         string
 		src          string

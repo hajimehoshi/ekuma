@@ -2,9 +2,9 @@
 
 These engine regression tests use Test262 front matter and an original 0BSD assertion harness.
 They complement the external conformance suite, including implementation-specific
-behavior and extensions. The Go runner reads the scripts and local harness
-from `testdata` using `os.DirFS`. They run with `go test -short ./...` without a
-Test262 checkout.
+behavior and extensions. The local runner loads the `test262-*.js` helpers from
+the [harness directory](../../internal/jstest/testdata/harness/).
+These tests run with `go test -short ./...` without a Test262 checkout.
 
 Put each test in a descriptive `.js` file grouped by feature. Use `assert.sameValue` for assertions and `negative` metadata for an uncaught
 expected error. The local harness implements only `assert.sameValue`,
