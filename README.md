@@ -204,7 +204,8 @@ import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
 Without the import, these features do not contribute to binary size. With it, a hello-world
-program grows from about 8.9 MiB to 16.0 MiB natively, and from 11.4 MiB to 18.8 MiB with `GOOS=js`.
+program grows from about 9.1 MiB to 17.2 MiB on macOS arm64, and from 12.0 MiB to 20.4 MiB
+with `GOOS=js`.
 
 Set the VM default locale with `vm.SetLocale("ja-JP")`; `vm.SetLocale("")` restores
 the host default. Explicit JavaScript locale arguments take precedence, and existing
@@ -221,8 +222,8 @@ The native locale calls on Apple platforms and Android use purego. Android build
 with `CGO_ENABLED=0` use only the locale environment variables. iOS builds require
 `CGO_ENABLED=1`; macOS supports `CGO_ENABLED=0`.
 
-Programs using the package must include the license notice for its locale data:
-see [License](#license).
+Programs using the package must include the notices for its locale data and word dictionaries.
+See [License](#license).
 
 ### Agents
 
@@ -269,8 +270,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root
-- `Intl.Segmenter` follows UAX #29 without dictionaries, so it does not split Chinese, Japanese
-  or Thai text into words
+- `Intl.Segmenter` uses dictionary word boundaries for Thai and Han text in every locale.
+  It follows the default UAX #29 rules for other scripts, including Japanese kana
 - `Intl.DisplayNames` gives the code of a language, or `undefined` with `fallback: "none"`, when
   one of its subtags has no name, where ICU names the other subtags
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
@@ -344,10 +345,7 @@ an unexpected pass or a stale path fails the suite. In the V8 list, a
 
 ## License
 
-Ekuma is under [0BSD](LICENSE), except for the data of the
-[Unicode Common Locale Data Repository](https://cldr.unicode.org/) in `internal/unicode/cldr`
-and its collation data in `internal/unicode/collation`, which are under the Unicode License v3
-([license](internal/unicode/cldr/LICENSE), [license](internal/unicode/collation/LICENSE)). Only
-the optional package `github.com/hajimehoshi/ekuma/intl` includes this data, so only a program
-that imports that package must include the copyright and permission notice of the Unicode
-License v3 with its copies or in their documentation.
+Ekuma's code is under [0BSD](LICENSE). Programs that import the optional
+`github.com/hajimehoshi/ekuma/intl` package must include the
+[notices for the CLDR data and ICU4C word dictionaries](internal/unicode/LICENSE)
+with their distributions.

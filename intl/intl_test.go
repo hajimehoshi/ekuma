@@ -197,6 +197,12 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 			want: "1.234,5,1 50%",
 		},
 		{
+			name: "Thai and Chinese word iteration",
+			src: `Array.from(new Intl.Segmenter(undefined, {granularity: "word"}).segment(
+				"😀เด็กๆกำลังเล่น，我研究生命起源。"), s => s.index + " " + s.segment).join("|")`,
+			want: "0 😀|2 เด็กๆ|7 กำลัง|12 เล่น|16 ，|17 我|18 研究|20 生命|22 起源|24 。",
+		},
+		{
 			name: "segment of a surrogate pair",
 			src: `(() => {
 				const s = new Intl.Segmenter("en", {granularity: "word"}).segment("a \u{1F600}b");

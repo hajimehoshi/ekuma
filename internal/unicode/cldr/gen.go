@@ -3,8 +3,7 @@
 
 //go:build ignore
 
-// This program generates the tables of package cldr from a CLDR release, and LICENSE, the
-// license of the CLDR data that the tables carry. Run it with go generate.
+// This program generates the tables of package cldr from a CLDR release. Run it with go generate.
 //
 // It reads the JSON data of the release (cldr-json, as published on npm) and, for collation and
 // the number symbols that cldr-json leaves out of the root locale, the XML data of the release.
@@ -31,6 +30,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldrgen"
 )
 
 const (
@@ -387,26 +388,6 @@ func (f *file) write() {
 	}
 }
 
-// unicodeLicense returns the copyright notice of the CLDR data and the text of its license,
-// the Unicode License v3, from the license text of the release.
-func unicodeLicense(text string) (copyright, license string) {
-	for l := range strings.Lines(text) {
-		if c, ok := strings.CutPrefix(strings.TrimSpace(l), "Copyright © "); ok {
-			copyright = c
-			break
-		}
-	}
-	// The license of the release also covers the text of UTS #35, which the data does not
-	// include. The Unicode License v3 starts at its notice to the user.
-	start := strings.Index(text, "NOTICE TO USER:")
-	end := strings.Index(text, "SPDX-License-Identifier: Unicode-3.0")
-	if copyright == "" || start < 0 || end < start {
-		log.Fatal("the license of the release is not the Unicode License v3")
-	}
-	license = "UNICODE LICENSE V3\n\nCOPYRIGHT AND PERMISSION NOTICE\n\nCopyright © " + copyright + "\n\n" + strings.TrimSpace(text[start:end]) + "\n"
-	return copyright, license
-}
-
 // keyword holds the BCP 47 data of a Unicode extension or transformed extension key.
 type keyword struct {
 	// values are the names of the values.
@@ -541,9 +522,9 @@ func main() {
 	collation := xmlFiles("common/collation")
 	jsonSource := "cldr-json " + jsonVersion
 
-	c, license := unicodeLicense(string(core["LICENSE"]))
-	copyright = c
-	if err := os.WriteFile("LICENSE", []byte(license), 0o644); err != nil {
+	var err error
+	copyright, err = cldrgen.Copyright(core["LICENSE"], "../LICENSE")
+	if err != nil {
 		log.Fatal(err)
 	}
 	kws := keywords(bcp47)

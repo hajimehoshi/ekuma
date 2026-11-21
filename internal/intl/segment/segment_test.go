@@ -46,7 +46,13 @@ func TestBoundaries(t *testing.T) {
 			name: "katakana and ideographs",
 			g:    segment.Word,
 			in:   "カタカナ漢字",
-			want: []string{"カタカナ", "漢", "字"},
+			want: []string{"カタカナ", "漢字"},
+		},
+		{
+			name: "unknown Thai and supplementary Han words",
+			g:    segment.Word,
+			in:   "ฅฅฅกิน𠀀𠀁",
+			want: []string{"ฅฅฅ", "กิน", "𠀀", "𠀁"},
 		},
 		{
 			name: "sentences",
@@ -146,13 +152,21 @@ func TestBoundariesLongRuns(t *testing.T) {
 
 // TestBoundariesPoll checks that the poll function can stop a long input.
 func TestBoundariesPoll(t *testing.T) {
-	type stop struct{}
-	defer func() {
-		if _, ok := recover().(stop); !ok {
-			t.Errorf("Boundaries did not stop")
-		}
-	}()
-	segment.Boundaries(segment.Sentence, []rune(strings.Repeat(" ", 1<<20)), func() {
-		panic(stop{})
+	check := func(t *testing.T, g segment.Granularity, input string) {
+		t.Helper()
+		type stop struct{}
+		defer func() {
+			if _, ok := recover().(stop); !ok {
+				t.Errorf("Boundaries did not stop")
+			}
+		}()
+		segment.Boundaries(g, []rune(input), func() { panic(stop{}) })
+	}
+	t.Run("sentence", func(t *testing.T) {
+		check(t, segment.Sentence, strings.Repeat(" ", 1<<20))
+	})
+	t.Run("word dictionary", func(t *testing.T) {
+		// The input is short enough that only dictionary matching needs to poll.
+		check(t, segment.Word, strings.Repeat("研究生命起源", 1800))
 	})
 }

@@ -11,9 +11,8 @@
 // addition to ISO 8601.
 // Without the import, a VM has no Intl, and Temporal has only the ISO 8601 calendar.
 //
-// That data is under the Unicode License v3. A program that imports the package must include
-// the copyright and permission notice of that license, in internal/unicode/cldr/LICENSE and
-// internal/unicode/collation/LICENSE, with its copies or in their documentation.
+// Programs that import this package must distribute the notices for its CLDR data and
+// ICU4C word dictionaries in internal/unicode/LICENSE.
 //
 // [github.com/hajimehoshi/ekuma.VM.SetLocale] overrides the default locale.
 // Otherwise, the first nonempty LC_ALL,

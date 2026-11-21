@@ -6,8 +6,7 @@
 // Package collation holds the collation data of CLDR: the CLDR root collation and the
 // tailorings of the locales, generated from the XML release of CLDR.
 //
-// The tables are under the Unicode License v3, the license of the CLDR data, which is in the
-// file LICENSE of this directory. That license covers this package only.
+// The tables are under the Unicode License v3 in internal/unicode/LICENSE.
 //
 // A collation element (CE) of the root is a uint32: the primary weight in bits 16 to 31,
 // the secondary weight in bits 7 to 15, the tertiary weight in bits 2 to 6, and a tag in

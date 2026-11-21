@@ -76,7 +76,3 @@ test/intl/regress-412149700.js
 # ECMA-402 uses IANA Zone and Link names. Ekuma rejects US/Pacific-New, which
 # is absent from its time zone database. V8 expects the name to be accepted.
 test/intl/regress-364374.js
-
-# ECMA-402 leaves word boundaries implementation-dependent. Ekuma follows the
-# default Unicode UAX #29 rules. V8 expects ICU's dictionary-based segmentation.
-test/intl/segmenter/word-containing.js

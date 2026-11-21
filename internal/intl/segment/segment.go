@@ -3,7 +3,7 @@
 
 //go:generate go run gen.go
 
-// Package segment implements the grapheme cluster, word and sentence boundaries of UAX #29.
+// Package segment implements UAX #29 segmentation with dictionary word boundaries for Thai and Han text.
 package segment
 
 import (
@@ -119,12 +119,16 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 	if len(rs) == 0 {
 		return nil
 	}
+	var dictionaryWords bool
 	ps := make([]uint16, len(rs))
 	for i, r := range rs {
 		if poll != nil && i%pollSteps == pollSteps-1 {
 			poll()
 		}
 		ps[i] = props(r)
+		if g == Word && !dictionaryWords && scriptOf(r) != otherScript {
+			dictionaryWords = true
+		}
 	}
 	var gs graphemeState
 	var ws wordState
@@ -158,7 +162,11 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 			bs = append(bs, int32(i))
 		}
 	}
-	return append(bs, int32(len(rs)))
+	bs = append(bs, int32(len(rs)))
+	if dictionaryWords {
+		return dictionaryBoundaries(rs, ps, bs, poll)
+	}
+	return bs
 }
 
 // Indic conjunct states of graphemeState.

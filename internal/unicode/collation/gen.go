@@ -3,8 +3,7 @@
 
 //go:build ignore
 
-// This program generates the tables of package collation from the XML release of CLDR, and
-// LICENSE, the license of the CLDR data that the tables carry. Run it with go generate.
+// This program generates the tables of package collation from the XML release of CLDR. Run it with go generate.
 //
 // The root collation comes from common/uca/allkeys_CLDR.txt, and the script groups and the
 // implicit weights of the scripts without explicit weights from common/uca/FractionalUCA.txt.
@@ -34,6 +33,8 @@ import (
 	"unicode"
 
 	"golang.org/x/text/unicode/norm"
+
+	"github.com/hajimehoshi/ekuma/internal/unicode/cldrgen"
 )
 
 const xmlVersion = "49"
@@ -122,26 +123,6 @@ func readRelease() *release {
 		log.Fatal("the release lacks allkeys_CLDR.txt, FractionalUCA.txt or LICENSE")
 	}
 	return r
-}
-
-// unicodeLicense returns the copyright notice of the CLDR data and the text of its license,
-// the Unicode License v3, from the license text of the release.
-func unicodeLicense(text string) (copyright, license string) {
-	for l := range strings.Lines(text) {
-		if c, ok := strings.CutPrefix(strings.TrimSpace(l), "Copyright © "); ok {
-			copyright = c
-			break
-		}
-	}
-	// The license of the release also covers the text of UTS #35, which the data does not
-	// include. The Unicode License v3 starts at its notice to the user.
-	start := strings.Index(text, "NOTICE TO USER:")
-	end := strings.Index(text, "SPDX-License-Identifier: Unicode-3.0")
-	if copyright == "" || start < 0 || end < start {
-		log.Fatal("the license of the release is not the Unicode License v3")
-	}
-	license = "UNICODE LICENSE V3\n\nCOPYRIGHT AND PERMISSION NOTICE\n\nCopyright © " + copyright + "\n\n" + strings.TrimSpace(text[start:end]) + "\n"
-	return copyright, license
 }
 
 // rootCE is a collation element of the root with the weights of allkeys_CLDR.txt.
@@ -1711,7 +1692,10 @@ func main() {
 	flag.Parse()
 	rel := readRelease()
 	r := parseRoot(rel)
-	copyright, license := unicodeLicense(string(rel.license))
+	copyright, err := cldrgen.Copyright(rel.license, "../LICENSE")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// The root trie: stage 1 by code point >> 10, stage 2 blocks of 32 entries by
 	// (code point >> 5) & 31, and leaves of 32 values.
@@ -1937,9 +1921,6 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := os.WriteFile("tables.go", out, 0o644); err != nil {
-		log.Fatal(err)
-	}
-	if err := os.WriteFile("LICENSE", []byte(license), 0o644); err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("root %d bytes (%d leaves, %d mids, %d expansion words, %d contraction words), %d tailorings in %d bytes",
