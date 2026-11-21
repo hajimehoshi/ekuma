@@ -38,12 +38,9 @@ func CanonicalizeUValue(key, value string) string {
 	return canonicalValue(key, strings.ToLower(value))
 }
 
-// ResolveLocale implements ResolveLocale of ECMA-402 for the canonical language tags
-// requested and the available locales. bestFit selects the "best fit" matcher, which is the
-// lookup matcher.
+// ResolveLocale resolves the requested canonical tags and extension keys using best fit or lookup.
 func ResolveLocale(requested []string, defaultLocale string, bestFit bool, keys []ExtensionKey) Resolution {
-	m := LookupMatcher(requested, defaultLocale)
-	found := m.Locale
+	found, request := matchRequested(requested, defaultLocale, bestFit)
 	r := Resolution{
 		DataLocale: found,
 	}
@@ -52,7 +49,7 @@ func ResolveLocale(requested []string, defaultLocale string, bestFit bool, keys 
 		values := k.Values(found)
 		value := values[0]
 		var keyword *Keyword
-		if v, ok := m.Requested.Keyword(k.Key); ok {
+		if v, ok := request.Keyword(k.Key); ok {
 			switch {
 			case v != "" && slices.Contains(values, v):
 				value = v

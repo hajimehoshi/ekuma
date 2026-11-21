@@ -49,6 +49,51 @@ func TestSetLocale(t *testing.T) {
 	}
 }
 
+func TestLocaleMatching(t *testing.T) {
+	var vm ekuma.VM
+	if err := vm.SetLocale("ja"); err != nil {
+		t.Fatal(err)
+	}
+	r := vm.InitialRealm()
+	for _, tc := range []struct {
+		matcher string
+		want    string
+	}{
+		{
+			matcher: "undefined",
+			want:    "fr-HT-u-nu-arab|ht-u-nu-arab",
+		},
+		{
+			matcher: "'best fit'",
+			want:    "fr-HT-u-nu-arab|ht-u-nu-arab",
+		},
+		{
+			matcher: "'lookup'",
+			want:    "ja|",
+		},
+	} {
+		got := evalLocale(t, r, `{
+			const options = {localeMatcher: `+tc.matcher+`};
+			const requests = ["ht-Cyrl-u-nu-thai", "HT-u-nu-arab"];
+			const locale = new Intl.NumberFormat(requests, options).resolvedOptions().locale;
+			locale + "|" + Intl.NumberFormat.supportedLocalesOf(requests, options).join();
+		}`)
+		if got != tc.want {
+			t.Errorf("localeMatcher %s: got %q, want %q", tc.matcher, got, tc.want)
+		}
+	}
+}
+
+func TestBestFitPrefersRequestedLanguage(t *testing.T) {
+	var vm ekuma.VM
+	got := evalLocale(t, vm.InitialRealm(), `
+		new Intl.NumberFormat(["co-u-nu-arab", "de-Latn-AT-u-nu-thai"]).resolvedOptions().locale
+	`)
+	if got != "de-AT-u-nu-thai" {
+		t.Errorf("resolved locale: got %q, want de-AT-u-nu-thai", got)
+	}
+}
+
 func TestSetLocaleChanges(t *testing.T) {
 	var vm, other ekuma.VM
 	if err := vm.SetLocale("en-US"); err != nil {

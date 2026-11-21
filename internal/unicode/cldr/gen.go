@@ -491,6 +491,48 @@ func keywords(files map[string][]byte) map[string]*keyword {
 	return kws
 }
 
+// writeLanguageMatches writes the related languages eligible for best-fit matching.
+func writeLanguageMatches(core map[string][]byte, source string) {
+	type match struct {
+		language string
+		distance int
+	}
+	matches := map[string][]match{}
+	rules := decode(core, "supplemental/languageMatching.json", "supplemental", "languageMatching", "written-new", "languageMatch")
+	for _, r := range rules.([]any) {
+		rule := object(r)
+		desired, supported := str(rule["_desired"]), str(rule["_supported"])
+		distance := int(rule["_distance"].(float64))
+		// Distances of 30 and above include broad fallbacks such as Klingon to English.
+		// Script and region are matched separately against the available locales.
+		if distance >= 30 || desired == "*" || strings.Contains(desired, "-") {
+			continue
+		}
+		matches[desired] = append(matches[desired], match{
+			language: supported,
+			distance: distance,
+		})
+		if rule["_oneway"] != true {
+			matches[supported] = append(matches[supported], match{
+				language: desired,
+				distance: distance,
+			})
+		}
+	}
+	related := map[string]string{}
+	for lang, ms := range matches {
+		slices.SortStableFunc(ms, func(a, b match) int { return a.distance - b.distance })
+		var languages []string
+		for _, m := range ms {
+			languages = append(languages, m.language)
+		}
+		related[lang] = strings.Join(languages, " ")
+	}
+	f := newFile("languagematching.go", source)
+	f.mapping("maps a desired language to related written languages in order of increasing distance, separated by spaces.", "LanguageMatches", related)
+	f.write()
+}
+
 func main() {
 	core := npmPackage("cldr-core")
 	bcp47 := npmPackage("cldr-bcp47")
@@ -526,6 +568,8 @@ func main() {
 	f = newFile("likelysubtags.go", jsonSource)
 	f.mapping("maps a language tag to its likely subtags.", "LikelySubtags", likely)
 	f.write()
+
+	writeLanguageMatches(core, jsonSource)
 
 	// Aliases.
 	f = newFile("aliases.go", jsonSource)

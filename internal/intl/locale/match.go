@@ -91,46 +91,129 @@ func BestAvailableLocale(s string) (string, bool) {
 	}
 }
 
-// Match is the result of matching requested locales against the available locales.
-type Match struct {
-	// Locale is the available locale that matched.
-	Locale string
-	// Requested is the requested locale that matched, or the default locale when none did.
-	Requested Tag
+type localeKey struct {
+	language string
+	script   string
+	region   string
 }
 
-// LookupMatcher implements LookupMatcher of ECMA-402 for the canonical language tags
-// requested, falling back to the available locale defaultLocale.
-func LookupMatcher(requested []string, defaultLocale string) Match {
+// likelyLocales indexes available locales by their likely subtags. An empty region
+// selects the first locale with the given language and script in CLDR order.
+var likelyLocales = sync.OnceValue(func() map[localeKey]string {
+	locales := map[localeKey]string{}
+	for i := range cldr.AvailableLocales.Len() {
+		name := cldr.AvailableLocales.At(i)
+		t, ok := Parse(name)
+		if !ok || t.Language == "und" || len(t.Variants) != 0 {
+			continue
+		}
+		id, ok := AddLikelySubtags(t.LanguageID)
+		if !ok {
+			continue
+		}
+		for _, region := range [...]string{id.Region, ""} {
+			key := localeKey{
+				language: id.Language,
+				script:   id.Script,
+				region:   region,
+			}
+			if locales[key] == "" {
+				locales[key] = name
+			}
+		}
+	}
+	return locales
+})
+
+// matchScriptRegion matches the maximized identifier want, returning prefix on a tie
+// or when no locale matches the script.
+func matchScriptRegion(want LanguageID, prefix string) string {
+	key := localeKey{
+		language: want.Language,
+		script:   want.Script,
+		region:   want.Region,
+	}
+	locales := likelyLocales()
+	regionMatch := locales[key]
+	if prefix != "" {
+		p, _ := Parse(prefix)
+		have, _ := AddLikelySubtags(p.LanguageID)
+		if have.Script == want.Script && (have.Region == want.Region || regionMatch == "") {
+			return prefix
+		}
+	}
+	if regionMatch != "" {
+		return regionMatch
+	}
+	key.region = ""
+	if l := locales[key]; l != "" {
+		return l
+	}
+	return prefix
+}
+
+// matchingLocale returns an available locale for t, or the empty string.
+// related reports whether the match is in a different language.
+func matchingLocale(t Tag, bestFit bool) (matched string, related bool) {
+	name := t.BaseName()
+	prefix, _ := BestAvailableLocale(name)
+	if !bestFit || prefix == name || t.Language == "und" {
+		return prefix, false
+	}
+	want, ok := AddLikelySubtags(t.LanguageID)
+	if !ok {
+		return prefix, false
+	}
+	if l := matchScriptRegion(want, prefix); l != "" {
+		return l, false
+	}
+	languages, _ := cldr.LanguageMatches.Lookup(want.Language)
+	for lang := range strings.FieldsSeq(languages) {
+		want.Language = lang
+		if l := matchScriptRegion(want, ""); l != "" {
+			return l, true
+		}
+	}
+	return "", false
+}
+
+// matchRequested returns the matched available locale and its corresponding request.
+func matchRequested(requested []string, defaultLocale string, bestFit bool) (string, Tag) {
+	var relatedLocale string
+	var relatedRequest Tag
 	for _, r := range requested {
 		t, ok := Parse(r)
 		if !ok {
 			continue
 		}
-		if l, ok := BestAvailableLocale(t.WithoutUnicode().String()); ok {
-			return Match{
-				Locale:    l,
-				Requested: t,
-			}
+		l, related := matchingLocale(t, bestFit)
+		if l == "" {
+			continue
+		}
+		if !related {
+			return l, t
+		}
+		// Prefer any requested language to a related language.
+		if relatedLocale == "" {
+			relatedLocale, relatedRequest = l, t
 		}
 	}
-	t, _ := Parse(defaultLocale)
-	return Match{
-		Locale:    defaultLocale,
-		Requested: t,
+	if relatedLocale != "" {
+		return relatedLocale, relatedRequest
 	}
+	t, _ := Parse(defaultLocale)
+	return defaultLocale, t
 }
 
-// SupportedLocales implements LookupSupportedLocales of ECMA-402 for the canonical language
-// tags requested: it returns those that an available locale matches.
-func SupportedLocales(requested []string) []string {
+// SupportedLocales returns the canonical requested tags that have an available match.
+func SupportedLocales(requested []string, bestFit bool) []string {
 	var out []string
 	for _, r := range requested {
 		t, ok := Parse(r)
 		if !ok {
 			continue
 		}
-		if _, ok := BestAvailableLocale(t.WithoutUnicode().String()); ok {
+		if l, _ := matchingLocale(t, bestFit); l != "" {
 			out = append(out, r)
 		}
 	}

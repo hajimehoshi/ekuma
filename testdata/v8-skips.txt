@@ -37,10 +37,6 @@ test/intl/date-format/check-ca-option.js
 test/intl/date-format/timezone.js
 test/intl/regress-1177623.js
 
-# ECMA-402 leaves the best-fit locale matcher implementation-defined. Ekuma uses
-# lookup matching. V8 expects matches between related languages.
-test/intl/localematcher/bestfit-supplemental-files.js
-
 # Ekuma follows ECMA-402 ResolvePlural and rounds the full input. V8 rounds the
 # scaled significand and uses the scientific exponent for CLDR's compact
 # exponent operand.

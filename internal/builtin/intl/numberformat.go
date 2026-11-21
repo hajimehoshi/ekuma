@@ -75,8 +75,8 @@ func localeMatcher(vm *engine.VM, options *engine.Object) bool {
 // supportedLocalesOf implements FilterLocales for the arguments of supportedLocalesOf.
 func supportedLocalesOf(vm *engine.VM, args []engine.Value) engine.Value {
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
-	localeMatcher(vm, optionsObject(vm, arg(args, 1)))
-	return stringArray(vm, locale.SupportedLocales(requested))
+	bestFit := localeMatcher(vm, optionsObject(vm, arg(args, 1)))
+	return stringArray(vm, locale.SupportedLocales(requested, bestFit))
 }
 
 // setDigitOptions implements SetNumberFormatDigitOptions.
