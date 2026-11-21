@@ -223,7 +223,7 @@ if (order !== 'HABA') throw new Error(order);`),
 	}
 }
 
-// CheckV8ScriptLoader checks nested script loads and error propagation through d8.file.execute.
+// CheckV8ScriptLoader checks d8 file lookups and nested script loads.
 func CheckV8ScriptLoader(t *testing.T) {
 	checkout := fstest.MapFS{
 		"helpers/append.mjs": {
@@ -237,6 +237,13 @@ func CheckV8ScriptLoader(t *testing.T) {
 		},
 		"helpers/invalid.js": {
 			Data: []byte("let x = ;"),
+		},
+		"nested": {
+			Mode: fs.ModeSymlink,
+			Data: []byte("helpers/subdir"),
+		},
+		"helpers/subdir": {
+			Mode: fs.ModeDir,
 		},
 	}
 	var vm ekuma.VM
@@ -266,6 +273,18 @@ func CheckV8ScriptLoader(t *testing.T) {
 		if (caught({toString() { throw token; }}) !== token) throw new Error('expected conversion exception');
 		if (!(caught('helpers/invalid.js') instanceof SyntaxError)) throw new Error('expected SyntaxError');
 		if (caught('missing.js')?.constructor !== Error) throw new Error('expected file error');
+		const exists = d8.file.exists;
+		const filename = {toString() { return './helpers/nested.js\x00suffix'; }};
+		if (!exists(filename) || !exists('nested/../../helpers/append.mjs') ||
+			exists('') || exists('missing/../helpers')) {
+			throw new Error('unexpected file lookup');
+		}
+		try {
+			exists({toString() { throw token; }});
+			throw new Error('expected filename conversion to throw');
+		} catch (e) {
+			if (e !== token) throw e;
+		}
 	`
 	if _, err := runScriptInRealm(ctx, realm, "test/mjsunit/loader.js", src); err != nil {
 		t.Error(err)
@@ -666,11 +685,69 @@ func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error
 	if err := global.Set("load", realm.FuncOf("load", execute)); err != nil {
 		return err
 	}
+	exists := func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if len(args) == 0 {
+			return nil, throw(errorCtor, "exists() takes one argument")
+		}
+		str, err := toString.Invoke(ctx, args[0])
+		if err != nil {
+			return nil, err
+		}
+		name, _, _ := strings.Cut(str.String(), "\x00")
+		return v8FileExists(s.checkout, name), nil
+	}
 	return global.Set("d8", realm.ValueOf(map[string]any{
 		"file": map[string]any{
 			"execute": realm.FuncOf("execute", execute),
+			"exists":  realm.FuncOf("exists", exists),
 		},
 	}))
+}
+
+func v8FileExists(checkout fs.FS, name string) bool {
+	name = filepath.ToSlash(name)
+	if name == "" || strings.HasPrefix(name, "/") || filepath.VolumeName(name) != "" {
+		return false
+	}
+	// io/fs takes clean names. Resolve links and check intervening directories
+	// before applying ".." or a trailing separator.
+	prefix := "."
+	var links int
+	for {
+		part, rest, more := strings.Cut(name, "/")
+		if part == ".." && prefix == "." {
+			return false
+		}
+		entry := path.Join(prefix, part)
+		info, err := fs.Lstat(checkout, entry)
+		if err != nil {
+			return false
+		}
+		if info.Mode()&fs.ModeSymlink != 0 {
+			target, err := fs.ReadLink(checkout, entry)
+			if err != nil {
+				return false
+			}
+			links++
+			target = filepath.ToSlash(target)
+			if links > 40 || target == "" || strings.HasPrefix(target, "/") || filepath.VolumeName(target) != "" {
+				return false
+			}
+			name = target
+			if more {
+				name += "/" + rest
+			}
+			continue
+		}
+		if more && !info.IsDir() {
+			return false
+		}
+		if !more {
+			return true
+		}
+		prefix = entry
+		name = rest
+	}
 }
 
 func (s *v8Scripts) runFile(ctx context.Context, timeouts *v8Timeouts, name, src string) suiteResult {

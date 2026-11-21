@@ -34,11 +34,12 @@ var v8ShellScript = sync.OnceValues(func() (*ekuma.UnboundScript, error) {
 type v8ExitCode int32
 
 type v8Shell struct {
-	stdout io.Writer
-	stderr io.Writer
-	origin time.Time
-	timers map[string]time.Time
-	marks  map[string]float64
+	stdout   io.Writer
+	stderr   io.Writer
+	origin   time.Time
+	timers   map[string]time.Time
+	marks    map[string]float64
+	domNodes ekuma.Value
 }
 
 func newV8Shell(stdout, stderr io.Writer) v8Shell {
@@ -96,7 +97,7 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, scripts *v8Script
 	now := r.FuncOf("now", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return s.timestamp(), nil
 	})
-	_, err = init.Invoke(ctx, map[string]any{
+	nodes, err := init.Invoke(ctx, map[string]any{
 		"readFile":          r.FuncOf("readFile", readFile),
 		"stdout":            r.FuncOf("stdout", write(s.stdout)),
 		"stderr":            r.FuncOf("stderr", write(s.stderr)),
@@ -108,8 +109,13 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, scripts *v8Script
 		"lookupMark":        r.FuncOf("lookupMark", s.lookupMark),
 		"osName":            v8OSName(),
 		"d8Path":            os.Args[0],
+		"domNodes":          s.domNodes,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	s.domNodes = nodes
+	return nil
 }
 
 func v8OSName() string {

@@ -660,27 +660,42 @@ test/mjsunit/regress/regress-crbug-9161.js
 test/mjsunit/regress/regress-v8-12219.js
 test/mjsunit/regress/regress-value-serializer.js
 
-# These tests require other d8 shell APIs.
-test/mjsunit/d8/d8-realm-shared-templates.js
+# These tests require d8.test.createAccessCheckedObject and Realm.shared.
+# d8-test-access-check also changes policies with d8.test.setAccessPolicy.
 test/mjsunit/d8/d8-test-access-check.js
+test/mjsunit/regress/regress-580533679.js
+
+# d8.test.createAccessCheckedInterceptorObject intercepts named reads when
+# access is denied. setAccessPolicy changes the policy on existing instances.
 test/mjsunit/d8/d8-test-access-checked-interceptor-object.js
+test/mjsunit/regress/regress-577242074.js
+
+# d8.test.createInterceptorObject installs a native named-property getter.
 test/mjsunit/d8/d8-test-interceptor.js
-test/mjsunit/d8/files/exists.js
+
+# This test requires d8.test.verifySourcePositions on a wrapped function.
+test/mjsunit/regress/regress-500174491.js
+
+# d8.profiler.setOnProfileEndListener registers a callback for the CPU profile
+# produced by console.profileEnd.
 test/mjsunit/regress/regress-1394663.js
+test/mjsunit/regress/regress-490446682.js
+
+# These tests require d8.serializer.serialize and deserialize. The crbug
+# cases modify the serialized bytes and expect the V8 decoder to reject them.
 test/mjsunit/regress/regress-14433.js
 test/mjsunit/regress/regress-40060821.js
-test/mjsunit/regress/regress-490446682.js
-test/mjsunit/regress/regress-500174491.js
-test/mjsunit/regress/regress-562529689.js
-test/mjsunit/regress/regress-577242074.js
-test/mjsunit/regress/regress-577255778.js
-test/mjsunit/regress/regress-580533679.js
-test/mjsunit/regress/regress-crbug-1057653.js
-test/mjsunit/regress/regress-crbug-1308360.js
 test/mjsunit/regress/regress-crbug-1381404.js
 test/mjsunit/regress/regress-crbug-1402139.js
-test/mjsunit/regress/regress-crbug-1509910.js
 test/mjsunit/value-serializer.js
+
+# These tests require d8.debugger.enable to run with the debugger active.
+test/mjsunit/regress/regress-562529689.js
+test/mjsunit/regress/regress-577255778.js
+
+# This test uses d8.constants.maxFixedArrayCapacity and expects key enumeration
+# to throw RangeError above V8's fixed-array capacity.
+test/mjsunit/regress/regress-crbug-1057653.js
 
 # These tests require performance.measureMemory(). regress-371237560 also
 # depends on asynchronous promise resolution.

@@ -172,6 +172,13 @@ func (host *V8) CheckRealm(t *testing.T) {
 		if (!Realm.eval(r, 'console.log instanceof Function && printErr instanceof Function')) {
 			throw Error("shell helpers installed in the wrong realm");
 		}
+		const Div = Realm.eval(r, "d8.dom.Div");
+		if (Div() !== Realm.global(r)) throw Error("wrong global receiver for Div()");
+		const unbranded = Object.create(Div.prototype);
+		try {
+			Div.call(unbranded).nodeType;
+			throw Error("calling Div branded its receiver");
+		} catch (e) { if (!(e instanceof Realm.eval(r, "TypeError"))) throw e; }
 		const mark = Realm.eval(r, 'performance.mark("child")');
 		if (performance.measure("elapsed", "child").startTime !== mark.startTime) {
 			throw Error("performance mark lost across realms");

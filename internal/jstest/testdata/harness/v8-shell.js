@@ -1,7 +1,41 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-(function (shell) {
+(function (installShell) {
+  return function (shell) {
+    installShell(shell);
+    // d8 creates fresh prototypes per realm and shares the node receiver brand.
+    const domNodes = shell.domNodes ?? new WeakSet();
+    const addNode = WeakSet.prototype.add.bind(domNodes);
+    const isNode = WeakSet.prototype.has.bind(domNodes);
+    const {TypeError} = globalThis;
+    // Template constructors use non-strict receiver conversion on ordinary calls.
+    function EventTarget() { return this; }
+    function nodeConstructor(parent, name) {
+      function ctor() {
+        if (new.target) addNode(this);
+        return this;
+      }
+      Object.defineProperty(ctor, "name", {value: name});
+      Object.setPrototypeOf(ctor.prototype, parent.prototype);
+      return ctor;
+    }
+    const Node = nodeConstructor(EventTarget, "");
+    Object.defineProperty(Node.prototype, "nodeType", {
+      get() {
+        if (!isNode(this)) throw new TypeError("Illegal invocation");
+        return 1;
+      },
+      enumerable: true, configurable: true,
+    });
+    const Element = nodeConstructor(Node, "");
+    const HTMLElement = nodeConstructor(Element, "");
+    d8.dom = {EventTarget, Div: nodeConstructor(HTMLElement, "Div")};
+    // Scripts can attach test state to this realm's d8.test object.
+    d8.test = {};
+    return domNodes;
+  };
+})(function (shell) {
   "use strict";
   const {readFile, stdout, stderr, timer, exit, canAccessReceiver} = shell;
   const {now: timestamp, recordMark, lookupMark} = shell;
