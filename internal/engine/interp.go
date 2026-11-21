@@ -942,6 +942,19 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = Bool((x.n == y.n) == (i.Op == bytecode.OpEq))
 				continue
 			}
+		case bytecode.OpNot:
+			// ToBoolean, for the kinds it can tell without a call, as in OpJumpIf.
+			if v := regs[i.B]; v.o == numberObject {
+				regs[i.A] = Bool(v.n == 0 || v.n != v.n)
+				continue
+			} else if o := v.o; o == nil || o.kind <= kindFalse {
+				regs[i.A] = Bool(true)
+				continue
+			} else if o.kind == kindTrue || o.kind >= kindObject {
+				// kindHTMLDDA is below kindObject and takes the slow path.
+				regs[i.A] = Bool(false)
+				continue
+			}
 		case bytecode.OpJump:
 			if int(i.A) >= pc || !vm.interrupt.Load() {
 				pc = int(i.A)
