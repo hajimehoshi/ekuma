@@ -441,14 +441,6 @@ test/mjsunit/regress/regress-4640.js
 test/mjsunit/regress/regress-857.js
 test/mjsunit/regress/regress-crbug-422858.js
 
-# These tests expect d8's global object to stringify as [object global].
-# Object.prototype.toString gives Ekuma's global object the default Object
-# tag.
-test/mjsunit/es6/object-tostring.js
-test/mjsunit/keyed-call-ic.js
-test/mjsunit/regress/regress-124.js
-test/mjsunit/this.js
-
 # Ekuma's global object inherits directly from Object.prototype. Installing a
 # property on the global prototype also makes it visible to an ordinary with
 # object. Assignment to an inherited writable data property on the global

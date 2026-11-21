@@ -183,6 +183,10 @@ func (host *V8) CheckRealm(t *testing.T) {
 		if (!Realm.eval(r, 'console.log instanceof Function && printErr instanceof Function')) {
 			throw Error("shell helpers installed in the wrong realm");
 		}
+		const tag = Realm.eval(r, "Object.getOwnPropertyDescriptor(globalThis, Symbol.toStringTag)");
+		if (!tag || tag.value !== "global" || !tag.writable || !tag.enumerable || !tag.configurable) {
+			throw Error("wrong global tag descriptor in child realm");
+		}
 		const Div = Realm.eval(r, "d8.dom.Div");
 		if (Div() !== Realm.global(r)) throw Error("wrong global receiver for Div()");
 		const unbranded = Object.create(Div.prototype);

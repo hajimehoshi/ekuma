@@ -120,6 +120,7 @@
   }
   d8.terminate = terminate;
   d8.terminateNow = terminateNow;
+  global[Symbol.toStringTag] = "global";
   global.onerror = null;
 
   globalThis.readbuffer = function readbuffer(name = undefined) {
