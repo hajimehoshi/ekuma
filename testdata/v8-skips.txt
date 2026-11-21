@@ -1,6 +1,7 @@
 # One checkout-relative V8 test path per line. A plain path runs as an expected
 # failure. Put "# SKIP: reason" directly above a path to skip execution.
 # An unexpected pass or a missing path fails the suite.
+# When Ekuma follows a specification, name the rule and what the test expects.
 
 # SKIP: requires a catchable stack limit
 test/intl/general/empty-handle.js
@@ -11,7 +12,8 @@ test/intl/overrides/caching.js
 # SKIP: requires a catchable stack limit
 test/intl/regress-1130489.js
 
-# These tests use V8's nonstandard Intl.v8BreakIterator constructor.
+# Ekuma implements the ECMA-402 Intl constructors. These tests also use
+# Intl.v8BreakIterator, a V8 extension.
 test/intl/break-iterator/default-locale.js
 test/intl/break-iterator/en-break.js
 test/intl/break-iterator/options.js
@@ -24,48 +26,61 @@ test/intl/default_locale.js
 test/intl/general/constructor.js
 test/intl/general/supported-locales-of.js
 
-# islamic-rgsa is the Saudi sighting calendar. Ekuma has no calendar of that
-# type, so ResolveLocale drops the extension for both en and ar.
+# Ekuma follows TC39's decision to ignore islamic-rgsa in Intl.DateTimeFormat.
+# ECMA-402 ResolveLocale omits the unsupported calendar from the resolved
+# locale. V8 expects both en and ar to retain the -u-ca-islamic-rgsa extension.
+# https://github.com/tc39/proposal-intl-era-monthcode/pull/99
 test/intl/date-format/check-ca-option.js
 
-# V8 canonicalizes GMT and Zulu to UTC.
+# Ekuma follows CreateDateTimeFormat as amended by Temporal and preserves the
+# supplied IANA identifier in resolvedOptions(). V8 expects UTC for GMT and Zulu.
 test/intl/date-format/timezone.js
 test/intl/regress-1177623.js
 
-# Ekuma uses lookup matching for the best-fit locale matcher.
+# ECMA-402 leaves the best-fit locale matcher implementation-defined. Ekuma uses
+# lookup matching. V8 expects matches between related languages.
 test/intl/localematcher/bestfit-supplemental-files.js
 
-# V8 uses the scientific exponent for CLDR's compact exponent operand and
-# rounds the scaled significand. ECMA-402 ResolvePlural rounds the full input.
+# Ekuma follows ECMA-402 ResolvePlural and rounds the full input. V8 rounds the
+# scaled significand and uses the scientific exponent for CLDR's compact
+# exponent operand.
 test/intl/plural-rules/select.js
 
-# The tests compare the wording of V8's exception messages.
+# ECMA-402 specifies the exception types for these errors and leaves the
+# message text to the implementation. The tests require V8's exact wording.
 test/intl/regress-10438.js
 test/intl/regress-10613.js
 test/intl/regress-9464.js
 test/intl/regress-9747.js
 
-# Umm al-Qura's civil fallback gives 16 and 17 Dhu al-Hijjah on July 22 and 23
-# of ISO year -195366. Arithmetic year -202003 is era year 202004 BH.
+# Ekuma follows the Intl Era and MonthCode rules for Umm al-Qura's civil
+# fallback and BH era. July 22 and 23 of ISO year -195366 fall on 16 and 17
+# Dhu al-Hijjah. Arithmetic year -202003 is era year 202004 BH.
 # CLDR 49 Arabic inherits "BH" from root. V8 expects -202003 with the AH label.
 test/intl/regress-10526.js
 
-# islamic resolves to islamic-tbla. Its epoch is 0622-07-18 (1 Muharram 1 AH),
-# so July 17 is 29 Dhu al-Hijjah 1 BH. V8 expects 30 Dhu al-Hijjah 0 AH.
+# Ekuma follows the Intl Era and MonthCode rule mapping islamic to islamic-tbla.
+# Its epoch is 0622-07-18 (1 Muharram 1 AH), so July 17 is 29 Dhu al-Hijjah
+# 1 BH. V8 expects 30 Dhu al-Hijjah 0 AH.
 # V8 expects both dates for islamic-rgsa too. Ekuma drops that unsupported
 # extension and formats July 17 and 18 in the default Gregorian calendar for ar.
 test/intl/regress-10527.js
 
-# V8 resolves America/Nuuk to the older America/Godthab. The pinned Test262
-# DateTimeFormat/timezone-case-insensitive.js requires America/Nuuk to survive.
+# Ekuma follows CreateDateTimeFormat as amended by Temporal and preserves
+# America/Nuuk in resolvedOptions(), as Test262 checks in
+# DateTimeFormat/timezone-case-insensitive.js. V8 expects America/Godthab.
 test/intl/regress-1074578.js
 
-# Ekuma accepts the language tag de-u-22300-true-x-true.
+# Ekuma follows the ECMA-402 language tag grammar. In de-u-22300-true-x-true,
+# 22300 and true are Unicode extension attributes and x-true is private use.
+# V8 expects a RangeError for this well-formed tag.
 test/intl/regress-1427932.js
 test/intl/regress-412149700.js
 
-# Ekuma rejects the obsolete US/Pacific-New time zone.
+# ECMA-402 uses IANA Zone and Link names. Ekuma rejects US/Pacific-New, which
+# is absent from its time zone database. V8 expects the name to be accepted.
 test/intl/regress-364374.js
 
-# Ekuma segments Thai words without ICU's dictionary.
+# ECMA-402 leaves word boundaries implementation-dependent. Ekuma follows the
+# default Unicode UAX #29 rules. V8 expects ICU's dictionary-based segmentation.
 test/intl/segmenter/word-containing.js

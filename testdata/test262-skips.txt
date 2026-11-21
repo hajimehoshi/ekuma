@@ -1,19 +1,22 @@
 # The test262 tests that are expected to fail, one path per line, each with the reason in a
 # comment above it. A skipped test still runs, and the test suite fails when it passes, so that
 # its line is removed.
+# When Ekuma follows a specification, name the rule and what the test expects.
 
-# The test expects the links of the IANA time zone database 2024b to 2026c from CST6CDT, EST5EDT,
-# MST7MDT and PST8PDT to America/Chicago, America/New_York, America/Denver and
-# America/Los_Angeles. Since 2026d these are zones again, "reverting to 2024a behavior", and the
-# test is stale. Remove this line when test262 updates the test.
+# Ekuma follows ECMA-402's rules for primary identifiers in the IANA time zone
+# database. From 2024b through 2026c, CST6CDT, EST5EDT, MST7MDT and PST8PDT
+# linked to America/Chicago, America/New_York, America/Denver and America/Los_Angeles,
+# respectively. Since 2026d these are zones again. The test expects the old links.
+# Remove this entry when test262 updates the test.
 test/intl402/Temporal/ZonedDateTime/links.js
 
-# The test expects Math.sinh to be as precise as fdlibm's, while the specification leaves the
-# precision to the implementation.
+# Ekuma follows ECMA-262, which leaves the approximation of Math.sinh to the
+# implementation. The test expects fdlibm's precision.
 test/staging/sm/Math/sinh-approx.js
 
-# The tests expect a function named arguments that is declared in a block to replace the
-# arguments object, as in SpiderMonkey. The specification does not hoist it over the arguments
-# object, as test/annexB/language/function-code/block-decl-func-skip-arguments.js checks.
+# Ekuma follows ECMA-262 Annex B and preserves the arguments object when a block
+# declares a function named arguments. These tests expect the function to replace
+# the arguments object, as in SpiderMonkey. The Annex B behavior is checked by
+# test/annexB/language/function-code/block-decl-func-skip-arguments.js.
 test/staging/sm/lexical-environment/block-scoped-functions-annex-b-arguments.js
 test/staging/sm/regress/regress-602621.js
