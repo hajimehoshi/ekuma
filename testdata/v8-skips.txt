@@ -32,9 +32,6 @@ test/intl/default_locale.js
 test/intl/general/constructor.js
 test/intl/general/supported-locales-of.js
 
-# With search usage, Ekuma reports the requested emoji collation.
-test/intl/collator/options.js
-
 # Ekuma drops the islamic-rgsa calendar extension from the resolved locale.
 test/intl/date-format/check-ca-option.js
 

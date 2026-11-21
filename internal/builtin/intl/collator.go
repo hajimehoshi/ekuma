@@ -39,9 +39,8 @@ func (cd *collatorData) compare(vm *engine.VM, x, y wtf8.String) int {
 	return cd.c.ComparePolled(wtf8.ToValidUTF8(x), wtf8.ToValidUTF8(y), vm.Poll)
 }
 
-// collationTypes returns the collation types of the locale l other than "standard" and
-// "search", after the empty string for the default one.
-func collationTypes(l string) []string {
+// sortCollationTypes returns the sort collations supported by l, with the default first.
+func sortCollationTypes(l string) []string {
 	t, ok := locale.Parse(l)
 	if !ok {
 		return []string{""}
@@ -66,15 +65,17 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 	}
 	kf, hasKf := getOption(vm, options, "caseFirst", "upper", "lower", "false")
 	typ := "standard"
+	coValues := sortCollationTypes
 	if usage == "search" {
 		typ = "search"
+		coValues = func(string) []string { return []string{""} }
 	}
 	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{
 		{
 			Key:       "co",
 			Option:    co,
 			HasOption: hasCo,
-			Values:    collationTypes,
+			Values:    coValues,
 		},
 		{
 			Key:       "kf",
@@ -134,7 +135,7 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 	case "variant":
 		o.Strength = 3
 	}
-	if typ == "standard" && cd.collation != "default" {
+	if cd.collation != "default" {
 		typ = cd.collation
 	}
 	cd.c = collate.New(dataLocale, typ, o)
