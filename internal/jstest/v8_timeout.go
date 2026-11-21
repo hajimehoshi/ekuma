@@ -116,6 +116,7 @@ func (host *V8) CheckTimeouts(t *testing.T) {
 		checkout := fstest.MapFS{
 			test.file: {
 				Data: []byte(`
+					// Flags: --ignore-unhandled-promises
 					setTimeout(() => { throw Error("timer exception"); });
 					setTimeout(() => print("continued"));`),
 			},
@@ -164,6 +165,13 @@ func (host *V8) CheckTimeouts(t *testing.T) {
 		result, _ := withHarness.execute(t.Context(), host, checkout, testTimeout)
 		if result.outcome != suiteFailed {
 			t.Errorf("outcome = %v, want failure", result.outcome)
+		}
+
+		file := checkout[test.file]
+		file.Data = append([]byte("// Flags: --ignore-unhandled-promises\n"), file.Data...)
+		result, _ = withHarness.execute(t.Context(), host, checkout, testTimeout)
+		if result.outcome != suitePassed {
+			t.Error(result.reason)
 		}
 	})
 }

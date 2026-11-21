@@ -278,11 +278,23 @@ test/mjsunit/regress/regress-crbug-869313.js
 
 # SKIP: requires d8 data URL module loading
 test/mjsunit/d8/modules-data-url.mjs
+test/mjsunit/harmony/modules-import-defer-terminate.mjs
 test/mjsunit/regress-367066330.js
+test/mjsunit/regress/modules-import-defer-cross-realm-synthetic.mjs
 test/mjsunit/regress/regress-438732677.js
 test/mjsunit/regress/regress-493591676.mjs
 test/mjsunit/regress/regress-495503057.mjs
 test/mjsunit/regress/regress-515494863.js
+test/mjsunit/regress/regress-572815316.js
+test/mjsunit/regress/regress-crbug-442161248.js
+
+# SKIP: --ignore-unhandled-promises suppresses the async assertion failure
+test/mjsunit/es8/async-await-interleaved.js
+
+# The test expects serialization to call a getter that rejects. Looking up
+# the missing serializer throws before the getter runs and satisfies assertThrowsAsync.
+# SKIP: requires d8.serializer to exercise the rejection
+test/mjsunit/harmony/regress/regress-418103036.js
 
 # The generated expression exceeds Ekuma's parser nesting limit.
 test/mjsunit/compiler/conditional-chain.js
@@ -333,6 +345,8 @@ test/mjsunit/harmony/set-intersection.js
 test/mjsunit/harmony/set-is-disjoint-from.js
 test/mjsunit/harmony/set-is-subset-of.js
 test/mjsunit/harmony/set-is-superset-of.js
+test/mjsunit/harmony/shadowrealm-evaluate.js
+test/mjsunit/harmony/shadowrealm-wrapped-function.js
 test/mjsunit/json-errors.js
 test/mjsunit/object-create.js
 test/mjsunit/object-define-property-length.js
@@ -362,6 +376,7 @@ test/mjsunit/regress/regress-v8-12729-1.mjs
 test/mjsunit/regress/regress-v8-12729.mjs
 test/mjsunit/regress/regress-v8-13037.js
 test/mjsunit/set-prototype-of-Object_prototype.js
+test/mjsunit/typedarray-constructor-mixed-bigint.js
 test/mjsunit/weakrefs/basics.js
 
 # Ekuma reports a SyntaxError at its parser nesting limit for eval source.
@@ -510,6 +525,34 @@ test/mjsunit/regress/regress-5566.js
 # regexp compiler's error text.
 test/mjsunit/regress/regress-484904778.js
 
+# Ekuma reports the rejected evaluation promise at the end of the test
+# after the script catches the exception from the deferred namespace.
+test/mjsunit/harmony/modules-import-defer-has-nonexistent-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-has-on-prototype-nonexistent-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-has-on-prototype-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-has-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-non-existant-field-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-nonexistent-on-prototype-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-on-prototype-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-prototype-swap-for-in-that-throws.mjs
+test/mjsunit/harmony/modules-import-defer-that-throws.mjs
+
+# d8 print converts its argument to a string, triggering deferred module
+# evaluation. Ekuma's print records the object without evaluating the module.
+test/mjsunit/harmony/modules-import-defer-throws-in-api-callback.mjs
+
+# V8 expects Iterator.concat to call the inner iterator's return method
+# when its next method throws. Ekuma propagates the exception directly.
+test/mjsunit/harmony/iterator-concat.js
+
+# The computed auto-accessor's getter string includes its name in Ekuma.
+# V8 expects an anonymous native function.
+test/mjsunit/harmony/regress-auto-accessor-tostring.js
+
+# Reading the name of the deeply wrapped bound function succeeds in Ekuma.
+# V8 expects a stack-overflow RangeError.
+test/mjsunit/harmony/shadowrealm-wrapped-function-props-stack.js
+
 # The module expects the d8 host to supply import.meta.url.
 test/mjsunit/harmony/modules-import-meta.mjs
 
@@ -522,6 +565,9 @@ test/mjsunit/cross-realm-callsite.js
 test/mjsunit/error-constructors.js
 test/mjsunit/eval-origin.js
 test/mjsunit/eval-stack-trace.js
+test/mjsunit/harmony/shadowrealm-callsite-throw.js
+test/mjsunit/harmony/shadowrealm-type-error-copy.js
+test/mjsunit/harmony/shadowrealm-type-error-prepare-stack-trace.js
 test/mjsunit/mjsunit-assertion-error.js
 test/mjsunit/regress/regress-2564.js
 test/mjsunit/regress/regress-3404.js
@@ -566,6 +612,7 @@ test/mjsunit/regress/regress-v8-12705.js
 test/mjsunit/d8/d8-realm-microtask-queue.js
 
 # SKIP: Ekuma does not support WebAssembly
+test/mjsunit/harmony/regress/regress-511329274.js
 test/mjsunit/regress/wasm/
 test/mjsunit/shared-memory/wasm/
 test/mjsunit/wasm/
@@ -593,6 +640,7 @@ test/mjsunit/regress/regress-1212404.js
 test/mjsunit/regress/regress-1221035.js
 test/mjsunit/regress/regress-1232620.js
 test/mjsunit/regress/regress-1353555.js
+test/mjsunit/regress/regress-1376663.js
 test/mjsunit/regress/regress-1415210.js
 test/mjsunit/regress/regress-1502014.js
 test/mjsunit/regress/regress-368467195.js
@@ -610,6 +658,7 @@ test/mjsunit/regress/regress-crbug-1421198.js
 test/mjsunit/regress/regress-crbug-722871.js
 test/mjsunit/regress/regress-crbug-9161.js
 test/mjsunit/regress/regress-v8-12219.js
+test/mjsunit/regress/regress-value-serializer.js
 
 # These tests require other d8 shell APIs.
 test/mjsunit/d8/d8-realm-shared-templates.js
@@ -621,13 +670,17 @@ test/mjsunit/regress/regress-1394663.js
 test/mjsunit/regress/regress-14433.js
 test/mjsunit/regress/regress-40060821.js
 test/mjsunit/regress/regress-490446682.js
+test/mjsunit/regress/regress-500174491.js
+test/mjsunit/regress/regress-562529689.js
 test/mjsunit/regress/regress-577242074.js
 test/mjsunit/regress/regress-577255778.js
+test/mjsunit/regress/regress-580533679.js
 test/mjsunit/regress/regress-crbug-1057653.js
 test/mjsunit/regress/regress-crbug-1308360.js
 test/mjsunit/regress/regress-crbug-1381404.js
 test/mjsunit/regress/regress-crbug-1402139.js
 test/mjsunit/regress/regress-crbug-1509910.js
+test/mjsunit/value-serializer.js
 
 # These tests require performance.measureMemory(). regress-371237560 also
 # depends on asynchronous promise resolution.

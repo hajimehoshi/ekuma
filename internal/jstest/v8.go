@@ -61,6 +61,32 @@ var v8Suites = []v8Suite{
 		dir:     "test/mjsunit",
 		helpers: []string{"mjsunit.js"},
 		exclude: []string{"mjsunit_numfuzz.js"},
+		flags: []string{
+			// Ekuma enables these language features by default.
+			"--harmony-shadow-realm",
+			"--harmony-top-level-await",
+			"--js-decorators",
+			"--js-defer-import-eval",
+			"--js-explicit-resource-management",
+			"--js-immutable-arraybuffer",
+			"--js-iterator-chunking",
+			"--js-iterator-includes",
+			"--js-iterator-join",
+			"--js-iterator-sequencing",
+			"--js-joint-iteration",
+			"--js-nonextensible-applies-to-private",
+
+			// At the pinned revision the staged JS features are immutable buffers,
+			// byte imports, deferred imports, iterator chunking and restricting
+			// private field addition on non-extensible objects. Older tests use
+			// --es-staging for staged language features.
+			"--es-staging",
+			"--harmony",
+			"--js-staging",
+
+			// The module loader resolves the exact filename in the specifier.
+			"--no-fuzzy-module-file-extensions",
+		},
 	},
 }
 
@@ -371,10 +397,11 @@ func (v *v8Test) run(ctx context.Context, host *V8, checkout fs.FS, timeout time
 }
 
 type v8Directives struct {
-	locale    string
-	zone      string
-	files     []string
-	noHarness bool
+	locale                  string
+	zone                    string
+	files                   []string
+	noHarness               bool
+	ignoreUnhandledPromises bool
 }
 
 func parseV8Directives(src string, enabledFlags []string) (v8Directives, string) {
@@ -393,8 +420,9 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 				normalized := strings.ReplaceAll(flag, "_", "-")
 				if l, ok := strings.CutPrefix(normalized, "--icu-locale="); ok {
 					flagLocale = l
+				} else if normalized == "--ignore-unhandled-promises" {
+					directives.ignoreUnhandledPromises = true
 				} else if !slices.Contains(enabledFlags, normalized) {
-					// TODO: Review mjsunit flags and enable those whose behavior Ekuma provides.
 					return v8Directives{}, "requires V8 flag " + flag
 				}
 			}
@@ -487,7 +515,9 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	// A later timer can attach a handler before d8 reports unhandled rejections.
-	host.DeferUnhandledRejections(&vm)
+	if !directives.ignoreUnhandledPromises {
+		host.DeferUnhandledRejections(&vm)
+	}
 	helpers := v.helpers
 	if directives.noHarness {
 		helpers = nil
@@ -519,7 +549,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		result = scripts.runFile(ctx, &timeouts, v.file, source)
 	}
 	result = timeouts.drain(ctx, result)
-	if result.outcome != suitePassed {
+	if result.outcome != suitePassed || directives.ignoreUnhandledPromises {
 		return result, lastPrint
 	}
 	if err := host.TakeUnhandledRejection(&vm); err != nil {
