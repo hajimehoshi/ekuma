@@ -570,10 +570,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				setNumber(&regs[i.A], float64(o.length))
 				continue
 			}
-			if o := regs[i.B].o; o != nil {
+			// The destination and the cache are read first, so that the instruction need not
+			// stay in registers across the tests, as in OpGetProp.
+			if a, c, o := i.A, &fp.caches[i.C], regs[i.B].o; o != nil {
 				// The length of a string known to be ASCII, as in Value.StringLength.
 				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
-					setNumber(&regs[i.A], float64(len(o.str)))
+					setNumber(&regs[a], float64(len(o.str)))
 					continue
 				}
 				// The length of a fixed-length typed array in the bounds of its buffer, when the
@@ -581,8 +583,23 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// shared or detached buffer is empty, so only an empty view of one passes the
 				// bounds check.
 				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
-					if c := &fp.caches[i.C]; o.shape == c.shape && c.kind == cacheGetter && c.epoch == vm.protoEpoch && c.holder == vm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
-						setNumber(&regs[i.A], float64(t.length))
+					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == vm.protoEpoch && c.holder == vm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
+						setNumber(&regs[a], float64(t.length))
+						continue
+					}
+				}
+				// A length data property that the cache locates, as in OpGetProp.
+				e := &c.cacheEntry
+				if o.shape != e.shape {
+					e = &c.second
+				}
+				if o.shape == e.shape {
+					if e.kind == cacheOwn {
+						regs[a] = o.slots[e.slot]
+						continue
+					}
+					if e.kind == cacheProto && e.epoch == vm.protoEpoch {
+						regs[a] = *e.ref
 						continue
 					}
 				}
