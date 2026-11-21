@@ -56,7 +56,8 @@ test/intl/regress-10526.js
 # extension and formats July 17 and 18 in the default Gregorian calendar for ar.
 test/intl/regress-10527.js
 
-# V8's English short time zone name at offset zero is GMT+0.
+# V8 resolves America/Nuuk to the older America/Godthab. The pinned Test262
+# DateTimeFormat/timezone-case-insensitive.js requires America/Nuuk to survive.
 test/intl/regress-1074578.js
 
 # Ekuma accepts the language tag de-u-22300-true-x-true.
@@ -65,9 +66,6 @@ test/intl/regress-412149700.js
 
 # Ekuma rejects the obsolete US/Pacific-New time zone.
 test/intl/regress-364374.js
-
-# V8 includes a localized time zone name in Date.prototype.toString().
-test/intl/regress-7770.js
 
 # Ekuma segments Thai words without ICU's dictionary.
 test/intl/segmenter/word-containing.js

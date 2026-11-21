@@ -13,6 +13,55 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
+func TestParseLocalizedDateString(t *testing.T) {
+	var vm ekuma.VM
+	if err := vm.SetLocale("wo"); err != nil {
+		t.Fatal(err)
+	}
+	loc, err := time.LoadLocation("America/Chicago")
+	if err != nil {
+		t.Fatal(err)
+	}
+	vm.SetTimeZone(loc)
+	// Wolof's daylight name contains an unmatched opening parenthesis.
+	got := evalLocale(t, vm.InitialRealm(), `
+		const date = new Date(Date.UTC(2020, 6, 1));
+		new Date(Date.parse(date.toString())).toUTCString();
+	`)
+	if want := "Wed, 01 Jul 2020 00:00:00 GMT"; got != want {
+		t.Errorf("parsing the localized Date string: got %q, want %q", got, want)
+	}
+}
+
+func TestDateStringWithCustomLocalZone(t *testing.T) {
+	t.Setenv("TZ", "UTC")
+	original := time.Local
+	t.Cleanup(func() { time.Local = original })
+	var vm ekuma.VM
+	for _, tc := range []struct {
+		name   string
+		offset int
+		want   string
+	}{
+		{
+			name: "Office",
+			want: "00:00:00 GMT+0000 (Office)",
+		},
+		{
+			name:   "Europe/Berlin",
+			offset: 3 * 60 * 60,
+			want:   "03:00:00 GMT+0300 (Europe/Berlin)",
+		},
+	} {
+		time.Local = time.FixedZone(tc.name, tc.offset)
+		vm.SetTimeZone(time.Local)
+		got := evalLocale(t, vm.InitialRealm(), `new Date(0).toTimeString()`)
+		if got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestTemporalToLocaleString(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -204,6 +253,11 @@ func TestFormatters(t *testing.T) {
 			want: "300002",
 		},
 		{
+			name: "regional date style clears inherited day numbering",
+			src:  `new Intl.DateTimeFormat("zh-Hant-MO", {calendar: "chinese", dateStyle: "long", timeZone: "UTC"}).formatToParts(Date.UTC(2020, 4, 23)).find(p => p.type === "day").value`,
+			want: "1",
+		},
+		{
 			name: "relative time",
 			src:  `[new Intl.RelativeTimeFormat("ja", {numeric: "auto"}).format(-1, "day"), new Intl.RelativeTimeFormat("ar-u-nu-arab").format(3, "hours")].join("; ")`,
 			want: "昨日; خلال ٣ ساعات",
@@ -253,11 +307,6 @@ func TestFormatters(t *testing.T) {
 				`new Intl.NumberFormat("en", {notation: "scientific", maximumFractionDigits: 0, roundingMode: "floor"}).formatToParts(-9.6).map(p => p.value).join(""), ` +
 				`new Intl.NumberFormat("en", {notation: "scientific", maximumFractionDigits: 0, roundingMode: "floor"}).formatRange(-9.6, -9.6)].join("; ")`,
 			want: "-1E1; -9E0; -1E1; -9E0; -1M; -1K; -1E3; -1E1; ~-1E1",
-		},
-		{
-			name: "regional date style clears inherited day numbering",
-			src:  `new Intl.DateTimeFormat("zh-Hant-MO", {calendar: "chinese", dateStyle: "long", timeZone: "UTC"}).formatToParts(Date.UTC(2020, 4, 23)).find(p => p.type === "day").value`,
-			want: "1",
 		},
 		{
 			// All the marks belong to the same vowel, even across interruption checks.

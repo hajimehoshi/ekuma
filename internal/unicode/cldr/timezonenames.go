@@ -10,7 +10,7 @@ import _ "embed"
 //go:embed timezonenames.deflate
 var timeZoneNamesBlocks string
 
-// TimeZoneNames maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "0" the GMT zero format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.
+// TimeZoneNames maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.
 var TimeZoneNames = Map{
 	keys: Strings{
 		data: "adyafakamarasastazbabal-Latnbebgbgcbhoblobnbobrbrxbsbs-Cyrlbuacaccpcecebchrckbcopcscswcvcydadede" +

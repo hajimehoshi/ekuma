@@ -28,7 +28,8 @@ func BenchmarkDateConversion(b *testing.B) {
 				case "UTC":
 					datetime.UTCString(v)
 				case "Local":
-					datetime.String(v, zone)
+					offset, name := zone.Offset(v)
+					datetime.String(v, offset, name)
 				case "LocaleDate":
 					datetime.LocaleDateString(v, zone)
 				}

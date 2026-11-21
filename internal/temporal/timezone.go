@@ -159,6 +159,11 @@ func TimeZoneEquals(a, b TimeZone) bool {
 	return false
 }
 
+// IsDST reports whether the zone observes daylight saving time at Unix time sec.
+func (z TimeZone) IsDST(sec int64) bool {
+	return z.zone != nil && z.zone.IsDST(sec)
+}
+
 // OffsetNanosecondsFor implements GetOffsetNanosecondsFor.
 func (z TimeZone) OffsetNanosecondsFor(epochNs Int128) int64 {
 	if z.isOffset {

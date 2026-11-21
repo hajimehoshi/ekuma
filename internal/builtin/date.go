@@ -51,14 +51,31 @@ func makeDate(c *[dateComponentCount]float64) float64 {
 	return datetime.MakeDate(day, datetime.MakeTime(c[dateHours], c[dateMinutes], c[dateSeconds], c[dateMilliseconds]))
 }
 
+// dateStringOffset returns the local UTC offset and the display name for Date strings.
+func dateStringOffset(vm *engine.VM, tz datetime.TimeZone, tv float64) (float64, string) {
+	offset, name := tz.Offset(tv)
+	if ext, ok := vm.RealmExtension(vm.CurrentRealm()).(interface {
+		DateTimeZoneName(vm *engine.VM, tz datetime.TimeZone, t, offset int64) string
+	}); ok {
+		if s := ext.DateTimeZoneName(vm, tz, int64(tv), int64(offset)); s != "" {
+			name = s
+		}
+	}
+	return offset, name
+}
+
 func initDate(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicDatePrototype)
 
+	dateString := func(tv float64, tz datetime.TimeZone) string {
+		offset, name := dateStringOffset(vm, tz, tv)
+		return datetime.String(tv, offset, name)
+	}
 	ctor := constructor(vm, "Date", 7, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		tz := vm.DefaultTimeZone()
 		if nt == nil {
-			return vm.StringFromGo(datetime.String(vm.SystemUTCEpochMilliseconds(), tz))
+			return vm.StringFromGo(dateString(vm.SystemUTCEpochMilliseconds(), tz))
 		}
 		var tv float64
 		switch len(args) {
@@ -272,9 +289,18 @@ func initDate(vm *engine.VM) {
 		name   string
 		format func(tv float64, tz datetime.TimeZone) string
 	}{
-		{"toString", datetime.String},
+		{
+			name:   "toString",
+			format: dateString,
+		},
 		{"toDateString", datetime.DateString},
-		{"toTimeString", datetime.TimeString},
+		{
+			name: "toTimeString",
+			format: func(tv float64, tz datetime.TimeZone) string {
+				offset, name := dateStringOffset(vm, tz, tv)
+				return datetime.TimeString(tv, offset, name)
+			},
+		},
 		{"toUTCString", func(tv float64, tz datetime.TimeZone) string { return datetime.UTCString(tv) }},
 		{"toLocaleString", datetime.LocaleString},
 		{"toLocaleDateString", datetime.LocaleDateString},

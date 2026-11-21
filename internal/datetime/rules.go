@@ -6,6 +6,7 @@
 package datetime
 
 import (
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -17,6 +18,9 @@ type Zone interface {
 
 	// OffsetSeconds returns the offset from UTC in seconds at the Unix time sec.
 	OffsetSeconds(sec int64) int
+
+	// IsDST reports whether the zone observes daylight saving time at Unix time sec.
+	IsDST(sec int64) bool
 
 	// Transition returns the first Unix time after sec at which the offset changes when next
 	// is true, or the last such time before sec when next is false. It reports false when
@@ -32,6 +36,10 @@ func (z locationZone) OffsetSeconds(sec int64) int {
 	sec = max(-maxSeconds, min(maxSeconds, sec))
 	_, off := time.Unix(sec, 0).In(z.loc).Zone()
 	return off
+}
+
+func (z locationZone) IsDST(sec int64) bool {
+	return time.Unix(sec, 0).In(z.loc).IsDST()
 }
 
 func (z locationZone) Transition(sec int64, next bool) (int64, bool) {
@@ -126,10 +134,12 @@ const (
 // ZoneName returns the identifier of tz, or an empty string if it is unknown.
 func ZoneName(tz TimeZone) string {
 	if tz, ok := tz.(locationZone); ok {
-		if tz.loc == time.Local {
+		name := tz.loc.String()
+		// Only the host's placeholder and zoneinfo paths need platform resolution.
+		if tz.loc == time.Local && (name == "Local" || filepath.IsAbs(name)) {
 			return localZoneName()
 		}
-		return tz.loc.String()
+		return name
 	}
 	return platformZoneName(tz)
 }

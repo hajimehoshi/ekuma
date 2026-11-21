@@ -5,7 +5,7 @@
 
 package cldr
 
-// MetaZoneUsages maps the CLDR identifiers of zones to the metazones that they use, as "metazone from to" separated by ";", where from and to are Unix times in seconds, or empty when the use is unbounded.
+// MetaZoneUsages maps zone identifiers to semicolon-separated "metazone from to" records, optionally followed within each record by the standard and daylight UTC offsets in seconds. The bounds are Unix times in seconds, or empty for an unbounded use.
 var MetaZoneUsages = Map{
 	keys: Strings{
 		data: "Africa/AbidjanAfrica/AccraAfrica/Addis_AbabaAfrica/AlgiersAfrica/AsmeraAfrica/BamakoAfrica/Bangu" +
@@ -121,157 +121,158 @@ var MetaZoneUsages = Map{
 			"46304400 Europe_Eastern  378684000;Europe_Central 378684000 641775600;Europe_Eastern 641775600 8" +
 			"44034400;Europe_Central 844034400 875916000;Europe_Eastern 875916000 1352505600;Europe_Central 1" +
 			"352505600 1382659200;Europe_Eastern 1382659200 Europe_Central  Africa_Southern  637970400;Africa" +
-			"_Central 637970400 764200800;Africa_Western 764200800 1508796000;Africa_Central 1508796000 Hawai" +
-			"i_Aleutian 439034400 Alaska 439030800 Atlantic  Atlantic  Brasilia  Argentina  667792800;Argenti" +
-			"na_Western 667792800 673588800;Argentina 673588800 1086058800;Argentina_Western 1086058800 10877" +
-			"04000;Argentina 1087704000 Argentina  1086058800;Argentina_Western 1086058800 1087704000;Argenti" +
-			"na 1087704000 Argentina  667965600;Argentina 687931200 Argentina  667792800;Argentina_Western 66" +
-			"7792800 673588800;Argentina 673588800 1085972400;Argentina_Western 1085972400 1090728000;Argenti" +
-			"na 1090728000 Argentina  637380000;Argentina_Western 637380000 675748800;Argentina 675748800 938" +
-			"919600;Argentina_Western 938919600 952052400;Argentina 952052400 1085972400;Argentina_Western 10" +
-			"85972400 1090728000;Argentina 1090728000 1200880800;Argentina_Western 1200880800 1255233600;Arge" +
-			"ntina 1255233600 Argentina  667965600;Argentina 687931200 1086058800;Argentina_Western 108605880" +
-			"0 1087099200;Argentina 1087099200 Argentina  1085886000;Argentina 1087704000 Atlantic  Paraguay " +
-			" Brasilia  America_Mountain  1270371600;America_Central 1270371600 Atlantic  Brasilia  America_C" +
-			"entral  Atlantic  Amazon  Colombia  America_Mountain  Argentina  America_Mountain  941356800;Ame" +
-			"rica_Central 941356800 972802800;America_Eastern 972802800 973400400;America_Central 973400400 9" +
-			"86115600;America_Mountain 986115600 Amazon  America_Central  378201600;America_Eastern 378201600" +
-			" 410504400;America_Central 410504400 877849200;America_Eastern 877849200 902037600;America_Centr" +
-			"al 902037600 1422777600;America_Eastern 1422777600 Venezuela  Argentina  667965600;Argentina 687" +
-			"931200 1086058800;Argentina_Western 1086058800 1087704000;Argentina 1087704000 French_Guiana  Am" +
-			"erica_Eastern  America_Central  America_Central  891766800;Mexico_Pacific 891766800 1667116800;A" +
-			"merica_Central 1667116800 America_Central  891766800;Mexico_Pacific 891766800 1667116800;America" +
-			"_Central 1667116800 1669788000;America_Mountain 1669788000 America_Eastern  Argentina  667965600" +
-			";Argentina 687931200 America_Central  Chile  America_Mountain  Amazon  Atlantic  Greenland_Weste" +
-			"rn  820465200;GMT 820465200 America_Pacific 120646800 1604214000;Yukon 1604214000 America_Pacifi" +
-			"c  84013200;America_Mountain 84013200 America_Mountain  America_Eastern  Atlantic  America_Mount" +
-			"ain  Acre  1214283600;Amazon 1214283600 1384056000;Acre 1384056000 America_Central  America_Paci" +
-			"fic  1425808800;America_Mountain 1425808800 Brasilia  Atlantic  Greenland_Western  1711414800;Gr" +
-			"eenland 1711414800 Atlantic  576043260;Atlantic 594180060 America_Eastern  1425798000;Atlantic 1" +
-			"425798000 1520751600;America_Eastern 1520751600 Atlantic  Atlantic  America_Central  Ecuador  Gu" +
-			"yana  Atlantic  Cuba  Mexico_Pacific  America_Central  688546800;America_Eastern 688546800 11439" +
-			"61200;America_Central 1143961200 America_Eastern  126687600;America_Central 126687600 152089200;" +
-			"America_Eastern 152089200 America_Central  247042800;America_Eastern 247042800 1143961200;Americ" +
-			"a_Central 1143961200 1194159600;America_Eastern 1194159600 America_Eastern  1143961200;America_C" +
-			"entral 1143961200 America_Eastern  America_Eastern  1143961200;America_Central 1143961200 119415" +
-			"9600;America_Eastern 1194159600 America_Eastern  1143961200;America_Central 1143961200 117360000" +
-			"0;America_Eastern 1173600000 America_Eastern  America_Pacific  294228000;America_Mountain 294228" +
-			"000 America_Eastern  941349600;America_Central 941349600 972802800;America_Eastern 972802800 Ame" +
-			"rica_Eastern  Argentina  636516000;Argentina 686721600 America_Pacific  325677600;America_Pacifi" +
-			"c 341402400 436352400;Alaska 439030800 America_Central  972802800;America_Eastern 972802800 Atla" +
-			"ntic  Bolivia  Peru  America_Pacific  America_Eastern  126687600;America_Central 126687600 15208" +
-			"9200;America_Eastern 152089200 Atlantic  Brasilia  America_Central  105084000;America_Eastern 10" +
-			"5084000 161758800;America_Central 161758800 694260000;America_Eastern 694260000 717310800;Americ" +
-			"a_Central 717310800 725868000;America_Eastern 725868000 852094800;America_Central 852094800 Amaz" +
-			"on  Atlantic  Atlantic  America_Central  Mexico_Pacific  Argentina  636516000;Argentina 71938080" +
-			"0 1085281200;Argentina 1096171200 America_Eastern  104914800;America_Central 104914800 America_C" +
-			"entral  378201600;America_Eastern 378201600 405068400;America_Central 405068400 America_Pacific " +
-			" 1446372000;Alaska 1446372000 1541325600;America_Pacific 1541325600 1547978400;Alaska 1547978400" +
-			" America_Central  Atlantic  326001600;Pierre_Miquelon 326001600 Atlantic  America_Central  Urugu" +
-			"ay  Atlantic  America_Eastern  America_Eastern  Alaska 439030800 Noronha  America_Mountain  1289" +
-			"116800;America_Central 1289116800 America_Mountain  720000000;America_Central 720000000 America_" +
-			"Mountain  1067155200;America_Central 1067155200 America_Central  891766800;America_Mountain 8917" +
-			"66800 1667116800;America_Central 1667116800 America_Eastern  Suriname 185686200 America_Mountain" +
-			"  America_Eastern  Atlantic  Amazon  Atlantic  Chile  America_Central  972802800;America_Eastern" +
-			" 972802800 986112000;America_Central 986112000 Brasilia  America_Central  America_Central  97280" +
-			"2800;America_Eastern 972802800 986112000;America_Central 986112000 1162105200;America_Eastern 11" +
-			"62105200 1173600000;America_Central 1173600000 Acre  1214283600;Amazon 1214283600 1384056000;Acr" +
-			"e 1384056000 Amazon  1214280000;Brasilia 1214280000 Chile  Atlantic 152082000 972799200;America_" +
-			"Eastern 972799200 975823200;Atlantic 975823200 Brasilia  Greenland_Eastern 354679200 1711846800;" +
-			"Greenland 1711846800 America_Pacific  436352400;Alaska 439030800 Atlantic  Newfoundland  Atlanti" +
-			"c  Atlantic  Atlantic  Atlantic  America_Mountain  73472400;America_Central 73472400 America_Cen" +
-			"tral  Atlantic  America_Pacific  America_Eastern  Atlantic  America_Pacific  America_Pacific  16" +
-			"04214000;Yukon 1604214000 America_Central  Alaska 439030800 Australia_Western  1255802400;Casey " +
-			"1255802400 1267714800;Australia_Western 1267714800 1319738400;Casey 1319738400 1329843600;Austra" +
-			"lia_Western 1329843600 1477065600;Casey 1477065600 1520701200;Australia_Western 1520701200 15388" +
-			"56000;Casey 1538856000 1552752000;Australia_Western 1552752000 1570129200;Casey 1570129200 15835" +
-			"96800;Australia_Western 1583596800 1601740860;Casey 1601740860 1615640400;Australia_Western 1615" +
-			"640400 1633190460;Casey 1633190460 1647090000;Australia_Western 1647090000 1664640060;Casey 1664" +
-			"640060 1678291200;Australia_Western 1678291200 Davis  DumontDUrville  Australia_Eastern  Mawson " +
-			" New_Zealand  Argentina  389070000;Chile 389070000 1480820400Rothera  Syowa  GMT  Vostok  Europe" +
-			"_Central  Arabian  Kazakhstan_Eastern 1099166400 1709229600;Kazakhstan 1709229600 Europe_Eastern" +
-			"  1666908000Anadyr  1269698400;Magadan 1269698400 1301151600;Kamchatka 1301151600 Kazakhstan_Wes" +
-			"tern 1099173600 1709229600;Kazakhstan 1709229600 Kazakhstan_Western 1099170000 1709229600;Kazakh" +
-			"stan 1709229600 Turkmenistan 695772000 Kazakhstan_Western 1099173600 1709229600;Kazakhstan 17092" +
-			"29600 Arabian  Gulf  76190400;Arabian 76190400 Azerbaijan 670370400 Indochina  Krasnoyarsk 14590" +
-			"22400 Europe_Eastern  Kyrgystan 670363200 Brunei  India  Yakutsk  1414252800;Irkutsk 1414256400 " +
-			"1459015200;Yakutsk 1459015200 India  832962600;India 1145039400 Europe_Eastern  1666904400Bangla" +
-			"desh 38772000 East_Timor  199897200;Indonesia_Central 199897200 969120000;East_Timor 969120000 G" +
-			"ulf  Tajikistan 684363600 Europe_Eastern  1473282000;Europe_Eastern 1509238800 Israel  820447200" +
-			";Europe_Eastern 820447200 Israel  820447200;Europe_Eastern 820447200 Hong_Kong  Hovd  Irkutsk  I" +
-			"ndonesia_Western  Indonesia_Eastern  Israel  Afghanistan  Kamchatka  Pakistan 38775600 Nepal  Ya" +
-			"kutsk  1072882800;Vladivostok 1072882800 1315832400;Yakutsk 1315832400 Krasnoyarsk  Malaysia 378" +
-			"662400 Malaysia 378662400 Arabian  China 945619200 Magadan  Indonesia_Central  Philippines  Gulf" +
-			"  Europe_Eastern  Krasnoyarsk  1269716400;Novosibirsk 1269716400 1414263600;Krasnoyarsk 14142636" +
-			"00 Novosibirsk  1469304000;Krasnoyarsk 1469304000 Omsk  Kazakhstan_Western 1099173600 1709229600" +
-			";Kazakhstan 1709229600 Indochina  Indonesia_Central  567964800;Indonesia_Western 567964800 Korea" +
-			"  1439564400;Pyongyang 1439564400 1525446000;Korea 1525446000 Gulf  76190400;Arabian 76190400 Ka" +
-			"zakhstan_Eastern 1099170000 1709229600;Kazakhstan 1709229600 Kazakhstan_Eastern 1099170000 15453" +
-			"28800;Kazakhstan_Western 1545328800 1709229600;Kazakhstan 1709229600 Myanmar  Arabian  Indochina" +
-			" 171820800 Sakhalin  1414249200;Magadan 1414249200 1459008000;Magadan 1461686400 Uzbekistan 6836" +
-			"61600 Korea  China  Singapore  Magadan  1414245600;Magadan 1461427200 Taipei  Uzbekistan 6703632" +
-			"00 Georgia 670370400 Iran  India  560025000;Bhutan 560025000 Japan  Krasnoyarsk 1464465600 Mongo" +
-			"lia  Urumqi  Yakutsk  354898800;Magadan 354898800 1315828800;Vladivostok 1315828800 Indochina  V" +
-			"ladivostok  Yakutsk  Yekaterinburg 695772000 Armenia 670370400 Azores  725421600;Europe_Western " +
-			"725421600 740278800;Azores 740278800 Atlantic  Europe_Western  Cape_Verde  Europe_Western  Europ" +
-			"e_Western  GMT  South_Georgia  GMT  Falkland  Australia_Central  Australia_Eastern  Australia_Ce" +
-			"ntral  Australia_Central  Australia_CentralWestern  Australia_Eastern  Australia_Eastern  Austra" +
-			"lia_Eastern  352216800;Lord_Howe 352216800 Australia_Eastern  Australia_Western  Australia_Easte" +
-			"rn  GMT  Europe_Central  Europe_Central  Moscow 701820000 1459033200;Samara 1459033200 Europe_Ea" +
-			"stern  Europe_Central  Europe_Central  Europe_Central  Europe_Central  Europe_Eastern  Europe_Ce" +
-			"ntral  Europe_Central  Moscow  641944800;Europe_Eastern 641944800 Europe_Central  Irish 57722400" +
-			" Europe_Central  British 57722400 Europe_Eastern  British 57722400 Europe_Eastern  267915600;Tur" +
-			"key 267915600 468111600;Europe_Eastern 468111600 1473195600;Turkey 1473195600 British 57722400 M" +
-			"oscow  606870000;Europe_Eastern 606870000 1301184000;Europe_Further_Eastern 1301184000 141427800" +
-			"0;Europe_Eastern 1414278000 Moscow  646783200;Europe_Eastern 646783200 Moscow 1414274400 Europe_" +
-			"Central  212544000;Europe_Western 212544000 717555600;Europe_Central 717555600 828234000;Europe_" +
-			"Western 828234000 Europe_Central  British 57722400 Europe_Central  Europe_Central  Europe_Centra" +
-			"l  Europe_Eastern  Moscow  670374000;Europe_Eastern 670374000 1301184000;Europe_Further_Eastern " +
-			"1301184000 1414360800;Moscow 1414360800 Europe_Central  Moscow  670374000;Europe_Eastern 6703740" +
-			"00 695779200;Moscow 695779200 Europe_Central  Europe_Central  Europe_Central  Europe_Central  Mo" +
-			"scow  606870000;Europe_Eastern 606870000 Europe_Central  Moscow 606866400 670374000;Europe_Easte" +
-			"rn 670374000 686102400;Samara 686102400 Europe_Central  Europe_Central  Moscow 701820000 1480806" +
-			"000;Samara 1480806000 Moscow  646786800;Europe_Eastern 646786800 767739600;Moscow 767739600 8596" +
-			"83600;Europe_Eastern 859683600 1396137600;Moscow 1396137600 Europe_Central  Europe_Eastern  Euro" +
-			"pe_Central  Moscow  606870000;Europe_Eastern 606870000 Europe_Central  Moscow 695779200 14590332" +
-			"00;Samara 1459033200 Europe_Central  Europe_Central  Europe_Central  Moscow  606870000;Europe_Ea" +
-			"stern 606870000 891133200;Europe_Central 891133200 941331600;Europe_Eastern 941331600 Volgograd " +
-			" 1609020000;Moscow 1609020000 Europe_Central  Europe_Central  Europe_Central  Africa_Eastern  In" +
-			"dian_Ocean  Christmas  Cocos  Africa_Eastern  French_Southern  Seychelles  Maldives  Mauritius  " +
-			"Africa_Eastern  Reunion  Apia  New_Zealand  Papua_New_Guinea  1419696000Chatham  Easter  Vanuatu" +
-			"  Phoenix_Islands  Tokelau  Fiji  Tuvalu  Ecuador  504939600;Galapagos 504939600 Gambier  Solomo" +
-			"n  Chamorro 977493600 Hawaii  Line_Islands  Kosrae  Marshall_Islands 745934400 Marshall_Islands " +
-			" Marquesas  Samoa 436363200 Nauru  Niue  Norfolk  New_Caledonia  Samoa 436363200 Palau  Pitcairn" +
-			"  Ponape  Papua_New_Guinea  Cook  Chamorro 977493600 Tahiti  Gilbert_Islands  Tonga  Truk  Wake " +
-			" Wallis  ",
+			"_Central 637970400 764200800;Africa_Western 764200800 1508796000 3600 7200;Africa_Central 150879" +
+			"6000 Hawaii_Aleutian 439034400 Alaska 439030800 Atlantic  Atlantic  Brasilia  Argentina  6677928" +
+			"00;Argentina_Western 667792800 673588800;Argentina 673588800 1086058800;Argentina_Western 108605" +
+			"8800 1087704000;Argentina 1087704000 Argentina  1086058800;Argentina_Western 1086058800 10877040" +
+			"00;Argentina 1087704000 Argentina  667965600;Argentina 687931200 Argentina  667792800;Argentina_" +
+			"Western 667792800 673588800;Argentina 673588800 1085972400;Argentina_Western 1085972400 10907280" +
+			"00;Argentina 1090728000 Argentina  637380000;Argentina_Western 637380000 675748800;Argentina 675" +
+			"748800 938919600;Argentina_Western 938919600 952052400;Argentina 952052400 1085972400;Argentina_" +
+			"Western 1085972400 1090728000;Argentina 1090728000 1200880800;Argentina_Western 1200880800 12552" +
+			"33600;Argentina 1255233600 Argentina  667965600;Argentina 687931200 1086058800;Argentina_Western" +
+			" 1086058800 1087099200;Argentina 1087099200 Argentina  1085886000;Argentina 1087704000 Atlantic " +
+			" Paraguay  Brasilia  America_Mountain  1270371600;America_Central 1270371600 Atlantic  Brasilia " +
+			" America_Central  Atlantic  Amazon  Colombia  America_Mountain  Argentina  America_Mountain  941" +
+			"356800;America_Central 941356800 972802800;America_Eastern 972802800 973400400;America_Central 9" +
+			"73400400 986115600;America_Mountain 986115600 Amazon  America_Central  378201600;America_Eastern" +
+			" 378201600 410504400;America_Central 410504400 877849200;America_Eastern 877849200 902037600;Ame" +
+			"rica_Central 902037600 1422777600;America_Eastern 1422777600 Venezuela  Argentina  667965600;Arg" +
+			"entina 687931200 1086058800;Argentina_Western 1086058800 1087704000;Argentina 1087704000 French_" +
+			"Guiana  America_Eastern  America_Central  America_Central  891766800;Mexico_Pacific 891766800 16" +
+			"67116800;America_Central 1667116800 America_Central  891766800;Mexico_Pacific 891766800 16671168" +
+			"00;America_Central 1667116800 1669788000;America_Mountain 1669788000 America_Eastern  Argentina " +
+			" 667965600;Argentina 687931200 America_Central  Chile   -14400 -10800America_Mountain  Amazon  A" +
+			"tlantic  Greenland_Western  820465200;GMT 820465200 America_Pacific 120646800 1604214000;Yukon 1" +
+			"604214000 America_Pacific  84013200;America_Mountain 84013200 America_Mountain  America_Eastern " +
+			" Atlantic  America_Mountain   -25200 -21600Acre  1214283600;Amazon 1214283600 1384056000;Acre 13" +
+			"84056000 America_Central  America_Pacific  1425808800;America_Mountain 1425808800 Brasilia  Atla" +
+			"ntic  Greenland_Western  1711414800;Greenland 1711414800 Atlantic  576043260;Atlantic 594180060 " +
+			"America_Eastern  1425798000;Atlantic 1425798000 1520751600;America_Eastern 1520751600 Atlantic  " +
+			"Atlantic  America_Central  Ecuador  Guyana  Atlantic  Cuba  Mexico_Pacific  America_Central  688" +
+			"546800;America_Eastern 688546800 1143961200;America_Central 1143961200 America_Eastern  12668760" +
+			"0;America_Central 126687600 152089200;America_Eastern 152089200 America_Central  247042800;Ameri" +
+			"ca_Eastern 247042800 1143961200;America_Central 1143961200 1194159600;America_Eastern 1194159600" +
+			" America_Eastern  1143961200;America_Central 1143961200 America_Eastern  America_Eastern  114396" +
+			"1200;America_Central 1143961200 1194159600;America_Eastern 1194159600 America_Eastern  114396120" +
+			"0;America_Central 1143961200 1173600000;America_Eastern 1173600000 America_Eastern  America_Paci" +
+			"fic  294228000;America_Mountain 294228000  -25200 -21600America_Eastern  941349600;America_Centr" +
+			"al 941349600 972802800;America_Eastern 972802800 America_Eastern  Argentina  636516000;Argentina" +
+			" 686721600 America_Pacific  325677600;America_Pacific 341402400 436352400;Alaska 439030800 Ameri" +
+			"ca_Central  972802800;America_Eastern 972802800 Atlantic  Bolivia  Peru  America_Pacific  Americ" +
+			"a_Eastern  126687600;America_Central 126687600 152089200;America_Eastern 152089200 Atlantic  Bra" +
+			"silia  America_Central  105084000;America_Eastern 105084000 161758800;America_Central 161758800 " +
+			"694260000;America_Eastern 694260000 717310800;America_Central 717310800 725868000;America_Easter" +
+			"n 725868000 852094800;America_Central 852094800 Amazon  Atlantic  Atlantic  America_Central  Mex" +
+			"ico_Pacific  Argentina  636516000;Argentina 719380800 1085281200;Argentina 1096171200 America_Ea" +
+			"stern  104914800;America_Central 104914800 America_Central  378201600;America_Eastern 378201600 " +
+			"405068400;America_Central 405068400 America_Pacific  1446372000;Alaska 1446372000 1541325600;Ame" +
+			"rica_Pacific 1541325600 1547978400;Alaska 1547978400 America_Central  Atlantic  326001600;Pierre" +
+			"_Miquelon 326001600 Atlantic  America_Central  Uruguay  Atlantic  America_Eastern  America_Easte" +
+			"rn  Alaska 439030800 Noronha  America_Mountain  1289116800;America_Central 1289116800 America_Mo" +
+			"untain  720000000;America_Central 720000000 America_Mountain  1067155200;America_Central 1067155" +
+			"200 America_Central  891766800;America_Mountain 891766800 1667116800;America_Central 1667116800 " +
+			"America_Eastern  Suriname 185686200 America_Mountain  America_Eastern  Atlantic  Amazon  Atlanti" +
+			"c  Chile   -14400 -10800America_Central  972802800;America_Eastern 972802800 986112000;America_C" +
+			"entral 986112000 Brasilia  America_Central  America_Central  972802800;America_Eastern 972802800" +
+			" 986112000;America_Central 986112000 1162105200;America_Eastern 1162105200 1173600000;America_Ce" +
+			"ntral 1173600000 Acre  1214283600;Amazon 1214283600 1384056000;Acre 1384056000 Amazon  121428000" +
+			"0;Brasilia 1214280000 Chile  Atlantic 152082000 972799200;America_Eastern 972799200 975823200;At" +
+			"lantic 975823200 Brasilia  Greenland_Eastern 354679200 1711846800;Greenland 1711846800 America_P" +
+			"acific  436352400;Alaska 439030800 Atlantic  Newfoundland  Atlantic  Atlantic  Atlantic  Atlanti" +
+			"c  America_Mountain  73472400;America_Central 73472400 America_Central  Atlantic  America_Pacifi" +
+			"c  America_Eastern  Atlantic  America_Pacific   -28800 -25200America_Pacific  1604214000;Yukon 1" +
+			"604214000 America_Central   -21600 -18000Alaska 439030800 Australia_Western  1255802400;Casey 12" +
+			"55802400 1267714800;Australia_Western 1267714800 1319738400;Casey 1319738400 1329843600;Australi" +
+			"a_Western 1329843600 1477065600;Casey 1477065600 1520701200;Australia_Western 1520701200 1538856" +
+			"000;Casey 1538856000 1552752000;Australia_Western 1552752000 1570129200;Casey 1570129200 1583596" +
+			"800;Australia_Western 1583596800 1601740860;Casey 1601740860 1615640400;Australia_Western 161564" +
+			"0400 1633190460;Casey 1633190460 1647090000;Australia_Western 1647090000 1664640060;Casey 166464" +
+			"0060 1678291200;Australia_Western 1678291200 Davis  DumontDUrville  Australia_Eastern  Mawson  N" +
+			"ew_Zealand  Argentina  389070000;Chile 389070000 1480820400Rothera  Syowa  GMT  Vostok  Europe_C" +
+			"entral  Arabian  Kazakhstan_Eastern 1099166400 1709229600;Kazakhstan 1709229600 Europe_Eastern  " +
+			"1666908000Anadyr  1269698400;Magadan 1269698400 1301151600;Kamchatka 1301151600 Kazakhstan_Weste" +
+			"rn 1099173600 1709229600;Kazakhstan 1709229600 Kazakhstan_Western 1099170000 1709229600;Kazakhst" +
+			"an 1709229600 Turkmenistan 695772000 Kazakhstan_Western 1099173600 1709229600;Kazakhstan 1709229" +
+			"600 Arabian  Gulf  76190400;Arabian 76190400 Azerbaijan 670370400 Indochina  Krasnoyarsk 1459022" +
+			"400 Europe_Eastern  Kyrgystan 670363200 Brunei  India  Yakutsk  1414252800;Irkutsk 1414256400 14" +
+			"59015200;Yakutsk 1459015200 India  832962600;India 1145039400 Europe_Eastern  1666904400Banglade" +
+			"sh 38772000 East_Timor  199897200;Indonesia_Central 199897200 969120000;East_Timor 969120000 Gul" +
+			"f  Tajikistan 684363600 Europe_Eastern  1473282000;Europe_Eastern 1509238800 Israel  820447200;E" +
+			"urope_Eastern 820447200 Israel  820447200;Europe_Eastern 820447200 Hong_Kong  Hovd  Irkutsk  Ind" +
+			"onesia_Western  Indonesia_Eastern  Israel  Afghanistan  Kamchatka  Pakistan 38775600 Nepal  Yaku" +
+			"tsk  1072882800;Vladivostok 1072882800 1315832400;Yakutsk 1315832400 Krasnoyarsk  Malaysia 37866" +
+			"2400 Malaysia 378662400 Arabian  China 945619200 Magadan  Indonesia_Central  Philippines  Gulf  " +
+			"Europe_Eastern  Krasnoyarsk  1269716400;Novosibirsk 1269716400 1414263600;Krasnoyarsk 1414263600" +
+			" Novosibirsk  1469304000;Krasnoyarsk 1469304000 Omsk  Kazakhstan_Western 1099173600 1709229600;K" +
+			"azakhstan 1709229600 Indochina  Indonesia_Central  567964800;Indonesia_Western 567964800 Korea  " +
+			"1439564400;Pyongyang 1439564400 1525446000;Korea 1525446000 Gulf  76190400;Arabian 76190400 Kaza" +
+			"khstan_Eastern 1099170000 1709229600;Kazakhstan 1709229600 Kazakhstan_Eastern 1099170000 1545328" +
+			"800;Kazakhstan_Western 1545328800 1709229600;Kazakhstan 1709229600 Myanmar  Arabian  Indochina 1" +
+			"71820800 Sakhalin  1414249200;Magadan 1414249200 1459008000;Magadan 1461686400 Uzbekistan 683661" +
+			"600 Korea  China  Singapore  Magadan  1414245600;Magadan 1461427200 Taipei  Uzbekistan 670363200" +
+			" Georgia 670370400 Iran  India  560025000;Bhutan 560025000 Japan  Krasnoyarsk 1464465600 Mongoli" +
+			"a  Urumqi  Yakutsk  354898800;Magadan 354898800 1315828800;Vladivostok 1315828800 Indochina  Vla" +
+			"divostok  Yakutsk  Yekaterinburg 695772000 Armenia 670370400 Azores  725421600;Europe_Western 72" +
+			"5421600 740278800;Azores 740278800 Atlantic  Europe_Western  Cape_Verde  Europe_Western  Europe_" +
+			"Western  GMT  South_Georgia  GMT  Falkland  Australia_Central  Australia_Eastern  Australia_Cent" +
+			"ral  Australia_Central  Australia_CentralWestern  Australia_Eastern  Australia_Eastern  Australi" +
+			"a_Eastern  352216800;Lord_Howe 352216800 Australia_Eastern  Australia_Western  Australia_Eastern" +
+			"  GMT  Europe_Central  Europe_Central  Moscow 701820000 1459033200;Samara 1459033200 Europe_East" +
+			"ern  Europe_Central  Europe_Central  Europe_Central  Europe_Central  Europe_Eastern  Europe_Cent" +
+			"ral  Europe_Central  Moscow  641944800;Europe_Eastern 641944800 Europe_Central  Irish 57722400  " +
+			"0 3600Europe_Central  British 57722400 Europe_Eastern  British 57722400 Europe_Eastern  26791560" +
+			"0;Turkey 267915600 468111600;Europe_Eastern 468111600 1473195600;Turkey 1473195600 British 57722" +
+			"400 Moscow  606870000;Europe_Eastern 606870000 1301184000;Europe_Further_Eastern 1301184000 1414" +
+			"278000;Europe_Eastern 1414278000 Moscow  646783200;Europe_Eastern 646783200 Moscow 1414274400 Eu" +
+			"rope_Central  212544000;Europe_Western 212544000 717555600;Europe_Central 717555600 828234000;Eu" +
+			"rope_Western 828234000 Europe_Central  British 57722400 Europe_Central  Europe_Central  Europe_C" +
+			"entral  Europe_Eastern  Moscow  670374000;Europe_Eastern 670374000 1301184000;Europe_Further_Eas" +
+			"tern 1301184000 1414360800;Moscow 1414360800 Europe_Central  Moscow  670374000;Europe_Eastern 67" +
+			"0374000 695779200;Moscow 695779200 Europe_Central  Europe_Central  Europe_Central  Europe_Centra" +
+			"l  Moscow  606870000;Europe_Eastern 606870000 Europe_Central  Moscow 606866400 670374000;Europe_" +
+			"Eastern 670374000 686102400;Samara 686102400 Europe_Central  Europe_Central  Moscow 701820000 14" +
+			"80806000;Samara 1480806000 Moscow  646786800;Europe_Eastern 646786800 767739600;Moscow 767739600" +
+			" 859683600;Europe_Eastern 859683600 1396137600;Moscow 1396137600 Europe_Central  Europe_Eastern " +
+			" Europe_Central  Moscow  606870000;Europe_Eastern 606870000 Europe_Central  Moscow 695779200 145" +
+			"9033200;Samara 1459033200 Europe_Central  Europe_Central  Europe_Central  Moscow  606870000;Euro" +
+			"pe_Eastern 606870000 891133200;Europe_Central 891133200 941331600;Europe_Eastern 941331600 Volgo" +
+			"grad  1609020000;Moscow 1609020000 Europe_Central  Europe_Central  Europe_Central  Africa_Easter" +
+			"n  Indian_Ocean  Christmas  Cocos  Africa_Eastern  French_Southern  Seychelles  Maldives  Maurit" +
+			"ius  Africa_Eastern  Reunion  Apia  New_Zealand  Papua_New_Guinea  1419696000Chatham  Easter  Va" +
+			"nuatu  Phoenix_Islands  Tokelau  Fiji  Tuvalu  Ecuador  504939600;Galapagos 504939600 Gambier  S" +
+			"olomon  Chamorro 977493600 Hawaii  Line_Islands  Kosrae  Marshall_Islands 745934400 Marshall_Isl" +
+			"ands  Marquesas  Samoa 436363200 Nauru  Niue  Norfolk  New_Caledonia  Samoa 436363200 Palau  Pit" +
+			"cairn  Ponape  Papua_New_Guinea  Cook  Chamorro 977493600 Tahiti  Gilbert_Islands  Tonga  Truk  " +
+			"Wake  Wallis  ",
 		ends: []uint32{
 			5, 10, 26, 147, 163, 168, 184, 189, 203, 219, 235, 251, 267, 390, 441, 446,
 			451, 467, 483, 499, 561, 566, 582, 598, 615, 703, 719, 807, 823, 839, 855, 871,
 			876, 892, 908, 924, 940, 956, 973, 990, 1006, 1019, 1035, 1051, 1067, 1072, 1077, 1093,
-			1161, 1391, 1407, 1531, 1557, 1574, 1584, 1594, 1604, 1755, 1838, 1879, 2030, 2321, 2434, 2477,
-			2487, 2497, 2507, 2563, 2573, 2583, 2600, 2610, 2618, 2628, 2646, 2657, 2820, 2828, 3027, 3038,
-			3151, 3166, 3183, 3200, 3290, 3419, 3436, 3477, 3494, 3501, 3519, 3527, 3537, 3580, 3634, 3686,
-			3704, 3721, 3731, 3749, 3811, 3828, 3884, 3894, 3904, 3955, 3994, 4080, 4090, 4100, 4117, 4126,
-			4134, 4144, 4150, 4166, 4257, 4346, 4475, 4530, 4547, 4640, 4733, 4750, 4804, 4893, 4910, 4951,
-			5031, 5084, 5094, 5103, 5109, 5126, 5215, 5225, 5235, 5468, 5476, 5486, 5496, 5513, 5529, 5602,
-			5655, 5744, 5857, 5874, 5920, 5930, 5947, 5956, 5966, 5983, 6000, 6017, 6026, 6082, 6136, 6192,
-			6284, 6301, 6320, 6338, 6355, 6365, 6373, 6383, 6390, 6479, 6489, 6506, 6671, 6733, 6772, 6779,
-			6863, 6873, 6933, 6977, 6987, 7001, 7011, 7021, 7031, 7041, 7093, 7110, 7120, 7137, 7154, 7164,
-			7181, 7226, 7243, 7260, 7823, 7830, 7846, 7865, 7873, 7886, 7933, 7942, 7949, 7954, 7962, 7978,
-			7987, 8050, 8076, 8146, 8209, 8272, 8295, 8358, 8367, 8399, 8420, 8431, 8454, 8470, 8490, 8498,
-			8505, 8574, 8608, 8634, 8654, 8735, 8741, 8762, 8815, 8858, 8901, 8912, 8918, 8927, 8946, 8965,
-			8973, 8986, 8997, 9015, 9022, 9095, 9108, 9127, 9146, 9155, 9171, 9180, 9199, 9212, 9218, 9234,
-			9315, 9362, 9368, 9431, 9442, 9499, 9566, 9598, 9661, 9765, 9774, 9783, 9803, 9873, 9894, 9901,
-			9908, 9919, 9958, 9966, 9987, 10005, 10011, 10045, 10052, 10075, 10085, 10093, 10164, 10175, 10188, 10197,
-			10221, 10239, 10309, 10319, 10335, 10347, 10363, 10379, 10384, 10399, 10404, 10414, 10433, 10452, 10471, 10490,
-			10516, 10535, 10554, 10603, 10622, 10641, 10660, 10665, 10681, 10697, 10743, 10759, 10775, 10791, 10807, 10823,
-			10839, 10855, 10871, 10914, 10930, 10945, 10961, 10978, 10994, 11011, 11118, 11135, 11260, 11303, 11321, 11442,
-			11458, 11475, 11491, 11507, 11523, 11539, 11656, 11672, 11742, 11758, 11774, 11790, 11806, 11849, 11865, 11944,
-			11960, 11976, 12022, 12156, 12172, 12188, 12204, 12247, 12263, 12309, 12325, 12341, 12357, 12470, 12510, 12526,
-			12542, 12558, 12574, 12588, 12599, 12606, 12622, 12639, 12651, 12661, 12672, 12688, 12697, 12703, 12716, 12744,
-			12753, 12761, 12770, 12787, 12796, 12802, 12810, 12849, 12858, 12867, 12886, 12894, 12908, 12916, 12943, 12961,
-			12972, 12988, 12995, 13001, 13010, 13025, 13041, 13048, 13058, 13066, 13084, 13090, 13109, 13117, 13134, 13141,
-			13147, 13153, 13161,
+			1161, 1391, 1407, 1541, 1567, 1584, 1594, 1604, 1614, 1765, 1848, 1889, 2040, 2331, 2444, 2487,
+			2497, 2507, 2517, 2573, 2583, 2593, 2610, 2620, 2628, 2638, 2656, 2667, 2830, 2838, 3037, 3048,
+			3161, 3176, 3193, 3210, 3300, 3429, 3446, 3487, 3504, 3525, 3543, 3551, 3561, 3604, 3658, 3710,
+			3728, 3745, 3755, 3787, 3849, 3866, 3922, 3932, 3942, 3993, 4032, 4118, 4128, 4138, 4155, 4164,
+			4172, 4182, 4188, 4204, 4295, 4384, 4513, 4568, 4585, 4678, 4771, 4788, 4856, 4945, 4962, 5003,
+			5083, 5136, 5146, 5155, 5161, 5178, 5267, 5277, 5287, 5520, 5528, 5538, 5548, 5565, 5581, 5654,
+			5707, 5796, 5909, 5926, 5972, 5982, 5999, 6008, 6018, 6035, 6052, 6069, 6078, 6134, 6188, 6244,
+			6336, 6353, 6372, 6390, 6407, 6417, 6425, 6435, 6456, 6545, 6555, 6572, 6737, 6799, 6838, 6845,
+			6929, 6939, 6999, 7043, 7053, 7067, 7077, 7087, 7097, 7107, 7159, 7176, 7186, 7203, 7220, 7230,
+			7261, 7306, 7337, 7354, 7917, 7924, 7940, 7959, 7967, 7980, 8027, 8036, 8043, 8048, 8056, 8072,
+			8081, 8144, 8170, 8240, 8303, 8366, 8389, 8452, 8461, 8493, 8514, 8525, 8548, 8564, 8584, 8592,
+			8599, 8668, 8702, 8728, 8748, 8829, 8835, 8856, 8909, 8952, 8995, 9006, 9012, 9021, 9040, 9059,
+			9067, 9080, 9091, 9109, 9116, 9189, 9202, 9221, 9240, 9249, 9265, 9274, 9293, 9306, 9312, 9328,
+			9409, 9456, 9462, 9525, 9536, 9593, 9660, 9692, 9755, 9859, 9868, 9877, 9897, 9967, 9988, 9995,
+			10002, 10013, 10052, 10060, 10081, 10099, 10105, 10139, 10146, 10169, 10179, 10187, 10258, 10269, 10282, 10291,
+			10315, 10333, 10403, 10413, 10429, 10441, 10457, 10473, 10478, 10493, 10498, 10508, 10527, 10546, 10565, 10584,
+			10610, 10629, 10648, 10697, 10716, 10735, 10754, 10759, 10775, 10791, 10837, 10853, 10869, 10885, 10901, 10917,
+			10933, 10949, 10965, 11008, 11024, 11046, 11062, 11079, 11095, 11112, 11219, 11236, 11361, 11404, 11422, 11543,
+			11559, 11576, 11592, 11608, 11624, 11640, 11757, 11773, 11843, 11859, 11875, 11891, 11907, 11950, 11966, 12045,
+			12061, 12077, 12123, 12257, 12273, 12289, 12305, 12348, 12364, 12410, 12426, 12442, 12458, 12571, 12611, 12627,
+			12643, 12659, 12675, 12689, 12700, 12707, 12723, 12740, 12752, 12762, 12773, 12789, 12798, 12804, 12817, 12845,
+			12854, 12862, 12871, 12888, 12897, 12903, 12911, 12950, 12959, 12968, 12987, 12995, 13009, 13017, 13044, 13062,
+			13073, 13089, 13096, 13102, 13111, 13126, 13142, 13149, 13159, 13167, 13185, 13191, 13210, 13218, 13235, 13242,
+			13248, 13254, 13262,
 		},
 	},
 }

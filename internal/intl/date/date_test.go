@@ -183,6 +183,44 @@ func TestTimeZoneNames(t *testing.T) {
 	}
 }
 
+func TestTimeZoneNameAtInstant(t *testing.T) {
+	for _, tc := range []struct {
+		zone string
+		at   time.Time
+		name string
+		want string
+	}{
+		{
+			zone: "Africa/Casablanca",
+			at:   time.Date(2020, 5, 25, 0, 0, 0, 0, time.UTC),
+			name: "short",
+			want: "GMT+0",
+		},
+		{
+			// Whitehorse stayed at UTC-7 when Pacific daylight time ended.
+			zone: "America/Whitehorse",
+			at:   time.Date(2020, 3, 9, 0, 0, 0, 0, time.UTC),
+			name: "short",
+			want: "PDT",
+		},
+		{
+			// CLDR specifies the daylight offset even on TZif builds with negative DST.
+			zone: "Europe/Dublin",
+			at:   time.Date(2024, 7, 1, 0, 0, 0, 0, time.UTC),
+			name: "long",
+			want: "Irish Standard Time",
+		},
+	} {
+		f := date.NewFormat("en", "gregory", "h23", date.Components{
+			TimeZoneName: tc.name,
+		})
+		got := join(date.NewFormatter(f, "latn", zone(t, tc.zone)).Format(tc.at.UnixMilli(), false))
+		if got != tc.want {
+			t.Errorf("%s at %s: got %q, want %q", tc.zone, tc.at, got, tc.want)
+		}
+	}
+}
+
 func TestFormat(t *testing.T) {
 	afternoon := time.Date(2024, 1, 5, 15, 4, 5, 6e6, time.UTC).UnixMilli()
 	noon := time.Date(2024, 1, 5, 12, 0, 0, 0, time.UTC).UnixMilli()

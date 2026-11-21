@@ -946,7 +946,7 @@ func main() {
 		zoneNames[l] = timeZoneFields(object(object(mainData(dates, name)["dates"])["timeZoneNames"]))
 	}
 	f = newFile("timezonenames.go", datesSource)
-	f.records(`maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "0" the GMT zero format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.`, "TimeZoneNames", tree.records(zoneNames))
+	f.records(`maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.`, "TimeZoneNames", tree.records(zoneNames))
 	f.write()
 
 	// Metazones.
@@ -966,7 +966,22 @@ func main() {
 					if s, ok := u["_to"]; ok {
 						to = metazoneTime(str(s))
 					}
-					us = append(us, str(u["_mzone"])+" "+from+" "+to)
+					usage := str(u["_mzone"]) + " " + from + " " + to
+					if std, ok := u["_stdOffset"]; ok {
+						for _, offset := range []any{std, u["_dstOffset"]} {
+							s := str(offset)
+							if len(s) == 3 {
+								s += ":00"
+							}
+							t, err := time.Parse("-07:00", s)
+							if err != nil {
+								log.Fatal(err)
+							}
+							_, sec := t.Zone()
+							usage += " " + strconv.Itoa(sec)
+						}
+					}
+					us = append(us, usage)
 				}
 				usages[prefix+k] = strings.Join(us, ";")
 				continue
@@ -1000,7 +1015,7 @@ func main() {
 		}
 	}
 	f = newFile("metazones.go", jsonSource)
-	f.mapping(`maps the CLDR identifiers of zones to the metazones that they use, as "metazone from to" separated by ";", where from and to are Unix times in seconds, or empty when the use is unbounded.`, "MetaZoneUsages", usages)
+	f.mapping(`maps zone identifiers to semicolon-separated "metazone from to" records, optionally followed within each record by the standard and daylight UTC offsets in seconds. The bounds are Unix times in seconds, or empty for an unbounded use.`, "MetaZoneUsages", usages)
 	f.mapping(`maps a metazone and a region, joined by "/", to the CLDR identifier of the zone that stands for the metazone in the region. The region "001" is for the rest of the world.`, "MetaZoneGoldenZones", golden)
 	f.mapping("maps regions to the CLDR identifiers of their primary zones, for the regions that have several zones but one that is used most.", "PrimaryZones", primary)
 	f.mapping("maps the identifiers of zones to their CLDR identifiers, for the identifiers that are not CLDR identifiers.", "ZoneAliases", zoneAliases)
@@ -1951,7 +1966,6 @@ func timeZoneFields(tz map[string]any) map[string]string {
 	for k, key := range map[string]string{
 		"hourFormat":                 "h",
 		"gmtFormat":                  "g",
-		"gmtZeroFormat":              "0",
 		"regionFormat":               "r",
 		"regionFormat-type-daylight": "r+",
 		"regionFormat-type-standard": "r-",

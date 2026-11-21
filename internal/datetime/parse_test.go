@@ -25,7 +25,8 @@ func TestParseFormattedRoundTrip(t *testing.T) {
 			values = append(values, float64(time.Date(2020, month, int(month), int(month), 34, 56, 0, time.UTC).UnixMilli()))
 		}
 		for _, tv := range values {
-			for _, s := range []string{datetime.UTCString(tv), datetime.String(tv, zone)} {
+			offset, name := zone.Offset(tv)
+			for _, s := range []string{datetime.UTCString(tv), datetime.String(tv, offset, name)} {
 				if got := datetime.Parse(s, zone); got != tv {
 					t.Errorf("%s: Parse(%q) = %v, want %v", loc, s, got, tv)
 				}

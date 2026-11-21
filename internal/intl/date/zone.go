@@ -59,12 +59,17 @@ func countryOf(id string) (country string, primary bool) {
 	return country, p == id
 }
 
-// metazoneOf returns the metazone that the zone with the CLDR identifier id uses at the Unix
-// time sec.
-func metazoneOf(id string, sec int64) string {
+type metazone struct {
+	name string
+	// The standard and daylight offsets in seconds are equal when CLDR specifies neither.
+	standard, daylight int64
+}
+
+// metazoneOf returns the metazone of the CLDR zone id at Unix time sec.
+func metazoneOf(id string, sec int64) metazone {
 	v, ok := cldr.MetaZoneUsages.Lookup(id)
 	if !ok {
-		return ""
+		return metazone{}
 	}
 	for u := range strings.SplitSeq(v, ";") {
 		f := strings.Split(u, " ")
@@ -78,9 +83,16 @@ func metazoneOf(id string, sec int64) string {
 				continue
 			}
 		}
-		return f[0]
+		mz := metazone{
+			name: f[0],
+		}
+		if len(f) == 5 {
+			mz.standard, _ = strconv.ParseInt(f[3], 10, 64)
+			mz.daylight, _ = strconv.ParseInt(f[4], 10, 64)
+		}
+		return mz
 	}
-	return ""
+	return metazone{}
 }
 
 // zoneAt is a time zone at an instant.
@@ -115,22 +127,22 @@ func transitionAt(tz temporal.TimeZone, t int64, next bool) (int64, bool) {
 	return ms, true
 }
 
-// isDST reports whether the offset of tz at t is daylight saving time: it is greater than the
-// offsets of the periods before and after it.
+// isDST reports whether the daylight name of tz applies at t milliseconds since the epoch.
 func isDST(tz temporal.TimeZone, t int64) bool {
-	if tz.IsOffset() {
-		return false
+	mz := metazoneOf(cldrZoneID(tz.ID()), floorDiv(t, 1000))
+	return mz.isDST(tz, t)
+}
+
+func (mz metazone) isDST(tz temporal.TimeZone, t int64) bool {
+	if mz.standard != mz.daylight {
+		switch offsetAt(tz, t) / 1000 {
+		case mz.standard:
+			return false
+		case mz.daylight:
+			return true
+		}
 	}
-	off := offsetAt(tz, t)
-	prev, ok := transitionAt(tz, t+1, false)
-	if !ok {
-		return false
-	}
-	next, ok := transitionAt(tz, t, true)
-	if !ok {
-		return false
-	}
-	return off > offsetAt(tz, prev-1) && off > offsetAt(tz, next)
+	return tz.IsDST(floorDiv(t, 1000))
 }
 
 // dstCheckRange is the range around an instant in which a transition into or out of daylight
@@ -164,12 +176,6 @@ func (z *zoneFormatter) name(key string) string {
 
 // gmt returns the localized GMT format of the offset in milliseconds.
 func (z *zoneFormatter) gmt(offset int64, short bool) string {
-	if offset == 0 {
-		if s := z.name("0"); s != "" {
-			return s
-		}
-		return "GMT"
-	}
 	hf := z.name("h")
 	if hf == "" {
 		hf = "+HH:mm;-HH:mm"
@@ -249,14 +255,22 @@ func (z *zoneFormatter) territoryName(r string) string {
 	return v
 }
 
-// specific returns the specific name of the zone id at sec, long or short, or an empty
-// string.
-func (z *zoneFormatter) specific(id string, sec int64, long, daylight bool) string {
+// specific returns the specific name of tz at Unix millisecond t, or empty if unavailable.
+func (z *zoneFormatter) specific(tz temporal.TimeZone, t int64, long bool) string {
+	id := cldrZoneID(tz.ID())
+	if tz.IsOffset() {
+		if tz.ID() != "+00:00" {
+			return ""
+		}
+		// The fixed offset +00:00 takes the localized name of Greenwich Mean Time.
+		id = "Etc/GMT"
+	}
+	mz := metazoneOf(id, floorDiv(t, 1000))
 	key := "s"
 	if long {
 		key = "l"
 	}
-	if daylight {
+	if mz.isDST(tz, t) {
 		key += "d"
 	} else {
 		key += "s"
@@ -264,10 +278,28 @@ func (z *zoneFormatter) specific(id string, sec int64, long, daylight bool) stri
 	if s := z.name("z" + id + "|" + key); s != "" {
 		return s
 	}
-	if mz := metazoneOf(id, sec); mz != "" {
-		return z.name("m" + mz + "|" + key)
+	if mz.name != "" {
+		return z.name("m" + mz.name + "|" + key)
 	}
 	return ""
+}
+
+// DateTimeZoneName returns a localized name for tz at Unix millisecond t with the given
+// UTC offset in milliseconds, or empty if unavailable.
+func DateTimeZoneName(l string, tz datetime.TimeZone, t, offset int64) string {
+	z, ok := temporal.SystemTimeZone(tz)
+	if !ok || z.IsOffset() {
+		return ""
+	}
+	// An application-supplied location can share a zone's name but use different rules.
+	// Date truncates historical offsets to whole minutes.
+	if offsetAt(z, t)/60000 != offset/60000 {
+		return ""
+	}
+	f := zoneFormatter{
+		data: newLocaleData(l, "gregory"),
+	}
+	return f.specific(z, t, true)
 }
 
 // genericLocation returns the generic location name of the zone id.
@@ -334,15 +366,16 @@ func (z *zoneFormatter) genericNonLocation(id string, za zoneAt, long bool) stri
 	}
 	sec := floorDiv(za.t, 1000)
 	mz := metazoneOf(id, sec)
-	if mz == "" {
+	if mz.name == "" {
 		return ""
 	}
-	mzGeneric := z.name("m" + mz + "|" + key)
-	if !isDST(za.tz, za.t) && !usesDSTAround(za.tz, za.t) {
+	mzGeneric := z.name("m" + mz.name + "|" + key)
+	dst := mz.isDST(za.tz, za.t)
+	if !dst && !usesDSTAround(za.tz, za.t) {
 		// A zone that uses no daylight saving time around the instant has the standard name.
 		s := z.name("z" + id + "|" + std)
 		if s == "" {
-			s = z.name("m" + mz + "|" + std)
+			s = z.name("m" + mz.name + "|" + std)
 		}
 		if s != "" && !strings.EqualFold(s, mzGeneric) {
 			return s
@@ -351,7 +384,7 @@ func (z *zoneFormatter) genericNonLocation(id string, za zoneAt, long bool) stri
 	if mzGeneric == "" {
 		return ""
 	}
-	golden := goldenZone(mz, z.region)
+	golden := goldenZone(mz.name, z.region)
 	if golden == "" || golden == id {
 		return mzGeneric
 	}
@@ -360,14 +393,13 @@ func (z *zoneFormatter) genericNonLocation(id string, za zoneAt, long bool) stri
 		return mzGeneric
 	}
 	off := za.offset
-	dst := isDST(za.tz, za.t)
 	// The offsets of the golden zone are taken at the same wall time.
 	gt := za.t + off
 	goff := offsetAt(gz, gt)
 	gt = za.t + off - goff
 	goff = offsetAt(gz, gt)
 	if goff != off || isDST(gz, gt) != dst {
-		return z.partialLocation(id, mz, mzGeneric)
+		return z.partialLocation(id, mz.name, mzGeneric)
 	}
 	return mzGeneric
 }
@@ -379,14 +411,11 @@ func (z *zoneFormatter) format(c byte, n int, za zoneAt) string {
 	if !za.tz.IsOffset() {
 		id = cldrZoneID(za.tz.ID())
 	}
-	sec := floorDiv(za.t, 1000)
 	long := n >= 4
 	var s string
 	switch c {
 	case 'z':
-		if id != "" {
-			s = z.specific(id, sec, long, isDST(za.tz, za.t))
-		}
+		s = z.specific(za.tz, za.t, long)
 	case 'v':
 		if id != "" {
 			s = z.genericNonLocation(id, za, long)

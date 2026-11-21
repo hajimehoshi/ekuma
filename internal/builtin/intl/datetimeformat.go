@@ -43,6 +43,11 @@ type dateTimeFormatData struct {
 	boundFormat *engine.Object
 }
 
+// DateTimeZoneName returns the localized name for Date strings, or empty if unavailable.
+func (*realm) DateTimeZoneName(vm *engine.VM, tz datetime.TimeZone, t, offset int64) string {
+	return date.DateTimeZoneName(defaultLocale(vm), tz, t, offset)
+}
+
 // calendarsOf returns the calendars that DateTimeFormat supports for the available locale l,
 // its default first.
 func calendarsOf(l string) []string {

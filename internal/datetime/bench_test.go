@@ -26,7 +26,8 @@ func BenchmarkParse(b *testing.B) {
 	for _, tv := range times {
 		corpora["ISO"] = append(corpora["ISO"], datetime.ISOString(tv))
 		corpora["UTC"] = append(corpora["UTC"], datetime.UTCString(tv))
-		corpora["Local"] = append(corpora["Local"], datetime.String(tv, zone))
+		offset, name := zone.Offset(tv)
+		corpora["Local"] = append(corpora["Local"], datetime.String(tv, offset, name))
 	}
 	for _, name := range []string{"ISO", "UTC", "Local", "Legacy", "Invalid"} {
 		b.Run(name, func(b *testing.B) {
@@ -45,6 +46,7 @@ func BenchmarkDateFormat(b *testing.B) {
 	zone := datetime.LocationZone(time.FixedZone("Test", 9*3600))
 	for b.Loop() {
 		datetime.UTCString(1615705199000)
-		datetime.String(1615705199000, zone)
+		offset, name := zone.Offset(1615705199000)
+		datetime.String(1615705199000, offset, name)
 	}
 }
