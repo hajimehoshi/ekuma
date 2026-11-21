@@ -317,19 +317,29 @@ without a Test262 checkout.
 `go test .` runs Test262 and V8 when their checkouts are available. Set the
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
-sparse checkout needs `test/intl`, `test/mjsunit`, the tool modules matching
-`/tools/**/*.mjs`, and the printing helper
+sparse checkout needs `test/intl`, `test/mjsunit`, `test/test262/local-tests/test`,
+the tool modules matching `/tools/**/*.mjs`, and the printing helper
 `tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
-Short mode skips both suites.
+Short mode skips all external conformance tests.
 
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl) and [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
 
-Both suites use the same flags, prefixed with `-test262.` or `-v8.`. Use `dir` to
-select a checkout-relative directory and `filter` to match a substring of a test
-path. For example, these commands select the collation tests or the mjsunit ES6 tests.
+`TestV8Test262` runs V8's local Test262 cases when both checkouts are available.
+It reads the cases from V8 and the harness from Test262. Each case is a Go subtest
+named by its path under `test/test262/local-tests/test`. The official Test262
+totals count only files from the Test262 checkout.
+
+```sh
+go test -count=1 -v -run '^TestV8Test262$' .
+```
+
+`TestTest262` and `TestV8` use the same flags, prefixed with `-test262.` or
+`-v8.`. Use `dir` to select a checkout-relative directory and `filter` to match
+a substring of a test path. These commands select the collation tests or the
+mjsunit ES6 tests.
 
 ```sh
 go test -count=1 -v -run '^TestTest262$' . -test262.dir test/intl402/Collator

@@ -58,6 +58,7 @@ jobs:
           sparse-checkout: |
             /test/intl/
             /test/mjsunit/
+            /test/test262/local-tests/test/
             /tools/**/*.mjs
             /tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js
           sparse-checkout-cone-mode: false

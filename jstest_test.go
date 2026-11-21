@@ -54,8 +54,16 @@ func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
 	test262Runner.CheckExpectedFailureWithMissingInclude(t)
 }
 
+func TestTest262EarlyNegativeWithRuntimeError(t *testing.T) {
+	test262Runner.CheckEarlyNegativeWithRuntimeError(t)
+}
+
 func TestV8(t *testing.T) {
 	v8Runner.Run(t)
+}
+
+func TestV8Test262(t *testing.T) {
+	test262Runner.RunV8LocalTests(t)
 }
 
 func TestV8ExposeGC(t *testing.T) {

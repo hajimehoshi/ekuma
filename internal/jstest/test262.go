@@ -115,6 +115,10 @@ func parseMetadata(src string) metadata {
 		case "negative":
 			if v, ok := strings.CutPrefix(trimmed, "phase:"); ok {
 				m.negativePhase = strings.TrimSpace(v)
+				// Older Test262 cases call the parse phase "early".
+				if m.negativePhase == "early" {
+					m.negativePhase = "parse"
+				}
 			}
 			if v, ok := strings.CutPrefix(trimmed, "type:"); ok {
 				m.negativeType = strings.TrimSpace(v)
@@ -143,6 +147,14 @@ func (suite *Test262) newHarness(files fs.FS) *harness {
 		files:   map[string]string{},
 		scripts: map[string]*ekuma.UnboundScript{},
 	}
+}
+
+func (suite *Test262) checkoutHarness(t *testing.T, dir string) *harness {
+	t.Helper()
+	if _, err := os.Stat(filepath.Join(dir, "harness", "assert.js")); err != nil {
+		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
+	}
+	return suite.newHarness(os.DirFS(filepath.Join(dir, "harness")))
 }
 
 // script returns the file name parsed as an unbound script.
@@ -617,12 +629,27 @@ func (suite *Test262) CheckExpectedFailureWithMissingInclude(t *testing.T) {
 	}
 }
 
+// CheckEarlyNegativeWithRuntimeError checks phase matching for a module that throws during evaluation.
+func (suite *Test262) CheckEarlyNegativeWithRuntimeError(t *testing.T) {
+	const src = `/*---
+flags: [module]
+negative:
+  phase: early
+  type: SyntaxError
+---*/
+throw new SyntaxError();
+`
+	h := suite.newHarness(localTest262HarnessFS{})
+	result := runOnce(h, "runtime-error.js", src, parseMetadata(src), false, testTimeout)
+	if result.outcome != suiteFailed {
+		t.Errorf("runtime SyntaxError in an early-negative module: got %v, want %v", result.outcome, suiteFailed)
+	}
+}
+
 // Run runs the ECMAScript conformance suite and checks its failures against the skip list.
 func (suite *Test262) Run(t *testing.T) {
 	dir := test262Flags.checkoutDir(t)
-	if _, err := os.Stat(filepath.Join(dir, "harness", "assert.js")); err != nil {
-		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
-	}
+	h := suite.checkoutHarness(t, dir)
 	pin, err := os.ReadFile(testdataDir + "/test262-revision.txt")
 	if err != nil {
 		t.Fatal(err)
@@ -675,7 +702,6 @@ func (suite *Test262) Run(t *testing.T) {
 	sort.Strings(paths)
 	sort.Strings(skipped)
 
-	h := suite.newHarness(os.DirFS(filepath.Join(dir, "harness")))
 	results := make([]suiteResult, len(paths))
 	var waitingTests sync.WaitGroup
 	// waitingSlots limits the tests that run without a worker.

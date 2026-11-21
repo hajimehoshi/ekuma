@@ -6,6 +6,7 @@ package jstest
 import (
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -22,25 +23,28 @@ func (localTest262HarnessFS) Open(name string) (fs.File, error) {
 
 // RunScripts runs the JavaScript files under the repository-relative scriptsDir.
 func (suite *Test262) RunScripts(t *testing.T, scriptsDir string) {
-	h := suite.newHarness(localTest262HarnessFS{})
-	scriptFS := os.DirFS(".")
-	err := fs.WalkDir(scriptFS, scriptsDir, func(path string, entry fs.DirEntry, err error) error {
+	suite.newHarness(localTest262HarnessFS{}).runScripts(t, scriptsDir)
+}
+
+// RunV8LocalTests runs V8's local Test262 cases with the official Test262 harness.
+func (suite *Test262) RunV8LocalTests(t *testing.T) {
+	v8Dir := v8Flags.checkoutDir(t)
+	h := suite.checkoutHarness(t, test262Flags.checkoutDir(t))
+	h.runScripts(t, filepath.Join(v8Dir, "test/test262/local-tests/test"))
+}
+
+func (h *harness) runScripts(t *testing.T, scriptsDir string) {
+	err := fs.WalkDir(os.DirFS(scriptsDir), ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() || !strings.HasSuffix(path, ".js") || strings.HasSuffix(path, "_FIXTURE.js") {
 			return nil
 		}
-		t.Run(strings.TrimPrefix(path, scriptsDir+"/"), func(t *testing.T) {
-			data, err := fs.ReadFile(scriptFS, path)
+		t.Run(path, func(t *testing.T) {
+			test, err := readTest(filepath.Join(scriptsDir, filepath.FromSlash(path)))
 			if err != nil {
 				t.Fatal(err)
-			}
-			src := string(data)
-			test := &test262Test{
-				path: path,
-				src:  src,
-				m:    parseMetadata(src),
 			}
 			result := test.run(h, testTimeout)
 			if result.retry {
@@ -53,7 +57,7 @@ func (suite *Test262) RunScripts(t *testing.T, scriptsDir string) {
 		return nil
 	})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("walking %s: %v", scriptsDir, err)
 	}
 }
 
