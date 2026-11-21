@@ -99,6 +99,10 @@ var v8Suites = []v8Suite{
 
 			// The module loader resolves the exact filename in the specifier.
 			"--no-fuzzy-module-file-extensions",
+
+			// Ekuma compiles nested functions with their enclosing code.
+			"--no-lazy",
+			"--nolazy",
 		},
 	},
 }
