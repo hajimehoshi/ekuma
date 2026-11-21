@@ -1416,6 +1416,28 @@ func (vm *VM) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
 	info.fast.number2 = k2
 }
 
+// MethodKernel0, MethodKernel1 and MethodKernel2 compute a function for its this value and no,
+// one or two arguments. They neither throw nor run code, and report false when the function has
+// to be called instead.
+type (
+	MethodKernel0 func(vm *VM, this Value) (Value, bool)
+	MethodKernel1 func(vm *VM, this, x Value) (Value, bool)
+	MethodKernel2 func(vm *VM, this, x, y Value) (Value, bool)
+)
+
+// SetMethodKernels makes a call of the native function f with exactly no, one or two arguments
+// try k0, k1 or k2 first. When the kernel reports true, its result must be what f returns for the
+// call. Any of them may be nil.
+func (vm *VM) SetMethodKernels(f *Object, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
+	info := f.fn.info
+	if info.fast == nil {
+		info.fast = &nativeFast{}
+	}
+	info.fast.method0 = k0
+	info.fast.method1 = k1
+	info.fast.method2 = k2
+}
+
 // nativeObject is a native function object together with its function state and description,
 // so that creating one is a single allocation.
 type nativeObject struct {

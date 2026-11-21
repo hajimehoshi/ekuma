@@ -2809,9 +2809,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			if fn.native != nil {
 				info := fn.info
-				// A native function with a kernel for its number arguments, which needs none of
-				// the bookkeeping of a call. The registers are reloaded, since a path to here may
-				// have grown the stack.
+				// A native function with a kernel, which needs none of the bookkeeping of a call.
+				// The registers are reloaded, since a path to here may have grown the stack.
 				if info != nil && info.fast != nil && !isNew && newTarget == nil {
 					k, a := info.fast, vm.stack[argBase:argBase+argc:argBase+argc]
 					if argc == 1 && k.number1 != nil && a[0].o == numberObject {
@@ -2825,6 +2824,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						regs = vm.reload(regs, vm.frameBase(), fp)
 						setNumber(&regs[ret], x)
 						continue
+					}
+					// A method kernel computes for the realm of the function, so only for the
+					// current one.
+					if info.realm == vm.curRealm {
+						if v, ok := k.callMethod(vm, callThis, a); ok {
+							regs = vm.reload(regs, vm.frameBase(), fp)
+							regs[ret] = v
+							continue
+						}
 					}
 				}
 				// A native function of the current realm is called directly. Like the call of a

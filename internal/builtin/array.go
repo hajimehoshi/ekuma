@@ -369,7 +369,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		return engine.ObjectValue(a)
 	})
 
-	method(vm, proto, "push", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	push := method(vm, proto, "push", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		if n, ok := vm.PushElements(o, args); ok {
 			return engine.Number(float64(n))
@@ -385,7 +385,19 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		setLength(vm, o, n)
 		return engine.Number(float64(n))
 	})
-	method(vm, proto, "pop", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	// The kernel of push is the fast path of push for a single value.
+	vm.SetMethodKernels(push, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+		if !this.IsObject() {
+			return engine.Undefined, false
+		}
+		vals := [...]engine.Value{v}
+		n, ok := vm.PushElements(this.Object(), vals[:])
+		if !ok {
+			return engine.Undefined, false
+		}
+		return engine.Number(float64(n)), true
+	}, nil)
+	pop := method(vm, proto, "pop", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		if v, ok := o.RemoveLastElement(); ok {
 			return v
@@ -400,6 +412,12 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		setLength(vm, o, n-1)
 		return v
 	})
+	vm.SetMethodKernels(pop, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+		if !this.IsObject() {
+			return engine.Undefined, false
+		}
+		return this.Object().RemoveLastElement()
+	}, nil, nil)
 	method(vm, proto, "shift", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		if v, ok := o.RemoveFirstElement(); ok {

@@ -33,6 +33,18 @@ func thisMap(vm *engine.VM, this engine.Value, name string) *collection.Table {
 	return t
 }
 
+// mapOf returns the [[MapData]] of this, or nil when this is not a Map object.
+func mapOf(this engine.Value) *collection.Table {
+	t, _ := engine.MapData(this).(*collection.Table)
+	return t
+}
+
+// setOf returns the [[SetData]] of this, or nil when this is not a Set object.
+func setOf(this engine.Value) *collection.Table {
+	t, _ := engine.SetData(this).(*collection.Table)
+	return t
+}
+
 func thisSet(vm *engine.VM, this engine.Value, name string) *collection.Table {
 	t, _ := engine.SetData(this).(*collection.Table)
 	if t == nil {
@@ -166,19 +178,46 @@ func initMap(vm *engine.VM) {
 		thisMap(vm, this, "clear").Clear()
 		return engine.Undefined
 	})
-	method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	// The kernels of the methods are the methods for a Map object.
+	mapDelete := method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisMap(vm, this, "delete").Delete(arg(args, 0)))
 	})
-	method(vm, proto, "get", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetMethodKernels(mapDelete, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+		if t := mapOf(this); t != nil {
+			return engine.Bool(t.Delete(k)), true
+		}
+		return engine.Undefined, false
+	}, nil)
+	mapGet := method(vm, proto, "get", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v, _ := thisMap(vm, this, "get").Get(arg(args, 0))
 		return v
 	})
-	method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetMethodKernels(mapGet, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+		if t := mapOf(this); t != nil {
+			v, _ := t.Get(k)
+			return v, true
+		}
+		return engine.Undefined, false
+	}, nil)
+	mapHas := method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisMap(vm, this, "has").Has(arg(args, 0)))
 	})
+	vm.SetMethodKernels(mapHas, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+		if t := mapOf(this); t != nil {
+			return engine.Bool(t.Has(k)), true
+		}
+		return engine.Undefined, false
+	}, nil)
 	mapSet = method(vm, proto, "set", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		thisMap(vm, this, "set").Set(arg(args, 0), arg(args, 1))
 		return this
+	})
+	vm.SetMethodKernels(mapSet, nil, nil, func(vm *engine.VM, this, k, v engine.Value) (engine.Value, bool) {
+		if t := mapOf(this); t != nil {
+			t.Set(k, v)
+			return this, true
+		}
+		return engine.Undefined, false
 	})
 	method(vm, proto, "getOrInsert", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisMap(vm, this, "getOrInsert")
@@ -224,9 +263,15 @@ func initMap(vm *engine.VM) {
 			vm.Call(cb.Object(), thisArg, argv...)
 		}
 	})
-	getter(vm, proto, vm.Intern("size"), "size", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	mapSize := getter(vm, proto, vm.Intern("size"), "size", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(float64(thisMap(vm, this, "size").Size()))
 	})
+	vm.SetMethodKernels(mapSize, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+		if t := mapOf(this); t != nil {
+			return engine.Number(float64(t.Size())), true
+		}
+		return engine.Undefined, false
+	}, nil, nil)
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
@@ -401,6 +446,7 @@ func initSet(vm *engine.VM) {
 		return engine.ObjectValue(vm.NewSetObject(vm.Intrinsic(engine.IntrinsicSetPrototype), t))
 	}
 
+	// The kernels of the methods are the methods for a Set object.
 	setAdd = method(vm, proto, "add", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(vm, this, "add")
 		v := arg(args, 0)
@@ -409,16 +455,38 @@ func initSet(vm *engine.VM) {
 		}
 		return this
 	})
+	vm.SetMethodKernels(setAdd, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+		t := setOf(this)
+		if t == nil {
+			return engine.Undefined, false
+		}
+		if !t.Has(v) {
+			t.Append(v, v)
+		}
+		return this, true
+	}, nil)
 	method(vm, proto, "clear", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		thisSet(vm, this, "clear").Clear()
 		return engine.Undefined
 	})
-	method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	setDelete := method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(vm, this, "delete").Delete(arg(args, 0)))
 	})
+	vm.SetMethodKernels(setDelete, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+		if t := setOf(this); t != nil {
+			return engine.Bool(t.Delete(v)), true
+		}
+		return engine.Undefined, false
+	}, nil)
 	keys.setHas = method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(thisSet(vm, this, "has").Has(arg(args, 0)))
 	})
+	vm.SetMethodKernels(keys.setHas, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+		if t := setOf(this); t != nil {
+			return engine.Bool(t.Has(v)), true
+		}
+		return engine.Undefined, false
+	}, nil)
 	method(vm, proto, "forEach", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(vm, this, "forEach")
 		cb := arg(args, 0)
@@ -437,9 +505,15 @@ func initSet(vm *engine.VM) {
 			vm.Call(cb.Object(), thisArg, argv...)
 		}
 	})
-	getter(vm, proto, keys.size, "size", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	setSize := getter(vm, proto, keys.size, "size", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(float64(thisSet(vm, this, "size").Size()))
 	})
+	vm.SetMethodKernels(setSize, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+		if t := setOf(this); t != nil {
+			return engine.Number(float64(t.Size())), true
+		}
+		return engine.Undefined, false
+	}, nil, nil)
 
 	method(vm, proto, "union", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(vm, this, "union")

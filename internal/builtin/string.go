@@ -123,14 +123,17 @@ func initString(vm *engine.VM) {
 		}
 		return vm.UnitString(s.UnitAt(int(i)))
 	})
-	method(vm, proto, "charCodeAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	charCodeAt := method(vm, proto, "charCodeAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "charCodeAt")
-		i := vm.ToIntegerOrInfinity(arg(args, 0))
-		if i < 0 || i >= float64(s.StringLength()) {
-			return engine.Number(math.NaN())
-		}
-		return engine.Number(float64(s.UnitAt(int(i))))
+		return codeUnitAt(s, vm.ToIntegerOrInfinity(arg(args, 0)))
 	})
+	// The kernel is the method for a string and a number, whose conversions run no code.
+	vm.SetMethodKernels(charCodeAt, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
+		if !this.IsString() || !x.IsNumber() {
+			return engine.Undefined, false
+		}
+		return codeUnitAt(this, vm.ToIntegerOrInfinity(x)), true
+	}, nil)
 	method(vm, proto, "codePointAt", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "codePointAt")
 		i := vm.ToIntegerOrInfinity(arg(args, 0))
@@ -817,4 +820,12 @@ func writeRepeated(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, count int) {
 			vm.Poll()
 		}
 	}
+}
+
+// codeUnitAt returns the code unit of the string s at the index i, or NaN when s has none there.
+func codeUnitAt(s engine.Value, i float64) engine.Value {
+	if i < 0 || i >= float64(s.StringLength()) {
+		return engine.Number(math.NaN())
+	}
+	return engine.Number(float64(s.UnitAt(int(i))))
 }

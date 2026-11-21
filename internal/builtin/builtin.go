@@ -41,10 +41,12 @@ func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStepF
 	return fn
 }
 
-// getter defines the accessor property key on o with the getter f, named "get " + name.
-func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) {
+// getter defines the accessor property key on o with the getter f, named "get " + name, and
+// returns the getter.
+func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) *engine.Object {
 	g := vm.NewNative("get "+name, 0, f)
 	vm.DefineAccessor(o, key, g, nil, engine.FlagConfigurable)
+	return g
 }
 
 // constant defines the property name of o that cannot be changed.

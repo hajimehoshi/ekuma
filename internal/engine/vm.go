@@ -90,6 +90,26 @@ type nativeFast struct {
 	// numbers.
 	number1 NumberKernel1
 	number2 NumberKernel2
+
+	// method0, method1 and method2 compute the function for its this value and exactly no, one
+	// or two arguments, unless they decline.
+	method0 MethodKernel0
+	method1 MethodKernel1
+	method2 MethodKernel2
+}
+
+// callMethod calls the method kernel for this and the arguments args. It reports false when
+// there is none for as many arguments or the kernel declines.
+func (k *nativeFast) callMethod(vm *VM, this Value, args []Value) (Value, bool) {
+	switch {
+	case len(args) == 0 && k.method0 != nil:
+		return k.method0(vm, this)
+	case len(args) == 1 && k.method1 != nil:
+		return k.method1(vm, this, args[0])
+	case len(args) == 2 && k.method2 != nil:
+		return k.method2(vm, this, args[0], args[1])
+	}
+	return Value{}, false
 }
 
 // nativeName returns the initial value of the property name of the native function f.
