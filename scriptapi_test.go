@@ -1281,7 +1281,11 @@ outer()`)
 
 // runScript parses src as a script of vm and evaluates it.
 func runScript(ctx context.Context, vm *ekuma.VM, name, src string) (ekuma.Value, error) {
-	s, err := vm.ParseScript(name, src)
+	return runScriptInRealm(ctx, vm.InitialRealm(), name, src)
+}
+
+func runScriptInRealm(ctx context.Context, realm *ekuma.Realm, name, src string) (ekuma.Value, error) {
+	s, err := realm.ParseScript(name, src)
 	if err != nil {
 		return ekuma.Undefined, err
 	}

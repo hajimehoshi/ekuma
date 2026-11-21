@@ -181,6 +181,53 @@ if (order !== 'HABA') throw new Error(order);`),
 	}
 }
 
+func TestV8ScriptLoader(t *testing.T) {
+	checkout := fstest.MapFS{
+		"helpers/append.mjs": {
+			Data: []byte("var appended = true; order += 'A';"),
+		},
+		"helpers/nested.js": {
+			Data: []byte("d8.file.execute('./helpers/append.mjs');"),
+		},
+		"helpers/throw.js": {
+			Data: []byte("throw token;"),
+		},
+		"helpers/invalid.js": {
+			Data: []byte("let x = ;"),
+		},
+	}
+	var vm ekuma.VM
+	realm := vm.NewRealm()
+	ctx := t.Context()
+	if err := installV8ScriptLoader(ctx, realm, checkout); err != nil {
+		t.Fatal(err)
+	}
+	const src = `
+		let order = '';
+		const next = {toString() { order += 'B'; return 'helpers/nested.js'; }};
+		function caller() {
+			let order = 'local';
+			return load('helpers/append.mjs', next);
+		}
+		if (caller() !== undefined || !globalThis.appended || order !== 'ABA') {
+			throw new Error('load order: ' + order);
+		}
+		const token = {};
+		function caught(...files) {
+			try { d8.file.execute(...files); } catch (e) { return e; }
+		}
+		if (caught('helpers/throw.js', next) !== token || order !== 'ABA') {
+			throw new Error('load did not stop at the thrown value');
+		}
+		if (caught({toString() { throw token; }}) !== token) throw new Error('expected conversion exception');
+		if (!(caught('helpers/invalid.js') instanceof SyntaxError)) throw new Error('expected SyntaxError');
+		if (caught('missing.js')?.constructor !== Error) throw new Error('expected file error');
+	`
+	if _, err := runScriptInRealm(ctx, realm, "test/mjsunit/loader.js", src); err != nil {
+		t.Error(err)
+	}
+}
+
 func readV8Environments(t *testing.T) map[string]v8TestEnvironment {
 	t.Helper()
 	data, err := os.ReadFile(v8EnvironmentFile)
@@ -395,6 +442,11 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 	if err := vm.Global().Set("print", print); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
+	if inSuiteDir(v.file, "test/mjsunit") {
+		if err := installV8ScriptLoader(ctx, vm.InitialRealm(), checkout); err != nil {
+			return suiteBroken.result(firstLine(err.Error())), ""
+		}
+	}
 	helpers := v.helpers
 	if directives.noHarness {
 		helpers = nil
@@ -442,6 +494,60 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 		return scriptErrorResult(rejection), lastPrint
 	}
 	return suiteResult{}, lastPrint
+}
+
+func installV8ScriptLoader(ctx context.Context, realm *ekuma.Realm, checkout fs.FS) error {
+	global := realm.Global()
+	errorCtor, err := global.Get("Error")
+	if err != nil {
+		return err
+	}
+	syntaxErrorCtor, err := global.Get("SyntaxError")
+	if err != nil {
+		return err
+	}
+	toString, err := runScriptInRealm(ctx, realm, "d8", "name => `${name}`")
+	if err != nil {
+		return err
+	}
+	throw := func(ctor ekuma.Value, message string) error {
+		e, err := ctor.New(ctx, message)
+		if err != nil {
+			return err
+		}
+		return &ekuma.ScriptError{
+			Value: e,
+		}
+	}
+	execute := func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		for _, arg := range args {
+			str, err := toString.Invoke(ctx, arg)
+			if err != nil {
+				return nil, err
+			}
+			name := str.String()
+			src, err := fs.ReadFile(checkout, path.Clean(filepath.ToSlash(name)))
+			if err != nil {
+				return nil, throw(errorCtor, "Error loading file: "+name)
+			}
+			// d8 executes a classic script even when its name ends in .mjs.
+			if _, err := runScriptInRealm(ctx, realm, filepath.FromSlash(name), string(src)); err != nil {
+				if se, ok := err.(*ekuma.SyntaxError); ok {
+					return nil, throw(syntaxErrorCtor, se.Message)
+				}
+				return nil, err
+			}
+		}
+		return ekuma.Undefined, nil
+	}
+	if err := global.Set("load", realm.FuncOf("load", execute)); err != nil {
+		return err
+	}
+	return global.Set("d8", realm.ValueOf(map[string]any{
+		"file": map[string]any{
+			"execute": realm.FuncOf("execute", execute),
+		},
+	}))
 }
 
 func runV8File(ctx context.Context, loader *moduleLoader, name, src string) suiteResult {
