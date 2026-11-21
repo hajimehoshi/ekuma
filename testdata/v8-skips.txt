@@ -46,9 +46,6 @@ test/intl/date-format/check-ca-option.js
 test/intl/date-format/timezone.js
 test/intl/regress-1177623.js
 
-# The Telugu Buddhist calendar pattern omits the requested year in resolvedOptions.
-test/intl/date-format/year-woy-field.js
-
 # Ekuma uses lookup matching for the best-fit locale matcher.
 test/intl/localematcher/bestfit-supplemental-files.js
 

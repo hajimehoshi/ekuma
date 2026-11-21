@@ -612,6 +612,7 @@ func main() {
 		name, key, doc string
 	}{
 		{"FirstDays", "firstDay", "maps regions to the first days of their weeks."},
+		{"MinDays", "minDays", "maps regions to the minimum number of days in the first week of the year."},
 		{"WeekendStarts", "weekendStart", "maps regions to the first days of their weekends."},
 		{"WeekendEnds", "weekendEnd", "maps regions to the last days of their weekends."},
 	} {

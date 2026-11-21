@@ -275,6 +275,17 @@ func TestCalendarFormat(t *testing.T) {
 		t      int64
 		want   string
 	}{
+		// A two-digit week-year keeps the sign when its leading digits are omitted.
+		{
+			locale: "te",
+			cal:    "buddhist",
+			c: date.Components{
+				Year:  "2-digit",
+				Month: "long",
+			},
+			t:    day(-101, 8, 17),
+			want: "ఆగస్టు -01",
+		},
 		// Adar of a leap year is Adar II.
 		{
 			locale: "en",

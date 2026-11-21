@@ -257,6 +257,26 @@ func (fm *Formatter) num(n int64, w int) string {
 	return number.Transliterate(fm.digits, pad(n, w))
 }
 
+// weekYear returns the year of the locale's week at local time t, with weekday 0 for Sunday.
+func (fm *Formatter) weekYear(t int64, weekday int) int64 {
+	day := floorDiv(t, msPerDay)
+	if fm.f.calendar == "iso8601" {
+		_, y := temporal.EpochDaysToISODate(day).WeekOfYear()
+		return int64(y)
+	}
+	tag, _ := locale.Parse(fm.f.locale)
+	firstDay, minDays := locale.WeekRules(tag)
+	// Count back from the last day of the week so that at least minDays
+	// of the first week fall in the new year.
+	daysSinceStart := (weekday - firstDay + 7) % 7
+	day += int64(7 - minDays - daysSinceStart)
+	// Buddhist and ROC week-years use Gregorian year numbers.
+	if fm.cal == nil || fm.f.calendar == "buddhist" || fm.f.calendar == "roc" {
+		return int64(temporal.EpochDaysToISODate(day).Year)
+	}
+	return int64(fm.cal.Date(day).Year)
+}
+
 // name returns the calendar name with the key, falling back to the other context.
 func (fm *Formatter) name(kind, ctx, width, key string) string {
 	if v, ok := fm.data.calendar(kind + ctx + width + key); ok {
@@ -317,17 +337,21 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 			return "year", fm.num(floorMod(y, 100), 2)
 		}
 		return "year", fm.num(y, n)
-	case 'u', 'r':
+	case 'Y', 'u', 'r':
 		y := lt.year
 		typ := "year"
-		if it.ch == 'r' {
+		switch it.ch {
+		case 'Y':
+			y = fm.weekYear(za.t+za.offset, lt.weekday)
+		case 'r':
 			y = lt.relatedYear
 			typ = "relatedYear"
 		}
-		s := strconv.FormatInt(abs64(y), 10)
-		for len(s) < n {
-			s = "0" + s
+		magnitude := abs64(y)
+		if it.ch == 'Y' && n == 2 {
+			magnitude %= 100
 		}
+		s := pad(magnitude, n)
 		if y < 0 {
 			s = "-" + s
 		}

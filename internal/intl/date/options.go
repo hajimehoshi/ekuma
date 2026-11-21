@@ -225,12 +225,10 @@ func (f *Format) Components() Components {
 			c.Weekday = width(it.n)
 		case 'G':
 			c.Era = width(it.n)
-		case 'y', 'u', 'U', 'r':
-			if it.n == 2 && it.ch == 'y' {
-				c.Year = "2-digit"
-			} else {
-				c.Year = "numeric"
-			}
+		case 'y', 'Y':
+			c.Year = digits(it.n)
+		case 'u', 'U', 'r':
+			c.Year = "numeric"
 		case 'M', 'L':
 			if it.n <= 2 {
 				c.Month = digits(it.n)

@@ -248,17 +248,28 @@ func Weekday(s string) int {
 	return slices.Index(weekdays, s) + 1
 }
 
+func firstDayOfWeek(t Tag, region string) int {
+	if v, ok := t.Keyword("fw"); ok {
+		if d := Weekday(v); d > 0 {
+			return d
+		}
+	}
+	return Weekday(regionData(cldr.FirstDays, region))
+}
+
+// WeekRules returns the first weekday (1 for Monday) and the minimum number of days
+// in the first week of the year.
+func WeekRules(t Tag) (firstDay, minDays int) {
+	days := regionData(cldr.MinDays, lookupRegion(t, cldr.MinDays))
+	return firstDayOfWeek(t, lookupRegion(t, cldr.FirstDays)), int(days[0] - '0')
+}
+
 // WeekInfoOf implements WeekInfoOfLocale of ECMA-402 for t, which is in canonical form. It
 // returns the first day of the week and the days of the weekend, sorted, numbered from 1 for
 // Monday to 7 for Sunday.
 func WeekInfoOf(t Tag) (firstDay int, weekend []int) {
 	region := lookupRegion(t, cldr.FirstDays)
-	firstDay = Weekday(regionData(cldr.FirstDays, region))
-	if v, ok := t.Keyword("fw"); ok {
-		if d := Weekday(v); d > 0 {
-			firstDay = d
-		}
-	}
+	firstDay = firstDayOfWeek(t, region)
 	start := Weekday(regionData(cldr.WeekendStarts, region))
 	end := Weekday(regionData(cldr.WeekendEnds, region))
 	for d := start; ; d = d%7 + 1 {

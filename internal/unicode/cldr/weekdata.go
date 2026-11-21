@@ -46,6 +46,29 @@ var FirstDays = Map{
 	},
 }
 
+// MinDays maps regions to the minimum number of days in the first week of the year.
+var MinDays = Map{
+	keys: Strings{
+		data: "001ADANATAXBEBGCHCZDEDKEEESFIFJFOFRGBGFGGGIGPGRGUHUIEIMISITJELILTLUMCMQNLNOPLPTRERUSESJSKSMUMUSV" +
+			"AVI",
+		ends: []uint32{
+			3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33,
+			35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65,
+			67, 69, 71, 73, 75, 77, 79, 81, 83, 85, 87, 89, 91, 93, 95, 97,
+			99,
+		},
+	},
+	values: Strings{
+		data: "1444444444444444444444414444444444444444444441141",
+		ends: []uint32{
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+			17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+			33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+			49,
+		},
+	},
+}
+
 // WeekendStarts maps regions to the first days of their weekends.
 var WeekendStarts = Map{
 	keys: Strings{
