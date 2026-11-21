@@ -42,7 +42,7 @@ func (vm *VM) deferredModuleNamespace(m *Module) *Object {
 	return m.deferredNamespace
 }
 
-// newModuleNamespace implements ModuleNamespaceCreate for the exports of m that resolve.
+// newModuleNamespace collects the exports for the requested phase and implements ModuleNamespaceCreate.
 func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 	type export struct {
 		name string
@@ -55,6 +55,9 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		star = m.starTable()
 	}
 	for _, n := range names {
+		if deferred && n == "then" {
+			continue
+		}
 		var r resolution
 		if star != nil && !m.hasOwnExport(n) {
 			// The default export is never provided by a star export, so n is not "default".

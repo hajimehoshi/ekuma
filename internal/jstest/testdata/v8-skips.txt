@@ -528,10 +528,6 @@ test/mjsunit/regress/regress-5566.js
 # regexp compiler's error text.
 test/mjsunit/regress/regress-484904778.js
 
-# Reflect.ownKeys includes the exported "then" on Ekuma's deferred module
-# namespace. V8 expects that key to be absent after evaluation.
-test/mjsunit/regress/regress-564879562.js
-
 # d8 print converts its argument to a string, triggering deferred module
 # evaluation. Ekuma's print records the object without evaluating the module.
 test/mjsunit/harmony/modules-import-defer-throws-in-api-callback.mjs
