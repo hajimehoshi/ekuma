@@ -2445,6 +2445,23 @@ func TestModuleEvaluationError(t *testing.T) {
 	}
 }
 
+func TestDeferredModuleRejectionReporting(t *testing.T) {
+	var vm ekuma.VM
+	var reported []ekuma.Value
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		reported = append(reported, promise)
+	})
+	modules := newMemoryModules(&vm, map[string]string{
+		"dep": `throw "deferred";`,
+		"main": `import defer * as ns from "dep";
+			try { ns.x; } catch (e) { globalThis.result = Promise.reject(e); }`,
+	})
+	want := modules.run(t, "main")
+	if len(reported) != 1 || !reported[0].Equal(want) {
+		t.Errorf("reported promises = %v, want only the promise created in catch", reported)
+	}
+}
+
 // TestModuleLoaderErrors checks the error that each kind of error of the loader becomes.
 func TestModuleLoaderErrors(t *testing.T) {
 	var vm ekuma.VM

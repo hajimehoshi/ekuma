@@ -121,7 +121,7 @@ func (vm *VM) isNamespaceExportKey(o *Object, k PropKey) bool {
 func (vm *VM) namespaceExports(o *Object) *moduleNamespace {
 	ns := namespaceOf(o)
 	if ns.deferred {
-		vm.ensureDeferredNamespaceEvaluation(ns.module)
+		vm.evaluateModuleSync(ns.module)
 	}
 	return ns
 }

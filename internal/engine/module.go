@@ -1153,15 +1153,18 @@ func (m *Module) readyForSyncExecution() bool {
 	return true
 }
 
-// ensureDeferredNamespaceEvaluation implements EnsureDeferredNamespaceEvaluation for the
-// module m of a deferred namespace object.
-func (vm *VM) ensureDeferredNamespaceEvaluation(m *Module) {
+// evaluateModuleSync implements EvaluateModuleSync.
+func (vm *VM) evaluateModuleSync(m *Module) {
 	if m.isCyclic() && m.status != moduleEvaluated && !m.readyForSyncExecution() {
 		vm.ThrowTypeError("the deferred module cannot be evaluated synchronously")
 	}
-	p := promiseOf(vm.evaluateModule(m).o)
-	if p.state == PromiseRejected {
-		vm.Throw(p.result)
+	p := vm.evaluateModule(m).o
+	if d := promiseOf(p); d.state == PromiseRejected {
+		if !d.isHandled {
+			vm.hostPromiseRejectionTracker(p, true)
+			d.isHandled = true
+		}
+		vm.Throw(d.result)
 	}
 }
 

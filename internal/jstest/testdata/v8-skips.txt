@@ -531,19 +531,6 @@ test/mjsunit/regress/regress-5566.js
 # regexp compiler's error text.
 test/mjsunit/regress/regress-484904778.js
 
-# Ekuma reports the rejected evaluation promise at the end of the test
-# after the script catches the exception from the deferred namespace.
-test/mjsunit/harmony/modules-import-defer-has-nonexistent-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-has-on-prototype-nonexistent-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-has-on-prototype-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-has-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-non-existant-field-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-nonexistent-on-prototype-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-on-prototype-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-prototype-swap-for-in-that-throws.mjs
-test/mjsunit/harmony/modules-import-defer-stack-overflow-on-sync-eval.js
-test/mjsunit/harmony/modules-import-defer-that-throws.mjs
-
 # Reflect.ownKeys includes the exported "then" on Ekuma's deferred module
 # namespace. V8 expects that key to be absent after evaluation.
 test/mjsunit/regress/regress-564879562.js
