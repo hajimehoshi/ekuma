@@ -44,8 +44,15 @@ test/intl/regress-10613.js
 test/intl/regress-9464.js
 test/intl/regress-9747.js
 
-# Islamic dates before the Hijra use different era and year representations.
+# Umm al-Qura's civil fallback gives 16 and 17 Dhu al-Hijjah on July 22 and 23
+# of ISO year -195366. Arithmetic year -202003 is era year 202004 BH.
+# CLDR 49 Arabic inherits "BH" from root. V8 expects -202003 with the AH label.
 test/intl/regress-10526.js
+
+# islamic resolves to islamic-tbla. Its epoch is 0622-07-18 (1 Muharram 1 AH),
+# so July 17 is 29 Dhu al-Hijjah 1 BH. V8 expects 30 Dhu al-Hijjah 0 AH.
+# V8 expects both dates for islamic-rgsa too. Ekuma drops that unsupported
+# extension and formats July 17 and 18 in the default Gregorian calendar for ar.
 test/intl/regress-10527.js
 
 # V8's English short time zone name at offset zero is GMT+0.
