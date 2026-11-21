@@ -43,6 +43,7 @@ type v8Shell struct {
 	marks    map[string]float64
 	domNodes ekuma.Value
 
+	recordPrint       ekuma.Func
 	withdrawInterrupt func()
 }
 
@@ -99,6 +100,10 @@ func (s *v8Shell) install(ctx context.Context, host *V8, r *ekuma.Realm, scripts
 			return ekuma.Undefined, err
 		}
 	}
+	var recordPrint ekuma.Value
+	if s.recordPrint != nil {
+		recordPrint = r.FuncOf("recordPrint", s.recordPrint)
+	}
 	exit := r.FuncOf("exit", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		panic(v8ExitCode(args[0].Int()))
 	})
@@ -122,6 +127,8 @@ func (s *v8Shell) install(ctx context.Context, host *V8, r *ekuma.Realm, scripts
 		"readFile":          r.FuncOf("readFile", readFile),
 		"stdout":            r.FuncOf("stdout", write(s.stdout)),
 		"stderr":            r.FuncOf("stderr", write(s.stderr)),
+		"recordPrint":       recordPrint,
+		"printLimit":        maxDiagnosticLineBytes,
 		"timer":             r.FuncOf("timer", s.timer),
 		"exit":              exit,
 		"terminate":         terminate,
@@ -241,6 +248,45 @@ func (host *V8) CheckShellOutput(t *testing.T) {
 	}
 	if got, want := stderr.String(), "partial \nconsole.error: done\n"; got != want {
 		t.Errorf("stderr = %q, want %q", got, want)
+	}
+}
+
+// CheckPrint checks mjsunit argument conversion and the last-print diagnostic.
+func (host *V8) CheckPrint(t *testing.T) {
+	const source = `
+		const child = Realm.create();
+		let order = "";
+		function argument(id, result) {
+			return { [Symbol.toPrimitive](hint) {
+				if (hint !== "string") throw Error(hint);
+				order += id;
+				return result;
+			} };
+		}
+		Realm.shared = [argument(1, "x".repeat(250)), argument(2, {}), argument(3, "")];
+		try {
+			Realm.eval(child, "print(...Realm.shared)");
+			throw Error("expected print to throw");
+		} catch (e) {
+			if (e.constructor !== Realm.eval(child, "TypeError")) throw e;
+		}
+		if (order !== "12") throw Error("conversion order: " + order);
+		console.log("after print");
+	`
+	test := v8Test{
+		file: "test/mjsunit/print.js",
+	}
+	checkout := fstest.MapFS{
+		test.file: {
+			Data: []byte(source),
+		},
+	}
+	result, printed := test.execute(t.Context(), host, checkout, testTimeout)
+	if result.outcome != suitePassed {
+		t.Error(result.reason)
+	}
+	if want := "[" + strings.Repeat("x", maxDiagnosticLineBytes-1); printed != want {
+		t.Errorf("last print = %q, want %q", printed, want)
 	}
 }
 

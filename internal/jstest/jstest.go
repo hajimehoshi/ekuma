@@ -104,12 +104,14 @@ func (f *suiteFlags) run(t *testing.T, count int, runTest func(int)) {
 	workers.Wait()
 }
 
+const maxDiagnosticLineBytes = 200
+
 func firstLine(s string) string {
 	if i := strings.IndexByte(s, '\n'); i >= 0 {
 		s = s[:i]
 	}
-	if len(s) > 200 {
-		s = s[:200]
+	if len(s) > maxDiagnosticLineBytes {
+		s = s[:maxDiagnosticLineBytes]
 	}
 	return s
 }

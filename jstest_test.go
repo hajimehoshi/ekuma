@@ -102,6 +102,10 @@ func TestV8ShellOutput(t *testing.T) {
 	v8Runner.CheckShellOutput(t)
 }
 
+func TestV8Print(t *testing.T) {
+	v8Runner.CheckPrint(t)
+}
+
 func TestV8Quit(t *testing.T) {
 	v8Runner.CheckQuit(t)
 }

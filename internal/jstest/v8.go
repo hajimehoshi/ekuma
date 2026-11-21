@@ -638,7 +638,7 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 		now := *v.environment.FixedTime
 		vm.SetClock(func() time.Time { return now })
 	}
-	print := func(this ekuma.Value, args []ekuma.Value) (any, error) {
+	recordPrint := func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		lastPrint = firstLine(fmt.Sprint(args))
 		return ekuma.Undefined, nil
 	}
@@ -668,14 +668,14 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 		if webkitOutput != nil {
 			realms.shell = newV8Shell(webkitOutput, io.Discard)
 		} else {
-			realms.print = print
 			realms.shell = newV8Shell(io.Discard, io.Discard)
+			realms.shell.recordPrint = recordPrint
 		}
 		defer realms.shell.close()
 		if _, err := realms.add(scripts.current, false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
 		}
-	} else if err := vm.Global().Set("print", vm.FuncOf("print", print)); err != nil {
+	} else if err := vm.Global().Set("print", vm.FuncOf("print", recordPrint)); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	// A later timer can attach a handler before d8 reports unhandled rejections.

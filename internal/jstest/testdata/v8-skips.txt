@@ -528,10 +528,6 @@ test/mjsunit/regress/regress-5566.js
 # regexp compiler's error text.
 test/mjsunit/regress/regress-484904778.js
 
-# d8 print converts its argument to a string, triggering deferred module
-# evaluation. Ekuma's print records the object without evaluating the module.
-test/mjsunit/harmony/modules-import-defer-throws-in-api-callback.mjs
-
 # V8 expects Iterator.concat to call the inner iterator's return method
 # when its next method throws. Ekuma propagates the exception directly.
 test/mjsunit/harmony/iterator-concat.js

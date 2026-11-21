@@ -38,6 +38,7 @@
 })(function (shell) {
   "use strict";
   const {readFile, stdout, stderr, timer, exit, terminate, terminateNow, canAccessReceiver} = shell;
+  const {recordPrint, printLimit} = shell;
   const {now: timestamp, recordMark, lookupMark} = shell;
   const global = globalThis;
   const {Error, String, TypeError, Uint8Array} = global;
@@ -141,8 +142,16 @@
       out("\n");
     }
   }
-  globalThis.print ??= function print(...args) {
-    printTo(stdout, args);
+  globalThis.print = function print(...args) {
+    if (!recordPrint) return printTo(stdout, args);
+    let prefix = "";
+    try {
+      write(text => {
+        if (prefix.length < printLimit) prefix += slice(text, 0, printLimit - prefix.length);
+      }, args);
+    } finally {
+      recordPrint(prefix);
+    }
   };
   globalThis.printErr = function printErr(...args) {
     printTo(stderr, args);
