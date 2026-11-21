@@ -16,9 +16,6 @@ test/intl/date-format/en-format-range-to-parts.js
 test/intl/date-format/format-range.js
 test/intl/regress-9912.js
 
-# Greek uppercasing of άόύώ produces ΑΟΥΩ where V8 expects ΑΟΫΩ.
-test/intl/general/case-mapping.js
-
 # These tests use V8's nonstandard Intl.v8BreakIterator constructor.
 test/intl/break-iterator/default-locale.js
 test/intl/break-iterator/en-break.js

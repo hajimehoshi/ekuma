@@ -112,6 +112,16 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 			want: "Υ",
 		},
 		{
+			name: "Greek diaeresis follows the form of the preceding accent",
+			src:  `"α\u0301ί άι\u0301".toLocaleUpperCase("el")`,
+			want: "ΑΙ\u0308 ΑΪ",
+		},
+		{
+			name: "Greek eta with case-ignorable neighbors",
+			src:  `"η\u0301 η\u0301'α α'ή".toLocaleUpperCase("el")`,
+			want: "Η\u0301 Η'Α Α'Η",
+		},
+		{
 			// A string longer than 65536 bytes is mapped in parts, and the language rules
 			// need the context of the characters around a part's end.
 			name: "case mapping around the end of a part",
@@ -121,7 +131,7 @@ func TestLocaleSensitiveMethods(t *testing.T) {
 					for (var [lang, c, upper] of [
 						["tr", "İ", false], ["az", "İ", false], ["tr", "İ", false],
 						["lt", "i̇", true], ["lt", "İ̀", false],
-						["el", "ᾳ", true], ["el", "Ά", true],
+						["el", "ᾳ", true], ["el", "Ά", true], ["el", "άι", true],
 					]) {
 						var map = s => upper ? s.toLocaleUpperCase(lang) : s.toLocaleLowerCase(lang);
 						if (map(p + c).slice(n) !== map(c)) {
@@ -245,10 +255,9 @@ func TestFormatters(t *testing.T) {
 			want: "-1E1; -9E0; -1E1; -9E0; -1M; -1K; -1E3; -1E1; ~-1E1",
 		},
 		{
-			// A run of marks longer than a step is uppercased as a whole: the first 30
-			// Greek modifiers after a letter are removed.
+			// All the marks belong to the same vowel, even across interruption checks.
 			name: "Greek uppercasing of a long run of marks",
-			src:  `String(("\u03b1" + "\u0301\u0308".repeat(2 ** 16)).toLocaleUpperCase("el") === "\u0391" + "\u0301\u0308".repeat(2 ** 16 - 15))`,
+			src:  `String(("α" + "\u0301\u0308".repeat(2 ** 16)).toLocaleUpperCase("el") === "Α\u0308")`,
 			want: "true",
 		},
 		{

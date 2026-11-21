@@ -9,9 +9,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -277,9 +274,9 @@ func initLocaleCase(vm *engine.VM) {
 			// result. Greek has rules only for uppercasing.
 			switch {
 			case lang == "el" && m.upper:
-				s = mapAtStarters(vm, s, greekUpper)
-				checkStringLength(vm, len(s))
-				return vm.NewString(s)
+				s = wtf8.MapWellFormed(s, func(s string) string {
+					return greekUpper(s, vm.Poll)
+				})
 			case lang == "lt" && m.upper:
 				s = mapAtStarters(vm, s, lithuanianUndot)
 			case lang == "lt":
@@ -387,46 +384,6 @@ func lithuanianDots(s string, poll func()) string {
 		}
 	}
 	return b.String()
-}
-
-// greekUpper applies the Greek uppercasing of CLDR, which removes the diacritics of Greek
-// letters.
-func greekUpper(s string, poll func()) string {
-	// cases keeps the diacritics of a letter whose uppercase in SpecialCasing.txt has several
-	// characters, so the letters are decomposed first. A letter with an iota subscript is kept
-	// for SpecialCasing.txt to turn the subscript into a capital iota.
-	var b strings.Builder
-	b.Grow(len(s))
-	k := 0
-	for _, r := range s {
-		if k++; k%pollRunes == 0 {
-			poll()
-		}
-		if unicode.Is(unicode.Greek, r) && unicode.IsLetter(r) {
-			if d := norm.NFD.String(string(r)); !strings.ContainsRune(d, '\u0345') {
-				b.WriteString(d)
-				continue
-			}
-		}
-		b.WriteRune(r)
-	}
-	if b.Len() <= caseChunk {
-		return cases.Upper(language.Greek).String(b.String())
-	}
-	// The caser streams, so that a long part is uppercased in steps with polls between them.
-	r := transform.NewReader(strings.NewReader(b.String()), cases.Upper(language.Greek))
-	var out strings.Builder
-	out.Grow(b.Len())
-	buf := make([]byte, 1<<16)
-	for {
-		n, err := r.Read(buf)
-		out.Write(buf[:n])
-		if err != nil {
-			// A Reader of a string fails only at its end, and the caser accepts any input.
-			return out.String()
-		}
-		poll()
-	}
 }
 
 // lithuanianUndot applies the Lithuanian rule of SpecialCasing.txt for uppercasing that

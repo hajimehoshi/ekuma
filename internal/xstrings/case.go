@@ -46,37 +46,43 @@ func ToLowerCase(s string, start, end int, poll func()) string {
 // isFinalSigma reports whether the character at byte offset i of s satisfies the Final_Sigma
 // casing context. poll is as for [ToLowerCase].
 func isFinalSigma(s string, i int, poll func()) bool {
-	// Before: a cased letter followed by zero or more case-ignorable characters.
-	// A character that is both cased and case-ignorable counts as case-ignorable.
-	var before bool
-	n := 0
-	for j := i; j > 0; {
-		if n++; n%pollRunes == 0 && poll != nil {
-			poll()
-		}
-		r, size := utf8.DecodeLastRuneInString(s[:j])
-		j -= size
-		if isCaseIgnorable(r) {
-			continue
-		}
-		before = isCased(r)
-		break
-	}
-	if !before {
-		return false
-	}
-	// After: not zero or more case-ignorable characters followed by a cased letter.
 	_, size := utf8.DecodeRuneInString(s[i:])
-	for _, r := range s[i+size:] {
+	return EndsWithCasedLetter(s[:i], poll) && !StartsWithCasedLetter(s[i+size:], poll)
+}
+
+// EndsWithCasedLetter reports whether s ends in a cased letter after ignoring trailing
+// case-ignorable characters. poll is as for [ToLowerCase].
+func EndsWithCasedLetter(s string, poll func()) bool {
+	// A character that is both cased and case-ignorable counts as case-ignorable.
+	var n int
+	for len(s) > 0 {
+		if n++; n%pollRunes == 0 && poll != nil {
+			poll()
+		}
+		r, size := utf8.DecodeLastRuneInString(s)
+		s = s[:len(s)-size]
+		if isCaseIgnorable(r) {
+			continue
+		}
+		return isCased(r)
+	}
+	return false
+}
+
+// StartsWithCasedLetter reports whether s starts with a cased letter after ignoring leading
+// case-ignorable characters. poll is as for [ToLowerCase].
+func StartsWithCasedLetter(s string, poll func()) bool {
+	var n int
+	for _, r := range s {
 		if n++; n%pollRunes == 0 && poll != nil {
 			poll()
 		}
 		if isCaseIgnorable(r) {
 			continue
 		}
-		return !isCased(r)
+		return isCased(r)
 	}
-	return true
+	return false
 }
 
 // isCased reports whether r has the Unicode Cased property.
