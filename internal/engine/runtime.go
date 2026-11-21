@@ -1357,7 +1357,8 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	}
 	this := tdz
 	if !fn.derived {
-		this = Value{o: newInstance(vm.shapeFor(vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicObjectPrototype))))}
+		proto := vm.GetPrototypeFromConstructor(newTarget, vm.Intrinsic(IntrinsicObjectPrototype))
+		this = Value{o: newInstance(vm.shapeForRealm(proto, fn.code.realm))}
 	}
 	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {
@@ -1531,7 +1532,7 @@ func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Obj
 	}
 	b.kind = kindFunction
 	b.class = classFunction
-	b.shape = vm.shapeFor(vm.ProtoOf(target))
+	b.shape = vm.shapeForRealm(vm.ProtoOf(target), target.shape.realm)
 	b.slots = b.props[:0]
 	return b.init()
 }

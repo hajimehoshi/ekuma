@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"unicode/utf8"
+	"weak"
 
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -184,9 +185,12 @@ type objectMeta struct {
 	// by collection. See [WeakTable].
 	weak weakEntries
 
-	// protoShape is the empty shape of the objects whose prototype is this object, once one
-	// was made. See [VM.shapeFor].
+	// protoShape is the empty shape for same-realm objects with this prototype.
 	protoShape *shape
+
+	// foreignProtoShape caches the last shape for objects created with this prototype in
+	// another realm. The prototype can outlive that realm.
+	foreignProtoShape weak.Pointer[shape]
 
 	// functionProtoShape is the empty shape of the functions whose prototype is this object
 	// and whose initial properties are not stored yet, once one was made.
@@ -298,15 +302,16 @@ const privateShapeThreshold = 128
 
 // shape describes the layout of an object: which property lives in which slot, and the prototype.
 //
-// Objects that got the same properties in the same order from the same prototype share a Shape,
-// until an object has many properties or changes in a way other than adding one.
+// Objects with a common prototype in their creation realm that got the same properties in the
+// same order share a Shape, until one has many properties or changes in a way other than adding one.
 // Then it gets a private Shape, which is changed in place.
 //
 // A shared Shape never changes, so an inline cache that remembers one stays valid for as long
 // as the prototypes it looked through keep their properties.
 type shape struct {
-	// vm is the [VM] that the objects with this shape belong to.
-	vm *VM
+	// vm and realm identify where the objects with this shape were created.
+	vm    *VM
+	realm *realm
 
 	proto  *Object
 	parent *shape
@@ -558,6 +563,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 	}
 	t := &shape{
 		vm:     s.vm,
+		realm:  s.realm,
 		proto:  s.proto,
 		parent: s,
 		key:    key,
@@ -616,6 +622,7 @@ func (s *shape) privateCopy() *shape {
 	}
 	t := &shape{
 		vm:      s.vm,
+		realm:   s.realm,
 		proto:   s.proto,
 		count:   s.count,
 		table:   make(map[*Object]prop, s.count+8),
@@ -636,6 +643,7 @@ func (s *shape) privateCopy() *shape {
 func (s *shape) handOver() *shape {
 	t := &shape{
 		vm:      s.vm,
+		realm:   s.realm,
 		proto:   s.proto,
 		count:   s.count,
 		table:   s.table,
@@ -691,24 +699,42 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (vm *VM) newShape(proto *Object) *shape {
+func (vm *VM) newShape(proto *Object, r *realm) *shape {
 	return &shape{
 		vm:    vm,
+		realm: r,
 		proto: proto,
 		small: []shapeEntry{},
 	}
 }
 
-// shapeFor returns the empty shape for objects whose prototype is proto, which may be nil.
+// shapeFor returns the empty shape for objects of the current realm with prototype proto, which may be nil.
 func (vm *VM) shapeFor(proto *Object) *shape {
+	return vm.shapeForRealm(proto, vm.curRealm)
+}
+
+// shapeForRealm returns the empty shape for objects of r with prototype proto, which may be nil.
+func (vm *VM) shapeForRealm(proto *Object, r *realm) *shape {
 	if proto == nil {
+		if r != vm.curRealm {
+			return r.shapes.nullProto
+		}
 		return vm.shapes.nullProto
+	}
+	m := proto.ensureMeta()
+	if proto.shape.realm != r {
+		if s := m.foreignProtoShape.Value(); s != nil && s.realm == r {
+			return s
+		}
+		s := vm.newShape(proto, r)
+		m.foreignProtoShape = weak.Make(s)
+		proto.flags |= objIsProto
+		return s
 	}
 	// The shape is stored on proto, so that it and the shapes derived from it are collected
 	// together with proto.
-	m := proto.ensureMeta()
 	if m.protoShape == nil {
-		m.protoShape = vm.newShape(proto)
+		m.protoShape = vm.newShape(proto, r)
 		proto.flags |= objIsProto
 	}
 	return m.protoShape
@@ -717,11 +743,11 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 // functionShapeFor returns the empty shape for the functions whose prototype is proto and whose
 // initial properties are not stored yet. No other object has this shape or one derived from it,
 // so an inline cache filled for another kind of object never applies to such a function.
-// proto must not be nil.
+// proto must be an intrinsic prototype of the current realm.
 func (vm *VM) functionShapeFor(proto *Object) *shape {
 	m := proto.ensureMeta()
 	if m.functionProtoShape == nil {
-		m.functionProtoShape = vm.newShape(proto)
+		m.functionProtoShape = vm.newShape(proto, vm.curRealm)
 		proto.flags |= objIsProto
 	}
 	return m.functionProtoShape
@@ -729,9 +755,13 @@ func (vm *VM) functionShapeFor(proto *Object) *shape {
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
 func (vm *VM) NewObject(proto *Object) *Object {
+	return newObject(vm.shapeFor(proto))
+}
+
+func newObject(s *shape) *Object {
 	return (&propertyObject{
 		kind:  kindObject,
-		shape: vm.shapeFor(proto),
+		shape: s,
 	}).init()
 }
 
@@ -1515,6 +1545,7 @@ func (vm *VM) remove(o *Object, key *Object) {
 	}
 	s := &shape{
 		vm:      old.vm,
+		realm:   old.realm,
 		proto:   old.proto,
 		table:   make(map[*Object]prop, old.count),
 		private: true,
@@ -1603,7 +1634,7 @@ func (vm *VM) setProto(o *Object, proto *Object) {
 		}
 		o.shape = s
 	} else {
-		s := vm.shapeFor(proto)
+		s := vm.shapeForRealm(proto, old.realm)
 		for _, k := range old.keys() {
 			p, _ := old.lookup(k)
 			s = s.with(k, p.flags)

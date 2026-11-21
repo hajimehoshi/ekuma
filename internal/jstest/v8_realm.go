@@ -87,7 +87,7 @@ func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess boo
 		}
 		return ekuma.Undefined, nil
 	})
-	view, err := init.Invoke(h.ctx, create, lookup, current)
+	view, err := init.Invoke(h.ctx, create, lookup, current, r.FuncOf("owner", h.owner))
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +155,19 @@ func (h *v8Realms) change(index int, operation string) (bool, error) {
 	}
 	delete(h.scripts.contexts, r)
 	return true, nil
+}
+
+func (h *v8Realms) owner(this ekuma.Value, args []ekuma.Value) (any, error) {
+	if len(args) == 0 || (args[0].Type() != ekuma.TypeObject && args[0].Type() != ekuma.TypeFunction) {
+		return nil, errors.New("Invalid argument")
+	}
+	r := h.host.ObjectCreationRealm(args[0])
+	for i, entry := range h.entries {
+		if entry != nil && entry.realm == r {
+			return i, nil
+		}
+	}
+	return ekuma.Undefined, nil
 }
 
 // CheckRealm checks script evaluation and global object access across V8 realms.
@@ -246,6 +259,53 @@ func (host *V8) CheckRealm(t *testing.T) {
 			Data: []byte("var loadedIn = globalThis"),
 		},
 	})
+}
+
+// CheckRealmOwner checks creation realm lookup across realm boundaries.
+func (host *V8) CheckRealmOwner(t *testing.T) {
+	const source = `
+		const child = Realm.create();
+		const foreignOwner = Realm.eval(child, "Realm.owner");
+		for (const args of [[], [null], [1]]) {
+			let error;
+			try { foreignOwner(...args); } catch (e) { error = e; }
+			if (error?.constructor !== Realm.eval(child, "Error")) throw Error("expected the child's Error");
+		}
+		const [obj, C] = Realm.eval(child, "[Object.create(null), function C() {}]");
+		function check(expected, value) {
+			const actual = Realm.owner(value);
+			if (actual !== expected) throw Error("expected owner " + expected + ", got " + actual);
+		}
+		check(child, obj);
+		Object.setPrototypeOf(obj, Object.prototype);
+		check(child, obj);
+		const local = Object.create(obj);
+		const peer = Realm.create();
+		check(peer, Realm.eval(peer, "Object.create")(obj));
+		check(0, local);
+		check(child, C);
+		check(child, C.prototype);
+		check(child, new C());
+		check(child, Reflect.construct(C, [], Object));
+		check(child, Function.prototype.bind.call(C, null));
+		check(child, Realm.eval(child, "async () => {}")());
+		check(child, Realm.eval(child, "Intl").NumberFormat);
+		const proxy = Proxy.revocable(C, {});
+		proxy.revoke();
+		check(0, proxy.proxy);
+		if (foreignOwner(globalThis, child) !== 0) throw Error("wrong global owner");
+		Object.setPrototypeOf(obj, null);
+		const global = Realm.global(child);
+		Realm.detachGlobal(child);
+		check(child, obj);
+		Realm.navigate(child);
+		check(child, global);
+		check(undefined, obj);
+		const fresh = Realm.eval(child, "({})");
+		Realm.dispose(child);
+		check(undefined, fresh);
+	`
+	host.checkRealmScript(t, "test/mjsunit/realm-owner.js", source, fstest.MapFS{})
 }
 
 // CheckRealmDetachGlobal checks the lifecycle of a detached realm and its global proxy.

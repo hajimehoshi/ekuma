@@ -42,6 +42,17 @@ func IsEnteredRealm(r *Realm) bool {
 	return r.vm.e.IsEnteredRealm(r.r)
 }
 
+// ObjectCreationRealm returns the host realm of the object v, or nil if it has none.
+func ObjectCreationRealm(v Value) *Realm {
+	o := v.value.Object()
+	r := o.CreationRealm()
+	if r == nil {
+		return nil
+	}
+	host, _ := o.VM().RealmHostDefined(r).(*Realm)
+	return host
+}
+
 // ParseScriptValue parses the JavaScript string src as a script of r.
 func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
 	return r.parseScript(name, src.value.Str())

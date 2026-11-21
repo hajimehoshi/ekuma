@@ -28,6 +28,7 @@ import (
 // V8 runs the V8 conformance suites with the supplied realm operations.
 type V8 struct {
 	IsEnteredRealm           func(*ekuma.Realm) bool
+	ObjectCreationRealm      func(ekuma.Value) *ekuma.Realm
 	ParseScriptValue         func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
 	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, *ekuma.Realm, bool) ekuma.Value
 	DetachGlobalProxy        func(*ekuma.Realm)

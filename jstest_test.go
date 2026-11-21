@@ -18,6 +18,7 @@ var test262Runner = jstest.Test262{
 
 var v8Runner = jstest.V8{
 	IsEnteredRealm:           ekuma.IsEnteredRealm,
+	ObjectCreationRealm:      ekuma.ObjectCreationRealm,
 	ParseScriptValue:         ekuma.ParseScriptValue,
 	InstallGlobalProxy:       ekuma.InstallGlobalProxy,
 	DetachGlobalProxy:        ekuma.DetachGlobalProxy,
@@ -77,6 +78,10 @@ func TestV8Timeouts(t *testing.T) {
 
 func TestV8Realm(t *testing.T) {
 	v8Runner.CheckRealm(t)
+}
+
+func TestV8RealmOwner(t *testing.T) {
+	v8Runner.CheckRealmOwner(t)
 }
 
 func TestV8RealmDetachGlobal(t *testing.T) {

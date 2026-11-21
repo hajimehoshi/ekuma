@@ -293,9 +293,11 @@ func (vm *VM) materialize(o *Object) {
 			if c.isAsync {
 				proto = vm.realmIntrinsic(c.realm, IntrinsicAsyncGeneratorPrototype)
 			}
-			vm.add(o, vm.Key(KeyPrototype), Value{o: vm.NewObject(proto)}, FlagWritable)
+			p := newObject(vm.shapeForRealm(proto, c.realm))
+			vm.add(o, vm.Key(KeyPrototype), Value{o: p}, FlagWritable)
 		case f.constructor:
-			p := vm.NewObject(vm.realmIntrinsic(c.realm, IntrinsicObjectPrototype))
+			proto := vm.realmIntrinsic(c.realm, IntrinsicObjectPrototype)
+			p := newObject(vm.shapeForRealm(proto, c.realm))
 			vm.add(p, vm.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {
@@ -350,7 +352,9 @@ func (vm *VM) InitLazyObject(o *Object) {
 	o.class = classObject
 	o.setExtState(nil)
 	o.flags &^= objExotic
-	init(o)
+	vm.InRealm(o.CreationRealm(), func() {
+		init(o)
+	})
 }
 
 // lookup finds the named property key on o and its prototype chain.
@@ -924,7 +928,7 @@ func (vm *VM) densify(o *Object) {
 	var root *shape
 	var base int
 	if s.private {
-		root = vm.shapeFor(s.proto)
+		root = vm.shapeForRealm(s.proto, s.realm)
 	} else {
 		root = s
 		for root.parent != nil {

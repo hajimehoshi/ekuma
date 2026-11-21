@@ -31,7 +31,7 @@ func NewVM(hostDefined any) *VM {
 		mailbox:             newMailbox(),
 		maxBigIntResultBits: MaxBigIntBits,
 	}
-	vm.symbolShape = vm.newShape(nil)
+	vm.symbolShape = vm.newShape(nil, nil)
 	vm.curRealm = &realm{}
 	vm.referrer = &scriptOrModule{realm: vm.curRealm}
 	vm.initRealmPrototypes()
@@ -63,8 +63,8 @@ func NewVM(hostDefined any) *VM {
 // initRealmPrototypes creates the prototypes of the current realm that the strings, the keys
 // and the other objects of the VM depend on.
 func (vm *VM) initRealmPrototypes() {
-	vm.shapes.nullProto = vm.newShape(nil)
-	vm.shapes.proxy = vm.newShape(nil)
+	vm.shapes.nullProto = vm.newShape(nil, vm.curRealm)
+	vm.shapes.proxy = vm.newShape(nil, vm.curRealm)
 	objectProto := (&propertyObject{
 		kind:  kindObject,
 		shape: vm.shapes.nullProto,
@@ -583,6 +583,20 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 // CurrentRealm returns the current Realm Record.
 func (vm *VM) CurrentRealm() *Realm {
 	return (*Realm)(vm.curRealm)
+}
+
+// CreationRealm returns the creation realm of the JavaScript object o, or nil for a detached global proxy.
+func (o *Object) CreationRealm() *Realm {
+	if o.class == classProxy {
+		st := o.extState().(*proxyState)
+		if st.isGlobal() {
+			if st.target == nil {
+				return nil
+			}
+			o = st.target
+		}
+	}
+	return (*Realm)(o.shape.realm)
 }
 
 // IsEnteredRealm reports whether r is the VM's entered realm.

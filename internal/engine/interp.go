@@ -1875,10 +1875,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					proto = Value{o: vm.realmIntrinsic(f.fn.code.realm, IntrinsicObjectPrototype)}
 				}
 				var shape *shape
-				if proto.o == c.holder && c.next != nil {
+				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.realm {
 					shape = c.next
 				} else {
-					shape = vm.shapeFor(proto.o)
+					shape = vm.shapeForRealm(proto.o, f.fn.code.realm)
 					if c.kind == cacheOwn {
 						c.holder, c.next = proto.o, shape
 					}

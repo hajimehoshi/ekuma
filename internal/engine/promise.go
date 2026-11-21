@@ -168,13 +168,17 @@ func promiseOf(o *Object) *promiseData {
 
 // NewPromiseObject returns a pending Promise object with the prototype proto.
 func (vm *VM) NewPromiseObject(proto *Object) *Object {
+	return newPromiseObject(vm.shapeFor(proto))
+}
+
+func newPromiseObject(s *shape) *Object {
 	w := &promiseObject{
 		state: promiseData{
 			result: Undefined,
 		},
 	}
 	w.kind = kindObject
-	w.shape = vm.shapeFor(proto)
+	w.shape = s
 	o := w.init()
 	o.class = classPromise
 	o.setExtState(&w.state)

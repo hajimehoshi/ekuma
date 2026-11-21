@@ -99,6 +99,8 @@ func (vm *VM) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAcce
 	vm.foreignGlobalView = foreignView
 	if proxy == nil {
 		proxy = vm.ProxyCreate(ObjectValue(vm.global), ObjectValue(handler))
+		// A global proxy can outlive its first realm and acquire a new target on navigation.
+		proxy.shape = vm.newShape(nil, nil)
 	} else {
 		state := proxy.extState().(*proxyState)
 		state.target = vm.global
