@@ -30,7 +30,7 @@ type errorData struct {
 	// pending is set until stack is formatted from name, msg and calls.
 	pending bool
 
-	// name and msg in UTF-8 begin the stack trace, and calls are its lines.
+	// name in WTF-8 and msg in UTF-8 begin the stack trace, and calls are its lines.
 	name  wtf8.String
 	msg   string
 	calls []stackCall

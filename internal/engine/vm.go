@@ -821,8 +821,8 @@ type stackCall struct {
 	isNew bool
 }
 
-// formatStack returns the stack trace of an error with the name name and the message msg in
-// UTF-8 whose lines are calls.
+// formatStack returns a stack trace starting with the WTF-8 name and UTF-8 message,
+// followed by one line per call.
 func formatStack(name wtf8.String, msg string, calls []stackCall) wtf8.String {
 	var b wtf8.Buffer
 	b.WriteString(name)
