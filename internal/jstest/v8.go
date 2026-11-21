@@ -62,7 +62,7 @@ var v8Suites = []v8Suite{
 // Run runs the selected V8 tests and checks their results against the skip list.
 func (host *V8) Run(t *testing.T) {
 	dir := v8Flags.checkoutDir(t)
-	unseenSkips := readV8Skips(t)
+	skips := readV8Skips(t)
 	unseenEnvironments := readV8Environments(t)
 	checkout := os.DirFS(dir)
 	selectedDir := path.Clean(filepath.ToSlash(v8Flags.dir))
@@ -79,7 +79,7 @@ func (host *V8) Run(t *testing.T) {
 			continue
 		}
 		matchedSuite = true
-		tests = append(tests, suite.collect(t, checkout, root, v8Flags.filter, unseenSkips, unseenEnvironments)...)
+		tests = append(tests, suite.collect(t, checkout, root, v8Flags.filter, skips, unseenEnvironments)...)
 	}
 	if !matchedSuite {
 		t.Fatalf("no enabled V8 suite in %q", selectedDir)
@@ -114,7 +114,7 @@ func (host *V8) Run(t *testing.T) {
 		}
 	}
 	failedTests := len(failures)
-	staleSkips := staleEntries(maps.Keys(unseenSkips), v8SkipsFile, selectedDir, v8Flags.filter)
+	staleSkips := staleEntries(skips.unseen, v8SkipsFile, selectedDir, v8Flags.filter)
 	staleEnvironments := staleEntries(maps.Keys(unseenEnvironments), v8EnvironmentFile, selectedDir, v8Flags.filter)
 	failures = append(failures, staleSkips...)
 	failures = append(failures, staleEnvironments...)
@@ -253,14 +253,13 @@ func readV8Environments(t *testing.T) map[string]v8TestEnvironment {
 	return environments
 }
 
-func readV8Skips(t *testing.T) map[string]string {
+func readV8Skips(t *testing.T) skipList {
 	t.Helper()
 	data, err := os.ReadFile(v8SkipsFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// An empty reason marks an expected failure that still runs.
-	skips := map[string]string{}
+	skips := skipList{}
 	lines := strings.Split(string(data), "\n")
 	var reason string
 	for i := 0; i < len(lines); i++ {
@@ -288,7 +287,9 @@ func readV8Skips(t *testing.T) map[string]string {
 		if _, exists := skips[file]; exists {
 			t.Fatalf("duplicate path %s in %s", file, v8SkipsFile)
 		}
-		skips[file] = reason
+		skips[file] = &skipEntry{
+			reason: reason,
+		}
 	}
 	return skips
 }
@@ -302,7 +303,7 @@ type v8Test struct {
 	wantFailure bool
 }
 
-func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, unseenSkips map[string]string, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
+func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, skips skipList, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
 	t.Helper()
 	var helpers []*ekuma.UnboundScript
 	for _, name := range s.helpers {
@@ -330,8 +331,7 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 		if slices.Contains(s.helpers, name) || slices.Contains(s.exclude, name) || !strings.Contains(file, filter) {
 			return nil
 		}
-		skipReason, listed := unseenSkips[file]
-		delete(unseenSkips, file)
+		skipReason, listed := skips.match(file)
 		environment := unseenEnvironments[file]
 		delete(unseenEnvironments, file)
 		tests = append(tests, v8Test{
@@ -356,7 +356,7 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 func (v *v8Test) run(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) suiteResult {
 	result, lastPrint := v.execute(ctx, host, checkout, timeout)
 	if v.wantFailure {
-		result = result.expectFailure(v.file, v8SkipsFile)
+		result = result.expectFailure(v8SkipsFile)
 	}
 	if lastPrint != "" && result.outcome != suitePassed {
 		result.reason += fmt.Sprintf(" (last print: %q)", lastPrint)

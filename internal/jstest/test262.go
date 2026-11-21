@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"maps"
 	"os"
 	"os/exec"
 	"path"
@@ -35,24 +34,23 @@ type Test262 struct {
 
 var test262Flags = registerSuiteFlags("test262")
 
-// skippedTestsFile lists the test262 tests that are expected to fail, one path per line, each
-// with a comment that says why. A line that starts with "#" is a comment.
+// skippedTestsFile lists the test262 tests that are expected to fail.
 const skippedTestsFile = testdataDir + "/test262-skips.txt"
 
-func readTest262Skips(name string) (map[string]bool, error) {
+func readTest262Skips(name string) (skipList, error) {
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	files := map[string]bool{}
+	skips := skipList{}
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		if file := strings.TrimSpace(sc.Text()); file != "" && !strings.HasPrefix(file, "#") {
-			files[file] = true
+			skips[file] = &skipEntry{}
 		}
 	}
-	return files, sc.Err()
+	return skips, sc.Err()
 }
 
 // metadata is the part of the front matter of a test that the runner uses.
@@ -611,7 +609,7 @@ func (suite *Test262) CheckExpectedFailureWithMissingInclude(t *testing.T) {
 			includes: []string{"missing.js"},
 		},
 	}
-	result := test.run(h, testTimeout).expectFailure(test.path, skippedTestsFile)
+	result := test.run(h, testTimeout).expectFailure(skippedTestsFile)
 	if result.outcome != suiteBroken {
 		t.Errorf("expected failure with missing include: got %v, want %v", result.outcome, suiteBroken)
 	}
@@ -640,7 +638,7 @@ func (suite *Test262) Run(t *testing.T) {
 	if test262Flags.dir != "" {
 		testDir = path.Clean(filepath.ToSlash(test262Flags.dir))
 	}
-	unseenSkips, err := readTest262Skips(skippedTestsFile)
+	skips, err := readTest262Skips(skippedTestsFile)
 	if err != nil {
 		t.Fatalf("reading the skipped tests: %v", err)
 	}
@@ -662,8 +660,7 @@ func (suite *Test262) Run(t *testing.T) {
 		if test262Flags.filter != "" && !strings.Contains(rel, test262Flags.filter) {
 			return nil
 		}
-		if unseenSkips[rel] {
-			delete(unseenSkips, rel)
+		if _, listed := skips.match(rel); listed {
 			skipped = append(skipped, rel)
 			return nil
 		}
@@ -738,12 +735,12 @@ func (suite *Test262) Run(t *testing.T) {
 	}
 	retryTests(skipped, skippedResults)
 	for i, p := range skipped {
-		result := skippedResults[i].expectFailure(p, skippedTestsFile)
+		result := skippedResults[i].expectFailure(skippedTestsFile)
 		if result.outcome != suitePassed {
 			t.Errorf("%s: %s", p, result.reason)
 		}
 	}
-	for _, failure := range staleEntries(maps.Keys(unseenSkips), skippedTestsFile, testDir, test262Flags.filter) {
+	for _, failure := range staleEntries(skips.unseen, skippedTestsFile, testDir, test262Flags.filter) {
 		t.Errorf("%s: %s", failure.path, failure.reason)
 	}
 	if testing.Verbose() {

@@ -342,7 +342,11 @@ paths and failure reasons. Both suites flag skip-list errors in the console.
 V8 also includes them in the report file. Relative checkout and report paths are
 resolved from the repository root.
 
-Plain paths in each skip list are expected failures. The tests still run, and
+Both skip lists accept checkout-relative file paths and directory paths. End a
+directory path with `/` to match every test beneath it, including in
+subdirectories. The most specific entry for a test takes precedence.
+
+Plain entries in each skip list are expected failures. The tests still run, and
 an unexpected pass or a stale path fails the suite. A runner error, engine
 panic, or timeout on the final attempt also fails the suite. In the V8 list, a
 `# SKIP: reason` comment skips all consecutive test paths directly below it.

@@ -1,6 +1,6 @@
-# The test262 tests that are expected to fail, one path per line, each with the reason in a
-# comment above it. A skipped test still runs, and the test suite fails when it passes, so that
-# its line is removed.
+# One checkout-relative path per line. A trailing / covers every test beneath a
+# directory. Give the reason in a comment above the entry. Listed tests still
+# run, and an unexpected pass or a missing path fails the suite.
 # When Ekuma follows a specification, name the rule and what the test expects.
 
 # Ekuma follows ECMA-402's rules for primary identifiers in the IANA time zone

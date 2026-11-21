@@ -168,14 +168,14 @@ func scriptErrorResult(err error) suiteResult {
 }
 
 // expectFailure accepts only a test failure for a listed file.
-func (r suiteResult) expectFailure(file, manifest string) suiteResult {
+func (r suiteResult) expectFailure(manifest string) suiteResult {
 	switch r.outcome {
 	case suiteFailed:
 		return suiteResult{}
 	case suitePassed:
-		return suiteBroken.result(fmt.Sprintf("passes now: remove %s from %s", file, manifest))
+		return suiteBroken.result("passes now: update " + manifest)
 	case suiteSkipped:
-		return suiteBroken.result(fmt.Sprintf("cannot run (%s): remove %s from %s", r.reason, file, manifest))
+		return suiteBroken.result(fmt.Sprintf("cannot run (%s): update %s", r.reason, manifest))
 	default:
 		return r
 	}
@@ -192,6 +192,57 @@ func retryInIsolation(results []suiteResult, run func(int, time.Duration) suiteR
 
 func inSuiteDir(file, dir string) bool {
 	return dir == "." || file == dir || strings.HasPrefix(file, dir+"/")
+}
+
+type skipEntry struct {
+	reason string // An empty reason marks an expected failure that still runs.
+	seen   bool
+}
+
+type skipList map[string]*skipEntry
+
+func (s skipList) match(file string) (reason string, listed bool) {
+	// Visit directory prefixes and then the file, so the most specific entry wins.
+	var end int
+	for part := range strings.SplitAfterSeq(file, "/") {
+		end += len(part)
+		if entry := s[file[:end]]; entry != nil {
+			entry.seen = true
+			reason, listed = entry.reason, true
+		}
+	}
+	return reason, listed
+}
+
+func (s skipList) unseen(yield func(string) bool) {
+	for name, entry := range s {
+		if !entry.seen && !yield(name) {
+			return
+		}
+	}
+}
+
+// CheckSkipDirectories checks directory matching and file overrides in a skip list.
+func CheckSkipDirectories(t *testing.T) {
+	skips := skipList{
+		"test/wasm/": {
+			reason: "requires WebAssembly",
+		},
+		"test/wasm/nested/fail.js": {},
+		"test/missing/":            {},
+	}
+	if reason, listed := skips.match("test/wasm/nested/example.js"); reason != "requires WebAssembly" || !listed {
+		t.Errorf("nested test: got (%q, %t), want the directory skip reason", reason, listed)
+	}
+	if reason, listed := skips.match("test/wasm/nested/fail.js"); reason != "" || !listed {
+		t.Errorf("file override: got (%q, %t), want an expected failure", reason, listed)
+	}
+	if _, listed := skips.match("test/wasm-extra/example.js"); listed {
+		t.Error("matched a sibling directory")
+	}
+	if got := slices.Collect(skips.unseen); !slices.Equal(got, []string{"test/missing/"}) {
+		t.Errorf("unseen entries: got %v, want [test/missing/]", got)
+	}
 }
 
 func staleEntries(unseen iter.Seq[string], manifest, dir, filter string) []suiteFailure {

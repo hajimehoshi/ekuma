@@ -34,6 +34,10 @@ func TestLocalScriptHarness(t *testing.T) {
 	test262Runner.CheckLocalScriptHarness(t)
 }
 
+func TestSkipDirectories(t *testing.T) {
+	jstest.CheckSkipDirectories(t)
+}
+
 func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
 	test262Runner.CheckExpectedFailureWithMissingInclude(t)
 }
