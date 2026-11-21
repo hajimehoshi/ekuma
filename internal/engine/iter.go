@@ -219,8 +219,7 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 			if vm.interrupt.Load() {
 				vm.Poll()
 			}
-			vm.checkNatives()
-			vm.pushNative(f, it, false)
+			vm.pushNative(f, it, nil)
 			_, ok := step(vm, it)
 			vm.popNative()
 			return ok
@@ -241,8 +240,7 @@ func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 	var v Value
 	var st int
 	if f := next.o; f != nil && f.fn != nil && f.fn.iteratorStep(vm.curRealm) != nil {
-		vm.checkNatives()
-		vm.pushNative(f, it, false)
+		vm.pushNative(f, it, nil)
 		v, st = vm.iterNext(it, next)
 		vm.popNative()
 	} else {

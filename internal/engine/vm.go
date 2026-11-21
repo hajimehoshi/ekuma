@@ -6,6 +6,7 @@ package engine
 import (
 	"cmp"
 	"math/rand/v2"
+	"slices"
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
@@ -319,32 +320,51 @@ type nativeCall struct {
 	// frames is the number of frames when the call started.
 	frames int
 
-	isNew bool
+	// newTarget is the constructor that the function is being constructed for, and nil in a
+	// call.
+	newTarget *Object
 }
 
-// checkNatives throws a RangeError when maxNatives calls of native functions are running. It
-// precedes [VM.pushNative].
-func (vm *VM) checkNatives() {
-	if len(vm.natives) >= maxNatives {
-		vm.throwNativeOverflow()
+// pushNative records the start of the call of the native function f for newTarget, which is nil
+// in a call. It throws a RangeError when maxNatives calls of native functions are running.
+func (vm *VM) pushNative(f *Object, this Value, newTarget *Object) {
+	n := len(vm.natives)
+	if n == cap(vm.natives) {
+		vm.growNatives()
 	}
+	vm.natives = vm.natives[:n+1]
+	c := &vm.natives[n]
+	c.f, c.this, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
 }
 
-// throwNativeOverflow throws the RangeError of too many nested calls of native functions.
+// growNatives makes room for one more call of a native function, or throws a RangeError when
+// maxNatives calls are running.
 //
 //go:noinline
-func (vm *VM) throwNativeOverflow() {
-	vm.ThrowRangeError("maximum call stack size exceeded")
+func (vm *VM) growNatives() {
+	if len(vm.natives) >= maxNatives {
+		vm.ThrowRangeError("maximum call stack size exceeded")
+	}
+	// The capacity never exceeds maxNatives, so that a push checks only for a full slice.
+	s := slices.Grow(vm.natives, 1)
+	vm.natives = s[:len(s):min(cap(s), maxNatives)]
 }
 
-// pushNative records the start of the call of the native function f.
-func (vm *VM) pushNative(f *Object, this Value, isNew bool) {
-	vm.natives = append(vm.natives, nativeCall{
-		f:      f,
-		this:   this,
-		frames: len(vm.frames),
-		isNew:  isNew,
-	})
+// callNative calls the native function f, which belongs to the current realm, for newTarget,
+// which is nil in a call.
+func (vm *VM) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
+	// This is pushNative written out, since pushNative does not inline. A change there belongs
+	// here too.
+	n := len(vm.natives)
+	if n == cap(vm.natives) {
+		vm.growNatives()
+	}
+	vm.natives = vm.natives[:n+1]
+	c := &vm.natives[n]
+	c.f, c.this, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
+	r := f.fn.native(vm, this, args)
+	vm.popNative()
+	return r
 }
 
 // popNative records the end of the innermost call of a native function.
@@ -420,9 +440,6 @@ type VM struct {
 
 	// abortCause defers job and module abandonment until the outermost call ends.
 	abortCause error
-
-	// newTarget is the constructor a native function is being constructed for, and nil in a plain call.
-	newTarget *Object
 
 	thrown   Value
 	thrownAt throwSite
@@ -868,8 +885,8 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 			}
 			d.calls = append(d.calls, stackCall{
 				name:  c.f.fn.nativeName(),
-				recv:  vm.receiverName(c.isNew, c.this),
-				isNew: c.isNew,
+				recv:  vm.receiverName(c.newTarget != nil, c.this),
+				isNew: c.newTarget != nil,
 			})
 		}
 		if i < 0 || len(d.calls) >= maxStackFrames {

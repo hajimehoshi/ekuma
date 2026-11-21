@@ -57,7 +57,7 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 		// of calling a function reaches them.
 		p.fn = &function{
 			native: func(vm *VM, this Value, args []Value) Value {
-				if nt := vm.newTarget; nt != nil {
+				if nt := vm.GetNewTarget(); nt != nil {
 					return Value{o: vm.proxyConstruct(p, args, nt)}
 				}
 				return vm.proxyCall(p, this, args)

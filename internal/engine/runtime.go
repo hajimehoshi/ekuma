@@ -1231,7 +1231,14 @@ func (vm *VM) callOnStack(f *Object, this Value, args []Value) Value {
 	vm.ensureStack(base + n)
 	copy(vm.stack[base:], args)
 	vm.sp = base + n
-	r := vm.callSlow(f, this, vm.stack[base:base+n:base+n], false, nil)
+	var r Value
+	if fn := f.fn; fn != nil && fn.native != nil && (fn.info == nil || fn.info.realm == vm.curRealm) &&
+		!vm.interrupt.Load() {
+		// A native function of the current realm needs none of the other checks of callSlow.
+		r = vm.callNative(f, this, vm.stack[base:base+n:base+n], nil)
+	} else {
+		r = vm.callSlow(f, this, vm.stack[base:base+n:base+n], false, nil)
+	}
 	vm.sp = base
 	return r
 }
@@ -1252,14 +1259,7 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 		if fn.info != nil && fn.info.realm != vm.curRealm {
 			return vm.callNativeInRealm(f, this, args, nil)
 		}
-		saved := vm.newTarget
-		vm.newTarget = nil
-		vm.checkNatives()
-		vm.pushNative(f, this, false)
-		r := fn.native(vm, this, args)
-		vm.popNative()
-		vm.newTarget = saved
-		return r
+		return vm.callNative(f, this, args, nil)
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
@@ -1311,17 +1311,10 @@ func (vm *VM) callBound(f *Object, args []Value) Value {
 // callNativeInRealm calls the native function f, whose realm is not the current one, in its realm.
 // newTarget is nil for a call and the new.target of a construction otherwise.
 func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *Object) Value {
-	fn := f.fn
-	savedRealm, savedTarget := vm.curRealm, vm.newTarget
-	vm.switchRealm(fn.info.realm)
-	defer vm.switchRealm(savedRealm)
-	vm.newTarget = newTarget
-	vm.checkNatives()
-	vm.pushNative(f, this, newTarget != nil)
-	r := fn.native(vm, this, args)
-	vm.popNative()
-	vm.newTarget = savedTarget
-	return r
+	saved := vm.curRealm
+	vm.switchRealm(f.fn.info.realm)
+	defer vm.switchRealm(saved)
+	return vm.callNative(f, this, args, newTarget)
 }
 
 // Construct implements Construct: new f(...args) with the given new.target.
@@ -1342,13 +1335,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 		if fn.info != nil && fn.info.realm != vm.curRealm {
 			r = vm.callNativeInRealm(f, Undefined, args, newTarget)
 		} else {
-			saved := vm.newTarget
-			vm.newTarget = newTarget
-			vm.checkNatives()
-			vm.pushNative(f, Undefined, true)
-			r = fn.native(vm, Undefined, args)
-			vm.popNative()
-			vm.newTarget = saved
+			r = vm.callNative(f, Undefined, args, newTarget)
 		}
 		if !r.IsObject() {
 			vm.ThrowTypeError("constructor did not return an object")
@@ -1454,7 +1441,10 @@ func (vm *VM) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *
 // GetNewTarget implements GetNewTarget for the running native function: it returns the
 // constructor the function is being constructed for, or nil when it was called.
 func (vm *VM) GetNewTarget() *Object {
-	return vm.newTarget
+	if n := len(vm.natives); n > 0 {
+		return vm.natives[n-1].newTarget
+	}
+	return nil
 }
 
 // findScope returns the innermost of the depth innermost dynamic scopes of the running

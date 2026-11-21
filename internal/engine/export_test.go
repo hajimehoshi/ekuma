@@ -36,3 +36,6 @@ func StackSize(vm *VM) int {
 func JobStorage(vm *VM) int {
 	return cap(vm.jobs.jobs)
 }
+
+// MaxNatives is the number of calls of native functions that can run at once.
+const MaxNatives = maxNatives

@@ -2765,6 +2765,40 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
+			if fn.native != nil {
+				info := fn.info
+				// A native function with a kernel for its number arguments, which needs none of
+				// the bookkeeping of a call. The registers are reloaded, since a path to here may
+				// have grown the stack.
+				if info != nil && info.fast != nil && !isNew && newTarget == nil {
+					k, a := info.fast, vm.stack[argBase:argBase+argc:argBase+argc]
+					if argc == 1 && k.number1 != nil && a[0].o == numberObject {
+						x := k.number1(a[0].n)
+						regs = vm.reload(regs, vm.frameBase(), fp)
+						setNumber(&regs[ret], x)
+						continue
+					}
+					if argc == 2 && k.number2 != nil && a[0].o == numberObject && a[1].o == numberObject {
+						x := k.number2(a[0].n, a[1].n)
+						regs = vm.reload(regs, vm.frameBase(), fp)
+						setNumber(&regs[ret], x)
+						continue
+					}
+				}
+				// A native function of the current realm is called directly. Like the call of a
+				// closure above, it does not poll for an interruption, which loops do at their
+				// backward jumps.
+				if info == nil || info.realm == vm.curRealm {
+					vm.ensureStack(argBase + argc)
+					saved := vm.sp
+					vm.sp = argBase + argc
+					r := vm.callNative(f, callThis, vm.stack[argBase:argBase+argc:argBase+argc], nil)
+					vm.sp = saved
+					regs = vm.reload(regs, vm.frameBase(), fp)
+					regs[ret] = r
+					continue
+				}
+			}
 			if fn.bound != nil && !isNew && newTarget == nil && len(fn.bound.args) == 0 {
 				f, callThis = vm.unbindPlain(f)
 				goto call
@@ -2780,24 +2814,6 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs = fr.gen.regs
 				pc = 0
 				continue
-			}
-			// A native function with a kernel for its number arguments, which needs none of the
-			// bookkeeping of a call. The registers are reloaded, since a path to here may have
-			// grown the stack.
-			if info := fn.info; info != nil && info.fast != nil && !isNew && newTarget == nil {
-				k, a := info.fast, vm.stack[argBase:argBase+argc:argBase+argc]
-				if argc == 1 && k.number1 != nil && a[0].o == numberObject {
-					x := k.number1(a[0].n)
-					regs = vm.reload(regs, vm.frameBase(), fp)
-					setNumber(&regs[ret], x)
-					continue
-				}
-				if argc == 2 && k.number2 != nil && a[0].o == numberObject && a[1].o == numberObject {
-					x := k.number2(a[0].n, a[1].n)
-					regs = vm.reload(regs, vm.frameBase(), fp)
-					setNumber(&regs[ret], x)
-					continue
-				}
 			}
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp

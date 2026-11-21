@@ -341,7 +341,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	// A host callback that recovered an interruption runs no more JavaScript.
 	vm.ResumeInterruption()
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
-	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
+	curRealm, callerRealm := vm.curRealm, vm.callerRealm
 	thrown, site := vm.thrown, vm.thrownAt
 	context := vm.jobContext
 	outermost := vm.entered == 0
@@ -386,7 +386,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			vm.unwindTo(frames)
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
-			vm.callerRealm, vm.newTarget = callerRealm, newTarget
+			vm.callerRealm = callerRealm
 			vm.thrown, vm.thrownAt = thrown, site
 			var cause error
 			if interrupted {
