@@ -361,6 +361,15 @@ type shape struct {
 	// slots. A deleted key leaves nil behind until the shape is compacted, so count is the number
 	// of keys and len(order) the number of slots.
 	order []*Object
+
+	// deletion is the result of the last deletion of a property from a shared shape, or nil.
+	deletion *deletion
+}
+
+// deletion is the shared shape that deleting the property key from a shared shape gives.
+type deletion struct {
+	key   *Object
+	shape *shape
 }
 
 // shapeEntry is a property of a shape and where it is.
@@ -611,6 +620,46 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 		}
 		d++
 	}
+	return t
+}
+
+// maxReadded is the largest number of properties after a deleted one for which the deletion
+// gives a shared shape.
+const maxReadded = 16
+
+// without returns the shared shape with the properties of the shared shape s other than key, in
+// the same order and with the same attributes. It returns nil when the chain of s does not add
+// key or adds more than maxReadded properties after it.
+func (s *shape) without(key *Object) *shape {
+	if d := s.deletion; d != nil && d.key == key {
+		return d.shape
+	}
+	// The properties after key, from the last one. Each can make a shape that the tree of shapes
+	// did not have yet.
+	var buf [maxReadded]shapeKey
+	later := buf[:0]
+	p := s
+	for p != nil && p.key != key {
+		if len(later) == maxReadded {
+			return nil
+		}
+		later = append(later, shapeKey{
+			key:   p.key,
+			flags: p.flags,
+		})
+		p = p.parent
+	}
+	if p == nil {
+		return nil
+	}
+	t := p.parent
+	for _, k := range slices.Backward(later) {
+		t = t.with(k.key, k.flags)
+	}
+	if s.deletion == nil {
+		s.deletion = &deletion{}
+	}
+	s.deletion.key, s.deletion.shape = key, t
 	return t
 }
 
@@ -1537,12 +1586,25 @@ func (o *Object) renewShape() {
 
 // remove deletes the own named property key of o, which must exist.
 func (vm *VM) remove(o *Object, key *Object) {
-	// Removing a property moves the later ones, so the object gets a shape that no inline cache has seen.
 	old := o.shape
 	if old.private {
 		vm.removeFromPrivate(o, key)
 		return
 	}
+	// The shared shape without key has the later properties in the slots after the one of key,
+	// so their values move down by one.
+	if s := old.without(key); s != nil {
+		p, _ := old.lookup(key)
+		n := len(o.slots)
+		copy(o.slots[p.slot:], o.slots[p.slot+1:])
+		o.slots[n-1] = Value{}
+		o.slots = o.slots[:n-1]
+		o.shape = s
+		vm.touchProto(o)
+		return
+	}
+	// Otherwise removing a property moves the later ones, so the object gets a shape that no
+	// inline cache has seen.
 	s := &shape{
 		vm:      old.vm,
 		realm:   old.realm,
