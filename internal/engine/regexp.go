@@ -264,6 +264,10 @@ func (vm *VM) IsRegExpOfCurrentRealm(o *Object) bool {
 type regExpOriginals struct {
 	props []originalProp
 
+	// data holds the data properties of props, found at epoch. Assigning to a data property
+	// does not move protoEpoch, so their values are compared at every check.
+	data []originalData
+
 	// epoch is the value of VM.protoEpoch when the slots of props were last found.
 	epoch   uint32
 	checked bool
@@ -281,6 +285,13 @@ type originalProp struct {
 	value *Object
 	// slot is the slot of the property in holder, found at regExpOriginals.epoch.
 	slot int32
+}
+
+// originalData is a recorded data property of an object.
+type originalData struct {
+	// ref points at the value of the property, which is in the slots of its holder.
+	ref   *Value
+	value *Object
 }
 
 // find looks the property up in its holder, and reports whether it has the recorded attributes,
@@ -351,10 +362,18 @@ func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
 	r := &vm.regExpOriginals
 	if !r.checked || r.epoch != vm.protoEpoch {
 		r.found = true
+		r.data = r.data[:0]
 		for i := range r.props {
-			if !r.props[i].find() {
+			p := &r.props[i]
+			if !p.find() {
 				r.found = false
 				break
+			}
+			if p.flags&FlagAccessor == 0 {
+				r.data = append(r.data, originalData{
+					ref:   &p.holder.slots[p.slot],
+					value: p.value,
+				})
 			}
 		}
 		r.epoch = vm.protoEpoch
@@ -363,9 +382,8 @@ func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
 	if !r.found {
 		return false
 	}
-	for i := range r.props {
-		p := &r.props[i]
-		if p.flags&FlagAccessor == 0 && p.holder.slots[p.slot].o != p.value {
+	for _, d := range r.data {
+		if d.ref.o != d.value {
 			return false
 		}
 	}

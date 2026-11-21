@@ -58,6 +58,12 @@ type Matcher struct {
 
 const pollInterval = 1 << 14
 
+// SetASCII records whether s, the subject of the matches that follow, consists of ASCII
+// characters only.
+func (m *Matcher) SetASCII(s wtf8.String, ascii bool) {
+	m.asciiS, m.ascii = s, ascii
+}
+
 // Match matches re against s at the code unit index start, or after it unless re is sticky.
 // It returns the start and end code unit indices of the whole match and of each capturing
 // group, -1 for the groups that did not participate, or nil when there is no match.

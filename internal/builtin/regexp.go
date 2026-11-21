@@ -121,6 +121,14 @@ func advanceStringIndex(s engine.Value, index int64, unicode bool) int64 {
 	return index + 1
 }
 
+// subject returns the text of the string s for a match, and tells the matcher whether it is
+// ASCII, which s remembers.
+func (e *regexpEnv) subject(s engine.Value) wtf8.String {
+	str := s.Str()
+	e.m.SetASCII(str, s.IsASCII())
+	return str
+}
+
 // builtinExecRaw implements RegExpBuiltinExec up to the creation of the match array.
 // It returns the code unit indices of the captures, which are valid until the next match,
 // or nil when there is no match.
@@ -139,7 +147,7 @@ func (e *regexpEnv) builtinExecRaw(vm *engine.VM, r *engine.Object, s engine.Val
 		}
 		return nil
 	}
-	caps := re.Match(&e.m, s.Str(), int(lastIndex), vm)
+	caps := re.Match(&e.m, e.subject(s), int(lastIndex), vm)
 	if caps == nil {
 		if global || sticky {
 			e.setLastIndex(vm, r, 0)
@@ -975,7 +983,7 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s engine.Value, limi
 		switch {
 		case fast:
 			// The splitter is sticky and its lastIndex is 0, so it can only match at 0.
-			if caps := re.Find(&e.m, s.Str(), 0, vm); caps != nil {
+			if caps := re.Find(&e.m, e.subject(s), 0, vm); caps != nil {
 				e.legacy.recordLegacy(true, s, caps)
 				return engine.ObjectValue(vm.NewArray(nil))
 			}
@@ -996,7 +1004,7 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s engine.Value, limi
 		var z engine.Value
 		var end int
 		if fast {
-			caps = re.Find(&e.m, s.Str(), q, vm)
+			caps = re.Find(&e.m, e.subject(s), q, vm)
 			if caps == nil || caps[0] >= size {
 				break
 			}
