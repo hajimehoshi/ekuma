@@ -72,6 +72,9 @@ var v8Suites = []v8Suite{
 			"--bundle",
 			"--expose-gc",
 
+			// Ekuma uses time zone rules and localized names for Date.
+			"--icu-timezone-data",
+
 			// Ekuma enables these language features by default.
 			"--harmony-shadow-realm",
 			"--harmony-top-level-await",
