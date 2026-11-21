@@ -222,11 +222,8 @@ func parseDateTime(s string, tz TimeZone, poll func()) (float64, bool) {
 		}
 	}
 	if sc.done() {
-		if !isoDate {
-			return 0, false
-		}
-		// A date-only form is UTC.
-		f.hasOffset = true
+		// ISO date-only forms are UTC. A single-digit month or day denotes a local date.
+		f.hasOffset = isoDate
 		return f.timeValue(tz), true
 	}
 	var relaxed bool
