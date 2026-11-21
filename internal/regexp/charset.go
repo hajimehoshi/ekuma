@@ -130,14 +130,6 @@ func (s charSet) subtract(t charSet) charSet {
 	return s.intersect(t.complement(maxRune))
 }
 
-// single reports the only character of s, if it has exactly one.
-func (s charSet) single() (rune, bool) {
-	if len(s) == 2 && s[0] == s[1] {
-		return s[0], true
-	}
-	return 0, false
-}
-
 func setOf(r ...rune) charSet {
 	s := make(charSet, 0, 2*len(r))
 	for _, c := range r {
