@@ -71,12 +71,24 @@ type nativeInfo struct {
 	name   wtf8.String
 	length int32
 
+	// fast holds the forms of the function that its callers use instead of calling it, or is
+	// nil.
+	fast *nativeFast
+
+	// realm is the [[Realm]] of the function.
+	realm *realm
+}
+
+// nativeFast holds the forms of a native function that its callers use instead of calling it.
+type nativeFast struct {
 	// step is set for the next method of a built-in iterator. It is what the function does
 	// without creating the iterator result.
 	step IteratorStepFunc
 
-	// realm is the [[Realm]] of the function.
-	realm *realm
+	// number1 and number2 compute the function for exactly one or two arguments that are
+	// numbers.
+	number1 NumberKernel1
+	number2 NumberKernel2
 }
 
 // nativeName returns the initial value of the property name of the native function f.
@@ -89,10 +101,10 @@ func (f *function) nativeName() wtf8.String {
 
 // iteratorStep returns the step function of the next method f of a built-in iterator in realm r, or nil.
 func (f *function) iteratorStep(r *realm) IteratorStepFunc {
-	if f.info == nil || f.info.realm != r {
+	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
 	}
-	return f.info.step
+	return f.info.fast.step
 }
 
 type boundFunc struct {

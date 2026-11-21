@@ -1416,6 +1416,25 @@ func (vm *VM) NewNative(name wtf8.String, length int, f NativeFunc) *Object {
 	return n.init()
 }
 
+// NumberKernel1 and NumberKernel2 compute a function of one or two numbers. They neither throw
+// nor run code.
+type (
+	NumberKernel1 func(x float64) float64
+	NumberKernel2 func(x, y float64) float64
+)
+
+// SetNumberKernels makes a call of the native function f with exactly one or two arguments that
+// are numbers call k1 or k2 instead, which must return what f returns for those arguments.
+// Either may be nil.
+func (vm *VM) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
+	info := f.fn.info
+	if info.fast == nil {
+		info.fast = &nativeFast{}
+	}
+	info.fast.number1 = k1
+	info.fast.number2 = k2
+}
+
 // nativeObject is a native function object together with its function state and description,
 // so that creating one is a single allocation.
 type nativeObject struct {

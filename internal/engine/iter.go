@@ -60,7 +60,9 @@ func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
 		}
 		return vm.CreateIterResultObject(v, false)
 	})
-	o.fn.info.step = step
+	o.fn.info.fast = &nativeFast{
+		step: step,
+	}
 	return o
 }
 

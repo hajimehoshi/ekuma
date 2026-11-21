@@ -436,13 +436,22 @@ func initMath(vm *engine.VM) {
 	} {
 		constant(vm, m, wtf8.String(c.name), engine.Number(c.value))
 	}
+	// unary and binary define the functions of numbers f, which also serve as their kernels.
 	unary := func(name string, f func(float64) float64) {
-		method(vm, m, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		fn := method(vm, m, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if len(args) > 0 && args[0].IsNumber() {
 				return engine.Number(f(args[0].Number()))
 			}
 			return engine.Number(f(vm.ToNumber(arg(args, 0))))
 		})
+		vm.SetNumberKernels(fn, f, nil)
+	}
+	binary := func(name string, f func(x, y float64) float64) {
+		fn := method(vm, m, wtf8.String(name), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			x := vm.ToNumber(arg(args, 0))
+			return engine.Number(f(x, vm.ToNumber(arg(args, 1))))
+		})
+		vm.SetNumberKernels(fn, nil, f)
 	}
 	unary("abs", math.Abs)
 	unary("acos", math.Acos)
@@ -497,24 +506,24 @@ func initMath(vm *engine.VM) {
 	unary("clz32", func(x float64) float64 {
 		return float64(bits.LeadingZeros32(numconv.ToUint32(x)))
 	})
-	method(vm, m, "atan2", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		y := vm.ToNumber(arg(args, 0))
-		return engine.Number(atan2(y, vm.ToNumber(arg(args, 1))))
-	})
-	method(vm, m, "pow", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		x := vm.ToNumber(arg(args, 0))
-		y := vm.ToNumber(arg(args, 1))
-		return engine.Number(engine.NumberPow(x, y))
-	})
-	method(vm, m, "imul", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		x := vm.ToInt32(arg(args, 0))
-		return engine.Number(float64(x * vm.ToInt32(arg(args, 1))))
+	binary("atan2", atan2)
+	binary("pow", engine.NumberPow)
+	binary("imul", func(x, y float64) float64 {
+		return float64(numconv.ToInt32(x) * numconv.ToInt32(y))
 	})
 	method(vm, m, "random", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(vm.RandomNumber())
 	})
 	minmax := func(name string, start float64, pick func(a, b float64) bool) {
-		method(vm, m, wtf8.String(name), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		// next returns the result so far r updated with n.
+		next := func(r, n float64) float64 {
+			// The zeros are ordered by sign.
+			if pick(n, r) || (n == 0 && r == 0 && math.Signbit(n) != math.Signbit(r) && math.Signbit(n) == (start > 0)) {
+				return n
+			}
+			return r
+		}
+		fn := method(vm, m, wtf8.String(name), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			r := start
 			nan := false
 			for _, a := range args {
@@ -522,15 +531,18 @@ func initMath(vm *engine.VM) {
 				if n != n {
 					nan = true
 				}
-				// The zeros are ordered by sign.
-				if pick(n, r) || (n == 0 && r == 0 && math.Signbit(n) != math.Signbit(r) && math.Signbit(n) == (start > 0)) {
-					r = n
-				}
+				r = next(r, n)
 			}
 			if nan {
 				return engine.Number(math.NaN())
 			}
 			return engine.Number(r)
+		})
+		vm.SetNumberKernels(fn, nil, func(x, y float64) float64 {
+			if x != x || y != y {
+				return math.NaN()
+			}
+			return next(next(start, x), y)
 		})
 	}
 	minmax("max", math.Inf(-1), func(a, b float64) bool {
