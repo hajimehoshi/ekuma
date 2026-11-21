@@ -6,9 +6,11 @@ package ekuma_test
 import (
 	"cmp"
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
+	"iter"
 	"maps"
 	"os"
 	"path"
@@ -16,6 +18,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
@@ -23,6 +26,7 @@ import (
 )
 
 const v8SkipsFile = "testdata/v8-skips.txt"
+const v8EnvironmentFile = "testdata/v8-environment.json"
 
 var v8Flags = registerSuiteFlags("v8")
 
@@ -58,6 +62,7 @@ func TestV8(t *testing.T) {
 		}
 	}
 	unseenSkips := readV8Skips(t)
+	unseenEnvironments := readV8Environments(t)
 	checkout := os.DirFS(dir)
 	selectedDir := path.Clean(filepath.ToSlash(v8Flags.dir))
 	if !fs.ValidPath(selectedDir) {
@@ -73,7 +78,7 @@ func TestV8(t *testing.T) {
 			continue
 		}
 		matchedSuite = true
-		tests = append(tests, suite.collect(t, checkout, root, v8Flags.filter, unseenSkips)...)
+		tests = append(tests, suite.collect(t, checkout, root, v8Flags.filter, unseenSkips, unseenEnvironments)...)
 	}
 	if !matchedSuite {
 		t.Fatalf("no enabled V8 suite in %q", selectedDir)
@@ -109,16 +114,12 @@ func TestV8(t *testing.T) {
 		}
 	}
 	failedTests := len(failures)
-	for _, file := range slices.Sorted(maps.Keys(unseenSkips)) {
-		if inV8Dir(file, selectedDir) && strings.Contains(file, v8Flags.filter) {
-			failures = append(failures, suiteFailure{
-				path:   file,
-				reason: "not in the suite: remove it from " + v8SkipsFile,
-			})
-		}
-	}
-	t.Logf("V8: selected %d, passed %d, expected failures %d, skipped %d, failed %d, stale skip entries %d",
-		len(tests), passed, expected, skipped, failedTests, len(failures)-failedTests)
+	staleSkips := staleV8Entries(maps.Keys(unseenSkips), v8SkipsFile, selectedDir, v8Flags.filter)
+	staleEnvironments := staleV8Entries(maps.Keys(unseenEnvironments), v8EnvironmentFile, selectedDir, v8Flags.filter)
+	failures = append(failures, staleSkips...)
+	failures = append(failures, staleEnvironments...)
+	t.Logf("V8: selected %d, passed %d, expected failures %d, skipped %d, failed %d, stale skip entries %d, stale environment entries %d",
+		len(tests), passed, expected, skipped, failedTests, len(staleSkips), len(staleEnvironments))
 	if testing.Verbose() {
 		for _, reason := range slices.Sorted(maps.Keys(skipCounts)) {
 			t.Logf("%d skipped: %s", skipCounts[reason], reason)
@@ -127,8 +128,70 @@ func TestV8(t *testing.T) {
 	v8Flags.reportFailures(t, failures)
 }
 
+func TestV8FixedTime(t *testing.T) {
+	const file = "test/clock.js"
+	checkout := fstest.MapFS{
+		"test/helper.js": {
+			Data: []byte("const helperTime = Date.now();"),
+		},
+		file: {
+			Data: []byte(`if (helperTime !== 1000 || Date.now() !== helperTime) throw new Error("unexpected clock");`),
+		},
+	}
+	suite := v8Suite{
+		dir:     "test",
+		helpers: []string{"helper.js"},
+	}
+	now := time.Unix(1, 0)
+	environments := map[string]v8TestEnvironment{
+		file: {
+			FixedTime: &now,
+		},
+	}
+	for _, test := range suite.collect(t, checkout, suite.dir, "", nil, environments) {
+		result := test.run(t.Context(), checkout, testTimeout)
+		if result.err != nil {
+			t.Error(result.err)
+		}
+		if result.skipReason != "" {
+			t.Errorf("%s was skipped: %s", test.file, result.skipReason)
+		}
+	}
+}
+
 func inV8Dir(file, dir string) bool {
 	return dir == "." || file == dir || strings.HasPrefix(file, dir+"/")
+}
+
+func staleV8Entries(files iter.Seq[string], manifest, dir, filter string) []suiteFailure {
+	var failures []suiteFailure
+	for _, file := range slices.Sorted(files) {
+		if inV8Dir(file, dir) && strings.Contains(file, filter) {
+			failures = append(failures, suiteFailure{
+				path:   file,
+				reason: "not in the suite: remove it from " + manifest,
+			})
+		}
+	}
+	return failures
+}
+
+type v8TestEnvironment struct {
+	Comment   string     `json:"comment"`
+	FixedTime *time.Time `json:"fixedTime"`
+}
+
+func readV8Environments(t *testing.T) map[string]v8TestEnvironment {
+	t.Helper()
+	data, err := os.ReadFile(v8EnvironmentFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var environments map[string]v8TestEnvironment
+	if err := json.Unmarshal(data, &environments, json.RejectUnknownMembers(true)); err != nil {
+		t.Fatalf("%s: %v", v8EnvironmentFile, err)
+	}
+	return environments
 }
 
 func readV8Skips(t *testing.T) map[string]string {
@@ -173,6 +236,7 @@ type v8Test struct {
 	file        string
 	helpers     []*ekuma.UnboundScript
 	flags       []string
+	environment v8TestEnvironment
 	skipReason  string
 	wantFailure bool
 }
@@ -183,7 +247,7 @@ type v8Result struct {
 	timedOut   bool
 }
 
-func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, unseenSkips map[string]string) []v8Test {
+func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, unseenSkips map[string]string, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
 	t.Helper()
 	var helpers []*ekuma.UnboundScript
 	for _, name := range s.helpers {
@@ -212,10 +276,13 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 		}
 		skipReason, listed := unseenSkips[file]
 		delete(unseenSkips, file)
+		environment := unseenEnvironments[file]
+		delete(unseenEnvironments, file)
 		tests = append(tests, v8Test{
 			file:        file,
 			helpers:     helpers,
 			flags:       s.flags,
+			environment: environment,
 			skipReason:  skipReason,
 			wantFailure: listed && skipReason == "",
 		})
@@ -318,6 +385,10 @@ func (v *v8Test) eval(ctx context.Context, src, locale, zone string) (string, er
 		return "", err
 	}
 	vm.SetTimeZone(loc)
+	if v.environment.FixedTime != nil {
+		now := *v.environment.FixedTime
+		vm.SetClock(func() time.Time { return now })
+	}
 	var lastPrint string
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		lastPrint = firstLine(fmt.Sprint(args))
