@@ -32,6 +32,7 @@ var v8Flags = registerSuiteFlags("v8")
 type v8Suite struct {
 	dir     string
 	helpers []string
+	exclude []string
 	flags   []string
 }
 
@@ -42,6 +43,11 @@ var v8Suites = []v8Suite{
 		helpers: []string{"assert.js", "utils.js"},
 		// Ekuma enables these features by default.
 		flags: []string{"--harmony-intl-best-fit-matcher", "--harmony-intl-locale-info-func"},
+	},
+	{
+		dir:     "test/mjsunit",
+		helpers: []string{"mjsunit.js"},
+		exclude: []string{"mjsunit_numfuzz.js"},
 	},
 }
 
@@ -146,6 +152,35 @@ type v8TestEnvironment struct {
 	FixedTime *time.Time `json:"fixedTime"`
 }
 
+func TestV8FilesOrder(t *testing.T) {
+	const file = "test/order.js"
+	checkout := fstest.MapFS{
+		"test/harness.js": {
+			Data: []byte("var order = 'H';"),
+		},
+		"helpers/a.js": {
+			Data: []byte("order += 'A';"),
+		},
+		"helpers/b.js": {
+			Data: []byte("order += 'B';"),
+		},
+		file: {
+			Data: []byte(`// Files: helpers/a.js helpers/b.js
+// Files: helpers/a.js
+if (order !== 'HABA') throw new Error(order);`),
+		},
+	}
+	suite := v8Suite{
+		dir:     "test",
+		helpers: []string{"harness.js"},
+	}
+	for _, test := range suite.collect(t, checkout, file, "", nil, nil) {
+		if result := test.run(t.Context(), checkout, testTimeout); result.outcome != suitePassed {
+			t.Error(result.reason)
+		}
+	}
+}
+
 func readV8Environments(t *testing.T) map[string]v8TestEnvironment {
 	t.Helper()
 	data, err := os.ReadFile(v8EnvironmentFile)
@@ -227,10 +262,11 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 			return err
 		}
 		name := strings.TrimPrefix(file, s.dir+"/")
-		if !entry.Type().IsRegular() || path.Ext(file) != ".js" || slices.Contains(s.helpers, name) {
+		ext := path.Ext(file)
+		if !entry.Type().IsRegular() || (ext != ".js" && ext != ".mjs") {
 			return nil
 		}
-		if !strings.Contains(file, filter) {
+		if slices.Contains(s.helpers, name) || slices.Contains(s.exclude, name) || !strings.Contains(file, filter) {
 			return nil
 		}
 		skipReason, listed := unseenSkips[file]
@@ -272,8 +308,15 @@ func (v *v8Test) run(ctx context.Context, checkout fs.FS, timeout time.Duration)
 	return result
 }
 
-// v8Environment translates d8 options into VM settings and reports any unsupported directive.
-func v8Environment(src string, enabledFlags []string) (locale, zone, unsupported string) {
+type v8Directives struct {
+	locale    string
+	zone      string
+	files     []string
+	noHarness bool
+}
+
+func parseV8Directives(src string, enabledFlags []string) (v8Directives, string) {
+	var directives v8Directives
 	var flagLocale string
 	env := map[string]string{}
 	for line := range strings.SplitSeq(src, "\n") {
@@ -289,7 +332,8 @@ func v8Environment(src string, enabledFlags []string) (locale, zone, unsupported
 				if l, ok := strings.CutPrefix(normalized, "--icu-locale="); ok {
 					flagLocale = l
 				} else if !slices.Contains(enabledFlags, normalized) {
-					return "", "", "requires V8 flag " + flag
+					// TODO: Review mjsunit flags and enable those whose behavior Ekuma provides.
+					return v8Directives{}, "requires V8 flag " + flag
 				}
 			}
 		case "Environment Variables":
@@ -299,15 +343,20 @@ func v8Environment(src string, enabledFlags []string) (locale, zone, unsupported
 				case "LC_ALL", "LC_MESSAGES", "LANG", "TZ":
 					env[name] = v
 				default:
-					return "", "", "requires environment setting " + pair
+					return v8Directives{}, "requires environment setting " + pair
 				}
 			}
 		case "Files":
-			return "", "", "requires additional scripts: " + strings.TrimSpace(value)
+			directives.files = append(directives.files, strings.Fields(value)...)
+		case "NO HARNESS":
+			directives.noHarness = true
 		}
 	}
-	locale = cmp.Or(flagLocale, env["LC_ALL"], env["LC_MESSAGES"], env["LANG"], "en-US")
-	return strings.ReplaceAll(locale, "_", "-"), cmp.Or(env["TZ"], "UTC"), ""
+	envLocale := cmp.Or(env["LC_ALL"], env["LC_MESSAGES"], env["LANG"])
+	envLocale, _, _ = strings.Cut(envLocale, ".")
+	directives.locale = strings.ReplaceAll(cmp.Or(flagLocale, envLocale, "en-US"), "_", "-")
+	directives.zone = cmp.Or(env["TZ"], "UTC")
+	return directives, ""
 }
 
 func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Duration) (suiteResult, string) {
@@ -319,17 +368,17 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 		return suiteBroken.result(err.Error()), ""
 	}
 	source := string(src)
-	locale, zone, unsupported := v8Environment(source, v.flags)
+	directives, unsupported := parseV8Directives(source, v.flags)
 	if unsupported != "" {
 		return suiteSkipped.result(unsupported), ""
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var vm ekuma.VM
-	if err := vm.SetLocale(locale); err != nil {
+	if err := vm.SetLocale(directives.locale); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
-	loc, err := time.LoadLocation(zone)
+	loc, err := time.LoadLocation(directives.zone)
 	if err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
@@ -346,7 +395,11 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 	if err := vm.Global().Set("print", print); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
-	for _, helper := range v.helpers {
+	helpers := v.helpers
+	if directives.noHarness {
+		helpers = nil
+	}
+	for _, helper := range helpers {
 		if _, err := vm.BindScript(helper).Evaluate(ctx); err != nil {
 			reason := firstLine("V8 harness: " + err.Error())
 			if errors.Is(err, context.DeadlineExceeded) {
@@ -355,9 +408,54 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 			return suiteBroken.result(reason), ""
 		}
 	}
-	if _, err := runScript(ctx, &vm, v.file, source); err != nil {
-		// A ScriptError retains its VM through the thrown value.
-		return scriptErrorResult(err), lastPrint
+	loader := moduleLoader{
+		vm:      &vm,
+		dir:     filepath.Dir(filepath.FromSlash(v.file)),
+		modules: map[string]*ekuma.Module{},
+		readFile: func(name string) ([]byte, error) {
+			return fs.ReadFile(checkout, filepath.ToSlash(name))
+		},
+	}
+	vm.SetModuleLoader(loader.load)
+	var rejection *ekuma.ScriptError
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		if rejection == nil {
+			rejection = &ekuma.ScriptError{
+				Value: reason,
+			}
+		}
+	})
+	for _, name := range directives.files {
+		b, err := fs.ReadFile(checkout, name)
+		if err != nil {
+			return suiteBroken.result(fmt.Sprintf("V8 Files: %s: %v", name, err)), lastPrint
+		}
+		if result := runV8File(ctx, &loader, name, string(b)); result.outcome != suitePassed {
+			result.reason = name + ": " + result.reason
+			return result, lastPrint
+		}
+	}
+	if result := runV8File(ctx, &loader, v.file, source); result.outcome != suitePassed {
+		return result, lastPrint
+	}
+	if rejection != nil {
+		return scriptErrorResult(rejection), lastPrint
 	}
 	return suiteResult{}, lastPrint
+}
+
+func runV8File(ctx context.Context, loader *moduleLoader, name, src string) suiteResult {
+	file := filepath.FromSlash(name)
+	if path.Ext(name) == ".mjs" {
+		p, _, err := loader.evaluate(ctx, file, src)
+		if err != nil {
+			return scriptErrorResult(err)
+		}
+		if state, _ := p.PromiseState(); state == ekuma.PromisePending {
+			return suiteFailed.result("module evaluation is still pending")
+		}
+	} else if _, err := runScript(ctx, loader.vm, file, src); err != nil {
+		return scriptErrorResult(err)
+	}
+	return suiteResult{}
 }

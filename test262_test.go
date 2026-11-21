@@ -200,10 +200,6 @@ func (m metadata) checkError(phase string, err error) suiteResult {
 		return suiteResult{}
 	}
 	result := scriptErrorResult(err)
-	// Test262 also checks errors raised while parsing the test.
-	if _, ok := err.(*ekuma.SyntaxError); ok {
-		result.outcome = suiteFailed
-	}
 	if result.outcome != suiteFailed || m.negativePhase == "" {
 		return result
 	}
@@ -233,11 +229,12 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		return suiteBroken.result("harness: " + err.Error())
 	}
 	loader := &moduleLoader{
-		vm:      &vm,
-		dir:     filepath.Dir(path),
-		modules: map[string]*ekuma.Module{},
+		vm:       &vm,
+		dir:      filepath.Dir(path),
+		readFile: os.ReadFile,
+		modules:  map[string]*ekuma.Module{},
 	}
-	vm.SetModuleLoader(loader.load)
+	vm.SetModuleLoader(loader.loadTest262)
 	// An async test reports its outcome by printing it.
 	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -278,7 +275,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		}
 	}
 	if m.flags["module"] {
-		return runModule(ctx, &vm, loader, path, src, m, printed)
+		return runModule(ctx, loader, path, src, m, printed)
 	}
 	if strict {
 		src = "\"use strict\";\n" + src
@@ -297,7 +294,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	return suiteResult{}
 }
 
-// moduleLoader loads the modules of a test from the test262 checkout, resolving a specifier
+// moduleLoader loads the modules of a test from the suite checkout, resolving a specifier
 // relative to the directory of the importing file. It keeps one module record per file and type.
 type moduleLoader struct {
 	vm *ekuma.VM
@@ -305,7 +302,8 @@ type moduleLoader struct {
 	// dir is the directory of the test, for the code that has no file.
 	dir string
 
-	modules map[string]*ekuma.Module
+	readFile func(string) ([]byte, error)
+	modules  map[string]*ekuma.Module
 
 	// source is the module of moduleSourceSpecifier, once it is loaded.
 	source *ekuma.Module
@@ -314,7 +312,7 @@ type moduleLoader struct {
 // moduleSourceSpecifier is the specifier that test262 resolves to a module with a module source.
 const moduleSourceSpecifier = "<module source>"
 
-func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+func (l *moduleLoader) loadTest262(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 	if req.Specifier == moduleSourceSpecifier {
 		// The specifier names a module that provides a module source, which no module that
 		// the loader parses does.
@@ -323,8 +321,12 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		}
 		return l.source, nil
 	}
+	return l.load(req)
+}
+
+func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 	dir := l.dir
-	if filepath.IsAbs(req.ReferrerName) {
+	if req.Referrer != nil || filepath.Dir(req.ReferrerName) != "." {
 		dir = filepath.Dir(req.ReferrerName)
 	}
 	path := filepath.Join(dir, filepath.FromSlash(req.Specifier))
@@ -333,7 +335,7 @@ func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 	if m, ok := l.modules[key]; ok {
 		return m, nil
 	}
-	b, err := os.ReadFile(path)
+	b, err := l.readFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -372,19 +374,28 @@ func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
 	return f.Invoke(context.Background(), arg)
 }
 
-// runModule runs the test source at path as a module, after the harness ran in vm.
-func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, src string, m metadata, printed *[]string) suiteResult {
-	mod, err := vm.ParseModule(path, src)
+// evaluate returns the module's evaluation promise or the phase and error that stopped it.
+func (l *moduleLoader) evaluate(ctx context.Context, path, src string) (promise ekuma.Value, phase string, err error) {
+	mod, err := l.vm.ParseModule(path, src)
 	if err != nil {
-		return m.checkError("parse", err)
+		return ekuma.Undefined, "parse", err
 	}
-	loader.modules[path+"\x00"] = mod
+	l.modules[path+"\x00"] = mod
 	p, err := mod.Evaluate(ctx)
 	if err != nil {
-		return m.checkError("resolution", err)
+		return ekuma.Undefined, "resolution", err
 	}
 	if st, r := p.PromiseState(); st == ekuma.PromiseRejected {
-		return m.checkError("runtime", &ekuma.ScriptError{Value: r})
+		return ekuma.Undefined, "runtime", &ekuma.ScriptError{
+			Value: r,
+		}
+	}
+	return p, "", nil
+}
+
+func runModule(ctx context.Context, loader *moduleLoader, path, src string, m metadata, printed *[]string) suiteResult {
+	if _, phase, err := loader.evaluate(ctx, path, src); err != nil {
+		return m.checkError(phase, err)
 	}
 	if m.negativePhase != "" {
 		return m.checkError("runtime", nil)

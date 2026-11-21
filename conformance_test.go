@@ -155,6 +155,9 @@ func scriptErrorResult(err error) suiteResult {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return timedOut(reason)
 	}
+	if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
+		return suiteFailed.result(reason)
+	}
 	if ex, ok := errors.AsType[*ekuma.ScriptError](err); ok && ex.Unwrap() == nil {
 		return suiteFailed.result(reason)
 	}

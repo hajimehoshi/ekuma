@@ -55,7 +55,10 @@ jobs:
           repository: v8/v8
           ref: ${{ steps.suites.outputs.v8 }}
           path: .v8
-          sparse-checkout: /test/intl/
+          sparse-checkout: |
+            /test/intl/
+            /test/mjsunit/
+            /tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js
           sparse-checkout-cone-mode: false
 
       - name: Setup Go

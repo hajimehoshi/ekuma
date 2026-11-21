@@ -72,3 +72,1353 @@ test/intl/regress-412149700.js
 # ECMA-402 uses IANA Zone and Link names. Ekuma rejects US/Pacific-New, which
 # is absent from its time zone database. V8 expects the name to be accepted.
 test/intl/regress-364374.js
+
+# mjsunit
+
+# SKIP: regular expression benchmark exceeds the isolated timeout on Windows/386
+test/mjsunit/ascii-regexp-subject.js
+
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/array-concat.js
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/es6/proxies-prototype-target-stackoverflow.js
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/regexp-capture-3.js
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/regexp/drain.js
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/regress/regress-576897250.js
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/regress/regress-578775.js
+# SKIP: exceeds the isolated test timeout
+test/mjsunit/regress/regress-crbug-482998.js
+
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/compiler/regress-445907.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/es6/proxies-json.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-1006670.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-10931.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-1432470.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-331074427.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-500980.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-558568713.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-599414-array-concat-fast-path.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-7558019.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-crbug-357052.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-crbug-627934.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-crbug-902672.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/regress/regress-crbug-918301.js
+# SKIP: exceeds the memory budget for parallel tests
+test/mjsunit/string-oom-concat.js
+
+# SKIP: excluded by mjsunit.status
+test/mjsunit/regress/regress-2073.js
+# SKIP: excluded by mjsunit.status
+test/mjsunit/sandbox/wasm-jspi.js
+# SKIP: excluded by mjsunit.status
+test/mjsunit/wasm/gc-js-interop-export.mjs
+
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-a.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-async-module.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-b.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-c.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-common.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-d.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-e.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-f.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-imports-async-module.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/async-module-ordinal-reset/skip-run.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-rqstd-order-indirect-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-rqstd-order-indirect-unreached-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-rqstd-order-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-rqstd-order-unreached-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-rqstd-order.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-top-level-await-cycle.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-10.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-11.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-12.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-13.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-2-rqstd-order-indirect-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-2-rqstd-order-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-2-rqstd-order.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-2-top-level-await-cycle.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-2-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-3-rqstd-order-indirect-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-3-rqstd-order-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-3-rqstd-order.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-3-top-level-await-cycle.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-3-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-3.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-4-rqstd-order-indirect-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-4-rqstd-order-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-4-rqstd-order.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-4-top-level-await-cycle.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-4-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-4.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-5-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-6-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-7-top-level-await.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-8.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-9.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-cycle-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-cycle-2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-cycle-3.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-cycle-leaf.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-cycle-start.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-error-parent-dynamic.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-error-parent-static1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-error-parent-static2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-error-parent.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-errors-due-to-import-entry.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-leaf-with-tla.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-mid-with-sync-error.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-subgraph-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-subgraph-2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-subgraph-async.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-subgraph-start.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-async-subgraph-x.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-empty.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-export-import-meta.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-import-defer-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-import-defer-no-exports.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-import-defer-optimized-access.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-import-defer-throws-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-import-defer-throws-primitive.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-imports-attributes-json-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-imports-json-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-large1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-large2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-top-level-await-cycle-error-indirection.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-top-level-await-cycle-error-throwing.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-top-level-await-cycle-error.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-top-level-cycle-mixed-sync.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/modules-skip-top-level-cycle-mixed-tla.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/shadowrealm-skip-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/shadowrealm-skip-2-throw.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/shadowrealm-skip-3-throw-object.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/harmony/shadowrealm-skip-4-throw-string.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/huge-typedarrays-helpers.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-3.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-4.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-5.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-6.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-7.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-8.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-9.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-circular-valid.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-cycle.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name2.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name3.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name4.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name5.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name6.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name7.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name8.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-default-name9.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-empty-import-aux.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-empty-import.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-import-meta-export.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-init1.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-init3.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-init4a.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-init4b.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-many-bindings.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-namespace.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-reset1.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-reset2.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-reset3.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-star-exports-conflict.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-star-exports-cycle.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-star-exports-indirect-cycle-a.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-star-exports-indirect-cycle-b.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-star-exports-indirect-cycle-c.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/modules-skip-star-exports-indirect-cycle-d.mjs
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/regress/modules-skip-regress-797581-1.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/regress/modules-skip-regress-797581-2.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/regress/modules-skip-regress-797581-3.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/regress/modules-skip-regress-797581-4.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/regress/modules-skip-regress-797581-5.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/regress/modules-skip-regress-crbug-424617296.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/tools/tickprocessor-test-large.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/typedarray-helpers.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/wasm/prototype-setup-builder.js
+# SKIP: fixture excluded by mjsunit.status
+test/mjsunit/wasm/wasm-module-builder.js
+
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/codemap.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/consarray.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/csvparser.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/dumpcpp.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/profile.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/profile_view.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/splaytree.mjs
+# SKIP: imports modules from V8's tools directory outside the suite checkout
+test/mjsunit/tools/timeline.mjs
+
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/regress/regress-1447343.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/regress/regress-779407.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/regress/regress-852258.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/regress/wasm/regress-1010272.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/wasm/memory64.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/wasm/simd-lane-memory64.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/wasm/table-grow.js
+# SKIP: memory-intensive test marked HEAVY by V8
+test/mjsunit/wasm/table.js
+
+# SKIP: requires V8's lower_limits_mode build
+test/mjsunit/lower_limits_mode/regress/regress-580241084.js
+# SKIP: requires V8's lower_limits_mode build
+test/mjsunit/lower_limits_mode/regress/regress-585919665.js
+# SKIP: requires V8's lower_limits_mode build
+test/mjsunit/lower_limits_mode/regress/regress-crbug-405910175-map.js
+# SKIP: requires V8's lower_limits_mode build
+test/mjsunit/lower_limits_mode/regress/regress-crbug-405910175-set.js
+
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/compiler/regress-815392.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-380416869.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-390568195.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-504697280.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-524.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-667603.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-862433.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-944945.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-crbug-1191886.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-crbug-1235182.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-crbug-357137.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/regress-crbug-869313.js
+# SKIP: requires a large allocation or heap for a parallel conformance test
+test/mjsunit/regress/wasm/regress-873600.js
+
+# SKIP: requires d8 data URL module loading
+test/mjsunit/d8/modules-data-url.mjs
+# SKIP: requires d8 data URL module loading
+test/mjsunit/regress-367066330.js
+# SKIP: requires d8 data URL module loading
+test/mjsunit/regress/regress-438732677.js
+# SKIP: requires d8 data URL module loading
+test/mjsunit/regress/regress-493591676.mjs
+# SKIP: requires d8 data URL module loading
+test/mjsunit/regress/regress-495503057.mjs
+# SKIP: requires d8 data URL module loading
+test/mjsunit/regress/regress-515494863.js
+
+# Private field access throws during these tests.
+test/mjsunit/es6/regress-private-name-heritage-recalc.js
+test/mjsunit/harmony/private-name-scopes.js
+test/mjsunit/harmony/regress-private-name-heritage-catch-eval.js
+test/mjsunit/regress/regress-574565617.js
+test/mjsunit/regress/regress-584005343.js
+
+# The generated expression exceeds Ekuma's parser nesting limit.
+test/mjsunit/compiler/conditional-chain.js
+
+# The regular expression uses a Unicode property name Ekuma rejects.
+test/mjsunit/harmony/regexp-property-binary.js
+
+# The test expects d8 to ignore an unrecognized import attribute.
+test/mjsunit/harmony/modules-import-attributes-4.mjs
+
+# These tests assert on V8's exception messages.
+test/mjsunit/es6/regress-arrow-cover-grammar-scope.js
+test/mjsunit/es6/regress-arrow-head-pattern-error-order.js
+test/mjsunit/es6/regress-arrow-reparse-strict-param.js
+test/mjsunit/es6/regress-class-member-init-reparse-super.js
+test/mjsunit/es6/regress-comma-expression-arrow-initializers.js
+test/mjsunit/es6/regress-conditional-chain-non-short-circuit.js
+test/mjsunit/es6/regress-for-of-async-property.js
+test/mjsunit/es6/regress-invalid-lhs-validate-expression.js
+test/mjsunit/es6/regress-member-template-expression-scope.js
+test/mjsunit/es6/regress-object-rest-property-validation.js
+test/mjsunit/es6/regress-preparser-validate-formals-on-body-error.js
+test/mjsunit/es6/regress-static-field-await-identifier.js
+test/mjsunit/es6/regress-strict-eval-destructuring-subpattern.js
+test/mjsunit/es6/regress-strict-octal-after-rbrace.js
+test/mjsunit/es6/regress-strict-param-error-order.js
+test/mjsunit/es6/regress-subpattern-validate-expression.js
+test/mjsunit/es6/regress-super-optional-chain.js
+test/mjsunit/es6/regress-yield-expression-scope.js
+test/mjsunit/es6/string-replace.js
+test/mjsunit/harmony/array-sort-comparefn.js
+test/mjsunit/harmony/dataview-accessors.js
+test/mjsunit/harmony/index-fields-nonextensible-global-proxy.js
+test/mjsunit/harmony/private-accessors.js
+test/mjsunit/harmony/private-reference-logical-assignment-short-circuit.js
+test/mjsunit/harmony/regress-for-using-closure-assignment.js
+test/mjsunit/harmony/regress/regress-463528051.js
+test/mjsunit/harmony/set-difference.js
+test/mjsunit/harmony/set-intersection.js
+test/mjsunit/harmony/set-is-disjoint-from.js
+test/mjsunit/harmony/set-is-subset-of.js
+test/mjsunit/harmony/set-is-superset-of.js
+test/mjsunit/object-define-property-length.js
+test/mjsunit/parser/array-literal-fast-path.js
+test/mjsunit/regexp-static.js
+test/mjsunit/regexp-unicode-sets.js
+test/mjsunit/regress/regress-1494681.js
+test/mjsunit/regress/regress-375748220.js
+test/mjsunit/regress/regress-559408989.js
+test/mjsunit/regress/regress-852765.js
+test/mjsunit/regress/regress-crbug-1259950.js
+test/mjsunit/regress/regress-crbug-1278086.js
+test/mjsunit/regress/regress-crbug-1467028.js
+test/mjsunit/regress/regress-crbug-1500898.js
+test/mjsunit/regress/regress-v8-11360.js
+test/mjsunit/regress/regress-v8-12122.js
+test/mjsunit/regress/regress-v8-12421.js
+test/mjsunit/regress/regress-v8-12729-1.mjs
+test/mjsunit/regress/regress-v8-12729.mjs
+test/mjsunit/regress/regress-v8-13037.js
+test/mjsunit/set-prototype-of-Object_prototype.js
+
+# These tests expect a different exception type.
+test/mjsunit/big-object-literal.js
+test/mjsunit/es6/proxies-ownkeys.js
+test/mjsunit/modules-init3.mjs
+
+# These tests expect an exception from an operation that completes in Ekuma.
+test/mjsunit/array-isarray.js
+test/mjsunit/regress-crbug-370694832.js
+test/mjsunit/regress/regress-1122.js
+test/mjsunit/regress/regress-344664770.js
+test/mjsunit/regress/regress-438523582.js
+test/mjsunit/regress/regress-503097371.js
+test/mjsunit/regress/regress-5178.js
+test/mjsunit/regress/regress-557076207.js
+test/mjsunit/regress/regress-567827593.js
+test/mjsunit/regress/regress-573263262.js
+test/mjsunit/regress/regress-578481635.js
+test/mjsunit/regress/regress-689016.js
+test/mjsunit/regress/regress-786573.js
+test/mjsunit/regress/regress-crbug-1459172.js
+test/mjsunit/regress/regress-crbug-669540.js
+test/mjsunit/regress/regress-crbug-902610-2.js
+test/mjsunit/regress/regress-crbug-902610.js
+test/mjsunit/regress/regress-v8-12472.js
+
+# These tests fail an mjsunit assertion.
+test/mjsunit/arguments-indirect.js
+test/mjsunit/array-tolocalestring.js
+test/mjsunit/date-parse.js
+test/mjsunit/duplicate-parameters.js
+test/mjsunit/error-tostring-omit.js
+test/mjsunit/es6/block-sloppy-function.js
+test/mjsunit/es6/iteration-semantics.js
+test/mjsunit/es6/iterator-prototype.js
+test/mjsunit/es6/math-hypot.js
+test/mjsunit/es6/object-tostring.js
+test/mjsunit/es6/proxies-for.js
+test/mjsunit/es6/proxies-with-unscopables.js
+test/mjsunit/es6/regexp-tostring.js
+test/mjsunit/es6/string-endswith.js
+test/mjsunit/es6/unicode-regexp-ignore-case-noi18n.js
+test/mjsunit/eval-origin.js
+test/mjsunit/eval-stack-trace.js
+test/mjsunit/function-call.js
+test/mjsunit/harmony/async-for-of-non-iterable.js
+test/mjsunit/harmony/bigint/tostring-toolong.js
+test/mjsunit/harmony/function-tostring.js
+test/mjsunit/intl-numberformat-formattoparts.js
+test/mjsunit/json-errors.js
+test/mjsunit/json.js
+test/mjsunit/keyed-call-ic.js
+test/mjsunit/keyed-load-null-receiver.js
+test/mjsunit/mjsunit-assertion-error.js
+test/mjsunit/number-tostring-big-integer.js
+test/mjsunit/object-create.js
+test/mjsunit/object-get-own-property-names.js
+test/mjsunit/regress/regress-1170.js
+test/mjsunit/regress/regress-1215653.js
+test/mjsunit/regress/regress-12256.js
+test/mjsunit/regress/regress-124.js
+test/mjsunit/regress/regress-136048.js
+test/mjsunit/regress/regress-1980.js
+test/mjsunit/regress/regress-2564.js
+test/mjsunit/regress/regress-437956096.js
+test/mjsunit/regress/regress-4640.js
+test/mjsunit/regress/regress-484904778.js
+test/mjsunit/regress/regress-499672315.js
+test/mjsunit/regress/regress-549231120.js
+test/mjsunit/regress/regress-5566.js
+test/mjsunit/regress/regress-6142.js
+test/mjsunit/regress/regress-633998.js
+test/mjsunit/regress/regress-857.js
+test/mjsunit/regress/regress-crbug-109362.js
+test/mjsunit/regress/regress-crbug-1105383.js
+test/mjsunit/regress/regress-crbug-364374.js
+test/mjsunit/regress/regress-crbug-422858.js
+test/mjsunit/regress/regress-crbug-487322.js
+test/mjsunit/regress/regress-declare-arguments-maybe-assigned.js
+test/mjsunit/regress/wasm/regress-1033948.js
+test/mjsunit/regress/wasm/regress-985154.js
+test/mjsunit/stack-traces-class-fields.js
+test/mjsunit/stack-traces-custom-lazy.js
+test/mjsunit/stack-traces.js
+test/mjsunit/this.js
+test/mjsunit/wasm/wasm-default.js
+test/mjsunit/wasm/wasm-object-api.js
+test/mjsunit/weakrefs/basics.js
+
+# These tests require V8's stack trace API.
+test/mjsunit/regress/regress-3718.js
+test/mjsunit/regress/regress-450328966.js
+test/mjsunit/regress/regress-5245.js
+test/mjsunit/regress/regress-5342.js
+test/mjsunit/regress/regress-596718.js
+test/mjsunit/regress/regress-693500.js
+test/mjsunit/regress/regress-crbug-1440685.js
+test/mjsunit/regress/regress-crbug-393988.js
+test/mjsunit/regress/regress-crbug-435825.js
+test/mjsunit/regress/regress-crbug-489597.js
+test/mjsunit/regress/regress-crbug-505370.js
+test/mjsunit/regress/regress-crbug-599067.js
+
+# These tests require the Realm global.
+test/mjsunit/array-constructor.js
+test/mjsunit/call-cross-realm.js
+test/mjsunit/compiler/regress-1250216.js
+test/mjsunit/contextual-calls.js
+test/mjsunit/cross-realm-callsite.js
+test/mjsunit/d8/d8-realm-explicit-scope.js
+test/mjsunit/d8/d8-realm-microtask-queue.js
+test/mjsunit/d8/d8-realm-onerror.js
+test/mjsunit/d8/d8-realm-shared-templates.js
+test/mjsunit/d8/regress-516209551.js
+test/mjsunit/d8/regress-517967108.js
+test/mjsunit/es6/array-species.js
+test/mjsunit/es6/proxies-accesschecks.js
+test/mjsunit/es6/proxies-construct.js
+test/mjsunit/es6/regress-rewriter-completion-values.js
+test/mjsunit/es6/regress/regress-576662.js
+test/mjsunit/harmony/global.js
+test/mjsunit/lookup-behind-property.js
+test/mjsunit/realm-property-access.js
+test/mjsunit/regress/redeclaration-error-types.js
+test/mjsunit/regress/regress-1033966.js
+test/mjsunit/regress/regress-1069964.js
+test/mjsunit/regress/regress-1494164.js
+test/mjsunit/regress/regress-280531.js
+test/mjsunit/regress/regress-396460426.js
+test/mjsunit/regress/regress-4509-Class-constructor-typeerror-realm.js
+test/mjsunit/regress/regress-463593768.js
+test/mjsunit/regress/regress-464961493.js
+test/mjsunit/regress/regress-493269623.js
+test/mjsunit/regress/regress-495503781.js
+test/mjsunit/regress/regress-523431532.js
+test/mjsunit/regress/regress-524921880.js
+test/mjsunit/regress/regress-547027738.js
+test/mjsunit/regress/regress-561672123.js
+test/mjsunit/regress/regress-572400584.js
+test/mjsunit/regress/regress-574222006.js
+test/mjsunit/regress/regress-575524702.js
+test/mjsunit/regress/regress-576225189.js
+test/mjsunit/regress/regress-586878505.js
+test/mjsunit/regress/regress-6733.js
+test/mjsunit/regress/regress-681984.js
+test/mjsunit/regress/regress-889722.js
+test/mjsunit/regress/regress-crbug-1130213.js
+test/mjsunit/regress/regress-crbug-364422411.js
+test/mjsunit/regress/regress-crbug-501808.js
+test/mjsunit/regress/regress-crbug-702798.js
+test/mjsunit/regress/regress-crbug-768875.js
+test/mjsunit/regress/regress-crbug-959727.js
+test/mjsunit/regress/regress-v8-12705.js
+test/mjsunit/regress/regress-v8-7848.js
+
+# These tests require the WebAssembly global.
+test/mjsunit/regress/wasm/regress-10309.js
+test/mjsunit/regress/wasm/regress-1215808.js
+test/mjsunit/regress/wasm/regress-1273705.js
+test/mjsunit/regress/wasm/regress-12866.js
+test/mjsunit/regress/wasm/regress-1347073.js
+test/mjsunit/regress/wasm/regress-1472618.js
+test/mjsunit/regress/wasm/regress-1473389.js
+test/mjsunit/regress/wasm/regress-372993873.js
+test/mjsunit/regress/wasm/regress-403308742.js
+test/mjsunit/regress/wasm/regress-433809112.js
+test/mjsunit/regress/wasm/regress-463546420.js
+test/mjsunit/regress/wasm/regress-476461881.js
+test/mjsunit/regress/wasm/regress-483643012.js
+test/mjsunit/regress/wasm/regress-489029655.js
+test/mjsunit/regress/wasm/regress-493905761.js
+test/mjsunit/regress/wasm/regress-566973959.js
+test/mjsunit/regress/wasm/regress-579213819.js
+test/mjsunit/regress/wasm/regress-680938.js
+test/mjsunit/regress/wasm/regress-717194.js
+test/mjsunit/regress/wasm/regress-734108.js
+test/mjsunit/regress/wasm/regress-799952.js
+test/mjsunit/regress/wasm/regress-816226.js
+test/mjsunit/regress/wasm/regress-825087a.js
+test/mjsunit/regress/wasm/regress-825087b.js
+test/mjsunit/regress/wasm/regress-853453.js
+test/mjsunit/regress/wasm/regress-940296.js
+test/mjsunit/regress/wasm/regress-crbug-1172912.js
+test/mjsunit/regress/wasm/regress-crbug-1340488.js
+test/mjsunit/regress/wasm/regress-crbug-1341180.js
+test/mjsunit/regress/wasm/regress-crbug-816961.js
+test/mjsunit/regress/wasm/regress-crbug-969498.js
+test/mjsunit/regress/wasm/regress-v8-9106.js
+test/mjsunit/wasm/gc-memory.js
+test/mjsunit/wasm/memory-toresizable-max-byte-length.js
+test/mjsunit/wasm/mutable-globals.js
+test/mjsunit/wasm/regress-577072717.js
+test/mjsunit/wasm/resizablearraybuffer-growablesharedarraybuffer-wasm.js
+test/mjsunit/wasm/shared-memory-gc-stress.js
+
+# These tests require the Worker global.
+test/mjsunit/d8/d8-fuzzable-worker.js
+test/mjsunit/d8/d8-worker-onerror-arguments.js
+test/mjsunit/d8/d8-worker-onerror-exception.js
+test/mjsunit/d8/d8-worker-onerror-settimeout.js
+test/mjsunit/d8/d8-worker-onerror.js
+test/mjsunit/d8/d8-worker-onmessage-ping-pong.js
+test/mjsunit/d8/regress-389573438.js
+test/mjsunit/d8/regress-511626668.js
+test/mjsunit/harmony/atomics-value-check.js
+test/mjsunit/harmony/atomics-waitasync-1thread-timeouts-and-no-timeouts.js
+test/mjsunit/harmony/error-cause.js
+test/mjsunit/rab-gsab-transfer-to-worker.js
+test/mjsunit/regress/regress-1006629.js
+test/mjsunit/regress/regress-1205290.js
+test/mjsunit/regress/regress-1212404.js
+test/mjsunit/regress/regress-1221035.js
+test/mjsunit/regress/regress-1232620.js
+test/mjsunit/regress/regress-1353555.js
+test/mjsunit/regress/regress-1415210.js
+test/mjsunit/regress/regress-1502014.js
+test/mjsunit/regress/regress-368467195.js
+test/mjsunit/regress/regress-439522866.js
+test/mjsunit/regress/regress-558005441.js
+test/mjsunit/regress/regress-566974863.js
+test/mjsunit/regress/regress-574438306.js
+test/mjsunit/regress/regress-821368.js
+test/mjsunit/regress/regress-chromium-1194026.js
+test/mjsunit/regress/regress-crbug-1162473.js
+test/mjsunit/regress/regress-crbug-1237153.js
+test/mjsunit/regress/regress-crbug-1412487.js
+test/mjsunit/regress/regress-crbug-1421198.js
+test/mjsunit/regress/regress-crbug-722871.js
+test/mjsunit/regress/regress-crbug-9161.js
+test/mjsunit/regress/regress-v8-12219.js
+test/mjsunit/regress/wasm/regress-358393368.js
+test/mjsunit/regress/wasm/regress-361717714.js
+test/mjsunit/regress/wasm/regress-370191716.js
+test/mjsunit/regress/wasm/regress-377942344.js
+test/mjsunit/regress/wasm/regress-487444465.js
+test/mjsunit/wasm/regress-522454846.js
+test/mjsunit/wasm/worker-memory.js
+
+# These tests require the console global.
+test/mjsunit/clone-ic-regression-crbug-1466315.js
+test/mjsunit/console.js
+test/mjsunit/regress/regress-566243375.js
+test/mjsunit/regress/regress-crbug-1329234.js
+test/mjsunit/regress/regress-crbug-1373770.js
+test/mjsunit/regress/wasm/regress-crbug-1502180.js
+
+# These tests require the d8 global.
+test/mjsunit/d8/d8-test-access-check.js
+test/mjsunit/d8/d8-test-access-checked-interceptor-object.js
+test/mjsunit/d8/d8-test-interceptor.js
+test/mjsunit/d8/files/exists.js
+test/mjsunit/empirical_max_arraybuffer.js
+test/mjsunit/harmony/atomics-waitasync-1thread-2timeout.js
+test/mjsunit/harmony/atomics-waitasync-1thread-timeout.js
+test/mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js
+test/mjsunit/regress/regress-1394663.js
+test/mjsunit/regress/regress-14433.js
+test/mjsunit/regress/regress-40060821.js
+test/mjsunit/regress/regress-490446682.js
+test/mjsunit/regress/regress-577242074.js
+test/mjsunit/regress/regress-577255778.js
+test/mjsunit/regress/regress-583020789.js
+test/mjsunit/regress/regress-crbug-1057653.js
+test/mjsunit/regress/regress-crbug-1308360.js
+test/mjsunit/regress/regress-crbug-1321899-1.js
+test/mjsunit/regress/regress-crbug-1321899-3.js
+test/mjsunit/regress/regress-crbug-1321899-5.js
+test/mjsunit/regress/regress-crbug-1339722-3.js
+test/mjsunit/regress/regress-crbug-1339722-5.js
+test/mjsunit/regress/regress-crbug-1339722-7.js
+test/mjsunit/regress/regress-crbug-1339722.js
+test/mjsunit/regress/regress-crbug-1381404.js
+test/mjsunit/regress/regress-crbug-1402139.js
+test/mjsunit/regress/regress-crbug-1509910.js
+test/mjsunit/regress/wasm/condition-change-during-branch-elimination.js
+test/mjsunit/regress/wasm/export-wrapper-canonical-types.js
+test/mjsunit/regress/wasm/global-initializer-error-offset.js
+test/mjsunit/regress/wasm/loop-stack-check.js
+test/mjsunit/regress/wasm/regress-10126.js
+test/mjsunit/regress/wasm/regress-1014798.js
+test/mjsunit/regress/wasm/regress-1026680.js
+test/mjsunit/regress/wasm/regress-1027410.js
+test/mjsunit/regress/wasm/regress-1029642.js
+test/mjsunit/regress/wasm/regress-1034394.js
+test/mjsunit/regress/wasm/regress-1045225.js
+test/mjsunit/regress/wasm/regress-1045737.js
+test/mjsunit/regress/wasm/regress-1046472.js
+test/mjsunit/regress/wasm/regress-1048241.js
+test/mjsunit/regress/wasm/regress-1051912.js
+test/mjsunit/regress/wasm/regress-1054466.js
+test/mjsunit/regress/wasm/regress-1065599.js
+test/mjsunit/regress/wasm/regress-1067621.js
+test/mjsunit/regress/wasm/regress-1070078.js
+test/mjsunit/regress/wasm/regress-10702.js
+test/mjsunit/regress/wasm/regress-1073553.js
+test/mjsunit/regress/wasm/regress-1074586-b.js
+test/mjsunit/regress/wasm/regress-1074586.js
+test/mjsunit/regress/wasm/regress-1075953.js
+test/mjsunit/regress/wasm/regress-1079449.js
+test/mjsunit/regress/wasm/regress-1080902.js
+test/mjsunit/regress/wasm/regress-1081030.js
+test/mjsunit/regress/wasm/regress-10831.js
+test/mjsunit/regress/wasm/regress-1084151.js
+test/mjsunit/regress/wasm/regress-10898.js
+test/mjsunit/regress/wasm/regress-1101304.js
+test/mjsunit/regress/wasm/regress-1111522.js
+test/mjsunit/regress/wasm/regress-1112124.js
+test/mjsunit/regress/wasm/regress-1114005.js
+test/mjsunit/regress/wasm/regress-1116019.js
+test/mjsunit/regress/wasm/regress-1124885.js
+test/mjsunit/regress/wasm/regress-1132461.js
+test/mjsunit/regress/wasm/regress-1137582.js
+test/mjsunit/regress/wasm/regress-1137608.js
+test/mjsunit/regress/wasm/regress-1140549.js
+test/mjsunit/regress/wasm/regress-1145135.js
+test/mjsunit/regress/wasm/regress-1146861.js
+test/mjsunit/regress/wasm/regress-11472.js
+test/mjsunit/regress/wasm/regress-1152937.js
+test/mjsunit/regress/wasm/regress-1153442.js
+test/mjsunit/regress/wasm/regress-1161654.js
+test/mjsunit/regress/wasm/regress-1161954.js
+test/mjsunit/regress/wasm/regress-1165966.js
+test/mjsunit/regress/wasm/regress-1168116.js
+test/mjsunit/regress/wasm/regress-1171788.js
+test/mjsunit/regress/wasm/regress-1179025.js
+test/mjsunit/regress/wasm/regress-1179182.js
+test/mjsunit/regress/wasm/regress-1187831.js
+test/mjsunit/regress/wasm/regress-1188825.js
+test/mjsunit/regress/wasm/regress-1188975.js
+test/mjsunit/regress/wasm/regress-1189454.js
+test/mjsunit/regress/wasm/regress-1196837.js
+test/mjsunit/regress/wasm/regress-1197393.js
+test/mjsunit/regress/wasm/regress-1199662.js
+test/mjsunit/regress/wasm/regress-1201340.js
+test/mjsunit/regress/wasm/regress-1202736.js
+test/mjsunit/regress/wasm/regress-1207263.js
+test/mjsunit/regress/wasm/regress-1217064.js
+test/mjsunit/regress/wasm/regress-1220855.js
+test/mjsunit/regress/wasm/regress-12270.js
+test/mjsunit/regress/wasm/regress-1227351.js
+test/mjsunit/regress/wasm/regress-1228720.js
+test/mjsunit/regress/wasm/regress-1231950.js
+test/mjsunit/regress/wasm/regress-1236958.js
+test/mjsunit/regress/wasm/regress-1237024.js
+test/mjsunit/regress/wasm/regress-1239116.js
+test/mjsunit/regress/wasm/regress-1239116b.js
+test/mjsunit/regress/wasm/regress-1239954.js
+test/mjsunit/regress/wasm/regress-1242300.js
+test/mjsunit/regress/wasm/regress-1242689.js
+test/mjsunit/regress/wasm/regress-1247659.js
+test/mjsunit/regress/wasm/regress-1251465.js
+test/mjsunit/regress/wasm/regress-1254675.js
+test/mjsunit/regress/wasm/regress-1255354.js
+test/mjsunit/regress/wasm/regress-12624.js
+test/mjsunit/regress/wasm/regress-1264462.js
+test/mjsunit/regress/wasm/regress-12789.js
+test/mjsunit/regress/wasm/regress-12867.js
+test/mjsunit/regress/wasm/regress-1289678.js
+test/mjsunit/regress/wasm/regress-1294384.js
+test/mjsunit/regress/wasm/regress-1296876.js
+test/mjsunit/regress/wasm/regress-1299183.js
+test/mjsunit/regress/wasm/regress-13061.js
+test/mjsunit/regress/wasm/regress-1308333.js
+test/mjsunit/regress/wasm/regress-13118.js
+test/mjsunit/regress/wasm/regress-1314184.js
+test/mjsunit/regress/wasm/regress-1338150.js
+test/mjsunit/regress/wasm/regress-1339153.js
+test/mjsunit/regress/wasm/regress-13700.js
+test/mjsunit/regress/wasm/regress-13715.js
+test/mjsunit/regress/wasm/regress-13732.js
+test/mjsunit/regress/wasm/regress-1379364.js
+test/mjsunit/regress/wasm/regress-1380646.js
+test/mjsunit/regress/wasm/regress-1388938.js
+test/mjsunit/regress/wasm/regress-1388942.js
+test/mjsunit/regress/wasm/regress-13939.js
+test/mjsunit/regress/wasm/regress-13946.js
+test/mjsunit/regress/wasm/regress-13956.js
+test/mjsunit/regress/wasm/regress-14047.js
+test/mjsunit/regress/wasm/regress-1408337.js
+test/mjsunit/regress/wasm/regress-14113.js
+test/mjsunit/regress/wasm/regress-14116.js
+test/mjsunit/regress/wasm/regress-14118.js
+test/mjsunit/regress/wasm/regress-14167.js
+test/mjsunit/regress/wasm/regress-14171.js
+test/mjsunit/regress/wasm/regress-1417908.js
+test/mjsunit/regress/wasm/regress-1432453.js
+test/mjsunit/regress/wasm/regress-14356.js
+test/mjsunit/regress/wasm/regress-1446221.js
+test/mjsunit/regress/wasm/regress-14573.js
+test/mjsunit/regress/wasm/regress-1458941.js
+test/mjsunit/regress/wasm/regress-14600.js
+test/mjsunit/regress/wasm/regress-1460019.js
+test/mjsunit/regress/wasm/regress-1462951.js
+test/mjsunit/regress/wasm/regress-1466183.js
+test/mjsunit/regress/wasm/regress-14689.js
+test/mjsunit/regress/wasm/regress-14700.js
+test/mjsunit/regress/wasm/regress-1478848.js
+test/mjsunit/regress/wasm/regress-1478913.js
+test/mjsunit/regress/wasm/regress-1479926.js
+test/mjsunit/regress/wasm/regress-1480117.js
+test/mjsunit/regress/wasm/regress-1484393.js
+test/mjsunit/regress/wasm/regress-1484978.js
+test/mjsunit/regress/wasm/regress-1485764.js
+test/mjsunit/regress/wasm/regress-1486237.js
+test/mjsunit/regress/wasm/regress-1487077.js
+test/mjsunit/regress/wasm/regress-1490847-2.js
+test/mjsunit/regress/wasm/regress-1490847.js
+test/mjsunit/regress/wasm/regress-1491415.js
+test/mjsunit/regress/wasm/regress-1492772.js
+test/mjsunit/regress/wasm/regress-1497018.js
+test/mjsunit/regress/wasm/regress-1500804.js
+test/mjsunit/regress/wasm/regress-1500812.js
+test/mjsunit/regress/wasm/regress-1502837.js
+test/mjsunit/regress/wasm/regress-1507743.js
+test/mjsunit/regress/wasm/regress-1508999.js
+test/mjsunit/regress/wasm/regress-1512426.js
+test/mjsunit/regress/wasm/regress-1514072.js
+test/mjsunit/regress/wasm/regress-1516319.js
+test/mjsunit/regress/wasm/regress-1517219.js
+test/mjsunit/regress/wasm/regress-1517243.js
+test/mjsunit/regress/wasm/regress-1517559.js
+test/mjsunit/regress/wasm/regress-1519091.js
+test/mjsunit/regress/wasm/regress-1520362.js
+test/mjsunit/regress/wasm/regress-1521371.js
+test/mjsunit/regress/wasm/regress-1523313.js
+test/mjsunit/regress/wasm/regress-1523316.js
+test/mjsunit/regress/wasm/regress-323694592.js
+test/mjsunit/regress/wasm/regress-325359458.js
+test/mjsunit/regress/wasm/regress-325756545.js
+test/mjsunit/regress/wasm/regress-326273468.js
+test/mjsunit/regress/wasm/regress-327517308.js
+test/mjsunit/regress/wasm/regress-328209289.js
+test/mjsunit/regress/wasm/regress-328499555.js
+test/mjsunit/regress/wasm/regress-329032153.js
+test/mjsunit/regress/wasm/regress-329464129.js
+test/mjsunit/regress/wasm/regress-329706236.js
+test/mjsunit/regress/wasm/regress-330767273.js
+test/mjsunit/regress/wasm/regress-333457544.js
+test/mjsunit/regress/wasm/regress-336358915.js
+test/mjsunit/regress/wasm/regress-337870524.js
+test/mjsunit/regress/wasm/regress-339704607.js
+test/mjsunit/regress/wasm/regress-341875188.js
+test/mjsunit/regress/wasm/regress-341947685.js
+test/mjsunit/regress/wasm/regress-342522151.js
+test/mjsunit/regress/wasm/regress-343035068.js
+test/mjsunit/regress/wasm/regress-343633071.js
+test/mjsunit/regress/wasm/regress-343748812.js
+test/mjsunit/regress/wasm/regress-344014332.js
+test/mjsunit/regress/wasm/regress-344484969.js
+test/mjsunit/regress/wasm/regress-346197738.js
+test/mjsunit/regress/wasm/regress-346505953.js
+test/mjsunit/regress/wasm/regress-347905990-2.js
+test/mjsunit/regress/wasm/regress-347914823.js
+test/mjsunit/regress/wasm/regress-347914831.js
+test/mjsunit/regress/wasm/regress-349402547.js
+test/mjsunit/regress/wasm/regress-359949835.js
+test/mjsunit/regress/wasm/regress-361123483.js
+test/mjsunit/regress/wasm/regress-361862737.js
+test/mjsunit/regress/wasm/regress-364312793.js
+test/mjsunit/regress/wasm/regress-365376497.js
+test/mjsunit/regress/wasm/regress-365802567.js
+test/mjsunit/regress/wasm/regress-366350770.js
+test/mjsunit/regress/wasm/regress-368512282.js
+test/mjsunit/regress/wasm/regress-369533086.js
+test/mjsunit/regress/wasm/regress-372067240.js
+test/mjsunit/regress/wasm/regress-373684419.js
+test/mjsunit/regress/wasm/regress-375959770.js
+test/mjsunit/regress/wasm/regress-378014602.js
+test/mjsunit/regress/wasm/regress-378779897.js
+test/mjsunit/regress/wasm/regress-380397544.js
+test/mjsunit/regress/wasm/regress-381696874.js
+test/mjsunit/regress/wasm/regress-382291459.js
+test/mjsunit/regress/wasm/regress-382547695.js
+test/mjsunit/regress/wasm/regress-384565015.js
+test/mjsunit/regress/wasm/regress-385256127.js
+test/mjsunit/regress/wasm/regress-387055479.js
+test/mjsunit/regress/wasm/regress-388290793.js
+test/mjsunit/regress/wasm/regress-395214627.js
+test/mjsunit/regress/wasm/regress-398439335.js
+test/mjsunit/regress/wasm/regress-40258436.js
+test/mjsunit/regress/wasm/regress-403364367.js
+test/mjsunit/regress/wasm/regress-406043349.js
+test/mjsunit/regress/wasm/regress-407298298.js
+test/mjsunit/regress/wasm/regress-413963387.js
+test/mjsunit/regress/wasm/regress-441816628.js
+test/mjsunit/regress/wasm/regress-444049512.js
+test/mjsunit/regress/wasm/regress-445870128.js
+test/mjsunit/regress/wasm/regress-450694568.js
+test/mjsunit/regress/wasm/regress-450868409.js
+test/mjsunit/regress/wasm/regress-451144692.js
+test/mjsunit/regress/wasm/regress-452079540.js
+test/mjsunit/regress/wasm/regress-453769899.js
+test/mjsunit/regress/wasm/regress-454991459.js
+test/mjsunit/regress/wasm/regress-463089250.js
+test/mjsunit/regress/wasm/regress-476177765.js
+test/mjsunit/regress/wasm/regress-490970052.js
+test/mjsunit/regress/wasm/regress-493197128.js
+test/mjsunit/regress/wasm/regress-502030575.js
+test/mjsunit/regress/wasm/regress-502300817.js
+test/mjsunit/regress/wasm/regress-504711585.js
+test/mjsunit/regress/wasm/regress-514159794.js
+test/mjsunit/regress/wasm/regress-518064995.js
+test/mjsunit/regress/wasm/regress-526226588.js
+test/mjsunit/regress/wasm/regress-5391956.js
+test/mjsunit/regress/wasm/regress-5531.js
+test/mjsunit/regress/wasm/regress-563427048.js
+test/mjsunit/regress/wasm/regress-566727937.js
+test/mjsunit/regress/wasm/regress-568806936.js
+test/mjsunit/regress/wasm/regress-569071532.js
+test/mjsunit/regress/wasm/regress-572830550.js
+test/mjsunit/regress/wasm/regress-577474118.js
+test/mjsunit/regress/wasm/regress-578382734.js
+test/mjsunit/regress/wasm/regress-5800.js
+test/mjsunit/regress/wasm/regress-581085888.js
+test/mjsunit/regress/wasm/regress-585810594.js
+test/mjsunit/regress/wasm/regress-5860.js
+test/mjsunit/regress/wasm/regress-586172380.js
+test/mjsunit/regress/wasm/regress-5884.js
+test/mjsunit/regress/wasm/regress-5888.js
+test/mjsunit/regress/wasm/regress-5911.js
+test/mjsunit/regress/wasm/regress-6054.js
+test/mjsunit/regress/wasm/regress-6164.js
+test/mjsunit/regress/wasm/regress-644682.js
+test/mjsunit/regress/wasm/regress-648079.js
+test/mjsunit/regress/wasm/regress-651961.js
+test/mjsunit/regress/wasm/regress-654377.js
+test/mjsunit/regress/wasm/regress-663994.js
+test/mjsunit/regress/wasm/regress-667745.js
+test/mjsunit/regress/wasm/regress-684858.js
+test/mjsunit/regress/wasm/regress-688876.js
+test/mjsunit/regress/wasm/regress-689450.js
+test/mjsunit/regress/wasm/regress-6931.js
+test/mjsunit/regress/wasm/regress-699485.js
+test/mjsunit/regress/wasm/regress-702460.js
+test/mjsunit/regress/wasm/regress-7033.js
+test/mjsunit/regress/wasm/regress-7035.js
+test/mjsunit/regress/wasm/regress-708714.js
+test/mjsunit/regress/wasm/regress-710844.js
+test/mjsunit/regress/wasm/regress-711203.js
+test/mjsunit/regress/wasm/regress-722445.js
+test/mjsunit/regress/wasm/regress-724972.js
+test/mjsunit/regress/wasm/regress-727222.js
+test/mjsunit/regress/wasm/regress-727560.js
+test/mjsunit/regress/wasm/regress-729991.js
+test/mjsunit/regress/wasm/regress-734246.js
+test/mjsunit/regress/wasm/regress-7364.js
+test/mjsunit/regress/wasm/regress-7366.js
+test/mjsunit/regress/wasm/regress-737069.js
+test/mjsunit/regress/wasm/regress-7422.js
+test/mjsunit/regress/wasm/regress-7499.js
+test/mjsunit/regress/wasm/regress-7508.js
+test/mjsunit/regress/wasm/regress-752423.js
+test/mjsunit/regress/wasm/regress-7565.js
+test/mjsunit/regress/wasm/regress-757217.js
+test/mjsunit/regress/wasm/regress-7579.js
+test/mjsunit/regress/wasm/regress-7582.js
+test/mjsunit/regress/wasm/regress-763439.js
+test/mjsunit/regress/wasm/regress-769637.js
+test/mjsunit/regress/wasm/regress-775366.js
+test/mjsunit/regress/wasm/regress-782280.js
+test/mjsunit/regress/wasm/regress-784050.js
+test/mjsunit/regress/wasm/regress-7914.js
+test/mjsunit/regress/wasm/regress-791810.js
+test/mjsunit/regress/wasm/regress-793551.js
+test/mjsunit/regress/wasm/regress-797846.js
+test/mjsunit/regress/wasm/regress-800756.js
+test/mjsunit/regress/wasm/regress-801850.js
+test/mjsunit/regress/wasm/regress-802244.js
+test/mjsunit/regress/wasm/regress-8059.js
+test/mjsunit/regress/wasm/regress-8094.js
+test/mjsunit/regress/wasm/regress-8095.js
+test/mjsunit/regress/wasm/regress-812005.js
+test/mjsunit/regress/wasm/regress-819869.js
+test/mjsunit/regress/wasm/regress-820802.js
+test/mjsunit/regress/wasm/regress-824681.js
+test/mjsunit/regress/wasm/regress-827806.js
+test/mjsunit/regress/wasm/regress-834693.js
+test/mjsunit/regress/wasm/regress-836141.js
+test/mjsunit/regress/wasm/regress-837417.js
+test/mjsunit/regress/wasm/regress-843563.js
+test/mjsunit/regress/wasm/regress-854011.js
+test/mjsunit/regress/wasm/regress-854050.js
+test/mjsunit/regress/wasm/regress-875556.js
+test/mjsunit/regress/wasm/regress-894307.js
+test/mjsunit/regress/wasm/regress-894374.js
+test/mjsunit/regress/wasm/regress-8947.js
+test/mjsunit/regress/wasm/regress-9017.js
+test/mjsunit/regress/wasm/regress-905815.js
+test/mjsunit/regress/wasm/regress-910824.js
+test/mjsunit/regress/wasm/regress-913804.js
+test/mjsunit/regress/wasm/regress-916869.js
+test/mjsunit/regress/wasm/regress-917412.js
+test/mjsunit/regress/wasm/regress-917588.js
+test/mjsunit/regress/wasm/regress-917588b.js
+test/mjsunit/regress/wasm/regress-918149.js
+test/mjsunit/regress/wasm/regress-918284.js
+test/mjsunit/regress/wasm/regress-918917.js
+test/mjsunit/regress/wasm/regress-919308.js
+test/mjsunit/regress/wasm/regress-919533.js
+test/mjsunit/regress/wasm/regress-922670.js
+test/mjsunit/regress/wasm/regress-922933.js
+test/mjsunit/regress/wasm/regress-924843.js
+test/mjsunit/regress/wasm/regress-924905.js
+test/mjsunit/regress/wasm/regress-9425.js
+test/mjsunit/regress/wasm/regress-9447.js
+test/mjsunit/regress/wasm/regress-948228.js
+test/mjsunit/regress/wasm/regress-952342.js
+test/mjsunit/regress/wasm/regress-957405.js
+test/mjsunit/regress/wasm/regress-964607.js
+test/mjsunit/regress/wasm/regress-968078.js
+test/mjsunit/regress/wasm/regress-980007.js
+test/mjsunit/regress/wasm/regress-9832.js
+test/mjsunit/regress/wasm/regress-crbug-1002388.js
+test/mjsunit/regress/wasm/regress-crbug-1338075.js
+test/mjsunit/regress/wasm/regress-crbug-1338980.js
+test/mjsunit/regress/wasm/regress-crbug-1339321.js
+test/mjsunit/regress/wasm/regress-crbug-1355070.js
+test/mjsunit/regress/wasm/regress-crbug-1356718.js
+test/mjsunit/regress/wasm/regress-crbug-1366399.js
+test/mjsunit/regress/wasm/regress-crbug-1407594.js
+test/mjsunit/regress/wasm/regress-crbug-1464604.js
+test/mjsunit/regress/wasm/regress-crbug-1465386.js
+test/mjsunit/regress/wasm/regress-crbug-1486362.js
+test/mjsunit/regress/wasm/regress-crbug-1491815.js
+test/mjsunit/regress/wasm/regress-crbug-1520130.js
+test/mjsunit/regress/wasm/regress-crbug-1520311.js
+test/mjsunit/regress/wasm/regress-crbug-1520312.js
+test/mjsunit/regress/wasm/regress-crbug-772056.js
+test/mjsunit/regress/wasm/regress-drumbrake-unreachable-cast.js
+test/mjsunit/regress/wasm/regress-simd-391916477.js
+test/mjsunit/regress/wasm/regress-simd-403675482.js
+test/mjsunit/regress/wasm/regress-simd-507671691.js
+test/mjsunit/regress/wasm/regress-simd-508025392.js
+test/mjsunit/regress/wasm/regress-simd-516833325.js
+test/mjsunit/regress/wasm/regress-ubsan.js
+test/mjsunit/regress/wasm/regress1192313.js
+test/mjsunit/regress/wasm/typecheck-null-undefined.js
+test/mjsunit/regress/wasm/wasm-typer-incompatible-ref-cast.js
+test/mjsunit/wasm/adapter-frame.js
+test/mjsunit/wasm/add-getters.js
+test/mjsunit/wasm/array-bulk-operations.js
+test/mjsunit/wasm/array-copy-benchmark.js
+test/mjsunit/wasm/array-copy-errors.js
+test/mjsunit/wasm/array-init-from-segment.js
+test/mjsunit/wasm/async-compile.js
+test/mjsunit/wasm/atomic-alignment-checks.js
+test/mjsunit/wasm/atomic-wait-multi-memory.js
+test/mjsunit/wasm/atomics-non-shared.js
+test/mjsunit/wasm/atomics-stress.js
+test/mjsunit/wasm/atomics.js
+test/mjsunit/wasm/atomics64-stress.js
+test/mjsunit/wasm/bigint-i64-to-imported-js-func.js
+test/mjsunit/wasm/bigint.js
+test/mjsunit/wasm/bounds-check-64bit.js
+test/mjsunit/wasm/br-table-no-stack-rewrite.js
+test/mjsunit/wasm/branch-stack-rewrite-error-location.js
+test/mjsunit/wasm/bulk-memory.js
+test/mjsunit/wasm/call-indirect-null-check.js
+test/mjsunit/wasm/call-ref.js
+test/mjsunit/wasm/call_indirect.js
+test/mjsunit/wasm/calls.js
+test/mjsunit/wasm/compare-exchange-stress.js
+test/mjsunit/wasm/compare-exchange64-stress.js
+test/mjsunit/wasm/compile-time-builtins.js
+test/mjsunit/wasm/data-segments.js
+test/mjsunit/wasm/drumbrake/memory-grow.js
+test/mjsunit/wasm/drumbrake/memory64-simd-lanes.js
+test/mjsunit/wasm/element-segments-with-reftypes.js
+test/mjsunit/wasm/empirical_max_memory.js
+test/mjsunit/wasm/exceptions-api.js
+test/mjsunit/wasm/exceptions-export.js
+test/mjsunit/wasm/exceptions-import.js
+test/mjsunit/wasm/exceptions-shared.js
+test/mjsunit/wasm/exnref-global.js
+test/mjsunit/wasm/export-global.js
+test/mjsunit/wasm/export-identity.js
+test/mjsunit/wasm/export-mutable-global.js
+test/mjsunit/wasm/export-table.js
+test/mjsunit/wasm/extended-constants.js
+test/mjsunit/wasm/externref-table.js
+test/mjsunit/wasm/ffi-error.js
+test/mjsunit/wasm/float-constant-folding.js
+test/mjsunit/wasm/function-names.js
+test/mjsunit/wasm/function-prototype.js
+test/mjsunit/wasm/gc-cast-type-inference.js
+test/mjsunit/wasm/gc-casts-subtypes.js
+test/mjsunit/wasm/gc-nominal.js
+test/mjsunit/wasm/gc-null-traps.js
+test/mjsunit/wasm/gc-ref-eq.js
+test/mjsunit/wasm/gc-typecheck-reducer.js
+test/mjsunit/wasm/globals-import-export-identity.js
+test/mjsunit/wasm/globals.js
+test/mjsunit/wasm/grow-memory-detaching-resizable-buffer.js
+test/mjsunit/wasm/grow-memory-detaching.js
+test/mjsunit/wasm/grow-shared-memory-resizable-buffer.js
+test/mjsunit/wasm/grow-shared-memory.js
+test/mjsunit/wasm/half-dup-shuffles.js
+test/mjsunit/wasm/half-shuffles.js
+test/mjsunit/wasm/i31ref.js
+test/mjsunit/wasm/import-function.js
+test/mjsunit/wasm/import-memory.js
+test/mjsunit/wasm/import-table.js
+test/mjsunit/wasm/import-wrapper-uninhabitable.js
+test/mjsunit/wasm/imported-function-types.js
+test/mjsunit/wasm/imported-strings-constants.js
+test/mjsunit/wasm/indirect-call-non-zero-table.js
+test/mjsunit/wasm/indirect-calls.js
+test/mjsunit/wasm/indirect-sig-mismatch.js
+test/mjsunit/wasm/js-api.js
+test/mjsunit/wasm/js-to-js.js
+test/mjsunit/wasm/js-to-wasm-invalid-sig.js
+test/mjsunit/wasm/js-wrapper-typechecks.js
+test/mjsunit/wasm/jspi-central-stack-unwind.js
+test/mjsunit/wasm/jspi-import-wrapper-receiver.js
+test/mjsunit/wasm/jspi-notraps.js
+test/mjsunit/wasm/large-offset.js
+test/mjsunit/wasm/liftoff-simd-params.js
+test/mjsunit/wasm/load-immutable.js
+test/mjsunit/wasm/load-shift32.js
+test/mjsunit/wasm/log-code-after-post-message.js
+test/mjsunit/wasm/many-memories.js
+test/mjsunit/wasm/many-parameters.js
+test/mjsunit/wasm/max-params.js
+test/mjsunit/wasm/memory-copy-inline.js
+test/mjsunit/wasm/memory-copy-outline.js
+test/mjsunit/wasm/memory-external-call.js
+test/mjsunit/wasm/memory-fill-inline.js
+test/mjsunit/wasm/memory-fill-outline.js
+test/mjsunit/wasm/memory-resizable-buffer-errors.js
+test/mjsunit/wasm/memory-size.js
+test/mjsunit/wasm/memory.js
+test/mjsunit/wasm/memory_4gb_oob.js
+test/mjsunit/wasm/mixed-eh-invalid.js
+test/mjsunit/wasm/multi-memory.js
+test/mjsunit/wasm/multi-memory64-memorysize.js
+test/mjsunit/wasm/multi-memory64-wrong-offset.js
+test/mjsunit/wasm/multi-memory64.js
+test/mjsunit/wasm/multi-table-element-section.js
+test/mjsunit/wasm/multi-value-simd.js
+test/mjsunit/wasm/multi-value.js
+test/mjsunit/wasm/names.js
+test/mjsunit/wasm/params.js
+test/mjsunit/wasm/prototype.js
+test/mjsunit/wasm/quarter-shuffles.js
+test/mjsunit/wasm/receiver.js
+test/mjsunit/wasm/ref-cast-js-function.js
+test/mjsunit/wasm/ref-eq-unreachable.js
+test/mjsunit/wasm/reference-globals.js
+test/mjsunit/wasm/reference-table-js-interop.js
+test/mjsunit/wasm/reference-tables.js
+test/mjsunit/wasm/regress-488803413.js
+test/mjsunit/wasm/regress-526048647.js
+test/mjsunit/wasm/regress-576453351.js
+test/mjsunit/wasm/return-call-wki.js
+test/mjsunit/wasm/shared-memory-resizable-buffer-errors.js
+test/mjsunit/wasm/shared-memory-size-atomic.js
+test/mjsunit/wasm/shared-memory-worker-gc-stress.js
+test/mjsunit/wasm/shared-memory-worker-stress.js
+test/mjsunit/wasm/shared-memory.js
+test/mjsunit/wasm/shuffles.js
+test/mjsunit/wasm/simd-add-sub-high-narrow.js
+test/mjsunit/wasm/simd-call.js
+test/mjsunit/wasm/simd-dot-i8.js
+test/mjsunit/wasm/simd-dot-i8x16.js
+test/mjsunit/wasm/simd-dot-product-sum.js
+test/mjsunit/wasm/simd-errors.js
+test/mjsunit/wasm/simd-extract-replace.js
+test/mjsunit/wasm/simd-globals.js
+test/mjsunit/wasm/simd-i64x2-mul-mixed-sign.js
+test/mjsunit/wasm/simd-int-narrowing.js
+test/mjsunit/wasm/simd-load-replaces.js
+test/mjsunit/wasm/simd-narrow-interleave.js
+test/mjsunit/wasm/simd-reduce.js
+test/mjsunit/wasm/simd-replace-lane-zero.js
+test/mjsunit/wasm/simd-rot64-no-xor.js
+test/mjsunit/wasm/simd-s128-orn.js
+test/mjsunit/wasm/simd-shift-left-long.js
+test/mjsunit/wasm/simd-usaddl.js
+test/mjsunit/wasm/simd-usaddw.js
+test/mjsunit/wasm/simd-ussubl.js
+test/mjsunit/wasm/simd-ussubw.js
+test/mjsunit/wasm/simd-wasm-interpreter.js
+test/mjsunit/wasm/simd-xor-rot64.js
+test/mjsunit/wasm/stack-push-root.js
+test/mjsunit/wasm/start-function.js
+test/mjsunit/wasm/stringrefs-invalid.js
+test/mjsunit/wasm/table-access.js
+test/mjsunit/wasm/table-copy-externref.js
+test/mjsunit/wasm/table-copy.js
+test/mjsunit/wasm/table-fill.js
+test/mjsunit/wasm/table-get.js
+test/mjsunit/wasm/table-grow-from-wasm.js
+test/mjsunit/wasm/table-numeric-ops.js
+test/mjsunit/wasm/table64-callindirect.js
+test/mjsunit/wasm/table64-copy.js
+test/mjsunit/wasm/table64-fill.js
+test/mjsunit/wasm/table64-get.js
+test/mjsunit/wasm/table64-grow.js
+test/mjsunit/wasm/table64-import.js
+test/mjsunit/wasm/table64-init.js
+test/mjsunit/wasm/table64-js-api.js
+test/mjsunit/wasm/table64-limits.js
+test/mjsunit/wasm/table64-set.js
+test/mjsunit/wasm/table64-size.js
+test/mjsunit/wasm/test-wasm-module-builder.js
+test/mjsunit/wasm/trap-location.js
+test/mjsunit/wasm/turboshaft/array-new-unreachable.js
+test/mjsunit/wasm/turboshaft/regress-crbug-1513580.js
+test/mjsunit/wasm/turboshaft/regress-crbug-420998402.js
+test/mjsunit/wasm/type-based-optimizations.js
+test/mjsunit/wasm/type-casts-tests.js
+test/mjsunit/wasm/type-reflection-with-externref.js
+test/mjsunit/wasm/type-reflection-wrap-wasm-function.js
+test/mjsunit/wasm/typed-funcref.js
+test/mjsunit/wasm/unicode-validation.js
+test/mjsunit/wasm/unicode.js
+test/mjsunit/wasm/unreachable-validation.js
+test/mjsunit/wasm/unreachable.js
+test/mjsunit/wasm/wasm-api-overloading.js
+test/mjsunit/wasm/wasm-gc-externalize-internalize.js
+test/mjsunit/wasm/wasm-gc-js-ref.js
+test/mjsunit/wasm/wasm-gc-source-location.js
+test/mjsunit/wasm/wasm-invalid-local.js
+test/mjsunit/wasm/wasm-to-js-i32-cond.js
+test/mjsunit/wasm/worker-module.js
+test/mjsunit/wasm/worker-running-empty-loop-interruptible.js
+
+# These tests require the load global.
+test/mjsunit/regress-393408781.js
+test/mjsunit/wasm/interpreter-catch-reenter-rethrow.js
+
+# These tests require the os global.
+test/mjsunit/d8/d8-os.js
+
+# These tests require the performance global.
+test/mjsunit/d8/performance-mark.js
+test/mjsunit/regress/regress-371237560.js
+
+# These tests require the quit global.
+test/mjsunit/weakrefs/clearkeptobjects-on-quit.js
+
+# These tests require the readbuffer global.
+test/mjsunit/regress/d8-readbuffer.js
+test/mjsunit/regress/regress-571565364.js
+test/mjsunit/wasm/ensure-wasm-binaries-up-to-date.js
+
+# These tests require the setTimeout global.
+test/mjsunit/d8/d8-unhandled-promise-handler-added.js
+test/mjsunit/es6/promise-resolve-thenable-job.js
+test/mjsunit/harmony/modules-import-top-level-await-8.mjs
+test/mjsunit/math-sum-precise/uncaught-error-message.js
+test/mjsunit/regress/regress-576644328.js
+
+# These tests require the version global.
+test/mjsunit/regress/regress-v8-5009.js
+
+# These tests throw before completing their assertions.
+test/mjsunit/error-constructors.js
+test/mjsunit/fuzz-accessors.js
+test/mjsunit/harmony/modules-import-meta.mjs
+test/mjsunit/regress/regress-3404.js
+test/mjsunit/regress/regress-381390367.js
+test/mjsunit/regress/regress-523435063.js
+test/mjsunit/regress/regress-533926191.js
+test/mjsunit/test-builtins-setup.js
+
+# This test requires Intl.v8BreakIterator.
+test/mjsunit/regress/regress-crbug-714696.js
+
+# This test requires d8's printErr global.
+test/mjsunit/print.js
+
+# V8 marks the bugs directory as expected to fail.
+test/mjsunit/bugs/bug-1344252.js
+test/mjsunit/bugs/bug-222.js
+test/mjsunit/bugs/bug-617.js
+test/mjsunit/bugs/bug-941049.js
+test/mjsunit/bugs/bug-proto.js

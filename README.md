@@ -318,20 +318,23 @@ from `testdata` and run without a Test262 checkout, including with
 The root package runs Test262 and V8 when their checkouts are available. Set the
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
-sparse checkout of `test/intl` is sufficient. Short mode skips both suites.
+sparse checkout needs `test/intl`, `test/mjsunit`, and the printing helper
+`tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
+Short mode skips both suites.
 
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](testdata/test262-revision.txt) | [Skip list](testdata/test262-skips.txt) |
-| [V8 Intl](https://github.com/v8/v8/tree/main/test/intl) | `EKUMA_V8` | `ekuma/v8` | [Revision](testdata/v8-revision.txt) | [Skip list](testdata/v8-skips.txt) |
+| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl) and [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit) | `EKUMA_V8` | `ekuma/v8` | [Revision](testdata/v8-revision.txt) | [Skip list](testdata/v8-skips.txt) |
 
 Both suites use the same flags, prefixed with `-test262.` or `-v8.`. Use `dir` to
 select a checkout-relative directory and `filter` to match a substring of a test
-path. These commands run each suite's collation tests.
+path. For example, these commands select the collation tests or the mjsunit ES6 tests.
 
 ```sh
 go test -count=1 -v -run '^TestTest262$' . -test262.dir test/intl402/Collator
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/intl/collator
+go test -count=1 -v -run '^TestV8$' . -v8.dir test/mjsunit/es6
 ```
 
 Use `shuffle` with `off`, `on`, or an integer seed. To replay a file order,
@@ -343,6 +346,9 @@ Plain paths in each skip list are expected failures. The tests still run, and
 an unexpected pass or a stale path fails the suite. A runner error, engine
 panic, or timeout on the final attempt also fails the suite. In the V8 list, a
 `# SKIP: reason` comment directly above a path skips execution of that test.
+The V8 runner loads checkout-relative scripts named by `// Files:` in order,
+after the suite harness and before the test. Unsupported flags and environment
+settings skip the test.
 
 ## License
 
