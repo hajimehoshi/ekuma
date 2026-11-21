@@ -50,11 +50,23 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 }
 
 // InstallGlobalProxy makes a proxy the global this value of the current realm.
-// In this realm, property operations on other realms' global proxies use foreignView.
-func (vm *VM) InstallGlobalProxy(foreignView *Object) Value {
-	if vm.globalProxyHandler == nil {
-		vm.globalProxyHandler = vm.NewObject(nil)
+// If shareAccess is true, the new proxy shares the entered realm's access group.
+// Property operations on globals outside the group use foreignView.
+func (vm *VM) InstallGlobalProxy(foreignView *Object, shareAccess bool) Value {
+	var handler *Object
+	if shareAccess && vm.enteredRealm != nil {
+		entered := vm.enteredRealm
+		if entered == vm.curRealm {
+			entered = &vm.realm
+		}
+		handler = entered.globalProxyHandler
 	}
+	if handler == nil {
+		handler = vm.NewObject(nil)
+		handler.class = classGlobalProxyHandler
+	}
+	vm.hasGlobalProxies = true
+	vm.globalProxyHandler = handler
 	vm.foreignGlobalView = foreignView
 	vm.globalThis = vm.ProxyCreate(ObjectValue(vm.global), ObjectValue(vm.globalProxyHandler))
 	proxy := ObjectValue(vm.globalThis)
@@ -87,6 +99,15 @@ func (vm *VM) IsArray(v Value) bool {
 
 // getFunctionRealm implements GetFunctionRealm.
 func (vm *VM) getFunctionRealm(f *Object) *realm {
+	if r := vm.functionRealmOrNil(f); r != nil {
+		return r
+	}
+	vm.throwRevoked("GetFunctionRealm")
+	return nil
+}
+
+// functionRealmOrNil returns the function's realm, or nil for a revoked proxy.
+func (vm *VM) functionRealmOrNil(f *Object) *realm {
 	for {
 		switch {
 		case f.fn != nil && f.fn.bound != nil:
@@ -94,7 +115,7 @@ func (vm *VM) getFunctionRealm(f *Object) *realm {
 		case f.class == classProxy:
 			st := f.extState().(*proxyState)
 			if st.handler == nil {
-				vm.throwRevoked("GetFunctionRealm")
+				return nil
 			}
 			f = st.target
 		case f.fn != nil && f.fn.code != nil:
@@ -112,7 +133,7 @@ func (vm *VM) throwRevoked(op string) {
 }
 
 // proxyEnter starts an internal method of the proxy o and returns its target and handler.
-// A foreign global proxy uses the accessing realm's view as its target.
+// A global proxy outside the accessing realm's group uses its foreign view.
 // The caller has to call proxyLeave when the method ends.
 //
 // The internal methods of a proxy whose target is a proxy call each other without running
@@ -129,7 +150,7 @@ func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
 		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
 	target = st.target
-	if st.handler == vm.globalProxyHandler && target != vm.global {
+	if st.handler.class == classGlobalProxyHandler && st.handler != vm.globalProxyHandler {
 		target = vm.foreignGlobalView
 		if target == nil {
 			vm.ThrowTypeError("no access")

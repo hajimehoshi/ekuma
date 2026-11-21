@@ -68,9 +68,7 @@ type promiseReaction struct {
 	gen    *generator
 	native AwaitHandler
 
-	// continuationData is the continuation data that was current when the reaction was made,
-	// which its job runs with.
-	continuationData any
+	context jobContext
 }
 
 // AwaitHandler continues a built-in async function after an Await: v is the value of
@@ -96,6 +94,36 @@ func (c *PromiseCapability) Promise() Value {
 	return Value{o: c.promise}
 }
 
+// jobContext is the host state in effect while a job or cleanup callback runs.
+type jobContext struct {
+	continuationData any
+
+	// enteredRealm stays fixed across ordinary cross-realm calls.
+	enteredRealm *realm
+}
+
+func (vm *VM) captureJobContext() jobContext {
+	c := jobContext{
+		continuationData: vm.continuationData,
+	}
+	if vm.hasGlobalProxies {
+		c.enteredRealm = vm.curRealm
+	}
+	return c
+}
+
+// withJobContext runs f with the captured continuation data and enters the job's realm.
+func (vm *VM) withJobContext(c jobContext, f func()) {
+	previous := vm.jobContext
+	vm.jobContext = c
+	defer func() { vm.jobContext = previous }()
+	if c.enteredRealm != nil {
+		vm.InRealm((*Realm)(c.enteredRealm), f)
+		return
+	}
+	f()
+}
+
 type jobKind uint8
 
 const (
@@ -111,8 +139,7 @@ type job struct {
 	// rejected selects the reject reaction of a reaction job.
 	rejected bool
 
-	// reaction is the reaction of a reaction job. The continuation data of a thenable job is
-	// reaction.continuationData too.
+	// reaction holds the reaction of a reaction job and the context of any job.
 	reaction promiseReaction
 
 	// argument is the value of a reaction job, or the thenable of a thenable job.
@@ -319,13 +346,12 @@ func (vm *VM) resolvePromise(p *Object, resolution Value) {
 	vm.enqueueThenableJob(p, resolution, then)
 }
 
-// enqueueThenableJob enqueues the job of NewPromiseResolveThenableJob, which runs with the
-// current continuation data.
+// enqueueThenableJob enqueues NewPromiseResolveThenableJob with the current continuation data.
 func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
 	vm.enqueueJob(job{
 		kind: jobThenable,
 		reaction: promiseReaction{
-			continuationData: vm.continuationData,
+			context: vm.captureJobContext(),
 		},
 		argument: thenable,
 		promise:  p,
@@ -389,9 +415,9 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 }
 
 // addReaction is the part of PerformPromiseThen after the reaction records are created.
-// The reaction captures the current continuation data, as HostMakeJobCallback does.
+// The reaction captures the host context for its job.
 func (vm *VM) addReaction(p *Object, r promiseReaction) {
-	r.continuationData = vm.continuationData
+	r.context = vm.captureJobContext()
 	d := promiseOf(p)
 	switch d.state {
 	case PromisePending:
@@ -451,7 +477,7 @@ func (vm *VM) await(g *generator, v Value, kind reactionKind) {
 // awaitValue performs PromiseResolve(%Promise%, v) and PerformPromiseThen with the reaction r.
 func (vm *VM) awaitValue(v Value, r promiseReaction) {
 	// The jobs enqueued here run r without addReaction.
-	r.continuationData = vm.continuationData
+	r.context = vm.captureJobContext()
 	// The promise that PromiseResolve creates is only needed for a thenable: any other value
 	// would settle it at once, so the reaction job can be enqueued directly.
 	switch {
@@ -603,7 +629,35 @@ func (q *jobQueue) dequeue() job {
 }
 
 func (vm *VM) enqueueJob(j job) {
+	if vm.hasGlobalProxies {
+		j.reaction.context.enteredRealm = vm.jobRealm(&j)
+	}
 	vm.jobs.enqueue(j)
+}
+
+// jobRealm returns the realm entered for a job. A missing or revoked handler
+// falls back to the other reaction handler and then to the enqueueing realm.
+func (vm *VM) jobRealm(j *job) *realm {
+	primary, secondary := j.reaction.onFulfilled, j.reaction.onRejected
+	switch {
+	case j.kind == jobThenable:
+		primary = j.then
+	case j.reaction.kind == reactionAwait:
+		// The await handler resumes code in the suspended function's realm.
+		return j.reaction.gen.f.fn.code.realm
+	case j.kind == jobReaction && j.reaction.kind != reactionHandlers:
+		return j.reaction.context.enteredRealm
+	case j.rejected:
+		primary, secondary = secondary, primary
+	}
+	for _, h := range [2]Value{primary, secondary} {
+		if h.IsCallable() {
+			if r := vm.functionRealmOrNil(h.o); r != nil {
+				return r
+			}
+		}
+	}
+	return vm.curRealm
 }
 
 // runJob runs the job j. An exception that leaves the job is dropped, as the host would
@@ -718,12 +772,9 @@ func (vm *VM) runJobs() {
 					vm.Poll()
 				}
 				j := vm.jobs.dequeue()
-				// A job runs with the continuation data that it captured, as HostCallJobCallback
-				// does. A panic or an interruption leaves it to enter to restore the data.
-				data := vm.continuationData
-				vm.continuationData = j.reaction.continuationData
-				vm.runJob(&j)
-				vm.continuationData = data
+				vm.withJobContext(j.reaction.context, func() {
+					vm.runJob(&j)
+				})
 				if vm.abortCause != nil {
 					return
 				}

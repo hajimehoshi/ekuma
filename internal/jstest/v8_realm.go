@@ -31,7 +31,7 @@ type v8Realms struct {
 	entries  []ekuma.Value
 }
 
-func (h *v8Realms) add(r *ekuma.Realm) (int, error) {
+func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 	s, err := v8RealmScript()
 	if err != nil {
 		return 0, err
@@ -47,7 +47,7 @@ func (h *v8Realms) add(r *ekuma.Realm) (int, error) {
 		return 0, err
 	}
 	create := r.FuncOf("create", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		return h.add(h.vm.NewRealm())
+		return h.add(h.vm.NewRealm(), args[0].Bool())
 	})
 	lookup := r.FuncOf("lookup", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		i := args[0].Int()
@@ -79,7 +79,7 @@ func (h *v8Realms) add(r *ekuma.Realm) (int, error) {
 	})
 	index := len(h.entries)
 	h.entries = append(h.entries, r.ValueOf(map[string]any{
-		"global":   h.host.InstallGlobalProxy(r, view),
+		"global":   h.host.InstallGlobalProxy(r, view, shareAccess),
 		"evaluate": evaluate,
 	}))
 	return index, nil
@@ -105,6 +105,37 @@ func (host *V8) CheckRealm(t *testing.T) {
 		const receiver = Realm.eval(r, 'Object.defineProperty(this, "self", {get() { return this }}); () => self');
 		if (receiver() !== Realm.global(r)) throw Error("wrong global getter receiver");
 		if (Reflect.setPrototypeOf(globalThis, globalThis)) throw Error("global prototype cycle");
+
+		const createShared = Realm.eval(r, "Realm.createAllowCrossRealmAccess");
+		Realm.global(createShared()).marker = 1;
+		const marker = Realm.eval(r, "globalThis.marker = {}");
+		function checkPeerOfR(i) {
+			if (Realm.eval(i, "Realm.global(" + r + ").marker") !== marker) {
+				throw Error("child cannot read its group's global");
+			}
+			try {
+				Realm.global(i).marker;
+			} catch (e) {
+				if (e instanceof TypeError) return;
+				throw e;
+			}
+			throw Error("child is accessible outside its group");
+		}
+		const peer = Realm.eval(r, "Realm.createAllowCrossRealmAccess()");
+		checkPeerOfR(Realm.eval(peer, "Realm.createAllowCrossRealmAccess()"));
+
+		const handler = new Proxy(Realm.eval(r, "Function.prototype"), {
+			apply() { return Realm.createAllowCrossRealmAccess(); },
+		});
+		Promise.resolve().then(handler).then(checkPeerOfR);
+
+		const afterAwait = Realm.eval(r, "async () => { await 0; return Realm.createAllowCrossRealmAccess(); }");
+		afterAwait().then(checkPeerOfR);
+
+		const thenable = Realm.eval(r, "({then(resolve) { resolve(Object.getPrototypeOf(resolve) === Function.prototype); }})");
+		Promise.resolve(thenable).then(ownResolver => {
+			if (!ownResolver) throw Error("resolver belongs to the wrong realm");
+		});
 	`
 	test := v8Test{
 		file: "test/mjsunit/realm.js",

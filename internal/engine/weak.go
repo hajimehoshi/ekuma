@@ -219,9 +219,8 @@ type FinalizationRegistry struct {
 	// callback is the [[CleanupCallback]].
 	callback *Object
 
-	// continuationData is the continuation data that was current when the registry was made,
-	// which callback runs with.
-	continuationData any
+	// context is the host context captured when the registry was created.
+	context jobContext
 
 	queue *finalizationQueue
 
@@ -302,10 +301,10 @@ func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Ob
 		vm.weak.finalization = &finalizationQueue{}
 	}
 	r := &FinalizationRegistry{
-		callback:         callback,
-		continuationData: vm.continuationData,
-		queue:            vm.weak.finalization,
-		cells:            map[uint64]*finalizationCell{},
+		callback: callback,
+		context:  vm.captureJobContext(),
+		queue:    vm.weak.finalization,
+		cells:    map[uint64]*finalizationCell{},
 		cleanups: &cellCleanups{
 			m: map[uint64]runtime.Cleanup{},
 		},
@@ -425,18 +424,8 @@ func (vm *VM) runFinalizationCleanups() {
 			continue
 		}
 		r.remove(d.id, c)
-		vm.callCleanupCallback(r, c.held)
+		vm.withJobContext(r.context, func() {
+			vm.Call(r.callback, Undefined, c.held)
+		})
 	}
-}
-
-// callCleanupCallback calls the cleanup callback of r with held and the continuation data of r,
-// as HostCallJobCallback does.
-func (vm *VM) callCleanupCallback(r *FinalizationRegistry, held Value) {
-	data := vm.continuationData
-	vm.continuationData = r.continuationData
-	// An exception of the callback ends the cleanups.
-	defer func() {
-		vm.continuationData = data
-	}()
-	vm.Call(r.callback, Undefined, held)
 }

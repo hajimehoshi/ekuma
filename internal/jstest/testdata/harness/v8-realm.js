@@ -26,7 +26,10 @@
       if (ownQueue) {
         throw new Error("Separate realm microtask queues are unsupported");
       }
-      return create();
+      return create(false);
+    },
+    createAllowCrossRealmAccess() {
+      return create(true);
     },
     eval(i, source, options) {
       const realm = select(i);

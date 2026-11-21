@@ -528,6 +528,9 @@ test/mjsunit/regress/regress-559408989.js
 test/mjsunit/regress/regress-852765.js
 test/mjsunit/regress/regress-crbug-1259950.js
 test/mjsunit/regress/regress-crbug-1278086.js
+test/mjsunit/regress/regress-crbug-1321899-3.js
+test/mjsunit/regress/regress-crbug-1339722-3.js
+test/mjsunit/regress/regress-crbug-1339722-7.js
 test/mjsunit/regress/regress-crbug-1467028.js
 test/mjsunit/regress/regress-crbug-1500898.js
 test/mjsunit/regress/regress-v8-11360.js
@@ -671,30 +674,6 @@ test/mjsunit/regress/regress-crbug-505370.js
 test/mjsunit/regress/regress-crbug-599067.js
 test/mjsunit/regress/regress-v8-7848.js
 
-# These tests require Realm.createAllowCrossRealmAccess.
-test/mjsunit/compiler/regress-1250216.js
-test/mjsunit/d8/d8-realm-onerror.js
-test/mjsunit/d8/regress-517967108.js
-test/mjsunit/realm-property-access.js
-test/mjsunit/regress/regress-1033966.js
-test/mjsunit/regress/regress-1069964.js
-test/mjsunit/regress/regress-1494164.js
-test/mjsunit/regress/regress-396460426.js
-test/mjsunit/regress/regress-463593768.js
-test/mjsunit/regress/regress-464961493.js
-test/mjsunit/regress/regress-493269623.js
-test/mjsunit/regress/regress-495503781.js
-test/mjsunit/regress/regress-524921880.js
-test/mjsunit/regress/regress-572400584.js
-test/mjsunit/regress/regress-575524702.js
-test/mjsunit/regress/regress-crbug-1130213.js
-test/mjsunit/regress/regress-crbug-1321899-1.js
-test/mjsunit/regress/regress-crbug-1321899-3.js
-test/mjsunit/regress/regress-crbug-1339722-3.js
-test/mjsunit/regress/regress-crbug-1339722-7.js
-test/mjsunit/regress/regress-crbug-959727.js
-test/mjsunit/wasm/jspi-import-wrapper-receiver.js
-
 # These tests require access checks on private elements of foreign globals.
 test/mjsunit/regress/regress-crbug-1321899-5.js
 test/mjsunit/regress/regress-crbug-1339722-5.js
@@ -705,12 +684,35 @@ test/mjsunit/contextual-calls.js
 test/mjsunit/regress/regress-6733.js
 test/mjsunit/regress/regress-crbug-768875.js
 
+# These tests require Realm.detachGlobal.
+test/mjsunit/compiler/regress-1250216.js
+test/mjsunit/regress/regress-1069964.js
+test/mjsunit/regress/regress-396460426.js
+test/mjsunit/regress/regress-464961493.js
+test/mjsunit/regress/regress-crbug-1321899-1.js
+test/mjsunit/regress/regress-crbug-959727.js
+
 # These tests require Realm.dispose.
 test/mjsunit/d8/regress-516209551.js
 test/mjsunit/regress/redeclaration-error-types.js
+test/mjsunit/regress/regress-1494164.js
+
+# These tests require Realm.navigate.
+test/mjsunit/regress/regress-493269623.js
+test/mjsunit/regress/regress-495503781.js
+
+# These tests require Realm.navigateSameOrigin.
+test/mjsunit/regress/regress-463593768.js
+test/mjsunit/regress/regress-524921880.js
+
+# This test requires Realm.owner.
+test/mjsunit/regress/regress-crbug-1130213.js
 
 # This test requires Realm.shared.
 test/mjsunit/regress/regress-523431532.js
+
+# This test requires Realm.switch.
+test/mjsunit/d8/regress-517967108.js
 
 # This test requires V8's cross-realm Promise constructor access check.
 test/mjsunit/regress/regress-v8-12705.js
@@ -1172,6 +1174,7 @@ test/mjsunit/wasm/js-to-js.js
 test/mjsunit/wasm/js-to-wasm-invalid-sig.js
 test/mjsunit/wasm/js-wrapper-typechecks.js
 test/mjsunit/wasm/jspi-central-stack-unwind.js
+test/mjsunit/wasm/jspi-import-wrapper-receiver.js
 test/mjsunit/wasm/jspi-notraps.js
 test/mjsunit/wasm/large-offset.js
 test/mjsunit/wasm/liftoff-simd-params.js
@@ -1385,6 +1388,7 @@ test/mjsunit/regress/regress-571565364.js
 test/mjsunit/wasm/ensure-wasm-binaries-up-to-date.js
 
 # These tests require the setTimeout global.
+test/mjsunit/d8/d8-realm-onerror.js
 test/mjsunit/d8/d8-unhandled-promise-handler-added.js
 test/mjsunit/es6/promise-resolve-thenable-job.js
 test/mjsunit/harmony/modules-import-top-level-await-8.mjs
@@ -1393,6 +1397,7 @@ test/mjsunit/regress/regress-576644328.js
 test/mjsunit/wasm/async-compile.js
 
 # These tests require the version global.
+test/mjsunit/regress/regress-575524702.js
 test/mjsunit/regress/regress-v8-5009.js
 
 # These tests throw before completing their assertions.

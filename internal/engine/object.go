@@ -92,6 +92,7 @@ const (
 	classPromise
 	classGenerator
 	classProxy
+	classGlobalProxyHandler
 	classIterator
 	classForIn
 	classPrivateName

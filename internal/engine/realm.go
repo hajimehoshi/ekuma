@@ -80,6 +80,9 @@ func (vm *VM) initRealmPrototypes() {
 			native: func(vm *VM, this Value, args []Value) Value {
 				return Undefined
 			},
+			info: &nativeInfo{
+				realm: vm.curRealm,
+			},
 		},
 	}).init()
 	vm.intrinsics[IntrinsicFunctionPrototype] = functionProto
@@ -284,6 +287,9 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
 	}
 	f := vm.newScriptFunction(s.code)
 	return vm.enter(func() Value {
+		previous := vm.enteredRealm
+		vm.enteredRealm = s.code.realm
+		defer func() { vm.enteredRealm = previous }()
 		return vm.Call(f, Value{o: vm.globalThis})
 	})
 }
@@ -300,6 +306,8 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 	if vm.entered > 0 {
 		return vm.enterBoundary(f)
 	}
+	vm.enteredRealm = vm.curRealm
+	defer func() { vm.enteredRealm = nil }()
 	// Data independent timing stays enabled for the goroutine across rescheduling, so the
 	// nested calls need nothing more.
 	subtle.WithDataIndependentTiming(func() {
@@ -315,7 +323,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
 	thrown := vm.thrown
-	continuationData := vm.continuationData
+	context := vm.jobContext
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
@@ -343,7 +351,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			if interrupted && !outermost {
 				panic(r)
 			}
-			vm.continuationData = continuationData
+			vm.jobContext = context
 			// Only activations belonging to this boundary have lost their Go callers.
 			if vm.curRealm != curRealm {
 				vm.switchRealm(curRealm)

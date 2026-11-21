@@ -27,7 +27,7 @@ import (
 // V8 runs the V8 conformance suites with the supplied realm operations.
 type V8 struct {
 	ParseScriptValue   func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
-	InstallGlobalProxy func(*ekuma.Realm, ekuma.Value) ekuma.Value
+	InstallGlobalProxy func(*ekuma.Realm, ekuma.Value, bool) ekuma.Value
 }
 
 const v8SkipsFile = testdataDir + "/v8-skips.txt"
@@ -457,7 +457,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			checkout: checkout,
 			print:    print,
 		}
-		if _, err := realms.add(vm.InitialRealm()); err != nil {
+		if _, err := realms.add(vm.InitialRealm(), false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
 		}
 	} else if err := vm.Global().Set("print", vm.FuncOf("print", print)); err != nil {

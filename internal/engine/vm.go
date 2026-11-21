@@ -33,7 +33,7 @@ type function struct {
 
 	native NativeFunc
 
-	// info describes a function created by [VM.NewNative], and is nil otherwise.
+	// info describes native functions with their own realm.
 	info *nativeInfo
 
 	bound *boundFunc
@@ -369,8 +369,8 @@ type VM struct {
 	// hostDefined is the value that [VM.HostDefined] returns.
 	hostDefined any
 
-	// globalProxyHandler identifies proxies whose target depends on the accessing realm.
-	globalProxyHandler *Object
+	// hasGlobalProxies enables recording the entered realm for queued jobs.
+	hasGlobalProxies bool
 
 	stack  []Value
 	frames []frame
@@ -488,8 +488,8 @@ type VM struct {
 	// to, and no lookup starts from it.
 	symbolShape *shape
 
-	// continuationData is the value that [VM.ContinuationData] returns.
-	continuationData any
+	// jobContext is the host context of the running script, job or cleanup.
+	jobContext
 
 	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
 	matchResultShapes matchResultShapes
@@ -513,6 +513,10 @@ type realm struct {
 
 	// globalThis is the global this value, which a host can set to a global proxy.
 	globalThis *Object
+
+	// globalProxyHandler is the private empty handler shared by realms that
+	// can access each other's global objects.
+	globalProxyHandler *Object
 
 	// foreignGlobalView handles this realm's property access on foreign global proxies.
 	foreignGlobalView *Object

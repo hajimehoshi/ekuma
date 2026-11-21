@@ -1639,7 +1639,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	for p := proto; p != nil; p = p.shape.proto {
 		if p.class == classProxy {
 			st := p.extState().(*proxyState)
-			if st.handler == nil || st.handler != vm.globalProxyHandler {
+			if st.handler == nil || st.handler.class != classGlobalProxyHandler {
 				break
 			}
 			// Global proxies forward to the same backing global for cycle
