@@ -317,7 +317,8 @@ without a Test262 checkout.
 `go test .` runs Test262 and V8 when their checkouts are available. Set the
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
-sparse checkout needs `test/intl`, `test/mjsunit`, and the printing helper
+sparse checkout needs `test/intl`, `test/mjsunit`, the tool modules matching
+`/tools/**/*.mjs`, and the printing helper
 `tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
 Short mode skips both suites.
 

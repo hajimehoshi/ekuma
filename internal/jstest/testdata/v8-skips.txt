@@ -241,16 +241,6 @@ test/mjsunit/regress/modules-skip-regress-crbug-424617296.js
 test/mjsunit/tools/tickprocessor-test-large.js
 test/mjsunit/typedarray-helpers.js
 
-# SKIP: imports modules from V8's tools directory outside the suite checkout
-test/mjsunit/tools/codemap.mjs
-test/mjsunit/tools/consarray.mjs
-test/mjsunit/tools/csvparser.mjs
-test/mjsunit/tools/dumpcpp.mjs
-test/mjsunit/tools/profile.mjs
-test/mjsunit/tools/profile_view.mjs
-test/mjsunit/tools/splaytree.mjs
-test/mjsunit/tools/timeline.mjs
-
 # SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/regress/regress-1447343.js
 test/mjsunit/regress/regress-779407.js
