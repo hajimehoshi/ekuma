@@ -18,6 +18,7 @@ jobs:
         shell: bash
     env:
       EKUMA_TEST262: ${{ github.workspace }}/.test262
+      EKUMA_V8: ${{ github.workspace }}/.v8
     steps:
       - name: Git
         run: |
@@ -28,22 +29,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find the test262 commit
-        id: test262
+      - name: Find the test suite revisions
+        id: suites
         run: |
-          commit=$(sed -n 's/^const test262Commit = "\([0-9a-f]\{40\}\)"$/\1/p' test262_test.go)
-          if [ -z "$commit" ]; then
-            echo "test262Commit was not found in test262_test.go"
-            exit 1
-          fi
-          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          for suite in test262 v8; do
+            file="testdata/$suite-revision.txt"
+            revision=$(cat "$file")
+            if [[ ! $revision =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Expected a commit SHA in $file"
+              exit 1
+            fi
+            echo "$suite=$revision" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Checkout test262
         uses: actions/checkout@v4
         with:
           repository: tc39/test262
-          ref: ${{ steps.test262.outputs.commit }}
+          ref: ${{ steps.suites.outputs.test262 }}
           path: .test262
+
+      - name: Checkout V8 test suites
+        uses: actions/checkout@v4
+        with:
+          repository: v8/v8
+          ref: ${{ steps.suites.outputs.v8 }}
+          path: .v8
+          sparse-checkout: /test/intl/
+          sparse-checkout-cone-mode: false
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -66,8 +79,8 @@ jobs:
 
       - name: go test
         run: |
-          # -test262.shuffle is defined only in the root package, so the other packages run separately.
-          go test -v -shuffle=on -timeout 30m . -test262.shuffle=on
+          # The suite flags are defined in the root package.
+          go test -v -shuffle=on -timeout 30m . -test262.shuffle=on -v8.shuffle=on
           go test -v -shuffle=on -timeout 30m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
 
       - name: go vet (386)
@@ -78,7 +91,7 @@ jobs:
       - name: go test (386)
         if: runner.os != 'macOS'
         run: |
-          env GOARCH=386 go test -v -shuffle=on -timeout 30m . -test262.shuffle=on
+          env GOARCH=386 go test -v -shuffle=on -timeout 30m . -test262.shuffle=on -v8.shuffle=on
           env GOARCH=386 go test -v -shuffle=on -timeout 30m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
 
   wasm:

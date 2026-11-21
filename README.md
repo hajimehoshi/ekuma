@@ -307,17 +307,40 @@ go test ./...
 Run `go test -tags=ekumavalidate ./...` to check the bytecode the compiler emits and verify
 that the interpreter's register writes and control flow agree with the opcode definitions.
 
-The test262 run is skipped unless a checkout of the suite is found in `ekuma/test262`
-under the user cache directory, or in the directory specified by `EKUMA_TEST262`.
-The flags `-test262.filter`, `-test262.dir` and `-test262.shuffle` of the root package select and
-order its tests. `-test262.report FILE` writes one line per unexpected failure to `FILE`, with
-the test path and reason separated by a tab. The runner separately checks that selected tests
-in the [skip list](testdata/test262-skips.txt) still fail.
-
 Local JavaScript regression tests in [`testdata/scripts`](testdata/scripts) use the
 same runner as Test262 with an original 0BSD harness. The scripts and harness are read
 from `testdata` and run without a Test262 checkout, including with
 `go test -short ./...`.
+
+### Conformance tests
+
+The root package runs Test262 and V8 when their checkouts are available. Set the
+suite's environment variable to its checkout directory, or use the default path
+under the user cache directory. CI uses the pinned revisions below. For V8, a
+sparse checkout of `test/intl` is sufficient. Short mode skips both suites.
+
+| Suite | Environment variable | Default cache path | CI revision | Expected failures |
+|---|---|---|---|---|
+| [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](testdata/test262-revision.txt) | [Skip list](testdata/test262-skips.txt) |
+| [V8 Intl](https://github.com/v8/v8/tree/main/test/intl) | `EKUMA_V8` | `ekuma/v8` | [Revision](testdata/v8-revision.txt) | [Skip list](testdata/v8-skips.txt) |
+
+Both suites use the same flags, prefixed with `-test262.` or `-v8.`. Use `dir` to
+select a checkout-relative directory and `filter` to match a substring of a test
+path. These commands run each suite's collation tests.
+
+```sh
+go test -count=1 -v -run '^TestTest262$' . -test262.dir test/intl402/Collator
+go test -count=1 -v -run '^TestV8$' . -v8.dir test/intl/collator
+```
+
+Use `shuffle` with `off`, `on`, or an integer seed. To replay a file order,
+set `GOMAXPROCS=1` and reuse the seed. `report FILE` writes tab-separated test
+paths and failure reasons. Both suites flag skip-list errors in the console.
+V8 also includes them in the report file.
+
+Plain paths in each skip list are expected failures. The tests still run, and
+an unexpected pass or a stale path fails the suite. In the V8 list, a
+`# SKIP: reason` comment directly above a path skips execution of that test.
 
 ## License
 

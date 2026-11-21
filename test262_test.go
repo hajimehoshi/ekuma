@@ -7,17 +7,14 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io/fs"
-	"math/rand/v2"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -27,15 +24,7 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
-var (
-	flagTest262Filter  = flag.String("test262.filter", "", "only run the test262 tests whose path contains this text")
-	flagTest262Report  = flag.String("test262.report", "", "write the path and reason for each unexpected test262 failure to this file")
-	flagTest262Shuffle = flag.String("test262.shuffle", "off", "run the test262 tests in random order: off, on, or a seed; a replay is exact only with GOMAXPROCS=1")
-	flagTest262Dir     = flag.String("test262.dir", "", "only run the test262 tests in this directory of the suite")
-)
-
-// test262Commit is the commit of https://github.com/tc39/test262 that the suite passes at.
-const test262Commit = "2e58f87d8350ad51224617a041c6e041d52f8444"
+var test262Flags = registerSuiteFlags("test262")
 
 // test262Dir returns the directory of the test262 checkout: $EKUMA_TEST262,
 // or ekuma/test262 in the user cache directory.
@@ -633,21 +622,6 @@ func runTest(h *harness, path string, timeout time.Duration) (reason string, tim
 	return t.run(h, timeout)
 }
 
-// test262ShuffleSeed parses the -test262.shuffle value. ok reports whether the tests are shuffled.
-func test262ShuffleSeed(value string) (seed int64, ok bool, err error) {
-	switch value {
-	case "off":
-		return 0, false, nil
-	case "on":
-		return time.Now().UnixNano(), true, nil
-	}
-	seed, err = strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		return 0, false, fmt.Errorf("-test262.shuffle must be off, on, or an integer: %w", err)
-	}
-	return seed, true, nil
-}
-
 // TestTest262 runs the ECMAScript conformance suite and checks its failures against the skip list.
 func TestTest262(t *testing.T) {
 	if testing.Short() {
@@ -657,18 +631,22 @@ func TestTest262(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "harness", "assert.js")); err != nil {
 		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
 	}
+	pin, err := os.ReadFile("testdata/test262-revision.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// A custom suite can be inside another repository. Read only the suite's own HEAD.
 	head := "unavailable"
 	cmd := exec.CommandContext(t.Context(), "git", "-C", dir, "--git-dir=.git", "rev-parse", "--verify", "HEAD")
 	if out, err := cmd.Output(); err == nil {
 		head = strings.TrimSpace(string(out))
 	}
-	t.Logf("test262 suite %q (Git HEAD: %s, expected pin: %s)", dir, head, test262Commit)
+	t.Logf("test262 suite %q (Git HEAD: %s, expected pin: %s)", dir, head, strings.TrimSpace(string(pin)))
 
 	// testDir is the directory of the suite whose tests run.
 	testDir := "test"
-	if *flagTest262Dir != "" {
-		testDir = *flagTest262Dir
+	if test262Flags.dir != "" {
+		testDir = test262Flags.dir
 	}
 	skips, err := readLines(skippedTestsFile)
 	if err != nil {
@@ -689,7 +667,7 @@ func TestTest262(t *testing.T) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		if *flagTest262Filter != "" && !strings.Contains(rel, *flagTest262Filter) {
+		if test262Flags.filter != "" && !strings.Contains(rel, test262Flags.filter) {
 			return nil
 		}
 		if _, ok := slices.BinarySearch(skips, rel); ok {
@@ -704,20 +682,6 @@ func TestTest262(t *testing.T) {
 	}
 	sort.Strings(paths)
 	sort.Strings(skipped)
-	// order holds the indices in paths in the order they are handed to the workers.
-	order := make([]int, len(paths))
-	for i := range order {
-		order[i] = i
-	}
-	if seed, ok, err := test262ShuffleSeed(*flagTest262Shuffle); err != nil {
-		t.Fatal(err)
-	} else if ok {
-		t.Logf("-test262.shuffle %d", seed)
-		r := rand.New(rand.NewPCG(uint64(seed), 0))
-		r.Shuffle(len(order), func(i, j int) {
-			order[i], order[j] = order[j], order[i]
-		})
-	}
 
 	h := &harness{
 		fs:      os.DirFS(filepath.Join(dir, "harness")),
@@ -726,38 +690,29 @@ func TestTest262(t *testing.T) {
 	}
 	reasons := make([]string, len(paths))
 	timedOut := make([]bool, len(paths))
-	var wg sync.WaitGroup
-	next := make(chan int)
-	// waiting limits the tests that run without a worker.
-	waiting := make(chan struct{}, 4*runtime.GOMAXPROCS(0))
-	for range runtime.GOMAXPROCS(0) {
-		wg.Go(func() {
-			for i := range next {
-				tt, err := readTest(filepath.Join(dir, filepath.FromSlash(paths[i])))
-				if err != nil {
-					reasons[i] = err.Error()
-					continue
-				}
-				if !tt.waitsForAgents() {
-					reasons[i], timedOut[i] = tt.run(h, testTimeout)
-					continue
-				}
-				// A test that waits needs no processor, so the worker goes on to the next test.
-				waiting <- struct{}{}
-				wg.Go(func() {
-					defer func() {
-						<-waiting
-					}()
-					reasons[i], timedOut[i] = tt.run(h, testTimeout)
-				})
-			}
+	var waitingTests sync.WaitGroup
+	// waitingSlots limits the tests that run without a worker.
+	waitingSlots := make(chan struct{}, 4*runtime.GOMAXPROCS(0))
+	test262Flags.run(t, len(paths), func(i int) {
+		tt, err := readTest(filepath.Join(dir, filepath.FromSlash(paths[i])))
+		if err != nil {
+			reasons[i] = err.Error()
+			return
+		}
+		if !tt.waitsForAgents() {
+			reasons[i], timedOut[i] = tt.run(h, testTimeout)
+			return
+		}
+		// A test that waits needs no processor, so the worker goes on to the next test.
+		waitingSlots <- struct{}{}
+		waitingTests.Go(func() {
+			defer func() {
+				<-waitingSlots
+			}()
+			reasons[i], timedOut[i] = tt.run(h, testTimeout)
 		})
-	}
-	for _, i := range order {
-		next <- i
-	}
-	close(next)
-	wg.Wait()
+	})
+	waitingTests.Wait()
 	// A slow test can run out of time because the other workers load the machine, or because the
 	// machine is slow, so a timed-out test runs once more on its own with more time.
 	for i := range paths {
@@ -766,8 +721,7 @@ func TestTest262(t *testing.T) {
 		}
 	}
 
-	// failed holds the indices in paths of the failing tests.
-	var failed []int
+	var failed []suiteFailure
 	byArea := map[string][2]int{}
 	for i, p := range paths {
 		parts := strings.SplitN(p, "/", 4)
@@ -777,7 +731,10 @@ func TestTest262(t *testing.T) {
 		if reasons[i] == "" {
 			c[0]++
 		} else {
-			failed = append(failed, i)
+			failed = append(failed, suiteFailure{
+				path:   p,
+				reason: reasons[i],
+			})
 		}
 		byArea[area] = c
 	}
@@ -791,7 +748,7 @@ func TestTest262(t *testing.T) {
 			t.Errorf("%s passes now: remove it from %s", p, skippedTestsFile)
 		}
 	}
-	if *flagTest262Filter == "" {
+	if test262Flags.filter == "" {
 		for _, p := range skips {
 			if _, ok := slices.BinarySearch(skipped, p); strings.HasPrefix(p, testDir+"/") && !ok {
 				t.Errorf("%s is not in the suite: remove it from %s", p, skippedTestsFile)
@@ -809,25 +766,7 @@ func TestTest262(t *testing.T) {
 		}
 	}
 
-	if *flagTest262Report != "" {
-		var sb strings.Builder
-		for i, p := range paths {
-			if reasons[i] != "" {
-				fmt.Fprintf(&sb, "%s\t%s\n", p, reasons[i])
-			}
-		}
-		if err := os.WriteFile(*flagTest262Report, []byte(sb.String()), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	const maxShown = 40
-	for n, i := range failed {
-		if n == maxShown {
-			t.Errorf("and %d more failures", len(failed)-maxShown)
-			break
-		}
-		t.Errorf("%s fails: %s", paths[i], reasons[i])
-	}
+	test262Flags.reportFailures(t, failed)
 }
 
 // agentCluster implements $262.agent for the agents that a test starts. Each agent is a VM that

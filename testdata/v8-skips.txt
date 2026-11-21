@@ -1,0 +1,91 @@
+# One checkout-relative V8 test path per line. A plain path runs as an expected
+# failure. Put "# SKIP: reason" directly above a path to skip execution.
+# An unexpected pass or a missing path fails the suite.
+
+# SKIP: requires a catchable stack limit
+test/intl/general/empty-handle.js
+
+# SKIP: timing-sensitive benchmark skipped by V8
+test/intl/overrides/caching.js
+
+# SKIP: requires a catchable stack limit
+test/intl/regress-1130489.js
+
+# Ekuma uses thin spaces around the en dash in English date ranges.
+test/intl/date-format/en-format-range-to-parts.js
+test/intl/regress-9912.js
+
+# V8 accepts non-ISO date strings such as "2019-1-3" and localized US dates.
+test/intl/date-format/format-range-to-parts.js
+test/intl/date-format/format-range.js
+test/intl/regress-13494.js
+
+# Greek uppercasing of άόύώ produces ΑΟΥΩ where V8 expects ΑΟΫΩ.
+test/intl/general/case-mapping.js
+
+# These tests use V8's nonstandard Intl.v8BreakIterator constructor.
+test/intl/break-iterator/default-locale.js
+test/intl/break-iterator/en-break.js
+test/intl/break-iterator/options.js
+test/intl/break-iterator/property-override.js
+test/intl/break-iterator/resolved-options-is-method.js
+test/intl/break-iterator/subclass.js
+test/intl/break-iterator/supported-locales-is-method.js
+test/intl/break-iterator/zh-break.js
+test/intl/default_locale.js
+test/intl/general/constructor.js
+test/intl/general/supported-locales-of.js
+
+# With search usage, Ekuma reports the requested emoji collation.
+test/intl/collator/options.js
+
+# Ekuma drops the islamic-rgsa calendar extension from the resolved locale.
+test/intl/date-format/check-ca-option.js
+
+# V8 canonicalizes GMT and Zulu to UTC.
+test/intl/date-format/timezone.js
+test/intl/regress-1177623.js
+
+# The Telugu Buddhist calendar pattern omits the requested year in resolvedOptions.
+test/intl/date-format/year-woy-field.js
+
+# Ekuma returns the calendar code for ethiopic-amete-alem in English and Chinese.
+test/intl/displaynames/calendar-v2.js
+
+# Ekuma uses lookup matching for the best-fit locale matcher.
+test/intl/localematcher/bestfit-supplemental-files.js
+
+# French plural selection in scientific notation gives "other" for 1.5e6.
+test/intl/plural-rules/select.js
+
+# The tests compare the wording of V8's exception messages.
+test/intl/regress-10438.js
+test/intl/regress-10613.js
+test/intl/regress-9464.js
+test/intl/regress-9747.js
+
+# Islamic dates before the Hijra use different era and year representations.
+test/intl/regress-10526.js
+test/intl/regress-10527.js
+
+# V8's English short time zone name at offset zero is GMT+0.
+test/intl/regress-1074578.js
+
+# V8 formats the first year of the Reiwa era as 元年.
+test/intl/regress-10960.js
+
+# Ekuma accepts the language tag de-u-22300-true-x-true.
+test/intl/regress-1427932.js
+test/intl/regress-412149700.js
+
+# Ekuma uses the en-US date field order with the ISO calendar.
+test/intl/regress-1451943.js
+
+# Ekuma rejects the obsolete US/Pacific-New time zone.
+test/intl/regress-364374.js
+
+# V8 includes a localized time zone name in Date.prototype.toString().
+test/intl/regress-7770.js
+
+# Ekuma segments Thai words without ICU's dictionary.
+test/intl/segmenter/word-containing.js
