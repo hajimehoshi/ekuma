@@ -1,5 +1,6 @@
 # One checkout-relative V8 test path per line. A plain path runs as an expected
-# failure. Put "# SKIP: reason" directly above a path to skip execution.
+# failure. "# SKIP: reason" skips the consecutive paths directly below it.
+# A blank line or comment ends the group.
 # An unexpected pass or a missing path fails the suite.
 # When Ekuma follows a specification, name the rule and what the test expects.
 
@@ -80,401 +81,215 @@ test/mjsunit/ascii-regexp-subject.js
 
 # SKIP: exceeds the isolated test timeout
 test/mjsunit/array-concat.js
-# SKIP: exceeds the isolated test timeout
 test/mjsunit/es6/proxies-prototype-target-stackoverflow.js
-# SKIP: exceeds the isolated test timeout
 test/mjsunit/regexp-capture-3.js
-# SKIP: exceeds the isolated test timeout
 test/mjsunit/regexp/drain.js
-# SKIP: exceeds the isolated test timeout
 test/mjsunit/regress/regress-576897250.js
-# SKIP: exceeds the isolated test timeout
 test/mjsunit/regress/regress-578775.js
-# SKIP: exceeds the isolated test timeout
 test/mjsunit/regress/regress-crbug-482998.js
 
 # SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/compiler/regress-445907.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/es6/proxies-json.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-1006670.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-10931.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-1432470.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-331074427.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-500980.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-558568713.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-599414-array-concat-fast-path.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-7558019.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-crbug-357052.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-crbug-627934.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-crbug-902672.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/regress/regress-crbug-918301.js
-# SKIP: exceeds the memory budget for parallel tests
 test/mjsunit/string-oom-concat.js
 
 # SKIP: excluded by mjsunit.status
 test/mjsunit/regress/regress-2073.js
-# SKIP: excluded by mjsunit.status
 test/mjsunit/sandbox/wasm-jspi.js
-# SKIP: excluded by mjsunit.status
 test/mjsunit/wasm/gc-js-interop-export.mjs
 
 # SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-a.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-async-module.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-b.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-c.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-common.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-d.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-e.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-f.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-imports-async-module.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/async-module-ordinal-reset/skip-run.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-rqstd-order-indirect-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-rqstd-order-indirect-unreached-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-rqstd-order-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-rqstd-order-unreached-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-rqstd-order.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-top-level-await-cycle.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-10.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-11.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-12.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-13.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-2-rqstd-order-indirect-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-2-rqstd-order-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-2-rqstd-order.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-2-top-level-await-cycle.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-2-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-3-rqstd-order-indirect-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-3-rqstd-order-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-3-rqstd-order.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-3-top-level-await-cycle.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-3-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-3.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-4-rqstd-order-indirect-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-4-rqstd-order-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-4-rqstd-order.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-4-top-level-await-cycle.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-4-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-4.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-5-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-6-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-7-top-level-await.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-8.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-9.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-cycle-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-cycle-2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-cycle-3.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-cycle-leaf.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-cycle-start.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-error-parent-dynamic.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-error-parent-static1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-error-parent-static2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-error-parent.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-errors-due-to-import-entry.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-leaf-with-tla.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-mid-with-sync-error.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-subgraph-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-subgraph-2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-subgraph-async.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-subgraph-start.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-async-subgraph-x.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-empty.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-export-import-meta.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-import-defer-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-import-defer-no-exports.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-import-defer-optimized-access.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-import-defer-throws-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-import-defer-throws-primitive.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-imports-attributes-json-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-imports-json-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-large1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-large2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-top-level-await-cycle-error-indirection.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-top-level-await-cycle-error-throwing.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-top-level-await-cycle-error.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-top-level-cycle-mixed-sync.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/modules-skip-top-level-cycle-mixed-tla.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/shadowrealm-skip-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/shadowrealm-skip-2-throw.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/shadowrealm-skip-3-throw-object.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/harmony/shadowrealm-skip-4-throw-string.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/huge-typedarrays-helpers.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-3.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-4.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-5.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-6.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-7.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-8.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-9.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-circular-valid.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-cycle.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name2.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name3.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name4.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name5.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name6.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name7.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name8.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-default-name9.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-empty-import-aux.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-empty-import.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-import-meta-export.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-init1.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-init3.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-init4a.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-init4b.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-many-bindings.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-namespace.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-reset1.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-reset2.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-reset3.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-star-exports-conflict.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-star-exports-cycle.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-star-exports-indirect-cycle-a.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-star-exports-indirect-cycle-b.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-star-exports-indirect-cycle-c.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/modules-skip-star-exports-indirect-cycle-d.mjs
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/regress/modules-skip-regress-797581-1.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/regress/modules-skip-regress-797581-2.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/regress/modules-skip-regress-797581-3.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/regress/modules-skip-regress-797581-4.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/regress/modules-skip-regress-797581-5.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/regress/modules-skip-regress-crbug-424617296.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/tools/tickprocessor-test-large.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/typedarray-helpers.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/wasm/prototype-setup-builder.js
-# SKIP: fixture excluded by mjsunit.status
 test/mjsunit/wasm/wasm-module-builder.js
 
 # SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/codemap.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/consarray.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/csvparser.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/dumpcpp.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/profile.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/profile_view.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/splaytree.mjs
-# SKIP: imports modules from V8's tools directory outside the suite checkout
 test/mjsunit/tools/timeline.mjs
 
 # SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/regress/regress-1447343.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/regress/regress-779407.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/regress/regress-852258.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/regress/wasm/regress-1010272.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/wasm/memory64.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/wasm/simd-lane-memory64.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/wasm/table-grow.js
-# SKIP: memory-intensive test marked HEAVY by V8
 test/mjsunit/wasm/table.js
 
 # SKIP: requires V8's lower_limits_mode build
 test/mjsunit/lower_limits_mode/regress/regress-580241084.js
-# SKIP: requires V8's lower_limits_mode build
 test/mjsunit/lower_limits_mode/regress/regress-585919665.js
-# SKIP: requires V8's lower_limits_mode build
 test/mjsunit/lower_limits_mode/regress/regress-crbug-405910175-map.js
-# SKIP: requires V8's lower_limits_mode build
 test/mjsunit/lower_limits_mode/regress/regress-crbug-405910175-set.js
 
 # SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/compiler/regress-815392.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-380416869.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-390568195.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-504697280.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-524.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-667603.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-862433.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-944945.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-crbug-1191886.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-crbug-1235182.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-crbug-357137.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/regress-crbug-869313.js
-# SKIP: requires a large allocation or heap for a parallel conformance test
 test/mjsunit/regress/wasm/regress-873600.js
 
 # SKIP: requires d8 data URL module loading
 test/mjsunit/d8/modules-data-url.mjs
-# SKIP: requires d8 data URL module loading
 test/mjsunit/regress-367066330.js
-# SKIP: requires d8 data URL module loading
 test/mjsunit/regress/regress-438732677.js
-# SKIP: requires d8 data URL module loading
 test/mjsunit/regress/regress-493591676.mjs
-# SKIP: requires d8 data URL module loading
 test/mjsunit/regress/regress-495503057.mjs
-# SKIP: requires d8 data URL module loading
 test/mjsunit/regress/regress-515494863.js
 
 # The generated expression exceeds Ekuma's parser nesting limit.

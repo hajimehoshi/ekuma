@@ -345,7 +345,8 @@ resolved from the repository root.
 Plain paths in each skip list are expected failures. The tests still run, and
 an unexpected pass or a stale path fails the suite. A runner error, engine
 panic, or timeout on the final attempt also fails the suite. In the V8 list, a
-`# SKIP: reason` comment directly above a path skips execution of that test.
+`# SKIP: reason` comment skips all consecutive test paths directly below it.
+A blank line or comment ends the group.
 The V8 runner loads checkout-relative scripts named by `// Files:` in order,
 after the suite harness and before the test. Unsupported flags and environment
 settings skip the test.

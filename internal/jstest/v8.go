@@ -261,15 +261,17 @@ func readV8Skips(t *testing.T) map[string]string {
 	// An empty reason marks an expected failure that still runs.
 	skips := map[string]string{}
 	lines := strings.Split(string(data), "\n")
+	var reason string
 	for i := 0; i < len(lines); i++ {
 		file := strings.TrimSpace(lines[i])
 		if file == "" {
+			reason = ""
 			continue
 		}
-		var reason string
 		if comment, ok := strings.CutPrefix(file, "#"); ok {
 			value, ok := strings.CutPrefix(strings.TrimSpace(comment), "SKIP:")
 			if !ok {
+				reason = ""
 				continue
 			}
 			reason = strings.TrimSpace(value)
