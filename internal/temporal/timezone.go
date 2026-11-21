@@ -64,8 +64,8 @@ func OffsetTimeZone(offsetMinutes int) TimeZone {
 // SystemTimeZoneIdentifier. It reports false for a zone without a usable identifier, whose time
 // zone [SystemOffsetTimeZone] gives.
 func SystemTimeZone(tz datetime.TimeZone) (TimeZone, bool) {
-	id, _, ok := datetime.ZoneOf(tz)
-	if !ok || id == "" {
+	id := datetime.ZoneName(tz)
+	if id == "" {
 		return TimeZone{}, false
 	}
 	if strings.EqualFold(id, "UTC") || strings.EqualFold(id, "Etc/UTC") || strings.EqualFold(id, "Etc/GMT") || strings.EqualFold(id, "GMT") {

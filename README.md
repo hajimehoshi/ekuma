@@ -260,7 +260,10 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 - Native builds can load named time zones from system zoneinfo directories and from the sources
   available to Go's `time.LoadLocation`. These include a directory or uncompressed zip file named
   by `ZONEINFO`, Go's `$GOROOT/lib/time/zoneinfo.zip`, and embedded data from `time/tzdata` when
-  imported. With `GOOS=js`, named time zones come from the host's `Intl.DateTimeFormat`
+  imported. With `GOOS=js`, a named zone is available when the host's `Intl.DateTimeFormat`
+  resolves its identifier and Go's `time.LoadLocation` can load the rules. Go supplies both the
+  offsets and the transitions, with `time/tzdata` embedded for hosts without zoneinfo files.
+  Local `Date` operations use the JavaScript host's `Date` by default
 - Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
   compares code units after Unicode normalization, and `toLocaleUpperCase` and
   `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior

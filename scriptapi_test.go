@@ -844,6 +844,34 @@ func TestTemporalTimeZone(t *testing.T) {
 	}
 }
 
+func TestTemporalBoaVistaTransitions(t *testing.T) {
+	var vm ekuma.VM
+	// Boa Vista observed daylight saving time for just one week in October 2000.
+	run(t, &vm, `function transition(instant, direction) {
+		const z = Temporal.Instant.from(instant).toZonedDateTimeISO("America/Boa_Vista");
+		const change = z.getTimeZoneTransition(direction);
+		return change && change.toInstant();
+	}`)
+	if got, want := run(t, &vm, `transition("2000-10-01T00:00Z", "next")`), "2000-10-08T04:00:00Z"; got != want {
+		t.Errorf("next transition: got %s, want %s", got, want)
+	}
+	if got, want := run(t, &vm, `transition("2000-10-20T00:00Z", "previous")`), "2000-10-15T03:00:00Z"; got != want {
+		t.Errorf("previous transition: got %s, want %s", got, want)
+	}
+	if got, want := run(t, &vm, `Temporal.ZonedDateTime.from("2000-10-08T12:00[America/Boa_Vista]").toInstant()`), "2000-10-08T15:00:00Z"; got != want {
+		t.Errorf("local noon: got %s, want %s", got, want)
+	}
+}
+
+func TestTemporalTransitionAtLeapYearEnd(t *testing.T) {
+	var vm ekuma.VM
+	const src = `Temporal.Instant.from("2000-12-31T12:00Z").toZonedDateTimeISO("Europe/Berlin")
+		.getTimeZoneTransition("next")?.toInstant()`
+	if got, want := run(t, &vm, src), "2001-03-25T01:00:00Z"; got != want {
+		t.Errorf("next transition: got %s, want %s", got, want)
+	}
+}
+
 // memoryModules loads the modules of sources by name, ignoring the referrer, and keeps one
 // record per name. loads counts the calls of the loader for each name.
 type memoryModules struct {

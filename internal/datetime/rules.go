@@ -43,6 +43,12 @@ func (z locationZone) Transition(sec int64, next bool) (int64, bool) {
 			if end.IsZero() {
 				return 0, false
 			}
+			if end.Unix() <= t {
+				// After the last recurring transition of a leap year, ZoneBounds
+				// can give December 31 00:00 UTC as the year end. The next year's
+				// rules start on January 1.
+				end = end.Add(24 * time.Hour)
+			}
 			t = end.Unix()
 			if t > maxSeconds {
 				return 0, false
@@ -117,18 +123,24 @@ const (
 	maxZoneNameLength = 64
 )
 
-// ZoneOf returns tz as a [Zone], with its IANA time zone identifier when it is known.
-func ZoneOf(tz TimeZone) (id string, z Zone, ok bool) {
-	switch tz := tz.(type) {
-	case locationZone:
+// ZoneName returns the identifier of tz, or an empty string if it is unknown.
+func ZoneName(tz TimeZone) string {
+	if tz, ok := tz.(locationZone); ok {
 		if tz.loc == time.Local {
-			return localZoneName(), tz, true
+			return localZoneName()
 		}
-		return tz.loc.String(), tz, true
-	case Zone:
-		return zoneName(tz), tz, true
+		return tz.loc.String()
 	}
-	return "", nil, false
+	return platformZoneName(tz)
+}
+
+// ZoneOf returns the rules of tz, with its identifier when known.
+func ZoneOf(tz TimeZone) (id string, z Zone, ok bool) {
+	id = ZoneName(tz)
+	if z, ok = tz.(Zone); !ok {
+		_, _, z, ok = LoadZone(id)
+	}
+	return id, z, ok
 }
 
 // primaryOfUTC returns the primary identifier for the identifiers that ECMA-262 treats as UTC.

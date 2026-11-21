@@ -103,7 +103,7 @@ func offsetAt(tz temporal.TimeZone, t int64) int64 {
 }
 
 // transitionAt returns the time of the first transition of tz after t when next is true, or of
-// the last one at or before t when it is false, in milliseconds since the epoch, and reports
+// the last one strictly before t when it is false, in milliseconds since the epoch, and reports
 // false when there is none.
 func transitionAt(tz temporal.TimeZone, t int64, next bool) (int64, bool) {
 	ns, ok := tz.Transition(epochNs(t), next)
@@ -137,7 +137,8 @@ func isDST(tz temporal.TimeZone, t int64) bool {
 // saving time makes a generic name preferred over a standard name.
 const dstCheckRange = 184 * msPerDay
 
-// usesDSTAround reports whether tz is in daylight saving time around t.
+// usesDSTAround reports whether the adjacent period across either nearby transition uses
+// daylight saving time. The caller checks the period containing t.
 func usesDSTAround(tz temporal.TimeZone, t int64) bool {
 	if prev, ok := transitionAt(tz, t+1, false); ok && t-prev < dstCheckRange && isDST(tz, prev-1) {
 		return true

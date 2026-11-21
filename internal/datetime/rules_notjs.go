@@ -222,8 +222,7 @@ func zoneNameFromPath(path string) string {
 	return path[i+len("zoneinfo/"):]
 }
 
-// zoneName returns the identifier of a Zone that is not a locationZone.
-func zoneName(z Zone) string {
+func platformZoneName(tz TimeZone) string {
 	return ""
 }
 
