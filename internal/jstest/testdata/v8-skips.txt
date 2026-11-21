@@ -40,8 +40,7 @@ test/intl/regress-1177623.js
 # exponent operand.
 test/intl/plural-rules/select.js
 
-# ECMA-402 specifies the exception types for these errors and leaves the
-# message text to the implementation. The tests require V8's exact wording.
+# SKIP: compares V8-specific exception message wording
 test/intl/regress-10438.js
 test/intl/regress-10613.js
 test/intl/regress-9464.js
@@ -304,7 +303,9 @@ test/mjsunit/harmony/regexp-property-binary.js
 # The test expects d8 to ignore an unrecognized import attribute.
 test/mjsunit/harmony/modules-import-attributes-4.mjs
 
-# These tests assert on V8's exception messages.
+# For source with multiple early errors, V8's SyntaxError can name a
+# different violation from Ekuma's.
+# SKIP: compares V8-specific exception message wording
 test/mjsunit/duplicate-parameters.js
 test/mjsunit/error-tostring-omit.js
 test/mjsunit/es6/iteration-semantics.js
@@ -524,8 +525,8 @@ test/mjsunit/regress/regress-549231120.js
 test/mjsunit/fuzz-accessors.js
 test/mjsunit/regress/regress-5566.js
 
-# Ekuma rejects the pattern at its regexp nesting limit. V8 expects its own
-# regexp compiler's error text.
+# Ekuma rejects the deeply nested pattern in the RegExp constructor. V8
+# can reach its regexp compiler's size limit in RegExp.prototype.test.
 test/mjsunit/regress/regress-484904778.js
 
 # V8 expects Iterator.concat to call the inner iterator's return method
@@ -697,8 +698,7 @@ test/webkit/array-sort-small-sparse-array-with-large-length.js
 # SKIP: webkit.status excludes the 4 GiB replacement in lower-limits mode
 test/webkit/string-replacement-outofmemory.js
 
-# These expectations include V8's exception messages. ECMAScript leaves the
-# wording of built-in error messages to the implementation.
+# SKIP: compares V8-specific exception message wording
 test/webkit/JSON-stringify-replacer.js
 test/webkit/Object-create.js
 test/webkit/Object-defineProperties.js
@@ -728,8 +728,6 @@ test/webkit/fast/js/JSON-parse-reviver.js
 test/webkit/fast/js/Promise-resolve-with-itself.js
 test/webkit/fast/js/arguments.js
 test/webkit/fast/js/array-prototype-properties.js
-test/webkit/fast/js/basic-strict-mode.js
-test/webkit/fast/js/date-toisostring.js
 test/webkit/fast/js/function-constructor-error.js
 test/webkit/fast/js/function-toString-parentheses.js
 test/webkit/fast/js/kde/parse.js
@@ -758,9 +756,19 @@ test/webkit/property-getters-and-setters.js
 test/webkit/regexp-compile-crash.js
 test/webkit/regexp-compile.js
 
-# Date.parse uses implementation-defined fallback parsing for this legacy date.
-# V8 accepts the trailing unmatched opening parenthesis.
+# Date.parse uses implementation-defined fallback parsing for legacy dates.
+# V8 accepts a trailing unmatched opening parenthesis. Comments embedded
+# in a time or zone also produce different results.
 test/webkit/date-parse-comments-test.js
+
+# Ekuma uses the same anonymous %ThrowTypeError% for both accessors of
+# Function.prototype.caller and arguments. V8 expects distinct accessors
+# and prints the caller getter as a named native function.
+test/webkit/fast/js/basic-strict-mode.js
+
+# Ekuma parses "1 January -1 UTC" as year -1. V8 expects an invalid date
+# and a RangeError from toISOString().
+test/webkit/fast/js/date-toisostring.js
 
 # The test defines a non-configurable accessor on Object.prototype and then
 # on the global object's prototype. In Ekuma these are the same object.
