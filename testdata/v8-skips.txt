@@ -42,7 +42,8 @@ test/intl/regress-1177623.js
 # Ekuma uses lookup matching for the best-fit locale matcher.
 test/intl/localematcher/bestfit-supplemental-files.js
 
-# French plural selection in scientific notation gives "other" for 1.5e6.
+# V8 uses the scientific exponent for CLDR's compact exponent operand and
+# rounds the scaled significand. ECMA-402 ResolvePlural rounds the full input.
 test/intl/plural-rules/select.js
 
 # The tests compare the wording of V8's exception messages.
