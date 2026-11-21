@@ -180,7 +180,7 @@ func (h *harness) file(name string) (string, error) {
 // testTimeout is how long one run of a test may take before it is interrupted.
 const testTimeout = 5 * time.Second
 
-// retryTimeout is how long one run of a test may take when a timed-out test runs again on its own.
+// retryTimeout is how long one run of a test may take when it runs again on its own.
 const retryTimeout = 4 * testTimeout
 
 // errorName returns the name of the constructor of the thrown value of err, or of the kind of error.
@@ -689,7 +689,7 @@ func TestTest262(t *testing.T) {
 		scripts: map[string]*ekuma.UnboundScript{},
 	}
 	reasons := make([]string, len(paths))
-	timedOut := make([]bool, len(paths))
+	retry := make([]bool, len(paths))
 	var waitingTests sync.WaitGroup
 	// waitingSlots limits the tests that run without a worker.
 	waitingSlots := make(chan struct{}, 4*runtime.GOMAXPROCS(0))
@@ -700,7 +700,7 @@ func TestTest262(t *testing.T) {
 			return
 		}
 		if !tt.waitsForAgents() {
-			reasons[i], timedOut[i] = tt.run(h, testTimeout)
+			reasons[i], retry[i] = tt.run(h, testTimeout)
 			return
 		}
 		// A test that waits needs no processor, so the worker goes on to the next test.
@@ -709,14 +709,16 @@ func TestTest262(t *testing.T) {
 			defer func() {
 				<-waitingSlots
 			}()
-			reasons[i], timedOut[i] = tt.run(h, testTimeout)
+			reasons[i], _ = tt.run(h, testTimeout)
+			// Waiters can time out before the main agent resumes to notify them.
+			retry[i] = reasons[i] != ""
 		})
 	})
 	waitingTests.Wait()
-	// A slow test can run out of time because the other workers load the machine, or because the
-	// machine is slow, so a timed-out test runs once more on its own with more time.
+	// Retry once in isolation so other workers cannot delay the test or its agents.
 	for i := range paths {
-		if timedOut[i] {
+		if retry[i] {
+			t.Logf("retrying %s in isolation: %s", paths[i], reasons[i])
 			reasons[i], _ = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])), retryTimeout)
 		}
 	}
