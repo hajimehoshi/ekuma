@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"iter"
 	"maps"
 	"os"
 	"path"
@@ -47,20 +46,7 @@ var v8Suites = []v8Suite{
 }
 
 func TestV8(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping V8 tests in short mode")
-	}
-	dir := os.Getenv("EKUMA_V8")
-	if dir == "" {
-		cache, err := os.UserCacheDir()
-		if err != nil {
-			t.Skip("no user cache directory; set EKUMA_V8 to a V8 checkout")
-		}
-		dir = filepath.Join(cache, "ekuma", "v8")
-		if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
-			t.Skipf("no V8 checkout at %s; set EKUMA_V8", dir)
-		}
-	}
+	dir := v8Flags.checkoutDir(t)
 	unseenSkips := readV8Skips(t)
 	unseenEnvironments := readV8Environments(t)
 	checkout := os.DirFS(dir)
@@ -72,9 +58,9 @@ func TestV8(t *testing.T) {
 	var matchedSuite bool
 	for _, suite := range v8Suites {
 		root := suite.dir
-		if inV8Dir(selectedDir, suite.dir) {
+		if inSuiteDir(selectedDir, suite.dir) {
 			root = selectedDir
-		} else if !inV8Dir(suite.dir, selectedDir) {
+		} else if !inSuiteDir(suite.dir, selectedDir) {
 			continue
 		}
 		matchedSuite = true
@@ -83,30 +69,29 @@ func TestV8(t *testing.T) {
 	if !matchedSuite {
 		t.Fatalf("no enabled V8 suite in %q", selectedDir)
 	}
-	results := make([]v8Result, len(tests))
+	results := make([]suiteResult, len(tests))
 	ctx := t.Context()
-	v8Flags.run(t, len(tests), func(i int) {
-		results[i] = tests[i].run(ctx, checkout, testTimeout)
-	})
-	for i, result := range results {
-		if result.timedOut {
-			results[i] = tests[i].run(ctx, checkout, retryTimeout)
-		}
+	run := func(i int, timeout time.Duration) suiteResult {
+		return tests[i].run(ctx, checkout, timeout)
 	}
+	v8Flags.run(t, len(tests), func(i int) {
+		results[i] = run(i, testTimeout)
+	})
+	retryInIsolation(results, run)
 
 	var failures []suiteFailure
 	var passed, expected, skipped int
 	skipCounts := map[string]int{}
 	for i, result := range results {
 		switch {
-		case result.err != nil:
+		case result.outcome == suiteBroken || result.outcome == suiteFailed:
 			failures = append(failures, suiteFailure{
 				path:   tests[i].file,
-				reason: result.err.Error(),
+				reason: result.reason,
 			})
-		case result.skipReason != "":
+		case result.outcome == suiteSkipped:
 			skipped++
-			skipCounts[result.skipReason]++
+			skipCounts[result.reason]++
 		case tests[i].wantFailure:
 			expected++
 		default:
@@ -114,8 +99,8 @@ func TestV8(t *testing.T) {
 		}
 	}
 	failedTests := len(failures)
-	staleSkips := staleV8Entries(maps.Keys(unseenSkips), v8SkipsFile, selectedDir, v8Flags.filter)
-	staleEnvironments := staleV8Entries(maps.Keys(unseenEnvironments), v8EnvironmentFile, selectedDir, v8Flags.filter)
+	staleSkips := staleEntries(maps.Keys(unseenSkips), v8SkipsFile, selectedDir, v8Flags.filter)
+	staleEnvironments := staleEntries(maps.Keys(unseenEnvironments), v8EnvironmentFile, selectedDir, v8Flags.filter)
 	failures = append(failures, staleSkips...)
 	failures = append(failures, staleEnvironments...)
 	t.Logf("V8: selected %d, passed %d, expected failures %d, skipped %d, failed %d, stale skip entries %d, stale environment entries %d",
@@ -150,30 +135,10 @@ func TestV8FixedTime(t *testing.T) {
 	}
 	for _, test := range suite.collect(t, checkout, suite.dir, "", nil, environments) {
 		result := test.run(t.Context(), checkout, testTimeout)
-		if result.err != nil {
-			t.Error(result.err)
-		}
-		if result.skipReason != "" {
-			t.Errorf("%s was skipped: %s", test.file, result.skipReason)
+		if result.outcome != suitePassed {
+			t.Errorf("%s: %s", test.file, result.reason)
 		}
 	}
-}
-
-func inV8Dir(file, dir string) bool {
-	return dir == "." || file == dir || strings.HasPrefix(file, dir+"/")
-}
-
-func staleV8Entries(files iter.Seq[string], manifest, dir, filter string) []suiteFailure {
-	var failures []suiteFailure
-	for _, file := range slices.Sorted(files) {
-		if inV8Dir(file, dir) && strings.Contains(file, filter) {
-			failures = append(failures, suiteFailure{
-				path:   file,
-				reason: "not in the suite: remove it from " + manifest,
-			})
-		}
-	}
-	return failures
 }
 
 type v8TestEnvironment struct {
@@ -241,12 +206,6 @@ type v8Test struct {
 	wantFailure bool
 }
 
-type v8Result struct {
-	skipReason string
-	err        error
-	timedOut   bool
-}
-
 func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, unseenSkips map[string]string, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
 	t.Helper()
 	var helpers []*ekuma.UnboundScript
@@ -297,41 +256,18 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 	return tests
 }
 
-func (v *v8Test) run(ctx context.Context, checkout fs.FS, timeout time.Duration) (result v8Result) {
+func (v *v8Test) run(ctx context.Context, checkout fs.FS, timeout time.Duration) (result suiteResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			result.err = fmt.Errorf("engine panic: %v", r)
+			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
 		}
 	}()
-	if v.skipReason != "" {
-		result.skipReason = v.skipReason
-		return result
+	result, lastPrint := v.execute(ctx, checkout, timeout)
+	if v.wantFailure {
+		result = result.expectFailure(v.file, v8SkipsFile)
 	}
-	src, err := fs.ReadFile(checkout, v.file)
-	if err != nil {
-		result.err = err
-		return result
-	}
-	source := string(src)
-	locale, zone, unsupported := v8Environment(source, v.flags)
-	if unsupported != "" {
-		if v.wantFailure {
-			result.err = fmt.Errorf("cannot run (%s): remove %s from %s", unsupported, v.file, v8SkipsFile)
-			return result
-		}
-		result.skipReason = unsupported
-		return result
-	}
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	if lastPrint, err := v.eval(ctx, source, locale, zone); err != nil {
-		result.timedOut = errors.Is(err, context.DeadlineExceeded)
-		// A ScriptError retains its VM through the thrown value.
-		message := firstLine(err.Error())
-		if lastPrint != "" {
-			message += fmt.Sprintf(" (last print: %q)", lastPrint)
-		}
-		result.err = errors.New(message)
+	if lastPrint != "" && result.outcome != suitePassed {
+		result.reason += fmt.Sprintf(" (last print: %q)", lastPrint)
 	}
 	return result
 }
@@ -374,15 +310,28 @@ func v8Environment(src string, enabledFlags []string) (locale, zone, unsupported
 	return strings.ReplaceAll(locale, "_", "-"), cmp.Or(env["TZ"], "UTC"), ""
 }
 
-// eval returns an unexpected test error together with the last print output for context.
-func (v *v8Test) eval(ctx context.Context, src, locale, zone string) (string, error) {
+func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Duration) (suiteResult, string) {
+	if v.skipReason != "" {
+		return suiteSkipped.result(v.skipReason), ""
+	}
+	src, err := fs.ReadFile(checkout, v.file)
+	if err != nil {
+		return suiteBroken.result(err.Error()), ""
+	}
+	source := string(src)
+	locale, zone, unsupported := v8Environment(source, v.flags)
+	if unsupported != "" {
+		return suiteSkipped.result(unsupported), ""
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	var vm ekuma.VM
 	if err := vm.SetLocale(locale); err != nil {
-		return "", err
+		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
-		return "", err
+		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	vm.SetTimeZone(loc)
 	if v.environment.FixedTime != nil {
@@ -395,21 +344,20 @@ func (v *v8Test) eval(ctx context.Context, src, locale, zone string) (string, er
 		return ekuma.Undefined, nil
 	})
 	if err := vm.Global().Set("print", print); err != nil {
-		return "", err
+		return suiteBroken.result(firstLine(err.Error())), ""
 	}
 	for _, helper := range v.helpers {
 		if _, err := vm.BindScript(helper).Evaluate(ctx); err != nil {
-			return "", fmt.Errorf("V8 harness: %w", err)
+			reason := firstLine("V8 harness: " + err.Error())
+			if errors.Is(err, context.DeadlineExceeded) {
+				return timedOut(reason), ""
+			}
+			return suiteBroken.result(reason), ""
 		}
 	}
-	if _, err := runScript(ctx, &vm, v.file, src); err != nil {
-		if _, ok := errors.AsType[*ekuma.ScriptError](err); v.wantFailure && ok {
-			return "", nil
-		}
-		return lastPrint, err
+	if _, err := runScript(ctx, &vm, v.file, source); err != nil {
+		// A ScriptError retains its VM through the thrown value.
+		return scriptErrorResult(err), lastPrint
 	}
-	if v.wantFailure {
-		return lastPrint, fmt.Errorf("passes now: remove %s from %s", v.file, v8SkipsFile)
-	}
-	return "", nil
+	return suiteResult{}, lastPrint
 }

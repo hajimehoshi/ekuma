@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -26,40 +28,24 @@ import (
 
 var test262Flags = registerSuiteFlags("test262")
 
-// test262Dir returns the directory of the test262 checkout: $EKUMA_TEST262,
-// or ekuma/test262 in the user cache directory.
-func test262Dir() string {
-	if d := os.Getenv("EKUMA_TEST262"); d != "" {
-		return d
-	}
-	c, err := os.UserCacheDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(c, "ekuma", "test262")
-}
-
 // skippedTestsFile lists the test262 tests that are expected to fail, one path per line, each
 // with a comment that says why. A line that starts with "#" is a comment.
 const skippedTestsFile = "testdata/test262-skips.txt"
 
-// readLines returns the lines of the file name other than the empty lines and the comments,
-// sorted.
-func readLines(name string) ([]string, error) {
+func readTest262Skips(name string) (map[string]bool, error) {
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	var lines []string
+	files := map[string]bool{}
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
-		if l := strings.TrimSpace(sc.Text()); l != "" && !strings.HasPrefix(l, "#") {
-			lines = append(lines, l)
+		if file := strings.TrimSpace(sc.Text()); file != "" && !strings.HasPrefix(file, "#") {
+			files[file] = true
 		}
 	}
-	sort.Strings(lines)
-	return lines, sc.Err()
+	return files, sc.Err()
 }
 
 // metadata is the part of the front matter of a test that the runner uses.
@@ -144,6 +130,14 @@ type harness struct {
 	scripts map[string]*ekuma.UnboundScript
 }
 
+func newHarness(files fs.FS) *harness {
+	return &harness{
+		fs:      files,
+		files:   map[string]string{},
+		scripts: map[string]*ekuma.UnboundScript{},
+	}
+}
+
 // script returns the file name parsed as an unbound script.
 func (h *harness) script(name string) (*ekuma.UnboundScript, error) {
 	text, err := h.file(name)
@@ -177,14 +171,8 @@ func (h *harness) file(name string) (string, error) {
 	return string(b), nil
 }
 
-// testTimeout is how long one run of a test may take before it is interrupted.
-const testTimeout = 5 * time.Second
-
-// retryTimeout is how long one run of a test may take when it runs again on its own.
-const retryTimeout = 4 * testTimeout
-
 // errorName returns the name of the constructor of the thrown value of err, or of the kind of error.
-func errorName(ctx context.Context, err error) string {
+func errorName(err error) string {
 	if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 		return "SyntaxError"
 	}
@@ -203,18 +191,46 @@ func errorName(ctx context.Context, err error) string {
 	return n.String()
 }
 
-// runOnce runs the test source at path in one mode for at most timeout and returns why it
-// failed, or "" when it passed. timedOut reports whether it failed by running out of time.
-func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time.Duration) (reason string, timedOut bool) {
+// checkError judges the result of the test body against its negative metadata.
+func (m metadata) checkError(phase string, err error) suiteResult {
+	if err == nil {
+		if m.negativePhase != "" {
+			return suiteFailed.result("expected " + m.negativeType + " but the test completed")
+		}
+		return suiteResult{}
+	}
+	result := scriptErrorResult(err)
+	// Test262 also checks errors raised while parsing the test.
+	if _, ok := err.(*ekuma.SyntaxError); ok {
+		result.outcome = suiteFailed
+	}
+	if result.outcome != suiteFailed || m.negativePhase == "" {
+		return result
+	}
+	phaseMatches := m.negativePhase == phase
+	if phase == "parse" && !m.flags["module"] {
+		// ParseScript reports both parse and early errors before evaluation.
+		phaseMatches = m.negativePhase != "runtime"
+	}
+	if !phaseMatches {
+		return suiteFailed.result("expected the error in the " + m.negativePhase + " phase: " + result.reason)
+	}
+	if got := errorName(err); got != m.negativeType {
+		return suiteFailed.result("expected " + m.negativeType + " but got " + result.reason)
+	}
+	return suiteResult{}
+}
+
+func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time.Duration) (result suiteResult) {
 	defer func() {
 		if r := recover(); r != nil {
-			reason, timedOut = fmt.Sprintf("engine panic: %v", r), false
+			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
 		}
 	}()
 	var vm ekuma.VM
 	// Tests that use the default locale expect en-US, not the host's locale.
 	if err := vm.SetLocale("en-US"); err != nil {
-		return "harness: " + err.Error(), false
+		return suiteBroken.result("harness: " + err.Error())
 	}
 	loader := &moduleLoader{
 		vm:      &vm,
@@ -231,7 +247,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		return ekuma.Undefined, nil
 	})
 	if err := vm.Global().Set("print", print); err != nil {
-		return "harness: " + err.Error(), false
+		return suiteBroken.result("harness: " + err.Error())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -240,7 +256,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	// The main agent can block, as in a shell, unless the test says otherwise.
 	vm.SetCanBlock(!m.flags["CanBlockIsFalse"])
 	if err := define262(&vm, agents); err != nil {
-		return "harness: " + err.Error(), false
+		return suiteBroken.result("harness: " + err.Error())
 	}
 
 	if !m.flags["raw"] {
@@ -251,13 +267,13 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		for _, name := range includes {
 			s, err := h.script(name)
 			if err != nil {
-				return "harness: " + err.Error(), false
+				return suiteBroken.result("harness: " + err.Error())
 			}
 			if _, err := vm.BindScript(s).Evaluate(ctx); err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
-					return "timeout in harness " + name, true
+					return timedOut("timeout in harness " + name)
 				}
-				return "harness " + name + ": " + firstLine(err.Error()), false
+				return suiteBroken.result("harness " + name + ": " + firstLine(err.Error()))
 			}
 		}
 	}
@@ -268,32 +284,17 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		src = "\"use strict\";\n" + src
 	}
 	_, err := runScript(ctx, &vm, path, src)
-	if errors.Is(err, context.DeadlineExceeded) {
-		return "timeout", true
-	}
-	if m.negativePhase != "" {
-		if err == nil {
-			return "expected " + m.negativeType + " but the test completed", false
+	if err != nil || m.negativePhase != "" {
+		phase := "runtime"
+		if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
+			phase = "parse"
 		}
-		if got := errorName(context.Background(), err); got != m.negativeType {
-			return "expected " + m.negativeType + " but got " + firstLine(err.Error()), false
-		}
-		var se *ekuma.SyntaxError
-		if early := errors.As(err, &se); early != (m.negativePhase != "runtime") {
-			return "expected the error in the " + m.negativePhase + " phase: " + firstLine(err.Error()), false
-		}
-		return "", false
-	}
-	if err != nil {
-		return firstLine(err.Error()), false
+		return m.checkError(phase, err)
 	}
 	if m.flags["async"] {
-		if awaitAgents(ctx, &vm, printed) {
-			return "timeout", true
-		}
-		return asyncOutcome(*printed), false
+		return awaitAgents(ctx, &vm, printed)
 	}
-	return "", false
+	return suiteResult{}
 }
 
 // moduleLoader loads the modules of a test from the test262 checkout, resolving a specifier
@@ -372,70 +373,41 @@ func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
 }
 
 // runModule runs the test source at path as a module, after the harness ran in vm.
-func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, src string, m metadata, printed *[]string) (reason string, timedOut bool) {
-	// phase judges the error of a phase of a negative test.
-	phase := func(name string, err error) string {
-		if m.negativePhase != name {
-			return "expected the error in the " + m.negativePhase + " phase: " + firstLine(err.Error())
-		}
-		if got := errorName(context.Background(), err); got != m.negativeType {
-			return "expected " + m.negativeType + " but got " + firstLine(err.Error())
-		}
-		return ""
-	}
+func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, src string, m metadata, printed *[]string) suiteResult {
 	mod, err := vm.ParseModule(path, src)
 	if err != nil {
-		if m.negativePhase != "" {
-			return phase("parse", err), false
-		}
-		return firstLine(err.Error()), false
+		return m.checkError("parse", err)
 	}
 	loader.modules[path+"\x00"] = mod
 	p, err := mod.Evaluate(ctx)
-	if errors.Is(err, context.DeadlineExceeded) {
-		return "timeout", true
-	}
 	if err != nil {
-		if m.negativePhase != "" {
-			return phase("resolution", err), false
-		}
-		return firstLine(err.Error()), false
+		return m.checkError("resolution", err)
 	}
-	// Evaluate ran the jobs: the promise is settled unless the evaluation waits forever.
-	var rejected *ekuma.ScriptError
 	if st, r := p.PromiseState(); st == ekuma.PromiseRejected {
-		rejected = &ekuma.ScriptError{Value: r}
+		return m.checkError("runtime", &ekuma.ScriptError{Value: r})
 	}
 	if m.negativePhase != "" {
-		if rejected == nil {
-			return "expected " + m.negativeType + " but the test completed", false
-		}
-		return phase("runtime", rejected), false
-	}
-	if rejected != nil {
-		return firstLine(rejected.Error()), false
+		return m.checkError("runtime", nil)
 	}
 	if m.flags["async"] {
-		return asyncOutcome(*printed), false
+		result, _ := asyncOutcome(*printed)
+		return result
 	}
-	return "", false
+	return suiteResult{}
 }
 
-// asyncOutcome judges an async test by the lines that it printed, after its jobs ran.
-func asyncOutcome(printed []string) string {
+// asyncOutcome returns the test outcome and whether the test reported completion.
+func asyncOutcome(printed []string) (suiteResult, bool) {
 	for _, l := range printed {
 		if l == "Test262:AsyncTestComplete" {
-			return ""
+			return suiteResult{}, true
 		}
 		if r, ok := strings.CutPrefix(l, "Test262:AsyncTestFailure:"); ok {
-			return "async: " + firstLine(r)
+			return suiteFailed.result("async: " + firstLine(r)), true
 		}
 	}
-	return asyncIncomplete
+	return suiteFailed.result("the async test did not complete"), false
 }
-
-// asyncIncomplete is the reason of an async test that has not printed its outcome.
-const asyncIncomplete = "the async test did not complete"
 
 // define262 defines the host object $262 of the harness, with the members that the engine supports.
 // agents implements $262.agent.
@@ -557,16 +529,6 @@ func detachArrayBuffer(vm *ekuma.VM, v ekuma.Value) (ok bool) {
 	return true
 }
 
-func firstLine(s string) string {
-	if i := strings.IndexByte(s, '\n'); i >= 0 {
-		s = s[:i]
-	}
-	if len(s) > 200 {
-		s = s[:200]
-	}
-	return s
-}
-
 // test262Test is a test of the suite that is read and ready to run.
 type test262Test struct {
 	path string
@@ -593,41 +555,52 @@ func (t *test262Test) waitsForAgents() bool {
 	return slices.Contains(t.m.includes, "atomicsHelper.js")
 }
 
-// run runs the test in every mode that its flags ask for, each for at most timeout. It returns
-// why the test failed, or "" when it passed, and whether it failed by running out of time.
-func (t *test262Test) run(h *harness, timeout time.Duration) (reason string, timedOut bool) {
+// run runs the test in every mode that its flags ask for.
+func (t *test262Test) run(h *harness, timeout time.Duration) suiteResult {
 	if t.m.flags["module"] {
 		// Module code is always strict.
 		return runOnce(h, t.path, t.src, t.m, false, timeout)
 	}
 	if !t.m.flags["onlyStrict"] {
-		if r, to := runOnce(h, t.path, t.src, t.m, false, timeout); r != "" {
-			return r, to
+		if result := runOnce(h, t.path, t.src, t.m, false, timeout); result.outcome != suitePassed {
+			return result
 		}
 	}
 	if !t.m.flags["noStrict"] && !t.m.flags["raw"] {
-		if r, to := runOnce(h, t.path, t.src, t.m, true, timeout); r != "" {
-			return "strict mode: " + r, to
+		if result := runOnce(h, t.path, t.src, t.m, true, timeout); result.outcome != suitePassed {
+			result.reason = "strict mode: " + result.reason
+			return result
 		}
 	}
-	return "", false
+	return suiteResult{}
 }
 
-// runTest reads and runs the test at path. It returns what run returns.
-func runTest(h *harness, path string, timeout time.Duration) (reason string, timedOut bool) {
+func runTest(h *harness, path string, timeout time.Duration) suiteResult {
 	t, err := readTest(path)
 	if err != nil {
-		return err.Error(), false
+		return suiteBroken.result(err.Error())
 	}
 	return t.run(h, timeout)
 }
 
+func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
+	h := newHarness(os.DirFS("testdata/harness"))
+	test := test262Test{
+		path: "missing-include.js",
+		src:  "throw new Error();",
+		m: metadata{
+			includes: []string{"missing.js"},
+		},
+	}
+	result := test.run(h, testTimeout).expectFailure(test.path, skippedTestsFile)
+	if result.outcome != suiteBroken {
+		t.Errorf("expected failure with missing include: got %v, want %v", result.outcome, suiteBroken)
+	}
+}
+
 // TestTest262 runs the ECMAScript conformance suite and checks its failures against the skip list.
 func TestTest262(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test262 in short mode")
-	}
-	dir := test262Dir()
+	dir := test262Flags.checkoutDir(t)
 	if _, err := os.Stat(filepath.Join(dir, "harness", "assert.js")); err != nil {
 		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
 	}
@@ -646,9 +619,9 @@ func TestTest262(t *testing.T) {
 	// testDir is the directory of the suite whose tests run.
 	testDir := "test"
 	if test262Flags.dir != "" {
-		testDir = test262Flags.dir
+		testDir = path.Clean(filepath.ToSlash(test262Flags.dir))
 	}
-	skips, err := readLines(skippedTestsFile)
+	unseenSkips, err := readTest262Skips(skippedTestsFile)
 	if err != nil {
 		t.Fatalf("reading the skipped tests: %v", err)
 	}
@@ -670,7 +643,8 @@ func TestTest262(t *testing.T) {
 		if test262Flags.filter != "" && !strings.Contains(rel, test262Flags.filter) {
 			return nil
 		}
-		if _, ok := slices.BinarySearch(skips, rel); ok {
+		if unseenSkips[rel] {
+			delete(unseenSkips, rel)
 			skipped = append(skipped, rel)
 			return nil
 		}
@@ -683,24 +657,19 @@ func TestTest262(t *testing.T) {
 	sort.Strings(paths)
 	sort.Strings(skipped)
 
-	h := &harness{
-		fs:      os.DirFS(filepath.Join(dir, "harness")),
-		files:   map[string]string{},
-		scripts: map[string]*ekuma.UnboundScript{},
-	}
-	reasons := make([]string, len(paths))
-	retry := make([]bool, len(paths))
+	h := newHarness(os.DirFS(filepath.Join(dir, "harness")))
+	results := make([]suiteResult, len(paths))
 	var waitingTests sync.WaitGroup
 	// waitingSlots limits the tests that run without a worker.
 	waitingSlots := make(chan struct{}, 4*runtime.GOMAXPROCS(0))
 	test262Flags.run(t, len(paths), func(i int) {
 		tt, err := readTest(filepath.Join(dir, filepath.FromSlash(paths[i])))
 		if err != nil {
-			reasons[i] = err.Error()
+			results[i] = suiteBroken.result(err.Error())
 			return
 		}
 		if !tt.waitsForAgents() {
-			reasons[i], retry[i] = tt.run(h, testTimeout)
+			results[i] = tt.run(h, testTimeout)
 			return
 		}
 		// A test that waits needs no processor, so the worker goes on to the next test.
@@ -709,19 +678,19 @@ func TestTest262(t *testing.T) {
 			defer func() {
 				<-waitingSlots
 			}()
-			reasons[i], _ = tt.run(h, testTimeout)
+			results[i] = tt.run(h, testTimeout)
 			// Waiters can time out before the main agent resumes to notify them.
-			retry[i] = reasons[i] != ""
+			results[i].retry = results[i].outcome != suitePassed
 		})
 	})
 	waitingTests.Wait()
-	// Retry once in isolation so other workers cannot delay the test or its agents.
-	for i := range paths {
-		if retry[i] {
-			t.Logf("retrying %s in isolation: %s", paths[i], reasons[i])
-			reasons[i], _ = runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])), retryTimeout)
-		}
+	retryTests := func(paths []string, results []suiteResult) {
+		retryInIsolation(results, func(i int, timeout time.Duration) suiteResult {
+			t.Logf("retrying %s in isolation: %s", paths[i], results[i].reason)
+			return runTest(h, filepath.Join(dir, filepath.FromSlash(paths[i])), timeout)
+		})
 	}
+	retryTests(paths, results)
 
 	var failed []suiteFailure
 	byArea := map[string][2]int{}
@@ -730,12 +699,12 @@ func TestTest262(t *testing.T) {
 		area := strings.Join(parts[:min(3, len(parts)-1)], "/")
 		c := byArea[area]
 		c[1]++
-		if reasons[i] == "" {
+		if results[i].outcome == suitePassed {
 			c[0]++
 		} else {
 			failed = append(failed, suiteFailure{
 				path:   p,
-				reason: reasons[i],
+				reason: results[i].reason,
 			})
 		}
 		byArea[area] = c
@@ -744,18 +713,19 @@ func TestTest262(t *testing.T) {
 	if len(skipped) > 0 {
 		t.Logf("test262: %d tests skipped, as %s lists", len(skipped), skippedTestsFile)
 	}
-	// Run the selected tests on the skip list separately to flag any that now pass.
-	for _, p := range skipped {
-		if r, _ := runTest(h, filepath.Join(dir, filepath.FromSlash(p)), testTimeout); r == "" {
-			t.Errorf("%s passes now: remove it from %s", p, skippedTestsFile)
+	skippedResults := make([]suiteResult, len(skipped))
+	for i, p := range skipped {
+		skippedResults[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(p)), testTimeout)
+	}
+	retryTests(skipped, skippedResults)
+	for i, p := range skipped {
+		result := skippedResults[i].expectFailure(p, skippedTestsFile)
+		if result.outcome != suitePassed {
+			t.Errorf("%s: %s", p, result.reason)
 		}
 	}
-	if test262Flags.filter == "" {
-		for _, p := range skips {
-			if _, ok := slices.BinarySearch(skipped, p); strings.HasPrefix(p, testDir+"/") && !ok {
-				t.Errorf("%s is not in the suite: remove it from %s", p, skippedTestsFile)
-			}
-		}
+	for _, failure := range staleEntries(maps.Keys(unseenSkips), skippedTestsFile, testDir, test262Flags.filter) {
+		t.Errorf("%s: %s", failure.path, failure.reason)
 	}
 	if testing.Verbose() {
 		areas := make([]string, 0, len(byArea))
@@ -994,16 +964,19 @@ func (c *agentCluster) run(a *testAgent, src string) {
 
 // awaitAgents lets an async test whose promises wait for other agents complete: it runs the jobs
 // whenever a waiter of Atomics.waitAsync of vm is notified or times out, until the test has
-// printed its outcome or nothing is left to wait for. It reports whether ctx ended it.
-func awaitAgents(ctx context.Context, vm *ekuma.VM, printed *[]string) bool {
-	for asyncOutcome(*printed) == asyncIncomplete {
+// printed its outcome or nothing is left to wait for.
+func awaitAgents(ctx context.Context, vm *ekuma.VM, printed *[]string) suiteResult {
+	for {
+		result, done := asyncOutcome(*printed)
+		if done {
+			return result
+		}
 		ok, err := vm.AwaitJobs(ctx)
 		if err != nil {
-			return ctx.Err() != nil
+			return scriptErrorResult(err)
 		}
 		if !ok {
-			break
+			return result
 		}
 	}
-	return false
 }

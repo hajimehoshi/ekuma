@@ -340,7 +340,8 @@ paths and failure reasons. Both suites flag skip-list errors in the console.
 V8 also includes them in the report file.
 
 Plain paths in each skip list are expected failures. The tests still run, and
-an unexpected pass or a stale path fails the suite. In the V8 list, a
+an unexpected pass or a stale path fails the suite. A runner error, engine
+panic, or timeout on the final attempt also fails the suite. In the V8 list, a
 `# SKIP: reason` comment directly above a path skips execution of that test.
 
 ## License

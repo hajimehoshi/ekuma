@@ -8,16 +8,10 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/hajimehoshi/ekuma"
 )
 
 func TestScripts(t *testing.T) {
-	h := &harness{
-		fs:      os.DirFS("testdata/harness"),
-		files:   map[string]string{},
-		scripts: map[string]*ekuma.UnboundScript{},
-	}
+	h := newHarness(os.DirFS("testdata/harness"))
 	scriptFS := os.DirFS(".")
 	err := fs.WalkDir(scriptFS, "testdata/scripts", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -37,12 +31,12 @@ func TestScripts(t *testing.T) {
 				src:  src,
 				m:    parseMetadata(src),
 			}
-			reason, timedOut := test.run(h, testTimeout)
-			if timedOut {
-				reason, _ = test.run(h, retryTimeout)
+			result := test.run(h, testTimeout)
+			if result.retry {
+				result = test.run(h, retryTimeout)
 			}
-			if reason != "" {
-				t.Error(reason)
+			if result.outcome != suitePassed {
+				t.Error(result.reason)
 			}
 		})
 		return nil
@@ -53,17 +47,13 @@ func TestScripts(t *testing.T) {
 }
 
 func TestLocalScriptHarness(t *testing.T) {
-	h := &harness{
-		fs:      os.DirFS("testdata/harness"),
-		files:   map[string]string{},
-		scripts: map[string]*ekuma.UnboundScript{},
-	}
+	h := newHarness(os.DirFS("testdata/harness"))
 	for _, tt := range []struct {
 		name         string
 		src          string
 		async        bool
 		negativeType string
-		wantFailure  bool
+		want         suiteOutcome
 	}{
 		{
 			name: "NaN and object identity",
@@ -85,10 +75,10 @@ func TestLocalScriptHarness(t *testing.T) {
 			negativeType: "Test262Error",
 		},
 		{
-			name:        "async rejection",
-			src:         `Promise.reject(new Test262Error("rejected")).then(() => $DONE(), $DONE);`,
-			async:       true,
-			wantFailure: true,
+			name:  "async rejection",
+			src:   `Promise.reject(new Test262Error("rejected")).then(() => $DONE(), $DONE);`,
+			async: true,
+			want:  suiteFailed,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -101,12 +91,9 @@ func TestLocalScriptHarness(t *testing.T) {
 				m.negativePhase = "runtime"
 				m.negativeType = tt.negativeType
 			}
-			reason, timedOut := runOnce(h, tt.name, tt.src, m, false, testTimeout)
-			if timedOut {
-				t.Error("harness test timed out")
-			}
-			if failed := reason != ""; failed != tt.wantFailure {
-				t.Errorf("failed = %v, want %v (reason: %s)", failed, tt.wantFailure, reason)
+			result := runOnce(h, tt.name, tt.src, m, false, testTimeout)
+			if result.outcome != tt.want {
+				t.Errorf("outcome = %v, want %v (reason: %s)", result.outcome, tt.want, result.reason)
 			}
 		})
 	}

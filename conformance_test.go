@@ -4,16 +4,24 @@
 package ekuma_test
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
+	"iter"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/hajimehoshi/ekuma"
 )
 
 type suiteFlags struct {
@@ -33,6 +41,26 @@ func registerSuiteFlags(name string) *suiteFlags {
 	flag.StringVar(&f.shuffle, name+".shuffle", "off", "run the "+name+" tests in random order: off, on, or a seed; a replay is exact only with GOMAXPROCS=1")
 	flag.StringVar(&f.report, name+".report", "", "write the path and reason for each unexpected "+name+" failure to this file")
 	return f
+}
+
+func (f *suiteFlags) checkoutDir(t *testing.T) string {
+	t.Helper()
+	if testing.Short() {
+		t.Skipf("skipping %s tests in short mode", f.name)
+	}
+	env := "EKUMA_" + strings.ToUpper(f.name)
+	if dir := os.Getenv(env); dir != "" {
+		return dir
+	}
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		t.Skipf("no user cache directory; set %s to a %s checkout", env, f.name)
+	}
+	dir := filepath.Join(cache, "ekuma", f.name)
+	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("no %s checkout at %s; set %s", f.name, dir, env)
+	}
+	return dir
 }
 
 // run calls runTest for each test index and waits for all workers to finish.
@@ -73,9 +101,104 @@ func (f *suiteFlags) run(t *testing.T, count int, runTest func(int)) {
 	workers.Wait()
 }
 
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[:i]
+	}
+	if len(s) > 200 {
+		s = s[:200]
+	}
+	return s
+}
+
 type suiteFailure struct {
 	path   string
 	reason string
+}
+
+const testTimeout = 5 * time.Second
+const retryTimeout = 4 * testTimeout
+
+type suiteOutcome int
+
+const (
+	suitePassed suiteOutcome = iota
+	suiteFailed              // The test ran and its expectations were not met.
+	suiteBroken              // The runner could not obtain a test outcome.
+	suiteSkipped
+)
+
+type suiteResult struct {
+	outcome suiteOutcome
+	reason  string
+	retry   bool
+}
+
+func (outcome suiteOutcome) result(reason string) suiteResult {
+	return suiteResult{
+		outcome: outcome,
+		reason:  reason,
+	}
+}
+
+func timedOut(reason string) suiteResult {
+	return suiteResult{
+		outcome: suiteBroken,
+		reason:  reason,
+		retry:   true,
+	}
+}
+
+// scriptErrorResult distinguishes a JavaScript exception from a runner failure.
+func scriptErrorResult(err error) suiteResult {
+	reason := firstLine(err.Error())
+	if errors.Is(err, context.DeadlineExceeded) {
+		return timedOut(reason)
+	}
+	if ex, ok := errors.AsType[*ekuma.ScriptError](err); ok && ex.Unwrap() == nil {
+		return suiteFailed.result(reason)
+	}
+	return suiteBroken.result(reason)
+}
+
+// expectFailure accepts only a test failure for a listed file.
+func (r suiteResult) expectFailure(file, manifest string) suiteResult {
+	switch r.outcome {
+	case suiteFailed:
+		return suiteResult{}
+	case suitePassed:
+		return suiteBroken.result(fmt.Sprintf("passes now: remove %s from %s", file, manifest))
+	case suiteSkipped:
+		return suiteBroken.result(fmt.Sprintf("cannot run (%s): remove %s from %s", r.reason, file, manifest))
+	default:
+		return r
+	}
+}
+
+// retryInIsolation reruns the selected tests after all parallel work has finished.
+func retryInIsolation(results []suiteResult, run func(int, time.Duration) suiteResult) {
+	for i, result := range results {
+		if result.retry {
+			results[i] = run(i, retryTimeout)
+		}
+	}
+}
+
+func inSuiteDir(file, dir string) bool {
+	return dir == "." || file == dir || strings.HasPrefix(file, dir+"/")
+}
+
+func staleEntries(unseen iter.Seq[string], manifest, dir, filter string) []suiteFailure {
+	var failures []suiteFailure
+	for _, file := range slices.Sorted(unseen) {
+		if inSuiteDir(file, dir) && strings.Contains(file, filter) {
+			failures = append(failures, suiteFailure{
+				path:   file,
+				reason: "not in the suite: remove it from " + manifest,
+			})
+		}
+	}
+	return failures
 }
 
 func (f *suiteFlags) reportFailures(t *testing.T, failures []suiteFailure) {
