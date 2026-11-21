@@ -3,7 +3,7 @@
 
 (function (installShell) {
   return function (shell) {
-    installShell(shell);
+    const reportException = installShell(shell);
     // d8 creates fresh prototypes per realm and shares the node receiver brand.
     const domNodes = shell.domNodes ?? new WeakSet();
     const addNode = WeakSet.prototype.add.bind(domNodes);
@@ -33,13 +33,15 @@
     d8.dom = {EventTarget, Div: nodeConstructor(HTMLElement, "Div")};
     // Scripts can attach test state to this realm's d8.test object.
     d8.test = {};
-    return domNodes;
+    return {__proto__: null, domNodes, reportException};
   };
 })(function (shell) {
   "use strict";
-  const {readFile, stdout, stderr, timer, exit, canAccessReceiver} = shell;
+  const {readFile, stdout, stderr, timer, exit, terminate, canAccessReceiver} = shell;
   const {now: timestamp, recordMark, lookupMark} = shell;
-  const {Error, TypeError, Uint8Array} = globalThis;
+  const global = globalThis;
+  const {Error, String, TypeError, Uint8Array} = global;
+  const apply = Reflect.apply;
   const {defineProperty} = Object;
   function getter(proto, name) {
     return Function.call.bind(Object.getOwnPropertyDescriptor(proto, name).get);
@@ -49,6 +51,7 @@
   const stackOf = getter(Error.prototype, "stack");
   const indexOf = Function.call.bind(String.prototype.indexOf);
   const slice = Function.call.bind(String.prototype.slice);
+  const repeat = Function.call.bind(String.prototype.repeat);
 
   globalThis.version = function version() {
     if (!canAccessReceiver(this)) throw new TypeError("no access");
@@ -114,6 +117,8 @@
       exit(code);
     };
   }
+  d8.terminate = terminate;
+  global.onerror = null;
 
   globalThis.readbuffer = function readbuffer(name = undefined) {
     const view = readFile(`${name}`, Uint8Array);
@@ -171,4 +176,28 @@
   };
   Object.defineProperty(console, Symbol.toStringTag, {value: "console", configurable: true});
   Object.defineProperty(globalThis, "console", {value: console, writable: true, configurable: true});
+
+  return function reportException(ex, source, line, column, description, sourceLine) {
+    if (description === undefined) {
+      try {
+        description = String(ex);
+      } catch {
+        description = "exception";
+      }
+    }
+    try {
+      const handler = global.onerror;
+      if (typeof handler === "function" &&
+          apply(handler, global, ["Uncaught " + description, source, line, column, ex]) === true) return;
+    } catch {
+      // A throwing handler leaves the original exception to be reported.
+    }
+    stdout(`${source}:${line}: ${ex}\n`);
+    if (line) stdout(sourceLine + "\n" + repeat(" ", column - 1) + "^\n");
+    if (ex !== null && (typeof ex === "object" || typeof ex === "function")) {
+      const stack = ex.stack;
+      if (typeof stack === "string") stdout(stack + "\n");
+    }
+    stdout("\n");
+  };
 })

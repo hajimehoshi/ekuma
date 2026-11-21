@@ -276,22 +276,34 @@ func (vm *VM) ParseScript(file string, src wtf8.String) (*Script, error) {
 	}, nil
 }
 
-// ScriptEvaluation implements ScriptEvaluation. It returns
-// the value of the last expression statement of s. The error is an [*Error] when the script
-// throws.
-func (vm *VM) ScriptEvaluation(s *Script) (Value, error) {
+// ScriptEvaluation evaluates s and runs pending jobs. completed reports whether
+// the script returned normally before the job checkpoint.
+func (vm *VM) ScriptEvaluation(s *Script) (Value, bool, error) {
 	saved := vm.curRealm
 	if r := s.code.realm; r != saved {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
-	f := vm.newScriptFunction(s.code)
-	return vm.enter(func() Value {
-		previous := vm.enteredRealm
-		vm.enteredRealm = s.code.realm
-		defer func() { vm.enteredRealm = previous }()
-		return vm.Call(f, Value{o: vm.globalThis})
+	var completed bool
+	value, err := vm.enter(func() Value {
+		v := vm.CallScript(s)
+		completed = true
+		return v
 	})
+	return value, completed, err
+}
+
+// CallScript evaluates s from a running host function and propagates its exception.
+func (vm *VM) CallScript(s *Script) Value {
+	saved := vm.curRealm
+	if r := s.code.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
+	previous := vm.enteredRealm
+	vm.enteredRealm = s.code.realm
+	defer func() { vm.enteredRealm = previous }()
+	return vm.Call(vm.newScriptFunction(s.code), Value{o: vm.globalThis})
 }
 
 // enter runs f as a call from Go and drains jobs at the outermost boundary, including
@@ -307,7 +319,12 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 		return vm.enterBoundary(f)
 	}
 	vm.enteredRealm = vm.curRealm
-	defer func() { vm.enteredRealm = nil }()
+	vm.captureThrowSites = vm.exceptionReporter != nil
+	defer func() {
+		vm.enteredRealm = nil
+		vm.captureThrowSites = false
+		vm.thrownAt = throwSite{}
+	}()
 	// Data independent timing stays enabled for the goroutine across rescheduling, so the
 	// nested calls need nothing more.
 	subtle.WithDataIndependentTiming(func() {
@@ -322,7 +339,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	vm.ResumeInterruption()
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	curRealm, callerRealm, newTarget := vm.curRealm, vm.callerRealm, vm.newTarget
-	thrown := vm.thrown
+	thrown, site := vm.thrown, vm.thrownAt
 	context := vm.jobContext
 	outermost := vm.entered == 0
 	vm.entered++
@@ -367,7 +384,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			vm.truncateNatives(natives)
 			vm.sp, vm.depth = sp, depth
 			vm.callerRealm, vm.newTarget = callerRealm, newTarget
-			vm.thrown = thrown
+			vm.thrown, vm.thrownAt = thrown, site
 			var cause error
 			if interrupted {
 				result, err = Undefined, &InterruptedError{
@@ -400,9 +417,17 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 		})
 		vm.ResumeInterruption()
 		thrown := vm.takeThrown()
+		site := vm.thrownAt
+		if !ok && outermost && vm.exceptionReporter != nil {
+			vm.protect(func() {
+				vm.exceptionReporter(thrown, site.location())
+			})
+			vm.thrown = Undefined
+		}
 		vm.runJobs()
 		if !ok {
-			vm.Throw(thrown)
+			vm.thrown, vm.thrownAt = thrown, site
+			panic(errThrow)
 		}
 	}) {
 		return Undefined, vm.takeException()

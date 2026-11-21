@@ -494,6 +494,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.exit(exitContinue, f.findTarget(s, s.Label, true), 0)
 	case *ast.ThrowStmt:
 		v := f.exprAny(s.Arg)
+		f.setPos(s.Start())
 		f.emit(bytecode.OpThrow, v, 0, 0)
 	case *ast.TryStmt:
 		f.try(s)

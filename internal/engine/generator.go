@@ -244,6 +244,12 @@ func (vm *VM) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 		// a throw or a return as an exception at the suspension.
 		switch mode {
 		case ResumeThrow:
+			if vm.captureThrowSites {
+				vm.thrownAt = throwSite{
+					code: g.f.fn.code.Func,
+					pc:   g.pc - 1,
+				}
+			}
 			vm.thrown = v
 		case ResumeReturn:
 			g.closeValue = v

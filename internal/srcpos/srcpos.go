@@ -39,24 +39,36 @@ func NewTable(src wtf8.String) *Table {
 	}
 }
 
-// lines returns the offsets at which the lines of the source start, and whether the source
-// consists of ASCII characters only.
-func (t *Table) lines() (starts []int32, ascii bool) {
+func (t *Table) locate(offset int32) (index int, at int32) {
 	t.linesOnce.Do(func() {
 		t.lineStarts = lineStarts(t.src)
 		t.ascii = wtf8.IsASCII(t.src)
 	})
-	return t.lineStarts, t.ascii
+	at = min(max(offset, 0), int32(len(t.src)))
+	index = sort.Search(len(t.lineStarts), func(i int) bool {
+		return t.lineStarts[i] > at
+	}) - 1
+	return index, at
 }
 
 // Position converts a byte offset into a 1-based line and a 1-based column counted in code points.
 func (t *Table) Position(offset int32) (line, column int) {
-	offset = min(max(offset, 0), int32(len(t.src)))
-	starts, ascii := t.lines()
-	i := sort.Search(len(starts), func(i int) bool {
-		return starts[i] > offset
-	}) - 1
-	return i + 1, t.column(starts[i], offset, ascii)
+	i, at := t.locate(offset)
+	return i + 1, t.column(t.lineStarts[i], at, t.ascii)
+}
+
+// SourceLine returns the line containing offset and its 1-based line and UTF-16 column numbers.
+func (t *Table) SourceLine(offset int32) (text wtf8.String, line, column int) {
+	i, at := t.locate(offset)
+	start, end := t.lineStarts[i], int32(len(t.src))
+	if i+1 < len(t.lineStarts) {
+		end = t.lineStarts[i+1]
+	}
+	column = int(at-start) + 1
+	if !t.ascii {
+		column = wtf8.Len(t.src[start:at]) + 1
+	}
+	return wtf8.String(strings.TrimRight(string(t.src[start:end]), "\r\n\u2028\u2029")), i + 1, column
 }
 
 // column returns the 1-based column of offset on the line starting at lineStart. ascii reports

@@ -256,13 +256,13 @@ func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 // being propagated and the errors of closing are dropped.
 func (vm *VM) iteratorClose(it Value, pending bool) {
 	if pending {
-		saved := vm.thrown
+		saved, site := vm.thrown, vm.thrownAt
 		vm.protect(func() {
 			if m := vm.GetMethod(it, vm.Key(keyReturn)); m != nil {
 				vm.Call(m, it)
 			}
 		})
-		vm.thrown = saved
+		vm.thrown, vm.thrownAt = saved, site
 		return
 	}
 	m := vm.GetMethod(it, vm.Key(keyReturn))

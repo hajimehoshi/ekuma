@@ -272,6 +272,9 @@ func (vm *VM) unwind(stop int) bool {
 				}
 			}
 			regs[h.Reg] = vm.thrown
+			if h.Finally && !closing && vm.captureThrowSites {
+				regs[h.Reg] = vm.saveException()
+			}
 			vm.thrown = Undefined
 			vm.dropNatives(n)
 			fr.pc = int(h.Target)
@@ -2045,13 +2048,20 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			regs[ret] = r
 		case bytecode.OpThrow:
+			if vm.captureThrowSites {
+				vm.thrownAt = throwSite{
+					code: fp.Func,
+					pc:   pc - 1,
+				}
+			}
 			vm.thrown = regs[i.A]
 			goto throw
 		case bytecode.OpRethrow:
-			vm.thrown = regs[i.A]
-			if i.B >= 0 && vm.thrown.o == closeSignal {
-				vm.thrown = regs[i.B]
+			v := regs[i.A]
+			if i.B >= 0 && v.o == closeSignal {
+				v = regs[i.B]
 			}
+			vm.restoreException(v)
 			goto throw
 
 		case bytecode.OpInitialYield:
@@ -2411,7 +2421,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpDisposeEnd:
 			if v, thrown := endDisposeOp(regs[i.A]); thrown {
 				regs[i.A] = Undefined
-				vm.thrown = v
+				vm.restoreException(v)
 				goto throw
 			}
 			regs[i.A] = Undefined

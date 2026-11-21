@@ -19,6 +19,43 @@ func InvokeInRealm(ctx context.Context, r *Realm, f Value) error {
 	return err
 }
 
+// SetExceptionReporter installs the shell's uncaught exception handler in r.
+func SetExceptionReporter(r *Realm, report Value) {
+	vm := r.vm.e
+	r.in(func() {
+		key := engine.NamedKey(vm.Key(engine.KeyToString))
+		objectToString := vm.Get(vm.Intrinsic(engine.IntrinsicObjectPrototype), key)
+		errorToString := vm.Get(vm.Intrinsic(engine.IntrinsicErrorPrototype), key)
+		vm.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
+			var source engine.Value
+			if loc.File != "" {
+				source = vm.StringFromGo(loc.File)
+			}
+			description := vm.ExceptionDescription(thrown, objectToString, errorToString)
+			vm.Call(report.value.Object(), engine.Undefined, thrown, source,
+				engine.Number(float64(loc.Line)), engine.Number(float64(max(loc.Column, 1))), description, vm.NewString(loc.SourceLine))
+		})
+	})
+}
+
+// CallScript evaluates s from a running shell function.
+func CallScript(s *Script) Value {
+	return fromEngine(s.vm.e.CallScript(s.s))
+}
+
+// EvaluateScriptTask reports whether s completed normally before its job checkpoint.
+func EvaluateScriptTask(ctx context.Context, s *Script) (bool, error) {
+	_, completed, err := s.evaluate(ctx)
+	return completed, err
+}
+
+// RequestInterrupt schedules an interruption and returns the function that withdraws it.
+func RequestInterrupt(r *Realm, cause error) func() {
+	var req interruptRequest
+	r.vm.interrupts.request(r.vm.e, &req, cause)
+	return func() { r.vm.interrupts.release(r.vm.e, &req) }
+}
+
 // DeferUnhandledRejections postpones rejection reports until TakeUnhandledRejection.
 func DeferUnhandledRejections(vm *VM) {
 	vm.initIfNeeded()

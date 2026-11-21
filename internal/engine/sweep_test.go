@@ -18,7 +18,8 @@ func runScript(vm *engine.VM, file, src string) (engine.Value, error) {
 	if err != nil {
 		return engine.Undefined, err
 	}
-	return vm.ScriptEvaluation(s)
+	v, _, err := vm.ScriptEvaluation(s)
+	return v, err
 }
 
 func newVM(t *testing.T) *engine.VM {

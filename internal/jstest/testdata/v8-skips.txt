@@ -556,10 +556,6 @@ test/mjsunit/harmony/shadowrealm-wrapped-function-props-stack.js
 # The module expects the d8 host to supply import.meta.url.
 test/mjsunit/harmony/modules-import-meta.mjs
 
-# The test throws an object whose toString expects d8.terminate to stop
-# execution while the host reports the exception.
-test/mjsunit/regress/regress-523435063.js
-
 # These tests require V8's stack trace API.
 test/mjsunit/cross-realm-callsite.js
 test/mjsunit/error-constructors.js
@@ -698,13 +694,6 @@ test/mjsunit/regress/regress-crbug-1057653.js
 # depends on asynchronous promise resolution.
 test/mjsunit/regress/regress-1494164.js
 test/mjsunit/regress/regress-371237560.js
-
-# These tests require d8 to report uncaught timer exceptions to onerror.
-test/mjsunit/d8/d8-realm-onerror.js
-test/mjsunit/math-sum-precise/uncaught-error-message.js
-
-# This test requires d8.terminate.
-test/mjsunit/regress/regress-576644328.js
 
 # These tests require Intl.v8BreakIterator.
 test/mjsunit/regress/regress-crbug-714696.js

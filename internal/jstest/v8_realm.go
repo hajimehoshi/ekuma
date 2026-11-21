@@ -23,14 +23,14 @@ var v8RealmScript = sync.OnceValues(func() (*ekuma.UnboundScript, error) {
 })
 
 type v8Realms struct {
-	host     *V8
-	vm       *ekuma.VM
-	ctx      context.Context
-	print    ekuma.Func
-	shell    v8Shell
-	timeouts *v8Timeouts
-	scripts  *v8Scripts
-	entries  []*v8RealmEntry
+	host    *V8
+	vm      *ekuma.VM
+	ctx     context.Context
+	print   ekuma.Func
+	shell   v8Shell
+	loop    *v8EventLoop
+	scripts *v8Scripts
+	entries []*v8RealmEntry
 
 	// Each Realm.eval protects its caller until the evaluation returns.
 	stack []*ekuma.Realm
@@ -63,10 +63,7 @@ func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess boo
 	if err := r.Global().Set("print", r.FuncOf("print", h.print)); err != nil {
 		return nil, err
 	}
-	if err := h.shell.install(h.ctx, r, h.scripts, h.host.CanAccessReceiver); err != nil {
-		return nil, err
-	}
-	if err := h.timeouts.install(r); err != nil {
+	if err := h.loop.install(r); err != nil {
 		return nil, err
 	}
 	create := r.FuncOf("create", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -113,15 +110,19 @@ func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess boo
 			h.scripts.current, h.scripts.next = caller, caller
 			h.stack = slices.Delete(h.stack, len(h.stack)-1, len(h.stack))
 		}()
-		return s.Evaluate(h.ctx)
+		return h.host.CallScript(s), nil
 	})
 	change := r.FuncOf("change", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return h.change(index, args[0].String())
 	})
+	global := h.host.InstallGlobalProxy(r, view, previous, shareAccess)
+	if err := h.shell.install(h.ctx, h.host, r, h.scripts); err != nil {
+		return nil, err
+	}
 	return &v8RealmEntry{
 		realm: r,
 		object: r.ValueOf(map[string]any{
-			"global":   h.host.InstallGlobalProxy(r, view, previous, shareAccess),
+			"global":   global,
 			"evaluate": evaluate,
 			"change":   change,
 		}),

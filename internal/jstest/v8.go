@@ -30,10 +30,14 @@ type V8 struct {
 	IsEnteredRealm           func(*ekuma.Realm) bool
 	ObjectCreationRealm      func(ekuma.Value) *ekuma.Realm
 	ParseScriptValue         func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
+	CallScript               func(*ekuma.Script) ekuma.Value
+	EvaluateScriptTask       func(context.Context, *ekuma.Script) (bool, error)
 	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, *ekuma.Realm, bool) ekuma.Value
 	DetachGlobalProxy        func(*ekuma.Realm)
 	CanAccessReceiver        func(*ekuma.Realm, ekuma.Value) bool
 	InvokeInRealm            func(context.Context, *ekuma.Realm, ekuma.Value) error
+	SetExceptionReporter     func(*ekuma.Realm, ekuma.Value)
+	RequestInterrupt         func(*ekuma.Realm, error) func()
 	DeferUnhandledRejections func(*ekuma.VM)
 	TakeUnhandledRejection   func(*ekuma.VM) error
 }
@@ -224,8 +228,8 @@ if (order !== 'HABA') throw new Error(order);`),
 	}
 }
 
-// CheckV8ScriptLoader checks d8 file lookups and nested script loads.
-func CheckV8ScriptLoader(t *testing.T) {
+// CheckScriptLoader checks d8 file lookups and nested script loads.
+func (host *V8) CheckScriptLoader(t *testing.T) {
 	checkout := fstest.MapFS{
 		"helpers/append.mjs": {
 			Data: []byte("var appended = true; order += 'A';"),
@@ -250,7 +254,7 @@ func CheckV8ScriptLoader(t *testing.T) {
 	var vm ekuma.VM
 	realm := vm.NewRealm()
 	ctx := t.Context()
-	scripts := newV8Scripts(realm, checkout, ".")
+	scripts := newV8Scripts(host, realm, checkout, ".")
 	if err := scripts.installLoader(ctx, realm); err != nil {
 		t.Fatal(err)
 	}
@@ -514,20 +518,21 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		lastPrint = firstLine(fmt.Sprint(args))
 		return ekuma.Undefined, nil
 	}
-	timeouts := v8Timeouts{
-		invoke: host.InvokeInRealm,
+	loop := v8EventLoop{
+		host: host,
 	}
-	scripts := newV8Scripts(vm.InitialRealm(), checkout, filepath.Dir(filepath.FromSlash(v.file)))
+	scripts := newV8Scripts(host, vm.InitialRealm(), checkout, filepath.Dir(filepath.FromSlash(v.file)))
 	if inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
-			host:     host,
-			vm:       &vm,
-			ctx:      ctx,
-			print:    print,
-			shell:    newV8Shell(io.Discard, io.Discard),
-			timeouts: &timeouts,
-			scripts:  scripts,
+			host:    host,
+			vm:      &vm,
+			ctx:     ctx,
+			print:   print,
+			shell:   newV8Shell(io.Discard, io.Discard),
+			loop:    &loop,
+			scripts: scripts,
 		}
+		defer realms.shell.close()
 		if _, err := realms.add(scripts.current, false); err != nil {
 			return suiteBroken.result(firstLine(err.Error())), ""
 		}
@@ -543,7 +548,10 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		helpers = nil
 	}
 	for _, helper := range helpers {
-		if _, err := scripts.evaluate(ctx, scripts.current.BindScript(helper)); err != nil {
+		if completed, err := scripts.evaluate(ctx, scripts.current.BindScript(helper)); err != nil {
+			if errors.Is(err, errV8Termination) {
+				return loop.terminationResult(ctx, completed), lastPrint
+			}
 			reason := firstLine("V8 harness: " + err.Error())
 			if errors.Is(err, context.DeadlineExceeded) {
 				return timedOut(reason), ""
@@ -559,17 +567,20 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 		if err != nil {
 			return suiteBroken.result(fmt.Sprintf("V8 Files: %s: %v", name, err)), lastPrint
 		}
-		result = scripts.runFile(ctx, &timeouts, name, string(b))
+		result = scripts.runFile(ctx, &loop, name, string(b))
 		if result.outcome != suitePassed {
 			result.reason = name + ": " + result.reason
 			break
 		}
+		if loop.terminated {
+			return result, lastPrint
+		}
 	}
 	if result.outcome == suitePassed {
-		result = scripts.runFile(ctx, &timeouts, v.file, source)
+		result = scripts.runFile(ctx, &loop, v.file, source)
 	}
-	result = timeouts.drain(ctx, result)
-	if result.outcome != suitePassed || directives.ignoreUnhandledPromises {
+	result = loop.drain(ctx, result)
+	if loop.terminated || result.outcome != suitePassed || directives.ignoreUnhandledPromises {
 		return result, lastPrint
 	}
 	if err := host.TakeUnhandledRejection(&vm); err != nil {
@@ -580,6 +591,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 
 // v8Scripts tracks d8's selection across classic script execution boundaries.
 type v8Scripts struct {
+	host     *V8
 	current  *ekuma.Realm
 	next     *ekuma.Realm
 	checkout fs.FS
@@ -593,8 +605,9 @@ type v8ScriptContext struct {
 	syntaxErrorCtor ekuma.Value
 }
 
-func newV8Scripts(r *ekuma.Realm, checkout fs.FS, dir string) *v8Scripts {
+func newV8Scripts(host *V8, r *ekuma.Realm, checkout fs.FS, dir string) *v8Scripts {
 	return &v8Scripts{
+		host:     host,
 		current:  r,
 		next:     r,
 		checkout: checkout,
@@ -621,18 +634,16 @@ func (s *v8Scripts) contextFor(r *ekuma.Realm) *v8ScriptContext {
 	return c
 }
 
-func (s *v8Scripts) run(ctx context.Context, name, source string) (ekuma.Value, error) {
-	script, err := s.current.ParseScript(name, source)
-	if err != nil {
-		return ekuma.Undefined, err
-	}
-	return s.evaluate(ctx, script)
+func (s *v8Scripts) evaluate(ctx context.Context, script *ekuma.Script) (bool, error) {
+	completed, err := s.host.EvaluateScriptTask(ctx, script)
+	s.current = s.next
+	return completed, err
 }
 
-func (s *v8Scripts) evaluate(ctx context.Context, script *ekuma.Script) (ekuma.Value, error) {
-	v, err := script.Evaluate(ctx)
-	s.current = s.next
-	return v, err
+func (s *v8Scripts) call(script *ekuma.Script) {
+	// A nested load applies a pending realm switch even when the script throws.
+	defer func() { s.current = s.next }()
+	s.host.CallScript(script)
 }
 
 func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error {
@@ -674,12 +685,14 @@ func (s *v8Scripts) installLoader(ctx context.Context, realm *ekuma.Realm) error
 				return nil, throw(selected.errorCtor, "Error loading file: "+name)
 			}
 			// d8 executes a classic script even when its name ends in .mjs.
-			if _, err := s.run(ctx, filepath.FromSlash(name), string(src)); err != nil {
+			script, err := s.current.ParseScript(filepath.FromSlash(name), string(src))
+			if err != nil {
 				if se, ok := err.(*ekuma.SyntaxError); ok {
 					return nil, throw(selected.syntaxErrorCtor, se.Message)
 				}
 				return nil, err
 			}
+			s.call(script)
 		}
 		return ekuma.Undefined, nil
 	}
@@ -751,17 +764,20 @@ func v8FileExists(checkout fs.FS, name string) bool {
 	}
 }
 
-func (s *v8Scripts) runFile(ctx context.Context, timeouts *v8Timeouts, name, src string) suiteResult {
+func (s *v8Scripts) runFile(ctx context.Context, loop *v8EventLoop, name, src string) suiteResult {
 	file := filepath.FromSlash(name)
 	if path.Ext(name) == ".mjs" {
 		p, _, err := s.contextFor(s.current).modules.evaluate(ctx, file, src)
 		if err != nil {
-			return scriptErrorResult(err)
+			return loop.scriptError(ctx, err)
 		}
 		// d8 pumps tasks before checking the module's evaluation promise. A
 		// timer exception during this checkpoint does not fail the module.
-		if result := timeouts.drain(ctx, suiteResult{}); result.outcome == suiteBroken {
+		if result := loop.drain(ctx, suiteResult{}); result.outcome == suiteBroken {
 			return result
+		}
+		if loop.terminated {
+			return suiteResult{}
 		}
 		switch state, reason := p.PromiseState(); state {
 		case ekuma.PromisePending:
@@ -771,8 +787,17 @@ func (s *v8Scripts) runFile(ctx context.Context, timeouts *v8Timeouts, name, src
 				Value: reason,
 			})
 		}
-	} else if _, err := s.run(ctx, file, src); err != nil {
-		return scriptErrorResult(err)
+	} else {
+		script, err := s.current.ParseScript(file, src)
+		if err != nil {
+			return scriptErrorResult(err)
+		}
+		if completed, err := s.evaluate(ctx, script); err != nil {
+			if errors.Is(err, errV8Termination) {
+				return loop.terminationResult(ctx, completed)
+			}
+			return scriptErrorResult(err)
+		}
 	}
 	return suiteResult{}
 }

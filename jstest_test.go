@@ -20,10 +20,14 @@ var v8Runner = jstest.V8{
 	IsEnteredRealm:           ekuma.IsEnteredRealm,
 	ObjectCreationRealm:      ekuma.ObjectCreationRealm,
 	ParseScriptValue:         ekuma.ParseScriptValue,
+	CallScript:               ekuma.CallScript,
+	EvaluateScriptTask:       ekuma.EvaluateScriptTask,
 	InstallGlobalProxy:       ekuma.InstallGlobalProxy,
 	DetachGlobalProxy:        ekuma.DetachGlobalProxy,
 	CanAccessReceiver:        ekuma.CanAccessReceiver,
 	InvokeInRealm:            ekuma.InvokeInRealm,
+	SetExceptionReporter:     ekuma.SetExceptionReporter,
+	RequestInterrupt:         ekuma.RequestInterrupt,
 	DeferUnhandledRejections: ekuma.DeferUnhandledRejections,
 	TakeUnhandledRejection:   ekuma.TakeUnhandledRejection,
 }
@@ -61,7 +65,7 @@ func TestV8FilesOrder(t *testing.T) {
 }
 
 func TestV8ScriptLoader(t *testing.T) {
-	jstest.CheckV8ScriptLoader(t)
+	v8Runner.CheckScriptLoader(t)
 }
 
 func TestV8ShellOutput(t *testing.T) {
@@ -70,6 +74,10 @@ func TestV8ShellOutput(t *testing.T) {
 
 func TestV8Quit(t *testing.T) {
 	v8Runner.CheckQuit(t)
+}
+
+func TestV8Termination(t *testing.T) {
+	v8Runner.CheckTermination(t)
 }
 
 func TestV8Timeouts(t *testing.T) {

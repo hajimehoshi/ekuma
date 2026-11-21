@@ -54,9 +54,18 @@ func (vm *VM) BindScript(u *UnboundScript) *Script {
 // next loop iteration or call, and the error is the cause of ctx.
 // Internal operation failures return an [*InternalError].
 func (s *Script) Evaluate(ctx context.Context) (Value, error) {
+	v, _, err := s.evaluate(ctx)
+	return v, err
+}
+
+func (s *Script) evaluate(ctx context.Context) (Value, bool, error) {
 	vm := s.vm
 	vm.initIfNeeded()
-	return vm.run(ctx, func() (engine.Value, error) {
-		return vm.e.ScriptEvaluation(s.s)
+	var completed bool
+	v, err := vm.run(ctx, func() (engine.Value, error) {
+		value, done, err := vm.e.ScriptEvaluation(s.s)
+		completed = done
+		return value, err
 	})
+	return v, completed, err
 }

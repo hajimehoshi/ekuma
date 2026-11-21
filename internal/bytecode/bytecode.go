@@ -630,13 +630,22 @@ type EvalVar struct {
 // Position returns the 1-based source line and column of the instruction at pc,
 // or zeros when it has none.
 func (f *Func) Position(pc int) (line, column int) {
+	offset := f.SourceOffset(pc)
+	if offset < 0 {
+		return 0, 0
+	}
+	return f.Lines.Position(offset)
+}
+
+// SourceOffset returns the byte offset in the source for the instruction at pc, or -1 if unknown.
+func (f *Func) SourceOffset(pc int) int32 {
 	i := sort.Search(len(f.Positions), func(i int) bool {
 		return int(f.Positions[i].PC) > pc
 	}) - 1
 	if i < 0 {
-		return 0, 0
+		return -1
 	}
-	return f.Lines.Position(f.Positions[i].Offset)
+	return f.Positions[i].Offset
 }
 
 // Module describes what a module imports and exports, and the bindings of its top level.

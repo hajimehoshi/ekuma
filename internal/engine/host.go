@@ -20,6 +20,98 @@ func (vm *VM) GlobalObject() Value {
 	return Value{o: vm.global}
 }
 
+// ExceptionLocation identifies the throw site. Line and Column are 1-based,
+// Column counts UTF-16 code units, and zero indicates an unknown position.
+type ExceptionLocation struct {
+	File       string
+	Line       int
+	Column     int
+	SourceLine wtf8.String
+}
+
+// SetExceptionReporter sets the current realm's handler for exceptions escaping
+// an outermost host call. The handler receives the thrown value and its source
+// location before the microtask checkpoint.
+func (vm *VM) SetExceptionReporter(report func(Value, ExceptionLocation)) {
+	vm.exceptionReporter = report
+}
+
+// ExceptionDescription describes a thrown Error or proxy without invoking JavaScript.
+// It returns undefined when the host should convert the thrown value to a string.
+// objectToString and errorToString are the reporting realm's original built-in methods.
+func (vm *VM) ExceptionDescription(v, objectToString, errorToString Value) Value {
+	if !v.IsObject() {
+		return Undefined
+	}
+	o := v.o
+	for o.class == classProxy {
+		st := o.extState().(*proxyState)
+		if st.isGlobal() {
+			// Shell globals are ordinary receivers for exception reporting.
+			if o == v.o {
+				return Undefined
+			}
+			break
+		}
+		o = st.target
+		if o == nil {
+			return vm.NewString("null")
+		}
+	}
+	if o == v.o && o.class != classError {
+		return Undefined
+	}
+	if o.fn != nil {
+		src := vm.NewString(o.SourceText())
+		if n := src.StringLength(); n > 128 {
+			return vm.NewString(src.Substring(0, 111) + "...<omitted>..." + src.Substring(n-2, n))
+		}
+		return src
+	}
+	method, _ := vm.lookupData(o, vm.Key(KeyToString))
+	if o.class == classError || IsStrictlyEqual(method, errorToString) {
+		name, _ := vm.lookupData(o, vm.Key(KeyName))
+		message, _ := vm.lookupData(o, vm.Key(KeyMessage))
+		if !message.IsString() {
+			message = vm.emptyString
+		}
+		if !name.IsString() || name.StringLength() == 0 {
+			return message
+		}
+		if message.StringLength() == 0 {
+			return name
+		}
+		return vm.ConcatStrings([]Value{name, vm.NewString(": "), message})
+	}
+	if IsStrictlyEqual(method, objectToString) {
+		ctor, _ := vm.lookupData(o, vm.Key(KeyConstructor))
+		if ctor.IsCallable() && ctor.o.class != classProxy {
+			if name := diagnosticFunctionName(ctor.o.fn); name != "" {
+				return vm.NewString("#<" + name + ">")
+			}
+		}
+	}
+	return vm.NewString("[object Object]")
+}
+
+func diagnosticFunctionName(fn *function) wtf8.String {
+	const limit = 1000
+	var prefix wtf8.Buffer
+	for fn.bound != nil {
+		prefix.WriteString("bound ")
+		if prefix.Len() >= limit {
+			return prefix.String()[:limit]
+		}
+		fn = fn.bound.target.fn
+	}
+	name := fn.nativeName()
+	if fn.code != nil {
+		name = fn.code.name
+	}
+	end := wtf8.Seek(name, wtf8.Pos{}, limit-prefix.Len())
+	return prefix.String() + wtf8.Slice(name, wtf8.Pos{}, end)
+}
+
 // NewFunction returns a function implemented by f. name is UTF-8.
 func (vm *VM) NewFunction(name string, f NativeFunc) Value {
 	return Value{o: vm.NewNative(wtf8.FromValidUTF8(name), 0, f)}

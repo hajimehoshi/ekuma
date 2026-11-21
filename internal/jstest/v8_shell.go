@@ -33,6 +33,8 @@ var v8ShellScript = sync.OnceValues(func() (*ekuma.UnboundScript, error) {
 // A host panic carries the exit code past JavaScript catch and finally blocks.
 type v8ExitCode int32
 
+var errV8Termination = errors.New("d8 execution terminated")
+
 type v8Shell struct {
 	stdout   io.Writer
 	stderr   io.Writer
@@ -40,6 +42,8 @@ type v8Shell struct {
 	timers   map[string]time.Time
 	marks    map[string]float64
 	domNodes ekuma.Value
+
+	withdrawInterrupt func()
 }
 
 func newV8Shell(stdout, stderr io.Writer) v8Shell {
@@ -52,7 +56,14 @@ func newV8Shell(stdout, stderr io.Writer) v8Shell {
 	}
 }
 
-func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, scripts *v8Scripts, canAccessReceiver func(*ekuma.Realm, ekuma.Value) bool) error {
+func (s *v8Shell) close() {
+	if s.withdrawInterrupt != nil {
+		s.withdrawInterrupt()
+		s.withdrawInterrupt = nil
+	}
+}
+
+func (s *v8Shell) install(ctx context.Context, host *V8, r *ekuma.Realm, scripts *v8Scripts) error {
 	if err := scripts.installLoader(ctx, r); err != nil {
 		return err
 	}
@@ -91,18 +102,25 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, scripts *v8Script
 	exit := r.FuncOf("exit", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		panic(v8ExitCode(args[0].Int()))
 	})
+	terminate := r.FuncOf("terminate", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		if s.withdrawInterrupt == nil {
+			s.withdrawInterrupt = host.RequestInterrupt(r, errV8Termination)
+		}
+		return ekuma.Undefined, nil
+	})
 	checkReceiver := r.FuncOf("canAccessReceiver", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		return canAccessReceiver(r, args[0]), nil
+		return host.CanAccessReceiver(r, args[0]), nil
 	})
 	now := r.FuncOf("now", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		return s.timestamp(), nil
 	})
-	nodes, err := init.Invoke(ctx, map[string]any{
+	installed, err := init.Invoke(ctx, map[string]any{
 		"readFile":          r.FuncOf("readFile", readFile),
 		"stdout":            r.FuncOf("stdout", write(s.stdout)),
 		"stderr":            r.FuncOf("stderr", write(s.stderr)),
 		"timer":             r.FuncOf("timer", s.timer),
 		"exit":              exit,
+		"terminate":         terminate,
 		"canAccessReceiver": checkReceiver,
 		"now":               now,
 		"recordMark":        r.FuncOf("recordMark", s.mark),
@@ -114,7 +132,16 @@ func (s *v8Shell) install(ctx context.Context, r *ekuma.Realm, scripts *v8Script
 	if err != nil {
 		return err
 	}
+	nodes, err := installed.Get("domNodes")
+	if err != nil {
+		return err
+	}
+	report, err := installed.Get("reportException")
+	if err != nil {
+		return err
+	}
 	s.domNodes = nodes
+	host.SetExceptionReporter(r, report)
 	return nil
 }
 
@@ -187,8 +214,9 @@ func (host *V8) CheckShellOutput(t *testing.T) {
 	var vm ekuma.VM
 	var stdout, stderr strings.Builder
 	shell := newV8Shell(&stdout, &stderr)
-	scripts := newV8Scripts(vm.InitialRealm(), nil, ".")
-	if err := shell.install(t.Context(), scripts.current, scripts, host.CanAccessReceiver); err != nil {
+	defer shell.close()
+	scripts := newV8Scripts(host, vm.InitialRealm(), nil, ".")
+	if err := shell.install(t.Context(), host, scripts.current, scripts); err != nil {
 		t.Fatal(err)
 	}
 	const source = `
@@ -260,6 +288,87 @@ func (host *V8) CheckQuit(t *testing.T) {
 			}
 			if lastPrint != "" {
 				t.Errorf("execution continued after quit: %s", lastPrint)
+			}
+		})
+	}
+}
+
+// CheckTermination checks how an interrupt ends execution of one mjsunit case.
+func (host *V8) CheckTermination(t *testing.T) {
+	test := v8Test{
+		file: "test/mjsunit/terminate.js",
+	}
+	t.Run("deadline during termination", func(t *testing.T) {
+		ctx, cancel := context.WithCancelCause(t.Context())
+		defer cancel(nil)
+		h := *host
+		h.RequestInterrupt = func(r *ekuma.Realm, cause error) func() {
+			withdraw := host.RequestInterrupt(r, cause)
+			cancel(context.DeadlineExceeded)
+			return withdraw
+		}
+		checkout := fstest.MapFS{
+			test.file: {
+				Data: []byte("d8.terminate(); for (let i = 0; i < 100; ++i) {}"),
+			},
+		}
+		result, _ := test.execute(ctx, &h, checkout, testTimeout)
+		if result.outcome != suiteBroken || !result.retry {
+			t.Errorf("result = %+v, want a retryable timeout", result)
+		}
+	})
+	for _, tc := range []struct {
+		name   string
+		script string
+		want   suiteOutcome
+	}{
+		{
+			name: "exception reporting before jobs",
+			script: `
+				Promise.resolve().then(() => print("ran a job"));
+				onerror = () => {
+					try {
+						d8.terminate(7);
+						for (let i = 0; i < 100000; ++i) {}
+					} finally { print("ran finally"); }
+				};
+				throw 1;`,
+			want: suitePassed,
+		},
+		{
+			name: "interrupt observed after script completion",
+			script: `
+				Promise.resolve().then(() => print("ran a job"));
+				d8.terminate();`,
+			want: suiteFailed,
+		},
+		{
+			name: "timer preserves earlier failure",
+			script: `
+				setTimeout(() => { throw 1; });
+				setTimeout(() => {
+					d8.terminate();
+					for (let i = 0; i < 100000; ++i) {}
+				});
+				setTimeout(() => print("ran a timer"));`,
+			want: suiteFailed,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checkout := fstest.MapFS{
+				"helper.js": {
+					Data: []byte(tc.script),
+				},
+				test.file: {
+					Data: []byte("// Files: helper.js\nsetTimeout(() => print('ran the test timer'));"),
+				},
+			}
+			result, printed := test.execute(t.Context(), host, checkout, testTimeout)
+			if result.outcome != tc.want {
+				t.Errorf("outcome = %v, want %v (%s)", result.outcome, tc.want, result.reason)
+			}
+			if printed != "" {
+				t.Errorf("unexpected print: %q", printed)
 			}
 		})
 	}

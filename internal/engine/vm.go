@@ -412,7 +412,11 @@ type VM struct {
 	// newTarget is the constructor a native function is being constructed for, and nil in a plain call.
 	newTarget *Object
 
-	thrown Value
+	thrown   Value
+	thrownAt throwSite
+
+	// captureThrowSites follows the reporter of the outermost host call across realms.
+	captureThrowSites bool
 
 	keys keys
 
@@ -505,6 +509,8 @@ type VM struct {
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.
 type realm struct {
 	intrinsics [intrinsicCount]*Object
+
+	exceptionReporter func(Value, ExceptionLocation)
 
 	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
 	asyncFromSyncProto *Object
@@ -704,8 +710,68 @@ func (e *Error) Error() string {
 
 // Throw throws v as a JavaScript exception. It does not return.
 func (vm *VM) Throw(v Value) {
+	if vm.captureThrowSites {
+		vm.thrownAt = throwSite{}
+		if n := len(vm.frames); n > 0 {
+			fr := &vm.frames[n-1]
+			vm.thrownAt = throwSite{
+				code: fr.fp.Func,
+				pc:   fr.pc - 1,
+			}
+		}
+	}
 	vm.thrown = v
 	panic(errThrow)
+}
+
+type throwSite struct {
+	code *bytecode.Func
+	pc   int
+}
+
+func (s throwSite) location() ExceptionLocation {
+	var loc ExceptionLocation
+	if s.code != nil {
+		loc.File = s.code.File
+		if offset := s.code.SourceOffset(s.pc); offset >= 0 {
+			loc.SourceLine, loc.Line, loc.Column = s.code.Lines.SourceLine(offset)
+		}
+	}
+	return loc
+}
+
+// A finally handler keeps its pending exception in a private bytecode register.
+// Its source location must survive any further exceptions handled by the finalizer.
+type savedException struct {
+	value Value
+	at    throwSite
+}
+
+func (vm *VM) saveException() Value {
+	return Value{o: &Object{
+		kind: kindHole,
+		ext: &savedException{
+			value: vm.thrown,
+			at:    vm.thrownAt,
+		},
+	}}
+}
+
+func unpackException(v Value) (Value, *throwSite) {
+	if v.o != nil && v.o.kind == kindHole {
+		if saved, ok := v.o.ext.(*savedException); ok {
+			return saved.value, &saved.at
+		}
+	}
+	return v, nil
+}
+
+func (vm *VM) restoreException(v Value) {
+	value, site := unpackException(v)
+	vm.thrown = value
+	if site != nil {
+		vm.thrownAt = *site
+	}
 }
 
 // newError returns a new error object of the given type.
