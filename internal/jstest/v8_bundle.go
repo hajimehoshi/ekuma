@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"iter"
-	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -63,21 +62,6 @@ func splitV8Bundle(src string) iter.Seq2[string, string] {
 	}
 }
 
-func v8BundleURL(name string) bool {
-	return strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") || strings.HasPrefix(name, "data:text/javascript,")
-}
-
-func v8BundleName(dir, name string) string {
-	if v8BundleURL(name) {
-		return name
-	}
-	if filepath.IsAbs(name) {
-		dir = ""
-	}
-	// d8 determines whether a path is absolute before replacing backslashes.
-	return filepath.Join(dir, strings.ReplaceAll(name, `\`, "/"))
-}
-
 type v8BundleEntry struct {
 	script string
 	module string
@@ -108,7 +92,7 @@ func (b *v8Bundle) register(parts iter.Seq2[string, string]) ([]v8BundleEntry, e
 		default:
 			continue
 		}
-		name = v8BundleName(".", name)
+		name = v8ModuleName(".", name)
 		if _, exists := b.modules[name]; exists {
 			return nil, fmt.Errorf("duplicate bundle module: %s", name)
 		}
@@ -173,6 +157,8 @@ order += 'A';
 // JS_BUNDLE_MODULE:test/mjsunit/sub/dep.mjs
 export { value } from 'https://bundle.test/dep';
 // JS_BUNDLE_MODULE:https://bundle.test/dep
+export { value } from 'data:text/javascript,export const value = 0';
+// JS_BUNDLE_MODULE:data:text/javascript,export const value = 0
 export const value = 42;`),
 		},
 		"plain.mjs": {

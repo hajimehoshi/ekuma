@@ -265,18 +265,6 @@ test/mjsunit/regress/regress-crbug-1235182.js
 test/mjsunit/regress/regress-crbug-357137.js
 test/mjsunit/regress/regress-crbug-869313.js
 
-# SKIP: requires d8 data URL module loading
-test/mjsunit/d8/modules-data-url.mjs
-test/mjsunit/harmony/modules-import-defer-terminate.mjs
-test/mjsunit/regress-367066330.js
-test/mjsunit/regress/modules-import-defer-cross-realm-synthetic.mjs
-test/mjsunit/regress/regress-438732677.js
-test/mjsunit/regress/regress-493591676.mjs
-test/mjsunit/regress/regress-495503057.mjs
-test/mjsunit/regress/regress-515494863.js
-test/mjsunit/regress/regress-572815316.js
-test/mjsunit/regress/regress-crbug-442161248.js
-
 # SKIP: --ignore-unhandled-promises suppresses the async assertion failure
 test/mjsunit/es8/async-await-interleaved.js
 
@@ -689,6 +677,9 @@ test/mjsunit/d8/d8-test-interceptor.js
 
 # This test requires d8.test.verifySourcePositions on a wrapped function.
 test/mjsunit/regress/regress-500174491.js
+
+# The dynamically imported module calls d8.terminateNow() for immediate termination.
+test/mjsunit/regress/regress-495503057.mjs
 
 # d8.profiler.setOnProfileEndListener registers a callback for the CPU profile
 # produced by console.profileEnd.

@@ -320,7 +320,7 @@ func (suite *Test262) setModuleLoader(vm *ekuma.VM, l *moduleLoader) {
 	var source *ekuma.Module
 	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		if req.Specifier != moduleSourceSpecifier {
-			return l.load(req)
+			return l.loadFile(l.resolveFile(req), req.Attributes["type"])
 		}
 		if source == nil {
 			source = suite.NewSourceModule(vm, req.Specifier, "Test262ModuleSource")
@@ -329,13 +329,12 @@ func (suite *Test262) setModuleLoader(vm *ekuma.VM, l *moduleLoader) {
 	})
 }
 
-func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+func (l *moduleLoader) resolveFile(req ekuma.ModuleRequest) string {
 	dir := l.dir
 	if req.Referrer != nil || filepath.Dir(req.ReferrerName) != "." {
 		dir = filepath.Dir(req.ReferrerName)
 	}
-	path := filepath.Join(dir, filepath.FromSlash(req.Specifier))
-	return l.loadFile(path, req.Attributes["type"])
+	return filepath.Join(dir, filepath.FromSlash(req.Specifier))
 }
 
 func (l *moduleLoader) loadFile(path, typ string) (*ekuma.Module, error) {

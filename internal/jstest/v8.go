@@ -304,6 +304,32 @@ func (host *V8) CheckScriptLoader(t *testing.T) {
 	}
 }
 
+// CheckDataURL checks module identity and relative imports from a data URL.
+func (host *V8) CheckDataURL(t *testing.T) {
+	const src = `
+		const payload = "export { token } from './dep.mjs'; // %20+#";
+		const url = "data:text/javascript," + payload;
+		const ns = await import(url);
+		if (ns !== await import(url + "\0suffix")) throw Error("module identity");
+		const text = await import(url, {with: {type: "text"}});
+		if (text.default !== payload) throw Error("text payload");
+		const file = await import("../../data:text/javascript,0", {with: {type: "text"}});
+		if (file.default !== "from file") throw Error("expected a filesystem import");
+		Realm.shared = url;
+		const child = Realm.createAllowCrossRealmAccess();
+		const other = await Realm.eval(child, "import(Realm.shared)");
+		if (ns.token === other.token) throw Error("shared module across realms");
+	`
+	host.checkRealmScript(t, "test/mjsunit/data-url.mjs", src, fstest.MapFS{
+		"dep.mjs": {
+			Data: []byte("export const token = {};"),
+		},
+		"data:text/javascript,0": {
+			Data: []byte("from file"),
+		},
+	})
+}
+
 func readV8Environments(t *testing.T) map[string]v8TestEnvironment {
 	t.Helper()
 	data, err := os.ReadFile(v8EnvironmentFile)
@@ -658,25 +684,67 @@ func (s *v8Scripts) contextFor(r *ekuma.Realm) *v8ScriptContext {
 	return c
 }
 
+const v8DataURLPrefix = "data:text/javascript,"
+
+func v8ModuleURL(name string) bool {
+	return strings.HasPrefix(name, v8DataURLPrefix) || strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://")
+}
+
+func v8ModuleName(dir, name string) string {
+	if v8ModuleURL(name) {
+		return name
+	}
+	if filepath.IsAbs(name) {
+		dir = ""
+	}
+	// d8 determines whether a path is absolute before replacing backslashes.
+	return v8FileModuleName(filepath.Join(dir, strings.ReplaceAll(name, `\`, "/")))
+}
+
+func v8FileModuleName(path string) string {
+	// d8 has absolute filenames. Keep a checkout-relative filename distinct
+	// from a data URL with the same spelling in the module map.
+	if strings.HasPrefix(path, v8DataURLPrefix) {
+		return "./" + path
+	}
+	return path
+}
+
 func (s *v8Scripts) readModuleFile(name string) ([]byte, error) {
 	if s.bundle != nil {
 		if src, ok := s.bundle.modules[name]; ok {
 			return []byte(src), nil
 		}
 	}
-	return fs.ReadFile(s.checkout, filepath.ToSlash(name))
+	if src, ok := strings.CutPrefix(name, v8DataURLPrefix); ok {
+		return []byte(src), nil
+	}
+	return fs.ReadFile(s.checkout, strings.TrimPrefix(filepath.ToSlash(name), "./"))
 }
 
 func (s *v8Scripts) loadModule(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 	loader := &s.contextFor(req.Realm).modules
-	if s.bundle == nil {
-		return loader.load(req)
+	typ, typed := req.Attributes["type"]
+	if strings.HasPrefix(req.Specifier, v8DataURLPrefix) {
+		// d8 converts the specifier to a NUL-terminated UTF-8 string.
+		name, _, _ := strings.Cut(req.Specifier, "\x00")
+		if !typed && strings.HasSuffix(name, ".wasm") {
+			return nil, errors.New("d8: WebAssembly modules are only supported in source phase imports")
+		}
+		// d8 reads byte modules from files. A data URL supplies source text.
+		if typed && typ != "text" && typ != "json" {
+			return nil, fmt.Errorf("d8: unsupported data URL module type %q", typ)
+		}
+		return loader.loadFile(name, typ)
 	}
-	dir := filepath.Dir(req.ReferrerName)
-	if v8BundleURL(req.ReferrerName) {
-		dir = "."
+	if v8ModuleURL(req.ReferrerName) {
+		// d8 resolves relative imports from URL modules in its working directory.
+		return loader.loadFile(v8ModuleName(".", req.Specifier), typ)
 	}
-	return loader.loadFile(v8BundleName(dir, req.Specifier), req.Attributes["type"])
+	if s.bundle != nil {
+		return loader.loadFile(v8ModuleName(filepath.Dir(req.ReferrerName), req.Specifier), typ)
+	}
+	return loader.loadFile(v8FileModuleName(loader.resolveFile(req)), typ)
 }
 
 func (s *v8Scripts) evaluate(ctx context.Context, script *ekuma.Script) (bool, error) {
@@ -811,7 +879,7 @@ func v8FileExists(checkout fs.FS, name string) bool {
 
 func (s *v8Scripts) runFile(ctx context.Context, loop *v8EventLoop, name string, src []byte) suiteResult {
 	if path.Ext(name) == ".mjs" {
-		return s.runModule(ctx, loop, v8BundleName(".", name))
+		return s.runModule(ctx, loop, v8ModuleName(".", name))
 	}
 	file := filepath.FromSlash(name)
 	if src == nil {

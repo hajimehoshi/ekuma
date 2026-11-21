@@ -77,6 +77,10 @@ func TestV8ScriptLoader(t *testing.T) {
 	v8Runner.CheckScriptLoader(t)
 }
 
+func TestV8DataURL(t *testing.T) {
+	v8Runner.CheckDataURL(t)
+}
+
 func TestV8ShellOutput(t *testing.T) {
 	v8Runner.CheckShellOutput(t)
 }
