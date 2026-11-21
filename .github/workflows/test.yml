@@ -33,7 +33,7 @@ jobs:
         id: suites
         run: |
           for suite in test262 v8; do
-            file="testdata/$suite-revision.txt"
+            file="internal/jstest/testdata/$suite-revision.txt"
             revision=$(cat "$file")
             if [[ ! $revision =~ ^[0-9a-f]{40}$ ]]; then
               echo "Expected a commit SHA in $file"
@@ -82,7 +82,7 @@ jobs:
 
       - name: go test
         run: |
-          # The suite flags are defined in the root package.
+          # Only the root package's tests use the suite flags.
           go test -v -shuffle=on -timeout 30m . -test262.shuffle=on -v8.shuffle=on
           go test -v -shuffle=on -timeout 30m $(go list ./... | grep -vx github.com/hajimehoshi/ekuma)
 

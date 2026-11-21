@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package ekuma_test
+package jstest
 
 import (
 	"io/fs"
@@ -10,17 +10,18 @@ import (
 	"testing"
 )
 
-func TestScripts(t *testing.T) {
-	h := newHarness(os.DirFS("testdata/harness"))
+// RunScripts runs the JavaScript files under the repository-relative scriptsDir using harnessFS.
+func (suite *Test262) RunScripts(t *testing.T, scriptsDir string, harnessFS fs.FS) {
+	h := suite.newHarness(harnessFS)
 	scriptFS := os.DirFS(".")
-	err := fs.WalkDir(scriptFS, "testdata/scripts", func(path string, entry fs.DirEntry, err error) error {
+	err := fs.WalkDir(scriptFS, scriptsDir, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() || !strings.HasSuffix(path, ".js") || strings.HasSuffix(path, "_FIXTURE.js") {
 			return nil
 		}
-		t.Run(strings.TrimPrefix(path, "testdata/scripts/"), func(t *testing.T) {
+		t.Run(strings.TrimPrefix(path, scriptsDir+"/"), func(t *testing.T) {
 			data, err := fs.ReadFile(scriptFS, path)
 			if err != nil {
 				t.Fatal(err)
@@ -46,8 +47,9 @@ func TestScripts(t *testing.T) {
 	}
 }
 
-func TestLocalScriptHarness(t *testing.T) {
-	h := newHarness(os.DirFS("testdata/harness"))
+// CheckLocalScriptHarness checks the local harness's assertions and asynchronous completion.
+func (suite *Test262) CheckLocalScriptHarness(t *testing.T, harnessFS fs.FS) {
+	h := suite.newHarness(harnessFS)
 	for _, tt := range []struct {
 		name         string
 		src          string

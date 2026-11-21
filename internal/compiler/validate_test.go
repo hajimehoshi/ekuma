@@ -148,9 +148,10 @@ func countFuncs(f *bytecode.Func) int {
 	return n
 }
 
-// TestValidateScripts tests that the compiled code of the local scripts and their harness is valid.
+// TestValidateScripts tests that the compiled code of the local scripts and JavaScript harness files is valid.
 func TestValidateScripts(t *testing.T) {
-	validateTree(t, filepath.Join("..", "..", "testdata", "scripts"), filepath.Join("..", "..", "testdata", "harness"))
+	dir := filepath.Join("..", "..", "testdata")
+	validateTree(t, filepath.Join(dir, "scripts"), filepath.Join(dir, "harness"), filepath.Join("..", "jstest", "testdata", "harness"))
 }
 
 // TestValidateTest262 tests that the compiled code of the Test262 suite and its harness is valid.

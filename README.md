@@ -239,7 +239,7 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 ## Status
 
 53,791 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
-4 fail for known reasons, which [`testdata/test262-skips.txt`](testdata/test262-skips.txt) lists.
+4 fail for known reasons, which [`test262-skips.txt`](internal/jstest/testdata/test262-skips.txt) lists.
 
 ### Implemented
 
@@ -308,14 +308,13 @@ go test ./...
 Run `go test -tags=ekumavalidate ./...` to check the bytecode the compiler emits and verify
 that the interpreter's register writes and control flow agree with the opcode definitions.
 
-Local JavaScript regression tests in [`testdata/scripts`](testdata/scripts) use the
-same runner as Test262 with an original 0BSD harness. The scripts and harness are read
-from `testdata` and run without a Test262 checkout, including with
-`go test -short ./...`.
+The [local JavaScript regression tests](testdata/scripts) use the
+Test262 runner with an original 0BSD harness. They run with `go test -short ./...`
+without a Test262 checkout.
 
 ### Conformance tests
 
-The root package runs Test262 and V8 when their checkouts are available. Set the
+`go test .` runs Test262 and V8 when their checkouts are available. Set the
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
 sparse checkout needs `test/intl`, `test/mjsunit`, and the printing helper
@@ -324,8 +323,8 @@ Short mode skips both suites.
 
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
-| [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](testdata/test262-revision.txt) | [Skip list](testdata/test262-skips.txt) |
-| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl) and [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit) | `EKUMA_V8` | `ekuma/v8` | [Revision](testdata/v8-revision.txt) | [Skip list](testdata/v8-skips.txt) |
+| [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
+| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl) and [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
 
 Both suites use the same flags, prefixed with `-test262.` or `-v8.`. Use `dir` to
 select a checkout-relative directory and `filter` to match a substring of a test
@@ -340,7 +339,8 @@ go test -count=1 -v -run '^TestV8$' . -v8.dir test/mjsunit/es6
 Use `shuffle` with `off`, `on`, or an integer seed. To replay a file order,
 set `GOMAXPROCS=1` and reuse the seed. `report FILE` writes tab-separated test
 paths and failure reasons. Both suites flag skip-list errors in the console.
-V8 also includes them in the report file.
+V8 also includes them in the report file. Relative checkout and report paths are
+resolved from the repository root.
 
 Plain paths in each skip list are expected failures. The tests still run, and
 an unexpected pass or a stale path fails the suite. A runner error, engine

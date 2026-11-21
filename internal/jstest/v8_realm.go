@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package ekuma_test
+package jstest
 
 import (
 	"context"
@@ -23,6 +23,7 @@ var v8RealmScript = sync.OnceValues(func() (*ekuma.UnboundScript, error) {
 })
 
 type v8Realms struct {
+	host     *V8
 	vm       *ekuma.VM
 	ctx      context.Context
 	checkout fs.FS
@@ -60,7 +61,7 @@ func (h *v8Realms) add(r *ekuma.Realm) (int, error) {
 		return 0, err
 	}
 	evaluate := r.FuncOf("evaluate", func(this ekuma.Value, args []ekuma.Value) (any, error) {
-		s, err := ekuma.ParseScriptValue(r, "(d8)", args[0])
+		s, err := h.host.ParseScriptValue(r, "(d8)", args[0])
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			// d8 compiles the script before entering the selected realm.
 			e, err := args[1].New(h.ctx, se.Message)
@@ -78,13 +79,14 @@ func (h *v8Realms) add(r *ekuma.Realm) (int, error) {
 	})
 	index := len(h.entries)
 	h.entries = append(h.entries, r.ValueOf(map[string]any{
-		"global":   ekuma.InstallGlobalProxy(r, view),
+		"global":   h.host.InstallGlobalProxy(r, view),
 		"evaluate": evaluate,
 	}))
 	return index, nil
 }
 
-func TestV8Realm(t *testing.T) {
+// CheckRealm checks script evaluation and global object access across V8 realms.
+func (host *V8) CheckRealm(t *testing.T) {
 	const source = `
 		const r = Realm.create();
 		if (Realm.eval(r, 'd8.file.execute("helper.js"); loadedIn') !== Realm.global(r)) {
@@ -115,7 +117,7 @@ func TestV8Realm(t *testing.T) {
 			Data: []byte(source),
 		},
 	}
-	if result := test.run(t.Context(), checkout, testTimeout); result.outcome != suitePassed {
+	if result := test.run(t.Context(), host, checkout, testTimeout); result.outcome != suitePassed {
 		t.Error(result.reason)
 	}
 }

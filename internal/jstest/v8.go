@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package ekuma_test
+package jstest
 
 import (
 	"cmp"
@@ -24,8 +24,14 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
-const v8SkipsFile = "testdata/v8-skips.txt"
-const v8EnvironmentFile = "testdata/v8-environment.json"
+// V8 runs the V8 conformance suites with the supplied realm operations.
+type V8 struct {
+	ParseScriptValue   func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
+	InstallGlobalProxy func(*ekuma.Realm, ekuma.Value) ekuma.Value
+}
+
+const v8SkipsFile = testdataDir + "/v8-skips.txt"
+const v8EnvironmentFile = testdataDir + "/v8-environment.json"
 
 var v8Flags = registerSuiteFlags("v8")
 
@@ -51,7 +57,8 @@ var v8Suites = []v8Suite{
 	},
 }
 
-func TestV8(t *testing.T) {
+// Run runs the selected V8 tests and checks their results against the skip list.
+func (host *V8) Run(t *testing.T) {
 	dir := v8Flags.checkoutDir(t)
 	unseenSkips := readV8Skips(t)
 	unseenEnvironments := readV8Environments(t)
@@ -78,7 +85,7 @@ func TestV8(t *testing.T) {
 	results := make([]suiteResult, len(tests))
 	ctx := t.Context()
 	run := func(i int, timeout time.Duration) suiteResult {
-		return tests[i].run(ctx, checkout, timeout)
+		return tests[i].run(ctx, host, checkout, timeout)
 	}
 	v8Flags.run(t, len(tests), func(i int) {
 		results[i] = run(i, testTimeout)
@@ -119,7 +126,8 @@ func TestV8(t *testing.T) {
 	v8Flags.reportFailures(t, failures)
 }
 
-func TestV8FixedTime(t *testing.T) {
+// CheckFixedTime checks that helpers and test code observe the same configured time.
+func (host *V8) CheckFixedTime(t *testing.T) {
 	const file = "test/clock.js"
 	checkout := fstest.MapFS{
 		"test/helper.js": {
@@ -140,7 +148,7 @@ func TestV8FixedTime(t *testing.T) {
 		},
 	}
 	for _, test := range suite.collect(t, checkout, suite.dir, "", nil, environments) {
-		result := test.run(t.Context(), checkout, testTimeout)
+		result := test.run(t.Context(), host, checkout, testTimeout)
 		if result.outcome != suitePassed {
 			t.Errorf("%s: %s", test.file, result.reason)
 		}
@@ -152,7 +160,8 @@ type v8TestEnvironment struct {
 	FixedTime *time.Time `json:"fixedTime"`
 }
 
-func TestV8FilesOrder(t *testing.T) {
+// CheckFilesOrder checks the execution order of helpers named by V8 Files directives.
+func (host *V8) CheckFilesOrder(t *testing.T) {
 	const file = "test/order.js"
 	checkout := fstest.MapFS{
 		"test/harness.js": {
@@ -175,13 +184,14 @@ if (order !== 'HABA') throw new Error(order);`),
 		helpers: []string{"harness.js"},
 	}
 	for _, test := range suite.collect(t, checkout, file, "", nil, nil) {
-		if result := test.run(t.Context(), checkout, testTimeout); result.outcome != suitePassed {
+		if result := test.run(t.Context(), host, checkout, testTimeout); result.outcome != suitePassed {
 			t.Error(result.reason)
 		}
 	}
 }
 
-func TestV8ScriptLoader(t *testing.T) {
+// CheckV8ScriptLoader checks nested script loads and error propagation through d8.file.execute.
+func CheckV8ScriptLoader(t *testing.T) {
 	checkout := fstest.MapFS{
 		"helpers/append.mjs": {
 			Data: []byte("var appended = true; order += 'A';"),
@@ -339,13 +349,13 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, uns
 	return tests
 }
 
-func (v *v8Test) run(ctx context.Context, checkout fs.FS, timeout time.Duration) (result suiteResult) {
+func (v *v8Test) run(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (result suiteResult) {
 	defer func() {
 		if r := recover(); r != nil {
 			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
 		}
 	}()
-	result, lastPrint := v.execute(ctx, checkout, timeout)
+	result, lastPrint := v.execute(ctx, host, checkout, timeout)
 	if v.wantFailure {
 		result = result.expectFailure(v.file, v8SkipsFile)
 	}
@@ -406,7 +416,7 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 	return directives, ""
 }
 
-func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Duration) (suiteResult, string) {
+func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (suiteResult, string) {
 	if v.skipReason != "" {
 		return suiteSkipped.result(v.skipReason), ""
 	}
@@ -441,6 +451,7 @@ func (v *v8Test) execute(ctx context.Context, checkout fs.FS, timeout time.Durat
 	}
 	if inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
+			host:     host,
 			vm:       &vm,
 			ctx:      ctx,
 			checkout: checkout,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-package ekuma_test
+package jstest
 
 import (
 	"bufio"
@@ -26,11 +26,18 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
+// Test262 runs Test262 and local regression scripts with the supplied host operations.
+type Test262 struct {
+	NewHTMLDDA           func(*ekuma.Realm) ekuma.Value
+	AbstractModuleSource func(*ekuma.Realm) ekuma.Value
+	NewSourceModule      func(*ekuma.VM, string, string) *ekuma.Module
+}
+
 var test262Flags = registerSuiteFlags("test262")
 
 // skippedTestsFile lists the test262 tests that are expected to fail, one path per line, each
 // with a comment that says why. A line that starts with "#" is a comment.
-const skippedTestsFile = "testdata/test262-skips.txt"
+const skippedTestsFile = testdataDir + "/test262-skips.txt"
 
 func readTest262Skips(name string) (map[string]bool, error) {
 	f, err := os.Open(name)
@@ -119,8 +126,9 @@ func parseMetadata(src string) metadata {
 	return m
 }
 
-// harness caches the files of the harness directory of the suite.
+// A harness pairs the Test262 host operations with the files and scripts shared by a run.
 type harness struct {
+	suite *Test262
 	fs    fs.FS
 	mu    sync.Mutex
 	files map[string]string
@@ -130,8 +138,9 @@ type harness struct {
 	scripts map[string]*ekuma.UnboundScript
 }
 
-func newHarness(files fs.FS) *harness {
+func (suite *Test262) newHarness(files fs.FS) *harness {
 	return &harness{
+		suite:   suite,
 		fs:      files,
 		files:   map[string]string{},
 		scripts: map[string]*ekuma.UnboundScript{},
@@ -234,7 +243,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		readFile: os.ReadFile,
 		modules:  map[string]*ekuma.Module{},
 	}
-	vm.SetModuleLoader(loader.loadTest262)
+	h.suite.setModuleLoader(loader)
 	// An async test reports its outcome by printing it.
 	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -252,7 +261,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	defer agents.close()
 	// The main agent can block, as in a shell, unless the test says otherwise.
 	vm.SetCanBlock(!m.flags["CanBlockIsFalse"])
-	if err := define262(&vm, agents); err != nil {
+	if err := h.suite.define262(&vm, agents); err != nil {
 		return suiteBroken.result("harness: " + err.Error())
 	}
 
@@ -304,24 +313,22 @@ type moduleLoader struct {
 
 	readFile func(string) ([]byte, error)
 	modules  map[string]*ekuma.Module
-
-	// source is the module of moduleSourceSpecifier, once it is loaded.
-	source *ekuma.Module
 }
 
 // moduleSourceSpecifier is the specifier that test262 resolves to a module with a module source.
 const moduleSourceSpecifier = "<module source>"
 
-func (l *moduleLoader) loadTest262(req ekuma.ModuleRequest) (*ekuma.Module, error) {
-	if req.Specifier == moduleSourceSpecifier {
-		// The specifier names a module that provides a module source, which no module that
-		// the loader parses does.
-		if l.source == nil {
-			l.source = ekuma.NewSourceModule(l.vm, req.Specifier, "Test262ModuleSource")
+func (suite *Test262) setModuleLoader(l *moduleLoader) {
+	var source *ekuma.Module
+	l.vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		if req.Specifier != moduleSourceSpecifier {
+			return l.load(req)
 		}
-		return l.source, nil
-	}
-	return l.load(req)
+		if source == nil {
+			source = suite.NewSourceModule(l.vm, req.Specifier, "Test262ModuleSource")
+		}
+		return source, nil
+	})
 }
 
 func (l *moduleLoader) load(req ekuma.ModuleRequest) (*ekuma.Module, error) {
@@ -422,8 +429,8 @@ func asyncOutcome(printed []string) (suiteResult, bool) {
 
 // define262 defines the host object $262 of the harness, with the members that the engine supports.
 // agents implements $262.agent.
-func define262(vm *ekuma.VM, agents *agentCluster) error {
-	o, err := new262(vm, vm.InitialRealm())
+func (suite *Test262) define262(vm *ekuma.VM, agents *agentCluster) error {
+	o, err := suite.new262(vm, vm.InitialRealm())
 	if err != nil {
 		return err
 	}
@@ -434,7 +441,7 @@ func define262(vm *ekuma.VM, agents *agentCluster) error {
 }
 
 // new262 returns the object $262 for the realm r of vm, without $262.agent.
-func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
+func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 	ctx := context.Background()
 	s, err := r.ParseScript("$262", "({})")
 	if err != nil {
@@ -446,7 +453,7 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 	}
 	createRealm := r.FuncOf("createRealm", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		nr := vm.NewRealm()
-		o, err := new262(vm, nr)
+		o, err := suite.new262(vm, nr)
 		if err != nil {
 			return nil, err
 		}
@@ -458,7 +465,7 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 	if err := o.Set("createRealm", createRealm); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("AbstractModuleSource", ekuma.AbstractModuleSource(r)); err != nil {
+	if err := o.Set("AbstractModuleSource", suite.AbstractModuleSource(r)); err != nil {
 		return ekuma.Undefined, err
 	}
 	detach := r.FuncOf("detachArrayBuffer", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -512,7 +519,7 @@ func new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
 	if err := o.Set("global", r.Global()); err != nil {
 		return ekuma.Undefined, err
 	}
-	if err := o.Set("IsHTMLDDA", ekuma.NewHTMLDDA(r)); err != nil {
+	if err := o.Set("IsHTMLDDA", suite.NewHTMLDDA(r)); err != nil {
 		return ekuma.Undefined, err
 	}
 	gc := r.FuncOf("gc", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -594,8 +601,9 @@ func runTest(h *harness, path string, timeout time.Duration) suiteResult {
 	return t.run(h, timeout)
 }
 
-func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
-	h := newHarness(os.DirFS("testdata/harness"))
+// CheckExpectedFailureWithMissingInclude checks that an expected failure still requires a working harness.
+func (suite *Test262) CheckExpectedFailureWithMissingInclude(t *testing.T, harnessFS fs.FS) {
+	h := suite.newHarness(harnessFS)
 	test := test262Test{
 		path: "missing-include.js",
 		src:  "throw new Error();",
@@ -609,13 +617,13 @@ func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
 	}
 }
 
-// TestTest262 runs the ECMAScript conformance suite and checks its failures against the skip list.
-func TestTest262(t *testing.T) {
+// Run runs the ECMAScript conformance suite and checks its failures against the skip list.
+func (suite *Test262) Run(t *testing.T) {
 	dir := test262Flags.checkoutDir(t)
 	if _, err := os.Stat(filepath.Join(dir, "harness", "assert.js")); err != nil {
 		t.Skipf("no test262 checkout at %s; set EKUMA_TEST262", dir)
 	}
-	pin, err := os.ReadFile("testdata/test262-revision.txt")
+	pin, err := os.ReadFile(testdataDir + "/test262-revision.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -668,7 +676,7 @@ func TestTest262(t *testing.T) {
 	sort.Strings(paths)
 	sort.Strings(skipped)
 
-	h := newHarness(os.DirFS(filepath.Join(dir, "harness")))
+	h := suite.newHarness(os.DirFS(filepath.Join(dir, "harness")))
 	results := make([]suiteResult, len(paths))
 	var waitingTests sync.WaitGroup
 	// waitingSlots limits the tests that run without a worker.
