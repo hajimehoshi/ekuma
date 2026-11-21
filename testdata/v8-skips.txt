@@ -477,13 +477,6 @@ test/mjsunit/regress/regress-495503057.mjs
 # SKIP: requires d8 data URL module loading
 test/mjsunit/regress/regress-515494863.js
 
-# Private field access throws during these tests.
-test/mjsunit/es6/regress-private-name-heritage-recalc.js
-test/mjsunit/harmony/private-name-scopes.js
-test/mjsunit/harmony/regress-private-name-heritage-catch-eval.js
-test/mjsunit/regress/regress-574565617.js
-test/mjsunit/regress/regress-584005343.js
-
 # The generated expression exceeds Ekuma's parser nesting limit.
 test/mjsunit/compiler/conditional-chain.js
 

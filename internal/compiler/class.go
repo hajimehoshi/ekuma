@@ -95,6 +95,13 @@ func (f *fn) class(n *ast.Class, dst int32, name wtf8.String, nameKey int32) {
 		inner.tdz = true
 		f.emit(bytecode.OpLoadTDZ, inner.reg, 0, 0)
 	}
+	// The heritage uses the class name binding and the surrounding private environment.
+	parent := int32(-1)
+	if n.Super != nil {
+		parent = f.newReg()
+		f.expr(n.Super, parent)
+	}
+
 	// Private names are variables of the class scope, so that closures find them.
 	for i := range n.Members {
 		m := &n.Members[i]
@@ -131,12 +138,6 @@ func (f *fn) class(n *ast.Class, dst int32, name wtf8.String, nameKey int32) {
 			f.c.fieldKeys = map[*ast.Function]string{}
 		}
 		f.c.fieldKeys[m.Value] = v
-	}
-
-	parent := int32(-1)
-	if n.Super != nil {
-		parent = f.newReg()
-		f.expr(n.Super, parent)
 	}
 
 	// ctor holds the constructor and ctor+1 the prototype object.
