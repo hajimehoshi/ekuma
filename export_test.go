@@ -108,6 +108,55 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 	return fromEngine(proxy)
 }
 
+// NewRealmShared provides operations to install and update Realm.shared in vm.
+func NewRealmShared(vm *VM) Value {
+	vm.initIfNeeded()
+	key := vm.e.Intern("shared")
+	propKey := vm.e.KeyOfString("shared")
+	var shared engine.Value
+	targets := map[*engine.Object]uint8{}
+	install := func(_ Value, args []Value) (any, error) {
+		target := args[0].value.Object()
+		vm.e.Define(target, key, shared, engine.FlagsData)
+		targets[target] = engine.FlagsData
+		return Undefined, nil
+	}
+	changed := func(_ Value, args []Value) (any, error) {
+		target := args[0].value.Object()
+		if _, linked := targets[target]; !linked {
+			return Undefined, nil
+		}
+		d, ok := vm.e.GetOwnProperty(target, propKey)
+		if !ok || d.IsAccessor() {
+			delete(targets, target)
+			return Undefined, nil
+		}
+		var flags uint8
+		if d.Writable() {
+			flags |= engine.FlagWritable
+		}
+		if d.Enumerable() {
+			flags |= engine.FlagEnumerable
+		}
+		if d.Configurable() {
+			flags |= engine.FlagConfigurable
+		}
+		targets[target] = flags
+		if !engine.SameValue(shared, d.Value()) {
+			shared = d.Value()
+			// A frozen Realm still observes writes made through another realm.
+			for other, flags := range targets {
+				vm.e.Define(other, key, shared, flags)
+			}
+		}
+		return Undefined, nil
+	}
+	return vm.ValueOf(map[string]any{
+		"install": install,
+		"changed": changed,
+	})
+}
+
 // DetachGlobalProxy disconnects the global proxy installed in r.
 func DetachGlobalProxy(r *Realm) {
 	r.in(r.vm.e.DetachGlobalProxy)

@@ -33,6 +33,7 @@ type V8 struct {
 	CallScript               func(*ekuma.Script) ekuma.Value
 	EvaluateScriptTask       func(context.Context, *ekuma.Script) (bool, error)
 	InstallGlobalProxy       func(*ekuma.Realm, ekuma.Value, *ekuma.Realm, bool) ekuma.Value
+	NewRealmShared           func(*ekuma.VM) ekuma.Value
 	DetachGlobalProxy        func(*ekuma.Realm)
 	CanAccessReceiver        func(*ekuma.Realm, ekuma.Value) bool
 	InvokeInRealm            func(context.Context, *ekuma.Realm, ekuma.Value) error
@@ -531,6 +532,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			shell:   newV8Shell(io.Discard, io.Discard),
 			loop:    &loop,
 			scripts: scripts,
+			shared:  host.NewRealmShared(&vm),
 		}
 		defer realms.shell.close()
 		if _, err := realms.add(scripts.current, false); err != nil {

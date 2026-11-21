@@ -467,6 +467,10 @@ test/mjsunit/regress/regress-declare-arguments-maybe-assigned.js
 # omits these properties from the function's own keys.
 test/mjsunit/arguments-indirect.js
 
+# V8's Function.prototype.caller getter returns null for a foreign sloppy
+# function. Ekuma's getter throws a TypeError.
+test/mjsunit/regress/regress-523431532.js
+
 # The element's toLocaleString returns an array. ToString of that result calls
 # join, which can finish by converting the element to [object Object]. V8
 # elides the nested array as a cycle.
@@ -594,14 +598,10 @@ test/mjsunit/regress/redeclaration-error-types.js
 # Temporal.Instant needs its default prototype from the realm of new.target.
 test/mjsunit/regress/regress-495503781.js
 
-# These tests require Realm.shared.
-test/mjsunit/contextual-calls.js
-test/mjsunit/regress/regress-523431532.js
-
 # This test requires V8's cross-realm Promise constructor access check.
 test/mjsunit/regress/regress-v8-12705.js
 
-# This test requires a separate microtask queue and Realm.shared.
+# This test requires a separate realm microtask queue.
 test/mjsunit/d8/d8-realm-microtask-queue.js
 
 # SKIP: Ekuma does not support WebAssembly

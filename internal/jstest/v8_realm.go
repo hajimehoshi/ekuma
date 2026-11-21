@@ -30,6 +30,7 @@ type v8Realms struct {
 	shell   v8Shell
 	loop    *v8EventLoop
 	scripts *v8Scripts
+	shared  ekuma.Value
 	entries []*v8RealmEntry
 
 	// Each Realm.eval protects its caller until the evaluation returns.
@@ -84,7 +85,7 @@ func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess boo
 		}
 		return ekuma.Undefined, nil
 	})
-	view, err := init.Invoke(h.ctx, create, lookup, current, r.FuncOf("owner", h.owner))
+	view, err := init.Invoke(h.ctx, create, lookup, current, r.FuncOf("owner", h.owner), h.shared)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +308,48 @@ func (host *V8) CheckRealmOwner(t *testing.T) {
 		check(undefined, fresh);
 	`
 	host.checkRealmScript(t, "test/mjsunit/realm-owner.js", source, fstest.MapFS{})
+}
+
+// CheckRealmShared checks the lifetime and identity of the value shared by a test's realms.
+func (host *V8) CheckRealmShared(t *testing.T) {
+	const file = "test/mjsunit/realm-shared.js"
+	const source = `
+		const descriptor = Object.getOwnPropertyDescriptor(Realm, "shared");
+		if (!descriptor.writable || !descriptor.enumerable || !descriptor.configurable ||
+			!Object.hasOwn(descriptor, "value") || descriptor.value !== undefined) {
+			throw Error("wrong initial shared descriptor");
+		}
+		const token = Symbol();
+		Realm.shared = token;
+		const child = Realm.create();
+		if (Realm.eval(child, "Realm.shared") !== token) throw Error("new realm lost the shared value");
+		const object = Realm.eval(child, "Realm.shared = {}");
+		if (Realm.shared !== object) throw Error("shared object identity changed");
+
+		const other = Realm.eval(child, "Realm");
+		const derived = Object.create(other);
+		derived.shared = 1;
+		if (derived.shared !== 1 || other.shared !== object) throw Error("inherited write changed the slot");
+		Object.defineProperty(other, "shared", {value: token, writable: false, configurable: false});
+		if (Realm.shared !== token || Reflect.set(other, "shared", 2)) throw Error("wrong redefinition");
+		Realm.shared = object;
+		if (Object.getOwnPropertyDescriptor(other, "shared").value !== object) {
+			throw Error("read-only property lost the shared value");
+		}
+
+		const sibling = Realm.eval(Realm.create(), "Realm");
+		delete sibling.shared;
+		sibling.shared = 3;
+		Object.defineProperty(Realm, "shared", {get() { return 4; }});
+		Realm.eval(Realm.create(), "Realm.shared = 5");
+		if (other.shared !== 5 || sibling.shared !== 3 || Realm.shared !== 4) {
+			throw Error("local replacement changed another realm");
+		}
+	`
+	host.checkRealmScript(t, file, source, fstest.MapFS{})
+	host.checkRealmScript(t, file, `
+		if (Realm.shared !== undefined) throw Error("shared value leaked from the previous VM");
+	`, fstest.MapFS{})
 }
 
 // CheckRealmDetachGlobal checks the lifecycle of a detached realm and its global proxy.

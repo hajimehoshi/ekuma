@@ -23,6 +23,7 @@ var v8Runner = jstest.V8{
 	CallScript:               ekuma.CallScript,
 	EvaluateScriptTask:       ekuma.EvaluateScriptTask,
 	InstallGlobalProxy:       ekuma.InstallGlobalProxy,
+	NewRealmShared:           ekuma.NewRealmShared,
 	DetachGlobalProxy:        ekuma.DetachGlobalProxy,
 	CanAccessReceiver:        ekuma.CanAccessReceiver,
 	InvokeInRealm:            ekuma.InvokeInRealm,
@@ -90,6 +91,10 @@ func TestV8Realm(t *testing.T) {
 
 func TestV8RealmOwner(t *testing.T) {
 	v8Runner.CheckRealmOwner(t)
+}
+
+func TestV8RealmShared(t *testing.T) {
+	v8Runner.CheckRealmShared(t)
 }
 
 func TestV8RealmDetachGlobal(t *testing.T) {

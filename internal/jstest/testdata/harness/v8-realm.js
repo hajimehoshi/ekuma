@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-(function (create, lookup, current, owner) {
+(function (create, lookup, current, owner, shared) {
   "use strict";
   const {Error, SyntaxError, TypeError} = globalThis;
   function isObject(value) {
@@ -19,7 +19,7 @@
     if (!select(i).change(operation)) throw new Error("Invalid realm index");
   }
 
-  globalThis.Realm = {
+  const realm = {
     current,
     owner,
     create(options) {
@@ -75,6 +75,24 @@
       return select(i).global;
     },
   };
+  // d8 exposes its native getter and setter as a writable data property.
+  shared.install(realm);
+  const {defineProperty, deleteProperty, setPrototypeOf} = Reflect;
+  globalThis.Realm = new Proxy(realm, {
+    __proto__: null,
+    defineProperty(target, key, desc) {
+      // Only the trap's own descriptor fields belong to this definition.
+      setPrototypeOf(desc, null);
+      const ok = defineProperty(target, key, desc);
+      if (ok && key === "shared") shared.changed(target);
+      return ok;
+    },
+    deleteProperty(target, key) {
+      const ok = deleteProperty(target, key);
+      if (ok && key === "shared") shared.changed(target);
+      return ok;
+    },
+  });
 
   // Foreign globals expose no own keys. Reads of well-known symbols return
   // undefined, including the toStringTag read by Object.prototype.toString.
