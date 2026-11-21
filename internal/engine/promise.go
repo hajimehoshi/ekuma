@@ -348,7 +348,7 @@ func (vm *VM) resolvePromise(p *Object, resolution Value) {
 
 // enqueueThenableJob enqueues NewPromiseResolveThenableJob with the current continuation data.
 func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
-	vm.enqueueJob(job{
+	vm.enqueueMicrotask(job{
 		kind: jobThenable,
 		reaction: promiseReaction{
 			context: vm.captureJobContext(),
@@ -385,7 +385,7 @@ func (vm *VM) rejectPromise(p *Object, reason Value) {
 // triggerPromiseReactions implements TriggerPromiseReactions.
 func (vm *VM) triggerPromiseReactions(reactions []promiseReaction, arg Value, rejected bool) {
 	for i := range reactions {
-		vm.enqueueJob(job{
+		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
 			rejected: rejected,
 			reaction: reactions[i],
@@ -423,7 +423,7 @@ func (vm *VM) addReaction(p *Object, r promiseReaction) {
 	case PromisePending:
 		d.reactions = append(d.reactions, r)
 	case PromiseFulfilled:
-		vm.enqueueJob(job{
+		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
 			reaction: r,
 			argument: d.result,
@@ -432,7 +432,7 @@ func (vm *VM) addReaction(p *Object, r promiseReaction) {
 		if !d.isHandled {
 			vm.hostPromiseRejectionTracker(p, true)
 		}
-		vm.enqueueJob(job{
+		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
 			rejected: true,
 			reaction: r,
@@ -487,7 +487,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 			return
 		}
 	case !v.IsObject():
-		vm.enqueueJob(job{
+		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
 			reaction: r,
 			argument: v,
@@ -498,7 +498,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 		if e, ok := vm.Completion(func() {
 			then = vm.GetV(v, vm.Key(keyThen))
 		}); !ok {
-			vm.enqueueJob(job{
+			vm.enqueueMicrotask(job{
 				kind:     jobReaction,
 				rejected: true,
 				reaction: r,
@@ -507,7 +507,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 			return
 		}
 		if !then.IsCallable() {
-			vm.enqueueJob(job{
+			vm.enqueueMicrotask(job{
 				kind:     jobReaction,
 				reaction: r,
 				argument: v,
@@ -628,9 +628,12 @@ func (q *jobQueue) dequeue() job {
 	return j
 }
 
-func (vm *VM) enqueueJob(j job) {
+func (vm *VM) enqueueMicrotask(j job) {
 	if vm.hasGlobalProxies {
 		j.reaction.context.enteredRealm = vm.jobRealm(&j)
+		if vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
+			return
+		}
 	}
 	vm.jobs.enqueue(j)
 }
@@ -772,9 +775,12 @@ func (vm *VM) runJobs() {
 					vm.Poll()
 				}
 				j := vm.jobs.dequeue()
-				vm.withJobContext(j.reaction.context, func() {
-					vm.runJob(&j)
-				})
+				// Detachment drops microtasks even if they were already queued.
+				if j.kind == jobResolve || !vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
+					vm.withJobContext(j.reaction.context, func() {
+						vm.runJob(&j)
+					})
+				}
 				if vm.abortCause != nil {
 					return
 				}

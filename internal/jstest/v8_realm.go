@@ -61,6 +61,7 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	var evalDepth int
 	evaluate := r.FuncOf("evaluate", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		s, err := h.host.ParseScriptValue(r, "(d8)", args[0])
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
@@ -76,12 +77,23 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 		if err != nil {
 			return nil, err
 		}
+		evalDepth++
+		defer func() { evalDepth-- }()
 		return s.Evaluate(h.ctx)
 	})
 	index := len(h.entries)
+	detach := r.FuncOf("detachGlobal", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		// d8 keeps the main realm and every realm on the Realm.eval stack attached.
+		if index == 0 || evalDepth != 0 {
+			return false, nil
+		}
+		h.host.DetachGlobalProxy(r)
+		return true, nil
+	})
 	h.entries = append(h.entries, r.ValueOf(map[string]any{
-		"global":   h.host.InstallGlobalProxy(r, view, shareAccess),
-		"evaluate": evaluate,
+		"global":       h.host.InstallGlobalProxy(r, view, shareAccess),
+		"evaluate":     evaluate,
+		"detachGlobal": detach,
 	}))
 	return index, nil
 }
@@ -146,19 +158,76 @@ func (host *V8) CheckRealm(t *testing.T) {
 			if (!ownResolver) throw Error("resolver belongs to the wrong realm");
 		});
 	`
-	test := v8Test{
-		file: "test/mjsunit/realm.js",
-	}
-	checkout := fstest.MapFS{
+	host.checkRealmScript(t, "test/mjsunit/realm.js", source, fstest.MapFS{
 		"bytes.bin": {
 			Data: []byte{0xff},
 		},
 		"helper.js": {
 			Data: []byte("var loadedIn = globalThis"),
 		},
-		test.file: {
-			Data: []byte(source),
-		},
+	})
+}
+
+// CheckRealmDetachGlobal checks the lifecycle of a detached realm and its global proxy.
+func (host *V8) CheckRealmDetachGlobal(t *testing.T) {
+	const source = `
+		function mustReject(i) {
+			try { Realm.detachGlobal(i); } catch (e) {
+				if (e instanceof Error) return;
+				throw e;
+			}
+			throw Error("detached an active realm");
+		}
+		mustReject(0);
+		const r = Realm.createAllowCrossRealmAccess();
+		const inner = Realm.create();
+		const g = Realm.global(r);
+		g.checkParent = () => Realm.eval(inner, "(" + mustReject + ")(" + r + ")");
+		Realm.eval(r, "checkParent()");
+
+		const enqueue = Realm.eval(r, "f => Promise.resolve().then(() => f())");
+		let ran = false;
+		const mark = () => { ran = true; };
+		enqueue(mark);
+		Realm.detachGlobal(r);
+		Realm.detachGlobal(r);
+		if (g !== Realm.global(r) || g !== Realm.eval(r, "this")) throw Error("global identity changed");
+		if (Realm.eval(r, "x = 42; x") !== 42) throw Error("lost the global binding");
+		const read = Realm.eval(r, "g => g.x");
+		const typeError = Realm.eval(r, "TypeError");
+		for (const target of [g, globalThis]) {
+			try { read(target); } catch (e) {
+				if (e instanceof typeError) continue;
+				throw e;
+			}
+			throw Error("detached realm retained global access");
+		}
+		enqueue(mark);
+		Promise.resolve().then(() => { if (ran) throw Error("ran a detached realm's job"); });
+	`
+	host.checkRealmScript(t, "test/mjsunit/detach-global.js", source, fstest.MapFS{})
+
+	const waiters = `
+		const r = Realm.createAllowCrossRealmAccess();
+		const cells = new Int32Array(new SharedArrayBuffer(4));
+		const waiting = Atomics.waitAsync(cells, 0, 0).value.then();
+		const waitInChild = Realm.eval(r, "a => Atomics.waitAsync(a, 0, 0).value");
+		const childWaiting = new Promise(resolve => waitInChild(cells).then(resolve));
+		Realm.detachGlobal(r);
+		const notify = Realm.eval(r, "cells => Atomics.notify(cells, 0)");
+		notify(cells);
+		if (await waiting !== "ok" || await childWaiting !== "ok") throw Error("waiter was not notified");
+	`
+	host.checkRealmScript(t, "test/mjsunit/detach-waiters.mjs", waiters, fstest.MapFS{})
+}
+
+func (host *V8) checkRealmScript(t *testing.T, file, source string, checkout fstest.MapFS) {
+	t.Helper()
+	test := v8Test{
+		file: file,
+	}
+	checkout[file] = &fstest.MapFile{
+		Data: []byte(source),
 	}
 	if result := test.run(t.Context(), host, checkout, testTimeout); result.outcome != suitePassed {
 		t.Error(result.reason)

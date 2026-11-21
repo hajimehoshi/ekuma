@@ -29,6 +29,7 @@ import (
 type V8 struct {
 	ParseScriptValue   func(*ekuma.Realm, string, ekuma.Value) (*ekuma.Script, error)
 	InstallGlobalProxy func(*ekuma.Realm, ekuma.Value, bool) ekuma.Value
+	DetachGlobalProxy  func(*ekuma.Realm)
 }
 
 const v8SkipsFile = testdataDir + "/v8-skips.txt"

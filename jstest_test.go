@@ -19,6 +19,7 @@ var test262Runner = jstest.Test262{
 var v8Runner = jstest.V8{
 	ParseScriptValue:   ekuma.ParseScriptValue,
 	InstallGlobalProxy: ekuma.InstallGlobalProxy,
+	DetachGlobalProxy:  ekuma.DetachGlobalProxy,
 }
 
 func TestTest262(t *testing.T) {
@@ -63,4 +64,8 @@ func TestV8Quit(t *testing.T) {
 
 func TestV8Realm(t *testing.T) {
 	v8Runner.CheckRealm(t)
+}
+
+func TestV8RealmDetachGlobal(t *testing.T) {
+	v8Runner.CheckRealmDetachGlobal(t)
 }

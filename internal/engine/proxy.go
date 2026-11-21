@@ -11,10 +11,18 @@ import (
 )
 
 // proxyState holds the internal slots of a proxy object.
-// Both are nil once the proxy is revoked.
+// A detached global proxy has a nil target. A revoked proxy has both slots nil.
 type proxyState struct {
 	target  *Object
 	handler *Object
+}
+
+func (s *proxyState) isGlobal() bool {
+	return s.handler != nil && s.handler.class == classGlobalProxyHandler
+}
+
+func (s *proxyState) allowsGlobalAccess(group *Object) bool {
+	return s.target != nil && s.handler == group
 }
 
 // ProxyCreate implements ProxyCreate.
@@ -62,8 +70,7 @@ func (vm *VM) InstallGlobalProxy(foreignView *Object, shareAccess bool) Value {
 		handler = entered.globalProxyHandler
 	}
 	if handler == nil {
-		handler = vm.NewObject(nil)
-		handler.class = classGlobalProxyHandler
+		handler = vm.newGlobalProxyHandler()
 	}
 	vm.hasGlobalProxies = true
 	vm.globalProxyHandler = handler
@@ -72,6 +79,29 @@ func (vm *VM) InstallGlobalProxy(foreignView *Object, shareAccess bool) Value {
 	proxy := ObjectValue(vm.globalThis)
 	vm.Define(vm.global, vm.Intern("globalThis"), proxy, FlagsHidden)
 	return proxy
+}
+
+func (vm *VM) newGlobalProxyHandler() *Object {
+	h := vm.NewObject(nil)
+	h.class = classGlobalProxyHandler
+	return h
+}
+
+// DetachGlobalProxy disconnects the current realm's installed global proxy.
+func (vm *VM) DetachGlobalProxy() {
+	st := vm.globalThis.extState().(*proxyState)
+	if st.target == nil {
+		return
+	}
+	st.target = nil
+	vm.globalProxyHandler = vm.newGlobalProxyHandler()
+}
+
+func (vm *VM) hasDetachedGlobal(r *realm) bool {
+	if r == vm.curRealm {
+		r = &vm.realm
+	}
+	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target == nil
 }
 
 // RevokeProxy revokes the proxy p: every internal method of p throws a TypeError from then on.
@@ -84,17 +114,14 @@ func RevokeProxy(p *Object) {
 // IsArray implements IsArray.
 func (vm *VM) IsArray(v Value) bool {
 	o := v.o
-	if o == nil {
-		return false
-	}
-	for o.class == classProxy {
+	for o != nil && o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.handler == nil {
 			vm.throwRevoked("IsArray")
 		}
 		o = st.target
 	}
-	return o.kind == kindArray
+	return o != nil && o.kind == kindArray
 }
 
 // getFunctionRealm implements GetFunctionRealm.
@@ -150,7 +177,7 @@ func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
 		vm.ThrowRangeError("maximum call stack size exceeded")
 	}
 	target = st.target
-	if st.handler.class == classGlobalProxyHandler && st.handler != vm.globalProxyHandler {
+	if st.isGlobal() && !st.allowsGlobalAccess(vm.globalProxyHandler) {
 		target = vm.foreignGlobalView
 		if target == nil {
 			vm.ThrowTypeError("no access")

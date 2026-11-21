@@ -1252,6 +1252,10 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 		return false
 	}
 	r := receiver.o
+	if o == vm.global && r == vm.globalThis {
+		// A global binding stores on the backing object even after detachment.
+		r = o
+	}
 	if existing, ok := vm.GetOwnProperty(r, k); ok {
 		if existing.flags&FlagAccessor != 0 || existing.flags&FlagWritable == 0 {
 			return false
@@ -1639,7 +1643,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	for p := proto; p != nil; p = p.shape.proto {
 		if p.class == classProxy {
 			st := p.extState().(*proxyState)
-			if st.handler == nil || st.handler.class != classGlobalProxyHandler {
+			if !st.isGlobal() || st.target == nil {
 				break
 			}
 			// Global proxies forward to the same backing global for cycle

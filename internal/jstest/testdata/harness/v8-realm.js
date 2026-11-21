@@ -31,6 +31,9 @@
     createAllowCrossRealmAccess() {
       return create(true);
     },
+    detachGlobal(i) {
+      if (!select(i).detachGlobal()) throw new Error("Invalid realm index");
+    },
     eval(i, source, options) {
       const realm = select(i);
       let type = "string";

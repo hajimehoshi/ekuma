@@ -1387,7 +1387,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if !o.IsObject() {
 				vm.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
-			_, ok := o.o.shape.lookup(regs[i.C].o)
+			_, ok := vm.privateStorage(o.o).shape.lookup(regs[i.C].o)
 			regs[i.A] = Bool(ok)
 		case bytecode.OpGetPrivate:
 			v := regs[i.B]

@@ -24,6 +24,11 @@ func InstallGlobalProxy(r *Realm, foreignView Value, shareAccess bool) Value {
 	return fromEngine(proxy)
 }
 
+// DetachGlobalProxy disconnects the global proxy installed in r.
+func DetachGlobalProxy(r *Realm) {
+	r.in(r.vm.e.DetachGlobalProxy)
+}
+
 // NewHTMLDDA returns an object of r with the [[IsHTMLDDA]] internal slot, which returns null when called.
 func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value

@@ -478,11 +478,26 @@ func (vm *VM) ordinaryHasInstance(c, v Value, site *propCache) bool {
 	return false
 }
 
+// privateStorage returns the object holding o's private elements.
+func (vm *VM) privateStorage(o *Object) *Object {
+	if o.class == classProxy {
+		st := o.extState().(*proxyState)
+		if st.isGlobal() {
+			if !st.allowsGlobalAccess(vm.globalProxyHandler) {
+				vm.ThrowTypeError("no access")
+			}
+			return st.target
+		}
+	}
+	return o
+}
+
 // getPrivate returns the private element name of v, or the getter to call.
 func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
 	if v.IsObject() {
-		if p, ok := v.o.shape.lookup(name); ok {
-			val := v.o.slots[p.slot]
+		o := vm.privateStorage(v.o)
+		if p, ok := o.shape.lookup(name); ok {
+			val := o.slots[p.slot]
 			if p.flags&FlagAccessor != 0 {
 				g := val.accessor().getter
 				if g == nil {
@@ -500,9 +515,10 @@ func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
 // setPrivate stores val as the private element name of v, or returns the setter to call.
 func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
 	if v.IsObject() {
-		if p, ok := v.o.shape.lookup(name); ok {
+		o := vm.privateStorage(v.o)
+		if p, ok := o.shape.lookup(name); ok {
 			if p.flags&FlagAccessor != 0 {
-				s := v.o.slots[p.slot].accessor().setter
+				s := o.slots[p.slot].accessor().setter
 				if s == nil {
 					vm.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a setter")
 				}
@@ -511,7 +527,7 @@ func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
 			if p.flags&FlagWritable == 0 {
 				vm.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.str) + "' is not writable")
 			}
-			v.o.slots[p.slot] = val
+			o.slots[p.slot] = val
 			return nil
 		}
 	}
@@ -524,7 +540,7 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 	if !v.IsObject() {
 		vm.ThrowTypeError("cannot define a private member on a non-object")
 	}
-	o := v.o
+	o := vm.privateStorage(v.o)
 	if _, ok := o.shape.lookup(name); ok {
 		vm.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.str) + " twice on the same object")
 	}
@@ -542,7 +558,7 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 // ensureCanAddPrivate throws a TypeError if the private element name cannot be added to v
 // because v is not extensible.
 func (vm *VM) ensureCanAddPrivate(v Value, name *Object) {
-	if v.IsObject() && !vm.IsExtensible(v.o) {
+	if v.IsObject() && !vm.IsExtensible(vm.privateStorage(v.o)) {
 		vm.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.str) + " on an object that is not extensible")
 	}
 }
@@ -804,8 +820,9 @@ func (vm *VM) defineClassElement(this Value, e *classElement) {
 		vm.definePrivate(this, e.key.o, Value{o: e.val})
 	case bytecode.ElemGetter, bytecode.ElemSetter:
 		if this.IsObject() {
-			if p, ok := this.o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
-				a := this.o.slots[p.slot].accessor()
+			o := vm.privateStorage(this.o)
+			if p, ok := o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
+				a := o.slots[p.slot].accessor()
 				if e.kind == bytecode.ElemGetter && a.getter == nil {
 					a.getter = e.val
 					return

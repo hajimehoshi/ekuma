@@ -555,23 +555,10 @@ test/mjsunit/stack-traces-class-fields.js
 test/mjsunit/stack-traces-custom-lazy.js
 test/mjsunit/stack-traces.js
 
-# These tests require access checks on private elements of foreign globals.
-test/mjsunit/regress/regress-crbug-1321899-5.js
-test/mjsunit/regress/regress-crbug-1339722-5.js
-test/mjsunit/regress/regress-crbug-1339722.js
-
 # These tests require Realm.current.
 test/mjsunit/contextual-calls.js
 test/mjsunit/regress/regress-6733.js
 test/mjsunit/regress/regress-crbug-768875.js
-
-# These tests require Realm.detachGlobal.
-test/mjsunit/compiler/regress-1250216.js
-test/mjsunit/regress/regress-1069964.js
-test/mjsunit/regress/regress-396460426.js
-test/mjsunit/regress/regress-464961493.js
-test/mjsunit/regress/regress-crbug-1321899-1.js
-test/mjsunit/regress/regress-crbug-959727.js
 
 # These tests require Realm.dispose.
 test/mjsunit/d8/regress-516209551.js

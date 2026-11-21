@@ -533,7 +533,7 @@ func (vm *VM) createDecoratorAccessObject(kind int, name Value) Value {
 		o := argAt(args, 0)
 		checkObject(vm, o)
 		if private {
-			_, ok := o.o.shape.lookup(name.o)
+			_, ok := vm.privateStorage(o.o).shape.lookup(name.o)
 			return Bool(ok)
 		}
 		return Bool(vm.HasProperty(o.o, vm.ToPropertyKey(name)))

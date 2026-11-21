@@ -43,6 +43,9 @@ type waiter struct {
 	// promise is the promise of [[PromiseCapability]] of an asynchronous wait.
 	promise *Object
 
+	// promiseRealm is the realm that created promise when global proxies are in use.
+	promiseRealm *realm
+
 	// done is closed when a synchronous wait is notified.
 	done chan struct{}
 
@@ -245,6 +248,9 @@ func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) 
 	}
 	if async {
 		w.promise = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+		if vm.hasGlobalProxies {
+			w.promiseRealm = vm.curRealm
+		}
 	} else {
 		w.done = make(chan struct{})
 		if vm.interrupt.Load() {
@@ -473,7 +479,18 @@ func (vm *VM) post(w *waiter) {
 // no longer in its list.
 func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
 	delete(vm.asyncWaiters, w)
-	vm.enqueueResolveInAgentJob(w.promise, vm.NewString(result))
+	// Settling a waiter is an agent task. Its promise reactions use their own
+	// realms' microtask queues.
+	vm.jobs.enqueue(job{
+		kind:     jobResolve,
+		promise:  w.promise,
+		argument: vm.NewString(result),
+		reaction: promiseReaction{
+			context: jobContext{
+				enteredRealm: w.promiseRealm,
+			},
+		},
+	})
 }
 
 // receiveNotifications queues the resolve jobs of the waiters that other agents notified,
@@ -604,14 +621,4 @@ func (t *timedWaiters) popExpired(now time.Time) (*waiter, bool) {
 		return nil, false
 	}
 	return heap.Pop(&t.heap).(*waiter), true
-}
-
-// enqueueResolveInAgentJob implements EnqueueResolveInAgentJob for the promise p of an
-// intrinsic capability whose resolving functions were never created.
-func (vm *VM) enqueueResolveInAgentJob(p *Object, v Value) {
-	vm.enqueueJob(job{
-		kind:     jobResolve,
-		promise:  p,
-		argument: v,
-	})
 }
