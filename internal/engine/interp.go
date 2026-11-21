@@ -570,10 +570,16 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				setNumber(&regs[i.A], float64(o.length))
 				continue
 			}
-			// The length of a fixed-length typed array in the bounds of its buffer, when the cache
-			// says that the length is the original getter, as in getNamed. The data of a shared or
-			// detached buffer is empty, so only an empty view of one passes the bounds check.
 			if o := regs[i.B].o; o != nil {
+				// The length of a string known to be ASCII, as in Value.StringLength.
+				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
+					setNumber(&regs[i.A], float64(len(o.str)))
+					continue
+				}
+				// The length of a fixed-length typed array in the bounds of its buffer, when the
+				// cache says that the length is the original getter, as in getNamed. The data of a
+				// shared or detached buffer is empty, so only an empty view of one passes the
+				// bounds check.
 				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
 					if c := &fp.caches[i.C]; o.shape == c.shape && c.kind == cacheGetter && c.epoch == vm.protoEpoch && c.holder == vm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
 						setNumber(&regs[i.A], float64(t.length))
