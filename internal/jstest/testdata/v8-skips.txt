@@ -680,6 +680,9 @@ test/mjsunit/regress/regress-13652.js
 test/mjsunit/regress/regress-562529689.js
 test/mjsunit/regress/regress-577255778.js
 
+# SKIP: requires d8.debugger.enable() before the dynamic import
+test/mjsunit/regress/regress-crbug-1442801.js
+
 # This test uses d8.constants.maxFixedArrayCapacity and expects key enumeration
 # to throw RangeError above V8's fixed-array capacity.
 test/mjsunit/regress/regress-crbug-1057653.js

@@ -72,6 +72,7 @@ var v8Suites = []v8Suite{
 		flags: []string{
 			"--bundle",
 			"--expose-gc",
+			"--throws",
 
 			// Ekuma uses time zone rules and localized names for Date.
 			"--icu-timezone-data",
@@ -175,6 +176,31 @@ func (host *V8) Run(t *testing.T) {
 		}
 	}
 	v8Flags.reportFailures(t, failures)
+}
+
+// CheckThrows checks the whole-run outcome of an mjsunit test with --throws.
+func (host *V8) CheckThrows(t *testing.T) {
+	test := v8Test{
+		file:  "test/mjsunit/throws.js",
+		flags: []string{"--throws"},
+	}
+	check := func(src string, want suiteOutcome) {
+		t.Helper()
+		checkout := fstest.MapFS{
+			test.file: {
+				Data: []byte("// Flags: --throws\n" + src),
+			},
+		}
+		if got := test.run(t.Context(), host, checkout, testTimeout); got.outcome != want {
+			t.Errorf("%s: outcome = %v, want %v (%s)", src, got.outcome, want, got.reason)
+		}
+	}
+	check("try { throw 1; } catch {}", suiteFailed)
+	check("setTimeout(() => Promise.reject(1));", suitePassed)
+	check("// Flags: --ignore-unhandled-promises\nPromise.reject(1);", suiteFailed)
+	check("// Files: missing.js", suiteBroken)
+	check("// Flags: --allow-natives-syntax\nthrow 1;", suiteSkipped)
+	check("quit(1);", suiteFailed)
 }
 
 // CheckFixedTime checks that helpers and test code observe the same configured time.
@@ -472,6 +498,7 @@ type v8Directives struct {
 	bundle                  bool
 	noHarness               bool
 	exposeGC                bool
+	throws                  bool
 	ignoreUnhandledPromises bool
 }
 
@@ -499,6 +526,8 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 					directives.bundle = true
 				} else if normalized == "--expose-gc" {
 					directives.exposeGC = true
+				} else if normalized == "--throws" {
+					directives.throws = true
 				}
 			}
 		case "Environment Variables":
@@ -525,9 +554,20 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 }
 
 func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (result suiteResult, lastPrint string) {
+	var directives v8Directives
 	defer func() {
 		switch r := recover().(type) {
 		case nil:
+			// d8 applies --throws to the whole run, after reporting rejections.
+			// An explicit quit exits with its own status.
+			if directives.throws {
+				switch result.outcome {
+				case suitePassed:
+					result = suiteFailed.result("--throws run completed successfully")
+				case suiteFailed:
+					result = suiteResult{}
+				}
+			}
 		case v8GCWithArguments:
 			result = suiteSkipped.result("requires V8 gc with arguments")
 		case v8ExitCode:

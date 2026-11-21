@@ -66,6 +66,10 @@ func TestV8Test262(t *testing.T) {
 	test262Runner.RunV8LocalTests(t)
 }
 
+func TestV8Throws(t *testing.T) {
+	v8Runner.CheckThrows(t)
+}
+
 func TestV8ExposeGC(t *testing.T) {
 	v8Runner.CheckExposeGC(t)
 }
