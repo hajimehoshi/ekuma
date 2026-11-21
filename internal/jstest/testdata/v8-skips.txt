@@ -1209,7 +1209,6 @@ test/mjsunit/error-constructors.js
 test/mjsunit/fuzz-accessors.js
 test/mjsunit/harmony/modules-import-meta.mjs
 test/mjsunit/regress/regress-3404.js
-test/mjsunit/regress/regress-381390367.js
 test/mjsunit/regress/regress-523435063.js
 test/mjsunit/test-builtins-setup.js
 
