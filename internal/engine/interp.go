@@ -938,8 +938,24 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		case bytecode.OpEq, bytecode.OpNe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Bool((x.n == y.n) == (i.Op == bytecode.OpEq))
+			// IsLooselyEqual, for the operands it can tell without a call, as in looseEquals:
+			// two numbers, one value twice, an undefined or null operand, two objects, and two
+			// interned strings, which differ in content when they are different objects.
+			x, y := regs[i.B], regs[i.C]
+			eq, known := false, true
+			if x.o == numberObject && y.o == numberObject {
+				eq = x.n == y.n
+			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+				eq = true
+			} else if xn, yn := x.IsNullish(), y.IsNullish(); xn || yn {
+				eq = xn && yn || x.isHTMLDDA() || y.isHTMLDDA()
+			} else if x.o.kind >= kindFirstObject && y.o.kind >= kindFirstObject {
+				eq = x.o == y.o
+			} else if x.o == y.o || x.o.flags&y.o.flags&objInterned == 0 {
+				known = false
+			}
+			if known {
+				regs[i.A] = Bool(eq == (i.Op == bytecode.OpEq))
 				continue
 			}
 		case bytecode.OpNot:
@@ -1033,8 +1049,22 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		case bytecode.OpJumpNotEq, bytecode.OpJumpNotNe:
-			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
-				if (x.n == y.n) != (i.Op == bytecode.OpJumpNotEq) {
+			// The same cases as OpEq.
+			x, y := regs[i.B], regs[i.C]
+			eq, known := false, true
+			if x.o == numberObject && y.o == numberObject {
+				eq = x.n == y.n
+			} else if x.o == y.o && math.Float64bits(x.n) == math.Float64bits(y.n) {
+				eq = true
+			} else if xn, yn := x.IsNullish(), y.IsNullish(); xn || yn {
+				eq = xn && yn || x.isHTMLDDA() || y.isHTMLDDA()
+			} else if x.o.kind >= kindFirstObject && y.o.kind >= kindFirstObject {
+				eq = x.o == y.o
+			} else if x.o == y.o || x.o.flags&y.o.flags&objInterned == 0 {
+				known = false
+			}
+			if known {
+				if eq != (i.Op == bytecode.OpJumpNotEq) {
 					pc = int(i.A)
 				}
 				continue
