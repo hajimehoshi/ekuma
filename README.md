@@ -318,14 +318,14 @@ without a Test262 checkout.
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
 sparse checkout needs `test/intl`, `test/mjsunit`, `test/test262/local-tests/test`,
-the tool modules matching `/tools/**/*.mjs`, and the printing helper
+`test/webkit`, the tool modules matching `/tools/**/*.mjs`, and the printing helper
 `tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
 Short mode skips all external conformance tests.
 
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
-| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl) and [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
+| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
 
 `TestV8Test262` runs V8's local Test262 cases when both checkouts are available.
 It reads the cases from V8 and the harness from Test262. Each case is a Go subtest
@@ -338,13 +338,13 @@ go test -count=1 -v -run '^TestV8Test262$' .
 
 `TestTest262` and `TestV8` use the same flags, prefixed with `-test262.` or
 `-v8.`. Use `dir` to select a checkout-relative directory and `filter` to match
-a substring of a test path. These commands select the collation tests or the
-mjsunit ES6 tests.
+a substring of a test path.
 
 ```sh
 go test -count=1 -v -run '^TestTest262$' . -test262.dir test/intl402/Collator
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/intl/collator
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/mjsunit/es6
+go test -count=1 -v -run '^TestV8$' . -v8.dir test/webkit
 ```
 
 Use `shuffle` with `off`, `on`, or an integer seed. To replay a file order,
@@ -363,9 +363,12 @@ panic, or timeout on the final attempt also fails the suite. In the V8 list, a
 `# SKIP: reason` comment skips all consecutive test paths directly below it.
 A `# SKIP(64-bit): reason` comment applies only on targets with 64-bit Go integers.
 A blank line or comment ends the group.
-The V8 runner loads checkout-relative scripts named by `// Files:` in order,
-after the suite harness and before the test. Unsupported flags and environment
-settings skip the test.
+The V8 runner loads checkout-relative scripts named by `// Files:` in order.
+Intl and mjsunit load them after the suite harness and before the test. WebKit
+loads them first, then runs `resources/standalone-pre.js`, the test, and
+`resources/standalone-post.js`. It compares stdout with the paired
+`-expected.txt` file using V8's line comparison rules. Unsupported flags and
+environment settings skip the test.
 
 ## License
 

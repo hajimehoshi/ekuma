@@ -696,3 +696,88 @@ test/mjsunit/bugs/bug-222.js
 test/mjsunit/bugs/bug-617.js
 test/mjsunit/bugs/bug-941049.js
 test/mjsunit/bugs/bug-proto.js
+
+# WebKit
+
+# SKIP: webkit.status excludes sorting this sparse array with length 10,000,001
+test/webkit/array-sort-small-sparse-array-with-large-length.js
+
+# SKIP: webkit.status excludes the 4 GiB replacement in lower-limits mode
+test/webkit/string-replacement-outofmemory.js
+
+# These expectations include V8's exception messages. ECMAScript leaves the
+# wording of built-in error messages to the implementation.
+test/webkit/JSON-stringify-replacer.js
+test/webkit/Object-create.js
+test/webkit/Object-defineProperties.js
+test/webkit/array-defineOwnProperty.js
+test/webkit/array-every.js
+test/webkit/break-ASI.js
+test/webkit/class-constructor-return.js
+test/webkit/class-syntax-call.js
+test/webkit/class-syntax-declaration.js
+test/webkit/class-syntax-default-constructor.js
+test/webkit/class-syntax-expression.js
+test/webkit/class-syntax-extends.js
+test/webkit/class-syntax-name.js
+test/webkit/class-syntax-prototype.js
+test/webkit/class-syntax-semicolon.js
+test/webkit/class-syntax-super.js
+test/webkit/cyclic-prototypes.js
+test/webkit/delete-getters-setters.js
+test/webkit/dfg-check-structure-elimination-for-non-cell.js
+test/webkit/dfg-compare-final-object-to-final-object-or-other-when-both-proven-final-object.js
+test/webkit/dfg-compare-final-object-to-final-object-or-other-when-proven-final-object.js
+test/webkit/dfg-inline-arguments-use-from-all-the-places-broken.js
+test/webkit/dfg-peephole-compare-final-object-to-final-object-or-other-when-both-proven-final-object.js
+test/webkit/dfg-peephole-compare-final-object-to-final-object-or-other-when-proven-final-object.js
+test/webkit/exception-for-nonobject.js
+test/webkit/fast/js/JSON-parse-reviver.js
+test/webkit/fast/js/Promise-resolve-with-itself.js
+test/webkit/fast/js/arguments.js
+test/webkit/fast/js/array-prototype-properties.js
+test/webkit/fast/js/basic-strict-mode.js
+test/webkit/fast/js/date-toisostring.js
+test/webkit/fast/js/function-constructor-error.js
+test/webkit/fast/js/function-toString-parentheses.js
+test/webkit/fast/js/kde/parse.js
+test/webkit/fast/js/modify-non-references.js
+test/webkit/fast/js/number-toString.js
+test/webkit/fast/js/numeric-escapes-in-string-literals.js
+test/webkit/fast/js/object-extra-comma.js
+test/webkit/fast/js/object-prototype-properties.js
+test/webkit/fast/js/primitive-property-access-edge-cases.js
+test/webkit/fast/js/read-modify-eval.js
+test/webkit/fast/js/regexp-no-extensions.js
+test/webkit/fast/js/regexp-range-out-of-order.js
+test/webkit/fast/js/toString-overrides.js
+test/webkit/fast/regex/early-acid3-86.js
+test/webkit/fast/regex/invalid-range-in-class.js
+test/webkit/fast/regex/lastIndex.js
+test/webkit/function-declaration.js
+test/webkit/function-prototype-descriptor.js
+test/webkit/function-toString-object-literals.js
+test/webkit/instance-of-immediates.js
+test/webkit/js-continue-break-restrictions.js
+test/webkit/no-semi-insertion-at-end-of-script.js
+test/webkit/parser-xml-close-comment.js
+test/webkit/preventExtensions.js
+test/webkit/property-getters-and-setters.js
+test/webkit/regexp-compile-crash.js
+test/webkit/regexp-compile.js
+
+# Date.parse uses implementation-defined fallback parsing for this legacy date.
+# V8 accepts the trailing unmatched opening parenthesis.
+test/webkit/date-parse-comments-test.js
+
+# The test defines a non-configurable accessor on Object.prototype and then
+# on the global object's prototype. In Ekuma these are the same object.
+test/webkit/fast/js/Object-defineProperty.js
+
+# Array.prototype.sort writes the sorted element back with Set. V8 leaves
+# index 0 inherited when sorting an array-like object with one element.
+test/webkit/fast/js/array-functions-non-arrays.js
+
+# Ekuma rounds while accumulating the digits of a legacy octal literal.
+# V8 rounds the full integer to the nearest representable Number.
+test/webkit/numeric-conversion.js

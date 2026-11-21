@@ -108,6 +108,10 @@ var v8Suites = []v8Suite{
 			"--nolazy",
 		},
 	},
+	{
+		dir:   v8WebKitDir,
+		flags: []string{"--expose-gc", "--harmony"},
+	},
 }
 
 // Run runs the selected V8 tests and checks their results against the skip list.
@@ -460,6 +464,9 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, ski
 		if !entry.Type().IsRegular() || (ext != ".js" && ext != ".mjs") {
 			return nil
 		}
+		if s.dir == v8WebKitDir && (strings.Contains(file, "/resources/") || strings.Contains(path.Dir(file), "/.")) {
+			return nil
+		}
 		if slices.Contains(s.helpers, name) || slices.Contains(s.exclude, name) || !strings.Contains(file, filter) {
 			return nil
 		}
@@ -558,7 +565,26 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 	return directives, ""
 }
 
-func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (result suiteResult, lastPrint string) {
+func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) (suiteResult, string) {
+	if v.skipReason != "" {
+		return suiteSkipped.result(v.skipReason), ""
+	}
+	if !inSuiteDir(v.file, v8WebKitDir) {
+		return v.executeScripts(ctx, host, checkout, timeout, nil)
+	}
+	expected, err := fs.ReadFile(checkout, strings.TrimSuffix(v.file, path.Ext(v.file))+"-expected.txt")
+	if err != nil {
+		return suiteBroken.result(err.Error()), ""
+	}
+	var stdout strings.Builder
+	result, _ := v.executeScripts(ctx, host, checkout, timeout, &stdout)
+	if result.outcome == suitePassed {
+		result = compareWebKitOutput(string(expected), stdout.String())
+	}
+	return result, ""
+}
+
+func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration, webkitOutput io.Writer) (result suiteResult, lastPrint string) {
 	var directives v8Directives
 	defer func() {
 		switch r := recover().(type) {
@@ -585,9 +611,6 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
 		}
 	}()
-	if v.skipReason != "" {
-		return suiteSkipped.result(v.skipReason), ""
-	}
 	src, err := fs.ReadFile(checkout, v.file)
 	if err != nil {
 		return suiteBroken.result(err.Error()), ""
@@ -633,16 +656,20 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 			modules: map[string]string{},
 		}
 	}
-	if inSuiteDir(v.file, "test/mjsunit") {
+	if webkitOutput != nil || inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
 			host:    host,
 			vm:      &vm,
 			ctx:     ctx,
-			print:   print,
-			shell:   newV8Shell(io.Discard, io.Discard),
 			loop:    &loop,
 			scripts: scripts,
 			shared:  host.NewRealmShared(&vm),
+		}
+		if webkitOutput != nil {
+			realms.shell = newV8Shell(webkitOutput, io.Discard)
+		} else {
+			realms.print = print
+			realms.shell = newV8Shell(io.Discard, io.Discard)
 		}
 		defer realms.shell.close()
 		if _, err := realms.add(scripts.current, false); err != nil {
@@ -675,7 +702,11 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	vm.SetImportMeta(func(m *ekuma.Module) map[string]any {
 		return map[string]any{"url": m.Name()}
 	})
-	for _, name := range directives.files {
+	files := directives.files
+	if webkitOutput != nil {
+		files = append(files, v8WebKitDir+"/resources/standalone-pre.js")
+	}
+	for _, name := range files {
 		result = scripts.runFile(ctx, &loop, name, nil)
 		if result.outcome != suitePassed {
 			result.reason = name + ": " + result.reason
@@ -687,6 +718,9 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	}
 	if result.outcome == suitePassed {
 		result = scripts.runFile(ctx, &loop, v.file, src)
+	}
+	if webkitOutput != nil && result.outcome == suitePassed && !loop.terminated {
+		result = scripts.runFile(ctx, &loop, v8WebKitDir+"/resources/standalone-post.js", nil)
 	}
 	result = loop.drain(ctx, result)
 	if loop.terminated || result.outcome != suitePassed || directives.ignoreUnhandledPromises {

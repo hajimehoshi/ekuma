@@ -134,12 +134,18 @@
       out(`${typeof arg === "symbol" ? descriptionOf(arg) : arg}`);
     }
   }
-  globalThis.printErr = function printErr(...args) {
+  function printTo(out, args) {
     try {
-      write(stderr, args);
+      write(out, args);
     } finally {
-      stderr("\n");
+      out("\n");
     }
+  }
+  globalThis.print ??= function print(...args) {
+    printTo(stdout, args);
+  };
+  globalThis.printErr = function printErr(...args) {
+    printTo(stderr, args);
   };
 
   function line(out, prefix, args) {

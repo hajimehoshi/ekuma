@@ -61,8 +61,10 @@ func (h *v8Realms) newEntry(index int, r, previous *ekuma.Realm, shareAccess boo
 	if err != nil {
 		return nil, err
 	}
-	if err := r.Global().Set("print", r.FuncOf("print", h.print)); err != nil {
-		return nil, err
+	if h.print != nil {
+		if err := r.Global().Set("print", r.FuncOf("print", h.print)); err != nil {
+			return nil, err
+		}
 	}
 	if err := h.loop.install(r); err != nil {
 		return nil, err

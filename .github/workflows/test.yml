@@ -59,6 +59,7 @@ jobs:
             /test/intl/
             /test/mjsunit/
             /test/test262/local-tests/test/
+            /test/webkit/
             /tools/**/*.mjs
             /tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js
           sparse-checkout-cone-mode: false
