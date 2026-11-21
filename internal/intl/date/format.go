@@ -337,7 +337,7 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 			if y == 1 {
 				return "year", "元"
 			}
-			return "year", strconv.FormatInt(y, 10)
+			return "year", fm.num(y, 1)
 		}
 		if n == 2 {
 			return "year", fm.num(floorMod(y, 100), 2)
