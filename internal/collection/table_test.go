@@ -229,6 +229,27 @@ func TestFindAfterDeletes(t *testing.T) {
 	check("clone", tab.Clone(), 1000)
 }
 
+// TestGrowthByUnhashedKeys tests that number keys are found and missed when the storage of the
+// entries grows only by keys that the slots do not locate.
+func TestGrowthByUnhashedKeys(t *testing.T) {
+	vm := engine.NewVM(nil)
+	var tab collection.Table
+	var numbers int
+	for i := range 1000 {
+		if tab.Size() == collection.EntryStorage(&tab) {
+			tab.Set(vm.NewString(wtf8.String("a key longer than sixteen bytes "+strconv.Itoa(i))), engine.Undefined)
+			continue
+		}
+		tab.Set(engine.Number(float64(numbers)), engine.Undefined)
+		numbers++
+	}
+	for i := range numbers + 1 {
+		if got, want := tab.Has(engine.Number(float64(i))), i < numbers; got != want {
+			t.Errorf("Has(%d) = %t, want %t", i, got, want)
+		}
+	}
+}
+
 // TestStorageShrinks tests that deleting most entries gives up the storage that they used.
 func TestStorageShrinks(t *testing.T) {
 	var tab collection.Table

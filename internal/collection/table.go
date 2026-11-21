@@ -445,6 +445,7 @@ func (t *Table) Append(k, v engine.Value) {
 	if k.IsNumber() {
 		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
 	}
+	t.makeRoom()
 	t.entries = append(t.entries, entry{
 		key:   k,
 		value: v,
@@ -465,12 +466,8 @@ func (t *Table) appendHashed(k, v engine.Value, h, s uint32) {
 		// probeNumber compares the stored bits.
 		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
 	}
-	if len(t.entries) == cap(t.entries) {
-		t.entries = slices.Grow(t.entries, 1)
-		if slotCount(cap(t.entries)) > len(t.slots) {
-			t.growSlots()
-			_, _, s = t.locate(k)
-		}
+	if t.makeRoom() {
+		_, _, s = t.locate(k)
 	}
 	t.entries = append(t.entries, entry{
 		key:   k,
@@ -481,6 +478,19 @@ func (t *Table) appendHashed(k, v engine.Value, h, s uint32) {
 		index: int32(len(t.entries) - 1),
 	}
 	t.live++
+}
+
+// makeRoom makes room for one more entry, and reports whether the slots were rebuilt.
+func (t *Table) makeRoom() bool {
+	if len(t.entries) < cap(t.entries) {
+		return false
+	}
+	t.entries = slices.Grow(t.entries, 1)
+	if !t.indexed || slotCount(cap(t.entries)) <= len(t.slots) {
+		return false
+	}
+	t.growSlots()
+	return true
 }
 
 // Delete deletes the entry with the key k and reports whether there was one.
