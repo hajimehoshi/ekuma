@@ -585,6 +585,12 @@ func (vm *VM) CurrentRealm() *Realm {
 	return (*Realm)(vm.curRealm)
 }
 
+// IsEnteredRealm reports whether r is the VM's entered realm.
+// Jobs record an entered realm only in VMs with global proxies.
+func (vm *VM) IsEnteredRealm(r *Realm) bool {
+	return r != nil && (*realm)(r) == vm.enteredRealm
+}
+
 // SetRealmHostDefined sets the [[HostDefined]] field of the realm r to v.
 func (vm *VM) SetRealmHostDefined(r *Realm, v any) {
 	if (*realm)(r) == vm.curRealm {

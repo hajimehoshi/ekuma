@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-(function (create, lookup) {
+(function (create, lookup, current) {
   "use strict";
   const {Error, SyntaxError, TypeError} = globalThis;
   function isObject(value) {
@@ -16,6 +16,7 @@
   }
 
   globalThis.Realm = {
+    current,
     create(options) {
       let ownQueue;
       try {

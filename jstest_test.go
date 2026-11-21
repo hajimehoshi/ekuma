@@ -17,6 +17,7 @@ var test262Runner = jstest.Test262{
 }
 
 var v8Runner = jstest.V8{
+	IsEnteredRealm:           ekuma.IsEnteredRealm,
 	ParseScriptValue:         ekuma.ParseScriptValue,
 	InstallGlobalProxy:       ekuma.InstallGlobalProxy,
 	DetachGlobalProxy:        ekuma.DetachGlobalProxy,

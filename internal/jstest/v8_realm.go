@@ -30,7 +30,12 @@ type v8Realms struct {
 	print    ekuma.Func
 	shell    v8Shell
 	timeouts *v8Timeouts
-	entries  []ekuma.Value
+	entries  []v8RealmEntry
+}
+
+type v8RealmEntry struct {
+	realm  *ekuma.Realm
+	object ekuma.Value
 }
 
 func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
@@ -59,9 +64,17 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 		if i < 0 || i >= len(h.entries) {
 			return ekuma.Undefined, nil
 		}
-		return h.entries[i], nil
+		return h.entries[i].object, nil
 	})
-	view, err := init.Invoke(h.ctx, create, lookup)
+	current := r.FuncOf("current", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+		for i, entry := range h.entries {
+			if h.host.IsEnteredRealm(entry.realm) {
+				return i, nil
+			}
+		}
+		return ekuma.Undefined, nil
+	})
+	view, err := init.Invoke(h.ctx, create, lookup, current)
 	if err != nil {
 		return 0, err
 	}
@@ -94,11 +107,14 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 		h.host.DetachGlobalProxy(r)
 		return true, nil
 	})
-	h.entries = append(h.entries, r.ValueOf(map[string]any{
-		"global":       h.host.InstallGlobalProxy(r, view, shareAccess),
-		"evaluate":     evaluate,
-		"detachGlobal": detach,
-	}))
+	h.entries = append(h.entries, v8RealmEntry{
+		realm: r,
+		object: r.ValueOf(map[string]any{
+			"global":       h.host.InstallGlobalProxy(r, view, shareAccess),
+			"evaluate":     evaluate,
+			"detachGlobal": detach,
+		}),
+	})
 	return index, nil
 }
 
@@ -106,6 +122,11 @@ func (h *v8Realms) add(r *ekuma.Realm, shareAccess bool) (int, error) {
 func (host *V8) CheckRealm(t *testing.T) {
 	const source = `
 		const r = Realm.create();
+		const [entered, current] = Realm.eval(r, "[Realm.current(), Realm.current]");
+		if (entered !== r || current() !== 0) throw Error("wrong entered realm");
+		Promise.resolve().then(current).then(i => {
+			if (i !== r) throw Error("wrong microtask realm");
+		});
 		if (Realm.eval(r, 'd8.file.execute("helper.js"); loadedIn') !== Realm.global(r)) {
 			throw Error("script loaded in the wrong realm");
 		}

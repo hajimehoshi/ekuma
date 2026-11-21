@@ -36,6 +36,12 @@ func TakeUnhandledRejection(vm *VM) error {
 	}
 }
 
+// IsEnteredRealm reports whether r is the VM's entered realm.
+// Jobs record an entered realm only in VMs with global proxies.
+func IsEnteredRealm(r *Realm) bool {
+	return r.vm.e.IsEnteredRealm(r.r)
+}
+
 // ParseScriptValue parses the JavaScript string src as a script of r.
 func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
 	return r.parseScript(name, src.value.Str())

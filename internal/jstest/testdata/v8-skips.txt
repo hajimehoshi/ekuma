@@ -546,11 +546,6 @@ test/mjsunit/stack-traces-class-fields.js
 test/mjsunit/stack-traces-custom-lazy.js
 test/mjsunit/stack-traces.js
 
-# These tests require Realm.current.
-test/mjsunit/contextual-calls.js
-test/mjsunit/regress/regress-6733.js
-test/mjsunit/regress/regress-crbug-768875.js
-
 # These tests require Realm.dispose.
 test/mjsunit/d8/regress-516209551.js
 test/mjsunit/regress/redeclaration-error-types.js
@@ -567,7 +562,8 @@ test/mjsunit/regress/regress-524921880.js
 # This test requires Realm.owner.
 test/mjsunit/regress/regress-crbug-1130213.js
 
-# This test requires Realm.shared.
+# These tests require Realm.shared.
+test/mjsunit/contextual-calls.js
 test/mjsunit/regress/regress-523431532.js
 
 # This test requires Realm.switch.
