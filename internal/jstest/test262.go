@@ -29,7 +29,7 @@ import (
 type Test262 struct {
 	NewHTMLDDA           func(*ekuma.Realm) ekuma.Value
 	AbstractModuleSource func(*ekuma.Realm) ekuma.Value
-	NewSourceModule      func(*ekuma.VM, string, string) *ekuma.Module
+	NewSourceModule      func(*ekuma.Realm, string, string) *ekuma.Module
 }
 
 var test262Flags = registerSuiteFlags("test262")
@@ -247,13 +247,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	if err := vm.SetLocale("en-US"); err != nil {
 		return suiteBroken.result("harness: " + err.Error())
 	}
-	loader := &moduleLoader{
-		realm:    vm.InitialRealm(),
-		dir:      filepath.Dir(path),
-		readFile: os.ReadFile,
-		modules:  map[string]*ekuma.Module{},
-	}
-	h.suite.setModuleLoader(&vm, loader)
+	loader := h.suite.setModuleLoader(&vm, filepath.Dir(path))
 	// An async test reports its outcome by printing it.
 	printed := new([]string)
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
@@ -313,32 +307,48 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	return suiteResult{}
 }
 
-// moduleLoader loads the modules of a test from the suite checkout, resolving a specifier
-// relative to the directory of the importing file. It keeps one module record per file and type.
+// moduleLoader loads a test's modules for one realm.
 type moduleLoader struct {
 	realm *ekuma.Realm
 
 	// dir is the directory of the test, for the code that has no file.
 	dir string
 
-	readFile func(string) ([]byte, error)
-	modules  map[string]*ekuma.Module
+	readFile     func(string) ([]byte, error)
+	modules      map[string]*ekuma.Module
+	sourceModule *ekuma.Module
 }
 
 // moduleSourceSpecifier is the specifier that test262 resolves to a module with a module source.
 const moduleSourceSpecifier = "<module source>"
 
-func (suite *Test262) setModuleLoader(vm *ekuma.VM, l *moduleLoader) {
-	var source *ekuma.Module
+// setModuleLoader installs the test's module loader and returns the initial realm's loader.
+func (suite *Test262) setModuleLoader(vm *ekuma.VM, dir string) *moduleLoader {
+	loaders := map[*ekuma.Realm]*moduleLoader{}
+	loaderFor := func(r *ekuma.Realm) *moduleLoader {
+		if l := loaders[r]; l != nil {
+			return l
+		}
+		l := &moduleLoader{
+			realm:    r,
+			dir:      dir,
+			readFile: os.ReadFile,
+			modules:  map[string]*ekuma.Module{},
+		}
+		loaders[r] = l
+		return l
+	}
 	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		l := loaderFor(req.Realm)
 		if req.Specifier != moduleSourceSpecifier {
 			return l.loadFile(l.resolveFile(req), req.Attributes["type"])
 		}
-		if source == nil {
-			source = suite.NewSourceModule(vm, req.Specifier, "Test262ModuleSource")
+		if l.sourceModule == nil {
+			l.sourceModule = suite.NewSourceModule(req.Realm, req.Specifier, "Test262ModuleSource")
 		}
-		return source, nil
+		return l.sourceModule, nil
 	})
+	return loaderFor(vm.InitialRealm())
 }
 
 func (l *moduleLoader) resolveFile(req ekuma.ModuleRequest) string {

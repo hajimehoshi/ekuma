@@ -2716,7 +2716,7 @@ func TestSyntheticModules(t *testing.T) {
 
 func TestModuleSource(t *testing.T) {
 	var vm ekuma.VM
-	src := ekuma.NewSourceModule(&vm, "src", "TestModuleSource")
+	src := ekuma.NewSourceModule(vm.InitialRealm(), "src", "TestModuleSource")
 	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
 		return src, nil
 	})

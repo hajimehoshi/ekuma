@@ -4,6 +4,8 @@
 package ekuma_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/synctest"
 
@@ -61,6 +63,47 @@ func TestTest262EarlyNegativeWithRuntimeError(t *testing.T) {
 
 func TestTest262ModuleJobs(t *testing.T) {
 	synctest.Test(t, test262Runner.CheckModuleJobs)
+}
+
+func TestTest262ModuleRealms(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"marker_FIXTURE.js": "export const marker = globalThis.marker;",
+		"marker.js": `/*---
+flags: [module]
+---*/
+globalThis.marker = "outer";
+assert.sameValue((await import("./marker_FIXTURE.js")).marker, "outer");
+const shadow = new ShadowRealm();
+shadow.evaluate('globalThis.marker = "inner"');
+assert.sameValue(await shadow.importValue("./marker_FIXTURE.js", "marker"), "inner");
+shadow.evaluate('globalThis.marker = "changed"');
+assert.sameValue(await shadow.importValue("././marker_FIXTURE.js", "marker"), "inner");`,
+		"data_FIXTURE.json": "[42]",
+		"typed.js": `/*---
+flags: [module]
+---*/
+const other = $262.createRealm();
+const load = other.evalScript('(type => import("./data_FIXTURE.json", { with: { type } }))');
+assert.sameValue(Object.getPrototypeOf((await load("json")).default), other.global.Array.prototype);
+assert.sameValue(Object.getPrototypeOf((await load("bytes")).default), other.global.Uint8Array.prototype);
+assert.sameValue((await load("text")).default, "[42]");`,
+		"source.js": `/*---
+flags: [module]
+---*/
+import source initial from "<module source>";
+const other = $262.createRealm();
+const src = await other.evalScript('import.source("<module source>")');
+assert.sameValue(src === initial, false);
+assert.sameValue(src instanceof other.global.$262.AbstractModuleSource, true);
+assert.sameValue(await other.evalScript('import.source("<module source>")'), src);`,
+	}
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	test262Runner.RunScripts(t, dir)
 }
 
 func TestV8(t *testing.T) {

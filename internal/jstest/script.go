@@ -21,7 +21,7 @@ func (localTest262HarnessFS) Open(name string) (fs.File, error) {
 	return os.DirFS(testdataDir + "/harness").Open("test262-" + name)
 }
 
-// RunScripts runs the JavaScript files under the repository-relative scriptsDir.
+// RunScripts runs the JavaScript tests under scriptsDir.
 func (suite *Test262) RunScripts(t *testing.T, scriptsDir string) {
 	suite.newHarness(localTest262HarnessFS{}).runScripts(t, scriptsDir)
 }

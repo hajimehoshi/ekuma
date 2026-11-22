@@ -217,12 +217,15 @@ func AbstractModuleSource(r *Realm) Value {
 	return fromEngine(v)
 }
 
-// NewSourceModule returns a module of vm whose only export is a default of undefined and
+// NewSourceModule returns a module of r whose only export is a default of undefined and
 // whose module source is an instance of %AbstractModuleSource% named className.
-func NewSourceModule(vm *VM, name, className string) *Module {
-	m := vm.NewSyntheticModule(name, Undefined)
-	proto := vm.e.NewObject(vm.e.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
-	m.m.SetModuleSource(vm.e.NewModuleSourceObject(proto, className))
+func NewSourceModule(r *Realm, name, className string) *Module {
+	m := r.NewSyntheticModule(name, Undefined)
+	r.in(func() {
+		e := r.vm.e
+		proto := e.NewObject(e.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
+		m.m.SetModuleSource(e.NewModuleSourceObject(proto, className))
+	})
 	return m
 }
 
