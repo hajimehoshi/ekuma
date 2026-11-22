@@ -9,15 +9,19 @@
 # relevant Unicode extension keys, so en-US-u-va-posix resolves to en-US.
 rbbitst.txt 1584 -23,-24,-36,-37
 
-# Ekuma uses a web-compatible space before AM/PM. In the distant Hebrew
-# date the host zone rules and CLDR name yield Pacific Standard Time.
+# Ekuma uses a web-compatible space before AM/PM.
 format.txt 35 "8/8/07, 6:54 PM"
 format.txt 100 "11:59:00 PM GMT"
 format.txt 107 "5:00:00 PM GMT"
+
+# The Hebrew date also differs in its zone name. In Gregorian year 99458,
+# ICU4C uses GMT-08:00 because its default metazone mapping ends in 9999.
+# Ekuma uses CLDR's open-ended America_Pacific mapping for Los Angeles.
 format.txt 552 "Friday, 3 Heshvan 103217 at 12:00:00 AM Pacific Standard Time"
 
-# The DecimalFormat specification expects other for Serbian scientific
-# 2E0. Ekuma selects few from the integer operand 2.
+# The fixture expects other for Serbian 2E0. Ekuma and ICU4C 79.1 both
+# select few. ICU4C's NumberFormatDataDrivenTest inherits isSelectPass,
+# which accepts the row without comparing the plural category.
 numberformattestspecification.txt 1042 few
 
 # ICU interval entries identify the method or parts check and source line.
@@ -27,7 +31,6 @@ cdateintervalformattest.c/formatRange 66,67,69,70,194,195,196,197,198,199,205,20
 cdateintervalformattest.c/formatRange 207,208,209,210,211,221,222,223,230,231,232,233 web-spaces
 cdateintervalformattest.c/formatRange 234,235,241,242,243,244,245,246,247,251,252,253 web-spaces
 cdateintervalformattest.c/formatRange 254,255,256,257,258,259 web-spaces
-cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal . \nshared month September\nshared literal  \nshared year 2010\nshared literal , \nstartRange hour 15\nstartRange literal :\nstartRange minute 00\nshared literal –\nendRange hour 22\nendRange literal :\nendRange minute 00\nshared literal  Uhr"
 dtifmtts.cpp/formatRange 427,428,430,431,433,435,437,438,439,441,443,445,447,449 web-spaces
 dtifmtts.cpp/formatRange 451,453,455,457,459,461,463,465,467,469,471,473 web-spaces
 dtifmtts.cpp/formatRange 475,477,481,482,483,485,487,489,491,493,497,499,501 web-spaces
@@ -51,3 +54,9 @@ dtifmtts.cpp/formatRange/KK 2135,2137,2139,2141,2142,2143,2145 web-spaces
 dtifmtts.cpp/formatRange/CC 2135,2137,2139,2141,2142,2143 web-spaces
 dtifmtts.cpp/formatRange/jj 2139,2141,2142,2143,2145 web-spaces
 dtifmtts.cpp/formatRangeToParts 1878 web-spaces
+
+# The German fixture lists a tenth field for Uhr at UTF-16 offsets [32, 35).
+# ICU4C 79.1 returns nine fields ending at 31, leaving " Uhr" as a shared
+# literal. Its checkMixedFormattedValue helper checks only returned fields,
+# so the extra expected field goes unchecked.
+cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal . \nshared month September\nshared literal  \nshared year 2010\nshared literal , \nstartRange hour 15\nstartRange literal :\nstartRange minute 00\nshared literal –\nendRange hour 22\nendRange literal :\nendRange minute 00\nshared literal  Uhr"
