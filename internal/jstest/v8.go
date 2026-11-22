@@ -468,6 +468,10 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, ski
 		}
 		helpers = append(helpers, script)
 	}
+	var ordinaryScripts map[string]bool
+	if s.dir == "test/mjsunit" {
+		ordinaryScripts = checkedMjsunitOrdinaryScripts(t, checkout, root, filter)
+	}
 	var tests []v8Test
 	walk := fs.WalkDir
 	var shells mozillaShells
@@ -495,6 +499,9 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, ski
 			helpers:     helpers,
 			flags:       s.flags,
 			environment: unseenEnvironments[file],
+		}
+		if ordinaryScripts[file] {
+			test.flags = append(slices.Clip(s.flags), "--allow-natives-syntax")
 		}
 		delete(unseenEnvironments, file)
 		if skip := skips.match(file); shells != nil && mozillaPlatformSkip(file) {
