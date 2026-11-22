@@ -287,6 +287,20 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 			}
 		}
 	}
+	if x, ok := k.BigInt64(); ok {
+		for ; ; s = (s + 1) & mask {
+			sl := slots[s]
+			if sl.index < 0 {
+				return -1, s
+			}
+			if sl.hash != h {
+				continue
+			}
+			if y, ok := entries[sl.index].key.BigInt64(); ok && y == x {
+				return int(sl.index), 0
+			}
+		}
+	}
 	for ; ; s = (s + 1) & mask {
 		sl := slots[s]
 		if sl.index < 0 {
