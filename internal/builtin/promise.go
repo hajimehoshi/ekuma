@@ -167,7 +167,7 @@ func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object
 
 func initPromise(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicPromisePrototype)
-	ctor := constructor(vm, "Promise", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Promise", 1, engine.IntrinsicPromisePrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("Promise constructor cannot be invoked without 'new'")

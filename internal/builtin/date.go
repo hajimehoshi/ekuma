@@ -72,7 +72,7 @@ func initDate(vm *engine.VM) {
 		offset, name := dateStringOffset(vm, tz, tv)
 		return datetime.String(tv, offset, name)
 	}
-	ctor := constructor(vm, "Date", 7, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Date", 7, engine.IntrinsicDatePrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			return vm.StringFromGo(dateString(vm.SystemUTCEpochMilliseconds(), vm.DefaultTimeZone()))

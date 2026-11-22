@@ -149,7 +149,7 @@ func initMap(vm *engine.VM) {
 	nextKey := engine.NamedKey(vm.Intern("next"))
 	// The original methods that iterating a Map calls.
 	var mapSet, mapEntries, mapIterProto, mapIterNext *engine.Object
-	ctor := constructor(vm, "Map", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Map", 0, engine.IntrinsicMapPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor Map requires 'new'")
@@ -435,7 +435,7 @@ func initSet(vm *engine.VM) {
 	}
 	// The original methods that iterating a Set calls.
 	var setAdd, setValues, setIterProto, setIterNext *engine.Object
-	ctor := constructor(vm, "Set", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Set", 0, engine.IntrinsicSetPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor Set requires 'new'")

@@ -27,7 +27,7 @@ func thisStringValue(vm *engine.VM, this engine.Value, what string) engine.Value
 
 func initString(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicStringPrototype)
-	ctor := constructor(vm, "String", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "String", 1, engine.IntrinsicStringPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := vm.NewString("")
 		if len(args) > 0 {
 			if vm.GetNewTarget() == nil && args[0].IsSymbol() {

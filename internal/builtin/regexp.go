@@ -446,7 +446,7 @@ func initRegExp(vm *engine.VM) {
 		execKey:   vm.Intern("exec"),
 	}
 	proto := vm.Intrinsic(engine.IntrinsicRegExpPrototype)
-	ctor := constructor(vm, "RegExp", 2, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "RegExp", 2, engine.IntrinsicRegExpPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		pattern, flags := arg(args, 0), arg(args, 1)
 		patternIsRegExp := isRegExp(vm, pattern)
 		nt := vm.GetNewTarget()

@@ -32,7 +32,7 @@ func low64(i *big.Int) uint64 {
 // initBigInt defines BigInt.
 func initBigInt(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicBigIntPrototype)
-	ctor := constructor(vm, "BigInt", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "BigInt", 1, engine.IntrinsicBigIntPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if vm.GetNewTarget() != nil {
 			vm.ThrowTypeError("BigInt is not a constructor")
 		}

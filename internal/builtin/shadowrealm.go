@@ -11,7 +11,7 @@ import (
 func initShadowRealm(vm *engine.VM) {
 	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
 	vm.SetIntrinsic(engine.IntrinsicShadowRealmPrototype, proto)
-	constructor(vm, "ShadowRealm", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	constructor(vm, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor ShadowRealm requires 'new'")

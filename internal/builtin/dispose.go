@@ -58,7 +58,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		}
 		return engine.ObjectValue(vm.NewDisposableStackObject(vm.GetPrototypeFromConstructor(nt, protoID), async, s))
 	}
-	ctor = constructor(vm, wtf8.String(name), 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor = constructor(vm, wtf8.String(name), 0, protoID, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor " + name + " requires 'new'")

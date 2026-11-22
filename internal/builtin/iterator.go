@@ -142,7 +142,7 @@ func initIteratorHelpers(vm *engine.VM) {
 		}
 		return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicIteratorPrototype)))
 	})
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	vm.DefineConstructorPrototype(ctor, engine.IntrinsicIteratorPrototype)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Iterator"), engine.ObjectValue(ctor), engine.FlagsHidden)
 
 	// The properties that Iterator.prototype had in earlier editions are accessors whose setters

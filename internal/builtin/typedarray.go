@@ -1090,7 +1090,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 			return bi.construct(vm, typ, args)
 		})
 		vm.SetPrototypeOf(c, ctor)
-		vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(p), 0)
+		vm.DefineConstructorPrototype(c, engine.TypedArrayPrototypeIntrinsic(typ))
 		vm.Define(p, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 		vm.Define(vm.GlobalObject().Object(), vm.Intern(wtf8.String(name)), engine.ObjectValue(c), engine.FlagsHidden)
 		bpe := engine.Number(float64(typ.Size()))

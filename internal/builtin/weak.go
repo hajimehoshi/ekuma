@@ -26,7 +26,7 @@ func initWeakMap(vm *engine.VM) {
 	vm.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
 	setKey := vm.Intern("set")
 	var weakMapSet *engine.Object
-	constructor(vm, "WeakMap", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	constructor(vm, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakMap requires 'new'")
@@ -114,7 +114,7 @@ func initWeakSet(vm *engine.VM) {
 	vm.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
 	addKey := vm.Intern("add")
 	var weakSetAdd *engine.Object
-	constructor(vm, "WeakSet", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	constructor(vm, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakSet requires 'new'")
@@ -168,7 +168,7 @@ func initWeakSet(vm *engine.VM) {
 func initWeakRef(vm *engine.VM) {
 	proto := vm.NewOrdinaryObject()
 	vm.SetIntrinsic(engine.IntrinsicWeakRefPrototype, proto)
-	constructor(vm, "WeakRef", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	constructor(vm, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor WeakRef requires 'new'")
@@ -192,7 +192,7 @@ func initWeakRef(vm *engine.VM) {
 func initFinalizationRegistry(vm *engine.VM) {
 	proto := vm.NewOrdinaryObject()
 	vm.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
-	constructor(vm, "FinalizationRegistry", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	constructor(vm, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor FinalizationRegistry requires 'new'")

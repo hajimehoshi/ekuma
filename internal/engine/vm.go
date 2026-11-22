@@ -76,6 +76,11 @@ type nativeInfo struct {
 	// for two numbers.
 	extremum Extremum
 
+	// prototype is the intrinsic of realm that the property prototype of the function holds,
+	// when fixedPrototype is set. The property can then be neither changed nor deleted.
+	prototype      Intrinsic
+	fixedPrototype bool
+
 	// fast holds the forms of the function that its callers use instead of calling it, or is
 	// nil.
 	fast *nativeFast

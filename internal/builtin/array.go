@@ -256,7 +256,7 @@ func writeSeparators(vm *engine.VM, b *wtf8.Buffer, sep wtf8.String, count int64
 func initArray(vm *engine.VM, strs *objectStrings) {
 	proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
 	var joins joinGuard
-	ctor := constructor(vm, "Array", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Array", 1, engine.IntrinsicArrayPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
 		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicArray) {
 			proto = vm.GetPrototypeFromConstructor(nt, engine.IntrinsicArrayPrototype)

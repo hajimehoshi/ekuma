@@ -1365,6 +1365,9 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) *Object {
 	r := vm.curRealm
 	if ctor != nil {
+		if f := ctor.fn; f != nil && f.info != nil && f.info.fixedPrototype {
+			return vm.realmIntrinsic(f.info.realm, f.info.prototype)
+		}
 		if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
 			return p.o
 		}
@@ -1471,6 +1474,14 @@ func (vm *VM) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *
 	o := vm.NewNative(name, length, f)
 	o.fn.constructor = true
 	return o
+}
+
+// DefineConstructorPrototype defines the property prototype of the constructor c, which
+// NewNativeConstructor returned in the current realm, as the intrinsic id, which the property
+// then holds for good.
+func (vm *VM) DefineConstructorPrototype(c *Object, id Intrinsic) {
+	vm.Define(c, vm.Key(KeyPrototype), Value{o: vm.Intrinsic(id)}, 0)
+	c.fn.info.prototype, c.fn.info.fixedPrototype = id, true
 }
 
 // GetNewTarget implements GetNewTarget for the running native function: it returns the

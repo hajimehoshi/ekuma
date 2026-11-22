@@ -19,7 +19,7 @@ import (
 // parseFloat and parseInt are the functions to define as properties of Number.
 func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	proto := vm.Intrinsic(engine.IntrinsicNumberPrototype)
-	ctor := constructor(vm, "Number", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Number", 1, engine.IntrinsicNumberPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := 0.0
 		if len(args) > 0 {
 			v := vm.ToNumeric(args[0])
@@ -163,7 +163,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	})
 
 	bproto := vm.Intrinsic(engine.IntrinsicBooleanPrototype)
-	constructor(vm, "Boolean", 1, bproto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	constructor(vm, "Boolean", 1, engine.IntrinsicBooleanPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ToBoolean(arg(args, 0))
 		if nt := vm.GetNewTarget(); nt != nil {
 			return engine.ObjectValue(vm.NewBooleanObject(b, vm.GetPrototypeFromConstructor(nt, engine.IntrinsicBooleanPrototype)))
@@ -607,7 +607,7 @@ func fixExponent(s []byte) []byte {
 
 func initSymbol(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicSymbolPrototype)
-	ctor := constructor(vm, "Symbol", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "Symbol", 0, engine.IntrinsicSymbolPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if vm.GetNewTarget() != nil {
 			vm.ThrowTypeError("Symbol is not a constructor")
 		}

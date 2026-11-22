@@ -85,7 +85,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	proto := vm.NewOrdinaryObject()
 	bi.arrayBufferProto = proto
 	vm.SetIntrinsic(engine.IntrinsicArrayBufferPrototype, proto)
-	ctor := constructor(vm, "ArrayBuffer", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "ArrayBuffer", 1, engine.IntrinsicArrayBufferPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor ArrayBuffer requires 'new'")
@@ -234,7 +234,7 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	proto := vm.NewOrdinaryObject()
 	bi.sharedArrayBufferProto = proto
 	vm.SetIntrinsic(engine.IntrinsicSharedArrayBufferPrototype, proto)
-	ctor := constructor(vm, "SharedArrayBuffer", 1, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	ctor := constructor(vm, "SharedArrayBuffer", 1, engine.IntrinsicSharedArrayBufferPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
 			vm.ThrowTypeError("constructor SharedArrayBuffer requires 'new'")

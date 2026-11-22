@@ -606,7 +606,7 @@ func temporalConstructor(vm *engine.VM, ns *engine.Object, name wtf8.String, len
 	proto := vm.NewOrdinaryObject()
 	vm.SetIntrinsic(protoID, proto)
 	c := vm.NewNativeConstructor(name, length, temporalNative(f))
-	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	vm.DefineConstructorPrototype(c, protoID)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 	vm.Define(ns, vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal."+name), engine.FlagConfigurable)
