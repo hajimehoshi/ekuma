@@ -121,6 +121,9 @@ func (vm *VM) initRealmGlobals() {
 	vm.shapes.iterResult = vm.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
 	vm.shapes.arguments = vm.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
 	vm.global = vm.NewObject(vm.intrinsics[IntrinsicObjectPrototype])
+	// Deleting a property can restore a shared shape and its cached global slot pointers.
+	// Keep the slots in place until adding a property gives the global object a private shape.
+	vm.global.slots = make([]Value, 0, privateShapeThreshold)
 	vm.globalThis = vm.global
 	vm.globalLex = vm.NewObject(nil)
 }
