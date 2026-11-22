@@ -991,6 +991,22 @@ func TestModules(t *testing.T) {
 			want: "hello b",
 		},
 		{
+			name: "cycle with an exported deferred namespace",
+			sources: map[string]string{
+				"main": `import { ns, read } from "a";
+					const fromB = read();
+					globalThis.result = [ns === fromB, globalThis.runs ?? 0, fromB.x, ns.x, globalThis.runs].join();`,
+				"a": `import { read } from "b";
+					import defer * as ns from "dep";
+					export { ns, read };`,
+				"b": `import { ns } from "a";
+					export function read() { return ns; }`,
+				"dep": `globalThis.runs = (globalThis.runs ?? 0) + 1;
+					export const x = 42;`,
+			},
+			want: "true,0,42,42,1",
+		},
+		{
 			// A module that two modules import, and that a dynamic import loads again,
 			// runs once, and all of them see the same namespace object.
 			name: "identity",

@@ -809,7 +809,8 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 		case bytecode.ModuleNamespace:
 			m.env[i] = newCell(Value{o: vm.moduleNamespace(m.requested[b.Request])})
 		case bytecode.ModuleDeferredNamespace:
-			m.env[i] = newCell(Value{o: vm.deferredModuleNamespace(m.requested[b.Request])})
+			// A circular importer may already refer to this cell.
+			*m.env[i].p = Value{o: vm.deferredModuleNamespace(m.requested[b.Request])}
 		case bytecode.ModuleSource:
 			v, ok := vm.getModuleSource(m.requested[b.Request])
 			if !ok {
