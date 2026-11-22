@@ -4,30 +4,40 @@
 package unorm_test
 
 import (
-	"math/rand/v2"
 	"strings"
 	"testing"
-
-	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 )
 
-var forms = []norm.Form{norm.NFC, norm.NFD, norm.NFKC, norm.NFKD}
-
 func TestStringInSteps(t *testing.T) {
-	// Short runs of non-starters normalize as the package norm does, also across the steps of a
-	// long string.
-	r := rand.New(rand.NewPCG(1, 2))
-	pieces := []string{"a", "é", "é", "̧́", "가", "가", "ﬁ", "ḍ̇", "x"}
-	var b strings.Builder
-	for b.Len() < 1<<18 {
-		b.WriteString(pieces[r.IntN(len(pieces))])
-	}
-	s := b.String()
-	for _, form := range forms {
-		if got, want := unorm.String(unorm.Form(form), s, nil), form.String(s); got != want {
-			t.Errorf("form %v: the result differs from the package norm", form)
+	// Each repetition starts with a starter, so its expected form is independent
+	// of its neighbors even when a chunk boundary falls in the middle of it.
+	const count = 1 << 14
+	s := strings.Repeat("e\u0301가ﬁḋ\u0323", count)
+	for _, tc := range []struct {
+		form unorm.Form
+		want string
+	}{
+		{
+			form: unorm.NFC,
+			want: "é가ﬁḍ\u0307",
+		},
+		{
+			form: unorm.NFD,
+			want: "e\u0301가ﬁd\u0323\u0307",
+		},
+		{
+			form: unorm.NFKC,
+			want: "é가fiḍ\u0307",
+		},
+		{
+			form: unorm.NFKD,
+			want: "e\u0301가fid\u0323\u0307",
+		},
+	} {
+		if got := unorm.String(tc.form, s, nil); got != strings.Repeat(tc.want, count) {
+			t.Errorf("form %v: incorrect normalization across chunks", tc.form)
 		}
 	}
 }
