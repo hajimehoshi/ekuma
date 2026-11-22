@@ -183,6 +183,7 @@ func (vm *VM) pushGenFrame(g *generator, ret int32) {
 	fr.this = g.this
 	fr.ret = ret
 	fr.isNew = false
+	fr.plainReturn = false
 	fr.argc = g.argc
 	fr.extraBase = -1
 	fr.newTarget = g.newTarget

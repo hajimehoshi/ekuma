@@ -34,6 +34,10 @@ type frame struct {
 	// isNew is set when the function was called as a constructor that creates its own this.
 	isNew bool
 
+	// plainReturn is set when the frame is no activation of a generator and the function of the
+	// calling frame belongs to the realm of its own function.
+	plainReturn bool
+
 	argc int
 
 	// extraBase is the stack index of the arguments beyond the parameters, which stay below
@@ -136,11 +140,14 @@ func (vm *VM) clearStale() {
 	vm.framesHigh = n
 }
 
-// appendFrame appends a frame whose fields the caller must initialize.
+// appendFrame appends a frame whose fields the caller must initialize. The frames have room for
+// at most maxFrames, which the caller does not exceed.
 func (vm *VM) appendFrame() *frame {
 	n := len(vm.frames)
 	if n == cap(vm.frames) {
-		vm.frames = append(vm.frames, frame{})
+		frames := make([]frame, n+1, max(min(2*n, maxFrames), n+1))
+		copy(frames, vm.frames)
+		vm.frames = frames
 	} else {
 		vm.frames = vm.frames[:n+1]
 	}
@@ -175,6 +182,8 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	fr := vm.appendFrame()
 	fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = fp, f, this, newTarget, nil, nil
 	fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, base, ret, isNew, argc, extraBase
+	n := len(vm.frames) - 1
+	fr.plainReturn = n > 0 && vm.frames[n-1].fp.realm == fp.realm
 	vm.sp = base + fp.nregs + 1
 	return base
 }
@@ -1288,7 +1297,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					n := len(vm.frames)
 					argBase := vm.frames[n-1].base + first
 					end := argBase + max(argc, c.nregs+1)
-					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
+					// The frames have room for at most maxFrames.
+					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) {
 						var this Value
 						switch {
 						case i.Op == bytecode.OpCallUndef:
@@ -1313,7 +1323,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]
 						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
-						fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
+						// The callee belongs to the current realm, which is that of the running frame.
+						fr.pc, fr.base, fr.ret, fr.isNew, fr.plainReturn, fr.argc, fr.extraBase = 0, argBase, i.A, false, true, argc, -1
 						vm.sp = argBase + c.nregs + 1
 						fp, pc = c, 0
 						regs = vm.stack[argBase:vm.sp]
@@ -1338,7 +1349,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				r = regs[i.A]
 			}
 			n := len(vm.frames) - 1
-			if done := &vm.frames[n]; done.gen == nil && n != stop && vm.frames[n-1].fp.realm == vm.curRealm && (len(vm.openUpvals) == 0 || vm.openUpvals[len(vm.openUpvals)-1].index < done.base) {
+			if done := &vm.frames[n]; done.plainReturn && n != stop && (len(vm.openUpvals) == 0 || vm.openUpvals[len(vm.openUpvals)-1].index < done.base) {
 				if done.isNew && (r.o == nil || r.o.kind < kindFirstObject) {
 					r = done.this
 				}
@@ -2066,7 +2077,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						argc := cur.argc
 						argBase := cur.base + fp.nregs + 1
 						end := argBase + max(argc, c.nregs+1)
-						if (argc <= fp.nparams || cur.extraBase >= 0) && (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) && n < maxFrames {
+						// The frames have room for at most maxFrames.
+						if (argc <= fp.nparams || cur.extraBase >= 0) && (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) {
 							k := min(argc, fp.nparams)
 							for j := range k {
 								vm.stack[argBase+j] = regs[j]
@@ -2083,7 +2095,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 							vm.framesHigh = max(vm.framesHigh, n+1)
 							fr := &vm.frames[n]
 							fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
-							fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, argBase, i.A, false, argc, -1
+							// The callee belongs to the current realm, which is that of the running frame.
+							fr.pc, fr.base, fr.ret, fr.isNew, fr.plainReturn, fr.argc, fr.extraBase = 0, argBase, i.A, false, true, argc, -1
 							vm.sp = argBase + c.nregs + 1
 							fp, pc = c, 0
 							regs = vm.stack[argBase:vm.sp]
