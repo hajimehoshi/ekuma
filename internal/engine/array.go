@@ -236,10 +236,13 @@ type pushSizeHint struct {
 	target uint16
 }
 
-// PushElements is the ordinary-array fast path for the built-in Array.prototype.push.
-// It returns the new length on success and may reserve space based on earlier pushes at the calling site.
+// PushElements appends vals to the array o and returns its new length and true.
+// If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
+// and returns 0, false.
 func (vm *VM) PushElements(o *Object, vals []Value) (uint32, bool) {
 	n, ok := vm.AppendElements(o, vals)
+	// Sample single-element pushes so earlier array lengths at this call site can
+	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
 		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
 			vm.observePush(o)

@@ -114,6 +114,8 @@ func AppendNumber(dst []byte, n float64) []byte {
 	return out
 }
 
+// DigitValue returns the base-36 value of an ASCII digit (0-9) or letter (A-Z or a-z).
+// It returns 36 for any other byte.
 func DigitValue(c byte) int {
 	switch {
 	case c >= '0' && c <= '9':

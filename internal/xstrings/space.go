@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
+// Package xstrings provides substring search and ECMAScript whitespace trimming for
+// WTF-8 strings, and case mapping for valid UTF-8 strings.
 package xstrings
 
 import (

@@ -46,9 +46,13 @@ func (vm *VM) BindScript(u *UnboundScript) *Script {
 	return vm.initialRealm.BindScript(u)
 }
 
-// Evaluate evaluates s, runs the pending jobs, and returns the completion value of s. s may be
-// evaluated more than once, but evaluating it again throws a JavaScript SyntaxError when s
-// declares a top-level let, const or class.
+// Evaluate evaluates s and returns its completion value. A script may be evaluated more than
+// once, but evaluating it again throws a JavaScript SyntaxError when s declares a top-level
+// let, const or class.
+//
+// Pending promise jobs run before the outermost Go call that executes JavaScript returns.
+// An Evaluate call made from a host callback can return with jobs still pending.
+// An interruption discards pending jobs.
 //
 // The error is a [*ScriptError] when the script throws. When ctx is done, the script stops at its
 // next loop iteration or call, and the error is the cause of ctx.

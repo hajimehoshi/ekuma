@@ -178,10 +178,14 @@ func (m *Module) Link() error {
 	return publicError(m.vm.e.Link(m.m))
 }
 
-// Evaluate evaluates m and its dependencies, runs the pending jobs, and returns a promise
-// for the evaluation. It calls [Module.Link] first. An exception thrown by a module rejects the
-// promise. Evaluating a source text module again returns the same promise; a synthetic or JSON
+// Evaluate evaluates m and its dependencies and returns a promise for the evaluation.
+// It calls [Module.Link] first. An exception thrown by a module rejects the promise.
+// Evaluating a source text module again returns the same promise. A synthetic or JSON
 // module returns a new fulfilled promise each time.
+//
+// Pending promise jobs run before the outermost Go call that executes JavaScript returns.
+// An Evaluate call made from a host callback can return with jobs still pending.
+// An interruption discards pending jobs.
 //
 // The error is the error of [Module.Link]. When ctx is done, the evaluation stops at its next
 // loop iteration or call, and the error is the cause of ctx. Any call that a context stops

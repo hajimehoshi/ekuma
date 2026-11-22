@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
-// Package datetime implements the date and time operations of ECMAScript on time values:
-// numbers of milliseconds since 1970-01-01T00:00:00Z.
+// Package datetime implements the date and time operations of ECMAScript.
+// Time values count milliseconds since 1970-01-01T00:00:00Z.
+// Day numbers count calendar days from the same epoch, starting at zero.
 package datetime
 
 import (
@@ -40,17 +41,17 @@ func modulo(x, y float64) float64 {
 	return r + 0 // Turn -0 into +0.
 }
 
-// Day implements Day.
+// Day returns the day number containing the time value t, with 1970-01-01 as day zero.
 func Day(t float64) float64 {
 	return math.Floor(t / MsPerDay)
 }
 
-// TimeWithinDay implements TimeWithinDay.
+// TimeWithinDay returns the milliseconds since midnight for the time value t.
 func TimeWithinDay(t float64) float64 {
 	return modulo(t, MsPerDay)
 }
 
-// DaysInYear implements DaysInYear.
+// DaysInYear returns the number of days (365 or 366) in the Gregorian calendar year y.
 func DaysInYear(y float64) float64 {
 	switch {
 	case modulo(y, 4) != 0:
@@ -63,17 +64,17 @@ func DaysInYear(y float64) float64 {
 	return 366
 }
 
-// DayFromYear implements DayFromYear.
+// DayFromYear returns the day number of January 1 of year y.
 func DayFromYear(y float64) float64 {
 	return 365*(y-1970) + math.Floor((y-1969)/4) - math.Floor((y-1901)/100) + math.Floor((y-1601)/400)
 }
 
-// TimeFromYear implements TimeFromYear.
+// TimeFromYear returns the time value at midnight on January 1 of year y.
 func TimeFromYear(y float64) float64 {
 	return MsPerDay * DayFromYear(y)
 }
 
-// YearFromTime implements YearFromTime. t must be finite.
+// YearFromTime returns the calendar year containing the finite time value t.
 func YearFromTime(t float64) float64 {
 	y := math.Floor(t/(MsPerDay*365.2425)) + 1970
 	for TimeFromYear(y) > t {
@@ -85,7 +86,7 @@ func YearFromTime(t float64) float64 {
 	return y
 }
 
-// InLeapYear implements InLeapYear.
+// InLeapYear reports whether the finite time value t falls in a leap year.
 func InLeapYear(t float64) bool {
 	return DaysInYear(YearFromTime(t)) == 366
 }
@@ -102,7 +103,7 @@ func daysBeforeMonth(m int, leap bool) float64 {
 	return d
 }
 
-// DayWithinYear implements DayWithinYear.
+// DayWithinYear returns the zero-based day of the year for the finite time value t.
 func DayWithinYear(t float64) float64 {
 	return Day(t) - DayFromYear(YearFromTime(t))
 }
@@ -124,39 +125,39 @@ func calendarFromTime(t float64) (year float64, month int, date float64) {
 	return year, month, day - daysBeforeMonth(month, leap) + 1
 }
 
-// MonthFromTime implements MonthFromTime: a month from 0 to 11.
+// MonthFromTime returns the month of the finite time value t, from 0 (January) to 11 (December).
 func MonthFromTime(t float64) float64 {
 	_, m, _, _ := monthFromTime(t)
 	return float64(m)
 }
 
-// DateFromTime implements DateFromTime: a day of the month from 1 to 31.
+// DateFromTime returns the day of the month (1 to 31) for the finite time value t.
 func DateFromTime(t float64) float64 {
 	_, m, d, leap := monthFromTime(t)
 	return d - daysBeforeMonth(m, leap) + 1
 }
 
-// WeekDay implements WeekDay: 0 for Sunday to 6 for Saturday.
+// WeekDay returns the weekday of the time value t, from 0 (Sunday) to 6 (Saturday).
 func WeekDay(t float64) float64 {
 	return modulo(Day(t)+4, 7)
 }
 
-// HourFromTime implements HourFromTime.
+// HourFromTime returns the hour of the day (0 to 23) for the time value t.
 func HourFromTime(t float64) float64 {
 	return modulo(math.Floor(t/msPerHour), 24)
 }
 
-// MinFromTime implements MinFromTime.
+// MinFromTime returns the minute within the hour (0 to 59) for the time value t.
 func MinFromTime(t float64) float64 {
 	return modulo(math.Floor(t/msPerMinute), 60)
 }
 
-// SecFromTime implements SecFromTime.
+// SecFromTime returns the second within the minute (0 to 59) for the time value t.
 func SecFromTime(t float64) float64 {
 	return modulo(math.Floor(t/msPerSecond), 60)
 }
 
-// MsFromTime implements msFromTime.
+// MsFromTime returns the millisecond within the second (0 to 999) for the time value t.
 func MsFromTime(t float64) float64 {
 	return modulo(t, msPerSecond)
 }
@@ -170,7 +171,8 @@ func toInteger(f float64) float64 {
 	return math.Trunc(f) + 0
 }
 
-// MakeTime implements MakeTime.
+// MakeTime combines hours, minutes, seconds, and milliseconds into a millisecond offset
+// from midnight. It truncates each component toward zero and returns NaN for non-finite input.
 func MakeTime(hour, min, sec, ms float64) float64 {
 	if !isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms) {
 		return math.NaN()
@@ -187,7 +189,10 @@ func MakeTime(hour, min, sec, ms float64) float64 {
 // make a valid time value with any reasonable date argument.
 const maxYear = 1e6
 
-// MakeDay implements MakeDay.
+// MakeDay returns the day number for the given year, zero-based month, and one-based date.
+// It truncates the components toward zero and normalizes out-of-range months and dates.
+// It returns NaN for non-finite input or if the year after month normalization is outside
+// the range -1,000,000 to 1,000,000.
 func MakeDay(year, month, date float64) float64 {
 	if !isFinite(year) || !isFinite(month) || !isFinite(date) {
 		return math.NaN()
@@ -202,7 +207,8 @@ func MakeDay(year, month, date float64) float64 {
 	return day + dt - 1
 }
 
-// MakeDate implements MakeDate.
+// MakeDate returns the time value for the given day number and millisecond offset from
+// midnight. It returns NaN if either input or the result is non-finite.
 func MakeDate(day, time float64) float64 {
 	if !isFinite(day) || !isFinite(time) {
 		return math.NaN()
@@ -214,7 +220,8 @@ func MakeDate(day, time float64) float64 {
 	return tv
 }
 
-// MakeFullYear implements MakeFullYear.
+// MakeFullYear truncates year toward zero and maps years 0 through 99 to 1900 through 1999.
+// It preserves NaN and infinities.
 func MakeFullYear(year float64) float64 {
 	if math.IsNaN(year) {
 		return math.NaN()
@@ -229,7 +236,8 @@ func MakeFullYear(year float64) float64 {
 	return y
 }
 
-// TimeClip implements TimeClip.
+// TimeClip truncates time toward zero to whole milliseconds. It returns NaN if time is
+// non-finite or its magnitude exceeds 8.64e15 milliseconds.
 func TimeClip(time float64) float64 {
 	if !isFinite(time) || math.Abs(time) > maxTime {
 		return math.NaN()

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: 0BSD
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
+// Package builtin installs the standard ECMAScript built-in objects in each realm.
 package builtin
 
 import (
