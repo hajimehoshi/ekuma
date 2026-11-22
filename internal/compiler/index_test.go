@@ -63,3 +63,55 @@ func TestStringLiteralIndex(t *testing.T) {
 		})
 	}
 }
+
+// TestLiteralIndexUpdate tests that a compound assignment reads a literal index key without
+// converting it, and converts any other key first.
+func TestLiteralIndexUpdate(t *testing.T) {
+	testCases := []struct {
+		name string
+		src  string
+
+		// want is the index that the read uses, or -1 for a read after a conversion of the key.
+		want int32
+	}{
+		{
+			name: "literal index",
+			src:  `o[3] += v;`,
+			want: 3,
+		},
+		{
+			name: "variable key",
+			src:  `o[k] += v;`,
+			want: -1,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			f, err := compiler.CompileScript(prog, "test.js")
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := int32(-2)
+			var converted bool
+			for _, i := range f.Code {
+				switch i.Op {
+				case bytecode.OpToPropertyKey:
+					converted = true
+				case bytecode.OpGetIndexInt:
+					got = i.C
+				case bytecode.OpGetIndex:
+					if converted {
+						got = -1
+					}
+				}
+			}
+			if got != tc.want {
+				t.Errorf("got %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

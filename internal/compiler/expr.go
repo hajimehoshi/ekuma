@@ -1004,6 +1004,11 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 	case !n.Computed:
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
+		// Converting a literal index has no effects, so its read needs no conversion.
+		if i, ok := literalIndex(n.Property); ok {
+			f.emit(bytecode.OpGetIndexInt, dst, t.obj, i)
+			return
+		}
 		// A compound assignment converts the key once, before the read and after the base is checked.
 		src := t.key
 		if t.keySrc >= 0 {
@@ -1093,28 +1098,33 @@ func (f *fn) member(n *ast.MemberExpr, dst int32) {
 	}
 	obj := f.operand(n.Object, n.Property)
 	f.chainCheck(n.Optional, obj)
-	if k, ok := n.Property.(*ast.NumberLit); ok {
-		if i := int32(k.Value); float64(i) == k.Value && i >= 0 {
-			f.setPos(n.Property.Start())
-			f.emit(bytecode.OpGetIndexInt, dst, obj, i)
-			return
-		}
+	if i, ok := literalIndex(n.Property); ok {
+		f.setPos(n.Property.Start())
+		f.emit(bytecode.OpGetIndexInt, dst, obj, i)
+		return
 	}
-	if s, ok := n.Property.(*ast.StringLit); ok {
-		if i, ok := int32Index(s.Value); ok {
-			f.setPos(n.Property.Start())
-			f.emit(bytecode.OpGetIndexInt, dst, obj, i)
-			return
-		}
-		if !isIndexString(s.Value) {
-			f.setPos(n.Property.Start())
-			f.emitGetProp(dst, obj, f.site(s.Value))
-			return
-		}
+	if s, ok := n.Property.(*ast.StringLit); ok && !isIndexString(s.Value) {
+		f.setPos(n.Property.Start())
+		f.emitGetProp(dst, obj, f.site(s.Value))
+		return
 	}
 	key := f.immediateOperand(n.Property)
 	f.setPos(n.Property.Start())
 	f.emit(bytecode.OpGetIndex, dst, obj, key)
+}
+
+// literalIndex reports the array index that the number or string literal e denotes, when the
+// index fits an int32.
+func literalIndex(e ast.Expr) (int32, bool) {
+	switch e := e.(type) {
+	case *ast.NumberLit:
+		if i := int32(e.Value); float64(i) == e.Value && i >= 0 {
+			return i, true
+		}
+	case *ast.StringLit:
+		return int32Index(e.Value)
+	}
+	return 0, false
 }
 
 // immediateOperand is like operand for a value that the instruction right after the expressions
