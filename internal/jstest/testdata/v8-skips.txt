@@ -837,8 +837,26 @@ test/mozilla/data/js1_5/extensions/regress-371636.js
 test/mozilla/data/js1_5/Function/regress-222029-001.js
 test/mozilla/data/js1_5/Function/regress-222029-002.js
 
+# The pinned Mozilla runner counts FAILED! output as a pass for -n tests.
+# These tests print FAILED! when valid JavaScript completes normally.
+# SKIP: expects a TypeError from new RegExp(regexp, flags) with valid flags
+test/mozilla/data/ecma_3/RegExp/15.10.4.1-5-n.js
+
+# SKIP: expects a SyntaxError for consecutive function declarations without a semicolon
+test/mozilla/data/js1_2/function/function-001-n.js
+test/mozilla/data/js1_3/Script/function-001-n.js
+test/mozilla/data/js1_3/regress/function-001-n.js
+
 # SKIP: compares the implementation-specific TypeError message for a method call
 test/mozilla/data/js1_5/Regress/regress-355556.js
+
+# SKIP: compares SpiderMonkey-specific TypeError message wording
+test/mozilla/data/js1_5/Regress/regress-328664.js
+test/mozilla/data/js1_5/Regress/regress-372364.js
+
+# SKIP: placeholder unconditionally fails with "NO TESTS EXIST"
+test/mozilla/data/ecma_2/RegExp/exec-001.js
+test/mozilla/data/ecma_2/String/replace-001.js
 
 # Built-in function length properties are configurable and built-in functions
 # do not expose the enumerable prototype properties these tests expect.
@@ -1002,11 +1020,9 @@ test/mozilla/data/ecma/String/15.5.4.6-2.js
 test/mozilla/data/ecma/String/15.5.4.8-2.js
 test/mozilla/data/ecma/TypeConversion/9.3.1-3.js
 test/mozilla/data/ecma_2/RegExp/constructor-001.js
-test/mozilla/data/ecma_2/RegExp/exec-001.js
 test/mozilla/data/ecma_2/RegExp/function-001.js
 test/mozilla/data/ecma_2/RegExp/properties-001.js
 test/mozilla/data/ecma_2/RegExp/regress-001.js
-test/mozilla/data/ecma_2/String/replace-001.js
 test/mozilla/data/ecma_3/Array/15.5.4.8-01.js
 test/mozilla/data/ecma_3/Array/regress-387501.js
 test/mozilla/data/ecma_3/LexicalConventions/7.9.1.js
@@ -1077,12 +1093,10 @@ test/mozilla/data/js1_5/Regress/regress-320119.js
 test/mozilla/data/js1_5/Regress/regress-321874.js
 test/mozilla/data/js1_5/Regress/regress-323314-1.js
 test/mozilla/data/js1_5/Regress/regress-325925.js
-test/mozilla/data/js1_5/Regress/regress-328664.js
 test/mozilla/data/js1_5/Regress/regress-336100.js
 test/mozilla/data/js1_5/Regress/regress-352197.js
 test/mozilla/data/js1_5/Regress/regress-352208.js
 test/mozilla/data/js1_5/Regress/regress-352604.js
-test/mozilla/data/js1_5/Regress/regress-372364.js
 test/mozilla/data/js1_5/Regress/regress-383674.js
 test/mozilla/data/js1_5/Regress/regress-410852.js
 test/mozilla/data/js1_5/Regress/regress-417893.js
