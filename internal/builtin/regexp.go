@@ -33,8 +33,7 @@ type regexpEnv struct {
 
 // legacyStatics holds the values of the legacy static properties of RegExp.
 type legacyStatics struct {
-	// valid is cleared by a match of a RegExp object without the legacy features.
-	valid bool
+	// input and str are undefined when their respective statics are unavailable.
 	input engine.Value
 	// str and caps are the subject and the capture indices of the last match, if any.
 	str  engine.Value
@@ -50,10 +49,11 @@ func (l *legacyStatics) record(r *engine.Object, s engine.Value, caps []int) {
 // whose [[LegacyFeaturesEnabled]] is legacy.
 func (l *legacyStatics) recordLegacy(legacy bool, s engine.Value, caps []int) {
 	if !legacy {
-		l.valid = false
+		l.input = engine.Undefined
+		l.str = engine.Undefined
+		l.caps = l.caps[:0]
 		return
 	}
-	l.valid = true
 	l.input = s
 	l.str = s
 	l.caps = append(l.caps[:0], caps...)
@@ -1222,15 +1222,19 @@ func regExpEscape(vm *engine.VM, s wtf8.String) wtf8.String {
 // initLegacyStatics defines the legacy static properties of RegExp.
 func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 	l := &env.legacy
-	l.valid = true
 	l.input = vm.NewString("")
+	l.str = l.input
 	str := func(a, b int) engine.Value {
 		if a < 0 {
 			return vm.NewString("")
 		}
 		return vm.Substring(l.str, a, b)
 	}
-	define := func(names []string, f func() engine.Value, settable bool) {
+	define := func(names []string, matchResult func() engine.Value) {
+		slot := &l.input
+		if matchResult != nil {
+			slot = &l.str
+		}
 		for _, name := range names {
 			check := func(vm *engine.VM, this engine.Value, what string) {
 				if !this.IsObject() || this.Object() != ctor {
@@ -1239,16 +1243,16 @@ func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 			}
 			get := vm.NewNative(wtf8.String("get "+name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				check(vm, this, "getter")
-				if !l.valid {
+				if slot.IsUndefined() {
 					vm.ThrowTypeError("RegExp." + name + " is not available after a match of a subclass instance")
 				}
-				if l.str.IsUndefined() && !settable {
-					return vm.NewString("")
+				if matchResult != nil && len(l.caps) > 0 {
+					return matchResult()
 				}
-				return f()
+				return *slot
 			})
 			var set *engine.Object
-			if settable {
+			if matchResult == nil {
 				set = vm.NewNative(wtf8.String("set "+name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 					check(vm, this, "setter")
 					l.input = vm.ToStringValue(arg(args, 0))
@@ -1258,31 +1262,29 @@ func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 			vm.DefineAccessor(ctor, vm.Intern(wtf8.String(name)), get, set, engine.FlagConfigurable)
 		}
 	}
-	define([]string{"input", "$_"}, func() engine.Value {
-		return l.input
-	}, true)
+	define([]string{"input", "$_"}, nil)
 	define([]string{"lastMatch", "$&"}, func() engine.Value {
 		return str(l.caps[0], l.caps[1])
-	}, false)
+	})
 	define([]string{"lastParen", "$+"}, func() engine.Value {
 		n := len(l.caps) / 2
 		if n <= 1 {
 			return vm.NewString("")
 		}
 		return str(l.caps[2*n-2], l.caps[2*n-1])
-	}, false)
+	})
 	define([]string{"leftContext", "$`"}, func() engine.Value {
 		return str(0, l.caps[0])
-	}, false)
+	})
 	define([]string{"rightContext", "$'"}, func() engine.Value {
 		return str(l.caps[1], l.str.StringLength())
-	}, false)
+	})
 	for i := 1; i <= 9; i++ {
 		define([]string{"$" + strconv.Itoa(i)}, func() engine.Value {
 			if 2*i+1 >= len(l.caps) {
 				return vm.NewString("")
 			}
 			return str(l.caps[2*i], l.caps[2*i+1])
-		}, false)
+		})
 	}
 }
