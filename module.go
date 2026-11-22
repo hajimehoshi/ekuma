@@ -107,11 +107,12 @@ func (vm *VM) engineError(err error) error {
 	return err
 }
 
-// SetImportMeta sets f as the implementation of HostGetImportMetaProperties: f returns the
-// properties, converted with [Realm.ValueOf] of the realm of m, that the import.meta object of
-// the module m gets when it is created. The object is created when the code of m first uses
-// it, so f applies to the import.meta objects that are created after the call. A nil f gives
-// no properties.
+// SetImportMeta sets f as the implementation of HostGetImportMetaProperties. On first use of
+// import.meta in a module, f supplies its properties, which are converted with [Realm.ValueOf]
+// in the module's realm. A nil f supplies no properties.
+//
+// A reentrant access during f sees the same object, which receives the properties after f
+// returns. If f panics, the next access retries initialization on that object.
 func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 	vm.initIfNeeded()
 	if f == nil {

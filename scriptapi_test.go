@@ -1278,6 +1278,48 @@ func TestImportMeta(t *testing.T) {
 	}
 }
 
+func TestImportMetaReentry(t *testing.T) {
+	for _, panicOnce := range []bool{false, true} {
+		t.Run(fmt.Sprintf("panic=%t", panicOnce), func(t *testing.T) {
+			var vm ekuma.VM
+			l := newMemoryModules(&vm, map[string]string{
+				"main": `export function meta() { return import.meta; } globalThis.result = meta;`,
+			})
+			meta := l.run(t, "main")
+			marker := new(int)
+			var inner ekuma.Value
+			var calls int
+			vm.SetImportMeta(func(*ekuma.Module) map[string]any {
+				calls++
+				if calls == 1 {
+					var err error
+					inner, err = meta.Invoke(t.Context())
+					if err != nil {
+						t.Errorf("reentrant meta(): %v", err)
+					}
+					if panicOnce {
+						panic(marker)
+					}
+				}
+				return map[string]any{"self": inner}
+			})
+			wantCalls := 1
+			if panicOnce {
+				if got := recoverHostPanic(func() { _, _ = meta.Invoke(t.Context()) }); got != marker {
+					t.Errorf("panic = %v, want original marker", got)
+				}
+				wantCalls++
+			}
+			if got := run(t, &vm, `const meta = result; meta() === meta().self`); got != "true" {
+				t.Error("import.meta.self did not refer to the outer call's object")
+			}
+			if calls != wantCalls {
+				t.Errorf("import.meta hook ran %d times, want %d", calls, wantCalls)
+			}
+		})
+	}
+}
+
 // TestLongImportChain checks that loading, linking and evaluating a long chain of imports
 // does not exhaust the Go stack.
 func TestLongImportChain(t *testing.T) {

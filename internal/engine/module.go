@@ -148,6 +148,9 @@ type Module struct {
 	// loading reports whether a walk of loadModuleGraph has visited m and not finished.
 	loading bool
 
+	// metaStarted is true during import.meta initialization and after it succeeds.
+	metaStarted bool
+
 	// evalError is the [[EvaluationError]] when hasError is set.
 	evalError Value
 	hasError  bool
@@ -1463,16 +1466,21 @@ func (vm *VM) evaluateAll(modules []*Module) Value {
 // importMeta returns the object import.meta of the running module.
 func (vm *VM) importMeta() Value {
 	m := vm.frames[len(vm.frames)-1].fp.script.module
-	if m.meta == nil {
-		meta := vm.NewObject(nil)
-		if vm.modules.meta != nil {
-			props := vm.modules.meta(vm, m)
+	if !m.metaStarted {
+		if m.meta == nil {
+			m.meta = vm.NewObject(nil)
+		}
+		m.metaStarted = true
+		if f := vm.modules.meta; f != nil {
+			var initialized bool
+			defer func() { m.metaStarted = initialized }()
+			props := f(vm, m)
 			vm.ResumeInterruption()
 			for _, p := range props {
-				vm.CreateDataPropertyOrThrow(meta, p.Key, p.Value)
+				vm.CreateDataPropertyOrThrow(m.meta, p.Key, p.Value)
 			}
+			initialized = true
 		}
-		m.meta = meta
 	}
 	return Value{o: m.meta}
 }
