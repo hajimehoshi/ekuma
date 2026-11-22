@@ -294,7 +294,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 		}
 	}
 	if m.flags["module"] {
-		return runModule(ctx, loader, path, src, m, printed)
+		return runModule(ctx, &vm, loader, path, src, m, printed)
 	}
 	if strict {
 		src = "\"use strict\";\n" + src
@@ -393,37 +393,36 @@ func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
 	return f.Invoke(context.Background(), arg)
 }
 
-// evaluate returns the module's evaluation promise or the phase and error that stopped it.
-func (l *moduleLoader) evaluate(ctx context.Context, path, src string) (promise ekuma.Value, phase string, err error) {
-	mod, err := l.realm.ParseModule(path, src)
+func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, src string, m metadata, printed *[]string) suiteResult {
+	mod, err := loader.realm.ParseModule(path, src)
 	if err != nil {
-		return ekuma.Undefined, "parse", err
+		return m.checkError("parse", err)
 	}
-	l.modules[path+"\x00"] = mod
+	loader.modules[path+"\x00"] = mod
 	p, err := mod.Evaluate(ctx)
 	if err != nil {
-		return ekuma.Undefined, "resolution", err
+		return m.checkError("resolution", err)
 	}
-	if st, r := p.PromiseState(); st == ekuma.PromiseRejected {
-		return ekuma.Undefined, "runtime", &ekuma.ScriptError{
-			Value: r,
+	for {
+		switch state, reason := p.PromiseState(); state {
+		case ekuma.PromiseFulfilled:
+			if m.flags["async"] && m.negativePhase == "" {
+				return awaitAgents(ctx, vm, printed)
+			}
+			return m.checkError("runtime", nil)
+		case ekuma.PromiseRejected:
+			return m.checkError("runtime", &ekuma.ScriptError{
+				Value: reason,
+			})
+		}
+		ran, err := vm.AwaitJobs(ctx)
+		if err != nil {
+			return scriptErrorResult(err)
+		}
+		if !ran {
+			return suiteFailed.result("module evaluation is still pending")
 		}
 	}
-	return p, "", nil
-}
-
-func runModule(ctx context.Context, loader *moduleLoader, path, src string, m metadata, printed *[]string) suiteResult {
-	if _, phase, err := loader.evaluate(ctx, path, src); err != nil {
-		return m.checkError(phase, err)
-	}
-	if m.negativePhase != "" {
-		return m.checkError("runtime", nil)
-	}
-	if m.flags["async"] {
-		result, _ := asyncOutcome(*printed)
-		return result
-	}
-	return suiteResult{}
 }
 
 // asyncOutcome returns the test outcome and whether the test reported completion.
@@ -644,6 +643,34 @@ throw new SyntaxError();
 	if result.outcome != suiteFailed {
 		t.Errorf("runtime SyntaxError in an early-negative module: got %v, want %v", result.outcome, suiteFailed)
 	}
+}
+
+// CheckModuleJobs checks module outcomes that depend on asynchronous jobs.
+func (suite *Test262) CheckModuleJobs(t *testing.T) {
+	h := suite.newHarness(localTest262HarnessFS{})
+	check := func(src string, m metadata, want suiteOutcome) {
+		t.Helper()
+		result := runOnce(h, "module.js", src, m, false, testTimeout)
+		if result.outcome != want {
+			t.Errorf("%s: got outcome %v, want %v (reason: %s)", src, result.outcome, want, result.reason)
+		}
+	}
+
+	const wait = `Atomics.waitAsync(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1).value`
+	const throws = `await ` + wait + `; throw new TypeError();`
+	module := metadata{
+		flags: map[string]bool{"module": true},
+	}
+	check(throws, module, suiteFailed)
+	check(`await new Promise(() => {});`, module, suiteFailed)
+	check(throws, metadata{
+		flags:         module.flags,
+		negativePhase: "runtime",
+		negativeType:  "TypeError",
+	}, suitePassed)
+	check(wait+`.then(() => $DONE());`, metadata{
+		flags: map[string]bool{"module": true, "async": true},
+	}, suitePassed)
 }
 
 // Run runs the ECMAScript conformance suite and checks its failures against the skip list.

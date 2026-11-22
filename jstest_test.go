@@ -5,6 +5,7 @@ package ekuma_test
 
 import (
 	"testing"
+	"testing/synctest"
 
 	"github.com/hajimehoshi/ekuma"
 	"github.com/hajimehoshi/ekuma/internal/jstest"
@@ -56,6 +57,10 @@ func TestTest262ExpectedFailureWithMissingInclude(t *testing.T) {
 
 func TestTest262EarlyNegativeWithRuntimeError(t *testing.T) {
 	test262Runner.CheckEarlyNegativeWithRuntimeError(t)
+}
+
+func TestTest262ModuleJobs(t *testing.T) {
+	synctest.Test(t, test262Runner.CheckModuleJobs)
 }
 
 func TestV8(t *testing.T) {
