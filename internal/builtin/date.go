@@ -34,10 +34,11 @@ func thisDate(vm *engine.VM, this engine.Value, name string) float64 {
 
 // components returns the components of the time value t, which must be finite.
 func components(t float64) [dateComponentCount]float64 {
+	year, month, date := datetime.CalendarFromTime(t)
 	return [dateComponentCount]float64{
-		dateYear:         datetime.YearFromTime(t),
-		dateMonth:        datetime.MonthFromTime(t),
-		dateDay:          datetime.DateFromTime(t),
+		dateYear:         year,
+		dateMonth:        float64(month),
+		dateDay:          date,
 		dateHours:        datetime.HourFromTime(t),
 		dateMinutes:      datetime.MinFromTime(t),
 		dateSeconds:      datetime.SecFromTime(t),

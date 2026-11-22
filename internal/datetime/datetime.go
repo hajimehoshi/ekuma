@@ -119,8 +119,9 @@ func monthFromTime(t float64) (year float64, month int, day float64, leap bool) 
 	return year, month, day, leap
 }
 
-// calendarFromTime returns the year, month (0 to 11), and day of the month of t.
-func calendarFromTime(t float64) (year float64, month int, date float64) {
+// CalendarFromTime returns the year, the month (0 to 11) and the day of the month (1 to 31) of the
+// finite time value t.
+func CalendarFromTime(t float64) (year float64, month int, date float64) {
 	year, month, day, leap := monthFromTime(t)
 	return year, month, day - daysBeforeMonth(month, leap) + 1
 }

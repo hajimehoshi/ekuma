@@ -38,7 +38,7 @@ func appendYear(b []byte, y float64) []byte {
 
 // appendDate implements DateString.
 func appendDate(b []byte, tv float64) []byte {
-	year, month, date := calendarFromTime(tv)
+	year, month, date := CalendarFromTime(tv)
 	b = append(b, weekdayNames[int(WeekDay(tv))]...)
 	b = append(b, ' ')
 	b = append(b, monthNames[month]...)
@@ -116,7 +116,7 @@ func TimeString(tv, offset float64, name string) string {
 
 // UTCString returns the result of Date.prototype.toUTCString for the time value tv, which must not be NaN.
 func UTCString(tv float64) string {
-	year, month, date := calendarFromTime(tv)
+	year, month, date := CalendarFromTime(tv)
 	b := append(make([]byte, 0, 32), weekdayNames[int(WeekDay(tv))]...)
 	b = append(b, ", "...)
 	b = pad(b, date, 2)
@@ -130,7 +130,7 @@ func UTCString(tv float64) string {
 
 // ISOString returns the result of Date.prototype.toISOString for the time value tv, which must be finite.
 func ISOString(tv float64) string {
-	year, month, date := calendarFromTime(tv)
+	year, month, date := CalendarFromTime(tv)
 	b := make([]byte, 0, 32)
 	switch {
 	case year < 0:
@@ -166,7 +166,7 @@ func LocaleString(tv float64, tz TimeZone) string {
 // LocaleDateString returns the result of Date.prototype.toLocaleDateString for the time value tv, which must not be NaN.
 func LocaleDateString(tv float64, tz TimeZone) string {
 	t := LocalTime(tv, tz)
-	year, month, date := calendarFromTime(t)
+	year, month, date := CalendarFromTime(t)
 	var b strings.Builder
 	b.WriteString(strconv.FormatFloat(float64(month)+1, 'f', 0, 64))
 	b.WriteByte('/')
