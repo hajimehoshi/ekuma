@@ -27,44 +27,51 @@ type WeakTable struct {
 // weakTableKeys identifies a table in its keys' entries and can outlive the table.
 type weakTableKeys struct {
 	mu sync.Mutex
-	// Each cleanup removes a dead key from the index. Deleting the entry stops its cleanup.
-	entries map[weak.Pointer[weakEntries]]runtime.Cleanup
+
+	// entries holds the entry stores of the table's keys weakly. The stores of collected keys
+	// stay until a sweep.
+	entries map[weak.Pointer[weakEntries]]struct{}
+
+	// sweepAt is the number of entries at which adding a key first drops the stores of the
+	// collected keys.
+	sweepAt int
 }
+
+// minWeakSweep is the number of key stores of a table below which adding a key never sweeps.
+const minWeakSweep = 8
 
 func (t *WeakTable) addKey(w *weakEntries) {
 	keys := t.keys
 	keys.mu.Lock()
 	defer keys.mu.Unlock()
 	if keys.entries == nil {
-		keys.entries = make(map[weak.Pointer[weakEntries]]runtime.Cleanup)
+		keys.entries = make(map[weak.Pointer[weakEntries]]struct{})
 		runtime.AddCleanup(t, (*weakTableKeys).clear, keys)
 	}
-	key := weak.Make(w)
-	keys.entries[key] = runtime.AddCleanup(w, keys.forget, key)
-}
-
-func (keys *weakTableKeys) forget(key weak.Pointer[weakEntries]) {
-	keys.mu.Lock()
-	defer keys.mu.Unlock()
-	delete(keys.entries, key)
+	if len(keys.entries) >= keys.sweepAt {
+		for key := range keys.entries {
+			if key.Value() == nil {
+				delete(keys.entries, key)
+			}
+		}
+		keys.sweepAt = max(minWeakSweep, 2*len(keys.entries))
+	}
+	keys.entries[weak.Make(w)] = struct{}{}
 }
 
 func (keys *weakTableKeys) remove(w *weakEntries) {
 	keys.mu.Lock()
 	defer keys.mu.Unlock()
-	key := weak.Make(w)
-	keys.entries[key].Stop()
-	delete(keys.entries, key)
+	delete(keys.entries, weak.Make(w))
 	runtime.KeepAlive(w)
 }
 
 func (keys *weakTableKeys) clear() {
 	keys.mu.Lock()
 	defer keys.mu.Unlock()
-	for key, cleanup := range keys.entries {
+	for key := range keys.entries {
 		if w := key.Value(); w != nil {
 			w.delete(keys)
-			cleanup.Stop()
 			runtime.KeepAlive(w)
 		}
 	}
