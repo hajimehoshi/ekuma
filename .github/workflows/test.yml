@@ -59,6 +59,7 @@ jobs:
             /icu4c/source/test/testdata/casing.txt
             /icu4c/source/test/testdata/rbbitst.txt
             /icu4c/source/data/unidata/UnicodeData.txt
+            /icu4c/source/data/unidata/SpecialCasing.txt
             /icu4c/source/data/unidata/CaseFolding.txt
             /icu4c/source/data/unidata/emoji-sequences.txt
             /icu4c/source/data/unidata/emoji-zwj-sequences.txt

@@ -1,4 +1,4 @@
-# ICU formatting and calendar conformance
+# ICU conformance
 
 Run `TestICU` from the repository root. Set `EKUMA_ICU` to the ICU 78.3
 checkout for Unicode and collation tests, and `EKUMA_ICU_CLDR` to ICU 79.1
@@ -9,11 +9,14 @@ adapters read fixtures from the external checkouts. [Pins and default cache path
 # Full suite
 go test -count=1 -v -run '^TestICU$' .
 
+# Unicode casing and ICU casing regressions
+go test -count=1 -v -run '^TestICU$/^(UnicodeData\.txt|SpecialCasing\.txt|casing\.txt)$' .
+
 # List formatting
-GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(listformattertest\.cpp|ulistfmttest\.c|ListFormatterTest\.java)$' .
+go test -count=1 -v -run '^TestICU$/^(listformattertest\.cpp|ulistfmttest\.c|ListFormatterTest\.java)$' .
 
 # Relative time formatting
-GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(reldatefmttest\.cpp|crelativedateformattest\.c|RelativeDateTimeFormatterTest\.java)$' .
+go test -count=1 -v -run '^TestICU$/^(reldatefmttest\.cpp|crelativedateformattest\.c|RelativeDateTimeFormatterTest\.java)$' .
 ```
 
 Use a fixture name after `^TestICU$/` to run one subtest. Verbose output
@@ -22,6 +25,12 @@ Listed differences still run. A changed result or an unexpected pass fails
 the test. [Known results](testdata/icu-failures.txt)
 
 ## Fixture inventory
+
+| ICU 78.3 casing fixtures | Coverage |
+|---|---|
+| `UnicodeData.txt` | Both default String casing methods on all 2,989 code points with a simple uppercase or lowercase mapping. Unconditional full mappings from `SpecialCasing.txt` take precedence. |
+| `SpecialCasing.txt` | Both directions on all 103 unconditional and 16 conditional rows. Whole-string checks cover final sigma, Lithuanian, Turkish and Azerbaijani casing, including combining marks and deletions. Contextual rules run with matching and nonmatching inputs. Locale rules also run under English. Titlecase is outside the String API. |
+| `casing.txt` | Separate ICU regression examples for default and locale-sensitive String casing. Titlecasing and case folding have no corresponding String methods. |
 
 | ICU 79.1 fixtures | Coverage |
 |---|---|

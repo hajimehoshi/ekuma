@@ -39,6 +39,11 @@ func Run(t *testing.T) {
 		t.Run("casing.txt", func(t *testing.T) {
 			runCasingTest(t, filepath.Join(testdata, "casing.txt"))
 		})
+		for _, file := range []string{"UnicodeData.txt", "SpecialCasing.txt"} {
+			t.Run(file, func(t *testing.T) {
+				runUnicodeCasing(t, unidata, file)
+			})
+		}
 		t.Run("rbbitst.txt", func(t *testing.T) {
 			runRBBITest(t, filepath.Join(testdata, "rbbitst.txt"), filepath.Join(unidata, "UnicodeData.txt"), fixtures["rbbitst.txt"])
 		})
