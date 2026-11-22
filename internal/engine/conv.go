@@ -458,13 +458,25 @@ func (vm *VM) addValues(a, b Value) Value {
 			}
 		}
 	}
-	a = vm.ToPrimitive(a, HintDefault)
-	b = vm.ToPrimitive(b, HintDefault)
+	if a.IsObject() {
+		a = vm.ToPrimitive(a, HintDefault)
+	}
+	if b.IsObject() {
+		b = vm.ToPrimitive(b, HintDefault)
+	}
 	as, bs := a.IsString(), b.IsString()
 	if as && bs {
 		return vm.Concat(a, b)
 	}
 	if as || bs {
+		// The sum of a number and the empty string, in either order, is the string of the number.
+		// The str of every kind of string has the byte length of its contents.
+		if as && b.o == numberObject && len(a.o.str) == 0 {
+			return vm.toStringValue(b)
+		}
+		if bs && a.o == numberObject && len(b.o.str) == 0 {
+			return vm.toStringValue(a)
+		}
 		var x, y wtf8.String
 		if as {
 			x = a.rawString()
