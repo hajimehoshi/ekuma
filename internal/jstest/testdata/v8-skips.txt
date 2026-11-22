@@ -331,6 +331,7 @@ test/mjsunit/es6/regress-super-optional-chain.js
 test/mjsunit/es6/regress-yield-expression-scope.js
 test/mjsunit/es6/string-endswith.js
 test/mjsunit/es6/string-replace.js
+test/mjsunit/es6/super.js
 test/mjsunit/function-call.js
 test/mjsunit/harmony/array-sort-comparefn.js
 test/mjsunit/harmony/async-for-of-non-iterable.js
