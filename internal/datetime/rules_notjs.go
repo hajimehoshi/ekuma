@@ -92,24 +92,25 @@ func findZone(id string) loadedZone {
 
 // findZoneInSources looks up the rules for name in zoneinfo directories and Go's time sources.
 func findZoneInSources(name string) (Zone, bool) {
-	if runtime.GOOS != "windows" {
-		dirs := zoneDirs
-		if z := os.Getenv("ZONEINFO"); z != "" {
-			dirs = append([]string{z}, dirs...)
+	if dir := os.Getenv("ZONEINFO"); runtime.GOOS != "windows" && dir != "" {
+		if z, ok := findZoneInDir(dir, name); ok {
+			return z, true
 		}
-		for _, dir := range dirs {
+	}
+	// LoadLocation gives a ZONEINFO zip precedence over the system directories.
+	if loc, err := time.LoadLocation(name); err == nil {
+		return locationZone{
+			loc: loc,
+		}, true
+	}
+	if runtime.GOOS != "windows" {
+		for _, dir := range zoneDirs {
 			if z, ok := findZoneInDir(dir, name); ok {
 				return z, true
 			}
 		}
 	}
-	loc, err := time.LoadLocation(name)
-	if err != nil {
-		return nil, false
-	}
-	return locationZone{
-		loc: loc,
-	}, true
+	return nil, false
 }
 
 // findZoneInDir loads rules from dir, matching path components without regard to ASCII case.

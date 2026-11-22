@@ -6,10 +6,66 @@
 package datetime_test
 
 import (
+	"archive/zip"
+	"bytes"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/datetime"
 )
+
+func TestLoadZoneFromZip(t *testing.T) {
+	if runtime.GOOS == "wasip1" || runtime.GOOS == "ios" {
+		t.Skip("requires a subprocess to isolate the time zone caches")
+	}
+	const name = "America/New_York"
+	if os.Getenv("EKUMA_TEST_ZONEINFO_ZIP") == "1" {
+		_, _, z, ok := datetime.LoadZone("america/new_york")
+		if !ok {
+			t.Fatalf("LoadZone(%q) failed", name)
+		}
+		if got := z.OffsetSeconds(0); got != 0 {
+			t.Errorf("%s offset at the Unix epoch = %d seconds, want 0", name, got)
+		}
+		return
+	}
+
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	entry, err := w.CreateHeader(&zip.FileHeader{
+		Name:   name,
+		Method: zip.Store,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A TZif v1 file with one UTC time type and no transitions.
+	data := make([]byte, 50)
+	copy(data, "TZif")
+	data[39] = 1 // Number of local time types.
+	data[43] = 4 // Number of bytes in the abbreviation table.
+	data = append(data, "UTC\x00"...)
+	if _, err := entry.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "zoneinfo.zip")
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Go records ZONEINFO on first use, and Ekuma caches each loaded zone.
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$")
+	cmd.Env = append(os.Environ(), "ZONEINFO="+path, "EKUMA_TEST_ZONEINFO_ZIP=1")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Errorf("test with ZONEINFO zip: %v\n%s", err, output)
+	}
+}
 
 // TestLoadZone checks the identifiers of the time zones of the system's time zone database:
 // a name in any case finds the zone in the case of the database, a link has the zone it
