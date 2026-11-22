@@ -70,6 +70,23 @@ func TestTest262ModuleJobs(t *testing.T) {
 	synctest.Test(t, test262Runner.CheckModuleJobs)
 }
 
+func TestTest262MetadataDelimiters(t *testing.T) {
+	dir := t.TempDir()
+	for name, src := range map[string]string{
+		"overlap.js": "/*---*/",
+		"stray-close.js": `// ---*/
+/*---
+flags: [module]
+---*/
+export default 1;`,
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	test262Runner.RunScripts(t, dir)
+}
+
 func TestTest262ModuleRealms(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{

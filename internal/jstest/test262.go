@@ -66,9 +66,12 @@ type metadata struct {
 // that the suite uses for the keys of interest.
 func parseMetadata(src string) metadata {
 	m := metadata{flags: map[string]bool{}}
-	start := strings.Index(src, "/*---")
-	end := strings.Index(src, "---*/")
-	if start < 0 || end < start {
+	_, rest, ok := strings.Cut(src, "/*---")
+	if !ok {
+		return m
+	}
+	front, _, ok := strings.Cut(rest, "---*/")
+	if !ok {
 		return m
 	}
 	list := func(s string) []string {
@@ -83,7 +86,7 @@ func parseMetadata(src string) metadata {
 	}
 	key := ""
 	// YAML line breaks are LF, CR or CRLF.
-	front := strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(src[start+5 : end])
+	front = strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(front)
 	for line := range strings.SplitSeq(front, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
