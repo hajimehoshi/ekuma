@@ -708,8 +708,7 @@ func (suite *Test262) Run(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading the skipped tests: %v", err)
 	}
-	// skipped holds the paths of the skipped tests in testDir.
-	var skipped []string
+	var expectedFailurePaths []string
 	var paths []string
 	err = filepath.WalkDir(filepath.Join(dir, testDir), func(p string, e fs.DirEntry, err error) error {
 		if err != nil {
@@ -727,7 +726,7 @@ func (suite *Test262) Run(t *testing.T) {
 			return nil
 		}
 		if skips.match(rel) != nil {
-			skipped = append(skipped, rel)
+			expectedFailurePaths = append(expectedFailurePaths, rel)
 			return nil
 		}
 		paths = append(paths, rel)
@@ -737,7 +736,7 @@ func (suite *Test262) Run(t *testing.T) {
 		t.Fatal(err)
 	}
 	sort.Strings(paths)
-	sort.Strings(skipped)
+	sort.Strings(expectedFailurePaths)
 
 	results := make([]suiteResult, len(paths))
 	var waitingTests sync.WaitGroup
@@ -773,37 +772,54 @@ func (suite *Test262) Run(t *testing.T) {
 	}
 	retryTests(paths, results)
 
-	var failed []suiteFailure
-	byArea := map[string][2]int{}
-	for i, p := range paths {
+	expectedFailureResults := make([]suiteResult, len(expectedFailurePaths))
+	for i, p := range expectedFailurePaths {
+		expectedFailureResults[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(p)), testTimeout)
+	}
+	retryTests(expectedFailurePaths, expectedFailureResults)
+
+	var passed int
+	type counts struct {
+		passed int
+		total  int
+	}
+	byArea := map[string]counts{}
+	recordOutcome := func(p string, outcome suiteOutcome) {
 		parts := strings.SplitN(p, "/", 4)
 		area := strings.Join(parts[:min(3, len(parts)-1)], "/")
 		c := byArea[area]
-		c[1]++
-		if results[i].outcome == suitePassed {
-			c[0]++
-		} else {
-			failed = append(failed, suiteFailure{
-				path:   p,
-				reason: results[i].reason,
-			})
+		c.total++
+		if outcome == suitePassed {
+			c.passed++
+			passed++
 		}
 		byArea[area] = c
 	}
-	t.Logf("test262: %d of %d tests pass (%.1f%%)", len(paths)-len(failed), len(paths), 100*float64(len(paths)-len(failed))/float64(max(len(paths), 1)))
-	if len(skipped) > 0 {
-		t.Logf("test262: %d tests skipped, as %s lists", len(skipped), skippedTestsFile)
-	}
-	skippedResults := make([]suiteResult, len(skipped))
-	for i, p := range skipped {
-		skippedResults[i] = runTest(h, filepath.Join(dir, filepath.FromSlash(p)), testTimeout)
-	}
-	retryTests(skipped, skippedResults)
-	for i, p := range skipped {
-		result := skippedResults[i].expectFailure(skippedTestsFile)
+	var failed []suiteFailure
+	for i, p := range paths {
+		result := results[i]
+		recordOutcome(p, result.outcome)
 		if result.outcome != suitePassed {
-			t.Errorf("%s: %s", p, result.reason)
+			failed = append(failed, suiteFailure{
+				path:   p,
+				reason: result.reason,
+			})
 		}
+	}
+	var failedAsExpected int
+	for i, p := range expectedFailurePaths {
+		result := expectedFailureResults[i]
+		recordOutcome(p, result.outcome)
+		if checked := result.expectFailure(skippedTestsFile); checked.outcome != suitePassed {
+			t.Errorf("%s: %s", p, checked.reason)
+		} else {
+			failedAsExpected++
+		}
+	}
+	total := len(paths) + len(expectedFailurePaths)
+	t.Logf("test262: %d of %d tests pass (%.1f%%)", passed, total, 100*float64(passed)/float64(max(total, 1)))
+	if failedAsExpected > 0 {
+		t.Logf("test262: %d failed as expected", failedAsExpected)
 	}
 	for _, failure := range staleEntries(skips.unseen, skippedTestsFile, testDir, test262Flags.filter) {
 		t.Errorf("%s: %s", failure.path, failure.reason)
@@ -815,7 +831,7 @@ func (suite *Test262) Run(t *testing.T) {
 		}
 		sort.Strings(areas)
 		for _, a := range areas {
-			t.Logf("%6d / %6d  %s", byArea[a][0], byArea[a][1], a)
+			t.Logf("%6d / %6d  %s", byArea[a].passed, byArea[a].total, a)
 		}
 	}
 
