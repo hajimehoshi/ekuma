@@ -31,6 +31,11 @@
     "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
     "fixedTime": "1800-01-01T00:00:00Z"
   },
+  "test/mozilla/data/ecma/Date/15.9.5.14.js": {
+    "comment": "The shell computes expected local hours using US daylight saving rules. A July date keeps the sampled hours clear of transitions.",
+    "timeZone": "America/Los_Angeles",
+    "fixedTime": "2024-07-15T23:30:00Z"
+  },
   "test/mozilla/data/ecma/Date/15.9.5.28-1.js": {
     "comment": "The shell applies US daylight saving time when converting the overflowing minute value back to UTC.",
     "timeZone": "America/Los_Angeles"
@@ -38,6 +43,11 @@
   "test/mozilla/data/ecma/Date/15.9.5.29-1.js": {
     "comment": "The shell applies US daylight saving time to the expected local time after the minutes overflow.",
     "timeZone": "America/Los_Angeles"
+  },
+  "test/mozilla/data/ecma/Date/15.9.5.34-1.js": {
+    "comment": "Moving the July date to December 31 exercises the change from daylight to standard time in the shell's expected result.",
+    "timeZone": "America/Los_Angeles",
+    "fixedTime": "2024-07-15T23:30:00Z"
   },
   "test/mozilla/data/ecma/Date/15.9.5.35-1.js": {
     "comment": "The shell applies US daylight saving time to the expected local time in June 1970.",

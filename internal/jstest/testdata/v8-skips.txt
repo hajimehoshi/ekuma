@@ -729,10 +729,11 @@ test/mozilla/data/js1_5/Array/regress-350256-03.js
 # SKIP: repeatedly doubles a string until the engine exhausts its string limit
 test/mozilla/data/js1_5/Regress/regress-3649-n.js
 
+# SKIP: assumes the August UTC offsets in 1900, 1965, and 1970 all match the 2005 offset
+test/mozilla/data/js1_5/Regress/regress-58116.js
+
 # PASS/FAIL: mozilla.status permits either outcome on the default Intl build
 test/mozilla/data/ecma/Date/15.9.5.10-2.js
-test/mozilla/data/ecma/Date/15.9.5.14.js
-test/mozilla/data/ecma/Date/15.9.5.34-1.js
 test/mozilla/data/ecma/Date/15.9.5.8.js
 test/mozilla/data/ecma/Statements/12.6.3-2.js
 test/mozilla/data/ecma_3/Date/15.9.5.5-02.js
@@ -749,7 +750,6 @@ test/mozilla/data/js1_5/Regress/regress-290575.js
 test/mozilla/data/js1_5/Regress/regress-347306-01.js
 test/mozilla/data/js1_5/Regress/regress-404755.js
 test/mozilla/data/js1_5/Regress/regress-416628.js
-test/mozilla/data/js1_5/Regress/regress-58116.js
 test/mozilla/data/js1_5/Regress/regress-98901.js
 test/mozilla/data/js1_5/String/regress-157334-01.js
 test/mozilla/data/js1_5/String/regress-314890.js
