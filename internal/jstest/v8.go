@@ -249,6 +249,7 @@ func (host *V8) CheckFixedTime(t *testing.T) {
 type v8TestEnvironment struct {
 	Comment   string     `json:"comment"`
 	FixedTime *time.Time `json:"fixedTime"`
+	TimeZone  string     `json:"timeZone"`
 }
 
 // CheckFilesOrder checks the execution order of helpers named by V8 Files directives.
@@ -615,7 +616,7 @@ func parseV8Directives(src string, enabledFlags []string) (v8Directives, string)
 	envLocale := cmp.Or(env["LC_ALL"], env["LC_MESSAGES"], env["LANG"])
 	envLocale, _, _ = strings.Cut(envLocale, ".")
 	directives.locale = strings.ReplaceAll(cmp.Or(flagLocale, envLocale, "en-US"), "_", "-")
-	directives.zone = cmp.Or(env["TZ"], "UTC")
+	directives.zone = env["TZ"]
 	return directives, ""
 }
 
@@ -677,7 +678,6 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 	if inSuiteDir(v.file, v8MozillaDir) {
 		directives = v8Directives{
 			locale:   "en-US",
-			zone:     "UTC",
 			exposeGC: true,
 		}
 	} else {
@@ -697,7 +697,7 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 	if err := vm.SetLocale(directives.locale); err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}
-	loc, err := time.LoadLocation(directives.zone)
+	loc, err := time.LoadLocation(cmp.Or(directives.zone, v.environment.TimeZone, "UTC"))
 	if err != nil {
 		return suiteBroken.result(firstLine(err.Error())), ""
 	}

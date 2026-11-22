@@ -732,10 +732,7 @@ test/mozilla/data/js1_5/Regress/regress-3649-n.js
 # PASS/FAIL: mozilla.status permits either outcome on the default Intl build
 test/mozilla/data/ecma/Date/15.9.5.10-2.js
 test/mozilla/data/ecma/Date/15.9.5.14.js
-test/mozilla/data/ecma/Date/15.9.5.28-1.js
-test/mozilla/data/ecma/Date/15.9.5.29-1.js
 test/mozilla/data/ecma/Date/15.9.5.34-1.js
-test/mozilla/data/ecma/Date/15.9.5.35-1.js
 test/mozilla/data/ecma/Date/15.9.5.8.js
 test/mozilla/data/ecma/Statements/12.6.3-2.js
 test/mozilla/data/ecma_3/Date/15.9.5.5-02.js
