@@ -506,23 +506,23 @@ func (vm *VM) receiveNotifications() bool {
 	return true
 }
 
-// AwaitJobs blocks until a waiter of Atomics.waitAsync of vm is notified by another agent or
-// reaches its timeout, and reports true. It
-// reports true without blocking when jobs are already pending, and false without blocking when
-// vm has no such waiter or when an interruption is requested.
-func (vm *VM) AwaitJobs() bool {
+// AwaitJobs waits for pending jobs, a waiter notification or a timeout. It returns
+// false if there are no jobs or waiters, or an InterruptedError if interrupted.
+func (vm *VM) AwaitJobs() (bool, error) {
 	for {
-		if vm.interruptCause.Load() != nil {
-			return false
+		if cause := vm.interruptCause.Load(); cause != nil {
+			return false, &InterruptedError{
+				Cause: *cause,
+			}
 		}
 		if vm.finalizationPending() || vm.mailbox.count.Load() != 0 {
-			return true
+			return true, nil
 		}
 		if len(vm.asyncWaiters) == 0 {
-			return false
+			return false, nil
 		}
 		if vm.awaitWake() {
-			return true
+			return true, nil
 		}
 	}
 }

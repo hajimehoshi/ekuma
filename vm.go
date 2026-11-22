@@ -363,7 +363,7 @@ var ErrRunning = errors.New("ekuma: AwaitJobs called while JavaScript runs")
 // notified or time out if necessary. It reports true if jobs were run, or
 // false without blocking if there are no pending jobs or asynchronous waiters.
 // It returns [ErrRunning] if the VM is running JavaScript, or the cause of ctx
-// if ctx is done.
+// if ctx is already done or interrupts the wait or job execution.
 func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 	vm.initIfNeeded()
 	if vm.e.Running() {
@@ -371,14 +371,12 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 	}
 	var waited bool
 	_, err := vm.run(ctx, func() (engine.Value, error) {
-		if waited = vm.e.AwaitJobs(); !waited {
-			return engine.Undefined, nil
+		var err error
+		if waited, err = vm.e.AwaitJobs(); !waited {
+			return engine.Undefined, err
 		}
 		return engine.Undefined, vm.e.RunJobs()
 	})
-	if err == nil && ctx.Err() != nil {
-		err = context.Cause(ctx)
-	}
 	return waited, err
 }
 

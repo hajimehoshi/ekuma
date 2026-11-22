@@ -551,6 +551,23 @@ func TestAwaitJobsCanceled(t *testing.T) {
 	})
 }
 
+func TestAwaitJobsCancellationAfterLastJob(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		vm.SetUnhandledRejection(func(ekuma.Value, ekuma.Value) { cancel() })
+		run(t, &vm, `Atomics.waitAsync(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1)
+			.value.then(() => { throw 42; });`)
+		if ran, err := vm.AwaitJobs(ctx); !ran || err != nil {
+			t.Errorf("AwaitJobs = %t, %v, want true, nil", ran, err)
+		}
+		if ctx.Err() == nil {
+			t.Error("the rejection handler did not cancel the context")
+		}
+	})
+}
+
 func TestAwaitJobsWhileRunning(t *testing.T) {
 	var vm ekuma.VM
 	var awaitErr error
