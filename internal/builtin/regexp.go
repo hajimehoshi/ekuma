@@ -759,6 +759,8 @@ type regexpStringIterator struct {
 type match struct {
 	// res is the match array, when the original exec did not produce the match.
 	res *engine.Object
+	// matcher produced the capture indices. A later exec lookup can recompile the receiver.
+	matcher *regexp.Regexp
 	// capsStart and capsEnd are the range of the capture indices of a match of the original
 	// exec in the buffer that holds them.
 	capsStart, capsEnd int
@@ -797,15 +799,20 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 			}
 			found = true
 			empty = caps[0] == caps[1]
+			re := rx.RegExpMatcher()
 			if !functional && len(results) == 0 {
 				if b.Len() == 0 {
 					b.Grow(len(s.Str()))
 				}
-				next = substituteMatch(vm, &b, rx.RegExpMatcher(), s, caps, template, next)
+				next = substituteMatch(vm, &b, re, s, caps, template, next)
 			} else {
 				start := len(capsBuf)
 				capsBuf = append(capsBuf, caps...)
-				results = append(results, match{capsStart: start, capsEnd: len(capsBuf)})
+				results = append(results, match{
+					matcher:   re,
+					capsStart: start,
+					capsEnd:   len(capsBuf),
+				})
 			}
 		} else {
 			res := e.regExpExecWith(vm, rx, s, exec)
@@ -829,17 +836,13 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 	if !found {
 		return s
 	}
-	var re *regexp.Regexp
 	for _, r := range results {
-		caps := capsBuf[r.capsStart:r.capsEnd]
 		var matched wtf8.String
 		var position int
 		var captures []engine.Value
 		var named engine.Value
-		if r.res == nil {
-			if re == nil {
-				re = rx.RegExpMatcher()
-			}
+		if re := r.matcher; re != nil {
+			caps := capsBuf[r.capsStart:r.capsEnd]
 			position = caps[0]
 			matched = s.Substring(caps[0], caps[1])
 			n := len(caps)/2 - 1
