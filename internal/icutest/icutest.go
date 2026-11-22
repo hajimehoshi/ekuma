@@ -20,7 +20,7 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
-// Run tests Ekuma's JavaScript APIs against the available ICU fixtures.
+// Run tests Ekuma against the available ICU fixtures.
 func Run(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
@@ -35,15 +35,77 @@ func Run(t *testing.T) {
 		runUnicodeTests(t, unicodeDir)
 	}
 	if cldrDir != "" {
-		dir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata", "cldr", "localeIdentifiers")
-		failures := readLocaleFailures(t)
+		dataDir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata")
+		dir := filepath.Join(dataDir, "cldr", "localeIdentifiers")
+		locales, collations := readFailures(t)
 		t.Run("likelySubtags.txt", func(t *testing.T) {
-			runLikelySubtagsTest(t, filepath.Join(dir, "likelySubtags.txt"), failures)
+			runLikelySubtagsTest(t, filepath.Join(dir, "likelySubtags.txt"), locales)
 		})
 		t.Run("localeCanonicalization.txt", func(t *testing.T) {
-			runLocaleCanonicalizationTest(t, filepath.Join(dir, "localeCanonicalization.txt"), failures)
+			runLocaleCanonicalizationTest(t, filepath.Join(dir, "localeCanonicalization.txt"), locales)
+		})
+		for _, alternate := range []string{"NON_IGNORABLE", "SHIFTED"} {
+			file := "CollationTest_" + alternate + "_SHORT.txt"
+			t.Run(file, func(t *testing.T) {
+				runOrderedCollation(t, filepath.Join(dataDir, file), alternate == "SHIFTED", collations[file])
+			})
+		}
+		const file = "collationtest.txt"
+		t.Run(file, func(t *testing.T) {
+			runCollationTest(t, filepath.Join(dataDir, file), collations[file])
 		})
 	}
+}
+
+const failuresFile = "internal/icutest/testdata/icu-failures.txt"
+
+func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
+	t.Helper()
+	data, err := os.ReadFile(failuresFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locales := localeFailures{
+		"maximize":                 {},
+		"minimize":                 {},
+		"Intl.getCanonicalLocales": {},
+	}
+	collations := map[string]map[int]string{
+		"CollationTest_NON_IGNORABLE_SHORT.txt": {},
+		"CollationTest_SHIFTED_SHORT.txt":       {},
+		"collationtest.txt":                     {},
+	}
+	for i, row := range strings.Split(string(data), "\n") {
+		row, _, _ = strings.Cut(row, "#")
+		fields := strings.Fields(row)
+		if len(fields) == 0 {
+			continue
+		}
+		if len(fields) != 3 {
+			t.Fatalf("%s:%d: expected an operation or fixture, a case and a known result, got %q", failuresFile, i+1, row)
+		}
+		name, key, result := fields[0], fields[1], fields[2]
+		if entries, ok := locales[name]; ok {
+			if _, ok := entries[key]; ok {
+				t.Fatalf("%s:%d: duplicate entry for %s(%q)", failuresFile, i+1, name, key)
+			}
+			entries[key] = result
+			continue
+		}
+		entries, ok := collations[name]
+		if !ok {
+			t.Fatalf("%s:%d: unknown operation or fixture %q", failuresFile, i+1, name)
+		}
+		line, err := strconv.Atoi(key)
+		if err != nil || line <= 0 {
+			t.Fatalf("%s:%d: invalid line %q for %s", failuresFile, i+1, key, name)
+		}
+		if _, ok := entries[line]; ok {
+			t.Fatalf("%s:%d: duplicate entry for %s:%d", failuresFile, i+1, name, line)
+		}
+		entries[line] = result
+	}
+	return locales, collations
 }
 
 func checkoutDir(t *testing.T, env, name string) string {

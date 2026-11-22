@@ -41,38 +41,7 @@ func runLocaleCanonicalizationTest(t *testing.T, path string, failures localeFai
 	})
 }
 
-const localeFailuresFile = "internal/icutest/testdata/icu-locale-failures.txt"
-
 type localeFailures map[string]map[string]string // operation to input tag to known result
-
-func readLocaleFailures(t *testing.T) localeFailures {
-	t.Helper()
-	data, err := os.ReadFile(localeFailuresFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	failures := localeFailures{
-		"maximize":                 {},
-		"minimize":                 {},
-		"Intl.getCanonicalLocales": {},
-	}
-	for i, row := range strings.Split(string(data), "\n") {
-		row, _, _ = strings.Cut(row, "#")
-		fields := strings.Fields(row)
-		if len(fields) == 0 {
-			continue
-		}
-		if len(fields) != 3 || failures[fields[0]] == nil {
-			t.Fatalf("%s:%d: expected a locale operation, input tag and known result, got %q", localeFailuresFile, i+1, row)
-		}
-		entries := failures[fields[0]]
-		if _, ok := entries[fields[1]]; ok {
-			t.Fatalf("%s:%d: duplicate entry for %s(%q)", localeFailuresFile, i+1, fields[0], fields[1])
-		}
-		entries[fields[1]] = fields[2]
-	}
-	return failures
-}
 
 type localeOperation struct {
 	path          string
@@ -100,7 +69,7 @@ func newLocaleOperation(t *testing.T, vm *ekuma.VM, path, name, source string, f
 	}
 	t.Cleanup(func() {
 		for input := range op.remaining {
-			t.Errorf("%s: %s entry for %s(%q) matches no case", path, localeFailuresFile, name, input)
+			t.Errorf("%s: %s entry for %s(%q) matches no case", path, failuresFile, name, input)
 		}
 		t.Logf("%s: %d known failures", name, op.knownFailures)
 	})
@@ -119,7 +88,7 @@ func (op *localeOperation) check(t *testing.T, line int, source, want string) {
 	got := value.String()
 	switch {
 	case listed && got == want:
-		t.Errorf("%s:%d: %s(%q): got expected %q; remove the %s entry", op.path, line, op.name, source, got, localeFailuresFile)
+		t.Errorf("%s:%d: %s(%q): got expected %q; remove the %s entry", op.path, line, op.name, source, got, failuresFile)
 	case listed && got == known:
 		op.knownFailures++
 	case got != want:

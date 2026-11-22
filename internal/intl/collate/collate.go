@@ -43,6 +43,11 @@ func (c ce) continuation() bool {
 	return c.primary() != 0 && c.secondary() == 0 && c.tertiary() == 0
 }
 
+func (c ce) variable() bool {
+	lead := c.primary() >> 15
+	return !c.continuation() && lead >= collation.FirstVariable && lead <= collation.PunctTop
+}
+
 const (
 	commonSecondary = 0x20 << 11
 	commonTertiary  = 0x02 << 6
@@ -331,6 +336,8 @@ func (t *tailoring) single(c rune) ([]ce, bool) {
 type Options struct {
 	// Strength is 1 for primary, 2 for secondary and 3 for tertiary differences.
 	Strength int
+	// Backwards compares secondary weights in reverse order.
+	Backwards bool
 	// CaseLevel compares the case after the secondary weights.
 	CaseLevel bool
 	// CaseFirst is "upper", "lower", or "false" for the order of the tailoring.
@@ -425,6 +432,7 @@ func New(l, typ string, o Options) *Collator {
 	c := &Collator{
 		t:         tailoringOf(l, typ),
 		strength:  o.Strength,
+		backwards: o.Backwards,
 		caseLevel: o.CaseLevel,
 		numeric:   o.Numeric,
 		shifted:   o.IgnorePunctuation,
@@ -436,7 +444,7 @@ func New(l, typ string, o Options) *Collator {
 		c.caseFirst = 2
 	}
 	if c.t != nil {
-		c.backwards = c.t.backwards
+		c.backwards = c.backwards || c.t.backwards
 		if c.t.caseLevel {
 			c.caseLevel = true
 		}
@@ -610,7 +618,7 @@ func (c *Collator) generate(ces []ce, rs []rune, p *pacer) []ce {
 					if afterVariable {
 						ces[j] = 0
 					}
-				case !e.continuation() && p>>15 >= collation.FirstVariable && p>>15 <= collation.PunctTop:
+				case e.variable():
 					ces[j] = 0
 					afterVariable = true
 				default:
@@ -627,6 +635,33 @@ func appendRootValue(ces []ce, v uint32, r rune) []ce {
 		return appendImplicit(ces, r)
 	}
 	return appendValue(ces, v)
+}
+
+// CompareRootShiftedQuaternary breaks a tertiary tie at the quaternary level
+// of the shifted root collation.
+func CompareRootShiftedQuaternary(a, b string) int {
+	return slices.Compare(rootShiftedQuaternaries(a), rootShiftedQuaternaries(b))
+}
+
+func rootShiftedQuaternaries(s string) []uint32 {
+	var root Collator
+	var buf buffer
+	var p pacer
+	var weights []uint32
+	var afterVariable bool
+	for _, e := range root.appendCEs(&buf, s, &p) {
+		if e.primary() != 0 {
+			afterVariable = e.variable()
+		}
+		switch {
+		case afterVariable && e.primary() != 0:
+			weights = append(weights, e.primary())
+		case !afterVariable && e.tertiary() != 0:
+			// The common quaternary weight sorts after every variable primary.
+			weights = append(weights, 0xffffffff)
+		}
+	}
+	return weights
 }
 
 // appendNumber appends the CEs of the digits at the start of rs as one number, and returns

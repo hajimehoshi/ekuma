@@ -1,2 +1,0 @@
-# Each entry gives the operation, input tag and current incorrect result.
-# All cases run. Remove the entry when the operation returns the fixture result.

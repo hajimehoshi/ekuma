@@ -59,7 +59,7 @@ jobs:
             /icu4c/source/test/testdata/SentenceBreakTest.txt
           sparse-checkout-cone-mode: false
 
-      - name: Checkout ICU CLDR locale identifier tests
+      - name: Checkout ICU CLDR locale identifier and collation tests
         uses: actions/checkout@v4
         with:
           repository: unicode-org/icu
@@ -69,6 +69,9 @@ jobs:
             /LICENSE
             /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
+            /icu4c/source/test/testdata/CollationTest_NON_IGNORABLE_SHORT.txt
+            /icu4c/source/test/testdata/CollationTest_SHIFTED_SHORT.txt
+            /icu4c/source/test/testdata/collationtest.txt
           sparse-checkout-cone-mode: false
 
       - name: Checkout test262

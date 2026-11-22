@@ -1,0 +1,29 @@
+# Locale entries give the operation, input tag and observed result.
+# Collation entries give the fixture, line of the second string and observed
+# relation (previous vs. current). All listed cases run.
+
+# Both ordered files use Unicode 18. These pairs contain combining marks whose
+# canonical combining classes are absent from Ekuma's Unicode 17 NFD data.
+CollationTest_NON_IGNORABLE_SHORT.txt 388 >
+CollationTest_NON_IGNORABLE_SHORT.txt 422 >
+CollationTest_NON_IGNORABLE_SHORT.txt 488 >
+CollationTest_NON_IGNORABLE_SHORT.txt 677 >
+CollationTest_NON_IGNORABLE_SHORT.txt 701 >
+CollationTest_NON_IGNORABLE_SHORT.txt 766 >
+CollationTest_NON_IGNORABLE_SHORT.txt 883 >
+CollationTest_NON_IGNORABLE_SHORT.txt 999 >
+CollationTest_NON_IGNORABLE_SHORT.txt 1030 >
+CollationTest_SHIFTED_SHORT.txt 4658 >
+CollationTest_SHIFTED_SHORT.txt 4692 >
+CollationTest_SHIFTED_SHORT.txt 4758 >
+CollationTest_SHIFTED_SHORT.txt 4949 >
+CollationTest_SHIFTED_SHORT.txt 4973 >
+CollationTest_SHIFTED_SHORT.txt 5038 >
+CollationTest_SHIFTED_SHORT.txt 5155 >
+CollationTest_SHIFTED_SHORT.txt 5271 >
+CollationTest_SHIFTED_SHORT.txt 5302 >
+
+# Backwards secondary reverses the entire input, including segments across U+FFFE.
+collationtest.txt 356 >2
+collationtest.txt 357 >2
+collationtest.txt 358 >2
