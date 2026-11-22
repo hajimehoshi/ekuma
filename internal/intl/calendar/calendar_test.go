@@ -599,6 +599,20 @@ func TestDateFromFields(t *testing.T) {
 			overflow: temporal.OverflowReject,
 			err:      true,
 		},
+		// The last day of the intercalary third month in the Korean calendar.
+		{
+			cal: "dangi",
+			f: temporal.CalendarFields{
+				Year:         1879,
+				HasYear:      true,
+				MonthCode:    "M03L",
+				HasMonthCode: true,
+				Day:          30,
+				HasDay:       true,
+			},
+			overflow: temporal.OverflowReject,
+			want:     isoDate(1879, 5, 20),
+		},
 		// A missing leap month of the Chinese calendar is its common month.
 		{
 			cal: "chinese",

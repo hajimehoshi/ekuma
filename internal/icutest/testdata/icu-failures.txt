@@ -9,11 +9,6 @@
 # relevant Unicode extension keys, so en-US-u-va-posix resolves to en-US.
 rbbitst.txt 1584 -23,-24,-36,-37
 
-# Before the Qing and KASI tables, Ekuma's ICU4X-based Dangi calendar uses
-# the Beijing meridian. Its tenth month of 1880 starts one day earlier.
-calendar.txt/fwd 157 "1880 M11 2"
-calendar.txt/rev 157 "1880 M10 2"
-
 # Ekuma uses a web-compatible space before AM/PM. In the distant Hebrew
 # date the host zone rules and CLDR name yield Pacific Standard Time.
 format.txt 35 "8/8/07, 6:54 PM"

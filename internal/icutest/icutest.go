@@ -78,7 +78,7 @@ func Run(t *testing.T) {
 			runDecimalFormat(t, filepath.Join(testdata, "dcfmtest.txt"))
 		})
 		t.Run("calendar.txt", func(t *testing.T) {
-			runCalendar(t, filepath.Join(testdata, "calendar.txt"), fixtures["calendar.txt/fwd"], fixtures["calendar.txt/rev"])
+			runCalendar(t, filepath.Join(testdata, "calendar.txt"))
 		})
 		t.Run("format.txt", func(t *testing.T) {
 			runDateFormat(t, filepath.Join(testdata, "format.txt"), fixtures["format.txt"])
@@ -130,8 +130,6 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 	fixtures := map[string]map[int]string{
 		"rbbitst.txt":                           {},
 		"format.txt":                            {},
-		"calendar.txt/fwd":                      {},
-		"calendar.txt/rev":                      {},
 		"numberformattestspecification.txt":     {},
 		"CollationTest_NON_IGNORABLE_SHORT.txt": {},
 		"CollationTest_SHIFTED_SHORT.txt":       {},

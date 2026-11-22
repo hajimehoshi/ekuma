@@ -94,10 +94,8 @@ func dateResult(fields map[string]any) string {
 	return fmt.Sprintf("%s %s %d", year, fields["monthCode"], fields["day"])
 }
 
-func runCalendar(t *testing.T, path string, forward, reverse map[int]string) {
+func runCalendar(t *testing.T, path string) {
 	f := newFormatFixture(t, path)
-	f.track("Temporal.PlainDate convert_fwd", forward)
-	f.track("Temporal.PlainDate convert_rev", reverse)
 	convert := f.function(`(input, calendar, era, duration) => {
 		let d = Temporal.PlainDate.from(input, {overflow: "reject"});
 		if (duration) d = d.add(duration);

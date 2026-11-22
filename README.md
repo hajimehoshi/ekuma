@@ -411,6 +411,8 @@ test (`-n.js`) and fails a positive test.
 
 Ekuma's code is licensed under [0BSD](LICENSE). The data tables Ekuma generates
 from Unicode, CLDR, and ICU releases are licensed under the [Unicode License v3](internal/unicode/LICENSE).
+The historical Korean calendar table from .NET is licensed under the [MIT License](internal/intl/calendar/NOTICE-dotnet).
+
 Every build includes Unicode character and emoji data, so all distributions must
 include the Unicode copyright and permission notice.
 
@@ -420,6 +422,7 @@ include the Unicode copyright and permission notice.
   - [CLDR locale data](internal/unicode/cldr/NOTICE)
   - [CLDR collation data](internal/unicode/collation/NOTICE)
   - [ICU calendar data](internal/intl/calendar/NOTICE)
+  - [Historical Korean calendar data from .NET (MIT)](internal/intl/calendar/NOTICE-dotnet)
   - ICU4C word break dictionaries
     - [Thai](internal/unicode/wordbreak/NOTICE-thai)
     - [Khmer](internal/unicode/wordbreak/NOTICE-khmer)

@@ -139,21 +139,27 @@ func simpleEastAsianYear(offset int64, relatedISO int) eastAsianYear {
 // eastAsian is the Chinese or the Korean calendar. Its arithmetic year is the ISO year in
 // which the year starts.
 type eastAsian struct {
-	modern      []uint32
-	modernStart int
-	offset      int64
+	modern          []uint32
+	modernStart     int
+	historical      []uint32
+	historicalStart int
+	offset          int64
 }
 
 var (
 	chinese = eastAsian{
-		modern:      chinaYears[:],
-		modernStart: chinaStart,
-		offset:      utcPlus8,
+		modern:          chinaYears[:],
+		modernStart:     chinaStart,
+		historical:      qingYears[:],
+		historicalStart: qingStart,
+		offset:          utcPlus8,
 	}
 	dangi = eastAsian{
-		modern:      koreaYears[:],
-		modernStart: koreaStart,
-		offset:      utcPlus9,
+		modern:          koreaYears[:],
+		modernStart:     koreaStart,
+		historical:      historicalKoreaYears[:],
+		historicalStart: historicalKoreaStart,
+		offset:          utcPlus9,
 	}
 )
 
@@ -164,9 +170,8 @@ func (c eastAsian) year(y int) eastAsianYear {
 	if y > c.modernStart {
 		return simpleEastAsianYear(c.offset, y)
 	}
-	// Both calendars follow the rules of the Qing dynasty before 1912.
-	if i := y - qingStart; i >= 0 && i < len(qingYears) {
-		return eastAsianYear(qingYears[i])
+	if i := y - c.historicalStart; i >= 0 && i < len(c.historical) {
+		return eastAsianYear(c.historical[i])
 	}
 	return simpleEastAsianYear(beijingOffset, y)
 }

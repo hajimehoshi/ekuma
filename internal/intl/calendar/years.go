@@ -408,10 +408,9 @@ var koreaYears = [...]uint32{
 // qingStart is the first year of qingYears.
 const qingStart = 1900
 
-// qingYears holds the years of the late Qing dynasty, for both the Chinese and the Korean calendar,
-// from qingStart on. Bits 0 to 12 are set for the months with 30 days, bits 13 to 16 are the
-// ordinal of the leap month or 0, and bits 17 to 22 are the new year in days after January 19 of
-// the year.
+// qingYears holds the Chinese calendar years of the late Qing dynasty, from qingStart on. Bits 0 to
+// 12 are set for the months with 30 days, bits 13 to 16 are the ordinal of the leap month or 0, and
+// bits 17 to 22 are the new year in days after January 19 of the year.
 var qingYears = [...]uint32{
 	0x001936d2, // 1900
 	0x003e0752, // 1901
