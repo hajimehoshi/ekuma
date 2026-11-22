@@ -387,7 +387,7 @@ func (f *Formatter) affixParts(tokens []token, compactPattern bool) []Part {
 		switch t.kind {
 		case tokenLiteral:
 			if compactPattern {
-				parts = append(parts, splitSpaces("compact", t.text)...)
+				parts = appendAffixParts(parts, "compact", t.text, unicode.IsSpace)
 			} else {
 				parts = append(parts, Part{
 					Type:  "literal",
@@ -395,15 +395,9 @@ func (f *Formatter) affixParts(tokens []token, compactPattern bool) []Part {
 				})
 			}
 		case tokenMinus:
-			parts = append(parts, Part{
-				Type:  "minusSign",
-				Value: f.minus,
-			})
+			parts = appendAffixParts(parts, "minusSign", f.minus, isBidiControl)
 		case tokenPlus:
-			parts = append(parts, Part{
-				Type:  "plusSign",
-				Value: f.plus,
-			})
+			parts = appendAffixParts(parts, "plusSign", f.plus, isBidiControl)
 		case tokenApproximately:
 			parts = append(parts, Part{
 				Type:  "approximatelySign",
@@ -429,14 +423,17 @@ func (f *Formatter) affixParts(tokens []token, compactPattern bool) []Part {
 	return parts
 }
 
-// splitSpaces returns the text s as a part of the type typ, with its leading and trailing
-// white space as literal parts.
-func splitSpaces(typ, s string) []Part {
-	trimmed := strings.TrimLeftFunc(s, unicode.IsSpace)
+func isBidiControl(r rune) bool {
+	return unicode.Is(unicode.Bidi_Control, r)
+}
+
+// appendAffixParts appends s as a part of type typ with its leading and trailing
+// literal characters in separate parts.
+func appendAffixParts(parts []Part, typ, s string, isLiteral func(rune) bool) []Part {
+	trimmed := strings.TrimLeftFunc(s, isLiteral)
 	lead := s[:len(s)-len(trimmed)]
-	core := strings.TrimRightFunc(trimmed, unicode.IsSpace)
+	core := strings.TrimRightFunc(trimmed, isLiteral)
 	trail := trimmed[len(core):]
-	var parts []Part
 	for _, p := range []Part{{
 		Type:  "literal",
 		Value: lead,
@@ -468,8 +465,8 @@ func (f *Formatter) setOuter(r *formatted, category string) {
 		p := f.unitPattern(category)
 		before, after, ok := strings.Cut(p, "{0}")
 		r.omitsNumber = !ok
-		r.outerPrefix = splitSpaces("unit", before)
-		r.outerSuffix = splitSpaces("unit", after)
+		r.outerPrefix = appendAffixParts(nil, "unit", before, unicode.IsSpace)
+		r.outerSuffix = appendAffixParts(nil, "unit", after, unicode.IsSpace)
 		return
 	}
 	p, ok := f.d.plural(cldr.NumberData, f.d.nu+".U", category)
@@ -672,10 +669,7 @@ func (f *Formatter) exponentParts(e int) []Part {
 		Value: f.exponential,
 	}}
 	if e < 0 {
-		parts = append(parts, Part{
-			Type:  "exponentMinusSign",
-			Value: f.minus,
-		})
+		parts = appendAffixParts(parts, "exponentMinusSign", f.minus, isBidiControl)
 		e = -e
 	}
 	return append(parts, Part{
@@ -730,11 +724,12 @@ func isSymbolOrSeparator(r rune) bool {
 
 // parts returns all the parts of r.
 func (f *Formatter) parts(r *formatted) []Part {
-	var body []Part
-	if !r.omitsNumber {
-		body = append(r.number[:len(r.number):len(r.number)], r.exponent...)
-		body = f.wrapMiddle(r.middlePrefix, body, r.middleSuffix)
+	if r.omitsNumber {
+		// The unit word expresses the magnitude and takes any sign on the number.
+		return mergeLiterals(f.wrapMiddle(r.middlePrefix, r.outerPrefix, r.middleSuffix))
 	}
+	body := append(r.number[:len(r.number):len(r.number)], r.exponent...)
+	body = f.wrapMiddle(r.middlePrefix, body, r.middleSuffix)
 	out := append(r.outerPrefix[:len(r.outerPrefix):len(r.outerPrefix)], body...)
 	return mergeLiterals(append(out, r.outerSuffix...))
 }

@@ -115,6 +115,10 @@ func (f *Formatter) FormatRange(x, y Decimal, poll func()) []RangePart {
 		o := &formatted{}
 		c := plural.SelectRange(f.pluralLocale, f.pluralOf(xf.pluralString, xf.pluralExponent), f.pluralOf(yf.pluralString, yf.pluralExponent))
 		f.setOuter(o, c)
+		if o.omitsNumber {
+			// A shared unit pattern needs a placeholder for the two endpoints.
+			f.setOuter(o, "other")
+		}
 		prefix = append(o.outerPrefix[:len(o.outerPrefix):len(o.outerPrefix)], prefix...)
 		suffix = append(suffix, o.outerSuffix...)
 	}
