@@ -72,7 +72,7 @@ func initString(vm *engine.VM) {
 		for _, a := range args {
 			n := vm.ToNumber(a)
 			if n != math.Trunc(n) || n < 0 || n > 0x10FFFF {
-				vm.ThrowRangeError("invalid code point " + wtf8.ToValidUTF8(vm.ToString(a)))
+				vm.ThrowRangeError("invalid code point " + string(numconv.NumberToString(n)))
 			}
 			points = append(points, rune(n))
 		}
@@ -297,7 +297,7 @@ func initString(vm *engine.VM) {
 		s := thisStringValue(vm, this, "repeat")
 		n := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || math.IsInf(n, 0) {
-			vm.ThrowRangeError("invalid count value: " + wtf8.ToValidUTF8(vm.ToString(arg(args, 0))))
+			vm.ThrowRangeError("invalid count value: " + string(numconv.NumberToString(n)))
 		}
 		if n == 0 {
 			return vm.NewString("")
