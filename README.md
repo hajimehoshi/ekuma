@@ -1,11 +1,8 @@
 # Ekuma
 
-Ekuma is a JavaScript engine written in pure Go and is almost `unsafe`-free.
-It uses `unsafe` only to access OS APIs.
-It is designed for fast execution without a JIT compiler.
-
-The project is at an early stage and its API is unstable, though nearly all of the syntax and
-standard library up to ES2026 is implemented. See [Status](#status).
+Ekuma is a JavaScript engine written in pure Go. Its bytecode interpreter runs without a JIT,
+and it uses `unsafe` only for OS APIs. It implements nearly all of ES2026. The Go API is unstable.
+See [Status](#status).
 
 ```go
 var vm ekuma.VM
@@ -36,29 +33,13 @@ The zero value of `ekuma.VM` is ready to use. A `VM` must not be copied after fi
 | `Intl` | ✅ | ❌ | ❌ | ❌ | ⚠️ `DateTimeFormat` and `NumberFormat` in en-US | ❌ | ✅ |
 | `Temporal` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-- Investigated on 2026-11-16, with goja and Sobek at their latest commits.
-- Sobek is the fork of goja that k6 uses.
-- v8go is the fork of [rogchap.com/v8go](https://github.com/rogchap/v8go) that follows V8's
-  releases.
+Compared on 2026-11-16, with goja and Sobek at their latest commits.
 
-Ekuma uses the following techniques to improve performance:
-
-- Objects have hidden-class shapes, and named property accesses use inline caches.
-- Dense array elements use contiguous storage with direct indexed access.
-- The bytecode is register based, with fused compare-and-jump and constant-operand instructions.
-- Ordinary JavaScript calls reuse stack storage within the interpreter loop, without Go recursion.
-- Proper tail calls reuse the current frame for eligible strict-mode calls.
-- Values occupy two words on 64-bit platforms; numbers and signed 64-bit BigInts are stored inline.
-  Short primitive strings can also store up to eight WTF-8 bytes inline, avoiding a separate
-  heap object.
-- Eligible forwarding calls such as `f.apply(this, arguments)` avoid creating an arguments object.
-- Memory is managed by Go's garbage collector, without reference counting.
-- Strings use [WTF-8](https://simonsapin.github.io/wtf-8/) with exact UTF-16 semantics;
-  well-formed strings cross the Go boundary without transcoding.
-- Repeated string appends and prepends can reuse growing buffers, preserving earlier string values.
-  Known ASCII operands can extend those buffers directly.
-- Multi-part string concatenation sizes its output before copying and can assemble small results
-  in stack scratch space.
+Ekuma uses a register-based interpreter, hidden classes, inline property caches, and dense
+array storage. JavaScript calls reuse interpreter stack space, including proper tail calls.
+On 64-bit platforms, a value occupies two words and can hold a number, a signed 64-bit BigInt,
+or a short string inline. Strings use [WTF-8](https://simonsapin.github.io/wtf-8/), preserving
+UTF-16 semantics and allowing well-formed strings to cross the Go boundary without transcoding.
 
 ## Performance
 
@@ -85,145 +66,58 @@ Measured on 2026-11-21: Apple M3 Pro, macOS 27.2, go1.27.4.
 
 <!-- END jsbench summary -->
 
-- For reference, the results include QuickJS compiled from the C source used by
-  modernc.org/quickjs, and v8go with and without V8's JIT compilers.
-- "(k/n)" means that k of the n benchmarks had successful paired results for that engine and
-  Ekuma; the mean covers those benchmarks. otto cannot parse microbench.js, which uses ES2015
-  syntax. Failed rounds are excluded from timing ratios.
-- See the [benchmark method](_bench/README.md#method), [individual results](_bench/RESULTS.md),
-  and [Ekuma CPU profile](_bench/TUNING.md#cpu-profiling).
+`(k/n)` means that the engine and Ekuma both completed k of n benchmarks. The mean covers
+those paired results. See the [benchmark method](_bench/README.md#method),
+[individual results](_bench/RESULTS.md), and [Ekuma CPU profile](_bench/TUNING.md#cpu-profiling).
 
 ## Host API
 
-The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) where it can:
-`Value.Get`, `Value.Set`, `Value.Call`, `Value.Invoke`, `Value.New`, `VM.ValueOf`, `VM.FuncOf`,
-`CopyBytesToGo`, `CopyBytesToJS`.
-Unlike `syscall/js`, a JavaScript exception is returned as an error, and the methods that run
-a script or call a function take a `context.Context` that can cancel execution.
-`Value.GetWithValueKey`, `Value.SetWithValueKey`, `Value.DeleteWithValueKey` and
-`Value.CallWithValueKey` take the property key as a value, such as a symbol.
-`VM.NewArrayBuffer` makes an `ArrayBuffer` over a Go byte slice without copying, which only
-`VM.DetachArrayBuffer` detaches, as WebAssembly memory needs when it grows.
+The API follows [`syscall/js`](https://pkg.go.dev/syscall/js) for working with values and
+functions. JavaScript exceptions return to Go as errors. Calls that execute scripts or invoke
+functions take a `context.Context` for cancellation. The [package documentation](https://pkg.go.dev/github.com/hajimehoshi/ekuma)
+describes cancellation, host panics, and pending jobs.
 
 ### Scripts
 
-`VM.ParseScript` parses a script for a VM, and `Script.Evaluate` evaluates it, as often as
-needed. A host that runs the same script in many VMs can parse it once with
-`ParseUnboundScript` and give each VM its own `Script` with `VM.BindScript`, which does not
-parse it again. An `UnboundScript` is immutable, and VMs on different goroutines may bind it
-at the same time.
+A parsed `Script` can be evaluated repeatedly. To share one parse across VMs, use
+`ParseUnboundScript` and bind the result in each VM with `VM.BindScript`.
 
 ### Modules
 
-Use `VM.ParseModule` or `VM.ParseJSONModule` to parse a module, or `VM.NewSyntheticModule` to
-create a synthetic module. The host supplies imported modules through `VM.SetModuleLoader`,
-which also handles `import()`. Module loading is synchronous.
-
-`Module.Evaluate` loads, links and evaluates a module and returns a promise whose state can
-be read with `Value.PromiseState`. `Module.LoadRequestedModules`
-and `Module.Link` perform the loading and linking steps separately.
-
-`Module.Namespace` returns the module namespace, and `VM.SetImportMeta` sets the properties
-of `import.meta`.
+Use `VM.ParseModule`, `VM.ParseJSONModule`, or `VM.NewSyntheticModule` to create a module.
+The host supplies a synchronous loader through `VM.SetModuleLoader`, including for `import()`.
+`Module.Evaluate` loads, links, and evaluates the module and returns a promise.
 
 ### Realms
 
-`VM.NewRealm` creates a realm: a global object with its own built-in objects, in which
-`Realm.ParseScript`, `Realm.BindScript`, `Realm.ParseModule`, `Realm.ValueOf` and
-`Realm.FuncOf` work. The methods of `VM` work in `VM.InitialRealm`. `ModuleRequest.Realm`
-tells the module loader the realm of an import, including that of a `ShadowRealm`.
+`VM.NewRealm` creates a global object with its own built-ins. Realms in a VM share values,
+jobs, and settings. Use separate VMs to isolate code.
 
-The realms of a VM share its jobs and settings, and values pass between them, so a realm
-is not a security boundary: an object of a realm gives access to its built-in objects.
-A separate `VM` isolates code.
+### Promises and jobs
 
-### Promises
-
-`VM.NewPromise` returns a pending promise and a `PromiseResolver`, which the host keeps to
-settle the promise later, for example when a goroutine posts the result of I/O back to the
-goroutine that uses the VM. `PromiseResolver.Resolve` and `PromiseResolver.Reject` settle it as
-the resolving functions of a JavaScript promise do, and run the pending jobs like other calls
-from Go. `Value.PromiseState` reads the state of any promise.
-
-### Jobs
-
-Pending promise jobs run before the outermost Go call that executes JavaScript returns,
-including property operations and calls that throw. Calls reentered from host callbacks leave
-jobs to the outermost call. An interruption discards pending jobs. Rejections still unhandled
-after draining are reported to `VM.SetUnhandledRejection`.
-
-`VM.WithContinuationData` calls a function with a host value as the continuation data, which
-`VM.ContinuationData` returns. A promise job, including the continuation of an `await`, runs
-with the continuation data that was current when it was registered, so the host can carry
-request-scoped state such as an AsyncLocalStorage frame across asynchronous code.
-
-### Cancellation
-
-A context stops everything that runs under it. When a `Func` makes a call with another
-context and that context stops the call, the outermost call returns the cause of that context
-and the `Func` does not continue. The interruption closes generators whose execution it unwinds.
-A context that is done after its call returned stops
-nothing. Operations without a context can run JavaScript and jobs without a cancellation
-limit, unless reentered under a call with a context.
-
-### Panics
-
-A panic of a `Func` or of another host function passes through to the caller of the
-Go call unchanged and leaves the VM usable. A host callback may also recover a panic from
-its reentrant call and continue.
-
-After a panic, pending jobs and unhandled rejection reports are discarded at the outermost
-boundary, and unfinished module evaluations are rejected, even if
-an inner panic was recovered. Synchronous module evaluations abandoned by a panic are
-rejected before control returns to the host. Side effects are not rolled back.
-
-Aborted generators are closed without running JavaScript `catch` or `finally` blocks.
-Promises for abandoned async functions, async generator requests, and discarded jobs may
-remain pending; later requests
-on an aborted async generator see it as completed. Suspended generators outside the aborted
-call remain intact.
-
-Host callbacks must not call `runtime.Goexit`: it is not a panic and leaves the VM unusable.
+`VM.NewPromise` returns a promise and a resolver for completing it from Go. Pending promise
+jobs run before the outermost Go call that executes JavaScript returns. `VM.SetUnhandledRejection`
+receives rejections still unhandled after those jobs run. Promise continuations, including
+`await`, preserve the host value set by `VM.WithContinuationData` when they were registered.
 
 ### Time and randomness
 
-`Date` and `Temporal` use
-the local time zone of Go's `time` package, or of the JavaScript host with `GOOS=js`, unless
-`VM.SetTimeZone` sets one. `VM.SetClock` sets the clock of the current time, and
-`VM.SetRandomSource` the source of `Math.random`.
+`Date` and `Temporal` use the local time zone by default. Override it with `VM.SetTimeZone`,
+the clock with `VM.SetClock`, and the source of `Math.random` with `VM.SetRandomSource`.
 
 ### Intl
 
-Importing `github.com/hajimehoshi/ekuma/intl` for its side effects adds `Intl` to every VM.
-It enables locale-aware formatting for the `toLocale*String` methods of numbers, dates,
-durations, arrays and typed arrays, and locale-aware behavior for `localeCompare`,
-`toLocaleUpperCase` and `toLocaleLowerCase`. It also adds the ECMA-402 calendars to `Temporal`,
-in addition to `iso8601`:
+Import the optional `intl` package to enable `Intl`, locale-aware string and formatting
+methods, and additional `Temporal` calendars in every VM.
 
 ```go
 import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
-Without the import, these features do not contribute to binary size. With it, a hello-world
-program grows from about 9.1 MiB to 17.2 MiB on macOS arm64, and from 12.0 MiB to 20.4 MiB
-with `GOOS=js`.
-
-Set the VM default locale with `vm.SetLocale("ja-JP")`; `vm.SetLocale("")` restores
-the host default. Explicit JavaScript locale arguments take precedence, and existing
-Intl instances keep their locale.
-
-The host default comes from `LC_ALL`, `LC_MESSAGES` or `LANG`, in that order, then
-the OS locale: user preferences on macOS, iOS, and Windows, system properties on
-Android, or system locale configuration on Linux.
-FreeBSD, OpenBSD, NetBSD, and DragonFly BSD use the locale environment variables
-supplied by the login session or shell. Browser builds use `navigator.language`.
-Unavailable host locales, `C` and `POSIX` fall back to en-US.
-
-The native locale calls on Apple platforms and Android use purego. Android builds
-with `CGO_ENABLED=0` use only the locale environment variables. iOS builds require
-`CGO_ENABLED=1`; macOS supports `CGO_ENABLED=0`.
-
-See [License](#license) for the notices to include when distributing programs that use this package.
+The import adds about 8 MiB to a hello-world binary on macOS arm64 and with `GOOS=js`.
+`VM.SetLocale` overrides the host default locale. iOS builds with `intl` require `CGO_ENABLED=1`.
+See the [intl package documentation](https://pkg.go.dev/github.com/hajimehoshi/ekuma/intl)
+for host locale selection and [License](#license) for distribution notices.
 
 ### Agents
 
@@ -253,25 +147,16 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ### Notes on behavior
 
-- `Date` truncates UTC offsets to whole minutes when calculating local time. At
-  `1890-01-01T00:00:00Z` in `Europe/Paris`, `Date` uses `+00:09` for the historical
-  offset of `+00:09:21`, so `getSeconds()` returns `0`. `Temporal.ZonedDateTime` uses
-  the full offset supplied by the platform for a named time zone, giving `21` seconds here
-- Ekuma tracks the Unicode version shipped with the Go release in `go.mod`. For Go 1.27,
-  that is Unicode 17.0.0. [ECMAScript](https://tc39.es/ecma262/multipage/conformance.html#sec-conformance)
-  requires the latest Unicode Standard for source text, so Ekuma may reject identifiers
-  that use letters added after Unicode 17
-- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar
-- Native builds can load named time zones from system zoneinfo directories and from the sources
-  available to Go's `time.LoadLocation`. These include a directory or uncompressed zip file named
-  by `ZONEINFO`, Go's `$GOROOT/lib/time/zoneinfo.zip`, and embedded data from `time/tzdata` when
-  imported. With `GOOS=js`, a named zone is available when the host's `Intl.DateTimeFormat`
-  resolves its identifier and Go's `time.LoadLocation` can load the rules. Go supplies both the
-  offsets and the transitions, with `time/tzdata` embedded for hosts without zoneinfo files.
-  Local `Date` operations use the JavaScript host's `Date` by default
-- Without [Intl](#intl), `toLocale*String` uses a fixed English format, `localeCompare`
-  compares code units after Unicode normalization, and `toLocaleUpperCase` and
-  `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
+- `Date` truncates historical UTC offsets to whole minutes. `Temporal.ZonedDateTime` uses
+  the full offset for a named time zone.
+- Ekuma uses the Unicode version shipped with Go (17.0.0 in Go 1.27). Identifiers containing
+  letters added in later Unicode versions may be rejected.
+- Native builds load named time zones from system zoneinfo and Go's `time.LoadLocation` sources.
+  With `GOOS=js`, the host's `Intl.DateTimeFormat` must also recognize the zone. Local `Date`
+  operations use the JavaScript host's `Date` by default.
+- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar, `toLocale*String`
+  uses a fixed English format, `localeCompare` compares normalized code units, and case
+  conversion ignores the locale.
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root
 - `Intl.Segmenter` uses dictionary word boundaries for Chinese, Japanese, Thai, Khmer and
@@ -310,22 +195,14 @@ Host API for these, some of which the engine has and only the tests use:
 go test ./...
 ```
 
-Run `go test -tags=ekumavalidate ./...` to check the bytecode the compiler emits and verify
-that the interpreter's register writes and control flow agree with the opcode definitions.
-
-The [local JavaScript regression tests](testdata/scripts) use the
-Test262 runner with an original 0BSD harness. They run with `go test -short ./...`
-without a Test262 checkout.
+Use `go test -short ./...` to run the [local regression tests](testdata/scripts) and skip
+external suites. Add `-tags=ekumavalidate` to check bytecode generation and execution.
 
 ### Conformance tests
 
-`go test .` runs ICU, Test262, and V8 when their checkouts are available. Set the
-suite's environment variable to its checkout directory, or use the default path
-under the user cache directory. CI uses the pinned revisions below. For V8, a
-sparse checkout needs `DEPS`, `test/intl`, `test/mjsunit`, `test/mozilla`, `test/test262/local-tests/test`,
-`test/webkit`, the tool modules matching `/tools/**/*.mjs`, and the printing helper
-`tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
-Short mode skips all external conformance tests.
+`go test .` runs the external suites when their checkouts are available. Set the environment
+variables below or place the checkouts at the listed paths under the user cache directory.
+The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
 
 | Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
@@ -334,86 +211,23 @@ Short mode skips all external conformance tests.
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
-ICU 78.3 supplies the casing, normalization, RegExp, segmentation, and collation
-fixtures. The casing tests check Unicode 17 uppercase and lowercase mappings
-from `UnicodeData.txt` and `SpecialCasing.txt`, including final sigma and
-locale-specific mappings for Lithuanian, Turkish, and Azerbaijani.
+See the [ICU fixture inventory](internal/icutest/README.md) for coverage and focused test commands.
 
-ICU 79.1 supplies CLDR 49 locale identifiers, number and number range
-formatting, display names, plural rules, calendars, date intervals, list formatting,
-and relative time formatting. The
-[fixture inventory](internal/icutest/README.md) describes the upstream readers,
-option mappings, exclusions, and known differences.
-The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
-Run the full suite or focus on one area with
-
-```sh
-go test -count=1 -v -run '^TestICU$' .
-go test -count=1 -v -run '^TestICU$/^(UnicodeData\.txt|SpecialCasing\.txt|casing\.txt)$' .
-go test -count=1 -v -run '^TestICU$/^[Cc]ollation' .
-go test -count=1 -v -run '^TestICU$/^(plural|icu4j-plurals)' .
-go test -count=1 -v -run '^TestICU$/^(cdateintervalformattest\.c|dtifmtts\.cpp)$' .
-go test -count=1 -v -run '^TestICU$/^(NumberRangeFormatterTest\.java|PluralRangesTest\.java|numbertest_range\.cpp|unumberrangeformattertst\.c)$' .
-```
-
-After checking out V8, fetch the separate Mozilla data revision pinned in
-its `DEPS` into `test/mozilla/data`. From the Ekuma repository root, run
+For V8's Mozilla suite, fetch the data revision pinned by V8 from the Ekuma repository root:
 
 ```sh
 bash internal/jstest/checkout-mozilla.sh "$EKUMA_V8"
 ```
 
-`TestV8Test262` runs V8's local Test262 cases when both checkouts are available.
-It reads the cases from V8 and the harness from Test262. Each case is a Go subtest
-named by its path under `test/test262/local-tests/test`. The official Test262
-totals count only files from the Test262 checkout.
+With both V8 and Test262 checked out, `TestV8Test262` also runs V8's local Test262 cases.
 
-```sh
-go test -count=1 -v -run '^TestV8Test262$' .
-```
-
-`TestTest262` and `TestV8` use the same flags, prefixed with `-test262.` or
-`-v8.`. Use `dir` to select a checkout-relative directory and `filter` to match
-a substring of a test path.
+Use `-test262.dir` or `-v8.dir` to select a checkout-relative directory, or the corresponding
+`filter` flag to match part of a test path.
 
 ```sh
 go test -count=1 -v -run '^TestTest262$' . -test262.dir test/intl402/Collator
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/intl/collator
-go test -count=1 -v -run '^TestV8$' . -v8.dir test/mjsunit/es6
-go test -count=1 -v -run '^TestV8$' . -v8.dir test/mozilla/data/ecma_3/RegExp
-go test -count=1 -v -run '^TestV8$' . -v8.dir test/webkit
 ```
-
-Use `shuffle` with `off`, `on`, or an integer seed. To replay a file order,
-set `GOMAXPROCS=1` and reuse the seed. `report FILE` writes tab-separated test
-paths and failure reasons. Both suites report expectation mismatches in the console.
-V8 also includes them in the report file. Relative checkout and report paths are
-resolved from the repository root.
-
-The Test262 and V8 expectation files accept checkout-relative paths. End a
-directory path with `/` to match every test beneath it, including in
-subdirectories. The most specific entry for a test takes precedence.
-
-Plain entries in both files are expected failures. The tests still run, and
-an unexpected pass or a stale path fails the suite. A runner error, engine
-panic, or timeout on the final attempt also fails the suite. In the V8 file, a
-`# SKIP: reason` comment skips all consecutive test paths directly below it.
-A `# SKIP(64-bit): reason` comment applies only on targets with 64-bit Go integers.
-A `# PASS/FAIL: reason` group runs each test and accepts either a pass or a
-JavaScript failure. The summary counts the observed outcome.
-A blank line or comment ends the group.
-The V8 runner loads checkout-relative scripts named by `// Files:` in order.
-Intl and mjsunit load them after the suite harness and before the test. WebKit
-loads them first, then runs `resources/standalone-pre.js`, the test, and
-`resources/standalone-post.js`. It compares stdout with the paired
-`-expected.txt` file using V8's line comparison rules. Unsupported flags and
-environment settings skip the test.
-
-Mozilla runs the `ecma`, `ecma_2`, `ecma_3`, and `js1_1` through `js1_5`
-directories with `--expose-gc`. It loads V8's shell emulation followed by
-each ancestor's `shell.js` from the data root to the test directory. A
-JavaScript failure or `FAILED!` anywhere in stdout satisfies a negative
-test (`-n.js`) and fails a positive test.
 
 ## License
 
