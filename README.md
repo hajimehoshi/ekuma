@@ -102,8 +102,9 @@ receives rejections still unhandled after those jobs run. Promise continuations,
 
 ### Time and randomness
 
-`Date` and `Temporal` use the local time zone by default. Override it with `VM.SetTimeZone`,
-the clock with `VM.SetClock`, and the source of `Math.random` with `VM.SetRandomSource`.
+`Date`, `Temporal`, and `Intl.DateTimeFormat` use the local time zone by default. Override it
+with `VM.SetTimeZone`, the clock with `VM.SetClock`, and the source of `Math.random` with
+`VM.SetRandomSource`.
 
 ### Intl
 
