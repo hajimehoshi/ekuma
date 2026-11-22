@@ -308,6 +308,7 @@ const (
 	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
 	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
 	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
+	OpIterNextPair    // a, x.a = the elements of the next value of the iterator b, b+1, an array of two, and jump to c, when the value is not needed; b = undefined when the iterator is done; nothing otherwise
 
 	// Disposal of resources.
 	OpUsing        // add the resource b with the Dispose hint c to the dispose capability a, which is created when a is undefined

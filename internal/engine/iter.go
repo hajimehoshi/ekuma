@@ -50,6 +50,32 @@ func (vm *VM) GetIterator(v Value) (it, next Value) {
 // It throws a TypeError when this is not an iterator of its kind.
 type IteratorStepFunc func(vm *VM, this Value) (Value, bool)
 
+// PairStep is the outcome of an [IteratorPairStepFunc].
+type PairStep uint8
+
+const (
+	// PairDeclined says that the step did nothing.
+	PairDeclined PairStep = iota
+
+	// PairDone says that the iterator is done.
+	PairDone
+
+	// PairYielded says that the iterator yielded an array of the two values.
+	PairYielded
+)
+
+// IteratorPairStepFunc is the next method of a built-in iterator, without the iterator result,
+// for an iterator that yields arrays of two elements: it returns the elements of the next array
+// that the iterator this yields, without creating the array. It declines when the iterator does
+// not yield such arrays, when this is not an iterator of its kind, or when stepping the iterator
+// could run JavaScript.
+type IteratorPairStepFunc func(vm *VM, this Value) (a, b Value, st PairStep)
+
+// SetIteratorPairStep makes step the pair step of next, which NewIteratorNext returned.
+func (vm *VM) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
+	next.fn.info.fast.pairStep = step
+}
+
 // NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
 // result for what step returns.
 func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
@@ -136,6 +162,35 @@ func (vm *VM) ArrayIteratorStep(this Value) (Value, bool) {
 		return v, true
 	}
 	return Value{o: vm.NewArrayPair(key, v)}, true
+}
+
+// ArrayIteratorPairStep is the pair step of array iterators, which yield arrays of two elements
+// as entries.
+func (vm *VM) ArrayIteratorPairStep(this Value) (a, b Value, st PairStep) {
+	it, _ := IteratorState(this).(*arrayIterator)
+	if it == nil || it.kind != IterateEntries {
+		return Undefined, Undefined, PairDeclined
+	}
+	o := it.object
+	if o == nil {
+		return Undefined, Undefined, PairDone
+	}
+	// Only the length and the elements of an array are read without running anything.
+	if o.kind != kindArray {
+		return Undefined, Undefined, PairDeclined
+	}
+	i := it.nextIndex
+	if i >= int64(o.length) {
+		it.object = nil
+		return Undefined, Undefined, PairDone
+	}
+	v, ok := o.Element(i)
+	if !ok {
+		return Undefined, Undefined, PairDeclined
+	}
+	it.nextIndex = i + 1
+	vm.PollAt(i)
+	return Number(float64(i)), v, PairYielded
 }
 
 // Outcomes of iterNext.

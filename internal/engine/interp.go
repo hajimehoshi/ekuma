@@ -2851,6 +2851,57 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					goto throw
 				}
 			}
+		case bytecode.OpIterNextPair:
+			// The elements of the next value go to their registers without the value when nothing
+			// can tell, and the instructions after this one step the iterator otherwise.
+			b := fp.code[pc].A
+			pc++
+			it, next := regs[i.B], regs[i.B+1]
+			if it.o == nil {
+				continue
+			}
+			if next.o == numberObject {
+				// A plain array iterated by index, whose element is itself a plain array of at
+				// least two elements.
+				o, j := it.o, uint32(next.n)
+				if j >= o.length || uint(j) >= uint(len(o.elems)) {
+					continue
+				}
+				e := o.elems[j].o
+				if e == nil || e.shape != vm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !vm.pairDestructuringPlain() {
+					continue
+				}
+				regs[i.B+1] = Number(next.n + 1)
+				regs[i.A] = e.elems[0]
+				regs[b] = e.elems[1]
+				pc = int(i.C)
+				continue
+			}
+			if next.o == nil || next.o.fn == nil {
+				continue
+			}
+			step := next.o.fn.iteratorPairStep(vm.curRealm)
+			if step == nil || !vm.pairDestructuringPlain() {
+				continue
+			}
+			vm.frames[len(vm.frames)-1].pc = pc
+			// A step that throws leaves the iterator finished, as in OpIterNext.
+			regs[i.B] = Undefined
+			if vm.interrupt.Load() {
+				vm.Poll()
+			}
+			x, y, st := step(vm, it)
+			regs = vm.reload(regs, vm.frameBase(), fp)
+			switch st {
+			case PairYielded:
+				regs[i.B] = it
+				regs[i.A] = x
+				regs[b] = y
+				pc = int(i.C)
+			case PairDeclined:
+				regs[i.B] = it
+			}
+			// A finished iterator is left for the step after this instruction.
 		case bytecode.OpIterClose:
 			it := regs[i.A]
 			if it.IsUndefined() {

@@ -1162,11 +1162,32 @@ func (vm *VM) arrayIterationUnmodified() bool {
 		c.epoch = vm.protoEpoch
 		c.found = c.iter.findData(vm.Intrinsic(IntrinsicArrayPrototype), vm.WellKnownSymbol(SymbolIterator)) &&
 			c.next.findData(vm.Intrinsic(IntrinsicArrayIteratorPrototype), vm.Key(keyNext))
+		c.noReturn = vm.noArrayIteratorReturn()
 	}
 	// Assigning to an existing data property does not move protoEpoch, so the values are
 	// compared on every call.
 	return c.found && c.iter.value().o == vm.Intrinsic(IntrinsicArrayPrototypeValues) &&
 		c.next.value().o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
+}
+
+// pairDestructuringPlain reports whether destructuring a new array of two elements into two
+// bindings runs nothing that JavaScript could observe.
+func (vm *VM) pairDestructuringPlain() bool {
+	return vm.arrayIterationUnmodified() && vm.arrayIter.noReturn
+}
+
+// noArrayIteratorReturn reports whether array iterators have no return method, which closing
+// one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
+// property to one moves protoEpoch.
+func (vm *VM) noArrayIteratorReturn() bool {
+	key := vm.Key(keyReturn)
+	for p := vm.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
+		p.flags |= objIsProto
+		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // arrayIterCache is what arrayIterationPlain found for arrays with the initial shape.
@@ -1180,6 +1201,8 @@ type arrayIterCache struct {
 	checked bool
 	// found reports whether iter and next were found as data properties.
 	found bool
+	// noReturn reports whether array iterators had no return method at epoch.
+	noReturn bool
 }
 
 // dataSlot is the slot of a data property in the object that holds it.

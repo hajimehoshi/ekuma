@@ -95,6 +95,10 @@ type nativeFast struct {
 	// without creating the iterator result.
 	step IteratorStepFunc
 
+	// pairStep is set for the next method of a built-in iterator that can yield pairs. It is
+	// what the function does without creating the iterator result or the pair.
+	pairStep IteratorPairStepFunc
+
 	// number1 and number2 compute the function for exactly one or two arguments that are
 	// numbers.
 	number1 NumberKernel1
@@ -135,6 +139,14 @@ func (f *function) iteratorStep(r *realm) IteratorStepFunc {
 		return nil
 	}
 	return f.info.fast.step
+}
+
+// iteratorPairStep is iteratorStep for the pair step.
+func (f *function) iteratorPairStep(r *realm) IteratorPairStepFunc {
+	if f.info == nil || f.info.realm != r || f.info.fast == nil {
+		return nil
+	}
+	return f.info.fast.pairStep
 }
 
 type boundFunc struct {

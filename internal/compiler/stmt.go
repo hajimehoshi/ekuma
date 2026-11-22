@@ -837,9 +837,17 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	base := f.top
 	scoped := f.enterScope(s.Scope, false)
 	v := f.newReg()
+	pair := -1
+	if a, b, ok := f.pairTargets(s); ok {
+		// The step for the binding [a, b] skips the value and its destructuring below when it can.
+		pair = f.emit(bytecode.OpIterNextPair, a, it, 0)
+		f.emit(bytecode.OpExtra, b, 0, 0)
+	}
 	next := f.emit(bytecode.OpIterNext, v, it, 0)
 	start := f.pc()
-	f.loopBody(s, v)
+	if body := f.loopBody(s, v); pair >= 0 {
+		f.f.Code[pair].C = body
+	}
 	f.patchAll(c.continues)
 	if scoped {
 		f.leaveScope()
@@ -858,17 +866,43 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	f.popLoop(c)
 }
 
-// loopBody compiles one iteration of the for-of or for-await statement s for the value v.
-func (f *fn) loopBody(s *ast.ForOfStmt, v int32) {
+// loopBody compiles one iteration of the for-of or for-await statement s for the value v, and
+// returns where the body starts after the binding, or -1 when the iteration disposes resources.
+func (f *fn) loopBody(s *ast.ForOfStmt, v int32) int32 {
 	if using, async := usingKinds(s.Scope); using {
 		f.disposing(async, func() {
 			f.bindLoopVar(s.Decl, s.Target, v)
 			f.stmt(s.Body, nil)
 		})
-		return
+		return -1
 	}
 	f.bindLoopVar(s.Decl, s.Target, v)
+	body := f.pc()
 	f.stmt(s.Body, nil)
+	return body
+}
+
+// pairTargets returns the registers that the binding of the for-of statement s writes, when the
+// binding destructures exactly two elements and writes each to a register as it is.
+func (f *fn) pairTargets(s *ast.ForOfStmt) (a, b int32, ok bool) {
+	target, mode := s.Target, patAssign
+	if d := s.Decl; d != nil {
+		if d.Kind == ast.DeclUsing || d.Kind == ast.DeclAwaitUsing {
+			return -1, -1, false
+		}
+		target, mode = d.Decls[0].Target, declMode(d.Kind)
+	}
+	p, isArray := target.(*ast.ArrayPattern)
+	if !isArray || len(p.Elements) != 2 {
+		return -1, -1, false
+	}
+	x, okX := p.Elements[0].(*ast.Identifier)
+	y, okY := p.Elements[1].(*ast.Identifier)
+	if !okX || !okY {
+		return -1, -1, false
+	}
+	a, b = f.targetReg(x, mode), f.targetReg(y, mode)
+	return a, b, a >= 0 && b >= 0
 }
 
 // forAwaitOf compiles the loop of a for-await statement over the async iterator it, it+1.

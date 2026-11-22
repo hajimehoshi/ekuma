@@ -1703,6 +1703,19 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpIterNextPair: {
+		name: "OpIterNextPair",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			C:      OperandTarget,
+			Extra:  true,
+			XA:     OperandReg,
+			Reads:  []Regs{{At: FieldB, Len: 2}},
+			Writes: []Regs{{At: FieldA, Len: 1}, {At: FieldB, Len: 2}, {At: FieldXA, Len: 1}},
+		},
+		flow: FlowNext,
+	},
 	OpIterClose: {
 		name: "OpIterClose",
 		operands: Operands{

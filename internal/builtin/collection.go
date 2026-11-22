@@ -335,6 +335,21 @@ func initMap(vm *engine.VM) {
 		}
 		return engine.ObjectValue(vm.NewArrayPair(k, v)), true
 	})
+	vm.SetIteratorPairStep(mapIterNext, func(vm *engine.VM, this engine.Value) (engine.Value, engine.Value, engine.PairStep) {
+		it, _ := engine.IteratorState(this).(*mapIterator)
+		if it == nil || it.kind != engine.IterateEntries {
+			return engine.Undefined, engine.Undefined, engine.PairDeclined
+		}
+		if it.table == nil {
+			return engine.Undefined, engine.Undefined, engine.PairDone
+		}
+		k, v, ok := it.table.Next(&it.cursor)
+		if !ok {
+			it.table = nil
+			return engine.Undefined, engine.Undefined, engine.PairDone
+		}
+		return k, v, engine.PairYielded
+	})
 	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map Iterator"), engine.FlagConfigurable)
 }
 
@@ -718,6 +733,21 @@ func initSet(vm *engine.VM) {
 			return engine.ObjectValue(vm.NewArrayPair(k, k)), true
 		}
 		return k, true
+	})
+	vm.SetIteratorPairStep(setIterNext, func(vm *engine.VM, this engine.Value) (engine.Value, engine.Value, engine.PairStep) {
+		it, _ := engine.IteratorState(this).(*setIterator)
+		if it == nil || it.kind != engine.IterateEntries {
+			return engine.Undefined, engine.Undefined, engine.PairDeclined
+		}
+		if it.table == nil {
+			return engine.Undefined, engine.Undefined, engine.PairDone
+		}
+		k, _, ok := it.table.Next(&it.cursor)
+		if !ok {
+			it.table = nil
+			return engine.Undefined, engine.Undefined, engine.PairDone
+		}
+		return k, k, engine.PairYielded
 	})
 	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set Iterator"), engine.FlagConfigurable)
 }

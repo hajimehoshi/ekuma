@@ -853,6 +853,7 @@ func initIterators(vm *engine.VM) {
 	})
 
 	arrayIterNext := iteratorNext(vm, vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), (*engine.VM).ArrayIteratorStep)
+	vm.SetIteratorPairStep(arrayIterNext, (*engine.VM).ArrayIteratorPairStep)
 	vm.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
 	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Array Iterator"), engine.FlagConfigurable)
 
