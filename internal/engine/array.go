@@ -188,12 +188,13 @@ func (vm *VM) arrayCtorPlain(o *Object) bool {
 	if o.shape != vm.shapes.array {
 		return false
 	}
+	ctor := vm.Intrinsic(IntrinsicArray)
 	c, ok := vm.lookupData(vm.Intrinsic(IntrinsicArrayPrototype), vm.Key(KeyConstructor))
-	if !ok || c.o != vm.Intrinsic(IntrinsicArray) {
+	if !ok || c.o != ctor {
 		return false
 	}
-	_, p, found := find(vm.Intrinsic(IntrinsicArray), vm.WellKnownSymbol(SymbolSpecies))
-	return found && p.flags&FlagAccessor != 0 && vm.Intrinsic(IntrinsicArray).slots[p.slot].accessor().getter == vm.Intrinsic(IntrinsicArraySpeciesGetter)
+	p, found := ctor.getOwn(vm.WellKnownSymbol(SymbolSpecies))
+	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == vm.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
