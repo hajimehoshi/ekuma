@@ -61,7 +61,7 @@ func runNormalizationTest(t *testing.T, path string) {
 			t.Fatalf("%s:%d: got %d columns, want %d", path, line, len(fields), len(columns))
 		}
 		for i, field := range fields {
-			s, err := parseNormalizationColumn(field)
+			s, err := parseCodePoints(field)
 			if err != nil {
 				t.Fatalf("%s:%d: c%d: %v", path, line, i+1, err)
 			}
@@ -91,17 +91,25 @@ func runNormalizationTest(t *testing.T, path string) {
 	t.Logf("%d rows", rows)
 }
 
-func parseNormalizationColumn(field string) (string, error) {
+func parseCodePoints(field string) (string, error) {
 	var s strings.Builder
 	for cp := range strings.FieldsSeq(field) {
-		n, err := strconv.ParseUint(cp, 16, 32)
-		if err != nil || !utf8.ValidRune(rune(n)) {
-			return "", fmt.Errorf("invalid Unicode scalar value %q", cp)
+		r, err := parseScalar(cp)
+		if err != nil {
+			return "", err
 		}
-		s.WriteRune(rune(n))
+		s.WriteRune(r)
 	}
 	if s.Len() == 0 {
-		return "", fmt.Errorf("empty normalization column")
+		return "", fmt.Errorf("empty code point sequence")
 	}
 	return s.String(), nil
+}
+
+func parseScalar(field string) (rune, error) {
+	n, err := strconv.ParseUint(field, 16, 32)
+	if err != nil || !utf8.ValidRune(rune(n)) {
+		return 0, fmt.Errorf("invalid Unicode scalar value %q", field)
+	}
+	return rune(n), nil
 }

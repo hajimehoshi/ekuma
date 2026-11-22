@@ -31,8 +31,25 @@ func Run(t *testing.T) {
 	if unicodeDir == "" && cldrDir == "" {
 		t.Skip("no ICU checkouts available")
 	}
+	locales, fixtures := readFailures(t)
 	if unicodeDir != "" {
 		runBreakTests(t, unicodeDir)
+		testdata := filepath.Join(unicodeDir, "icu4c", "source", "test", "testdata")
+		unidata := filepath.Join(unicodeDir, "icu4c", "source", "data", "unidata")
+		t.Run("casing.txt", func(t *testing.T) {
+			runCasingTest(t, filepath.Join(testdata, "casing.txt"))
+		})
+		t.Run("rbbitst.txt", func(t *testing.T) {
+			runRBBITest(t, filepath.Join(testdata, "rbbitst.txt"), filepath.Join(unidata, "UnicodeData.txt"), fixtures["rbbitst.txt"])
+		})
+		t.Run("CaseFolding.txt", func(t *testing.T) {
+			runCaseFoldingTest(t, filepath.Join(unidata, "CaseFolding.txt"))
+		})
+		for _, file := range []string{"emoji-sequences.txt", "emoji-zwj-sequences.txt"} {
+			t.Run(file, func(t *testing.T) {
+				runEmojiTest(t, filepath.Join(unidata, file))
+			})
+		}
 	}
 	if cldrDir != "" {
 		t.Run("NormalizationTest.txt", func(t *testing.T) {
@@ -40,7 +57,6 @@ func Run(t *testing.T) {
 		})
 		dataDir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata")
 		dir := filepath.Join(dataDir, "cldr", "localeIdentifiers")
-		locales, collations := readFailures(t)
 		t.Run("likelySubtags.txt", func(t *testing.T) {
 			runLikelySubtagsTest(t, filepath.Join(dir, "likelySubtags.txt"), locales)
 		})
@@ -50,12 +66,12 @@ func Run(t *testing.T) {
 		for _, alternate := range []string{"NON_IGNORABLE", "SHIFTED"} {
 			file := "CollationTest_" + alternate + "_SHORT.txt"
 			t.Run(file, func(t *testing.T) {
-				runOrderedCollation(t, filepath.Join(dataDir, file), alternate == "SHIFTED", collations[file])
+				runOrderedCollation(t, filepath.Join(dataDir, file), alternate == "SHIFTED", fixtures[file])
 			})
 		}
 		const file = "collationtest.txt"
 		t.Run(file, func(t *testing.T) {
-			runCollationTest(t, filepath.Join(dataDir, file), collations[file])
+			runCollationTest(t, filepath.Join(dataDir, file), fixtures[file])
 		})
 	}
 }
@@ -73,7 +89,8 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		"minimize":                 {},
 		"Intl.getCanonicalLocales": {},
 	}
-	collations := map[string]map[int]string{
+	fixtures := map[string]map[int]string{
+		"rbbitst.txt":                           {},
 		"CollationTest_NON_IGNORABLE_SHORT.txt": {},
 		"CollationTest_SHIFTED_SHORT.txt":       {},
 		"collationtest.txt":                     {},
@@ -95,7 +112,7 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 			entries[key] = result
 			continue
 		}
-		entries, ok := collations[name]
+		entries, ok := fixtures[name]
 		if !ok {
 			t.Fatalf("%s:%d: unknown operation or fixture %q", failuresFile, i+1, name)
 		}
@@ -108,7 +125,7 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		}
 		entries[line] = result
 	}
-	return locales, collations
+	return locales, fixtures
 }
 
 func checkoutDir(t *testing.T, env, name string) string {
@@ -148,24 +165,7 @@ func runBreakTest(t *testing.T, path, granularity string) {
 	defer f.Close()
 
 	var vm ekuma.VM
-	script, err := vm.ParseScript("break-test.js", `
-		const segmenter = new Intl.Segmenter("en", {granularity: `+strconv.Quote(granularity)+`});
-		codePoints => {
-			const input = String.fromCodePoint(...codePoints);
-			const boundaries = [];
-			let end = 0;
-			for (const {index, segment} of segmenter.segment(input)) {
-				boundaries.push(index);
-				end = index + segment.length;
-			}
-			boundaries.push(end);
-			return boundaries.join(" ");
-		}
-	`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	boundaries, err := script.Evaluate(t.Context())
+	boundaries, err := segmenterFactory(t, &vm).Invoke(t.Context(), "en", granularity)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,19 +201,47 @@ func runBreakTest(t *testing.T, path, granularity string) {
 	t.Logf("%d cases", cases)
 }
 
+func segmenterFactory(t *testing.T, vm *ekuma.VM) ekuma.Value {
+	t.Helper()
+	script, err := vm.ParseScript("break-test.js", `
+		(locale, granularity) => {
+			const segmenter = new Intl.Segmenter(locale, {granularity});
+			return codePoints => {
+				const input = String.fromCodePoint(...codePoints);
+				const boundaries = [];
+				let end = 0;
+				for (const {index, segment} of segmenter.segment(input)) {
+					boundaries.push(index);
+					end = index + segment.length;
+				}
+				boundaries.push(end);
+				return boundaries.join(" ");
+			};
+		}
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	factory, err := script.Evaluate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return factory
+}
+
 // parseBreakTest returns the code points and expected UTF-16 boundary indices for a row.
 func parseBreakTest(fields []string) ([]any, string, error) {
 	if len(fields)%2 != 1 || fields[0] != "÷" || fields[len(fields)-1] != "÷" {
 		return nil, "", fmt.Errorf("expected alternating break markers and code points with a break at both ends")
 	}
 	var codePoints []any
-	var offsets []string
+	var offsets []int
 	var offset int
 	for i, field := range fields {
 		if i%2 == 0 {
 			switch field {
 			case "÷":
-				offsets = append(offsets, strconv.Itoa(offset))
+				offsets = append(offsets, offset)
 			case "×":
 			default:
 				return nil, "", fmt.Errorf("invalid break marker %q", field)
@@ -230,5 +258,16 @@ func parseBreakTest(fields []string) ([]any, string, error) {
 			offset++
 		}
 	}
-	return codePoints, strings.Join(offsets, " "), nil
+	return codePoints, formatBreakOffsets(offsets), nil
+}
+
+func formatBreakOffsets(offsets []int) string {
+	var b strings.Builder
+	for i, offset := range offsets {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(strconv.Itoa(offset))
+	}
+	return b.String()
 }

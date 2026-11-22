@@ -17,7 +17,7 @@ func runLikelySubtagsTest(t *testing.T, path string, failures localeFailures) {
 	var vm ekuma.VM
 	maximize := newLocaleOperation(t, &vm, path, "maximize", `tag => new Intl.Locale(tag).maximize().toString()`, failures)
 	minimize := newLocaleOperation(t, &vm, path, "minimize", `tag => new Intl.Locale(tag).minimize().toString()`, failures)
-	forEachLocaleRow(t, path, 4, func(line int, fields []string) {
+	forEachDataRow(t, path, 4, func(line int, fields []string) {
 		source, add, favorScript, favorRegion := fields[0], fields[1], fields[2], fields[3]
 		// ECMA-402 returns the input locale when a likely-subtags operation fails.
 		if add == "FAIL" {
@@ -33,7 +33,7 @@ func runLikelySubtagsTest(t *testing.T, path string, failures localeFailures) {
 func runLocaleCanonicalizationTest(t *testing.T, path string, failures localeFailures) {
 	var vm ekuma.VM
 	canonicalize := newLocaleOperation(t, &vm, path, "Intl.getCanonicalLocales", `tag => Intl.getCanonicalLocales(tag).join(",")`, failures)
-	forEachLocaleRow(t, path, 2, func(line int, fields []string) {
+	forEachDataRow(t, path, 2, func(line int, fields []string) {
 		// The fixture uses the CLDR subtag separator on both sides of the alias.
 		source := strings.ReplaceAll(fields[0], "_", "-")
 		want := strings.ReplaceAll(fields[1], "_", "-")
@@ -96,7 +96,7 @@ func (op *localeOperation) check(t *testing.T, line int, source, want string) {
 	}
 }
 
-func forEachLocaleRow(t *testing.T, path string, columns int, test func(line int, fields []string)) {
+func forEachDataRow(t *testing.T, path string, columns int, test func(line int, fields []string)) {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
@@ -129,7 +129,7 @@ func forEachLocaleRow(t *testing.T, path string, columns int, test func(line int
 		t.Fatal(err)
 	}
 	if rows == 0 {
-		t.Fatalf("%s contains no locale tests", path)
+		t.Fatalf("%s contains no test rows", path)
 	}
 	t.Logf("%d rows executed, 0 excluded", rows)
 }

@@ -56,6 +56,12 @@ jobs:
             /icu4c/source/test/testdata/GraphemeBreakTest.txt
             /icu4c/source/test/testdata/WordBreakTest.txt
             /icu4c/source/test/testdata/SentenceBreakTest.txt
+            /icu4c/source/test/testdata/casing.txt
+            /icu4c/source/test/testdata/rbbitst.txt
+            /icu4c/source/data/unidata/UnicodeData.txt
+            /icu4c/source/data/unidata/CaseFolding.txt
+            /icu4c/source/data/unidata/emoji-sequences.txt
+            /icu4c/source/data/unidata/emoji-zwj-sequences.txt
           sparse-checkout-cone-mode: false
 
       - name: Checkout ICU normalization and CLDR tests

@@ -324,15 +324,16 @@ Short mode skips all external conformance tests.
 
 | Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
-| [ICU 78.3 (Unicode 17.0)](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | None |
+| [ICU 78.3 (Unicode 17.0)](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
 | [ICU 79.1 (Unicode 18.0, CLDR 49)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
-`TestICU` uses ICU 78.3 for segmentation and ICU 79.1 for normalization, locale
-identifiers and collation. Set `EKUMA_ICU` and `EKUMA_ICU_CLDR` to the
-respective checkouts. For sparse checkouts, use the paths in the
-[CI workflow](.github/workflows/test.yml). Run the full suite or just collation with
+`TestICU` uses ICU 78.3 for casing, segmentation and Unicode regular
+expressions. It uses ICU 79.1 for normalization, locale identifiers and
+collation. Set `EKUMA_ICU` and `EKUMA_ICU_CLDR` to the respective checkouts.
+For sparse checkouts, use the paths in the [CI workflow](.github/workflows/test.yml).
+Run the full suite or just collation with
 
 ```sh
 go test -count=1 -v -run '^TestICU$' .
