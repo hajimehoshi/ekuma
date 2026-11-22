@@ -53,7 +53,8 @@ func (f *Formatter) FormatRange(x, y Decimal, poll func()) []RangePart {
 
 	// The unit or currency name is the same on both sides, so it is shown once.
 	collapseOuter := true
-	collapseMiddle := xf.middleKey == yf.middleKey &&
+	// A compact literal that supplies the entire number belongs to its endpoint.
+	collapseMiddle := len(xf.number) > 0 && len(yf.number) > 0 && xf.middleKey == yf.middleKey &&
 		String(xf.middlePrefix)+String(xf.middleSuffix) != "" &&
 		codePoints(xf.middlePrefix, xf.middleSuffix) > 1
 	if xf.compactMag < 0 && collapseMiddle {

@@ -249,6 +249,7 @@ func (f *Formatter) format(x Decimal, approximately, joined bool, poll func()) *
 		compactMag: -1,
 	}
 	rounded := x
+	var digits string
 	switch {
 	case x.nan:
 		r.number = []Part{{
@@ -269,11 +270,9 @@ func (f *Formatter) format(x Decimal, approximately, joined bool, poll func()) *
 			x = x.scale(2)
 		}
 		exp, pmag := f.computeExponent(x)
-		s, rx := f.o.Digits.FormatToString(x.scale(-exp))
-		rounded = rx
-		r.number = f.digitParts(s, joined, poll)
-		r.compactString = s
-		r.pluralString = s
+		digits, rounded = f.o.Digits.FormatToString(x.scale(-exp))
+		r.compactString = digits
+		r.pluralString = digits
 		if f.o.Notation == "compact" {
 			r.pluralExponent = exp
 			r.compactMag = pmag
@@ -281,11 +280,13 @@ func (f *Formatter) format(x Decimal, approximately, joined bool, poll func()) *
 		if f.o.Notation == "scientific" || f.o.Notation == "engineering" {
 			r.exponent = f.exponentParts(exp)
 			// The plural form is that of the number that the notation stands for.
-			r.pluralString = shiftPoint(s, exp)
+			r.pluralString = shiftPoint(digits, exp)
 		}
 	}
 	r.sign = f.signOf(rounded)
-	f.setMiddle(r, approximately, "")
+	if hasNumber := f.setMiddle(r, approximately, ""); hasNumber && digits != "" {
+		r.number = f.digitParts(digits, joined, poll)
+	}
 	f.setOuter(r, "")
 	return r
 }
@@ -322,9 +323,9 @@ func shiftPoint(s string, e int) string {
 	return i + "." + frac
 }
 
-// setMiddle sets the affix of the pattern of r. A non-empty category overrides the plural
-// category of the compact pattern.
-func (f *Formatter) setMiddle(r *formatted, approximately bool, category string) {
+// setMiddle sets the pattern affixes and reports whether the pattern has a number placeholder.
+// A non-empty category overrides the plural category of the compact pattern.
+func (f *Formatter) setMiddle(r *formatted, approximately bool, category string) bool {
 	p := f.standard
 	compactPattern := false
 	if r.compactMag >= 0 {
@@ -346,6 +347,7 @@ func (f *Formatter) setMiddle(r *formatted, approximately bool, category string)
 	r.middlePrefix = f.affixParts(p.affix(true, r.sign, approximately), compactPattern)
 	r.middleSuffix = f.affixParts(p.affix(false, r.sign, approximately), compactPattern)
 	r.middleKey = strconv.Itoa(int(r.sign)) + "/" + strconv.Itoa(r.compactMag) + "/" + strconv.FormatBool(approximately)
+	return p.hasNumber
 }
 
 // withStandardAffix adds the tokens of the kind of the standard pattern, with its literals,

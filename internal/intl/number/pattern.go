@@ -46,6 +46,7 @@ type pattern struct {
 	positive    subpattern
 	negative    subpattern
 	hasNegative bool
+	hasNumber   bool
 	// primary and secondary are the sizes of the groups of integer digits, 0 without
 	// grouping.
 	primary   int
@@ -57,7 +58,8 @@ func parsePattern(p string) *pattern {
 	parts := splitUnquoted(p, ';')
 	pos, number := parseSubpattern(parts[0])
 	pat := &pattern{
-		positive: pos,
+		positive:  pos,
+		hasNumber: number != "",
 	}
 	if len(parts) > 1 {
 		pat.negative, _ = parseSubpattern(parts[1])
