@@ -78,6 +78,11 @@ type Table struct {
 // deletedKey is private to this package and cannot be supplied as a collection key.
 var deletedKey = new(engine.Object)
 
+// deletedEntry is what a deleted entry becomes.
+var deletedEntry = entry{
+	key: engine.ObjectValue(deletedKey),
+}
+
 type entry struct {
 	key   engine.Value
 	value engine.Value
@@ -485,6 +490,11 @@ func (t *Table) makeRoom() bool {
 	if len(t.entries) < cap(t.entries) {
 		return false
 	}
+	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live {
+		// The storage of the deleted entries makes the room.
+		t.compact()
+		return t.indexed
+	}
 	t.entries = slices.Grow(t.entries, 1)
 	if !t.indexed || slotCount(cap(t.entries)) <= len(t.slots) {
 		return false
@@ -509,18 +519,24 @@ func (t *Table) deleteAt(i int) {
 	if t.indexed && !hashed(e.key) {
 		t.mapUnindex(e.key)
 	}
-	*e = entry{
-		key: engine.ObjectValue(deletedKey),
-	}
+	*e = deletedEntry
 	t.live--
 	if i == t.head {
 		for t.head < len(t.entries) && t.entries[t.head].deleted() {
 			t.head++
 		}
 	}
-	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live {
+	// Iterations skip the deleted entries before head at once, so a table whose deleted entries
+	// are mostly before head is compacted only to give up storage.
+	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live && (dead-t.head >= t.live || t.oversized()) {
 		t.compact()
 	}
+}
+
+// oversized reports whether the storage of the entries is large enough and at most a quarter
+// used by live entries, so that compaction gives up most of it.
+func (t *Table) oversized() bool {
+	return cap(t.entries) > minShrinkEntries && t.live < cap(t.entries)/4
 }
 
 // compact removes the deleted entries.
@@ -544,7 +560,7 @@ func (t *Table) compact() {
 	t.entries = t.entries[:n]
 	t.head = 0
 	// The maps keep their room until they are rebuilt.
-	shrink := cap(t.entries) > minShrinkEntries && n < cap(t.entries)/4
+	shrink := t.oversized()
 	if shrink {
 		entries := make([]entry, n, 2*n)
 		copy(entries, t.entries)

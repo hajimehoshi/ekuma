@@ -268,6 +268,36 @@ func TestStorageShrinks(t *testing.T) {
 	}
 }
 
+// TestQueue tests that a table from which the oldest entry is deleted for every new one finds
+// its entries and keeps storage in proportion to them.
+func TestQueue(t *testing.T) {
+	const live = 1000
+	var tab collection.Table
+	var most int
+	for i := range 100 * live {
+		tab.Set(engine.Number(float64(i)), engine.Undefined)
+		if i >= live {
+			tab.Delete(engine.Number(float64(i - live)))
+		}
+		most = max(most, collection.EntryStorage(&tab))
+	}
+	if most > 3*live {
+		t.Errorf("got storage for up to %d entries, want at most %d", most, 3*live)
+	}
+	if got := tab.Size(); got != live {
+		t.Errorf("Size: got %d, want %d", got, live)
+	}
+	var missing int
+	for i := 99 * live; i < 100*live; i++ {
+		if !tab.Has(engine.Number(float64(i))) {
+			missing++
+		}
+	}
+	if missing > 0 {
+		t.Errorf("%d of the last %d keys are not found", missing, live)
+	}
+}
+
 func TestDeletedUndefinedKey(t *testing.T) {
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table
