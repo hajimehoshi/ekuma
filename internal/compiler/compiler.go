@@ -912,6 +912,15 @@ func (f *fn) setPos(offset int32) {
 	f.f.Positions = append(f.f.Positions, pos)
 }
 
+// currentPos returns the source position of the instructions emitted next, or -1 when none is
+// recorded.
+func (f *fn) currentPos() int32 {
+	if k := len(f.f.Positions); k > 0 {
+		return f.f.Positions[k-1].Offset
+	}
+	return -1
+}
+
 // setRefPos records the position of n, a reference to the variable name that resolve returned r
 // for, when using the reference may throw.
 func (f *fn) setRefPos(n ast.Node, name string, r ref) {

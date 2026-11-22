@@ -671,6 +671,9 @@ type loopTest struct {
 	// jumps to before the first iteration.
 	end   bool
 	entry int
+
+	// pos is the source position of the instructions at the start of the loop.
+	pos int32
 }
 
 // loopStart compiles the start of a loop with the condition test, nil for none. A condition
@@ -680,6 +683,7 @@ type loopTest struct {
 func (f *fn) loopStart(test ast.Expr) loopTest {
 	t := loopTest{
 		entry: -1,
+		pos:   f.currentPos(),
 	}
 	switch lit, _ := test.(*ast.BoolLit); {
 	case test == nil || lit != nil && lit.Value:
@@ -704,7 +708,12 @@ func (f *fn) loopEnd(t loopTest, test ast.Expr) {
 		if t.entry >= 0 {
 			f.patch(t.entry)
 		}
+		// The condition throws where it would at the start of the loop, and what follows the
+		// loop keeps the position of the body.
+		body := f.currentPos()
+		f.setPos(t.pos)
 		f.loopBack(test, t.top)
+		f.setPos(body)
 	} else {
 		f.jumpTo(t.top)
 	}
