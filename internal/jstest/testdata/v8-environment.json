@@ -2,5 +2,33 @@
   "test/intl/date-format/invalid-time.js": {
     "comment": "The test compares formatting Date.now() with formatting the implicit current time. An hour or date change between those reads can make the results differ.",
     "fixedTime": "2006-01-02T15:04:05Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.1.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.2-1.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.2-2.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.2-3.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.2-4.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.2-5.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
+  },
+  "test/mozilla/data/ecma/Date/15.9.2.2-6.js": {
+    "comment": "The one-sided comparison with new Date() needs a clock earlier than every date supplied to Date().",
+    "fixedTime": "1800-01-01T00:00:00Z"
   }
 }
