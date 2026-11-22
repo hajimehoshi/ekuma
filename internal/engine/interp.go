@@ -178,7 +178,9 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	} else {
 		vm.ensureStack(base + max(argc, fp.nregs+1))
 	}
-	clearFrameRegs(vm.stack[base:], fp.firstCleared(argc), fp.nclear)
+	if from, to := fp.firstCleared(argc), fp.nclear; from < to {
+		clearFrameRegs(vm.stack[base:], from, to)
+	}
 	fr := vm.appendFrame()
 	fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = fp, f, this, newTarget, nil, nil
 	fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, base, ret, isNew, argc, extraBase
@@ -1302,10 +1304,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					// The frames have room for at most maxFrames.
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(vm.stack) && n < cap(vm.frames) {
 						var this Value
-						switch {
-						case i.Op == bytecode.OpCallUndef:
-							regs[first-1] = Value{}
-						case i.Op != bytecode.OpCallCall || i.C > 0:
+						if i.Op != bytecode.OpCallUndef && (i.Op != bytecode.OpCallCall || i.C > 0) {
 							this = regs[first-1]
 						}
 						if site := c.returnedProperty; site != nil && this.IsObject() {
@@ -1320,7 +1319,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						// way, and a change to one of the three belongs in the others.
 						vm.frames[n-1].pc = pc
 						vm.stackHigh = max(vm.stackHigh, end)
-						clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
+						if from, to := c.firstCleared(argc), c.nclear; from < to {
+							clearFrameRegs(vm.stack[argBase:], from, to)
+						}
 						vm.frames = vm.frames[:n+1]
 						vm.framesHigh = max(vm.framesHigh, n+1)
 						fr := &vm.frames[n]
@@ -2363,7 +2364,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 							this := regs[i.C]
 							cur.pc = pc
 							vm.stackHigh = max(vm.stackHigh, end)
-							clearFrameRegs(vm.stack[argBase:], c.firstCleared(argc), c.nclear)
+							if from, to := c.firstCleared(argc), c.nclear; from < to {
+								clearFrameRegs(vm.stack[argBase:], from, to)
+							}
 							vm.frames = vm.frames[:n+1]
 							vm.framesHigh = max(vm.framesHigh, n+1)
 							fr := &vm.frames[n]

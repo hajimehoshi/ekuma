@@ -216,7 +216,7 @@ const (
 	// start at b+2, so a call can overwrite every register from there on; [Operands.Writes]
 	// says which calls can.
 	OpCall           // a = b(this b+1, args b+2...), c arguments
-	OpCallUndef      // like [OpCall], with the this value undefined; b+1 becomes undefined
+	OpCallUndef      // like [OpCall], with the this value undefined instead of b+1
 	OpCallCall       // a = b.call(...) where b+1 is the function and b+2... the c arguments of call, the first of which is the this value
 	OpApplyFwd       // a = b(this b+1, c, arguments). x.a holds the arguments object once materialized. An ordinary call passes c and the object in b+2 and b+3
 	OpCallFwd        // a = b(this b+1, ...arguments). c holds the arguments object once materialized
