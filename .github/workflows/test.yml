@@ -18,6 +18,7 @@ jobs:
         shell: bash
     env:
       EKUMA_ICU: ${{ github.workspace }}/.icu
+      EKUMA_ICU_CLDR: ${{ github.workspace }}/.icu-cldr
       EKUMA_TEST262: ${{ github.workspace }}/.test262
       EKUMA_V8: ${{ github.workspace }}/.v8
     steps:
@@ -44,7 +45,7 @@ jobs:
             echo "$suite=$revision" >> "$GITHUB_OUTPUT"
           done
 
-      - name: Checkout ICU conformance tests
+      - name: Checkout ICU Unicode conformance tests
         uses: actions/checkout@v4
         with:
           repository: unicode-org/icu
@@ -56,6 +57,18 @@ jobs:
             /icu4c/source/test/testdata/GraphemeBreakTest.txt
             /icu4c/source/test/testdata/WordBreakTest.txt
             /icu4c/source/test/testdata/SentenceBreakTest.txt
+          sparse-checkout-cone-mode: false
+
+      - name: Checkout ICU CLDR locale identifier tests
+        uses: actions/checkout@v4
+        with:
+          repository: unicode-org/icu
+          ref: ${{ steps.suites.outputs.icu-cldr }}
+          path: .icu-cldr
+          sparse-checkout: |
+            /LICENSE
+            /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
+            /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
           sparse-checkout-cone-mode: false
 
       - name: Checkout test262

@@ -20,25 +20,53 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
-// Run tests Intl.Segmenter and String.prototype.normalize against data in an ICU checkout.
+// Run tests Ekuma's JavaScript APIs against the available ICU fixtures.
 func Run(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("skipping ICU tests in short mode")
 	}
-	dir := os.Getenv("EKUMA_ICU")
-	if dir == "" {
-		cache, err := os.UserCacheDir()
-		if err != nil {
-			t.Skip("no user cache directory; set EKUMA_ICU to an ICU checkout")
-		}
-		dir = filepath.Join(cache, "ekuma", "icu")
-		if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
-			t.Skipf("no ICU checkout at %s; set EKUMA_ICU", dir)
-		} else if err != nil {
-			t.Fatal(err)
-		}
+	unicodeDir := checkoutDir(t, "EKUMA_ICU", "icu")
+	cldrDir := checkoutDir(t, "EKUMA_ICU_CLDR", "icu-cldr")
+	if unicodeDir == "" && cldrDir == "" {
+		t.Skip("no ICU checkouts available")
 	}
+	if unicodeDir != "" {
+		runUnicodeTests(t, unicodeDir)
+	}
+	if cldrDir != "" {
+		dir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata", "cldr", "localeIdentifiers")
+		skips := readLocaleSkips(t)
+		t.Run("likelySubtags.txt", func(t *testing.T) {
+			runLikelySubtagsTest(t, filepath.Join(dir, "likelySubtags.txt"), skips)
+		})
+		t.Run("localeCanonicalization.txt", func(t *testing.T) {
+			runLocaleCanonicalizationTest(t, filepath.Join(dir, "localeCanonicalization.txt"), skips)
+		})
+	}
+}
+
+func checkoutDir(t *testing.T, env, name string) string {
+	t.Helper()
+	if dir := os.Getenv(env); dir != "" {
+		return dir
+	}
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		t.Logf("no user cache directory; set %s to an ICU checkout", env)
+		return ""
+	}
+	dir := filepath.Join(cache, "ekuma", name)
+	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
+		t.Logf("no ICU checkout at %s; set %s", dir, env)
+		return ""
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func runUnicodeTests(t *testing.T, dir string) {
 	for _, kind := range []string{"Grapheme", "Word", "Sentence"} {
 		file := kind + "BreakTest.txt"
 		t.Run(file, func(t *testing.T) {
