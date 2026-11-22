@@ -268,6 +268,21 @@ func TestStorageShrinks(t *testing.T) {
 	}
 }
 
+// TestReserveBeforeEntries tests that a table that reserves room before its first entries finds
+// them.
+func TestReserveBeforeEntries(t *testing.T) {
+	var tab collection.Table
+	tab.Reserve(1000)
+	for i := range 10 {
+		tab.Set(engine.Number(float64(i)), engine.Undefined)
+	}
+	for i := range 11 {
+		if got, want := tab.Has(engine.Number(float64(i))), i < 10; got != want {
+			t.Errorf("Has(%d) = %t, want %t", i, got, want)
+		}
+	}
+}
+
 // TestQueue tests that a table from which the oldest entry is deleted for every new one finds
 // its entries and keeps storage in proportion to them.
 func TestQueue(t *testing.T) {

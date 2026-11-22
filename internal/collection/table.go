@@ -28,6 +28,13 @@ const minDeleted = 8
 // few entries remain.
 const minShrinkEntries = 64
 
+// blockShift is the base-2 logarithm of blockSize.
+const blockShift = 6
+
+// blockSize is the number of entries of a block. A table that has room for at most blockSize
+// entries keeps them in one slice instead of blocks.
+const blockSize = 1 << blockShift
+
 // minSlots is the smallest number of slots of an indexed table.
 const minSlots = 8
 
@@ -47,9 +54,14 @@ var (
 // Keys are compared with SameValueZero, and entries are kept in insertion order.
 // The zero value is an empty table.
 type Table struct {
-	// entries holds the entries in insertion order, including the deleted ones that
-	// compaction has not removed yet.
-	entries []entry
+	// small holds the entries while the table has room for at most blockSize of them, and
+	// blocks from then on, when small is nil. The entries are in insertion order, including the
+	// deleted ones that compaction has not removed yet. The storage after the entries is zero.
+	small  []entry
+	blocks []*[blockSize]entry
+
+	// n is the number of entries, including the deleted ones.
+	n int
 
 	// live is the number of entries that are not deleted.
 	live int
@@ -57,13 +69,14 @@ type Table struct {
 	// head is the number of leading entries that are all deleted.
 	head int
 
-	// indexed says that slots, strs and objs locate every live entry by its key.
+	// indexed says that slots, strs and objs locate every live entry by its key. Only an
+	// indexed table keeps its entries in blocks.
 	indexed bool
 
 	// slots is an open-addressing table of the entries whose keys are numbers, strings of at
 	// most shortKeyBytes bytes or BigInts, probed linearly from the hash of a key. Its length
-	// is a power of two of at least twice the capacity of entries. The slot of a deleted entry
-	// stays until the slots are rebuilt.
+	// is a power of two of at least twice the capacity of the storage of the entries. The slot
+	// of a deleted entry stays until the slots are rebuilt.
 	slots []slot
 
 	// strs maps the longer strings to their indices in entries by their contents, and objs
@@ -88,8 +101,7 @@ type entry struct {
 	value engine.Value
 }
 
-// slot locates the entry at index in entries, whose key has the hash hash. An empty slot has the
-// index -1.
+// slot locates the entry at index, whose key has the hash hash. An empty slot has the index -1.
 type slot struct {
 	hash  uint32
 	index int32
@@ -97,6 +109,75 @@ type slot struct {
 
 func (e *entry) deleted() bool {
 	return !e.key.IsString() && e.key.Object() == deletedKey
+}
+
+// entryAt returns the entry at the index i of the storage small or blocks of a table.
+func entryAt(small []entry, blocks []*[blockSize]entry, i int) *entry {
+	if blocks == nil {
+		return &small[i]
+	}
+	return &blocks[i>>blockShift][i&(blockSize-1)]
+}
+
+// at returns the entry at the index i.
+func (t *Table) at(i int) *entry {
+	return entryAt(t.small, t.blocks, i)
+}
+
+// capacity returns the number of entries that the storage has room for.
+func (t *Table) capacity() int {
+	if t.blocks == nil {
+		return len(t.small)
+	}
+	return len(t.blocks) << blockShift
+}
+
+// grow adds room for at least one more entry.
+func (t *Table) grow() {
+	if t.blocks == nil && len(t.small) < blockSize {
+		t.resizeSmall(min(max(2*len(t.small), 1), blockSize))
+		return
+	}
+	t.toBlocks()
+	t.blocks = append(t.blocks, new([blockSize]entry))
+}
+
+// resizeSmall moves the entries of a table without blocks to storage with room for n entries.
+func (t *Table) resizeSmall(n int) {
+	small := make([]entry, n)
+	copy(small, t.small[:t.n])
+	t.small = small
+}
+
+// toBlocks moves the entries into blocks unless they are in blocks already.
+func (t *Table) toBlocks() {
+	if t.blocks != nil {
+		return
+	}
+	var b *[blockSize]entry
+	if len(t.small) == blockSize {
+		b = (*[blockSize]entry)(t.small)
+	} else {
+		b = new([blockSize]entry)
+		copy(b[:], t.small[:t.n])
+	}
+	t.blocks = append(t.blocks, b)
+	t.small = nil
+}
+
+// setStorage gives an empty table storage with room for n entries.
+func (t *Table) setStorage(n int) {
+	t.small, t.blocks = nil, nil
+	if n <= blockSize {
+		if n > 0 {
+			t.small = make([]entry, n)
+		}
+		return
+	}
+	t.blocks = make([]*[blockSize]entry, (n+blockSize-1)>>blockShift)
+	for i := range t.blocks {
+		t.blocks[i] = new([blockSize]entry)
+	}
 }
 
 // generation is a period of the life of a table between two compactions.
@@ -147,7 +228,7 @@ func (t *Table) Size() int {
 	return t.live
 }
 
-// find returns the index in entries of the live entry with the key k, or -1.
+// find returns the index of the live entry with the key k, or -1.
 func (t *Table) find(k engine.Value) int {
 	switch {
 	case !t.indexed:
@@ -191,7 +272,7 @@ func hashed(k engine.Value) bool {
 	return k.IsNumber() || k.IsBigInt() || k.IsString() && k.StringByteLength() <= shortKeyBytes
 }
 
-// mapIndex records that the key k, which the slots do not locate, is at the index i of entries.
+// mapIndex records that the key k, which the slots do not locate, is at the index i.
 func (t *Table) mapIndex(k engine.Value, i int) {
 	if k.IsString() {
 		if t.strs == nil {
@@ -250,10 +331,9 @@ func hashKey(k engine.Value) uint32 {
 }
 
 // probeNumber looks for the live entry with the number key whose [numberKey] is n and whose
-// hash is h. It returns the index of the entry in entries, or -1 and the empty slot where the
-// probe ended.
+// hash is h. It returns the index of the entry, or -1 and the empty slot where the probe ended.
 func (t *Table) probeNumber(n uint64, h uint32) (int, uint32) {
-	slots, entries := t.slots, t.entries
+	slots, small, blocks := t.slots, t.small, t.blocks
 	mask := uint32(len(slots) - 1)
 	// The hash is compared first, so that a probe reads the entries only for a likely match.
 	// The number keys are stored as numberKey returns them.
@@ -265,7 +345,7 @@ func (t *Table) probeNumber(n uint64, h uint32) (int, uint32) {
 		if sl.hash != h {
 			continue
 		}
-		if a := entries[sl.index].key; a.IsNumber() && math.Float64bits(a.Number()) == n {
+		if a := entryAt(small, blocks, int(sl.index)).key; a.IsNumber() && math.Float64bits(a.Number()) == n {
 			return int(sl.index), 0
 		}
 	}
@@ -273,7 +353,7 @@ func (t *Table) probeNumber(n uint64, h uint32) (int, uint32) {
 
 // probe is probeNumber for the key k, which is a string or a BigInt that the slots locate.
 func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
-	slots, entries := t.slots, t.entries
+	slots, small, blocks := t.slots, t.small, t.blocks
 	mask := uint32(len(slots) - 1)
 	s := h & mask
 	if k.IsString() {
@@ -282,7 +362,7 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 			if sl.index < 0 {
 				return -1, s
 			}
-			if sl.hash == h && engine.IsStrictlyEqual(entries[sl.index].key, k) {
+			if sl.hash == h && engine.IsStrictlyEqual(entryAt(small, blocks, int(sl.index)).key, k) {
 				return int(sl.index), 0
 			}
 		}
@@ -296,7 +376,7 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 			if sl.hash != h {
 				continue
 			}
-			if y, ok := entries[sl.index].key.BigInt64(); ok && y == x {
+			if y, ok := entryAt(small, blocks, int(sl.index)).key.BigInt64(); ok && y == x {
 				return int(sl.index), 0
 			}
 		}
@@ -309,7 +389,7 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 		if sl.hash != h {
 			continue
 		}
-		if a := entries[sl.index].key; a.IsBigInt() && engine.SameValueZero(a, k) {
+		if a := entryAt(small, blocks, int(sl.index)).key; a.IsBigInt() && engine.SameValueZero(a, k) {
 			return int(sl.index), 0
 		}
 	}
@@ -317,31 +397,32 @@ func (t *Table) probe(k engine.Value, h uint32) (int, uint32) {
 
 // scan is find for a table that is not indexed.
 func (t *Table) scan(k engine.Value) int {
+	entries := t.small[:t.n]
 	switch {
 	case k.IsNumber():
 		n := numberKey(k.Number())
-		for i := range t.entries {
-			e := &t.entries[i]
+		for i := range entries {
+			e := &entries[i]
 			if e.key.IsNumber() && numberKey(e.key.Number()) == n && !e.deleted() {
 				return i
 			}
 		}
 	case k.IsString():
-		for i := range t.entries {
-			if e := &t.entries[i]; engine.IsStrictlyEqual(e.key, k) {
+		for i := range entries {
+			if e := &entries[i]; engine.IsStrictlyEqual(e.key, k) {
 				return i
 			}
 		}
 	case k.IsBigInt():
-		for i := range t.entries {
-			if e := &t.entries[i]; e.key.IsBigInt() && engine.SameValueZero(e.key, k) {
+		for i := range entries {
+			if e := &entries[i]; e.key.IsBigInt() && engine.SameValueZero(e.key, k) {
 				return i
 			}
 		}
 	default:
 		o := k.Object()
-		for i := range t.entries {
-			if e := &t.entries[i]; !e.deleted() && !e.key.IsNumber() && !e.key.IsString() && e.key.Object() == o {
+		for i := range entries {
+			if e := &entries[i]; !e.deleted() && !e.key.IsNumber() && !e.key.IsString() && e.key.Object() == o {
 				return i
 			}
 		}
@@ -349,7 +430,7 @@ func (t *Table) scan(k engine.Value) int {
 	return -1
 }
 
-// slotCount returns the number of slots for entries with the capacity n.
+// slotCount returns the number of slots for storage with room for n entries.
 func slotCount(n int) int {
 	c := minSlots
 	for c < 2*n {
@@ -358,15 +439,15 @@ func slotCount(n int) int {
 	return c
 }
 
-// reindex locates every live entry again, with as many slots as the capacity of entries calls
+// reindex locates every live entry again, with as many slots as the storage of the entries calls
 // for.
 func (t *Table) reindex() {
 	clear(t.strs)
 	clear(t.objs)
-	t.slots = emptySlots(t.slots, slotCount(cap(t.entries)))
+	t.slots = emptySlots(t.slots, slotCount(t.capacity()))
 	mask := uint32(len(t.slots) - 1)
-	for i := range t.entries {
-		e := &t.entries[i]
+	for i := range t.n {
+		e := t.at(i)
 		switch {
 		case e.deleted():
 		case hashed(e.key):
@@ -386,14 +467,14 @@ func (t *Table) reindex() {
 	t.indexed = true
 }
 
-// growSlots moves the slots of the live entries into as many slots as the capacity of entries
+// growSlots moves the slots of the live entries into as many slots as the storage of the entries
 // calls for.
 func (t *Table) growSlots() {
 	old := t.slots
-	t.slots = emptySlots(nil, slotCount(cap(t.entries)))
+	t.slots = emptySlots(nil, slotCount(t.capacity()))
 	mask := uint32(len(t.slots) - 1)
 	for _, sl := range old {
-		if sl.index < 0 || t.entries[sl.index].deleted() {
+		if sl.index < 0 || t.at(int(sl.index)).deleted() {
 			continue
 		}
 		s := sl.hash & mask
@@ -426,7 +507,7 @@ func (t *Table) Get(k engine.Value) (engine.Value, bool) {
 	if i < 0 {
 		return engine.Undefined, false
 	}
-	return t.entries[i].value, true
+	return t.at(i).value, true
 }
 
 // Has reports whether the table has an entry with the key k.
@@ -439,7 +520,7 @@ func (t *Table) Has(k engine.Value) bool {
 func (t *Table) Set(k, v engine.Value) {
 	if !t.indexed || !hashed(k) {
 		if i := t.find(k); i >= 0 {
-			t.entries[i].value = v
+			t.at(i).value = v
 			return
 		}
 		t.Append(k, v)
@@ -447,7 +528,7 @@ func (t *Table) Set(k, v engine.Value) {
 	}
 	h, i, s := t.locate(k)
 	if i >= 0 {
-		t.entries[i].value = v
+		t.at(i).value = v
 		return
 	}
 	t.appendHashed(k, v, h, s)
@@ -465,14 +546,15 @@ func (t *Table) Append(k, v engine.Value) {
 		k = engine.Number(math.Float64frombits(numberKey(k.Number())))
 	}
 	t.makeRoom()
-	t.entries = append(t.entries, entry{
+	*t.at(t.n) = entry{
 		key:   k,
 		value: v,
-	})
+	}
+	t.n++
 	t.live++
 	switch {
 	case t.indexed:
-		t.mapIndex(k, len(t.entries)-1)
+		t.mapIndex(k, t.n-1)
 	case t.live > smallSize:
 		t.reindex()
 	}
@@ -488,29 +570,30 @@ func (t *Table) appendHashed(k, v engine.Value, h, s uint32) {
 	if t.makeRoom() {
 		_, _, s = t.locate(k)
 	}
-	t.entries = append(t.entries, entry{
+	*t.at(t.n) = entry{
 		key:   k,
 		value: v,
-	})
+	}
 	t.slots[s] = slot{
 		hash:  h,
-		index: int32(len(t.entries) - 1),
+		index: int32(t.n),
 	}
+	t.n++
 	t.live++
 }
 
 // makeRoom makes room for one more entry, and reports whether the slots were rebuilt.
 func (t *Table) makeRoom() bool {
-	if len(t.entries) < cap(t.entries) {
+	if t.n < t.capacity() {
 		return false
 	}
-	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live {
+	if dead := t.n - t.live; dead >= minDeleted && dead >= t.live {
 		// The storage of the deleted entries makes the room.
 		t.compact()
 		return t.indexed
 	}
-	t.entries = slices.Grow(t.entries, 1)
-	if !t.indexed || slotCount(cap(t.entries)) <= len(t.slots) {
+	t.grow()
+	if !t.indexed || slotCount(t.capacity()) <= len(t.slots) {
 		return false
 	}
 	t.growSlots()
@@ -527,22 +610,22 @@ func (t *Table) Delete(k engine.Value) bool {
 	return true
 }
 
-// deleteAt deletes the live entry at the index i of entries.
+// deleteAt deletes the live entry at the index i.
 func (t *Table) deleteAt(i int) {
-	e := &t.entries[i]
+	e := t.at(i)
 	if t.indexed && !hashed(e.key) {
 		t.mapUnindex(e.key)
 	}
 	*e = deletedEntry
 	t.live--
 	if i == t.head {
-		for t.head < len(t.entries) && t.entries[t.head].deleted() {
+		for t.head < t.n && t.at(t.head).deleted() {
 			t.head++
 		}
 	}
 	// Iterations skip the deleted entries before head at once, so a table whose deleted entries
 	// are mostly before head is compacted only to give up storage.
-	if dead := len(t.entries) - t.live; dead >= minDeleted && dead >= t.live && (dead-t.head >= t.live || t.oversized()) {
+	if dead := t.n - t.live; dead >= minDeleted && dead >= t.live && (dead-t.head >= t.live || t.oversized()) {
 		t.compact()
 	}
 }
@@ -550,35 +633,38 @@ func (t *Table) deleteAt(i int) {
 // oversized reports whether the storage of the entries is large enough and at most a quarter
 // used by live entries, so that compaction gives up most of it.
 func (t *Table) oversized() bool {
-	return cap(t.entries) > minShrinkEntries && t.live < cap(t.entries)/4
+	return t.capacity() > minShrinkEntries && t.live < t.capacity()/4
 }
 
 // compact removes the deleted entries.
 func (t *Table) compact() {
 	var removed []int32
 	if t.gen != nil {
-		removed = make([]int32, 0, len(t.entries)-t.live)
+		removed = make([]int32, 0, t.n-t.live)
 	}
 	n := 0
-	for i, e := range t.entries {
+	for i := range t.n {
+		e := t.at(i)
 		if e.deleted() {
 			if t.gen != nil {
 				removed = append(removed, int32(i))
 			}
 			continue
 		}
-		t.entries[n] = e
+		if n != i {
+			*t.at(n) = *e
+		}
 		n++
 	}
-	clear(t.entries[n:])
-	t.entries = t.entries[:n]
+	for i := n; i < t.n; i++ {
+		*t.at(i) = entry{}
+	}
+	t.n = n
 	t.head = 0
 	// The maps keep their room until they are rebuilt.
 	shrink := t.oversized()
 	if shrink {
-		entries := make([]entry, n, 2*n)
-		copy(entries, t.entries)
-		t.entries = entries
+		t.shrink()
 	}
 	if t.gen != nil {
 		next := &generation{}
@@ -595,9 +681,30 @@ func (t *Table) compact() {
 	}
 }
 
+// shrink moves the entries to storage with room for twice as many.
+func (t *Table) shrink() {
+	if want := 2 * t.n; want <= blockSize {
+		small, blocks := t.small, t.blocks
+		t.setStorage(want)
+		for i := range t.n {
+			t.small[i] = *entryAt(small, blocks, i)
+		}
+		return
+	}
+	t.trimBlocks(2 * t.n)
+}
+
+// trimBlocks gives up the blocks beyond those that n entries need.
+func (t *Table) trimBlocks(n int) {
+	k := (n + blockSize - 1) >> blockShift
+	clear(t.blocks[k:])
+	t.blocks = slices.Clip(t.blocks[:k])
+}
+
 // Clear deletes every entry.
 func (t *Table) Clear() {
-	t.entries = nil
+	t.small, t.blocks = nil, nil
+	t.n = 0
 	t.live = 0
 	t.head = 0
 	t.indexed = false
@@ -612,15 +719,15 @@ func (t *Table) Clear() {
 
 // Clone returns a new table with the same entries.
 func (t *Table) Clone() *Table {
-	c := &Table{
-		entries: make([]entry, 0, t.live),
-	}
-	for _, e := range t.entries {
-		if !e.deleted() {
-			c.entries = append(c.entries, e)
+	c := &Table{}
+	c.setStorage(t.live)
+	for i := range t.n {
+		if e := t.at(i); !e.deleted() {
+			*c.at(c.n) = *e
+			c.n++
 		}
 	}
-	c.live = len(c.entries)
+	c.live = c.n
 	if c.live > smallSize {
 		// The maps of t hold the keys of its live entries only.
 		c.strs = withRoom(t.strs, len(t.strs))
@@ -633,10 +740,21 @@ func (t *Table) Clone() *Table {
 // Reserve makes room for n entries in all, for keys of the kinds of the present keys in the
 // same proportions.
 func (t *Table) Reserve(n int) {
-	if n <= len(t.entries) {
+	if n <= t.capacity() {
 		return
 	}
-	t.entries = slices.Grow(t.entries, n-len(t.entries))
+	if t.blocks == nil && n <= blockSize {
+		t.resizeSmall(n)
+	} else {
+		t.toBlocks()
+		for t.capacity() < n {
+			t.blocks = append(t.blocks, new([blockSize]entry))
+		}
+		if !t.indexed {
+			t.reindex()
+			return
+		}
+	}
 	if !t.indexed || t.live == 0 {
 		return
 	}
@@ -650,10 +768,21 @@ func (t *Table) Reserve(n int) {
 
 // Trim gives up the room for entries that is mostly unused.
 func (t *Table) Trim() {
-	if cap(t.entries) < 2*len(t.entries)+minDeleted {
+	if t.capacity() < 2*t.n+minDeleted {
 		return
 	}
-	t.entries = slices.Clone(t.entries)
+	switch {
+	case t.blocks == nil:
+		t.resizeSmall(t.n)
+	case t.n <= blockSize:
+		blocks := t.blocks
+		t.setStorage(t.n)
+		for i := range t.n {
+			t.small[i] = blocks[0][i]
+		}
+	default:
+		t.trimBlocks(t.n)
+	}
 	if t.indexed {
 		t.strs = withRoom(t.strs, len(t.strs))
 		t.objs = withRoom(t.objs, len(t.objs))
@@ -693,8 +822,8 @@ func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
 	}
 	// The entries before head are deleted.
 	c.pos = max(c.pos, t.head)
-	for c.pos < len(t.entries) {
-		e := &t.entries[c.pos]
+	for c.pos < t.n {
+		e := t.at(c.pos)
 		c.pos++
 		if !e.deleted() {
 			return e.key, e.value, true
