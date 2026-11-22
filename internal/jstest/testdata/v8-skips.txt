@@ -769,7 +769,6 @@ test/mozilla/data/js1_5/decompilation/regress-350242.js
 test/mozilla/data/js1_5/decompilation/regress-350263.js
 test/mozilla/data/js1_5/decompilation/regress-350271.js
 test/mozilla/data/js1_5/decompilation/regress-350666.js
-test/mozilla/data/js1_5/decompilation/regress-350670.js
 test/mozilla/data/js1_5/decompilation/regress-351104.js
 test/mozilla/data/js1_5/decompilation/regress-351219.js
 test/mozilla/data/js1_5/decompilation/regress-351597.js
