@@ -1,0 +1,12 @@
+ICU4C 79.1 Persian calendar leap-year corrections (persncal.cpp)
+© 2016 and later: Unicode, Inc. and others.
+Copyright (C) 2003-2013, International Business Machines Corporation
+and others. All Rights Reserved.
+
+ICU4X calendar tables (icu_calendar 2.4.0)
+Copyright © 2020-2024 Unicode, Inc.
+Portions of ICU4X may have been adapted from ICU4C and/or ICU4J.
+ICU 1.8.1 to ICU 57.1 © 1995-2016 International Business Machines
+Corporation and others.
+
+Unicode License v3 (internal/unicode/LICENSE)

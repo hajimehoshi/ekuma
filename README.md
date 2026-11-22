@@ -223,8 +223,7 @@ The native locale calls on Apple platforms and Android use purego. Android build
 with `CGO_ENABLED=0` use only the locale environment variables. iOS builds require
 `CGO_ENABLED=1`; macOS supports `CGO_ENABLED=0`.
 
-Programs using the package must include the notices for its locale data and word dictionaries.
-See [License](#license).
+See [License](#license) for the notices to include when distributing programs that use this package.
 
 ### Agents
 
@@ -405,7 +404,19 @@ test (`-n.js`) and fails a positive test.
 
 ## License
 
-Ekuma's code is under [0BSD](LICENSE). Distributions must include the Unicode
-notice for the Unicode character and emoji data. Programs that import the optional
-`github.com/hajimehoshi/ekuma/intl` package must also include the notices for
-the CLDR data and ICU4C word dictionaries. See [Unicode notices](internal/unicode/LICENSE).
+Ekuma's code is licensed under [0BSD](LICENSE). The data tables Ekuma generates
+from Unicode, CLDR, and ICU releases are licensed under the [Unicode License v3](internal/unicode/LICENSE).
+Every build includes Unicode character and emoji data, so all distributions must
+include the Unicode copyright and permission notice.
+
+- Windows builds must also include the [CLDR time zone mapping notice](internal/datetime/NOTICE),
+  even when built without `intl`.
+- Builds that import `github.com/hajimehoshi/ekuma/intl` must also include the following notices.
+  - [CLDR locale data](internal/unicode/cldr/NOTICE)
+  - [CLDR collation data](internal/unicode/collation/NOTICE)
+  - [ICU calendar data](internal/intl/calendar/NOTICE)
+  - ICU4C word break dictionaries
+    - [Thai](internal/unicode/wordbreak/NOTICE-thai)
+    - [Khmer](internal/unicode/wordbreak/NOTICE-khmer)
+    - [Burmese](internal/unicode/wordbreak/NOTICE-burmese)
+    - [Chinese/Japanese](internal/unicode/wordbreak/NOTICE-cj)

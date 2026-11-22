@@ -10,9 +10,8 @@ import (
 	"strings"
 )
 
-// Copyright returns the CLDR copyright holder and years for generated file headers
-// after checking that noticesPath includes the release's copyright and data license.
-func Copyright(releaseLicense []byte, noticesPath string) (string, error) {
+// Copyright returns the CLDR copyright holder and years after verifying the local license and notice.
+func Copyright(releaseLicense []byte, licensePath, noticePath string) (string, error) {
 	text := string(releaseLicense)
 	var copyright string
 	for line := range strings.Lines(text) {
@@ -27,13 +26,19 @@ func Copyright(releaseLicense []byte, noticesPath string) (string, error) {
 	if copyright == "" || start < 0 || end < start {
 		return "", fmt.Errorf("the CLDR release lacks the Unicode License v3")
 	}
-	b, err := os.ReadFile(noticesPath)
+	license, err := os.ReadFile(licensePath)
 	if err != nil {
 		return "", err
 	}
-	notices := string(b)
-	if !strings.Contains(notices, "Copyright © "+copyright+"\n") || !strings.Contains(notices, strings.TrimSpace(text[start:end])) {
-		return "", fmt.Errorf("update %s with the CLDR release's copyright and license", noticesPath)
+	if !strings.Contains(string(license), strings.TrimSpace(text[start:end])) {
+		return "", fmt.Errorf("update %s with the CLDR release's license", licensePath)
+	}
+	notice, err := os.ReadFile(noticePath)
+	if err != nil {
+		return "", err
+	}
+	if !strings.Contains(string(notice), "Copyright © "+copyright+"\n") {
+		return "", fmt.Errorf("update %s with the CLDR release's copyright", noticePath)
 	}
 	return copyright, nil
 }

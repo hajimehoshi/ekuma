@@ -4,7 +4,7 @@
 //go:generate go run gen.go
 
 // Package wordbreak holds word dictionaries from ICU4C.
-// Their license notices are in internal/unicode/LICENSE.
+// The NOTICE files alongside the dictionaries contain their third-party notices.
 package wordbreak
 
 import _ "embed"

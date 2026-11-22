@@ -1696,7 +1696,7 @@ func main() {
 	flag.Parse()
 	rel := readRelease()
 	r := parseRoot(rel)
-	copyright, err := cldrgen.Copyright(rel.license, "../LICENSE")
+	copyright, err := cldrgen.Copyright(rel.license, "../LICENSE", "NOTICE")
 	if err != nil {
 		log.Fatal(err)
 	}

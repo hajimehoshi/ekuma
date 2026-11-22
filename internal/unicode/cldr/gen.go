@@ -523,7 +523,7 @@ func main() {
 	jsonSource := "cldr-json " + jsonVersion
 
 	var err error
-	copyright, err = cldrgen.Copyright(core["LICENSE"], "../LICENSE")
+	copyright, err = cldrgen.Copyright(core["LICENSE"], "../LICENSE", "NOTICE")
 	if err != nil {
 		log.Fatal(err)
 	}
