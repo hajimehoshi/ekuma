@@ -115,3 +115,71 @@ func TestLiteralIndexUpdate(t *testing.T) {
 		})
 	}
 }
+
+// TestLiteralIndexStore tests that a store to a literal index key holds the index in the
+// instruction.
+func TestLiteralIndexStore(t *testing.T) {
+	testCases := []struct {
+		name string
+		src  string
+
+		wantOp bytecode.Opcode
+
+		// wantIndex is the index that the store holds, for an OpSetIndexInt or OpSetIndexIntStrict.
+		wantIndex int32
+	}{
+		{
+			name:      "assignment",
+			src:       `o[3] = v;`,
+			wantOp:    bytecode.OpSetIndexInt,
+			wantIndex: 3,
+		},
+		{
+			name:      "strict assignment",
+			src:       `"use strict"; o[3] = v;`,
+			wantOp:    bytecode.OpSetIndexIntStrict,
+			wantIndex: 3,
+		},
+		{
+			name:      "compound assignment",
+			src:       `o["4"] += v;`,
+			wantOp:    bytecode.OpSetIndexInt,
+			wantIndex: 4,
+		},
+		{
+			name:   "variable key",
+			src:    `o[k] = v;`,
+			wantOp: bytecode.OpSetIndex,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			prog, err := parser.ParseScript(wtf8.String(tc.src), parser.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			f, err := compiler.CompileScript(prog, "test.js")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var store *bytecode.Instr
+			for k, i := range f.Code {
+				switch i.Op {
+				case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
+					store = &f.Code[k]
+				}
+			}
+			if store == nil {
+				t.Fatal("no store to an index")
+			}
+			if store.Op != tc.wantOp {
+				t.Errorf("got %s, want %s", store.Op, tc.wantOp)
+			}
+			if tc.wantOp == bytecode.OpSetIndexInt || tc.wantOp == bytecode.OpSetIndexIntStrict {
+				if store.B != tc.wantIndex {
+					t.Errorf("got the index %d, want %d", store.B, tc.wantIndex)
+				}
+			}
+		})
+	}
+}

@@ -727,6 +727,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
+			// OpSetIndexInt's case at the end of this switch has the same fast paths for the key in
+			// the instruction; a change to one belongs in the other.
 			v, k := regs[i.A], regs[i.B]
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
@@ -1390,6 +1392,82 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 			}
+		case bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
+			// The fast paths of OpSetIndex's case, in the same order, for the key b.
+			if o := regs[i.A].o; o != nil && o.objectProperties != nil {
+				j := int(i.B)
+				if uint(j) < uint(len(o.elems)) {
+					if o.elems[j].o != holeObject {
+						o.elems[j] = regs[i.C]
+						continue
+					}
+					break
+				}
+				if t, ok := o.ext.(*TypedArray); ok && t.numberStore && t.typ != ElementFloat16 {
+					if x := regs[i.C]; x.o == numberObject && !t.tracking && uint(j) < uint(t.length) && numconv.InInt64Range(x.n) {
+						if s := t.typ.Size(); t.offset+t.length*s <= len(t.data.data) {
+							b, f := t.data.data[t.offset+j*s:], x.n
+							// The most common types are tested first.
+							if u := uint64(int64(f)); t.typ == ElementInt32 || t.typ == ElementUint32 {
+								_ = b[3]
+								b[0] = byte(u)
+								b[1] = byte(u >> 8)
+								b[2] = byte(u >> 16)
+								b[3] = byte(u >> 24)
+							} else if t.typ == ElementFloat64 {
+								bits := math.Float64bits(f)
+								_ = b[7]
+								b[0] = byte(bits)
+								b[1] = byte(bits >> 8)
+								b[2] = byte(bits >> 16)
+								b[3] = byte(bits >> 24)
+								b[4] = byte(bits >> 32)
+								b[5] = byte(bits >> 40)
+								b[6] = byte(bits >> 48)
+								b[7] = byte(bits >> 56)
+							} else if t.typ == ElementInt8 || t.typ == ElementUint8 {
+								b[0] = byte(u)
+							} else if t.typ == ElementFloat32 {
+								bits := math.Float32bits(float32(f))
+								_ = b[3]
+								b[0] = byte(bits)
+								b[1] = byte(bits >> 8)
+								b[2] = byte(bits >> 16)
+								b[3] = byte(bits >> 24)
+							} else if t.typ == ElementUint8C {
+								// ToUint8Clamp, which rounds half to even.
+								c := byte(0)
+								if f >= 255 {
+									c = 255
+								} else if f > 0 {
+									c = byte(f)
+									if r := f - float64(c); r > 0.5 || r == 0.5 && c&1 != 0 {
+										c++
+									}
+								}
+								b[0] = c
+							} else {
+								_ = b[1]
+								b[0] = byte(u)
+								b[1] = byte(u >> 8)
+							}
+							continue
+						}
+					}
+					break
+				}
+				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == vm.shapes.array {
+					if a := vm.Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
+						if p := a.shape.proto; p == vm.Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
+							x := regs[i.C]
+							o.elems = o.elems[:j+1]
+							o.elems[j] = x
+							o.length++
+							continue
+						}
+					}
+				}
+			}
 		}
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
@@ -1648,8 +1726,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				goto callAbove
 			}
 			regs[i.A] = val
-		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
-			v, k := regs[i.A], regs[i.B]
+		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
+			// OpSetIndexInt and OpSetIndexIntStrict follow OpSetIndex and OpSetIndexStrict.
+			v, k := regs[i.A], Value{}
+			if i.Op < bytecode.OpSetIndexInt {
+				k = regs[i.B]
+			} else {
+				k = Number(float64(i.B))
+			}
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.shapes.array && vm.arrayProtoPlain() {
 					// Appending to a plain array.
@@ -1661,7 +1745,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			// Converting the key can run code that changes the register of the value.
 			val := regs[i.C]
-			setter := vm.setValue(v, k, val, i.Op == bytecode.OpSetIndexStrict)
+			setter := vm.setValue(v, k, val, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
 			if setter != nil {
 				argBase = vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(argBase + 1)

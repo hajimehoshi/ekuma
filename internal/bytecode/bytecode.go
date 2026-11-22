@@ -87,21 +87,23 @@ const (
 	OpGetArgsIndex   // a = arguments[c]. b holds the arguments object once materialized
 
 	// Properties.
-	OpGetProp          // a = b.Keys[c]; c is a site
-	OpGetPropChain     // like [OpGetProp], followed by an [OpGetProp] or [OpGetPropChain] of a, which it may run too
-	OpGetMethod        // a, a+1 = b.Keys[c], b; c is a site
-	OpGetLength        // a = b.length; c is a site
-	OpGetIndex         // a = b[c]
-	OpGetIndexInt      // a = b[the integer c]
-	OpSetProp          // a.Keys[b] = c; b is a site
-	OpSetPropStrict    // like [OpSetProp], in strict code
-	OpSetIndex         // a[b] = c
-	OpSetIndexStrict   // like [OpSetIndex], in strict code
-	OpDeleteProp       // a = delete b[c]
-	OpDeletePropStrict // like [OpDeleteProp], in strict code
-	OpIn               // a = c in b
-	OpInstanceof       // a = b instanceof c; x.a is a site for the prototype property of c
-	OpToPropertyKey    // a = b converted to a property key. c is -1, or the object of a compound assignment to its property b: then a key that is an integer from 0 to 2^32-1 stays a number, and a key that needs converting first throws a TypeError when c is undefined or null
+	OpGetProp           // a = b.Keys[c]; c is a site
+	OpGetPropChain      // like [OpGetProp], followed by an [OpGetProp] or [OpGetPropChain] of a, which it may run too
+	OpGetMethod         // a, a+1 = b.Keys[c], b; c is a site
+	OpGetLength         // a = b.length; c is a site
+	OpGetIndex          // a = b[c]
+	OpGetIndexInt       // a = b[the integer c]
+	OpSetProp           // a.Keys[b] = c; b is a site
+	OpSetPropStrict     // like [OpSetProp], in strict code
+	OpSetIndex          // a[b] = c
+	OpSetIndexStrict    // like [OpSetIndex], in strict code
+	OpSetIndexInt       // a[the integer b] = c
+	OpSetIndexIntStrict // like [OpSetIndexInt], in strict code
+	OpDeleteProp        // a = delete b[c]
+	OpDeletePropStrict  // like [OpDeleteProp], in strict code
+	OpIn                // a = c in b
+	OpInstanceof        // a = b instanceof c; x.a is a site for the prototype property of c
+	OpToPropertyKey     // a = b converted to a property key. c is -1, or the object of a compound assignment to its property b: then a key that is an integer from 0 to 2^32-1 stays a number, and a key that needs converting first throws a TypeError when c is undefined or null
 
 	// Super properties.
 	OpSuperBase      // a = the super base of the home object b, which is its prototype

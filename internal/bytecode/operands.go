@@ -267,6 +267,12 @@ var (
 		C:     OperandReg,
 		Reads: regABC,
 	}
+	storeIntOperands = Operands{
+		A:     OperandReg,
+		B:     OperandInt,
+		C:     OperandReg,
+		Reads: regAC,
+	}
 	superStoreOperands = Operands{
 		A:     OperandReg,
 		B:     OperandReg,
@@ -733,6 +739,16 @@ var opcodes = [...]struct {
 	OpSetIndexStrict: {
 		name:     "OpSetIndexStrict",
 		operands: storeOperands,
+		flow:     FlowNext,
+	},
+	OpSetIndexInt: {
+		name:     "OpSetIndexInt",
+		operands: storeIntOperands,
+		flow:     FlowNext,
+	},
+	OpSetIndexIntStrict: {
+		name:     "OpSetIndexIntStrict",
+		operands: storeIntOperands,
 		flow:     FlowNext,
 	},
 	OpDeleteProp: {

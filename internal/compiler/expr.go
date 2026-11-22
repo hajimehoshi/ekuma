@@ -858,6 +858,11 @@ type memberTarget struct {
 	// keySrc is the register that loadTarget converts into key, or -1 when key holds the key.
 	keySrc int32
 
+	// literal is set for a computed key that is a literal array index, which needs no register:
+	// index is that index.
+	literal bool
+	index   int32
+
 	// For a super property: the registers of this and of the home object,
 	// or of the super base when superBase is set.
 	super     bool
@@ -906,6 +911,10 @@ func (f *fn) targetBefore(n *ast.MemberExpr, rest []ast.Expr, storeOnly, opaque,
 	}
 	if n.Computed {
 		t.obj = f.heldOperand(n.Object, opaque, append([]ast.Expr{n.Property}, rest...)...)
+		if i, ok := literalIndex(n.Property); ok {
+			t.literal, t.index = true, i
+			return t
+		}
 		if storeOnly {
 			// The store reads the key right after rest.
 			t.key = f.immediateOperand(n.Property, rest...)
@@ -998,17 +1007,14 @@ func (f *fn) loadTarget(t memberTarget, dst int32) {
 		}
 		f.emit(bytecode.OpGetSuper, dst, t.this, t.key)
 		f.emit(bytecode.OpExtra, t.home, superBase, 0)
+	case t.literal:
+		f.emit(bytecode.OpGetIndexInt, dst, t.obj, t.index)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
 		f.emitGetProp(dst, t.obj, f.site(wtf8.String(name)))
 	case !n.Computed:
 		f.emit(bytecode.OpGetPrivate, dst, t.obj, t.key)
 	default:
-		// Converting a literal index has no effects, so its read needs no conversion.
-		if i, ok := literalIndex(n.Property); ok {
-			f.emit(bytecode.OpGetIndexInt, dst, t.obj, i)
-			return
-		}
 		// A compound assignment converts the key once, before the read and after the base is checked.
 		src := t.key
 		if t.keySrc >= 0 {
@@ -1034,6 +1040,12 @@ func (f *fn) storeTarget(t memberTarget, src int32) {
 		}
 		f.emit(op, t.this, t.key, src)
 		f.emit(bytecode.OpExtra, t.home, 0, 0)
+	case t.literal:
+		op := bytecode.OpSetIndexInt
+		if f.strict() {
+			op = bytecode.OpSetIndexIntStrict
+		}
+		f.emit(op, t.obj, t.index, src)
 	case t.key < 0:
 		name := n.Property.(*ast.Identifier).Name
 		op := bytecode.OpSetProp
