@@ -34,13 +34,32 @@ type loadedZone struct {
 // cache is bounded by the size of the time zone database.
 var loadedZones sync.Map
 
+// zoneIDByLowerCase maps IANA zone and link names to their database spelling.
+var zoneIDByLowerCase = sync.OnceValue(func() map[string]string {
+	ids := map[string]string{
+		"factory": "Factory", // zoneTab omits Factory.
+	}
+	for _, e := range zoneTab {
+		ids[strings.ToLower(e.zone)] = e.zone
+	}
+	for link, target := range zoneLinks {
+		ids[strings.ToLower(link)] = link
+		ids[strings.ToLower(target)] = target
+	}
+	return ids
+})
+
 func loadZone(name string) (string, string, Zone, bool) {
 	key := strings.ToLower(name)
 	if v, ok := loadedZones.Load(key); ok {
 		l := v.(loadedZone)
 		return l.id, l.primary, l.zone, l.ok
 	}
-	l := findZone(name)
+	id, ok := zoneIDByLowerCase()[key]
+	if !ok {
+		return "", "", nil, false
+	}
+	l := findZone(id)
 	if !l.ok {
 		return "", "", nil, false
 	}
@@ -49,113 +68,57 @@ func loadZone(name string) (string, string, Zone, bool) {
 	return l.id, l.primary, l.zone, l.ok
 }
 
-// findZone finds the time zone that name stands for, resolving a link to its zone.
-func findZone(name string) loadedZone {
-	link, target, isLink := findZoneLink(name)
+// findZone loads the rules for an IANA identifier in its database spelling.
+func findZone(id string) loadedZone {
+	target, isLink := zoneLinks[id]
 	if !isLink {
-		id, z, ok := findZoneInSources(name)
-		if !ok {
-			return loadedZone{}
-		}
-		return loadedZone{
-			id:      id,
-			primary: primaryOfUTC(id),
-			zone:    z,
-			ok:      true,
-		}
+		target = id
 	}
-	// The sources might not have the link, which some systems put in an optional package. A
-	// database older than the table might have the link but not the zone that it resolves to.
-	z, ok := findZoneOfLink(target, link)
+	z, ok := findZoneInSources(target)
+	if !ok && isLink {
+		// An older database may have rules only under the link name.
+		z, ok = findZoneInSources(id)
+	}
 	if !ok {
 		return loadedZone{}
 	}
 	return loadedZone{
-		id:      link,
+		id:      id,
 		primary: primaryOfUTC(target),
 		zone:    z,
 		ok:      true,
 	}
 }
 
-// findZoneLink finds the link of the IANA time zone database that name matches without regard
-// to ASCII case, and the zone that it resolves to.
-func findZoneLink(name string) (link, zone string, ok bool) {
-	if zone, ok := zoneLinks[name]; ok {
-		return name, zone, true
-	}
-	for link, zone := range zoneLinks {
-		if strings.EqualFold(link, name) {
-			return link, zone, true
+// findZoneInSources looks up the rules for name in zoneinfo directories and Go's time sources.
+func findZoneInSources(name string) (Zone, bool) {
+	if runtime.GOOS != "windows" {
+		dirs := zoneDirs
+		if z := os.Getenv("ZONEINFO"); z != "" {
+			dirs = append([]string{z}, dirs...)
 		}
-	}
-	return "", "", false
-}
-
-// findZoneOfLink finds the zone of a link in the sources by the name of the zone that the link
-// resolves to, or else by the name of the link.
-func findZoneOfLink(target, link string) (Zone, bool) {
-	if _, z, ok := findZoneInSources(target); ok {
-		return z, true
-	}
-	if _, z, ok := findZoneInSources(link); ok {
-		return z, true
-	}
-	return nil, false
-}
-
-// findZoneInSources looks up name in the directories of the time zone database, and then in
-// the sources of the time package. It returns the identifier in the case of the source.
-func findZoneInSources(name string) (string, Zone, bool) {
-	dirs := zoneDirs
-	if z := os.Getenv("ZONEINFO"); z != "" {
-		dirs = append([]string{z}, dirs...)
-	}
-	if runtime.GOOS == "windows" {
-		// The sources of the time package match names in their case only.
-		name = zoneIDInCase(name)
-	} else {
 		for _, dir := range dirs {
-			if id, z, ok := findZoneInDir(dir, name); ok {
-				return id, z, true
+			if z, ok := findZoneInDir(dir, name); ok {
+				return z, true
 			}
 		}
 	}
 	loc, err := time.LoadLocation(name)
-	if err != nil || loc.String() == "Local" {
-		return "", nil, false
+	if err != nil {
+		return nil, false
 	}
-	return name, locationZone{
+	return locationZone{
 		loc: loc,
 	}, true
 }
 
-// zoneIDInCase returns the identifier of the zone of the IANA time zone database that name
-// matches without regard to ASCII case, or name when there is none.
-func zoneIDInCase(name string) string {
-	for _, e := range zoneTab {
-		if strings.EqualFold(e.zone, name) {
-			return e.zone
-		}
-	}
-	// zoneTab has UTC for these zones.
-	for _, id := range []string{"Etc/UTC", "Etc/GMT"} {
-		if strings.EqualFold(id, name) {
-			return id
-		}
-	}
-	return name
-}
-
-// findZoneInDir finds the file of name in dir, matching each path element without regard to
-// ASCII case. It returns the identifier in the case of the file.
-func findZoneInDir(dir, name string) (string, Zone, bool) {
+// findZoneInDir loads rules from dir, matching path components without regard to ASCII case.
+func findZoneInDir(dir, name string) (Zone, bool) {
 	path := dir
-	var elems []string
 	for elem := range strings.SplitSeq(name, "/") {
 		entries, err := os.ReadDir(path)
 		if err != nil {
-			return "", nil, false
+			return nil, false
 		}
 		found := ""
 		for _, e := range entries {
@@ -168,21 +131,19 @@ func findZoneInDir(dir, name string) (string, Zone, bool) {
 			}
 		}
 		if found == "" {
-			return "", nil, false
+			return nil, false
 		}
-		elems = append(elems, found)
 		path = filepath.Join(path, found)
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", nil, false
+		return nil, false
 	}
-	id := strings.Join(elems, "/")
-	loc, err := time.LoadLocationFromTZData(id, data)
+	loc, err := time.LoadLocationFromTZData(name, data)
 	if err != nil {
-		return "", nil, false
+		return nil, false
 	}
-	return id, locationZone{
+	return locationZone{
 		loc: loc,
 	}, true
 }

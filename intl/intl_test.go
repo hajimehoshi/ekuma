@@ -6,12 +6,40 @@ package intl_test
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
+
+func TestDateTimeFormatRejectsPosixrules(t *testing.T) {
+	dir := t.TempDir()
+	// A TZif v1 file with one UTC time type and no transitions.
+	data := make([]byte, 50)
+	copy(data, "TZif")
+	data[39] = 1 // Number of local time types.
+	data[43] = 4 // Number of bytes in the abbreviation table.
+	data = append(data, "UTC\x00"...)
+	if err := os.WriteFile(filepath.Join(dir, "posixrules"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ZONEINFO", dir)
+
+	var vm ekuma.VM
+	got := evalLocale(t, vm.InitialRealm(), `
+		try {
+			new Intl.DateTimeFormat("en", {timeZone: "posixrules"}).resolvedOptions().timeZone;
+		} catch (e) {
+			String(e instanceof RangeError);
+		}
+	`)
+	if got != "true" {
+		t.Errorf("DateTimeFormat with posixrules: got %s, want RangeError", got)
+	}
+}
 
 func TestParseLocalizedDateString(t *testing.T) {
 	var vm ekuma.VM
