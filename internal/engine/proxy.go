@@ -364,7 +364,7 @@ func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 			vm.throwTrapError(name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
 		}
 		if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 && targetDesc.flags&FlagWritable != 0 {
-			vm.throwTrapError(name, "trap reported non-configurable and writable for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable, non-writable in the proxy target")
+			vm.throwTrapError(name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable, writable in the proxy target")
 		}
 	}
 	return d, true
