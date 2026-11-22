@@ -12,8 +12,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-// Type is the type of a JavaScript value, as the typeof operator sees it,
-// except that null has a type of its own.
+// Type is the type of a JavaScript value. Null has type [TypeNull], and
+// callable objects have type [TypeFunction], including those with [[IsHTMLDDA]].
 type Type int
 
 const (

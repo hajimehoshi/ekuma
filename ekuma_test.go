@@ -292,6 +292,14 @@ func TestValueString(t *testing.T) {
 	}
 }
 
+func TestHTMLDDAType(t *testing.T) {
+	var vm ekuma.VM
+	dda := ekuma.NewHTMLDDA(vm.InitialRealm())
+	if got := dda.Type(); got != ekuma.TypeFunction {
+		t.Errorf("HTMLDDA.Type() = %v, want %v", got, ekuma.TypeFunction)
+	}
+}
+
 func TestValues(t *testing.T) {
 	ctx := t.Context()
 	var vm ekuma.VM
