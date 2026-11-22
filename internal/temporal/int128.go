@@ -117,7 +117,8 @@ func Mul64(a, b int64) Int128 {
 	return I128(a).MulInt64(b)
 }
 
-// QuoRemInt64 returns the quotient and remainder of x / d truncated towards zero. d must not be 0.
+// QuoRemInt64 returns the quotient and remainder of x / d truncated towards zero.
+// d must be nonzero and the quotient must fit in an Int128.
 func (x Int128) QuoRemInt64(d int64) (Int128, int64) {
 	neg := x.hi < 0
 	ax := x.Abs()
@@ -143,7 +144,7 @@ func (x Int128) QuoRemInt64(d int64) (Int128, int64) {
 }
 
 // FloorDivInt64 returns floor(x / d) and the remainder x - floor(x / d) × d, which has the
-// sign of d. d must not be 0.
+// sign of d. d must be nonzero and the quotient must fit in an Int128.
 func (x Int128) FloorDivInt64(d int64) (Int128, int64) {
 	q, r := x.QuoRemInt64(d)
 	if r != 0 && (r < 0) != (d < 0) {
@@ -153,7 +154,8 @@ func (x Int128) FloorDivInt64(d int64) (Int128, int64) {
 	return q, r
 }
 
-// QuoRem returns the quotient and remainder of x / d truncated towards zero. d must not be 0.
+// QuoRem returns the quotient and remainder of x / d truncated towards zero.
+// d must be nonzero and the quotient must fit in an Int128.
 func (x Int128) QuoRem(d Int128) (Int128, Int128) {
 	if dd, ok := d.Int64(); ok && dd != -1<<63 {
 		q, r := x.QuoRemInt64(dd)
