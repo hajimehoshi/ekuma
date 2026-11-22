@@ -720,9 +720,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict:
 			v, k := regs[i.A], regs[i.B]
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
-				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
-					o.elems[j] = regs[i.C]
-					continue
+				if j := int(k.n); float64(j) == k.n && uint(j) < uint(len(o.elems)) {
+					if o.elems[j].o != holeObject {
+						o.elems[j] = regs[i.C]
+						continue
+					}
+					// A store into a hole takes the switch below.
+					break
 				}
 				// The stores of a number into a typed array of numbers other than Float16, as in
 				// typedArraySet, with every check before the data is loaded as in OpGetIndex. A
@@ -776,6 +780,24 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 								b[0] = byte(u)
 								b[1] = byte(u >> 8)
 							}
+							continue
+						}
+					}
+					// The append below does not apply to a typed array.
+					break
+				}
+				// An append to a plain array that has room for it, as in the switch below, with the
+				// conditions of arrayProtoPlain written out.
+				if j := int(k.n); j == len(o.elems) && j < cap(o.elems) &&
+					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.shapes.array {
+					if a := vm.Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
+						if p := a.shape.proto; p == vm.Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
+							// Reading x first keeps i.C from being read again after the
+							// store to the length.
+							x := regs[i.C]
+							o.elems = o.elems[:j+1]
+							o.elems[j] = x
+							o.length++
 							continue
 						}
 					}
