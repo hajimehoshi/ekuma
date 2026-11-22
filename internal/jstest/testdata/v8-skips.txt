@@ -732,6 +732,113 @@ test/mozilla/data/js1_5/Regress/regress-3649-n.js
 # SKIP: assumes the August UTC offsets in 1900, 1965, and 1970 all match the 2005 offset
 test/mozilla/data/js1_5/Regress/regress-58116.js
 
+# SKIP: requires SpiderMonkey's Script object
+test/mozilla/data/js1_3/extensions/script-001.js
+test/mozilla/data/js1_5/extensions/regress-220584.js
+test/mozilla/data/js1_5/extensions/regress-225831.js
+test/mozilla/data/js1_5/extensions/regress-226507.js
+test/mozilla/data/js1_5/extensions/regress-237461.js
+test/mozilla/data/js1_5/extensions/regress-291213.js
+test/mozilla/data/js1_5/extensions/regress-313938.js
+test/mozilla/data/js1_5/extensions/regress-338804-02.js
+test/mozilla/data/js1_5/extensions/regress-354541-01.js
+test/mozilla/data/js1_5/extensions/regress-354541-02.js
+test/mozilla/data/js1_5/extensions/regress-354541-03.js
+test/mozilla/data/js1_5/extensions/regress-354541-04.js
+test/mozilla/data/js1_5/extensions/regress-355655.js
+test/mozilla/data/js1_5/extensions/regress-355982.js
+test/mozilla/data/js1_5/extensions/regress-356402.js
+test/mozilla/data/js1_5/extensions/regress-359024.js
+test/mozilla/data/js1_5/extensions/regress-361552.js
+test/mozilla/data/js1_5/extensions/regress-367118-01.js
+test/mozilla/data/js1_5/extensions/regress-367118-02.js
+test/mozilla/data/js1_5/extensions/regress-367119-01.js
+test/mozilla/data/js1_5/extensions/regress-367119-02.js
+test/mozilla/data/js1_5/extensions/regress-367120-01.js
+test/mozilla/data/js1_5/extensions/regress-367120-02.js
+
+# SKIP: requires browser globals or DOM objects
+test/mozilla/data/js1_5/Regress/regress-127243.js
+test/mozilla/data/js1_5/Regress/regress-233483-2.js
+test/mozilla/data/js1_5/Regress/regress-233483.js
+test/mozilla/data/js1_5/Regress/regress-246964.js
+test/mozilla/data/js1_5/Regress/regress-320032.js
+test/mozilla/data/js1_5/Regress/regress-328012.js
+test/mozilla/data/js1_5/Regress/regress-328897.js
+test/mozilla/data/js1_5/Regress/regress-341360.js
+test/mozilla/data/js1_5/Regress/regress-344804.js
+test/mozilla/data/js1_5/Regress/regress-418540.js
+test/mozilla/data/js1_5/Regress/regress-425360.js
+test/mozilla/data/js1_5/Regress/regress-453024.js
+test/mozilla/data/js1_5/Regress/regress-466747.js
+test/mozilla/data/js1_5/Regress/regress-475645-02.js
+test/mozilla/data/js1_5/Regress/regress-476049.js
+test/mozilla/data/js1_5/extensions/regress-327608.js
+test/mozilla/data/js1_5/extensions/regress-340199.js
+test/mozilla/data/js1_5/extensions/regress-367121.js
+test/mozilla/data/js1_5/extensions/regress-367589.js
+test/mozilla/data/js1_5/extensions/regress-369404.js
+test/mozilla/data/js1_5/extensions/regress-372309.js
+test/mozilla/data/js1_5/extensions/regress-375344.js
+test/mozilla/data/js1_5/extensions/regress-406572.js
+test/mozilla/data/js1_5/extensions/regress-407019.js
+test/mozilla/data/js1_5/extensions/regress-407720.js
+test/mozilla/data/js1_5/extensions/regress-426711.js
+test/mozilla/data/js1_5/extensions/regress-436741.js
+test/mozilla/data/js1_5/extensions/regress-443569.js
+test/mozilla/data/js1_5/extensions/regress-454704.js
+test/mozilla/data/js1_5/extensions/regress-488995.js
+
+# SKIP: requires SpiderMonkey's toSource method
+test/mozilla/data/ecma_3/extensions/10.1.3-2.js
+test/mozilla/data/js1_5/extensions/regress-192465.js
+test/mozilla/data/js1_5/extensions/regress-245148.js
+test/mozilla/data/js1_5/extensions/regress-255245.js
+
+# SKIP: requires SpiderMonkey's uneval function
+test/mozilla/data/js1_5/extensions/regress-231518.js
+test/mozilla/data/js1_5/extensions/regress-245795.js
+test/mozilla/data/js1_5/extensions/regress-254375.js
+
+# SKIP: requires SpiderMonkey's disassembler
+test/mozilla/data/js1_5/extensions/regress-352291.js
+test/mozilla/data/js1_5/extensions/regress-380889.js
+test/mozilla/data/js1_5/extensions/regress-396326.js
+test/mozilla/data/js1_5/extensions/regress-422592.js
+
+# SKIP: requires SpiderMonkey's gczeal function
+test/mozilla/data/js1_5/extensions/regress-414755.js
+test/mozilla/data/js1_5/extensions/regress-416354.js
+test/mozilla/data/js1_5/extensions/regress-452168.js
+
+# SKIP: requires SpiderMonkey's watch method
+test/mozilla/data/js1_5/extensions/regress-385134.js
+test/mozilla/data/js1_5/extensions/regress-390597.js
+test/mozilla/data/js1_5/extensions/regress-454040.js
+
+# SKIP: requires SpiderMonkey's clone function
+test/mozilla/data/js1_5/Regress/regress-127557.js
+test/mozilla/data/js1_5/extensions/regress-300079.js
+
+# SKIP: requires SpiderMonkey's evalcx function
+test/mozilla/data/js1_5/extensions/regress-394967.js
+test/mozilla/data/js1_5/extensions/regress-446386.js
+
+# SKIP: requires SpiderMonkey's debugger trap function
+test/mozilla/data/js1_5/extensions/regress-431428.js
+
+# SKIP: requires the SpiderMonkey shell's it object
+test/mozilla/data/js1_5/Regress/regress-89474.js
+
+# SKIP: requires SpiderMonkey's __noSuchMethod__ hook
+test/mozilla/data/js1_5/extensions/regress-375183.js
+
+# SKIP: requires the SpiderMonkey shell's seal function
+test/mozilla/data/js1_5/extensions/regress-449657.js
+
+# SKIP: requires SpiderMonkey's shapeOf function
+test/mozilla/data/js1_5/extensions/regress-479551.js
+
 # PASS/FAIL: mozilla.status permits either outcome on the default Intl build
 test/mozilla/data/ecma/Statements/12.6.3-2.js
 test/mozilla/data/ecma_3/Date/15.9.5.5-02.js
