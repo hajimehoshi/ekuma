@@ -56,14 +56,13 @@ func (t *WeakTable) addKey(w *weakEntries) {
 		}
 		keys.sweepAt = max(minWeakSweep, 2*len(keys.entries))
 	}
-	keys.entries[weak.Make(w)] = struct{}{}
+	keys.entries[w.self] = struct{}{}
 }
 
 func (keys *weakTableKeys) remove(w *weakEntries) {
 	keys.mu.Lock()
 	defer keys.mu.Unlock()
-	delete(keys.entries, weak.Make(w))
-	runtime.KeepAlive(w)
+	delete(keys.entries, w.self)
 }
 
 func (keys *weakTableKeys) clear() {
@@ -86,6 +85,9 @@ type weakEntries struct {
 	firstTable *weakTableKeys
 	first      Value
 	rest       map[*weakTableKeys]Value
+
+	// self is the weak pointer by which the collections refer to the store.
+	self weak.Pointer[weakEntries]
 }
 
 func newWeakTable() *WeakTable {
@@ -166,7 +168,9 @@ func (t *WeakTable) Set(k, v Value) {
 	defer runtime.KeepAlive(t)
 	m := k.o.ensureMeta()
 	if m.weak == nil {
-		m.weak = &weakEntries{}
+		w := &weakEntries{}
+		w.self = weak.Make(w)
+		m.weak = w
 	}
 	if m.weak.set(t.keys, v) {
 		t.addKey(m.weak)
