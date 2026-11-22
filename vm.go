@@ -180,6 +180,9 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 		if x == nil {
 			panic("ekuma: ValueOf: nil *big.Int")
 		}
+		if x.IsInt64() {
+			return engine.BigIntFromInt64(x.Int64())
+		}
 		if x.BitLen() > engine.MaxBigIntBits {
 			panic(fmt.Sprintf("ekuma: ValueOf: BigInt of %d bits, more than %d", x.BitLen(), engine.MaxBigIntBits))
 		}
