@@ -11,6 +11,9 @@ go test -count=1 -v -run '^TestICU$' .
 
 # List formatting
 GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(listformattertest\.cpp|ulistfmttest\.c|ListFormatterTest\.java)$' .
+
+# Relative time formatting
+GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(reldatefmttest\.cpp|crelativedateformattest\.c|RelativeDateTimeFormatterTest\.java)$' .
 ```
 
 Use a fixture name after `^TestICU$/` to run one subtest. Verbose output
@@ -52,3 +55,12 @@ check element and literal parts. Urdu narrow-unit patterns are locale data
 that JavaScript can request. Custom ICU patterns are excluded. ICU omits
 zero-width fields, while ECMA-402 retains an element part for an empty input
 string. [ECMA-402 CreatePartsFromList](https://tc39.es/ecma402/#sec-createpartsfromlist)
+
+## Relative time fixtures
+
+`reldatefmttest.cpp`, `crelativedateformattest.c`, and
+`RelativeDateTimeFormatterTest.java` cover named and numeric offsets,
+fractional quantities, Serbian plurals, and style fallback. The adapter
+checks exact strings and uses ICU's UTF-16 field positions to check part
+types, values, and units. It excludes ICU-specific features such as weekday
+units, capitalization contexts, and custom number formats.

@@ -336,7 +336,8 @@ Short mode skips all external conformance tests.
 
 ICU 78.3 supplies the casing, normalization, RegExp, segmentation, and collation
 fixtures. ICU 79.1 supplies CLDR 49 locale identifiers, number and number range
-formatting, display names, plural rules, calendars, and date intervals. The
+formatting, display names, plural rules, calendars, date intervals, list formatting,
+and relative time formatting. The
 [fixture inventory](internal/icutest/README.md) describes the upstream readers,
 option mappings, exclusions, and known differences.
 The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
