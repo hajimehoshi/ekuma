@@ -1170,19 +1170,19 @@ func (d *DataView) byteLengthOf(n int) (int, bool) {
 	return d.length, true
 }
 
-// Lock returns the bytes that d views, or nil when d is out of bounds, as [ArrayBuffer.Lock] does
-// for the buffer. It must be paired with [DataView.Unlock]. The slice must not be modified when
-// the buffer is immutable.
-func (d *DataView) Lock() []byte {
+// Lock locks the buffer as [ArrayBuffer.Lock] does and returns the bytes that d views.
+// It reports false when the buffer is detached or d is out of bounds. Always pair Lock with
+// [DataView.Unlock]. The slice must not be modified when the buffer is immutable.
+func (d *DataView) Lock() ([]byte, bool) {
 	b := d.data.Lock()
 	if d.data.state == bufferDetached {
-		return nil
+		return nil, false
 	}
 	n, ok := d.byteLengthOf(len(b))
 	if !ok {
-		return nil
+		return nil, false
 	}
-	return b[d.offset : d.offset+n]
+	return b[d.offset : d.offset+n], true
 }
 
 // Unlock ends the access of [DataView.Lock].

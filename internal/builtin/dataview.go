@@ -100,8 +100,8 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		typ := e.typ
 		// view returns the bytes of the element at the converted index, as GetViewValue and SetViewValue
 		// check it, from the bytes b of the view.
-		view := func(vm *engine.VM, b []byte, i int64, what string) []byte {
-			if b == nil {
+		view := func(vm *engine.VM, b []byte, inBounds bool, i int64, what string) []byte {
+			if !inBounds {
 				vm.ThrowTypeError("DataView.prototype." + what + ": the view is detached or out of bounds")
 			}
 			if i+int64(typ.Size()) > int64(len(b)) {
@@ -111,14 +111,14 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		// load and store hold the lock of the buffer, which a throw releases.
 		load := func(vm *engine.VM, d *engine.DataView, i int64, le bool, what string) engine.Value {
-			b := d.Lock()
+			b, inBounds := d.Lock()
 			defer d.Unlock()
-			return vm.GetValueFromBuffer(view(vm, b, i, what), typ, le)
+			return vm.GetValueFromBuffer(view(vm, b, inBounds, i, what), typ, le)
 		}
 		store := func(vm *engine.VM, d *engine.DataView, i int64, v engine.Value, le bool, what string) {
-			b := d.Lock()
+			b, inBounds := d.Lock()
 			defer d.Unlock()
-			engine.SetValueInBuffer(view(vm, b, i, what), typ, v, le)
+			engine.SetValueInBuffer(view(vm, b, inBounds, i, what), typ, v, le)
 		}
 		get := "get" + e.name
 		method(vm, proto, wtf8.String(get), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

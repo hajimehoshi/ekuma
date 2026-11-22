@@ -652,6 +652,46 @@ func TestNewArrayBuffer(t *testing.T) {
 	}
 }
 
+func TestDataViewBounds(t *testing.T) {
+	var vm ekuma.VM
+	if err := vm.Global().Set("hostBuffer", vm.NewArrayBuffer(nil)); err != nil {
+		t.Fatal(err)
+	}
+	run(t, &vm, `
+		const hostView = new DataView(hostBuffer);
+		const immutableView = new DataView(new ArrayBuffer(0).sliceToImmutable());
+		const buffer = new ArrayBuffer(1, {maxByteLength: 1});
+		const fixedView = new DataView(buffer, 0, 1);
+		buffer.resize(0);
+	`)
+	for _, tc := range []struct {
+		src  string
+		want string
+	}{
+		{
+			src:  "hostView.getUint8(0)",
+			want: "RangeError",
+		},
+		{
+			src:  "hostView.setUint8(0, 1)",
+			want: "RangeError",
+		},
+		{
+			src:  "immutableView.getUint8(0)",
+			want: "RangeError",
+		},
+		{
+			src:  "fixedView.getUint8(0)",
+			want: "TypeError",
+		},
+	} {
+		got := run(t, &vm, "try { "+tc.src+" } catch (e) { e.constructor.name }")
+		if got != tc.want {
+			t.Errorf("%s: got %s, want %s", tc.src, got, tc.want)
+		}
+	}
+}
+
 // TestRealmNewArrayBuffer tests that an ArrayBuffer of a realm is an instance of the ArrayBuffer
 // of that realm, and that an empty one is not detached.
 func TestRealmNewArrayBuffer(t *testing.T) {
