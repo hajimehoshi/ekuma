@@ -459,7 +459,12 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		top := f.pc()
 		f.stmt(s.Body, nil)
 		f.patchAll(c.continues)
+		// The condition throws where it is, and what follows the loop keeps the position of the
+		// body.
+		body := f.currentPos()
+		f.setPos(s.Test.Start())
 		f.loopBack(s.Test, top)
+		f.setPos(body)
 		f.popLoop(c)
 	case *ast.ReturnStmt:
 		var v int32
@@ -649,7 +654,11 @@ func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 		f.emit(bytecode.OpCloseUpvals, f.scope.firstReg, 0, 0)
 	}
 	if s.Update != nil {
+		// The update throws where it is, and the rest of the loop keeps the position of the body.
+		body := f.currentPos()
+		f.setPos(s.Update.Start())
 		f.effect(s.Update)
+		f.setPos(body)
 	}
 	f.loopEnd(t, s.Test)
 	f.popLoop(c)
