@@ -161,7 +161,8 @@ request-scoped state such as an AsyncLocalStorage frame across asynchronous code
 
 A context stops everything that runs under it. When a `Func` makes a call with another
 context and that context stops the call, the outermost call returns the cause of that context
-and the `Func` does not continue. A context that is done after its call returned stops
+and the `Func` does not continue. The interruption closes generators whose execution it unwinds.
+A context that is done after its call returned stops
 nothing. Operations without a context can run JavaScript and jobs without a cancellation
 limit, unless reentered under a call with a context.
 

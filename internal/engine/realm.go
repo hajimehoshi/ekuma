@@ -376,11 +376,9 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			if vm.curRealm != curRealm {
 				vm.switchRealm(curRealm)
 			}
-			if !interrupted {
-				for i := frames; i < len(vm.frames); i++ {
-					if g := vm.frames[i].gen; g != nil {
-						g.abort()
-					}
+			for i := frames; i < len(vm.frames); i++ {
+				if g := vm.frames[i].gen; g != nil {
+					g.abort()
 				}
 			}
 			vm.unwindTo(frames)

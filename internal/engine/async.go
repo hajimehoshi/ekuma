@@ -83,7 +83,7 @@ func (vm *VM) asyncResume(g *generator, mode ResumeMode, v Value) {
 // asyncFunctionResume runs the async function g from its suspension until it awaits or
 // completes, and settles its promise when it completes.
 func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
-	defer g.abortOnHostPanic()
+	defer g.abortOnPanic()
 	for {
 		var r Value
 		var done bool
@@ -217,7 +217,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 		vm.RejectCapability(c, vm.NewError(ErrorKindType, "method called on an object that is not an async generator"))
 		return c.Promise()
 	}
-	defer g.abortOnHostPanic()
+	defer g.abortOnPanic()
 	a := g.async
 	state := asyncGeneratorStateOf(g)
 	if mode == ResumeThrow && state == asyncGenSuspendedStart {

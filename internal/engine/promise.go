@@ -731,7 +731,7 @@ func (vm *VM) runJob(j *job) {
 	}
 	r := &j.reaction
 	if r.gen != nil {
-		defer r.gen.abortOnHostPanic()
+		defer r.gen.abortOnPanic()
 	}
 	switch r.kind {
 	case reactionAwait:

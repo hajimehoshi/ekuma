@@ -1409,6 +1409,41 @@ func TestArgumentStorageConversionPanicReentrant(t *testing.T) {
 	checkArgumentStorage(t, &vm, 0, 0)
 }
 
+func TestCanceledGeneratorRequests(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cause := errors.New("stop generator")
+	cancel(cause)
+	if err := vm.Global().Set("stop", vm.FuncOf("stop", func(_ ekuma.Value, args []ekuma.Value) (any, error) {
+		return args[0].Invoke(ctx)
+	})); err != nil {
+		t.Fatal(err)
+	}
+	obj, err := runScript(t.Context(), &vm, "setup", `
+		var g = (function* () { stop(() => {}); })();
+		var ag = (async function* () {})();
+		({
+			get sync() { return g.next(); },
+			get async() { return ag.return({ get then() { stop(() => {}); } }); }
+		})`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"sync", "async"} {
+		if _, err := obj.Get(name); err != cause {
+			t.Errorf("Get(%q) returned %T %v, want the cancellation cause", name, err, err)
+		}
+	}
+	done, err := runScript(t.Context(), &vm, "sync", "g.next().done")
+	if err != nil || !done.Truthy() {
+		t.Errorf("g.next().done = %v, %v, want true", done, err)
+	}
+	run(t, &vm, "var done; ag.next().then(r => done = r.done)")
+	if got := run(t, &vm, "done"); got != "true" {
+		t.Errorf("next async generator request: done = %s, want true", got)
+	}
+}
+
 func TestCancelNestedContext(t *testing.T) {
 	for _, cause := range []error{context.DeadlineExceeded, errors.New("nested cancellation")} {
 		t.Run(cause.Error(), func(t *testing.T) {

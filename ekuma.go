@@ -22,7 +22,8 @@
 //
 // Pending promise jobs run before the outermost Go call that executes JavaScript returns,
 // including property operations and calls that throw. Calls reentered from host callbacks
-// leave jobs to the outermost call. An interruption discards pending jobs.
+// leave jobs to the outermost call. An interruption discards pending jobs and
+// closes generators whose execution it unwinds.
 // Operations without a context can run JavaScript and jobs without a cancellation limit,
 // unless reentered under a call with a context.
 // [VM.AwaitJobs] waits for asynchronous notifications and runs their jobs.
@@ -110,6 +111,9 @@ func (e *ScriptError) Unwrap() error {
 func publicError(err error) error {
 	if err == nil {
 		return nil
+	}
+	if interrupted, ok := errors.AsType[*engine.InterruptedError](err); ok && interrupted.Cause != nil {
+		return interrupted.Cause
 	}
 	if se, ok := errors.AsType[*engine.SyntaxError](err); ok {
 		return &SyntaxError{

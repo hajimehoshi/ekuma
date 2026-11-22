@@ -350,9 +350,6 @@ func (vm *VM) run(ctx context.Context, f func() (engine.Value, error)) (Value, e
 		}()
 	}
 	v, err := f()
-	if interrupted, ok := errors.AsType[*engine.InterruptedError](err); ok && interrupted.Cause != nil {
-		return Undefined, interrupted.Cause
-	}
 	return fromEngine(v), publicError(err)
 }
 
