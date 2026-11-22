@@ -317,6 +317,22 @@ func TestStringToNumberLong(t *testing.T) {
 	}
 }
 
+func TestStringToNumberLongExponent(t *testing.T) {
+	exponent := strings.Repeat("0", 780) + "4294967296"
+	if got := numconv.StringToNumber(wtf8.String("1e"+exponent), nil); got != math.Inf(1) {
+		t.Errorf("positive exponent: got %v, want +Inf", got)
+	}
+	if got := numconv.StringToNumber(wtf8.String("1e-"+exponent), nil); got != 0 || math.Signbit(got) {
+		t.Errorf("negative exponent: got %v, want +0", got)
+	}
+
+	// The exponent cancels the leading zeros, leaving the halfway integer 2^53+1.
+	s := "0." + strings.Repeat("0", 4000) + "9007199254740993e4016"
+	if got := numconv.StringToNumber(wtf8.String(s), nil); got != 1<<53 {
+		t.Errorf("halfway integer: got %v, want %v", got, float64(1<<53))
+	}
+}
+
 func TestStringToNumberManyDigits(t *testing.T) {
 	r := rand.New(rand.NewPCG(3, 4))
 	for range 300 {

@@ -148,7 +148,7 @@ func ParseDecimal(s string, poll func()) float64 {
 	if sticky {
 		b = append(b, '1')
 	}
-	exp := 0
+	var exp int64
 	if i < len(s) && (s[i] == 'e' || s[i] == 'E') {
 		i++
 		neg := false
@@ -157,17 +157,19 @@ func ParseDecimal(s string, poll func()) float64 {
 			i++
 		}
 		i = skipZeros(s, i, poll)
-		// An exponent beyond 10^9 gives an infinity or a zero, as 10^9 does.
-		for ; i < len(s) && exp < 1e9; i++ {
-			exp = exp*10 + int(s[i]-'0')
+		// The mantissa can offset at most count decimal places. Beyond that,
+		// 324 more places guarantee infinity or zero even if more digits follow.
+		limit := int64(count) + 324
+		for ; i < len(s) && exp < limit; i++ {
+			exp = exp*10 + int64(s[i]-'0')
 		}
 		if neg {
 			exp = -exp
 		}
 	}
-	exp += point - first - (len(b) - mantissa)
+	exp += int64(point-first) - int64(len(b)-mantissa)
 	b = append(b, 'e')
-	b = strconv.AppendInt(b, int64(exp), 10)
+	b = strconv.AppendInt(b, exp, 10)
 	f, _ := strconv.ParseFloat(string(b), 64)
 	return f
 }
