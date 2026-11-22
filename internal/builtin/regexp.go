@@ -15,7 +15,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
-// regexpEnv is the state that the RegExp built-ins of one VM share.
+// regexpEnv is the state that the RegExp built-ins of one realm share.
 type regexpEnv struct {
 	m regexp.Matcher
 
@@ -157,7 +157,9 @@ func (e *regexpEnv) builtinExecRaw(vm *engine.VM, r *engine.Object, s engine.Val
 	if global || sticky {
 		e.setLastIndex(vm, r, int64(caps[1]))
 	}
-	e.legacy.record(r, s, caps)
+	if vm.IsRegExpOfCurrentRealm(r) {
+		e.legacy.record(r, s, caps)
+	}
 	return caps
 }
 
