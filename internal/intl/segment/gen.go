@@ -126,26 +126,66 @@ func main() {
 			}
 		}
 	}
-	for _, l := range fetch("Scripts.txt") {
+	complexContext := make([]bool, len(props))
+	for _, l := range fetch("LineBreak.txt") {
 		codes, value, _ := strings.Cut(l, ";")
-		script := strings.TrimSpace(value)
-		if script != "Thai" && script != "Han" {
-			continue
-		}
-		lo, hi := codeRange(strings.TrimSpace(codes))
-		for c := lo; c <= hi; c++ {
-			switch script {
-			case "Thai":
-				props[c] |= 1 << 17
-				if 0x0e01 <= c && c <= 0x0e4e && category[c] == 'L' {
-					props[c] |= 1 << 18
-				}
-			case "Han":
-				if category[c] != 'M' {
-					props[c] |= 2 << 18
-				}
+		if strings.TrimSpace(value) == "SA" {
+			lo, hi := codeRange(strings.TrimSpace(codes))
+			for c := lo; c <= hi; c++ {
+				complexContext[c] = true
 			}
 		}
+	}
+	// The dictionary engines handle script runs within a rule-based word.
+	// The CJK rule joins Han, Hiragana and Word_Break=Katakana, while its
+	// dictionary also handles prolonged and halfwidth voicing marks.
+	const cj = 2
+	// Values match wordScript in dictionary.go.
+	scripts := map[string]uint32{
+		"Thai": 1, "Han": cj, "Hiragana": cj, "Katakana": cj, "Khmer": 3, "Myanmar": 4,
+	}
+	for _, l := range fetch("Scripts.txt") {
+		codes, value, _ := strings.Cut(l, ";")
+		lo, hi := codeRange(strings.TrimSpace(codes))
+		name := strings.TrimSpace(value)
+		script, ok := scripts[name]
+		if !ok {
+			continue
+		}
+		for c := lo; c <= hi; c++ {
+			if script != cj && !complexContext[c] {
+				continue
+			}
+			props[c] |= script << 18
+			if script != cj && category[c] == 'M' {
+				props[c] |= 1 << 17
+			}
+			if name == "Han" || name == "Hiragana" {
+				props[c] |= 1 << 21
+			}
+		}
+	}
+	for _, c := range []rune{0x30fc, 0xff70, 0xff9e, 0xff9f} {
+		props[c] |= cj << 18
+	}
+	aletter := index(wordValues, "ALetter")
+	extend := index(wordValues, "Extend")
+	katakana := index(wordValues, "Katakana")
+	control := index(graphemeValues, "Control")
+	for c, p := range props {
+		w := p >> 4 & 31
+		if w == katakana {
+			props[c] |= 1 << 21
+		}
+		switch {
+		case c >= 0xac00 && c <= 0xd7a3:
+			w = uint32(len(wordValues)) // wHangul
+		case p&(1<<21) != 0 && w == aletter:
+			w = 0
+		case complexContext[c] && w != extend && p&15 != control:
+			w = aletter
+		}
+		props[c] = props[c]&^(31<<4) | w<<4
 	}
 
 	// Each leaf entry indexes one distinct combination of properties.

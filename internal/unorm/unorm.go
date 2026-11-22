@@ -55,7 +55,7 @@ func cut(form Form, s string, poll func()) int {
 		}
 		if utf8.RuneStart(s[i]) {
 			r, _ := utf8.DecodeRuneInString(s[i:])
-			if boundaryBefore(form, r) {
+			if BoundaryBefore(form, r) {
 				return i
 			}
 		}
@@ -222,7 +222,7 @@ func LastBoundary(form Form, s string) int {
 		// A boundary is before a whole character that cannot combine with what precedes it.
 		if utf8.RuneStart(s[i]) && utf8.FullRuneInString(s[i:]) {
 			r, _ := utf8.DecodeRuneInString(s[i:])
-			if boundaryBefore(form, r) {
+			if BoundaryBefore(form, r) {
 				return i
 			}
 		}

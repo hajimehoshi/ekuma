@@ -274,8 +274,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   `toLocaleLowerCase` ignore the locale. With Intl, these methods use locale-aware behavior
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root
-- `Intl.Segmenter` uses dictionary word boundaries for Thai and Han text in every locale.
-  It follows the default UAX #29 rules for other scripts, including Japanese kana
+- `Intl.Segmenter` uses dictionary word boundaries for Chinese, Japanese, Thai, Khmer and
+  Burmese text in every locale. Greek locales also tailor sentence breaks at question marks
 - `Intl.DisplayNames` gives the code of a language, or `undefined` with `fallback: "none"`, when
   one of its subtags has no name, where ICU names the other subtags
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns

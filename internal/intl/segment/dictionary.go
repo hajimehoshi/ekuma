@@ -46,7 +46,9 @@ func loadTrie(data string) wordTrie {
 }
 
 var thaiTrie = sync.OnceValue(func() wordTrie { return loadTrie(wordbreak.Thai) })
-var hanTrie = sync.OnceValue(func() wordTrie { return loadTrie(wordbreak.Han) })
+var cjTrie = sync.OnceValue(func() wordTrie { return loadTrie(wordbreak.CJ) })
+var khmerTrie = sync.OnceValue(func() wordTrie { return loadTrie(wordbreak.Khmer) })
+var burmeseTrie = sync.OnceValue(func() wordTrie { return loadTrie(wordbreak.Burmese) })
 
 func (t wordTrie) child(parent int, r rune) int {
 	if r > 0xffff {
@@ -66,7 +68,9 @@ type wordScript int
 const (
 	otherScript wordScript = iota
 	thaiScript
-	hanScript
+	cjScript
+	khmerScript
+	burmeseScript
 )
 
 type dictionaryPoller struct {
@@ -81,99 +85,26 @@ func (p *dictionaryPoller) step() {
 	}
 }
 
-func dictionaryBoundaries(rs []rune, ps []propertyIndex, bounds []int32, poll func()) []int32 {
-	p := dictionaryPoller{
-		poll: poll,
-	}
-	out := bounds[:0]
-	for i := 0; i < len(bounds)-1; {
+// appendDictionaryBreaks adds the boundaries strictly inside each dictionary
+// run of a single rule-based word.
+func appendDictionaryBreaks(out []int32, rs []rune, ps []propertyIndex, start, end int, p *dictionaryPoller) []int32 {
+	for i := start; i < end; {
 		p.step()
-		script := scriptOf(ps[bounds[i]])
+		script := scriptOf(ps[i])
 		j := i + 1
-		if script != otherScript {
-			for j < len(bounds)-1 && scriptOf(ps[bounds[j]]) == script {
-				p.step()
-				j++
-			}
+		for j < end && scriptOf(ps[j]) == script {
+			p.step()
+			j++
 		}
-		if j == i+1 {
-			out = append(out, bounds[i])
-		} else {
-			out = appendDictionaryWords(out, rs, ps, bounds[i:j+1], script, &p)
+		if j-i > 1 {
+			switch script {
+			case cjScript:
+				out = appendCJBreaks(out, rs[i:j], i, p)
+			case thaiScript, khmerScript, burmeseScript:
+				out = appendSoutheastAsianBreaks(out, rs[i:j], ps[i:j], i, script, p)
+			}
 		}
 		i = j
 	}
-	return append(out, bounds[len(bounds)-1])
-}
-
-// wordSteps chooses the cheapest segmentation of each suffix. A positive step spans
-// that many UAX #29 segments. A zero step takes one segment as an unknown word.
-func wordSteps(rs []rune, ps []propertyIndex, bounds []int32, script wordScript, p *dictionaryPoller) []byte {
-	n := len(bounds) - 1
-	var trie wordTrie
-	// ICU's Han entries carry word costs. For Thai, minimize the number of
-	// unmatched segments first, then the number of dictionary words.
-	unknownCost := int64(255)
-	if script == thaiScript {
-		trie = thaiTrie()
-		unknownCost = int64(n) + 1
-	} else {
-		trie = hanTrie()
-	}
-
-	// costs holds the cheapest suffix starting at each candidate boundary.
-	// A dictionary word spans at most 255 runes, with at least one matched
-	// rune per segment, so only the next 255 suffix costs are needed.
-	var costs [256]int64
-	steps := make([]byte, n)
-	for i := n - 1; i >= 0; i-- {
-		best := unknownCost + costs[byte(i+1)]
-		var node int
-	match:
-		for j := i; j < n; j++ {
-			for k := bounds[j]; k < bounds[j+1]; k++ {
-				p.step()
-				// Thai combining marks are part of dictionary spellings.
-				if wordIgnorable(wordOf(ps[k])) && !isThai(ps[k]) {
-					continue
-				}
-				node = trie.child(node, rs[k])
-				if node < 0 {
-					break match
-				}
-			}
-			if cost := trie[node].cost; cost != 0 {
-				total := int64(cost) + costs[byte(j+1)]
-				if total <= best {
-					best = total
-					steps[i] = byte(j + 1 - i)
-				}
-			}
-		}
-		costs[byte(i)] = best
-	}
-
-	return steps
-}
-
-func appendDictionaryWords(out []int32, rs []rune, ps []propertyIndex, bounds []int32, script wordScript, p *dictionaryPoller) []int32 {
-	steps := wordSteps(rs, ps, bounds, script, p)
-	var previousUnknown bool
-	for i := 0; i < len(steps); i += max(1, int(steps[i])) {
-		p.step()
-		unknown := script == thaiScript && steps[i] == 0
-		if unknown && i > 0 && thaiSuffix(rs[bounds[i]-1], rs[bounds[i]]) {
-			continue
-		}
-		if !unknown || !previousUnknown {
-			out = append(out, bounds[i])
-		}
-		previousUnknown = unknown
-	}
 	return out
-}
-
-// Thai abbreviation and repetition signs can follow a word in that order.
-func thaiSuffix(prev, r rune) bool {
-	return r == 'ฯ' && prev != 'ฯ' && prev != 'ๆ' || r == 'ๆ' && prev != 'ๆ'
 }

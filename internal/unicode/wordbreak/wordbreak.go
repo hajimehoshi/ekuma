@@ -3,7 +3,7 @@
 
 //go:generate go run gen.go
 
-// Package wordbreak holds the Thai and Han word dictionaries from ICU4C.
+// Package wordbreak holds word dictionaries from ICU4C.
 // Their license notices are in internal/unicode/LICENSE.
 package wordbreak
 
@@ -18,7 +18,17 @@ import _ "embed"
 //go:embed thai.deflate
 var Thai string
 
-// Han is the Han word dictionary.
+// Khmer is the Khmer word dictionary.
 //
-//go:embed han.deflate
-var Han string
+//go:embed khmer.deflate
+var Khmer string
+
+// Burmese is the Burmese word dictionary.
+//
+//go:embed burmese.deflate
+var Burmese string
+
+// CJ is the Chinese/Japanese word dictionary.
+//
+//go:embed cj.deflate
+var CJ string

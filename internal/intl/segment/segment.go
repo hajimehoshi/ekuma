@@ -3,11 +3,12 @@
 
 //go:generate go run gen.go
 
-// Package segment implements UAX #29 segmentation with dictionary word boundaries for Thai and Han text.
+// Package segment implements UAX #29 segmentation with dictionary word boundaries and locale tailorings.
 package segment
 
 import (
 	"encoding/binary"
+	"strings"
 	"unicode"
 )
 
@@ -59,6 +60,7 @@ const (
 	wNumeric
 	wExtendNumLet
 	wWSegSpace
+	wHangul
 )
 
 // Sentence_Break values.
@@ -109,20 +111,25 @@ func sentenceOf(p propertyIndex) int      { return int(propertyValues[p] >> 9 & 
 func pictographic(p propertyIndex) bool   { return propertyValues[p]&(1<<13) != 0 }
 func incbOf(p propertyIndex) int          { return int(propertyValues[p] >> 14 & 3) }
 func letterOrNumber(p propertyIndex) bool { return propertyValues[p]&(1<<16) != 0 }
-func isThai(p propertyIndex) bool         { return propertyValues[p]&(1<<17) != 0 }
-func scriptOf(p propertyIndex) wordScript { return wordScript(propertyValues[p] >> 18) }
+func dictionaryMark(p propertyIndex) bool { return propertyValues[p]&(1<<17) != 0 }
+func scriptOf(p propertyIndex) wordScript { return wordScript(propertyValues[p] >> 18 & 7) }
+
+func joinsCJ(p propertyIndex) bool { return propertyValues[p]&(1<<21) != 0 }
 
 // pollSteps is the number of code points between two calls of the poll function of
 // [Boundaries].
 const pollSteps = 1 << 14
 
-// Boundaries returns the boundaries of the segments of rs as indices of rs, from 0 to
-// len(rs), which must be less than 2^31. An empty rs has no boundaries. Boundaries calls poll, which may be nil, now and
-// then during a long input; poll may stop Boundaries by panicking.
-func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
+// Boundaries returns the segment boundaries for locale as rune indices from 0
+// to len(rs), which must be less than 2^31. An empty locale uses the default
+// rules. An empty input has no boundaries. A non-nil poll may interrupt the
+// operation by panicking.
+func Boundaries(g Granularity, rs []rune, locale string, poll func()) []int32 {
 	if len(rs) == 0 {
 		return nil
 	}
+	language, _, _ := strings.Cut(locale, "-")
+	greekSentence := g == Sentence && language == "el"
 	var dictionaryWords bool
 	ps := make([]propertyIndex, len(rs))
 	for i, r := range rs {
@@ -130,8 +137,11 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 			poll()
 		}
 		ps[i] = props(r)
-		if g == Word && !dictionaryWords && scriptOf(ps[i]) != otherScript {
+		if g == Word && scriptOf(ps[i]) != otherScript {
 			dictionaryWords = true
+		}
+		if greekSentence && (r == ';' || r == '\u037E') {
+			ps[i] = props('!')
 		}
 	}
 	var gs graphemeState
@@ -144,6 +154,9 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 		ws.advance(ps[0])
 	case Sentence:
 		ss.advance(ps, 0)
+	}
+	dp := dictionaryPoller{
+		poll: poll,
 	}
 	bs := []int32{0}
 	for i := 1; i < len(rs); i++ {
@@ -163,14 +176,16 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 			ss.advance(ps, i)
 		}
 		if brk {
+			if dictionaryWords {
+				bs = appendDictionaryBreaks(bs, rs, ps, int(bs[len(bs)-1]), i, &dp)
+			}
 			bs = append(bs, int32(i))
 		}
 	}
-	bs = append(bs, int32(len(rs)))
 	if dictionaryWords {
-		return dictionaryBoundaries(rs, ps, bs, poll)
+		bs = appendDictionaryBreaks(bs, rs, ps, int(bs[len(bs)-1]), len(rs), &dp)
 	}
-	return bs
+	return append(bs, int32(len(rs)))
 }
 
 // Indic conjunct states of graphemeState.
@@ -290,6 +305,8 @@ func wordBreak(ps []propertyIndex, i int, s *wordState) bool {
 	case a == wNewline || a == wCR || a == wLF || b == wNewline || b == wCR || b == wLF:
 		return true
 	case a == wZWJ && pictographic(ps[i]):
+		return false
+	case a == wHangul && b == wHangul, joinsCJ(ps[i-1]) && joinsCJ(ps[i]):
 		return false
 	case a == wWSegSpace && b == wWSegSpace:
 		return false

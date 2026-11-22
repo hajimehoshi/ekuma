@@ -49,6 +49,13 @@ func TestBoundaries(t *testing.T) {
 			want: []string{"カタカナ", "漢字"},
 		},
 		{
+			// NFKC expands ㌙ to two dictionary words, グラム and トン.
+			name: "dictionary boundary inside a compatibility character",
+			g:    segment.Word,
+			in:   "猫㌙寿司",
+			want: []string{"猫", "㌙", "寿司"},
+		},
+		{
 			name: "unknown Thai and supplementary Han words",
 			g:    segment.Word,
 			in:   "ฅฅฅกิน𠀀𠀁",
@@ -63,7 +70,7 @@ func TestBoundaries(t *testing.T) {
 	} {
 		rs := []rune(tc.in)
 		var got []string
-		bs := segment.Boundaries(tc.g, rs, nil)
+		bs := segment.Boundaries(tc.g, rs, "", nil)
 		for i := 1; i < len(bs); i++ {
 			got = append(got, string(rs[bs[i-1]:bs[i]]))
 		}
@@ -149,7 +156,7 @@ func TestBoundariesLongRuns(t *testing.T) {
 			want: []int32{0, 2*n + 3},
 		},
 	} {
-		if got := segment.Boundaries(tc.g, tc.in, nil); !slices.Equal(got, tc.want) {
+		if got := segment.Boundaries(tc.g, tc.in, "", nil); !slices.Equal(got, tc.want) {
 			t.Errorf("%s: got %d boundaries, want %d", tc.name, len(got), len(tc.want))
 		}
 	}
@@ -165,7 +172,7 @@ func TestBoundariesPoll(t *testing.T) {
 				t.Errorf("Boundaries did not stop")
 			}
 		}()
-		segment.Boundaries(g, []rune(input), func() { panic(stop{}) })
+		segment.Boundaries(g, []rune(input), "", func() { panic(stop{}) })
 	}
 	t.Run("sentence", func(t *testing.T) {
 		check(t, segment.Sentence, strings.Repeat(" ", 1<<20))

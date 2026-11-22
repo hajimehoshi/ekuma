@@ -3,7 +3,7 @@
 
 //go:build ignore
 
-// This program generates the Thai and Han word tries from ICU4C.
+// This program generates word tries from ICU4C.
 package main
 
 import (
@@ -17,7 +17,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/hajimehoshi/ekuma/internal/unicode/datafile"
@@ -79,9 +78,6 @@ func generate(filename, out string, weighted bool) error {
 		word := fields[0]
 		cost := uint64(1)
 		if weighted {
-			if strings.IndexFunc(word, func(r rune) bool { return !unicode.Is(unicode.Han, r) }) >= 0 {
-				continue
-			}
 			cost, err = strconv.ParseUint(fields[1], 10, 8)
 			if err != nil || cost == 0 {
 				return fmt.Errorf("invalid word cost in %q", line)
@@ -112,10 +108,9 @@ func generate(filename, out string, weighted bool) error {
 }
 
 func main() {
-	if err := generate("thaidict.txt", "thai.deflate", false); err != nil {
-		log.Fatal(err)
-	}
-	if err := generate("cjdict.txt", "han.deflate", true); err != nil {
-		log.Fatal(err)
+	for _, name := range []string{"thai", "khmer", "burmese", "cj"} {
+		if err := generate(name+"dict.txt", name+".deflate", name == "cj"); err != nil {
+			log.Fatal(err)
+		}
 	}
 }

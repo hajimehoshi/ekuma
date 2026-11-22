@@ -67,7 +67,8 @@ func (p property) quickYes(form Form) bool {
 	return p&(1<<(8+form)) == 0
 }
 
-func boundaryBefore(form Form, r rune) bool {
+// BoundaryBefore reports whether normalization can split immediately before r.
+func BoundaryBefore(form Form, r rune) bool {
 	for {
 		p := lookup(r)
 		s := p.mapping(form)

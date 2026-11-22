@@ -20,9 +20,11 @@ const UnicodeVersion = "17.0.0"
 const ICUVersion = "79.1"
 
 var icuChecksums = map[string]string{
-	"icu4c/source/data/brkitr/dictionaries/cjdict.txt":   "e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0",
-	"icu4c/source/data/brkitr/dictionaries/thaidict.txt": "3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274",
-	"icu4c/source/i18n/persncal.cpp":                     "31e7e93bb7dc1e4436c58ffd44fd1ed2686ceb79228b8d989f6573ec15ed5f45",
+	"icu4c/source/data/brkitr/dictionaries/burmesedict.txt": "61d8abc3d9102b2f9bf0c9f44db0d7ab89b18172d8cd26832e4c83174bd8673b",
+	"icu4c/source/data/brkitr/dictionaries/cjdict.txt":      "e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0",
+	"icu4c/source/data/brkitr/dictionaries/khmerdict.txt":   "87bee2d17cd5148aa36957eb05409eefc124de8ad519b81b789298ef3e60b5d9",
+	"icu4c/source/data/brkitr/dictionaries/thaidict.txt":    "3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274",
+	"icu4c/source/i18n/persncal.cpp":                        "31e7e93bb7dc1e4436c58ffd44fd1ed2686ceb79228b8d989f6573ec15ed5f45",
 }
 
 // ReadICU returns a source file from the pinned ICU release.
@@ -41,6 +43,7 @@ var unicodeChecksums = map[string]string{
 	"ucd/CaseFolding.txt":                       "ff8d8fefbf123574205085d6714c36149eb946d717a0c585c27f0f4ef58c4183",
 	"ucd/DerivedCoreProperties.txt":             "24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08",
 	"ucd/DerivedNormalizationProps.txt":         "71fd6a206a2c0cdd41feb6b7f656aa31091db45e9cedc926985d718397f9e488",
+	"ucd/LineBreak.txt":                         "e6a18fa91f8f6a6f8e534b1d3f128c21ada45bfe152eb6b1bcc5e15fd8ac92e6",
 	"ucd/PropertyValueAliases.txt":              "64e9a5f76f7a1e8b5a47d6a1f9a26522a251208f5276bdfa1559dac7cf2e827a",
 	"ucd/ScriptExtensions.txt":                  "ec2107e58825a1586acee8e0911ce18260394ac8b87e535ca325f1ccbeb06bc6",
 	"ucd/Scripts.txt":                           "9f5e50d3abaee7d6ce09480f325c706f485ae3240912527e651954d2d6b035bf",

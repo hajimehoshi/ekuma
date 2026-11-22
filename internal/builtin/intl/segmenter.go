@@ -73,7 +73,7 @@ func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s wtf8.
 
 func (d *segmentsData) boundaries(vm *engine.VM) []int32 {
 	if d.bounds == nil {
-		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes, vm.Poll)
+		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes, d.segmenter.locale, vm.Poll)
 	}
 	return d.bounds
 }
