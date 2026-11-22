@@ -102,6 +102,7 @@ func Run(t *testing.T) {
 		t.Run("pluralRanges.txt", func(t *testing.T) {
 			runPluralRanges(t, filepath.Join(misc, "pluralRanges.txt"), filepath.Join(misc, "plurals.txt"))
 		})
+		runDateIntervals(t, cldrDir, fixtures)
 		t.Run("caltestdata.h", func(t *testing.T) {
 			runLunarMapping(t, filepath.Join(cldrDir, "icu4c/source/test/intltest/caltestdata.h"))
 		})
@@ -164,6 +165,11 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 			continue
 		}
 		entries, ok := fixtures[name]
+		if fixture, _, hasOp := strings.Cut(name, "/"); hasOp && !ok && (fixture == "cdateintervalformattest.c" || fixture == "dtifmtts.cpp") {
+			entries = map[int]string{}
+			fixtures[name] = entries
+			ok = true
+		}
 		if !ok {
 			t.Fatalf("%s:%d: unknown operation or fixture %q", failuresFile, i+1, name)
 		}

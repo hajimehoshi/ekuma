@@ -85,6 +85,9 @@ jobs:
             /icu4c/source/test/testdata/dcfmtest.txt
             /icu4c/source/test/testdata/calendar.txt
             /icu4c/source/test/testdata/format.txt
+            /icu4c/source/test/cintltst/cdateintervalformattest.c
+            /icu4c/source/test/intltest/dtifmtts.cpp
+            /icu4c/source/i18n/unicode/udat.h
             /icu4c/source/test/intltest/caltestdata.h
             /icu4c/source/data/misc/plurals.txt
             /icu4c/source/data/misc/pluralRanges.txt

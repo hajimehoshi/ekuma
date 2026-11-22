@@ -83,6 +83,17 @@ func (f *formatFixture) check(line int, op string, fn ekuma.Value, want string, 
 	case listed && actual == known:
 		f.known++
 	case actual != want:
+		if op == "formatRangeToParts" {
+			gotParts, wantParts := strings.Split(actual, "\n"), strings.Split(want, "\n")
+			for i := range min(len(gotParts), len(wantParts)) {
+				if gotParts[i] != wantParts[i] {
+					f.t.Errorf("%s:%d: %s(%v): part %d: got %q, want %q", f.path, line, op, args, i, gotParts[i], wantParts[i])
+					return
+				}
+			}
+			f.t.Errorf("%s:%d: %s(%v): got %d parts, want %d", f.path, line, op, args, len(gotParts), len(wantParts))
+			return
+		}
 		f.t.Errorf("%s:%d: %s(%v): got %q, want %q", f.path, line, op, args, actual, want)
 	}
 }

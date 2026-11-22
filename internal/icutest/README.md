@@ -10,10 +10,11 @@ go test -count=1 -v -run '^TestICU$/^([Nn]umber|dcfmtest|icu4j-Number)' .
 go test -count=1 -v -run '^TestICU$/^localeDisplayName' .
 go test -count=1 -v -run '^TestICU$/^(plural|icu4j-plurals)' .
 go test -count=1 -v -run '^TestICU$/^(calendar|caltestdata|format\.txt)' .
+GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(cdateintervalformattest\.c|dtifmtts\.cpp)$' .
 go test -count=1 -v -run '^TestICU$' .
 ```
 
-The four areas use ICU 79.1, which supplies the CLDR 49 expectations. Ekuma
+These fixtures use ICU 79.1, which supplies the CLDR 49 expectations. Ekuma
 also pins ICU 79.1 for calendar data and ICU4X `icu_calendar` 2.4.0 for its
 East Asian year tables. For Korean years 1391–1911 it uses the historical
 table from .NET 10.0.0, which its authors checked against the Korea Astronomy
@@ -46,7 +47,9 @@ the test. [Known results](testdata/icu-failures.txt)
 | `calendar.txt` | 72 | 18 | 0 | `dadrcal.cpp` and `DataDrivenCalendarTest.java`. Both conversion directions, month codes, leap months, eras, date addition, and epoch-millisecond addition. Temporal has no field-roll operation. |
 | `format.txt` | 19 | 43 | 4 | `dadrfmt.cpp` and `DataDrivenFormatTest.java`. Style formatting and the era/year fields of `G y` and `G yy` through `formatToParts`. Parsing, longer padded year widths, and ICU relative-date words and join patterns are excluded. |
 | `caltestdata.h` | 14,610 | 60 | 0 | `CalendarTest::TestChineseCalendarMapping`. Both directions of every active Gregorian/lunar row, including cyclic year, one-based month, leap flag, and day. ICU marks the disabled rows with `//#`. |
-| **Stage 5 total** | **37,246** | **7,770** | **5** | 12 fixtures |
+| `cdateintervalformattest.c` | 195 | 12 | 59 | 95 exact strings and 100 parts checks. Covers explicit zones, minute positions, collapsed ranges, and complete German field and span tables. |
+| `dtifmtts.cpp` | 464 | 115 | 252 | 459 exact strings and 5 parts checks. Covers localized skeletons, hour cycles, fractional seconds, Japanese and ROC eras, and shared or endpoint-specific fields. |
+| **Total** | **37,905** | **7,897** | **316** | 14 fixtures |
 
 The permutation, specification, and display-name files have identical Git
 blobs in ICU4C and ICU4J. Each runs once. The Java calendar and format
@@ -61,3 +64,46 @@ Its MessageFormat fixtures exercise message evaluation.
 - Cardinal, ordinal, and range checks preserve visible fraction digits with digit options. ICU4J phrase wording can be shared by several categories. The original reader extracts a numeric input, and ICU's CLDR resource supplies the category rules for that input. The number specification separately expects `other` for Serbian scientific `2E0`, where Ekuma selects `few`. [Original ICU4J reader](https://github.com/unicode-org/icu/blob/4524c8c33d1f59eabc0ed0e5e87bd59eef0a871d/icu4j/main/tests/core/src/com/ibm/icu/dev/test/format/WritePluralRulesData.java#L325) · [ECMA-402 range resolution](https://tc39.es/ecma402/#sec-resolvepluralrange)
 - In `calendar.txt`, an empty target field inherits the source field. ICU month numbers are zero-based, and a leap month repeats a month number. Temporal's month code carries the leap flag. The Dangi cases check November 3, 1880, the first day of lunar month 10, in both directions.
 - ICU's formatting harness defaults to `America/Los_Angeles`. The date tests pass the zone explicitly. Ekuma uses an ASCII space before AM/PM in four strings. The distant Hebrew date also uses a Pacific time-zone name where ICU expects an offset. The separate lunar table's reader requests the unrecognized ICU zone ID `China`, which resolves to a fixed zero offset.
+
+## Date interval fixtures
+
+The 0BSD Go adapter reads the ICU sources as data at test time. The original
+string literals, interval field tables, and Japanese-era macro definitions
+live in the pinned ICU checkout. `formatRange` compares the entire Unicode
+string. For complete `formatRangeToParts` expectations, each ICU date field
+sets a part type and each interval span sets its source. Gaps between fields
+become literals. The adapter slices the expected text at both kinds of
+boundary in UTF-16 code units. An interval with no spans has only shared parts.
+[ICU field fixtures](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/cintltst/cdateintervalformattest.c) ·
+[ICU interval fixtures](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/intltest/dtifmtts.cpp)
+
+| Upstream cases | Coverage |
+|---|---|
+| `TestDateIntervalFormat` | All 11 default-context rows, including the same instants in US/Pacific and Asia/Tokyo. Nine rows request capitalization for a sentence, list, or standalone use (three each). |
+| `TestFPos_SkelWithSeconds` | Nine skeleton/locale combinations at nine GMT deltas. Every row checks both the text and the first minute's value and offsets, including its absence. In 16 rows distinct instants collapse to the zero-delta text and every part must be shared. |
+| `TestFormatToResult`, `TestFormatCalendarToResult` | Complete text and parts across months, within a day, and for the proleptic Gregorian case. Two calendar-overload rows repeat the same expectations. One row requests ICU's historical Julian/Gregorian cutover. |
+| `testFormat`, `testHourMetacharacters`, `testTicket20707` | Read both flat tables and the locale-by-skeleton midnight matrix. The skeleton determines the clock family. A compatible locale override selects the cycle within it. The C++ harness uses Los Angeles for wall times and the midnight matrix uses UTC. The adapter converts Buddhist and Japanese era years to instants before formatting. |
+| `testFormatMillisecond`, `testTicket11583_2`, `testTicket21222*EraDiff` | Fractional seconds use the requested precision, including omitted fields that distinguish endpoints. The March 2019 Los Angeles DST gap advances the skipped wall time. Also checks Spanish month/year ranges and the Japanese and ROC era boundaries at 06:00 GMT. |
+| `testFormattedDateInterval`, `testTicket20710_FieldIdentity` | Exact English text and parts for same-month and identical dates, the specified start span across months, and source attribution with distinct or identical CET endpoints. Date-only calendar inputs use local midnight. |
+
+The C++ exclusions count 1 root locale, 5 padded-year skeletons, 6 explicit
+AM/PM widths, 3 noon/midnight day periods, and 7 suppressed day periods on
+12-hour clocks. Six early-date assertions in `testYearFormats` and the
+Gregorian era ticket use Julian calendar dates. The user-defined
+`DateIntervalInfo` table supplies 22 custom patterns and the formatted-result
+test has 1 custom reversed fallback. The context table repeats 3 C cases and
+requests 9 capitalization overrides. Two API time-zone examples repeat the
+C fixture. The stress test supplies 6 date pairs without expected strings.
+The quick interval-identity matrix computes its own reference text for
+44 locale/skeleton combinations. API lifecycle, threading, construction,
+and pattern-inspection tests supply no further fixed range results.
+
+Of the 311 known differences, 278 reproduce Ekuma's web-compatible spaces
+around English interval separators or before day periods. The remaining C
+differences include Japanese date patterns and their minute offsets, Czech
+month ranges, and the German `Uhr` field. ICU labels `Uhr` as a shared day
+period. Ekuma includes it in the preceding literal. The remaining C++
+differences involve month-only ranges across years, Chinese and Japanese
+date patterns, German month abbreviations, and Thai era and month formatting.
+Each entry applies to one operation and explicit upstream lines.
+[Known results](testdata/icu-failures.txt)
