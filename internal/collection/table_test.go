@@ -306,6 +306,20 @@ func TestCopyFromPolls(t *testing.T) {
 	}
 }
 
+func TestCopyFromAfterDeletingAllEntries(t *testing.T) {
+	var src, dst collection.Table
+	src.Set(engine.Number(1), engine.Number(42))
+	dst.Set(engine.Number(2), engine.Undefined)
+	cursor := dst.Start()
+	dst.Next(&cursor)
+	dst.Delete(engine.Number(2))
+	dst.CopyFrom(&src, nil)
+	key, value, ok := dst.Next(&cursor)
+	if !ok || key.Number() != 1 || value.Number() != 42 {
+		t.Errorf("next copied entry = (%v, %v, %t), want (1, 42, true)", key, value, ok)
+	}
+}
+
 // TestQueue tests that a table from which the oldest entry is deleted for every new one finds
 // its entries and keeps storage in proportion to them.
 func TestQueue(t *testing.T) {

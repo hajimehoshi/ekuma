@@ -728,6 +728,10 @@ func (t *Table) Clone() *Table {
 // be nil, is called now and then over many entries and may stop the copy by panicking, which
 // leaves t unusable.
 func (t *Table) CopyFrom(src *Table, poll func()) {
+	// An empty table can still have deleted entries and cursors positioned after them.
+	if t.n != 0 || t.indexed {
+		t.Clear()
+	}
 	t.setStorage(src.live)
 	for i := range src.n {
 		if poll != nil && i&(engine.PollInterval-1) == engine.PollInterval-1 {
