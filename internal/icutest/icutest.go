@@ -104,6 +104,7 @@ func Run(t *testing.T) {
 		})
 		runDateIntervals(t, cldrDir, fixtures)
 		runNumberRanges(t, cldrDir)
+		runListFormats(t, cldrDir)
 		t.Run("caltestdata.h", func(t *testing.T) {
 			runLunarMapping(t, filepath.Join(cldrDir, "icu4c/source/test/intltest/caltestdata.h"))
 		})

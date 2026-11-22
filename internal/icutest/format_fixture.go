@@ -55,6 +55,11 @@ func (f *formatFixture) track(op string, entries map[int]string) {
 func (f *formatFixture) function(source string) ekuma.Value {
 	f.t.Helper()
 	var vm ekuma.VM
+	return f.functionIn(&vm, source)
+}
+
+func (f *formatFixture) functionIn(vm *ekuma.VM, source string) ekuma.Value {
+	f.t.Helper()
 	s, err := vm.ParseScript(f.path+".js", source)
 	if err != nil {
 		f.t.Fatal(err)

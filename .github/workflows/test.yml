@@ -89,6 +89,8 @@ jobs:
             /icu4c/source/test/intltest/dtifmtts.cpp
             /icu4c/source/test/cintltst/unumberrangeformattertst.c
             /icu4c/source/test/intltest/numbertest_range.cpp
+            /icu4c/source/test/intltest/listformattertest.cpp
+            /icu4c/source/test/cintltst/ulistfmttest.c
             /icu4c/source/i18n/unicode/udat.h
             /icu4c/source/test/intltest/caltestdata.h
             /icu4c/source/data/misc/plurals.txt
@@ -97,6 +99,7 @@ jobs:
             /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/plurals.txt
             /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberRangeFormatterTest.java
             /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/PluralRangesTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/ListFormatterTest.java
           sparse-checkout-cone-mode: false
 
       - name: Checkout test262
