@@ -80,6 +80,9 @@ func (vm *VM) callEval(regs []Value, i *bytecode.Instr, site, argc int) (Value, 
 // directEval implements PerformEval for a direct eval of x by the running function at its
 // call site site.
 func (vm *VM) directEval(x Value, site int) Value {
+	if vm.interrupt.Load() {
+		vm.Poll()
+	}
 	if !x.IsString() {
 		return x
 	}

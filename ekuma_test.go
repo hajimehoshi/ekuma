@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
@@ -1269,6 +1270,31 @@ func TestCancel(t *testing.T) {
 	if !ran.IsUndefined() {
 		t.Errorf("a script ran under a context that was already done")
 	}
+}
+
+func TestCancelBeforeHostCall(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		var calls int
+		step := vm.FuncOf("step", func(ekuma.Value, []ekuma.Value) (any, error) {
+			calls++
+			cancel()
+			// Wait until the VM has received the cancellation.
+			synctest.Wait()
+			return nil, nil
+		})
+		if err := vm.Global().Set("step", step); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := runScript(ctx, &vm, "cancel", "step(); step();"); !errors.Is(err, context.Canceled) {
+			t.Errorf("got %v, want context.Canceled", err)
+		}
+		if calls != 1 {
+			t.Errorf("got %d host calls, want 1", calls)
+		}
+	})
 }
 
 // TestCancelLoopConditions tests that a context stops the loops whose conditions jump back.

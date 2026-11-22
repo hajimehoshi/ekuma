@@ -1348,6 +1348,9 @@ func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *
 
 // Construct implements Construct: new f(...args) with the given new.target.
 func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
+	if vm.interrupt.Load() {
+		vm.Poll()
+	}
 	fn := f.fn
 	for b := fn.bound; b != nil; b = fn.bound {
 		if len(b.args) > 0 {

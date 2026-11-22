@@ -1284,6 +1284,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				i = n
 				pc++
 			}
+			if vm.interrupt.Load() {
+				break
+			}
 			// f is the callee and first the register of its first argument. The this value is in
 			// the register before first, and is read only once the frame is certain, so that it
 			// takes no registers while the frame is checked.
@@ -2357,7 +2360,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// the OpExtra that follows the instruction. This is not a fast path above, as the
 				// registers its tests take there made the loop store the values it carries
 				// before every instruction where registers are few, as on amd64.
-				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil {
+				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil && !vm.interrupt.Load() {
 					if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
 						n := len(vm.frames)
 						cur := &vm.frames[n-1]
@@ -3147,6 +3150,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	call:
 		// The arguments are on the stack from argBase on.
 		{
+			if vm.interrupt.Load() {
+				vm.frames[len(vm.frames)-1].pc = pc
+				vm.Poll()
+			}
 			if f == nil || f.fn == nil {
 				vm.frames[len(vm.frames)-1].pc = pc
 				vm.throwNotCallable(fp, pc, slices.Clip(regs))
@@ -3211,9 +3218,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						}
 					}
 				}
-				// A native function of the current realm is called directly. Like the call of a
-				// closure above, it does not poll for an interruption, which loops do at their
-				// backward jumps.
+				// A native function of the current realm is called directly.
 				if info == nil || info.realm == vm.curRealm {
 					vm.ensureStack(argBase + argc)
 					saved := vm.sp
