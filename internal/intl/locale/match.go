@@ -161,6 +161,10 @@ func matchingLocale(t Tag, bestFit bool) (matched string, related bool) {
 		return prefix, false
 	}
 	want, ok := AddLikelySubtags(t.LanguageID)
+	if !ok && t.Script != "" {
+		// Best-fit matching can use the script's likely region to find a related language.
+		want, ok = lookupLikelySubtags(t.LanguageID, "und-"+t.Script)
+	}
 	if !ok {
 		return prefix, false
 	}

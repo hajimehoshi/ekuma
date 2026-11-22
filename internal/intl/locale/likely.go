@@ -13,38 +13,44 @@ func AddLikelySubtags(id LanguageID) (LanguageID, bool) {
 	l, s, r := id.Language, id.Script, id.Region
 	var keys []string
 	if s != "" && r != "" {
+		// A fully specified language ID needs no entry in the likely-subtags data.
+		if l != "und" && s != "Zzzz" && r != "ZZ" {
+			return id, true
+		}
 		keys = append(keys, l+"-"+s+"-"+r)
-	}
-	if r != "" {
-		keys = append(keys, l+"-"+r)
 	}
 	if s != "" {
 		keys = append(keys, l+"-"+s)
 	}
-	keys = append(keys, l)
-	if l != "und" && s != "" {
-		keys = append(keys, "und-"+s)
+	if r != "" {
+		keys = append(keys, l+"-"+r)
 	}
+	keys = append(keys, l)
 	for _, k := range keys {
-		v, ok := cldr.LikelySubtags.Lookup(k)
-		if !ok {
-			continue
+		if max, ok := lookupLikelySubtags(id, k); ok {
+			return max, true
 		}
-		t, _ := Parse(v)
-		m := t.LanguageID
-		if l != "und" {
-			m.Language = l
-		}
-		if s != "" {
-			m.Script = s
-		}
-		if r != "" {
-			m.Region = r
-		}
-		m.Variants = id.Variants
-		return m, true
 	}
 	return id, false
+}
+
+// lookupLikelySubtags fills the missing fields of id from the entry for key.
+func lookupLikelySubtags(id LanguageID, key string) (LanguageID, bool) {
+	v, ok := cldr.LikelySubtags.Lookup(key)
+	if !ok {
+		return id, false
+	}
+	t, _ := Parse(v)
+	if id.Language == "und" {
+		id.Language = t.Language
+	}
+	if id.Script == "" {
+		id.Script = t.Script
+	}
+	if id.Region == "" {
+		id.Region = t.Region
+	}
+	return id, true
 }
 
 // RemoveLikelySubtags implements the Remove Likely Subtags algorithm of UTS 35 for id, which

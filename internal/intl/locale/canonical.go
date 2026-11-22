@@ -63,57 +63,48 @@ var aliasSubtags = sync.OnceValue(func() map[string]struct{} {
 	return m
 })
 
-// replaceLanguageAlias applies the first language alias rule that matches id, and reports
-// whether one did. Rules with more variants come first, then rules with a region, then the
-// rule for the language alone.
-func replaceLanguageAlias(id *LanguageID) bool {
-	try := func(key string) bool {
-		r, ok := cldr.LanguageAliases.Lookup(key)
-		if !ok {
-			return false
-		}
-		rule := parseReplacement(key)
-		applyAlias(id, rule, parseReplacement(r))
+// replaceLanguageAlias applies the rule for key to id and reports whether it exists.
+func replaceLanguageAlias(id *LanguageID, key string) bool {
+	r, ok := cldr.LanguageAliases.Lookup(key)
+	if !ok {
+		return false
+	}
+	applyAlias(id, parseReplacement(key), parseReplacement(r))
+	return true
+}
+
+// replaceCompoundAlias applies the first matching compound language alias in CLDR 49.
+func replaceCompoundAlias(id *LanguageID) bool {
+	// Each compound rule has two subtags. UTS 35 gives a language and region
+	// precedence over a language and variant, then a pair of variants.
+	// An "und" in a rule matches any language and does not count as a subtag.
+	if id.Region != "" && replaceLanguageAlias(id, id.Language+"-"+id.Region) {
 		return true
 	}
-	langs := []string{id.Language}
-	if id.Language != "und" {
-		langs = append(langs, "und")
-	}
-	// Only the variants of the rules can match, which keeps the pairs few.
 	aliased := aliasSubtags()
 	var variants []string
 	for _, v := range id.Variants {
 		if _, ok := aliased[v]; ok {
+			if id.Language != "und" && replaceLanguageAlias(id, id.Language+"-"+v) {
+				return true
+			}
 			variants = append(variants, v)
 		}
 	}
 	for i, v := range variants {
 		for _, w := range variants[i+1:] {
-			for _, l := range langs {
-				if try(l + "-" + v + "-" + w) {
-					return true
-				}
-			}
-		}
-	}
-	for _, v := range variants {
-		for _, l := range langs {
-			if try(l + "-" + v) {
+			if replaceLanguageAlias(id, "und-"+v+"-"+w) {
 				return true
 			}
 		}
 	}
-	if id.Region != "" && try(id.Language+"-"+id.Region) {
-		return true
-	}
-	return id.Language != "und" && try(id.Language)
+	return false
 }
 
 // replaceAliases replaces the aliases in id as the canonicalization of UTS 35 does.
 func replaceAliases(id *LanguageID) {
 	for range maxAliasSteps {
-		if replaceLanguageAlias(id) {
+		if replaceCompoundAlias(id) || replaceLanguageAlias(id, id.Language) {
 			continue
 		}
 		if id.Script != "" {
@@ -130,6 +121,10 @@ func replaceAliases(id *LanguageID) {
 		}
 		changed := false
 		for i, v := range id.Variants {
+			if replaceLanguageAlias(id, "und-"+v) {
+				changed = true
+				break
+			}
 			if r, ok := cldr.VariantAliases.Lookup(v); ok {
 				vs := slices.Delete(slices.Clone(id.Variants), i, i+1)
 				if !slices.Contains(vs, r) {

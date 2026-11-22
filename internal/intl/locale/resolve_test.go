@@ -62,6 +62,21 @@ func TestResolveLocale(t *testing.T) {
 			wantData:   "fr",
 			wantValue:  "arab",
 		},
+		{
+			// Neither quh nor und-Latn has a likely-subtags entry.
+			name:       "related language with explicit script and region",
+			requested:  []string{"quh-Latn-BO"},
+			wantLocale: "qu-BO",
+			wantData:   "qu-BO",
+			wantValue:  "latn",
+		},
+		{
+			name:       "related language with only an explicit script",
+			requested:  []string{"czo-Hans"},
+			wantLocale: "zh",
+			wantData:   "zh",
+			wantValue:  "latn",
+		},
 	} {
 		r := locale.ResolveLocale(tc.requested, "en-US", true, []locale.ExtensionKey{{
 			Key:       "nu",
