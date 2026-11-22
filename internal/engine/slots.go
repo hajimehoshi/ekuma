@@ -168,25 +168,37 @@ func IntlData(v Value) any {
 	return nil
 }
 
+// dateObject keeps a Date object and its [[DateValue]] in one allocation. The internal state of
+// the object points to tv, so that setting the date value allocates nothing.
+type dateObject struct {
+	propertyObject
+	tv float64
+}
+
 // NewDateObject returns a Date object with the prototype proto whose [[DateValue]] is tv.
 func (vm *VM) NewDateObject(proto *Object, tv float64) *Object {
-	o := vm.NewObject(proto)
-	o.class = classDate
-	o.setExtState(tv)
+	d := &dateObject{
+		kind:  kindObject,
+		class: classDate,
+		shape: vm.shapeFor(proto),
+		tv:    tv,
+	}
+	o := d.init()
+	o.ext = &d.tv
 	return o
 }
 
 // ThisTimeValue implements thisTimeValue. It reports false when the specification throws.
 func ThisTimeValue(v Value) (float64, bool) {
 	if v.IsObject() && v.o.class == classDate {
-		return v.o.extState().(float64), true
+		return *v.o.extState().(*float64), true
 	}
 	return 0, false
 }
 
 // SetDateValue sets the [[DateValue]] of the Date object v to tv.
 func SetDateValue(v Value, tv float64) {
-	v.o.setExtState(tv)
+	*v.o.extState().(*float64) = tv
 }
 
 // IteratorState returns the state of the built-in iterator object v,
