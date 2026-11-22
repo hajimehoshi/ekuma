@@ -9,9 +9,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
@@ -429,15 +426,11 @@ func initString(vm *engine.VM) {
 	}
 	// The uppercase mapping without a language maps each character on its own.
 	upper := stringMapping{
-		f: contextFree(func(s string) string {
-			return cases.Upper(language.Und).String(s)
-		}),
+		f:        contextFree(xstrings.ToUpperCase),
 		boundary: runeBoundary,
 	}
 	lower := stringMapping{
-		f: func(s string, start, end int, poll func()) string {
-			return xstrings.ToLowerCase(s, start, end, poll)
-		},
+		f:        xstrings.ToLowerCase,
 		boundary: runeBoundary,
 	}
 	mapShortCase("toUpperCase", true, strings.ToUpper, upper)

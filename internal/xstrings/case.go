@@ -4,8 +4,8 @@
 package xstrings
 
 import (
+	"sort"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 )
 
@@ -13,33 +13,77 @@ import (
 // function.
 const pollRunes = 1 << 14
 
-// ToLowerCase converts s[start:end] to lowercase with the root locale's full case mapping, in the
-// context of the rest of s. s must be valid UTF-8, and start and end must be rune boundaries.
-// poll, which may be nil, is called now and then during a long mapping, and may stop it by
-// panicking.
+//go:generate go run gen_case.go
+
+// A caseRange maps every stride-th rune from lo through hi.
+type caseRange struct {
+	lo, hi    rune
+	stride    rune
+	delta     rune
+	expansion string
+}
+
+type caseTable []caseRange
+
+func (ranges caseTable) lookup(r rune) *caseRange {
+	i := sort.Search(len(ranges), func(i int) bool { return ranges[i].hi >= r })
+	if i == len(ranges) {
+		return nil
+	}
+	m := &ranges[i]
+	if r < m.lo || (r-m.lo)%m.stride != 0 {
+		return nil
+	}
+	return m
+}
+
+// ToUpperCase returns the full default uppercase mapping of a valid UTF-8 string.
+func ToUpperCase(s string) string {
+	return mapCase(s, 0, len(s), true, nil)
+}
+
+// ToLowerCase maps s[start:end] to full default lowercase in the context of s.
+// s must be valid UTF-8 and both offsets must be rune boundaries.
+// A non-nil poll may interrupt a long mapping.
 func ToLowerCase(s string, start, end int, poll func()) string {
+	return mapCase(s, start, end, false, poll)
+}
+
+func mapCase(s string, start, end int, upper bool, poll func()) string {
+	ranges := lowerCaseRanges
+	if upper {
+		ranges = upperCaseRanges
+	}
 	var b strings.Builder
-	b.Grow(end - start)
-	n := 0
+	copied := start
+	var n int
 	for k, r := range s[start:end] {
-		if n++; n%pollRunes == 0 && poll != nil {
+		if n++; poll != nil && n%pollRunes == 0 {
 			poll()
 		}
-		i := start + k
-		switch r {
-		case '\u0130':
-			// LATIN CAPITAL LETTER I WITH DOT ABOVE keeps the dot as a combining character.
-			b.WriteString("i\u0307")
-		case '\u03A3':
-			if isFinalSigma(s, i, poll) {
-				b.WriteRune('\u03C2')
-			} else {
-				b.WriteRune('\u03C3')
-			}
-		default:
-			b.WriteRune(unicode.ToLower(r))
+		m := ranges.lookup(r)
+		if m == nil {
+			continue
 		}
+		i := start + k
+		if b.Cap() == 0 {
+			b.Grow(end - start)
+		}
+		b.WriteString(s[copied:i])
+		switch {
+		case !upper && r == 'Σ' && isFinalSigma(s, i, poll):
+			b.WriteRune('ς')
+		case m.expansion != "":
+			b.WriteString(m.expansion)
+		default:
+			b.WriteRune(r + m.delta)
+		}
+		copied = i + utf8.RuneLen(r)
 	}
+	if copied == start {
+		return s[start:end]
+	}
+	b.WriteString(s[copied:end])
 	return b.String()
 }
 
@@ -61,10 +105,10 @@ func EndsWithCasedLetter(s string, poll func()) bool {
 		}
 		r, size := utf8.DecodeLastRuneInString(s)
 		s = s[:len(s)-size]
-		if isCaseIgnorable(r) {
+		if inCaseProperty(r, caseIgnorableBounds) {
 			continue
 		}
-		return isCased(r)
+		return inCaseProperty(r, casedBounds)
 	}
 	return false
 }
@@ -77,26 +121,16 @@ func StartsWithCasedLetter(s string, poll func()) bool {
 		if n++; n%pollRunes == 0 && poll != nil {
 			poll()
 		}
-		if isCaseIgnorable(r) {
+		if inCaseProperty(r, caseIgnorableBounds) {
 			continue
 		}
-		return isCased(r)
+		return inCaseProperty(r, casedBounds)
 	}
 	return false
 }
 
-// isCased reports whether r has the Unicode Cased property.
-func isCased(r rune) bool {
-	return unicode.In(r, unicode.Lu, unicode.Ll, unicode.Lt, unicode.Other_Lowercase, unicode.Other_Uppercase)
-}
-
-// isCaseIgnorable reports whether r has the Unicode Case_Ignorable property.
-func isCaseIgnorable(r rune) bool {
-	switch r {
-	// Word_Break values MidLetter, MidNumLet and Single_Quote.
-	case '\'', '.', ':', '\u00B7', '\u0387', '\u055F', '\u05F4', '\u2018', '\u2019', '\u2024', '\u2027',
-		'\uFE13', '\uFE52', '\uFE55', '\uFF07', '\uFF0E', '\uFF1A':
-		return true
-	}
-	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf, unicode.Lm, unicode.Sk)
+// inCaseProperty reports whether r is in a half-open range delimited by bounds.
+func inCaseProperty(r rune, bounds []rune) bool {
+	i := sort.Search(len(bounds), func(i int) bool { return bounds[i] > r })
+	return i%2 != 0
 }
