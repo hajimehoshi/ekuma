@@ -1516,9 +1516,10 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 			f.emit(bytecode.OpMove, dst, r.b.reg, 0)
 		}
 	case refUpval:
-		f.emit(bytecode.OpGetUpval, dst, r.index, 0)
 		if r.needsCheck() {
-			f.emit(bytecode.OpCheckTDZ, dst, f.key(wtf8.String(name)), 0)
+			f.emit(bytecode.OpGetUpvalChecked, dst, r.index, f.key(wtf8.String(name)))
+		} else {
+			f.emit(bytecode.OpGetUpval, dst, r.index, 0)
 		}
 	case refGlobal:
 		op := bytecode.OpGetGlobal
@@ -1624,8 +1625,7 @@ func (f *fn) checkTDZ(r ref, name string) {
 		f.emit(bytecode.OpCheckTDZ, r.b.reg, f.key(wtf8.String(name)), 0)
 	case refUpval:
 		t := f.newReg()
-		f.emit(bytecode.OpGetUpval, t, r.index, 0)
-		f.emit(bytecode.OpCheckTDZ, t, f.key(wtf8.String(name)), 0)
+		f.emit(bytecode.OpGetUpvalChecked, t, r.index, f.key(wtf8.String(name)))
 		f.free(t)
 	}
 }

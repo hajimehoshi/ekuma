@@ -587,6 +587,16 @@ var opcodes = [...]struct {
 		},
 		flow: FlowNext,
 	},
+	OpGetUpvalChecked: {
+		name: "OpGetUpvalChecked",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandUpval,
+			C:      OperandKey,
+			Writes: regA,
+		},
+		flow: FlowNext,
+	},
 	OpSetUpval: {
 		name: "OpSetUpval",
 		operands: Operands{

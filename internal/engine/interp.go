@@ -1627,6 +1627,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		}
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
+		case bytecode.OpGetUpvalChecked:
+			v := *vm.frames[len(vm.frames)-1].cl.fn.upvals[i.B].p
+			if v.o == tdzObject {
+				vm.frames[len(vm.frames)-1].pc = pc
+				vm.throwTDZ(fp.keys[i.C])
+			}
+			regs[i.A] = v
 		case bytecode.OpCheckTDZ:
 			if regs[i.A].o == tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc

@@ -70,10 +70,11 @@ const (
 	OpDeclareAnnexB          // a = whether the global variable Keys[b] of a block-level function is declared; c is a set of GlobalVar flags
 
 	// Upvalues and closures.
-	OpGetUpval    // a = upvalue b
-	OpSetUpval    // upvalue b = a
-	OpCloseUpvals // detach the upvalues that refer to the registers from a on
-	OpClosure     // a = closure of Protos[b]
+	OpGetUpval        // a = upvalue b
+	OpGetUpvalChecked // a = upvalue b, throwing a ReferenceError naming Keys[c] if it is uninitialized
+	OpSetUpval        // upvalue b = a
+	OpCloseUpvals     // detach the upvalues that refer to the registers from a on
+	OpClosure         // a = closure of Protos[b]
 
 	// The values that the running function provides.
 	OpLoadThis       // a = this
