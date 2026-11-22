@@ -373,37 +373,7 @@ func (f *fn) decorator(state int32, e ast.Expr) {
 	f.setPos(e.Start())
 	// The decorator goes to base and its receiver to base+1.
 	base := f.newRegs(2)
-	switch e := e.(type) {
-	case *ast.MemberExpr:
-		f.expr(e.Object, base+1)
-		f.setPos(e.Property.Start())
-		if p, ok := e.Property.(*ast.PrivateName); ok {
-			name := f.newReg()
-			f.loadVar("#"+p.Name, name, false)
-			f.emit(bytecode.OpGetPrivate, base, base+1, name)
-			break
-		}
-		f.emitGetProp(base, base+1, f.site(wtf8.String(e.Property.(*ast.Identifier).Name)))
-	case *ast.Identifier:
-		if scope := f.resolveName(e.Name); scope >= 0 {
-			skip := f.emit(bytecode.OpJumpIfUndef, 0, scope, 0)
-			f.emit(f.getScopedOp(), base, scope, f.key(wtf8.String(e.Name)))
-			if f.evalScopesAround() {
-				f.emit(bytecode.OpScopeThis, base+1, scope, 0)
-			} else {
-				f.emit(bytecode.OpMove, base+1, scope, 0)
-			}
-			end := f.jump()
-			f.patch(skip)
-			f.loadStatic(e.Name, f.resolve(e.Name), base, false)
-			f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
-			f.patch(end)
-			break
-		}
-		f.expr(e, base)
-		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
-	default:
-		f.expr(e, base)
+	if !f.callReference(e, base) {
 		f.emit(bytecode.OpLoadUndef, base+1, 0, 0)
 	}
 	f.emit(bytecode.OpDecorateAdd, state, base, base+1)

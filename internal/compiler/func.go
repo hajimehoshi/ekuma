@@ -42,9 +42,14 @@ func (f *fn) forwardsArguments() bool {
 	// the object of a read of length or of a computed key.
 	allowed := map[*ast.Identifier]bool{}
 	// notRead holds the member expressions that can be more than a read of their property:
-	// assignment targets, operands of updates and delete, and callees and tags, which receive
-	// their object as the this value. Every member expression of a target counts.
+	// assignment targets, operands of updates and delete, and callees, tags and decorators
+	// that receive their object as this. Every member expression of a target counts.
 	notRead := map[*ast.MemberExpr]bool{}
+	markCallee := func(e ast.Expr) {
+		if m, _ := callMember(e); m != nil {
+			notRead[m] = true
+		}
+	}
 	markNotRead := func(n ast.Node) {
 		walk(n, func(n ast.Node) bool {
 			if m, isMember := n.(*ast.MemberExpr); isMember {
@@ -93,12 +98,17 @@ func (f *fn) forwardsArguments() bool {
 					allowed[id] = true
 				}
 			}
-			if m, isMember := n.Callee.(*ast.MemberExpr); isMember {
-				notRead[m] = true
-			}
+			markCallee(n.Callee)
 		case *ast.TaggedTemplate:
-			if m, isMember := n.Tag.(*ast.MemberExpr); isMember {
-				notRead[m] = true
+			markCallee(n.Tag)
+		case *ast.Class:
+			for _, d := range n.Decorators {
+				markCallee(d)
+			}
+			for i := range n.Members {
+				for _, d := range n.Members[i].Decorators {
+					markCallee(d)
+				}
 			}
 		case *ast.AssignExpr:
 			markNotRead(n.Target)
