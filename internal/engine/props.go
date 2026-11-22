@@ -360,10 +360,14 @@ func (vm *VM) InitLazyObject(o *Object) {
 
 // lookup finds the named property key on o and its prototype chain.
 // For the length of an array, which is not stored, it returns the array as holder and slot -1.
+// If a proxy or module namespace must perform the lookup, it returns that object and ok=false.
 func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 	length := key == vm.Key(KeyLength)
 	for h := o; h != nil; h = h.shape.proto {
 		if h.flags&objExotic != 0 {
+			if h.class == classProxy || h.class == classModuleNamespace {
+				return h, prop{}, false
+			}
 			if h.class == classLazy || vm.isLazyKey(key) {
 				vm.resolve(h)
 			}
@@ -506,11 +510,8 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 	}
 	holder, p, ok := vm.lookup(start, key)
 	if !ok {
-		if h := proxyOnChain(start); h != nil {
-			if h.class == classModuleNamespace {
-				return vm.getProp(h, PropKey{key: key}, v), nil
-			}
-			return vm.proxyGet(h, PropKey{key: key}, v), nil
+		if holder != nil {
+			return vm.getProp(holder, PropKey{key: key}, v), nil
 		}
 		if c != nil {
 			// Cache the miss as a hit on an object that holds undefined.
