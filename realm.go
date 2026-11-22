@@ -73,8 +73,10 @@ func (r *Realm) ValueOf(x any) Value {
 	return fromEngine(r.vm.valueOf(r, x))
 }
 
-// FuncOf is like [VM.FuncOf], but the function belongs to r: it runs in r, and the errors
-// that it throws are objects of r.
+// FuncOf is like [VM.FuncOf], but the function belongs to and runs in r.
+// If f returns a [*ScriptError], directly or wrapped, the function throws its stored value,
+// which may be a primitive or an object from any realm of the same VM. For any other
+// non-nil error, the function throws a new Error object in r.
 func (r *Realm) FuncOf(name string, f Func) Value {
 	var v engine.Value
 	r.in(func() {
