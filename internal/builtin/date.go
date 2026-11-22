@@ -103,9 +103,12 @@ func initDate(vm *engine.VM) {
 		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDatePrototype), tv))
 	})
 
-	method(vm, ctor, "now", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	now := method(vm, ctor, "now", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(vm.SystemUTCEpochMilliseconds())
 	})
+	vm.SetMethodKernels(now, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+		return engine.Number(vm.SystemUTCEpochMilliseconds()), true
+	}, nil, nil)
 	method(vm, ctor, "parse", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(datetime.ParsePolled(string(vm.ToString(arg(args, 0))), vm.DefaultTimeZone(), vm.Poll))
 	})
