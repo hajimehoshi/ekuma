@@ -96,6 +96,38 @@ func TestTimeZone(t *testing.T) {
 	}
 }
 
+func TestDateTimeZoneAfterArgumentConversion(t *testing.T) {
+	var vm ekuma.VM
+	changeTimeZone := vm.FuncOf("changeTimeZone", func(ekuma.Value, []ekuma.Value) (any, error) {
+		vm.SetTimeZone(time.FixedZone("", 3600))
+		return nil, nil
+	})
+	if err := vm.Global().Set("changeTimeZone", changeTimeZone); err != nil {
+		t.Fatal(err)
+	}
+	for _, src := range []string{
+		`new Date({ valueOf() { changeTimeZone(); return 1970; } }, 0, 1).getTime()`,
+		`new Date({ valueOf() { changeTimeZone(); return "1970-01-01T00:00:00"; } }).getTime()`,
+	} {
+		vm.SetTimeZone(time.UTC)
+		if got, want := run(t, &vm, src), "-3600000"; got != want {
+			t.Errorf("%s: got %s, want %s", src, got, want)
+		}
+	}
+}
+
+func TestDateTimeZoneAfterClockRead(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetTimeZone(time.UTC)
+	vm.SetClock(func() time.Time {
+		vm.SetTimeZone(time.FixedZone("", 3600))
+		return time.Unix(0, 0)
+	})
+	if got, want := run(t, &vm, `Date()`), run(t, &vm, `new Date(0).toString()`); got != want {
+		t.Errorf("Date(): got %q, want %q", got, want)
+	}
+}
+
 // TestTimeZoneName checks that Date, Temporal and Intl agree on a location whose name is a
 // known time zone identifier with other rules.
 func TestTimeZoneName(t *testing.T) {

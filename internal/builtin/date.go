@@ -74,9 +74,8 @@ func initDate(vm *engine.VM) {
 	}
 	ctor := constructor(vm, "Date", 7, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
-		tz := vm.DefaultTimeZone()
 		if nt == nil {
-			return vm.StringFromGo(dateString(vm.SystemUTCEpochMilliseconds(), tz))
+			return vm.StringFromGo(dateString(vm.SystemUTCEpochMilliseconds(), vm.DefaultTimeZone()))
 		}
 		var tv float64
 		switch len(args) {
@@ -89,7 +88,7 @@ func initDate(vm *engine.VM) {
 			}
 			v := vm.ToPrimitive(args[0], engine.HintDefault)
 			if v.IsString() {
-				tv = datetime.ParsePolled(string(vm.ToString(v)), tz, vm.Poll)
+				tv = datetime.ParsePolled(string(vm.ToString(v)), vm.DefaultTimeZone(), vm.Poll)
 			} else {
 				tv = datetime.TimeClip(vm.ToNumber(v))
 			}
@@ -99,7 +98,7 @@ func initDate(vm *engine.VM) {
 				c[i] = vm.ToNumber(args[i])
 			}
 			c[dateYear] = datetime.MakeFullYear(c[dateYear])
-			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), tz))
+			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), vm.DefaultTimeZone()))
 		}
 		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDatePrototype), tv))
 	})
