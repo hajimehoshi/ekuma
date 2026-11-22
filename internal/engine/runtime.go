@@ -1421,6 +1421,20 @@ func (vm *VM) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
 	info.fast.number2 = k2
 }
 
+// Extremum identifies Math.min or Math.max for [VM.SetExtremum].
+type Extremum uint8
+
+const (
+	ExtremumNone Extremum = iota
+	ExtremumMin
+	ExtremumMax
+)
+
+// SetExtremum says that the native function f is Math.min or Math.max, as e names.
+func (vm *VM) SetExtremum(f *Object, e Extremum) {
+	f.fn.info.extremum = e
+}
+
 // MethodKernel0, MethodKernel1 and MethodKernel2 compute a function for its this value and no,
 // one or two arguments. They neither throw nor run code, and report false when the function has
 // to be called instead.

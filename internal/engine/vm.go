@@ -72,6 +72,10 @@ type nativeInfo struct {
 	name   wtf8.String
 	length int32
 
+	// extremum says that the function is Math.min or Math.max, which the interpreter computes
+	// for two numbers.
+	extremum Extremum
+
 	// fast holds the forms of the function that its callers use instead of calling it, or is
 	// nil.
 	fast *nativeFast

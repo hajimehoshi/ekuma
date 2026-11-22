@@ -514,7 +514,7 @@ func initMath(vm *engine.VM) {
 	method(vm, m, "random", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Number(vm.RandomNumber())
 	})
-	minmax := func(name string, start float64, pick func(a, b float64) bool) {
+	minmax := func(name string, e engine.Extremum, start float64, pick func(a, b float64) bool) {
 		// next returns the result so far r updated with n.
 		next := func(r, n float64) float64 {
 			// The zeros are ordered by sign.
@@ -544,11 +544,12 @@ func initMath(vm *engine.VM) {
 			}
 			return next(next(start, x), y)
 		})
+		vm.SetExtremum(fn, e)
 	}
-	minmax("max", math.Inf(-1), func(a, b float64) bool {
+	minmax("max", engine.ExtremumMax, math.Inf(-1), func(a, b float64) bool {
 		return a > b
 	})
-	minmax("min", math.Inf(1), func(a, b float64) bool {
+	minmax("min", engine.ExtremumMin, math.Inf(1), func(a, b float64) bool {
 		return a < b
 	})
 	method(vm, m, "sumPrecise", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

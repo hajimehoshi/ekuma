@@ -1337,6 +1337,19 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 						}
 						continue
 					}
+				} else if c == nil && argc == 2 {
+					// Math.min and Math.max of two numbers. Go's min and max of floats give NaN
+					// when an argument is NaN and order -0 below +0, as the specification does.
+					if info := f.fn.info; info != nil && info.extremum != ExtremumNone {
+						if x, y := regs[first], regs[first+1]; x.o == numberObject && y.o == numberObject {
+							if info.extremum == ExtremumMin {
+								setNumber(&regs[i.A], min(x.n, y.n))
+							} else {
+								setNumber(&regs[i.A], max(x.n, y.n))
+							}
+							continue
+						}
+					}
 				}
 			}
 		case bytecode.OpReturn, bytecode.OpReturnUndef:
