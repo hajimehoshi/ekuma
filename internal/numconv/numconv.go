@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
-	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
 // MaxSafeInteger is 2**53 - 1.
@@ -135,43 +134,34 @@ func ParseRadixDigits(s string, radix int, poll func()) (f float64, ok bool) {
 	if s == "" {
 		return 0, false
 	}
-	if len(s) > scanStep {
-		if skipRadixDigits(s, 0, radix, poll) < len(s) {
-			return 0, false
-		}
-		// The leading zeros add nothing to the value.
-		if s = s[skipZeros(s, 0, poll):]; s == "" {
-			return 0, true
-		}
-	}
+	s = s[skipZeros(s, 0, poll):]
 	var n uint64
-	exact := true
-	for i := 0; i < len(s); i++ {
+	var i int
+	for ; i < len(s); i++ {
 		d := DigitValue(s[i])
 		if d >= radix {
 			return 0, false
 		}
-		if exact {
-			if n > (1<<53)/uint64(radix) {
-				exact = false
-				continue
-			}
-			n = n*uint64(radix) + uint64(d)
+		if n > (1<<53)/uint64(radix) {
+			break
 		}
+		n = n*uint64(radix) + uint64(d)
 	}
-	if exact {
+	if i == len(s) {
 		return float64(n), true
 	}
+	if skipRadixDigits(s, i, radix, poll) != len(s) {
+		return 0, false
+	}
 	// A value of at least 2^1025 is beyond the numbers.
-	s = strings.TrimLeft(s, "0")
 	if float64(len(s)-1)*math.Log2(float64(radix)) > 1025 {
 		return math.Inf(1), true
 	}
-	i, ok := ParseBigInt(s, radix, nil)
+	b, ok := ParseBigInt(s, radix, nil)
 	if !ok {
 		return 0, false
 	}
-	f, _ = new(big.Float).SetInt(i).Float64()
+	f, _ = new(big.Float).SetInt(b).Float64()
 	return f, true
 }
 
@@ -397,7 +387,7 @@ var (
 // than maxBits bits. poll, which may be nil, is called between the steps of a long conversion
 // and may stop it by panicking.
 func StringToBigInt(str wtf8.String, maxBits int, poll func()) (*big.Int, error) {
-	s := string(xstrings.TrimWhiteSpace(str, true, true))
+	s := string(trimWhiteSpace(str, true, true, poll))
 	if s == "" {
 		return new(big.Int), nil
 	}
@@ -420,17 +410,27 @@ func StringToBigInt(str wtf8.String, maxBits int, poll func()) (*big.Int, error)
 		neg = s[0] == '-'
 		s = s[1:]
 	}
-	if !validDigits(s, radix, poll) {
+	if s == "" {
 		return nil, ErrNotBigInt
 	}
+	s = s[skipZeros(s, 0, poll):]
+	if s == "" {
+		return new(big.Int), nil
+	}
 	// A value of n digits has more than (n-1) log2(radix) bits.
-	if d := strings.TrimLeft(s, "0"); float64(len(d)-1)*math.Log2(float64(radix)) > float64(maxBits) {
+	if float64(len(s)-1)*math.Log2(float64(radix)) > float64(maxBits) {
+		if !validDigits(s, radix, poll) {
+			return nil, ErrNotBigInt
+		}
 		if neg {
 			return big.NewInt(-1), ErrBigIntTooLarge
 		}
 		return big.NewInt(1), ErrBigIntTooLarge
 	}
-	i, _ := ParseBigInt(s, radix, poll)
+	i, ok := ParseBigInt(s, radix, poll)
+	if !ok {
+		return nil, ErrNotBigInt
+	}
 	if neg {
 		i.Neg(i)
 	}

@@ -179,6 +179,15 @@ func TestParseBigIntPoll(t *testing.T) {
 	}
 }
 
+func TestFormatBigIntPowerOfTwoPoll(t *testing.T) {
+	var polled bool
+	x := new(big.Int).Lsh(big.NewInt(-3), 100000)
+	got := numconv.FormatBigInt(x, 8, func() { polled = true })
+	if string(got) != x.Text(8) || !polled {
+		t.Errorf("large octal BigInt: correct digits %t, polled %t", string(got) == x.Text(8), polled)
+	}
+}
+
 // TestBigIntArithmetic checks MulBigInt and QuoRemBigInt with steps of a few words, so that
 // small integers take many steps.
 func TestBigIntArithmetic(t *testing.T) {
@@ -256,6 +265,23 @@ func TestStringToBigIntLimit(t *testing.T) {
 		if _, err := numconv.StringToBigInt(wtf8.String(tc.in), 8, nil); !errors.Is(err, tc.want) {
 			t.Errorf("StringToBigInt(%q, 8): got %v, want %v", tc.in, err, tc.want)
 		}
+	}
+}
+
+func TestStringToBigIntWhitespacePoll(t *testing.T) {
+	var polled bool
+	s := wtf8.String(strings.Repeat("　", 1<<15))
+	got, err := numconv.StringToBigInt(s, 8, func() { polled = true })
+	if err != nil || got.Sign() != 0 || !polled {
+		t.Errorf("StringToBigInt of whitespace = %v, %v, polled %t", got, err, polled)
+	}
+}
+
+func TestBigIntDigitsTooLargeLeadingZerosPoll(t *testing.T) {
+	var polled bool
+	s := strings.Repeat("0", 1<<17) + "1"
+	if numconv.BigIntDigitsTooLarge(s, 16, func() { polled = true }) || !polled {
+		t.Error("small hexadecimal BigInt with leading zeros should pass the size check and poll")
 	}
 }
 

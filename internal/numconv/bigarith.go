@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
-	"strings"
 )
 
 // MaxBigIntBits is the largest number of bits of the magnitude of a BigInt.
@@ -17,7 +16,7 @@ const MaxBigIntBits = 1 << 30
 // from 2 to 36, has more than MaxBigIntBits bits. poll, which may be nil, is called between the
 // steps of a long check and may stop it by panicking.
 func BigIntDigitsTooLarge(s string, radix int, poll func()) bool {
-	s = strings.TrimLeft(s, "0")
+	s = s[skipZeros(s, 0, poll):]
 	if s == "" {
 		return false
 	}

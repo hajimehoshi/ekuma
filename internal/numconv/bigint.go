@@ -123,8 +123,14 @@ func radixPower(radix, digits, k int, pows *[]*big.Int, poll func()) *big.Int {
 // [big.Int.Text] does. poll, which may be nil, is called between the steps of a long conversion
 // and may stop it by panicking.
 func FormatBigInt(x *big.Int, radix int, poll func()) wtf8.String {
-	if x.BitLen() <= formatLeafBits || bits.OnesCount(uint(radix)) == 1 {
+	if x.BitLen() <= formatLeafBits {
 		return wtf8.String(x.Text(radix))
+	}
+	if bits.OnesCount(uint(radix)) == 1 {
+		if poll == nil {
+			return wtf8.String(x.Text(radix))
+		}
+		return formatPow2Digits(x, radix, poll)
 	}
 	var sb strings.Builder
 	if x.Sign() < 0 {
@@ -138,6 +144,40 @@ func FormatBigInt(x *big.Int, radix int, poll func()) wtf8.String {
 	return wtf8.String(sb.String())
 }
 
+// formatPow2Digits formats chunks of whole words whose bit lengths are also whole radix digits.
+func formatPow2Digits(x *big.Int, radix int, poll func()) wtf8.String {
+	shift := bits.TrailingZeros(uint(radix))
+	chunkWords := formatLeafBits / bits.UintSize / shift * shift
+	width := chunkWords * bits.UintSize / shift
+	words := x.Bits()
+	var sb strings.Builder
+	size := (x.BitLen() + shift - 1) / shift
+	if x.Sign() < 0 {
+		size++
+	}
+	sb.Grow(size)
+	if x.Sign() < 0 {
+		sb.WriteByte('-')
+	}
+	var chunk big.Int
+	var digits []byte
+	for end := len(words); end > 0; {
+		start := (end - 1) / chunkWords * chunkWords
+		digits = chunk.SetBits(words[start:end]).Append(digits[:0], radix)
+		if end < len(words) {
+			for range width - len(digits) {
+				sb.WriteByte('0')
+			}
+		}
+		sb.Write(digits)
+		end = start
+		if end > 0 {
+			poll()
+		}
+	}
+	return wtf8.String(sb.String())
+}
+
 // formatBigDigits writes the digits of the non-negative x in the radix to sb, padded with zeros
 // to width digits. pows[k] is radix to the power digits<<k, and recips[k], when it is not nil,
 // its reciprocal.
@@ -147,8 +187,11 @@ func formatBigDigits(sb *strings.Builder, x *big.Int, radix, digits, width int, 
 		if x.Sign() == 0 {
 			s = ""
 		}
-		for range width - len(s) {
+		for i := range width - len(s) {
 			sb.WriteByte('0')
+			if i%formatLeafBits == formatLeafBits-1 {
+				callPoll(poll)
+			}
 		}
 		sb.WriteString(s)
 		return
