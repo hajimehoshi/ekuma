@@ -288,23 +288,32 @@ func (v Value) DeleteWithValueKey(key Value) error {
 	return publicError(vm.e.HostDelete(v.value, vm.acceptValue(key)))
 }
 
-// Index returns the element i of v. The errors are those of [Value.Get].
+func (vm *VM) indexKey(i int) engine.Value {
+	if uint64(i) <= engine.MaxArrayIndex {
+		return engine.Number(float64(i))
+	}
+	return vm.e.StringFromGo(strconv.Itoa(i))
+}
+
+// Index returns the property of v named by the decimal representation of i.
+// The errors are those of [Value.Get].
 func (v Value) Index(i int) (Value, error) {
 	vm, err := v.vm("Value.Index")
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.value, engine.Number(float64(i)))
+	r, err := vm.e.HostGet(v.value, vm.indexKey(i))
 	return fromEngine(r), publicError(err)
 }
 
-// SetIndex stores [VM.ValueOf](x) as the element i of v. The errors are those of [Value.Get].
+// SetIndex sets the property of v named by the decimal representation of i to [VM.ValueOf](x).
+// The errors are those of [Value.Get].
 func (v Value) SetIndex(i int, x any) error {
 	vm, err := v.vm("Value.SetIndex")
 	if err != nil {
 		return err
 	}
-	return publicError(vm.e.HostSet(v.value, engine.Number(float64(i)), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.e.HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm, x)))
 }
 
 // Call calls the method named name on v with v as this. The arguments are converted with

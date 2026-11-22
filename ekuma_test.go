@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -387,6 +388,28 @@ func TestValues(t *testing.T) {
 	// A lexical declaration is not a property of the global object.
 	if v, err := global.Get("lexical"); err != nil || !v.IsUndefined() {
 		t.Errorf("Get(lexical) = %v, %v, want undefined", v, err)
+	}
+}
+
+func TestValueLargeIndex(t *testing.T) {
+	const key = "9007199254740993"
+	index, err := strconv.Atoi(key)
+	if errors.Is(err, strconv.ErrRange) {
+		t.Skip("index requires a 64-bit int")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vm ekuma.VM
+	obj := vm.ValueOf(map[string]any{key: "original"})
+	if got, err := obj.Index(index); err != nil || got.String() != "original" {
+		t.Errorf("Index(%d) = %v, %v, want original", index, got, err)
+	}
+	if err := obj.SetIndex(index, "updated"); err != nil {
+		t.Errorf("SetIndex(%d): %v", index, err)
+	}
+	if got, err := obj.Get(key); err != nil || got.String() != "updated" {
+		t.Errorf("Get(%q) = %v, %v, want updated", key, got, err)
 	}
 }
 
