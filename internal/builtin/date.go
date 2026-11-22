@@ -107,6 +107,10 @@ func initDate(vm *engine.VM) {
 		return engine.Number(vm.SystemUTCEpochMilliseconds())
 	})
 	vm.SetMethodKernels(now, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+		// A host clock can reenter JavaScript and observe the native call frame.
+		if vm.HasCustomClock() {
+			return engine.Undefined, false
+		}
 		return engine.Number(vm.SystemUTCEpochMilliseconds()), true
 	}, nil, nil)
 	method(vm, ctor, "parse", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {

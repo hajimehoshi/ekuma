@@ -174,6 +174,27 @@ func TestClock(t *testing.T) {
 	}
 }
 
+func TestDateNowClockCaller(t *testing.T) {
+	var vm ekuma.VM
+	var caller ekuma.Value
+	vm.SetClock(func() time.Time {
+		v, err := vm.Global().Call(t.Context(), "observeCaller")
+		if err != nil {
+			t.Fatal(err)
+		}
+		caller = v
+		return time.Unix(0, 0)
+	})
+	run(t, &vm, `
+		function observeCaller() { return observeCaller.caller; }
+		function readTime() { return Date.now(); }
+		readTime();
+	`)
+	if !caller.IsNull() {
+		t.Errorf("caller during Date.now(): got %v, want null", caller)
+	}
+}
+
 func TestClockNil(t *testing.T) {
 	var vm ekuma.VM
 	vm.SetClock(func() time.Time {

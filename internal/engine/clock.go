@@ -30,6 +30,11 @@ func (vm *VM) SetClock(now func() time.Time) {
 	vm.clock = now
 }
 
+// HasCustomClock reports whether reading the clock calls a host function.
+func (vm *VM) HasCustomClock() bool {
+	return vm.clock != nil
+}
+
 // The limits of the current time: the limits of time values, and of epoch nanoseconds of
 // Temporal.Instant.
 var (
