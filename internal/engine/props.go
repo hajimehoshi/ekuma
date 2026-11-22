@@ -940,7 +940,7 @@ func (vm *VM) densify(o *Object) {
 	var root *shape
 	var base int
 	if s.private {
-		root = vm.shapeForRealm(s.proto, s.realm)
+		root = vm.objectRootShape(s.proto, s.realm, o.class)
 	} else {
 		root = s
 		for root.parent != nil {

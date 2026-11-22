@@ -699,7 +699,7 @@ func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, 
 		},
 	}
 	w.kind = kindObject
-	w.shape = vm.shapeFor(proto)
+	w.shape = vm.objectRootShape(proto, vm.curRealm, classTypedArray)
 	o := w.init()
 	o.class = classTypedArray
 	o.flags |= objExotic

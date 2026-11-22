@@ -185,12 +185,11 @@ type objectMeta struct {
 	// by collection. See [WeakTable].
 	weak *weakEntries
 
-	// protoShape is the empty shape for same-realm objects with this prototype.
-	protoShape *shape
+	protoShapes prototypeShapeCache
 
-	// foreignProtoShape caches the last shape for objects created with this prototype in
-	// another realm. The prototype can outlive that realm.
-	foreignProtoShape weak.Pointer[shape]
+	// Arrays have an implicit length and typed arrays have integer-indexed properties.
+	// Their property caches require separate shapes even with the same prototype.
+	indexedProtoShapes *indexedPrototypeShapes
 
 	// functionProtoShape is the empty shape of the functions whose prototype is this object
 	// and whose initial properties are not stored yet, once one was made.
@@ -729,14 +728,16 @@ func (v Value) accessor() *accessorPair {
 // shapeTable holds the shapes that new objects start with.
 type shapeTable struct {
 	// shortStrings are immutable sentinels. Per-string caches belong to materialized objects.
-	shortStrings *[shortstrings.MaxBytes + 1]Object
-	nullProto    *shape
-	object       *shape
-	array        *shape
-	function     *shape
-	string       *shape
-	iterResult   *shape
-	arguments    *shape
+	shortStrings   *[shortstrings.MaxBytes + 1]Object
+	nullProto      *shape
+	nullArray      *shape
+	nullTypedArray *shape
+	object         *shape
+	array          *shape
+	function       *shape
+	string         *shape
+	iterResult     *shape
+	arguments      *shape
 
 	// regExp is the shape of a new RegExp object whose prototype is %RegExp.prototype%,
 	// once one was made.
@@ -749,6 +750,9 @@ type shapeTable struct {
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
 func (vm *VM) newShape(proto *Object, r *realm) *shape {
+	if proto != nil {
+		proto.flags |= objIsProto
+	}
 	return &shape{
 		vm:    vm,
 		realm: r,
@@ -770,23 +774,63 @@ func (vm *VM) shapeForRealm(proto *Object, r *realm) *shape {
 		}
 		return vm.shapes.nullProto
 	}
-	m := proto.ensureMeta()
+	return proto.ensureMeta().protoShapes.forRealm(vm, proto, r)
+}
+
+type prototypeShapeCache struct {
+	local *shape
+	// A prototype can outlive the realm that created an object with it.
+	foreign weak.Pointer[shape]
+}
+
+type indexedPrototypeShapes struct {
+	array, typedArray prototypeShapeCache
+}
+
+func (c *prototypeShapeCache) forRealm(vm *VM, proto *Object, r *realm) *shape {
 	if proto.shape.realm != r {
-		if s := m.foreignProtoShape.Value(); s != nil && s.realm == r {
+		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
 		}
 		s := vm.newShape(proto, r)
-		m.foreignProtoShape = weak.Make(s)
-		proto.flags |= objIsProto
+		c.foreign = weak.Make(s)
 		return s
 	}
 	// The shape is stored on proto, so that it and the shapes derived from it are collected
 	// together with proto.
-	if m.protoShape == nil {
-		m.protoShape = vm.newShape(proto, r)
-		proto.flags |= objIsProto
+	if c.local == nil {
+		c.local = vm.newShape(proto, r)
 	}
-	return m.protoShape
+	return c.local
+}
+
+// objectRootShape returns the initial layout for an object of class cls.
+func (vm *VM) objectRootShape(proto *Object, r *realm, cls class) *shape {
+	if cls != classArray && cls != classTypedArray {
+		return vm.shapeForRealm(proto, r)
+	}
+	if proto == nil {
+		shapes := &vm.shapes
+		if r != vm.curRealm {
+			shapes = &r.shapes
+		}
+		s := &shapes.nullArray
+		if cls == classTypedArray {
+			s = &shapes.nullTypedArray
+		}
+		if *s == nil {
+			*s = vm.newShape(nil, r)
+		}
+		return *s
+	}
+	m := proto.ensureMeta()
+	if m.indexedProtoShapes == nil {
+		m.indexedProtoShapes = &indexedPrototypeShapes{}
+	}
+	if cls == classArray {
+		return m.indexedProtoShapes.array.forRealm(vm, proto, r)
+	}
+	return m.indexedProtoShapes.typedArray.forRealm(vm, proto, r)
 }
 
 // functionShapeFor returns the empty shape for the functions whose prototype is proto and whose
@@ -797,7 +841,6 @@ func (vm *VM) functionShapeFor(proto *Object) *shape {
 	m := proto.ensureMeta()
 	if m.functionProtoShape == nil {
 		m.functionProtoShape = vm.newShape(proto, vm.curRealm)
-		proto.flags |= objIsProto
 	}
 	return m.functionProtoShape
 }
@@ -1696,7 +1739,7 @@ func (vm *VM) setProto(o *Object, proto *Object) {
 		}
 		o.shape = s
 	} else {
-		s := vm.shapeForRealm(proto, old.realm)
+		s := vm.objectRootShape(proto, old.realm, o.class)
 		for _, k := range old.keys() {
 			p, _ := old.lookup(k)
 			s = s.with(k, p.flags)
