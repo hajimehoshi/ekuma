@@ -732,6 +732,10 @@ test/mozilla/data/js1_5/Regress/regress-3649-n.js
 # SKIP: assumes the August UTC offsets in 1900, 1965, and 1970 all match the 2005 offset
 test/mozilla/data/js1_5/Regress/regress-58116.js
 
+# SKIP: upstream disables the test body on every host with quit() or a commented-out call
+test/mozilla/data/ecma_3/Statements/regress-121744.js
+test/mozilla/data/js1_5/extensions/regress-338804-01.js
+
 # SKIP: requires SpiderMonkey's Script object
 test/mozilla/data/js1_3/extensions/script-001.js
 test/mozilla/data/js1_5/extensions/regress-220584.js
