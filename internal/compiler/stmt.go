@@ -967,15 +967,14 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 }
 
 func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {
-	var tests []ast.Expr
-	if _, ok := s.Discriminant.(*ast.Identifier); ok {
-		for i := range s.Cases {
-			if t := s.Cases[i].Test; t != nil {
-				tests = append(tests, t)
-			}
+	// The discriminant must survive every case test, including when an assignment
+	// leaves its result in a local variable.
+	tests := make([]ast.Expr, 0, len(s.Cases))
+	for i := range s.Cases {
+		if t := s.Cases[i].Test; t != nil {
+			tests = append(tests, t)
 		}
 	}
-	// All the case tests run before any case body.
 	d := f.operand(s.Discriminant, tests...)
 	c := &ctl{
 		kind:     ctlLoop,

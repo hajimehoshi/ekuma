@@ -44,6 +44,14 @@ assert.sameValue((function() {
 })(), "one, x = 2");
 
 assert.sameValue((function() {
+	var x;
+	switch (x = 1) {
+	case (x = 2): return "two";
+	case 1: return "one";
+	}
+})(), "one");
+
+assert.sameValue((function() {
 	var x = "a";
 	function set() { x = "b"; return "b"; }
 	switch (x) {
