@@ -11,6 +11,7 @@ go test -count=1 -v -run '^TestICU$/^localeDisplayName' .
 go test -count=1 -v -run '^TestICU$/^(plural|icu4j-plurals)' .
 go test -count=1 -v -run '^TestICU$/^(calendar|caltestdata|format\.txt)' .
 GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(cdateintervalformattest\.c|dtifmtts\.cpp)$' .
+GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(NumberRangeFormatterTest\.java|PluralRangesTest\.java|numbertest_range\.cpp|unumberrangeformattertst\.c)$' .
 go test -count=1 -v -run '^TestICU$' .
 ```
 
@@ -49,7 +50,11 @@ the test. [Known results](testdata/icu-failures.txt)
 | `caltestdata.h` | 14,610 | 60 | 0 | `CalendarTest::TestChineseCalendarMapping`. Both directions of every active Gregorian/lunar row, including cyclic year, one-based month, leap flag, and day. ICU marks the disabled rows with `//#`. |
 | `cdateintervalformattest.c` | 195 | 12 | 43 | 95 exact strings and 100 parts checks. Covers explicit zones, minute positions, collapsed ranges, and complete German field and span tables. |
 | `dtifmtts.cpp` | 464 | 115 | 239 | 459 exact strings and 5 parts checks. Covers localized skeletons, hour cycles, fractional seconds, Japanese and ROC eras, and shared or endpoint-specific fields. |
-| **Total** | **37,905** | **7,897** | **287** | 14 fixtures |
+| `NumberRangeFormatterTest.java` | 204 | 220 | 0 | 197 strings and 7 parts checks. Covers equality before and after rounding, compact and scientific notation, localized signs, units, currency, percent, numbering systems, and Slovenian range plurals. |
+| `PluralRangesTest.java` | 16 | 0 | 0 | All `TestFormatting` rows, including French unit and currency plurals, JPY precision, and narrow currency symbols. |
+| `numbertest_range.cpp` | 19 | 4 | 0 | 14 strings, 3 complete parts tables, and 2 field counts. Covers infinity, grouped integers, a shared unit, and a shared approximate sign and minus sign. ICU formats four ranges containing NaN. JS raises RangeError. |
+| `unumberrangeformattertst.c` | 4 | 0 | 0 | Two USD examples and a compact range with decimal-string endpoints, checked against both the text and the complete field table. |
+| **Total** | **38,148** | **8,121** | **287** | 18 fixtures |
 
 The permutation, specification, and display-name files have identical Git
 blobs in ICU4C and ICU4J. Each runs once. The Java calendar and format
@@ -104,3 +109,44 @@ German parts check, the ICU fixture labels `Uhr` as a shared day period.
 Ekuma treats the quoted word in the CLDR pattern as part of a shared literal.
 Each entry applies to one operation and explicit upstream lines.
 [Known results](testdata/icu-failures.txt)
+
+## Number range fixtures
+
+The 0BSD adapter reads the expected strings, fields, and spans from the ICU
+79.1 checkout. The Java helper supplies ten endpoint pairs per formatter. Its
+double literals reach JS as Numbers, including the distinct values 4.9999999
+and 5.0000001. ICU's default decimal precision rounds both to 5. The scaled
+percent skeleton retains their difference. For the bare percent skeleton the
+adapter divides the inputs by 100 in decimal arithmetic. ICU4C decimal-string
+inputs go directly to JS as strings.
+[Java helper and expectations](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberRangeFormatterTest.java)
+
+ECMA-402 uses an approximate result with shared parts when both endpoints
+format identically. Range collapsing is locale- and implementation-dependent.
+The comparison uses ICU's automatic collapse and approximate identity fallback.
+For the scientific rows, both automatic collapse and explicit `NONE` repeat
+the exponent. Slovenian GBP names exercise all 12 unequal category pairs,
+including descending ranges. For compact `APPROXIMATELY_OR_SINGLE_VALUE`,
+the seven pairs with distinct inputs retain the default result.
+[ECMA-402 range formatting](https://tc39.es/ecma402/#sec-partitionnumberrangepattern) · [ICU policy implementation](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/i18n/numrange_impl.cpp)
+
+The Java exclusions comprise 134 repeated expectations, 35 strings changed
+by explicit collapse, 14 changed by identity fallback in the helper matrix,
+and 6 forced ranges with equal endpoints (4 Slovenian rows and 2 locale
+tests). Another 21 rows require different formatters for the two endpoints,
+and 10 request kelvin, which is outside the sanctioned unit set. The C++
+fixture repeats 38 Java helper blocks and the Slovenian table. Counts omit
+those copies. The adapter uses the C++ version of the shared infinity and
+field-position cases and runs the additional C and C++ expectations.
+[Sanctioned units](https://tc39.es/ecma402/#sec-issanctionedsingleunitidentifier) · [C++ cases](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/intltest/numbertest_range.cpp)
+
+Four complete parts tables use UTF-16 offsets. The narrowest field supplies
+the type inside a grouped integer. Gaps become literals, and the two endpoint
+spans determine attribution. Text outside both spans is shared. Seven further
+checks cover the rounded pair's shared attribution, repeated and shared
+currency affixes, and the minus sign on either endpoint of decimal and percent
+ranges. The C++ state-reuse rows count number fields and endpoint spans.
+Construction, skeleton parse errors, decimal getters, pattern inspection,
+performance, and ICU size-limit errors supply no additional range strings
+or parts. All 243 number range checks match the pin.
+[ICU4C decimal range and fields](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/cintltst/unumberrangeformattertst.c) · [Plural formatting table](https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/PluralRangesTest.java)

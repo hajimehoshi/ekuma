@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// intervalSource is a section of a pinned C or C++ fixture with its original line numbers.
+// intervalSource is a section of a pinned range fixture with its original line numbers.
 type intervalSource struct {
 	t     *testing.T
 	path  string

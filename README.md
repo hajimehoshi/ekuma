@@ -335,8 +335,8 @@ Short mode skips all external conformance tests.
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
 ICU 78.3 supplies the casing, normalization, RegExp, segmentation, and collation
-fixtures. ICU 79.1 supplies CLDR 49 locale identifiers, number formatting,
-display names, plural rules, calendars, and date intervals. The
+fixtures. ICU 79.1 supplies CLDR 49 locale identifiers, number and number range
+formatting, display names, plural rules, calendars, and date intervals. The
 [fixture inventory](internal/icutest/README.md) describes the upstream readers,
 option mappings, exclusions, and known differences.
 The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
@@ -347,6 +347,7 @@ go test -count=1 -v -run '^TestICU$' .
 go test -count=1 -v -run '^TestICU$/^[Cc]ollation' .
 go test -count=1 -v -run '^TestICU$/^(plural|icu4j-plurals)' .
 GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(cdateintervalformattest\.c|dtifmtts\.cpp)$' .
+GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^(NumberRangeFormatterTest\.java|PluralRangesTest\.java|numbertest_range\.cpp|unumberrangeformattertst\.c)$' .
 ```
 
 After checking out V8, fetch the separate Mozilla data revision pinned in

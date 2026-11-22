@@ -103,6 +103,7 @@ func Run(t *testing.T) {
 			runPluralRanges(t, filepath.Join(misc, "pluralRanges.txt"), filepath.Join(misc, "plurals.txt"))
 		})
 		runDateIntervals(t, cldrDir, fixtures)
+		runNumberRanges(t, cldrDir)
 		t.Run("caltestdata.h", func(t *testing.T) {
 			runLunarMapping(t, filepath.Join(cldrDir, "icu4c/source/test/intltest/caltestdata.h"))
 		})

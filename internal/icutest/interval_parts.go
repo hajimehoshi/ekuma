@@ -11,13 +11,18 @@ import (
 	"unicode/utf16"
 )
 
-var intervalFields = map[string]string{
-	"UDAT_DATE_FIELD":         "day",
-	"UDAT_MONTH_FIELD":        "month",
-	"UDAT_YEAR_FIELD":         "year",
-	"UDAT_HOUR_OF_DAY0_FIELD": "hour",
-	"UDAT_MINUTE_FIELD":       "minute",
-	"UDAT_AM_PM_FIELD":        "dayPeriod",
+var rangeFields = map[string]string{
+	"UDAT_DATE_FIELD":               "day",
+	"UDAT_MONTH_FIELD":              "month",
+	"UDAT_YEAR_FIELD":               "year",
+	"UDAT_HOUR_OF_DAY0_FIELD":       "hour",
+	"UDAT_MINUTE_FIELD":             "minute",
+	"UDAT_AM_PM_FIELD":              "dayPeriod",
+	"UNUM_INTEGER_FIELD":            "integer",
+	"UNUM_COMPACT_FIELD":            "compact",
+	"UNUM_MEASURE_UNIT_FIELD":       "unit",
+	"UNUM_GROUPING_SEPARATOR_FIELD": "group",
+	"UNUM_APPROXIMATELY_SIGN_FIELD": "approximatelySign",
 }
 
 type intervalPosition struct {
@@ -25,7 +30,7 @@ type intervalPosition struct {
 	begin, end int
 }
 
-func intervalParts(t *testing.T, want string, rows []intervalRow) string {
+func rangeParts(t *testing.T, want string, rows []intervalRow) string {
 	t.Helper()
 	units := utf16.Encode([]rune(want))
 	// A field boundary changes the part type. A span boundary changes its source,
@@ -43,7 +48,7 @@ func intervalParts(t *testing.T, want string, rows []intervalRow) string {
 		}
 		bounds = append(bounds, p.begin, p.end)
 		switch col[0] {
-		case "UFIELD_CATEGORY_DATE_INTERVAL_SPAN":
+		case "UFIELD_CATEGORY_DATE_INTERVAL_SPAN", "UFIELD_CATEGORY_NUMBER_RANGE_SPAN":
 			switch col[1] {
 			case "0":
 				p.label = "startRange"
@@ -53,10 +58,18 @@ func intervalParts(t *testing.T, want string, rows []intervalRow) string {
 				t.Fatalf("line %d: unknown interval span %s", row.line, col[1])
 			}
 			spans = append(spans, p)
-		case "UFIELD_CATEGORY_DATE":
-			p.label = intervalFields[col[1]]
+		case "UFIELD_CATEGORY_DATE", "UFIELD_CATEGORY_NUMBER":
+			p.label = rangeFields[col[1]]
+			if col[1] == "UNUM_SIGN_FIELD" {
+				switch string(utf16.Decode(units[p.begin:p.end])) {
+				case "-":
+					p.label = "minusSign"
+				case "+":
+					p.label = "plusSign"
+				}
+			}
 			if p.label == "" {
-				t.Fatalf("line %d: unknown date field %s", row.line, col[1])
+				t.Fatalf("line %d: unknown field %s in %q", row.line, col[1], want)
 			}
 			fields = append(fields, p)
 		default:
@@ -69,9 +82,12 @@ func intervalParts(t *testing.T, want string, rows []intervalRow) string {
 	for i, begin := range bounds[:len(bounds)-1] {
 		end := bounds[i+1]
 		typ, source := "literal", "shared"
+		// Grouping separators are nested inside the ICU integer field.
+		width := len(units) + 1
 		for _, field := range fields {
-			if field.begin <= begin && end <= field.end {
+			if field.begin <= begin && end <= field.end && field.end-field.begin < width {
 				typ = field.label
+				width = field.end - field.begin
 			}
 		}
 		for _, span := range spans {
@@ -88,7 +104,7 @@ func (s *intervalSuite) checkResult(block intervalSource, group string, in inter
 	row := block.from("expectedString = ")
 	want := intervalString(s.t, row.lines[0])
 	s.checkInterval(row.line, group, "formatRange", in, want)
-	parts := intervalParts(s.t, want, row.table("expectedFieldPositions[] ="))
+	parts := rangeParts(s.t, want, row.table("expectedFieldPositions[] ="))
 	s.checkInterval(row.line, group, "formatRangeToParts", in, parts)
 }
 

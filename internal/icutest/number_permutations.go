@@ -9,14 +9,18 @@ import (
 	"testing"
 )
 
-// permutationOptions translates the skeleton used by ICU's NumberPermutationTest.
-func permutationOptions(parts []string) (map[string]any, int, string) {
+// numberSkeletonOptions returns the NumberFormat options and input divisor for an ICU skeleton.
+func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 	o := map[string]any{"roundingMode": "halfEven"}
 	divisor := 1
+	var width string
 	for _, part := range parts {
 		switch part {
-		case "compact-short":
+		case "compact-short", "compact-long":
 			o["notation"] = "compact"
+			o["compactDisplay"] = strings.TrimPrefix(part, "compact-")
+		case "scientific":
+			o["notation"] = "scientific"
 		case "scientific/+ee/sign-always":
 			return nil, 0, "Intl cannot pad or force the sign of the exponent"
 		case "percent":
@@ -29,25 +33,25 @@ func permutationOptions(parts []string) (map[string]any, int, string) {
 				o["style"] = "percent"
 				divisor *= 100
 			}
-		case "currency/EUR":
+		case "%x100":
+			o["style"] = "percent"
+		case "currency/EUR", "currency/GBP", "currency/CHF", "currency/USD", "currency/JPY", "currency/PTE":
 			o["style"] = "currency"
-			o["currency"] = "EUR"
+			o["currency"] = strings.TrimPrefix(part, "currency/")
+		case "meter", "fahrenheit", "inch":
+			o["style"], o["unit"] = "unit", part
 		case "measure-unit/length-furlong":
 			return nil, 0, "furlong is not an ECMA-402 sanctioned unit"
-		case "unit-width-narrow", "unit-width-full-name":
-			if slices.Contains(parts, "currency/EUR") {
-				if part == "unit-width-narrow" {
-					o["currencyDisplay"] = "narrowSymbol"
-				} else {
-					o["currencyDisplay"] = "name"
-				}
-			}
+		case "unit-width-narrow", "unit-width-full-name", "unit-width-iso-code":
+			width = part
 		case "precision-integer":
 			o["maximumFractionDigits"] = 0
 			o["minimumFractionDigits"] = 0
 		case ".000":
 			o["maximumFractionDigits"] = 3
 			o["minimumFractionDigits"] = 3
+		case ".###":
+			o["maximumFractionDigits"] = 3
 		case ".##/@@@+":
 			o["minimumFractionDigits"] = 0
 			o["maximumFractionDigits"] = 2
@@ -59,6 +63,8 @@ func permutationOptions(parts []string) (map[string]any, int, string) {
 			o["maximumSignificantDigits"] = 2
 		case "rounding-mode-floor":
 			o["roundingMode"] = "floor"
+		case "rounding-mode-half-up":
+			o["roundingMode"] = "halfExpand"
 		case "integer-width/##00":
 			return nil, 0, "Intl cannot truncate the integer part to four digits"
 		case "scale/0.5":
@@ -67,6 +73,8 @@ func permutationOptions(parts []string) (map[string]any, int, string) {
 			o["useGrouping"] = "always"
 		case "latin":
 			o["numberingSystem"] = "latn"
+		case "numbering-system/thai", "numbering-system/arab":
+			o["numberingSystem"] = strings.TrimPrefix(part, "numbering-system/")
 		case "sign-accounting-except-zero":
 			o["signDisplay"] = "exceptZero"
 			o["currencySign"] = "accounting"
@@ -74,6 +82,23 @@ func permutationOptions(parts []string) (map[string]any, int, string) {
 			return nil, 0, "Intl cannot force a decimal separator after an integer"
 		default:
 			panic("unknown ICU number skeleton " + part)
+		}
+	}
+	if o["style"] == "currency" {
+		switch width {
+		case "unit-width-narrow":
+			o["currencyDisplay"] = "narrowSymbol"
+		case "unit-width-full-name":
+			o["currencyDisplay"] = "name"
+		case "unit-width-iso-code":
+			o["currencyDisplay"] = "code"
+		}
+	} else if o["style"] == "unit" {
+		switch width {
+		case "unit-width-full-name":
+			o["unitDisplay"] = "long"
+		case "unit-width-narrow":
+			o["unitDisplay"] = "narrow"
 		}
 	}
 	if o["notation"] != "compact" && o["currency"] == nil && o["maximumSignificantDigits"] == nil && o["maximumFractionDigits"] == nil {
@@ -125,7 +150,7 @@ func runNumberPermutations(t *testing.T, path string) {
 		default:
 			endBlock(line)
 			skeleton = row
-			opts, divisor, reason = permutationOptions(strings.Fields(row))
+			opts, divisor, reason = numberSkeletonOptions(strings.Fields(row))
 			localeCount = 0
 		}
 	})
