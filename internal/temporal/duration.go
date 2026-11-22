@@ -398,6 +398,7 @@ func TotalTimeDuration(d Int128, unit Unit) float64 {
 }
 
 // RoundInt128ToIncrement implements RoundNumberToIncrement for integers in an Int128.
+// The increment must be positive and the result must fit in an Int128.
 func RoundInt128ToIncrement(x, increment Int128, mode RoundingMode) Int128 {
 	q, r := x.QuoRem(increment)
 	if r.IsZero() {
@@ -406,7 +407,8 @@ func RoundInt128ToIncrement(x, increment Int128, mode RoundingMode) Int128 {
 	negative := x.Sign() < 0
 	r1 := q.Abs()
 	r2 := r1.Add(I128(1))
-	cmp := r.Abs().Add(r.Abs()).Cmp(increment)
+	remainder := r.Abs()
+	cmp := remainder.Cmp(increment.Sub(remainder))
 	even := r1.lo&1 == 0
 	rounded := r1
 	if mode.unsigned(negative).apply(cmp, even) {

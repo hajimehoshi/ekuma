@@ -225,6 +225,14 @@ func TestRoundInt128ToIncrementMinimum(t *testing.T) {
 	}
 }
 
+func TestRoundInt128ToLargeIncrement(t *testing.T) {
+	x := temporal.Mul64(math.MinInt64, math.MinInt64) // 2^126
+	increment := x.Add(temporal.I128(1))
+	if got := temporal.RoundInt128ToIncrement(x, increment, temporal.RoundHalfExpand); got.Cmp(increment) != 0 {
+		t.Errorf("RoundInt128ToIncrement(%v, %v, halfExpand) = %v, want %v", x, increment, got, increment)
+	}
+}
+
 // zoneType is a local time type of a time zone.
 type zoneType struct {
 	offset int32
