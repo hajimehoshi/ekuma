@@ -764,20 +764,17 @@ func (t *Table) Reserve(n int) {
 		for t.capacity() < n {
 			t.blocks = append(t.blocks, new([blockSize]entry))
 		}
-		if !t.indexed {
-			t.reindex()
-			return
+	}
+	if t.live > 0 && t.indexed {
+		share := func(kind int) int {
+			return int(int64(n) * int64(kind) / int64(t.live))
 		}
+		t.strs = withRoom(t.strs, share(len(t.strs)))
+		t.objs = withRoom(t.objs, share(len(t.objs)))
 	}
-	if !t.indexed || t.live == 0 {
-		return
+	if t.indexed || t.blocks != nil {
+		t.reindex()
 	}
-	share := func(kind int) int {
-		return int(int64(n) * int64(kind) / int64(t.live))
-	}
-	t.strs = withRoom(t.strs, share(len(t.strs)))
-	t.objs = withRoom(t.objs, share(len(t.objs)))
-	t.reindex()
 }
 
 // Trim gives up the room for entries that is mostly unused.

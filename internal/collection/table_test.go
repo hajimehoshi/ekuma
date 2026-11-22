@@ -320,6 +320,23 @@ func TestCopyFromAfterDeletingAllEntries(t *testing.T) {
 	}
 }
 
+func TestReserveAfterDeletingAllEntries(t *testing.T) {
+	var tab collection.Table
+	for i := range 8 {
+		tab.Set(engine.Number(float64(i)), engine.Undefined)
+	}
+	for i := range 8 {
+		tab.Delete(engine.Number(float64(i)))
+	}
+	tab.Reserve(64)
+	for i := range 64 {
+		tab.Set(engine.Number(float64(i)), engine.Undefined)
+	}
+	if got := tab.Size(); got != 64 {
+		t.Errorf("size = %d, want 64", got)
+	}
+}
+
 // TestQueue tests that a table from which the oldest entry is deleted for every new one finds
 // its entries and keeps storage in proportion to them.
 func TestQueue(t *testing.T) {
