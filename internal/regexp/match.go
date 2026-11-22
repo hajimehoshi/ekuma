@@ -287,6 +287,22 @@ func (m *Matcher) results() []int {
 	return m.out
 }
 
+// Span returns the positions in the subject of the start and the end of the capture i of the last
+// match, which must have matched. They are valid until the next match.
+func (m *Matcher) Span(i int) (start, end wtf8.Pos) {
+	return m.position(2 * i), m.position(2*i + 1)
+}
+
+// position returns the position of the element k of the captures of the last match. A position in
+// the middle of a four-byte sequence is its low surrogate.
+func (m *Matcher) position(k int) wtf8.Pos {
+	pos, unit := m.caps[k], m.out[k]
+	if m.isMiddle(pos) {
+		return wtf8.Pos{Unit: unit, Byte: pos - 2, Low: true}
+	}
+	return wtf8.Pos{Unit: unit, Byte: pos}
+}
+
 // next reads the character at pos. It returns the character and the position after it,
 // or -1 at the end of the input.
 func (m *Matcher) next(pos int, unicodeMode bool) (rune, int) {

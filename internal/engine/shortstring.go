@@ -163,6 +163,20 @@ func (vm *VM) Substring(s Value, start, end int) Value {
 	}
 }
 
+// SubstringBetween is like [VM.Substring] for the positions start and end in the text of s, which
+// must be in order.
+func (vm *VM) SubstringBetween(s Value, start, end wtf8.Pos) Value {
+	if s.isShortString() {
+		// The packed text gives the code units without a search.
+		return vm.Substring(s, start.Unit, end.Unit)
+	}
+	text := s.o.Str()
+	if start.Byte == 0 && !start.Low && end.Byte == len(text) && !end.Low {
+		return s
+	}
+	return vm.NewString(wtf8.Slice(text, start, end))
+}
+
 // StringByteLength returns the byte length of the string's canonical WTF-8 encoding.
 func (v Value) StringByteLength() int {
 	return len(v.o.str)

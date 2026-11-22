@@ -141,7 +141,9 @@ func (e *regexpEnv) builtinExecRaw(vm *engine.VM, r *engine.Object, s engine.Val
 	if !global && !sticky {
 		lastIndex = 0
 	}
-	if lastIndex > int64(s.StringLength()) {
+	// No string is shorter than a lastIndex of 0, which matches that are neither global nor sticky
+	// start at.
+	if lastIndex > 0 && lastIndex > int64(s.StringLength()) {
 		if global || sticky {
 			e.setLastIndex(vm, r, 0)
 		}
@@ -210,8 +212,16 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s engine.Value)
 		nprops = 4
 	}
 	a := vm.NewArrayWithRoom(n+1, nprops)
+	// The matcher still holds the match, whose positions in a string that is not ASCII spare a
+	// search for the code units of the captures.
+	ascii := s.IsASCII()
 	for i := 0; i <= n; i++ {
-		a.SetElement(int64(i), capture(vm, s, caps, i))
+		if ascii || caps[2*i] < 0 {
+			a.SetElement(int64(i), capture(vm, s, caps, i))
+			continue
+		}
+		start, end := e.m.Span(i)
+		a.SetElement(int64(i), vm.SubstringBetween(s, start, end))
 	}
 	var pairs []engine.Value
 	if re.Flags()&regexp.FlagHasIndices != 0 {
