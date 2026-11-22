@@ -1651,7 +1651,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	if o.shape.proto == proto {
 		return true
 	}
-	if o.flags&objNotExtensible != 0 || o == vm.Intrinsic(IntrinsicObjectPrototype) {
+	if o.flags&objNotExtensible != 0 || o.shape.proto == nil && o == vm.realmIntrinsic(o.shape.realm, IntrinsicObjectPrototype) {
 		return false
 	}
 	if o.flags&objExotic != 0 {
