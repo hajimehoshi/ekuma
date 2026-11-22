@@ -689,7 +689,7 @@ func (suite *Test262) Run(t *testing.T) {
 		if test262Flags.filter != "" && !strings.Contains(rel, test262Flags.filter) {
 			return nil
 		}
-		if _, listed := skips.match(rel); listed {
+		if skips.match(rel) != nil {
 			skipped = append(skipped, rel)
 			return nil
 		}

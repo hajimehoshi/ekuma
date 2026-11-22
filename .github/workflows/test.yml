@@ -56,13 +56,18 @@ jobs:
           ref: ${{ steps.suites.outputs.v8 }}
           path: .v8
           sparse-checkout: |
+            /DEPS
             /test/intl/
             /test/mjsunit/
+            /test/mozilla/
             /test/test262/local-tests/test/
             /test/webkit/
             /tools/**/*.mjs
             /tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js
           sparse-checkout-cone-mode: false
+
+      - name: Checkout Mozilla test data
+        run: bash internal/jstest/checkout-mozilla.sh "$EKUMA_V8"
 
       - name: Setup Go
         uses: actions/setup-go@v5

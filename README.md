@@ -317,7 +317,7 @@ without a Test262 checkout.
 `go test .` runs Test262 and V8 when their checkouts are available. Set the
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
-sparse checkout needs `test/intl`, `test/mjsunit`, `test/test262/local-tests/test`,
+sparse checkout needs `DEPS`, `test/intl`, `test/mjsunit`, `test/mozilla`, `test/test262/local-tests/test`,
 `test/webkit`, the tool modules matching `/tools/**/*.mjs`, and the printing helper
 `tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
 Short mode skips all external conformance tests.
@@ -325,7 +325,14 @@ Short mode skips all external conformance tests.
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
-| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
+| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
+
+After checking out V8, fetch the separate Mozilla data revision pinned in
+its `DEPS` into `test/mozilla/data`. From the Ekuma repository root, run
+
+```sh
+bash internal/jstest/checkout-mozilla.sh "$EKUMA_V8"
+```
 
 `TestV8Test262` runs V8's local Test262 cases when both checkouts are available.
 It reads the cases from V8 and the harness from Test262. Each case is a Go subtest
@@ -344,6 +351,7 @@ a substring of a test path.
 go test -count=1 -v -run '^TestTest262$' . -test262.dir test/intl402/Collator
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/intl/collator
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/mjsunit/es6
+go test -count=1 -v -run '^TestV8$' . -v8.dir test/mozilla/data/ecma_3/RegExp
 go test -count=1 -v -run '^TestV8$' . -v8.dir test/webkit
 ```
 
@@ -362,6 +370,8 @@ an unexpected pass or a stale path fails the suite. A runner error, engine
 panic, or timeout on the final attempt also fails the suite. In the V8 list, a
 `# SKIP: reason` comment skips all consecutive test paths directly below it.
 A `# SKIP(64-bit): reason` comment applies only on targets with 64-bit Go integers.
+A `# PASS/FAIL: reason` group runs each test and accepts either a pass or a
+JavaScript failure. The summary counts the observed outcome.
 A blank line or comment ends the group.
 The V8 runner loads checkout-relative scripts named by `// Files:` in order.
 Intl and mjsunit load them after the suite harness and before the test. WebKit
@@ -369,6 +379,12 @@ loads them first, then runs `resources/standalone-pre.js`, the test, and
 `resources/standalone-post.js`. It compares stdout with the paired
 `-expected.txt` file using V8's line comparison rules. Unsupported flags and
 environment settings skip the test.
+
+Mozilla runs the `ecma`, `ecma_2`, `ecma_3`, and `js1_1` through `js1_5`
+directories with `--expose-gc`. It loads V8's shell emulation followed by
+each ancestor's `shell.js` from the data root to the test directory. A
+JavaScript failure or `FAILED!` anywhere in stdout satisfies a negative
+test (`-n.js`) and fails a positive test.
 
 ## License
 

@@ -90,6 +90,10 @@ func TestV8WebKit(t *testing.T) {
 	v8Runner.CheckWebKit(t)
 }
 
+func TestV8Mozilla(t *testing.T) {
+	v8Runner.CheckMozilla(t)
+}
+
 func TestV8Bundle(t *testing.T) {
 	v8Runner.CheckBundle(t)
 }

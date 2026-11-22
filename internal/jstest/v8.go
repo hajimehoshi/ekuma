@@ -112,6 +112,7 @@ var v8Suites = []v8Suite{
 			"--nolazy",
 		},
 	},
+	v8MozillaSuite,
 	{
 		dir:   v8WebKitDir,
 		flags: []string{"--expose-gc", "--harmony"},
@@ -160,6 +161,8 @@ func (host *V8) Run(t *testing.T) {
 	skipCounts := map[string]int{}
 	for i, result := range results {
 		switch {
+		case tests[i].allowFailure && result.outcome == suiteFailed:
+			expected++
 		case result.outcome == suiteBroken || result.outcome == suiteFailed:
 			failures = append(failures, suiteFailure{
 				path:   tests[i].file,
@@ -409,6 +412,8 @@ func readV8Skips(t *testing.T) skipList {
 			}
 			switch directive {
 			case "SKIP":
+			case "PASS/FAIL":
+				group.allowPass = true
 			case "SKIP(64-bit)":
 				group.inactive = strconv.IntSize != 64
 			default:
@@ -434,32 +439,42 @@ func readV8Skips(t *testing.T) skipList {
 }
 
 type v8Test struct {
-	checkoutDir string
-	file        string
-	helpers     []*ekuma.UnboundScript
-	flags       []string
-	environment v8TestEnvironment
-	skipReason  string
-	wantFailure bool
+	checkoutDir  string
+	file         string
+	helpers      []*ekuma.UnboundScript
+	flags        []string
+	environment  v8TestEnvironment
+	skipReason   string
+	wantFailure  bool
+	allowFailure bool
+}
+
+func readV8Helper(checkout fs.FS, file string) (*ekuma.UnboundScript, error) {
+	src, err := fs.ReadFile(checkout, file)
+	if err != nil {
+		return nil, err
+	}
+	return ekuma.ParseUnboundScript(file, string(src))
 }
 
 func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, skips skipList, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
 	t.Helper()
 	var helpers []*ekuma.UnboundScript
 	for _, name := range s.helpers {
-		file := path.Join(s.dir, name)
-		src, err := fs.ReadFile(checkout, file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		script, err := ekuma.ParseUnboundScript(file, string(src))
+		script, err := readV8Helper(checkout, path.Join(s.dir, name))
 		if err != nil {
 			t.Fatal(err)
 		}
 		helpers = append(helpers, script)
 	}
 	var tests []v8Test
-	err := fs.WalkDir(checkout, root, func(file string, entry fs.DirEntry, err error) error {
+	walk := fs.WalkDir
+	var shells mozillaShells
+	if s.dir == v8MozillaDir {
+		walk = walkMozillaTests
+		shells = mozillaShells{v8MozillaDir: helpers}
+	}
+	err := walk(checkout, root, func(file string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -474,17 +489,29 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, ski
 		if slices.Contains(s.helpers, name) || slices.Contains(s.exclude, name) || !strings.Contains(file, filter) {
 			return nil
 		}
-		skipReason, listed := skips.match(file)
-		environment := unseenEnvironments[file]
-		delete(unseenEnvironments, file)
-		tests = append(tests, v8Test{
+		test := v8Test{
 			file:        file,
 			helpers:     helpers,
 			flags:       s.flags,
-			environment: environment,
-			skipReason:  skipReason,
-			wantFailure: listed && skipReason == "",
-		})
+			environment: unseenEnvironments[file],
+		}
+		delete(unseenEnvironments, file)
+		if skip := skips.match(file); shells != nil && mozillaPlatformSkip(file) {
+			test.skipReason = "skipped on this platform by mozilla.status"
+		} else if skip != nil {
+			test.allowFailure = skip.allowPass
+			test.wantFailure = skip.reason == ""
+			if !skip.allowPass {
+				test.skipReason = skip.reason
+			}
+		}
+		if shells != nil && test.skipReason == "" {
+			test.helpers, err = shells.forDir(checkout, path.Dir(file))
+			if err != nil {
+				return err
+			}
+		}
+		tests = append(tests, test)
 		return nil
 	})
 	if err != nil {
@@ -596,6 +623,11 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	if v.skipReason != "" {
 		return suiteSkipped.result(v.skipReason), ""
 	}
+	if inSuiteDir(v.file, v8MozillaDir) {
+		var stdout mozillaOutput
+		result, _ := v.executeScripts(ctx, host, checkout, timeout, &stdout)
+		return stdout.result(result, strings.HasSuffix(strings.TrimSuffix(v.file, path.Ext(v.file)), "-n")), ""
+	}
 	if !inSuiteDir(v.file, v8WebKitDir) {
 		return v.executeScripts(ctx, host, checkout, timeout, nil)
 	}
@@ -611,7 +643,7 @@ func (v *v8Test) execute(ctx context.Context, host *V8, checkout fs.FS, timeout 
 	return result, ""
 }
 
-func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration, webkitOutput io.Writer) (result suiteResult, lastPrint string) {
+func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration, stdout io.Writer) (result suiteResult, lastPrint string) {
 	var directives v8Directives
 	defer func() {
 		switch r := recover().(type) {
@@ -642,9 +674,18 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 	if err != nil {
 		return suiteBroken.result(err.Error()), ""
 	}
-	directives, unsupported := parseV8Directives(string(src), v.flags)
-	if unsupported != "" {
-		return suiteSkipped.result(unsupported), ""
+	if inSuiteDir(v.file, v8MozillaDir) {
+		directives = v8Directives{
+			locale:   "en-US",
+			zone:     "UTC",
+			exposeGC: true,
+		}
+	} else {
+		var unsupported string
+		directives, unsupported = parseV8Directives(string(src), v.flags)
+		if unsupported != "" {
+			return suiteSkipped.result(unsupported), ""
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -683,7 +724,7 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 			modules: map[string]string{},
 		}
 	}
-	if webkitOutput != nil || inSuiteDir(v.file, "test/mjsunit") {
+	if stdout != nil || inSuiteDir(v.file, "test/mjsunit") {
 		realms := v8Realms{
 			host:    host,
 			vm:      &vm,
@@ -692,8 +733,8 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 			scripts: scripts,
 			shared:  host.NewRealmShared(&vm),
 		}
-		if webkitOutput != nil {
-			realms.shell = newV8Shell(webkitOutput, io.Discard)
+		if stdout != nil {
+			realms.shell = newV8Shell(stdout, io.Discard)
 		} else {
 			realms.shell = newV8Shell(io.Discard, io.Discard)
 			realms.shell.recordPrint = recordPrint
@@ -730,7 +771,8 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 		return map[string]any{"url": m.Name()}
 	})
 	files := directives.files
-	if webkitOutput != nil {
+	webkit := inSuiteDir(v.file, v8WebKitDir)
+	if webkit {
 		files = append(files, v8WebKitDir+"/resources/standalone-pre.js")
 	}
 	for _, name := range files {
@@ -746,7 +788,7 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 	if result.outcome == suitePassed {
 		result = scripts.runFile(ctx, &loop, v.file, src)
 	}
-	if webkitOutput != nil && result.outcome == suitePassed && !loop.terminated {
+	if webkit && result.outcome == suitePassed && !loop.terminated {
 		result = scripts.runFile(ctx, &loop, v8WebKitDir+"/resources/standalone-post.js", nil)
 	}
 	result = loop.drain(ctx, result)

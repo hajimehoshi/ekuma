@@ -197,26 +197,28 @@ func inSuiteDir(file, dir string) bool {
 }
 
 type skipEntry struct {
-	reason   string // An empty reason marks an expected failure that still runs.
-	seen     bool
-	inactive bool // The entry applies only to other platforms.
+	reason    string
+	allowPass bool // V8 accepts either a pass or a JavaScript failure.
+	seen      bool
+	inactive  bool // The entry applies only to other platforms.
 }
 
 type skipList map[string]*skipEntry
 
-func (s skipList) match(file string) (reason string, listed bool) {
+func (s skipList) match(file string) *skipEntry {
 	// Visit directory prefixes and then the file, so the most specific entry wins.
 	var end int
+	var matched *skipEntry
 	for part := range strings.SplitAfterSeq(file, "/") {
 		end += len(part)
 		if entry := s[file[:end]]; entry != nil {
 			entry.seen = true
 			if !entry.inactive {
-				reason, listed = entry.reason, true
+				matched = entry
 			}
 		}
 	}
-	return reason, listed
+	return matched
 }
 
 func (s skipList) unseen(yield func(string) bool) {
@@ -239,13 +241,13 @@ func CheckSkipDirectories(t *testing.T) {
 		"test/wasm/nested/fail.js": {},
 		"test/missing/":            {},
 	}
-	if reason, listed := skips.match("test/wasm/nested/example.js"); reason != "requires WebAssembly" || !listed {
-		t.Errorf("nested test: got (%q, %t), want the directory skip reason", reason, listed)
+	if entry := skips.match("test/wasm/nested/example.js"); entry == nil || entry.reason != "requires WebAssembly" {
+		t.Errorf("nested test: got %v, want the directory skip reason", entry)
 	}
-	if reason, listed := skips.match("test/wasm/nested/fail.js"); reason != "" || !listed {
-		t.Errorf("file override: got (%q, %t), want an expected failure", reason, listed)
+	if entry := skips.match("test/wasm/nested/fail.js"); entry == nil || entry.reason != "" {
+		t.Errorf("file override: got %v, want an expected failure", entry)
 	}
-	if _, listed := skips.match("test/wasm-extra/example.js"); listed {
+	if skips.match("test/wasm-extra/example.js") != nil {
 		t.Error("matched a sibling directory")
 	}
 	if got := slices.Collect(skips.unseen); !slices.Equal(got, []string{"test/missing/"}) {
