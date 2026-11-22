@@ -3,7 +3,7 @@
 
 //go:build ignore
 
-// This program builds Unicode normalization tables from the UCD in the pinned ICU release.
+// This program builds Unicode normalization tables from the Unicode Character Database.
 package main
 
 import (
@@ -18,11 +18,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/hajimehoshi/ekuma/internal/unicode/icu"
+	"github.com/hajimehoshi/ekuma/internal/unicode/datafile"
 )
 
 func read(name string) string {
-	b, err := icu.ReadFile("icu4c/source/data/unidata/" + name)
+	b, err := datafile.ReadUnicode("ucd/" + name)
 	if err != nil {
 		log.Fatal(err)
 	}

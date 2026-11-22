@@ -13,7 +13,7 @@ import (
 
 //go:generate go run gen.go
 
-// The Unicode 18.0 normalization data is under the Unicode License v3 in internal/unicode/LICENSE.
+// The Unicode normalization data is under the Unicode License v3 in internal/unicode/LICENSE.
 //
 //go:embed tables.bin
 var tables string

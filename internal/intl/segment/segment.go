@@ -173,11 +173,19 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 	return bs
 }
 
+// Indic conjunct states of graphemeState.
+const (
+	conjNone = iota
+	// conjConsonant is after Consonant [Extend Linker]* without a Linker.
+	conjConsonant
+	// conjLinked is after Consonant [Extend Linker]* with a Linker.
+	conjLinked
+)
+
 // graphemeState summarizes the code points before a position for the rules of
 // graphemeBreak that look back over runs.
 type graphemeState struct {
-	// linked reports whether the prefix ends in an InCB Linker followed by zero or more Extends.
-	linked bool
+	conj int
 	// pict and prevPict report whether the code points up to the last and up to the one
 	// before the last end in ExtPict Extend*.
 	pict     bool
@@ -189,11 +197,15 @@ type graphemeState struct {
 // advance appends the code point of the properties p.
 func (s *graphemeState) advance(p propertyIndex) {
 	switch incbOf(p) {
+	case incbConsonant:
+		s.conj = conjConsonant
 	case incbLinker:
-		s.linked = true
+		if s.conj != conjNone {
+			s.conj = conjLinked
+		}
 	case incbExtend:
 	default:
-		s.linked = false
+		s.conj = conjNone
 	}
 	s.prevPict = s.pict
 	if graphemeOf(p) != gExtend {
@@ -223,8 +235,8 @@ func graphemeBreak(ps []propertyIndex, i int, s *graphemeState) bool {
 	case b == gExtend || b == gZWJ || b == gSpacingMark || a == gPrepend:
 		return false
 	}
-	// GB9c: Linker Extend* × Consonant.
-	if incbOf(ps[i]) == incbConsonant && s.linked {
+	// GB9c: Consonant [Extend Linker]* Linker [Extend Linker]* × Consonant.
+	if incbOf(ps[i]) == incbConsonant && s.conj == conjLinked {
 		return false
 	}
 	// GB11: ExtPict Extend* ZWJ × ExtPict.

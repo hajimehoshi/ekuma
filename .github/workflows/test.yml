@@ -18,6 +18,7 @@ jobs:
         shell: bash
     env:
       EKUMA_ICU: ${{ github.workspace }}/.icu
+      EKUMA_ICU_CLDR: ${{ github.workspace }}/.icu-cldr
       EKUMA_TEST262: ${{ github.workspace }}/.test262
       EKUMA_V8: ${{ github.workspace }}/.v8
     steps:
@@ -62,11 +63,21 @@ jobs:
             /icu4c/source/data/unidata/emoji-sequences.txt
             /icu4c/source/data/unidata/emoji-zwj-sequences.txt
             /icu4c/source/data/unidata/NormalizationTest.txt
-            /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
-            /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
             /icu4c/source/test/testdata/CollationTest_NON_IGNORABLE_SHORT.txt
             /icu4c/source/test/testdata/CollationTest_SHIFTED_SHORT.txt
             /icu4c/source/test/testdata/collationtest.txt
+          sparse-checkout-cone-mode: false
+
+      - name: Checkout CLDR locale identifier tests
+        uses: actions/checkout@v4
+        with:
+          repository: unicode-org/icu
+          ref: ${{ steps.suites.outputs.icu-cldr }}
+          path: .icu-cldr
+          sparse-checkout: |
+            /LICENSE
+            /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
+            /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
           sparse-checkout-cone-mode: false
 
       - name: Checkout test262

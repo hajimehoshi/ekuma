@@ -48,7 +48,7 @@ func (c ce) variable() bool {
 }
 
 const (
-	mergeSeparatorPrimary = 0x0200 << 15
+	mergeSeparatorPrimary = collation.MergeSeparator << 15
 	commonSecondary       = 0x20 << 11
 	commonTertiary        = 0x02 << 6
 )

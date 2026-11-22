@@ -33,10 +33,11 @@ import (
 	"unicode"
 
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldrgen"
+	"github.com/hajimehoshi/ekuma/internal/unicode/datafile"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 )
 
-const xmlVersion = "49"
+const xmlVersion = "48.2"
 
 const xmlURL = "https://unicode.org/Public/cldr/" + xmlVersion + "/cldr-common-" + xmlVersion + ".zip"
 
@@ -193,6 +194,10 @@ func parseCEs(s string) ([]rootCE, []uint16) {
 }
 
 func parseRoot(rel *release) *root {
+	if !bytes.Contains(rel.allkeys, []byte("\n@version "+datafile.UnicodeVersion+"\n")) {
+		log.Fatalf("CLDR %s collation lacks UCA version %s", xmlVersion, datafile.UnicodeVersion)
+	}
+
 	r := &root{
 		entries:      map[string][]rootCE{},
 		variable:     map[uint16]bool{},
@@ -1891,6 +1896,7 @@ func main() {
 			tops[c] = g.end
 		}
 	}
+	fmt.Fprintf(&src, "// MergeSeparator is the primary weight of U+FFFE.\nconst MergeSeparator = 0x%04X\n\n", r.entries["\uFFFE"][0].p)
 	zero := r.entries["0"]
 	fmt.Fprintf(&src, "// FirstVariable is the first primary weight of the space group, the first group that can\n// be variable.\nconst FirstVariable = 0x%04X\n\n", bottom)
 	src.WriteString("// The last primary weights of the groups that maxVariable can name.\nconst (\n")

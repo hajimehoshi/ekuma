@@ -238,8 +238,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 ## Status
 
-53,790 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
-5 fail for known reasons, which [`test262-failures.txt`](internal/jstest/testdata/test262-failures.txt) lists.
+53,791 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
+4 fail for known reasons, which [`test262-failures.txt`](internal/jstest/testdata/test262-failures.txt) lists.
 
 ### Implemented
 
@@ -257,6 +257,10 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   `1890-01-01T00:00:00Z` in `Europe/Paris`, `Date` uses `+00:09` for the historical
   offset of `+00:09:21`, so `getSeconds()` returns `0`. `Temporal.ZonedDateTime` uses
   the full offset supplied by the platform for a named time zone, giving `21` seconds here
+- Ekuma tracks the Unicode version shipped with the Go release in `go.mod`. For Go 1.27,
+  that is Unicode 17.0.0. [ECMAScript](https://tc39.es/ecma262/multipage/conformance.html#sec-conformance)
+  requires the latest Unicode Standard for source text, so Ekuma may reject identifiers
+  that use letters added after Unicode 17
 - Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar
 - Native builds can load named time zones from system zoneinfo directories and from the sources
   available to Go's `time.LoadLocation`. These include a directory or uncompressed zip file named
@@ -291,22 +295,6 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   a built-in function. A proper tail call from strict code leaves no frame of the strict
   function, so the function that it calls sees the caller of the strict function instead
 
-#### Unicode versions
-
-| Feature | Unicode version |
-|---|---|
-| String methods `toUpperCase`, `toLowerCase`, and `normalize` | 18.0 |
-| Unicode break properties used by `Intl.Segmenter` | 18.0 |
-| RegExp simple case folding (`iu` or `iv`) and emoji properties of strings such as `\p{RGI_Emoji}` (`v`) | 18.0 |
-| RegExp code-point property escapes such as `\p{Letter}` and `\p{Emoji}` (`u` or `v`), and identifier characters in capture group names | 17.0 |
-| JavaScript identifiers and RegExp case-insensitive matching without `u` or `v` | Go's Unicode tables (17.0 in Go 1.27) |
-
-Ekuma keeps RegExp code-point properties at Unicode 17 to match the pinned Test262 fixtures.
-Switching those properties to Unicode 18 causes 90 generated property-escape tests to fail
-at [Test262 revision `2e58f87d`](https://github.com/tc39/test262/tree/2e58f87d8350ad51224617a041c6e041d52f8444/test/built-ins/RegExp/property-escapes/generated).
-Ekuma's Unicode 18 casing maps U+0277 to U+A7DD when uppercasing. The pinned Test262 fixture
-expects U+0277 to uppercase to itself, so `string-upper-lower-mapping.js` is an expected failure.
-
 ### Missing
 
 Host API for these, some of which the engine has and only the tests use:
@@ -340,13 +328,14 @@ Short mode skips all external conformance tests.
 
 | Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
-| [ICU 79.1 (Unicode 18.0, CLDR 49)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
+| [ICU 78.3 (Unicode 17, CLDR 48.2 collation)](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
+| [ICU 79.1 (CLDR 49 locale identifiers)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
-The ICU tests cover RegExp simple case folding and emoji properties of strings.
-Set `EKUMA_ICU` to the ICU checkout. For a sparse checkout, use the paths
-in the [CI workflow](.github/workflows/test.yml).
+ICU 78.3 supplies the casing, normalization, RegExp, segmentation, and collation
+fixtures. ICU 79.1 supplies the two CLDR 49 locale-identifier fixtures.
+The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
 Run the full suite or just collation with
 
 ```sh
@@ -416,6 +405,6 @@ test (`-n.js`) and fails a positive test.
 ## License
 
 Ekuma's code is under [0BSD](LICENSE). Distributions must include the Unicode
-notice for the normalization data. Programs that import the optional
+notice for the Unicode character and emoji data. Programs that import the optional
 `github.com/hajimehoshi/ekuma/intl` package must also include the notices for
 the CLDR data and ICU4C word dictionaries. See [Unicode notices](internal/unicode/LICENSE).

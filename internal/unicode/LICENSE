@@ -2,10 +2,13 @@ UNICODE LICENSE V3
 
 COPYRIGHT AND PERMISSION NOTICE
 
-CLDR locale and collation data
+CLDR locale data
 Copyright © 2001–2026 Unicode, Inc.
 
-Unicode Character Database casing and normalization data and ICU4C word dictionaries
+CLDR collation data
+Copyright © 2019-2025 Unicode, Inc.
+
+Unicode Character Database, emoji data and ICU4C word dictionaries
 Copyright © 1991-2026 Unicode, Inc.
 
 NOTICE TO USER: Carefully read the following legal agreement. BY

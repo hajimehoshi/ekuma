@@ -20,7 +20,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/hajimehoshi/ekuma/internal/unicode/icu"
+	"github.com/hajimehoshi/ekuma/internal/unicode/datafile"
 )
 
 type node struct {
@@ -64,7 +64,7 @@ func encodeTrie(root *node) ([]byte, error) {
 }
 
 func generate(filename, out string, weighted bool) error {
-	src, err := icu.ReadFile("icu4c/source/data/brkitr/dictionaries/" + filename)
+	src, err := datafile.ReadICU("icu4c/source/data/brkitr/dictionaries/" + filename)
 	if err != nil {
 		return err
 	}

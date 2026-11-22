@@ -62,8 +62,8 @@ func TestMatch(t *testing.T) {
 		{
 			pattern: `(.)\1`,
 			flags:   "iu",
-			input:   "ɷ\ua7dd",
-			want:    []int{0, 2, 0, 1},
+			input:   "\U00016ea0\U00016ebb",
+			want:    []int{0, 4, 0, 2},
 		},
 		{pattern: `(?<x>.)\k<x>`, input: "abb", want: []int{1, 3, 1, 2}},
 		{pattern: `(?:(?<x>a)|(?<x>b))\k<x>`, input: "bb", want: []int{0, 2, -1, -1, 0, 1}},

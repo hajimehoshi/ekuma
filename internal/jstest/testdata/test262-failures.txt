@@ -14,11 +14,6 @@ test/intl402/Temporal/ZonedDateTime/links.js
 # implementation. The test expects fdlibm's precision.
 test/staging/sm/Math/sinh-approx.js
 
-# Ekuma uses Unicode 18 default case mappings. The Unicode 17 fixture expects
-# U+0277 to uppercase to itself. Unicode 18 maps it to U+A7DD.
-# Remove this entry when the pinned fixture uses Unicode 18 mappings.
-test/staging/sm/String/string-upper-lower-mapping.js
-
 # Ekuma follows ECMA-262 Annex B and preserves the arguments object when a block
 # declares a function named arguments. These tests expect the function to replace
 # the arguments object, as in SpiderMonkey. The Annex B behavior is checked by

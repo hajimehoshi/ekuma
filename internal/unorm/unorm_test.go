@@ -71,12 +71,12 @@ func TestStringLongRun(t *testing.T) {
 }
 
 func TestCombiningMarkAtChunkBoundary(t *testing.T) {
-	// U+1ADE has combining class 230 in Unicode 18. The following dot
+	// U+1ACF has combining class 230. The following dot
 	// below moves across the chunk boundary and composes with the A.
-	const end = "A\u0315\u1ade"
+	const end = "A\u0315\u1acf"
 	prefix := strings.Repeat("x", (1<<16)-len(end))
 	got := unorm.String(unorm.NFC, prefix+end+"\u0323", nil)
-	if want := prefix + "Ạ\u1ade\u0315"; got != want {
+	if want := prefix + "Ạ\u1acf\u0315"; got != want {
 		t.Errorf("normalized suffix = %+q, want %+q", strings.TrimPrefix(got, prefix), strings.TrimPrefix(want, prefix))
 	}
 }

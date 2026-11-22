@@ -26,48 +26,53 @@ func Run(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping ICU tests in short mode")
 	}
-	dir := checkoutDir(t)
-	if dir == "" {
+	dir := checkoutDir(t, "EKUMA_ICU", "icu")
+	cldrDir := checkoutDir(t, "EKUMA_ICU_CLDR", "icu-cldr")
+	if dir == "" && cldrDir == "" {
 		t.Skip("no ICU checkout available")
 	}
 	locales, fixtures := readFailures(t)
-	testdata := filepath.Join(dir, "icu4c", "source", "test", "testdata")
-	unidata := filepath.Join(dir, "icu4c", "source", "data", "unidata")
-	runBreakTests(t, testdata)
-	t.Run("casing.txt", func(t *testing.T) {
-		runCasingTest(t, filepath.Join(testdata, "casing.txt"))
-	})
-	t.Run("rbbitst.txt", func(t *testing.T) {
-		runRBBITest(t, filepath.Join(testdata, "rbbitst.txt"), filepath.Join(unidata, "UnicodeData.txt"), fixtures["rbbitst.txt"])
-	})
-	t.Run("CaseFolding.txt", func(t *testing.T) {
-		runCaseFoldingTest(t, filepath.Join(unidata, "CaseFolding.txt"))
-	})
-	for _, file := range []string{"emoji-sequences.txt", "emoji-zwj-sequences.txt"} {
+	if dir != "" {
+		testdata := filepath.Join(dir, "icu4c", "source", "test", "testdata")
+		unidata := filepath.Join(dir, "icu4c", "source", "data", "unidata")
+		runBreakTests(t, testdata)
+		t.Run("casing.txt", func(t *testing.T) {
+			runCasingTest(t, filepath.Join(testdata, "casing.txt"))
+		})
+		t.Run("rbbitst.txt", func(t *testing.T) {
+			runRBBITest(t, filepath.Join(testdata, "rbbitst.txt"), filepath.Join(unidata, "UnicodeData.txt"), fixtures["rbbitst.txt"])
+		})
+		t.Run("CaseFolding.txt", func(t *testing.T) {
+			runCaseFoldingTest(t, filepath.Join(unidata, "CaseFolding.txt"))
+		})
+		for _, file := range []string{"emoji-sequences.txt", "emoji-zwj-sequences.txt"} {
+			t.Run(file, func(t *testing.T) {
+				runEmojiTest(t, filepath.Join(unidata, file))
+			})
+		}
+		t.Run("NormalizationTest.txt", func(t *testing.T) {
+			runNormalizationTest(t, filepath.Join(unidata, "NormalizationTest.txt"))
+		})
+		for _, alternate := range []string{"NON_IGNORABLE", "SHIFTED"} {
+			file := "CollationTest_" + alternate + "_SHORT.txt"
+			t.Run(file, func(t *testing.T) {
+				runOrderedCollation(t, filepath.Join(testdata, file), alternate == "SHIFTED", fixtures[file])
+			})
+		}
+		const file = "collationtest.txt"
 		t.Run(file, func(t *testing.T) {
-			runEmojiTest(t, filepath.Join(unidata, file))
+			runCollationTest(t, filepath.Join(testdata, file), fixtures[file])
 		})
 	}
-	t.Run("NormalizationTest.txt", func(t *testing.T) {
-		runNormalizationTest(t, filepath.Join(unidata, "NormalizationTest.txt"))
-	})
-	localeDir := filepath.Join(testdata, "cldr", "localeIdentifiers")
-	t.Run("likelySubtags.txt", func(t *testing.T) {
-		runLikelySubtagsTest(t, filepath.Join(localeDir, "likelySubtags.txt"), locales)
-	})
-	t.Run("localeCanonicalization.txt", func(t *testing.T) {
-		runLocaleCanonicalizationTest(t, filepath.Join(localeDir, "localeCanonicalization.txt"), locales)
-	})
-	for _, alternate := range []string{"NON_IGNORABLE", "SHIFTED"} {
-		file := "CollationTest_" + alternate + "_SHORT.txt"
-		t.Run(file, func(t *testing.T) {
-			runOrderedCollation(t, filepath.Join(testdata, file), alternate == "SHIFTED", fixtures[file])
+	if cldrDir != "" {
+		localeDir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata", "cldr", "localeIdentifiers")
+		t.Run("likelySubtags.txt", func(t *testing.T) {
+			runLikelySubtagsTest(t, filepath.Join(localeDir, "likelySubtags.txt"), locales)
+		})
+		t.Run("localeCanonicalization.txt", func(t *testing.T) {
+			runLocaleCanonicalizationTest(t, filepath.Join(localeDir, "localeCanonicalization.txt"), locales)
 		})
 	}
-	const file = "collationtest.txt"
-	t.Run(file, func(t *testing.T) {
-		runCollationTest(t, filepath.Join(testdata, file), fixtures[file])
-	})
 }
 
 const failuresFile = "internal/icutest/testdata/icu-failures.txt"
@@ -122,19 +127,19 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 	return locales, fixtures
 }
 
-func checkoutDir(t *testing.T) string {
+func checkoutDir(t *testing.T, env, name string) string {
 	t.Helper()
-	if dir := os.Getenv("EKUMA_ICU"); dir != "" {
+	if dir := os.Getenv(env); dir != "" {
 		return dir
 	}
 	cache, err := os.UserCacheDir()
 	if err != nil {
-		t.Logf("no user cache directory; set EKUMA_ICU to an ICU checkout")
+		t.Logf("no user cache directory; set %s to an ICU checkout", env)
 		return ""
 	}
-	dir := filepath.Join(cache, "ekuma", "icu")
+	dir := filepath.Join(cache, "ekuma", name)
 	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
-		t.Logf("no ICU checkout at %s; set EKUMA_ICU", dir)
+		t.Logf("no ICU checkout at %s; set %s", dir, env)
 		return ""
 	} else if err != nil {
 		t.Fatal(err)
