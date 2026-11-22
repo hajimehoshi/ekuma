@@ -79,11 +79,12 @@ func iterationUnobservable(vm *engine.VM, o, proto, iter, iterProto, next *engin
 	if _, ok := vm.GetOwnProperty(o, key); ok || vm.ProtoOf(o) != proto {
 		return false
 	}
-	if d, ok := vm.GetOwnProperty(proto, key); !ok || !d.IsData() || d.Value().Object() != iter {
-		return false
-	}
-	d, ok := vm.GetOwnProperty(iterProto, nextKey)
-	return ok && d.IsData() && d.Value().Object() == next
+	return hasOwnMethod(vm, proto, key, iter) && hasOwnMethod(vm, iterProto, nextKey, next)
+}
+
+func hasOwnMethod(vm *engine.VM, proto *engine.Object, key engine.PropKey, method *engine.Object) bool {
+	d, ok := vm.GetOwnProperty(proto, key)
+	return ok && d.IsData() && d.Value().Object() == method
 }
 
 // reserveProbe is the number of elements of an array after which a collection made from the
@@ -155,20 +156,22 @@ func initMap(vm *engine.VM) {
 			vm.ThrowTypeError("constructor Map requires 'new'")
 		}
 		t := &collection.Table{}
-		m := vm.NewMapObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype), t)
+		targetProto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype)
+		m := vm.NewMapObject(targetProto, t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
+			return engine.ObjectValue(m)
+		}
+		// A getter for set can modify or retain m. Bulk copying requires a fresh, unobserved table.
+		if src := mapOf(iterable); src != nil && targetProto == proto &&
+			hasOwnMethod(vm, proto, engine.NamedKey(setKey), mapSet) &&
+			iterationUnobservable(vm, iterable.Object(), proto, mapEntries, mapIterProto, mapIterNext, nextKey) {
+			t.CopyFrom(src, vm.Poll)
 			return engine.ObjectValue(m)
 		}
 		adder := adderOf(vm, m, setKey)
 		var fast func(k, v engine.Value)
 		if adder == mapSet {
-			if src := mapOf(iterable); src != nil && iterationUnobservable(vm, iterable.Object(), proto, mapEntries, mapIterProto, mapIterNext, nextKey) {
-				// The iteration yields the entries of src in their order, which the original set
-				// adds as they are.
-				t.CopyFrom(src, vm.Poll)
-				return engine.ObjectValue(m)
-			}
 			n := engine.ElementCount(iterable)
 			var i int
 			fast = func(k, v engine.Value) {
@@ -456,19 +459,20 @@ func initSet(vm *engine.VM) {
 			vm.ThrowTypeError("constructor Set requires 'new'")
 		}
 		t := &collection.Table{}
-		s := vm.NewSetObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype), t)
+		targetProto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype)
+		s := vm.NewSetObject(targetProto, t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
 		}
+		if src := setOf(iterable); src != nil && targetProto == proto &&
+			hasOwnMethod(vm, proto, engine.NamedKey(addKey), setAdd) &&
+			iterationUnobservable(vm, iterable.Object(), proto, setValues, setIterProto, setIterNext, engine.NamedKey(keys.next)) {
+			t.CopyFrom(src, vm.Poll)
+			return engine.ObjectValue(s)
+		}
 		adder := adderOf(vm, s, addKey)
 		if adder == setAdd {
-			if src := setOf(iterable); src != nil && iterationUnobservable(vm, iterable.Object(), proto, setValues, setIterProto, setIterNext, engine.NamedKey(keys.next)) {
-				// The iteration yields the values of src in their order, which the original add
-				// adds as they are.
-				t.CopyFrom(src, vm.Poll)
-				return engine.ObjectValue(s)
-			}
 			n := engine.ElementCount(iterable)
 			var i int
 			vm.Iterate(iterable, func(e engine.Value) bool {
