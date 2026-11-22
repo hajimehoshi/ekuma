@@ -335,7 +335,8 @@ func (vm *VM) resolve(o *Object) {
 // init defines. init runs once, before the first operation that needs the own properties of
 // the object, or in [VM.InitLazyObject].
 func (vm *VM) NewLazyObject(proto *Object, init func(o *Object)) *Object {
-	o := vm.NewObject(proto)
+	// A cached miss on an ordinary object must still run this object's initializer.
+	o := newObject(vm.newShape(proto, vm.curRealm))
 	o.class = classLazy
 	o.flags |= objExotic
 	o.setExtState(init)
