@@ -1643,11 +1643,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
 			strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
 			v := vm.getGlobal(fp.keys[i.B], c, orUndef, strict)
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			regs[i.A] = v
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			c := &fp.globals[i.C]
 			vm.frames[len(vm.frames)-1].pc = pc
 			vm.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)
+			regs = vm.reload(regs, vm.frameBase(), fp)
 		case bytecode.OpResolveGlobal:
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
@@ -1754,6 +1756,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.forwardedArguments(slices.Clip(regs), i.B)
 			val, getter := vm.getNamed(v, vm.Key(KeyLength), nil)
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -1765,6 +1768,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			v := vm.forwardedArguments(slices.Clip(regs), i.B)
 			val, getter := vm.getValue(v, regs[i.C])
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -1840,6 +1844,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.frames[len(vm.frames)-1].pc = pc
 				var ok bool
 				setter, ok = vm.setNamed(v, fp.keys[i.B], regs[i.C], c)
+				regs = vm.reload(regs, vm.frameBase(), fp)
 				if !ok && i.Op == bytecode.OpSetPropStrict {
 					vm.throwReadOnly(v, PropKey{key: fp.keys[i.B]})
 				}
@@ -1860,6 +1865,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			val, getter := vm.getNamedAtSite(v, vm.Key(KeyLength), &fp.caches[i.C])
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -1869,6 +1875,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v, k := regs[i.B], regs[i.C]
 			vm.frames[len(vm.frames)-1].pc = pc
 			val, getter := vm.getValue(v, k)
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -1878,6 +1885,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := regs[i.B]
 			vm.frames[len(vm.frames)-1].pc = pc
 			val, getter := vm.getIndex(v, uint32(i.C))
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
@@ -1903,6 +1911,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			// Converting the key can run code that changes the register of the value.
 			val := regs[i.C]
 			setter := vm.setValue(v, k, val, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if setter != nil {
 				argBase = vm.frames[len(vm.frames)-1].top()
 				vm.ensureStack(argBase + 1)
@@ -3085,6 +3094,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := regs[i.B]
 			vm.frames[len(vm.frames)-1].pc = pc
 			val, getter := vm.getNamedAtSite(v, fp.keys[i.C], &fp.caches[i.C])
+			regs = vm.reload(regs, vm.frameBase(), fp)
 			if getter != nil {
 				f, callThis, argc, ret = getter, v, 0, i.A
 				goto callAbove
