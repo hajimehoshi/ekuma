@@ -30,3 +30,6 @@ r.push(len(inherits));
 Object.defineProperty(Proto.prototype, "length", {get() { return 8; }});
 r.push(len(inherits));
 assert.sameValue(r.join(" "), "0,2,3,4,6,2,5 0,2,3,4,6,2,5 0,2,3,4,6,2,5 7 8");
+
+assert.sameValue(len(Object.create(String.prototype)), 0);
+assert.sameValue(len("é"), 1);

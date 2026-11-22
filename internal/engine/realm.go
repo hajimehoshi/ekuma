@@ -99,7 +99,10 @@ func (vm *VM) initRealmPrototypes() {
 	vm.shapes.array = vm.shapeFor(arrayProto)
 	stringProto := vm.NewObject(objectProto)
 	vm.intrinsics[IntrinsicStringPrototype] = stringProto
-	vm.shapes.string = vm.shapeFor(stringProto)
+	// A primitive string has its own length even when an ordinary object with the same
+	// prototype inherits its length.
+	stringProto.flags |= objIsProto
+	vm.shapes.string = vm.newShape(stringProto, vm.curRealm)
 	vm.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
 	for i := range vm.shapes.shortStrings {
 		vm.shapes.shortStrings[i] = Object{

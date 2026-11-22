@@ -1854,6 +1854,10 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpGetLength:
 			v := regs[i.B]
+			if v.IsString() {
+				setNumber(&regs[i.A], float64(v.StringLength()))
+				continue
+			}
 			vm.frames[len(vm.frames)-1].pc = pc
 			val, getter := vm.getNamedAtSite(v, vm.Key(KeyLength), &fp.caches[i.C])
 			if getter != nil {
