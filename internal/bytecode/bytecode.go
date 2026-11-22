@@ -195,6 +195,18 @@ const (
 	OpJumpNotSEqP // if !(b === c) then pc = a, where c is one of [PrimUndefined] through [PrimTrue]
 	OpJumpNotSNeP // if !(b !== c) then pc = a, where c is one of [PrimUndefined] through [PrimTrue]
 
+	// Jumps back to the start of a loop when its condition holds. Like a backward [OpJump], they
+	// check for an interruption. The constant Consts[c] of the K forms is a number.
+	OpLoopIf  // if b then pc = a
+	OpLoopLt  // if b < c then pc = a
+	OpLoopLe  // if b <= c then pc = a
+	OpLoopGt  // if b > c then pc = a
+	OpLoopGe  // if b >= c then pc = a
+	OpLoopLtK // if b < Consts[c] then pc = a
+	OpLoopLeK // if b <= Consts[c] then pc = a
+	OpLoopGtK // if b > Consts[c] then pc = a
+	OpLoopGeK // if b >= Consts[c] then pc = a
+
 	// Calls. The callee is in b and the this value in b+1. The result goes to a, which may be b,
 	// once the call returns: a call that throws leaves a as it is. The frame of the callee can
 	// start at b+2, so a call can overwrite every register from there on; [Operands.Writes]

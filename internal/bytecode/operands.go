@@ -1196,6 +1196,52 @@ var opcodes = [...]struct {
 		flow:     FlowNext,
 	},
 
+	OpLoopIf: {
+		name:     "OpLoopIf",
+		operands: jumpIfOperands,
+		flow:     FlowNext,
+	},
+	OpLoopLt: {
+		name:     "OpLoopLt",
+		operands: jumpCmpOperands,
+		flow:     FlowNext,
+	},
+	OpLoopLe: {
+		name:     "OpLoopLe",
+		operands: jumpCmpOperands,
+		flow:     FlowNext,
+	},
+	OpLoopGt: {
+		name:     "OpLoopGt",
+		operands: jumpCmpOperands,
+		flow:     FlowNext,
+	},
+	OpLoopGe: {
+		name:     "OpLoopGe",
+		operands: jumpCmpOperands,
+		flow:     FlowNext,
+	},
+	OpLoopLtK: {
+		name:     "OpLoopLtK",
+		operands: jumpCmpKOperands,
+		flow:     FlowNext,
+	},
+	OpLoopLeK: {
+		name:     "OpLoopLeK",
+		operands: jumpCmpKOperands,
+		flow:     FlowNext,
+	},
+	OpLoopGtK: {
+		name:     "OpLoopGtK",
+		operands: jumpCmpKOperands,
+		flow:     FlowNext,
+	},
+	OpLoopGeK: {
+		name:     "OpLoopGeK",
+		operands: jumpCmpKOperands,
+		flow:     FlowNext,
+	},
+
 	OpCall: {
 		name:     "OpCall",
 		operands: callOperands,

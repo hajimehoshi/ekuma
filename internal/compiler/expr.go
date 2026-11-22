@@ -530,6 +530,22 @@ var compareConstJumps = map[ast.Op]bytecode.Opcode{
 	ast.OpStrictNe: bytecode.OpJumpNotSNeK,
 }
 
+// loopJumps and loopConstJumps are the jumps back to the start of a loop for the relational
+// comparisons.
+var loopJumps = map[ast.Op]bytecode.Opcode{
+	ast.OpLt: bytecode.OpLoopLt,
+	ast.OpLe: bytecode.OpLoopLe,
+	ast.OpGt: bytecode.OpLoopGt,
+	ast.OpGe: bytecode.OpLoopGe,
+}
+
+var loopConstJumps = map[ast.Op]bytecode.Opcode{
+	ast.OpLt: bytecode.OpLoopLtK,
+	ast.OpLe: bytecode.OpLoopLeK,
+	ast.OpGt: bytecode.OpLoopGtK,
+	ast.OpGe: bytecode.OpLoopGeK,
+}
+
 // primLiteral returns the operand c of OpJumpNotSEqP for e when e is undefined, null or a boolean
 // literal, and -1 otherwise.
 func (f *fn) primLiteral(e ast.Expr) int32 {
@@ -627,6 +643,62 @@ func (f *fn) jumpIfFalse(e ast.Expr) jumps {
 	}
 	r := f.exprAny(e)
 	return jumpAt(f.emit(bytecode.OpJumpIfNot, 0, r, 0))
+}
+
+// loopBack compiles the condition e of a loop at its end, with a jump back to top when it is
+// true.
+func (f *fn) loopBack(e ast.Expr, top int32) {
+	mark := f.top
+	defer f.free(mark)
+	switch n := e.(type) {
+	case *ast.BinaryExpr:
+		if op, ok := loopJumps[n.Op]; ok {
+			l := f.immediateOperand(n.Left, n.Right)
+			if k, isNum := numberLit(n.Right); isNum {
+				f.emit(loopConstJumps[n.Op], top, l, f.constNum(k))
+				return
+			}
+			r := f.immediateOperand(n.Right)
+			f.emit(op, top, l, r)
+			return
+		}
+		if _, ok := compareJumps[n.Op]; ok {
+			// The fused jumps of the other comparisons leave the loop when they fail.
+			f.loopBackOver(e, top)
+			return
+		}
+	case *ast.LogicalExpr:
+		switch n.Op {
+		case ast.OpAnd:
+			no := f.jumpIfFalse(n.Left)
+			f.loopBack(n.Right, top)
+			f.patchJumps(no)
+			return
+		case ast.OpOr:
+			f.loopBack(n.Left, top)
+			f.loopBack(n.Right, top)
+			return
+		}
+	case *ast.UnaryExpr:
+		if n.Op == ast.OpNot {
+			f.loopBackOver(e, top)
+			return
+		}
+	case *ast.BoolLit:
+		if n.Value {
+			f.jumpTo(top)
+		}
+		return
+	}
+	r := f.exprAny(e)
+	f.emit(bytecode.OpLoopIf, top, r, 0)
+}
+
+// loopBackOver is loopBack with a jump over the backward jump when e is false.
+func (f *fn) loopBackOver(e ast.Expr, top int32) {
+	no := f.jumpIfFalse(e)
+	f.jumpTo(top)
+	f.patchJumps(no)
 }
 
 // jumpIfTrue compiles the condition e and returns the jumps that are taken when it is true.

@@ -1263,6 +1263,33 @@ func TestCancel(t *testing.T) {
 	}
 }
 
+// TestCancelLoopConditions tests that a context stops the loops whose conditions jump back.
+func TestCancelLoopConditions(t *testing.T) {
+	for _, src := range []string{
+		`var i = 0, n = 1; while (i < n) {}`,
+		`var i = 0, n = 1; while (i <= n) {}`,
+		`var i = 1, z = 0; while (i > z) {}`,
+		`var i = 1, z = 0; while (i >= z) {}`,
+		`var i = 0; while (i < 1) {}`,
+		`var i = 0; while (i <= 1) {}`,
+		`var i = 1; while (i > 0) {}`,
+		`var i = 1; while (i >= 0) {}`,
+		`var o = {}; while (o) {}`,
+		// Conditions that take the full comparison or ToBoolean.
+		`var s = "a"; while (s < "b") {}`,
+		`var x = 0n; while (x < 1) {}`,
+		`var s = "s"; do {} while (s);`,
+	} {
+		var vm ekuma.VM
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		_, err := runScript(ctx, &vm, "loop", src)
+		cancel()
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("%s: got %v, want context.DeadlineExceeded", src, err)
+		}
+	}
+}
+
 // TestCancelNested checks that a context stops what a Func does on behalf of the script.
 func TestCancelNested(t *testing.T) {
 	var vm ekuma.VM

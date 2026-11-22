@@ -1481,6 +1481,112 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
+		case bytecode.OpLoopIf:
+			// The ToBoolean of OpJumpIf. A pending interruption takes the switch below.
+			v := regs[i.B]
+			t, known := false, true
+			if o := v.o; o == numberObject {
+				t = v.n != 0 && v.n == v.n
+			} else if o == nil {
+				t = false
+			} else if k := o.kind; k == kindTrue {
+				t = true
+			} else if k <= kindFalse {
+				t = false
+			} else if k >= kindObject {
+				t = true
+			} else {
+				known = false
+			}
+			if known {
+				if !t {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopLt:
+			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
+				if !(x.n < y.n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopLe:
+			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
+				if !(x.n <= y.n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopGt:
+			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
+				if !(x.n > y.n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopGe:
+			if x, y := regs[i.B], regs[i.C]; x.o == numberObject && y.o == numberObject {
+				if !(x.n >= y.n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopLtK:
+			if x := regs[i.B]; x.o == numberObject {
+				if !(x.n < fp.consts[i.C].n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopLeK:
+			if x := regs[i.B]; x.o == numberObject {
+				if !(x.n <= fp.consts[i.C].n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopGtK:
+			if x := regs[i.B]; x.o == numberObject {
+				if !(x.n > fp.consts[i.C].n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
+		case bytecode.OpLoopGeK:
+			if x := regs[i.B]; x.o == numberObject {
+				if !(x.n >= fp.consts[i.C].n) {
+					continue
+				}
+				if !vm.interrupt.Load() {
+					pc = int(i.A)
+					continue
+				}
+			}
 		}
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
@@ -2006,7 +2112,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 		case bytecode.OpJump:
 			if int(i.A) < pc && vm.interrupt.Load() {
-				// Every loop jumps backwards with this instruction.
+				// A loop whose condition is not tested at its end jumps backwards with this
+				// instruction.
 				vm.frames[len(vm.frames)-1].pc = pc
 				vm.Poll()
 			}
@@ -2124,6 +2231,34 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			if !(x.n >= fp.consts[i.C].n) {
+				pc = int(i.A)
+			}
+		case bytecode.OpLoopIf:
+			if ToBoolean(regs[i.B]) {
+				if vm.interrupt.Load() {
+					vm.frames[len(vm.frames)-1].pc = pc
+					vm.Poll()
+				}
+				pc = int(i.A)
+			}
+		case bytecode.OpLoopLt, bytecode.OpLoopLe, bytecode.OpLoopGt, bytecode.OpLoopGe:
+			vm.frames[len(vm.frames)-1].pc = pc
+			r := vm.loopHolds(i.Op, regs[i.B], regs[i.C])
+			regs = vm.reload(regs, vm.frameBase(), fp)
+			if r {
+				if vm.interrupt.Load() {
+					vm.Poll()
+				}
+				pc = int(i.A)
+			}
+		case bytecode.OpLoopLtK, bytecode.OpLoopLeK, bytecode.OpLoopGtK, bytecode.OpLoopGeK:
+			vm.frames[len(vm.frames)-1].pc = pc
+			r := vm.loopHoldsK(i.Op, regs[i.B], fp.consts[i.C])
+			regs = vm.reload(regs, vm.frameBase(), fp)
+			if r {
+				if vm.interrupt.Load() {
+					vm.Poll()
+				}
 				pc = int(i.A)
 			}
 
@@ -3207,4 +3342,52 @@ func NumberPow(x, y float64) float64 {
 		return numconv.Pow10(int(y))
 	}
 	return xmath.Pow(x, y)
+}
+
+// loopHolds reports whether the comparison of the loop jump op, one of [bytecode.OpLoopLt]
+// through [bytecode.OpLoopGe], holds for x and y.
+func (vm *VM) loopHolds(op bytecode.Opcode, x, y Value) bool {
+	switch op {
+	case bytecode.OpLoopLt:
+		return vm.compare(x, y, true) == cmpLess
+	case bytecode.OpLoopLe:
+		c := vm.compare(y, x, false)
+		return c == cmpGreater || c == cmpEqual
+	case bytecode.OpLoopGt:
+		return vm.compare(y, x, false) == cmpLess
+	default:
+		c := vm.compare(x, y, true)
+		return c == cmpGreater || c == cmpEqual
+	}
+}
+
+// loopHoldsK reports whether the comparison of the loop jump op, one of [bytecode.OpLoopLtK]
+// through [bytecode.OpLoopGeK], holds for x and the number k.
+func (vm *VM) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
+	if x.o != numberObject {
+		x = vm.ToNumeric(vm.ToPrimitive(x, HintNumber))
+		if x.o != numberObject {
+			c := vm.compareBigIntMixed(x, k)
+			switch op {
+			case bytecode.OpLoopLtK:
+				return c == cmpLess
+			case bytecode.OpLoopLeK:
+				return c == cmpLess || c == cmpEqual
+			case bytecode.OpLoopGtK:
+				return c == cmpGreater
+			default:
+				return c == cmpGreater || c == cmpEqual
+			}
+		}
+	}
+	switch op {
+	case bytecode.OpLoopLtK:
+		return x.n < k.n
+	case bytecode.OpLoopLeK:
+		return x.n <= k.n
+	case bytecode.OpLoopGtK:
+		return x.n > k.n
+	default:
+		return x.n >= k.n
+	}
 }

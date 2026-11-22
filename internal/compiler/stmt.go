@@ -449,21 +449,17 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 		f.forOf(s, labels)
 	case *ast.WhileStmt:
 		c := f.pushLoop(labels)
-		top := f.pc()
-		exit := f.jumpIfFalse(s.Test)
+		t := f.loopStart(s.Test)
 		f.stmt(s.Body, nil)
 		f.patchAll(c.continues)
-		f.jumpTo(top)
-		f.patchJumps(exit)
+		f.loopEnd(t, s.Test)
 		f.popLoop(c)
 	case *ast.DoWhileStmt:
 		c := f.pushLoop(labels)
 		top := f.pc()
 		f.stmt(s.Body, nil)
 		f.patchAll(c.continues)
-		exit := f.jumpIfFalse(s.Test)
-		f.jumpTo(top)
-		f.patchJumps(exit)
+		f.loopBack(s.Test, top)
 		f.popLoop(c)
 	case *ast.ReturnStmt:
 		var v int32
@@ -643,25 +639,122 @@ func (f *fn) forLoop(s *ast.ForStmt, labels []string, scoped bool) {
 		f.emit(bytecode.OpCloseUpvals, f.scope.firstReg, 0, 0)
 	}
 	c := f.pushLoop(labels)
-	top := f.pc()
-	var exit jumps
-	if s.Test != nil {
-		exit = f.jumpIfFalse(s.Test)
-	}
+	t := f.loopStart(s.Test)
 	f.stmt(s.Body, nil)
 	f.patchAll(c.continues)
-	// The update is compiled after the copy, so the closures and direct evals in it are not
-	// known from the scope yet.
-	if scoped && (f.scope.captured || mayCapture(s.Update)) {
+	// The update and the condition are compiled after the copy, so the closures and direct
+	// evals in them are not known from the scope yet.
+	if scoped && (f.scope.captured || mayCapture(s.Update) || mayCapture(s.Test)) {
 		// Every iteration has its own copy of the loop variables.
 		f.emit(bytecode.OpCloseUpvals, f.scope.firstReg, 0, 0)
 	}
 	if s.Update != nil {
 		f.effect(s.Update)
 	}
-	f.jumpTo(top)
-	f.patchJumps(exit)
+	f.loopEnd(t, s.Test)
 	f.popLoop(c)
+}
+
+// maxCopiedTest is the most nodes of a loop condition that is compiled both before and after
+// the body.
+const maxCopiedTest = 12
+
+// loopTest is how a loop tests its condition, which [fn.loopStart] decides.
+type loopTest struct {
+	// top is where the jumps back go.
+	top int32
+
+	// exit holds the jumps out of the loop of a condition tested before the body.
+	exit jumps
+
+	// end reports whether the condition is tested after the body, where entry, unless it is -1,
+	// jumps to before the first iteration.
+	end   bool
+	entry int
+}
+
+// loopStart compiles the start of a loop with the condition test, nil for none. A condition
+// that jumps back when true is tested after the body, so that an iteration takes one jump; one
+// that compiles the same twice is also tested before the body, so that entering the loop takes
+// no jump.
+func (f *fn) loopStart(test ast.Expr) loopTest {
+	t := loopTest{
+		entry: -1,
+	}
+	switch lit, _ := test.(*ast.BoolLit); {
+	case test == nil || lit != nil && lit.Value:
+	case !loopInvertible(test):
+		t.top = f.pc()
+		t.exit = f.jumpIfFalse(test)
+		return t
+	case loopTestCopyable(test):
+		t.exit = f.jumpIfFalse(test)
+		t.end = true
+	default:
+		t.entry = f.jump()
+		t.end = true
+	}
+	t.top = f.pc()
+	return t
+}
+
+// loopEnd ends the loop that loopStart started as t with the condition test.
+func (f *fn) loopEnd(t loopTest, test ast.Expr) {
+	if t.end {
+		if t.entry >= 0 {
+			f.patch(t.entry)
+		}
+		f.loopBack(test, t.top)
+	} else {
+		f.jumpTo(t.top)
+	}
+	f.patchJumps(t.exit)
+}
+
+// loopInvertible reports whether loopBack compiles the condition e to jumps back that are taken
+// when e is true, rather than to a jump over a jump back.
+func loopInvertible(e ast.Expr) bool {
+	switch n := e.(type) {
+	case *ast.BinaryExpr:
+		if _, ok := loopJumps[n.Op]; ok {
+			return true
+		}
+		_, ok := compareJumps[n.Op]
+		return !ok
+	case *ast.LogicalExpr:
+		switch n.Op {
+		case ast.OpAnd:
+			return loopInvertible(n.Right)
+		case ast.OpOr:
+			return loopInvertible(n.Left) && loopInvertible(n.Right)
+		}
+	case *ast.UnaryExpr:
+		return n.Op != ast.OpNot
+	case *ast.BoolLit:
+		return false
+	}
+	return true
+}
+
+// loopTestCopyable reports whether the condition e of a loop is small and made only of names,
+// literals, member reads and operators, whose code can be compiled twice.
+func loopTestCopyable(e ast.Expr) bool {
+	n := 0
+	ok := true
+	walk(e, func(m ast.Node) bool {
+		n++
+		switch m := m.(type) {
+		case *ast.Identifier, *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.BigIntLit,
+			*ast.ThisExpr, *ast.MemberExpr, *ast.BinaryExpr, *ast.LogicalExpr:
+		case *ast.UnaryExpr:
+			ok = m.Op != ast.OpDelete
+		default:
+			ok = false
+		}
+		ok = ok && n <= maxCopiedTest
+		return ok
+	})
+	return ok
 }
 
 // bindLoopVar stores the register v to the variable of a for-in or for-of loop.

@@ -145,7 +145,7 @@ func TestPrefixUpdateComparison(t *testing.T) {
 		switch i.Op {
 		case bytecode.OpDec:
 			local = i.A
-		case bytecode.OpJumpNotGeK:
+		case bytecode.OpLoopGeK:
 			compared = i.B
 		}
 	}
