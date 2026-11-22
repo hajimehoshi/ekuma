@@ -10,6 +10,7 @@ import (
 	"testing/synctest"
 
 	"github.com/hajimehoshi/ekuma"
+	"github.com/hajimehoshi/ekuma/internal/icutest"
 	"github.com/hajimehoshi/ekuma/internal/jstest"
 )
 
@@ -35,6 +36,10 @@ var v8Runner = jstest.V8{
 	InterruptNow:             ekuma.InterruptNow,
 	DeferUnhandledRejections: ekuma.DeferUnhandledRejections,
 	TakeUnhandledRejection:   ekuma.TakeUnhandledRejection,
+}
+
+func TestICU(t *testing.T) {
+	icutest.Run(t)
 }
 
 func TestTest262(t *testing.T) {

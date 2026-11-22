@@ -314,7 +314,7 @@ without a Test262 checkout.
 
 ### Conformance tests
 
-`go test .` runs Test262 and V8 when their checkouts are available. Set the
+`go test .` runs ICU, Test262, and V8 when their checkouts are available. Set the
 suite's environment variable to its checkout directory, or use the default path
 under the user cache directory. CI uses the pinned revisions below. For V8, a
 sparse checkout needs `DEPS`, `test/intl`, `test/mjsunit`, `test/mozilla`, `test/test262/local-tests/test`,
@@ -324,8 +324,19 @@ Short mode skips all external conformance tests.
 
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
+| [ICU break tests](https://github.com/unicode-org/icu/tree/release-78.3/icu4c/source/test/testdata) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | None |
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
+
+`TestICU` checks the UTF-16 boundaries returned by `Intl.Segmenter` against grapheme,
+word, and sentence break cases from the external ICU checkout. CI uses ICU
+78.3 to match Ekuma's Unicode 17.0 segmentation tables. The fixtures retain their
+[upstream license](https://github.com/unicode-org/icu/blob/release-78.3/LICENSE).
+Run the suite on its own with
+
+```sh
+go test -count=1 -v -run '^TestICU$' .
+```
 
 After checking out V8, fetch the separate Mozilla data revision pinned in
 its `DEPS` into `test/mozilla/data`. From the Ekuma repository root, run

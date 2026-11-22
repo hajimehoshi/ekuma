@@ -17,6 +17,7 @@ jobs:
       run:
         shell: bash
     env:
+      EKUMA_ICU: ${{ github.workspace }}/.icu
       EKUMA_TEST262: ${{ github.workspace }}/.test262
       EKUMA_V8: ${{ github.workspace }}/.v8
     steps:
@@ -32,8 +33,9 @@ jobs:
       - name: Find the test suite revisions
         id: suites
         run: |
-          for suite in test262 v8; do
-            file="internal/jstest/testdata/$suite-revision.txt"
+          for file in internal/{icutest,jstest}/testdata/*-revision.txt; do
+            name=${file##*/}
+            suite=${name%-revision.txt}
             revision=$(cat "$file")
             if [[ ! $revision =~ ^[0-9a-f]{40}$ ]]; then
               echo "Expected a commit SHA in $file"
@@ -41,6 +43,19 @@ jobs:
             fi
             echo "$suite=$revision" >> "$GITHUB_OUTPUT"
           done
+
+      - name: Checkout ICU break tests
+        uses: actions/checkout@v4
+        with:
+          repository: unicode-org/icu
+          ref: ${{ steps.suites.outputs.icu }}
+          path: .icu
+          sparse-checkout: |
+            /LICENSE
+            /icu4c/source/test/testdata/GraphemeBreakTest.txt
+            /icu4c/source/test/testdata/WordBreakTest.txt
+            /icu4c/source/test/testdata/SentenceBreakTest.txt
+          sparse-checkout-cone-mode: false
 
       - name: Checkout test262
         uses: actions/checkout@v4
