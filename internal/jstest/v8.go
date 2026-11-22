@@ -49,7 +49,7 @@ type V8 struct {
 	TakeUnhandledRejection   func(*ekuma.VM) error
 }
 
-const v8SkipsFile = testdataDir + "/v8-skips.txt"
+const v8FailuresFile = testdataDir + "/v8-failures.txt"
 const v8EnvironmentFile = testdataDir + "/v8-environment.json"
 
 var v8Flags = registerSuiteFlags("v8")
@@ -119,10 +119,10 @@ var v8Suites = []v8Suite{
 	},
 }
 
-// Run runs the selected V8 tests and checks their results against the skip list.
+// Run runs the selected V8 tests and checks their results against the expectations.
 func (host *V8) Run(t *testing.T) {
 	dir := v8Flags.checkoutDir(t)
-	skips := readV8Skips(t)
+	expectations := readV8Expectations(t)
 	unseenEnvironments := readV8Environments(t)
 	checkout := os.DirFS(dir)
 	selectedDir := path.Clean(filepath.ToSlash(v8Flags.dir))
@@ -139,7 +139,7 @@ func (host *V8) Run(t *testing.T) {
 			continue
 		}
 		matchedSuite = true
-		tests = append(tests, suite.collect(t, checkout, root, v8Flags.filter, skips, unseenEnvironments)...)
+		tests = append(tests, suite.collect(t, checkout, root, v8Flags.filter, expectations, unseenEnvironments)...)
 	}
 	if !matchedSuite {
 		t.Fatalf("no enabled V8 suite in %q", selectedDir)
@@ -178,12 +178,12 @@ func (host *V8) Run(t *testing.T) {
 		}
 	}
 	failedTests := len(failures)
-	staleSkips := staleEntries(skips.unseen, v8SkipsFile, selectedDir, v8Flags.filter)
+	staleExpectations := staleEntries(expectations.unseen, v8FailuresFile, selectedDir, v8Flags.filter)
 	staleEnvironments := staleEntries(maps.Keys(unseenEnvironments), v8EnvironmentFile, selectedDir, v8Flags.filter)
-	failures = append(failures, staleSkips...)
+	failures = append(failures, staleExpectations...)
 	failures = append(failures, staleEnvironments...)
-	t.Logf("V8: selected %d, passed %d, expected failures %d, skipped %d, failed %d, stale skip entries %d, stale environment entries %d",
-		len(tests), passed, expected, skipped, failedTests, len(staleSkips), len(staleEnvironments))
+	t.Logf("V8: selected %d, passed %d, expected failures %d, skipped %d, failed %d, stale expectation entries %d, stale environment entries %d",
+		len(tests), passed, expected, skipped, failedTests, len(staleExpectations), len(staleEnvironments))
 	if testing.Verbose() {
 		for _, reason := range slices.Sorted(maps.Keys(skipCounts)) {
 			t.Logf("%d skipped: %s", skipCounts[reason], reason)
@@ -390,23 +390,23 @@ func readV8Environments(t *testing.T) map[string]v8TestEnvironment {
 	return environments
 }
 
-func readV8Skips(t *testing.T) skipList {
+func readV8Expectations(t *testing.T) expectationList {
 	t.Helper()
-	data, err := os.ReadFile(v8SkipsFile)
+	data, err := os.ReadFile(v8FailuresFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	skips := skipList{}
+	expectations := expectationList{}
 	lines := strings.Split(string(data), "\n")
-	var group skipEntry
+	var group expectation
 	for i := 0; i < len(lines); i++ {
 		file := strings.TrimSpace(lines[i])
 		if file == "" {
-			group = skipEntry{}
+			group = expectation{}
 			continue
 		}
 		if comment, ok := strings.CutPrefix(file, "#"); ok {
-			group = skipEntry{}
+			group = expectation{}
 			directive, value, ok := strings.Cut(strings.TrimSpace(comment), ":")
 			if !ok {
 				continue
@@ -422,21 +422,21 @@ func readV8Skips(t *testing.T) skipList {
 			}
 			group.reason = strings.TrimSpace(value)
 			if group.reason == "" || i+1 >= len(lines) {
-				t.Fatalf("%s:%d: %s needs a reason and a test path on the next line", v8SkipsFile, i+1, directive)
+				t.Fatalf("%s:%d: %s needs a reason and a test path on the next line", v8FailuresFile, i+1, directive)
 			}
 			i++
 			file = strings.TrimSpace(lines[i])
 		}
 		if file == "" || strings.Contains(file, "#") {
-			t.Fatalf("%s:%d: expected a test path on its own line", v8SkipsFile, i+1)
+			t.Fatalf("%s:%d: expected a test path on its own line", v8FailuresFile, i+1)
 		}
-		if _, exists := skips[file]; exists {
-			t.Fatalf("duplicate path %s in %s", file, v8SkipsFile)
+		if _, exists := expectations[file]; exists {
+			t.Fatalf("duplicate path %s in %s", file, v8FailuresFile)
 		}
 		entry := group
-		skips[file] = &entry
+		expectations[file] = &entry
 	}
-	return skips
+	return expectations
 }
 
 type v8Test struct {
@@ -458,7 +458,7 @@ func readV8Helper(checkout fs.FS, file string) (*ekuma.UnboundScript, error) {
 	return ekuma.ParseUnboundScript(file, string(src))
 }
 
-func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, skips skipList, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
+func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, expectations expectationList, unseenEnvironments map[string]v8TestEnvironment) []v8Test {
 	t.Helper()
 	var helpers []*ekuma.UnboundScript
 	for _, name := range s.helpers {
@@ -504,13 +504,13 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, ski
 			test.flags = append(slices.Clip(s.flags), "--allow-natives-syntax")
 		}
 		delete(unseenEnvironments, file)
-		if skip := skips.match(file); shells != nil && mozillaPlatformSkip(file) {
+		if matched := expectations.match(file); shells != nil && mozillaPlatformSkip(file) {
 			test.skipReason = "skipped on this platform by mozilla.status"
-		} else if skip != nil {
-			test.allowFailure = skip.allowPass
-			test.wantFailure = skip.reason == ""
-			if !skip.allowPass {
-				test.skipReason = skip.reason
+		} else if matched != nil {
+			test.allowFailure = matched.allowPass
+			test.wantFailure = matched.reason == ""
+			if !matched.allowPass {
+				test.skipReason = matched.reason
 			}
 		}
 		if shells != nil && test.skipReason == "" {
@@ -534,7 +534,7 @@ func (s *v8Suite) collect(t *testing.T, checkout fs.FS, root, filter string, ski
 func (v *v8Test) run(ctx context.Context, host *V8, checkout fs.FS, timeout time.Duration) suiteResult {
 	result, lastPrint := v.execute(ctx, host, checkout, timeout)
 	if v.wantFailure {
-		result = result.expectFailure(v8SkipsFile)
+		result = result.expectFailure(v8FailuresFile)
 	}
 	if lastPrint != "" && result.outcome != suitePassed {
 		result.reason += fmt.Sprintf(" (last print: %q)", lastPrint)

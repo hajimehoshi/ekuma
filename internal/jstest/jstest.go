@@ -196,22 +196,22 @@ func inSuiteDir(file, dir string) bool {
 	return dir == "." || file == dir || strings.HasPrefix(file, dir+"/")
 }
 
-type skipEntry struct {
+type expectation struct {
 	reason    string
 	allowPass bool // V8 accepts either a pass or a JavaScript failure.
 	seen      bool
 	inactive  bool // The entry applies only to other platforms.
 }
 
-type skipList map[string]*skipEntry
+type expectationList map[string]*expectation
 
-func (s skipList) match(file string) *skipEntry {
+func (l expectationList) match(file string) *expectation {
 	// Visit directory prefixes and then the file, so the most specific entry wins.
 	var end int
-	var matched *skipEntry
+	var matched *expectation
 	for part := range strings.SplitAfterSeq(file, "/") {
 		end += len(part)
-		if entry := s[file[:end]]; entry != nil {
+		if entry := l[file[:end]]; entry != nil {
 			entry.seen = true
 			if !entry.inactive {
 				matched = entry
@@ -221,17 +221,17 @@ func (s skipList) match(file string) *skipEntry {
 	return matched
 }
 
-func (s skipList) unseen(yield func(string) bool) {
-	for name, entry := range s {
+func (l expectationList) unseen(yield func(string) bool) {
+	for name, entry := range l {
 		if !entry.seen && !yield(name) {
 			return
 		}
 	}
 }
 
-// CheckSkipDirectories checks directory matching and file overrides in a skip list.
-func CheckSkipDirectories(t *testing.T) {
-	skips := skipList{
+// CheckExpectationDirectories checks directory matching and file overrides in an expectation list.
+func CheckExpectationDirectories(t *testing.T) {
+	expectations := expectationList{
 		"test/wasm/": {
 			reason: "requires WebAssembly",
 		},
@@ -241,16 +241,16 @@ func CheckSkipDirectories(t *testing.T) {
 		"test/wasm/nested/fail.js": {},
 		"test/missing/":            {},
 	}
-	if entry := skips.match("test/wasm/nested/example.js"); entry == nil || entry.reason != "requires WebAssembly" {
+	if entry := expectations.match("test/wasm/nested/example.js"); entry == nil || entry.reason != "requires WebAssembly" {
 		t.Errorf("nested test: got %v, want the directory skip reason", entry)
 	}
-	if entry := skips.match("test/wasm/nested/fail.js"); entry == nil || entry.reason != "" {
+	if entry := expectations.match("test/wasm/nested/fail.js"); entry == nil || entry.reason != "" {
 		t.Errorf("file override: got %v, want an expected failure", entry)
 	}
-	if skips.match("test/wasm-extra/example.js") != nil {
+	if expectations.match("test/wasm-extra/example.js") != nil {
 		t.Error("matched a sibling directory")
 	}
-	if got := slices.Collect(skips.unseen); !slices.Equal(got, []string{"test/missing/"}) {
+	if got := slices.Collect(expectations.unseen); !slices.Equal(got, []string{"test/missing/"}) {
 		t.Errorf("unseen entries: got %v, want [test/missing/]", got)
 	}
 }

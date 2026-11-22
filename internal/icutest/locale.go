@@ -13,10 +13,10 @@ import (
 	"github.com/hajimehoshi/ekuma"
 )
 
-func runLikelySubtagsTest(t *testing.T, path string, skips localeSkips) {
+func runLikelySubtagsTest(t *testing.T, path string, failures localeFailures) {
 	var vm ekuma.VM
-	maximize := newLocaleOperation(t, &vm, path, "maximize", `tag => new Intl.Locale(tag).maximize().toString()`, skips)
-	minimize := newLocaleOperation(t, &vm, path, "minimize", `tag => new Intl.Locale(tag).minimize().toString()`, skips)
+	maximize := newLocaleOperation(t, &vm, path, "maximize", `tag => new Intl.Locale(tag).maximize().toString()`, failures)
+	minimize := newLocaleOperation(t, &vm, path, "minimize", `tag => new Intl.Locale(tag).minimize().toString()`, failures)
 	forEachLocaleRow(t, path, 4, func(line int, fields []string) {
 		source, add, favorScript, favorRegion := fields[0], fields[1], fields[2], fields[3]
 		// ECMA-402 returns the input locale when a likely-subtags operation fails.
@@ -30,9 +30,9 @@ func runLikelySubtagsTest(t *testing.T, path string, skips localeSkips) {
 	})
 }
 
-func runLocaleCanonicalizationTest(t *testing.T, path string, skips localeSkips) {
+func runLocaleCanonicalizationTest(t *testing.T, path string, failures localeFailures) {
 	var vm ekuma.VM
-	canonicalize := newLocaleOperation(t, &vm, path, "Intl.getCanonicalLocales", `tag => Intl.getCanonicalLocales(tag).join(",")`, skips)
+	canonicalize := newLocaleOperation(t, &vm, path, "Intl.getCanonicalLocales", `tag => Intl.getCanonicalLocales(tag).join(",")`, failures)
 	forEachLocaleRow(t, path, 2, func(line int, fields []string) {
 		// The fixture uses the CLDR subtag separator on both sides of the alias.
 		source := strings.ReplaceAll(fields[0], "_", "-")
@@ -41,16 +41,17 @@ func runLocaleCanonicalizationTest(t *testing.T, path string, skips localeSkips)
 	})
 }
 
-type localeSkips map[string]map[string]string // operation to input tag to known result
+const localeFailuresFile = "internal/icutest/testdata/icu-locale-failures.txt"
 
-func readLocaleSkips(t *testing.T) localeSkips {
+type localeFailures map[string]map[string]string // operation to input tag to known result
+
+func readLocaleFailures(t *testing.T) localeFailures {
 	t.Helper()
-	const path = "internal/icutest/testdata/icu-skips.txt"
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(localeFailuresFile)
 	if err != nil {
 		t.Fatal(err)
 	}
-	skips := localeSkips{
+	failures := localeFailures{
 		"maximize":                 {},
 		"minimize":                 {},
 		"Intl.getCanonicalLocales": {},
@@ -61,16 +62,16 @@ func readLocaleSkips(t *testing.T) localeSkips {
 		if len(fields) == 0 {
 			continue
 		}
-		if len(fields) != 3 || skips[fields[0]] == nil {
-			t.Fatalf("%s:%d: expected a locale operation, input tag and known result, got %q", path, i+1, row)
+		if len(fields) != 3 || failures[fields[0]] == nil {
+			t.Fatalf("%s:%d: expected a locale operation, input tag and known result, got %q", localeFailuresFile, i+1, row)
 		}
-		entries := skips[fields[0]]
+		entries := failures[fields[0]]
 		if _, ok := entries[fields[1]]; ok {
-			t.Fatalf("%s:%d: duplicate entry for %s(%q)", path, i+1, fields[0], fields[1])
+			t.Fatalf("%s:%d: duplicate entry for %s(%q)", localeFailuresFile, i+1, fields[0], fields[1])
 		}
 		entries[fields[1]] = fields[2]
 	}
-	return skips
+	return failures
 }
 
 type localeOperation struct {
@@ -81,7 +82,7 @@ type localeOperation struct {
 	knownFailures int
 }
 
-func newLocaleOperation(t *testing.T, vm *ekuma.VM, path, name, source string, skips localeSkips) *localeOperation {
+func newLocaleOperation(t *testing.T, vm *ekuma.VM, path, name, source string, failures localeFailures) *localeOperation {
 	t.Helper()
 	script, err := vm.ParseScript("locale-test.js", source)
 	if err != nil {
@@ -95,11 +96,11 @@ func newLocaleOperation(t *testing.T, vm *ekuma.VM, path, name, source string, s
 		path:      path,
 		name:      name,
 		function:  f,
-		remaining: skips[name],
+		remaining: failures[name],
 	}
 	t.Cleanup(func() {
 		for input := range op.remaining {
-			t.Errorf("%s: icu-skips.txt entry for %s(%q) matches no case", path, name, input)
+			t.Errorf("%s: %s entry for %s(%q) matches no case", path, localeFailuresFile, name, input)
 		}
 		t.Logf("%s: %d known failures", name, op.knownFailures)
 	})
@@ -118,7 +119,7 @@ func (op *localeOperation) check(t *testing.T, line int, source, want string) {
 	got := value.String()
 	switch {
 	case listed && got == want:
-		t.Errorf("%s:%d: %s(%q): got expected %q; remove the icu-skips.txt entry", op.path, line, op.name, source, got)
+		t.Errorf("%s:%d: %s(%q): got expected %q; remove the %s entry", op.path, line, op.name, source, got, localeFailuresFile)
 	case listed && got == known:
 		op.knownFailures++
 	case got != want:

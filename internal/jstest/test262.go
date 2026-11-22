@@ -34,23 +34,22 @@ type Test262 struct {
 
 var test262Flags = registerSuiteFlags("test262")
 
-// skippedTestsFile lists the test262 tests that are expected to fail.
-const skippedTestsFile = testdataDir + "/test262-skips.txt"
+const test262FailuresFile = testdataDir + "/test262-failures.txt"
 
-func readTest262Skips(name string) (skipList, error) {
+func readTest262Failures(name string) (expectationList, error) {
 	f, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	skips := skipList{}
+	expectedFailures := expectationList{}
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		if file := strings.TrimSpace(sc.Text()); file != "" && !strings.HasPrefix(file, "#") {
-			skips[file] = &skipEntry{}
+			expectedFailures[file] = &expectation{}
 		}
 	}
-	return skips, sc.Err()
+	return expectedFailures, sc.Err()
 }
 
 // metadata is the part of the front matter of a test that the runner uses.
@@ -632,7 +631,7 @@ func (suite *Test262) CheckExpectedFailureWithMissingInclude(t *testing.T) {
 			includes: []string{"missing.js"},
 		},
 	}
-	result := test.run(h, testTimeout).expectFailure(skippedTestsFile)
+	result := test.run(h, testTimeout).expectFailure(test262FailuresFile)
 	if result.outcome != suiteBroken {
 		t.Errorf("expected failure with missing include: got %v, want %v", result.outcome, suiteBroken)
 	}
@@ -683,7 +682,7 @@ func (suite *Test262) CheckModuleJobs(t *testing.T) {
 	}, suitePassed)
 }
 
-// Run runs the ECMAScript conformance suite and checks its failures against the skip list.
+// Run runs the ECMAScript conformance suite and checks its results against the expected failures.
 func (suite *Test262) Run(t *testing.T) {
 	dir := test262Flags.checkoutDir(t)
 	h := suite.checkoutHarness(t, dir)
@@ -704,9 +703,9 @@ func (suite *Test262) Run(t *testing.T) {
 	if test262Flags.dir != "" {
 		testDir = path.Clean(filepath.ToSlash(test262Flags.dir))
 	}
-	skips, err := readTest262Skips(skippedTestsFile)
+	expectedFailures, err := readTest262Failures(test262FailuresFile)
 	if err != nil {
-		t.Fatalf("reading the skipped tests: %v", err)
+		t.Fatalf("reading the expected failures: %v", err)
 	}
 	var expectedFailurePaths []string
 	var paths []string
@@ -725,7 +724,7 @@ func (suite *Test262) Run(t *testing.T) {
 		if test262Flags.filter != "" && !strings.Contains(rel, test262Flags.filter) {
 			return nil
 		}
-		if skips.match(rel) != nil {
+		if expectedFailures.match(rel) != nil {
 			expectedFailurePaths = append(expectedFailurePaths, rel)
 			return nil
 		}
@@ -810,7 +809,7 @@ func (suite *Test262) Run(t *testing.T) {
 	for i, p := range expectedFailurePaths {
 		result := expectedFailureResults[i]
 		recordOutcome(p, result.outcome)
-		if checked := result.expectFailure(skippedTestsFile); checked.outcome != suitePassed {
+		if checked := result.expectFailure(test262FailuresFile); checked.outcome != suitePassed {
 			t.Errorf("%s: %s", p, checked.reason)
 		} else {
 			failedAsExpected++
@@ -821,7 +820,7 @@ func (suite *Test262) Run(t *testing.T) {
 	if failedAsExpected > 0 {
 		t.Logf("test262: %d failed as expected", failedAsExpected)
 	}
-	for _, failure := range staleEntries(skips.unseen, skippedTestsFile, testDir, test262Flags.filter) {
+	for _, failure := range staleEntries(expectedFailures.unseen, test262FailuresFile, testDir, test262Flags.filter) {
 		t.Errorf("%s: %s", failure.path, failure.reason)
 	}
 	if testing.Verbose() {

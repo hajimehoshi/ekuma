@@ -185,6 +185,6 @@ func (host *V8) CheckMozilla(t *testing.T) {
 	checkout[file].Data = []byte("let = ;")
 	check(suitePassed)
 	checkout[dir+"/shell.js"].Data = []byte("print('FAILED!'); throw Error('broken harness');")
-	tests = v8MozillaSuite.collect(t, checkout, file, "", skipList{file: {}}, nil)
+	tests = v8MozillaSuite.collect(t, checkout, file, "", expectationList{file: {}}, nil)
 	check(suiteBroken)
 }

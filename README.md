@@ -239,7 +239,7 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 ## Status
 
 53,791 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
-4 fail for known reasons, which [`test262-skips.txt`](internal/jstest/testdata/test262-skips.txt) lists.
+4 fail for known reasons, which [`test262-failures.txt`](internal/jstest/testdata/test262-failures.txt) lists.
 
 ### Implemented
 
@@ -322,12 +322,12 @@ sparse checkout needs `DEPS`, `test/intl`, `test/mjsunit`, `test/mozilla`, `test
 `tools/clusterfuzz/js_fuzzer/resources/differential_fuzz_library.js`.
 Short mode skips all external conformance tests.
 
-| Suite | Environment variable | Default cache path | CI revision | Expected failures |
+| Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
 | [ICU 78.3 (Unicode 17.0)](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | None |
-| [ICU 79.1 (CLDR 49)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Skip list](internal/icutest/testdata/icu-skips.txt) |
-| [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
-| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
+| [ICU 79.1 (CLDR 49)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Locale failures](internal/icutest/testdata/icu-locale-failures.txt) |
+| [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
+| V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
 `TestICU` checks segmentation and normalization with Unicode fixtures and locale
 identifiers with CLDR fixtures. To include the locale tests, check out ICU's
@@ -367,17 +367,17 @@ go test -count=1 -v -run '^TestV8$' . -v8.dir test/webkit
 
 Use `shuffle` with `off`, `on`, or an integer seed. To replay a file order,
 set `GOMAXPROCS=1` and reuse the seed. `report FILE` writes tab-separated test
-paths and failure reasons. Both suites flag skip-list errors in the console.
+paths and failure reasons. Both suites report expectation mismatches in the console.
 V8 also includes them in the report file. Relative checkout and report paths are
 resolved from the repository root.
 
-Both skip lists accept checkout-relative file paths and directory paths. End a
+The Test262 and V8 expectation files accept checkout-relative paths. End a
 directory path with `/` to match every test beneath it, including in
 subdirectories. The most specific entry for a test takes precedence.
 
-Plain entries in each skip list are expected failures. The tests still run, and
+Plain entries in both files are expected failures. The tests still run, and
 an unexpected pass or a stale path fails the suite. A runner error, engine
-panic, or timeout on the final attempt also fails the suite. In the V8 list, a
+panic, or timeout on the final attempt also fails the suite. In the V8 file, a
 `# SKIP: reason` comment skips all consecutive test paths directly below it.
 A `# SKIP(64-bit): reason` comment applies only on targets with 64-bit Go integers.
 A `# PASS/FAIL: reason` group runs each test and accepts either a pass or a

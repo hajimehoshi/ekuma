@@ -36,12 +36,12 @@ func Run(t *testing.T) {
 	}
 	if cldrDir != "" {
 		dir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata", "cldr", "localeIdentifiers")
-		skips := readLocaleSkips(t)
+		failures := readLocaleFailures(t)
 		t.Run("likelySubtags.txt", func(t *testing.T) {
-			runLikelySubtagsTest(t, filepath.Join(dir, "likelySubtags.txt"), skips)
+			runLikelySubtagsTest(t, filepath.Join(dir, "likelySubtags.txt"), failures)
 		})
 		t.Run("localeCanonicalization.txt", func(t *testing.T) {
-			runLocaleCanonicalizationTest(t, filepath.Join(dir, "localeCanonicalization.txt"), skips)
+			runLocaleCanonicalizationTest(t, filepath.Join(dir, "localeCanonicalization.txt"), failures)
 		})
 	}
 }
