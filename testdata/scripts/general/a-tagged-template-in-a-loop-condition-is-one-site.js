@@ -11,6 +11,6 @@ function tag(strings) {
   return true;
 }
 for (var i = 0; i < 3 && tag`x`; i++) {}
-var k = 0;
-while (tag`y` && k < 3) k++;
+var k = 3;
+while (tag`y` && +k) k--;
 assert.sameValue(templates.size, 2);

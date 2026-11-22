@@ -747,7 +747,7 @@ func loopTestCopyable(e ast.Expr) bool {
 		case *ast.Identifier, *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.BigIntLit,
 			*ast.ThisExpr, *ast.MemberExpr, *ast.BinaryExpr, *ast.LogicalExpr:
 		case *ast.UnaryExpr:
-			ok = m.Op != ast.OpDelete
+			ok = ok && m.Op != ast.OpDelete
 		default:
 			ok = false
 		}
