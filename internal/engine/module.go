@@ -1327,26 +1327,7 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 		if !attrs.IsObject() {
 			vm.ThrowTypeError("the attributes of import() must be an object")
 		}
-		keys := vm.EnumerableOwnKeys(attrs.o, nil)
-		values := make([]Value, len(keys))
-		for i, k := range keys {
-			values[i] = vm.Get(attrs.o, k)
-		}
-		for i, k := range keys {
-			if !values[i].IsString() {
-				vm.ThrowTypeError("the value of the import attribute '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' must be a string")
-			}
-			req.Attributes = append(req.Attributes, ImportAttribute{
-				Key:   vm.ToString(vm.KeyValue(k)),
-				Value: values[i].Str(),
-			})
-		}
-		if !allImportAttributesSupported(req.Attributes) {
-			vm.ThrowTypeError("unsupported import attribute")
-		}
-		slices.SortFunc(req.Attributes, func(a, b ImportAttribute) int {
-			return wtf8.Compare(a.Key, b.Key)
-		})
+		req.Attributes = vm.dynamicImportAttributes(attrs.o)
 	})
 	if !ok {
 		return Value{o: c.promise}
@@ -1362,6 +1343,48 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 	}
 	vm.continueDynamicImport(c, m, phase)
 	return Value{o: c.promise}
+}
+
+// dynamicImportAttributes reads and validates the attributes of an import() call.
+func (vm *VM) dynamicImportAttributes(o *Object) []ImportAttribute {
+	type entry struct {
+		key   wtf8.String
+		value Value
+	}
+	var entries []entry
+	for i, k := range vm.OwnKeys(o) {
+		vm.pollAt(i)
+		if k.IsSymbol() {
+			continue
+		}
+		d, ok := vm.GetOwnProperty(o, k)
+		if !ok || !d.Enumerable() {
+			continue
+		}
+		entries = append(entries, entry{
+			key:   vm.KeyString(k),
+			value: vm.Get(o, k),
+		})
+	}
+	// All attribute getters run before their values are checked.
+	var attrs []ImportAttribute
+	for i, e := range entries {
+		vm.pollAt(i)
+		if !e.value.IsString() {
+			vm.ThrowTypeError("the value of the import attribute '" + wtf8.ToValidUTF8(e.key) + "' must be a string")
+		}
+		attrs = append(attrs, ImportAttribute{
+			Key:   e.key,
+			Value: e.value.Str(),
+		})
+	}
+	if !allImportAttributesSupported(attrs) {
+		vm.ThrowTypeError("unsupported import attribute")
+	}
+	slices.SortFunc(attrs, func(a, b ImportAttribute) int {
+		return wtf8.Compare(a.Key, b.Key)
+	})
+	return attrs
 }
 
 // continueDynamicImport implements ContinueDynamicImport for a module of the phase that loaded.

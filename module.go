@@ -52,11 +52,13 @@ type ModuleRequest struct {
 // throws a JavaScript SyntaxError. import() rejects its promise with it, and the methods of
 // [Module] return it as a [*ScriptError].
 //
-// Without a loader, or with a nil f, every import fails with a TypeError. An import also fails
-// with a SyntaxError when its attributes are not supported, and with a TypeError when f returns
-// a nil [*Module] without an error or when the module is being loaded by a call that has not
-// finished. The loader applies to subsequent module loads. Already loaded modules retain their
-// loaded dependencies.
+// Unsupported attributes cause a SyntaxError when loading a static import and cause import()
+// to reject its promise with a TypeError.
+//
+// An import fails with a TypeError when there is no loader, when f returns a nil [*Module]
+// without an error, or when the module is being loaded by a call that has not finished.
+// A nil f removes the loader. The loader applies to subsequent module loads. Already loaded
+// modules retain their loaded dependencies.
 func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 	vm.initIfNeeded()
 	if f == nil {

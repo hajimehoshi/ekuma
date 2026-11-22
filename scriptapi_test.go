@@ -1101,6 +1101,27 @@ func TestModuleLoadedOnce(t *testing.T) {
 	}
 }
 
+func TestDynamicImportAttributeGetterDeletesNextProperty(t *testing.T) {
+	var vm ekuma.VM
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		if got := req.Attributes; len(got) != 1 || got["type"] != "json" {
+			t.Errorf("loader attributes = %v, want only type=json", got)
+		}
+		return vm.ParseJSONModule(req.Specifier, `"loaded"`)
+	})
+	p, err := runScript(t.Context(), &vm, "main", `
+		import("data.json", { with: {
+			get type() { delete this.extra; return "json"; },
+			extra: "unused",
+		} }).then(ns => ns.default)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st, v := p.PromiseState(); st != ekuma.PromiseFulfilled || v.String() != "loaded" {
+		t.Errorf("import result = %v with %v, want fulfilled with loaded", st, v)
+	}
+}
+
 // TestDynamicImportLoadError checks that an error of the loader rejects the promise of a
 // dynamic import with the thrown value, and that a later import asks the loader again.
 func TestDynamicImportLoadError(t *testing.T) {
