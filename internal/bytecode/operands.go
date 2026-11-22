@@ -1241,6 +1241,26 @@ var opcodes = [...]struct {
 		operands: jumpCmpKOperands,
 		flow:     FlowNext,
 	},
+	OpLoopSEqP: {
+		name:     "OpLoopSEqP",
+		operands: jumpCmpPOperands,
+		flow:     FlowNext,
+	},
+	OpLoopSNeP: {
+		name:     "OpLoopSNeP",
+		operands: jumpCmpPOperands,
+		flow:     FlowNext,
+	},
+	OpLoopNullish: {
+		name:     "OpLoopNullish",
+		operands: jumpNullishOperands,
+		flow:     FlowNext,
+	},
+	OpLoopNotNullish: {
+		name:     "OpLoopNotNullish",
+		operands: jumpNullishOperands,
+		flow:     FlowNext,
+	},
 
 	OpCall: {
 		name:     "OpCall",

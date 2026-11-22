@@ -683,7 +683,7 @@ func (f *fn) loopStart(test ast.Expr) loopTest {
 	}
 	switch lit, _ := test.(*ast.BoolLit); {
 	case test == nil || lit != nil && lit.Value:
-	case !loopInvertible(test):
+	case !f.loopInvertible(test):
 		t.top = f.pc()
 		t.exit = f.jumpIfFalse(test)
 		return t
@@ -713,9 +713,12 @@ func (f *fn) loopEnd(t loopTest, test ast.Expr) {
 
 // loopInvertible reports whether loopBack compiles the condition e to jumps back that are taken
 // when e is true, rather than to a jump over a jump back.
-func loopInvertible(e ast.Expr) bool {
+func (f *fn) loopInvertible(e ast.Expr) bool {
 	switch n := e.(type) {
 	case *ast.BinaryExpr:
+		if _, p := f.primComparison(n); p >= 0 {
+			return true
+		}
 		if _, ok := loopJumps[n.Op]; ok {
 			return true
 		}
@@ -724,12 +727,20 @@ func loopInvertible(e ast.Expr) bool {
 	case *ast.LogicalExpr:
 		switch n.Op {
 		case ast.OpAnd:
-			return loopInvertible(n.Right)
+			return f.loopInvertible(n.Right)
 		case ast.OpOr:
-			return loopInvertible(n.Left) && loopInvertible(n.Right)
+			return f.loopInvertible(n.Left) && f.loopInvertible(n.Right)
 		}
 	case *ast.UnaryExpr:
-		return n.Op != ast.OpNot
+		if n.Op != ast.OpNot {
+			return true
+		}
+		b, ok := n.Arg.(*ast.BinaryExpr)
+		if !ok {
+			return false
+		}
+		_, p := f.primComparison(b)
+		return p >= 0
 	case *ast.BoolLit:
 		return false
 	}

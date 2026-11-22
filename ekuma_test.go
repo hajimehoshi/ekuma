@@ -1275,6 +1275,10 @@ func TestCancelLoopConditions(t *testing.T) {
 		`var i = 1; while (i > 0) {}`,
 		`var i = 1; while (i >= 0) {}`,
 		`var o = {}; while (o) {}`,
+		`var o = {}; while (o !== null) {}`,
+		`var u; while (u === undefined) {}`,
+		`var u; while (u == null) {}`,
+		`var o = {}; while (o != null) {}`,
 		// Conditions that take the full comparison or ToBoolean.
 		`var s = "a"; while (s < "b") {}`,
 		`var x = 0n; while (x < 1) {}`,

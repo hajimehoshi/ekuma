@@ -570,13 +570,29 @@ func (f *fn) primLiteral(e ast.Expr) int32 {
 	return -1
 }
 
-// literalJump compiles the comparison n of a value with undefined, null or a boolean as a jump
-// that is taken when the result of n is want, and reports whether n is such a comparison.
-func (f *fn) literalJump(n *ast.BinaryExpr, want bool) (int, bool) {
-	x, p := n.Left, f.primLiteral(n.Right)
+// primComparison returns, for the comparison n of a value with undefined, null or a boolean,
+// the other operand x and the operand p of the literal as primLiteral returns it. p is -1 when n
+// is not such a comparison, or when a loose one has a boolean.
+func (f *fn) primComparison(n *ast.BinaryExpr) (x ast.Expr, p int32) {
+	switch n.Op {
+	case ast.OpStrictEq, ast.OpStrictNe, ast.OpEq, ast.OpNe:
+	default:
+		return nil, -1
+	}
+	x, p = n.Left, f.primLiteral(n.Right)
 	if p < 0 {
 		x, p = n.Right, f.primLiteral(n.Left)
 	}
+	if (n.Op == ast.OpEq || n.Op == ast.OpNe) && p != bytecode.PrimUndefined && p != bytecode.PrimNull {
+		return nil, -1
+	}
+	return x, p
+}
+
+// literalJump compiles the comparison n of a value with undefined, null or a boolean as a jump
+// that is taken when the result of n is want, and reports whether n is such a comparison.
+func (f *fn) literalJump(n *ast.BinaryExpr, want bool) (int, bool) {
+	x, p := f.primComparison(n)
 	if p < 0 {
 		return 0, false
 	}
@@ -587,10 +603,7 @@ func (f *fn) literalJump(n *ast.BinaryExpr, want bool) (int, bool) {
 			op = bytecode.OpJumpNotSEqP
 		}
 		return f.emit(op, 0, f.immediateOperand(x), p), true
-	case ast.OpEq, ast.OpNe:
-		if p != bytecode.PrimUndefined && p != bytecode.PrimNull {
-			return 0, false
-		}
+	default:
 		op := bytecode.OpJumpIfNotNullish
 		if (n.Op == ast.OpEq) == want {
 			op = bytecode.OpJumpIfNullish
@@ -598,7 +611,31 @@ func (f *fn) literalJump(n *ast.BinaryExpr, want bool) (int, bool) {
 		// An object with [[IsHTMLDDA]] is loosely equal to null.
 		return f.emit(op, 0, f.immediateOperand(x), 1), true
 	}
-	return 0, false
+}
+
+// literalLoop compiles the comparison n of a value with undefined, null or a boolean as a jump
+// back to top that is taken when the result of n is want, and reports whether n is such a
+// comparison.
+func (f *fn) literalLoop(n *ast.BinaryExpr, want bool, top int32) bool {
+	x, p := f.primComparison(n)
+	if p < 0 {
+		return false
+	}
+	switch n.Op {
+	case ast.OpStrictEq, ast.OpStrictNe:
+		op := bytecode.OpLoopSEqP
+		if (n.Op == ast.OpStrictEq) != want {
+			op = bytecode.OpLoopSNeP
+		}
+		f.emit(op, top, f.immediateOperand(x), p)
+	default:
+		op := bytecode.OpLoopNullish
+		if (n.Op == ast.OpEq) != want {
+			op = bytecode.OpLoopNotNullish
+		}
+		f.emit(op, top, f.immediateOperand(x), 1)
+	}
+	return true
 }
 
 // jumpIfFalse compiles the condition e and returns the jumps that are taken when it is false.
@@ -652,6 +689,9 @@ func (f *fn) loopBack(e ast.Expr, top int32) {
 	defer f.free(mark)
 	switch n := e.(type) {
 	case *ast.BinaryExpr:
+		if f.literalLoop(n, true, top) {
+			return
+		}
 		if op, ok := loopJumps[n.Op]; ok {
 			l := f.immediateOperand(n.Left, n.Right)
 			if k, isNum := numberLit(n.Right); isNum {
@@ -681,6 +721,9 @@ func (f *fn) loopBack(e ast.Expr, top int32) {
 		}
 	case *ast.UnaryExpr:
 		if n.Op == ast.OpNot {
+			if b, ok := n.Arg.(*ast.BinaryExpr); ok && f.literalLoop(b, false, top) {
+				return
+			}
 			f.loopBackOver(e, top)
 			return
 		}

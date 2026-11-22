@@ -1587,6 +1587,39 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 			}
+		case bytecode.OpLoopSEqP:
+			if regs[i.B].o != primObjects[i.C] {
+				continue
+			}
+			if !vm.interrupt.Load() {
+				pc = int(i.A)
+				continue
+			}
+		case bytecode.OpLoopSNeP:
+			if regs[i.B].o == primObjects[i.C] {
+				continue
+			}
+			if !vm.interrupt.Load() {
+				pc = int(i.A)
+				continue
+			}
+		case bytecode.OpLoopNullish:
+			// The kind of an object is read only when it can be an IsHTMLDDA object.
+			if x := regs[i.B]; !x.IsNullish() && (i.C == 0 || !vm.madeHTMLDDA || !x.isHTMLDDA()) {
+				continue
+			}
+			if !vm.interrupt.Load() {
+				pc = int(i.A)
+				continue
+			}
+		case bytecode.OpLoopNotNullish:
+			if x := regs[i.B]; x.IsNullish() || i.C != 0 && vm.madeHTMLDDA && x.isHTMLDDA() {
+				continue
+			}
+			if !vm.interrupt.Load() {
+				pc = int(i.A)
+				continue
+			}
 		}
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
@@ -2257,6 +2290,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			if r {
 				if vm.interrupt.Load() {
+					vm.Poll()
+				}
+				pc = int(i.A)
+			}
+		case bytecode.OpLoopSEqP, bytecode.OpLoopSNeP, bytecode.OpLoopNullish, bytecode.OpLoopNotNullish:
+			if vm.loopHoldsP(i.Op, regs[i.B], i.C) {
+				if vm.interrupt.Load() {
+					vm.frames[len(vm.frames)-1].pc = pc
 					vm.Poll()
 				}
 				pc = int(i.A)
@@ -3389,5 +3430,20 @@ func (vm *VM) loopHoldsK(op bytecode.Opcode, x, k Value) bool {
 		return x.n > k.n
 	default:
 		return x.n >= k.n
+	}
+}
+
+// loopHoldsP reports whether the comparison of the loop jump op, one of [bytecode.OpLoopSEqP]
+// through [bytecode.OpLoopNotNullish], holds for x and the operand c.
+func (vm *VM) loopHoldsP(op bytecode.Opcode, x Value, c int32) bool {
+	switch op {
+	case bytecode.OpLoopSEqP:
+		return x.o == primObjects[c]
+	case bytecode.OpLoopSNeP:
+		return x.o != primObjects[c]
+	case bytecode.OpLoopNullish:
+		return x.IsNullish() || c != 0 && x.isHTMLDDA()
+	default:
+		return !x.IsNullish() && (c == 0 || !x.isHTMLDDA())
 	}
 }

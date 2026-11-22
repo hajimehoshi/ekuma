@@ -560,6 +560,9 @@ type VM struct {
 
 	// typeofs are the interned results of the typeof operator, indexed by the typeof constants.
 	typeofs [typeofCount]Value
+
+	// madeHTMLDDA reports whether the VM made an object with the [[IsHTMLDDA]] internal slot.
+	madeHTMLDDA bool
 }
 
 // realm is a realm: the intrinsic objects, the global environment and what is derived from them.

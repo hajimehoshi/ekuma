@@ -56,3 +56,17 @@ assert.sameValue([
   count(it => { for (var i = 0; i < 5; i++) { if (i % 2) continue; it(); } }),
   count(it => { outer: for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) { if (j == 1) continue outer; it(); } }),
 ].join(), "3,3,3,3,3,1,3,3");
+
+// Comparisons with undefined, null and booleans, and an IsHTMLDDA object, which is loosely null.
+var list = { next: { next: { next: null } } }, dda = $262.IsHTMLDDA;
+assert.sameValue([
+  count(it => { var o = list; while (o !== null) { it(); o = o.next; } }),
+  count(it => { var o = list; while (o != null) { it(); o = o.next; } }),
+  count(it => { var o = list; while (!(o === null)) { it(); o = o.next; } }),
+  count(it => { var u; while (u === undefined) { it(); u = 0; } }),
+  count(it => { var u; while (u == null) { it(); u = 0; } }),
+  count(it => { var b = true; do { it(); b = !b; } while (b === false); }),
+  count(it => { var o = dda, k = 0; while (o == null) { it(); if (++k == 2) o = 0; } }),
+  count(it => { var o = 1, k = 0; while (o != null) { it(); if (++k == 2) o = dda; else if (k > 3) break; } }),
+  count(it => { var k = 1; while (k == true) { it(); k = 2; } }),
+].join(), "3,3,3,1,1,2,2,2,1");

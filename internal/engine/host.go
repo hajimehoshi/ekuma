@@ -121,6 +121,7 @@ func (vm *VM) NewFunction(name string, f NativeFunc) Value {
 func (vm *VM) NewHTMLDDA(f NativeFunc) Value {
 	o := vm.NewNative("", 0, f)
 	o.kind = kindHTMLDDA
+	vm.madeHTMLDDA = true
 	return Value{o: o}
 }
 
