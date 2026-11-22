@@ -183,7 +183,7 @@ type objectMeta struct {
 
 	// weak holds the values that the weak collections associate with an object or a symbol,
 	// by collection. See [WeakTable].
-	weak weakEntries
+	weak *weakEntries
 
 	// protoShape is the empty shape for same-realm objects with this prototype.
 	protoShape *shape

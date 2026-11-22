@@ -13,41 +13,69 @@ import (
 	"github.com/hajimehoshi/ekuma"
 )
 
-// TestWeakCollectionsCollected checks that the entry of a key in a collection is found after the
-// other collections of the key are collected, and that the value of a collected collection is
-// collected once the key joins another collection.
 func TestWeakCollectionsCollected(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `
 		var k = {}, c = new WeakMap();
 		function make() {
-			var a = new WeakMap(), b = new WeakMap(), v = {};
-			a.set(k, v); b.set(k, {}); c.set(k, 3);
-			return [new WeakRef(a), new WeakRef(b), new WeakRef(v)];
+			var a = new WeakMap(), b = new WeakMap();
+			a.set(k, {}); b.set(k, {}); c.set(k, {n: 3});
+			return [a, b, a.get(k), b.get(k)].map(o => new WeakRef(o));
 		}
 		var refs = make();
 	`); err != nil {
 		t.Fatal(err)
 	}
-	runtime.GC()
+	// The map cleanups release the values for a subsequent GC. The key stays idle.
+	const want = "false,false,false,false"
+	var live string
+	for range 20 {
+		runtime.GC()
+		v, err := runScript(t.Context(), &vm, "refs", `refs.map(r => r.deref() !== undefined).join()`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		live = v.String()
+		if live == want {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if live != want {
+		t.Errorf("reachable (map a, map b, value a, value b): got %s, want %s", live, want)
+	}
 	v, err := runScript(t.Context(), &vm, "reuse", `
 		var d = new WeakMap();
 		d.set(k, 4);
-		[refs[0].deref() === undefined, refs[1].deref() === undefined, c.get(k), d.get(k)].join();
+		[c.get(k).n, d.get(k)].join();
 	`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := v.String(), "true,true,3,4"; got != want {
+	if got, want := v.String(), "3,4"; got != want {
 		t.Errorf("after the collections were collected: got %s, want %s", got, want)
 	}
+}
+
+func TestWeakMapValueReferencesKey(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		var m = new WeakMap();
+		var ref = (() => {
+			let k = {};
+			m.set(k, {key: k});
+			return new WeakRef(k);
+		})();
+	`); err != nil {
+		t.Fatal(err)
+	}
 	runtime.GC()
-	v, err = runScript(t.Context(), &vm, "value", `refs[2].deref() === undefined`)
+	v, err := runScript(t.Context(), &vm, "key", `ref.deref() === undefined`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !v.Bool() {
-		t.Errorf("the value of a collected collection is alive")
+		t.Error("the value kept its WeakMap key alive")
 	}
 }
 

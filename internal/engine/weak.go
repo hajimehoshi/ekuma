@@ -13,37 +13,78 @@ import (
 
 // This file holds the weak collections, WeakRef and FinalizationRegistry.
 //
-// The entries of a WeakMap or a WeakSet are stored on their keys, in objectMeta.weak, and the
-// collection does not refer to its keys. An entry is then reachable only through its key, which
-// gives the ephemeron behavior on the garbage collector of Go without any tracing of the engine:
-// a value that refers to its own key does not keep the pair alive. The entries refer to their
-// collection weakly, so that a key does not keep a collection alive.
+// A key owns its entries, so a value that refers back to its key can be collected with it.
+// Each collection tracks the keys' entry stores weakly. Its cleanup removes its value from
+// every store that outlives the collection.
 
 // WeakTable is the [[WeakMapData]] of a WeakMap or the [[WeakSetData]] of a WeakSet.
 // Every key must be a value for which CanBeHeldWeakly holds.
 type WeakTable struct {
-	self weak.Pointer[WeakTable]
+	// Operations on keys keep the table alive until its entries have been read or updated.
+	keys *weakTableKeys
+}
+
+// weakTableKeys identifies a table in its keys' entries and can outlive the table.
+type weakTableKeys struct {
+	mu sync.Mutex
+	// Each cleanup removes a dead key from the index. Deleting the entry stops its cleanup.
+	entries map[weak.Pointer[weakEntries]]runtime.Cleanup
+}
+
+func (t *WeakTable) addKey(w *weakEntries) {
+	keys := t.keys
+	keys.mu.Lock()
+	defer keys.mu.Unlock()
+	if keys.entries == nil {
+		keys.entries = make(map[weak.Pointer[weakEntries]]runtime.Cleanup)
+		runtime.AddCleanup(t, (*weakTableKeys).clear, keys)
+	}
+	key := weak.Make(w)
+	keys.entries[key] = runtime.AddCleanup(w, keys.forget, key)
+}
+
+func (keys *weakTableKeys) forget(key weak.Pointer[weakEntries]) {
+	keys.mu.Lock()
+	defer keys.mu.Unlock()
+	delete(keys.entries, key)
+}
+
+func (keys *weakTableKeys) remove(w *weakEntries) {
+	keys.mu.Lock()
+	defer keys.mu.Unlock()
+	key := weak.Make(w)
+	keys.entries[key].Stop()
+	delete(keys.entries, key)
+	runtime.KeepAlive(w)
+}
+
+func (keys *weakTableKeys) clear() {
+	keys.mu.Lock()
+	defer keys.mu.Unlock()
+	for key, cleanup := range keys.entries {
+		if w := key.Value(); w != nil {
+			w.delete(keys)
+			cleanup.Stop()
+			runtime.KeepAlive(w)
+		}
+	}
+	keys.entries = nil
 }
 
 // weakEntries are the entries of the weak collections whose key is one object or symbol.
 // One entry is held in first, and only the entries of the other collections are in rest.
 type weakEntries struct {
-	// firstTable is the collection of the entry in first. first holds no entry when firstTable is
-	// zero or its collection was collected.
-	firstTable weak.Pointer[WeakTable]
+	// The VM and the runtime cleanups of several collections can access the same key.
+	mu         sync.Mutex
+	firstTable *weakTableKeys
 	first      Value
-
-	rest map[weak.Pointer[WeakTable]]Value
-
-	// sweepAt is the number of entries in rest at which an insertion into rest first drops
-	// the entries of the collections that were collected.
-	sweepAt int
+	rest       map[*weakTableKeys]Value
 }
 
 func newWeakTable() *WeakTable {
-	t := &WeakTable{}
-	t.self = weak.Make(t)
-	return t
+	return &WeakTable{
+		keys: &weakTableKeys{},
+	}
 }
 
 // NewWeakMapObject returns a WeakMap object without entries with the prototype proto.
@@ -93,18 +134,18 @@ func (vm *VM) CanBeHeldWeakly(v Value) bool {
 // Get returns the value of the entry with the key k.
 func (t *WeakTable) Get(k Value) (Value, bool) {
 	m := k.o.meta()
-	if m == nil {
+	if m == nil || m.weak == nil {
 		return Undefined, false
 	}
-	w := &m.weak
-	if w.firstTable == t.self {
+	defer runtime.KeepAlive(t)
+	w := m.weak
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.firstTable == t.keys {
 		return w.first, true
 	}
-	v, ok := w.rest[t.self]
-	if !ok {
-		return Undefined, false
-	}
-	return v, true
+	v, ok := w.rest[t.keys]
+	return v, ok
 }
 
 // Has reports whether t has an entry with the key k.
@@ -115,51 +156,60 @@ func (t *WeakTable) Has(k Value) bool {
 
 // Set sets the value of the entry with the key k.
 func (t *WeakTable) Set(k, v Value) {
-	w := &k.o.ensureMeta().weak
-	if w.firstTable == t.self {
-		w.first = v
-		return
+	defer runtime.KeepAlive(t)
+	m := k.o.ensureMeta()
+	if m.weak == nil {
+		m.weak = &weakEntries{}
 	}
-	if _, ok := w.rest[t.self]; ok {
-		w.rest[t.self] = v
-		return
+	if m.weak.set(t.keys, v) {
+		t.addKey(m.weak)
 	}
-	// first is free when it holds no entry or the entry of a collection that was collected.
-	if w.firstTable.Value() == nil {
-		w.firstTable = t.self
+}
+
+// set reports whether it added a new entry.
+func (w *weakEntries) set(table *weakTableKeys, v Value) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.firstTable == table {
 		w.first = v
-		return
+		return false
+	}
+	_, exists := w.rest[table]
+	if w.firstTable == nil && !exists {
+		w.firstTable = table
+		w.first = v
+		return true
 	}
 	if w.rest == nil {
-		w.rest = map[weak.Pointer[WeakTable]]Value{}
+		w.rest = make(map[*weakTableKeys]Value)
 	}
-	if len(w.rest) >= w.sweepAt {
-		for c := range w.rest {
-			if c.Value() == nil {
-				delete(w.rest, c)
-			}
-		}
-		w.sweepAt = max(8, 2*len(w.rest))
-	}
-	w.rest[t.self] = v
+	w.rest[table] = v
+	return !exists
 }
 
 // Delete deletes the entry with the key k and reports whether there was one.
 func (t *WeakTable) Delete(k Value) bool {
+	defer runtime.KeepAlive(t)
 	m := k.o.meta()
-	if m == nil {
+	if m == nil || m.weak == nil || !m.weak.delete(t.keys) {
 		return false
 	}
-	w := &m.weak
-	if w.firstTable == t.self {
-		w.firstTable = weak.Pointer[WeakTable]{}
+	t.keys.remove(m.weak)
+	return true
+}
+
+func (w *weakEntries) delete(table *weakTableKeys) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.firstTable == table {
+		w.firstTable = nil
 		w.first = Undefined
 		return true
 	}
-	if _, ok := w.rest[t.self]; !ok {
+	if _, ok := w.rest[table]; !ok {
 		return false
 	}
-	delete(w.rest, t.self)
+	delete(w.rest, table)
 	return true
 }
 
