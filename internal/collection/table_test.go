@@ -283,6 +283,29 @@ func TestReserveBeforeEntries(t *testing.T) {
 	}
 }
 
+// TestCopyFromPolls tests that copying many entries polls and copies every entry.
+func TestCopyFromPolls(t *testing.T) {
+	var src collection.Table
+	n := 2 * engine.PollInterval
+	for i := range n {
+		src.Append(engine.Number(float64(i)), engine.Undefined)
+	}
+	var polls int
+	var dst collection.Table
+	dst.CopyFrom(&src, func() {
+		polls++
+	})
+	if polls == 0 {
+		t.Errorf("no polls while copying %d entries", n)
+	}
+	if got := dst.Size(); got != n {
+		t.Errorf("Size: got %d, want %d", got, n)
+	}
+	if !dst.Has(engine.Number(float64(n - 1))) {
+		t.Errorf("Has(%d) = false, want true", n-1)
+	}
+}
+
 // TestQueue tests that a table from which the oldest entry is deleted for every new one finds
 // its entries and keeps storage in proportion to them.
 func TestQueue(t *testing.T) {

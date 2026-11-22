@@ -720,21 +720,31 @@ func (t *Table) Clear() {
 // Clone returns a new table with the same entries.
 func (t *Table) Clone() *Table {
 	c := &Table{}
-	c.setStorage(t.live)
-	for i := range t.n {
-		if e := t.at(i); !e.deleted() {
-			*c.at(c.n) = *e
-			c.n++
+	c.CopyFrom(t, nil)
+	return c
+}
+
+// CopyFrom makes t, which must be empty, hold the entries of src in their order. poll, which may
+// be nil, is called now and then over many entries and may stop the copy by panicking, which
+// leaves t unusable.
+func (t *Table) CopyFrom(src *Table, poll func()) {
+	t.setStorage(src.live)
+	for i := range src.n {
+		if poll != nil && i&(engine.PollInterval-1) == engine.PollInterval-1 {
+			poll()
+		}
+		if e := src.at(i); !e.deleted() {
+			*t.at(t.n) = *e
+			t.n++
 		}
 	}
-	c.live = c.n
-	if c.live > smallSize {
-		// The maps of t hold the keys of its live entries only.
-		c.strs = withRoom(t.strs, len(t.strs))
-		c.objs = withRoom(t.objs, len(t.objs))
-		c.reindex()
+	t.live = t.n
+	if t.live > smallSize {
+		// The maps of src hold the keys of its live entries only.
+		t.strs = withRoom(src.strs, len(src.strs))
+		t.objs = withRoom(src.objs, len(src.objs))
+		t.reindex()
 	}
-	return c
 }
 
 // Reserve makes room for n entries in all, for keys of the kinds of the present keys in the

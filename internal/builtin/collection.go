@@ -71,6 +71,21 @@ func addEntriesFromIterable(vm *engine.VM, target *engine.Object, iterable engin
 	})
 }
 
+// iterationUnobservable reports whether iterating the Map or Set o calls the method iter as its
+// @@iterator, which proto holds, and the method next, which iterProto holds, finding both
+// without running anything that JavaScript could observe.
+func iterationUnobservable(vm *engine.VM, o, proto, iter, iterProto, next *engine.Object, nextKey engine.PropKey) bool {
+	key := engine.NamedKey(vm.WellKnownSymbol(engine.SymbolIterator))
+	if _, ok := vm.GetOwnProperty(o, key); ok || vm.ProtoOf(o) != proto {
+		return false
+	}
+	if d, ok := vm.GetOwnProperty(proto, key); !ok || !d.IsData() || d.Value().Object() != iter {
+		return false
+	}
+	d, ok := vm.GetOwnProperty(iterProto, nextKey)
+	return ok && d.IsData() && d.Value().Object() == next
+}
+
 // reserveProbe is the number of elements of an array after which a collection made from the
 // array makes room for all of them, if they all had different keys.
 const reserveProbe = 16
@@ -131,7 +146,9 @@ func initMapAndSet(vm *engine.VM) {
 func initMap(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicMapPrototype)
 	setKey := vm.Intern("set")
-	var mapSet *engine.Object
+	nextKey := engine.NamedKey(vm.Intern("next"))
+	// The original methods that iterating a Map calls.
+	var mapSet, mapEntries, mapIterProto, mapIterNext *engine.Object
 	ctor := constructor(vm, "Map", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
@@ -146,6 +163,12 @@ func initMap(vm *engine.VM) {
 		adder := adderOf(vm, m, setKey)
 		var fast func(k, v engine.Value)
 		if adder == mapSet {
+			if src := mapOf(iterable); src != nil && iterationUnobservable(vm, iterable.Object(), proto, mapEntries, mapIterProto, mapIterNext, nextKey) {
+				// The iteration yields the entries of src in their order, which the original set
+				// adds as they are.
+				t.CopyFrom(src, vm.Poll)
+				return engine.ObjectValue(m)
+			}
 			n := engine.ElementCount(iterable)
 			var i int
 			fast = func(k, v engine.Value) {
@@ -274,6 +297,7 @@ func initMap(vm *engine.VM) {
 	}, nil, nil)
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	mapIterProto = iterProto
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisMap(vm, this, name)
@@ -286,11 +310,11 @@ func initMap(vm *engine.VM) {
 	}
 	iterate("keys", engine.IterateKeys)
 	iterate("values", engine.IterateValues)
-	entries := iterate("entries", engine.IterateEntries)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(entries), engine.FlagsHidden)
+	mapEntries = iterate("entries", engine.IterateEntries)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(mapEntries), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map"), engine.FlagConfigurable)
 
-	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+	mapIterNext = iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*mapIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not a Map Iterator")
@@ -409,7 +433,8 @@ func initSet(vm *engine.VM) {
 		keys: vm.Intern("keys"),
 		next: vm.Intern("next"),
 	}
-	var setAdd *engine.Object
+	// The original methods that iterating a Set calls.
+	var setAdd, setValues, setIterProto, setIterNext *engine.Object
 	ctor := constructor(vm, "Set", 0, proto, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
@@ -423,6 +448,12 @@ func initSet(vm *engine.VM) {
 		}
 		adder := adderOf(vm, s, addKey)
 		if adder == setAdd {
+			if src := setOf(iterable); src != nil && iterationUnobservable(vm, iterable.Object(), proto, setValues, setIterProto, setIterNext, engine.NamedKey(keys.next)) {
+				// The iteration yields the values of src in their order, which the original add
+				// adds as they are.
+				t.CopyFrom(src, vm.Poll)
+				return engine.ObjectValue(s)
+			}
 			n := engine.ElementCount(iterable)
 			var i int
 			vm.Iterate(iterable, func(e engine.Value) bool {
@@ -653,6 +684,7 @@ func initSet(vm *engine.VM) {
 	})
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	setIterProto = iterProto
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t := thisSet(vm, this, name)
@@ -664,12 +696,12 @@ func initSet(vm *engine.VM) {
 		})
 	}
 	iterate("entries", engine.IterateEntries)
-	values := iterate("values", engine.IterateValues)
-	vm.Define(proto, keys.keys, engine.ObjectValue(values), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(values), engine.FlagsHidden)
+	setValues = iterate("values", engine.IterateValues)
+	vm.Define(proto, keys.keys, engine.ObjectValue(setValues), engine.FlagsHidden)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(setValues), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set"), engine.FlagConfigurable)
 
-	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+	setIterNext = iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		it, _ := engine.IteratorState(this).(*setIterator)
 		if it == nil {
 			vm.ThrowTypeError("next method called on an object that is not a Set Iterator")
