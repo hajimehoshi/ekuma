@@ -1541,16 +1541,17 @@ func numberFields(n map[string]any) map[string]string {
 			return
 		}
 		for k, p := range object(v) {
-			// Keys are in the form of "1000-count-one".
+			// Keys are in the form of "1000-count-one" or "1000-count-1".
 			mag, count, ok := strings.Cut(k, "-count-")
-			if !ok || strings.Contains(count, "-") {
-				continue
-			}
-			c, ok := pluralCategories[count]
 			if !ok {
 				continue
 			}
-			out[prefix+strconv.Itoa(len(mag)-1)+"."+c] = str(p)
+			if c, ok := pluralCategories[count]; ok {
+				count = c
+			} else if count != "0" && count != "1" {
+				continue
+			}
+			out[prefix+strconv.Itoa(len(mag)-1)+"."+count] = str(p)
 		}
 	}
 	for k, v := range n {

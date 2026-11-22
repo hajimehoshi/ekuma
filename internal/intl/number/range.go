@@ -98,12 +98,12 @@ func (f *Formatter) FormatRange(x, y Decimal, poll func()) []RangePart {
 		if xf.compactMag >= 0 {
 			// The compact symbol takes the plural form of the range.
 			m = &formatted{
-				compactMag:    xf.compactMag,
-				sign:          xf.sign,
-				compactString: xf.compactString,
+				compactMag: xf.compactMag,
+				sign:       xf.sign,
 			}
 			c := plural.SelectRange(f.pluralLocale, f.pluralOf(xf.compactString, 0), f.pluralOf(yf.compactString, 0))
-			f.setMiddle(m, false, c)
+			p, _ := f.compact.pattern(xf.compactMag, c)
+			f.setMiddle(m, false, p)
 		}
 		// The affixes surround the whole range, so the currency spacing depends on the
 		// outermost digits.

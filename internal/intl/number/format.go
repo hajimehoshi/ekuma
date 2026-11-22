@@ -284,7 +284,15 @@ func (f *Formatter) format(x Decimal, approximately, joined bool, poll func()) *
 		}
 	}
 	r.sign = f.signOf(rounded)
-	if hasNumber := f.setMiddle(r, approximately, ""); hasNumber && digits != "" {
+	var compactPattern string
+	if r.compactMag >= 0 {
+		var ok bool
+		compactPattern, ok = f.compact.exactPattern(r.compactMag, rounded)
+		if !ok {
+			compactPattern, _ = f.compact.pattern(r.compactMag, f.pluralOf(r.compactString, 0))
+		}
+	}
+	if hasNumber := f.setMiddle(r, approximately, compactPattern); hasNumber && digits != "" {
 		r.number = f.digitParts(digits, joined, poll)
 	}
 	f.setOuter(r, "")
@@ -324,28 +332,20 @@ func shiftPoint(s string, e int) string {
 }
 
 // setMiddle sets the pattern affixes and reports whether the pattern has a number placeholder.
-// A non-empty category overrides the plural category of the compact pattern.
-func (f *Formatter) setMiddle(r *formatted, approximately bool, category string) bool {
+func (f *Formatter) setMiddle(r *formatted, approximately bool, compactPattern string) bool {
 	p := f.standard
-	compactPattern := false
-	if r.compactMag >= 0 {
-		if category == "" {
-			category = f.pluralOf(r.compactString, 0)
-		}
-		if s, ok := f.compact.pattern(r.compactMag, category); ok && !isOnlyZeros(s) {
-			cp := parsePattern(s)
-			switch {
-			case f.o.Style == "currency" && f.o.CurrencyDisplay != "name" && !cp.positive.has(tokenCurrency):
-				cp = f.withStandardAffix(cp, tokenCurrency)
-			case f.o.Style == "percent" && !cp.positive.has(tokenPercent):
-				cp = f.withStandardAffix(cp, tokenPercent)
-			}
-			p = cp
-			compactPattern = true
+	useCompact := compactPattern != "" && !isOnlyZeros(compactPattern)
+	if useCompact {
+		p = parsePattern(compactPattern)
+		switch {
+		case f.o.Style == "currency" && f.o.CurrencyDisplay != "name" && !p.positive.has(tokenCurrency):
+			p = f.withStandardAffix(p, tokenCurrency)
+		case f.o.Style == "percent" && !p.positive.has(tokenPercent):
+			p = f.withStandardAffix(p, tokenPercent)
 		}
 	}
-	r.middlePrefix = f.affixParts(p.affix(true, r.sign, approximately), compactPattern)
-	r.middleSuffix = f.affixParts(p.affix(false, r.sign, approximately), compactPattern)
+	r.middlePrefix = f.affixParts(p.affix(true, r.sign, approximately), useCompact)
+	r.middleSuffix = f.affixParts(p.affix(false, r.sign, approximately), useCompact)
 	r.middleKey = strconv.Itoa(int(r.sign)) + "/" + strconv.Itoa(r.compactMag) + "/" + strconv.FormatBool(approximately)
 	return p.hasNumber
 }

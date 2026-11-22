@@ -17,7 +17,7 @@ var recordSums = []struct {
 	{
 		name: "NumberData",
 		m:    cldr.NumberData,
-		sum:  "ff596659f5132d66e57139a502629b8eb5af7bab81409057fd78c4b8e341fb2c",
+		sum:  "b7152443ae61238d77056e14bff89aa57e8acc4254ae9a661f776e6f66145abd",
 	},
 	{
 		name: "CurrencyData",

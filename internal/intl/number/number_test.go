@@ -355,6 +355,43 @@ func TestFormat(t *testing.T) {
 	}
 }
 
+func TestCompactPatternSelection(t *testing.T) {
+	f := number.NewFormatter(&number.Options{
+		Locale:                "fr",
+		NumberingSystem:       "latn",
+		Style:                 "decimal",
+		Notation:              "compact",
+		CompactDisplay:        "long",
+		MinimumIntegerDigits:  1,
+		MinimumFractionDigits: 1,
+		MaximumFractionDigits: 1,
+		RoundingIncrement:     1,
+		RoundingMode:          "halfExpand",
+	})
+	for _, tc := range []struct {
+		in   string
+		want string
+	}{
+		{
+			in:   "1000",
+			want: "mille",
+		},
+		{
+			// Rounding carries into the thousands and the compact value is 1.0.
+			in:   "-999.99",
+			want: "-mille",
+		},
+		{
+			in:   "1100",
+			want: "1,1 millier",
+		},
+	} {
+		if got := f.FormatToString(number.Parse(tc.in), nil); got != tc.want {
+			t.Errorf("formatting %s: got %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 // TestFormatPoll checks that the poll function can stop the formatting of a long number.
 func TestFormatPoll(t *testing.T) {
 	type stop struct{}

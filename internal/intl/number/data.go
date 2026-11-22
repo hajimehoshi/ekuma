@@ -117,6 +117,20 @@ func (c compact) pattern(mag int, category string) (string, bool) {
 	return c.d.plural(cldr.NumberData, c.kind+strconv.Itoa(mag)+".", category)
 }
 
+// exactPattern returns the pattern for the absolute value of the rounded compact number.
+func (c compact) exactPattern(mag int, rounded Decimal) (string, bool) {
+	var count string
+	switch {
+	case rounded.IsZero():
+		count = "0"
+	case rounded.digits == "1" && rounded.exp == 0:
+		count = "1"
+	default:
+		return "", false
+	}
+	return c.d.lookup(cldr.NumberData, c.kind+strconv.Itoa(mag)+"."+count)
+}
+
 // maxCompactMagnitude is the largest magnitude that CLDR has compact patterns for.
 const maxCompactMagnitude = 19
 
