@@ -32,9 +32,8 @@ import (
 	"strings"
 	"unicode"
 
-	"golang.org/x/text/unicode/norm"
-
 	"github.com/hajimehoshi/ekuma/internal/unicode/cldrgen"
+	"github.com/hajimehoshi/ekuma/internal/unorm"
 )
 
 const xmlVersion = "49"
@@ -1169,7 +1168,7 @@ func parseSet(s string) []rune {
 }
 
 func nfd(s string) []rune {
-	return []rune(norm.NFD.String(s))
+	return []rune(unorm.String(unorm.NFD, s, nil))
 }
 
 // tailoringSource is the rules of a tailoring by its locale file and type.

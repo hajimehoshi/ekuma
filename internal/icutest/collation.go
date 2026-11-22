@@ -15,8 +15,6 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"golang.org/x/text/unicode/norm"
-
 	"github.com/hajimehoshi/ekuma/internal/intl/collate"
 	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
@@ -126,8 +124,8 @@ func runOrderedCollation(t *testing.T, path string, shifted bool, failures map[i
 
 // The identical level orders NFD code points with the merge separator below U+0000.
 func identicalOrder(a, b string) int {
-	a = unorm.String(norm.NFD, a, nil)
-	b = unorm.String(norm.NFD, b, nil)
+	a = unorm.String(unorm.NFD, a, nil)
+	b = unorm.String(unorm.NFD, b, nil)
 	for a != "" && b != "" {
 		x, nx := utf8.DecodeRuneInString(a)
 		y, ny := utf8.DecodeRuneInString(b)

@@ -26,7 +26,7 @@ func TestStringInSteps(t *testing.T) {
 	}
 	s := b.String()
 	for _, form := range forms {
-		if got, want := unorm.String(form, s, nil), form.String(s); got != want {
+		if got, want := unorm.String(unorm.Form(form), s, nil), form.String(s); got != want {
 			t.Errorf("form %v: the result differs from the package norm", form)
 		}
 	}
@@ -37,15 +37,15 @@ func TestStringLongRun(t *testing.T) {
 	const n = 1 << 16
 	s := "a" + strings.Repeat("̧̨́", n)
 	for _, tc := range []struct {
-		form norm.Form
+		form unorm.Form
 		want string
 	}{
 		{
-			form: norm.NFD,
+			form: unorm.NFD,
 			want: "a" + strings.Repeat("̧̨", n) + strings.Repeat("́", n),
 		},
 		{
-			form: norm.NFC,
+			form: unorm.NFC,
 			want: "á" + strings.Repeat("̧̨", n) + strings.Repeat("́", n-1),
 		},
 	} {
@@ -57,5 +57,16 @@ func TestStringLongRun(t *testing.T) {
 		if polls < 8 {
 			t.Errorf("form %v: got %d polls, want at least 8", tc.form, polls)
 		}
+	}
+}
+
+func TestCombiningMarkAtChunkBoundary(t *testing.T) {
+	// U+1ADE has combining class 230 in Unicode 18. The following dot
+	// below moves across the chunk boundary and composes with the A.
+	const end = "A\u0315\u1ade"
+	prefix := strings.Repeat("x", (1<<16)-len(end))
+	got := unorm.String(unorm.NFC, prefix+end+"\u0323", nil)
+	if want := prefix + "Ạ\u1ade\u0315"; got != want {
+		t.Errorf("normalized suffix = %+q, want %+q", strings.TrimPrefix(got, prefix), strings.TrimPrefix(want, prefix))
 	}
 }

@@ -9,11 +9,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/text/unicode/norm"
-
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/collate"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
+	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -330,7 +329,7 @@ func lastStarter(s string) int {
 		if !utf8.RuneStart(s[i]) || !utf8.FullRuneInString(s[i:]) {
 			continue
 		}
-		if r, _ := utf8.DecodeRuneInString(s[i:]); combiningClass(r) == 0 {
+		if r, _ := utf8.DecodeRuneInString(s[i:]); unorm.CombiningClass(r) == 0 {
 			return i
 		}
 	}
@@ -345,7 +344,7 @@ func nextStarter(s string, i int, poll func()) int {
 			poll()
 		}
 		r, size := utf8.DecodeRuneInString(s[i:])
-		if utf8.RuneStart(s[i]) && combiningClass(r) == 0 {
+		if utf8.RuneStart(s[i]) && unorm.CombiningClass(r) == 0 {
 			return i
 		}
 		i += size
@@ -398,7 +397,7 @@ func lithuanianUndot(s string, poll func()) string {
 		if k++; k%pollRunes == 0 {
 			poll()
 		}
-		c := combiningClass(r)
+		c := unorm.CombiningClass(r)
 		if r == '\u0307' && afterSoftDotted {
 			afterSoftDotted = false
 			continue
@@ -425,7 +424,7 @@ func turkicLowerI(s string, poll func()) string {
 		if k++; k%pollRunes == 0 {
 			poll()
 		}
-		c := combiningClass(r)
+		c := unorm.CombiningClass(r)
 		switch {
 		case r == '\u0130':
 			b.WriteByte('i')
@@ -450,7 +449,7 @@ func turkicLowerI(s string, poll func()) string {
 // class Above (230).
 func moreAbove(s string) bool {
 	for _, r := range s {
-		switch combiningClass(r) {
+		switch unorm.CombiningClass(r) {
 		case 0:
 			return false
 		case 230:
@@ -467,22 +466,12 @@ func beforeDot(s string) bool {
 		if r == '\u0307' {
 			return true
 		}
-		switch combiningClass(r) {
+		switch unorm.CombiningClass(r) {
 		case 0, 230:
 			return false
 		}
 	}
 	return false
-}
-
-// combiningClass returns the canonical combining class of r.
-func combiningClass(r rune) uint8 {
-	if r < utf8.RuneSelf {
-		return 0
-	}
-	var b [utf8.UTFMax]byte
-	n := utf8.EncodeRune(b[:], r)
-	return norm.NFD.Properties(b[:n]).CCC()
 }
 
 // initArrayToLocaleString replaces Array.prototype.toLocaleString and

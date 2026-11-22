@@ -8,8 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/text/unicode/norm"
-
+	"github.com/hajimehoshi/ekuma/internal/unorm"
 	"github.com/hajimehoshi/ekuma/internal/xstrings"
 )
 
@@ -100,12 +99,10 @@ func greekUpper(s string, poll func()) string {
 			continue
 		}
 		var marks greekDiacritics
-		if d := norm.NFD.PropertiesString(s[i:]).Decomposition(); len(d) != 0 {
-			var baseSize int
-			r, baseSize = utf8.DecodeRune(d)
-			for _, mark := range string(d[baseSize:]) {
-				marks.add(mark, precomposedMark)
-			}
+		d := unorm.String(unorm.NFD, s[i:i+size], nil)
+		r, baseSize := utf8.DecodeRuneInString(d)
+		for _, mark := range d[baseSize:] {
+			marks.add(mark, precomposedMark)
 		}
 		end := i + size
 		for _, mark := range s[end:] {

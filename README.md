@@ -325,15 +325,14 @@ Short mode skips all external conformance tests.
 | Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
 | [ICU 78.3 (Unicode 17.0)](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | None |
-| [ICU 79.1 (CLDR 49)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
+| [ICU 79.1 (Unicode 18.0, CLDR 49)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
-`TestICU` checks segmentation and normalization with Unicode fixtures and locale
-identifiers and collation with CLDR fixtures. Set `EKUMA_ICU` to the ICU 78.3
-checkout and `EKUMA_ICU_CLDR` to a separate ICU 79.1 checkout. A sparse
-checkout needs both `CollationTest_*_SHORT.txt` files and `collationtest.txt`
-under `icu4c/source/test/testdata`. Run the full suite or just collation with
+`TestICU` uses ICU 78.3 for segmentation and ICU 79.1 for normalization, locale
+identifiers and collation. Set `EKUMA_ICU` and `EKUMA_ICU_CLDR` to the
+respective checkouts. For sparse checkouts, use the paths in the
+[CI workflow](.github/workflows/test.yml). Run the full suite or just collation with
 
 ```sh
 go test -count=1 -v -run '^TestICU$' .
@@ -401,7 +400,7 @@ test (`-n.js`) and fails a positive test.
 
 ## License
 
-Ekuma's code is under [0BSD](LICENSE). Programs that import the optional
-`github.com/hajimehoshi/ekuma/intl` package must include the
-[notices for the CLDR data and ICU4C word dictionaries](internal/unicode/LICENSE)
-with their distributions.
+Ekuma's code is under [0BSD](LICENSE). Distributions must include the Unicode
+notice for the normalization data. Programs that import the optional
+`github.com/hajimehoshi/ekuma/intl` package must also include the notices for
+the CLDR data and ICU4C word dictionaries. See [Unicode notices](internal/unicode/LICENSE).

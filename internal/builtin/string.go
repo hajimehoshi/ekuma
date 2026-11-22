@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
@@ -445,7 +444,7 @@ func initString(vm *engine.VM) {
 	mapShortCase("toLowerCase", false, strings.ToLower, lower)
 	mapShortCase("toLocaleUpperCase", true, strings.ToUpper, upper)
 	mapShortCase("toLocaleLowerCase", false, strings.ToLower, lower)
-	nfc, nfd, nfkc, nfkd := normalization(norm.NFC), normalization(norm.NFD), normalization(norm.NFKC), normalization(norm.NFKD)
+	nfc, nfd, nfkc, nfkd := normalization(unorm.NFC), normalization(unorm.NFD), normalization(unorm.NFKC), normalization(unorm.NFKD)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "localeCompare")
 		that := vm.ToStringValue(arg(args, 0))
@@ -457,16 +456,16 @@ func initString(vm *engine.VM) {
 	})
 	method(vm, proto, "normalize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(vm, this, "normalize")
-		form, quick := nfc, norm.NFC
+		form, quick := nfc, unorm.NFC
 		if f := arg(args, 0); !f.IsUndefined() {
 			switch vm.ToString(f) {
 			case "NFC":
 			case "NFD":
-				form, quick = nfd, norm.NFD
+				form, quick = nfd, unorm.NFD
 			case "NFKC":
-				form, quick = nfkc, norm.NFKC
+				form, quick = nfkc, unorm.NFKC
 			case "NFKD":
-				form, quick = nfkd, norm.NFKD
+				form, quick = nfkd, unorm.NFKD
 			default:
 				vm.ThrowRangeError("the normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
@@ -475,7 +474,7 @@ func initString(vm *engine.VM) {
 			return s
 		}
 		str := s.Str()
-		if wtf8.IsWellFormed(str) && quick.QuickSpanString(string(str)) == len(str) {
+		if wtf8.IsWellFormed(str) && unorm.QuickCheck(quick, string(str), vm.Poll) {
 			return s
 		}
 		return vm.NewString(mapLimited(vm, str, form))
@@ -730,7 +729,7 @@ func contextFree(f func(string) string) func(s string, start, end int, poll func
 }
 
 // normalization returns the mapping to the normalization form.
-func normalization(form norm.Form) stringMapping {
+func normalization(form unorm.Form) stringMapping {
 	return stringMapping{
 		f: func(s string, start, end int, poll func()) string {
 			return unorm.String(form, s[start:end], poll)
@@ -741,7 +740,7 @@ func normalization(form norm.Form) stringMapping {
 
 // lastBoundary returns a boundary function for the normalization form: the parts of a string
 // between its boundaries normalize independently.
-func lastBoundary(form norm.Form) func(s string) int {
+func lastBoundary(form unorm.Form) func(s string) int {
 	return func(s string) int {
 		return unorm.LastBoundary(form, s)
 	}

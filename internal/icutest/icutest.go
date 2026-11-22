@@ -32,9 +32,12 @@ func Run(t *testing.T) {
 		t.Skip("no ICU checkouts available")
 	}
 	if unicodeDir != "" {
-		runUnicodeTests(t, unicodeDir)
+		runBreakTests(t, unicodeDir)
 	}
 	if cldrDir != "" {
+		t.Run("NormalizationTest.txt", func(t *testing.T) {
+			runNormalizationTest(t, filepath.Join(cldrDir, "icu4c", "source", "data", "unidata", "NormalizationTest.txt"))
+		})
 		dataDir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata")
 		dir := filepath.Join(dataDir, "cldr", "localeIdentifiers")
 		locales, collations := readFailures(t)
@@ -128,16 +131,13 @@ func checkoutDir(t *testing.T, env, name string) string {
 	return dir
 }
 
-func runUnicodeTests(t *testing.T, dir string) {
+func runBreakTests(t *testing.T, dir string) {
 	for _, kind := range []string{"Grapheme", "Word", "Sentence"} {
 		file := kind + "BreakTest.txt"
 		t.Run(file, func(t *testing.T) {
 			runBreakTest(t, filepath.Join(dir, "icu4c", "source", "test", "testdata", file), strings.ToLower(kind))
 		})
 	}
-	t.Run("NormalizationTest.txt", func(t *testing.T) {
-		runNormalizationTest(t, filepath.Join(dir, "icu4c", "source", "data", "unidata", "NormalizationTest.txt"))
-	})
 }
 
 func runBreakTest(t *testing.T, path, granularity string) {

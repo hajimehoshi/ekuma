@@ -16,9 +16,11 @@ import (
 const Version = "79.1"
 
 var checksums = map[string]string{
-	"icu4c/source/data/brkitr/dictionaries/cjdict.txt":   "e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0",
-	"icu4c/source/data/brkitr/dictionaries/thaidict.txt": "3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274",
-	"icu4c/source/i18n/persncal.cpp":                     "31e7e93bb7dc1e4436c58ffd44fd1ed2686ceb79228b8d989f6573ec15ed5f45",
+	"icu4c/source/data/brkitr/dictionaries/cjdict.txt":        "e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0",
+	"icu4c/source/data/brkitr/dictionaries/thaidict.txt":      "3166abde40c0f44ab91c28f5ce96d7d1472cb7882e1c0bda0a72f8f69dba4274",
+	"icu4c/source/data/unidata/UnicodeData.txt":               "0736451de439ae7baf1425136617da495e09ee5afbe6e394374db7009ea08950",
+	"icu4c/source/data/unidata/DerivedNormalizationProps.txt": "a8520eb851d4eaeb7d5a97735b4b740c9af401dee4210303ee5d9f4946f902c2",
+	"icu4c/source/i18n/persncal.cpp":                          "31e7e93bb7dc1e4436c58ffd44fd1ed2686ceb79228b8d989f6573ec15ed5f45",
 }
 
 // ReadFile returns the contents of a checksum-pinned file from the ICU repository.

@@ -7,6 +7,7 @@ package collate
 
 import (
 	"bytes"
+	"cmp"
 	"compress/flate"
 	"encoding/binary"
 	"io"
@@ -15,8 +16,6 @@ import (
 	"sync"
 	"unicode"
 	"unicode/utf8"
-
-	"golang.org/x/text/unicode/norm"
 
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/unicode/collation"
@@ -49,8 +48,9 @@ func (c ce) variable() bool {
 }
 
 const (
-	commonSecondary = 0x20 << 11
-	commonTertiary  = 0x02 << 6
+	mergeSeparatorPrimary = 0x0200 << 15
+	commonSecondary       = 0x20 << 11
+	commonTertiary        = 0x02 << 6
 )
 
 func isUpper(t uint32) bool {
@@ -523,7 +523,7 @@ func (c *Collator) appendCEs(buf *buffer, s string, p *pacer) []ce {
 		}
 	}
 	if !ascii {
-		s = unorm.String(norm.NFD, s, p.poll)
+		s = unorm.String(unorm.NFD, s, p.poll)
 	}
 	for _, r := range s {
 		p.step(1)
@@ -710,15 +710,6 @@ func digitValue(r rune) (byte, bool) {
 	return byte(d), true
 }
 
-func ccc(r rune) uint8 {
-	if r < 0x300 {
-		return 0
-	}
-	var b [utf8.UTFMax]byte
-	n := utf8.EncodeRune(b[:], r)
-	return norm.NFD.Properties(b[:n]).CCC()
-}
-
 // candidates are the strings of contractions that start with one code point, by the code
 // points after the first one.
 type candidates interface {
@@ -739,7 +730,7 @@ func matchContraction(cs candidates, rs []rune, i int) (int, int, []rune) {
 		}
 	}
 	// Discontiguous matches: unblocked non-starters after the match.
-	if j := i + 1 + bestLen; j >= len(rs) || ccc(rs[j]) == 0 {
+	if j := i + 1 + bestLen; j >= len(rs) || unorm.CombiningClass(rs[j]) == 0 {
 		return best, 1 + bestLen, rs
 	}
 	matched := slices.Clone(rs[i+1 : i+1+bestLen])
@@ -747,7 +738,7 @@ func matchContraction(cs candidates, rs []rune, i int) (int, int, []rune) {
 	skipped := false
 	j := i + 1 + bestLen
 	for j < len(rs) {
-		cc := ccc(rs[j])
+		cc := unorm.CombiningClass(rs[j])
 		if cc == 0 {
 			break
 		}
@@ -855,11 +846,13 @@ func (c *Collator) compareCEs(a, b []ce, p *pacer) int {
 		return r
 	}
 	if c.strength >= 2 {
-		sa, sb := a, b
+		var r int
 		if c.backwards {
-			sa, sb = reversed(a), reversed(b)
+			r = compareBackwardsSecondary(a, b, p)
+		} else {
+			r = compareLevel(a, b, func(e ce) uint32 { return e.secondary() }, p)
 		}
-		if r := compareLevel(sa, sb, func(e ce) uint32 { return e.secondary() }, p); r != 0 {
+		if r != 0 {
 			return r
 		}
 	}
@@ -899,10 +892,41 @@ func (c *Collator) compareCEs(a, b []ce, p *pacer) int {
 	return 0
 }
 
-func reversed(ces []ce) []ce {
-	r := slices.Clone(ces)
-	slices.Reverse(r)
-	return r
+func compareBackwardsSecondary(a, b []ce, p *pacer) int {
+	// The primary level has already matched the U+FFFE separators. Compare
+	// segments in forward order and the weights within each segment backwards.
+	segment := func(ces []ce) ([]ce, []ce) {
+		for i, e := range ces {
+			p.step(1)
+			if e.primary() == mergeSeparatorPrimary {
+				return ces[:i], ces[i+1:]
+			}
+		}
+		return ces, nil
+	}
+	lastWeight := func(ces []ce) (uint32, []ce) {
+		for i, e := range slices.Backward(ces) {
+			p.step(1)
+			if weight := e.secondary(); weight != 0 {
+				return weight, ces[:i]
+			}
+		}
+		return 0, nil
+	}
+	for len(a) > 0 || len(b) > 0 {
+		var x, y []ce
+		x, a = segment(a)
+		y, b = segment(b)
+		for len(x) > 0 || len(y) > 0 {
+			var wx, wy uint32
+			wx, x = lastWeight(x)
+			wy, y = lastWeight(y)
+			if wx != wy {
+				return cmp.Compare(wx, wy)
+			}
+		}
+	}
+	return 0
 }
 
 // compareLevel compares the non-zero weights that key returns.

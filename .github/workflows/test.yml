@@ -53,13 +53,12 @@ jobs:
           path: .icu
           sparse-checkout: |
             /LICENSE
-            /icu4c/source/data/unidata/NormalizationTest.txt
             /icu4c/source/test/testdata/GraphemeBreakTest.txt
             /icu4c/source/test/testdata/WordBreakTest.txt
             /icu4c/source/test/testdata/SentenceBreakTest.txt
           sparse-checkout-cone-mode: false
 
-      - name: Checkout ICU CLDR locale identifier and collation tests
+      - name: Checkout ICU normalization and CLDR tests
         uses: actions/checkout@v4
         with:
           repository: unicode-org/icu
@@ -67,6 +66,7 @@ jobs:
           path: .icu-cldr
           sparse-checkout: |
             /LICENSE
+            /icu4c/source/data/unidata/NormalizationTest.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
             /icu4c/source/test/testdata/CollationTest_NON_IGNORABLE_SHORT.txt
