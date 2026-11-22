@@ -756,10 +756,8 @@ test/mozilla/data/ecma/FunctionObjects/15.3.5-1.js
 test/mozilla/data/ecma/Statements/12.6.3-2.js
 test/mozilla/data/ecma_3/Date/15.9.5.5-02.js
 test/mozilla/data/ecma_3/Number/15.7.4.3-02.js
-test/mozilla/data/ecma_3/RegExp/15.10.2-1.js
 test/mozilla/data/ecma_3/RegExp/regress-289669.js
 test/mozilla/data/ecma_3/RegExp/regress-311414.js
-test/mozilla/data/ecma_3/Unicode/uc-002.js
 test/mozilla/data/js1_5/Array/regress-99120-01.js
 test/mozilla/data/js1_5/Array/regress-99120-02.js
 test/mozilla/data/js1_5/GC/regress-383269-01.js
