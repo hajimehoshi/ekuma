@@ -168,7 +168,10 @@ func (vm *VM) lendRegExpLiteral(regs []Value, dst, callee int32, site *regExpSit
 		return
 	}
 	if o := regs[dst].o; o != nil && o == site.lent {
-		regs[dst] = Value{o: vm.regExpLiteralFor(f, site, vm.regExpReceiverBorrowers)}
+		// The register keeps the lent object, without a write barrier, when f borrows it.
+		if lent := vm.regExpLiteralFor(f, site, vm.regExpReceiverBorrowers); lent != o {
+			regs[dst] = Value{o: lent}
+		}
 	}
 }
 
@@ -195,9 +198,13 @@ func (vm *VM) resetLentRegExp(site *regExpSite) *Object {
 		site.lent = o
 		return o
 	}
-	// A borrower that runs script code may still hold o, but no longer uses it.
-	o.shape = vm.regExpShape()
-	o.slots[0] = Number(0)
+	// A borrower that runs script code may still hold o, but no longer uses it. Only the pointers
+	// that differ from those of a new object are stored, so that reusing o needs no write barrier
+	// while the garbage collector marks.
+	if s := vm.regExpShape(); o.shape != s {
+		o.shape = s
+	}
+	setNumber(&o.slots[0], 0)
 	return o
 }
 
