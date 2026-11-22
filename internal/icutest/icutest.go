@@ -65,7 +65,46 @@ func Run(t *testing.T) {
 		})
 	}
 	if cldrDir != "" {
-		localeDir := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata", "cldr", "localeIdentifiers")
+		testdata := filepath.Join(cldrDir, "icu4c", "source", "test", "testdata")
+		localeDir := filepath.Join(testdata, "cldr", "localeIdentifiers")
+		misc := filepath.Join(cldrDir, "icu4c", "source", "data", "misc")
+		t.Run("numberpermutationtest.txt", func(t *testing.T) {
+			runNumberPermutations(t, filepath.Join(testdata, "numberpermutationtest.txt"))
+		})
+		t.Run("NumberFormatTestCases.txt", func(t *testing.T) {
+			runNumberCases(t, filepath.Join(testdata, "NumberFormatTestCases.txt"))
+		})
+		t.Run("dcfmtest.txt", func(t *testing.T) {
+			runDecimalFormat(t, filepath.Join(testdata, "dcfmtest.txt"))
+		})
+		t.Run("calendar.txt", func(t *testing.T) {
+			runCalendar(t, filepath.Join(testdata, "calendar.txt"), fixtures["calendar.txt/fwd"], fixtures["calendar.txt/rev"])
+		})
+		t.Run("format.txt", func(t *testing.T) {
+			runDateFormat(t, filepath.Join(testdata, "format.txt"), fixtures["format.txt"])
+		})
+		t.Run("numberformattestspecification.txt", func(t *testing.T) {
+			runNumberSpecification(t, filepath.Join(testdata, "numberformattestspecification.txt"), fixtures["numberformattestspecification.txt"])
+		})
+		javaFormat := filepath.Join(cldrDir, "icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format")
+		t.Run("icu4j-plurals.txt", func(t *testing.T) {
+			runPluralPhrases(t, filepath.Join(javaFormat, "plurals.txt"), filepath.Join(misc, "plurals.txt"))
+		})
+		t.Run("icu4j-NumberFormatTestCases.txt", func(t *testing.T) {
+			runNumberCases(t, filepath.Join(javaFormat, "NumberFormatTestCases.txt"))
+		})
+		t.Run("localeDisplayName.txt", func(t *testing.T) {
+			runDisplayNames(t, filepath.Join(localeDir, "localeDisplayName.txt"), fixtures["localeDisplayName.txt"])
+		})
+		t.Run("plurals.txt", func(t *testing.T) {
+			runPluralSamples(t, filepath.Join(misc, "plurals.txt"))
+		})
+		t.Run("pluralRanges.txt", func(t *testing.T) {
+			runPluralRanges(t, filepath.Join(misc, "pluralRanges.txt"), filepath.Join(misc, "plurals.txt"))
+		})
+		t.Run("caltestdata.h", func(t *testing.T) {
+			runLunarMapping(t, filepath.Join(cldrDir, "icu4c/source/test/intltest/caltestdata.h"))
+		})
 		t.Run("likelySubtags.txt", func(t *testing.T) {
 			runLikelySubtagsTest(t, filepath.Join(localeDir, "likelySubtags.txt"), locales)
 		})
@@ -90,6 +129,11 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 	}
 	fixtures := map[string]map[int]string{
 		"rbbitst.txt":                           {},
+		"localeDisplayName.txt":                 {},
+		"format.txt":                            {},
+		"calendar.txt/fwd":                      {},
+		"calendar.txt/rev":                      {},
+		"numberformattestspecification.txt":     {},
 		"CollationTest_NON_IGNORABLE_SHORT.txt": {},
 		"CollationTest_SHIFTED_SHORT.txt":       {},
 		"collationtest.txt":                     {},
@@ -100,10 +144,21 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		if len(fields) == 0 {
 			continue
 		}
-		if len(fields) != 3 {
+		if len(fields) < 3 {
 			t.Fatalf("%s:%d: expected an operation or fixture, a case and a known result, got %q", failuresFile, i+1, row)
 		}
-		name, key, result := fields[0], fields[1], fields[2]
+		name, key := fields[0], fields[1]
+		tail := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(row), name))
+		result := strings.TrimSpace(strings.TrimPrefix(tail, key))
+		if strings.HasPrefix(result, "\"") {
+			var err error
+			result, err = strconv.Unquote(result)
+			if err != nil {
+				t.Fatalf("%s:%d: %v", failuresFile, i+1, err)
+			}
+		} else if len(fields) != 3 {
+			t.Fatalf("%s:%d: expected one result, got %q", failuresFile, i+1, result)
+		}
 		if entries, ok := locales[name]; ok {
 			if _, ok := entries[key]; ok {
 				t.Fatalf("%s:%d: duplicate entry for %s(%q)", failuresFile, i+1, name, key)
@@ -115,14 +170,16 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		if !ok {
 			t.Fatalf("%s:%d: unknown operation or fixture %q", failuresFile, i+1, name)
 		}
-		line, err := strconv.Atoi(key)
-		if err != nil || line <= 0 {
-			t.Fatalf("%s:%d: invalid line %q for %s", failuresFile, i+1, key, name)
+		for k := range strings.SplitSeq(key, ",") {
+			line, err := strconv.Atoi(k)
+			if err != nil || line <= 0 {
+				t.Fatalf("%s:%d: invalid line %q for %s", failuresFile, i+1, key, name)
+			}
+			if _, ok := entries[line]; ok {
+				t.Fatalf("%s:%d: duplicate entry for %s:%d", failuresFile, i+1, name, line)
+			}
+			entries[line] = result
 		}
-		if _, ok := entries[line]; ok {
-			t.Fatalf("%s:%d: duplicate entry for %s:%d", failuresFile, i+1, name, line)
-		}
-		entries[line] = result
 	}
 	return locales, fixtures
 }

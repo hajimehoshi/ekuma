@@ -101,6 +101,9 @@ func (n Names) DateTimeField(code, style string) (string, bool) {
 	return n.field(cldr.DateFieldNames, f)
 }
 
+// CLDR 49 locales inherit these nested bracket replacements from root.
+var nameBrackets = strings.NewReplacer("(", "[", ")", "]", "（", "［", "）", "］")
+
 // Language returns the name of the canonical unicode_language_id id, with the names of
 // dialects such as "American English" when dialect is true. It reports false when a subtag
 // has no name.
@@ -115,14 +118,12 @@ func (n Names) Language(id locale.LanguageID, dialect bool) (string, bool) {
 				hasScript, hasRegion = false, false
 			}
 		}
-		// As ICU, the names of the language with only the script or only the region
-		// are not used for a locale that has both.
-		if hasScript && !hasRegion {
+		if !found && hasScript {
 			if name, found = n.name("l" + lang + "-" + id.Script); found {
 				hasScript = false
 			}
 		}
-		if hasRegion && !hasScript {
+		if !found && hasRegion {
 			if name, found = n.name("l" + lang + "-" + id.Region); found {
 				hasRegion = false
 			}
@@ -135,46 +136,37 @@ func (n Names) Language(id locale.LanguageID, dialect bool) (string, bool) {
 		}
 		name = v
 	}
+	name = nameBrackets.Replace(name)
 	var qualifiers []string
 	if hasScript {
-		v, ok := n.name("s" + id.Script)
+		v, ok := n.Script(id.Script)
 		if !ok {
 			return "", false
 		}
-		qualifiers = append(qualifiers, v)
+		qualifiers = append(qualifiers, nameBrackets.Replace(v))
 	}
 	if hasRegion {
-		v, ok := n.field(cldr.TerritoryNames, id.Region)
-		if n.short {
-			if s, sok := n.field(cldr.LocaleDisplayNames, "r"+id.Region); sok {
-				v, ok = s, true
-			}
-		}
+		v, ok := n.Region(id.Region)
 		if !ok {
 			return "", false
 		}
-		qualifiers = append(qualifiers, v)
+		qualifiers = append(qualifiers, nameBrackets.Replace(v))
 	}
 	for _, variant := range id.Variants {
 		v, ok := n.field(cldr.LocaleDisplayNames, "v"+strings.ToUpper(variant))
 		if !ok {
 			return "", false
 		}
-		qualifiers = append(qualifiers, v)
+		qualifiers = append(qualifiers, nameBrackets.Replace(v))
 	}
 	if len(qualifiers) == 0 {
 		return name, true
 	}
 	pattern, _ := n.field(cldr.LocaleDisplayNames, "p")
 	sep, _ := n.field(cldr.LocaleDisplayNames, "q")
-	open, close, ropen, rclose := "(", ")", "[", "]"
-	if strings.Contains(pattern, "（") {
-		open, close, ropen, rclose = "（", "）", "［", "］"
-	}
 	rest := qualifiers[0]
 	for _, q := range qualifiers[1:] {
 		rest = strings.NewReplacer("{0}", rest, "{1}", q).Replace(sep)
 	}
-	rest = strings.NewReplacer(open, ropen, close, rclose).Replace(rest)
 	return strings.NewReplacer("{0}", name, "{1}", rest).Replace(pattern), true
 }

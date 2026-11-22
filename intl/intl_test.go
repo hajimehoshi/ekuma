@@ -297,11 +297,9 @@ func TestFormatters(t *testing.T) {
 			want: "昨日; خلال ٣ ساعات",
 		},
 		{
-			// The name of a dialect is used only when it covers every subtag that it
-			// stands for.
 			name: "language names",
 			src:  `["en-US", "zh-Hant-TW", "en-Latn-US", "de-1996"].map(c => new Intl.DisplayNames("en", {type: "language"}).of(c)).concat([new Intl.DisplayNames("en", {type: "language", style: "short"}).of("en-GB"), new Intl.DisplayNames("en", {type: "language", languageDisplay: "standard"}).of("en-US"), new Intl.DisplayNames("ja", {type: "language"}).of("zh-Hans-SG")]).join("; ")`,
-			want: "American English; Chinese (Traditional, Taiwan); English (Latin, United States); German (German orthography of 1996); UK English; English (United States); 中国語 (簡体字、シンガポール)",
+			want: "American English; Traditional Chinese (Taiwan); American English (Latin); German (German orthography of 1996); UK English; English (United States); 簡体中国語 (シンガポール)",
 		},
 		{
 			name: "language without a name",

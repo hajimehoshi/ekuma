@@ -8,3 +8,31 @@
 # POSIX English word breaks around punctuation. Intl.Segmenter has no
 # relevant Unicode extension keys, so en-US-u-va-posix resolves to en-US.
 rbbitst.txt 1584 -23,-24,-36,-37
+
+# CLDR emits partial language names for unknown qualifiers. Ekuma falls back
+# to the canonical language code when a subtag has no localized name.
+localeDisplayName.txt 375,394,413,432,451,470,489,508,527,546,565,584 code
+localeDisplayName.txt 603,622,641,660,717,736,869,888,907,926,1097,1116 code
+localeDisplayName.txt 1401,1420,1553,1572,1591,1610,1629,1648,1705,1724,1819,1838 code
+localeDisplayName.txt 1895,1914,1971,1990,2009,2028,2123,2142,2161,2180,2313,2332 code
+localeDisplayName.txt 2351,2370,2389,2408,2427,2446,2465,2484,2503,2522,2655,2674 code
+localeDisplayName.txt 2731,2750,2769,2788,2883,2902,3035,3054,3073,3092,3111,3130 code
+localeDisplayName.txt 3149,3168,3225,3244,3301,3320,3453,3472,3491,3510,3529,3548 code
+localeDisplayName.txt 3567,3586,3643,3662,3681,3700,3871,3890,3909,3928,3947,3966 code
+localeDisplayName.txt 4023,4042,4137,4156,4175,4194,4213,4232,4289,4308 code
+
+# Before the Qing and KASI tables, Ekuma's ICU4X-based Dangi calendar uses
+# the Beijing meridian. Its tenth month of 1880 starts one day earlier.
+calendar.txt/fwd 157 "1880 M11 2"
+calendar.txt/rev 157 "1880 M10 2"
+
+# Ekuma uses a web-compatible space before AM/PM. In the distant Hebrew
+# date the host zone rules and CLDR name yield Pacific Standard Time.
+format.txt 35 "8/8/07, 6:54 PM"
+format.txt 100 "11:59:00 PM GMT"
+format.txt 107 "5:00:00 PM GMT"
+format.txt 552 "Friday, 3 Heshvan 103217 at 12:00:00 AM Pacific Standard Time"
+
+# The DecimalFormat specification expects other for Serbian scientific
+# 2E0. Ekuma selects few from the integer operand 2.
+numberformattestspecification.txt 1042 few

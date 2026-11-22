@@ -329,18 +329,22 @@ Short mode skips all external conformance tests.
 | Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
 | [ICU 78.3 (Unicode 17, CLDR 48.2 collation)](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
-| [ICU 79.1 (CLDR 49 locale identifiers)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
+| [ICU 79.1 (CLDR 49 locale and formatting data)](https://github.com/unicode-org/icu/tree/release-79.1) | `EKUMA_ICU_CLDR` | `ekuma/icu-cldr` | [Revision](internal/icutest/testdata/icu-cldr-revision.txt) | [Expected failures](internal/icutest/testdata/icu-failures.txt) |
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
 ICU 78.3 supplies the casing, normalization, RegExp, segmentation, and collation
-fixtures. ICU 79.1 supplies the two CLDR 49 locale-identifier fixtures.
+fixtures. ICU 79.1 supplies CLDR 49 locale identifiers, number formatting,
+display names, plural rules, and calendar fixtures. The
+[fixture inventory](internal/icutest/README.md) describes the upstream readers,
+option mappings, exclusions, and known differences.
 The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
-Run the full suite or just collation with
+Run the full suite or focus on one area with
 
 ```sh
 go test -count=1 -v -run '^TestICU$' .
 go test -count=1 -v -run '^TestICU$/^[Cc]ollation' .
+go test -count=1 -v -run '^TestICU$/^(plural|icu4j-plurals)' .
 ```
 
 After checking out V8, fetch the separate Mozilla data revision pinned in

@@ -68,7 +68,7 @@ jobs:
             /icu4c/source/test/testdata/collationtest.txt
           sparse-checkout-cone-mode: false
 
-      - name: Checkout CLDR locale identifier tests
+      - name: Checkout CLDR locale and formatting tests
         uses: actions/checkout@v4
         with:
           repository: unicode-org/icu
@@ -78,6 +78,18 @@ jobs:
             /LICENSE
             /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
+            /icu4c/source/test/testdata/cldr/localeIdentifiers/localeDisplayName.txt
+            /icu4c/source/test/testdata/numberpermutationtest.txt
+            /icu4c/source/test/testdata/numberformattestspecification.txt
+            /icu4c/source/test/testdata/NumberFormatTestCases.txt
+            /icu4c/source/test/testdata/dcfmtest.txt
+            /icu4c/source/test/testdata/calendar.txt
+            /icu4c/source/test/testdata/format.txt
+            /icu4c/source/test/intltest/caltestdata.h
+            /icu4c/source/data/misc/plurals.txt
+            /icu4c/source/data/misc/pluralRanges.txt
+            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/NumberFormatTestCases.txt
+            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/plurals.txt
           sparse-checkout-cone-mode: false
 
       - name: Checkout test262
