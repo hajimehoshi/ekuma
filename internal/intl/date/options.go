@@ -33,7 +33,10 @@ type Format struct {
 	hourCycle string
 	pattern   string
 	items     []item
-	// numbers is the date style's field-specific numbering system, if any.
+	// A localized date pattern can lose the requested month width or add an era.
+	// Component-based intervals use the original request to select their patterns.
+	requestedSkeleton string
+	// numbers is the pattern's field-specific numbering override, if any.
 	numbers string
 }
 
@@ -124,10 +127,24 @@ func skeletonFor(c Components, hc string) string {
 // extension keywords apply, and the calendar cal, with the hour cycle hc.
 func NewFormat(l, cal, hc string, c Components) *Format {
 	g := generatorFor(l, cal)
-	p := g.bestPattern(skeletonFor(c, hc), matchOptions{
+	skeleton := skeletonFor(c, hc)
+	p := g.bestPattern(skeleton, matchOptions{
 		hourLength: true,
 	})
-	return newFormat(l, cal, replaceHourCycle(p, hc))
+	f := newFormat(l, cal, replaceHourCycle(p, hc))
+	f.requestedSkeleton = skeleton
+	f.numbers = f.patternNumbers(f.pattern)
+	return f
+}
+
+// patternNumbers returns the numbering override for a component or interval pattern.
+func (f *Format) patternNumbers(p string) string {
+	if f.calendar == "japanese" && strings.ContainsRune(p, '年') {
+		if lang, _, _ := strings.Cut(f.locale, "-"); lang == "ja" {
+			return "y=jpanyear"
+		}
+	}
+	return ""
 }
 
 func newFormat(l, cal, p string) *Format {

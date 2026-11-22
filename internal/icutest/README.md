@@ -47,9 +47,9 @@ the test. [Known results](testdata/icu-failures.txt)
 | `calendar.txt` | 72 | 18 | 0 | `dadrcal.cpp` and `DataDrivenCalendarTest.java`. Both conversion directions, month codes, leap months, eras, date addition, and epoch-millisecond addition. Temporal has no field-roll operation. |
 | `format.txt` | 19 | 43 | 4 | `dadrfmt.cpp` and `DataDrivenFormatTest.java`. Style formatting and the era/year fields of `G y` and `G yy` through `formatToParts`. Parsing, longer padded year widths, and ICU relative-date words and join patterns are excluded. |
 | `caltestdata.h` | 14,610 | 60 | 0 | `CalendarTest::TestChineseCalendarMapping`. Both directions of every active Gregorian/lunar row, including cyclic year, one-based month, leap flag, and day. ICU marks the disabled rows with `//#`. |
-| `cdateintervalformattest.c` | 195 | 12 | 59 | 95 exact strings and 100 parts checks. Covers explicit zones, minute positions, collapsed ranges, and complete German field and span tables. |
-| `dtifmtts.cpp` | 464 | 115 | 252 | 459 exact strings and 5 parts checks. Covers localized skeletons, hour cycles, fractional seconds, Japanese and ROC eras, and shared or endpoint-specific fields. |
-| **Total** | **37,905** | **7,897** | **316** | 14 fixtures |
+| `cdateintervalformattest.c` | 195 | 12 | 43 | 95 exact strings and 100 parts checks. Covers explicit zones, minute positions, collapsed ranges, and complete German field and span tables. |
+| `dtifmtts.cpp` | 464 | 115 | 239 | 459 exact strings and 5 parts checks. Covers localized skeletons, hour cycles, fractional seconds, Japanese and ROC eras, and shared or endpoint-specific fields. |
+| **Total** | **37,905** | **7,897** | **287** | 14 fixtures |
 
 The permutation, specification, and display-name files have identical Git
 blobs in ICU4C and ICU4J. Each runs once. The Java calendar and format
@@ -98,12 +98,9 @@ The quick interval-identity matrix computes its own reference text for
 44 locale/skeleton combinations. API lifecycle, threading, construction,
 and pattern-inspection tests supply no further fixed range results.
 
-Of the 311 known differences, 278 reproduce Ekuma's web-compatible spaces
-around English interval separators or before day periods. The remaining C
-differences include Japanese date patterns and their minute offsets, Czech
-month ranges, and the German `Uhr` field. ICU labels `Uhr` as a shared day
-period. Ekuma includes it in the preceding literal. The remaining C++
-differences involve month-only ranges across years, Chinese and Japanese
-date patterns, German month abbreviations, and Thai era and month formatting.
+Of the 282 known interval differences, 281 reproduce Ekuma's web-compatible
+spaces around English interval separators or before day periods. In one
+German parts check, the ICU fixture labels `Uhr` as a shared day period.
+Ekuma treats the quoted word in the CLDR pattern as part of a shared literal.
 Each entry applies to one operation and explicit upstream lines.
 [Known results](testdata/icu-failures.txt)

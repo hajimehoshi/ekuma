@@ -324,8 +324,19 @@ func abs(x int) int {
 	return x
 }
 
-// SkeletonOf returns the skeleton of the date pattern p, the fields of p without literals,
-// in the order of ICU's DateTimePatternGenerator.staticGetSkeleton.
-func SkeletonOf(p string) string {
-	return newSkeleton(p).String()
+// rangeSkeleton returns the fields for selecting localized interval patterns.
+func (f *Format) rangeSkeleton() string {
+	if f.requestedSkeleton == "" {
+		return newSkeleton(f.pattern).String()
+	}
+	s := newSkeleton(f.requestedSkeleton)
+	// A calendar can render the year option as a related, cyclic, or week-based
+	// year. Those fields also determine the year parts of an interval.
+	for _, it := range f.items {
+		switch it.ch {
+		case 'r', 'U', 'u', 'Y':
+			s.set(fieldYear, it.ch, it.n)
+		}
+	}
+	return s.String()
 }

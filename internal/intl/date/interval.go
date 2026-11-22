@@ -185,8 +185,7 @@ func (info *intervalInfo) bestSkeleton(skel string) (string, int) {
 type rangeFormat struct {
 	gen  *generator
 	info *intervalInfo
-	// skeleton is the skeleton of the format, and full its pattern.
-	skeleton string
+	// full is the pattern for an entire endpoint.
 	full     string
 	patterns [calCount]intervalPattern
 	// datePattern and timePattern are the patterns of the date and time parts for a fallback
@@ -453,16 +452,14 @@ func fieldInSkeleton(field int, s string) bool {
 	return strings.IndexByte(s, calendarLetters[field]) >= 0
 }
 
-// newRangeFormat returns the range format for the pattern p of the generator g, as ICU's
-// DateIntervalFormat creates it for the skeleton of p.
-func newRangeFormat(g *generator, p string) *rangeFormat {
+// newRangeFormat returns the range format for the requested skeleton.
+func newRangeFormat(g *generator, skeleton string) *rangeFormat {
 	r := &rangeFormat{
 		gen:  g,
 		info: newIntervalInfo(g.data),
 	}
-	r.skeleton = SkeletonOf(p)
-	r.full = g.bestPattern(r.skeleton, matchOptions{})
-	skel := r.normalizeHours(r.skeleton)
+	r.full = g.bestPattern(skeleton, matchOptions{})
+	skel := r.normalizeHours(skeleton)
 	date, normDate, time, normTime := splitSkeleton(skel)
 	if time != "" && date != "" {
 		r.dateTime, _ = g.data.calendar("Cm")
@@ -483,7 +480,7 @@ func newRangeFormat(g *generator, p string) *rangeFormat {
 			second: g.bestPattern("GyMd"+time, matchOptions{}),
 		}
 	case time != "" && date != "":
-		s := r.skeleton
+		s := skeleton
 		for _, f := range []struct {
 			field  int
 			letter string
@@ -707,7 +704,7 @@ func (fm *Formatter) rangeFormat() *rangeFormat {
 		if hc := fm.f.hourCycle; hc != "" {
 			l = withKeyword(l, "hc", hc)
 		}
-		fm.ranges = newRangeFormat(generatorFor(l, fm.f.calendar), fm.f.pattern)
+		fm.ranges = newRangeFormat(generatorFor(l, fm.f.calendar), fm.f.rangeSkeleton())
 	}
 	return fm.ranges
 }
@@ -803,7 +800,7 @@ func (fm *Formatter) fieldParts(p string, t int64, plain bool) []fieldPart {
 		}
 	}
 	li := 0
-	for _, part := range fm.formatItems(items, t, plain, "") {
+	for _, part := range fm.formatItems(items, t, plain, fm.f.patternNumbers(p)) {
 		fp := fieldPart{Part: part}
 		if part.Type != "literal" {
 			fp.letter = letters[li]
