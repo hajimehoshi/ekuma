@@ -92,21 +92,25 @@ func u16(off int) uint16 {
 	return binary.LittleEndian.Uint16([]byte(properties[off : off+2]))
 }
 
-// props returns the packed break properties of c.
-func props(c rune) uint16 {
+type propertyIndex byte
+
+func props(c rune) propertyIndex {
 	if c < 0 || c > unicode.MaxRune {
 		return 0
 	}
 	mid := int(u16(int(c>>10) * 2))
 	leaf := int(u16(propertiesStage2 + (mid*32+int(c>>5)&31)*2))
-	return u16(propertiesLeaves + (leaf*32+int(c)&31)*2)
+	return propertyIndex(properties[propertiesLeaves+leaf*32+(int(c)&31)])
 }
 
-func graphemeOf(p uint16) int    { return int(p & 0xF) }
-func wordOf(p uint16) int        { return int(p >> 4 & 0x1F) }
-func sentenceOf(p uint16) int    { return int(p >> 9 & 0xF) }
-func pictographic(p uint16) bool { return p&(1<<13) != 0 }
-func incbOf(p uint16) int        { return int(p >> 14) }
+func graphemeOf(p propertyIndex) int      { return int(propertyValues[p] & 0xF) }
+func wordOf(p propertyIndex) int          { return int(propertyValues[p] >> 4 & 0x1F) }
+func sentenceOf(p propertyIndex) int      { return int(propertyValues[p] >> 9 & 0xF) }
+func pictographic(p propertyIndex) bool   { return propertyValues[p]&(1<<13) != 0 }
+func incbOf(p propertyIndex) int          { return int(propertyValues[p] >> 14 & 3) }
+func letterOrNumber(p propertyIndex) bool { return propertyValues[p]&(1<<16) != 0 }
+func isThai(p propertyIndex) bool         { return propertyValues[p]&(1<<17) != 0 }
+func scriptOf(p propertyIndex) wordScript { return wordScript(propertyValues[p] >> 18) }
 
 // pollSteps is the number of code points between two calls of the poll function of
 // [Boundaries].
@@ -120,13 +124,13 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 		return nil
 	}
 	var dictionaryWords bool
-	ps := make([]uint16, len(rs))
+	ps := make([]propertyIndex, len(rs))
 	for i, r := range rs {
 		if poll != nil && i%pollSteps == pollSteps-1 {
 			poll()
 		}
 		ps[i] = props(r)
-		if g == Word && !dictionaryWords && scriptOf(r) != otherScript {
+		if g == Word && !dictionaryWords && scriptOf(ps[i]) != otherScript {
 			dictionaryWords = true
 		}
 	}
@@ -169,19 +173,11 @@ func Boundaries(g Granularity, rs []rune, poll func()) []int32 {
 	return bs
 }
 
-// Indic conjunct states of graphemeState.
-const (
-	conjNone = iota
-	// conjConsonant is after Consonant [Extend Linker]* without a Linker.
-	conjConsonant
-	// conjLinked is after Consonant [Extend Linker]* with a Linker.
-	conjLinked
-)
-
 // graphemeState summarizes the code points before a position for the rules of
 // graphemeBreak that look back over runs.
 type graphemeState struct {
-	conj int
+	// linked reports whether the prefix ends in an InCB Linker followed by zero or more Extends.
+	linked bool
 	// pict and prevPict report whether the code points up to the last and up to the one
 	// before the last end in ExtPict Extend*.
 	pict     bool
@@ -191,17 +187,13 @@ type graphemeState struct {
 }
 
 // advance appends the code point of the properties p.
-func (s *graphemeState) advance(p uint16) {
+func (s *graphemeState) advance(p propertyIndex) {
 	switch incbOf(p) {
-	case incbConsonant:
-		s.conj = conjConsonant
 	case incbLinker:
-		if s.conj != conjNone {
-			s.conj = conjLinked
-		}
+		s.linked = true
 	case incbExtend:
 	default:
-		s.conj = conjNone
+		s.linked = false
 	}
 	s.prevPict = s.pict
 	if graphemeOf(p) != gExtend {
@@ -215,7 +207,7 @@ func (s *graphemeState) advance(p uint16) {
 }
 
 // graphemeBreak reports whether there is a boundary before ps[i]. s summarizes ps[:i].
-func graphemeBreak(ps []uint16, i int, s *graphemeState) bool {
+func graphemeBreak(ps []propertyIndex, i int, s *graphemeState) bool {
 	a, b := graphemeOf(ps[i-1]), graphemeOf(ps[i])
 	switch {
 	case a == gCR && b == gLF:
@@ -231,8 +223,8 @@ func graphemeBreak(ps []uint16, i int, s *graphemeState) bool {
 	case b == gExtend || b == gZWJ || b == gSpacingMark || a == gPrepend:
 		return false
 	}
-	// GB9c: Consonant [Extend Linker]* Linker [Extend Linker]* × Consonant.
-	if incbOf(ps[i]) == incbConsonant && s.conj == conjLinked {
+	// GB9c: Linker Extend* × Consonant.
+	if incbOf(ps[i]) == incbConsonant && s.linked {
 		return false
 	}
 	// GB11: ExtPict Extend* ZWJ × ExtPict.
@@ -267,7 +259,7 @@ type wordState struct {
 }
 
 // advance appends the code point of the properties p.
-func (s *wordState) advance(p uint16) {
+func (s *wordState) advance(p propertyIndex) {
 	switch w := wordOf(p); {
 	case wordIgnorable(w):
 	case w == wRI:
@@ -278,7 +270,7 @@ func (s *wordState) advance(p uint16) {
 }
 
 // wordBreak reports whether there is a boundary before ps[i]. s summarizes ps[:i].
-func wordBreak(ps []uint16, i int, s *wordState) bool {
+func wordBreak(ps []propertyIndex, i int, s *wordState) bool {
 	a, b := wordOf(ps[i-1]), wordOf(ps[i])
 	switch {
 	case a == wCR && b == wLF:
@@ -378,7 +370,7 @@ type sentenceState struct {
 }
 
 // advance appends the code point ps[i].
-func (s *sentenceState) advance(ps []uint16, i int) {
+func (s *sentenceState) advance(ps []propertyIndex, i int) {
 	if i == 0 {
 		s.term = -1
 		s.lowerFrom = -1
@@ -398,7 +390,7 @@ func (s *sentenceState) advance(ps []uint16, i int) {
 
 // lowerAfter returns the index of the first code point at i or later that is OLetter, Upper,
 // Lower, ParaSep or SATerm, or len(ps).
-func (s *sentenceState) lowerAfter(ps []uint16, i int) int {
+func (s *sentenceState) lowerAfter(ps []propertyIndex, i int) int {
 	if s.lowerFrom >= 0 && s.lowerFrom <= i && i <= s.lowerAt {
 		return s.lowerAt
 	}
@@ -415,7 +407,7 @@ func (s *sentenceState) lowerAfter(ps []uint16, i int) int {
 }
 
 // sentenceBreak reports whether there is a boundary before ps[i]. s summarizes ps[:i].
-func sentenceBreak(ps []uint16, i int, s *sentenceState) bool {
+func sentenceBreak(ps []propertyIndex, i int, s *sentenceState) bool {
 	a, b := sentenceOf(ps[i-1]), sentenceOf(ps[i])
 	switch {
 	case a == sCR && b == sLF:
@@ -473,11 +465,12 @@ func sentenceBreak(ps []uint16, i int, s *sentenceState) bool {
 // ideographs.
 func IsWordLike(rs []rune) bool {
 	for _, r := range rs {
-		switch wordOf(props(r)) {
+		p := props(r)
+		switch wordOf(p) {
 		case wALetter, wHebrewLetter, wNumeric, wKatakana:
 			return true
 		}
-		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+		if letterOrNumber(p) {
 			return true
 		}
 	}

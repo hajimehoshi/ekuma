@@ -91,6 +91,11 @@ func TestIsWordLike(t *testing.T) {
 			want: true,
 		},
 		{
+			// Unicode 18 assigns this Khitan letter Word_Break=Other.
+			in:   "\U00018cd6",
+			want: true,
+		},
+		{
 			in:   " ",
 			want: false,
 		},

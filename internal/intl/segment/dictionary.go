@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"unicode"
 
 	"github.com/hajimehoshi/ekuma/internal/unicode/wordbreak"
 )
@@ -70,18 +69,6 @@ const (
 	hanScript
 )
 
-func scriptOf(r rune) wordScript {
-	switch {
-	case r < 0x0e01:
-		return otherScript
-	case r <= 0x0e4e && unicode.IsLetter(r):
-		return thaiScript
-	case unicode.Is(unicode.Han, r) && !unicode.IsMark(r):
-		return hanScript
-	}
-	return otherScript
-}
-
 type dictionaryPoller struct {
 	poll  func()
 	steps int
@@ -94,17 +81,17 @@ func (p *dictionaryPoller) step() {
 	}
 }
 
-func dictionaryBoundaries(rs []rune, ps []uint16, bounds []int32, poll func()) []int32 {
+func dictionaryBoundaries(rs []rune, ps []propertyIndex, bounds []int32, poll func()) []int32 {
 	p := dictionaryPoller{
 		poll: poll,
 	}
 	out := bounds[:0]
 	for i := 0; i < len(bounds)-1; {
 		p.step()
-		script := scriptOf(rs[bounds[i]])
+		script := scriptOf(ps[bounds[i]])
 		j := i + 1
 		if script != otherScript {
-			for j < len(bounds)-1 && scriptOf(rs[bounds[j]]) == script {
+			for j < len(bounds)-1 && scriptOf(ps[bounds[j]]) == script {
 				p.step()
 				j++
 			}
@@ -121,7 +108,7 @@ func dictionaryBoundaries(rs []rune, ps []uint16, bounds []int32, poll func()) [
 
 // wordSteps chooses the cheapest segmentation of each suffix. A positive step spans
 // that many UAX #29 segments. A zero step takes one segment as an unknown word.
-func wordSteps(rs []rune, ps []uint16, bounds []int32, script wordScript, p *dictionaryPoller) []byte {
+func wordSteps(rs []rune, ps []propertyIndex, bounds []int32, script wordScript, p *dictionaryPoller) []byte {
 	n := len(bounds) - 1
 	var trie wordTrie
 	// ICU's Han entries carry word costs. For Thai, minimize the number of
@@ -147,7 +134,7 @@ func wordSteps(rs []rune, ps []uint16, bounds []int32, script wordScript, p *dic
 			for k := bounds[j]; k < bounds[j+1]; k++ {
 				p.step()
 				// Thai combining marks are part of dictionary spellings.
-				if wordIgnorable(wordOf(ps[k])) && !unicode.Is(unicode.Thai, rs[k]) {
+				if wordIgnorable(wordOf(ps[k])) && !isThai(ps[k]) {
 					continue
 				}
 				node = trie.child(node, rs[k])
@@ -169,7 +156,7 @@ func wordSteps(rs []rune, ps []uint16, bounds []int32, script wordScript, p *dic
 	return steps
 }
 
-func appendDictionaryWords(out []int32, rs []rune, ps []uint16, bounds []int32, script wordScript, p *dictionaryPoller) []int32 {
+func appendDictionaryWords(out []int32, rs []rune, ps []propertyIndex, bounds []int32, script wordScript, p *dictionaryPoller) []int32 {
 	steps := wordSteps(rs, ps, bounds, script, p)
 	var previousUnknown bool
 	for i := 0; i < len(steps); i += max(1, int(steps[i])) {

@@ -226,11 +226,10 @@ func canonUnicode(c rune) rune {
 		}
 		return c
 	}
-	m := c
-	for f := unicode.SimpleFold(c); f != c; f = unicode.SimpleFold(f) {
-		m = min(m, f)
+	if cl := folds(true).classOf[c]; len(cl) != 0 {
+		return cl[0]
 	}
-	return m
+	return c
 }
 
 // foldClasses lists, for one canonicalization, the characters that are equivalent to
@@ -249,30 +248,30 @@ var (
 	unicodeOnce  sync.Once
 )
 
-func add(byCanon map[rune][]rune, c, k rune) {
-	cl := byCanon[k]
-	if slices.Contains(cl, c) {
-		return
-	}
-	if len(cl) == 0 && k != c {
-		cl = append(cl, k)
-	}
-	byCanon[k] = append(cl, c)
-}
-
-func buildFolds(top rune, canon func(rune) rune) foldClasses {
+func buildFolds(unicodeMode bool) foldClasses {
 	byCanon := map[rune][]rune{}
-	// No character after U+1FFFF has a case equivalent.
-	for c := rune(0); c <= min(top, 0x1FFFF); c++ {
-		if k := canon(c); k != c || unicode.SimpleFold(c) != c {
-			add(byCanon, c, k)
+	add := func(c, canonical rune) {
+		cl := byCanon[canonical]
+		if len(cl) == 0 {
+			cl = append(cl, canonical)
+		}
+		byCanon[canonical] = append(cl, c)
+	}
+	if unicodeMode {
+		for _, pair := range simpleFoldPairs {
+			add(pair[0], pair[1])
+		}
+	} else {
+		for c := rune(0); c <= 0xffff; c++ {
+			if k := canonUCS2(c); k != c {
+				add(c, k)
+			}
 		}
 	}
-	f := foldClasses{classOf: map[rune][]rune{}}
+	f := foldClasses{
+		classOf: map[rune][]rune{},
+	}
 	for _, cl := range byCanon {
-		if len(cl) < 2 {
-			continue
-		}
 		slices.Sort(cl)
 		for _, c := range cl {
 			f.classOf[c] = cl
@@ -286,12 +285,12 @@ func buildFolds(top rune, canon func(rune) rune) foldClasses {
 func folds(unicodeMode bool) *foldClasses {
 	if unicodeMode {
 		unicodeOnce.Do(func() {
-			unicodeFolds = buildFolds(maxRune, canonUnicode)
+			unicodeFolds = buildFolds(true)
 		})
 		return &unicodeFolds
 	}
 	ucs2Once.Do(func() {
-		ucs2Folds = buildFolds(0xFFFF, canonUCS2)
+		ucs2Folds = buildFolds(false)
 	})
 	return &ucs2Folds
 }
