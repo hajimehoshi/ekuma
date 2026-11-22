@@ -47,6 +47,13 @@ func initString(vm *engine.VM) {
 		}
 		return s
 	})
+	// The kernel converts a number or a string, which needs no code to run and cannot throw.
+	vm.SetMethodKernels(ctor, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
+		if x.IsNumber() || x.IsString() {
+			return vm.ToStringValue(x), true
+		}
+		return engine.Undefined, false
+	}, nil)
 	fromCharCode := method(vm, ctor, "fromCharCode", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if len(args) == 1 {
 			return vm.UnitString(uint16(vm.ToUint32(args[0])))

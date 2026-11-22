@@ -42,6 +42,15 @@ func initBigInt(vm *engine.VM) {
 		}
 		return vm.ToBigInt(p)
 	})
+	// The kernel converts an integer that fits in an int64, which cannot throw.
+	vm.SetMethodKernels(ctor, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
+		if x.IsNumber() {
+			if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
+				return engine.BigIntFromInt64(int64(n)), true
+			}
+		}
+		return engine.Undefined, false
+	}, nil)
 	method(vm, ctor, "asIntN", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		bits := toIndex(vm, arg(args, 0))
 		x := vm.ToBigInt(arg(args, 1))
