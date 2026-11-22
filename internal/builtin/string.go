@@ -585,10 +585,7 @@ func initString(vm *engine.VM) {
 			}
 			var b wtf8.Builder
 			if !functional {
-				// The size of the result when repStr has no substitutions. A larger one throws below.
-				if size := int64(s.StringByteLength()) + int64(len(positions))*int64(len(repStr)-search.StringByteLength()); size <= engine.MaxStringLength {
-					b.Grow(int(size))
-				}
+				b.Grow(replacementCapacity(s.StringByteLength(), search.StringByteLength(), len(repStr), len(positions)))
 			}
 			end := 0
 			for _, p := range positions {
@@ -658,6 +655,16 @@ const (
 	// it joins them.
 	stringPartsOnStack = 16
 )
+
+func replacementCapacity(inputBytes, searchBytes, replacementBytes, matches int) int {
+	// A match can split a surrogate pair, so its standalone WTF-8 byte length
+	// can overstate the bytes removed. Substitutions can also change the result size.
+	size := int64(inputBytes) + int64(matches)*int64(replacementBytes-searchBytes)
+	if size < 0 || size > engine.MaxStringLength {
+		return 0
+	}
+	return int(size)
+}
 
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
 func checkStringLength(vm *engine.VM, n int) {
