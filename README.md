@@ -324,13 +324,15 @@ Short mode skips all external conformance tests.
 
 | Suite | Environment variable | Default cache path | CI revision | Expected failures |
 |---|---|---|---|---|
-| [ICU break tests](https://github.com/unicode-org/icu/tree/release-78.3/icu4c/source/test/testdata) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | None |
+| [ICU](https://github.com/unicode-org/icu/tree/release-78.3) | `EKUMA_ICU` | `ekuma/icu` | [Revision](internal/icutest/testdata/icu-revision.txt) | None |
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Skip list](internal/jstest/testdata/test262-skips.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Skip list](internal/jstest/testdata/v8-skips.txt) |
 
-`TestICU` checks the UTF-16 boundaries returned by `Intl.Segmenter` against grapheme,
-word, and sentence break cases from the external ICU checkout. CI uses ICU
-78.3 to match Ekuma's Unicode 17.0 segmentation tables. The fixtures retain their
+`TestICU` uses Unicode 17.0 fixtures from ICU 78.3. It checks the UTF-16 boundaries
+returned by `Intl.Segmenter` against the grapheme, word, and sentence break tests in
+`icu4c/source/test/testdata`. It also checks `String.prototype.normalize` in NFC, NFD,
+NFKC, and NFKD for all five columns of each row in
+`icu4c/source/data/unidata/NormalizationTest.txt`. The fixtures retain their
 [upstream license](https://github.com/unicode-org/icu/blob/release-78.3/LICENSE).
 Run the suite on its own with
 

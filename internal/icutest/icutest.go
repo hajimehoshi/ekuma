@@ -20,7 +20,7 @@ import (
 	_ "github.com/hajimehoshi/ekuma/intl"
 )
 
-// Run tests Intl.Segmenter against the Unicode break tests in an ICU checkout.
+// Run tests Intl.Segmenter and String.prototype.normalize against data in an ICU checkout.
 func Run(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
@@ -45,6 +45,9 @@ func Run(t *testing.T) {
 			runBreakTest(t, filepath.Join(dir, "icu4c", "source", "test", "testdata", file), strings.ToLower(kind))
 		})
 	}
+	t.Run("NormalizationTest.txt", func(t *testing.T) {
+		runNormalizationTest(t, filepath.Join(dir, "icu4c", "source", "data", "unidata", "NormalizationTest.txt"))
+	})
 }
 
 func runBreakTest(t *testing.T, path, granularity string) {

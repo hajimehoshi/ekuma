@@ -44,7 +44,7 @@ jobs:
             echo "$suite=$revision" >> "$GITHUB_OUTPUT"
           done
 
-      - name: Checkout ICU break tests
+      - name: Checkout ICU conformance tests
         uses: actions/checkout@v4
         with:
           repository: unicode-org/icu
@@ -52,6 +52,7 @@ jobs:
           path: .icu
           sparse-checkout: |
             /LICENSE
+            /icu4c/source/data/unidata/NormalizationTest.txt
             /icu4c/source/test/testdata/GraphemeBreakTest.txt
             /icu4c/source/test/testdata/WordBreakTest.txt
             /icu4c/source/test/testdata/SentenceBreakTest.txt
