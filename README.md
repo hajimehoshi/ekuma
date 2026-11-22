@@ -291,6 +291,22 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   a built-in function. A proper tail call from strict code leaves no frame of the strict
   function, so the function that it calls sees the caller of the strict function instead
 
+#### Unicode versions
+
+| Feature | Unicode version |
+|---|---|
+| String methods `toUpperCase`, `toLowerCase`, and `normalize` | 18.0 |
+| Unicode break properties used by `Intl.Segmenter` | 18.0 |
+| RegExp simple case folding (`iu` or `iv`) and emoji properties of strings such as `\p{RGI_Emoji}` (`v`) | 18.0 |
+| RegExp code-point property escapes such as `\p{Letter}` and `\p{Emoji}` (`u` or `v`), and identifier characters in capture group names | 17.0 |
+| JavaScript identifiers and RegExp case-insensitive matching without `u` or `v` | Go's Unicode tables (17.0 in Go 1.27) |
+
+Ekuma keeps RegExp code-point properties at Unicode 17 to match the pinned Test262 fixtures.
+Switching those properties to Unicode 18 causes 90 generated property-escape tests to fail
+at [Test262 revision `2e58f87d`](https://github.com/tc39/test262/tree/2e58f87d8350ad51224617a041c6e041d52f8444/test/built-ins/RegExp/property-escapes/generated).
+Ekuma's Unicode 18 casing maps U+0277 to U+A7DD when uppercasing. The pinned Test262 fixture
+expects U+0277 to uppercase to itself, so `string-upper-lower-mapping.js` is an expected failure.
+
 ### Missing
 
 Host API for these, some of which the engine has and only the tests use:
@@ -328,8 +344,7 @@ Short mode skips all external conformance tests.
 | [Test262](https://github.com/tc39/test262) | `EKUMA_TEST262` | `ekuma/test262` | [Revision](internal/jstest/testdata/test262-revision.txt) | [Expected failures](internal/jstest/testdata/test262-failures.txt) |
 | V8 [Intl](https://github.com/v8/v8/tree/main/test/intl), [mjsunit](https://github.com/v8/v8/tree/main/test/mjsunit), [Mozilla](https://github.com/v8/v8/tree/main/test/mozilla), and [WebKit](https://github.com/v8/v8/tree/main/test/webkit) | `EKUMA_V8` | `ekuma/v8` | [Revision](internal/jstest/testdata/v8-revision.txt) | [Test expectations](internal/jstest/testdata/v8-failures.txt) |
 
-ICU covers regexp simple folding and emoji properties of strings. Regexp
-code-point properties follow Unicode 17, matching the pinned Test262 fixtures.
+The ICU tests cover RegExp simple case folding and emoji properties of strings.
 Set `EKUMA_ICU` to the ICU checkout. For a sparse checkout, use the paths
 in the [CI workflow](.github/workflows/test.yml).
 Run the full suite or just collation with
