@@ -5,8 +5,11 @@ package engine
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/shortstrings"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
 // This file holds the operations on the elements of objects for the built-in objects.
@@ -460,6 +463,50 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 		}
 	}
 	return -1, i
+}
+
+// JoinStrings returns the elements of the Array o joined with sep between them, when sep and every
+// element are ASCII strings and the result has at most MaxStringLength bytes. It reports false
+// otherwise.
+func (vm *VM) JoinStrings(o *Object, sep wtf8.String) (Value, bool) {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || !wtf8.IsASCII(sep) {
+		return Value{}, false
+	}
+	elems := o.elems
+	n := int64(len(sep)) * int64(max(len(elems)-1, 0))
+	for i, e := range elems {
+		if e.o == nil || e.o.kind != kindString || !e.IsASCII() {
+			return Value{}, false
+		}
+		if n += int64(len(e.o.str)); n > MaxStringLength {
+			return Value{}, false
+		}
+		if i&(PollInterval-1) == PollInterval-1 {
+			vm.Poll()
+		}
+	}
+	var b strings.Builder
+	b.Grow(int(n))
+	var buf [shortstrings.MaxBytes]byte
+	for i, e := range elems {
+		if i > 0 {
+			b.WriteString(string(sep))
+		}
+		if e.isShortString() {
+			b.Write(e.AppendStringBytes(buf[:0]))
+		} else {
+			b.WriteString(string(e.o.Str()))
+		}
+		if i&(PollInterval-1) == PollInterval-1 {
+			vm.Poll()
+		}
+	}
+	v := vm.NewString(wtf8.String(b.String()))
+	if !v.isShortString() {
+		// A string longer than a short one is a new object.
+		v.o.flags |= objASCIIKnown | objASCII
+	}
+	return v, true
 }
 
 // ReverseElements reverses the order of the elements of the array o.
