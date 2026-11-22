@@ -465,11 +465,10 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 	return -1, i
 }
 
-// JoinStrings returns the elements of the Array o joined with sep between them, when sep and every
-// element are ASCII strings and the result has at most MaxStringLength bytes. It reports false
-// otherwise.
-func (vm *VM) JoinStrings(o *Object, sep wtf8.String) (Value, bool) {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || !wtf8.IsASCII(sep) {
+// JoinStrings joins an array of the given length with sep when its elements and sep are
+// ASCII strings and the result fits in MaxStringLength bytes. It reports false otherwise.
+func (vm *VM) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
+	if o.kind != kindArray || int64(o.length) != length || int64(len(o.elems)) != length || !wtf8.IsASCII(sep) {
 		return Value{}, false
 	}
 	elems := o.elems

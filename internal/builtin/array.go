@@ -169,7 +169,7 @@ func joinArray(vm *engine.VM, g *joinGuard, o *engine.Object, n int64, sep wtf8.
 		return vm.NewString("")
 	}
 	defer g.leave()
-	if v, ok := vm.JoinStrings(o, sep); ok {
+	if v, ok := vm.JoinStrings(o, n, sep); ok {
 		return v
 	}
 	return joinElements(vm, o, n, sep, nil)

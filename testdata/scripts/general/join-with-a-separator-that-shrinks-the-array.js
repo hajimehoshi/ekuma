@@ -6,4 +6,5 @@ description: "join with a separator that shrinks the array"
 flags: [noStrict]
 ---*/
 
-var a = [1, 2, 3]; assert.sameValue(String(a.join({ toString() { a.length = 1; return "-"; } })), "1--");
+var a = ["a", "b", "c"];
+assert.sameValue(a.join({ toString() { a.length = 1; return "-"; } }), "a--");
