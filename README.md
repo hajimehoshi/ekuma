@@ -276,8 +276,9 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root
 - `Intl.Segmenter` uses dictionary word boundaries for Chinese, Japanese, Thai, Khmer and
   Burmese text in every locale. Greek locales also tailor sentence breaks at question marks
-- `Intl.DisplayNames` gives the code of a language, or `undefined` with `fallback: "none"`, when
-  one of its subtags has no name, where ICU names the other subtags
+- `Intl.DisplayNames` uses a regular CLDR variant's canonical subtag when the display
+  locale has no translation. If another subtag has no display name, the result is the
+  canonical language code, or `undefined` with `fallback: "none"`
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
   do, such as `1.02.03` in Serbian, where ICU uses the time separator
 - A BigInt has at most 2^30 bits, as in V8: an operation or a conversion whose result would be

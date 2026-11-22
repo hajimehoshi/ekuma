@@ -105,8 +105,8 @@ func (n Names) DateTimeField(code, style string) (string, bool) {
 var nameBrackets = strings.NewReplacer("(", "[", ")", "]", "（", "［", "）", "］")
 
 // Language returns the name of the canonical unicode_language_id id, with the names of
-// dialects such as "American English" when dialect is true. It reports false when a subtag
-// has no name.
+// dialects such as "American English" when dialect is true. An untranslated regular
+// variant uses its subtag as its name. It reports false if a name is unavailable.
 func (n Names) Language(id locale.LanguageID, dialect bool) (string, bool) {
 	hasScript, hasRegion := id.Script != "", id.Region != ""
 	var name string
@@ -155,7 +155,10 @@ func (n Names) Language(id locale.LanguageID, dialect bool) (string, bool) {
 	for _, variant := range id.Variants {
 		v, ok := n.field(cldr.LocaleDisplayNames, "v"+strings.ToUpper(variant))
 		if !ok {
-			return "", false
+			if !cldr.RegularVariants.Contains(variant) {
+				return "", false
+			}
+			v = variant
 		}
 		qualifiers = append(qualifiers, nameBrackets.Replace(v))
 	}

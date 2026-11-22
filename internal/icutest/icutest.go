@@ -94,7 +94,7 @@ func Run(t *testing.T) {
 			runNumberCases(t, filepath.Join(javaFormat, "NumberFormatTestCases.txt"))
 		})
 		t.Run("localeDisplayName.txt", func(t *testing.T) {
-			runDisplayNames(t, filepath.Join(localeDir, "localeDisplayName.txt"), fixtures["localeDisplayName.txt"])
+			runDisplayNames(t, filepath.Join(localeDir, "localeDisplayName.txt"))
 		})
 		t.Run("plurals.txt", func(t *testing.T) {
 			runPluralSamples(t, filepath.Join(misc, "plurals.txt"))
@@ -129,7 +129,6 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 	}
 	fixtures := map[string]map[int]string{
 		"rbbitst.txt":                           {},
-		"localeDisplayName.txt":                 {},
 		"format.txt":                            {},
 		"calendar.txt/fwd":                      {},
 		"calendar.txt/rev":                      {},

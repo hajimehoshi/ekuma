@@ -5,8 +5,8 @@
 
 // This program generates the tables of package cldr from a CLDR release. Run it with go generate.
 //
-// It reads the JSON data of the release (cldr-json, as published on npm) and, for collation and
-// the number symbols that cldr-json leaves out of the root locale, the XML data of the release.
+// It reads the JSON data of the release (cldr-json, as published on npm) and the XML data
+// for collation, regular variant codes, and number symbols missing from the root locale.
 package main
 
 import (
@@ -1126,6 +1126,10 @@ func main() {
 	f.records(`maps locales to their list patterns, as records in the form of [Field]. A key is a type ("c", "d" or "u" for conjunction, disjunction or unit), a width ("l", "s" or "n" for long, short or narrow), and the pattern ("s", "m", "e" or "2" for start, middle, end or a list of two). A record that a locale shares with its parent is left out.`, "ListPatterns", tree.records(listData))
 	f.write()
 
+	f = newFile("regularvariants.go", "CLDR "+xmlVersion+" (common/validity/variant.xml)")
+	f.strings("are the variant subtags with regular status in CLDR.", "RegularVariants", regularVariants(xmlFiles("common/validity")["variant.xml"]))
+	f.write()
+
 	// Display names of locales and calendars.
 	nameData := map[string]map[string]string{}
 	for name := range localeNames {
@@ -1204,6 +1208,43 @@ func listFields(lists map[string]any) map[string]string {
 		}
 	}
 	return out
+}
+
+// regularVariants reads the regular variant codes, expanding ranges of final characters.
+func regularVariants(data []byte) []string {
+	var doc struct {
+		IDs []struct {
+			Status string `xml:"idStatus,attr"`
+			Codes  string `xml:",chardata"`
+		} `xml:"idValidity>id"`
+	}
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		log.Fatal(err)
+	}
+	var codes []string
+	for _, id := range doc.IDs {
+		if id.Status != "regular" {
+			continue
+		}
+		for token := range strings.FieldsSeq(id.Codes) {
+			first, last, ranged := strings.Cut(token, "~")
+			if !ranged {
+				codes = append(codes, first)
+				continue
+			}
+			if len(first) == 0 || len(last) != 1 || last[0] < first[len(first)-1] {
+				log.Fatalf("unsupported CLDR variant range %q", token)
+			}
+			prefix := first[:len(first)-1]
+			for c := first[len(prefix)]; c <= last[0]; c++ {
+				codes = append(codes, prefix+string(c))
+			}
+		}
+	}
+	if len(codes) == 0 {
+		log.Fatal("CLDR validity data has no regular variants")
+	}
+	return codes
 }
 
 // localeDisplayNameFields returns the fields of the records of LocaleDisplayNames of the locale

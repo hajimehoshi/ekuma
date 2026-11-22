@@ -8,9 +8,8 @@ import (
 	"testing"
 )
 
-func runDisplayNames(t *testing.T, path string, known map[int]string) {
+func runDisplayNames(t *testing.T, path string) {
 	f := newFormatFixture(t, path)
-	f.track("Intl.DisplayNames.of", known)
 	of := f.function(`(locale, languageDisplay, code) => new Intl.DisplayNames(locale, {type:"language", languageDisplay}).of(code)`)
 	var locale, mode string
 	fixtureLines(t, path, func(line int, row string) {
@@ -34,12 +33,6 @@ func runDisplayNames(t *testing.T, path string, known map[int]string) {
 		case strings.Contains(input, "-u-") || strings.Contains(input, "-t-"):
 			f.excluded["Intl.DisplayNames language codes exclude locale extensions"]++
 		default:
-			if result, ok := known[line]; ok {
-				if result != "code" {
-					t.Fatalf("%s:%d: unknown expected result %q", path, line, result)
-				}
-				known[line] = input
-			}
 			f.check(line, "Intl.DisplayNames.of", of, want, locale, mode, input)
 		}
 	})

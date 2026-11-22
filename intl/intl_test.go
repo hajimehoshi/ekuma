@@ -307,6 +307,11 @@ func TestFormatters(t *testing.T) {
 			want: "en-XY undefined",
 		},
 		{
+			name: "untranslated variant with fallback none",
+			src:  `const names = new Intl.DisplayNames("en", {type: "language", fallback: "none"}); [names.of("hmn-PAHAWH3"), names.of("hmn-unlisted")].map(String).join("; ")`,
+			want: "Hmong (pahawh3); undefined",
+		},
+		{
 			name: "other display names",
 			src:  `[new Intl.DisplayNames("fr", {type: "region"}).of("de"), new Intl.DisplayNames("en", {type: "region", style: "short"}).of("GB"), new Intl.DisplayNames("en", {type: "script"}).of("hans"), new Intl.DisplayNames("de", {type: "currency", style: "narrow"}).of("usd"), new Intl.DisplayNames("en", {type: "calendar"}).of("islamic-civil"), new Intl.DisplayNames("en", {type: "dateTimeField", style: "short"}).of("month")].join("; ")`,
 			want: "Allemagne; UK; Simplified; US-Dollar; Hijri Calendar (tabular, civil epoch); mo.",
