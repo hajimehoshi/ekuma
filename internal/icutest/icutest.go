@@ -53,6 +53,12 @@ func Run(t *testing.T) {
 		t.Run("CaseFolding.txt", func(t *testing.T) {
 			runCaseFoldingTest(t, filepath.Join(unidata, "CaseFolding.txt"))
 		})
+		t.Run("regextst.txt", func(t *testing.T) {
+			runTaggedCaptures(t, filepath.Join(testdata, "regextst.txt"))
+		})
+		t.Run("re_tests.txt", func(t *testing.T) {
+			runPerlCaptures(t, filepath.Join(testdata, "re_tests.txt"))
+		})
 		t.Run("DerivedCoreProperties.txt", func(t *testing.T) {
 			runIdentifierBoundaries(t, filepath.Join(unidata, "DerivedCoreProperties.txt"))
 		})

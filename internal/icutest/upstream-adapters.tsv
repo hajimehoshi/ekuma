@@ -1,7 +1,7 @@
 TestICU subtest	Go selector for runnable sections	Executed (adapter units)	Known differences	Excluded (counts and reasons)
-GraphemeBreakTest.txt	runBreakTest (icutest.go:268)	766 cases	0	0 reported
-WordBreakTest.txt	runBreakTest (icutest.go:268)	1944 cases	0	0 reported
-SentenceBreakTest.txt	runBreakTest (icutest.go:268)	512 cases	0	0 reported
+GraphemeBreakTest.txt	runBreakTest (icutest.go:274)	766 cases	0	0 reported
+WordBreakTest.txt	runBreakTest (icutest.go:274)	1944 cases	0	0 reported
+SentenceBreakTest.txt	runBreakTest (icutest.go:274)	512 cases	0	0 reported
 emoji-test.txt	runEmojiBreakTest (rbbi.go:23)	3210 inputs in each of grapheme and word modes	0	167 single-code-unit rows | line breaking has no Intl.Segmenter granularity
 casing.txt	runCasingTest (casing.go:17)	3 lower and 3 upper cases executed	0	15 titlecasing rows | 2 casefolding rows
 strcase.cpp	runArmenianUpper (casing.go:141)	3 uppercase checks	0	3 titlecasing checks (no corresponding String method)
@@ -9,6 +9,8 @@ UnicodeData.txt	runUnicodeCasing (unicode_casing.go:240)	2989 rows with simple m
 SpecialCasing.txt	runUnicodeCasing (unicode_casing.go:240)	103 unconditional and 16 conditional rows, 288 checks executed	0	0 reported
 rbbitst.txt	runRBBITest (rbbi.go:82)	277 grapheme, 133 word, 36 sentence cases executed	1	5 ICU sentence-break suppression | 5 custom ICU rules | 237 line breaking | 7 lineML breaking | 9 title breaking | 1 ICU rule-rejection test
 CaseFolding.txt	runCaseFoldingTest (regexp.go:16)	1618 rows executed / 1481 common, 31 simple, 104 full, 2 Turkic rows checked in iu and iv modes	0	0 reported
+regextst.txt	runTaggedCaptures (regexp_captures.go:114)	106 cases executed	0	2 ICU Unicode word boundary or digit class | 12 ICU UnicodeSet, character name, or property syntax | 8 ICU anchor, quoting, or octal pattern syntax | 1 ICU backreference to a nonparticipating group fails | 7 ICU full case folding | 49 ICU matcher mode, region, or end-state assertion | 4 ICU retains an optional empty repetition | 12 atomic group or possessive quantifier | 1911 no tagged subgroup or tagged match with a code-point escape
+re_tests.txt	runPerlCaptures (regexp_captures.go:179)	427 cases executed	0	29 Perl bracket expression | 42 Perl end anchor or final newline behavior | 31 Perl extended syntax, atomic group, conditional, or code expression | 6 capture or backreference from a previous repetition | 367 no successful capture oracle or marked incompatible by ICU | 21 unscoped inline mode modifier
 DerivedCoreProperties.txt	runIdentifierBoundaries (identifier.go:14)	ID_Start: 19 RegExp v checks and 19 binding identifier checks / ID_Continue: 19 RegExp v checks and 19 binding identifier checks	0	0 reported
 emoji-sequences.txt	runEmojiTest (regexp.go:63)	1441 rows executed / 2339 sequences checked against all 7 properties	0	0 reported
 emoji-zwj-sequences.txt	runEmojiTest (regexp.go:63)	1614 rows executed / 1614 sequences checked against all 7 properties	0	0 reported

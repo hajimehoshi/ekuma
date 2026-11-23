@@ -104,7 +104,7 @@
 1	1	support	build	input	icu4c/source/test/cintltst/cintltst.vcxproj.filters	-	-	79.1	-
 1	1	suite source	collator-api	outside	icu4c/source/test/cintltst/citertst.c	addCollIterTest [TestPrevious, TestOffset]	-	78.3	-
 1	1	support	native-header	input	icu4c/source/test/cintltst/citertst.h	-	-	79.1	-
-1	1	suite source	collation	proposed	icu4c/source/test/cintltst/cjaptst.c	addKannaCollTest [TestTertiary, TestBase]	-	78.3	Proposal 3
+1	1	suite source	collation	proposed	icu4c/source/test/cintltst/cjaptst.c	addKannaCollTest [TestTertiary, TestBase]	-	78.3	Proposal 2
 1	1	support	native-header	input	icu4c/source/test/cintltst/cjaptst.h	-	-	79.1	-
 1	1	suite source	locale	overlap	icu4c/source/test/cintltst/cldrtest.c	addCLDRTest [TestLocaleStructure, TestCurrencyList]	-	79.1	TestICU/locale-info/icu4c/source/data/curr/en.txt (currency enumeration)
 1	1	suite source	locale	adapter	icu4c/source/test/cintltst/cloctst.c	addLocaleTest [TestObsoleteNames, TestBasicGetters]	display-names/cloctst.c	79.1	-
@@ -132,7 +132,7 @@
 1	1	source	properties	related source	icu4c/source/test/cintltst/cucdapi.c	-	-	78.3	Test262 generated RegExp property tests, including Script_Extensions_-_Hiragana.js
 1	1	support	native-header	input	icu4c/source/test/cintltst/cucdapi.h	-	-	79.1	-
 1	1	suite source	properties	overlap	icu4c/source/test/cintltst/cucdtst.c	addUnicodeTest [TestCodeUnit, TestCodePoint]	-	78.3	Test262 generated RegExp property tests, including Script_Extensions_-_Hiragana.js
-1	1	suite source	display-currency	proposed	icu4c/source/test/cintltst/currtest.c	addCurrencyTest [TestEnumList, TestEnumListReset]	-	79.1	Proposal 4
+1	1	suite source	display-currency	proposed	icu4c/source/test/cintltst/currtest.c	addCurrencyTest [TestEnumList, TestEnumListReset]	-	79.1	Proposal 3
 1	1	suite source	codec	outside	icu4c/source/test/cintltst/custrtrn.c	addUCharTransformTest [Test_strToUTF32, Test_strToUTF32_surrogates]	-	79.1	-
 1	1	suite source	utf	overlap	icu4c/source/test/cintltst/custrtst.c	addUStringTest [TestStringCopy, TestStringFunctions]	-	78.3	Test262 test/built-ins/String/prototype/codePointAt/return-utf16-decode.js
 1	1	suite source	harness	input	icu4c/source/test/cintltst/cutiltst.c	addUtility	-	79.1	-
@@ -151,7 +151,7 @@
 1	1	suite source	codec	outside	icu4c/source/test/cintltst/nucnvtst.c	addTestNewConvert [TestInBufSizes, TestOutBufSizes]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/cintltst/nucnvtst.h	-	-	79.1	-
 1	1	suite source	native-tools	outside	icu4c/source/test/cintltst/putiltst.c	addPUtilTest, addToolUtilTests [TestVersion, TestCompareVersions]	-	79.1	-
-1	1	suite source	regex	proposed	icu4c/source/test/cintltst/reapits.c	addURegexTest [TestRegexCAPI, TestBug4315]	-	78.3	Proposal 1
+1	1	suite source	regex	overlap	icu4c/source/test/cintltst/reapits.c	addURegexTest [TestRegexCAPI, TestBug4315]	-	78.3	TestICU/regextst.txt (capture groups), native matcher configuration outside RegExp
 1	1	suite source	native	outside	icu4c/source/test/cintltst/sorttest.c	addSortTest [SortTest, StableSortTest]	-	79.1	-
 1	1	suite source	spoof	outside	icu4c/source/test/cintltst/spooftest.c	addUSpoofTest [TestOpenFromSource, TestUSpoofCAPI]	-	79.1	-
 1	1	suite source	idna	outside	icu4c/source/test/cintltst/spreptst.c	addUStringPrepTest [Test_nfs4_cs_prep_data, Test_nfs4_cis_prep_data]	-	79.1	-
@@ -273,7 +273,7 @@
 1	1	suite source	collation	overlap	icu4c/source/test/intltest/collationtest.cpp	CollationTest [TestMinMax, TestImplicits]	-	78.3	TestICU/collationtest.txt
 1	1	source	collator-api	outside	icu4c/source/test/intltest/colldata.cpp	-	-	78.3	-
 1	1	support	native-header	input	icu4c/source/test/intltest/colldata.h	-	-	79.1	-
-1	1	suite source	number	proposed	icu4c/source/test/intltest/compactdecimalformattest.cpp	CompactDecimalFormatTest [TestEnglishShort, TestSerbianShort]	-	79.1	Proposal 4
+1	1	suite source	number	proposed	icu4c/source/test/intltest/compactdecimalformattest.cpp	CompactDecimalFormatTest [TestEnglishShort, TestSerbianShort]	-	79.1	Proposal 3
 1	1	suite source	codec	outside	icu4c/source/test/intltest/convtest.cpp	ConversionTest [TestToUnicode, TestFromUnicode]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/convtest.h	-	-	79.1	-
 1	1	suite source	translit	outside	icu4c/source/test/intltest/cpdtrtst.cpp	CompoundTransliteratorTest [TestConstruction, TestCloneEqual]	-	79.1	-
@@ -358,11 +358,11 @@
 1	1	support	native-header	input	icu4c/source/test/intltest/ittrans.h	-	-	79.1	-
 1	1	suite source	harness	input	icu4c/source/test/intltest/itutil.cpp	IntlTestUtilities, ErrorCodeTest, LocalPointerTest, EnumSetTest, UHashTest [TestErrorCode, TestSubclass]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/itutil.h	-	-	79.1	-
-1	1	suite source	collation	proposed	icu4c/source/test/intltest/jacoll.cpp	CollationKanaTest [TestTertiary, TestBase]	-	78.3	Proposal 3
+1	1	suite source	collation	proposed	icu4c/source/test/intltest/jacoll.cpp	CollationKanaTest [TestTertiary, TestBase]	-	78.3	Proposal 2
 1	1	support	native-header	input	icu4c/source/test/intltest/jacoll.h	-	-	79.1	-
 1	1	suite source	translit	outside	icu4c/source/test/intltest/jamotest.cpp	JamoTest [TestJamo, TestRealText]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/jamotest.h	-	-	79.1	-
-1	1	suite source	collation	proposed	icu4c/source/test/intltest/lcukocol.cpp	LotusCollationKoreanTest [TestTertiary]	-	78.3	Proposal 3
+1	1	suite source	collation	proposed	icu4c/source/test/intltest/lcukocol.cpp	LotusCollationKoreanTest [TestTertiary]	-	78.3	Proposal 2
 1	1	support	native-header	input	icu4c/source/test/intltest/lcukocol.h	-	-	79.1	-
 1	1	suite source	list	adapter	icu4c/source/test/intltest/listformattertest.cpp	ListFormatterTest [TestRoot, TestBogus]	listformattertest.cpp, duration/listformattertest.cpp	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/listformattertest.h	-	-	79.1	-
@@ -409,7 +409,7 @@
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_patternstring.cpp	PatternStringTest [testLocalized, testToPatternSimple]	-	79.1	-
 1	1	suite source	number	overlap	icu4c/source/test/intltest/numbertest_permutation.cpp	NumberPermutationTest [testPermutations]	-	79.1	TestICU/numberpermutationtest.txt
 1	1	suite source	number-range	adapter	icu4c/source/test/intltest/numbertest_range.cpp	NumberRangeFormatterTest [testSanity, testBasic]	numbertest_range.cpp	79.1	-
-1	1	suite source	number	proposed	icu4c/source/test/intltest/numbertest_simple.cpp	SimpleNumberFormatterTest [testBasic, testWithOptions]	-	79.1	Proposal 4
+1	1	suite source	number	proposed	icu4c/source/test/intltest/numbertest_simple.cpp	SimpleNumberFormatterTest [testBasic, testWithOptions]	-	79.1	Proposal 3
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_skeletons.cpp	NumberSkeletonTest [validTokens, invalidTokens]	-	79.1	-
 1	1	suite source	number	overlap	icu4c/source/test/intltest/numfmtdatadriventest.cpp	NumberFormatDataDrivenTest [TestNumberFormatTestTuple, TestDataDrivenICU4C]	-	79.1	TestICU/numberformattestspecification.txt
 1	1	suite source	number	overlap	icu4c/source/test/intltest/numfmtspectest.cpp	NumberFormatSpecificationTest [TestBasicPatterns, TestNfSetters]	-	79.1	TestICU/NumberFormatTestCases.txt and TestICU/number-parts/numfmtst.cpp
@@ -435,7 +435,7 @@
 1	1	support	native-header	input	icu4c/source/test/intltest/rbbitst.h	-	-	79.1	-
 1	1	suite source	collation	adapter	icu4c/source/test/intltest/regcoll.cpp	CollationRegressionTest [Test4048446, Test4051866]	locale-collation/regcoll.cpp	78.3	-
 1	1	support	native-header	input	icu4c/source/test/intltest/regcoll.h	-	-	79.1	-
-1	1	suite source	regex	proposed	icu4c/source/test/intltest/regextst.cpp	RegexTest [Basic, API_Match]	-	78.3	Proposal 1
+1	1	suite source	regex	overlap	icu4c/source/test/intltest/regextst.cpp	RegexTest [Basic, API_Match]	-	78.3	TestICU/regextst.txt and TestICU/re_tests.txt (capture text and indices)
 1	1	support	native-header	input	icu4c/source/test/intltest/regextst.h	-	-	79.1	-
 1	1	suite source	locale-api	outside	icu4c/source/test/intltest/regiontst.cpp	RegionTest [TestKnownRegions, TestGetInstanceString]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/regiontst.h	-	-	79.1	-
@@ -710,7 +710,7 @@
 1	1	fixture	idna	outside	icu4c/source/test/testdata/IdnaTestV2.txt	-	-	79.1	-
 1	1	fixture	line-break	outside	icu4c/source/test/testdata/LineBreakTest.txt	-	-	78.3	-
 1	1	support	build	input	icu4c/source/test/testdata/Makefile.in	-	-	79.1	-
-1	1	fixture	old-normalization	proposed	icu4c/source/test/testdata/NormalizationTest-3.2.0.txt	-	-	78.3	Proposal 6
+1	1	fixture	old-normalization	proposed	icu4c/source/test/testdata/NormalizationTest-3.2.0.txt	-	-	78.3	Proposal 5
 1	1	fixture	data-number	adapter	icu4c/source/test/testdata/NumberFormatTestCases.txt	-	NumberFormatTestCases.txt	79.1	-
 1	1	fixture	data-unicode	adapter	icu4c/source/test/testdata/SentenceBreakTest.txt	-	SentenceBreakTest.txt	78.3	-
 1	1	fixture	layout	outside	icu4c/source/test/testdata/TestFont1.otf	-	-	79.1	-
@@ -934,9 +934,9 @@
 1	1	fixture	resource	outside	icu4c/source/test/testdata/ra.txt	-	-	79.1	-
 1	1	fixture	resource	outside	icu4c/source/test/testdata/ra.xlf	-	-	79.1	-
 1	1	fixture	segment	adapter	icu4c/source/test/testdata/rbbitst.txt	-	rbbitst.txt	78.3	-
-1	1	fixture	regex	proposed	icu4c/source/test/testdata/re_tests.txt	-	-	78.3	Proposal 1
+1	1	fixture	regex	adapter	icu4c/source/test/testdata/re_tests.txt	-	re_tests.txt	78.3	-
 1	1	support	build	input	icu4c/source/test/testdata/readme.txt	-	-	79.1	-
-1	1	fixture	regex	proposed	icu4c/source/test/testdata/regextst.txt	-	-	78.3	Proposal 1
+1	1	fixture	regex	adapter	icu4c/source/test/testdata/regextst.txt	-	regextst.txt	78.3	-
 1	1	fixture	data-collation	adapter	icu4c/source/test/testdata/riwords.txt	-	locale-collation/riwords.txt	78.3	-
 1	1	fixture	resource	outside	icu4c/source/test/testdata/root.txt	-	-	79.1	-
 1	1	fixture	resource	outside	icu4c/source/test/testdata/sh.txt	-	-	79.1	-
@@ -1026,7 +1026,7 @@
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationFrozenMonkeyTest.java	CollationFrozenMonkeyTest [TestCollationKey, TestCompare]	-	78.3	TestLocaleSensitiveMethods/localeCompare and TestICU/collationtest.txt
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationGermanTest.java	CollationGermanTest [TestTertiary, TestSecondary]	-	78.3	V8 test/intl/collator/de-sort.js
 1	1	suite source	collator-api	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationIteratorTest.java	CollationIteratorTest [TestClearBuffers, TestMaxExpansion]	-	78.3	-
-1	1	suite source	collation	proposed	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationKanaTest.java	CollationKanaTest [TestTertiary, TestBase]	-	78.3	Proposal 3
+1	1	suite source	collation	proposed	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationKanaTest.java	CollationKanaTest [TestTertiary, TestBase]	-	78.3	Proposal 2
 1	1	suite source	collation	adapter	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationMiscTest.java	CollationMiscTest [TestComposeDecompose, TestRuleOptions]	locale-collation/CollationMiscTest.java	78.3	-
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationMonkeyTest.java	CollationMonkeyTest [TestCollationKey, TestCompare]	-	78.3	TestLocaleSensitiveMethods/localeCompare and TestICU/collationtest.txt
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationRegressionTest.java	CollationRegressionTest [Test4048446, Test4051866]	-	78.3	TestICU/locale-collation/regcoll.cpp
@@ -1038,7 +1038,7 @@
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationTurkishTest.java	CollationTurkishTest [TestTertiary, TestPrimary]	-	78.3	TestICU/locale-collation/trcoll.cpp
 1	1	source	collator-api	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/Counter.java	-	-	78.3	-
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/G7CollationTest.java	G7CollationTest [TestDemo1, TestDemo2]	-	78.3	TestLocaleSensitiveMethods/localeCompare and TestICU/collationtest.txt
-1	1	suite source	collation	proposed	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/LotusCollationKoreanTest.java	LotusCollationKoreanTest [TestTertiary]	-	78.3	Proposal 3
+1	1	suite source	collation	proposed	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/LotusCollationKoreanTest.java	LotusCollationKoreanTest [TestTertiary]	-	78.3	Proposal 2
 1	1	suite source	data-collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/UCAConformanceTest.java	UCAConformanceTest [TestTableNonIgnorable, TestTableShifted]	-	78.3	TestICU/CollationTest_NON_IGNORABLE_SHORT.txt, TestICU/CollationTest_SHIFTED_SHORT.txt
 1	1	suite source	locale-api	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/format/GlobalizationPreferencesTest.java	GlobalizationPreferencesTest [TestDefault, TestFreezable]	-	79.1	-
 1	1	suite source	rbnf	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/format/RbnfLenientScannerTest.java	RbnfLenientScannerTest [TestDefaultProvider, TestEnglishSpellout]	-	79.1	-
@@ -1054,7 +1054,7 @@
 1	1	support	build	input	icu4j/main/common_tests/pom.xml	-	-	79.1	-
 1	1	suite source	display	adapter	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/TestLocaleNamePackaging.java	TestLocaleNamePackaging [testRegionDisplayNames, testLanguageDisplayNames]	display-names/TestLocaleNamePackaging.java	79.1	-
 1	1	suite source	calendar	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/calendar/DataDrivenCalendarTest.java	DataDrivenCalendarTest [calendarTest]	-	79.1	TestICU/calendar.txt
-1	1	suite source	number	proposed	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java	CompactDecimalFormatTest [TestDefaultSignificantDigits, TestCharacterIterator]	-	79.1	Proposal 4
+1	1	suite source	number	proposed	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java	CompactDecimalFormatTest [TestDefaultSignificantDigits, TestCharacterIterator]	-	79.1	Proposal 3
 1	1	suite source	date	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/DataDrivenFormatTest.java	DataDrivenFormatTest [formatTest]	-	79.1	TestICU/format.txt
 1	1	suite source	date	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/DateFormatTest.java	DateFormatTest [TestPatterns, TestWallyWedel]	-	79.1	TestICU/dtptngts.cpp and TestICU/format.txt
 1	1	suite source	number	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/IntlTestDecimalFormatAPIC.java	IntlTestDecimalFormatAPIC [TestAPI, TestRounding]	-	79.1	TestICU/NumberFormatTestCases.txt and TestICU/number-parts/numfmtst.cpp
@@ -1155,7 +1155,7 @@
 1	1	suite source	calendar	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/IslamicTest.java	IslamicTest [TestRoll, TestCivilCases]	-	79.1	TestICU/calendar.txt and TestICU/calendar-arithmetic/TemporalMonthCodeTest.java
 1	1	suite source	calendar	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/JapaneseTest.java	JapaneseTest [TestCoverage, Test3860]	-	79.1	TestICU/calendar-arithmetic/incaltst.cpp
 1	1	suite source	calendar	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/OrdinalMonthTest.java	OrdinalMonthTest [TestMostCalendarsSet, TestChineseCalendarSet]	calendar-arithmetic/OrdinalMonthTest.java	79.1	-
-1	1	suite source	calendar	proposed	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java	PersianTest [TestMapping, TestCoverage12424]	-	79.1	Proposal 2
+1	1	suite source	calendar	proposed	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java	PersianTest [TestMapping, TestCoverage12424]	-	79.1	Proposal 1
 1	1	suite source	calendar	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/TemporalMonthCodeTest.java	TemporalMonthCodeTest [TestChineseCalendarGetTemporalMonthCode, TestDangiCalendarGetTemporalMonthCode]	calendar-arithmetic/TemporalMonthCodeTest.java	79.1	-
 1	1	source	calendar	related source	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/TestCase.java	-	-	79.1	TestICU/calendar.txt and TestICU/calendar-arithmetic/TemporalMonthCodeTest.java
 1	1	suite source	codec	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/charsetdet/TestCharsetDetector.java	TestCharsetDetector [TestConstruction, TestInputFilter]	-	79.1	-
@@ -1203,7 +1203,7 @@
 1	1	suite source	number	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/IntlTestNumberFormatAPI.java	IntlTestNumberFormatAPI [TestAPI, TestCoverage]	-	79.1	TestICU/NumberFormatTestCases.txt and TestICU/number-parts/numfmtst.cpp
 1	1	suite source	date	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/IntlTestSimpleDateFormatAPI.java	IntlTestSimpleDateFormatAPI [TestAPI, TestCoverage]	-	79.1	TestICU/dtptngts.cpp and TestICU/format.txt
 1	1	suite source	misc-format	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeConvertersTest.java	JavaTimeConvertersTest [testDateOnly, testTimesOnly]	-	79.1	-
-1	1	suite source	date	proposed	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeFormatTest.java	JavaTimeFormatTest [testLocalDateFormatting, testLocalDateTimeFormatting]	-	79.1	Proposal 5
+1	1	suite source	date	proposed	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeFormatTest.java	JavaTimeFormatTest [testLocalDateFormatting, testLocalDateTimeFormatting]	-	79.1	Proposal 4
 1	1	suite source	list	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/ListFormatterTest.java	ListFormatterTest [TestBasic, TestEnglish]	ListFormatterTest.java	79.1	-
 1	1	suite source	misc-format	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/MeasureUnitThreadTest.java	MeasureUnitThreadTest [MUThreadTest, NumericRaceTest]	-	79.1	-
 1	1	suite source	message	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/MessagePatternUtilTest.java	MessagePatternUtilTest [TestHello, TestHelloWithApos]	-	79.1	-
@@ -1563,7 +1563,7 @@
 1	1	fixture	normalization-data	overlap	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/CompositionExclusions.txt	-	-	78.3	TestICU/NormalizationTest.txt (decomposition and composition columns)
 1	1	fixture	idna	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/IdnaTestV2.txt	icu4c/source/test/testdata/IdnaTestV2.txt	-	79.1	-
 1	1	fixture	normalization-data	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationCorrections.txt	icu4c/source/data/unidata/NormalizationCorrections.txt	-	78.3	-
-1	1	fixture	old-normalization	proposed	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationTest-3.2.0.txt	-	-	78.3	Proposal 6
+1	1	fixture	old-normalization	proposed	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationTest-3.2.0.txt	-	-	78.3	Proposal 5
 1	1	fixture	data-unicode	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationTest.txt	icu4c/source/data/unidata/NormalizationTest.txt	-	78.3	-
 1	1	fixture	data-unicode	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/SpecialCasing.txt	icu4c/source/data/unidata/SpecialCasing.txt	-	78.3	-
 1	1	fixture	data-unicode	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/UnicodeData.txt	icu4c/source/data/unidata/UnicodeData.txt	-	78.3	-
