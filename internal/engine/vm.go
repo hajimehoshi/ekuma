@@ -261,6 +261,40 @@ func (vm *VM) WellKnownSymbol(s WellKnownSymbol) *Object {
 	return vm.keys.wellKnown[s]
 }
 
+func (vm *VM) initKeys() {
+	for k, name := range [commonKeyCount]wtf8.String{
+		KeyLength: "length", KeyPrototype: "prototype", KeyConstructor: "constructor", KeyName: "name",
+		KeyMessage: "message", KeyStack: "stack", KeyCause: "cause", KeyErrors: "errors",
+		KeyError: "error", KeySuppressed: "suppressed",
+		KeyToString: "toString", keyValueOf: "valueOf", keyToJSON: "toJSON",
+		keyCall: "call", keyApply: "apply", keyBind: "bind",
+		KeyGet: "get", KeySet: "set", KeyValue: "value", KeyWritable: "writable",
+		KeyEnumerable: "enumerable", KeyConfigurable: "configurable",
+		keyNext: "next", keyDone: "done", keyReturn: "return", keyThrow: "throw", keyThen: "then",
+		keyCallee: "callee", keyCaller: "caller", keyArguments: "arguments",
+		keyIndex: "index", keyInput: "input", keyGroups: "groups", keyLastIndex: "lastIndex",
+		KeyRaw: "raw", keySource: "source", keyFlags: "flags", keyDefault: "default",
+		keyGetPrototypeOf: "getPrototypeOf", keySetPrototypeOf: "setPrototypeOf",
+		keyIsExtensible: "isExtensible", keyPreventExtensions: "preventExtensions",
+		keyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", keyDefineProperty: "defineProperty",
+		keyHas: "has", keyDeleteProperty: "deleteProperty", keyOwnKeys: "ownKeys", keyConstruct: "construct",
+	} {
+		vm.keys.common[k] = vm.Intern(name)
+	}
+	for s, name := range [wellKnownSymbolCount]wtf8.String{
+		SymbolIterator: "Symbol.iterator", SymbolAsyncIterator: "Symbol.asyncIterator",
+		SymbolHasInstance: "Symbol.hasInstance", SymbolToPrimitive: "Symbol.toPrimitive",
+		SymbolToStringTag: "Symbol.toStringTag", SymbolSpecies: "Symbol.species",
+		SymbolIsConcatSpreadable: "Symbol.isConcatSpreadable", SymbolUnscopables: "Symbol.unscopables",
+		SymbolMatch: "Symbol.match", SymbolMatchAll: "Symbol.matchAll", SymbolReplace: "Symbol.replace",
+		SymbolSearch: "Symbol.search", SymbolSplit: "Symbol.split",
+		SymbolDispose: "Symbol.dispose", SymbolAsyncDispose: "Symbol.asyncDispose",
+		SymbolMetadata: "Symbol.metadata",
+	} {
+		vm.keys.wellKnown[s] = vm.NewSymbol(name, true)
+	}
+}
+
 // interruptSignal is what an interruption unwinds Go frames with. No JavaScript code can catch it.
 type interruptSignal struct {
 	// cause is the cause of the interruption.

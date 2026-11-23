@@ -117,6 +117,14 @@ func (vm *VM) directEval(x Value, site int) Value {
 	}).init(), Undefined)
 }
 
+// PerformEval implements PerformEval for an indirect eval.
+func (vm *VM) PerformEval(x Value) Value {
+	if !x.IsString() {
+		return x
+	}
+	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.Str())), Value{o: vm.curRealm.globalThis})
+}
+
 // createLazyArguments creates the arguments object of the frame fr, whose direct eval at the
 // call site es runs the eval code p, when p refers to the register that waits for it.
 func (vm *VM) createLazyArguments(fr *frame, es *bytecode.EvalScope, p *funcProto) {
@@ -252,4 +260,62 @@ func (vm *VM) declareEvalVar(cl *Object, key *Object, depth int, regs []Value, f
 	case fn >= 0:
 		vm.setProp(o, k, regs[fn], Value{o: o})
 	}
+}
+
+// FunctionKind is the kind of function that CreateDynamicFunction creates.
+type FunctionKind uint8
+
+const (
+	NormalFunction FunctionKind = iota
+	GeneratorFunction
+	AsyncFunction
+	AsyncGeneratorFunction
+)
+
+// CreateDynamicFunction implements CreateDynamicFunction. ctor is the constructor being called,
+// newTarget is nil in a plain call, and the last of args is the body.
+func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, args []Value) Value {
+	if newTarget == nil {
+		newTarget = ctor
+	}
+	var params, body wtf8.String
+	if len(args) > 0 {
+		var sb []byte
+		for i, a := range args[:len(args)-1] {
+			if i > 0 {
+				sb = append(sb, ',')
+			}
+			p := vm.ToString(a)
+			if len(sb)+len(p) > MaxStringLength {
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+			}
+			sb = append(sb, p...)
+		}
+		params = wtf8.String(sb)
+		body = vm.ToString(args[len(args)-1])
+	}
+
+	var pkind parser.FunctionKind
+	fallback := IntrinsicFunctionPrototype
+	switch kind {
+	case GeneratorFunction:
+		pkind = parser.GeneratorFunction
+		fallback = IntrinsicGeneratorFunctionPrototype
+	case AsyncFunction:
+		pkind = parser.AsyncFunction
+		fallback = IntrinsicAsyncFunctionPrototype
+	case AsyncGeneratorFunction:
+		pkind = parser.AsyncGeneratorFunction
+		fallback = IntrinsicAsyncGeneratorFunctionPrototype
+	}
+	fp, err := vm.compileFunction("<anonymous>", params, body, pkind)
+	if err != nil {
+		vm.throwCompileError(vm.CurrentRealm(), "<anonymous>", err)
+	}
+	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
+	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.curRealm.globalThis})
+	if proto != vm.CurrentRealm().Intrinsic(fallback) {
+		vm.SetPrototypeOf(f.o, proto)
+	}
+	return f
 }
