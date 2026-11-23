@@ -18,7 +18,7 @@ test that runs as a module, which is strict code. Async tests add `async` to the
 For example, run the local proxy tests with:
 
 ```sh
-go test . -run '^TestScripts/proxy/'
+go test . -run '^TestScripts$/^proxy$/'
 ```
 
 Keep tests of Go APIs, host configuration, Go constants, script completion
