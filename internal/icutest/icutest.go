@@ -50,6 +50,9 @@ func Run(t *testing.T) {
 		t.Run("CaseFolding.txt", func(t *testing.T) {
 			runCaseFoldingTest(t, filepath.Join(unidata, "CaseFolding.txt"))
 		})
+		t.Run("DerivedCoreProperties.txt", func(t *testing.T) {
+			runIdentifierBoundaries(t, filepath.Join(unidata, "DerivedCoreProperties.txt"))
+		})
 		for _, file := range []string{"emoji-sequences.txt", "emoji-zwj-sequences.txt"} {
 			t.Run(file, func(t *testing.T) {
 				runEmojiTest(t, filepath.Join(unidata, file))

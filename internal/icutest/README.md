@@ -160,3 +160,12 @@ reordering. The Thai dictionary in `riwords.txt` permits ties between adjacent
 words. ICU4J supplies numeric comparisons with leading zeros and non-ASCII
 digits. The 45 long-number comparisons in `cmsccoll.c` cover the 254-digit
 segment boundary. All 34,804 comparisons pass.
+
+## Unicode property and identifier boundaries
+
+Test262's generated `u` tests match ICU 78.3's Unicode 17 ranges and their
+complements for 18 derived properties and all 38 general categories.
+`DerivedCoreProperties.txt` supplies 76 checks of `ID_Start` and `ID_Continue`
+in RegExp `v` mode and JavaScript binding identifiers. They cover Arabic,
+Tai Yo and CJK range edges, adjacent nonmembers, and the grammar rules for
+`$`, `_` and the two join controls. [Test262 ID_Start](https://github.com/tc39/test262/blob/2e58f87d8350ad51224617a041c6e041d52f8444/test/built-ins/RegExp/property-escapes/generated/ID_Start.js) · [Test262 ID_Continue](https://github.com/tc39/test262/blob/2e58f87d8350ad51224617a041c6e041d52f8444/test/built-ins/RegExp/property-escapes/generated/ID_Continue.js) · [V8 supplementary identifiers](https://github.com/v8/v8/blob/31a217159f038ccf8306f6da561bae54c0c0bb86/test/intl/general/smp-identifier.js)
