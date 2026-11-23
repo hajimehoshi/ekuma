@@ -90,6 +90,7 @@ func (cx *ExecutionContext) newArgumentsObject(fr *frame, regs []Value) *Object 
 	a.elems = elems
 	a.storage = [3]Value{Number(float64(fr.argc)), {o: cx.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]
+	a.pinned = pinnedSlots | pinnedElems
 	return a.init()
 }
 

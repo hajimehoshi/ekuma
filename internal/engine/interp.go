@@ -1833,7 +1833,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					case cacheAdd:
 						if o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
 							o.shape = e.next
-							o.slots = append(o.slots, regs[i.C])
+							o.appendSlot(regs[i.C])
 							continue
 						}
 					case cacheSetter:
@@ -1905,7 +1905,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
 				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == fp.context.realm.shapes.array && fp.context.arrayProtoPlain() {
 					// Appending to a plain array.
-					o.elems = appendElem(o.elems, regs[i.C])
+					o.appendElem(regs[i.C])
 					o.length++
 					continue
 				}
@@ -2668,11 +2668,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Value{o: fp.context.NewArrayCopy(fp.consts[i.B : i.B+i.C])}
 		case bytecode.OpArrayPush:
 			o := regs[i.A].o
-			o.elems = appendElem(o.elems, regs[i.B])
+			o.appendElem(regs[i.B])
 			o.length = uint32(len(o.elems))
 		case bytecode.OpArrayHole:
 			o := regs[i.A].o
-			o.elems = appendElem(o.elems, hole)
+			o.appendElem(hole)
 			o.length = uint32(len(o.elems))
 		case bytecode.OpArraySpread:
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -2706,7 +2706,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			c := &fp.caches[i.B]
 			if o.shape == c.shape && c.kind == cacheAdd {
 				o.shape = c.next
-				o.slots = append(o.slots, regs[i.C])
+				o.appendSlot(regs[i.C])
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc

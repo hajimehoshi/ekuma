@@ -603,10 +603,10 @@ func (cx *ExecutionContext) spreadArgs(v Value) *Object {
 // appendIterable appends the values that iterating v yields to the array o.
 func (cx *ExecutionContext) appendIterable(o *Object, v Value) {
 	if s := v.o; s != nil && s.kind == kindArray {
-		o.elems = reserveElems(o.elems, len(s.elems))
+		o.reserveElems(len(s.elems))
 	}
 	cx.Iterate(v, func(e Value) bool {
-		o.elems = appendElem(o.elems, e)
+		o.appendElem(e)
 		o.length = uint32(len(o.elems))
 		return true
 	})
@@ -622,9 +622,10 @@ type iterResult struct {
 // CreateIterResultObject creates an iterator result in the execution realm.
 func (cx *ExecutionContext) CreateIterResultObject(v Value, done bool) Value {
 	result := &iterResult{
-		kind:  kindObject,
-		shape: cx.realm.shapes.iterResult,
-		props: [2]Value{v, Bool(done)},
+		kind:   kindObject,
+		pinned: pinnedSlots,
+		shape:  cx.realm.shapes.iterResult,
+		props:  [2]Value{v, Bool(done)},
 	}
 	result.slots = result.props[:]
 	return Value{o: result.init()}

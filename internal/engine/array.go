@@ -50,23 +50,37 @@ func (cx *ExecutionContext) ArrayCreate(length uint32, proto *Object) *Object {
 	return a
 }
 
-// reserveElems returns elems with room for n more elements.
-func reserveElems(elems []Value, n int) []Value {
-	if cap(elems)-len(elems) >= n {
-		return elems
+// reserveElems gives the elements of o room for n more elements.
+func (o *Object) reserveElems(n int) {
+	if cap(o.elems)-len(o.elems) < n {
+		o.moveElems(n)
 	}
-	if cap(elems) == 0 {
-		return make([]Value, 0, max(n, minElems))
-	}
-	return slices.Grow(elems, n)
 }
 
-// appendElem appends v to elems.
-func appendElem(elems []Value, v Value) []Value {
+// moveElems moves the elements of o to new storage with room for n more elements.
+// It stays out of line so that reserveElems can be inlined.
+//
+//go:noinline
+func (o *Object) moveElems(n int) {
+	elems := o.elems
+	if cap(elems) == 0 {
+		o.elems = make([]Value, 0, max(n, minElems))
+		return
+	}
+	o.elems = slices.Grow(elems, n)
+	o.leaveElems(elems)
+}
+
+// appendElem appends v to the elements of o.
+func (o *Object) appendElem(v Value) {
+	elems := o.elems
 	if cap(elems) == 0 {
 		elems = make([]Value, 0, minElems)
 	}
-	return append(elems, v)
+	o.elems = append(elems, v)
+	if cap(o.elems) != cap(elems) {
+		o.leaveElems(elems)
+	}
 }
 
 // elemsStorage returns the number of values that the storage of the elements of o has room
@@ -221,7 +235,8 @@ func (cx *ExecutionContext) AppendElements(o *Object, vals []Value) (uint32, boo
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !cx.newElementsPlain(o) {
 		return 0, false
 	}
-	o.elems = append(reserveElems(o.elems, len(vals)), vals...)
+	o.reserveElems(len(vals))
+	o.elems = append(o.elems, vals...)
 	o.length = uint32(len(o.elems))
 	cx.touchProto(o)
 	return o.length, true
@@ -292,6 +307,7 @@ func (ag *agent) observePush(o *Object) {
 		if room := min(int(h.target), 8*n); room > n {
 			elems := make([]Value, n, room)
 			copy(elems, o.elems)
+			o.leaveElems(o.elems)
 			o.elems = elems
 			if m := o.meta(); m != nil {
 				m.shiftedElems, m.shiftedCap = 0, 0
@@ -312,6 +328,7 @@ func (cx *ExecutionContext) PrependElements(o *Object, vals []Value) (uint32, bo
 	} else {
 		elems := make([]Value, n+k, n+k+max((n+k)/2, minElems))
 		copy(elems[k:], o.elems)
+		o.leaveElems(o.elems)
 		o.elems = elems
 	}
 	copy(o.elems, vals)
@@ -394,7 +411,7 @@ func (cx *ExecutionContext) FillElements(o *Object, n, start, end int64, v Value
 		if i < int64(len(o.elems)) {
 			o.elems[i] = v
 		} else {
-			o.elems = appendElem(o.elems, v)
+			o.appendElem(v)
 		}
 	}
 	return true
@@ -558,6 +575,9 @@ func (cx *ExecutionContext) SpliceElements(o *Object, length, start, del int64, 
 	elems := o.elems
 	if newLen > n {
 		elems = slices.Grow(elems, newLen-n)
+		if cap(elems) != cap(o.elems) {
+			o.leaveElems(o.elems)
+		}
 	}
 	elems = elems[:max(n, newLen)]
 	copy(elems[int(start)+k:], elems[start+del:n])
@@ -581,7 +601,11 @@ func (cx *ExecutionContext) AppendElementsOf(dst *Object, n int64, src *Object) 
 	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {
 		return false
 	}
-	dst.elems = appendPolled(cx, dst.elems, src.elems)
+	old := dst.elems
+	dst.elems = appendPolled(cx, old, src.elems)
+	if cap(dst.elems) != cap(old) {
+		dst.leaveElems(old)
+	}
 	dst.length = uint32(len(dst.elems))
 	return true
 }

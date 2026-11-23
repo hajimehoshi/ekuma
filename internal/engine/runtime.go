@@ -880,7 +880,7 @@ func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *p
 func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCache) {
 	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.shape == c.shape && c.kind == cacheAdd {
 		o.shape = c.next
-		o.slots = append(o.slots, val)
+		o.appendSlot(val)
 		return
 	}
 	if pk := cx.ToPropertyKey(k); pk.key != nil {
@@ -987,7 +987,7 @@ func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded 
 		for elems < len(ks) && ks[elems].isIndex() {
 			elems++
 		}
-		dst.slots = slices.Grow(dst.slots, len(ks)-elems)
+		dst.reserveSlots(len(ks) - elems)
 	}
 	var pacer Pacer
 keys:
@@ -1607,6 +1607,7 @@ func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args
 	b.class = classFunction
 	b.shape = cx.shapeForRealm(cx.ProtoOf(target), target.shape.realm)
 	b.slots = b.props[:0]
+	b.pinned = pinnedSlots
 	return b.init()
 }
 

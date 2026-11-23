@@ -57,6 +57,110 @@ func TestWeakCollectionsCollected(t *testing.T) {
 	}
 }
 
+// TestMovedStorageReleasesValues checks that the storage that the properties or elements of
+// an object move out of does not keep their values alive.
+func TestMovedStorageReleasesValues(t *testing.T) {
+	// The scripts run in order. Each case reads a property or a variable through an inline cache
+	// or stores it in the storage that the object is created with, makes the storage move by
+	// adding properties or elements, and then drops the value that wr refers to.
+	for _, tc := range []struct {
+		name    string
+		scripts []string
+	}{
+		{
+			name: "global variable",
+			scripts: []string{`
+				var g = {};
+				var wr = new WeakRef(g);
+				function read() { return g; }
+				read();
+				for (var i = 0; i < 200; i++) globalThis["k" + i] = i;
+				g = null;
+			`},
+		},
+		{
+			// The bindings of a script are declared before it runs, so the bindings that move
+			// the storage come in another script.
+			name: "global lexical binding",
+			scripts: []string{`
+				let g = {};
+				var wr = new WeakRef(g);
+				function read() { return g; }
+				read();
+			`, `
+				let l0, l1, l2, l3, l4, l5, l6, l7, l8, l9, l10, l11, l12, l13, l14, l15, l16;
+			`, `
+				g = null;
+			`},
+		},
+		{
+			name: "prototype property",
+			scripts: []string{`
+				function F() {}
+				F.prototype.m = {};
+				var wr = new WeakRef(F.prototype.m);
+				function read(o) { return o.m; }
+				read(new F());
+				for (var i = 0; i < 30; i++) F.prototype["p" + i] = i;
+				F.prototype.m = null;
+			`},
+		},
+		{
+			name: "object literal",
+			scripts: []string{`
+				var o = {a: {}};
+				var wr = new WeakRef(o.a);
+				for (var i = 0; i < 20; i++) o["k" + i] = i;
+				o.a = null;
+			`},
+		},
+		{
+			name: "array literal",
+			scripts: []string{`
+				var a = [{}, 1];
+				var wr = new WeakRef(a[0]);
+				for (var i = 0; i < 20; i++) a.push(i);
+				a[0] = null;
+			`},
+		},
+		{
+			// The elements and the properties of a match result with many groups share storage.
+			name: "match result",
+			scripts: []string{`
+				var m = /(a)(b)(c)(d)(e)/.exec("abcde");
+				m[1] = {};
+				var wr = new WeakRef(m[1]);
+				m.push(0);
+				m[1] = null;
+			`},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			for i, src := range tc.scripts {
+				if _, err := runScript(t.Context(), &vm, "script"+strconv.Itoa(i), src); err != nil {
+					t.Fatal(err)
+				}
+			}
+			live := true
+			for range 10 {
+				runtime.GC()
+				v, err := runScript(t.Context(), &vm, "check", `wr.deref() !== undefined`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if live = v.Bool(); !live {
+					break
+				}
+				time.Sleep(time.Millisecond)
+			}
+			if live {
+				t.Error("the dropped value is still reachable")
+			}
+		})
+	}
+}
+
 func TestWeakMapValueReferencesKey(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `

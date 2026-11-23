@@ -916,7 +916,7 @@ func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8
 			return true
 		}
 		if growElems(o.elems, i) {
-			o.elems = reserveElems(o.elems, int(i)+1-n)
+			o.reserveElems(int(i) + 1 - n)
 			for uint32(len(o.elems)) < i {
 				o.elems = append(o.elems, hole)
 			}
@@ -998,7 +998,8 @@ func (cx *ExecutionContext) densify(o *Object) {
 		return
 	}
 
-	elems := reserveElems(o.elems, int(end)-len(o.elems))
+	o.reserveElems(int(end) - len(o.elems))
+	elems := o.elems
 	for int64(len(elems)) < end {
 		elems = append(elems, hole)
 	}
@@ -1015,6 +1016,7 @@ func (cx *ExecutionContext) densify(o *Object) {
 		}
 		cx.add(o, k, slots[p.slot], p.flags)
 	}
+	o.leaveSlots(slots)
 	o.elems = elems
 	o.flags &^= objSparse
 	if o.kind != kindArray {

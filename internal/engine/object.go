@@ -65,6 +65,19 @@ const objReversed = objFrozenLength
 // that of objIsProto, which strings never use.
 const objKept = objIsProto
 
+// [Object] pinned bits, which mark storage that stays reachable after the slots or the elements
+// of the object move out of it.
+const (
+	// pinnedSlots and pinnedElems mark slots and elements that may be in the allocation of the
+	// object, or in storage that the other of them keeps using.
+	pinnedSlots uint8 = 1 << iota
+	pinnedElems
+
+	// pinnedGlobalSlots marks the slots of a global object or of the global lexical bindings,
+	// which the inline caches of global variables point into.
+	pinnedGlobalSlots
+)
+
 // class distinguishes the built-in objects that have internal state or exotic behavior.
 type class uint8
 
@@ -118,6 +131,9 @@ type Object struct {
 	kind  kind
 	class class
 	flags uint8
+
+	// pinned holds the pinned bits of the storage of slots and elems.
+	pinned uint8
 
 	// length is the length of an array, which is at least len(elems). For a string it is 0,
 	// or the array index that the string stands for plus one. See [Object.arrayIndex].
@@ -1057,38 +1073,44 @@ func newClosureObject(n, ncopied int) (*Object, []upvalue) {
 	return c.init(), copies
 }
 
-// newObjectWithStorage returns a zero object and storage for n values. For a small n, both are
-// a single allocation.
+// newObjectWithStorage returns an object and storage for n values. The object is zero but for
+// its pinned bits. For a small n, both are a single allocation.
 func newObjectWithStorage(n int) (*Object, []Value) {
+	var o *Object
+	var storage []Value
 	switch n {
 	case 0:
 		return (&propertyObject{}).init(), nil
 	case 1:
 		w := &objectWith[[1]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 2:
 		w := &objectWith[[2]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 3:
 		w := &objectWith[[3]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 4:
 		w := &objectWith[[4]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 5:
 		w := &objectWith[[5]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 6:
 		w := &objectWith[[6]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 7:
 		w := &objectWith[[7]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
 	case 8:
 		w := &objectWith[[8]Value]{}
-		return w.init(), w.storage[:]
+		o, storage = w.init(), w.storage[:]
+	default:
+		return (&propertyObject{}).init(), make([]Value, n)
 	}
-	return (&propertyObject{}).init(), make([]Value, n)
+	// The storage becomes the slots, the elements or both.
+	o.pinned = pinnedSlots | pinnedElems
+	return o, storage
 }
 
 // objectWith is an object together with storage for its slots or elements.
@@ -1097,11 +1119,47 @@ type objectWith[S any] struct {
 	storage S
 }
 
+// appendSlot appends v to the slots of o.
+func (o *Object) appendSlot(v Value) {
+	old := o.slots
+	o.slots = append(old, v)
+	if cap(o.slots) != cap(old) {
+		o.leaveSlots(old)
+	}
+}
+
+// reserveSlots gives the slots of o room for n more values.
+func (o *Object) reserveSlots(n int) {
+	if old := o.slots; cap(old)-len(old) < n {
+		o.slots = slices.Grow(old, n)
+		o.leaveSlots(old)
+	}
+}
+
+// leaveSlots clears old, storage that the slots of o have moved out of, when it stays reachable.
+func (o *Object) leaveSlots(old []Value) {
+	// Inline caches point into the slots of global objects and of prototypes.
+	if o.pinned&(pinnedSlots|pinnedGlobalSlots) != 0 || o.flags&objIsProto != 0 {
+		clear(old)
+	}
+	o.pinned &^= pinnedSlots
+}
+
+// leaveElems clears old, storage that the elements of o have moved out of, when it stays
+// reachable.
+func (o *Object) leaveElems(old []Value) {
+	if o.pinned&pinnedElems != 0 {
+		clear(old)
+		o.pinned &^= pinnedElems
+	}
+}
+
 // NewArrayPair returns a new array with the elements a and b.
 func (cx *ExecutionContext) NewArrayPair(a, b Value) *Object {
 	p := &pairArray{
 		kind:   kindArray,
 		class:  classArray,
+		pinned: pinnedElems,
 		shape:  cx.realm.shapes.array,
 		length: 2,
 		pair:   [2]Value{a, b},
@@ -1120,6 +1178,7 @@ func (cx *ExecutionContext) NewArrayWithRoom(length, n int) *Object {
 	a.elems = storage[:length:length]
 	a.length = uint32(length)
 	a.slots = storage[length:length]
+	a.pinned = pinnedSlots | pinnedElems
 	return a
 }
 
@@ -1156,7 +1215,7 @@ func (cx *ExecutionContext) NewObjectFromProperties(keys []PropKey, vals []Value
 				flags: FlagsData,
 			}); t != nil {
 				o.shape = t
-				o.slots = append(o.slots, v)
+				o.appendSlot(v)
 				continue
 			}
 		}
@@ -1530,7 +1589,7 @@ func (ag *agent) add(o *Object, key *Object, val Value, flags uint8) {
 	} else {
 		o.shape = s.with(key, flags)
 	}
-	o.slots = append(o.slots, val)
+	o.appendSlot(val)
 	ag.touchProto(o)
 }
 
@@ -1666,6 +1725,7 @@ func (cx *ExecutionContext) remove(o *Object, key *Object) {
 		s.count++
 		slots = append(slots, o.slots[q.slot])
 	}
+	o.leaveSlots(o.slots)
 	o.shape = s
 	o.slots = slots
 	cx.touchProto(o)
