@@ -212,7 +212,7 @@ func IteratorState(v Value) any {
 // For other values it returns two nil values.
 func IteratorStateAndContext(v Value) (any, *ExecutionContext) {
 	if v.IsObject() && v.o.class == classIterator {
-		return v.o.extState(), v.o.shape.realm.Context()
+		return v.o.extState(), &v.o.shape.realm.context
 	}
 	return nil, nil
 }

@@ -138,6 +138,9 @@ func TestExecutionContextBoundary(t *testing.T) {
 			if engineType(tv.Type, "Host") {
 				t.Errorf("%v: built-in uses the engine host handle", fset.Position(expr.Pos()))
 			}
+			if engineType(tv.Type, "realm") {
+				t.Errorf("%v: built-in uses the raw engine realm", fset.Position(expr.Pos()))
+			}
 			if engineType(tv.Type, "agent") {
 				t.Errorf("%v: built-in uses the raw engine agent", fset.Position(expr.Pos()))
 			}

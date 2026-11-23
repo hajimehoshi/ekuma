@@ -656,7 +656,7 @@ func compareResult(c int) engine.Value {
 // initTemporal defines the Temporal namespace and Date.prototype.toTemporalInstant. The
 // contents of the namespace are created when they are first needed.
 func initTemporal(cx *engine.ExecutionContext) {
-	ns := cx.NewLazyObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
+	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
 		cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal"), engine.FlagConfigurable)
 		initTemporalInstant(cx, ns)
 		initTemporalDuration(cx, ns)
@@ -671,7 +671,7 @@ func initTemporal(cx *engine.ExecutionContext) {
 	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 
-	tmethod(cx, cx.Realm().Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	tmethod(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		tv := thisDate(cx, this, "toTemporalInstant")
 		if math.IsNaN(tv) {
 			cx.ThrowRangeError("invalid time value")

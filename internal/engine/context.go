@@ -6,7 +6,7 @@ package engine
 // ExecutionContext binds engine operations to one realm of an agent.
 type ExecutionContext struct {
 	*agent
-	realm *Realm
+	realm *realm
 }
 
 // Host provides agent-wide operations and the active context for host calls.
@@ -18,16 +18,6 @@ type Host struct {
 // ActiveContext returns the execution context for a host entry.
 func (h *Host) ActiveContext() *ExecutionContext {
 	return h.active
-}
-
-// Context returns the execution context of r.
-func (r *Realm) Context() *ExecutionContext {
-	return &r.context
-}
-
-// Realm returns the execution realm.
-func (cx *ExecutionContext) Realm() *Realm {
-	return cx.realm
 }
 
 // activate installs cx and returns the context it replaced.
@@ -45,9 +35,4 @@ func (cx *ExecutionContext) Run(f func()) {
 		defer previous.activate()
 	}
 	f()
-}
-
-// CreateIterResultObject creates an iterator result in the execution realm.
-func (cx *ExecutionContext) CreateIterResultObject(v Value, done bool) Value {
-	return cx.realm.CreateIterResultObject(v, done)
 }

@@ -158,16 +158,15 @@ func (r *realm) newSegmenter(cx *engine.ExecutionContext, this engine.Value, arg
 
 // initSegmenter defines Intl.Segmenter.
 func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
-	realm := cx.Realm()
-	proto := cx.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("Segmenter", 0, r.newSegmenter)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	cx.Define(r.ns, cx.Intern("Segmenter"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.segmenterProto = proto
 
-	segmentsProto := cx.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
-	iterProto := cx.NewObject(realm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	segmentsProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
+	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 
 	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(cx, args)

@@ -9,7 +9,7 @@ import (
 
 // initAbstractModuleSource creates %AbstractModuleSource%, which is not a global.
 func initAbstractModuleSource(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	c := cx.NewNativeConstructor("AbstractModuleSource", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		cx.ThrowTypeError("AbstractModuleSource cannot be constructed")
 		return engine.Undefined

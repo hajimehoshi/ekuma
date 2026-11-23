@@ -145,7 +145,7 @@ func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, ar
 
 // initRelativeTimeFormat defines Intl.RelativeTimeFormat.
 func (r *realm) initRelativeTimeFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("RelativeTimeFormat", 0, r.newRelativeTimeFormat)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)

@@ -188,17 +188,16 @@ func (ag *agent) elemsMovable(o *Object) bool {
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
 func (cx *ExecutionContext) arrayCtorPlain(o *Object) bool {
-	realm := cx.realm
-	if o.shape != realm.shapes.array {
+	if o.shape != cx.realm.shapes.array {
 		return false
 	}
-	ctor := realm.Intrinsic(IntrinsicArray)
-	c, ok := cx.lookupData(realm.Intrinsic(IntrinsicArrayPrototype), cx.Key(KeyConstructor))
+	ctor := cx.Intrinsic(IntrinsicArray)
+	c, ok := cx.lookupData(cx.Intrinsic(IntrinsicArrayPrototype), cx.Key(KeyConstructor))
 	if !ok || c.o != ctor {
 		return false
 	}
 	p, found := ctor.getOwn(cx.WellKnownSymbol(SymbolSpecies))
-	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == realm.Intrinsic(IntrinsicArraySpeciesGetter)
+	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == cx.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
@@ -208,13 +207,13 @@ func (cx *ExecutionContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object
 	if o.kind != kindArray || n > MaxArrayIndex+1 || !cx.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return cx.ArrayCreate(uint32(n), cx.realm.Intrinsic(IntrinsicArrayPrototype)), true
+	return cx.ArrayCreate(uint32(n), cx.Intrinsic(IntrinsicArrayPrototype)), true
 }
 
 // newElementsPlain reports whether storing a new element in the array o defines it as an own
 // data property without consulting a prototype.
 func (cx *ExecutionContext) newElementsPlain(o *Object) bool {
-	return o.shape.proto == cx.realm.Intrinsic(IntrinsicArrayPrototype) && cx.arrayProtoPlain()
+	return o.shape.proto == cx.Intrinsic(IntrinsicArrayPrototype) && cx.arrayProtoPlain()
 }
 
 // AppendElements adds vals at the end of the array o and returns the new length.
@@ -336,7 +335,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	o.elems = o.elems[:n]
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.realm.Context().reallocElems(o)
+		o.shape.realm.context.reallocElems(o)
 	}
 	return v, true
 }
@@ -372,7 +371,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.realm.Context().reallocElems(o)
+		o.shape.realm.context.reallocElems(o)
 	}
 	return v, true
 }

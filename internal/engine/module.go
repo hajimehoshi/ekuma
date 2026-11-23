@@ -26,7 +26,7 @@ type scriptOrModule struct {
 	module *Module
 
 	// realm is the [[Realm]] of the script or module, or the realm itself.
-	realm *Realm
+	realm *realm
 
 	// loaded is the [[LoadedModules]], by requestKey.
 	loaded map[string]*Module
@@ -61,15 +61,15 @@ func requestKey(r ModuleRequest) string {
 }
 
 // HostLoadImportedModuleFunc implements HostLoadImportedModule synchronously: it returns the
-// module that the request req of the referrer resolves to. referrer is the importing module,
-// or nil for a script or for code that has neither; file is the name that the importing script
-// or module was given, or empty; realm is the [[Realm]] of the importing script or module, or
-// the realm for code that has neither. The engine calls it at most once for a request of a referrer
-// that completed normally.
+// module that the request req of the referrer resolves to. cx is the executing context.
+// referrerContext is the context of the importing script, module, or realm. referrer is the
+// importing module, or nil for a script or realm. file is the name of the script or module,
+// or empty. The engine calls the loader at most once per successfully resolved request
+// for a given referrer.
 //
 // The error is an [*Error] for a thrown value, a [*SyntaxError], or any other error, which is
 // thrown as an Error with its message.
-type HostLoadImportedModuleFunc func(cx *ExecutionContext, referrer *Module, file string, realm *Realm, req ModuleRequest) (*Module, error)
+type HostLoadImportedModuleFunc func(cx *ExecutionContext, referrer *Module, file string, referrerContext *ExecutionContext, req ModuleRequest) (*Module, error)
 
 // HostGetImportMetaPropertiesFunc implements HostGetImportMetaProperties: it returns the
 // properties of the object import.meta of the module m, which is created then.
@@ -304,7 +304,7 @@ func (m *Module) isCyclic() bool {
 // synchronously: it loads the modules that m and its dependencies request. Once it has
 // completed for m, it does nothing. A thrown exception is reported as an [*Error].
 func (m *Module) LoadRequestedModules() error {
-	cx := m.ref.realm.Context()
+	cx := &m.ref.realm.context
 	_, err := cx.enter(func() Value {
 		if e, ok := cx.loadModuleGraph(m); !ok {
 			cx.Throw(e)
@@ -317,7 +317,7 @@ func (m *Module) LoadRequestedModules() error {
 // Link implements Link, after [Module.LoadRequestedModules] when m is not loaded. Once m is
 // linked, it does nothing. A thrown exception is reported as an [*Error].
 func (m *Module) Link() error {
-	cx := m.ref.realm.Context()
+	cx := &m.ref.realm.context
 	_, err := cx.enter(func() Value {
 		cx.loadAndLink(m)
 		return Undefined
@@ -338,7 +338,7 @@ func (cx *ExecutionContext) loadAndLink(m *Module) {
 // Evaluate implements Evaluate, after [Module.Link] when m is not linked. It returns the promise of the evaluation. A failure to load or
 // link, which comes before any module code runs, is reported as an [*Error].
 func (m *Module) Evaluate() (Value, error) {
-	cx := m.ref.realm.Context()
+	cx := &m.ref.realm.context
 	return cx.enter(func() Value {
 		cx.loadAndLink(m)
 		return cx.evaluateModule(m)
@@ -348,7 +348,7 @@ func (m *Module) Evaluate() (Value, error) {
 // GetModuleNamespace implements GetModuleNamespace for the evaluation phase, after [Module.Link]
 // when m is not linked. A thrown exception is reported as an [*Error].
 func (m *Module) GetModuleNamespace() (Value, error) {
-	cx := m.ref.realm.Context()
+	cx := &m.ref.realm.context
 	return cx.enter(func() Value {
 		cx.loadAndLink(m)
 		return Value{o: cx.moduleNamespace(m)}
@@ -360,7 +360,7 @@ func (m *Module) GetModuleNamespace() (Value, error) {
 // SyntaxError.
 func (cx *ExecutionContext) ParseJSONModule(src string, hostDefined any) (*Module, error) {
 	v, err := cx.enter(func() Value {
-		return cx.Call(cx.realm.Intrinsic(IntrinsicJSONParse), Undefined, cx.StringFromGo(src))
+		return cx.Call(cx.Intrinsic(IntrinsicJSONParse), Undefined, cx.StringFromGo(src))
 	})
 	if err != nil {
 		return nil, err
@@ -379,14 +379,14 @@ func (cx *ExecutionContext) activeScriptOrModule() *scriptOrModule {
 }
 
 // errorValue returns the value to throw for an error of the host.
-func (cx *ExecutionContext) errorValue(r *Realm, err error) Value {
+func (cx *ExecutionContext) errorValue(r *realm, err error) Value {
 	if e, ok := errors.AsType[*Error](err); ok {
 		return e.Value
 	}
 	if e, ok := errors.AsType[*SyntaxError](err); ok {
-		return r.Context().NewError(ErrorKindSyntax, e.messageWithPosition())
+		return r.context.NewError(ErrorKindSyntax, e.messageWithPosition())
 	}
-	return r.Context().NewGoError(err)
+	return r.context.NewGoError(err)
 }
 
 // loadImportedModule returns the module of the request req of the referrer ref from its
@@ -399,15 +399,15 @@ func (cx *ExecutionContext) loadImportedModule(ref *scriptOrModule, req ModuleRe
 	}
 	r := ref.realm
 	if cx.modules.load == nil {
-		return nil, r.Context().NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
+		return nil, r.context.NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
 	}
-	m, err := cx.modules.load(cx, ref.module, ref.file, r, req)
+	m, err := cx.modules.load(cx, ref.module, ref.file, &r.context, req)
 	cx.ResumeInterruption()
 	if err != nil {
 		return nil, cx.errorValue(r, err), false
 	}
 	if m == nil {
-		return nil, r.Context().NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"'"), false
+		return nil, r.context.NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"'"), false
 	}
 	if ref.loaded == nil {
 		ref.loaded = map[string]*Module{}
@@ -482,7 +482,7 @@ func (cx *ExecutionContext) loadModuleGraph(root *Module) (Value, bool) {
 		top.i++
 		req := moduleRequest(m.code.Requests[i])
 		if !allImportAttributesSupported(req.Attributes) {
-			return m.ref.realm.Context().NewError(ErrorKindSyntax, "unsupported import attribute"), false
+			return m.ref.realm.context.NewError(ErrorKindSyntax, "unsupported import attribute"), false
 		}
 		dep, e, ok := cx.loadImportedModule(&m.ref, req)
 		if !ok {
@@ -502,8 +502,8 @@ func (cx *ExecutionContext) loadModuleGraph(root *Module) (Value, bool) {
 }
 
 // loadingError returns the TypeError of loading m while an unfinished call is loading it.
-func (cx *ExecutionContext) loadingError(r *Realm, m *Module) Value {
-	return r.Context().NewError(ErrorKindType, "cannot load '"+m.ref.file+"' while it is being loaded")
+func (cx *ExecutionContext) loadingError(r *realm, m *Module) Value {
+	return r.context.NewError(ErrorKindType, "cannot load '"+m.ref.file+"' while it is being loaded")
 }
 
 // loadRequestedModules implements LoadRequestedModules: it returns its promise.
@@ -773,7 +773,7 @@ func (m *Module) exportedNames() []string {
 
 // initializeEnvironment implements InitializeEnvironment for the source text module m.
 func (m *Module) initializeEnvironment() (Value, bool) {
-	cx := m.ref.realm.Context()
+	cx := &m.ref.realm.context
 	code := m.code
 	for _, e := range code.IndirectExports {
 		if r := m.resolveExport(e.Name); r.kind != resolutionFound {
@@ -848,9 +848,9 @@ func (m *Module) initializeEnvironment() (Value, bool) {
 // resolve to r.
 func (cx *ExecutionContext) resolutionError(m *Module, n string, r resolution) Value {
 	if r.kind == resolutionAmbiguous {
-		return m.ref.realm.Context().NewError(ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
+		return m.ref.realm.context.NewError(ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
 	}
-	return m.ref.realm.Context().NewError(ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
+	return m.ref.realm.context.NewError(ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
 }
 
 // newClosure returns a closure of p whose enclosing function has the upvalues upvals. p must

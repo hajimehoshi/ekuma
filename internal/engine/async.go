@@ -58,7 +58,7 @@ func (ag *agent) callAsync(f *Object, this Value, args []Value) Value {
 	g.async = asyncFunction
 	cx := g.fp.context
 	cx.Run(func() {
-		g.object = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+		g.object = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
 		g.state = genSuspendedStart
 		g.asyncFunctionResume(ResumeNext, Undefined)
 	})
@@ -303,7 +303,7 @@ func (cx *ExecutionContext) thisAsyncFromSyncIterator(this Value) *asyncFromSync
 
 // initAsyncFromSyncIteratorPrototype creates %AsyncFromSyncIteratorPrototype%.
 func (cx *ExecutionContext) initAsyncFromSyncIteratorPrototype() {
-	proto := cx.NewObject(cx.realm.Intrinsic(IntrinsicAsyncIteratorPrototype))
+	proto := cx.NewObject(cx.Intrinsic(IntrinsicAsyncIteratorPrototype))
 	cx.realm.asyncFromSyncProto = proto
 	cx.Define(proto, cx.Key(keyNext), Value{o: cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
 		s := cx.thisAsyncFromSyncIterator(this)

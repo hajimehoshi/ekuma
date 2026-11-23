@@ -18,7 +18,7 @@ import (
 // initNumber defines Number and Boolean.
 // parseFloat and parseInt are the functions to define as properties of Number.
 func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicNumberPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicNumberPrototype)
 	ctor := constructor(cx, "Number", 1, engine.IntrinsicNumberPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		n := 0.0
 		if len(args) > 0 {
@@ -162,7 +162,7 @@ func initNumber(cx *engine.ExecutionContext, parseFloat, parseInt *engine.Object
 		return cx.NewStringBytes(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d))))
 	})
 
-	bproto := cx.Realm().Intrinsic(engine.IntrinsicBooleanPrototype)
+	bproto := cx.Intrinsic(engine.IntrinsicBooleanPrototype)
 	constructor(cx, "Boolean", 1, engine.IntrinsicBooleanPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ToBoolean(arg(args, 0))
 		if nt := cx.GetNewTarget(); nt != nil {
@@ -606,7 +606,7 @@ func fixExponent(s []byte) []byte {
 }
 
 func initSymbol(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicSymbolPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicSymbolPrototype)
 	ctor := constructor(cx, "Symbol", 0, engine.IntrinsicSymbolPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if cx.GetNewTarget() != nil {
 			cx.ThrowTypeError("Symbol is not a constructor")
@@ -845,20 +845,19 @@ func initMath(cx *engine.ExecutionContext) {
 }
 
 func initIterators(cx *engine.ExecutionContext) {
-	realm := cx.Realm()
-	symMethod(cx, realm.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicIteratorPrototype), cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
-	symMethod(cx, realm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(cx, cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), cx.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
 
 	arrayIterNext := cx.NewArrayIteratorNext()
-	cx.Define(realm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
+	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
 	cx.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
-	cx.Define(realm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Array Iterator"), engine.FlagConfigurable)
+	cx.Define(cx.Intrinsic(engine.IntrinsicArrayIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Array Iterator"), engine.FlagConfigurable)
 
-	plainIteratorNext(cx, realm.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(cx *engine.ExecutionContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
+	plainIteratorNext(cx, cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(cx *engine.ExecutionContext, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
 		if it.pos >= len(it.str) {
 			return engine.Undefined, false
 		}
@@ -867,9 +866,9 @@ func initIterators(cx *engine.ExecutionContext) {
 		it.pos += size
 		return cx.NewString(s), true
 	})
-	cx.Define(realm.Intrinsic(engine.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("String Iterator"), engine.FlagConfigurable)
+	cx.Define(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("String Iterator"), engine.FlagConfigurable)
 
-	gp := realm.Intrinsic(engine.IntrinsicGeneratorPrototype)
+	gp := cx.Intrinsic(engine.IntrinsicGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) *engine.Object {
 		return method(cx, gp, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			r, ok := cx.ResumeGenerator(this, mode, arg(args, 0))
@@ -885,7 +884,7 @@ func initIterators(cx *engine.ExecutionContext) {
 	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Generator"), engine.FlagConfigurable)
 
 	// The prototype chain of generator functions.
-	gf := realm.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
+	gf := cx.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
 	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 	functionKindConstructor(cx, "GeneratorFunction", engine.GeneratorFunction, gf)

@@ -71,7 +71,7 @@ func evalArg(args []Value, argc int) Value {
 // call site site, when the callee is the eval function, and reports whether it did. argc is as
 // for evalArg. The registers may move when it returns.
 func (cx *ExecutionContext) callEval(regs []Value, i *bytecode.Instr, site, argc int) (Value, bool) {
-	if regs[i.B].o != cx.realm.Intrinsic(IntrinsicEval) {
+	if regs[i.B].o != cx.Intrinsic(IntrinsicEval) {
 		return Undefined, false
 	}
 	return cx.directEval(evalArg(regs[i.B+2:], argc), site), true
@@ -314,7 +314,7 @@ func (cx *ExecutionContext) CreateDynamicFunction(ctor, newTarget *Object, kind 
 	}
 	proto := cx.GetPrototypeFromConstructor(newTarget, fallback)
 	f := cx.Call(cx.newScriptFunction(fp), Value{o: cx.realm.globalThis})
-	if proto != cx.realm.Intrinsic(fallback) {
+	if proto != cx.Intrinsic(fallback) {
 		cx.SetPrototypeOf(f.o, proto)
 	}
 	return f

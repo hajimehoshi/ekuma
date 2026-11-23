@@ -91,7 +91,7 @@ type nativeInfo struct {
 	fast *nativeFast
 
 	// realm is the [[Realm]] of the function.
-	realm *Realm
+	realm *realm
 }
 
 // nativeFast holds the forms of a native function that its callers use instead of calling it.
@@ -144,7 +144,7 @@ func (f *function) frameless() bool {
 }
 
 // iteratorStep returns the step function of the next method f of a built-in iterator in realm r, or nil.
-func (f *function) iteratorStep(r *Realm) IteratorStepFunc {
+func (f *function) iteratorStep(r *realm) IteratorStepFunc {
 	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
 	}
@@ -152,7 +152,7 @@ func (f *function) iteratorStep(r *Realm) IteratorStepFunc {
 }
 
 // iteratorPairStep is iteratorStep for the pair step.
-func (f *function) iteratorPairStep(r *Realm) IteratorPairStepFunc {
+func (f *function) iteratorPairStep(r *realm) IteratorPairStepFunc {
 	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
 	}
@@ -441,7 +441,7 @@ func (cx *ExecutionContext) growNatives() {
 // callNative dispatches a native call or construction. A proxy inherits its caller's context.
 func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
 	if info := f.fn.info; info != nil {
-		cx = info.realm.Context()
+		cx = &info.realm.context
 	}
 	if previous := cx.activate(); previous != cx {
 		defer previous.activate()
@@ -597,7 +597,7 @@ type agent struct {
 	active *ExecutionContext
 
 	// callerRealm is the realm that was current when the innermost interpreter loop started.
-	callerRealm *Realm
+	callerRealm *realm
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
@@ -657,7 +657,7 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 		maxBigIntResultBits: MaxBigIntBits,
 	}
 	r := host.newRealm()
-	cx := r.Context()
+	cx := &r.context
 	cx.activate()
 	cx.symbolShape = cx.newShape(nil, nil)
 	cx.initRealmPrototypes()
@@ -803,9 +803,9 @@ func TypedArrayPrototypeIntrinsic(t ElementType) Intrinsic {
 	return IntrinsicInt8ArrayPrototype + Intrinsic(t)
 }
 
-// Intrinsic returns the intrinsic object id of r, or nil before it is set.
-func (r *Realm) Intrinsic(id Intrinsic) *Object {
-	return r.intrinsics[id]
+// Intrinsic returns the intrinsic object id of the execution realm, or nil before it is set.
+func (cx *ExecutionContext) Intrinsic(id Intrinsic) *Object {
+	return cx.realm.intrinsics[id]
 }
 
 // SetIntrinsic makes o the intrinsic object id.
@@ -913,7 +913,7 @@ func (ag *agent) restoreException(v Value) {
 
 // newError returns a new error object of the given type in the execution realm.
 func (cx *ExecutionContext) newError(kind ErrorKind, msg string) *Object {
-	e := cx.NewErrorObject(cx.realm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
+	e := cx.NewErrorObject(cx.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	// A message that quotes a value of the script can be longer than a string may be.
 	cx.Define(e, cx.Key(KeyMessage), cx.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
 	e.setExtState(cx.newErrorData(e, msg, len(cx.frames), len(cx.natives)))
@@ -979,7 +979,7 @@ func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *error
 	if n := min(frames+natives, maxStackFrames); n > 0 {
 		d.calls = make([]stackCall, 0, n)
 	}
-	globalThis := e.CreationRealm().globalThis
+	globalThis := e.creationRealm().globalThis
 	j := natives - 1
 	for i := frames - 1; len(d.calls) < maxStackFrames; i-- {
 		// A native function called from the frame i runs inside it.

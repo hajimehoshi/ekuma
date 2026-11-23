@@ -14,7 +14,7 @@ type hostContext struct {
 	continuationData any
 
 	// enteredRealm stays fixed across ordinary cross-realm calls.
-	enteredRealm *Realm
+	enteredRealm *realm
 }
 
 // enterJob installs the job's host state across calls in its execution realm.

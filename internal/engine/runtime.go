@@ -401,7 +401,7 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 		if !cx.inheritsHasInstance(c.o) {
 			site = nil
 			if m := cx.GetMethod(c, cx.WellKnownSymbol(SymbolHasInstance)); m != nil {
-				if m != cx.realm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
+				if m != cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
 					return ToBoolean(cx.Call(m, c, v))
 				}
 			} else if !c.IsCallable() {
@@ -422,7 +422,7 @@ func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 func (cx *ExecutionContext) inheritsHasInstance(c *Object) bool {
 	// The property of %Function.prototype% is neither writable nor configurable, so only the
 	// objects before it on the chain can hide it.
-	fp := cx.realm.Intrinsic(IntrinsicFunctionPrototype)
+	fp := cx.Intrinsic(IntrinsicFunctionPrototype)
 	key := cx.WellKnownSymbol(SymbolHasInstance)
 	for h := c; h != fp; h = h.shape.proto {
 		// The properties that an unmaterialized function lacks have string keys.
@@ -1087,8 +1087,8 @@ func takenShape(dst, from *Object) *shape {
 // setupClass makes the function ctor a class constructor that extends parent,
 // which is hole for a class without an extends clause. It returns the prototype object.
 func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
-	protoParent := cx.realm.Intrinsic(IntrinsicObjectPrototype)
-	ctorParent := cx.realm.Intrinsic(IntrinsicFunctionPrototype)
+	protoParent := cx.Intrinsic(IntrinsicObjectPrototype)
+	ctorParent := cx.Intrinsic(IntrinsicFunctionPrototype)
 	if !parent.isHole() {
 		switch {
 		case parent.IsNull():
@@ -1135,24 +1135,22 @@ func (cx *ExecutionContext) IsConstructor(f *Object) bool {
 
 // closurePrototype returns the prototype of the closures of p, which is a generator or async function.
 func (p *funcProto) closurePrototype() *Object {
-	realm := p.context.realm
 	switch {
 	case p.isGenerator && p.isAsync:
-		return realm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
+		return p.context.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
 	case p.isGenerator:
-		return realm.Intrinsic(IntrinsicGeneratorFunctionPrototype)
+		return p.context.Intrinsic(IntrinsicGeneratorFunctionPrototype)
 	case p.isAsync:
-		return realm.Intrinsic(IntrinsicAsyncFunctionPrototype)
+		return p.context.Intrinsic(IntrinsicAsyncFunctionPrototype)
 	}
-	return realm.Intrinsic(IntrinsicFunctionPrototype)
+	return p.context.Intrinsic(IntrinsicFunctionPrototype)
 }
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
 // so that storing a new element in such an array cannot run a setter.
 func (cx *ExecutionContext) arrayProtoPlain() bool {
-	realm := cx.realm
-	a := realm.Intrinsic(IntrinsicArrayPrototype)
-	o := realm.Intrinsic(IntrinsicObjectPrototype)
+	a := cx.Intrinsic(IntrinsicArrayPrototype)
+	o := cx.Intrinsic(IntrinsicObjectPrototype)
 	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
 }
 
@@ -1164,7 +1162,7 @@ func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
 // %ArrayIteratorPrototype%.next are the original functions.
-func (ag *agent) arrayIterationUnmodified(r *Realm) bool {
+func (ag *agent) arrayIterationUnmodified(r *realm) bool {
 	c := &r.arrayIter
 	if c.epoch != ag.protoEpoch || !c.checked {
 		c.checked = true
@@ -1181,7 +1179,7 @@ func (ag *agent) arrayIterationUnmodified(r *Realm) bool {
 
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
-func (ag *agent) pairDestructuringPlain(r *Realm) bool {
+func (ag *agent) pairDestructuringPlain(r *realm) bool {
 	return ag.arrayIterationUnmodified(r) && r.arrayIter.noReturn
 }
 
@@ -1384,7 +1382,7 @@ func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultPro
 		if p := cx.GetV(Value{o: ctor}, cx.Key(KeyPrototype)); p.IsObject() {
 			return p.o
 		}
-		r = cx.GetFunctionRealm(ctor)
+		r = cx.FunctionContext(ctor).realm
 	}
 	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicTemporalZonedDateTimePrototype {
 		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {
@@ -1499,7 +1497,7 @@ func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f
 // NewNativeConstructor returned in the current realm, as the intrinsic id, which the property
 // then holds for good.
 func (cx *ExecutionContext) DefineConstructorPrototype(c *Object, id Intrinsic) {
-	cx.Define(c, cx.Key(KeyPrototype), Value{o: cx.realm.Intrinsic(id)}, 0)
+	cx.Define(c, cx.Key(KeyPrototype), Value{o: cx.Intrinsic(id)}, 0)
 	c.fn.info.prototype, c.fn.info.fixedPrototype = id, true
 }
 

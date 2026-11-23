@@ -200,7 +200,7 @@ func (r *realm) newLocale(cx *engine.ExecutionContext, this engine.Value, args [
 
 // initLocale defines Intl.Locale.
 func (r *realm) initLocale(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("Locale", 1, r.newLocale)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -288,7 +288,7 @@ func (r *realm) initLocale(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "getTextInfo", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := locale.TextDirectionOf(thisLocale(cx, this, "getTextInfo").tag)
-		info := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+		info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
 		return engine.ObjectValue(info)
 	})
@@ -298,7 +298,7 @@ func (r *realm) initLocale(cx *engine.ExecutionContext) {
 		for i, d := range weekend {
 			days[i] = engine.Number(float64(d))
 		}
-		info := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+		info := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("firstDay")), engine.Number(float64(firstDay)))
 		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
 		return engine.ObjectValue(info)

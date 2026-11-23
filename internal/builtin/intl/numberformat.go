@@ -417,7 +417,7 @@ func (nf *numberFormatData) formatRange(cx *engine.ExecutionContext, args []engi
 
 // initNumberFormat defines Intl.NumberFormat.
 func (r *realm) initNumberFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("NumberFormat", 0, r.newNumberFormat)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -472,7 +472,7 @@ func (r *realm) initNumberFormat(cx *engine.ExecutionContext) {
 // the internal slot.
 func (nf *numberFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.Value {
 	o := &nf.opts
-	out := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
 		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
@@ -534,14 +534,14 @@ func initToLocaleString(cx *engine.ExecutionContext) {
 		nf := createNumberFormat(cx, arg(args, 0), arg(args, 1))
 		return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
 	}
-	method(cx, cx.Realm().Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, cx.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)
 		if !ok {
 			cx.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
 		}
 		return format(cx, args, number.FromFloat(x))
 	})
-	method(cx, cx.Realm().Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, cx.Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisBigIntValue(this)
 		if !ok {
 			cx.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")

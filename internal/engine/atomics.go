@@ -246,7 +246,7 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 		timedIndex: -1,
 	}
 	if async {
-		w.promise = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+		w.promise = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
 		w.promiseContext = cx
 	} else {
 		w.done = make(chan struct{})

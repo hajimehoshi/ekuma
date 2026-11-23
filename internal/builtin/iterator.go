@@ -119,7 +119,7 @@ func initIteratorHelpers(cx *engine.ExecutionContext) {
 		next: cx.Intern("next"),
 		ret:  cx.Intern("return"),
 	}
-	proto := cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
 	var ctor *engine.Object
 	ctor = cx.NewNativeConstructor("Iterator", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
@@ -179,7 +179,7 @@ type wrappedIterator struct {
 }
 
 func initIteratorFrom(cx *engine.ExecutionContext, k *iteratorKeys, ctor *engine.Object) {
-	wrapProto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype))
+	wrapProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	thisWrapped := func(cx *engine.ExecutionContext, this engine.Value, what string) *wrappedIterator {
 		w, _ := engine.IteratorState(this).(*wrappedIterator)
 		if w == nil {
@@ -746,7 +746,7 @@ func (h *chunksHelper) close(cx *engine.ExecutionContext) {
 
 // initLazyIteratorMethods defines the methods of Iterator.prototype that return iterator helpers.
 func initLazyIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys, newHelper func(*engine.ExecutionContext, helperBody) engine.Value) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(cx, proto, "map", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "map")
 		f := callableArg(cx, it, arg(args, 0))
@@ -818,7 +818,7 @@ func initLazyIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys, newHe
 
 // initEagerIteratorMethods defines the methods of Iterator.prototype that consume the iterator.
 func initEagerIteratorMethods(cx *engine.ExecutionContext, k *iteratorKeys) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(cx, proto, "reduce", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(cx, this, "reduce")
 		f := callableArg(cx, it, arg(args, 0))

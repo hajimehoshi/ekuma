@@ -284,7 +284,7 @@ func (e *regexpEnv) execMatch(cx *engine.ExecutionContext, r *engine.Object, s e
 // Construct(%RegExp%, « r, flags ») does for a RegExp object r with the source src for which
 // [engine.ExecutionContext.IsUnmodifiedRegExp] holds.
 func cloneRegExp(cx *engine.ExecutionContext, src wtf8.String, flags engine.Value) *engine.Object {
-	return cx.RegExpInitialize(cx.RegExpAlloc(cx.Realm().Intrinsic(engine.IntrinsicRegExp)), cx.NewString(src), flags)
+	return cx.RegExpInitialize(cx.RegExpAlloc(cx.Intrinsic(engine.IntrinsicRegExp)), cx.NewString(src), flags)
 }
 
 // regExpExecWith implements RegExpExec with the value of r.exec already read.
@@ -340,7 +340,7 @@ func requireGlobalRegExp(cx *engine.ExecutionContext, o *engine.Object, name str
 
 // regExpCreate implements RegExpCreate.
 func regExpCreate(cx *engine.ExecutionContext, p, f engine.Value) *engine.Object {
-	return cx.RegExpInitialize(cx.RegExpAlloc(cx.Realm().Intrinsic(engine.IntrinsicRegExp)), p, f)
+	return cx.RegExpInitialize(cx.RegExpAlloc(cx.Intrinsic(engine.IntrinsicRegExp)), p, f)
 }
 
 // speciesConstructor implements SpeciesConstructor.
@@ -475,13 +475,13 @@ func initRegExp(cx *engine.ExecutionContext) {
 		source:    cx.Intern("source"),
 		execKey:   cx.Intern("exec"),
 	}
-	proto := cx.Realm().Intrinsic(engine.IntrinsicRegExpPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicRegExpPrototype)
 	ctor := constructor(cx, "RegExp", 2, engine.IntrinsicRegExpPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		pattern, flags := arg(args, 0), arg(args, 1)
 		patternIsRegExp := isRegExp(cx, pattern)
 		nt := cx.GetNewTarget()
 		if nt == nil {
-			nt = cx.Realm().Intrinsic(engine.IntrinsicRegExp)
+			nt = cx.Intrinsic(engine.IntrinsicRegExp)
 			if patternIsRegExp && flags.IsUndefined() {
 				pc := cx.GetV(pattern, cx.Key(engine.KeyConstructor))
 				if pc.IsObject() && pc.Object() == nt {
@@ -577,7 +577,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 			}
 			re := this.Object().RegExpMatcher()
 			if re == nil {
-				if this.Object() == cx.Realm().Intrinsic(engine.IntrinsicRegExpPrototype) {
+				if this.Object() == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
 					return engine.Undefined
 				}
 				cx.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-RegExp object")
@@ -608,7 +608,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 		}
 		o := this.Object()
 		if o.RegExpMatcher() == nil {
-			if o == cx.Realm().Intrinsic(engine.IntrinsicRegExpPrototype) {
+			if o == cx.Intrinsic(engine.IntrinsicRegExpPrototype) {
 				return cx.NewString("(?:)")
 			}
 			cx.ThrowTypeError("RegExp.prototype.source getter called on non-RegExp object")
@@ -651,7 +651,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 		return engine.ObjectValue(cx.NewArray(out))
 	})
 
-	iterProto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype))
+	iterProto := cx.NewObject(cx.Intrinsic(engine.IntrinsicIteratorPrototype))
 	iteratorNext(cx, iterProto, engine.IteratorMethodRealm, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		st, ok := engine.IteratorState(this).(*regexpStringIterator)
 		if !ok {
@@ -683,7 +683,7 @@ func initRegExp(cx *engine.ExecutionContext) {
 		unmodified := cx.IsUnmodifiedRegExp(r)
 		var c *engine.Object
 		if !unmodified {
-			c = speciesConstructor(cx, r, cx.Realm().Intrinsic(engine.IntrinsicRegExp))
+			c = speciesConstructor(cx, r, cx.Intrinsic(engine.IntrinsicRegExp))
 		}
 		flags := env.getFlags(cx, r)
 		var matcher *engine.Object
@@ -947,9 +947,9 @@ func (e *regexpEnv) split(cx *engine.ExecutionContext, rx *engine.Object, s engi
 	unmodified := cx.IsUnmodifiedRegExp(rx)
 	var c *engine.Object
 	if unmodified {
-		c = cx.Realm().Intrinsic(engine.IntrinsicRegExp)
+		c = cx.Intrinsic(engine.IntrinsicRegExp)
 	} else {
-		c = speciesConstructor(cx, rx, cx.Realm().Intrinsic(engine.IntrinsicRegExp))
+		c = speciesConstructor(cx, rx, cx.Intrinsic(engine.IntrinsicRegExp))
 	}
 	flags := e.getFlags(cx, rx).Str()
 	unicodeMatching := strings.ContainsAny(string(flags), "uv")
@@ -987,7 +987,7 @@ func (e *regexpEnv) split(cx *engine.ExecutionContext, rx *engine.Object, s engi
 	}
 	// Reading exec from a splitter that is not unmodified can run JavaScript, so it is read
 	// only where RegExpExec reads it.
-	if splitter != nil && c == cx.Realm().Intrinsic(engine.IntrinsicRegExp) && cx.IsUnmodifiedRegExp(splitter) {
+	if splitter != nil && c == cx.Intrinsic(engine.IntrinsicRegExp) && cx.IsUnmodifiedRegExp(splitter) {
 		fast = true
 		re = splitter.RegExpMatcher()
 	}

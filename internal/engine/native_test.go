@@ -56,14 +56,13 @@ func TestDerivedReturnErrorLocation(t *testing.T) {
 	if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("Ctor"), ctor); err != nil {
 		t.Fatal(err)
 	}
-	callerRealm := cx.Realm()
 	var loc engine.ExceptionLocation
 	cx.SetExceptionReporter(func(thrown engine.Value, site engine.ExceptionLocation) {
 		loc = site
-		if thrown.Object().CreationRealm() != callerRealm {
+		if thrown.Object().CreationContext() != cx {
 			t.Error("derived constructor return error was created outside the caller's realm")
 		}
-		if got := cx.ProtoOf(thrown.Object()); got != callerRealm.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+		if got := cx.ProtoOf(thrown.Object()); got != cx.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
 			t.Error("derived constructor return error has the wrong prototype")
 		}
 	})

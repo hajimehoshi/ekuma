@@ -170,7 +170,7 @@ type promiseObject struct {
 // newIntrinsicCapability returns the capability of a new promise of %Promise%,
 // as NewPromiseCapability(%Promise%) does.
 func (cx *ExecutionContext) newIntrinsicCapability() *PromiseCapability {
-	proto := cx.realm.Intrinsic(IntrinsicPromisePrototype)
+	proto := cx.Intrinsic(IntrinsicPromisePrototype)
 	return &PromiseCapability{
 		promise:   newPromiseObject(cx.shapeForRealm(proto, cx.realm)),
 		intrinsic: true,
@@ -217,7 +217,7 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 	if !c.IsObject() || !cx.IsConstructor(c.o) {
 		cx.ThrowTypeError(cx.DisplayString(c) + " is not a constructor")
 	}
-	if c.o == cx.realm.Intrinsic(IntrinsicPromise) {
+	if c.o == cx.Intrinsic(IntrinsicPromise) {
 		// Constructing %Promise% with an executor observes nothing that this does not.
 		return cx.newIntrinsicCapability()
 	}
@@ -250,7 +250,7 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 // ensureResolvingFunctions materializes the deferred functions of an intrinsic capability.
 func (ag *agent) ensureResolvingFunctions(c *PromiseCapability) {
 	if c.resolve == nil {
-		c.promise.CreationRealm().Context().createResolvingFunctions(c)
+		c.promise.CreationContext().createResolvingFunctions(c)
 	}
 }
 
@@ -267,12 +267,12 @@ func (ag *agent) CapabilityReject(c *PromiseCapability) Value {
 }
 
 // resolvingRealm returns the realm of an intrinsic capability's resolving functions.
-func (c *PromiseCapability) resolvingRealm() *Realm {
+func (c *PromiseCapability) resolvingRealm() *realm {
 	if c.resolve != nil {
 		// A thenable job creates its own resolving functions in the job's realm.
 		return c.resolve.fn.info.realm
 	}
-	return c.promise.CreationRealm()
+	return c.promise.creationRealm()
 }
 
 // canSettleDirectly reports whether the intrinsic resolving functions run in the current realm.
@@ -318,9 +318,9 @@ func (cx *ExecutionContext) IfAbruptRejectPromise(c *PromiseCapability, f func()
 
 // resolvePromise is what a promise resolve function does with resolution once it was not
 // already resolved: the promise resolution procedure.
-func (cx *ExecutionContext) resolvePromise(resolverRealm *Realm, p *Object, resolution Value) {
+func (cx *ExecutionContext) resolvePromise(resolverRealm *realm, p *Object, resolution Value) {
 	if resolution.o == p {
-		cx.rejectPromise(p, resolverRealm.Context().NewError(ErrorKindType, "chaining cycle detected for promise"))
+		cx.rejectPromise(p, resolverRealm.context.NewError(ErrorKindType, "chaining cycle detected for promise"))
 		return
 	}
 	if !resolution.IsObject() {
@@ -347,7 +347,7 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *Realm, p *Object, reso
 func (cx *ExecutionContext) enqueueThenableJob(p *Object, thenable, then Value) {
 	cx.enqueuePromiseJob(job{
 		kind:             jobThenable,
-		context:          cx.promiseJobRealm(then.o).Context(),
+		context:          &cx.promiseJobRealm(then.o).context,
 		continuationData: cx.continuationData,
 		argument:         thenable,
 		promise:          p,
@@ -450,7 +450,7 @@ func (cx *ExecutionContext) enqueueReactionJob(r *pendingReaction, arg Value, re
 		if callback == nil {
 			callback = other
 		}
-		jobContext = cx.promiseJobRealm(callback).Context()
+		jobContext = &cx.promiseJobRealm(callback).context
 	}
 	cx.enqueuePromiseJob(job{
 		kind:             jobReaction,
@@ -512,10 +512,10 @@ func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 	var rejected bool
 	switch {
 	case IsPromise(v):
-		if ctor := cx.GetV(v, cx.Key(KeyConstructor)); ctor.o == cx.realm.Intrinsic(IntrinsicPromise) {
+		if ctor := cx.GetV(v, cx.Key(KeyConstructor)); ctor.o == cx.Intrinsic(IntrinsicPromise) {
 			p = v.o
 		} else {
-			p = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+			p = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
 			cx.resolvePromise(cx.realm, p, v)
 		}
 	case v.IsObject():
@@ -525,7 +525,7 @@ func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 		}); !ok {
 			v, rejected = e, true
 		} else if then.IsCallable() {
-			p = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+			p = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
 			cx.enqueueThenableJob(p, v, then)
 		}
 	}
@@ -667,7 +667,7 @@ func (q *jobQueue) dequeue() job {
 }
 
 // promiseJobRealm implements the GetFunctionRealm step of both promise job constructors.
-func (cx *ExecutionContext) promiseJobRealm(callback *Object) *Realm {
+func (cx *ExecutionContext) promiseJobRealm(callback *Object) *realm {
 	if cx.trackJobRealms && callback != nil {
 		if r := cx.functionRealmOrNil(callback); r != nil {
 			return r
@@ -696,7 +696,7 @@ func (cx *ExecutionContext) QueueMicrotask(callback Value) {
 	}
 	cx.jobs.enqueue(job{
 		kind:             jobCallback,
-		context:          callback.o.CreationRealm().Context(),
+		context:          callback.o.CreationContext(),
 		continuationData: cx.continuationData,
 		callback:         callback.o,
 	})

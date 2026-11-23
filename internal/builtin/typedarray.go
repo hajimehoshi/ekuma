@@ -1079,7 +1079,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		storeAt(cx, a, at, int(idx), v)
 		return engine.ObjectValue(a)
 	})
-	toString := cx.Get(cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype), engine.NamedKey(cx.Key(engine.KeyToString)))
+	toString := cx.Get(cx.Intrinsic(engine.IntrinsicArrayPrototype), engine.NamedKey(cx.Key(engine.KeyToString)))
 	cx.Define(proto, cx.Key(engine.KeyToString), toString, engine.FlagsHidden)
 
 	for typ := range engine.ElementTypeCount {

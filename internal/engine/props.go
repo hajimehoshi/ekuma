@@ -367,7 +367,7 @@ func (ag *agent) InitLazyObject(o *Object) {
 	o.class = classObject
 	o.setExtState(nil)
 	o.flags &^= objExotic
-	cx := o.CreationRealm().Context()
+	cx := o.CreationContext()
 	cx.Run(func() {
 		init(cx, o)
 	})
@@ -413,25 +413,25 @@ func (cx *ExecutionContext) lookup(o *Object, key *Object) (holder *Object, p pr
 func (cx *ExecutionContext) protoStart(v Value, key PropKey) *Object {
 	o := v.o
 	if o == numberObject {
-		return cx.realm.Intrinsic(IntrinsicNumberPrototype)
+		return cx.Intrinsic(IntrinsicNumberPrototype)
 	}
 	if o == nil {
 		cx.ThrowTypeError("cannot read properties of undefined (reading '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "')")
 	}
 	switch o.kind {
 	case kindFalse, kindTrue:
-		return cx.realm.Intrinsic(IntrinsicBooleanPrototype)
+		return cx.Intrinsic(IntrinsicBooleanPrototype)
 	case kindSymbol:
-		return cx.realm.Intrinsic(IntrinsicSymbolPrototype)
+		return cx.Intrinsic(IntrinsicSymbolPrototype)
 	case kindBigInt:
-		return cx.realm.Intrinsic(IntrinsicBigIntPrototype)
+		return cx.Intrinsic(IntrinsicBigIntPrototype)
 	case kindNull:
 		cx.ThrowTypeError("cannot read properties of " + cx.DisplayString(v) + " (reading '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "')")
 	case kindString:
 		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
 		}
-		if p := cx.realm.Intrinsic(IntrinsicStringPrototype); o.shape.proto != p {
+		if p := cx.Intrinsic(IntrinsicStringPrototype); o.shape.proto != p {
 			// The shape of a string made in another realm leads to the String.prototype of
 			// that realm.
 			return cx.NewStringObject(o, p)
@@ -514,7 +514,7 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 		if e.shape != start.shape {
 			e = &c.second
 		}
-		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == cx.protoEpoch && e.holder == cx.realm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
+		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == cx.protoEpoch && e.holder == cx.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
 			return Number(float64(cx.typedArrayLength(start))), nil
 		}
 	}

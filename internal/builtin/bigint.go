@@ -31,7 +31,7 @@ func low64(i *big.Int) uint64 {
 
 // initBigInt defines BigInt.
 func initBigInt(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicBigIntPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicBigIntPrototype)
 	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if cx.GetNewTarget() != nil {
 			cx.ThrowTypeError("BigInt is not a constructor")

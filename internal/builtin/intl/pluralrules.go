@@ -73,7 +73,7 @@ func thisPluralRules(cx *engine.ExecutionContext, this engine.Value, name string
 
 // initPluralRules defines Intl.PluralRules.
 func (r *realm) initPluralRules(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("PluralRules", 0, r.newPluralRules)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -85,7 +85,7 @@ func (r *realm) initPluralRules(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		pr := thisPluralRules(cx, this, "resolvedOptions")
-		out := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+		out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 		set := func(name string, v engine.Value) {
 			cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
 		}

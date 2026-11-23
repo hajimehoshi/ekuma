@@ -55,7 +55,7 @@ func makeDate(c *[dateComponentCount]float64) float64 {
 // dateStringOffset returns the local UTC offset and the display name for Date strings.
 func dateStringOffset(cx *engine.ExecutionContext, tz datetime.TimeZone, tv float64) (float64, string) {
 	offset, name := tz.Offset(tv)
-	if ext, ok := cx.RealmExtension(cx.Realm()).(interface {
+	if ext, ok := cx.RealmExtension().(interface {
 		DateTimeZoneName(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string
 	}); ok {
 		if s := ext.DateTimeZoneName(cx, tz, int64(tv), int64(offset)); s != "" {
@@ -89,7 +89,7 @@ func formatDate(cx *engine.ExecutionContext, method string, tv float64) string {
 }
 
 func initDate(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicDatePrototype)
+	proto := cx.Intrinsic(engine.IntrinsicDatePrototype)
 
 	ctor := constructor(cx, "Date", 7, engine.IntrinsicDatePrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()

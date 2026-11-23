@@ -9,7 +9,7 @@ import (
 )
 
 func initShadowRealm(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	cx.SetIntrinsic(engine.IntrinsicShadowRealmPrototype, proto)
 	constructor(cx, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
@@ -44,8 +44,8 @@ func initShadowRealm(cx *engine.ExecutionContext) {
 
 // performShadowRealmEval implements PerformShadowRealmEval with the current realm as the
 // caller realm.
-func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, evalRealm *engine.Realm) engine.Value {
-	v, ok := cx.EvalInRealm(evalRealm, src)
+func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, target *engine.ExecutionContext) engine.Value {
+	v, ok := cx.EvalInRealm(target, src)
 	if !ok {
 		cx.ThrowTypeError("the evaluation in the ShadowRealm threw")
 	}
@@ -54,8 +54,8 @@ func performShadowRealmEval(cx *engine.ExecutionContext, src wtf8.String, evalRe
 
 // shadowRealmImportValue implements ShadowRealmImportValue with the current realm as the
 // caller realm.
-func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, exportName engine.Value, evalRealm *engine.Realm) engine.Value {
-	inner := cx.ImportInRealm(evalRealm, specifier)
+func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, exportName engine.Value, target *engine.ExecutionContext) engine.Value {
+	inner := target.ImportInRealm(specifier)
 	onFulfilled := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		exports := arg(args, 0).Object()
 		k := cx.ToPropertyKey(exportName)
@@ -68,7 +68,7 @@ func shadowRealmImportValue(cx *engine.ExecutionContext, specifier wtf8.String, 
 		cx.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(specifier) + "' in the ShadowRealm")
 		return engine.Undefined
 	})
-	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Realm().Intrinsic(engine.IntrinsicPromise)))
+	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	return cx.PerformPromiseThen(engine.ObjectValue(inner), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected), c)
 }
 
@@ -106,15 +106,14 @@ func wrappedFunctionCreate(cx *engine.ExecutionContext, target *engine.Object) *
 // ordinaryWrappedFunctionCall implements OrdinaryWrappedFunctionCall for the wrapped function
 // of target, whose realm is the current one.
 func ordinaryWrappedFunctionCall(cx *engine.ExecutionContext, target *engine.Object, this engine.Value, args []engine.Value) engine.Value {
-	targetRealm := cx.GetFunctionRealm(target)
+	targetContext := cx.FunctionContext(target)
 	wrappedArgs := make([]engine.Value, len(args))
 	var wrappedThis engine.Value
-	targetRealm.Context().Run(func() {
-		cx := targetRealm.Context()
+	targetContext.Run(func() {
 		for i, a := range args {
-			wrappedArgs[i] = getWrappedValue(cx, a)
+			wrappedArgs[i] = getWrappedValue(targetContext, a)
 		}
-		wrappedThis = getWrappedValue(cx, this)
+		wrappedThis = getWrappedValue(targetContext, this)
 	})
 	return getWrappedValue(cx, cx.Call(target, wrappedThis, wrappedArgs...))
 }

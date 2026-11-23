@@ -74,15 +74,14 @@ func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 // the realm joins the previous realm's group after detachment, or the entered
 // realm's group when previous is nil.
 // Property operations on globals outside the group use foreignView.
-func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAccess bool) Value {
+func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *ExecutionContext, shareAccess bool) Value {
 	var proxy, handler *Object
 	if previous != nil {
-		previous.Context().Run(func() {
-			cx := previous.Context()
-			cx.DetachGlobalProxy()
-			proxy = cx.realm.globalThis
+		previous.Run(func() {
+			previous.DetachGlobalProxy()
+			proxy = previous.realm.globalThis
 			if shareAccess {
-				handler = cx.realm.globalProxyHandler
+				handler = previous.realm.globalProxyHandler
 			}
 		})
 	} else if shareAccess && cx.enteredRealm != nil {
@@ -127,7 +126,7 @@ func (cx *ExecutionContext) DetachGlobalProxy() {
 	cx.realm.globalProxyHandler = cx.defaultGlobalHandler()
 }
 
-func (ag *agent) hasDetachedGlobal(r *Realm) bool {
+func (ag *agent) hasDetachedGlobal(r *realm) bool {
 	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target != r.global
 }
 
@@ -160,17 +159,17 @@ func IsArrayPlain(v Value) (is, ok bool) {
 	return o != nil && o.kind == kindArray, true
 }
 
-// GetFunctionRealm implements GetFunctionRealm.
-func (cx *ExecutionContext) GetFunctionRealm(f *Object) *Realm {
+// FunctionContext returns the context of GetFunctionRealm(f).
+func (cx *ExecutionContext) FunctionContext(f *Object) *ExecutionContext {
 	if r := cx.functionRealmOrNil(f); r != nil {
-		return r
+		return &r.context
 	}
 	cx.throwRevoked("GetFunctionRealm")
 	return nil
 }
 
 // functionRealmOrNil returns the function's realm, or nil for a revoked proxy.
-func (cx *ExecutionContext) functionRealmOrNil(f *Object) *Realm {
+func (cx *ExecutionContext) functionRealmOrNil(f *Object) *realm {
 	for {
 		switch {
 		case f.fn != nil && f.fn.bound != nil:

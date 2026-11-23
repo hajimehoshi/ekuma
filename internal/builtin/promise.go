@@ -166,7 +166,7 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 }
 
 func initPromise(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicPromisePrototype)
+	proto := cx.Intrinsic(engine.IntrinsicPromisePrototype)
 	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		nt := cx.GetNewTarget()
 		if nt == nil {
@@ -357,7 +357,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		if !this.IsObject() {
 			cx.ThrowTypeError("Promise.prototype.finally called on non-object")
 		}
-		c := speciesConstructor(cx, this.Object(), cx.Realm().Intrinsic(engine.IntrinsicPromise))
+		c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
 		onFinally := arg(args, 0)
 		thenFinally, catchFinally := onFinally, onFinally
 		if onFinally.IsCallable() {
@@ -388,7 +388,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		if !engine.IsPromise(this) {
 			cx.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + cx.DisplayString(this))
 		}
-		c := speciesConstructor(cx, this.Object(), cx.Realm().Intrinsic(engine.IntrinsicPromise))
+		c := speciesConstructor(cx, this.Object(), cx.Intrinsic(engine.IntrinsicPromise))
 		pc := cx.NewPromiseCapability(engine.ObjectValue(c))
 		return cx.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
 	})

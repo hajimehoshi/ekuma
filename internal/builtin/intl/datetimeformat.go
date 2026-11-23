@@ -563,7 +563,7 @@ func rangeArgs(cx *engine.ExecutionContext, args []engine.Value) (formattable, f
 
 // initDateTimeFormat defines Intl.DateTimeFormat.
 func (r *realm) initDateTimeFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("DateTimeFormat", 0, r.newDateTimeFormat)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -616,7 +616,7 @@ func (r *realm) initDateTimeFormat(cx *engine.ExecutionContext) {
 // resolvedOptions implements Intl.DateTimeFormat.prototype.resolvedOptions after the check of
 // the internal slot.
 func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.Value {
-	out := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
 		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
@@ -657,11 +657,11 @@ func (dtf *dateTimeFormatData) resolvedOptions(cx *engine.ExecutionContext) engi
 // initTemporalToLocaleString installs the ECMA-402 toLocaleString methods on the Temporal prototypes.
 func initTemporalToLocaleString(cx *engine.ExecutionContext) {
 	global := cx.GlobalObject().Object()
-	orig := cx.Realm().Intrinsic(engine.IntrinsicTemporal)
+	orig := cx.Intrinsic(engine.IntrinsicTemporal)
 	if orig == nil {
 		return
 	}
-	ns := cx.NewLazyObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
+	ns := cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
 		for _, k := range cx.OwnKeys(orig) {
 			d, _ := cx.GetOwnProperty(orig, k)
 			cx.DefineOwnProperty(ns, k, d)
@@ -734,7 +734,7 @@ func initDateToLocaleString(cx *engine.ExecutionContext) {
 		{"toLocaleDateString", date.Date, date.Date},
 		{"toLocaleTimeString", date.Time, date.Time},
 	} {
-		method(cx, cx.Realm().Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		method(cx, cx.Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			t, ok := engine.ThisTimeValue(this)
 			if !ok {
 				cx.ThrowTypeError("Date.prototype." + m.name + " requires that 'this' be a Date")

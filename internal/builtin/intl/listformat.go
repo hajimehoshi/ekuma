@@ -83,7 +83,7 @@ func stringListFromIterable(cx *engine.ExecutionContext, v engine.Value) []strin
 
 // initListFormat defines Intl.ListFormat.
 func (r *realm) initListFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("ListFormat", 0, r.newListFormat)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)

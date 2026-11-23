@@ -22,7 +22,7 @@ type regExpState struct {
 	lent bool
 
 	// realm is the [[Realm]] of the object.
-	realm *Realm
+	realm *realm
 }
 
 // regExpSite is a regular expression literal of a function.
@@ -43,7 +43,7 @@ const regExpCacheLimit = 1024
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor
 // newTarget, with an own lastIndex property and no matcher yet.
 func (cx *ExecutionContext) RegExpAlloc(newTarget *Object) *Object {
-	legacy := newTarget == cx.realm.Intrinsic(IntrinsicRegExp)
+	legacy := newTarget == cx.Intrinsic(IntrinsicRegExp)
 	var s *shape
 	if legacy {
 		// The prototype property of %RegExp% is neither writable nor configurable.
@@ -60,7 +60,7 @@ func (cx *ExecutionContext) RegExpAlloc(newTarget *Object) *Object {
 
 // regExpShape returns the shape of a new RegExp object whose prototype is %RegExp.prototype%.
 func (cx *ExecutionContext) regExpShape() *shape {
-	proto := cx.realm.Intrinsic(IntrinsicRegExpPrototype)
+	proto := cx.Intrinsic(IntrinsicRegExpPrototype)
 	if s := cx.realm.shapes.regExp; s != nil && s.proto == proto {
 		return s
 	}
@@ -319,8 +319,8 @@ func (p *originalProp) find() bool {
 // and ctorKeys of %RegExp%, which [ExecutionContext.IsUnmodifiedRegExp] requires to stay unchanged.
 // Every key must name an existing property whose value, if it is a data property, is an object.
 func (cx *ExecutionContext) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
-	proto := cx.realm.Intrinsic(IntrinsicRegExpPrototype)
-	ctor := cx.realm.Intrinsic(IntrinsicRegExp)
+	proto := cx.Intrinsic(IntrinsicRegExpPrototype)
+	ctor := cx.Intrinsic(IntrinsicRegExp)
 	r := &cx.realm.regExpOriginals
 	// hasRegExpShape compares against this shape, so it must exist from now on.
 	cx.regExpShape()

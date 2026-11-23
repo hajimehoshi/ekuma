@@ -160,7 +160,7 @@ func thisCollator(cx *engine.ExecutionContext, this engine.Value, name string) *
 
 // initCollator defines Intl.Collator.
 func (r *realm) initCollator(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("Collator", 0, r.newCollator)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -184,7 +184,7 @@ func (r *realm) initCollator(cx *engine.ExecutionContext) {
 	})
 	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		cd := thisCollator(cx, this, "resolvedOptions")
-		out := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+		out := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 		set := func(name string, v engine.Value) {
 			cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
 		}
@@ -202,7 +202,7 @@ func (r *realm) initCollator(cx *engine.ExecutionContext) {
 
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
 func initLocaleCompare(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicStringPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
 	method(cx, proto, "localeCompare", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if this.IsNullish() {
 			cx.ThrowTypeError("String.prototype.localeCompare called on null or undefined")
@@ -212,7 +212,7 @@ func initLocaleCompare(cx *engine.ExecutionContext) {
 		locales, options := arg(args, 1), arg(args, 2)
 		var cd *collatorData
 		if locales.IsUndefined() && options.IsUndefined() {
-			r := cx.RealmExtension(cx.Realm()).(*realm)
+			r := cx.RealmExtension().(*realm)
 			if l := defaultLocale(cx); r.defaultCollator == nil || r.defaultCollatorLocale != l {
 				r.defaultCollator = createCollator(cx, engine.Undefined, engine.Undefined)
 				r.defaultCollatorLocale = l
@@ -231,7 +231,7 @@ var caseLocales = []string{"az", "el", "lt", "tr"}
 // initLocaleCase replaces String.prototype.toLocaleUpperCase and toLocaleLowerCase with the
 // versions of ECMA-402.
 func initLocaleCase(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicStringPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
 	for _, m := range []struct {
 		name  string
 		upper bool
@@ -507,11 +507,11 @@ func initArrayToLocaleString(cx *engine.ExecutionContext) {
 		}
 		return cx.NewString(b.String())
 	}
-	method(cx, cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, cx.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := cx.ToObject(this)
 		return join(cx, o, cx.LengthOfArrayLike(o), args)
 	})
-	typedArrayProto := cx.ProtoOf(cx.Realm().Intrinsic(engine.IntrinsicInt8ArrayPrototype))
+	typedArrayProto := cx.ProtoOf(cx.Intrinsic(engine.IntrinsicInt8ArrayPrototype))
 	method(cx, typedArrayProto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		// ValidateTypedArray.
 		t := engine.TypedArrayData(this)

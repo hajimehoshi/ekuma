@@ -12,21 +12,19 @@ import (
 )
 
 func TestExecutionContextHostReentry(t *testing.T) {
-	cx, host := engine.NewExecutionContext(nil)
-	builtin.Install(cx)
-	a := cx.Realm()
-	b := cx.CreateRealm(builtin.Install)
-	c := cx.CreateRealm(builtin.Install)
+	a, host := engine.NewExecutionContext(nil)
+	builtin.Install(a)
+	b := a.CreateRealm(builtin.Install)
+	c := a.CreateRealm(builtin.Install)
 	stop := errors.New("stop")
 
 	for _, outcome := range []string{"return", "allocate", "throw", "iterator step", "interrupt"} {
 		t.Run(outcome, func(t *testing.T) {
 			var outer *engine.ExecutionContext
 			var inner engine.Value
-			c.Context().Run(func() {
-				cx := c.Context()
-				probe := cx.NewFunction("probe", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
-					if host.ActiveContext().Realm() != c || !cx.IsEnteredRealm(a) {
+			c.Run(func() {
+				probe := c.NewFunction("probe", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
+					if host.ActiveContext() != c || !a.IsEnteredRealm() {
 						t.Error("expected running C and entered A during reentry")
 					}
 					switch outcome {
@@ -36,7 +34,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 						outer.ThrowTypeError("from B")
 					case "iterator step":
 						defer func() {
-							if host.ActiveContext().Realm() != c {
+							if host.ActiveContext() != c {
 								t.Error("iterator step did not restore C on throw")
 							}
 						}()
@@ -47,21 +45,20 @@ func TestExecutionContextHostReentry(t *testing.T) {
 					}
 					return engine.Undefined
 				})
-				cx.Define(cx.GlobalObject().Object(), cx.Intern("probe"), probe, engine.FlagsData)
+				c.Define(c.GlobalObject().Object(), c.Intern("probe"), probe, engine.FlagsData)
 				var err error
-				inner, err = runScript(cx, "C", "(function () { return probe(() => 0) ?? []; })")
+				inner, err = runScript(c, "C", "(function () { return probe(() => 0) ?? []; })")
 				if err != nil {
 					t.Fatal(err)
 				}
 			})
 
 			var ctor *engine.Object
-			b.Context().Run(func() {
-				bContext := b.Context()
-				ctor = bContext.NewNativeConstructor("Bridge", 0, func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
+			b.Run(func() {
+				ctor = b.NewNativeConstructor("Bridge", 0, func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
 					outer = cx
 					defer func() {
-						if host.ActiveContext().Realm() != b || !bContext.IsEnteredRealm(a) {
+						if host.ActiveContext() != b || !a.IsEnteredRealm() {
 							t.Error("return from C did not restore running B and entered A")
 						}
 					}()
@@ -75,7 +72,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 					return v
 				})
 			})
-			v, err := cx.HostConstruct(engine.ObjectValue(ctor), nil)
+			v, err := a.HostConstruct(engine.ObjectValue(ctor), nil)
 			switch outcome {
 			case "return", "allocate":
 				if err != nil {
@@ -85,7 +82,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				if outcome == "allocate" {
 					want = b
 				}
-				if cx.ProtoOf(v.Object()) != want.Intrinsic(engine.IntrinsicArrayPrototype) {
+				if a.ProtoOf(v.Object()) != want.Intrinsic(engine.IntrinsicArrayPrototype) {
 					t.Error("array has the wrong prototype")
 				}
 			case "throw", "iterator step":
@@ -93,7 +90,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				if !ok {
 					t.Fatalf("got %v, want a JavaScript throw", err)
 				}
-				if cx.ProtoOf(ex.Value.Object()) != b.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+				if a.ProtoOf(ex.Value.Object()) != b.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
 					t.Error("B's context threw an error with the wrong prototype while C was running")
 				}
 			case "interrupt":
@@ -101,16 +98,16 @@ func TestExecutionContextHostReentry(t *testing.T) {
 					t.Errorf("got %v, want an interruption carrying %v", err, stop)
 				}
 			}
-			if host.ActiveContext().Realm() != a || cx.IsEnteredRealm(a) {
+			if host.ActiveContext() != a || a.IsEnteredRealm() {
 				t.Error("outer host boundary did not restore A and clear the entered realm")
 			}
 		})
 	}
-	v, err := runScript(cx, "after interruption", "[]")
+	v, err := runScript(a, "after interruption", "[]")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cx.ProtoOf(v.Object()) != a.Intrinsic(engine.IntrinsicArrayPrototype) {
+	if a.ProtoOf(v.Object()) != a.Intrinsic(engine.IntrinsicArrayPrototype) {
 		t.Error("script after interruption produced an array outside A")
 	}
 }

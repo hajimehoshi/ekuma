@@ -366,7 +366,7 @@ func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, ms
 		r = cx.frames[n-1].fp.context.realm
 	}
 	cx.frames[n].pc = pc
-	cx.recordThrow(r.Context().NewError(kind, msg))
+	cx.recordThrow(r.context.NewError(kind, msg))
 	// The constructor has returned. Unwind from before its handlers.
 	cx.frames[n].pc = 0
 	panic(errThrow)
@@ -2894,7 +2894,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 			var x, y Value
 			var st PairStep
-			pairRealm := fp.context.Realm()
+			pairRealm := fp.context.realm
 			if step := next.o.fn.iteratorPairStep(fp.context.realm); step != nil {
 				x, y, st = step(IteratorState(it))
 				if st == PairYielded {
@@ -2914,7 +2914,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			case PairYielded:
 				if !ag.pairDestructuringPlain(pairRealm) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
-					regs[fp.code[pc].A] = Value{o: pairRealm.Context().NewArrayPair(x, y)}
+					regs[fp.code[pc].A] = Value{o: pairRealm.context.NewArrayPair(x, y)}
 					pc++
 					continue
 				}
@@ -3360,7 +3360,7 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 		}
 		// Function.prototype.call and apply end in a tail call of their this value.
 		switch f {
-		case cx.realm.Intrinsic(IntrinsicFunctionPrototypeCall):
+		case cx.Intrinsic(IntrinsicFunctionPrototypeCall):
 			f, this = this.o, Undefined
 			if argc > 0 {
 				this = cx.stack[argBase]
@@ -3368,7 +3368,7 @@ func (cx *ExecutionContext) unbind(f *Object, this Value, argBase, argc int) (*O
 				argc--
 			}
 			continue
-		case cx.realm.Intrinsic(IntrinsicFunctionPrototypeApply):
+		case cx.Intrinsic(IntrinsicFunctionPrototypeApply):
 			var list []Value
 			if argc > 1 {
 				if a := cx.stack[argBase+1]; !a.IsNullish() {

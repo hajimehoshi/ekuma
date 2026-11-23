@@ -67,7 +67,7 @@ func constant(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, v
 func constructor(cx *engine.ExecutionContext, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) *engine.Object {
 	c := cx.NewNativeConstructor(name, length, f)
 	cx.DefineConstructorPrototype(c, protoID)
-	cx.Define(cx.Realm().Intrinsic(protoID), cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(cx.Intrinsic(protoID), cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 	cx.Define(cx.GlobalObject().Object(), cx.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
 	return c
 }
@@ -110,8 +110,7 @@ func RegisterExtension(install func(cx *engine.ExecutionContext)) {
 // Install creates the standard built-in objects of cx, and those of the registered extensions.
 func Install(cx *engine.ExecutionContext) {
 	cx.StartBuiltins()
-	realm := cx.Realm()
-	objectProto := realm.Intrinsic(engine.IntrinsicObjectPrototype)
+	objectProto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
 	cx.SetIntrinsic(engine.IntrinsicNumberPrototype, cx.NewNumberObject(0, objectProto))
 	cx.SetIntrinsic(engine.IntrinsicBooleanPrototype, cx.NewBooleanObject(false, objectProto))
 	for _, id := range []engine.Intrinsic{
@@ -122,14 +121,14 @@ func Install(cx *engine.ExecutionContext) {
 	} {
 		cx.SetIntrinsic(id, cx.NewObject(objectProto))
 	}
-	iteratorProto := realm.Intrinsic(engine.IntrinsicIteratorPrototype)
+	iteratorProto := cx.Intrinsic(engine.IntrinsicIteratorPrototype)
 	for _, id := range []engine.Intrinsic{
 		engine.IntrinsicArrayIteratorPrototype, engine.IntrinsicStringIteratorPrototype, engine.IntrinsicGeneratorPrototype,
 	} {
 		cx.SetIntrinsic(id, cx.NewObject(iteratorProto))
 	}
-	cx.SetIntrinsic(engine.IntrinsicAsyncGeneratorPrototype, cx.NewObject(realm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype)))
-	functionProto := realm.Intrinsic(engine.IntrinsicFunctionPrototype)
+	cx.SetIntrinsic(engine.IntrinsicAsyncGeneratorPrototype, cx.NewObject(cx.Intrinsic(engine.IntrinsicAsyncIteratorPrototype)))
+	functionProto := cx.Intrinsic(engine.IntrinsicFunctionPrototype)
 	for _, id := range []engine.Intrinsic{
 		engine.IntrinsicGeneratorFunctionPrototype, engine.IntrinsicAsyncFunctionPrototype, engine.IntrinsicAsyncGeneratorFunctionPrototype,
 	} {
@@ -315,9 +314,9 @@ func enumerableOwn(cx *engine.ExecutionContext, o *engine.Object, entries bool) 
 }
 
 func initObject(cx *engine.ExecutionContext, strs *objectStrings) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(cx, "Object", 1, engine.IntrinsicObjectPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if nt := cx.GetNewTarget(); nt != nil && nt != cx.Realm().Intrinsic(engine.IntrinsicObject) {
+		if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicObject) {
 			return engine.ObjectValue(cx.NewInstance(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicObjectPrototype)))
 		}
 		v := arg(args, 0)
@@ -689,7 +688,7 @@ func indexValues(cx *engine.ExecutionContext, out []engine.Value, v engine.Value
 }
 
 func initFunction(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicFunctionPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicFunctionPrototype)
 	var ctor *engine.Object
 	ctor = constructor(cx, "Function", 1, engine.IntrinsicFunctionPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return cx.CreateDynamicFunction(ctor, cx.GetNewTarget(), engine.NormalFunction, args)
@@ -740,7 +739,7 @@ func initFunction(cx *engine.ExecutionContext) {
 	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolMetadata), engine.Null, 0)
 
 	// AddRestrictedFunctionProperties
-	throwTypeError := cx.Realm().Intrinsic(engine.IntrinsicThrowTypeError)
+	throwTypeError := cx.Intrinsic(engine.IntrinsicThrowTypeError)
 	cx.DefineAccessor(proto, cx.Intern("caller"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 	cx.DefineAccessor(proto, cx.Intern("arguments"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 
@@ -786,7 +785,7 @@ func initError(cx *engine.ExecutionContext) {
 	for kind, name := range names {
 		kind := engine.ErrorKind(kind)
 		protoID := engine.ErrorPrototypeIntrinsic(kind)
-		proto := cx.Realm().Intrinsic(engine.IntrinsicErrorPrototype)
+		proto := cx.Intrinsic(engine.IntrinsicErrorPrototype)
 		if kind != engine.ErrorKindError {
 			proto = cx.NewObject(proto)
 			cx.SetIntrinsic(protoID, proto)
@@ -843,7 +842,7 @@ func initError(cx *engine.ExecutionContext) {
 		return engine.Bool(engine.IsError(arg(args, 0)))
 	})
 	stackKey := engine.NamedKey(cx.Key(engine.KeyStack))
-	cx.DefineAccessor(cx.Realm().Intrinsic(engine.IntrinsicErrorPrototype), cx.Key(engine.KeyStack),
+	cx.DefineAccessor(cx.Intrinsic(engine.IntrinsicErrorPrototype), cx.Key(engine.KeyStack),
 		cx.NewNative("get stack", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
 				cx.ThrowTypeError("Error.prototype.stack getter called on non-object")
@@ -861,11 +860,11 @@ func initError(cx *engine.ExecutionContext) {
 			if !v.IsString() {
 				cx.ThrowTypeError("Error.prototype.stack setter requires a string")
 			}
-			setterThatIgnoresPrototypeProperties(cx, this, cx.Realm().Intrinsic(engine.IntrinsicErrorPrototype), stackKey, v, "Error.prototype.stack setter")
+			setterThatIgnoresPrototypeProperties(cx, this, cx.Intrinsic(engine.IntrinsicErrorPrototype), stackKey, v, "Error.prototype.stack setter")
 			return engine.Undefined
 		}),
 		engine.FlagConfigurable)
-	method(cx, cx.Realm().Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, cx.Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o := thisObject(cx, this, "Error.prototype.toString")
 		name := wtf8.String("Error")
 		if n := cx.GetV(engine.ObjectValue(o), cx.Key(engine.KeyName)); !n.IsUndefined() {

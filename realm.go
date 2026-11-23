@@ -16,7 +16,7 @@ import (
 // security boundary: an object of a realm gives access to the built-in objects of its realm.
 type Realm struct {
 	vm *VM
-	r  *engine.Realm
+	cx *engine.ExecutionContext
 }
 
 // InitialRealm returns the realm created with vm, in which the methods of vm operate.
@@ -34,19 +34,19 @@ func (vm *VM) Global() Value {
 // NewRealm returns a new realm of vm.
 func (vm *VM) NewRealm() *Realm {
 	vm.initIfNeeded()
-	return vm.realmOf(vm.hostContext().CreateRealm(builtin.Install))
+	return vm.realmOf(vm.e.CreateRealm(builtin.Install))
 }
 
-// realmOf returns the [Realm] of the engine realm r.
-func (vm *VM) realmOf(r *engine.Realm) *Realm {
-	if pr, ok := vm.e.RealmHostDefined(r).(*Realm); ok {
+// realmOf returns the public realm for cx.
+func (vm *VM) realmOf(cx *engine.ExecutionContext) *Realm {
+	if pr, ok := cx.RealmHostDefined().(*Realm); ok {
 		return pr
 	}
 	pr := &Realm{
 		vm: vm,
-		r:  r,
+		cx: cx,
 	}
-	vm.e.SetRealmHostDefined(r, pr)
+	cx.SetRealmHostDefined(pr)
 	return pr
 }
 
@@ -57,7 +57,7 @@ func (r *Realm) in(f func()) {
 
 func (r *Realm) context() *engine.ExecutionContext {
 	r.vm.initIfNeeded()
-	return r.r.Context()
+	return r.cx
 }
 
 // Global returns the global object of r.
@@ -83,13 +83,15 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 	if len(b) > engine.MaxBufferLength {
 		panic("ekuma: NewArrayBuffer: the slice is too long for an ArrayBuffer")
 	}
-	proto := r.r.Intrinsic(engine.IntrinsicArrayBufferPrototype)
-	return fromEngine(engine.ObjectValue(r.context().NewHostArrayBufferObject(proto, b)))
+	cx := r.context()
+	proto := cx.Intrinsic(engine.IntrinsicArrayBufferPrototype)
+	return fromEngine(engine.ObjectValue(cx.NewHostArrayBufferObject(proto, b)))
 }
 
 // NewPromise returns a new pending promise of r and the resolver that settles it.
 func (r *Realm) NewPromise() (Value, *PromiseResolver) {
-	c := r.context().NewPromiseCapability(engine.ObjectValue(r.r.Intrinsic(engine.IntrinsicPromise)))
+	cx := r.context()
+	c := cx.NewPromiseCapability(engine.ObjectValue(cx.Intrinsic(engine.IntrinsicPromise)))
 	return fromEngine(c.Promise()), &PromiseResolver{
 		realm: r,
 		c:     c,

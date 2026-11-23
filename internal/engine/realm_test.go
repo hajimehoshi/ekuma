@@ -14,7 +14,7 @@ func TestRealmIntrinsic(t *testing.T) {
 	var want *engine.Object
 	created := cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		want = cx.ProtoOf(cx.GlobalObject().Object())
-		if got := cx.Realm().Intrinsic(engine.IntrinsicPromisePrototype); got != nil {
+		if got := cx.Intrinsic(engine.IntrinsicPromisePrototype); got != nil {
 			t.Errorf("unset Promise prototype = %p, want nil", got)
 		}
 	})
@@ -25,16 +25,15 @@ func TestRealmIntrinsic(t *testing.T) {
 
 func TestCreateRealmThrow(t *testing.T) {
 	cx, host := engine.NewExecutionContext(nil)
-	caller := cx.Realm()
-	var created *engine.Realm
+	var created *engine.ExecutionContext
 	thrown, ok := cx.Completion(func() {
 		defer func() {
-			if host.ActiveContext().Realm() != caller {
+			if host.ActiveContext() != cx {
 				t.Error("CreateRealm did not restore its caller after the installer threw")
 			}
 		}()
 		cx.CreateRealm(func(cx *engine.ExecutionContext) {
-			created = cx.Realm()
+			created = cx
 			cx.Throw(engine.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
 		})
 	})

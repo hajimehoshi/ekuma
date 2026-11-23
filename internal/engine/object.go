@@ -310,7 +310,7 @@ const privateShapeThreshold = 128
 type shape struct {
 	// agent and realm identify where the objects with this shape were created.
 	agent *agent
-	realm *Realm
+	realm *realm
 
 	proto  *Object
 	parent *shape
@@ -749,7 +749,7 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (cx *ExecutionContext) newShape(proto *Object, r *Realm) *shape {
+func (cx *ExecutionContext) newShape(proto *Object, r *realm) *shape {
 	if proto != nil {
 		proto.flags |= objIsProto
 	}
@@ -767,7 +767,7 @@ func (cx *ExecutionContext) shapeFor(proto *Object) *shape {
 }
 
 // shapeForRealm returns the empty shape for objects of r with prototype proto, which may be nil.
-func (cx *ExecutionContext) shapeForRealm(proto *Object, r *Realm) *shape {
+func (cx *ExecutionContext) shapeForRealm(proto *Object, r *realm) *shape {
 	if proto == nil {
 		return r.shapes.nullProto
 	}
@@ -784,7 +784,7 @@ type indexedPrototypeShapes struct {
 	array, typedArray prototypeShapeCache
 }
 
-func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *Realm) *shape {
+func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *realm) *shape {
 	if proto.shape.realm != r {
 		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
@@ -802,7 +802,7 @@ func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *R
 }
 
 // objectRootShape returns the initial layout for an object of class cls.
-func (cx *ExecutionContext) objectRootShape(proto *Object, r *Realm, cls class) *shape {
+func (cx *ExecutionContext) objectRootShape(proto *Object, r *realm, cls class) *shape {
 	if cls != classArray && cls != classTypedArray {
 		return cx.shapeForRealm(proto, r)
 	}
@@ -902,7 +902,7 @@ func (cx *ExecutionContext) NewArray(elems []Value) *Object {
 	return cx.realm.newArray(elems)
 }
 
-func (r *Realm) newArray(elems []Value) *Object {
+func (r *realm) newArray(elems []Value) *Object {
 	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,

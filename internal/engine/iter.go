@@ -115,11 +115,10 @@ func (cx *ExecutionContext) newIteratorNext(yieldRealm IteratorYieldRealm, step 
 		if !ok {
 			return cx.CreateIterResultObject(Undefined, true)
 		}
-		realm := cx.realm
 		if yieldRealm == IteratorClosureRealm {
-			realm = this.o.CreationRealm()
+			return this.o.CreationContext().CreateIterResultObject(v, false)
 		}
-		return realm.CreateIterResultObject(v, false)
+		return cx.CreateIterResultObject(v, false)
 	})
 }
 
@@ -181,7 +180,7 @@ func (cx *ExecutionContext) NewArrayIterator(o *Object, kind IterationKind) *Obj
 }
 
 func (cx *ExecutionContext) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *Object {
-	return cx.NewIteratorObject(cx.realm.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
+	return cx.NewIteratorObject(cx.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
 		object:    o,
 		nextIndex: nextIndex,
 		kind:      kind,
@@ -335,7 +334,7 @@ func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 			return Undefined, iterDone
 		}
 		return v, iterValue
-	case f != nil && f == cx.realm.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
+	case f != nil && f == cx.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
 		if cx.interrupt.Load() {
 			cx.Poll()
 		}
@@ -482,7 +481,7 @@ func (cx *ExecutionContext) iteratorCloseAll(its []Value, pending bool) {
 // can expose it to JavaScript.
 func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
 	key := cx.Key(keyReturn)
-	for p := cx.realm.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
+	for p := cx.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
 			it := cx.newArrayIterator(o, IterateValues, int64(nextIndex))
 			cx.iteratorClose(Value{o: it}, pending)
@@ -505,7 +504,7 @@ func (cx *ExecutionContext) Iterate(v Value, f func(Value) bool) {
 // IterateFromMethod is [ExecutionContext.Iterate] for the iterator that GetIteratorFromMethod(v, method)
 // returns.
 func (cx *ExecutionContext) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
-	if method == cx.realm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
+	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
 		cx.iteratePlainArray(v.o, f)
 		return
 	}
@@ -546,9 +545,8 @@ func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
 	array := Value{o: o}
 	// A native frame uses its receiver only to name it in a stack trace. An indexed
 	// iterator has no own properties, so its prototype supplies the same name.
-	realm := cx.realm
-	proto := realm.Intrinsic(IntrinsicArrayIteratorPrototype)
-	cx.pushNative(realm.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
+	proto := cx.Intrinsic(IntrinsicArrayIteratorPrototype)
+	cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
 	v := cx.Index(array, i)
 	cx.popNative()
 	return v
@@ -621,11 +619,11 @@ type iterResult struct {
 	props [2]Value
 }
 
-// CreateIterResultObject creates an iterator result with the Object prototype of r.
-func (r *Realm) CreateIterResultObject(v Value, done bool) Value {
+// CreateIterResultObject creates an iterator result in the execution realm.
+func (cx *ExecutionContext) CreateIterResultObject(v Value, done bool) Value {
 	result := &iterResult{
 		kind:  kindObject,
-		shape: r.shapes.iterResult,
+		shape: cx.realm.shapes.iterResult,
 		props: [2]Value{v, Bool(done)},
 	}
 	result.slots = result.props[:]
@@ -863,7 +861,7 @@ func (cx *ExecutionContext) iterResultValue(r Value) (Value, bool) {
 
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (cx *ExecutionContext) IteratorToList(v Value, method *Object) []Value {
-	if method == cx.realm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
+	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
 		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
 			return slices.Clone(v.o.elems[:n])
 		}

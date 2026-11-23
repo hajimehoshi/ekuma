@@ -26,7 +26,7 @@ func thisStringValue(cx *engine.ExecutionContext, this engine.Value, what string
 }
 
 func initString(cx *engine.ExecutionContext) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicStringPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicStringPrototype)
 	ctor := constructor(cx, "String", 1, engine.IntrinsicStringPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := cx.NewString("")
 		if len(args) > 0 {
@@ -634,7 +634,7 @@ func initString(cx *engine.ExecutionContext) {
 	}
 	symMethod(cx, proto, cx.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "[Symbol.iterator]")
-		return engine.ObjectValue(cx.NewIteratorObject(cx.Realm().Intrinsic(engine.IntrinsicStringIteratorPrototype), &stringIterator{str: s.Str()}))
+		return engine.ObjectValue(cx.NewIteratorObject(cx.Intrinsic(engine.IntrinsicStringIteratorPrototype), &stringIterator{str: s.Str()}))
 	})
 }
 

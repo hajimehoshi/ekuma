@@ -110,7 +110,7 @@ func (vm *VM) initIfNeeded() {
 		vm.e = host
 		vm.interrupts = &interruptRequests{}
 		builtin.Install(cx)
-		vm.initialRealm = vm.realmOf(cx.Realm())
+		vm.initialRealm = vm.realmOf(cx)
 		return
 	}
 	if vm.e.HostDefined() != any(vm) {
@@ -143,7 +143,7 @@ func (vm *VM) initIfNeeded() {
 // The objects that ValueOf creates belong to the initial realm.
 func (vm *VM) ValueOf(x any) Value {
 	vm.initIfNeeded()
-	return fromEngine(vm.valueOf(vm.initialRealm.r.Context(), x))
+	return fromEngine(vm.valueOf(vm.initialRealm.cx, x))
 }
 
 // valueOf implements [Realm.ValueOf] in the execution realm.
@@ -224,7 +224,7 @@ func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) engine.Value {
 		if x == nil || x.b == nil {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
 		}
-		proto := cx.Realm().Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
+		proto := cx.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
 		return engine.ObjectValue(cx.NewSharedArrayBufferObject(proto, x.b))
 	case []any:
 		if len(x) > 0 {
@@ -321,7 +321,7 @@ func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, er
 		vm.callArgs = vm.callArgs[:n]
 	}()
 	for _, a := range args {
-		vm.callArgs = append(vm.callArgs, vm.valueOf(vm.initialRealm.r.Context(), a))
+		vm.callArgs = append(vm.callArgs, vm.valueOf(vm.initialRealm.cx, a))
 	}
 	return f(vm.callArgs[n:len(vm.callArgs):len(vm.callArgs)])
 }

@@ -27,7 +27,7 @@ func (cx *ExecutionContext) newArguments(fr *frame, regs []Value, mapped bool) *
 	if !mapped {
 		if cx.realm.strictCallee.o == nil {
 			// An accessor pair is never changed in place, so the objects share it.
-			throwTypeError := cx.realm.Intrinsic(IntrinsicThrowTypeError)
+			throwTypeError := cx.Intrinsic(IntrinsicThrowTypeError)
 			cx.realm.strictCallee = newAccessor(throwTypeError, throwTypeError)
 		}
 		cx.add(o, cx.Key(keyCallee), cx.realm.strictCallee, FlagAccessor)
@@ -88,7 +88,7 @@ func (cx *ExecutionContext) newArgumentsObject(fr *frame, regs []Value) *Object 
 	a.class = classArguments
 	a.shape = cx.realm.shapes.arguments
 	a.elems = elems
-	a.storage = [3]Value{Number(float64(fr.argc)), {o: cx.realm.Intrinsic(IntrinsicArrayPrototypeValues)}}
+	a.storage = [3]Value{Number(float64(fr.argc)), {o: cx.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]
 	return a.init()
 }

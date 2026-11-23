@@ -52,7 +52,7 @@ type realm struct {
 // Install defines the Intl namespace in the current realm of cx.
 func Install(cx *engine.ExecutionContext) {
 	r := &realm{}
-	r.ns = cx.NewLazyObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
+	r.ns = cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
 		r.init(cx)
 	})
 	cx.SetRealmExtension(r)
@@ -110,7 +110,7 @@ func (r *realm) init(cx *engine.ExecutionContext) {
 
 // realmOf returns the Intl objects of the realm of the function f.
 func realmOf(cx *engine.ExecutionContext, f *engine.Object) *realm {
-	r := cx.RealmExtension(cx.GetFunctionRealm(f)).(*realm)
+	r := cx.FunctionContext(f).RealmExtension().(*realm)
 	cx.InitLazyObject(r.ns)
 	return r
 }
@@ -233,7 +233,7 @@ func getOption(cx *engine.ExecutionContext, options *engine.Object, name string,
 }
 
 func defaultLocale(cx *engine.ExecutionContext) string {
-	r := cx.RealmExtension(cx.Realm()).(*realm)
+	r := cx.RealmExtension().(*realm)
 	tag := cx.DefaultLocale()
 	if r.defaultLocale != "" && r.defaultLocaleTag == tag {
 		return r.defaultLocale

@@ -148,7 +148,7 @@ func (cx *ExecutionContext) disposeError(dc *DisposeCapability, e Value) {
 		dc.thrown = true
 		return
 	}
-	s := cx.NewErrorObject(cx.realm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
+	s := cx.NewErrorObject(cx.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
 	cx.Define(s, cx.Key(KeyError), e, FlagsHidden)
 	suppressed, _ := unpackException(dc.completion)
 	cx.Define(s, cx.Key(KeySuppressed), suppressed, FlagsHidden)

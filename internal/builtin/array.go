@@ -120,7 +120,7 @@ func arraySpeciesCreate(cx *engine.ExecutionContext, orig *engine.Object, n int6
 				c = s
 			}
 		}
-		if !c.IsUndefined() && !(c.IsObject() && c.Object() == cx.Realm().Intrinsic(engine.IntrinsicArray)) {
+		if !c.IsUndefined() && !(c.IsObject() && c.Object() == cx.Intrinsic(engine.IntrinsicArray)) {
 			if !c.IsCallable() || !cx.IsConstructor(c.Object()) {
 				cx.ThrowTypeError("object.constructor[Symbol.species] is not a constructor")
 			}
@@ -130,7 +130,7 @@ func arraySpeciesCreate(cx *engine.ExecutionContext, orig *engine.Object, n int6
 	if n > engine.MaxArrayIndex+1 {
 		cx.ThrowRangeError("invalid array length")
 	}
-	return cx.ArrayCreate(uint32(n), cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype))
+	return cx.ArrayCreate(uint32(n), cx.Intrinsic(engine.IntrinsicArrayPrototype))
 }
 
 func callback(cx *engine.ExecutionContext, args []engine.Value, what string) *engine.Object {
@@ -254,11 +254,11 @@ func writeSeparators(cx *engine.ExecutionContext, b *wtf8.Buffer, sep wtf8.Strin
 }
 
 func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
-	proto := cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype)
+	proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
 	var joins joinGuard
 	ctor := constructor(cx, "Array", 1, engine.IntrinsicArrayPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		proto := cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype)
-		if nt := cx.GetNewTarget(); nt != nil && nt != cx.Realm().Intrinsic(engine.IntrinsicArray) {
+		proto := cx.Intrinsic(engine.IntrinsicArrayPrototype)
+		if nt := cx.GetNewTarget(); nt != nil && nt != cx.Intrinsic(engine.IntrinsicArray) {
 			proto = cx.GetPrototypeFromConstructor(nt, engine.IntrinsicArrayPrototype)
 		}
 		if len(args) == 1 {
@@ -276,7 +276,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		} else {
 			a = cx.NewArray(append([]engine.Value(nil), args...))
 		}
-		if proto != cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype) {
+		if proto != cx.Intrinsic(engine.IntrinsicArrayPrototype) {
 			cx.SetPrototypeOf(a, proto)
 		}
 		return engine.ObjectValue(a)
@@ -296,7 +296,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		return engine.Bool(is), ok
 	}, nil)
 	method(cx, ctor, "of", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		if this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Realm().Intrinsic(engine.IntrinsicArray) {
+		if this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(engine.IntrinsicArray) {
 			a := cx.Construct(this.Object(), []engine.Value{engine.Number(float64(len(args)))}, this.Object())
 			for i, v := range args {
 				cx.CreateDataPropertyOrThrow(a, engine.IndexKey(uint32(i)), v)
@@ -311,7 +311,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		if !mapFn.IsUndefined() && !mapFn.IsCallable() {
 			cx.ThrowTypeError(cx.DisplayString(mapFn) + " is not a function")
 		}
-		custom := this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Realm().Intrinsic(engine.IntrinsicArray)
+		custom := this.IsCallable() && cx.IsConstructor(this.Object()) && this.Object() != cx.Intrinsic(engine.IntrinsicArray)
 		mapped := func(v engine.Value, i int64) engine.Value {
 			if mapFn.IsUndefined() {
 				return v
@@ -365,7 +365,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 		case custom:
 			a = cx.Construct(this.Object(), []engine.Value{engine.Number(float64(n))}, this.Object())
 		case n <= engine.MaxArrayIndex+1:
-			a = cx.ArrayCreate(uint32(n), cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype))
+			a = cx.ArrayCreate(uint32(n), cx.Intrinsic(engine.IntrinsicArrayPrototype))
 		default:
 			cx.ThrowRangeError("invalid array length")
 		}
@@ -1071,7 +1071,7 @@ func initArray(cx *engine.ExecutionContext, strs *objectStrings) {
 	iter("keys", engine.IterateKeys)
 	iter("entries", engine.IterateEntries)
 	cx.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, iter("values", engine.IterateValues))
-	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.Realm().Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
 	initArrayAdditions(cx, proto)
 }
 

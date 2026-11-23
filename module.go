@@ -65,9 +65,9 @@ func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 		vm.e.SetHostLoadImportedModule(nil)
 		return
 	}
-	vm.e.SetHostLoadImportedModule(func(cx *engine.ExecutionContext, referrer *engine.Module, file string, realm *engine.Realm, req engine.ModuleRequest) (*engine.Module, error) {
+	vm.e.SetHostLoadImportedModule(func(cx *engine.ExecutionContext, referrer *engine.Module, file string, referrerContext *engine.ExecutionContext, req engine.ModuleRequest) (*engine.Module, error) {
 		r := ModuleRequest{
-			Realm:        vm.realmOf(realm),
+			Realm:        vm.realmOf(referrerContext),
 			ReferrerName: file,
 			Specifier:    wtf8.ToValidUTF8(req.Specifier),
 			Attributes:   map[string]string{},
@@ -131,7 +131,7 @@ func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 		for _, k := range keys {
 			list = append(list, engine.ImportMetaProperty{
 				Key:   cx.ToPropertyKey(cx.StringFromGo(k)),
-				Value: vm.valueOf(pm.realm.r.Context(), props[k]),
+				Value: vm.valueOf(pm.realm.cx, props[k]),
 			})
 		}
 		return list

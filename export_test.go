@@ -21,11 +21,11 @@ func InvokeInRealm(ctx context.Context, r *Realm, f Value) error {
 
 // SetExceptionReporter installs the shell's uncaught exception handler in r.
 func SetExceptionReporter(r *Realm, report Value) {
-	cx := r.r.Context()
+	cx := r.cx
 	r.in(func() {
 		key := engine.NamedKey(cx.Key(engine.KeyToString))
-		objectToString := cx.Get(r.r.Intrinsic(engine.IntrinsicObjectPrototype), key)
-		errorToString := cx.Get(r.r.Intrinsic(engine.IntrinsicErrorPrototype), key)
+		objectToString := cx.Get(r.cx.Intrinsic(engine.IntrinsicObjectPrototype), key)
+		errorToString := cx.Get(r.cx.Intrinsic(engine.IntrinsicErrorPrototype), key)
 		cx.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
 			var source engine.Value
 			if loc.File != "" {
@@ -60,7 +60,7 @@ func RequestInterrupt(r *Realm, cause error) func() {
 func InterruptNow(r *Realm, cause error) {
 	withdraw := RequestInterrupt(r, cause)
 	defer withdraw()
-	r.r.Context().Poll()
+	r.cx.Poll()
 }
 
 // DeferUnhandledRejections postpones rejection reports until TakeUnhandledRejection.
@@ -83,17 +83,17 @@ func TakeUnhandledRejection(vm *VM) error {
 // IsEnteredRealm reports whether r is the VM's entered realm.
 // Promise jobs record an entered realm only in VMs with global proxies.
 func IsEnteredRealm(r *Realm) bool {
-	return r.r.Context().IsEnteredRealm(r.r)
+	return r.cx.IsEnteredRealm()
 }
 
 // ObjectCreationRealm returns the host realm of the object v, or nil if it has none.
 func ObjectCreationRealm(v Value) *Realm {
 	o := v.value.Object()
-	r := o.CreationRealm()
-	if r == nil {
+	cx := o.CreationContext()
+	if cx == nil {
 		return nil
 	}
-	host, _ := r.Context().RealmHostDefined(r).(*Realm)
+	host, _ := cx.RealmHostDefined().(*Realm)
 	return host
 }
 
@@ -104,13 +104,13 @@ func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
 
 // InstallGlobalProxy installs a d8 global proxy in r, reusing the proxy of previous if supplied.
 func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAccess bool) Value {
-	var prev *engine.Realm
+	var prev *engine.ExecutionContext
 	if previous != nil {
-		prev = previous.r
+		prev = previous.cx
 	}
 	var proxy engine.Value
 	r.in(func() {
-		cx := r.r.Context()
+		cx := r.cx
 		proxy = cx.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
 		cx.SetPrototypeOf(cx.GlobalObject().Object(), newV8GlobalPrototype(cx, proxy))
 	})
@@ -118,7 +118,7 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 }
 
 func newV8GlobalPrototype(cx *engine.ExecutionContext, globalThis engine.Value) *engine.Object {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("", 0, func(cx *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
 		if target := cx.GetNewTarget(); target != nil {
 			instanceProto := cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)
@@ -185,14 +185,14 @@ func NewRealmShared(vm *VM) Value {
 
 // DetachGlobalProxy disconnects the global proxy installed in r.
 func DetachGlobalProxy(r *Realm) {
-	r.in(r.r.Context().DetachGlobalProxy)
+	r.in(r.cx.DetachGlobalProxy)
 }
 
 // CanAccessReceiver reports whether r may use receiver in a checked host call.
 func CanAccessReceiver(r *Realm, receiver Value) bool {
 	var allowed bool
 	r.in(func() {
-		allowed = r.r.Context().CanAccessReceiver(receiver.value)
+		allowed = r.cx.CanAccessReceiver(receiver.value)
 	})
 	return allowed
 }
@@ -201,7 +201,7 @@ func CanAccessReceiver(r *Realm, receiver Value) bool {
 func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value
 	r.in(func() {
-		v = r.r.Context().NewHTMLDDA(func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
+		v = r.cx.NewHTMLDDA(func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
 			return engine.Null
 		})
 	})
@@ -210,7 +210,7 @@ func NewHTMLDDA(r *Realm) Value {
 
 // AbstractModuleSource returns %AbstractModuleSource% of r.
 func AbstractModuleSource(r *Realm) Value {
-	return fromEngine(engine.ObjectValue(r.r.Intrinsic(engine.IntrinsicAbstractModuleSource)))
+	return fromEngine(engine.ObjectValue(r.cx.Intrinsic(engine.IntrinsicAbstractModuleSource)))
 }
 
 // NewSourceModule returns a module of r whose only export is a default of undefined and
@@ -218,8 +218,8 @@ func AbstractModuleSource(r *Realm) Value {
 func NewSourceModule(r *Realm, name, className string) *Module {
 	m := r.NewSyntheticModule(name, Undefined)
 	r.in(func() {
-		cx := r.r.Context()
-		proto := cx.NewObject(r.r.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
+		cx := r.cx
+		proto := cx.NewObject(r.cx.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
 		m.m.SetModuleSource(cx.NewModuleSourceObject(proto, className))
 	})
 	return m

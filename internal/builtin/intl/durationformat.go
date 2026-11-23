@@ -194,7 +194,7 @@ func (df *durationFormatData) format(d duration.Duration) string {
 
 // initDurationFormat defines Intl.DurationFormat.
 func (r *realm) initDurationFormat(cx *engine.ExecutionContext) {
-	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := cx.NewObject(cx.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := cx.NewNativeConstructor("DurationFormat", 0, r.newDurationFormat)
 	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)

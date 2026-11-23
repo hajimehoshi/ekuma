@@ -8,8 +8,8 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// Realm is a Realm Record.
-type Realm struct {
+// realm is a Realm Record.
+type realm struct {
 	// context is shared by jobs bound to this realm.
 	context ExecutionContext
 
@@ -65,8 +65,8 @@ type Realm struct {
 	strictCallee Value
 }
 
-func (ag *agent) newRealm() *Realm {
-	r := &Realm{}
+func (ag *agent) newRealm() *realm {
+	r := &realm{}
 	r.context = ExecutionContext{
 		agent: ag,
 		realm: r,
@@ -144,28 +144,36 @@ func (cx *ExecutionContext) initRealmGlobals() {
 	r.globalLex = cx.NewObject(nil)
 }
 
-// CreateRealm creates a realm whose built-in objects install creates while the realm is current.
-func (ag *agent) CreateRealm(install func(*ExecutionContext)) *Realm {
+// CreateRealm returns the context of a new realm after calling install with that context active.
+func (ag *agent) CreateRealm(install func(*ExecutionContext)) *ExecutionContext {
 	ag.trackJobRealms = true
 	r := ag.newRealm()
-	cx := r.Context()
+	cx := &r.context
 	cx.Run(func() {
 		cx.initRealmPrototypes()
 		cx.initRealmGlobals()
 		install(cx)
 	})
-	return r
+	return cx
 }
 
 // IsIntrinsicOfOtherRealm reports whether the function f is the intrinsic id of
 // GetFunctionRealm(f), and that realm is not the current one.
 func (cx *ExecutionContext) IsIntrinsicOfOtherRealm(f *Object, id Intrinsic) bool {
-	r := cx.GetFunctionRealm(f)
+	r := cx.FunctionContext(f).realm
 	return r != cx.realm && r.intrinsics[id] == f
 }
 
-// CreationRealm returns the creation realm of the JavaScript object o, or nil for a detached global proxy.
-func (o *Object) CreationRealm() *Realm {
+// CreationContext returns the creation realm's context for the JavaScript object o,
+// or nil for a detached global proxy.
+func (o *Object) CreationContext() *ExecutionContext {
+	if r := o.creationRealm(); r != nil {
+		return &r.context
+	}
+	return nil
+}
+
+func (o *Object) creationRealm() *realm {
 	if o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.isGlobal() {
@@ -178,19 +186,19 @@ func (o *Object) CreationRealm() *Realm {
 	return o.shape.realm
 }
 
-// IsEnteredRealm reports whether r is the agent's entered realm.
-func (ag *agent) IsEnteredRealm(r *Realm) bool {
-	return r != nil && r == ag.enteredRealm
+// IsEnteredRealm reports whether the execution realm is the agent's entered realm.
+func (cx *ExecutionContext) IsEnteredRealm() bool {
+	return cx.realm == cx.enteredRealm
 }
 
-// SetRealmHostDefined sets the [[HostDefined]] field of the realm r to v.
-func (ag *agent) SetRealmHostDefined(r *Realm, v any) {
-	r.hostDefined = v
+// SetRealmHostDefined sets the [[HostDefined]] field of the execution realm to v.
+func (cx *ExecutionContext) SetRealmHostDefined(v any) {
+	cx.realm.hostDefined = v
 }
 
-// RealmHostDefined returns the [[HostDefined]] field of the realm r.
-func (ag *agent) RealmHostDefined(r *Realm) any {
-	return r.hostDefined
+// RealmHostDefined returns the [[HostDefined]] field of the execution realm.
+func (cx *ExecutionContext) RealmHostDefined() any {
+	return cx.realm.hostDefined
 }
 
 // SetRealmExtension sets the state of the built-in extension of the current realm to v.
@@ -198,7 +206,7 @@ func (cx *ExecutionContext) SetRealmExtension(v any) {
 	cx.realm.extension = v
 }
 
-// RealmExtension returns the state of the built-in extension of the realm r.
-func (ag *agent) RealmExtension(r *Realm) any {
-	return r.extension
+// RealmExtension returns the state of the built-in extension of the execution realm.
+func (cx *ExecutionContext) RealmExtension() any {
+	return cx.realm.extension
 }

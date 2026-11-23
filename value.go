@@ -257,7 +257,7 @@ func (v Value) Set(name string, x any) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostSet(v.value, vm.hostContext().StringFromGo(name), vm.valueOf(vm.initialRealm.r.Context(), x)))
+	return publicError(vm.hostContext().HostSet(v.value, vm.hostContext().StringFromGo(name), vm.valueOf(vm.initialRealm.cx, x)))
 }
 
 // SetWithValueKey is like [Value.Set], but takes key as [Value.GetWithValueKey] does.
@@ -266,7 +266,7 @@ func (v Value) SetWithValueKey(key Value, x any) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm.r.Context(), x)))
+	return publicError(vm.hostContext().HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm.cx, x)))
 }
 
 // Delete deletes the property named name from v, as the delete operator in strict mode does.
@@ -313,7 +313,7 @@ func (v Value) SetIndex(i int, x any) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.hostContext().HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm.r.Context(), x)))
+	return publicError(vm.hostContext().HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm.cx, x)))
 }
 
 // Call calls the method named name on v with v as this. The arguments are converted with
