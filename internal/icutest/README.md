@@ -44,13 +44,12 @@ the test. [Known results](testdata/icu-failures.txt)
 
 ## Calendar arithmetic and era boundaries
 
-ICU4J and ICU4C fixtures exercise 4,490 Temporal checks covering addition
-across leap months and year boundaries, ordinal months and `monthCode`,
-`inLeapYear`, and dates on either side of era transitions. ICU4C 79.1
-supplies the reference year lengths. Exclusions include ICU field rolls,
-lenient field setting, and observational Islamic calendars. The six known
-differences concern Chinese year lengths in 4645–4646 and the start of
-the Meiji era. [Reference year lengths](testdata/calendar-year-lengths.txt) · [Known results](testdata/icu-failures.txt)
+ICU4J and ICU4C fixtures check Temporal addition across leap months and year
+boundaries, ordinal months, `monthCode`, `inLeapYear`, and era transitions.
+ICU4C 79.1 supplies the reference year lengths. Ekuma uses astronomical
+projections for Chinese years 2103–8485 and Gregorian eras for Japanese dates
+through 1872. Exclusions include ICU field rolls, lenient field setting, and
+observational Islamic calendars. All 4,492 checks pass. [Reference year lengths](testdata/calendar-year-lengths.txt)
 
 ## Best-fit locale matching
 

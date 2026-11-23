@@ -19,21 +19,31 @@ func eraStart(f *formatFixture, eras resource, id string) (time.Time, int) {
 	return time.Date(integer(r.values[0]), time.Month(integer(r.values[1])), integer(r.values[2]), 0, 0, 0, 0, time.UTC), r.line
 }
 
+// Temporal uses Gregorian eras in the Japanese calendar until the 1873 reform.
+const japaneseReformYear = 1873
+
+func eraResult(calendar string, isoYear int, era string, eraYear int) string {
+	if calendar == "japanese" && era == "meiji" && isoYear < japaneseReformYear {
+		return fmt.Sprintf("ce %d", isoYear)
+	}
+	return fmt.Sprintf("%s %d", era, eraYear)
+}
+
 func checkCalendarEras(f *formatFixture, calendars resource) {
 	step := f.function(`(calendar, iso, days) => {
 		const d = Temporal.PlainDate.from(iso).withCalendar(calendar).add({days});
 		return [d.withCalendar("iso8601").toString(), d.era, d.eraYear].join(" ");
 	}`)
-	check := func(calendar string, line int, start time.Time, beforeEra string, beforeYear int, afterEra string) {
-		before := start.AddDate(0, 0, -1).Format(time.DateOnly)
-		after := start.Format(time.DateOnly)
-		f.check(line, "add/next-era", step, after+" "+afterEra+" 1", calendar, before, 1)
-		f.check(line, "add/previous-era", step, fmt.Sprintf("%s %s %d", before, beforeEra, beforeYear), calendar, after, -1)
+	check := func(calendar string, line int, start time.Time, beforeEra string, beforeYear int, afterEra string, afterYear int) {
+		prev := start.AddDate(0, 0, -1)
+		before, after := prev.Format(time.DateOnly), start.Format(time.DateOnly)
+		f.check(line, "add/next-era", step, after+" "+eraResult(calendar, start.Year(), afterEra, afterYear), calendar, before, 1)
+		f.check(line, "add/previous-era", step, before+" "+eraResult(calendar, prev.Year(), beforeEra, beforeYear), calendar, after, -1)
 	}
 
 	paired := func(name, eraID, before, after string) {
 		start, line := eraStart(f, calendars.child(name).child("eras"), eraID)
-		check(temporalCalendarID(name), line, start, before, 1, after)
+		check(temporalCalendarID(name), line, start, before, 1, after, 1)
 	}
 	paired("gregorian", "1", "bce", "ce")
 	paired("roc", "1", "broc", "roc")
@@ -46,11 +56,15 @@ func checkCalendarEras(f *formatFixture, calendars resource) {
 		f.t.Fatalf("%s:%d: unexpected Japanese era inheritance", f.path, japanese.line)
 	}
 	start, line := eraStart(f, calendars.child("gregorian").child("eras"), "1")
-	check("japanese", line, start, "bce", 1, "ce")
+	check("japanese", line, start, "bce", 1, "ce", 1)
 	previousEra, firstYear := "ce", 1
 	for i, name := range []string{"meiji", "taisho", "showa", "heisei", "reiwa"} {
 		start, line := eraStart(f, japanese.child("eras"), strconv.Itoa(232+i))
-		check("japanese", line, start, previousEra, start.AddDate(0, 0, -1).Year()-firstYear+1, name)
+		check("japanese", line, start, previousEra, start.AddDate(0, 0, -1).Year()-firstYear+1, name, 1)
+		if name == "meiji" {
+			reform := time.Date(japaneseReformYear, time.January, 1, 0, 0, 0, 0, time.UTC)
+			check("japanese", line, reform, "ce", japaneseReformYear-1, name, japaneseReformYear-start.Year()+1)
+		}
 		previousEra, firstYear = name, start.Year()
 	}
 }
@@ -125,10 +139,12 @@ func checkJapaneseEraFields(f *formatFixture, src intervalSource) {
 			f.t.Fatalf("%s:%d: unexpected Japanese era %s", f.path, row.line, c[0])
 		}
 		month := fixtureMonth(f.t, c[3])
-		bag := map[string]any{"calendar": "japanese", "era": strings.ToLower(era), "eraYear": integer(c[1]), "month": month, "day": integer(c[4])}
-		iso := fmt.Sprintf("%04d-%02d-%02d", integer(c[2]), month, integer(c[4]))
+		era = strings.ToLower(era)
+		isoYear, eraYear := integer(c[2]), integer(c[1])
+		bag := map[string]any{"calendar": "japanese", "era": era, "eraYear": eraYear, "month": month, "day": integer(c[4])}
+		iso := fmt.Sprintf("%04d-%02d-%02d", isoYear, month, integer(c[4]))
 		f.check(row.line, "TestJapanese from era/eraYear", toISO, iso, bag)
-		f.check(row.line, "withCalendar/era", fromISO, strings.ToLower(era)+" "+c[1], iso, "japanese")
+		f.check(row.line, "withCalendar/era", fromISO, eraResult("japanese", isoYear, era, eraYear), iso, "japanese")
 	}
 }
 

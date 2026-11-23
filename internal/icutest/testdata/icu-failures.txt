@@ -66,14 +66,3 @@ cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal 
 # Intl canonicalizes sh to sr-Latn. ICU expects different selections for
 # sr-Latn and sh under the same settings on lines 1392 and 1393.
 localeMatcherTest.txt 1393 sr
-
-# Beyond the tabulated Chinese years, Ekuma uses ICU4X's mean approximation.
-# ICU 79.1 sets the literal EXTENDED_YEAR in these ordinal-limit cases.
-OrdinalMonthTest.java/monthsInYear 496 13
-OrdinalMonthTest.java/monthsInYear 497 12
-
-# Temporal begins Meiji at year 6 on 1873-01-01, when Japan adopted the
-# Gregorian calendar. CLDR starts Meiji at year 1 on 1868-10-23.
-supplementalData.txt/add/next-era 224 "1868-10-23 ce 1868"
-incaltst.cpp/withCalendar/era 406,407 "ce 1868"
-incaltst.cpp/withCalendar/era 408 "ce 1869"

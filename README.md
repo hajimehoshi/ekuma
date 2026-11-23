@@ -245,6 +245,7 @@ include the Unicode copyright and permission notice.
   - [CLDR locale data](internal/unicode/cldr/NOTICE)
   - [CLDR collation data](internal/unicode/collation/NOTICE)
   - [ICU calendar data](internal/intl/calendar/NOTICE)
+  - [Projected Chinese calendar data from lunar-go (MIT)](internal/intl/calendar/NOTICE-lunar-go)
   - [Historical Chinese calendar data from Lunar-Solar-Calendar-Converter (MIT)](internal/intl/calendar/NOTICE-lunarsolar)
   - [Historical Korean calendar data from .NET (MIT)](internal/intl/calendar/NOTICE-dotnet)
   - ICU4C word break dictionaries

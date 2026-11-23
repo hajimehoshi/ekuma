@@ -572,6 +572,19 @@ func TestDateFromFields(t *testing.T) {
 		want     temporal.ISODate
 		err      bool
 	}{
+		{
+			cal: "chinese",
+			f: temporal.CalendarFields{
+				Year:         4646,
+				HasYear:      true,
+				MonthCode:    "M04L",
+				HasMonthCode: true,
+				Day:          30,
+				HasDay:       true,
+			},
+			overflow: temporal.OverflowReject,
+			want:     isoDate(4646, 6, 18),
+		},
 		// Adar I in a common year is Adar.
 		{
 			cal: "hebrew",
@@ -713,6 +726,29 @@ func TestDateAdd(t *testing.T) {
 		Years: 300000,
 	}, temporal.OverflowConstrain); err == nil {
 		t.Errorf("CalendarDateAdd beyond the limits: got no error")
+	}
+}
+
+func TestChineseProjectionHandoffs(t *testing.T) {
+	// Add one lunar month from the start of month 12 across each handoff.
+	for _, tc := range []struct {
+		from, want temporal.ISODate
+	}{
+		{
+			from: isoDate(2103, 1, 9),
+			want: isoDate(2103, 2, 7),
+		},
+		{
+			from: isoDate(8486, 1, 15),
+			want: isoDate(8486, 2, 14),
+		},
+	} {
+		got, err := temporal.CalendarDateAdd("chinese", tc.from, temporal.DateDuration{
+			Months: 1,
+		}, temporal.OverflowReject)
+		if err != nil || got != tc.want {
+			t.Errorf("%v + 1 Chinese month: got %v, %v; want %v", tc.from, got, err, tc.want)
+		}
 	}
 }
 
