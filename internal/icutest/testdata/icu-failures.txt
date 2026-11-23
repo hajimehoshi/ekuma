@@ -61,9 +61,14 @@ dtifmtts.cpp/formatRangeToParts 1878 web-spaces
 # so the extra expected field goes unchecked.
 cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal . \nshared month September\nshared literal  \nshared year 2010\nshared literal , \nstartRange hour 15\nstartRange literal :\nstartRange minute 00\nshared literal –\nendRange hour 22\nendRange literal :\nendRange minute 00\nshared literal  Uhr"
 
-# ICU uses a numeric offset for the winter long name in London and Dublin.
-# CLDR 49 root.xml aliases British/long and Irish/long to GMT/long.
-# The resolved cldr-json names used by Ekuma include that standard name.
+# ICU 79.1 expects a localized offset (GMT+00:00 in English) for the long
+# winter name in London and Dublin. Ekuma follows CLDR 49. Its root.xml
+# aliases British/long and Irish/long to GMT/long, supplying the localized
+# GMT standard name. Where a locale blocks inheritance of that name, the
+# offset fallback still applies. Recheck these rows if CLDR changes the
+# resolved names or an ICU fixture starts expecting them.
+# https://raw.githubusercontent.com/unicode-org/cldr/release-49/common/main/root.xml
+# https://raw.githubusercontent.com/unicode-org/icu/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/intltest/tztest.cpp
 tztest.cpp/timeZoneName 2353,2394,2399 "Greenwich Mean Time"
 TimeZoneFormatTest.java/timeZoneName 1232 "Greenwich Mean Time"
 dtfmttst.cpp/timeZoneName 2755 "Greenwich Mean Time"
