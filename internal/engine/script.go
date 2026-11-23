@@ -34,11 +34,11 @@ func (e *SyntaxError) messageWithPosition() string {
 }
 
 // throwCompileError throws a SyntaxError for err, an error of the parser or the compiler for the source file.
-func (vm *VM) throwCompileError(errorRealm *Realm, file string, err error) {
+func (cx *ExecutionContext) throwCompileError(file string, err error) {
 	if se, ok := errors.AsType[*SyntaxError](toSyntaxError(file, err)); ok {
-		vm.ThrowSyntaxError(errorRealm, se.messageWithPosition())
+		cx.ThrowSyntaxError(se.messageWithPosition())
 	}
-	vm.ThrowSyntaxError(errorRealm, err.Error())
+	cx.ThrowSyntaxError(err.Error())
 }
 
 func itoa(n int) string {
@@ -52,8 +52,8 @@ type Script struct {
 
 // ParseScript implements ParseScript for the current realm. file names the script in error
 // messages. The error is a [*SyntaxError] when src is not a valid script.
-func (vm *VM) ParseScript(file string, src wtf8.String) (*Script, error) {
-	fp, err := vm.compileScript(file, src)
+func (cx *ExecutionContext) ParseScript(file string, src wtf8.String) (*Script, error) {
+	fp, err := cx.compileScript(file, src)
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +64,11 @@ func (vm *VM) ParseScript(file string, src wtf8.String) (*Script, error) {
 
 // ScriptEvaluation evaluates s and runs pending jobs. completed reports whether
 // the script returned normally before the job checkpoint.
-func (vm *VM) ScriptEvaluation(s *Script) (Value, bool, error) {
-	saved := vm.curRealm
-	if r := s.code.context.realm; r != saved {
-		vm.switchRealm(r)
-		defer vm.switchRealm(saved)
-	}
+func (s *Script) ScriptEvaluation() (Value, bool, error) {
+	cx := s.code.context
 	var completed bool
-	value, err := vm.enter(func(ExecutionContext) Value {
-		v := vm.CallScript(s)
+	value, err := cx.enter(func() Value {
+		v := s.CallScript()
 		completed = true
 		return v
 	})
@@ -80,26 +76,22 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, bool, error) {
 }
 
 // CallScript evaluates s from a running host function and propagates its exception.
-func (vm *VM) CallScript(s *Script) Value {
-	saved := vm.curRealm
-	if r := s.code.context.realm; r != saved {
-		vm.switchRealm(r)
-		defer vm.switchRealm(saved)
-	}
-	previous := vm.enteredRealm
-	vm.enteredRealm = s.code.context.realm
-	defer func() { vm.enteredRealm = previous }()
-	return vm.Call(vm.newScriptFunction(s.code), Value{o: vm.curRealm.globalThis})
+func (s *Script) CallScript() Value {
+	cx := s.code.context
+	previous := cx.enteredRealm
+	cx.enteredRealm = s.code.context.realm
+	defer func() { cx.enteredRealm = previous }()
+	return cx.Call(cx.newScriptFunction(s.code), Value{o: cx.realm.globalThis})
 }
 
-func (vm *VM) compileScript(file string, src wtf8.String) (*funcProto, error) {
+func (cx *ExecutionContext) compileScript(file string, src wtf8.String) (*funcProto, error) {
 	bc, err := compileScriptCode(file, src)
 	if err != nil {
 		return nil, err
 	}
-	return vm.link(bc, &scriptOrModule{
+	return cx.link(bc, &scriptOrModule{
 		file:  file,
-		realm: vm.curRealm,
+		realm: cx.realm,
 	}), nil
 }
 
@@ -118,7 +110,7 @@ func compileScriptCode(file string, src wtf8.String) (*bytecode.Func, error) {
 }
 
 // UnboundScript is a script parsed for no particular VM. Any number of VMs may bind it with
-// [VM.BindScript], also at the same time.
+// [ExecutionContext.BindScript], also at the same time.
 type UnboundScript struct {
 	file string
 	code *bytecode.Func
@@ -137,32 +129,32 @@ func ParseUnboundScript(file, src string) (*UnboundScript, error) {
 	}, nil
 }
 
-// BindScript returns the script of u for the current realm, as [VM.ParseScript] returns it for
+// BindScript returns the script of u for the current realm, as [ExecutionContext.ParseScript] returns it for
 // the source of u.
-func (vm *VM) BindScript(u *UnboundScript) *Script {
+func (cx *ExecutionContext) BindScript(u *UnboundScript) *Script {
 	return &Script{
-		code: vm.linkShared(u.code, &scriptOrModule{
+		code: cx.linkShared(u.code, &scriptOrModule{
 			file:  u.file,
-			realm: vm.curRealm,
+			realm: cx.realm,
 		}),
 	}
 }
 
 // compileFunction compiles the function of [parser.ParseFunction] into a script that evaluates
 // to it.
-func (vm *VM) compileFunction(file string, params, body wtf8.String, kind parser.FunctionKind) (*funcProto, error) {
+func (cx *ExecutionContext) compileFunction(file string, params, body wtf8.String, kind parser.FunctionKind) (*funcProto, error) {
 	prog, err := parser.ParseFunction(params, body, kind, parser.Options{
-		Poll: vm.Poll,
+		Poll: cx.Poll,
 	})
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
-	bc, err := compiler.CompileFunction(prog, file, vm.Poll)
+	bc, err := compiler.CompileFunction(prog, file, cx.Poll)
 	if err != nil {
 		return nil, toSyntaxError(file, err)
 	}
 	// The function has the active ScriptOrModule of its creation.
-	return vm.link(bc, vm.activeScriptOrModule()), nil
+	return cx.link(bc, cx.activeScriptOrModule()), nil
 }
 
 // toSyntaxError converts an error of the parser or the compiler for the source file to a
@@ -186,12 +178,12 @@ func toSyntaxError(file string, err error) error {
 }
 
 // newScriptFunction returns the function that runs the script fp.
-func (vm *VM) newScriptFunction(fp *funcProto) *Object {
+func (cx *ExecutionContext) newScriptFunction(fp *funcProto) *Object {
 	return (&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.curRealm.shapes.function,
+		shape: cx.realm.shapes.function,
 		fn:    &function{code: fp},
 	}).init()
 }

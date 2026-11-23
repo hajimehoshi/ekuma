@@ -16,11 +16,11 @@ func (v Value) isShortString() bool {
 	return v.IsString() && len(v.o.str) <= shortstrings.MaxBytes
 }
 
-func (vm *VM) shortString(s wtf8.String) Value {
+func (cx *ExecutionContext) shortString(s wtf8.String) Value {
 	// The immutable sentinel carries the byte length and the originating realm.
 	return Value{
 		n: math.Float64frombits(shortstrings.Pack(s)),
-		o: &vm.curRealm.shapes.shortStrings[len(s)],
+		o: &cx.realm.shapes.shortStrings[len(s)],
 	}
 }
 
@@ -146,35 +146,35 @@ func (v Value) writeShortString(b *strings.Builder) {
 }
 
 // Substring returns the code units of s from start up to end, which must be in range and in order.
-func (vm *VM) Substring(s Value, start, end int) Value {
+func (cx *ExecutionContext) Substring(s Value, start, end int) Value {
 	if !s.isShortString() {
-		return vm.NewString(s.o.Substring(start, end))
+		return cx.NewString(s.o.Substring(start, end))
 	}
 	if start == end {
-		return vm.emptyString
+		return cx.emptyString
 	}
 	data, n := shortstrings.Slice(math.Float64bits(s.n), start, end)
 	if n == 1 && byte(data) < 0x80 {
-		return vm.strings.ascii[byte(data)]
+		return cx.strings.ascii[byte(data)]
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.curRealm.shapes.shortStrings[n],
+		o: &cx.realm.shapes.shortStrings[n],
 	}
 }
 
-// SubstringBetween is like [VM.Substring] for the positions start and end in the text of s, which
+// SubstringBetween is like [ExecutionContext.Substring] for the positions start and end in the text of s, which
 // must be in order.
-func (vm *VM) SubstringBetween(s Value, start, end wtf8.Pos) Value {
+func (cx *ExecutionContext) SubstringBetween(s Value, start, end wtf8.Pos) Value {
 	if s.isShortString() {
 		// The packed text gives the code units without a search.
-		return vm.Substring(s, start.Unit, end.Unit)
+		return cx.Substring(s, start.Unit, end.Unit)
 	}
 	text := s.o.Str()
 	if start.Byte == 0 && !start.Low && end.Byte == len(text) && !end.Low {
 		return s
 	}
-	return vm.NewString(wtf8.Slice(text, start, end))
+	return cx.NewString(wtf8.Slice(text, start, end))
 }
 
 // StringByteLength returns the byte length of the string's canonical WTF-8 encoding.
@@ -247,40 +247,40 @@ func (v Value) IsWellFormed() bool {
 }
 
 // ToWellFormed returns s with lone surrogates replaced by U+FFFD.
-func (vm *VM) ToWellFormed(s Value) Value {
+func (cx *ExecutionContext) ToWellFormed(s Value) Value {
 	if s.isShortString() {
-		return vm.toWellFormedShort(s, math.Float64bits(s.n), len(s.o.str))
+		return cx.toWellFormedShort(s, math.Float64bits(s.n), len(s.o.str))
 	}
 	text := s.o.Str()
 	repaired := wtf8.String(wtf8.ToValidUTF8(text))
 	if repaired == text {
 		return s
 	}
-	return vm.NewString(repaired)
+	return cx.NewString(repaired)
 }
 
-func (vm *VM) toWellFormedShort(s Value, data uint64, n int) Value {
+func (cx *ExecutionContext) toWellFormedShort(s Value, data uint64, n int) Value {
 	repaired := shortstrings.ToWellFormed(data)
 	if repaired == data {
 		return s
 	}
 	return Value{
 		n: math.Float64frombits(repaired),
-		o: &vm.curRealm.shapes.shortStrings[n],
+		o: &cx.realm.shapes.shortStrings[n],
 	}
 }
 
 // MapASCII converts s to uppercase if upper is true, or lowercase otherwise.
 // s must be a string; false means it is non-ASCII or too long to pack.
-func (vm *VM) MapASCII(s Value, upper bool) (mapped Value, ok bool) {
+func (cx *ExecutionContext) MapASCII(s Value, upper bool) (mapped Value, ok bool) {
 	if len(s.o.str) > shortstrings.MaxBytes {
 		return
 	}
-	mapped, ok = vm.mapASCII(s, upper)
+	mapped, ok = cx.mapASCII(s, upper)
 	return
 }
 
-func (vm *VM) mapASCII(s Value, upper bool) (Value, bool) {
+func (cx *ExecutionContext) mapASCII(s Value, upper bool) (Value, bool) {
 	data := math.Float64bits(s.n)
 	if !shortstrings.IsASCII(data) {
 		return Value{}, false
@@ -296,28 +296,28 @@ func (vm *VM) mapASCII(s Value, upper bool) (Value, bool) {
 		return s, true
 	}
 	if n == 1 {
-		return vm.strings.ascii[byte(mapped)], true
+		return cx.strings.ascii[byte(mapped)], true
 	}
 	return Value{
 		n: math.Float64frombits(mapped),
-		o: &vm.curRealm.shapes.shortStrings[n],
+		o: &cx.realm.shapes.shortStrings[n],
 	}, true
 }
 
 // TrimString trims whitespace from the selected ends of the string s.
-func (vm *VM) TrimString(s Value, start, end bool) Value {
+func (cx *ExecutionContext) TrimString(s Value, start, end bool) Value {
 	if s.isShortString() {
-		return vm.trimShortString(s, start, end)
+		return cx.trimShortString(s, start, end)
 	}
 	text := s.o.Str()
 	trimmed := xstrings.TrimWhiteSpace(text, start, end)
 	if len(trimmed) == len(text) {
 		return s
 	}
-	return vm.NewString(trimmed)
+	return cx.NewString(trimmed)
 }
 
-func (vm *VM) trimShortString(s Value, start, end bool) Value {
+func (cx *ExecutionContext) trimShortString(s Value, start, end bool) Value {
 	data := math.Float64bits(s.n)
 	n := len(s.o.str)
 	var trimmed uint64
@@ -337,34 +337,34 @@ func (vm *VM) trimShortString(s Value, start, end bool) Value {
 		return s
 	}
 	if trimmedN == 0 {
-		return vm.emptyString
+		return cx.emptyString
 	}
 	if trimmedN == 1 && byte(trimmed) < 0x80 {
-		return vm.strings.ascii[byte(trimmed)]
+		return cx.strings.ascii[byte(trimmed)]
 	}
 	return Value{
 		n: math.Float64frombits(trimmed),
-		o: &vm.curRealm.shapes.shortStrings[trimmedN],
+		o: &cx.realm.shapes.shortStrings[trimmedN],
 	}
 }
 
 // RepeatShort returns count copies of s and reports whether the result fits a packed string.
 // s must be a string, and count must be nonnegative.
-func (vm *VM) RepeatShort(s Value, count int) (repeated Value, ok bool) {
+func (cx *ExecutionContext) RepeatShort(s Value, count int) (repeated Value, ok bool) {
 	if len(s.o.str) > shortstrings.MaxBytes && count != 0 {
 		return
 	}
-	repeated, ok = vm.repeatShort(s, count)
+	repeated, ok = cx.repeatShort(s, count)
 	return
 }
 
-func (vm *VM) repeatShort(s Value, count int) (Value, bool) {
+func (cx *ExecutionContext) repeatShort(s Value, count int) (Value, bool) {
 	if count == 0 {
-		return vm.emptyString, true
+		return cx.emptyString, true
 	}
 	n := s.StringByteLength()
 	if n == 0 {
-		return vm.emptyString, true
+		return cx.emptyString, true
 	}
 	if count > shortstrings.MaxBytes/n {
 		return Value{}, false
@@ -379,21 +379,21 @@ func (vm *VM) repeatShort(s Value, count int) (Value, bool) {
 	}
 	return Value{
 		n: math.Float64frombits(repeated),
-		o: &vm.curRealm.shapes.shortStrings[repeatedN],
+		o: &cx.realm.shapes.shortStrings[repeatedN],
 	}, true
 }
 
 // PadShort pads s with fill to target UTF-16 units and reports whether the result fits.
 // s and fill must be strings, fill must be nonempty, and need must be positive and equal target minus s's length.
-func (vm *VM) PadShort(s, fill Value, target, need int, atStart bool) (padded Value, ok bool) {
+func (cx *ExecutionContext) PadShort(s, fill Value, target, need int, atStart bool) (padded Value, ok bool) {
 	if target > shortstrings.MaxBytes {
 		return
 	}
-	padded, ok = vm.padShort(s, fill, need, atStart)
+	padded, ok = cx.padShort(s, fill, need, atStart)
 	return
 }
 
-func (vm *VM) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
+func (cx *ExecutionContext) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
 	n := s.StringByteLength()
 	if n > shortstrings.MaxBytes {
 		return Value{}, false
@@ -445,11 +445,11 @@ func (vm *VM) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
 		return Value{}, false
 	}
 	if n == 1 && byte(data) < 0x80 {
-		return vm.strings.ascii[byte(data)], true
+		return cx.strings.ascii[byte(data)], true
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.curRealm.shapes.shortStrings[n],
+		o: &cx.realm.shapes.shortStrings[n],
 	}, true
 }
 
@@ -464,17 +464,17 @@ func CompareStrings(a, b Value) int {
 }
 
 // NewStringBytes returns a string value containing the canonical WTF-8 bytes s.
-func (vm *VM) NewStringBytes(s []byte) Value {
+func (cx *ExecutionContext) NewStringBytes(s []byte) Value {
 	if len(s) == 0 {
-		return vm.emptyString
+		return cx.emptyString
 	}
 	if len(s) == 1 && s[0] < 0x80 {
-		return vm.strings.ascii[s[0]]
+		return cx.strings.ascii[s[0]]
 	}
 	if len(s) <= shortstrings.MaxBytes {
-		return vm.shortString(wtf8.String(s))
+		return cx.shortString(wtf8.String(s))
 	}
-	return vm.NewString(wtf8.String(s))
+	return cx.NewString(wtf8.String(s))
 }
 
 // AppendStringBytes appends the string value's canonical WTF-8 bytes to dst.

@@ -27,23 +27,23 @@ type moduleNamespace struct {
 }
 
 // moduleNamespace implements GetModuleNamespace for the evaluation phase.
-func (vm *VM) moduleNamespace(m *Module) *Object {
+func (cx *ExecutionContext) moduleNamespace(m *Module) *Object {
 	if m.namespace == nil {
-		m.namespace = vm.newModuleNamespace(m, false)
+		m.namespace = cx.newModuleNamespace(m, false)
 	}
 	return m.namespace
 }
 
 // deferredModuleNamespace implements GetModuleNamespace for the defer phase.
-func (vm *VM) deferredModuleNamespace(m *Module) *Object {
+func (cx *ExecutionContext) deferredModuleNamespace(m *Module) *Object {
 	if m.deferredNamespace == nil {
-		m.deferredNamespace = vm.newModuleNamespace(m, true)
+		m.deferredNamespace = cx.newModuleNamespace(m, true)
 	}
 	return m.deferredNamespace
 }
 
 // newModuleNamespace collects the exports for the requested phase and implements ModuleNamespaceCreate.
-func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
+func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object {
 	type export struct {
 		name string
 		r    resolution
@@ -83,7 +83,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		deferred: deferred,
 	}
 	for i, e := range exports {
-		k := vm.ToPropertyKey(ObjectValue(vm.Intern(wtf8.String(e.name))))
+		k := cx.ToPropertyKey(ObjectValue(cx.Intern(wtf8.String(e.name))))
 		ns.keys[i] = k
 		ns.targets[i] = e.r
 		ns.index[k] = i
@@ -92,14 +92,14 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		kind:  kindObject,
 		class: classModuleNamespace,
 		flags: objExotic,
-		shape: vm.curRealm.shapes.nullProto,
+		shape: cx.realm.shapes.nullProto,
 		ext:   ns,
 	}).init()
 	tag := wtf8.String("Module")
 	if deferred {
 		tag = "Deferred Module"
 	}
-	vm.add(o, vm.WellKnownSymbol(SymbolToStringTag), vm.NewString(tag), 0)
+	cx.add(o, cx.WellKnownSymbol(SymbolToStringTag), cx.NewString(tag), 0)
 	o.flags |= objNotExtensible
 	// The properties of the exports are not in the shape, which no inline cache may share.
 	o.makePrivate()
@@ -121,17 +121,17 @@ func (vm *VM) isNamespaceExportKey(o *Object, k PropKey) bool {
 
 // namespaceExports implements GetModuleExportsList: it returns the namespace data of the
 // module namespace object o, evaluating the module of a deferred one.
-func (vm *VM) namespaceExports(o *Object) *moduleNamespace {
+func (cx *ExecutionContext) namespaceExports(o *Object) *moduleNamespace {
 	ns := namespaceOf(o)
 	if ns.deferred {
-		vm.evaluateModuleSync(ns.module)
+		cx.evaluateModuleSync(ns.module)
 	}
 	return ns
 }
 
 // namespaceGet implements [[Get]] of the module namespace object o for an export key.
-func (vm *VM) namespaceGet(o *Object, k PropKey) Value {
-	ns := vm.namespaceExports(o)
+func (cx *ExecutionContext) namespaceGet(o *Object, k PropKey) Value {
+	ns := cx.namespaceExports(o)
 	i, ok := ns.index[k]
 	if !ok {
 		return Undefined
@@ -139,39 +139,39 @@ func (vm *VM) namespaceGet(o *Object, k PropKey) Value {
 	r := ns.targets[i]
 	switch r.index {
 	case resolutionNamespace:
-		return Value{o: vm.moduleNamespace(r.module)}
+		return Value{o: cx.moduleNamespace(r.module)}
 	case resolutionSource:
 		if r.module.source == nil {
-			vm.ThrowReferenceError(vm.CurrentRealm(), "the module source of '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is not available")
+			cx.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' is not available")
 		}
 		return Value{o: r.module.source}
 	}
 	v := *r.module.env[r.index].p
 	if v.o == tdzObject {
-		vm.ThrowReferenceError(vm.CurrentRealm(), "cannot access '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' before initialization")
+		cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' before initialization")
 	}
 	return v
 }
 
 // namespaceHas implements [[HasProperty]] of the module namespace object o for an export key.
-func (vm *VM) namespaceHas(o *Object, k PropKey) bool {
-	_, ok := vm.namespaceExports(o).index[k]
+func (cx *ExecutionContext) namespaceHas(o *Object, k PropKey) bool {
+	_, ok := cx.namespaceExports(o).index[k]
 	return ok
 }
 
 // namespaceGetOwnProperty implements [[GetOwnProperty]] of the module namespace object o
 // for an export key.
-func (vm *VM) namespaceGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
-	if !vm.namespaceHas(o, k) {
+func (cx *ExecutionContext) namespaceGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
+	if !cx.namespaceHas(o, k) {
 		return PropDesc{}, false
 	}
-	return dataDesc(vm.namespaceGet(o, k), FlagEnumerable|FlagWritable), true
+	return dataDesc(cx.namespaceGet(o, k), FlagEnumerable|FlagWritable), true
 }
 
 // namespaceDefineOwnProperty implements [[DefineOwnProperty]] of the module namespace object o
 // for an export key.
-func (vm *VM) namespaceDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
-	cur, ok := vm.namespaceGetOwnProperty(o, k)
+func (cx *ExecutionContext) namespaceDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+	cur, ok := cx.namespaceGetOwnProperty(o, k)
 	if !ok {
 		return false
 	}
@@ -194,8 +194,8 @@ func (vm *VM) namespaceDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool 
 }
 
 // namespaceOwnKeys implements [[OwnPropertyKeys]] of the module namespace object o.
-func (vm *VM) namespaceOwnKeys(o *Object) []PropKey {
-	keys := slices.Clone(vm.namespaceExports(o).keys)
+func (cx *ExecutionContext) namespaceOwnKeys(o *Object) []PropKey {
+	keys := slices.Clone(cx.namespaceExports(o).keys)
 	for _, k := range o.shape.keys() {
 		keys = append(keys, PropKey{key: k})
 	}
@@ -203,8 +203,8 @@ func (vm *VM) namespaceOwnKeys(o *Object) []PropKey {
 }
 
 // namespaceDelete implements [[Delete]] of the module namespace object o for an export key.
-func (vm *VM) namespaceDelete(o *Object, k PropKey) bool {
-	return !vm.namespaceHas(o, k)
+func (cx *ExecutionContext) namespaceDelete(o *Object, k PropKey) bool {
+	return !cx.namespaceHas(o, k)
 }
 
 // minStarTable is the number of export names from which newModuleNamespace resolves the names

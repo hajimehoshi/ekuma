@@ -36,10 +36,10 @@ func NewDisposeCapability() *DisposeCapability {
 }
 
 // AddDisposableResource implements AddDisposableResource. A nil method is not present.
-func (vm *VM) AddDisposableResource(dc *DisposeCapability, v Value, hint DisposeHint, method *Object) {
+func (cx *ExecutionContext) AddDisposableResource(dc *DisposeCapability, v Value, hint DisposeHint, method *Object) {
 	if method != nil {
 		if !(Value{o: method}).IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(Value{o: method})+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(Value{o: method}) + " is not a function")
 		}
 		dc.stack = append(dc.stack, disposableResource{
 			value:  Undefined,
@@ -59,11 +59,11 @@ func (vm *VM) AddDisposableResource(dc *DisposeCapability, v Value, hint Dispose
 		return
 	}
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not an object and cannot be disposed")
+		cx.ThrowTypeError(cx.DisplayString(v) + " is not an object and cannot be disposed")
 	}
-	method = vm.getDisposeMethod(v, hint)
+	method = cx.getDisposeMethod(v, hint)
 	if method == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not disposable")
+		cx.ThrowTypeError(cx.DisplayString(v) + " is not disposable")
 	}
 	dc.stack = append(dc.stack, disposableResource{
 		value:  v,
@@ -73,26 +73,26 @@ func (vm *VM) AddDisposableResource(dc *DisposeCapability, v Value, hint Dispose
 }
 
 // getDisposeMethod implements GetDisposeMethod. It returns nil for undefined.
-func (vm *VM) getDisposeMethod(v Value, hint DisposeHint) *Object {
+func (cx *ExecutionContext) getDisposeMethod(v Value, hint DisposeHint) *Object {
 	if hint == SyncDispose {
-		return vm.GetMethod(v, vm.WellKnownSymbol(SymbolDispose))
+		return cx.GetMethod(v, cx.WellKnownSymbol(SymbolDispose))
 	}
-	if m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolAsyncDispose)); m != nil {
+	if m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolAsyncDispose)); m != nil {
 		return m
 	}
-	m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolDispose))
+	m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolDispose))
 	if m == nil {
 		return nil
 	}
-	return vm.NewNative("", 0, func(vm *VM, this Value, args []Value) Value {
-		c := vm.newIntrinsicCapability()
-		if e, ok := vm.Completion(func() {
-			vm.Call(m, this)
+	return cx.NewNative("", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
+		c := cx.newIntrinsicCapability()
+		if e, ok := cx.Completion(func() {
+			cx.Call(m, this)
 		}); !ok {
-			vm.RejectCapability(c, e)
+			cx.RejectCapability(c, e)
 			return Value{o: c.promise}
 		}
-		vm.ResolveCapability(c, Undefined)
+		cx.ResolveCapability(c, Undefined)
 		return Value{o: c.promise}
 	})
 }
@@ -108,7 +108,7 @@ func (dc *DisposeCapability) beginDispose(v Value, thrown bool) {
 
 // disposeStep continues DisposeResources on dc until it has to await. It reports the value
 // to await and true, or false when every resource is disposed.
-func (vm *VM) disposeStep(dc *DisposeCapability) (Value, bool) {
+func (cx *ExecutionContext) disposeStep(dc *DisposeCapability) (Value, bool) {
 	for len(dc.stack) > 0 {
 		r := dc.stack[len(dc.stack)-1]
 		if r.hint == SyncDispose && dc.needsAwait && !dc.hasAwaited {
@@ -122,10 +122,10 @@ func (vm *VM) disposeStep(dc *DisposeCapability) (Value, bool) {
 			continue
 		}
 		var result Value
-		if e, ok := vm.Completion(func() {
-			result = vm.Call(r.method, r.value)
+		if e, ok := cx.Completion(func() {
+			result = cx.Call(r.method, r.value)
 		}); !ok {
-			vm.disposeError(vm.CurrentRealm(), dc, e)
+			cx.disposeError(dc, e)
 			continue
 		}
 		if r.hint == AsyncDispose {
@@ -142,17 +142,17 @@ func (vm *VM) disposeStep(dc *DisposeCapability) (Value, bool) {
 }
 
 // disposeError records that disposing a resource of dc threw e.
-func (vm *VM) disposeError(errorRealm *Realm, dc *DisposeCapability, e Value) {
+func (cx *ExecutionContext) disposeError(dc *DisposeCapability, e Value) {
 	if !dc.thrown {
 		dc.completion = e
 		dc.thrown = true
 		return
 	}
-	s := vm.NewErrorObject(errorRealm, errorRealm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
-	vm.Define(s, vm.Key(KeyError), e, FlagsHidden)
+	s := cx.NewErrorObject(cx.realm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
+	cx.Define(s, cx.Key(KeyError), e, FlagsHidden)
 	suppressed, _ := unpackException(dc.completion)
-	vm.Define(s, vm.Key(KeySuppressed), suppressed, FlagsHidden)
-	s.setExtState(vm.newErrorData(s, "", len(vm.frames), len(vm.natives)))
+	cx.Define(s, cx.Key(KeySuppressed), suppressed, FlagsHidden)
+	s.setExtState(cx.newErrorData(s, "", len(cx.frames), len(cx.natives)))
 	dc.completion = Value{o: s}
 }
 
@@ -166,44 +166,44 @@ func (dc *DisposeCapability) endDispose() (Value, bool) {
 // DisposeResources implements DisposeResources for a built-in function, for the completion v,
 // which is a throw completion when thrown is set. k receives the resulting completion, now or,
 // when a disposal awaits, in a later job.
-func (vm *VM) DisposeResources(dc *DisposeCapability, v Value, thrown bool, k AwaitHandler) {
+func (cx *ExecutionContext) DisposeResources(dc *DisposeCapability, v Value, thrown bool, k AwaitHandler) {
 	dc.beginDispose(v, thrown)
-	vm.continueDispose(dc, k)
+	cx.continueDispose(dc, k)
 }
 
-func (vm *VM) continueDispose(dc *DisposeCapability, k AwaitHandler) {
+func (cx *ExecutionContext) continueDispose(dc *DisposeCapability, k AwaitHandler) {
 	for {
-		v, await := vm.disposeStep(dc)
+		v, await := cx.disposeStep(dc)
 		if !await {
 			v, thrown := dc.endDispose()
-			k(vm, v, thrown)
+			k(cx, v, thrown)
 			return
 		}
-		e, ok := vm.Completion(func() {
-			vm.Await(v, func(vm *VM, v Value, rejected bool) {
+		e, ok := cx.Completion(func() {
+			cx.Await(v, func(cx *ExecutionContext, v Value, rejected bool) {
 				if rejected {
-					vm.disposeError(vm.CurrentRealm(), dc, v)
+					cx.disposeError(dc, v)
 				}
-				vm.continueDispose(dc, k)
+				cx.continueDispose(dc, k)
 			})
 		})
 		if ok {
 			return
 		}
-		vm.disposeError(vm.CurrentRealm(), dc, e)
+		cx.disposeError(dc, e)
 	}
 }
 
 // addDisposableOp adds v with hint to the dispose capability that the register value d holds,
 // creating it when d is undefined, and returns the new register value.
-func (vm *VM) addDisposableOp(v, d Value, hint DisposeHint) Value {
+func (cx *ExecutionContext) addDisposableOp(v, d Value, hint DisposeHint) Value {
 	if d.IsUndefined() {
 		d = Value{o: (&propertyObject{
 			kind: kindObject,
 			ext:  NewDisposeCapability(),
 		}).init()}
 	}
-	vm.AddDisposableResource(d.o.extState().(*DisposeCapability), v, hint, nil)
+	cx.AddDisposableResource(d.o.extState().(*DisposeCapability), v, hint, nil)
 	return d
 }
 
@@ -218,11 +218,11 @@ func beginDisposeOp(d, v, k Value) {
 }
 
 // disposeStepOp is disposeStep on the dispose capability that the register value d holds, if any.
-func (vm *VM) disposeStepOp(d Value) (Value, bool) {
+func (cx *ExecutionContext) disposeStepOp(d Value) (Value, bool) {
 	if d.IsUndefined() {
 		return Undefined, false
 	}
-	return vm.disposeStep(d.o.extState().(*DisposeCapability))
+	return cx.disposeStep(d.o.extState().(*DisposeCapability))
 }
 
 // endDisposeOp is endDispose on the dispose capability that the register value d holds.

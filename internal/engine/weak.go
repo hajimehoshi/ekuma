@@ -97,8 +97,8 @@ func newWeakTable() *WeakTable {
 }
 
 // NewWeakMapObject returns a WeakMap object without entries with the prototype proto.
-func (vm *VM) NewWeakMapObject(proto *Object) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewWeakMapObject(proto *Object) *Object {
+	o := cx.NewObject(proto)
 	o.class = classWeakMap
 	o.setExtState(newWeakTable())
 	return o
@@ -113,8 +113,8 @@ func WeakMapData(v Value) *WeakTable {
 }
 
 // NewWeakSetObject returns a WeakSet object without entries with the prototype proto.
-func (vm *VM) NewWeakSetObject(proto *Object) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewWeakSetObject(proto *Object) *Object {
+	o := cx.NewObject(proto)
 	o.class = classWeakSet
 	o.setExtState(newWeakTable())
 	return o
@@ -226,8 +226,8 @@ func (w *weakEntries) delete(table *weakTableKeys) bool {
 
 // NewWeakRefObject returns a WeakRef object with the prototype proto whose target is v,
 // for which CanBeHeldWeakly must hold.
-func (vm *VM) NewWeakRefObject(proto *Object, v Value) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewWeakRefObject(proto *Object, v Value) *Object {
+	o := cx.NewObject(proto)
 	o.class = classWeakRef
 	o.setExtState(weak.Make(v.o))
 	return o
@@ -358,15 +358,15 @@ func (q *finalizationQueue) pop() (deadCell, bool) {
 
 // NewFinalizationRegistryObject returns a FinalizationRegistry object with the prototype proto
 // and the cleanup callback callback.
-func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Object {
-	if vm.weak.finalization == nil {
-		vm.weak.finalization = &finalizationQueue{}
+func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *Object, callback *Object) *Object {
+	if cx.weak.finalization == nil {
+		cx.weak.finalization = &finalizationQueue{}
 	}
 	r := &FinalizationRegistry{
 		callback:         callback,
-		context:          &vm.curRealm.context,
-		continuationData: vm.continuationData,
-		queue:            vm.weak.finalization,
+		context:          cx,
+		continuationData: cx.continuationData,
+		queue:            cx.weak.finalization,
 		cells:            map[uint64]*finalizationCell{},
 		cleanups: &cellCleanups{
 			m: map[uint64]runtime.Cleanup{},
@@ -374,7 +374,7 @@ func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Ob
 	}
 	r.self = weak.Make(r)
 	runtime.AddCleanup(r, (*cellCleanups).stopAll, r.cleanups)
-	o := vm.NewObject(proto)
+	o := cx.NewObject(proto)
 	o.class = classFinalizationRegistry
 	o.setExtState(r)
 	return o
@@ -469,15 +469,15 @@ func (vm *VM) finalizationPending() bool {
 
 // runFinalizationCleanups calls the cleanup callbacks for the targets that were collected,
 // and reports whether any callback ran.
-func (vm *VM) runFinalizationCleanups() bool {
-	if !vm.finalizationPending() {
+func (cx *ExecutionContext) runFinalizationCleanups() bool {
+	if !cx.finalizationPending() {
 		return false
 	}
-	q := vm.weak.finalization
+	q := cx.weak.finalization
 	ran := false
 	for {
-		if vm.interrupt.Load() {
-			vm.Poll()
+		if cx.interrupt.Load() {
+			cx.Poll()
 		}
 		d, ok := q.pop()
 		if !ok {
@@ -494,17 +494,18 @@ func (vm *VM) runFinalizationCleanups() bool {
 		r.remove(d.id, c)
 		ran = true
 		r.context.enterJob(r.continuationData, func() {
-			if !vm.protect(func() {
-				vm.Call(r.callback, Undefined, c.held)
+			cx := r.context
+			if !cx.protect(func() {
+				cx.Call(r.callback, Undefined, c.held)
 			}) {
-				thrown := vm.takeThrown()
-				vm.reportUncaughtException(thrown, vm.thrownAt)
+				thrown := cx.takeThrown()
+				cx.reportUncaughtException(thrown, cx.thrownAt)
 			}
 		})
-		vm.ResumeInterruption()
-		if vm.abortCause != nil {
+		cx.ResumeInterruption()
+		if cx.abortCause != nil {
 			return ran
 		}
-		vm.clearKeptObjects()
+		cx.clearKeptObjects()
 	}
 }

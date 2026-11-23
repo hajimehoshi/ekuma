@@ -24,11 +24,11 @@ const (
 )
 
 // ToPrimitive implements ToPrimitive.
-func (vm *VM) ToPrimitive(v Value, h Hint) Value {
+func (cx *ExecutionContext) ToPrimitive(v Value, h Hint) Value {
 	if !v.IsObject() {
 		return v
 	}
-	if m := vm.GetMethod(v, vm.WellKnownSymbol(SymbolToPrimitive)); m != nil {
+	if m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolToPrimitive)); m != nil {
 		var name wtf8.String = "default"
 		switch h {
 		case HintNumber:
@@ -36,47 +36,47 @@ func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 		case HintString:
 			name = "string"
 		}
-		r := vm.Call(m, v, vm.NewString(name))
+		r := cx.Call(m, v, cx.NewString(name))
 		if r.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert object to primitive value")
+			cx.ThrowTypeError("cannot convert object to primitive value")
 		}
 		return r
 	}
-	return vm.OrdinaryToPrimitive(v.o, h)
+	return cx.OrdinaryToPrimitive(v.o, h)
 }
 
 // OrdinaryToPrimitive implements OrdinaryToPrimitive. h is [HintString] or [HintNumber].
-func (vm *VM) OrdinaryToPrimitive(o *Object, h Hint) Value {
-	first, second := vm.Key(keyValueOf), vm.Key(KeyToString)
+func (cx *ExecutionContext) OrdinaryToPrimitive(o *Object, h Hint) Value {
+	first, second := cx.Key(keyValueOf), cx.Key(KeyToString)
 	if h == HintString {
 		first, second = second, first
 	}
 	v := Value{o: o}
 	for _, name := range [2]*Object{first, second} {
-		if m := vm.GetV(v, name); m.IsCallable() {
-			if r := vm.Call(m.o, v); !r.IsObject() {
+		if m := cx.GetV(v, name); m.IsCallable() {
+			if r := cx.Call(m.o, v); !r.IsObject() {
 				return r
 			}
 		}
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert object to primitive value")
+	cx.ThrowTypeError("cannot convert object to primitive value")
 	return Undefined
 }
 
 // GetMethod implements GetMethod: the callable property key of v, or nil when it is undefined or null.
-func (vm *VM) GetMethod(v Value, key *Object) *Object {
-	m := vm.GetV(v, key)
+func (cx *ExecutionContext) GetMethod(v Value, key *Object) *Object {
+	m := cx.GetV(v, key)
 	if m.IsNullish() {
 		return nil
 	}
 	if !m.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key}))+" is not a function")
+		cx.ThrowTypeError(wtf8.ToValidUTF8(cx.KeyString(PropKey{key: key})) + " is not a function")
 	}
 	return m.o
 }
 
 // ToNumber implements ToNumber.
-func (vm *VM) ToNumber(v Value) float64 {
+func (cx *ExecutionContext) ToNumber(v Value) float64 {
 	o := v.o
 	if o == nil {
 		return math.NaN()
@@ -95,55 +95,55 @@ func (vm *VM) ToNumber(v Value) float64 {
 				return float64(n)
 			}
 		}
-		return numconv.StringToNumber(v.Str(), vm.Poll)
+		return numconv.StringToNumber(v.Str(), cx.Poll)
 	case kindSymbol:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a Symbol value to a number")
+		cx.ThrowTypeError("cannot convert a Symbol value to a number")
 	case kindBigInt:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a BigInt value to a number")
+		cx.ThrowTypeError("cannot convert a BigInt value to a number")
 	}
-	return vm.ToNumber(vm.ToPrimitive(v, HintNumber))
+	return cx.ToNumber(cx.ToPrimitive(v, HintNumber))
 }
 
 // ToNumeric implements ToNumeric: the result is a number or a BigInt.
-func (vm *VM) ToNumeric(v Value) Value {
+func (cx *ExecutionContext) ToNumeric(v Value) Value {
 	if v.o == numberObject {
 		return v
 	}
 	if v.IsObject() {
-		v = vm.ToPrimitive(v, HintNumber)
+		v = cx.ToPrimitive(v, HintNumber)
 	}
 	if v.o != nil && v.o.kind == kindBigInt {
 		return v
 	}
-	return Number(vm.ToNumber(v))
+	return Number(cx.ToNumber(v))
 }
 
 // ToIntegerOrInfinity implements ToIntegerOrInfinity.
-func (vm *VM) ToIntegerOrInfinity(v Value) float64 {
+func (cx *ExecutionContext) ToIntegerOrInfinity(v Value) float64 {
 	if v.o == numberObject {
 		return numconv.ToIntegerOrInfinity(v.n)
 	}
-	return numconv.ToIntegerOrInfinity(vm.ToNumber(v))
+	return numconv.ToIntegerOrInfinity(cx.ToNumber(v))
 }
 
 // ToInt32 implements ToInt32.
-func (vm *VM) ToInt32(v Value) int32 {
+func (cx *ExecutionContext) ToInt32(v Value) int32 {
 	if v.o == numberObject {
 		return numconv.ToInt32(v.n)
 	}
-	return numconv.ToInt32(vm.ToNumber(v))
+	return numconv.ToInt32(cx.ToNumber(v))
 }
 
 // ToUint32 implements ToUint32.
-func (vm *VM) ToUint32(v Value) uint32 {
+func (cx *ExecutionContext) ToUint32(v Value) uint32 {
 	if v.o == numberObject {
 		return numconv.ToUint32(v.n)
 	}
-	return numconv.ToUint32(vm.ToNumber(v))
+	return numconv.ToUint32(cx.ToNumber(v))
 }
 
 // ToString implements ToString.
-func (vm *VM) ToString(v Value) wtf8.String {
+func (cx *ExecutionContext) ToString(v Value) wtf8.String {
 	o := v.o
 	if o == nil {
 		return "undefined"
@@ -161,71 +161,71 @@ func (vm *VM) ToString(v Value) wtf8.String {
 	case kindTrue:
 		return "true"
 	case kindSymbol:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a Symbol value to a string")
+		cx.ThrowTypeError("cannot convert a Symbol value to a string")
 	case kindBigInt:
-		return vm.BigIntToString(v, 10)
+		return cx.BigIntToString(v, 10)
 	}
-	return vm.ToString(vm.ToPrimitive(v, HintString))
+	return cx.ToString(cx.ToPrimitive(v, HintString))
 }
 
 // ToStringValue implements ToString and returns the result as a value.
-func (vm *VM) ToStringValue(v Value) Value {
+func (cx *ExecutionContext) ToStringValue(v Value) Value {
 	if v.o != nil && v.o.kind == kindString {
 		return v
 	}
-	return vm.toStringValue(v)
+	return cx.toStringValue(v)
 }
 
-func (vm *VM) toStringValue(v Value) Value {
+func (cx *ExecutionContext) toStringValue(v Value) Value {
 	if v.IsObject() {
-		return vm.ToStringValue(vm.ToPrimitive(v, HintString))
+		return cx.ToStringValue(cx.ToPrimitive(v, HintString))
 	}
 	if v.IsNumber() {
 		var buf [32]byte
 		text := numconv.AppendNumber(buf[:0], v.n)
 		if len(text) == 1 {
-			return vm.strings.ascii[text[0]]
+			return cx.strings.ascii[text[0]]
 		}
 		if len(text) <= shortstrings.MaxBytes {
-			return vm.shortString(wtf8.String(text))
+			return cx.shortString(wtf8.String(text))
 		}
-		return vm.NewString(wtf8.String(text))
+		return cx.NewString(wtf8.String(text))
 	}
-	return vm.NewString(vm.ToString(v))
+	return cx.NewString(cx.ToString(v))
 }
 
 // ToObject implements ToObject.
-func (vm *VM) ToObject(v Value) *Object {
+func (cx *ExecutionContext) ToObject(v Value) *Object {
 	o := v.o
 	if o != nil && o.kind >= kindFirstObject {
 		return o
 	}
 	if o == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
+		cx.ThrowTypeError("cannot convert undefined or null to object")
 	}
 	if o == numberObject {
-		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicNumberPrototype))
+		w := cx.NewObject(cx.realm.Intrinsic(IntrinsicNumberPrototype))
 		w.class = classNumber
 		w.setExtState(v.n)
 		return w
 	}
 	switch o.kind {
 	case kindNull:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
+		cx.ThrowTypeError("cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
-		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicBooleanPrototype))
+		w := cx.NewObject(cx.realm.Intrinsic(IntrinsicBooleanPrototype))
 		w.class = classBoolean
 		w.setExtState(o.kind == kindTrue)
 		return w
 	case kindString:
-		return vm.NewStringObject(v.stringObject(), vm.CurrentRealm().Intrinsic(IntrinsicStringPrototype))
+		return cx.NewStringObject(v.stringObject(), cx.realm.Intrinsic(IntrinsicStringPrototype))
 	case kindSymbol:
-		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicSymbolPrototype))
+		w := cx.NewObject(cx.realm.Intrinsic(IntrinsicSymbolPrototype))
 		w.class = classSymbol
 		w.setExtState(o)
 		return w
 	case kindBigInt:
-		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicBigIntPrototype))
+		w := cx.NewObject(cx.realm.Intrinsic(IntrinsicBigIntPrototype))
 		w.class = classBigInt
 		w.setExtState(v)
 		return w
@@ -234,56 +234,56 @@ func (vm *VM) ToObject(v Value) *Object {
 }
 
 // NewStringObject returns the String object that wraps the string s.
-func (vm *VM) NewStringObject(s *Object, proto *Object) *Object {
-	w := vm.NewObject(proto)
+func (cx *ExecutionContext) NewStringObject(s *Object, proto *Object) *Object {
+	w := cx.NewObject(proto)
 	w.class = classString
 	w.setExtState(s)
-	vm.add(w, vm.Key(KeyLength), Number(float64(s.StringLength())), 0)
+	cx.add(w, cx.Key(KeyLength), Number(float64(s.StringLength())), 0)
 	return w
 }
 
 // RequireObjectCoercible throws a TypeError when v is undefined or null.
-func (vm *VM) RequireObjectCoercible(v Value, what string) {
+func (cx *ExecutionContext) RequireObjectCoercible(v Value, what string) {
 	if v.IsNullish() {
-		vm.ThrowTypeError(vm.CurrentRealm(), what+" called on null or undefined")
+		cx.ThrowTypeError(what + " called on null or undefined")
 	}
 }
 
 // ToBigInt implements ToBigInt. The result is a BigInt.
-func (vm *VM) ToBigInt(v Value) Value {
-	p := vm.ToPrimitive(v, HintNumber)
+func (cx *ExecutionContext) ToBigInt(v Value) Value {
+	p := cx.ToPrimitive(v, HintNumber)
 	if p.o == numberObject {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert "+wtf8.ToValidUTF8(numconv.NumberToString(p.n))+" to a BigInt")
+		cx.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(numconv.NumberToString(p.n)) + " to a BigInt")
 	}
 	if p.IsUndefined() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined to a BigInt")
+		cx.ThrowTypeError("cannot convert undefined to a BigInt")
 	}
 	switch p.o.kind {
 	case kindBigInt:
 		return p
 	case kindNull:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert "+wtf8.ToValidUTF8(vm.ToString(p))+" to a BigInt")
+		cx.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(cx.ToString(p)) + " to a BigInt")
 	case kindFalse:
 		return BigIntFromInt64(0)
 	case kindTrue:
 		return BigIntFromInt64(1)
 	case kindString:
-		i, err := numconv.StringToBigInt(p.Str(), MaxBigIntBits, vm.Poll)
+		i, err := numconv.StringToBigInt(p.Str(), MaxBigIntBits, cx.Poll)
 		switch {
 		case errors.Is(err, numconv.ErrNotBigInt):
-			vm.ThrowSyntaxError(vm.CurrentRealm(), "cannot convert "+vm.DisplayString(p)+" to a BigInt")
+			cx.ThrowSyntaxError("cannot convert " + cx.DisplayString(p) + " to a BigInt")
 		case errors.Is(err, numconv.ErrBigIntTooLarge):
-			vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
+			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
-		return vm.NewBigInt(i)
+		return cx.NewBigInt(i)
 	case kindSymbol:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a Symbol value to a BigInt")
+		cx.ThrowTypeError("cannot convert a Symbol value to a BigInt")
 	}
 	panic("ekuma: internal value reached ToBigInt")
 }
 
 // looseEquals implements IsLooselyEqual.
-func (vm *VM) looseEquals(a, b Value) bool {
+func (cx *ExecutionContext) looseEquals(a, b Value) bool {
 	for {
 		if a.o == numberObject && b.o == numberObject {
 			return a.n == b.n
@@ -301,20 +301,20 @@ func (vm *VM) looseEquals(a, b Value) bool {
 		case a.IsObject() && b.IsObject():
 			return a.o == b.o
 		case a.IsObject():
-			a = vm.ToPrimitive(a, HintDefault)
+			a = cx.ToPrimitive(a, HintDefault)
 		case b.IsObject():
-			b = vm.ToPrimitive(b, HintDefault)
+			b = cx.ToPrimitive(b, HintDefault)
 		case a.IsBool():
-			a = Number(vm.ToNumber(a))
+			a = Number(cx.ToNumber(a))
 		case b.IsBool():
-			b = Number(vm.ToNumber(b))
+			b = Number(cx.ToNumber(b))
 		case ak == kindSymbol || bk == kindSymbol:
 			return false
 		case ak == kindBigInt || bk == kindBigInt:
-			return vm.compareBigIntMixed(a, b) == cmpEqual
+			return cx.compareBigIntMixed(a, b) == cmpEqual
 		default:
 			// A number and a string.
-			return vm.ToNumber(a) == vm.ToNumber(b)
+			return cx.ToNumber(a) == cx.ToNumber(b)
 		}
 	}
 }
@@ -337,7 +337,7 @@ const (
 )
 
 // compareBigIntMixed compares a BigInt with a BigInt, a number or a string, in either order.
-func (vm *VM) compareBigIntMixed(a, b Value) cmpResult {
+func (cx *ExecutionContext) compareBigIntMixed(a, b Value) cmpResult {
 	if x, ok := a.BigInt64(); ok {
 		if y, ok := b.BigInt64(); ok {
 			return compareInt64s(x, y)
@@ -361,7 +361,7 @@ func (vm *VM) compareBigIntMixed(a, b Value) cmpResult {
 		case kindBigInt:
 			return v.BigInt(), 0, 0, true
 		case kindString:
-			i, err := numconv.StringToBigInt(v.Str(), MaxBigIntBits, vm.Poll)
+			i, err := numconv.StringToBigInt(v.Str(), MaxBigIntBits, cx.Poll)
 			switch {
 			case errors.Is(err, numconv.ErrNotBigInt):
 				return nil, 0, 0, false
@@ -411,30 +411,30 @@ func compareBigFloat(x *big.Int, f float64) cmpResult {
 }
 
 // compare implements IsLessThan for a and b, converting a first when leftFirst is set.
-func (vm *VM) compare(a, b Value, leftFirst bool) cmpResult {
+func (cx *ExecutionContext) compare(a, b Value, leftFirst bool) cmpResult {
 	if a.o == numberObject && b.o == numberObject {
 		return compareNumbers(a.n, b.n)
 	}
 	if leftFirst {
-		a = vm.ToPrimitive(a, HintNumber)
-		b = vm.ToPrimitive(b, HintNumber)
+		a = cx.ToPrimitive(a, HintNumber)
+		b = cx.ToPrimitive(b, HintNumber)
 	} else {
-		b = vm.ToPrimitive(b, HintNumber)
-		a = vm.ToPrimitive(a, HintNumber)
+		b = cx.ToPrimitive(b, HintNumber)
+		a = cx.ToPrimitive(a, HintNumber)
 	}
 	if a.IsString() && b.IsString() {
 		return cmpResult(CompareStrings(a, b) + 1)
 	}
 	if kindOf(a) == kindBigInt || kindOf(b) == kindBigInt {
 		if !a.IsNumber() && !a.IsBigInt() && !a.IsString() {
-			a = Number(vm.ToNumber(a))
+			a = Number(cx.ToNumber(a))
 		}
 		if !b.IsNumber() && !b.IsBigInt() && !b.IsString() {
-			b = Number(vm.ToNumber(b))
+			b = Number(cx.ToNumber(b))
 		}
-		return vm.compareBigIntMixed(a, b)
+		return cx.compareBigIntMixed(a, b)
 	}
-	return compareNumbers(vm.ToNumber(a), vm.ToNumber(b))
+	return compareNumbers(cx.ToNumber(a), cx.ToNumber(b))
 }
 
 func compareNumbers(x, y float64) cmpResult {
@@ -450,7 +450,7 @@ func compareNumbers(x, y float64) cmpResult {
 }
 
 // addValues implements the + operator for operands that are not both numbers.
-func (vm *VM) addValues(a, b Value) Value {
+func (cx *ExecutionContext) addValues(a, b Value) Value {
 	if x, ok := a.BigInt64(); ok {
 		if y, ok := b.BigInt64(); ok {
 			if s, ok := add64(x, y); ok {
@@ -459,45 +459,45 @@ func (vm *VM) addValues(a, b Value) Value {
 		}
 	}
 	if a.IsObject() {
-		a = vm.ToPrimitive(a, HintDefault)
+		a = cx.ToPrimitive(a, HintDefault)
 	}
 	if b.IsObject() {
-		b = vm.ToPrimitive(b, HintDefault)
+		b = cx.ToPrimitive(b, HintDefault)
 	}
 	as, bs := a.IsString(), b.IsString()
 	if as && bs {
-		return vm.Concat(a, b)
+		return cx.Concat(a, b)
 	}
 	if as || bs {
 		// The sum of a number and the empty string, in either order, is the string of the number.
 		// The str of every kind of string has the byte length of its contents.
 		if as && b.o == numberObject && len(a.o.str) == 0 {
-			return vm.toStringValue(b)
+			return cx.toStringValue(b)
 		}
 		if bs && a.o == numberObject && len(b.o.str) == 0 {
-			return vm.toStringValue(a)
+			return cx.toStringValue(a)
 		}
 		var x, y wtf8.String
 		if as {
 			x = a.rawString()
 		} else {
-			x = vm.ToString(a)
+			x = cx.ToString(a)
 		}
 		if bs {
 			y = b.rawString()
 		} else {
-			y = vm.ToString(b)
+			y = cx.ToString(b)
 		}
-		return vm.concat(a, x, b, y)
+		return cx.concat(a, x, b, y)
 	}
-	a, b = vm.ToNumeric(a), vm.ToNumeric(b)
+	a, b = cx.ToNumeric(a), cx.ToNumeric(b)
 	if a.o == numberObject && b.o == numberObject {
 		return Number(a.n + b.n)
 	}
 	if a.o == numberObject || b.o == numberObject {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot mix BigInt and other types, use explicit conversions")
+		cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
-	return vm.addBigInts(a, b)
+	return cx.addBigInts(a, b)
 }
 
 // MaxStringLength is the largest length a string may have, in bytes.

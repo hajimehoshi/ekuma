@@ -36,8 +36,8 @@ func TestArrayStorageShrinks(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			vm := newVM(t)
-			v, err := runScript(vm, tt.name, fill+tt.remove+`a`)
+			cx := newVM(t)
+			v, err := runScript(cx, tt.name, fill+tt.remove+`a`)
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
@@ -55,11 +55,11 @@ func TestArrayStorageShrinks(t *testing.T) {
 // after it returns to Go.
 func TestStackReleased(t *testing.T) {
 	const args = 1 << 18
-	vm := newVM(t)
-	if _, err := runScript(vm, "apply", `function f() {} f.apply(null, new Array(262144).fill(0));`); err != nil {
+	cx := newVM(t)
+	if _, err := runScript(cx, "apply", `function f() {} f.apply(null, new Array(262144).fill(0));`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	if got := engine.StackSize(vm); got >= args {
+	if got := engine.StackSize(cx); got >= args {
 		t.Errorf("got %d stack slots, want fewer than %d", got, args)
 	}
 }
@@ -67,11 +67,11 @@ func TestStackReleased(t *testing.T) {
 // TestJobQueueReleased tests that the job queue gives up its storage once many jobs ran.
 func TestJobQueueReleased(t *testing.T) {
 	const jobs = 10000
-	vm := newVM(t)
-	if _, err := runScript(vm, "jobs", `for (var i = 0; i < 10000; i++) Promise.resolve().then(() => {});`); err != nil {
+	cx := newVM(t)
+	if _, err := runScript(cx, "jobs", `for (var i = 0; i < 10000; i++) Promise.resolve().then(() => {});`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	if got := engine.JobStorage(vm); got >= jobs {
+	if got := engine.JobStorage(cx); got >= jobs {
 		t.Errorf("got storage for %d jobs, want fewer than %d", got, jobs)
 	}
 }

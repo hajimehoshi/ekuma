@@ -106,7 +106,7 @@ func decodeChunk(dst []byte, chunk []int, strict bool) ([]byte, bool) {
 const decodeRun = 1 << 16
 
 // fromBase64 implements FromBase64 for the string s, which may contain any bytes of WTF-8.
-func fromBase64(vm *engine.VM, s wtf8.String, url bool, lastChunkHandling wtf8.String, maxLength int) decodeResult {
+func fromBase64(cx *engine.ExecutionContext, s wtf8.String, url bool, lastChunkHandling wtf8.String, maxLength int) decodeResult {
 	var r decodeResult
 	if maxLength == 0 {
 		return r
@@ -124,7 +124,7 @@ func fromBase64(vm *engine.VM, s wtf8.String, url bool, lastChunkHandling wtf8.S
 		if done {
 			return r
 		}
-		vm.Poll()
+		cx.Poll()
 	}
 }
 
@@ -228,7 +228,7 @@ func fromBase64Run(s wtf8.String, i, stop int, values *[256]int8, lastChunkHandl
 }
 
 // fromHex implements FromHex for the string s.
-func fromHex(vm *engine.VM, s wtf8.String, maxLength int) decodeResult {
+func fromHex(cx *engine.ExecutionContext, s wtf8.String, maxLength int) decodeResult {
 	var r decodeResult
 	length := len(s)
 	if !wtf8.IsASCII(s) {
@@ -243,7 +243,7 @@ func fromHex(vm *engine.VM, s wtf8.String, maxLength int) decodeResult {
 	r.bytes = make([]byte, 0, min(maxLength, len(s)/2))
 	for r.read < len(s) && len(r.bytes) < maxLength && r.err == "" {
 		if r.read > 0 {
-			vm.Poll()
+			cx.Poll()
 		}
 		fromHexRun(s, r.read+decodeRun, maxLength, &r)
 	}
@@ -264,19 +264,19 @@ func fromHexRun(s wtf8.String, stop, maxLength int, r *decodeResult) {
 }
 
 // optionsObject implements GetOptionsObject.
-func optionsObject(vm *engine.VM, options engine.Value) engine.Value {
+func optionsObject(cx *engine.ExecutionContext, options engine.Value) engine.Value {
 	if options.IsUndefined() {
-		return engine.ObjectValue(vm.NewObject(nil))
+		return engine.ObjectValue(cx.NewObject(nil))
 	}
 	if !options.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "options must be an object")
+		cx.ThrowTypeError("options must be an object")
 	}
 	return options
 }
 
 // stringOption returns the option name of opts, which must be one of choices; undefined stands for choices[0].
-func stringOption(vm *engine.VM, opts engine.Value, name string, choices ...wtf8.String) wtf8.String {
-	v := vm.GetV(opts, vm.Intern(wtf8.String(name)))
+func stringOption(cx *engine.ExecutionContext, opts engine.Value, name string, choices ...wtf8.String) wtf8.String {
+	v := cx.GetV(opts, cx.Intern(wtf8.String(name)))
 	if v.IsUndefined() {
 		return choices[0]
 	}
@@ -286,103 +286,103 @@ func stringOption(vm *engine.VM, opts engine.Value, name string, choices ...wtf8
 			return s
 		}
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "invalid value of the option "+name+": "+vm.DisplayString(v))
+	cx.ThrowTypeError("invalid value of the option " + name + ": " + cx.DisplayString(v))
 	return ""
 }
 
-func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
+func initUint8ArrayBase64(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	ctor := bi.ctors[engine.ElementUint8]
 	proto := bi.protos[engine.ElementUint8]
 
 	// thisUint8Array implements ValidateUint8Array with the access mode write when write is set.
-	thisUint8Array := func(vm *engine.VM, this engine.Value, write bool, what string) *engine.TypedArray {
+	thisUint8Array := func(cx *engine.ExecutionContext, this engine.Value, write bool, what string) *engine.TypedArray {
 		t := engine.TypedArrayData(this)
 		if t == nil || t.ElementType() != engine.ElementUint8 {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Uint8Array.prototype."+what+": this is not a Uint8Array")
+			cx.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
 		}
 		if write && t.ArrayBuffer().IsImmutable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Uint8Array.prototype."+what+": the typed array is backed by an immutable ArrayBuffer")
+			cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is backed by an immutable ArrayBuffer")
 		}
 		return t
 	}
-	lengthOf := func(vm *engine.VM, t *engine.TypedArray, what string) int {
+	lengthOf := func(cx *engine.ExecutionContext, t *engine.TypedArray, what string) int {
 		n, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Uint8Array.prototype."+what+": the typed array is detached or out of bounds")
+			cx.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
 		}
 		return n
 	}
 	// bytesOf implements GetUint8ArrayBytes.
-	bytesOf := func(vm *engine.VM, t *engine.TypedArray, what string) []byte {
-		lengthOf(vm, t, what)
+	bytesOf := func(cx *engine.ExecutionContext, t *engine.TypedArray, what string) []byte {
+		lengthOf(cx, t, what)
 		return elementsOf(t)
 	}
-	stringArg := func(vm *engine.VM, args []engine.Value) wtf8.String {
+	stringArg := func(cx *engine.ExecutionContext, args []engine.Value) wtf8.String {
 		s := arg(args, 0)
 		if !s.IsString() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "the argument must be a string")
+			cx.ThrowTypeError("the argument must be a string")
 		}
 		return s.Str()
 	}
-	base64Options := func(vm *engine.VM, options engine.Value) (bool, wtf8.String) {
-		opts := optionsObject(vm, options)
-		alphabet := stringOption(vm, opts, "alphabet", "base64", "base64url")
-		last := stringOption(vm, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
+	base64Options := func(cx *engine.ExecutionContext, options engine.Value) (bool, wtf8.String) {
+		opts := optionsObject(cx, options)
+		alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
+		last := stringOption(cx, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
 		return alphabet == "base64url", last
 	}
-	newUint8Array := func(vm *engine.VM, b []byte) engine.Value {
-		o := bi.newTypedArray(vm, proto, engine.ElementUint8, int64(len(b)))
+	newUint8Array := func(cx *engine.ExecutionContext, b []byte) engine.Value {
+		o := bi.newTypedArray(cx, proto, engine.ElementUint8, int64(len(b)))
 		writeElements(engine.TypedArrayData(engine.ObjectValue(o)), 0, b)
 		return engine.ObjectValue(o)
 	}
 	// setResult implements the end of setFromBase64 and setFromHex.
-	setResult := func(vm *engine.VM, t *engine.TypedArray, r decodeResult) engine.Value {
+	setResult := func(cx *engine.ExecutionContext, t *engine.TypedArray, r decodeResult) engine.Value {
 		writeElements(t, 0, r.bytes)
 		if r.err != "" {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), r.err)
+			cx.ThrowSyntaxError(r.err)
 		}
-		o := vm.NewObjectFromProperties(
-			[]engine.PropKey{engine.NamedKey(vm.Intern("read")), engine.NamedKey(vm.Intern("written"))},
+		o := cx.NewObjectFromProperties(
+			[]engine.PropKey{engine.NamedKey(cx.Intern("read")), engine.NamedKey(cx.Intern("written"))},
 			[]engine.Value{engine.Number(float64(r.read)), engine.Number(float64(len(r.bytes)))},
 		)
 		return engine.ObjectValue(o)
 	}
 
-	method(vm, ctor, "fromBase64", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := stringArg(vm, args)
-		url, last := base64Options(vm, arg(args, 1))
-		r := fromBase64(vm, s, url, last, math.MaxInt)
+	method(cx, ctor, "fromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := stringArg(cx, args)
+		url, last := base64Options(cx, arg(args, 1))
+		r := fromBase64(cx, s, url, last, math.MaxInt)
 		if r.err != "" {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), r.err)
+			cx.ThrowSyntaxError(r.err)
 		}
-		return newUint8Array(vm, r.bytes)
+		return newUint8Array(cx, r.bytes)
 	})
-	method(vm, ctor, "fromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		r := fromHex(vm, stringArg(vm, args), math.MaxInt)
+	method(cx, ctor, "fromHex", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		r := fromHex(cx, stringArg(cx, args), math.MaxInt)
 		if r.err != "" {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), r.err)
+			cx.ThrowSyntaxError(r.err)
 		}
-		return newUint8Array(vm, r.bytes)
+		return newUint8Array(cx, r.bytes)
 	})
-	method(vm, proto, "setFromBase64", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, true, "setFromBase64")
-		s := stringArg(vm, args)
-		url, last := base64Options(vm, arg(args, 1))
-		n := lengthOf(vm, t, "setFromBase64")
-		return setResult(vm, t, fromBase64(vm, s, url, last, n))
+	method(cx, proto, "setFromBase64", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisUint8Array(cx, this, true, "setFromBase64")
+		s := stringArg(cx, args)
+		url, last := base64Options(cx, arg(args, 1))
+		n := lengthOf(cx, t, "setFromBase64")
+		return setResult(cx, t, fromBase64(cx, s, url, last, n))
 	})
-	method(vm, proto, "setFromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, true, "setFromHex")
-		s := stringArg(vm, args)
-		n := lengthOf(vm, t, "setFromHex")
-		return setResult(vm, t, fromHex(vm, s, n))
+	method(cx, proto, "setFromHex", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisUint8Array(cx, this, true, "setFromHex")
+		s := stringArg(cx, args)
+		n := lengthOf(cx, t, "setFromHex")
+		return setResult(cx, t, fromHex(cx, s, n))
 	})
-	method(vm, proto, "toBase64", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, false, "toBase64")
-		opts := optionsObject(vm, arg(args, 0))
-		alphabet := stringOption(vm, opts, "alphabet", "base64", "base64url")
-		omitPadding := engine.ToBoolean(vm.GetV(opts, vm.Intern("omitPadding")))
-		b := bytesOf(vm, t, "toBase64")
+	method(cx, proto, "toBase64", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisUint8Array(cx, this, false, "toBase64")
+		opts := optionsObject(cx, arg(args, 0))
+		alphabet := stringOption(cx, opts, "alphabet", "base64", "base64url")
+		omitPadding := engine.ToBoolean(cx.GetV(opts, cx.Intern("omitPadding")))
+		b := bytesOf(cx, t, "toBase64")
 		enc := base64.StdEncoding
 		if alphabet == "base64url" {
 			enc = base64.URLEncoding
@@ -392,11 +392,11 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		// Every chunk but the last is a whole number of 3-byte groups, which encode without
 		// padding.
-		return vm.NewString(wtf8.String(encodeInChunks(vm, b, 3, enc.EncodedLen, enc.AppendEncode)))
+		return cx.NewString(wtf8.String(encodeInChunks(cx, b, 3, enc.EncodedLen, enc.AppendEncode)))
 	})
-	method(vm, proto, "toHex", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisUint8Array(vm, this, false, "toHex")
-		return vm.NewString(wtf8.String(encodeInChunks(vm, bytesOf(vm, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
+	method(cx, proto, "toHex", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisUint8Array(cx, this, false, "toHex")
+		return cx.NewString(wtf8.String(encodeInChunks(cx, bytesOf(cx, t, "toHex"), 1, hex.EncodedLen, hex.AppendEncode)))
 	})
 }
 
@@ -406,15 +406,15 @@ const encodeChunk = 1 << 20
 
 // encodeInChunks returns the encoding of b by appendEncode, whose length encodedLen returns,
 // encoding a multiple of group bytes at a time.
-func encodeInChunks(vm *engine.VM, b []byte, group int, encodedLen func(n int) int, appendEncode func(dst, src []byte) []byte) string {
+func encodeInChunks(cx *engine.ExecutionContext, b []byte, group int, encodedLen func(n int) int, appendEncode func(dst, src []byte) []byte) string {
 	size := encodedLen(len(b))
-	checkStringLength(vm, size)
+	checkStringLength(cx, size)
 	out := make([]byte, 0, size)
 	n := encodeChunk / group * group
 	for len(b) > n {
 		out = appendEncode(out, b[:n])
 		b = b[n:]
-		vm.Poll()
+		cx.Poll()
 	}
 	return string(appendEncode(out, b))
 }

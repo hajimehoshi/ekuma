@@ -18,7 +18,7 @@ type regExpState struct {
 	source  wtf8.String
 	flags   wtf8.String
 	legacy  bool
-	// lent marks the state of a RegExp object that [VM.LendRegExpLiterals] lends.
+	// lent marks the state of a RegExp object that [ExecutionContext.LendRegExpLiterals] lends.
 	lent bool
 
 	// realm is the [[Realm]] of the object.
@@ -33,7 +33,7 @@ type regExpSite struct {
 	// pattern is compiled.
 	state *regExpState
 
-	// lent is the RegExp object that [VM.LendRegExpLiterals] lends for the literal, once made.
+	// lent is the RegExp object that [ExecutionContext.LendRegExpLiterals] lends for the literal, once made.
 	lent *Object
 }
 
@@ -42,30 +42,30 @@ const regExpCacheLimit = 1024
 
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor
 // newTarget, with an own lastIndex property and no matcher yet.
-func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
-	legacy := newTarget == vm.CurrentRealm().Intrinsic(IntrinsicRegExp)
+func (cx *ExecutionContext) RegExpAlloc(newTarget *Object) *Object {
+	legacy := newTarget == cx.realm.Intrinsic(IntrinsicRegExp)
 	var s *shape
 	if legacy {
 		// The prototype property of %RegExp% is neither writable nor configurable.
-		s = vm.regExpShape()
+		s = cx.regExpShape()
 	} else {
-		proto := vm.GetPrototypeFromConstructor(newTarget, IntrinsicRegExpPrototype)
-		s = vm.shapeFor(proto).with(vm.Key(keyLastIndex), FlagWritable)
+		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicRegExpPrototype)
+		s = cx.shapeFor(proto).with(cx.Key(keyLastIndex), FlagWritable)
 	}
-	return vm.newRegExpObject(s, &regExpState{
+	return cx.newRegExpObject(s, &regExpState{
 		legacy: legacy,
-		realm:  vm.curRealm,
+		realm:  cx.realm,
 	})
 }
 
 // regExpShape returns the shape of a new RegExp object whose prototype is %RegExp.prototype%.
-func (vm *VM) regExpShape() *shape {
-	proto := vm.CurrentRealm().Intrinsic(IntrinsicRegExpPrototype)
-	if s := vm.curRealm.shapes.regExp; s != nil && s.proto == proto {
+func (cx *ExecutionContext) regExpShape() *shape {
+	proto := cx.realm.Intrinsic(IntrinsicRegExpPrototype)
+	if s := cx.realm.shapes.regExp; s != nil && s.proto == proto {
 		return s
 	}
-	s := vm.shapeFor(proto).with(vm.Key(keyLastIndex), FlagWritable)
-	vm.curRealm.shapes.regExp = s
+	s := cx.shapeFor(proto).with(cx.Key(keyLastIndex), FlagWritable)
+	cx.realm.shapes.regExp = s
 	return s
 }
 
@@ -84,15 +84,15 @@ func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
 
 // RegExpInitialize implements RegExpInitialize for the RegExp object o and returns o.
 // It throws a SyntaxError for an invalid pattern or invalid flags.
-func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
+func (cx *ExecutionContext) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 	var r bytecode.RegExp
 	if !pattern.IsUndefined() {
-		r.Pattern = vm.ToString(pattern)
+		r.Pattern = cx.ToString(pattern)
 	}
 	if !flags.IsUndefined() {
-		r.Flags = vm.ToString(flags)
+		r.Flags = cx.ToString(flags)
 	}
-	re := vm.compileRegExp(r)
+	re := cx.compileRegExp(r)
 	o.setExtState(&regExpState{
 		matcher: re,
 		source:  r.Pattern,
@@ -100,44 +100,44 @@ func (vm *VM) RegExpInitialize(o *Object, pattern, flags Value) *Object {
 		legacy:  o.extState().(*regExpState).legacy,
 		realm:   o.extState().(*regExpState).realm,
 	})
-	vm.Set(o, NamedKey(vm.Key(keyLastIndex)), Number(0))
+	cx.Set(o, NamedKey(cx.Key(keyLastIndex)), Number(0))
 	return o
 }
 
 // compileRegExp compiles r or throws a SyntaxError.
-func (vm *VM) compileRegExp(r bytecode.RegExp) *regexp.Regexp {
-	if re, ok := vm.regExps[r]; ok {
+func (cx *ExecutionContext) compileRegExp(r bytecode.RegExp) *regexp.Regexp {
+	if re, ok := cx.regExps[r]; ok {
 		return re
 	}
 	flags, err := regexp.ParseFlags(r.Flags)
 	if err != nil {
-		vm.ThrowSyntaxError(vm.CurrentRealm(), err.Error())
+		cx.ThrowSyntaxError(err.Error())
 	}
-	re, err := regexp.Compile(r.Pattern, flags, vm)
+	re, err := regexp.Compile(r.Pattern, flags, cx)
 	if err != nil {
-		vm.ThrowSyntaxError(vm.CurrentRealm(), err.Error())
+		cx.ThrowSyntaxError(err.Error())
 	}
-	if vm.regExps == nil || len(vm.regExps) >= regExpCacheLimit {
-		vm.regExps = map[bytecode.RegExp]*regexp.Regexp{}
+	if cx.regExps == nil || len(cx.regExps) >= regExpCacheLimit {
+		cx.regExps = map[bytecode.RegExp]*regexp.Regexp{}
 	}
-	vm.regExps[r] = re
+	cx.regExps[r] = re
 	return re
 }
 
 // newRegExpLiteral evaluates the regular expression literal site: it returns a new RegExp object.
-func (vm *VM) newRegExpLiteral(site *regExpSite) *Object {
-	return vm.newRegExpObject(vm.regExpShape(), vm.regExpLiteralState(site))
+func (cx *ExecutionContext) newRegExpLiteral(site *regExpSite) *Object {
+	return cx.newRegExpObject(cx.regExpShape(), cx.regExpLiteralState(site))
 }
 
 // regExpLiteralState returns the state that the RegExp objects of the literal site share.
-func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
+func (cx *ExecutionContext) regExpLiteralState(site *regExpSite) *regExpState {
 	if site.state == nil {
 		site.state = &regExpState{
-			matcher: vm.compileRegExp(site.literal),
+			matcher: cx.compileRegExp(site.literal),
 			source:  site.literal.Pattern,
 			flags:   site.literal.Flags,
 			legacy:  true,
-			realm:   vm.curRealm,
+			realm:   cx.realm,
 		}
 	}
 	return site.state
@@ -146,62 +146,62 @@ func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
 // LendRegExpLiterals marks the native function f as one that may receive, as the first argument
 // of a call in the current realm written with a regular expression literal there, a RegExp object
 // that other evaluations of the literal reuse instead of a new one. Unless f replaces that
-// argument by [VM.OwnRegExp] before using it, f must not keep it, expose it to script code, or use
+// argument by [ExecutionContext.OwnRegExp] before using it, f must not keep it, expose it to script code, or use
 // it after running script code.
-func (vm *VM) LendRegExpLiterals(f *Object) {
-	vm.curRealm.regExpBorrowers = append(vm.curRealm.regExpBorrowers, f)
+func (cx *ExecutionContext) LendRegExpLiterals(f *Object) {
+	cx.realm.regExpBorrowers = append(cx.realm.regExpBorrowers, f)
 }
 
-// LendRegExpLiteralReceivers is like [VM.LendRegExpLiterals] for the this value of a method call
+// LendRegExpLiteralReceivers is like [ExecutionContext.LendRegExpLiterals] for the this value of a method call
 // on a regular expression literal.
-func (vm *VM) LendRegExpLiteralReceivers(f *Object) {
-	vm.curRealm.regExpReceiverBorrowers = append(vm.curRealm.regExpReceiverBorrowers, f)
+func (cx *ExecutionContext) LendRegExpLiteralReceivers(f *Object) {
+	cx.realm.regExpReceiverBorrowers = append(cx.realm.regExpReceiverBorrowers, f)
 }
 
 // lendRegExpLiteral evaluates the regular expression literal site into the register dst of
 // regs for the call of the callee in the register callee: dst is the first argument, or the
-// this value, which it sets only when [VM.regExpLiteralMethod] left the lent object there.
-func (vm *VM) lendRegExpLiteral(regs []Value, dst, callee int32, site *regExpSite) {
+// this value, which it sets only when [ExecutionContext.regExpLiteralMethod] left the lent object there.
+func (cx *ExecutionContext) lendRegExpLiteral(regs []Value, dst, callee int32, site *regExpSite) {
 	f := regs[callee].o
 	if dst == callee+2 {
-		regs[dst] = Value{o: vm.regExpLiteralFor(f, site, vm.curRealm.regExpBorrowers)}
+		regs[dst] = Value{o: cx.regExpLiteralFor(f, site, cx.realm.regExpBorrowers)}
 		return
 	}
 	if o := regs[dst].o; o != nil && o == site.lent {
 		// The register keeps the lent object, without a write barrier, when f borrows it.
-		if lent := vm.regExpLiteralFor(f, site, vm.curRealm.regExpReceiverBorrowers); lent != o {
+		if lent := cx.regExpLiteralFor(f, site, cx.realm.regExpReceiverBorrowers); lent != o {
 			regs[dst] = Value{o: lent}
 		}
 	}
 }
 
 // regExpLiteralFor returns the lent object of the literal site, as new, when f is one of
-// borrowers and [VM.IsUnmodifiedRegExp] holds for it, or else a new RegExp object.
-func (vm *VM) regExpLiteralFor(f *Object, site *regExpSite, borrowers []*Object) *Object {
+// borrowers and [ExecutionContext.IsUnmodifiedRegExp] holds for it, or else a new RegExp object.
+func (cx *ExecutionContext) regExpLiteralFor(f *Object, site *regExpSite, borrowers []*Object) *Object {
 	if f == nil || !slices.Contains(borrowers, f) {
-		return vm.newRegExpLiteral(site)
+		return cx.newRegExpLiteral(site)
 	}
-	o := vm.resetLentRegExp(site)
-	if !vm.IsUnmodifiedRegExp(o) {
-		return vm.newRegExpLiteral(site)
+	o := cx.resetLentRegExp(site)
+	if !cx.IsUnmodifiedRegExp(o) {
+		return cx.newRegExpLiteral(site)
 	}
 	return o
 }
 
 // resetLentRegExp returns the lent object of the literal site in the state of a new RegExp object.
-func (vm *VM) resetLentRegExp(site *regExpSite) *Object {
+func (cx *ExecutionContext) resetLentRegExp(site *regExpSite) *Object {
 	o := site.lent
 	if o == nil {
-		lent := *vm.regExpLiteralState(site)
+		lent := *cx.regExpLiteralState(site)
 		lent.lent = true
-		o = vm.newRegExpObject(vm.regExpShape(), &lent)
+		o = cx.newRegExpObject(cx.regExpShape(), &lent)
 		site.lent = o
 		return o
 	}
 	// A borrower that runs script code may still hold o, but no longer uses it. Only the pointers
 	// that differ from those of a new object are stored, so that reusing o needs no write barrier
 	// while the garbage collector marks.
-	if s := vm.regExpShape(); o.shape != s {
+	if s := cx.regExpShape(); o.shape != s {
 		o.shape = s
 	}
 	setNumber(&o.slots[0], 0)
@@ -210,32 +210,32 @@ func (vm *VM) resetLentRegExp(site *regExpSite) *Object {
 
 // regExpLiteralMethod reads the method key of a RegExp object for the literal site, using the
 // cache c, and returns it with the object to call it on. When reading it runs no code, that
-// object is the lent object of the literal, which [VM.lendRegExpLiteral] replaces before the call.
-func (vm *VM) regExpLiteralMethod(site *regExpSite, key *Object, c *propCache) (method Value, this *Object) {
-	o := vm.resetLentRegExp(site)
+// object is the lent object of the literal, which [ExecutionContext.lendRegExpLiteral] replaces before the call.
+func (cx *ExecutionContext) regExpLiteralMethod(site *regExpSite, key *Object, c *propCache) (method Value, this *Object) {
+	o := cx.resetLentRegExp(site)
 	e := &c.cacheEntry
 	if o.shape != e.shape {
 		e = &c.second
 	}
-	if o.shape == e.shape && e.kind == cacheProto && e.epoch == vm.protoEpoch {
+	if o.shape == e.shape && e.kind == cacheProto && e.epoch == cx.protoEpoch {
 		return *e.ref, o
 	}
-	if _, ok := vm.GetVWithoutCall(Value{o: o}, key); ok {
-		v, _ := vm.getNamed(Value{o: o}, key, c)
+	if _, ok := cx.GetVWithoutCall(Value{o: o}, key); ok {
+		v, _ := cx.getNamed(Value{o: o}, key, c)
 		return v, o
 	}
-	o = vm.newRegExpLiteral(site)
-	return vm.GetV(Value{o: o}, key), o
+	o = cx.newRegExpLiteral(site)
+	return cx.GetV(Value{o: o}, key), o
 }
 
 // OwnRegExp returns v, or a new RegExp object for the same literal when v is a RegExp object
-// lent by [VM.LendRegExpLiterals]. v must not have been used since it was lent.
-func (vm *VM) OwnRegExp(v Value) Value {
+// lent by [ExecutionContext.LendRegExpLiterals]. v must not have been used since it was lent.
+func (cx *ExecutionContext) OwnRegExp(v Value) Value {
 	if o := v.o; o != nil && o.class == classRegExp {
 		if st := o.extState().(*regExpState); st.lent {
 			own := *st
 			own.lent = false
-			return Value{o: vm.newRegExpObject(vm.regExpShape(), &own)}
+			return Value{o: cx.newRegExpObject(cx.regExpShape(), &own)}
 		}
 	}
 	return v
@@ -263,11 +263,11 @@ func (o *Object) RegExpLegacyFeaturesEnabled() bool {
 }
 
 // IsRegExpOfCurrentRealm reports whether the [[Realm]] of the RegExp object o is the current realm.
-func (vm *VM) IsRegExpOfCurrentRealm(o *Object) bool {
-	return o.extState().(*regExpState).realm == vm.curRealm
+func (cx *ExecutionContext) IsRegExpOfCurrentRealm(o *Object) bool {
+	return o.extState().(*regExpState).realm == cx.realm
 }
 
-// regExpOriginals is what [VM.IsUnmodifiedRegExp] compares against.
+// regExpOriginals is what [ExecutionContext.IsUnmodifiedRegExp] compares against.
 type regExpOriginals struct {
 	props []originalProp
 
@@ -316,14 +316,14 @@ func (p *originalProp) find() bool {
 }
 
 // RecordRegExpOriginals records the current own properties protoKeys of %RegExp.prototype%
-// and ctorKeys of %RegExp%, which [VM.IsUnmodifiedRegExp] requires to stay unchanged.
+// and ctorKeys of %RegExp%, which [ExecutionContext.IsUnmodifiedRegExp] requires to stay unchanged.
 // Every key must name an existing property whose value, if it is a data property, is an object.
-func (vm *VM) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
-	proto := vm.CurrentRealm().Intrinsic(IntrinsicRegExpPrototype)
-	ctor := vm.CurrentRealm().Intrinsic(IntrinsicRegExp)
-	r := &vm.curRealm.regExpOriginals
+func (cx *ExecutionContext) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
+	proto := cx.realm.Intrinsic(IntrinsicRegExpPrototype)
+	ctor := cx.realm.Intrinsic(IntrinsicRegExp)
+	r := &cx.realm.regExpOriginals
 	// hasRegExpShape compares against this shape, so it must exist from now on.
-	vm.regExpShape()
+	cx.regExpShape()
 	r.props = r.props[:0]
 	record := func(holder *Object, keys []*Object) {
 		for _, k := range keys {
@@ -360,14 +360,14 @@ func (vm *VM) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 
 // IsUnmodifiedRegExp reports whether o is an initialized RegExp object whose prototype is
 // %RegExp.prototype% and whose only own property is a writable lastIndex, while the properties
-// recorded by [VM.RecordRegExpOriginals] are unchanged. Then those properties are the only
+// recorded by [ExecutionContext.RecordRegExpOriginals] are unchanged. Then those properties are the only
 // ones that reading the recorded keys from o finds, and lastIndex is an ordinary data property.
-func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
-	if o.class != classRegExp || !vm.hasRegExpShape(o) || o.extState().(*regExpState).matcher == nil {
+func (cx *ExecutionContext) IsUnmodifiedRegExp(o *Object) bool {
+	if o.class != classRegExp || !cx.hasRegExpShape(o) || o.extState().(*regExpState).matcher == nil {
 		return false
 	}
-	r := &vm.curRealm.regExpOriginals
-	if !r.checked || r.epoch != vm.protoEpoch {
+	r := &cx.realm.regExpOriginals
+	if !r.checked || r.epoch != cx.protoEpoch {
 		r.found = true
 		r.data = r.data[:0]
 		for i := range r.props {
@@ -383,7 +383,7 @@ func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
 				})
 			}
 		}
-		r.epoch = vm.protoEpoch
+		r.epoch = cx.protoEpoch
 		r.checked = true
 	}
 	if !r.found {
@@ -399,33 +399,33 @@ func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
 
 // hasRegExpShape reports whether o has the shape of a new RegExp object whose prototype is
 // %RegExp.prototype%, so that its only own property is a writable lastIndex in slot 0.
-func (vm *VM) hasRegExpShape(o *Object) bool {
-	s := vm.curRealm.shapes.regExp
+func (cx *ExecutionContext) hasRegExpShape(o *Object) bool {
+	s := cx.realm.shapes.regExp
 	return s != nil && o.shape == s
 }
 
 // RegExpLastIndex returns the value of the own lastIndex property of o, or false when o may not
-// have it as a writable data property where [VM.RegExpAlloc] puts it.
-func (vm *VM) RegExpLastIndex(o *Object) (Value, bool) {
-	if !vm.hasRegExpShape(o) {
+// have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
+func (cx *ExecutionContext) RegExpLastIndex(o *Object) (Value, bool) {
+	if !cx.hasRegExpShape(o) {
 		return Undefined, false
 	}
 	return o.slots[0], true
 }
 
 // SetRegExpLastIndex sets the own lastIndex property of o to v and reports true, or reports
-// false when o may not have it as a writable data property where [VM.RegExpAlloc] puts it.
-func (vm *VM) SetRegExpLastIndex(o *Object, v Value) bool {
-	if !vm.hasRegExpShape(o) {
+// false when o may not have it as a writable data property where [ExecutionContext.RegExpAlloc] puts it.
+func (cx *ExecutionContext) SetRegExpLastIndex(o *Object, v Value) bool {
+	if !cx.hasRegExpShape(o) {
 		return false
 	}
 	o.slots[0] = v
-	vm.touchProto(o)
+	cx.touchProto(o)
 	return true
 }
 
 // matchResultShapes are the shapes that a match result array has after
-// [VM.DefineMatchResultProperties] or [VM.DefineMatchResultPropertiesWithIndices].
+// [ExecutionContext.DefineMatchResultProperties] or [ExecutionContext.DefineMatchResultPropertiesWithIndices].
 type matchResultShapes struct {
 	// array is the shape of a new array that the others derive from.
 	array *shape
@@ -436,14 +436,14 @@ type matchResultShapes struct {
 
 // matchResultShapesFor returns the match result shapes that derive from the shape array of a
 // new array of the current realm.
-func (vm *VM) matchResultShapesFor(array *shape) *matchResultShapes {
-	m := &vm.matchResultShapes
+func (cx *ExecutionContext) matchResultShapesFor(array *shape) *matchResultShapes {
+	m := &cx.matchResultShapes
 	if m.array != array {
-		plain := array.with(vm.Key(keyIndex), FlagsData).with(vm.Key(keyInput), FlagsData).with(vm.Key(keyGroups), FlagsData)
+		plain := array.with(cx.Key(keyIndex), FlagsData).with(cx.Key(keyInput), FlagsData).with(cx.Key(keyGroups), FlagsData)
 		*m = matchResultShapes{
 			array:       array,
 			plain:       plain,
-			withIndices: plain.with(vm.Intern("indices"), FlagsData),
+			withIndices: plain.with(cx.Intern("indices"), FlagsData),
 		}
 	}
 	return m
@@ -451,21 +451,21 @@ func (vm *VM) matchResultShapesFor(array *shape) *matchResultShapes {
 
 // DefineMatchResultProperties creates the data properties index, input and groups of a match
 // result on a, in that order, as CreateDataPropertyOrThrow does. a must be an array from
-// [VM.NewArrayWithRoom] that has no named properties.
-func (vm *VM) DefineMatchResultProperties(a *Object, index, input, groups Value) {
-	if a.shape != vm.curRealm.shapes.array || len(a.slots) != 0 {
+// [ExecutionContext.NewArrayWithRoom] that has no named properties.
+func (cx *ExecutionContext) DefineMatchResultProperties(a *Object, index, input, groups Value) {
+	if a.shape != cx.realm.shapes.array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultProperties on an array that is not new")
 	}
-	a.shape = vm.matchResultShapesFor(a.shape).plain
+	a.shape = cx.matchResultShapesFor(a.shape).plain
 	a.slots = append(a.slots, index, input, groups)
 }
 
-// DefineMatchResultPropertiesWithIndices is like [VM.DefineMatchResultProperties] and creates
+// DefineMatchResultPropertiesWithIndices is like [ExecutionContext.DefineMatchResultProperties] and creates
 // the data property indices after groups.
-func (vm *VM) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
-	if a.shape != vm.curRealm.shapes.array || len(a.slots) != 0 {
+func (cx *ExecutionContext) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
+	if a.shape != cx.realm.shapes.array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultPropertiesWithIndices on an array that is not new")
 	}
-	a.shape = vm.matchResultShapesFor(a.shape).withIndices
+	a.shape = cx.matchResultShapesFor(a.shape).withIndices
 	a.slots = append(a.slots, index, input, groups, indices)
 }

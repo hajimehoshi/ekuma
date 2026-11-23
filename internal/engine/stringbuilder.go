@@ -85,49 +85,49 @@ func (b *stringBuilder) String() wtf8.String {
 }
 
 // StringFromCodeUnits returns the string value whose code units are units.
-func (vm *VM) StringFromCodeUnits(units []uint16) Value {
+func (cx *ExecutionContext) StringFromCodeUnits(units []uint16) Value {
 	// Every code unit takes at least one byte.
 	if len(units) > shortstrings.MaxBytes {
-		return vm.NewString(wtf8.FromUTF16(units))
+		return cx.NewString(wtf8.FromUTF16(units))
 	}
 	var b stringBuilder
 	for _, u := range units {
 		b.WriteUnit(u)
 	}
-	return vm.builtString(&b)
+	return cx.builtString(&b)
 }
 
 // CodePointsToString returns the string value of points, code points that may be surrogates.
-func (vm *VM) CodePointsToString(points []rune) Value {
+func (cx *ExecutionContext) CodePointsToString(points []rune) Value {
 	// Every code point takes at least one byte.
 	if len(points) > shortstrings.MaxBytes {
 		var b wtf8.Buffer
 		for _, r := range points {
 			b.WriteRune(r)
 		}
-		return vm.NewString(b.String())
+		return cx.NewString(b.String())
 	}
 	var b stringBuilder
 	for _, r := range points {
 		b.WriteRune(r)
 	}
-	return vm.builtString(&b)
+	return cx.builtString(&b)
 }
 
 // builtString returns b's string as a string value.
-func (vm *VM) builtString(b *stringBuilder) Value {
+func (cx *ExecutionContext) builtString(b *stringBuilder) Value {
 	data, n, ok := b.packed()
 	if !ok {
-		return vm.NewString(b.String())
+		return cx.NewString(b.String())
 	}
 	if n == 0 {
-		return vm.emptyString
+		return cx.emptyString
 	}
 	if n == 1 && byte(data) < 0x80 {
-		return vm.strings.ascii[byte(data)]
+		return cx.strings.ascii[byte(data)]
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.curRealm.shapes.shortStrings[n],
+		o: &cx.realm.shapes.shortStrings[n],
 	}
 }

@@ -16,15 +16,15 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func (vm *VM) throwTDZ(errorRealm *Realm, name *Object) {
+func (cx *ExecutionContext) throwTDZ(name *Object) {
 	if name.str == "this" {
-		vm.ThrowReferenceError(errorRealm, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+		cx.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	vm.ThrowReferenceError(errorRealm, "cannot access '"+wtf8.ToValidUTF8(name.str)+"' before initialization")
+	cx.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.str) + "' before initialization")
 }
 
-func (vm *VM) throwReadOnly(errorRealm *Realm, v Value, k PropKey) {
-	vm.ThrowTypeError(errorRealm, "cannot assign to read only property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' of "+vm.DisplayString(v))
+func (cx *ExecutionContext) throwReadOnly(v Value, k PropKey) {
+	cx.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "' of " + cx.DisplayString(v))
 }
 
 // callAt returns the index of the call instruction of fp that ends before pc, past its extra.
@@ -79,13 +79,13 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
 // not exist, it throws a ReferenceError unless orUndef is set.
-func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
-	r := vm.curRealm
+func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
+	r := cx.realm
 	g := r.global
 	if p, ok := r.globalLex.shape.lookup(key); ok {
 		v := r.globalLex.slots[p.slot]
 		if v.o == tdzObject {
-			vm.throwTDZ(vm.CurrentRealm(), key)
+			cx.throwTDZ(key)
 		}
 		// c refers only to initialized bindings, which stay initialized, so a hit needs no
 		// check.
@@ -101,44 +101,44 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 		return g.slots[p.slot]
 	}
 	k := PropKey{key: key}
-	if !vm.HasProperty(g, k) {
+	if !cx.HasProperty(g, k) {
 		if orUndef {
 			return Undefined
 		}
-		vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
 	// GetBindingValue checks for the property again, which only a proxy can observe.
-	if proxyOnChain(g) != nil && !vm.HasProperty(g, k) {
+	if proxyOnChain(g) != nil && !cx.HasProperty(g, k) {
 		if strict {
-			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 		return Undefined
 	}
-	return vm.getProp(g, k, Value{o: r.globalThis})
+	return cx.getProp(g, k, Value{o: r.globalThis})
 }
 
 // resolveGlobal returns whether the global variable key exists.
-func (vm *VM) resolveGlobal(key *Object, c *globalCache) Value {
-	g := vm.curRealm.global
-	_, lex := vm.curRealm.globalLex.shape.lookup(key)
+func (cx *ExecutionContext) resolveGlobal(key *Object, c *globalCache) Value {
+	g := cx.realm.global
+	_, lex := cx.realm.globalLex.shape.lookup(key)
 	if _, own := g.shape.lookup(key); lex || own {
 		c.holder = g
 		c.shape = g.shape
 		return True
 	}
-	return Bool(vm.HasProperty(g, PropKey{key: key}))
+	return Bool(cx.HasProperty(g, PropKey{key: key}))
 }
 
 // setGlobal assigns to the global variable key.
-func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
-	r := vm.curRealm
+func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
+	r := cx.realm
 	g := r.global
 	if p, ok := r.globalLex.shape.lookup(key); ok {
 		if r.globalLex.slots[p.slot].o == tdzObject {
-			vm.throwTDZ(vm.CurrentRealm(), key)
+			cx.throwTDZ(key)
 		}
 		if p.flags&FlagWritable == 0 {
-			vm.ThrowTypeError(vm.CurrentRealm(), "assignment to constant variable '"+wtf8.ToValidUTF8(key.str)+"'")
+			cx.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 		r.globalLex.slots[p.slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
@@ -158,78 +158,78 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 	// Resolving the name and SetMutableBinding both check for the property, which only matters
 	// in strict code or to a proxy.
 	if proxied := proxyOnChain(g) != nil; strict || proxied {
-		found := vm.HasProperty(g, k)
+		found := cx.HasProperty(g, k)
 		if found && proxied {
-			found = vm.HasProperty(g, k)
+			found = cx.HasProperty(g, k)
 		}
 		if !found && strict {
-			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 	}
-	if !vm.setProp(g, k, val, Value{o: r.globalThis}) && strict {
-		vm.throwReadOnly(vm.CurrentRealm(), Value{o: g}, k)
+	if !cx.setProp(g, k, val, Value{o: r.globalThis}) && strict {
+		cx.throwReadOnly(Value{o: g}, k)
 	}
 }
 
 // checkGlobalDecl throws when declaring key at the top level of a script would conflict
 // with an existing declaration. what is a bytecode Decl kind.
-func (vm *VM) checkGlobalDecl(key *Object, what int) {
-	r := vm.curRealm
+func (cx *ExecutionContext) checkGlobalDecl(key *Object, what int) {
+	r := cx.realm
 	_, lex := r.globalLex.shape.lookup(key)
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
-		if !vm.HasOwnProperty(r.global, PropKey{key: key}) && !vm.IsExtensible(r.global) {
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global variable '"+wtf8.ToValidUTF8(key.str)+"'")
+		if !cx.HasOwnProperty(r.global, PropKey{key: key}) && !cx.IsExtensible(r.global) {
+			cx.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 	case bytecode.DeclLexical:
 		if lex {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := vm.GetOwnProperty(r.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
+		if d, ok := cx.GetOwnProperty(r.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
-			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
+			cx.ThrowSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
 		}
-		d, ok := vm.GetOwnProperty(r.global, PropKey{key: key})
+		d, ok := cx.GetOwnProperty(r.global, PropKey{key: key})
 		switch {
 		case !ok:
-			if !vm.IsExtensible(r.global) {
-				vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global function '"+wtf8.ToValidUTF8(key.str)+"'")
+			if !cx.IsExtensible(r.global) {
+				cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
 			}
 		case d.flags&FlagConfigurable != 0:
 		case d.flags&FlagAccessor != 0 || d.flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global function '"+wtf8.ToValidUTF8(key.str)+"'")
+			cx.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
 		}
 	}
 }
 
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when
 // flags has [bytecode.GlobalVarFunc]. flags is a set of the bytecode GlobalVar flags.
-func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
-	g := vm.curRealm.global
+func (cx *ExecutionContext) declareGlobalVar(key *Object, flags int, fn Value) {
+	g := cx.realm.global
 	k := PropKey{key: key}
-	d, ok := vm.GetOwnProperty(g, k)
+	d, ok := cx.GetOwnProperty(g, k)
 	attrs := FlagEnumerable | FlagWritable
 	if flags&bytecode.GlobalVarDeletable != 0 {
 		attrs |= FlagConfigurable
 	}
 	if flags&bytecode.GlobalVarFunc == 0 {
 		if !ok {
-			vm.DefinePropertyOrThrow(g, k, dataDesc(Undefined, attrs))
+			cx.DefinePropertyOrThrow(g, k, dataDesc(Undefined, attrs))
 		}
 		return
 	}
 	if !ok || d.flags&FlagConfigurable != 0 {
-		vm.DefinePropertyOrThrow(g, k, dataDesc(fn, attrs))
+		cx.DefinePropertyOrThrow(g, k, dataDesc(fn, attrs))
 		return
 	}
-	vm.DefinePropertyOrThrow(g, k, PropDesc{
+	cx.DefinePropertyOrThrow(g, k, PropDesc{
 		value: fn,
 		has:   HasValue,
 	})
@@ -239,45 +239,45 @@ func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
 // code, as Annex B.3.2.2 and B.3.2.3 do, and reports whether it is declared. It declares
 // nothing when a global lexical declaration of key exists or CanDeclareGlobalVar(key) is false.
 // flags is a set of the bytecode GlobalVar flags.
-func (vm *VM) declareGlobalAnnexB(key *Object, flags int) bool {
-	r := vm.curRealm
+func (cx *ExecutionContext) declareGlobalAnnexB(key *Object, flags int) bool {
+	r := cx.realm
 	if _, lex := r.globalLex.shape.lookup(key); lex {
 		return false
 	}
-	if !vm.HasOwnProperty(r.global, PropKey{key: key}) && !vm.IsExtensible(r.global) {
+	if !cx.HasOwnProperty(r.global, PropKey{key: key}) && !cx.IsExtensible(r.global) {
 		return false
 	}
-	vm.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, Undefined)
+	cx.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, Undefined)
 	return true
 }
 
 // declareGlobalLex creates the uninitialized global lexical binding key.
-func (vm *VM) declareGlobalLex(key *Object, isConst bool) {
-	r := vm.curRealm
+func (cx *ExecutionContext) declareGlobalLex(key *Object, isConst bool) {
+	r := cx.realm
 	flags := FlagsData
 	if isConst {
 		flags = FlagEnumerable | FlagConfigurable
 	}
-	vm.add(r.globalLex, key, tdz, flags)
+	cx.add(r.globalLex, key, tdz, flags)
 	// The binding may hide a property of the global object, and the bindings may have moved,
 	// so the global variable caches must not apply any longer.
 	r.global.renewShape()
 }
 
-func (vm *VM) initGlobalLex(key *Object, val Value) {
-	r := vm.curRealm
+func (cx *ExecutionContext) initGlobalLex(key *Object, val Value) {
+	r := cx.realm
 	p, _ := r.globalLex.shape.lookup(key)
 	r.globalLex.slots[p.slot] = val
 }
 
 // getValue returns v[k], or the getter to call.
-func (vm *VM) getValue(v, k Value) (Value, *Object) {
+func (cx *ExecutionContext) getValue(v, k Value) (Value, *Object) {
 	if ko := k.o; ko == numberObject {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
-				return vm.typedArrayGet(o, i), nil
+				return cx.typedArrayGet(o, i), nil
 			}
-			return vm.getIndex(v, i)
+			return cx.getIndex(v, i)
 		}
 	} else if ko != nil && ko.kind == kindString {
 		// An element in elems is an own data property, whatever object v is.
@@ -291,34 +291,34 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	}
 	// The receiver is checked before the key is converted.
 	if v.IsNullish() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of "+vm.DisplayString(v)+" (reading '"+vm.DisplayString(k)+"')")
+		cx.ThrowTypeError("cannot read properties of " + cx.DisplayString(v) + " (reading '" + cx.DisplayString(k) + "')")
 	}
-	key := vm.QueryKey(k)
+	key := cx.QueryKey(k)
 	if key.key == nil {
-		return vm.getIndex(v, key.idx)
+		return cx.getIndex(v, key.idx)
 	}
-	return vm.getNamed(v, key.key, nil)
+	return cx.getNamed(v, key.key, nil)
 }
 
 // setValue stores v[k] = val and returns the setter to call, if any. A store that fails throws
 // a TypeError in strict mode.
-func (vm *VM) setValue(v, k, val Value, strict bool) *Object {
-	setter, ok, key := vm.storeValue(v, k, val)
+func (cx *ExecutionContext) setValue(v, k, val Value, strict bool) *Object {
+	setter, ok, key := cx.storeValue(v, k, val)
 	if !ok && strict {
-		vm.throwReadOnly(vm.CurrentRealm(), v, key)
+		cx.throwReadOnly(v, key)
 	}
 	return setter
 }
 
 // storeValue stores v[k] = val. The first two results are those of setNamed, and the last is k
 // converted to a property key when the store fails.
-func (vm *VM) storeValue(v, k, val Value) (*Object, bool, PropKey) {
+func (cx *ExecutionContext) storeValue(v, k, val Value) (*Object, bool, PropKey) {
 	if ko := k.o; ko == numberObject {
 		if i, ok := numberIndex(k.n); ok {
 			if o := v.o; o != nil && o.class == classTypedArray {
-				return nil, vm.typedArraySet(o, i, val), IndexKey(i)
+				return nil, cx.typedArraySet(o, i, val), IndexKey(i)
 			}
-			setter, ok := vm.setIndex(v, i, val)
+			setter, ok := cx.setIndex(v, i, val)
 			return setter, ok, IndexKey(i)
 		}
 	} else if ko != nil && ko.kind == kindString {
@@ -331,86 +331,86 @@ func (vm *VM) storeValue(v, k, val Value) (*Object, bool, PropKey) {
 		}
 	}
 	if v.IsNullish() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot set properties of "+vm.DisplayString(v)+" (setting '"+vm.DisplayString(k)+"')")
+		cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + cx.DisplayString(k) + "')")
 	}
-	key := vm.ToPropertyKey(k)
+	key := cx.ToPropertyKey(k)
 	if key.key == nil {
-		setter, ok := vm.setIndex(v, key.idx, val)
+		setter, ok := cx.setIndex(v, key.idx, val)
 		return setter, ok, key
 	}
-	setter, ok := vm.setNamed(v, key.key, val, nil)
+	setter, ok := cx.setNamed(v, key.key, val, nil)
 	return setter, ok, key
 }
 
 // deleteValue implements the delete operator on a property.
-func (vm *VM) deleteValue(v, k Value, strict bool) Value {
+func (cx *ExecutionContext) deleteValue(v, k Value, strict bool) Value {
 	if v.IsNullish() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
+		cx.ThrowTypeError("cannot convert undefined or null to object")
 	}
-	key := vm.ToPropertyKey(k)
-	o := vm.ToObject(v)
-	ok := vm.DeleteProp(o, key)
+	key := cx.ToPropertyKey(k)
+	o := cx.ToObject(v)
+	ok := cx.DeleteProp(o, key)
 	if !ok && strict {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot delete property '"+wtf8.ToValidUTF8(vm.KeyString(key))+"' of "+vm.DisplayString(v))
+		cx.ThrowTypeError("cannot delete property '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "' of " + cx.DisplayString(v))
 	}
 	return Bool(ok)
 }
 
 // superBase implements GetSuperBase for the home object home.
-func (vm *VM) superBase(home Value) Value {
+func (cx *ExecutionContext) superBase(home Value) Value {
 	if !home.IsObject() {
-		vm.ThrowSyntaxError(vm.CurrentRealm(), "'super' keyword unexpected here")
+		cx.ThrowSyntaxError("'super' keyword unexpected here")
 	}
-	if p := vm.ProtoOf(home.o); p != nil {
+	if p := cx.ProtoOf(home.o); p != nil {
 		return ObjectValue(p)
 	}
 	return Null
 }
 
 // superObject returns the object that a super property access with the super base base starts from.
-func (vm *VM) superObject(base Value) *Object {
+func (cx *ExecutionContext) superObject(base Value) *Object {
 	if base.IsNull() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot access a property of a null prototype through 'super'")
+		cx.ThrowTypeError("cannot access a property of a null prototype through 'super'")
 	}
 	return base.o
 }
 
 // getSuper reads the property k of the super base base with the this value this,
 // and returns the property key as well.
-func (vm *VM) getSuper(base, k, this Value) (Value, PropKey) {
-	o := vm.superObject(base)
-	key := vm.ToPropertyKey(k)
-	return vm.getProp(o, key, this), key
+func (cx *ExecutionContext) getSuper(base, k, this Value) (Value, PropKey) {
+	o := cx.superObject(base)
+	key := cx.ToPropertyKey(k)
+	return cx.getProp(o, key, this), key
 }
 
-func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
-	o := vm.superObject(base)
-	key := vm.ToPropertyKey(k)
-	if !vm.setProp(o, key, val, this) && strict {
-		vm.throwReadOnly(vm.CurrentRealm(), this, key)
+func (cx *ExecutionContext) setSuper(base, k, val, this Value, strict bool) {
+	o := cx.superObject(base)
+	key := cx.ToPropertyKey(k)
+	if !cx.setProp(o, key, val, this) && strict {
+		cx.throwReadOnly(this, key)
 	}
 }
 
 // instanceOf implements InstanceofOperator. site is the inline cache of the OpInstanceof that
 // evaluates it, or nil.
-func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
+func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 	for {
 		if !c.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "right-hand side of 'instanceof' is not an object")
+			cx.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 		}
-		if !vm.inheritsHasInstance(c.o) {
+		if !cx.inheritsHasInstance(c.o) {
 			site = nil
-			if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
-				if m != vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
-					return ToBoolean(vm.Call(m, c, v))
+			if m := cx.GetMethod(c, cx.WellKnownSymbol(SymbolHasInstance)); m != nil {
+				if m != cx.realm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
+					return ToBoolean(cx.Call(m, c, v))
 				}
 			} else if !c.IsCallable() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "right-hand side of 'instanceof' is not callable")
+				cx.ThrowTypeError("right-hand side of 'instanceof' is not callable")
 			}
 		}
 		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
 		if !c.IsCallable() || c.o.fn.bound == nil {
-			return vm.ordinaryHasInstance(c, v, site)
+			return cx.ordinaryHasInstance(c, v, site)
 		}
 		c, site = Value{o: c.o.fn.bound.target}, nil
 	}
@@ -419,11 +419,11 @@ func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
 // inheritsHasInstance reports whether the @@hasInstance property of c is the one that it
 // inherits from %Function.prototype% of the current realm. A false result does not mean the
 // opposite.
-func (vm *VM) inheritsHasInstance(c *Object) bool {
+func (cx *ExecutionContext) inheritsHasInstance(c *Object) bool {
 	// The property of %Function.prototype% is neither writable nor configurable, so only the
 	// objects before it on the chain can hide it.
-	fp := vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototype)
-	key := vm.WellKnownSymbol(SymbolHasInstance)
+	fp := cx.realm.Intrinsic(IntrinsicFunctionPrototype)
+	key := cx.WellKnownSymbol(SymbolHasInstance)
 	for h := c; h != fp; h = h.shape.proto {
 		// The properties that an unmaterialized function lacks have string keys.
 		if h == nil || h.class != classFunction && (h.class != classObject || h.flags&objExotic != 0) {
@@ -437,47 +437,47 @@ func (vm *VM) inheritsHasInstance(c *Object) bool {
 }
 
 // functionPrototype returns Get(c, "prototype") for the function c.
-func (vm *VM) functionPrototype(c *Object) Value {
+func (cx *ExecutionContext) functionPrototype(c *Object) Value {
 	if c.class == classFunction {
 		if c.flags&objExotic != 0 {
-			vm.resolve(c)
+			cx.resolve(c)
 		}
-		if p, ok := c.shape.lookup(vm.Key(KeyPrototype)); ok && p.flags&FlagAccessor == 0 {
+		if p, ok := c.shape.lookup(cx.Key(KeyPrototype)); ok && p.flags&FlagAccessor == 0 {
 			return c.slots[p.slot]
 		}
 	}
-	return vm.GetV(Value{o: c}, vm.Key(KeyPrototype))
+	return cx.GetV(Value{o: c}, cx.Key(KeyPrototype))
 }
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
-func (vm *VM) OrdinaryHasInstance(c, v Value) bool {
-	return vm.ordinaryHasInstance(c, v, nil)
+func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
+	return cx.ordinaryHasInstance(c, v, nil)
 }
 
 // ordinaryHasInstance implements OrdinaryHasInstance for the instanceof operator with the inline
 // cache site, which is nil unless the @@hasInstance of c is that of %Function.prototype%.
-func (vm *VM) ordinaryHasInstance(c, v Value, site *propCache) bool {
+func (cx *ExecutionContext) ordinaryHasInstance(c, v Value, site *propCache) bool {
 	if !c.IsCallable() {
 		return false
 	}
 	if b := c.o.fn.bound; b != nil {
-		return vm.instanceOf(v, Value{o: b.target}, nil)
+		return cx.instanceOf(v, Value{o: b.target}, nil)
 	}
 	if !v.IsObject() {
 		return false
 	}
-	p := vm.functionPrototype(c.o)
+	p := cx.functionPrototype(c.o)
 	if !p.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "function has non-object prototype in instanceof check")
+		cx.ThrowTypeError("function has non-object prototype in instanceof check")
 	}
 	if site != nil && c.o.class == classFunction && c.o.flags&objExotic == 0 {
-		if s, ok := c.o.shape.lookup(vm.Key(KeyPrototype)); ok && s.flags&FlagAccessor == 0 {
+		if s, ok := c.o.shape.lookup(cx.Key(KeyPrototype)); ok && s.flags&FlagAccessor == 0 {
 			// Caching the constructor's own prototype slot also relies on @@hasInstance staying inherited.
-			site.setInherited(c.o.shape, cacheOwn, vm.protoEpoch)
+			site.setInherited(c.o.shape, cacheOwn, cx.protoEpoch)
 			site.slot = s.slot
 		}
 	}
-	for o := vm.ProtoOf(v.o); o != nil; o = vm.ProtoOf(o) {
+	for o := cx.ProtoOf(v.o); o != nil; o = cx.ProtoOf(o) {
 		if o == p.o {
 			return true
 		}
@@ -486,12 +486,12 @@ func (vm *VM) ordinaryHasInstance(c, v Value, site *propCache) bool {
 }
 
 // privateStorage returns the object holding o's private elements.
-func (vm *VM) privateStorage(o *Object) *Object {
+func (cx *ExecutionContext) privateStorage(o *Object) *Object {
 	if o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.isGlobal() {
-			if !st.allowsGlobalAccess(vm.curRealm.globalProxyHandler) {
-				vm.ThrowTypeError(vm.CurrentRealm(), "no access")
+			if !st.allowsGlobalAccess(cx.realm.globalProxyHandler) {
+				cx.ThrowTypeError("no access")
 			}
 			return st.target
 		}
@@ -500,56 +500,56 @@ func (vm *VM) privateStorage(o *Object) *Object {
 }
 
 // getPrivate returns the private element name of v, or the getter to call.
-func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
+func (cx *ExecutionContext) getPrivate(v Value, name *Object) (Value, *Object) {
 	if v.IsObject() {
-		o := vm.privateStorage(v.o)
+		o := cx.privateStorage(v.o)
 		if p, ok := o.shape.lookup(name); ok {
 			val := o.slots[p.slot]
 			if p.flags&FlagAccessor != 0 {
 				g := val.accessor().getter
 				if g == nil {
-					vm.ThrowTypeError(vm.CurrentRealm(), "'#"+wtf8.ToValidUTF8(name.str)+"' was defined without a getter")
+					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a getter")
 				}
 				return Undefined, g
 			}
 			return val, nil
 		}
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "cannot read private member #"+wtf8.ToValidUTF8(name.str)+" from an object whose class did not declare it")
+	cx.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.str) + " from an object whose class did not declare it")
 	return Undefined, nil
 }
 
 // setPrivate stores val as the private element name of v, or returns the setter to call.
-func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
+func (cx *ExecutionContext) setPrivate(v Value, name *Object, val Value) *Object {
 	if v.IsObject() {
-		o := vm.privateStorage(v.o)
+		o := cx.privateStorage(v.o)
 		if p, ok := o.shape.lookup(name); ok {
 			if p.flags&FlagAccessor != 0 {
 				s := o.slots[p.slot].accessor().setter
 				if s == nil {
-					vm.ThrowTypeError(vm.CurrentRealm(), "'#"+wtf8.ToValidUTF8(name.str)+"' was defined without a setter")
+					cx.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a setter")
 				}
 				return s
 			}
 			if p.flags&FlagWritable == 0 {
-				vm.ThrowTypeError(vm.CurrentRealm(), "private method '#"+wtf8.ToValidUTF8(name.str)+"' is not writable")
+				cx.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.str) + "' is not writable")
 			}
 			o.slots[p.slot] = val
 			return nil
 		}
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "cannot write private member #"+wtf8.ToValidUTF8(name.str)+" to an object whose class did not declare it")
+	cx.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.str) + " to an object whose class did not declare it")
 	return nil
 }
 
 // definePrivate adds the private element name to v. val is the field value, a method, or an accessor.
-func (vm *VM) definePrivate(v Value, name *Object, val Value) {
+func (cx *ExecutionContext) definePrivate(v Value, name *Object, val Value) {
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot define a private member on a non-object")
+		cx.ThrowTypeError("cannot define a private member on a non-object")
 	}
-	o := vm.privateStorage(v.o)
+	o := cx.privateStorage(v.o)
 	if _, ok := o.shape.lookup(name); ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot initialize #"+wtf8.ToValidUTF8(name.str)+" twice on the same object")
+		cx.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.str) + " twice on the same object")
 	}
 	flags := FlagWritable
 	switch {
@@ -559,19 +559,19 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 		// The name stands for a method, which cannot be assigned to.
 		flags = 0
 	}
-	vm.add(o, name, val, flags)
+	cx.add(o, name, val, flags)
 }
 
 // ensureCanAddPrivate throws a TypeError if the private element name cannot be added to v
 // because v is not extensible.
-func (vm *VM) ensureCanAddPrivate(v Value, name *Object) {
-	if v.IsObject() && !vm.IsExtensible(vm.privateStorage(v.o)) {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot define private member #"+wtf8.ToValidUTF8(name.str)+" on an object that is not extensible")
+func (cx *ExecutionContext) ensureCanAddPrivate(v Value, name *Object) {
+	if v.IsObject() && !cx.IsExtensible(cx.privateStorage(v.o)) {
+		cx.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.str) + " on an object that is not extensible")
 	}
 }
 
 // arith implements the binary arithmetic operators other than + for operands that are not both numbers.
-func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
+func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 	if xi, ok := x.BigInt64(); ok {
 		if yi, ok := y.BigInt64(); ok {
 			if r, ok := arithBigInt64(op, xi, yi); ok {
@@ -579,8 +579,8 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 			}
 		}
 	}
-	x = vm.ToNumeric(x)
-	y = vm.ToNumeric(y)
+	x = cx.ToNumeric(x)
+	y = cx.ToNumeric(y)
 	if x.o == numberObject && y.o == numberObject {
 		a, b := x.n, y.n
 		switch op {
@@ -610,34 +610,34 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
 	if x.o == numberObject || y.o == numberObject {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot mix BigInt and other types, use explicit conversions")
+		cx.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
 	}
 	// Subtraction, the bitwise operations and the shifts on huge BigInts cannot stop once they
 	// start, so a pending interruption is taken before them.
-	if vm.interrupt.Load() {
-		vm.Poll()
+	if cx.interrupt.Load() {
+		cx.Poll()
 	}
 	a, b := x.BigInt(), y.BigInt()
 	r := new(big.Int)
 	switch op {
 	case bytecode.OpSub:
 		r.Sub(a, b)
-		vm.checkBigIntBits(int64(r.BitLen()))
+		cx.checkBigIntBits(int64(r.BitLen()))
 	case bytecode.OpMul:
-		return vm.multiplyBigInts(a, b)
+		return cx.multiplyBigInts(a, b)
 	case bytecode.OpDiv:
 		if b.Sign() == 0 {
-			vm.ThrowRangeError(vm.CurrentRealm(), "division by zero")
+			cx.ThrowRangeError("division by zero")
 		}
-		r, _ = numconv.QuoRemBigInt(a, b, vm.Poll)
+		r, _ = numconv.QuoRemBigInt(a, b, cx.Poll)
 	case bytecode.OpMod:
 		if b.Sign() == 0 {
-			vm.ThrowRangeError(vm.CurrentRealm(), "division by zero")
+			cx.ThrowRangeError("division by zero")
 		}
-		_, r = numconv.QuoRemBigInt(a, b, vm.Poll)
+		_, r = numconv.QuoRemBigInt(a, b, cx.Poll)
 	case bytecode.OpExp:
 		if b.Sign() < 0 {
-			vm.ThrowRangeError(vm.CurrentRealm(), "exponent must be non-negative")
+			cx.ThrowRangeError("exponent must be non-negative")
 		}
 		if a.CmpAbs(big.NewInt(1)) <= 0 {
 			r.Exp(a, b, nil)
@@ -645,26 +645,26 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		}
 		// The result of a base other than 0, 1 and -1 has more bits than the exponent.
 		if !b.IsInt64() || b.Int64() >= MaxBigIntBits {
-			vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
+			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		n := b.Int64()
 		size := powBitLen(a, n)
-		vm.checkBigIntBits(size)
+		cx.checkBigIntBits(size)
 		if size > bigExpStepBits {
-			vm.bigExp(r, a, n)
+			cx.bigExp(r, a, n)
 		} else {
 			r.Exp(a, b, nil)
 		}
-		vm.checkBigIntBits(int64(r.BitLen()))
+		cx.checkBigIntBits(int64(r.BitLen()))
 	case bytecode.OpBitOr:
 		r.Or(a, b)
-		vm.checkBigIntBits(int64(r.BitLen()))
+		cx.checkBigIntBits(int64(r.BitLen()))
 	case bytecode.OpBitAnd:
 		r.And(a, b)
-		vm.checkBigIntBits(int64(r.BitLen()))
+		cx.checkBigIntBits(int64(r.BitLen()))
 	case bytecode.OpBitXor:
 		r.Xor(a, b)
-		vm.checkBigIntBits(int64(r.BitLen()))
+		cx.checkBigIntBits(int64(r.BitLen()))
 	case bytecode.OpShl, bytecode.OpShr:
 		n := b
 		if op == bytecode.OpShr {
@@ -673,14 +673,14 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		switch {
 		case !n.IsInt64() || n.Int64() > 1<<30:
 			if n.Sign() > 0 && a.Sign() != 0 {
-				vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
+				cx.ThrowRangeError("maximum BigInt size exceeded")
 			}
 			if a.Sign() < 0 && n.Sign() < 0 {
 				r.SetInt64(-1)
 			}
 		case n.Sign() >= 0:
 			if a.Sign() != 0 {
-				vm.checkBigIntBits(int64(a.BitLen()) + n.Int64())
+				cx.checkBigIntBits(int64(a.BitLen()) + n.Int64())
 			}
 			r.Lsh(a, uint(n.Int64()))
 		case n.Int64() < -(1 << 30):
@@ -691,49 +691,49 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 			r.Rsh(a, uint(-n.Int64()))
 		}
 	case bytecode.OpUShr:
-		vm.ThrowTypeError(vm.CurrentRealm(), "BigInts have no unsigned right shift, use >> instead")
+		cx.ThrowTypeError("BigInts have no unsigned right shift, use >> instead")
 	default:
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
-	return vm.NewBigInt(r)
+	return cx.NewBigInt(r)
 }
 
-func (vm *VM) negate(x Value) Value {
+func (cx *ExecutionContext) negate(x Value) Value {
 	if i, ok := x.BigInt64(); ok && i != math.MinInt64 {
 		return BigIntFromInt64(-i)
 	}
-	x = vm.ToNumeric(x)
+	x = cx.ToNumeric(x)
 	if x.o == numberObject {
 		return Number(-x.n)
 	}
-	return vm.NewBigInt(new(big.Int).Neg(x.BigInt()))
+	return cx.NewBigInt(new(big.Int).Neg(x.BigInt()))
 }
 
-func (vm *VM) bitNot(x Value) Value {
+func (cx *ExecutionContext) bitNot(x Value) Value {
 	if i, ok := x.BigInt64(); ok {
 		return BigIntFromInt64(^i)
 	}
-	x = vm.ToNumeric(x)
+	x = cx.ToNumeric(x)
 	if x.o == numberObject {
 		return Number(float64(^numconv.ToInt32(x.n)))
 	}
 	r := new(big.Int).Not(x.BigInt())
-	vm.checkBigIntBits(int64(r.BitLen()))
-	return vm.NewBigInt(r)
+	cx.checkBigIntBits(int64(r.BitLen()))
+	return cx.NewBigInt(r)
 }
 
 // step implements ++ and -- for an operand that is not a number: it adds d to x.
-func (vm *VM) step(x Value, d int64) Value {
+func (cx *ExecutionContext) step(x Value, d int64) Value {
 	if i, ok := x.BigInt64(); ok {
 		if s, ok := add64(i, d); ok {
 			return BigIntFromInt64(s)
 		}
 	}
-	x = vm.ToNumeric(x)
+	x = cx.ToNumeric(x)
 	if x.o == numberObject {
 		return Number(x.n + float64(d))
 	}
-	return vm.addBigInts(x, BigIntFromInt64(d))
+	return cx.addBigInts(x, BigIntFromInt64(d))
 }
 
 // classElement is an element that the constructor of a class adds to every instance.
@@ -755,7 +755,7 @@ type classElement struct {
 // addClassElement registers an instance element of the class ctor, or defines a static element at once.
 // For a field, v is the function that computes the initial value, or with [bytecode.ElemValue]
 // in kind, the initial value itself.
-func (vm *VM) addClassElement(ctor *Object, key Value, v Value, kind int) {
+func (cx *ExecutionContext) addClassElement(ctor *Object, key Value, v Value, kind int) {
 	e := classElement{
 		kind: kind &^ (bytecode.ElemStatic | bytecode.ElemValue),
 		key:  key,
@@ -766,7 +766,7 @@ func (vm *VM) addClassElement(ctor *Object, key Value, v Value, kind int) {
 		e.val = v.o
 	}
 	if kind&bytecode.ElemStatic != 0 {
-		vm.defineClassElement(Value{o: ctor}, &e)
+		cx.defineClassElement(Value{o: ctor}, &e)
 		return
 	}
 	if ctor.fn.fields == nil {
@@ -776,58 +776,58 @@ func (vm *VM) addClassElement(ctor *Object, key Value, v Value, kind int) {
 }
 
 // initFields defines the instance elements of the class ctor on this.
-func (vm *VM) initFields(ctor *Object, this Value) {
+func (cx *ExecutionContext) initFields(ctor *Object, this Value) {
 	fields := *ctor.fn.fields
 	// Private methods and accessors exist before any field initializer runs.
 	checked := false
 	for i := range fields {
 		if e := &fields[i]; e.kind != bytecode.ElemField && e.kind != elemInitializer {
 			if !checked {
-				vm.ensureCanAddPrivate(this, e.key.o)
+				cx.ensureCanAddPrivate(this, e.key.o)
 				checked = true
 			}
-			vm.defineClassElement(this, e)
+			cx.defineClassElement(this, e)
 		}
 	}
 	for i := range fields {
 		switch e := &fields[i]; e.kind {
 		case bytecode.ElemField:
-			vm.defineClassElement(this, e)
+			cx.defineClassElement(this, e)
 		case elemInitializer:
-			vm.Call(e.val, this)
+			cx.Call(e.val, this)
 		}
 	}
 }
 
-func (vm *VM) defineClassElement(this Value, e *classElement) {
+func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
 	private := e.key.o != nil && e.key.o.class == classPrivateName
 	switch e.kind {
 	case bytecode.ElemField:
 		v := e.init
 		if e.val != nil {
-			v = vm.Call(e.val, this)
+			v = cx.Call(e.val, this)
 		}
 		if e.dec != nil {
 			for _, init := range e.dec.initializers {
-				v = vm.Call(init, this, v)
+				v = cx.Call(init, this, v)
 			}
 		}
 		if private {
-			vm.ensureCanAddPrivate(this, e.key.o)
-			vm.definePrivate(this, e.key.o, v)
+			cx.ensureCanAddPrivate(this, e.key.o)
+			cx.definePrivate(this, e.key.o, v)
 		} else {
-			vm.definePublicField(this.o, e.key, v, &e.cache)
+			cx.definePublicField(this.o, e.key, v, &e.cache)
 		}
 		if e.dec != nil {
 			for _, init := range e.dec.extra {
-				vm.Call(init, this)
+				cx.Call(init, this)
 			}
 		}
 	case bytecode.ElemMethod:
-		vm.definePrivate(this, e.key.o, Value{o: e.val})
+		cx.definePrivate(this, e.key.o, Value{o: e.val})
 	case bytecode.ElemGetter, bytecode.ElemSetter:
 		if this.IsObject() {
-			o := vm.privateStorage(this.o)
+			o := cx.privateStorage(this.o)
 			if p, ok := o.shape.lookup(e.key.o); ok && p.flags&FlagAccessor != 0 {
 				a := o.slots[p.slot].accessor()
 				if e.kind == bytecode.ElemGetter && a.getter == nil {
@@ -841,9 +841,9 @@ func (vm *VM) defineClassElement(this Value, e *classElement) {
 			}
 		}
 		if e.kind == bytecode.ElemGetter {
-			vm.definePrivate(this, e.key.o, newAccessor(e.val, nil))
+			cx.definePrivate(this, e.key.o, newAccessor(e.val, nil))
 		} else {
-			vm.definePrivate(this, e.key.o, newAccessor(nil, e.val))
+			cx.definePrivate(this, e.key.o, newAccessor(nil, e.val))
 		}
 	}
 }
@@ -854,16 +854,16 @@ func (vm *VM) typeofValue(v Value) Value {
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals
 // and public class fields use it.
-func (vm *VM) defineField(o *Object, k, val Value) {
-	vm.CreateDataPropertyOrThrow(o, vm.ToPropertyKey(k), val)
+func (cx *ExecutionContext) defineField(o *Object, k, val Value) {
+	cx.CreateDataPropertyOrThrow(o, cx.ToPropertyKey(k), val)
 }
 
 // defineFieldK defines the enumerable data property key of o.
-func (vm *VM) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
+func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
 	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 {
 		if _, ok := o.shape.lookup(key); !ok {
 			old := o.shape
-			vm.add(o, key, val, FlagsData)
+			cx.add(o, key, val, FlagsData)
 			if !old.private && !o.shape.private {
 				c.shape = old
 				c.kind = cacheAdd
@@ -872,32 +872,32 @@ func (vm *VM) defineFieldK(o *Object, key *Object, val Value, c *propCache) {
 			return
 		}
 	}
-	vm.CreateDataPropertyOrThrow(o, PropKey{key: key}, val)
+	cx.CreateDataPropertyOrThrow(o, PropKey{key: key}, val)
 }
 
 // definePublicField implements CreateDataPropertyOrThrow for the public class field k of o.
 // c caches the shape transition of the field, whose key is always k.
-func (vm *VM) definePublicField(o *Object, k, val Value, c *propCache) {
+func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCache) {
 	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.shape == c.shape && c.kind == cacheAdd {
 		o.shape = c.next
 		o.slots = append(o.slots, val)
 		return
 	}
-	if pk := vm.ToPropertyKey(k); pk.key != nil {
-		vm.defineFieldK(o, pk.key, val, c)
+	if pk := cx.ToPropertyKey(k); pk.key != nil {
+		cx.defineFieldK(o, pk.key, val, c)
 		return
 	}
-	vm.defineField(o, k, val)
+	cx.defineField(o, k, val)
 }
 
 // defineMethod defines the method f under the key k of o.
-func (vm *VM) defineMethod(o *Object, k, f Value) {
+func (cx *ExecutionContext) defineMethod(o *Object, k, f Value) {
 	f.o.ownFunction().home = o
-	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), dataDesc(f, FlagsHidden))
+	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), dataDesc(f, FlagsHidden))
 }
 
 // defineAccessor defines the getter or setter f under the key k of o.
-func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
+func (cx *ExecutionContext) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable bool) {
 	f.ownFunction().home = o
 	d := PropDesc{
 		flags: FlagConfigurable,
@@ -913,11 +913,11 @@ func (vm *VM) defineAccessor(o *Object, k Value, f *Object, isSetter, enumerable
 		d.getter = f
 		d.has |= HasGet
 	}
-	vm.DefinePropertyOrThrow(o, vm.ToPropertyKey(k), d)
+	cx.DefinePropertyOrThrow(o, cx.ToPropertyKey(k), d)
 }
 
 // funcNameOfKey returns the name that SetFunctionName gives a function for the property key or private name k.
-func (vm *VM) funcNameOfKey(k Value) wtf8.String {
+func (cx *ExecutionContext) funcNameOfKey(k Value) wtf8.String {
 	switch {
 	case k.IsSymbol():
 		if k.o.class == classPrivateName {
@@ -925,7 +925,7 @@ func (vm *VM) funcNameOfKey(k Value) wtf8.String {
 		}
 		if k.o.extState() != nil {
 			if len(k.o.str)+2 > MaxStringLength {
-				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+				cx.ThrowRangeError("invalid string length")
 			}
 			return "[" + k.o.str + "]"
 		}
@@ -933,15 +933,15 @@ func (vm *VM) funcNameOfKey(k Value) wtf8.String {
 	case k.IsString():
 		return k.Str()
 	}
-	return vm.ToString(k)
+	return cx.ToString(k)
 }
 
 // setFuncName implements SetFunctionName for the function or class f, which must be anonymous.
-func (vm *VM) setFuncName(f, k Value, prefix int) {
+func (cx *ExecutionContext) setFuncName(f, k Value, prefix int) {
 	if !f.IsCallable() {
 		return
 	}
-	name := vm.funcNameOfKey(k)
+	name := cx.funcNameOfKey(k)
 	switch prefix {
 	case bytecode.NamePrefixGet:
 		name = "get " + name
@@ -949,38 +949,38 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 		name = "set " + name
 	}
 	if len(name) > MaxStringLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+		cx.ThrowRangeError("invalid string length")
 	}
 	o := f.o
 	if o.fn.materialized {
-		if _, ok := o.shape.lookup(vm.Key(KeyName)); ok {
-			if d, _ := vm.GetOwnProperty(o, PropKey{key: vm.Key(KeyName)}); d.flags&FlagAccessor != 0 || !d.value.IsString() || d.value.rawString() != "" {
+		if _, ok := o.shape.lookup(cx.Key(KeyName)); ok {
+			if d, _ := cx.GetOwnProperty(o, PropKey{key: cx.Key(KeyName)}); d.flags&FlagAccessor != 0 || !d.value.IsString() || d.value.rawString() != "" {
 				return
 			}
 		}
-		vm.defineOwnProperty(o, PropKey{key: vm.Key(KeyName)}, dataDesc(vm.NewString(name), FlagConfigurable))
+		cx.defineOwnProperty(o, PropKey{key: cx.Key(KeyName)}, dataDesc(cx.NewString(name), FlagConfigurable))
 		return
 	}
 	// The name is part of the code of an unmaterialized function, which closures share,
 	// so give this one its properties now.
-	vm.materialize(o)
-	vm.Define(o, vm.Key(KeyName), vm.NewString(name), FlagConfigurable)
+	cx.materialize(o)
+	cx.Define(o, cx.Key(KeyName), cx.NewString(name), FlagConfigurable)
 }
 
 // copyDataProperties implements CopyDataProperties.
-func (vm *VM) copyDataProperties(dst *Object, src Value, excluded []Value) {
+func (cx *ExecutionContext) copyDataProperties(dst *Object, src Value, excluded []Value) {
 	if src.IsNullish() {
 		return
 	}
-	from := vm.ToObject(src)
+	from := cx.ToObject(src)
 	if len(excluded) == 0 && takeDataProperties(dst, from) {
 		return
 	}
 	var skip []PropKey
 	for _, e := range excluded {
-		skip = append(skip, vm.ToPropertyKey(e))
+		skip = append(skip, cx.ToPropertyKey(e))
 	}
-	ks := vm.OwnKeys(from)
+	ks := cx.OwnKeys(from)
 	if dst.flags&objExotic == 0 {
 		// The keys of the elements come first, and the other keys usually get slots.
 		elems := 0
@@ -992,21 +992,21 @@ func (vm *VM) copyDataProperties(dst *Object, src Value, excluded []Value) {
 	var pacer Pacer
 keys:
 	for _, k := range ks {
-		pacer.Step(vm)
+		pacer.Step(cx)
 		for _, s := range skip {
 			if s == k {
 				continue keys
 			}
 		}
-		d, ok := vm.GetOwnProperty(from, k)
+		d, ok := cx.GetOwnProperty(from, k)
 		if !ok || d.flags&FlagEnumerable == 0 {
 			continue
 		}
 		val := d.value
 		if d.flags&FlagAccessor != 0 || from.class == classProxy {
-			val = vm.getProp(from, k, Value{o: from})
+			val = cx.getProp(from, k, Value{o: from})
 		}
-		vm.CreateDataPropertyOrThrow(dst, k, val)
+		cx.CreateDataPropertyOrThrow(dst, k, val)
 	}
 }
 
@@ -1086,49 +1086,49 @@ func takenShape(dst, from *Object) *shape {
 
 // setupClass makes the function ctor a class constructor that extends parent,
 // which is hole for a class without an extends clause. It returns the prototype object.
-func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
-	protoParent := vm.CurrentRealm().Intrinsic(IntrinsicObjectPrototype)
-	ctorParent := vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototype)
+func (cx *ExecutionContext) setupClass(ctor *Object, parent Value) *Object {
+	protoParent := cx.realm.Intrinsic(IntrinsicObjectPrototype)
+	ctorParent := cx.realm.Intrinsic(IntrinsicFunctionPrototype)
 	if !parent.isHole() {
 		switch {
 		case parent.IsNull():
 			protoParent = nil
-		case !parent.IsCallable() || !vm.IsConstructor(parent.o):
-			vm.ThrowTypeError(vm.CurrentRealm(), "class extends value "+vm.DisplayString(parent)+" is not a constructor or null")
+		case !parent.IsCallable() || !cx.IsConstructor(parent.o):
+			cx.ThrowTypeError("class extends value " + cx.DisplayString(parent) + " is not a constructor or null")
 		default:
-			p := vm.GetV(parent, vm.Key(KeyPrototype))
+			p := cx.GetV(parent, cx.Key(KeyPrototype))
 			switch {
 			case p.IsObject():
 				protoParent = p.o
 			case p.IsNull():
 				protoParent = nil
 			default:
-				vm.ThrowTypeError(vm.CurrentRealm(), "class extends value does not have valid prototype property")
+				cx.ThrowTypeError("class extends value does not have valid prototype property")
 			}
 			ctorParent = parent.o
 		}
 	}
-	proto := vm.NewObject(protoParent)
+	proto := cx.NewObject(protoParent)
 	fn := ctor.ownFunction()
 	fn.materialized = true
 	fn.home = proto
 	ctor.flags &^= objExotic
-	ctor.shape = vm.shapeFor(ctorParent)
-	vm.add(ctor, vm.Key(KeyLength), Number(float64(fn.code.length)), FlagConfigurable)
-	vm.add(ctor, vm.Key(KeyName), vm.NewString(fn.code.name), FlagConfigurable)
-	vm.add(ctor, vm.Key(KeyPrototype), Value{o: proto}, 0)
-	vm.add(proto, vm.Key(KeyConstructor), Value{o: ctor}, FlagsHidden)
+	ctor.shape = cx.shapeFor(ctorParent)
+	cx.add(ctor, cx.Key(KeyLength), Number(float64(fn.code.length)), FlagConfigurable)
+	cx.add(ctor, cx.Key(KeyName), cx.NewString(fn.code.name), FlagConfigurable)
+	cx.add(ctor, cx.Key(KeyPrototype), Value{o: proto}, 0)
+	cx.add(proto, cx.Key(KeyConstructor), Value{o: ctor}, FlagsHidden)
 	return proto
 }
 
 // IsConstructor implements IsConstructor.
-func (vm *VM) IsConstructor(f *Object) bool {
+func (cx *ExecutionContext) IsConstructor(f *Object) bool {
 	fn := f.fn
 	if fn == nil {
 		return false
 	}
 	if fn.bound != nil {
-		return vm.IsConstructor(fn.bound.target)
+		return cx.IsConstructor(fn.bound.target)
 	}
 	return fn.constructor
 }
@@ -1149,8 +1149,8 @@ func (p *funcProto) closurePrototype() *Object {
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
 // so that storing a new element in such an array cannot run a setter.
-func (vm *VM) arrayProtoPlain() bool {
-	realm := vm.CurrentRealm()
+func (cx *ExecutionContext) arrayProtoPlain() bool {
+	realm := cx.realm
 	a := realm.Intrinsic(IntrinsicArrayPrototype)
 	o := realm.Intrinsic(IntrinsicObjectPrototype)
 	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
@@ -1158,8 +1158,8 @@ func (vm *VM) arrayProtoPlain() bool {
 
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
 // without any observable call.
-func (vm *VM) arrayIterationPlain(o *Object) bool {
-	return o.shape == vm.curRealm.shapes.array && vm.arrayIterationUnmodified(vm.curRealm)
+func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
+	return o.shape == cx.realm.shapes.array && cx.arrayIterationUnmodified(cx.realm)
 }
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
@@ -1240,121 +1240,108 @@ func (d *dataSlot) value() Value {
 }
 
 // Call calls the callable object f.
-func (vm *VM) Call(f *Object, this Value, args ...Value) Value {
-	return vm.callOnStack(f, this, args)
+func (cx *ExecutionContext) Call(f *Object, this Value, args ...Value) Value {
+	return cx.callOnStack(f, this, args)
 }
 
 // CallValue calls f, which must be callable, or throws a TypeError.
-func (vm *VM) CallValue(f, this Value, args ...Value) Value {
+func (cx *ExecutionContext) CallValue(f, this Value, args ...Value) Value {
 	if !f.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(f)+" is not a function")
+		cx.ThrowTypeError(cx.DisplayString(f) + " is not a function")
 	}
-	return vm.callOnStack(f.o, this, args)
+	return cx.callOnStack(f.o, this, args)
 }
 
 // callOnStack calls f with a copy of args on the [VM] stack, so that args does not escape.
-func (vm *VM) callOnStack(f *Object, this Value, args []Value) Value {
-	base := vm.sp
+func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Value {
+	base := cx.sp
 	n := len(args)
 	if fn := f.fn; fn != nil && fn.bound == nil && fn.native == nil && !fn.classConstructor &&
-		!fn.code.isGenerator && !fn.code.isAsync && !vm.interrupt.Load() && len(vm.frames) < maxFrames {
+		!fn.code.isGenerator && !fn.code.isAsync && !cx.interrupt.Load() && len(cx.frames) < maxFrames {
 		// A plain closure gets its arguments written once, where its frame starts.
-		vm.ensureStack(base + n + fn.code.nregs + 1)
-		copy(vm.stack[base:], args)
-		vm.pushFrame(f, this, base, n, 0, false, nil)
-		r := vm.run(len(vm.frames) - 1)
-		vm.sp = base
+		cx.ensureStack(base + n + fn.code.nregs + 1)
+		copy(cx.stack[base:], args)
+		cx.pushFrame(f, this, base, n, 0, false, nil)
+		r := cx.run(len(cx.frames) - 1)
+		cx.sp = base
 		return r
 	}
-	vm.ensureStack(base + n)
-	copy(vm.stack[base:], args)
-	vm.sp = base + n
+	cx.ensureStack(base + n)
+	copy(cx.stack[base:], args)
+	cx.sp = base + n
 	var r Value
-	if fn := f.fn; fn != nil && fn.native != nil && (fn.info == nil || fn.info.realm == vm.curRealm) &&
-		!vm.interrupt.Load() {
-		// A native function of the current realm needs none of the other checks of callSlow.
-		r = vm.callNative(f, this, vm.stack[base:base+n:base+n], nil)
+	if fn := f.fn; fn != nil && fn.native != nil && !cx.interrupt.Load() {
+		// A native function needs none of the other checks of callSlow.
+		r = cx.callNative(f, this, cx.stack[base:base+n:base+n], nil)
 	} else {
-		r = vm.callSlow(f, this, vm.stack[base:base+n:base+n], false, nil)
+		r = cx.callSlow(f, this, cx.stack[base:base+n:base+n], false, nil)
 	}
-	vm.sp = base
+	cx.sp = base
 	return r
 }
 
 // callSlow calls f with any kind of callee. With isNew set, this is the object under construction.
-func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarget *Object) Value {
-	if vm.interrupt.Load() {
-		vm.Poll()
+func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew bool, newTarget *Object) Value {
+	if cx.interrupt.Load() {
+		cx.Poll()
 	}
 	fn := f.fn
 	if fn == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(Value{o: f})+" is not a function")
+		cx.ThrowTypeError(cx.DisplayString(Value{o: f}) + " is not a function")
 	}
 	if fn.bound != nil {
-		return vm.callBound(f, args)
+		return cx.callBound(f, args)
 	}
 	if fn.native != nil {
-		if fn.info != nil && fn.info.realm != vm.curRealm {
-			return vm.callNativeInRealm(f, this, args, nil)
-		}
-		return vm.callNative(f, this, args, nil)
+		return cx.callNative(f, this, args, nil)
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
 		c.context.ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
-		return vm.callCoroutine(f, this, args)
+		return cx.callCoroutine(f, this, args)
 	}
-	if len(vm.frames) >= maxFrames {
-		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
+	if len(cx.frames) >= maxFrames {
+		cx.ThrowRangeError("maximum call stack size exceeded")
 	}
-	base := vm.sp
-	vm.ensureStack(base + len(args) + c.nregs + 1)
-	copy(vm.stack[base:], args)
-	vm.pushFrame(f, this, base, len(args), 0, isNew, newTarget)
-	r := vm.run(len(vm.frames) - 1)
-	vm.sp = base
+	base := cx.sp
+	cx.ensureStack(base + len(args) + c.nregs + 1)
+	copy(cx.stack[base:], args)
+	cx.pushFrame(f, this, base, len(args), 0, isNew, newTarget)
+	r := cx.run(len(cx.frames) - 1)
+	cx.sp = base
 	return r
 }
 
 // callBound calls the bound function f, unwrapping a chain of bound functions without recursion.
-func (vm *VM) callBound(f *Object, args []Value) Value {
+func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
 	var this Value
-	base := vm.sp
+	base := cx.sp
 	for b := f.fn.bound; b != nil; b = f.fn.bound {
 		if k := len(b.args); k > 0 {
 			// The combined arguments go on the stack above its top. args may start at the top,
 			// so it moves up before the bound arguments are written.
-			top := vm.sp
+			top := cx.sp
 			n := k + len(args)
-			vm.ensureStack(top + n)
-			s := vm.stack[top : top+n : top+n]
+			cx.ensureStack(top + n)
+			s := cx.stack[top : top+n : top+n]
 			copy(s[k:], args)
 			copy(s, b.args)
-			vm.sp = top + n
+			cx.sp = top + n
 			args = s
 		}
 		f, this = b.target, b.this
 	}
-	r := vm.callSlow(f, this, args, false, nil)
-	vm.sp = base
+	r := cx.callSlow(f, this, args, false, nil)
+	cx.sp = base
 	return r
 }
 
-// callNativeInRealm calls the native function f, whose realm is not the current one, in its realm.
-// newTarget is nil for a call and the new.target of a construction otherwise.
-func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *Object) Value {
-	saved := vm.executionContext()
-	vm.switchRealm(f.fn.info.realm)
-	defer saved.activate()
-	return vm.callNative(f, this, args, newTarget)
-}
-
 // Construct implements Construct: new f(...args) with the given new.target.
-func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
-	if vm.interrupt.Load() {
-		vm.Poll()
+func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object) *Object {
+	if cx.interrupt.Load() {
+		cx.Poll()
 	}
 	fn := f.fn
 	for b := fn.bound; b != nil; b = fn.bound {
@@ -1368,45 +1355,40 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 		fn = f.fn
 	}
 	if fn.native != nil {
-		var r Value
-		if fn.info != nil && fn.info.realm != vm.curRealm {
-			r = vm.callNativeInRealm(f, Undefined, args, newTarget)
-		} else {
-			r = vm.callNative(f, Undefined, args, newTarget)
-		}
+		r := cx.callNative(f, Undefined, args, newTarget)
 		if !r.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor did not return an object")
+			cx.ThrowTypeError("constructor did not return an object")
 		}
 		return r.o
 	}
 	this := tdz
 	if !fn.derived {
-		proto := vm.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
-		this = Value{o: newInstance(vm.shapeForRealm(proto, fn.code.context.realm))}
+		proto := cx.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
+		this = Value{o: newInstance(cx.shapeForRealm(proto, fn.code.context.realm))}
 	}
-	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
+	r := cx.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor did not return an object")
+		cx.ThrowTypeError("constructor did not return an object")
 	}
 	return r.o
 }
 
 // GetPrototypeFromConstructor implements GetPrototypeFromConstructor.
 // A nil ctor selects defaultProto in the current realm.
-func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) *Object {
-	r := vm.curRealm
+func (cx *ExecutionContext) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) *Object {
+	r := cx.realm
 	if ctor != nil {
 		if f := ctor.fn; f != nil && f.info != nil && f.info.fixedPrototype {
 			return f.info.realm.intrinsics[f.info.prototype]
 		}
-		if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
+		if p := cx.GetV(Value{o: ctor}, cx.Key(KeyPrototype)); p.IsObject() {
 			return p.o
 		}
-		r = vm.GetFunctionRealm(ctor)
+		r = cx.GetFunctionRealm(ctor)
 	}
 	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicTemporalZonedDateTimePrototype {
 		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {
-			vm.InitLazyObject(ns)
+			cx.InitLazyObject(ns)
 		}
 	}
 	if proto := r.intrinsics[defaultProto]; proto != nil {
@@ -1416,19 +1398,19 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) 
 }
 
 // NewNative returns a function implemented in Go.
-func (vm *VM) NewNative(name wtf8.String, length int, f NativeFunc) *Object {
+func (cx *ExecutionContext) NewNative(name wtf8.String, length int, f NativeFunc) *Object {
 	n := &nativeObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.curRealm.shapes.function,
+		shape: cx.realm.shapes.function,
 		state: function{
 			native: f,
 		},
 		info: nativeInfo{
 			name:   name,
 			length: int32(length),
-			realm:  vm.curRealm,
+			realm:  cx.realm,
 		},
 	}
 	n.fn = &n.state
@@ -1479,9 +1461,9 @@ func (vm *VM) SetFrameless(f *Object) {
 // one or two arguments. They neither throw nor run code, and report false when the function has
 // to be called instead.
 type (
-	MethodKernel0 func(vm *VM, this Value) (Value, bool)
-	MethodKernel1 func(vm *VM, this, x Value) (Value, bool)
-	MethodKernel2 func(vm *VM, this, x, y Value) (Value, bool)
+	MethodKernel0 func(cx *ExecutionContext, this Value) (Value, bool)
+	MethodKernel1 func(cx *ExecutionContext, this, x Value) (Value, bool)
+	MethodKernel2 func(cx *ExecutionContext, this, x, y Value) (Value, bool)
 )
 
 // SetMethodKernels makes a call of the native function f with exactly no, one or two arguments
@@ -1507,8 +1489,8 @@ type nativeObject struct {
 
 // NewNativeConstructor returns a function implemented in Go that can be called with new.
 // f learns the constructor it is constructing for from [VM.GetNewTarget].
-func (vm *VM) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *Object {
-	o := vm.NewNative(name, length, f)
+func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *Object {
+	o := cx.NewNative(name, length, f)
 	o.fn.constructor = true
 	return o
 }
@@ -1516,8 +1498,8 @@ func (vm *VM) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *
 // DefineConstructorPrototype defines the property prototype of the constructor c, which
 // NewNativeConstructor returned in the current realm, as the intrinsic id, which the property
 // then holds for good.
-func (vm *VM) DefineConstructorPrototype(c *Object, id Intrinsic) {
-	vm.Define(c, vm.Key(KeyPrototype), Value{o: vm.CurrentRealm().Intrinsic(id)}, 0)
+func (cx *ExecutionContext) DefineConstructorPrototype(c *Object, id Intrinsic) {
+	cx.Define(c, cx.Key(KeyPrototype), Value{o: cx.realm.Intrinsic(id)}, 0)
 	c.fn.info.prototype, c.fn.info.fixedPrototype = id, true
 }
 
@@ -1532,22 +1514,22 @@ func (vm *VM) GetNewTarget() *Object {
 
 // findScope returns the innermost of the depth innermost dynamic scopes of the running
 // function cl that has the variable key, or nil.
-func (vm *VM) findScope(cl *Object, key *Object, depth int) *Object {
+func (cx *ExecutionContext) findScope(cl *Object, key *Object, depth int) *Object {
 	k := PropKey{key: key}
-	for _, scopes := range [...][]*Object{vm.frames[len(vm.frames)-1].scopes, cl.fn.capturedScopes()} {
+	for _, scopes := range [...][]*Object{cx.frames[len(cx.frames)-1].scopes, cl.fn.capturedScopes()} {
 		for _, o := range slices.Backward(scopes) {
 			if depth == 0 {
 				return nil
 			}
 			depth--
-			if !vm.HasProperty(o, k) {
+			if !cx.HasProperty(o, k) {
 				continue
 			}
 			if o.class == classEvalScope {
 				return o
 			}
-			if u := vm.getProp(o, PropKey{key: vm.WellKnownSymbol(SymbolUnscopables)}, Value{o: o}); u.IsObject() {
-				if ToBoolean(vm.getProp(u.o, k, u)) {
+			if u := cx.getProp(o, PropKey{key: cx.WellKnownSymbol(SymbolUnscopables)}, Value{o: o}); u.IsObject() {
+				if ToBoolean(cx.getProp(u.o, k, u)) {
 					continue
 				}
 			}
@@ -1576,39 +1558,39 @@ func (vm *VM) openScopes(cl *Object) *[]*Object {
 }
 
 // getScoped implements GetBindingValue of the object environment record of the dynamic scope o.
-func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
+func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value {
 	k := PropKey{key: key}
-	if !vm.HasProperty(o, k) {
+	if !cx.HasProperty(o, k) {
 		if strict {
-			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 		}
 		return Undefined
 	}
-	return vm.getProp(o, k, Value{o: o})
+	return cx.getProp(o, k, Value{o: o})
 }
 
 // setScoped implements SetMutableBinding of the object environment record of the dynamic scope o.
-func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
+func (cx *ExecutionContext) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
-	if !vm.HasProperty(o, k) && strict {
-		vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
+	if !cx.HasProperty(o, k) && strict {
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
-	if !vm.setProp(o, k, val, Value{o: o}) && strict {
-		vm.throwReadOnly(vm.CurrentRealm(), Value{o: o}, k)
+	if !cx.setProp(o, k, val, Value{o: o}) && strict {
+		cx.throwReadOnly(Value{o: o}, k)
 	}
 }
 
 // deleteName deletes the global variable key.
-func (vm *VM) deleteName(key *Object) bool {
-	r := vm.curRealm
+func (cx *ExecutionContext) deleteName(key *Object) bool {
+	r := cx.realm
 	if _, ok := r.globalLex.shape.lookup(key); ok {
 		return false
 	}
-	return vm.DeleteProp(r.global, PropKey{key: key})
+	return cx.DeleteProp(r.global, PropKey{key: key})
 }
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
-func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
+func (cx *ExecutionContext) BoundFunctionCreate(target *Object, this Value, args []Value) *Object {
 	b := &boundObject{
 		bound: boundFunc{
 			target: target,
@@ -1625,7 +1607,7 @@ func (vm *VM) BoundFunctionCreate(target *Object, this Value, args []Value) *Obj
 	}
 	b.kind = kindFunction
 	b.class = classFunction
-	b.shape = vm.shapeForRealm(vm.ProtoOf(target), target.shape.realm)
+	b.shape = cx.shapeForRealm(cx.ProtoOf(target), target.shape.realm)
 	b.slots = b.props[:0]
 	return b.init()
 }

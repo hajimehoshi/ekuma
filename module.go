@@ -65,7 +65,7 @@ func (vm *VM) SetModuleLoader(f func(req ModuleRequest) (*Module, error)) {
 		vm.e.SetHostLoadImportedModule(nil)
 		return
 	}
-	vm.e.SetHostLoadImportedModule(func(e *engine.VM, referrer *engine.Module, file string, realm *engine.Realm, req engine.ModuleRequest) (*engine.Module, error) {
+	vm.e.SetHostLoadImportedModule(func(cx *engine.ExecutionContext, referrer *engine.Module, file string, realm *engine.Realm, req engine.ModuleRequest) (*engine.Module, error) {
 		r := ModuleRequest{
 			Realm:        vm.realmOf(realm),
 			ReferrerName: file,
@@ -119,7 +119,7 @@ func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 		vm.e.SetHostGetImportMetaProperties(nil)
 		return
 	}
-	vm.e.SetHostGetImportMetaProperties(func(e *engine.VM, m *engine.Module) []engine.ImportMetaProperty {
+	vm.e.SetHostGetImportMetaProperties(func(cx *engine.ExecutionContext, m *engine.Module) []engine.ImportMetaProperty {
 		pm := m.HostDefined().(*Module)
 		props := f(pm)
 		keys := make([]string, 0, len(props))
@@ -130,8 +130,8 @@ func (vm *VM) SetImportMeta(f func(m *Module) map[string]any) {
 		list := make([]engine.ImportMetaProperty, 0, len(keys))
 		for _, k := range keys {
 			list = append(list, engine.ImportMetaProperty{
-				Key:   e.ToPropertyKey(e.StringFromGo(k)),
-				Value: vm.valueOf(pm.realm, props[k]),
+				Key:   cx.ToPropertyKey(cx.StringFromGo(k)),
+				Value: vm.valueOf(pm.realm.r.Context(), props[k]),
 			})
 		}
 		return list
@@ -168,7 +168,7 @@ func (m *Module) Name() string {
 // Go error, [errors.Is] matches that error through the returned [*ScriptError].
 func (m *Module) LoadRequestedModules() error {
 	m.vm.initIfNeeded()
-	return publicError(m.vm.e.LoadRequestedModules(m.m))
+	return publicError(m.m.LoadRequestedModules())
 }
 
 // Link links m and its dependencies: it resolves their imports without evaluating module code.
@@ -178,7 +178,7 @@ func (m *Module) LoadRequestedModules() error {
 // that does not resolve. Link may be retried after a failure.
 func (m *Module) Link() error {
 	m.vm.initIfNeeded()
-	return publicError(m.vm.e.Link(m.m))
+	return publicError(m.m.Link())
 }
 
 // Evaluate evaluates m and its dependencies and returns a promise for the evaluation.
@@ -199,7 +199,7 @@ func (m *Module) Evaluate(ctx context.Context) (Value, error) {
 	vm := m.vm
 	vm.initIfNeeded()
 	return vm.run(ctx, func() (engine.Value, error) {
-		return vm.e.Evaluate(m.m)
+		return m.m.Evaluate()
 	})
 }
 
@@ -208,6 +208,6 @@ func (m *Module) Evaluate(ctx context.Context) (Value, error) {
 // initialized yet throws a ReferenceError.
 func (m *Module) Namespace() (Value, error) {
 	m.vm.initIfNeeded()
-	v, err := m.vm.e.GetModuleNamespace(m.m)
+	v, err := m.m.GetModuleNamespace()
 	return fromEngine(v), publicError(err)
 }

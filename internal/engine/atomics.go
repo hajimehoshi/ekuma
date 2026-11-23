@@ -235,43 +235,43 @@ func elementBitsEqual(t ElementType, x, y uint64) bool {
 // that is not negative and may be +Inf. A synchronous wait suspends the agent, which must be able
 // to, and returns "ok", "not-equal" or "timed-out". An asynchronous wait returns "not-equal" or
 // "timed-out" without waiting, or reports true and returns a promise that resolves to "ok" when
-// [VM.NotifyWaiters] in any VM notifies the waiter, or to "timed-out" after the timeout.
+// [ExecutionContext.NotifyWaiters] in any VM notifies the waiter, or to "timed-out" after the timeout.
 //
 // An interruption ends a synchronous wait.
-func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
+func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
 	blk := t.data.block
 	w := &waiter{
-		agent:      vm,
+		agent:      cx.agent,
 		block:      blk,
 		byteIndex:  t.offset + i*t.typ.Size(),
 		timedIndex: -1,
 	}
 	if async {
-		w.promise = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
-		w.promiseContext = &vm.curRealm.context
+		w.promise = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+		w.promiseContext = cx
 	} else {
 		w.done = make(chan struct{})
-		if vm.interrupt.Load() {
-			vm.Poll()
+		if cx.interrupt.Load() {
+			cx.Poll()
 		}
 	}
 	add := timeout > 0
 	if !blk.compareAndAdd(w, t.typ, v, add) {
-		return vm.NewString("not-equal"), false
+		return cx.NewString("not-equal"), false
 	}
 	if !add {
-		return vm.NewString("timed-out"), false
+		return cx.NewString("timed-out"), false
 	}
 	if !async {
-		return vm.suspend(w, timeout), false
+		return cx.suspend(w, timeout), false
 	}
-	if vm.asyncWaiters == nil {
-		vm.asyncWaiters = map[*waiter]struct{}{}
+	if cx.asyncWaiters == nil {
+		cx.asyncWaiters = map[*waiter]struct{}{}
 	}
-	vm.asyncWaiters[w] = struct{}{}
+	cx.asyncWaiters[w] = struct{}{}
 	// A timeout that a time.Duration cannot hold, about 292 years, never expires.
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
-		vm.timedWaiters.add(w, vm.Now().Add(time.Duration(ns)))
+		cx.timedWaiters.add(w, cx.Now().Add(time.Duration(ns)))
 	}
 	return Value{o: w.promise}, true
 }
@@ -410,14 +410,14 @@ func (l *waiterList) sweep() {
 
 // suspend implements SuspendThisAgent for the synchronous waiter w, which is in its list,
 // and returns the result of the wait.
-func (vm *VM) suspend(w *waiter, timeout float64) Value {
+func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 	// An interruption leaves the list.
 	defer w.block.unlist(w)
 	var deadline time.Time
 	var timer *time.Timer
 	var expired <-chan time.Time
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
-		deadline = vm.Now().Add(time.Duration(ns))
+		deadline = cx.Now().Add(time.Duration(ns))
 		timer = time.NewTimer(time.Duration(ns))
 		defer timer.Stop()
 		expired = timer.C
@@ -425,22 +425,22 @@ func (vm *VM) suspend(w *waiter, timeout float64) Value {
 	for {
 		select {
 		case <-w.done:
-			return vm.NewString("ok")
+			return cx.NewString("ok")
 		case <-expired:
 			// The timer measures real time, which the clock may run behind.
-			if d := deadline.Sub(vm.Now()); d > 0 {
+			if d := deadline.Sub(cx.Now()); d > 0 {
 				timer.Reset(d)
 				continue
 			}
 			if w.block.unlist(w) {
-				return vm.NewString("timed-out")
+				return cx.NewString("timed-out")
 			}
 			// A notification came first.
-			return vm.NewString("ok")
-		case <-vm.mailbox.wake:
+			return cx.NewString("ok")
+		case <-cx.mailbox.wake:
 			// The posted waiters wait for the end of the wait.
-			if vm.interruptCause.Load() != nil {
-				vm.Poll()
+			if cx.interruptCause.Load() != nil {
+				cx.Poll()
 			}
 		}
 	}
@@ -449,15 +449,15 @@ func (vm *VM) suspend(w *waiter, timeout float64) Value {
 // NotifyWaiters implements RemoveWaiters and NotifyWaiter for the waiters of byteIndex of the
 // shared buffer b, which may belong to any agent: it notifies the first count waiters, and returns
 // how many it notified. count must not be negative and may be +Inf.
-func (vm *VM) NotifyWaiters(b *ArrayBuffer, byteIndex int, count float64) int {
+func (cx *ExecutionContext) NotifyWaiters(b *ArrayBuffer, byteIndex int, count float64) int {
 	ws := b.block.removeWaiters(byteIndex, count)
 	for _, w := range ws {
 		switch {
 		case w.done != nil:
 			close(w.done)
-		case w.agent == vm:
-			vm.timedWaiters.remove(w)
-			vm.resolveWaiter(w, "ok")
+		case w.agent == cx.agent:
+			cx.timedWaiters.remove(w)
+			cx.resolveWaiter(w, "ok")
 		default:
 			w.agent.post(w)
 		}
@@ -482,7 +482,7 @@ func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
 	vm.jobs.enqueue(job{
 		kind:     jobResolve,
 		promise:  w.promise,
-		argument: vm.NewString(result),
+		argument: w.promiseContext.NewString(result),
 		context:  w.promiseContext,
 	})
 }
@@ -550,11 +550,11 @@ func (vm *VM) Running() bool {
 	return vm.entered > 0
 }
 
-// RunJobs runs the pending jobs, as the end of an outermost call into vm does. It must not be
+// RunJobs runs the pending jobs, as the end of an outermost call into cx does. It must not be
 // called while [VM.Running] reports true.
-func (vm *VM) RunJobs() error {
+func (cx *ExecutionContext) RunJobs() error {
 	// enter drains the pending jobs after this empty callback returns.
-	_, err := vm.enter(func(ExecutionContext) Value {
+	_, err := cx.enter(func() Value {
 		return Undefined
 	})
 	return err
@@ -562,20 +562,20 @@ func (vm *VM) RunJobs() error {
 
 // expireWaiters runs the timeout jobs of the waiters whose deadline has passed, and reports
 // whether there were any.
-func (vm *VM) expireWaiters() bool {
-	if vm.timedWaiters.isEmpty() {
+func (cx *ExecutionContext) expireWaiters() bool {
+	if cx.timedWaiters.isEmpty() {
 		return false
 	}
-	now := vm.Now()
+	now := cx.Now()
 	var expired bool
 	for {
-		w, ok := vm.timedWaiters.popExpired(now)
+		w, ok := cx.timedWaiters.popExpired(now)
 		if !ok {
 			break
 		}
 		// A waiter that another agent notified first is in the mailbox.
 		if w.block.unlist(w) {
-			vm.resolveWaiter(w, "timed-out")
+			cx.resolveWaiter(w, "timed-out")
 			expired = true
 		}
 	}

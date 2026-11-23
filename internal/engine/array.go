@@ -32,7 +32,7 @@ const minShrinkElems = 64
 const shiftCopyElems = 32
 
 // ArrayCreate implements ArrayCreate.
-func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
+func (cx *ExecutionContext) ArrayCreate(length uint32, proto *Object) *Object {
 	var a *Object
 	if length > 0 && length <= maxPresizedElems {
 		// The array is usually filled up to its length afterwards.
@@ -40,12 +40,12 @@ func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
 		a, elems = newObjectWithStorage(int(length))
 		a.kind = kindArray
 		a.class = classArray
-		a.shape = vm.curRealm.shapes.array
+		a.shape = cx.realm.shapes.array
 		a.elems = elems[:0]
 	} else {
-		a = vm.NewArray(nil)
+		a = cx.NewArray(nil)
 	}
-	vm.setProto(a, proto)
+	cx.setProto(a, proto)
 	a.length = length
 	return a
 }
@@ -87,18 +87,18 @@ func (o *Object) elemsOversized() bool {
 }
 
 // reallocElems moves the elements of o to new storage with room for as many elements again.
-func (vm *VM) reallocElems(o *Object) {
+func (cx *ExecutionContext) reallocElems(o *Object) {
 	elems := make([]Value, len(o.elems), max(2*len(o.elems), minElems))
-	CopyPolled(vm, elems, o.elems)
+	CopyPolled(cx, elems, o.elems)
 	o.elems = elems
 }
 
 // LengthOfArrayLike implements LengthOfArrayLike.
-func (vm *VM) LengthOfArrayLike(o *Object) int64 {
+func (cx *ExecutionContext) LengthOfArrayLike(o *Object) int64 {
 	if o.kind == kindArray {
 		return int64(o.length)
 	}
-	return numconv.ToLength(vm.ToNumber(vm.GetV(Value{o: o}, vm.Key(KeyLength))))
+	return numconv.ToLength(cx.ToNumber(cx.GetV(Value{o: o}, cx.Key(KeyLength))))
 }
 
 // Element returns the own property of o with the integer index i when reading it
@@ -187,44 +187,44 @@ func (vm *VM) elemsMovable(o *Object) bool {
 
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
-func (vm *VM) arrayCtorPlain(o *Object) bool {
-	realm := vm.CurrentRealm()
+func (cx *ExecutionContext) arrayCtorPlain(o *Object) bool {
+	realm := cx.realm
 	if o.shape != realm.shapes.array {
 		return false
 	}
 	ctor := realm.Intrinsic(IntrinsicArray)
-	c, ok := vm.lookupData(realm.Intrinsic(IntrinsicArrayPrototype), vm.Key(KeyConstructor))
+	c, ok := cx.lookupData(realm.Intrinsic(IntrinsicArrayPrototype), cx.Key(KeyConstructor))
 	if !ok || c.o != ctor {
 		return false
 	}
-	p, found := ctor.getOwn(vm.WellKnownSymbol(SymbolSpecies))
+	p, found := ctor.getOwn(cx.WellKnownSymbol(SymbolSpecies))
 	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == realm.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
 // %Array.prototype% when that is what ArraySpeciesCreate for o creates, because o is an array
 // with the original constructor of the current realm. It reports false otherwise.
-func (vm *VM) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
-	if o.kind != kindArray || n > MaxArrayIndex+1 || !vm.arrayCtorPlain(o) {
+func (cx *ExecutionContext) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
+	if o.kind != kindArray || n > MaxArrayIndex+1 || !cx.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return vm.ArrayCreate(uint32(n), vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototype)), true
+	return cx.ArrayCreate(uint32(n), cx.realm.Intrinsic(IntrinsicArrayPrototype)), true
 }
 
 // newElementsPlain reports whether storing a new element in the array o defines it as an own
 // data property without consulting a prototype.
-func (vm *VM) newElementsPlain(o *Object) bool {
-	return o.shape.proto == vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototype) && vm.arrayProtoPlain()
+func (cx *ExecutionContext) newElementsPlain(o *Object) bool {
+	return o.shape.proto == cx.realm.Intrinsic(IntrinsicArrayPrototype) && cx.arrayProtoPlain()
 }
 
 // AppendElements adds vals at the end of the array o and returns the new length.
-func (vm *VM) AppendElements(o *Object, vals []Value) (uint32, bool) {
-	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !vm.newElementsPlain(o) {
+func (cx *ExecutionContext) AppendElements(o *Object, vals []Value) (uint32, bool) {
+	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !cx.newElementsPlain(o) {
 		return 0, false
 	}
 	o.elems = append(reserveElems(o.elems, len(vals)), vals...)
 	o.length = uint32(len(o.elems))
-	vm.touchProto(o)
+	cx.touchProto(o)
 	return o.length, true
 }
 
@@ -244,13 +244,13 @@ type pushSizeHint struct {
 // PushElements appends vals to the array o and returns its new length and true.
 // If o requires the generic Array.prototype.push algorithm, it leaves o unchanged
 // and returns 0, false.
-func (vm *VM) PushElements(o *Object, vals []Value) (uint32, bool) {
-	n, ok := vm.AppendElements(o, vals)
+func (cx *ExecutionContext) PushElements(o *Object, vals []Value) (uint32, bool) {
+	n, ok := cx.AppendElements(o, vals)
 	// Sample single-element pushes so earlier array lengths at this call site can
 	// guide how much space to reserve.
 	if ok && len(vals) == 1 && n > minElems && n <= maxPresizedElems {
 		if n == minElems+1 || int(n) == cap(o.elems) || n%pushSampleInterval == 0 {
-			vm.observePush(o)
+			cx.observePush(o)
 		}
 	}
 	return n, ok
@@ -302,8 +302,8 @@ func (vm *VM) observePush(o *Object) {
 }
 
 // PrependElements adds vals at the start of the array o and returns the new length.
-func (vm *VM) PrependElements(o *Object, vals []Value) (uint32, bool) {
-	if !vm.elemsMovable(o) || !vm.newElementsPlain(o) {
+func (cx *ExecutionContext) PrependElements(o *Object, vals []Value) (uint32, bool) {
+	if !cx.elemsMovable(o) || !cx.newElementsPlain(o) {
 		return 0, false
 	}
 	n, k := len(o.elems), len(vals)
@@ -336,7 +336,7 @@ func (o *Object) RemoveLastElement() (Value, bool) {
 	o.elems = o.elems[:n]
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.vm.reallocElems(o)
+		o.shape.realm.Context().reallocElems(o)
 	}
 	return v, true
 }
@@ -372,25 +372,25 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	o.length = uint32(n)
 	if o.elemsOversized() {
-		o.shape.vm.reallocElems(o)
+		o.shape.realm.Context().reallocElems(o)
 	}
 	return v, true
 }
 
 // FillElements stores v as the elements of the array o from start up to end, as
 // Array.prototype.fill does when the length of o is n. It reports false when it did nothing.
-func (vm *VM) FillElements(o *Object, n, start, end int64, v Value) bool {
+func (cx *ExecutionContext) FillElements(o *Object, n, start, end int64, v Value) bool {
 	if o.kind != kindArray || int64(o.length) != n || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return false
 	}
 	// Storing past the stored elements must not skip an index.
-	if start < 0 || start > int64(len(o.elems)) || end > n || !vm.holesAreAbsent(o) {
+	if start < 0 || start > int64(len(o.elems)) || end > n || !cx.holesAreAbsent(o) {
 		return false
 	}
-	vm.touchProto(o)
+	cx.touchProto(o)
 	for i := start; i < end; i++ {
-		if vm.interrupt.Load() {
-			vm.Poll()
+		if cx.interrupt.Load() {
+			cx.Poll()
 		}
 		if i < int64(len(o.elems)) {
 			o.elems[i] = v
@@ -404,13 +404,13 @@ func (vm *VM) FillElements(o *Object, n, start, end int64, v Value) bool {
 // SearchArray returns the index of the first element of the Array v that equals target, or -1,
 // comparing with SameValueZero when sameValueZero is set and with IsStrictlyEqual otherwise. It
 // reports false when v is not an Array or reading one of its elements could run JavaScript.
-func (vm *VM) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
+func (cx *ExecutionContext) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
 	o := v.o
 	if o == nil || o.kind != kindArray {
 		return -1, false
 	}
 	n := int64(o.length)
-	found, next := vm.SearchElements(o, 0, n, target, sameValueZero)
+	found, next := cx.SearchElements(o, 0, n, target, sameValueZero)
 	if found < 0 && next < n {
 		return -1, false
 	}
@@ -422,7 +422,7 @@ func (vm *VM) SearchArray(v, target Value, sameValueZero bool) (int64, bool) {
 // sameValueZero is set and with IsStrictlyEqual otherwise. It looks only at a run of elements
 // that reading runs no JavaScript for, and returns -1 and the index after the run when the run
 // has no such element.
-func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+func (cx *ExecutionContext) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
 	eq := IsStrictlyEqual
 	if sameValueZero {
 		eq = SameValueZero
@@ -443,7 +443,7 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 				}
 			}
 			if i > end && i&(PollInterval-1) == PollInterval-1 {
-				vm.Poll()
+				cx.Poll()
 			}
 		}
 		return -1, i
@@ -460,7 +460,7 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 			}
 		}
 		if i < end && i&(PollInterval-1) == 0 {
-			vm.Poll()
+			cx.Poll()
 		}
 	}
 	return -1, i
@@ -468,7 +468,7 @@ func (vm *VM) SearchElements(o *Object, i, end int64, target Value, sameValueZer
 
 // JoinStrings joins an array of the given length with sep when its elements and sep are
 // ASCII strings and the result fits in MaxStringLength bytes. It reports false otherwise.
-func (vm *VM) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
+func (cx *ExecutionContext) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool) {
 	if o.kind != kindArray || int64(o.length) != length || int64(len(o.elems)) != length || !wtf8.IsASCII(sep) {
 		return Value{}, false
 	}
@@ -482,7 +482,7 @@ func (vm *VM) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool
 			return Value{}, false
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
-			vm.Poll()
+			cx.Poll()
 		}
 	}
 	var b strings.Builder
@@ -498,10 +498,10 @@ func (vm *VM) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool
 			b.WriteString(string(e.o.Str()))
 		}
 		if i&(PollInterval-1) == PollInterval-1 {
-			vm.Poll()
+			cx.Poll()
 		}
 	}
-	v := vm.NewString(wtf8.String(b.String()))
+	v := cx.NewString(wtf8.String(b.String()))
 	if !v.isShortString() {
 		// A string longer than a short one is a new object.
 		v.o.flags |= objASCIIKnown | objASCII
@@ -510,12 +510,12 @@ func (vm *VM) JoinStrings(o *Object, length int64, sep wtf8.String) (Value, bool
 }
 
 // ReverseElements reverses the order of the elements of the array o.
-func (vm *VM) ReverseElements(o *Object) bool {
+func (cx *ExecutionContext) ReverseElements(o *Object) bool {
 	if !o.isDense() {
 		return false
 	}
 	for i, j := 0, len(o.elems)-1; i < j; i, j = i+1, j-1 {
-		vm.PollAt(int64(i))
+		cx.PollAt(int64(i))
 		o.elems[i], o.elems[j] = o.elems[j], o.elems[i]
 	}
 	return true
@@ -523,7 +523,7 @@ func (vm *VM) ReverseElements(o *Object) bool {
 
 // CopyElementRange returns a new array with the elements of the array o from start up to end,
 // as Array.prototype.slice creates it. A range that ends before it starts is empty.
-func (vm *VM) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
+func (cx *ExecutionContext) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return nil, false
 	}
@@ -534,27 +534,27 @@ func (vm *VM) CopyElementRange(o *Object, start, end int64) (*Object, bool) {
 	if start < end {
 		elems = o.elems[start:end]
 	}
-	if slices.ContainsFunc(elems, Value.isHole) || !vm.arrayCtorPlain(o) {
+	if slices.ContainsFunc(elems, Value.isHole) || !cx.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return vm.NewArray(appendPolled(vm, nil, elems)), true
+	return cx.NewArray(appendPolled(cx, nil, elems)), true
 }
 
 // SpliceElements replaces del elements of the array o from start on with items, and returns
 // the removed elements as a new array, as Array.prototype.splice creates it.
 // length is the length of o that start and del were checked against.
-func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
+func (cx *ExecutionContext) SpliceElements(o *Object, length, start, del int64, items []Value) (*Object, bool) {
 	if length != int64(len(o.elems)) || start < 0 || start > length || del < 0 || del > length-start {
 		return nil, false
 	}
-	if !vm.elemsMovable(o) || !vm.arrayCtorPlain(o) || !vm.arrayProtoPlain() {
+	if !cx.elemsMovable(o) || !cx.arrayCtorPlain(o) || !cx.arrayProtoPlain() {
 		return nil, false
 	}
-	removed := appendPolled(vm, nil, o.elems[start:start+del])
+	removed := appendPolled(cx, nil, o.elems[start:start+del])
 	n, k := int(length), len(items)
 	newLen := n - int(del) + k
 	if n-int(start+del) > pollChunk {
-		vm.Poll()
+		cx.Poll()
 	}
 	elems := o.elems
 	if newLen > n {
@@ -568,21 +568,21 @@ func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value)
 	o.elems = elems[:newLen]
 	o.length = uint32(newLen)
 	if o.elemsOversized() {
-		vm.reallocElems(o)
+		cx.reallocElems(o)
 	}
-	return vm.NewArray(removed), true
+	return cx.NewArray(removed), true
 }
 
 // AppendElementsOf adds the elements of the array src at the end of the array dst,
 // which must have the length n, exactly n elements and no other property.
-func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
-	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != vm.curRealm.shapes.array {
+func (cx *ExecutionContext) AppendElementsOf(dst *Object, n int64, src *Object) bool {
+	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != cx.realm.shapes.array {
 		return false
 	}
 	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {
 		return false
 	}
-	dst.elems = appendPolled(vm, dst.elems, src.elems)
+	dst.elems = appendPolled(cx, dst.elems, src.elems)
 	dst.length = uint32(len(dst.elems))
 	return true
 }

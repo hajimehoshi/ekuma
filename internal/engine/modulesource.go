@@ -5,8 +5,8 @@ package engine
 
 // NewModuleSourceObject returns a module source object with the prototype proto whose
 // [[ModuleSourceClassName]] is className.
-func (vm *VM) NewModuleSourceObject(proto *Object, className string) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewModuleSourceObject(proto *Object, className string) *Object {
+	o := cx.NewObject(proto)
 	o.class = classModuleSource
 	o.setExtState(className)
 	return o

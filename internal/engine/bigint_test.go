@@ -13,8 +13,8 @@ import (
 
 func TestBigIntBitwiseSizeLimit(t *testing.T) {
 	const bits = 128
-	vm := engine.NewVMWithBigIntResultLimit(bits)
-	builtin.Install(vm)
+	cx := engine.NewVMWithBigIntResultLimit(bits)
+	builtin.Install(cx)
 	setup := fmt.Sprintf(`
 		const x = BigInt.asUintN(%d, -1n);
 		function throwsRangeError(f) {
@@ -22,7 +22,7 @@ func TestBigIntBitwiseSizeLimit(t *testing.T) {
 			return false;
 		}
 	`, bits)
-	if _, err := runScript(vm, "setup", setup); err != nil {
+	if _, err := runScript(cx, "setup", setup); err != nil {
 		t.Fatal(err)
 	}
 	for _, expr := range []string{
@@ -31,7 +31,7 @@ func TestBigIntBitwiseSizeLimit(t *testing.T) {
 		`throwsRangeError(() => -x & -2n)`,
 		`(-x | x) === -1n`,
 	} {
-		got, err := runScript(vm, "bitwise", expr)
+		got, err := runScript(cx, "bitwise", expr)
 		if err != nil {
 			t.Errorf("%s: %v", expr, err)
 		} else if !engine.ToBoolean(got) {

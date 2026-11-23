@@ -39,7 +39,7 @@ type segmentsData struct {
 	bounds []int32
 }
 
-func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s wtf8.String) *segmentsData {
+func newSegmentsData(cx *engine.ExecutionContext, sd *segmenterData, str engine.Value, s wtf8.String) *segmentsData {
 	// Every code point starts with a byte that is not a continuation byte.
 	var n int
 	for i := 0; i < len(s); i++ {
@@ -56,7 +56,7 @@ func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s wtf8.
 	var u int32
 	var p engine.Pacer
 	for len(s) > 0 {
-		p.Step(vm)
+		p.Step(cx)
 		r, size := wtf8.DecodeRune(s)
 		s = s[size:]
 		d.runes = append(d.runes, r)
@@ -71,9 +71,9 @@ func newSegmentsData(vm *engine.VM, sd *segmenterData, str engine.Value, s wtf8.
 	return d
 }
 
-func (d *segmentsData) boundaries(vm *engine.VM) []int32 {
+func (d *segmentsData) boundaries(cx *engine.ExecutionContext) []int32 {
 	if d.bounds == nil {
-		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes, d.segmenter.locale, vm.Poll)
+		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes, d.segmenter.locale, cx.Poll)
 	}
 	return d.bounds
 }
@@ -85,13 +85,13 @@ func (d *segmentsData) length() int {
 
 // segmentAt returns the start and the end of the segment that contains the code unit n, as
 // indices of runes.
-func (d *segmentsData) segmentAt(vm *engine.VM, n int) (int, int) {
+func (d *segmentsData) segmentAt(cx *engine.ExecutionContext, n int) (int, int) {
 	// The rune that contains the code unit n.
 	ri, found := slices.BinarySearch(d.units, int32(n))
 	if !found {
 		ri--
 	}
-	bs := d.boundaries(vm)
+	bs := d.boundaries(cx)
 	k, found := slices.BinarySearch(bs, int32(ri))
 	if !found {
 		k--
@@ -100,26 +100,26 @@ func (d *segmentsData) segmentAt(vm *engine.VM, n int) (int, int) {
 }
 
 // segmentData implements CreateSegmentDataObject for the runes from start to end.
-func (d *segmentsData) segmentData(vm *engine.VM, start, end int) engine.Value {
+func (d *segmentsData) segmentData(cx *engine.ExecutionContext, start, end int) engine.Value {
 	b := make([]byte, 0, int(d.units[end]-d.units[start]))
 	var p engine.Pacer
 	for _, r := range d.runes[start:end] {
-		p.Step(vm)
+		p.Step(cx)
 		b = wtf8.AppendRune(b, r)
 	}
 	keys := [4]engine.PropKey{
-		engine.NamedKey(vm.Intern("segment")),
-		engine.NamedKey(vm.Intern("index")),
-		engine.NamedKey(vm.Intern("input")),
+		engine.NamedKey(cx.Intern("segment")),
+		engine.NamedKey(cx.Intern("index")),
+		engine.NamedKey(cx.Intern("input")),
 	}
-	vals := [4]engine.Value{vm.NewStringBytes(b), engine.Number(float64(d.units[start])), d.str}
+	vals := [4]engine.Value{cx.NewStringBytes(b), engine.Number(float64(d.units[start])), d.str}
 	propertyCount := 3
 	if d.segmenter.granularity == "word" {
-		keys[3] = engine.NamedKey(vm.Intern("isWordLike"))
-		vals[3] = engine.Bool(isWordLike(vm, d.runes[start:end]))
+		keys[3] = engine.NamedKey(cx.Intern("isWordLike"))
+		vals[3] = engine.Bool(isWordLike(cx, d.runes[start:end]))
 		propertyCount++
 	}
-	return engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
+	return engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
 }
 
 // segmentIteratorData holds the internal slots of a Segment Iterator object.
@@ -130,125 +130,125 @@ type segmentIteratorData struct {
 }
 
 // newSegmenter implements the Intl.Segmenter constructor.
-func (r *realm) newSegmenter(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newSegmenter(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.Segmenter requires 'new'")
+		cx.ThrowTypeError("constructor Intl.Segmenter requires 'new'")
 	}
-	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.segmenterProto })
-	requested := canonicalizeLocaleList(vm, arg(args, 0))
+	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.segmenterProto })
+	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	// GetOptionsObject.
 	var options *engine.Object
 	switch o := arg(args, 1); {
 	case o.IsUndefined():
-		options = vm.NewObject(nil)
+		options = cx.NewObject(nil)
 	case o.IsObject():
 		options = o.Object()
 	default:
-		vm.ThrowTypeError(vm.CurrentRealm(), "the options of Intl.Segmenter must be an object")
+		cx.ThrowTypeError("the options of Intl.Segmenter must be an object")
 	}
-	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
+	bestFit := localeMatcher(cx, options)
+	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, nil)
 	sd := &segmenterData{
 		locale:      res.Locale,
-		granularity: getStringOption(vm, options, "granularity", "grapheme", "grapheme", "word", "sentence"),
+		granularity: getStringOption(cx, options, "granularity", "grapheme", "grapheme", "word", "sentence"),
 	}
-	return engine.ObjectValue(vm.NewIntlObject(proto, sd))
+	return engine.ObjectValue(cx.NewIntlObject(proto, sd))
 }
 
 // initSegmenter defines Intl.Segmenter.
-func (r *realm) initSegmenter(vm *engine.VM) {
-	realm := vm.CurrentRealm()
-	proto := vm.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("Segmenter", 0, r.newSegmenter)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("Segmenter"), engine.ObjectValue(ctor), engine.FlagsHidden)
+func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
+	realm := cx.Realm()
+	proto := cx.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("Segmenter", 0, r.newSegmenter)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("Segmenter"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.segmenterProto = proto
 
-	segmentsProto := vm.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
-	iterProto := vm.NewObject(realm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	segmentsProto := cx.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
+	iterProto := cx.NewObject(realm.Intrinsic(engine.IntrinsicIteratorPrototype))
 
-	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(vm, args)
+	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return supportedLocalesOf(cx, args)
 	})
-	thisSegmenter := func(vm *engine.VM, this engine.Value, name string) *segmenterData {
+	thisSegmenter := func(cx *engine.ExecutionContext, this engine.Value, name string) *segmenterData {
 		sd, ok := engine.IntlData(this).(*segmenterData)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Intl.Segmenter.prototype."+name+" called on an object that is not an Intl.Segmenter")
+			cx.ThrowTypeError("Intl.Segmenter.prototype." + name + " called on an object that is not an Intl.Segmenter")
 		}
 		return sd
 	}
-	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		sd := thisSegmenter(vm, this, "resolvedOptions")
-		out := vm.NewObjectFromProperties(
-			[]engine.PropKey{engine.NamedKey(vm.Intern("locale")), engine.NamedKey(vm.Intern("granularity"))},
-			[]engine.Value{vm.NewString(wtf8.String(sd.locale)), vm.NewString(wtf8.String(sd.granularity))},
+	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		sd := thisSegmenter(cx, this, "resolvedOptions")
+		out := cx.NewObjectFromProperties(
+			[]engine.PropKey{engine.NamedKey(cx.Intern("locale")), engine.NamedKey(cx.Intern("granularity"))},
+			[]engine.Value{cx.NewString(wtf8.String(sd.locale)), cx.NewString(wtf8.String(sd.granularity))},
 		)
 		return engine.ObjectValue(out)
 	})
-	method(vm, proto, "segment", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		sd := thisSegmenter(vm, this, "segment")
-		s := vm.ToString(arg(args, 0))
-		str := vm.NewString(s)
-		return engine.ObjectValue(vm.NewIntlObject(segmentsProto, newSegmentsData(vm, sd, str, s)))
+	method(cx, proto, "segment", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		sd := thisSegmenter(cx, this, "segment")
+		s := cx.ToString(arg(args, 0))
+		str := cx.NewString(s)
+		return engine.ObjectValue(cx.NewIntlObject(segmentsProto, newSegmentsData(cx, sd, str, s)))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Segmenter"), engine.FlagConfigurable)
 
-	thisSegments := func(vm *engine.VM, this engine.Value, name string) *segmentsData {
+	thisSegments := func(cx *engine.ExecutionContext, this engine.Value, name string) *segmentsData {
 		d, ok := engine.IntlData(this).(*segmentsData)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "%Segments.prototype%."+name+" called on an object that is not a Segments object")
+			cx.ThrowTypeError("%Segments.prototype%." + name + " called on an object that is not a Segments object")
 		}
 		return d
 	}
-	method(vm, segmentsProto, "containing", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		d := thisSegments(vm, this, "containing")
-		n := vm.ToIntegerOrInfinity(arg(args, 0))
+	method(cx, segmentsProto, "containing", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		d := thisSegments(cx, this, "containing")
+		n := cx.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || n >= float64(d.length()) {
 			return engine.Undefined
 		}
-		start, end := d.segmentAt(vm, int(n))
-		return d.segmentData(vm, start, end)
+		start, end := d.segmentAt(cx, int(n))
+		return d.segmentData(cx, start, end)
 	})
-	vm.Define(segmentsProto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.NewNative("[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		d := thisSegments(vm, this, "[Symbol.iterator]")
-		return engine.ObjectValue(vm.NewIntlObject(iterProto, &segmentIteratorData{
+	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		d := thisSegments(cx, this, "[Symbol.iterator]")
+		return engine.ObjectValue(cx.NewIntlObject(iterProto, &segmentIteratorData{
 			segments: d,
 		}))
 	})), engine.FlagsHidden)
 
-	method(vm, iterProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, iterProto, "next", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		it, ok := engine.IntlData(this).(*segmentIteratorData)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
+			cx.ThrowTypeError("%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
 		}
 		d := it.segments
 		if it.pos >= len(d.runes) {
-			return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
+			return cx.CreateIterResultObject(engine.Undefined, true)
 		}
 		start := it.pos
-		bs := d.boundaries(vm)
+		bs := d.boundaries(cx)
 		k, found := slices.BinarySearch(bs, int32(start))
 		if found {
 			k++
 		}
 		end := int(bs[k])
 		it.pos = end
-		return vm.CurrentRealm().CreateIterResultObject(d.segmentData(vm, start, end), false)
+		return cx.CreateIterResultObject(d.segmentData(cx, start, end), false)
 	})
-	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
+	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
 }
 
 // isWordLike is [segment.IsWordLike], checking for an interruption between the parts of a long
 // segment. A segment is word-like when any part of it is.
-func isWordLike(vm *engine.VM, rs []rune) bool {
+func isWordLike(cx *engine.ExecutionContext, rs []rune) bool {
 	for len(rs) > engine.PollInterval {
 		if segment.IsWordLike(rs[:engine.PollInterval]) {
 			return true
 		}
 		rs = rs[engine.PollInterval:]
-		vm.Poll()
+		cx.Poll()
 	}
 	return segment.IsWordLike(rs)
 }

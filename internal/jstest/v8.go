@@ -558,18 +558,18 @@ type v8Directives struct {
 var v8VMDirectives sync.Map
 
 func init() {
-	builtin.RegisterExtension(func(vm *engine.VM) {
-		host, _ := vm.HostDefined().(*ekuma.VM)
+	builtin.RegisterExtension(func(cx *engine.ExecutionContext) {
+		host, _ := cx.HostDefined().(*ekuma.VM)
 		d, ok := v8VMDirectives.Load(host)
 		if !ok {
 			return
 		}
 		directives := d.(v8Directives)
 		if directives.exposeGC {
-			installV8GC(vm)
+			installV8GC(cx)
 		}
 		if directives.enableQueueMicrotask {
-			installV8QueueMicrotask(vm)
+			installV8QueueMicrotask(cx)
 		}
 	})
 }

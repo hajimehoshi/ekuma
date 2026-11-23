@@ -12,19 +12,19 @@ import (
 // TestArrayWithLengthFilledFromEnd tests that filling an array created with its length from the
 // end keeps every element in the storage of the elements, which needs no key for an index.
 func TestArrayWithLengthFilledFromEnd(t *testing.T) {
-	vm := newVM(t)
-	before := engine.InternedCount(vm)
-	if _, err := runScript(vm, "fill", `o = new Array(500); for (i = 499; i >= 0; i--) o[i] = i;`); err != nil {
+	cx := newVM(t)
+	before := engine.InternedCount(cx)
+	if _, err := runScript(cx, "fill", `o = new Array(500); for (i = 499; i >= 0; i--) o[i] = i;`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	if got := engine.InternedCount(vm); got != before {
+	if got := engine.InternedCount(cx); got != before {
 		t.Errorf("got %d interned strings, want %d", got, before)
 	}
 }
 
 func TestPushCapacityAfterLongRuns(t *testing.T) {
-	vm := newVM(t)
-	v, err := runScript(vm, "build", `
+	cx := newVM(t)
+	v, err := runScript(cx, "build", `
 		function build(n, a = []) {
 			while (a.length < n) a.push(a.length);
 			return a;
@@ -44,7 +44,7 @@ func TestPushCapacityAfterLongRuns(t *testing.T) {
 	if got := engine.ElementStorage(v); got <= 8 || got > 64 {
 		t.Errorf("capacity after long runs: got %d, want more than 8 and at most 64", got)
 	}
-	v, err = runScript(vm, "short", "build(8)")
+	v, err = runScript(cx, "short", "build(8)")
 	if err != nil {
 		t.Fatal(err)
 	}

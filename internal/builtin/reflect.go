@@ -7,121 +7,121 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-func initReflect(vm *engine.VM) {
-	r := vm.NewOrdinaryObject()
-	vm.Define(vm.GlobalObject().Object(), vm.Intern("Reflect"), engine.ObjectValue(r), engine.FlagsHidden)
-	vm.Define(r, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Reflect"), engine.FlagConfigurable)
+func initReflect(cx *engine.ExecutionContext) {
+	r := cx.NewOrdinaryObject()
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Reflect"), engine.ObjectValue(r), engine.FlagsHidden)
+	cx.Define(r, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Reflect"), engine.FlagConfigurable)
 
-	target := func(vm *engine.VM, v engine.Value, name string) *engine.Object {
+	target := func(cx *engine.ExecutionContext, v engine.Value, name string) *engine.Object {
 		if !v.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect."+name+" called on non-object")
+			cx.ThrowTypeError("Reflect." + name + " called on non-object")
 		}
 		return v.Object()
 	}
 	// argumentList implements CreateListFromArrayLike, which requires an object.
-	argumentList := func(vm *engine.VM, v engine.Value, name string) []engine.Value {
+	argumentList := func(cx *engine.ExecutionContext, v engine.Value, name string) []engine.Value {
 		if !v.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect."+name+" requires an array-like object as the argument list")
+			cx.ThrowTypeError("Reflect." + name + " requires an array-like object as the argument list")
 		}
-		return listFromArrayLike(vm, v)
+		return listFromArrayLike(cx, v)
 	}
 
 	// Reflect.apply and Reflect.construct show no frame, as Function.prototype.call and apply.
-	apply := method(vm, r, "apply", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	apply := method(cx, r, "apply", 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		f := arg(args, 0)
 		if !f.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.apply requires a function as the target")
+			cx.ThrowTypeError("Reflect.apply requires a function as the target")
 		}
-		return vm.Call(f.Object(), arg(args, 1), argumentList(vm, arg(args, 2), "apply")...)
+		return cx.Call(f.Object(), arg(args, 1), argumentList(cx, arg(args, 2), "apply")...)
 	})
-	vm.SetFrameless(apply)
-	construct := method(vm, r, "construct", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	cx.SetFrameless(apply)
+	construct := method(cx, r, "construct", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		f := arg(args, 0)
-		if !f.IsObject() || !vm.IsConstructor(f.Object()) {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.construct requires a constructor as the target")
+		if !f.IsObject() || !cx.IsConstructor(f.Object()) {
+			cx.ThrowTypeError("Reflect.construct requires a constructor as the target")
 		}
 		nt := f
 		if len(args) > 2 {
 			nt = args[2]
-			if !nt.IsObject() || !vm.IsConstructor(nt.Object()) {
-				vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.construct requires a constructor as the new target")
+			if !nt.IsObject() || !cx.IsConstructor(nt.Object()) {
+				cx.ThrowTypeError("Reflect.construct requires a constructor as the new target")
 			}
 		}
-		list := argumentList(vm, arg(args, 1), "construct")
-		return engine.ObjectValue(vm.Construct(f.Object(), list, nt.Object()))
+		list := argumentList(cx, arg(args, 1), "construct")
+		return engine.ObjectValue(cx.Construct(f.Object(), list, nt.Object()))
 	})
-	vm.SetFrameless(construct)
-	method(vm, r, "defineProperty", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "defineProperty")
-		k := vm.ToPropertyKey(arg(args, 1))
-		return engine.Bool(vm.DefineOwnProperty(o, k, vm.ToPropertyDescriptor(arg(args, 2))))
+	cx.SetFrameless(construct)
+	method(cx, r, "defineProperty", 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "defineProperty")
+		k := cx.ToPropertyKey(arg(args, 1))
+		return engine.Bool(cx.DefineOwnProperty(o, k, cx.ToPropertyDescriptor(arg(args, 2))))
 	})
-	method(vm, r, "deleteProperty", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "deleteProperty")
-		return engine.Bool(vm.DeleteProp(o, vm.ToPropertyKey(arg(args, 1))))
+	method(cx, r, "deleteProperty", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "deleteProperty")
+		return engine.Bool(cx.DeleteProp(o, cx.ToPropertyKey(arg(args, 1))))
 	})
-	method(vm, r, "get", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "get")
-		k := vm.ToPropertyKey(arg(args, 1))
+	method(cx, r, "get", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "get")
+		k := cx.ToPropertyKey(arg(args, 1))
 		receiver := args[0]
 		if len(args) > 2 {
 			receiver = args[2]
 		}
-		return vm.GetWithReceiver(o, k, receiver)
+		return cx.GetWithReceiver(o, k, receiver)
 	})
-	method(vm, r, "getOwnPropertyDescriptor", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "getOwnPropertyDescriptor")
-		d, ok := vm.GetOwnProperty(o, vm.ToPropertyKey(arg(args, 1)))
+	method(cx, r, "getOwnPropertyDescriptor", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "getOwnPropertyDescriptor")
+		d, ok := cx.GetOwnProperty(o, cx.ToPropertyKey(arg(args, 1)))
 		if !ok {
 			return engine.Undefined
 		}
-		return vm.FromPropertyDescriptor(d)
+		return cx.FromPropertyDescriptor(d)
 	})
-	method(vm, r, "getPrototypeOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if p := vm.ProtoOf(target(vm, arg(args, 0), "getPrototypeOf")); p != nil {
+	method(cx, r, "getPrototypeOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		if p := cx.ProtoOf(target(cx, arg(args, 0), "getPrototypeOf")); p != nil {
 			return engine.ObjectValue(p)
 		}
 		return engine.Null
 	})
-	method(vm, r, "has", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "has")
-		return engine.Bool(vm.HasProperty(o, vm.QueryKey(arg(args, 1))))
+	method(cx, r, "has", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "has")
+		return engine.Bool(cx.HasProperty(o, cx.QueryKey(arg(args, 1))))
 	})
-	method(vm, r, "isExtensible", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(vm.IsExtensible(target(vm, arg(args, 0), "isExtensible")))
+	method(cx, r, "isExtensible", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(cx.IsExtensible(target(cx, arg(args, 0), "isExtensible")))
 	})
-	method(vm, r, "ownKeys", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		keys := vm.OwnKeys(target(vm, arg(args, 0), "ownKeys"))
+	method(cx, r, "ownKeys", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		keys := cx.OwnKeys(target(cx, arg(args, 0), "ownKeys"))
 		out := make([]engine.Value, len(keys))
 		var pacer engine.Pacer
 		for i, k := range keys {
-			pacer.Step(vm)
-			out[i] = vm.KeyValue(k)
+			pacer.Step(cx)
+			out[i] = cx.KeyValue(k)
 		}
-		return engine.ObjectValue(vm.NewArray(out))
+		return engine.ObjectValue(cx.NewArray(out))
 	})
-	method(vm, r, "preventExtensions", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(vm.PreventExtensions(target(vm, arg(args, 0), "preventExtensions")))
+	method(cx, r, "preventExtensions", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(cx.PreventExtensions(target(cx, arg(args, 0), "preventExtensions")))
 	})
-	method(vm, r, "set", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "set")
-		k := vm.ToPropertyKey(arg(args, 1))
+	method(cx, r, "set", 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "set")
+		k := cx.ToPropertyKey(arg(args, 1))
 		receiver := args[0]
 		if len(args) > 3 {
 			receiver = args[3]
 		}
-		return engine.Bool(vm.SetWithReceiver(o, k, arg(args, 2), receiver))
+		return engine.Bool(cx.SetWithReceiver(o, k, arg(args, 2), receiver))
 	})
-	method(vm, r, "setPrototypeOf", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := target(vm, arg(args, 0), "setPrototypeOf")
+	method(cx, r, "setPrototypeOf", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := target(cx, arg(args, 0), "setPrototypeOf")
 		p := arg(args, 1)
 		if !p.IsObject() && !p.IsNull() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "object prototype may only be an Object or null: "+vm.DisplayString(p))
+			cx.ThrowTypeError("object prototype may only be an Object or null: " + cx.DisplayString(p))
 		}
 		var po *engine.Object
 		if p.IsObject() {
 			po = p.Object()
 		}
-		return engine.Bool(vm.SetPrototypeOf(o, po))
+		return engine.Bool(cx.SetPrototypeOf(o, po))
 	})
 }

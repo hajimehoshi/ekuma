@@ -70,18 +70,18 @@ type reversedBuilder struct {
 }
 
 // Concat returns the concatenation of the strings a and b.
-func (vm *VM) Concat(a, b Value) Value {
+func (cx *ExecutionContext) Concat(a, b Value) Value {
 	if sb := tailBuilder(a.o); sb != nil && b.o.flags&(objASCIIKnown|objASCII|objReversed) == objASCIIKnown|objASCII {
 		y := b.o.str
 		if y == "" {
 			return a
 		}
 		if len(y) > MaxStringLength-len(a.o.str) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+			cx.ThrowRangeError("invalid string length")
 		}
 		// An ASCII suffix cannot join a surrogate pair.
 		sb.WriteString(string(y))
-		return vm.extendTail(a.o, sb, true)
+		return cx.extendTail(a.o, sb, true)
 	}
 	if b.o.flags&objReversed != 0 && a.o.flags&(objASCIIKnown|objASCII|objReversed) == objASCIIKnown|objASCII {
 		if rb := headBuilder(b.o); rb != nil {
@@ -90,10 +90,10 @@ func (vm *VM) Concat(a, b Value) Value {
 				return b
 			}
 			if len(x) > MaxStringLength-len(b.o.str) {
-				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+				cx.ThrowRangeError("invalid string length")
 			}
 			writeReversed(&rb.sb, x)
-			return vm.extendHead(b.o, rb, true)
+			return cx.extendHead(b.o, rb, true)
 		}
 	}
 	aN := a.StringByteLength()
@@ -107,12 +107,12 @@ func (vm *VM) Concat(a, b Value) Value {
 		}
 		if bN <= shortstrings.MaxBytes && aN+bN <= shortstrings.MaxBytes+2 &&
 			(aN+bN <= shortstrings.MaxBytes || shortStringsJoinPair(a, aN, b, bN)) {
-			if v, ok := vm.concatShort(a, aN, b, bN); ok {
+			if v, ok := cx.concatShort(a, aN, b, bN); ok {
 				return v
 			}
 		}
 	}
-	return vm.concat(a, a.rawString(), b, b.rawString())
+	return cx.concat(a, a.rawString(), b, b.rawString())
 }
 
 // shortStringsJoinPair reports whether the unreversed strings form a surrogate pair at their join.
@@ -124,7 +124,7 @@ func shortStringsJoinPair(a Value, aN int, b Value, bN int) bool {
 	return tail&0xf0ff == 0xa0ed && math.Float64bits(b.n)&0xf0ff == 0xb0ed
 }
 
-func (vm *VM) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
+func (cx *ExecutionContext) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
 	x, y := math.Float64bits(a.n), math.Float64bits(b.n)
 	data, n, ok := shortstrings.Concat(x, aN, y, bN)
 	if !ok {
@@ -132,13 +132,13 @@ func (vm *VM) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.curRealm.shapes.shortStrings[n],
+		o: &cx.realm.shapes.shortStrings[n],
 	}, true
 }
 
 // concat returns the concatenation of a and b. x and y are the str of a and b when those are
 // strings, and their string forms otherwise.
-func (vm *VM) concat(a Value, x wtf8.String, b Value, y wtf8.String) Value {
+func (cx *ExecutionContext) concat(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 	if x == "" && b.IsString() {
 		return b
 	}
@@ -147,28 +147,28 @@ func (vm *VM) concat(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 	}
 	n := len(x) + len(y)
 	if n > MaxStringLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+		cx.ThrowRangeError("invalid string length")
 	}
 	if b.IsString() && b.o.flags&objReversed != 0 {
-		return vm.concatReversed(a, x, b, y)
+		return cx.concatReversed(a, x, b, y)
 	}
 	var ca, cb concatCount
 	if a.IsString() {
 		// A tail is never reversed.
 		if sb := tailBuilder(a.o); sb != nil {
 			if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {
-				return vm.NewString(wtf8.Concat(x, y))
+				return cx.NewString(wtf8.Concat(x, y))
 			}
 			sb.WriteString(string(y))
-			return vm.extendTail(a.o, sb, isASCII(b, y))
+			return cx.extendTail(a.o, sb, isASCII(b, y))
 		}
 		if a.o.flags&objReversed != 0 {
-			return vm.concatReversed(a, x, b, y)
+			return cx.concatReversed(a, x, b, y)
 		}
 		ca = a.o.extConcatCount()
 	}
 	if len(y) >= 3 && len(x) >= 3 && wtf8.JoinsPair(x, y) {
-		return vm.NewString(wtf8.Concat(x, y))
+		return cx.NewString(wtf8.Concat(x, y))
 	}
 	if b.IsString() {
 		cb = b.o.extConcatCount()
@@ -179,27 +179,27 @@ func (vm *VM) concat(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 			sb.Grow(n)
 			sb.WriteString(string(x))
 			sb.WriteString(string(y))
-			return vm.newTail(sb, isASCII(a, x) && isASCII(b, y))
+			return cx.newTail(sb, isASCII(a, x) && isASCII(b, y))
 		}
 		if cb.prepends() >= bufferAfter {
 			rb := new(reversedBuilder)
 			rb.sb.Grow(n)
 			writeReversed(&rb.sb, y)
 			writeReversed(&rb.sb, x)
-			return vm.newHead(rb, isASCII(a, x) && isASCII(b, y))
+			return cx.newHead(rb, isASCII(a, x) && isASCII(b, y))
 		}
 	}
 	if n <= shortstrings.MaxBytes {
 		var data [shortstrings.MaxBytes]byte
 		copy(data[:], x)
 		copy(data[len(x):], y)
-		return vm.shortString(wtf8.String(data[:n]))
+		return cx.shortString(wtf8.String(data[:n]))
 	}
-	return vm.concatenated(x+y, nextCount(ca, cb))
+	return cx.concatenated(x+y, nextCount(ca, cb))
 }
 
-// concatReversed is [VM.concat] for operands one or both of which are reversed strings.
-func (vm *VM) concatReversed(a Value, x wtf8.String, b Value, y wtf8.String) Value {
+// concatReversed is [ExecutionContext.concat] for operands one or both of which are reversed strings.
+func (cx *ExecutionContext) concatReversed(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 	ar := a.IsString() && a.o.flags&objReversed != 0
 	br := b.IsString() && b.o.flags&objReversed != 0
 	asciiX := isASCII(a, x)
@@ -211,7 +211,7 @@ func (vm *VM) concatReversed(a Value, x wtf8.String, b Value, y wtf8.String) Val
 		if br {
 			y = b.Str()
 		}
-		return vm.concat(a, x, b, y)
+		return cx.concat(a, x, b, y)
 	}
 	rb := headBuilder(b.o)
 	if rb == nil {
@@ -224,11 +224,11 @@ func (vm *VM) concatReversed(a Value, x wtf8.String, b Value, y wtf8.String) Val
 	} else {
 		writeReversed(&rb.sb, x)
 	}
-	return vm.extendHead(b.o, rb, asciiX)
+	return cx.extendHead(b.o, rb, asciiX)
 }
 
 // ConcatStrings returns the concatenation of the strings parts.
-func (vm *VM) ConcatStrings(parts []Value) Value {
+func (cx *ExecutionContext) ConcatStrings(parts []Value) Value {
 	var n, nonEmpty, previousBytes int
 	var needsUnpacking bool
 	var flags uint8
@@ -243,13 +243,13 @@ func (vm *VM) ConcatStrings(parts []Value) Value {
 		if previousBytes >= 3 && nbytes >= 3 && wtf8.JoinsPair(parts[last].rawString(), p.rawString()) {
 			acc := parts[0]
 			for _, p := range parts[1:] {
-				acc = vm.Concat(acc, p)
+				acc = cx.Concat(acc, p)
 			}
 			return acc
 		}
 		n += nbytes
 		if n > MaxStringLength {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+			cx.ThrowRangeError("invalid string length")
 		}
 		flags |= p.o.flags
 		last = i
@@ -258,12 +258,12 @@ func (vm *VM) ConcatStrings(parts []Value) Value {
 	}
 	switch nonEmpty {
 	case 0:
-		return vm.emptyString
+		return cx.emptyString
 	case 1:
 		return parts[last]
 	}
 	if flags&objReversed != 0 {
-		return vm.concatReversedStrings(parts)
+		return cx.concatReversedStrings(parts)
 	}
 
 	first := parts[0].o
@@ -274,13 +274,13 @@ func (vm *VM) ConcatStrings(parts []Value) Value {
 			sb.WriteString(string(s))
 			ascii = ascii && isASCII(p, s)
 		}
-		return vm.extendTail(first, sb, ascii)
+		return cx.extendTail(first, sb, ascii)
 	}
 	ca := first.extConcatCount()
 	cb := parts[len(parts)-1].o.extConcatCount()
 	if n < minBufferedLength || ca.appends() < bufferAfter && cb.prepends() < bufferAfter {
 		if n <= maxStackConcatBytes {
-			return vm.concatSmall(parts, n, nextCount(ca, cb), needsUnpacking)
+			return cx.concatSmall(parts, n, nextCount(ca, cb), needsUnpacking)
 		}
 		var sb strings.Builder
 		sb.Grow(n)
@@ -297,14 +297,14 @@ func (vm *VM) ConcatStrings(parts []Value) Value {
 				sb.WriteString(string(p.o.str))
 			}
 		}
-		return vm.concatenated(wtf8.String(sb.String()), nextCount(ca, cb))
+		return cx.concatenated(wtf8.String(sb.String()), nextCount(ca, cb))
 	}
-	return vm.newBuffered(parts, n, ca.appends() >= bufferAfter)
+	return cx.newBuffered(parts, n, ca.appends() >= bufferAfter)
 }
 
 // concatSmall joins parts with total byte length n, at most maxStackConcatBytes.
 // No part is reversed and no boundary forms a surrogate pair.
-func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpacking bool) Value {
+func (cx *ExecutionContext) concatSmall(parts []Value, n int, count concatCount, needsUnpacking bool) Value {
 	if n <= shortstrings.MaxBytes {
 		// Every part is a short string, whose value holds its bytes packed.
 		var data uint64
@@ -315,7 +315,7 @@ func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpackin
 		}
 		return Value{
 			n: math.Float64frombits(data),
-			o: &vm.curRealm.shapes.shortStrings[n],
+			o: &cx.realm.shapes.shortStrings[n],
 		}
 	}
 	var buf [maxStackConcatBytes]byte
@@ -329,12 +329,12 @@ func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpackin
 			written += copy(buf[written:], p.o.str)
 		}
 	}
-	return vm.concatenated(wtf8.String(buf[:n]), count)
+	return cx.concatenated(wtf8.String(buf[:n]), count)
 }
 
-// concatReversedStrings is [VM.ConcatStrings] for parts one or more of which are reversed
+// concatReversedStrings is [ExecutionContext.ConcatStrings] for parts one or more of which are reversed
 // strings.
-func (vm *VM) concatReversedStrings(parts []Value) Value {
+func (cx *ExecutionContext) concatReversedStrings(parts []Value) Value {
 	for _, p := range parts[:len(parts)-1] {
 		if p.o.flags&objReversed != 0 {
 			p.o.unreverse()
@@ -344,19 +344,19 @@ func (vm *VM) concatReversedStrings(parts []Value) Value {
 	// them, and they can be prepended to it.
 	if end := parts[len(parts)-1].o; end.flags&objReversed != 0 {
 		if rb := headBuilder(end); rb != nil {
-			if v, ok := vm.prependStrings(parts[:len(parts)-1], end, rb); ok {
+			if v, ok := cx.prependStrings(parts[:len(parts)-1], end, rb); ok {
 				return v
 			}
 		}
 		end.unreverse()
 	}
-	return vm.ConcatStrings(parts)
+	return cx.ConcatStrings(parts)
 }
 
 // newBuffered returns the concatenation of the strings parts, none of which is reversed, as the
 // tail of a new builder if tail is set, and as the head of a new builder otherwise. n is the
 // length of the concatenation in bytes.
-func (vm *VM) newBuffered(parts []Value, n int, tail bool) Value {
+func (cx *ExecutionContext) newBuffered(parts []Value, n int, tail bool) Value {
 	ascii := true
 	if tail {
 		sb := new(strings.Builder)
@@ -366,7 +366,7 @@ func (vm *VM) newBuffered(parts []Value, n int, tail bool) Value {
 			sb.WriteString(string(s))
 			ascii = ascii && isASCII(p, s)
 		}
-		return vm.newTail(sb, ascii)
+		return cx.newTail(sb, ascii)
 	}
 	rb := new(reversedBuilder)
 	rb.sb.Grow(n)
@@ -375,13 +375,13 @@ func (vm *VM) newBuffered(parts []Value, n int, tail bool) Value {
 		writeReversed(&rb.sb, s)
 		ascii = ascii && isASCII(p, s)
 	}
-	return vm.newHead(rb, ascii)
+	return cx.newHead(rb, ascii)
 }
 
 // prependStrings returns the concatenation of the strings parts, none of which is reversed, and
 // the string b, which is the head of rb. It reports false when two of the strings form a
 // surrogate pair where they meet.
-func (vm *VM) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Value, bool) {
+func (cx *ExecutionContext) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Value, bool) {
 	n := len(b.str)
 	ascii := true
 	next, nextReversed, nextASCII := b.str, true, b.IsASCII()
@@ -396,7 +396,7 @@ func (vm *VM) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Val
 		}
 		n += len(p)
 		if n > MaxStringLength {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+			cx.ThrowRangeError("invalid string length")
 		}
 		ascii = ascii && pASCII
 		next, nextReversed, nextASCII = p, false, pASCII
@@ -407,19 +407,19 @@ func (vm *VM) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Val
 	for _, part := range slices.Backward(parts) {
 		writeReversed(&rb.sb, part.rawString())
 	}
-	return vm.extendHead(b, rb, ascii), true
+	return cx.extendHead(b, rb, ascii), true
 }
 
 // concatenated returns s, the result of a concatenation without a builder, whose
 // [concatCount] is count.
-func (vm *VM) concatenated(s wtf8.String, count concatCount) Value {
+func (cx *ExecutionContext) concatenated(s wtf8.String, count concatCount) Value {
 	if len(s) <= shortstrings.MaxBytes {
-		return vm.NewString(s)
+		return cx.NewString(s)
 	}
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: vm.curRealm.shapes.string,
+			shape: cx.realm.shapes.string,
 			str:   s,
 			ext:   count,
 		},
@@ -450,18 +450,18 @@ func headBuilder(o *Object) *reversedBuilder {
 
 // newTail returns the contents of sb as a string that is the tail of sb.
 // ascii reports whether the contents are ASCII.
-func (vm *VM) newTail(sb *strings.Builder, ascii bool) Value {
+func (cx *ExecutionContext) newTail(sb *strings.Builder, ascii bool) Value {
 	flags := objASCIIKnown
 	if ascii {
 		flags |= objASCII
 	}
-	return vm.newBufferedString(wtf8.String(sb.String()), flags, sb, nil)
+	return cx.newBufferedString(wtf8.String(sb.String()), flags, sb, nil)
 }
 
 // extendTail returns the contents of sb as the string that becomes its tail in place of the
 // string a, after strings were appended to the contents of a. ascii reports whether the
 // appended strings are ASCII.
-func (vm *VM) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
+func (cx *ExecutionContext) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
 	a.setExtState(nil)
 	s := wtf8.String(sb.String())
 	flags := objASCIIKnown
@@ -478,23 +478,23 @@ func (vm *VM) extendTail(a *Object, sb *strings.Builder, ascii bool) Value {
 			meta.length = m.length + int32(wtf8.Len(s[len(a.str):]))
 		}
 	}
-	return vm.newBufferedString(s, flags, sb, meta)
+	return cx.newBufferedString(s, flags, sb, meta)
 }
 
 // newHead returns the reversed string whose str is the contents of rb, as the head of rb.
 // ascii reports whether the contents are ASCII.
-func (vm *VM) newHead(rb *reversedBuilder, ascii bool) Value {
+func (cx *ExecutionContext) newHead(rb *reversedBuilder, ascii bool) Value {
 	flags := objASCIIKnown | objReversed
 	if ascii {
 		flags |= objASCII
 	}
-	return vm.newBufferedString(wtf8.String(rb.sb.String()), flags, rb, nil)
+	return cx.newBufferedString(wtf8.String(rb.sb.String()), flags, rb, nil)
 }
 
 // extendHead returns the reversed string whose str is the contents of rb, as the head of rb, after
 // strings were prepended to the reversed string b by writing them to rb. ascii reports whether
 // the prepended strings are ASCII.
-func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
+func (cx *ExecutionContext) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
 	b.setExtState(nil)
 	s := wtf8.String(rb.sb.String())
 	flags := objASCIIKnown | objReversed
@@ -507,17 +507,17 @@ func (vm *VM) extendHead(b *Object, rb *reversedBuilder, ascii bool) Value {
 			length: m.length + int32(wtf8.Len(s[len(b.str):])),
 		}
 	}
-	return vm.newBufferedString(s, flags, rb, meta)
+	return cx.newBufferedString(s, flags, rb, meta)
 }
 
 // newBufferedString returns a string with its builder and optional UTF-16 metadata.
-func (vm *VM) newBufferedString(s wtf8.String, flags uint8, builder any, meta *objectMeta) Value {
+func (cx *ExecutionContext) newBufferedString(s wtf8.String, flags uint8, builder any, meta *objectMeta) Value {
 	if meta == nil {
 		return Value{
 			o: &Object{
 				kind:  kindString,
 				flags: flags,
-				shape: vm.curRealm.shapes.string,
+				shape: cx.realm.shapes.string,
 				str:   s,
 				ext:   builder,
 			},
@@ -531,7 +531,7 @@ func (vm *VM) newBufferedString(s wtf8.String, flags uint8, builder any, meta *o
 		object: Object{
 			kind:  kindString,
 			flags: flags,
-			shape: vm.curRealm.shapes.string,
+			shape: cx.realm.shapes.string,
 			str:   s,
 		},
 		meta: *meta,

@@ -41,17 +41,17 @@ func defaultDigits() number.Digits {
 }
 
 // newRelativeTimeFormat implements the Intl.RelativeTimeFormat constructor.
-func (r *realm) newRelativeTimeFormat(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.RelativeTimeFormat requires 'new'")
+		cx.ThrowTypeError("constructor Intl.RelativeTimeFormat requires 'new'")
 	}
-	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.relativeTimeFormatProto })
-	requested := canonicalizeLocaleList(vm, arg(args, 0))
-	options := optionsObject(vm, arg(args, 1))
-	bestFit := localeMatcher(vm, options)
-	nu, hasNu := numberingSystemOption(vm, options)
-	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{{
+	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.relativeTimeFormatProto })
+	requested := canonicalizeLocaleList(cx, arg(args, 0))
+	options := optionsObject(cx, arg(args, 1))
+	bestFit := localeMatcher(cx, options)
+	nu, hasNu := numberingSystemOption(cx, options)
+	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{{
 		Key:       "nu",
 		Option:    nu,
 		HasOption: hasNu,
@@ -61,8 +61,8 @@ func (r *realm) newRelativeTimeFormat(vm *engine.VM, this engine.Value, args []e
 		locale:          res.Locale,
 		dataLocale:      res.DataLocale,
 		numberingSystem: res.Values[0],
-		style:           getStringOption(vm, options, "style", "long", "long", "short", "narrow"),
-		numeric:         getStringOption(vm, options, "numeric", "always", "always", "auto"),
+		style:           getStringOption(cx, options, "style", "long", "long", "short", "narrow"),
+		numeric:         getStringOption(cx, options, "numeric", "always", "always", "auto"),
 		pluralDigits:    defaultDigits(),
 	}
 	rtf.nf = number.NewFormatter(&number.Options{
@@ -74,14 +74,14 @@ func (r *realm) newRelativeTimeFormat(vm *engine.VM, this engine.Value, args []e
 		SignDisplay:     "auto",
 		Digits:          defaultDigits(),
 	})
-	return engine.ObjectValue(vm.NewIntlObject(proto, rtf))
+	return engine.ObjectValue(cx.NewIntlObject(proto, rtf))
 }
 
 // thisRelativeTimeFormat implements RequireInternalSlot for an Intl.RelativeTimeFormat.
-func thisRelativeTimeFormat(vm *engine.VM, this engine.Value, name string) *relativeTimeFormatData {
+func thisRelativeTimeFormat(cx *engine.ExecutionContext, this engine.Value, name string) *relativeTimeFormatData {
 	rtf, ok := engine.IntlData(this).(*relativeTimeFormatData)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.RelativeTimeFormat.prototype."+name+" called on an object that is not an Intl.RelativeTimeFormat")
+		cx.ThrowTypeError("Intl.RelativeTimeFormat.prototype." + name + " called on an object that is not an Intl.RelativeTimeFormat")
 	}
 	return rtf
 }
@@ -94,9 +94,9 @@ type relativeTimePart struct {
 }
 
 // partition implements PartitionRelativeTimePattern after the conversion of the arguments.
-func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit string) []relativeTimePart {
+func (rtf *relativeTimeFormatData) partition(cx *engine.ExecutionContext, value float64, unit string) []relativeTimePart {
 	if math.IsNaN(value) || math.IsInf(value, 0) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "the value of a relative time must be finite")
+		cx.ThrowRangeError("the value of a relative time must be finite")
 	}
 	// SingularRelativeTimeUnit.
 	switch unit {
@@ -104,11 +104,11 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 		unit = strings.TrimSuffix(unit, "s")
 	case "second", "minute", "hour", "day", "week", "month", "quarter", "year":
 	default:
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid unit of a relative time: "+vm.DisplayString(vm.NewString(wtf8.String(unit))))
+		cx.ThrowRangeError("invalid unit of a relative time: " + cx.DisplayString(cx.NewString(wtf8.String(unit))))
 	}
 	patterns := reltime.PatternsOf(rtf.dataLocale, unit, rtf.style)
 	if rtf.numeric == "auto" {
-		if s, ok := patterns.Named(string(vm.ToString(engine.Number(value)))); ok {
+		if s, ok := patterns.Named(string(cx.ToString(engine.Number(value)))); ok {
 			return []relativeTimePart{{typ: "literal", value: s}}
 		}
 	}
@@ -137,64 +137,64 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 
 // partitionArgs implements PartitionRelativeTimePattern for the arguments of format and
 // formatToParts, converting them first.
-func (rtf *relativeTimeFormatData) partitionArgs(vm *engine.VM, args []engine.Value) []relativeTimePart {
-	value := vm.ToNumber(arg(args, 0))
-	unit := wtf8.ToValidUTF8(vm.ToString(arg(args, 1)))
-	return rtf.partition(vm, value, unit)
+func (rtf *relativeTimeFormatData) partitionArgs(cx *engine.ExecutionContext, args []engine.Value) []relativeTimePart {
+	value := cx.ToNumber(arg(args, 0))
+	unit := wtf8.ToValidUTF8(cx.ToString(arg(args, 1)))
+	return rtf.partition(cx, value, unit)
 }
 
 // initRelativeTimeFormat defines Intl.RelativeTimeFormat.
-func (r *realm) initRelativeTimeFormat(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("RelativeTimeFormat", 0, r.newRelativeTimeFormat)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("RelativeTimeFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
+func (r *realm) initRelativeTimeFormat(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("RelativeTimeFormat", 0, r.newRelativeTimeFormat)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("RelativeTimeFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.relativeTimeFormatProto = proto
 
-	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(vm, args)
+	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return supportedLocalesOf(cx, args)
 	})
-	method(vm, proto, "format", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		rtf := thisRelativeTimeFormat(vm, this, "format")
+	method(cx, proto, "format", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		rtf := thisRelativeTimeFormat(cx, this, "format")
 		var b strings.Builder
-		for _, p := range rtf.partitionArgs(vm, args) {
+		for _, p := range rtf.partitionArgs(cx, args) {
 			b.WriteString(p.value)
 		}
-		return vm.NewString(wtf8.String(b.String()))
+		return cx.NewString(wtf8.String(b.String()))
 	})
-	method(vm, proto, "formatToParts", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		rtf := thisRelativeTimeFormat(vm, this, "formatToParts")
-		parts := rtf.partitionArgs(vm, args)
-		return unitPartsArray(vm, len(parts), func(i int) (string, string, string) {
+	method(cx, proto, "formatToParts", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		rtf := thisRelativeTimeFormat(cx, this, "formatToParts")
+		parts := rtf.partitionArgs(cx, args)
+		return unitPartsArray(cx, len(parts), func(i int) (string, string, string) {
 			return parts[i].typ, parts[i].value, parts[i].unit
 		})
 	})
-	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		rtf := thisRelativeTimeFormat(vm, this, "resolvedOptions")
-		return resolvedOptions(vm, "locale", rtf.locale, "style", rtf.style, "numeric", rtf.numeric, "numberingSystem", rtf.numberingSystem)
+	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		rtf := thisRelativeTimeFormat(cx, this, "resolvedOptions")
+		return resolvedOptions(cx, "locale", rtf.locale, "style", rtf.style, "numeric", rtf.numeric, "numberingSystem", rtf.numberingSystem)
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.RelativeTimeFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.RelativeTimeFormat"), engine.FlagConfigurable)
 }
 
 // unitPartsArray returns the parts as an array of objects with the properties "type" and
 // "value", and "unit" for the parts with a unit.
-func unitPartsArray(vm *engine.VM, n int, part func(i int) (typ, value, unit string)) engine.Value {
+func unitPartsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value, unit string)) engine.Value {
 	keys := [...]engine.PropKey{
-		engine.NamedKey(vm.Intern("type")),
-		engine.NamedKey(vm.Intern("value")),
-		engine.NamedKey(vm.Intern("unit")),
+		engine.NamedKey(cx.Intern("type")),
+		engine.NamedKey(cx.Intern("value")),
+		engine.NamedKey(cx.Intern("unit")),
 	}
 	vals := make([]engine.Value, n)
 	for i := range n {
 		typ, value, unit := part(i)
-		props := [3]engine.Value{vm.NewString(wtf8.String(typ)), vm.NewString(wtf8.String(value))}
+		props := [3]engine.Value{cx.NewString(wtf8.String(typ)), cx.NewString(wtf8.String(value))}
 		propertyCount := 2
 		if unit != "" {
-			props[2] = vm.NewString(wtf8.String(unit))
+			props[2] = cx.NewString(wtf8.String(unit))
 			propertyCount++
 		}
-		vals[i] = engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
+		vals[i] = engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
 	}
-	return vm.NewArrayOf(vals)
+	return cx.NewArrayOf(vals)
 }

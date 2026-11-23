@@ -11,22 +11,22 @@ import (
 )
 
 func TestNativeCallLimit(t *testing.T) {
-	vm := newVM(t)
+	cx := newVM(t)
 	var depth, deepest int
 	var nest engine.Value
-	nest = vm.NewFunction("nest", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	nest = cx.NewFunction("nest", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		depth++
 		deepest = max(deepest, depth)
 		defer func() {
 			depth--
 		}()
-		vm.Call(nest.Object(), engine.Undefined)
+		cx.Call(nest.Object(), engine.Undefined)
 		return engine.Undefined
 	})
-	if err := vm.HostSet(vm.GlobalObject(), vm.StringFromGo("nest"), nest); err != nil {
+	if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("nest"), nest); err != nil {
 		t.Fatalf("HostSet: %v", err)
 	}
-	v, err := runScript(vm, "nest", `try { nest(); 0; } catch (e) { e instanceof RangeError ? 1 : 2; }`)
+	v, err := runScript(cx, "nest", `try { nest(); 0; } catch (e) { e instanceof RangeError ? 1 : 2; }`)
 	if err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
@@ -39,12 +39,12 @@ func TestNativeCallLimit(t *testing.T) {
 }
 
 func TestDerivedReturnErrorLocation(t *testing.T) {
-	vm := newVM(t)
+	cx := newVM(t)
 	var ctor engine.Value
-	vm.CreateRealm(func() {
-		builtin.Install(vm)
+	cx.CreateRealm(func(cx *engine.ExecutionContext) {
+		builtin.Install(cx)
 		var err error
-		ctor, err = runScript(vm, "ctor.js", `(class extends Object {
+		ctor, err = runScript(cx, "ctor.js", `(class extends Object {
 	constructor() {
 		return 1;
 	}
@@ -53,21 +53,21 @@ func TestDerivedReturnErrorLocation(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if err := vm.HostSet(vm.GlobalObject(), vm.StringFromGo("Ctor"), ctor); err != nil {
+	if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("Ctor"), ctor); err != nil {
 		t.Fatal(err)
 	}
-	callerRealm := vm.CurrentRealm()
+	callerRealm := cx.Realm()
 	var loc engine.ExceptionLocation
-	vm.SetExceptionReporter(func(thrown engine.Value, site engine.ExceptionLocation) {
+	cx.SetExceptionReporter(func(thrown engine.Value, site engine.ExceptionLocation) {
 		loc = site
 		if thrown.Object().CreationRealm() != callerRealm {
 			t.Error("derived constructor return error was created outside the caller's realm")
 		}
-		if got := vm.ProtoOf(thrown.Object()); got != callerRealm.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+		if got := cx.ProtoOf(thrown.Object()); got != callerRealm.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
 			t.Error("derived constructor return error has the wrong prototype")
 		}
 	})
-	if _, err := runScript(vm, "caller.js", "new Ctor()"); err == nil {
+	if _, err := runScript(cx, "caller.js", "new Ctor()"); err == nil {
 		t.Error("expected the derived constructor to throw")
 	}
 	if loc.File != "ctor.js" || loc.Line != 3 || loc.Column != 3 || loc.SourceLine != "\t\treturn 1;" {

@@ -15,7 +15,7 @@ import (
 
 // writer is the state of one call of Stringify.
 type writer struct {
-	vm  *engine.VM
+	cx  *engine.ExecutionContext
 	buf []byte
 
 	keyToJSON  engine.PropKey
@@ -70,11 +70,11 @@ type Stringifier struct {
 }
 
 // Stringify implements JSON.stringify.
-func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Value) engine.Value {
+func (s *Stringifier) Stringify(cx *engine.ExecutionContext, value, replacer, space engine.Value) engine.Value {
 	w := &writer{
-		vm:         vm,
-		keyToJSON:  engine.NamedKey(vm.Intern("toJSON")),
-		keyRawJSON: vm.Intern("rawJSON"),
+		cx:         cx,
+		keyToJSON:  engine.NamedKey(cx.Intern("toJSON")),
+		keyRawJSON: cx.Intern("rawJSON"),
 	}
 	// A call from a toJSON method or a replacer during another call uses storage of its own.
 	if !s.busy {
@@ -100,30 +100,30 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 
 	if replacer.IsCallable() {
 		w.replacer = replacer.Object()
-	} else if vm.IsArray(replacer) {
+	} else if cx.IsArray(replacer) {
 		w.hasProps = true
 		r := replacer.Object()
-		n := vm.LengthOfArrayLike(r)
+		n := cx.LengthOfArrayLike(r)
 		seen := map[engine.PropKey]bool{}
 		for i := range n {
 			var v engine.Value
 			if e, ok := r.Element(i); ok {
-				vm.PollAt(i)
+				cx.PollAt(i)
 				v = e
 			} else {
-				v = vm.Get(r, indexKey(vm, i))
+				v = cx.Get(r, indexKey(cx, i))
 			}
 			var item engine.PropKey
 			switch {
 			case v.IsString():
-				item = vm.ToPropertyKey(v)
+				item = cx.ToPropertyKey(v)
 			case v.IsNumber():
-				item = vm.ToPropertyKey(vm.ToStringValue(v))
+				item = cx.ToPropertyKey(cx.ToStringValue(v))
 			case v.IsObject():
 				if _, ok := engine.ThisStringValue(v); ok {
-					item = vm.ToPropertyKey(vm.ToStringValue(v))
+					item = cx.ToPropertyKey(cx.ToStringValue(v))
 				} else if _, ok := engine.ThisNumberValue(v); ok {
-					item = vm.ToPropertyKey(vm.ToStringValue(v))
+					item = cx.ToPropertyKey(cx.ToStringValue(v))
 				} else {
 					continue
 				}
@@ -139,9 +139,9 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 
 	if space.IsObject() {
 		if _, ok := engine.ThisNumberValue(space); ok {
-			space = engine.Number(vm.ToNumber(space))
+			space = engine.Number(cx.ToNumber(space))
 		} else if _, ok := engine.ThisStringValue(space); ok {
-			space = vm.ToStringValue(space)
+			space = cx.ToStringValue(space)
 		}
 	}
 	if space.IsNumber() {
@@ -157,19 +157,19 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 
 	var holder *engine.Object
 	if w.replacer != nil {
-		holder = vm.NewOrdinaryObject()
-		vm.CreateDataPropertyOrThrow(holder, engine.NamedKey(vm.Intern("")), value)
+		holder = cx.NewOrdinaryObject()
+		cx.CreateDataPropertyOrThrow(holder, engine.NamedKey(cx.Intern("")), value)
 	}
-	if !w.serialize(holder, engine.NamedKey(vm.Intern("")), value) {
+	if !w.serialize(holder, engine.NamedKey(cx.Intern("")), value) {
 		return engine.Undefined
 	}
 	w.checkLength()
-	return vm.NewStringBytes(w.buf)
+	return cx.NewStringBytes(w.buf)
 }
 
 func (w *writer) checkLength() {
 	if len(w.buf) > engine.MaxStringLength {
-		w.vm.ThrowRangeError(w.vm.CurrentRealm(), "invalid string length")
+		w.cx.ThrowRangeError("invalid string length")
 	}
 }
 
@@ -192,7 +192,7 @@ func (w *writer) appendQuote(s wtf8.String) {
 		}
 		w.buf = appendEscaped(w.buf, s[:n])
 		s = s[n:]
-		w.vm.Poll()
+		w.cx.Poll()
 		w.checkLength()
 	}
 	w.buf = append(w.buf, '"')
@@ -201,25 +201,25 @@ func (w *writer) appendQuote(s wtf8.String) {
 // serialize implements SerializeJSONProperty for the value of the property key of holder,
 // which is value. It reports false, having written nothing, when the result is undefined.
 func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engine.Value) bool {
-	vm := w.vm
+	cx := w.cx
 	if value.IsObject() || value.IsBigInt() {
-		if f := vm.GetVCached(value, w.keyToJSON, cacheAt(&w.toJSONCaches, len(w.stack))); f.IsCallable() {
-			value = vm.Call(f.Object(), value, vm.KeyValue(key))
+		if f := cx.GetVCached(value, w.keyToJSON, cacheAt(&w.toJSONCaches, len(w.stack))); f.IsCallable() {
+			value = cx.Call(f.Object(), value, cx.KeyValue(key))
 		}
 	}
 	if w.replacer != nil {
-		value = vm.Call(w.replacer, engine.ObjectValue(holder), vm.KeyValue(key), value)
+		value = cx.Call(w.replacer, engine.ObjectValue(holder), cx.KeyValue(key), value)
 	}
 	if value.IsObject() {
 		o := value.Object()
 		switch {
 		case o.IsRawJSON():
-			w.buf = append(w.buf, vm.ToString(vm.Get(o, engine.NamedKey(w.keyRawJSON)))...)
+			w.buf = append(w.buf, cx.ToString(cx.Get(o, engine.NamedKey(w.keyRawJSON)))...)
 			return true
 		case isClass(engine.ThisNumberValue(value)):
-			value = engine.Number(vm.ToNumber(value))
+			value = engine.Number(cx.ToNumber(value))
 		case isClass(engine.ThisStringValue(value)):
-			value = vm.ToStringValue(value)
+			value = cx.ToStringValue(value)
 		case isClass(engine.ThisBooleanValue(value)):
 			b, _ := engine.ThisBooleanValue(value)
 			value = engine.Bool(b)
@@ -251,11 +251,11 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 			w.buf = numconv.AppendNumber(w.buf, n)
 		}
 	case value.IsBigInt():
-		vm.ThrowTypeError(vm.CurrentRealm(), "do not know how to serialize a BigInt")
+		cx.ThrowTypeError("do not know how to serialize a BigInt")
 	case value.IsObject() && !value.IsCallable():
 		o := value.Object()
 		w.enter(o)
-		if vm.IsArray(value) {
+		if cx.IsArray(value) {
 			w.serializeArray(o)
 		} else {
 			w.serializeObject(o)
@@ -273,18 +273,18 @@ func isClass[T any](_ T, ok bool) bool {
 
 // enter pushes o on the stack of objects being serialized, and throws for a cycle or too deep a nesting.
 func (w *writer) enter(o *engine.Object) {
-	vm := w.vm
+	cx := w.cx
 	w.entered++
 	if w.entered&0x3ff == 0 {
-		vm.Poll()
+		cx.Poll()
 	}
 	for _, s := range w.stack {
 		if s == o {
-			vm.ThrowTypeError(vm.CurrentRealm(), "converting circular structure to JSON")
+			cx.ThrowTypeError("converting circular structure to JSON")
 		}
 	}
 	if len(w.stack) >= maxDepth {
-		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
+		cx.ThrowRangeError("maximum call stack size exceeded")
 	}
 	w.stack = append(w.stack, o)
 	w.checkLength()
@@ -308,24 +308,24 @@ func (w *writer) newline(n int) {
 
 // serializeObject implements SerializeJSONObject. o is on the stack.
 func (w *writer) serializeObject(o *engine.Object) {
-	vm := w.vm
+	cx := w.cx
 	depth := len(w.stack)
 	base := len(w.keys)
 	if w.hasProps {
 		w.keys = append(w.keys, w.props...)
 	} else {
-		w.keys = vm.EnumerableOwnKeys(o, w.keys)
+		w.keys = cx.EnumerableOwnKeys(o, w.keys)
 	}
 	end := len(w.keys)
 	w.buf = append(w.buf, '{')
 	empty := true
 	for i := base; i < end; i++ {
 		if j := i - base; j > 0 && j&0x3ff == 0 {
-			vm.Poll()
+			cx.Poll()
 			w.checkLength()
 		}
 		k := w.keys[i]
-		v := vm.GetVCached(engine.ObjectValue(o), k, cacheAt(&w.getCaches, i))
+		v := cx.GetVCached(engine.ObjectValue(o), k, cacheAt(&w.getCaches, i))
 		mark := len(w.buf)
 		if !empty {
 			w.buf = append(w.buf, ',')
@@ -333,7 +333,7 @@ func (w *writer) serializeObject(o *engine.Object) {
 		if w.gap != "" {
 			w.newline(depth)
 		}
-		w.buf = AppendQuote(w.buf, vm.KeyString(k))
+		w.buf = AppendQuote(w.buf, cx.KeyString(k))
 		w.buf = append(w.buf, ':')
 		if w.gap != "" {
 			w.buf = append(w.buf, ' ')
@@ -354,15 +354,15 @@ func (w *writer) serializeObject(o *engine.Object) {
 
 // serializeArray implements SerializeJSONArray. o is on the stack.
 func (w *writer) serializeArray(o *engine.Object) {
-	vm := w.vm
+	cx := w.cx
 	depth := len(w.stack)
-	n := vm.LengthOfArrayLike(o)
+	n := cx.LengthOfArrayLike(o)
 	w.buf = append(w.buf, '[')
 	for i := range n {
 		if i > 0 {
 			w.buf = append(w.buf, ',')
 			if i&0x3ff == 0 {
-				vm.Poll()
+				cx.Poll()
 				w.checkLength()
 			}
 		}
@@ -373,9 +373,9 @@ func (w *writer) serializeArray(o *engine.Object) {
 		if e, ok := o.Element(i); ok {
 			v = e
 		} else {
-			v = vm.Get(o, indexKey(vm, i))
+			v = cx.Get(o, indexKey(cx, i))
 		}
-		if !w.serialize(o, indexKey(vm, i), v) {
+		if !w.serialize(o, indexKey(cx, i), v) {
 			w.buf = append(w.buf, "null"...)
 		}
 	}

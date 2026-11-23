@@ -15,72 +15,72 @@ import (
 var durationFieldNames = [10]string{"years", "months", "weeks", "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds"}
 
 // newDuration implements CreateTemporalDuration for a valid duration.
-func newDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
-	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalDurationPrototype)
-	return engine.ObjectValue(vm.NewTemporalObject(proto, &durationSlots{
+func newDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *engine.Object) engine.Value {
+	proto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalDurationPrototype)
+	return engine.ObjectValue(cx.NewTemporalObject(proto, &durationSlots{
 		d: d,
 	}))
 }
 
 // createDuration implements CreateTemporalDuration.
-func createDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
+func createDuration(cx *engine.ExecutionContext, d temporal.Duration, nt *engine.Object) engine.Value {
 	if !temporal.IsValidDuration(&d) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
+		cx.ThrowRangeError("duration is out of range")
 	}
-	return newDuration(vm, d, nt)
+	return newDuration(cx, d, nt)
 }
 
-func thisDuration(vm *engine.VM, this engine.Value, name string) *durationSlots {
+func thisDuration(cx *engine.ExecutionContext, this engine.Value, name string) *durationSlots {
 	s, ok := engine.TemporalData(this).(*durationSlots)
 	if !ok {
-		incompatible(vm, "Temporal.Duration.prototype."+name, this)
+		incompatible(cx, "Temporal.Duration.prototype."+name, this)
 	}
 	return s
 }
 
 // toPartialDuration implements ToTemporalPartialDurationRecord. It returns the fields and
 // which of them are present.
-func toPartialDuration(vm *engine.VM, v engine.Value) ([10]float64, [10]bool) {
+func toPartialDuration(cx *engine.ExecutionContext, v engine.Value) ([10]float64, [10]bool) {
 	var f [10]float64
 	var has [10]bool
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "duration-like must be an object")
+		cx.ThrowTypeError("duration-like must be an object")
 	}
 	o := v.Object()
 	any := false
 	// The fields in alphabetical order, with their indices.
 	for _, i := range []int{3, 4, 8, 7, 5, 1, 9, 6, 2, 0} {
-		x := get(vm, o, durationFieldNames[i])
+		x := get(cx, o, durationFieldNames[i])
 		if x.IsUndefined() {
 			continue
 		}
-		f[i] = toIntegerIfIntegral(vm, x, durationFieldNames[i])
+		f[i] = toIntegerIfIntegral(cx, x, durationFieldNames[i])
 		has[i] = true
 		any = true
 	}
 	if !any {
-		vm.ThrowTypeError(vm.CurrentRealm(), "duration-like has no duration fields")
+		cx.ThrowTypeError("duration-like has no duration fields")
 	}
 	return f, has
 }
 
 // toTemporalDuration implements ToTemporalDuration, returning the fields.
-func toTemporalDuration(vm *engine.VM, item engine.Value) temporal.Duration {
+func toTemporalDuration(cx *engine.ExecutionContext, item engine.Value) temporal.Duration {
 	if s, ok := engine.TemporalData(item).(*durationSlots); ok {
 		return s.d
 	}
 	if !item.IsObject() {
-		str := requireString(vm, item, "duration")
-		d := must(temporal.ParseTemporalDurationString(str, vm.Poll))
+		str := requireString(cx, item, "duration")
+		d := must(temporal.ParseTemporalDurationString(str, cx.Poll))
 		if !temporal.IsValidDuration(&d) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
+			cx.ThrowRangeError("duration is out of range")
 		}
 		return d
 	}
-	f, _ := toPartialDuration(vm, item)
+	f, _ := toPartialDuration(cx, item)
 	d := temporal.DurationFromFields(f)
 	if !temporal.IsValidDuration(&d) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
+		cx.ThrowRangeError("duration is out of range")
 	}
 	return d
 }
@@ -92,8 +92,8 @@ type relativeTo struct {
 }
 
 // getRelativeToOption implements GetTemporalRelativeToOption.
-func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
-	v := get(vm, opts, "relativeTo")
+func getRelativeToOption(cx *engine.ExecutionContext, opts *engine.Object) relativeTo {
+	v := get(cx, opts, "relativeTo")
 	if v.IsUndefined() {
 		return relativeTo{}
 	}
@@ -124,10 +124,10 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 			}
 		}
 		o := v.Object()
-		cal = calendarWithISODefault(vm, o)
+		cal = calendarWithISODefault(cx, o)
 		names := append(append(append([]string{}, dateFieldNames...), timeFieldNames...), "offset", "timeZone")
-		f := prepareCalendarFields(vm, cal, o, names, fieldsNoneRequired)
-		dt := interpretDateTimeFields(vm, cal, f, temporal.OverflowConstrain)
+		f := prepareCalendarFields(cx, cal, o, names, fieldsNoneRequired)
+		dt := interpretDateTimeFields(cx, cal, f, temporal.OverflowConstrain)
 		date, t = dt.Date, dt.Time
 		tz, hasTZ = f.TimeZone, f.HasTimeZone
 		offset = f.Offset
@@ -135,10 +135,10 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 			behaviour = temporal.OffsetBehaviourWall
 		}
 	} else {
-		str := requireString(vm, v, "relativeTo")
-		p := must(temporal.ParseISODateTime(str, vm.Poll, temporal.GoalZonedDateTime, temporal.GoalDateTime))
+		str := requireString(cx, v, "relativeTo")
+		p := must(temporal.ParseISODateTime(str, cx.Poll, temporal.GoalZonedDateTime, temporal.GoalDateTime))
 		if p.TimeZoneAnnotation != "" {
-			tz = toTimeZone(vm, vm.NewString(wtf8.String(p.TimeZoneAnnotation)))
+			tz = toTimeZone(cx, cx.NewString(wtf8.String(p.TimeZoneAnnotation)))
 			hasTZ = true
 			switch {
 			case p.Z:
@@ -151,9 +151,9 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 				match = temporal.MatchExactly
 			}
 		} else if p.Z {
-			vm.ThrowRangeError(vm.CurrentRealm(), "a UTC designator needs a time zone annotation in relativeTo")
+			cx.ThrowRangeError("a UTC designator needs a time zone annotation in relativeTo")
 		}
-		cal = canonicalizeParsedCalendar(vm, p.Calendar)
+		cal = canonicalizeParsedCalendar(cx, p.Calendar)
 		date = temporal.ISODate{Year: p.Year, Month: p.Month, Day: p.Day}
 		t = p.Time
 		startOfDay = p.StartOfDay
@@ -161,7 +161,7 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 	}
 	if !hasTZ {
 		if !temporal.ISODateWithinLimits(date) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "relativeTo is out of range")
+			cx.ThrowRangeError("relativeTo is out of range")
 		}
 		return relativeTo{
 			plain: &plainDateSlots{
@@ -185,14 +185,14 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 }
 
 // addDurations implements AddDurations.
-func addDurations(vm *engine.VM, d temporal.Duration, otherV engine.Value, subtract bool) temporal.Duration {
-	other := toTemporalDuration(vm, otherV)
+func addDurations(cx *engine.ExecutionContext, d temporal.Duration, otherV engine.Value, subtract bool) temporal.Duration {
+	other := toTemporalDuration(cx, otherV)
 	if subtract {
 		other = other.Negated()
 	}
 	largest := temporal.LargerOfTwoTemporalUnits(temporal.DefaultTemporalLargestUnit(&d), temporal.DefaultTemporalLargestUnit(&other))
 	if largest.IsCalendarUnit() {
-		vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be added")
+		cx.ThrowRangeError("durations with years, months or weeks need a relativeTo to be added")
 	}
 	d1 := temporal.ToInternalDurationRecordWith24HourDays(&d)
 	d2 := temporal.ToInternalDurationRecordWith24HourDays(&other)
@@ -202,7 +202,7 @@ func addDurations(vm *engine.VM, d temporal.Duration, otherV engine.Value, subtr
 
 // plainRelativeEnd returns the date-times of a duration added to a plain relativeTo, as
 // Duration.prototype.round and total compute them.
-func plainRelativeEnd(vm *engine.VM, d *temporal.Duration, rel *plainDateSlots) (temporal.InternalDuration, temporal.ISODateTime, temporal.ISODateTime) {
+func plainRelativeEnd(cx *engine.ExecutionContext, d *temporal.Duration, rel *plainDateSlots) (temporal.InternalDuration, temporal.ISODateTime, temporal.ISODateTime) {
 	id := temporal.ToInternalDurationRecordWith24HourDays(d)
 	targetTime, days := temporal.AddTime(temporal.MidnightTime, id.Time)
 	dd := must(temporal.AdjustDateDurationRecord(id.Date, days, -1<<63, -1<<63))
@@ -216,31 +216,31 @@ func plainRelativeEnd(vm *engine.VM, d *temporal.Duration, rel *plainDateSlots) 
 }
 
 // validateDifferenceIncrement throws a RangeError when increment is not a valid rounding increment for unit.
-func validateDifferenceIncrement(vm *engine.VM, unit temporal.Unit, increment int64) {
+func validateDifferenceIncrement(cx *engine.ExecutionContext, unit temporal.Unit, increment int64) {
 	if maximum, ok := temporal.MaximumTemporalDurationRoundingIncrement(unit); ok {
 		check(temporal.ValidateTemporalRoundingIncrement(increment, maximum, false))
 	}
 }
 
-func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
-	ctor, proto := temporalConstructor(vm, ns, "Duration", 0, engine.IntrinsicTemporalDurationPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := newTarget(vm, "Temporal.Duration")
+func initTemporalDuration(cx *engine.ExecutionContext, ns *engine.Object) {
+	ctor, proto := temporalConstructor(cx, ns, "Duration", 0, engine.IntrinsicTemporalDurationPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := newTarget(cx, "Temporal.Duration")
 		var f [10]float64
 		for i := range f {
 			if v := arg(args, i); !v.IsUndefined() {
-				f[i] = toIntegerIfIntegral(vm, v, durationFieldNames[i])
+				f[i] = toIntegerIfIntegral(cx, v, durationFieldNames[i])
 			}
 		}
-		return createDuration(vm, temporal.DurationFromFields(f), nt)
+		return createDuration(cx, temporal.DurationFromFields(f), nt)
 	})
-	tmethod(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return newDuration(vm, toTemporalDuration(vm, arg(args, 0)), nil)
+	tmethod(cx, ctor, "from", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return newDuration(cx, toTemporalDuration(cx, arg(args, 0)), nil)
 	})
-	tmethod(vm, ctor, "compare", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		one := toTemporalDuration(vm, arg(args, 0))
-		two := toTemporalDuration(vm, arg(args, 1))
-		opts := getOptionsObject(vm, arg(args, 2))
-		rel := getRelativeToOption(vm, opts)
+	tmethod(cx, ctor, "compare", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		one := toTemporalDuration(cx, arg(args, 0))
+		two := toTemporalDuration(cx, arg(args, 1))
+		opts := getOptionsObject(cx, arg(args, 2))
+		rel := getRelativeToOption(cx, opts)
 		if one.Fields() == two.Fields() {
 			return engine.Number(0)
 		}
@@ -257,7 +257,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 		days1, days2 := d1.Date.Days, d2.Date.Days
 		if lu1.IsCalendarUnit() || lu2.IsCalendarUnit() {
 			if rel.plain == nil {
-				vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be compared")
+				cx.ThrowRangeError("durations with years, months or weeks need a relativeTo to be compared")
 			}
 			days1 = must(temporal.DateDurationDays(d1.Date, rel.plain.date, rel.plain.cal))
 			days2 = must(temporal.DateDurationDays(d2.Date, rel.plain.date, rel.plain.cal))
@@ -268,55 +268,55 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 	})
 
 	for i, name := range durationFieldNames {
-		tgetter(vm, proto, vm.Intern(wtf8.String(name)), wtf8.String(name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			f := thisDuration(vm, this, name).d.Fields()
+		tgetter(cx, proto, cx.Intern(wtf8.String(name)), wtf8.String(name), func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			f := thisDuration(cx, this, name).d.Fields()
 			return engine.Number(f[i])
 		})
 	}
-	tgetter(vm, proto, vm.Intern("sign"), "sign", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(float64(temporal.DurationSign(&thisDuration(vm, this, "sign").d)))
+	tgetter(cx, proto, cx.Intern("sign"), "sign", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(float64(temporal.DurationSign(&thisDuration(cx, this, "sign").d)))
 	})
-	tgetter(vm, proto, vm.Intern("blank"), "blank", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(temporal.DurationSign(&thisDuration(vm, this, "blank").d) == 0)
+	tgetter(cx, proto, cx.Intern("blank"), "blank", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(temporal.DurationSign(&thisDuration(cx, this, "blank").d) == 0)
 	})
-	tmethod(vm, proto, "with", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisDuration(vm, this, "with")
-		pf, has := toPartialDuration(vm, arg(args, 0))
+	tmethod(cx, proto, "with", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisDuration(cx, this, "with")
+		pf, has := toPartialDuration(cx, arg(args, 0))
 		f := s.d.Fields()
 		for i := range f {
 			if has[i] {
 				f[i] = pf[i]
 			}
 		}
-		return createDuration(vm, temporal.DurationFromFields(f), nil)
+		return createDuration(cx, temporal.DurationFromFields(f), nil)
 	})
-	tmethod(vm, proto, "negated", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return newDuration(vm, thisDuration(vm, this, "negated").d.Negated(), nil)
+	tmethod(cx, proto, "negated", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return newDuration(cx, thisDuration(cx, this, "negated").d.Negated(), nil)
 	})
-	tmethod(vm, proto, "abs", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		f := thisDuration(vm, this, "abs").d.Fields()
+	tmethod(cx, proto, "abs", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		f := thisDuration(cx, this, "abs").d.Fields()
 		for i := range f {
 			f[i] = math.Abs(f[i])
 		}
-		return newDuration(vm, temporal.DurationFromFields(f), nil)
+		return newDuration(cx, temporal.DurationFromFields(f), nil)
 	})
 	for _, name := range []string{"add", "subtract"} {
-		tmethod(vm, proto, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			s := thisDuration(vm, this, name)
-			return newDuration(vm, addDurations(vm, s.d, arg(args, 0), name == "subtract"), nil)
+		tmethod(cx, proto, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			s := thisDuration(cx, this, name)
+			return newDuration(cx, addDurations(cx, s.d, arg(args, 0), name == "subtract"), nil)
 		})
 	}
-	tmethod(vm, proto, "round", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisDuration(vm, this, "round")
+	tmethod(cx, proto, "round", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisDuration(cx, this, "round")
 		d := s.d
-		opts := roundToOptions(vm, arg(args, 0), "smallestUnit")
+		opts := roundToOptions(cx, arg(args, 0), "smallestUnit")
 		existingLargest := temporal.DefaultTemporalLargestUnit(&d)
-		largest := getUnitOption(vm, opts, "largestUnit", false)
-		rel := getRelativeToOption(vm, opts)
-		increment := getRoundingIncrementOption(vm, opts)
-		mode := getRoundingModeOption(vm, opts, temporal.RoundHalfExpand)
-		smallest := getUnitOption(vm, opts, "smallestUnit", false)
-		validateUnit(vm, smallest, unitGroupDateTime)
+		largest := getUnitOption(cx, opts, "largestUnit", false)
+		rel := getRelativeToOption(cx, opts)
+		increment := getRoundingIncrementOption(cx, opts)
+		mode := getRoundingModeOption(cx, opts, temporal.RoundHalfExpand)
+		smallest := getUnitOption(cx, opts, "smallestUnit", false)
+		validateUnit(cx, smallest, unitGroupDateTime)
 		smallestPresent := smallest != temporal.UnitUnset
 		if !smallestPresent {
 			smallest = temporal.UnitNanosecond
@@ -327,15 +327,15 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 			largest = defaultLargest
 		}
 		if !smallestPresent && !largestPresent {
-			vm.ThrowRangeError(vm.CurrentRealm(), "smallestUnit or largestUnit is required")
+			cx.ThrowRangeError("smallestUnit or largestUnit is required")
 		}
-		validateUnit(vm, largest, unitGroupDateTime)
+		validateUnit(cx, largest, unitGroupDateTime)
 		if temporal.LargerOfTwoTemporalUnits(largest, smallest) != largest {
-			vm.ThrowRangeError(vm.CurrentRealm(), "largestUnit must not be smaller than smallestUnit")
+			cx.ThrowRangeError("largestUnit must not be smaller than smallestUnit")
 		}
-		validateDifferenceIncrement(vm, smallest, increment)
+		validateDifferenceIncrement(cx, smallest, increment)
 		if increment > 1 && smallest.IsDateUnit() && largest != smallest {
-			vm.ThrowRangeError(vm.CurrentRealm(), "a roundingIncrement of a date unit needs the same largestUnit")
+			cx.ThrowRangeError("a roundingIncrement of a date unit needs the same largestUnit")
 		}
 		if z := rel.zoned; z != nil {
 			id := temporal.ToInternalDurationRecord(&d)
@@ -344,15 +344,15 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 			if largest.IsDateUnit() {
 				largest = temporal.UnitHour
 			}
-			return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
+			return newDuration(cx, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 		}
 		if p := rel.plain; p != nil {
-			_, from, to := plainRelativeEnd(vm, &d, p)
+			_, from, to := plainRelativeEnd(cx, &d, p)
 			id := must(temporal.DifferencePlainDateTimeWithRounding(from, to, p.cal, largest, increment, smallest, mode))
-			return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
+			return newDuration(cx, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 		}
 		if existingLargest.IsCalendarUnit() || largest.IsCalendarUnit() {
-			vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be rounded")
+			cx.ThrowRangeError("durations with years, months or weeks need a relativeTo to be rounded")
 		}
 		id := temporal.ToInternalDurationRecordWith24HourDays(&d)
 		if smallest == temporal.UnitDay {
@@ -366,57 +366,57 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 			t := must(temporal.RoundTimeDuration(id.Time, increment, smallest, mode))
 			id = temporal.CombineDateAndTimeDuration(temporal.DateDuration{}, t)
 		}
-		return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
+		return newDuration(cx, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 	})
-	tmethod(vm, proto, "total", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisDuration(vm, this, "total")
+	tmethod(cx, proto, "total", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisDuration(cx, this, "total")
 		d := s.d
-		opts := roundToOptions(vm, arg(args, 0), "unit")
-		rel := getRelativeToOption(vm, opts)
-		unit := getUnitOption(vm, opts, "unit", true)
-		validateUnit(vm, unit, unitGroupDateTime)
+		opts := roundToOptions(cx, arg(args, 0), "unit")
+		rel := getRelativeToOption(cx, opts)
+		unit := getUnitOption(cx, opts, "unit", true)
+		validateUnit(cx, unit, unitGroupDateTime)
 		if z := rel.zoned; z != nil {
 			id := temporal.ToInternalDurationRecord(&d)
 			target := must(temporal.AddZonedDateTime(z.ns, z.tz, z.cal, id, temporal.OverflowConstrain))
 			return engine.Number(must(temporal.DifferenceZonedDateTimeWithTotal(z.ns, target, z.tz, z.cal, unit)))
 		}
 		if p := rel.plain; p != nil {
-			_, from, to := plainRelativeEnd(vm, &d, p)
+			_, from, to := plainRelativeEnd(cx, &d, p)
 			return engine.Number(must(temporal.DifferencePlainDateTimeWithTotal(from, to, p.cal, unit)))
 		}
 		largest := temporal.DefaultTemporalLargestUnit(&d)
 		if largest.IsCalendarUnit() || unit.IsCalendarUnit() {
-			vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be totaled")
+			cx.ThrowRangeError("durations with years, months or weeks need a relativeTo to be totaled")
 		}
 		id := temporal.ToInternalDurationRecordWith24HourDays(&d)
 		return engine.Number(temporal.TotalTimeDuration(id.Time, unit))
 	})
-	tmethod(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisDuration(vm, this, "toString")
+	tmethod(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisDuration(cx, this, "toString")
 		d := s.d
-		opts := getOptionsObject(vm, arg(args, 0))
-		digits := getFractionalSecondDigitsOption(vm, opts)
-		mode := getRoundingModeOption(vm, opts, temporal.RoundTrunc)
-		unit := getUnitOption(vm, opts, "smallestUnit", false)
-		validateUnit(vm, unit, unitGroupTime)
+		opts := getOptionsObject(cx, arg(args, 0))
+		digits := getFractionalSecondDigitsOption(cx, opts)
+		mode := getRoundingModeOption(cx, opts, temporal.RoundTrunc)
+		unit := getUnitOption(cx, opts, "smallestUnit", false)
+		validateUnit(cx, unit, unitGroupTime)
 		if unit == temporal.UnitHour || unit == temporal.UnitMinute {
-			vm.ThrowRangeError(vm.CurrentRealm(), "smallestUnit must not be hour or minute")
+			cx.ThrowRangeError("smallestUnit must not be hour or minute")
 		}
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		if p.Unit == temporal.UnitNanosecond && p.Increment == 1 {
-			return vm.NewString(wtf8.String(temporal.TemporalDurationToString(&d, p.Precision)))
+			return cx.NewString(wtf8.String(temporal.TemporalDurationToString(&d, p.Precision)))
 		}
 		largest := temporal.DefaultTemporalLargestUnit(&d)
 		id := temporal.ToInternalDurationRecord(&d)
 		t := must(temporal.RoundTimeDuration(id.Time, p.Increment, p.Unit, mode))
 		id = temporal.CombineDateAndTimeDuration(id.Date, t)
 		rd := must(temporal.TemporalDurationFromInternal(id, temporal.LargerOfTwoTemporalUnits(largest, temporal.UnitSecond)))
-		return vm.NewString(wtf8.String(temporal.TemporalDurationToString(&rd, p.Precision)))
+		return cx.NewString(wtf8.String(temporal.TemporalDurationToString(&rd, p.Precision)))
 	})
 	for _, name := range []string{"toJSON", "toLocaleString"} {
-		tmethod(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return vm.NewString(wtf8.String(temporal.TemporalDurationToString(&thisDuration(vm, this, name).d, temporal.PrecisionAuto)))
+		tmethod(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			return cx.NewString(wtf8.String(temporal.TemporalDurationToString(&thisDuration(cx, this, name).d, temporal.PrecisionAuto)))
 		})
 	}
-	valueOfThrows(vm, proto, "Duration")
+	valueOfThrows(cx, proto, "Duration")
 }

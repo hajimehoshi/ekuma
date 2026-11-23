@@ -21,26 +21,26 @@ func InvokeInRealm(ctx context.Context, r *Realm, f Value) error {
 
 // SetExceptionReporter installs the shell's uncaught exception handler in r.
 func SetExceptionReporter(r *Realm, report Value) {
-	vm := r.vm.e
+	cx := r.r.Context()
 	r.in(func() {
-		key := engine.NamedKey(vm.Key(engine.KeyToString))
-		objectToString := vm.Get(r.r.Intrinsic(engine.IntrinsicObjectPrototype), key)
-		errorToString := vm.Get(r.r.Intrinsic(engine.IntrinsicErrorPrototype), key)
-		vm.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
+		key := engine.NamedKey(cx.Key(engine.KeyToString))
+		objectToString := cx.Get(r.r.Intrinsic(engine.IntrinsicObjectPrototype), key)
+		errorToString := cx.Get(r.r.Intrinsic(engine.IntrinsicErrorPrototype), key)
+		cx.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
 			var source engine.Value
 			if loc.File != "" {
-				source = vm.StringFromGo(loc.File)
+				source = cx.StringFromGo(loc.File)
 			}
-			description := vm.ExceptionDescription(thrown, objectToString, errorToString)
-			vm.Call(report.value.Object(), engine.Undefined, thrown, source,
-				engine.Number(float64(loc.Line)), engine.Number(float64(max(loc.Column, 1))), description, vm.NewString(loc.SourceLine))
+			description := cx.ExceptionDescription(thrown, objectToString, errorToString)
+			cx.Call(report.value.Object(), engine.Undefined, thrown, source,
+				engine.Number(float64(loc.Line)), engine.Number(float64(max(loc.Column, 1))), description, cx.NewString(loc.SourceLine))
 		})
 	})
 }
 
 // CallScript evaluates s from a running shell function.
 func CallScript(s *Script) Value {
-	return fromEngine(s.vm.e.CallScript(s.s))
+	return fromEngine(s.s.CallScript())
 }
 
 // EvaluateScriptTask reports whether s completed normally before its job checkpoint.
@@ -60,7 +60,7 @@ func RequestInterrupt(r *Realm, cause error) func() {
 func InterruptNow(r *Realm, cause error) {
 	withdraw := RequestInterrupt(r, cause)
 	defer withdraw()
-	r.vm.e.Poll()
+	r.r.Context().Poll()
 }
 
 // DeferUnhandledRejections postpones rejection reports until TakeUnhandledRejection.
@@ -83,7 +83,7 @@ func TakeUnhandledRejection(vm *VM) error {
 // IsEnteredRealm reports whether r is the VM's entered realm.
 // Promise jobs record an entered realm only in VMs with global proxies.
 func IsEnteredRealm(r *Realm) bool {
-	return r.vm.e.IsEnteredRealm(r.r)
+	return r.r.Context().IsEnteredRealm(r.r)
 }
 
 // ObjectCreationRealm returns the host realm of the object v, or nil if it has none.
@@ -93,7 +93,7 @@ func ObjectCreationRealm(v Value) *Realm {
 	if r == nil {
 		return nil
 	}
-	host, _ := o.VM().RealmHostDefined(r).(*Realm)
+	host, _ := r.Context().RealmHostDefined(r).(*Realm)
 	return host
 }
 
@@ -110,40 +110,40 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 	}
 	var proxy engine.Value
 	r.in(func() {
-		vm := r.vm.e
-		proxy = vm.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
-		vm.SetPrototypeOf(vm.GlobalObject().Object(), newV8GlobalPrototype(vm, proxy))
+		cx := r.r.Context()
+		proxy = cx.InstallGlobalProxy(foreignView.value.Object(), prev, shareAccess)
+		cx.SetPrototypeOf(cx.GlobalObject().Object(), newV8GlobalPrototype(cx, proxy))
 	})
 	return fromEngine(proxy)
 }
 
-func newV8GlobalPrototype(vm *engine.VM, globalThis engine.Value) *engine.Object {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("", 0, func(vm *engine.VM, this engine.Value, _ []engine.Value) engine.Value {
-		if target := vm.GetNewTarget(); target != nil {
-			instanceProto := vm.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)
-			return engine.ObjectValue(vm.NewObject(instanceProto))
+func newV8GlobalPrototype(cx *engine.ExecutionContext, globalThis engine.Value) *engine.Object {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("", 0, func(cx *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
+		if target := cx.GetNewTarget(); target != nil {
+			instanceProto := cx.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)
+			return engine.ObjectValue(cx.NewObject(instanceProto))
 		}
 		if this.IsNullish() {
 			return globalThis
 		}
-		return engine.ObjectValue(vm.ToObject(this))
+		return engine.ObjectValue(cx.ToObject(this))
 	})
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), engine.FlagWritable)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), engine.FlagWritable)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	return proto
 }
 
 // NewRealmShared provides operations to install and update Realm.shared in vm.
 func NewRealmShared(vm *VM) Value {
 	vm.initIfNeeded()
-	key := vm.e.Intern("shared")
-	propKey := vm.e.KeyOfString("shared")
+	key := vm.hostContext().Intern("shared")
+	propKey := vm.hostContext().KeyOfString("shared")
 	var shared engine.Value
 	targets := map[*engine.Object]uint8{}
 	install := func(_ Value, args []Value) (any, error) {
 		target := args[0].value.Object()
-		vm.e.Define(target, key, shared, engine.FlagsData)
+		vm.hostContext().Define(target, key, shared, engine.FlagsData)
 		targets[target] = engine.FlagsData
 		return Undefined, nil
 	}
@@ -152,7 +152,7 @@ func NewRealmShared(vm *VM) Value {
 		if _, linked := targets[target]; !linked {
 			return Undefined, nil
 		}
-		d, ok := vm.e.GetOwnProperty(target, propKey)
+		d, ok := vm.hostContext().GetOwnProperty(target, propKey)
 		if !ok || d.IsAccessor() {
 			delete(targets, target)
 			return Undefined, nil
@@ -172,7 +172,7 @@ func NewRealmShared(vm *VM) Value {
 			shared = d.Value()
 			// A frozen Realm still observes writes made through another realm.
 			for other, flags := range targets {
-				vm.e.Define(other, key, shared, flags)
+				vm.hostContext().Define(other, key, shared, flags)
 			}
 		}
 		return Undefined, nil
@@ -185,14 +185,14 @@ func NewRealmShared(vm *VM) Value {
 
 // DetachGlobalProxy disconnects the global proxy installed in r.
 func DetachGlobalProxy(r *Realm) {
-	r.in(r.vm.e.DetachGlobalProxy)
+	r.in(r.r.Context().DetachGlobalProxy)
 }
 
 // CanAccessReceiver reports whether r may use receiver in a checked host call.
 func CanAccessReceiver(r *Realm, receiver Value) bool {
 	var allowed bool
 	r.in(func() {
-		allowed = r.vm.e.CanAccessReceiver(receiver.value)
+		allowed = r.r.Context().CanAccessReceiver(receiver.value)
 	})
 	return allowed
 }
@@ -201,7 +201,7 @@ func CanAccessReceiver(r *Realm, receiver Value) bool {
 func NewHTMLDDA(r *Realm) Value {
 	var v engine.Value
 	r.in(func() {
-		v = r.vm.e.NewHTMLDDA(func(*engine.VM, engine.Value, []engine.Value) engine.Value {
+		v = r.r.Context().NewHTMLDDA(func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
 			return engine.Null
 		})
 	})
@@ -218,9 +218,9 @@ func AbstractModuleSource(r *Realm) Value {
 func NewSourceModule(r *Realm, name, className string) *Module {
 	m := r.NewSyntheticModule(name, Undefined)
 	r.in(func() {
-		e := r.vm.e
-		proto := e.NewObject(r.r.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
-		m.m.SetModuleSource(e.NewModuleSourceObject(proto, className))
+		cx := r.r.Context()
+		proto := cx.NewObject(r.r.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
+		m.m.SetModuleSource(cx.NewModuleSourceObject(proto, className))
 	})
 	return m
 }
@@ -245,7 +245,7 @@ const MaxStringLength = engine.MaxStringLength
 // InternalFailureFunc returns a native function that fails with cause.
 func InternalFailureFunc(vm *VM, cause error) Value {
 	vm.initIfNeeded()
-	return fromEngine(vm.e.NewFunction("fail", func(*engine.VM, engine.Value, []engine.Value) engine.Value {
+	return fromEngine(vm.hostContext().NewFunction("fail", func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
 		panic(&xerrors.InternalError{
 			Op:  "test operation",
 			Err: cause,

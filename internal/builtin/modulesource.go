@@ -8,21 +8,21 @@ import (
 )
 
 // initAbstractModuleSource creates %AbstractModuleSource%, which is not a global.
-func initAbstractModuleSource(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	c := vm.NewNativeConstructor("AbstractModuleSource", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError(vm.CurrentRealm(), "AbstractModuleSource cannot be constructed")
+func initAbstractModuleSource(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	c := cx.NewNativeConstructor("AbstractModuleSource", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		cx.ThrowTypeError("AbstractModuleSource cannot be constructed")
 		return engine.Undefined
 	})
-	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
-	getter(vm, proto, vm.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		name, ok := vm.ModuleSourceClassName(this)
+	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
+	getter(cx, proto, cx.WellKnownSymbol(engine.SymbolToStringTag), "[Symbol.toStringTag]", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		name, ok := cx.ModuleSourceClassName(this)
 		if !ok {
 			return engine.Undefined
 		}
-		return vm.StringFromGo(name)
+		return cx.StringFromGo(name)
 	})
-	vm.SetIntrinsic(engine.IntrinsicAbstractModuleSource, c)
-	vm.SetIntrinsic(engine.IntrinsicAbstractModuleSourcePrototype, proto)
+	cx.SetIntrinsic(engine.IntrinsicAbstractModuleSource, c)
+	cx.SetIntrinsic(engine.IntrinsicAbstractModuleSourcePrototype, proto)
 }

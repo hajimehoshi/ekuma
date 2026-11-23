@@ -25,10 +25,10 @@ type setIterator struct {
 	kind   engine.IterationKind
 }
 
-func thisMap(vm *engine.VM, this engine.Value, name string) *collection.Table {
+func thisMap(cx *engine.ExecutionContext, this engine.Value, name string) *collection.Table {
 	t, _ := engine.MapData(this).(*collection.Table)
 	if t == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Map.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
+		cx.ThrowTypeError("Map.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
 	return t
 }
@@ -45,27 +45,27 @@ func setOf(this engine.Value) *collection.Table {
 	return t
 }
 
-func thisSet(vm *engine.VM, this engine.Value, name string) *collection.Table {
+func thisSet(cx *engine.ExecutionContext, this engine.Value, name string) *collection.Table {
 	t, _ := engine.SetData(this).(*collection.Table)
 	if t == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Set.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
+		cx.ThrowTypeError("Set.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
 	return t
 }
 
 // addEntriesFromIterable implements AddEntriesFromIterable. When fast is not nil, it is
 // called instead of adder, which must then be the original set method of the collection.
-func addEntriesFromIterable(vm *engine.VM, target *engine.Object, iterable engine.Value, adder *engine.Object, fast func(k, v engine.Value)) {
-	vm.Iterate(iterable, func(e engine.Value) bool {
+func addEntriesFromIterable(cx *engine.ExecutionContext, target *engine.Object, iterable engine.Value, adder *engine.Object, fast func(k, v engine.Value)) {
+	cx.Iterate(iterable, func(e engine.Value) bool {
 		if !e.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "iterator value "+vm.DisplayString(e)+" is not an entry object")
+			cx.ThrowTypeError("iterator value " + cx.DisplayString(e) + " is not an entry object")
 		}
-		k := vm.Index(e, 0)
-		v := vm.Index(e, 1)
+		k := cx.Index(e, 0)
+		v := cx.Index(e, 1)
 		if fast != nil {
 			fast(k, v)
 		} else {
-			vm.Call(adder, engine.ObjectValue(target), k, v)
+			cx.Call(adder, engine.ObjectValue(target), k, v)
 		}
 		return true
 	})
@@ -74,16 +74,16 @@ func addEntriesFromIterable(vm *engine.VM, target *engine.Object, iterable engin
 // iterationUnobservable reports whether iterating the Map or Set o calls the method iter as its
 // @@iterator, which proto holds, and the method next, which iterProto holds, finding both
 // without running anything that JavaScript could observe.
-func iterationUnobservable(vm *engine.VM, o, proto, iter, iterProto, next *engine.Object, nextKey engine.PropKey) bool {
-	key := engine.NamedKey(vm.WellKnownSymbol(engine.SymbolIterator))
-	if _, ok := vm.GetOwnProperty(o, key); ok || vm.ProtoOf(o) != proto {
+func iterationUnobservable(cx *engine.ExecutionContext, o, proto, iter, iterProto, next *engine.Object, nextKey engine.PropKey) bool {
+	key := engine.NamedKey(cx.WellKnownSymbol(engine.SymbolIterator))
+	if _, ok := cx.GetOwnProperty(o, key); ok || cx.ProtoOf(o) != proto {
 		return false
 	}
-	return hasOwnMethod(vm, proto, key, iter) && hasOwnMethod(vm, iterProto, nextKey, next)
+	return hasOwnMethod(cx, proto, key, iter) && hasOwnMethod(cx, iterProto, nextKey, next)
 }
 
-func hasOwnMethod(vm *engine.VM, proto *engine.Object, key engine.PropKey, method *engine.Object) bool {
-	d, ok := vm.GetOwnProperty(proto, key)
+func hasOwnMethod(cx *engine.ExecutionContext, proto *engine.Object, key engine.PropKey, method *engine.Object) bool {
+	d, ok := cx.GetOwnProperty(proto, key)
 	return ok && d.IsData() && d.Value().Object() == method
 }
 
@@ -110,30 +110,30 @@ func reserveAfter(t *collection.Table, i, n int) {
 }
 
 // adderOf returns the method name of the new collection o, or throws a TypeError.
-func adderOf(vm *engine.VM, o *engine.Object, name *engine.Object) *engine.Object {
-	adder := vm.Get(o, engine.NamedKey(name))
+func adderOf(cx *engine.ExecutionContext, o *engine.Object, name *engine.Object) *engine.Object {
+	adder := cx.Get(o, engine.NamedKey(name))
 	if !adder.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the "+wtf8.ToValidUTF8(name.Str())+" method of the new collection is not a function")
+		cx.ThrowTypeError("the " + wtf8.ToValidUTF8(name.Str()) + " method of the new collection is not a function")
 	}
 	return adder.Object()
 }
 
 // speciesGetter defines the getter of Symbol.species that returns this on the constructor c.
-func speciesGetter(vm *engine.VM, c *engine.Object) {
-	getter(vm, c, vm.WellKnownSymbol(engine.SymbolSpecies), "[Symbol.species]", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func speciesGetter(cx *engine.ExecutionContext, c *engine.Object) {
+	getter(cx, c, cx.WellKnownSymbol(engine.SymbolSpecies), "[Symbol.species]", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
 }
 
 // groupBy implements GroupBy. It calls add with every value and the result of the callback for it.
-func groupBy(vm *engine.VM, items, cb engine.Value, add func(k, v engine.Value)) {
-	vm.RequireObjectCoercible(items, "groupBy")
+func groupBy(cx *engine.ExecutionContext, items, cb engine.Value, add func(k, v engine.Value)) {
+	cx.RequireObjectCoercible(items, "groupBy")
 	if !cb.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
+		cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 	}
 	k := 0.0
-	vm.Iterate(items, func(v engine.Value) bool {
-		key := vm.Call(cb.Object(), engine.Undefined, v, engine.Number(k))
+	cx.Iterate(items, func(v engine.Value) bool {
+		key := cx.Call(cb.Object(), engine.Undefined, v, engine.Number(k))
 		add(key, v)
 		k++
 		return true
@@ -141,45 +141,45 @@ func groupBy(vm *engine.VM, items, cb engine.Value, add func(k, v engine.Value))
 }
 
 // appendToGroup adds v at the end of the array g of a group, which no code has seen yet.
-func appendToGroup(vm *engine.VM, g *engine.Object, v engine.Value) {
-	if _, ok := vm.AppendElements(g, []engine.Value{v}); ok {
+func appendToGroup(cx *engine.ExecutionContext, g *engine.Object, v engine.Value) {
+	if _, ok := cx.AppendElements(g, []engine.Value{v}); ok {
 		return
 	}
-	vm.CreateDataPropertyOrThrow(g, bigKey(vm, vm.LengthOfArrayLike(g)), v)
+	cx.CreateDataPropertyOrThrow(g, bigKey(cx, cx.LengthOfArrayLike(g)), v)
 }
 
-func initMapAndSet(vm *engine.VM) {
-	initMap(vm)
-	initSet(vm)
-	initObjectGroupBy(vm)
+func initMapAndSet(cx *engine.ExecutionContext) {
+	initMap(cx)
+	initSet(cx)
+	initObjectGroupBy(cx)
 }
 
-func initMap(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicMapPrototype)
-	setKey := vm.Intern("set")
-	nextKey := engine.NamedKey(vm.Intern("next"))
+func initMap(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicMapPrototype)
+	setKey := cx.Intern("set")
+	nextKey := engine.NamedKey(cx.Intern("next"))
 	// The original methods that iterating a Map calls.
 	var mapSet, mapEntries, mapIterProto, mapIterNext *engine.Object
-	ctor := constructor(vm, "Map", 0, engine.IntrinsicMapPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+	ctor := constructor(cx, "Map", 0, engine.IntrinsicMapPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor Map requires 'new'")
+			cx.ThrowTypeError("constructor Map requires 'new'")
 		}
 		t := &collection.Table{}
-		targetProto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype)
-		m := vm.NewMapObject(targetProto, t)
+		targetProto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype)
+		m := cx.NewMapObject(targetProto, t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
 		}
 		// A getter for set can modify or retain m. Bulk copying requires a fresh, unobserved table.
 		if src := mapOf(iterable); src != nil && targetProto == proto &&
-			hasOwnMethod(vm, proto, engine.NamedKey(setKey), mapSet) &&
-			iterationUnobservable(vm, iterable.Object(), proto, mapEntries, mapIterProto, mapIterNext, nextKey) {
-			t.CopyFrom(src, vm.Poll)
+			hasOwnMethod(cx, proto, engine.NamedKey(setKey), mapSet) &&
+			iterationUnobservable(cx, iterable.Object(), proto, mapEntries, mapIterProto, mapIterNext, nextKey) {
+			t.CopyFrom(src, cx.Poll)
 			return engine.ObjectValue(m)
 		}
-		adder := adderOf(vm, m, setKey)
+		adder := adderOf(cx, m, setKey)
 		var fast func(k, v engine.Value)
 		if adder == mapSet {
 			n := engine.ElementCount(iterable)
@@ -190,73 +190,73 @@ func initMap(vm *engine.VM) {
 				reserveAfter(t, i, n)
 			}
 		}
-		addEntriesFromIterable(vm, m, iterable, adder, fast)
+		addEntriesFromIterable(cx, m, iterable, adder, fast)
 		if fast != nil {
 			t.Trim()
 		}
 		return engine.ObjectValue(m)
 	})
-	speciesGetter(vm, ctor)
-	method(vm, ctor, "groupBy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	speciesGetter(cx, ctor)
+	method(cx, ctor, "groupBy", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := &collection.Table{}
-		groupBy(vm, arg(args, 0), arg(args, 1), func(k, v engine.Value) {
+		groupBy(cx, arg(args, 0), arg(args, 1), func(k, v engine.Value) {
 			g, ok := t.Get(k)
 			if !ok {
-				g = engine.ObjectValue(vm.NewArray(nil))
+				g = engine.ObjectValue(cx.NewArray(nil))
 				t.Append(k, g)
 			}
-			appendToGroup(vm, g.Object(), v)
+			appendToGroup(cx, g.Object(), v)
 		})
-		return engine.ObjectValue(vm.NewMapObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicMapPrototype), t))
+		return engine.ObjectValue(cx.NewMapObject(cx.Realm().Intrinsic(engine.IntrinsicMapPrototype), t))
 	})
 
-	method(vm, proto, "clear", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		thisMap(vm, this, "clear").Clear()
+	method(cx, proto, "clear", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		thisMap(cx, this, "clear").Clear()
 		return engine.Undefined
 	})
 	// The kernels of the methods are the methods for a Map object.
-	mapDelete := method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisMap(vm, this, "delete").Delete(arg(args, 0)))
+	mapDelete := method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(thisMap(cx, this, "delete").Delete(arg(args, 0)))
 	})
-	vm.SetMethodKernels(mapDelete, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapDelete, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			return engine.Bool(t.Delete(k)), true
 		}
 		return engine.Undefined, false
 	}, nil)
-	mapGet := method(vm, proto, "get", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		v, _ := thisMap(vm, this, "get").Get(arg(args, 0))
+	mapGet := method(cx, proto, "get", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		v, _ := thisMap(cx, this, "get").Get(arg(args, 0))
 		return v
 	})
-	vm.SetMethodKernels(mapGet, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapGet, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			v, _ := t.Get(k)
 			return v, true
 		}
 		return engine.Undefined, false
 	}, nil)
-	mapHas := method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisMap(vm, this, "has").Has(arg(args, 0)))
+	mapHas := method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(thisMap(cx, this, "has").Has(arg(args, 0)))
 	})
-	vm.SetMethodKernels(mapHas, nil, func(vm *engine.VM, this, k engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapHas, nil, func(cx *engine.ExecutionContext, this, k engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			return engine.Bool(t.Has(k)), true
 		}
 		return engine.Undefined, false
 	}, nil)
-	mapSet = method(vm, proto, "set", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		thisMap(vm, this, "set").Set(arg(args, 0), arg(args, 1))
+	mapSet = method(cx, proto, "set", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		thisMap(cx, this, "set").Set(arg(args, 0), arg(args, 1))
 		return this
 	})
-	vm.SetMethodKernels(mapSet, nil, nil, func(vm *engine.VM, this, k, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapSet, nil, nil, func(cx *engine.ExecutionContext, this, k, v engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			t.Set(k, v)
 			return this, true
 		}
 		return engine.Undefined, false
 	})
-	method(vm, proto, "getOrInsert", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisMap(vm, this, "getOrInsert")
+	method(cx, proto, "getOrInsert", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisMap(cx, this, "getOrInsert")
 		k, v := arg(args, 0), arg(args, 1)
 		if old, ok := t.Get(k); ok {
 			return old
@@ -264,11 +264,11 @@ func initMap(vm *engine.VM) {
 		t.Append(k, v)
 		return v
 	})
-	method(vm, proto, "getOrInsertComputed", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisMap(vm, this, "getOrInsertComputed")
+	method(cx, proto, "getOrInsertComputed", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisMap(cx, this, "getOrInsertComputed")
 		k, cb := arg(args, 0), arg(args, 1)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 		}
 		if k.IsNumber() && k.Number() == 0 {
 			k = engine.Number(0)
@@ -276,15 +276,15 @@ func initMap(vm *engine.VM) {
 		if old, ok := t.Get(k); ok {
 			return old
 		}
-		v := vm.Call(cb.Object(), engine.Undefined, k)
+		v := cx.Call(cb.Object(), engine.Undefined, k)
 		t.Set(k, v)
 		return v
 	})
-	method(vm, proto, "forEach", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisMap(vm, this, "forEach")
+	method(cx, proto, "forEach", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisMap(cx, this, "forEach")
 		cb := arg(args, 0)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 		}
 		thisArg := arg(args, 1)
 		// The callee does not keep its arguments, so one slice serves every call.
@@ -296,25 +296,25 @@ func initMap(vm *engine.VM) {
 				return engine.Undefined
 			}
 			argv[0], argv[1], argv[2] = v, k, this
-			vm.Call(cb.Object(), thisArg, argv...)
+			cx.Call(cb.Object(), thisArg, argv...)
 		}
 	})
-	mapSize := getter(vm, proto, vm.Intern("size"), "size", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(float64(thisMap(vm, this, "size").Size()))
+	mapSize := getter(cx, proto, cx.Intern("size"), "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(float64(thisMap(cx, this, "size").Size()))
 	})
-	vm.SetMethodKernels(mapSize, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(mapSize, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		if t := mapOf(this); t != nil {
 			return engine.Number(float64(t.Size())), true
 		}
 		return engine.Undefined, false
 	}, nil, nil)
 
-	iterProto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype))
+	iterProto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype))
 	mapIterProto = iterProto
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			t := thisMap(vm, this, name)
-			return engine.ObjectValue(vm.NewIteratorObject(iterProto, &mapIterator{
+		return method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			t := thisMap(cx, this, name)
+			return engine.ObjectValue(cx.NewIteratorObject(iterProto, &mapIterator{
 				table:  t,
 				cursor: t.Start(),
 				kind:   kind,
@@ -324,10 +324,10 @@ func initMap(vm *engine.VM) {
 	iterate("keys", engine.IterateKeys)
 	iterate("values", engine.IterateValues)
 	mapEntries = iterate("entries", engine.IterateEntries)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(mapEntries), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(mapEntries), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Map"), engine.FlagConfigurable)
 
-	mapIterNext = plainIteratorNext(vm, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", func(vm *engine.VM, iterator *engine.Object, it *mapIterator) (engine.Value, bool) {
+	mapIterNext = plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", func(cx *engine.ExecutionContext, iterator *engine.Object, it *mapIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -342,9 +342,9 @@ func initMap(vm *engine.VM) {
 		case engine.IterateValues:
 			return v, true
 		}
-		return engine.ObjectValue(vm.NewArrayPairInRealm(iterator.CreationRealm(), k, v)), true
+		return engine.ObjectValue(iterator.CreationRealm().Context().NewArrayPair(k, v)), true
 	})
-	vm.SetIteratorPairStep(mapIterNext, func(state any) (engine.Value, engine.Value, engine.PairStep) {
+	cx.SetIteratorPairStep(mapIterNext, func(state any) (engine.Value, engine.Value, engine.PairStep) {
 		it, _ := state.(*mapIterator)
 		if it == nil || it.kind != engine.IterateEntries {
 			return engine.Undefined, engine.Undefined, engine.PairDeclined
@@ -359,7 +359,7 @@ func initMap(vm *engine.VM) {
 		}
 		return k, v, engine.PairYielded
 	})
-	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map Iterator"), engine.FlagConfigurable)
+	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Map Iterator"), engine.FlagConfigurable)
 }
 
 // setRecord is a Set Record.
@@ -386,26 +386,26 @@ type setLikeKeys struct {
 }
 
 // getSetRecord implements GetSetRecord.
-func getSetRecord(vm *engine.VM, v engine.Value, k *setLikeKeys) setRecord {
+func getSetRecord(cx *engine.ExecutionContext, v engine.Value, k *setLikeKeys) setRecord {
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not an object")
+		cx.ThrowTypeError(cx.DisplayString(v) + " is not an object")
 	}
 	o := v.Object()
-	n := vm.ToNumber(vm.Get(o, engine.NamedKey(k.size)))
+	n := cx.ToNumber(cx.Get(o, engine.NamedKey(k.size)))
 	if n != n {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the size of a set-like object must be a number")
+		cx.ThrowTypeError("the size of a set-like object must be a number")
 	}
-	size := vm.ToIntegerOrInfinity(engine.Number(n))
+	size := cx.ToIntegerOrInfinity(engine.Number(n))
 	if size < 0 {
-		vm.ThrowRangeError(vm.CurrentRealm(), "the size of a set-like object must not be negative")
+		cx.ThrowRangeError("the size of a set-like object must not be negative")
 	}
-	has := vm.Get(o, engine.NamedKey(k.has))
+	has := cx.Get(o, engine.NamedKey(k.has))
 	if !has.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the has method of a set-like object must be a function")
+		cx.ThrowTypeError("the has method of a set-like object must be a function")
 	}
-	keys := vm.Get(o, engine.NamedKey(k.keys))
+	keys := cx.Get(o, engine.NamedKey(k.keys))
 	if !keys.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the keys method of a set-like object must be a function")
+		cx.ThrowTypeError("the keys method of a set-like object must be a function")
 	}
 	r := setRecord{
 		obj:  o,
@@ -421,67 +421,67 @@ func getSetRecord(vm *engine.VM, v engine.Value, k *setLikeKeys) setRecord {
 }
 
 // otherHas returns ToBoolean(Call(r.[[Has]], r.[[SetObject]], « e »)).
-func (r *setRecord) otherHas(vm *engine.VM, e engine.Value) bool {
+func (r *setRecord) otherHas(cx *engine.ExecutionContext, e engine.Value) bool {
 	if r.table != nil {
 		return r.table.Has(e)
 	}
-	return engine.ToBoolean(vm.Call(r.has, engine.ObjectValue(r.obj), e))
+	return engine.ToBoolean(cx.Call(r.has, engine.ObjectValue(r.obj), e))
 }
 
 // keysIterator implements GetKeysIterator(r) and returns the iterator and its next method.
-func (r *setRecord) keysIterator(vm *engine.VM) (it, next engine.Value) {
-	it = vm.Call(r.keys, engine.ObjectValue(r.obj))
+func (r *setRecord) keysIterator(cx *engine.ExecutionContext) (it, next engine.Value) {
+	it = cx.Call(r.keys, engine.ObjectValue(r.obj))
 	if !it.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the keys method of a set-like object must return an object")
+		cx.ThrowTypeError("the keys method of a set-like object must return an object")
 	}
-	next = vm.GetV(it, r.next)
+	next = cx.GetV(it, r.next)
 	if !next.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the iterator of a set-like object must have a next method")
+		cx.ThrowTypeError("the iterator of a set-like object must have a next method")
 	}
 	return it, next
 }
 
 // eachKey iterates the iterator that GetKeysIterator returns for r.
 // When f returns false, the iteration stops and the iterator is closed.
-func (r *setRecord) eachKey(vm *engine.VM, f func(engine.Value) bool) {
-	it, next := r.keysIterator(vm)
-	vm.IterateRecord(it, next, f)
+func (r *setRecord) eachKey(cx *engine.ExecutionContext, f func(engine.Value) bool) {
+	it, next := r.keysIterator(cx)
+	cx.IterateRecord(it, next, f)
 }
 
-func initSet(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicSetPrototype)
-	addKey := vm.Intern("add")
+func initSet(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicSetPrototype)
+	addKey := cx.Intern("add")
 	keys := &setLikeKeys{
-		size: vm.Intern("size"),
-		has:  vm.Intern("has"),
-		keys: vm.Intern("keys"),
-		next: vm.Intern("next"),
+		size: cx.Intern("size"),
+		has:  cx.Intern("has"),
+		keys: cx.Intern("keys"),
+		next: cx.Intern("next"),
 	}
 	// The original methods that iterating a Set calls.
 	var setAdd, setValues, setIterProto, setIterNext *engine.Object
-	ctor := constructor(vm, "Set", 0, engine.IntrinsicSetPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+	ctor := constructor(cx, "Set", 0, engine.IntrinsicSetPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor Set requires 'new'")
+			cx.ThrowTypeError("constructor Set requires 'new'")
 		}
 		t := &collection.Table{}
-		targetProto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype)
-		s := vm.NewSetObject(targetProto, t)
+		targetProto := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype)
+		s := cx.NewSetObject(targetProto, t)
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
 		}
 		if src := setOf(iterable); src != nil && targetProto == proto &&
-			hasOwnMethod(vm, proto, engine.NamedKey(addKey), setAdd) &&
-			iterationUnobservable(vm, iterable.Object(), proto, setValues, setIterProto, setIterNext, engine.NamedKey(keys.next)) {
-			t.CopyFrom(src, vm.Poll)
+			hasOwnMethod(cx, proto, engine.NamedKey(addKey), setAdd) &&
+			iterationUnobservable(cx, iterable.Object(), proto, setValues, setIterProto, setIterNext, engine.NamedKey(keys.next)) {
+			t.CopyFrom(src, cx.Poll)
 			return engine.ObjectValue(s)
 		}
-		adder := adderOf(vm, s, addKey)
+		adder := adderOf(cx, s, addKey)
 		if adder == setAdd {
 			n := engine.ElementCount(iterable)
 			var i int
-			vm.Iterate(iterable, func(e engine.Value) bool {
+			cx.Iterate(iterable, func(e engine.Value) bool {
 				t.Set(e, e)
 				i++
 				reserveAfter(t, i, n)
@@ -490,28 +490,28 @@ func initSet(vm *engine.VM) {
 			t.Trim()
 			return engine.ObjectValue(s)
 		}
-		vm.Iterate(iterable, func(e engine.Value) bool {
-			vm.Call(adder, engine.ObjectValue(s), e)
+		cx.Iterate(iterable, func(e engine.Value) bool {
+			cx.Call(adder, engine.ObjectValue(s), e)
 			return true
 		})
 		return engine.ObjectValue(s)
 	})
-	speciesGetter(vm, ctor)
+	speciesGetter(cx, ctor)
 
-	newSet := func(t *collection.Table) engine.Value {
-		return engine.ObjectValue(vm.NewSetObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicSetPrototype), t))
+	newSet := func(cx *engine.ExecutionContext, t *collection.Table) engine.Value {
+		return engine.ObjectValue(cx.NewSetObject(cx.Realm().Intrinsic(engine.IntrinsicSetPrototype), t))
 	}
 
 	// The kernels of the methods are the methods for a Set object.
-	setAdd = method(vm, proto, "add", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "add")
+	setAdd = method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "add")
 		v := arg(args, 0)
 		if !t.Has(v) {
 			t.Append(v, v)
 		}
 		return this
 	})
-	vm.SetMethodKernels(setAdd, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(setAdd, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		t := setOf(this)
 		if t == nil {
 			return engine.Undefined, false
@@ -521,33 +521,33 @@ func initSet(vm *engine.VM) {
 		}
 		return this, true
 	}, nil)
-	method(vm, proto, "clear", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		thisSet(vm, this, "clear").Clear()
+	method(cx, proto, "clear", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		thisSet(cx, this, "clear").Clear()
 		return engine.Undefined
 	})
-	setDelete := method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisSet(vm, this, "delete").Delete(arg(args, 0)))
+	setDelete := method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(thisSet(cx, this, "delete").Delete(arg(args, 0)))
 	})
-	vm.SetMethodKernels(setDelete, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(setDelete, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Bool(t.Delete(v)), true
 		}
 		return engine.Undefined, false
 	}, nil)
-	keys.setHas = method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Bool(thisSet(vm, this, "has").Has(arg(args, 0)))
+	keys.setHas = method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Bool(thisSet(cx, this, "has").Has(arg(args, 0)))
 	})
-	vm.SetMethodKernels(keys.setHas, nil, func(vm *engine.VM, this, v engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(keys.setHas, nil, func(cx *engine.ExecutionContext, this, v engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Bool(t.Has(v)), true
 		}
 		return engine.Undefined, false
 	}, nil)
-	method(vm, proto, "forEach", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "forEach")
+	method(cx, proto, "forEach", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "forEach")
 		cb := arg(args, 0)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 		}
 		thisArg := arg(args, 1)
 		argv := []engine.Value{engine.Undefined, engine.Undefined, this}
@@ -558,35 +558,35 @@ func initSet(vm *engine.VM) {
 				return engine.Undefined
 			}
 			argv[0], argv[1], argv[2] = k, k, this
-			vm.Call(cb.Object(), thisArg, argv...)
+			cx.Call(cb.Object(), thisArg, argv...)
 		}
 	})
-	setSize := getter(vm, proto, keys.size, "size", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(float64(thisSet(vm, this, "size").Size()))
+	setSize := getter(cx, proto, keys.size, "size", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(float64(thisSet(cx, this, "size").Size()))
 	})
-	vm.SetMethodKernels(setSize, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(setSize, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		if t := setOf(this); t != nil {
 			return engine.Number(float64(t.Size())), true
 		}
 		return engine.Undefined, false
 	}, nil, nil)
 
-	method(vm, proto, "union", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "union")
-		r := getSetRecord(vm, arg(args, 0), keys)
-		it, next := r.keysIterator(vm)
+	method(cx, proto, "union", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "union")
+		r := getSetRecord(cx, arg(args, 0), keys)
+		it, next := r.keysIterator(cx)
 		result := t.Clone()
-		vm.IterateRecord(it, next, func(e engine.Value) bool {
+		cx.IterateRecord(it, next, func(e engine.Value) bool {
 			if !result.Has(e) {
 				result.Append(e, e)
 			}
 			return true
 		})
-		return newSet(result)
+		return newSet(cx, result)
 	})
-	method(vm, proto, "intersection", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "intersection")
-		r := getSetRecord(vm, arg(args, 0), keys)
+	method(cx, proto, "intersection", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "intersection")
+		r := getSetRecord(cx, arg(args, 0), keys)
 		result := &collection.Table{}
 		if float64(t.Size()) <= r.size {
 			c := t.Start()
@@ -595,23 +595,23 @@ func initSet(vm *engine.VM) {
 				if !ok {
 					break
 				}
-				if r.otherHas(vm, e) && !result.Has(e) {
+				if r.otherHas(cx, e) && !result.Has(e) {
 					result.Append(e, e)
 				}
 			}
 		} else {
-			r.eachKey(vm, func(e engine.Value) bool {
+			r.eachKey(cx, func(e engine.Value) bool {
 				if t.Has(e) && !result.Has(e) {
 					result.Append(e, e)
 				}
 				return true
 			})
 		}
-		return newSet(result)
+		return newSet(cx, result)
 	})
-	method(vm, proto, "difference", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "difference")
-		r := getSetRecord(vm, arg(args, 0), keys)
+	method(cx, proto, "difference", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "difference")
+		r := getSetRecord(cx, arg(args, 0), keys)
 		result := t.Clone()
 		if float64(t.Size()) <= r.size {
 			// The result is not visible to JavaScript yet, so its keys can be taken in advance.
@@ -625,24 +625,24 @@ func initSet(vm *engine.VM) {
 				keys = append(keys, e)
 			}
 			for _, e := range keys {
-				if r.otherHas(vm, e) {
+				if r.otherHas(cx, e) {
 					result.Delete(e)
 				}
 			}
 		} else {
-			r.eachKey(vm, func(e engine.Value) bool {
+			r.eachKey(cx, func(e engine.Value) bool {
 				result.Delete(e)
 				return true
 			})
 		}
-		return newSet(result)
+		return newSet(cx, result)
 	})
-	method(vm, proto, "symmetricDifference", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "symmetricDifference")
-		r := getSetRecord(vm, arg(args, 0), keys)
-		it, next := r.keysIterator(vm)
+	method(cx, proto, "symmetricDifference", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "symmetricDifference")
+		r := getSetRecord(cx, arg(args, 0), keys)
+		it, next := r.keysIterator(cx)
 		result := t.Clone()
-		vm.IterateRecord(it, next, func(e engine.Value) bool {
+		cx.IterateRecord(it, next, func(e engine.Value) bool {
 			inResult := result.Has(e)
 			if t.Has(e) {
 				if inResult {
@@ -653,11 +653,11 @@ func initSet(vm *engine.VM) {
 			}
 			return true
 		})
-		return newSet(result)
+		return newSet(cx, result)
 	})
-	method(vm, proto, "isSubsetOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "isSubsetOf")
-		r := getSetRecord(vm, arg(args, 0), keys)
+	method(cx, proto, "isSubsetOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "isSubsetOf")
+		r := getSetRecord(cx, arg(args, 0), keys)
 		if float64(t.Size()) > r.size {
 			return engine.False
 		}
@@ -667,27 +667,27 @@ func initSet(vm *engine.VM) {
 			if !ok {
 				return engine.True
 			}
-			if !r.otherHas(vm, e) {
+			if !r.otherHas(cx, e) {
 				return engine.False
 			}
 		}
 	})
-	method(vm, proto, "isSupersetOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "isSupersetOf")
-		r := getSetRecord(vm, arg(args, 0), keys)
+	method(cx, proto, "isSupersetOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "isSupersetOf")
+		r := getSetRecord(cx, arg(args, 0), keys)
 		if float64(t.Size()) < r.size {
 			return engine.False
 		}
 		result := true
-		r.eachKey(vm, func(e engine.Value) bool {
+		r.eachKey(cx, func(e engine.Value) bool {
 			result = t.Has(e)
 			return result
 		})
 		return engine.Bool(result)
 	})
-	method(vm, proto, "isDisjointFrom", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisSet(vm, this, "isDisjointFrom")
-		r := getSetRecord(vm, arg(args, 0), keys)
+	method(cx, proto, "isDisjointFrom", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisSet(cx, this, "isDisjointFrom")
+		r := getSetRecord(cx, arg(args, 0), keys)
 		if float64(t.Size()) <= r.size {
 			c := t.Start()
 			for {
@@ -695,25 +695,25 @@ func initSet(vm *engine.VM) {
 				if !ok {
 					return engine.True
 				}
-				if r.otherHas(vm, e) {
+				if r.otherHas(cx, e) {
 					return engine.False
 				}
 			}
 		}
 		result := true
-		r.eachKey(vm, func(e engine.Value) bool {
+		r.eachKey(cx, func(e engine.Value) bool {
 			result = !t.Has(e)
 			return result
 		})
 		return engine.Bool(result)
 	})
 
-	iterProto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype))
+	iterProto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicIteratorPrototype))
 	setIterProto = iterProto
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
-		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			t := thisSet(vm, this, name)
-			return engine.ObjectValue(vm.NewIteratorObject(iterProto, &setIterator{
+		return method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			t := thisSet(cx, this, name)
+			return engine.ObjectValue(cx.NewIteratorObject(iterProto, &setIterator{
 				table:  t,
 				cursor: t.Start(),
 				kind:   kind,
@@ -722,11 +722,11 @@ func initSet(vm *engine.VM) {
 	}
 	iterate("entries", engine.IterateEntries)
 	setValues = iterate("values", engine.IterateValues)
-	vm.Define(proto, keys.keys, engine.ObjectValue(setValues), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(setValues), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set"), engine.FlagConfigurable)
+	cx.Define(proto, keys.keys, engine.ObjectValue(setValues), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(setValues), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Set"), engine.FlagConfigurable)
 
-	setIterNext = plainIteratorNext(vm, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", func(vm *engine.VM, iterator *engine.Object, it *setIterator) (engine.Value, bool) {
+	setIterNext = plainIteratorNext(cx, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", func(cx *engine.ExecutionContext, iterator *engine.Object, it *setIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -736,11 +736,11 @@ func initSet(vm *engine.VM) {
 			return engine.Undefined, false
 		}
 		if it.kind == engine.IterateEntries {
-			return engine.ObjectValue(vm.NewArrayPairInRealm(iterator.CreationRealm(), k, k)), true
+			return engine.ObjectValue(iterator.CreationRealm().Context().NewArrayPair(k, k)), true
 		}
 		return k, true
 	})
-	vm.SetIteratorPairStep(setIterNext, func(state any) (engine.Value, engine.Value, engine.PairStep) {
+	cx.SetIteratorPairStep(setIterNext, func(state any) (engine.Value, engine.Value, engine.PairStep) {
 		it, _ := state.(*setIterator)
 		if it == nil || it.kind != engine.IterateEntries {
 			return engine.Undefined, engine.Undefined, engine.PairDeclined
@@ -755,26 +755,26 @@ func initSet(vm *engine.VM) {
 		}
 		return k, k, engine.PairYielded
 	})
-	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set Iterator"), engine.FlagConfigurable)
+	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Set Iterator"), engine.FlagConfigurable)
 }
 
-func initObjectGroupBy(vm *engine.VM) {
-	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicObject), "groupBy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initObjectGroupBy(cx *engine.ExecutionContext) {
+	method(cx, cx.Realm().Intrinsic(engine.IntrinsicObject), "groupBy", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		var keys []engine.PropKey
 		groups := map[engine.PropKey]*engine.Object{}
-		groupBy(vm, arg(args, 0), arg(args, 1), func(k, v engine.Value) {
-			pk := vm.ToPropertyKey(k)
+		groupBy(cx, arg(args, 0), arg(args, 1), func(k, v engine.Value) {
+			pk := cx.ToPropertyKey(k)
 			g, ok := groups[pk]
 			if !ok {
-				g = vm.NewArray(nil)
+				g = cx.NewArray(nil)
 				groups[pk] = g
 				keys = append(keys, pk)
 			}
-			appendToGroup(vm, g, v)
+			appendToGroup(cx, g, v)
 		})
-		o := vm.NewObject(nil)
+		o := cx.NewObject(nil)
 		for _, k := range keys {
-			vm.CreateDataPropertyOrThrow(o, k, engine.ObjectValue(groups[k]))
+			cx.CreateDataPropertyOrThrow(o, k, engine.ObjectValue(groups[k]))
 		}
 		return engine.ObjectValue(o)
 	})

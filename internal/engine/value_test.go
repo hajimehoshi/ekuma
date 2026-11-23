@@ -11,7 +11,7 @@ import (
 )
 
 func TestDisplayStringLoneSurrogates(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	// A low surrogate before a high one makes two lone surrogates in a row.
 	s := wtf8.FromUTF16([]uint16{'a', 0xDE00, 0xD83D})
 	for _, tc := range []struct {
@@ -21,16 +21,16 @@ func TestDisplayStringLoneSurrogates(t *testing.T) {
 	}{
 		{
 			name: "string",
-			v:    vm.NewString(s),
+			v:    cx.NewString(s),
 			want: "a��",
 		},
 		{
 			name: "symbol",
-			v:    engine.ObjectValue(vm.NewSymbol(s, true)),
+			v:    engine.ObjectValue(cx.NewSymbol(s, true)),
 			want: "Symbol(a��)",
 		},
 	} {
-		if got := vm.DisplayString(tc.v); got != tc.want {
+		if got := cx.DisplayString(tc.v); got != tc.want {
 			t.Errorf("%s: DisplayString = %q, want %q", tc.name, got, tc.want)
 		}
 	}

@@ -16,8 +16,8 @@ func (vm *VM) HostDefined() any {
 }
 
 // GlobalObject returns the global object.
-func (vm *VM) GlobalObject() Value {
-	return Value{o: vm.curRealm.global}
+func (cx *ExecutionContext) GlobalObject() Value {
+	return Value{o: cx.realm.global}
 }
 
 // ExceptionLocation identifies the throw site. Line and Column are 1-based,
@@ -32,14 +32,14 @@ type ExceptionLocation struct {
 // SetExceptionReporter sets the current realm's handler for exceptions escaping
 // an outermost host call or a queued callback. The handler receives the thrown
 // value and its source location before the next microtask runs.
-func (vm *VM) SetExceptionReporter(report func(Value, ExceptionLocation)) {
-	vm.curRealm.exceptionReporter = report
+func (cx *ExecutionContext) SetExceptionReporter(report func(Value, ExceptionLocation)) {
+	cx.realm.exceptionReporter = report
 }
 
 // ExceptionDescription describes a thrown Error or proxy without invoking JavaScript.
 // It returns undefined when the host should convert the thrown value to a string.
 // objectToString and errorToString are the reporting realm's original built-in methods.
-func (vm *VM) ExceptionDescription(v, objectToString, errorToString Value) Value {
+func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToString Value) Value {
 	if !v.IsObject() {
 		return Undefined
 	}
@@ -55,25 +55,25 @@ func (vm *VM) ExceptionDescription(v, objectToString, errorToString Value) Value
 		}
 		o = st.target
 		if o == nil {
-			return vm.NewString("null")
+			return cx.NewString("null")
 		}
 	}
 	if o == v.o && o.class != classError {
 		return Undefined
 	}
 	if o.fn != nil {
-		src := vm.NewString(o.SourceText())
+		src := cx.NewString(o.SourceText())
 		if n := src.StringLength(); n > 128 {
-			return vm.NewString(src.Substring(0, 111) + "...<omitted>..." + src.Substring(n-2, n))
+			return cx.NewString(src.Substring(0, 111) + "...<omitted>..." + src.Substring(n-2, n))
 		}
 		return src
 	}
-	method, _ := vm.lookupData(o, vm.Key(KeyToString))
+	method, _ := cx.lookupData(o, cx.Key(KeyToString))
 	if o.class == classError || IsStrictlyEqual(method, errorToString) {
-		name, _ := vm.lookupData(o, vm.Key(KeyName))
-		message, _ := vm.lookupData(o, vm.Key(KeyMessage))
+		name, _ := cx.lookupData(o, cx.Key(KeyName))
+		message, _ := cx.lookupData(o, cx.Key(KeyMessage))
 		if !message.IsString() {
-			message = vm.emptyString
+			message = cx.emptyString
 		}
 		if !name.IsString() || name.StringLength() == 0 {
 			return message
@@ -81,17 +81,17 @@ func (vm *VM) ExceptionDescription(v, objectToString, errorToString Value) Value
 		if message.StringLength() == 0 {
 			return name
 		}
-		return vm.ConcatStrings([]Value{name, vm.NewString(": "), message})
+		return cx.ConcatStrings([]Value{name, cx.NewString(": "), message})
 	}
 	if IsStrictlyEqual(method, objectToString) {
-		ctor, _ := vm.lookupData(o, vm.Key(KeyConstructor))
+		ctor, _ := cx.lookupData(o, cx.Key(KeyConstructor))
 		if ctor.IsCallable() && ctor.o.class != classProxy {
 			if name := diagnosticFunctionName(ctor.o.fn); name != "" {
-				return vm.NewString("#<" + name + ">")
+				return cx.NewString("#<" + name + ">")
 			}
 		}
 	}
-	return vm.NewString("[object Object]")
+	return cx.NewString("[object Object]")
 }
 
 func diagnosticFunctionName(fn *function) wtf8.String {
@@ -113,26 +113,26 @@ func diagnosticFunctionName(fn *function) wtf8.String {
 }
 
 // NewFunction returns a function implemented by f. name is UTF-8.
-func (vm *VM) NewFunction(name string, f NativeFunc) Value {
-	return Value{o: vm.NewNative(wtf8.FromValidUTF8(name), 0, f)}
+func (cx *ExecutionContext) NewFunction(name string, f NativeFunc) Value {
+	return Value{o: cx.NewNative(wtf8.FromValidUTF8(name), 0, f)}
 }
 
 // NewHTMLDDA returns a function implemented by f that has the [[IsHTMLDDA]] internal slot.
-func (vm *VM) NewHTMLDDA(f NativeFunc) Value {
-	o := vm.NewNative("", 0, f)
+func (cx *ExecutionContext) NewHTMLDDA(f NativeFunc) Value {
+	o := cx.NewNative("", 0, f)
 	o.kind = kindHTMLDDA
-	vm.madeHTMLDDA = true
+	cx.madeHTMLDDA = true
 	return Value{o: o}
 }
 
 // NewPlainObject returns a new empty object.
-func (vm *VM) NewPlainObject() Value {
-	return Value{o: vm.NewOrdinaryObject()}
+func (cx *ExecutionContext) NewPlainObject() Value {
+	return Value{o: cx.NewOrdinaryObject()}
 }
 
 // NewArrayOf returns a new array with the given elements, which it keeps.
-func (vm *VM) NewArrayOf(elems []Value) Value {
-	return Value{o: vm.NewArray(elems)}
+func (cx *ExecutionContext) NewArrayOf(elems []Value) Value {
+	return Value{o: cx.NewArray(elems)}
 }
 
 // GoString returns the content of the string v as UTF-8, with lone surrogates replaced by U+FFFD.
@@ -141,21 +141,21 @@ func GoString(v Value) string {
 }
 
 // HostGet returns v[key].
-func (vm *VM) HostGet(v, key Value) (Value, error) {
-	return vm.enter(func(ExecutionContext) Value {
-		val, getter := vm.getValue(v, key)
+func (cx *ExecutionContext) HostGet(v, key Value) (Value, error) {
+	return cx.enter(func() Value {
+		val, getter := cx.getValue(v, key)
 		if getter != nil {
-			return vm.Call(getter, v)
+			return cx.Call(getter, v)
 		}
 		return val
 	})
 }
 
 // HostSet stores v[key] = val the way strict mode code does.
-func (vm *VM) HostSet(v, key, val Value) error {
-	_, err := vm.enter(func(ExecutionContext) Value {
-		if setter := vm.setValue(v, key, val, true); setter != nil {
-			vm.Call(setter, v, val)
+func (cx *ExecutionContext) HostSet(v, key, val Value) error {
+	_, err := cx.enter(func() Value {
+		if setter := cx.setValue(v, key, val, true); setter != nil {
+			cx.Call(setter, v, val)
 		}
 		return Undefined
 	})
@@ -163,66 +163,66 @@ func (vm *VM) HostSet(v, key, val Value) error {
 }
 
 // HostDelete deletes v[key] the way strict mode code does.
-func (vm *VM) HostDelete(v, key Value) error {
-	_, err := vm.enter(func(ExecutionContext) Value {
-		return vm.deleteValue(v, key, true)
+func (cx *ExecutionContext) HostDelete(v, key Value) error {
+	_, err := cx.enter(func() Value {
+		return cx.deleteValue(v, key, true)
 	})
 	return err
 }
 
 // HostCall calls f with the given this value and arguments.
-func (vm *VM) HostCall(f, this Value, args []Value) (Value, error) {
-	return vm.enter(func(ExecutionContext) Value {
-		return vm.CallValue(f, this, args...)
+func (cx *ExecutionContext) HostCall(f, this Value, args []Value) (Value, error) {
+	return cx.enter(func() Value {
+		return cx.CallValue(f, this, args...)
 	})
 }
 
 // HostCallMethod calls the method v[key] with v as this.
-func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
-	return vm.enter(func(cx ExecutionContext) Value {
-		f, getter := vm.getValue(v, key)
+func (cx *ExecutionContext) HostCallMethod(v, key Value, args []Value) (Value, error) {
+	return cx.enter(func() Value {
+		f, getter := cx.getValue(v, key)
 		if getter != nil {
-			f = vm.Call(getter, v)
+			f = cx.Call(getter, v)
 		}
 		if !f.IsCallable() {
-			cx.ThrowTypeError(vm.DisplayString(key) + " is not a function")
+			cx.ThrowTypeError(cx.DisplayString(key) + " is not a function")
 		}
-		return vm.CallValue(f, v, args...)
+		return cx.CallValue(f, v, args...)
 	})
 }
 
 // HostConstruct implements new f(...args).
-func (vm *VM) HostConstruct(f Value, args []Value) (Value, error) {
-	return vm.enter(func(cx ExecutionContext) Value {
-		if !f.IsCallable() || !vm.IsConstructor(f.o) {
-			cx.ThrowTypeError(vm.DisplayString(f) + " is not a constructor")
+func (cx *ExecutionContext) HostConstruct(f Value, args []Value) (Value, error) {
+	return cx.enter(func() Value {
+		if !f.IsCallable() || !cx.IsConstructor(f.o) {
+			cx.ThrowTypeError(cx.DisplayString(f) + " is not a constructor")
 		}
-		return Value{o: vm.Construct(f.o, args, f.o)}
+		return Value{o: cx.Construct(f.o, args, f.o)}
 	})
 }
 
 // HostResolve resolves the promise of c with v, as the [[Resolve]] function of c does.
-func (vm *VM) HostResolve(c *PromiseCapability, v Value) error {
-	_, err := vm.enter(func(ExecutionContext) Value {
-		vm.ResolveCapability(c, v)
+func (cx *ExecutionContext) HostResolve(c *PromiseCapability, v Value) error {
+	_, err := cx.enter(func() Value {
+		cx.ResolveCapability(c, v)
 		return Undefined
 	})
 	return err
 }
 
 // HostReject rejects the promise of c with v, as the [[Reject]] function of c does.
-func (vm *VM) HostReject(c *PromiseCapability, v Value) error {
-	_, err := vm.enter(func(ExecutionContext) Value {
-		vm.RejectCapability(c, v)
+func (cx *ExecutionContext) HostReject(c *PromiseCapability, v Value) error {
+	_, err := cx.enter(func() Value {
+		cx.RejectCapability(c, v)
 		return Undefined
 	})
 	return err
 }
 
 // HostInstanceOf implements v instanceof t.
-func (vm *VM) HostInstanceOf(v, t Value) (bool, error) {
-	r, err := vm.enter(func(ExecutionContext) Value {
-		return Bool(vm.instanceOf(v, t, nil))
+func (cx *ExecutionContext) HostInstanceOf(v, t Value) (bool, error) {
+	r, err := cx.enter(func() Value {
+		return Bool(cx.instanceOf(v, t, nil))
 	})
 	return ToBoolean(r), err
 }
@@ -230,8 +230,8 @@ func (vm *VM) HostInstanceOf(v, t Value) (bool, error) {
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.
 func ThrownMessage(v Value) string {
 	var vm *VM
-	if v.o != nil {
-		vm = v.o.VM()
+	if v.o != nil && v.o.shape != nil {
+		vm = v.o.shape.vm
 	}
 	if vm == nil {
 		// A primitive other than a string: its description needs no VM.

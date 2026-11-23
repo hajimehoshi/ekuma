@@ -31,19 +31,19 @@ func (k PropKey) IsSymbol() bool {
 
 // KeyOfString returns the property key for the string s.
 // It does not keep s.
-func (vm *VM) KeyOfString(s wtf8.String) PropKey {
+func (cx *ExecutionContext) KeyOfString(s wtf8.String) PropKey {
 	if i, ok := stringIndex(s); ok {
 		return PropKey{idx: i}
 	}
-	if o := vm.strings.interned.get(s); o != nil {
+	if o := cx.strings.interned.get(s); o != nil {
 		return PropKey{key: o}
 	}
-	return PropKey{key: vm.Intern(wtf8.String(strings.Clone(string(s))))}
+	return PropKey{key: cx.Intern(wtf8.String(strings.Clone(string(s))))}
 }
 
 // indexName returns the key under which the array index i is stored in a shape.
-func (vm *VM) indexName(i uint32) *Object {
-	return vm.Intern(wtf8.String(strconv.FormatUint(uint64(i), 10)))
+func (cx *ExecutionContext) indexName(i uint32) *Object {
+	return cx.Intern(wtf8.String(strconv.FormatUint(uint64(i), 10)))
 }
 
 // indexKey returns the interned key for the index i, or nil when the key is not interned,
@@ -54,9 +54,9 @@ func (vm *VM) indexKey(i uint32) *Object {
 }
 
 // KeyValue returns the key k as a string or symbol value.
-func (vm *VM) KeyValue(k PropKey) Value {
+func (cx *ExecutionContext) KeyValue(k PropKey) Value {
 	if k.key == nil {
-		return vm.indexString(k.idx)
+		return cx.indexString(k.idx)
 	}
 	return ObjectValue(k.key)
 }
@@ -73,19 +73,19 @@ func (vm *VM) KeyString(k PropKey) wtf8.String {
 }
 
 // ToPropertyKey implements ToPropertyKey.
-func (vm *VM) ToPropertyKey(v Value) PropKey {
+func (cx *ExecutionContext) ToPropertyKey(v Value) PropKey {
 	if v.isShortString() && v.o.flags&objInterned == 0 {
-		return vm.KeyOfString(v.shortText())
+		return cx.KeyOfString(v.shortText())
 	}
 	o := v.o
 	if o == numberObject {
 		if i, ok := numberIndex(v.n); ok {
 			return PropKey{idx: i}
 		}
-		return PropKey{key: vm.Intern(numconv.NumberToString(v.n))}
+		return PropKey{key: cx.Intern(numconv.NumberToString(v.n))}
 	}
 	if o == nil {
-		return vm.KeyOfString("undefined")
+		return cx.KeyOfString("undefined")
 	}
 	switch o.kind {
 	case kindString:
@@ -94,33 +94,33 @@ func (vm *VM) ToPropertyKey(v Value) PropKey {
 				return PropKey{idx: i}
 			}
 		}
-		return PropKey{key: vm.stringKey(o)}
+		return PropKey{key: cx.stringKey(o)}
 	case kindSymbol:
 		return PropKey{key: o}
 	}
 	if o.kind >= kindFirstObject {
-		return vm.ToPropertyKey(vm.ToPrimitive(v, HintString))
+		return cx.ToPropertyKey(cx.ToPrimitive(v, HintString))
 	}
-	return vm.KeyOfString(vm.ToString(v))
+	return cx.KeyOfString(cx.ToString(v))
 }
 
 // QueryKey returns ToPropertyKey(v) for an operation that only reads properties. The key is
 // valid only for that operation and must not be used to create a property.
-func (vm *VM) QueryKey(v Value) PropKey {
+func (cx *ExecutionContext) QueryKey(v Value) PropKey {
 	if v.isShortString() && v.o.flags&objInterned == 0 {
 		s := v.shortText()
 		if i, ok := stringIndex(s); ok {
 			return PropKey{idx: i}
 		}
-		if o := vm.strings.interned.get(s); o != nil {
+		if o := cx.strings.interned.get(s); o != nil {
 			return PropKey{key: o}
 		}
 		return PropKey{key: v.stringObject()}
 	}
 	if o := v.o; o != nil && o.kind == kindString {
-		return vm.queryStringKey(o)
+		return cx.queryStringKey(o)
 	}
-	return vm.ToPropertyKey(v)
+	return cx.ToPropertyKey(v)
 }
 
 // queryStringKey returns the property key for the string o for a read. When no property key has
@@ -148,11 +148,11 @@ func (vm *VM) queryStringKey(o *Object) PropKey {
 }
 
 // storedKey returns k as the key that a property with k is stored under. A trap of a proxy can
-// create the property while a read with a key from [VM.QueryKey] runs, and the checks after the
+// create the property while a read with a key from [ExecutionContext.QueryKey] runs, and the checks after the
 // trap have to find it.
-func (vm *VM) storedKey(k PropKey) PropKey {
+func (cx *ExecutionContext) storedKey(k PropKey) PropKey {
 	if o := k.key; o != nil && o.kind == kindString && o.flags&objInterned == 0 {
-		return PropKey{key: vm.stringKey(o)}
+		return PropKey{key: cx.stringKey(o)}
 	}
 	return k
 }
@@ -271,7 +271,7 @@ func dataDesc(v Value, flags uint8) PropDesc {
 
 // materialize creates the properties that a function has from the start but that are only
 // stored once something looks at them.
-func (vm *VM) materialize(o *Object) {
+func (cx *ExecutionContext) materialize(o *Object) {
 	if o.fn.materialized {
 		return
 	}
@@ -279,13 +279,13 @@ func (vm *VM) materialize(o *Object) {
 	f.materialized = true
 	o.flags &^= objExotic
 	if c := f.code; c != nil {
-		vm.add(o, vm.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
-		vm.add(o, vm.Key(KeyName), vm.SharedString(c.name), FlagConfigurable)
+		cx.add(o, cx.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
+		cx.add(o, cx.Key(KeyName), cx.SharedString(c.name), FlagConfigurable)
 		if c.legacyCallerArguments {
 			// Accessors, as the values change while the properties are neither writable nor
 			// configurable.
-			vm.add(o, vm.Key(keyArguments), newAccessor(c.context.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
-			vm.add(o, vm.Key(keyCaller), newAccessor(c.context.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
+			cx.add(o, cx.Key(keyArguments), newAccessor(c.context.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
+			cx.add(o, cx.Key(keyCaller), newAccessor(c.context.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
 		}
 		switch {
 		case c.isGenerator:
@@ -293,17 +293,17 @@ func (vm *VM) materialize(o *Object) {
 			if c.isAsync {
 				proto = c.context.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
 			}
-			p := newObject(vm.shapeForRealm(proto, c.context.realm))
-			vm.add(o, vm.Key(KeyPrototype), Value{o: p}, FlagWritable)
+			p := newObject(cx.shapeForRealm(proto, c.context.realm))
+			cx.add(o, cx.Key(KeyPrototype), Value{o: p}, FlagWritable)
 		case f.constructor:
 			proto := c.context.realm.intrinsics[IntrinsicObjectPrototype]
-			p := newObject(vm.shapeForRealm(proto, c.context.realm))
-			vm.add(p, vm.Key(KeyConstructor), Value{o: o}, FlagsHidden)
+			p := newObject(cx.shapeForRealm(proto, c.context.realm))
+			cx.add(p, cx.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {
 				flags = 0
 			}
-			vm.add(o, vm.Key(KeyPrototype), Value{o: p}, flags)
+			cx.add(o, cx.Key(KeyPrototype), Value{o: p}, flags)
 		}
 		return
 	}
@@ -311,8 +311,8 @@ func (vm *VM) materialize(o *Object) {
 	if f.info != nil {
 		length = f.info.length
 	}
-	vm.add(o, vm.Key(KeyLength), Number(float64(length)), FlagConfigurable)
-	vm.add(o, vm.Key(KeyName), vm.SharedString(f.nativeName()), FlagConfigurable)
+	cx.add(o, cx.Key(KeyLength), Number(float64(length)), FlagConfigurable)
+	cx.add(o, cx.Key(KeyName), cx.SharedString(f.nativeName()), FlagConfigurable)
 }
 
 // isLazyKey reports whether key names a property that materialize creates.
@@ -321,55 +321,56 @@ func (vm *VM) isLazyKey(key *Object) bool {
 }
 
 // resolve prepares the exotic object o for an operation on its named properties.
-func (vm *VM) resolve(o *Object) {
+func (cx *ExecutionContext) resolve(o *Object) {
 	if o.fn != nil && !o.fn.materialized {
-		vm.materialize(o)
+		cx.materialize(o)
 		return
 	}
 	if o.class == classLazy {
-		vm.InitLazyObject(o)
+		cx.InitLazyObject(o)
 	}
 }
 
 // NewLazyObject returns an ordinary object with the prototype proto whose own properties
 // init defines. init runs once, before the first operation that needs the own properties of
 // the object, or in [VM.InitLazyObject].
-func (vm *VM) NewLazyObject(proto *Object, init func(o *Object)) *Object {
+func (cx *ExecutionContext) NewLazyObject(proto *Object, init func(*ExecutionContext, *Object)) *Object {
 	// A cached miss on an ordinary object must still run this object's initializer.
-	o := newObject(vm.newShape(proto, vm.curRealm))
+	o := newObject(cx.newShape(proto, cx.realm))
 	o.class = classLazy
 	o.flags |= objExotic
 	o.setExtState(init)
 	return o
 }
 
-// InitLazyObject runs the init function of o, an object of [VM.NewLazyObject], unless it has
+// InitLazyObject runs the init function of o, an object of [ExecutionContext.NewLazyObject], unless it has
 // run already.
 func (vm *VM) InitLazyObject(o *Object) {
 	if o.class != classLazy {
 		return
 	}
-	init := o.extState().(func(*Object))
+	init := o.extState().(func(*ExecutionContext, *Object))
 	o.class = classObject
 	o.setExtState(nil)
 	o.flags &^= objExotic
-	vm.InRealm(o.CreationRealm(), func() {
-		init(o)
+	cx := o.CreationRealm().Context()
+	cx.Run(func() {
+		init(cx, o)
 	})
 }
 
 // lookup finds the named property key on o and its prototype chain.
 // For the length of an array, which is not stored, it returns the array as holder and slot -1.
 // If a proxy or module namespace must perform the lookup, it returns that object and ok=false.
-func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
-	length := key == vm.Key(KeyLength)
+func (cx *ExecutionContext) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
+	length := key == cx.Key(KeyLength)
 	for h := o; h != nil; h = h.shape.proto {
 		if h.flags&objExotic != 0 {
 			if h.class == classProxy || h.class == classModuleNamespace {
 				return h, prop{}, false
 			}
-			if h.class == classLazy || vm.isLazyKey(key) {
-				vm.resolve(h)
+			if h.class == classLazy || cx.isLazyKey(key) {
+				cx.resolve(h)
 			}
 			if h.class == classTypedArray && isCanonicalNumericString(key) {
 				// An integer-indexed object answers for every numeric key and never defers to its prototype.
@@ -395,31 +396,31 @@ func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 
 // protoStart returns the object at which a property lookup on the value v starts.
 // It throws a TypeError for undefined and null.
-func (vm *VM) protoStart(v Value, key PropKey) *Object {
+func (cx *ExecutionContext) protoStart(v Value, key PropKey) *Object {
 	o := v.o
 	if o == numberObject {
-		return vm.CurrentRealm().Intrinsic(IntrinsicNumberPrototype)
+		return cx.realm.Intrinsic(IntrinsicNumberPrototype)
 	}
 	if o == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of undefined (reading '"+wtf8.ToValidUTF8(vm.KeyString(key))+"')")
+		cx.ThrowTypeError("cannot read properties of undefined (reading '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "')")
 	}
 	switch o.kind {
 	case kindFalse, kindTrue:
-		return vm.CurrentRealm().Intrinsic(IntrinsicBooleanPrototype)
+		return cx.realm.Intrinsic(IntrinsicBooleanPrototype)
 	case kindSymbol:
-		return vm.CurrentRealm().Intrinsic(IntrinsicSymbolPrototype)
+		return cx.realm.Intrinsic(IntrinsicSymbolPrototype)
 	case kindBigInt:
-		return vm.CurrentRealm().Intrinsic(IntrinsicBigIntPrototype)
+		return cx.realm.Intrinsic(IntrinsicBigIntPrototype)
 	case kindNull:
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of "+vm.DisplayString(v)+" (reading '"+wtf8.ToValidUTF8(vm.KeyString(key))+"')")
+		cx.ThrowTypeError("cannot read properties of " + cx.DisplayString(v) + " (reading '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "')")
 	case kindString:
 		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
 		}
-		if p := vm.CurrentRealm().Intrinsic(IntrinsicStringPrototype); o.shape.proto != p {
+		if p := cx.realm.Intrinsic(IntrinsicStringPrototype); o.shape.proto != p {
 			// The shape of a string made in another realm leads to the String.prototype of
 			// that realm.
-			return vm.NewStringObject(o, p)
+			return cx.NewStringObject(o, p)
 		}
 	}
 	// A string has the empty shape whose prototype is String.prototype.
@@ -427,31 +428,31 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 }
 
 // getNamedAtSite reads a named property through the additional shapes recorded at the site.
-func (vm *VM) getNamedAtSite(v Value, key *Object, c *propCache) (Value, *Object) {
-	if r := c.reads; r != nil && r.vm == vm && r.epoch == vm.protoEpoch {
-		if o := v.o; o != nil && o.kind == kindObject && o.class == classObject && o.flags&objExotic == 0 && o.shape.vm == vm {
+func (cx *ExecutionContext) getNamedAtSite(v Value, key *Object, c *propCache) (Value, *Object) {
+	if r := c.reads; r != nil && r.vm == cx.agent && r.epoch == cx.protoEpoch {
+		if o := v.o; o != nil && o.kind == kindObject && o.class == classObject && o.flags&objExotic == 0 && o.shape.vm == cx.agent {
 			if e, ok := r.shapes[o.shape.readID]; ok && e.count == o.shape.count {
 				h := o
 				for range e.depth {
 					h = h.shape.proto
 				}
 				c.keep(o.shape)
-				return vm.readNamedSlot(o, h, e.prop, c)
+				return cx.readNamedSlot(o, h, e.prop, c)
 			}
 		}
 	}
-	return vm.getNamed(v, key, c)
+	return cx.getNamed(v, key, c)
 }
 
 // rememberRead records the location of p for subsequent reads from start's shape.
-func (c *propCache) rememberRead(vm *VM, start, holder *Object, p prop) {
+func (c *propCache) rememberRead(cx *ExecutionContext, start, holder *Object, p prop) {
 	s := start.shape
 	if s.readID == 0 {
-		if vm.lastReadShapeID == ^uint32(0) {
+		if cx.lastReadShapeID == ^uint32(0) {
 			return
 		}
-		vm.lastReadShapeID++
-		s.readID = vm.lastReadShapeID
+		cx.lastReadShapeID++
+		s.readID = cx.lastReadShapeID
 	}
 	r := c.reads
 	if r == nil {
@@ -460,10 +461,10 @@ func (c *propCache) rememberRead(vm *VM, start, holder *Object, p prop) {
 		}
 		c.reads = r
 	}
-	if r.vm != vm || r.epoch != vm.protoEpoch || len(r.shapes) >= 64 {
+	if r.vm != cx.agent || r.epoch != cx.protoEpoch || len(r.shapes) >= 64 {
 		clear(r.shapes)
-		r.vm = vm
-		r.epoch = vm.protoEpoch
+		r.vm = cx.agent
+		r.epoch = cx.protoEpoch
 	}
 	var depth int32
 	for h := start; h != holder; h = h.shape.proto {
@@ -479,44 +480,44 @@ func (c *propCache) rememberRead(vm *VM, start, holder *Object, p prop) {
 // getNamed returns the named property key of v. When the property is an accessor with a getter,
 // getNamed returns the getter instead and the caller has to call it with v as this.
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
-func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *Object) {
-	if key == vm.Key(KeyLength) && v.IsString() {
+func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Value, getter *Object) {
+	if key == cx.Key(KeyLength) && v.IsString() {
 		return Number(float64(v.StringLength())), nil
 	}
-	start := vm.protoStart(v, PropKey{key: key})
-	if start.kind == kindString && key == vm.Key(KeyLength) {
+	start := cx.protoStart(v, PropKey{key: key})
+	if start.kind == kindString && key == cx.Key(KeyLength) {
 		return Number(float64(start.StringLength())), nil
 	}
 	if start.class == classProxy {
-		return vm.proxyGet(start, PropKey{key: key}, v), nil
+		return cx.proxyGet(start, PropKey{key: key}, v), nil
 	}
 	if start.class == classModuleNamespace {
-		return vm.getProp(start, PropKey{key: key}, v), nil
+		return cx.getProp(start, PropKey{key: key}, v), nil
 	}
-	if start.class == classTypedArray && key == vm.Key(KeyLength) && c != nil {
+	if start.class == classTypedArray && key == cx.Key(KeyLength) && c != nil {
 		// The cache says that the length is the original getter, whose result needs no call.
 		e := &c.cacheEntry
 		if e.shape != start.shape {
 			e = &c.second
 		}
-		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == vm.protoEpoch && e.holder == vm.CurrentRealm().Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
-			return Number(float64(vm.typedArrayLength(start))), nil
+		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == cx.protoEpoch && e.holder == cx.realm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
+			return Number(float64(cx.typedArrayLength(start))), nil
 		}
 	}
-	s, epoch := start.shape, vm.protoEpoch
+	s, epoch := start.shape, cx.protoEpoch
 	var evicted bool
 	if c != nil {
 		evicted = c.keep(s)
 	}
-	holder, p, ok := vm.lookup(start, key)
+	holder, p, ok := cx.lookup(start, key)
 	if !ok {
 		if holder != nil {
-			return vm.getProp(holder, PropKey{key: key}, v), nil
+			return cx.getProp(holder, PropKey{key: key}, v), nil
 		}
 		if c != nil {
 			// Cache the miss as a hit on an object that holds undefined.
-			c.setInherited(start.shape, cacheProto, vm.protoEpoch)
-			c.ref = &vm.missHolder.slots[0]
+			c.setInherited(start.shape, cacheProto, cx.protoEpoch)
+			c.ref = &cx.missHolder.slots[0]
 		}
 		return Undefined, nil
 	}
@@ -524,10 +525,10 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 		return Number(float64(holder.length)), nil
 	}
 	if evicted && start == v.o && start.kind == kindObject && start.class == classObject && start.flags&objExotic == 0 &&
-		s == start.shape && s.vm == vm && epoch == vm.protoEpoch {
-		c.rememberRead(vm, start, holder, p)
+		s == start.shape && s.vm == cx.agent && epoch == cx.protoEpoch {
+		c.rememberRead(cx, start, holder, p)
 	}
-	return vm.readNamedSlot(start, holder, p, c)
+	return cx.readNamedSlot(start, holder, p, c)
 }
 
 // readNamedSlot reads p and returns its getter separately for the caller to invoke.
@@ -590,25 +591,25 @@ func typedArrayOnChain(o *Object) bool {
 }
 
 // GetV returns the named property key of v, calling a getter.
-func (vm *VM) GetV(v Value, key *Object) Value {
-	val, getter := vm.getNamed(v, key, nil)
+func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
+	val, getter := cx.getNamed(v, key, nil)
 	if getter != nil {
-		return vm.Call(getter, v)
+		return cx.Call(getter, v)
 	}
 	return val
 }
 
 // GetVWithoutCall returns GetV(v, key) when that runs no code, that is when it reaches no
 // getter, proxy or module namespace object. Otherwise ok is false.
-func (vm *VM) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
-	start := vm.protoStart(v, PropKey{key: key})
-	if start.kind == kindString && key == vm.Key(KeyLength) {
+func (cx *ExecutionContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
+	start := cx.protoStart(v, PropKey{key: key})
+	if start.kind == kindString && key == cx.Key(KeyLength) {
 		return Number(float64(start.StringLength())), true
 	}
 	if hasProxyOnChain(start) {
 		return Undefined, false
 	}
-	holder, p, found := vm.lookup(start, key)
+	holder, p, found := cx.lookup(start, key)
 	switch {
 	case !found:
 		return Undefined, true
@@ -620,7 +621,7 @@ func (vm *VM) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
 	return holder.slots[p.slot], true
 }
 
-// PropertyCache remembers where [VM.GetVCached] found a property, so that looking up the same key
+// PropertyCache remembers where [ExecutionContext.GetVCached] found a property, so that looking up the same key
 // again on values with the same layout is fast. The zero value is empty.
 type PropertyCache struct {
 	key PropKey
@@ -628,9 +629,9 @@ type PropertyCache struct {
 }
 
 // GetVCached implements GetV(v, k), using and updating c.
-func (vm *VM) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
+func (cx *ExecutionContext) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
 	if k.key == nil {
-		return vm.Index(v, k.idx)
+		return cx.Index(v, k.idx)
 	}
 	if c.key != k {
 		*c = PropertyCache{key: k}
@@ -644,47 +645,47 @@ func (vm *VM) GetVCached(v Value, k PropKey, c *PropertyCache) Value {
 			if e.kind == cacheOwn {
 				return o.slots[e.slot]
 			}
-			if e.epoch == vm.protoEpoch {
+			if e.epoch == cx.protoEpoch {
 				switch e.kind {
 				case cacheProto:
 					return *e.ref
 				case cacheGetter:
-					return vm.Call(e.holder, v)
+					return cx.Call(e.holder, v)
 				}
 			}
 			if e.kind == cacheOwnGetter {
 				if g := o.slots[e.slot].accessor().getter; g != nil {
-					return vm.Call(g, v)
+					return cx.Call(g, v)
 				}
 				return Undefined
 			}
 		}
 	}
-	val, getter := vm.getNamedAtSite(v, k.key, &c.c)
+	val, getter := cx.getNamedAtSite(v, k.key, &c.c)
 	if getter != nil {
-		return vm.Call(getter, v)
+		return cx.Call(getter, v)
 	}
 	return val
 }
 
 // Index returns v[i], calling a getter.
-func (vm *VM) Index(v Value, i uint32) Value {
-	val, getter := vm.getIndex(v, i)
+func (cx *ExecutionContext) Index(v Value, i uint32) Value {
+	val, getter := cx.getIndex(v, i)
 	if getter != nil {
-		return vm.Call(getter, v)
+		return cx.Call(getter, v)
 	}
 	return val
 }
 
 // getIndex returns the property of v whose key is the array index i, or the getter to call.
-func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
+func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 	if v.isShortString() && uint(i) < uint(v.StringLength()) {
-		return vm.UnitString(v.UnitAt(int(i))), nil
+		return cx.UnitString(v.UnitAt(int(i))), nil
 	}
 	if o := v.o; o != nil && o.class == classTypedArray {
-		return vm.typedArrayGet(o, i), nil
+		return cx.typedArrayGet(o, i), nil
 	}
-	start := vm.protoStart(v, PropKey{idx: i})
+	start := cx.protoStart(v, PropKey{idx: i})
 	for h := start; h != nil; h = h.shape.proto {
 		if h.objectProperties != nil && int64(i) < int64(len(h.elems)) {
 			if e := h.elems[i]; !e.isHole() {
@@ -696,12 +697,12 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 		}
 		switch h.class {
 		case classProxy:
-			return vm.proxyGet(h, PropKey{idx: i}, v), nil
+			return cx.proxyGet(h, PropKey{idx: i}, v), nil
 		case classModuleNamespace:
-			return vm.namespaceGet(h, PropKey{idx: i}), nil
+			return cx.namespaceGet(h, PropKey{idx: i}), nil
 		case classTypedArray:
 			// An integer-indexed object answers for every index and never defers to its prototype.
-			return vm.typedArrayGet(h, i), nil
+			return cx.typedArrayGet(h, i), nil
 		}
 		if h.kind == kindString || h.class == classString {
 			s := h
@@ -709,11 +710,11 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 				s = h.extState().(*Object)
 			}
 			if uint(i) < uint(s.StringLength()) {
-				return vm.UnitString(s.UnitAt(int(i))), nil
+				return cx.UnitString(s.UnitAt(int(i))), nil
 			}
 		}
 		if h.flags&objSparse != 0 {
-			if p, ok := h.shape.lookup(vm.indexKey(i)); ok {
+			if p, ok := h.shape.lookup(cx.indexKey(i)); ok {
 				val := h.slots[p.slot]
 				if p.flags&FlagAccessor != 0 {
 					return Undefined, val.accessor().getter
@@ -729,12 +730,12 @@ func (vm *VM) getIndex(v Value, i uint32) (Value, *Object) {
 }
 
 // GetOwnProperty implements [[GetOwnProperty]].
-func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
+func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 	if o.class == classProxy {
-		return vm.proxyGetOwnProperty(o, k)
+		return cx.proxyGetOwnProperty(o, k)
 	}
-	if o.class == classModuleNamespace && vm.isNamespaceExportKey(o, k) {
-		return vm.namespaceGetOwnProperty(o, k)
+	if o.class == classModuleNamespace && cx.isNamespaceExportKey(o, k) {
+		return cx.namespaceGetOwnProperty(o, k)
 	}
 	if k.key == nil {
 		if o.objectProperties != nil && int64(k.idx) < int64(len(o.elems)) {
@@ -744,37 +745,37 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 		}
 		switch o.class {
 		case classTypedArray:
-			if v := vm.typedArrayGet(o, k.idx); !v.IsUndefined() {
+			if v := cx.typedArrayGet(o, k.idx); !v.IsUndefined() {
 				return dataDesc(v, typedArrayFlags(o)), true
 			}
 			return PropDesc{}, false
 		case classString:
 			s := o.extState().(*Object)
 			if uint(k.idx) < uint(s.StringLength()) {
-				return dataDesc(vm.UnitString(s.UnitAt(int(k.idx))), FlagEnumerable), true
+				return dataDesc(cx.UnitString(s.UnitAt(int(k.idx))), FlagEnumerable), true
 			}
 		}
 		if o.flags&objSparse == 0 {
 			return PropDesc{}, false
 		}
 		if u := mappedParam(o, k.idx); u != nil {
-			p, _ := o.shape.lookup(vm.indexName(k.idx))
+			p, _ := o.shape.lookup(cx.indexName(k.idx))
 			return dataDesc(*u.p, p.flags), true
 		}
-		k.key = vm.indexKey(k.idx)
+		k.key = cx.indexKey(k.idx)
 		if k.key == nil {
 			return PropDesc{}, false
 		}
 	} else {
 		if o.flags&objExotic != 0 {
-			if o.class == classLazy || vm.isLazyKey(k.key) {
-				vm.resolve(o)
+			if o.class == classLazy || cx.isLazyKey(k.key) {
+				cx.resolve(o)
 			}
 			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
 				return PropDesc{}, false
 			}
 		}
-		if k.key == vm.Key(KeyLength) && o.kind == kindArray {
+		if k.key == cx.Key(KeyLength) && o.kind == kindArray {
 			flags := FlagWritable
 			if o.flags&objFrozenLength != 0 {
 				flags = 0
@@ -800,33 +801,33 @@ func (vm *VM) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 }
 
 // HasOwnProperty reports whether o has the own property k.
-func (vm *VM) HasOwnProperty(o *Object, k PropKey) bool {
-	_, ok := vm.GetOwnProperty(o, k)
+func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
+	_, ok := cx.GetOwnProperty(o, k)
 	return ok
 }
 
 // HasOwnPropertyPlain is HasOwnProperty of o and the key k when k is a primitive and finding out
 // neither throws nor runs JavaScript. It reports false as ok otherwise.
-func (vm *VM) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
+func (cx *ExecutionContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
 	if k.IsObject() || o.class == classProxy || o.class == classModuleNamespace {
 		return false, false
 	}
-	return vm.HasOwnProperty(o, vm.QueryKey(k)), true
+	return cx.HasOwnProperty(o, cx.QueryKey(k)), true
 }
 
 // HasProperty implements [[HasProperty]].
-func (vm *VM) HasProperty(o *Object, k PropKey) bool {
-	for h := o; h != nil; h = vm.ProtoOf(h) {
+func (cx *ExecutionContext) HasProperty(o *Object, k PropKey) bool {
+	for h := o; h != nil; h = cx.ProtoOf(h) {
 		if h.class == classProxy {
-			return vm.proxyHas(h, k)
+			return cx.proxyHas(h, k)
 		}
-		if h.class == classModuleNamespace && vm.isNamespaceExportKey(h, k) {
-			return vm.namespaceHas(h, k)
+		if h.class == classModuleNamespace && cx.isNamespaceExportKey(h, k) {
+			return cx.namespaceHas(h, k)
 		}
 		if h.class == classTypedArray && isNumericKey(k) {
-			return k.key == nil && vm.typedArrayHas(h, k.idx)
+			return k.key == nil && cx.typedArrayHas(h, k.idx)
 		}
-		if vm.HasOwnProperty(h, k) {
+		if cx.HasOwnProperty(h, k) {
 			return true
 		}
 	}
@@ -834,29 +835,29 @@ func (vm *VM) HasProperty(o *Object, k PropKey) bool {
 }
 
 // ProtoOf implements [[GetPrototypeOf]].
-func (vm *VM) ProtoOf(o *Object) *Object {
+func (cx *ExecutionContext) ProtoOf(o *Object) *Object {
 	if o.class == classProxy {
-		return vm.proxyGetPrototypeOf(o)
+		return cx.proxyGetPrototypeOf(o)
 	}
 	return o.shape.proto
 }
 
 // getProp implements [[Get]] with a receiver.
-func (vm *VM) getProp(o *Object, k PropKey, receiver Value) Value {
+func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value {
 	for h := o; h != nil; h = h.shape.proto {
 		if h.class == classProxy {
-			return vm.proxyGet(h, k, receiver)
+			return cx.proxyGet(h, k, receiver)
 		}
-		if h.class == classModuleNamespace && vm.isNamespaceExportKey(h, k) {
-			return vm.namespaceGet(h, k)
+		if h.class == classModuleNamespace && cx.isNamespaceExportKey(h, k) {
+			return cx.namespaceGet(h, k)
 		}
 		if h.class == classTypedArray && isNumericKey(k) {
 			if k.key != nil {
 				return Undefined
 			}
-			return vm.typedArrayGet(h, k.idx)
+			return cx.typedArrayGet(h, k.idx)
 		}
-		d, ok := vm.GetOwnProperty(h, k)
+		d, ok := cx.GetOwnProperty(h, k)
 		if !ok {
 			continue
 		}
@@ -864,7 +865,7 @@ func (vm *VM) getProp(o *Object, k PropKey, receiver Value) Value {
 			if d.getter == nil {
 				return Undefined
 			}
-			return vm.Call(d.getter, receiver)
+			return cx.Call(d.getter, receiver)
 		}
 		return d.value
 	}
@@ -877,13 +878,13 @@ func growElems(elems []Value, i uint32) bool {
 	return int64(i) < int64(cap(elems)) || int64(i) <= n+n/2+16
 }
 
-// denseFactor is the largest number of slots per element for which [VM.densify] moves the array
+// denseFactor is the largest number of slots per element for which [ExecutionContext.densify] moves the array
 // index properties of an object into elems.
 const denseFactor = 4
 
 // addIndex creates the data property with the array index i on o, which has no such own property.
 // It reports false when o does not allow it.
-func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
+func (cx *ExecutionContext) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	if o.flags&objNotExtensible != 0 {
 		return false
 	}
@@ -897,7 +898,7 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 	if flags == FlagsData {
 		if uint(i) < uint(n) {
 			o.elems[i] = val
-			vm.touchProto(o)
+			cx.touchProto(o)
 			return true
 		}
 		if growElems(o.elems, i) {
@@ -906,25 +907,25 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 				o.elems = append(o.elems, hole)
 			}
 			o.elems = append(o.elems, val)
-			vm.touchProto(o)
+			cx.touchProto(o)
 			// The elements may have reached the indices in the shape. Checking only when their
 			// number passes a power of two bounds the cost of the checks by that of the growth.
 			if o.flags&objSparse != 0 && bits.Len(uint(n)) != bits.Len(uint(len(o.elems))) {
-				vm.densify(o)
+				cx.densify(o)
 			}
 			return true
 		}
 	}
 	o.flags |= objSparse
-	vm.add(o, vm.indexName(i), val, flags)
+	cx.add(o, cx.indexName(i), val, flags)
 	if o.flags&objIsProto != 0 {
-		vm.protoEpoch++
+		cx.protoEpoch++
 	}
 	// Checking only when the number of properties in the shape reaches a power of two bounds
 	// the cost of the checks by that of the additions. The elements would need more than i
 	// slots.
 	if c := int64(o.shape.count); flags == FlagsData && c&(c-1) == 0 && (int64(len(o.elems))+c)*denseFactor > int64(i) {
-		vm.densify(o)
+		cx.densify(o)
 	}
 	return true
 }
@@ -932,7 +933,7 @@ func (vm *VM) addIndex(o *Object, i uint32, val Value, flags uint8) bool {
 // densify moves the array index properties of o from its shape to elems, and clears objSparse,
 // when they are all writable, enumerable and configurable data properties and elems would have
 // at most denseFactor slots per element.
-func (vm *VM) densify(o *Object) {
+func (cx *ExecutionContext) densify(o *Object) {
 	if o.kind != kindArray && o.class != classObject || o.flags&(objExotic|objNotExtensible) != 0 {
 		return
 	}
@@ -942,7 +943,7 @@ func (vm *VM) densify(o *Object) {
 	var root *shape
 	var base int
 	if s.private {
-		root = vm.objectRootShape(s.proto, s.realm, o.class)
+		root = cx.objectRootShape(s.proto, s.realm, o.class)
 	} else {
 		root = s
 		for root.parent != nil {
@@ -998,7 +999,7 @@ func (vm *VM) densify(o *Object) {
 				continue
 			}
 		}
-		vm.add(o, k, slots[p.slot], p.flags)
+		cx.add(o, k, slots[p.slot], p.flags)
 	}
 	o.elems = elems
 	o.flags &^= objSparse
@@ -1008,12 +1009,12 @@ func (vm *VM) densify(o *Object) {
 		// shape, so o gets a new one.
 		o.makePrivate()
 	}
-	vm.touchProto(o)
+	cx.touchProto(o)
 }
 
 // setArrayLength implements ArraySetLength for a length that is already converted.
 // It reports false when an element could not be deleted or the length is not writable.
-func (vm *VM) setArrayLength(o *Object, n uint32) bool {
+func (cx *ExecutionContext) setArrayLength(o *Object, n uint32) bool {
 	if n == o.length {
 		return true
 	}
@@ -1039,14 +1040,14 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 		slices.Sort(idxs)
 		var p Pacer
 		for _, idx := range slices.Backward(idxs) {
-			p.Step(vm)
-			k := vm.indexKey(idx)
+			p.Step(cx)
+			k := cx.indexKey(idx)
 			if p, _ := o.shape.lookup(k); p.flags&FlagConfigurable == 0 {
 				n = idx + 1
 				ok = false
 				break
 			}
-			vm.remove(o, k)
+			cx.remove(o, k)
 		}
 	}
 	if int64(n) < int64(len(o.elems)) {
@@ -1060,9 +1061,9 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 		o.length = n
 		if oversized {
 			// The tail goes away with the storage.
-			vm.reallocElems(o)
+			cx.reallocElems(o)
 		} else {
-			clearPolled(vm, tail)
+			clearPolled(cx, tail)
 		}
 	}
 	o.length = n
@@ -1072,21 +1073,21 @@ func (vm *VM) setArrayLength(o *Object, n uint32) bool {
 // setNamed stores val as the named property key of v. When the property has a setter, setNamed returns it
 // and the caller has to call it with v as this. ok is false when the store was refused,
 // which is a TypeError in strict code.
-func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *Object, ok bool) {
+func (cx *ExecutionContext) setNamed(v Value, key *Object, val Value, c *propCache) (setter *Object, ok bool) {
 	o := v.o
 	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot set properties of "+vm.DisplayString(v)+" (setting '"+wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key}))+"')")
+			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(PropKey{key: key})) + "')")
 		}
 		// A store to a primitive only has an effect when a setter is inherited.
-		start := vm.protoStart(v, PropKey{key: key})
+		start := cx.protoStart(v, PropKey{key: key})
 		if hasProxyOnChain(start) {
-			if start.kind == kindString && key == vm.Key(KeyLength) {
+			if start.kind == kindString && key == cx.Key(KeyLength) {
 				return nil, false
 			}
-			return nil, vm.setProp(start, PropKey{key: key}, val, v)
+			return nil, cx.setProp(start, PropKey{key: key}, val, v)
 		}
-		if h, p, found := vm.lookup(start, key); found && p.slot >= 0 && p.flags&FlagAccessor != 0 {
+		if h, p, found := cx.lookup(start, key); found && p.slot >= 0 && p.flags&FlagAccessor != 0 {
 			if s := h.slots[p.slot].accessor().setter; s != nil {
 				return s, true
 			}
@@ -1094,14 +1095,14 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 		return nil, false
 	}
 	if o.class == classProxy || o.class == classModuleNamespace || o.class == classTypedArray && isCanonicalNumericString(key) {
-		return nil, vm.setProp(o, PropKey{key: key}, val, v)
+		return nil, cx.setProp(o, PropKey{key: key}, val, v)
 	}
 	if o.flags&objExotic != 0 {
 		// The initial properties of a function precede every property that a store adds.
-		vm.resolve(o)
+		cx.resolve(o)
 	}
-	if o.kind == kindArray && key == vm.Key(KeyLength) {
-		return nil, vm.setArrayLengthValue(o, val)
+	if o.kind == kindArray && key == cx.Key(KeyLength) {
+		return nil, cx.setArrayLengthValue(o, val)
 	}
 	if c != nil {
 		c.keep(o.shape)
@@ -1129,9 +1130,9 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 	// The property is new on o: a setter or a read-only property further up takes precedence.
 	if proto := o.shape.proto; proto != nil {
 		if hasProxyOnChain(proto) || isCanonicalNumericString(key) && typedArrayOnChain(proto) {
-			return nil, vm.setProp(o, PropKey{key: key}, val, v)
+			return nil, cx.setProp(o, PropKey{key: key}, val, v)
 		}
-		if h, p, found := vm.lookup(proto, key); found {
+		if h, p, found := cx.lookup(proto, key); found {
 			if p.slot >= 0 && p.flags&FlagAccessor != 0 {
 				s := h.slots[p.slot].accessor().setter
 				if s == nil {
@@ -1141,7 +1142,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 					c.shape = o.shape
 					c.kind = cacheSetter
 					c.holder = s
-					c.epoch = vm.protoEpoch
+					c.epoch = cx.protoEpoch
 				}
 				return s, true
 			}
@@ -1154,60 +1155,60 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 		return nil, false
 	}
 	old := o.shape
-	vm.add(o, key, val, FlagsData)
+	cx.add(o, key, val, FlagsData)
 	if c != nil && !old.private && !o.shape.private && o.flags&objIsProto == 0 {
 		c.shape = old
 		c.kind = cacheAdd
 		c.next = o.shape
-		c.epoch = vm.protoEpoch
+		c.epoch = cx.protoEpoch
 	}
 	return nil, true
 }
 
 // setArrayLengthValue implements the store of an arbitrary value to the length of an array.
-func (vm *VM) setArrayLengthValue(o *Object, val Value) bool {
+func (cx *ExecutionContext) setArrayLengthValue(o *Object, val Value) bool {
 	if o.flags&objFrozenLength != 0 {
 		return false
 	}
-	return vm.setArrayLength(o, vm.toArrayLength(val))
+	return cx.setArrayLength(o, cx.toArrayLength(val))
 }
 
 // toArrayLength converts val to a new array length as ArraySetLength does, throwing a RangeError when
 // val is not a valid length.
-func (vm *VM) toArrayLength(val Value) uint32 {
+func (cx *ExecutionContext) toArrayLength(val Value) uint32 {
 	// ArraySetLength converts the value by ToUint32 and then by ToNumber. Only an object can observe the
 	// second conversion.
-	n := vm.ToNumber(val)
+	n := cx.ToNumber(val)
 	u := numconv.ToUint32(n)
 	if val.IsObject() {
-		n = vm.ToNumber(val)
+		n = cx.ToNumber(val)
 	}
 	if float64(u) != n {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
+		cx.ThrowRangeError("invalid array length")
 	}
 	return u
 }
 
 // setIndex stores val as the property of v whose key is the array index i.
 // The results are those of setNamed.
-func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
+func (cx *ExecutionContext) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 	o := v.o
 	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot set properties of "+vm.DisplayString(v)+" (setting '"+wtf8.ToValidUTF8(vm.KeyString(PropKey{idx: i}))+"')")
+			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(PropKey{idx: i})) + "')")
 		}
 		if o != nil && o.kind == kindString && int64(i) < int64(v.StringLength()) {
 			return nil, false
 		}
 		// Only an inherited setter or a proxy can observe the store.
-		return nil, vm.setProp(vm.protoStart(v, PropKey{idx: i}), PropKey{idx: i}, val, v)
+		return nil, cx.setProp(cx.protoStart(v, PropKey{idx: i}), PropKey{idx: i}, val, v)
 	}
 	if int64(i) < int64(len(o.elems)) && !o.elems[i].isHole() {
 		o.elems[i] = val
 		return nil, true
 	}
 	if o.class == classTypedArray {
-		return nil, vm.typedArraySet(o, i, val)
+		return nil, cx.typedArraySet(o, i, val)
 	}
 	// Anything but a plain store into a plain object or array takes the general path.
 	if (o.kind == kindArray || o.class == classObject) && o.flags&(objSparse|objExotic) == 0 {
@@ -1219,19 +1220,19 @@ func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 			}
 		}
 		if plain {
-			return nil, vm.addIndex(o, i, val, FlagsData)
+			return nil, cx.addIndex(o, i, val, FlagsData)
 		}
 	}
-	return nil, vm.setProp(o, PropKey{idx: i}, val, v)
+	return nil, cx.setProp(o, PropKey{idx: i}, val, v)
 }
 
 // setProp implements [[Set]] with a receiver. It reports false when the store was refused.
-func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
+func (cx *ExecutionContext) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 	var d PropDesc
 	found := false
 	for h := o; h != nil; h = h.shape.proto {
 		if h.class == classProxy {
-			return vm.proxySet(h, k, val, receiver)
+			return cx.proxySet(h, k, val, receiver)
 		}
 		if h.class == classModuleNamespace {
 			return false
@@ -1241,18 +1242,18 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 				return false
 			}
 			if k.key != nil {
-				vm.typedArraySetNamed(h, val, receiver)
+				cx.typedArraySetNamed(h, val, receiver)
 				return true
 			}
 			if receiver.o == h {
-				vm.typedArraySetElement(h.extState().(*TypedArray), k.idx, val)
+				cx.typedArraySetElement(h.extState().(*TypedArray), k.idx, val)
 				return true
 			}
-			if !vm.typedArrayHas(h, k.idx) {
+			if !cx.typedArrayHas(h, k.idx) {
 				return true
 			}
 		}
-		if d, found = vm.GetOwnProperty(h, k); found {
+		if d, found = cx.GetOwnProperty(h, k); found {
 			break
 		}
 	}
@@ -1260,7 +1261,7 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 		if d.setter == nil {
 			return false
 		}
-		vm.Call(d.setter, receiver, val)
+		cx.Call(d.setter, receiver, val)
 		return true
 	}
 	if found && d.flags&FlagWritable == 0 {
@@ -1270,49 +1271,49 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 		return false
 	}
 	r := receiver.o
-	if o == vm.curRealm.global && r == vm.curRealm.globalThis {
+	if o == cx.realm.global && r == cx.realm.globalThis {
 		// A global binding stores on the backing object even after detachment.
 		r = o
 	}
-	if existing, ok := vm.GetOwnProperty(r, k); ok {
+	if existing, ok := cx.GetOwnProperty(r, k); ok {
 		if existing.flags&FlagAccessor != 0 || existing.flags&FlagWritable == 0 {
 			return false
 		}
-		return vm.defineOwnProperty(r, k, PropDesc{
+		return cx.defineOwnProperty(r, k, PropDesc{
 			value: val,
 			has:   HasValue,
 		})
 	}
-	return vm.defineOwnProperty(r, k, dataDesc(val, FlagsData))
+	return cx.defineOwnProperty(r, k, dataDesc(val, FlagsData))
 }
 
 // Set stores val as the property k of o and throws a TypeError when the store is refused.
-func (vm *VM) Set(o *Object, k PropKey, val Value) {
-	if !vm.setProp(o, k, val, Value{o: o}) {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot assign to read only property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+func (cx *ExecutionContext) Set(o *Object, k PropKey, val Value) {
+	if !cx.setProp(o, k, val, Value{o: o}) {
+		cx.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "'")
 	}
 }
 
 // defineOwnProperty implements [[DefineOwnProperty]]. It reports false when the definition is refused.
-func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+func (cx *ExecutionContext) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	if o.class == classProxy {
-		return vm.proxyDefineOwnProperty(o, k, d)
+		return cx.proxyDefineOwnProperty(o, k, d)
 	}
-	if o.class == classModuleNamespace && vm.isNamespaceExportKey(o, k) {
-		return vm.namespaceDefineOwnProperty(o, k, d)
+	if o.class == classModuleNamespace && cx.isNamespaceExportKey(o, k) {
+		return cx.namespaceDefineOwnProperty(o, k, d)
 	}
 	if o.class == classTypedArray && isNumericKey(k) {
-		return k.key == nil && vm.typedArrayDefine(o, k.idx, d)
+		return k.key == nil && cx.typedArrayDefine(o, k.idx, d)
 	}
-	if o.kind == kindArray && k.key == vm.Key(KeyLength) {
-		return vm.defineArrayLength(o, d)
+	if o.kind == kindArray && k.key == cx.Key(KeyLength) {
+		return cx.defineArrayLength(o, d)
 	}
 	if k.key == nil {
 		if u := mappedParam(o, k.idx); u != nil {
-			return vm.defineMappedArgument(o, k.idx, u, d)
+			return cx.defineMappedArgument(o, k.idx, u, d)
 		}
 	}
-	cur, exists := vm.GetOwnProperty(o, k)
+	cur, exists := cx.GetOwnProperty(o, k)
 	if !exists {
 		if o.flags&objNotExtensible != 0 {
 			return false
@@ -1322,7 +1323,7 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 		}
 		if o.flags&objExotic != 0 {
 			// The initial properties of a function precede every property that is defined later.
-			vm.resolve(o)
+			cx.resolve(o)
 		}
 		flags := d.flags & d.attrMask()
 		val := d.value
@@ -1334,9 +1335,9 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 			val = newAccessor(d.getter, d.setter)
 		}
 		if k.key == nil {
-			return vm.addIndex(o, k.idx, val, flags)
+			return cx.addIndex(o, k.idx, val, flags)
 		}
-		vm.add(o, k.key, val, flags)
+		cx.add(o, k.key, val, flags)
 		return true
 	}
 
@@ -1383,7 +1384,7 @@ func (vm *VM) defineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 			flags = flags&^FlagWritable | d.flags&FlagWritable
 		}
 	}
-	vm.replaceOwn(o, k, val, flags)
+	cx.replaceOwn(o, k, val, flags)
 	return true
 }
 
@@ -1403,30 +1404,30 @@ func (d *PropDesc) attrMask() uint8 {
 }
 
 // replaceOwn stores the value and attributes of the existing own property k of o.
-func (vm *VM) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
+func (cx *ExecutionContext) replaceOwn(o *Object, k PropKey, val Value, flags uint8) {
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			if flags == FlagsData {
 				o.elems[k.idx] = val
-				vm.touchProto(o)
+				cx.touchProto(o)
 				return
 			}
 			// The property no longer fits in elems.
 			o.elems[k.idx] = hole
 			o.flags |= objSparse
-			vm.add(o, vm.indexName(k.idx), val, flags)
+			cx.add(o, cx.indexName(k.idx), val, flags)
 			return
 		}
-		k.key = vm.indexName(k.idx)
+		k.key = cx.indexName(k.idx)
 	}
-	vm.Define(o, k.key, val, flags)
+	cx.Define(o, k.key, val, flags)
 }
 
 // defineArrayLength implements ArraySetLength.
-func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
+func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 	n := o.length
 	if d.has&HasValue != 0 {
-		n = vm.toArrayLength(d.value)
+		n = cx.toArrayLength(d.value)
 	}
 	if d.IsAccessor() {
 		return false
@@ -1446,32 +1447,32 @@ func (vm *VM) defineArrayLength(o *Object, d PropDesc) bool {
 		if frozen {
 			return false
 		}
-		ok = vm.setArrayLength(o, n)
+		ok = cx.setArrayLength(o, n)
 	}
 	if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
 		o.flags |= objFrozenLength
-		vm.touchProto(o)
+		cx.touchProto(o)
 	}
 	return ok
 }
 
 // DeleteProp implements [[Delete]]. It reports false when the property is not configurable.
-func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
+func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 	if o.class == classProxy {
-		return vm.proxyDelete(o, k)
+		return cx.proxyDelete(o, k)
 	}
-	if o.class == classModuleNamespace && vm.isNamespaceExportKey(o, k) {
-		return vm.namespaceDelete(o, k)
+	if o.class == classModuleNamespace && cx.isNamespaceExportKey(o, k) {
+		return cx.namespaceDelete(o, k)
 	}
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
 			o.elems[k.idx] = hole
-			vm.touchProto(o)
+			cx.touchProto(o)
 			return true
 		}
 		switch o.class {
 		case classTypedArray:
-			return !vm.typedArrayHas(o, k.idx)
+			return !cx.typedArrayHas(o, k.idx)
 		case classString:
 			if uint(k.idx) < uint(o.extState().(*Object).StringLength()) {
 				return false
@@ -1481,22 +1482,22 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 			return true
 		}
 		if mappedParam(o, k.idx) != nil {
-			return vm.deleteMappedArgument(o, k.idx)
+			return cx.deleteMappedArgument(o, k.idx)
 		}
-		k.key = vm.indexKey(k.idx)
+		k.key = cx.indexKey(k.idx)
 		if k.key == nil {
 			return true
 		}
 	} else {
 		if o.flags&objExotic != 0 {
-			if o.class == classLazy || vm.isLazyKey(k.key) {
-				vm.resolve(o)
+			if o.class == classLazy || cx.isLazyKey(k.key) {
+				cx.resolve(o)
 			}
 			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
 				return true
 			}
 		}
-		if k.key == vm.Key(KeyLength) && o.kind == kindArray {
+		if k.key == cx.Key(KeyLength) && o.kind == kindArray {
 			return false
 		}
 	}
@@ -1507,36 +1508,36 @@ func (vm *VM) DeleteProp(o *Object, k PropKey) bool {
 	if p.flags&FlagConfigurable == 0 {
 		return false
 	}
-	vm.remove(o, k.key)
+	cx.remove(o, k.key)
 	return true
 }
 
 // OwnKeys implements [[OwnPropertyKeys]]: array indices in ascending order,
 // then strings and then symbols, each in the order of creation.
-func (vm *VM) OwnKeys(o *Object) []PropKey {
+func (cx *ExecutionContext) OwnKeys(o *Object) []PropKey {
 	if o.class == classProxy {
-		return vm.proxyOwnKeys(o)
+		return cx.proxyOwnKeys(o)
 	}
 	if o.class == classModuleNamespace {
-		return vm.namespaceOwnKeys(o)
+		return cx.namespaceOwnKeys(o)
 	}
 	if o.flags&objExotic != 0 {
-		vm.resolve(o)
+		cx.resolve(o)
 	}
 	// Every element, every named property and length.
 	keys := make([]PropKey, 0, len(o.elems)+int(o.shape.count)+1)
 	switch o.class {
 	case classString:
-		keys = vm.appendIndexKeys(keys, o.extState().(*Object).StringLength())
+		keys = cx.appendIndexKeys(keys, o.extState().(*Object).StringLength())
 	case classTypedArray:
-		keys = vm.appendIndexKeys(keys, vm.typedArrayLength(o))
+		keys = cx.appendIndexKeys(keys, cx.typedArrayLength(o))
 	}
-	keys = vm.appendElemKeys(keys, o.elems)
+	keys = cx.appendElemKeys(keys, o.elems)
 	names := o.shape.keys()
 	if o.flags&objSparse != 0 {
 		sorted := true
 		for j, k := range names {
-			vm.pollAt(j)
+			cx.pollAt(j)
 			if k.kind != kindString {
 				continue
 			}
@@ -1548,14 +1549,14 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 			}
 		}
 		if !sorted {
-			vm.sortIndexKeys(keys)
+			cx.sortIndexKeys(keys)
 		}
 	}
 	if o.kind == kindArray {
-		keys = append(keys, PropKey{key: vm.Key(KeyLength)})
+		keys = append(keys, PropKey{key: cx.Key(KeyLength)})
 	}
 	for j, k := range names {
-		vm.pollAt(j)
+		cx.pollAt(j)
 		if k.kind != kindString {
 			continue
 		}
@@ -1567,7 +1568,7 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 		keys = append(keys, PropKey{key: k})
 	}
 	for j, k := range names {
-		vm.pollAt(j)
+		cx.pollAt(j)
 		if k.kind == kindSymbol && k.class != classPrivateName {
 			keys = append(keys, PropKey{key: k})
 		}
@@ -1577,15 +1578,15 @@ func (vm *VM) OwnKeys(o *Object) []PropKey {
 
 // pollAt checks for an interruption at every PollInterval-th step i of a loop, other than the
 // first.
-func (vm *VM) pollAt(i int) {
+func (cx *ExecutionContext) pollAt(i int) {
 	if i > 0 && i%PollInterval == 0 {
-		vm.Poll()
+		cx.Poll()
 	}
 }
 
 // sortIndexKeys sorts the index keys keys in ascending order, checking for an interruption while
 // it sorts many.
-func (vm *VM) sortIndexKeys(keys []PropKey) {
+func (cx *ExecutionContext) sortIndexKeys(keys []PropKey) {
 	if len(keys) <= PollInterval {
 		slices.SortFunc(keys, func(a, b PropKey) int {
 			return cmp.Compare(a.idx, b.idx)
@@ -1598,7 +1599,7 @@ func (vm *VM) sortIndexKeys(keys []PropKey) {
 	for shift := 0; shift < 32; shift += 16 {
 		clear(count)
 		for i, k := range src {
-			vm.pollAt(i)
+			cx.pollAt(i)
 			count[k.idx>>shift&0xFFFF]++
 		}
 		sum := 0
@@ -1607,7 +1608,7 @@ func (vm *VM) sortIndexKeys(keys []PropKey) {
 			sum += c
 		}
 		for i, k := range src {
-			vm.pollAt(i)
+			cx.pollAt(i)
 			d := k.idx >> shift & 0xFFFF
 			dst[count[d]] = k
 			count[d]++
@@ -1617,24 +1618,24 @@ func (vm *VM) sortIndexKeys(keys []PropKey) {
 }
 
 // IsExtensible implements [[IsExtensible]].
-func (vm *VM) IsExtensible(o *Object) bool {
+func (cx *ExecutionContext) IsExtensible(o *Object) bool {
 	if o.class == classProxy {
-		return vm.proxyIsExtensible(o)
+		return cx.proxyIsExtensible(o)
 	}
 	return o.flags&objNotExtensible == 0
 }
 
 // PreventExtensions implements [[PreventExtensions]].
-func (vm *VM) PreventExtensions(o *Object) bool {
+func (cx *ExecutionContext) PreventExtensions(o *Object) bool {
 	if o.class == classProxy {
-		return vm.proxyPreventExtensions(o)
+		return cx.proxyPreventExtensions(o)
 	}
 	if o.class == classTypedArray && !o.extState().(*TypedArray).isTypedArrayFixedLength() {
 		return false
 	}
 	if o.flags&objNotExtensible == 0 {
 		if o.flags&objExotic != 0 {
-			vm.resolve(o)
+			cx.resolve(o)
 		}
 		o.flags |= objNotExtensible
 		// The inline caches that add properties are keyed by shared shapes.
@@ -1644,9 +1645,9 @@ func (vm *VM) PreventExtensions(o *Object) bool {
 }
 
 // SetPrototypeOf implements [[SetPrototypeOf]].
-func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
+func (cx *ExecutionContext) SetPrototypeOf(o *Object, proto *Object) bool {
 	if o.class == classProxy {
-		return vm.proxySetPrototypeOf(o, proto)
+		return cx.proxySetPrototypeOf(o, proto)
 	}
 	if o.shape.proto == proto {
 		return true
@@ -1656,7 +1657,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	}
 	if o.flags&objExotic != 0 {
 		// A function keeps the shape of functionShapeFor only until its properties are stored.
-		vm.resolve(o)
+		cx.resolve(o)
 	}
 	for p := proto; p != nil; p = p.shape.proto {
 		if p.class == classProxy {
@@ -1672,31 +1673,31 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 			return false
 		}
 	}
-	vm.setProto(o, proto)
+	cx.setProto(o, proto)
 	return true
 }
 
 // CreateDataPropertyOrThrow implements CreateDataPropertyOrThrow.
-func (vm *VM) CreateDataPropertyOrThrow(o *Object, k PropKey, val Value) {
-	if !vm.CreateDataProperty(o, k, val) {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot define property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+func (cx *ExecutionContext) CreateDataPropertyOrThrow(o *Object, k PropKey, val Value) {
+	if !cx.CreateDataProperty(o, k, val) {
+		cx.ThrowTypeError("cannot define property '" + wtf8.ToValidUTF8(cx.KeyString(k)) + "'")
 	}
 }
 
 // CreateDataProperty implements CreateDataProperty. It reports false when the definition is refused.
-func (vm *VM) CreateDataProperty(o *Object, k PropKey, val Value) bool {
+func (cx *ExecutionContext) CreateDataProperty(o *Object, k PropKey, val Value) bool {
 	// An array whose index properties are all in its elements has none at the index just
 	// past them.
 	if k.key == nil && o.kind == kindArray && int(k.idx) == len(o.elems) && o.flags&(objSparse|objExotic) == 0 {
-		return vm.addIndex(o, k.idx, val, FlagsData)
+		return cx.addIndex(o, k.idx, val, FlagsData)
 	}
-	return vm.defineOwnProperty(o, k, dataDesc(val, FlagsData))
+	return cx.defineOwnProperty(o, k, dataDesc(val, FlagsData))
 }
 
 // DefinePropertyOrThrow implements DefinePropertyOrThrow.
-func (vm *VM) DefinePropertyOrThrow(o *Object, k PropKey, d PropDesc) {
-	if !vm.defineOwnProperty(o, k, d) {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot redefine property: "+wtf8.ToValidUTF8(vm.KeyString(k)))
+func (cx *ExecutionContext) DefinePropertyOrThrow(o *Object, k PropKey, d PropDesc) {
+	if !cx.defineOwnProperty(o, k, d) {
+		cx.ThrowTypeError("cannot redefine property: " + wtf8.ToValidUTF8(cx.KeyString(k)))
 	}
 }
 
@@ -1711,23 +1712,23 @@ func NamedKey(key *Object) PropKey {
 }
 
 // Get implements Get.
-func (vm *VM) Get(o *Object, k PropKey) Value {
-	return vm.getProp(o, k, Value{o: o})
+func (cx *ExecutionContext) Get(o *Object, k PropKey) Value {
+	return cx.getProp(o, k, Value{o: o})
 }
 
 // GetWithReceiver implements o.[[Get]](k, receiver).
-func (vm *VM) GetWithReceiver(o *Object, k PropKey, receiver Value) Value {
-	return vm.getProp(o, k, receiver)
+func (cx *ExecutionContext) GetWithReceiver(o *Object, k PropKey, receiver Value) Value {
+	return cx.getProp(o, k, receiver)
 }
 
 // SetWithReceiver implements o.[[Set]](k, val, receiver). It reports false when the store was refused.
-func (vm *VM) SetWithReceiver(o *Object, k PropKey, val Value, receiver Value) bool {
-	return vm.setProp(o, k, val, receiver)
+func (cx *ExecutionContext) SetWithReceiver(o *Object, k PropKey, val Value, receiver Value) bool {
+	return cx.setProp(o, k, val, receiver)
 }
 
 // DefineOwnProperty implements [[DefineOwnProperty]]. It reports false when the definition is refused.
-func (vm *VM) DefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
-	return vm.defineOwnProperty(o, k, d)
+func (cx *ExecutionContext) DefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+	return cx.defineOwnProperty(o, k, d)
 }
 
 // isEnumerableString reports whether key is a string and flags make the property enumerable.
@@ -1746,10 +1747,10 @@ func enumerableKey(key *Object, flags uint8) PropKey {
 
 // appendIndexKeys appends the keys of the indices from 0 up to n to keys, checking for an
 // interruption while it appends many.
-func (vm *VM) appendIndexKeys(keys []PropKey, n int) []PropKey {
+func (cx *ExecutionContext) appendIndexKeys(keys []PropKey, n int) []PropKey {
 	for i := 0; i < n; i += PollInterval {
 		if i > 0 {
-			vm.Poll()
+			cx.Poll()
 		}
 		keys = appendIndexRun(keys, i, min(i+PollInterval, n))
 	}
@@ -1766,10 +1767,10 @@ func appendIndexRun(keys []PropKey, i, j int) []PropKey {
 
 // appendElemKeys appends the keys of the elements in elems to keys, checking for an
 // interruption while it appends many.
-func (vm *VM) appendElemKeys(keys []PropKey, elems []Value) []PropKey {
+func (cx *ExecutionContext) appendElemKeys(keys []PropKey, elems []Value) []PropKey {
 	for i := 0; i < len(elems); i += PollInterval {
 		if i > 0 {
-			vm.Poll()
+			cx.Poll()
 		}
 		keys = appendElemRun(keys, elems[i:min(i+PollInterval, len(elems))], i)
 	}
@@ -1800,28 +1801,28 @@ func appendEnumerableNames(keys []PropKey, s *shape, names []*Object) []PropKey 
 
 // EnumerableOwnKeys implements EnumerableOwnProperties with the kind key.
 // It appends the keys to keys and returns the extended slice.
-func (vm *VM) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
+func (cx *ExecutionContext) EnumerableOwnKeys(o *Object, keys []PropKey) []PropKey {
 	if o.flags&objExotic != 0 && (o.fn != nil || o.class == classLazy) {
-		vm.resolve(o)
+		cx.resolve(o)
 	}
 	if (o.class != classObject && o.class != classArray && o.class != classFunction) || o.flags&(objSparse|objExotic) != 0 {
-		for i, k := range vm.OwnKeys(o) {
-			vm.pollAt(i)
+		for i, k := range cx.OwnKeys(o) {
+			cx.pollAt(i)
 			if k.IsSymbol() {
 				continue
 			}
-			if d, ok := vm.GetOwnProperty(o, k); ok && d.flags&FlagEnumerable != 0 {
+			if d, ok := cx.GetOwnProperty(o, k); ok && d.flags&FlagEnumerable != 0 {
 				keys = append(keys, k)
 			}
 		}
 		return keys
 	}
-	keys = vm.appendElemKeys(keys, o.elems)
+	keys = cx.appendElemKeys(keys, o.elems)
 	s := o.shape
 	if s.private {
 		for i := 0; i < len(s.order); i += PollInterval {
 			if i > 0 {
-				vm.Poll()
+				cx.Poll()
 			}
 			keys = appendEnumerableNames(keys, s, s.order[i:min(i+PollInterval, len(s.order))])
 		}

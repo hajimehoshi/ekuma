@@ -12,24 +12,24 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// runScript parses src as a script of vm and evaluates it.
-func runScript(vm *engine.VM, file, src string) (engine.Value, error) {
-	s, err := vm.ParseScript(file, wtf8.FromValidUTF8(src))
+// runScript parses src as a script of cx and evaluates it.
+func runScript(cx *engine.ExecutionContext, file, src string) (engine.Value, error) {
+	s, err := cx.ParseScript(file, wtf8.FromValidUTF8(src))
 	if err != nil {
 		return engine.Undefined, err
 	}
-	v, _, err := vm.ScriptEvaluation(s)
+	v, _, err := s.ScriptEvaluation()
 	return v, err
 }
 
-func newVM(t *testing.T) *engine.VM {
+func newVM(t *testing.T) *engine.ExecutionContext {
 	t.Helper()
-	vm := engine.NewVM(nil)
-	builtin.Install(vm)
-	if _, err := runScript(vm, "init", `var o, i = 0;`); err != nil {
+	cx := engine.HostContext(engine.NewVM(nil))
+	builtin.Install(cx)
+	if _, err := runScript(cx, "init", `var o, i = 0;`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	return vm
+	return cx
 }
 
 func TestDynamicKeysCollected(t *testing.T) {
@@ -52,24 +52,24 @@ func TestDynamicKeysCollected(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			vm := newVM(t)
-			if _, err := runScript(vm, "keep", `var kept = {}; kept["k" + 0] = 0;`); err != nil {
+			cx := newVM(t)
+			if _, err := runScript(cx, "keep", `var kept = {}; kept["k" + 0] = 0;`); err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
 			for range rounds {
-				if _, err := runScript(vm, "round", tc.src); err != nil {
+				if _, err := runScript(cx, "round", tc.src); err != nil {
 					t.Fatalf("runScript: %v", err)
 				}
 				runtime.GC()
 			}
-			if got := engine.InternedCount(vm); got > max {
+			if got := engine.InternedCount(cx); got > max {
 				t.Errorf("got %d interned strings after %d keys, want at most %d", got, rounds*keys, max)
 			}
-			if got := engine.ObjectTransitionCount(vm); got > max {
+			if got := engine.ObjectTransitionCount(cx); got > max {
 				t.Errorf("got %d transitions after %d keys, want at most %d", got, rounds*keys, max)
 			}
 			// The key of a live object stays the same key.
-			v, err := runScript(vm, "check", `kept["k" + 0] === 0 && JSON.stringify(Object.assign({}, kept)) === '{"k0":0}'`)
+			v, err := runScript(cx, "check", `kept["k" + 0] === 0 && JSON.stringify(Object.assign({}, kept)) === '{"k0":0}'`)
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}

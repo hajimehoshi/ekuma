@@ -30,20 +30,20 @@ func low64(i *big.Int) uint64 {
 }
 
 // initBigInt defines BigInt.
-func initBigInt(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicBigIntPrototype)
-	ctor := constructor(vm, "BigInt", 1, engine.IntrinsicBigIntPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if vm.GetNewTarget() != nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt is not a constructor")
+func initBigInt(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicBigIntPrototype)
+	ctor := constructor(cx, "BigInt", 1, engine.IntrinsicBigIntPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		if cx.GetNewTarget() != nil {
+			cx.ThrowTypeError("BigInt is not a constructor")
 		}
-		p := vm.ToPrimitive(arg(args, 0), engine.HintNumber)
+		p := cx.ToPrimitive(arg(args, 0), engine.HintNumber)
 		if p.IsNumber() {
-			return numberToBigInt(vm, p.Number())
+			return numberToBigInt(cx, p.Number())
 		}
-		return vm.ToBigInt(p)
+		return cx.ToBigInt(p)
 	})
 	// The kernel converts an integer that fits in an int64, which cannot throw.
-	vm.SetMethodKernels(ctor, nil, func(vm *engine.VM, this, x engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(ctor, nil, func(cx *engine.ExecutionContext, this, x engine.Value) (engine.Value, bool) {
 		if x.IsNumber() {
 			if n := x.Number(); n == math.Trunc(n) && n >= -1<<63 && n < 1<<63 {
 				return engine.BigIntFromInt64(int64(n)), true
@@ -51,9 +51,9 @@ func initBigInt(vm *engine.VM) {
 		}
 		return engine.Undefined, false
 	}, nil)
-	method(vm, ctor, "asIntN", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		bits := toIndex(vm, arg(args, 0))
-		x := vm.ToBigInt(arg(args, 1))
+	method(cx, ctor, "asIntN", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		bits := toIndex(cx, arg(args, 0))
+		x := cx.ToBigInt(arg(args, 1))
 		if bits == 0 {
 			return engine.BigIntFromInt64(0)
 		}
@@ -80,11 +80,11 @@ func initBigInt(vm *engine.VM) {
 		if r.Bit(int(bits-1)) != 0 {
 			r.Sub(r, m)
 		}
-		return vm.NewBigInt(r)
+		return cx.NewBigInt(r)
 	})
-	method(vm, ctor, "asUintN", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		bits := toIndex(vm, arg(args, 0))
-		x := vm.ToBigInt(arg(args, 1))
+	method(cx, ctor, "asUintN", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		bits := toIndex(cx, arg(args, 0))
+		x := cx.ToBigInt(arg(args, 1))
 		if n, ok := x.BigInt64(); ok && bits <= 64 {
 			u := uint64(n)
 			if bits < 64 {
@@ -93,7 +93,7 @@ func initBigInt(vm *engine.VM) {
 			if u <= math.MaxInt64 {
 				return engine.BigIntFromInt64(int64(u))
 			}
-			return vm.NewBigInt(new(big.Int).SetUint64(u))
+			return cx.NewBigInt(new(big.Int).SetUint64(u))
 		}
 		i := x.BigInt()
 		if i.Sign() >= 0 && int64(i.BitLen()) <= bits {
@@ -107,61 +107,61 @@ func initBigInt(vm *engine.VM) {
 			if u <= math.MaxInt64 {
 				return engine.BigIntFromInt64(int64(u))
 			}
-			return vm.NewBigInt(new(big.Int).SetUint64(u))
+			return cx.NewBigInt(new(big.Int).SetUint64(u))
 		}
 		if bits > engine.MaxBigIntBits {
-			vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
+			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		// The low bits of the two's complement of i.
 		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
-		return vm.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
+		return cx.NewBigInt(new(big.Int).And(i, m.Sub(m, big.NewInt(1))))
 	})
 
-	thisBigInt := func(vm *engine.VM, this engine.Value, what string) engine.Value {
+	thisBigInt := func(cx *engine.ExecutionContext, this engine.Value, what string) engine.Value {
 		v, ok := engine.ThisBigIntValue(this)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt.prototype."+what+" requires that 'this' be a BigInt")
+			cx.ThrowTypeError("BigInt.prototype." + what + " requires that 'this' be a BigInt")
 		}
 		return v
 	}
-	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		x := thisBigInt(vm, this, "toString")
+	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		x := thisBigInt(cx, this, "toString")
 		radix := 10.0
 		if r := arg(args, 0); !r.IsUndefined() {
-			radix = vm.ToIntegerOrInfinity(r)
+			radix = cx.ToIntegerOrInfinity(r)
 		}
 		if radix < 2 || radix > 36 {
-			vm.ThrowRangeError(vm.CurrentRealm(), "toString() radix must be between 2 and 36")
+			cx.ThrowRangeError("toString() radix must be between 2 and 36")
 		}
-		return vm.NewString(vm.BigIntToString(x, int(radix)))
+		return cx.NewString(cx.BigIntToString(x, int(radix)))
 	})
-	method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		x := thisBigInt(vm, this, "toLocaleString")
-		return vm.NewString(vm.ToString(x))
+	method(cx, proto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		x := thisBigInt(cx, this, "toLocaleString")
+		return cx.NewString(cx.ToString(x))
 	})
-	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return thisBigInt(vm, this, "valueOf")
+	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return thisBigInt(cx, this, "valueOf")
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("BigInt"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("BigInt"), engine.FlagConfigurable)
 }
 
 // numberToBigInt implements NumberToBigInt.
-func numberToBigInt(vm *engine.VM, n float64) engine.Value {
+func numberToBigInt(cx *engine.ExecutionContext, n float64) engine.Value {
 	if n != math.Trunc(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "the number "+wtf8.ToValidUTF8(numconv.NumberToString(n))+" cannot be converted to a BigInt because it is not an integer")
+		cx.ThrowRangeError("the number " + wtf8.ToValidUTF8(numconv.NumberToString(n)) + " cannot be converted to a BigInt because it is not an integer")
 	}
 	if n >= -1<<63 && n < 1<<63 {
 		return engine.BigIntFromInt64(int64(n))
 	}
 	i, _ := big.NewFloat(n).Int(nil)
-	return vm.NewBigInt(i)
+	return cx.NewBigInt(i)
 }
 
 // toIndex implements ToIndex.
-func toIndex(vm *engine.VM, v engine.Value) int64 {
-	i := vm.ToIntegerOrInfinity(v)
+func toIndex(cx *engine.ExecutionContext, v engine.Value) int64 {
+	i := cx.ToIntegerOrInfinity(v)
 	if i < 0 || i > numconv.MaxSafeInteger {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid index "+vm.DisplayString(v))
+		cx.ThrowRangeError("invalid index " + cx.DisplayString(v))
 	}
 	return int64(i)
 }

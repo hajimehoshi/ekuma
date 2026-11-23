@@ -138,9 +138,9 @@ func publicInternalError(err error) error {
 }
 
 // thrownValue returns the JavaScript value that the error of a [Func] throws.
-func (vm *VM) thrownValue(r *Realm, err error) engine.Value {
+func (vm *VM) thrownValue(cx *engine.ExecutionContext, err error) engine.Value {
 	if ex, ok := errors.AsType[*ScriptError](err); ok {
 		return vm.acceptValue(ex.Value)
 	}
-	return vm.e.NewGoError(r.r, err)
+	return cx.NewGoError(err)
 }

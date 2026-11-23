@@ -10,11 +10,11 @@ import (
 )
 
 func TestRealmIntrinsic(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	var want *engine.Object
-	created := vm.CreateRealm(func() {
-		want = vm.ProtoOf(vm.GlobalObject().Object())
-		if got := vm.CurrentRealm().Intrinsic(engine.IntrinsicPromisePrototype); got != nil {
+	created := cx.CreateRealm(func(cx *engine.ExecutionContext) {
+		want = cx.ProtoOf(cx.GlobalObject().Object())
+		if got := cx.Realm().Intrinsic(engine.IntrinsicPromisePrototype); got != nil {
 			t.Errorf("unset Promise prototype = %p, want nil", got)
 		}
 	})
@@ -24,25 +24,26 @@ func TestRealmIntrinsic(t *testing.T) {
 }
 
 func TestCreateRealmThrow(t *testing.T) {
-	vm := engine.NewVM(nil)
-	caller := vm.CurrentRealm()
+	machine := engine.NewVM(nil)
+	cx := engine.HostContext(machine)
+	caller := cx.Realm()
 	var created *engine.Realm
-	thrown, ok := vm.Completion(func() {
+	thrown, ok := cx.Completion(func() {
 		defer func() {
-			if vm.CurrentRealm() != caller {
+			if engine.HostContext(machine).Realm() != caller {
 				t.Error("CreateRealm did not restore its caller after the installer threw")
 			}
 		}()
-		vm.CreateRealm(func() {
-			created = vm.CurrentRealm()
-			vm.Throw(engine.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
+		cx.CreateRealm(func(cx *engine.ExecutionContext) {
+			created = cx.Realm()
+			cx.Throw(engine.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
 		})
 	})
 	if ok {
 		t.Fatal("CreateRealm returned normally")
 	}
 	result := created.CreateIterResultObject(engine.Undefined, true)
-	if got := vm.ProtoOf(result.Object()); got != thrown.Object() {
+	if got := cx.ProtoOf(result.Object()); got != thrown.Object() {
 		t.Error("the saved realm produced an iterator result with the wrong prototype after the throw")
 	}
 }

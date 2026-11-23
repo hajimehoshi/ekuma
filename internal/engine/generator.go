@@ -156,13 +156,13 @@ func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 }
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
-func (vm *VM) newGeneratorObject(g *generator) *Object {
+func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
 	r := g.fp.context.realm
 	proto := r.intrinsics[IntrinsicGeneratorPrototype]
 	if g.async != nil {
 		proto = r.intrinsics[IntrinsicAsyncGeneratorPrototype]
 	}
-	if p := vm.GetV(Value{o: g.f}, vm.Key(KeyPrototype)); p.IsObject() {
+	if p := cx.GetV(Value{o: g.f}, cx.Key(KeyPrototype)); p.IsObject() {
 		proto = p.o
 	}
 	o := g.fp.context.NewObject(proto)
@@ -192,29 +192,28 @@ func (vm *VM) pushGenFrame(g *generator, ret int32) {
 }
 
 // callCoroutine calls the generator, async function or async generator f from Go.
-func (vm *VM) callCoroutine(f *Object, this Value, args []Value) Value {
+func (cx *ExecutionContext) callCoroutine(f *Object, this Value, args []Value) Value {
 	c := f.fn.code
 	if c.isAsync && !c.isGenerator {
-		return vm.callAsync(f, this, args)
+		return cx.callAsync(f, this, args)
 	}
-	sp := vm.sp
-	vm.pushGenerator(f, this, args, 0)
-	r := vm.run(len(vm.frames) - 1)
-	vm.sp = sp
+	sp := cx.sp
+	cx.pushGenerator(f, this, args, 0)
+	r := cx.run(len(cx.frames) - 1)
+	cx.sp = sp
 	return r
 }
 
 // resume continues the suspended generator g. It returns the yielded or returned value
 // and whether g completed. An exception that leaves g is thrown.
-func (resumer ExecutionContext) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
-	vm := resumer.vm
+func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 	switch g.state {
 	case genRunning:
 		resumer.ThrowTypeError("generator is already running")
 	case genCompleted:
 		switch mode {
 		case ResumeThrow:
-			vm.Throw(v)
+			resumer.Throw(v)
 		case ResumeReturn:
 			return v, true
 		}
@@ -224,59 +223,59 @@ func (resumer ExecutionContext) resume(g *generator, mode ResumeMode, v Value) (
 		case ResumeThrow:
 			g.state = genCompleted
 			g.regs = nil
-			vm.Throw(v)
+			resumer.Throw(v)
 		case ResumeReturn:
 			g.state = genCompleted
 			g.regs = nil
 			return v, true
 		}
 	}
-	if len(vm.frames) >= maxFrames {
-		vm.ThrowRangeError(resumer.realm, "maximum call stack size exceeded")
+	if len(resumer.frames) >= maxFrames {
+		resumer.ThrowRangeError("maximum call stack size exceeded")
 	}
-	sp := vm.sp
+	sp := resumer.sp
 	started := g.state == genSuspendedYield
 	g.state = genRunning
 	g.mode = mode
-	vm.pushGenFrame(g, 0)
-	stop := len(vm.frames) - 1
+	resumer.pushGenFrame(g, 0)
+	stop := len(resumer.frames) - 1
 	if started {
 		g.regs[g.resumeReg] = v
 		// The code after an await or a plain yield does not look at the mode: deliver
 		// a throw or a return as an exception at the suspension.
 		switch mode {
 		case ResumeThrow:
-			if vm.captureThrowSites {
-				vm.thrownAt = throwSite{
+			if resumer.captureThrowSites {
+				resumer.thrownAt = throwSite{
 					code: g.fp.Func,
 					pc:   g.pc - 1,
 				}
 			}
-			vm.thrown = v
+			resumer.thrown = v
 		case ResumeReturn:
 			g.closeValue = v
-			vm.thrown = Value{o: closeSignal}
+			resumer.thrown = Value{o: closeSignal}
 		}
 		if mode != ResumeNext && !g.delegating {
 			g.mode = ResumeNext
-			if !vm.unwind(stop) {
-				vm.sp = sp
-				if vm.thrown.o == closeSignal {
-					vm.thrown = Undefined
+			if !resumer.unwind(stop) {
+				resumer.sp = sp
+				if resumer.thrown.o == closeSignal {
+					resumer.thrown = Undefined
 					return g.closeValue, true
 				}
 				panic(errThrow)
 			}
 		} else {
-			vm.thrown = Undefined
+			resumer.thrown = Undefined
 		}
 	}
-	r, ok := vm.runFrame(stop)
-	vm.sp = sp
+	r, ok := resumer.runFrame(stop)
+	resumer.sp = sp
 	if !ok {
-		vm.dropNatives(stop)
-		if vm.thrown.o == closeSignal {
-			vm.thrown = Undefined
+		resumer.dropNatives(stop)
+		if resumer.thrown.o == closeSignal {
+			resumer.thrown = Undefined
 			return g.closeValue, true
 		}
 		panic(errThrow)
@@ -295,7 +294,7 @@ func isSyncGenerator(v Value) bool {
 
 // ResumeGenerator continues the generator gen with the value v and returns the iterator result.
 // It reports false, without running anything, when gen is not a generator.
-func (cx ExecutionContext) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {
+func (cx *ExecutionContext) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool) {
 	var g *generator
 	if gen.IsObject() {
 		g, _ = gen.o.extState().(*generator)

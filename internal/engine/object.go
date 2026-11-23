@@ -193,7 +193,7 @@ type objectMeta struct {
 
 	// functionProtoShape is the empty shape of the functions whose prototype is this object
 	// and whose initial properties are not stored yet, once one was made.
-	// See [VM.functionShapeFor].
+	// See [ExecutionContext.functionShapeFor].
 	functionProtoShape *shape
 
 	// shiftedElems is the number of unused values before the elements of an array in their
@@ -749,12 +749,12 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (vm *VM) newShape(proto *Object, r *Realm) *shape {
+func (cx *ExecutionContext) newShape(proto *Object, r *Realm) *shape {
 	if proto != nil {
 		proto.flags |= objIsProto
 	}
 	return &shape{
-		vm:    vm,
+		vm:    cx.agent,
 		realm: r,
 		proto: proto,
 		small: []shapeEntry{},
@@ -762,16 +762,16 @@ func (vm *VM) newShape(proto *Object, r *Realm) *shape {
 }
 
 // shapeFor returns the empty shape for objects of the current realm with prototype proto, which may be nil.
-func (vm *VM) shapeFor(proto *Object) *shape {
-	return vm.shapeForRealm(proto, vm.curRealm)
+func (cx *ExecutionContext) shapeFor(proto *Object) *shape {
+	return cx.shapeForRealm(proto, cx.realm)
 }
 
 // shapeForRealm returns the empty shape for objects of r with prototype proto, which may be nil.
-func (vm *VM) shapeForRealm(proto *Object, r *Realm) *shape {
+func (cx *ExecutionContext) shapeForRealm(proto *Object, r *Realm) *shape {
 	if proto == nil {
 		return r.shapes.nullProto
 	}
-	return proto.ensureMeta().protoShapes.forRealm(vm, proto, r)
+	return proto.ensureMeta().protoShapes.forRealm(cx, proto, r)
 }
 
 type prototypeShapeCache struct {
@@ -784,27 +784,27 @@ type indexedPrototypeShapes struct {
 	array, typedArray prototypeShapeCache
 }
 
-func (c *prototypeShapeCache) forRealm(vm *VM, proto *Object, r *Realm) *shape {
+func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *Realm) *shape {
 	if proto.shape.realm != r {
 		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
 		}
-		s := vm.newShape(proto, r)
+		s := cx.newShape(proto, r)
 		c.foreign = weak.Make(s)
 		return s
 	}
 	// The shape is stored on proto, so that it and the shapes derived from it are collected
 	// together with proto.
 	if c.local == nil {
-		c.local = vm.newShape(proto, r)
+		c.local = cx.newShape(proto, r)
 	}
 	return c.local
 }
 
 // objectRootShape returns the initial layout for an object of class cls.
-func (vm *VM) objectRootShape(proto *Object, r *Realm, cls class) *shape {
+func (cx *ExecutionContext) objectRootShape(proto *Object, r *Realm, cls class) *shape {
 	if cls != classArray && cls != classTypedArray {
-		return vm.shapeForRealm(proto, r)
+		return cx.shapeForRealm(proto, r)
 	}
 	if proto == nil {
 		s := &r.shapes.nullArray
@@ -812,7 +812,7 @@ func (vm *VM) objectRootShape(proto *Object, r *Realm, cls class) *shape {
 			s = &r.shapes.nullTypedArray
 		}
 		if *s == nil {
-			*s = vm.newShape(nil, r)
+			*s = cx.newShape(nil, r)
 		}
 		return *s
 	}
@@ -821,26 +821,26 @@ func (vm *VM) objectRootShape(proto *Object, r *Realm, cls class) *shape {
 		m.indexedProtoShapes = &indexedPrototypeShapes{}
 	}
 	if cls == classArray {
-		return m.indexedProtoShapes.array.forRealm(vm, proto, r)
+		return m.indexedProtoShapes.array.forRealm(cx, proto, r)
 	}
-	return m.indexedProtoShapes.typedArray.forRealm(vm, proto, r)
+	return m.indexedProtoShapes.typedArray.forRealm(cx, proto, r)
 }
 
 // functionShapeFor returns the empty shape for the functions whose prototype is proto and whose
 // initial properties are not stored yet. No other object has this shape or one derived from it,
 // so an inline cache filled for another kind of object never applies to such a function.
 // proto must be an intrinsic prototype of the current realm.
-func (vm *VM) functionShapeFor(proto *Object) *shape {
+func (cx *ExecutionContext) functionShapeFor(proto *Object) *shape {
 	m := proto.ensureMeta()
 	if m.functionProtoShape == nil {
-		m.functionProtoShape = vm.newShape(proto, vm.curRealm)
+		m.functionProtoShape = cx.newShape(proto, cx.realm)
 	}
 	return m.functionProtoShape
 }
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
-func (vm *VM) NewObject(proto *Object) *Object {
-	return newObject(vm.shapeFor(proto))
+func (cx *ExecutionContext) NewObject(proto *Object) *Object {
+	return newObject(cx.shapeFor(proto))
 }
 
 func newObject(s *shape) *Object {
@@ -851,8 +851,8 @@ func newObject(s *shape) *Object {
 }
 
 // NewInstance returns a new empty ordinary instance with prototype proto, which may be nil.
-func (vm *VM) NewInstance(proto *Object) *Object {
-	return newInstance(vm.shapeFor(proto))
+func (cx *ExecutionContext) NewInstance(proto *Object) *Object {
+	return newInstance(cx.shapeFor(proto))
 }
 
 // maxInstanceSlots bounds the room for properties that newInstance gives an object.
@@ -890,16 +890,16 @@ func newInstance(s *shape) *Object {
 }
 
 // NewOrdinaryObject returns a new empty ordinary object whose prototype is %Object.prototype%.
-func (vm *VM) NewOrdinaryObject() *Object {
+func (cx *ExecutionContext) NewOrdinaryObject() *Object {
 	return (&propertyObject{
 		kind:  kindObject,
-		shape: vm.curRealm.shapes.object,
+		shape: cx.realm.shapes.object,
 	}).init()
 }
 
 // NewArray returns a new array with the given elements, which it keeps.
-func (vm *VM) NewArray(elems []Value) *Object {
-	return vm.curRealm.newArray(elems)
+func (cx *ExecutionContext) NewArray(elems []Value) *Object {
+	return cx.realm.newArray(elems)
 }
 
 func (r *Realm) newArray(elems []Value) *Object {
@@ -913,11 +913,11 @@ func (r *Realm) newArray(elems []Value) *Object {
 }
 
 // NewArrayCopy returns a new array with a copy of elems as its elements.
-func (vm *VM) NewArrayCopy(elems []Value) *Object {
+func (cx *ExecutionContext) NewArrayCopy(elems []Value) *Object {
 	a, storage := newObjectWithStorage(len(elems))
 	a.kind = kindArray
 	a.class = classArray
-	a.shape = vm.curRealm.shapes.array
+	a.shape = cx.realm.shapes.array
 	a.elems = storage
 	copy(a.elems, elems)
 	a.length = uint32(len(elems))
@@ -925,11 +925,11 @@ func (vm *VM) NewArrayCopy(elems []Value) *Object {
 }
 
 // NewEmptyArrayWithRoom returns a new empty array with room for n elements.
-func (vm *VM) NewEmptyArrayWithRoom(n int) *Object {
+func (cx *ExecutionContext) NewEmptyArrayWithRoom(n int) *Object {
 	a, storage := newObjectWithStorage(n)
 	a.kind = kindArray
 	a.class = classArray
-	a.shape = vm.curRealm.shapes.array
+	a.shape = cx.realm.shapes.array
 	a.elems = storage[:0]
 	return a
 }
@@ -1098,16 +1098,11 @@ type objectWith[S any] struct {
 }
 
 // NewArrayPair returns a new array with the elements a and b.
-func (vm *VM) NewArrayPair(a, b Value) *Object {
-	return vm.NewArrayPairInRealm(vm.CurrentRealm(), a, b)
-}
-
-// NewArrayPairInRealm returns an array with the elements a and b in realm.
-func (vm *VM) NewArrayPairInRealm(realm *Realm, a, b Value) *Object {
+func (cx *ExecutionContext) NewArrayPair(a, b Value) *Object {
 	p := &pairArray{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  realm.shapes.array,
+		shape:  cx.realm.shapes.array,
 		length: 2,
 		pair:   [2]Value{a, b},
 	}
@@ -1116,11 +1111,11 @@ func (vm *VM) NewArrayPairInRealm(realm *Realm, a, b Value) *Object {
 }
 
 // NewArrayWithRoom returns an array of length undefined elements with room for n named properties.
-func (vm *VM) NewArrayWithRoom(length, n int) *Object {
+func (cx *ExecutionContext) NewArrayWithRoom(length, n int) *Object {
 	a, storage := newObjectWithStorage(length + n)
 	a.kind = kindArray
 	a.class = classArray
-	a.shape = vm.curRealm.shapes.array
+	a.shape = cx.realm.shapes.array
 	// Appending elements must not overwrite the named properties.
 	a.elems = storage[:length:length]
 	a.length = uint32(length)
@@ -1131,10 +1126,10 @@ func (vm *VM) NewArrayWithRoom(length, n int) *Object {
 // NewObjectFromProperties returns a new ordinary object whose prototype is Object.prototype,
 // with the data properties keys[i]: vals[i] created in order as CreateDataProperty creates them.
 // A repeated key keeps its first position and takes the last value. It does not keep the slices.
-func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
+func (cx *ExecutionContext) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 	o, slots := newObjectWithStorage(len(vals))
 	o.kind = kindObject
-	o.shape = vm.curRealm.shapes.object
+	o.shape = cx.realm.shapes.object
 	o.slots = slots[:0]
 	for i, k := range keys {
 		v := vals[i]
@@ -1144,14 +1139,14 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 				continue
 			}
 			if o.flags&objSparse != 0 {
-				if key := vm.indexKey(k.idx); key != nil {
+				if key := cx.indexKey(k.idx); key != nil {
 					if _, ok := o.shape.lookup(key); ok {
-						vm.Define(o, key, v, FlagsData)
+						cx.Define(o, key, v, FlagsData)
 						continue
 					}
 				}
 			}
-			vm.addIndex(o, k.idx, v, FlagsData)
+			cx.addIndex(o, k.idx, v, FlagsData)
 			continue
 		}
 		// A transition exists only for a key that the shape does not have.
@@ -1165,7 +1160,7 @@ func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 				continue
 			}
 		}
-		vm.Define(o, k.key, v, FlagsData)
+		cx.Define(o, k.key, v, FlagsData)
 	}
 	return o
 }
@@ -1187,23 +1182,23 @@ type stringTable struct {
 const indexStringCount = 1024
 
 // indexString returns the string of the array index i.
-func (vm *VM) indexString(i uint32) Value {
+func (cx *ExecutionContext) indexString(i uint32) Value {
 	if i < 10 {
-		return vm.strings.ascii['0'+i]
+		return cx.strings.ascii['0'+i]
 	}
 	if i >= indexStringCount {
-		return vm.newIndexString(i)
+		return cx.newIndexString(i)
 	}
-	t := vm.indexStrings
+	t := cx.indexStrings
 	if int(i) >= len(t) {
 		t = append(t, make([]*Object, int(i)+1-len(t))...)
 		t = t[:cap(t)]
-		vm.indexStrings = t
+		cx.indexStrings = t
 	}
 	if o := t[i]; o != nil {
 		return ObjectValue(o)
 	}
-	v := vm.newIndexString(i)
+	v := cx.newIndexString(i)
 	o := v.stringObject()
 	o.length = i + 1
 	t[i] = o
@@ -1211,8 +1206,8 @@ func (vm *VM) indexString(i uint32) Value {
 }
 
 // newIndexString returns a new string of the array index i, which is at least 10.
-func (vm *VM) newIndexString(i uint32) Value {
-	v := vm.NewString(wtf8.String(strconv.FormatUint(uint64(i), 10)))
+func (cx *ExecutionContext) newIndexString(i uint32) Value {
+	v := cx.NewString(wtf8.String(strconv.FormatUint(uint64(i), 10)))
 	if !v.isShortString() {
 		v.o.length = i + 1
 	}
@@ -1228,22 +1223,22 @@ const internedMinSweep = 1 << 10
 const internedInitialSize = 896
 
 // NewString returns the string s as a value.
-func (vm *VM) NewString(s wtf8.String) Value {
+func (cx *ExecutionContext) NewString(s wtf8.String) Value {
 	switch len(s) {
 	case 0:
-		return vm.emptyString
+		return cx.emptyString
 	case 1:
 		if s[0] < 0x80 {
-			return vm.strings.ascii[s[0]]
+			return cx.strings.ascii[s[0]]
 		}
 	}
 	if len(s) <= shortstrings.MaxBytes {
-		return vm.shortString(s)
+		return cx.shortString(s)
 	}
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: vm.curRealm.shapes.string,
+			shape: cx.realm.shapes.string,
 			str:   s,
 		},
 	}
@@ -1251,28 +1246,28 @@ func (vm *VM) NewString(s wtf8.String) Value {
 
 // SharedString returns the string s as a value that may be the same object as a property key
 // with the same contents.
-func (vm *VM) SharedString(s wtf8.String) Value {
-	if o := vm.strings.interned.get(s); o != nil {
+func (cx *ExecutionContext) SharedString(s wtf8.String) Value {
+	if o := cx.strings.interned.get(s); o != nil {
 		return ObjectValue(o)
 	}
-	return vm.NewString(s)
+	return cx.NewString(s)
 }
 
 // Intern returns the string s as a property key.
-func (vm *VM) Intern(s wtf8.String) *Object {
-	if o := vm.strings.interned.get(s); o != nil {
+func (cx *ExecutionContext) Intern(s wtf8.String) *Object {
+	if o := cx.strings.interned.get(s); o != nil {
 		return o
 	}
 	o := &Object{
 		kind:  kindString,
 		flags: objInterned,
-		shape: vm.curRealm.shapes.string,
+		shape: cx.realm.shapes.string,
 		str:   s,
 	}
-	if vm.strings.keepNew {
+	if cx.strings.keepNew {
 		o.flags |= objKept
 	}
-	vm.strings.interned.put(s, o, internedMinSweep, isKept)
+	cx.strings.interned.put(s, o, internedMinSweep, isKept)
 	return o
 }
 
@@ -1282,14 +1277,14 @@ func isKept(o *Object) bool {
 }
 
 // stringKey returns the property key for the string o.
-func (vm *VM) stringKey(o *Object) *Object {
+func (cx *ExecutionContext) stringKey(o *Object) *Object {
 	if o.flags&objInterned != 0 {
 		return o
 	}
 	if k, ok := o.extObject(); ok {
 		return k
 	}
-	k := vm.Intern(o.Str())
+	k := cx.Intern(o.Str())
 	o.setExtState(k)
 	return k
 }
@@ -1478,12 +1473,12 @@ func (o *Object) Substring(start, end int) wtf8.String {
 }
 
 // UnitString returns the string that consists of the code unit u.
-func (vm *VM) UnitString(u uint16) Value {
+func (cx *ExecutionContext) UnitString(u uint16) Value {
 	if u < 0x80 {
-		return vm.strings.ascii[u]
+		return cx.strings.ascii[u]
 	}
 	var buf [utf8.UTFMax]byte
-	return vm.shortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
+	return cx.shortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
 }
 
 // getOwn returns the own named property key of o.
@@ -1592,20 +1587,20 @@ func (o *Object) shareShape() {
 
 // Define creates or replaces the own named property key of o with the given attributes,
 // without any of the checks of the JavaScript operations.
-func (vm *VM) Define(o *Object, key *Object, val Value, flags uint8) {
+func (cx *ExecutionContext) Define(o *Object, key *Object, val Value, flags uint8) {
 	if o.flags&objExotic != 0 {
-		vm.resolve(o)
+		cx.resolve(o)
 	}
 	p, ok := o.shape.lookup(key)
 	if !ok {
-		vm.add(o, key, val, flags)
+		cx.add(o, key, val, flags)
 		return
 	}
 	if p.flags != flags {
-		vm.setFlags(o, key, p, flags)
+		cx.setFlags(o, key, p, flags)
 	}
 	o.slots[p.slot] = val
-	vm.touchProto(o)
+	cx.touchProto(o)
 }
 
 // setFlags changes the attributes of the existing own property key of o.
@@ -1630,10 +1625,10 @@ func (o *Object) renewShape() {
 }
 
 // remove deletes the own named property key of o, which must exist.
-func (vm *VM) remove(o *Object, key *Object) {
+func (cx *ExecutionContext) remove(o *Object, key *Object) {
 	old := o.shape
 	if old.private {
-		vm.removeFromPrivate(o, key)
+		cx.removeFromPrivate(o, key)
 		return
 	}
 	// The shared shape without key has the later properties in the slots after the one of key,
@@ -1645,7 +1640,7 @@ func (vm *VM) remove(o *Object, key *Object) {
 		o.slots[n-1] = Value{}
 		o.slots = o.slots[:n-1]
 		o.shape = s
-		vm.touchProto(o)
+		cx.touchProto(o)
 		return
 	}
 	// Otherwise removing a property moves the later ones, so the object gets a shape that no
@@ -1673,7 +1668,7 @@ func (vm *VM) remove(o *Object, key *Object) {
 	}
 	o.shape = s
 	o.slots = slots
-	vm.touchProto(o)
+	cx.touchProto(o)
 }
 
 // removeFromPrivate deletes the own named property key of o, which must exist, from the private
@@ -1728,7 +1723,7 @@ func (o *Object) compact() {
 }
 
 // setProto changes the prototype of o.
-func (vm *VM) setProto(o *Object, proto *Object) {
+func (cx *ExecutionContext) setProto(o *Object, proto *Object) {
 	old := o.shape
 	if old.proto == proto {
 		return
@@ -1743,9 +1738,9 @@ func (vm *VM) setProto(o *Object, proto *Object) {
 	} else {
 		var s *shape
 		if o.flags&objExotic != 0 && o.class != classArray && o.class != classTypedArray {
-			s = vm.newShape(proto, old.realm)
+			s = cx.newShape(proto, old.realm)
 		} else {
-			s = vm.objectRootShape(proto, old.realm, o.class)
+			s = cx.objectRootShape(proto, old.realm, o.class)
 		}
 		for _, k := range old.keys() {
 			p, _ := old.lookup(k)
@@ -1753,7 +1748,7 @@ func (vm *VM) setProto(o *Object, proto *Object) {
 		}
 		o.shape = s
 	}
-	vm.protoEpoch++
+	cx.protoEpoch++
 }
 
 // makePrivate gives o a shape of its own, so that no inline cache filled for another object applies to it.
@@ -1853,7 +1848,7 @@ type namedRead struct {
 //
 // The global object gets another shape whenever a global lexical binding is declared, and
 // whenever its own properties or the storage of their values change (see [VM.add] and
-// [VM.densify]).
+// [ExecutionContext.densify]).
 type globalCache struct {
 	shape  *shape
 	ref    *Value
@@ -1871,12 +1866,17 @@ func (c *propCache) keep(shape *shape) bool {
 	return previous != nil && previous != shape && previous != c.shape
 }
 
-// VM returns the [VM] that o belongs to, or nil for a value that is shared by all VMs.
-func (o *Object) VM() *VM {
+// Owns reports whether o belongs to vm or is shared by all agents.
+func (vm *VM) Owns(o *Object) bool {
+	return o.shape == nil || o.shape.vm == vm
+}
+
+// HostDefined returns the host of the agent that owns o, or nil for shared values.
+func (o *Object) HostDefined() any {
 	if o.shape == nil {
 		return nil
 	}
-	return o.shape.vm
+	return o.shape.vm.hostDefined
 }
 
 // Str returns the content of the string o in WTF-8.
@@ -2016,6 +2016,6 @@ func (o *Object) findUnits(sub wtf8.String, from int, backward bool, poll func()
 
 // DefineAccessor creates or replaces the own accessor property key of o with the given
 // attributes. getter and setter may be nil.
-func (vm *VM) DefineAccessor(o *Object, key *Object, getter, setter *Object, flags uint8) {
-	vm.Define(o, key, newAccessor(getter, setter), flags|FlagAccessor)
+func (cx *ExecutionContext) DefineAccessor(o *Object, key *Object, getter, setter *Object, flags uint8) {
+	cx.Define(o, key, newAccessor(getter, setter), flags|FlagAccessor)
 }

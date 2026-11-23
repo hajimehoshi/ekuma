@@ -6,35 +6,35 @@ package engine
 // FunctionCaller returns the value of the caller property of the non-strict ordinary function f:
 // the function that made the innermost running call of f, or null. It throws a TypeError when f
 // is not such a function.
-func (vm *VM) FunctionCaller(f Value) Value {
-	i := vm.innermostCall(f)
+func (cx *ExecutionContext) FunctionCaller(f Value) Value {
+	i := cx.innermostCall(f)
 	if i < 0 {
 		return Null
 	}
-	return vm.callerOf(i)
+	return cx.callerOf(i)
 }
 
 // FunctionArguments returns the value of the arguments property of the non-strict ordinary
 // function f: a new arguments object of the innermost running call of f, or null. It throws a
 // TypeError when f is not such a function.
-func (vm *VM) FunctionArguments(f Value) Value {
-	i := vm.innermostCall(f)
+func (cx *ExecutionContext) FunctionArguments(f Value) Value {
+	i := cx.innermostCall(f)
 	if i < 0 {
 		return Null
 	}
-	return Value{o: vm.callArguments(i)}
+	return Value{o: cx.callArguments(i)}
 }
 
 // innermostCall returns the index of the frame of the innermost running call of the non-strict
 // ordinary function f, or -1 when f is not running. It throws a TypeError when f is not such a
 // function.
-func (vm *VM) innermostCall(f Value) int {
+func (cx *ExecutionContext) innermostCall(f Value) int {
 	o := f.o
 	if o == nil || o.fn == nil || o.fn.code == nil || !o.fn.code.legacyCallerArguments {
-		vm.ThrowTypeError(vm.CurrentRealm(), "'caller' and 'arguments' are only available on non-strict functions")
+		cx.ThrowTypeError("'caller' and 'arguments' are only available on non-strict functions")
 	}
-	i := len(vm.frames) - 1
-	for i >= 0 && vm.frames[i].cl != o {
+	i := len(cx.frames) - 1
+	for i >= 0 && cx.frames[i].cl != o {
 		i--
 	}
 	return i
@@ -42,10 +42,10 @@ func (vm *VM) innermostCall(f Value) int {
 
 // callArguments returns a new arguments object with the current arguments of the call of
 // frames[i], which are not mapped to its parameters.
-func (vm *VM) callArguments(i int) *Object {
-	fr := &vm.frames[i]
-	o := vm.newArgumentsObject(fr, vm.stack[fr.base:])
-	vm.add(o, vm.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
+func (cx *ExecutionContext) callArguments(i int) *Object {
+	fr := &cx.frames[i]
+	o := cx.newArgumentsObject(fr, cx.stack[fr.base:])
+	cx.add(o, cx.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
 	return o
 }
 

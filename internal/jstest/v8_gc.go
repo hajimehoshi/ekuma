@@ -14,30 +14,30 @@ import (
 // An unsupported call ends the test even if its script catches exceptions.
 type v8GCWithArguments struct{}
 
-func installV8GC(vm *engine.VM) {
-	gc := vm.NewFunction("gc", func(vm *engine.VM, _ engine.Value, args []engine.Value) engine.Value {
+func installV8GC(cx *engine.ExecutionContext) {
+	gc := cx.NewFunction("gc", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
 		if len(args) != 0 {
-			readV8GCOptions(vm, args[0])
+			readV8GCOptions(cx, args[0])
 			panic(v8GCWithArguments{})
 		}
 		runtime.GC()
 		return engine.Undefined
 	})
 	// The V8 extension declares gc as a global var.
-	vm.Define(vm.GlobalObject().Object(), vm.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("gc"), gc, engine.FlagWritable|engine.FlagEnumerable)
 }
 
 // d8 reads these properties in order before selecting a collection. A getter
 // can throw even when the collection itself would be unsupported.
-func readV8GCOptions(vm *engine.VM, options engine.Value) {
+func readV8GCOptions(cx *engine.ExecutionContext, options engine.Value) {
 	if !options.IsObject() {
 		return
 	}
-	typ := vm.GetV(options, vm.Intern("type"))
-	vm.GetV(options, vm.Intern("execution"))
-	vm.GetV(options, vm.Intern("flavor"))
+	typ := cx.GetV(options, cx.Intern("type"))
+	cx.GetV(options, cx.Intern("execution"))
+	cx.GetV(options, cx.Intern("flavor"))
 	if typ.IsString() && typ.Str() == "major-snapshot" {
-		vm.GetV(options, vm.Intern("filename"))
+		cx.GetV(options, cx.Intern("filename"))
 	}
 }
 

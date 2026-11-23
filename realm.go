@@ -34,9 +34,7 @@ func (vm *VM) Global() Value {
 // NewRealm returns a new realm of vm.
 func (vm *VM) NewRealm() *Realm {
 	vm.initIfNeeded()
-	return vm.realmOf(vm.e.CreateRealm(func() {
-		builtin.Install(vm.e)
-	}))
+	return vm.realmOf(vm.hostContext().CreateRealm(builtin.Install))
 }
 
 // realmOf returns the [Realm] of the engine realm r.
@@ -54,23 +52,22 @@ func (vm *VM) realmOf(r *engine.Realm) *Realm {
 
 // in runs f with r as the current realm of its VM.
 func (r *Realm) in(f func()) {
+	r.context().Run(f)
+}
+
+func (r *Realm) context() *engine.ExecutionContext {
 	r.vm.initIfNeeded()
-	r.vm.e.InRealm(r.r, f)
+	return r.r.Context()
 }
 
 // Global returns the global object of r.
 func (r *Realm) Global() Value {
-	var v engine.Value
-	r.in(func() {
-		v = r.vm.e.GlobalObject()
-	})
-	return fromEngine(v)
+	return fromEngine(r.context().GlobalObject())
 }
 
 // ValueOf is like [VM.ValueOf], but the objects that it creates belong to r.
 func (r *Realm) ValueOf(x any) Value {
-	r.vm.initIfNeeded()
-	return fromEngine(r.vm.valueOf(r, x))
+	return fromEngine(r.vm.valueOf(r.context(), x))
 }
 
 // FuncOf is like [VM.FuncOf], but the function belongs to and runs in r.
@@ -78,11 +75,7 @@ func (r *Realm) ValueOf(x any) Value {
 // which may be a primitive or an object from any realm of the same VM. For any other
 // non-nil error, the function throws a new Error object in r.
 func (r *Realm) FuncOf(name string, f Func) Value {
-	var v engine.Value
-	r.in(func() {
-		v = r.vm.funcOf(r, name, f)
-	})
-	return fromEngine(v)
+	return fromEngine(r.vm.funcOf(r.context(), name, f))
 }
 
 // NewArrayBuffer is like [VM.NewArrayBuffer], but the ArrayBuffer belongs to r.
@@ -90,20 +83,13 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 	if len(b) > engine.MaxBufferLength {
 		panic("ekuma: NewArrayBuffer: the slice is too long for an ArrayBuffer")
 	}
-	var v engine.Value
-	r.in(func() {
-		proto := r.r.Intrinsic(engine.IntrinsicArrayBufferPrototype)
-		v = engine.ObjectValue(r.vm.e.NewHostArrayBufferObject(proto, b))
-	})
-	return fromEngine(v)
+	proto := r.r.Intrinsic(engine.IntrinsicArrayBufferPrototype)
+	return fromEngine(engine.ObjectValue(r.context().NewHostArrayBufferObject(proto, b)))
 }
 
 // NewPromise returns a new pending promise of r and the resolver that settles it.
 func (r *Realm) NewPromise() (Value, *PromiseResolver) {
-	var c *engine.PromiseCapability
-	r.in(func() {
-		c = r.vm.e.NewPromiseCapability(engine.ObjectValue(r.r.Intrinsic(engine.IntrinsicPromise)))
-	})
+	c := r.context().NewPromiseCapability(engine.ObjectValue(r.r.Intrinsic(engine.IntrinsicPromise)))
 	return fromEngine(c.Promise()), &PromiseResolver{
 		realm: r,
 		c:     c,
@@ -118,11 +104,7 @@ func (r *Realm) ParseScript(name, src string) (*Script, error) {
 }
 
 func (r *Realm) parseScript(name string, src wtf8.String) (*Script, error) {
-	var es *engine.Script
-	var err error
-	r.in(func() {
-		es, err = r.vm.e.ParseScript(name, src)
-	})
+	es, err := r.context().ParseScript(name, src)
 	if err != nil {
 		return nil, publicError(err)
 	}
@@ -135,10 +117,7 @@ func (r *Realm) parseScript(name string, src wtf8.String) (*Script, error) {
 // BindScript returns the script of u for r: the script that [Realm.ParseScript] of r returns
 // for the name and source text of u.
 func (r *Realm) BindScript(u *UnboundScript) *Script {
-	var es *engine.Script
-	r.in(func() {
-		es = r.vm.e.BindScript(u.s)
-	})
+	es := r.context().BindScript(u.s)
 	return &Script{
 		vm: r.vm,
 		s:  es,
@@ -150,11 +129,7 @@ func (r *Realm) BindScript(u *UnboundScript) *Script {
 // The error is a [*SyntaxError] when src is not a valid module.
 func (r *Realm) ParseModule(name, src string) (*Module, error) {
 	m := r.newModule(name)
-	var em *engine.Module
-	var err error
-	r.in(func() {
-		em, err = r.vm.e.ParseModule(name, src, m)
-	})
+	em, err := r.context().ParseModule(name, src, m)
 	if err != nil {
 		return nil, publicError(err)
 	}
@@ -167,11 +142,7 @@ func (r *Realm) ParseModule(name, src string) (*Module, error) {
 // SyntaxError when src is not valid JSON.
 func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 	m := r.newModule(name)
-	var em *engine.Module
-	var err error
-	r.in(func() {
-		em, err = r.vm.e.ParseJSONModule(src, m)
-	})
+	em, err := r.context().ParseJSONModule(src, m)
 	if err != nil {
 		return nil, publicError(err)
 	}
@@ -183,9 +154,7 @@ func (r *Realm) ParseJSONModule(name, src string) (*Module, error) {
 // It panics if v belongs to another VM.
 func (r *Realm) NewSyntheticModule(name string, v Value) *Module {
 	m := r.newModule(name)
-	r.in(func() {
-		m.m = r.vm.e.CreateDefaultExportSyntheticModule(r.vm.acceptValue(v), m)
-	})
+	m.m = r.context().CreateDefaultExportSyntheticModule(r.vm.acceptValue(v), m)
 	return m
 }
 

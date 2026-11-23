@@ -11,7 +11,7 @@ import (
 )
 
 func TestStringFromCodeUnits(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, tc := range []struct {
 		name  string
 		units []uint16
@@ -34,7 +34,7 @@ func TestStringFromCodeUnits(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := vm.StringFromCodeUnits(tc.units).Str(); got != tc.want {
+			if got := cx.StringFromCodeUnits(tc.units).Str(); got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
@@ -42,9 +42,9 @@ func TestStringFromCodeUnits(t *testing.T) {
 }
 
 func TestCodePointsToStringJoinsSurrogates(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	points := []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 0xd83d, 0xde00}
-	if got, want := vm.CodePointsToString(points).Str(), wtf8.String("abcdefg😀"); got != want {
+	if got, want := cx.CodePointsToString(points).Str(), wtf8.String("abcdefg😀"); got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

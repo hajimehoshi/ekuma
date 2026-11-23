@@ -26,27 +26,27 @@ func (s *proxyState) allowsGlobalAccess(group *Object) bool {
 }
 
 // CanAccessReceiver reports whether a non-strict host call may use receiver in the current realm.
-func (vm *VM) CanAccessReceiver(receiver Value) bool {
+func (cx *ExecutionContext) CanAccessReceiver(receiver Value) bool {
 	if receiver.IsNullish() {
-		receiver = ObjectValue(vm.curRealm.globalThis)
+		receiver = ObjectValue(cx.realm.globalThis)
 	}
 	if !receiver.IsObject() || receiver.o.class != classProxy {
 		return true
 	}
 	st := receiver.o.extState().(*proxyState)
-	return !st.isGlobal() || st.allowsGlobalAccess(vm.curRealm.globalProxyHandler)
+	return !st.isGlobal() || st.allowsGlobalAccess(cx.realm.globalProxyHandler)
 }
 
 // ProxyCreate implements ProxyCreate.
-func (vm *VM) ProxyCreate(target, handler Value) *Object {
+func (cx *ExecutionContext) ProxyCreate(target, handler Value) *Object {
 	if !target.IsObject() || !handler.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "cannot create proxy with a non-object as target or handler")
+		cx.ThrowTypeError("cannot create proxy with a non-object as target or handler")
 	}
 	p := (&propertyObject{
 		kind:  kindObject,
 		class: classProxy,
 		flags: objExotic,
-		shape: vm.curRealm.shapes.proxy,
+		shape: cx.realm.shapes.proxy,
 		ext: &proxyState{
 			target:  target.o,
 			handler: handler.o,
@@ -56,14 +56,14 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 		// The native function is the [[Call]] and [[Construct]] of the proxy, so that every way
 		// of calling a function reaches them.
 		p.fn = &function{
-			native: func(vm *VM, this Value, args []Value) Value {
-				if nt := vm.GetNewTarget(); nt != nil {
-					return Value{o: vm.proxyConstruct(p, args, nt)}
+			native: func(cx *ExecutionContext, this Value, args []Value) Value {
+				if nt := cx.GetNewTarget(); nt != nil {
+					return Value{o: cx.proxyConstruct(p, args, nt)}
 				}
-				return vm.proxyCall(p, this, args)
+				return cx.proxyCall(p, this, args)
 			},
 			materialized: true,
-			constructor:  vm.IsConstructor(target.o),
+			constructor:  cx.IsConstructor(target.o),
 		}
 	}
 	return p
@@ -74,56 +74,57 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 // the realm joins the previous realm's group after detachment, or the entered
 // realm's group when previous is nil.
 // Property operations on globals outside the group use foreignView.
-func (vm *VM) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAccess bool) Value {
+func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAccess bool) Value {
 	var proxy, handler *Object
 	if previous != nil {
-		vm.InRealm(previous, func() {
-			vm.DetachGlobalProxy()
-			proxy = vm.curRealm.globalThis
+		previous.Context().Run(func() {
+			cx := previous.Context()
+			cx.DetachGlobalProxy()
+			proxy = cx.realm.globalThis
 			if shareAccess {
-				handler = vm.curRealm.globalProxyHandler
+				handler = cx.realm.globalProxyHandler
 			}
 		})
-	} else if shareAccess && vm.enteredRealm != nil {
-		handler = vm.enteredRealm.globalProxyHandler
+	} else if shareAccess && cx.enteredRealm != nil {
+		handler = cx.enteredRealm.globalProxyHandler
 	}
 	if handler == nil {
-		handler = vm.defaultGlobalHandler()
+		handler = cx.defaultGlobalHandler()
 	}
-	vm.trackJobRealms = true
-	vm.curRealm.globalProxyHandler = handler
-	vm.curRealm.foreignGlobalView = foreignView
+	cx.trackJobRealms = true
+	cx.realm.globalProxyHandler = handler
+	cx.realm.foreignGlobalView = foreignView
 	if proxy == nil {
-		proxy = vm.ProxyCreate(ObjectValue(vm.curRealm.global), ObjectValue(handler))
+		proxy = cx.ProxyCreate(ObjectValue(cx.realm.global), ObjectValue(handler))
 		// A global proxy can outlive its first realm and acquire a new target on navigation.
-		proxy.shape = vm.newShape(nil, nil)
+		proxy.shape = cx.newShape(nil, nil)
 	} else {
 		state := proxy.extState().(*proxyState)
-		state.target = vm.curRealm.global
+		state.target = cx.realm.global
 		state.handler = handler
 	}
-	vm.curRealm.globalThis = proxy
-	vm.Define(vm.curRealm.global, vm.Intern("globalThis"), ObjectValue(proxy), FlagsHidden)
+	cx.realm.globalThis = proxy
+	cx.Define(cx.realm.global, cx.Intern("globalThis"), ObjectValue(proxy), FlagsHidden)
 	return ObjectValue(proxy)
 }
 
-func (vm *VM) defaultGlobalHandler() *Object {
-	if vm.curRealm.defaultGlobalProxyHandler == nil {
-		h := vm.NewObject(nil)
+func (cx *ExecutionContext) defaultGlobalHandler() *Object {
+	if cx.realm.defaultGlobalProxyHandler == nil {
+		h := cx.NewObject(nil)
 		h.class = classGlobalProxyHandler
-		vm.curRealm.defaultGlobalProxyHandler = h
+		cx.realm.defaultGlobalProxyHandler = h
 	}
-	return vm.curRealm.defaultGlobalProxyHandler
+	return cx.realm.defaultGlobalProxyHandler
 }
 
 // DetachGlobalProxy disconnects the current realm's installed global proxy.
-func (vm *VM) DetachGlobalProxy() {
-	st := vm.curRealm.globalThis.extState().(*proxyState)
-	if st.target != vm.curRealm.global {
+func (cx *ExecutionContext) DetachGlobalProxy() {
+	st := cx.realm.globalThis.extState().(*proxyState)
+	if st.target != cx.realm.global {
 		return
 	}
 	st.target = nil
-	vm.curRealm.globalProxyHandler = vm.defaultGlobalHandler()
+	cx.realm.globalProxyHandler = cx.defaultGlobalHandler()
 }
 
 func (vm *VM) hasDetachedGlobal(r *Realm) bool {
@@ -138,12 +139,12 @@ func RevokeProxy(p *Object) {
 }
 
 // IsArray implements IsArray.
-func (vm *VM) IsArray(v Value) bool {
+func (cx *ExecutionContext) IsArray(v Value) bool {
 	o := v.o
 	for o != nil && o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.handler == nil {
-			vm.throwRevoked(vm.CurrentRealm(), "IsArray")
+			cx.throwRevoked("IsArray")
 		}
 		o = st.target
 	}
@@ -160,16 +161,16 @@ func IsArrayPlain(v Value) (is, ok bool) {
 }
 
 // GetFunctionRealm implements GetFunctionRealm.
-func (vm *VM) GetFunctionRealm(f *Object) *Realm {
-	if r := vm.functionRealmOrNil(f); r != nil {
+func (cx *ExecutionContext) GetFunctionRealm(f *Object) *Realm {
+	if r := cx.functionRealmOrNil(f); r != nil {
 		return r
 	}
-	vm.throwRevoked(vm.CurrentRealm(), "GetFunctionRealm")
+	cx.throwRevoked("GetFunctionRealm")
 	return nil
 }
 
 // functionRealmOrNil returns the function's realm, or nil for a revoked proxy.
-func (vm *VM) functionRealmOrNil(f *Object) *Realm {
+func (cx *ExecutionContext) functionRealmOrNil(f *Object) *Realm {
 	for {
 		switch {
 		case f.fn != nil && f.fn.bound != nil:
@@ -185,13 +186,13 @@ func (vm *VM) functionRealmOrNil(f *Object) *Realm {
 		case f.fn != nil && f.fn.info != nil:
 			return f.fn.info.realm
 		default:
-			return vm.curRealm
+			return cx.realm
 		}
 	}
 }
 
-func (vm *VM) throwRevoked(errorRealm *Realm, op string) {
-	vm.ThrowTypeError(errorRealm, "cannot perform '"+op+"' on a proxy that has been revoked")
+func (cx *ExecutionContext) throwRevoked(op string) {
+	cx.ThrowTypeError("cannot perform '" + op + "' on a proxy that has been revoked")
 }
 
 // proxyEnter starts an internal method of the proxy o and returns its target and handler.
@@ -200,25 +201,25 @@ func (vm *VM) throwRevoked(errorRealm *Realm, op string) {
 //
 // The internal methods of a proxy whose target is a proxy call each other without running
 // any JavaScript, so they count as nested interpreter loops and poll for interruptions.
-func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
+func (cx *ExecutionContext) proxyEnter(o *Object, op string) (target, handler *Object) {
 	st := o.extState().(*proxyState)
 	if st.handler == nil {
-		vm.throwRevoked(vm.CurrentRealm(), op)
+		cx.throwRevoked(op)
 	}
-	if vm.interrupt.Load() {
-		vm.Poll()
+	if cx.interrupt.Load() {
+		cx.Poll()
 	}
-	if vm.depth >= maxDepth {
-		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
+	if cx.depth >= maxDepth {
+		cx.ThrowRangeError("maximum call stack size exceeded")
 	}
 	target = st.target
-	if st.isGlobal() && !st.allowsGlobalAccess(vm.curRealm.globalProxyHandler) {
-		target = vm.curRealm.foreignGlobalView
+	if st.isGlobal() && !st.allowsGlobalAccess(cx.realm.globalProxyHandler) {
+		target = cx.realm.foreignGlobalView
 		if target == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "no access")
+			cx.ThrowTypeError("no access")
 		}
 	}
-	vm.depth++
+	cx.depth++
 	return target, st.handler
 }
 
@@ -227,292 +228,292 @@ func (vm *VM) proxyLeave() {
 }
 
 // proxyTrap returns the trap key of handler, or nil when the operation forwards to the target.
-func (vm *VM) proxyTrap(handler *Object, key CommonKey) *Object {
-	return vm.GetMethod(Value{o: handler}, vm.Key(key))
+func (cx *ExecutionContext) proxyTrap(handler *Object, key CommonKey) *Object {
+	return cx.GetMethod(Value{o: handler}, cx.Key(key))
 }
 
 // callTrap calls trap with handler as this.
-func (vm *VM) callTrap(trap, handler *Object, args ...Value) Value {
-	return vm.callOnStack(trap, Value{o: handler}, args)
+func (cx *ExecutionContext) callTrap(trap, handler *Object, args ...Value) Value {
+	return cx.callOnStack(trap, Value{o: handler}, args)
 }
 
-func (vm *VM) throwTrapError(errorRealm *Realm, trap, msg string) {
-	vm.ThrowTypeError(errorRealm, "'"+trap+"' on proxy: "+msg)
+func (cx *ExecutionContext) throwTrapError(trap, msg string) {
+	cx.ThrowTypeError("'" + trap + "' on proxy: " + msg)
 }
 
 // proxyGetPrototypeOf implements [[GetPrototypeOf]] of a proxy.
-func (vm *VM) proxyGetPrototypeOf(o *Object) *Object {
-	target, handler := vm.proxyEnter(o, "getPrototypeOf")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyGetPrototypeOf)
+func (cx *ExecutionContext) proxyGetPrototypeOf(o *Object) *Object {
+	target, handler := cx.proxyEnter(o, "getPrototypeOf")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyGetPrototypeOf)
 	if trap == nil {
-		return vm.ProtoOf(target)
+		return cx.ProtoOf(target)
 	}
-	r := vm.callTrap(trap, handler, Value{o: target})
+	r := cx.callTrap(trap, handler, Value{o: target})
 	if !r.IsObject() && !r.IsNull() {
-		vm.throwTrapError(vm.CurrentRealm(), "getPrototypeOf", "trap returned neither object nor null")
+		cx.throwTrapError("getPrototypeOf", "trap returned neither object nor null")
 	}
 	var proto *Object
 	if r.IsObject() {
 		proto = r.o
 	}
-	if vm.IsExtensible(target) {
+	if cx.IsExtensible(target) {
 		return proto
 	}
-	if vm.ProtoOf(target) != proto {
-		vm.throwTrapError(vm.CurrentRealm(), "getPrototypeOf", "proxy target is non-extensible but the trap did not return its actual prototype")
+	if cx.ProtoOf(target) != proto {
+		cx.throwTrapError("getPrototypeOf", "proxy target is non-extensible but the trap did not return its actual prototype")
 	}
 	return proto
 }
 
 // proxySetPrototypeOf implements [[SetPrototypeOf]] of a proxy.
-func (vm *VM) proxySetPrototypeOf(o *Object, proto *Object) bool {
-	target, handler := vm.proxyEnter(o, "setPrototypeOf")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keySetPrototypeOf)
+func (cx *ExecutionContext) proxySetPrototypeOf(o *Object, proto *Object) bool {
+	target, handler := cx.proxyEnter(o, "setPrototypeOf")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keySetPrototypeOf)
 	if trap == nil {
-		return vm.SetPrototypeOf(target, proto)
+		return cx.SetPrototypeOf(target, proto)
 	}
 	v := Null
 	if proto != nil {
 		v = Value{o: proto}
 	}
-	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, v)) {
+	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, v)) {
 		return false
 	}
-	if vm.IsExtensible(target) {
+	if cx.IsExtensible(target) {
 		return true
 	}
-	if vm.ProtoOf(target) != proto {
-		vm.throwTrapError(vm.CurrentRealm(), "setPrototypeOf", "trap returned truish for setting a new prototype on the non-extensible proxy target")
+	if cx.ProtoOf(target) != proto {
+		cx.throwTrapError("setPrototypeOf", "trap returned truish for setting a new prototype on the non-extensible proxy target")
 	}
 	return true
 }
 
 // proxyIsExtensible implements [[IsExtensible]] of a proxy.
-func (vm *VM) proxyIsExtensible(o *Object) bool {
-	target, handler := vm.proxyEnter(o, "isExtensible")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyIsExtensible)
+func (cx *ExecutionContext) proxyIsExtensible(o *Object) bool {
+	target, handler := cx.proxyEnter(o, "isExtensible")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyIsExtensible)
 	if trap == nil {
-		return vm.IsExtensible(target)
+		return cx.IsExtensible(target)
 	}
-	r := ToBoolean(vm.callTrap(trap, handler, Value{o: target}))
-	if r != vm.IsExtensible(target) {
-		vm.throwTrapError(vm.CurrentRealm(), "isExtensible", "trap result does not reflect extensibility of proxy target")
+	r := ToBoolean(cx.callTrap(trap, handler, Value{o: target}))
+	if r != cx.IsExtensible(target) {
+		cx.throwTrapError("isExtensible", "trap result does not reflect extensibility of proxy target")
 	}
 	return r
 }
 
 // proxyPreventExtensions implements [[PreventExtensions]] of a proxy.
-func (vm *VM) proxyPreventExtensions(o *Object) bool {
-	target, handler := vm.proxyEnter(o, "preventExtensions")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyPreventExtensions)
+func (cx *ExecutionContext) proxyPreventExtensions(o *Object) bool {
+	target, handler := cx.proxyEnter(o, "preventExtensions")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyPreventExtensions)
 	if trap == nil {
-		return vm.PreventExtensions(target)
+		return cx.PreventExtensions(target)
 	}
-	r := ToBoolean(vm.callTrap(trap, handler, Value{o: target}))
-	if r && vm.IsExtensible(target) {
-		vm.throwTrapError(vm.CurrentRealm(), "preventExtensions", "trap returned truish but the proxy target is extensible")
+	r := ToBoolean(cx.callTrap(trap, handler, Value{o: target}))
+	if r && cx.IsExtensible(target) {
+		cx.throwTrapError("preventExtensions", "trap returned truish but the proxy target is extensible")
 	}
 	return r
 }
 
 // proxyGetOwnProperty implements [[GetOwnProperty]] of a proxy.
-func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
-	k = vm.storedKey(k)
-	target, handler := vm.proxyEnter(o, "getOwnPropertyDescriptor")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyGetOwnPropertyDescriptor)
+func (cx *ExecutionContext) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
+	k = cx.storedKey(k)
+	target, handler := cx.proxyEnter(o, "getOwnPropertyDescriptor")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyGetOwnPropertyDescriptor)
 	if trap == nil {
-		return vm.GetOwnProperty(target, k)
+		return cx.GetOwnProperty(target, k)
 	}
 	const name = "getOwnPropertyDescriptor"
-	r := vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))
+	r := cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k))
 	if !r.IsObject() && !r.IsUndefined() {
-		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned neither object nor undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+		cx.throwTrapError(name, "trap returned neither object nor undefined for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"'")
 	}
-	targetDesc, targetHas := vm.GetOwnProperty(target, k)
+	targetDesc, targetHas := cx.GetOwnProperty(target, k)
 	if r.IsUndefined() {
 		if !targetHas {
 			return PropDesc{}, false
 		}
 		if targetDesc.flags&FlagConfigurable == 0 {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable in the proxy target")
+			cx.throwTrapError(name, "trap returned undefined for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable in the proxy target")
 		}
-		if !vm.IsExtensible(target) {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the non-extensible proxy target")
+		if !cx.IsExtensible(target) {
+			cx.throwTrapError(name, "trap returned undefined for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the non-extensible proxy target")
 		}
 		return PropDesc{}, false
 	}
-	extensible := vm.IsExtensible(target)
-	d := vm.ToPropertyDescriptor(r)
+	extensible := cx.IsExtensible(target)
+	d := cx.ToPropertyDescriptor(r)
 	d.complete()
 	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, targetHas) {
-		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned descriptor for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
+		cx.throwTrapError(name, "trap returned descriptor for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
 	if d.flags&FlagConfigurable == 0 {
 		if !targetHas || targetDesc.flags&FlagConfigurable != 0 {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
+			cx.throwTrapError(name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
 		}
 		if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 && targetDesc.flags&FlagWritable != 0 {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable, writable in the proxy target")
+			cx.throwTrapError(name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable, writable in the proxy target")
 		}
 	}
 	return d, true
 }
 
 // proxyDefineOwnProperty implements [[DefineOwnProperty]] of a proxy.
-func (vm *VM) proxyDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
-	target, handler := vm.proxyEnter(o, "defineProperty")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyDefineProperty)
+func (cx *ExecutionContext) proxyDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
+	target, handler := cx.proxyEnter(o, "defineProperty")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyDefineProperty)
 	if trap == nil {
-		return vm.defineOwnProperty(target, k, d)
+		return cx.defineOwnProperty(target, k, d)
 	}
 	const name = "defineProperty"
-	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), vm.FromPropertyDescriptor(d))) {
+	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), cx.FromPropertyDescriptor(d))) {
 		return false
 	}
-	targetDesc, targetHas := vm.GetOwnProperty(target, k)
-	extensible := vm.IsExtensible(target)
+	targetDesc, targetHas := cx.GetOwnProperty(target, k)
+	extensible := cx.IsExtensible(target)
 	settingConfigFalse := d.has&HasConfigurable != 0 && d.flags&FlagConfigurable == 0
 	if !targetHas {
 		if !extensible {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' to the non-extensible proxy target")
+			cx.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' to the non-extensible proxy target")
 		}
 		if settingConfigFalse {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-existent in the proxy target")
+			cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-existent in the proxy target")
 		}
 		return true
 	}
 	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, true) {
-		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
+		cx.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
 	if settingConfigFalse && targetDesc.flags&FlagConfigurable != 0 {
-		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is configurable in the proxy target")
+		cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is configurable in the proxy target")
 	}
 	if targetDesc.flags&(FlagAccessor|FlagConfigurable|FlagWritable) == FlagWritable && d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
-		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
+		cx.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
 	}
 	return true
 }
 
 // proxyHas implements [[HasProperty]] of a proxy.
-func (vm *VM) proxyHas(o *Object, k PropKey) bool {
-	k = vm.storedKey(k)
-	target, handler := vm.proxyEnter(o, "has")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyHas)
+func (cx *ExecutionContext) proxyHas(o *Object, k PropKey) bool {
+	k = cx.storedKey(k)
+	target, handler := cx.proxyEnter(o, "has")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyHas)
 	if trap == nil {
-		return vm.HasProperty(target, k)
+		return cx.HasProperty(target, k)
 	}
-	if ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))) {
+	if ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k))) {
 		return true
 	}
-	if targetDesc, ok := vm.GetOwnProperty(target, k); ok {
+	if targetDesc, ok := cx.GetOwnProperty(target, k); ok {
 		if targetDesc.flags&FlagConfigurable == 0 {
-			vm.throwTrapError(vm.CurrentRealm(), "has", "trap returned falsish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as non-configurable")
+			cx.throwTrapError("has", "trap returned falsish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as non-configurable")
 		}
-		if !vm.IsExtensible(target) {
-			vm.throwTrapError(vm.CurrentRealm(), "has", "trap returned falsish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' but the proxy target is not extensible")
+		if !cx.IsExtensible(target) {
+			cx.throwTrapError("has", "trap returned falsish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' but the proxy target is not extensible")
 		}
 	}
 	return false
 }
 
 // proxyGet implements [[Get]] of a proxy.
-func (vm *VM) proxyGet(o *Object, k PropKey, receiver Value) Value {
-	k = vm.storedKey(k)
-	target, handler := vm.proxyEnter(o, "get")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, KeyGet)
+func (cx *ExecutionContext) proxyGet(o *Object, k PropKey, receiver Value) Value {
+	k = cx.storedKey(k)
+	target, handler := cx.proxyEnter(o, "get")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, KeyGet)
 	if trap == nil {
-		return vm.getProp(target, k, receiver)
+		return cx.getProp(target, k, receiver)
 	}
-	r := vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), receiver)
-	if targetDesc, ok := vm.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
+	r := cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), receiver)
+	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
 		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(r, targetDesc.value) {
-			vm.throwTrapError(vm.CurrentRealm(), "get", "property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
+			cx.throwTrapError("get", "property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
 		}
 		if targetDesc.flags&FlagAccessor != 0 && targetDesc.getter == nil && !r.IsUndefined() {
-			vm.throwTrapError(vm.CurrentRealm(), "get", "property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is a non-configurable accessor property on the proxy target and does not have a getter function, but the trap did not return 'undefined'")
+			cx.throwTrapError("get", "property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' is a non-configurable accessor property on the proxy target and does not have a getter function, but the trap did not return 'undefined'")
 		}
 	}
 	return r
 }
 
 // proxySet implements [[Set]] of a proxy. It reports false when the store was refused.
-func (vm *VM) proxySet(o *Object, k PropKey, val, receiver Value) bool {
-	target, handler := vm.proxyEnter(o, "set")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, KeySet)
+func (cx *ExecutionContext) proxySet(o *Object, k PropKey, val, receiver Value) bool {
+	target, handler := cx.proxyEnter(o, "set")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, KeySet)
 	if trap == nil {
-		return vm.setProp(target, k, val, receiver)
+		return cx.setProp(target, k, val, receiver)
 	}
-	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), val, receiver)) {
+	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k), val, receiver)) {
 		return false
 	}
-	if targetDesc, ok := vm.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
+	if targetDesc, ok := cx.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
 		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(val, targetDesc.value) {
-			vm.throwTrapError(vm.CurrentRealm(), "set", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
+			cx.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
 		}
 		if targetDesc.flags&FlagAccessor != 0 && targetDesc.setter == nil {
-			vm.throwTrapError(vm.CurrentRealm(), "set", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable accessor property without a setter")
+			cx.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable accessor property without a setter")
 		}
 	}
 	return true
 }
 
 // proxyDelete implements [[Delete]] of a proxy. It reports false when the property is not deleted.
-func (vm *VM) proxyDelete(o *Object, k PropKey) bool {
-	target, handler := vm.proxyEnter(o, "deleteProperty")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyDeleteProperty)
+func (cx *ExecutionContext) proxyDelete(o *Object, k PropKey) bool {
+	target, handler := cx.proxyEnter(o, "deleteProperty")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyDeleteProperty)
 	if trap == nil {
-		return vm.DeleteProp(target, k)
+		return cx.DeleteProp(target, k)
 	}
-	if !ToBoolean(vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))) {
+	if !ToBoolean(cx.callTrap(trap, handler, Value{o: target}, cx.KeyValue(k))) {
 		return false
 	}
-	targetDesc, ok := vm.GetOwnProperty(target, k)
+	targetDesc, ok := cx.GetOwnProperty(target, k)
 	if !ok {
 		return true
 	}
 	if targetDesc.flags&FlagConfigurable == 0 {
-		vm.throwTrapError(vm.CurrentRealm(), "deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable in the proxy target")
+		cx.throwTrapError("deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' which is non-configurable in the proxy target")
 	}
-	if !vm.IsExtensible(target) {
-		vm.throwTrapError(vm.CurrentRealm(), "deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' but the proxy target is non-extensible")
+	if !cx.IsExtensible(target) {
+		cx.throwTrapError("deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(cx.KeyString(k))+"' but the proxy target is non-extensible")
 	}
 	return true
 }
 
 // proxyOwnKeys implements [[OwnPropertyKeys]] of a proxy.
-func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
-	target, handler := vm.proxyEnter(o, "ownKeys")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyOwnKeys)
+func (cx *ExecutionContext) proxyOwnKeys(o *Object) []PropKey {
+	target, handler := cx.proxyEnter(o, "ownKeys")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyOwnKeys)
 	if trap == nil {
-		return vm.OwnKeys(target)
+		return cx.OwnKeys(target)
 	}
 	const name = "ownKeys"
-	keys := vm.propertyKeyList(vm.callTrap(trap, handler, Value{o: target}))
+	keys := cx.propertyKeyList(cx.callTrap(trap, handler, Value{o: target}))
 	var p Pacer
 	unchecked := make(map[PropKey]struct{}, len(keys))
 	for _, k := range keys {
-		p.Step(vm)
+		p.Step(cx)
 		if _, dup := unchecked[k]; dup {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned duplicate entries")
+			cx.throwTrapError(name, "trap returned duplicate entries")
 		}
 		unchecked[k] = struct{}{}
 	}
-	extensible := vm.IsExtensible(target)
+	extensible := cx.IsExtensible(target)
 	var configurable, nonconfigurable []PropKey
-	for _, k := range vm.OwnKeys(target) {
-		p.Step(vm)
-		if d, ok := vm.GetOwnProperty(target, k); ok && d.flags&FlagConfigurable == 0 {
+	for _, k := range cx.OwnKeys(target) {
+		p.Step(cx)
+		if d, ok := cx.GetOwnProperty(target, k); ok && d.flags&FlagConfigurable == 0 {
 			nonconfigurable = append(nonconfigurable, k)
 		} else {
 			configurable = append(configurable, k)
@@ -522,9 +523,9 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 		return keys
 	}
 	for _, k := range nonconfigurable {
-		p.Step(vm)
+		p.Step(cx)
 		if _, ok := unchecked[k]; !ok {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap result did not include '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+			cx.throwTrapError(name, "trap result did not include '"+wtf8.ToValidUTF8(cx.KeyString(k))+"'")
 		}
 		delete(unchecked, k)
 	}
@@ -532,64 +533,64 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 		return keys
 	}
 	for _, k := range configurable {
-		p.Step(vm)
+		p.Step(cx)
 		if _, ok := unchecked[k]; !ok {
-			vm.throwTrapError(vm.CurrentRealm(), name, "trap result did not include '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+			cx.throwTrapError(name, "trap result did not include '"+wtf8.ToValidUTF8(cx.KeyString(k))+"'")
 		}
 		delete(unchecked, k)
 	}
 	if len(unchecked) != 0 {
-		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned extra keys but proxy target is non-extensible")
+		cx.throwTrapError(name, "trap returned extra keys but proxy target is non-extensible")
 	}
 	return keys
 }
 
 // propertyKeyList implements CreateListFromArrayLike(v, property-key).
-func (vm *VM) propertyKeyList(v Value) []PropKey {
+func (cx *ExecutionContext) propertyKeyList(v Value) []PropKey {
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "CreateListFromArrayLike called on non-object")
+		cx.ThrowTypeError("CreateListFromArrayLike called on non-object")
 	}
-	n := vm.LengthOfArrayLike(v.o)
+	n := cx.LengthOfArrayLike(v.o)
 	var keys []PropKey
 	for i := range n {
-		vm.PollAt(i)
+		cx.PollAt(i)
 		k := PropKey{idx: uint32(i)}
 		if i > MaxArrayIndex {
-			k = vm.KeyOfString(wtf8.String(strconv.FormatInt(i, 10)))
+			k = cx.KeyOfString(wtf8.String(strconv.FormatInt(i, 10)))
 		}
-		e := vm.getProp(v.o, k, v)
+		e := cx.getProp(v.o, k, v)
 		if !e.IsString() && !e.IsSymbol() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(e)+" is not a valid property name")
+			cx.ThrowTypeError(cx.DisplayString(e) + " is not a valid property name")
 		}
-		keys = append(keys, vm.ToPropertyKey(e))
+		keys = append(keys, cx.ToPropertyKey(e))
 	}
 	return keys
 }
 
 // proxyCall implements [[Call]] of a proxy.
-func (vm *VM) proxyCall(o *Object, this Value, args []Value) Value {
-	target, handler := vm.proxyEnter(o, "apply")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyApply)
+func (cx *ExecutionContext) proxyCall(o *Object, this Value, args []Value) Value {
+	target, handler := cx.proxyEnter(o, "apply")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyApply)
 	if trap == nil {
-		return vm.Call(target, this, args...)
+		return cx.Call(target, this, args...)
 	}
-	argArray := vm.NewArray(append([]Value(nil), args...))
-	return vm.callTrap(trap, handler, Value{o: target}, this, Value{o: argArray})
+	argArray := cx.NewArray(append([]Value(nil), args...))
+	return cx.callTrap(trap, handler, Value{o: target}, this, Value{o: argArray})
 }
 
 // proxyConstruct implements [[Construct]] of a proxy.
-func (vm *VM) proxyConstruct(o *Object, args []Value, newTarget *Object) *Object {
-	target, handler := vm.proxyEnter(o, "construct")
-	defer vm.proxyLeave()
-	trap := vm.proxyTrap(handler, keyConstruct)
+func (cx *ExecutionContext) proxyConstruct(o *Object, args []Value, newTarget *Object) *Object {
+	target, handler := cx.proxyEnter(o, "construct")
+	defer cx.proxyLeave()
+	trap := cx.proxyTrap(handler, keyConstruct)
 	if trap == nil {
-		return vm.Construct(target, args, newTarget)
+		return cx.Construct(target, args, newTarget)
 	}
-	argArray := vm.NewArray(append([]Value(nil), args...))
-	r := vm.callTrap(trap, handler, Value{o: target}, Value{o: argArray}, Value{o: newTarget})
+	argArray := cx.NewArray(append([]Value(nil), args...))
+	r := cx.callTrap(trap, handler, Value{o: target}, Value{o: argArray}, Value{o: newTarget})
 	if !r.IsObject() {
-		vm.throwTrapError(vm.CurrentRealm(), "construct", "trap returned non-object ('"+vm.DisplayString(r)+"')")
+		cx.throwTrapError("construct", "trap returned non-object ('"+cx.DisplayString(r)+"')")
 	}
 	return r.o
 }
@@ -659,18 +660,18 @@ func (d *PropDesc) complete() {
 }
 
 // ToPropertyDescriptor implements ToPropertyDescriptor.
-func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
+func (cx *ExecutionContext) ToPropertyDescriptor(v Value) PropDesc {
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "property description must be an object: "+vm.DisplayString(v))
+		cx.ThrowTypeError("property description must be an object: " + cx.DisplayString(v))
 	}
 	o := v.o
 	var d PropDesc
 	field := func(key CommonKey) (Value, bool) {
-		k := PropKey{key: vm.Key(key)}
-		if !vm.HasProperty(o, k) {
+		k := PropKey{key: cx.Key(key)}
+		if !cx.HasProperty(o, k) {
 			return Undefined, false
 		}
-		return vm.getProp(o, k, v), true
+		return cx.getProp(o, k, v), true
 	}
 	if x, ok := field(KeyEnumerable); ok {
 		d.SetEnumerable(ToBoolean(x))
@@ -686,7 +687,7 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 	}
 	if x, ok := field(KeyGet); ok {
 		if !x.IsUndefined() && !x.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "getter must be a function: "+vm.DisplayString(x))
+			cx.ThrowTypeError("getter must be a function: " + cx.DisplayString(x))
 		}
 		var f *Object
 		if x.IsObject() {
@@ -696,7 +697,7 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 	}
 	if x, ok := field(KeySet); ok {
 		if !x.IsUndefined() && !x.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "setter must be a function: "+vm.DisplayString(x))
+			cx.ThrowTypeError("setter must be a function: " + cx.DisplayString(x))
 		}
 		var f *Object
 		if x.IsObject() {
@@ -705,16 +706,16 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 		d.SetSetter(f)
 	}
 	if d.IsAccessor() && d.IsData() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
+		cx.ThrowTypeError("invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
 	}
 	return d
 }
 
 // FromPropertyDescriptor implements FromPropertyDescriptor for a descriptor that is not undefined.
-func (vm *VM) FromPropertyDescriptor(d PropDesc) Value {
+func (cx *ExecutionContext) FromPropertyDescriptor(d PropDesc) Value {
 	o, slots := newObjectWithStorage(bits.OnesCount8(d.has))
 	o.kind = kindObject
-	o.shape = vm.curRealm.shapes.object
+	o.shape = cx.realm.shapes.object
 	o.slots = slots[:0]
 	fn := func(f *Object) Value {
 		if f == nil {
@@ -723,22 +724,22 @@ func (vm *VM) FromPropertyDescriptor(d PropDesc) Value {
 		return Value{o: f}
 	}
 	if d.has&HasValue != 0 {
-		vm.add(o, vm.Key(KeyValue), d.value, FlagsData)
+		cx.add(o, cx.Key(KeyValue), d.value, FlagsData)
 	}
 	if d.has&HasWritable != 0 {
-		vm.add(o, vm.Key(KeyWritable), Bool(d.flags&FlagWritable != 0), FlagsData)
+		cx.add(o, cx.Key(KeyWritable), Bool(d.flags&FlagWritable != 0), FlagsData)
 	}
 	if d.has&HasGet != 0 {
-		vm.add(o, vm.Key(KeyGet), fn(d.getter), FlagsData)
+		cx.add(o, cx.Key(KeyGet), fn(d.getter), FlagsData)
 	}
 	if d.has&HasSet != 0 {
-		vm.add(o, vm.Key(KeySet), fn(d.setter), FlagsData)
+		cx.add(o, cx.Key(KeySet), fn(d.setter), FlagsData)
 	}
 	if d.has&HasEnumerable != 0 {
-		vm.add(o, vm.Key(KeyEnumerable), Bool(d.flags&FlagEnumerable != 0), FlagsData)
+		cx.add(o, cx.Key(KeyEnumerable), Bool(d.flags&FlagEnumerable != 0), FlagsData)
 	}
 	if d.has&HasConfigurable != 0 {
-		vm.add(o, vm.Key(KeyConfigurable), Bool(d.flags&FlagConfigurable != 0), FlagsData)
+		cx.add(o, cx.Key(KeyConfigurable), Bool(d.flags&FlagConfigurable != 0), FlagsData)
 	}
 	return Value{o: o}
 }

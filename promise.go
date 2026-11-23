@@ -52,16 +52,12 @@ func (r *PromiseResolver) Reject(ctx context.Context, v any) error {
 func (r *PromiseResolver) settle(ctx context.Context, x any, reject bool) error {
 	vm := r.realm.vm
 	_, err := vm.run(ctx, func() (engine.Value, error) {
-		var err error
-		r.realm.in(func() {
-			v := vm.valueOf(r.realm, x)
-			if reject {
-				err = vm.e.HostReject(r.c, v)
-				return
-			}
-			err = vm.e.HostResolve(r.c, v)
-		})
-		return engine.Undefined, err
+		cx := r.realm.context()
+		v := vm.valueOf(cx, x)
+		if reject {
+			return engine.Undefined, cx.HostReject(r.c, v)
+		}
+		return engine.Undefined, cx.HostResolve(r.c, v)
 	})
 	return err
 }

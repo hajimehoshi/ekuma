@@ -24,10 +24,10 @@ const (
 )
 
 // thisDate returns the [[DateValue]] of this, or throws a TypeError naming the method.
-func thisDate(vm *engine.VM, this engine.Value, name string) float64 {
+func thisDate(cx *engine.ExecutionContext, this engine.Value, name string) float64 {
 	tv, ok := engine.ThisTimeValue(this)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Date.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
+		cx.ThrowTypeError("Date.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 	}
 	return tv
 }
@@ -53,74 +53,93 @@ func makeDate(c *[dateComponentCount]float64) float64 {
 }
 
 // dateStringOffset returns the local UTC offset and the display name for Date strings.
-func dateStringOffset(vm *engine.VM, tz datetime.TimeZone, tv float64) (float64, string) {
+func dateStringOffset(cx *engine.ExecutionContext, tz datetime.TimeZone, tv float64) (float64, string) {
 	offset, name := tz.Offset(tv)
-	if ext, ok := vm.RealmExtension(vm.CurrentRealm()).(interface {
-		DateTimeZoneName(vm *engine.VM, tz datetime.TimeZone, t, offset int64) string
+	if ext, ok := cx.RealmExtension(cx.Realm()).(interface {
+		DateTimeZoneName(cx *engine.ExecutionContext, tz datetime.TimeZone, t, offset int64) string
 	}); ok {
-		if s := ext.DateTimeZoneName(vm, tz, int64(tv), int64(offset)); s != "" {
+		if s := ext.DateTimeZoneName(cx, tz, int64(tv), int64(offset)); s != "" {
 			name = s
 		}
 	}
 	return offset, name
 }
 
-func initDate(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicDatePrototype)
-
-	dateString := func(tv float64, tz datetime.TimeZone) string {
-		offset, name := dateStringOffset(vm, tz, tv)
-		return datetime.String(tv, offset, name)
+func formatDate(cx *engine.ExecutionContext, method string, tv float64) string {
+	tz := cx.DefaultTimeZone()
+	switch method {
+	case "toString", "toTimeString":
+		offset, name := dateStringOffset(cx, tz, tv)
+		if method == "toString" {
+			return datetime.String(tv, offset, name)
+		}
+		return datetime.TimeString(tv, offset, name)
+	case "toDateString":
+		return datetime.DateString(tv, tz)
+	case "toUTCString":
+		return datetime.UTCString(tv)
+	case "toLocaleString":
+		return datetime.LocaleString(tv, tz)
+	case "toLocaleDateString":
+		return datetime.LocaleDateString(tv, tz)
+	case "toLocaleTimeString":
+		return datetime.LocaleTimeString(tv, tz)
 	}
-	ctor := constructor(vm, "Date", 7, engine.IntrinsicDatePrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+	panic("invalid Date format method")
+}
+
+func initDate(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicDatePrototype)
+
+	ctor := constructor(cx, "Date", 7, engine.IntrinsicDatePrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			return vm.StringFromGo(dateString(vm.SystemUTCEpochMilliseconds(), vm.DefaultTimeZone()))
+			return cx.StringFromGo(formatDate(cx, "toString", cx.SystemUTCEpochMilliseconds()))
 		}
 		var tv float64
 		switch len(args) {
 		case 0:
-			tv = vm.SystemUTCEpochMilliseconds()
+			tv = cx.SystemUTCEpochMilliseconds()
 		case 1:
 			if t, ok := engine.ThisTimeValue(args[0]); ok {
 				tv = t
 				break
 			}
-			v := vm.ToPrimitive(args[0], engine.HintDefault)
+			v := cx.ToPrimitive(args[0], engine.HintDefault)
 			if v.IsString() {
-				tv = datetime.ParsePolled(string(vm.ToString(v)), vm.DefaultTimeZone(), vm.Poll)
+				tv = datetime.ParsePolled(string(cx.ToString(v)), cx.DefaultTimeZone(), cx.Poll)
 			} else {
-				tv = datetime.TimeClip(vm.ToNumber(v))
+				tv = datetime.TimeClip(cx.ToNumber(v))
 			}
 		default:
 			c := [dateComponentCount]float64{dateDay: 1}
 			for i := range min(len(args), dateComponentCount) {
-				c[i] = vm.ToNumber(args[i])
+				c[i] = cx.ToNumber(args[i])
 			}
 			c[dateYear] = datetime.MakeFullYear(c[dateYear])
-			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), vm.DefaultTimeZone()))
+			tv = datetime.TimeClip(datetime.UTC(makeDate(&c), cx.DefaultTimeZone()))
 		}
-		return engine.ObjectValue(vm.NewDateObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDatePrototype), tv))
+		return engine.ObjectValue(cx.NewDateObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicDatePrototype), tv))
 	})
 
-	now := method(vm, ctor, "now", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(vm.SystemUTCEpochMilliseconds())
+	now := method(cx, ctor, "now", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(cx.SystemUTCEpochMilliseconds())
 	})
-	vm.SetMethodKernels(now, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+	cx.SetMethodKernels(now, func(cx *engine.ExecutionContext, this engine.Value) (engine.Value, bool) {
 		// A host clock can reenter JavaScript and observe the native call frame.
-		if vm.HasCustomClock() {
+		if cx.HasCustomClock() {
 			return engine.Undefined, false
 		}
-		return engine.Number(vm.SystemUTCEpochMilliseconds()), true
+		return engine.Number(cx.SystemUTCEpochMilliseconds()), true
 	}, nil, nil)
-	method(vm, ctor, "parse", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(datetime.ParsePolled(string(vm.ToString(arg(args, 0))), vm.DefaultTimeZone(), vm.Poll))
+	method(cx, ctor, "parse", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(datetime.ParsePolled(string(cx.ToString(arg(args, 0))), cx.DefaultTimeZone(), cx.Poll))
 	})
-	method(vm, ctor, "UTC", 7, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ctor, "UTC", 7, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		c := [dateComponentCount]float64{dateDay: 1}
-		c[dateYear] = vm.ToNumber(arg(args, 0))
+		c[dateYear] = cx.ToNumber(arg(args, 0))
 		for i := 1; i < min(len(args), dateComponentCount); i++ {
-			c[i] = vm.ToNumber(args[i])
+			c[i] = cx.ToNumber(args[i])
 		}
 		c[dateYear] = datetime.MakeFullYear(c[dateYear])
 		return engine.Number(datetime.TimeClip(makeDate(&c)))
@@ -173,51 +192,51 @@ func initDate(vm *engine.VM) {
 			if local {
 				name = g.local
 			}
-			method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-				t := thisDate(vm, this, name)
+			method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+				t := thisDate(cx, this, name)
 				if math.IsNaN(t) {
 					return engine.Number(t)
 				}
 				if local {
-					t = datetime.LocalTime(t, vm.DefaultTimeZone())
+					t = datetime.LocalTime(t, cx.DefaultTimeZone())
 				}
 				return engine.Number(g.component(t))
 			})
 		}
 	}
-	method(vm, proto, "getDay", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisDate(vm, this, "getDay")
+	method(cx, proto, "getDay", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, "getDay")
 		if math.IsNaN(t) {
 			return engine.Number(t)
 		}
-		return engine.Number(datetime.WeekDay(datetime.LocalTime(t, vm.DefaultTimeZone())))
+		return engine.Number(datetime.WeekDay(datetime.LocalTime(t, cx.DefaultTimeZone())))
 	})
-	method(vm, proto, "getUTCDay", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisDate(vm, this, "getUTCDay")
+	method(cx, proto, "getUTCDay", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, "getUTCDay")
 		if math.IsNaN(t) {
 			return engine.Number(t)
 		}
 		return engine.Number(datetime.WeekDay(t))
 	})
-	method(vm, proto, "getTime", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(thisDate(vm, this, "getTime"))
+	method(cx, proto, "getTime", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(thisDate(cx, this, "getTime"))
 	})
-	method(vm, proto, "getTimezoneOffset", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisDate(vm, this, "getTimezoneOffset")
+	method(cx, proto, "getTimezoneOffset", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, "getTimezoneOffset")
 		if math.IsNaN(t) {
 			return engine.Number(t)
 		}
-		return engine.Number((t - datetime.LocalTime(t, vm.DefaultTimeZone())) / 60000)
+		return engine.Number((t - datetime.LocalTime(t, cx.DefaultTimeZone())) / 60000)
 	})
-	method(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.Number(thisDate(vm, this, "valueOf"))
+	method(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.Number(thisDate(cx, this, "valueOf"))
 	})
-	method(vm, proto, "getYear", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisDate(vm, this, "getYear")
+	method(cx, proto, "getYear", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, "getYear")
 		if math.IsNaN(t) {
 			return engine.Number(t)
 		}
-		return engine.Number(datetime.YearFromTime(datetime.LocalTime(t, vm.DefaultTimeZone())) - 1900)
+		return engine.Number(datetime.YearFromTime(datetime.LocalTime(t, cx.DefaultTimeZone())) - 1900)
 	})
 
 	// setters defines the methods that set the components from first on, as many as
@@ -241,14 +260,14 @@ func initDate(vm *engine.VM) {
 				name = s.local
 			}
 			first, count := s.first, s.count
-			method(vm, proto, wtf8.String(name), count, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-				t := thisDate(vm, this, name)
+			method(cx, proto, wtf8.String(name), count, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+				t := thisDate(cx, this, name)
 				var vals [dateComponentCount]float64
 				n := max(1, min(len(args), count))
 				for i := range n {
-					vals[i] = vm.ToNumber(arg(args, i))
+					vals[i] = cx.ToNumber(arg(args, i))
 				}
-				tz := vm.DefaultTimeZone()
+				tz := cx.DefaultTimeZone()
 				switch {
 				case math.IsNaN(t) && first == dateYear:
 					t = 0
@@ -269,16 +288,16 @@ func initDate(vm *engine.VM) {
 			})
 		}
 	}
-	method(vm, proto, "setTime", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		thisDate(vm, this, "setTime")
-		t := datetime.TimeClip(vm.ToNumber(arg(args, 0)))
+	method(cx, proto, "setTime", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		thisDate(cx, this, "setTime")
+		t := datetime.TimeClip(cx.ToNumber(arg(args, 0)))
 		engine.SetDateValue(this, t)
 		return engine.Number(t)
 	})
-	method(vm, proto, "setYear", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisDate(vm, this, "setYear")
-		y := vm.ToNumber(arg(args, 0))
-		tz := vm.DefaultTimeZone()
+	method(cx, proto, "setYear", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisDate(cx, this, "setYear")
+		y := cx.ToNumber(arg(args, 0))
+		tz := cx.DefaultTimeZone()
 		if math.IsNaN(t) {
 			t = 0
 		} else {
@@ -291,72 +310,50 @@ func initDate(vm *engine.VM) {
 		return engine.Number(u)
 	})
 
-	// formats defines the methods that return a string, or "Invalid Date" for an invalid date.
-	formats := []struct {
-		name   string
-		format func(tv float64, tz datetime.TimeZone) string
-	}{
-		{
-			name:   "toString",
-			format: dateString,
-		},
-		{"toDateString", datetime.DateString},
-		{
-			name: "toTimeString",
-			format: func(tv float64, tz datetime.TimeZone) string {
-				offset, name := dateStringOffset(vm, tz, tv)
-				return datetime.TimeString(tv, offset, name)
-			},
-		},
-		{"toUTCString", func(tv float64, tz datetime.TimeZone) string { return datetime.UTCString(tv) }},
-		{"toLocaleString", datetime.LocaleString},
-		{"toLocaleDateString", datetime.LocaleDateString},
-		{"toLocaleTimeString", datetime.LocaleTimeString},
-	}
-	for _, f := range formats {
-		fn := method(vm, proto, wtf8.String(f.name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			tv := thisDate(vm, this, f.name)
+	for _, name := range []string{"toString", "toDateString", "toTimeString", "toUTCString", "toLocaleString", "toLocaleDateString", "toLocaleTimeString"} {
+		fn := method(cx, proto, wtf8.String(name), 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			tv := thisDate(cx, this, name)
 			if math.IsNaN(tv) {
-				return vm.NewString("Invalid Date")
+				return cx.NewString("Invalid Date")
 			}
-			return vm.StringFromGo(f.format(tv, vm.DefaultTimeZone()))
+			return cx.StringFromGo(formatDate(cx, name, tv))
 		})
-		if f.name == "toUTCString" {
-			vm.Define(proto, vm.Intern("toGMTString"), engine.ObjectValue(fn), engine.FlagsHidden)
+		if name == "toUTCString" {
+			cx.Define(proto, cx.Intern("toGMTString"), engine.ObjectValue(fn), engine.FlagsHidden)
 		}
 	}
-	method(vm, proto, "toISOString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		tv := thisDate(vm, this, "toISOString")
+	method(cx, proto, "toISOString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		tv := thisDate(cx, this, "toISOString")
 		if math.IsNaN(tv) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time value")
+			cx.ThrowRangeError("invalid time value")
 		}
-		return vm.NewString(wtf8.String(datetime.ISOString(tv)))
+		return cx.NewString(wtf8.String(datetime.ISOString(tv)))
 	})
-	toISOString := vm.Intern("toISOString")
-	method(vm, proto, "toJSON", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := engine.ObjectValue(vm.ToObject(this))
-		tv := vm.ToPrimitive(o, engine.HintNumber)
+	toISOString := cx.Intern("toISOString")
+	method(cx, proto, "toJSON", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := engine.ObjectValue(cx.ToObject(this))
+		tv := cx.ToPrimitive(o, engine.HintNumber)
 		if tv.IsNumber() {
 			if n := tv.Number(); math.IsNaN(n) || math.IsInf(n, 0) {
 				return engine.Null
 			}
 		}
-		return vm.CallValue(vm.GetV(o, toISOString), o)
+		return cx.CallValue(cx.GetV(o, toISOString), o)
 	})
 
-	toPrimitive := vm.NewNative("[Symbol.toPrimitive]", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := thisObject(vm, this, "Date.prototype[Symbol.toPrimitive]")
+	toPrimitive := cx.NewNative("[Symbol.toPrimitive]", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := thisObject(cx, this, "Date.prototype[Symbol.toPrimitive]")
 		h := arg(args, 0)
 		if h.IsString() {
 			switch h.Str() {
 			case "string", "default":
-				return vm.OrdinaryToPrimitive(o, engine.HintString)
+				return cx.OrdinaryToPrimitive(o, engine.HintString)
 			case "number":
-				return vm.OrdinaryToPrimitive(o, engine.HintNumber)
+				return cx.OrdinaryToPrimitive(o, engine.HintNumber)
 			}
 		}
-		vm.ThrowTypeError(vm.CurrentRealm(), "invalid hint: "+vm.DisplayString(h))
+		cx.ThrowTypeError("invalid hint: " + cx.DisplayString(h))
 		return engine.Undefined
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToPrimitive), engine.ObjectValue(toPrimitive), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToPrimitive), engine.ObjectValue(toPrimitive), engine.FlagConfigurable)
 }

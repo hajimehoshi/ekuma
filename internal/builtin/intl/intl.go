@@ -49,32 +49,32 @@ type realm struct {
 	fallbackSymbol *engine.Object
 }
 
-// Install defines the Intl namespace in the current realm of vm.
-func Install(vm *engine.VM) {
+// Install defines the Intl namespace in the current realm of cx.
+func Install(cx *engine.ExecutionContext) {
 	r := &realm{}
-	r.ns = vm.NewLazyObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
-		r.init(vm)
+	r.ns = cx.NewLazyObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
+		r.init(cx)
 	})
-	vm.SetRealmExtension(r)
-	vm.Define(vm.GlobalObject().Object(), vm.Intern("Intl"), engine.ObjectValue(r.ns), engine.FlagsHidden)
-	initToLocaleString(vm)
-	initDateToLocaleString(vm)
-	initTemporalToLocaleString(vm)
-	initLocaleCompare(vm)
-	initLocaleCase(vm)
-	initArrayToLocaleString(vm)
+	cx.SetRealmExtension(r)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Intl"), engine.ObjectValue(r.ns), engine.FlagsHidden)
+	initToLocaleString(cx)
+	initDateToLocaleString(cx)
+	initTemporalToLocaleString(cx)
+	initLocaleCompare(cx)
+	initLocaleCase(cx)
+	initArrayToLocaleString(cx)
 }
 
 // init defines the properties of the Intl namespace.
-func (r *realm) init(vm *engine.VM) {
+func (r *realm) init(cx *engine.ExecutionContext) {
 	ns := r.ns
-	vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl"), engine.FlagConfigurable)
-	method(vm, ns, "getCanonicalLocales", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return stringArray(vm, canonicalizeLocaleList(vm, arg(args, 0)))
+	cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl"), engine.FlagConfigurable)
+	method(cx, ns, "getCanonicalLocales", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return stringArray(cx, canonicalizeLocaleList(cx, arg(args, 0)))
 	})
-	method(vm, ns, "supportedValuesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ns, "supportedValuesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		var values []string
-		switch vm.ToString(arg(args, 0)) {
+		switch cx.ToString(arg(args, 0)) {
 		case "calendar":
 			values = locale.Calendars
 		case "collation":
@@ -91,37 +91,37 @@ func (r *realm) init(vm *engine.VM) {
 		case "unit":
 			values = sanctionedUnits
 		default:
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid key for Intl.supportedValuesOf")
+			cx.ThrowRangeError("invalid key for Intl.supportedValuesOf")
 		}
-		return stringArray(vm, values)
+		return stringArray(cx, values)
 	})
-	r.fallbackSymbol = vm.NewSymbol("IntlLegacyConstructedSymbol", true)
-	r.initLocale(vm)
-	r.initNumberFormat(vm)
-	r.initPluralRules(vm)
-	r.initDateTimeFormat(vm)
-	r.initCollator(vm)
-	r.initSegmenter(vm)
-	r.initListFormat(vm)
-	r.initRelativeTimeFormat(vm)
-	r.initDisplayNames(vm)
-	r.initDurationFormat(vm)
+	r.fallbackSymbol = cx.NewSymbol("IntlLegacyConstructedSymbol", true)
+	r.initLocale(cx)
+	r.initNumberFormat(cx)
+	r.initPluralRules(cx)
+	r.initDateTimeFormat(cx)
+	r.initCollator(cx)
+	r.initSegmenter(cx)
+	r.initListFormat(cx)
+	r.initRelativeTimeFormat(cx)
+	r.initDisplayNames(cx)
+	r.initDurationFormat(cx)
 }
 
 // realmOf returns the Intl objects of the realm of the function f.
-func realmOf(vm *engine.VM, f *engine.Object) *realm {
-	r := vm.RealmExtension(vm.GetFunctionRealm(f)).(*realm)
-	vm.InitLazyObject(r.ns)
+func realmOf(cx *engine.ExecutionContext, f *engine.Object) *realm {
+	r := cx.RealmExtension(cx.GetFunctionRealm(f)).(*realm)
+	cx.InitLazyObject(r.ns)
 	return r
 }
 
 // protoFor implements GetPrototypeFromConstructor for the constructor newTarget, with proto
 // selecting the fallback prototype of a realm.
-func protoFor(vm *engine.VM, newTarget *engine.Object, proto func(r *realm) *engine.Object) *engine.Object {
-	if p := vm.GetV(engine.ObjectValue(newTarget), vm.Key(engine.KeyPrototype)); p.IsObject() {
+func protoFor(cx *engine.ExecutionContext, newTarget *engine.Object, proto func(r *realm) *engine.Object) *engine.Object {
+	if p := cx.GetV(engine.ObjectValue(newTarget), cx.Key(engine.KeyPrototype)); p.IsObject() {
 		return p.Object()
 	}
-	return proto(realmOf(vm, newTarget))
+	return proto(realmOf(cx, newTarget))
 }
 
 // sanctionedUnits are the sanctioned single unit identifiers of ECMA-402, sorted.
@@ -135,38 +135,38 @@ var sanctionedUnits = []string{
 }
 
 // canonicalizeLocaleList implements CanonicalizeLocaleList.
-func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
+func canonicalizeLocaleList(cx *engine.ExecutionContext, locales engine.Value) []string {
 	if locales.IsUndefined() {
 		return nil
 	}
 	var o *engine.Object
 	if _, ok := engine.IntlData(locales).(*localeData); ok || locales.IsString() {
-		o = vm.NewArray([]engine.Value{locales})
+		o = cx.NewArray([]engine.Value{locales})
 	} else {
-		o = vm.ToObject(locales)
+		o = cx.ToObject(locales)
 	}
-	n := vm.LengthOfArrayLike(o)
+	n := cx.LengthOfArrayLike(o)
 	var seen []string
 	var seenSet map[string]struct{}
 	for k := range n {
-		vm.PollAt(k)
-		pk := vm.ToPropertyKey(engine.Number(float64(k)))
-		if !vm.HasProperty(o, pk) {
+		cx.PollAt(k)
+		pk := cx.ToPropertyKey(engine.Number(float64(k)))
+		if !cx.HasProperty(o, pk) {
 			continue
 		}
-		v := vm.Get(o, pk)
+		v := cx.Get(o, pk)
 		if !v.IsString() && !v.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "a locale must be a string or an object, not "+vm.DisplayString(v))
+			cx.ThrowTypeError("a locale must be a string or an object, not " + cx.DisplayString(v))
 		}
 		var tag string
 		if l, ok := engine.IntlData(v).(*localeData); ok {
 			tag = l.String()
 		} else {
-			tag = wtf8.ToValidUTF8(vm.ToString(v))
+			tag = wtf8.ToValidUTF8(cx.ToString(v))
 		}
-		c, ok := locale.Canonicalize(tag, vm.Poll)
+		c, ok := locale.Canonicalize(tag, cx.Poll)
 		if !ok {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid language tag: "+vm.DisplayString(vm.NewString(wtf8.String(tag))))
+			cx.ThrowRangeError("invalid language tag: " + cx.DisplayString(cx.NewString(wtf8.String(tag))))
 		}
 		if !localetag.HasDuplicate(&seenSet, seen, c) {
 			seen = append(seen, c)
@@ -184,57 +184,57 @@ func arg(args []engine.Value, i int) engine.Value {
 }
 
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
-func checkStringLength(vm *engine.VM, n int) {
+func checkStringLength(cx *engine.ExecutionContext, n int) {
 	if n > engine.MaxStringLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+		cx.ThrowRangeError("invalid string length")
 	}
 }
 
 // method defines the non-enumerable function name on o.
-func method(vm *engine.VM, o *engine.Object, name string, length int, f engine.NativeFunc) {
-	vm.Define(o, vm.Intern(wtf8.String(name)), engine.ObjectValue(vm.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
+func method(cx *engine.ExecutionContext, o *engine.Object, name string, length int, f engine.NativeFunc) {
+	cx.Define(o, cx.Intern(wtf8.String(name)), engine.ObjectValue(cx.NewNative(wtf8.String(name), length, f)), engine.FlagsHidden)
 }
 
 // getter defines the accessor property name on o with the getter f.
-func getter(vm *engine.VM, o *engine.Object, name string, f engine.NativeFunc) {
-	vm.DefineAccessor(o, vm.Intern(wtf8.String(name)), vm.NewNative(wtf8.String("get "+name), 0, f), nil, engine.FlagConfigurable)
+func getter(cx *engine.ExecutionContext, o *engine.Object, name string, f engine.NativeFunc) {
+	cx.DefineAccessor(o, cx.Intern(wtf8.String(name)), cx.NewNative(wtf8.String("get "+name), 0, f), nil, engine.FlagConfigurable)
 }
 
 // stringArray returns a new array of the strings ss.
-func stringArray(vm *engine.VM, ss []string) engine.Value {
+func stringArray(cx *engine.ExecutionContext, ss []string) engine.Value {
 	vals := make([]engine.Value, len(ss))
 	for i, s := range ss {
-		vals[i] = vm.NewString(wtf8.String(s))
+		vals[i] = cx.NewString(wtf8.String(s))
 	}
-	return vm.NewArrayOf(vals)
+	return cx.NewArrayOf(vals)
 }
 
 // stringOrUndefined returns s as a String when ok is true, or undefined otherwise.
-func stringOrUndefined(vm *engine.VM, s string, ok bool) engine.Value {
+func stringOrUndefined(cx *engine.ExecutionContext, s string, ok bool) engine.Value {
 	if !ok {
 		return engine.Undefined
 	}
-	return vm.NewString(wtf8.String(s))
+	return cx.NewString(wtf8.String(s))
 }
 
 // getOption implements GetOption for an option of the type string without a default: it
 // returns the option name of options converted to a String, and reports false when it is
 // undefined. A non-empty values lists the allowed values.
-func getOption(vm *engine.VM, options *engine.Object, name string, values ...string) (string, bool) {
-	v := vm.Get(options, engine.NamedKey(vm.Intern(wtf8.String(name))))
+func getOption(cx *engine.ExecutionContext, options *engine.Object, name string, values ...string) (string, bool) {
+	v := cx.Get(options, engine.NamedKey(cx.Intern(wtf8.String(name))))
 	if v.IsUndefined() {
 		return "", false
 	}
-	s := wtf8.ToValidUTF8(vm.ToString(v))
+	s := wtf8.ToValidUTF8(cx.ToString(v))
 	if len(values) > 0 && !slices.Contains(values, s) {
-		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
+		cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	}
 	return s, true
 }
 
-func defaultLocale(vm *engine.VM) string {
-	r := vm.RealmExtension(vm.CurrentRealm()).(*realm)
-	tag := vm.DefaultLocale()
+func defaultLocale(cx *engine.ExecutionContext) string {
+	r := cx.RealmExtension(cx.Realm()).(*realm)
+	tag := cx.DefaultLocale()
 	if r.defaultLocale != "" && r.defaultLocaleTag == tag {
 		return r.defaultLocale
 	}

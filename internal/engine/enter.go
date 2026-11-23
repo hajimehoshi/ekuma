@@ -18,22 +18,20 @@ type hostContext struct {
 }
 
 // enterJob installs the job's host state across calls in its execution realm.
-func (cx ExecutionContext) enterJob(continuationData any, f func()) {
-	vm := cx.vm
+func (cx *ExecutionContext) enterJob(continuationData any, f func()) {
 	// The outer host call already entered the only realm in a single-realm VM.
-	if vm.trackJobRealms {
-		caller := vm.executionContext()
-		entered := vm.enteredRealm
-		vm.enteredRealm = cx.realm
-		cx.activate()
+	if cx.trackJobRealms {
+		caller := cx.activate()
+		entered := cx.enteredRealm
+		cx.enteredRealm = cx.realm
 		defer func() {
-			vm.enteredRealm = entered
+			cx.enteredRealm = entered
 			caller.activate()
 		}()
 	}
-	previous := vm.continuationData
-	vm.continuationData = continuationData
-	defer vm.SetContinuationData(previous)
+	previous := cx.continuationData
+	cx.continuationData = continuationData
+	defer cx.SetContinuationData(previous)
 	f()
 }
 
@@ -45,70 +43,73 @@ func (cx ExecutionContext) enterJob(continuationData any, f func()) {
 //
 // A Go panic restores each boundary it escapes. The outermost boundary discards pending
 // jobs and rejects unfinished module evaluations, including after a recovered inner panic.
-func (vm *VM) enter(f func(ExecutionContext) Value) (result Value, err error) {
-	if vm.entered > 0 {
-		return vm.enterBoundary(f)
+func (cx *ExecutionContext) enter(f func() Value) (result Value, err error) {
+	if previous := cx.activate(); previous != cx {
+		defer previous.activate()
 	}
-	vm.enteredRealm = vm.curRealm
-	vm.captureThrowSites = vm.curRealm.exceptionReporter != nil
+	if cx.entered > 0 {
+		return cx.enterBoundary(f)
+	}
+	cx.enteredRealm = cx.realm
+	cx.captureThrowSites = cx.realm.exceptionReporter != nil
 	defer func() {
-		vm.enteredRealm = nil
-		vm.captureThrowSites = false
-		vm.thrownAt = throwSite{}
+		cx.enteredRealm = nil
+		cx.captureThrowSites = false
+		cx.thrownAt = throwSite{}
 	}()
 	// Data independent timing stays enabled for the goroutine across rescheduling, so the
 	// nested calls need nothing more.
 	subtle.WithDataIndependentTiming(func() {
-		result, err = vm.enterBoundary(f)
+		result, err = cx.enterBoundary(f)
 	})
 	return result, err
 }
 
-// enterBoundary implements [VM.enter].
-func (vm *VM) enterBoundary(f func(ExecutionContext) Value) (result Value, err error) {
+// enterBoundary implements [ExecutionContext.enter].
+func (cx *ExecutionContext) enterBoundary(f func() Value) (result Value, err error) {
 	// A host callback that recovered an interruption runs no more JavaScript.
-	vm.ResumeInterruption()
-	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
-	cx, callerRealm := vm.executionContext(), vm.callerRealm
-	thrown, site := vm.thrown, vm.thrownAt
-	hostContext := vm.hostContext
-	outermost := vm.entered == 0
-	vm.entered++
+	cx.ResumeInterruption()
+	frames, natives, sp, depth := len(cx.frames), len(cx.natives), cx.sp, cx.depth
+	callerRealm := cx.callerRealm
+	thrown, site := cx.thrown, cx.thrownAt
+	hostContext := cx.hostContext
+	outermost := cx.entered == 0
+	cx.entered++
 	defer func() {
-		vm.entered--
+		cx.entered--
 		if outermost {
 			defer func() {
-				if vm.abortCause != nil {
-					cause := vm.abortCause
-					vm.abortCause = nil
+				if cx.abortCause != nil {
+					cause := cx.abortCause
+					cx.abortCause = nil
 					if internal, ok := cause.(*xerrors.InternalError); ok {
 						result, err = Undefined, internal
 					}
-					vm.abortModuleEvaluations(cause)
-					vm.dropJobs()
+					cx.abortModuleEvaluations(cause)
+					cx.dropJobs()
 				}
-				vm.raised = nil
-				vm.clearKeptObjects()
-				vm.clearStale()
-				vm.releaseStack()
+				cx.raised = nil
+				cx.clearKeptObjects()
+				cx.clearStale()
+				cx.releaseStack()
 			}()
 		}
 		if r := recover(); r != nil {
 			sig, interrupted := r.(*interruptSignal)
 			internal, failed := r.(*xerrors.InternalError)
-			vm.hostContext = hostContext
+			cx.hostContext = hostContext
 			// Only activations belonging to this boundary have lost their Go callers.
 			cx.activate()
-			for i := frames; i < len(vm.frames); i++ {
-				if g := vm.frames[i].gen; g != nil {
+			for i := frames; i < len(cx.frames); i++ {
+				if g := cx.frames[i].gen; g != nil {
 					g.abort()
 				}
 			}
-			vm.unwindTo(frames)
-			vm.truncateNatives(natives)
-			vm.sp, vm.depth = sp, depth
-			vm.callerRealm = callerRealm
-			vm.thrown, vm.thrownAt = thrown, site
+			cx.unwindTo(frames)
+			cx.truncateNatives(natives)
+			cx.sp, cx.depth = sp, depth
+			cx.callerRealm = callerRealm
+			cx.thrown, cx.thrownAt = thrown, site
 			var cause error
 			if interrupted {
 				if !outermost {
@@ -122,49 +123,49 @@ func (vm *VM) enterBoundary(f func(ExecutionContext) Value) (result Value, err e
 					cause = err
 				}
 			} else if failed {
-				vm.abortCause = internal
+				cx.abortCause = internal
 				if !outermost {
 					panic(r)
 				}
 				return
 			} else {
-				vm.abortCause = &PanicError{
+				cx.abortCause = &PanicError{
 					Value: r,
 				}
 				panic(r)
 			}
 			// The rejections of the modules queue jobs, which are dropped as well.
-			vm.abortModuleEvaluations(cause)
-			vm.dropJobs()
+			cx.abortModuleEvaluations(cause)
+			cx.dropJobs()
 		}
 	}()
-	if !vm.protect(func() {
-		ok := vm.protect(func() {
-			result = f(cx)
+	if !cx.protect(func() {
+		ok := cx.protect(func() {
+			result = f()
 		})
-		vm.ResumeInterruption()
-		thrown := vm.takeThrown()
-		site := vm.thrownAt
+		cx.ResumeInterruption()
+		thrown := cx.takeThrown()
+		site := cx.thrownAt
 		if !ok && outermost {
-			vm.reportUncaughtException(thrown, site)
+			cx.reportUncaughtException(thrown, site)
 		}
-		vm.runJobs()
-		vm.ResumeInterruption()
+		cx.runJobs()
+		cx.ResumeInterruption()
 		if !ok {
-			vm.thrown, vm.thrownAt = thrown, site
+			cx.thrown, cx.thrownAt = thrown, site
 			panic(errThrow)
 		}
 	}) {
-		return Undefined, vm.takeException()
+		return Undefined, cx.takeException()
 	}
 	return result, nil
 }
 
-func (vm *VM) reportUncaughtException(thrown Value, site throwSite) {
-	if vm.curRealm.exceptionReporter != nil {
-		vm.protect(func() {
-			vm.curRealm.exceptionReporter(thrown, site.location())
+func (cx *ExecutionContext) reportUncaughtException(thrown Value, site throwSite) {
+	if cx.realm.exceptionReporter != nil {
+		cx.protect(func() {
+			cx.realm.exceptionReporter(thrown, site.location())
 		})
-		vm.thrown = Undefined
+		cx.thrown = Undefined
 	}
 }

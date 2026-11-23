@@ -59,12 +59,12 @@ func TestStringIndexKey(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			vm := newVM(t)
-			v, err := runScript(vm, "index", tc.src)
+			cx := newVM(t)
+			v, err := runScript(cx, "index", tc.src)
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
-			if got := vm.ToString(v); got != tc.want {
+			if got := cx.ToString(v); got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
@@ -72,8 +72,8 @@ func TestStringIndexKey(t *testing.T) {
 }
 
 func TestPrimitiveElements(t *testing.T) {
-	vm := engine.NewVM(nil)
-	o := vm.NewString("abc").Object()
+	cx := engine.HostContext(engine.NewVM(nil))
+	o := cx.NewString("abc").Object()
 	if _, ok := o.Element(0); ok {
 		t.Error("Element reported a stored element for a primitive")
 	}
@@ -83,11 +83,11 @@ func TestPrimitiveElements(t *testing.T) {
 }
 
 func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
-	vm := newVM(t)
+	cx := newVM(t)
 	var target engine.Value
-	vm.CreateRealm(func() {
+	cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		var err error
-		target, err = runScript(vm, "target", `function Target() {} Target.prototype = null; Target;`)
+		target, err = runScript(cx, "target", `function Target() {} Target.prototype = null; Target;`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -99,5 +99,5 @@ func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
 			t.Error("expected a panic for the missing Date prototype in the target's realm")
 		}
 	}()
-	vm.GetPrototypeFromConstructor(target.Object(), engine.IntrinsicDatePrototype)
+	cx.GetPrototypeFromConstructor(target.Object(), engine.IntrinsicDatePrototype)
 }

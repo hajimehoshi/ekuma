@@ -74,7 +74,7 @@ type frame struct {
 // Parser parses JSON text into JavaScript values. The zero value is ready to use.
 // A Parser keeps scratch storage between calls but no references to values.
 type Parser struct {
-	vm  *engine.VM
+	cx  *engine.ExecutionContext
 	src wtf8.String
 	pos int
 
@@ -89,19 +89,19 @@ type Parser struct {
 	ticks int
 }
 
-// Parse parses the JSON text src into a value of vm. It throws a SyntaxError when src is not a JSON text.
-func (p *Parser) Parse(vm *engine.VM, src wtf8.String) engine.Value {
-	v, _ := p.parse(vm, src, false)
+// Parse parses the JSON text src into a value of cx. It throws a SyntaxError when src is not a JSON text.
+func (p *Parser) Parse(cx *engine.ExecutionContext, src wtf8.String) engine.Value {
+	v, _ := p.parse(cx, src, false)
 	return v
 }
 
 // ParseWithRecord is like [Parser.Parse], and also returns the parse record of the value.
-func (p *Parser) ParseWithRecord(vm *engine.VM, src wtf8.String) (engine.Value, *Record) {
-	return p.parse(vm, src, true)
+func (p *Parser) ParseWithRecord(cx *engine.ExecutionContext, src wtf8.String) (engine.Value, *Record) {
+	return p.parse(cx, src, true)
 }
 
-func (p *Parser) parse(vm *engine.VM, src wtf8.String, withRecords bool) (engine.Value, *Record) {
-	p.vm = vm
+func (p *Parser) parse(cx *engine.ExecutionContext, src wtf8.String, withRecords bool) (engine.Value, *Record) {
+	p.cx = cx
 	p.src = src
 	p.pos = 0
 	defer p.release()
@@ -110,7 +110,7 @@ func (p *Parser) parse(vm *engine.VM, src wtf8.String, withRecords bool) (engine
 
 // release drops the references that the scratch storage holds, and the storage itself when it grew large.
 func (p *Parser) release() {
-	p.vm = nil
+	p.cx = nil
 	p.src = ""
 	p.vals = releaseScratch(p.vals)
 	p.keys = releaseScratch(p.keys)
@@ -134,16 +134,16 @@ func releaseScratch[S ~[]E, E any](s S) S {
 }
 
 func (p *Parser) fail() {
-	vm := p.vm
+	cx := p.cx
 	pos := wtf8.Len(p.src[:p.pos])
 	if p.pos >= len(p.src) {
-		vm.ThrowSyntaxError(vm.CurrentRealm(), "unexpected end of JSON input")
+		cx.ThrowSyntaxError("unexpected end of JSON input")
 	}
 	c := p.src[p.pos]
 	if c >= 0x20 && c < 0x7f {
-		vm.ThrowSyntaxError(vm.CurrentRealm(), "unexpected character '"+string(rune(c))+"' in JSON at position "+strconv.Itoa(pos))
+		cx.ThrowSyntaxError("unexpected character '" + string(rune(c)) + "' in JSON at position " + strconv.Itoa(pos))
 	}
-	vm.ThrowSyntaxError(vm.CurrentRealm(), "unexpected character in JSON at position "+strconv.Itoa(pos))
+	cx.ThrowSyntaxError("unexpected character in JSON at position " + strconv.Itoa(pos))
 }
 
 func (p *Parser) skipSpace() {
@@ -173,7 +173,7 @@ func (p *Parser) parseKey() {
 	if p.pos >= len(p.src) || p.src[p.pos] != '"' {
 		p.fail()
 	}
-	p.keys = append(p.keys, p.vm.KeyOfString(p.parseString()))
+	p.keys = append(p.keys, p.cx.KeyOfString(p.parseString()))
 	p.skipSpace()
 	if p.pos >= len(p.src) || p.src[p.pos] != ':' {
 		p.fail()
@@ -182,7 +182,7 @@ func (p *Parser) parseKey() {
 }
 
 func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
-	vm := p.vm
+	cx := p.cx
 	src := p.src
 	var v engine.Value
 	var rec *Record
@@ -201,9 +201,9 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			if p.pos < len(src) && (array && src[p.pos] == ']' || !array && src[p.pos] == '}') {
 				p.pos++
 				if array {
-					v = engine.ObjectValue(vm.NewArray(nil))
+					v = engine.ObjectValue(cx.NewArray(nil))
 				} else {
-					v = engine.ObjectValue(vm.NewOrdinaryObject())
+					v = engine.ObjectValue(cx.NewOrdinaryObject())
 				}
 				if withRecords {
 					rec = &Record{value: v}
@@ -221,7 +221,7 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			}
 			continue
 		case '"':
-			v = vm.NewString(p.parseString())
+			v = cx.NewString(p.parseString())
 		case 't':
 			p.literal("true")
 			v = engine.True
@@ -232,7 +232,7 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			p.literal("null")
 			v = engine.Null
 		default:
-			n, end, ok := ScanNumber(src, p.pos, vm.Poll)
+			n, end, ok := ScanNumber(src, p.pos, cx.Poll)
 			p.pos = end
 			if !ok {
 				p.fail()
@@ -258,7 +258,7 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 			p.vals = append(p.vals, v)
 			p.ticks++
 			if p.ticks&0x3ff == 0 {
-				vm.Poll()
+				cx.Poll()
 			}
 			if withRecords {
 				p.recs = append(p.recs, rec)
@@ -290,13 +290,13 @@ func (p *Parser) parseText(withRecords bool) (engine.Value, *Record) {
 
 // close creates the array or object of the frame f from its members, and removes them from the scratch storage.
 func (p *Parser) close(f *frame, withRecords bool) (engine.Value, *Record) {
-	vm := p.vm
+	cx := p.cx
 	vals := p.vals[f.base:]
 	var o *engine.Object
 	if f.array {
-		o = vm.NewArrayCopy(vals)
+		o = cx.NewArrayCopy(vals)
 	} else {
-		o = vm.NewObjectFromProperties(p.keys[f.keyBase:], vals)
+		o = cx.NewObjectFromProperties(p.keys[f.keyBase:], vals)
 	}
 	v := engine.ObjectValue(o)
 	var rec *Record

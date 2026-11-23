@@ -98,14 +98,18 @@ func (r *interruptRequests) release(e *engine.VM, req *interruptRequest) {
 	e.Interrupt(r.pending[0].cause)
 }
 
+func (vm *VM) hostContext() *engine.ExecutionContext {
+	return engine.HostContext(vm.e)
+}
+
 // initIfNeeded creates the engine of vm on first use, and panics when vm is a copy of a [VM] in
 // use.
 func (vm *VM) initIfNeeded() {
 	if vm.e == nil {
 		vm.e = engine.NewVM(vm)
 		vm.interrupts = &interruptRequests{}
-		builtin.Install(vm.e)
-		vm.initialRealm = vm.realmOf(vm.e.CurrentRealm())
+		builtin.Install(vm.hostContext())
+		vm.initialRealm = vm.realmOf(vm.hostContext().Realm())
 		return
 	}
 	if vm.e.HostDefined() != any(vm) {
@@ -138,11 +142,11 @@ func (vm *VM) initIfNeeded() {
 // The objects that ValueOf creates belong to the initial realm.
 func (vm *VM) ValueOf(x any) Value {
 	vm.initIfNeeded()
-	return fromEngine(vm.valueOf(vm.initialRealm, x))
+	return fromEngine(vm.valueOf(vm.initialRealm.r.Context(), x))
 }
 
-// valueOf implements [Realm.ValueOf] for the realm r.
-func (vm *VM) valueOf(r *Realm, x any) engine.Value {
+// valueOf implements [Realm.ValueOf] in the execution realm.
+func (vm *VM) valueOf(cx *engine.ExecutionContext, x any) engine.Value {
 	switch x := x.(type) {
 	case Value:
 		return vm.acceptValue(x)
@@ -186,17 +190,13 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 		if x.BitLen() > engine.MaxBigIntBits {
 			panic(fmt.Sprintf("ekuma: ValueOf: BigInt of %d bits, more than %d", x.BitLen(), engine.MaxBigIntBits))
 		}
-		return vm.e.NewBigInt(new(big.Int).Set(x))
+		return cx.NewBigInt(new(big.Int).Set(x))
 	case string:
-		return vm.e.StringFromGo(x)
+		return cx.StringFromGo(x)
 	case func(Value, []Value) (any, error):
-		return vm.valueOf(r, Func(x))
+		return vm.valueOf(cx, Func(x))
 	case Func, *SharedDataBlock, []any, map[string]any:
-		var v engine.Value
-		vm.e.InRealm(r.r, func() {
-			v = vm.objectOf(r, x)
-		})
-		return v
+		return vm.objectOf(cx, x)
 	}
 	panic(fmt.Sprintf("ekuma: ValueOf: invalid value of type %T", x))
 }
@@ -204,37 +204,36 @@ func (vm *VM) valueOf(r *Realm, x any) engine.Value {
 // acceptValue checks ownership before passing v to the engine.
 func (vm *VM) acceptValue(v Value) engine.Value {
 	if o := v.value.Object(); o != nil {
-		if owner := o.VM(); owner != nil && owner != vm.e {
+		if !vm.e.Owns(o) {
 			panic("ekuma: value belongs to another VM: " + v.String())
 		}
 	}
 	return v.value
 }
 
-// objectOf implements [Realm.ValueOf] for the values that become objects, with r as the
-// current realm.
-func (vm *VM) objectOf(r *Realm, x any) engine.Value {
+// objectOf converts a host value into an object of the execution realm.
+func (vm *VM) objectOf(cx *engine.ExecutionContext, x any) engine.Value {
 	switch x := x.(type) {
 	case Func:
 		if x == nil {
 			panic("ekuma: ValueOf: nil Func")
 		}
-		return vm.funcOf(r, "", x)
+		return vm.funcOf(cx, "", x)
 	case *SharedDataBlock:
 		if x == nil || x.b == nil {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
 		}
-		proto := r.r.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
-		return engine.ObjectValue(vm.e.NewSharedArrayBufferObject(proto, x.b))
+		proto := cx.Realm().Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
+		return engine.ObjectValue(cx.NewSharedArrayBufferObject(proto, x.b))
 	case []any:
 		if len(x) > 0 {
 			defer vm.leaveContainer(vm.enterContainer(containerID{elem0: &x[0], len: len(x)}))
 		}
 		elems := make([]engine.Value, len(x))
 		for i, e := range x {
-			elems[i] = vm.valueOf(r, e)
+			elems[i] = vm.valueOf(cx, e)
 		}
-		return vm.e.NewArrayOf(elems)
+		return cx.NewArrayOf(elems)
 	case map[string]any:
 		if len(x) > 0 {
 			defer vm.leaveContainer(vm.enterContainer(containerID{mapPtr: reflect.ValueOf(x).Pointer()}))
@@ -244,9 +243,9 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 			keys = append(keys, k)
 		}
 		slices.Sort(keys)
-		o := vm.e.NewPlainObject()
+		o := cx.NewPlainObject()
 		for _, k := range keys {
-			vm.e.CreateDataPropertyOrThrow(o.Object(), vm.e.ToPropertyKey(vm.e.StringFromGo(k)), vm.valueOf(r, x[k]))
+			cx.CreateDataPropertyOrThrow(o.Object(), cx.ToPropertyKey(cx.StringFromGo(k)), vm.valueOf(cx, x[k]))
 		}
 		return o
 	}
@@ -287,12 +286,12 @@ func (vm *VM) FuncOf(name string, f Func) Value {
 	return vm.initialRealm.FuncOf(name, f)
 }
 
-// funcOf implements [Realm.FuncOf] for the realm r, which is the current realm.
-func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
+// funcOf implements [Realm.FuncOf] for the execution context.
+func (vm *VM) funcOf(cx *engine.ExecutionContext, name string, f Func) engine.Value {
 	if f == nil {
 		panic("ekuma: FuncOf: nil Func")
 	}
-	return vm.e.NewFunction(name, func(_ *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	return cx.NewFunction(name, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		n := len(vm.args)
 		defer func() {
 			clear(vm.args[n:])
@@ -302,14 +301,14 @@ func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 			vm.args = append(vm.args, fromEngine(a))
 		}
 		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
-		vm.e.ResumeInterruption()
+		cx.ResumeInterruption()
 		if err != nil {
-			vm.e.Throw(vm.thrownValue(r, err))
+			cx.Throw(vm.thrownValue(cx, err))
 		}
 		if b, ok := res.(*big.Int); ok && b != nil && b.BitLen() > engine.MaxBigIntBits {
-			vm.e.ThrowRangeError(r.r, "maximum BigInt size exceeded")
+			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
-		return vm.valueOf(r, res)
+		return vm.valueOf(cx, res)
 	})
 }
 
@@ -321,7 +320,7 @@ func (vm *VM) withArgs(args []any, f func(args []engine.Value) (engine.Value, er
 		vm.callArgs = vm.callArgs[:n]
 	}()
 	for _, a := range args {
-		vm.callArgs = append(vm.callArgs, vm.valueOf(vm.initialRealm, a))
+		vm.callArgs = append(vm.callArgs, vm.valueOf(vm.initialRealm.r.Context(), a))
 	}
 	return f(vm.callArgs[n:len(vm.callArgs):len(vm.callArgs)])
 }
@@ -375,7 +374,7 @@ func (vm *VM) AwaitJobs(ctx context.Context) (bool, error) {
 		if waited, err = vm.e.AwaitJobs(); !waited {
 			return engine.Undefined, err
 		}
-		return engine.Undefined, vm.e.RunJobs()
+		return engine.Undefined, vm.hostContext().RunJobs()
 	})
 	return waited, err
 }
@@ -463,7 +462,7 @@ func (vm *VM) SetUnhandledRejection(f func(promise, reason Value)) {
 		vm.e.SetHostUnhandledRejection(nil)
 		return
 	}
-	vm.e.SetHostUnhandledRejection(func(e *engine.VM, promise, reason engine.Value) {
+	vm.e.SetHostUnhandledRejection(func(cx *engine.ExecutionContext, promise, reason engine.Value) {
 		f(fromEngine(promise), fromEngine(reason))
 	})
 }

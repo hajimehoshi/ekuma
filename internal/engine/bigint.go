@@ -41,25 +41,25 @@ func (vm *VM) NewBigInt(i *big.Int) Value {
 const MaxBigIntBits = numconv.MaxBigIntBits
 
 // checkBigIntBits throws a RangeError when a BigInt result of n bits exceeds the limit.
-func (vm *VM) checkBigIntBits(n int64) {
-	if n > vm.maxBigIntResultBits {
-		vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
+func (cx *ExecutionContext) checkBigIntBits(n int64) {
+	if n > cx.maxBigIntResultBits {
+		cx.ThrowRangeError("maximum BigInt size exceeded")
 	}
 }
 
 const bigIntProductWords = 256 / bits.UintSize
 
 // multiplyBigInts returns the product of two BigInts.
-func (vm *VM) multiplyBigInts(x, y *big.Int) Value {
+func (cx *ExecutionContext) multiplyBigInts(x, y *big.Int) Value {
 	if x.Sign() == 0 || y.Sign() == 0 {
 		return BigIntFromInt64(0)
 	}
 	if len(x.Bits())+len(y.Bits()) > bigIntProductWords {
 		// The product has the sum of the bits of x and y, or one less.
-		vm.checkBigIntBits(int64(x.BitLen()) + int64(y.BitLen()) - 1)
-		z := numconv.MulBigInt(x, y, vm.Poll)
-		vm.checkBigIntBits(int64(z.BitLen()))
-		return vm.NewBigInt(z)
+		cx.checkBigIntBits(int64(x.BitLen()) + int64(y.BitLen()) - 1)
+		z := numconv.MulBigInt(x, y, cx.Poll)
+		cx.checkBigIntBits(int64(z.BitLen()))
+		return cx.NewBigInt(z)
 	}
 	o := &struct {
 		bigIntObject
@@ -80,13 +80,13 @@ func (vm *VM) multiplyBigInts(x, y *big.Int) Value {
 const bigIntSumWords = 256 / bits.UintSize
 
 // addBigInts returns the sum of two BigInts.
-func (vm *VM) addBigInts(a, b Value) Value {
+func (cx *ExecutionContext) addBigInts(a, b Value) Value {
 	x, y := a.BigInt(), b.BigInt()
 	if a.o == bigInt64Object && b.o == bigInt64Object ||
 		x.Sign() != y.Sign() || len(x.Bits()) > bigIntSumWords || len(y.Bits()) > bigIntSumWords {
 		z := new(big.Int).Add(x, y)
-		vm.checkBigIntBits(int64(z.BitLen()))
-		return vm.NewBigInt(z)
+		cx.checkBigIntBits(int64(z.BitLen()))
+		return cx.NewBigInt(z)
 	}
 	o := &struct {
 		bigIntObject
@@ -129,7 +129,7 @@ func displayBigInt(v Value) string {
 
 // BigIntToString implements BigInt::toString. It throws a RangeError when the result would be
 // longer than MaxStringLength.
-func (vm *VM) BigIntToString(v Value, radix int) wtf8.String {
+func (cx *ExecutionContext) BigIntToString(v Value, radix int) wtf8.String {
 	if i, ok := v.BigInt64(); ok {
 		return wtf8.String(strconv.FormatInt(i, radix))
 	}
@@ -144,14 +144,14 @@ func (vm *VM) BigIntToString(v Value, radix int) wtf8.String {
 			sign = 1
 		}
 		if sign+(n+k-1)/k > MaxStringLength {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+			cx.ThrowRangeError("invalid string length")
 		}
 	} else if float64(n-1)/math.Log2(float64(radix)) > MaxStringLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+		cx.ThrowRangeError("invalid string length")
 	}
-	s := numconv.FormatBigInt(x, radix, vm.Poll)
+	s := numconv.FormatBigInt(x, radix, cx.Poll)
 	if len(s) > MaxStringLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+		cx.ThrowRangeError("invalid string length")
 	}
 	return s
 }
@@ -313,7 +313,7 @@ func powBitLen(a *big.Int, n int64) int64 {
 
 // bigExp sets r to a to the power of the non-negative n, checking for an interruption between
 // the multiplications.
-func (vm *VM) bigExp(r, a *big.Int, n int64) {
+func (cx *ExecutionContext) bigExp(r, a *big.Int, n int64) {
 	if k := a.TrailingZeroBits(); a.BitLen() == int(k)+1 {
 		// A power of two is a shift.
 		r.Lsh(big.NewInt(1), k*uint(n))
@@ -324,10 +324,10 @@ func (vm *VM) bigExp(r, a *big.Int, n int64) {
 	}
 	r.SetInt64(1)
 	for i := bits.Len64(uint64(n)) - 1; i >= 0; i-- {
-		vm.Poll()
-		r.Set(numconv.MulBigInt(r, r, vm.Poll))
+		cx.Poll()
+		r.Set(numconv.MulBigInt(r, r, cx.Poll))
 		if n>>i&1 != 0 {
-			r.Set(numconv.MulBigInt(r, a, vm.Poll))
+			r.Set(numconv.MulBigInt(r, a, cx.Poll))
 		}
 	}
 }

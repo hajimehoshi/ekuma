@@ -36,9 +36,9 @@ func TestQueryOfMissingKeyNotInterned(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			vm := newVM(t)
-			before := engine.InternedCount(vm)
-			if _, err := runScript(vm, "query", `
+			cx := newVM(t)
+			before := engine.InternedCount(cx)
+			if _, err := runScript(cx, "query", `
 				o = {};
 				for (let i = 0; i < 10000; i++) {
 					const k = "k" + i;
@@ -47,7 +47,7 @@ func TestQueryOfMissingKeyNotInterned(t *testing.T) {
 			`); err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
-			if got := engine.InternedCount(vm); got != before {
+			if got := engine.InternedCount(cx); got != before {
 				t.Errorf("got %d interned strings, want %d", got, before)
 			}
 		})
@@ -79,8 +79,8 @@ func TestQueryKeyThroughProxy(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			vm := newVM(t)
-			v, err := runScript(vm, "proxy", `
+			cx := newVM(t)
+			v, err := runScript(cx, "proxy", `
 				function define(t, k) {
 					Object.defineProperty(t, k, {value: 1});
 				}

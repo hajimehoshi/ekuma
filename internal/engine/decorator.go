@@ -83,8 +83,8 @@ func (vm *VM) newClassDecoration(name Value) Value {
 }
 
 // autoAccessorOp performs the instruction i, an [bytecode.OpAutoAccessor], on the registers regs.
-func (vm *VM) autoAccessorOp(regs []Value, i *bytecode.Instr) {
-	storage, getter, setter := vm.makeAutoAccessor(regs[i.B])
+func (cx *ExecutionContext) autoAccessorOp(regs []Value, i *bytecode.Instr) {
+	storage, getter, setter := cx.makeAutoAccessor(regs[i.B])
 	regs[i.A] = Value{o: storage}
 	regs[i.A+1] = Value{o: getter}
 	regs[i.A+2] = Value{o: setter}
@@ -94,12 +94,12 @@ func (vm *VM) autoAccessorOp(regs []Value, i *bytecode.Instr) {
 // [bytecode.OpDecorateFinish], on the registers regs; x is the [bytecode.OpExtra] after an
 // [bytecode.OpDecorateElement]. It returns the value for the register a of a step that has one.
 // The registers may move when it returns.
-func (vm *VM) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
+func (cx *ExecutionContext) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
 	switch i.Op {
 	case bytecode.OpDecorateBegin:
-		return vm.newClassDecoration(regs[i.B]), true
+		return cx.newClassDecoration(regs[i.B]), true
 	case bytecode.OpDecorateApply:
-		return vm.applyClassDecorators(regs[i.B].o.extState().(*classDecoration), regs[i.C].o), true
+		return cx.applyClassDecorators(regs[i.B].o.extState().(*classDecoration), regs[i.C].o), true
 	}
 	st := regs[i.A].o.extState().(*classDecoration)
 	switch i.Op {
@@ -119,16 +119,16 @@ func (vm *VM) decorateOp(regs []Value, i, x *bytecode.Instr) (Value, bool) {
 		if i.C >= 0 {
 			v = regs[i.C]
 		}
-		vm.addDecoratedElement(st, int(x.A), k, v.o)
+		cx.addDecoratedElement(st, int(x.A), k, v.o)
 	case bytecode.OpDecorateFinish:
-		vm.finishClass(st, regs[i.B])
+		cx.finishClass(st, regs[i.B])
 	}
 	return Undefined, false
 }
 
 // addDecoratedElement adds the class element of the Elem kind elem with the key k and the value
 // or initializer v, which may be nil, to the state st, with the decorators added so far.
-func (vm *VM) addDecoratedElement(st *classDecoration, elem int, k Value, v *Object) {
+func (cx *ExecutionContext) addDecoratedElement(st *classDecoration, elem int, k Value, v *Object) {
 	e := &elementDef{
 		kind:       elem &^ bytecode.ElemStatic,
 		static:     elem&bytecode.ElemStatic != 0,
@@ -138,17 +138,17 @@ func (vm *VM) addDecoratedElement(st *classDecoration, elem int, k Value, v *Obj
 	}
 	st.pending = nil
 	if e.kind == bytecode.ElemAccessor {
-		e.storage, e.getter, e.setter = vm.makeAutoAccessor(k)
+		e.storage, e.getter, e.setter = cx.makeAutoAccessor(k)
 	}
 	st.elements = append(st.elements, e)
 }
 
 // makeAutoAccessor returns the backing private name, the getter and the setter of an
 // auto-accessor with the key k, which is a property key or a private name.
-func (vm *VM) makeAutoAccessor(k Value) (storage, getter, setter *Object) {
-	name := vm.funcNameOfKey(k)
+func (cx *ExecutionContext) makeAutoAccessor(k Value) (storage, getter, setter *Object) {
+	name := cx.funcNameOfKey(k)
 	if len("get ")+len(name) > MaxStringLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+		cx.ThrowRangeError("invalid string length")
 	}
 	storage = &Object{
 		kind:  kindSymbol,
@@ -158,47 +158,47 @@ func (vm *VM) makeAutoAccessor(k Value) (storage, getter, setter *Object) {
 	if k.o.class == classPrivateName {
 		storage.str = k.o.str + " accessor storage"
 	}
-	getter = vm.NewNative("get "+name, 0, func(vm *VM, this Value, args []Value) Value {
-		return vm.PrivateGet(this, storage)
+	getter = cx.NewNative("get "+name, 0, func(cx *ExecutionContext, this Value, args []Value) Value {
+		return cx.PrivateGet(this, storage)
 	})
-	setter = vm.NewNative("set "+name, 1, func(vm *VM, this Value, args []Value) Value {
-		vm.PrivateSet(this, storage, argAt(args, 0))
+	setter = cx.NewNative("set "+name, 1, func(cx *ExecutionContext, this Value, args []Value) Value {
+		cx.PrivateSet(this, storage, argAt(args, 0))
 		return Undefined
 	})
 	return storage, getter, setter
 }
 
 // PrivateGet implements PrivateGet.
-func (vm *VM) PrivateGet(o Value, name *Object) Value {
-	v, getter := vm.getPrivate(o, name)
+func (cx *ExecutionContext) PrivateGet(o Value, name *Object) Value {
+	v, getter := cx.getPrivate(o, name)
 	if getter != nil {
-		return vm.Call(getter, o)
+		return cx.Call(getter, o)
 	}
 	return v
 }
 
 // PrivateSet implements PrivateSet.
-func (vm *VM) PrivateSet(o Value, name *Object, v Value) {
-	if setter := vm.setPrivate(o, name, v); setter != nil {
-		vm.Call(setter, o, v)
+func (cx *ExecutionContext) PrivateSet(o Value, name *Object, v Value) {
+	if setter := cx.setPrivate(o, name, v); setter != nil {
+		cx.Call(setter, o, v)
 	}
 }
 
 // applyClassDecorators performs the steps of ClassDefinitionEvaluation from the application of
 // the decorators of the elements to the application of the decorators of the class F, and
 // returns the class that the decorators of the class returned.
-func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
+func (cx *ExecutionContext) applyClassDecorators(st *classDecoration, f *Object) Value {
 	proto := f.fn.home
 
 	// Nothing has had access to F yet, so its [[Prototype]] is still constructorParent. Without
 	// a ClassHeritage it is %Function.prototype%, whose non-configurable, non-writable
 	// @@metadata is null, as the spec gives for that case.
-	parent := vm.Get(f.shape.proto, PropKey{key: vm.WellKnownSymbol(SymbolMetadata)})
+	parent := cx.Get(f.shape.proto, PropKey{key: cx.WellKnownSymbol(SymbolMetadata)})
 	var metadataProto *Object
 	if parent.IsObject() {
 		metadataProto = parent.o
 	}
-	st.metadata = vm.NewObject(metadataProto)
+	st.metadata = cx.NewObject(metadataProto)
 	var instanceMethodInitializers []*Object
 
 	home := func(e *elementDef) *Object {
@@ -222,14 +222,14 @@ func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 			case static:
 				extra = &st.staticMethodInitializers
 			}
-			vm.applyDecoratorsToElementDefinition(e, extra, st.metadata)
-			vm.defineMethodProperty(home(e), e)
+			cx.applyDecoratorsToElementDefinition(e, extra, st.metadata)
+			cx.defineMethodProperty(home(e), e)
 		}
 	}
 	for _, static := range []bool{true, false} {
 		for _, e := range st.elements {
 			if e.static == static && e.kind == bytecode.ElemField {
-				vm.applyDecoratorsToElementDefinition(e, &e.dec.extra, st.metadata)
+				cx.applyDecoratorsToElementDefinition(e, &e.dec.extra, st.metadata)
 			}
 		}
 	}
@@ -259,13 +259,13 @@ func (vm *VM) applyClassDecorators(st *classDecoration, f *Object) Value {
 		}
 		for _, c := range e.appendElements(nil) {
 			if c.kind != bytecode.ElemField {
-				vm.defineClassElement(Value{o: f}, &c)
+				cx.defineClassElement(Value{o: f}, &c)
 			}
 		}
 	}
 
-	newF := vm.applyDecoratorsToClassDefinition(st, Value{o: f})
-	vm.DefinePropertyOrThrow(newF.o, PropKey{key: vm.WellKnownSymbol(SymbolMetadata)}, dataDesc(Value{o: st.metadata}, FlagsHidden))
+	newF := cx.applyDecoratorsToClassDefinition(st, Value{o: f})
+	cx.DefinePropertyOrThrow(newF.o, PropKey{key: cx.WellKnownSymbol(SymbolMetadata)}, dataDesc(Value{o: st.metadata}, FlagsHidden))
 	return newF
 }
 
@@ -313,7 +313,7 @@ func (e *elementDef) appendElements(elems []classElement) []classElement {
 
 // defineMethodProperty implements DefineMethodProperty for the method, getter, setter or
 // auto-accessor e of the class with the home object home.
-func (vm *VM) defineMethodProperty(home *Object, e *elementDef) {
+func (cx *ExecutionContext) defineMethodProperty(home *Object, e *elementDef) {
 	if e.key.o != nil && e.key.o.class == classPrivateName {
 		return
 	}
@@ -335,58 +335,58 @@ func (vm *VM) defineMethodProperty(home *Object, e *elementDef) {
 		d.setter = e.setter
 		d.has |= HasGet | HasSet
 	}
-	vm.DefinePropertyOrThrow(home, vm.ToPropertyKey(e.key), d)
+	cx.DefinePropertyOrThrow(home, cx.ToPropertyKey(e.key), d)
 }
 
 // applyDecoratorsToElementDefinition implements ApplyDecoratorsToElementDefinition.
 // The decorators of a field or an auto-accessor add their initializers to e.dec.
-func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object, metadata *Object) {
+func (cx *ExecutionContext) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object, metadata *Object) {
 	// The decorator closest to the element applies first.
 	for _, d := range slices.Backward(e.decorators) {
 		state := &decorationState{}
-		ctx := vm.createDecoratorContextObject(e.kind, e.key, extra, state, metadata, e.static, false)
+		ctx := cx.createDecoratorContextObject(e.kind, e.key, extra, state, metadata, e.static, false)
 		value := Undefined
 		switch e.kind {
 		case bytecode.ElemMethod, bytecode.ElemGetter, bytecode.ElemSetter:
 			value = Value{o: e.value}
 		case bytecode.ElemAccessor:
-			o := vm.NewOrdinaryObject()
-			vm.CreateDataPropertyOrThrow(o, PropKey{key: vm.Key(KeyGet)}, Value{o: e.getter})
-			vm.CreateDataPropertyOrThrow(o, PropKey{key: vm.Key(KeySet)}, Value{o: e.setter})
+			o := cx.NewOrdinaryObject()
+			cx.CreateDataPropertyOrThrow(o, PropKey{key: cx.Key(KeyGet)}, Value{o: e.getter})
+			cx.CreateDataPropertyOrThrow(o, PropKey{key: cx.Key(KeySet)}, Value{o: e.setter})
 			value = Value{o: o}
 		}
 		nv := func() Value {
 			defer func() {
 				state.finished = true
 			}()
-			return vm.CallValue(d.decorator, d.receiver, value, ctx)
+			return cx.CallValue(d.decorator, d.receiver, value, ctx)
 		}()
 		switch e.kind {
 		case bytecode.ElemField:
 			if nv.IsCallable() {
 				e.dec.initializers = append(e.dec.initializers, nv.o)
 			} else if !nv.IsUndefined() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "a field decorator must return a function or undefined")
+				cx.ThrowTypeError("a field decorator must return a function or undefined")
 			}
 		case bytecode.ElemAccessor:
 			if nv.IsObject() {
-				if g := vm.decoratorResultFunction(nv, vm.Key(KeyGet)); g != nil {
+				if g := cx.decoratorResultFunction(nv, cx.Key(KeyGet)); g != nil {
 					e.getter = g
 				}
-				if s := vm.decoratorResultFunction(nv, vm.Key(KeySet)); s != nil {
+				if s := cx.decoratorResultFunction(nv, cx.Key(KeySet)); s != nil {
 					e.setter = s
 				}
-				if init := vm.decoratorResultFunction(nv, vm.Intern("init")); init != nil {
+				if init := cx.decoratorResultFunction(nv, cx.Intern("init")); init != nil {
 					e.dec.initializers = append(e.dec.initializers, init)
 				}
 			} else if !nv.IsUndefined() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "an accessor decorator must return an object or undefined")
+				cx.ThrowTypeError("an accessor decorator must return an object or undefined")
 			}
 		default:
 			if nv.IsCallable() {
 				e.value = nv.o
 			} else if !nv.IsUndefined() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "a method decorator must return a function or undefined")
+				cx.ThrowTypeError("a method decorator must return a function or undefined")
 			}
 		}
 	}
@@ -395,32 +395,32 @@ func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object
 
 // decoratorResultFunction returns the property key of the object that an accessor decorator
 // returned when it is a function, or nil when it is undefined.
-func (vm *VM) decoratorResultFunction(o Value, key *Object) *Object {
-	v := vm.Get(o.o, PropKey{key: key})
+func (cx *ExecutionContext) decoratorResultFunction(o Value, key *Object) *Object {
+	v := cx.Get(o.o, PropKey{key: key})
 	if v.IsCallable() {
 		return v.o
 	}
 	if !v.IsUndefined() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the "+wtf8.ToValidUTF8(key.str)+" property that an accessor decorator returned must be a function or undefined")
+		cx.ThrowTypeError("the " + wtf8.ToValidUTF8(key.str) + " property that an accessor decorator returned must be a function or undefined")
 	}
 	return nil
 }
 
 // applyDecoratorsToClassDefinition implements ApplyDecoratorsToClassDefinition.
-func (vm *VM) applyDecoratorsToClassDefinition(st *classDecoration, classDef Value) Value {
+func (cx *ExecutionContext) applyDecoratorsToClassDefinition(st *classDecoration, classDef Value) Value {
 	for _, d := range slices.Backward(st.classDecorators) {
 		state := &decorationState{}
-		ctx := vm.createDecoratorContextObject(0, st.name, &st.classInitializers, state, st.metadata, false, true)
+		ctx := cx.createDecoratorContextObject(0, st.name, &st.classInitializers, state, st.metadata, false, true)
 		nd := func() Value {
 			defer func() {
 				state.finished = true
 			}()
-			return vm.CallValue(d.decorator, d.receiver, classDef, ctx)
+			return cx.CallValue(d.decorator, d.receiver, classDef, ctx)
 		}()
 		if nd.IsCallable() {
 			classDef = nd
 		} else if !nd.IsUndefined() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "a class decorator must return a function or undefined")
+			cx.ThrowTypeError("a class decorator must return a function or undefined")
 		}
 	}
 	st.classDecorators = nil
@@ -429,9 +429,9 @@ func (vm *VM) applyDecoratorsToClassDefinition(st *classDecoration, classDef Val
 
 // finishClass performs the last steps of ClassDefinitionEvaluation for the class f: the
 // initializers of the static methods, the static elements, and the initializers of the class.
-func (vm *VM) finishClass(st *classDecoration, f Value) {
+func (cx *ExecutionContext) finishClass(st *classDecoration, f Value) {
 	for _, init := range st.staticMethodInitializers {
-		vm.Call(init, f)
+		cx.Call(init, f)
 	}
 	for _, e := range st.elements {
 		if !e.static {
@@ -441,22 +441,22 @@ func (vm *VM) finishClass(st *classDecoration, f Value) {
 		case bytecode.ElemField, bytecode.ElemAccessor:
 			for _, c := range e.appendElements(nil) {
 				if c.kind == bytecode.ElemField {
-					vm.defineClassElement(f, &c)
+					cx.defineClassElement(f, &c)
 				}
 			}
 		case bytecode.ElemStaticBlock:
-			vm.Call(e.value, f)
+			cx.Call(e.value, f)
 		}
 	}
 	for _, init := range st.classInitializers {
-		vm.Call(init, f)
+		cx.Call(init, f)
 	}
 }
 
 // createDecoratorContextObject implements CreateDecoratorContextObject. kind is a bytecode
 // Elem kind, which isClass overrides.
-func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[]*Object, state *decorationState, metadata *Object, static, isClass bool) Value {
-	ctx := vm.NewOrdinaryObject()
+func (cx *ExecutionContext) createDecoratorContextObject(kind int, name Value, initializers *[]*Object, state *decorationState, metadata *Object, static, isClass bool) Value {
+	ctx := cx.NewOrdinaryObject()
 	var kindStr wtf8.String
 	switch {
 	case isClass:
@@ -473,15 +473,15 @@ func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[
 		kindStr = "field"
 	}
 	def := func(key wtf8.String, v Value) {
-		vm.CreateDataPropertyOrThrow(ctx, PropKey{key: vm.Intern(key)}, v)
+		cx.CreateDataPropertyOrThrow(ctx, PropKey{key: cx.Intern(key)}, v)
 	}
-	def("kind", vm.NewString(kindStr))
+	def("kind", cx.NewString(kindStr))
 	if !isClass {
-		def("access", vm.createDecoratorAccessObject(kind, name))
+		def("access", cx.createDecoratorAccessObject(kind, name))
 		def("static", Bool(static))
 		if name.o != nil && name.o.class == classPrivateName {
 			def("private", True)
-			def("name", vm.NewString("#"+name.o.str))
+			def("name", cx.NewString("#"+name.o.str))
 		} else {
 			def("private", False)
 			def("name", name)
@@ -489,13 +489,13 @@ func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[
 	} else {
 		def("name", name)
 	}
-	def("addInitializer", Value{o: vm.NewNative("addInitializer", 1, func(vm *VM, this Value, args []Value) Value {
+	def("addInitializer", Value{o: cx.NewNative("addInitializer", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
 		if state.finished {
-			vm.ThrowTypeError(vm.CurrentRealm(), "addInitializer cannot be called after the decorator returned")
+			cx.ThrowTypeError("addInitializer cannot be called after the decorator returned")
 		}
 		init := argAt(args, 0)
 		if !init.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "an initializer must be a function")
+			cx.ThrowTypeError("an initializer must be a function")
 		}
 		*initializers = append(*initializers, init.o)
 		return Undefined
@@ -505,47 +505,47 @@ func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[
 }
 
 // createDecoratorAccessObject implements CreateDecoratorAccessObject.
-func (vm *VM) createDecoratorAccessObject(kind int, name Value) Value {
-	access := vm.NewOrdinaryObject()
+func (cx *ExecutionContext) createDecoratorAccessObject(kind int, name Value) Value {
+	access := cx.NewOrdinaryObject()
 	private := name.o != nil && name.o.class == classPrivateName
-	checkObject := func(vm *VM, o Value) {
+	checkObject := func(cx *ExecutionContext, o Value) {
 		if !o.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "the object of a decorator access must be an object")
+			cx.ThrowTypeError("the object of a decorator access must be an object")
 		}
 	}
 	if kind != bytecode.ElemSetter {
-		getter := vm.NewNative("", 1, func(vm *VM, this Value, args []Value) Value {
+		getter := cx.NewNative("", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
 			o := argAt(args, 0)
-			checkObject(vm, o)
+			checkObject(cx, o)
 			if private {
-				return vm.PrivateGet(o, name.o)
+				return cx.PrivateGet(o, name.o)
 			}
-			return vm.Get(o.o, vm.ToPropertyKey(name))
+			return cx.Get(o.o, cx.ToPropertyKey(name))
 		})
-		vm.CreateDataPropertyOrThrow(access, PropKey{key: vm.Key(KeyGet)}, Value{o: getter})
+		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeyGet)}, Value{o: getter})
 	}
 	if kind == bytecode.ElemField || kind == bytecode.ElemAccessor || kind == bytecode.ElemSetter {
-		setter := vm.NewNative("", 2, func(vm *VM, this Value, args []Value) Value {
+		setter := cx.NewNative("", 2, func(cx *ExecutionContext, this Value, args []Value) Value {
 			o := argAt(args, 0)
-			checkObject(vm, o)
+			checkObject(cx, o)
 			if private {
-				vm.PrivateSet(o, name.o, argAt(args, 1))
+				cx.PrivateSet(o, name.o, argAt(args, 1))
 			} else {
-				vm.Set(o.o, vm.ToPropertyKey(name), argAt(args, 1))
+				cx.Set(o.o, cx.ToPropertyKey(name), argAt(args, 1))
 			}
 			return Undefined
 		})
-		vm.CreateDataPropertyOrThrow(access, PropKey{key: vm.Key(KeySet)}, Value{o: setter})
+		cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Key(KeySet)}, Value{o: setter})
 	}
-	has := vm.NewNative("has", 1, func(vm *VM, this Value, args []Value) Value {
+	has := cx.NewNative("has", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
 		o := argAt(args, 0)
-		checkObject(vm, o)
+		checkObject(cx, o)
 		if private {
-			_, ok := vm.privateStorage(o.o).shape.lookup(name.o)
+			_, ok := cx.privateStorage(o.o).shape.lookup(name.o)
 			return Bool(ok)
 		}
-		return Bool(vm.HasProperty(o.o, vm.ToPropertyKey(name)))
+		return Bool(cx.HasProperty(o.o, cx.ToPropertyKey(name)))
 	})
-	vm.CreateDataPropertyOrThrow(access, PropKey{key: vm.Intern("has")}, Value{o: has})
+	cx.CreateDataPropertyOrThrow(access, PropKey{key: cx.Intern("has")}, Value{o: has})
 	return Value{o: access}
 }

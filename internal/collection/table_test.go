@@ -73,7 +73,7 @@ func TestCursorAcrossCompaction(t *testing.T) {
 }
 
 func TestSameValueZero(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	// Below and above the size at which the table indexes its keys.
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table
@@ -82,8 +82,8 @@ func TestSameValueZero(t *testing.T) {
 		}
 		tab.Set(engine.Number(math.Copysign(0, -1)), engine.Number(1))
 		tab.Set(engine.Number(math.NaN()), engine.Number(2))
-		tab.Set(vm.NewString("key"), engine.Number(3))
-		o := engine.ObjectValue(vm.NewObject(nil))
+		tab.Set(cx.NewString("key"), engine.Number(3))
+		o := engine.ObjectValue(cx.NewObject(nil))
 		tab.Set(o, engine.Number(4))
 
 		for _, tc := range []struct {
@@ -100,7 +100,7 @@ func TestSameValueZero(t *testing.T) {
 			},
 			{
 				// A string with the same contents that is another object.
-				key:  vm.NewString(wtf8.String([]byte("key"))),
+				key:  cx.NewString(wtf8.String([]byte("key"))),
 				want: 3,
 			},
 			{
@@ -110,10 +110,10 @@ func TestSameValueZero(t *testing.T) {
 		} {
 			v, ok := tab.Get(tc.key)
 			if !ok || v.Number() != tc.want {
-				t.Errorf("filler %d: Get(%s) = %v, %t; want %v", filler, vm.DisplayString(tc.key), vm.DisplayString(v), ok, tc.want)
+				t.Errorf("filler %d: Get(%s) = %v, %t; want %v", filler, cx.DisplayString(tc.key), cx.DisplayString(v), ok, tc.want)
 			}
 		}
-		if tab.Has(engine.ObjectValue(vm.NewObject(nil))) {
+		if tab.Has(engine.ObjectValue(cx.NewObject(nil))) {
 			t.Errorf("filler %d: another object is found", filler)
 		}
 		c := tab.Start()
@@ -134,9 +134,9 @@ func TestSameValueZero(t *testing.T) {
 }
 
 func TestSameValueZeroBigInts(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	big64 := func() engine.Value {
-		return vm.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
+		return cx.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
 	}
 	// Below and above the size at which the table indexes its keys.
 	for _, filler := range []int{0, 20} {
@@ -148,10 +148,10 @@ func TestSameValueZeroBigInts(t *testing.T) {
 		tab.Set(engine.BigIntFromInt64(-1), engine.Number(1))
 		tab.Set(engine.BigIntFromInt64(math.MinInt64), engine.Number(2))
 		tab.Set(big64(), engine.Number(3))
-		tab.Set(vm.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))), engine.Number(4))
+		tab.Set(cx.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))), engine.Number(4))
 		// A key of many bits is stored and found quickly.
 		huge := new(big.Int).Lsh(big.NewInt(3), 1<<26)
-		tab.Set(vm.NewBigInt(huge), engine.Number(5))
+		tab.Set(cx.NewBigInt(huge), engine.Number(5))
 
 		for _, tc := range []struct {
 			key  engine.Value
@@ -171,17 +171,17 @@ func TestSameValueZeroBigInts(t *testing.T) {
 				want: 3,
 			},
 			{
-				key:  vm.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))),
+				key:  cx.NewBigInt(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 64))),
 				want: 4,
 			},
 			{
-				key:  vm.NewBigInt(new(big.Int).Set(huge)),
+				key:  cx.NewBigInt(new(big.Int).Set(huge)),
 				want: 5,
 			},
 		} {
 			v, ok := tab.Get(tc.key)
 			if !ok || v.Number() != tc.want {
-				t.Errorf("filler %d: Get of %d bits = %v, %t; want %v", filler, tc.key.BigInt().BitLen(), vm.DisplayString(v), ok, tc.want)
+				t.Errorf("filler %d: Get of %d bits = %v, %t; want %v", filler, tc.key.BigInt().BitLen(), cx.DisplayString(v), ok, tc.want)
 			}
 		}
 		if tab.Has(engine.BigIntFromInt64(0)) {
@@ -193,23 +193,23 @@ func TestSameValueZeroBigInts(t *testing.T) {
 // TestFindAfterDeletes tests that every live key is found while deleted entries are in the
 // table, after the table grows, and in a clone.
 func TestFindAfterDeletes(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	// A new string for every call, so that keys are found by their contents.
 	key := func(i int) engine.Value {
 		switch i % 3 {
 		case 0:
 			return engine.Number(float64(i))
 		case 1:
-			return vm.NewString(wtf8.String(strconv.Itoa(i)))
+			return cx.NewString(wtf8.String(strconv.Itoa(i)))
 		default:
-			return vm.NewString(wtf8.String("a key longer than sixteen bytes " + strconv.Itoa(i)))
+			return cx.NewString(wtf8.String("a key longer than sixteen bytes " + strconv.Itoa(i)))
 		}
 	}
 	check := func(name string, tab *collection.Table, n int) {
 		for i := range n {
 			deleted := i < 300 && i%4 == 0
 			if v, ok := tab.Get(key(i)); ok == deleted || ok && v.Number() != float64(i) {
-				t.Errorf("%s: Get(%d) = %s, %t", name, i, vm.DisplayString(v), ok)
+				t.Errorf("%s: Get(%d) = %s, %t", name, i, cx.DisplayString(v), ok)
 			}
 		}
 	}
@@ -232,12 +232,12 @@ func TestFindAfterDeletes(t *testing.T) {
 // TestGrowthByUnhashedKeys tests that number keys are found and missed when the storage of the
 // entries grows only by keys that the slots do not locate.
 func TestGrowthByUnhashedKeys(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	var tab collection.Table
 	var numbers int
 	for i := range 1000 {
 		if tab.Size() == collection.EntryStorage(&tab) {
-			tab.Set(vm.NewString(wtf8.String("a key longer than sixteen bytes "+strconv.Itoa(i))), engine.Undefined)
+			tab.Set(cx.NewString(wtf8.String("a key longer than sixteen bytes "+strconv.Itoa(i))), engine.Undefined)
 			continue
 		}
 		tab.Set(engine.Number(float64(numbers)), engine.Undefined)

@@ -48,11 +48,11 @@ type (
 )
 
 // throwTemporal throws err, an error of the temporal package, as the error it stands for.
-func throwTemporal(vm *engine.VM, err error) {
+func throwTemporal(cx *engine.ExecutionContext, err error) {
 	if te, ok := errors.AsType[*temporal.Error](err); ok && te.Kind == temporal.TypeError {
-		vm.ThrowTypeError(vm.CurrentRealm(), te.Message)
+		cx.ThrowTypeError(te.Message)
 	}
-	vm.ThrowRangeError(vm.CurrentRealm(), err.Error())
+	cx.ThrowRangeError(err.Error())
 }
 
 // temporalFailure carries an error of the temporal package out of a Temporal function to
@@ -92,179 +92,179 @@ func check(err error) {
 
 // temporalNative returns f as a function that throws the errors that must and check report.
 func temporalNative(f engine.NativeFunc) engine.NativeFunc {
-	return func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	return func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		defer func() {
 			if e := recover(); e != nil {
 				if tf, ok := e.(temporalFailure); ok {
-					throwTemporal(vm, tf.err)
+					throwTemporal(cx, tf.err)
 				}
 				panic(e)
 			}
 		}()
-		return f(vm, this, args)
+		return f(cx, this, args)
 	}
 }
 
 // tmethod is method for the functions of Temporal.
-func tmethod(vm *engine.VM, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
-	return method(vm, o, name, length, temporalNative(f))
+func tmethod(cx *engine.ExecutionContext, o *engine.Object, name wtf8.String, length int, f engine.NativeFunc) *engine.Object {
+	return method(cx, o, name, length, temporalNative(f))
 }
 
 // tgetter is getter for the functions of Temporal.
-func tgetter(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) {
-	getter(vm, o, key, name, temporalNative(f))
+func tgetter(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) {
+	getter(cx, o, key, name, temporalNative(f))
 }
 
 // get returns the property name of o.
-func get(vm *engine.VM, o *engine.Object, name string) engine.Value {
-	return vm.Get(o, engine.NamedKey(vm.Intern(wtf8.String(name))))
+func get(cx *engine.ExecutionContext, o *engine.Object, name string) engine.Value {
+	return cx.Get(o, engine.NamedKey(cx.Intern(wtf8.String(name))))
 }
 
 // requireString returns v as a Go string, or throws a TypeError when it is not a String.
-func requireString(vm *engine.VM, v engine.Value, what string) string {
+func requireString(cx *engine.ExecutionContext, v engine.Value, what string) string {
 	if !v.IsString() {
-		vm.ThrowTypeError(vm.CurrentRealm(), what+" must be a string, not "+vm.DisplayString(v))
+		cx.ThrowTypeError(what + " must be a string, not " + cx.DisplayString(v))
 	}
-	return wtf8.ToValidUTF8(vm.ToString(v))
+	return wtf8.ToValidUTF8(cx.ToString(v))
 }
 
 // toIntegerWithTruncation implements ToIntegerWithTruncation.
-func toIntegerWithTruncation(vm *engine.VM, v engine.Value, what string) float64 {
-	n := vm.ToNumber(v)
+func toIntegerWithTruncation(cx *engine.ExecutionContext, v engine.Value, what string) float64 {
+	n := cx.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError(vm.CurrentRealm(), what+" must be a finite number")
+		cx.ThrowRangeError(what + " must be a finite number")
 	}
 	return math.Trunc(n) + 0
 }
 
 // toPositiveIntegerWithTruncation implements ToPositiveIntegerWithTruncation.
-func toPositiveIntegerWithTruncation(vm *engine.VM, v engine.Value, what string) float64 {
-	n := toIntegerWithTruncation(vm, v, what)
+func toPositiveIntegerWithTruncation(cx *engine.ExecutionContext, v engine.Value, what string) float64 {
+	n := toIntegerWithTruncation(cx, v, what)
 	if n <= 0 {
-		vm.ThrowRangeError(vm.CurrentRealm(), what+" must be positive")
+		cx.ThrowRangeError(what + " must be positive")
 	}
 	return n
 }
 
 // toIntegerIfIntegral implements ToIntegerIfIntegral.
-func toIntegerIfIntegral(vm *engine.VM, v engine.Value, what string) float64 {
-	n := vm.ToNumber(v)
+func toIntegerIfIntegral(cx *engine.ExecutionContext, v engine.Value, what string) float64 {
+	n := cx.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
-		vm.ThrowRangeError(vm.CurrentRealm(), what+" must be an integer")
+		cx.ThrowRangeError(what + " must be an integer")
 	}
 	return n + 0
 }
 
 // getOptionsObject implements GetOptionsObject.
-func getOptionsObject(vm *engine.VM, v engine.Value) *engine.Object {
+func getOptionsObject(cx *engine.ExecutionContext, v engine.Value) *engine.Object {
 	if v.IsUndefined() {
-		return vm.NewObject(nil)
+		return cx.NewObject(nil)
 	}
 	if v.IsObject() {
 		return v.Object()
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "options must be an object, not "+vm.DisplayString(v))
+	cx.ThrowTypeError("options must be an object, not " + cx.DisplayString(v))
 	return nil
 }
 
 // temporalOption implements GetOption for a String option whose allowed values are values. It
 // returns the index of the value, or fallback when the option is undefined. A negative
 // fallback makes the option required.
-func temporalOption(vm *engine.VM, opts *engine.Object, name string, values []string, fallback int) int {
-	v := get(vm, opts, name)
+func temporalOption(cx *engine.ExecutionContext, opts *engine.Object, name string, values []string, fallback int) int {
+	v := get(cx, opts, name)
 	if v.IsUndefined() {
 		if fallback < 0 {
-			vm.ThrowRangeError(vm.CurrentRealm(), name+" is required")
+			cx.ThrowRangeError(name + " is required")
 		}
 		return fallback
 	}
-	s := wtf8.ToValidUTF8(vm.ToString(v))
+	s := wtf8.ToValidUTF8(cx.ToString(v))
 	if i := slices.Index(values, s); i >= 0 {
 		return i
 	}
-	vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
+	cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	return 0
 }
 
-func getOverflowOption(vm *engine.VM, opts *engine.Object) temporal.Overflow {
-	return temporal.Overflow(temporalOption(vm, opts, "overflow", []string{"constrain", "reject"}, 0))
+func getOverflowOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.Overflow {
+	return temporal.Overflow(temporalOption(cx, opts, "overflow", []string{"constrain", "reject"}, 0))
 }
 
-func getDisambiguationOption(vm *engine.VM, opts *engine.Object) temporal.Disambiguation {
-	return temporal.Disambiguation(temporalOption(vm, opts, "disambiguation", []string{"compatible", "earlier", "later", "reject"}, 0))
+func getDisambiguationOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.Disambiguation {
+	return temporal.Disambiguation(temporalOption(cx, opts, "disambiguation", []string{"compatible", "earlier", "later", "reject"}, 0))
 }
 
-func getOffsetOption(vm *engine.VM, opts *engine.Object, fallback temporal.OffsetOption) temporal.OffsetOption {
-	return temporal.OffsetOption(temporalOption(vm, opts, "offset", []string{"prefer", "use", "ignore", "reject"}, int(fallback)))
+func getOffsetOption(cx *engine.ExecutionContext, opts *engine.Object, fallback temporal.OffsetOption) temporal.OffsetOption {
+	return temporal.OffsetOption(temporalOption(cx, opts, "offset", []string{"prefer", "use", "ignore", "reject"}, int(fallback)))
 }
 
-func getRoundingModeOption(vm *engine.VM, opts *engine.Object, fallback temporal.RoundingMode) temporal.RoundingMode {
-	return temporal.RoundingMode(temporalOption(vm, opts, "roundingMode", temporal.RoundingModeNames, int(fallback)))
+func getRoundingModeOption(cx *engine.ExecutionContext, opts *engine.Object, fallback temporal.RoundingMode) temporal.RoundingMode {
+	return temporal.RoundingMode(temporalOption(cx, opts, "roundingMode", temporal.RoundingModeNames, int(fallback)))
 }
 
-func getShowCalendarOption(vm *engine.VM, opts *engine.Object) temporal.ShowCalendar {
-	return temporal.ShowCalendar(temporalOption(vm, opts, "calendarName", []string{"auto", "always", "never", "critical"}, 0))
+func getShowCalendarOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.ShowCalendar {
+	return temporal.ShowCalendar(temporalOption(cx, opts, "calendarName", []string{"auto", "always", "never", "critical"}, 0))
 }
 
-func getShowTimeZoneOption(vm *engine.VM, opts *engine.Object) temporal.ShowTimeZone {
-	return temporal.ShowTimeZone(temporalOption(vm, opts, "timeZoneName", []string{"auto", "never", "critical"}, 0))
+func getShowTimeZoneOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.ShowTimeZone {
+	return temporal.ShowTimeZone(temporalOption(cx, opts, "timeZoneName", []string{"auto", "never", "critical"}, 0))
 }
 
 // getShowOffsetOption reports whether the offset option of toString is "auto".
-func getShowOffsetOption(vm *engine.VM, opts *engine.Object) bool {
-	return temporalOption(vm, opts, "offset", []string{"auto", "never"}, 0) == 0
+func getShowOffsetOption(cx *engine.ExecutionContext, opts *engine.Object) bool {
+	return temporalOption(cx, opts, "offset", []string{"auto", "never"}, 0) == 0
 }
 
 // getRoundingIncrementOption implements GetRoundingIncrementOption.
-func getRoundingIncrementOption(vm *engine.VM, opts *engine.Object) int64 {
-	v := get(vm, opts, "roundingIncrement")
+func getRoundingIncrementOption(cx *engine.ExecutionContext, opts *engine.Object) int64 {
+	v := get(cx, opts, "roundingIncrement")
 	if v.IsUndefined() {
 		return 1
 	}
-	n := toIntegerWithTruncation(vm, v, "roundingIncrement")
+	n := toIntegerWithTruncation(cx, v, "roundingIncrement")
 	if n < 1 || n > 1e9 {
-		vm.ThrowRangeError(vm.CurrentRealm(), "roundingIncrement must be from 1 to 1e9")
+		cx.ThrowRangeError("roundingIncrement must be from 1 to 1e9")
 	}
 	return int64(n)
 }
 
 // getFractionalSecondDigitsOption implements GetTemporalFractionalSecondDigitsOption.
-func getFractionalSecondDigitsOption(vm *engine.VM, opts *engine.Object) temporal.Precision {
-	v := get(vm, opts, "fractionalSecondDigits")
+func getFractionalSecondDigitsOption(cx *engine.ExecutionContext, opts *engine.Object) temporal.Precision {
+	v := get(cx, opts, "fractionalSecondDigits")
 	if v.IsUndefined() {
 		return temporal.PrecisionAuto
 	}
 	if !v.IsNumber() {
-		if vm.ToString(v) != "auto" {
-			vm.ThrowRangeError(vm.CurrentRealm(), "fractionalSecondDigits must be 'auto' or from 0 to 9")
+		if cx.ToString(v) != "auto" {
+			cx.ThrowRangeError("fractionalSecondDigits must be 'auto' or from 0 to 9")
 		}
 		return temporal.PrecisionAuto
 	}
 	n := v.Number()
 	if math.IsNaN(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "fractionalSecondDigits must be 'auto' or from 0 to 9")
+		cx.ThrowRangeError("fractionalSecondDigits must be 'auto' or from 0 to 9")
 	}
 	d := math.Floor(n)
 	if d < 0 || d > 9 {
-		vm.ThrowRangeError(vm.CurrentRealm(), "fractionalSecondDigits must be 'auto' or from 0 to 9")
+		cx.ThrowRangeError("fractionalSecondDigits must be 'auto' or from 0 to 9")
 	}
 	return temporal.Precision(d)
 }
 
 // getUnitOption implements GetTemporalUnitValuedOption. It returns UnitUnset for an undefined
 // option that is not required.
-func getUnitOption(vm *engine.VM, opts *engine.Object, key string, required bool) temporal.Unit {
-	v := get(vm, opts, key)
+func getUnitOption(cx *engine.ExecutionContext, opts *engine.Object, key string, required bool) temporal.Unit {
+	v := get(cx, opts, key)
 	if v.IsUndefined() {
 		if required {
-			vm.ThrowRangeError(vm.CurrentRealm(), key+" is required")
+			cx.ThrowRangeError(key + " is required")
 		}
 		return temporal.UnitUnset
 	}
-	s := wtf8.ToValidUTF8(vm.ToString(v))
+	s := wtf8.ToValidUTF8(cx.ToString(v))
 	u, ok := temporal.UnitFromString(s)
 	if !ok {
-		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+key)
+		cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for " + key)
 	}
 	return u
 }
@@ -279,7 +279,7 @@ const (
 )
 
 // validateUnit implements ValidateTemporalUnitValue.
-func validateUnit(vm *engine.VM, u temporal.Unit, group unitGroup, extra ...temporal.Unit) {
+func validateUnit(cx *engine.ExecutionContext, u temporal.Unit, group unitGroup, extra ...temporal.Unit) {
 	if u == temporal.UnitUnset || slices.Contains(extra, u) {
 		return
 	}
@@ -290,7 +290,7 @@ func validateUnit(vm *engine.VM, u temporal.Unit, group unitGroup, extra ...temp
 	case u.IsTimeUnit() && group != unitGroupDate:
 		return
 	}
-	vm.ThrowRangeError(vm.CurrentRealm(), u.String()+" is not a valid unit here")
+	cx.ThrowRangeError(u.String() + " is not a valid unit here")
 }
 
 // differenceSettings is the result of GetDifferenceSettings.
@@ -302,31 +302,31 @@ type differenceSettings struct {
 }
 
 // getDifferenceSettings implements GetDifferenceSettings.
-func getDifferenceSettings(vm *engine.VM, since bool, opts *engine.Object, group unitGroup, disallowed []temporal.Unit, fallbackSmallest, smallestLargestDefault temporal.Unit) differenceSettings {
-	largest := getUnitOption(vm, opts, "largestUnit", false)
-	increment := getRoundingIncrementOption(vm, opts)
-	mode := getRoundingModeOption(vm, opts, temporal.RoundTrunc)
-	smallest := getUnitOption(vm, opts, "smallestUnit", false)
-	validateUnit(vm, largest, group, temporal.UnitAuto)
+func getDifferenceSettings(cx *engine.ExecutionContext, since bool, opts *engine.Object, group unitGroup, disallowed []temporal.Unit, fallbackSmallest, smallestLargestDefault temporal.Unit) differenceSettings {
+	largest := getUnitOption(cx, opts, "largestUnit", false)
+	increment := getRoundingIncrementOption(cx, opts)
+	mode := getRoundingModeOption(cx, opts, temporal.RoundTrunc)
+	smallest := getUnitOption(cx, opts, "smallestUnit", false)
+	validateUnit(cx, largest, group, temporal.UnitAuto)
 	if largest == temporal.UnitUnset {
 		largest = temporal.UnitAuto
 	}
 	if slices.Contains(disallowed, largest) {
-		vm.ThrowRangeError(vm.CurrentRealm(), largest.String()+" is not a valid value for largestUnit")
+		cx.ThrowRangeError(largest.String() + " is not a valid value for largestUnit")
 	}
-	validateUnit(vm, smallest, group)
+	validateUnit(cx, smallest, group)
 	if smallest == temporal.UnitUnset {
 		smallest = fallbackSmallest
 	}
 	if slices.Contains(disallowed, smallest) {
-		vm.ThrowRangeError(vm.CurrentRealm(), smallest.String()+" is not a valid value for smallestUnit")
+		cx.ThrowRangeError(smallest.String() + " is not a valid value for smallestUnit")
 	}
 	defaultLargest := temporal.LargerOfTwoTemporalUnits(smallestLargestDefault, smallest)
 	if largest == temporal.UnitAuto {
 		largest = defaultLargest
 	}
 	if temporal.LargerOfTwoTemporalUnits(largest, smallest) != largest {
-		vm.ThrowRangeError(vm.CurrentRealm(), "largestUnit must not be smaller than smallestUnit")
+		cx.ThrowRangeError("largestUnit must not be smaller than smallestUnit")
 	}
 	if maximum, ok := temporal.MaximumTemporalDurationRoundingIncrement(smallest); ok {
 		check(temporal.ValidateTemporalRoundingIncrement(increment, maximum, false))
@@ -344,41 +344,41 @@ func getDifferenceSettings(vm *engine.VM, since bool, opts *engine.Object, group
 
 // roundToOptions returns the options object of a round method, where a string stands for the
 // smallestUnit option (or the key option).
-func roundToOptions(vm *engine.VM, v engine.Value, key string) *engine.Object {
+func roundToOptions(cx *engine.ExecutionContext, v engine.Value, key string) *engine.Object {
 	if v.IsUndefined() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "options are required")
+		cx.ThrowTypeError("options are required")
 	}
 	if v.IsString() {
-		o := vm.NewObject(nil)
-		vm.CreateDataPropertyOrThrow(o, engine.NamedKey(vm.Intern(wtf8.String(key))), v)
+		o := cx.NewObject(nil)
+		cx.CreateDataPropertyOrThrow(o, engine.NamedKey(cx.Intern(wtf8.String(key))), v)
 		return o
 	}
-	return getOptionsObject(vm, v)
+	return getOptionsObject(cx, v)
 }
 
 // SystemTimeZone returns the time zone of the host for Temporal and Intl.DateTimeFormat.
-func SystemTimeZone(vm *engine.VM) temporal.TimeZone {
-	tz := vm.DefaultTimeZone()
+func SystemTimeZone(cx *engine.ExecutionContext) temporal.TimeZone {
+	tz := cx.DefaultTimeZone()
 	if z, ok := temporal.SystemTimeZone(tz); ok {
 		return z
 	}
-	return temporal.SystemOffsetTimeZone(tz, vm.SystemUTCEpochMilliseconds())
+	return temporal.SystemOffsetTimeZone(tz, cx.SystemUTCEpochMilliseconds())
 }
 
 // toTimeZone implements ToTemporalTimeZoneIdentifier, returning the time zone.
-func toTimeZone(vm *engine.VM, v engine.Value) temporal.TimeZone {
+func toTimeZone(cx *engine.ExecutionContext, v engine.Value) temporal.TimeZone {
 	if s, ok := engine.TemporalData(v).(*zonedDateTimeSlots); ok {
 		return s.tz
 	}
-	str := requireString(vm, v, "time zone")
+	str := requireString(cx, v, "time zone")
 	if str == "UTC" {
 		return temporal.UTC
 	}
-	name, off, isOff, err := temporal.ParseTemporalTimeZoneString(str, vm.Poll)
+	name, off, isOff, err := temporal.ParseTemporalTimeZoneString(str, cx.Poll)
 	check(err)
 	var system temporal.TimeZone
 	if !isOff {
-		system = SystemTimeZone(vm)
+		system = SystemTimeZone(cx)
 	}
 	return must(temporal.TimeZoneFromIdentifier(name, off, isOff, system))
 }
@@ -401,42 +401,42 @@ func calendarOf(v engine.Value) (string, bool) {
 }
 
 // toCalendar implements ToTemporalCalendarIdentifier.
-func toCalendar(vm *engine.VM, v engine.Value) string {
+func toCalendar(cx *engine.ExecutionContext, v engine.Value) string {
 	if c, ok := calendarOf(v); ok {
 		return c
 	}
-	s := requireString(vm, v, "calendar")
-	return must(temporal.CanonicalizeCalendar(parseCalendarString(vm, s)))
+	s := requireString(cx, v, "calendar")
+	return must(temporal.CanonicalizeCalendar(parseCalendarString(cx, s)))
 }
 
 // parseCalendarString implements ParseTemporalCalendarString.
-func parseCalendarString(vm *engine.VM, s string) string {
-	if r, err := temporal.ParseISODateTime(s, vm.Poll, temporal.AnyGoal...); err == nil {
+func parseCalendarString(cx *engine.ExecutionContext, s string) string {
+	if r, err := temporal.ParseISODateTime(s, cx.Poll, temporal.AnyGoal...); err == nil {
 		if r.Calendar == "" {
 			return temporal.ISO8601
 		}
 		return r.Calendar
 	}
-	if !temporal.IsAnnotationValue(s, vm.Poll) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid calendar: "+vm.DisplayString(vm.NewString(wtf8.String(s))))
+	if !temporal.IsAnnotationValue(s, cx.Poll) {
+		cx.ThrowRangeError("invalid calendar: " + cx.DisplayString(cx.NewString(wtf8.String(s))))
 	}
 	return s
 }
 
 // calendarWithISODefault implements GetTemporalCalendarIdentifierWithISODefault.
-func calendarWithISODefault(vm *engine.VM, item *engine.Object) string {
+func calendarWithISODefault(cx *engine.ExecutionContext, item *engine.Object) string {
 	if c, ok := calendarOf(engine.ObjectValue(item)); ok {
 		return c
 	}
-	v := get(vm, item, "calendar")
+	v := get(cx, item, "calendar")
 	if v.IsUndefined() {
 		return temporal.ISO8601
 	}
-	return toCalendar(vm, v)
+	return toCalendar(cx, v)
 }
 
 // canonicalizeParsedCalendar returns the canonical calendar of a parsed string.
-func canonicalizeParsedCalendar(vm *engine.VM, c string) string {
+func canonicalizeParsedCalendar(cx *engine.ExecutionContext, c string) string {
 	if c == "" {
 		return temporal.ISO8601
 	}
@@ -461,7 +461,7 @@ const (
 
 // prepareCalendarFields implements PrepareCalendarFields. names are
 // the names of the fields to read.
-func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names []string, req fieldsRequirement) temporal.CalendarFields {
+func prepareCalendarFields(cx *engine.ExecutionContext, cal string, bag *engine.Object, names []string, req fieldsRequirement) temporal.CalendarFields {
 	names = slices.Clone(names)
 	// CalendarExtraFields.
 	if slices.Contains(names, "year") && temporal.CalendarSupportsEra(cal) {
@@ -474,59 +474,59 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 	}
 	any := false
 	for _, name := range names {
-		v := get(vm, bag, name)
+		v := get(cx, bag, name)
 		if v.IsUndefined() {
 			if req == fieldsTimeZoneRequired && name == "timeZone" {
-				vm.ThrowTypeError(vm.CurrentRealm(), "timeZone is required")
+				cx.ThrowTypeError("timeZone is required")
 			}
 			continue
 		}
 		any = true
 		switch name {
 		case "era":
-			f.Era, f.HasEra = wtf8.ToValidUTF8(vm.ToString(v)), true
+			f.Era, f.HasEra = wtf8.ToValidUTF8(cx.ToString(v)), true
 		case "eraYear":
-			f.EraYear, f.HasEraYear = toIntegerWithTruncation(vm, v, name), true
+			f.EraYear, f.HasEraYear = toIntegerWithTruncation(cx, v, name), true
 		case "year":
-			f.Year, f.HasYear = toIntegerWithTruncation(vm, v, name), true
+			f.Year, f.HasYear = toIntegerWithTruncation(cx, v, name), true
 		case "month":
-			f.Month, f.HasMonth = toPositiveIntegerWithTruncation(vm, v, name), true
+			f.Month, f.HasMonth = toPositiveIntegerWithTruncation(cx, v, name), true
 		case "day":
-			f.Day, f.HasDay = toPositiveIntegerWithTruncation(vm, v, name), true
+			f.Day, f.HasDay = toPositiveIntegerWithTruncation(cx, v, name), true
 		case "monthCode":
-			p := vm.ToPrimitive(v, engine.HintString)
+			p := cx.ToPrimitive(v, engine.HintString)
 			if !p.IsString() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "monthCode must be a string")
+				cx.ThrowTypeError("monthCode must be a string")
 			}
-			s := wtf8.ToValidUTF8(vm.ToString(p))
+			s := wtf8.ToValidUTF8(cx.ToString(p))
 			n, leap := must2(temporal.ParseMonthCode(s))
 			f.MonthCode, f.HasMonthCode = temporal.CreateMonthCode(n, leap), true
 		case "hour":
-			f.Hour, f.HasHour = toIntegerWithTruncation(vm, v, name), true
+			f.Hour, f.HasHour = toIntegerWithTruncation(cx, v, name), true
 		case "minute":
-			f.Minute, f.HasMinute = toIntegerWithTruncation(vm, v, name), true
+			f.Minute, f.HasMinute = toIntegerWithTruncation(cx, v, name), true
 		case "second":
-			f.Second, f.HasSecond = toIntegerWithTruncation(vm, v, name), true
+			f.Second, f.HasSecond = toIntegerWithTruncation(cx, v, name), true
 		case "millisecond":
-			f.Millisecond, f.HasMillisecond = toIntegerWithTruncation(vm, v, name), true
+			f.Millisecond, f.HasMillisecond = toIntegerWithTruncation(cx, v, name), true
 		case "microsecond":
-			f.Microsecond, f.HasMicrosecond = toIntegerWithTruncation(vm, v, name), true
+			f.Microsecond, f.HasMicrosecond = toIntegerWithTruncation(cx, v, name), true
 		case "nanosecond":
-			f.Nanosecond, f.HasNanosecond = toIntegerWithTruncation(vm, v, name), true
+			f.Nanosecond, f.HasNanosecond = toIntegerWithTruncation(cx, v, name), true
 		case "offset":
-			p := vm.ToPrimitive(v, engine.HintString)
+			p := cx.ToPrimitive(v, engine.HintString)
 			if !p.IsString() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "offset must be a string")
+				cx.ThrowTypeError("offset must be a string")
 			}
-			s := wtf8.ToValidUTF8(vm.ToString(p))
+			s := wtf8.ToValidUTF8(cx.ToString(p))
 			must(temporal.ParseDateTimeUTCOffset(s))
 			f.Offset, f.HasOffset = s, true
 		case "timeZone":
-			f.TimeZone, f.HasTimeZone = toTimeZone(vm, v), true
+			f.TimeZone, f.HasTimeZone = toTimeZone(cx, v), true
 		}
 	}
 	if req == fieldsPartial && !any {
-		vm.ThrowTypeError(vm.CurrentRealm(), "no fields are given")
+		cx.ThrowTypeError("no fields are given")
 	}
 	return f
 }
@@ -538,7 +538,7 @@ type timeRecordFields struct {
 }
 
 // toTemporalTimeRecord implements ToTemporalTimeRecord.
-func toTemporalTimeRecord(vm *engine.VM, bag *engine.Object, partial bool) timeRecordFields {
+func toTemporalTimeRecord(cx *engine.ExecutionContext, bag *engine.Object, partial bool) timeRecordFields {
 	var r timeRecordFields
 	any := false
 	// The fields in alphabetical order, with their indices in values.
@@ -546,16 +546,16 @@ func toTemporalTimeRecord(vm *engine.VM, bag *engine.Object, partial bool) timeR
 		name  string
 		index int
 	}{{"hour", 0}, {"microsecond", 4}, {"millisecond", 3}, {"minute", 1}, {"nanosecond", 5}, {"second", 2}} {
-		v := get(vm, bag, f.name)
+		v := get(cx, bag, f.name)
 		if v.IsUndefined() {
 			continue
 		}
-		r.values[f.index] = toIntegerWithTruncation(vm, v, f.name)
+		r.values[f.index] = toIntegerWithTruncation(cx, v, f.name)
 		r.has[f.index] = true
 		any = true
 	}
 	if !any {
-		vm.ThrowTypeError(vm.CurrentRealm(), "no time fields are given")
+		cx.ThrowTypeError("no time fields are given")
 	}
 	if !partial {
 		r.has = [6]bool{true, true, true, true, true, true}
@@ -564,7 +564,7 @@ func toTemporalTimeRecord(vm *engine.VM, bag *engine.Object, partial bool) timeR
 }
 
 // interpretDateTimeFields implements InterpretTemporalDateTimeFields.
-func interpretDateTimeFields(vm *engine.VM, cal string, f temporal.CalendarFields, overflow temporal.Overflow) temporal.ISODateTime {
+func interpretDateTimeFields(cx *engine.ExecutionContext, cal string, f temporal.CalendarFields, overflow temporal.Overflow) temporal.ISODateTime {
 	d := must(temporal.CalendarDateFromFields(cal, f, overflow))
 	t := must(temporal.RegulateTime(f.Hour, f.Minute, f.Second, f.Millisecond, f.Microsecond, f.Nanosecond, overflow))
 	return temporal.ISODateTime{
@@ -574,72 +574,72 @@ func interpretDateTimeFields(vm *engine.VM, cal string, f temporal.CalendarField
 }
 
 // rejectTemporalLikeObject implements IsPartialTemporalObject's rejections.
-func rejectTemporalLikeObject(vm *engine.VM, v engine.Value) *engine.Object {
+func rejectTemporalLikeObject(cx *engine.ExecutionContext, v engine.Value) *engine.Object {
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "argument must be an object")
+		cx.ThrowTypeError("argument must be an object")
 	}
 	switch engine.TemporalData(v).(type) {
 	case *plainDateSlots, *plainDateTimeSlots, *plainMonthDaySlots, *plainTimeSlots, *plainYearMonthSlots, *zonedDateTimeSlots:
-		vm.ThrowTypeError(vm.CurrentRealm(), "argument must be a partial object, not a Temporal object")
+		cx.ThrowTypeError("argument must be a partial object, not a Temporal object")
 	}
 	o := v.Object()
-	if !get(vm, o, "calendar").IsUndefined() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "calendar is not allowed")
+	if !get(cx, o, "calendar").IsUndefined() {
+		cx.ThrowTypeError("calendar is not allowed")
 	}
-	if !get(vm, o, "timeZone").IsUndefined() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "timeZone is not allowed")
+	if !get(cx, o, "timeZone").IsUndefined() {
+		cx.ThrowTypeError("timeZone is not allowed")
 	}
 	return o
 }
 
 // newTarget returns the new.target of a constructor, or throws a TypeError when it was called.
-func newTarget(vm *engine.VM, name string) *engine.Object {
-	nt := vm.GetNewTarget()
+func newTarget(cx *engine.ExecutionContext, name string) *engine.Object {
+	nt := cx.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor "+name+" requires 'new'")
+		cx.ThrowTypeError("constructor " + name + " requires 'new'")
 	}
 	return nt
 }
 
 // temporalConstructor defines a Temporal constructor and returns it and its intrinsic prototype.
-func temporalConstructor(vm *engine.VM, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (*engine.Object, *engine.Object) {
-	proto := vm.NewOrdinaryObject()
-	vm.SetIntrinsic(protoID, proto)
-	c := vm.NewNativeConstructor(name, length, temporalNative(f))
-	vm.DefineConstructorPrototype(c, protoID)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
-	vm.Define(ns, vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal."+name), engine.FlagConfigurable)
+func temporalConstructor(cx *engine.ExecutionContext, ns *engine.Object, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) (*engine.Object, *engine.Object) {
+	proto := cx.NewOrdinaryObject()
+	cx.SetIntrinsic(protoID, proto)
+	c := cx.NewNativeConstructor(name, length, temporalNative(f))
+	cx.DefineConstructorPrototype(c, protoID)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(ns, cx.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal."+name), engine.FlagConfigurable)
 	return c, proto
 }
 
 // valueOfThrows defines the valueOf method of the prototype of the type name, which throws.
-func valueOfThrows(vm *engine.VM, proto *engine.Object, name string) {
-	tmethod(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError(vm.CurrentRealm(), "use Temporal."+name+".compare or equals to compare Temporal."+name+" values, and toString to convert them")
+func valueOfThrows(cx *engine.ExecutionContext, proto *engine.Object, name string) {
+	tmethod(cx, proto, "valueOf", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		cx.ThrowTypeError("use Temporal." + name + ".compare or equals to compare Temporal." + name + " values, and toString to convert them")
 		return engine.Undefined
 	})
 }
 
 // incompatible throws the TypeError of a method called on a receiver of a wrong type.
-func incompatible(vm *engine.VM, what string, this engine.Value) {
-	vm.ThrowTypeError(vm.CurrentRealm(), what+" called on incompatible receiver "+vm.DisplayString(this))
+func incompatible(cx *engine.ExecutionContext, what string, this engine.Value) {
+	cx.ThrowTypeError(what + " called on incompatible receiver " + cx.DisplayString(this))
 }
 
 // bigIntToEpochNs returns the BigInt v as epoch nanoseconds, or throws a RangeError when they
 // are not valid.
-func bigIntToEpochNs(vm *engine.VM, v engine.Value) temporal.Int128 {
-	b := vm.ToBigInt(v).BigInt()
+func bigIntToEpochNs(cx *engine.ExecutionContext, v engine.Value) temporal.Int128 {
+	b := cx.ToBigInt(v).BigInt()
 	ns, ok := temporal.Int128FromBig(b)
 	if !ok || !temporal.IsValidEpochNanoseconds(ns) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "epoch nanoseconds are out of range")
+		cx.ThrowRangeError("epoch nanoseconds are out of range")
 	}
 	return ns
 }
 
 // epochNsValue returns ns as a BigInt.
-func epochNsValue(vm *engine.VM, ns temporal.Int128) engine.Value {
-	return vm.NewBigInt(ns.Big())
+func epochNsValue(cx *engine.ExecutionContext, ns temporal.Int128) engine.Value {
+	return cx.NewBigInt(ns.Big())
 }
 
 // epochMilliseconds returns floor(ns / 10⁶) as a Number.
@@ -655,28 +655,28 @@ func compareResult(c int) engine.Value {
 
 // initTemporal defines the Temporal namespace and Date.prototype.toTemporalInstant. The
 // contents of the namespace are created when they are first needed.
-func initTemporal(vm *engine.VM) {
-	ns := vm.NewLazyObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
-		vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal"), engine.FlagConfigurable)
-		initTemporalInstant(vm, ns)
-		initTemporalDuration(vm, ns)
-		initTemporalPlainDate(vm, ns)
-		initTemporalPlainTime(vm, ns)
-		initTemporalPlainDateTime(vm, ns)
-		initTemporalPlainYearMonth(vm, ns)
-		initTemporalPlainMonthDay(vm, ns)
-		initTemporalZonedDateTime(vm, ns)
-		initTemporalNow(vm, ns)
+func initTemporal(cx *engine.ExecutionContext) {
+	ns := cx.NewLazyObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {
+		cx.Define(ns, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Temporal"), engine.FlagConfigurable)
+		initTemporalInstant(cx, ns)
+		initTemporalDuration(cx, ns)
+		initTemporalPlainDate(cx, ns)
+		initTemporalPlainTime(cx, ns)
+		initTemporalPlainDateTime(cx, ns)
+		initTemporalPlainYearMonth(cx, ns)
+		initTemporalPlainMonthDay(cx, ns)
+		initTemporalZonedDateTime(cx, ns)
+		initTemporalNow(cx, ns)
 	})
-	vm.SetIntrinsic(engine.IntrinsicTemporal, ns)
-	vm.Define(vm.GlobalObject().Object(), vm.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
+	cx.SetIntrinsic(engine.IntrinsicTemporal, ns)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 
-	tmethod(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		tv := thisDate(vm, this, "toTemporalInstant")
+	tmethod(cx, cx.Realm().Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		tv := thisDate(cx, this, "toTemporalInstant")
 		if math.IsNaN(tv) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time value")
+			cx.ThrowRangeError("invalid time value")
 		}
-		return newInstant(vm, temporal.Mul64(int64(tv), 1_000_000), nil)
+		return newInstant(cx, temporal.Mul64(int64(tv), 1_000_000), nil)
 	})
 }
 

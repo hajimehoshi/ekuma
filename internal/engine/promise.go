@@ -75,7 +75,7 @@ type reactionAction struct {
 
 // AwaitHandler continues a built-in async function after an Await: v is the value of
 // the awaited promise, or its rejection reason when rejected is set.
-type AwaitHandler func(vm *VM, v Value, rejected bool)
+type AwaitHandler func(cx *ExecutionContext, v Value, rejected bool)
 
 // PromiseCapability is a PromiseCapability Record.
 type PromiseCapability struct {
@@ -142,8 +142,8 @@ func promiseOf(o *Object) *promiseData {
 }
 
 // NewPromiseObject returns a pending Promise object with the prototype proto.
-func (vm *VM) NewPromiseObject(proto *Object) *Object {
-	return newPromiseObject(vm.shapeFor(proto))
+func (cx *ExecutionContext) NewPromiseObject(proto *Object) *Object {
+	return newPromiseObject(cx.shapeFor(proto))
 }
 
 func newPromiseObject(s *shape) *Object {
@@ -169,41 +169,37 @@ type promiseObject struct {
 
 // newIntrinsicCapability returns the capability of a new promise of %Promise%,
 // as NewPromiseCapability(%Promise%) does.
-func (vm *VM) newIntrinsicCapability() *PromiseCapability {
-	return vm.executionContext().newIntrinsicCapability()
-}
-
-func (cx ExecutionContext) newIntrinsicCapability() *PromiseCapability {
+func (cx *ExecutionContext) newIntrinsicCapability() *PromiseCapability {
 	proto := cx.realm.Intrinsic(IntrinsicPromisePrototype)
 	return &PromiseCapability{
-		promise:   newPromiseObject(cx.vm.shapeForRealm(proto, cx.realm)),
+		promise:   newPromiseObject(cx.shapeForRealm(proto, cx.realm)),
 		intrinsic: true,
 	}
 }
 
 // CreateResolvingFunctions implements CreateResolvingFunctions for the promise p.
 // The result is a capability whose resolving functions are those functions.
-func (vm *VM) CreateResolvingFunctions(p *Object) *PromiseCapability {
+func (cx *ExecutionContext) CreateResolvingFunctions(p *Object) *PromiseCapability {
 	c := &PromiseCapability{
 		promise:   p,
 		intrinsic: true,
 	}
-	vm.createResolvingFunctions(c)
+	cx.createResolvingFunctions(c)
 	return c
 }
 
-func (vm *VM) createResolvingFunctions(c *PromiseCapability) {
-	c.resolve = vm.NewNative("", 1, func(vm *VM, this Value, args []Value) Value {
+func (cx *ExecutionContext) createResolvingFunctions(c *PromiseCapability) {
+	c.resolve = cx.NewNative("", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
-			vm.resolvePromise(c.resolvingRealm(), c.promise, argAt(args, 0))
+			cx.resolvePromise(c.resolvingRealm(), c.promise, argAt(args, 0))
 		}
 		return Undefined
 	})
-	c.reject = vm.NewNative("", 1, func(vm *VM, this Value, args []Value) Value {
+	c.reject = cx.NewNative("", 1, func(cx *ExecutionContext, this Value, args []Value) Value {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
-			vm.rejectPromise(c.promise, argAt(args, 0))
+			cx.rejectPromise(c.promise, argAt(args, 0))
 		}
 		return Undefined
 	})
@@ -217,32 +213,32 @@ func argAt(args []Value, i int) Value {
 }
 
 // NewPromiseCapability implements NewPromiseCapability.
-func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
-	if !c.IsObject() || !vm.IsConstructor(c.o) {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(c)+" is not a constructor")
+func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
+	if !c.IsObject() || !cx.IsConstructor(c.o) {
+		cx.ThrowTypeError(cx.DisplayString(c) + " is not a constructor")
 	}
-	if c.o == vm.CurrentRealm().Intrinsic(IntrinsicPromise) {
+	if c.o == cx.realm.Intrinsic(IntrinsicPromise) {
 		// Constructing %Promise% with an executor observes nothing that this does not.
-		return vm.newIntrinsicCapability()
+		return cx.newIntrinsicCapability()
 	}
 	var resolve, reject Value
 	resolve, reject = Undefined, Undefined
-	executor := vm.NewNative("", 2, func(vm *VM, this Value, args []Value) Value {
+	executor := cx.NewNative("", 2, func(cx *ExecutionContext, this Value, args []Value) Value {
 		if !resolve.IsUndefined() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "promise capability resolve function is already set")
+			cx.ThrowTypeError("promise capability resolve function is already set")
 		}
 		if !reject.IsUndefined() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "promise capability reject function is already set")
+			cx.ThrowTypeError("promise capability reject function is already set")
 		}
 		resolve, reject = argAt(args, 0), argAt(args, 1)
 		return Undefined
 	})
-	p := vm.Construct(c.o, []Value{{o: executor}}, c.o)
+	p := cx.Construct(c.o, []Value{{o: executor}}, c.o)
 	if !resolve.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "promise capability resolve function is not callable")
+		cx.ThrowTypeError("promise capability resolve function is not callable")
 	}
 	if !reject.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "promise capability reject function is not callable")
+		cx.ThrowTypeError("promise capability reject function is not callable")
 	}
 	return &PromiseCapability{
 		promise: p,
@@ -254,7 +250,7 @@ func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
 // ensureResolvingFunctions materializes the deferred functions of an intrinsic capability.
 func (vm *VM) ensureResolvingFunctions(c *PromiseCapability) {
 	if c.resolve == nil {
-		vm.InRealm(c.promise.CreationRealm(), func() { vm.createResolvingFunctions(c) })
+		c.promise.CreationRealm().Context().createResolvingFunctions(c)
 	}
 }
 
@@ -280,79 +276,79 @@ func (c *PromiseCapability) resolvingRealm() *Realm {
 }
 
 // canSettleDirectly reports whether the intrinsic resolving functions run in the current realm.
-func (c *PromiseCapability) canSettleDirectly(vm *VM) bool {
-	return c.intrinsic && (!vm.trackJobRealms || c.resolvingRealm() == vm.CurrentRealm())
+func (c *PromiseCapability) canSettleDirectly(cx *ExecutionContext) bool {
+	return c.intrinsic && (!cx.trackJobRealms || c.resolvingRealm() == cx.realm)
 }
 
 // ResolveCapability calls the [[Resolve]] function of c with v.
-func (vm *VM) ResolveCapability(c *PromiseCapability, v Value) {
-	if c.canSettleDirectly(vm) {
+func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v Value) {
+	if c.canSettleDirectly(cx) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
-			vm.resolvePromise(c.resolvingRealm(), c.promise, v)
+			cx.resolvePromise(c.resolvingRealm(), c.promise, v)
 		}
 		return
 	}
-	vm.Call(vm.CapabilityResolve(c).o, Undefined, v)
+	cx.Call(cx.CapabilityResolve(c).o, Undefined, v)
 }
 
 // RejectCapability calls the [[Reject]] function of c with v.
-func (vm *VM) RejectCapability(c *PromiseCapability, v Value) {
-	if c.canSettleDirectly(vm) {
+func (cx *ExecutionContext) RejectCapability(c *PromiseCapability, v Value) {
+	if c.canSettleDirectly(cx) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
-			vm.rejectPromise(c.promise, v)
+			cx.rejectPromise(c.promise, v)
 		}
 		return
 	}
-	vm.Call(vm.CapabilityReject(c).o, Undefined, v)
+	cx.Call(cx.CapabilityReject(c).o, Undefined, v)
 }
 
 // IfAbruptRejectPromise implements IfAbruptRejectPromise for what f does: when f throws,
 // it rejects c with the exception and reports false.
-func (vm *VM) IfAbruptRejectPromise(c *PromiseCapability, f func()) bool {
-	if vm.protect(f) {
+func (cx *ExecutionContext) IfAbruptRejectPromise(c *PromiseCapability, f func()) bool {
+	if cx.protect(f) {
 		return true
 	}
-	e := vm.thrown
-	vm.thrown = Undefined
-	vm.RejectCapability(c, e)
+	e := cx.thrown
+	cx.thrown = Undefined
+	cx.RejectCapability(c, e)
 	return false
 }
 
 // resolvePromise is what a promise resolve function does with resolution once it was not
 // already resolved: the promise resolution procedure.
-func (vm *VM) resolvePromise(resolverRealm *Realm, p *Object, resolution Value) {
+func (cx *ExecutionContext) resolvePromise(resolverRealm *Realm, p *Object, resolution Value) {
 	if resolution.o == p {
-		vm.rejectPromise(p, vm.NewError(resolverRealm, ErrorKindType, "chaining cycle detected for promise"))
+		cx.rejectPromise(p, resolverRealm.Context().NewError(ErrorKindType, "chaining cycle detected for promise"))
 		return
 	}
 	if !resolution.IsObject() {
-		vm.fulfillPromise(p, resolution)
+		cx.fulfillPromise(p, resolution)
 		return
 	}
 	var then Value
-	if !vm.protect(func() {
-		then = vm.GetV(resolution, vm.Key(keyThen))
+	if !cx.protect(func() {
+		then = cx.GetV(resolution, cx.Key(keyThen))
 	}) {
-		e := vm.thrown
-		vm.thrown = Undefined
-		vm.rejectPromise(p, e)
+		e := cx.thrown
+		cx.thrown = Undefined
+		cx.rejectPromise(p, e)
 		return
 	}
 	if !then.IsCallable() {
-		vm.fulfillPromise(p, resolution)
+		cx.fulfillPromise(p, resolution)
 		return
 	}
-	vm.enqueueThenableJob(p, resolution, then)
+	cx.enqueueThenableJob(p, resolution, then)
 }
 
 // enqueueThenableJob enqueues NewPromiseResolveThenableJob with the current continuation data.
-func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
-	vm.enqueuePromiseJob(job{
+func (cx *ExecutionContext) enqueueThenableJob(p *Object, thenable, then Value) {
+	cx.enqueuePromiseJob(job{
 		kind:             jobThenable,
-		context:          &vm.promiseJobRealm(then.o).context,
-		continuationData: vm.continuationData,
+		context:          cx.promiseJobRealm(then.o).Context(),
+		continuationData: cx.continuationData,
 		argument:         thenable,
 		promise:          p,
 		callback:         then.o,
@@ -360,44 +356,44 @@ func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
 }
 
 // fulfillPromise implements FulfillPromise.
-func (vm *VM) fulfillPromise(p *Object, v Value) {
+func (cx *ExecutionContext) fulfillPromise(p *Object, v Value) {
 	d := promiseOf(p)
 	reactions := d.reactions
 	d.reactions = nil
 	d.result = v
 	d.state = PromiseFulfilled
-	vm.triggerPromiseReactions(reactions, v, false)
+	cx.triggerPromiseReactions(reactions, v, false)
 }
 
 // rejectPromise implements RejectPromise.
-func (vm *VM) rejectPromise(p *Object, reason Value) {
+func (cx *ExecutionContext) rejectPromise(p *Object, reason Value) {
 	d := promiseOf(p)
 	reactions := d.reactions
 	d.reactions = nil
 	d.result = reason
 	d.state = PromiseRejected
 	if !d.isHandled {
-		vm.hostPromiseRejectionTracker(p, false)
+		cx.hostPromiseRejectionTracker(p, false)
 	}
-	vm.triggerPromiseReactions(reactions, reason, true)
+	cx.triggerPromiseReactions(reactions, reason, true)
 }
 
 // triggerPromiseReactions implements TriggerPromiseReactions.
-func (vm *VM) triggerPromiseReactions(reactions []pendingReaction, arg Value, rejected bool) {
+func (cx *ExecutionContext) triggerPromiseReactions(reactions []pendingReaction, arg Value, rejected bool) {
 	for i := range reactions {
-		vm.enqueueReactionJob(&reactions[i], arg, rejected)
+		cx.enqueueReactionJob(&reactions[i], arg, rejected)
 	}
 }
 
 // PerformPromiseThen implements PerformPromiseThen for the promise p. c is nil when
 // the result capability is undefined, and the result is then undefined.
-func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *PromiseCapability) Value {
+func (cx *ExecutionContext) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *PromiseCapability) Value {
 	r := pendingReaction{
 		action: reactionAction{
 			kind:       reactionHandlers,
 			capability: c,
 		},
-		continuationData: vm.continuationData,
+		continuationData: cx.continuationData,
 	}
 	if onFulfilled.IsCallable() {
 		r.onFulfilled = onFulfilled.o
@@ -405,7 +401,7 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 	if onRejected.IsCallable() {
 		r.onRejected = onRejected.o
 	}
-	vm.addReaction(p.o, &r)
+	cx.addReaction(p.o, &r)
 	if c == nil {
 		return Undefined
 	}
@@ -413,40 +409,40 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 }
 
 // addReaction is the part of PerformPromiseThen after the reaction records are created.
-func (vm *VM) addReaction(p *Object, r *pendingReaction) {
+func (cx *ExecutionContext) addReaction(p *Object, r *pendingReaction) {
 	d := promiseOf(p)
 	switch d.state {
 	case PromisePending:
 		d.reactions = append(d.reactions, *r)
 	case PromiseFulfilled:
-		vm.enqueueReactionJob(r, d.result, false)
+		cx.enqueueReactionJob(r, d.result, false)
 	case PromiseRejected:
 		if !d.isHandled {
-			vm.hostPromiseRejectionTracker(p, true)
+			cx.hostPromiseRejectionTracker(p, true)
 		}
-		vm.enqueueReactionJob(r, d.result, true)
+		cx.enqueueReactionJob(r, d.result, true)
 	}
 	d.isHandled = true
 }
 
-func (vm *VM) addNativeReaction(p *Object, handler AwaitHandler) {
-	vm.addReaction(p, &pendingReaction{
+func (cx *ExecutionContext) addNativeReaction(p *Object, handler AwaitHandler) {
+	cx.addReaction(p, &pendingReaction{
 		action: reactionAction{
 			kind:   reactionNative,
 			native: handler,
 		},
-		continuationData: vm.continuationData,
-		builtinContext:   &vm.curRealm.context,
+		continuationData: cx.continuationData,
+		builtinContext:   cx,
 	})
 }
 
 // enqueueReactionJob implements NewPromiseReactionJob and HostEnqueuePromiseJob.
-func (vm *VM) enqueueReactionJob(r *pendingReaction, arg Value, rejected bool) {
+func (cx *ExecutionContext) enqueueReactionJob(r *pendingReaction, arg Value, rejected bool) {
 	handler, other := r.onFulfilled, r.onRejected
 	if rejected {
 		handler, other = other, handler
 	}
-	cx := r.builtinContext
+	jobContext := r.builtinContext
 	if r.action.kind == reactionHandlers {
 		// The host uses the other handler's realm for an absent handler,
 		// falling back to the enqueueing realm when both are absent.
@@ -454,11 +450,11 @@ func (vm *VM) enqueueReactionJob(r *pendingReaction, arg Value, rejected bool) {
 		if callback == nil {
 			callback = other
 		}
-		cx = &vm.promiseJobRealm(callback).context
+		jobContext = cx.promiseJobRealm(callback).Context()
 	}
-	vm.enqueuePromiseJob(job{
+	cx.enqueuePromiseJob(job{
 		kind:             jobReaction,
-		context:          cx,
+		context:          jobContext,
 		continuationData: r.continuationData,
 		reaction:         r.action,
 		rejected:         rejected,
@@ -468,22 +464,22 @@ func (vm *VM) enqueueReactionJob(r *pendingReaction, arg Value, rejected bool) {
 }
 
 // PromiseResolve implements PromiseResolve for the constructor c.
-func (vm *VM) PromiseResolve(c *Object, x Value) Value {
+func (cx *ExecutionContext) PromiseResolve(c *Object, x Value) Value {
 	if IsPromise(x) {
-		if ctor := vm.GetV(x, vm.Key(KeyConstructor)); ctor.o == c {
+		if ctor := cx.GetV(x, cx.Key(KeyConstructor)); ctor.o == c {
 			return x
 		}
 	}
-	pc := vm.NewPromiseCapability(Value{o: c})
-	vm.ResolveCapability(pc, x)
+	pc := cx.NewPromiseCapability(Value{o: c})
+	cx.ResolveCapability(pc, x)
 	return Value{o: pc.promise}
 }
 
 // Await implements Await for a built-in async function: k continues the function in
 // a later job with the value that v settles to. An exception that PromiseResolve throws
 // propagates, and k is not called then.
-func (vm *VM) Await(v Value, k AwaitHandler) {
-	vm.executionContext().awaitValue(v, reactionAction{
+func (cx *ExecutionContext) Await(v Value, k AwaitHandler) {
+	cx.awaitValue(v, reactionAction{
 		kind:   reactionNative,
 		native: k,
 	})
@@ -492,63 +488,58 @@ func (vm *VM) Await(v Value, k AwaitHandler) {
 // tryAwait suspends g on v, or leaves the exception pending if PromiseResolve throws.
 func (g *generator) tryAwait(v Value, kind reactionKind) bool {
 	cx := g.fp.context
-	vm := cx.vm
 	action := reactionAction{
 		kind: kind,
 		gen:  g,
 	}
 	if !v.IsObject() {
 		// A primitive only queues the fulfill handler created in the activation's realm.
-		vm.enqueueReactionJob(&pendingReaction{
+		cx.enqueueReactionJob(&pendingReaction{
 			action:           action,
-			continuationData: vm.continuationData,
-			builtinContext:   &cx.realm.context,
+			continuationData: cx.continuationData,
+			builtinContext:   cx,
 		}, v, false)
 		return true
 	}
-	return vm.protect(func() {
+	return cx.protect(func() {
 		cx.awaitValue(v, action)
 	})
 }
 
 // awaitValue performs PromiseResolve and registers the implicit handlers for an await.
-func (cx ExecutionContext) awaitValue(v Value, action reactionAction) {
-	vm := cx.vm
-	if caller := cx.activate(); caller != nil {
-		defer vm.switchRealm(caller)
-	}
+func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 	var p *Object
 	var rejected bool
 	switch {
 	case IsPromise(v):
-		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == cx.realm.Intrinsic(IntrinsicPromise) {
+		if ctor := cx.GetV(v, cx.Key(KeyConstructor)); ctor.o == cx.realm.Intrinsic(IntrinsicPromise) {
 			p = v.o
 		} else {
-			p = vm.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
-			vm.resolvePromise(cx.realm, p, v)
+			p = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+			cx.resolvePromise(cx.realm, p, v)
 		}
 	case v.IsObject():
 		var then Value
-		if e, ok := vm.Completion(func() {
-			then = vm.GetV(v, vm.Key(keyThen))
+		if e, ok := cx.Completion(func() {
+			then = cx.GetV(v, cx.Key(keyThen))
 		}); !ok {
 			v, rejected = e, true
 		} else if then.IsCallable() {
-			p = vm.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
-			vm.enqueueThenableJob(p, v, then)
+			p = cx.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+			cx.enqueueThenableJob(p, v, then)
 		}
 	}
 	r := pendingReaction{
 		action:           action,
-		continuationData: vm.continuationData,
-		builtinContext:   &cx.realm.context,
+		continuationData: cx.continuationData,
+		builtinContext:   cx,
 	}
 	if p != nil {
-		vm.addReaction(p, &r)
+		cx.addReaction(p, &r)
 		return
 	}
 	// PromiseResolve would have settled immediately with v.
-	vm.enqueueReactionJob(&r, v, rejected)
+	cx.enqueueReactionJob(&r, v, rejected)
 }
 
 // hostPromiseRejectionTracker implements HostPromiseRejectionTracker. handle selects
@@ -566,7 +557,7 @@ func (vm *VM) hostPromiseRejectionTracker(p *Object, handle bool) {
 
 // UnhandledRejectionFunc is the type of the function that is told about a promise that was
 // rejected with reason and has no handler.
-type UnhandledRejectionFunc func(vm *VM, promise, reason Value)
+type UnhandledRejectionFunc func(cx *ExecutionContext, promise, reason Value)
 
 // SetHostUnhandledRejection sets f as the function that is told about the unhandled
 // rejections, in the order of rejection, after the jobs ran. f may call into vm. Without
@@ -676,14 +667,14 @@ func (q *jobQueue) dequeue() job {
 }
 
 // promiseJobRealm implements the GetFunctionRealm step of both promise job constructors.
-func (vm *VM) promiseJobRealm(callback *Object) *Realm {
-	if vm.trackJobRealms && callback != nil {
-		if r := vm.functionRealmOrNil(callback); r != nil {
+func (cx *ExecutionContext) promiseJobRealm(callback *Object) *Realm {
+	if cx.trackJobRealms && callback != nil {
+		if r := cx.functionRealmOrNil(callback); r != nil {
 			return r
 		}
 		// A revoked proxy gets its TypeError from the realm creating the job.
 	}
-	return vm.curRealm
+	return cx.realm
 }
 
 func (vm *VM) enqueuePromiseJob(j job) {
@@ -696,40 +687,39 @@ func (vm *VM) enqueuePromiseJob(j job) {
 // QueueMicrotask queues a call to callback with no arguments and reports an exception
 // in the callback's creation realm.
 // It throws a TypeError if callback is not callable.
-func (vm *VM) QueueMicrotask(callback Value) {
+func (cx *ExecutionContext) QueueMicrotask(callback Value) {
 	if !callback.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(callback)+" is not a function")
+		cx.ThrowTypeError(cx.DisplayString(callback) + " is not a function")
 	}
-	if vm.hasDetachedGlobal(vm.curRealm) {
+	if cx.hasDetachedGlobal(cx.realm) {
 		return
 	}
-	vm.jobs.enqueue(job{
+	cx.jobs.enqueue(job{
 		kind:             jobCallback,
-		context:          &callback.o.CreationRealm().context,
-		continuationData: vm.continuationData,
+		context:          callback.o.CreationRealm().Context(),
+		continuationData: cx.continuationData,
 		callback:         callback.o,
 	})
 }
 
 func (j *job) run() {
-	cx := *j.context
-	vm := cx.vm
+	cx := j.context
 	switch j.kind {
 	case jobCallback:
-		if thrown, ok := vm.Completion(func() {
-			vm.Call(j.callback, Undefined)
+		if thrown, ok := cx.Completion(func() {
+			cx.Call(j.callback, Undefined)
 		}); !ok {
-			vm.reportUncaughtException(thrown, vm.thrownAt)
+			cx.reportUncaughtException(thrown, cx.thrownAt)
 		}
 		return
 	case jobResolve:
-		vm.resolvePromise(cx.realm, j.promise, j.argument)
+		cx.resolvePromise(cx.realm, j.promise, j.argument)
 		return
 	case jobThenable:
-		vm.protect(func() {
+		cx.protect(func() {
 			cx.promiseResolveThenableJob(j.promise, j.argument, j.callback)
 		})
-		vm.thrown = Undefined
+		cx.thrown = Undefined
 		return
 	}
 	r := &j.reaction
@@ -758,60 +748,58 @@ func (j *job) run() {
 		cx.asyncGeneratorDrainQueue(g)
 		return
 	}
-	vm.protect(func() {
+	cx.protect(func() {
 		cx.promiseReactionJob(j)
 	})
-	vm.thrown = Undefined
+	cx.thrown = Undefined
 }
 
 // promiseReactionJob is the job of NewPromiseReactionJob.
-func (cx ExecutionContext) promiseReactionJob(j *job) {
-	vm := cx.vm
+func (cx *ExecutionContext) promiseReactionJob(j *job) {
 	r, arg, rejected := &j.reaction, j.argument, j.rejected
 	switch r.kind {
 	case reactionNative:
-		r.native(vm, arg, rejected)
+		r.native(cx, arg, rejected)
 		return
 	case reactionUnwrap:
 		if !rejected {
-			vm.ResolveCapability(r.capability, cx.CreateIterResultObject(arg, r.done))
+			cx.ResolveCapability(r.capability, cx.CreateIterResultObject(arg, r.done))
 			return
 		}
 		if r.iterator != nil {
-			vm.iteratorClose(Value{o: r.iterator}, true)
+			cx.iteratorClose(Value{o: r.iterator}, true)
 		}
-		vm.RejectCapability(r.capability, arg)
+		cx.RejectCapability(r.capability, arg)
 		return
 	}
 	result := arg
 	abrupt := rejected
 	if j.callback != nil {
-		abrupt = !vm.protect(func() {
-			result = vm.Call(j.callback, Undefined, arg)
+		abrupt = !cx.protect(func() {
+			result = cx.Call(j.callback, Undefined, arg)
 		})
 		if abrupt {
-			result = vm.thrown
-			vm.thrown = Undefined
+			result = cx.thrown
+			cx.thrown = Undefined
 		}
 	}
 	if r.capability == nil {
 		return
 	}
 	if abrupt {
-		vm.RejectCapability(r.capability, result)
+		cx.RejectCapability(r.capability, result)
 	} else {
-		vm.ResolveCapability(r.capability, result)
+		cx.ResolveCapability(r.capability, result)
 	}
 }
 
 // promiseResolveThenableJob is the job of NewPromiseResolveThenableJob.
-func (cx ExecutionContext) promiseResolveThenableJob(p *Object, thenable Value, then *Object) {
-	vm := cx.vm
-	c := vm.CreateResolvingFunctions(p)
-	if !vm.protect(func() {
-		vm.Call(then, thenable, Value{o: c.resolve}, Value{o: c.reject})
+func (cx *ExecutionContext) promiseResolveThenableJob(p *Object, thenable Value, then *Object) {
+	c := cx.CreateResolvingFunctions(p)
+	if !cx.protect(func() {
+		cx.Call(then, thenable, Value{o: c.resolve}, Value{o: c.reject})
 	}) {
-		vm.RejectCapability(c, vm.takeThrown())
+		cx.RejectCapability(c, cx.takeThrown())
 	}
 }
 
@@ -819,44 +807,44 @@ func (cx ExecutionContext) promiseResolveThenableJob(p *Object, thenable Value, 
 // the waiters that other agents notified until none is left, and then the cleanup callbacks of
 // FinalizationRegistry objects. It does nothing unless it is called by the outermost call
 // into the engine, as jobs only run when no other JavaScript is running.
-func (vm *VM) runJobs() {
-	if vm.entered != 1 || vm.abortCause != nil {
+func (cx *ExecutionContext) runJobs() {
+	if cx.entered != 1 || cx.abortCause != nil {
 		return
 	}
 	for {
 		for {
-			for !vm.jobs.isEmpty() {
-				if vm.interrupt.Load() {
-					vm.Poll()
+			for !cx.jobs.isEmpty() {
+				if cx.interrupt.Load() {
+					cx.Poll()
 				}
-				j := vm.jobs.dequeue()
+				j := cx.jobs.dequeue()
 				// Detachment drops microtasks even if they were already queued.
-				if !vm.trackJobRealms || j.kind == jobResolve || !vm.hasDetachedGlobal(j.context.realm) {
+				if !cx.trackJobRealms || j.kind == jobResolve || !cx.hasDetachedGlobal(j.context.realm) {
 					j.context.enterJob(j.continuationData, j.run)
 				}
-				if vm.abortCause != nil {
+				if cx.abortCause != nil {
 					return
 				}
-				vm.clearKeptObjects()
+				cx.clearKeptObjects()
 				// A timeout job runs as soon as its time has passed, even while promise jobs keep
 				// queuing more.
-				if !vm.timedWaiters.isEmpty() {
-					vm.expireWaiters()
+				if !cx.timedWaiters.isEmpty() {
+					cx.expireWaiters()
 				}
 			}
-			received := vm.receiveNotifications()
-			if !vm.expireWaiters() && !received {
+			received := cx.receiveNotifications()
+			if !cx.expireWaiters() && !received {
 				break
 			}
 		}
 		// The reports can queue jobs and reject promises.
-		if vm.notifyRejectedPromises() {
-			if vm.abortCause != nil {
+		if cx.notifyRejectedPromises() {
+			if cx.abortCause != nil {
 				return
 			}
 			continue
 		}
-		if vm.abortCause != nil || !vm.runFinalizationCleanups() {
+		if cx.abortCause != nil || !cx.runFinalizationCleanups() {
 			break
 		}
 	}
@@ -865,8 +853,8 @@ func (vm *VM) runJobs() {
 // notifyRejectedPromises reports the unhandled rejections and removes them, the way the
 // HTML standard notifies about rejected promises. It reports whether there were any to
 // report.
-func (vm *VM) notifyRejectedPromises() bool {
-	t := &vm.rejections
+func (cx *ExecutionContext) notifyRejectedPromises() bool {
+	t := &cx.rejections
 	if len(t.promises) == 0 || t.deferred {
 		return false
 	}
@@ -887,9 +875,9 @@ func (vm *VM) notifyRejectedPromises() bool {
 		if t.notify == nil {
 			break
 		}
-		t.notify(vm, Value{o: p}, d.result)
-		vm.ResumeInterruption()
-		if vm.abortCause != nil {
+		t.notify(cx, Value{o: p}, d.result)
+		cx.ResumeInterruption()
+		if cx.abortCause != nil {
 			break
 		}
 	}

@@ -14,27 +14,27 @@ func TestOwnKeysOfManyIndicesPoll(t *testing.T) {
 	cause := errors.New("stop")
 	for _, tc := range []struct {
 		name string
-		list func(vm *engine.VM, o *engine.Object)
+		list func(cx *engine.ExecutionContext, o *engine.Object)
 	}{
 		{
 			name: "EnumerableOwnKeys",
-			list: func(vm *engine.VM, o *engine.Object) { vm.EnumerableOwnKeys(o, nil) },
+			list: func(cx *engine.ExecutionContext, o *engine.Object) { cx.EnumerableOwnKeys(o, nil) },
 		},
 	} {
-		vm := newVM(t)
+		cx := newVM(t)
 		returned := false
-		list := vm.NewFunction("list", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		list := cx.NewFunction("list", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			// The interruption is seen at the next poll.
-			vm.Interrupt(cause)
-			tc.list(vm, args[0].Object())
+			cx.Interrupt(cause)
+			tc.list(cx, args[0].Object())
 			returned = true
 			return engine.Undefined
 		})
-		if err := vm.HostSet(vm.GlobalObject(), vm.StringFromGo("list"), list); err != nil {
+		if err := cx.HostSet(cx.GlobalObject(), cx.StringFromGo("list"), list); err != nil {
 			t.Fatalf("HostSet: %v", err)
 		}
 		// Scattered indices make a sparse object whose index keys need sorting.
-		_, err := runScript(vm, "keys", `o = {}; for (i = 0; i < 2e5; i++) o[(i * 2654435761) % 4294967291] = 1; list(o);`)
+		_, err := runScript(cx, "keys", `o = {}; for (i = 0; i < 2e5; i++) o[(i * 2654435761) % 4294967291] = 1; list(o);`)
 		if interrupted, ok := errors.AsType[*engine.InterruptedError](err); !ok || interrupted.Cause != cause {
 			t.Errorf("%s: got %v, want an interruption by the cause", tc.name, err)
 		}

@@ -11,26 +11,26 @@ type argumentsMap struct {
 }
 
 // forwardedArguments returns the arguments object shared by forwarding calls in the running frame.
-func (vm *VM) forwardedArguments(regs []Value, argsReg int32) Value {
+func (cx *ExecutionContext) forwardedArguments(regs []Value, argsReg int32) Value {
 	if regs[argsReg].IsUndefined() {
-		fr := &vm.frames[len(vm.frames)-1]
+		fr := &cx.frames[len(cx.frames)-1]
 		// Only functions with a simple parameter list forward their arguments.
-		regs[argsReg] = Value{o: vm.newArguments(fr, regs, !fr.fp.strict)}
+		regs[argsReg] = Value{o: cx.newArguments(fr, regs, !fr.fp.strict)}
 	}
 	return regs[argsReg]
 }
 
 // newArguments returns the arguments object of the frame fr, whose registers are regs.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
-func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
-	o := vm.newArgumentsObject(fr, regs)
+func (cx *ExecutionContext) newArguments(fr *frame, regs []Value, mapped bool) *Object {
+	o := cx.newArgumentsObject(fr, regs)
 	if !mapped {
-		if vm.curRealm.strictCallee.o == nil {
+		if cx.realm.strictCallee.o == nil {
 			// An accessor pair is never changed in place, so the objects share it.
-			throwTypeError := vm.CurrentRealm().Intrinsic(IntrinsicThrowTypeError)
-			vm.curRealm.strictCallee = newAccessor(throwTypeError, throwTypeError)
+			throwTypeError := cx.realm.Intrinsic(IntrinsicThrowTypeError)
+			cx.realm.strictCallee = newAccessor(throwTypeError, throwTypeError)
 		}
-		vm.add(o, vm.Key(keyCallee), vm.curRealm.strictCallee, FlagAccessor)
+		cx.add(o, cx.Key(keyCallee), cx.realm.strictCallee, FlagAccessor)
 		return o
 	}
 	if n := min(fr.argc, fr.fp.nparams); n > 0 {
@@ -45,22 +45,22 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 			if fr.gen != nil {
 				m.params[i] = fr.gen.findUpval(i)
 			} else {
-				m.params[i] = vm.findUpval(fr.base + i)
+				m.params[i] = cx.findUpval(fr.base + i)
 			}
 			// A mapped property stays out of elems, so that every access to it takes a path that consults the map.
-			vm.add(o, vm.indexName(uint32(i)), o.elems[i], FlagsData)
+			cx.add(o, cx.indexName(uint32(i)), o.elems[i], FlagsData)
 			o.elems[i] = hole
 		}
 		o.flags |= objSparse
 		o.setExtState(m)
 	}
-	vm.add(o, vm.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
+	cx.add(o, cx.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
 	return o
 }
 
 // newArgumentsObject returns an arguments object without callee whose elements are the arguments
 // of the frame fr, whose registers are regs.
-func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
+func (cx *ExecutionContext) newArgumentsObject(fr *frame, regs []Value) *Object {
 	var a *argumentsObject
 	var elems []Value
 	switch fr.argc {
@@ -83,12 +83,12 @@ func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
 	}
 	n := min(fr.argc, fr.fp.nparams)
 	elems = append(elems, regs[:n]...)
-	elems = append(elems, vm.extraArgs(fr)...)
+	elems = append(elems, cx.extraArgs(fr)...)
 	a.kind = kindObject
 	a.class = classArguments
-	a.shape = vm.curRealm.shapes.arguments
+	a.shape = cx.realm.shapes.arguments
 	a.elems = elems
-	a.storage = [3]Value{Number(float64(fr.argc)), {o: vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototypeValues)}}
+	a.storage = [3]Value{Number(float64(fr.argc)), {o: cx.realm.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]
 	return a.init()
 }
@@ -121,10 +121,10 @@ func mappedParam(o *Object, i uint32) *upvalue {
 
 // defineMappedArgument implements [[DefineOwnProperty]] of an arguments exotic object
 // for the index i, which is mapped to the parameter u.
-func (vm *VM) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) bool {
+func (cx *ExecutionContext) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) bool {
 	m := o.extState().(*argumentsMap)
 	// The stored value is brought up to date, as the ordinary definition validates against it.
-	p, _ := o.shape.lookup(vm.indexName(i))
+	p, _ := o.shape.lookup(cx.indexName(i))
 	o.slots[p.slot] = *u.p
 	readOnly := d.has&HasWritable != 0 && d.flags&FlagWritable == 0
 	if d.IsData() && d.has&HasValue == 0 && readOnly {
@@ -132,7 +132,7 @@ func (vm *VM) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) 
 		d.has |= HasValue
 	}
 	m.params[i] = nil
-	if !vm.defineOwnProperty(o, PropKey{idx: i}, d) {
+	if !cx.defineOwnProperty(o, PropKey{idx: i}, d) {
 		m.params[i] = u
 		return false
 	}
@@ -150,12 +150,12 @@ func (vm *VM) defineMappedArgument(o *Object, i uint32, u *upvalue, d PropDesc) 
 
 // deleteMappedArgument implements [[Delete]] of an arguments exotic object for the index i,
 // which is mapped to a parameter.
-func (vm *VM) deleteMappedArgument(o *Object, i uint32) bool {
-	key := vm.indexName(i)
+func (cx *ExecutionContext) deleteMappedArgument(o *Object, i uint32) bool {
+	key := cx.indexName(i)
 	if p, _ := o.shape.lookup(key); p.flags&FlagConfigurable == 0 {
 		return false
 	}
-	vm.remove(o, key)
+	cx.remove(o, key)
 	o.extState().(*argumentsMap).params[i] = nil
 	return true
 }

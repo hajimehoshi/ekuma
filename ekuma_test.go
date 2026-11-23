@@ -3409,17 +3409,17 @@ var inlineTextSink wtf8.String
 func BenchmarkInlineString(b *testing.B) {
 	for _, text := range []wtf8.String{"abcdefgh", "abcdefghi"} {
 		b.Run(fmt.Sprintf("construct/%d", len(text)), func(b *testing.B) {
-			vm := engine.NewVM(nil)
+			cx := engine.HostContext(engine.NewVM(nil))
 			b.ReportAllocs()
 			for b.Loop() {
-				inlineStringSink = vm.NewString(text)
+				inlineStringSink = cx.NewString(text)
 			}
 		})
 		b.Run(fmt.Sprintf("roundtrip/%d", len(text)), func(b *testing.B) {
-			vm := engine.NewVM(nil)
+			cx := engine.HostContext(engine.NewVM(nil))
 			b.ReportAllocs()
 			for b.Loop() {
-				inlineTextSink = vm.ToString(vm.NewString(text))
+				inlineTextSink = cx.ToString(cx.NewString(text))
 			}
 		})
 	}
@@ -3465,21 +3465,21 @@ func BenchmarkInlineString(b *testing.B) {
 }
 
 func TestInlineStringBoundaries(t *testing.T) {
-	vm := engine.NewVM(nil)
-	otherVM := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
+	otherContext := engine.HostContext(engine.NewVM(nil))
 	for _, s := range []wtf8.String{"", "a", "ab", "abcdefgh", "abcdefghi", "ab\x00", "\x00\x00\x00\x00\x00\x00\xc2\x80", "日本", "\xed\xa0\x80"} {
 		t.Run(fmt.Sprintf("%x", s), func(t *testing.T) {
-			v := vm.NewString(s)
-			if got := vm.ToString(v); got != s {
+			v := cx.NewString(s)
+			if got := cx.ToString(v); got != s {
 				t.Errorf("ToString = %q, want %q", got, s)
 			}
-			if !engine.IsStrictlyEqual(v, otherVM.NewString(s)) {
+			if !engine.IsStrictlyEqual(v, otherContext.NewString(s)) {
 				t.Error("equal strings from different VMs differ")
 			}
 			if len(s) > 0 {
 				different := []byte(s)
 				different[0] ^= 1
-				if engine.IsStrictlyEqual(v, vm.NewString(wtf8.String(different))) {
+				if engine.IsStrictlyEqual(v, cx.NewString(wtf8.String(different))) {
 					t.Error("different payloads compare equal")
 				}
 			}
@@ -3487,7 +3487,7 @@ func TestInlineStringBoundaries(t *testing.T) {
 			if !engine.IsStrictlyEqual(v, boxed) {
 				t.Error("materialized value differs")
 			}
-			if engine.IsStrictlyEqual(v, vm.NewString(s+"\x00")) {
+			if engine.IsStrictlyEqual(v, cx.NewString(s+"\x00")) {
 				t.Error("different lengths compare equal")
 			}
 			if got := engine.ToBoolean(v); got != (s != "") {
@@ -3498,15 +3498,15 @@ func TestInlineStringBoundaries(t *testing.T) {
 }
 
 func TestInlineStringIndexAllocations(t *testing.T) {
-	vm := engine.NewVM(nil)
-	s := vm.NewString("abc")
-	if got := testing.AllocsPerRun(100, func() { vm.Index(s, 1) }); got != 0 {
+	cx := engine.HostContext(engine.NewVM(nil))
+	s := cx.NewString("abc")
+	if got := testing.AllocsPerRun(100, func() { cx.Index(s, 1) }); got != 0 {
 		t.Errorf("packed string index allocations = %v, want 0", got)
 	}
 }
 
 func TestInlineStringCodeUnits(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, tc := range []struct {
 		text  wtf8.String
 		units []uint16
@@ -3521,7 +3521,7 @@ func TestInlineStringCodeUnits(t *testing.T) {
 		},
 	} {
 		t.Run(fmt.Sprintf("%x", tc.text), func(t *testing.T) {
-			v := vm.NewString(tc.text)
+			v := cx.NewString(tc.text)
 			if got := v.StringLength(); got != len(tc.units) {
 				t.Errorf("StringLength = %d, want %d", got, len(tc.units))
 			}

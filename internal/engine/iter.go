@@ -10,75 +10,69 @@ import (
 )
 
 // getIterator implements GetIterator and returns the iterator and its next method.
-func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
+func (cx *ExecutionContext) getIterator(v Value, async bool) (it, next Value) {
 	var m *Object
 	if async {
-		m = vm.GetMethod(v, vm.WellKnownSymbol(SymbolAsyncIterator))
+		m = cx.GetMethod(v, cx.WellKnownSymbol(SymbolAsyncIterator))
 		if m == nil {
-			sync, syncNext := vm.getIterator(v, false)
-			return vm.asyncFromSyncIterator(sync, syncNext)
+			sync, syncNext := cx.getIterator(v, false)
+			return cx.asyncFromSyncIterator(sync, syncNext)
 		}
 	} else {
-		m = vm.GetMethod(v, vm.WellKnownSymbol(SymbolIterator))
+		m = cx.GetMethod(v, cx.WellKnownSymbol(SymbolIterator))
 	}
 	if m == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not iterable")
+		cx.ThrowTypeError(cx.DisplayString(v) + " is not iterable")
 	}
-	it = vm.Call(m, v)
+	it = cx.Call(m, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
+		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	next = vm.GetV(it, vm.Key(keyNext))
+	next = cx.GetV(it, cx.Key(keyNext))
 	if next.o == numberObject {
 		// A number in the next method slot of the bytecode marks a plain array iterated by
 		// index, so a numeric next method is held by a function that throws as calling it does.
 		n := next
-		next = Value{o: vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
-			return vm.CallValue(n, this, args...)
+		next = Value{o: cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
+			return cx.CallValue(n, this, args...)
 		})}
 	}
 	return it, next
 }
 
 // GetIterator implements GetIterator for a sync iterator and returns the iterator and its next method.
-func (vm *VM) GetIterator(v Value) (it, next Value) {
-	return vm.getIterator(v, false)
+func (cx *ExecutionContext) GetIterator(v Value) (it, next Value) {
+	return cx.getIterator(v, false)
 }
 
 // GetIteratorFromMethod returns the iterator and next method obtained by calling method on v.
-func (cx ExecutionContext) GetIteratorFromMethod(v Value, method *Object) (it, next Value) {
-	if caller := cx.activate(); caller != nil {
-		defer cx.vm.switchRealm(caller)
-	}
-	return cx.iteratorRecord(cx.vm.Call(method, v))
+func (cx *ExecutionContext) GetIteratorFromMethod(v Value, method *Object) (it, next Value) {
+	return cx.iteratorRecord(cx.Call(method, v))
 }
 
 // GetIteratorFlattenable returns an iterator and its next method, accepting strings when iterateStrings is set.
-func (cx ExecutionContext) GetIteratorFlattenable(v Value, iterateStrings bool) (it, next Value) {
+func (cx *ExecutionContext) GetIteratorFlattenable(v Value, iterateStrings bool) (it, next Value) {
 	if !v.IsObject() && (!iterateStrings || !v.IsString()) {
-		cx.ThrowTypeError(cx.vm.DisplayString(v) + " is not an iterator or an iterable object")
-	}
-	if caller := cx.activate(); caller != nil {
-		defer cx.vm.switchRealm(caller)
+		cx.ThrowTypeError(cx.DisplayString(v) + " is not an iterator or an iterable object")
 	}
 	it = v
-	if m := cx.vm.GetMethod(v, cx.vm.WellKnownSymbol(SymbolIterator)); m != nil {
-		it = cx.vm.Call(m, v)
+	if m := cx.GetMethod(v, cx.WellKnownSymbol(SymbolIterator)); m != nil {
+		it = cx.Call(m, v)
 	}
 	return cx.iteratorRecord(it)
 }
 
-func (cx ExecutionContext) iteratorRecord(it Value) (Value, Value) {
+func (cx *ExecutionContext) iteratorRecord(it Value) (Value, Value) {
 	if !it.IsObject() {
 		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	return it, cx.vm.GetV(it, cx.vm.Key(keyNext))
+	return it, cx.GetV(it, cx.Key(keyNext))
 }
 
 // IteratorStepFunc is the next method of a built-in iterator, without the iterator result:
 // it returns the next value of the iterator this, or reports false when the iterator is done.
 // It throws a TypeError when this is not an iterator of its kind.
-type IteratorStepFunc func(vm *VM, this Value) (Value, bool)
+type IteratorStepFunc func(cx *ExecutionContext, this Value) (Value, bool)
 
 // PairStep is the outcome of an [IteratorPairStepFunc].
 type PairStep uint8
@@ -115,10 +109,9 @@ const (
 )
 
 // newIteratorNext creates the result-returning form of an iterator's next method.
-func (vm *VM) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
-	return vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
-		cx := vm.NativeContext()
-		v, ok := step(vm, this)
+func (cx *ExecutionContext) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
+	return cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
+		v, ok := step(cx, this)
 		if !ok {
 			return cx.CreateIterResultObject(Undefined, true)
 		}
@@ -132,13 +125,13 @@ func (vm *VM) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFu
 
 // NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
 // result for what step returns.
-func (vm *VM) NewIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
-	o := vm.newIteratorNext(yieldRealm, step)
+func (cx *ExecutionContext) NewIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
+	o := cx.newIteratorNext(yieldRealm, step)
 	o.fn.info.fast = &nativeFast{
-		step: func(vm *VM, this Value) (Value, bool) {
-			vm.pushNative(o, this, nil)
-			v, ok := step(vm, this)
-			vm.popNative()
+		step: func(cx *ExecutionContext, this Value) (Value, bool) {
+			cx.pushNative(o, this, nil)
+			v, ok := step(cx, this)
+			cx.popNative()
 			return v, ok
 		},
 	}
@@ -147,21 +140,21 @@ func (vm *VM) NewIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFu
 
 // NewPlainIteratorNext returns a next method for iterators with state T.
 // For a compatible receiver, step must neither throw nor run JavaScript.
-func NewPlainIteratorNext[T any](vm *VM, yieldRealm IteratorYieldRealm, receiverError string, step func(*VM, *Object, T) (Value, bool)) *Object {
-	next := vm.newIteratorNext(yieldRealm, func(vm *VM, this Value) (Value, bool) {
+func NewPlainIteratorNext[T any](cx *ExecutionContext, yieldRealm IteratorYieldRealm, receiverError string, step func(*ExecutionContext, *Object, T) (Value, bool)) *Object {
+	next := cx.newIteratorNext(yieldRealm, func(cx *ExecutionContext, this Value) (Value, bool) {
 		state, ok := IteratorState(this).(T)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), receiverError)
+			cx.ThrowTypeError(receiverError)
 		}
-		return step(vm, this.o, state)
+		return step(cx, this.o, state)
 	})
 	next.fn.info.fast = &nativeFast{
-		step: func(vm *VM, this Value) (Value, bool) {
+		step: func(cx *ExecutionContext, this Value) (Value, bool) {
 			if state, ok := IteratorState(this).(T); ok {
-				return step(vm, this.o, state)
+				return step(cx, this.o, state)
 			}
 			// The receiver error belongs to the native next call.
-			return vm.Call(next, this), false
+			return cx.Call(next, this), false
 		},
 	}
 	return next
@@ -183,12 +176,12 @@ type arrayIterator struct {
 }
 
 // NewArrayIterator returns an array iterator over the array-like object o.
-func (vm *VM) NewArrayIterator(o *Object, kind IterationKind) *Object {
-	return vm.newArrayIterator(o, kind, 0)
+func (cx *ExecutionContext) NewArrayIterator(o *Object, kind IterationKind) *Object {
+	return cx.newArrayIterator(o, kind, 0)
 }
 
-func (vm *VM) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *Object {
-	return vm.NewIteratorObject(vm.CurrentRealm().Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
+func (cx *ExecutionContext) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *Object {
+	return cx.NewIteratorObject(cx.realm.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
 		object:    o,
 		nextIndex: nextIndex,
 		kind:      kind,
@@ -196,20 +189,20 @@ func (vm *VM) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *
 }
 
 // NewArrayIteratorNext returns the next method of array iterators.
-func (vm *VM) NewArrayIteratorNext() *Object {
-	next := vm.newIteratorNext(IteratorMethodRealm, func(vm *VM, this Value) (Value, bool) {
+func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
+	next := cx.newIteratorNext(IteratorMethodRealm, func(cx *ExecutionContext, this Value) (Value, bool) {
 		it, _ := IteratorState(this).(*arrayIterator)
-		v, st := it.valueStep(vm, true)
+		v, st := it.valueStep(cx, true)
 		return v, st == PairYielded
 	})
 	next.fn.info.fast = &nativeFast{
-		step: func(vm *VM, this Value) (Value, bool) {
+		step: func(cx *ExecutionContext, this Value) (Value, bool) {
 			it, _ := IteratorState(this).(*arrayIterator)
-			v, st := it.valueStep(vm, false)
+			v, st := it.valueStep(cx, false)
 			if st == PairDeclined {
-				vm.pushNative(next, this, nil)
-				v, st = it.valueStep(vm, true)
-				vm.popNative()
+				cx.pushNative(next, this, nil)
+				v, st = it.valueStep(cx, true)
+				cx.popNative()
 			}
 			return v, st == PairYielded
 		},
@@ -217,22 +210,22 @@ func (vm *VM) NewArrayIteratorNext() *Object {
 	return next
 }
 
-func (vm *VM) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
+func (cx *ExecutionContext) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
 	state, _ := IteratorState(it).(*arrayIterator)
 	if state == nil || state.kind != IterateEntries {
 		return Undefined, Undefined, PairDeclined
 	}
-	key, value, st := state.step(vm, false)
+	key, value, st := state.step(cx, false)
 	if st == PairDeclined {
-		vm.pushNative(next.o, it, nil)
-		key, value, st = state.step(vm, true)
-		vm.popNative()
+		cx.pushNative(next.o, it, nil)
+		key, value, st = state.step(cx, true)
+		cx.popNative()
 	}
 	return key, value, st
 }
 
-func (it *arrayIterator) valueStep(vm *VM, allowCalls bool) (Value, PairStep) {
-	key, value, st := it.step(vm, allowCalls)
+func (it *arrayIterator) valueStep(cx *ExecutionContext, allowCalls bool) (Value, PairStep) {
+	key, value, st := it.step(cx, allowCalls)
 	if st != PairYielded {
 		return Undefined, st
 	}
@@ -242,17 +235,17 @@ func (it *arrayIterator) valueStep(vm *VM, allowCalls bool) (Value, PairStep) {
 	case IterateValues:
 		return value, st
 	default:
-		return Value{o: vm.NewArrayPair(key, value)}, st
+		return Value{o: cx.NewArrayPair(key, value)}, st
 	}
 }
 
 // step advances the iterator, declining before any observable operation when allowCalls is false.
-func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st PairStep) {
+func (it *arrayIterator) step(cx *ExecutionContext, allowCalls bool) (key, value Value, st PairStep) {
 	if it == nil {
 		if !allowCalls {
 			return Undefined, Undefined, PairDeclined
 		}
-		vm.ThrowTypeError(vm.CurrentRealm(), "next method called on an object that is not an array iterator")
+		cx.ThrowTypeError("next method called on an object that is not an array iterator")
 	}
 	o := it.object
 	if o == nil {
@@ -268,9 +261,9 @@ func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st Pai
 		t := o.extState().(*TypedArray)
 		if it.kind != IterateKeys && i <= MaxArrayIndex {
 			if b, ok := t.element(uint32(i)); ok {
-				value = vm.loadElement(t.typ, b)
+				value = cx.loadElement(t.typ, b)
 				it.nextIndex = i + 1
-				vm.PollAt(i)
+				cx.PollAt(i)
 				return Number(float64(i)), value, PairYielded
 			}
 		}
@@ -279,14 +272,14 @@ func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st Pai
 			if !allowCalls {
 				return Undefined, Undefined, PairDeclined
 			}
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot iterate a detached or out of bounds typed array")
+			cx.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
 		}
 		length = int64(n)
 	default:
 		if !allowCalls {
 			return Undefined, Undefined, PairDeclined
 		}
-		length = vm.LengthOfArrayLike(o)
+		length = cx.LengthOfArrayLike(o)
 	}
 	if i >= length {
 		it.object = nil
@@ -300,15 +293,15 @@ func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st Pai
 	if i < int64(len(o.elems)) && !o.elems[i].isHole() {
 		value = o.elems[i]
 		it.nextIndex = i + 1
-		vm.PollAt(i)
+		cx.PollAt(i)
 		return key, value, PairYielded
 	}
 	if !allowCalls {
 		return Undefined, Undefined, PairDeclined
 	}
 	it.nextIndex = i + 1
-	vm.Poll()
-	return key, vm.Get(o, vm.ToPropertyKey(key)), PairYielded
+	cx.Poll()
+	return key, cx.Get(o, cx.ToPropertyKey(key)), PairYielded
 }
 
 // Outcomes of iterNext.
@@ -325,31 +318,31 @@ const (
 //
 // The next methods of the built-in iterators and of generators run without creating
 // the iterator result, whose reading would have no observable effect.
-func (vm *VM) iterNext(it, next Value) (Value, int) {
+func (cx *ExecutionContext) iterNext(it, next Value) (Value, int) {
 	f := next.o
 	var step IteratorStepFunc
 	if f != nil && f.fn != nil {
-		step = f.fn.iteratorStep(vm.curRealm)
+		step = f.fn.iteratorStep(cx.realm)
 	}
 	var r Value
 	switch {
 	case step != nil:
-		if vm.interrupt.Load() {
-			vm.Poll()
+		if cx.interrupt.Load() {
+			cx.Poll()
 		}
-		v, ok := step(vm, it)
+		v, ok := step(cx, it)
 		if !ok {
 			return Undefined, iterDone
 		}
 		return v, iterValue
-	case f != nil && f == vm.CurrentRealm().Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
-		if vm.interrupt.Load() {
-			vm.Poll()
+	case f != nil && f == cx.realm.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
+		if cx.interrupt.Load() {
+			cx.Poll()
 		}
 		g := it.o.extState().(*generator)
-		vm.pushNative(f, it, nil)
-		v, done := vm.NativeContext().resume(g, ResumeNext, Undefined)
-		vm.popNative()
+		cx.pushNative(f, it, nil)
+		v, done := cx.resume(g, ResumeNext, Undefined)
+		cx.popNative()
 		if done {
 			return Undefined, iterDone
 		}
@@ -359,17 +352,17 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 		// yield* passes the result object of the inner iterator through.
 		r = v
 	default:
-		r = vm.CallValue(next, it)
+		r = cx.CallValue(next, it)
 	}
 	var v Value
 	var done bool
-	if !vm.protect(func() {
+	if !cx.protect(func() {
 		if !r.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
+			cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 		}
-		done = ToBoolean(vm.GetV(r, vm.Key(keyDone)))
+		done = ToBoolean(cx.GetV(r, cx.Key(keyDone)))
 		if !done {
-			v = vm.GetV(r, vm.Key(KeyValue))
+			v = cx.GetV(r, cx.Key(KeyValue))
 		}
 	}) {
 		return Undefined, iterFailed
@@ -382,32 +375,32 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 
 // IteratorStepValue implements IteratorStepValue for the iterator it and its next method next:
 // it returns the next value, or reports false when the iterator is done.
-func (vm *VM) IteratorStepValue(it, next Value) (Value, bool) {
-	return vm.iteratorStep(it, next)
+func (cx *ExecutionContext) IteratorStepValue(it, next Value) (Value, bool) {
+	return cx.iteratorStep(it, next)
 }
 
 // IteratorStep implements IteratorStep for the iterator it and its next method next,
 // without the result: it reports false when the iterator is done.
-func (vm *VM) IteratorStep(it, next Value) bool {
+func (cx *ExecutionContext) IteratorStep(it, next Value) bool {
 	if f := next.o; f != nil && f.fn != nil {
-		if step := f.fn.iteratorStep(vm.curRealm); step != nil {
-			if vm.interrupt.Load() {
-				vm.Poll()
+		if step := f.fn.iteratorStep(cx.realm); step != nil {
+			if cx.interrupt.Load() {
+				cx.Poll()
 			}
-			_, ok := step(vm, it)
+			_, ok := step(cx, it)
 			return ok
 		}
 	}
-	r := vm.CallValue(next, it)
+	r := cx.CallValue(next, it)
 	if !r.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
+		cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 	}
-	return !ToBoolean(vm.GetV(r, vm.Key(keyDone)))
+	return !ToBoolean(cx.GetV(r, cx.Key(keyDone)))
 }
 
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
-func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
-	v, st := vm.iterNext(it, next)
+func (cx *ExecutionContext) iteratorStep(it, next Value) (Value, bool) {
+	v, st := cx.iterNext(it, next)
 	if st == iterFailed {
 		panic(errThrow)
 	}
@@ -416,67 +409,67 @@ func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
 
 // iteratorClose implements IteratorClose. With pending set, an exception is already
 // being propagated and the errors of closing are dropped.
-func (vm *VM) iteratorClose(it Value, pending bool) {
+func (cx *ExecutionContext) iteratorClose(it Value, pending bool) {
 	if pending {
-		saved, site := vm.thrown, vm.thrownAt
-		vm.protect(func() {
-			if m := vm.GetMethod(it, vm.Key(keyReturn)); m != nil {
-				vm.Call(m, it)
+		saved, site := cx.thrown, cx.thrownAt
+		cx.protect(func() {
+			if m := cx.GetMethod(it, cx.Key(keyReturn)); m != nil {
+				cx.Call(m, it)
 			}
 		})
-		vm.thrown, vm.thrownAt = saved, site
+		cx.thrown, cx.thrownAt = saved, site
 		return
 	}
-	m := vm.GetMethod(it, vm.Key(keyReturn))
+	m := cx.GetMethod(it, cx.Key(keyReturn))
 	if m == nil {
 		return
 	}
-	if r := vm.Call(m, it); !r.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
+	if r := cx.Call(m, it); !r.IsObject() {
+		cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 	}
 }
 
 // IteratorClose implements IteratorClose for a normal completion.
-func (vm *VM) IteratorClose(it Value) {
-	vm.iteratorClose(it, false)
+func (cx *ExecutionContext) IteratorClose(it Value) {
+	cx.iteratorClose(it, false)
 }
 
 // IteratorCloseAll implements IteratorCloseAll for a normal completion:
 // it closes the iterators its in reverse order, skipping undefined entries.
-func (vm *VM) IteratorCloseAll(its []Value) {
-	vm.iteratorCloseAll(its, false)
+func (cx *ExecutionContext) IteratorCloseAll(its []Value) {
+	cx.iteratorCloseAll(its, false)
 }
 
 // IfAbruptCloseIterator implements IfAbruptCloseIterator for what f does: when f throws,
 // it closes the iterator it, ignoring any error of closing, and throws the exception again.
-func (vm *VM) IfAbruptCloseIterator(it Value, f func()) {
-	if vm.protect(f) {
+func (cx *ExecutionContext) IfAbruptCloseIterator(it Value, f func()) {
+	if cx.protect(f) {
 		return
 	}
-	vm.iteratorClose(it, true)
+	cx.iteratorClose(it, true)
 	panic(errThrow)
 }
 
 // IfAbruptCloseIterators implements IfAbruptCloseIterators for what f does: when f throws,
 // it closes the iterators its in reverse order, skipping undefined entries, and rethrows
 // the original exception.
-func (vm *VM) IfAbruptCloseIterators(its []Value, f func()) {
-	if vm.protect(f) {
+func (cx *ExecutionContext) IfAbruptCloseIterators(its []Value, f func()) {
+	if cx.protect(f) {
 		return
 	}
-	vm.iteratorCloseAll(its, true)
+	cx.iteratorCloseAll(its, true)
 }
 
-func (vm *VM) iteratorCloseAll(its []Value, pending bool) {
+func (cx *ExecutionContext) iteratorCloseAll(its []Value, pending bool) {
 	for _, it := range slices.Backward(its) {
 		if it.IsUndefined() {
 			continue
 		}
 		if pending {
-			vm.iteratorClose(it, true)
+			cx.iteratorClose(it, true)
 		} else {
-			pending = !vm.protect(func() {
-				vm.iteratorClose(it, false)
+			pending = !cx.protect(func() {
+				cx.iteratorClose(it, false)
 			})
 		}
 	}
@@ -487,12 +480,12 @@ func (vm *VM) iteratorCloseAll(its []Value, pending bool) {
 
 // closePlainArrayIterator materializes an array iterator at nextIndex if looking up return
 // can expose it to JavaScript.
-func (vm *VM) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
-	key := vm.Key(keyReturn)
-	for p := vm.CurrentRealm().Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
+func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
+	key := cx.Key(keyReturn)
+	for p := cx.realm.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
-			it := vm.newArrayIterator(o, IterateValues, int64(nextIndex))
-			vm.iteratorClose(Value{o: it}, pending)
+			it := cx.newArrayIterator(o, IterateValues, int64(nextIndex))
+			cx.iteratorClose(Value{o: it}, pending)
 			return
 		}
 	}
@@ -500,81 +493,81 @@ func (vm *VM) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool)
 
 // Iterate calls f for every value that iterating v yields. When f returns false,
 // the iteration stops and the iterator is closed.
-func (vm *VM) Iterate(v Value, f func(Value) bool) {
-	if v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
-		vm.iteratePlainArray(v.o, f)
+func (cx *ExecutionContext) Iterate(v Value, f func(Value) bool) {
+	if v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
+		cx.iteratePlainArray(v.o, f)
 		return
 	}
-	it, next := vm.getIterator(v, false)
-	vm.IterateRecord(it, next, f)
+	it, next := cx.getIterator(v, false)
+	cx.IterateRecord(it, next, f)
 }
 
-// IterateFromMethod is [VM.Iterate] for the iterator that GetIteratorFromMethod(v, method)
+// IterateFromMethod is [ExecutionContext.Iterate] for the iterator that GetIteratorFromMethod(v, method)
 // returns.
-func (vm *VM) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
-	if method == vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
-		vm.iteratePlainArray(v.o, f)
+func (cx *ExecutionContext) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
+	if method == cx.realm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
+		cx.iteratePlainArray(v.o, f)
 		return
 	}
-	it := vm.Call(method, v)
+	it := cx.Call(method, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
+		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
-	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), f)
+	cx.IterateRecord(it, cx.GetV(it, cx.Key(keyNext)), f)
 }
 
 // iteratePlainArray iterates o by index with the original array values and next methods.
-func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
+func (cx *ExecutionContext) iteratePlainArray(o *Object, f func(Value) bool) {
 	var nextIndex uint32
-	vm.iterate(func() (Value, bool) {
+	cx.iterate(func() (Value, bool) {
 		i := nextIndex
 		if i >= o.length {
 			return Undefined, false
 		}
-		if vm.interrupt.Load() {
-			vm.Poll()
+		if cx.interrupt.Load() {
+			cx.Poll()
 		}
 		nextIndex++
 		if uint(i) < uint(len(o.elems)) && !o.elems[i].isHole() {
 			return o.elems[i], true
 		}
-		return vm.plainArrayIteratorIndex(o, i), true
+		return cx.plainArrayIteratorIndex(o, i), true
 	}, func(pending bool) {
-		vm.closePlainArrayIterator(o, nextIndex, pending)
+		cx.closePlainArrayIterator(o, nextIndex, pending)
 	}, f)
 }
 
 // plainArrayIteratorIndex reads an element outside dense storage with the native next frame
 // that a getter or proxy can observe.
-func (vm *VM) plainArrayIteratorIndex(o *Object, i uint32) Value {
-	if o.flags&objSparse == 0 && vm.holesAreAbsent(o) {
+func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
+	if o.flags&objSparse == 0 && cx.holesAreAbsent(o) {
 		return Undefined
 	}
 	array := Value{o: o}
 	// A native frame uses its receiver only to name it in a stack trace. An indexed
 	// iterator has no own properties, so its prototype supplies the same name.
-	realm := vm.CurrentRealm()
+	realm := cx.realm
 	proto := realm.Intrinsic(IntrinsicArrayIteratorPrototype)
-	vm.pushNative(realm.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
-	v := vm.Index(array, i)
-	vm.popNative()
+	cx.pushNative(realm.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
+	v := cx.Index(array, i)
+	cx.popNative()
 	return v
 }
 
-// IterateRecord is [VM.Iterate] for the iterator record of the iterator it and its next method
+// IterateRecord is [ExecutionContext.Iterate] for the iterator record of the iterator it and its next method
 // next.
-func (vm *VM) IterateRecord(it, next Value, f func(Value) bool) {
-	vm.iterate(func() (Value, bool) {
-		return vm.iteratorStep(it, next)
+func (cx *ExecutionContext) IterateRecord(it, next Value, f func(Value) bool) {
+	cx.iterate(func() (Value, bool) {
+		return cx.iteratorStep(it, next)
 	}, func(pending bool) {
-		vm.iteratorClose(it, pending)
+		cx.iteratorClose(it, pending)
 	}, f)
 }
 
-func (vm *VM) iterate(step func() (Value, bool), closeIterator func(pending bool), f func(Value) bool) {
+func (cx *ExecutionContext) iterate(step func() (Value, bool), closeIterator func(pending bool), f func(Value) bool) {
 	// Only a callback that stops or throws closes the iterator.
 	var closeNeeded bool
-	ok := vm.protect(func() {
+	ok := cx.protect(func() {
 		for {
 			e, ok := step()
 			if !ok {
@@ -598,23 +591,23 @@ func (vm *VM) iterate(step func() (Value, bool), closeIterator func(pending bool
 // spreadArgs returns an array of the values that iterating v yields, for a spread call that
 // copies them before running any JavaScript. The array is v itself when iterating v reads its
 // elements without running JavaScript.
-func (vm *VM) spreadArgs(v Value) *Object {
-	if s := v.o; s != nil && s.kind == kindArray && vm.arrayIterationPlain(s) {
+func (cx *ExecutionContext) spreadArgs(v Value) *Object {
+	if s := v.o; s != nil && s.kind == kindArray && cx.arrayIterationPlain(s) {
 		if _, ok := s.plainElems(); ok {
 			return s
 		}
 	}
-	o := vm.NewArray(nil)
-	vm.appendIterable(o, v)
+	o := cx.NewArray(nil)
+	cx.appendIterable(o, v)
 	return o
 }
 
 // appendIterable appends the values that iterating v yields to the array o.
-func (vm *VM) appendIterable(o *Object, v Value) {
+func (cx *ExecutionContext) appendIterable(o *Object, v Value) {
 	if s := v.o; s != nil && s.kind == kindArray {
 		o.elems = reserveElems(o.elems, len(s.elems))
 	}
-	vm.Iterate(v, func(e Value) bool {
+	cx.Iterate(v, func(e Value) bool {
 		o.elems = appendElem(o.elems, e)
 		o.length = uint32(len(o.elems))
 		return true
@@ -663,55 +656,55 @@ type forIn struct {
 }
 
 // newForIn returns the iterator of a for-in loop over v.
-func (vm *VM) newForIn(v Value) Value {
+func (cx *ExecutionContext) newForIn(v Value) Value {
 	it := &forIn{
 		kind:  kindObject,
 		class: classForIn,
 	}
 	it.setExtState(it)
 	if !v.IsNullish() {
-		it.obj = vm.ToObject(v)
-		it.indices, it.length, it.keys = vm.forInOwnKeys(it.obj)
+		it.obj = cx.ToObject(v)
+		it.indices, it.length, it.keys = cx.forInOwnKeys(it.obj)
 	}
 	return Value{o: it.init()}
 }
 
 // forInOwnKeys returns the own property keys of the receiver o of a for-in loop in the order of
-// [VM.OwnKeys], where symbols may be left out: the indices below indices, then the key length
+// [ExecutionContext.OwnKeys], where symbols may be left out: the indices below indices, then the key length
 // if length is set, then keys.
-func (vm *VM) forInOwnKeys(o *Object) (indices uint32, length bool, keys []PropKey) {
+func (cx *ExecutionContext) forInOwnKeys(o *Object) (indices uint32, length bool, keys []PropKey) {
 	if o.class == classProxy || o.class == classModuleNamespace {
-		return 0, false, vm.OwnKeys(o)
+		return 0, false, cx.OwnKeys(o)
 	}
 	if o.flags&objExotic != 0 {
-		vm.resolve(o)
+		cx.resolve(o)
 	}
 	// The own keys of any other object are its elements, the length of an array, and the
 	// keys of its shape.
 	if o.flags&(objExotic|objSparse) != 0 || o.class == classString || slices.ContainsFunc(o.elems, Value.isHole) {
-		return 0, false, vm.OwnKeys(o)
+		return 0, false, cx.OwnKeys(o)
 	}
 	return uint32(len(o.elems)), o.kind == kindArray, o.shape.stringKeys()
 }
 
 // forInNext returns the next key of the for-in iterator o.
-func (vm *VM) forInNext(o *Object) (Value, bool) {
+func (cx *ExecutionContext) forInNext(o *Object) (Value, bool) {
 	it := o.extState().(*forIn)
 	for it.obj != nil {
 		for it.index < it.indices {
 			i := it.index
 			it.index++
 			if obj := it.obj; int64(i) < int64(len(obj.elems)) && !obj.elems[i].isHole() {
-				return vm.indexString(i), true
+				return cx.indexString(i), true
 			}
 			k := PropKey{idx: i}
-			d, ok := vm.GetOwnProperty(it.obj, k)
+			d, ok := cx.GetOwnProperty(it.obj, k)
 			if !ok {
 				it.missing = append(it.missing, k)
 				continue
 			}
 			if d.flags&FlagEnumerable != 0 {
-				return vm.indexString(i), true
+				return cx.indexString(i), true
 			}
 		}
 		for it.pos < len(it.keys) {
@@ -727,7 +720,7 @@ func (vm *VM) forInNext(o *Object) (Value, bool) {
 			}
 			// A property that was deleted in the meantime is skipped, and one that is not
 			// enumerable still hides the properties of the same name further up.
-			d, ok := vm.GetOwnProperty(it.obj, k)
+			d, ok := cx.GetOwnProperty(it.obj, k)
 			if !ok {
 				if it.visited == nil {
 					it.missing = append(it.missing, k)
@@ -740,39 +733,39 @@ func (vm *VM) forInNext(o *Object) (Value, bool) {
 			if d.flags&FlagEnumerable == 0 {
 				continue
 			}
-			return vm.KeyValue(k), true
+			return cx.KeyValue(k), true
 		}
-		vm.forInNextObject(it)
+		cx.forInNextObject(it)
 	}
 	return Undefined, false
 }
 
 // forInNextObject moves the for-in iterator it from the object whose keys it visited to the
 // prototype of that object.
-func (vm *VM) forInNextObject(it *forIn) {
-	proto := vm.ProtoOf(it.obj)
-	if !vm.forInMayVisit(proto) {
+func (cx *ExecutionContext) forInNextObject(it *forIn) {
+	proto := cx.ProtoOf(it.obj)
+	if !cx.forInMayVisit(proto) {
 		it.obj = nil
 		return
 	}
 	if it.visited == nil {
-		vm.forInVisitReceiver(it)
+		cx.forInVisitReceiver(it)
 	}
 	it.obj = proto
 	it.index, it.indices = 0, 0
-	it.keys = vm.OwnKeys(proto)
+	it.keys = cx.OwnKeys(proto)
 	it.pos = 0
 }
 
 // forInMayVisit reports whether a for-in loop might visit a key of o or of its prototypes. When
 // it reports false, visiting the keys of those objects would have no observable effect.
-func (vm *VM) forInMayVisit(o *Object) bool {
+func (cx *ExecutionContext) forInMayVisit(o *Object) bool {
 	for ; o != nil; o = o.shape.proto {
 		if o.class == classProxy || o.class == classModuleNamespace {
 			return true
 		}
 		if o.flags&objExotic != 0 {
-			vm.resolve(o)
+			cx.resolve(o)
 			if o.flags&objExotic != 0 {
 				return true
 			}
@@ -812,14 +805,14 @@ func (vm *VM) forInVisitReceiver(it *forIn) {
 }
 
 // templateObject returns the template object of a tagged template, creating it on first use.
-func (vm *VM) templateObject(t *templateSite) *Object {
+func (cx *ExecutionContext) templateObject(t *templateSite) *Object {
 	if t.object != nil {
 		return t.object
 	}
 	freeze := func(vals []Value) *Object {
-		a := vm.NewArray(nil)
+		a := cx.NewArray(nil)
 		for i, v := range vals {
-			vm.add(a, vm.indexName(uint32(i)), v, FlagEnumerable)
+			cx.add(a, cx.indexName(uint32(i)), v, FlagEnumerable)
 		}
 		a.length = uint32(len(vals))
 		a.flags |= objSparse | objFrozenLength | objNotExtensible
@@ -828,66 +821,66 @@ func (vm *VM) templateObject(t *templateSite) *Object {
 	raw := freeze(t.raw)
 	raw.makePrivate()
 	o := freeze(t.cooked)
-	vm.add(o, vm.Key(KeyRaw), Value{o: raw}, 0)
+	cx.add(o, cx.Key(KeyRaw), Value{o: raw}, 0)
 	o.makePrivate()
 	t.object = o
 	return o
 }
 
 // StringFromGo returns the Go string s, which is taken to be UTF-8, as a value.
-func (vm *VM) StringFromGo(s string) Value {
-	return vm.NewString(wtf8.FromValidUTF8(s))
+func (cx *ExecutionContext) StringFromGo(s string) Value {
+	return cx.NewString(wtf8.FromValidUTF8(s))
 }
 
 // iterReturn calls the return method of the iterator it without arguments, as
 // AsyncIteratorClose does, and returns the result. It reports false when it is undefined
 // or has no return method.
-func (vm *VM) iterReturn(it Value) (Value, bool) {
+func (cx *ExecutionContext) iterReturn(it Value) (Value, bool) {
 	if it.IsUndefined() {
 		return Undefined, false
 	}
-	m := vm.GetMethod(it, vm.Key(keyReturn))
+	m := cx.GetMethod(it, cx.Key(keyReturn))
 	if m == nil {
 		return Undefined, false
 	}
-	return vm.Call(m, it), true
+	return cx.Call(m, it), true
 }
 
-func (vm *VM) throwNotIterResult(errorRealm *Realm, r Value) {
-	vm.ThrowTypeError(errorRealm, "iterator result "+vm.DisplayString(r)+" is not an object")
+func (cx *ExecutionContext) throwNotIterResult(r Value) {
+	cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 }
 
 // iterResultValue returns the value of the iterator result r, or reports true when it is done.
-func (vm *VM) iterResultValue(r Value) (Value, bool) {
+func (cx *ExecutionContext) iterResultValue(r Value) (Value, bool) {
 	if !r.IsObject() {
-		vm.throwNotIterResult(vm.CurrentRealm(), r)
+		cx.throwNotIterResult(r)
 	}
-	if ToBoolean(vm.GetV(r, vm.Key(keyDone))) {
+	if ToBoolean(cx.GetV(r, cx.Key(keyDone))) {
 		return Undefined, true
 	}
-	return vm.GetV(r, vm.Key(KeyValue)), false
+	return cx.GetV(r, cx.Key(KeyValue)), false
 }
 
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
-func (vm *VM) IteratorToList(v Value, method *Object) []Value {
-	if method == vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+func (cx *ExecutionContext) IteratorToList(v Value, method *Object) []Value {
+	if method == cx.realm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
 		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
 			return slices.Clone(v.o.elems[:n])
 		}
 		// The length of a sparse array says nothing about the memory it holds.
 		vals := make([]Value, 0, len(v.o.elems))
-		vm.iteratePlainArray(v.o, func(e Value) bool {
+		cx.iteratePlainArray(v.o, func(e Value) bool {
 			vals = append(vals, e)
 			return true
 		})
 		return vals
 	}
-	it := vm.Call(method, v)
+	it := cx.Call(method, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
+		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
 	}
 	var vals []Value
-	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), func(e Value) bool {
+	cx.IterateRecord(it, cx.GetV(it, cx.Key(keyNext)), func(e Value) bool {
 		vals = append(vals, e)
 		return true
 	})

@@ -67,7 +67,7 @@ func (s *Script) evaluate(ctx context.Context) (Value, bool, error) {
 	vm.initIfNeeded()
 	var completed bool
 	v, err := vm.run(ctx, func() (engine.Value, error) {
-		value, done, err := vm.e.ScriptEvaluation(s.s)
+		value, done, err := s.s.ScriptEvaluation()
 		completed = done
 		return value, err
 	})

@@ -7,230 +7,230 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-func initWeak(vm *engine.VM) {
-	initWeakMap(vm)
-	initWeakSet(vm)
-	initWeakRef(vm)
-	initFinalizationRegistry(vm)
+func initWeak(cx *engine.ExecutionContext) {
+	initWeakMap(cx)
+	initWeakSet(cx)
+	initWeakRef(cx)
+	initFinalizationRegistry(cx)
 }
 
 // requireHoldable throws a TypeError when v cannot be held weakly.
-func requireHoldable(vm *engine.VM, v engine.Value, what string) {
-	if !vm.CanBeHeldWeakly(v) {
-		vm.ThrowTypeError(vm.CurrentRealm(), "invalid value used "+what+": "+vm.DisplayString(v))
+func requireHoldable(cx *engine.ExecutionContext, v engine.Value, what string) {
+	if !cx.CanBeHeldWeakly(v) {
+		cx.ThrowTypeError("invalid value used " + what + ": " + cx.DisplayString(v))
 	}
 }
 
-func initWeakMap(vm *engine.VM) {
-	proto := vm.NewOrdinaryObject()
-	vm.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
-	setKey := vm.Intern("set")
+func initWeakMap(cx *engine.ExecutionContext) {
+	proto := cx.NewOrdinaryObject()
+	cx.SetIntrinsic(engine.IntrinsicWeakMapPrototype, proto)
+	setKey := cx.Intern("set")
 	var weakMapSet *engine.Object
-	constructor(vm, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+	constructor(cx, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor WeakMap requires 'new'")
+			cx.ThrowTypeError("constructor WeakMap requires 'new'")
 		}
-		m := vm.NewWeakMapObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakMapPrototype))
+		m := cx.NewWeakMapObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakMapPrototype))
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(m)
 		}
-		adder := adderOf(vm, m, setKey)
+		adder := adderOf(cx, m, setKey)
 		var fast func(k, v engine.Value)
 		if adder == weakMapSet {
 			t := engine.WeakMapData(engine.ObjectValue(m))
 			fast = func(k, v engine.Value) {
-				requireHoldable(vm, k, "as weak map key")
+				requireHoldable(cx, k, "as weak map key")
 				t.Set(k, v)
 			}
 		}
-		addEntriesFromIterable(vm, m, iterable, adder, fast)
+		addEntriesFromIterable(cx, m, iterable, adder, fast)
 		return engine.ObjectValue(m)
 	})
 
-	thisWeakMap := func(vm *engine.VM, this engine.Value, name string) *engine.WeakTable {
+	thisWeakMap := func(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
 		t := engine.WeakMapData(this)
 		if t == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "WeakMap.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
+			cx.ThrowTypeError("WeakMap.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 		}
 		return t
 	}
-	method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakMap(vm, this, "delete")
+	method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakMap(cx, this, "delete")
 		k := arg(args, 0)
-		return engine.Bool(vm.CanBeHeldWeakly(k) && t.Delete(k))
+		return engine.Bool(cx.CanBeHeldWeakly(k) && t.Delete(k))
 	})
-	method(vm, proto, "get", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakMap(vm, this, "get")
+	method(cx, proto, "get", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakMap(cx, this, "get")
 		k := arg(args, 0)
-		if !vm.CanBeHeldWeakly(k) {
+		if !cx.CanBeHeldWeakly(k) {
 			return engine.Undefined
 		}
 		v, _ := t.Get(k)
 		return v
 	})
-	method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakMap(vm, this, "has")
+	method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakMap(cx, this, "has")
 		k := arg(args, 0)
-		return engine.Bool(vm.CanBeHeldWeakly(k) && t.Has(k))
+		return engine.Bool(cx.CanBeHeldWeakly(k) && t.Has(k))
 	})
-	weakMapSet = method(vm, proto, "set", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakMap(vm, this, "set")
+	weakMapSet = method(cx, proto, "set", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakMap(cx, this, "set")
 		k := arg(args, 0)
-		requireHoldable(vm, k, "as weak map key")
+		requireHoldable(cx, k, "as weak map key")
 		t.Set(k, arg(args, 1))
 		return this
 	})
-	method(vm, proto, "getOrInsert", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakMap(vm, this, "getOrInsert")
+	method(cx, proto, "getOrInsert", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakMap(cx, this, "getOrInsert")
 		k, v := arg(args, 0), arg(args, 1)
-		requireHoldable(vm, k, "as weak map key")
+		requireHoldable(cx, k, "as weak map key")
 		if old, ok := t.Get(k); ok {
 			return old
 		}
 		t.Set(k, v)
 		return v
 	})
-	method(vm, proto, "getOrInsertComputed", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakMap(vm, this, "getOrInsertComputed")
+	method(cx, proto, "getOrInsertComputed", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakMap(cx, this, "getOrInsertComputed")
 		k, cb := arg(args, 0), arg(args, 1)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 		}
-		requireHoldable(vm, k, "as weak map key")
+		requireHoldable(cx, k, "as weak map key")
 		if old, ok := t.Get(k); ok {
 			return old
 		}
-		v := vm.Call(cb.Object(), engine.Undefined, k)
+		v := cx.Call(cb.Object(), engine.Undefined, k)
 		t.Set(k, v)
 		return v
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("WeakMap"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakMap"), engine.FlagConfigurable)
 }
 
-func initWeakSet(vm *engine.VM) {
-	proto := vm.NewOrdinaryObject()
-	vm.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
-	addKey := vm.Intern("add")
+func initWeakSet(cx *engine.ExecutionContext) {
+	proto := cx.NewOrdinaryObject()
+	cx.SetIntrinsic(engine.IntrinsicWeakSetPrototype, proto)
+	addKey := cx.Intern("add")
 	var weakSetAdd *engine.Object
-	constructor(vm, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+	constructor(cx, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor WeakSet requires 'new'")
+			cx.ThrowTypeError("constructor WeakSet requires 'new'")
 		}
-		s := vm.NewWeakSetObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakSetPrototype))
+		s := cx.NewWeakSetObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakSetPrototype))
 		iterable := arg(args, 0)
 		if iterable.IsNullish() {
 			return engine.ObjectValue(s)
 		}
-		adder := adderOf(vm, s, addKey)
+		adder := adderOf(cx, s, addKey)
 		t := engine.WeakSetData(engine.ObjectValue(s))
-		vm.Iterate(iterable, func(e engine.Value) bool {
+		cx.Iterate(iterable, func(e engine.Value) bool {
 			if adder == weakSetAdd {
-				requireHoldable(vm, e, "in weak set")
+				requireHoldable(cx, e, "in weak set")
 				t.Set(e, engine.True)
 			} else {
-				vm.Call(adder, engine.ObjectValue(s), e)
+				cx.Call(adder, engine.ObjectValue(s), e)
 			}
 			return true
 		})
 		return engine.ObjectValue(s)
 	})
 
-	thisWeakSet := func(vm *engine.VM, this engine.Value, name string) *engine.WeakTable {
+	thisWeakSet := func(cx *engine.ExecutionContext, this engine.Value, name string) *engine.WeakTable {
 		t := engine.WeakSetData(this)
 		if t == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "WeakSet.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
+			cx.ThrowTypeError("WeakSet.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 		}
 		return t
 	}
-	weakSetAdd = method(vm, proto, "add", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakSet(vm, this, "add")
+	weakSetAdd = method(cx, proto, "add", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakSet(cx, this, "add")
 		v := arg(args, 0)
-		requireHoldable(vm, v, "in weak set")
+		requireHoldable(cx, v, "in weak set")
 		t.Set(v, engine.True)
 		return this
 	})
-	method(vm, proto, "delete", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakSet(vm, this, "delete")
+	method(cx, proto, "delete", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakSet(cx, this, "delete")
 		v := arg(args, 0)
-		return engine.Bool(vm.CanBeHeldWeakly(v) && t.Delete(v))
+		return engine.Bool(cx.CanBeHeldWeakly(v) && t.Delete(v))
 	})
-	method(vm, proto, "has", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisWeakSet(vm, this, "has")
+	method(cx, proto, "has", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisWeakSet(cx, this, "has")
 		v := arg(args, 0)
-		return engine.Bool(vm.CanBeHeldWeakly(v) && t.Has(v))
+		return engine.Bool(cx.CanBeHeldWeakly(v) && t.Has(v))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("WeakSet"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakSet"), engine.FlagConfigurable)
 }
 
-func initWeakRef(vm *engine.VM) {
-	proto := vm.NewOrdinaryObject()
-	vm.SetIntrinsic(engine.IntrinsicWeakRefPrototype, proto)
-	constructor(vm, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+func initWeakRef(cx *engine.ExecutionContext) {
+	proto := cx.NewOrdinaryObject()
+	cx.SetIntrinsic(engine.IntrinsicWeakRefPrototype, proto)
+	constructor(cx, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor WeakRef requires 'new'")
+			cx.ThrowTypeError("constructor WeakRef requires 'new'")
 		}
 		target := arg(args, 0)
-		requireHoldable(vm, target, "as WeakRef target")
-		r := vm.NewWeakRefObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakRefPrototype), target)
-		vm.AddToKeptObjects(target.Object())
+		requireHoldable(cx, target, "as WeakRef target")
+		r := cx.NewWeakRefObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakRefPrototype), target)
+		cx.AddToKeptObjects(target.Object())
 		return engine.ObjectValue(r)
 	})
-	method(vm, proto, "deref", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		v, ok := vm.WeakRefDeref(this)
+	method(cx, proto, "deref", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		v, ok := cx.WeakRefDeref(this)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "WeakRef.prototype.deref called on incompatible receiver "+vm.DisplayString(this))
+			cx.ThrowTypeError("WeakRef.prototype.deref called on incompatible receiver " + cx.DisplayString(this))
 		}
 		return v
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("WeakRef"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("WeakRef"), engine.FlagConfigurable)
 }
 
-func initFinalizationRegistry(vm *engine.VM) {
-	proto := vm.NewOrdinaryObject()
-	vm.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
-	constructor(vm, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+func initFinalizationRegistry(cx *engine.ExecutionContext) {
+	proto := cx.NewOrdinaryObject()
+	cx.SetIntrinsic(engine.IntrinsicFinalizationRegistryPrototype, proto)
+	constructor(cx, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor FinalizationRegistry requires 'new'")
+			cx.ThrowTypeError("constructor FinalizationRegistry requires 'new'")
 		}
 		cb := arg(args, 0)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(cb) + " is not a function")
 		}
-		return engine.ObjectValue(vm.NewFinalizationRegistryObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
+		return engine.ObjectValue(cx.NewFinalizationRegistryObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
 	})
 
-	thisRegistry := func(vm *engine.VM, this engine.Value, name string) *engine.FinalizationRegistry {
+	thisRegistry := func(cx *engine.ExecutionContext, this engine.Value, name string) *engine.FinalizationRegistry {
 		r := engine.FinalizationRegistryData(this)
 		if r == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "FinalizationRegistry.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
+			cx.ThrowTypeError("FinalizationRegistry.prototype." + name + " called on incompatible receiver " + cx.DisplayString(this))
 		}
 		return r
 	}
-	method(vm, proto, "register", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		r := thisRegistry(vm, this, "register")
+	method(cx, proto, "register", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		r := thisRegistry(cx, this, "register")
 		target, held, token := arg(args, 0), arg(args, 1), arg(args, 2)
-		requireHoldable(vm, target, "as FinalizationRegistry target")
+		requireHoldable(cx, target, "as FinalizationRegistry target")
 		if engine.SameValue(target, held) {
-			vm.ThrowTypeError(vm.CurrentRealm(), "the target and the held value of a FinalizationRegistry registration must differ")
+			cx.ThrowTypeError("the target and the held value of a FinalizationRegistry registration must differ")
 		}
-		if !vm.CanBeHeldWeakly(token) {
+		if !cx.CanBeHeldWeakly(token) {
 			if !token.IsUndefined() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "invalid value used as unregister token: "+vm.DisplayString(token))
+				cx.ThrowTypeError("invalid value used as unregister token: " + cx.DisplayString(token))
 			}
 		}
 		r.Register(target, held, token)
 		return engine.Undefined
 	})
-	method(vm, proto, "unregister", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		r := thisRegistry(vm, this, "unregister")
+	method(cx, proto, "unregister", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		r := thisRegistry(cx, this, "unregister")
 		token := arg(args, 0)
-		requireHoldable(vm, token, "as unregister token")
-		return engine.Bool(r.Unregister(token, vm.Poll))
+		requireHoldable(cx, token, "as unregister token")
+		return engine.Bool(r.Unregister(token, cx.Poll))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("FinalizationRegistry"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("FinalizationRegistry"), engine.FlagConfigurable)
 }

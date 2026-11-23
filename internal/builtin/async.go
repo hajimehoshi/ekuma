@@ -11,46 +11,46 @@ import (
 
 // functionKindConstructor creates the constructor name of the functions of kind whose prototype
 // object is proto, such as GeneratorFunction. It is not a global.
-func functionKindConstructor(vm *engine.VM, name wtf8.String, kind engine.FunctionKind, proto *engine.Object) {
+func functionKindConstructor(cx *engine.ExecutionContext, name wtf8.String, kind engine.FunctionKind, proto *engine.Object) {
 	var c *engine.Object
-	c = vm.NewNativeConstructor(name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.CreateDynamicFunction(c, vm.GetNewTarget(), kind, args)
+	c = cx.NewNativeConstructor(name, 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return cx.CreateDynamicFunction(c, cx.GetNewTarget(), kind, args)
 	})
-	vm.SetPrototypeOf(c, vm.CurrentRealm().Intrinsic(engine.IntrinsicFunction))
-	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString(name), engine.FlagConfigurable)
+	cx.SetPrototypeOf(c, cx.Realm().Intrinsic(engine.IntrinsicFunction))
+	cx.Define(c, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString(name), engine.FlagConfigurable)
 }
 
-func initAsync(vm *engine.VM) {
-	realm := vm.CurrentRealm()
-	functionKindConstructor(vm, "AsyncFunction", engine.AsyncFunction, realm.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
-	functionKindConstructor(vm, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, realm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
+func initAsync(cx *engine.ExecutionContext) {
+	realm := cx.Realm()
+	functionKindConstructor(cx, "AsyncFunction", engine.AsyncFunction, realm.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
+	functionKindConstructor(cx, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, realm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
 
 	gp := realm.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) {
-		method(vm, gp, wtf8.String(name), 1, engine.WithExecutionContext(func(cx engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		method(cx, gp, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			return cx.ResumeAsyncGenerator(this, mode, arg(args, 0))
-		}))
+		})
 	}
 	resume("next", engine.ResumeNext)
 	resume("return", engine.ResumeReturn)
 	resume("throw", engine.ResumeThrow)
-	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("AsyncGenerator"), engine.FlagConfigurable)
+	cx.Define(gp, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("AsyncGenerator"), engine.FlagConfigurable)
 	gf := realm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
-	vm.Define(gf, vm.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
-	vm.Define(gp, vm.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
+	cx.Define(gf, cx.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
+	cx.Define(gp, cx.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 
-	method(vm, realm.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
+	method(cx, realm.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
 }
 
 // getIteratorFromMethod implements GetIteratorFromMethod.
-func getIteratorFromMethod(vm *engine.VM, v engine.Value, m *engine.Object) (it, next engine.Value) {
-	it = vm.Call(m, v)
+func getIteratorFromMethod(cx *engine.ExecutionContext, v engine.Value, m *engine.Object) (it, next engine.Value) {
+	it = cx.Call(m, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "result of the iterator method is not an object")
+		cx.ThrowTypeError("result of the iterator method is not an object")
 	}
-	return it, vm.GetV(it, vm.Intern("next"))
+	return it, cx.GetV(it, cx.Intern("next"))
 }
 
 // fromAsync is the state of a call of Array.fromAsync.
@@ -69,167 +69,167 @@ type fromAsync struct {
 	length    int64
 }
 
-func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	pc := vm.NewPromiseCapability(engine.ObjectValue(vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise)))
+func arrayFromAsync(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	pc := cx.NewPromiseCapability(engine.ObjectValue(cx.Realm().Intrinsic(engine.IntrinsicPromise)))
 	s := &fromAsync{
 		pc:      pc,
 		mapper:  arg(args, 1),
 		thisArg: arg(args, 2),
 	}
 	items := arg(args, 0)
-	custom := this.IsCallable() && vm.IsConstructor(this.Object())
-	vm.IfAbruptRejectPromise(pc, func() {
+	custom := this.IsCallable() && cx.IsConstructor(this.Object())
+	cx.IfAbruptRejectPromise(pc, func() {
 		if !s.mapper.IsUndefined() && !s.mapper.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(s.mapper)+" is not a function")
+			cx.ThrowTypeError(cx.DisplayString(s.mapper) + " is not a function")
 		}
-		if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolAsyncIterator)); m != nil {
-			s.it, s.next = getIteratorFromMethod(vm, items, m)
-		} else if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
-			s.it, s.next = vm.CreateAsyncFromSyncIterator(getIteratorFromMethod(vm, items, m))
+		if m := cx.GetMethod(items, cx.WellKnownSymbol(engine.SymbolAsyncIterator)); m != nil {
+			s.it, s.next = getIteratorFromMethod(cx, items, m)
+		} else if m := cx.GetMethod(items, cx.WellKnownSymbol(engine.SymbolIterator)); m != nil {
+			s.it, s.next = cx.CreateAsyncFromSyncIterator(getIteratorFromMethod(cx, items, m))
 		}
 		if s.it.IsObject() {
 			if custom {
-				s.array = vm.Construct(this.Object(), nil, this.Object())
+				s.array = cx.Construct(this.Object(), nil, this.Object())
 			} else {
-				s.array = vm.ArrayCreate(0, vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype))
+				s.array = cx.ArrayCreate(0, cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype))
 			}
-			s.step(vm)
+			s.step(cx)
 			return
 		}
-		s.arrayLike = vm.ToObject(items)
-		s.length = vm.LengthOfArrayLike(s.arrayLike)
+		s.arrayLike = cx.ToObject(items)
+		s.length = cx.LengthOfArrayLike(s.arrayLike)
 		if custom {
-			s.array = vm.Construct(this.Object(), []engine.Value{engine.Number(float64(s.length))}, this.Object())
+			s.array = cx.Construct(this.Object(), []engine.Value{engine.Number(float64(s.length))}, this.Object())
 		} else {
 			if s.length > engine.MaxArrayIndex+1 {
-				vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
+				cx.ThrowRangeError("invalid array length")
 			}
-			s.array = vm.ArrayCreate(uint32(s.length), vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype))
+			s.array = cx.ArrayCreate(uint32(s.length), cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype))
 		}
-		s.stepArrayLike(vm)
+		s.stepArrayLike(cx)
 	})
 	return pc.Promise()
 }
 
 // reject rejects the promise with e.
-func (s *fromAsync) reject(vm *engine.VM, e engine.Value) {
-	vm.RejectCapability(s.pc, e)
+func (s *fromAsync) reject(cx *engine.ExecutionContext, e engine.Value) {
+	cx.RejectCapability(s.pc, e)
 }
 
 // closeAndReject closes the iterator and then rejects the promise with e, as
 // IfAbruptCloseAsyncIterator does.
-func (s *fromAsync) closeAndReject(vm *engine.VM, e engine.Value) {
-	vm.AsyncIteratorClose(s.it, e, true, func(vm *engine.VM, v engine.Value, thrown bool) {
-		s.reject(vm, v)
+func (s *fromAsync) closeAndReject(cx *engine.ExecutionContext, e engine.Value) {
+	cx.AsyncIteratorClose(s.it, e, true, func(cx *engine.ExecutionContext, v engine.Value, thrown bool) {
+		s.reject(cx, v)
 	})
 }
 
 // step calls the next method of the iterator and awaits the result. It throws when that fails.
-func (s *fromAsync) step(vm *engine.VM) {
+func (s *fromAsync) step(cx *engine.ExecutionContext) {
 	if s.k >= numconv.MaxSafeInteger {
-		s.closeAndReject(vm, vm.NewError(vm.CurrentRealm(), engine.ErrorKindType, "too many elements for Array.fromAsync"))
+		s.closeAndReject(cx, cx.NewError(engine.ErrorKindType, "too many elements for Array.fromAsync"))
 		return
 	}
-	r := vm.CallValue(s.next, s.it)
-	vm.Await(r, s.onNext)
+	r := cx.CallValue(s.next, s.it)
+	cx.Await(r, s.onNext)
 }
 
-func (s *fromAsync) onNext(vm *engine.VM, r engine.Value, rejected bool) {
+func (s *fromAsync) onNext(cx *engine.ExecutionContext, r engine.Value, rejected bool) {
 	if rejected {
-		s.reject(vm, r)
+		s.reject(cx, r)
 		return
 	}
 	var done bool
 	var v engine.Value
-	if e, ok := vm.Completion(func() {
+	if e, ok := cx.Completion(func() {
 		if !r.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
+			cx.ThrowTypeError("iterator result " + cx.DisplayString(r) + " is not an object")
 		}
-		done = engine.ToBoolean(vm.GetV(r, vm.Intern("done")))
+		done = engine.ToBoolean(cx.GetV(r, cx.Intern("done")))
 		if done {
-			setLength(vm, s.array, s.k)
+			setLength(cx, s.array, s.k)
 			return
 		}
-		v = vm.GetV(r, vm.Key(engine.KeyValue))
+		v = cx.GetV(r, cx.Key(engine.KeyValue))
 	}); !ok {
-		s.reject(vm, e)
+		s.reject(cx, e)
 		return
 	}
 	if done {
-		vm.ResolveCapability(s.pc, engine.ObjectValue(s.array))
+		cx.ResolveCapability(s.pc, engine.ObjectValue(s.array))
 		return
 	}
 	if s.mapper.IsUndefined() {
-		s.define(vm, v)
+		s.define(cx, v)
 		return
 	}
 	var mapped engine.Value
-	if e, ok := vm.Completion(func() {
-		mapped = vm.Call(s.mapper.Object(), s.thisArg, v, engine.Number(float64(s.k)))
-		vm.Await(mapped, s.onMapped)
+	if e, ok := cx.Completion(func() {
+		mapped = cx.Call(s.mapper.Object(), s.thisArg, v, engine.Number(float64(s.k)))
+		cx.Await(mapped, s.onMapped)
 	}); !ok {
-		s.closeAndReject(vm, e)
+		s.closeAndReject(cx, e)
 	}
 }
 
-func (s *fromAsync) onMapped(vm *engine.VM, v engine.Value, rejected bool) {
+func (s *fromAsync) onMapped(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
 	if rejected {
-		s.closeAndReject(vm, v)
+		s.closeAndReject(cx, v)
 		return
 	}
-	s.define(vm, v)
+	s.define(cx, v)
 }
 
-func (s *fromAsync) define(vm *engine.VM, v engine.Value) {
-	if e, ok := vm.Completion(func() {
-		vm.CreateDataPropertyOrThrow(s.array, bigKey(vm, s.k), v)
+func (s *fromAsync) define(cx *engine.ExecutionContext, v engine.Value) {
+	if e, ok := cx.Completion(func() {
+		cx.CreateDataPropertyOrThrow(s.array, bigKey(cx, s.k), v)
 	}); !ok {
-		s.closeAndReject(vm, e)
+		s.closeAndReject(cx, e)
 		return
 	}
 	s.k++
-	if e, ok := vm.Completion(func() {
-		s.step(vm)
+	if e, ok := cx.Completion(func() {
+		s.step(cx)
 	}); !ok {
-		s.reject(vm, e)
+		s.reject(cx, e)
 	}
 }
 
 // stepArrayLike reads and awaits the next element of the array-like, or resolves the promise
 // when there is none. It throws when that fails.
-func (s *fromAsync) stepArrayLike(vm *engine.VM) {
+func (s *fromAsync) stepArrayLike(cx *engine.ExecutionContext) {
 	if s.k >= s.length {
-		setLength(vm, s.array, s.length)
-		vm.ResolveCapability(s.pc, engine.ObjectValue(s.array))
+		setLength(cx, s.array, s.length)
+		cx.ResolveCapability(s.pc, engine.ObjectValue(s.array))
 		return
 	}
-	v := getAt(vm, s.arrayLike, s.k)
-	vm.Await(v, s.onArrayLikeValue)
+	v := getAt(cx, s.arrayLike, s.k)
+	cx.Await(v, s.onArrayLikeValue)
 }
 
-func (s *fromAsync) onArrayLikeValue(vm *engine.VM, v engine.Value, rejected bool) {
-	vm.IfAbruptRejectPromise(s.pc, func() {
+func (s *fromAsync) onArrayLikeValue(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
+	cx.IfAbruptRejectPromise(s.pc, func() {
 		if rejected {
-			vm.Throw(v)
+			cx.Throw(v)
 		}
 		if s.mapper.IsUndefined() {
-			s.defineArrayLike(vm, v)
+			s.defineArrayLike(cx, v)
 			return
 		}
-		mapped := vm.Call(s.mapper.Object(), s.thisArg, v, engine.Number(float64(s.k)))
-		vm.Await(mapped, func(vm *engine.VM, v engine.Value, rejected bool) {
-			vm.IfAbruptRejectPromise(s.pc, func() {
+		mapped := cx.Call(s.mapper.Object(), s.thisArg, v, engine.Number(float64(s.k)))
+		cx.Await(mapped, func(cx *engine.ExecutionContext, v engine.Value, rejected bool) {
+			cx.IfAbruptRejectPromise(s.pc, func() {
 				if rejected {
-					vm.Throw(v)
+					cx.Throw(v)
 				}
-				s.defineArrayLike(vm, v)
+				s.defineArrayLike(cx, v)
 			})
 		})
 	})
 }
 
-func (s *fromAsync) defineArrayLike(vm *engine.VM, v engine.Value) {
-	vm.CreateDataPropertyOrThrow(s.array, bigKey(vm, s.k), v)
+func (s *fromAsync) defineArrayLike(cx *engine.ExecutionContext, v engine.Value) {
+	cx.CreateDataPropertyOrThrow(s.array, bigKey(cx, s.k), v)
 	s.k++
-	s.stepArrayLike(vm)
+	s.stepArrayLike(cx)
 }

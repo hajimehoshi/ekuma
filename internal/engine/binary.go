@@ -133,7 +133,7 @@ func (b *ArrayBuffer) SameDataBlock(c *ArrayBuffer) bool {
 
 // SharedDataBlock returns the data block of the shared buffer b, or nil when b is not shared.
 // Another VM, which may run on another goroutine, creates a SharedArrayBuffer over the block with
-// [VM.NewSharedArrayBufferObject].
+// [ExecutionContext.NewSharedArrayBufferObject].
 func (b *ArrayBuffer) SharedDataBlock() *SharedDataBlock {
 	return b.block
 }
@@ -238,9 +238,9 @@ func copyWithin(b *ArrayBuffer, dstOffset, srcOffset, n int) {
 }
 
 // checkBufferLength throws a RangeError when a data block of n bytes cannot be created.
-func (vm *VM) checkBufferLength(n int64) {
+func (cx *ExecutionContext) checkBufferLength(n int64) {
 	if n > MaxBufferLength {
-		vm.ThrowRangeError(vm.CurrentRealm(), "array buffer allocation failed")
+		cx.ThrowRangeError("array buffer allocation failed")
 	}
 }
 
@@ -248,24 +248,24 @@ func (vm *VM) checkBufferLength(n int64) {
 // it returns a buffer object of byteLength zero bytes with the prototype proto.
 // maxByteLength is -1 for a buffer whose length is fixed. It throws a RangeError
 // when the lengths are too large.
-func (vm *VM) NewArrayBufferObject(proto *Object, byteLength, maxByteLength int64, shared bool) *Object {
-	vm.checkBufferLength(byteLength)
-	vm.checkBufferLength(maxByteLength)
+func (cx *ExecutionContext) NewArrayBufferObject(proto *Object, byteLength, maxByteLength int64, shared bool) *Object {
+	cx.checkBufferLength(byteLength)
+	cx.checkBufferLength(maxByteLength)
 	if shared {
 		blk := &SharedDataBlock{
 			data: make([]byte, byteLength),
 			max:  int(maxByteLength),
 		}
 		blk.length.Store(byteLength)
-		return vm.NewSharedArrayBufferObject(proto, blk)
+		return cx.NewSharedArrayBufferObject(proto, blk)
 	}
-	return vm.newArrayBufferFromBytes(proto, make([]byte, byteLength), int(maxByteLength))
+	return cx.newArrayBufferFromBytes(proto, make([]byte, byteLength), int(maxByteLength))
 }
 
 // NewSharedArrayBufferObject returns a SharedArrayBuffer with the prototype proto over the data
 // block blk, which may come from another VM.
-func (vm *VM) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *Object {
+	o := cx.NewObject(proto)
 	o.class = classArrayBuffer
 	o.ext = &ArrayBuffer{
 		block:      blk,
@@ -279,7 +279,7 @@ func (vm *VM) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *O
 // newArrayBufferFromBytes returns an ArrayBuffer with the prototype proto whose data is b,
 // which it keeps. maxByteLength is -1 for a buffer whose length is fixed and must not be
 // smaller than len(b) otherwise.
-func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int) *Object {
+func (cx *ExecutionContext) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int) *Object {
 	w := &arrayBufferObject{
 		state: ArrayBuffer{
 			data: b,
@@ -287,7 +287,7 @@ func (vm *VM) newArrayBufferFromBytes(proto *Object, b []byte, maxByteLength int
 		},
 	}
 	w.kind = kindObject
-	w.shape = vm.shapeFor(proto)
+	w.shape = cx.shapeFor(proto)
 	o := w.init()
 	o.class = classArrayBuffer
 	o.setExtState(&w.state)
@@ -312,8 +312,8 @@ func ArrayBufferData(v Value) *ArrayBuffer {
 
 // NewImmutableArrayBufferFromBytes returns an immutable ArrayBuffer with the prototype proto
 // whose data is b, which it keeps. b must not be modified afterwards.
-func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
-	o := vm.newArrayBufferFromBytes(proto, b, -1)
+func (cx *ExecutionContext) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object {
+	o := cx.newArrayBufferFromBytes(proto, b, -1)
 	o.extState().(*ArrayBuffer).immutable = true
 	return o
 }
@@ -321,9 +321,9 @@ func (vm *VM) NewImmutableArrayBufferFromBytes(proto *Object, b []byte) *Object 
 // NewHostArrayBufferObject returns an ArrayBuffer of fixed length with the prototype proto whose
 // data block is b, which it keeps. Its [[ArrayBufferDetachKey]] is set, so that only the host
 // detaches it. len(b) must not exceed [MaxBufferLength].
-func (vm *VM) NewHostArrayBufferObject(proto *Object, b []byte) *Object {
+func (cx *ExecutionContext) NewHostArrayBufferObject(proto *Object, b []byte) *Object {
 	// The capacity is cut, so that no operation reaches the bytes of the host beyond len(b).
-	o := vm.newArrayBufferFromBytes(proto, b[:len(b):len(b)], -1)
+	o := cx.newArrayBufferFromBytes(proto, b[:len(b):len(b)], -1)
 	o.extState().(*ArrayBuffer).hasDetachKey = true
 	return o
 }
@@ -341,9 +341,9 @@ func (b *ArrayBuffer) Detach() {
 // zero-filled beyond its length, and detaches o. maxByteLength is -1 for a buffer whose length is fixed.
 // The new buffer is immutable when immutable is set. o must be mutable and have no detach key.
 // It throws a RangeError when the lengths are too large.
-func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
-	vm.checkBufferLength(newByteLength)
-	vm.checkBufferLength(maxByteLength)
+func (cx *ExecutionContext) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxByteLength int64, immutable bool) *Object {
+	cx.checkBufferLength(newByteLength)
+	cx.checkBufferLength(maxByteLength)
 	b := o.extState().(*ArrayBuffer)
 	n := int(newByteLength)
 	var data []byte
@@ -358,7 +358,7 @@ func (vm *VM) TransferArrayBuffer(o *Object, proto *Object, newByteLength, maxBy
 		copy(data, b.data)
 	}
 	b.Detach()
-	r := vm.newArrayBufferFromBytes(proto, data, int(maxByteLength))
+	r := cx.newArrayBufferFromBytes(proto, data, int(maxByteLength))
 	r.extState().(*ArrayBuffer).immutable = immutable
 	return r
 }
@@ -653,14 +653,14 @@ func ConvertElementBits(from, to ElementType, x uint64) uint64 {
 
 // ToElementValue converts v as TypedArraySetElement does for an element of the type t:
 // by ToBigInt for a BigInt type and by ToNumber otherwise.
-func (vm *VM) ToElementValue(t ElementType, v Value) Value {
+func (cx *ExecutionContext) ToElementValue(t ElementType, v Value) Value {
 	if t.IsBigInt() {
-		return vm.ToBigInt(v)
+		return cx.ToBigInt(v)
 	}
 	if v.o == numberObject {
 		return v
 	}
-	return Number(vm.ToNumber(v))
+	return Number(cx.ToNumber(v))
 }
 
 // TypedArray is the state of a typed array object.
@@ -685,7 +685,7 @@ type TypedArray struct {
 // NewTypedArrayObject returns a typed array with the prototype proto whose elements of the type t
 // are stored in the buffer object buffer from byteOffset on. length is the number of elements, or -1
 // for a typed array whose length tracks the length of the buffer.
-func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, byteOffset, length int) *Object {
+func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, byteOffset, length int) *Object {
 	data := buffer.extState().(*ArrayBuffer)
 	w := &typedArrayObject{
 		state: TypedArray{
@@ -699,7 +699,7 @@ func (vm *VM) NewTypedArrayObject(proto *Object, t ElementType, buffer *Object, 
 		},
 	}
 	w.kind = kindObject
-	w.shape = vm.objectRootShape(proto, vm.curRealm, classTypedArray)
+	w.shape = cx.objectRootShape(proto, cx.realm, classTypedArray)
 	o := w.init()
 	o.class = classTypedArray
 	o.flags |= objExotic
@@ -946,7 +946,7 @@ func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
 
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
 // It reports false when the buffer is immutable.
-func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
+func (cx *ExecutionContext) typedArraySet(o *Object, i uint32, val Value) bool {
 	t := o.extState().(*TypedArray)
 	if val.o == numberObject && t.numberStore {
 		if data, f := t.data.data, val.n; !t.tracking && uint(i) < uint(t.length) {
@@ -976,13 +976,13 @@ func (vm *VM) typedArraySet(o *Object, i uint32, val Value) bool {
 	if t.data.immutable {
 		return false
 	}
-	vm.typedArraySetElement(t, i, val)
+	cx.typedArraySetElement(t, i, val)
 	return true
 }
 
 // typedArraySetElement implements TypedArraySetElement for the typed array t on a mutable buffer.
-func (vm *VM) typedArraySetElement(t *TypedArray, i uint32, val Value) {
-	val = vm.ToElementValue(t.typ, val)
+func (cx *ExecutionContext) typedArraySetElement(t *TypedArray, i uint32, val Value) {
+	val = cx.ToElementValue(t.typ, val)
 	if t.data.block != nil {
 		t.StoreElement(int(i), ElementBits(t.typ, val))
 		return
@@ -1026,8 +1026,8 @@ func (vm *VM) typedArrayLength(o *Object) int {
 }
 
 // typedArrayDefine implements [[DefineOwnProperty]] of a typed array for an array index.
-func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
-	if !vm.typedArrayHas(o, i) {
+func (cx *ExecutionContext) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
+	if !cx.typedArrayHas(o, i) {
 		return false
 	}
 	if typedArrayImmutable(o) {
@@ -1044,7 +1044,7 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 		if d.has&HasWritable != 0 && d.flags&FlagWritable != 0 {
 			return false
 		}
-		return d.has&HasValue == 0 || SameValue(d.value, vm.typedArrayGet(o, i))
+		return d.has&HasValue == 0 || SameValue(d.value, cx.typedArrayGet(o, i))
 	}
 	if d.has&HasConfigurable != 0 && d.flags&FlagConfigurable == 0 {
 		return false
@@ -1059,16 +1059,16 @@ func (vm *VM) typedArrayDefine(o *Object, i uint32, d PropDesc) bool {
 		return false
 	}
 	if d.has&HasValue != 0 {
-		vm.typedArraySetElement(o.extState().(*TypedArray), i, d.value)
+		cx.typedArraySetElement(o.extState().(*TypedArray), i, d.value)
 	}
 	return true
 }
 
 // typedArraySetNamed implements [[Set]] of the typed array o for a canonical numeric string that is
 // not an array index, which is never a valid integer index.
-func (vm *VM) typedArraySetNamed(o *Object, val Value, receiver Value) {
+func (cx *ExecutionContext) typedArraySetNamed(o *Object, val Value, receiver Value) {
 	if receiver.o == o {
-		vm.ToElementValue(o.extState().(*TypedArray).typ, val)
+		cx.ToElementValue(o.extState().(*TypedArray).typ, val)
 	}
 }
 
@@ -1107,8 +1107,8 @@ func isNumericKey(k PropKey) bool {
 
 // NewDataViewObject returns a DataView with the prototype proto on the buffer object buffer
 // from byteOffset on. byteLength is -1 for a view whose length tracks the length of the buffer.
-func (vm *VM) NewDataViewObject(proto *Object, buffer *Object, byteOffset, byteLength int) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewDataViewObject(proto *Object, buffer *Object, byteOffset, byteLength int) *Object {
+	o := cx.NewObject(proto)
 	o.class = classDataView
 	o.ext = &DataView{
 		buffer:   buffer,

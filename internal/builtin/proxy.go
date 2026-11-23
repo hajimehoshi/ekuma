@@ -7,27 +7,27 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
-func initProxy(vm *engine.VM) {
-	ctor := vm.NewNativeConstructor("Proxy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if vm.GetNewTarget() == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor Proxy requires 'new'")
+func initProxy(cx *engine.ExecutionContext) {
+	ctor := cx.NewNativeConstructor("Proxy", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		if cx.GetNewTarget() == nil {
+			cx.ThrowTypeError("constructor Proxy requires 'new'")
 		}
-		return engine.ObjectValue(vm.ProxyCreate(arg(args, 0), arg(args, 1)))
+		return engine.ObjectValue(cx.ProxyCreate(arg(args, 0), arg(args, 1)))
 	})
-	vm.Define(vm.GlobalObject().Object(), vm.Intern("Proxy"), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("Proxy"), engine.ObjectValue(ctor), engine.FlagsHidden)
 
-	method(vm, ctor, "revocable", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		p := vm.ProxyCreate(arg(args, 0), arg(args, 1))
+	method(cx, ctor, "revocable", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		p := cx.ProxyCreate(arg(args, 0), arg(args, 1))
 		revocable := p
-		revoke := vm.NewNative("", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		revoke := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			if revocable != nil {
 				engine.RevokeProxy(revocable)
 				revocable = nil
 			}
 			return engine.Undefined
 		})
-		r := vm.NewObjectFromProperties(
-			[]engine.PropKey{engine.NamedKey(vm.Intern("proxy")), engine.NamedKey(vm.Intern("revoke"))},
+		r := cx.NewObjectFromProperties(
+			[]engine.PropKey{engine.NamedKey(cx.Intern("proxy")), engine.NamedKey(cx.Intern("revoke"))},
 			[]engine.Value{engine.ObjectValue(p), engine.ObjectValue(revoke)},
 		)
 		return engine.ObjectValue(r)

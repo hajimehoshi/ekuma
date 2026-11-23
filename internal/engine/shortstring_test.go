@@ -13,23 +13,23 @@ import (
 )
 
 func BenchmarkShortString(b *testing.B) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, s := range []wtf8.String{"abc", "abcdefgh", "é日", "😀😀"} {
 		b.Run(string(s), func(b *testing.B) {
-			v := vm.NewString(s)
+			v := cx.NewString(s)
 			b.Run("New", func(b *testing.B) {
 				for b.Loop() {
-					vm.NewString(s)
+					cx.NewString(s)
 				}
 			})
 			b.Run("Equal", func(b *testing.B) {
-				other := vm.NewString(s)
+				other := cx.NewString(s)
 				for b.Loop() {
 					engine.IsStrictlyEqual(v, other)
 				}
 			})
 			b.Run("DifferentLength", func(b *testing.B) {
-				other := vm.NewString("ab")
+				other := cx.NewString("ab")
 				for b.Loop() {
 					engine.IsStrictlyEqual(v, other)
 				}
@@ -49,13 +49,13 @@ func BenchmarkShortString(b *testing.B) {
 }
 
 func BenchmarkShortStringSubstring(b *testing.B) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, s := range []wtf8.String{"abcdefgh", "é日a", "😀😀"} {
 		b.Run(string(s), func(b *testing.B) {
-			v := vm.NewString(s)
+			v := cx.NewString(s)
 			b.Run("Value", func(b *testing.B) {
 				for b.Loop() {
-					vm.Substring(v, 1, 3)
+					cx.Substring(v, 1, 3)
 				}
 			})
 			b.Run("String", func(b *testing.B) {
@@ -68,7 +68,7 @@ func BenchmarkShortStringSubstring(b *testing.B) {
 }
 
 func TestSubstringEquals(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, tc := range []struct {
 		name          string
 		text          wtf8.String
@@ -130,10 +130,10 @@ func TestSubstringEquals(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			v := vm.NewString(tc.text)
-			pattern := vm.NewString(tc.pattern)
+			v := cx.NewString(tc.text)
+			pattern := cx.NewString(tc.pattern)
 			if tc.internPattern {
-				pattern = engine.ObjectValue(vm.Intern(tc.pattern))
+				pattern = engine.ObjectValue(cx.Intern(tc.pattern))
 			}
 			if got := v.SubstringEquals(tc.start, tc.end, pattern); got != tc.want {
 				t.Errorf("SubstringEquals() = %t, want %t", got, tc.want)
@@ -143,8 +143,8 @@ func TestSubstringEquals(t *testing.T) {
 }
 
 func TestShortStringOrdering(t *testing.T) {
-	vm := newVM(t)
-	v, err := runScript(vm, "ordering", `
+	cx := newVM(t)
+	v, err := runScript(cx, "ordering", `
   const a = "\ud83d\ue000";
   const b = "😀!".slice(0, -1);
   a > b && b < a && a >= b && b <= a;
@@ -158,8 +158,8 @@ func TestShortStringOrdering(t *testing.T) {
 }
 
 func TestToWellFormedLiteral(t *testing.T) {
-	vm := newVM(t)
-	v, err := runScript(vm, "well-formed-literal", `"\udfff\udbff".toWellFormed();`)
+	cx := newVM(t)
+	v, err := runScript(cx, "well-formed-literal", `"\udfff\udbff".toWellFormed();`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,17 +169,17 @@ func TestToWellFormedLiteral(t *testing.T) {
 }
 
 func BenchmarkShortStringLeadingSurrogate(b *testing.B) {
-	vm := engine.NewVM(nil)
-	v := vm.NewString("😀😀")
+	cx := engine.HostContext(engine.NewVM(nil))
+	v := cx.NewString("😀😀")
 	for b.Loop() {
 		v.UnitAt(0)
 	}
 }
 
 func TestCodePointAtCachedLowSurrogate(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	const prefixUnits = 90
-	v := vm.NewString(wtf8.String(strings.Repeat("日", prefixUnits) + "😀"))
+	v := cx.NewString(wtf8.String(strings.Repeat("日", prefixUnits) + "😀"))
 	if got := v.CodePointAt(prefixUnits + 1); got != 0xde00 {
 		t.Errorf("CodePointAt(low) = %#x, want %#x", got, 0xde00)
 	}
@@ -189,7 +189,7 @@ func TestCodePointAtCachedLowSurrogate(t *testing.T) {
 }
 
 func TestStringValueBoundaries(t *testing.T) {
-	vm := newVM(t)
+	cx := newVM(t)
 	for _, tc := range []struct {
 		name string
 		src  string
@@ -237,14 +237,14 @@ func TestStringValueBoundaries(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			v, err := runScript(vm, tc.name, tc.src)
+			v, err := runScript(cx, tc.name, tc.src)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got := v.Str(); got != tc.want {
 				t.Errorf("Str() = %q, want %q", got, tc.want)
 			}
-			if !engine.IsStrictlyEqual(v, vm.NewString(tc.want)) {
+			if !engine.IsStrictlyEqual(v, cx.NewString(tc.want)) {
 				t.Error("value differs from NewString")
 			}
 		})
@@ -252,20 +252,20 @@ func TestStringValueBoundaries(t *testing.T) {
 }
 
 func TestInternedStringValue(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	const text = "\xed\xa0\xbdabc"
-	v := vm.NewString(text)
+	v := cx.NewString(text)
 	for _, tc := range []struct {
 		name  string
 		value engine.Value
 	}{
 		{
 			name:  "interned",
-			value: engine.ObjectValue(vm.Intern(text)),
+			value: engine.ObjectValue(cx.Intern(text)),
 		},
 		{
 			name:  "shared",
-			value: vm.SharedString(text),
+			value: cx.SharedString(text),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -277,7 +277,7 @@ func TestInternedStringValue(t *testing.T) {
 }
 
 func TestShortStringToNumber(t *testing.T) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, tc := range []struct {
 		text wtf8.String
 		want float64
@@ -336,8 +336,8 @@ func TestShortStringToNumber(t *testing.T) {
 		},
 	} {
 		t.Run(string(tc.text), func(t *testing.T) {
-			for _, value := range []engine.Value{vm.NewString(tc.text), engine.ObjectValue(vm.Intern(tc.text))} {
-				got := vm.ToNumber(value)
+			for _, value := range []engine.Value{cx.NewString(tc.text), engine.ObjectValue(cx.Intern(tc.text))} {
+				got := cx.ToNumber(value)
 				if math.IsNaN(tc.want) {
 					if !math.IsNaN(got) {
 						t.Errorf("ToNumber(%q) = %v, want NaN", tc.text, got)

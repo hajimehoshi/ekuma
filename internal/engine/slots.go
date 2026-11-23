@@ -8,16 +8,16 @@ import "github.com/hajimehoshi/ekuma/internal/wtf8"
 // This file holds the operations on the internal slots of the built-in objects.
 
 // NewNumberObject returns a Number object for n with the prototype proto.
-func (vm *VM) NewNumberObject(n float64, proto *Object) *Object {
-	w := vm.NewObject(proto)
+func (cx *ExecutionContext) NewNumberObject(n float64, proto *Object) *Object {
+	w := cx.NewObject(proto)
 	w.class = classNumber
 	w.setExtState(n)
 	return w
 }
 
 // NewBooleanObject returns a Boolean object for b with the prototype proto.
-func (vm *VM) NewBooleanObject(b bool, proto *Object) *Object {
-	w := vm.NewObject(proto)
+func (cx *ExecutionContext) NewBooleanObject(b bool, proto *Object) *Object {
+	w := cx.NewObject(proto)
 	w.class = classBoolean
 	w.setExtState(b)
 	return w
@@ -39,9 +39,9 @@ type errorData struct {
 	goErr error
 }
 
-// NewErrorObject returns an Error object in r with prototype proto and no own properties.
-func (vm *VM) NewErrorObject(r *Realm, proto *Object) *Object {
-	e := newObject(vm.shapeForRealm(proto, r))
+// NewErrorObject returns an Error object with prototype proto and no own properties.
+func (cx *ExecutionContext) NewErrorObject(proto *Object) *Object {
+	e := newObject(cx.shapeForRealm(proto, cx.realm))
 	e.class = classError
 	return e
 }
@@ -69,20 +69,20 @@ func ErrorStack(v Value) (wtf8.String, bool) {
 	return d.stack, true
 }
 
-// NewGoError returns a new Error object in r whose message is the text of err and that
+// NewGoError returns a new Error object whose message is the text of err and that
 // [GoError] maps back to err.
-func (vm *VM) NewGoError(r *Realm, err error) Value {
-	return vm.newGoError(r, err.Error(), err)
+func (cx *ExecutionContext) NewGoError(err error) Value {
+	return cx.newGoError(err.Error(), err)
 }
 
 // newGoError returns a new Error object whose message is msg and that [GoError] maps to err.
-func (vm *VM) newGoError(r *Realm, msg string, err error) Value {
-	e := vm.newError(r, ErrorKindError, msg)
+func (cx *ExecutionContext) newGoError(msg string, err error) Value {
+	e := cx.newError(ErrorKindError, msg)
 	e.extState().(*errorData).goErr = err
 	return Value{o: e}
 }
 
-// GoError returns the Go error that v was made from by [VM.NewGoError], or nil when it was not.
+// GoError returns the Go error that v was made from by [ExecutionContext.NewGoError], or nil when it was not.
 func GoError(v Value) error {
 	if !IsError(v) {
 		return nil
@@ -95,16 +95,16 @@ func GoError(v Value) error {
 
 // NewIteratorObject returns a built-in iterator object with the prototype proto.
 // state is what [IteratorState] returns for it.
-func (vm *VM) NewIteratorObject(proto *Object, state any) *Object {
-	it := vm.NewObject(proto)
+func (cx *ExecutionContext) NewIteratorObject(proto *Object, state any) *Object {
+	it := cx.NewObject(proto)
 	it.class = classIterator
 	it.setExtState(state)
 	return it
 }
 
 // NewMapObject returns a Map object with the prototype proto whose [[MapData]] is data.
-func (vm *VM) NewMapObject(proto *Object, data any) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewMapObject(proto *Object, data any) *Object {
+	o := cx.NewObject(proto)
 	o.class = classMap
 	o.setExtState(data)
 	return o
@@ -119,8 +119,8 @@ func MapData(v Value) any {
 }
 
 // NewSetObject returns a Set object with the prototype proto whose [[SetData]] is data.
-func (vm *VM) NewSetObject(proto *Object, data any) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewSetObject(proto *Object, data any) *Object {
+	o := cx.NewObject(proto)
 	o.class = classSet
 	o.setExtState(data)
 	return o
@@ -136,8 +136,8 @@ func SetData(v Value) any {
 
 // NewTemporalObject returns an object of one of the Temporal types with the prototype proto,
 // whose internal slots are data.
-func (vm *VM) NewTemporalObject(proto *Object, data any) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewTemporalObject(proto *Object, data any) *Object {
+	o := cx.NewObject(proto)
 	o.class = classTemporal
 	o.setExtState(data)
 	return o
@@ -153,8 +153,8 @@ func TemporalData(v Value) any {
 
 // NewIntlObject returns an object of one of the Intl types with the prototype proto, whose
 // internal slots are data.
-func (vm *VM) NewIntlObject(proto *Object, data any) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewIntlObject(proto *Object, data any) *Object {
+	o := cx.NewObject(proto)
 	o.class = classIntl
 	o.setExtState(data)
 	return o
@@ -176,11 +176,11 @@ type dateObject struct {
 }
 
 // NewDateObject returns a Date object with the prototype proto whose [[DateValue]] is tv.
-func (vm *VM) NewDateObject(proto *Object, tv float64) *Object {
+func (cx *ExecutionContext) NewDateObject(proto *Object, tv float64) *Object {
 	d := &dateObject{
 		kind:  kindObject,
 		class: classDate,
-		shape: vm.shapeFor(proto),
+		shape: cx.shapeFor(proto),
 		tv:    tv,
 	}
 	o := d.init()
@@ -209,15 +209,12 @@ func IteratorState(v Value) any {
 }
 
 // IteratorStateAndContext returns the state and creation context of a built-in iterator.
-// For other values it returns nil and the zero context.
-func IteratorStateAndContext(v Value) (any, ExecutionContext) {
+// For other values it returns two nil values.
+func IteratorStateAndContext(v Value) (any, *ExecutionContext) {
 	if v.IsObject() && v.o.class == classIterator {
-		return v.o.extState(), ExecutionContext{
-			vm:    v.o.shape.vm,
-			realm: v.o.shape.realm,
-		}
+		return v.o.extState(), v.o.shape.realm.Context()
 	}
-	return nil, ExecutionContext{}
+	return nil, nil
 }
 
 // ThisNumberValue implements ThisNumberValue. It reports false when the specification throws.
@@ -282,9 +279,9 @@ func SymbolDescription(sym *Object) (wtf8.String, bool) {
 
 // BuiltinTag returns the name that Object.prototype.toString uses for o
 // when o has no Symbol.toStringTag property.
-func (vm *VM) BuiltinTag(o *Object) wtf8.String {
+func (cx *ExecutionContext) BuiltinTag(o *Object) wtf8.String {
 	switch {
-	case vm.IsArray(Value{o: o}):
+	case cx.IsArray(Value{o: o}):
 		return "Array"
 	case o.fn != nil:
 		return "Function"
@@ -315,8 +312,8 @@ func (o *Object) IsRegExpObject() bool {
 
 // NewRawJSONObject returns an object without any property or prototype
 // that has the internal slot [[IsRawJSON]].
-func (vm *VM) NewRawJSONObject() *Object {
-	o := vm.NewObject(nil)
+func (cx *ExecutionContext) NewRawJSONObject() *Object {
+	o := cx.NewObject(nil)
 	o.class = classRawJSON
 	return o
 }
@@ -328,8 +325,8 @@ func (o *Object) IsRawJSON() bool {
 
 // NewDisposableStackObject returns a DisposableStack object, or an AsyncDisposableStack object
 // when async is set, with the prototype proto. state is what [DisposableStackState] returns for it.
-func (vm *VM) NewDisposableStackObject(proto *Object, async bool, state any) *Object {
-	o := vm.NewObject(proto)
+func (cx *ExecutionContext) NewDisposableStackObject(proto *Object, async bool, state any) *Object {
+	o := cx.NewObject(proto)
 	o.class = classDisposableStack
 	if async {
 		o.class = classAsyncDisposableStack

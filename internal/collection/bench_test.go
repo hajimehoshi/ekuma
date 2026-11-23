@@ -14,7 +14,7 @@ import (
 )
 
 func BenchmarkTableSet(b *testing.B) {
-	vm := engine.NewVM(nil)
+	cx := engine.HostContext(engine.NewVM(nil))
 	for _, kind := range []string{"number", "string", "bigint", "object"} {
 		for _, size := range []int{1, 4, 8, 1000, 100000} {
 			b.Run(fmt.Sprintf("%s/%d", kind, size), func(b *testing.B) {
@@ -24,11 +24,11 @@ func BenchmarkTableSet(b *testing.B) {
 					case "number":
 						keys[i] = engine.Number(float64(i))
 					case "string":
-						keys[i] = vm.NewString(wtf8.String(strconv.Itoa(i)))
+						keys[i] = cx.NewString(wtf8.String(strconv.Itoa(i)))
 					case "bigint":
 						keys[i] = engine.BigIntFromInt64(int64(i))
 					case "object":
-						keys[i] = engine.ObjectValue(vm.NewObject(nil))
+						keys[i] = engine.ObjectValue(cx.NewObject(nil))
 					}
 				}
 				b.ReportAllocs()

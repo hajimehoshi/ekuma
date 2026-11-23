@@ -35,10 +35,10 @@ func (l *localeData) String() string {
 
 // thisLocale returns the internal slots of the Intl.Locale object this, or throws a TypeError
 // naming the method.
-func thisLocale(vm *engine.VM, this engine.Value, name string) *localeData {
+func thisLocale(cx *engine.ExecutionContext, this engine.Value, name string) *localeData {
 	l, ok := engine.IntlData(this).(*localeData)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.Locale.prototype."+name+" called on an object that is not an Intl.Locale")
+		cx.ThrowTypeError("Intl.Locale.prototype." + name + " called on an object that is not an Intl.Locale")
 	}
 	return l
 }
@@ -54,14 +54,14 @@ func asciiLower(s string) (string, bool) {
 // subtagOption returns the option name of options in lower case if it is a subtag that valid
 // accepts, or the fallback when the option is undefined. It throws a RangeError for any other
 // value.
-func subtagOption(vm *engine.VM, options *engine.Object, name string, valid func(string) bool, fallback string) string {
-	s, ok := getOption(vm, options, name)
+func subtagOption(cx *engine.ExecutionContext, options *engine.Object, name string, valid func(string) bool, fallback string) string {
+	s, ok := getOption(cx, options, name)
 	if !ok {
 		return fallback
 	}
 	l, ok := asciiLower(s)
 	if !ok || !valid(l) {
-		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
+		cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 	}
 	return l
 }
@@ -101,48 +101,48 @@ func weekdayToString(s string) string {
 }
 
 // newLocale implements the Intl.Locale constructor.
-func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newLocale(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.Locale requires 'new'")
+		cx.ThrowTypeError("constructor Intl.Locale requires 'new'")
 	}
-	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.localeProto })
+	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.localeProto })
 	tagV := arg(args, 0)
 	if !tagV.IsString() && !tagV.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the tag of Intl.Locale must be a string or an object, not "+vm.DisplayString(tagV))
+		cx.ThrowTypeError("the tag of Intl.Locale must be a string or an object, not " + cx.DisplayString(tagV))
 	}
 	var tag string
 	if l, ok := engine.IntlData(tagV).(*localeData); ok {
 		tag = l.String()
 	} else {
-		tag = wtf8.ToValidUTF8(vm.ToString(tagV))
+		tag = wtf8.ToValidUTF8(cx.ToString(tagV))
 	}
 	var options *engine.Object
 	if o := arg(args, 1); o.IsUndefined() {
-		options = vm.NewObject(nil)
+		options = cx.NewObject(nil)
 	} else {
-		options = vm.ToObject(o)
+		options = cx.ToObject(o)
 	}
 	t, ok := locale.Parse(tag)
 	if !ok {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid language tag: "+vm.DisplayString(vm.NewString(wtf8.String(tag))))
+		cx.ThrowRangeError("invalid language tag: " + cx.DisplayString(cx.NewString(wtf8.String(tag))))
 	}
-	t = t.CanonicalizePolled(vm.Poll)
+	t = t.CanonicalizePolled(cx.Poll)
 
 	// UpdateLanguageId.
-	t.Language = subtagOption(vm, options, "language", localetag.IsLanguageSubtag, t.Language)
-	if s := subtagOption(vm, options, "script", localetag.IsScriptSubtag, strings.ToLower(t.Script)); s != "" {
+	t.Language = subtagOption(cx, options, "language", localetag.IsLanguageSubtag, t.Language)
+	if s := subtagOption(cx, options, "script", localetag.IsScriptSubtag, strings.ToLower(t.Script)); s != "" {
 		t.Script = strings.ToUpper(s[:1]) + s[1:]
 	}
-	t.Region = strings.ToUpper(subtagOption(vm, options, "region", localetag.IsRegionSubtag, t.Region))
-	if vs := subtagOption(vm, options, "variants", validVariants, ""); vs != "" {
+	t.Region = strings.ToUpper(subtagOption(cx, options, "region", localetag.IsRegionSubtag, t.Region))
+	if vs := subtagOption(cx, options, "variants", validVariants, ""); vs != "" {
 		t.Variants = strings.Split(vs, "-")
 	}
 
 	// The options of the relevant extension keys, in the order that they are read.
 	var kws []locale.Keyword
 	typeOption := func(name, key string, conv func(string) string) {
-		s, ok := getOption(vm, options, name)
+		s, ok := getOption(cx, options, name)
 		if !ok {
 			return
 		}
@@ -151,7 +151,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 		}
 		l, ok := asciiLower(s)
 		if !ok || !localetag.IsType(l) {
-			vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
+			cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for " + name)
 		}
 		kws = append(kws, locale.Keyword{
 			Key:   key,
@@ -159,7 +159,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 		})
 	}
 	enumOption := func(name, key string, values ...string) {
-		if s, ok := getOption(vm, options, name, values...); ok {
+		if s, ok := getOption(cx, options, name, values...); ok {
 			kws = append(kws, locale.Keyword{
 				Key:   key,
 				Value: s,
@@ -171,7 +171,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	typeOption("firstDayOfWeek", "fw", weekdayToString)
 	enumOption("hourCycle", "hc", "h11", "h12", "h23", "h24")
 	enumOption("caseFirst", "kf", "upper", "lower", "false")
-	if v := vm.Get(options, engine.NamedKey(vm.Intern("numeric"))); !v.IsUndefined() {
+	if v := cx.Get(options, engine.NamedKey(cx.Intern("numeric"))); !v.IsUndefined() {
 		s := "false"
 		if engine.ToBoolean(v) {
 			s = "true"
@@ -195,42 +195,42 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 			}
 		}
 	}
-	return engine.ObjectValue(vm.NewIntlObject(proto, newLocaleData(t.CanonicalizePolled(vm.Poll))))
+	return engine.ObjectValue(cx.NewIntlObject(proto, newLocaleData(t.CanonicalizePolled(cx.Poll))))
 }
 
 // initLocale defines Intl.Locale.
-func (r *realm) initLocale(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("Locale", 1, r.newLocale)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("Locale"), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.Locale"), engine.FlagConfigurable)
+func (r *realm) initLocale(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("Locale", 1, r.newLocale)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("Locale"), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Locale"), engine.FlagConfigurable)
 	r.localeProto = proto
 	r.localeCtor = ctor
 
-	newLocale := func(t locale.Tag) engine.Value {
-		return engine.ObjectValue(vm.NewIntlObject(r.localeProto, newLocaleData(t)))
+	newLocale := func(cx *engine.ExecutionContext, t locale.Tag) engine.Value {
+		return engine.ObjectValue(cx.NewIntlObject(r.localeProto, newLocaleData(t)))
 	}
-	method(vm, proto, "maximize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisLocale(vm, this, "maximize").tag
+	method(cx, proto, "maximize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisLocale(cx, this, "maximize").tag
 		if max, ok := locale.AddLikelySubtags(t.LanguageID); ok {
 			t.LanguageID = max
 		}
-		return newLocale(t)
+		return newLocale(cx, t)
 	})
-	method(vm, proto, "minimize", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		t := thisLocale(vm, this, "minimize").tag
+	method(cx, proto, "minimize", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		t := thisLocale(cx, this, "minimize").tag
 		if min, ok := locale.RemoveLikelySubtags(t.LanguageID); ok {
 			t.LanguageID = min
 		}
-		return newLocale(t)
+		return newLocale(cx, t)
 	})
-	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(wtf8.String(thisLocale(vm, this, "toString").String()))
+	method(cx, proto, "toString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return cx.NewString(wtf8.String(thisLocale(cx, this, "toString").String()))
 	})
-	getter(vm, proto, "baseName", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(wtf8.String(thisLocale(vm, this, "baseName").tag.BaseName()))
+	getter(cx, proto, "baseName", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return cx.NewString(wtf8.String(thisLocale(cx, this, "baseName").tag.BaseName()))
 	})
 	for _, k := range []struct {
 		name, key string
@@ -242,29 +242,29 @@ func (r *realm) initLocale(vm *engine.VM) {
 		{"hourCycle", "hc"},
 		{"numberingSystem", "nu"},
 	} {
-		getter(vm, proto, k.name, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			v, ok := thisLocale(vm, this, k.name).tag.Keyword(k.key)
-			return stringOrUndefined(vm, v, ok)
+		getter(cx, proto, k.name, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			v, ok := thisLocale(cx, this, k.name).tag.Keyword(k.key)
+			return stringOrUndefined(cx, v, ok)
 		})
 	}
-	getter(vm, proto, "numeric", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		v, ok := thisLocale(vm, this, "numeric").tag.Keyword("kn")
+	getter(cx, proto, "numeric", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		v, ok := thisLocale(cx, this, "numeric").tag.Keyword("kn")
 		return engine.Bool(ok && (v == "" || v == "true"))
 	})
-	getter(vm, proto, "language", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return vm.NewString(wtf8.String(thisLocale(vm, this, "language").tag.Language))
+	getter(cx, proto, "language", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return cx.NewString(wtf8.String(thisLocale(cx, this, "language").tag.Language))
 	})
-	getter(vm, proto, "script", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisLocale(vm, this, "script").tag.Script
-		return stringOrUndefined(vm, s, s != "")
+	getter(cx, proto, "script", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisLocale(cx, this, "script").tag.Script
+		return stringOrUndefined(cx, s, s != "")
 	})
-	getter(vm, proto, "region", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		s := thisLocale(vm, this, "region").tag.Region
-		return stringOrUndefined(vm, s, s != "")
+	getter(cx, proto, "region", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		s := thisLocale(cx, this, "region").tag.Region
+		return stringOrUndefined(cx, s, s != "")
 	})
-	getter(vm, proto, "variants", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vs := thisLocale(vm, this, "variants").tag.Variants
-		return stringOrUndefined(vm, strings.Join(vs, "-"), len(vs) > 0)
+	getter(cx, proto, "variants", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		vs := thisLocale(cx, this, "variants").tag.Variants
+		return stringOrUndefined(cx, strings.Join(vs, "-"), len(vs) > 0)
 	})
 	for _, m := range []struct {
 		name string
@@ -275,32 +275,32 @@ func (r *realm) initLocale(vm *engine.VM) {
 		{"getHourCycles", locale.HourCyclesOf},
 		{"getNumberingSystems", locale.NumberingSystemsOf},
 	} {
-		method(vm, proto, m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return stringArray(vm, m.f(thisLocale(vm, this, m.name).tag))
+		method(cx, proto, m.name, 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			return stringArray(cx, m.f(thisLocale(cx, this, m.name).tag))
 		})
 	}
-	method(vm, proto, "getTimeZones", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		zones, ok := locale.TimeZonesOf(thisLocale(vm, this, "getTimeZones").tag)
+	method(cx, proto, "getTimeZones", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		zones, ok := locale.TimeZonesOf(thisLocale(cx, this, "getTimeZones").tag)
 		if !ok {
 			return engine.Undefined
 		}
-		return stringArray(vm, zones)
+		return stringArray(cx, zones)
 	})
-	method(vm, proto, "getTextInfo", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		d := locale.TextDirectionOf(thisLocale(vm, this, "getTextInfo").tag)
-		info := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-		vm.CreateDataPropertyOrThrow(info, engine.NamedKey(vm.Intern("direction")), stringOrUndefined(vm, d, d != ""))
+	method(cx, proto, "getTextInfo", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		d := locale.TextDirectionOf(thisLocale(cx, this, "getTextInfo").tag)
+		info := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("direction")), stringOrUndefined(cx, d, d != ""))
 		return engine.ObjectValue(info)
 	})
-	method(vm, proto, "getWeekInfo", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		firstDay, weekend := locale.WeekInfoOf(thisLocale(vm, this, "getWeekInfo").tag)
+	method(cx, proto, "getWeekInfo", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		firstDay, weekend := locale.WeekInfoOf(thisLocale(cx, this, "getWeekInfo").tag)
 		days := make([]engine.Value, len(weekend))
 		for i, d := range weekend {
 			days[i] = engine.Number(float64(d))
 		}
-		info := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-		vm.CreateDataPropertyOrThrow(info, engine.NamedKey(vm.Intern("firstDay")), engine.Number(float64(firstDay)))
-		vm.CreateDataPropertyOrThrow(info, engine.NamedKey(vm.Intern("weekend")), vm.NewArrayOf(days))
+		info := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("firstDay")), engine.Number(float64(firstDay)))
+		cx.CreateDataPropertyOrThrow(info, engine.NamedKey(cx.Intern("weekend")), cx.NewArrayOf(days))
 		return engine.ObjectValue(info)
 	})
 }

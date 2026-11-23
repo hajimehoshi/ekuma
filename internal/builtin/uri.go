@@ -37,39 +37,39 @@ var (
 
 // initURIFunctions defines the URI handling functions and the Annex B functions escape and
 // unescape on the global object.
-func initURIFunctions(vm *engine.VM) {
-	g := vm.GlobalObject().Object()
-	uriFunc := func(name string, f func(vm *engine.VM, s wtf8.String) wtf8.String) {
-		method(vm, g, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return vm.NewString(f(vm, vm.ToString(arg(args, 0))))
+func initURIFunctions(cx *engine.ExecutionContext) {
+	g := cx.GlobalObject().Object()
+	uriFunc := func(name string, f func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String) {
+		method(cx, g, wtf8.String(name), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			return cx.NewString(f(cx, cx.ToString(arg(args, 0))))
 		})
 	}
-	uriFunc("decodeURI", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return uriDecode(vm, s, uriReserved+"#")
+	uriFunc("decodeURI", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
+		return uriDecode(cx, s, uriReserved+"#")
 	})
-	uriFunc("decodeURIComponent", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return uriDecode(vm, s, "")
+	uriFunc("decodeURIComponent", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
+		return uriDecode(cx, s, "")
 	})
-	uriFunc("encodeURI", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return uriEncode(vm, s, &uriEncodeSet)
+	uriFunc("encodeURI", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
+		return uriEncode(cx, s, &uriEncodeSet)
 	})
-	uriFunc("encodeURIComponent", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return uriEncode(vm, s, &uriComponentSet)
+	uriFunc("encodeURIComponent", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
+		return uriEncode(cx, s, &uriComponentSet)
 	})
-	uriFunc("escape", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return escape(vm, s)
+	uriFunc("escape", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
+		return escape(cx, s)
 	})
-	uriFunc("unescape", func(vm *engine.VM, s wtf8.String) wtf8.String {
-		return unescape(vm, s)
+	uriFunc("unescape", func(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
+		return unescape(cx, s)
 	})
 }
 
-func throwURIError(vm *engine.VM, msg string) {
-	vm.Throw(vm.NewError(vm.CurrentRealm(), engine.ErrorKindURI, msg))
+func throwURIError(cx *engine.ExecutionContext, msg string) {
+	cx.Throw(cx.NewError(engine.ErrorKindURI, msg))
 }
 
 // uriEncode implements Encode. The ASCII characters in extraUnescaped are not escaped.
-func uriEncode(vm *engine.VM, s wtf8.String, extraUnescaped *[256]bool) wtf8.String {
+func uriEncode(cx *engine.ExecutionContext, s wtf8.String, extraUnescaped *[256]bool) wtf8.String {
 	var i int
 	for {
 		end := min(len(s), i+uriRun)
@@ -77,7 +77,7 @@ func uriEncode(vm *engine.VM, s wtf8.String, extraUnescaped *[256]bool) wtf8.Str
 		if i < end || i == len(s) {
 			break
 		}
-		vm.Poll()
+		cx.Poll()
 	}
 	if i == len(s) {
 		return s
@@ -91,10 +91,10 @@ func uriEncode(vm *engine.VM, s wtf8.String, extraUnescaped *[256]bool) wtf8.Str
 		for n < len(s) && s[n]&0xc0 == 0x80 {
 			n++
 		}
-		uriEncodeRun(vm, &b, s[i:n], extraUnescaped)
-		checkStringLength(vm, b.Len())
+		uriEncodeRun(cx, &b, s[i:n], extraUnescaped)
+		checkStringLength(cx, b.Len())
 		i = n
-		vm.Poll()
+		cx.Poll()
 	}
 	return wtf8.String(b.String())
 }
@@ -114,7 +114,7 @@ func unescapedLen(s wtf8.String, extraUnescaped *[256]bool) int {
 }
 
 // uriEncodeRun writes s to b as uriEncode encodes it.
-func uriEncodeRun(vm *engine.VM, b *strings.Builder, s wtf8.String, extraUnescaped *[256]bool) {
+func uriEncodeRun(cx *engine.ExecutionContext, b *strings.Builder, s wtf8.String, extraUnescaped *[256]bool) {
 	var buf [utf8.UTFMax]byte
 	for i := 0; i < len(s); {
 		if c := s[i]; extraUnescaped[c] {
@@ -125,7 +125,7 @@ func uriEncodeRun(vm *engine.VM, b *strings.Builder, s wtf8.String, extraUnescap
 		r, size := wtf8.DecodeRune(s[i:])
 		i += size
 		if wtf8.IsHighSurrogate(r) || wtf8.IsLowSurrogate(r) {
-			throwURIError(vm, "URI malformed")
+			throwURIError(cx, "URI malformed")
 		}
 		n := utf8.EncodeRune(buf[:], r)
 		for _, o := range buf[:n] {
@@ -159,22 +159,22 @@ func hexDigit(c byte) (byte, bool) {
 }
 
 // uriDecode implements Decode. Escapes of the ASCII characters in preserveEscapeSet are kept.
-func uriDecode(vm *engine.VM, s wtf8.String, preserveEscapeSet string) wtf8.String {
+func uriDecode(cx *engine.ExecutionContext, s wtf8.String, preserveEscapeSet string) wtf8.String {
 	if strings.IndexByte(string(s), '%') < 0 {
 		return s
 	}
 	var b wtf8.Buffer
 	b.Grow(len(s))
 	for i := 0; i < len(s); {
-		i = uriDecodeRun(vm, &b, s, i, i+uriRun, preserveEscapeSet)
-		vm.Poll()
+		i = uriDecodeRun(cx, &b, s, i, i+uriRun, preserveEscapeSet)
+		cx.Poll()
 	}
 	return b.String()
 }
 
 // uriDecodeRun writes s to b from the index i on as uriDecode decodes it, up to about the index
 // stop, and returns the index after the part it decoded.
-func uriDecodeRun(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, i, stop int, preserveEscapeSet string) int {
+func uriDecodeRun(cx *engine.ExecutionContext, b *wtf8.Buffer, s wtf8.String, i, stop int, preserveEscapeSet string) int {
 	var octets [utf8.UTFMax]byte
 	for i < len(s) && i < stop {
 		j := strings.IndexByte(string(s[i:]), '%')
@@ -186,7 +186,7 @@ func uriDecodeRun(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, i, stop int, pre
 		i += j
 		o, ok := hexByte(s, i+1)
 		if !ok {
-			throwURIError(vm, "URI malformed")
+			throwURIError(cx, "URI malformed")
 		}
 		if o < 0x80 {
 			if strings.IndexByte(preserveEscapeSet, o) >= 0 {
@@ -206,24 +206,24 @@ func uriDecodeRun(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, i, stop int, pre
 		case o&0xF8 == 0xF0:
 			n = 4
 		default:
-			throwURIError(vm, "URI malformed")
+			throwURIError(cx, "URI malformed")
 		}
 		octets[0] = o
 		i += 3
 		for k := 1; k < n; k++ {
 			if i >= len(s) || s[i] != '%' {
-				throwURIError(vm, "URI malformed")
+				throwURIError(cx, "URI malformed")
 			}
 			o, ok := hexByte(s, i+1)
 			if !ok || o&0xC0 != 0x80 {
-				throwURIError(vm, "URI malformed")
+				throwURIError(cx, "URI malformed")
 			}
 			octets[k] = o
 			i += 3
 		}
 		r, size := utf8.DecodeRune(octets[:n])
 		if r == utf8.RuneError && size <= 1 {
-			throwURIError(vm, "URI malformed")
+			throwURIError(cx, "URI malformed")
 		}
 		b.WriteRune(r)
 	}
@@ -231,7 +231,7 @@ func uriDecodeRun(vm *engine.VM, b *wtf8.Buffer, s wtf8.String, i, stop int, pre
 }
 
 // escape implements the Annex B function escape.
-func escape(vm *engine.VM, s wtf8.String) wtf8.String {
+func escape(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
 	var b strings.Builder
 	b.Grow(len(s))
 	var units []uint16
@@ -243,9 +243,9 @@ func escape(vm *engine.VM, s wtf8.String) wtf8.String {
 		}
 		units = wtf8.AppendUTF16(units[:0], s[:n])
 		escapeUnits(&b, units)
-		checkStringLength(vm, b.Len())
+		checkStringLength(cx, b.Len())
 		s = s[n:]
-		vm.Poll()
+		cx.Poll()
 	}
 	return wtf8.String(b.String())
 }
@@ -275,7 +275,7 @@ func escapeUnits(b *strings.Builder, us []uint16) {
 }
 
 // unescape implements the Annex B function unescape.
-func unescape(vm *engine.VM, s wtf8.String) wtf8.String {
+func unescape(cx *engine.ExecutionContext, s wtf8.String) wtf8.String {
 	if strings.IndexByte(string(s), '%') < 0 {
 		return s
 	}
@@ -283,7 +283,7 @@ func unescape(vm *engine.VM, s wtf8.String) wtf8.String {
 	b.Grow(len(s))
 	for i := 0; i < len(s); {
 		i = unescapeRun(&b, s, i, i+uriRun)
-		vm.Poll()
+		cx.Poll()
 	}
 	return b.String()
 }

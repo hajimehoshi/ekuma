@@ -31,8 +31,8 @@ type collatorData struct {
 }
 
 // compare implements CompareStrings.
-func (cd *collatorData) compare(vm *engine.VM, x, y wtf8.String) int {
-	return cd.c.ComparePolled(wtf8.ToValidUTF8(x), wtf8.ToValidUTF8(y), vm.Poll)
+func (cd *collatorData) compare(cx *engine.ExecutionContext, x, y wtf8.String) int {
+	return cd.c.ComparePolled(wtf8.ToValidUTF8(x), wtf8.ToValidUTF8(y), cx.Poll)
 }
 
 // sortCollationTypes returns the sort collations supported by l, with the default first.
@@ -45,28 +45,28 @@ func sortCollationTypes(l string) []string {
 }
 
 // createCollator implements the steps of the Intl.Collator constructor after the prototype.
-func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
-	requested := canonicalizeLocaleList(vm, locales)
-	options := optionsObject(vm, opts)
-	usage := getStringOption(vm, options, "usage", "sort", "sort", "search")
-	bestFit := localeMatcher(vm, options)
-	co, hasCo := typeOption(vm, options, "collation")
+func createCollator(cx *engine.ExecutionContext, locales, opts engine.Value) *collatorData {
+	requested := canonicalizeLocaleList(cx, locales)
+	options := optionsObject(cx, opts)
+	usage := getStringOption(cx, options, "usage", "sort", "sort", "search")
+	bestFit := localeMatcher(cx, options)
+	co, hasCo := typeOption(cx, options, "collation")
 	var kn string
 	hasKn := false
-	if v := vm.Get(options, engine.NamedKey(vm.Intern("numeric"))); !v.IsUndefined() {
+	if v := cx.Get(options, engine.NamedKey(cx.Intern("numeric"))); !v.IsUndefined() {
 		kn, hasKn = "false", true
 		if engine.ToBoolean(v) {
 			kn = "true"
 		}
 	}
-	kf, hasKf := getOption(vm, options, "caseFirst", "upper", "lower", "false")
+	kf, hasKf := getOption(cx, options, "caseFirst", "upper", "lower", "false")
 	typ := "standard"
 	coValues := sortCollationTypes
 	if usage == "search" {
 		typ = "search"
 		coValues = func(string) []string { return []string{""} }
 	}
-	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{
+	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{
 		{
 			Key:       "co",
 			Option:    co,
@@ -108,10 +108,10 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 		cd.collation = "default"
 	}
 	dataLocale := locale.DataLocale(res.DataLocale)
-	cd.sensitivity = getStringOption(vm, options, "sensitivity", "variant", "base", "accent", "case", "variant")
+	cd.sensitivity = getStringOption(cx, options, "sensitivity", "variant", "base", "accent", "case", "variant")
 	_, defaultIgnore := collate.Defaults(dataLocale, typ)
 	cd.ignorePunctuation = defaultIgnore
-	if v := vm.Get(options, engine.NamedKey(vm.Intern("ignorePunctuation"))); !v.IsUndefined() {
+	if v := cx.Get(options, engine.NamedKey(cx.Intern("ignorePunctuation"))); !v.IsUndefined() {
 		cd.ignorePunctuation = engine.ToBoolean(v)
 	}
 
@@ -139,89 +139,89 @@ func createCollator(vm *engine.VM, locales, opts engine.Value) *collatorData {
 }
 
 // newCollator implements the Intl.Collator constructor.
-func (r *realm) newCollator(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newCollator(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	if nt == nil {
 		nt = r.collatorCtor
 	}
-	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.collatorProto })
-	cd := createCollator(vm, arg(args, 0), arg(args, 1))
-	return engine.ObjectValue(vm.NewIntlObject(proto, cd))
+	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.collatorProto })
+	cd := createCollator(cx, arg(args, 0), arg(args, 1))
+	return engine.ObjectValue(cx.NewIntlObject(proto, cd))
 }
 
 // thisCollator implements RequireInternalSlot for an Intl.Collator.
-func thisCollator(vm *engine.VM, this engine.Value, name string) *collatorData {
+func thisCollator(cx *engine.ExecutionContext, this engine.Value, name string) *collatorData {
 	cd, ok := engine.IntlData(this).(*collatorData)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.Collator.prototype."+name+" called on an object that is not an Intl.Collator")
+		cx.ThrowTypeError("Intl.Collator.prototype." + name + " called on an object that is not an Intl.Collator")
 	}
 	return cd
 }
 
 // initCollator defines Intl.Collator.
-func (r *realm) initCollator(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("Collator", 0, r.newCollator)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("Collator"), engine.ObjectValue(ctor), engine.FlagsHidden)
+func (r *realm) initCollator(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("Collator", 0, r.newCollator)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("Collator"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.collatorProto = proto
 	r.collatorCtor = ctor
 
-	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(vm, args)
+	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return supportedLocalesOf(cx, args)
 	})
-	getter(vm, proto, "compare", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		cd := thisCollator(vm, this, "compare")
+	getter(cx, proto, "compare", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		cd := thisCollator(cx, this, "compare")
 		if cd.boundCompare == nil {
-			cd.boundCompare = vm.NewNative("", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-				x := vm.ToString(arg(args, 0))
-				y := vm.ToString(arg(args, 1))
-				return engine.Number(float64(cd.compare(vm, x, y)))
+			cd.boundCompare = cx.NewNative("", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+				x := cx.ToString(arg(args, 0))
+				y := cx.ToString(arg(args, 1))
+				return engine.Number(float64(cd.compare(cx, x, y)))
 			})
 		}
 		return engine.ObjectValue(cd.boundCompare)
 	})
-	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		cd := thisCollator(vm, this, "resolvedOptions")
-		out := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
+	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		cd := thisCollator(cx, this, "resolvedOptions")
+		out := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
 		set := func(name string, v engine.Value) {
-			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
+			cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
 		}
-		set("locale", vm.NewString(wtf8.String(cd.locale)))
-		set("usage", vm.NewString(wtf8.String(cd.usage)))
-		set("sensitivity", vm.NewString(wtf8.String(cd.sensitivity)))
+		set("locale", cx.NewString(wtf8.String(cd.locale)))
+		set("usage", cx.NewString(wtf8.String(cd.usage)))
+		set("sensitivity", cx.NewString(wtf8.String(cd.sensitivity)))
 		set("ignorePunctuation", engine.Bool(cd.ignorePunctuation))
-		set("collation", vm.NewString(wtf8.String(cd.collation)))
+		set("collation", cx.NewString(wtf8.String(cd.collation)))
 		set("numeric", engine.Bool(cd.numeric))
-		set("caseFirst", vm.NewString(wtf8.String(cd.caseFirst)))
+		set("caseFirst", cx.NewString(wtf8.String(cd.caseFirst)))
 		return engine.ObjectValue(out)
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.Collator"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.Collator"), engine.FlagConfigurable)
 }
 
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
-func initLocaleCompare(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicStringPrototype)
-	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+func initLocaleCompare(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicStringPrototype)
+	method(cx, proto, "localeCompare", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if this.IsNullish() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "String.prototype.localeCompare called on null or undefined")
+			cx.ThrowTypeError("String.prototype.localeCompare called on null or undefined")
 		}
-		s := vm.ToString(this)
-		that := vm.ToString(arg(args, 0))
+		s := cx.ToString(this)
+		that := cx.ToString(arg(args, 0))
 		locales, options := arg(args, 1), arg(args, 2)
 		var cd *collatorData
 		if locales.IsUndefined() && options.IsUndefined() {
-			r := vm.RealmExtension(vm.CurrentRealm()).(*realm)
-			if l := defaultLocale(vm); r.defaultCollator == nil || r.defaultCollatorLocale != l {
-				r.defaultCollator = createCollator(vm, engine.Undefined, engine.Undefined)
+			r := cx.RealmExtension(cx.Realm()).(*realm)
+			if l := defaultLocale(cx); r.defaultCollator == nil || r.defaultCollatorLocale != l {
+				r.defaultCollator = createCollator(cx, engine.Undefined, engine.Undefined)
 				r.defaultCollatorLocale = l
 			}
 			cd = r.defaultCollator
 		} else {
-			cd = createCollator(vm, locales, options)
+			cd = createCollator(cx, locales, options)
 		}
-		return engine.Number(float64(cd.compare(vm, s, that)))
+		return engine.Number(float64(cd.compare(cx, s, that)))
 	})
 }
 
@@ -230,8 +230,8 @@ var caseLocales = []string{"az", "el", "lt", "tr"}
 
 // initLocaleCase replaces String.prototype.toLocaleUpperCase and toLocaleLowerCase with the
 // versions of ECMA-402.
-func initLocaleCase(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicStringPrototype)
+func initLocaleCase(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicStringPrototype)
 	for _, m := range []struct {
 		name  string
 		upper bool
@@ -240,19 +240,19 @@ func initLocaleCase(vm *engine.VM) {
 		{"toLocaleLowerCase", false},
 	} {
 		// The methods of the base map the case without a language.
-		base := vm.Get(proto, engine.NamedKey(vm.Intern(wtf8.String(m.name))))
-		method(vm, proto, m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		base := cx.Get(proto, engine.NamedKey(cx.Intern(wtf8.String(m.name))))
+		method(cx, proto, m.name, 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			if this.IsNullish() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "String.prototype."+m.name+" called on null or undefined")
+				cx.ThrowTypeError("String.prototype." + m.name + " called on null or undefined")
 			}
-			value := vm.ToStringValue(this)
+			value := cx.ToStringValue(this)
 			// TransformCase.
-			requested := canonicalizeLocaleList(vm, arg(args, 0))
+			requested := canonicalizeLocaleList(cx, arg(args, 0))
 			var tag string
 			if len(requested) > 0 {
 				tag = requested[0]
 			} else {
-				tag = defaultLocale(vm)
+				tag = defaultLocale(cx)
 			}
 			lang := ""
 			if t, ok := locale.Parse(tag); ok {
@@ -263,10 +263,10 @@ func initLocaleCase(vm *engine.VM) {
 				}
 			}
 			if lang == "" || lang == "el" && !m.upper {
-				if mapped, ok := vm.MapASCII(value, m.upper); ok {
+				if mapped, ok := cx.MapASCII(value, m.upper); ok {
 					return mapped
 				}
-				return vm.CallValue(base, value)
+				return cx.CallValue(base, value)
 			}
 			s := value.Str()
 			// The rules of the language apply first, and then the base maps the case of the
@@ -274,21 +274,21 @@ func initLocaleCase(vm *engine.VM) {
 			switch {
 			case lang == "el" && m.upper:
 				s = wtf8.MapWellFormed(s, func(s string) string {
-					return greekUpper(s, vm.Poll)
+					return greekUpper(s, cx.Poll)
 				})
 			case lang == "lt" && m.upper:
-				s = mapAtStarters(vm, s, lithuanianUndot)
+				s = mapAtStarters(cx, s, lithuanianUndot)
 			case lang == "lt":
-				s = mapAtStarters(vm, s, lithuanianDots)
+				s = mapAtStarters(cx, s, lithuanianDots)
 			case (lang == "tr" || lang == "az") && m.upper:
-				s = mapAtStarters(vm, s, func(s string, poll func()) string {
+				s = mapAtStarters(cx, s, func(s string, poll func()) string {
 					return strings.ReplaceAll(s, "i", "\u0130")
 				})
 			case lang == "tr" || lang == "az":
-				s = mapAtStarters(vm, s, turkicLowerI)
+				s = mapAtStarters(cx, s, turkicLowerI)
 			}
-			checkStringLength(vm, len(s))
-			return vm.CallValue(base, vm.NewString(s))
+			checkStringLength(cx, len(s))
+			return cx.CallValue(base, cx.NewString(s))
 		})
 	}
 }
@@ -301,23 +301,23 @@ const caseChunk = 1 << 16
 // character of the canonical combining class 0, checking for an interruption between the parts
 // of a long string. f looks at no character beyond such a part, and calls poll now and then
 // over a long part.
-func mapAtStarters(vm *engine.VM, s wtf8.String, f func(s string, poll func()) string) wtf8.String {
+func mapAtStarters(cx *engine.ExecutionContext, s wtf8.String, f func(s string, poll func()) string) wtf8.String {
 	return wtf8.MapWellFormed(s, func(s string) string {
 		if len(s) <= caseChunk {
-			return f(s, vm.Poll)
+			return f(s, cx.Poll)
 		}
 		var b strings.Builder
 		b.Grow(len(s))
 		for len(s) > caseChunk {
 			i := lastStarter(s[:caseChunk])
 			if i <= 0 {
-				i = nextStarter(s, caseChunk, vm.Poll)
+				i = nextStarter(s, caseChunk, cx.Poll)
 			}
-			b.WriteString(f(s[:i], vm.Poll))
+			b.WriteString(f(s[:i], cx.Poll))
 			s = s[i:]
-			vm.Poll()
+			cx.Poll()
 		}
-		b.WriteString(f(s, vm.Poll))
+		b.WriteString(f(s, cx.Poll))
 		return b.String()
 	})
 }
@@ -477,13 +477,13 @@ func beforeDot(s string) bool {
 // initArrayToLocaleString replaces Array.prototype.toLocaleString and
 // %TypedArray%.prototype.toLocaleString with the versions of ECMA-402, which pass the locales
 // and the options to the elements.
-func initArrayToLocaleString(vm *engine.VM) {
-	key := vm.Intern("toLocaleString")
+func initArrayToLocaleString(cx *engine.ExecutionContext) {
+	key := cx.Intern("toLocaleString")
 	// joining are the arrays being converted, which an array that contains itself meets again.
 	var joining []*engine.Object
-	join := func(vm *engine.VM, o *engine.Object, n int64, args []engine.Value) engine.Value {
+	join := func(cx *engine.ExecutionContext, o *engine.Object, n int64, args []engine.Value) engine.Value {
 		if slices.Contains(joining, o) {
-			return vm.NewString("")
+			return cx.NewString("")
 		}
 		joining = append(joining, o)
 		defer func() {
@@ -493,35 +493,35 @@ func initArrayToLocaleString(vm *engine.VM) {
 		locales, options := arg(args, 0), arg(args, 1)
 		var b wtf8.Buffer
 		for k := range n {
-			vm.PollAt(k)
+			cx.PollAt(k)
 			if k > 0 {
 				b.WriteString(",")
 			}
-			e := vm.Get(o, vm.ToPropertyKey(engine.Number(float64(k))))
+			e := cx.Get(o, cx.ToPropertyKey(engine.Number(float64(k))))
 			if !e.IsNullish() {
-				b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, key), e, locales, options)))
+				b.WriteString(cx.ToString(cx.CallValue(cx.GetV(e, key), e, locales, options)))
 			}
 			if b.Len() > engine.MaxStringLength {
-				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
+				cx.ThrowRangeError("invalid string length")
 			}
 		}
-		return vm.NewString(b.String())
+		return cx.NewString(b.String())
 	}
-	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		o := vm.ToObject(this)
-		return join(vm, o, vm.LengthOfArrayLike(o), args)
+	method(cx, cx.Realm().Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		o := cx.ToObject(this)
+		return join(cx, o, cx.LengthOfArrayLike(o), args)
 	})
-	typedArrayProto := vm.ProtoOf(vm.CurrentRealm().Intrinsic(engine.IntrinsicInt8ArrayPrototype))
-	method(vm, typedArrayProto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	typedArrayProto := cx.ProtoOf(cx.Realm().Intrinsic(engine.IntrinsicInt8ArrayPrototype))
+	method(cx, typedArrayProto, "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		// ValidateTypedArray.
 		t := engine.TypedArrayData(this)
 		if t == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.toLocaleString: this is not a typed array")
+			cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: this is not a typed array")
 		}
 		n, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.toLocaleString: the typed array is detached or out of bounds")
+			cx.ThrowTypeError("%TypedArray%.prototype.toLocaleString: the typed array is detached or out of bounds")
 		}
-		return join(vm, this.Object(), int64(n), args)
+		return join(cx, this.Object(), int64(n), args)
 	})
 }

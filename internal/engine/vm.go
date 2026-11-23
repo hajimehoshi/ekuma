@@ -23,8 +23,8 @@ import (
 // NativeFunc is a function implemented in Go.
 //
 // args is only valid until the function returns. An exception is thrown with the Throw methods of
-// [VM], which do not return.
-type NativeFunc func(vm *VM, this Value, args []Value) Value
+// [ExecutionContext], which do not return.
+type NativeFunc func(cx *ExecutionContext, this Value, args []Value) Value
 
 // function is the state of a callable object.
 type function struct {
@@ -118,14 +118,14 @@ type nativeFast struct {
 
 // callMethod calls the method kernel for this and the arguments args. It reports false when
 // there is none for as many arguments or the kernel declines.
-func (k *nativeFast) callMethod(vm *VM, this Value, args []Value) (Value, bool) {
+func (k *nativeFast) callMethod(cx *ExecutionContext, this Value, args []Value) (Value, bool) {
 	switch {
 	case len(args) == 0 && k.method0 != nil:
-		return k.method0(vm, this)
+		return k.method0(cx, this)
 	case len(args) == 1 && k.method1 != nil:
-		return k.method1(vm, this, args[0])
+		return k.method1(cx, this, args[0])
 	case len(args) == 2 && k.method2 != nil:
-		return k.method2(vm, this, args[0], args[1])
+		return k.method2(cx, this, args[0], args[1])
 	}
 	return Value{}, false
 }
@@ -269,7 +269,7 @@ func (vm *VM) WellKnownSymbol(s WellKnownSymbol) *Object {
 	return vm.keys.wellKnown[s]
 }
 
-func (vm *VM) initKeys() {
+func (cx *ExecutionContext) initKeys() {
 	for k, name := range [commonKeyCount]wtf8.String{
 		KeyLength: "length", KeyPrototype: "prototype", KeyConstructor: "constructor", KeyName: "name",
 		KeyMessage: "message", KeyStack: "stack", KeyCause: "cause", KeyErrors: "errors",
@@ -287,7 +287,7 @@ func (vm *VM) initKeys() {
 		keyGetOwnPropertyDescriptor: "getOwnPropertyDescriptor", keyDefineProperty: "defineProperty",
 		keyHas: "has", keyDeleteProperty: "deleteProperty", keyOwnKeys: "ownKeys", keyConstruct: "construct",
 	} {
-		vm.keys.common[k] = vm.Intern(name)
+		cx.keys.common[k] = cx.Intern(name)
 	}
 	for s, name := range [wellKnownSymbolCount]wtf8.String{
 		SymbolIterator: "Symbol.iterator", SymbolAsyncIterator: "Symbol.asyncIterator",
@@ -299,7 +299,7 @@ func (vm *VM) initKeys() {
 		SymbolDispose: "Symbol.dispose", SymbolAsyncDispose: "Symbol.asyncDispose",
 		SymbolMetadata: "Symbol.metadata",
 	} {
-		vm.keys.wellKnown[s] = vm.NewSymbol(name, true)
+		cx.keys.wellKnown[s] = cx.NewSymbol(name, true)
 	}
 }
 
@@ -400,8 +400,7 @@ var errThrow = &throwSignal{}
 // nativeCall is a running call of a native function or a proxy, which stack traces show as
 // [nativeCall.showsFrame] says.
 type nativeCall struct {
-	f       *Object
-	context ExecutionContext
+	f *Object
 
 	// receiver supplies the type name of the receiver in stack traces.
 	receiver Value
@@ -416,45 +415,53 @@ type nativeCall struct {
 
 // pushNative records the start of the call of the native function f for newTarget, which is nil
 // in a call. It throws a RangeError when maxNatives calls of native functions are running.
-func (vm *VM) pushNative(f *Object, this Value, newTarget *Object) {
-	n := len(vm.natives)
-	if n == cap(vm.natives) {
-		vm.growNatives()
+func (cx *ExecutionContext) pushNative(f *Object, this Value, newTarget *Object) {
+	n := len(cx.natives)
+	if n == cap(cx.natives) {
+		cx.growNatives()
 	}
-	vm.natives = vm.natives[:n+1]
-	c := &vm.natives[n]
-	c.f, c.receiver, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
-	c.context = vm.executionContext()
+	cx.natives = cx.natives[:n+1]
+	c := &cx.natives[n]
+	c.f, c.receiver, c.frames, c.newTarget = f, this, len(cx.frames), newTarget
 }
 
 // growNatives makes room for one more call of a native function, or throws a RangeError when
 // maxNatives calls are running.
 //
 //go:noinline
-func (vm *VM) growNatives() {
-	if len(vm.natives) >= maxNatives {
-		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
+func (cx *ExecutionContext) growNatives() {
+	if len(cx.natives) >= maxNatives {
+		cx.ThrowRangeError("maximum call stack size exceeded")
 	}
 	// The capacity never exceeds maxNatives, so that a push checks only for a full slice.
-	s := slices.Grow(vm.natives, 1)
-	vm.natives = s[:len(s):min(cap(s), maxNatives)]
+	s := slices.Grow(cx.natives, 1)
+	cx.natives = s[:len(s):min(cap(s), maxNatives)]
 }
 
-// callNative calls the native function f, which belongs to the current realm, for newTarget,
-// which is nil in a call.
-func (vm *VM) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
+// callNative dispatches a native call or construction. A proxy inherits its caller's context.
+func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newTarget *Object) Value {
+	if info := f.fn.info; info != nil {
+		cx = info.realm.Context()
+	}
+	if previous := cx.activate(); previous != cx {
+		defer previous.activate()
+	}
+	return cx.invokeNative(f, this, args, newTarget)
+}
+
+// invokeNative runs f with the already active context.
+func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, newTarget *Object) Value {
 	// This is pushNative written out, since pushNative does not inline. A change there belongs
 	// here too.
-	n := len(vm.natives)
-	if n == cap(vm.natives) {
-		vm.growNatives()
+	n := len(cx.natives)
+	if n == cap(cx.natives) {
+		cx.growNatives()
 	}
-	vm.natives = vm.natives[:n+1]
-	c := &vm.natives[n]
-	c.f, c.receiver, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
-	c.context = vm.executionContext()
-	r := f.fn.native(vm, this, args)
-	vm.popNative()
+	cx.natives = cx.natives[:n+1]
+	c := &cx.natives[n]
+	c.f, c.receiver, c.frames, c.newTarget = f, this, len(cx.frames), newTarget
+	r := f.fn.native(cx, this, args)
+	cx.popNative()
 	return r
 }
 
@@ -588,7 +595,7 @@ type VM struct {
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[bytecode.RegExp]*regexp.Regexp
 
-	curRealm *Realm
+	active *ExecutionContext
 
 	// callerRealm is the realm that was current when the innermost interpreter loop started.
 	callerRealm *Realm
@@ -641,7 +648,7 @@ const initialStackSize = 1 << 12
 
 // NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
 func NewVM(hostDefined any) *VM {
-	vm := &VM{
+	machine := &VM{
 		hostDefined:         hostDefined,
 		stack:               make([]Value, initialStackSize),
 		symbolRegistry:      map[wtf8.String]*Object{},
@@ -649,36 +656,37 @@ func NewVM(hostDefined any) *VM {
 		mailbox:             newMailbox(),
 		maxBigIntResultBits: MaxBigIntBits,
 	}
-	r := vm.newRealm()
-	vm.curRealm = r
-	vm.symbolShape = vm.newShape(nil, nil)
-	vm.initRealmPrototypes()
+	r := machine.newRealm()
+	cx := r.Context()
+	cx.activate()
+	cx.symbolShape = cx.newShape(nil, nil)
+	cx.initRealmPrototypes()
 
-	vm.emptyString = Value{
+	cx.emptyString = Value{
 		o: &Object{
 			kind:  kindString,
 			flags: objInterned | objKept,
 			shape: r.shapes.string,
 		},
 	}
-	vm.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
-	vm.strings.keepNew = true
-	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep, isKept)
-	for i := range vm.strings.ascii {
-		vm.strings.ascii[i] = ObjectValue(vm.Intern(wtf8.String(rune(i))))
+	cx.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
+	cx.strings.keepNew = true
+	cx.strings.interned.put("", cx.emptyString.o, internedMinSweep, isKept)
+	for i := range cx.strings.ascii {
+		cx.strings.ascii[i] = ObjectValue(cx.Intern(wtf8.String(rune(i))))
 	}
-	vm.initKeys()
+	cx.initKeys()
 	for t, name := range typeofNames {
-		vm.typeofs[t] = ObjectValue(vm.Intern(name))
+		cx.typeofs[t] = ObjectValue(cx.Intern(name))
 	}
-	vm.missHolder = (&propertyObject{
+	cx.missHolder = (&propertyObject{
 		kind:  kindObject,
 		shape: r.shapes.nullProto,
 		slots: []Value{Undefined},
 	}).init()
-	vm.initRealmGlobals()
-	vm.strings.keepNew = false
-	return vm
+	cx.initRealmGlobals()
+	cx.strings.keepNew = false
+	return machine
 }
 
 // Intrinsic identifies an intrinsic object.
@@ -801,8 +809,8 @@ func (r *Realm) Intrinsic(id Intrinsic) *Object {
 }
 
 // SetIntrinsic makes o the intrinsic object id.
-func (vm *VM) SetIntrinsic(id Intrinsic, o *Object) {
-	vm.curRealm.intrinsics[id] = o
+func (cx *ExecutionContext) SetIntrinsic(id Intrinsic, o *Object) {
+	cx.realm.intrinsics[id] = o
 }
 
 // ErrorKind is a native error type.
@@ -903,37 +911,37 @@ func (vm *VM) restoreException(v Value) {
 	}
 }
 
-// newError returns a new error object of the given type in r.
-func (vm *VM) newError(r *Realm, kind ErrorKind, msg string) *Object {
-	e := vm.NewErrorObject(r, r.Intrinsic(ErrorPrototypeIntrinsic(kind)))
+// newError returns a new error object of the given type in the execution realm.
+func (cx *ExecutionContext) newError(kind ErrorKind, msg string) *Object {
+	e := cx.NewErrorObject(cx.realm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	// A message that quotes a value of the script can be longer than a string may be.
-	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
-	e.setExtState(vm.newErrorData(e, msg, len(vm.frames), len(vm.natives)))
+	cx.Define(e, cx.Key(KeyMessage), cx.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
+	e.setExtState(cx.newErrorData(e, msg, len(cx.frames), len(cx.natives)))
 	return e
 }
 
-func (vm *VM) throwError(r *Realm, kind ErrorKind, msg string) {
-	vm.Throw(Value{o: vm.newError(r, kind, msg)})
+func (cx *ExecutionContext) throwError(kind ErrorKind, msg string) {
+	cx.Throw(Value{o: cx.newError(kind, msg)})
 }
 
-// ThrowTypeError throws a TypeError of r with the given message. It does not return.
-func (vm *VM) ThrowTypeError(r *Realm, msg string) {
-	vm.throwError(r, ErrorKindType, msg)
+// ThrowTypeError throws a TypeError in the execution realm with the given message. It does not return.
+func (cx *ExecutionContext) ThrowTypeError(msg string) {
+	cx.throwError(ErrorKindType, msg)
 }
 
-// ThrowRangeError throws a RangeError of r with the given message. It does not return.
-func (vm *VM) ThrowRangeError(r *Realm, msg string) {
-	vm.throwError(r, ErrorKindRange, msg)
+// ThrowRangeError throws a RangeError in the execution realm with the given message. It does not return.
+func (cx *ExecutionContext) ThrowRangeError(msg string) {
+	cx.throwError(ErrorKindRange, msg)
 }
 
-// ThrowReferenceError throws a ReferenceError of r with the given message. It does not return.
-func (vm *VM) ThrowReferenceError(r *Realm, msg string) {
-	vm.throwError(r, ErrorKindReference, msg)
+// ThrowReferenceError throws a ReferenceError in the execution realm with the given message. It does not return.
+func (cx *ExecutionContext) ThrowReferenceError(msg string) {
+	cx.throwError(ErrorKindReference, msg)
 }
 
-// ThrowSyntaxError throws a SyntaxError of r with the given message. It does not return.
-func (vm *VM) ThrowSyntaxError(r *Realm, msg string) {
-	vm.throwError(r, ErrorKindSyntax, msg)
+// ThrowSyntaxError throws a SyntaxError in the execution realm with the given message. It does not return.
+func (cx *ExecutionContext) ThrowSyntaxError(msg string) {
+	cx.throwError(ErrorKindSyntax, msg)
 }
 
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
@@ -1175,8 +1183,8 @@ func (vm *VM) errorOf(v Value) *Error {
 }
 
 // NewError returns a new error object of the given type in r with the message msg, which is UTF-8.
-func (vm *VM) NewError(r *Realm, kind ErrorKind, msg string) Value {
-	return Value{o: vm.newError(r, kind, msg)}
+func (cx *ExecutionContext) NewError(kind ErrorKind, msg string) Value {
+	return Value{o: cx.newError(kind, msg)}
 }
 
 // maxDisplayString is the length in bytes up to which a message shows a string.
@@ -1215,25 +1223,23 @@ func (vm *VM) DisplayString(v Value) string {
 }
 
 // protect runs f and reports whether it completed without throwing.
-// When it reports false, the exception is in vm.thrown.
-func (vm *VM) protect(f func()) (ok bool) {
-	frames := len(vm.frames)
-	natives := len(vm.natives)
-	sp := vm.sp
-	depth := vm.depth
-	curRealm := vm.curRealm
+// When it reports false, the exception is in cx.thrown.
+func (cx *ExecutionContext) protect(f func()) (ok bool) {
+	frames := len(cx.frames)
+	natives := len(cx.natives)
+	sp := cx.sp
+	depth := cx.depth
+	saved := cx.active
 	defer func() {
 		if r := recover(); r != nil {
 			if r != any(errThrow) {
 				panic(r)
 			}
-			if vm.curRealm != curRealm {
-				vm.switchRealm(curRealm)
-			}
-			vm.unwindTo(frames)
-			vm.truncateNatives(natives)
-			vm.sp = sp
-			vm.depth = depth
+			saved.activate()
+			cx.unwindTo(frames)
+			cx.truncateNatives(natives)
+			cx.sp = sp
+			cx.depth = depth
 			ok = false
 		}
 	}()

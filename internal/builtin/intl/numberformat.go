@@ -35,67 +35,67 @@ type digitSlots struct {
 }
 
 // optionsObject implements CoerceOptionsToObject.
-func optionsObject(vm *engine.VM, v engine.Value) *engine.Object {
+func optionsObject(cx *engine.ExecutionContext, v engine.Value) *engine.Object {
 	if v.IsUndefined() {
-		return vm.NewObject(nil)
+		return cx.NewObject(nil)
 	}
-	return vm.ToObject(v)
+	return cx.ToObject(v)
 }
 
 // getNumberOption implements GetNumberOption, with -1 for an undefined fallback.
-func getNumberOption(vm *engine.VM, options *engine.Object, name string, minimum, maximum, fallback int) int {
-	return defaultNumberOption(vm, vm.Get(options, engine.NamedKey(vm.Intern(wtf8.String(name)))), name, minimum, maximum, fallback)
+func getNumberOption(cx *engine.ExecutionContext, options *engine.Object, name string, minimum, maximum, fallback int) int {
+	return defaultNumberOption(cx, cx.Get(options, engine.NamedKey(cx.Intern(wtf8.String(name)))), name, minimum, maximum, fallback)
 }
 
 // defaultNumberOption implements DefaultNumberOption, with -1 for an undefined fallback.
-func defaultNumberOption(vm *engine.VM, v engine.Value, name string, minimum, maximum, fallback int) int {
+func defaultNumberOption(cx *engine.ExecutionContext, v engine.Value, name string, minimum, maximum, fallback int) int {
 	if v.IsUndefined() {
 		return fallback
 	}
-	n := vm.ToNumber(v)
+	n := cx.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) || n < float64(minimum) || n > float64(maximum) {
-		vm.ThrowRangeError(vm.CurrentRealm(), name+" value is out of range")
+		cx.ThrowRangeError(name + " value is out of range")
 	}
 	return int(math.Trunc(n))
 }
 
 // getStringOption implements GetOption for a string option with a default.
-func getStringOption(vm *engine.VM, options *engine.Object, name, fallback string, values ...string) string {
-	if s, ok := getOption(vm, options, name, values...); ok {
+func getStringOption(cx *engine.ExecutionContext, options *engine.Object, name, fallback string, values ...string) string {
+	if s, ok := getOption(cx, options, name, values...); ok {
 		return s
 	}
 	return fallback
 }
 
 // localeMatcher reads the localeMatcher option and reports whether it is "best fit".
-func localeMatcher(vm *engine.VM, options *engine.Object) bool {
-	return getStringOption(vm, options, "localeMatcher", "best fit", "lookup", "best fit") == "best fit"
+func localeMatcher(cx *engine.ExecutionContext, options *engine.Object) bool {
+	return getStringOption(cx, options, "localeMatcher", "best fit", "lookup", "best fit") == "best fit"
 }
 
 // supportedLocalesOf implements FilterLocales for the arguments of supportedLocalesOf.
-func supportedLocalesOf(vm *engine.VM, args []engine.Value) engine.Value {
-	requested := canonicalizeLocaleList(vm, arg(args, 0))
-	bestFit := localeMatcher(vm, optionsObject(vm, arg(args, 1)))
-	return stringArray(vm, locale.SupportedLocales(requested, bestFit))
+func supportedLocalesOf(cx *engine.ExecutionContext, args []engine.Value) engine.Value {
+	requested := canonicalizeLocaleList(cx, arg(args, 0))
+	bestFit := localeMatcher(cx, optionsObject(cx, arg(args, 1)))
+	return stringArray(cx, locale.SupportedLocales(requested, bestFit))
 }
 
 // setDigitOptions implements SetNumberFormatDigitOptions.
-func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options *engine.Object, minFDDefault, maxFDDefault int, notation string) {
+func setDigitOptions(cx *engine.ExecutionContext, d *number.Digits, slots *digitSlots, options *engine.Object, minFDDefault, maxFDDefault int, notation string) {
 	get := func(name string) engine.Value {
-		return vm.Get(options, engine.NamedKey(vm.Intern(wtf8.String(name))))
+		return cx.Get(options, engine.NamedKey(cx.Intern(wtf8.String(name))))
 	}
-	minInt := getNumberOption(vm, options, "minimumIntegerDigits", 1, 21, 1)
+	minInt := getNumberOption(cx, options, "minimumIntegerDigits", 1, 21, 1)
 	minFD := get("minimumFractionDigits")
 	maxFD := get("maximumFractionDigits")
 	minSD := get("minimumSignificantDigits")
 	maxSD := get("maximumSignificantDigits")
-	inc := getNumberOption(vm, options, "roundingIncrement", 1, 5000, 1)
+	inc := getNumberOption(cx, options, "roundingIncrement", 1, 5000, 1)
 	if !slices.Contains([]int{1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000}, inc) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid roundingIncrement")
+		cx.ThrowRangeError("invalid roundingIncrement")
 	}
-	mode := getStringOption(vm, options, "roundingMode", "halfExpand", "ceil", "floor", "expand", "trunc", "halfCeil", "halfFloor", "halfExpand", "halfTrunc", "halfEven")
-	priority := getStringOption(vm, options, "roundingPriority", "auto", "auto", "morePrecision", "lessPrecision")
-	tzd := getStringOption(vm, options, "trailingZeroDisplay", "auto", "auto", "stripIfInteger")
+	mode := getStringOption(cx, options, "roundingMode", "halfExpand", "ceil", "floor", "expand", "trunc", "halfCeil", "halfFloor", "halfExpand", "halfTrunc", "halfEven")
+	priority := getStringOption(cx, options, "roundingPriority", "auto", "auto", "morePrecision", "lessPrecision")
+	tzd := getStringOption(cx, options, "trailingZeroDisplay", "auto", "auto", "stripIfInteger")
 	if inc != 1 {
 		maxFDDefault = minFDDefault
 	}
@@ -112,8 +112,8 @@ func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options
 	}
 	if needSD {
 		if hasSD {
-			d.MinimumSignificantDigits = defaultNumberOption(vm, minSD, "minimumSignificantDigits", 1, 21, 1)
-			d.MaximumSignificantDigits = defaultNumberOption(vm, maxSD, "maximumSignificantDigits", d.MinimumSignificantDigits, 21, 21)
+			d.MinimumSignificantDigits = defaultNumberOption(cx, minSD, "minimumSignificantDigits", 1, 21, 1)
+			d.MaximumSignificantDigits = defaultNumberOption(cx, maxSD, "maximumSignificantDigits", d.MinimumSignificantDigits, 21, 21)
 		} else {
 			d.MinimumSignificantDigits = 1
 			d.MaximumSignificantDigits = 21
@@ -121,15 +121,15 @@ func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options
 	}
 	if needFD {
 		if hasFD {
-			lo := defaultNumberOption(vm, minFD, "minimumFractionDigits", 0, 100, -1)
-			hi := defaultNumberOption(vm, maxFD, "maximumFractionDigits", 0, 100, -1)
+			lo := defaultNumberOption(cx, minFD, "minimumFractionDigits", 0, 100, -1)
+			hi := defaultNumberOption(cx, maxFD, "maximumFractionDigits", 0, 100, -1)
 			switch {
 			case lo < 0:
 				lo = min(minFDDefault, hi)
 			case hi < 0:
 				hi = max(maxFDDefault, lo)
 			case lo > hi:
-				vm.ThrowRangeError(vm.CurrentRealm(), "minimumFractionDigits is greater than maximumFractionDigits")
+				cx.ThrowRangeError("minimumFractionDigits is greater than maximumFractionDigits")
 			}
 			d.MinimumFractionDigits = lo
 			d.MaximumFractionDigits = hi
@@ -165,10 +165,10 @@ func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options
 	}
 	if inc != 1 {
 		if d.RoundingType != number.FractionDigits {
-			vm.ThrowTypeError(vm.CurrentRealm(), "roundingIncrement requires fraction digits rounding")
+			cx.ThrowTypeError("roundingIncrement requires fraction digits rounding")
 		}
 		if d.MaximumFractionDigits != d.MinimumFractionDigits {
-			vm.ThrowRangeError(vm.CurrentRealm(), "roundingIncrement requires equal minimumFractionDigits and maximumFractionDigits")
+			cx.ThrowRangeError("roundingIncrement requires equal minimumFractionDigits and maximumFractionDigits")
 		}
 	}
 }
@@ -209,15 +209,15 @@ func numberingSystemsOf(l string) []string {
 }
 
 // numberingSystemOption reads the numberingSystem option.
-func numberingSystemOption(vm *engine.VM, options *engine.Object) (string, bool) {
-	s, ok := getOption(vm, options, "numberingSystem")
+func numberingSystemOption(cx *engine.ExecutionContext, options *engine.Object) (string, bool) {
+	s, ok := getOption(cx, options, "numberingSystem")
 	if ok && !localetag.IsType(strings.ToLower(s)) {
-		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for numberingSystem")
+		cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for numberingSystem")
 	}
 	if ok {
 		for i := range len(s) {
 			if s[i] >= 0x80 {
-				vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for numberingSystem")
+				cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for numberingSystem")
 			}
 		}
 	}
@@ -226,12 +226,12 @@ func numberingSystemOption(vm *engine.VM, options *engine.Object) (string, bool)
 
 // createNumberFormat implements the steps of the Intl.NumberFormat constructor that resolve
 // the internal slots.
-func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormatData {
-	requested := canonicalizeLocaleList(vm, locales)
-	options := optionsObject(vm, opts)
-	bestFit := localeMatcher(vm, options)
-	nu, hasNu := numberingSystemOption(vm, options)
-	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, []locale.ExtensionKey{{
+func createNumberFormat(cx *engine.ExecutionContext, locales, opts engine.Value) *numberFormatData {
+	requested := canonicalizeLocaleList(cx, locales)
+	options := optionsObject(cx, opts)
+	bestFit := localeMatcher(cx, options)
+	nu, hasNu := numberingSystemOption(cx, options)
+	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, []locale.ExtensionKey{{
 		Key:       "nu",
 		Option:    nu,
 		HasOption: hasNu,
@@ -245,26 +245,26 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 	o.NumberingSystem = res.Values[0]
 
 	// SetNumberFormatUnitOptions.
-	o.Style = getStringOption(vm, options, "style", "decimal", "decimal", "percent", "currency", "unit")
-	currency, hasCurrency := getOption(vm, options, "currency")
+	o.Style = getStringOption(cx, options, "style", "decimal", "decimal", "percent", "currency", "unit")
+	currency, hasCurrency := getOption(cx, options, "currency")
 	if !hasCurrency {
 		if o.Style == "currency" {
-			vm.ThrowTypeError(vm.CurrentRealm(), "currency is required with the currency style")
+			cx.ThrowTypeError("currency is required with the currency style")
 		}
 	} else if !isWellFormedCurrencyCode(currency) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid currency code: "+vm.DisplayString(vm.NewString(wtf8.String(currency))))
+		cx.ThrowRangeError("invalid currency code: " + cx.DisplayString(cx.NewString(wtf8.String(currency))))
 	}
-	currencyDisplay := getStringOption(vm, options, "currencyDisplay", "symbol", "code", "symbol", "narrowSymbol", "name")
-	currencySign := getStringOption(vm, options, "currencySign", "standard", "standard", "accounting")
-	unit, hasUnit := getOption(vm, options, "unit")
+	currencyDisplay := getStringOption(cx, options, "currencyDisplay", "symbol", "code", "symbol", "narrowSymbol", "name")
+	currencySign := getStringOption(cx, options, "currencySign", "standard", "standard", "accounting")
+	unit, hasUnit := getOption(cx, options, "unit")
 	if !hasUnit {
 		if o.Style == "unit" {
-			vm.ThrowTypeError(vm.CurrentRealm(), "unit is required with the unit style")
+			cx.ThrowTypeError("unit is required with the unit style")
 		}
 	} else if !isWellFormedUnitIdentifier(unit) {
-		vm.ThrowRangeError(vm.CurrentRealm(), "invalid unit: "+vm.DisplayString(vm.NewString(wtf8.String(unit))))
+		cx.ThrowRangeError("invalid unit: " + cx.DisplayString(cx.NewString(wtf8.String(unit))))
 	}
-	unitDisplay := getStringOption(vm, options, "unitDisplay", "short", "short", "narrow", "long")
+	unitDisplay := getStringOption(cx, options, "unitDisplay", "short", "short", "narrow", "long")
 	if o.Style == "currency" {
 		o.Currency = strings.ToUpper(currency)
 		o.CurrencyDisplay = currencyDisplay
@@ -275,7 +275,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 		o.UnitDisplay = unitDisplay
 	}
 
-	o.Notation = getStringOption(vm, options, "notation", "standard", "standard", "scientific", "engineering", "compact")
+	o.Notation = getStringOption(cx, options, "notation", "standard", "standard", "scientific", "engineering", "compact")
 	minFD, maxFD := 0, 3
 	switch {
 	case o.Style == "currency" && o.Notation == "standard":
@@ -284,8 +284,8 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 	case o.Style == "percent":
 		minFD, maxFD = 0, 0
 	}
-	setDigitOptions(vm, &o.Digits, &nf.digits, options, minFD, maxFD, o.Notation)
-	compactDisplay := getStringOption(vm, options, "compactDisplay", "short", "short", "long")
+	setDigitOptions(cx, &o.Digits, &nf.digits, options, minFD, maxFD, o.Notation)
+	compactDisplay := getStringOption(cx, options, "compactDisplay", "short", "short", "long")
 	defaultUseGrouping := "auto"
 	if o.Notation == "compact" {
 		o.CompactDisplay = compactDisplay
@@ -293,7 +293,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 	}
 	o.UseGrouping = defaultUseGrouping
 	nf.useGrouping = true
-	if v := vm.Get(options, engine.NamedKey(vm.Intern("useGrouping"))); !v.IsUndefined() {
+	if v := cx.Get(options, engine.NamedKey(cx.Intern("useGrouping"))); !v.IsUndefined() {
 		switch {
 		case v.IsBool() && engine.ToBoolean(v):
 			o.UseGrouping = "always"
@@ -301,49 +301,49 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 			o.UseGrouping = ""
 			nf.useGrouping = false
 		default:
-			s := wtf8.ToValidUTF8(vm.ToString(v))
+			s := wtf8.ToValidUTF8(cx.ToString(v))
 			if !slices.Contains([]string{"min2", "auto", "always", "true", "false"}, s) {
-				vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for useGrouping")
+				cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(s))) + " is not a valid value for useGrouping")
 			}
 			if s != "true" && s != "false" {
 				o.UseGrouping = s
 			}
 		}
 	}
-	o.SignDisplay = getStringOption(vm, options, "signDisplay", "auto", "auto", "never", "always", "exceptZero", "negative")
+	o.SignDisplay = getStringOption(cx, options, "signDisplay", "auto", "auto", "never", "always", "exceptZero", "negative")
 	nf.f = number.NewFormatter(o)
 	return nf
 }
 
 // toIntlMathematicalValue implements ToIntlMathematicalValue.
-func toIntlMathematicalValue(vm *engine.VM, v engine.Value) number.Decimal {
-	p := vm.ToPrimitive(v, engine.HintNumber)
+func toIntlMathematicalValue(cx *engine.ExecutionContext, v engine.Value) number.Decimal {
+	p := cx.ToPrimitive(v, engine.HintNumber)
 	switch {
 	case p.IsBigInt():
-		return number.FromInteger(string(vm.BigIntToString(p, 10)))
+		return number.FromInteger(string(cx.BigIntToString(p, 10)))
 	case p.IsString():
-		return number.Parse(wtf8.ToValidUTF8(vm.ToString(p)))
+		return number.Parse(wtf8.ToValidUTF8(cx.ToString(p)))
 	}
-	return number.FromFloat(vm.ToNumber(p))
+	return number.FromFloat(cx.ToNumber(p))
 }
 
 // newNumberFormat implements the Intl.NumberFormat constructor.
-func (r *realm) newNumberFormat(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newNumberFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	newTarget := nt
 	if newTarget == nil {
 		newTarget = r.numberFormatCtor
 	}
-	proto := protoFor(vm, newTarget, func(r *realm) *engine.Object { return r.numberFormatProto })
-	nf := vm.NewIntlObject(proto, createNumberFormat(vm, arg(args, 0), arg(args, 1)))
+	proto := protoFor(cx, newTarget, func(r *realm) *engine.Object { return r.numberFormatProto })
+	nf := cx.NewIntlObject(proto, createNumberFormat(cx, arg(args, 0), arg(args, 1)))
 	// ChainNumberFormat.
-	if nt == nil && vm.OrdinaryHasInstance(engine.ObjectValue(r.numberFormatCtor), this) {
+	if nt == nil && cx.OrdinaryHasInstance(engine.ObjectValue(r.numberFormatCtor), this) {
 		var d engine.PropDesc
 		d.SetValue(engine.ObjectValue(nf))
 		d.SetWritable(false)
 		d.SetEnumerable(false)
 		d.SetConfigurable(false)
-		vm.DefinePropertyOrThrow(this.Object(), engine.NamedKey(r.fallbackSymbol), d)
+		cx.DefinePropertyOrThrow(this.Object(), engine.NamedKey(r.fallbackSymbol), d)
 		return this
 	}
 	return engine.ObjectValue(nf)
@@ -351,134 +351,134 @@ func (r *realm) newNumberFormat(vm *engine.VM, this engine.Value, args []engine.
 
 // unwrapNumberFormat implements UnwrapNumberFormat followed by the check of the internal
 // slot.
-func (r *realm) unwrapNumberFormat(vm *engine.VM, this engine.Value, name string) *numberFormatData {
+func (r *realm) unwrapNumberFormat(cx *engine.ExecutionContext, this engine.Value, name string) *numberFormatData {
 	if !this.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.NumberFormat.prototype."+name+" called on a value that is not an object")
+		cx.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on a value that is not an object")
 	}
 	if nf, ok := engine.IntlData(this).(*numberFormatData); ok {
 		return nf
 	}
-	if vm.OrdinaryHasInstance(engine.ObjectValue(r.numberFormatCtor), this) {
-		if nf, ok := engine.IntlData(vm.Get(this.Object(), engine.NamedKey(r.fallbackSymbol))).(*numberFormatData); ok {
+	if cx.OrdinaryHasInstance(engine.ObjectValue(r.numberFormatCtor), this) {
+		if nf, ok := engine.IntlData(cx.Get(this.Object(), engine.NamedKey(r.fallbackSymbol))).(*numberFormatData); ok {
 			return nf
 		}
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "Intl.NumberFormat.prototype."+name+" called on an object that is not an Intl.NumberFormat")
+	cx.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on an object that is not an Intl.NumberFormat")
 	return nil
 }
 
 // thisNumberFormat implements RequireInternalSlot for an Intl.NumberFormat.
-func thisNumberFormat(vm *engine.VM, this engine.Value, name string) *numberFormatData {
+func thisNumberFormat(cx *engine.ExecutionContext, this engine.Value, name string) *numberFormatData {
 	nf, ok := engine.IntlData(this).(*numberFormatData)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.NumberFormat.prototype."+name+" called on an object that is not an Intl.NumberFormat")
+		cx.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on an object that is not an Intl.NumberFormat")
 	}
 	return nf
 }
 
 // partsArray returns the parts as an array of objects with the properties "type" and
 // "value", and "source" for range parts.
-func partsArray(vm *engine.VM, n int, part func(i int) (typ, value, source string)) engine.Value {
+func partsArray(cx *engine.ExecutionContext, n int, part func(i int) (typ, value, source string)) engine.Value {
 	keys := [...]engine.PropKey{
-		engine.NamedKey(vm.Intern("type")),
-		engine.NamedKey(vm.Intern("value")),
-		engine.NamedKey(vm.Intern("source")),
+		engine.NamedKey(cx.Intern("type")),
+		engine.NamedKey(cx.Intern("value")),
+		engine.NamedKey(cx.Intern("source")),
 	}
 	vals := make([]engine.Value, n)
 	var p engine.Pacer
 	for i := range n {
-		p.Step(vm)
+		p.Step(cx)
 		typ, value, source := part(i)
-		props := [3]engine.Value{vm.NewString(wtf8.String(typ)), vm.NewString(wtf8.String(value))}
+		props := [3]engine.Value{cx.NewString(wtf8.String(typ)), cx.NewString(wtf8.String(value))}
 		propertyCount := 2
 		if source != "" {
-			props[2] = vm.NewString(wtf8.String(source))
+			props[2] = cx.NewString(wtf8.String(source))
 			propertyCount++
 		}
-		vals[i] = engine.ObjectValue(vm.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
+		vals[i] = engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], props[:propertyCount]))
 	}
-	return vm.NewArrayOf(vals)
+	return cx.NewArrayOf(vals)
 }
 
 // formatRange checks and converts the arguments start and end of formatRange and
 // formatRangeToParts, and implements PartitionNumberRangePattern for them.
-func (nf *numberFormatData) formatRange(vm *engine.VM, args []engine.Value) []number.RangePart {
+func (nf *numberFormatData) formatRange(cx *engine.ExecutionContext, args []engine.Value) []number.RangePart {
 	start, end := arg(args, 0), arg(args, 1)
 	if start.IsUndefined() || end.IsUndefined() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "formatRange requires a start and an end")
+		cx.ThrowTypeError("formatRange requires a start and an end")
 	}
-	x := toIntlMathematicalValue(vm, start)
-	y := toIntlMathematicalValue(vm, end)
+	x := toIntlMathematicalValue(cx, start)
+	y := toIntlMathematicalValue(cx, end)
 	if x.IsNaN() || y.IsNaN() {
-		vm.ThrowRangeError(vm.CurrentRealm(), "the start or the end of a range is NaN")
+		cx.ThrowRangeError("the start or the end of a range is NaN")
 	}
-	return nf.f.FormatRange(x, y, vm.Poll)
+	return nf.f.FormatRange(x, y, cx.Poll)
 }
 
 // initNumberFormat defines Intl.NumberFormat.
-func (r *realm) initNumberFormat(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("NumberFormat", 0, r.newNumberFormat)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("NumberFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
+func (r *realm) initNumberFormat(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("NumberFormat", 0, r.newNumberFormat)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("NumberFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.numberFormatProto = proto
 	r.numberFormatCtor = ctor
 
-	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(vm, args)
+	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return supportedLocalesOf(cx, args)
 	})
-	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nf := r.unwrapNumberFormat(vm, this, "resolvedOptions")
-		return nf.resolvedOptions(vm)
+	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nf := r.unwrapNumberFormat(cx, this, "resolvedOptions")
+		return nf.resolvedOptions(cx)
 	})
-	getter(vm, proto, "format", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nf := r.unwrapNumberFormat(vm, this, "format")
+	getter(cx, proto, "format", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nf := r.unwrapNumberFormat(cx, this, "format")
 		if nf.boundFormat == nil {
-			nf.boundFormat = vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-				x := toIntlMathematicalValue(vm, arg(args, 0))
-				return formattedString(vm, nf.f.FormatToString(x, vm.Poll))
+			nf.boundFormat = cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+				x := toIntlMathematicalValue(cx, arg(args, 0))
+				return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
 			})
 		}
 		return engine.ObjectValue(nf.boundFormat)
 	})
-	method(vm, proto, "formatRange", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nf := thisNumberFormat(vm, this, "formatRange")
+	method(cx, proto, "formatRange", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nf := thisNumberFormat(cx, this, "formatRange")
 		var b strings.Builder
-		for _, p := range nf.formatRange(vm, args) {
+		for _, p := range nf.formatRange(cx, args) {
 			b.WriteString(p.Value)
 		}
-		checkStringLength(vm, b.Len())
-		return vm.NewString(wtf8.String(b.String()))
+		checkStringLength(cx, b.Len())
+		return cx.NewString(wtf8.String(b.String()))
 	})
-	method(vm, proto, "formatRangeToParts", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nf := thisNumberFormat(vm, this, "formatRangeToParts")
-		parts := nf.formatRange(vm, args)
-		return partsArray(vm, len(parts), func(i int) (string, string, string) {
+	method(cx, proto, "formatRangeToParts", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nf := thisNumberFormat(cx, this, "formatRangeToParts")
+		parts := nf.formatRange(cx, args)
+		return partsArray(cx, len(parts), func(i int) (string, string, string) {
 			return parts[i].Type, parts[i].Value, parts[i].Source
 		})
 	})
-	method(vm, proto, "formatToParts", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nf := thisNumberFormat(vm, this, "formatToParts")
-		parts := nf.f.Format(toIntlMathematicalValue(vm, arg(args, 0)), vm.Poll)
-		return partsArray(vm, len(parts), func(i int) (string, string, string) {
+	method(cx, proto, "formatToParts", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nf := thisNumberFormat(cx, this, "formatToParts")
+		parts := nf.f.Format(toIntlMathematicalValue(cx, arg(args, 0)), cx.Poll)
+		return partsArray(cx, len(parts), func(i int) (string, string, string) {
 			return parts[i].Type, parts[i].Value, ""
 		})
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.NumberFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.NumberFormat"), engine.FlagConfigurable)
 }
 
 // resolvedOptions implements Intl.NumberFormat.prototype.resolvedOptions after the check of
 // the internal slot.
-func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
+func (nf *numberFormatData) resolvedOptions(cx *engine.ExecutionContext) engine.Value {
 	o := &nf.opts
-	out := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
+	out := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
-		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
+		cx.CreateDataPropertyOrThrow(out, engine.NamedKey(cx.Intern(wtf8.String(name))), v)
 	}
 	str := func(name, v string) {
 		if v != "" {
-			set(name, vm.NewString(wtf8.String(v)))
+			set(name, cx.NewString(wtf8.String(v)))
 		}
 	}
 	num := func(name string, v int) {
@@ -522,30 +522,30 @@ func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 
 // formattedString returns the formatted string s, and throws a RangeError instead when it is
 // longer than MaxStringLength.
-func formattedString(vm *engine.VM, s string) engine.Value {
-	checkStringLength(vm, len(s))
-	return vm.NewString(wtf8.String(s))
+func formattedString(cx *engine.ExecutionContext, s string) engine.Value {
+	checkStringLength(cx, len(s))
+	return cx.NewString(wtf8.String(s))
 }
 
 // initToLocaleString replaces Number.prototype.toLocaleString and
 // BigInt.prototype.toLocaleString with the versions of ECMA-402.
-func initToLocaleString(vm *engine.VM) {
-	format := func(vm *engine.VM, args []engine.Value, x number.Decimal) engine.Value {
-		nf := createNumberFormat(vm, arg(args, 0), arg(args, 1))
-		return formattedString(vm, nf.f.FormatToString(x, vm.Poll))
+func initToLocaleString(cx *engine.ExecutionContext) {
+	format := func(cx *engine.ExecutionContext, args []engine.Value, x number.Decimal) engine.Value {
+		nf := createNumberFormat(cx, arg(args, 0), arg(args, 1))
+		return formattedString(cx, nf.f.FormatToString(x, cx.Poll))
 	}
-	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, cx.Realm().Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Number.prototype.toLocaleString requires that 'this' be a Number")
+			cx.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
 		}
-		return format(vm, args, number.FromFloat(x))
+		return format(cx, args, number.FromFloat(x))
 	})
-	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, cx.Realm().Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisBigIntValue(this)
 		if !ok {
-			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
+			cx.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
 		}
-		return format(vm, args, number.FromInteger(string(vm.BigIntToString(x, 10))))
+		return format(cx, args, number.FromInteger(string(cx.BigIntToString(x, 10))))
 	})
 }

@@ -11,15 +11,15 @@ import (
 )
 
 // invoke implements Invoke for the property key of v.
-func invoke(vm *engine.VM, v engine.Value, key *engine.Object, args ...engine.Value) engine.Value {
-	return vm.CallValue(vm.GetV(v, key), v, args...)
+func invoke(cx *engine.ExecutionContext, v engine.Value, key *engine.Object, args ...engine.Value) engine.Value {
+	return cx.CallValue(cx.GetV(v, key), v, args...)
 }
 
 // getPromiseResolve implements GetPromiseResolve.
-func getPromiseResolve(vm *engine.VM, c engine.Value) engine.Value {
-	r := vm.GetV(c, vm.Intern("resolve"))
+func getPromiseResolve(cx *engine.ExecutionContext, c engine.Value) engine.Value {
+	r := cx.GetV(c, cx.Intern("resolve"))
 	if !r.IsCallable() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the resolve method of the promise constructor is not a function")
+		cx.ThrowTypeError("the resolve method of the promise constructor is not a function")
 	}
 	return r
 }
@@ -28,29 +28,29 @@ func getPromiseResolve(vm *engine.VM, c engine.Value) engine.Value {
 // and Promise.race share. perform is called for every value of the iterable with the result
 // of the resolve method of c, as their Perform operations do, and done when the iterator is
 // exhausted. The iterator is closed when the call of the resolve method or perform throws.
-func promiseCombinator(vm *engine.VM, c, iterable engine.Value, perform func(c *engine.PromiseCapability, next engine.Value), done func(c *engine.PromiseCapability)) engine.Value {
-	pc := vm.NewPromiseCapability(c)
+func promiseCombinator(cx *engine.ExecutionContext, c, iterable engine.Value, perform func(c *engine.PromiseCapability, next engine.Value), done func(c *engine.PromiseCapability)) engine.Value {
+	pc := cx.NewPromiseCapability(c)
 	var resolve engine.Value
-	if !vm.IfAbruptRejectPromise(pc, func() {
-		resolve = getPromiseResolve(vm, c)
+	if !cx.IfAbruptRejectPromise(pc, func() {
+		resolve = getPromiseResolve(cx, c)
 	}) {
 		return pc.Promise()
 	}
 	var it, next engine.Value
-	if !vm.IfAbruptRejectPromise(pc, func() {
-		it, next = vm.GetIterator(iterable)
+	if !cx.IfAbruptRejectPromise(pc, func() {
+		it, next = cx.GetIterator(iterable)
 	}) {
 		return pc.Promise()
 	}
-	vm.IfAbruptRejectPromise(pc, func() {
+	cx.IfAbruptRejectPromise(pc, func() {
 		for {
-			v, ok := vm.IteratorStepValue(it, next)
+			v, ok := cx.IteratorStepValue(it, next)
 			if !ok {
 				done(pc)
 				return
 			}
-			vm.IfAbruptCloseIterator(it, func() {
-				perform(pc, vm.CallValue(resolve, c, v))
+			cx.IfAbruptCloseIterator(it, func() {
+				perform(pc, cx.CallValue(resolve, c, v))
 			})
 		}
 	})
@@ -73,132 +73,132 @@ type keyedPromiseElements struct {
 }
 
 // resolveIfDone resolves pc with the result object when no element is left unsettled.
-func (e *keyedPromiseElements) resolveIfDone(vm *engine.VM, pc *engine.PromiseCapability) {
+func (e *keyedPromiseElements) resolveIfDone(cx *engine.ExecutionContext, pc *engine.PromiseCapability) {
 	e.remaining--
 	if e.remaining == 0 {
-		vm.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(vm, e.keys, e.values)))
+		cx.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(cx, e.keys, e.values)))
 	}
 }
 
 // createKeyedPromiseCombinatorResultObject implements CreateKeyedPromiseCombinatorResultObject.
-func createKeyedPromiseCombinatorResultObject(vm *engine.VM, keys []engine.PropKey, values []engine.Value) *engine.Object {
-	o := vm.NewObject(nil)
+func createKeyedPromiseCombinatorResultObject(cx *engine.ExecutionContext, keys []engine.PropKey, values []engine.Value) *engine.Object {
+	o := cx.NewObject(nil)
 	for i, k := range keys {
-		vm.CreateDataPropertyOrThrow(o, k, values[i])
+		cx.CreateDataPropertyOrThrow(o, k, values[i])
 	}
 	return o
 }
 
 // promiseKeyedCombinator implements Promise.allKeyed, or Promise.allSettledKeyed when
 // settled is true.
-func promiseKeyedCombinator(vm *engine.VM, c, promises engine.Value, settled bool, name string) engine.Value {
-	pc := vm.NewPromiseCapability(c)
+func promiseKeyedCombinator(cx *engine.ExecutionContext, c, promises engine.Value, settled bool, name string) engine.Value {
+	pc := cx.NewPromiseCapability(c)
 	var resolve engine.Value
-	if !vm.IfAbruptRejectPromise(pc, func() {
-		resolve = getPromiseResolve(vm, c)
+	if !cx.IfAbruptRejectPromise(pc, func() {
+		resolve = getPromiseResolve(cx, c)
 	}) {
 		return pc.Promise()
 	}
 	if !promises.IsObject() {
-		vm.RejectCapability(pc, vm.NewError(vm.CurrentRealm(), engine.ErrorKindType, name+" called on non-object"))
+		cx.RejectCapability(pc, cx.NewError(engine.ErrorKindType, name+" called on non-object"))
 		return pc.Promise()
 	}
-	vm.IfAbruptRejectPromise(pc, func() {
-		performPromiseAllKeyed(vm, settled, promises.Object(), c, pc, resolve)
+	cx.IfAbruptRejectPromise(pc, func() {
+		performPromiseAllKeyed(cx, settled, promises.Object(), c, pc, resolve)
 	})
 	return pc.Promise()
 }
 
 // performPromiseAllKeyed implements PerformPromiseAllKeyed. settled selects the all-settled variant.
-func performPromiseAllKeyed(vm *engine.VM, settled bool, promises *engine.Object, c engine.Value, pc *engine.PromiseCapability, resolve engine.Value) {
-	keyThen := vm.Intern("then")
-	keyStatus := vm.Intern("status")
-	keyReason := vm.Intern("reason")
+func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises *engine.Object, c engine.Value, pc *engine.PromiseCapability, resolve engine.Value) {
+	keyThen := cx.Intern("then")
+	keyStatus := cx.Intern("status")
+	keyReason := cx.Intern("reason")
 	e := &keyedPromiseElements{
 		remaining: 1,
 	}
-	for _, k := range vm.OwnKeys(promises) {
-		d, ok := vm.GetOwnProperty(promises, k)
+	for _, k := range cx.OwnKeys(promises) {
+		d, ok := cx.GetOwnProperty(promises, k)
 		if !ok || !d.Enumerable() {
 			continue
 		}
-		v := vm.Get(promises, k)
+		v := cx.Get(promises, k)
 		i := len(e.values)
 		e.keys = append(e.keys, k)
 		e.values = append(e.values, engine.Undefined)
-		next := vm.CallValue(resolve, c, v)
+		next := cx.CallValue(resolve, c, v)
 		called := false
 		var onFulfilled, onRejected engine.Value
 		if settled {
 			element := func(status string, key *engine.Object) engine.Value {
-				return engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+				return engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 					if called {
 						return engine.Undefined
 					}
 					called = true
-					o := vm.NewObjectFromProperties(
+					o := cx.NewObjectFromProperties(
 						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
-						[]engine.Value{vm.NewString(wtf8.String(status)), arg(args, 0)},
+						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
-					e.resolveIfDone(vm, pc)
+					e.resolveIfDone(cx, pc)
 					return engine.Undefined
 				}))
 			}
-			onFulfilled = element("fulfilled", vm.Key(engine.KeyValue))
+			onFulfilled = element("fulfilled", cx.Key(engine.KeyValue))
 			onRejected = element("rejected", keyReason)
 		} else {
-			onFulfilled = engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			onFulfilled = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				if called {
 					return engine.Undefined
 				}
 				called = true
 				e.values[i] = arg(args, 0)
-				e.resolveIfDone(vm, pc)
+				e.resolveIfDone(cx, pc)
 				return engine.Undefined
 			}))
-			onRejected = vm.CapabilityReject(pc)
+			onRejected = cx.CapabilityReject(pc)
 		}
 		e.remaining++
-		invoke(vm, next, keyThen, onFulfilled, onRejected)
+		invoke(cx, next, keyThen, onFulfilled, onRejected)
 	}
-	e.resolveIfDone(vm, pc)
+	e.resolveIfDone(cx, pc)
 }
 
-func initPromise(vm *engine.VM) {
-	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicPromisePrototype)
-	ctor := constructor(vm, "Promise", 1, engine.IntrinsicPromisePrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+func initPromise(cx *engine.ExecutionContext) {
+	proto := cx.Realm().Intrinsic(engine.IntrinsicPromisePrototype)
+	ctor := constructor(cx, "Promise", 1, engine.IntrinsicPromisePrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Promise constructor cannot be invoked without 'new'")
+			cx.ThrowTypeError("Promise constructor cannot be invoked without 'new'")
 		}
 		executor := arg(args, 0)
 		if !executor.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Promise resolver "+vm.DisplayString(executor)+" is not a function")
+			cx.ThrowTypeError("Promise resolver " + cx.DisplayString(executor) + " is not a function")
 		}
-		p := vm.NewPromiseObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
-		rf := vm.CreateResolvingFunctions(p)
-		vm.IfAbruptRejectPromise(rf, func() {
-			vm.Call(executor.Object(), engine.Undefined, vm.CapabilityResolve(rf), vm.CapabilityReject(rf))
+		p := cx.NewPromiseObject(cx.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
+		rf := cx.CreateResolvingFunctions(p)
+		cx.IfAbruptRejectPromise(rf, func() {
+			cx.Call(executor.Object(), engine.Undefined, cx.CapabilityResolve(rf), cx.CapabilityReject(rf))
 		})
 		return engine.ObjectValue(p)
 	})
-	vm.SetIntrinsic(engine.IntrinsicPromise, ctor)
-	speciesGetter(vm, ctor)
+	cx.SetIntrinsic(engine.IntrinsicPromise, ctor)
+	speciesGetter(cx, ctor)
 
-	keyThen := vm.Intern("then")
-	keyStatus := vm.Intern("status")
-	keyReason := vm.Intern("reason")
+	keyThen := cx.Intern("then")
+	keyStatus := cx.Intern("status")
+	keyReason := cx.Intern("reason")
 
-	method(vm, ctor, "all", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ctor, "all", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := &promiseElements{
 			remaining: 1,
 		}
-		return promiseCombinator(vm, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
 			i := len(e.values)
 			e.values = append(e.values, engine.Undefined)
 			called := false
-			onFulfilled := vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			onFulfilled := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				if called {
 					return engine.Undefined
 				}
@@ -206,80 +206,80 @@ func initPromise(vm *engine.VM) {
 				e.values[i] = arg(args, 0)
 				e.remaining--
 				if e.remaining == 0 {
-					vm.ResolveCapability(pc, engine.ObjectValue(vm.NewArray(slices.Clone(e.values))))
+					cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
 				}
 				return engine.Undefined
 			})
 			e.remaining++
-			invoke(vm, next, keyThen, engine.ObjectValue(onFulfilled), vm.CapabilityReject(pc))
+			invoke(cx, next, keyThen, engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				vm.ResolveCapability(pc, engine.ObjectValue(vm.NewArray(slices.Clone(e.values))))
+				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
 			}
 		})
 	})
 
-	method(vm, ctor, "allSettled", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ctor, "allSettled", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := &promiseElements{
 			remaining: 1,
 		}
-		return promiseCombinator(vm, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
 			i := len(e.values)
 			e.values = append(e.values, engine.Undefined)
 			called := false
 			element := func(status string, key *engine.Object) *engine.Object {
-				return vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+				return cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 					if called {
 						return engine.Undefined
 					}
 					called = true
-					o := vm.NewObjectFromProperties(
+					o := cx.NewObjectFromProperties(
 						[]engine.PropKey{engine.NamedKey(keyStatus), engine.NamedKey(key)},
-						[]engine.Value{vm.NewString(wtf8.String(status)), arg(args, 0)},
+						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
 					e.remaining--
 					if e.remaining == 0 {
-						vm.ResolveCapability(pc, engine.ObjectValue(vm.NewArray(slices.Clone(e.values))))
+						cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
 					}
 					return engine.Undefined
 				})
 			}
-			onFulfilled := element("fulfilled", vm.Key(engine.KeyValue))
+			onFulfilled := element("fulfilled", cx.Key(engine.KeyValue))
 			onRejected := element("rejected", keyReason)
 			e.remaining++
-			invoke(vm, next, keyThen, engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
+			invoke(cx, next, keyThen, engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				vm.ResolveCapability(pc, engine.ObjectValue(vm.NewArray(slices.Clone(e.values))))
+				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(slices.Clone(e.values))))
 			}
 		})
 	})
 
-	method(vm, ctor, "allKeyed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return promiseKeyedCombinator(vm, this, arg(args, 0), false, "Promise.allKeyed")
+	method(cx, ctor, "allKeyed", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return promiseKeyedCombinator(cx, this, arg(args, 0), false, "Promise.allKeyed")
 	})
 
-	method(vm, ctor, "allSettledKeyed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return promiseKeyedCombinator(vm, this, arg(args, 0), true, "Promise.allSettledKeyed")
+	method(cx, ctor, "allSettledKeyed", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return promiseKeyedCombinator(cx, this, arg(args, 0), true, "Promise.allSettledKeyed")
 	})
 
-	method(vm, ctor, "any", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ctor, "any", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		e := &promiseElements{
 			remaining: 1,
 		}
-		aggregate := func() engine.Value {
-			err := vm.NewError(vm.CurrentRealm(), engine.ErrorKindAggregate, "all promises were rejected")
-			vm.Define(err.Object(), vm.Key(engine.KeyErrors), engine.ObjectValue(vm.NewArray(slices.Clone(e.values))), engine.FlagsHidden)
+		aggregate := func(cx *engine.ExecutionContext) engine.Value {
+			err := cx.NewError(engine.ErrorKindAggregate, "all promises were rejected")
+			cx.Define(err.Object(), cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(slices.Clone(e.values))), engine.FlagsHidden)
 			return err
 		}
-		return promiseCombinator(vm, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
 			i := len(e.values)
 			e.values = append(e.values, engine.Undefined)
 			called := false
-			onRejected := vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			onRejected := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				if called {
 					return engine.Undefined
 				}
@@ -287,111 +287,111 @@ func initPromise(vm *engine.VM) {
 				e.values[i] = arg(args, 0)
 				e.remaining--
 				if e.remaining == 0 {
-					vm.RejectCapability(pc, aggregate())
+					cx.RejectCapability(pc, aggregate(cx))
 				}
 				return engine.Undefined
 			})
 			e.remaining++
-			invoke(vm, next, keyThen, vm.CapabilityResolve(pc), engine.ObjectValue(onRejected))
+			invoke(cx, next, keyThen, cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				vm.Throw(aggregate())
+				cx.Throw(aggregate(cx))
 			}
 		})
 	})
 
-	method(vm, ctor, "race", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return promiseCombinator(vm, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			invoke(vm, next, keyThen, vm.CapabilityResolve(pc), vm.CapabilityReject(pc))
+	method(cx, ctor, "race", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
+			invoke(cx, next, keyThen, cx.CapabilityResolve(pc), cx.CapabilityReject(pc))
 		}, func(pc *engine.PromiseCapability) {})
 	})
 
-	method(vm, ctor, "reject", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		pc := vm.NewPromiseCapability(this)
-		vm.RejectCapability(pc, arg(args, 0))
+	method(cx, ctor, "reject", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		pc := cx.NewPromiseCapability(this)
+		cx.RejectCapability(pc, arg(args, 0))
 		return pc.Promise()
 	})
 
-	method(vm, ctor, "resolve", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ctor, "resolve", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.resolve called on non-object")
+			cx.ThrowTypeError("Promise.resolve called on non-object")
 		}
-		return vm.PromiseResolve(this.Object(), arg(args, 0))
+		return cx.PromiseResolve(this.Object(), arg(args, 0))
 	})
 
-	method(vm, ctor, "try", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, ctor, "try", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.try called on non-object")
+			cx.ThrowTypeError("Promise.try called on non-object")
 		}
 		var status engine.Value
-		e, ok := vm.Completion(func() {
-			status = vm.CallValue(arg(args, 0), engine.Undefined, args[min(1, len(args)):]...)
+		e, ok := cx.Completion(func() {
+			status = cx.CallValue(arg(args, 0), engine.Undefined, args[min(1, len(args)):]...)
 		})
 		if ok {
-			return vm.PromiseResolve(this.Object(), status)
+			return cx.PromiseResolve(this.Object(), status)
 		}
-		pc := vm.NewPromiseCapability(this)
-		vm.RejectCapability(pc, e)
+		pc := cx.NewPromiseCapability(this)
+		cx.RejectCapability(pc, e)
 		return pc.Promise()
 	})
 
-	method(vm, ctor, "withResolvers", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		pc := vm.NewPromiseCapability(this)
-		o := vm.NewObjectFromProperties(
+	method(cx, ctor, "withResolvers", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		pc := cx.NewPromiseCapability(this)
+		o := cx.NewObjectFromProperties(
 			[]engine.PropKey{
-				engine.NamedKey(vm.Intern("promise")),
-				engine.NamedKey(vm.Intern("resolve")),
-				engine.NamedKey(vm.Intern("reject")),
+				engine.NamedKey(cx.Intern("promise")),
+				engine.NamedKey(cx.Intern("resolve")),
+				engine.NamedKey(cx.Intern("reject")),
 			},
-			[]engine.Value{pc.Promise(), vm.CapabilityResolve(pc), vm.CapabilityReject(pc)},
+			[]engine.Value{pc.Promise(), cx.CapabilityResolve(pc), cx.CapabilityReject(pc)},
 		)
 		return engine.ObjectValue(o)
 	})
 
-	method(vm, proto, "catch", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return invoke(vm, this, keyThen, engine.Undefined, arg(args, 0))
+	method(cx, proto, "catch", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return invoke(cx, this, keyThen, engine.Undefined, arg(args, 0))
 	})
 
-	method(vm, proto, "finally", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, proto, "finally", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.prototype.finally called on non-object")
+			cx.ThrowTypeError("Promise.prototype.finally called on non-object")
 		}
-		c := speciesConstructor(vm, this.Object(), vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise))
+		c := speciesConstructor(cx, this.Object(), cx.Realm().Intrinsic(engine.IntrinsicPromise))
 		onFinally := arg(args, 0)
 		thenFinally, catchFinally := onFinally, onFinally
 		if onFinally.IsCallable() {
-			thenFinally = engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			thenFinally = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				value := arg(args, 0)
-				result := vm.Call(onFinally.Object(), engine.Undefined)
-				p := vm.PromiseResolve(c, result)
-				valueThunk := vm.NewNative("", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+				result := cx.Call(onFinally.Object(), engine.Undefined)
+				p := cx.PromiseResolve(c, result)
+				valueThunk := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 					return value
 				})
-				return invoke(vm, p, keyThen, engine.ObjectValue(valueThunk))
+				return invoke(cx, p, keyThen, engine.ObjectValue(valueThunk))
 			}))
-			catchFinally = engine.ObjectValue(vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+			catchFinally = engine.ObjectValue(cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				reason := arg(args, 0)
-				result := vm.Call(onFinally.Object(), engine.Undefined)
-				p := vm.PromiseResolve(c, result)
-				thrower := vm.NewNative("", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-					vm.Throw(reason)
+				result := cx.Call(onFinally.Object(), engine.Undefined)
+				p := cx.PromiseResolve(c, result)
+				thrower := cx.NewNative("", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+					cx.Throw(reason)
 					return engine.Undefined
 				})
-				return invoke(vm, p, keyThen, engine.ObjectValue(thrower))
+				return invoke(cx, p, keyThen, engine.ObjectValue(thrower))
 			}))
 		}
-		return invoke(vm, this, keyThen, thenFinally, catchFinally)
+		return invoke(cx, this, keyThen, thenFinally, catchFinally)
 	})
 
-	method(vm, proto, "then", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, proto, "then", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		if !engine.IsPromise(this) {
-			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.prototype.then called on incompatible receiver "+vm.DisplayString(this))
+			cx.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + cx.DisplayString(this))
 		}
-		c := speciesConstructor(vm, this.Object(), vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise))
-		pc := vm.NewPromiseCapability(engine.ObjectValue(c))
-		return vm.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
+		c := speciesConstructor(cx, this.Object(), cx.Realm().Intrinsic(engine.IntrinsicPromise))
+		pc := cx.NewPromiseCapability(engine.ObjectValue(c))
+		return cx.PerformPromiseThen(this, arg(args, 0), arg(args, 1), pc)
 	})
 
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Promise"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Promise"), engine.FlagConfigurable)
 }

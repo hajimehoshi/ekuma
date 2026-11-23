@@ -215,8 +215,8 @@ func (v Value) Equal(w Value) bool {
 // vm returns the [VM] that the object, function or string v belongs to.
 func (v Value) vm(method string) (*VM, error) {
 	if o := v.value.Object(); o != nil && !v.value.IsSymbol() {
-		if e := o.VM(); e != nil {
-			return e.HostDefined().(*VM), nil
+		if host, ok := o.HostDefined().(*VM); ok {
+			return host, nil
 		}
 	}
 	return nil, &ValueError{
@@ -234,7 +234,7 @@ func (v Value) Get(name string) (Value, error) {
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.value, vm.e.StringFromGo(name))
+	r, err := vm.hostContext().HostGet(v.value, vm.hostContext().StringFromGo(name))
 	return fromEngine(r), publicError(err)
 }
 
@@ -246,7 +246,7 @@ func (v Value) GetWithValueKey(key Value) (Value, error) {
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.value, vm.acceptValue(key))
+	r, err := vm.hostContext().HostGet(v.value, vm.acceptValue(key))
 	return fromEngine(r), publicError(err)
 }
 
@@ -257,7 +257,7 @@ func (v Value) Set(name string, x any) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.e.HostSet(v.value, vm.e.StringFromGo(name), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.hostContext().HostSet(v.value, vm.hostContext().StringFromGo(name), vm.valueOf(vm.initialRealm.r.Context(), x)))
 }
 
 // SetWithValueKey is like [Value.Set], but takes key as [Value.GetWithValueKey] does.
@@ -266,7 +266,7 @@ func (v Value) SetWithValueKey(key Value, x any) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.e.HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.hostContext().HostSet(v.value, vm.acceptValue(key), vm.valueOf(vm.initialRealm.r.Context(), x)))
 }
 
 // Delete deletes the property named name from v, as the delete operator in strict mode does.
@@ -276,7 +276,7 @@ func (v Value) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.e.HostDelete(v.value, vm.e.StringFromGo(name)))
+	return publicError(vm.hostContext().HostDelete(v.value, vm.hostContext().StringFromGo(name)))
 }
 
 // DeleteWithValueKey is like [Value.Delete], but takes key as [Value.GetWithValueKey] does.
@@ -285,14 +285,14 @@ func (v Value) DeleteWithValueKey(key Value) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.e.HostDelete(v.value, vm.acceptValue(key)))
+	return publicError(vm.hostContext().HostDelete(v.value, vm.acceptValue(key)))
 }
 
 func (vm *VM) indexKey(i int) engine.Value {
 	if uint64(i) <= engine.MaxArrayIndex {
 		return engine.Number(float64(i))
 	}
-	return vm.e.StringFromGo(strconv.Itoa(i))
+	return vm.hostContext().StringFromGo(strconv.Itoa(i))
 }
 
 // Index returns the property of v named by the decimal representation of i.
@@ -302,7 +302,7 @@ func (v Value) Index(i int) (Value, error) {
 	if err != nil {
 		return Undefined, err
 	}
-	r, err := vm.e.HostGet(v.value, vm.indexKey(i))
+	r, err := vm.hostContext().HostGet(v.value, vm.indexKey(i))
 	return fromEngine(r), publicError(err)
 }
 
@@ -313,7 +313,7 @@ func (v Value) SetIndex(i int, x any) error {
 	if err != nil {
 		return err
 	}
-	return publicError(vm.e.HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm, x)))
+	return publicError(vm.hostContext().HostSet(v.value, vm.indexKey(i), vm.valueOf(vm.initialRealm.r.Context(), x)))
 }
 
 // Call calls the method named name on v with v as this. The arguments are converted with
@@ -328,7 +328,7 @@ func (v Value) Call(ctx context.Context, name string, args ...any) (Value, error
 	}
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
-			return vm.e.HostCallMethod(v.value, vm.e.StringFromGo(name), a)
+			return vm.hostContext().HostCallMethod(v.value, vm.hostContext().StringFromGo(name), a)
 		})
 	})
 }
@@ -342,7 +342,7 @@ func (v Value) CallWithValueKey(ctx context.Context, key Value, args ...any) (Va
 	k := vm.acceptValue(key)
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
-			return vm.e.HostCallMethod(v.value, k, a)
+			return vm.hostContext().HostCallMethod(v.value, k, a)
 		})
 	})
 }
@@ -375,9 +375,9 @@ func (v Value) invoke(ctx context.Context, method string, construct bool, args [
 	return vm.run(ctx, func() (engine.Value, error) {
 		return vm.withArgs(args, func(a []engine.Value) (engine.Value, error) {
 			if construct {
-				return vm.e.HostConstruct(v.value, a)
+				return vm.hostContext().HostConstruct(v.value, a)
 			}
-			return vm.e.HostCall(v.value, engine.Undefined, a)
+			return vm.hostContext().HostCall(v.value, engine.Undefined, a)
 		})
 	})
 }
@@ -391,7 +391,7 @@ func (v Value) InstanceOf(t Value) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	r, err := vm.e.HostInstanceOf(vm.acceptValue(v), t.value)
+	r, err := vm.hostContext().HostInstanceOf(vm.acceptValue(v), t.value)
 	return r, publicError(err)
 }
 

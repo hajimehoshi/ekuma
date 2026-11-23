@@ -4,21 +4,21 @@
 package engine
 
 // NewVMWithBigIntResultLimit returns a [VM] that allows up to maxBits bits in checked BigInt results.
-func NewVMWithBigIntResultLimit(maxBits int64) *VM {
-	vm := NewVM(nil)
-	vm.maxBigIntResultBits = maxBits
-	return vm
+func NewVMWithBigIntResultLimit(maxBits int64) *ExecutionContext {
+	cx := HostContext(NewVM(nil))
+	cx.maxBigIntResultBits = maxBits
+	return cx
 }
 
-// InternedCount returns the number of entries in the table of interned strings of vm.
-func InternedCount(vm *VM) int {
-	return len(vm.strings.interned.entries)
+// InternedCount returns the number of entries in the table of interned strings of cx.
+func InternedCount(cx *ExecutionContext) int {
+	return len(cx.strings.interned.entries)
 }
 
 // ObjectTransitionCount returns the number of transitions from the empty shape of the objects
 // whose prototype is %Object.prototype%.
-func ObjectTransitionCount(vm *VM) int {
-	return vm.curRealm.shapes.object.transitions.len()
+func ObjectTransitionCount(cx *ExecutionContext) int {
+	return cx.realm.shapes.object.transitions.len()
 }
 
 // ElementStorage returns the number of values that the storage of the elements of the object
@@ -27,14 +27,14 @@ func ElementStorage(v Value) int {
 	return v.o.elemsStorage()
 }
 
-// StackSize returns the number of slots of the stack of vm.
-func StackSize(vm *VM) int {
-	return len(vm.stack)
+// StackSize returns the number of slots of the stack of cx.
+func StackSize(cx *ExecutionContext) int {
+	return len(cx.stack)
 }
 
-// JobStorage returns the number of jobs that the storage of the job queue of vm has room for.
-func JobStorage(vm *VM) int {
-	return cap(vm.jobs.jobs)
+// JobStorage returns the number of jobs that the storage of the job queue of cx has room for.
+func JobStorage(cx *ExecutionContext) int {
+	return cap(cx.jobs.jobs)
 }
 
 // MaxNatives is the number of calls of native functions that can run at once.

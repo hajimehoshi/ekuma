@@ -24,52 +24,52 @@ type displayNamesData struct {
 }
 
 // newDisplayNames implements the Intl.DisplayNames constructor.
-func (r *realm) newDisplayNames(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newDisplayNames(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.DisplayNames requires 'new'")
+		cx.ThrowTypeError("constructor Intl.DisplayNames requires 'new'")
 	}
-	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.displayNamesProto })
-	requested := canonicalizeLocaleList(vm, arg(args, 0))
+	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.displayNamesProto })
+	requested := canonicalizeLocaleList(cx, arg(args, 0))
 	// GetOptionsObject, with the options required.
 	o := arg(args, 1)
 	if !o.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the options of Intl.DisplayNames must be an object")
+		cx.ThrowTypeError("the options of Intl.DisplayNames must be an object")
 	}
 	options := o.Object()
-	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
+	bestFit := localeMatcher(cx, options)
+	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, nil)
 	dn := &displayNamesData{
-		style: getStringOption(vm, options, "style", "long", "narrow", "short", "long"),
+		style: getStringOption(cx, options, "style", "long", "narrow", "short", "long"),
 	}
-	typ, ok := getOption(vm, options, "type", "language", "region", "script", "currency", "calendar", "dateTimeField")
+	typ, ok := getOption(cx, options, "type", "language", "region", "script", "currency", "calendar", "dateTimeField")
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "the type option of Intl.DisplayNames is required")
+		cx.ThrowTypeError("the type option of Intl.DisplayNames is required")
 	}
 	dn.typ = typ
-	dn.fallback = getStringOption(vm, options, "fallback", "code", "code", "none")
+	dn.fallback = getStringOption(cx, options, "fallback", "code", "code", "none")
 	dn.locale = res.Locale
-	languageDisplay := getStringOption(vm, options, "languageDisplay", "dialect", "dialect", "standard")
+	languageDisplay := getStringOption(cx, options, "languageDisplay", "dialect", "dialect", "standard")
 	if typ == "language" {
 		dn.languageDisplay = languageDisplay
 	}
 	dn.names = displaynames.New(res.DataLocale, dn.style != "long")
-	return engine.ObjectValue(vm.NewIntlObject(proto, dn))
+	return engine.ObjectValue(cx.NewIntlObject(proto, dn))
 }
 
 // thisDisplayNames implements RequireInternalSlot for an Intl.DisplayNames.
-func thisDisplayNames(vm *engine.VM, this engine.Value, name string) *displayNamesData {
+func thisDisplayNames(cx *engine.ExecutionContext, this engine.Value, name string) *displayNamesData {
 	dn, ok := engine.IntlData(this).(*displayNamesData)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DisplayNames.prototype."+name+" called on an object that is not an Intl.DisplayNames")
+		cx.ThrowTypeError("Intl.DisplayNames.prototype." + name + " called on an object that is not an Intl.DisplayNames")
 	}
 	return dn
 }
 
 // of implements Intl.DisplayNames.prototype.of after the conversion of code to a String.
-func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
+func (dn *displayNamesData) of(cx *engine.ExecutionContext, code string) engine.Value {
 	invalid := func() {
-		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(code)))+" is not a valid code for the type "+dn.typ)
+		cx.ThrowRangeError(cx.DisplayString(cx.NewString(wtf8.String(code))) + " is not a valid code for the type " + dn.typ)
 	}
 	var name string
 	var ok bool
@@ -79,7 +79,7 @@ func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 		if !valid || t.HasUnicode || t.HasTransformed || len(t.Others) > 0 || t.PrivateUse != "" {
 			invalid()
 		}
-		c, _ := locale.Canonicalize(code, vm.Poll)
+		c, _ := locale.Canonicalize(code, cx.Poll)
 		ct, _ := locale.Parse(c)
 		code = c
 		name, ok = dn.names.Language(ct.LanguageID, dn.languageDisplay == "dialect")
@@ -116,9 +116,9 @@ func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 	}
 	switch {
 	case ok:
-		return vm.NewString(wtf8.String(name))
+		return cx.NewString(wtf8.String(name))
 	case dn.fallback == "code":
-		return vm.NewString(wtf8.String(code))
+		return cx.NewString(wtf8.String(code))
 	}
 	return engine.Undefined
 }
@@ -134,24 +134,24 @@ func isASCII(s string) bool {
 }
 
 // initDisplayNames defines Intl.DisplayNames.
-func (r *realm) initDisplayNames(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("DisplayNames", 2, r.newDisplayNames)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("DisplayNames"), engine.ObjectValue(ctor), engine.FlagsHidden)
+func (r *realm) initDisplayNames(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("DisplayNames", 2, r.newDisplayNames)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("DisplayNames"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.displayNamesProto = proto
 
-	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(vm, args)
+	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return supportedLocalesOf(cx, args)
 	})
-	method(vm, proto, "of", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		dn := thisDisplayNames(vm, this, "of")
-		return dn.of(vm, wtf8.ToValidUTF8(vm.ToString(arg(args, 0))))
+	method(cx, proto, "of", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		dn := thisDisplayNames(cx, this, "of")
+		return dn.of(cx, wtf8.ToValidUTF8(cx.ToString(arg(args, 0))))
 	})
-	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		dn := thisDisplayNames(vm, this, "resolvedOptions")
-		return resolvedOptions(vm, "locale", dn.locale, "style", dn.style, "type", dn.typ, "fallback", dn.fallback, "languageDisplay", dn.languageDisplay)
+	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		dn := thisDisplayNames(cx, this, "resolvedOptions")
+		return resolvedOptions(cx, "locale", dn.locale, "style", dn.style, "type", dn.typ, "fallback", dn.fallback, "languageDisplay", dn.languageDisplay)
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.DisplayNames"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.DisplayNames"), engine.FlagConfigurable)
 }

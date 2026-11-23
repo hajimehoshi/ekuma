@@ -8,29 +8,29 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
-	proto := vm.NewOrdinaryObject()
-	vm.SetIntrinsic(engine.IntrinsicDataViewPrototype, proto)
+func initDataView(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
+	proto := cx.NewOrdinaryObject()
+	cx.SetIntrinsic(engine.IntrinsicDataViewPrototype, proto)
 	bi.dataViewProto = proto
-	constructor(vm, "DataView", 1, engine.IntrinsicDataViewPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		nt := vm.GetNewTarget()
+	constructor(cx, "DataView", 1, engine.IntrinsicDataViewPrototype, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		nt := cx.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "constructor DataView requires 'new'")
+			cx.ThrowTypeError("constructor DataView requires 'new'")
 		}
 		buf := arg(args, 0)
 		b := engine.ArrayBufferData(buf)
 		if b == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "first argument to DataView constructor must be an ArrayBuffer")
+			cx.ThrowTypeError("first argument to DataView constructor must be an ArrayBuffer")
 		}
-		offset := toIndex(vm, arg(args, 1))
+		offset := toIndex(cx, arg(args, 1))
 		if b.IsDetached() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot construct a DataView on a detached ArrayBuffer")
+			cx.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
 		}
 		// The length of the buffer is taken before converting the view length, which can run
 		// JavaScript.
 		bufferLength := int64(b.ByteLength())
 		if offset > bufferLength {
-			vm.ThrowRangeError(vm.CurrentRealm(), "start offset "+itoa(offset)+" is outside the bounds of the buffer")
+			cx.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
 		}
 		length := arg(args, 2)
 		viewLength := int64(-1)
@@ -39,47 +39,47 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 				viewLength = bufferLength - offset
 			}
 		} else {
-			viewLength = toIndex(vm, length)
+			viewLength = toIndex(cx, length)
 			if offset+viewLength > bufferLength {
-				vm.ThrowRangeError(vm.CurrentRealm(), "invalid DataView length "+itoa(viewLength))
+				cx.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 			}
 		}
-		p := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDataViewPrototype)
+		p := cx.GetPrototypeFromConstructor(nt, engine.IntrinsicDataViewPrototype)
 		// Getting the prototype may have detached or shrunk the buffer.
 		if b.IsDetached() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "cannot construct a DataView on a detached ArrayBuffer")
+			cx.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
 		}
 		if offset > int64(b.ByteLength()) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "start offset "+itoa(offset)+" is outside the bounds of the buffer")
+			cx.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
 		}
 		if !length.IsUndefined() && offset+viewLength > int64(b.ByteLength()) {
-			vm.ThrowRangeError(vm.CurrentRealm(), "invalid DataView length "+itoa(viewLength))
+			cx.ThrowRangeError("invalid DataView length " + itoa(viewLength))
 		}
-		return engine.ObjectValue(vm.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
+		return engine.ObjectValue(cx.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
 	})
 
-	thisView := func(vm *engine.VM, this engine.Value, what string) *engine.DataView {
+	thisView := func(cx *engine.ExecutionContext, this engine.Value, what string) *engine.DataView {
 		d := engine.DataViewData(this)
 		if d == nil {
-			vm.ThrowTypeError(vm.CurrentRealm(), "DataView.prototype."+what+" called on incompatible receiver "+vm.DisplayString(this))
+			cx.ThrowTypeError("DataView.prototype." + what + " called on incompatible receiver " + cx.DisplayString(this))
 		}
 		return d
 	}
-	getter(vm, proto, vm.Intern("buffer"), "buffer", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return engine.ObjectValue(thisView(vm, this, "buffer").Buffer())
+	getter(cx, proto, cx.Intern("buffer"), "buffer", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return engine.ObjectValue(thisView(cx, this, "buffer").Buffer())
 	})
-	getter(vm, proto, vm.Intern("byteLength"), "byteLength", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		n, _ := thisView(vm, this, "byteLength").ByteLength()
+	getter(cx, proto, cx.Intern("byteLength"), "byteLength", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		n, _ := thisView(cx, this, "byteLength").ByteLength()
 		return engine.Number(float64(n))
 	})
-	getter(vm, proto, vm.Intern("byteOffset"), "byteOffset", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		d := thisView(vm, this, "byteOffset")
+	getter(cx, proto, cx.Intern("byteOffset"), "byteOffset", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		d := thisView(cx, this, "byteOffset")
 		if _, ok := d.ByteLength(); !ok {
 			return engine.Number(0)
 		}
 		return engine.Number(float64(d.ByteOffset()))
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("DataView"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("DataView"), engine.FlagConfigurable)
 
 	for _, e := range []struct {
 		name string
@@ -100,43 +100,43 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		typ := e.typ
 		// view returns the bytes of the element at the converted index, as GetViewValue and SetViewValue
 		// check it, from the bytes b of the view.
-		view := func(vm *engine.VM, b []byte, inBounds bool, i int64, what string) []byte {
+		view := func(cx *engine.ExecutionContext, b []byte, inBounds bool, i int64, what string) []byte {
 			if !inBounds {
-				vm.ThrowTypeError(vm.CurrentRealm(), "DataView.prototype."+what+": the view is detached or out of bounds")
+				cx.ThrowTypeError("DataView.prototype." + what + ": the view is detached or out of bounds")
 			}
 			if i+int64(typ.Size()) > int64(len(b)) {
-				vm.ThrowRangeError(vm.CurrentRealm(), "offset is outside the bounds of the DataView")
+				cx.ThrowRangeError("offset is outside the bounds of the DataView")
 			}
 			return b[i:]
 		}
 		// load and store hold the lock of the buffer, which a throw releases.
-		load := func(vm *engine.VM, d *engine.DataView, i int64, le bool, what string) engine.Value {
+		load := func(cx *engine.ExecutionContext, d *engine.DataView, i int64, le bool, what string) engine.Value {
 			b, inBounds := d.Lock()
 			defer d.Unlock()
-			return vm.GetValueFromBuffer(view(vm, b, inBounds, i, what), typ, le)
+			return cx.GetValueFromBuffer(view(cx, b, inBounds, i, what), typ, le)
 		}
-		store := func(vm *engine.VM, d *engine.DataView, i int64, v engine.Value, le bool, what string) {
+		store := func(cx *engine.ExecutionContext, d *engine.DataView, i int64, v engine.Value, le bool, what string) {
 			b, inBounds := d.Lock()
 			defer d.Unlock()
-			engine.SetValueInBuffer(view(vm, b, inBounds, i, what), typ, v, le)
+			engine.SetValueInBuffer(view(cx, b, inBounds, i, what), typ, v, le)
 		}
 		get := "get" + e.name
-		method(vm, proto, wtf8.String(get), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			d := thisView(vm, this, get)
-			i := toIndex(vm, arg(args, 0))
+		method(cx, proto, wtf8.String(get), 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			d := thisView(cx, this, get)
+			i := toIndex(cx, arg(args, 0))
 			le := engine.ToBoolean(arg(args, 1))
-			return load(vm, d, i, le, get)
+			return load(cx, d, i, le, get)
 		})
 		set := "set" + e.name
-		method(vm, proto, wtf8.String(set), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			d := thisView(vm, this, set)
+		method(cx, proto, wtf8.String(set), 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			d := thisView(cx, this, set)
 			if engine.ArrayBufferData(engine.ObjectValue(d.Buffer())).IsImmutable() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "DataView.prototype."+set+": the DataView is backed by an immutable ArrayBuffer")
+				cx.ThrowTypeError("DataView.prototype." + set + ": the DataView is backed by an immutable ArrayBuffer")
 			}
-			i := toIndex(vm, arg(args, 0))
-			v := vm.ToElementValue(typ, arg(args, 1))
+			i := toIndex(cx, arg(args, 0))
+			v := cx.ToElementValue(typ, arg(args, 1))
 			le := engine.ToBoolean(arg(args, 2))
-			store(vm, d, i, v, le, set)
+			store(cx, d, i, v, le, set)
 			return engine.Undefined
 		})
 	}

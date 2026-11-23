@@ -19,83 +19,83 @@ type listFormatData struct {
 }
 
 // getOptionsObject implements GetOptionsObject.
-func getOptionsObject(vm *engine.VM, v engine.Value, name string) *engine.Object {
+func getOptionsObject(cx *engine.ExecutionContext, v engine.Value, name string) *engine.Object {
 	switch {
 	case v.IsUndefined():
-		return vm.NewObject(nil)
+		return cx.NewObject(nil)
 	case v.IsObject():
 		return v.Object()
 	}
-	vm.ThrowTypeError(vm.CurrentRealm(), "the options of "+name+" must be an object")
+	cx.ThrowTypeError("the options of " + name + " must be an object")
 	return nil
 }
 
 // newListFormat implements the Intl.ListFormat constructor.
-func (r *realm) newListFormat(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	nt := vm.GetNewTarget()
+func (r *realm) newListFormat(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+	nt := cx.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.ListFormat requires 'new'")
+		cx.ThrowTypeError("constructor Intl.ListFormat requires 'new'")
 	}
-	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.listFormatProto })
-	requested := canonicalizeLocaleList(vm, arg(args, 0))
-	options := getOptionsObject(vm, arg(args, 1), "Intl.ListFormat")
-	bestFit := localeMatcher(vm, options)
-	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
+	proto := protoFor(cx, nt, func(r *realm) *engine.Object { return r.listFormatProto })
+	requested := canonicalizeLocaleList(cx, arg(args, 0))
+	options := getOptionsObject(cx, arg(args, 1), "Intl.ListFormat")
+	bestFit := localeMatcher(cx, options)
+	res := locale.ResolveLocale(requested, defaultLocale(cx), bestFit, nil)
 	lf := &listFormatData{
 		locale: res.Locale,
-		typ:    getStringOption(vm, options, "type", "conjunction", "conjunction", "disjunction", "unit"),
-		style:  getStringOption(vm, options, "style", "long", "long", "short", "narrow"),
+		typ:    getStringOption(cx, options, "type", "conjunction", "conjunction", "disjunction", "unit"),
+		style:  getStringOption(cx, options, "style", "long", "long", "short", "narrow"),
 	}
 	lf.f = list.NewFormatter(res.DataLocale, lf.typ, lf.style)
-	return engine.ObjectValue(vm.NewIntlObject(proto, lf))
+	return engine.ObjectValue(cx.NewIntlObject(proto, lf))
 }
 
 // thisListFormat implements RequireInternalSlot for an Intl.ListFormat.
-func thisListFormat(vm *engine.VM, this engine.Value, name string) *listFormatData {
+func thisListFormat(cx *engine.ExecutionContext, this engine.Value, name string) *listFormatData {
 	lf, ok := engine.IntlData(this).(*listFormatData)
 	if !ok {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.ListFormat.prototype."+name+" called on an object that is not an Intl.ListFormat")
+		cx.ThrowTypeError("Intl.ListFormat.prototype." + name + " called on an object that is not an Intl.ListFormat")
 	}
 	return lf
 }
 
 // stringListFromIterable implements StringListFromIterable.
-func stringListFromIterable(vm *engine.VM, v engine.Value) []string {
+func stringListFromIterable(cx *engine.ExecutionContext, v engine.Value) []string {
 	if v.IsUndefined() {
 		return nil
 	}
-	it, next := vm.GetIterator(v)
+	it, next := cx.GetIterator(v)
 	var out []string
 	for {
-		e, ok := vm.IteratorStepValue(it, next)
+		e, ok := cx.IteratorStepValue(it, next)
 		if !ok {
 			return out
 		}
 		if !e.IsString() {
-			vm.IfAbruptCloseIterator(it, func() {
-				vm.ThrowTypeError(vm.CurrentRealm(), "an element of the list is not a string: "+vm.DisplayString(e))
+			cx.IfAbruptCloseIterator(it, func() {
+				cx.ThrowTypeError("an element of the list is not a string: " + cx.DisplayString(e))
 			})
 		}
 		// The formatter copies the elements into its parts as they are, lone surrogates included.
-		out = append(out, string(vm.ToString(e)))
+		out = append(out, string(cx.ToString(e)))
 	}
 }
 
 // initListFormat defines Intl.ListFormat.
-func (r *realm) initListFormat(vm *engine.VM) {
-	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
-	ctor := vm.NewNativeConstructor("ListFormat", 0, r.newListFormat)
-	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
-	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
-	vm.Define(r.ns, vm.Intern("ListFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
+func (r *realm) initListFormat(cx *engine.ExecutionContext) {
+	proto := cx.NewObject(cx.Realm().Intrinsic(engine.IntrinsicObjectPrototype))
+	ctor := cx.NewNativeConstructor("ListFormat", 0, r.newListFormat)
+	cx.Define(ctor, cx.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
+	cx.Define(proto, cx.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
+	cx.Define(r.ns, cx.Intern("ListFormat"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.listFormatProto = proto
 
-	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return supportedLocalesOf(vm, args)
+	method(cx, ctor, "supportedLocalesOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return supportedLocalesOf(cx, args)
 	})
-	method(vm, proto, "format", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		lf := thisListFormat(vm, this, "format")
-		parts := lf.f.Format(stringListFromIterable(vm, arg(args, 0)))
+	method(cx, proto, "format", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		lf := thisListFormat(cx, this, "format")
+		parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
 		var n int
 		var previous wtf8.String
 		for _, p := range parts {
@@ -108,7 +108,7 @@ func (r *realm) initListFormat(vm *engine.VM) {
 				// Two three-byte surrogates form a four-byte code point.
 				n -= 2
 			}
-			checkStringLength(vm, n)
+			checkStringLength(cx, n)
 			previous = v
 		}
 		var b wtf8.Builder
@@ -116,34 +116,34 @@ func (r *realm) initListFormat(vm *engine.VM) {
 		for _, p := range parts {
 			b.WriteString(wtf8.String(p.Value))
 		}
-		return vm.NewString(b.String())
+		return cx.NewString(b.String())
 	})
-	method(vm, proto, "formatToParts", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		lf := thisListFormat(vm, this, "formatToParts")
-		parts := lf.f.Format(stringListFromIterable(vm, arg(args, 0)))
-		return partsArray(vm, len(parts), func(i int) (string, string, string) {
+	method(cx, proto, "formatToParts", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		lf := thisListFormat(cx, this, "formatToParts")
+		parts := lf.f.Format(stringListFromIterable(cx, arg(args, 0)))
+		return partsArray(cx, len(parts), func(i int) (string, string, string) {
 			return parts[i].Type, parts[i].Value, ""
 		})
 	})
-	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		lf := thisListFormat(vm, this, "resolvedOptions")
-		return resolvedOptions(vm, "locale", lf.locale, "type", lf.typ, "style", lf.style)
+	method(cx, proto, "resolvedOptions", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		lf := thisListFormat(cx, this, "resolvedOptions")
+		return resolvedOptions(cx, "locale", lf.locale, "type", lf.typ, "style", lf.style)
 	})
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Intl.ListFormat"), engine.FlagConfigurable)
+	cx.Define(proto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Intl.ListFormat"), engine.FlagConfigurable)
 }
 
 // resolvedOptions returns a new object with the string properties of the pairs of names and
 // values kv, in order, leaving out the empty values.
-func resolvedOptions(vm *engine.VM, kv ...string) engine.Value {
+func resolvedOptions(cx *engine.ExecutionContext, kv ...string) engine.Value {
 	var keyStorage [32]engine.PropKey
 	var valueStorage [32]engine.Value
 	keys := keyStorage[:0]
 	vals := valueStorage[:0]
 	for i := 0; i < len(kv); i += 2 {
 		if kv[i+1] != "" {
-			keys = append(keys, engine.NamedKey(vm.Intern(wtf8.String(kv[i]))))
-			vals = append(vals, vm.NewString(wtf8.String(kv[i+1])))
+			keys = append(keys, engine.NamedKey(cx.Intern(wtf8.String(kv[i]))))
+			vals = append(vals, cx.NewString(wtf8.String(kv[i+1])))
 		}
 	}
-	return engine.ObjectValue(vm.NewObjectFromProperties(keys, vals))
+	return engine.ObjectValue(cx.NewObjectFromProperties(keys, vals))
 }

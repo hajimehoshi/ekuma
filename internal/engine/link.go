@@ -55,7 +55,7 @@ type funcProto struct {
 	script *scriptOrModule
 
 	// Each frame enters the context of its linked code, including a replacement tail frame.
-	context ExecutionContext
+	context *ExecutionContext
 
 	// thisReg is the register that the first instruction loads this into, or -1 when the
 	// first instruction does not load this. thisSloppy says whether it converts this the way
@@ -92,19 +92,19 @@ type templateSite struct {
 // link converts the compiled function f and the functions nested in it to their runtime form.
 // script is their [[ScriptOrModule]]. The constants and keys of f are no longer available
 // afterwards.
-func (vm *VM) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
-	return vm.linkFunc(f, script, true)
+func (cx *ExecutionContext) link(f *bytecode.Func, script *scriptOrModule) *funcProto {
+	return cx.linkFunc(f, script, true)
 }
 
-// linkShared is like [VM.link], but leaves f unchanged, so that any number of VMs can link f,
+// linkShared is like [ExecutionContext.link], but leaves f unchanged, so that any number of VMs can link f,
 // also at the same time.
-func (vm *VM) linkShared(f *bytecode.Func, script *scriptOrModule) *funcProto {
-	return vm.linkFunc(f, script, false)
+func (cx *ExecutionContext) linkShared(f *bytecode.Func, script *scriptOrModule) *funcProto {
+	return cx.linkFunc(f, script, false)
 }
 
-// linkFunc implements [VM.link] and [VM.linkShared]. consume says whether the constants and keys
+// linkFunc implements [ExecutionContext.link] and [ExecutionContext.linkShared]. consume says whether the constants and keys
 // of f are dropped.
-func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *funcProto {
+func (cx *ExecutionContext) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *funcProto {
 	legacy := !f.Strict && !f.IsArrow && !f.IsMethod && !f.IsGenerator && !f.IsAsync && !f.IsClassConstructor
 	p := &funcProto{
 		Func:               f,
@@ -131,7 +131,7 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		legacyCallerArguments: legacy,
 
 		script:  script,
-		context: vm.executionContext(),
+		context: cx,
 
 		thisReg:  -1,
 		heapRegs: f.IsGenerator || f.IsAsync,
@@ -168,20 +168,20 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		case bytecode.ConstNumber:
 			p.consts[i] = Number(c.Num)
 		case bytecode.ConstString:
-			p.consts[i] = ObjectValue(vm.Intern(c.Str))
+			p.consts[i] = ObjectValue(cx.Intern(c.Str))
 		case bytecode.ConstBigInt:
 			// A script may be linked when no JavaScript runs, which an interruption
 			// cannot stop.
 			var poll func()
-			if vm.Running() {
-				poll = vm.Poll
+			if cx.Running() {
+				poll = cx.Poll
 			}
 			n, _ := numconv.ParseBigInt(string(c.Str), 10, poll)
-			p.consts[i] = vm.NewBigInt(n)
+			p.consts[i] = cx.NewBigInt(n)
 		}
 	}
 	for i, k := range f.Keys {
-		p.keys[i] = vm.Intern(k)
+		p.keys[i] = cx.Intern(k)
 	}
 	for _, d := range f.Upvals {
 		if d.ByValue {
@@ -189,7 +189,7 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		}
 	}
 	for i, q := range f.Protos {
-		p.protos[i] = vm.linkFunc(q, script, consume)
+		p.protos[i] = cx.linkFunc(q, script, consume)
 	}
 	for i, r := range f.RegExps {
 		p.regExps[i].literal = r
@@ -201,11 +201,11 @@ func (vm *VM) linkFunc(f *bytecode.Func, script *scriptOrModule, consume bool) *
 		}
 		for j, s := range t.Cooked {
 			if t.HasCooked[j] {
-				site.cooked[j] = vm.NewString(s)
+				site.cooked[j] = cx.NewString(s)
 			}
 		}
 		for j, s := range t.Raw {
-			site.raw[j] = vm.NewString(s)
+			site.raw[j] = cx.NewString(s)
 		}
 		p.templates[i] = site
 	}

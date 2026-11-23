@@ -14,33 +14,33 @@ type jsonState struct {
 	stringifier json.Stringifier
 }
 
-func initJSON(vm *engine.VM) {
+func initJSON(cx *engine.ExecutionContext) {
 	st := &jsonState{}
 
-	j := vm.NewOrdinaryObject()
-	vm.Define(vm.GlobalObject().Object(), vm.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
-	vm.Define(j, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("JSON"), engine.FlagConfigurable)
+	j := cx.NewOrdinaryObject()
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("JSON"), engine.ObjectValue(j), engine.FlagsHidden)
+	cx.Define(j, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("JSON"), engine.FlagConfigurable)
 
-	parse := method(vm, j, "parse", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		text := vm.ToString(arg(args, 0))
+	parse := method(cx, j, "parse", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		text := cx.ToString(arg(args, 0))
 		reviver := arg(args, 1)
 		if !reviver.IsCallable() {
-			return st.parser.Parse(vm, text)
+			return st.parser.Parse(cx, text)
 		}
-		v, rec := st.parser.ParseWithRecord(vm, text)
-		return json.Revive(vm, v, rec, reviver.Object())
+		v, rec := st.parser.ParseWithRecord(cx, text)
+		return json.Revive(cx, v, rec, reviver.Object())
 	})
-	vm.SetIntrinsic(engine.IntrinsicJSONParse, parse)
+	cx.SetIntrinsic(engine.IntrinsicJSONParse, parse)
 
-	method(vm, j, "stringify", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return st.stringifier.Stringify(vm, arg(args, 0), arg(args, 1), arg(args, 2))
-	})
-
-	method(vm, j, "rawJSON", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		return json.RawJSON(vm, arg(args, 0))
+	method(cx, j, "stringify", 3, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return st.stringifier.Stringify(cx, arg(args, 0), arg(args, 1), arg(args, 2))
 	})
 
-	method(vm, j, "isRawJSON", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(cx, j, "rawJSON", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		return json.RawJSON(cx, arg(args, 0))
+	})
+
+	method(cx, j, "isRawJSON", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		return engine.Bool(json.IsRawJSON(arg(args, 0)))
 	})
 }
