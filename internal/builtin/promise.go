@@ -324,15 +324,16 @@ func initPromise(vm *engine.VM) {
 		if !this.IsObject() {
 			vm.ThrowTypeError("Promise.try called on non-object")
 		}
+		pc := vm.NewPromiseCapability(this)
 		var status engine.Value
 		e, ok := vm.Completion(func() {
 			status = vm.CallValue(arg(args, 0), engine.Undefined, args[min(1, len(args)):]...)
 		})
 		if ok {
-			return vm.PromiseResolve(this.Object(), status)
+			vm.ResolveCapability(pc, status)
+		} else {
+			vm.RejectCapability(pc, e)
 		}
-		pc := vm.NewPromiseCapability(this)
-		vm.RejectCapability(pc, e)
 		return pc.Promise()
 	})
 

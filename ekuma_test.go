@@ -3617,3 +3617,28 @@ func TestDirectEvalParamDefaultArguments(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestPromiseTrySpec(t *testing.T) {
+	var vm ekuma.VM
+	got := run(t, &vm, `
+		const p = Promise.resolve(1);
+		const same = (Promise.try(() => p) === p);
+
+		let ran = false;
+		let nonCtorErr = "";
+		try {
+			Promise.try.call({}, () => { ran = true; });
+		} catch (e) {
+			nonCtorErr = e.name;
+		}
+
+		const order = [];
+		function C(exec) { order.push("C"); exec(() => {}, () => {}); }
+		Promise.try.call(C, () => { order.push("cb"); });
+
+		[same, ran, nonCtorErr, order.join("/")].join(",");
+	`)
+	if want := "false,false,TypeError,C/cb"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
