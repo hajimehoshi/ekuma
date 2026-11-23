@@ -260,6 +260,16 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 		}
 	}
 
+	var paramNames map[string]bool
+	if !node.SimpleParams {
+		paramNames = map[string]bool{}
+		for _, p := range node.Params {
+			patternNames(p, func(id *ast.Identifier) {
+				paramNames[id.Name] = true
+			})
+		}
+	}
+
 	// The values that the engine provides. An arrow function uses those of the enclosing function.
 	if !node.Arrow {
 		if node.UsesThis || node.DerivedConstructor || node.ClassConstructor || node.HasDirectEval {
@@ -298,21 +308,24 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 			}
 		}
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
-			if f.scope.lookup("arguments") == nil {
+			if f.scope.lookup("arguments") == nil && !paramNames["arguments"] {
+				var args *binding
 				switch {
 				case !node.Scope.ContainsDirectEval && f.forwardsArguments():
-					f.forwardedArgs = f.declare("arguments", bindVar)
+					args = f.declare("arguments", bindVar)
+					f.forwardedArgs = args
 				case !node.UsesArguments && mappedArguments(node) != 0 &&
 					!arrowsHaveDirectEval(node):
 					// Only the direct evals of the function itself can see the arguments object,
 					// which the first of them that needs it creates.
-					args := f.declare("arguments", bindVar)
+					args = f.declare("arguments", bindVar)
 					f.emit(bytecode.OpLoadTDZ, args.reg, 0, 0)
 					f.lazyArgs = true
 				default:
-					args := f.declare("arguments", bindVar)
+					args = f.declare("arguments", bindVar)
 					f.emit(bytecode.OpArguments, args.reg, mappedArguments(node), 0)
 				}
+				args.isArgs = true
 				b.NeedsExtra = true
 			}
 		}
@@ -323,14 +336,7 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 	// live in a scope of their own that the parameter code cannot see.
 	selfName := node.Name != nil && c.isExpression[node]
 	paramScope := f.scope
-	var paramNames map[string]bool
 	if !node.SimpleParams {
-		paramNames = map[string]bool{}
-		for _, p := range node.Params {
-			patternNames(p, func(id *ast.Identifier) {
-				paramNames[id.Name] = true
-			})
-		}
 		if selfName {
 			selfName = false
 			if n := node.Name.Name; !paramNames[n] && n != "arguments" {

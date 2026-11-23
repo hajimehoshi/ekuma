@@ -3589,3 +3589,31 @@ func TestDirectEvalDestructuredCatch(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestDirectEvalParamDefaultArguments(t *testing.T) {
+	var vm ekuma.VM
+	got := run(t, &vm, `
+		const a = (function f(x = eval("var arguments = 42")) { return arguments; })();
+		const b = (function f(x = eval("var arguments = 42"), y = arguments) { return y + ":" + arguments; })();
+		const c = (function f(x = eval("function arguments() { return 7; }")) { return arguments(); })();
+		const d = (function f(x = eval("var arguments = 42")) { var arguments; return arguments; })();
+
+		let paramArgErr = "";
+		try {
+			(function f(arguments = eval("var arguments = 42")) { return arguments; })();
+		} catch (e) {
+			paramArgErr = e.name;
+		}
+		let destrArgErr = "";
+		try {
+			(function f({ arguments } = eval("var arguments = 42")) { return arguments; })();
+		} catch (e) {
+			destrArgErr = e.name;
+		}
+
+		[a, b, c, d, paramArgErr, destrArgErr].join(",");
+	`)
+	if want := "42,42:42,7,42,SyntaxError,SyntaxError"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
