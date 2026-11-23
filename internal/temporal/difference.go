@@ -330,14 +330,11 @@ func nudgeToCalendarUnit(sign int, d InternalDuration, originEpochNs, destEpochN
 		r.duration = InternalDuration{
 			Date: w.endDuration,
 		}
+		r.nudgedEpochNs = w.endEpochNs
 	} else {
 		r.duration = InternalDuration{
 			Date: w.startDuration,
 		}
-	}
-	if didExpand {
-		r.nudgedEpochNs = w.endEpochNs
-	} else {
 		r.nudgedEpochNs = w.startEpochNs
 	}
 	return r, total, nil
@@ -419,7 +416,7 @@ func nudgeToDayOrTime(d InternalDuration, destEpochNs Int128, largestUnit Unit, 
 	diff := rounded.Sub(t)
 	wholeDays, _ := t.QuoRemInt64(NsPerDay)
 	roundedWholeDays, _ := rounded.QuoRemInt64(NsPerDay)
-	didExpandDays := roundedWholeDays.Sub(wholeDays).Sign() == t.Sign()
+	didExpandDays := roundedWholeDays.Abs().Cmp(wholeDays.Abs()) > 0
 	nudged := destEpochNs.Add(diff)
 	var days int64
 	remainder := rounded
