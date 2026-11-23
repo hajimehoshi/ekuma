@@ -196,8 +196,13 @@ type promiseObject struct {
 // newIntrinsicCapability returns the capability of a new promise of %Promise%,
 // as NewPromiseCapability(%Promise%) does.
 func (vm *VM) newIntrinsicCapability() *PromiseCapability {
+	return vm.executionContext().newIntrinsicCapability()
+}
+
+func (cx ExecutionContext) newIntrinsicCapability() *PromiseCapability {
+	proto := cx.realm.Intrinsic(IntrinsicPromisePrototype)
 	return &PromiseCapability{
-		promise:   vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype)),
+		promise:   newPromiseObject(cx.vm.shapeForRealm(proto, cx.realm)),
 		intrinsic: true,
 	}
 }
@@ -502,14 +507,16 @@ func (vm *VM) PromiseResolve(c *Object, x Value) Value {
 // a later job with the value that v settles to. An exception that PromiseResolve throws
 // propagates, and k is not called then.
 func (vm *VM) Await(v Value, k AwaitHandler) {
-	vm.awaitValue(v, reactionAction{
+	vm.executionContext().awaitValue(v, reactionAction{
 		kind:   reactionNative,
 		native: k,
 	})
 }
 
 // tryAwait suspends g on v, or leaves the exception pending if PromiseResolve throws.
-func (vm *VM) tryAwait(g *generator, v Value, kind reactionKind) bool {
+func (g *generator) tryAwait(v Value, kind reactionKind) bool {
+	cx := g.fp.context
+	vm := cx.vm
 	action := reactionAction{
 		kind: kind,
 		gen:  g,
@@ -519,30 +526,30 @@ func (vm *VM) tryAwait(g *generator, v Value, kind reactionKind) bool {
 		vm.enqueueReactionJob(&pendingReaction{
 			action:           action,
 			continuationData: vm.continuationData,
-			builtinRealm:     g.f.fn.code.context.realm,
+			builtinRealm:     cx.realm,
 		}, v, false)
 		return true
 	}
 	return vm.protect(func() {
-		if vm.trackJobRealms && g.f.fn.code.context.realm != vm.curRealm {
-			vm.InRealm(g.f.fn.code.context.realm, func() { vm.awaitValue(v, action) })
-			return
-		}
-		vm.awaitValue(v, action)
+		cx.awaitValue(v, action)
 	})
 }
 
 // awaitValue performs PromiseResolve and registers the implicit handlers for an await.
-func (vm *VM) awaitValue(v Value, action reactionAction) {
+func (cx ExecutionContext) awaitValue(v Value, action reactionAction) {
+	vm := cx.vm
+	if caller := cx.activate(); caller != nil {
+		defer vm.switchRealm(caller)
+	}
 	var p *Object
 	var rejected bool
 	switch {
 	case IsPromise(v):
-		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == vm.CurrentRealm().Intrinsic(IntrinsicPromise) {
+		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == cx.realm.Intrinsic(IntrinsicPromise) {
 			p = v.o
 		} else {
-			p = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
-			vm.resolvePromise(vm.CurrentRealm(), p, v)
+			p = vm.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
+			vm.resolvePromise(cx.realm, p, v)
 		}
 	case v.IsObject():
 		var then Value
@@ -551,14 +558,14 @@ func (vm *VM) awaitValue(v Value, action reactionAction) {
 		}); !ok {
 			v, rejected = e, true
 		} else if then.IsCallable() {
-			p = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
+			p = vm.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
 			vm.enqueueThenableJob(p, v, then)
 		}
 	}
 	r := pendingReaction{
 		action:           action,
 		continuationData: vm.continuationData,
-		builtinRealm:     vm.curRealm,
+		builtinRealm:     cx.realm,
 	}
 	if p != nil {
 		vm.addReaction(p, &r)
@@ -767,19 +774,24 @@ func (vm *VM) runJob(j *job) {
 		if j.rejected {
 			mode = ResumeThrow
 		}
-		vm.asyncResume(r.gen, mode, j.argument)
+		r.gen.resumeAfterAwait(mode, j.argument)
 		return
 	case reactionAwaitReturn:
 		mode := ResumeReturn
 		if j.rejected {
 			mode = ResumeThrow
 		}
-		vm.asyncResume(r.gen, mode, j.argument)
+		r.gen.resumeAfterAwait(mode, j.argument)
 		return
 	case reactionAsyncGeneratorReturn:
 		g := r.gen
-		vm.asyncGeneratorCompleteStep(g, j.context.enteredRealm, j.argument, j.rejected, true)
-		vm.asyncGeneratorDrainQueue(g)
+		// A completed return resumes the handler created by the draining context.
+		cx := ExecutionContext{
+			vm:    vm,
+			realm: j.context.enteredRealm,
+		}
+		cx.asyncGeneratorCompleteStep(g, j.argument, j.rejected, true)
+		cx.asyncGeneratorDrainQueue(g)
 		return
 	}
 	vm.protect(func() {

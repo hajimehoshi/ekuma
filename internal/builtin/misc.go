@@ -871,13 +871,13 @@ func initIterators(vm *engine.VM) {
 
 	gp := realm.Intrinsic(engine.IntrinsicGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) *engine.Object {
-		return method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			r, ok := vm.ResumeGenerator(this, mode, arg(args, 0))
+		return method(vm, gp, wtf8.String(name), 1, engine.WithExecutionContext(func(cx engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			r, ok := cx.ResumeGenerator(this, mode, arg(args, 0))
 			if !ok {
-				vm.ThrowTypeError(vm.CurrentRealm(), name+" method called on an object that is not a generator")
+				cx.ThrowTypeError(name + " method called on an object that is not a generator")
 			}
 			return r
-		})
+		}))
 	}
 	vm.SetIntrinsic(engine.IntrinsicGeneratorPrototypeNext, resume("next", engine.ResumeNext))
 	resume("return", engine.ResumeReturn)

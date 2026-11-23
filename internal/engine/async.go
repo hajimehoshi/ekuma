@@ -54,13 +54,13 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 
 // callAsync calls the async function f, which is not an async generator, from Go.
 func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
-	g := vm.newGenerator(f, this, args)
+	g := newGenerator(f, this, args)
 	g.async = asyncFunction
-	realm := f.fn.code.context.realm
-	vm.InRealm(realm, func() {
-		g.object = vm.NewPromiseObject(realm.Intrinsic(IntrinsicPromisePrototype))
+	cx := g.fp.context
+	cx.Run(func() {
+		g.object = vm.NewPromiseObject(cx.realm.Intrinsic(IntrinsicPromisePrototype))
 		g.state = genSuspendedStart
-		vm.asyncFunctionResume(g, ResumeNext, Undefined)
+		g.asyncFunctionResume(ResumeNext, Undefined)
 	})
 	return Value{o: g.object}
 }
@@ -72,33 +72,35 @@ func (vm *VM) takeThrown() Value {
 	return e
 }
 
-// asyncResume continues the async function or async generator g after an await.
-func (vm *VM) asyncResume(g *generator, mode ResumeMode, v Value) {
+// resumeAfterAwait continues the async function or async generator g after an await.
+func (g *generator) resumeAfterAwait(mode ResumeMode, v Value) {
 	if g.async == asyncFunction {
-		vm.asyncFunctionResume(g, mode, v)
+		g.asyncFunctionResume(mode, v)
 		return
 	}
-	vm.asyncGeneratorResume(g, mode, v)
+	g.fp.context.asyncGeneratorResume(g, mode, v)
 }
 
 // asyncFunctionResume runs the async function g from its suspension until it awaits or
 // completes, and settles its promise when it completes.
-func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
+func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 	defer g.abortOnPanic()
+	cx := g.fp.context
+	vm := cx.vm
 	for {
 		var r Value
 		var done bool
 		if !vm.protect(func() {
-			r, done = vm.resume(g, mode, v)
+			r, done = cx.resume(g, mode, v)
 		}) {
 			vm.rejectPromise(g.object, vm.takeThrown())
 			return
 		}
 		if done {
-			vm.resolvePromise(g.f.fn.code.context.realm, g.object, r)
+			vm.resolvePromise(cx.realm, g.object, r)
 			return
 		}
-		if vm.tryAwait(g, r, reactionAwait) {
+		if g.tryAwait(r, reactionAwait) {
 			return
 		}
 		mode, v = ResumeThrow, vm.takeThrown()
@@ -107,28 +109,28 @@ func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
 
 // asyncGeneratorResume runs the async generator g from its suspension until it awaits,
 // yields with no request left, or completes.
-func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
+func (resumer ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 	a := g.async
-	resumerRealm := vm.CurrentRealm()
+	vm := resumer.vm
 	for {
 		var r Value
 		var done bool
 		if !vm.protect(func() {
-			r, done = vm.resume(g, mode, v)
+			r, done = resumer.resume(g, mode, v)
 		}) {
 			a.draining = true
-			vm.asyncGeneratorCompleteStep(g, resumerRealm, vm.takeThrown(), true, true)
-			vm.asyncGeneratorDrainQueue(g)
+			resumer.asyncGeneratorCompleteStep(g, vm.takeThrown(), true, true)
+			resumer.asyncGeneratorDrainQueue(g)
 			return
 		}
 		if done {
 			a.draining = true
-			vm.asyncGeneratorCompleteStep(g, resumerRealm, r, false, true)
-			vm.asyncGeneratorDrainQueue(g)
+			resumer.asyncGeneratorCompleteStep(g, r, false, true)
+			resumer.asyncGeneratorDrainQueue(g)
 			return
 		}
 		if g.awaiting {
-			if vm.tryAwait(g, r, reactionAwait) {
+			if g.tryAwait(r, reactionAwait) {
 				return
 			}
 			mode, v = ResumeThrow, vm.takeThrown()
@@ -137,7 +139,7 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 
 		// AsyncGeneratorYield: the generator stays executing while it settles the request.
 		g.awaiting = true
-		vm.asyncGeneratorCompleteStep(g, resumerRealm, r, false, false)
+		resumer.asyncGeneratorCompleteStep(g, r, false, false)
 		if len(a.queue) == 0 {
 			g.awaiting = false
 			return
@@ -146,7 +148,7 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 		mode, v = next.mode, next.value
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
-			if vm.tryAwait(g, v, reactionAwaitReturn) {
+			if g.tryAwait(v, reactionAwaitReturn) {
 				return
 			}
 			mode, v = ResumeThrow, vm.takeThrown()
@@ -156,61 +158,63 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 
 // asyncGeneratorCompleteStep implements AsyncGeneratorCompleteStep for a completion with
 // the value v, which is a throw completion when thrown is set.
-func (vm *VM) asyncGeneratorCompleteStep(g *generator, realm *Realm, v Value, thrown, done bool) {
+func (cx ExecutionContext) asyncGeneratorCompleteStep(g *generator, v Value, thrown, done bool) {
 	a := g.async
 	next := a.queue[0]
 	n := copy(a.queue, a.queue[1:])
 	a.queue[n] = asyncGeneratorRequest{}
 	a.queue = a.queue[:n]
 	if thrown {
-		vm.RejectCapability(next.capability, v)
+		cx.vm.RejectCapability(next.capability, v)
 		return
 	}
-	vm.ResolveCapability(next.capability, realm.CreateIterResultObject(v, done))
+	cx.vm.ResolveCapability(next.capability, cx.CreateIterResultObject(v, done))
 }
 
 // asyncGeneratorDrainQueue implements AsyncGeneratorDrainQueue.
-func (vm *VM) asyncGeneratorDrainQueue(g *generator) {
+func (cx ExecutionContext) asyncGeneratorDrainQueue(g *generator) {
 	a := g.async
 	for len(a.queue) > 0 {
 		next := &a.queue[0]
 		switch next.mode {
 		case ResumeReturn:
-			vm.asyncGeneratorAwaitReturn(g)
+			cx.asyncGeneratorAwaitReturn(g)
 			return
 		case ResumeThrow:
-			vm.asyncGeneratorCompleteStep(g, vm.CurrentRealm(), next.value, true, true)
+			cx.asyncGeneratorCompleteStep(g, next.value, true, true)
 		default:
-			vm.asyncGeneratorCompleteStep(g, vm.CurrentRealm(), Undefined, false, true)
+			cx.asyncGeneratorCompleteStep(g, Undefined, false, true)
 		}
 	}
 	a.draining = false
 }
 
 // asyncGeneratorAwaitReturn implements AsyncGeneratorAwaitReturn.
-func (vm *VM) asyncGeneratorAwaitReturn(g *generator) {
+func (cx ExecutionContext) asyncGeneratorAwaitReturn(g *generator) {
 	v := g.async.queue[0].value
+	vm := cx.vm
 	if !vm.protect(func() {
-		vm.awaitValue(v, reactionAction{
+		cx.awaitValue(v, reactionAction{
 			kind: reactionAsyncGeneratorReturn,
 			gen:  g,
 		})
 	}) {
-		vm.asyncGeneratorCompleteStep(g, vm.CurrentRealm(), vm.takeThrown(), true, true)
-		vm.asyncGeneratorDrainQueue(g)
+		cx.asyncGeneratorCompleteStep(g, vm.takeThrown(), true, true)
+		cx.asyncGeneratorDrainQueue(g)
 	}
 }
 
 // ResumeAsyncGenerator implements the next, return and throw methods of async generators,
 // selected by mode, for the receiver gen. It returns the promise of the iterator result.
-func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
-	c := vm.newIntrinsicCapability()
+func (cx ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
+	vm := cx.vm
+	c := cx.newIntrinsicCapability()
 	var g *generator
 	if gen.IsObject() {
 		g, _ = gen.o.extState().(*generator)
 	}
 	if g == nil || g.async == nil || g.async == asyncFunction {
-		vm.RejectCapability(c, vm.NewError(vm.CurrentRealm(), ErrorKindType, "method called on an object that is not an async generator"))
+		vm.RejectCapability(c, vm.NewError(cx.realm, ErrorKindType, "method called on an object that is not an async generator"))
 		return c.Promise()
 	}
 	defer g.abortOnPanic()
@@ -224,7 +228,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 	if state == asyncGenCompleted {
 		switch mode {
 		case ResumeNext:
-			vm.ResolveCapability(c, vm.CurrentRealm().CreateIterResultObject(Undefined, true))
+			vm.ResolveCapability(c, cx.CreateIterResultObject(Undefined, true))
 			return c.Promise()
 		case ResumeThrow:
 			vm.RejectCapability(c, v)
@@ -242,24 +246,24 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 			g.state = genCompleted
 			g.regs = nil
 			a.draining = true
-			vm.asyncGeneratorAwaitReturn(g)
+			cx.asyncGeneratorAwaitReturn(g)
 			break
 		}
-		vm.asyncGeneratorResume(g, mode, v)
+		cx.asyncGeneratorResume(g, mode, v)
 	case asyncGenCompleted:
 		// Only a return request gets here.
 		a.draining = true
-		vm.asyncGeneratorAwaitReturn(g)
+		cx.asyncGeneratorAwaitReturn(g)
 	case asyncGenSuspendedYield:
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
 			g.awaiting = true
-			if vm.tryAwait(g, v, reactionAwaitReturn) {
+			if g.tryAwait(v, reactionAwaitReturn) {
 				break
 			}
 			mode, v = ResumeThrow, vm.takeThrown()
 		}
-		vm.asyncGeneratorResume(g, mode, v)
+		cx.asyncGeneratorResume(g, mode, v)
 	}
 	return c.Promise()
 }
@@ -403,7 +407,7 @@ func (vm *VM) asyncFromSyncIteratorContinuation(result Value, c *PromiseCapabili
 		r.iterator = it.o
 	}
 	if !vm.protect(func() {
-		vm.awaitValue(value, r)
+		vm.executionContext().awaitValue(value, r)
 	}) {
 		e := vm.takeThrown()
 		if !done && closeOnRejection {

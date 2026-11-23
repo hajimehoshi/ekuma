@@ -3242,9 +3242,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if c := fn.code; c != nil && c.isGenerator && !c.isAsync && fn.bound == nil {
 				// Run the generator up to its initial suspension as an ordinary frame.
 				vm.pushGenerator(f, callThis, vm.stack[argBase:argBase+argc], ret)
-				c.context.activate()
 				fr := &vm.frames[len(vm.frames)-1]
-				fp = c
+				fp = fr.fp
+				fp.context.activate()
 				regs = fr.gen.regs
 				pc = 0
 				continue

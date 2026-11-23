@@ -29,9 +29,9 @@ func initAsync(vm *engine.VM) {
 
 	gp := realm.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) {
-		method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			return vm.ResumeAsyncGenerator(this, mode, arg(args, 0))
-		})
+		method(vm, gp, wtf8.String(name), 1, engine.WithExecutionContext(func(cx engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+			return cx.ResumeAsyncGenerator(this, mode, arg(args, 0))
+		}))
 	}
 	resume("next", engine.ResumeNext)
 	resume("return", engine.ResumeReturn)

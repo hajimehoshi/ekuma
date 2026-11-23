@@ -3,7 +3,7 @@
 
 package engine
 
-// ExecutionContext binds synchronous operations to their execution realm.
+// ExecutionContext binds operations to their execution realm.
 type ExecutionContext struct {
 	vm    *VM
 	realm *Realm

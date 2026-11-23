@@ -348,7 +348,7 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 		}
 		g := it.o.extState().(*generator)
 		vm.pushNative(f, it, nil)
-		v, done := vm.resume(g, ResumeNext, Undefined)
+		v, done := vm.NativeContext().resume(g, ResumeNext, Undefined)
 		vm.popNative()
 		if done {
 			return Undefined, iterDone

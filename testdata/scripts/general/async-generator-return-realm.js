@@ -24,7 +24,11 @@ Object.defineProperty(value, "then", { get() { throw marker; } });
 	);
 
 	// After completion, the return method's PromiseResolve recognizes its own promise.
-	const completed = await close.call(gen, value);
+	const closing = close.call(gen, value);
+	const queued = gen.next();
+	const completed = await closing;
 	assert.sameValue(completed.value, 42);
 	assert.sameValue(Object.getPrototypeOf(completed), Object.prototype);
+	// The return continuation drains the queued next request in the return method's realm.
+	assert.sameValue(Object.getPrototypeOf(await queued), Object.prototype);
 })().then(() => $DONE(), $DONE);
