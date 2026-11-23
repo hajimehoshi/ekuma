@@ -376,6 +376,19 @@ func TestCalendarFormat(t *testing.T) {
 			t:      day(2023, 3, 22),
 			want:   "2bis/1/2023",
 		},
+		// The closest pattern for a date with an era uses an abbreviated month.
+		{
+			locale: "en",
+			cal:    "chinese",
+			c: date.Components{
+				Era:   "short",
+				Year:  "numeric",
+				Month: "numeric",
+				Day:   "numeric",
+			},
+			t:    day(2006, 3, 4),
+			want: "Mo2 5, 2006",
+		},
 		{
 			locale: "en",
 			cal:    "japanese",

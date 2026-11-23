@@ -408,8 +408,8 @@ func (g *generator) adjust(p string, specified, req *skeleton, usesJ, fixFractio
 		case specified != nil && reqChar != 'c' && reqChar != 'e':
 			skelLen := specified.lens[f]
 			patNumeric := row.typ > 0
-			skelNumeric := specified.types[f] > 0
-			if skelLen == reqLen || patNumeric != skelNumeric {
+			reqNumeric := req.types[f] > 0
+			if skelLen == reqLen || patNumeric != reqNumeric {
 				adjLen = it.n
 			}
 		}
