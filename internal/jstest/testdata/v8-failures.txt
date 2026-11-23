@@ -496,11 +496,6 @@ test/mjsunit/es6/unicode-regexp-ignore-case-noi18n.js
 # to native function syntax for a large source offset.
 test/mjsunit/harmony/function-tostring.js
 
-# ECMA-402 leaves number symbols to the locale data. Ekuma includes the Arabic
-# letter marks in the minus and percent sign parts. V8 expects separate
-# literal parts.
-test/mjsunit/intl-numberformat-formattoparts.js
-
 # CreateDateTimeFormat as amended by Temporal preserves the supplied IANA
 # identifier. V8 expects aliases for the same zone to resolve to one spelling.
 test/mjsunit/regress/regress-crbug-364374.js

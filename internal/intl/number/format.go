@@ -407,10 +407,7 @@ func (f *Formatter) affixParts(tokens []token, compactPattern bool) []Part {
 			})
 		case tokenPercent:
 			if f.o.Style == "percent" {
-				parts = append(parts, Part{
-					Type:  "percentSign",
-					Value: f.percent,
-				})
+				parts = appendAffixParts(parts, "percentSign", f.percent, isBidiControl)
 			}
 		case tokenPermille:
 		case tokenCurrency:
