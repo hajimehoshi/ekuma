@@ -2866,7 +2866,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpIterNextPair:
 			// The elements of the next value go to their registers without the value when nothing
-			// can tell, and the instructions after this one step the iterator otherwise.
+			// can tell. When the step has run and something can tell, the pair becomes the value of
+			// the following OpIterNext, which is skipped. Otherwise the instructions after this one
+			// step the iterator, which is already cleared when the step found it finished.
 			b := fp.code[pc].A
 			pc++
 			it, next := regs[i.B], regs[i.B+1]
