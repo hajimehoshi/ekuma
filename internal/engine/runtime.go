@@ -1150,38 +1150,38 @@ func (vm *VM) arrayProtoPlain() bool {
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
 // without any observable call.
 func (vm *VM) arrayIterationPlain(o *Object) bool {
-	return o.shape == vm.shapes.array && vm.arrayIterationUnmodified()
+	return o.shape == vm.shapes.array && vm.arrayIterationUnmodified(&vm.realm)
 }
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
 // %ArrayIteratorPrototype%.next are the original functions.
-func (vm *VM) arrayIterationUnmodified() bool {
-	c := &vm.arrayIter
+func (vm *VM) arrayIterationUnmodified(r *realm) bool {
+	c := &r.arrayIter
 	if c.epoch != vm.protoEpoch || !c.checked {
 		c.checked = true
 		c.epoch = vm.protoEpoch
-		c.found = c.iter.findData(vm.Intrinsic(IntrinsicArrayPrototype), vm.WellKnownSymbol(SymbolIterator)) &&
-			c.next.findData(vm.Intrinsic(IntrinsicArrayIteratorPrototype), vm.Key(keyNext))
-		c.noReturn = vm.noArrayIteratorReturn()
+		c.found = c.iter.findData(r.intrinsics[IntrinsicArrayPrototype], vm.WellKnownSymbol(SymbolIterator)) &&
+			c.next.findData(r.intrinsics[IntrinsicArrayIteratorPrototype], vm.Key(keyNext))
+		c.noReturn = vm.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
 	}
 	// Assigning to an existing data property does not move protoEpoch, so the values are
 	// compared on every call.
-	return c.found && c.iter.value().o == vm.Intrinsic(IntrinsicArrayPrototypeValues) &&
-		c.next.value().o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
+	return c.found && c.iter.value().o == r.intrinsics[IntrinsicArrayPrototypeValues] &&
+		c.next.value().o == r.intrinsics[IntrinsicArrayIteratorPrototypeNext]
 }
 
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
-func (vm *VM) pairDestructuringPlain() bool {
-	return vm.arrayIterationUnmodified() && vm.arrayIter.noReturn
+func (vm *VM) pairDestructuringPlain(r *realm) bool {
+	return vm.arrayIterationUnmodified(r) && r.arrayIter.noReturn
 }
 
 // noArrayIteratorReturn reports whether array iterators have no return method, which closing
 // one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
 // property to one moves protoEpoch.
-func (vm *VM) noArrayIteratorReturn() bool {
+func (vm *VM) noArrayIteratorReturn(proto *Object) bool {
 	key := vm.Key(keyReturn)
-	for p := vm.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
+	for p := proto; p != nil; p = p.shape.proto {
 		p.flags |= objIsProto
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
 			return false

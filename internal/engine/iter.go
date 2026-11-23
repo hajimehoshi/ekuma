@@ -62,19 +62,13 @@ const (
 
 	// PairYielded says that the iterator yielded an array of the two values.
 	PairYielded
-
-	// PairYieldedAfterCall says that the step yielded a pair and may have run JavaScript.
-	PairYieldedAfterCall
 )
 
-// IteratorPairStepFunc is the next method of a built-in iterator, without the iterator result,
-// for an iterator that yields arrays of two elements: it returns the elements of the next array
-// that the iterator this yields, without creating the array. It declines when the iterator does
-// not yield such arrays or this is not an iterator of its kind. A step that may have run
-// JavaScript reports PairYieldedAfterCall when it yields.
-type IteratorPairStepFunc func(vm *VM, this Value) (a, b Value, st PairStep)
+// IteratorPairStepFunc advances an entries iterator that yields pairs in its creation realm.
+// It must decline incompatible state without advancing, and must neither throw nor run JavaScript.
+type IteratorPairStepFunc func(state any) (a, b Value, st PairStep)
 
-// SetIteratorPairStep makes step the pair step of next, which NewIteratorNext returned.
+// SetIteratorPairStep registers the pair step of a built-in next method.
 func (vm *VM) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
 	next.fn.info.fast.pairStep = step
 }
@@ -122,18 +116,18 @@ func (vm *VM) NewIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFu
 
 // NewPlainIteratorNext returns a next method for iterators with state T.
 // For a compatible receiver, step must neither throw nor run JavaScript.
-func NewPlainIteratorNext[T any](vm *VM, yieldRealm IteratorYieldRealm, receiverError string, step func(*VM, T) (Value, bool)) *Object {
+func NewPlainIteratorNext[T any](vm *VM, yieldRealm IteratorYieldRealm, receiverError string, step func(*VM, *Object, T) (Value, bool)) *Object {
 	next := vm.newIteratorNext(yieldRealm, func(vm *VM, this Value) (Value, bool) {
 		state, ok := IteratorState(this).(T)
 		if !ok {
 			vm.ThrowTypeError(receiverError)
 		}
-		return step(vm, state)
+		return step(vm, this.o, state)
 	})
 	next.fn.info.fast = &nativeFast{
 		step: func(vm *VM, this Value) (Value, bool) {
 			if state, ok := IteratorState(this).(T); ok {
-				return step(vm, state)
+				return step(vm, this.o, state)
 			}
 			// The receiver error belongs to the native next call.
 			return vm.Call(next, this), false
@@ -188,24 +182,22 @@ func (vm *VM) NewArrayIteratorNext() *Object {
 			}
 			return v, st == PairYielded
 		},
-		pairStep: func(vm *VM, this Value) (Value, Value, PairStep) {
-			it, _ := IteratorState(this).(*arrayIterator)
-			if it == nil || it.kind != IterateEntries {
-				return Undefined, Undefined, PairDeclined
-			}
-			key, value, st := it.step(vm, false)
-			if st == PairDeclined {
-				vm.pushNative(next, this, nil)
-				key, value, st = it.step(vm, true)
-				vm.popNative()
-				if st == PairYielded {
-					st = PairYieldedAfterCall
-				}
-			}
-			return key, value, st
-		},
 	}
 	return next
+}
+
+func (vm *VM) arrayIteratorPairStep(it, next Value) (Value, Value, PairStep) {
+	state, _ := IteratorState(it).(*arrayIterator)
+	if state == nil || state.kind != IterateEntries {
+		return Undefined, Undefined, PairDeclined
+	}
+	key, value, st := state.step(vm, false)
+	if st == PairDeclined {
+		vm.pushNative(next.o, it, nil)
+		key, value, st = state.step(vm, true)
+		vm.popNative()
+	}
+	return key, value, st
 }
 
 func (it *arrayIterator) valueStep(vm *VM, allowCalls bool) (Value, PairStep) {

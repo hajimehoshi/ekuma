@@ -2901,7 +2901,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 				e := o.elems[j].o
-				if e == nil || e.shape != vm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !vm.pairDestructuringPlain() {
+				if e == nil || e.shape != vm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !vm.pairDestructuringPlain(&vm.realm) {
 					continue
 				}
 				regs[i.B+1].n = next.n + 1
@@ -2910,38 +2910,40 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.C)
 				continue
 			}
-			if next.o == nil || next.o.fn == nil {
+			if next.o == nil || next.o.fn == nil || vm.interrupt.Load() {
 				continue
 			}
-			step := next.o.fn.iteratorPairStep(vm.curRealm)
-			if step == nil || !vm.pairDestructuringPlain() {
+			var x, y Value
+			var st PairStep
+			pairRealm := vm.CurrentRealm()
+			if step := next.o.fn.iteratorPairStep(vm.curRealm); step != nil {
+				x, y, st = step(IteratorState(it))
+				if st == PairYielded {
+					pairRealm = (*Realm)(it.o.shape.realm)
+				}
+			} else if next.o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext) {
+				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
+				vm.frames[len(vm.frames)-1].pc = pc
+				regs[i.B] = Undefined
+				x, y, st = vm.arrayIteratorPairStep(it, next)
+				regs = vm.reload(regs, vm.frameBase(), fp)
+				regs[i.B] = it
+			} else {
 				continue
 			}
-			vm.frames[len(vm.frames)-1].pc = pc
-			// A step that throws leaves the iterator finished, as in OpIterNext.
-			regs[i.B] = Undefined
-			if vm.interrupt.Load() {
-				vm.Poll()
-			}
-			x, y, st := step(vm, it)
-			regs = vm.reload(regs, vm.frameBase(), fp)
 			switch st {
-			case PairYieldedAfterCall:
-				if !vm.pairDestructuringPlain() {
+			case PairYielded:
+				if !vm.pairDestructuringPlain(vm.realmData(pairRealm)) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
-					regs[i.B] = it
-					regs[fp.code[pc].A] = Value{o: vm.NewArrayPair(x, y)}
+					regs[fp.code[pc].A] = Value{o: vm.NewArrayPairInRealm(pairRealm, x, y)}
 					pc++
 					continue
 				}
-				fallthrough
-			case PairYielded:
-				regs[i.B] = it
 				regs[i.A] = x
 				regs[b] = y
 				pc = int(i.C)
-			case PairDeclined:
-				regs[i.B] = it
+			case PairDone:
+				regs[i.B] = Undefined
 			}
 			// A finished iterator is left for the step after this instruction.
 		case bytecode.OpIterClose:
@@ -3140,7 +3142,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !vm.arrayIterationUnmodified()) {
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !vm.arrayIterationUnmodified(&vm.realm)) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			args := vm.spreadArgs(vm.forwardedArguments(slices.Clip(regs), i.C)).elems
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil

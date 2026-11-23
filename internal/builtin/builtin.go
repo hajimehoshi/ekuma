@@ -43,7 +43,7 @@ func iteratorNext(vm *engine.VM, proto *engine.Object, yieldRealm engine.Iterato
 }
 
 // plainIteratorNext defines a next method whose step runs no JavaScript and cannot throw.
-func plainIteratorNext[T any](vm *engine.VM, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, receiverError string, step func(*engine.VM, T) (engine.Value, bool)) *engine.Object {
+func plainIteratorNext[T any](vm *engine.VM, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, receiverError string, step func(*engine.VM, *engine.Object, T) (engine.Value, bool)) *engine.Object {
 	fn := engine.NewPlainIteratorNext(vm, yieldRealm, receiverError, step)
 	vm.Define(proto, vm.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn

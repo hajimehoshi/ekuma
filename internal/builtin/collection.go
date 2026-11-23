@@ -317,7 +317,7 @@ func initMap(vm *engine.VM) {
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(mapEntries), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map"), engine.FlagConfigurable)
 
-	mapIterNext = plainIteratorNext(vm, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", func(vm *engine.VM, it *mapIterator) (engine.Value, bool) {
+	mapIterNext = plainIteratorNext(vm, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Map Iterator", func(vm *engine.VM, iterator *engine.Object, it *mapIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -332,10 +332,10 @@ func initMap(vm *engine.VM) {
 		case engine.IterateValues:
 			return v, true
 		}
-		return engine.ObjectValue(vm.NewArrayPair(k, v)), true
+		return engine.ObjectValue(vm.NewArrayPairInRealm(iterator.CreationRealm(), k, v)), true
 	})
-	vm.SetIteratorPairStep(mapIterNext, func(vm *engine.VM, this engine.Value) (engine.Value, engine.Value, engine.PairStep) {
-		it, _ := engine.IteratorState(this).(*mapIterator)
+	vm.SetIteratorPairStep(mapIterNext, func(state any) (engine.Value, engine.Value, engine.PairStep) {
+		it, _ := state.(*mapIterator)
 		if it == nil || it.kind != engine.IterateEntries {
 			return engine.Undefined, engine.Undefined, engine.PairDeclined
 		}
@@ -716,7 +716,7 @@ func initSet(vm *engine.VM) {
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(setValues), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set"), engine.FlagConfigurable)
 
-	setIterNext = plainIteratorNext(vm, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", func(vm *engine.VM, it *setIterator) (engine.Value, bool) {
+	setIterNext = plainIteratorNext(vm, iterProto, engine.IteratorClosureRealm, "next method called on an object that is not a Set Iterator", func(vm *engine.VM, iterator *engine.Object, it *setIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -726,12 +726,12 @@ func initSet(vm *engine.VM) {
 			return engine.Undefined, false
 		}
 		if it.kind == engine.IterateEntries {
-			return engine.ObjectValue(vm.NewArrayPair(k, k)), true
+			return engine.ObjectValue(vm.NewArrayPairInRealm(iterator.CreationRealm(), k, k)), true
 		}
 		return k, true
 	})
-	vm.SetIteratorPairStep(setIterNext, func(vm *engine.VM, this engine.Value) (engine.Value, engine.Value, engine.PairStep) {
-		it, _ := engine.IteratorState(this).(*setIterator)
+	vm.SetIteratorPairStep(setIterNext, func(state any) (engine.Value, engine.Value, engine.PairStep) {
+		it, _ := state.(*setIterator)
 		if it == nil || it.kind != engine.IterateEntries {
 			return engine.Undefined, engine.Undefined, engine.PairDeclined
 		}

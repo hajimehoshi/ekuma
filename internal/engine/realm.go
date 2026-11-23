@@ -142,6 +142,14 @@ func (vm *VM) CreateRealm(install func()) *Realm {
 	return (*Realm)(r)
 }
 
+// realmData returns the live state of r until the next realm switch.
+func (vm *VM) realmData(r *Realm) *realm {
+	if r == vm.CurrentRealm() {
+		return &vm.realm
+	}
+	return (*realm)(r)
+}
+
 // realmIntrinsic returns the intrinsic id of the realm r.
 func (vm *VM) realmIntrinsic(r *realm, id Intrinsic) *Object {
 	if r == vm.curRealm {

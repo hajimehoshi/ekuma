@@ -1102,10 +1102,15 @@ type objectWith[S any] struct {
 
 // NewArrayPair returns a new array with the elements a and b.
 func (vm *VM) NewArrayPair(a, b Value) *Object {
+	return vm.NewArrayPairInRealm(vm.CurrentRealm(), a, b)
+}
+
+// NewArrayPairInRealm returns an array with the elements a and b in realm.
+func (vm *VM) NewArrayPairInRealm(realm *Realm, a, b Value) *Object {
 	p := &pairArray{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  vm.shapes.array,
+		shape:  vm.realmData(realm).shapes.array,
 		length: 2,
 		pair:   [2]Value{a, b},
 	}

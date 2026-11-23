@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
 /*---
-description: "Map entry pairs belong to the realm of the next method"
+description: "Map entry pairs belong to the realm of the iterator closure"
 ---*/
 
 const foreign = $262.createRealm().global;
