@@ -379,6 +379,9 @@ func (p *parser) parseExport() ast.Stmt {
 	decl := p.parseStatement(ctxList)
 	switch s := decl.(type) {
 	case *ast.VarDecl:
+		if s.Kind == ast.DeclUsing || s.Kind == ast.DeclAwaitUsing {
+			p.fail(int(decl.Start()), "using declarations cannot be exported")
+		}
 		for i := range s.Decls {
 			p.addPatternExports(s.Decls[i].Target)
 		}

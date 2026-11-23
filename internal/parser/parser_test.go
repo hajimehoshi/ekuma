@@ -1544,6 +1544,16 @@ func TestInvalid(t *testing.T) {
 		{
 			src: "class C { accessor constructor }",
 		},
+
+		// Exported using declarations are not allowed.
+		{
+			src:  "export using x = y;",
+			mode: module,
+		},
+		{
+			src:  "export await using x = y;",
+			mode: module,
+		},
 	}
 	for _, tc := range testCases {
 		prog, err := parse(tc.src, tc.mode)
