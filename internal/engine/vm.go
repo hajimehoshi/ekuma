@@ -536,10 +536,6 @@ type VM struct {
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[bytecode.RegExp]*regexp.Regexp
 
-	// realm is the state of the current realm, whose record is curRealm. The record of the
-	// current realm is stale: the state lives here until another realm becomes current.
-	realm
-
 	curRealm *realm
 
 	// callerRealm is the realm that was current when the innermost interpreter loop started.
@@ -644,12 +640,7 @@ type realm struct {
 type Realm realm
 
 // switchRealm makes r the current realm.
-//
-//go:noinline
 func (vm *VM) switchRealm(r *realm) {
-	// A switch is rare. Out of line, the copy does not grow the interpreter loop.
-	*vm.curRealm = vm.realm
-	vm.realm = *r
 	vm.curRealm = r
 }
 
@@ -769,12 +760,12 @@ func TypedArrayPrototypeIntrinsic(t ElementType) Intrinsic {
 
 // Intrinsic returns the intrinsic object id, or nil before it is set.
 func (vm *VM) Intrinsic(id Intrinsic) *Object {
-	return vm.intrinsics[id]
+	return vm.curRealm.intrinsics[id]
 }
 
 // SetIntrinsic makes o the intrinsic object id.
 func (vm *VM) SetIntrinsic(id Intrinsic, o *Object) {
-	vm.intrinsics[id] = o
+	vm.curRealm.intrinsics[id] = o
 }
 
 // ErrorKind is a native error type.
@@ -877,7 +868,7 @@ func (vm *VM) restoreException(v Value) {
 
 // newError returns a new error object of the given type in r.
 func (vm *VM) newError(r *Realm, kind ErrorKind, msg string) *Object {
-	e := vm.NewErrorObject(r, vm.realmIntrinsic((*realm)(r), ErrorPrototypeIntrinsic(kind)))
+	e := vm.NewErrorObject(r, r.intrinsics[ErrorPrototypeIntrinsic(kind)])
 	// A message that quotes a value of the script can be longer than a string may be.
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
 	e.setExtState(vm.newErrorData(e, msg, len(vm.frames), len(vm.natives)))
@@ -943,7 +934,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 	if n := min(frames+natives, maxStackFrames); n > 0 {
 		d.calls = make([]stackCall, 0, n)
 	}
-	globalThis := vm.realmData(e.CreationRealm()).globalThis
+	globalThis := e.CreationRealm().globalThis
 	j := natives - 1
 	for i := frames - 1; len(d.calls) < maxStackFrames; i-- {
 		// A native function called from the frame i runs inside it.

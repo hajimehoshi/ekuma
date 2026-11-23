@@ -598,13 +598,9 @@ type iterResult struct {
 
 // CreateIterResultObject creates an iterator result with the Object prototype of realm.
 func (vm *VM) CreateIterResultObject(realm *Realm, v Value, done bool) Value {
-	s := vm.shapes.iterResult
-	if realm != vm.CurrentRealm() {
-		s = realm.shapes.iterResult
-	}
 	r := &iterResult{
 		kind:  kindObject,
-		shape: s,
+		shape: realm.shapes.iterResult,
 		props: [2]Value{v, Bool(done)},
 	}
 	r.slots = r.props[:]

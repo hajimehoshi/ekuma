@@ -25,11 +25,11 @@ func (vm *VM) forwardedArguments(regs []Value, argsReg int32) Value {
 func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 	o := vm.newArgumentsObject(fr, regs)
 	if !mapped {
-		if vm.strictCallee.o == nil {
+		if vm.curRealm.strictCallee.o == nil {
 			// An accessor pair is never changed in place, so the objects share it.
-			vm.strictCallee = newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError))
+			vm.curRealm.strictCallee = newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError))
 		}
-		vm.add(o, vm.Key(keyCallee), vm.strictCallee, FlagAccessor)
+		vm.add(o, vm.Key(keyCallee), vm.curRealm.strictCallee, FlagAccessor)
 		return o
 	}
 	if n := min(fr.argc, fr.fp.nparams); n > 0 {
@@ -85,7 +85,7 @@ func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
 	elems = append(elems, vm.extraArgs(fr)...)
 	a.kind = kindObject
 	a.class = classArguments
-	a.shape = vm.shapes.arguments
+	a.shape = vm.curRealm.shapes.arguments
 	a.elems = elems
 	a.storage = [3]Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]

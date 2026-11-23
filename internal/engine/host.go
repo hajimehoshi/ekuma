@@ -17,7 +17,7 @@ func (vm *VM) HostDefined() any {
 
 // GlobalObject returns the global object.
 func (vm *VM) GlobalObject() Value {
-	return Value{o: vm.global}
+	return Value{o: vm.curRealm.global}
 }
 
 // ExceptionLocation identifies the throw site. Line and Column are 1-based,
@@ -33,7 +33,7 @@ type ExceptionLocation struct {
 // an outermost host call or a queued callback. The handler receives the thrown
 // value and its source location before the next microtask runs.
 func (vm *VM) SetExceptionReporter(report func(Value, ExceptionLocation)) {
-	vm.exceptionReporter = report
+	vm.curRealm.exceptionReporter = report
 }
 
 // ExceptionDescription describes a thrown Error or proxy without invoking JavaScript.

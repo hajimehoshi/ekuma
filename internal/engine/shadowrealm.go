@@ -39,9 +39,9 @@ func (vm *VM) EvalInRealm(r *Realm, src wtf8.String) (Value, bool) {
 	var result, e Value
 	var ok bool
 	vm.InRealm(r, func() {
-		f := vm.newScriptFunction(vm.link(bc, vm.referrer))
+		f := vm.newScriptFunction(vm.link(bc, vm.curRealm.referrer))
 		e, ok = vm.Completion(func() {
-			result = vm.Call(f, Value{o: vm.globalThis})
+			result = vm.Call(f, Value{o: vm.curRealm.globalThis})
 		})
 	})
 	if !ok {
@@ -57,7 +57,7 @@ func (vm *VM) ImportInRealm(r *Realm, specifier wtf8.String) *Object {
 	vm.InRealm(r, func() {
 		c := vm.newIntrinsicCapability()
 		p = c.promise
-		m, e, ok := vm.loadImportedModule(vm.referrer, ModuleRequest{
+		m, e, ok := vm.loadImportedModule(vm.curRealm.referrer, ModuleRequest{
 			Specifier: specifier,
 		})
 		if !ok {

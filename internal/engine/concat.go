@@ -132,7 +132,7 @@ func (vm *VM) concatShort(a Value, aN int, b Value, bN int) (Value, bool) {
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.shapes.shortStrings[n],
+		o: &vm.curRealm.shapes.shortStrings[n],
 	}, true
 }
 
@@ -315,7 +315,7 @@ func (vm *VM) concatSmall(parts []Value, n int, count concatCount, needsUnpackin
 		}
 		return Value{
 			n: math.Float64frombits(data),
-			o: &vm.shapes.shortStrings[n],
+			o: &vm.curRealm.shapes.shortStrings[n],
 		}
 	}
 	var buf [maxStackConcatBytes]byte
@@ -419,7 +419,7 @@ func (vm *VM) concatenated(s wtf8.String, count concatCount) Value {
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: vm.shapes.string,
+			shape: vm.curRealm.shapes.string,
 			str:   s,
 			ext:   count,
 		},
@@ -517,7 +517,7 @@ func (vm *VM) newBufferedString(s wtf8.String, flags uint8, builder any, meta *o
 			o: &Object{
 				kind:  kindString,
 				flags: flags,
-				shape: vm.shapes.string,
+				shape: vm.curRealm.shapes.string,
 				str:   s,
 				ext:   builder,
 			},
@@ -531,7 +531,7 @@ func (vm *VM) newBufferedString(s wtf8.String, flags uint8, builder any, meta *o
 		object: Object{
 			kind:  kindString,
 			flags: flags,
-			shape: vm.shapes.string,
+			shape: vm.curRealm.shapes.string,
 			str:   s,
 		},
 		meta: *meta,

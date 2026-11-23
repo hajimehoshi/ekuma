@@ -92,7 +92,7 @@ func (vm *VM) newModuleNamespace(m *Module, deferred bool) *Object {
 		kind:  kindObject,
 		class: classModuleNamespace,
 		flags: objExotic,
-		shape: vm.shapes.nullProto,
+		shape: vm.curRealm.shapes.nullProto,
 		ext:   ns,
 	}).init()
 	tag := wtf8.String("Module")

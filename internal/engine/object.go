@@ -769,10 +769,7 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 // shapeForRealm returns the empty shape for objects of r with prototype proto, which may be nil.
 func (vm *VM) shapeForRealm(proto *Object, r *realm) *shape {
 	if proto == nil {
-		if r != vm.curRealm {
-			return r.shapes.nullProto
-		}
-		return vm.shapes.nullProto
+		return r.shapes.nullProto
 	}
 	return proto.ensureMeta().protoShapes.forRealm(vm, proto, r)
 }
@@ -810,13 +807,9 @@ func (vm *VM) objectRootShape(proto *Object, r *realm, cls class) *shape {
 		return vm.shapeForRealm(proto, r)
 	}
 	if proto == nil {
-		shapes := &vm.shapes
-		if r != vm.curRealm {
-			shapes = &r.shapes
-		}
-		s := &shapes.nullArray
+		s := &r.shapes.nullArray
 		if cls == classTypedArray {
-			s = &shapes.nullTypedArray
+			s = &r.shapes.nullTypedArray
 		}
 		if *s == nil {
 			*s = vm.newShape(nil, r)
@@ -900,7 +893,7 @@ func newInstance(s *shape) *Object {
 func (vm *VM) NewOrdinaryObject() *Object {
 	return (&propertyObject{
 		kind:  kindObject,
-		shape: vm.shapes.object,
+		shape: vm.curRealm.shapes.object,
 	}).init()
 }
 
@@ -909,7 +902,7 @@ func (vm *VM) NewArray(elems []Value) *Object {
 	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  vm.shapes.array,
+		shape:  vm.curRealm.shapes.array,
 		elems:  elems,
 		length: uint32(len(elems)),
 	}).init()
@@ -920,7 +913,7 @@ func (vm *VM) NewArrayCopy(elems []Value) *Object {
 	a, storage := newObjectWithStorage(len(elems))
 	a.kind = kindArray
 	a.class = classArray
-	a.shape = vm.shapes.array
+	a.shape = vm.curRealm.shapes.array
 	a.elems = storage
 	copy(a.elems, elems)
 	a.length = uint32(len(elems))
@@ -932,7 +925,7 @@ func (vm *VM) NewEmptyArrayWithRoom(n int) *Object {
 	a, storage := newObjectWithStorage(n)
 	a.kind = kindArray
 	a.class = classArray
-	a.shape = vm.shapes.array
+	a.shape = vm.curRealm.shapes.array
 	a.elems = storage[:0]
 	return a
 }
@@ -1110,7 +1103,7 @@ func (vm *VM) NewArrayPairInRealm(realm *Realm, a, b Value) *Object {
 	p := &pairArray{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  vm.realmData(realm).shapes.array,
+		shape:  realm.shapes.array,
 		length: 2,
 		pair:   [2]Value{a, b},
 	}
@@ -1123,7 +1116,7 @@ func (vm *VM) NewArrayWithRoom(length, n int) *Object {
 	a, storage := newObjectWithStorage(length + n)
 	a.kind = kindArray
 	a.class = classArray
-	a.shape = vm.shapes.array
+	a.shape = vm.curRealm.shapes.array
 	// Appending elements must not overwrite the named properties.
 	a.elems = storage[:length:length]
 	a.length = uint32(length)
@@ -1137,7 +1130,7 @@ func (vm *VM) NewArrayWithRoom(length, n int) *Object {
 func (vm *VM) NewObjectFromProperties(keys []PropKey, vals []Value) *Object {
 	o, slots := newObjectWithStorage(len(vals))
 	o.kind = kindObject
-	o.shape = vm.shapes.object
+	o.shape = vm.curRealm.shapes.object
 	o.slots = slots[:0]
 	for i, k := range keys {
 		v := vals[i]
@@ -1246,7 +1239,7 @@ func (vm *VM) NewString(s wtf8.String) Value {
 	return Value{
 		o: &Object{
 			kind:  kindString,
-			shape: vm.shapes.string,
+			shape: vm.curRealm.shapes.string,
 			str:   s,
 		},
 	}
@@ -1269,7 +1262,7 @@ func (vm *VM) Intern(s wtf8.String) *Object {
 	o := &Object{
 		kind:  kindString,
 		flags: objInterned,
-		shape: vm.shapes.string,
+		shape: vm.curRealm.shapes.string,
 		str:   s,
 	}
 	if vm.strings.keepNew {

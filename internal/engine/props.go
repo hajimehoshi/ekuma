@@ -284,19 +284,19 @@ func (vm *VM) materialize(o *Object) {
 		if c.legacyCallerArguments {
 			// Accessors, as the values change while the properties are neither writable nor
 			// configurable.
-			vm.add(o, vm.Key(keyArguments), newAccessor(vm.realmIntrinsic(c.realm, IntrinsicFunctionArgumentsGetter), nil), FlagAccessor)
-			vm.add(o, vm.Key(keyCaller), newAccessor(vm.realmIntrinsic(c.realm, IntrinsicFunctionCallerGetter), nil), FlagAccessor)
+			vm.add(o, vm.Key(keyArguments), newAccessor(c.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
+			vm.add(o, vm.Key(keyCaller), newAccessor(c.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
 		}
 		switch {
 		case c.isGenerator:
-			proto := vm.realmIntrinsic(c.realm, IntrinsicGeneratorPrototype)
+			proto := c.realm.intrinsics[IntrinsicGeneratorPrototype]
 			if c.isAsync {
-				proto = vm.realmIntrinsic(c.realm, IntrinsicAsyncGeneratorPrototype)
+				proto = c.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
 			}
 			p := newObject(vm.shapeForRealm(proto, c.realm))
 			vm.add(o, vm.Key(KeyPrototype), Value{o: p}, FlagWritable)
 		case f.constructor:
-			proto := vm.realmIntrinsic(c.realm, IntrinsicObjectPrototype)
+			proto := c.realm.intrinsics[IntrinsicObjectPrototype]
 			p := newObject(vm.shapeForRealm(proto, c.realm))
 			vm.add(p, vm.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
@@ -416,7 +416,7 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
 		}
-		if p := vm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {
+		if p := vm.curRealm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {
 			// The shape of a string made in another realm leads to the String.prototype of
 			// that realm.
 			return vm.NewStringObject(o, p)
@@ -1270,7 +1270,7 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 		return false
 	}
 	r := receiver.o
-	if o == vm.global && r == vm.globalThis {
+	if o == vm.curRealm.global && r == vm.curRealm.globalThis {
 		// A global binding stores on the backing object even after detachment.
 		r = o
 	}
@@ -1651,7 +1651,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 	if o.shape.proto == proto {
 		return true
 	}
-	if o.flags&objNotExtensible != 0 || o.shape.proto == nil && o == vm.realmIntrinsic(o.shape.realm, IntrinsicObjectPrototype) {
+	if o.flags&objNotExtensible != 0 || o.shape.proto == nil && o == o.shape.realm.intrinsics[IntrinsicObjectPrototype] {
 		return false
 	}
 	if o.flags&objExotic != 0 {

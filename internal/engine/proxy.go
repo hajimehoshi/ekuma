@@ -28,13 +28,13 @@ func (s *proxyState) allowsGlobalAccess(group *Object) bool {
 // CanAccessReceiver reports whether a non-strict host call may use receiver in the current realm.
 func (vm *VM) CanAccessReceiver(receiver Value) bool {
 	if receiver.IsNullish() {
-		receiver = ObjectValue(vm.globalThis)
+		receiver = ObjectValue(vm.curRealm.globalThis)
 	}
 	if !receiver.IsObject() || receiver.o.class != classProxy {
 		return true
 	}
 	st := receiver.o.extState().(*proxyState)
-	return !st.isGlobal() || st.allowsGlobalAccess(vm.globalProxyHandler)
+	return !st.isGlobal() || st.allowsGlobalAccess(vm.curRealm.globalProxyHandler)
 }
 
 // ProxyCreate implements ProxyCreate.
@@ -46,7 +46,7 @@ func (vm *VM) ProxyCreate(target, handler Value) *Object {
 		kind:  kindObject,
 		class: classProxy,
 		flags: objExotic,
-		shape: vm.shapes.proxy,
+		shape: vm.curRealm.shapes.proxy,
 		ext: &proxyState{
 			target:  target.o,
 			handler: handler.o,
@@ -79,61 +79,54 @@ func (vm *VM) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAcce
 	if previous != nil {
 		vm.InRealm(previous, func() {
 			vm.DetachGlobalProxy()
-			proxy = vm.globalThis
+			proxy = vm.curRealm.globalThis
 			if shareAccess {
-				handler = vm.globalProxyHandler
+				handler = vm.curRealm.globalProxyHandler
 			}
 		})
 	} else if shareAccess && vm.enteredRealm != nil {
-		entered := vm.enteredRealm
-		if entered == vm.curRealm {
-			entered = &vm.realm
-		}
-		handler = entered.globalProxyHandler
+		handler = vm.enteredRealm.globalProxyHandler
 	}
 	if handler == nil {
 		handler = vm.defaultGlobalHandler()
 	}
 	vm.trackJobRealms = true
-	vm.globalProxyHandler = handler
-	vm.foreignGlobalView = foreignView
+	vm.curRealm.globalProxyHandler = handler
+	vm.curRealm.foreignGlobalView = foreignView
 	if proxy == nil {
-		proxy = vm.ProxyCreate(ObjectValue(vm.global), ObjectValue(handler))
+		proxy = vm.ProxyCreate(ObjectValue(vm.curRealm.global), ObjectValue(handler))
 		// A global proxy can outlive its first realm and acquire a new target on navigation.
 		proxy.shape = vm.newShape(nil, nil)
 	} else {
 		state := proxy.extState().(*proxyState)
-		state.target = vm.global
+		state.target = vm.curRealm.global
 		state.handler = handler
 	}
-	vm.globalThis = proxy
-	vm.Define(vm.global, vm.Intern("globalThis"), ObjectValue(proxy), FlagsHidden)
+	vm.curRealm.globalThis = proxy
+	vm.Define(vm.curRealm.global, vm.Intern("globalThis"), ObjectValue(proxy), FlagsHidden)
 	return ObjectValue(proxy)
 }
 
 func (vm *VM) defaultGlobalHandler() *Object {
-	if vm.defaultGlobalProxyHandler == nil {
+	if vm.curRealm.defaultGlobalProxyHandler == nil {
 		h := vm.NewObject(nil)
 		h.class = classGlobalProxyHandler
-		vm.defaultGlobalProxyHandler = h
+		vm.curRealm.defaultGlobalProxyHandler = h
 	}
-	return vm.defaultGlobalProxyHandler
+	return vm.curRealm.defaultGlobalProxyHandler
 }
 
 // DetachGlobalProxy disconnects the current realm's installed global proxy.
 func (vm *VM) DetachGlobalProxy() {
-	st := vm.globalThis.extState().(*proxyState)
-	if st.target != vm.global {
+	st := vm.curRealm.globalThis.extState().(*proxyState)
+	if st.target != vm.curRealm.global {
 		return
 	}
 	st.target = nil
-	vm.globalProxyHandler = vm.defaultGlobalHandler()
+	vm.curRealm.globalProxyHandler = vm.defaultGlobalHandler()
 }
 
 func (vm *VM) hasDetachedGlobal(r *realm) bool {
-	if r == vm.curRealm {
-		r = &vm.realm
-	}
 	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target != r.global
 }
 
@@ -219,8 +212,8 @@ func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
 		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	target = st.target
-	if st.isGlobal() && !st.allowsGlobalAccess(vm.globalProxyHandler) {
-		target = vm.foreignGlobalView
+	if st.isGlobal() && !st.allowsGlobalAccess(vm.curRealm.globalProxyHandler) {
+		target = vm.curRealm.foreignGlobalView
 		if target == nil {
 			vm.ThrowTypeError(vm.CurrentRealm(), "no access")
 		}
@@ -721,7 +714,7 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 func (vm *VM) FromPropertyDescriptor(d PropDesc) Value {
 	o, slots := newObjectWithStorage(bits.OnesCount8(d.has))
 	o.kind = kindObject
-	o.shape = vm.shapes.object
+	o.shape = vm.curRealm.shapes.object
 	o.slots = slots[:0]
 	fn := func(f *Object) Value {
 		if f == nil {

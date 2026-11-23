@@ -23,7 +23,9 @@ const initialStackSize = 1 << 12
 
 // NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
 func NewVM(hostDefined any) *VM {
+	r := &realm{}
 	vm := &VM{
+		curRealm:            r,
 		hostDefined:         hostDefined,
 		stack:               make([]Value, initialStackSize),
 		symbolRegistry:      map[wtf8.String]*Object{},
@@ -32,15 +34,16 @@ func NewVM(hostDefined any) *VM {
 		maxBigIntResultBits: MaxBigIntBits,
 	}
 	vm.symbolShape = vm.newShape(nil, nil)
-	vm.curRealm = &realm{}
-	vm.referrer = &scriptOrModule{realm: vm.curRealm}
+	r.referrer = &scriptOrModule{
+		realm: r,
+	}
 	vm.initRealmPrototypes()
 
 	vm.emptyString = Value{
 		o: &Object{
 			kind:  kindString,
 			flags: objInterned | objKept,
-			shape: vm.shapes.string,
+			shape: r.shapes.string,
 		},
 	}
 	vm.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
@@ -55,7 +58,7 @@ func NewVM(hostDefined any) *VM {
 	}
 	vm.missHolder = (&propertyObject{
 		kind:  kindObject,
-		shape: vm.shapes.nullProto,
+		shape: r.shapes.nullProto,
 		slots: []Value{Undefined},
 	}).init()
 	vm.initRealmGlobals()
@@ -66,47 +69,48 @@ func NewVM(hostDefined any) *VM {
 // initRealmPrototypes creates the prototypes of the current realm that the strings, the keys
 // and the other objects of the VM depend on.
 func (vm *VM) initRealmPrototypes() {
-	vm.shapes.nullProto = vm.newShape(nil, vm.curRealm)
-	vm.shapes.proxy = vm.newShape(nil, vm.curRealm)
+	r := vm.curRealm
+	r.shapes.nullProto = vm.newShape(nil, r)
+	r.shapes.proxy = vm.newShape(nil, r)
 	objectProto := (&propertyObject{
 		kind:  kindObject,
-		shape: vm.shapes.nullProto,
+		shape: r.shapes.nullProto,
 	}).init()
-	vm.intrinsics[IntrinsicObjectPrototype] = objectProto
-	vm.shapes.object = vm.shapeFor(objectProto)
+	r.intrinsics[IntrinsicObjectPrototype] = objectProto
+	r.shapes.object = vm.shapeFor(objectProto)
 	functionProto := (&propertyObject{
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.shapes.object,
+		shape: r.shapes.object,
 		fn: &function{
 			native: func(vm *VM, this Value, args []Value) Value {
 				return Undefined
 			},
 			info: &nativeInfo{
-				realm: vm.curRealm,
+				realm: r,
 			},
 		},
 	}).init()
-	vm.intrinsics[IntrinsicFunctionPrototype] = functionProto
-	vm.shapes.function = vm.functionShapeFor(functionProto)
+	r.intrinsics[IntrinsicFunctionPrototype] = functionProto
+	r.shapes.function = vm.functionShapeFor(functionProto)
 	arrayProto := (&propertyObject{
 		kind:  kindArray,
 		class: classArray,
-		shape: vm.objectRootShape(objectProto, vm.curRealm, classArray),
+		shape: vm.objectRootShape(objectProto, r, classArray),
 	}).init()
-	vm.intrinsics[IntrinsicArrayPrototype] = arrayProto
-	vm.shapes.array = vm.objectRootShape(arrayProto, vm.curRealm, classArray)
+	r.intrinsics[IntrinsicArrayPrototype] = arrayProto
+	r.shapes.array = vm.objectRootShape(arrayProto, r, classArray)
 	stringProto := vm.NewObject(objectProto)
-	vm.intrinsics[IntrinsicStringPrototype] = stringProto
+	r.intrinsics[IntrinsicStringPrototype] = stringProto
 	// A primitive string has its own length even when an ordinary object with the same
 	// prototype inherits its length.
-	vm.shapes.string = vm.newShape(stringProto, vm.curRealm)
-	vm.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
-	for i := range vm.shapes.shortStrings {
-		vm.shapes.shortStrings[i] = Object{
+	r.shapes.string = vm.newShape(stringProto, r)
+	r.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
+	for i := range r.shapes.shortStrings {
+		r.shapes.shortStrings[i] = Object{
 			kind:  kindString,
-			shape: vm.shapes.string,
+			shape: r.shapes.string,
 			str:   wtf8.String("\x00\x00\x00\x00\x00\x00\x00\x00")[:i],
 		}
 	}
@@ -114,18 +118,19 @@ func (vm *VM) initRealmPrototypes() {
 
 // initRealmGlobals finishes the prototypes of the current realm and creates its global object.
 func (vm *VM) initRealmGlobals() {
-	stringProto := vm.intrinsics[IntrinsicStringPrototype]
+	r := vm.curRealm
+	stringProto := r.intrinsics[IntrinsicStringPrototype]
 	stringProto.class = classString
 	stringProto.setExtState(vm.emptyString.o)
 	vm.add(stringProto, vm.Key(KeyLength), Number(0), 0)
-	vm.shapes.iterResult = vm.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
-	vm.shapes.arguments = vm.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
-	vm.global = vm.NewObject(vm.intrinsics[IntrinsicObjectPrototype])
+	r.shapes.iterResult = r.shapes.object.with(vm.Key(KeyValue), FlagsData).with(vm.Key(keyDone), FlagsData)
+	r.shapes.arguments = r.shapes.object.with(vm.Key(KeyLength), FlagsHidden).with(vm.WellKnownSymbol(SymbolIterator), FlagsHidden)
+	r.global = vm.NewObject(r.intrinsics[IntrinsicObjectPrototype])
 	// Deleting a property can restore a shared shape and its cached global slot pointers.
 	// Keep the slots in place until adding a property gives the global object a private shape.
-	vm.global.slots = make([]Value, 0, privateShapeThreshold)
-	vm.globalThis = vm.global
-	vm.globalLex = vm.NewObject(nil)
+	r.global.slots = make([]Value, 0, privateShapeThreshold)
+	r.globalThis = r.global
+	r.globalLex = vm.NewObject(nil)
 }
 
 // CreateRealm creates a realm whose built-in objects install creates while the realm is current.
@@ -134,28 +139,14 @@ func (vm *VM) CreateRealm(install func()) *Realm {
 	saved := vm.curRealm
 	r := &realm{}
 	vm.switchRealm(r)
-	vm.referrer = &scriptOrModule{realm: r}
+	defer vm.switchRealm(saved)
+	r.referrer = &scriptOrModule{
+		realm: r,
+	}
 	vm.initRealmPrototypes()
 	vm.initRealmGlobals()
 	install()
-	vm.switchRealm(saved)
 	return (*Realm)(r)
-}
-
-// realmData returns the live state of r until the next realm switch.
-func (vm *VM) realmData(r *Realm) *realm {
-	if r == vm.CurrentRealm() {
-		return &vm.realm
-	}
-	return (*realm)(r)
-}
-
-// realmIntrinsic returns the intrinsic id of the realm r.
-func (vm *VM) realmIntrinsic(r *realm, id Intrinsic) *Object {
-	if r == vm.curRealm {
-		return vm.intrinsics[id]
-	}
-	return r.intrinsics[id]
 }
 
 // IsIntrinsicOfOtherRealm reports whether the function f is the intrinsic id of
@@ -320,7 +311,7 @@ func (vm *VM) CallScript(s *Script) Value {
 	previous := vm.enteredRealm
 	vm.enteredRealm = s.code.realm
 	defer func() { vm.enteredRealm = previous }()
-	return vm.Call(vm.newScriptFunction(s.code), Value{o: vm.globalThis})
+	return vm.Call(vm.newScriptFunction(s.code), Value{o: vm.curRealm.globalThis})
 }
 
 // enter runs f as a call from Go and drains jobs at the outermost boundary, including
@@ -336,7 +327,7 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 		return vm.enterBoundary(f)
 	}
 	vm.enteredRealm = vm.curRealm
-	vm.captureThrowSites = vm.exceptionReporter != nil
+	vm.captureThrowSites = vm.curRealm.exceptionReporter != nil
 	defer func() {
 		vm.enteredRealm = nil
 		vm.captureThrowSites = false
@@ -449,9 +440,9 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 }
 
 func (vm *VM) reportUncaughtException(thrown Value, site throwSite) {
-	if vm.exceptionReporter != nil {
+	if vm.curRealm.exceptionReporter != nil {
 		vm.protect(func() {
-			vm.exceptionReporter(thrown, site.location())
+			vm.curRealm.exceptionReporter(thrown, site.location())
 		})
 		vm.thrown = Undefined
 	}
@@ -556,7 +547,7 @@ func (vm *VM) newScriptFunction(fp *funcProto) *Object {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.shapes.function,
+		shape: vm.curRealm.shapes.function,
 		fn:    &function{code: fp},
 	}).init()
 }
@@ -566,7 +557,7 @@ func (vm *VM) PerformEval(x Value) Value {
 	if !x.IsString() {
 		return x
 	}
-	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.Str())), Value{o: vm.globalThis})
+	return vm.Call(vm.newScriptFunction(vm.evalCode(nil, 0, x.Str())), Value{o: vm.curRealm.globalThis})
 }
 
 // FunctionKind is the kind of function that CreateDynamicFunction creates.
@@ -620,7 +611,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 		vm.throwCompileError(vm.CurrentRealm(), "<anonymous>", err)
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
-	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.globalThis})
+	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.curRealm.globalThis})
 	if proto != vm.Intrinsic(fallback) {
 		vm.SetPrototypeOf(f.o, proto)
 	}
@@ -653,30 +644,20 @@ func (vm *VM) IsEnteredRealm(r *Realm) bool {
 
 // SetRealmHostDefined sets the [[HostDefined]] field of the realm r to v.
 func (vm *VM) SetRealmHostDefined(r *Realm, v any) {
-	if (*realm)(r) == vm.curRealm {
-		vm.realm.hostDefined = v
-		return
-	}
 	r.hostDefined = v
 }
 
 // RealmHostDefined returns the [[HostDefined]] field of the realm r.
 func (vm *VM) RealmHostDefined(r *Realm) any {
-	if (*realm)(r) == vm.curRealm {
-		return vm.realm.hostDefined
-	}
 	return r.hostDefined
 }
 
 // SetRealmExtension sets the state of the built-in extension of the current realm to v.
 func (vm *VM) SetRealmExtension(v any) {
-	vm.realm.extension = v
+	vm.curRealm.extension = v
 }
 
 // RealmExtension returns the state of the built-in extension of the realm r.
 func (vm *VM) RealmExtension(r *Realm) any {
-	if (*realm)(r) == vm.curRealm {
-		return vm.realm.extension
-	}
 	return r.extension
 }

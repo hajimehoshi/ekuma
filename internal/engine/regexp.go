@@ -61,11 +61,11 @@ func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
 // regExpShape returns the shape of a new RegExp object whose prototype is %RegExp.prototype%.
 func (vm *VM) regExpShape() *shape {
 	proto := vm.Intrinsic(IntrinsicRegExpPrototype)
-	if s := vm.shapes.regExp; s != nil && s.proto == proto {
+	if s := vm.curRealm.shapes.regExp; s != nil && s.proto == proto {
 		return s
 	}
 	s := vm.shapeFor(proto).with(vm.Key(keyLastIndex), FlagWritable)
-	vm.shapes.regExp = s
+	vm.curRealm.shapes.regExp = s
 	return s
 }
 
@@ -149,13 +149,13 @@ func (vm *VM) regExpLiteralState(site *regExpSite) *regExpState {
 // argument by [VM.OwnRegExp] before using it, f must not keep it, expose it to script code, or use
 // it after running script code.
 func (vm *VM) LendRegExpLiterals(f *Object) {
-	vm.regExpBorrowers = append(vm.regExpBorrowers, f)
+	vm.curRealm.regExpBorrowers = append(vm.curRealm.regExpBorrowers, f)
 }
 
 // LendRegExpLiteralReceivers is like [VM.LendRegExpLiterals] for the this value of a method call
 // on a regular expression literal.
 func (vm *VM) LendRegExpLiteralReceivers(f *Object) {
-	vm.regExpReceiverBorrowers = append(vm.regExpReceiverBorrowers, f)
+	vm.curRealm.regExpReceiverBorrowers = append(vm.curRealm.regExpReceiverBorrowers, f)
 }
 
 // lendRegExpLiteral evaluates the regular expression literal site into the register dst of
@@ -164,12 +164,12 @@ func (vm *VM) LendRegExpLiteralReceivers(f *Object) {
 func (vm *VM) lendRegExpLiteral(regs []Value, dst, callee int32, site *regExpSite) {
 	f := regs[callee].o
 	if dst == callee+2 {
-		regs[dst] = Value{o: vm.regExpLiteralFor(f, site, vm.regExpBorrowers)}
+		regs[dst] = Value{o: vm.regExpLiteralFor(f, site, vm.curRealm.regExpBorrowers)}
 		return
 	}
 	if o := regs[dst].o; o != nil && o == site.lent {
 		// The register keeps the lent object, without a write barrier, when f borrows it.
-		if lent := vm.regExpLiteralFor(f, site, vm.regExpReceiverBorrowers); lent != o {
+		if lent := vm.regExpLiteralFor(f, site, vm.curRealm.regExpReceiverBorrowers); lent != o {
 			regs[dst] = Value{o: lent}
 		}
 	}
@@ -321,7 +321,7 @@ func (p *originalProp) find() bool {
 func (vm *VM) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
 	proto := vm.Intrinsic(IntrinsicRegExpPrototype)
 	ctor := vm.Intrinsic(IntrinsicRegExp)
-	r := &vm.regExpOriginals
+	r := &vm.curRealm.regExpOriginals
 	// hasRegExpShape compares against this shape, so it must exist from now on.
 	vm.regExpShape()
 	r.props = r.props[:0]
@@ -366,7 +366,7 @@ func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
 	if o.class != classRegExp || !vm.hasRegExpShape(o) || o.extState().(*regExpState).matcher == nil {
 		return false
 	}
-	r := &vm.regExpOriginals
+	r := &vm.curRealm.regExpOriginals
 	if !r.checked || r.epoch != vm.protoEpoch {
 		r.found = true
 		r.data = r.data[:0]
@@ -400,7 +400,7 @@ func (vm *VM) IsUnmodifiedRegExp(o *Object) bool {
 // hasRegExpShape reports whether o has the shape of a new RegExp object whose prototype is
 // %RegExp.prototype%, so that its only own property is a writable lastIndex in slot 0.
 func (vm *VM) hasRegExpShape(o *Object) bool {
-	s := vm.shapes.regExp
+	s := vm.curRealm.shapes.regExp
 	return s != nil && o.shape == s
 }
 
@@ -453,7 +453,7 @@ func (vm *VM) matchResultShapesFor(array *shape) *matchResultShapes {
 // result on a, in that order, as CreateDataPropertyOrThrow does. a must be an array from
 // [VM.NewArrayWithRoom] that has no named properties.
 func (vm *VM) DefineMatchResultProperties(a *Object, index, input, groups Value) {
-	if a.shape != vm.shapes.array || len(a.slots) != 0 {
+	if a.shape != vm.curRealm.shapes.array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultProperties on an array that is not new")
 	}
 	a.shape = vm.matchResultShapesFor(a.shape).plain
@@ -463,7 +463,7 @@ func (vm *VM) DefineMatchResultProperties(a *Object, index, input, groups Value)
 // DefineMatchResultPropertiesWithIndices is like [VM.DefineMatchResultProperties] and creates
 // the data property indices after groups.
 func (vm *VM) DefineMatchResultPropertiesWithIndices(a *Object, index, input, groups, indices Value) {
-	if a.shape != vm.shapes.array || len(a.slots) != 0 {
+	if a.shape != vm.curRealm.shapes.array || len(a.slots) != 0 {
 		panic("engine: DefineMatchResultPropertiesWithIndices on an array that is not new")
 	}
 	a.shape = vm.matchResultShapesFor(a.shape).withIndices

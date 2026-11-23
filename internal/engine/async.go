@@ -271,10 +271,10 @@ type asyncFromSyncIterator struct {
 // asyncFromSyncIterator implements CreateAsyncFromSyncIterator for the iterator it and
 // its next method, and returns the async iterator and its next method.
 func (vm *VM) asyncFromSyncIterator(it, next Value) (Value, Value) {
-	if vm.asyncFromSyncProto == nil {
+	if vm.curRealm.asyncFromSyncProto == nil {
 		vm.initAsyncFromSyncIteratorPrototype()
 	}
-	o := vm.NewObject(vm.asyncFromSyncProto)
+	o := vm.NewObject(vm.curRealm.asyncFromSyncProto)
 	o.class = classIterator
 	o.ext = &asyncFromSyncIterator{
 		iterator: it,
@@ -303,7 +303,7 @@ func (vm *VM) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
 // initAsyncFromSyncIteratorPrototype creates %AsyncFromSyncIteratorPrototype%.
 func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 	proto := vm.NewObject(vm.Intrinsic(IntrinsicAsyncIteratorPrototype))
-	vm.asyncFromSyncProto = proto
+	vm.curRealm.asyncFromSyncProto = proto
 	vm.Define(proto, vm.Key(keyNext), Value{o: vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		s := vm.thisAsyncFromSyncIterator(this)
 		c := vm.newIntrinsicCapability()

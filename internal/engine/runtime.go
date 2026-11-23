@@ -80,9 +80,10 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
 // not exist, it throws a ReferenceError unless orUndef is set.
 func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
-	g := vm.global
-	if p, ok := vm.globalLex.shape.lookup(key); ok {
-		v := vm.globalLex.slots[p.slot]
+	r := vm.curRealm
+	g := r.global
+	if p, ok := r.globalLex.shape.lookup(key); ok {
+		v := r.globalLex.slots[p.slot]
 		if v.o == tdzObject {
 			vm.throwTDZ(vm.CurrentRealm(), key)
 		}
@@ -90,7 +91,7 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 		// check.
 		c.holder = g
 		c.shape = g.shape
-		c.ref = &vm.globalLex.slots[p.slot]
+		c.ref = &r.globalLex.slots[p.slot]
 		return v
 	}
 	if p, ok := g.shape.lookup(key); ok && p.flags&FlagAccessor == 0 {
@@ -113,13 +114,13 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 		}
 		return Undefined
 	}
-	return vm.getProp(g, k, Value{o: vm.globalThis})
+	return vm.getProp(g, k, Value{o: r.globalThis})
 }
 
 // resolveGlobal returns whether the global variable key exists.
 func (vm *VM) resolveGlobal(key *Object, c *globalCache) Value {
-	g := vm.global
-	_, lex := vm.globalLex.shape.lookup(key)
+	g := vm.curRealm.global
+	_, lex := vm.curRealm.globalLex.shape.lookup(key)
 	if _, own := g.shape.lookup(key); lex || own {
 		c.holder = g
 		c.shape = g.shape
@@ -130,19 +131,20 @@ func (vm *VM) resolveGlobal(key *Object, c *globalCache) Value {
 
 // setGlobal assigns to the global variable key.
 func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
-	g := vm.global
-	if p, ok := vm.globalLex.shape.lookup(key); ok {
-		if vm.globalLex.slots[p.slot].o == tdzObject {
+	r := vm.curRealm
+	g := r.global
+	if p, ok := r.globalLex.shape.lookup(key); ok {
+		if r.globalLex.slots[p.slot].o == tdzObject {
 			vm.throwTDZ(vm.CurrentRealm(), key)
 		}
 		if p.flags&FlagWritable == 0 {
 			vm.ThrowTypeError(vm.CurrentRealm(), "assignment to constant variable '"+wtf8.ToValidUTF8(key.str)+"'")
 		}
-		vm.globalLex.slots[p.slot] = val
+		r.globalLex.slots[p.slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
 		c.holder = g
 		c.shape = g.shape
-		c.ref = &vm.globalLex.slots[p.slot]
+		c.ref = &r.globalLex.slots[p.slot]
 		return
 	}
 	if p, ok := g.shape.lookup(key); ok && p.flags&(FlagAccessor|FlagWritable) == FlagWritable {
@@ -164,7 +166,7 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
 		}
 	}
-	if !vm.setProp(g, k, val, Value{o: vm.globalThis}) && strict {
+	if !vm.setProp(g, k, val, Value{o: r.globalThis}) && strict {
 		vm.throwReadOnly(vm.CurrentRealm(), Value{o: g}, k)
 	}
 }
@@ -172,13 +174,14 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 // checkGlobalDecl throws when declaring key at the top level of a script would conflict
 // with an existing declaration. what is a bytecode Decl kind.
 func (vm *VM) checkGlobalDecl(key *Object, what int) {
-	_, lex := vm.globalLex.shape.lookup(key)
+	r := vm.curRealm
+	_, lex := r.globalLex.shape.lookup(key)
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
 			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
-		if !vm.HasOwnProperty(vm.global, PropKey{key: key}) && !vm.IsExtensible(vm.global) {
+		if !vm.HasOwnProperty(r.global, PropKey{key: key}) && !vm.IsExtensible(r.global) {
 			vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global variable '"+wtf8.ToValidUTF8(key.str)+"'")
 		}
 	case bytecode.DeclLexical:
@@ -186,17 +189,17 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
-		if d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
+		if d, ok := vm.GetOwnProperty(r.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
 			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
 			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
-		d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key})
+		d, ok := vm.GetOwnProperty(r.global, PropKey{key: key})
 		switch {
 		case !ok:
-			if !vm.IsExtensible(vm.global) {
+			if !vm.IsExtensible(r.global) {
 				vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global function '"+wtf8.ToValidUTF8(key.str)+"'")
 			}
 		case d.flags&FlagConfigurable != 0:
@@ -209,7 +212,7 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 // declareGlobalVar implements CreateGlobalVarBinding, and CreateGlobalFunctionBinding when
 // flags has [bytecode.GlobalVarFunc]. flags is a set of the bytecode GlobalVar flags.
 func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
-	g := vm.global
+	g := vm.curRealm.global
 	k := PropKey{key: key}
 	d, ok := vm.GetOwnProperty(g, k)
 	attrs := FlagEnumerable | FlagWritable
@@ -237,10 +240,11 @@ func (vm *VM) declareGlobalVar(key *Object, flags int, fn Value) {
 // nothing when a global lexical declaration of key exists or CanDeclareGlobalVar(key) is false.
 // flags is a set of the bytecode GlobalVar flags.
 func (vm *VM) declareGlobalAnnexB(key *Object, flags int) bool {
-	if _, lex := vm.globalLex.shape.lookup(key); lex {
+	r := vm.curRealm
+	if _, lex := r.globalLex.shape.lookup(key); lex {
 		return false
 	}
-	if !vm.HasOwnProperty(vm.global, PropKey{key: key}) && !vm.IsExtensible(vm.global) {
+	if !vm.HasOwnProperty(r.global, PropKey{key: key}) && !vm.IsExtensible(r.global) {
 		return false
 	}
 	vm.declareGlobalVar(key, flags&^bytecode.GlobalVarFunc, Undefined)
@@ -249,19 +253,21 @@ func (vm *VM) declareGlobalAnnexB(key *Object, flags int) bool {
 
 // declareGlobalLex creates the uninitialized global lexical binding key.
 func (vm *VM) declareGlobalLex(key *Object, isConst bool) {
+	r := vm.curRealm
 	flags := FlagsData
 	if isConst {
 		flags = FlagEnumerable | FlagConfigurable
 	}
-	vm.add(vm.globalLex, key, tdz, flags)
+	vm.add(r.globalLex, key, tdz, flags)
 	// The binding may hide a property of the global object, and the bindings may have moved,
 	// so the global variable caches must not apply any longer.
-	vm.global.renewShape()
+	r.global.renewShape()
 }
 
 func (vm *VM) initGlobalLex(key *Object, val Value) {
-	p, _ := vm.globalLex.shape.lookup(key)
-	vm.globalLex.slots[p.slot] = val
+	r := vm.curRealm
+	p, _ := r.globalLex.shape.lookup(key)
+	r.globalLex.slots[p.slot] = val
 }
 
 // getValue returns v[k], or the getter to call.
@@ -484,7 +490,7 @@ func (vm *VM) privateStorage(o *Object) *Object {
 	if o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.isGlobal() {
-			if !st.allowsGlobalAccess(vm.globalProxyHandler) {
+			if !st.allowsGlobalAccess(vm.curRealm.globalProxyHandler) {
 				vm.ThrowTypeError(vm.CurrentRealm(), "no access")
 			}
 			return st.target
@@ -1150,7 +1156,7 @@ func (vm *VM) arrayProtoPlain() bool {
 // arrayIterationPlain reports whether iterating the array o visits its elements by index
 // without any observable call.
 func (vm *VM) arrayIterationPlain(o *Object) bool {
-	return o.shape == vm.shapes.array && vm.arrayIterationUnmodified(&vm.realm)
+	return o.shape == vm.curRealm.shapes.array && vm.arrayIterationUnmodified(vm.curRealm)
 }
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
@@ -1388,7 +1394,7 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) 
 	r := vm.curRealm
 	if ctor != nil {
 		if f := ctor.fn; f != nil && f.info != nil && f.info.fixedPrototype {
-			return vm.realmIntrinsic(f.info.realm, f.info.prototype)
+			return f.info.realm.intrinsics[f.info.prototype]
 		}
 		if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
 			return p.o
@@ -1396,11 +1402,11 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) 
 		r = vm.getFunctionRealm(ctor)
 	}
 	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicTemporalZonedDateTimePrototype {
-		if ns := vm.realmIntrinsic(r, IntrinsicTemporal); ns != nil {
+		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {
 			vm.InitLazyObject(ns)
 		}
 	}
-	if proto := vm.realmIntrinsic(r, defaultProto); proto != nil {
+	if proto := r.intrinsics[defaultProto]; proto != nil {
 		return proto
 	}
 	panic("engine: uninitialized intrinsic prototype " + strconv.Itoa(int(defaultProto)))
@@ -1412,7 +1418,7 @@ func (vm *VM) NewNative(name wtf8.String, length int, f NativeFunc) *Object {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.shapes.function,
+		shape: vm.curRealm.shapes.function,
 		state: function{
 			native: f,
 		},
@@ -1585,10 +1591,11 @@ func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
 
 // deleteName deletes the global variable key.
 func (vm *VM) deleteName(key *Object) bool {
-	if _, ok := vm.globalLex.shape.lookup(key); ok {
+	r := vm.curRealm
+	if _, ok := r.globalLex.shape.lookup(key); ok {
 		return false
 	}
-	return vm.DeleteProp(vm.global, PropKey{key: key})
+	return vm.DeleteProp(r.global, PropKey{key: key})
 }
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.

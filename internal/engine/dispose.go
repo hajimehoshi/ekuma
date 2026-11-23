@@ -148,7 +148,7 @@ func (vm *VM) disposeError(errorRealm *Realm, dc *DisposeCapability, e Value) {
 		dc.thrown = true
 		return
 	}
-	s := vm.NewErrorObject(errorRealm, vm.realmIntrinsic((*realm)(errorRealm), ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
+	s := vm.NewErrorObject(errorRealm, errorRealm.intrinsics[ErrorPrototypeIntrinsic(ErrorKindSuppressed)])
 	vm.Define(s, vm.Key(KeyError), e, FlagsHidden)
 	suppressed, _ := unpackException(dc.completion)
 	vm.Define(s, vm.Key(KeySuppressed), suppressed, FlagsHidden)

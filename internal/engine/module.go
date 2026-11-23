@@ -394,7 +394,7 @@ func (vm *VM) activeScriptOrModule() *scriptOrModule {
 			return s
 		}
 	}
-	return vm.referrer
+	return vm.curRealm.referrer
 }
 
 // errorValue returns the value to throw for an error of the host.
@@ -855,7 +855,7 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.shapes.function,
+		shape: vm.curRealm.shapes.function,
 		fn: &function{
 			code:   m.body,
 			upvals: upvals,
@@ -889,7 +889,7 @@ func (vm *VM) newClosure(p *funcProto, upvals []*upvalue) *Object {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.shapes.function,
+		shape: vm.curRealm.shapes.function,
 		fn:    fn,
 	}).init()
 	if p.isGenerator || p.isAsync {

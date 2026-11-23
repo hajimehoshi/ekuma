@@ -112,7 +112,7 @@ func (vm *VM) directEval(x Value, site int) Value {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: vm.shapes.function,
+		shape: vm.curRealm.shapes.function,
 		fn:    fn,
 	}).init(), Undefined)
 }
@@ -162,14 +162,14 @@ func (vm *VM) evalCode(fp *funcProto, site int, src wtf8.String) *funcProto {
 		src:    src,
 		script: script,
 	}
-	if p := vm.evals.get(k); p != nil {
+	if p := vm.curRealm.evals.get(k); p != nil {
 		return p
 	}
 	bc := vm.compileEval(fp, site, src)
 	p := vm.link(bc, script)
 	// Every evaluation of a tagged template in new eval code has template objects of its own.
 	if !hasTemplates(bc) {
-		vm.evals.add(k, p)
+		vm.curRealm.evals.add(k, p)
 	}
 	return p
 }

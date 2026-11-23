@@ -40,7 +40,7 @@ func (vm *VM) ArrayCreate(length uint32, proto *Object) *Object {
 		a, elems = newObjectWithStorage(int(length))
 		a.kind = kindArray
 		a.class = classArray
-		a.shape = vm.shapes.array
+		a.shape = vm.curRealm.shapes.array
 		a.elems = elems[:0]
 	} else {
 		a = vm.NewArray(nil)
@@ -188,7 +188,7 @@ func (vm *VM) elemsMovable(o *Object) bool {
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
 func (vm *VM) arrayCtorPlain(o *Object) bool {
-	if o.shape != vm.shapes.array {
+	if o.shape != vm.curRealm.shapes.array {
 		return false
 	}
 	ctor := vm.Intrinsic(IntrinsicArray)
@@ -575,7 +575,7 @@ func (vm *VM) SpliceElements(o *Object, length, start, del int64, items []Value)
 // AppendElementsOf adds the elements of the array src at the end of the array dst,
 // which must have the length n, exactly n elements and no other property.
 func (vm *VM) AppendElementsOf(dst *Object, n int64, src *Object) bool {
-	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != vm.shapes.array {
+	if dst.kind != kindArray || int64(dst.length) != n || int64(len(dst.elems)) != n || dst.shape != vm.curRealm.shapes.array {
 		return false
 	}
 	if dst.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 || !src.isDense() {

@@ -801,7 +801,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// An append to a plain array that has room for it, as in the switch below, with the
 				// conditions of arrayProtoPlain written out.
 				if j := int(k.n); j == len(o.elems) && j < cap(o.elems) &&
-					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.shapes.array {
+					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.curRealm.shapes.array {
 					if a := vm.Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
 						if p := a.shape.proto; p == vm.Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
 							// Reading x first keeps i.C from being read again after the
@@ -1472,7 +1472,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					}
 					break
 				}
-				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == vm.shapes.array {
+				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == vm.curRealm.shapes.array {
 					if a := vm.Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
 						if p := a.shape.proto; p == vm.Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
 							x := regs[i.C]
@@ -1701,7 +1701,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			o.kind = kindFunction
 			o.class = classFunction
 			o.flags = objExotic
-			o.shape = vm.shapes.function
+			o.shape = vm.curRealm.shapes.function
 			if p.isGenerator || p.isAsync {
 				o.shape = vm.functionShapeFor(vm.functionProtoFor(p))
 			}
@@ -1729,7 +1729,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			t := vm.frames[len(vm.frames)-1].this
 			if t.o == nil || t.o.kind < kindFirstObject {
 				if t.IsNullish() {
-					t = Value{o: vm.globalThis}
+					t = Value{o: vm.curRealm.globalThis}
 				} else {
 					t = Value{o: vm.ToObject(t)}
 				}
@@ -1909,7 +1909,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				k = Number(float64(i.B))
 			}
 			if o := v.o; o != nil && o.objectProperties != nil && k.o == numberObject {
-				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.shapes.array && vm.arrayProtoPlain() {
+				if j := int(k.n); j == len(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.curRealm.shapes.array && vm.arrayProtoPlain() {
 					// Appending to a plain array.
 					o.elems = appendElem(o.elems, regs[i.C])
 					o.length++
@@ -2504,7 +2504,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					proto, _ = vm.getNamed(Value{o: f}, vm.Key(KeyPrototype), c)
 				}
 				if proto.o == nil || proto.o.kind < kindFirstObject {
-					proto = Value{o: vm.realmIntrinsic(f.fn.code.realm, IntrinsicObjectPrototype)}
+					proto = Value{o: f.fn.code.realm.intrinsics[IntrinsicObjectPrototype]}
 				}
 				var shape *shape
 				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.realm {
@@ -2664,14 +2664,14 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpNewObject:
 			o, slots := newObjectWithStorage(int(i.C))
 			o.kind = kindObject
-			o.shape = vm.shapes.object
+			o.shape = vm.curRealm.shapes.object
 			o.slots = slots[:0]
 			regs[i.A] = Value{o: o}
 		case bytecode.OpNewArray:
 			o, elems := newObjectWithStorage(int(i.C))
 			o.kind = kindArray
 			o.class = classArray
-			o.shape = vm.shapes.array
+			o.shape = vm.curRealm.shapes.array
 			o.elems = elems[:0]
 			regs[i.A] = Value{o: o}
 		case bytecode.OpNewArrayK:
@@ -2890,7 +2890,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 				e := o.elems[j].o
-				if e == nil || e.shape != vm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !vm.pairDestructuringPlain(&vm.realm) {
+				if e == nil || e.shape != vm.curRealm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !vm.pairDestructuringPlain(vm.curRealm) {
 					continue
 				}
 				regs[i.B+1].n = next.n + 1
@@ -2922,7 +2922,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			switch st {
 			case PairYielded:
-				if !vm.pairDestructuringPlain(vm.realmData(pairRealm)) {
+				if !vm.pairDestructuringPlain((*realm)(pairRealm)) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
 					regs[fp.code[pc].A] = Value{o: vm.NewArrayPairInRealm(pairRealm, x, y)}
 					pc++
@@ -3131,7 +3131,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 
 	forward:
 		// A call with the arguments of the running function.
-		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !vm.arrayIterationUnmodified(&vm.realm)) {
+		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !vm.arrayIterationUnmodified(vm.curRealm)) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			args := vm.spreadArgs(vm.forwardedArguments(slices.Clip(regs), i.C)).elems
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil

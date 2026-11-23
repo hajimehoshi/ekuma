@@ -18,7 +18,7 @@ func InternedCount(vm *VM) int {
 // ObjectTransitionCount returns the number of transitions from the empty shape of the objects
 // whose prototype is %Object.prototype%.
 func ObjectTransitionCount(vm *VM) int {
-	return vm.shapes.object.transitions.len()
+	return vm.curRealm.shapes.object.transitions.len()
 }
 
 // ElementStorage returns the number of values that the storage of the elements of the object

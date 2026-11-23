@@ -128,6 +128,6 @@ func (vm *VM) builtString(b *stringBuilder) Value {
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.shapes.shortStrings[n],
+		o: &vm.curRealm.shapes.shortStrings[n],
 	}
 }

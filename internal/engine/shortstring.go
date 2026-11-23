@@ -20,7 +20,7 @@ func (vm *VM) shortString(s wtf8.String) Value {
 	// The immutable sentinel carries the byte length and the originating realm.
 	return Value{
 		n: math.Float64frombits(shortstrings.Pack(s)),
-		o: &vm.shapes.shortStrings[len(s)],
+		o: &vm.curRealm.shapes.shortStrings[len(s)],
 	}
 }
 
@@ -159,7 +159,7 @@ func (vm *VM) Substring(s Value, start, end int) Value {
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.shapes.shortStrings[n],
+		o: &vm.curRealm.shapes.shortStrings[n],
 	}
 }
 
@@ -266,7 +266,7 @@ func (vm *VM) toWellFormedShort(s Value, data uint64, n int) Value {
 	}
 	return Value{
 		n: math.Float64frombits(repaired),
-		o: &vm.shapes.shortStrings[n],
+		o: &vm.curRealm.shapes.shortStrings[n],
 	}
 }
 
@@ -300,7 +300,7 @@ func (vm *VM) mapASCII(s Value, upper bool) (Value, bool) {
 	}
 	return Value{
 		n: math.Float64frombits(mapped),
-		o: &vm.shapes.shortStrings[n],
+		o: &vm.curRealm.shapes.shortStrings[n],
 	}, true
 }
 
@@ -344,7 +344,7 @@ func (vm *VM) trimShortString(s Value, start, end bool) Value {
 	}
 	return Value{
 		n: math.Float64frombits(trimmed),
-		o: &vm.shapes.shortStrings[trimmedN],
+		o: &vm.curRealm.shapes.shortStrings[trimmedN],
 	}
 }
 
@@ -379,7 +379,7 @@ func (vm *VM) repeatShort(s Value, count int) (Value, bool) {
 	}
 	return Value{
 		n: math.Float64frombits(repeated),
-		o: &vm.shapes.shortStrings[repeatedN],
+		o: &vm.curRealm.shapes.shortStrings[repeatedN],
 	}, true
 }
 
@@ -449,7 +449,7 @@ func (vm *VM) padShort(s, fill Value, need int, atStart bool) (Value, bool) {
 	}
 	return Value{
 		n: math.Float64frombits(data),
-		o: &vm.shapes.shortStrings[n],
+		o: &vm.curRealm.shapes.shortStrings[n],
 	}, true
 }
 
