@@ -49,7 +49,7 @@ type realm struct {
 	fallbackSymbol *engine.Object
 }
 
-// Install defines the Intl namespace in the current realm of cx.
+// Install defines the Intl namespace in the realm of cx.
 func Install(cx *engine.ExecutionContext) {
 	r := &realm{}
 	r.ns = cx.NewLazyObject(cx.Intrinsic(engine.IntrinsicObjectPrototype), func(cx *engine.ExecutionContext, ns *engine.Object) {

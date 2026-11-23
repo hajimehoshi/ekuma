@@ -928,7 +928,7 @@ func (cx *ExecutionContext) evaluateModule(m *Module) Value {
 	return Value{o: c.promise}
 }
 
-// innerModuleEvaluation implements InnerModuleEvaluation for the module m and the index 0.
+// innerModuleEvaluation implements InnerModuleEvaluation for the module root and the index 0.
 // ok is false when the evaluation throws, and the result is the exception then.
 func (cx *ExecutionContext) innerModuleEvaluation(root *Module, stack *[]*Module) (Value, bool) {
 	type frame struct {
@@ -1282,9 +1282,9 @@ func (cx *ExecutionContext) asyncModuleExecutionRejected(m *Module, e Value) {
 	}
 }
 
-// abortModuleEvaluations evaluates every module whose evaluation is in progress with an Error
-// that [GoError] maps to cause, as an exception of the module does. An interruption cuts these evaluations
-// off: it unwinds the modules that run and drops the jobs that the others wait for.
+// abortModuleEvaluations rejects every module whose evaluation is in progress with an Error
+// that [GoError] maps to cause, as an exception of the module does. An interruption cuts these
+// evaluations off: it unwinds the modules that run and drops the jobs that the others wait for.
 func (cx *ExecutionContext) abortModuleEvaluations(cause error) {
 	modules := cx.modules.evaluating
 	cx.modules.evaluating = nil

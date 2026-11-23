@@ -317,10 +317,10 @@ const privateShapeThreshold = 128
 // shape describes the layout of an object: which property lives in which slot, and the prototype.
 //
 // Objects with a common prototype in their creation realm that got the same properties in the
-// same order share a Shape, until one has many properties or changes in a way other than adding one.
-// Then it gets a private Shape, which is changed in place.
+// same order share a shape, until one has many properties or changes in a way other than adding one.
+// Then it gets a private shape, which is changed in place.
 //
-// A shared Shape never changes, so an inline cache that remembers one stays valid for as long
+// A shared shape never changes, so an inline cache that remembers one stays valid for as long
 // as the prototypes it looked through keep their properties.
 type shape struct {
 	// agent and realm identify where the objects with this shape were created.
@@ -718,7 +718,8 @@ func (s *shape) handOver() *shape {
 	return t
 }
 
-// accessor is the content of the slot of an accessor property.
+// newAccessor returns the content of the slot of an accessor property with the given getter
+// and setter.
 func newAccessor(getter, setter *Object) Value {
 	return Value{
 		o: &Object{
@@ -1941,7 +1942,7 @@ func (ag *agent) Owns(o *Object) bool {
 	return o.shape == nil || o.shape.agent == ag
 }
 
-// HostDefined returns the host of the agent that owns o, or nil for shared values.
+// HostDefined returns the host-defined value of the agent that owns o, or nil for shared values.
 func (o *Object) HostDefined() any {
 	if o.shape == nil {
 		return nil

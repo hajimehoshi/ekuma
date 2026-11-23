@@ -133,7 +133,8 @@ func (e *regexpEnv) subject(s engine.Value) wtf8.String {
 	return str
 }
 
-// builtinExecRaw implements RegExpBuiltinExec up to the creation of the match array.
+// builtinExecRaw implements RegExpBuiltinExec from the use of lastIndex, which is the value of
+// the property converted to a length, up to the creation of the match array.
 // It returns the code unit indices of the captures, which are valid until the next match,
 // or nil when there is no match.
 func (e *regexpEnv) builtinExecRaw(cx *engine.ExecutionContext, r *engine.Object, s engine.Value, lastIndex int64) []int {

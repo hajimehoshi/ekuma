@@ -79,7 +79,7 @@ type Table struct {
 	// of a deleted entry stays until the slots are rebuilt.
 	slots []slot
 
-	// strs maps the longer strings to their indices in entries by their contents, and objs
+	// strs maps the longer strings to the indices of their entries by their contents, and objs
 	// every other key by identity.
 	strs map[wtf8.String]int32
 	objs map[*engine.Object]int32

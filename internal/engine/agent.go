@@ -1182,7 +1182,7 @@ func (ag *agent) errorOf(v Value) *Error {
 	}
 }
 
-// NewError returns a new error object of the given type in r with the message msg, which is UTF-8.
+// NewError returns a new error object of the given type in the execution realm with the message msg, which is UTF-8.
 func (cx *ExecutionContext) NewError(kind ErrorKind, msg string) Value {
 	return Value{o: cx.newError(kind, msg)}
 }

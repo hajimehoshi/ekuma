@@ -5,7 +5,7 @@ These notes measure Ekuma alone, to find where it spends its time and to check a
 
 ## CPU profiling
 
-On 2026-11-21, Ekuma's interpreter loop (`(*VM).exec`) accounted for 46.7% of CPU samples
+On 2026-11-21, Ekuma's interpreter loop (`(*agent).exec`, named `(*VM).exec` at that time) accounted for 46.7% of CPU samples
 directly and 64.0% including its callees. The profile covers all ten V8 benchmarks at
 `f130b4d6c37d` on an Apple M3 Pro running macOS 27.2 and go1.27.4. It includes parsing,
 setup, benchmark calibration, and garbage collection. See the

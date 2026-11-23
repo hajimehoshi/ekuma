@@ -35,7 +35,7 @@ func symMethod(cx *engine.ExecutionContext, o *engine.Object, key *engine.Object
 }
 
 // iteratorNext defines the next method of the built-in iterators with the prototype proto,
-// which steps the iterator with step.
+// which steps the iterator with step and creates its results in the realm that yieldRealm selects.
 func iteratorNext(cx *engine.ExecutionContext, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, step engine.IteratorStepFunc) *engine.Object {
 	fn := cx.NewIteratorNext(yieldRealm, step)
 	cx.Define(proto, cx.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
@@ -107,7 +107,7 @@ func RegisterExtension(install func(cx *engine.ExecutionContext)) {
 	extensions = append(extensions, install)
 }
 
-// Install creates the standard built-in objects of cx, and those of the registered extensions.
+// Install creates the standard built-in objects of the realm of cx, and those of the registered extensions.
 func Install(cx *engine.ExecutionContext) {
 	cx.StartBuiltins()
 	objectProto := cx.Intrinsic(engine.IntrinsicObjectPrototype)
@@ -182,7 +182,7 @@ func Install(cx *engine.ExecutionContext) {
 	cx.FinishBuiltins()
 }
 
-// objectStrings holds the results of Object.prototype.toString for an agent by tag.
+// objectStrings holds the results of Object.prototype.toString of one realm by tag.
 type objectStrings struct {
 	byTag map[wtf8.String]engine.Value
 }

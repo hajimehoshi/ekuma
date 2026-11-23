@@ -53,7 +53,7 @@ type frame struct {
 	scopes []*Object
 }
 
-// thrownErrorKinds maps the error kinds of OpThrowError to the agent's.
+// thrownErrorKinds maps the error kinds of OpThrowError to [ErrorKind] values.
 var thrownErrorKinds = [...]ErrorKind{
 	bytecode.ThrowTypeError:      ErrorKindType,
 	bytecode.ThrowReferenceError: ErrorKindReference,
@@ -327,6 +327,7 @@ func (cx *ExecutionContext) run(stop int) Value {
 
 // runFrame executes the frame at stop until it returns, yields, or unwinds with an exception.
 // An unwound frame leaves the exception pending and returns false.
+// At the depth limit, the frames from stop are dropped and a RangeError is thrown.
 func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 	if cx.depth >= maxDepth {
 		cx.unwindTo(stop)

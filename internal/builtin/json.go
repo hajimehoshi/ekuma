@@ -8,7 +8,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/json"
 )
 
-// jsonState is the state that the JSON functions of one VM share.
+// jsonState is the state that the JSON functions of one realm share.
 type jsonState struct {
 	parser      json.Parser
 	stringifier json.Stringifier

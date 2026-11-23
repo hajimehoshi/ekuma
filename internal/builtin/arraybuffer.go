@@ -10,7 +10,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-// binaryIntrinsics are the intrinsic objects of the binary data built-ins of one VM.
+// binaryIntrinsics are the intrinsic objects of the binary data built-ins of one realm.
 type binaryIntrinsics struct {
 	arrayBufferCtor, arrayBufferProto             *engine.Object
 	sharedArrayBufferCtor, sharedArrayBufferProto *engine.Object

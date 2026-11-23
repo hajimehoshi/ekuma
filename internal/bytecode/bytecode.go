@@ -309,7 +309,7 @@ const (
 	OpIterReturn      // a, a+1 = the result of calling the return method of the iterator b without arguments and true, or undefined and false when there is none; b becomes undefined
 	OpIterCheckResult // throw a TypeError when the iterator result a is not an object
 	OpIterResultValue // a = the value of the iterator result b; jump to c when it is done
-	OpIterNextPair    // step b, b+1 when it yields a pair, writing its elements to a, x.a and jumping to c when destructuring is plain; otherwise supply the pair to the following OpIterNext or leave it to step the iterator
+	OpIterNextPair    // step b, b+1 when it yields a pair, writing its elements to a, x.a and jumping to c when destructuring is plain; otherwise write the pair as the value of the following OpIterNext and skip it, or leave it to step the iterator
 
 	// Disposal of resources.
 	OpUsing        // add the resource b with the Dispose hint c to the dispose capability a, which is created when a is undefined
@@ -365,7 +365,7 @@ const (
 	ThrowReferenceError
 )
 
-// The values that [OpJumpNotSEqP] and [OpJumpNotSNeP] compare with.
+// The values that [OpJumpNotSEqP], [OpJumpNotSNeP], [OpLoopSEqP] and [OpLoopSNeP] compare with.
 const (
 	PrimUndefined = iota
 	PrimNull
@@ -373,7 +373,7 @@ const (
 	PrimTrue
 )
 
-// The flags of [OpDeclareGlobalVar].
+// The flags of [OpDeclareGlobalVar] and [OpDeclareAnnexB].
 const (
 	// GlobalVarFunc declares a function.
 	GlobalVarFunc = 1 << iota
@@ -538,7 +538,7 @@ type Func struct {
 
 	RegExps []RegExp
 
-	// EvalScopes describe the call sites of direct evals, which [OpCallEval] refers to.
+	// EvalScopes describe the call sites of direct evals, which [OpCallEval] and its spread and tail-call forms refer to.
 	EvalScopes []EvalScope
 
 	// Positions maps instructions to source positions, ordered by PC.

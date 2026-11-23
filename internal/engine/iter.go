@@ -84,7 +84,7 @@ const (
 	// PairDone says that the iterator is done.
 	PairDone
 
-	// PairYielded says that the iterator yielded an array of the two values.
+	// PairYielded says that the iterator yielded the two values of a pair.
 	PairYielded
 )
 
