@@ -65,7 +65,7 @@ func (vm *VM) callerOf(i int) Value {
 	// A native function called by the frame j or an eval frame above it made the call, unless
 	// it shows no frame.
 	for k := len(vm.natives) - 1; k >= 0 && vm.natives[k].frames > j; k-- {
-		if c := &vm.natives[k]; c.frames <= i && !c.f.fn.frameless() {
+		if c := &vm.natives[k]; c.frames <= i && c.showsFrame() {
 			return Null
 		}
 	}

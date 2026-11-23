@@ -397,8 +397,8 @@ type throwSignal struct{}
 
 var errThrow = &throwSignal{}
 
-// nativeCall is a running call of a native function, which stack traces show unless the function
-// is frameless.
+// nativeCall is a running call of a native function or a proxy, which stack traces show as
+// [nativeCall.showsFrame] says.
 type nativeCall struct {
 	f       *Object
 	context ExecutionContext
@@ -456,6 +456,12 @@ func (vm *VM) callNative(f *Object, this Value, args []Value, newTarget *Object)
 	r := f.fn.native(vm, this, args)
 	vm.popNative()
 	return r
+}
+
+// showsFrame reports whether stack traces show the call c, and the functions that c calls have
+// no caller. A proxy shows its target or its trap instead, and a frameless function nothing.
+func (c *nativeCall) showsFrame() bool {
+	return c.f.class != classProxy && !c.f.fn.frameless()
 }
 
 // popNative records the end of the innermost call of a native function.
@@ -974,8 +980,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 		// A native function called from the frame i runs inside it.
 		for ; j >= 0 && vm.natives[j].frames > i && len(d.calls) < maxStackFrames; j-- {
 			c := &vm.natives[j]
-			if c.f.class == classProxy || c.f.fn.frameless() {
-				// Calling a proxy calls its target or its trap, which the trace shows instead.
+			if !c.showsFrame() {
 				continue
 			}
 			d.calls = append(d.calls, stackCall{
