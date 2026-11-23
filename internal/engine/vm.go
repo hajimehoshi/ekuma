@@ -444,8 +444,8 @@ type VM struct {
 	// hostDefined is the value that [VM.HostDefined] returns.
 	hostDefined any
 
-	// hasGlobalProxies enables recording the entered realm for queued jobs.
-	hasGlobalProxies bool
+	// trackJobRealms selects handler realms for jobs in VMs with multiple realms or global proxies.
+	trackJobRealms bool
 
 	stack  []Value
 	frames []frame

@@ -94,7 +94,7 @@ func (vm *VM) InstallGlobalProxy(foreignView *Object, previous *Realm, shareAcce
 	if handler == nil {
 		handler = vm.defaultGlobalHandler()
 	}
-	vm.hasGlobalProxies = true
+	vm.trackJobRealms = true
 	vm.globalProxyHandler = handler
 	vm.foreignGlobalView = foreignView
 	if proxy == nil {

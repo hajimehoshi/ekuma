@@ -43,7 +43,7 @@ type waiter struct {
 	// promise is the promise of [[PromiseCapability]] of an asynchronous wait.
 	promise *Object
 
-	// promiseRealm is the realm that created promise when global proxies are in use.
+	// promiseRealm is the realm that created promise.
 	promiseRealm *realm
 
 	// done is closed when a synchronous wait is notified.
@@ -248,9 +248,7 @@ func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) 
 	}
 	if async {
 		w.promise = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
-		if vm.hasGlobalProxies {
-			w.promiseRealm = vm.curRealm
-		}
+		w.promiseRealm = vm.curRealm
 	} else {
 		w.done = make(chan struct{})
 		if vm.interrupt.Load() {

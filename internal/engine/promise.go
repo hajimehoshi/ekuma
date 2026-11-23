@@ -103,13 +103,10 @@ type jobContext struct {
 }
 
 func (vm *VM) captureJobContext() jobContext {
-	c := jobContext{
+	return jobContext{
 		continuationData: vm.continuationData,
+		enteredRealm:     vm.curRealm,
 	}
-	if vm.hasGlobalProxies {
-		c.enteredRealm = vm.curRealm
-	}
-	return c
 }
 
 // withJobContext runs f with the captured continuation data and enters the job's realm.
@@ -117,7 +114,7 @@ func (vm *VM) withJobContext(c jobContext, f func()) {
 	previous := vm.jobContext
 	vm.jobContext = c
 	defer func() { vm.jobContext = previous }()
-	if c.enteredRealm != nil {
+	if c.enteredRealm != nil && c.enteredRealm != vm.curRealm {
 		vm.InRealm((*Realm)(c.enteredRealm), f)
 		return
 	}
@@ -413,7 +410,7 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 	if onRejected.IsCallable() {
 		r.onRejected = onRejected
 	}
-	vm.addReaction(p.o, r)
+	vm.addReaction(p.o, &r)
 	if c == nil {
 		return Undefined
 	}
@@ -422,16 +419,16 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 
 // addReaction is the part of PerformPromiseThen after the reaction records are created.
 // The reaction captures the host context for its job.
-func (vm *VM) addReaction(p *Object, r promiseReaction) {
+func (vm *VM) addReaction(p *Object, r *promiseReaction) {
 	r.context = vm.captureJobContext()
 	d := promiseOf(p)
 	switch d.state {
 	case PromisePending:
-		d.reactions = append(d.reactions, r)
+		d.reactions = append(d.reactions, *r)
 	case PromiseFulfilled:
 		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
-			reaction: r,
+			reaction: *r,
 			argument: d.result,
 		})
 	case PromiseRejected:
@@ -441,7 +438,7 @@ func (vm *VM) addReaction(p *Object, r promiseReaction) {
 		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
 			rejected: true,
-			reaction: r,
+			reaction: *r,
 			argument: d.result,
 		})
 	}
@@ -464,24 +461,42 @@ func (vm *VM) PromiseResolve(c *Object, x Value) Value {
 // a later job with the value that v settles to. An exception that PromiseResolve throws
 // propagates, and k is not called then.
 func (vm *VM) Await(v Value, k AwaitHandler) {
-	vm.awaitValue(v, promiseReaction{
+	vm.awaitValue(v, &promiseReaction{
 		kind:   reactionNative,
 		native: k,
 	})
 }
 
-// await suspends the async function or async generator g on v, as Await does.
-// kind is reactionAwait or reactionAwaitReturn. An exception that PromiseResolve throws
-// propagates.
-func (vm *VM) await(g *generator, v Value, kind reactionKind) {
-	vm.awaitValue(v, promiseReaction{
+// tryAwait suspends g on v, or leaves the exception pending if PromiseResolve throws.
+func (vm *VM) tryAwait(g *generator, v Value, kind reactionKind) bool {
+	r := promiseReaction{
 		kind: kind,
 		gen:  g,
+	}
+	if !v.IsObject() {
+		// A primitive only queues the fulfill handler created in the activation's realm.
+		r.context = jobContext{
+			continuationData: vm.continuationData,
+			enteredRealm:     g.f.fn.code.realm,
+		}
+		vm.enqueueMicrotask(job{
+			kind:     jobReaction,
+			reaction: r,
+			argument: v,
+		})
+		return true
+	}
+	return vm.protect(func() {
+		if vm.trackJobRealms && g.f.fn.code.realm != vm.curRealm {
+			vm.InRealm((*Realm)(g.f.fn.code.realm), func() { vm.awaitValue(v, &r) })
+			return
+		}
+		vm.awaitValue(v, &r)
 	})
 }
 
 // awaitValue performs PromiseResolve(%Promise%, v) and PerformPromiseThen with the reaction r.
-func (vm *VM) awaitValue(v Value, r promiseReaction) {
+func (vm *VM) awaitValue(v Value, r *promiseReaction) {
 	// The jobs enqueued here run r without addReaction.
 	r.context = vm.captureJobContext()
 	// The promise that PromiseResolve creates is only needed for a thenable: any other value
@@ -495,7 +510,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 	case !v.IsObject():
 		vm.enqueueMicrotask(job{
 			kind:     jobReaction,
-			reaction: r,
+			reaction: *r,
 			argument: v,
 		})
 		return
@@ -507,7 +522,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 			vm.enqueueMicrotask(job{
 				kind:     jobReaction,
 				rejected: true,
-				reaction: r,
+				reaction: *r,
 				argument: e,
 			})
 			return
@@ -515,7 +530,7 @@ func (vm *VM) awaitValue(v Value, r promiseReaction) {
 		if !then.IsCallable() {
 			vm.enqueueMicrotask(job{
 				kind:     jobReaction,
-				reaction: r,
+				reaction: *r,
 				argument: v,
 			})
 			return
@@ -655,7 +670,7 @@ func (q *jobQueue) dequeue() job {
 }
 
 func (vm *VM) enqueueMicrotask(j job) {
-	if vm.hasGlobalProxies {
+	if vm.trackJobRealms {
 		j.reaction.context.enteredRealm = vm.jobRealm(&j)
 		if vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
 			return
@@ -692,9 +707,6 @@ func (vm *VM) jobRealm(j *job) *realm {
 	switch {
 	case j.kind == jobThenable:
 		primary = j.callback
-	case j.reaction.kind == reactionAwait:
-		// The await handler resumes code in the suspended function's realm.
-		return j.reaction.gen.f.fn.code.realm
 	case j.kind == jobReaction && j.reaction.kind != reactionHandlers:
 		return j.reaction.context.enteredRealm
 	case j.rejected:
@@ -828,7 +840,7 @@ func (vm *VM) runJobs() {
 				}
 				j := vm.jobs.dequeue()
 				// Detachment drops microtasks even if they were already queued.
-				if j.kind == jobResolve || !vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
+				if !vm.trackJobRealms || j.kind == jobResolve || !vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
 					vm.withJobContext(j.reaction.context, func() {
 						vm.runJob(&j)
 					})

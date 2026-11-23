@@ -130,6 +130,7 @@ func (vm *VM) initRealmGlobals() {
 
 // CreateRealm creates a realm whose built-in objects install creates while the realm is current.
 func (vm *VM) CreateRealm(install func()) *Realm {
+	vm.trackJobRealms = true
 	saved := vm.curRealm
 	r := &realm{}
 	vm.switchRealm(r)
@@ -638,7 +639,6 @@ func (o *Object) CreationRealm() *Realm {
 }
 
 // IsEnteredRealm reports whether r is the VM's entered realm.
-// Promise jobs record an entered realm only in VMs with global proxies.
 func (vm *VM) IsEnteredRealm(r *Realm) bool {
 	return r != nil && (*realm)(r) == vm.enteredRealm
 }

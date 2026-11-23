@@ -97,9 +97,7 @@ func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
 			vm.resolvePromise(g.object, r)
 			return
 		}
-		if vm.protect(func() {
-			vm.await(g, r, reactionAwait)
-		}) {
+		if vm.tryAwait(g, r, reactionAwait) {
 			return
 		}
 		mode, v = ResumeThrow, vm.takeThrown()
@@ -128,9 +126,7 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 			return
 		}
 		if g.awaiting {
-			if vm.protect(func() {
-				vm.await(g, r, reactionAwait)
-			}) {
+			if vm.tryAwait(g, r, reactionAwait) {
 				return
 			}
 			mode, v = ResumeThrow, vm.takeThrown()
@@ -148,9 +144,7 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 		mode, v = next.mode, next.value
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
-			if vm.protect(func() {
-				vm.await(g, v, reactionAwaitReturn)
-			}) {
+			if vm.tryAwait(g, v, reactionAwaitReturn) {
 				return
 			}
 			mode, v = ResumeThrow, vm.takeThrown()
@@ -195,7 +189,7 @@ func (vm *VM) asyncGeneratorDrainQueue(g *generator) {
 func (vm *VM) asyncGeneratorAwaitReturn(g *generator) {
 	v := g.async.queue[0].value
 	if !vm.protect(func() {
-		vm.awaitValue(v, promiseReaction{
+		vm.awaitValue(v, &promiseReaction{
 			kind: reactionAsyncGeneratorReturn,
 			gen:  g,
 		})
@@ -258,9 +252,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 		if mode == ResumeReturn {
 			// AsyncGeneratorUnwrapYieldResumption awaits the value to return.
 			g.awaiting = true
-			if vm.protect(func() {
-				vm.await(g, v, reactionAwaitReturn)
-			}) {
+			if vm.tryAwait(g, v, reactionAwaitReturn) {
 				break
 			}
 			mode, v = ResumeThrow, vm.takeThrown()
@@ -410,7 +402,7 @@ func (vm *VM) asyncFromSyncIteratorContinuation(result Value, c *PromiseCapabili
 		r.onRejected = it
 	}
 	if !vm.protect(func() {
-		vm.awaitValue(value, r)
+		vm.awaitValue(value, &r)
 	}) {
 		e := vm.takeThrown()
 		if !done && closeOnRejection {

@@ -1198,7 +1198,7 @@ func (vm *VM) evaluateModuleSync(m *Module) {
 // executeAsyncModule implements ExecuteAsyncModule.
 func (vm *VM) executeAsyncModule(m *Module) {
 	p := vm.Call(m.fn, Undefined)
-	vm.addReaction(p.o, promiseReaction{
+	vm.addReaction(p.o, &promiseReaction{
 		kind: reactionNative,
 		native: func(vm *VM, v Value, rejected bool) {
 			if rejected {
@@ -1424,7 +1424,7 @@ func (vm *VM) continueDynamicImport(c *PromiseCapability, m *Module, phase bytec
 		return
 	}
 	load := vm.loadRequestedModules(m)
-	vm.addReaction(load.o, promiseReaction{
+	vm.addReaction(load.o, &promiseReaction{
 		kind: reactionNative,
 		native: func(vm *VM, v Value, rejected bool) {
 			if rejected {
@@ -1441,7 +1441,7 @@ func (vm *VM) continueDynamicImport(c *PromiseCapability, m *Module, phase bytec
 			} else {
 				p = vm.evaluateModule(m)
 			}
-			vm.addReaction(p.o, promiseReaction{
+			vm.addReaction(p.o, &promiseReaction{
 				kind: reactionNative,
 				native: func(vm *VM, v Value, rejected bool) {
 					if rejected {
@@ -1470,7 +1470,7 @@ func (vm *VM) evaluateAll(modules []*Module) Value {
 	remaining := len(modules)
 	for _, m := range modules {
 		p := vm.evaluateModule(m)
-		vm.addReaction(p.o, promiseReaction{
+		vm.addReaction(p.o, &promiseReaction{
 			kind: reactionNative,
 			native: func(vm *VM, v Value, rejected bool) {
 				if rejected {
