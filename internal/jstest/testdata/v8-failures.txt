@@ -1139,6 +1139,7 @@ test/mozilla/data/js1_4/Functions/function-001.js
 test/mozilla/data/js1_5/Array/regress-313153.js
 test/mozilla/data/js1_5/Array/regress-474529.js
 test/mozilla/data/js1_5/Date/regress-301738-02.js
+test/mozilla/data/js1_5/Date/regress-309925-02.js
 test/mozilla/data/js1_5/Error/regress-465377.js
 test/mozilla/data/js1_5/Exceptions/errstack-001.js
 test/mozilla/data/js1_5/Exceptions/regress-123002.js
