@@ -109,8 +109,7 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 }
 
 // checkInstr checks the instruction of s, after which its frame continues at pc with the
-// registers regs. The instruction may also have run the instruction after it, when its flow
-// lets that one follow, and a throw continues at a handler.
+// registers regs. A dispatch may include a second instruction or continue at an exception handler.
 func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	regs = regs[:len(s.regs)]
 	code := s.fp.code
@@ -118,7 +117,7 @@ func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	if reached && bad < 0 {
 		return
 	}
-	if second := nextPC(code, s.pc); second < len(code) && follows(code, s.pc, second) {
+	if second := nextPC(code, s.pc); second < len(code) && canFuse(code[s.pc], code[second]) {
 		b, r := ag.fits(s, regs, pc, s.pc, second)
 		if r && b < 0 {
 			return
@@ -137,21 +136,38 @@ func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	}
 }
 
+// canFuse reports whether the interpreter can consume both instructions in one dispatch.
+func canFuse(first, second bytecode.Instr) bool {
+	switch first.Op {
+	case bytecode.OpGetPropChain:
+		return (second.Op == bytecode.OpGetProp || second.Op == bytecode.OpGetPropChain) && second.B == first.A
+	case bytecode.OpGetMethod:
+		return second.Op == bytecode.OpCall && second.B == first.A
+	case bytecode.OpIterNextPair:
+		return second.Op == bytecode.OpIterNext && second.B == first.B
+	}
+	return false
+}
+
 // fits reports whether the instructions at first and second of the frame of s, or the one at
 // first alone when second is -1, can continue at to, and returns a register that they changed
 // without writing it, or -1. The registers of the frame were s.regs before and are regs after.
 func (ag *agent) fits(s *execStep, regs []Value, to, first, second int) (bad int, reached bool) {
 	code := s.fp.code
+	var continues bool
 	last := first
-	if second >= 0 {
+	if second < 0 {
+		continues = follows(code, first, to)
+	} else {
 		last = second
+		continues = to == nextPC(code, second)
 	}
 	handlerReg := -1
-	if !follows(code, last, to) {
+	if !continues {
 		// A throw continues at a handler, which receives the thrown value.
 		found := false
 		for _, h := range s.fp.Handlers {
-			if int(h.Target) == to && (covers(h, first) || covers(h, last)) {
+			if int(h.Target) == to && covers(h, last) {
 				handlerReg = int(h.Reg)
 				found = true
 				break
@@ -182,8 +198,7 @@ func nextPC(code []bytecode.Instr, pc int) int {
 	return pc + 1
 }
 
-// follows reports whether the flow or a jump target of the instruction at pc of code lets the
-// instruction at to follow it.
+// follows reports whether the instruction at pc can continue at to on its own.
 func follows(code []bytecode.Instr, pc, to int) bool {
 	in := &code[pc]
 	ops := in.Op.Operands()
@@ -192,12 +207,8 @@ func follows(code []bytecode.Instr, pc, to int) bool {
 		x = &code[pc+1]
 	}
 	switch in.Op.Flow() {
-	case bytecode.FlowNext:
+	case bytecode.FlowNext, bytecode.FlowNextOrSkip:
 		if to == nextPC(code, pc) {
-			return true
-		}
-	case bytecode.FlowNextOrSkip:
-		if to == nextPC(code, pc) || to == pc+2 {
 			return true
 		}
 	}

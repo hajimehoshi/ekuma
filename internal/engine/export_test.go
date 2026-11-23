@@ -102,3 +102,21 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 		}
 	})
 }
+
+// CheckDispatchSequence checks successive instruction offsets in a frame of f.
+func CheckDispatchSequence(f *bytecode.Func, pcs ...int) {
+	fp := &funcProto{
+		Func:  f,
+		code:  f.Code,
+		nregs: f.NumRegs,
+	}
+	ag := &agent{
+		frames: []frame{{
+			fp: fp,
+		}},
+		stack: make([]Value, fp.nregs+1),
+	}
+	for _, pc := range pcs {
+		ag.checkStep(fp, pc, ag.stack)
+	}
+}

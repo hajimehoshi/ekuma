@@ -34,9 +34,10 @@ type Opcode uint8
 //     [OpLoadThis] for non-strict functions.
 //   - An instruction whose operands do not fit in a, b and c is followed by an [OpExtra] with
 //     the rest, written x.a and x.b.
-//   - Some instructions work together with the instruction after them: [OpGetPropChain] may
-//     run the [OpGetProp] that follows it, [OpIterNextPair] may supply the value of the following
-//     [OpIterNext], and [OpRegExpArg] and [OpSpreadArgs] prepare the call that follows them.
+//   - Some instructions work together with the next instruction. [OpGetPropChain] may run
+//     the next named read, and [OpGetMethod] may run the following [OpCall]. [OpIterNextPair]
+//     may supply the value of the following [OpIterNext]. [OpRegExpArg] and [OpSpreadArgs]
+//     prepare the call that follows them.
 const (
 	// Loads and moves.
 	OpLoadK     Opcode = iota // a = Consts[b]

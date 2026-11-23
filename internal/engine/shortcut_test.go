@@ -109,3 +109,29 @@ func TestIteratorPairDifferential(t *testing.T) {
 	compareShortcut(t, bytecode.OpIterNextPair, setup, scenario,
 		`[["entry","unset",true],"get yield throw close ",[1,"tail"],false,true]`, []int{3}, []int{2})
 }
+
+func TestValidationRejectsSkippedLoad(t *testing.T) {
+	f := &bytecode.Func{
+		NumRegs: 1,
+		Code: []bytecode.Instr{
+			{
+				Op: bytecode.OpLoadUndef,
+			},
+			{
+				Op: bytecode.OpLoadTrue,
+			},
+			{
+				Op: bytecode.OpReturn,
+			},
+		},
+	}
+	if err := f.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if recover() == nil {
+			t.Error("validation accepted a dispatch that skipped the second load")
+		}
+	}()
+	engine.CheckDispatchSequence(f, 0, 2)
+}

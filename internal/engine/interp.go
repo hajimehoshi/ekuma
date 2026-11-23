@@ -516,8 +516,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					w = o.slots[e.slot]
 				}
 				regs[a] = w
-				// The next instruction is an OpGetProp of w. It runs here only when it reads a
-				// data property through its cache, and runs on its own otherwise.
+				// Consume the next named read of w if its cache supplies a data property.
 				if o := w.o; o != nil {
 					n := &fp.code[pc]
 					c := &fp.caches[n.C]
@@ -1235,8 +1234,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpGetMethod, bytecode.OpCall, bytecode.OpCallUndef, bytecode.OpCallCall:
 			if i.Op == bytecode.OpGetMethod {
-				// A data property read through the cache, as in OpGetProp's case. The call of
-				// the method without arguments, when it is the next instruction, runs here too.
+				// A data property read through the cache, as in OpGetProp's case. An immediately
+				// following OpCall on the same register runs here too.
 				// The this value goes in place first, as the case below does too, so that it
 				// does not stay in registers across the tests of the cache.
 				a := i.A
