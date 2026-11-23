@@ -239,7 +239,7 @@ func datePatternOptions(id, skeleton, zone string) (string, map[string]any, stri
 	return loc, opts, ""
 }
 
-func (s *datePatternSuite) checkSkeletonText(line int, loc string, opts map[string]any, skeleton string, instant time.Time, want string) {
+func (s *formatFixture) checkSkeletonText(line int, loc string, opts map[string]any, skeleton string, instant time.Time, want string) {
 	s.t.Helper()
 	zone := opts["timeZone"].(string)
 	tz, ok := temporal.GetAvailableNamedTimeZone(zone, temporal.UTC)

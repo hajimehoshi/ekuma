@@ -4,6 +4,7 @@
 package icutest
 
 import (
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -196,15 +197,45 @@ func (s *zoneSuite) dateFormat() {
 		loc := intervalString(s.t, c[0])
 		zone := intervalString(s.t, c[1])
 		pattern := intervalString(s.t, c[3])
-		_, opts, reason := datePatternOptions(loc, pattern, zone)
+		locale, opts, reason := datePatternOptions(loc, pattern, zone)
 		if reason != "" {
 			s.excluded[reason]++
 			continue
 		}
-		s.display(row.line, loc, zone, intervalString(s.t, c[2]), opts["timeZoneName"].(string), intervalString(s.t, c[4]))
+		instant := intervalString(s.t, c[2])
+		want := intervalString(s.t, c[4])
+		style := opts["timeZoneName"].(string)
+		if locale == "en-MX" && zone == "America/Chicago" && style == "longGeneric" {
+			// ICU uses the Mexican reference zone. Intl negotiates en, whose
+			// reference zone for America_Central is Chicago itself.
+			at, err := time.Parse(time.RFC3339, instant)
+			if err != nil {
+				s.t.Fatalf("%s:%d: %v", s.path, row.line, err)
+			}
+			s.checkSkeletonText(row.line, locale, opts, pattern, at, want)
+			resolved := s.function(`(locale, opts) => new Intl.DateTimeFormat(locale, opts).resolvedOptions().locale`)
+			s.check(row.line, "resolvedOptions().locale", resolved, "en", locale, opts)
+			want = s.englishCentralTime()
+		}
+		s.display(row.line, locale, zone, instant, style, want)
 	}
 	s.fieldPositions(src)
 	s.fullDateTime(src.from("::TestLocaleDateFormat()"))
+}
+
+func (s *zoneSuite) englishCentralTime() string {
+	path := filepath.Join(s.root, "icu4c/source/data/zone/en.txt")
+	central := readIntervalSource(s.t, path).from(`"meta:America_Central"{`)
+	for _, field := range central.lines[1:] {
+		if field == "}" {
+			break
+		}
+		if strings.HasPrefix(field, "lg{") {
+			return intervalString(s.t, field)
+		}
+	}
+	s.t.Fatalf("%s:%d: missing long generic name for America_Central", path, central.line)
+	return ""
 }
 
 func (s *zoneSuite) fullDateTime(block intervalSource) {

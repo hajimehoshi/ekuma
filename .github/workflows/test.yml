@@ -87,6 +87,7 @@ jobs:
             /icu4c/source/test/testdata/calendar.txt
             /icu4c/source/test/testdata/format.txt
             /icu4c/source/test/cintltst/cdateintervalformattest.c
+            /icu4c/source/data/zone/en.txt
             /icu4c/source/tools/tzcode/icuzones
             /icu4c/source/test/intltest/tztest.cpp
             /icu4c/source/test/intltest/tzfmttst.cpp
