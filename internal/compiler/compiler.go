@@ -81,9 +81,6 @@ type binding struct {
 	// catch marks a simple parameter of a catch clause.
 	catch bool
 
-	// isArgs marks the implicit arguments object binding of a function.
-	isArgs bool
-
 	// initialized is set once the code compiled from then on always runs after the binding
 	// got its first value.
 	initialized bool

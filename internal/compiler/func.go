@@ -309,23 +309,20 @@ func (c *compiler) compileFunction(parent *fn, node *ast.Function, name wtf8.Str
 		}
 		if node.UsesArguments || node.HasDirectEval && !node.FieldInit {
 			if f.scope.lookup("arguments") == nil && !paramNames["arguments"] {
-				var args *binding
 				switch {
 				case !node.Scope.ContainsDirectEval && f.forwardsArguments():
-					args = f.declare("arguments", bindVar)
-					f.forwardedArgs = args
+					f.forwardedArgs = f.declare("arguments", bindVar)
 				case !node.UsesArguments && mappedArguments(node) != 0 &&
 					!arrowsHaveDirectEval(node):
 					// Only the direct evals of the function itself can see the arguments object,
 					// which the first of them that needs it creates.
-					args = f.declare("arguments", bindVar)
+					args := f.declare("arguments", bindVar)
 					f.emit(bytecode.OpLoadTDZ, args.reg, 0, 0)
 					f.lazyArgs = true
 				default:
-					args = f.declare("arguments", bindVar)
+					args := f.declare("arguments", bindVar)
 					f.emit(bytecode.OpArguments, args.reg, mappedArguments(node), 0)
 				}
-				args.isArgs = true
 				b.NeedsExtra = true
 			}
 		}

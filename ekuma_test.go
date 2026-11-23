@@ -3593,27 +3593,29 @@ func TestDirectEvalDestructuredCatch(t *testing.T) {
 func TestDirectEvalParamDefaultArguments(t *testing.T) {
 	var vm ekuma.VM
 	got := run(t, &vm, `
-		const a = (function f(x = eval("var arguments = 42")) { return arguments; })();
-		const b = (function f(x = eval("var arguments = 42"), y = arguments) { return y + ":" + arguments; })();
-		const c = (function f(x = eval("function arguments() { return 7; }")) { return arguments(); })();
-		const d = (function f(x = eval("var arguments = 42")) { var arguments; return arguments; })();
+		const errName = (fn) => {
+			try {
+				fn();
+				return "ok";
+			} catch (e) {
+				return e.name;
+			}
+		};
+		const a = errName(() => (function f(x = eval("var arguments = 42")) { return arguments; })());
+		const b = errName(() => (function f(x = eval("function arguments() { return 7; }")) { return arguments(); })());
+		const c = errName(() => (function f(x = eval("var arguments = 42")) { var arguments; return arguments; })());
+		const d = errName(() => (function f(arguments = eval("var arguments = 42")) { return arguments; })());
+		const e = errName(() => (function f({ arguments } = eval("var arguments = 42")) { return arguments; })());
+		const f = (function outer() {
+			const arrow = (x = eval("var arguments = 42")) => arguments;
+			return arrow();
+		})();
+		const g = (function f({ arguments } = { arguments: 7 }) { return arguments; })();
+		const h = (function f(x = eval("{ function arguments() {} }")) { return typeof arguments; })();
 
-		let paramArgErr = "";
-		try {
-			(function f(arguments = eval("var arguments = 42")) { return arguments; })();
-		} catch (e) {
-			paramArgErr = e.name;
-		}
-		let destrArgErr = "";
-		try {
-			(function f({ arguments } = eval("var arguments = 42")) { return arguments; })();
-		} catch (e) {
-			destrArgErr = e.name;
-		}
-
-		[a, b, c, d, paramArgErr, destrArgErr].join(",");
+		[a, b, c, d, e, f, g, h].join(",");
 	`)
-	if want := "42,42:42,7,42,SyntaxError,SyntaxError"; got != want {
+	if want := "SyntaxError,SyntaxError,SyntaxError,SyntaxError,SyntaxError,42,7,object"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
@@ -3624,10 +3626,18 @@ func TestPromiseTrySpec(t *testing.T) {
 		const p = Promise.resolve(1);
 		const same = (Promise.try(() => p) === p);
 
-		let ran = false;
+		let nonObjRan = false;
+		let nonObjErr = "";
+		try {
+			Promise.try.call(null, () => { nonObjRan = true; });
+		} catch (e) {
+			nonObjErr = e.name;
+		}
+
+		let nonCtorRan = false;
 		let nonCtorErr = "";
 		try {
-			Promise.try.call({}, () => { ran = true; });
+			Promise.try.call({}, () => { nonCtorRan = true; });
 		} catch (e) {
 			nonCtorErr = e.name;
 		}
@@ -3636,9 +3646,9 @@ func TestPromiseTrySpec(t *testing.T) {
 		function C(exec) { order.push("C"); exec(() => {}, () => {}); }
 		Promise.try.call(C, () => { order.push("cb"); });
 
-		[same, ran, nonCtorErr, order.join("/")].join(",");
+		[same, nonObjRan, nonObjErr, nonCtorRan, nonCtorErr, order.join("/")].join(",");
 	`)
-	if want := "false,false,TypeError,C/cb"; got != want {
+	if want := "true,false,TypeError,true,TypeError,cb/C"; got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

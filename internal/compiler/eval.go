@@ -256,7 +256,7 @@ func (f *fn) evalSite() int32 {
 				s.captured = true
 			}
 			for _, b := range s.sortedBinds() {
-				inVarEnv := g == f && b.kind == bindVar && (s == varEnv || varEnv == nil && b.isArgs)
+				inVarEnv := g == f && s == varEnv && b.kind == bindVar
 				blocksVar := g == f && inner && !inVarEnv && !b.catch && b.kind != bindFuncName
 				add(b.name, b.kind, inVarEnv, blocksVar)
 			}
