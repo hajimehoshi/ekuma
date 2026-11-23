@@ -11,8 +11,8 @@ import (
 // they report a JavaScript exception as an error.
 
 // HostDefined returns the value that [NewExecutionContext] was given.
-func (vm *VM) HostDefined() any {
-	return vm.hostDefined
+func (ag *agent) HostDefined() any {
+	return ag.hostDefined
 }
 
 // GlobalObject returns the global object.
@@ -229,25 +229,25 @@ func (cx *ExecutionContext) HostInstanceOf(v, t Value) (bool, error) {
 
 // ThrownMessage describes the thrown value v for a Go error, without running any JavaScript.
 func ThrownMessage(v Value) string {
-	var vm *VM
+	var ag *agent
 	if v.o != nil && v.o.shape != nil {
-		vm = v.o.shape.vm
+		ag = v.o.shape.agent
 	}
-	if vm == nil {
-		// A primitive other than a string: its description needs no VM.
-		return "uncaught " + vm.DisplayString(v)
+	if ag == nil {
+		// A primitive other than a string: its description needs no agent.
+		return "uncaught " + ag.DisplayString(v)
 	}
-	return vm.errorOf(v).Error()
+	return ag.errorOf(v).Error()
 }
 
 // ContinuationData returns the continuation data, the value of the host that promise
 // reactions, awaits and FinalizationRegistry objects capture when they are made, and that
 // their jobs run with.
-func (vm *VM) ContinuationData() any {
-	return vm.continuationData
+func (ag *agent) ContinuationData() any {
+	return ag.continuationData
 }
 
 // SetContinuationData sets data as the continuation data.
-func (vm *VM) SetContinuationData(data any) {
-	vm.continuationData = data
+func (ag *agent) SetContinuationData(data any) {
+	ag.continuationData = data
 }

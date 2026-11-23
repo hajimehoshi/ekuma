@@ -11,8 +11,8 @@ const validateExec = false
 
 type execChecks struct{}
 
-func (vm *VM) enterChecks() {}
+func (ag *agent) enterChecks() {}
 
-func (vm *VM) leaveChecks() {}
+func (ag *agent) leaveChecks() {}
 
-func (vm *VM) checkStep(fp *funcProto, pc int, regs []Value) {}
+func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {}

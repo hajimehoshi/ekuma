@@ -11,7 +11,7 @@ import (
 )
 
 func TestInterruptWithoutCause(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	cx.Interrupt(nil)
 	_, err := runScript(cx, "interrupted", `while (true) {}`)
 	interrupted, ok := errors.AsType[*engine.InterruptedError](err)

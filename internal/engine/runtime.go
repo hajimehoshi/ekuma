@@ -37,7 +37,7 @@ func callAt(fp *funcProto, pc int) int {
 }
 
 // calleeName names the function that the call instruction at pc calls, for an error message.
-func (vm *VM) calleeName(fp *funcProto, pc int) wtf8.String {
+func (ag *agent) calleeName(fp *funcProto, pc int) wtf8.String {
 	target := fp.code[pc].B
 	for j := pc - 1; j >= 0 && j >= pc-64; j-- {
 		in := fp.code[j]
@@ -57,22 +57,22 @@ func (vm *VM) calleeName(fp *funcProto, pc int) wtf8.String {
 
 // throwNotCallable throws the TypeError for the call instruction of fp that ends before pc,
 // whose callee is not a function.
-func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
+func (ag *agent) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 	pc = callAt(fp, pc)
-	name := wtf8.ToValidUTF8(vm.calleeName(fp, pc))
+	name := wtf8.ToValidUTF8(ag.calleeName(fp, pc))
 	if name == "" {
-		name = vm.DisplayString(regs[fp.code[pc].B])
+		name = ag.DisplayString(regs[fp.code[pc].B])
 	}
 	fp.context.ThrowTypeError(name + " is not a function")
 }
 
 // throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
 // whose callee is not a constructor.
-func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
+func (ag *agent) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	pc = callAt(fp, pc)
-	name := wtf8.ToValidUTF8(vm.calleeName(fp, pc))
+	name := wtf8.ToValidUTF8(ag.calleeName(fp, pc))
 	if name == "" {
-		name = vm.DisplayString(regs[fp.code[pc].B])
+		name = ag.DisplayString(regs[fp.code[pc].B])
 	}
 	fp.context.ThrowTypeError(name + " is not a constructor")
 }
@@ -848,8 +848,8 @@ func (cx *ExecutionContext) defineClassElement(this Value, e *classElement) {
 	}
 }
 
-func (vm *VM) typeofValue(v Value) Value {
-	return vm.typeofs[typeOf(v)]
+func (ag *agent) typeofValue(v Value) Value {
+	return ag.typeofs[typeOf(v)]
 }
 
 // defineField implements CreateDataPropertyOrThrow for a computed key, as object literals
@@ -1030,7 +1030,7 @@ func takeDataProperties(dst, from *Object) bool {
 
 // AssignDataProperties copies the own enumerable properties of from to the empty object to as
 // Object.assign does, when that is known to run no code, and reports whether it did.
-func (vm *VM) AssignDataProperties(to, from *Object) bool {
+func (ag *agent) AssignDataProperties(to, from *Object) bool {
 	s := takenShape(to, from)
 	if s == nil || len(from.elems) != 0 {
 		return false
@@ -1164,14 +1164,14 @@ func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
 // %ArrayIteratorPrototype%.next are the original functions.
-func (vm *VM) arrayIterationUnmodified(r *Realm) bool {
+func (ag *agent) arrayIterationUnmodified(r *Realm) bool {
 	c := &r.arrayIter
-	if c.epoch != vm.protoEpoch || !c.checked {
+	if c.epoch != ag.protoEpoch || !c.checked {
 		c.checked = true
-		c.epoch = vm.protoEpoch
-		c.found = c.iter.findData(r.intrinsics[IntrinsicArrayPrototype], vm.WellKnownSymbol(SymbolIterator)) &&
-			c.next.findData(r.intrinsics[IntrinsicArrayIteratorPrototype], vm.Key(keyNext))
-		c.noReturn = vm.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
+		c.epoch = ag.protoEpoch
+		c.found = c.iter.findData(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator)) &&
+			c.next.findData(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(keyNext))
+		c.noReturn = ag.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
 	}
 	// Assigning to an existing data property does not move protoEpoch, so the values are
 	// compared on every call.
@@ -1181,15 +1181,15 @@ func (vm *VM) arrayIterationUnmodified(r *Realm) bool {
 
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
-func (vm *VM) pairDestructuringPlain(r *Realm) bool {
-	return vm.arrayIterationUnmodified(r) && r.arrayIter.noReturn
+func (ag *agent) pairDestructuringPlain(r *Realm) bool {
+	return ag.arrayIterationUnmodified(r) && r.arrayIter.noReturn
 }
 
 // noArrayIteratorReturn reports whether array iterators have no return method, which closing
 // one calls. The prototypes that it looks at count as prototypes from then on, so that adding a
 // property to one moves protoEpoch.
-func (vm *VM) noArrayIteratorReturn(proto *Object) bool {
-	key := vm.Key(keyReturn)
+func (ag *agent) noArrayIteratorReturn(proto *Object) bool {
+	key := ag.Key(keyReturn)
 	for p := proto; p != nil; p = p.shape.proto {
 		p.flags |= objIsProto
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
@@ -1205,7 +1205,7 @@ type arrayIterCache struct {
 	iter dataSlot
 	next dataSlot
 
-	// epoch is the value of VM.protoEpoch at which iter and next were found.
+	// epoch is the value of agent.protoEpoch at which iter and next were found.
 	epoch   uint32
 	checked bool
 	// found reports whether iter and next were found as data properties.
@@ -1252,7 +1252,7 @@ func (cx *ExecutionContext) CallValue(f, this Value, args ...Value) Value {
 	return cx.callOnStack(f.o, this, args)
 }
 
-// callOnStack calls f with a copy of args on the [VM] stack, so that args does not escape.
+// callOnStack calls f with a copy of args on the agent stack, so that args does not escape.
 func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Value {
 	base := cx.sp
 	n := len(args)
@@ -1428,7 +1428,7 @@ type (
 // SetNumberKernels makes a call of the native function f with exactly one or two arguments that
 // are numbers call k1 or k2 instead, which must return what f returns for those arguments.
 // Either may be nil.
-func (vm *VM) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
+func (ag *agent) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
 	info := f.fn.info
 	if info.fast == nil {
 		info.fast = &nativeFast{}
@@ -1437,7 +1437,7 @@ func (vm *VM) SetNumberKernels(f *Object, k1 NumberKernel1, k2 NumberKernel2) {
 	info.fast.number2 = k2
 }
 
-// Extremum identifies Math.min or Math.max for [VM.SetExtremum].
+// Extremum identifies Math.min or Math.max for [agent.SetExtremum].
 type Extremum uint8
 
 const (
@@ -1447,13 +1447,13 @@ const (
 )
 
 // SetExtremum says that the native function f is Math.min or Math.max, as e names.
-func (vm *VM) SetExtremum(f *Object, e Extremum) {
+func (ag *agent) SetExtremum(f *Object, e Extremum) {
 	f.fn.info.extremum = e
 }
 
 // SetFrameless makes calls of the native function f show no frame: stack traces leave them out,
 // and the caller of a function that f calls is the one that called f.
-func (vm *VM) SetFrameless(f *Object) {
+func (ag *agent) SetFrameless(f *Object) {
 	f.fn.info.frameless = true
 }
 
@@ -1469,7 +1469,7 @@ type (
 // SetMethodKernels makes a call of the native function f with exactly no, one or two arguments
 // try k0, k1 or k2 first. When the kernel reports true, its result must be what f returns for the
 // call. Any of them may be nil.
-func (vm *VM) SetMethodKernels(f *Object, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
+func (ag *agent) SetMethodKernels(f *Object, k0 MethodKernel0, k1 MethodKernel1, k2 MethodKernel2) {
 	info := f.fn.info
 	if info.fast == nil {
 		info.fast = &nativeFast{}
@@ -1488,7 +1488,7 @@ type nativeObject struct {
 }
 
 // NewNativeConstructor returns a function implemented in Go that can be called with new.
-// f learns the constructor it is constructing for from [VM.GetNewTarget].
+// f learns the constructor it is constructing for from [agent.GetNewTarget].
 func (cx *ExecutionContext) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *Object {
 	o := cx.NewNative(name, length, f)
 	o.fn.constructor = true
@@ -1505,9 +1505,9 @@ func (cx *ExecutionContext) DefineConstructorPrototype(c *Object, id Intrinsic) 
 
 // GetNewTarget implements GetNewTarget for the running native function: it returns the
 // constructor the function is being constructed for, or nil when it was called.
-func (vm *VM) GetNewTarget() *Object {
-	if n := len(vm.natives); n > 0 {
-		return vm.natives[n-1].newTarget
+func (ag *agent) GetNewTarget() *Object {
+	if n := len(ag.natives); n > 0 {
+		return ag.natives[n-1].newTarget
 	}
 	return nil
 }
@@ -1549,8 +1549,8 @@ func (f *function) capturedScopes() []*Object {
 
 // openScopes returns a copy of the dynamic scopes that are open in the running function cl,
 // innermost last, or nil when none are.
-func (vm *VM) openScopes(cl *Object) *[]*Object {
-	scopes := slices.Concat(cl.fn.capturedScopes(), vm.frames[len(vm.frames)-1].scopes)
+func (ag *agent) openScopes(cl *Object) *[]*Object {
+	scopes := slices.Concat(cl.fn.capturedScopes(), ag.frames[len(ag.frames)-1].scopes)
 	if len(scopes) == 0 {
 		return nil
 	}

@@ -43,14 +43,14 @@ type execStep struct {
 
 // enterChecks forgets the instructions of the running frame and of the frames after it, which
 // an interpreter loop that starts or resumes the running frame leaves unchecked.
-func (vm *VM) enterChecks() {
-	vm.checks.forget(len(vm.frames) - 1)
+func (ag *agent) enterChecks() {
+	ag.checks.forget(len(ag.frames) - 1)
 }
 
 // leaveChecks forgets the instructions of the frames that have ended or been suspended when an
 // interpreter loop returns.
-func (vm *VM) leaveChecks() {
-	vm.checks.forget(len(vm.frames))
+func (ag *agent) leaveChecks() {
+	ag.checks.forget(len(ag.frames))
 }
 
 // forget forgets the instructions of the frames from the index n on, without keeping their
@@ -65,10 +65,10 @@ func (c *execChecks) forget(n int) {
 
 // checkStep checks the instruction that the running frame started last, which continues at pc
 // with the registers regs, and records the instruction at pc. fp is the code of the frame.
-func (vm *VM) checkStep(fp *funcProto, pc int, regs []Value) {
-	c := &vm.checks
-	n := len(vm.frames) - 1
-	fr := &vm.frames[n]
+func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
+	c := &ag.checks
+	n := len(ag.frames) - 1
+	fr := &ag.frames[n]
 	// The frames after the running one have ended.
 	c.forget(n + 1)
 	c.top = n + 1
@@ -77,7 +77,7 @@ func (vm *VM) checkStep(fp *funcProto, pc int, regs []Value) {
 	}
 	s := &c.steps[n]
 	if s.valid && s.fp == fp && s.base == fr.base && s.gen == fr.gen {
-		vm.checkInstr(s, pc, regs)
+		ag.checkInstr(s, pc, regs)
 	}
 	s.valid = true
 	s.fp, s.base, s.gen, s.pc = fp, fr.base, fr.gen, pc
@@ -88,15 +88,15 @@ func (vm *VM) checkStep(fp *funcProto, pc int, regs []Value) {
 // checkInstr checks the instruction of s, after which its frame continues at pc with the
 // registers regs. The instruction may also have run the instruction after it, when its flow
 // lets that one follow, and a throw continues at a handler.
-func (vm *VM) checkInstr(s *execStep, pc int, regs []Value) {
+func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	regs = regs[:len(s.regs)]
 	code := s.fp.code
-	bad, reached := vm.fits(s, regs, pc, s.pc, -1)
+	bad, reached := ag.fits(s, regs, pc, s.pc, -1)
 	if reached && bad < 0 {
 		return
 	}
 	if second := nextPC(code, s.pc); second < len(code) && follows(code, s.pc, second) {
-		b, r := vm.fits(s, regs, pc, s.pc, second)
+		b, r := ag.fits(s, regs, pc, s.pc, second)
 		if r && b < 0 {
 			return
 		}
@@ -108,16 +108,16 @@ func (vm *VM) checkInstr(s *execStep, pc int, regs []Value) {
 	case !reached && isTailCall(code[s.pc].Op):
 		// The callee took the place of the frame.
 	case !reached:
-		panic(vm.failure(s, fmt.Sprintf("continued at %d", pc)))
+		panic(ag.failure(s, fmt.Sprintf("continued at %d", pc)))
 	default:
-		panic(vm.failure(s, fmt.Sprintf("changed the register %d and continued at %d", bad, pc)))
+		panic(ag.failure(s, fmt.Sprintf("changed the register %d and continued at %d", bad, pc)))
 	}
 }
 
 // fits reports whether the instructions at first and second of the frame of s, or the one at
 // first alone when second is -1, can continue at to, and returns a register that they changed
 // without writing it, or -1. The registers of the frame were s.regs before and are regs after.
-func (vm *VM) fits(s *execStep, regs []Value, to, first, second int) (bad int, reached bool) {
+func (ag *agent) fits(s *execStep, regs []Value, to, first, second int) (bad int, reached bool) {
 	code := s.fp.code
 	last := first
 	if second >= 0 {
@@ -139,7 +139,7 @@ func (vm *VM) fits(s *execStep, regs []Value, to, first, second int) (bad int, r
 		}
 	}
 	for r := range regs {
-		if sameBits(s.regs[r], regs[r]) || r == handlerReg || writesAt(code, first, r) || second >= 0 && writesAt(code, second, r) || vm.hasOpenUpval(s, r) {
+		if sameBits(s.regs[r], regs[r]) || r == handlerReg || writesAt(code, first, r) || second >= 0 && writesAt(code, second, r) || ag.hasOpenUpval(s, r) {
 			continue
 		}
 		return r, true
@@ -254,8 +254,8 @@ func isTailCall(op bytecode.Opcode) bool {
 
 // hasOpenUpval reports whether a closure or an arguments object shares the register r of the
 // frame of s, so that code other than the instruction of s may have changed it.
-func (vm *VM) hasOpenUpval(s *execStep, r int) bool {
-	ups, index := vm.openUpvals, s.base+r
+func (ag *agent) hasOpenUpval(s *execStep, r int) bool {
+	ups, index := ag.openUpvals, s.base+r
 	if s.gen != nil {
 		ups, index = s.gen.openUpvals, r
 	}
@@ -266,7 +266,7 @@ func (vm *VM) hasOpenUpval(s *execStep, r int) bool {
 }
 
 // failure returns the message of a failed check of the instruction of s.
-func (vm *VM) failure(s *execStep, msg string) string {
+func (ag *agent) failure(s *execStep, msg string) string {
 	in := s.fp.code[s.pc]
 	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, s.pc, s.fp.name, s.fp.File, msg)
 }

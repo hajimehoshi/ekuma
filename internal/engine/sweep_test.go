@@ -22,7 +22,7 @@ func runScript(cx *engine.ExecutionContext, file, src string) (engine.Value, err
 	return v, err
 }
 
-func newVM(t *testing.T) *engine.ExecutionContext {
+func newTestContext(t *testing.T) *engine.ExecutionContext {
 	t.Helper()
 	cx, _ := engine.NewExecutionContext(nil)
 	builtin.Install(cx)
@@ -52,7 +52,7 @@ func TestDynamicKeysCollected(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cx := newVM(t)
+			cx := newTestContext(t)
 			if _, err := runScript(cx, "keep", `var kept = {}; kept["k" + 0] = 0;`); err != nil {
 				t.Fatalf("runScript: %v", err)
 			}

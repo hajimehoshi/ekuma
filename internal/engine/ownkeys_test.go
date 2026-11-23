@@ -21,7 +21,7 @@ func TestOwnKeysOfManyIndicesPoll(t *testing.T) {
 			list: func(cx *engine.ExecutionContext, o *engine.Object) { cx.EnumerableOwnKeys(o, nil) },
 		},
 	} {
-		cx := newVM(t)
+		cx := newTestContext(t)
 		returned := false
 		list := cx.NewFunction("list", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 			// The interruption is seen at the next poll.

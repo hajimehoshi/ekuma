@@ -65,10 +65,10 @@ type Realm struct {
 	strictCallee Value
 }
 
-func (vm *VM) newRealm() *Realm {
+func (ag *agent) newRealm() *Realm {
 	r := &Realm{}
 	r.context = ExecutionContext{
-		agent: vm,
+		agent: ag,
 		realm: r,
 	}
 	r.referrer = &scriptOrModule{
@@ -78,7 +78,7 @@ func (vm *VM) newRealm() *Realm {
 }
 
 // initRealmPrototypes creates the prototypes of the current realm that the strings, the keys
-// and the other objects of the VM depend on.
+// and the other objects of the agent depend on.
 func (cx *ExecutionContext) initRealmPrototypes() {
 	r := cx.realm
 	r.shapes.nullProto = cx.newShape(nil, r)
@@ -145,9 +145,9 @@ func (cx *ExecutionContext) initRealmGlobals() {
 }
 
 // CreateRealm creates a realm whose built-in objects install creates while the realm is current.
-func (vm *VM) CreateRealm(install func(*ExecutionContext)) *Realm {
-	vm.trackJobRealms = true
-	r := vm.newRealm()
+func (ag *agent) CreateRealm(install func(*ExecutionContext)) *Realm {
+	ag.trackJobRealms = true
+	r := ag.newRealm()
 	cx := r.Context()
 	cx.Run(func() {
 		cx.initRealmPrototypes()
@@ -178,18 +178,18 @@ func (o *Object) CreationRealm() *Realm {
 	return o.shape.realm
 }
 
-// IsEnteredRealm reports whether r is the VM's entered realm.
-func (vm *VM) IsEnteredRealm(r *Realm) bool {
-	return r != nil && r == vm.enteredRealm
+// IsEnteredRealm reports whether r is the agent's entered realm.
+func (ag *agent) IsEnteredRealm(r *Realm) bool {
+	return r != nil && r == ag.enteredRealm
 }
 
 // SetRealmHostDefined sets the [[HostDefined]] field of the realm r to v.
-func (vm *VM) SetRealmHostDefined(r *Realm, v any) {
+func (ag *agent) SetRealmHostDefined(r *Realm, v any) {
 	r.hostDefined = v
 }
 
 // RealmHostDefined returns the [[HostDefined]] field of the realm r.
-func (vm *VM) RealmHostDefined(r *Realm) any {
+func (ag *agent) RealmHostDefined(r *Realm) any {
 	return r.hostDefined
 }
 
@@ -199,6 +199,6 @@ func (cx *ExecutionContext) SetRealmExtension(v any) {
 }
 
 // RealmExtension returns the state of the built-in extension of the realm r.
-func (vm *VM) RealmExtension(r *Realm) any {
+func (ag *agent) RealmExtension(r *Realm) any {
 	return r.extension
 }

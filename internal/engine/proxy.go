@@ -127,7 +127,7 @@ func (cx *ExecutionContext) DetachGlobalProxy() {
 	cx.realm.globalProxyHandler = cx.defaultGlobalHandler()
 }
 
-func (vm *VM) hasDetachedGlobal(r *Realm) bool {
+func (ag *agent) hasDetachedGlobal(r *Realm) bool {
 	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target != r.global
 }
 
@@ -223,8 +223,8 @@ func (cx *ExecutionContext) proxyEnter(o *Object, op string) (target, handler *O
 	return target, st.handler
 }
 
-func (vm *VM) proxyLeave() {
-	vm.depth--
+func (ag *agent) proxyLeave() {
+	ag.depth--
 }
 
 // proxyTrap returns the trap key of handler, or nil when the operation forwards to the target.

@@ -93,7 +93,7 @@ const (
 type IteratorPairStepFunc func(state any) (a, b Value, st PairStep)
 
 // SetIteratorPairStep registers the pair step of a built-in next method.
-func (vm *VM) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
+func (ag *agent) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
 	next.fn.info.fast.pairStep = step
 }
 
@@ -785,13 +785,13 @@ func (cx *ExecutionContext) forInMayVisit(o *Object) bool {
 
 // forInVisitReceiver records the keys that the for-in iterator it visited on the receiver,
 // which it is done with, in it.visited.
-func (vm *VM) forInVisitReceiver(it *forIn) {
+func (ag *agent) forInVisitReceiver(it *forIn) {
 	it.visited = make(map[PropKey]struct{}, int(it.indices)+len(it.keys)+1)
 	for i := range it.indices {
 		it.visited[PropKey{idx: i}] = struct{}{}
 	}
 	if it.length {
-		it.visited[PropKey{key: vm.Key(KeyLength)}] = struct{}{}
+		it.visited[PropKey{key: ag.Key(KeyLength)}] = struct{}{}
 	}
 	for _, k := range it.keys {
 		if !k.IsSymbol() {

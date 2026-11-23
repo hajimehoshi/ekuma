@@ -73,7 +73,7 @@ type decorationState struct {
 }
 
 // newClassDecoration returns a new state for the evaluation of the class with the name name.
-func (vm *VM) newClassDecoration(name Value) Value {
+func (ag *agent) newClassDecoration(name Value) Value {
 	return Value{o: (&propertyObject{
 		kind: kindObject,
 		ext: &classDecoration{

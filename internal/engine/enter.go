@@ -9,7 +9,7 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
-// hostContext is the host state in effect during an entry into the VM.
+// hostContext is the host state in effect during an entry into the agent.
 type hostContext struct {
 	continuationData any
 
@@ -19,7 +19,7 @@ type hostContext struct {
 
 // enterJob installs the job's host state across calls in its execution realm.
 func (cx *ExecutionContext) enterJob(continuationData any, f func()) {
-	// The outer host call already entered the only realm in a single-realm VM.
+	// The outer host call already entered the only realm in a single-realm agent.
 	if cx.trackJobRealms {
 		caller := cx.activate()
 		entered := cx.enteredRealm

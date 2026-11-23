@@ -17,7 +17,7 @@ type Pacer struct {
 	steps int
 }
 
-// Step counts one step, and calls [VM.Poll] when a check is due.
+// Step counts one step, and calls [agent.Poll] when a check is due.
 func (p *Pacer) Step(cx *ExecutionContext) {
 	p.steps++
 	if p.steps >= PollInterval {
@@ -26,11 +26,11 @@ func (p *Pacer) Step(cx *ExecutionContext) {
 	}
 }
 
-// PollAt calls [VM.Poll] when i ends a run of [PollInterval] indices, so that a loop over
+// PollAt calls [agent.Poll] when i ends a run of [PollInterval] indices, so that a loop over
 // consecutive indices checks for an interruption regularly.
-func (vm *VM) PollAt(i int64) {
+func (ag *agent) PollAt(i int64) {
 	if i&(PollInterval-1) == PollInterval-1 {
-		vm.Poll()
+		ag.Poll()
 	}
 }
 

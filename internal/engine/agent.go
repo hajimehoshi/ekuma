@@ -78,7 +78,7 @@ type nativeInfo struct {
 	// for two numbers.
 	extremum Extremum
 
-	// frameless says that calls of the function show no frame, as [VM.SetFrameless] describes.
+	// frameless says that calls of the function show no frame, as [agent.SetFrameless] describes.
 	frameless bool
 
 	// prototype is the intrinsic of realm that the property prototype of the function holds,
@@ -260,13 +260,13 @@ type keys struct {
 }
 
 // Key returns the string property key k.
-func (vm *VM) Key(k CommonKey) *Object {
-	return vm.keys.common[k]
+func (ag *agent) Key(k CommonKey) *Object {
+	return ag.keys.common[k]
 }
 
 // WellKnownSymbol returns the well-known symbol s.
-func (vm *VM) WellKnownSymbol(s WellKnownSymbol) *Object {
-	return vm.keys.wellKnown[s]
+func (ag *agent) WellKnownSymbol(s WellKnownSymbol) *Object {
+	return ag.keys.wellKnown[s]
 }
 
 func (cx *ExecutionContext) initKeys() {
@@ -309,7 +309,7 @@ type interruptSignal struct {
 	cause error
 }
 
-// InterruptedError reports the cause of an interruption by [VM.Interrupt].
+// InterruptedError reports the cause of an interruption by [agent.Interrupt].
 type InterruptedError struct {
 	Cause error
 }
@@ -353,46 +353,46 @@ func isHostPanic(value any) bool {
 // or call. It may be called from any goroutine and remains pending until observed or
 // cleared. Interrupted module evaluations are rejected with an Error whose message is
 // "ekuma: interrupted" and whose [GoError] is cause, or the [InterruptedError] when cause is nil.
-func (vm *VM) Interrupt(cause error) {
-	vm.interruptCause.Store(&cause)
-	vm.interrupt.Store(true)
-	vm.mailbox.poke()
+func (ag *agent) Interrupt(cause error) {
+	ag.interruptCause.Store(&cause)
+	ag.interrupt.Store(true)
+	ag.mailbox.poke()
 }
 
-// ClearInterrupt withdraws a request of [VM.Interrupt] that no script has observed.
-func (vm *VM) ClearInterrupt() {
-	vm.interrupt.Store(false)
-	vm.interruptCause.Store(nil)
+// ClearInterrupt withdraws a request of [agent.Interrupt] that no script has observed.
+func (ag *agent) ClearInterrupt() {
+	ag.interrupt.Store(false)
+	ag.interruptCause.Store(nil)
 }
 
 // Poll stops the script when an interruption was requested. It also takes the notifications of
 // other agents, which raise the interrupt flag too. A loop calls it only between runs of many
 // steps, such as [PollInterval] steps.
-func (vm *VM) Poll() {
-	vm.pollYield()
-	vm.ResumeInterruption()
-	if vm.interrupt.Load() {
-		vm.interrupt.Store(false)
-		vm.receiveNotifications()
-		if c := vm.interruptCause.Swap(nil); c != nil {
-			vm.raised = &interruptSignal{
+func (ag *agent) Poll() {
+	ag.pollYield()
+	ag.ResumeInterruption()
+	if ag.interrupt.Load() {
+		ag.interrupt.Store(false)
+		ag.receiveNotifications()
+		if c := ag.interruptCause.Swap(nil); c != nil {
+			ag.raised = &interruptSignal{
 				cause: *c,
 			}
-			panic(vm.raised)
+			panic(ag.raised)
 		}
 	}
 }
 
 // ResumeInterruption panics again with an interruption that a host callback recovered before
 // the interruption reached the outermost call from Go.
-func (vm *VM) ResumeInterruption() {
-	if vm.raised != nil {
-		panic(vm.raised)
+func (ag *agent) ResumeInterruption() {
+	if ag.raised != nil {
+		panic(ag.raised)
 	}
 }
 
 // throwSignal is what a thrown JavaScript exception unwinds Go frames with.
-// The exception itself is VM.thrown.
+// The exception itself is agent.thrown.
 type throwSignal struct{}
 
 var errThrow = &throwSignal{}
@@ -472,40 +472,39 @@ func (c *nativeCall) showsFrame() bool {
 }
 
 // popNative records the end of the innermost call of a native function.
-func (vm *VM) popNative() {
-	n := len(vm.natives) - 1
-	vm.natives[n] = nativeCall{}
-	vm.natives = vm.natives[:n]
+func (ag *agent) popNative() {
+	n := len(ag.natives) - 1
+	ag.natives[n] = nativeCall{}
+	ag.natives = ag.natives[:n]
 }
 
 // truncateNatives drops the calls of native functions after the first n.
-func (vm *VM) truncateNatives(n int) {
-	clear(vm.natives[n:])
-	vm.natives = vm.natives[:n]
+func (ag *agent) truncateNatives(n int) {
+	clear(ag.natives[n:])
+	ag.natives = ag.natives[:n]
 }
 
 // dropNatives drops the calls of native functions that started when there were more than
 // frames frames, which an exception ended.
-func (vm *VM) dropNatives(frames int) {
-	n := len(vm.natives)
-	for n > 0 && vm.natives[n-1].frames > frames {
+func (ag *agent) dropNatives(frames int) {
+	n := len(ag.natives)
+	for n > 0 && ag.natives[n-1].frames > frames {
 		n--
-		vm.natives[n] = nativeCall{}
+		ag.natives[n] = nativeCall{}
 	}
-	vm.natives = vm.natives[:n]
+	ag.natives = ag.natives[:n]
 }
 
-// VM is a JavaScript virtual machine, which is an agent of the specification. It must not be used
-// from more than one goroutine at a time.
-type VM struct {
+// agent is an ECMAScript agent. It must not be used from more than one goroutine at a time.
+type agent struct {
 	// checks is the state of the checks of the interpreter in builds with the build tag
 	// ekumavalidate. Being first, it changes no offset in other builds, where it is empty.
 	checks execChecks
 
-	// hostDefined is the value that [VM.HostDefined] returns.
+	// hostDefined is the value that [agent.HostDefined] returns.
 	hostDefined any
 
-	// trackJobRealms selects handler realms for jobs in VMs with multiple realms or global proxies.
+	// trackJobRealms selects handler realms for jobs in agents with multiple realms or global proxies.
 	trackJobRealms bool
 
 	stack  []Value
@@ -521,7 +520,7 @@ type VM struct {
 	sp int
 
 	// stackHigh is the stack index below which values may remain from the calls since the
-	// outermost call into the engine started, apart from the headroom of [VM.ensureStack].
+	// outermost call into the engine started, apart from the headroom of [agent.ensureStack].
 	stackHigh int
 
 	// framesHigh is the number of elements of the array of frames that may remain from the
@@ -577,7 +576,7 @@ type VM struct {
 	timedWaiters timedWaiters
 
 	// asyncWaiters are the waiters of Atomics.waitAsync whose promise is not resolved. The waiter
-	// lists of the data blocks refer to them weakly, so that a VM that is dropped while waiting
+	// lists of the data blocks refer to them weakly, so that an agent that is dropped while waiting
 	// is collected.
 	asyncWaiters map[*waiter]struct{}
 
@@ -617,7 +616,7 @@ type VM struct {
 	// made, by index, and nil for the others.
 	indexStrings []*Object
 
-	// symbolShape is the shape of the symbols of the VM. It records the VM that they belong
+	// symbolShape is the shape of the symbols of the agent. It records the agent that they belong
 	// to, and no lookup starts from it.
 	symbolShape *shape
 
@@ -637,11 +636,11 @@ type VM struct {
 	// typeofs are the interned results of the typeof operator, indexed by the typeof constants.
 	typeofs [typeofCount]Value
 
-	// madeHTMLDDA reports whether the VM made an object with the [[IsHTMLDDA]] internal slot.
+	// madeHTMLDDA reports whether the agent made an object with the [[IsHTMLDDA]] internal slot.
 	madeHTMLDDA bool
 }
 
-// initialStackSize is the number of values that the stack of a VM has room for from the start.
+// initialStackSize is the number of values that the stack of an agent has room for from the start.
 // It is large enough for the Go runtime to allocate it on pages of its own, which the interpreter
 // loop runs measurably faster with.
 const initialStackSize = 1 << 12
@@ -843,23 +842,23 @@ func (e *Error) Error() string {
 }
 
 // Throw throws v as a JavaScript exception. It does not return.
-func (vm *VM) Throw(v Value) {
-	vm.recordThrow(v)
+func (ag *agent) Throw(v Value) {
+	ag.recordThrow(v)
 	panic(errThrow)
 }
 
-func (vm *VM) recordThrow(v Value) {
-	if vm.captureThrowSites {
-		vm.thrownAt = throwSite{}
-		if n := len(vm.frames); n > 0 {
-			fr := &vm.frames[n-1]
-			vm.thrownAt = throwSite{
+func (ag *agent) recordThrow(v Value) {
+	if ag.captureThrowSites {
+		ag.thrownAt = throwSite{}
+		if n := len(ag.frames); n > 0 {
+			fr := &ag.frames[n-1]
+			ag.thrownAt = throwSite{
 				code: fr.fp.Func,
 				pc:   fr.pc - 1,
 			}
 		}
 	}
-	vm.thrown = v
+	ag.thrown = v
 }
 
 type throwSite struct {
@@ -885,12 +884,12 @@ type savedException struct {
 	at    throwSite
 }
 
-func (vm *VM) saveException() Value {
+func (ag *agent) saveException() Value {
 	return Value{o: &Object{
 		kind: kindHole,
 		ext: &savedException{
-			value: vm.thrown,
-			at:    vm.thrownAt,
+			value: ag.thrown,
+			at:    ag.thrownAt,
 		},
 	}}
 }
@@ -904,11 +903,11 @@ func unpackException(v Value) (Value, *throwSite) {
 	return v, nil
 }
 
-func (vm *VM) restoreException(v Value) {
+func (ag *agent) restoreException(v Value) {
 	value, site := unpackException(v)
-	vm.thrown = value
+	ag.thrown = value
 	if site != nil {
-		vm.thrownAt = *site
+		ag.thrownAt = *site
 	}
 }
 
@@ -948,18 +947,18 @@ func (cx *ExecutionContext) ThrowSyntaxError(msg string) {
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
 // as what [ErrorStack] returns. The running native function constructs e for newTarget: the trace
 // leaves out that function, and the frames up to the call of newTarget when newTarget is running.
-func (vm *VM) RecordStack(e *Object, msg string, newTarget *Object) {
-	frames, natives := len(vm.frames), max(len(vm.natives)-1, 0)
+func (ag *agent) RecordStack(e *Object, msg string, newTarget *Object) {
+	frames, natives := len(ag.frames), max(len(ag.natives)-1, 0)
 	for i := frames - 1; i >= 0; i-- {
-		if vm.frames[i].cl == newTarget {
+		if ag.frames[i].cl == newTarget {
 			frames = i
-			for natives > 0 && vm.natives[natives-1].frames > i {
+			for natives > 0 && ag.natives[natives-1].frames > i {
 				natives--
 			}
 			break
 		}
 	}
-	e.setExtState(vm.newErrorData(e, msg, frames, natives))
+	e.setExtState(ag.newErrorData(e, msg, frames, natives))
 }
 
 // maxStackFrames is the number of calls that a stack trace shows.
@@ -968,13 +967,13 @@ const maxStackFrames = 16
 // newErrorData returns the error data of the new error e, whose stack trace shows the first
 // frames frames and the first natives calls of native functions. The names that the trace
 // shows are read now, and the trace is formatted when it is first read.
-func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorData {
+func (ag *agent) newErrorData(e *Object, msg string, frames, natives int) *errorData {
 	d := &errorData{
 		name:    "Error",
 		msg:     msg,
 		pending: true,
 	}
-	if v, ok := vm.lookupData(e, vm.Key(KeyName)); ok && v.IsString() {
+	if v, ok := ag.lookupData(e, ag.Key(KeyName)); ok && v.IsString() {
 		d.name = v.Str()
 	}
 	if n := min(frames+natives, maxStackFrames); n > 0 {
@@ -984,21 +983,21 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 	j := natives - 1
 	for i := frames - 1; len(d.calls) < maxStackFrames; i-- {
 		// A native function called from the frame i runs inside it.
-		for ; j >= 0 && vm.natives[j].frames > i && len(d.calls) < maxStackFrames; j-- {
-			c := &vm.natives[j]
+		for ; j >= 0 && ag.natives[j].frames > i && len(d.calls) < maxStackFrames; j-- {
+			c := &ag.natives[j]
 			if !c.showsFrame() {
 				continue
 			}
 			d.calls = append(d.calls, stackCall{
 				name:  c.f.fn.nativeName(),
-				recv:  vm.receiverName(globalThis, c.newTarget != nil, c.receiver),
+				recv:  ag.receiverName(globalThis, c.newTarget != nil, c.receiver),
 				isNew: c.newTarget != nil,
 			})
 		}
 		if i < 0 || len(d.calls) >= maxStackFrames {
 			break
 		}
-		fr := &vm.frames[i]
+		fr := &ag.frames[i]
 		c := stackCall{
 			fp:    fr.fp,
 			name:  fr.fp.name,
@@ -1008,7 +1007,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 		if fr.fp.IsEval {
 			c.name = "eval"
 		} else {
-			c.recv = vm.receiverName(globalThis, c.isNew, fr.this)
+			c.recv = ag.receiverName(globalThis, c.isNew, fr.this)
 		}
 		d.calls = append(d.calls, c)
 	}
@@ -1017,11 +1016,11 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 
 // receiverName returns the type name that a stack trace shows for a call with this, or an
 // empty string when the call shows no receiver.
-func (vm *VM) receiverName(globalThis *Object, isNew bool, this Value) wtf8.String {
+func (ag *agent) receiverName(globalThis *Object, isNew bool, this Value) wtf8.String {
 	if isNew || this.IsObject() && this.o == globalThis || this.IsNullish() {
 		return ""
 	}
-	return vm.typeName(this)
+	return ag.typeName(this)
 }
 
 // stackCall is a line of a stack trace.
@@ -1114,7 +1113,7 @@ func (c *stackCall) write(b *strings.Builder) {
 
 // typeName returns the name of the type of v that a stack trace shows for a method called on v.
 // It runs no JavaScript.
-func (vm *VM) typeName(v Value) wtf8.String {
+func (ag *agent) typeName(v Value) wtf8.String {
 	switch {
 	case v.IsString():
 		return "String"
@@ -1129,24 +1128,24 @@ func (vm *VM) typeName(v Value) wtf8.String {
 	}
 	o := v.o
 	if v.IsCallable() {
-		if n, ok := vm.lookupData(o, vm.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
+		if n, ok := ag.lookupData(o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" {
 			return n.Str()
 		}
 		return "Function"
 	}
-	if c, ok := vm.lookupData(o, vm.Key(KeyConstructor)); ok && c.IsCallable() {
-		if n, ok := vm.lookupData(c.o, vm.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
+	if c, ok := ag.lookupData(o, ag.Key(KeyConstructor)); ok && c.IsCallable() {
+		if n, ok := ag.lookupData(c.o, ag.Key(KeyName)); ok && n.IsString() && n.Str() != "" && n.Str() != "Object" {
 			return n.Str()
 		}
 	}
-	if t, ok := vm.lookupData(o, vm.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
+	if t, ok := ag.lookupData(o, ag.WellKnownSymbol(SymbolToStringTag)); ok && t.IsString() && t.Str() != "" {
 		return t.Str()
 	}
 	return "Object"
 }
 
 // lookupData returns the data property key of o or its prototypes, without running any JavaScript.
-func (vm *VM) lookupData(o *Object, key *Object) (Value, bool) {
+func (ag *agent) lookupData(o *Object, key *Object) (Value, bool) {
 	h, p, ok := find(o, key)
 	if !ok || p.flags&FlagAccessor != 0 {
 		return Undefined, false
@@ -1155,27 +1154,27 @@ func (vm *VM) lookupData(o *Object, key *Object) (Value, bool) {
 }
 
 // takeException converts the pending exception to a Go error.
-func (vm *VM) takeException() error {
-	v := vm.thrown
-	vm.thrown = Undefined
-	return vm.errorOf(v)
+func (ag *agent) takeException() error {
+	v := ag.thrown
+	ag.thrown = Undefined
+	return ag.errorOf(v)
 }
 
 // errorOf returns the Go error for the thrown value v.
-func (vm *VM) errorOf(v Value) *Error {
+func (ag *agent) errorOf(v Value) *Error {
 	var msg string
 	if v.IsObject() {
-		if s, ok := vm.lookupData(v.o, vm.Key(KeyStack)); ok && s.IsString() {
+		if s, ok := ag.lookupData(v.o, ag.Key(KeyStack)); ok && s.IsString() {
 			msg = wtf8.ToValidUTF8(s.Str())
 		} else if s, ok := ErrorStack(v); ok {
 			msg = wtf8.ToValidUTF8(s)
-		} else if s, ok := vm.lookupData(v.o, vm.Key(KeyMessage)); ok && s.IsString() {
+		} else if s, ok := ag.lookupData(v.o, ag.Key(KeyMessage)); ok && s.IsString() {
 			msg = wtf8.ToValidUTF8(s.Str())
 		} else {
 			msg = "uncaught exception"
 		}
 	} else {
-		msg = "uncaught " + vm.DisplayString(v)
+		msg = "uncaught " + ag.DisplayString(v)
 	}
 	return &Error{
 		Value: v,
@@ -1193,7 +1192,7 @@ const maxDisplayString = 1 << 10
 
 // DisplayString describes v for messages, without running any JavaScript. A long string is
 // shortened.
-func (vm *VM) DisplayString(v Value) string {
+func (ag *agent) DisplayString(v Value) string {
 	o := v.o
 	if o == nil {
 		return "undefined"
@@ -1249,15 +1248,15 @@ func (cx *ExecutionContext) protect(f func()) (ok bool) {
 }
 
 // unwindTo drops the frames above the first n, closing their upvalues.
-func (vm *VM) unwindTo(n int) {
-	if len(vm.frames) <= n {
+func (ag *agent) unwindTo(n int) {
+	if len(ag.frames) <= n {
 		return
 	}
-	if len(vm.openUpvals) > 0 {
-		vm.closeUpvals(vm.frames[n].base)
+	if len(ag.openUpvals) > 0 {
+		ag.closeUpvals(ag.frames[n].base)
 	}
-	for i := n; i < len(vm.frames); i++ {
-		vm.frames[i] = frame{}
+	for i := n; i < len(ag.frames); i++ {
+		ag.frames[i] = frame{}
 	}
-	vm.frames = vm.frames[:n]
+	ag.frames = ag.frames[:n]
 }

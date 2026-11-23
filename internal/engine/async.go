@@ -53,7 +53,7 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 }
 
 // callAsync calls the async function f, which is not an async generator, from Go.
-func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
+func (ag *agent) callAsync(f *Object, this Value, args []Value) Value {
 	g := newGenerator(f, this, args)
 	g.async = asyncFunction
 	cx := g.fp.context
@@ -66,9 +66,9 @@ func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
 }
 
 // takeThrown returns the pending exception and clears it.
-func (vm *VM) takeThrown() Value {
-	e := vm.thrown
-	vm.thrown = Undefined
+func (ag *agent) takeThrown() Value {
+	e := ag.thrown
+	ag.thrown = Undefined
 	return e
 }
 

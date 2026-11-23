@@ -112,11 +112,11 @@ func namespaceOf(o *Object) *moduleNamespace {
 
 // isNamespaceExportKey reports whether k is a key that the module namespace object o
 // handles as an export name, which is not what IsSymbolLikeNamespaceKey says.
-func (vm *VM) isNamespaceExportKey(o *Object, k PropKey) bool {
+func (ag *agent) isNamespaceExportKey(o *Object, k PropKey) bool {
 	if k.IsSymbol() {
 		return false
 	}
-	return !namespaceOf(o).deferred || k.key != vm.Key(keyThen)
+	return !namespaceOf(o).deferred || k.key != ag.Key(keyThen)
 }
 
 // namespaceExports implements GetModuleExportsList: it returns the namespace data of the

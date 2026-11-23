@@ -15,14 +15,14 @@ import (
 // interruption only a few times lets another goroutine interrupt it, as js/wasm runs that
 // goroutine only when the running one yields.
 func TestInterruptBuiltinFromGoroutine(t *testing.T) {
-	vm := newVM(t)
+	cx := newTestContext(t)
 	// Object.assign checks for an interruption every PollInterval properties.
 	n := strconv.Itoa(4 * engine.PollInterval)
-	if _, err := runScript(vm, "setup", `var o = {}; for (let i = 0; i < `+n+`; i++) o["k" + i] = i;`); err != nil {
+	if _, err := runScript(cx, "setup", `var o = {}; for (let i = 0; i < `+n+`; i++) o["k" + i] = i;`); err != nil {
 		t.Fatalf("runScript: %v", err)
 	}
-	go vm.Interrupt(nil)
-	_, err := runScript(vm, "assign", `Object.assign({}, o)`)
+	go cx.Interrupt(nil)
+	_, err := runScript(cx, "assign", `Object.assign({}, o)`)
 	if _, ok := errors.AsType[*engine.InterruptedError](err); !ok {
 		t.Errorf("got %v, want *engine.InterruptedError", err)
 	}

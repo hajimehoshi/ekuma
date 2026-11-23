@@ -132,7 +132,7 @@ func (b *ArrayBuffer) SameDataBlock(c *ArrayBuffer) bool {
 }
 
 // SharedDataBlock returns the data block of the shared buffer b, or nil when b is not shared.
-// Another VM, which may run on another goroutine, creates a SharedArrayBuffer over the block with
+// Another agent, which may run on another goroutine, creates a SharedArrayBuffer over the block with
 // [ExecutionContext.NewSharedArrayBufferObject].
 func (b *ArrayBuffer) SharedDataBlock() *SharedDataBlock {
 	return b.block
@@ -175,7 +175,7 @@ func resizeBytes(data []byte, n, maxLen int) []byte {
 	return d
 }
 
-// SharedDataBlock is a Shared Data Block: the bytes of a SharedArrayBuffer, which the VMs of an
+// SharedDataBlock is a Shared Data Block: the bytes of a SharedArrayBuffer, which the agents of an
 // agent cluster share. Its methods may be called from any goroutine.
 type SharedDataBlock struct {
 	// mu guards data and waiterLists. Every access to the bytes holds it.
@@ -190,7 +190,7 @@ type SharedDataBlock struct {
 	max int
 
 	// waiterLists are the waiter lists by byte index. A waiter is held by its agent: by the
-	// suspended call of a synchronous wait, and by the VM of an asynchronous one.
+	// suspended call of a synchronous wait, and by the agent of an asynchronous one.
 	waiterLists map[int]*waiterList
 }
 
@@ -263,7 +263,7 @@ func (cx *ExecutionContext) NewArrayBufferObject(proto *Object, byteLength, maxB
 }
 
 // NewSharedArrayBufferObject returns a SharedArrayBuffer with the prototype proto over the data
-// block blk, which may come from another VM.
+// block blk, which may come from another agent.
 func (cx *ExecutionContext) NewSharedArrayBufferObject(proto *Object, blk *SharedDataBlock) *Object {
 	o := cx.NewObject(proto)
 	o.class = classArrayBuffer
@@ -607,7 +607,7 @@ func ElementNumber(t ElementType, x uint64) float64 {
 }
 
 // ElementFromBits returns the value that the encoding x of an element of the type t stands for.
-func (vm *VM) ElementFromBits(t ElementType, x uint64) Value {
+func (ag *agent) ElementFromBits(t ElementType, x uint64) Value {
 	switch t {
 	case ElementBigInt64:
 		return BigIntFromInt64(int64(x))
@@ -615,14 +615,14 @@ func (vm *VM) ElementFromBits(t ElementType, x uint64) Value {
 		if x <= math.MaxInt64 {
 			return BigIntFromInt64(int64(x))
 		}
-		return vm.NewBigInt(new(big.Int).SetUint64(x))
+		return ag.NewBigInt(new(big.Int).SetUint64(x))
 	}
 	return Number(numberFromBits(t, x))
 }
 
 // GetValueFromBuffer implements GetValueFromBuffer for the bytes b, which hold at least one element of the type t.
-func (vm *VM) GetValueFromBuffer(b []byte, t ElementType, littleEndian bool) Value {
-	return vm.ElementFromBits(t, loadBits(b, t.Size(), littleEndian))
+func (ag *agent) GetValueFromBuffer(b []byte, t ElementType, littleEndian bool) Value {
+	return ag.ElementFromBits(t, loadBits(b, t.Size(), littleEndian))
 }
 
 // SetValueInBuffer implements SetValueInBuffer for the bytes b, which hold at least one element of the type t.
@@ -847,7 +847,7 @@ func (t *TypedArray) element(i uint32) ([]byte, bool) {
 }
 
 // loadElement returns the element of the type t at the start of b.
-func (vm *VM) loadElement(t ElementType, b []byte) Value {
+func (ag *agent) loadElement(t ElementType, b []byte) Value {
 	switch t {
 	case ElementInt8:
 		return Number(float64(int8(b[0])))
@@ -868,7 +868,7 @@ func (vm *VM) loadElement(t ElementType, b []byte) Value {
 	case ElementFloat64:
 		return Number(math.Float64frombits(binary.LittleEndian.Uint64(b)))
 	}
-	return vm.ElementFromBits(t, binary.LittleEndian.Uint64(b))
+	return ag.ElementFromBits(t, binary.LittleEndian.Uint64(b))
 }
 
 // storeNumber stores the number f as an element of the type t, which is not a BigInt type, at the start of b.
@@ -904,7 +904,7 @@ func storeNumber(t ElementType, b []byte, f float64) {
 }
 
 // typedArrayGet implements TypedArrayGetElement. It returns undefined when i is not a valid integer index.
-func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
+func (ag *agent) typedArrayGet(o *Object, i uint32) Value {
 	t := o.extState().(*TypedArray)
 	if data := t.data.data; !t.tracking && uint(i) < uint(t.length) {
 		switch t.typ {
@@ -924,15 +924,15 @@ func (vm *VM) typedArrayGet(o *Object, i uint32) Value {
 	}
 	b, ok := t.element(i)
 	if !ok {
-		return vm.typedArrayGetSlow(o, i)
+		return ag.typedArrayGetSlow(o, i)
 	}
-	return vm.loadElement(t.typ, b)
+	return ag.loadElement(t.typ, b)
 }
 
 // typedArrayGetSlow implements TypedArrayGetElement for the typed array o when the bytes of the
 // element i are not in the data of its buffer: when the buffer is shared or i is not a valid
 // integer index.
-func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
+func (ag *agent) typedArrayGetSlow(o *Object, i uint32) Value {
 	t := o.extState().(*TypedArray)
 	if t.data.block == nil {
 		return Undefined
@@ -941,7 +941,7 @@ func (vm *VM) typedArrayGetSlow(o *Object, i uint32) Value {
 	if !ok {
 		return Undefined
 	}
-	return vm.ElementFromBits(t.typ, x)
+	return ag.ElementFromBits(t.typ, x)
 }
 
 // typedArraySet implements [[Set]] of the typed array o for an array index and the receiver o.
@@ -1007,7 +1007,7 @@ func typedArrayFlags(o *Object) uint8 {
 }
 
 // typedArrayHas implements IsValidIntegerIndex for an array index.
-func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
+func (ag *agent) typedArrayHas(o *Object, i uint32) bool {
 	t := o.extState().(*TypedArray)
 	if _, ok := t.element(i); ok {
 		return true
@@ -1020,7 +1020,7 @@ func (vm *VM) typedArrayHas(o *Object, i uint32) bool {
 }
 
 // typedArrayLength returns the length of o, or 0 when o is out of bounds.
-func (vm *VM) typedArrayLength(o *Object) int {
+func (ag *agent) typedArrayLength(o *Object) int {
 	n, _ := o.extState().(*TypedArray).Length()
 	return n
 }

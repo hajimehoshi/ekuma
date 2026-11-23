@@ -58,7 +58,7 @@ var fastPathCalls = map[string]bool{
 	"clearFrameRegs":       true,
 	"setNumber":            true,
 	"numconv.InInt64Range": true,
-	"vm.interrupt.Load":    true,
+	"ag.interrupt.Load":    true,
 	"t.typ.Size":           true,
 	"math.Float32frombits": true,
 	"math.Float32bits":     true,
@@ -84,7 +84,7 @@ func TestExecFastPathsCallNothing(t *testing.T) {
 	}
 	fast := fastPath(f)
 	if fast == nil {
-		t.Fatal("no switch on i.Op at the start of the loop of (*VM).exec")
+		t.Fatal("no switch on i.Op at the start of the loop of (*agent).exec")
 	}
 	t.Run("source", func(t *testing.T) {
 		for _, s := range fast {
@@ -156,7 +156,7 @@ func testFastPathSource(t *testing.T, fset *token.FileSet, s ast.Stmt) {
 }
 
 // testFastPathCode tests that the machine code of the lines first to last of interp.go in
-// (*VM).exec calls nothing but write barriers and panics, in a test binary of this package built
+// (*agent).exec calls nothing but write barriers and panics, in a test binary of this package built
 // with the default settings for the architecture that runs the test.
 func testFastPathCode(t *testing.T, first, last int) {
 	// On 386, the fast paths call runtime functions that convert between floats and integers, and
@@ -177,7 +177,7 @@ func testFastPathCode(t *testing.T, first, last int) {
 		t.Fatalf("go test -c: %v\n%s", err, out)
 	}
 
-	execName := reflect.TypeFor[engine.VM]().PkgPath() + ".(*VM).exec"
+	execName := reflect.TypeFor[engine.ExecutionContext]().PkgPath() + ".(*agent).exec"
 	objdump := exec.Command(gocmd, "tool", "objdump", "-s", "^"+regexp.QuoteMeta(execName)+"$", bin)
 	// The tool is for the host, whatever the target of the test is.
 	objdump.Env = slices.DeleteFunc(os.Environ(), func(kv string) bool {
@@ -389,7 +389,7 @@ func execLine(inlined []inlinedCall, in objdumpInstruction) int {
 	return n
 }
 
-// fastPath returns the statements of the loop of (*VM).exec up to its first switch on i.Op, or
+// fastPath returns the statements of the loop of (*agent).exec up to its first switch on i.Op, or
 // nil.
 func fastPath(f *ast.File) []ast.Stmt {
 	for _, d := range f.Decls {

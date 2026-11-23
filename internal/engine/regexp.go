@@ -37,7 +37,7 @@ type regExpSite struct {
 	lent *Object
 }
 
-// regExpCacheLimit bounds the number of compiled patterns that a [VM] keeps.
+// regExpCacheLimit bounds the number of compiled patterns that an agent keeps.
 const regExpCacheLimit = 1024
 
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor
@@ -71,7 +71,7 @@ func (cx *ExecutionContext) regExpShape() *shape {
 
 // newRegExpObject returns a new RegExp object with the shape s, whose only property is
 // lastIndex, and the internal state st.
-func (vm *VM) newRegExpObject(s *shape, st *regExpState) *Object {
+func (ag *agent) newRegExpObject(s *shape, st *regExpState) *Object {
 	o, slots := newObjectWithStorage(1)
 	o.kind = kindObject
 	o.class = classRegExp
@@ -275,7 +275,7 @@ type regExpOriginals struct {
 	// does not move protoEpoch, so their values are compared at every check.
 	data []originalData
 
-	// epoch is the value of VM.protoEpoch when the slots of props were last found.
+	// epoch is the value of agent.protoEpoch when the slots of props were last found.
 	epoch   uint32
 	checked bool
 	// found reports whether every property of props had its recorded attributes at epoch,

@@ -51,7 +51,7 @@ func IsError(v Value) bool {
 	return v.IsObject() && v.o.class == classError
 }
 
-// ErrorStack returns the stack trace that [VM.RecordStack] recorded for the error object v.
+// ErrorStack returns the stack trace that [agent.RecordStack] recorded for the error object v.
 // It reports false when v has no [[ErrorData]] internal slot or no recorded stack trace.
 func ErrorStack(v Value) (wtf8.String, bool) {
 	if !IsError(v) {

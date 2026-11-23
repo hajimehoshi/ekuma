@@ -3,9 +3,6 @@
 
 package engine
 
-// The unexported embedded name keeps the raw VM outside the context API.
-type agent = VM
-
 // ExecutionContext binds engine operations to one realm of an agent.
 type ExecutionContext struct {
 	*agent

@@ -81,7 +81,7 @@ type ImportMetaProperty struct {
 	Value Value
 }
 
-// moduleHost is the state of the [VM] for modules.
+// moduleHost is the state of the agent for modules.
 type moduleHost struct {
 	load HostLoadImportedModuleFunc
 	meta HostGetImportMetaPropertiesFunc
@@ -96,14 +96,14 @@ type moduleHost struct {
 
 // SetHostLoadImportedModule sets the implementation of HostLoadImportedModule. Without one,
 // every import fails with a TypeError.
-func (vm *VM) SetHostLoadImportedModule(f HostLoadImportedModuleFunc) {
-	vm.modules.load = f
+func (ag *agent) SetHostLoadImportedModule(f HostLoadImportedModuleFunc) {
+	ag.modules.load = f
 }
 
 // SetHostGetImportMetaProperties sets the implementation of HostGetImportMetaProperties.
 // Without one, import.meta has no properties.
-func (vm *VM) SetHostGetImportMetaProperties(f HostGetImportMetaPropertiesFunc) {
-	vm.modules.meta = f
+func (ag *agent) SetHostGetImportMetaProperties(f HostGetImportMetaPropertiesFunc) {
+	ag.modules.meta = f
 }
 
 type moduleStatus uint8

@@ -112,7 +112,7 @@ func (o *Object) Element(i int64) (Value, bool) {
 	if o.class == classTypedArray && i >= 0 && i <= MaxArrayIndex {
 		t := o.extState().(*TypedArray)
 		if b, ok := t.element(uint32(i)); ok {
-			return o.shape.vm.loadElement(t.typ, b), true
+			return o.shape.agent.loadElement(t.typ, b), true
 		}
 	}
 	return Value{}, false
@@ -178,11 +178,11 @@ func (o *Object) isDense() bool {
 // elemsMovable reports whether moving the elements of the array o by index, holes included,
 // does what moving them one by one with HasProperty, Set and DeletePropertyOrThrow does, and
 // whether o accepts changes to its elements and its length.
-func (vm *VM) elemsMovable(o *Object) bool {
+func (ag *agent) elemsMovable(o *Object) bool {
 	if o.kind != kindArray || int(o.length) != len(o.elems) || o.flags&(objSparse|objNotExtensible|objFrozenLength) != 0 {
 		return false
 	}
-	return vm.holesAreAbsent(o) || o.isDense()
+	return ag.holesAreAbsent(o) || o.isDense()
 }
 
 // arrayCtorPlain reports whether creating the result of a method for the array o
@@ -257,12 +257,12 @@ func (cx *ExecutionContext) PushElements(o *Object, vals []Value) (uint32, bool)
 }
 
 // observePush samples the array after a single-element push at the calling frame's pc.
-func (vm *VM) observePush(o *Object) {
-	if len(vm.frames) == 0 {
+func (ag *agent) observePush(o *Object) {
+	if len(ag.frames) == 0 {
 		return
 	}
 	n := len(o.elems)
-	fr := &vm.frames[len(vm.frames)-1]
+	fr := &ag.frames[len(ag.frames)-1]
 	state := fr.cl.extState()
 	h, _ := state.(*pushSizeHint)
 	if h == nil || h.pc != fr.pc {
@@ -353,7 +353,7 @@ func (o *Object) RemoveFirstElement() (Value, bool) {
 	}
 	// A hole after the first element moves with the elements when no prototype can have
 	// an element.
-	if !o.shape.vm.holesAreAbsent(o) && slices.ContainsFunc(o.elems, Value.isHole) {
+	if !o.shape.agent.holesAreAbsent(o) && slices.ContainsFunc(o.elems, Value.isHole) {
 		return Value{}, false
 	}
 	n := len(o.elems) - 1
@@ -590,8 +590,8 @@ func (cx *ExecutionContext) AppendElementsOf(dst *Object, n int64, src *Object) 
 // SkipHoles returns the greatest index j with i <= j <= end such that neither o nor its prototypes
 // have a property with an integer index from i to j-1. It returns i when that is not known
 // without running JavaScript.
-func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
-	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !vm.holesAreAbsent(o) {
+func (ag *agent) SkipHoles(o *Object, i, end int64) int64 {
+	if i < 0 || i >= end || i < int64(len(o.elems)) && !o.elems[i].isHole() || !ag.holesAreAbsent(o) {
 		return i
 	}
 	j := end
@@ -602,7 +602,7 @@ func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
 		}
 	}
 	if o.flags&objSparse != 0 {
-		idxs := vm.sparseIndices.list(o)
+		idxs := ag.sparseIndices.list(o)
 		if p, _ := slices.BinarySearch(idxs, uint32(i)); p < len(idxs) && int64(idxs[p]) < j {
 			j = int64(idxs[p])
 		}
@@ -613,8 +613,8 @@ func (vm *VM) SkipHoles(o *Object, i, end int64) int64 {
 // SkipHolesBackward returns the least index j with end <= j <= i such that neither o nor its
 // prototypes have a property with an integer index from j+1 to i. It returns i when that is not
 // known without running JavaScript.
-func (vm *VM) SkipHolesBackward(o *Object, i, end int64) int64 {
-	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !vm.holesAreAbsent(o) {
+func (ag *agent) SkipHolesBackward(o *Object, i, end int64) int64 {
+	if i <= end || i < 0 || i > MaxArrayIndex || i < int64(len(o.elems)) && !o.elems[i].isHole() || !ag.holesAreAbsent(o) {
 		return i
 	}
 	j := max(end, -1)
@@ -625,7 +625,7 @@ func (vm *VM) SkipHolesBackward(o *Object, i, end int64) int64 {
 		}
 	}
 	if o.flags&objSparse != 0 {
-		idxs := vm.sparseIndices.list(o)
+		idxs := ag.sparseIndices.list(o)
 		p, found := slices.BinarySearch(idxs, uint32(i))
 		if found {
 			p++
@@ -639,7 +639,7 @@ func (vm *VM) SkipHolesBackward(o *Object, i, end int64) int64 {
 
 // holesAreAbsent reports whether an integer index that o does not store is absent from o
 // and its prototypes, and whether finding that out runs no JavaScript.
-func (vm *VM) holesAreAbsent(o *Object) bool {
+func (ag *agent) holesAreAbsent(o *Object) bool {
 	if o.kind != kindArray || o.flags&objExotic != 0 {
 		return false
 	}

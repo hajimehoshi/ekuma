@@ -11,4 +11,4 @@ import "sync/atomic"
 type interruptFlag = atomic.Bool
 
 // pollYield does nothing, as the other goroutines run without waiting for a yield.
-func (vm *VM) pollYield() {}
+func (ag *agent) pollYield() {}

@@ -11,7 +11,7 @@ import (
 )
 
 func TestNativeCallLimit(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	var depth, deepest int
 	var nest engine.Value
 	nest = cx.NewFunction("nest", func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -39,7 +39,7 @@ func TestNativeCallLimit(t *testing.T) {
 }
 
 func TestDerivedReturnErrorLocation(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	var ctor engine.Value
 	cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		builtin.Install(cx)

@@ -96,7 +96,7 @@ func (cx *ExecutionContext) link(f *bytecode.Func, script *scriptOrModule) *func
 	return cx.linkFunc(f, script, true)
 }
 
-// linkShared is like [ExecutionContext.link], but leaves f unchanged, so that any number of VMs can link f,
+// linkShared is like [ExecutionContext.link], but leaves f unchanged, so that any number of agents can link f,
 // also at the same time.
 func (cx *ExecutionContext) linkShared(f *bytecode.Func, script *scriptOrModule) *funcProto {
 	return cx.linkFunc(f, script, false)

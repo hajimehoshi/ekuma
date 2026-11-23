@@ -143,7 +143,7 @@ func TestSubstringEquals(t *testing.T) {
 }
 
 func TestShortStringOrdering(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	v, err := runScript(cx, "ordering", `
   const a = "\ud83d\ue000";
   const b = "😀!".slice(0, -1);
@@ -158,7 +158,7 @@ func TestShortStringOrdering(t *testing.T) {
 }
 
 func TestToWellFormedLiteral(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	v, err := runScript(cx, "well-formed-literal", `"\udfff\udbff".toWellFormed();`)
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +189,7 @@ func TestCodePointAtCachedLowSurrogate(t *testing.T) {
 }
 
 func TestStringValueBoundaries(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	for _, tc := range []struct {
 		name string
 		src  string

@@ -36,7 +36,7 @@ func TestQueryOfMissingKeyNotInterned(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cx := newVM(t)
+			cx := newTestContext(t)
 			before := engine.InternedCount(cx)
 			if _, err := runScript(cx, "query", `
 				o = {};
@@ -79,7 +79,7 @@ func TestQueryKeyThroughProxy(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cx := newVM(t)
+			cx := newTestContext(t)
 			v, err := runScript(cx, "proxy", `
 				function define(t, k) {
 					Object.defineProperty(t, k, {value: 1});

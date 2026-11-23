@@ -73,8 +73,8 @@ func TestExecutionContextBoundary(t *testing.T) {
 		}
 		if p.ImportPath == engine {
 			// Only dispatch, restoration and the host entry point may observe the active binding.
-			vm := pkg.Scope().Lookup("VM").Type()
-			active, _, _ := types.LookupFieldOrMethod(vm, true, pkg, "active")
+			ag := pkg.Scope().Lookup("agent").Type()
+			active, _, _ := types.LookupFieldOrMethod(ag, true, pkg, "active")
 			cx := types.NewPointer(pkg.Scope().Lookup("ExecutionContext").Type())
 			if method, _, _ := types.LookupFieldOrMethod(cx, true, pkg, "ActiveContext"); method != nil {
 				t.Error("ExecutionContext exposes the active context to built-ins")
@@ -138,8 +138,8 @@ func TestExecutionContextBoundary(t *testing.T) {
 			if engineType(tv.Type, "Host") {
 				t.Errorf("%v: built-in uses the engine host handle", fset.Position(expr.Pos()))
 			}
-			if engineType(tv.Type, "VM") {
-				t.Errorf("%v: built-in uses the raw engine VM", fset.Position(expr.Pos()))
+			if engineType(tv.Type, "agent") {
+				t.Errorf("%v: built-in uses the raw engine agent", fset.Position(expr.Pos()))
 			}
 		}
 	}

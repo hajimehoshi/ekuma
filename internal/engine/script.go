@@ -109,14 +109,14 @@ func compileScriptCode(file string, src wtf8.String) (*bytecode.Func, error) {
 	return bc, nil
 }
 
-// UnboundScript is a script parsed for no particular VM. Any number of VMs may bind it with
+// UnboundScript is a script parsed for no particular agent. Any number of agents may bind it with
 // [ExecutionContext.BindScript], also at the same time.
 type UnboundScript struct {
 	file string
 	code *bytecode.Func
 }
 
-// ParseUnboundScript parses src as the source text of a script for no particular VM. file names
+// ParseUnboundScript parses src as the source text of a script for no particular agent. file names
 // the script in error messages. The error is a [*SyntaxError] when src is not a valid script.
 func ParseUnboundScript(file, src string) (*UnboundScript, error) {
 	bc, err := compileScriptCode(file, wtf8.FromValidUTF8(src))

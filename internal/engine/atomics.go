@@ -17,28 +17,27 @@ import (
 // This file holds the Atomics operations on shared data blocks and the waiters of Atomics.wait
 // and Atomics.waitAsync.
 //
-// The VMs that share a data block are the agents of an agent cluster, and may run on different
+// Agents that share a data block belong to the same agent cluster, and may run on different
 // goroutines. The mutex of a SharedDataBlock is the critical section of all its waiter lists,
 // and every access to its bytes holds it, so that the Atomics operations are atomic and the other
 // accesses are free of data races.
 //
 // The waiter lists are stored on their data block, so that a waiter that nothing can notify any
-// more is collected with its block. The lists refer to their waiters weakly, and the VM of a
-// waiter of Atomics.waitAsync holds it until its promise is resolved, so that a VM that is
+// more is collected with its block. The lists refer to their waiters weakly, and the agent of a
+// waiter of Atomics.waitAsync holds it until its promise is resolved, so that an agent that is
 // dropped while waiting is collected even when its block lives on. Such a waiter leaves its
 // list without being notified.
 //
-// A waiter of Atomics.waitAsync that another agent notifies is posted to the mailbox of its VM,
+// A waiter of Atomics.waitAsync that another agent notifies is posted to the mailbox of its agent,
 // which resolves its promise on its own goroutine: at its next poll for an interruption, when
-// it runs the jobs, or in [VM.AwaitJobs].
+// it runs the jobs, or in [agent.AwaitJobs].
 //
-// The VM has no timers. A timeout job runs when the jobs run after its time: whenever the
+// The agent has no timers. A timeout job runs when the jobs run after its time: whenever the
 // promise jobs are drained, the waiters whose time has passed are notified with "timed-out".
 
 // waiter is a Waiter Record.
 type waiter struct {
-	// agent is the VM that waits.
-	agent *VM
+	agent *agent
 
 	// promise is the promise of [[PromiseCapability]] of an asynchronous wait.
 	promise *Object
@@ -103,20 +102,20 @@ func (h *waiterHeap) Pop() any {
 	return w
 }
 
-// mailbox receives what the other agents of a VM's cluster send it. Its methods may be called
+// mailbox receives what the other agents of an agent's cluster send it. Its methods may be called
 // from any goroutine.
 type mailbox struct {
 	mu sync.Mutex
 
-	// notified are the waiters of Atomics.waitAsync of the VM that other agents notified, oldest
+	// notified are the waiters of Atomics.waitAsync of the agent that other agents notified, oldest
 	// first. It is guarded by mu.
 	notified []*waiter
 
 	// count is len(notified), for checking without mu.
 	count atomic.Int32
 
-	// wake holds a token when the VM may have something to do: a waiter was posted or an
-	// interruption was requested. A blocked VM waits for it.
+	// wake holds a token when the agent may have something to do: a waiter was posted or an
+	// interruption was requested. A blocked agent waits for it.
 	wake chan struct{}
 }
 
@@ -126,7 +125,7 @@ func newMailbox() *mailbox {
 	}
 }
 
-// poke wakes the VM if it is blocked.
+// poke wakes the agent if it is blocked.
 func (m *mailbox) poke() {
 	select {
 	case m.wake <- struct{}{}:
@@ -151,15 +150,15 @@ func (m *mailbox) take() []*waiter {
 	return ws
 }
 
-// SetAgentCanSuspend sets whether the agent of vm can suspend, which Atomics.wait requires.
-// A VM that can suspend must not run on a thread that must not block.
-func (vm *VM) SetAgentCanSuspend(canSuspend bool) {
-	vm.canSuspend = canSuspend
+// SetAgentCanSuspend sets whether the agent can suspend, which Atomics.wait requires.
+// An agent that can suspend must not run on a thread that must not block.
+func (ag *agent) SetAgentCanSuspend(canSuspend bool) {
+	ag.canSuspend = canSuspend
 }
 
 // AgentCanSuspend implements AgentCanSuspend.
-func (vm *VM) AgentCanSuspend() bool {
-	return vm.canSuspend
+func (ag *agent) AgentCanSuspend() bool {
+	return ag.canSuspend
 }
 
 // AtomicOp is the operation of [TypedArray.AtomicReadModifyWrite].
@@ -235,7 +234,7 @@ func elementBitsEqual(t ElementType, x, y uint64) bool {
 // that is not negative and may be +Inf. A synchronous wait suspends the agent, which must be able
 // to, and returns "ok", "not-equal" or "timed-out". An asynchronous wait returns "not-equal" or
 // "timed-out" without waiting, or reports true and returns a promise that resolves to "ok" when
-// [ExecutionContext.NotifyWaiters] in any VM notifies the waiter, or to "timed-out" after the timeout.
+// [ExecutionContext.NotifyWaiters] in any agent notifies the waiter, or to "timed-out" after the timeout.
 //
 // An interruption ends a synchronous wait.
 func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
@@ -465,21 +464,21 @@ func (cx *ExecutionContext) NotifyWaiters(b *ArrayBuffer, byteIndex int, count f
 	return len(ws)
 }
 
-// post hands the waiter w of vm, which another agent notified, to vm. It may be called from any
+// post hands the waiter w of ag, which another agent notified, to ag. It may be called from any
 // goroutine. The interrupt flag makes a running script take it at its next poll.
-func (vm *VM) post(w *waiter) {
-	vm.mailbox.add(w)
-	vm.interrupt.Store(true)
-	vm.mailbox.poke()
+func (ag *agent) post(w *waiter) {
+	ag.mailbox.add(w)
+	ag.interrupt.Store(true)
+	ag.mailbox.poke()
 }
 
-// resolveWaiter implements EnqueueResolveInAgentJob for the asynchronous waiter w of vm, which is
+// resolveWaiter implements EnqueueResolveInAgentJob for the asynchronous waiter w of ag, which is
 // no longer in its list.
-func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
-	delete(vm.asyncWaiters, w)
+func (ag *agent) resolveWaiter(w *waiter, result wtf8.String) {
+	delete(ag.asyncWaiters, w)
 	// Settling a waiter is an agent task. Its promise reactions use their own
 	// realms' microtask queues.
-	vm.jobs.enqueue(job{
+	ag.jobs.enqueue(job{
 		kind:     jobResolve,
 		promise:  w.promise,
 		argument: w.promiseContext.NewString(result),
@@ -489,46 +488,46 @@ func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
 
 // receiveNotifications queues the resolve jobs of the waiters that other agents notified,
 // and reports whether there were any.
-func (vm *VM) receiveNotifications() bool {
-	if vm.mailbox.count.Load() == 0 {
+func (ag *agent) receiveNotifications() bool {
+	if ag.mailbox.count.Load() == 0 {
 		return false
 	}
-	for _, w := range vm.mailbox.take() {
-		vm.timedWaiters.remove(w)
-		vm.resolveWaiter(w, "ok")
+	for _, w := range ag.mailbox.take() {
+		ag.timedWaiters.remove(w)
+		ag.resolveWaiter(w, "ok")
 	}
 	return true
 }
 
 // AwaitJobs waits for pending jobs, a waiter notification or a timeout. It returns
 // false if there are no jobs or waiters, or an InterruptedError if interrupted.
-func (vm *VM) AwaitJobs() (bool, error) {
+func (ag *agent) AwaitJobs() (bool, error) {
 	for {
-		if cause := vm.interruptCause.Load(); cause != nil {
+		if cause := ag.interruptCause.Load(); cause != nil {
 			return false, &InterruptedError{
 				Cause: *cause,
 			}
 		}
-		if !vm.jobs.isEmpty() || vm.finalizationPending() || vm.mailbox.count.Load() != 0 {
+		if !ag.jobs.isEmpty() || ag.finalizationPending() || ag.mailbox.count.Load() != 0 {
 			return true, nil
 		}
-		if len(vm.asyncWaiters) == 0 {
+		if len(ag.asyncWaiters) == 0 {
 			return false, nil
 		}
-		if vm.awaitWake() {
+		if ag.awaitWake() {
 			return true, nil
 		}
 	}
 }
 
-// awaitWake blocks until the mailbox of vm is poked or the earliest timeout of its waiters
+// awaitWake blocks until the mailbox of ag is poked or the earliest timeout of its waiters
 // passes, and reports whether the timeout passed.
-func (vm *VM) awaitWake() bool {
+func (ag *agent) awaitWake() bool {
 	var deadline time.Time
 	var expired <-chan time.Time
-	if !vm.timedWaiters.isEmpty() {
-		deadline = vm.timedWaiters.heap[0].deadline
-		d := deadline.Sub(vm.Now())
+	if !ag.timedWaiters.isEmpty() {
+		deadline = ag.timedWaiters.heap[0].deadline
+		d := deadline.Sub(ag.Now())
 		if d <= 0 {
 			return true
 		}
@@ -539,19 +538,19 @@ func (vm *VM) awaitWake() bool {
 	select {
 	case <-expired:
 		// The timer measures real time, which the clock may run behind.
-		return !deadline.After(vm.Now())
-	case <-vm.mailbox.wake:
+		return !deadline.After(ag.Now())
+	case <-ag.mailbox.wake:
 		return false
 	}
 }
 
-// Running reports whether a call from Go into vm is running.
-func (vm *VM) Running() bool {
-	return vm.entered > 0
+// Running reports whether a call from Go into ag is running.
+func (ag *agent) Running() bool {
+	return ag.entered > 0
 }
 
 // RunJobs runs the pending jobs, as the end of an outermost call into cx does. It must not be
-// called while [VM.Running] reports true.
+// called while [agent.Running] reports true.
 func (cx *ExecutionContext) RunJobs() error {
 	// enter drains the pending jobs after this empty callback returns.
 	_, err := cx.enter(func() Value {

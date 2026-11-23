@@ -12,7 +12,7 @@ import (
 // TestArrayWithLengthFilledFromEnd tests that filling an array created with its length from the
 // end keeps every element in the storage of the elements, which needs no key for an index.
 func TestArrayWithLengthFilledFromEnd(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	before := engine.InternedCount(cx)
 	if _, err := runScript(cx, "fill", `o = new Array(500); for (i = 499; i >= 0; i--) o[i] = i;`); err != nil {
 		t.Fatalf("runScript: %v", err)
@@ -23,7 +23,7 @@ func TestArrayWithLengthFilledFromEnd(t *testing.T) {
 }
 
 func TestPushCapacityAfterLongRuns(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	v, err := runScript(cx, "build", `
 		function build(n, a = []) {
 			while (a.length < n) a.push(a.length);

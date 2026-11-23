@@ -183,7 +183,7 @@ func Install(cx *engine.ExecutionContext) {
 	cx.FinishBuiltins()
 }
 
-// objectStrings holds the results of Object.prototype.toString of a [engine.VM] by tag.
+// objectStrings holds the results of Object.prototype.toString for an agent by tag.
 type objectStrings struct {
 	byTag map[wtf8.String]engine.Value
 }

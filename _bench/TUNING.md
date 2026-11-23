@@ -25,7 +25,7 @@ Run profiling separately from engine comparisons to keep its overhead out of the
 
 ## Instruction counts and the loop head of exec
 
-A change to `(*VM).exec` can speed up one architecture and slow down another. Go's register
+A change to `(*agent).exec` can speed up one architecture and slow down another. Go's register
 allocator stores a value that the dispatch loop carries in the block that dominates all of its
 reloads. When a fast path of the first switch runs out of registers and reloads such a value, the
 store moves to the loop head and runs before every instruction. arm64 has registers enough that
@@ -37,9 +37,9 @@ amd64, `JMP (R27)` on arm64. From the repository root:
 
 ```sh
 GOARCH=amd64 go test -c -o /tmp/ekuma-amd64.test . && \
-  go tool objdump -s 'engine\.\(\*VM\)\.exec$' /tmp/ekuma-amd64.test
+  go tool objdump -s 'engine\.\(\*agent\)\.exec$' /tmp/ekuma-amd64.test
 GOARCH=arm64 go test -c -o /tmp/ekuma-arm64.test . && \
-  go tool objdump -s 'engine\.\(\*VM\)\.exec$' /tmp/ekuma-arm64.test
+  go tool objdump -s 'engine\.\(\*agent\)\.exec$' /tmp/ekuma-arm64.test
 ```
 
 At `be32cfd`, amd64 stores two values there, pc and the address of the code, and only for the

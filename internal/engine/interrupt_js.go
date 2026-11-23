@@ -9,7 +9,7 @@ import (
 )
 
 // js/wasm runs one goroutine at a time and switches only when the running one yields.
-// A busy script yields now and then, so that the goroutine that calls [VM.Interrupt] can run.
+// A busy script yields now and then, so that the goroutine that calls [agent.Interrupt] can run.
 
 // yieldTicks is the number of ticks between two yields.
 const yieldTicks = 1 << 12
@@ -41,8 +41,8 @@ func (f *interruptFlag) yield() {
 	runtime.Gosched()
 }
 
-// pollYield yields at each call of [VM.Poll], as its callers call it only between runs of many
+// pollYield yields at each call of [agent.Poll], as its callers call it only between runs of many
 // steps. The goroutines that request an interruption may need more than one yield to run.
-func (vm *VM) pollYield() {
-	vm.interrupt.yield()
+func (ag *agent) pollYield() {
+	ag.interrupt.yield()
 }

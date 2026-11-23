@@ -21,7 +21,7 @@ type bigIntObject struct {
 }
 
 // NewBigInt returns the BigInt i, which must not be modified afterward.
-func (vm *VM) NewBigInt(i *big.Int) Value {
+func (ag *agent) NewBigInt(i *big.Int) Value {
 	if i.IsInt64() {
 		return BigIntFromInt64(i.Int64())
 	}

@@ -146,13 +146,13 @@ func newGenerator(f *Object, this Value, args []Value) *generator {
 // pushGenerator creates the activation of a generator or async generator for a call of f and
 // pushes its frame, so that the caller can run it up to its initial suspension, which creates
 // the generator object.
-func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
+func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 	g := newGenerator(f, this, args)
 	if g.fp.isAsync {
 		g.async = &asyncState{}
 	}
 	g.state = genRunning
-	vm.pushGenFrame(g, ret)
+	ag.pushGenFrame(g, ret)
 }
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
@@ -173,9 +173,9 @@ func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
 }
 
 // pushGenFrame pushes the frame that continues g at g.pc.
-func (vm *VM) pushGenFrame(g *generator, ret int32) {
-	base := vm.sp
-	fr := vm.appendFrame()
+func (ag *agent) pushGenFrame(g *generator, ret int32) {
+	base := ag.sp
+	fr := ag.appendFrame()
 	fr.fp = g.fp
 	fr.cl = g.f
 	fr.pc = g.pc

@@ -59,7 +59,7 @@ func TestStringIndexKey(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			cx := newVM(t)
+			cx := newTestContext(t)
 			v, err := runScript(cx, "index", tc.src)
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
@@ -83,7 +83,7 @@ func TestPrimitiveElements(t *testing.T) {
 }
 
 func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
-	cx := newVM(t)
+	cx := newTestContext(t)
 	var target engine.Value
 	cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		var err error

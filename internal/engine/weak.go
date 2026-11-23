@@ -80,7 +80,7 @@ func (keys *weakTableKeys) clear() {
 // weakEntries are the entries of the weak collections whose key is one object or symbol.
 // One entry is held in first, and only the entries of the other collections are in rest.
 type weakEntries struct {
-	// The VM and the runtime cleanups of several collections can access the same key.
+	// The agent and the runtime cleanups of several collections can access the same key.
 	mu         sync.Mutex
 	firstTable *weakTableKeys
 	first      Value
@@ -129,14 +129,14 @@ func WeakSetData(v Value) *WeakTable {
 }
 
 // CanBeHeldWeakly implements CanBeHeldWeakly.
-func (vm *VM) CanBeHeldWeakly(v Value) bool {
+func (ag *agent) CanBeHeldWeakly(v Value) bool {
 	if v.IsObject() {
 		return true
 	}
 	if !v.IsSymbol() {
 		return false
 	}
-	_, registered := vm.KeyForSymbol(v.o)
+	_, registered := ag.KeyForSymbol(v.o)
 	return !registered
 }
 
@@ -235,7 +235,7 @@ func (cx *ExecutionContext) NewWeakRefObject(proto *Object, v Value) *Object {
 
 // WeakRefDeref implements WeakRefDeref for the WeakRef object v.
 // It reports false when v is not a WeakRef object.
-func (vm *VM) WeakRefDeref(v Value) (Value, bool) {
+func (ag *agent) WeakRefDeref(v Value) (Value, bool) {
 	if !v.IsObject() || v.o.class != classWeakRef {
 		return Undefined, false
 	}
@@ -243,7 +243,7 @@ func (vm *VM) WeakRefDeref(v Value) (Value, bool) {
 	if t == nil {
 		return Undefined, true
 	}
-	vm.AddToKeptObjects(t)
+	ag.AddToKeptObjects(t)
 	return Value{o: t}, true
 }
 
@@ -259,18 +259,18 @@ type weakState struct {
 }
 
 // AddToKeptObjects implements AddToKeptObjects: o stays alive until the current job ends.
-func (vm *VM) AddToKeptObjects(o *Object) {
-	if vm.weak.keptAlive == nil {
-		vm.weak.keptAlive = map[*Object]struct{}{}
+func (ag *agent) AddToKeptObjects(o *Object) {
+	if ag.weak.keptAlive == nil {
+		ag.weak.keptAlive = map[*Object]struct{}{}
 	}
-	vm.weak.keptAlive[o] = struct{}{}
+	ag.weak.keptAlive[o] = struct{}{}
 }
 
 // clearKeptObjects implements ClearKeptObjects.
 // It must be called when a job ends: after each promise job, and when the outermost call into
 // the engine returns.
-func (vm *VM) clearKeptObjects() {
-	clear(vm.weak.keptAlive)
+func (ag *agent) clearKeptObjects() {
+	clear(ag.weak.keptAlive)
 }
 
 // FinalizationRegistry is the state of a FinalizationRegistry object.
@@ -323,7 +323,7 @@ func (c *cellCleanups) stopAll() {
 }
 
 // finalizationQueue holds the cells whose target was collected. The cleanup goroutine of the
-// Go runtime adds to it, and the [VM] takes from it between jobs.
+// Go runtime adds to it, and the agent takes from it between jobs.
 type finalizationQueue struct {
 	pending atomic.Bool
 
@@ -462,8 +462,8 @@ func (r *FinalizationRegistry) remove(id uint64, c *finalizationCell) {
 
 // finalizationPending reports whether a target of a FinalizationRegistry was collected and its
 // cleanup callback has not run yet.
-func (vm *VM) finalizationPending() bool {
-	q := vm.weak.finalization
+func (ag *agent) finalizationPending() bool {
+	q := ag.weak.finalization
 	return q != nil && q.pending.Load()
 }
 

@@ -53,10 +53,10 @@ func (cx *ExecutionContext) callArguments(i int) *Object {
 // from a native function that shows a frame or from script code, or when the caller is strict, a
 // generator or an async function. After a proper tail call, the caller is that of the function
 // that made it.
-func (vm *VM) callerOf(i int) Value {
+func (ag *agent) callerOf(i int) Value {
 	// Eval code runs on behalf of the code that calls eval.
 	j := i - 1
-	for j >= 0 && vm.frames[j].fp.IsEval {
+	for j >= 0 && ag.frames[j].fp.IsEval {
 		j--
 	}
 	if j < 0 {
@@ -64,14 +64,14 @@ func (vm *VM) callerOf(i int) Value {
 	}
 	// A native function called by the frame j or an eval frame above it made the call, unless
 	// it shows no frame.
-	for k := len(vm.natives) - 1; k >= 0 && vm.natives[k].frames > j; k-- {
-		if c := &vm.natives[k]; c.frames <= i && c.showsFrame() {
+	for k := len(ag.natives) - 1; k >= 0 && ag.natives[k].frames > j; k-- {
+		if c := &ag.natives[k]; c.frames <= i && c.showsFrame() {
 			return Null
 		}
 	}
-	fp := vm.frames[j].fp
+	fp := ag.frames[j].fp
 	if fp.IsScript || fp.strict || fp.isGenerator || fp.isAsync {
 		return Null
 	}
-	return Value{o: vm.frames[j].cl}
+	return Value{o: ag.frames[j].cl}
 }

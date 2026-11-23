@@ -82,10 +82,10 @@ type PromiseCapability struct {
 	promise *Object
 
 	// resolve and reject are the [[Resolve]] and [[Reject]] functions. For a promise that
-	// the [VM] created itself, they are nil until something asks for them.
+	// the agent created itself, they are nil until something asks for them.
 	resolve, reject *Object
 
-	// intrinsic is set when the [VM] created the promise and its resolving functions are
+	// intrinsic is set when the agent created the promise and its resolving functions are
 	// the ones of CreateResolvingFunctions, which then share alreadyResolved.
 	intrinsic       bool
 	alreadyResolved bool
@@ -248,21 +248,21 @@ func (cx *ExecutionContext) NewPromiseCapability(c Value) *PromiseCapability {
 }
 
 // ensureResolvingFunctions materializes the deferred functions of an intrinsic capability.
-func (vm *VM) ensureResolvingFunctions(c *PromiseCapability) {
+func (ag *agent) ensureResolvingFunctions(c *PromiseCapability) {
 	if c.resolve == nil {
 		c.promise.CreationRealm().Context().createResolvingFunctions(c)
 	}
 }
 
 // CapabilityResolve returns the [[Resolve]] function of c.
-func (vm *VM) CapabilityResolve(c *PromiseCapability) Value {
-	vm.ensureResolvingFunctions(c)
+func (ag *agent) CapabilityResolve(c *PromiseCapability) Value {
+	ag.ensureResolvingFunctions(c)
 	return Value{o: c.resolve}
 }
 
 // CapabilityReject returns the [[Reject]] function of c.
-func (vm *VM) CapabilityReject(c *PromiseCapability) Value {
-	vm.ensureResolvingFunctions(c)
+func (ag *agent) CapabilityReject(c *PromiseCapability) Value {
+	ag.ensureResolvingFunctions(c)
 	return Value{o: c.reject}
 }
 
@@ -547,12 +547,12 @@ func (cx *ExecutionContext) awaitValue(v Value, action reactionAction) {
 //
 // The promises that are rejected without a handler when the job queue is drained are
 // the unhandled rejections, which notifyRejectedPromises reports.
-func (vm *VM) hostPromiseRejectionTracker(p *Object, handle bool) {
+func (ag *agent) hostPromiseRejectionTracker(p *Object, handle bool) {
 	if !handle {
-		vm.rejections.add(p)
+		ag.rejections.add(p)
 		return
 	}
-	vm.rejections.remove(p)
+	ag.rejections.remove(p)
 }
 
 // UnhandledRejectionFunc is the type of the function that is told about a promise that was
@@ -560,20 +560,20 @@ func (vm *VM) hostPromiseRejectionTracker(p *Object, handle bool) {
 type UnhandledRejectionFunc func(cx *ExecutionContext, promise, reason Value)
 
 // SetHostUnhandledRejection sets f as the function that is told about the unhandled
-// rejections, in the order of rejection, after the jobs ran. f may call into vm. Without
+// rejections, in the order of rejection, after the jobs ran. f may call into ag. Without
 // one, the unhandled rejections are discarded.
-func (vm *VM) SetHostUnhandledRejection(f UnhandledRejectionFunc) {
-	vm.rejections.notify = f
+func (ag *agent) SetHostUnhandledRejection(f UnhandledRejectionFunc) {
+	ag.rejections.notify = f
 }
 
 // DeferUnhandledRejections postpones rejection reports across job checkpoints.
-func (vm *VM) DeferUnhandledRejections() {
-	vm.rejections.deferred = true
+func (ag *agent) DeferUnhandledRejections() {
+	ag.rejections.deferred = true
 }
 
 // TakeUnhandledRejection ends deferral, returning the first unhandled reason and clearing all reports.
-func (vm *VM) TakeUnhandledRejection() (Value, bool) {
-	t := &vm.rejections
+func (ag *agent) TakeUnhandledRejection() (Value, bool) {
+	t := &ag.rejections
 	t.deferred = false
 	if len(t.promises) == 0 {
 		return Undefined, false
@@ -677,11 +677,11 @@ func (cx *ExecutionContext) promiseJobRealm(callback *Object) *Realm {
 	return cx.realm
 }
 
-func (vm *VM) enqueuePromiseJob(j job) {
-	if vm.trackJobRealms && vm.hasDetachedGlobal(j.context.realm) {
+func (ag *agent) enqueuePromiseJob(j job) {
+	if ag.trackJobRealms && ag.hasDetachedGlobal(j.context.realm) {
 		return
 	}
-	vm.jobs.enqueue(j)
+	ag.jobs.enqueue(j)
 }
 
 // QueueMicrotask queues a call to callback with no arguments and reports an exception
@@ -885,7 +885,7 @@ func (cx *ExecutionContext) notifyRejectedPromises() bool {
 }
 
 // dropJobs discards the pending jobs.
-func (vm *VM) dropJobs() {
-	vm.jobs = jobQueue{}
-	vm.rejections.reset()
+func (ag *agent) dropJobs() {
+	ag.jobs = jobQueue{}
+	ag.rejections.reset()
 }

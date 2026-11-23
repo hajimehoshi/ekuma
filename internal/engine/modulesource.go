@@ -14,7 +14,7 @@ func (cx *ExecutionContext) NewModuleSourceObject(proto *Object, className strin
 
 // ModuleSourceClassName returns the [[ModuleSourceClassName]] of v. ok is false when v has
 // no such slot.
-func (vm *VM) ModuleSourceClassName(v Value) (name string, ok bool) {
+func (ag *agent) ModuleSourceClassName(v Value) (name string, ok bool) {
 	if !v.IsObject() || v.o.class != classModuleSource {
 		return "", false
 	}
