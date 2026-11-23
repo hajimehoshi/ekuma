@@ -142,14 +142,60 @@ func (have scriptRegion) distance(want LanguageID, language string) int {
 	return distance + cldr.RegionDistance(language, "", want.Region, have.region)
 }
 
+// For equivalent maximized locales, agreement on an explicit script takes
+// precedence over agreement on an explicit region.
+type subtagMask uint8
+
+const (
+	explicitRegion subtagMask = 1 << iota
+	explicitScript
+)
+
+func explicitSubtags(id LanguageID) subtagMask {
+	var mask subtagMask
+	if id.Script != "" {
+		mask |= explicitScript
+	}
+	if id.Region != "" {
+		mask |= explicitRegion
+	}
+	return mask
+}
+
+type localeForm struct {
+	name     string
+	explicit subtagMask
+}
+
 type regionalLocale struct {
 	name string
 	scriptRegion
-	paradigm bool
+	paradigm, likelyRegion bool
+}
+
+func newRegionalLocale(name string, id LanguageID) regionalLocale {
+	likely, ok := AddLikelySubtags(LanguageID{
+		Language: id.Language,
+		Script:   id.Script,
+	})
+	return regionalLocale{
+		name:         name,
+		script:       id.Script,
+		region:       id.Region,
+		paradigm:     paradigmLocales()[id.String()],
+		likelyRegion: ok && id.Region == likely.Region,
+	}
+}
+
+func (c regionalLocale) preferredTo(other regionalLocale) bool {
+	if c.paradigm != other.paradigm {
+		return c.paradigm
+	}
+	return c.script == other.script && c.likelyRegion && !other.likelyRegion
 }
 
 type languageLocales struct {
-	exact   map[scriptRegion]string
+	forms   map[scriptRegion][]localeForm
 	ordered []regionalLocale
 }
 
@@ -177,7 +223,7 @@ func (index likelyIndex) add(name string) {
 	locales := index[id.Language]
 	if locales == nil {
 		locales = &languageLocales{
-			exact: map[scriptRegion]string{},
+			forms: map[scriptRegion][]localeForm{},
 		}
 		index[id.Language] = locales
 	}
@@ -185,14 +231,12 @@ func (index likelyIndex) add(name string) {
 		script: id.Script,
 		region: id.Region,
 	}
-	if locales.exact[key] != "" {
-		return
+	if len(locales.forms[key]) == 0 {
+		locales.ordered = append(locales.ordered, newRegionalLocale(name, id))
 	}
-	locales.exact[key] = name
-	locales.ordered = append(locales.ordered, regionalLocale{
-		name:         name,
-		scriptRegion: key,
-		paradigm:     paradigmLocales()[id.String()],
+	locales.forms[key] = append(locales.forms[key], localeForm{
+		name:     name,
+		explicit: explicitSubtags(t.LanguageID),
 	})
 }
 
@@ -204,8 +248,32 @@ var likelyLocales = sync.OnceValue(func() likelyIndex {
 	return index
 })
 
+// exactForm selects among supported spellings of the same maximized identifier.
+// prefix is an equivalent lookup match when one exists.
+func (locales *languageLocales) exactForm(want LanguageID, language string, explicit subtagMask, prefix localeForm) string {
+	if locales == nil {
+		return prefix.name
+	}
+	best := prefix
+	forms := locales.forms[scriptRegion{
+		script: want.Script,
+		region: want.Region,
+	}]
+	for _, form := range forms {
+		if want.Language != language {
+			return form.name
+		}
+		if best.name == "" || form.explicit^explicit < best.explicit^explicit {
+			best = form
+		}
+	}
+	return best.name
+}
+
 // matchLanguage ranks the supported locales of language by script and region distance.
-func (index likelyIndex) matchLanguage(want LanguageID, language, prefix string) string {
+func (index likelyIndex) matchLanguage(want LanguageID, explicit subtagMask, language, prefix string) string {
+	locales := index[language]
+	var equivalentPrefix localeForm
 	bestDistance := cldr.DefaultScriptDistance
 	var best regionalLocale
 	if prefix != "" {
@@ -218,30 +286,25 @@ func (index likelyIndex) matchLanguage(want LanguageID, language, prefix string)
 			}
 			distance := candidate.distance(want, language)
 			if distance == 0 {
-				return prefix
-			}
-			if distance < bestDistance {
-				best = regionalLocale{
+				equivalentPrefix = localeForm{
 					name:     prefix,
-					paradigm: paradigmLocales()[have.String()],
+					explicit: explicitSubtags(p.LanguageID),
 				}
+			} else if distance < bestDistance {
+				best = newRegionalLocale(prefix, have)
 				bestDistance = distance
 			}
 		}
 	}
-	locales := index[language]
+	if exact := locales.exactForm(want, language, explicit, equivalentPrefix); exact != "" {
+		return exact
+	}
 	if locales == nil {
 		return best.name
 	}
-	if exact := locales.exact[scriptRegion{
-		script: want.Script,
-		region: want.Region,
-	}]; exact != "" {
-		return exact
-	}
 	for _, candidate := range locales.ordered {
 		distance := candidate.distance(want, language)
-		if distance < bestDistance || distance == bestDistance && best.name != "" && candidate.paradigm && !best.paradigm {
+		if distance < bestDistance || distance == bestDistance && best.name != "" && candidate.preferredTo(best) {
 			best = candidate
 			bestDistance = distance
 		}
@@ -276,12 +339,13 @@ func (m Matcher) matchingLocale(t Tag, bestFit bool) (matched string, related bo
 	if index == nil {
 		index = likelyLocales()
 	}
-	if l := index.matchLanguage(want, want.Language, prefix); l != "" {
+	explicit := explicitSubtags(t.LanguageID)
+	if l := index.matchLanguage(want, explicit, want.Language, prefix); l != "" {
 		return l, false
 	}
 	languages, _ := cldr.LanguageMatches.Lookup(want.Language)
 	for lang := range strings.FieldsSeq(languages) {
-		if l := index.matchLanguage(want, lang, ""); l != "" {
+		if l := index.matchLanguage(want, explicit, lang, ""); l != "" {
 			return l, true
 		}
 	}

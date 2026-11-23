@@ -66,5 +66,3 @@ cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal 
 localeMatcherTest.txt 764 fr
 localeMatcherTest.txt 1486 en-GB
 localeMatcherTest.txt 1393 sr
-localeMatcherTest.txt 1564 nl
-localeMatcherTest.txt 1904 fr-CA

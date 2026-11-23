@@ -88,3 +88,11 @@ func TestBestFitVariantPrefix(t *testing.T) {
 		t.Errorf("matched %q, want be-tarask", got)
 	}
 }
+
+func TestBestFitImplicitSubtags(t *testing.T) {
+	m := locale.NewMatcher([]string{"zh-Hans", "zh-CN"})
+	got, _ := m.Match([]string{"zh"}, "en", true)
+	if got != "zh-CN" {
+		t.Errorf("matched %q, want zh-CN", got)
+	}
+}
