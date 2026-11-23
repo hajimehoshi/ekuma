@@ -226,7 +226,7 @@ func initLocaleCompare(cx *engine.ExecutionContext) {
 }
 
 // caseLocales are the languages that have language-sensitive case mappings.
-var caseLocales = []string{"az", "el", "lt", "tr"}
+var caseLocales = []string{"az", "el", "hy", "lt", "tr"}
 
 // initLocaleCase replaces String.prototype.toLocaleUpperCase and toLocaleLowerCase with the
 // versions of ECMA-402.
@@ -262,19 +262,22 @@ func initLocaleCase(cx *engine.ExecutionContext) {
 					lang = t.Language
 				}
 			}
-			if lang == "" || lang == "el" && !m.upper {
+			if lang == "" || !m.upper && (lang == "el" || lang == "hy") {
 				if mapped, ok := cx.MapASCII(value, m.upper); ok {
 					return mapped
 				}
 				return cx.CallValue(base, value)
 			}
 			s := value.Str()
-			// The rules of the language apply first, and then the base maps the case of the
-			// result. Greek has rules only for uppercasing.
+			// Apply the language-specific rules before the default case mapping.
 			switch {
 			case lang == "el" && m.upper:
 				s = wtf8.MapWellFormed(s, func(s string) string {
 					return greekUpper(s, cx.Poll)
+				})
+			case lang == "hy" && m.upper:
+				s = mapAtStarters(cx, s, func(s string, poll func()) string {
+					return strings.ReplaceAll(s, "և", "ԵՎ")
 				})
 			case lang == "lt" && m.upper:
 				s = mapAtStarters(cx, s, lithuanianUndot)

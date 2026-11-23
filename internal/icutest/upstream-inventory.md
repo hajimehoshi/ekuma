@@ -1,20 +1,18 @@
 # Upstream ICU suite inventory
 
-**Eastern Armenian uppercasing is the one mismatch found outside the maintained suite.**
 At Ekuma `033441f`, the full two-pin `TestICU` run passed all 117 leaf subtests with
 289 expected differences and zero unexpected failures. Issue #9 stays open until
 each applicable gap has a maintained test or a linked issue. [Tracker](https://github.com/hajimehoshi/ekuma/issues/9)
 
 ## Proposed follow-ups in priority order
 
-1. **Eastern Armenian casing.** For `"և".toLocaleUpperCase("hy")`, both ICU ports expect `ԵՎ`. Ekuma returns `ԵՒ`, which matches ICU for default and Western Armenian casing. [C++ TestArmenian][armenian-c] · [Java TestArmenian][armenian-j]
-2. **Emoji segmentation.** All 3,210 eligible emoji inputs stayed intact in both grapheme and word iteration. Add the fixture to exercise both modes, including non-fully-qualified spellings. [TestEmoji][emoji-driver] · [Emoji 5.0 fixture][emoji-data]
-3. **Regex captures.** Use the ECMAScript-compatible rows to check capture text and UTF-16 offsets. For `(.*)(?=c)` on `abcdef`, both the match and group 1 span [0, 2). [Tagged captures][regex-data] · [tabular offsets][perl-data]
-4. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
-5. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
-6. **Number formatting.** Check Serbian compact rounding of −999999 to `-1 милион`, Hungarian forint output at zero, two and three fraction digits, and the two grouping spans in Swiss German `-1'000'007`. [Compact numbers][compact] · [currency digits][currency] · [field positions][simple-number]
-7. **French date ranges.** Check `17–23 septembre 2024` within a month and `17 septembre – 3 octobre 2024` across months, including the thin spaces. [Date interval cases][fr-range]
-8. **Normalization.** The corrected 3.2 fixture adds 246 distinct five-column rows beyond the Unicode 17 corpus. All 4,920 comparisons matched in a one-off run. [Older fixture][old-norm] · [Unicode 17 fixture][norm]
+1. **Emoji segmentation.** All 3,210 eligible emoji inputs stayed intact in both grapheme and word iteration. Add the fixture to exercise both modes, including non-fully-qualified spellings. [TestEmoji][emoji-driver] · [Emoji 5.0 fixture][emoji-data]
+2. **Regex captures.** Use the ECMAScript-compatible rows to check capture text and UTF-16 offsets. For `(.*)(?=c)` on `abcdef`, both the match and group 1 span [0, 2). [Tagged captures][regex-data] · [tabular offsets][perl-data]
+3. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
+4. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
+5. **Number formatting.** Check Serbian compact rounding of −999999 to `-1 милион`, Hungarian forint output at zero, two and three fraction digits, and the two grouping spans in Swiss German `-1'000'007`. [Compact numbers][compact] · [currency digits][currency] · [field positions][simple-number]
+6. **French date ranges.** Check `17–23 septembre 2024` within a month and `17 septembre – 3 octobre 2024` across months, including the thin spaces. [Date interval cases][fr-range]
+7. **Normalization.** The corrected 3.2 fixture adds 246 distinct five-column rows beyond the Unicode 17 corpus. All 4,920 comparisons matched in a one-off run. [Older fixture][old-norm] · [Unicode 17 fixture][norm]
 
 ## Scope and verification
 
@@ -44,8 +42,6 @@ Ekuma repository root:
 go run internal/icutest/verify_inventory.go "$EKUMA_ICU" "$EKUMA_ICU_CLDR"
 ```
 
-[armenian-c]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/intltest/strcase.cpp#L940
-[armenian-j]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4j/main/core/src/test/java/com/ibm/icu/dev/test/lang/UCharacterCaseTest.java#L884
 [emoji-driver]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/intltest/rbbitst.cpp#L3542
 [emoji-data]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/testdata/emoji-test.txt
 [regex-data]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/testdata/regextst.txt

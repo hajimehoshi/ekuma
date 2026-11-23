@@ -137,3 +137,17 @@ func runCasingTest(t *testing.T, path string) {
 	t.Logf("%d lower and %d upper cases executed, %d titlecasing and %d casefolding rows excluded (no corresponding String method), 0 known failures",
 		counts["lowercasing"], counts["uppercasing"], counts["titlecasing"], counts["casefolding"])
 }
+
+func runArmenianUpper(t *testing.T, path string) {
+	f := newFormatFixture(t, path)
+	src := readIntervalSource(t, path).from("void StringCaseTest::TestArmenian() {")
+	input := intervalString(t, src.from("UnicodeString s(u").lines[0])
+	upper := f.function(`(s, locale) => locale === "root" ? s.toUpperCase() : s.toLocaleUpperCase(locale)`)
+	for _, locale := range []string{"root", "hy", "hyw"} {
+		marker := `assertEquals("upper ` + locale + `", `
+		row := src.from(marker)
+		want := intervalString(t, strings.TrimPrefix(row.lines[0], marker))
+		f.check(row.line, "TestArmenian uppercase", upper, want, input, locale)
+	}
+	f.excluded["ICU titlecasing has no corresponding String method"] += 3
+}

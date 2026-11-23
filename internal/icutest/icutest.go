@@ -39,6 +39,9 @@ func Run(t *testing.T) {
 		t.Run("casing.txt", func(t *testing.T) {
 			runCasingTest(t, filepath.Join(testdata, "casing.txt"))
 		})
+		t.Run("strcase.cpp", func(t *testing.T) {
+			runArmenianUpper(t, filepath.Join(dir, "icu4c/source/test/intltest/strcase.cpp"))
+		})
 		for _, file := range []string{"UnicodeData.txt", "SpecialCasing.txt"} {
 			t.Run(file, func(t *testing.T) {
 				runUnicodeCasing(t, unidata, file)

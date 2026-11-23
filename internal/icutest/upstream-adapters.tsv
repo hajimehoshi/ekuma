@@ -1,8 +1,9 @@
 TestICU subtest	Go selector for runnable sections	Executed (adapter units)	Known differences	Excluded (counts and reasons)
-GraphemeBreakTest.txt	runBreakTest (icutest.go:262)	766 cases	0	0 reported
-WordBreakTest.txt	runBreakTest (icutest.go:262)	1944 cases	0	0 reported
-SentenceBreakTest.txt	runBreakTest (icutest.go:262)	512 cases	0	0 reported
+GraphemeBreakTest.txt	runBreakTest (icutest.go:265)	766 cases	0	0 reported
+WordBreakTest.txt	runBreakTest (icutest.go:265)	1944 cases	0	0 reported
+SentenceBreakTest.txt	runBreakTest (icutest.go:265)	512 cases	0	0 reported
 casing.txt	runCasingTest (casing.go:17)	3 lower and 3 upper cases executed	0	15 titlecasing rows | 2 casefolding rows
+strcase.cpp	runArmenianUpper (casing.go:141)	3 uppercase checks	0	3 titlecasing checks (no corresponding String method)
 UnicodeData.txt	runUnicodeCasing (unicode_casing.go:240)	2989 rows with simple mappings, 5978 checks executed	0	37586 rows without a simple upper/lower mapping
 SpecialCasing.txt	runUnicodeCasing (unicode_casing.go:240)	103 unconditional and 16 conditional rows, 288 checks executed	0	0 reported
 rbbitst.txt	runRBBITest (rbbi.go:23)	277 grapheme, 133 word, 36 sentence cases executed	1	5 ICU sentence-break suppression | 5 custom ICU rules | 237 line breaking | 7 lineML breaking | 9 title breaking | 1 ICU rule-rejection test

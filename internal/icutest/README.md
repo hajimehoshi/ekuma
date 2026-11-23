@@ -25,6 +25,7 @@ the test. [Known results](testdata/icu-failures.txt)
 | `UnicodeData.txt` | Both default String casing methods on all 2,989 code points with a simple uppercase or lowercase mapping. Unconditional full mappings from `SpecialCasing.txt` take precedence. |
 | `SpecialCasing.txt` | Both directions on all 103 unconditional and 16 conditional rows. Whole-string checks cover final sigma, Lithuanian, Turkish and Azerbaijani casing, including combining marks and deletions. Contextual rules run with matching and nonmatching inputs. Locale rules also run under English. Titlecase is outside the String API. |
 | `casing.txt` | Separate ICU regression examples for default and locale-sensitive String casing. Titlecasing and case folding have no corresponding String methods. |
+| `strcase.cpp` | ICU’s `TestArmenian` checks the uppercase form of և for Eastern Armenian, Western Armenian and default casing. |
 
 | ICU 79.1 fixtures | Coverage |
 |---|---|
@@ -182,8 +183,8 @@ differs on word boundaries around punctuation. [Known results](testdata/icu-fail
 ## Upstream suite inventory
 
 The inventory maps ICU4C and ICU4J suite registrations and fixtures at both
-pins to Ekuma, Test262, and V8 cases. It records an Eastern Armenian casing
-difference and prioritizes gaps in emoji segmentation and regex captures.
+pins to Ekuma, Test262, and V8 cases. The next gaps are emoji segmentation
+and regex captures.
 Each runnable ICU subtest lists its source selections, expected differences,
 and exclusions. The path counts can be verified from the two Git trees.
 [Prioritized gaps and accounting](upstream-inventory.md) · [Upstream paths and test groups](upstream-paths.tsv)
