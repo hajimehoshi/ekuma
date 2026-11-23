@@ -58,7 +58,7 @@ type pendingReaction struct {
 	continuationData        any
 
 	// builtinRealm is the creation realm of an implicit built-in handler.
-	builtinRealm *realm
+	builtinRealm *Realm
 }
 
 // reactionAction describes what the selected reaction does with its argument.
@@ -101,7 +101,7 @@ type jobContext struct {
 	continuationData any
 
 	// enteredRealm stays fixed across ordinary cross-realm calls.
-	enteredRealm *realm
+	enteredRealm *Realm
 }
 
 func (vm *VM) captureJobContext() jobContext {
@@ -117,7 +117,7 @@ func (vm *VM) withJobContext(c jobContext, f func()) {
 	vm.jobContext = c
 	defer func() { vm.jobContext = previous }()
 	if c.enteredRealm != nil && c.enteredRealm != vm.curRealm {
-		vm.InRealm((*Realm)(c.enteredRealm), f)
+		vm.InRealm(c.enteredRealm, f)
 		return
 	}
 	f()
@@ -295,7 +295,7 @@ func (vm *VM) CapabilityReject(c *PromiseCapability) Value {
 func (c *PromiseCapability) resolvingRealm() *Realm {
 	if c.resolve != nil {
 		// A thenable job creates its own resolving functions in the job's realm.
-		return (*Realm)(c.resolve.fn.info.realm)
+		return c.resolve.fn.info.realm
 	}
 	return c.promise.CreationRealm()
 }
@@ -525,7 +525,7 @@ func (vm *VM) tryAwait(g *generator, v Value, kind reactionKind) bool {
 	}
 	return vm.protect(func() {
 		if vm.trackJobRealms && g.f.fn.code.realm != vm.curRealm {
-			vm.InRealm((*Realm)(g.f.fn.code.realm), func() { vm.awaitValue(v, action) })
+			vm.InRealm(g.f.fn.code.realm, func() { vm.awaitValue(v, action) })
 			return
 		}
 		vm.awaitValue(v, action)
@@ -693,7 +693,7 @@ func (q *jobQueue) dequeue() job {
 }
 
 // promiseJobCallbackRealm implements the GetFunctionRealm step of both promise job constructors.
-func (vm *VM) promiseJobCallbackRealm(callback *Object) *realm {
+func (vm *VM) promiseJobCallbackRealm(callback *Object) *Realm {
 	if vm.trackJobRealms {
 		if r := vm.functionRealmOrNil(callback); r != nil {
 			return r
@@ -732,7 +732,7 @@ func (vm *VM) QueueMicrotask(callback Value) {
 		kind: jobCallback,
 		context: jobContext{
 			continuationData: vm.continuationData,
-			enteredRealm:     (*realm)(callback.o.CreationRealm()),
+			enteredRealm:     callback.o.CreationRealm(),
 		},
 		callback: callback.o,
 	})
@@ -748,7 +748,7 @@ func (vm *VM) runJob(j *job) {
 		}
 		return
 	case jobResolve:
-		vm.resolvePromise((*Realm)(j.context.enteredRealm), j.promise, j.argument)
+		vm.resolvePromise(j.context.enteredRealm, j.promise, j.argument)
 		return
 	case jobThenable:
 		vm.protect(func() {
@@ -778,7 +778,7 @@ func (vm *VM) runJob(j *job) {
 		return
 	case reactionAsyncGeneratorReturn:
 		g := r.gen
-		vm.asyncGeneratorCompleteStep(g, (*Realm)(j.context.enteredRealm), j.argument, j.rejected, true)
+		vm.asyncGeneratorCompleteStep(g, j.context.enteredRealm, j.argument, j.rejected, true)
 		vm.asyncGeneratorDrainQueue(g)
 		return
 	}
@@ -797,7 +797,7 @@ func (vm *VM) promiseReactionJob(j *job) {
 		return
 	case reactionUnwrap:
 		if !rejected {
-			vm.ResolveCapability(r.capability, (*Realm)(j.context.enteredRealm).CreateIterResultObject(arg, r.done))
+			vm.ResolveCapability(r.capability, j.context.enteredRealm.CreateIterResultObject(arg, r.done))
 			return
 		}
 		if r.iterator != nil {

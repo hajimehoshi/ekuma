@@ -310,7 +310,7 @@ const privateShapeThreshold = 128
 type shape struct {
 	// vm and realm identify where the objects with this shape were created.
 	vm    *VM
-	realm *realm
+	realm *Realm
 
 	proto  *Object
 	parent *shape
@@ -749,7 +749,7 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (vm *VM) newShape(proto *Object, r *realm) *shape {
+func (vm *VM) newShape(proto *Object, r *Realm) *shape {
 	if proto != nil {
 		proto.flags |= objIsProto
 	}
@@ -767,7 +767,7 @@ func (vm *VM) shapeFor(proto *Object) *shape {
 }
 
 // shapeForRealm returns the empty shape for objects of r with prototype proto, which may be nil.
-func (vm *VM) shapeForRealm(proto *Object, r *realm) *shape {
+func (vm *VM) shapeForRealm(proto *Object, r *Realm) *shape {
 	if proto == nil {
 		return r.shapes.nullProto
 	}
@@ -784,7 +784,7 @@ type indexedPrototypeShapes struct {
 	array, typedArray prototypeShapeCache
 }
 
-func (c *prototypeShapeCache) forRealm(vm *VM, proto *Object, r *realm) *shape {
+func (c *prototypeShapeCache) forRealm(vm *VM, proto *Object, r *Realm) *shape {
 	if proto.shape.realm != r {
 		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
@@ -802,7 +802,7 @@ func (c *prototypeShapeCache) forRealm(vm *VM, proto *Object, r *realm) *shape {
 }
 
 // objectRootShape returns the initial layout for an object of class cls.
-func (vm *VM) objectRootShape(proto *Object, r *realm, cls class) *shape {
+func (vm *VM) objectRootShape(proto *Object, r *Realm, cls class) *shape {
 	if cls != classArray && cls != classTypedArray {
 		return vm.shapeForRealm(proto, r)
 	}

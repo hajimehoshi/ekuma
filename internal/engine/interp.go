@@ -370,7 +370,7 @@ func (vm *VM) throwReturnError(stop, n, pc int, kind ErrorKind, msg string) {
 		r = vm.frames[n-1].fp.realm
 	}
 	vm.frames[n].pc = pc
-	vm.recordThrow(vm.NewError((*Realm)(r), kind, msg))
+	vm.recordThrow(vm.NewError(r, kind, msg))
 	// The constructor has returned. Unwind from before its handlers.
 	vm.frames[n].pc = 0
 	panic(errThrow)
@@ -1630,21 +1630,21 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := *vm.frames[len(vm.frames)-1].cl.fn.upvals[i.B].p
 			if v.o == tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwTDZ((*Realm)(fp.realm), fp.keys[i.C])
+				vm.throwTDZ(fp.realm, fp.keys[i.C])
 			}
 			regs[i.A] = v
 		case bytecode.OpCheckTDZ:
 			if regs[i.A].o == tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwTDZ((*Realm)(fp.realm), fp.keys[i.B])
+				vm.throwTDZ(fp.realm, fp.keys[i.B])
 			}
 		case bytecode.OpThrowConstAssign:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.ThrowTypeError((*Realm)(fp.realm), "assignment to constant variable '"+wtf8.ToValidUTF8(fp.keys[i.A].str)+"'")
+			vm.ThrowTypeError(fp.realm, "assignment to constant variable '"+wtf8.ToValidUTF8(fp.keys[i.A].str)+"'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
 			// Error text is an interned constant.
-			vm.throwError((*Realm)(fp.realm), thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
+			vm.throwError(fp.realm, thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.globals[i.C]
@@ -1855,7 +1855,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				setter, ok = vm.setNamed(v, fp.keys[i.B], regs[i.C], c)
 				regs = vm.reload(regs, vm.frameBase(), fp)
 				if !ok && i.Op == bytecode.OpSetPropStrict {
-					vm.throwReadOnly((*Realm)(fp.realm), v, PropKey{key: fp.keys[i.B]})
+					vm.throwReadOnly(fp.realm, v, PropKey{key: fp.keys[i.B]})
 				}
 			}
 			if setter != nil {
@@ -1960,7 +1960,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
-				vm.ThrowTypeError((*Realm)(fp.realm), "cannot use 'in' operator to search for a key in a non-object")
+				vm.ThrowTypeError(fp.realm, "cannot use 'in' operator to search for a key in a non-object")
 			}
 			r := vm.HasProperty(o.o, vm.QueryKey(regs[i.C]))
 			regs = vm.reload(regs, vm.frameBase(), fp)
@@ -1976,7 +1976,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
-				vm.ThrowTypeError((*Realm)(fp.realm), "cannot use 'in' operator to search for a private field in a non-object")
+				vm.ThrowTypeError(fp.realm, "cannot use 'in' operator to search for a private field in a non-object")
 			}
 			_, ok := vm.privateStorage(o.o).shape.lookup(regs[i.C].o)
 			regs[i.A] = Bool(ok)
@@ -2010,7 +2010,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			if i.C >= 0 {
 				if b := regs[i.C]; b.IsNullish() {
-					vm.ThrowTypeError((*Realm)(fp.realm), "cannot read properties of "+vm.DisplayString(b)+" (reading '"+vm.DisplayString(v)+"')")
+					vm.ThrowTypeError(fp.realm, "cannot read properties of "+vm.DisplayString(b)+" (reading '"+vm.DisplayString(v)+"')")
 				}
 			}
 			k := vm.KeyValue(vm.ToPropertyKey(v))
@@ -2649,7 +2649,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := regs[i.B]
 			if !r.IsObject() {
-				vm.ThrowTypeError((*Realm)(fp.realm), "iterator result "+vm.DisplayString(r)+" is not an object")
+				vm.ThrowTypeError(fp.realm, "iterator result "+vm.DisplayString(r)+" is not an object")
 			}
 			done := ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 			regs = vm.reload(regs, vm.frameBase(), fp)
@@ -2789,12 +2789,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.ThrowReferenceError((*Realm)(fp.realm), "super constructor may only be called once")
+				vm.ThrowReferenceError(fp.realm, "super constructor may only be called once")
 			}
 		case bytecode.OpRequireCoercible:
 			if regs[i.A].IsNullish() {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.ThrowTypeError((*Realm)(fp.realm), "cannot destructure '"+vm.DisplayString(regs[i.A])+"' as it is "+vm.DisplayString(regs[i.A]))
+				vm.ThrowTypeError(fp.realm, "cannot destructure '"+vm.DisplayString(regs[i.A])+"' as it is "+vm.DisplayString(regs[i.A]))
 			}
 
 		case bytecode.OpForIn:
@@ -2908,7 +2908,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if step := next.o.fn.iteratorPairStep(vm.curRealm); step != nil {
 				x, y, st = step(IteratorState(it))
 				if st == PairYielded {
-					pairRealm = (*Realm)(it.o.shape.realm)
+					pairRealm = it.o.shape.realm
 				}
 			} else if next.o == vm.CurrentRealm().Intrinsic(IntrinsicArrayIteratorPrototypeNext) {
 				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
@@ -2922,7 +2922,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			switch st {
 			case PairYielded:
-				if !vm.pairDestructuringPlain((*realm)(pairRealm)) {
+				if !vm.pairDestructuringPlain(pairRealm) {
 					// The outer iterator has stepped. Supply its pair to the ordinary binding.
 					regs[fp.code[pc].A] = Value{o: vm.NewArrayPairInRealm(pairRealm, x, y)}
 					pc++
@@ -2978,7 +2978,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpIterCheckResult:
 			if !regs[i.A].IsObject() {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwNotIterResult((*Realm)(fp.realm), regs[i.A])
+				vm.throwNotIterResult(fp.realm, regs[i.A])
 			}
 		case bytecode.OpIterResultValue:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -3013,7 +3013,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = v
 			}
 		case bytecode.OpDisposeError:
-			vm.disposeError((*Realm)(fp.realm), regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
+			vm.disposeError(fp.realm, regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
 		case bytecode.OpDisposeEnd:
 			if v, thrown := endDisposeOp(regs[i.A]); thrown {
 				regs[i.A] = Undefined
@@ -3179,7 +3179,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
 				if len(vm.frames) >= maxFrames {
 					vm.frames[len(vm.frames)-1].pc = pc
-					vm.ThrowRangeError((*Realm)(fp.realm), "maximum call stack size exceeded")
+					vm.ThrowRangeError(fp.realm, "maximum call stack size exceeded")
 				}
 				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.realm == vm.curRealm && callThis.IsObject() {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
@@ -3313,7 +3313,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			parent := f
 			if parent == nil || parent.fn == nil || !vm.IsConstructor(parent) {
-				vm.ThrowTypeError((*Realm)(fp.realm), "super constructor is not a constructor")
+				vm.ThrowTypeError(fp.realm, "super constructor is not a constructor")
 			}
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp

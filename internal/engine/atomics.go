@@ -44,7 +44,7 @@ type waiter struct {
 	promise *Object
 
 	// promiseRealm is the realm that created promise.
-	promiseRealm *realm
+	promiseRealm *Realm
 
 	// done is closed when a synchronous wait is notified.
 	done chan struct{}

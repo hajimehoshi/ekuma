@@ -22,7 +22,7 @@ type regExpState struct {
 	lent bool
 
 	// realm is the [[Realm]] of the object.
-	realm *realm
+	realm *Realm
 }
 
 // regExpSite is a regular expression literal of a function.

@@ -126,7 +126,7 @@ func (vm *VM) DetachGlobalProxy() {
 	vm.curRealm.globalProxyHandler = vm.defaultGlobalHandler()
 }
 
-func (vm *VM) hasDetachedGlobal(r *realm) bool {
+func (vm *VM) hasDetachedGlobal(r *Realm) bool {
 	return r != nil && r.globalProxyHandler != nil && r.globalThis.extState().(*proxyState).target != r.global
 }
 
@@ -159,8 +159,8 @@ func IsArrayPlain(v Value) (is, ok bool) {
 	return o != nil && o.kind == kindArray, true
 }
 
-// getFunctionRealm implements GetFunctionRealm.
-func (vm *VM) getFunctionRealm(f *Object) *realm {
+// GetFunctionRealm implements GetFunctionRealm.
+func (vm *VM) GetFunctionRealm(f *Object) *Realm {
 	if r := vm.functionRealmOrNil(f); r != nil {
 		return r
 	}
@@ -169,7 +169,7 @@ func (vm *VM) getFunctionRealm(f *Object) *realm {
 }
 
 // functionRealmOrNil returns the function's realm, or nil for a revoked proxy.
-func (vm *VM) functionRealmOrNil(f *Object) *realm {
+func (vm *VM) functionRealmOrNil(f *Object) *Realm {
 	for {
 		switch {
 		case f.fn != nil && f.fn.bound != nil:

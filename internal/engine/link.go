@@ -55,7 +55,7 @@ type funcProto struct {
 	script *scriptOrModule
 
 	// realm is the [[Realm]] of the functions.
-	realm *realm
+	realm *Realm
 
 	// thisReg is the register that the first instruction loads this into, or -1 when the
 	// first instruction does not load this. thisSloppy says whether it converts this the way

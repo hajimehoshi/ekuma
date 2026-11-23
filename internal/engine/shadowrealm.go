@@ -26,11 +26,6 @@ func (vm *VM) ValidateShadowRealmObject(o Value) *Realm {
 	return o.o.extState().(*Realm)
 }
 
-// GetFunctionRealm implements GetFunctionRealm.
-func (vm *VM) GetFunctionRealm(f *Object) *Realm {
-	return (*Realm)(vm.getFunctionRealm(f))
-}
-
 // EvalInRealm evaluates the script src in the realm r as an indirect eval there would, as code
 // without a ScriptOrModule. It throws a SyntaxError of the current realm when src is not a valid
 // script. It reports false when the evaluation throws, and the result is the exception then.

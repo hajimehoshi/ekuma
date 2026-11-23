@@ -16,54 +16,58 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
-// initialStackSize is the number of values that the stack of a VM has room for from the start.
-// It is large enough for the Go runtime to allocate it on pages of its own, which the interpreter
-// loop runs measurably faster with.
-const initialStackSize = 1 << 12
+// Realm is a Realm Record.
+type Realm struct {
+	intrinsics [intrinsicCount]*Object
 
-// NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
-func NewVM(hostDefined any) *VM {
-	r := &realm{}
-	vm := &VM{
-		curRealm:            r,
-		hostDefined:         hostDefined,
-		stack:               make([]Value, initialStackSize),
-		symbolRegistry:      map[wtf8.String]*Object{},
-		thrown:              Undefined,
-		mailbox:             newMailbox(),
-		maxBigIntResultBits: MaxBigIntBits,
-	}
-	vm.symbolShape = vm.newShape(nil, nil)
-	r.referrer = &scriptOrModule{
-		realm: r,
-	}
-	vm.initRealmPrototypes()
+	exceptionReporter func(Value, ExceptionLocation)
 
-	vm.emptyString = Value{
-		o: &Object{
-			kind:  kindString,
-			flags: objInterned | objKept,
-			shape: r.shapes.string,
-		},
-	}
-	vm.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
-	vm.strings.keepNew = true
-	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep, isKept)
-	for i := range vm.strings.ascii {
-		vm.strings.ascii[i] = ObjectValue(vm.Intern(wtf8.String(rune(i))))
-	}
-	vm.initKeys()
-	for t, name := range typeofNames {
-		vm.typeofs[t] = ObjectValue(vm.Intern(name))
-	}
-	vm.missHolder = (&propertyObject{
-		kind:  kindObject,
-		shape: r.shapes.nullProto,
-		slots: []Value{Undefined},
-	}).init()
-	vm.initRealmGlobals()
-	vm.strings.keepNew = false
-	return vm
+	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
+	asyncFromSyncProto *Object
+
+	global *Object
+
+	// globalThis is the global this value, which a host can set to a global proxy.
+	globalThis *Object
+
+	// globalProxyHandler is the private empty handler shared by realms that
+	// can access each other's global objects.
+	globalProxyHandler *Object
+
+	// defaultGlobalProxyHandler is the realm's own access group, restored on detachment.
+	defaultGlobalProxyHandler *Object
+
+	// foreignGlobalView handles this realm's property access on foreign global proxies.
+	foreignGlobalView *Object
+
+	// globalLex holds the top-level let, const and class declarations.
+	globalLex *Object
+
+	shapes shapeTable
+
+	arrayIter arrayIterCache
+
+	regExpOriginals regExpOriginals
+
+	// regExpBorrowers are the functions marked by [VM.LendRegExpLiterals], and
+	// regExpReceiverBorrowers those marked by [VM.LendRegExpLiteralReceivers].
+	regExpBorrowers, regExpReceiverBorrowers []*Object
+
+	// evals caches the compiled code of eval.
+	evals evalCache
+
+	// referrer is the referrer of the code of the realm that has no ScriptOrModule.
+	referrer *scriptOrModule
+
+	// hostDefined is the [[HostDefined]] field of the realm.
+	hostDefined any
+
+	// extension is the state of the built-in extension in the realm.
+	extension any
+
+	// strictCallee is the callee property of unmapped arguments objects, or the zero value
+	// until it is needed.
+	strictCallee Value
 }
 
 // initRealmPrototypes creates the prototypes of the current realm that the strings, the keys
@@ -137,7 +141,7 @@ func (vm *VM) initRealmGlobals() {
 func (vm *VM) CreateRealm(install func()) *Realm {
 	vm.trackJobRealms = true
 	saved := vm.curRealm
-	r := &realm{}
+	r := &Realm{}
 	vm.switchRealm(r)
 	defer vm.switchRealm(saved)
 	r.referrer = &scriptOrModule{
@@ -146,24 +150,29 @@ func (vm *VM) CreateRealm(install func()) *Realm {
 	vm.initRealmPrototypes()
 	vm.initRealmGlobals()
 	install()
-	return (*Realm)(r)
+	return r
 }
 
 // IsIntrinsicOfOtherRealm reports whether the function f is the intrinsic id of
 // GetFunctionRealm(f), and that realm is not the current one.
 func (vm *VM) IsIntrinsicOfOtherRealm(f *Object, id Intrinsic) bool {
-	r := vm.getFunctionRealm(f)
+	r := vm.GetFunctionRealm(f)
 	return r != vm.curRealm && r.intrinsics[id] == f
+}
+
+// switchRealm makes r the current realm.
+func (vm *VM) switchRealm(r *Realm) {
+	vm.curRealm = r
 }
 
 // InRealm runs f with r as the current realm.
 func (vm *VM) InRealm(r *Realm, f func()) {
 	saved := vm.curRealm
-	if saved == (*realm)(r) {
+	if saved == r {
 		f()
 		return
 	}
-	vm.switchRealm((*realm)(r))
+	vm.switchRealm(r)
 	defer vm.switchRealm(saved)
 	f()
 }
@@ -620,7 +629,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 
 // CurrentRealm returns the current Realm Record.
 func (vm *VM) CurrentRealm() *Realm {
-	return (*Realm)(vm.curRealm)
+	return vm.curRealm
 }
 
 // CreationRealm returns the creation realm of the JavaScript object o, or nil for a detached global proxy.
@@ -634,12 +643,12 @@ func (o *Object) CreationRealm() *Realm {
 			o = st.target
 		}
 	}
-	return (*Realm)(o.shape.realm)
+	return o.shape.realm
 }
 
 // IsEnteredRealm reports whether r is the VM's entered realm.
 func (vm *VM) IsEnteredRealm(r *Realm) bool {
-	return r != nil && (*realm)(r) == vm.enteredRealm
+	return r != nil && r == vm.enteredRealm
 }
 
 // SetRealmHostDefined sets the [[HostDefined]] field of the realm r to v.

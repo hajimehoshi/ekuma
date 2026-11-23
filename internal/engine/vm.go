@@ -88,7 +88,7 @@ type nativeInfo struct {
 	fast *nativeFast
 
 	// realm is the [[Realm]] of the function.
-	realm *realm
+	realm *Realm
 }
 
 // nativeFast holds the forms of a native function that its callers use instead of calling it.
@@ -136,7 +136,7 @@ func (f *function) nativeName() wtf8.String {
 }
 
 // iteratorStep returns the step function of the next method f of a built-in iterator in realm r, or nil.
-func (f *function) iteratorStep(r *realm) IteratorStepFunc {
+func (f *function) iteratorStep(r *Realm) IteratorStepFunc {
 	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
 	}
@@ -144,7 +144,7 @@ func (f *function) iteratorStep(r *realm) IteratorStepFunc {
 }
 
 // iteratorPairStep is iteratorStep for the pair step.
-func (f *function) iteratorPairStep(r *realm) IteratorPairStepFunc {
+func (f *function) iteratorPairStep(r *Realm) IteratorPairStepFunc {
 	if f.info == nil || f.info.realm != r || f.info.fast == nil {
 		return nil
 	}
@@ -536,10 +536,10 @@ type VM struct {
 	// regExps caches compiled patterns by their flags and source.
 	regExps map[bytecode.RegExp]*regexp.Regexp
 
-	curRealm *realm
+	curRealm *Realm
 
 	// callerRealm is the realm that was current when the innermost interpreter loop started.
-	callerRealm *realm
+	callerRealm *Realm
 
 	// timeZone is the time zone of local time, or nil for the one of the host.
 	timeZone datetime.TimeZone
@@ -582,66 +582,54 @@ type VM struct {
 	madeHTMLDDA bool
 }
 
-// realm is a realm: the intrinsic objects, the global environment and what is derived from them.
-type realm struct {
-	intrinsics [intrinsicCount]*Object
+// initialStackSize is the number of values that the stack of a VM has room for from the start.
+// It is large enough for the Go runtime to allocate it on pages of its own, which the interpreter
+// loop runs measurably faster with.
+const initialStackSize = 1 << 12
 
-	exceptionReporter func(Value, ExceptionLocation)
+// NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
+func NewVM(hostDefined any) *VM {
+	r := &Realm{}
+	vm := &VM{
+		curRealm:            r,
+		hostDefined:         hostDefined,
+		stack:               make([]Value, initialStackSize),
+		symbolRegistry:      map[wtf8.String]*Object{},
+		thrown:              Undefined,
+		mailbox:             newMailbox(),
+		maxBigIntResultBits: MaxBigIntBits,
+	}
+	vm.symbolShape = vm.newShape(nil, nil)
+	r.referrer = &scriptOrModule{
+		realm: r,
+	}
+	vm.initRealmPrototypes()
 
-	// asyncFromSyncProto is %AsyncFromSyncIteratorPrototype%, or nil until it is needed.
-	asyncFromSyncProto *Object
-
-	global *Object
-
-	// globalThis is the global this value, which a host can set to a global proxy.
-	globalThis *Object
-
-	// globalProxyHandler is the private empty handler shared by realms that
-	// can access each other's global objects.
-	globalProxyHandler *Object
-
-	// defaultGlobalProxyHandler is the realm's own access group, restored on detachment.
-	defaultGlobalProxyHandler *Object
-
-	// foreignGlobalView handles this realm's property access on foreign global proxies.
-	foreignGlobalView *Object
-
-	// globalLex holds the top-level let, const and class declarations.
-	globalLex *Object
-
-	shapes shapeTable
-
-	arrayIter arrayIterCache
-
-	regExpOriginals regExpOriginals
-
-	// regExpBorrowers are the functions marked by [VM.LendRegExpLiterals], and
-	// regExpReceiverBorrowers those marked by [VM.LendRegExpLiteralReceivers].
-	regExpBorrowers, regExpReceiverBorrowers []*Object
-
-	// evals caches the compiled code of eval.
-	evals evalCache
-
-	// referrer is the referrer of the code of the realm that has no ScriptOrModule.
-	referrer *scriptOrModule
-
-	// hostDefined is the [[HostDefined]] field of the realm.
-	hostDefined any
-
-	// extension is the state of the built-in extension in the realm.
-	extension any
-
-	// strictCallee is the callee property of unmapped arguments objects, or the zero value
-	// until it is needed.
-	strictCallee Value
-}
-
-// Realm is a Realm Record.
-type Realm realm
-
-// switchRealm makes r the current realm.
-func (vm *VM) switchRealm(r *realm) {
-	vm.curRealm = r
+	vm.emptyString = Value{
+		o: &Object{
+			kind:  kindString,
+			flags: objInterned | objKept,
+			shape: r.shapes.string,
+		},
+	}
+	vm.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
+	vm.strings.keepNew = true
+	vm.strings.interned.put("", vm.emptyString.o, internedMinSweep, isKept)
+	for i := range vm.strings.ascii {
+		vm.strings.ascii[i] = ObjectValue(vm.Intern(wtf8.String(rune(i))))
+	}
+	vm.initKeys()
+	for t, name := range typeofNames {
+		vm.typeofs[t] = ObjectValue(vm.Intern(name))
+	}
+	vm.missHolder = (&propertyObject{
+		kind:  kindObject,
+		shape: r.shapes.nullProto,
+		slots: []Value{Undefined},
+	}).init()
+	vm.initRealmGlobals()
+	vm.strings.keepNew = false
+	return vm
 }
 
 // Intrinsic identifies an intrinsic object.

@@ -63,7 +63,7 @@ func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
-	vm.ThrowTypeError((*Realm)(fp.realm), name+" is not a function")
+	vm.ThrowTypeError(fp.realm, name+" is not a function")
 }
 
 // throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
@@ -74,7 +74,7 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
-	vm.ThrowTypeError((*Realm)(fp.realm), name+" is not a constructor")
+	vm.ThrowTypeError(fp.realm, name+" is not a constructor")
 }
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
@@ -1135,7 +1135,7 @@ func (vm *VM) IsConstructor(f *Object) bool {
 
 // closurePrototype returns the prototype of the closures of p, which is a generator or async function.
 func (p *funcProto) closurePrototype() *Object {
-	realm := (*Realm)(p.realm)
+	realm := p.realm
 	switch {
 	case p.isGenerator && p.isAsync:
 		return realm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
@@ -1164,7 +1164,7 @@ func (vm *VM) arrayIterationPlain(o *Object) bool {
 
 // arrayIterationUnmodified reports whether %Array.prototype%[@@iterator] and
 // %ArrayIteratorPrototype%.next are the original functions.
-func (vm *VM) arrayIterationUnmodified(r *realm) bool {
+func (vm *VM) arrayIterationUnmodified(r *Realm) bool {
 	c := &r.arrayIter
 	if c.epoch != vm.protoEpoch || !c.checked {
 		c.checked = true
@@ -1181,7 +1181,7 @@ func (vm *VM) arrayIterationUnmodified(r *realm) bool {
 
 // pairDestructuringPlain reports whether destructuring a new array of two elements into two
 // bindings runs nothing that JavaScript could observe.
-func (vm *VM) pairDestructuringPlain(r *realm) bool {
+func (vm *VM) pairDestructuringPlain(r *Realm) bool {
 	return vm.arrayIterationUnmodified(r) && r.arrayIter.noReturn
 }
 
@@ -1301,7 +1301,7 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		vm.ThrowTypeError((*Realm)(c.realm), "class constructor "+wtf8.ToValidUTF8(c.name)+" cannot be invoked without 'new'")
+		vm.ThrowTypeError(c.realm, "class constructor "+wtf8.ToValidUTF8(c.name)+" cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return vm.callCoroutine(f, this, args)
@@ -1402,7 +1402,7 @@ func (vm *VM) GetPrototypeFromConstructor(ctor *Object, defaultProto Intrinsic) 
 		if p := vm.GetV(Value{o: ctor}, vm.Key(KeyPrototype)); p.IsObject() {
 			return p.o
 		}
-		r = vm.getFunctionRealm(ctor)
+		r = vm.GetFunctionRealm(ctor)
 	}
 	if IntrinsicTemporalInstantPrototype <= defaultProto && defaultProto <= IntrinsicTemporalZonedDateTimePrototype {
 		if ns := r.intrinsics[IntrinsicTemporal]; ns != nil {

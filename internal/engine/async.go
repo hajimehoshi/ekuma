@@ -56,7 +56,7 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
 	g := vm.newGenerator(f, this, args)
 	g.async = asyncFunction
-	realm := (*Realm)(f.fn.code.realm)
+	realm := f.fn.code.realm
 	vm.InRealm(realm, func() {
 		g.object = vm.NewPromiseObject(realm.Intrinsic(IntrinsicPromisePrototype))
 		g.state = genSuspendedStart
@@ -95,7 +95,7 @@ func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
 			return
 		}
 		if done {
-			vm.resolvePromise((*Realm)(g.f.fn.code.realm), g.object, r)
+			vm.resolvePromise(g.f.fn.code.realm, g.object, r)
 			return
 		}
 		if vm.tryAwait(g, r, reactionAwait) {

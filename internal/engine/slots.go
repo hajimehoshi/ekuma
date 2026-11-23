@@ -41,7 +41,7 @@ type errorData struct {
 
 // NewErrorObject returns an Error object in r with prototype proto and no own properties.
 func (vm *VM) NewErrorObject(r *Realm, proto *Object) *Object {
-	e := newObject(vm.shapeForRealm(proto, (*realm)(r)))
+	e := newObject(vm.shapeForRealm(proto, r))
 	e.class = classError
 	return e
 }

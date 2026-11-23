@@ -310,7 +310,7 @@ func (vm *VM) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool)
 			return r, true
 		}
 		// Yield creates its result before returning to the resuming method's realm.
-		realm = (*Realm)(g.f.fn.code.realm)
+		realm = g.f.fn.code.realm
 	}
 	return realm.CreateIterResultObject(r, done), true
 }

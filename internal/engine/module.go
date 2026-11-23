@@ -26,7 +26,7 @@ type scriptOrModule struct {
 	module *Module
 
 	// realm is the [[Realm]] of the script or module, or the realm itself.
-	realm *realm
+	realm *Realm
 
 	// loaded is the [[LoadedModules]], by requestKey.
 	loaded map[string]*Module
@@ -416,7 +416,7 @@ func (vm *VM) loadImportedModule(ref *scriptOrModule, req ModuleRequest) (m *Mod
 	if m := ref.loaded[k]; m != nil {
 		return m, Undefined, true
 	}
-	r := (*Realm)(ref.realm)
+	r := ref.realm
 	if vm.modules.load == nil {
 		return nil, vm.NewError(r, ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
 	}
@@ -489,7 +489,7 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		return true
 	}
 	if !visit(root) {
-		return vm.loadingError((*Realm)(root.ref.realm), root), false
+		return vm.loadingError(root.ref.realm, root), false
 	}
 	for len(stack) > 0 {
 		top := &stack[len(stack)-1]
@@ -501,7 +501,7 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		top.i++
 		req := moduleRequest(m.code.Requests[i])
 		if !allImportAttributesSupported(req.Attributes) {
-			return vm.NewError((*Realm)(m.ref.realm), ErrorKindSyntax, "unsupported import attribute"), false
+			return vm.NewError(m.ref.realm, ErrorKindSyntax, "unsupported import attribute"), false
 		}
 		dep, e, ok := vm.loadImportedModule(&m.ref, req)
 		if !ok {
@@ -509,7 +509,7 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		}
 		m.requested[i] = dep
 		if !visit(dep) {
-			return vm.loadingError((*Realm)(m.ref.realm), dep), false
+			return vm.loadingError(m.ref.realm, dep), false
 		}
 	}
 	for _, m := range order {
@@ -871,9 +871,9 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 // resolve to r.
 func (vm *VM) resolutionError(m *Module, n string, r resolution) Value {
 	if r.kind == resolutionAmbiguous {
-		return vm.NewError((*Realm)(m.ref.realm), ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
+		return vm.NewError(m.ref.realm, ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
 	}
-	return vm.NewError((*Realm)(m.ref.realm), ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
+	return vm.NewError(m.ref.realm, ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
 }
 
 // newClosure returns a closure of p whose enclosing function has the upvalues upvals. p must
