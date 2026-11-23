@@ -60,3 +60,215 @@ var LanguageMatches = Map{
 		},
 	},
 }
+
+// ParadigmLocales are the representative locales for language matching.
+var ParadigmLocales = Strings{
+	data: "enen-GBeses-419pt-BRpt-PT",
+	ends: []uint32{
+		2, 7, 9, 15, 20, 25,
+	},
+}
+
+var anyRegion = regionSet{
+	exclude: true,
+}
+
+var inAmericas = regionSet{
+	regions: Strings{
+		data: "003005013019021029419AGAIARAWBBBLBMBOBQBRBSBVBZCACLCOCRCUCWDMDOECFKGDGFGLGPGSGTGYHNHTJMKNKYLCMFM" +
+			"QMSMXNIPAPEPMPRPYSRSVSXTCTTUSUYVCVEVGVI",
+		ends: []uint32{
+			3, 6, 9, 12, 15, 18, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39,
+			41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71,
+			73, 75, 77, 79, 81, 83, 85, 87, 89, 91, 93, 95, 97, 99, 101, 103,
+			105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127, 129, 131, 133, 135,
+		},
+	},
+}
+
+var outsideAmericas = regionSet{
+	regions: Strings{
+		data: "001003005013019021029419AGAIARAWBBBLBMBOBQBRBSBVBZCACLCOCRCUCWDMDOECFKGDGFGLGPGSGTGYHNHTJMKNKYLC" +
+			"MFMQMSMXNIPAPEPMPRPYSRSVSXTCTTUNUSUYVCVEVGVI",
+		ends: []uint32{
+			3, 6, 9, 12, 15, 18, 21, 24, 26, 28, 30, 32, 34, 36, 38, 40,
+			42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72,
+			74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96, 98, 100, 102, 104,
+			106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126, 128, 130, 132, 134, 136,
+			138, 140,
+		},
+	},
+	exclude: true,
+}
+
+var inCnsar = regionSet{
+	regions: Strings{
+		data: "HKMO",
+		ends: []uint32{
+			2, 4,
+		},
+	},
+}
+
+var outsideCnsar = regionSet{
+	regions: Strings{
+		data: "001030142HKMO",
+		ends: []uint32{
+			3, 6, 9, 11, 13,
+		},
+	},
+	exclude: true,
+}
+
+var inEnUS = regionSet{
+	regions: Strings{
+		data: "ASCAGUMHMPPHPRUMUSVI",
+		ends: []uint32{
+			2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
+		},
+	},
+}
+
+var outsideEnUS = regionSet{
+	regions: Strings{
+		data: "001003009019021029035057061142419ASCAGUMHMPPHPRUMUNUSVI",
+		ends: []uint32{
+			3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 35, 37, 39, 41, 43,
+			45, 47, 49, 51, 53, 55,
+		},
+	},
+	exclude: true,
+}
+
+var inMaghreb = regionSet{
+	regions: Strings{
+		data: "DZEHLYMAMRTN",
+		ends: []uint32{
+			2, 4, 6, 8, 10, 12,
+		},
+	},
+}
+
+var outsideMaghreb = regionSet{
+	regions: Strings{
+		data: "001002011015202DZEHLYMAMRTNUN",
+		ends: []uint32{
+			3, 6, 9, 12, 15, 17, 19, 21, 23, 25, 27, 29,
+		},
+	},
+	exclude: true,
+}
+
+var regionGB = regionSet{
+	regions: Strings{
+		data: "GB",
+		ends: []uint32{
+			2,
+		},
+	},
+}
+
+var regionDistanceRules = map[string][]regionDistanceRule{
+	"*": {
+		{
+			desired:   anyRegion,
+			supported: anyRegion,
+			distance:  4,
+		},
+	},
+	"ar": {
+		{
+			desired:   inMaghreb,
+			supported: inMaghreb,
+			distance:  4,
+		},
+		{
+			desired:   outsideMaghreb,
+			supported: outsideMaghreb,
+			distance:  4,
+		},
+		{
+			desired:   anyRegion,
+			supported: anyRegion,
+			distance:  5,
+		},
+	},
+	"en": {
+		{
+			desired:   inEnUS,
+			supported: inEnUS,
+			distance:  4,
+		},
+		{
+			desired:   outsideEnUS,
+			supported: regionGB,
+			distance:  3,
+		},
+		{
+			desired:   regionGB,
+			supported: outsideEnUS,
+			distance:  3,
+		},
+		{
+			desired:   outsideEnUS,
+			supported: outsideEnUS,
+			distance:  4,
+		},
+		{
+			desired:   anyRegion,
+			supported: anyRegion,
+			distance:  5,
+		},
+	},
+	"es": {
+		{
+			desired:   inAmericas,
+			supported: inAmericas,
+			distance:  4,
+		},
+		{
+			desired:   outsideAmericas,
+			supported: outsideAmericas,
+			distance:  4,
+		},
+		{
+			desired:   anyRegion,
+			supported: anyRegion,
+			distance:  5,
+		},
+	},
+	"pt": {
+		{
+			desired:   inAmericas,
+			supported: inAmericas,
+			distance:  4,
+		},
+		{
+			desired:   outsideAmericas,
+			supported: outsideAmericas,
+			distance:  4,
+		},
+		{
+			desired:   anyRegion,
+			supported: anyRegion,
+			distance:  5,
+		},
+	},
+	"zh-Hant": {
+		{
+			desired:   inCnsar,
+			supported: inCnsar,
+			distance:  4,
+		},
+		{
+			desired:   outsideCnsar,
+			supported: outsideCnsar,
+			distance:  4,
+		},
+		{
+			desired:   anyRegion,
+			supported: anyRegion,
+			distance:  5,
+		},
+	},
+}

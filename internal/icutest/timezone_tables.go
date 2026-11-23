@@ -206,15 +206,15 @@ func (s *zoneSuite) dateFormat() {
 		want := intervalString(s.t, c[4])
 		style := opts["timeZoneName"].(string)
 		if locale == "en-MX" && zone == "America/Chicago" && style == "longGeneric" {
-			// ICU uses the Mexican reference zone. Intl negotiates en, whose
-			// reference zone for America_Central is Chicago itself.
+			// ICU uses the Mexican reference zone. Best fit selects en-GB,
+			// which uses Chicago as the reference zone for America_Central.
 			at, err := time.Parse(time.RFC3339, instant)
 			if err != nil {
 				s.t.Fatalf("%s:%d: %v", s.path, row.line, err)
 			}
 			s.checkSkeletonText(row.line, locale, opts, pattern, at, want)
 			resolved := s.function(`(locale, opts) => new Intl.DateTimeFormat(locale, opts).resolvedOptions().locale`)
-			s.check(row.line, "resolvedOptions().locale", resolved, "en", locale, opts)
+			s.check(row.line, "resolvedOptions().locale", resolved, "en-GB", locale, opts)
 			want = s.englishCentralTime()
 		}
 		s.display(row.line, locale, zone, instant, style, want)

@@ -472,15 +472,16 @@ func keywords(files map[string][]byte) map[string]*keyword {
 	return kws
 }
 
-// writeLanguageMatches writes the related languages eligible for best-fit matching.
+// writeLanguageMatches writes the CLDR data for best-fit matching.
 func writeLanguageMatches(core map[string][]byte, source string) {
 	type match struct {
 		language string
 		distance int
 	}
 	matches := map[string][]match{}
-	rules := decode(core, "supplemental/languageMatching.json", "supplemental", "languageMatching", "written-new", "languageMatch")
-	for _, r := range rules.([]any) {
+	written := object(decode(core, "supplemental/languageMatching.json", "supplemental", "languageMatching", "written-new"))
+	rules := written["languageMatch"].([]any)
+	for _, r := range rules {
 		rule := object(r)
 		desired, supported := str(rule["_desired"]), str(rule["_supported"])
 		distance := int(rule["_distance"].(float64))
@@ -511,7 +512,122 @@ func writeLanguageMatches(core map[string][]byte, source string) {
 	}
 	f := newFile("languagematching.go", source)
 	f.mapping("maps a desired language to related written languages in order of increasing distance, separated by spaces.", "LanguageMatches", related)
+	f.strings("are the representative locales for language matching.", "ParadigmLocales", strs(object(written["paradigmLocales"])["_locales"]))
+	containment := object(decode(core, "supplemental/territoryContainment.json", "supplemental", "territoryContainment"))
+	writeRegionDistances(f, rules, object(written["matchVariables"]), containment)
 	f.write()
+}
+
+// regionLeaves returns the territories contained in each geographical region,
+// including groupings such as Latin America and the Caribbean (419).
+func regionLeaves(containment map[string]any) map[string][]string {
+	leaves := map[string][]string{}
+	var expand func(string) []string
+	expand = func(region string) []string {
+		if ls, ok := leaves[region]; ok {
+			return ls
+		}
+		if group, ok := containment[region]; ok {
+			for _, child := range strs(object(group)["_contains"]) {
+				leaves[region] = append(leaves[region], expand(child)...)
+			}
+		} else {
+			leaves[region] = []string{region}
+		}
+		return leaves[region]
+	}
+	for region := range containment {
+		if !strings.Contains(region, "-") {
+			expand(region)
+		}
+	}
+	return leaves
+}
+
+func writeRegionSets(f *file, variables, containment map[string]any) map[string]string {
+	leaves := regionLeaves(containment)
+	sets := map[string]string{"*": "anyRegion"}
+	f.b.WriteString("\nvar anyRegion = regionSet{\nexclude: true,\n}\n")
+	for _, variable := range slices.Sorted(maps.Keys(variables)) {
+		members := map[string]bool{}
+		for root := range strings.SplitSeq(str(object(variables[variable])["_value"]), "+") {
+			territories, ok := leaves[root]
+			if !ok {
+				log.Fatalf("%s: unknown territory %q", variable, root)
+			}
+			for _, member := range territories {
+				members[member] = true
+			}
+		}
+		// A macroregion can match a positive or negative variable only if
+		// all its territories match. Mixed regions belong to neither set.
+		var contained, overlapping []string
+		for region, ls := range leaves {
+			var count int
+			for _, leaf := range ls {
+				if members[leaf] {
+					count++
+				}
+			}
+			if count == len(ls) {
+				contained = append(contained, region)
+			}
+			if count > 0 {
+				overlapping = append(overlapping, region)
+			}
+		}
+		slices.Sort(contained)
+		slices.Sort(overlapping)
+		name := strings.TrimPrefix(variable, "$")
+		suffix := strings.ToUpper(name[:1]) + name[1:]
+		sets[variable] = "in" + suffix
+		sets["$!"+name] = "outside" + suffix
+		fmt.Fprintf(&f.b, "\nvar in%s = regionSet{\nregions: %s,\n}\n", suffix, stringsLiteral(contained))
+		fmt.Fprintf(&f.b, "\nvar outside%s = regionSet{\nregions: %s,\nexclude: true,\n}\n", suffix, stringsLiteral(overlapping))
+	}
+	return sets
+}
+
+// writeRegionDistances preserves CLDR rule order within each language and script.
+func writeRegionDistances(f *file, rules []any, variables, containment map[string]any) {
+	sets := writeRegionSets(f, variables, containment)
+	byLanguage := map[string][]string{}
+	for _, r := range rules {
+		rule := object(r)
+		want := strings.Split(str(rule["_desired"]), "-")
+		have := strings.Split(str(rule["_supported"]), "-")
+		if len(want) != 3 {
+			continue
+		}
+		if len(have) != 3 || want[0] != have[0] || want[1] != have[1] {
+			log.Fatalf("unsupported regional distance rule: %v", rule)
+		}
+		key := want[0]
+		if want[1] != "*" {
+			key += "-" + want[1]
+		}
+		for _, pattern := range []string{want[2], have[2]} {
+			if _, ok := sets[pattern]; !ok {
+				if strings.HasPrefix(pattern, "$") {
+					log.Fatalf("unknown match variable %s", pattern)
+				}
+				sets[pattern] = "region" + pattern
+				fmt.Fprintf(&f.b, "\nvar region%s = regionSet{\nregions: %s,\n}\n", pattern, stringsLiteral([]string{pattern}))
+			}
+		}
+		entry := func(a, b string) string {
+			return fmt.Sprintf("{\ndesired: %s,\nsupported: %s,\ndistance: %d,\n},\n", sets[a], sets[b], int(rule["_distance"].(float64)))
+		}
+		byLanguage[key] = append(byLanguage[key], entry(want[2], have[2]))
+		if want[2] != have[2] && rule["_oneway"] != true {
+			byLanguage[key] = append(byLanguage[key], entry(have[2], want[2]))
+		}
+	}
+	f.b.WriteString("\nvar regionDistanceRules = map[string][]regionDistanceRule{\n")
+	for _, k := range slices.Sorted(maps.Keys(byLanguage)) {
+		fmt.Fprintf(&f.b, "%q: {\n%s},\n", k, strings.Join(byLanguage[k], ""))
+	}
+	f.b.WriteString("}\n")
 }
 
 func main() {

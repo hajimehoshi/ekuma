@@ -123,15 +123,33 @@ func (m Matcher) bestAvailableLocale(s string) (string, bool) {
 	}
 }
 
-type localeKey struct {
+type scriptKey struct {
 	language string
 	script   string
-	region   string
 }
 
-type likelyIndex map[localeKey]string
+type regionalLocale struct {
+	name, region string
+	paradigm     bool
+}
 
-// An empty region indexes the first candidate with the given language and script.
+type scriptLocales struct {
+	byRegion map[string]string
+	ordered  []regionalLocale
+}
+
+type likelyIndex map[scriptKey]*scriptLocales
+
+var paradigmLocales = sync.OnceValue(func() map[string]bool {
+	locales := map[string]bool{}
+	for i := range cldr.ParadigmLocales.Len() {
+		t, _ := Parse(cldr.ParadigmLocales.At(i))
+		max, _ := AddLikelySubtags(t.LanguageID)
+		locales[max.String()] = true
+	}
+	return locales
+})
+
 func (index likelyIndex) add(name string) {
 	t, ok := Parse(name)
 	if !ok || t.Language == "und" || len(t.Variants) != 0 {
@@ -141,16 +159,26 @@ func (index likelyIndex) add(name string) {
 	if !ok {
 		return
 	}
-	for _, region := range [...]string{id.Region, ""} {
-		key := localeKey{
-			language: id.Language,
-			script:   id.Script,
-			region:   region,
-		}
-		if index[key] == "" {
-			index[key] = name
-		}
+	key := scriptKey{
+		language: id.Language,
+		script:   id.Script,
 	}
+	locales := index[key]
+	if locales == nil {
+		locales = &scriptLocales{
+			byRegion: map[string]string{},
+		}
+		index[key] = locales
+	}
+	if locales.byRegion[id.Region] != "" {
+		return
+	}
+	locales.byRegion[id.Region] = name
+	locales.ordered = append(locales.ordered, regionalLocale{
+		name:     name,
+		region:   id.Region,
+		paradigm: paradigmLocales()[id.String()],
+	})
 }
 
 var likelyLocales = sync.OnceValue(func() likelyIndex {
@@ -161,34 +189,46 @@ var likelyLocales = sync.OnceValue(func() likelyIndex {
 	return index
 })
 
-// matchScriptRegion matches the maximized identifier want, returning prefix on a tie
-// or when no locale matches the script.
+// matchScriptRegion ranks regions within the maximized language and script.
 func (m Matcher) matchScriptRegion(want LanguageID, prefix string) string {
-	key := localeKey{
+	index := m.likely
+	if index == nil {
+		index = likelyLocales()
+	}
+	locales := index[scriptKey{
 		language: want.Language,
 		script:   want.Script,
-		region:   want.Region,
-	}
-	locales := m.likely
+	}]
 	if locales == nil {
-		locales = likelyLocales()
+		return prefix
 	}
-	regionMatch := locales[key]
+	var best string
+	var bestDistance int
+	var bestParadigm bool
 	if prefix != "" {
 		p, _ := Parse(prefix)
 		have, _ := AddLikelySubtags(p.LanguageID)
-		if have.Script == want.Script && (have.Region == want.Region || regionMatch == "") {
-			return prefix
+		if have.Script == want.Script {
+			if have.Region == want.Region {
+				return prefix
+			}
+			best = prefix
+			bestDistance = cldr.RegionDistance(want.Language, want.Script, want.Region, have.Region)
+			bestParadigm = paradigmLocales()[have.String()]
 		}
 	}
-	if regionMatch != "" {
-		return regionMatch
+	if exact := locales.byRegion[want.Region]; exact != "" {
+		return exact
 	}
-	key.region = ""
-	if l := locales[key]; l != "" {
-		return l
+	for _, candidate := range locales.ordered {
+		distance := cldr.RegionDistance(want.Language, want.Script, want.Region, candidate.region)
+		if best == "" || distance < bestDistance || distance == bestDistance && candidate.paradigm && !bestParadigm {
+			best = candidate.name
+			bestDistance = distance
+			bestParadigm = candidate.paradigm
+		}
 	}
-	return prefix
+	return best
 }
 
 // matchingLocale returns an available locale for t, or the empty string.
