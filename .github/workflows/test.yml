@@ -46,37 +46,30 @@ jobs:
             echo "$suite=$revision" >> "$GITHUB_OUTPUT"
           done
 
+      - name: Select ICU fixtures from the inventory
+        id: icu-fixtures
+        run: |
+          write_paths() {
+            echo "$1<<EOF"
+            echo /LICENSE
+            awk -F '\t' -v pin="$2" '
+              NR == 1 { for (i = 1; i <= NF; i++) col[$i] = i; next }
+              $(col["disposition"]) == "adapter" && $(col["reference pin"]) == pin {
+                print "/" $(col["ICU path"])
+              }
+            ' internal/icutest/upstream-paths.tsv
+            echo EOF
+          }
+          write_paths unicode 78.3 >> "$GITHUB_OUTPUT"
+          write_paths cldr 79.1 >> "$GITHUB_OUTPUT"
+
       - name: Checkout ICU conformance tests
         uses: actions/checkout@v4
         with:
           repository: unicode-org/icu
           ref: ${{ steps.suites.outputs.icu }}
           path: .icu
-          sparse-checkout: |
-            /LICENSE
-            /icu4c/source/test/testdata/GraphemeBreakTest.txt
-            /icu4c/source/test/testdata/WordBreakTest.txt
-            /icu4c/source/test/testdata/SentenceBreakTest.txt
-            /icu4c/source/test/testdata/casing.txt
-            /icu4c/source/test/testdata/rbbitst.txt
-            /icu4c/source/data/unidata/UnicodeData.txt
-            /icu4c/source/data/unidata/DerivedCoreProperties.txt
-            /icu4c/source/data/unidata/SpecialCasing.txt
-            /icu4c/source/data/unidata/CaseFolding.txt
-            /icu4c/source/data/unidata/emoji-sequences.txt
-            /icu4c/source/data/unidata/emoji-zwj-sequences.txt
-            /icu4c/source/data/unidata/NormalizationTest.txt
-            /icu4c/source/test/testdata/CollationTest_NON_IGNORABLE_SHORT.txt
-            /icu4c/source/test/testdata/CollationTest_SHIFTED_SHORT.txt
-            /icu4c/source/test/testdata/riwords.txt
-            /icu4c/source/test/testdata/collationtest.txt
-            /icu4c/source/test/cintltst/cmsccoll.c
-            /icu4c/source/test/intltest/regcoll.cpp
-            /icu4c/source/test/intltest/frcoll.cpp
-            /icu4c/source/test/intltest/ficoll.cpp
-            /icu4c/source/test/intltest/trcoll.cpp
-            /icu4c/source/test/intltest/thcoll.cpp
-            /icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationMiscTest.java
+          sparse-checkout: ${{ steps.icu-fixtures.outputs.unicode }}
           sparse-checkout-cone-mode: false
 
       - name: Checkout CLDR locale and formatting tests
@@ -85,88 +78,7 @@ jobs:
           repository: unicode-org/icu
           ref: ${{ steps.suites.outputs.icu-cldr }}
           path: .icu-cldr
-          sparse-checkout: |
-            /LICENSE
-            /icu4c/source/test/testdata/localeMatcherTest.txt
-            /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
-            /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
-            /icu4c/source/test/testdata/cldr/localeIdentifiers/localeDisplayName.txt
-            /icu4c/source/test/testdata/numberpermutationtest.txt
-            /icu4c/source/test/testdata/numberformattestspecification.txt
-            /icu4c/source/test/testdata/NumberFormatTestCases.txt
-            /icu4c/source/test/testdata/dcfmtest.txt
-            /icu4c/source/test/testdata/calendar.txt
-            /icu4c/source/test/testdata/format.txt
-            /icu4c/source/test/intltest/locnmtst.cpp
-            /icu4c/source/test/cintltst/cloctst.c
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/util/CurrencyTest.java
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/TestLocaleNamePackaging.java
-            /icu4c/source/data/region/es.txt
-            /icu4c/source/data/lang/en.txt
-            /icu4c/source/test/cintltst/cdateintervalformattest.c
-            /icu4c/source/data/zone/en.txt
-            /icu4c/source/tools/tzcode/icuzones
-            /icu4c/source/data/misc/zoneinfo64.txt
-            /icu4c/source/data/misc/keyTypeData.txt
-            /icu4c/source/data/misc/supplementalData.txt
-            /icu4c/source/data/misc/numberingSystems.txt
-            /icu4c/source/data/misc/timezoneTypes.txt
-            /icu4c/source/data/coll/*.txt
-            /icu4c/source/data/curr/en.txt
-            /icu4c/source/data/unit/en.txt
-            /icu4c/source/data/locales/ar_EG.txt
-            /icu4c/source/data/locales/ar_MA.txt
-            /icu4c/source/data/locales/bn.txt
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/util/ULocaleTest.java
-            /icu4c/source/test/intltest/tzbdtest.cpp
-            /icu4c/source/test/intltest/tzoffloc.cpp
-            /icu4c/source/test/intltest/caltest.cpp
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/timezone/TimeZoneBoundaryTest.java
-            /icu4c/source/test/intltest/tztest.cpp
-            /icu4c/source/test/intltest/tzfmttst.cpp
-            /icu4c/source/test/intltest/dtfmttst.cpp
-            /icu4c/source/test/cintltst/ccaltst.c
-            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/TimeZoneAliases.txt
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/TimeZoneFormatTest.java
-            /icu4c/source/test/intltest/dtptngts.cpp
-            /icu4c/source/test/cintltst/udatpg_test.c
-            /icu4c/source/test/intltest/dtifmtts.cpp
-            /icu4c/source/test/cintltst/unumberformattertst.c
-            /icu4c/source/test/intltest/numfmtst.cpp
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/NumberFormatTest.java
-            /icu4c/source/test/cintltst/unumberrangeformattertst.c
-            /icu4c/source/test/intltest/numbertest_range.cpp
-            /icu4c/source/test/intltest/listformattertest.cpp
-            /icu4c/source/test/intltest/measfmttest.cpp
-            /icu4c/source/test/intltest/numbertest_api.cpp
-            /icu4c/source/test/intltest/reldatefmttest.cpp
-            /icu4c/source/test/cintltst/ulistfmttest.c
-            /icu4c/source/test/cintltst/crelativedateformattest.c
-            /icu4c/source/i18n/unicode/udat.h
-            /icu4c/source/test/intltest/incaltst.cpp
-            /icu4c/source/test/intltest/caltestdata.h
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/CalendarRegressionTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/CopticTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/DangiTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/EthiopicTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/HebrewTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/InTemporalLeapYearTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/IndianTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/OrdinalMonthTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/TemporalMonthCodeTest.java
-            /icu4c/source/data/misc/plurals.txt
-            /icu4c/source/data/misc/pluralRanges.txt
-            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/NumberFormatTestCases.txt
-            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/plurals.txt
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberRangeFormatterTest.java
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/PluralRangesTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/DateTimeGeneratorTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/ListFormatterTest.java
-            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/MeasureUnitTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/TimeUnitTest.java
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/duration/ICUDurationTest.java
-            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/duration/testdata/testdata_*.txt
-            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/RelativeDateTimeFormatterTest.java
+          sparse-checkout: ${{ steps.icu-fixtures.outputs.cldr }}
           sparse-checkout-cone-mode: false
 
       - name: Fetch pinned zoneinfo for the ICU transition tests
