@@ -196,6 +196,38 @@ func TestCompletedIteratorHelperReleasesSource(t *testing.T) {
 	}
 }
 
+// TestIteratorHelpersReleaseUsedInputs keeps the helpers suspended after they have
+// finished using one of their inputs.
+func TestIteratorHelpersReleaseUsedInputs(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		function concat() {
+			const input = {[Symbol.iterator]: Array.prototype.values.bind([])};
+			return [Iterator.concat(input, [1]), new WeakRef(input[Symbol.iterator])];
+		}
+		function zip() {
+			const input = {next: () => ({done: true})};
+			return [Iterator.zip([input, [1]], {mode: "longest"}), new WeakRef(input.next)];
+		}
+		function chunks() {
+			const input = [1].values();
+			return [input.chunks(2), new WeakRef(input)];
+		}
+		const cases = [concat(), zip(), chunks()];
+		for (const [helper] of cases) helper.next();
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `cases.map(([, ref]) => ref.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true,true"; got != want {
+		t.Errorf("collected inputs of concat, zip and chunks: got %s, want %s", got, want)
+	}
+}
+
 func TestCompletedGeneratorReleasesActivation(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `

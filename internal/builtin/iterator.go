@@ -234,6 +234,7 @@ func (h *concatHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 		}
 		iterable, method := h.iterables[h.pos], h.methods[h.pos]
 		h.iterables[h.pos] = engine.Undefined
+		h.methods[h.pos] = nil
 		h.pos++
 		h.inner.it, h.inner.next = cx.GetIteratorFromMethod(iterable, method)
 		h.active = true
@@ -334,6 +335,7 @@ func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []engine.Value {
 			}
 			cx.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
 		}
+		h.next[i] = engine.Undefined
 		results[i] = h.padding[i]
 	}
 	if !yielded {
@@ -713,6 +715,7 @@ func (h *chunksHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 		v, ok := h.src.stepValue(cx)
 		if !ok {
 			h.exhausted = true
+			h.src = iterRecord{}
 			buf := h.buf
 			h.buf = nil
 			if len(buf) == 0 || (h.windows && (!h.allowPartial || len(buf) == h.size)) {
