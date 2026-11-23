@@ -180,6 +180,9 @@ func main() {
 		switch {
 		case c >= 0xac00 && c <= 0xd7a3:
 			w = uint32(len(wordValues)) // wHangul
+		case w == extend && unicode.Is(unicode.Han, rune(c)):
+			// ICU excludes Han characters from its word-break Extend class.
+			w = 0
 		case p&(1<<21) != 0 && w == aletter:
 			w = 0
 		case complexContext[c] && w != extend && p&15 != control:

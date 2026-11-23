@@ -16,3 +16,8 @@ function statuses(input) {
 }
 assert.sameValue(statuses("漢々"), "true,true");
 assert.sameValue(statuses("漢々\u0301"), "false,false");
+
+// A Vietnamese alternate reading mark belongs to the Han script.
+const mark = words.segment("a\u{16FF0}b").containing(2);
+assert.sameValue(mark.segment, "\u{16FF0}");
+assert.sameValue(mark.isWordLike, false);
