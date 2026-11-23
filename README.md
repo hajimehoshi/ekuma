@@ -189,6 +189,12 @@ See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
   SpiderMonkey, `caller` is `null` for a call from strict code, a generator, an async function or
   a built-in function. A proper tail call from strict code leaves no frame of the strict
   function, so the function that it calls sees the caller of the strict function instead
+- A `WeakMap` or `WeakSet` entry is stored with its key, since Go's garbage collector has no
+  ephemerons. A value that refers back to its `WeakMap` therefore keeps the map alive for as long
+  as the key is alive
+- A `Map` or `Set` iterator that is not advanced keeps the records of the entries that later
+  compactions of the collection removed, until it is advanced again or becomes unreachable, so
+  that it resumes at the right place. V8 does the same
 
 ### Missing
 
