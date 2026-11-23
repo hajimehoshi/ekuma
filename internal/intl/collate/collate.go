@@ -564,7 +564,8 @@ func (c *Collator) generate(ces []ce, rs []rune, p *pacer) []ce {
 		start := len(ces)
 		r := rs[i]
 		if c.numeric {
-			if n, ok := c.appendNumber(&ces, rs[i:]); ok {
+			var n int
+			if ces, n = appendNumericSegment(ces, rs[i:]); n > 0 {
 				i += n
 				afterVariable = false
 				continue
@@ -664,34 +665,32 @@ func rootShiftedQuaternaries(s string) []uint32 {
 	return weights
 }
 
-// appendNumber appends the CEs of the digits at the start of rs as one number, and returns
-// the number of the code points of the digits.
-func (c *Collator) appendNumber(ces *[]ce, rs []rune) (int, bool) {
-	n := 0
-	var digits []byte
-	for n < len(rs) {
+// appendNumericSegment appends one numeric segment and returns the number of runes consumed.
+func appendNumericSegment(ces []ce, rs []rune) ([]ce, int) {
+	// ICU skips leading zeros before each segment of up to 254 digits.
+	var digits [254]byte
+	var n, length int
+	for n < len(rs) && length < len(digits) {
 		d, ok := digitValue(rs[n])
 		if !ok {
 			break
 		}
-		if len(digits) > 0 || d != 0 {
-			digits = append(digits, d)
+		if length > 0 || d != 0 {
+			digits[length] = d
+			length++
 		}
 		n++
 	}
 	if n == 0 {
-		return 0, false
+		return ces, 0
 	}
-	if len(digits) == 0 {
-		digits = []byte{0}
-	}
+	length = max(length, 1)
 	const base = collation.DigitZero << 15
-	l := min(len(digits), 0x3FFF)
-	*ces = append(*ces, makeCE(base|0x4000|uint32(l), commonSecondary, commonTertiary, 0))
-	for _, d := range digits {
-		*ces = append(*ces, makeCE(base|0x4000|uint32(d), commonSecondary, commonTertiary, 0))
+	ces = append(ces, makeCE(base|0x4000|uint32(length), commonSecondary, commonTertiary, 0))
+	for _, d := range digits[:length] {
+		ces = append(ces, makeCE(base|0x4000|uint32(d), commonSecondary, commonTertiary, 0))
 	}
-	return n, true
+	return ces, n
 }
 
 // digitValue returns the value of a decimal digit.

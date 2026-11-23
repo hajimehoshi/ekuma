@@ -158,5 +158,5 @@ The `locale-collation` group checks Canadian French backwards accents, Czech
 contractions, Danish, Finnish, Turkish and pinyin ordering, and Thai vowel
 reordering. The Thai dictionary in `riwords.txt` permits ties between adjacent
 words. ICU4J supplies numeric comparisons with leading zeros and non-ASCII
-digits. In `cmsccoll.c`, 13 pairs differ because ICU splits runs after 254
-digits and Ekuma compares each run as one number. [Known results](testdata/icu-failures.txt)
+digits. The 45 long-number comparisons in `cmsccoll.c` cover the 254-digit
+segment boundary. All 34,804 comparisons pass.

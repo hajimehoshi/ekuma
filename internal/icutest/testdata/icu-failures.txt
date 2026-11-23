@@ -2,14 +2,6 @@
 # Collation entries give the fixture, line of the second string and observed
 # relation (previous vs. current). All listed cases run.
 
-# ICU splits numeric runs into segments of at most 254 digits. Ekuma
-# orders the whole run by length and digits for these comparisons.
-# longNumericStrings identifies each pair by its left and right lines.
-cmsccoll.c/longNumericStrings/2996 2997,3001,3002,3003 >
-cmsccoll.c/longNumericStrings/2998 3001,3002,3003 >
-cmsccoll.c/longNumericStrings/2999 3001,3002,3003 >
-cmsccoll.c/longNumericStrings/3000 3001,3002,3003 >
-
 # rbbitst.txt entries give the opening <data> line and the exact changes
 # from its expected UTF-16 break offsets (+extra, -missing).
 

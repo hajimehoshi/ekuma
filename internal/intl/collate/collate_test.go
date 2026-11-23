@@ -208,6 +208,17 @@ func TestCompare(t *testing.T) {
 	}
 }
 
+func TestNumericSegmentLeadingZeros(t *testing.T) {
+	c := collate.New("en", "standard", collate.Options{
+		Strength: 3,
+		Numeric:  true,
+	})
+	segment := strings.Repeat("9", 254)
+	if got := c.Compare("0"+segment+"001", segment+"1"); got != 0 {
+		t.Errorf("leading zeros in successive numeric segments: got %d, want 0", got)
+	}
+}
+
 func TestBackwardSecondary(t *testing.T) {
 	// French of Canada compares the accents from the end of the strings.
 	for _, tc := range []struct {
