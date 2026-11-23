@@ -887,6 +887,7 @@ func (vm *VM) notifyRejectedPromises() bool {
 			break
 		}
 		t.notify(vm, Value{o: p}, d.result)
+		vm.ResumeInterruption()
 		if vm.abortCause != nil {
 			break
 		}

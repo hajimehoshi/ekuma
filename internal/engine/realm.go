@@ -428,6 +428,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			vm.reportUncaughtException(thrown, site)
 		}
 		vm.runJobs()
+		vm.ResumeInterruption()
 		if !ok {
 			vm.thrown, vm.thrownAt = thrown, site
 			panic(errThrow)

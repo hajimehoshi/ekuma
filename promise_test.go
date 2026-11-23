@@ -252,3 +252,29 @@ func TestPromiseResolverUnhandledRejection(t *testing.T) {
 		t.Errorf("got %q, want none", got)
 	}
 }
+
+func TestUnhandledRejectionRecoveredInterruption(t *testing.T) {
+	var vm ekuma.VM
+	cause := errors.New("stop in rejection handler")
+	canceled, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+
+	var calls int
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		calls++
+		if calls == 1 {
+			defer func() { _ = recover() }()
+			_, _ = vm.Global().Call(canceled, "eval", "1")
+		}
+	})
+	s, err := vm.ParseScript("test", `Promise.reject("a"); Promise.reject("b"); 42`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Evaluate(t.Context()); !errors.Is(err, cause) {
+		t.Errorf("Evaluate: got %v, want %v", err, cause)
+	}
+	if calls != 1 {
+		t.Errorf("callback calls: got %d, want 1", calls)
+	}
+}
