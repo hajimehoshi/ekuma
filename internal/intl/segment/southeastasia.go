@@ -68,7 +68,7 @@ func canResumeWord(script wordScript, prev, next rune) bool {
 	}
 }
 
-func appendSoutheastAsianBreaks(out []int32, rs []rune, ps []propertyIndex, start int, script wordScript, p *dictionaryPoller) []int32 {
+func appendSoutheastAsianBreaks(out []Boundary, rs []rune, ps []propertyIndex, start int, script wordScript, p *dictionaryPoller) []Boundary {
 	if len(rs) < 4 || script == thaiScript && len(rs) == 4 {
 		return out
 	}
@@ -118,7 +118,7 @@ func appendSoutheastAsianBreaks(out []int32, rs []rune, ps []propertyIndex, star
 			}
 		}
 		if end < len(rs) {
-			out = append(out, int32(start+end))
+			out = append(out, boundaryAt(start+end))
 		}
 		i = end
 	}

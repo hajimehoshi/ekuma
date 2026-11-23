@@ -37,7 +37,7 @@ func isKatakana(r rune) bool {
 	return 0x30a1 <= r && r <= 0x30fe && r != 0x30fb || 0xff66 <= r && r <= 0xff9f
 }
 
-func appendCJBreaks(out []int32, input []rune, start int, p *dictionaryPoller) []int32 {
+func appendCJBreaks(out []Boundary, input []rune, start int, p *dictionaryPoller) []Boundary {
 	rs, source := normalizeCJ(input, p)
 	trie := cjTrie()
 	// At each end position keep the lowest-cost path and the length of its
@@ -94,8 +94,9 @@ func appendCJBreaks(out []int32, input []rune, start int, p *dictionaryPoller) [
 		if source != nil {
 			pos = source[end]
 		}
-		if pos > 0 && (len(out) == base || out[len(out)-1] != int32(start)+pos) {
-			out = append(out, int32(start)+pos)
+		b := boundaryAt(start + int(pos))
+		if pos > 0 && (len(out) == base || out[len(out)-1] != b) {
+			out = append(out, b)
 		}
 	}
 	slices.Reverse(out[base:])

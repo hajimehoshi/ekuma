@@ -87,7 +87,7 @@ func (p *dictionaryPoller) step() {
 
 // appendDictionaryBreaks adds the boundaries strictly inside each dictionary
 // run of a single rule-based word.
-func appendDictionaryBreaks(out []int32, rs []rune, ps []propertyIndex, start, end int, p *dictionaryPoller) []int32 {
+func appendDictionaryBreaks(out []Boundary, rs []rune, ps []propertyIndex, start, end int, p *dictionaryPoller) []Boundary {
 	for i := start; i < end; {
 		p.step()
 		script := scriptOf(ps[i])

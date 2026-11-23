@@ -8,7 +8,6 @@ package segment
 
 import (
 	"encoding/binary"
-	"slices"
 	"strings"
 	"unicode"
 )
@@ -111,7 +110,7 @@ func wordOf(p propertyIndex) int          { return int(propertyValues[p] >> 4 & 
 func sentenceOf(p propertyIndex) int      { return int(propertyValues[p] >> 9 & 0xF) }
 func pictographic(p propertyIndex) bool   { return propertyValues[p]&(1<<13) != 0 }
 func incbOf(p propertyIndex) int          { return int(propertyValues[p] >> 14 & 3) }
-func letterOrNumber(p propertyIndex) bool { return propertyValues[p]&(1<<16) != 0 }
+func wordBase(p propertyIndex) bool       { return propertyValues[p]&(1<<16) != 0 }
 func dictionaryMark(p propertyIndex) bool { return propertyValues[p]&(1<<17) != 0 }
 func scriptOf(p propertyIndex) wordScript { return wordScript(propertyValues[p] >> 18 & 7) }
 
@@ -121,11 +120,29 @@ func joinsCJ(p propertyIndex) bool { return propertyValues[p]&(1<<21) != 0 }
 // [Boundaries].
 const pollSteps = 1 << 14
 
-// Boundaries returns the segment boundaries for locale as rune indices from 0
-// to len(rs), which must be less than 2^31. An empty locale uses the default
-// rules. An empty input has no boundaries. A non-nil poll may interrupt the
-// operation by panicking.
-func Boundaries(g Granularity, rs []rune, locale string, poll func()) []int32 {
+// Boundary marks a position between segments.
+type Boundary uint32
+
+const wordLikeFlag Boundary = 1
+
+func boundaryAt(index int) Boundary {
+	return Boundary(index) << 1
+}
+
+// Index returns the rune index at the boundary.
+func (b Boundary) Index() int32 {
+	return int32(b >> 1)
+}
+
+// IsWordLike reports whether the segment ending at b is word-like.
+func (b Boundary) IsWordLike() bool {
+	return b&wordLikeFlag != 0
+}
+
+// Boundaries returns the segment boundaries for locale from 0 to len(rs),
+// which must be less than 2^31. An empty locale uses the default rules. An empty
+// input has no boundaries. A non-nil poll may interrupt the operation by panicking.
+func Boundaries(g Granularity, rs []rune, locale string, poll func()) []Boundary {
 	if len(rs) == 0 {
 		return nil
 	}
@@ -159,7 +176,7 @@ func Boundaries(g Granularity, rs []rune, locale string, poll func()) []int32 {
 	dp := dictionaryPoller{
 		poll: poll,
 	}
-	bs := []int32{0}
+	bs := []Boundary{0}
 	for i := 1; i < len(rs); i++ {
 		if poll != nil && i%pollSteps == 0 {
 			poll()
@@ -177,16 +194,34 @@ func Boundaries(g Granularity, rs []rune, locale string, poll func()) []int32 {
 			ss.advance(ps, i)
 		}
 		if brk {
-			if dictionaryWords {
-				bs = appendDictionaryBreaks(bs, rs, ps, int(bs[len(bs)-1]), i, &dp)
+			if g == Word {
+				bs = appendWordBoundaries(bs, rs, ps, i, dictionaryWords, &dp)
+			} else {
+				bs = append(bs, boundaryAt(i))
 			}
-			bs = append(bs, int32(i))
 		}
 	}
-	if dictionaryWords {
-		bs = appendDictionaryBreaks(bs, rs, ps, int(bs[len(bs)-1]), len(rs), &dp)
+	if g == Word {
+		return appendWordBoundaries(bs, rs, ps, len(rs), dictionaryWords, &dp)
 	}
-	return append(bs, int32(len(rs)))
+	return append(bs, boundaryAt(len(rs)))
+}
+
+func appendWordBoundaries(bs []Boundary, rs []rune, ps []propertyIndex, end int, dictionary bool, dp *dictionaryPoller) []Boundary {
+	first := len(bs)
+	start := int(bs[first-1].Index())
+	if dictionary {
+		bs = appendDictionaryBreaks(bs, rs, ps, start, end, dp)
+	}
+	b := boundaryAt(end)
+	if wordBase(ps[end-1]) || contextualWordStatus(ps[start:end], dp.poll) {
+		b |= wordLikeFlag
+		// Dictionary subdivisions inherit the status at the rule-based boundary.
+		for i := first; i < len(bs); i++ {
+			bs[i] |= wordLikeFlag
+		}
+	}
+	return append(bs, b)
 }
 
 // Indic conjunct states of graphemeState.
@@ -336,20 +371,18 @@ func wordBreak(ps []propertyIndex, i int, s *wordState) bool {
 	}
 	pi := prev(i - 1)
 	a = at(pi)
-	aa := at(prev(pi - 1))
-	bb := at(next(i + 1))
 	switch {
 	case isAHLetter(a) && isAHLetter(b):
 		return false
-	case isAHLetter(a) && (b == wMidLetter || isMidNumLetQ(b)) && isAHLetter(bb):
+	case isAHLetter(a) && (b == wMidLetter || isMidNumLetQ(b)) && isAHLetter(at(next(i+1))):
 		return false
-	case isAHLetter(aa) && (a == wMidLetter || isMidNumLetQ(a)) && isAHLetter(b):
+	case isAHLetter(b) && (a == wMidLetter || isMidNumLetQ(a)) && isAHLetter(at(prev(pi-1))):
 		return false
 	case a == wHebrewLetter && b == wSingleQuote:
 		return false
-	case a == wHebrewLetter && b == wDoubleQuote && bb == wHebrewLetter:
+	case a == wHebrewLetter && b == wDoubleQuote && at(next(i+1)) == wHebrewLetter:
 		return false
-	case aa == wHebrewLetter && a == wDoubleQuote && b == wHebrewLetter:
+	case b == wHebrewLetter && a == wDoubleQuote && at(prev(pi-1)) == wHebrewLetter:
 		return false
 	case a == wNumeric && b == wNumeric:
 		return false
@@ -357,9 +390,9 @@ func wordBreak(ps []propertyIndex, i int, s *wordState) bool {
 		return false
 	case a == wNumeric && isAHLetter(b):
 		return false
-	case aa == wNumeric && (a == wMidNum || isMidNumLetQ(a)) && b == wNumeric:
+	case b == wNumeric && (a == wMidNum || isMidNumLetQ(a)) && at(prev(pi-1)) == wNumeric:
 		return false
-	case a == wNumeric && (b == wMidNum || isMidNumLetQ(b)) && bb == wNumeric:
+	case a == wNumeric && (b == wMidNum || isMidNumLetQ(b)) && at(next(i+1)) == wNumeric:
 		return false
 	case a == wKatakana && b == wKatakana:
 		return false
@@ -491,31 +524,30 @@ func sentenceBreak(ps []propertyIndex, i int, s *sentenceState) bool {
 	return true
 }
 
-// IsWordLike reports whether a word segment is word-like.
-// A non-nil poll may interrupt the operation by panicking.
-func IsWordLike(rs []rune, poll func()) bool {
-	for i, r := range slices.Backward(rs) {
-		if poll != nil && (len(rs)-i)%pollSteps == 0 {
-			poll()
-		}
-		p := props(r)
-		switch wordOf(p) {
-		case wHangul:
-			// The Hangul rule assigns word status only at the end of a syllable.
-			return i == len(rs)-1
-		case wSingleQuote, wExtendNumLet:
-			// The rules for a Hebrew apostrophe and a joined connector
-			// require the boundary immediately after that character.
-			return i > 0 && i == len(rs)-1
-		case wALetter, wHebrewLetter, wNumeric, wKatakana:
-			return true
-		case wExtend, wFormat, wZWJ:
-			// An ideographic extending mark has word status of its own.
-			if unicode.Is(unicode.Ideographic, r) {
+// contextualWordStatus reports word status when the final character has none of its own.
+func contextualWordStatus(ps []propertyIndex, poll func()) bool {
+	n := len(ps)
+	last := ps[n-1]
+	// ICU assigns word status to a boundary immediately after two kana or Han characters.
+	if joinsCJ(last) && n >= 2 && joinsCJ(ps[n-2]) {
+		return true
+	}
+	switch wordOf(last) {
+	case wHangul:
+		return true
+	case wSingleQuote, wExtendNumLet:
+		return n > 1
+	case wExtend, wFormat, wZWJ:
+		for i := n - 2; i >= 0; i-- {
+			if poll != nil && (n-i)%pollSteps == 0 {
+				poll()
+			}
+			if wordBase(ps[i]) {
 				return true
 			}
-		default:
-			return letterOrNumber(p)
+			if !wordIgnorable(wordOf(ps[i])) {
+				break
+			}
 		}
 	}
 	return false

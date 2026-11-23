@@ -72,7 +72,7 @@ func TestBoundaries(t *testing.T) {
 		var got []string
 		bs := segment.Boundaries(tc.g, rs, "", nil)
 		for i := 1; i < len(bs); i++ {
-			got = append(got, string(rs[bs[i-1]:bs[i]]))
+			got = append(got, string(rs[bs[i-1].Index():bs[i].Index()]))
 		}
 		if !slices.Equal(got, tc.want) {
 			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
@@ -128,8 +128,13 @@ func TestIsWordLike(t *testing.T) {
 			want: false,
 		},
 	} {
-		if got := segment.IsWordLike([]rune(tc.in), nil); got != tc.want {
-			t.Errorf("IsWordLike(%q): got %t, want %t", tc.in, got, tc.want)
+		bs := segment.Boundaries(segment.Word, []rune(tc.in), "", nil)
+		if len(bs) != 2 {
+			t.Errorf("got %d segments for %q, want 1", len(bs)-1, tc.in)
+			continue
+		}
+		if got := bs[1].IsWordLike(); got != tc.want {
+			t.Errorf("word status for %q: got %t, want %t", tc.in, got, tc.want)
 		}
 	}
 }
@@ -173,7 +178,9 @@ func TestBoundariesLongRuns(t *testing.T) {
 			want: []int32{0, 2*n + 3},
 		},
 	} {
-		if got := segment.Boundaries(tc.g, tc.in, "", nil); !slices.Equal(got, tc.want) {
+		if got := segment.Boundaries(tc.g, tc.in, "", nil); !slices.EqualFunc(got, tc.want, func(b segment.Boundary, i int32) bool {
+			return b.Index() == i
+		}) {
 			t.Errorf("%s: got %d boundaries, want %d", tc.name, len(got), len(tc.want))
 		}
 	}

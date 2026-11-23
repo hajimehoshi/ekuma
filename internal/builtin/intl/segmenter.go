@@ -5,6 +5,7 @@ package intl
 
 import (
 	"slices"
+	"sort"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
 	"github.com/hajimehoshi/ekuma/internal/intl/locale"
@@ -35,8 +36,8 @@ type segmentsData struct {
 	runes     []rune
 	// units are the code unit indices of the runes, with the length of the string last.
 	units []int32
-	// bounds are the boundaries of the segments as indices of runes, computed on first use.
-	bounds []int32
+	// bounds are computed on first use.
+	bounds []segment.Boundary
 }
 
 func newSegmentsData(cx *engine.ExecutionContext, sd *segmenterData, str engine.Value, s wtf8.String) *segmentsData {
@@ -71,7 +72,7 @@ func newSegmentsData(cx *engine.ExecutionContext, sd *segmenterData, str engine.
 	return d
 }
 
-func (d *segmentsData) boundaries(cx *engine.ExecutionContext) []int32 {
+func (d *segmentsData) boundaries(cx *engine.ExecutionContext) []segment.Boundary {
 	if d.bounds == nil {
 		d.bounds = segment.Boundaries(d.segmenter.kind(), d.runes, d.segmenter.locale, cx.Poll)
 	}
@@ -83,24 +84,20 @@ func (d *segmentsData) length() int {
 	return int(d.units[len(d.units)-1])
 }
 
-// segmentAt returns the start and the end of the segment that contains the code unit n, as
-// indices of runes.
-func (d *segmentsData) segmentAt(cx *engine.ExecutionContext, n int) (int, int) {
+// segmentAt returns the index of the segment that contains the code unit n.
+func (d *segmentsData) segmentAt(cx *engine.ExecutionContext, n int) int {
 	// The rune that contains the code unit n.
 	ri, found := slices.BinarySearch(d.units, int32(n))
 	if !found {
 		ri--
 	}
 	bs := d.boundaries(cx)
-	k, found := slices.BinarySearch(bs, int32(ri))
-	if !found {
-		k--
-	}
-	return int(bs[k]), int(bs[k+1])
+	return sort.Search(len(bs), func(i int) bool { return bs[i].Index() > int32(ri) }) - 1
 }
 
-// segmentData implements CreateSegmentDataObject for the runes from start to end.
-func (d *segmentsData) segmentData(cx *engine.ExecutionContext, start, end int) engine.Value {
+// segmentData implements CreateSegmentDataObject for segment k.
+func (d *segmentsData) segmentData(cx *engine.ExecutionContext, k int) engine.Value {
+	start, end := d.bounds[k].Index(), d.bounds[k+1].Index()
 	b := make([]byte, 0, int(d.units[end]-d.units[start]))
 	var p engine.Pacer
 	for _, r := range d.runes[start:end] {
@@ -116,7 +113,7 @@ func (d *segmentsData) segmentData(cx *engine.ExecutionContext, start, end int) 
 	propertyCount := 3
 	if d.segmenter.granularity == "word" {
 		keys[3] = engine.NamedKey(cx.Intern("isWordLike"))
-		vals[3] = engine.Bool(segment.IsWordLike(d.runes[start:end], cx.Poll))
+		vals[3] = engine.Bool(d.bounds[k+1].IsWordLike())
 		propertyCount++
 	}
 	return engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
@@ -125,8 +122,8 @@ func (d *segmentsData) segmentData(cx *engine.ExecutionContext, start, end int) 
 // segmentIteratorData holds the internal slots of a Segment Iterator object.
 type segmentIteratorData struct {
 	segments *segmentsData
-	// pos is the index of the rune where the next segment starts.
-	pos int
+	// next is the index of the next segment.
+	next int
 }
 
 // newSegmenter implements the Intl.Segmenter constructor.
@@ -207,8 +204,7 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 		if n < 0 || n >= float64(d.length()) {
 			return engine.Undefined
 		}
-		start, end := d.segmentAt(cx, int(n))
-		return d.segmentData(cx, start, end)
+		return d.segmentData(cx, d.segmentAt(cx, int(n)))
 	})
 	cx.Define(segmentsProto, cx.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(cx.NewNative("[Symbol.iterator]", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		d := thisSegments(cx, this, "[Symbol.iterator]")
@@ -223,18 +219,12 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 			cx.ThrowTypeError("%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
 		}
 		d := it.segments
-		if it.pos >= len(d.runes) {
+		if it.next+1 >= len(d.boundaries(cx)) {
 			return cx.CreateIterResultObject(engine.Undefined, true)
 		}
-		start := it.pos
-		bs := d.boundaries(cx)
-		k, found := slices.BinarySearch(bs, int32(start))
-		if found {
-			k++
-		}
-		end := int(bs[k])
-		it.pos = end
-		return cx.CreateIterResultObject(d.segmentData(cx, start, end), false)
+		v := d.segmentData(cx, it.next)
+		it.next++
+		return cx.CreateIterResultObject(v, false)
 	})
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
 }

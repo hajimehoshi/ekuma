@@ -17,6 +17,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/hajimehoshi/ekuma/internal/unicode/datafile"
 )
@@ -113,7 +114,7 @@ func main() {
 	}
 	set("DerivedCoreProperties.txt", 14, incbValues, 2, "InCB")
 
-	// Word-like status and dictionary selection also depend on category and script.
+	// The Southeast Asian dictionaries distinguish combining marks.
 	category := make([]byte, len(props))
 	for _, l := range fetch("extracted/DerivedGeneralCategory.txt") {
 		codes, value, _ := strings.Cut(l, ";")
@@ -121,9 +122,6 @@ func main() {
 		lo, hi := codeRange(strings.TrimSpace(codes))
 		for c := lo; c <= hi; c++ {
 			category[c] = group
-			if group == 'L' || group == 'N' {
-				props[c] |= 1 << 16
-			}
 		}
 	}
 	complexContext := make([]bool, len(props))
@@ -169,6 +167,8 @@ func main() {
 		props[c] |= cj << 18
 	}
 	aletter := index(wordValues, "ALetter")
+	hebrew := index(wordValues, "Hebrew_Letter")
+	numeric := index(wordValues, "Numeric")
 	extend := index(wordValues, "Extend")
 	katakana := index(wordValues, "Katakana")
 	control := index(graphemeValues, "Control")
@@ -186,6 +186,11 @@ func main() {
 			w = aletter
 		}
 		props[c] = props[c]&^(31<<4) | w<<4
+		// These word rules keep their status across trailing Extend, Format and ZWJ.
+		if w == aletter || w == hebrew || w == numeric || w == katakana ||
+			unicode.Is(unicode.Ideographic, rune(c)) || unicode.Is(unicode.Hiragana, rune(c)) {
+			props[c] |= 1 << 16
+		}
 	}
 
 	// Each leaf entry indexes one distinct combination of properties.
