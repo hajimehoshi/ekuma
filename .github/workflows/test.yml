@@ -87,6 +87,13 @@ jobs:
             /icu4c/source/test/testdata/calendar.txt
             /icu4c/source/test/testdata/format.txt
             /icu4c/source/test/cintltst/cdateintervalformattest.c
+            /icu4c/source/tools/tzcode/icuzones
+            /icu4c/source/test/intltest/tztest.cpp
+            /icu4c/source/test/intltest/tzfmttst.cpp
+            /icu4c/source/test/intltest/dtfmttst.cpp
+            /icu4c/source/test/cintltst/ccaltst.c
+            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/TimeZoneAliases.txt
+            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/TimeZoneFormatTest.java
             /icu4c/source/test/intltest/dtptngts.cpp
             /icu4c/source/test/cintltst/udatpg_test.c
             /icu4c/source/test/intltest/dtifmtts.cpp

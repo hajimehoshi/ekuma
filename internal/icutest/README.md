@@ -15,6 +15,9 @@ go test -count=1 -v -run '^TestICU$/^(UnicodeData\.txt|SpecialCasing\.txt|casing
 # Single-date pattern selection
 go test -count=1 -v -run '^TestICU$/^(dtptngts\.cpp|udatpg_test\.c|DateTimeGeneratorTest\.java)$' .
 
+# Time-zone identifiers and display names
+go test -count=1 -v -run '^TestICU$/^(TimeZoneAliases\.txt|ccaltst\.c|tztest\.cpp|tzfmttst\.cpp|dtfmttst\.cpp|TimeZoneFormatTest\.java)$' .
+
 # List formatting
 go test -count=1 -v -run '^TestICU$/^(listformattertest\.cpp|ulistfmttest\.c|ListFormatterTest\.java)$' .
 
@@ -87,3 +90,13 @@ fractional quantities, Serbian plurals, and style fallback. The adapter
 checks exact strings and uses ICU's UTF-16 field positions to check part
 types, values, and units. It excludes ICU-specific features such as weekday
 units, capitalization contexts, and custom number formats.
+
+## Time-zone identifiers and display names
+
+`TimeZoneAliases.txt`, `ccaltst.c` and `tztest.cpp` check alias acceptance
+and the identifier returned by Intl.DateTimeFormat and Temporal.ZonedDateTime.
+`tzfmttst.cpp`, `dtfmttst.cpp` and `TimeZoneFormatTest.java` supply exact
+specific, generic and localized GMT names at fixed instants. The adapter
+checks the formatted text and the `timeZoneName` part, including standard
+and daylight names. ICU 79.1 uses tzdata 2026e and Ekuma's identifier
+tables use 2026f. [Known results](testdata/icu-failures.txt)

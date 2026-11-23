@@ -107,6 +107,7 @@ func Run(t *testing.T) {
 		t.Run("pluralRanges.txt", func(t *testing.T) {
 			runPluralRanges(t, filepath.Join(misc, "pluralRanges.txt"), filepath.Join(misc, "plurals.txt"))
 		})
+		runTimeZones(t, cldrDir, fixtures)
 		runDatePatterns(t, cldrDir, fixtures)
 		runDateIntervals(t, cldrDir, fixtures)
 		runNumberRanges(t, cldrDir)
@@ -176,7 +177,8 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		entries, ok := fixtures[name]
 		if fixture, _, hasOp := strings.Cut(name, "/"); hasOp && !ok {
 			switch fixture {
-			case "cdateintervalformattest.c", "dtifmtts.cpp", "dtptngts.cpp", "udatpg_test.c", "DateTimeGeneratorTest.java":
+			case "cdateintervalformattest.c", "dtifmtts.cpp", "dtptngts.cpp", "udatpg_test.c", "DateTimeGeneratorTest.java",
+				"dtfmttst.cpp", "tztest.cpp", "TimeZoneFormatTest.java":
 				entries = map[int]string{}
 				fixtures[name] = entries
 				ok = true
