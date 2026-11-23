@@ -253,6 +253,25 @@ func TestPromiseResolverUnhandledRejection(t *testing.T) {
 	}
 }
 
+func TestPromiseJobCreatesSecondRealm(t *testing.T) {
+	var vm ekuma.VM
+	var entered bool
+	newHandler := vm.FuncOf("newHandler", func(ekuma.Value, []ekuma.Value) (any, error) {
+		r := vm.NewRealm()
+		return r.FuncOf("probe", func(ekuma.Value, []ekuma.Value) (any, error) {
+			entered = ekuma.IsEnteredRealm(r)
+			return nil, nil
+		}), nil
+	})
+	if err := vm.Global().Set("newHandler", newHandler); err != nil {
+		t.Fatal(err)
+	}
+	run(t, &vm, `Promise.resolve().then(() => { Promise.resolve().then(newHandler()); })`)
+	if !entered {
+		t.Error("the next job did not enter the realm created during the drain")
+	}
+}
+
 func TestPromiseJobRestoresEnteredRealm(t *testing.T) {
 	var vm ekuma.VM
 	drainRealm := vm.NewRealm()

@@ -614,8 +614,8 @@ type VM struct {
 	// to, and no lookup starts from it.
 	symbolShape *shape
 
-	// jobContext is the host context of the running script, job or cleanup.
-	jobContext
+	// hostContext is the host context of the running script, job or cleanup.
+	hostContext
 
 	// matchResultShapes are the shapes of RegExp match results of the realm that made them last.
 	matchResultShapes matchResultShapes
@@ -641,9 +641,7 @@ const initialStackSize = 1 << 12
 
 // NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
 func NewVM(hostDefined any) *VM {
-	r := &Realm{}
 	vm := &VM{
-		curRealm:            r,
 		hostDefined:         hostDefined,
 		stack:               make([]Value, initialStackSize),
 		symbolRegistry:      map[wtf8.String]*Object{},
@@ -651,10 +649,9 @@ func NewVM(hostDefined any) *VM {
 		mailbox:             newMailbox(),
 		maxBigIntResultBits: MaxBigIntBits,
 	}
+	r := vm.newRealm()
+	vm.curRealm = r
 	vm.symbolShape = vm.newShape(nil, nil)
-	r.referrer = &scriptOrModule{
-		realm: r,
-	}
 	vm.initRealmPrototypes()
 
 	vm.emptyString = Value{

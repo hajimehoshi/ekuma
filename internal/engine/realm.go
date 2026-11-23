@@ -10,6 +10,9 @@ import (
 
 // Realm is a Realm Record.
 type Realm struct {
+	// context is shared by jobs bound to this realm.
+	context ExecutionContext
+
 	intrinsics [intrinsicCount]*Object
 
 	exceptionReporter func(Value, ExceptionLocation)
@@ -60,6 +63,18 @@ type Realm struct {
 	// strictCallee is the callee property of unmapped arguments objects, or the zero value
 	// until it is needed.
 	strictCallee Value
+}
+
+func (vm *VM) newRealm() *Realm {
+	r := &Realm{}
+	r.context = ExecutionContext{
+		vm:    vm,
+		realm: r,
+	}
+	r.referrer = &scriptOrModule{
+		realm: r,
+	}
+	return r
 }
 
 // initRealmPrototypes creates the prototypes of the current realm that the strings, the keys
@@ -133,12 +148,9 @@ func (vm *VM) initRealmGlobals() {
 func (vm *VM) CreateRealm(install func()) *Realm {
 	vm.trackJobRealms = true
 	saved := vm.curRealm
-	r := &Realm{}
+	r := vm.newRealm()
 	vm.switchRealm(r)
 	defer vm.switchRealm(saved)
-	r.referrer = &scriptOrModule{
-		realm: r,
-	}
 	vm.initRealmPrototypes()
 	vm.initRealmGlobals()
 	install()

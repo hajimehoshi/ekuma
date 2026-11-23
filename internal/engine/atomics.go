@@ -43,8 +43,8 @@ type waiter struct {
 	// promise is the promise of [[PromiseCapability]] of an asynchronous wait.
 	promise *Object
 
-	// promiseRealm is the realm that created promise.
-	promiseRealm *Realm
+	// promiseContext is the execution context that created promise.
+	promiseContext *ExecutionContext
 
 	// done is closed when a synchronous wait is notified.
 	done chan struct{}
@@ -248,7 +248,7 @@ func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) 
 	}
 	if async {
 		w.promise = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
-		w.promiseRealm = vm.curRealm
+		w.promiseContext = &vm.curRealm.context
 	} else {
 		w.done = make(chan struct{})
 		if vm.interrupt.Load() {
@@ -483,9 +483,7 @@ func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
 		kind:     jobResolve,
 		promise:  w.promise,
 		argument: vm.NewString(result),
-		context: jobContext{
-			enteredRealm: w.promiseRealm,
-		},
+		context:  w.promiseContext,
 	})
 }
 

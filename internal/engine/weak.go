@@ -280,8 +280,9 @@ type FinalizationRegistry struct {
 	// callback is the [[CleanupCallback]].
 	callback *Object
 
-	// context is the host context captured when the registry was created.
-	context jobContext
+	// Cleanup callbacks enter the context captured when the registry was created.
+	context          *ExecutionContext
+	continuationData any
 
 	queue *finalizationQueue
 
@@ -362,10 +363,11 @@ func (vm *VM) NewFinalizationRegistryObject(proto *Object, callback *Object) *Ob
 		vm.weak.finalization = &finalizationQueue{}
 	}
 	r := &FinalizationRegistry{
-		callback: callback,
-		context:  vm.captureJobContext(),
-		queue:    vm.weak.finalization,
-		cells:    map[uint64]*finalizationCell{},
+		callback:         callback,
+		context:          &vm.curRealm.context,
+		continuationData: vm.continuationData,
+		queue:            vm.weak.finalization,
+		cells:            map[uint64]*finalizationCell{},
 		cleanups: &cellCleanups{
 			m: map[uint64]runtime.Cleanup{},
 		},
@@ -491,7 +493,7 @@ func (vm *VM) runFinalizationCleanups() bool {
 		}
 		r.remove(d.id, c)
 		ran = true
-		vm.withJobContext(r.context, func() {
+		r.context.enterJob(r.continuationData, func() {
 			if !vm.protect(func() {
 				vm.Call(r.callback, Undefined, c.held)
 			}) {

@@ -9,6 +9,34 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
+// hostContext is the host state in effect during an entry into the VM.
+type hostContext struct {
+	continuationData any
+
+	// enteredRealm stays fixed across ordinary cross-realm calls.
+	enteredRealm *Realm
+}
+
+// enterJob installs the job's host state across calls in its execution realm.
+func (cx ExecutionContext) enterJob(continuationData any, f func()) {
+	vm := cx.vm
+	// The outer host call already entered the only realm in a single-realm VM.
+	if vm.trackJobRealms {
+		caller := vm.executionContext()
+		entered := vm.enteredRealm
+		vm.enteredRealm = cx.realm
+		cx.activate()
+		defer func() {
+			vm.enteredRealm = entered
+			caller.activate()
+		}()
+	}
+	previous := vm.continuationData
+	vm.continuationData = continuationData
+	defer vm.SetContinuationData(previous)
+	f()
+}
+
 // enter runs f as a call from Go and drains jobs at the outermost boundary, including
 // after a JavaScript exception.
 //
@@ -43,7 +71,7 @@ func (vm *VM) enterBoundary(f func(ExecutionContext) Value) (result Value, err e
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
 	cx, callerRealm := vm.executionContext(), vm.callerRealm
 	thrown, site := vm.thrown, vm.thrownAt
-	jobContext := vm.jobContext
+	hostContext := vm.hostContext
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
@@ -68,7 +96,7 @@ func (vm *VM) enterBoundary(f func(ExecutionContext) Value) (result Value, err e
 		if r := recover(); r != nil {
 			sig, interrupted := r.(*interruptSignal)
 			internal, failed := r.(*xerrors.InternalError)
-			vm.jobContext = jobContext
+			vm.hostContext = hostContext
 			// Only activations belonging to this boundary have lost their Go callers.
 			cx.activate()
 			for i := frames; i < len(vm.frames); i++ {

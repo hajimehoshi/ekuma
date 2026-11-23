@@ -65,6 +65,11 @@ func (host *V8) CheckQueueMicrotask(t *testing.T) {
 		setTimeout(() => print(order));
 	`, suitePassed, "[ABCD]")
 	check(`// Flags: --enable-queue-microtask
+		const child = Realm.createAllowCrossRealmAccess();
+		const callback = new (Realm.global(child).Proxy)(() => print(Realm.current() === child), {});
+		queueMicrotask(callback);
+	`, suitePassed, "[true]")
+	check(`// Flags: --enable-queue-microtask
 		queueMicrotask(async () => { throw Error("rejected"); });
 		setTimeout(() => print("timer ran"));
 	`, suiteFailed, "[timer ran]")
