@@ -31,6 +31,7 @@ the test. [Known results](testdata/icu-failures.txt)
 |---|---|
 | `numberpermutationtest.txt`, `numberformattestspecification.txt`, `dcfmtest.txt`, ICU4C and ICU4J `NumberFormatTestCases.txt` | Decimal, currency and scientific formatting. Decimal-string inputs preserve precision. The adapter maps representable ICU patterns to NumberFormat options and excludes parsing. |
 | `CompactDecimalFormatTest.java`, `currtest.c` | Serbian long compact forms for negative values with two significant digits, and Hungarian forint formatting with default and explicit fraction digits. |
+| `NumberFormatterApiTest.java`, `unumberformattertst.c` | The ICU `/w` precision suffix maps to `trailingZeroDisplay: "stripIfInteger"`. Cases cover fraction and significant digits, rounding modes, currency precision, and repeated formatting with a rounding increment. |
 | `localeDisplayName.txt` | Standard and dialect display names for locale identifiers. |
 | `misc/plurals.txt`, ICU4J `format/plurals.txt`, `misc/pluralRanges.txt` | Cardinal, ordinal and range categories. The adapter preserves visible fraction digits and uses ICU's cardinal rules to interpret localized phrase samples. |
 | `calendar.txt`, `caltestdata.h`, `format.txt` | Calendar conversion and arithmetic, leap months, Gregorian/lunar mappings, and localized date strings and parts. |

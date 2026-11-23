@@ -15,6 +15,10 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 	divisor := 1
 	var width, perUnit string
 	for _, part := range parts {
+		if precision, ok := strings.CutSuffix(part, "/w"); ok {
+			o["trailingZeroDisplay"] = "stripIfInteger"
+			part = precision
+		}
 		switch part {
 		case "compact-short", "compact-long":
 			o["notation"] = "compact"
@@ -35,7 +39,7 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 			}
 		case "%x100":
 			o["style"] = "percent"
-		case "currency/EUR", "currency/GBP", "currency/CHF", "currency/USD", "currency/JPY", "currency/PTE", "currency/IDR", "currency/RON", "currency/CNY":
+		case "currency/EUR", "currency/GBP", "currency/CHF", "currency/USD", "currency/JPY", "currency/PTE", "currency/IDR", "currency/RON", "currency/CNY", "currency/CZK":
 			o["style"] = "currency"
 			o["currency"] = strings.TrimPrefix(part, "currency/")
 		case "measure-unit/length-meter", "measure-unit/temperature-fahrenheit", "measure-unit/speed-meter-per-second":
@@ -52,6 +56,12 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 		case "precision-integer":
 			o["maximumFractionDigits"] = 0
 			o["minimumFractionDigits"] = 0
+		case "precision-currency-standard":
+			// NumberFormat defaults to the currency's standard fraction digits.
+		case "precision-increment/0.05":
+			o["roundingIncrement"] = 5
+			o["minimumFractionDigits"] = 2
+			o["maximumFractionDigits"] = 2
 		case ".00", ".000":
 			o["maximumFractionDigits"] = len(part) - 1
 			o["minimumFractionDigits"] = len(part) - 1
@@ -60,8 +70,8 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 			o["maximumFractionDigits"] = 100
 		case ".###":
 			o["maximumFractionDigits"] = 3
-		case ".##/@@@+":
-			o["minimumFractionDigits"] = 0
+		case ".##/@@@+", ".00/@@@*":
+			o["minimumFractionDigits"] = strings.Count(part, "0")
 			o["maximumFractionDigits"] = 2
 			o["minimumSignificantDigits"] = 1
 			o["maximumSignificantDigits"] = 3
