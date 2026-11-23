@@ -502,7 +502,7 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 			Name: p.t.str,
 		})
 		p.next()
-		if isClassKeyEnd(p.t.kind) {
+		if isClassKeyEnd(p.t.kind) || p.t.nl && p.t.kind == tAt {
 			key = id
 		} else {
 			m.Static = true
@@ -546,8 +546,8 @@ func (p *parser) parseClassMember(cls *ast.Class, m *ast.ClassMember) {
 		})
 		p.next()
 		switch {
-		case isClassKeyEnd(p.t.kind) || p.t.nl && (id.Name == "async" || p.t.kind == tMul):
-			// A line break after async, or before *, ends a field named get, set or async by ASI.
+		case isClassKeyEnd(p.t.kind) || p.t.nl && (id.Name == "async" || p.t.kind == tMul || p.t.kind == tAt):
+			// A line break after async, or before * or @, ends a field named get, set or async by ASI.
 			key = id
 		case id.Name == "get":
 			m.Kind = ast.MemberGetter

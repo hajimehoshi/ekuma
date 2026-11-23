@@ -3774,3 +3774,43 @@ func TestAsyncArrowYieldParamInGenerator(t *testing.T) {
 		}
 	}
 }
+
+func TestClassFieldKeywordBeforeDecorator(t *testing.T) {
+	var vm ekuma.VM
+	got := run(t, &vm, `
+		function dec(v) { return v; }
+		class C {
+			static
+			@dec
+			a = 1
+			get
+			@dec
+			b = 2
+			set
+			@dec
+			c = 3
+		}
+		const inst = new C();
+		[
+			Object.hasOwn(inst, "static"),
+			Object.hasOwn(inst, "get"),
+			Object.hasOwn(inst, "set"),
+			inst.a,
+			inst.b,
+			inst.c,
+		].join(",");
+	`)
+	if want := "true,true,true,1,2,3"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+
+	for _, bad := range []string{
+		`class C { static @dec x = 1 }`,
+		`class C { get @dec x = 1 }`,
+		`class C { set @dec x = 1 }`,
+	} {
+		if _, err := vm.ParseScript("test", bad); err == nil {
+			t.Errorf("ParseScript(%q) succeeded, want SyntaxError", bad)
+		}
+	}
+}
