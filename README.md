@@ -130,7 +130,8 @@ VMs on different goroutines share the memory of a `SharedArrayBuffer` as agents 
 `Atomics.wait` throws unless `VM.SetCanBlock` lets the VM block. When another VM notifies
 a waiter of `Atomics.waitAsync`, its promise is settled by the
 jobs that the waiting VM runs at the end of its current or next outermost call from Go.
-`VM.AwaitJobs` blocks until such a waiter is notified or times out, and runs the jobs.
+`VM.AwaitJobs` runs pending jobs. If none are ready, it waits for an asynchronous waiter to be
+notified or time out. With no pending jobs or waiters, it returns immediately.
 
 ## Status
 
@@ -158,8 +159,9 @@ See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
 
 - `Date` truncates historical UTC offsets to whole minutes. `Temporal.ZonedDateTime` uses
   the full offset for a named time zone.
-- Ekuma uses the Unicode version shipped with Go (17.0.0 in Go 1.27). Identifiers containing
-  letters added in later Unicode versions may be rejected.
+- Ekuma's generated Unicode tables follow the Go release in `go.mod` (Unicode 17.0.0 for
+  Go 1.27). The parser uses the build toolchain's Unicode tables for JavaScript identifiers
+  and may reject letters added in later Unicode versions.
 - Native builds load named time zones from system zoneinfo and Go's `time.LoadLocation` sources.
   With `GOOS=js`, the host's `Intl.DateTimeFormat` must also recognize the zone. Local `Date`
   operations use the JavaScript host's `Date` by default.
