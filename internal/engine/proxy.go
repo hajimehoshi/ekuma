@@ -96,7 +96,7 @@ func (cx *ExecutionContext) InstallGlobalProxy(foreignView *Object, previous *Ex
 	if proxy == nil {
 		proxy = cx.ProxyCreate(ObjectValue(cx.realm.global), ObjectValue(handler))
 		// A global proxy can outlive its first realm and acquire a new target on navigation.
-		proxy.shape = cx.newShape(nil, nil)
+		proxy.shape = cx.rootShape(nil, nil, delegatedRoot)
 	} else {
 		state := proxy.extState().(*proxyState)
 		state.target = cx.realm.global

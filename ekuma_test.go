@@ -3583,9 +3583,9 @@ func TestExoticSetPrototypeOfShapeIsolation(t *testing.T) {
 			src: `
 				const p = {};
 				function getLen(o) { return o.length; }
-				getLen(Object.create(p));
 				function f(a, b) {}
 				Object.setPrototypeOf(f, p);
+				getLen(Object.create(p));
 				String(getLen(f));
 			`,
 			want: "2",
@@ -3595,8 +3595,8 @@ func TestExoticSetPrototypeOfShapeIsolation(t *testing.T) {
 			src: `
 				const p = {};
 				function getInstant(o) { return o.Instant; }
-				getInstant(Object.create(p));
 				Object.setPrototypeOf(Temporal, p);
+				getInstant(Object.create(p));
 				typeof getInstant(Temporal);
 			`,
 			want: "function",

@@ -659,7 +659,10 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	r := host.newRealm()
 	cx := &r.context
 	cx.activate()
-	cx.symbolShape = cx.newShape(nil, nil)
+	cx.symbolShape = &shape{
+		agent: cx.agent,
+		small: []shapeEntry{},
+	}
 	cx.initRealmPrototypes()
 
 	cx.emptyString = Value{
@@ -681,7 +684,7 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	}
 	cx.missHolder = (&propertyObject{
 		kind:  kindObject,
-		shape: r.shapes.nullProto,
+		shape: r.shapes.nullProto[ordinaryRoot],
 		slots: []Value{Undefined},
 	}).init()
 	cx.initRealmGlobals()

@@ -699,7 +699,7 @@ func (cx *ExecutionContext) NewTypedArrayObject(proto *Object, t ElementType, bu
 		},
 	}
 	w.kind = kindObject
-	w.shape = cx.objectRootShape(proto, cx.realm, classTypedArray)
+	w.shape = cx.rootShape(proto, cx.realm, typedArrayRoot)
 	o := w.init()
 	o.class = classTypedArray
 	o.flags |= objExotic

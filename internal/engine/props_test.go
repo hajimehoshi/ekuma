@@ -82,6 +82,43 @@ func TestPrimitiveElements(t *testing.T) {
 	}
 }
 
+func TestCachedReadThroughLazyPrototype(t *testing.T) {
+	cx, _ := engine.NewExecutionContext(nil)
+	key := cx.Intern("value")
+	var receiver *engine.Object
+	proto := cx.NewLazyObject(nil, func(cx *engine.ExecutionContext, proto *engine.Object) {
+		cx.Define(receiver, key, engine.Number(2), engine.FlagsData)
+		cx.Define(proto, key, engine.Number(1), engine.FlagsData)
+	})
+	receiver = cx.NewObject(proto)
+
+	var cache engine.PropertyCache
+	for _, want := range []float64{1, 2} {
+		got := cx.GetVCached(engine.ObjectValue(receiver), engine.NamedKey(key), &cache)
+		if !got.IsNumber() || got.Number() != want {
+			t.Errorf("read returned %v, want %v", got, want)
+		}
+	}
+}
+
+func TestCachedStringReadAcrossRealms(t *testing.T) {
+	a, _ := engine.NewExecutionContext(nil)
+	key := a.Intern("value")
+	a.Define(a.Intrinsic(engine.IntrinsicStringPrototype), key, engine.Number(1), engine.FlagsData)
+	b := a.CreateRealm(func(cx *engine.ExecutionContext) {
+		cx.Define(cx.Intrinsic(engine.IntrinsicStringPrototype), key, engine.Number(2), engine.FlagsData)
+	})
+
+	str := a.NewString("text")
+	var cache engine.PropertyCache
+	if got := a.GetVCached(str, engine.NamedKey(key), &cache); !got.IsNumber() || got.Number() != 1 {
+		t.Errorf("read in first realm returned %v, want 1", got)
+	}
+	if got := b.GetVCached(str, engine.NamedKey(key), &cache); !got.IsNumber() || got.Number() != 2 {
+		t.Errorf("read in second realm returned %v, want 2", got)
+	}
+}
+
 func TestGetPrototypeFromConstructorMissingIntrinsic(t *testing.T) {
 	cx := newTestContext(t)
 	var target engine.Value

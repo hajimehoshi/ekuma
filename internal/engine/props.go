@@ -278,6 +278,11 @@ func (cx *ExecutionContext) materialize(o *Object) {
 	f := o.ownFunction()
 	f.materialized = true
 	o.flags &^= objExotic
+	if r := o.shape.realm; o.shape == r.shapes.function {
+		o.shape = r.shapes.materializedFunction
+	} else {
+		cx.rebuildShape(o, o.shape.proto, ordinaryRoot)
+	}
 	if c := f.code; c != nil {
 		cx.add(o, cx.Key(KeyLength), Number(float64(c.length)), FlagConfigurable)
 		cx.add(o, cx.Key(KeyName), cx.SharedString(c.name), FlagConfigurable)
@@ -350,7 +355,7 @@ func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) *Object {
 // the object, or in [agent.InitLazyObject].
 func (cx *ExecutionContext) NewLazyObject(proto *Object, init func(*ExecutionContext, *Object)) *Object {
 	// A cached miss on an ordinary object must still run this object's initializer.
-	o := newObject(cx.newShape(proto, cx.realm))
+	o := newObject(cx.rootShape(proto, cx.realm, delegatedRoot))
 	o.class = classLazy
 	o.flags |= objExotic
 	o.setExtState(init)
@@ -368,44 +373,74 @@ func (ag *agent) InitLazyObject(o *Object) {
 	o.setExtState(nil)
 	o.flags &^= objExotic
 	cx := o.CreationContext()
+	cx.rebuildShape(o, o.shape.proto, ordinaryRoot)
 	cx.Run(func() {
 		init(cx, o)
 	})
 }
 
+type namedLookupKind uint8
+
+const (
+	lookupAbsent      namedLookupKind = iota // The chain ended. A miss or property addition can be cached.
+	lookupSlot                               // A slot supplies the value or accessor.
+	lookupLength                             // The implicit length of an array or string has no slot.
+	lookupNumericMiss                        // A typed array answers undefined on reads and handles stores itself.
+	lookupDelegate                           // The holder must perform each operation.
+)
+
+type namedLookup struct {
+	kind   namedLookupKind
+	holder *Object
+	prop   prop
+}
+
+func (r namedLookup) length(receiver Value) Value {
+	if r.holder.kind == kindString {
+		return Number(float64(receiver.StringLength()))
+	}
+	return Number(float64(r.holder.length))
+}
+
 // lookup finds the named property key on o and its prototype chain.
-// For the length of an array, which is not stored, it returns the array as holder and slot -1.
-// If a proxy or module namespace must perform the lookup, it returns that object and ok=false.
-func (cx *ExecutionContext) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
-	length := key == cx.Key(KeyLength)
+func (cx *ExecutionContext) lookup(o *Object, key *Object) namedLookup {
 	for h := o; h != nil; h = h.shape.proto {
-		if h.flags&objExotic != 0 {
-			if h.class == classProxy || h.class == classModuleNamespace {
-				return h, prop{}, false
+		switch h.shape.family {
+		case delegatedRoot:
+			return namedLookup{
+				kind:   lookupDelegate,
+				holder: h,
 			}
-			if h.class == classLazy || cx.isLazyKey(key) {
-				key = cx.resolveForKey(h, key)
+		case arrayRoot, primitiveStringRoot:
+			if key == cx.Key(KeyLength) {
+				return namedLookup{
+					kind:   lookupLength,
+					holder: h,
+				}
 			}
-			if h.class == classTypedArray && isCanonicalNumericString(key) {
-				// An integer-indexed object answers for every numeric key and never defers to its prototype.
-				return nil, prop{}, false
+		case typedArrayRoot:
+			if isCanonicalNumericString(key) {
+				return namedLookup{
+					kind:   lookupNumericMiss,
+					holder: h,
+				}
 			}
-		}
-		if length && h.kind == kindArray {
-			flags := FlagWritable
-			if h.flags&objFrozenLength != 0 {
-				flags = 0
+		case lazyFunctionRoot:
+			if cx.isLazyKey(key) {
+				cx.materialize(h)
 			}
-			return h, prop{
-				slot:  -1,
-				flags: flags,
-			}, true
 		}
 		if p, ok := h.shape.lookup(key); ok {
-			return h, p, true
+			return namedLookup{
+				kind:   lookupSlot,
+				holder: h,
+				prop:   p,
+			}
 		}
 	}
-	return nil, prop{}, false
+	return namedLookup{
+		kind: lookupAbsent,
+	}
 }
 
 // protoStart returns the object at which a property lookup on the value v starts.
@@ -428,6 +463,9 @@ func (cx *ExecutionContext) protoStart(v Value, key PropKey) *Object {
 	case kindNull:
 		cx.ThrowTypeError("cannot read properties of " + cx.DisplayString(v) + " (reading '" + wtf8.ToValidUTF8(cx.KeyString(key)) + "')")
 	case kindString:
+		if key.key == cx.Key(KeyLength) {
+			return o
+		}
 		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
 		}
@@ -495,19 +533,10 @@ func (c *propCache) rememberRead(cx *ExecutionContext, start, holder *Object, p 
 // getNamed returns the getter instead and the caller has to call it with v as this.
 // getNamed fills c, which may be nil, when the lookup can be repeated from the cache.
 func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Value, getter *Object) {
-	if key == cx.Key(KeyLength) && v.IsString() {
-		return Number(float64(v.StringLength())), nil
+	if o := v.o; o != nil && o.class == classProxy {
+		return cx.proxyGet(o, PropKey{key: key}, v), nil
 	}
 	start := cx.protoStart(v, PropKey{key: key})
-	if start.kind == kindString && key == cx.Key(KeyLength) {
-		return Number(float64(start.StringLength())), nil
-	}
-	if start.class == classProxy {
-		return cx.proxyGet(start, PropKey{key: key}, v), nil
-	}
-	if start.class == classModuleNamespace {
-		return cx.getProp(start, PropKey{key: key}, v), nil
-	}
 	if start.class == classTypedArray && key == cx.Key(KeyLength) && c != nil {
 		// The cache says that the length is the original getter, whose result needs no call.
 		e := &c.cacheEntry
@@ -519,30 +548,28 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 		}
 	}
 	s, epoch := start.shape, cx.protoEpoch
-	var evicted bool
-	if c != nil {
-		evicted = c.keep(s)
-	}
-	holder, p, ok := cx.lookup(start, key)
-	if !ok {
-		if holder != nil {
-			return cx.getProp(holder, PropKey{key: key}, v), nil
-		}
+	r := cx.lookup(start, key)
+	switch r.kind {
+	case lookupDelegate:
+		return cx.getProp(r.holder, PropKey{key: key}, v), nil
+	case lookupLength:
+		return r.length(v), nil
+	case lookupAbsent, lookupNumericMiss:
 		if c != nil {
-			// Cache the miss as a hit on an object that holds undefined.
+			// Both misses are stable for this shape and prototype epoch.
+			c.keep(start.shape)
 			c.setInherited(start.shape, cacheProto, cx.protoEpoch)
 			c.ref = &cx.missHolder.slots[0]
 		}
 		return Undefined, nil
+	case lookupSlot:
+		if c != nil && c.keep(start.shape) && start == v.o && start.kind == kindObject && start.class == classObject && start.flags&objExotic == 0 &&
+			s == start.shape && s.agent == cx.agent && epoch == cx.protoEpoch {
+			c.rememberRead(cx, start, r.holder, r.prop)
+		}
+		return cx.readNamedSlot(start, r.holder, r.prop, c)
 	}
-	if p.slot < 0 {
-		return Number(float64(holder.length)), nil
-	}
-	if evicted && start == v.o && start.kind == kindObject && start.class == classObject && start.flags&objExotic == 0 &&
-		s == start.shape && s.agent == cx.agent && epoch == cx.protoEpoch {
-		c.rememberRead(cx, start, holder, p)
-	}
-	return cx.readNamedSlot(start, holder, p, c)
+	panic("engine: unknown named lookup result")
 }
 
 // readNamedSlot reads p and returns its getter separately for the caller to invoke.
@@ -590,20 +617,6 @@ func proxyOnChain(o *Object) *Object {
 	return nil
 }
 
-func hasProxyOnChain(o *Object) bool {
-	return proxyOnChain(o) != nil
-}
-
-// typedArrayOnChain reports whether a typed array is on the prototype chain of o before any proxy.
-func typedArrayOnChain(o *Object) bool {
-	for h := o; h != nil && h.class != classProxy; h = h.shape.proto {
-		if h.class == classTypedArray {
-			return true
-		}
-	}
-	return false
-}
-
 // GetV returns the named property key of v, calling a getter.
 func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
 	val, getter := cx.getNamed(v, key, nil)
@@ -613,33 +626,28 @@ func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
 	return val
 }
 
-// GetVWithoutCall returns GetV(v, key) when that runs no code, that is when it reaches no
-// getter, proxy or module namespace object. Otherwise ok is false.
+// GetVWithoutCall returns GetV(v, key) when the lookup reaches a value without running code.
 func (cx *ExecutionContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
-	start := cx.protoStart(v, PropKey{key: key})
-	if start.kind == kindString && key == cx.Key(KeyLength) {
-		return Number(float64(start.StringLength())), true
-	}
-	if hasProxyOnChain(start) {
-		return Undefined, false
-	}
-	holder, p, found := cx.lookup(start, key)
-	switch {
-	case !found:
+	r := cx.lookup(cx.protoStart(v, PropKey{key: key}), key)
+	switch r.kind {
+	case lookupAbsent, lookupNumericMiss:
 		return Undefined, true
-	case p.slot < 0:
-		return Number(float64(holder.length)), true
-	case p.flags&FlagAccessor != 0:
-		return Undefined, false
+	case lookupLength:
+		return r.length(v), true
+	case lookupSlot:
+		if r.prop.flags&FlagAccessor == 0 {
+			return r.holder.slots[r.prop.slot], true
+		}
 	}
-	return holder.slots[p.slot], true
+	return Undefined, false
 }
 
 // PropertyCache remembers where [ExecutionContext.GetVCached] found a property, so that looking up the same key
 // again on values with the same layout is fast. The zero value is empty.
 type PropertyCache struct {
-	key PropKey
-	c   propCache
+	realm *realm
+	key   PropKey
+	c     propCache
 }
 
 // GetVCached implements GetV(v, k), using and updating c.
@@ -647,8 +655,12 @@ func (cx *ExecutionContext) GetVCached(v Value, k PropKey, c *PropertyCache) Val
 	if k.key == nil {
 		return cx.Index(v, k.idx)
 	}
-	if c.key != k {
-		*c = PropertyCache{key: k}
+	// A primitive inherits from the intrinsics of the realm performing the read.
+	if c.realm != cx.realm || c.key != k {
+		*c = PropertyCache{
+			realm: cx.realm,
+			key:   k,
+		}
 	}
 	if o := v.o; o != nil {
 		e := &c.c.cacheEntry
@@ -859,6 +871,9 @@ func (cx *ExecutionContext) ProtoOf(o *Object) *Object {
 // getProp implements [[Get]] with a receiver.
 func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value {
 	for h := o; h != nil; h = h.shape.proto {
+		if h.class == classLazy && k.key != nil {
+			k.key = cx.resolveForKey(h, k.key)
+		}
 		if h.class == classProxy {
 			return cx.proxyGet(h, k, receiver)
 		}
@@ -957,7 +972,7 @@ func (cx *ExecutionContext) densify(o *Object) {
 	var root *shape
 	var base int
 	if s.private {
-		root = cx.objectRootShape(s.proto, s.realm, o.class)
+		root = cx.rootShape(s.proto, s.realm, s.family)
 	} else {
 		root = s
 		for root.parent != nil {
@@ -1091,83 +1106,60 @@ func (cx *ExecutionContext) setArrayLength(o *Object, n uint32) bool {
 // which is a TypeError in strict code.
 func (cx *ExecutionContext) setNamed(v Value, key *Object, val Value, c *propCache) (setter *Object, ok bool) {
 	o := v.o
-	if o == nil || o.kind < kindFirstObject {
+	start := o
+	if !v.IsObject() {
 		if v.IsNullish() {
 			cx.ThrowTypeError("cannot set properties of " + cx.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(cx.KeyString(PropKey{key: key})) + "')")
 		}
-		// A store to a primitive only has an effect when a setter is inherited.
-		start := cx.protoStart(v, PropKey{key: key})
-		if hasProxyOnChain(start) {
-			if start.kind == kindString && key == cx.Key(KeyLength) {
-				return nil, false
-			}
-			return nil, cx.setProp(start, PropKey{key: key}, val, v)
-		}
-		if h, p, found := cx.lookup(start, key); found && p.slot >= 0 && p.flags&FlagAccessor != 0 {
-			if s := h.slots[p.slot].accessor().setter; s != nil {
-				return s, true
-			}
-		}
-		return nil, false
-	}
-	if o.class == classProxy || o.class == classModuleNamespace || o.class == classTypedArray && isCanonicalNumericString(key) {
-		return nil, cx.setProp(o, PropKey{key: key}, val, v)
-	}
-	if o.flags&objExotic != 0 {
+		start = cx.protoStart(v, PropKey{key: key})
+		c = nil
+	} else if o.shape.family == lazyFunctionRoot {
 		// The initial properties of a function precede every property that a store adds.
-		cx.resolve(o)
+		cx.materialize(o)
 	}
-	if o.kind == kindArray && key == cx.Key(KeyLength) {
-		return nil, cx.setArrayLengthValue(o, val)
+	r := cx.lookup(start, key)
+	switch r.kind {
+	case lookupDelegate, lookupNumericMiss:
+		return nil, cx.setProp(r.holder, PropKey{key: key}, val, v)
+	case lookupLength:
+		if r.holder.kind == kindString {
+			return nil, false
+		}
+		if r.holder == o {
+			return nil, cx.setArrayLengthValue(o, val)
+		}
+		return nil, cx.setProp(r.holder, PropKey{key: key}, val, v)
+	case lookupSlot, lookupAbsent:
+		if c != nil {
+			c.keep(o.shape)
+		}
+	default:
+		panic("engine: unknown named lookup result")
 	}
-	if c != nil {
-		c.keep(o.shape)
-	}
-	if p, found := o.shape.lookup(key); found {
+	if r.kind == lookupSlot {
+		p := r.prop
 		if p.flags&FlagAccessor != 0 {
-			s := o.slots[p.slot].accessor().setter
-			if s == nil {
-				return nil, false
+			setter := r.holder.slots[p.slot].accessor().setter
+			if setter != nil && c != nil && r.holder != o && !o.shape.private {
+				c.setInherited(o.shape, cacheSetter, cx.protoEpoch)
+				c.holder = setter
 			}
-			// An own setter is not cached, for the same reason as an own getter in getNamed.
-			return s, true
+			return setter, setter != nil
 		}
 		if p.flags&FlagWritable == 0 {
 			return nil, false
 		}
-		o.slots[p.slot] = val
-		if c != nil {
-			c.shape = o.shape
-			c.kind = cacheOwn
-			c.slot = p.slot
-		}
-		return nil, true
-	}
-	// The property is new on o: a setter or a read-only property further up takes precedence.
-	if proto := o.shape.proto; proto != nil {
-		if hasProxyOnChain(proto) || isCanonicalNumericString(key) && typedArrayOnChain(proto) {
-			return nil, cx.setProp(o, PropKey{key: key}, val, v)
-		}
-		if h, p, found := cx.lookup(proto, key); found {
-			if p.slot >= 0 && p.flags&FlagAccessor != 0 {
-				s := h.slots[p.slot].accessor().setter
-				if s == nil {
-					return nil, false
-				}
-				if c != nil && !o.shape.private {
-					c.shape = o.shape
-					c.kind = cacheSetter
-					c.holder = s
-					c.epoch = cx.protoEpoch
-				}
-				return s, true
+		if r.holder == o {
+			o.slots[p.slot] = val
+			if c != nil {
+				c.shape = o.shape
+				c.kind = cacheOwn
+				c.slot = p.slot
 			}
-			if p.flags&FlagWritable == 0 {
-				return nil, false
-			}
+			return nil, true
 		}
 	}
-	if o.flags&objNotExtensible != 0 {
+	if !v.IsObject() || o.flags&objNotExtensible != 0 {
 		return nil, false
 	}
 	old := o.shape
@@ -1670,10 +1662,6 @@ func (cx *ExecutionContext) SetPrototypeOf(o *Object, proto *Object) bool {
 	}
 	if o.flags&objNotExtensible != 0 || o.shape.proto == nil && o == o.shape.realm.intrinsics[IntrinsicObjectPrototype] {
 		return false
-	}
-	if o.flags&objExotic != 0 {
-		// A function keeps the shape of functionShapeFor only until its properties are stored.
-		cx.resolve(o)
 	}
 	for p := proto; p != nil; p = p.shape.proto {
 		if p.class == classProxy {

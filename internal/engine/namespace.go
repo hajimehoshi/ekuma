@@ -91,8 +91,8 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 	o := (&propertyObject{
 		kind:  kindObject,
 		class: classModuleNamespace,
-		flags: objExotic,
-		shape: cx.realm.shapes.nullProto,
+		flags: objExotic | objNotExtensible,
+		shape: cx.rootShape(nil, cx.realm, delegatedRoot),
 		ext:   ns,
 	}).init()
 	tag := wtf8.String("Module")
@@ -100,9 +100,6 @@ func (cx *ExecutionContext) newModuleNamespace(m *Module, deferred bool) *Object
 		tag = "Deferred Module"
 	}
 	cx.add(o, cx.WellKnownSymbol(SymbolToStringTag), cx.NewString(tag), 0)
-	o.flags |= objNotExtensible
-	// The properties of the exports are not in the shape, which no inline cache may share.
-	o.makePrivate()
 	return o
 }
 

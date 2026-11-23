@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
 /*---
-description: "A cached property read distinguishes typed arrays from ordinary objects with the same prototype"
+description: "Cached numeric property accesses distinguish typed arrays from ordinary objects with the same prototype"
 ---*/
 
 function read(object) {
@@ -20,3 +20,18 @@ const view = new Uint8Array(1);
 check(view);
 Object.setPrototypeOf(view, {});
 check(view);
+
+function store(object, value) {
+	object["-1"] = value;
+}
+
+const calls = [];
+const proto = {set "-1"(value) { calls.push("setter"); }};
+Object.setPrototypeOf(view, proto);
+const value = {valueOf() { calls.push("convert"); return 1; }};
+store(Object.create(proto), value);
+store(view, value);
+const child = Object.create(view);
+store(child, value);
+assert.sameValue(calls.join(), "setter,convert");
+assert.sameValue(Object.hasOwn(child, "-1"), false);

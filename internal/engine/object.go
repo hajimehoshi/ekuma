@@ -202,14 +202,8 @@ type objectMeta struct {
 
 	protoShapes prototypeShapeCache
 
-	// Arrays have an implicit length and typed arrays have integer-indexed properties.
-	// Their property caches require separate shapes even with the same prototype.
-	indexedProtoShapes *indexedPrototypeShapes
-
-	// functionProtoShape is the empty shape of the functions whose prototype is this object
-	// and whose initial properties are not stored yet, once one was made.
-	// See [ExecutionContext.functionShapeFor].
-	functionProtoShape *shape
+	// otherProtoShapes holds the roots for receivers with special named properties.
+	otherProtoShapes *[delegatedRoot - arrayRoot]prototypeShapeCache
 
 	// shiftedElems is the number of unused values before the elements of an array in their
 	// storage, left by removing the first elements. It counts only while the elements have the
@@ -314,11 +308,24 @@ type shapeKey struct {
 // privateShapeThreshold is the number of properties above which an object stops sharing its shape.
 const privateShapeThreshold = 128
 
+// A shapeFamily determines which receivers can share a tree of named property layouts.
+type shapeFamily uint8
+
+const (
+	ordinaryRoot shapeFamily = iota
+	arrayRoot
+	typedArrayRoot
+	lazyFunctionRoot
+	// These families start a separate tree for each request.
+	delegatedRoot
+	primitiveStringRoot
+)
+
 // shape describes the layout of an object: which property lives in which slot, and the prototype.
 //
-// Objects with a common prototype in their creation realm that got the same properties in the
-// same order share a shape, until one has many properties or changes in a way other than adding one.
-// Then it gets a private shape, which is changed in place.
+// The root fixes the creation realm, prototype, and behavior of named properties. Objects built
+// from that root by adding the same properties in the same order share a shape, until one
+// gets a private shape, which is changed in place.
 //
 // A shared shape never changes, so an inline cache that remembers one stays valid for as long
 // as the prototypes it looked through keep their properties.
@@ -332,8 +339,9 @@ type shape struct {
 
 	// key is the property this shape adds to parent, stored in slot count-1.
 	// It is an interned string or a symbol.
-	key   *Object
-	flags uint8
+	key    *Object
+	flags  uint8
+	family shapeFamily
 
 	// enumerable tells whether a shared shape has an enumerable property whose key is a
 	// string, once that is known: one of the enumerable* values.
@@ -588,6 +596,7 @@ func (s *shape) with(key *Object, flags uint8) *shape {
 		agent:  s.agent,
 		realm:  s.realm,
 		proto:  s.proto,
+		family: s.family,
 		parent: s,
 		key:    key,
 		flags:  flags,
@@ -687,6 +696,7 @@ func (s *shape) privateCopy() *shape {
 		agent:   s.agent,
 		realm:   s.realm,
 		proto:   s.proto,
+		family:  s.family,
 		count:   s.count,
 		table:   make(map[*Object]prop, s.count+8),
 		private: true,
@@ -708,6 +718,7 @@ func (s *shape) handOver() *shape {
 		agent:   s.agent,
 		realm:   s.realm,
 		proto:   s.proto,
+		family:  s.family,
 		count:   s.count,
 		table:   s.table,
 		private: true,
@@ -744,16 +755,15 @@ func (v Value) accessor() *accessorPair {
 // shapeTable holds the shapes that new objects start with.
 type shapeTable struct {
 	// shortStrings are immutable sentinels. Per-string caches belong to materialized objects.
-	shortStrings   *[shortstrings.MaxBytes + 1]Object
-	nullProto      *shape
-	nullArray      *shape
-	nullTypedArray *shape
-	object         *shape
-	array          *shape
-	function       *shape
-	string         *shape
-	iterResult     *shape
-	arguments      *shape
+	shortStrings         *[shortstrings.MaxBytes + 1]Object
+	nullProto            [delegatedRoot]*shape
+	object               *shape
+	array                *shape
+	function             *shape
+	materializedFunction *shape
+	string               *shape
+	iterResult           *shape
+	arguments            *shape
 
 	// regExp is the shape of a new RegExp object whose prototype is %RegExp.prototype%,
 	// once one was made.
@@ -765,29 +775,52 @@ type shapeTable struct {
 }
 
 // newShape returns a new empty shared shape for objects whose prototype is proto.
-func (cx *ExecutionContext) newShape(proto *Object, r *realm) *shape {
+func (cx *ExecutionContext) newShape(proto *Object, r *realm, family shapeFamily) *shape {
 	if proto != nil {
 		proto.flags |= objIsProto
 	}
 	return &shape{
-		agent: cx.agent,
-		realm: r,
-		proto: proto,
-		small: []shapeEntry{},
+		agent:  cx.agent,
+		realm:  r,
+		proto:  proto,
+		family: family,
+		small:  []shapeEntry{},
 	}
 }
 
-// shapeFor returns the empty shape for objects of the current realm with prototype proto, which may be nil.
+// shapeFor returns the ordinary root shape in the current realm for prototype proto, which may be nil.
 func (cx *ExecutionContext) shapeFor(proto *Object) *shape {
 	return cx.shapeForRealm(proto, cx.realm)
 }
 
-// shapeForRealm returns the empty shape for objects of r with prototype proto, which may be nil.
+// shapeForRealm returns the ordinary root shape in r for prototype proto, which may be nil.
 func (cx *ExecutionContext) shapeForRealm(proto *Object, r *realm) *shape {
 	if proto == nil {
-		return r.shapes.nullProto
+		return r.shapes.nullProto[ordinaryRoot]
 	}
-	return proto.ensureMeta().protoShapes.forRealm(cx, proto, r)
+	return proto.ensureMeta().protoShapes.forRealm(cx, proto, r, ordinaryRoot)
+}
+
+// rootShape selects the tree of layouts shared by receivers of this family, prototype and realm.
+func (cx *ExecutionContext) rootShape(proto *Object, r *realm, family shapeFamily) *shape {
+	if family == ordinaryRoot {
+		return cx.shapeForRealm(proto, r)
+	}
+	if family >= delegatedRoot {
+		return cx.newShape(proto, r, family)
+	}
+	if proto == nil {
+		s := &r.shapes.nullProto[family]
+		if *s == nil {
+			*s = cx.newShape(nil, r, family)
+		}
+		return *s
+	}
+	m := proto.ensureMeta()
+	if m.otherProtoShapes == nil {
+		m.otherProtoShapes = new([delegatedRoot - arrayRoot]prototypeShapeCache)
+	}
+	return m.otherProtoShapes[family-arrayRoot].forRealm(cx, proto, r, family)
 }
 
 type prototypeShapeCache struct {
@@ -796,62 +829,26 @@ type prototypeShapeCache struct {
 	foreign weak.Pointer[shape]
 }
 
-type indexedPrototypeShapes struct {
-	array, typedArray prototypeShapeCache
-}
-
-func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *realm) *shape {
+func (c *prototypeShapeCache) forRealm(cx *ExecutionContext, proto *Object, r *realm, family shapeFamily) *shape {
 	if proto.shape.realm != r {
 		if s := c.foreign.Value(); s != nil && s.realm == r {
 			return s
 		}
-		s := cx.newShape(proto, r)
+		s := cx.newShape(proto, r, family)
 		c.foreign = weak.Make(s)
 		return s
 	}
 	// The shape is stored on proto, so that it and the shapes derived from it are collected
 	// together with proto.
 	if c.local == nil {
-		c.local = cx.newShape(proto, r)
+		c.local = cx.newShape(proto, r, family)
 	}
 	return c.local
 }
 
-// objectRootShape returns the initial layout for an object of class cls.
-func (cx *ExecutionContext) objectRootShape(proto *Object, r *realm, cls class) *shape {
-	if cls != classArray && cls != classTypedArray {
-		return cx.shapeForRealm(proto, r)
-	}
-	if proto == nil {
-		s := &r.shapes.nullArray
-		if cls == classTypedArray {
-			s = &r.shapes.nullTypedArray
-		}
-		if *s == nil {
-			*s = cx.newShape(nil, r)
-		}
-		return *s
-	}
-	m := proto.ensureMeta()
-	if m.indexedProtoShapes == nil {
-		m.indexedProtoShapes = &indexedPrototypeShapes{}
-	}
-	if cls == classArray {
-		return m.indexedProtoShapes.array.forRealm(cx, proto, r)
-	}
-	return m.indexedProtoShapes.typedArray.forRealm(cx, proto, r)
-}
-
-// functionShapeFor returns the empty shape for the functions whose prototype is proto and whose
-// initial properties are not stored yet. No other object has this shape or one derived from it,
-// so an inline cache filled for another kind of object never applies to such a function.
-// proto must be an intrinsic prototype of the current realm.
+// functionShapeFor returns the root for functions whose initial named properties are still implicit.
 func (cx *ExecutionContext) functionShapeFor(proto *Object) *shape {
-	m := proto.ensureMeta()
-	if m.functionProtoShape == nil {
-		m.functionProtoShape = cx.newShape(proto, cx.realm)
-	}
-	return m.functionProtoShape
+	return cx.rootShape(proto, cx.realm, lazyFunctionRoot)
 }
 
 // NewObject returns a new empty object with the prototype proto, which may be nil.
@@ -1719,6 +1716,7 @@ func (cx *ExecutionContext) remove(o *Object, key *Object) {
 		agent:   old.agent,
 		realm:   old.realm,
 		proto:   old.proto,
+		family:  old.family,
 		table:   make(map[*Object]prop, old.count),
 		private: true,
 	}
@@ -1793,33 +1791,35 @@ func (o *Object) compact() {
 	o.slots = o.slots[:n]
 }
 
-// setProto changes the prototype of o.
+// setProto changes the prototype of o. It stays out of line to keep ArrayCreate small.
+//
+//go:noinline
 func (cx *ExecutionContext) setProto(o *Object, proto *Object) {
-	old := o.shape
-	if old.proto == proto {
-		return
+	if o.shape.proto != proto {
+		cx.rebuildShape(o, proto, o.shape.family)
+		cx.protoEpoch++
 	}
+}
+
+// rebuildShape preserves the slots of o when its prototype or named property behavior changes.
+func (cx *ExecutionContext) rebuildShape(o *Object, proto *Object, family shapeFamily) {
+	old := o.shape
 	if old.private {
 		s := old.privateCopy()
 		s.proto = proto
+		s.family = family
 		if proto != nil {
 			proto.flags |= objIsProto
 		}
 		o.shape = s
-	} else {
-		var s *shape
-		if o.flags&objExotic != 0 && o.class != classArray && o.class != classTypedArray {
-			s = cx.newShape(proto, old.realm)
-		} else {
-			s = cx.objectRootShape(proto, old.realm, o.class)
-		}
-		for _, k := range old.keys() {
-			p, _ := old.lookup(k)
-			s = s.with(k, p.flags)
-		}
-		o.shape = s
+		return
 	}
-	cx.protoEpoch++
+	s := cx.rootShape(proto, old.realm, family)
+	for _, k := range old.keys() {
+		p, _ := old.lookup(k)
+		s = s.with(k, p.flags)
+	}
+	o.shape = s
 }
 
 // makePrivate gives o a shape of its own, so that no inline cache filled for another object applies to it.

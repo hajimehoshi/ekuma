@@ -81,11 +81,11 @@ func (ag *agent) newRealm() *realm {
 // and the other objects of the agent depend on.
 func (cx *ExecutionContext) initRealmPrototypes() {
 	r := cx.realm
-	r.shapes.nullProto = cx.newShape(nil, r)
-	r.shapes.proxy = cx.newShape(nil, r)
+	r.shapes.nullProto[ordinaryRoot] = cx.newShape(nil, r, ordinaryRoot)
+	r.shapes.proxy = cx.rootShape(nil, r, delegatedRoot)
 	objectProto := (&propertyObject{
 		kind:  kindObject,
-		shape: r.shapes.nullProto,
+		shape: r.shapes.nullProto[ordinaryRoot],
 	}).init()
 	r.intrinsics[IntrinsicObjectPrototype] = objectProto
 	r.shapes.object = cx.shapeFor(objectProto)
@@ -93,7 +93,7 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 		kind:  kindFunction,
 		class: classFunction,
 		flags: objExotic,
-		shape: r.shapes.object,
+		shape: cx.functionShapeFor(objectProto),
 		fn: &function{
 			native: func(cx *ExecutionContext, this Value, args []Value) Value {
 				return Undefined
@@ -105,18 +105,19 @@ func (cx *ExecutionContext) initRealmPrototypes() {
 	}).init()
 	r.intrinsics[IntrinsicFunctionPrototype] = functionProto
 	r.shapes.function = cx.functionShapeFor(functionProto)
+	r.shapes.materializedFunction = cx.shapeFor(functionProto)
 	arrayProto := (&propertyObject{
 		kind:  kindArray,
 		class: classArray,
-		shape: cx.objectRootShape(objectProto, r, classArray),
+		shape: cx.rootShape(objectProto, r, arrayRoot),
 	}).init()
 	r.intrinsics[IntrinsicArrayPrototype] = arrayProto
-	r.shapes.array = cx.objectRootShape(arrayProto, r, classArray)
+	r.shapes.array = cx.rootShape(arrayProto, r, arrayRoot)
 	stringProto := cx.NewObject(objectProto)
 	r.intrinsics[IntrinsicStringPrototype] = stringProto
 	// A primitive string has its own length even when an ordinary object with the same
 	// prototype inherits its length.
-	r.shapes.string = cx.newShape(stringProto, r)
+	r.shapes.string = cx.rootShape(stringProto, r, primitiveStringRoot)
 	r.shapes.shortStrings = new([shortstrings.MaxBytes + 1]Object)
 	for i := range r.shapes.shortStrings {
 		r.shapes.shortStrings[i] = Object{
