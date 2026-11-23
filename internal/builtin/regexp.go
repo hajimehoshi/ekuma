@@ -90,12 +90,16 @@ func (e *regexpEnv) getLastIndex(vm *engine.VM, r *engine.Object) int64 {
 		v = vm.Get(r, e.key(e.lastIndex))
 	}
 	if v.IsNumber() {
-		n := v.Number()
-		if n >= 0 && n <= engine.MaxStringLength {
-			return int64(n)
-		}
+		return numericLastIndex(v.Number())
 	}
 	return numconv.ToLength(vm.ToNumber(v))
+}
+
+func numericLastIndex(n float64) int64 {
+	if n >= 0 && n <= numconv.MaxSafeInteger {
+		return int64(n)
+	}
+	return numconv.ToLength(n)
 }
 
 func (e *regexpEnv) setLastIndex(vm *engine.VM, r *engine.Object, n int64) {
@@ -132,9 +136,7 @@ func (e *regexpEnv) subject(s engine.Value) wtf8.String {
 // builtinExecRaw implements RegExpBuiltinExec up to the creation of the match array.
 // It returns the code unit indices of the captures, which are valid until the next match,
 // or nil when there is no match.
-func (e *regexpEnv) builtinExecRaw(vm *engine.VM, r *engine.Object, s engine.Value) []int {
-	// Converting lastIndex can run JavaScript that recompiles r.
-	lastIndex := e.getLastIndex(vm, r)
+func (e *regexpEnv) builtinExecRaw(vm *engine.VM, r *engine.Object, s engine.Value, lastIndex int64) []int {
 	re := r.RegExpMatcher()
 	f := re.Flags()
 	global, sticky := f&regexp.FlagGlobal != 0, f&regexp.FlagSticky != 0
@@ -201,7 +203,9 @@ func groupsObject(vm *engine.VM, re *regexp.Regexp, vals func(i int) engine.Valu
 
 // builtinExec implements RegExpBuiltinExec.
 func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s engine.Value) engine.Value {
-	caps := e.builtinExecRaw(vm, r, s)
+	// Converting lastIndex can run JavaScript that recompiles r.
+	lastIndex := e.getLastIndex(vm, r)
+	caps := e.builtinExecRaw(vm, r, s, lastIndex)
 	if caps == nil {
 		return engine.Null
 	}
@@ -250,14 +254,30 @@ func (e *regexpEnv) builtinExec(vm *engine.VM, r *engine.Object, s engine.Value)
 	return engine.ObjectValue(a)
 }
 
-// fastExec returns the exec method of r, and reports whether RegExpExec on r would call the
-// original exec, and so whether builtinExecRaw can stand for it.
-func (e *regexpEnv) fastExec(vm *engine.VM, r *engine.Object) (engine.Value, bool) {
+// execMatch performs RegExpExec, returning capture indices or the result object, or both nil for no match.
+func (e *regexpEnv) execMatch(vm *engine.VM, r *engine.Object, s engine.Value) ([]int, *engine.Object) {
+	var exec, index engine.Value
 	if vm.IsUnmodifiedRegExp(r) {
-		return engine.ObjectValue(e.exec), true
+		index, _ = vm.RegExpLastIndex(r)
+		exec = engine.ObjectValue(e.exec)
+	} else {
+		exec = vm.Get(r, e.key(e.execKey))
+		if exec.IsObject() && exec.Object() == e.exec && r.RegExpMatcher() != nil {
+			if d, _ := vm.GetOwnProperty(r, e.key(e.lastIndex)); d.Writable() {
+				index = d.Value()
+			}
+		}
 	}
-	exec := vm.Get(r, e.key(e.execKey))
-	return exec, exec.IsObject() && exec.Object() == e.exec && r.RegExpMatcher() != nil
+	// With a writable numeric lastIndex, the original exec can run without a native frame.
+	// Coercion can otherwise run JavaScript, and a read-only lastIndex can throw on a write.
+	if index.IsNumber() {
+		return e.builtinExecRaw(vm, r, s, numericLastIndex(index.Number())), nil
+	}
+	result := e.regExpExecWith(vm, r, s, exec)
+	if result.IsNull() {
+		return nil, nil
+	}
+	return nil, result.Object()
 }
 
 // cloneRegExp returns a new RegExp object with the pattern src and the flags flags. It does what
@@ -521,11 +541,8 @@ func initRegExp(vm *engine.VM) {
 		}
 		r := thisObject(vm, this, "RegExp.prototype.test")
 		s := vm.ToStringValue(arg(args, 0))
-		exec, ok := env.fastExec(vm, r)
-		if ok {
-			return engine.Bool(env.builtinExecRaw(vm, r, s) != nil)
-		}
-		return engine.Bool(!env.regExpExecWith(vm, r, s, exec).IsNull())
+		caps, result := env.execMatch(vm, r, s)
+		return engine.Bool(caps != nil || result != nil)
 	}))
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := thisObject(vm, this, "RegExp.prototype.toString")
@@ -614,18 +631,13 @@ func initRegExp(vm *engine.VM) {
 		var out []engine.Value
 		for {
 			var matchStr engine.Value
-			if exec, ok := env.fastExec(vm, rx); ok {
-				caps := env.builtinExecRaw(vm, rx, s)
-				if caps == nil {
-					break
-				}
+			caps, result := env.execMatch(vm, rx, s)
+			if caps != nil {
 				matchStr = capture(vm, s, caps, 0)
+			} else if result != nil {
+				matchStr = vm.ToStringValue(vm.Get(result, engine.IndexKey(0)))
 			} else {
-				res := env.regExpExecWith(vm, rx, s, exec)
-				if res.IsNull() {
-					break
-				}
-				matchStr = vm.ToStringValue(vm.Get(res.Object(), engine.IndexKey(0)))
+				break
 			}
 			out = append(out, matchStr)
 			if matchStr.Str() == "" {
@@ -707,19 +719,15 @@ func initRegExp(vm *engine.VM) {
 			vm.Set(rx, key, engine.Number(0))
 		}
 		index := engine.Number(-1)
-		var res engine.Value
-		if exec, ok := env.fastExec(vm, rx); ok {
-			if caps := env.builtinExecRaw(vm, rx, s); caps != nil {
-				index = engine.Number(float64(caps[0]))
-			}
-		} else {
-			res = env.regExpExecWith(vm, rx, s, exec)
+		caps, result := env.execMatch(vm, rx, s)
+		if caps != nil {
+			index = engine.Number(float64(caps[0]))
 		}
 		if cur := vm.Get(rx, key); !engine.SameValue(cur, prev) {
 			vm.Set(rx, key, prev)
 		}
-		if res.IsObject() {
-			index = vm.Get(res.Object(), env.key(env.index))
+		if result != nil {
+			index = vm.Get(result, env.key(env.index))
 		}
 		return index
 	})
@@ -802,14 +810,13 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 	var capsArr [16]int
 	results, capsBuf := resultsArr[:0], capsArr[:0]
 	for {
-		exec, fast := e.fastExec(vm, rx)
+		caps, res := e.execMatch(vm, rx, s)
+		if caps == nil && res == nil {
+			break
+		}
+		found = true
 		var empty bool
-		if fast {
-			caps := e.builtinExecRaw(vm, rx, s)
-			if caps == nil {
-				break
-			}
-			found = true
+		if caps != nil {
 			empty = caps[0] == caps[1]
 			re := rx.RegExpMatcher()
 			if !functional && len(results) == 0 {
@@ -827,14 +834,9 @@ func (e *regexpEnv) replace(vm *engine.VM, rx *engine.Object, s engine.Value, re
 				})
 			}
 		} else {
-			res := e.regExpExecWith(vm, rx, s, exec)
-			if res.IsNull() {
-				break
-			}
-			found = true
-			results = append(results, match{res: res.Object()})
+			results = append(results, match{res: res})
 			if global {
-				empty = vm.ToString(vm.Get(res.Object(), engine.IndexKey(0))) == ""
+				empty = vm.ToString(vm.Get(res, engine.IndexKey(0))) == ""
 			}
 		}
 		if !global {
@@ -985,29 +987,21 @@ func (e *regexpEnv) split(vm *engine.VM, rx *engine.Object, s engine.Value, limi
 	}
 	// Reading exec from a splitter that is not unmodified can run JavaScript, so it is read
 	// only where RegExpExec reads it.
-	var origExec bool
-	if splitter != nil && vm.IsUnmodifiedRegExp(splitter) {
-		origExec = true
-		if c == vm.Intrinsic(engine.IntrinsicRegExp) {
-			fast = true
-			re = splitter.RegExpMatcher()
-		}
+	if splitter != nil && c == vm.Intrinsic(engine.IntrinsicRegExp) && vm.IsUnmodifiedRegExp(splitter) {
+		fast = true
+		re = splitter.RegExpMatcher()
 	}
 	size := s.StringLength()
 	if size == 0 {
-		switch {
-		case fast:
+		if fast {
 			// The splitter is sticky and its lastIndex is 0, so it can only match at 0.
 			if caps := re.Find(&e.m, e.subject(s), 0, vm); caps != nil {
 				e.legacy.recordLegacy(true, s, caps)
 				return engine.ObjectValue(vm.NewArray(nil))
 			}
-		case origExec:
-			if e.builtinExecRaw(vm, splitter, s) != nil {
-				return engine.ObjectValue(vm.NewArray(nil))
-			}
-		default:
-			if !e.regExpExec(vm, splitter, s).IsNull() {
+		} else {
+			caps, result := e.execMatch(vm, splitter, s)
+			if caps != nil || result != nil {
 				return engine.ObjectValue(vm.NewArray(nil))
 			}
 		}
