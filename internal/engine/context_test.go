@@ -12,8 +12,7 @@ import (
 )
 
 func TestExecutionContextHostReentry(t *testing.T) {
-	machine := engine.NewVM(nil)
-	cx := engine.HostContext(machine)
+	cx, host := engine.NewExecutionContext(nil)
 	builtin.Install(cx)
 	a := cx.Realm()
 	b := cx.CreateRealm(builtin.Install)
@@ -27,7 +26,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 			c.Context().Run(func() {
 				cx := c.Context()
 				probe := cx.NewFunction("probe", func(cx *engine.ExecutionContext, _ engine.Value, args []engine.Value) engine.Value {
-					if engine.HostContext(machine).Realm() != c || !cx.IsEnteredRealm(a) {
+					if host.ActiveContext().Realm() != c || !cx.IsEnteredRealm(a) {
 						t.Error("expected running C and entered A during reentry")
 					}
 					switch outcome {
@@ -37,7 +36,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 						outer.ThrowTypeError("from B")
 					case "iterator step":
 						defer func() {
-							if engine.HostContext(machine).Realm() != c {
+							if host.ActiveContext().Realm() != c {
 								t.Error("iterator step did not restore C on throw")
 							}
 						}()
@@ -62,7 +61,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				ctor = bContext.NewNativeConstructor("Bridge", 0, func(cx *engine.ExecutionContext, _ engine.Value, _ []engine.Value) engine.Value {
 					outer = cx
 					defer func() {
-						if engine.HostContext(machine).Realm() != b || !bContext.IsEnteredRealm(a) {
+						if host.ActiveContext().Realm() != b || !bContext.IsEnteredRealm(a) {
 							t.Error("return from C did not restore running B and entered A")
 						}
 					}()
@@ -102,7 +101,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 					t.Errorf("got %v, want an interruption carrying %v", err, stop)
 				}
 			}
-			if engine.HostContext(machine).Realm() != a || cx.IsEnteredRealm(a) {
+			if host.ActiveContext().Realm() != a || cx.IsEnteredRealm(a) {
 				t.Error("outer host boundary did not restore A and clear the entered realm")
 			}
 		})
@@ -117,7 +116,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 }
 
 func TestSameRealmContextCallAllocations(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	f := cx.NewNative("noop", 0, func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
 		return engine.Undefined
 	})

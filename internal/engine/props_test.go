@@ -72,7 +72,7 @@ func TestStringIndexKey(t *testing.T) {
 }
 
 func TestPrimitiveElements(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	o := cx.NewString("abc").Object()
 	if _, ok := o.Element(0); ok {
 		t.Error("Element reported a stored element for a primitive")

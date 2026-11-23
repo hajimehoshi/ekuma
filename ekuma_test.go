@@ -3415,14 +3415,14 @@ var inlineTextSink wtf8.String
 func BenchmarkInlineString(b *testing.B) {
 	for _, text := range []wtf8.String{"abcdefgh", "abcdefghi"} {
 		b.Run(fmt.Sprintf("construct/%d", len(text)), func(b *testing.B) {
-			cx := engine.HostContext(engine.NewVM(nil))
+			cx, _ := engine.NewExecutionContext(nil)
 			b.ReportAllocs()
 			for b.Loop() {
 				inlineStringSink = cx.NewString(text)
 			}
 		})
 		b.Run(fmt.Sprintf("roundtrip/%d", len(text)), func(b *testing.B) {
-			cx := engine.HostContext(engine.NewVM(nil))
+			cx, _ := engine.NewExecutionContext(nil)
 			b.ReportAllocs()
 			for b.Loop() {
 				inlineTextSink = cx.ToString(cx.NewString(text))
@@ -3471,8 +3471,8 @@ func BenchmarkInlineString(b *testing.B) {
 }
 
 func TestInlineStringBoundaries(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
-	otherContext := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
+	otherContext, _ := engine.NewExecutionContext(nil)
 	for _, s := range []wtf8.String{"", "a", "ab", "abcdefgh", "abcdefghi", "ab\x00", "\x00\x00\x00\x00\x00\x00\xc2\x80", "日本", "\xed\xa0\x80"} {
 		t.Run(fmt.Sprintf("%x", s), func(t *testing.T) {
 			v := cx.NewString(s)
@@ -3504,7 +3504,7 @@ func TestInlineStringBoundaries(t *testing.T) {
 }
 
 func TestInlineStringIndexAllocations(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	s := cx.NewString("abc")
 	if got := testing.AllocsPerRun(100, func() { cx.Index(s, 1) }); got != 0 {
 		t.Errorf("packed string index allocations = %v, want 0", got)
@@ -3512,7 +3512,7 @@ func TestInlineStringIndexAllocations(t *testing.T) {
 }
 
 func TestInlineStringCodeUnits(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	for _, tc := range []struct {
 		text  wtf8.String
 		units []uint16

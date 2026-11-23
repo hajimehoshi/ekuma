@@ -3,9 +3,9 @@
 
 package engine
 
-// NewVMWithBigIntResultLimit returns a [VM] that allows up to maxBits bits in checked BigInt results.
-func NewVMWithBigIntResultLimit(maxBits int64) *ExecutionContext {
-	cx := HostContext(NewVM(nil))
+// NewExecutionContextWithBigIntResultLimit limits checked BigInt results to maxBits bits.
+func NewExecutionContextWithBigIntResultLimit(maxBits int64) *ExecutionContext {
+	cx, _ := NewExecutionContext(nil)
 	cx.maxBigIntResultBits = maxBits
 	return cx
 }

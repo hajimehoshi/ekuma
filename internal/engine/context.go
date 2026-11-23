@@ -12,9 +12,15 @@ type ExecutionContext struct {
 	realm *Realm
 }
 
-// HostContext returns the context to use for a host entry into vm.
-func HostContext(vm *VM) *ExecutionContext {
-	return vm.active
+// Host provides agent-wide operations and the active context for host calls.
+// A Host must not be copied.
+type Host struct {
+	agent
+}
+
+// ActiveContext returns the execution context for a host entry.
+func (h *Host) ActiveContext() *ExecutionContext {
+	return h.active
 }
 
 // Context returns the execution context of r.

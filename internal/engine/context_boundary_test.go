@@ -75,7 +75,11 @@ func TestExecutionContextBoundary(t *testing.T) {
 			// Only dispatch, restoration and the host entry point may observe the active binding.
 			vm := pkg.Scope().Lookup("VM").Type()
 			active, _, _ := types.LookupFieldOrMethod(vm, true, pkg, "active")
-			activate, _, _ := types.LookupFieldOrMethod(types.NewPointer(pkg.Scope().Lookup("ExecutionContext").Type()), true, pkg, "activate")
+			cx := types.NewPointer(pkg.Scope().Lookup("ExecutionContext").Type())
+			if method, _, _ := types.LookupFieldOrMethod(cx, true, pkg, "ActiveContext"); method != nil {
+				t.Error("ExecutionContext exposes the active context to built-ins")
+			}
+			activate, _, _ := types.LookupFieldOrMethod(cx, true, pkg, "activate")
 			if active == nil || activate == nil {
 				t.Fatal("missing execution context dispatch binding")
 			}
@@ -94,13 +98,13 @@ func TestExecutionContextBoundary(t *testing.T) {
 						switch info.Uses[id] {
 						case active:
 							switch owner {
-							case "activate", "HostContext", "runFrame", "protect":
+							case "activate", "ActiveContext", "runFrame", "protect":
 							default:
 								t.Errorf("%v: active context access in %s", fset.Position(id.Pos()), owner)
 							}
 						case activate:
 							switch owner {
-							case "NewVM", "Run", "enter", "enterJob", "enterBoundary", "exec", "runFrame", "callNative", "protect":
+							case "NewExecutionContext", "Run", "enter", "enterJob", "enterBoundary", "exec", "runFrame", "callNative", "protect":
 							default:
 								t.Errorf("%v: context activation in %s", fset.Position(id.Pos()), owner)
 							}
@@ -129,8 +133,11 @@ func TestExecutionContextBoundary(t *testing.T) {
 				return true
 			})
 		}
-		// Check inferred expressions too, including a VM obtained from an object or a factory.
+		// Check inferred expressions too, including handles obtained from a factory.
 		for expr, tv := range info.Types {
+			if engineType(tv.Type, "Host") {
+				t.Errorf("%v: built-in uses the engine host handle", fset.Position(expr.Pos()))
+			}
 			if engineType(tv.Type, "VM") {
 				t.Errorf("%v: built-in uses the raw engine VM", fset.Position(expr.Pos()))
 			}

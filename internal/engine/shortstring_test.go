@@ -13,7 +13,7 @@ import (
 )
 
 func BenchmarkShortString(b *testing.B) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	for _, s := range []wtf8.String{"abc", "abcdefgh", "é日", "😀😀"} {
 		b.Run(string(s), func(b *testing.B) {
 			v := cx.NewString(s)
@@ -49,7 +49,7 @@ func BenchmarkShortString(b *testing.B) {
 }
 
 func BenchmarkShortStringSubstring(b *testing.B) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	for _, s := range []wtf8.String{"abcdefgh", "é日a", "😀😀"} {
 		b.Run(string(s), func(b *testing.B) {
 			v := cx.NewString(s)
@@ -68,7 +68,7 @@ func BenchmarkShortStringSubstring(b *testing.B) {
 }
 
 func TestSubstringEquals(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	for _, tc := range []struct {
 		name          string
 		text          wtf8.String
@@ -169,7 +169,7 @@ func TestToWellFormedLiteral(t *testing.T) {
 }
 
 func BenchmarkShortStringLeadingSurrogate(b *testing.B) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	v := cx.NewString("😀😀")
 	for b.Loop() {
 		v.UnitAt(0)
@@ -177,7 +177,7 @@ func BenchmarkShortStringLeadingSurrogate(b *testing.B) {
 }
 
 func TestCodePointAtCachedLowSurrogate(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	const prefixUnits = 90
 	v := cx.NewString(wtf8.String(strings.Repeat("日", prefixUnits) + "😀"))
 	if got := v.CodePointAt(prefixUnits + 1); got != 0xde00 {
@@ -252,7 +252,7 @@ func TestStringValueBoundaries(t *testing.T) {
 }
 
 func TestInternedStringValue(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	const text = "\xed\xa0\xbdabc"
 	v := cx.NewString(text)
 	for _, tc := range []struct {
@@ -277,7 +277,7 @@ func TestInternedStringValue(t *testing.T) {
 }
 
 func TestShortStringToNumber(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	for _, tc := range []struct {
 		text wtf8.String
 		want float64

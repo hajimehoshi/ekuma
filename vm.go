@@ -24,7 +24,7 @@ import (
 // The zero value is ready to use. A VM must not be copied after first use.
 // A VM and its values and realms must not be used from more than one goroutine at a time.
 type VM struct {
-	e *engine.VM
+	e *engine.Host
 
 	initialRealm *Realm
 
@@ -66,7 +66,7 @@ type interruptRequests struct {
 }
 
 // request adds req with cause, unless its call has ended. It may be called from any goroutine.
-func (r *interruptRequests) request(e *engine.VM, req *interruptRequest, cause error) {
+func (r *interruptRequests) request(e *engine.Host, req *interruptRequest, cause error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	if req.released {
@@ -80,7 +80,7 @@ func (r *interruptRequests) request(e *engine.VM, req *interruptRequest, cause e
 }
 
 // release ends the call of req and withdraws req. The requests of the other calls stay.
-func (r *interruptRequests) release(e *engine.VM, req *interruptRequest) {
+func (r *interruptRequests) release(e *engine.Host, req *interruptRequest) {
 	r.m.Lock()
 	defer r.m.Unlock()
 	req.released = true
@@ -99,17 +99,18 @@ func (r *interruptRequests) release(e *engine.VM, req *interruptRequest) {
 }
 
 func (vm *VM) hostContext() *engine.ExecutionContext {
-	return engine.HostContext(vm.e)
+	return vm.e.ActiveContext()
 }
 
 // initIfNeeded creates the engine of vm on first use, and panics when vm is a copy of a [VM] in
 // use.
 func (vm *VM) initIfNeeded() {
 	if vm.e == nil {
-		vm.e = engine.NewVM(vm)
+		cx, host := engine.NewExecutionContext(vm)
+		vm.e = host
 		vm.interrupts = &interruptRequests{}
-		builtin.Install(vm.hostContext())
-		vm.initialRealm = vm.realmOf(vm.hostContext().Realm())
+		builtin.Install(cx)
+		vm.initialRealm = vm.realmOf(cx.Realm())
 		return
 	}
 	if vm.e.HostDefined() != any(vm) {

@@ -646,9 +646,10 @@ type VM struct {
 // loop runs measurably faster with.
 const initialStackSize = 1 << 12
 
-// NewVM creates a [VM] without the built-in objects. hostDefined is what [VM.HostDefined] returns.
-func NewVM(hostDefined any) *VM {
-	machine := &VM{
+// NewExecutionContext creates an agent and returns its initial realm's context and host handle.
+// The realm starts without the standard built-ins.
+func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
+	host := &Host{
 		hostDefined:         hostDefined,
 		stack:               make([]Value, initialStackSize),
 		symbolRegistry:      map[wtf8.String]*Object{},
@@ -656,7 +657,7 @@ func NewVM(hostDefined any) *VM {
 		mailbox:             newMailbox(),
 		maxBigIntResultBits: MaxBigIntBits,
 	}
-	r := machine.newRealm()
+	r := host.newRealm()
 	cx := r.Context()
 	cx.activate()
 	cx.symbolShape = cx.newShape(nil, nil)
@@ -686,7 +687,7 @@ func NewVM(hostDefined any) *VM {
 	}).init()
 	cx.initRealmGlobals()
 	cx.strings.keepNew = false
-	return machine
+	return cx, host
 }
 
 // Intrinsic identifies an intrinsic object.

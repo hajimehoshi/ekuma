@@ -14,7 +14,7 @@ import (
 )
 
 func BenchmarkTableSet(b *testing.B) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	for _, kind := range []string{"number", "string", "bigint", "object"} {
 		for _, size := range []int{1, 4, 8, 1000, 100000} {
 			b.Run(fmt.Sprintf("%s/%d", kind, size), func(b *testing.B) {

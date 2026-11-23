@@ -73,7 +73,7 @@ func TestCursorAcrossCompaction(t *testing.T) {
 }
 
 func TestSameValueZero(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	// Below and above the size at which the table indexes its keys.
 	for _, filler := range []int{0, 20} {
 		var tab collection.Table
@@ -134,7 +134,7 @@ func TestSameValueZero(t *testing.T) {
 }
 
 func TestSameValueZeroBigInts(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	big64 := func() engine.Value {
 		return cx.NewBigInt(new(big.Int).Lsh(big.NewInt(1), 64))
 	}
@@ -193,7 +193,7 @@ func TestSameValueZeroBigInts(t *testing.T) {
 // TestFindAfterDeletes tests that every live key is found while deleted entries are in the
 // table, after the table grows, and in a clone.
 func TestFindAfterDeletes(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	// A new string for every call, so that keys are found by their contents.
 	key := func(i int) engine.Value {
 		switch i % 3 {
@@ -232,7 +232,7 @@ func TestFindAfterDeletes(t *testing.T) {
 // TestGrowthByUnhashedKeys tests that number keys are found and missed when the storage of the
 // entries grows only by keys that the slots do not locate.
 func TestGrowthByUnhashedKeys(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	var tab collection.Table
 	var numbers int
 	for i := range 1000 {

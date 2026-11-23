@@ -10,7 +10,7 @@ import (
 )
 
 func TestRealmIntrinsic(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	var want *engine.Object
 	created := cx.CreateRealm(func(cx *engine.ExecutionContext) {
 		want = cx.ProtoOf(cx.GlobalObject().Object())
@@ -24,13 +24,12 @@ func TestRealmIntrinsic(t *testing.T) {
 }
 
 func TestCreateRealmThrow(t *testing.T) {
-	machine := engine.NewVM(nil)
-	cx := engine.HostContext(machine)
+	cx, host := engine.NewExecutionContext(nil)
 	caller := cx.Realm()
 	var created *engine.Realm
 	thrown, ok := cx.Completion(func() {
 		defer func() {
-			if engine.HostContext(machine).Realm() != caller {
+			if host.ActiveContext().Realm() != caller {
 				t.Error("CreateRealm did not restore its caller after the installer threw")
 			}
 		}()

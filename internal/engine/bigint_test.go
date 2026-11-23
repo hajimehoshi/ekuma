@@ -13,7 +13,7 @@ import (
 
 func TestBigIntBitwiseSizeLimit(t *testing.T) {
 	const bits = 128
-	cx := engine.NewVMWithBigIntResultLimit(bits)
+	cx := engine.NewExecutionContextWithBigIntResultLimit(bits)
 	builtin.Install(cx)
 	setup := fmt.Sprintf(`
 		const x = BigInt.asUintN(%d, -1n);

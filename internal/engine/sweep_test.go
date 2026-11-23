@@ -24,7 +24,7 @@ func runScript(cx *engine.ExecutionContext, file, src string) (engine.Value, err
 
 func newVM(t *testing.T) *engine.ExecutionContext {
 	t.Helper()
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	builtin.Install(cx)
 	if _, err := runScript(cx, "init", `var o, i = 0;`); err != nil {
 		t.Fatalf("runScript: %v", err)

@@ -11,7 +11,7 @@ import (
 )
 
 func TestDisplayStringLoneSurrogates(t *testing.T) {
-	cx := engine.HostContext(engine.NewVM(nil))
+	cx, _ := engine.NewExecutionContext(nil)
 	// A low surrogate before a high one makes two lone surrogates in a row.
 	s := wtf8.FromUTF16([]uint16{'a', 0xDE00, 0xD83D})
 	for _, tc := range []struct {
