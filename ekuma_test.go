@@ -1272,29 +1272,80 @@ func TestCancel(t *testing.T) {
 	}
 }
 
-func TestCancelBeforeHostCall(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		var vm ekuma.VM
-		ctx, cancel := context.WithCancel(t.Context())
-		defer cancel()
-		var calls int
-		step := vm.FuncOf("step", func(ekuma.Value, []ekuma.Value) (any, error) {
-			calls++
-			cancel()
-			// Wait until the VM has received the cancellation.
-			synctest.Wait()
-			return nil, nil
+// TestCancelBeforeCalls checks that no call starts after a host callback cancels the evaluation,
+// whichever way the call is made.
+func TestCancelBeforeCalls(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "host function",
+			src:  `step(); step();`,
+		},
+		{
+			name: "function",
+			src:  `step(); f();`,
+		},
+		{
+			name: "apply of the arguments",
+			src:  `function g() { step(); return f.apply(this, arguments); } g();`,
+		},
+		{
+			// Compiling the code would throw a SyntaxError.
+			name: "direct eval",
+			src:  `step(); eval("(");`,
+		},
+		{
+			name: "tail call",
+			src:  `function g() { "use strict"; step(); return f(); } g();`,
+		},
+		{
+			name: "callback of a built-in",
+			src:  `[1, 2].forEach(function (x) { if (x === 1) step(); else ran = true; });`,
+		},
+		{
+			name: "host function called back by a built-in",
+			src:  `[1, 2].forEach(step);`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var vm ekuma.VM
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				var steps int
+				step := vm.FuncOf("step", func(ekuma.Value, []ekuma.Value) (any, error) {
+					steps++
+					cancel()
+					// Wait until the VM has received the cancellation.
+					synctest.Wait()
+					return nil, nil
+				})
+				if err := vm.Global().Set("step", step); err != nil {
+					t.Fatal(err)
+				}
+				// The fast paths take calls of functions that have run, when the VM has room for
+				// more frames.
+				src := `var ran = false; function f() { ran = true; }
+					(function nest(n) { if (n > 0) nest(n - 1); else f(); })(8);
+					ran = false;` + tc.src
+				if _, err := runScript(ctx, &vm, "cancel", src); !errors.Is(err, context.Canceled) {
+					t.Errorf("got %v, want context.Canceled", err)
+				}
+				if steps != 1 {
+					t.Errorf("got %d calls of step, want 1", steps)
+				}
+				ran, err := vm.Global().Get("ran")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if ran.Bool() {
+					t.Errorf("a function ran after the cancellation")
+				}
+			})
 		})
-		if err := vm.Global().Set("step", step); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := runScript(ctx, &vm, "cancel", "step(); step();"); !errors.Is(err, context.Canceled) {
-			t.Errorf("got %v, want context.Canceled", err)
-		}
-		if calls != 1 {
-			t.Errorf("got %d host calls, want 1", calls)
-		}
-	})
+	}
 }
 
 // TestCancelLoopConditions tests that a context stops the loops whose conditions jump back.
