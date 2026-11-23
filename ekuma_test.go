@@ -3700,6 +3700,14 @@ func TestDirectEvalParamDefaultArguments(t *testing.T) {
 }
 
 func TestPromiseTrySpec(t *testing.T) {
+	// ES2026 §27.2.4.8 creates the promise capability before calling the callback.
+	// Ekuma follows ECMA-262 #3883. It checks for an object receiver, calls the
+	// callback, then uses PromiseResolve on success. The pinned Test262 fixture
+	// expects this to preserve a returned promise whose constructor is the receiver.
+	// Recheck call order and promise identity when adopting a new edition.
+	// https://tc39.es/ecma262/2026/multipage/control-abstraction-objects.html#sec-promise.try
+	// https://github.com/tc39/ecma262/commit/9235b15340da045e06309b24f82c5e0711ad58f9
+	// https://raw.githubusercontent.com/tc39/test262/2e58f87d8350ad51224617a041c6e041d52f8444/test/built-ins/Promise/try/avoids-wrap.js
 	var vm ekuma.VM
 	got := run(t, &vm, `
 		const p = Promise.resolve(1);
