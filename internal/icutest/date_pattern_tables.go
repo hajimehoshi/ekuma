@@ -101,7 +101,6 @@ func (s *datePatternSuite) cppDatePatterns(src intervalSource) {
 	s.excluded["generator populated with custom day-period patterns"] += len(src.table("testItems[][2]"))
 	s.excluded["generator skeleton extraction or enumeration"] += len(src.table("testGetSkeletonAndBase[][3]")) +
 		len(src.table("testSkeletonsResults[]")) + len(src.table("testBaseSkeletonsResults[]")) + len(src.from("::testStaticGetSkeleton(").table("testData[]"))
-	s.excluded["localized field display name"] += len(src.table("FieldDisplayNameData testData[]"))
 	s.excluded["custom date/time combining pattern"] += len(skel)
 	s.excluded["week-based year in Japanese and Chinese month regression"] += 2
 	s.excluded["comparison of three ICU formatting APIs without an independent expected pattern"] += len(listArray(src.from("::test_jConsistencyOddLocales() {"), "localeIDs[]"))

@@ -59,6 +59,15 @@ data to check week starts and weekends, text direction, calendar preferences,
 collations, hour cycles, numbering systems, and regional time zones. It also
 checks the sorted lists for all six `Intl.supportedValuesOf` keys.
 
+## Display names beyond languages
+
+The `display-names` group uses `locnmtst.cpp`, `cloctst.c`, ICU4J tests, and
+CLDR resources for exact region, script, currency, calendar, and date-time
+field names. All 146 checks pass across three styles and both fallback
+policies, including a name equal to its code. Exclusions include stand-alone
+script labels, currency symbols and plurals, and weekday of the month.
+[Ekuma formatter examples](../../intl/intl_test.go) · [Test262 currency coverage](https://github.com/tc39/test262/blob/2e58f87d8350ad51224617a041c6e041d52f8444/test/intl402/Intl/supportedValuesOf/currencies-accepted-by-DisplayNames.js) · [V8 calendar](https://github.com/v8/v8/blob/31a217159f038ccf8306f6da561bae54c0c0bb86/test/intl/displaynames/calendar-v2.js) and [date-time field comparisons](https://github.com/v8/v8/blob/31a217159f038ccf8306f6da561bae54c0c0bb86/test/intl/displaynames/date-time-field-v2.js)
+
 ## Single-date pattern fixtures
 
 `dtptngts.cpp`, `udatpg_test.c`, and `DateTimeGeneratorTest.java` cover

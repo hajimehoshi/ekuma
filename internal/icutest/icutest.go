@@ -101,6 +101,9 @@ func Run(t *testing.T) {
 		t.Run("localeDisplayName.txt", func(t *testing.T) {
 			runDisplayNames(t, filepath.Join(localeDir, "localeDisplayName.txt"))
 		})
+		t.Run("display-names", func(t *testing.T) {
+			runDisplayNameComponents(t, cldrDir)
+		})
 		t.Run("plurals.txt", func(t *testing.T) {
 			runPluralSamples(t, filepath.Join(misc, "plurals.txt"))
 		})

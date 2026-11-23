@@ -88,6 +88,12 @@ jobs:
             /icu4c/source/test/testdata/dcfmtest.txt
             /icu4c/source/test/testdata/calendar.txt
             /icu4c/source/test/testdata/format.txt
+            /icu4c/source/test/intltest/locnmtst.cpp
+            /icu4c/source/test/cintltst/cloctst.c
+            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/util/CurrencyTest.java
+            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/TestLocaleNamePackaging.java
+            /icu4c/source/data/region/es.txt
+            /icu4c/source/data/lang/en.txt
             /icu4c/source/test/cintltst/cdateintervalformattest.c
             /icu4c/source/data/zone/en.txt
             /icu4c/source/tools/tzcode/icuzones
