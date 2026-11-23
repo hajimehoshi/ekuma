@@ -970,6 +970,15 @@ func main() {
 		}
 		zoneNames[l] = timeZoneFields(object(object(mainData(dates, name)["dates"])["timeZoneNames"]))
 	}
+	// The resolved JSON omits names whose inheritance CLDR blocks. Store an
+	// empty field wherever walking to the parent would restore such a name.
+	for l, names := range zoneNames {
+		for key, value := range tree.parentFields(l, zoneNames) {
+			if _, ok := names[key]; !ok && value != "" {
+				names[key] = ""
+			}
+		}
+	}
 	f = newFile("timezonenames.go", datesSource)
 	f.records(`maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.`, "TimeZoneNames", tree.records(zoneNames))
 	f.write()
@@ -1416,18 +1425,21 @@ func (t *localeTree) parent(l string) (string, bool) {
 	return "und", true
 }
 
+func (t *localeTree) parentFields(l string, data map[string]map[string]string) map[string]string {
+	for p, ok := t.parent(l); ok; p, ok = t.parent(p) {
+		if fields, ok := data[p]; ok {
+			return fields
+		}
+	}
+	return nil
+}
+
 // records returns the records of the locales in data, each without the fields whose values
 // equal those of the nearest ancestor that has data.
 func (t *localeTree) records(data map[string]map[string]string) map[string]string {
 	out := map[string]string{}
 	for l, fields := range data {
-		var inherited map[string]string
-		for p, ok := t.parent(l); ok; p, ok = t.parent(p) {
-			if d, ok := data[p]; ok {
-				inherited = d
-				break
-			}
-		}
+		inherited := t.parentFields(l, data)
 		var b strings.Builder
 		for _, k := range slices.Sorted(maps.Keys(fields)) {
 			v := fields[k]

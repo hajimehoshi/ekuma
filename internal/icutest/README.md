@@ -9,20 +9,8 @@ adapters read fixtures from the external checkouts. [Pins and default cache path
 # Full suite
 go test -count=1 -v -run '^TestICU$' .
 
-# Unicode casing and ICU casing regressions
-go test -count=1 -v -run '^TestICU$/^(UnicodeData\.txt|SpecialCasing\.txt|casing\.txt)$' .
-
-# Single-date pattern selection
-go test -count=1 -v -run '^TestICU$/^(dtptngts\.cpp|udatpg_test\.c|DateTimeGeneratorTest\.java)$' .
-
-# Time-zone identifiers and display names
-go test -count=1 -v -run '^TestICU$/^(TimeZoneAliases\.txt|ccaltst\.c|tztest\.cpp|tzfmttst\.cpp|dtfmttst\.cpp|TimeZoneFormatTest\.java)$' .
-
-# List formatting
-go test -count=1 -v -run '^TestICU$/^(listformattertest\.cpp|ulistfmttest\.c|ListFormatterTest\.java)$' .
-
-# Relative time formatting
-go test -count=1 -v -run '^TestICU$/^(reldatefmttest\.cpp|crelativedateformattest\.c|RelativeDateTimeFormatterTest\.java)$' .
+# One fixture
+go test -count=1 -v -run '^TestICU$/^TimeZoneAliases\.txt$' .
 ```
 
 Use a fixture name after `^TestICU$/` to run one subtest. Verbose output

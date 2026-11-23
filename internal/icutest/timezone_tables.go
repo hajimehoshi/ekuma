@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hajimehoshi/ekuma/internal/intl/date"
+	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
 
 // zoneRows joins the six-column format records which ICU wraps over several lines.
@@ -201,7 +204,17 @@ func (s *zoneSuite) dateFormat() {
 		s.display(row.line, loc, zone, intervalString(s.t, c[2]), opts["timeZoneName"].(string), intervalString(s.t, c[4]))
 	}
 	s.fieldPositions(src)
-	block := src.from("::TestLocaleDateFormat()")
+	s.fullDateTime(src.from("::TestLocaleDateFormat()"))
+}
+
+func (s *zoneSuite) fullDateTime(block intervalSource) {
+	const zone = "America/Los_Angeles"
+	tz, ok := temporal.GetAvailableNamedTimeZone(zone, temporal.UTC)
+	if !ok {
+		s.t.Fatalf("%s:%d: unknown time zone %s", s.path, block.line, zone)
+	}
+	instant := time.Date(1997, time.September, 15, 7, 0, 0, 0, time.UTC)
+	options := map[string]any{"dateStyle": "full", "timeStyle": "full"}
 	format := s.function(`(locale, timeZone, instant, options) =>
 		new Intl.DateTimeFormat(locale, {...options, timeZone}).format(Date.parse(instant))`)
 	for _, tc := range []struct {
@@ -218,7 +231,14 @@ func (s *zoneSuite) dateFormat() {
 		},
 	} {
 		r := block.from(tc.marker)
-		s.check(r.line, "format", format, intervalString(s.t, r.lines[0]), tc.locale, "America/Los_Angeles", "1997-09-15T07:00:00Z", map[string]any{"dateStyle": "full", "timeStyle": "full"})
+		want := intervalString(s.t, r.lines[0])
+		hc, _, _ := date.HourCycles(tc.locale)
+		f := date.NewStyleFormat(tc.locale, "gregory", hc, "full", "full")
+		s.executed++
+		if got := date.NewFormatter(f, "latn", tz).FormatLocaleText(instant.UnixMilli()); got != want {
+			s.t.Errorf("%s:%d: %s %s %s %v: got %q, want %q", s.path, r.line, tc.locale, zone, instant, options, got, want)
+		}
+		s.check(r.line, "format", format, strings.ReplaceAll(want, "\u202f", " "), tc.locale, zone, instant.Format(time.RFC3339), options)
 	}
 }
 

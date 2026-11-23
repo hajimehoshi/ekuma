@@ -127,7 +127,7 @@ var recordSums = []struct {
 	{
 		name: "TimeZoneNames",
 		m:    cldr.TimeZoneNames,
-		sum:  "00914d78079e13a8154c3eac8780fcf01c286fe615d6e8bfeb405f40d4817bce",
+		sum:  "c89a1b58ebcd034f0339098fa981edb77a834912c319bfbeb9afd6241f24f1b9",
 	},
 	{
 		name: "TerritoryNames",

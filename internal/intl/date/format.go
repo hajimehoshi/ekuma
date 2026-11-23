@@ -197,9 +197,14 @@ func FormatSkeleton(l, cal, nu, skeleton string, tz temporal.TimeZone, t int64) 
 	l = withKeyword(l, "nu", nu)
 	p := PatternForSkeleton(l, cal, skeleton, false)
 	f := newFormat(l, cal, p)
-	fm := NewFormatter(f, nu, tz)
+	f.numbers = f.patternNumbers(p)
+	return NewFormatter(f, nu, tz).FormatLocaleText(t)
+}
+
+// FormatLocaleText formats the instant t in Unix milliseconds with the locale's original spacing.
+func (fm *Formatter) FormatLocaleText(t int64) string {
 	var b strings.Builder
-	for _, part := range fm.formatItems(f.items, t, false, f.patternNumbers(p)) {
+	for _, part := range fm.formatItems(fm.f.items, t, false, fm.f.numbers) {
 		b.WriteString(part.Value)
 	}
 	return b.String()
