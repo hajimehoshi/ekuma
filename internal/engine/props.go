@@ -331,6 +331,20 @@ func (cx *ExecutionContext) resolve(o *Object) {
 	}
 }
 
+// resolveForKey resolves the exotic object o for an operation with the named key and returns the
+// key to continue with. A key from [ExecutionContext.QueryKey] that matched no property may name
+// one that the initializer of a lazy object created, which is stored under another key object.
+func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) *Object {
+	lazy := o.class == classLazy
+	cx.resolve(o)
+	if lazy && key != nil && key.kind == kindString && key.flags&objInterned == 0 {
+		if k := cx.strings.interned.get(key.Str()); k != nil {
+			return k
+		}
+	}
+	return key
+}
+
 // NewLazyObject returns an ordinary object with the prototype proto whose own properties
 // init defines. init runs once, before the first operation that needs the own properties of
 // the object, or in [VM.InitLazyObject].
@@ -370,7 +384,7 @@ func (cx *ExecutionContext) lookup(o *Object, key *Object) (holder *Object, p pr
 				return h, prop{}, false
 			}
 			if h.class == classLazy || cx.isLazyKey(key) {
-				cx.resolve(h)
+				key = cx.resolveForKey(h, key)
 			}
 			if h.class == classTypedArray && isCanonicalNumericString(key) {
 				// An integer-indexed object answers for every numeric key and never defers to its prototype.
@@ -769,7 +783,7 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 	} else {
 		if o.flags&objExotic != 0 {
 			if o.class == classLazy || cx.isLazyKey(k.key) {
-				cx.resolve(o)
+				k.key = cx.resolveForKey(o, k.key)
 			}
 			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
 				return PropDesc{}, false
