@@ -5,6 +5,7 @@ package icutest
 
 import (
 	"bufio"
+	"cmp"
 	"fmt"
 	"maps"
 	"os"
@@ -29,35 +30,32 @@ func runRBBITest(t *testing.T, path, unicodeData string, failures map[int]string
 		changes, listed := failures[c.line]
 		delete(failures, c.line)
 		where := fmt.Sprintf("%s:%d: Intl.Segmenter(%q, %s) on %q", path, c.line, c.locale, c.mode, c.input)
-		boundaries, err := newSegmenter.Invoke(t.Context(), c.locale, c.mode)
+		check, err := newSegmenter.Invoke(t.Context(), c.locale, c.mode)
 		if err != nil {
 			t.Errorf("%s: %v", where, err)
 			return
 		}
-		got, err := boundaries.Invoke(t.Context(), c.points)
-		if err != nil {
-			t.Errorf("%s: %v", where, err)
-			return
-		}
-		want := formatBreakOffsets(c.offsets)
-		if got.String() == want {
-			if listed {
-				t.Errorf("%s: got expected [%s]; remove the %s entry", where, want, failuresFile)
-			}
-			return
-		}
-		if listed {
-			recorded, err := applyBreakChanges(c.offsets, changes)
+		err = checkBreakRecords(t, check, c.points, c.boundaries)
+		if !listed {
 			if err != nil {
-				t.Errorf("%s: %s: %v", where, failuresFile, err)
-				return
+				t.Errorf("%s: %v", where, err)
 			}
-			if got.String() == formatBreakOffsets(recorded) {
-				known++
-				return
-			}
+			return
 		}
-		t.Errorf("%s: got [%s], want [%s] (recorded changes %q)", where, got.String(), want, changes)
+		if err == nil {
+			t.Errorf("%s: matches ICU; remove the %s entry", where, failuresFile)
+			return
+		}
+		recorded, err := applyBreakChanges(c.boundaries, changes)
+		if err != nil {
+			t.Errorf("%s: %s: %v", where, failuresFile, err)
+			return
+		}
+		if err := checkBreakRecords(t, check, c.points, recorded); err != nil {
+			t.Errorf("%s (recorded changes %q): %v", where, changes, err)
+			return
+		}
+		known++
 	})
 	for line := range failures {
 		t.Errorf("%s:%d: known failure matches no executed break test", path, line)
@@ -67,37 +65,61 @@ func runRBBITest(t *testing.T, path, unicodeData string, failures map[int]string
 			t.Errorf("%s: no %s cases", path, mode)
 		}
 	}
-	t.Logf("%d grapheme, %d word, %d sentence cases executed; %d known failures", executed["grapheme"], executed["word"], executed["sentence"], known)
+	t.Logf("%d grapheme, %d word, %d sentence cases executed; %d known differences", executed["grapheme"], executed["word"], executed["sentence"], known)
 }
 
-func applyBreakChanges(offsets []int, changes string) ([]int, error) {
-	offsets = slices.Clone(offsets)
+func applyBreakChanges(boundaries []breakBoundary, changes string) ([]breakBoundary, error) {
+	boundaries = slices.Clone(boundaries)
 	for field := range strings.SplitSeq(changes, ",") {
-		if len(field) < 2 || field[0] != '+' && field[0] != '-' {
-			return nil, fmt.Errorf("invalid break change %q", field)
+		offsetText, value, changeStatus := strings.Cut(field, "=")
+		if !changeStatus {
+			if len(field) < 2 || field[0] != '+' && field[0] != '-' {
+				return nil, fmt.Errorf("invalid break change %q", field)
+			}
+			offsetText = field[1:]
 		}
-		offset, err := strconv.Atoi(field[1:])
+		offset, err := strconv.Atoi(offsetText)
 		if err != nil || offset < 0 {
 			return nil, fmt.Errorf("invalid break offset in %q", field)
 		}
-		i, found := slices.BinarySearch(offsets, offset)
+		i, found := slices.BinarySearchFunc(boundaries, offset, func(b breakBoundary, offset int) int {
+			return cmp.Compare(b.offset, offset)
+		})
+		if changeStatus {
+			if !found || i == 0 || boundaries[i].wordLike == nil || value != "true" && value != "false" {
+				return nil, fmt.Errorf("invalid word status change %q", field)
+			}
+			like := value == "true"
+			if *boundaries[i].wordLike == like {
+				return nil, fmt.Errorf("word status change %q already matches the fixture", field)
+			}
+			boundaries[i].wordLike = &like
+			continue
+		}
 		if found != (field[0] == '-') {
 			return nil, fmt.Errorf("change %s does not apply to the fixture boundaries", field)
 		}
 		if found {
-			offsets = slices.Delete(offsets, i, i+1)
+			boundaries = slices.Delete(boundaries, i, i+1)
 		} else {
-			offsets = slices.Insert(offsets, i, offset)
+			boundaries = slices.Insert(boundaries, i, breakBoundary{
+				offset: offset,
+			})
+			i++
+		}
+		// The next boundary now ends a different segment.
+		if i < len(boundaries) {
+			boundaries[i].wordLike = nil
 		}
 	}
-	return offsets, nil
+	return boundaries, nil
 }
 
 type breakCase struct {
 	line                int
 	mode, locale, input string
 	points              []any
-	offsets             []int
+	boundaries          []breakBoundary
 }
 
 func forEachBreakCase(t *testing.T, path, unicodeData string, visit func(breakCase)) {
@@ -138,7 +160,7 @@ func forEachBreakCase(t *testing.T, path, unicodeData string, visit func(breakCa
 				t.Fatalf("%s:%d: <data> before a break mode: %.80q", path, line, source.rest)
 			}
 			raw := source.rest
-			points, want, err := source.breakData(names)
+			points, want, err := source.breakData(names, mode == "word")
 			if err != nil {
 				t.Fatalf("%s:%d: <%s> (%s), data from line %d: %v at %.80q", path, source.line, mode, activeLocale, line, err, source.rest)
 			}
@@ -147,12 +169,12 @@ func forEachBreakCase(t *testing.T, path, unicodeData string, visit func(breakCa
 				continue
 			}
 			visit(breakCase{
-				line:    line,
-				mode:    mode,
-				locale:  activeLocale,
-				input:   raw[:len(raw)-len(source.rest)-len("</data>")],
-				points:  points,
-				offsets: want,
+				line:       line,
+				mode:       mode,
+				locale:     activeLocale,
+				input:      raw[:len(raw)-len(source.rest)-len("</data>")],
+				points:     points,
+				boundaries: want,
 			})
 		case "rules", "badrules":
 			end := "</" + tag + ">"
@@ -271,9 +293,9 @@ func (s *breakSource) skipComment() {
 	s.take(n + 1)
 }
 
-func (s *breakSource) breakData(names map[string]rune) ([]any, []int, error) {
+func (s *breakSource) breakData(names map[string]rune, word bool) ([]any, []breakBoundary, error) {
 	var points []any
-	var breaks []int
+	var breaks []breakBoundary
 	var offset int
 	lastBreak := -1
 	for s.rest != "" {
@@ -291,24 +313,43 @@ func (s *breakSource) breakData(names map[string]rune) ([]any, []int, error) {
 				continue
 			}
 		case '•', '<':
+			var status int
 			if r == '<' {
-				status, _, ok := strings.Cut(s.rest[1:], ">")
-				if !ok || strings.IndexFunc(status, func(r rune) bool {
-					return !unicode.IsSpace(r) && !unicode.IsDigit(r)
-				}) >= 0 {
-					return nil, nil, fmt.Errorf("invalid break status")
+				digits, _, ok := strings.Cut(s.rest[1:], ">")
+				if !ok {
+					return nil, nil, fmt.Errorf("unterminated break status")
 				}
-				n = len(status) + 2
+				for _, ch := range digits {
+					if unicode.IsSpace(ch) {
+						continue
+					}
+					if ch < '0' || ch > '9' {
+						return nil, nil, fmt.Errorf("invalid break status %q", digits)
+					}
+					status = status*10 + int(ch-'0')
+				}
+				n = len(digits) + 2
 			}
 			if lastBreak == offset {
-				if strings.HasPrefix(s.rest, "<>") {
-					s.take(2)
-					continue
+				if !strings.HasPrefix(s.rest, "<>") {
+					return nil, nil, fmt.Errorf("duplicate break at UTF-16 offset %d", offset)
 				}
-				return nil, nil, fmt.Errorf("duplicate break at UTF-16 offset %d", offset)
+				// ICU lets <> replace the status at the current boundary.
+				breaks = breaks[:len(breaks)-1]
 			}
 			lastBreak = offset
-			breaks = append(breaks, offset)
+			boundary := breakBoundary{
+				offset: offset,
+			}
+			if word {
+				// ICU word statuses 0..99 denote nonwords and 100..499
+				// denote numbers, letters, kana, or ideographs.
+				if status >= 500 {
+					return nil, nil, fmt.Errorf("unknown ICU word status %d", status)
+				}
+				boundary.wordLike = new(status >= 100)
+			}
+			breaks = append(breaks, boundary)
 			s.take(n)
 			continue
 		case '\\':

@@ -267,7 +267,7 @@ func runBreakTest(t *testing.T, path, granularity string) {
 	defer f.Close()
 
 	var vm ekuma.VM
-	boundaries, err := segmenterFactory(t, &vm).Invoke(t.Context(), "en", granularity)
+	check, err := segmenterFactory(t, &vm).Invoke(t.Context(), "en", granularity)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,12 +285,8 @@ func runBreakTest(t *testing.T, path, granularity string) {
 		if err != nil {
 			t.Fatalf("%s:%d: %v", path, line, err)
 		}
-		got, err := boundaries.Invoke(t.Context(), codePoints)
-		if err != nil {
-			t.Fatalf("%s:%d: %v", path, line, err)
-		}
-		if got.String() != want {
-			t.Errorf("%s:%d: %s: got [%s], want [%s]", path, line, data, got.String(), want)
+		if err := checkBreakRecords(t, check, codePoints, want); err != nil {
+			t.Errorf("%s:%d: %s: %v", path, line, granularity, err)
 		}
 		cases++
 	}
@@ -308,16 +304,47 @@ func segmenterFactory(t *testing.T, vm *ekuma.VM) ekuma.Value {
 	script, err := vm.ParseScript("break-test.js", `
 		(locale, granularity) => {
 			const segmenter = new Intl.Segmenter(locale, {granularity});
-			return codePoints => {
+			return (codePoints, offsets, wordLike) => {
 				const input = String.fromCodePoint(...codePoints);
-				const boundaries = [];
-				let end = 0;
-				for (const {index, segment} of segmenter.segment(input)) {
-					boundaries.push(index);
-					end = index + segment.length;
+				if (offsets[0] !== 0 || offsets.at(-1) !== input.length) {
+					throw new Error("fixture lacks an initial or final UTF-16 boundary");
 				}
-				boundaries.push(end);
-				return boundaries.join(" ");
+				const segments = segmenter.segment(input);
+				const iterator = segments[Symbol.iterator]();
+				// Look up at most three segment starts and two interior code units per row.
+				const middle = Math.floor((offsets.length - 1) / 2);
+				const lookups = new Set([0, offsets[middle], offsets.at(-2)]);
+				const interiorEnd = offsets.find((end, i) => i > 0 && end - offsets[i - 1] > 1);
+				if (interiorEnd !== undefined) lookups.add(interiorEnd - 1);
+				const pair = input.search(/[\uD800-\uDBFF][\uDC00-\uDFFF]/);
+				if (pair >= 0) lookups.add(pair + 1);
+
+				function check(operation, index, got, want) {
+					if (got && got.index === want.index && got.segment === want.segment &&
+						got.input === want.input && (want.isWordLike === undefined ||
+						got.isWordLike === want.isWordLike)) {
+						return;
+					}
+					throw new Error(operation + " at UTF-16 index " + index + ": got " +
+						JSON.stringify(got) + ", want " + JSON.stringify(want));
+				}
+				for (let i = 1; i < offsets.length; i++) {
+					const start = offsets[i - 1], end = offsets[i];
+					const want = {segment: input.slice(start, end), index: start, input};
+					if (wordLike[i] !== null) want.isWordLike = wordLike[i];
+					const step = iterator.next();
+					check("iterator", start, step.done ? undefined : step.value, want);
+					for (const index of lookups) {
+						if (start <= index && index < end) {
+							check("containing", index, segments.containing(index), want);
+						}
+					}
+				}
+				const extra = iterator.next();
+				if (!extra.done) {
+					throw new Error("iterator at UTF-16 index " + input.length +
+						": got " + JSON.stringify(extra.value) + ", want end of iterator");
+				}
 			};
 		}
 	`)
@@ -332,27 +359,29 @@ func segmenterFactory(t *testing.T, vm *ekuma.VM) ekuma.Value {
 }
 
 // parseBreakTest returns the code points and expected UTF-16 boundary indices for a row.
-func parseBreakTest(fields []string) ([]any, string, error) {
+func parseBreakTest(fields []string) ([]any, []breakBoundary, error) {
 	if len(fields)%2 != 1 || fields[0] != "÷" || fields[len(fields)-1] != "÷" {
-		return nil, "", fmt.Errorf("expected alternating break markers and code points with a break at both ends")
+		return nil, nil, fmt.Errorf("expected alternating break markers and code points with a break at both ends")
 	}
 	var codePoints []any
-	var offsets []int
+	var boundaries []breakBoundary
 	var offset int
 	for i, field := range fields {
 		if i%2 == 0 {
 			switch field {
 			case "÷":
-				offsets = append(offsets, offset)
+				boundaries = append(boundaries, breakBoundary{
+					offset: offset,
+				})
 			case "×":
 			default:
-				return nil, "", fmt.Errorf("invalid break marker %q", field)
+				return nil, nil, fmt.Errorf("invalid break marker %q", field)
 			}
 			continue
 		}
 		cp, err := strconv.ParseUint(field, 16, 32)
 		if err != nil || cp > unicode.MaxRune {
-			return nil, "", fmt.Errorf("invalid code point %q", field)
+			return nil, nil, fmt.Errorf("invalid code point %q", field)
 		}
 		codePoints = append(codePoints, uint32(cp))
 		offset++
@@ -360,16 +389,25 @@ func parseBreakTest(fields []string) ([]any, string, error) {
 			offset++
 		}
 	}
-	return codePoints, formatBreakOffsets(offsets), nil
+	return codePoints, boundaries, nil
 }
 
-func formatBreakOffsets(offsets []int) string {
-	var b strings.Builder
-	for i, offset := range offsets {
-		if i > 0 {
-			b.WriteByte(' ')
+type breakBoundary struct {
+	offset int
+	// wordLike is the ICU word classification of the segment ending here.
+	// A nil value means the fixture supplies no equivalent classification.
+	wordLike *bool
+}
+
+func checkBreakRecords(t *testing.T, check ekuma.Value, points []any, boundaries []breakBoundary) error {
+	offsets := make([]any, len(boundaries))
+	wordLike := make([]any, len(boundaries))
+	for i, b := range boundaries {
+		offsets[i] = b.offset
+		if b.wordLike != nil {
+			wordLike[i] = *b.wordLike
 		}
-		b.WriteString(strconv.Itoa(offset))
 	}
-	return b.String()
+	_, err := check.Invoke(t.Context(), points, offsets, wordLike)
+	return err
 }
