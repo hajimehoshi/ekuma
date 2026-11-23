@@ -129,6 +129,7 @@ func (g *generator) closeUpvals(from int) {
 // newGenerator creates the activation of the generator or async function f without an object.
 func (vm *VM) newGenerator(f *Object, this Value, args []Value) *generator {
 	fp := f.fn.code
+	fp.prepare()
 	g := &generator{
 		f:    f,
 		this: this,
@@ -174,7 +175,6 @@ func (vm *VM) newGeneratorObject(g *generator) *Object {
 // pushGenFrame pushes the frame that continues g at g.pc.
 func (vm *VM) pushGenFrame(g *generator, ret int32) {
 	base := vm.sp
-	g.f.fn.code.prepare()
 	fr := vm.appendFrame()
 	fr.fp = g.f.fn.code
 	fr.cl = g.f
@@ -270,18 +270,16 @@ func (vm *VM) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 			vm.thrown = Undefined
 		}
 	}
-	var r Value
-	if !vm.protect(func() {
-		r = vm.run(stop)
-	}) {
-		vm.sp = sp
+	r, ok := vm.runFrame(stop)
+	vm.sp = sp
+	if !ok {
+		vm.dropNatives(stop)
 		if vm.thrown.o == closeSignal {
 			vm.thrown = Undefined
 			return g.closeValue, true
 		}
 		panic(errThrow)
 	}
-	vm.sp = sp
 	return r, g.state == genCompleted
 }
 

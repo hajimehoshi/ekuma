@@ -318,6 +318,16 @@ func (fr *frame) top() int {
 // run executes the top frame until the frame at index stop returns, and returns its value.
 // An exception that leaves that frame is thrown to the Go caller.
 func (vm *VM) run(stop int) Value {
+	v, ok := vm.runFrame(stop)
+	if !ok {
+		panic(errThrow)
+	}
+	return v
+}
+
+// runFrame executes the frame at stop until it returns, yields, or unwinds with an exception.
+// An unwound frame leaves the exception pending and returns false.
+func (vm *VM) runFrame(stop int) (Value, bool) {
 	if vm.depth >= maxDepth {
 		vm.unwindTo(stop)
 		vm.ThrowRangeError("maximum call stack size exceeded")
@@ -338,7 +348,7 @@ func (vm *VM) run(stop int) Value {
 			if vm.curRealm != saved {
 				vm.switchRealm(saved)
 			}
-			return v
+			return v, true
 		case execPanic:
 			if vm.unwind(stop) {
 				continue
@@ -349,7 +359,7 @@ func (vm *VM) run(stop int) Value {
 		if vm.curRealm != saved {
 			vm.switchRealm(saved)
 		}
-		panic(errThrow)
+		return Undefined, false
 	}
 }
 
