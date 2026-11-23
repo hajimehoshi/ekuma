@@ -337,6 +337,59 @@ func TestReserveAfterDeletingAllEntries(t *testing.T) {
 	}
 }
 
+// TestShrinkGivesUpBlockPointers tests that a table that had room for many entries gives up the
+// storage of its pointers to blocks, after Trim and after compacting, for one in proportion to its
+// entries.
+func TestShrinkGivesUpBlockPointers(t *testing.T) {
+	const peak, left = 64 * 1024, 100
+	for _, tt := range []struct {
+		name   string
+		fill   func(tab *collection.Table)
+		shrink func(tab *collection.Table)
+	}{
+		{
+			name: "trim",
+			fill: func(tab *collection.Table) {
+				tab.Reserve(peak)
+			},
+			shrink: func(tab *collection.Table) {
+				for i := range left {
+					tab.Set(engine.Number(float64(i)), engine.Undefined)
+				}
+				tab.Trim()
+			},
+		},
+		{
+			name: "compact",
+			fill: func(tab *collection.Table) {
+				for i := range peak {
+					tab.Set(engine.Number(float64(i)), engine.Undefined)
+				}
+			},
+			shrink: func(tab *collection.Table) {
+				// Deleting most entries compacts the table.
+				for i := range peak - left {
+					tab.Delete(engine.Number(float64(i)))
+				}
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var tab collection.Table
+			tt.fill(&tab)
+			_, before := collection.BlockPointerStorage(&tab)
+			tt.shrink(&tab)
+			n, after := collection.BlockPointerStorage(&tab)
+			if after == before {
+				t.Errorf("kept the storage of the block pointers for %d entries", peak)
+			}
+			if max := 16; n > max {
+				t.Errorf("got room for %d block pointers, want at most %d", n, max)
+			}
+		})
+	}
+}
+
 // TestQueue tests that a table from which the oldest entry is deleted for every new one finds
 // its entries and keeps storage in proportion to them.
 func TestQueue(t *testing.T) {

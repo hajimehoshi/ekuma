@@ -697,8 +697,13 @@ func (t *Table) shrink() {
 // trimBlocks gives up the blocks beyond those that n entries need.
 func (t *Table) trimBlocks(n int) {
 	k := (n + blockSize - 1) >> blockShift
+	if k <= cap(t.blocks)/4 {
+		// Most of the room for pointers to blocks would stay unused.
+		t.blocks = slices.Clone(t.blocks[:k])
+		return
+	}
 	clear(t.blocks[k:])
-	t.blocks = slices.Clip(t.blocks[:k])
+	t.blocks = t.blocks[:k]
 }
 
 // Clear deletes every entry.
