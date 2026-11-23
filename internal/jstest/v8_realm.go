@@ -177,6 +177,25 @@ func (host *V8) CheckRealm(t *testing.T) {
 		Promise.resolve().then(current).then(i => {
 			if (i !== r) throw Error("wrong microtask realm");
 		});
+		const rejectionRealms = [];
+		const rejected = Promise.reject(42);
+		rejected.constructor = {
+			[Symbol.species]: class {
+				constructor(executor) {
+					executor(() => {}, () => rejectionRealms.push(Realm.current()));
+				}
+			},
+		};
+		// The absent rejection handler uses the fulfillment handler's realm.
+		rejected.then(current);
+		// With both handlers absent, the borrowed then method enqueues the job.
+		const enqueueRealm = Realm.create();
+		Realm.eval(enqueueRealm, "Promise.prototype.then").call(rejected);
+		Promise.resolve().then(() => {
+			if (rejectionRealms.join() !== [r, enqueueRealm].join()) {
+				throw Error("unexpected entered realms for absent handlers: " + rejectionRealms);
+			}
+		});
 		if (Realm.eval(r, 'd8.file.execute("helper.js"); loadedIn') !== Realm.global(r)) {
 			throw Error("script loaded in the wrong realm");
 		}
