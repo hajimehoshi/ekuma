@@ -294,8 +294,7 @@ func (ag *agent) unwind(stop int) bool {
 			return true
 		}
 		if fr.gen != nil {
-			fr.gen.state = genCompleted
-			fr.gen.regs = nil
+			fr.gen.complete()
 		} else if len(ag.openUpvals) > 0 {
 			ag.closeUpvals(fr.base)
 		}
@@ -2552,8 +2551,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				r = done.this
 			}
 			if g := done.gen; g != nil {
-				g.state = genCompleted
-				g.regs = nil
+				g.complete()
 			} else if len(ag.openUpvals) > 0 {
 				ag.closeUpvals(done.base)
 			}

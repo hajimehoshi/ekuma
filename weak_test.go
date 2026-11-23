@@ -196,6 +196,31 @@ func TestCompletedIteratorHelperReleasesSource(t *testing.T) {
 	}
 }
 
+func TestCompletedGeneratorReleasesActivation(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		function* gen() { yield arguments[0]; }
+		function make() {
+			const receiver = {}, arg = {}, result = {};
+			const it = gen.call(receiver, arg);
+			it.next();
+			it.return(result);
+			return [it, [receiver, arg, result].map(v => new WeakRef(v))];
+		}
+		const [completed, refs] = make();
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `refs.map(r => r.deref() === undefined).join()`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true,true"; got != want {
+		t.Errorf("collected receiver, argument and return value: got %s, want %s", got, want)
+	}
+}
+
 func TestWeakMapValueReferencesKey(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `

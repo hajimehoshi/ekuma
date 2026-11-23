@@ -217,8 +217,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 	a := g.async
 	state := asyncGeneratorStateOf(g)
 	if mode == ResumeThrow && state == asyncGenSuspendedStart {
-		g.state = genCompleted
-		g.regs = nil
+		g.complete()
 		state = asyncGenCompleted
 	}
 	if state == asyncGenCompleted {
@@ -239,8 +238,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 	switch state {
 	case asyncGenSuspendedStart:
 		if mode == ResumeReturn {
-			g.state = genCompleted
-			g.regs = nil
+			g.complete()
 			a.draining = true
 			cx.asyncGeneratorAwaitReturn(g)
 			break

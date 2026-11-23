@@ -84,14 +84,20 @@ func (g *generator) abortOnPanic() {
 
 // abort closes an abandoned activation without running JavaScript.
 func (g *generator) abort() {
-	g.closeUpvals(0)
-	g.state = genCompleted
-	g.regs, g.scopes, g.extra = nil, nil, nil
-	g.this, g.closeValue = Undefined, Undefined
+	g.complete()
 	if g.async != nil && g.async != asyncFunction {
 		g.async.queue = nil
 		g.async.draining = false
 	}
+}
+
+// complete releases the activation after its last frame finishes.
+func (g *generator) complete() {
+	g.closeUpvals(0)
+	g.state = genCompleted
+	g.f = nil
+	g.regs, g.scopes, g.extra, g.openUpvals = nil, nil, nil, nil
+	g.this, g.closeValue = Undefined, Undefined
 }
 
 func (g *generator) findUpval(index int) *upvalue {
@@ -221,12 +227,10 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 	case genSuspendedStart:
 		switch mode {
 		case ResumeThrow:
-			g.state = genCompleted
-			g.regs = nil
+			g.complete()
 			resumer.Throw(v)
 		case ResumeReturn:
-			g.state = genCompleted
-			g.regs = nil
+			g.complete()
 			return v, true
 		}
 	}
@@ -242,6 +246,9 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 	stop := len(resumer.frames) - 1
 	if started {
 		g.regs[g.resumeReg] = v
+		resumer.thrown = Undefined
+	}
+	if started && mode != ResumeNext && !g.delegating {
 		// The code after an await or a plain yield does not look at the mode: deliver
 		// a throw or a return as an exception at the suspension.
 		switch mode {
@@ -257,27 +264,25 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 			g.closeValue = v
 			resumer.thrown = Value{o: closeSignal}
 		}
-		if mode != ResumeNext && !g.delegating {
-			g.mode = ResumeNext
-			if !resumer.unwind(stop) {
-				resumer.sp = sp
-				if resumer.thrown.o == closeSignal {
-					resumer.thrown = Undefined
-					return g.closeValue, true
-				}
-				panic(errThrow)
+		g.mode = ResumeNext
+		if !resumer.unwind(stop) {
+			resumer.sp = sp
+			if resumer.thrown.o == closeSignal {
+				resumer.thrown = Undefined
+				return v, true
 			}
-		} else {
-			resumer.thrown = Undefined
+			panic(errThrow)
 		}
 	}
+	// Completing the frame releases its pending return, including one carried across an await.
+	closeValue := g.closeValue
 	r, ok := resumer.runFrame(stop)
 	resumer.sp = sp
 	if !ok {
 		resumer.dropNatives(stop)
 		if resumer.thrown.o == closeSignal {
 			resumer.thrown = Undefined
-			return g.closeValue, true
+			return closeValue, true
 		}
 		panic(errThrow)
 	}
