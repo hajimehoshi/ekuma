@@ -170,6 +170,32 @@ func TestMovedStorageReleasesValues(t *testing.T) {
 	}
 }
 
+func TestCompletedIteratorHelperReleasesSource(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		function make() {
+			const source = [].values();
+			return [source.map(Boolean), new WeakRef(source)];
+		}
+		const [exhausted, afterNext] = make();
+		const [closed, afterReturn] = make();
+		exhausted.next();
+		closed.return();
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `
+		[afterNext.deref() === undefined, afterReturn.deref() === undefined].join()
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := v.String(), "true,true"; got != want {
+		t.Errorf("source collected after next and return: got %s, want %s", got, want)
+	}
+}
+
 func TestWeakMapValueReferencesKey(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `

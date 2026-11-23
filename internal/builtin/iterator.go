@@ -80,7 +80,9 @@ func resumeHelper(cx *engine.ExecutionContext, this engine.Value, mode engine.Re
 		if mode == engine.ResumeReturn {
 			// Before the first yield, the return method closes the underlying iterators itself.
 			h.state = helperCompleted
-			h.body.close(cx)
+			body := h.body
+			h.body = nil
+			body.close(cx)
 			return engine.Undefined, false
 		}
 	}
@@ -104,6 +106,7 @@ func (h *iteratorHelper) resumeBody(cx *engine.ExecutionContext, mode engine.Res
 			h.state = helperSuspendedYield
 		} else {
 			h.state = helperCompleted
+			h.body = nil
 		}
 	}()
 	if mode == engine.ResumeReturn {
