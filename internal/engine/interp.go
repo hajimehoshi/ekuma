@@ -2852,7 +2852,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					pc = int(i.C)
 					continue
 				}
-				regs[i.B+1] = Number(idx.n + 1)
+				regs[i.B+1].n = idx.n + 1
 				if uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
 					regs[i.A] = o.elems[j]
 					continue
@@ -2904,7 +2904,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				if e == nil || e.shape != vm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !vm.pairDestructuringPlain() {
 					continue
 				}
-				regs[i.B+1] = Number(next.n + 1)
+				regs[i.B+1].n = next.n + 1
 				regs[i.A] = e.elems[0]
 				regs[b] = e.elems[1]
 				pc = int(i.C)
@@ -2926,6 +2926,15 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			x, y, st := step(vm, it)
 			regs = vm.reload(regs, vm.frameBase(), fp)
 			switch st {
+			case PairYieldedAfterCall:
+				if !vm.pairDestructuringPlain() {
+					// The outer iterator has stepped. Supply its pair to the ordinary binding.
+					regs[i.B] = it
+					regs[fp.code[pc].A] = Value{o: vm.NewArrayPair(x, y)}
+					pc++
+					continue
+				}
+				fallthrough
 			case PairYielded:
 				regs[i.B] = it
 				regs[i.A] = x

@@ -113,6 +113,34 @@ var arrayLike = {
 };
 assert.sameValue(pairs(Array.prototype.entries.call(arrayLike)) + ":" + lengths, "0a:2", "the entries of an array-like object");
 
+// A length getter can change how the entry it is about to yield is destructured.
+var marker = {}, closed = false;
+var changing = Array.prototype.entries.call({
+	0: "element",
+	get length() {
+		Array.prototype[Symbol.iterator] = function* () {
+			yield this[1];
+			throw marker;
+		};
+		return 1;
+	},
+});
+changing.return = function () { closed = true; return {}; };
+function bindChangingEntry() {
+	var first, second, caught;
+	try {
+		for ([first, second] of changing) {}
+	} catch (e) {
+		caught = e;
+	} finally {
+		Array.prototype[Symbol.iterator] = arrayIterator;
+	}
+	assert.sameValue(first, "element");
+	assert.sameValue(caught, marker);
+	assert.sameValue(closed, true);
+}
+bindChangingEntry();
+
 var foreign = $262.createRealm().global;
 var foreignMap = new foreign.Map([[1, 2]]);
 var foreignArrayIteratorProto = Object.getPrototypeOf(new foreign.Array()[foreign.Symbol.iterator]());

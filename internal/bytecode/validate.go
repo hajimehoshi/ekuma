@@ -400,6 +400,10 @@ func (v *validator) special(pc int, in Instr) error {
 		if pc+1 >= len(code) || code[pc+1].Op != OpGetProp && code[pc+1].Op != OpGetPropChain || code[pc+1].B != in.A {
 			return v.errorf(pc, ErrSequence, "not followed by an OpGetProp of a")
 		}
+	case OpIterNextPair:
+		if pc+2 >= len(code) || code[pc+2].Op != OpIterNext || code[pc+2].B != in.B {
+			return v.errorf(pc, ErrSequence, "not followed by an OpIterNext of b")
+		}
 	case OpRegExpArg:
 		// The RegExp object is the this value or the first argument of the call.
 		if in.A != in.C+1 && in.A != in.C+2 {

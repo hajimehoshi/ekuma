@@ -165,6 +165,17 @@ func TestValidate(t *testing.T) {
 			pc:  0,
 		},
 		{
+			name: "pair without its iterator step",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[4] = bytecode.Instr{
+					Op: bytecode.OpIterNextPair,
+					C:  7,
+				}
+			},
+			err: bytecode.ErrSequence,
+			pc:  4,
+		},
+		{
 			name: "chain without its next read",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[3].B = 0

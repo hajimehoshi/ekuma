@@ -62,13 +62,16 @@ const (
 
 	// PairYielded says that the iterator yielded an array of the two values.
 	PairYielded
+
+	// PairYieldedAfterCall says that the step yielded a pair and may have run JavaScript.
+	PairYieldedAfterCall
 )
 
 // IteratorPairStepFunc is the next method of a built-in iterator, without the iterator result,
 // for an iterator that yields arrays of two elements: it returns the elements of the next array
 // that the iterator this yields, without creating the array. It declines when the iterator does
-// not yield such arrays, when this is not an iterator of its kind, or when stepping the iterator
-// could run JavaScript.
+// not yield such arrays or this is not an iterator of its kind. A step that may have run
+// JavaScript reports PairYieldedAfterCall when it yields.
 type IteratorPairStepFunc func(vm *VM, this Value) (a, b Value, st PairStep)
 
 // SetIteratorPairStep makes step the pair step of next, which NewIteratorNext returned.
@@ -175,7 +178,16 @@ func (vm *VM) NewArrayIteratorNext() *Object {
 			if it == nil || it.kind != IterateEntries {
 				return Undefined, Undefined, PairDeclined
 			}
-			return it.step(vm, false)
+			key, value, st := it.step(vm, false)
+			if st == PairDeclined {
+				vm.pushNative(next, this, nil)
+				key, value, st = it.step(vm, true)
+				vm.popNative()
+				if st == PairYielded {
+					st = PairYieldedAfterCall
+				}
+			}
+			return key, value, st
 		},
 	}
 	return next
