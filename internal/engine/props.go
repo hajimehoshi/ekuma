@@ -336,13 +336,17 @@ func (cx *ExecutionContext) resolve(o *Object) {
 	}
 }
 
-// resolveForKey resolves the exotic object o for an operation with the named key and returns the
-// key to continue with. A key from [ExecutionContext.QueryKey] that matched no property may name
-// one that the initializer of a lazy object created, which is stored under another key object.
+// resolveForKey materializes the own properties needed for key. A lazy object's initializer
+// can intern a previously missing query key on the object or farther up its prototype chain.
 func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) *Object {
-	lazy := o.class == classLazy
-	cx.resolve(o)
-	if lazy && key != nil && key.kind == kindString && key.flags&objInterned == 0 {
+	if o.class != classLazy {
+		if o.fn != nil && key != nil && cx.isLazyKey(key) {
+			cx.materialize(o)
+		}
+		return key
+	}
+	cx.InitLazyObject(o)
+	if key != nil && key.kind == kindString && key.flags&objInterned == 0 {
 		if k := cx.strings.interned.get(key.Str()); k != nil {
 			return k
 		}
@@ -350,9 +354,8 @@ func (cx *ExecutionContext) resolveForKey(o *Object, key *Object) *Object {
 	return key
 }
 
-// NewLazyObject returns an ordinary object with the prototype proto whose own properties
-// init defines. init runs once, before the first operation that needs the own properties of
-// the object, or in [agent.InitLazyObject].
+// NewLazyObject returns an ordinary object with prototype proto. The first operation that
+// needs its own properties, or a call to [agent.InitLazyObject], runs init once.
 func (cx *ExecutionContext) NewLazyObject(proto *Object, init func(*ExecutionContext, *Object)) *Object {
 	// A cached miss on an ordinary object must still run this object's initializer.
 	o := newObject(cx.rootShape(proto, cx.realm, delegatedRoot))
@@ -708,28 +711,30 @@ func (cx *ExecutionContext) Index(v Value, i uint32) Value {
 
 // getIndex returns the property of v whose key is the array index i, or the getter to call.
 func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
-	if v.isShortString() && uint(i) < uint(v.StringLength()) {
-		return cx.UnitString(v.UnitAt(int(i))), nil
+	start := v.o
+	if v.IsObject() {
+		if start.class == classTypedArray {
+			return cx.typedArrayGet(start, i), nil
+		}
+	} else {
+		if v.isShortString() && uint(i) < uint(v.StringLength()) {
+			return cx.UnitString(v.UnitAt(int(i))), nil
+		}
+		start = cx.protoStart(v, PropKey{idx: i})
 	}
-	if o := v.o; o != nil && o.class == classTypedArray {
-		return cx.typedArrayGet(o, i), nil
-	}
-	start := cx.protoStart(v, PropKey{idx: i})
 	for h := start; h != nil; h = h.shape.proto {
 		if h.objectProperties != nil && int64(i) < int64(len(h.elems)) {
 			if e := h.elems[i]; !e.isHole() {
 				return e, nil
 			}
 		}
-		if h.kind == kindObject && h.class == classObject && h.flags&objSparse == 0 {
+		if h.indicesInElements() {
 			continue
 		}
-		switch h.class {
-		case classProxy:
-			return cx.proxyGet(h, PropKey{idx: i}, v), nil
-		case classModuleNamespace:
-			return cx.namespaceGet(h, PropKey{idx: i}), nil
-		case classTypedArray:
+		if h.delegatesPropertyAccess() {
+			return cx.getProp(h, PropKey{idx: i}, v), nil
+		}
+		if h.class == classTypedArray {
 			// An integer-indexed object answers for every index and never defers to its prototype.
 			return cx.typedArrayGet(h, i), nil
 		}
@@ -760,12 +765,28 @@ func (cx *ExecutionContext) getIndex(v Value, i uint32) (Value, *Object) {
 
 // GetOwnProperty implements [[GetOwnProperty]].
 func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
-	if o.class == classProxy {
-		return cx.proxyGetOwnProperty(o, k)
+	return cx.getOwnProperty(o, &k)
+}
+
+// getOwnProperty keeps the refreshed query key available to a caller walking the prototype chain.
+func (cx *ExecutionContext) getOwnProperty(o *Object, query *PropKey) (PropDesc, bool) {
+	if o.flags&objExotic != 0 {
+		switch o.class {
+		case classProxy:
+			return cx.proxyGetOwnProperty(o, *query)
+		case classModuleNamespace:
+			if cx.isNamespaceExportKey(o, *query) {
+				return cx.namespaceGetOwnProperty(o, *query)
+			}
+		case classTypedArray:
+			if query.key != nil && isCanonicalNumericString(query.key) {
+				return PropDesc{}, false
+			}
+		default:
+			query.key = cx.resolveForKey(o, query.key)
+		}
 	}
-	if o.class == classModuleNamespace && cx.isNamespaceExportKey(o, k) {
-		return cx.namespaceGetOwnProperty(o, k)
-	}
+	k := *query
 	if k.key == nil {
 		if o.objectProperties != nil && int64(k.idx) < int64(len(o.elems)) {
 			if e := o.elems[k.idx]; !e.isHole() {
@@ -796,14 +817,6 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 			return PropDesc{}, false
 		}
 	} else {
-		if o.flags&objExotic != 0 {
-			if o.class == classLazy || cx.isLazyKey(k.key) {
-				k.key = cx.resolveForKey(o, k.key)
-			}
-			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
-				return PropDesc{}, false
-			}
-		}
 		if k.key == cx.Key(KeyLength) && o.kind == kindArray {
 			flags := FlagWritable
 			if o.flags&objFrozenLength != 0 {
@@ -831,14 +844,26 @@ func (cx *ExecutionContext) GetOwnProperty(o *Object, k PropKey) (PropDesc, bool
 
 // HasOwnProperty reports whether o has the own property k.
 func (cx *ExecutionContext) HasOwnProperty(o *Object, k PropKey) bool {
-	_, ok := cx.GetOwnProperty(o, k)
+	return cx.hasOwnProperty(o, &k)
+}
+
+func (cx *ExecutionContext) hasOwnProperty(o *Object, k *PropKey) bool {
+	if k.key == nil {
+		if o.indicesInElements() {
+			return int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole()
+		}
+	} else if o.shape.family == ordinaryRoot {
+		_, ok := o.shape.lookup(k.key)
+		return ok
+	}
+	_, ok := cx.getOwnProperty(o, k)
 	return ok
 }
 
 // HasOwnPropertyPlain is HasOwnProperty of o and the key k when k is a primitive and finding out
 // neither throws nor runs JavaScript. It reports false as ok otherwise.
 func (cx *ExecutionContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok bool) {
-	if k.IsObject() || o.class == classProxy || o.class == classModuleNamespace {
+	if k.IsObject() || o.delegatesPropertyAccess() {
 		return false, false
 	}
 	return cx.HasOwnProperty(o, cx.QueryKey(k)), true
@@ -846,17 +871,22 @@ func (cx *ExecutionContext) HasOwnPropertyPlain(o *Object, k Value) (has, ok boo
 
 // HasProperty implements [[HasProperty]].
 func (cx *ExecutionContext) HasProperty(o *Object, k PropKey) bool {
-	for h := o; h != nil; h = cx.ProtoOf(h) {
-		if h.class == classProxy {
-			return cx.proxyHas(h, k)
+	for h := o; h != nil; h = h.shape.proto {
+		if h.flags&objExotic != 0 {
+			switch h.class {
+			case classProxy:
+				return cx.proxyHas(h, k)
+			case classModuleNamespace:
+				if cx.isNamespaceExportKey(h, k) {
+					return cx.namespaceHas(h, k)
+				}
+			case classTypedArray:
+				if isNumericKey(k) {
+					return k.key == nil && cx.typedArrayHas(h, k.idx)
+				}
+			}
 		}
-		if h.class == classModuleNamespace && cx.isNamespaceExportKey(h, k) {
-			return cx.namespaceHas(h, k)
-		}
-		if h.class == classTypedArray && isNumericKey(k) {
-			return k.key == nil && cx.typedArrayHas(h, k.idx)
-		}
-		if cx.HasOwnProperty(h, k) {
+		if cx.hasOwnProperty(h, &k) {
 			return true
 		}
 	}
@@ -884,9 +914,6 @@ func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value 
 			}
 			continue
 		}
-		if h.class == classLazy && k.key != nil {
-			k.key = cx.resolveForKey(h, k.key)
-		}
 		if h.class == classProxy {
 			return cx.proxyGet(h, k, receiver)
 		}
@@ -899,7 +926,7 @@ func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value 
 			}
 			return cx.typedArrayGet(h, k.idx)
 		}
-		d, ok := cx.GetOwnProperty(h, k)
+		d, ok := cx.getOwnProperty(h, &k)
 		if !ok {
 			continue
 		}
@@ -1232,7 +1259,7 @@ func (cx *ExecutionContext) setIndex(v Value, i uint32, val Value) (setter *Obje
 		return nil, cx.typedArraySet(o, i, val)
 	}
 	// Anything but a plain store into a plain object or array takes the general path.
-	if (o.kind == kindArray || o.class == classObject) && o.flags&(objSparse|objExotic) == 0 {
+	if o.indicesInElements() {
 		plain := true
 		for h := o.shape.proto; h != nil; h = h.shape.proto {
 			if len(h.elems) != 0 || h.flags&(objSparse|objExotic) != 0 || h.class != classObject && h.class != classArray && h.class != classFunction {
@@ -1479,11 +1506,21 @@ func (cx *ExecutionContext) defineArrayLength(o *Object, d PropDesc) bool {
 
 // DeleteProp implements [[Delete]]. It reports false when the property is not configurable.
 func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
-	if o.class == classProxy {
-		return cx.proxyDelete(o, k)
-	}
-	if o.class == classModuleNamespace && cx.isNamespaceExportKey(o, k) {
-		return cx.namespaceDelete(o, k)
+	if o.flags&objExotic != 0 {
+		switch o.class {
+		case classProxy:
+			return cx.proxyDelete(o, k)
+		case classModuleNamespace:
+			if cx.isNamespaceExportKey(o, k) {
+				return cx.namespaceDelete(o, k)
+			}
+		case classTypedArray:
+			if k.key != nil && isCanonicalNumericString(k.key) {
+				return true
+			}
+		default:
+			k.key = cx.resolveForKey(o, k.key)
+		}
 	}
 	if k.key == nil {
 		if int64(k.idx) < int64(len(o.elems)) && !o.elems[k.idx].isHole() {
@@ -1510,14 +1547,6 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 			return true
 		}
 	} else {
-		if o.flags&objExotic != 0 {
-			if o.class == classLazy || cx.isLazyKey(k.key) {
-				cx.resolve(o)
-			}
-			if o.class == classTypedArray && isCanonicalNumericString(k.key) {
-				return true
-			}
-		}
 		if k.key == cx.Key(KeyLength) && o.kind == kindArray {
 			return false
 		}

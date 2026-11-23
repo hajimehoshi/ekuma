@@ -101,6 +101,92 @@ func TestCachedReadThroughLazyPrototype(t *testing.T) {
 	}
 }
 
+// Each operation gets a fresh object so an earlier lookup cannot initialize it.
+func TestLazyPropertyOperations(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		script string
+	}{
+		{
+			name:   "indexed getter",
+			script: `const child = Object.create(subject); child[1] === child;`,
+		},
+		{
+			name:   "own descriptor",
+			script: `Object.getOwnPropertyDescriptor(subject, "0")?.value;`,
+		},
+		{
+			name:   "inherited query key",
+			script: `["installed", "ByInit"].join("") in subject;`,
+		},
+		{
+			name:   "inherited read-only index",
+			script: `Reflect.set(Object.create(subject), 0, false);`,
+		},
+		{
+			name:   "redefine index",
+			script: `Reflect.defineProperty(subject, 1, {value: 2});`,
+		},
+		{
+			name:   "delete index",
+			script: `delete subject[0]; Reflect.ownKeys(subject).includes("0");`,
+		},
+		{
+			name:   "enumerate",
+			script: `Reflect.ownKeys(subject).join();`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := runLazyPropertyOperation(t, tc.script, true)
+			want := runLazyPropertyOperation(t, tc.script, false)
+			if got != want {
+				t.Errorf("lazy object returned %q, eagerly initialized object returned %q", got, want)
+			}
+		})
+	}
+}
+
+func runLazyPropertyOperation(t *testing.T, script string, lazy bool) string {
+	t.Helper()
+	cx := newTestContext(t)
+	proto := cx.NewObject(nil)
+	init := func(cx *engine.ExecutionContext, o *engine.Object) {
+		var data engine.PropDesc
+		data.SetValue(engine.True)
+		data.SetConfigurable(true)
+		cx.DefinePropertyOrThrow(o, engine.IndexKey(0), data)
+		var accessor engine.PropDesc
+		accessor.SetGetter(cx.NewNative("get 1", 0, func(_ *engine.ExecutionContext, this engine.Value, _ []engine.Value) engine.Value {
+			return this
+		}))
+		cx.DefinePropertyOrThrow(o, engine.IndexKey(1), accessor)
+		cx.Define(proto, cx.Intern("installedByInit"), engine.True, engine.FlagsData)
+	}
+	var subject *engine.Object
+	if lazy {
+		subject = cx.NewLazyObject(proto, init)
+	} else {
+		subject = cx.NewObject(proto)
+		init(cx, subject)
+	}
+	cx.Define(cx.GlobalObject().Object(), cx.Intern("subject"), engine.ObjectValue(subject), engine.FlagsData)
+	v, err := runScript(cx, "lookup", script)
+	if err != nil {
+		t.Fatalf("lazy=%t: %v", lazy, err)
+	}
+	return string(cx.ToString(v))
+}
+
+func TestPlainOwnPropertyQueryDefersLazyInitialization(t *testing.T) {
+	cx, _ := engine.NewExecutionContext(nil)
+	o := cx.NewLazyObject(nil, func(*engine.ExecutionContext, *engine.Object) {
+		t.Error("side-effect-free query ran the initializer")
+	})
+	if _, ok := cx.HasOwnPropertyPlain(o, engine.Number(0)); ok {
+		t.Error("side-effect-free query accepted an uninitialized object")
+	}
+}
+
 func TestCachedStringReadAcrossRealms(t *testing.T) {
 	a, _ := engine.NewExecutionContext(nil)
 	key := a.Intern("value")

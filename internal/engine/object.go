@@ -321,6 +321,17 @@ const (
 	primitiveStringRoot
 )
 
+// delegatesPropertyAccess reports whether a lookup must use the object's property operations
+// even when its storage has no matching key.
+func (o *Object) delegatesPropertyAccess() bool {
+	return o.flags&objExotic != 0 && o.shape.family == delegatedRoot
+}
+
+// indicesInElements reports whether elems accounts for all own indexed properties.
+func (o *Object) indicesInElements() bool {
+	return (o.kind == kindObject && o.class == classObject || o.kind == kindArray) && o.flags&(objSparse|objExotic) == 0
+}
+
 // shape describes the layout of an object: which property lives in which slot, and the prototype.
 //
 // The root fixes the creation realm, prototype, and behavior of named properties. Objects built
