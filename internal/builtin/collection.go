@@ -334,6 +334,7 @@ func initMap(cx *engine.ExecutionContext) {
 		k, v, ok := it.table.Next(&it.cursor)
 		if !ok {
 			it.table = nil
+			it.cursor = collection.Cursor{}
 			return engine.Undefined, false
 		}
 		switch it.kind {
@@ -355,6 +356,7 @@ func initMap(cx *engine.ExecutionContext) {
 		k, v, ok := it.table.Next(&it.cursor)
 		if !ok {
 			it.table = nil
+			it.cursor = collection.Cursor{}
 			return engine.Undefined, engine.Undefined, engine.PairDone
 		}
 		return k, v, engine.PairYielded
@@ -738,6 +740,7 @@ func initSet(cx *engine.ExecutionContext) {
 		k, _, ok := it.table.Next(&it.cursor)
 		if !ok {
 			it.table = nil
+			it.cursor = collection.Cursor{}
 			return engine.Undefined, false
 		}
 		if it.kind == engine.IterateEntries {
@@ -756,6 +759,7 @@ func initSet(cx *engine.ExecutionContext) {
 		k, _, ok := it.table.Next(&it.cursor)
 		if !ok {
 			it.table = nil
+			it.cursor = collection.Cursor{}
 			return engine.Undefined, engine.Undefined, engine.PairDone
 		}
 		return k, k, engine.PairYielded

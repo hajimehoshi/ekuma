@@ -192,9 +192,8 @@ See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
 - A `WeakMap` or `WeakSet` entry is stored with its key, since Go's garbage collector has no
   ephemerons. A value that refers back to its `WeakMap` therefore keeps the map alive for as long
   as the key is alive
-- A `Map` or `Set` iterator that is not advanced keeps the records of the entries that later
-  compactions of the collection removed, until it is advanced again or becomes unreachable, so
-  that it resumes at the right place. V8 does the same
+- When a `Map` or `Set` is compacted, an unfinished iterator keeps the positions of deleted
+  entries until its next step so it can resume in insertion order
 
 ### Missing
 
