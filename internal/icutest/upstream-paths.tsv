@@ -132,7 +132,7 @@
 1	1	source	properties	related source	icu4c/source/test/cintltst/cucdapi.c	-	-	78.3	Test262 generated RegExp property tests, including Script_Extensions_-_Hiragana.js
 1	1	support	native-header	input	icu4c/source/test/cintltst/cucdapi.h	-	-	79.1	-
 1	1	suite source	properties	overlap	icu4c/source/test/cintltst/cucdtst.c	addUnicodeTest [TestCodeUnit, TestCodePoint]	-	78.3	Test262 generated RegExp property tests, including Script_Extensions_-_Hiragana.js
-1	1	suite source	display-currency	proposed	icu4c/source/test/cintltst/currtest.c	addCurrencyTest [TestEnumList, TestEnumListReset]	-	79.1	Proposal 3
+1	1	suite source	display-currency	adapter	icu4c/source/test/cintltst/currtest.c	addCurrencyTest [TestEnumList, TestEnumListReset]	currtest.c	79.1	-
 1	1	suite source	codec	outside	icu4c/source/test/cintltst/custrtrn.c	addUCharTransformTest [Test_strToUTF32, Test_strToUTF32_surrogates]	-	79.1	-
 1	1	suite source	utf	overlap	icu4c/source/test/cintltst/custrtst.c	addUStringTest [TestStringCopy, TestStringFunctions]	-	78.3	Test262 test/built-ins/String/prototype/codePointAt/return-utf16-decode.js
 1	1	suite source	harness	input	icu4c/source/test/cintltst/cutiltst.c	addUtility	-	79.1	-
@@ -273,7 +273,7 @@
 1	1	suite source	collation	overlap	icu4c/source/test/intltest/collationtest.cpp	CollationTest [TestMinMax, TestImplicits]	-	78.3	TestICU/collationtest.txt
 1	1	source	collator-api	outside	icu4c/source/test/intltest/colldata.cpp	-	-	78.3	-
 1	1	support	native-header	input	icu4c/source/test/intltest/colldata.h	-	-	79.1	-
-1	1	suite source	number	proposed	icu4c/source/test/intltest/compactdecimalformattest.cpp	CompactDecimalFormatTest [TestEnglishShort, TestSerbianShort]	-	79.1	Proposal 3
+1	1	suite source	number	overlap	icu4c/source/test/intltest/compactdecimalformattest.cpp	CompactDecimalFormatTest [TestEnglishShort, TestSerbianShort]	-	79.1	TestICU/CompactDecimalFormatTest.java
 1	1	suite source	codec	outside	icu4c/source/test/intltest/convtest.cpp	ConversionTest [TestToUnicode, TestFromUnicode]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/convtest.h	-	-	79.1	-
 1	1	suite source	translit	outside	icu4c/source/test/intltest/cpdtrtst.cpp	CompoundTransliteratorTest [TestConstruction, TestCloneEqual]	-	79.1	-
@@ -409,7 +409,7 @@
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_patternstring.cpp	PatternStringTest [testLocalized, testToPatternSimple]	-	79.1	-
 1	1	suite source	number	overlap	icu4c/source/test/intltest/numbertest_permutation.cpp	NumberPermutationTest [testPermutations]	-	79.1	TestICU/numberpermutationtest.txt
 1	1	suite source	number-range	adapter	icu4c/source/test/intltest/numbertest_range.cpp	NumberRangeFormatterTest [testSanity, testBasic]	numbertest_range.cpp	79.1	-
-1	1	suite source	number	proposed	icu4c/source/test/intltest/numbertest_simple.cpp	SimpleNumberFormatterTest [testBasic, testWithOptions]	-	79.1	Proposal 3
+1	1	suite source	number	adapter	icu4c/source/test/intltest/numbertest_simple.cpp	SimpleNumberFormatterTest [testBasic, testWithOptions]	number-parts/numbertest_simple.cpp	79.1	-
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_skeletons.cpp	NumberSkeletonTest [validTokens, invalidTokens]	-	79.1	-
 1	1	suite source	number	overlap	icu4c/source/test/intltest/numfmtdatadriventest.cpp	NumberFormatDataDrivenTest [TestNumberFormatTestTuple, TestDataDrivenICU4C]	-	79.1	TestICU/numberformattestspecification.txt
 1	1	suite source	number	overlap	icu4c/source/test/intltest/numfmtspectest.cpp	NumberFormatSpecificationTest [TestBasicPatterns, TestNfSetters]	-	79.1	TestICU/NumberFormatTestCases.txt and TestICU/number-parts/numfmtst.cpp
@@ -1054,7 +1054,7 @@
 1	1	support	build	input	icu4j/main/common_tests/pom.xml	-	-	79.1	-
 1	1	suite source	display	adapter	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/TestLocaleNamePackaging.java	TestLocaleNamePackaging [testRegionDisplayNames, testLanguageDisplayNames]	display-names/TestLocaleNamePackaging.java	79.1	-
 1	1	suite source	calendar	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/calendar/DataDrivenCalendarTest.java	DataDrivenCalendarTest [calendarTest]	-	79.1	TestICU/calendar.txt
-1	1	suite source	number	proposed	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java	CompactDecimalFormatTest [TestDefaultSignificantDigits, TestCharacterIterator]	-	79.1	Proposal 3
+1	1	suite source	number	adapter	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java	CompactDecimalFormatTest [TestDefaultSignificantDigits, TestCharacterIterator]	CompactDecimalFormatTest.java	79.1	-
 1	1	suite source	date	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/DataDrivenFormatTest.java	DataDrivenFormatTest [formatTest]	-	79.1	TestICU/format.txt
 1	1	suite source	date	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/DateFormatTest.java	DateFormatTest [TestPatterns, TestWallyWedel]	-	79.1	TestICU/dtptngts.cpp and TestICU/format.txt
 1	1	suite source	number	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/IntlTestDecimalFormatAPIC.java	IntlTestDecimalFormatAPIC [TestAPI, TestRounding]	-	79.1	TestICU/NumberFormatTestCases.txt and TestICU/number-parts/numfmtst.cpp

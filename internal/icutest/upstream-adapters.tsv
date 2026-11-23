@@ -1,7 +1,7 @@
 TestICU subtest	Go selector for runnable sections	Executed (adapter units)	Known differences	Excluded (counts and reasons)
-GraphemeBreakTest.txt	runBreakTest (icutest.go:282)	766 cases	0	0 reported
-WordBreakTest.txt	runBreakTest (icutest.go:282)	1944 cases	0	0 reported
-SentenceBreakTest.txt	runBreakTest (icutest.go:282)	512 cases	0	0 reported
+GraphemeBreakTest.txt	runBreakTest (icutest.go:288)	766 cases	0	0 reported
+WordBreakTest.txt	runBreakTest (icutest.go:288)	1944 cases	0	0 reported
+SentenceBreakTest.txt	runBreakTest (icutest.go:288)	512 cases	0	0 reported
 emoji-test.txt	runEmojiBreakTest (rbbi.go:23)	3210 inputs in each of grapheme and word modes	0	167 single-code-unit rows | line breaking has no Intl.Segmenter granularity
 casing.txt	runCasingTest (casing.go:17)	3 lower and 3 upper cases executed	0	15 titlecasing rows | 2 casefolding rows
 strcase.cpp	runArmenianUpper (casing.go:141)	3 uppercase checks	0	3 titlecasing checks (no corresponding String method)
@@ -28,6 +28,8 @@ locale-collation/cmsccoll.c	longNumbers (locale_collation.go:188)	45 cases execu
 locale-collation/CollationMiscTest.java	javaCases (locale_collation.go:227)	1121 cases executed	0	0 reported
 collationtest.txt	runCollationTest (collation_cases.go:274)	1457 input rows, 470 comparisons executed (pairs)	0	6 Ekuma shifts through punctuation; ICU maxVariable=currency also shifts symbols and currency | 3 ICU locale keywords select backwards secondary and shift through currency | 5 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8 | 8 ICU shifts only spaces and disables normalization with this locale's keywords | 6 ICU shifts only spaces; Ekuma also shifts punctuation | 912 custom ICU tailoring requires a run-time rule builder | 47 explicit ICU script reordering is unavailable
 numberpermutationtest.txt	runNumberPermutations (number_permutations.go:125)	2484 cases executed	0	747 Intl cannot force a decimal separator after an integer | 990 Intl cannot pad or force the sign of the exponent | 873 Intl cannot truncate the integer part to four digits | 756 furlong is not an ECMA-402 sanctioned unit
+CompactDecimalFormatTest.java	runCompactSerbian (number.go:224)	20 cases executed	0	0 reported
+currtest.c	runCurrencyFractionDigits (number.go:243)	3 cases executed	0	0 reported
 NumberFormatTestCases.txt	runNumberCases (number.go:173)	38 cases executed	0	4 ICU overrides the locale's primary or secondary grouping width | 3 ICU pattern syntax rejection | 14 Intl does not serialize ICU patterns | 2 Intl.NumberFormat has no parsing operation | 7 parse side of the currency round trip | 35 parse side of the format/parse round trip
 dcfmtest.txt	runDecimalFormat (number.go:153)	1475 cases executed	0	2 ICU suppresses the scientific mantissa's leading zero | 3 ICU uses a mantissa width or exponent interval unavailable in Intl | 2 Intl has no halfodd rounding mode | 8 Intl has no unnecessary rounding mode | 1 Intl.NumberFormat has no parsing operation
 calendar.txt	runCalendar (calendar.go:97)	72 cases executed	0	18 ICU Calendar.roll wraps one field without carrying into larger fields
@@ -92,6 +94,7 @@ dtifmtts.cpp	checkSkeletonIntervals (interval_tables.go:122), checkMilliseconds 
 JavaTimeFormatTest.java	checkFrenchDateRanges (interval.go:240)	2 cases executed	0	0 reported
 number-parts/unumberformattertst.c	cFormatter (number_parts_cases.go:8)	5 cases executed	0	0 reported
 number-parts/numbertest_api.cpp	cppFormatter (number_parts_cases.go:51)	23 cases executed	0	1 composed and built-in meter-per-second have identical parts | 1 kelvin is not an ECMA-402 sanctioned unit | 15 matching ICU4J field-position case
+number-parts/numbertest_simple.cpp	simpleInteger (number_parts_cases.go:182)	1 cases executed	0	0 reported
 number-parts/numfmtst.cpp	formatAttributes (number_parts_cases.go:128)	2 cases executed	0	0 reported
 number-parts/NumberFormatTest.java	accounting (number_parts_cases.go:152)	11 cases executed	0	14 locale currency preference repeats explicit accounting style
 NumberRangeFormatterTest.java	javaNumberRanges (number_range_cases.go:181)	204 cases executed	0	21 different endpoint formatters | 4 equal Slovenian endpoints with forced range | 2 equal endpoints with forced range in locale() | 35 explicit ICU collapse changes the range | 14 explicit ICU identity fallback changes the range | 10 kelvin is not a sanctioned unit | 134 repeats mapped formatter expectation

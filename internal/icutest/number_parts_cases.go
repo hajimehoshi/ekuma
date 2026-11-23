@@ -178,3 +178,13 @@ func (s *numberPartsSuite) accounting(src intervalSource) {
 		s.checkParts(start, strings.ReplaceAll(locale, "_", "-"), "currency/"+currency+" sign-accounting", fixtureFloat(block, input), want, nil)
 	}
 }
+
+func (s *numberPartsSuite) simpleInteger(src intervalSource) {
+	block := src.from("void SimpleNumberFormatterTest::testBasic() {")
+	locale := intervalString(s.t, block.from("SimpleNumberFormatter::forLocale(").lines[0])
+	call := block.from("snf.formatInt64(")
+	_, args, _ := strings.Cut(call.lines[0], "snf.formatInt64(")
+	input, _, _ := strings.Cut(args, ",")
+	want := intervalString(s.t, block.from("checkFormattedValue(").from("result,").from(`u"`).lines[0])
+	s.checkParts(call.line, locale, "", integer(input), want, block.table("expectedFieldPositions[] ="))
+}

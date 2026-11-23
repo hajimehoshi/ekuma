@@ -33,6 +33,10 @@ func runNumberParts(t *testing.T, root string) {
 			run:  (*numberPartsSuite).cppFormatter,
 		},
 		{
+			path: "icu4c/source/test/intltest/numbertest_simple.cpp",
+			run:  (*numberPartsSuite).simpleInteger,
+		},
+		{
 			path: "icu4c/source/test/intltest/numfmtst.cpp",
 			run:  (*numberPartsSuite).formatAttributes,
 		},

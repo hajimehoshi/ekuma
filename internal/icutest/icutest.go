@@ -99,6 +99,12 @@ func Run(t *testing.T) {
 		t.Run("numberpermutationtest.txt", func(t *testing.T) {
 			runNumberPermutations(t, filepath.Join(testdata, "numberpermutationtest.txt"))
 		})
+		t.Run("CompactDecimalFormatTest.java", func(t *testing.T) {
+			runCompactSerbian(t, filepath.Join(cldrDir, "icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java"))
+		})
+		t.Run("currtest.c", func(t *testing.T) {
+			runCurrencyFractionDigits(t, filepath.Join(cldrDir, "icu4c/source/test/cintltst/currtest.c"))
+		})
 		t.Run("NumberFormatTestCases.txt", func(t *testing.T) {
 			runNumberCases(t, filepath.Join(testdata, "NumberFormatTestCases.txt"))
 		})

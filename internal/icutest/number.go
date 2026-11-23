@@ -220,3 +220,47 @@ func runNumberCases(t *testing.T, path string) {
 		}
 	})
 }
+
+func runCompactSerbian(t *testing.T, path string) {
+	f := newNumberChecks(t, path)
+	src := readIntervalSource(t, path)
+	opts := map[string]any{"notation": "compact", "compactDisplay": "long", "maximumSignificantDigits": 2}
+	for _, row := range src.table("Object[][] SerbianTestDataLongNegative =") {
+		c := row.columns(t, 2)
+		literal, single := strings.CutSuffix(c[0], "f")
+		bits := 64
+		if single {
+			bits = 32
+		}
+		input, err := strconv.ParseFloat(literal, bits)
+		if err != nil {
+			t.Fatalf("%s:%d: %v", path, row.line, err)
+		}
+		f.check(row.line, "TestSerbianLongNegative", f.format, intervalString(t, c[1]), "sr", opts, input)
+	}
+}
+
+func runCurrencyFractionDigits(t *testing.T, path string) {
+	f := newNumberChecks(t, path)
+	block := readIntervalSource(t, path).from("static void TestFractionDigitOverride(void) {")
+	locale := strings.ReplaceAll(intervalString(t, block.from("unum_open(").lines[0]), "_", "-")
+	opts := map[string]any{"style": "currency", "currency": "HUF"}
+	var input float64
+	for i, line := range block.lines {
+		switch {
+		case strings.HasPrefix(line, "unum_setAttribute(fmt, UNUM_FRACTION_DIGITS, "):
+			digits := integer(strings.TrimSuffix(strings.TrimPrefix(line, "unum_setAttribute(fmt, UNUM_FRACTION_DIGITS, "), ");"))
+			opts["minimumFractionDigits"] = digits
+			opts["maximumFractionDigits"] = digits
+		case strings.HasPrefix(line, "unum_formatDouble("):
+			input = fixtureFloat(block, strings.TrimSpace(strings.Split(line, ",")[1]))
+		case strings.HasPrefix(line, "u_unescape("):
+			name, _, _ := strings.Cut(strings.TrimPrefix(line, "u_unescape("), ",")
+			want := intervalString(t, block.from("const char " + name + "[] =").lines[0])
+			f.check(block.line+i, "TestFractionDigitOverride", f.format, want, locale, opts, input)
+		case strings.HasPrefix(line, "unum_close("):
+			return
+		}
+	}
+	t.Fatalf("%s:%d: unterminated currency fixture", path, block.line)
+}

@@ -30,6 +30,7 @@ the test. [Known results](testdata/icu-failures.txt)
 | ICU 79.1 fixtures | Coverage |
 |---|---|
 | `numberpermutationtest.txt`, `numberformattestspecification.txt`, `dcfmtest.txt`, ICU4C and ICU4J `NumberFormatTestCases.txt` | Decimal, currency and scientific formatting. Decimal-string inputs preserve precision. The adapter maps representable ICU patterns to NumberFormat options and excludes parsing. |
+| `CompactDecimalFormatTest.java`, `currtest.c` | Serbian long compact forms for negative values with two significant digits, and Hungarian forint formatting with default and explicit fraction digits. |
 | `localeDisplayName.txt` | Standard and dialect display names for locale identifiers. |
 | `misc/plurals.txt`, ICU4J `format/plurals.txt`, `misc/pluralRanges.txt` | Cardinal, ordinal and range categories. The adapter preserves visible fraction digits and uses ICU's cardinal rules to interpret localized phrase samples. |
 | `calendar.txt`, `caltestdata.h`, `format.txt` | Calendar conversion and arithmetic, leap months, Gregorian/lunar mappings, and localized date strings and parts. |
@@ -100,8 +101,8 @@ Known differences include English spacing and the field type of German
 exponents, compact notation, currency spacing, accounting, and unit labels.
 UTF-16 field spans split grouped integers and leave gaps as literals. The
 adapter maps ICU skeletons to NumberFormat options for half-even rounding,
-unit width, and accounting, and passes exact decimals as strings. All 41
-checks pass. [Skeleton mappings](number_permutations.go) · [Supplementary ICU 79.1 field positions](testdata/number-fields.txt)
+unit width, and accounting, and passes exact decimals as strings. ICU’s
+simple-formatter table supplies Swiss German integer and grouping spans. [Skeleton mappings](number_permutations.go) · [Supplementary ICU 79.1 field positions](testdata/number-fields.txt)
 
 ## Number range fixtures
 
