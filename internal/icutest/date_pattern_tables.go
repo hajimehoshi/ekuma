@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/hajimehoshi/ekuma/internal/intl/date"
 )
 
 func (s *datePatternSuite) strings(row intervalRow, count int) []string {
@@ -85,7 +87,16 @@ func (s *datePatternSuite) cppDatePatterns(src intervalSource) {
 	want := block.from("UnicodeString expR =")
 	s.pattern(want.line, "en", intervalString(s.t, block.lines[0]), intervalString(s.t, want.lines[0]), localeHourWidth)
 	block = src.from(`const char* testLocaleID = "de_US"`)
-	s.clock(block.line, intervalString(s.t, block.lines[0]), "h12")
+	loc, opts, _ := datePatternOptions(intervalString(s.t, block.lines[0]), "j", "UTC")
+	// testJjMapping checks the hour letter selected for the requested US region.
+	hourCheck := block.from("jPatSkeleton.indexOf(")
+	_, letter, ok := strings.Cut(hourCheck.lines[0], "indexOf(u'")
+	if !ok || len(letter) < 2 || letter[1] != '\'' {
+		s.t.Fatalf("%s:%d: invalid hour letter in %s", s.path, hourCheck.line, hourCheck.lines[0])
+	}
+	s.checkPatternField(hourCheck.line, loc, opts, "j", letter[:1], requestedHourWidth)
+	// Intl resolves de-US to de, whose hour-only pattern at midnight is HH 'Uhr'.
+	s.check(block.line, "hourCycle", s.observe, "de h23 00 Uhr", loc, opts, patternInstant.Truncate(24*time.Hour).UnixMilli(), "j", "regionalClock")
 
 	s.excluded["generator populated with custom day-period patterns"] += len(src.table("testItems[][2]"))
 	s.excluded["generator skeleton extraction or enumeration"] += len(src.table("testGetSkeletonAndBase[][3]")) +
@@ -173,6 +184,16 @@ func (s *datePatternSuite) allDateFields(src intervalSource) {
 					continue
 				}
 				op := "includes/" + id + "/" + skel
+				if v[1] == "G" && id == "en@calendar=chinese" {
+					s.checkPatternField(row.line, loc, opts, skel, v[3], localeHourWidth)
+					// ICU formats an isolated G as the sexagenary cycle number.
+					s.checkSkeletonText(row.line, loc, opts, skel, patternInstant, "78")
+					// Intl adds year, month and day. ICU 79.1 selects MMM d, r
+					// for all three era widths with those default fields.
+					const want = "month Mo2\nliteral  \nday 5\nliteral , \nrelatedYear 2006"
+					s.check(row.line, op, s.observe, want, loc, opts, patternInstant.UnixMilli(), skel, "pattern", []any{})
+					continue
+				}
 				switch v[3] {
 				case "hK", "Hk":
 					// At 13:05 the clock families give different hour parts.
@@ -205,6 +226,20 @@ func (s *datePatternSuite) allDateFields(src intervalSource) {
 			}
 		}
 	}
+}
+
+func (s *datePatternSuite) checkPatternField(line int, loc string, opts map[string]any, skeleton, letters string, mode hourWidthMode) {
+	s.executed++
+	pattern := date.PatternForSkeleton(loc, opts["calendar"].(string), skeleton, bool(mode))
+	var quoted bool
+	for _, ch := range pattern {
+		if ch == '\'' {
+			quoted = !quoted
+		} else if !quoted && strings.ContainsRune(letters, ch) {
+			return
+		}
+	}
+	s.t.Errorf("%s:%d: %s %q (%v): pattern %q lacks a field from %q", s.path, line, loc, skeleton, opts, pattern, letters)
 }
 
 func (s *datePatternSuite) clock(line int, id, cycle string) {

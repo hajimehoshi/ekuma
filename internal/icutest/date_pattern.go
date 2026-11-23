@@ -72,6 +72,7 @@ func runDatePatterns(t *testing.T, root string, failures map[string]map[int]stri
 					if (!parts.some(p => p.type === fields) || !resolved[fields]) return JSON.stringify(parts);
 					if (fields === "dayPeriod") return "flexible";
 					return resolved.timeZoneName.replace(/^(short|long)/, "") || "specific";
+				case "regionalClock": return [resolved.locale, resolved.hourCycle, text].join(" ");
 				case "clock": {
 					const hour = parts.find(p => p.type === "hour");
 					return resolved.hourCycle + " " + (hour && hour.value.replace(/^[0٠](?=.)/, ""));
@@ -238,6 +239,20 @@ func datePatternOptions(id, skeleton, zone string) (string, map[string]any, stri
 	return loc, opts, ""
 }
 
+func (s *datePatternSuite) checkSkeletonText(line int, loc string, opts map[string]any, skeleton string, instant time.Time, want string) {
+	s.t.Helper()
+	zone := opts["timeZone"].(string)
+	tz, ok := temporal.GetAvailableNamedTimeZone(zone, temporal.UTC)
+	if !ok {
+		s.t.Fatalf("%s:%d: unknown time zone %q", s.path, line, zone)
+	}
+	s.executed++
+	got := date.FormatSkeleton(loc, opts["calendar"].(string), opts["numberingSystem"].(string), skeleton, tz, instant.UnixMilli())
+	if got != want {
+		s.t.Errorf("%s:%d: skeleton %q (%s %v, %s): got %q, want %q", s.path, line, skeleton, loc, opts, instant, got, want)
+	}
+}
+
 // ICU's fixed-output matrices give strings without field positions. The
 // instant identifies the numeric fields, and the text supplies their padding.
 var dateDigits = regexp.MustCompile(`[0-9]+`)
@@ -248,15 +263,7 @@ func (s *datePatternSuite) fixed(line int, id, skeleton string, instant time.Tim
 		s.excluded[reason]++
 		return
 	}
-	tz, ok := temporal.GetAvailableNamedTimeZone(zone, temporal.UTC)
-	if !ok {
-		s.t.Fatalf("%s:%d: unknown time zone %q", s.path, line, zone)
-	}
-	s.executed++
-	got := date.FormatSkeleton(loc, opts["calendar"].(string), opts["numberingSystem"].(string), skeleton, tz, instant.UnixMilli())
-	if got != want {
-		s.t.Errorf("%s:%d: skeleton %q (%s %v, %s): got %q, want %q", s.path, line, skeleton, loc, opts, instant, got, want)
-	}
+	s.checkSkeletonText(line, loc, opts, skeleton, instant, want)
 	want = strings.ReplaceAll(want, "\u202f", " ")
 	numbers := dateDigits.FindAllString(want, -1)
 	var values []any
@@ -396,7 +403,7 @@ func (s *datePatternSuite) checkDefaultHourPattern(line int, loc string, opts ma
 	}
 	patternLocale := tag.Canonicalize().String()
 	s.executed++
-	got := date.PatternForSkeleton(patternLocale, opts["calendar"].(string), skeleton)
+	got := date.PatternForSkeleton(patternLocale, opts["calendar"].(string), skeleton, false)
 	if got != pattern {
 		s.t.Errorf("%s:%d: default pattern for %s %q (%v): got %q, want %q", s.path, line, patternLocale, skeleton, opts, got, pattern)
 	}

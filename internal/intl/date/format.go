@@ -158,11 +158,12 @@ var weekdayKeys = [7]string{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}
 type Formatter struct {
 	f *Format
 	// cal is the calendar, or nil for the Gregorian and the ISO 8601 calendar.
-	cal    *calendar.Calendar
-	data   *localeData
-	digits []string
-	zones  *zoneFormatter
-	tz     temporal.TimeZone
+	cal             *calendar.Calendar
+	data            *localeData
+	digits          []string
+	numberingSystem string
+	zones           *zoneFormatter
+	tz              temporal.TimeZone
 	// dayPeriodRules are the rules of the flexible day periods of the locale, or nil.
 	dayPeriodRules []dayPeriodRule
 	// ranges is the range format, created when it is first needed.
@@ -175,10 +176,11 @@ func NewFormatter(f *Format, nu string, tz temporal.TimeZone) *Formatter {
 	d := newLocaleData(t.BaseName(), f.calendar)
 	digits := number.DigitsOf(nu)
 	return &Formatter{
-		f:      f,
-		cal:    calendar.Lookup(f.calendar),
-		data:   d,
-		digits: digits,
+		f:               f,
+		cal:             calendar.Lookup(f.calendar),
+		data:            d,
+		digits:          digits,
+		numberingSystem: nu,
 		zones: &zoneFormatter{
 			data:   d,
 			region: region(t),
@@ -193,7 +195,7 @@ func NewFormatter(f *Format, nu string, tz temporal.TimeZone) *Formatter {
 // matching and the locale's original spacing.
 func FormatSkeleton(l, cal, nu, skeleton string, tz temporal.TimeZone, t int64) string {
 	l = withKeyword(l, "nu", nu)
-	p := PatternForSkeleton(l, cal, skeleton)
+	p := PatternForSkeleton(l, cal, skeleton, false)
 	f := newFormat(l, cal, p)
 	fm := NewFormatter(f, nu, tz)
 	var b strings.Builder
@@ -327,6 +329,15 @@ func (fm *Formatter) field(it item, lt localTime, za zoneAt, hasMinute, hasSecon
 	n := it.n
 	switch it.ch {
 	case 'G':
+		switch fm.f.calendar {
+		case "chinese", "dangi":
+			// Lunar year 1984 starts the 78th sexagenary cycle.
+			cycle := 78 + floorDiv(lt.relatedYear-1984, 60)
+			if cycle < 0 {
+				return "era", fm.data.numberSymbol(fm.numberingSystem, "-") + fm.num(-cycle, 1)
+			}
+			return "era", fm.num(cycle, 1)
+		}
 		w := "a"
 		switch n {
 		case 4:

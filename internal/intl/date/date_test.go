@@ -314,6 +314,31 @@ func TestFormat(t *testing.T) {
 	}
 }
 
+func TestDangiCycle(t *testing.T) {
+	for _, tc := range []struct {
+		instant time.Time
+		want    string
+	}{
+		// The cycle changes at lunar new year.
+		{
+			instant: time.Date(1984, time.February, 1, 12, 0, 0, 0, time.UTC),
+			want:    "٧٧",
+		},
+		{
+			instant: time.Date(1984, time.February, 2, 12, 0, 0, 0, time.UTC),
+			want:    "٧٨",
+		},
+		{
+			instant: time.Date(-2800, time.March, 4, 12, 0, 0, 0, time.UTC),
+			want:    "\u061c-٢",
+		},
+	} {
+		if got := date.FormatSkeleton("ar", "dangi", "arab", "G", temporal.UTC, tc.instant.UnixMilli()); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.instant, got, tc.want)
+		}
+	}
+}
+
 func TestCalendarFormat(t *testing.T) {
 	day := func(y, m, d int) int64 {
 		return time.Date(y, time.Month(m), d, 12, 0, 0, 0, time.UTC).UnixMilli()

@@ -50,7 +50,8 @@ When ICU supplies formatted text, the adapter checks the exact Unicode
 string for the ICU skeleton, then checks JavaScript text and parts with
 web-compatible spacing. For pattern-only rows it checks field order, widths,
 and literals. When ICU chooses the hour width, the adapter checks the ICU
-pattern directly and requests its hour width in JavaScript. [Known results](testdata/icu-failures.txt)
+pattern directly and requests its hour width in JavaScript. Era and clock
+cases also check the effects of default date fields and locale negotiation.
 
 ## Date interval fixtures
 

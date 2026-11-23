@@ -60,17 +60,3 @@ dtifmtts.cpp/formatRangeToParts 1878 web-spaces
 # literal. Its checkMixedFormattedValue helper checks only returned fields,
 # so the extra expected field goes unchecked.
 cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal . \nshared month September\nshared literal  \nshared year 2010\nshared literal , \nstartRange hour 15\nstartRange literal :\nstartRange minute 00\nshared literal –\nendRange hour 22\nendRange literal :\nendRange minute 00\nshared literal  Uhr"
-
-# Single-date pattern selection.
-
-# An era-only Intl request adds default date fields. The Chinese date
-# includes a related year and has no era part.
-dtptngts.cpp/includes/en@calendar=chinese/G 1006 "month literal day literal relatedYear"
-dtptngts.cpp/includes/en@calendar=chinese/GG 1006 "month literal day literal relatedYear"
-dtptngts.cpp/includes/en@calendar=chinese/GGG 1006 "month literal day literal relatedYear"
-dtptngts.cpp/includes/en@calendar=chinese/GGGG 1006 "month literal day literal relatedYear"
-dtptngts.cpp/includes/en@calendar=chinese/GGGGG 1006 "month literal day literal relatedYear"
-
-# ICU honors the US region in de_US. Intl locale matching resolves to
-# German and its default 24-hour clock.
-dtptngts.cpp/hourCycle 1326 "h23 0"
