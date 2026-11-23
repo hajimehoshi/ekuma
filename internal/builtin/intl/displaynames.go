@@ -135,7 +135,7 @@ func isASCII(s string) bool {
 
 // initDisplayNames defines Intl.DisplayNames.
 func (r *realm) initDisplayNames(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("DisplayNames", 2, r.newDisplayNames)
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)

@@ -63,7 +63,7 @@ func TestDerivedReturnErrorLocation(t *testing.T) {
 		if thrown.Object().CreationRealm() != callerRealm {
 			t.Error("derived constructor return error was created outside the caller's realm")
 		}
-		if got := vm.ProtoOf(thrown.Object()); got != vm.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+		if got := vm.ProtoOf(thrown.Object()); got != callerRealm.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
 			t.Error("derived constructor return error has the wrong prototype")
 		}
 	})

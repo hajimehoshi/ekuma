@@ -124,7 +124,7 @@ func helperReturn(vm *engine.VM, this engine.Value, args []engine.Value) engine.
 		}()
 		h.body.close(vm)
 	}
-	return vm.CreateIterResultObject(vm.CurrentRealm(), engine.Undefined, true)
+	return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
 }
 
 // initIteratorHelpers defines Iterator and the iterator helpers.
@@ -133,7 +133,7 @@ func initIteratorHelpers(vm *engine.VM) {
 		next: vm.Intern("next"),
 		ret:  vm.Intern("return"),
 	}
-	proto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype)
 	var ctor *engine.Object
 	ctor = vm.NewNativeConstructor("Iterator", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
@@ -188,7 +188,7 @@ type wrappedIterator struct {
 }
 
 func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
-	wrapProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	wrapProto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype))
 	thisWrapped := func(vm *engine.VM, this engine.Value, what string) *wrappedIterator {
 		w, _ := engine.IteratorState(this).(*wrappedIterator)
 		if w == nil {
@@ -204,7 +204,7 @@ func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
 		w := thisWrapped(vm, this, "return")
 		m := vm.GetMethod(w.it, k.ret)
 		if m == nil {
-			return vm.CreateIterResultObject(vm.CurrentRealm(), engine.Undefined, true)
+			return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
 		}
 		return vm.Call(m, w.it)
 	})
@@ -760,7 +760,7 @@ func (h *chunksHelper) close(vm *engine.VM) {
 
 // initLazyIteratorMethods defines the methods of Iterator.prototype that return iterator helpers.
 func initLazyIteratorMethods(vm *engine.VM, k *iteratorKeys, newHelper func(helperBody) engine.Value) {
-	proto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(vm, proto, "map", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(vm, this, "map")
 		f := callableArg(vm, it, arg(args, 0))
@@ -833,7 +833,7 @@ func initLazyIteratorMethods(vm *engine.VM, k *iteratorKeys, newHelper func(help
 
 // initEagerIteratorMethods defines the methods of Iterator.prototype that consume the iterator.
 func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
-	proto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype)
 	method(vm, proto, "reduce", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		it := receiver(vm, this, "reduce")
 		f := callableArg(vm, it, arg(args, 0))

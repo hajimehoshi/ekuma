@@ -89,13 +89,13 @@ func (vm *VM) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFu
 	return vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		v, ok := step(vm, this)
 		if !ok {
-			return vm.CreateIterResultObject(vm.CurrentRealm(), Undefined, true)
+			return vm.CurrentRealm().CreateIterResultObject(Undefined, true)
 		}
 		realm := vm.CurrentRealm()
 		if yieldRealm == IteratorClosureRealm {
 			realm = this.o.CreationRealm()
 		}
-		return vm.CreateIterResultObject(realm, v, false)
+		return realm.CreateIterResultObject(v, false)
 	})
 }
 
@@ -157,7 +157,7 @@ func (vm *VM) NewArrayIterator(o *Object, kind IterationKind) *Object {
 }
 
 func (vm *VM) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *Object {
-	return vm.NewIteratorObject(vm.Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
+	return vm.NewIteratorObject(vm.CurrentRealm().Intrinsic(IntrinsicArrayIteratorPrototype), &arrayIterator{
 		object:    o,
 		nextIndex: nextIndex,
 		kind:      kind,
@@ -311,7 +311,7 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 			return Undefined, iterDone
 		}
 		return v, iterValue
-	case f != nil && f == vm.Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
+	case f != nil && f == vm.CurrentRealm().Intrinsic(IntrinsicGeneratorPrototypeNext) && isSyncGenerator(it):
 		if vm.interrupt.Load() {
 			vm.Poll()
 		}
@@ -458,7 +458,7 @@ func (vm *VM) iteratorCloseAll(its []Value, pending bool) {
 // can expose it to JavaScript.
 func (vm *VM) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
 	key := vm.Key(keyReturn)
-	for p := vm.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
+	for p := vm.CurrentRealm().Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
 		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
 			it := vm.newArrayIterator(o, IterateValues, int64(nextIndex))
 			vm.iteratorClose(Value{o: it}, pending)
@@ -481,7 +481,7 @@ func (vm *VM) Iterate(v Value, f func(Value) bool) {
 // IterateFromMethod is [VM.Iterate] for the iterator that GetIteratorFromMethod(v, method)
 // returns.
 func (vm *VM) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
-	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+	if method == vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
 		vm.iteratePlainArray(v.o, f)
 		return
 	}
@@ -522,8 +522,9 @@ func (vm *VM) plainArrayIteratorIndex(o *Object, i uint32) Value {
 	array := Value{o: o}
 	// A native frame uses its receiver only to name it in a stack trace. An indexed
 	// iterator has no own properties, so its prototype supplies the same name.
-	proto := vm.Intrinsic(IntrinsicArrayIteratorPrototype)
-	vm.pushNative(vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
+	realm := vm.CurrentRealm()
+	proto := realm.Intrinsic(IntrinsicArrayIteratorPrototype)
+	vm.pushNative(realm.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
 	v := vm.Index(array, i)
 	vm.popNative()
 	return v
@@ -596,15 +597,15 @@ type iterResult struct {
 	props [2]Value
 }
 
-// CreateIterResultObject creates an iterator result with the Object prototype of realm.
-func (vm *VM) CreateIterResultObject(realm *Realm, v Value, done bool) Value {
-	r := &iterResult{
+// CreateIterResultObject creates an iterator result with the Object prototype of r.
+func (r *Realm) CreateIterResultObject(v Value, done bool) Value {
+	result := &iterResult{
 		kind:  kindObject,
-		shape: realm.shapes.iterResult,
+		shape: r.shapes.iterResult,
 		props: [2]Value{v, Bool(done)},
 	}
-	r.slots = r.props[:]
-	return Value{o: r.init()}
+	result.slots = result.props[:]
+	return Value{o: result.init()}
 }
 
 // forIn is a for-in iterator object together with the state of its loop, so that creating
@@ -838,7 +839,7 @@ func (vm *VM) iterResultValue(r Value) (Value, bool) {
 
 // IteratorToList implements IteratorToList(GetIteratorFromMethod(v, method)).
 func (vm *VM) IteratorToList(v Value, method *Object) []Value {
-	if method == vm.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
+	if method == vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && vm.arrayIterationPlain(v.o) {
 		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
 			return slices.Clone(v.o.elems[:n])
 		}

@@ -67,7 +67,7 @@ func constant(vm *engine.VM, o *engine.Object, name wtf8.String, v engine.Value)
 func constructor(vm *engine.VM, name wtf8.String, length int, protoID engine.Intrinsic, f engine.NativeFunc) *engine.Object {
 	c := vm.NewNativeConstructor(name, length, f)
 	vm.DefineConstructorPrototype(c, protoID)
-	vm.Define(vm.Intrinsic(protoID), vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
+	vm.Define(vm.CurrentRealm().Intrinsic(protoID), vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagsHidden)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern(name), engine.ObjectValue(c), engine.FlagsHidden)
 	return c
 }
@@ -110,7 +110,8 @@ func RegisterExtension(install func(vm *engine.VM)) {
 // Install creates the standard built-in objects of vm, and those of the registered extensions.
 func Install(vm *engine.VM) {
 	vm.StartBuiltins()
-	objectProto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
+	realm := vm.CurrentRealm()
+	objectProto := realm.Intrinsic(engine.IntrinsicObjectPrototype)
 	vm.SetIntrinsic(engine.IntrinsicNumberPrototype, vm.NewNumberObject(0, objectProto))
 	vm.SetIntrinsic(engine.IntrinsicBooleanPrototype, vm.NewBooleanObject(false, objectProto))
 	for _, id := range []engine.Intrinsic{
@@ -121,14 +122,14 @@ func Install(vm *engine.VM) {
 	} {
 		vm.SetIntrinsic(id, vm.NewObject(objectProto))
 	}
-	iteratorProto := vm.Intrinsic(engine.IntrinsicIteratorPrototype)
+	iteratorProto := realm.Intrinsic(engine.IntrinsicIteratorPrototype)
 	for _, id := range []engine.Intrinsic{
 		engine.IntrinsicArrayIteratorPrototype, engine.IntrinsicStringIteratorPrototype, engine.IntrinsicGeneratorPrototype,
 	} {
 		vm.SetIntrinsic(id, vm.NewObject(iteratorProto))
 	}
-	vm.SetIntrinsic(engine.IntrinsicAsyncGeneratorPrototype, vm.NewObject(vm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype)))
-	functionProto := vm.Intrinsic(engine.IntrinsicFunctionPrototype)
+	vm.SetIntrinsic(engine.IntrinsicAsyncGeneratorPrototype, vm.NewObject(realm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype)))
+	functionProto := realm.Intrinsic(engine.IntrinsicFunctionPrototype)
 	for _, id := range []engine.Intrinsic{
 		engine.IntrinsicGeneratorFunctionPrototype, engine.IntrinsicAsyncFunctionPrototype, engine.IntrinsicAsyncGeneratorFunctionPrototype,
 	} {
@@ -314,9 +315,9 @@ func enumerableOwn(vm *engine.VM, o *engine.Object, entries bool) []engine.Value
 }
 
 func initObject(vm *engine.VM, strs *objectStrings) {
-	proto := vm.Intrinsic(engine.IntrinsicObjectPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype)
 	ctor := constructor(vm, "Object", 1, engine.IntrinsicObjectPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicObject) {
+		if nt := vm.GetNewTarget(); nt != nil && nt != vm.CurrentRealm().Intrinsic(engine.IntrinsicObject) {
 			return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicObjectPrototype)))
 		}
 		v := arg(args, 0)
@@ -688,7 +689,7 @@ func indexValues(vm *engine.VM, out []engine.Value, v engine.Value, start int) {
 }
 
 func initFunction(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicFunctionPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicFunctionPrototype)
 	var ctor *engine.Object
 	ctor = constructor(vm, "Function", 1, engine.IntrinsicFunctionPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.CreateDynamicFunction(ctor, vm.GetNewTarget(), engine.NormalFunction, args)
@@ -735,7 +736,7 @@ func initFunction(vm *engine.VM) {
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolMetadata), engine.Null, 0)
 
 	// AddRestrictedFunctionProperties
-	throwTypeError := vm.Intrinsic(engine.IntrinsicThrowTypeError)
+	throwTypeError := vm.CurrentRealm().Intrinsic(engine.IntrinsicThrowTypeError)
 	vm.DefineAccessor(proto, vm.Intern("caller"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 	vm.DefineAccessor(proto, vm.Intern("arguments"), throwTypeError, throwTypeError, engine.FlagConfigurable)
 
@@ -781,7 +782,7 @@ func initError(vm *engine.VM) {
 	for kind, name := range names {
 		kind := engine.ErrorKind(kind)
 		protoID := engine.ErrorPrototypeIntrinsic(kind)
-		proto := vm.Intrinsic(engine.IntrinsicErrorPrototype)
+		proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicErrorPrototype)
 		if kind != engine.ErrorKindError {
 			proto = vm.NewObject(proto)
 			vm.SetIntrinsic(protoID, proto)
@@ -838,7 +839,7 @@ func initError(vm *engine.VM) {
 		return engine.Bool(engine.IsError(arg(args, 0)))
 	})
 	stackKey := engine.NamedKey(vm.Key(engine.KeyStack))
-	vm.DefineAccessor(vm.Intrinsic(engine.IntrinsicErrorPrototype), vm.Key(engine.KeyStack),
+	vm.DefineAccessor(vm.CurrentRealm().Intrinsic(engine.IntrinsicErrorPrototype), vm.Key(engine.KeyStack),
 		vm.NewNative("get stack", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
 				vm.ThrowTypeError(vm.CurrentRealm(), "Error.prototype.stack getter called on non-object")
@@ -856,11 +857,11 @@ func initError(vm *engine.VM) {
 			if !v.IsString() {
 				vm.ThrowTypeError(vm.CurrentRealm(), "Error.prototype.stack setter requires a string")
 			}
-			setterThatIgnoresPrototypeProperties(vm, this, vm.Intrinsic(engine.IntrinsicErrorPrototype), stackKey, v, "Error.prototype.stack setter")
+			setterThatIgnoresPrototypeProperties(vm, this, vm.CurrentRealm().Intrinsic(engine.IntrinsicErrorPrototype), stackKey, v, "Error.prototype.stack setter")
 			return engine.Undefined
 		}),
 		engine.FlagConfigurable)
-	method(vm, vm.Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicErrorPrototype), "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := thisObject(vm, this, "Error.prototype.toString")
 		name := wtf8.String("Error")
 		if n := vm.GetV(engine.ObjectValue(o), vm.Key(engine.KeyName)); !n.IsUndefined() {

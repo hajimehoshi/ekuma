@@ -16,17 +16,18 @@ func functionKindConstructor(vm *engine.VM, name wtf8.String, kind engine.Functi
 	c = vm.NewNativeConstructor(name, 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return vm.CreateDynamicFunction(c, vm.GetNewTarget(), kind, args)
 	})
-	vm.SetPrototypeOf(c, vm.Intrinsic(engine.IntrinsicFunction))
+	vm.SetPrototypeOf(c, vm.CurrentRealm().Intrinsic(engine.IntrinsicFunction))
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(c), engine.FlagConfigurable)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString(name), engine.FlagConfigurable)
 }
 
 func initAsync(vm *engine.VM) {
-	functionKindConstructor(vm, "AsyncFunction", engine.AsyncFunction, vm.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
-	functionKindConstructor(vm, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, vm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
+	realm := vm.CurrentRealm()
+	functionKindConstructor(vm, "AsyncFunction", engine.AsyncFunction, realm.Intrinsic(engine.IntrinsicAsyncFunctionPrototype))
+	functionKindConstructor(vm, "AsyncGeneratorFunction", engine.AsyncGeneratorFunction, realm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype))
 
-	gp := vm.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
+	gp := realm.Intrinsic(engine.IntrinsicAsyncGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) {
 		method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return vm.ResumeAsyncGenerator(this, mode, arg(args, 0))
@@ -36,11 +37,11 @@ func initAsync(vm *engine.VM) {
 	resume("return", engine.ResumeReturn)
 	resume("throw", engine.ResumeThrow)
 	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("AsyncGenerator"), engine.FlagConfigurable)
-	gf := vm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
+	gf := realm.Intrinsic(engine.IntrinsicAsyncGeneratorFunctionPrototype)
 	vm.Define(gf, vm.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	vm.Define(gp, vm.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 
-	method(vm, vm.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
+	method(vm, realm.Intrinsic(engine.IntrinsicArray), "fromAsync", 1, arrayFromAsync)
 }
 
 // getIteratorFromMethod implements GetIteratorFromMethod.
@@ -69,7 +70,7 @@ type fromAsync struct {
 }
 
 func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	pc := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
+	pc := vm.NewPromiseCapability(engine.ObjectValue(vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise)))
 	s := &fromAsync{
 		pc:      pc,
 		mapper:  arg(args, 1),
@@ -90,7 +91,7 @@ func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engin
 			if custom {
 				s.array = vm.Construct(this.Object(), nil, this.Object())
 			} else {
-				s.array = vm.ArrayCreate(0, vm.Intrinsic(engine.IntrinsicArrayPrototype))
+				s.array = vm.ArrayCreate(0, vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype))
 			}
 			s.step(vm)
 			return
@@ -103,7 +104,7 @@ func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engin
 			if s.length > engine.MaxArrayIndex+1 {
 				vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
 			}
-			s.array = vm.ArrayCreate(uint32(s.length), vm.Intrinsic(engine.IntrinsicArrayPrototype))
+			s.array = vm.ArrayCreate(uint32(s.length), vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype))
 		}
 		s.stepArrayLike(vm)
 	})

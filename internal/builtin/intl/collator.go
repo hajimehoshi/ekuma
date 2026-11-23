@@ -160,7 +160,7 @@ func thisCollator(vm *engine.VM, this engine.Value, name string) *collatorData {
 
 // initCollator defines Intl.Collator.
 func (r *realm) initCollator(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("Collator", 0, r.newCollator)
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -184,7 +184,7 @@ func (r *realm) initCollator(vm *engine.VM) {
 	})
 	method(vm, proto, "resolvedOptions", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cd := thisCollator(vm, this, "resolvedOptions")
-		out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+		out := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 		set := func(name string, v engine.Value) {
 			vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 		}
@@ -202,7 +202,7 @@ func (r *realm) initCollator(vm *engine.VM) {
 
 // initLocaleCompare replaces String.prototype.localeCompare with the version of ECMA-402.
 func initLocaleCompare(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicStringPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicStringPrototype)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if this.IsNullish() {
 			vm.ThrowTypeError(vm.CurrentRealm(), "String.prototype.localeCompare called on null or undefined")
@@ -231,7 +231,7 @@ var caseLocales = []string{"az", "el", "lt", "tr"}
 // initLocaleCase replaces String.prototype.toLocaleUpperCase and toLocaleLowerCase with the
 // versions of ECMA-402.
 func initLocaleCase(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicStringPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicStringPrototype)
 	for _, m := range []struct {
 		name  string
 		upper bool
@@ -507,11 +507,11 @@ func initArrayToLocaleString(vm *engine.VM) {
 		}
 		return vm.NewString(b.String())
 	}
-	method(vm, vm.Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := vm.ToObject(this)
 		return join(vm, o, vm.LengthOfArrayLike(o), args)
 	})
-	typedArrayProto := vm.ProtoOf(vm.Intrinsic(engine.IntrinsicInt8ArrayPrototype))
+	typedArrayProto := vm.ProtoOf(vm.CurrentRealm().Intrinsic(engine.IntrinsicInt8ArrayPrototype))
 	method(vm, typedArrayProto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		// ValidateTypedArray.
 		t := engine.TypedArrayData(this)

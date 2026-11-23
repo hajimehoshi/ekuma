@@ -59,12 +59,14 @@ var fastPathCalls = map[string]bool{
 	"setNumber":            true,
 	"numconv.InInt64Range": true,
 	"vm.interrupt.Load":    true,
-	"vm.Intrinsic":         true,
 	"t.typ.Size":           true,
 	"math.Float32frombits": true,
 	"math.Float32bits":     true,
 	"math.Float64frombits": true,
 	"math.Float64bits":     true,
+
+	"vm.CurrentRealm":             true,
+	"vm.CurrentRealm().Intrinsic": true,
 }
 
 // fastPathMethods are the methods that the fast paths may call on a value of any name.

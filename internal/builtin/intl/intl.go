@@ -52,7 +52,7 @@ type realm struct {
 // Install defines the Intl namespace in the current realm of vm.
 func Install(vm *engine.VM) {
 	r := &realm{}
-	r.ns = vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
+	r.ns = vm.NewLazyObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
 		r.init(vm)
 	})
 	vm.SetRealmExtension(r)

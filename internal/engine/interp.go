@@ -593,7 +593,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// shared or detached buffer is empty, so only an empty view of one passes the
 				// bounds check.
 				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
-					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == vm.protoEpoch && c.holder == vm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
+					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == vm.protoEpoch && c.holder == vm.CurrentRealm().Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
 						setNumber(&regs[a], float64(t.length))
 						continue
 					}
@@ -802,8 +802,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// conditions of arrayProtoPlain written out.
 				if j := int(k.n); j == len(o.elems) && j < cap(o.elems) &&
 					o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && float64(j) == k.n && o.shape == vm.curRealm.shapes.array {
-					if a := vm.Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
-						if p := a.shape.proto; p == vm.Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
+					if a := vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
+						if p := a.shape.proto; p == vm.CurrentRealm().Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
 							// Reading x first keeps i.C from being read again after the
 							// store to the length.
 							x := regs[i.C]
@@ -1292,7 +1292,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			f, first, argc := regs[b].o, b+2, int(i.C)
 			if i.Op == bytecode.OpCallCall {
-				if f != vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
+				if f != vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeCall) {
 					f = nil
 				} else {
 					f, first, argc = regs[b+1].o, b+3, max(argc-1, 0)
@@ -1473,8 +1473,8 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					break
 				}
 				if j == len(o.elems) && j < cap(o.elems) && o.kind == kindArray && uint32(j) == o.length && o.flags == 0 && o.shape == vm.curRealm.shapes.array {
-					if a := vm.Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
-						if p := a.shape.proto; p == vm.Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
+					if a := vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototype); len(a.elems) == 0 && a.flags&objSparse == 0 {
+						if p := a.shape.proto; p == vm.CurrentRealm().Intrinsic(IntrinsicObjectPrototype) && len(p.elems) == 0 && p.flags&objSparse == 0 {
 							x := regs[i.C]
 							o.elems = o.elems[:j+1]
 							o.elems[j] = x
@@ -1703,7 +1703,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			o.flags = objExotic
 			o.shape = vm.curRealm.shapes.function
 			if p.isGenerator || p.isAsync {
-				o.shape = vm.functionShapeFor(vm.functionProtoFor(p))
+				o.shape = vm.functionShapeFor(p.closurePrototype())
 			}
 			for j, d := range p.Upvals {
 				switch {
@@ -1797,7 +1797,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if o == numberObject {
 				// getNamed starts at Number.prototype for a number. Its own slot
 				// stays valid for its shape, and the method receives v as this.
-				o = vm.Intrinsic(IntrinsicNumberPrototype)
+				o = vm.CurrentRealm().Intrinsic(IntrinsicNumberPrototype)
 				if c.kind == cacheOwn && c.shape == o.shape {
 					regs[i.A] = o.slots[c.slot]
 					continue
@@ -2336,7 +2336,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			goto callRegs
 		case bytecode.OpCallCall:
 			b := int(i.B)
-			if regs[b].o == vm.Intrinsic(IntrinsicFunctionPrototypeCall) {
+			if regs[b].o == vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeCall) {
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b+1].o, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
 				if argc < 0 {
 					callThis, argc = Undefined, 0
@@ -2349,7 +2349,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			argsReg := fp.code[pc].A
 			pc++
 			b := int(i.B)
-			if !regs[argsReg].IsUndefined() || regs[b].o != vm.Intrinsic(IntrinsicFunctionPrototypeApply) {
+			if !regs[argsReg].IsUndefined() || regs[b].o != vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeApply) {
 				// Once exposed, the arguments object's length and indexed properties can change.
 				regs[b+2] = regs[i.C]
 				regs[b+3] = vm.forwardedArguments(slices.Clip(regs), argsReg)
@@ -2910,7 +2910,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				if st == PairYielded {
 					pairRealm = (*Realm)(it.o.shape.realm)
 				}
-			} else if next.o == vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext) {
+			} else if next.o == vm.CurrentRealm().Intrinsic(IntrinsicArrayIteratorPrototypeNext) {
 				// Reading an array entry can run JavaScript. A throwing step finishes the iterator.
 				vm.frames[len(vm.frames)-1].pc = pc
 				regs[i.B] = Undefined
@@ -3379,7 +3379,7 @@ func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, 
 		}
 		// Function.prototype.call and apply end in a tail call of their this value.
 		switch f {
-		case vm.Intrinsic(IntrinsicFunctionPrototypeCall):
+		case vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeCall):
 			f, this = this.o, Undefined
 			if argc > 0 {
 				this = vm.stack[argBase]
@@ -3387,7 +3387,7 @@ func (vm *VM) unbind(f *Object, this Value, argBase, argc int) (*Object, Value, 
 				argc--
 			}
 			continue
-		case vm.Intrinsic(IntrinsicFunctionPrototypeApply):
+		case vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeApply):
 			var list []Value
 			if argc > 1 {
 				if a := vm.stack[argBase+1]; !a.IsNullish() {

@@ -188,16 +188,17 @@ func (vm *VM) elemsMovable(o *Object) bool {
 // arrayCtorPlain reports whether creating the result of a method for the array o
 // makes a plain array, because o has the original constructor.
 func (vm *VM) arrayCtorPlain(o *Object) bool {
-	if o.shape != vm.curRealm.shapes.array {
+	realm := vm.CurrentRealm()
+	if o.shape != realm.shapes.array {
 		return false
 	}
-	ctor := vm.Intrinsic(IntrinsicArray)
-	c, ok := vm.lookupData(vm.Intrinsic(IntrinsicArrayPrototype), vm.Key(KeyConstructor))
+	ctor := realm.Intrinsic(IntrinsicArray)
+	c, ok := vm.lookupData(realm.Intrinsic(IntrinsicArrayPrototype), vm.Key(KeyConstructor))
 	if !ok || c.o != ctor {
 		return false
 	}
 	p, found := ctor.getOwn(vm.WellKnownSymbol(SymbolSpecies))
-	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == vm.Intrinsic(IntrinsicArraySpeciesGetter)
+	return found && p.flags&FlagAccessor != 0 && ctor.slots[p.slot].accessor().getter == realm.Intrinsic(IntrinsicArraySpeciesGetter)
 }
 
 // ArraySpeciesCreatePlain returns a new array of the length n with the prototype
@@ -207,13 +208,13 @@ func (vm *VM) ArraySpeciesCreatePlain(o *Object, n int64) (*Object, bool) {
 	if o.kind != kindArray || n > MaxArrayIndex+1 || !vm.arrayCtorPlain(o) {
 		return nil, false
 	}
-	return vm.ArrayCreate(uint32(n), vm.Intrinsic(IntrinsicArrayPrototype)), true
+	return vm.ArrayCreate(uint32(n), vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototype)), true
 }
 
 // newElementsPlain reports whether storing a new element in the array o defines it as an own
 // data property without consulting a prototype.
 func (vm *VM) newElementsPlain(o *Object) bool {
-	return o.shape.proto == vm.Intrinsic(IntrinsicArrayPrototype) && vm.arrayProtoPlain()
+	return o.shape.proto == vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototype) && vm.arrayProtoPlain()
 }
 
 // AppendElements adds vals at the end of the array o and returns the new length.

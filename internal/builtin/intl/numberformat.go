@@ -417,7 +417,7 @@ func (nf *numberFormatData) formatRange(vm *engine.VM, args []engine.Value) []nu
 
 // initNumberFormat defines Intl.NumberFormat.
 func (r *realm) initNumberFormat(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("NumberFormat", 0, r.newNumberFormat)
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -472,7 +472,7 @@ func (r *realm) initNumberFormat(vm *engine.VM) {
 // the internal slot.
 func (nf *numberFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 	o := &nf.opts
-	out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	out := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
 		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 	}
@@ -534,14 +534,14 @@ func initToLocaleString(vm *engine.VM) {
 		nf := createNumberFormat(vm, arg(args, 0), arg(args, 1))
 		return formattedString(vm, nf.f.FormatToString(x, vm.Poll))
 	}
-	method(vm, vm.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)
 		if !ok {
 			vm.ThrowTypeError(vm.CurrentRealm(), "Number.prototype.toLocaleString requires that 'this' be a Number")
 		}
 		return format(vm, args, number.FromFloat(x))
 	})
-	method(vm, vm.Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisBigIntValue(this)
 		if !ok {
 			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt.prototype.toLocaleString requires that 'this' be a BigInt")

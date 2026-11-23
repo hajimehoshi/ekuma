@@ -9,6 +9,20 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
+func TestRealmIntrinsic(t *testing.T) {
+	vm := engine.NewVM(nil)
+	var want *engine.Object
+	created := vm.CreateRealm(func() {
+		want = vm.ProtoOf(vm.GlobalObject().Object())
+		if got := vm.CurrentRealm().Intrinsic(engine.IntrinsicPromisePrototype); got != nil {
+			t.Errorf("unset Promise prototype = %p, want nil", got)
+		}
+	})
+	if got := created.Intrinsic(engine.IntrinsicObjectPrototype); got != want {
+		t.Errorf("Object prototype = %p, want %p from the selected realm", got, want)
+	}
+}
+
 func TestCreateRealmThrow(t *testing.T) {
 	vm := engine.NewVM(nil)
 	caller := vm.CurrentRealm()
@@ -21,13 +35,13 @@ func TestCreateRealmThrow(t *testing.T) {
 		}()
 		vm.CreateRealm(func() {
 			created = vm.CurrentRealm()
-			vm.Throw(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicObjectPrototype)))
+			vm.Throw(engine.ObjectValue(created.Intrinsic(engine.IntrinsicObjectPrototype)))
 		})
 	})
 	if ok {
 		t.Fatal("CreateRealm returned normally")
 	}
-	result := vm.CreateIterResultObject(created, engine.Undefined, true)
+	result := created.CreateIterResultObject(engine.Undefined, true)
 	if got := vm.ProtoOf(result.Object()); got != thrown.Object() {
 		t.Error("the saved realm produced an iterator result with the wrong prototype after the throw")
 	}

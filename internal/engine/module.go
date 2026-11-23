@@ -379,7 +379,7 @@ func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
 // SyntaxError.
 func (vm *VM) ParseJSONModule(src string, hostDefined any) (*Module, error) {
 	v, err := vm.enter(func() Value {
-		return vm.Call(vm.Intrinsic(IntrinsicJSONParse), Undefined, vm.StringFromGo(src))
+		return vm.Call(vm.CurrentRealm().Intrinsic(IntrinsicJSONParse), Undefined, vm.StringFromGo(src))
 	})
 	if err != nil {
 		return nil, err
@@ -893,7 +893,7 @@ func (vm *VM) newClosure(p *funcProto, upvals []*upvalue) *Object {
 		fn:    fn,
 	}).init()
 	if p.isGenerator || p.isAsync {
-		o.shape = vm.functionShapeFor(vm.functionProtoFor(p))
+		o.shape = vm.functionShapeFor(p.closurePrototype())
 	}
 	if n := len(p.Upvals); n > 0 {
 		fn.upvals = make([]*upvalue, n)

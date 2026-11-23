@@ -92,7 +92,7 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 	}
 	var v engine.Value
 	r.in(func() {
-		proto := r.vm.e.Intrinsic(engine.IntrinsicArrayBufferPrototype)
+		proto := r.r.Intrinsic(engine.IntrinsicArrayBufferPrototype)
 		v = engine.ObjectValue(r.vm.e.NewHostArrayBufferObject(proto, b))
 	})
 	return fromEngine(v)
@@ -102,7 +102,7 @@ func (r *Realm) NewArrayBuffer(b []byte) Value {
 func (r *Realm) NewPromise() (Value, *PromiseResolver) {
 	var c *engine.PromiseCapability
 	r.in(func() {
-		c = r.vm.e.NewPromiseCapability(engine.ObjectValue(r.vm.e.Intrinsic(engine.IntrinsicPromise)))
+		c = r.vm.e.NewPromiseCapability(engine.ObjectValue(r.r.Intrinsic(engine.IntrinsicPromise)))
 	})
 	return fromEngine(c.Promise()), &PromiseResolver{
 		realm: r,

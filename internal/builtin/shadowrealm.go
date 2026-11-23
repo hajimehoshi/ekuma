@@ -9,7 +9,7 @@ import (
 )
 
 func initShadowRealm(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	vm.SetIntrinsic(engine.IntrinsicShadowRealmPrototype, proto)
 	constructor(vm, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
@@ -68,7 +68,7 @@ func shadowRealmImportValue(vm *engine.VM, specifier wtf8.String, exportName eng
 		vm.ThrowTypeError(vm.CurrentRealm(), "cannot import '"+wtf8.ToValidUTF8(specifier)+"' in the ShadowRealm")
 		return engine.Undefined
 	})
-	c := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
+	c := vm.NewPromiseCapability(engine.ObjectValue(vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise)))
 	return vm.PerformPromiseThen(engine.ObjectValue(inner), engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected), c)
 }
 

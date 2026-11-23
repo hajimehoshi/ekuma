@@ -27,7 +27,8 @@ func (vm *VM) newArguments(fr *frame, regs []Value, mapped bool) *Object {
 	if !mapped {
 		if vm.curRealm.strictCallee.o == nil {
 			// An accessor pair is never changed in place, so the objects share it.
-			vm.curRealm.strictCallee = newAccessor(vm.Intrinsic(IntrinsicThrowTypeError), vm.Intrinsic(IntrinsicThrowTypeError))
+			throwTypeError := vm.CurrentRealm().Intrinsic(IntrinsicThrowTypeError)
+			vm.curRealm.strictCallee = newAccessor(throwTypeError, throwTypeError)
 		}
 		vm.add(o, vm.Key(keyCallee), vm.curRealm.strictCallee, FlagAccessor)
 		return o
@@ -87,7 +88,7 @@ func (vm *VM) newArgumentsObject(fr *frame, regs []Value) *Object {
 	a.class = classArguments
 	a.shape = vm.curRealm.shapes.arguments
 	a.elems = elems
-	a.storage = [3]Value{Number(float64(fr.argc)), {o: vm.Intrinsic(IntrinsicArrayPrototypeValues)}}
+	a.storage = [3]Value{Number(float64(fr.argc)), {o: vm.CurrentRealm().Intrinsic(IntrinsicArrayPrototypeValues)}}
 	a.slots = a.storage[:2]
 	return a.init()
 }

@@ -120,7 +120,7 @@ func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Obj
 				c = s
 			}
 		}
-		if !c.IsUndefined() && !(c.IsObject() && c.Object() == vm.Intrinsic(engine.IntrinsicArray)) {
+		if !c.IsUndefined() && !(c.IsObject() && c.Object() == vm.CurrentRealm().Intrinsic(engine.IntrinsicArray)) {
 			if !c.IsCallable() || !vm.IsConstructor(c.Object()) {
 				vm.ThrowTypeError(vm.CurrentRealm(), "object.constructor[Symbol.species] is not a constructor")
 			}
@@ -130,7 +130,7 @@ func arraySpeciesCreate(vm *engine.VM, orig *engine.Object, n int64) *engine.Obj
 	if n > engine.MaxArrayIndex+1 {
 		vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
 	}
-	return vm.ArrayCreate(uint32(n), vm.Intrinsic(engine.IntrinsicArrayPrototype))
+	return vm.ArrayCreate(uint32(n), vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype))
 }
 
 func callback(vm *engine.VM, args []engine.Value, what string) *engine.Object {
@@ -254,11 +254,11 @@ func writeSeparators(vm *engine.VM, b *wtf8.Buffer, sep wtf8.String, count int64
 }
 
 func initArray(vm *engine.VM, strs *objectStrings) {
-	proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype)
 	var joins joinGuard
 	ctor := constructor(vm, "Array", 1, engine.IntrinsicArrayPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		proto := vm.Intrinsic(engine.IntrinsicArrayPrototype)
-		if nt := vm.GetNewTarget(); nt != nil && nt != vm.Intrinsic(engine.IntrinsicArray) {
+		proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype)
+		if nt := vm.GetNewTarget(); nt != nil && nt != vm.CurrentRealm().Intrinsic(engine.IntrinsicArray) {
 			proto = vm.GetPrototypeFromConstructor(nt, engine.IntrinsicArrayPrototype)
 		}
 		if len(args) == 1 {
@@ -276,7 +276,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		} else {
 			a = vm.NewArray(append([]engine.Value(nil), args...))
 		}
-		if proto != vm.Intrinsic(engine.IntrinsicArrayPrototype) {
+		if proto != vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype) {
 			vm.SetPrototypeOf(a, proto)
 		}
 		return engine.ObjectValue(a)
@@ -296,7 +296,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		return engine.Bool(is), ok
 	}, nil)
 	method(vm, ctor, "of", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.Intrinsic(engine.IntrinsicArray) {
+		if this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.CurrentRealm().Intrinsic(engine.IntrinsicArray) {
 			a := vm.Construct(this.Object(), []engine.Value{engine.Number(float64(len(args)))}, this.Object())
 			for i, v := range args {
 				vm.CreateDataPropertyOrThrow(a, engine.IndexKey(uint32(i)), v)
@@ -311,7 +311,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		if !mapFn.IsUndefined() && !mapFn.IsCallable() {
 			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(mapFn)+" is not a function")
 		}
-		custom := this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.Intrinsic(engine.IntrinsicArray)
+		custom := this.IsCallable() && vm.IsConstructor(this.Object()) && this.Object() != vm.CurrentRealm().Intrinsic(engine.IntrinsicArray)
 		mapped := func(v engine.Value, i int64) engine.Value {
 			if mapFn.IsUndefined() {
 				return v
@@ -365,7 +365,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 		case custom:
 			a = vm.Construct(this.Object(), []engine.Value{engine.Number(float64(n))}, this.Object())
 		case n <= engine.MaxArrayIndex+1:
-			a = vm.ArrayCreate(uint32(n), vm.Intrinsic(engine.IntrinsicArrayPrototype))
+			a = vm.ArrayCreate(uint32(n), vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototype))
 		default:
 			vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
 		}
@@ -1071,7 +1071,7 @@ func initArray(vm *engine.VM, strs *objectStrings) {
 	iter("keys", engine.IterateKeys)
 	iter("entries", engine.IterateEntries)
 	vm.SetIntrinsic(engine.IntrinsicArrayPrototypeValues, iter("values", engine.IterateValues))
-	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
+	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(vm.CurrentRealm().Intrinsic(engine.IntrinsicArrayPrototypeValues)), engine.FlagsHidden)
 	initArrayAdditions(vm, proto)
 }
 

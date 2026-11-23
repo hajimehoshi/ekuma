@@ -398,25 +398,25 @@ func (vm *VM) lookup(o *Object, key *Object) (holder *Object, p prop, ok bool) {
 func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	o := v.o
 	if o == numberObject {
-		return vm.Intrinsic(IntrinsicNumberPrototype)
+		return vm.CurrentRealm().Intrinsic(IntrinsicNumberPrototype)
 	}
 	if o == nil {
 		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of undefined (reading '"+wtf8.ToValidUTF8(vm.KeyString(key))+"')")
 	}
 	switch o.kind {
 	case kindFalse, kindTrue:
-		return vm.Intrinsic(IntrinsicBooleanPrototype)
+		return vm.CurrentRealm().Intrinsic(IntrinsicBooleanPrototype)
 	case kindSymbol:
-		return vm.Intrinsic(IntrinsicSymbolPrototype)
+		return vm.CurrentRealm().Intrinsic(IntrinsicSymbolPrototype)
 	case kindBigInt:
-		return vm.Intrinsic(IntrinsicBigIntPrototype)
+		return vm.CurrentRealm().Intrinsic(IntrinsicBigIntPrototype)
 	case kindNull:
 		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of "+vm.DisplayString(v)+" (reading '"+wtf8.ToValidUTF8(vm.KeyString(key))+"')")
 	case kindString:
 		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
 		}
-		if p := vm.curRealm.intrinsics[IntrinsicStringPrototype]; o.shape.proto != p {
+		if p := vm.CurrentRealm().Intrinsic(IntrinsicStringPrototype); o.shape.proto != p {
 			// The shape of a string made in another realm leads to the String.prototype of
 			// that realm.
 			return vm.NewStringObject(o, p)
@@ -499,7 +499,7 @@ func (vm *VM) getNamed(v Value, key *Object, c *propCache) (val Value, getter *O
 		if e.shape != start.shape {
 			e = &c.second
 		}
-		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == vm.protoEpoch && e.holder == vm.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
+		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == vm.protoEpoch && e.holder == vm.CurrentRealm().Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
 			return Number(float64(vm.typedArrayLength(start))), nil
 		}
 	}

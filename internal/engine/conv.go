@@ -204,7 +204,7 @@ func (vm *VM) ToObject(v Value) *Object {
 		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
 	}
 	if o == numberObject {
-		w := vm.NewObject(vm.Intrinsic(IntrinsicNumberPrototype))
+		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicNumberPrototype))
 		w.class = classNumber
 		w.setExtState(v.n)
 		return w
@@ -213,19 +213,19 @@ func (vm *VM) ToObject(v Value) *Object {
 	case kindNull:
 		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
-		w := vm.NewObject(vm.Intrinsic(IntrinsicBooleanPrototype))
+		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicBooleanPrototype))
 		w.class = classBoolean
 		w.setExtState(o.kind == kindTrue)
 		return w
 	case kindString:
-		return vm.NewStringObject(v.stringObject(), vm.Intrinsic(IntrinsicStringPrototype))
+		return vm.NewStringObject(v.stringObject(), vm.CurrentRealm().Intrinsic(IntrinsicStringPrototype))
 	case kindSymbol:
-		w := vm.NewObject(vm.Intrinsic(IntrinsicSymbolPrototype))
+		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicSymbolPrototype))
 		w.class = classSymbol
 		w.setExtState(o)
 		return w
 	case kindBigInt:
-		w := vm.NewObject(vm.Intrinsic(IntrinsicBigIntPrototype))
+		w := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicBigIntPrototype))
 		w.class = classBigInt
 		w.setExtState(v)
 		return w

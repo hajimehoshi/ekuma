@@ -24,8 +24,8 @@ func SetExceptionReporter(r *Realm, report Value) {
 	vm := r.vm.e
 	r.in(func() {
 		key := engine.NamedKey(vm.Key(engine.KeyToString))
-		objectToString := vm.Get(vm.Intrinsic(engine.IntrinsicObjectPrototype), key)
-		errorToString := vm.Get(vm.Intrinsic(engine.IntrinsicErrorPrototype), key)
+		objectToString := vm.Get(r.r.Intrinsic(engine.IntrinsicObjectPrototype), key)
+		errorToString := vm.Get(r.r.Intrinsic(engine.IntrinsicErrorPrototype), key)
 		vm.SetExceptionReporter(func(thrown engine.Value, loc engine.ExceptionLocation) {
 			var source engine.Value
 			if loc.File != "" {
@@ -118,7 +118,7 @@ func InstallGlobalProxy(r *Realm, foreignView Value, previous *Realm, shareAcces
 }
 
 func newV8GlobalPrototype(vm *engine.VM, globalThis engine.Value) *engine.Object {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("", 0, func(vm *engine.VM, this engine.Value, _ []engine.Value) engine.Value {
 		if target := vm.GetNewTarget(); target != nil {
 			instanceProto := vm.GetPrototypeFromConstructor(target, engine.IntrinsicObjectPrototype)
@@ -210,11 +210,7 @@ func NewHTMLDDA(r *Realm) Value {
 
 // AbstractModuleSource returns %AbstractModuleSource% of r.
 func AbstractModuleSource(r *Realm) Value {
-	var v engine.Value
-	r.in(func() {
-		v = engine.ObjectValue(r.vm.e.Intrinsic(engine.IntrinsicAbstractModuleSource))
-	})
-	return fromEngine(v)
+	return fromEngine(engine.ObjectValue(r.r.Intrinsic(engine.IntrinsicAbstractModuleSource)))
 }
 
 // NewSourceModule returns a module of r whose only export is a default of undefined and
@@ -223,7 +219,7 @@ func NewSourceModule(r *Realm, name, className string) *Module {
 	m := r.NewSyntheticModule(name, Undefined)
 	r.in(func() {
 		e := r.vm.e
-		proto := e.NewObject(e.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
+		proto := e.NewObject(r.r.Intrinsic(engine.IntrinsicAbstractModuleSourcePrototype))
 		m.m.SetModuleSource(e.NewModuleSourceObject(proto, className))
 	})
 	return m

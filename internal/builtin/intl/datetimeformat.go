@@ -563,7 +563,7 @@ func rangeArgs(vm *engine.VM, args []engine.Value) (formattable, formattable) {
 
 // initDateTimeFormat defines Intl.DateTimeFormat.
 func (r *realm) initDateTimeFormat(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("DateTimeFormat", 0, r.newDateTimeFormat)
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -616,7 +616,7 @@ func (r *realm) initDateTimeFormat(vm *engine.VM) {
 // resolvedOptions implements Intl.DateTimeFormat.prototype.resolvedOptions after the check of
 // the internal slot.
 func (dtf *dateTimeFormatData) resolvedOptions(vm *engine.VM) engine.Value {
-	out := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	out := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	set := func(name string, v engine.Value) {
 		vm.CreateDataPropertyOrThrow(out, engine.NamedKey(vm.Intern(wtf8.String(name))), v)
 	}
@@ -657,11 +657,11 @@ func (dtf *dateTimeFormatData) resolvedOptions(vm *engine.VM) engine.Value {
 // initTemporalToLocaleString installs the ECMA-402 toLocaleString methods on the Temporal prototypes.
 func initTemporalToLocaleString(vm *engine.VM) {
 	global := vm.GlobalObject().Object()
-	orig := vm.Intrinsic(engine.IntrinsicTemporal)
+	orig := vm.CurrentRealm().Intrinsic(engine.IntrinsicTemporal)
 	if orig == nil {
 		return
 	}
-	ns := vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
+	ns := vm.NewLazyObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
 		for _, k := range vm.OwnKeys(orig) {
 			d, _ := vm.GetOwnProperty(orig, k)
 			vm.DefineOwnProperty(ns, k, d)
@@ -734,7 +734,7 @@ func initDateToLocaleString(vm *engine.VM) {
 		{"toLocaleDateString", date.Date, date.Date},
 		{"toLocaleTimeString", date.Time, date.Time},
 	} {
-		method(vm, vm.Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t, ok := engine.ThisTimeValue(this)
 			if !ok {
 				vm.ThrowTypeError(vm.CurrentRealm(), "Date.prototype."+m.name+" requires that 'this' be a Date")

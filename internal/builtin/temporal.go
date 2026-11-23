@@ -656,7 +656,7 @@ func compareResult(c int) engine.Value {
 // initTemporal defines the Temporal namespace and Date.prototype.toTemporalInstant. The
 // contents of the namespace are created when they are first needed.
 func initTemporal(vm *engine.VM) {
-	ns := vm.NewLazyObject(vm.Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
+	ns := vm.NewLazyObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype), func(ns *engine.Object) {
 		vm.Define(ns, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Temporal"), engine.FlagConfigurable)
 		initTemporalInstant(vm, ns)
 		initTemporalDuration(vm, ns)
@@ -671,7 +671,7 @@ func initTemporal(vm *engine.VM) {
 	vm.SetIntrinsic(engine.IntrinsicTemporal, ns)
 	vm.Define(vm.GlobalObject().Object(), vm.Intern("Temporal"), engine.ObjectValue(ns), engine.FlagsHidden)
 
-	tmethod(vm, vm.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	tmethod(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tv := thisDate(vm, this, "toTemporalInstant")
 		if math.IsNaN(tv) {
 			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time value")

@@ -612,7 +612,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
 	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.curRealm.globalThis})
-	if proto != vm.Intrinsic(fallback) {
+	if proto != vm.CurrentRealm().Intrinsic(fallback) {
 		vm.SetPrototypeOf(f.o, proto)
 	}
 	return f

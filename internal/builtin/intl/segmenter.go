@@ -158,15 +158,16 @@ func (r *realm) newSegmenter(vm *engine.VM, this engine.Value, args []engine.Val
 
 // initSegmenter defines Intl.Segmenter.
 func (r *realm) initSegmenter(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	realm := vm.CurrentRealm()
+	proto := vm.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("Segmenter", 0, r.newSegmenter)
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
 	vm.Define(r.ns, vm.Intern("Segmenter"), engine.ObjectValue(ctor), engine.FlagsHidden)
 	r.segmenterProto = proto
 
-	segmentsProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
-	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	segmentsProto := vm.NewObject(realm.Intrinsic(engine.IntrinsicObjectPrototype))
+	iterProto := vm.NewObject(realm.Intrinsic(engine.IntrinsicIteratorPrototype))
 
 	method(vm, ctor, "supportedLocalesOf", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return supportedLocalesOf(vm, args)
@@ -224,7 +225,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		}
 		d := it.segments
 		if it.pos >= len(d.runes) {
-			return vm.CreateIterResultObject(vm.CurrentRealm(), engine.Undefined, true)
+			return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
 		}
 		start := it.pos
 		bs := d.boundaries(vm)
@@ -234,7 +235,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		}
 		end := int(bs[k])
 		it.pos = end
-		return vm.CreateIterResultObject(vm.CurrentRealm(), d.segmentData(vm, start, end), false)
+		return vm.CurrentRealm().CreateIterResultObject(d.segmentData(vm, start, end), false)
 	})
 	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
 }

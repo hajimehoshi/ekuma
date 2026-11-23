@@ -18,7 +18,7 @@ import (
 // initNumber defines Number and Boolean.
 // parseFloat and parseInt are the functions to define as properties of Number.
 func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
-	proto := vm.Intrinsic(engine.IntrinsicNumberPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicNumberPrototype)
 	ctor := constructor(vm, "Number", 1, engine.IntrinsicNumberPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := 0.0
 		if len(args) > 0 {
@@ -162,7 +162,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		return vm.NewStringBytes(fixExponent(appendHalfUp(buf[:0], n, 'e', int(d))))
 	})
 
-	bproto := vm.Intrinsic(engine.IntrinsicBooleanPrototype)
+	bproto := vm.CurrentRealm().Intrinsic(engine.IntrinsicBooleanPrototype)
 	constructor(vm, "Boolean", 1, engine.IntrinsicBooleanPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ToBoolean(arg(args, 0))
 		if nt := vm.GetNewTarget(); nt != nil {
@@ -606,7 +606,7 @@ func fixExponent(s []byte) []byte {
 }
 
 func initSymbol(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicSymbolPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicSymbolPrototype)
 	ctor := constructor(vm, "Symbol", 0, engine.IntrinsicSymbolPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if vm.GetNewTarget() != nil {
 			vm.ThrowTypeError(vm.CurrentRealm(), "Symbol is not a constructor")
@@ -845,19 +845,20 @@ func initMath(vm *engine.VM) {
 }
 
 func initIterators(vm *engine.VM) {
-	symMethod(vm, vm.Intrinsic(engine.IntrinsicIteratorPrototype), vm.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	realm := vm.CurrentRealm()
+	symMethod(vm, realm.Intrinsic(engine.IntrinsicIteratorPrototype), vm.WellKnownSymbol(engine.SymbolIterator), "[Symbol.iterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
-	symMethod(vm, vm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), vm.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	symMethod(vm, realm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), vm.WellKnownSymbol(engine.SymbolAsyncIterator), "[Symbol.asyncIterator]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		return this
 	})
 
 	arrayIterNext := vm.NewArrayIteratorNext()
-	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
+	vm.Define(realm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
 	vm.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
-	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Array Iterator"), engine.FlagConfigurable)
+	vm.Define(realm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Array Iterator"), engine.FlagConfigurable)
 
-	plainIteratorNext(vm, vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(vm *engine.VM, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
+	plainIteratorNext(vm, realm.Intrinsic(engine.IntrinsicStringIteratorPrototype), engine.IteratorClosureRealm, "next method called on an object that is not a string iterator", func(vm *engine.VM, _ *engine.Object, it *stringIterator) (engine.Value, bool) {
 		if it.pos >= len(it.str) {
 			return engine.Undefined, false
 		}
@@ -866,9 +867,9 @@ func initIterators(vm *engine.VM) {
 		it.pos += size
 		return vm.NewString(s), true
 	})
-	vm.Define(vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("String Iterator"), engine.FlagConfigurable)
+	vm.Define(realm.Intrinsic(engine.IntrinsicStringIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("String Iterator"), engine.FlagConfigurable)
 
-	gp := vm.Intrinsic(engine.IntrinsicGeneratorPrototype)
+	gp := realm.Intrinsic(engine.IntrinsicGeneratorPrototype)
 	resume := func(name string, mode engine.ResumeMode) *engine.Object {
 		return method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			r, ok := vm.ResumeGenerator(this, mode, arg(args, 0))
@@ -884,7 +885,7 @@ func initIterators(vm *engine.VM) {
 	vm.Define(gp, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Generator"), engine.FlagConfigurable)
 
 	// The prototype chain of generator functions.
-	gf := vm.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
+	gf := realm.Intrinsic(engine.IntrinsicGeneratorFunctionPrototype)
 	vm.Define(gf, vm.Key(engine.KeyPrototype), engine.ObjectValue(gp), engine.FlagConfigurable)
 	vm.Define(gp, vm.Key(engine.KeyConstructor), engine.ObjectValue(gf), engine.FlagConfigurable)
 	functionKindConstructor(vm, "GeneratorFunction", engine.GeneratorFunction, gf)

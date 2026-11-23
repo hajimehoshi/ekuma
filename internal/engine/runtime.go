@@ -401,7 +401,7 @@ func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
 		if !vm.inheritsHasInstance(c.o) {
 			site = nil
 			if m := vm.GetMethod(c, vm.WellKnownSymbol(SymbolHasInstance)); m != nil {
-				if m != vm.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
+				if m != vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
 					return ToBoolean(vm.Call(m, c, v))
 				}
 			} else if !c.IsCallable() {
@@ -422,7 +422,7 @@ func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
 func (vm *VM) inheritsHasInstance(c *Object) bool {
 	// The property of %Function.prototype% is neither writable nor configurable, so only the
 	// objects before it on the chain can hide it.
-	fp := vm.Intrinsic(IntrinsicFunctionPrototype)
+	fp := vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototype)
 	key := vm.WellKnownSymbol(SymbolHasInstance)
 	for h := c; h != fp; h = h.shape.proto {
 		// The properties that an unmaterialized function lacks have string keys.
@@ -1087,8 +1087,8 @@ func takenShape(dst, from *Object) *shape {
 // setupClass makes the function ctor a class constructor that extends parent,
 // which is hole for a class without an extends clause. It returns the prototype object.
 func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
-	protoParent := vm.Intrinsic(IntrinsicObjectPrototype)
-	ctorParent := vm.Intrinsic(IntrinsicFunctionPrototype)
+	protoParent := vm.CurrentRealm().Intrinsic(IntrinsicObjectPrototype)
+	ctorParent := vm.CurrentRealm().Intrinsic(IntrinsicFunctionPrototype)
 	if !parent.isHole() {
 		switch {
 		case parent.IsNull():
@@ -1133,23 +1133,26 @@ func (vm *VM) IsConstructor(f *Object) bool {
 	return fn.constructor
 }
 
-// functionProtoFor returns the prototype of the closures of p, which is a generator or async function.
-func (vm *VM) functionProtoFor(p *funcProto) *Object {
+// closurePrototype returns the prototype of the closures of p, which is a generator or async function.
+func (p *funcProto) closurePrototype() *Object {
+	realm := (*Realm)(p.realm)
 	switch {
 	case p.isGenerator && p.isAsync:
-		return vm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
+		return realm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
 	case p.isGenerator:
-		return vm.Intrinsic(IntrinsicGeneratorFunctionPrototype)
+		return realm.Intrinsic(IntrinsicGeneratorFunctionPrototype)
 	case p.isAsync:
-		return vm.Intrinsic(IntrinsicAsyncFunctionPrototype)
+		return realm.Intrinsic(IntrinsicAsyncFunctionPrototype)
 	}
-	return vm.Intrinsic(IntrinsicFunctionPrototype)
+	return realm.Intrinsic(IntrinsicFunctionPrototype)
 }
 
 // arrayProtoPlain reports whether no array index property exists on the prototypes of plain arrays,
 // so that storing a new element in such an array cannot run a setter.
 func (vm *VM) arrayProtoPlain() bool {
-	a, o := vm.Intrinsic(IntrinsicArrayPrototype), vm.Intrinsic(IntrinsicObjectPrototype)
+	realm := vm.CurrentRealm()
+	a := realm.Intrinsic(IntrinsicArrayPrototype)
+	o := realm.Intrinsic(IntrinsicObjectPrototype)
 	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
 }
 
@@ -1508,7 +1511,7 @@ func (vm *VM) NewNativeConstructor(name wtf8.String, length int, f NativeFunc) *
 // NewNativeConstructor returned in the current realm, as the intrinsic id, which the property
 // then holds for good.
 func (vm *VM) DefineConstructorPrototype(c *Object, id Intrinsic) {
-	vm.Define(c, vm.Key(KeyPrototype), Value{o: vm.Intrinsic(id)}, 0)
+	vm.Define(c, vm.Key(KeyPrototype), Value{o: vm.CurrentRealm().Intrinsic(id)}, 0)
 	c.fn.info.prototype, c.fn.info.fixedPrototype = id, true
 }
 

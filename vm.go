@@ -224,7 +224,7 @@ func (vm *VM) objectOf(r *Realm, x any) engine.Value {
 		if x == nil || x.b == nil {
 			panic("ekuma: ValueOf: invalid *SharedDataBlock")
 		}
-		proto := vm.e.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
+		proto := r.r.Intrinsic(engine.IntrinsicSharedArrayBufferPrototype)
 		return engine.ObjectValue(vm.e.NewSharedArrayBufferObject(proto, x.b))
 	case []any:
 		if len(x) > 0 {

@@ -197,7 +197,7 @@ type promiseObject struct {
 // as NewPromiseCapability(%Promise%) does.
 func (vm *VM) newIntrinsicCapability() *PromiseCapability {
 	return &PromiseCapability{
-		promise:   vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype)),
+		promise:   vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype)),
 		intrinsic: true,
 	}
 }
@@ -242,7 +242,7 @@ func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
 	if !c.IsObject() || !vm.IsConstructor(c.o) {
 		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(c)+" is not a constructor")
 	}
-	if c.o == vm.Intrinsic(IntrinsicPromise) {
+	if c.o == vm.CurrentRealm().Intrinsic(IntrinsicPromise) {
 		// Constructing %Promise% with an executor observes nothing that this does not.
 		return vm.newIntrinsicCapability()
 	}
@@ -538,10 +538,10 @@ func (vm *VM) awaitValue(v Value, action reactionAction) {
 	var rejected bool
 	switch {
 	case IsPromise(v):
-		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == vm.Intrinsic(IntrinsicPromise) {
+		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == vm.CurrentRealm().Intrinsic(IntrinsicPromise) {
 			p = v.o
 		} else {
-			p = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+			p = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
 			vm.resolvePromise(vm.CurrentRealm(), p, v)
 		}
 	case v.IsObject():
@@ -551,7 +551,7 @@ func (vm *VM) awaitValue(v Value, action reactionAction) {
 		}); !ok {
 			v, rejected = e, true
 		} else if then.IsCallable() {
-			p = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+			p = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
 			vm.enqueueThenableJob(p, v, then)
 		}
 	}
@@ -797,7 +797,7 @@ func (vm *VM) promiseReactionJob(j *job) {
 		return
 	case reactionUnwrap:
 		if !rejected {
-			vm.ResolveCapability(r.capability, vm.CreateIterResultObject((*Realm)(j.context.enteredRealm), arg, r.done))
+			vm.ResolveCapability(r.capability, (*Realm)(j.context.enteredRealm).CreateIterResultObject(arg, r.done))
 			return
 		}
 		if r.iterator != nil {

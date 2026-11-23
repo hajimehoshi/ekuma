@@ -66,7 +66,7 @@ func dateStringOffset(vm *engine.VM, tz datetime.TimeZone, tv float64) (float64,
 }
 
 func initDate(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicDatePrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicDatePrototype)
 
 	dateString := func(tv float64, tz datetime.TimeZone) string {
 		offset, name := dateStringOffset(vm, tz, tv)

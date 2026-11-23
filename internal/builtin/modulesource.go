@@ -9,7 +9,7 @@ import (
 
 // initAbstractModuleSource creates %AbstractModuleSource%, which is not a global.
 func initAbstractModuleSource(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	c := vm.NewNativeConstructor("AbstractModuleSource", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		vm.ThrowTypeError(vm.CurrentRealm(), "AbstractModuleSource cannot be constructed")
 		return engine.Undefined

@@ -200,7 +200,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 
 // initLocale defines Intl.Locale.
 func (r *realm) initLocale(vm *engine.VM) {
-	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 	ctor := vm.NewNativeConstructor("Locale", 1, r.newLocale)
 	vm.Define(ctor, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)
 	vm.Define(proto, vm.Key(engine.KeyConstructor), engine.ObjectValue(ctor), engine.FlagsHidden)
@@ -288,7 +288,7 @@ func (r *realm) initLocale(vm *engine.VM) {
 	})
 	method(vm, proto, "getTextInfo", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		d := locale.TextDirectionOf(thisLocale(vm, this, "getTextInfo").tag)
-		info := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+		info := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 		vm.CreateDataPropertyOrThrow(info, engine.NamedKey(vm.Intern("direction")), stringOrUndefined(vm, d, d != ""))
 		return engine.ObjectValue(info)
 	})
@@ -298,7 +298,7 @@ func (r *realm) initLocale(vm *engine.VM) {
 		for i, d := range weekend {
 			days[i] = engine.Number(float64(d))
 		}
-		info := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
+		info := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicObjectPrototype))
 		vm.CreateDataPropertyOrThrow(info, engine.NamedKey(vm.Intern("firstDay")), engine.Number(float64(firstDay)))
 		vm.CreateDataPropertyOrThrow(info, engine.NamedKey(vm.Intern("weekend")), vm.NewArrayOf(days))
 		return engine.ObjectValue(info)

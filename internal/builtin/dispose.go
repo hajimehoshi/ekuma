@@ -18,8 +18,8 @@ func initDisposableStacks(vm *engine.VM) {
 	initDisposableStack(vm, false)
 	initDisposableStack(vm, true)
 
-	symMethod(vm, vm.Intrinsic(engine.IntrinsicAsyncIteratorPrototype), vm.WellKnownSymbol(engine.SymbolAsyncDispose), "[Symbol.asyncDispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		pc := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
+	symMethod(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicAsyncIteratorPrototype), vm.WellKnownSymbol(engine.SymbolAsyncDispose), "[Symbol.asyncDispose]", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		pc := vm.NewPromiseCapability(engine.ObjectValue(vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise)))
 		vm.IfAbruptRejectPromise(pc, func() {
 			m := vm.GetMethod(this, vm.Intern("return"))
 			if m == nil {
@@ -107,7 +107,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 	var dispose *engine.Object
 	if async {
 		dispose = method(vm, proto, "disposeAsync", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-			pc := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
+			pc := vm.NewPromiseCapability(engine.ObjectValue(vm.CurrentRealm().Intrinsic(engine.IntrinsicPromise)))
 			s, _ := engine.DisposableStackState(this, async).(*disposableStack)
 			switch {
 			case s == nil:

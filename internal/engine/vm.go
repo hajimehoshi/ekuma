@@ -758,9 +758,9 @@ func TypedArrayPrototypeIntrinsic(t ElementType) Intrinsic {
 	return IntrinsicInt8ArrayPrototype + Intrinsic(t)
 }
 
-// Intrinsic returns the intrinsic object id, or nil before it is set.
-func (vm *VM) Intrinsic(id Intrinsic) *Object {
-	return vm.curRealm.intrinsics[id]
+// Intrinsic returns the intrinsic object id of r, or nil before it is set.
+func (r *Realm) Intrinsic(id Intrinsic) *Object {
+	return r.intrinsics[id]
 }
 
 // SetIntrinsic makes o the intrinsic object id.
@@ -868,7 +868,7 @@ func (vm *VM) restoreException(v Value) {
 
 // newError returns a new error object of the given type in r.
 func (vm *VM) newError(r *Realm, kind ErrorKind, msg string) *Object {
-	e := vm.NewErrorObject(r, r.intrinsics[ErrorPrototypeIntrinsic(kind)])
+	e := vm.NewErrorObject(r, r.Intrinsic(ErrorPrototypeIntrinsic(kind)))
 	// A message that quotes a value of the script can be longer than a string may be.
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
 	e.setExtState(vm.newErrorData(e, msg, len(vm.frames), len(vm.natives)))

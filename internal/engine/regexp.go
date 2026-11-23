@@ -43,7 +43,7 @@ const regExpCacheLimit = 1024
 // RegExpAlloc implements RegExpAlloc: it returns a RegExp object for the constructor
 // newTarget, with an own lastIndex property and no matcher yet.
 func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
-	legacy := newTarget == vm.Intrinsic(IntrinsicRegExp)
+	legacy := newTarget == vm.CurrentRealm().Intrinsic(IntrinsicRegExp)
 	var s *shape
 	if legacy {
 		// The prototype property of %RegExp% is neither writable nor configurable.
@@ -60,7 +60,7 @@ func (vm *VM) RegExpAlloc(newTarget *Object) *Object {
 
 // regExpShape returns the shape of a new RegExp object whose prototype is %RegExp.prototype%.
 func (vm *VM) regExpShape() *shape {
-	proto := vm.Intrinsic(IntrinsicRegExpPrototype)
+	proto := vm.CurrentRealm().Intrinsic(IntrinsicRegExpPrototype)
 	if s := vm.curRealm.shapes.regExp; s != nil && s.proto == proto {
 		return s
 	}
@@ -319,8 +319,8 @@ func (p *originalProp) find() bool {
 // and ctorKeys of %RegExp%, which [VM.IsUnmodifiedRegExp] requires to stay unchanged.
 // Every key must name an existing property whose value, if it is a data property, is an object.
 func (vm *VM) RecordRegExpOriginals(protoKeys, ctorKeys []*Object) {
-	proto := vm.Intrinsic(IntrinsicRegExpPrototype)
-	ctor := vm.Intrinsic(IntrinsicRegExp)
+	proto := vm.CurrentRealm().Intrinsic(IntrinsicRegExpPrototype)
+	ctor := vm.CurrentRealm().Intrinsic(IntrinsicRegExp)
 	r := &vm.curRealm.regExpOriginals
 	// hasRegExpShape compares against this shape, so it must exist from now on.
 	vm.regExpShape()

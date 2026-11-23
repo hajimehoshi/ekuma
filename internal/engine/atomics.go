@@ -247,7 +247,7 @@ func (vm *VM) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) 
 		timedIndex: -1,
 	}
 	if async {
-		w.promise = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+		w.promise = vm.NewPromiseObject(vm.CurrentRealm().Intrinsic(IntrinsicPromisePrototype))
 		w.promiseRealm = vm.curRealm
 	} else {
 		w.done = make(chan struct{})

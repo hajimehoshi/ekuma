@@ -145,7 +145,7 @@ func initMapAndSet(vm *engine.VM) {
 }
 
 func initMap(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicMapPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicMapPrototype)
 	setKey := vm.Intern("set")
 	nextKey := engine.NamedKey(vm.Intern("next"))
 	// The original methods that iterating a Map calls.
@@ -197,7 +197,7 @@ func initMap(vm *engine.VM) {
 			}
 			appendToGroup(vm, g.Object(), v)
 		})
-		return engine.ObjectValue(vm.NewMapObject(vm.Intrinsic(engine.IntrinsicMapPrototype), t))
+		return engine.ObjectValue(vm.NewMapObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicMapPrototype), t))
 	})
 
 	method(vm, proto, "clear", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -299,7 +299,7 @@ func initMap(vm *engine.VM) {
 		return engine.Undefined, false
 	}, nil, nil)
 
-	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	iterProto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype))
 	mapIterProto = iterProto
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -439,7 +439,7 @@ func (r *setRecord) eachKey(vm *engine.VM, f func(engine.Value) bool) {
 }
 
 func initSet(vm *engine.VM) {
-	proto := vm.Intrinsic(engine.IntrinsicSetPrototype)
+	proto := vm.CurrentRealm().Intrinsic(engine.IntrinsicSetPrototype)
 	addKey := vm.Intern("add")
 	keys := &setLikeKeys{
 		size: vm.Intern("size"),
@@ -489,7 +489,7 @@ func initSet(vm *engine.VM) {
 	speciesGetter(vm, ctor)
 
 	newSet := func(t *collection.Table) engine.Value {
-		return engine.ObjectValue(vm.NewSetObject(vm.Intrinsic(engine.IntrinsicSetPrototype), t))
+		return engine.ObjectValue(vm.NewSetObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicSetPrototype), t))
 	}
 
 	// The kernels of the methods are the methods for a Set object.
@@ -698,7 +698,7 @@ func initSet(vm *engine.VM) {
 		return engine.Bool(result)
 	})
 
-	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
+	iterProto := vm.NewObject(vm.CurrentRealm().Intrinsic(engine.IntrinsicIteratorPrototype))
 	setIterProto = iterProto
 	iterate := func(name string, kind engine.IterationKind) *engine.Object {
 		return method(vm, proto, wtf8.String(name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -749,7 +749,7 @@ func initSet(vm *engine.VM) {
 }
 
 func initObjectGroupBy(vm *engine.VM) {
-	method(vm, vm.Intrinsic(engine.IntrinsicObject), "groupBy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	method(vm, vm.CurrentRealm().Intrinsic(engine.IntrinsicObject), "groupBy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		var keys []engine.PropKey
 		groups := map[engine.PropKey]*engine.Object{}
 		groupBy(vm, arg(args, 0), arg(args, 1), func(k, v engine.Value) {

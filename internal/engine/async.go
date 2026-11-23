@@ -56,8 +56,9 @@ func asyncGeneratorStateOf(g *generator) asyncGeneratorState {
 func (vm *VM) callAsync(f *Object, this Value, args []Value) Value {
 	g := vm.newGenerator(f, this, args)
 	g.async = asyncFunction
-	vm.InRealm((*Realm)(f.fn.code.realm), func() {
-		g.object = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+	realm := (*Realm)(f.fn.code.realm)
+	vm.InRealm(realm, func() {
+		g.object = vm.NewPromiseObject(realm.Intrinsic(IntrinsicPromisePrototype))
 		g.state = genSuspendedStart
 		vm.asyncFunctionResume(g, ResumeNext, Undefined)
 	})
@@ -165,7 +166,7 @@ func (vm *VM) asyncGeneratorCompleteStep(g *generator, realm *Realm, v Value, th
 		vm.RejectCapability(next.capability, v)
 		return
 	}
-	vm.ResolveCapability(next.capability, vm.CreateIterResultObject(realm, v, done))
+	vm.ResolveCapability(next.capability, realm.CreateIterResultObject(v, done))
 }
 
 // asyncGeneratorDrainQueue implements AsyncGeneratorDrainQueue.
@@ -223,7 +224,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 	if state == asyncGenCompleted {
 		switch mode {
 		case ResumeNext:
-			vm.ResolveCapability(c, vm.CreateIterResultObject(vm.CurrentRealm(), Undefined, true))
+			vm.ResolveCapability(c, vm.CurrentRealm().CreateIterResultObject(Undefined, true))
 			return c.Promise()
 		case ResumeThrow:
 			vm.RejectCapability(c, v)
@@ -302,7 +303,7 @@ func (vm *VM) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
 
 // initAsyncFromSyncIteratorPrototype creates %AsyncFromSyncIteratorPrototype%.
 func (vm *VM) initAsyncFromSyncIteratorPrototype() {
-	proto := vm.NewObject(vm.Intrinsic(IntrinsicAsyncIteratorPrototype))
+	proto := vm.NewObject(vm.CurrentRealm().Intrinsic(IntrinsicAsyncIteratorPrototype))
 	vm.curRealm.asyncFromSyncProto = proto
 	vm.Define(proto, vm.Key(keyNext), Value{o: vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		s := vm.thisAsyncFromSyncIterator(this)
@@ -342,7 +343,7 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 			return c.Promise()
 		}
 		if !hasReturn {
-			vm.ResolveCapability(c, vm.CreateIterResultObject(vm.CurrentRealm(), argAt(args, 0), true))
+			vm.ResolveCapability(c, vm.CurrentRealm().CreateIterResultObject(argAt(args, 0), true))
 			return c.Promise()
 		}
 		if !result.IsObject() {
