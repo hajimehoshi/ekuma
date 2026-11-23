@@ -38,6 +38,12 @@ func runDateIntervals(t *testing.T, root string, failures map[string]map[int]str
 		s.checkSpanIdentity(src)
 		s.countIntervalExclusions(src)
 	})
+	const javaFile = "JavaTimeFormatTest.java"
+	t.Run(javaFile, func(t *testing.T) {
+		path := filepath.Join(root, "icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format", javaFile)
+		s := newIntervalSuite(t, path, failures)
+		s.checkFrenchDateRanges(readIntervalSource(t, path))
+	})
 }
 
 const intervalPacific = "America/Los_Angeles"
@@ -229,4 +235,36 @@ func (s *intervalSuite) checkInterval(line int, group, op string, in intervalInp
 		entries[line] = known
 	}
 	s.check(line, op, s.format, want, op, in.locale, opts, in.start, in.end, group+" "+in.skeleton)
+}
+
+func (s *intervalSuite) checkFrenchDateRanges(src intervalSource) {
+	block := src.from("void testDateIntervalFormat()")
+	in := intervalInput{
+		locale:   "fr",
+		skeleton: intervalString(s.t, block.from("String intervalSkeleton =").lines[0]),
+		zone:     "UTC",
+	}
+	for i, line := range block.lines {
+		switch {
+		case strings.Contains(line, "= LocalDate.of("):
+			assignment, args, _ := strings.Cut(line, "= LocalDate.of(")
+			row := intervalRow{
+				line: block.line + i,
+				text: strings.TrimSuffix(args, ");"),
+			}
+			c := row.columns(s.t, 3)
+			month := fixtureMonth(s.t, strings.TrimPrefix(c[1], "Month."))
+			ms := time.Date(integer(c[0]), time.Month(month), integer(c[2]), 0, 0, 0, 0, time.UTC).UnixMilli()
+			if strings.HasSuffix(assignment, "from ") {
+				in.start = ms
+			} else {
+				in.end = ms
+			}
+		case strings.HasPrefix(line, "di.format(from, to,"):
+			s.checkInterval(block.line+i-1, "testDateIntervalFormat", "formatRange", in, intervalString(s.t, block.lines[i-1]))
+		case strings.HasPrefix(line, "LocalDateTime fromDt"):
+			return
+		}
+	}
+	s.t.Fatalf("%s:%d: missing end of LocalDate cases", src.path, block.line)
 }

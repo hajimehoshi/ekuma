@@ -9,7 +9,6 @@ each applicable gap has a maintained test or a linked issue. [Tracker](https://g
 1. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
 2. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
 3. **Number formatting.** Check Serbian compact rounding of −999999 to `-1 милион`, Hungarian forint output at zero, two and three fraction digits, and the two grouping spans in Swiss German `-1'000'007`. [Compact numbers][compact] · [currency digits][currency] · [field positions][simple-number]
-4. **French date ranges.** Check `17–23 septembre 2024` within a month and `17 septembre – 3 octobre 2024` across months, including the thin spaces. [Date interval cases][fr-range]
 
 ## Scope and verification
 
@@ -45,4 +44,3 @@ go run internal/icutest/verify_inventory.go "$EKUMA_ICU" "$EKUMA_ICU_CLDR"
 [compact]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java#L109
 [currency]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/cintltst/currtest.c#L196
 [simple-number]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/intltest/numbertest_simple.cpp#L29
-[fr-range]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeFormatTest.java#L405

@@ -1203,7 +1203,7 @@
 1	1	suite source	number	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/IntlTestNumberFormatAPI.java	IntlTestNumberFormatAPI [TestAPI, TestCoverage]	-	79.1	TestICU/NumberFormatTestCases.txt and TestICU/number-parts/numfmtst.cpp
 1	1	suite source	date	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/IntlTestSimpleDateFormatAPI.java	IntlTestSimpleDateFormatAPI [TestAPI, TestCoverage]	-	79.1	TestICU/dtptngts.cpp and TestICU/format.txt
 1	1	suite source	misc-format	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeConvertersTest.java	JavaTimeConvertersTest [testDateOnly, testTimesOnly]	-	79.1	-
-1	1	suite source	date	proposed	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeFormatTest.java	JavaTimeFormatTest [testLocalDateFormatting, testLocalDateTimeFormatting]	-	79.1	Proposal 4
+1	1	suite source	date	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeFormatTest.java	JavaTimeFormatTest [testLocalDateFormatting, testLocalDateTimeFormatting]	JavaTimeFormatTest.java	79.1	-
 1	1	suite source	list	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/ListFormatterTest.java	ListFormatterTest [TestBasic, TestEnglish]	ListFormatterTest.java	79.1	-
 1	1	suite source	misc-format	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/MeasureUnitThreadTest.java	MeasureUnitThreadTest [MUThreadTest, NumericRaceTest]	-	79.1	-
 1	1	suite source	message	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/MessagePatternUtilTest.java	MessagePatternUtilTest [TestHello, TestHelloWithApos]	-	79.1	-

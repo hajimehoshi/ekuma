@@ -92,7 +92,7 @@ cases also check the effects of default date fields and locale negotiation.
 parts, including collapsed ranges. ICU's UTF-16 field positions give each
 part its type. Interval spans identify the start, end, and shared text.
 Known differences include English spacing and the field type of German
-`Uhr`. [Known results](testdata/icu-failures.txt)
+`Uhr`. ICU4J also checks exact French same-month and cross-month ranges. [Known results](testdata/icu-failures.txt)
 
 ## Single-number formatting parts
 
