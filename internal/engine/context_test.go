@@ -18,18 +18,25 @@ func TestExecutionContextHostReentry(t *testing.T) {
 	c := vm.CreateRealm(func() { builtin.Install(vm) })
 	stop := errors.New("stop")
 
-	for _, outcome := range []string{"return", "throw", "interrupt"} {
+	for _, outcome := range []string{"return", "throw", "iterator step", "interrupt"} {
 		t.Run(outcome, func(t *testing.T) {
 			var outer engine.ExecutionContext
 			var inner engine.Value
 			vm.InRealm(c, func() {
-				probe := vm.NewFunction("probe", func(vm *engine.VM, _ engine.Value, _ []engine.Value) engine.Value {
+				probe := vm.NewFunction("probe", func(vm *engine.VM, _ engine.Value, args []engine.Value) engine.Value {
 					if vm.CurrentRealm() != c || !vm.IsEnteredRealm(a) {
 						t.Error("expected running C and entered A during reentry")
 					}
 					switch outcome {
 					case "throw":
 						outer.ThrowTypeError("from B")
+					case "iterator step":
+						defer func() {
+							if vm.CurrentRealm() != c {
+								t.Error("iterator step did not restore C on throw")
+							}
+						}()
+						outer.IteratorStepValue(engine.Undefined, args[0])
 					case "interrupt":
 						vm.Interrupt(stop)
 						vm.Poll()
@@ -38,7 +45,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				})
 				vm.Define(vm.GlobalObject().Object(), vm.Intern("probe"), probe, engine.FlagsData)
 				var err error
-				inner, err = runScript(vm, "C", "(function () { probe(); return []; })")
+				inner, err = runScript(vm, "C", "(function () { probe(() => 0); return []; })")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -72,7 +79,7 @@ func TestExecutionContextHostReentry(t *testing.T) {
 				if vm.ProtoOf(v.Object()) != c.Intrinsic(engine.IntrinsicArrayPrototype) {
 					t.Error("array returned by C has the wrong prototype")
 				}
-			case "throw":
+			case "throw", "iterator step":
 				ex, ok := errors.AsType[*engine.Error](err)
 				if !ok {
 					t.Fatalf("got %v, want a JavaScript throw", err)

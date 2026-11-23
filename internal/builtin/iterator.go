@@ -18,8 +18,8 @@ type iterRecord struct {
 }
 
 // stepValue implements IteratorStepValue.
-func (r *iterRecord) stepValue(vm *engine.VM) (engine.Value, bool) {
-	return vm.IteratorStepValue(r.it, r.next)
+func (r *iterRecord) stepValue(cx engine.ExecutionContext) (engine.Value, bool) {
+	return cx.IteratorStepValue(r.it, r.next)
 }
 
 // iteratorKeys holds the property keys that the iterator helpers use.
@@ -36,29 +36,13 @@ func (k *iteratorKeys) getIteratorDirect(vm *engine.VM, it engine.Value) iterRec
 	}
 }
 
-// getIteratorFlattenable implements GetIteratorFlattenable. Strings are iterated when
-// iterateStrings is set, and other primitives are rejected.
-func (k *iteratorKeys) getIteratorFlattenable(vm *engine.VM, v engine.Value, iterateStrings bool) iterRecord {
-	if !v.IsObject() && (!iterateStrings || !v.IsString()) {
-		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not an iterator or an iterable object")
-	}
-	it := v
-	if m := vm.GetMethod(v, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
-		it = vm.Call(m, v)
-	}
-	if !it.IsObject() {
-		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
-	}
-	return k.getIteratorDirect(vm, it)
-}
-
 // helperBody is the algorithm of an iterator helper object.
 type helperBody interface {
 	// step returns the next value of the helper, or reports false when the helper is done.
-	step(vm *engine.VM) (engine.Value, bool)
+	step(cx engine.ExecutionContext) (engine.Value, bool)
 
 	// close closes the underlying iterators when return is called before the helper is done.
-	close(vm *engine.VM)
+	close(cx engine.ExecutionContext)
 }
 
 type helperState uint8
@@ -77,43 +61,43 @@ type iteratorHelper struct {
 }
 
 // resumeHelper runs a next or return resumption and reports whether the helper yielded.
-func resumeHelper(vm *engine.VM, this engine.Value, mode engine.ResumeMode) (engine.Value, bool) {
-	state, realm := engine.IteratorStateAndRealm(this)
+func resumeHelper(cx engine.ExecutionContext, this engine.Value, mode engine.ResumeMode) (engine.Value, bool) {
+	state, bodyContext := engine.IteratorStateAndContext(this)
 	h, _ := state.(*iteratorHelper)
 	if h == nil {
 		method := "next"
 		if mode == engine.ResumeReturn {
 			method = "return"
 		}
-		vm.ThrowTypeError(vm.CurrentRealm(), "Iterator Helper.prototype."+method+" requires that 'this' be an Iterator Helper")
+		cx.ThrowTypeError("Iterator Helper.prototype." + method + " requires that 'this' be an Iterator Helper")
 	}
 	switch h.state {
 	case helperExecuting:
-		vm.ThrowTypeError(vm.CurrentRealm(), "generator is already running")
+		cx.ThrowTypeError("generator is already running")
 	case helperCompleted:
 		return engine.Undefined, false
 	case helperSuspendedStart:
 		if mode == engine.ResumeReturn {
 			// Before the first yield, the return method closes the underlying iterators itself.
 			h.state = helperCompleted
-			h.body.close(vm)
+			h.body.close(cx)
 			return engine.Undefined, false
 		}
 	}
 
-	if realm == vm.CurrentRealm() {
-		return h.resumeBody(vm, mode)
+	if cx == bodyContext {
+		return h.resumeBody(cx, mode)
 	}
 	var v engine.Value
 	var yielded bool
-	vm.InRealm(realm, func() {
-		v, yielded = h.resumeBody(vm, mode)
+	bodyContext.Run(func() {
+		v, yielded = h.resumeBody(bodyContext, mode)
 	})
 	return v, yielded
 }
 
 // resumeBody runs in the helper's creation realm.
-func (h *iteratorHelper) resumeBody(vm *engine.VM, mode engine.ResumeMode) (v engine.Value, yielded bool) {
+func (h *iteratorHelper) resumeBody(cx engine.ExecutionContext, mode engine.ResumeMode) (v engine.Value, yielded bool) {
 	h.state = helperExecuting
 	defer func() {
 		if yielded {
@@ -123,10 +107,10 @@ func (h *iteratorHelper) resumeBody(vm *engine.VM, mode engine.ResumeMode) (v en
 		}
 	}()
 	if mode == engine.ResumeReturn {
-		h.body.close(vm)
+		h.body.close(cx)
 		return engine.Undefined, false
 	}
-	return h.body.step(vm)
+	return h.body.step(cx)
 }
 
 // initIteratorHelpers defines Iterator and the iterator helpers.
@@ -171,20 +155,20 @@ func initIteratorHelpers(vm *engine.VM) {
 
 	helperProto := vm.NewObject(proto)
 	iteratorNext(vm, helperProto, engine.IteratorClosureRealm, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-		return resumeHelper(vm, this, engine.ResumeNext)
+		return resumeHelper(vm.NativeContext(), this, engine.ResumeNext)
 	})
-	method(vm, helperProto, "return", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		resumeHelper(vm, this, engine.ResumeReturn)
-		return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
-	})
+	method(vm, helperProto, "return", 0, engine.WithExecutionContext(func(cx engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		resumeHelper(cx, this, engine.ResumeReturn)
+		return cx.CreateIterResultObject(engine.Undefined, true)
+	}))
 	vm.Define(helperProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Iterator Helper"), engine.FlagConfigurable)
 	newHelper := func(body helperBody) engine.Value {
 		return engine.ObjectValue(vm.NewIteratorObject(helperProto, &iteratorHelper{body: body}))
 	}
 
 	initIteratorFrom(vm, k, ctor)
-	initIteratorConcat(vm, k, ctor, newHelper)
-	initIteratorZip(vm, k, ctor, newHelper)
+	initIteratorConcat(vm, ctor, newHelper)
+	initIteratorZip(vm, ctor, newHelper)
 	initLazyIteratorMethods(vm, k, newHelper)
 	initEagerIteratorMethods(vm, k)
 }
@@ -216,7 +200,8 @@ func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
 		return vm.Call(m, w.it)
 	})
 	method(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		r := k.getIteratorFlattenable(vm, arg(args, 0), true)
+		var r iterRecord
+		r.it, r.next = vm.NativeContext().GetIteratorFlattenable(arg(args, 0), true)
 		if vm.OrdinaryHasInstance(engine.ObjectValue(ctor), r.it) {
 			return r.it
 		}
@@ -226,7 +211,6 @@ func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
 
 // concatHelper is the helper that Iterator.concat returns.
 type concatHelper struct {
-	k         *iteratorKeys
 	iterables []engine.Value
 	methods   []*engine.Object
 	pos       int
@@ -234,10 +218,10 @@ type concatHelper struct {
 	active    bool
 }
 
-func (h *concatHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *concatHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	for {
 		if h.active {
-			if v, ok := h.inner.stepValue(vm); ok {
+			if v, ok := h.inner.stepValue(cx); ok {
 				return v, true
 			}
 			h.active = false
@@ -245,27 +229,23 @@ func (h *concatHelper) step(vm *engine.VM) (engine.Value, bool) {
 		if h.pos >= len(h.iterables) {
 			return engine.Undefined, false
 		}
-		it := vm.Call(h.methods[h.pos], h.iterables[h.pos])
+		iterable, method := h.iterables[h.pos], h.methods[h.pos]
 		h.iterables[h.pos] = engine.Undefined
 		h.pos++
-		if !it.IsObject() {
-			vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
-		}
-		h.inner = h.k.getIteratorDirect(vm, it)
+		h.inner.it, h.inner.next = cx.GetIteratorFromMethod(iterable, method)
 		h.active = true
 	}
 }
 
-func (h *concatHelper) close(vm *engine.VM) {
+func (h *concatHelper) close(cx engine.ExecutionContext) {
 	if h.active {
-		vm.IteratorClose(h.inner.it)
+		cx.IteratorClose(h.inner.it)
 	}
 }
 
-func initIteratorConcat(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHelper func(helperBody) engine.Value) {
+func initIteratorConcat(vm *engine.VM, ctor *engine.Object, newHelper func(helperBody) engine.Value) {
 	method(vm, ctor, "concat", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		h := &concatHelper{
-			k:         k,
 			iterables: make([]engine.Value, len(args)),
 			methods:   make([]*engine.Object, len(args)),
 		}
@@ -306,27 +286,27 @@ type zipHelper struct {
 	keys []engine.PropKey
 }
 
-func (h *zipHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *zipHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	var results []engine.Value
-	vm.IfAbruptCloseIterators(h.open, func() {
-		results = h.nextRow(vm)
+	cx.IfAbruptCloseIterators(h.open, func() {
+		results = h.nextRow(cx)
 	})
 	if results == nil {
-		h.close(vm)
+		h.close(cx)
 		return engine.Undefined, false
 	}
 	if h.keys == nil {
-		return vm.NewArrayOf(results), true
+		return cx.NewArrayOf(results), true
 	}
-	o := vm.NewObject(nil)
+	o := cx.NewObject(nil)
 	for i, key := range h.keys {
-		vm.CreateDataPropertyOrThrow(o, key, results[i])
+		cx.CreateDataPropertyOrThrow(o, key, results[i])
 	}
 	return engine.ObjectValue(o), true
 }
 
 // nextRow returns the next row, or nil when iteration is done.
-func (h *zipHelper) nextRow(vm *engine.VM) []engine.Value {
+func (h *zipHelper) nextRow(cx engine.ExecutionContext) []engine.Value {
 	results := make([]engine.Value, len(h.open))
 	var yielded bool
 	for i, it := range h.open {
@@ -335,7 +315,7 @@ func (h *zipHelper) nextRow(vm *engine.VM) []engine.Value {
 			continue
 		}
 		h.open[i] = engine.Undefined
-		v, ok := vm.IteratorStepValue(it, h.next[i])
+		v, ok := cx.IteratorStepValue(it, h.next[i])
 		if ok {
 			h.open[i] = it
 			results[i] = v
@@ -346,10 +326,10 @@ func (h *zipHelper) nextRow(vm *engine.VM) []engine.Value {
 		case zipShortest:
 			return nil
 		case zipStrict:
-			if i == 0 && h.remainingDone(vm) {
+			if i == 0 && h.remainingDone(cx) {
 				return nil
 			}
-			vm.ThrowTypeError(vm.CurrentRealm(), "Iterator.zip: an iterator finished before the others in strict mode")
+			cx.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
 		}
 		results[i] = h.padding[i]
 	}
@@ -360,11 +340,11 @@ func (h *zipHelper) nextRow(vm *engine.VM) []engine.Value {
 }
 
 // remainingDone checks the remaining iterators when the first finishes in strict mode.
-func (h *zipHelper) remainingDone(vm *engine.VM) bool {
+func (h *zipHelper) remainingDone(cx engine.ExecutionContext) bool {
 	for i := 1; i < len(h.open); i++ {
 		it := h.open[i]
 		h.open[i] = engine.Undefined
-		if vm.IteratorStep(it, h.next[i]) {
+		if cx.IteratorStep(it, h.next[i]) {
 			h.open[i] = it
 			return false
 		}
@@ -372,11 +352,11 @@ func (h *zipHelper) remainingDone(vm *engine.VM) bool {
 	return true
 }
 
-func (h *zipHelper) close(vm *engine.VM) {
-	vm.IteratorCloseAll(h.open)
+func (h *zipHelper) close(cx engine.ExecutionContext) {
+	cx.IteratorCloseAll(h.open)
 }
 
-func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHelper func(helperBody) engine.Value) {
+func initIteratorZip(vm *engine.VM, ctor *engine.Object, newHelper func(helperBody) engine.Value) {
 	modeKey := vm.Intern("mode")
 	paddingKey := vm.Intern("padding")
 	// options reads the options of Iterator.zip and Iterator.zipKeyed and returns the mode and
@@ -425,6 +405,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 	}
 
 	method(vm, ctor, "zip", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		cx := vm.NativeContext()
 		iterables := arg(args, 0)
 		mode, pad := options(vm, iterables, arg(args, 1))
 		input, inputNext := vm.GetIterator(iterables)
@@ -441,7 +422,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 			}
 			var r iterRecord
 			vm.IfAbruptCloseIterators(open, func() {
-				r = k.getIteratorFlattenable(vm, v, false)
+				r.it, r.next = cx.GetIteratorFlattenable(v, false)
 			})
 			open = append(open, r.it)
 			next = append(next, r.next)
@@ -474,6 +455,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 	})
 
 	method(vm, ctor, "zipKeyed", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		cx := vm.NativeContext()
 		iterables := arg(args, 0)
 		mode, pad := options(vm, iterables, arg(args, 1))
 		o := iterables.Object()
@@ -491,7 +473,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 				if v.IsUndefined() {
 					return
 				}
-				r = k.getIteratorFlattenable(vm, v, false)
+				r.it, r.next = cx.GetIteratorFlattenable(v, false)
 				add = true
 			})
 			if add {
@@ -583,21 +565,21 @@ type mapHelper struct {
 	counter float64
 }
 
-func (h *mapHelper) step(vm *engine.VM) (engine.Value, bool) {
-	v, ok := h.src.stepValue(vm)
+func (h *mapHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
+	v, ok := h.src.stepValue(cx)
 	if !ok {
 		return engine.Undefined, false
 	}
 	var r engine.Value
-	vm.IfAbruptCloseIterator(h.src.it, func() {
-		r = vm.Call(h.f, engine.Undefined, v, engine.Number(h.counter))
+	cx.IfAbruptCloseIterator(h.src.it, func() {
+		r = cx.Call(h.f, engine.Undefined, v, engine.Number(h.counter))
 	})
 	h.counter++
 	return r, true
 }
 
-func (h *mapHelper) close(vm *engine.VM) {
-	vm.IteratorClose(h.src.it)
+func (h *mapHelper) close(cx engine.ExecutionContext) {
+	cx.IteratorClose(h.src.it)
 }
 
 type filterHelper struct {
@@ -606,15 +588,15 @@ type filterHelper struct {
 	counter float64
 }
 
-func (h *filterHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *filterHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	for {
-		v, ok := h.src.stepValue(vm)
+		v, ok := h.src.stepValue(cx)
 		if !ok {
 			return engine.Undefined, false
 		}
 		var selected bool
-		vm.IfAbruptCloseIterator(h.src.it, func() {
-			selected = engine.ToBoolean(vm.Call(h.f, engine.Undefined, v, engine.Number(h.counter)))
+		cx.IfAbruptCloseIterator(h.src.it, func() {
+			selected = engine.ToBoolean(cx.Call(h.f, engine.Undefined, v, engine.Number(h.counter)))
 		})
 		h.counter++
 		if selected {
@@ -623,8 +605,8 @@ func (h *filterHelper) step(vm *engine.VM) (engine.Value, bool) {
 	}
 }
 
-func (h *filterHelper) close(vm *engine.VM) {
-	vm.IteratorClose(h.src.it)
+func (h *filterHelper) close(cx engine.ExecutionContext) {
+	cx.IteratorClose(h.src.it)
 }
 
 type takeHelper struct {
@@ -632,19 +614,19 @@ type takeHelper struct {
 	remaining float64
 }
 
-func (h *takeHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *takeHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	if h.remaining == 0 {
-		vm.IteratorClose(h.src.it)
+		cx.IteratorClose(h.src.it)
 		return engine.Undefined, false
 	}
 	if !math.IsInf(h.remaining, 1) {
 		h.remaining--
 	}
-	return h.src.stepValue(vm)
+	return h.src.stepValue(cx)
 }
 
-func (h *takeHelper) close(vm *engine.VM) {
-	vm.IteratorClose(h.src.it)
+func (h *takeHelper) close(cx engine.ExecutionContext) {
+	cx.IteratorClose(h.src.it)
 }
 
 type dropHelper struct {
@@ -652,24 +634,23 @@ type dropHelper struct {
 	remaining float64
 }
 
-func (h *dropHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *dropHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	for h.remaining > 0 {
 		if !math.IsInf(h.remaining, 1) {
 			h.remaining--
 		}
-		if !vm.IteratorStep(h.src.it, h.src.next) {
+		if !cx.IteratorStep(h.src.it, h.src.next) {
 			return engine.Undefined, false
 		}
 	}
-	return h.src.stepValue(vm)
+	return h.src.stepValue(cx)
 }
 
-func (h *dropHelper) close(vm *engine.VM) {
-	vm.IteratorClose(h.src.it)
+func (h *dropHelper) close(cx engine.ExecutionContext) {
+	cx.IteratorClose(h.src.it)
 }
 
 type flatMapHelper struct {
-	k       *iteratorKeys
 	src     iterRecord
 	f       *engine.Object
 	counter float64
@@ -677,39 +658,39 @@ type flatMapHelper struct {
 	active  bool
 }
 
-func (h *flatMapHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *flatMapHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	for {
 		if h.active {
 			var v engine.Value
 			var ok bool
-			vm.IfAbruptCloseIterator(h.src.it, func() {
-				v, ok = h.inner.stepValue(vm)
+			cx.IfAbruptCloseIterator(h.src.it, func() {
+				v, ok = h.inner.stepValue(cx)
 			})
 			if ok {
 				return v, true
 			}
 			h.active = false
 		}
-		v, ok := h.src.stepValue(vm)
+		v, ok := h.src.stepValue(cx)
 		if !ok {
 			return engine.Undefined, false
 		}
-		vm.IfAbruptCloseIterator(h.src.it, func() {
-			mapped := vm.Call(h.f, engine.Undefined, v, engine.Number(h.counter))
-			h.inner = h.k.getIteratorFlattenable(vm, mapped, false)
+		cx.IfAbruptCloseIterator(h.src.it, func() {
+			mapped := cx.Call(h.f, engine.Undefined, v, engine.Number(h.counter))
+			h.inner.it, h.inner.next = cx.GetIteratorFlattenable(mapped, false)
 		})
 		h.counter++
 		h.active = true
 	}
 }
 
-func (h *flatMapHelper) close(vm *engine.VM) {
+func (h *flatMapHelper) close(cx engine.ExecutionContext) {
 	if h.active {
-		vm.IfAbruptCloseIterator(h.src.it, func() {
-			vm.IteratorClose(h.inner.it)
+		cx.IfAbruptCloseIterator(h.src.it, func() {
+			cx.IteratorClose(h.inner.it)
 		})
 	}
-	vm.IteratorClose(h.src.it)
+	cx.IteratorClose(h.src.it)
 }
 
 // chunksHelper is the helper that chunks and windows return.
@@ -723,12 +704,12 @@ type chunksHelper struct {
 	buf          []engine.Value
 }
 
-func (h *chunksHelper) step(vm *engine.VM) (engine.Value, bool) {
+func (h *chunksHelper) step(cx engine.ExecutionContext) (engine.Value, bool) {
 	if h.exhausted {
 		return engine.Undefined, false
 	}
 	for {
-		v, ok := h.src.stepValue(vm)
+		v, ok := h.src.stepValue(cx)
 		if !ok {
 			h.exhausted = true
 			buf := h.buf
@@ -736,14 +717,14 @@ func (h *chunksHelper) step(vm *engine.VM) (engine.Value, bool) {
 			if len(buf) == 0 || (h.windows && (!h.allowPartial || len(buf) == h.size)) {
 				return engine.Undefined, false
 			}
-			return vm.NewArrayOf(buf), true
+			return cx.NewArrayOf(buf), true
 		}
 		if !h.windows {
 			h.buf = append(h.buf, v)
 			if len(h.buf) == h.size {
 				buf := h.buf
 				h.buf = nil
-				return vm.NewArrayOf(buf), true
+				return cx.NewArrayOf(buf), true
 			}
 			continue
 		}
@@ -754,14 +735,14 @@ func (h *chunksHelper) step(vm *engine.VM) (engine.Value, bool) {
 			h.buf = append(h.buf, v)
 		}
 		if len(h.buf) == h.size {
-			return vm.NewArrayOf(append([]engine.Value(nil), h.buf...)), true
+			return cx.NewArrayOf(append([]engine.Value(nil), h.buf...)), true
 		}
 	}
 }
 
-func (h *chunksHelper) close(vm *engine.VM) {
+func (h *chunksHelper) close(cx engine.ExecutionContext) {
 	if !h.exhausted {
-		vm.IteratorClose(h.src.it)
+		cx.IteratorClose(h.src.it)
 	}
 }
 
@@ -804,7 +785,6 @@ func initLazyIteratorMethods(vm *engine.VM, k *iteratorKeys, newHelper func(help
 		it := receiver(vm, this, "flatMap")
 		f := callableArg(vm, it, arg(args, 0))
 		return newHelper(&flatMapHelper{
-			k:   k,
 			src: k.getIteratorDirect(vm, it),
 			f:   f,
 		})
@@ -848,7 +828,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 		var acc engine.Value
 		counter := 0.0
 		if len(args) < 2 {
-			v, ok := r.stepValue(vm)
+			v, ok := vm.IteratorStepValue(r.it, r.next)
 			if !ok {
 				vm.ThrowTypeError(vm.CurrentRealm(), "reduce of empty iterator with no initial value")
 			}
@@ -869,7 +849,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 		r := k.getIteratorDirect(vm, it)
 		var items []engine.Value
 		for {
-			v, ok := r.stepValue(vm)
+			v, ok := vm.IteratorStepValue(r.it, r.next)
 			if !ok {
 				return vm.NewArrayOf(items)
 			}
@@ -938,7 +918,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 		skipped := 0.0
 		found := false
 		for {
-			v, ok := r.stepValue(vm)
+			v, ok := vm.IteratorStepValue(r.it, r.next)
 			if !ok {
 				return engine.False
 			}
@@ -966,7 +946,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 		var sb wtf8.Buffer
 		first := true
 		for {
-			v, ok := r.stepValue(vm)
+			v, ok := vm.IteratorStepValue(r.it, r.next)
 			if !ok {
 				return vm.NewString(sb.String())
 			}

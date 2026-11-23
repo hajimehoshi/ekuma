@@ -204,16 +204,20 @@ func SetDateValue(v Value, tv float64) {
 // IteratorState returns the state of the built-in iterator object v,
 // or nil when v is not such an object.
 func IteratorState(v Value) any {
-	state, _ := IteratorStateAndRealm(v)
+	state, _ := IteratorStateAndContext(v)
 	return state
 }
 
-// IteratorStateAndRealm returns the state and creation realm of a built-in iterator, or two nils for any other value.
-func IteratorStateAndRealm(v Value) (any, *Realm) {
+// IteratorStateAndContext returns the state and creation context of a built-in iterator.
+// For other values it returns nil and the zero context.
+func IteratorStateAndContext(v Value) (any, ExecutionContext) {
 	if v.IsObject() && v.o.class == classIterator {
-		return v.o.extState(), v.o.shape.realm
+		return v.o.extState(), ExecutionContext{
+			vm:    v.o.shape.vm,
+			realm: v.o.shape.realm,
+		}
 	}
-	return nil, nil
+	return nil, ExecutionContext{}
 }
 
 // ThisNumberValue implements ThisNumberValue. It reports false when the specification throws.

@@ -45,6 +45,36 @@ func (vm *VM) GetIterator(v Value) (it, next Value) {
 	return vm.getIterator(v, false)
 }
 
+// GetIteratorFromMethod returns the iterator and next method obtained by calling method on v.
+func (cx ExecutionContext) GetIteratorFromMethod(v Value, method *Object) (it, next Value) {
+	if caller := cx.activate(); caller != nil {
+		defer cx.vm.switchRealm(caller)
+	}
+	return cx.iteratorRecord(cx.vm.Call(method, v))
+}
+
+// GetIteratorFlattenable returns an iterator and its next method, accepting strings when iterateStrings is set.
+func (cx ExecutionContext) GetIteratorFlattenable(v Value, iterateStrings bool) (it, next Value) {
+	if !v.IsObject() && (!iterateStrings || !v.IsString()) {
+		cx.ThrowTypeError(cx.vm.DisplayString(v) + " is not an iterator or an iterable object")
+	}
+	if caller := cx.activate(); caller != nil {
+		defer cx.vm.switchRealm(caller)
+	}
+	it = v
+	if m := cx.vm.GetMethod(v, cx.vm.WellKnownSymbol(SymbolIterator)); m != nil {
+		it = cx.vm.Call(m, v)
+	}
+	return cx.iteratorRecord(it)
+}
+
+func (cx ExecutionContext) iteratorRecord(it Value) (Value, Value) {
+	if !it.IsObject() {
+		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
+	}
+	return it, cx.vm.GetV(it, cx.vm.Key(keyNext))
+}
+
 // IteratorStepFunc is the next method of a built-in iterator, without the iterator result:
 // it returns the next value of the iterator this, or reports false when the iterator is done.
 // It throws a TypeError when this is not an iterator of its kind.
@@ -87,11 +117,12 @@ const (
 // newIteratorNext creates the result-returning form of an iterator's next method.
 func (vm *VM) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
 	return vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
+		cx := vm.NativeContext()
 		v, ok := step(vm, this)
 		if !ok {
-			return vm.CurrentRealm().CreateIterResultObject(Undefined, true)
+			return cx.CreateIterResultObject(Undefined, true)
 		}
-		realm := vm.CurrentRealm()
+		realm := cx.realm
 		if yieldRealm == IteratorClosureRealm {
 			realm = this.o.CreationRealm()
 		}

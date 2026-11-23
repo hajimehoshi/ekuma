@@ -899,10 +899,14 @@ func (vm *VM) NewOrdinaryObject() *Object {
 
 // NewArray returns a new array with the given elements, which it keeps.
 func (vm *VM) NewArray(elems []Value) *Object {
+	return vm.curRealm.newArray(elems)
+}
+
+func (r *Realm) newArray(elems []Value) *Object {
 	return (&propertyObject{
 		kind:   kindArray,
 		class:  classArray,
-		shape:  vm.curRealm.shapes.array,
+		shape:  r.shapes.array,
 		elems:  elems,
 		length: uint32(len(elems)),
 	}).init()

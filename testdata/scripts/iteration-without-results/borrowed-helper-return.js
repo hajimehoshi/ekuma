@@ -23,3 +23,4 @@ check.throws(() => close.call(fresh), "B", "TypeError", "borrowed return before 
 const started = makeHelper();
 started.next();
 check.throws(() => close.call(started), "C", "TypeError", "borrowed return after first yield: close error");
+check.prototype(close.call(started), "B", "Object", "borrowed return: completed result");
