@@ -1397,8 +1397,6 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if j := int(k.n); float64(j) == k.n && uint(j) < uint(fr.argc) {
 					if n := fp.nparams; j < n {
 						*a = regs[j]
-					} else if fr.gen != nil {
-						*a = fr.gen.extra[j-n]
 					} else {
 						*a = ag.stack[fr.extraBase+j-n]
 					}
