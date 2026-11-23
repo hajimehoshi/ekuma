@@ -128,12 +128,15 @@ type scriptRegion struct {
 }
 
 func (have scriptRegion) distance(want LanguageID, language string) int {
+	if want.Language != language {
+		if want.Script != have.script {
+			return cldr.DefaultScriptDistance
+		}
+		// Cross-language rules have no language-specific regional preference.
+		return cldr.RegionDistance("", "", want.Region, have.region)
+	}
 	if want.Script == have.script {
 		return cldr.RegionDistance(language, want.Script, want.Region, have.region)
-	}
-	// The script rules apply to two writing systems of the same language.
-	if want.Language != language {
-		return cldr.DefaultScriptDistance
 	}
 	distance := cldr.ScriptDistance(language, want.Script, have.script)
 	if distance >= cldr.DefaultScriptDistance {
@@ -271,7 +274,7 @@ func (locales *languageLocales) exactForm(want LanguageID, language string, expl
 }
 
 // matchLanguage ranks the supported locales of language by script and region distance.
-func (index likelyIndex) matchLanguage(want LanguageID, explicit subtagMask, language, prefix string) string {
+func (index likelyIndex) matchLanguage(want LanguageID, explicit subtagMask, language, prefix string) (string, int) {
 	locales := index[language]
 	var equivalentPrefix localeForm
 	bestDistance := cldr.DefaultScriptDistance
@@ -297,10 +300,10 @@ func (index likelyIndex) matchLanguage(want LanguageID, explicit subtagMask, lan
 		}
 	}
 	if exact := locales.exactForm(want, language, explicit, equivalentPrefix); exact != "" {
-		return exact
+		return exact, 0
 	}
 	if locales == nil {
-		return best.name
+		return best.name, bestDistance
 	}
 	for _, candidate := range locales.ordered {
 		distance := candidate.distance(want, language)
@@ -309,20 +312,19 @@ func (index likelyIndex) matchLanguage(want LanguageID, explicit subtagMask, lan
 			bestDistance = distance
 		}
 	}
-	return best.name
+	return best.name, bestDistance
 }
 
-// matchingLocale returns an available locale for t, or the empty string.
-// related reports whether a related-language rule supplied the match.
-func (m Matcher) matchingLocale(t Tag, bestFit bool) (matched string, related bool) {
+// matchingLocale returns the closest available locale and its distance, or an empty name if none matches.
+func (m Matcher) matchingLocale(t Tag, bestFit bool) (string, int) {
 	name := t.BaseName()
 	prefix, _ := m.bestAvailableLocale(name)
 	if !bestFit || prefix == name {
-		return prefix, false
+		return prefix, 0
 	}
 	if t.Language == "und" {
 		if t.Script == "" && t.Region == "" {
-			return prefix, false
+			return prefix, 0
 		}
 		// Only the explicit script or region identifies a language here.
 		prefix = ""
@@ -333,49 +335,62 @@ func (m Matcher) matchingLocale(t Tag, bestFit bool) (matched string, related bo
 		want, ok = lookupLikelySubtags(t.LanguageID, "und-"+t.Script)
 	}
 	if !ok {
-		return prefix, false
+		return prefix, 0
 	}
 	index := m.likely
 	if index == nil {
 		index = likelyLocales()
 	}
 	explicit := explicitSubtags(t.LanguageID)
-	if l := index.matchLanguage(want, explicit, want.Language, prefix); l != "" {
-		return l, false
+	best, bestDistance := index.matchLanguage(want, explicit, want.Language, prefix)
+	if bestDistance == 0 {
+		return best, bestDistance
 	}
-	languages, _ := cldr.LanguageMatches.Lookup(want.Language)
-	for lang := range strings.FieldsSeq(languages) {
-		if l := index.matchLanguage(want, explicit, lang, ""); l != "" {
-			return l, true
+	for lang, languageDistance := range cldr.RelatedLanguages(want.Language) {
+		if languageDistance >= bestDistance {
+			break
+		}
+		l, distance := index.matchLanguage(want, explicit, lang, "")
+		distance += languageDistance
+		if l != "" && distance < bestDistance {
+			best, bestDistance = l, distance
 		}
 	}
-	return "", false
+	return best, bestDistance
 }
+
+// ICU uses the distance between US and British English as the cost of moving
+// one position down the requested locale list.
+var requestDemotion = cldr.RegionDistance("en", "Latn", "US", "GB")
 
 // Match returns the selected locale and corresponding canonical request.
 // When no request matches, both results use defaultLocale.
 func (m Matcher) Match(requested []string, defaultLocale string, bestFit bool) (string, Tag) {
-	var relatedLocale string
-	var relatedRequest Tag
+	var best string
+	var request Tag
+	remainingDistance := cldr.DefaultScriptDistance
 	for _, r := range requested {
 		t, ok := Parse(r)
 		if !ok {
 			continue
 		}
-		l, related := m.matchingLocale(t, bestFit)
-		if l == "" {
+		l, distance := m.matchingLocale(t, bestFit)
+		if l != "" && distance < remainingDistance {
+			best, request = l, t
+			remainingDistance = distance
+		}
+		// Every request remains eligible until the first match. After that,
+		// each list position reduces the distance a later match may have.
+		if best == "" {
 			continue
 		}
-		if !related {
-			return l, t
-		}
-		// Prefer any requested language to a related language.
-		if relatedLocale == "" {
-			relatedLocale, relatedRequest = l, t
+		remainingDistance -= requestDemotion
+		if remainingDistance <= 0 {
+			break
 		}
 	}
-	if relatedLocale != "" {
-		return relatedLocale, relatedRequest
+	if best != "" {
+		return best, request
 	}
 	t, _ := Parse(defaultLocale)
 	return defaultLocale, t

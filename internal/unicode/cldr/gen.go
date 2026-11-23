@@ -485,9 +485,7 @@ func writeLanguageMatches(core map[string][]byte, source string) {
 		rule := object(r)
 		desired, supported := str(rule["_desired"]), str(rule["_supported"])
 		distance := int(rule["_distance"].(float64))
-		// Distances of 30 and above include broad fallbacks such as Klingon to English.
-		// Script and region are matched separately against the available locales.
-		if distance >= 30 || desired == "*" || strings.Contains(desired, "-") {
+		if desired == "*" || strings.Contains(desired, "-") {
 			continue
 		}
 		matches[desired] = append(matches[desired], match{
@@ -504,14 +502,14 @@ func writeLanguageMatches(core map[string][]byte, source string) {
 	related := map[string]string{}
 	for lang, ms := range matches {
 		slices.SortStableFunc(ms, func(a, b match) int { return a.distance - b.distance })
-		var languages []string
+		var record strings.Builder
 		for _, m := range ms {
-			languages = append(languages, m.language)
+			fmt.Fprintf(&record, "\x1e%s\x1f%d", m.language, m.distance)
 		}
-		related[lang] = strings.Join(languages, " ")
+		related[lang] = record.String()
 	}
 	f := newFile("languagematching.go", source)
-	f.mapping("maps a desired language to related written languages in order of increasing distance, separated by spaces.", "LanguageMatches", related)
+	f.mapping("maps languages to records of related languages and their distances in ascending distance order.", "languageMatches", related)
 	f.strings("are the representative locales for language matching.", "ParadigmLocales", strs(object(written["paradigmLocales"])["_locales"]))
 	containment := object(decode(core, "supplemental/territoryContainment.json", "supplemental", "territoryContainment"))
 	writeScriptDistances(f, rules)

@@ -5,58 +5,84 @@
 
 package cldr
 
-// LanguageMatches maps a desired language to related written languages in order of increasing distance, separated by spaces.
-var LanguageMatches = Map{
+// languageMatches maps languages to records of related languages and their distances in ascending distance order.
+var languageMatches = Map{
 	keys: Strings{
-		data: "aaaaeaaoaatabhabvacmacqacwacxacyadfaebaecafafbaiialnapcapdarqarsaryarzauzavlayayhaylaynaypazbbal" +
-			"bbzbebhrbjnbjqbmmbobrbsbtjbvebvubzccacdochrcjycnpcocoacpxcrscscspcyczhczodadtydupenbeueyoffmfofu" +
-			"bfuefuffuhfuifuqfuvfygagangaxgdgkpglgngnwgswguigunhaehakhawhjihnmhrhsnhtididaiktisjakjaxjvknnkvb" +
-			"kvrkxdlalblcelcfliwlkblkolkslrilrmlsmltgltoltsluhlwglzhmaimaxmeomfamfbmiminmnpmqgmshmsimuimvfnan" +
-			"nbnhdniqnlennnonydocokiorcornorspbtpcmpelpgapkopsepstqubqudqufqugquhqukqulqupqurqusquwquxquyqvaq" +
-			"vcqveqvhqviqvjqvlqvmqvnqvoqvpqvsqvwqvzqwaqwcqwhqwsqxaqxcqxhqxlqxnqxoqxpqxrqxtqxuqxwragrmrnrwscns" +
-			"dcsdnsgcshshusjcskskgspvsrsrosshssysutdxtectkgtmwtuytxyugurkuzsvkkvktvrowuuxmmxmvxmwyihyuezazlmz" +
-			"mi",
+		data: "aaaaeaaoaatababhabvachacmacqacwacxacyadfaebaecafafbaiiakalnamapcapdarqarsaryarzauzavlayayhaylayn" +
+			"aypazazbbalbbzbebembhbhrbjnbjqbmmbnbobrbsbtjbvebvubzccacdocebchrcjyckbcnpcocoacpxcrscscspcyczhcz" +
+			"odadtydupeeenbeoeueyoffmfofubfuefuffuhfuifuqfuvfygagaagangaxgdgkpglgngnwgswguguigunhahaehakhawhj" +
+			"ihnmhrhsnhthyiaididaigiktisjakjaxjvkakgkkkmknknnkrikukvbkvrkxdkylalblcelcflgliwlkblkolkslnlolozl" +
+			"rilrmlsmltgltoltslualuhlwglzhmaimaxmeomfamfbmfemgmiminmlmnmnpmqgmrmsmshmsimtmuimvfmynannbnenhdni" +
+			"qnlennnonsonynydnynocokiomororcornorspapbtpcmpelpgapkopspsepstququbqudqufqugquhqukqulqupqurqusqu" +
+			"wquxquyqvaqvcqveqvhqviqvjqvlqvmqvnqvoqvpqvsqvwqvzqwaqwcqwhqwsqxaqxcqxhqxlqxnqxoqxpqxrqxtqxuqxwra" +
+			"grmrnrwsascnsdsdcsdnsgcshshusisjcskskgsnsospvsqsrsrosshssystsuswtatdxtetectgtitktkgtlhtmwtntottt" +
+			"umtuytxyugururkuzuzsvkkvktvrowowuuxhxmmxmvxmwyiyihyoyuezazlmzmizu",
 		ends: []uint32{
-			2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 43, 46,
-			49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 78, 81, 84, 87, 90, 93,
-			96, 99, 101, 104, 107, 110, 113, 115, 117, 119, 122, 125, 128, 131, 133, 136,
-			139, 142, 145, 147, 150, 153, 156, 158, 161, 163, 166, 169, 171, 174, 177, 180,
-			182, 185, 188, 190, 193, 196, 199, 202, 205, 208, 211, 213, 215, 218, 221, 223,
-			226, 228, 230, 233, 236, 239, 242, 245, 248, 251, 254, 257, 259, 262, 264, 266,
-			269, 272, 274, 277, 280, 282, 285, 288, 291, 294, 296, 298, 301, 304, 307, 310,
-			313, 316, 319, 322, 325, 328, 331, 334, 337, 340, 343, 346, 349, 352, 355, 358,
-			360, 363, 366, 369, 372, 375, 378, 381, 384, 386, 389, 392, 395, 397, 399, 402,
-			404, 407, 410, 413, 416, 419, 422, 425, 428, 431, 434, 437, 440, 443, 446, 449,
-			452, 455, 458, 461, 464, 467, 470, 473, 476, 479, 482, 485, 488, 491, 494, 497,
-			500, 503, 506, 509, 512, 515, 518, 521, 524, 527, 530, 533, 536, 539, 542, 545,
-			548, 551, 554, 557, 560, 563, 566, 568, 570, 572, 575, 578, 581, 584, 586, 589,
-			592, 594, 597, 600, 602, 605, 608, 611, 613, 616, 619, 622, 625, 628, 631, 633,
-			636, 639, 642, 645, 648, 651, 654, 657, 660, 663, 666, 668, 671, 674,
+			2, 5, 8, 11, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46,
+			48, 51, 54, 56, 59, 61, 64, 67, 70, 73, 76, 79, 82, 85, 87, 90,
+			93, 96, 99, 101, 104, 107, 110, 112, 115, 117, 120, 123, 126, 129, 131, 133,
+			135, 137, 140, 143, 146, 149, 151, 154, 157, 160, 163, 166, 169, 171, 174, 177,
+			180, 182, 185, 187, 190, 193, 195, 198, 201, 203, 206, 208, 210, 213, 216, 218,
+			221, 224, 227, 230, 233, 236, 239, 241, 243, 246, 249, 252, 254, 257, 259, 261,
+			264, 267, 269, 272, 275, 277, 280, 283, 286, 289, 292, 294, 297, 299, 301, 303,
+			305, 308, 310, 313, 315, 318, 321, 323, 325, 327, 329, 331, 333, 336, 339, 341,
+			344, 347, 350, 352, 354, 356, 359, 362, 364, 367, 370, 373, 376, 378, 380, 383,
+			386, 389, 392, 395, 398, 401, 404, 407, 410, 413, 416, 419, 422, 425, 428, 431,
+			433, 435, 438, 440, 442, 445, 448, 450, 452, 455, 458, 460, 463, 466, 468, 471,
+			473, 475, 478, 481, 484, 486, 488, 491, 493, 496, 499, 501, 504, 506, 508, 511,
+			514, 517, 519, 522, 525, 528, 531, 534, 536, 539, 542, 544, 547, 550, 553, 556,
+			559, 562, 565, 568, 571, 574, 577, 580, 583, 586, 589, 592, 595, 598, 601, 604,
+			607, 610, 613, 616, 619, 622, 625, 628, 631, 634, 637, 640, 643, 646, 649, 652,
+			655, 658, 661, 664, 667, 670, 673, 675, 677, 679, 681, 684, 686, 689, 692, 695,
+			697, 700, 702, 705, 707, 710, 712, 714, 717, 719, 721, 724, 727, 730, 732, 734,
+			736, 738, 741, 743, 746, 748, 750, 752, 755, 758, 761, 763, 765, 767, 770, 773,
+			776, 778, 780, 783, 785, 788, 791, 794, 797, 799, 802, 804, 807, 810, 813, 815,
+			818, 820, 823, 825, 828, 831, 833,
 		},
 	},
 	values: Strings{
-		data: "ssysqarsqararararararararararenarsyrsqararararararararesararararazurarrumgmsmgmgzhfrhr shmsmsmsm" +
-			"geszhenzhzhfrmszhfrskzhenzhzhno nbnemsklnesklnffdaffffffffffffffnlenzhomenkpeesesgndegngnomzhenm" +
-			"szhbs shzhfrmsluyiuenmsmsidkokmsmsmsitdemsmsmsluyluyluyluyluyluylvluyluyzhluyzhhimsmsmsmsenmszhm" +
-			"smgmsmsmnzhno da nngnklnluynb nonb da nnluyfrklnommsmspsenmsarklnmspsquququququququququququququq" +
-			"uququququququququququququququququququququququququququququluyderwrnitscscklnbs hr srarzhcsmgorshs" +
-			"caraaidmgklnmgmsklnmgzhmsuzmsmsetzhmsmgmgyizhzhmsms",
+		data: "\x1essy\x1f4\x1esq\x1f10\x1ear\x1f10\x1esq\x1f10\x1eru\x1f30\x1ear\x1f10\x1ear\x1f10\x1een\x1f30\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10" +
+			"\x1een\x1f20\x1ear\x1f10\x1esyr\x1f10\x1een\x1f30\x1esq\x1f10\x1een\x1f30\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1ees\x1f20\x1ear\x1f1" +
+			"0\x1ear\x1f10\x1ear\x1f10\x1ear\x1f10\x1eru\x1f30\x1eaz\x1f10\x1eur\x1f20\x1ear\x1f10\x1eru\x1f20\x1een\x1f30\x1ehi\x1f30\x1emg\x1f10\x1ems\x1f10\x1emg\x1f10\x1emg\x1f10\x1een\x1f30\x1ezh\x1f2" +
+			"0\x1efr\x1f20\x1ehr\x1f4\x1esh\x1f4\x1ems\x1f10\x1ems\x1f10\x1ems\x1f10\x1emg\x1f10\x1ees\x1f20\x1ezh\x1f10\x1efil\x1f30\x1een\x1f20\x1ezh\x1f10\x1ear\x1f30\x1ezh\x1f10\x1efr\x1f20\x1ems\x1f10" +
+			"\x1ezh\x1f10\x1efr\x1f20\x1esk\x1f20\x1ezh\x1f10\x1een\x1f20\x1ezh\x1f10\x1ezh\x1f10\x1eno\x1f8\x1enb\x1f8\x1ene\x1f10\x1ems\x1f10\x1een\x1f30\x1ekln\x1f10\x1een\x1f30\x1ees\x1f20\x1ekln\x1f10" +
+			"\x1eff\x1f10\x1eda\x1f20\x1eff\x1f10\x1eff\x1f10\x1eff\x1f10\x1eff\x1f10\x1eff\x1f10\x1eff\x1f10\x1eff\x1f10\x1enl\x1f20\x1een\x1f20\x1een\x1f30\x1ezh\x1f10\x1eom\x1f10\x1een\x1f20\x1ekpe\x1f1" +
+			"0\x1ees\x1f20\x1ees\x1f20\x1egn\x1f10\x1ede\x1f4\x1ehi\x1f30\x1egn\x1f10\x1egn\x1f10\x1een\x1f30\x1eom\x1f10\x1ezh\x1f10\x1een\x1f20\x1ems\x1f10\x1ezh\x1f10\x1ebs\x1f4\x1esh\x1f4\x1ezh\x1f10\x1ef" +
+			"r\x1f20\x1eru\x1f30\x1een\x1f30\x1ems\x1f10\x1eluy\x1f10\x1een\x1f30\x1eiu\x1f10\x1een\x1f20\x1ems\x1f10\x1ems\x1f10\x1eid\x1f20\x1een\x1f30\x1efr\x1f30\x1eru\x1f30\x1een\x1f30\x1een\x1f30\x1e" +
+			"kok\x1f10\x1een\x1f30\x1etr\x1f30\x1ems\x1f10\x1ems\x1f10\x1ems\x1f10\x1eru\x1f30\x1eit\x1f20\x1ede\x1f4\x1ems\x1f10\x1ems\x1f10\x1een\x1f30\x1ems\x1f10\x1eluy\x1f10\x1eluy\x1f10\x1eluy\x1f" +
+			"10\x1efr\x1f30\x1een\x1f30\x1een\x1f30\x1eluy\x1f10\x1eluy\x1f10\x1eluy\x1f10\x1elv\x1f10\x1eluy\x1f10\x1eluy\x1f10\x1efr\x1f30\x1ezh\x1f10\x1eluy\x1f10\x1ezh\x1f10\x1ehi\x1f20\x1ems\x1f" +
+			"10\x1ems\x1f10\x1ems\x1f10\x1ems\x1f10\x1een\x1f30\x1efr\x1f30\x1een\x1f20\x1ems\x1f10\x1een\x1f30\x1eru\x1f30\x1ezh\x1f10\x1ems\x1f10\x1ehi\x1f30\x1eid\x1f30\x1emg\x1f10\x1ems\x1f10\x1een\x1f" +
+			"30\x1ems\x1f10\x1emn\x1f10\x1een\x1f30\x1ezh\x1f10\x1eno\x1f1\x1eda\x1f8\x1enn\x1f20\x1een\x1f30\x1egn\x1f10\x1ekln\x1f10\x1eluy\x1f10\x1enb\x1f20\x1eno\x1f20\x1enb\x1f1\x1eda\x1f8\x1enn\x1f20" +
+			"\x1een\x1f30\x1een\x1f30\x1eluy\x1f10\x1een\x1f30\x1efr\x1f20\x1ekln\x1f10\x1een\x1f30\x1een\x1f30\x1eom\x1f10\x1ems\x1f10\x1ems\x1f10\x1een\x1f30\x1eps\x1f10\x1een\x1f20\x1ems\x1f10\x1ear\x1f" +
+			"10\x1ekln\x1f10\x1een\x1f30\x1ems\x1f10\x1eps\x1f10\x1ees\x1f30\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ" +
+			"\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ" +
+			"\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1equ\x1f10\x1elu" +
+			"y\x1f10\x1ede\x1f20\x1erw\x1f10\x1efr\x1f30\x1een\x1f35\x1ern\x1f10\x1een\x1f30\x1efr\x1f35\x1ehi\x1f30\x1eit\x1f20\x1een\x1f30\x1esc\x1f10\x1esc\x1f10\x1ekln\x1f10\x1ebs\x1f4\x1ehr\x1f4\x1esr" +
+			"\x1f4\x1ear\x1f10\x1een\x1f30\x1ezh\x1f10\x1ecs\x1f20\x1emg\x1f10\x1een\x1f30\x1een\x1f30\x1eor\x1f10\x1een\x1f30\x1esh\x1f4\x1esc\x1f10\x1ear\x1f10\x1eaa\x1f4\x1een\x1f30\x1eid\x1f20\x1een\x1f30" +
+			"\x1een\x1f30\x1emg\x1f10\x1een\x1f30\x1ekln\x1f10\x1eru\x1f30\x1een\x1f30\x1eru\x1f30\x1emg\x1f10\x1een\x1f30\x1ems\x1f10\x1een\x1f30\x1een\x1f30\x1eru\x1f30\x1een\x1f30\x1ekln\x1f10\x1emg\x1f" +
+			"10\x1ezh\x1f20\x1een\x1f30\x1ems\x1f10\x1eru\x1f30\x1euz\x1f10\x1ems\x1f10\x1ems\x1f10\x1eet\x1f10\x1efr\x1f30\x1ezh\x1f10\x1een\x1f30\x1ems\x1f10\x1emg\x1f10\x1emg\x1f10\x1een\x1f30\x1eyi\x1f" +
+			"10\x1een\x1f30\x1ezh\x1f10\x1ezh\x1f20\x1ems\x1f10\x1ems\x1f10\x1een\x1f30",
 		ends: []uint32{
-			3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33,
-			36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62, 64, 66,
-			68, 70, 72, 74, 76, 78, 80, 82, 84, 89, 91, 93, 95, 97, 99, 101,
-			103, 105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 130, 132, 134, 137,
-			139, 142, 144, 146, 148, 150, 152, 154, 156, 158, 160, 162, 164, 166, 168, 170,
-			173, 175, 177, 179, 181, 183, 185, 187, 189, 191, 193, 195, 200, 202, 204, 206,
-			209, 211, 213, 215, 217, 219, 222, 224, 226, 228, 230, 232, 234, 236, 238, 241,
-			244, 247, 250, 253, 256, 258, 261, 264, 266, 269, 271, 273, 275, 277, 279, 281,
-			283, 285, 287, 289, 291, 293, 295, 297, 299, 307, 309, 312, 315, 320, 328, 331,
-			333, 336, 338, 340, 342, 344, 346, 348, 350, 353, 355, 357, 359, 361, 363, 365,
-			367, 369, 371, 373, 375, 377, 379, 381, 383, 385, 387, 389, 391, 393, 395, 397,
-			399, 401, 403, 405, 407, 409, 411, 413, 415, 417, 419, 421, 423, 425, 427, 429,
-			431, 433, 435, 437, 439, 441, 444, 446, 448, 450, 452, 454, 456, 459, 467, 469,
-			471, 473, 475, 477, 479, 481, 483, 485, 487, 489, 492, 494, 496, 499, 501, 503,
-			505, 507, 509, 511, 513, 515, 517, 519, 521, 523, 525, 527, 529, 531,
+			6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96,
+			102, 108, 115, 121, 127, 133, 139, 145, 151, 157, 163, 169, 175, 181, 187, 193,
+			199, 205, 211, 217, 223, 229, 235, 241, 247, 253, 259, 265, 271, 277, 283, 289,
+			295, 305, 311, 317, 323, 329, 335, 341, 348, 354, 360, 366, 372, 378, 384, 390,
+			396, 402, 408, 414, 420, 426, 436, 442, 448, 454, 461, 467, 473, 480, 486, 492,
+			498, 504, 510, 516, 522, 528, 534, 540, 546, 552, 558, 564, 570, 577, 583, 589,
+			595, 600, 606, 612, 618, 624, 630, 636, 642, 648, 654, 664, 670, 676, 682, 688,
+			694, 701, 707, 713, 719, 725, 731, 737, 743, 749, 755, 761, 767, 774, 780, 786,
+			792, 798, 804, 810, 816, 821, 827, 833, 839, 845, 852, 859, 866, 872, 878, 884,
+			891, 898, 905, 911, 918, 925, 931, 937, 944, 950, 956, 962, 968, 974, 980, 986,
+			992, 998, 1004, 1010, 1016, 1022, 1028, 1034, 1040, 1046, 1052, 1058, 1064, 1070, 1076, 1082,
+			1098, 1104, 1110, 1117, 1124, 1136, 1152, 1158, 1164, 1171, 1177, 1183, 1190, 1196, 1202, 1208,
+			1214, 1220, 1226, 1232, 1238, 1244, 1250, 1257, 1263, 1269, 1275, 1281, 1287, 1293, 1299, 1305,
+			1311, 1317, 1323, 1329, 1335, 1341, 1347, 1353, 1359, 1365, 1371, 1377, 1383, 1389, 1395, 1401,
+			1407, 1413, 1419, 1425, 1431, 1437, 1443, 1449, 1455, 1461, 1467, 1473, 1479, 1485, 1491, 1497,
+			1503, 1509, 1515, 1521, 1527, 1533, 1540, 1546, 1564, 1582, 1588, 1594, 1600, 1606, 1612, 1619,
+			1634, 1640, 1646, 1652, 1658, 1664, 1670, 1676, 1682, 1688, 1693, 1699, 1705, 1710, 1716, 1722,
+			1728, 1734, 1740, 1746, 1753, 1759, 1765, 1771, 1777, 1783, 1789, 1795, 1801, 1807, 1813, 1820,
+			1826, 1832, 1838, 1844, 1850, 1856, 1862, 1868, 1874, 1880, 1886, 1892, 1898, 1904, 1910, 1916,
+			1922, 1928, 1934, 1940, 1946, 1952, 1958,
 		},
 	},
 }

@@ -98,6 +98,21 @@ func TestBestFitUndWithRegion(t *testing.T) {
 	}
 }
 
+func TestBestFitAfterUnmatchedRequests(t *testing.T) {
+	var vm ekuma.VM
+	if err := vm.SetLocale("ja"); err != nil {
+		t.Fatal(err)
+	}
+	got := evalLocale(t, vm.InitialRealm(), `
+		const requests = Array.from({length: 12}, (_, i) => "qaa-x-" + i);
+		requests.push("fr");
+		new Intl.NumberFormat(requests, {localeMatcher: "best fit"}).resolvedOptions().locale
+	`)
+	if got != "fr" {
+		t.Errorf("resolved locale: got %q, want fr", got)
+	}
+}
+
 func TestBestFitPrefersRequestedLanguage(t *testing.T) {
 	var vm ekuma.VM
 	got := evalLocale(t, vm.InitialRealm(), `

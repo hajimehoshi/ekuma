@@ -96,3 +96,11 @@ func TestBestFitImplicitSubtags(t *testing.T) {
 		t.Errorf("matched %q, want zh-CN", got)
 	}
 }
+
+func TestBestFitRegionAmongRelatedLanguages(t *testing.T) {
+	m := locale.NewMatcher([]string{"no", "nb-SJ"})
+	got, _ := m.Match([]string{"da-SJ"}, "en", true)
+	if got != "nb-SJ" {
+		t.Errorf("matched %q, want nb-SJ", got)
+	}
+}
