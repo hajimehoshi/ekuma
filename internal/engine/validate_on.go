@@ -14,10 +14,9 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
 
-// validateExec says whether the interpreter checks the instructions that it runs against the
-// opcode table. It panics when an instruction changes a register that [bytecode.Opcode.Operands]
-// does not list among its writes, or continues where neither [bytecode.Opcode.Flow] nor a jump
-// target lets it.
+// validateExec enables the interpreter's frame and bytecode checks. The registers must belong
+// to the running frame. Each instruction must write only the registers in [bytecode.Opcode.Operands]
+// and continue where [bytecode.Opcode.Flow] or a jump target allows.
 const validateExec = true
 
 // execChecks is the state of the checks of the instructions.
@@ -72,6 +71,18 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 	c := &ag.checks
 	n := len(ag.frames) - 1
 	fr := &ag.frames[n]
+	if want := fr.fp.nregs + 1; len(regs) != want {
+		panic(validationFailure(fp, pc, fmt.Sprintf("register count is %d, want %d", len(regs), want)))
+	}
+	var first *Value
+	if fr.gen != nil {
+		first = &fr.gen.regs[0]
+	} else {
+		first = &ag.stack[fr.base]
+	}
+	if &regs[0] != first {
+		panic(validationFailure(fp, pc, "registers do not belong to the running frame"))
+	}
 	// The frames after the running one have ended.
 	c.forget(n + 1)
 	c.top = n + 1
@@ -111,9 +122,9 @@ func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	case !reached && isTailCall(code[s.pc].Op):
 		// The callee took the place of the frame.
 	case !reached:
-		panic(ag.failure(s, fmt.Sprintf("continued at %d", pc)))
+		panic(validationFailure(s.fp, s.pc, fmt.Sprintf("continued at %d", pc)))
 	default:
-		panic(ag.failure(s, fmt.Sprintf("changed the register %d and continued at %d", bad, pc)))
+		panic(validationFailure(s.fp, s.pc, fmt.Sprintf("changed the register %d and continued at %d", bad, pc)))
 	}
 }
 
@@ -268,10 +279,10 @@ func (ag *agent) hasOpenUpval(s *execStep, r int) bool {
 	return ok
 }
 
-// failure returns the message of a failed check of the instruction of s.
-func (ag *agent) failure(s *execStep, msg string) string {
-	in := s.fp.code[s.pc]
-	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, s.pc, s.fp.name, s.fp.File, msg)
+// validationFailure describes a failed check at pc.
+func validationFailure(fp *funcProto, pc int, msg string) string {
+	in := fp.code[pc]
+	return fmt.Sprintf("ekumavalidate: %s at %d of %s (%s): %s", in.Op, pc, fp.name, fp.File, msg)
 }
 
 // sameBits reports whether a and b are the same bits.

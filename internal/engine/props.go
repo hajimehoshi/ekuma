@@ -619,6 +619,9 @@ func proxyOnChain(o *Object) *Object {
 
 // GetV returns the named property key of v, calling a getter.
 func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
+	if v.IsObject() && v.o.shape.family == ordinaryRoot {
+		return cx.getProp(v.o, PropKey{key: key}, v)
+	}
 	val, getter := cx.getNamed(v, key, nil)
 	if getter != nil {
 		return cx.Call(getter, v)

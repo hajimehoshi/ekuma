@@ -3050,21 +3050,23 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fr.pc = pc
 			var val Value
 			var getter *Object
-			switch {
-			case site != nil:
+			switch i.Op {
+			case bytecode.OpGetProp, bytecode.OpGetPropChain, bytecode.OpGetMethod, bytecode.OpGetLength:
 				val, getter = fp.context.getNamedAtSite(receiver, name, site)
-			case name != nil:
+			case bytecode.OpGetArgsLength:
 				val, getter = fp.context.getNamed(receiver, name, nil)
-			case i.Op == bytecode.OpGetIndex || i.Op == bytecode.OpGetArgsIndex:
+			case bytecode.OpGetIndex, bytecode.OpGetArgsIndex:
 				val, getter = fp.context.getValue(receiver, key)
-			case i.Op == bytecode.OpGetIndexInt:
+			case bytecode.OpGetIndexInt:
 				val, getter = fp.context.getIndex(receiver, uint32(i.C))
-			case i.Op == bytecode.OpResolveGlobal:
+			case bytecode.OpResolveGlobal:
 				val = fp.context.resolveGlobal(fp.keys[i.B], &fp.globals[i.C])
-			default:
+			case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 				orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
 				strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
 				val = fp.context.getGlobal(fp.keys[i.B], &fp.globals[i.C], orUndef, strict)
+			default:
+				panic("ekuma: unexpected property read opcode: " + i.Op.String())
 			}
 			regs = ag.reload(regs, base, fp)
 			if getter != nil {
@@ -3079,20 +3081,24 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &ag.frames[len(ag.frames)-1]
 			base := fr.base
-			if setter == nil {
-				fr.pc = pc
-				switch {
-				case name != nil:
+			switch i.Op {
+			case bytecode.OpSetProp, bytecode.OpSetPropStrict:
+				if setter == nil {
+					fr.pc = pc
 					var ok bool
 					setter, ok = fp.context.setNamed(receiver, name, rhs, site)
 					if !ok && i.Op == bytecode.OpSetPropStrict {
 						fp.context.throwReadOnly(receiver, PropKey{key: name})
 					}
-				case i.Op == bytecode.OpSetGlobal || i.Op == bytecode.OpSetGlobalStrict:
-					fp.context.setGlobal(fp.keys[i.B], rhs, &fp.globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
-				default:
-					setter = fp.context.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
 				}
+			case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
+				fr.pc = pc
+				fp.context.setGlobal(fp.keys[i.B], rhs, &fp.globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
+			case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
+				fr.pc = pc
+				setter = fp.context.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
+			default:
+				panic("ekuma: unexpected property write opcode: " + i.Op.String())
 			}
 			if setter != nil {
 				argBase = ag.frames[len(ag.frames)-1].top()
