@@ -273,7 +273,10 @@ func (vm *VM) CreateDefaultExportSyntheticModule(v Value, hostDefined any) *Modu
 		env:         []*upvalue{newCell(v)},
 		status:      moduleEvaluated,
 	}
-	m.ref = scriptOrModule{module: m}
+	m.ref = scriptOrModule{
+		module: m,
+		realm:  vm.curRealm,
+	}
 	return m
 }
 
@@ -304,6 +307,11 @@ func (m *Module) isCyclic() bool {
 // synchronously: it loads the modules that m and its dependencies request. Once it has
 // completed for m, it does nothing. A thrown exception is reported as an [*Error].
 func (vm *VM) LoadRequestedModules(m *Module) error {
+	saved := vm.curRealm
+	if r := m.ref.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
 	_, err := vm.enter(func() Value {
 		if e, ok := vm.loadModuleGraph(m); !ok {
 			vm.Throw(e)
@@ -316,6 +324,11 @@ func (vm *VM) LoadRequestedModules(m *Module) error {
 // Link implements Link, after [VM.LoadRequestedModules] when m is not loaded. Once m is
 // linked, it does nothing. A thrown exception is reported as an [*Error].
 func (vm *VM) Link(m *Module) error {
+	saved := vm.curRealm
+	if r := m.ref.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
 	_, err := vm.enter(func() Value {
 		vm.loadAndLink(m)
 		return Undefined
@@ -350,6 +363,11 @@ func (vm *VM) Evaluate(m *Module) (Value, error) {
 // GetModuleNamespace implements GetModuleNamespace for the evaluation phase, after [VM.Link]
 // when m is not linked. A thrown exception is reported as an [*Error].
 func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
+	saved := vm.curRealm
+	if r := m.ref.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
 	return vm.enter(func() Value {
 		vm.loadAndLink(m)
 		return Value{o: vm.moduleNamespace(m)}
@@ -773,6 +791,11 @@ func (m *Module) exportedNames() []string {
 
 // initializeEnvironment implements InitializeEnvironment for the source text module m.
 func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
+	saved := vm.curRealm
+	if r := m.ref.realm; r != saved {
+		vm.switchRealm(r)
+		defer vm.switchRealm(saved)
+	}
 	code := m.code
 	for _, e := range code.IndirectExports {
 		if r := m.resolveExport(e.Name); r.kind != resolutionFound {

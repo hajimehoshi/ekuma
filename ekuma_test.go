@@ -2812,6 +2812,117 @@ func TestSyntheticModules(t *testing.T) {
 	if _, err := vm.ParseJSONModule("bad.json", `{`); !errors.As(err, &ex) || !isInstance(t, &vm, ex.Value, "SyntaxError") {
 		t.Errorf("got %v, want a SyntaxError", err)
 	}
+
+	// Evaluating a synthetic or JSON module directly returns a fulfilled promise of its realm.
+	for _, tc := range []struct {
+		name string
+		mod  *ekuma.Module
+	}{
+		{"synthetic", syn},
+		{"json", j},
+	} {
+		p, err := tc.mod.Evaluate(t.Context())
+		if err != nil {
+			t.Fatalf("%s Evaluate: %v", tc.name, err)
+		}
+		if st, _ := p.PromiseState(); st != ekuma.PromiseFulfilled {
+			t.Errorf("%s Evaluate state = %v, want fulfilled", tc.name, st)
+		}
+		if !isInstance(t, &vm, p, "Promise") {
+			t.Errorf("%s Evaluate returned promise from wrong realm", tc.name)
+		}
+	}
+	other := vm.NewRealm()
+	otherSyn := other.NewSyntheticModule("other-syn", other.ValueOf(1))
+	otherJSON, err := other.ParseJSONModule("other.json", `{"b": 2}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherPromiseCtor, err := other.Global().Get("Promise")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		mod  *ekuma.Module
+	}{
+		{"other synthetic", otherSyn},
+		{"other json", otherJSON},
+	} {
+		p, err := tc.mod.Evaluate(t.Context())
+		if err != nil {
+			t.Fatalf("%s Evaluate: %v", tc.name, err)
+		}
+		if st, _ := p.PromiseState(); st != ekuma.PromiseFulfilled {
+			t.Errorf("%s Evaluate state = %v, want fulfilled", tc.name, st)
+		}
+		if ok, err := p.InstanceOf(otherPromiseCtor); err != nil || !ok {
+			t.Errorf("%s Evaluate promise instanceof other.Promise = %v, %v", tc.name, ok, err)
+		}
+	}
+}
+
+func TestModuleLinkRealm(t *testing.T) {
+	t.Run("direct Link in secondary realm", func(t *testing.T) {
+		var vm ekuma.VM
+		r := vm.NewRealm()
+		m, err := r.ParseModule("m.js", `
+			export function f() {}
+			export const ok = (f instanceof Function);
+		`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := m.Link(); err != nil {
+			t.Fatalf("Link: %v", err)
+		}
+		if _, err := m.Evaluate(t.Context()); err != nil {
+			t.Fatalf("Evaluate: %v", err)
+		}
+		ns, err := m.Namespace()
+		if err != nil {
+			t.Fatalf("Namespace: %v", err)
+		}
+		ok, err := ns.Get("ok")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok.Bool() {
+			t.Error("hoisted function in secondary realm module had wrong Function.prototype")
+		}
+	})
+
+	t.Run("cross-realm import links dependency in its own realm", func(t *testing.T) {
+		var vm ekuma.VM
+		r := vm.NewRealm()
+		dep, err := r.ParseModule("dep.js", `
+			export function f() {}
+			export const ok = (f instanceof Function);
+		`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+			return dep, nil
+		})
+		mainMod, err := vm.ParseModule("main.js", `
+			import { ok } from "dep.js";
+			globalThis.ok = ok;
+		`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := mainMod.Evaluate(t.Context()); err != nil {
+			t.Fatalf("Evaluate: %v", err)
+		}
+		ok, err := vm.Global().Get("ok")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok.Bool() {
+			t.Error("cross-realm imported module linked hoisted function in importer's realm")
+		}
+	})
 }
 
 func TestModuleSource(t *testing.T) {
