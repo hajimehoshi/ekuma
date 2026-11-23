@@ -776,7 +776,7 @@ func (vm *VM) runJob(j *job) {
 		return
 	case reactionAsyncGeneratorReturn:
 		g := r.gen
-		vm.asyncGeneratorCompleteStep(g, j.argument, j.rejected, true)
+		vm.asyncGeneratorCompleteStep(g, (*Realm)(j.context.enteredRealm), j.argument, j.rejected, true)
 		vm.asyncGeneratorDrainQueue(g)
 		return
 	}
@@ -795,7 +795,7 @@ func (vm *VM) promiseReactionJob(j *job) {
 		return
 	case reactionUnwrap:
 		if !rejected {
-			vm.ResolveCapability(r.capability, vm.CreateIterResultObject(arg, r.done))
+			vm.ResolveCapability(r.capability, vm.CreateIterResultObject((*Realm)(j.context.enteredRealm), arg, r.done))
 			return
 		}
 		if r.iterator != nil {

@@ -124,7 +124,7 @@ func helperReturn(vm *engine.VM, this engine.Value, args []engine.Value) engine.
 		}()
 		h.body.close(vm)
 	}
-	return vm.CreateIterResultObject(engine.Undefined, true)
+	return vm.CreateIterResultObject(vm.CurrentRealm(), engine.Undefined, true)
 }
 
 // initIteratorHelpers defines Iterator and the iterator helpers.
@@ -168,7 +168,7 @@ func initIteratorHelpers(vm *engine.VM) {
 	})
 
 	helperProto := vm.NewObject(proto)
-	iteratorNext(vm, helperProto, helperNext)
+	iteratorNext(vm, helperProto, engine.IteratorClosureRealm, helperNext)
 	method(vm, helperProto, "return", 0, helperReturn)
 	vm.Define(helperProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Iterator Helper"), engine.FlagConfigurable)
 	newHelper := func(body helperBody) engine.Value {
@@ -204,7 +204,7 @@ func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
 		w := thisWrapped(vm, this, "return")
 		m := vm.GetMethod(w.it, k.ret)
 		if m == nil {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return vm.CreateIterResultObject(vm.CurrentRealm(), engine.Undefined, true)
 		}
 		return vm.Call(m, w.it)
 	})

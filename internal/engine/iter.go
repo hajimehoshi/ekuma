@@ -79,21 +79,36 @@ func (vm *VM) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
 	next.fn.info.fast.pairStep = step
 }
 
+// IteratorYieldRealm identifies where a built-in iterator creates a yielded result.
+type IteratorYieldRealm uint8
+
+const (
+	// IteratorMethodRealm is the realm of the next method.
+	IteratorMethodRealm IteratorYieldRealm = iota
+
+	// IteratorClosureRealm is the creation realm of an iterator produced by CreateIteratorFromClosure.
+	IteratorClosureRealm
+)
+
 // newIteratorNext creates the result-returning form of an iterator's next method.
-func (vm *VM) newIteratorNext(step IteratorStepFunc) *Object {
+func (vm *VM) newIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
 	return vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		v, ok := step(vm, this)
 		if !ok {
-			return vm.CreateIterResultObject(Undefined, true)
+			return vm.CreateIterResultObject(vm.CurrentRealm(), Undefined, true)
 		}
-		return vm.CreateIterResultObject(v, false)
+		realm := vm.CurrentRealm()
+		if yieldRealm == IteratorClosureRealm {
+			realm = this.o.CreationRealm()
+		}
+		return vm.CreateIterResultObject(realm, v, false)
 	})
 }
 
 // NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
 // result for what step returns.
-func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
-	o := vm.newIteratorNext(step)
+func (vm *VM) NewIteratorNext(yieldRealm IteratorYieldRealm, step IteratorStepFunc) *Object {
+	o := vm.newIteratorNext(yieldRealm, step)
 	o.fn.info.fast = &nativeFast{
 		step: func(vm *VM, this Value) (Value, bool) {
 			vm.pushNative(o, this, nil)
@@ -107,8 +122,8 @@ func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
 
 // NewPlainIteratorNext returns a next method for iterators with state T.
 // For a compatible receiver, step must neither throw nor run JavaScript.
-func NewPlainIteratorNext[T any](vm *VM, receiverError string, step func(*VM, T) (Value, bool)) *Object {
-	next := vm.newIteratorNext(func(vm *VM, this Value) (Value, bool) {
+func NewPlainIteratorNext[T any](vm *VM, yieldRealm IteratorYieldRealm, receiverError string, step func(*VM, T) (Value, bool)) *Object {
+	next := vm.newIteratorNext(yieldRealm, func(vm *VM, this Value) (Value, bool) {
 		state, ok := IteratorState(this).(T)
 		if !ok {
 			vm.ThrowTypeError(receiverError)
@@ -157,7 +172,7 @@ func (vm *VM) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *
 
 // NewArrayIteratorNext returns the next method of array iterators.
 func (vm *VM) NewArrayIteratorNext() *Object {
-	next := vm.newIteratorNext(func(vm *VM, this Value) (Value, bool) {
+	next := vm.newIteratorNext(IteratorMethodRealm, func(vm *VM, this Value) (Value, bool) {
 		it, _ := IteratorState(this).(*arrayIterator)
 		v, st := it.valueStep(vm, true)
 		return v, st == PairYielded
@@ -589,12 +604,12 @@ type iterResult struct {
 	props [2]Value
 }
 
-// CreateIterResultObject implements CreateIterResultObject.
-func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
-	return newIterResult(vm.shapes.iterResult, v, done)
-}
-
-func newIterResult(s *shape, v Value, done bool) Value {
+// CreateIterResultObject creates an iterator result with the Object prototype of realm.
+func (vm *VM) CreateIterResultObject(realm *Realm, v Value, done bool) Value {
+	s := vm.shapes.iterResult
+	if realm != vm.CurrentRealm() {
+		s = realm.shapes.iterResult
+	}
 	r := &iterResult{
 		kind:  kindObject,
 		shape: s,

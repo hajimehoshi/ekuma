@@ -36,15 +36,15 @@ func symMethod(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.St
 
 // iteratorNext defines the next method of the built-in iterators with the prototype proto,
 // which steps the iterator with step.
-func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStepFunc) *engine.Object {
-	fn := vm.NewIteratorNext(step)
+func iteratorNext(vm *engine.VM, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, step engine.IteratorStepFunc) *engine.Object {
+	fn := vm.NewIteratorNext(yieldRealm, step)
 	vm.Define(proto, vm.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }
 
 // plainIteratorNext defines a next method whose step runs no JavaScript and cannot throw.
-func plainIteratorNext[T any](vm *engine.VM, proto *engine.Object, receiverError string, step func(*engine.VM, T) (engine.Value, bool)) *engine.Object {
-	fn := engine.NewPlainIteratorNext(vm, receiverError, step)
+func plainIteratorNext[T any](vm *engine.VM, proto *engine.Object, yieldRealm engine.IteratorYieldRealm, receiverError string, step func(*engine.VM, T) (engine.Value, bool)) *engine.Object {
+	fn := engine.NewPlainIteratorNext(vm, yieldRealm, receiverError, step)
 	vm.Define(proto, vm.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
 	return fn
 }

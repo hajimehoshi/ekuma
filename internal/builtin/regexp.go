@@ -652,7 +652,7 @@ func initRegExp(vm *engine.VM) {
 	})
 
 	iterProto := vm.NewObject(vm.Intrinsic(engine.IntrinsicIteratorPrototype))
-	iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+	iteratorNext(vm, iterProto, engine.IteratorMethodRealm, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		st, ok := engine.IteratorState(this).(*regexpStringIterator)
 		if !ok {
 			vm.ThrowTypeError("%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")

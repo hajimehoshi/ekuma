@@ -224,7 +224,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		}
 		d := it.segments
 		if it.pos >= len(d.runes) {
-			return vm.CreateIterResultObject(engine.Undefined, true)
+			return vm.CreateIterResultObject(vm.CurrentRealm(), engine.Undefined, true)
 		}
 		start := it.pos
 		bs := d.boundaries(vm)
@@ -234,7 +234,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 		}
 		end := int(bs[k])
 		it.pos = end
-		return vm.CreateIterResultObject(d.segmentData(vm, start, end), false)
+		return vm.CreateIterResultObject(vm.CurrentRealm(), d.segmentData(vm, start, end), false)
 	})
 	vm.Define(iterProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
 }

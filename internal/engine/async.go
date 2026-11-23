@@ -108,6 +108,7 @@ func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
 // yields with no request left, or completes.
 func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 	a := g.async
+	resumerRealm := vm.CurrentRealm()
 	for {
 		var r Value
 		var done bool
@@ -115,13 +116,13 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 			r, done = vm.resume(g, mode, v)
 		}) {
 			a.draining = true
-			vm.asyncGeneratorCompleteStep(g, vm.takeThrown(), true, true)
+			vm.asyncGeneratorCompleteStep(g, resumerRealm, vm.takeThrown(), true, true)
 			vm.asyncGeneratorDrainQueue(g)
 			return
 		}
 		if done {
 			a.draining = true
-			vm.asyncGeneratorCompleteStep(g, r, false, true)
+			vm.asyncGeneratorCompleteStep(g, resumerRealm, r, false, true)
 			vm.asyncGeneratorDrainQueue(g)
 			return
 		}
@@ -135,7 +136,7 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 
 		// AsyncGeneratorYield: the generator stays executing while it settles the request.
 		g.awaiting = true
-		vm.asyncGeneratorCompleteStep(g, r, false, false)
+		vm.asyncGeneratorCompleteStep(g, resumerRealm, r, false, false)
 		if len(a.queue) == 0 {
 			g.awaiting = false
 			return
@@ -154,7 +155,7 @@ func (vm *VM) asyncGeneratorResume(g *generator, mode ResumeMode, v Value) {
 
 // asyncGeneratorCompleteStep implements AsyncGeneratorCompleteStep for a completion with
 // the value v, which is a throw completion when thrown is set.
-func (vm *VM) asyncGeneratorCompleteStep(g *generator, v Value, thrown, done bool) {
+func (vm *VM) asyncGeneratorCompleteStep(g *generator, realm *Realm, v Value, thrown, done bool) {
 	a := g.async
 	next := a.queue[0]
 	n := copy(a.queue, a.queue[1:])
@@ -164,7 +165,7 @@ func (vm *VM) asyncGeneratorCompleteStep(g *generator, v Value, thrown, done boo
 		vm.RejectCapability(next.capability, v)
 		return
 	}
-	vm.ResolveCapability(next.capability, vm.CreateIterResultObject(v, done))
+	vm.ResolveCapability(next.capability, vm.CreateIterResultObject(realm, v, done))
 }
 
 // asyncGeneratorDrainQueue implements AsyncGeneratorDrainQueue.
@@ -177,9 +178,9 @@ func (vm *VM) asyncGeneratorDrainQueue(g *generator) {
 			vm.asyncGeneratorAwaitReturn(g)
 			return
 		case ResumeThrow:
-			vm.asyncGeneratorCompleteStep(g, next.value, true, true)
+			vm.asyncGeneratorCompleteStep(g, vm.CurrentRealm(), next.value, true, true)
 		default:
-			vm.asyncGeneratorCompleteStep(g, Undefined, false, true)
+			vm.asyncGeneratorCompleteStep(g, vm.CurrentRealm(), Undefined, false, true)
 		}
 	}
 	a.draining = false
@@ -194,7 +195,7 @@ func (vm *VM) asyncGeneratorAwaitReturn(g *generator) {
 			gen:  g,
 		})
 	}) {
-		vm.asyncGeneratorCompleteStep(g, vm.takeThrown(), true, true)
+		vm.asyncGeneratorCompleteStep(g, vm.CurrentRealm(), vm.takeThrown(), true, true)
 		vm.asyncGeneratorDrainQueue(g)
 	}
 }
@@ -222,7 +223,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 	if state == asyncGenCompleted {
 		switch mode {
 		case ResumeNext:
-			vm.ResolveCapability(c, vm.CreateIterResultObject(Undefined, true))
+			vm.ResolveCapability(c, vm.CreateIterResultObject(vm.CurrentRealm(), Undefined, true))
 			return c.Promise()
 		case ResumeThrow:
 			vm.RejectCapability(c, v)
@@ -341,7 +342,7 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 			return c.Promise()
 		}
 		if !hasReturn {
-			vm.ResolveCapability(c, vm.CreateIterResultObject(argAt(args, 0), true))
+			vm.ResolveCapability(c, vm.CreateIterResultObject(vm.CurrentRealm(), argAt(args, 0), true))
 			return c.Promise()
 		}
 		if !result.IsObject() {
