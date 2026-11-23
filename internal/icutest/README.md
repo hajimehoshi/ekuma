@@ -88,3 +88,13 @@ specific, generic and localized GMT names at fixed instants. The adapter
 checks the formatted text and the `timeZoneName` part, including standard
 and daylight names. ICU 79.1 uses tzdata 2026e and Ekuma's identifier
 tables use 2026f. [Known results](testdata/icu-failures.txt)
+
+## Time-zone transitions and Temporal disambiguation
+
+`tzbdtest.cpp`, `tztest.cpp`, and `TimeZoneBoundaryTest.java` check transition
+counts, UTC offsets, and local times around named-zone boundaries.
+`tzoffloc.cpp` and `caltest.cpp` check all four Temporal disambiguation modes
+for gaps and overlaps, including Lord Howe's 30-minute overlap and Apia's
+skipped day. The VM uses Go 1.27.4's tzdata 2026c, which agrees with ICU's
+2026e rules for these cases. If the installed Go archive differs, set
+`EKUMA_ICU_ZONEINFO` to a local copy of the [pinned zoneinfo.zip](https://raw.githubusercontent.com/golang/go/go1.27.4/lib/time/zoneinfo.zip).

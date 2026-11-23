@@ -19,6 +19,7 @@ jobs:
     env:
       EKUMA_ICU: ${{ github.workspace }}/.icu
       EKUMA_ICU_CLDR: ${{ github.workspace }}/.icu-cldr
+      EKUMA_ICU_ZONEINFO: ${{ github.workspace }}/.icu-zoneinfo.zip
       EKUMA_TEST262: ${{ github.workspace }}/.test262
       EKUMA_V8: ${{ github.workspace }}/.v8
     steps:
@@ -89,6 +90,11 @@ jobs:
             /icu4c/source/test/cintltst/cdateintervalformattest.c
             /icu4c/source/data/zone/en.txt
             /icu4c/source/tools/tzcode/icuzones
+            /icu4c/source/data/misc/zoneinfo64.txt
+            /icu4c/source/test/intltest/tzbdtest.cpp
+            /icu4c/source/test/intltest/tzoffloc.cpp
+            /icu4c/source/test/intltest/caltest.cpp
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/timezone/TimeZoneBoundaryTest.java
             /icu4c/source/test/intltest/tztest.cpp
             /icu4c/source/test/intltest/tzfmttst.cpp
             /icu4c/source/test/intltest/dtfmttst.cpp
@@ -116,6 +122,9 @@ jobs:
             /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/ListFormatterTest.java
             /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/RelativeDateTimeFormatterTest.java
           sparse-checkout-cone-mode: false
+
+      - name: Fetch pinned zoneinfo for the ICU transition tests
+        run: curl --fail --location --retry 3 --output "$EKUMA_ICU_ZONEINFO" https://raw.githubusercontent.com/golang/go/go1.27.4/lib/time/zoneinfo.zip
 
       - name: Checkout test262
         uses: actions/checkout@v4

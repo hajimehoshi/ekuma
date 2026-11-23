@@ -107,6 +107,9 @@ func Run(t *testing.T) {
 		t.Run("pluralRanges.txt", func(t *testing.T) {
 			runPluralRanges(t, filepath.Join(misc, "pluralRanges.txt"), filepath.Join(misc, "plurals.txt"))
 		})
+		t.Run("transitions", func(t *testing.T) {
+			runTransitions(t, cldrDir)
+		})
 		runTimeZones(t, cldrDir, fixtures)
 		runDatePatterns(t, cldrDir, fixtures)
 		runDateIntervals(t, cldrDir, fixtures)
