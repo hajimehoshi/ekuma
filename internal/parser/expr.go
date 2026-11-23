@@ -877,12 +877,12 @@ func (p *parser) parseArrow(start int32, params []ast.Pattern, async bool, use u
 }
 
 // declareArrowParams declares the parameters of the arrow function fn, which are in the
-// function whose state is outer as far as await is concerned.
+// function whose state is outer as far as await and yield are concerned.
 func (p *parser) declareArrowParams(fn *ast.Function, outer fnState) {
-	reserved := p.f.awaitReserved
-	p.f.awaitReserved = outer.awaitReserved
+	reserved, yield := p.f.awaitReserved, p.f.yield
+	p.f.awaitReserved, p.f.yield = outer.awaitReserved, outer.yield
 	p.declareParams(fn)
-	p.f.awaitReserved = reserved
+	p.f.awaitReserved, p.f.yield = reserved, yield
 }
 
 func (p *parser) parseNew() ast.Expr {

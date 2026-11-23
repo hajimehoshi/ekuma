@@ -3760,3 +3760,17 @@ func TestGeneratorAndAsyncForwardedArgumentsIndex(t *testing.T) {
 		t.Errorf("got %q, want %q", res, want)
 	}
 }
+
+func TestAsyncArrowYieldParamInGenerator(t *testing.T) {
+	var vm ekuma.VM
+	cases := []string{
+		`function* g() { return async yield => yield; }`,
+		`function* g() { return async ([yield]) => 1; }`,
+		`async function* g() { return async yield => 1; }`,
+	}
+	for _, src := range cases {
+		if _, err := vm.ParseScript("test", src); err == nil {
+			t.Errorf("ParseScript(%q) succeeded, want SyntaxError", src)
+		}
+	}
+}
