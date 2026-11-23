@@ -77,20 +77,21 @@ type iteratorHelper struct {
 }
 
 // thisIteratorHelper implements GeneratorValidate for an iterator helper object.
-func thisIteratorHelper(vm *engine.VM, this engine.Value, what string) *iteratorHelper {
-	h, _ := engine.IteratorState(this).(*iteratorHelper)
+func thisIteratorHelper(vm *engine.VM, this engine.Value, what string) (*iteratorHelper, *engine.Realm) {
+	state, realm := engine.IteratorStateAndRealm(this)
+	h, _ := state.(*iteratorHelper)
 	if h == nil {
 		vm.ThrowTypeError(vm.CurrentRealm(), "Iterator Helper.prototype."+what+" requires that 'this' be an Iterator Helper")
 	}
 	if h.state == helperExecuting {
 		vm.ThrowTypeError(vm.CurrentRealm(), "generator is already running")
 	}
-	return h
+	return h, realm
 }
 
 // helperNext is the next method of the iterator helper objects without the iterator result.
 func helperNext(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-	h := thisIteratorHelper(vm, this, "next")
+	h, realm := thisIteratorHelper(vm, this, "next")
 	if h.state == helperCompleted {
 		return engine.Undefined, false
 	}
@@ -102,7 +103,15 @@ func helperNext(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 			h.state = helperCompleted
 		}
 	}()
-	v, ok := h.body.step(vm)
+	var v engine.Value
+	var ok bool
+	if realm == vm.CurrentRealm() {
+		v, ok = h.body.step(vm)
+	} else {
+		vm.InRealm(realm, func() {
+			v, ok = h.body.step(vm)
+		})
+	}
 	if ok {
 		completed = false
 		h.state = helperSuspendedYield
@@ -112,9 +121,10 @@ func helperNext(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 
 // helperReturn is the return method of the iterator helper objects.
 func helperReturn(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	h := thisIteratorHelper(vm, this, "return")
+	h, realm := thisIteratorHelper(vm, this, "return")
 	switch h.state {
 	case helperSuspendedStart:
+		// Before the first yield, the return method closes the underlying iterators itself.
 		h.state = helperCompleted
 		h.body.close(vm)
 	case helperSuspendedYield:
@@ -122,7 +132,9 @@ func helperReturn(vm *engine.VM, this engine.Value, args []engine.Value) engine.
 		defer func() {
 			h.state = helperCompleted
 		}()
-		h.body.close(vm)
+		vm.InRealm(realm, func() {
+			h.body.close(vm)
+		})
 	}
 	return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
 }
