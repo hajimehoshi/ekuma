@@ -69,6 +69,37 @@ var ParadigmLocales = Strings{
 	},
 }
 
+// DefaultScriptDistance is the CLDR distance between unrelated scripts.
+const DefaultScriptDistance = 50
+
+var scriptDistances = map[[3]string]int{
+	{"sr", "Latn", "Cyrl"}: 5,
+	{"sr", "Cyrl", "Latn"}: 5,
+	{"zh", "Hani", "Hans"}: 20,
+	{"zh", "Hani", "Hant"}: 20,
+	{"ar", "Latn", "Arab"}: 20,
+	{"bn", "Latn", "Beng"}: 20,
+	{"gu", "Latn", "Gujr"}: 20,
+	{"hi", "Latn", "Deva"}: 20,
+	{"kn", "Latn", "Knda"}: 20,
+	{"ml", "Latn", "Mlym"}: 20,
+	{"mr", "Latn", "Deva"}: 20,
+	{"ta", "Latn", "Taml"}: 20,
+	{"te", "Latn", "Telu"}: 20,
+	{"zh", "Latn", "Hans"}: 20,
+	{"ja", "Latn", "Jpan"}: 5,
+	{"ja", "Hani", "Jpan"}: 5,
+	{"ja", "Hira", "Jpan"}: 5,
+	{"ja", "Kana", "Jpan"}: 5,
+	{"ja", "Hrkt", "Jpan"}: 5,
+	{"ja", "Hira", "Hrkt"}: 5,
+	{"ja", "Kana", "Hrkt"}: 5,
+	{"ko", "Hani", "Kore"}: 5,
+	{"ko", "Hang", "Kore"}: 5,
+	{"ko", "Jamo", "Kore"}: 5,
+	{"ko", "Jamo", "Hang"}: 5,
+}
+
 var anyRegion = regionSet{
 	exclude: true,
 }

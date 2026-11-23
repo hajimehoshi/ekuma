@@ -514,8 +514,38 @@ func writeLanguageMatches(core map[string][]byte, source string) {
 	f.mapping("maps a desired language to related written languages in order of increasing distance, separated by spaces.", "LanguageMatches", related)
 	f.strings("are the representative locales for language matching.", "ParadigmLocales", strs(object(written["paradigmLocales"])["_locales"]))
 	containment := object(decode(core, "supplemental/territoryContainment.json", "supplemental", "territoryContainment"))
+	writeScriptDistances(f, rules)
 	writeRegionDistances(f, rules, object(written["matchVariables"]), containment)
 	f.write()
+}
+
+// writeScriptDistances writes same-language script rules and the unmatched-script distance.
+func writeScriptDistances(f *file, rules []any) {
+	var entries []string
+	for _, r := range rules {
+		rule := object(r)
+		lang, desired, ok := strings.Cut(str(rule["_desired"]), "-")
+		if !ok || strings.Contains(desired, "-") {
+			continue
+		}
+		supportedLang, supported, _ := strings.Cut(str(rule["_supported"]), "-")
+		if lang != supportedLang {
+			continue
+		}
+		distance := int(rule["_distance"].(float64))
+		if lang == "*" && desired == "*" && supported == "*" {
+			fmt.Fprintf(&f.b, "\n// DefaultScriptDistance is the CLDR distance between unrelated scripts.\nconst DefaultScriptDistance = %d\n", distance)
+			continue
+		}
+		entry := func(a, b string) string {
+			return fmt.Sprintf("{%q, %q, %q}: %d,\n", lang, a, b, distance)
+		}
+		entries = append(entries, entry(desired, supported))
+		if rule["_oneway"] != true && desired != supported {
+			entries = append(entries, entry(supported, desired))
+		}
+	}
+	fmt.Fprintf(&f.b, "\nvar scriptDistances = map[[3]string]int{\n%s}\n", strings.Join(entries, ""))
 }
 
 // regionLeaves returns the territories contained in each geographical region,

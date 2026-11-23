@@ -3,6 +3,17 @@
 
 package cldr
 
+// ScriptDistance returns the CLDR matching distance between scripts of the same language.
+func ScriptDistance(language, desired, supported string) int {
+	if desired == supported {
+		return 0
+	}
+	if distance, ok := scriptDistances[[3]string{language, desired, supported}]; ok {
+		return distance
+	}
+	return DefaultScriptDistance
+}
+
 type regionSet struct {
 	regions Strings
 	exclude bool
@@ -17,7 +28,8 @@ type regionDistanceRule struct {
 	distance           int
 }
 
-// RegionDistance returns the CLDR matching distance between regions of the same maximized language and script.
+// RegionDistance returns the CLDR matching distance between regions for a language and script.
+// An empty script selects the language-wide rules.
 func RegionDistance(language, script, desired, supported string) int {
 	if desired == supported {
 		return 0

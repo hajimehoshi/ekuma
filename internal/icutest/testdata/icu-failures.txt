@@ -63,13 +63,8 @@ cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal 
 
 # Best fit is implementation-defined. These are Ekuma's selected locales
 # with the same candidates, default, and request order as the ICU case.
-localeMatcherTest.txt 1406,1407 en
-localeMatcherTest.txt 269 zh
 localeMatcherTest.txt 764 fr
-localeMatcherTest.txt 940,950 und
 localeMatcherTest.txt 1486 en-GB
 localeMatcherTest.txt 1393 sr
-localeMatcherTest.txt 1396,1564 nl
-localeMatcherTest.txt 1646,1647,1648 it
+localeMatcherTest.txt 1564 nl
 localeMatcherTest.txt 1904 fr-CA
-localeMatcherTest.txt 1910 he

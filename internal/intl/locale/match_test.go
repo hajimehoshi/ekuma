@@ -80,3 +80,11 @@ func TestCollationParent(t *testing.T) {
 		}
 	}
 }
+
+func TestBestFitVariantPrefix(t *testing.T) {
+	m := locale.NewMatcher([]string{"en", "be-tarask"})
+	got, _ := m.Match([]string{"be-tarask-unifon"}, "en", true)
+	if got != "be-tarask" {
+		t.Errorf("matched %q, want be-tarask", got)
+	}
+}
