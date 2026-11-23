@@ -1,7 +1,7 @@
 TestICU subtest	Go selector for runnable sections	Executed (adapter units)	Known differences	Excluded (counts and reasons)
-GraphemeBreakTest.txt	runBreakTest (icutest.go:274)	766 cases	0	0 reported
-WordBreakTest.txt	runBreakTest (icutest.go:274)	1944 cases	0	0 reported
-SentenceBreakTest.txt	runBreakTest (icutest.go:274)	512 cases	0	0 reported
+GraphemeBreakTest.txt	runBreakTest (icutest.go:282)	766 cases	0	0 reported
+WordBreakTest.txt	runBreakTest (icutest.go:282)	1944 cases	0	0 reported
+SentenceBreakTest.txt	runBreakTest (icutest.go:282)	512 cases	0	0 reported
 emoji-test.txt	runEmojiBreakTest (rbbi.go:23)	3210 inputs in each of grapheme and word modes	0	167 single-code-unit rows | line breaking has no Intl.Segmenter granularity
 casing.txt	runCasingTest (casing.go:17)	3 lower and 3 upper cases executed	0	15 titlecasing rows | 2 casefolding rows
 strcase.cpp	runArmenianUpper (casing.go:141)	3 uppercase checks	0	3 titlecasing checks (no corresponding String method)
@@ -14,7 +14,8 @@ re_tests.txt	runPerlCaptures (regexp_captures.go:179)	427 cases executed	0	29 Pe
 DerivedCoreProperties.txt	runIdentifierBoundaries (identifier.go:14)	ID_Start: 19 RegExp v checks and 19 binding identifier checks / ID_Continue: 19 RegExp v checks and 19 binding identifier checks	0	0 reported
 emoji-sequences.txt	runEmojiTest (regexp.go:63)	1441 rows executed / 2339 sequences checked against all 7 properties	0	0 reported
 emoji-zwj-sequences.txt	runEmojiTest (regexp.go:63)	1614 rows executed / 1614 sequences checked against all 7 properties	0	0 reported
-NormalizationTest.txt	runNormalizationTest (normalization.go:18)	20034 rows	0	0 reported
+NormalizationTest.txt	runNormalizationTest (normalization.go:40)	20034 rows	0	0 reported
+NormalizationTest-3.2.0.txt	runNormalizationTest (normalization.go:40)	246 rows	0	16746 duplicate rows
 CollationTest_NON_IGNORABLE_SHORT.txt	runOrderedCollation (collation.go:69)	206298 input rows, 206266 comparisons executed (pairs)	0	31 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8
 CollationTest_SHIFTED_SHORT.txt	runOrderedCollation (collation.go:69)	227809 input rows, 227777 comparisons executed (pairs)	0	31 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8
 locale-collation/regcoll.cpp	regressions (locale_collation.go:92)	7 cases executed	0	0 reported

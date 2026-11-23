@@ -34,6 +34,12 @@ the test. [Known results](testdata/icu-failures.txt)
 | `misc/plurals.txt`, ICU4J `format/plurals.txt`, `misc/pluralRanges.txt` | Cardinal, ordinal and range categories. The adapter preserves visible fraction digits and uses ICU's cardinal rules to interpret localized phrase samples. |
 | `calendar.txt`, `caltestdata.h`, `format.txt` | Calendar conversion and arithmetic, leap months, Gregorian/lunar mappings, and localized date strings and parts. |
 
+## Unicode normalization
+
+`NormalizationTest.txt` checks NFC, NFD, NFKC and NFKD on all five columns.
+The corrected `NormalizationTest-3.2.0.txt` adds 246 distinct rows after
+duplicates are removed. Their 4,920 expected results agree with Unicode 17.
+
 ## Calendar arithmetic and era boundaries
 
 ICU4J and ICU4C fixtures check Temporal addition across leap months and year

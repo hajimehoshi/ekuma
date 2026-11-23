@@ -67,8 +67,16 @@ func Run(t *testing.T) {
 				runEmojiTest(t, filepath.Join(unidata, file))
 			})
 		}
+		currentNormalization := filepath.Join(unidata, "NormalizationTest.txt")
 		t.Run("NormalizationTest.txt", func(t *testing.T) {
-			runNormalizationTest(t, filepath.Join(unidata, "NormalizationTest.txt"))
+			runNormalizationTest(t, currentNormalization, nil)
+		})
+		t.Run("NormalizationTest-3.2.0.txt", func(t *testing.T) {
+			seen := map[[5]string]bool{}
+			forEachNormalizationRow(t, currentNormalization, func(_ int, columns [5]string) {
+				seen[columns] = true
+			})
+			runNormalizationTest(t, filepath.Join(testdata, "NormalizationTest-3.2.0.txt"), seen)
 		})
 		for _, alternate := range []string{"NON_IGNORABLE", "SHIFTED"} {
 			file := "CollationTest_" + alternate + "_SHORT.txt"

@@ -19,7 +19,7 @@
 1	1	fixture	normalization-data	overlap	icu4c/source/data/unidata/DerivedNormalizationProps.txt	-	-	78.3	TestICU/NormalizationTest.txt (decomposition and composition columns)
 1	1	fixture	unicode-input	input	icu4c/source/data/unidata/FractionalUCA.txt	-	-	78.3	-
 1	1	fixture	normalization-data	overlap	icu4c/source/data/unidata/NormalizationCorrections.txt	-	-	78.3	TestICU/NormalizationTest.txt (decomposition and composition columns)
-1	1	fixture	data-unicode	adapter	icu4c/source/data/unidata/NormalizationTest.txt	-	NormalizationTest.txt	78.3	-
+1	1	fixture	data-unicode	adapter	icu4c/source/data/unidata/NormalizationTest.txt	-	NormalizationTest.txt, NormalizationTest-3.2.0.txt	78.3	-
 1	1	fixture	data-unicode	adapter	icu4c/source/data/unidata/SpecialCasing.txt	-	SpecialCasing.txt, UnicodeData.txt	78.3	-
 1	1	fixture	unicode-input	input	icu4c/source/data/unidata/UCARules.txt	-	-	78.3	-
 1	1	fixture	data-unicode	adapter	icu4c/source/data/unidata/UnicodeData.txt	-	UnicodeData.txt, SpecialCasing.txt, rbbitst.txt	78.3	-
@@ -710,7 +710,7 @@
 1	1	fixture	idna	outside	icu4c/source/test/testdata/IdnaTestV2.txt	-	-	79.1	-
 1	1	fixture	line-break	outside	icu4c/source/test/testdata/LineBreakTest.txt	-	-	78.3	-
 1	1	support	build	input	icu4c/source/test/testdata/Makefile.in	-	-	79.1	-
-1	1	fixture	old-normalization	proposed	icu4c/source/test/testdata/NormalizationTest-3.2.0.txt	-	-	78.3	Proposal 5
+1	1	fixture	old-normalization	adapter	icu4c/source/test/testdata/NormalizationTest-3.2.0.txt	-	NormalizationTest-3.2.0.txt	78.3	-
 1	1	fixture	data-number	adapter	icu4c/source/test/testdata/NumberFormatTestCases.txt	-	NumberFormatTestCases.txt	79.1	-
 1	1	fixture	data-unicode	adapter	icu4c/source/test/testdata/SentenceBreakTest.txt	-	SentenceBreakTest.txt	78.3	-
 1	1	fixture	layout	outside	icu4c/source/test/testdata/TestFont1.otf	-	-	79.1	-
@@ -1563,7 +1563,7 @@
 1	1	fixture	normalization-data	overlap	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/CompositionExclusions.txt	-	-	78.3	TestICU/NormalizationTest.txt (decomposition and composition columns)
 1	1	fixture	idna	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/IdnaTestV2.txt	icu4c/source/test/testdata/IdnaTestV2.txt	-	79.1	-
 1	1	fixture	normalization-data	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationCorrections.txt	icu4c/source/data/unidata/NormalizationCorrections.txt	-	78.3	-
-1	1	fixture	old-normalization	proposed	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationTest-3.2.0.txt	-	-	78.3	Proposal 5
+1	1	fixture	old-normalization	overlap	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationTest-3.2.0.txt	-	-	78.3	TestICU/NormalizationTest-3.2.0.txt
 1	1	fixture	data-unicode	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/NormalizationTest.txt	icu4c/source/data/unidata/NormalizationTest.txt	-	78.3	-
 1	1	fixture	data-unicode	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/SpecialCasing.txt	icu4c/source/data/unidata/SpecialCasing.txt	-	78.3	-
 1	1	fixture	data-unicode	same blob	icu4j/main/core/src/test/resources/com/ibm/icu/dev/data/unicode/UnicodeData.txt	icu4c/source/data/unidata/UnicodeData.txt	-	78.3	-

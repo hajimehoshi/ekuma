@@ -4,9 +4,7 @@
 package icutest
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,13 +13,31 @@ import (
 	"github.com/hajimehoshi/ekuma"
 )
 
-func runNormalizationTest(t *testing.T, path string) {
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
+func forEachNormalizationRow(t *testing.T, path string, visit func(int, [5]string)) {
+	t.Helper()
+	fixtureLines(t, path, func(line int, row string) {
+		data, _, _ := strings.Cut(row, "#")
+		data = strings.TrimSpace(data)
+		if data == "" || strings.HasPrefix(data, "@Part") {
+			return
+		}
+		var columns [5]string
+		fields := strings.Split(strings.TrimSuffix(data, ";"), ";")
+		if len(fields) != len(columns) {
+			t.Fatalf("%s:%d: got %d columns, want %d", path, line, len(fields), len(columns))
+		}
+		for i, field := range fields {
+			s, err := parseCodePoints(field)
+			if err != nil {
+				t.Fatalf("%s:%d: c%d: %v", path, line, i+1, err)
+			}
+			columns[i] = s
+		}
+		visit(line, columns)
+	})
+}
 
+func runNormalizationTest(t *testing.T, path string, seen map[[5]string]bool) {
 	// For each input c1 through c5, the fixture gives the expected column for each form.
 	forms := []struct {
 		name        string
@@ -46,26 +62,18 @@ func runNormalizationTest(t *testing.T, path string) {
 	}
 
 	var vm ekuma.VM
-	var rows, line int
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line++
-		data, _, _ := strings.Cut(scanner.Text(), "#")
-		data = strings.TrimSpace(data)
-		if data == "" || strings.HasPrefix(data, "@Part") {
-			continue
+	var rows, duplicates int
+	forEachNormalizationRow(t, path, func(line int, texts [5]string) {
+		if seen != nil {
+			if seen[texts] {
+				duplicates++
+				return
+			}
+			seen[texts] = true
 		}
 		var columns [5]ekuma.Value
-		fields := strings.Split(strings.TrimSuffix(data, ";"), ";")
-		if len(fields) != len(columns) {
-			t.Fatalf("%s:%d: got %d columns, want %d", path, line, len(fields), len(columns))
-		}
-		for i, field := range fields {
-			s, err := parseCodePoints(field)
-			if err != nil {
-				t.Fatalf("%s:%d: c%d: %v", path, line, i+1, err)
-			}
-			columns[i] = vm.ValueOf(s)
+		for i, text := range texts {
+			columns[i] = vm.ValueOf(text)
 		}
 		for _, form := range forms {
 			for i, wantColumn := range form.wantColumns {
@@ -81,9 +89,9 @@ func runNormalizationTest(t *testing.T, path string) {
 			}
 		}
 		rows++
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
+	})
+	if seen != nil {
+		t.Logf("%d duplicate rows excluded", duplicates)
 	}
 	if rows == 0 {
 		t.Fatalf("%s contains no normalization tests", path)

@@ -10,7 +10,6 @@ each applicable gap has a maintained test or a linked issue. [Tracker](https://g
 2. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
 3. **Number formatting.** Check Serbian compact rounding of −999999 to `-1 милион`, Hungarian forint output at zero, two and three fraction digits, and the two grouping spans in Swiss German `-1'000'007`. [Compact numbers][compact] · [currency digits][currency] · [field positions][simple-number]
 4. **French date ranges.** Check `17–23 septembre 2024` within a month and `17 septembre – 3 octobre 2024` across months, including the thin spaces. [Date interval cases][fr-range]
-5. **Normalization.** The corrected 3.2 fixture adds 246 distinct five-column rows beyond the Unicode 17 corpus. All 4,920 comparisons matched in a one-off run. [Older fixture][old-norm] · [Unicode 17 fixture][norm]
 
 ## Scope and verification
 
@@ -47,5 +46,3 @@ go run internal/icutest/verify_inventory.go "$EKUMA_ICU" "$EKUMA_ICU_CLDR"
 [currency]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/cintltst/currtest.c#L196
 [simple-number]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4c/source/test/intltest/numbertest_simple.cpp#L29
 [fr-range]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/JavaTimeFormatTest.java#L405
-[old-norm]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/testdata/NormalizationTest-3.2.0.txt
-[norm]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/data/unidata/NormalizationTest.txt
