@@ -6,13 +6,12 @@ each applicable gap has a maintained test or a linked issue. [Tracker](https://g
 
 ## Proposed follow-ups in priority order
 
-1. **Emoji segmentation.** All 3,210 eligible emoji inputs stayed intact in both grapheme and word iteration. Add the fixture to exercise both modes, including non-fully-qualified spellings. [TestEmoji][emoji-driver] · [Emoji 5.0 fixture][emoji-data]
-2. **Regex captures.** Use the ECMAScript-compatible rows to check capture text and UTF-16 offsets. For `(.*)(?=c)` on `abcdef`, both the match and group 1 span [0, 2). [Tagged captures][regex-data] · [tabular offsets][perl-data]
-3. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
-4. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
-5. **Number formatting.** Check Serbian compact rounding of −999999 to `-1 милион`, Hungarian forint output at zero, two and three fraction digits, and the two grouping spans in Swiss German `-1'000'007`. [Compact numbers][compact] · [currency digits][currency] · [field positions][simple-number]
-6. **French date ranges.** Check `17–23 septembre 2024` within a month and `17 septembre – 3 octobre 2024` across months, including the thin spaces. [Date interval cases][fr-range]
-7. **Normalization.** The corrected 3.2 fixture adds 246 distinct five-column rows beyond the Unicode 17 corpus. All 4,920 comparisons matched in a one-off run. [Older fixture][old-norm] · [Unicode 17 fixture][norm]
+1. **Regex captures.** Use the ECMAScript-compatible rows to check capture text and UTF-16 offsets. For `(.*)(?=c)` on `abcdef`, both the match and group 1 span [0, 2). [Tagged captures][regex-data] · [tabular offsets][perl-data]
+2. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
+3. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
+4. **Number formatting.** Check Serbian compact rounding of −999999 to `-1 милион`, Hungarian forint output at zero, two and three fraction digits, and the two grouping spans in Swiss German `-1'000'007`. [Compact numbers][compact] · [currency digits][currency] · [field positions][simple-number]
+5. **French date ranges.** Check `17–23 septembre 2024` within a month and `17 septembre – 3 octobre 2024` across months, including the thin spaces. [Date interval cases][fr-range]
+6. **Normalization.** The corrected 3.2 fixture adds 246 distinct five-column rows beyond the Unicode 17 corpus. All 4,920 comparisons matched in a one-off run. [Older fixture][old-norm] · [Unicode 17 fixture][norm]
 
 ## Scope and verification
 
@@ -42,8 +41,6 @@ Ekuma repository root:
 go run internal/icutest/verify_inventory.go "$EKUMA_ICU" "$EKUMA_ICU_CLDR"
 ```
 
-[emoji-driver]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/intltest/rbbitst.cpp#L3542
-[emoji-data]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/testdata/emoji-test.txt
 [regex-data]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/testdata/regextst.txt
 [perl-data]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/testdata/re_tests.txt
 [persian]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java#L24

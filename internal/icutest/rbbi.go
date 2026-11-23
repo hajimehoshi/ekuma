@@ -20,6 +20,65 @@ import (
 	"github.com/hajimehoshi/ekuma"
 )
 
+func runEmojiBreakTest(t *testing.T, path string) {
+	var vm ekuma.VM
+	factory := segmenterFactory(t, &vm)
+	checks := map[string]ekuma.Value{}
+	for _, mode := range []string{"grapheme", "word"} {
+		check, err := factory.Invoke(t.Context(), "en", mode)
+		if err != nil {
+			t.Fatal(err)
+		}
+		checks[mode] = check
+	}
+
+	var cases, excluded int
+	fixtureLines(t, path, func(line int, row string) {
+		data, _, _ := strings.Cut(row, "#")
+		if strings.TrimSpace(data) == "" {
+			return
+		}
+		codes, _, ok := strings.Cut(data, ";")
+		if !ok {
+			t.Fatalf("%s:%d: missing emoji qualification field", path, line)
+		}
+		var points []any
+		var length int
+		for field := range strings.FieldsSeq(codes) {
+			r, err := parseScalar(field)
+			if err != nil {
+				t.Fatalf("%s:%d: %v", path, line, err)
+			}
+			points = append(points, r)
+			length += utf16.RuneLen(r)
+		}
+		if length == 0 {
+			t.Fatalf("%s:%d: empty emoji sequence", path, line)
+		}
+		// ICU's TestEmoji checks inputs longer than one UTF-16 code unit.
+		if length == 1 {
+			excluded++
+			return
+		}
+		want := []breakBoundary{
+			{},
+			{
+				offset: length,
+			},
+		}
+		for mode, check := range checks {
+			if err := checkBreakRecords(t, check, points, want); err != nil {
+				t.Errorf("%s:%d: %s on %s: %v", path, line, mode, strings.TrimSpace(codes), err)
+			}
+		}
+		cases++
+	})
+	if cases == 0 {
+		t.Fatalf("%s contains no eligible emoji sequences", path)
+	}
+	t.Logf("%d inputs checked for grapheme and word breaks, %d single-code-unit rows excluded", cases, excluded)
+}
+
 func runRBBITest(t *testing.T, path, unicodeData string, failures map[int]string) {
 	var vm ekuma.VM
 	newSegmenter := segmenterFactory(t, &vm)

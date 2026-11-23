@@ -260,6 +260,9 @@ func runBreakTests(t *testing.T, dir string) {
 			runBreakTest(t, filepath.Join(dir, file), strings.ToLower(kind))
 		})
 	}
+	t.Run("emoji-test.txt", func(t *testing.T) {
+		runEmojiBreakTest(t, filepath.Join(dir, "emoji-test.txt"))
+	})
 }
 
 func runBreakTest(t *testing.T, path, granularity string) {
