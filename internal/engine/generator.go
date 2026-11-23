@@ -303,9 +303,16 @@ func (vm *VM) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool)
 		return Undefined, false
 	}
 	r, done := vm.resume(g, mode, v)
-	if !done && g.delegating {
-		// yield* passes the result object of the inner iterator through.
-		return r, true
+	s := vm.shapes.iterResult
+	if !done {
+		if g.delegating {
+			// yield* passes the result object of the inner iterator through.
+			return r, true
+		}
+		// Yield creates its result before returning to the resuming method's realm.
+		if realm := g.f.fn.code.realm; realm != vm.curRealm {
+			s = realm.shapes.iterResult
+		}
 	}
-	return vm.CreateIterResultObject(r, done), true
+	return newIterResult(s, r, done), true
 }

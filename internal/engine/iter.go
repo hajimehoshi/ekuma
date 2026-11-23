@@ -591,9 +591,13 @@ type iterResult struct {
 
 // CreateIterResultObject implements CreateIterResultObject.
 func (vm *VM) CreateIterResultObject(v Value, done bool) Value {
+	return newIterResult(vm.shapes.iterResult, v, done)
+}
+
+func newIterResult(s *shape, v Value, done bool) Value {
 	r := &iterResult{
 		kind:  kindObject,
-		shape: vm.shapes.iterResult,
+		shape: s,
 		props: [2]Value{v, Bool(done)},
 	}
 	r.slots = r.props[:]
