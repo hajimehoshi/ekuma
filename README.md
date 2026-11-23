@@ -139,8 +139,10 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 Ekuma checks its pure Go implementation of `Intl` (ECMA-402) against ICU’s own tests for
 collation, segmentation, and locale-aware formatting. The suite also checks Unicode normalization
-and `Temporal` calendars. Across the pinned ICU 78.3 and 79.1 fixtures, all 129 subtests passed
-with 289 expected differences and zero unexpected failures. See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
+and `Temporal` calendars. In 123 of 129 subtests, Ekuma matched the pinned ICU 78.3 and 79.1
+fixtures on every case it ran. The other six recorded 289 expected differences, including 281
+where only the spacing in a formatted date range differed. The run had no unexpected failures.
+See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
 
 ### Implemented
 
