@@ -677,7 +677,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 				vm.checkBigIntBits(int64(a.BitLen()) + n.Int64())
 			}
 			r.Lsh(a, uint(n.Int64()))
-		case -n.Int64() > 1<<30:
+		case n.Int64() < -(1 << 30):
 			if a.Sign() < 0 {
 				r.SetInt64(-1)
 			}

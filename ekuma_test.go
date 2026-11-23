@@ -3420,3 +3420,11 @@ func TestExoticSetPrototypeOfShapeIsolation(t *testing.T) {
 		})
 	}
 }
+
+func TestBigIntShiftMinInt64(t *testing.T) {
+	var vm ekuma.VM
+	got := run(t, &vm, `[123n >> (1n << 63n), (-5n) >> (1n << 63n)].join(",")`)
+	if want := "0,-1"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
