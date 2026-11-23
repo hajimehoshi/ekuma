@@ -9,6 +9,9 @@ adapters read fixtures from the external checkouts. [Pins and default cache path
 # Full suite
 go test -count=1 -v -run '^TestICU$' .
 
+# Stage 16 duration and multi-unit formatting
+GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^duration$' .
+
 # Stage 15 locale information and supported values
 go test -count=1 -v -run '^TestICU$/^locale-info$' .
 
@@ -89,6 +92,15 @@ check element and literal parts. Urdu narrow-unit patterns are locale data
 that JavaScript can request. Custom ICU patterns are excluded. ICU omits
 zero-width fields, while ECMA-402 retains an element part for an empty input
 string. [ECMA-402 CreatePartsFromList](https://tc39.es/ecma402/#sec-createpartsfromlist)
+
+## Duration and multi-unit formatting
+
+`measfmttest.cpp` and ICU4J duration fixtures check long, short, narrow and
+digital output for negative durations, explicit zeros and fractional seconds.
+ICU list spans and CLDR unit patterns identify which parts belong to each
+unit and which literals separate them. All 260 checks pass. Exclusions cover
+mixed signs, repeated or out-of-order units, legacy wording and precision,
+and elapsed time relative to a reference instant.
 
 ## Relative time fixtures
 

@@ -71,19 +71,33 @@ func (s *listSuite) mixedListFields(block intervalSource, group, locale, typ, st
 func (s *listSuite) checkFields(result intervalSource, group, locale, typ, style string, input []string, rows []intervalRow, mixed bool) {
 	want := intervalString(s.t, result.lines[0])
 	s.checkList(result.line, group, "format", locale, typ, style, input, want)
-	units := utf16.Encode([]rune(want))
 	var parts []string
+	for _, p := range listFieldParts(result, want, input, rows, mixed) {
+		parts = append(parts, p.kind+" "+p.value)
+	}
+	s.checkList(result.line, group, "formatToParts", locale, typ, style, input, strings.Join(parts, "\n"))
+}
+
+type listFieldPart struct {
+	kind, value string
+}
+
+func listFieldParts(result intervalSource, want string, input []string, rows []intervalRow, mixed bool) []listFieldPart {
+	t := result.t
+	t.Helper()
+	units := utf16.Encode([]rune(want))
+	var parts []listFieldPart
 	var offset int
 	for _, row := range rows {
 		var cols []string
 		if mixed {
-			cols = row.columns(s.t, 4)
+			cols = row.columns(t, 4)
 		} else {
-			cols = row.columns(s.t, 3)
+			cols = row.columns(t, 3)
 		}
 		begin, end := integer(cols[len(cols)-2]), integer(cols[len(cols)-1])
 		if begin != offset || end <= begin || end > len(units) {
-			s.t.Fatalf("%s:%d: invalid UTF-16 range %d..%d at %d for %q", s.path, row.line, begin, end, offset, want)
+			t.Fatalf("%s:%d: invalid UTF-16 range %d..%d at %d for %q", result.path, row.line, begin, end, offset, want)
 		}
 		value := string(utf16.Decode(units[begin:end]))
 		if mixed {
@@ -91,29 +105,34 @@ func (s *listSuite) checkFields(result intervalSource, group, locale, typ, style
 			case "UFIELD_CATEGORY_LIST_SPAN":
 				index := integer(cols[1])
 				if index < 0 || index >= len(input) || input[index] != value {
-					s.t.Fatalf("%s:%d: invalid input span %d for %q", s.path, row.line, index, value)
+					t.Fatalf("%s:%d: invalid input span %d for %q", result.path, row.line, index, value)
 				}
 				continue
 			case "UFIELD_CATEGORY_LIST":
 				cols = cols[1:]
 			default:
-				s.t.Fatalf("%s:%d: unknown list field category %s", s.path, row.line, cols[0])
+				t.Fatalf("%s:%d: unknown list field category %s", result.path, row.line, cols[0])
 			}
 		}
+		var kind string
 		switch cols[0] {
 		case "ULISTFMT_ELEMENT_FIELD":
-			parts = append(parts, "element "+value)
+			kind = "element"
 		case "ULISTFMT_LITERAL_FIELD":
-			parts = append(parts, "literal "+value)
+			kind = "literal"
 		default:
-			s.t.Fatalf("%s:%d: unknown list field %s", s.path, row.line, cols[0])
+			t.Fatalf("%s:%d: unknown list field %s", result.path, row.line, cols[0])
 		}
+		parts = append(parts, listFieldPart{
+			kind:  kind,
+			value: value,
+		})
 		offset = end
 	}
 	if offset != len(units) {
-		s.t.Fatalf("%s:%d: fields cover %d of %d UTF-16 units", s.path, result.line, offset, len(units))
+		t.Fatalf("%s:%d: fields cover %d of %d UTF-16 units", result.path, result.line, offset, len(units))
 	}
-	s.checkList(result.line, group, "formatToParts", locale, typ, style, input, strings.Join(parts, "\n"))
+	return parts
 }
 
 func (s *listSuite) cListPositions(src intervalSource) {

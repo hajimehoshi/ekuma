@@ -119,6 +119,8 @@ jobs:
             /icu4c/source/test/cintltst/unumberrangeformattertst.c
             /icu4c/source/test/intltest/numbertest_range.cpp
             /icu4c/source/test/intltest/listformattertest.cpp
+            /icu4c/source/test/intltest/measfmttest.cpp
+            /icu4c/source/test/intltest/numbertest_api.cpp
             /icu4c/source/test/intltest/reldatefmttest.cpp
             /icu4c/source/test/cintltst/ulistfmttest.c
             /icu4c/source/test/cintltst/crelativedateformattest.c
@@ -132,6 +134,10 @@ jobs:
             /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/PluralRangesTest.java
             /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/DateTimeGeneratorTest.java
             /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/ListFormatterTest.java
+            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/MeasureUnitTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/TimeUnitTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/duration/ICUDurationTest.java
+            /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/duration/testdata/testdata_*.txt
             /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/format/RelativeDateTimeFormatterTest.java
           sparse-checkout-cone-mode: false
 
