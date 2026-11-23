@@ -57,8 +57,11 @@ func (ag *agent) leaveChecks() {
 // values reachable.
 func (c *execChecks) forget(n int) {
 	for k := n; k < c.top; k++ {
-		c.steps[k].valid = false
-		clear(c.steps[k].regs)
+		step := &c.steps[k]
+		clear(step.regs)
+		*step = execStep{
+			regs: step.regs[:0],
+		}
 	}
 	c.top = min(c.top, n)
 }

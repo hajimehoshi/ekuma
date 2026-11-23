@@ -60,6 +60,14 @@ type iteratorHelper struct {
 	body  helperBody
 }
 
+// complete detaches the body and returns it for any remaining close calls.
+func (h *iteratorHelper) complete() helperBody {
+	body := h.body
+	h.state = helperCompleted
+	h.body = nil
+	return body
+}
+
 // resumeHelper runs a next or return resumption and reports whether the helper yielded.
 func resumeHelper(cx *engine.ExecutionContext, this engine.Value, mode engine.ResumeMode) (engine.Value, bool) {
 	state, bodyContext := engine.IteratorStateAndContext(this)
@@ -79,10 +87,7 @@ func resumeHelper(cx *engine.ExecutionContext, this engine.Value, mode engine.Re
 	case helperSuspendedStart:
 		if mode == engine.ResumeReturn {
 			// Before the first yield, the return method closes the underlying iterators itself.
-			h.state = helperCompleted
-			body := h.body
-			h.body = nil
-			body.close(cx)
+			h.complete().close(cx)
 			return engine.Undefined, false
 		}
 	}
@@ -105,8 +110,7 @@ func (h *iteratorHelper) resumeBody(cx *engine.ExecutionContext, mode engine.Res
 		if yielded {
 			h.state = helperSuspendedYield
 		} else {
-			h.state = helperCompleted
-			h.body = nil
+			h.complete()
 		}
 	}()
 	if mode == engine.ResumeReturn {
@@ -214,35 +218,35 @@ func initIteratorFrom(cx *engine.ExecutionContext, k *iteratorKeys, ctor *engine
 
 // concatHelper is the helper that Iterator.concat returns.
 type concatHelper struct {
-	iterables []engine.Value
-	methods   []*engine.Object
-	pos       int
-	inner     iterRecord
-	active    bool
+	inputs []concatInput
+	inner  iterRecord
+}
+
+type concatInput struct {
+	iterable engine.Value
+	method   *engine.Object
 }
 
 func (h *concatHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 	for {
-		if h.active {
+		if !h.inner.it.IsUndefined() {
 			if v, ok := h.inner.stepValue(cx); ok {
 				return v, true
 			}
-			h.active = false
+			h.inner = iterRecord{}
 		}
-		if h.pos >= len(h.iterables) {
+		if len(h.inputs) == 0 {
 			return engine.Undefined, false
 		}
-		iterable, method := h.iterables[h.pos], h.methods[h.pos]
-		h.iterables[h.pos] = engine.Undefined
-		h.methods[h.pos] = nil
-		h.pos++
-		h.inner.it, h.inner.next = cx.GetIteratorFromMethod(iterable, method)
-		h.active = true
+		input := h.inputs[0]
+		h.inputs[0] = concatInput{}
+		h.inputs = h.inputs[1:]
+		h.inner.it, h.inner.next = cx.GetIteratorFromMethod(input.iterable, input.method)
 	}
 }
 
 func (h *concatHelper) close(cx *engine.ExecutionContext) {
-	if h.active {
+	if !h.inner.it.IsUndefined() {
 		cx.IteratorClose(h.inner.it)
 	}
 }
@@ -250,8 +254,7 @@ func (h *concatHelper) close(cx *engine.ExecutionContext) {
 func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object, newHelper func(*engine.ExecutionContext, helperBody) engine.Value) {
 	method(cx, ctor, "concat", 0, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		h := &concatHelper{
-			iterables: make([]engine.Value, len(args)),
-			methods:   make([]*engine.Object, len(args)),
+			inputs: make([]concatInput, len(args)),
 		}
 		for i, item := range args {
 			if !item.IsObject() {
@@ -261,8 +264,10 @@ func initIteratorConcat(cx *engine.ExecutionContext, ctor *engine.Object, newHel
 			if m == nil {
 				cx.ThrowTypeError(cx.DisplayString(item) + " is not iterable")
 			}
-			h.iterables[i] = item
-			h.methods[i] = m
+			h.inputs[i] = concatInput{
+				iterable: item,
+				method:   m,
+			}
 		}
 		return newHelper(cx, h)
 	})
@@ -279,7 +284,7 @@ const (
 // zipHelper is the helper that Iterator.zip and Iterator.zipKeyed return. It implements IteratorZip.
 type zipHelper struct {
 	// open and next hold the iterators and their next methods in input order.
-	// An open entry is undefined while stepping that iterator and after it finishes.
+	// A finished iterator has undefined entries in both slices.
 	open    []engine.Value
 	next    []engine.Value
 	mode    zipMode
@@ -318,10 +323,8 @@ func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []engine.Value {
 			results[i] = h.padding[i]
 			continue
 		}
-		h.open[i] = engine.Undefined
-		v, ok := cx.IteratorStepValue(it, h.next[i])
+		v, ok := h.stepInput(cx, i, true)
 		if ok {
-			h.open[i] = it
 			results[i] = v
 			yielded = true
 			continue
@@ -335,7 +338,6 @@ func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []engine.Value {
 			}
 			cx.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
 		}
-		h.next[i] = engine.Undefined
 		results[i] = h.padding[i]
 	}
 	if !yielded {
@@ -344,13 +346,23 @@ func (h *zipHelper) nextRow(cx *engine.ExecutionContext) []engine.Value {
 	return results
 }
 
+// stepInput releases a finished or throwing input before the other inputs can be closed.
+func (h *zipHelper) stepInput(cx *engine.ExecutionContext, i int, readValue bool) (v engine.Value, yielded bool) {
+	defer func() {
+		if !yielded {
+			h.open[i], h.next[i] = engine.Undefined, engine.Undefined
+		}
+	}()
+	if readValue {
+		return cx.IteratorStepValue(h.open[i], h.next[i])
+	}
+	return engine.Undefined, cx.IteratorStep(h.open[i], h.next[i])
+}
+
 // remainingDone checks the remaining iterators when the first finishes in strict mode.
 func (h *zipHelper) remainingDone(cx *engine.ExecutionContext) bool {
 	for i := 1; i < len(h.open); i++ {
-		it := h.open[i]
-		h.open[i] = engine.Undefined
-		if cx.IteratorStep(it, h.next[i]) {
-			h.open[i] = it
+		if _, ok := h.stepInput(cx, i, false); ok {
 			return false
 		}
 	}
@@ -658,12 +670,11 @@ type flatMapHelper struct {
 	f       *engine.Object
 	counter float64
 	inner   iterRecord
-	active  bool
 }
 
 func (h *flatMapHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 	for {
-		if h.active {
+		if !h.inner.it.IsUndefined() {
 			var v engine.Value
 			var ok bool
 			cx.IfAbruptCloseIterator(h.src.it, func() {
@@ -672,7 +683,7 @@ func (h *flatMapHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 			if ok {
 				return v, true
 			}
-			h.active = false
+			h.inner = iterRecord{}
 		}
 		v, ok := h.src.stepValue(cx)
 		if !ok {
@@ -683,12 +694,11 @@ func (h *flatMapHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 			h.inner.it, h.inner.next = cx.GetIteratorFlattenable(mapped, false)
 		})
 		h.counter++
-		h.active = true
 	}
 }
 
 func (h *flatMapHelper) close(cx *engine.ExecutionContext) {
-	if h.active {
+	if !h.inner.it.IsUndefined() {
 		cx.IfAbruptCloseIterator(h.src.it, func() {
 			cx.IteratorClose(h.inner.it)
 		})
@@ -703,18 +713,16 @@ type chunksHelper struct {
 	windows bool
 	// allowPartial is set for windows when undersized is "allow-partial".
 	allowPartial bool
-	exhausted    bool
 	buf          []engine.Value
 }
 
 func (h *chunksHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
-	if h.exhausted {
+	if h.src.it.IsUndefined() {
 		return engine.Undefined, false
 	}
 	for {
 		v, ok := h.src.stepValue(cx)
 		if !ok {
-			h.exhausted = true
 			h.src = iterRecord{}
 			buf := h.buf
 			h.buf = nil
@@ -745,7 +753,7 @@ func (h *chunksHelper) step(cx *engine.ExecutionContext) (engine.Value, bool) {
 }
 
 func (h *chunksHelper) close(cx *engine.ExecutionContext) {
-	if !h.exhausted {
+	if !h.src.it.IsUndefined() {
 		cx.IteratorClose(h.src.it)
 	}
 }

@@ -91,13 +91,17 @@ func (g *generator) abort() {
 	}
 }
 
-// complete releases the activation after its last frame finishes.
-func (g *generator) complete() {
-	g.closeUpvals(0)
-	g.state = genCompleted
-	g.f = nil
-	g.regs, g.scopes, g.extra, g.openUpvals = nil, nil, nil, nil
-	g.this, g.closeValue = Undefined, Undefined
+// complete releases the activation and returns its pending return value.
+func (g *generator) complete() Value {
+	if len(g.openUpvals) > 0 {
+		g.closeUpvals(0)
+	}
+	v := g.closeValue
+	*g = generator{
+		state: genCompleted,
+		async: g.async,
+	}
+	return v
 }
 
 func (g *generator) findUpval(index int) *upvalue {
@@ -157,7 +161,6 @@ func (ag *agent) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 	if g.fp.isAsync {
 		g.async = &asyncState{}
 	}
-	g.state = genRunning
 	ag.pushGenFrame(g, ret)
 }
 
@@ -195,6 +198,7 @@ func (ag *agent) pushGenFrame(g *generator, ret int32) {
 	fr.newTarget = nil
 	fr.gen = g
 	fr.scopes = g.scopes
+	g.state = genRunning
 }
 
 // callCoroutine calls the generator, async function or async generator f from Go.
@@ -240,7 +244,6 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 	}
 	sp := resumer.sp
 	started := g.state == genSuspendedYield
-	g.state = genRunning
 	g.mode = mode
 	resumer.pushGenFrame(g, 0)
 	stop := len(resumer.frames) - 1
@@ -265,25 +268,19 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 			resumer.thrown = Value{o: closeSignal}
 		}
 		g.mode = ResumeNext
-		if !resumer.unwind(stop) {
+		r, status := resumer.unwind(stop)
+		if status != execCatch {
 			resumer.sp = sp
-			if resumer.thrown.o == closeSignal {
-				resumer.thrown = Undefined
-				return v, true
+			if status == execReturn {
+				return r, true
 			}
 			panic(errThrow)
 		}
 	}
-	// Completing the frame releases its pending return, including one carried across an await.
-	closeValue := g.closeValue
 	r, ok := resumer.runFrame(stop)
 	resumer.sp = sp
 	if !ok {
 		resumer.dropNatives(stop)
-		if resumer.thrown.o == closeSignal {
-			resumer.thrown = Undefined
-			return closeValue, true
-		}
 		panic(errThrow)
 	}
 	return r, g.state == genCompleted

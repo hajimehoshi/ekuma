@@ -418,7 +418,7 @@ func BenchmarkOpenUpvalues(b *testing.B) {
 	}
 }
 
-// BenchmarkGenerator measures generator creation and resumption.
+// BenchmarkGenerator measures generator creation, resumption and return.
 func BenchmarkGenerator(b *testing.B) {
 	const src = `
 		function* one() { yield 1; }
@@ -435,8 +435,17 @@ func BenchmarkGenerator(b *testing.B) {
 			for (const x of many(n)) sum += x;
 			if (sum !== n) throw new Error("incorrect result");
 		}
+		function close(n) {
+			let sum = 0;
+			for (let i = 0; i < n; i++) {
+				const it = one();
+				it.next();
+				sum += it.return(1).value;
+			}
+			if (sum !== n) throw new Error("incorrect result");
+		}
 	`
-	for _, name := range []string{"create", "resume"} {
+	for _, name := range []string{"create", "resume", "close"} {
 		b.Run(name, func(b *testing.B) {
 			var vm ekuma.VM
 			if _, err := runScript(b.Context(), &vm, "generator.js", src); err != nil {
@@ -451,7 +460,7 @@ func BenchmarkGenerator(b *testing.B) {
 	}
 }
 
-// BenchmarkIteratorZip creates a zip iterator and reads its first row.
+// BenchmarkIteratorZip measures creating, stepping and closing zip iterators.
 func BenchmarkIteratorZip(b *testing.B) {
 	for _, n := range []int{2, 128} {
 		b.Run(fmt.Sprintf("inputs=%d", n), func(b *testing.B) {
@@ -472,6 +481,30 @@ func BenchmarkIteratorZip(b *testing.B) {
 			}
 		})
 	}
+	b.Run("partial", func(b *testing.B) {
+		var vm ekuma.VM
+		ctx := b.Context()
+		fn, err := runScript(ctx, &vm, "partial.js", `
+			const inputs = [[1], Array(16).fill(2)];
+			const options = {mode: "longest"};
+			() => {
+				const it = Iterator.zip(inputs, options);
+				let sum = 0;
+				for (let i = 0; i < 8; i++) sum += it.next().value[1];
+				it.return();
+				if (sum !== 16) throw new Error("incorrect result");
+			};
+		`)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.ReportAllocs()
+		for b.Loop() {
+			if _, err := fn.Invoke(ctx); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }
 
 // BenchmarkAsync measures promises and async functions. One iteration is one await of

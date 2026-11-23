@@ -57,12 +57,13 @@ func (ag *agent) callAsync(f *Object, this Value, args []Value) Value {
 	g := newGenerator(f, this, args)
 	g.async = asyncFunction
 	cx := g.fp.context
+	var promise *Object
 	cx.Run(func() {
-		g.object = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
-		g.state = genSuspendedStart
+		promise = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+		g.object = promise
 		g.asyncFunctionResume(ResumeNext, Undefined)
 	})
-	return Value{o: g.object}
+	return Value{o: promise}
 }
 
 // takeThrown returns the pending exception and clears it.
@@ -86,17 +87,18 @@ func (g *generator) resumeAfterAwait(mode ResumeMode, v Value) {
 func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 	defer g.abortOnPanic()
 	cx := g.fp.context
+	promise := g.object
 	for {
 		var r Value
 		var done bool
 		if !cx.protect(func() {
 			r, done = cx.resume(g, mode, v)
 		}) {
-			cx.rejectPromise(g.object, cx.takeThrown())
+			cx.rejectPromise(promise, cx.takeThrown())
 			return
 		}
 		if done {
-			cx.resolvePromise(cx.realm, g.object, r)
+			cx.resolvePromise(cx.realm, promise, r)
 			return
 		}
 		if g.tryAwait(r, reactionAwait) {
@@ -113,31 +115,31 @@ func (resumer *ExecutionContext) asyncGeneratorResume(g *generator, mode ResumeM
 	for {
 		var r Value
 		var done bool
-		if !resumer.protect(func() {
+		ok := resumer.protect(func() {
 			r, done = resumer.resume(g, mode, v)
-		}) {
-			a.draining = true
-			resumer.asyncGeneratorCompleteStep(g, resumer.takeThrown(), true, true)
-			resumer.asyncGeneratorDrainQueue(g)
-			return
-		}
-		if done {
-			a.draining = true
-			resumer.asyncGeneratorCompleteStep(g, r, false, true)
-			resumer.asyncGeneratorDrainQueue(g)
-			return
-		}
-		if g.awaiting {
+		})
+		if !ok || done {
+			if !ok {
+				r = resumer.takeThrown()
+			}
+			// A resume refused at the depth limit consumes only the current request.
+			a.draining = g.state == genCompleted
+			resumer.asyncGeneratorCompleteStep(g, r, !ok, true)
+			if a.draining {
+				resumer.asyncGeneratorDrainQueue(g)
+				return
+			}
+		} else if g.awaiting {
 			if g.tryAwait(r, reactionAwait) {
 				return
 			}
 			mode, v = ResumeThrow, resumer.takeThrown()
 			continue
+		} else {
+			// AsyncGeneratorYield: the generator stays executing while it settles the request.
+			g.awaiting = true
+			resumer.asyncGeneratorCompleteStep(g, r, false, false)
 		}
-
-		// AsyncGeneratorYield: the generator stays executing while it settles the request.
-		g.awaiting = true
-		resumer.asyncGeneratorCompleteStep(g, r, false, false)
 		if len(a.queue) == 0 {
 			g.awaiting = false
 			return
@@ -189,6 +191,7 @@ func (cx *ExecutionContext) asyncGeneratorDrainQueue(g *generator) {
 
 // asyncGeneratorAwaitReturn implements AsyncGeneratorAwaitReturn.
 func (cx *ExecutionContext) asyncGeneratorAwaitReturn(g *generator) {
+	g.async.draining = true
 	v := g.async.queue[0].value
 	if !cx.protect(func() {
 		cx.awaitValue(v, reactionAction{
@@ -216,7 +219,7 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 	defer g.abortOnPanic()
 	a := g.async
 	state := asyncGeneratorStateOf(g)
-	if mode == ResumeThrow && state == asyncGenSuspendedStart {
+	if mode != ResumeNext && state == asyncGenSuspendedStart {
 		g.complete()
 		state = asyncGenCompleted
 	}
@@ -237,16 +240,9 @@ func (cx *ExecutionContext) ResumeAsyncGenerator(gen Value, mode ResumeMode, v V
 	})
 	switch state {
 	case asyncGenSuspendedStart:
-		if mode == ResumeReturn {
-			g.complete()
-			a.draining = true
-			cx.asyncGeneratorAwaitReturn(g)
-			break
-		}
 		cx.asyncGeneratorResume(g, mode, v)
 	case asyncGenCompleted:
 		// Only a return request gets here.
-		a.draining = true
 		cx.asyncGeneratorAwaitReturn(g)
 	case asyncGenSuspendedYield:
 		if mode == ResumeReturn {

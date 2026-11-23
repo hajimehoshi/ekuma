@@ -89,6 +89,9 @@ const (
 
 	// execYield: the generator the loop was started for suspended.
 	execYield
+
+	// execCatch: unwind found a handler and execution can continue there.
+	execCatch
 )
 
 // stackHeadroom is the number of values that [agent.ensureStack] keeps free above what it is asked for.
@@ -259,8 +262,8 @@ func (ag *agent) closeUpvals(from int) {
 }
 
 // unwind finds the handler for the pending exception, dropping the frames that have none.
-// It reports false when the frame at index stop was dropped without a handler.
-func (ag *agent) unwind(stop int) bool {
+// It returns execCatch at a handler, or the completion that left the frame at stop.
+func (ag *agent) unwind(stop int) (Value, execStatus) {
 	for {
 		n := len(ag.frames) - 1
 		fr := &ag.frames[n]
@@ -291,17 +294,23 @@ func (ag *agent) unwind(stop int) bool {
 			fr.pc = int(h.Target)
 			fr.scopes = fr.scopes[:min(len(fr.scopes), int(h.Scopes))]
 			ag.sp = fr.top()
-			return true
+			return Undefined, execCatch
 		}
+		var closeValue Value
 		if fr.gen != nil {
-			fr.gen.complete()
+			closeValue = fr.gen.complete()
 		} else if len(ag.openUpvals) > 0 {
 			ag.closeUpvals(fr.base)
 		}
 		*fr = frame{}
 		ag.frames = ag.frames[:n]
 		if n == stop {
-			return false
+			if closing {
+				ag.thrown = Undefined
+				ag.dropNatives(n)
+				return closeValue, execReturn
+			}
+			return Undefined, execThrow
 		}
 	}
 }
@@ -341,21 +350,16 @@ func (cx *ExecutionContext) runFrame(stop int) (Value, bool) {
 		if validateExec {
 			cx.leaveChecks()
 		}
-		switch st {
-		case execReturn, execYield:
-			cx.depth--
-			cx.callerRealm = outer
-			saved.activate()
-			return v, true
-		case execPanic:
-			if cx.unwind(stop) {
+		if st == execPanic {
+			v, st = cx.unwind(stop)
+			if st == execCatch {
 				continue
 			}
 		}
 		cx.depth--
 		cx.callerRealm = outer
 		saved.activate()
-		return Undefined, false
+		return v, st != execThrow
 	}
 }
 
@@ -3320,8 +3324,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 
 	throw:
 		ag.frames[len(ag.frames)-1].pc = pc
-		if !ag.unwind(stop) {
-			return Undefined, execThrow
+		if v, st := ag.unwind(stop); st != execCatch {
+			return v, st
 		}
 		{
 			fr := &ag.frames[len(ag.frames)-1]

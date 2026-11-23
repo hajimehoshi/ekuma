@@ -253,6 +253,26 @@ func TestCompletedGeneratorReleasesActivation(t *testing.T) {
 	}
 }
 
+func TestCompletedGeneratorReleasesTemplateSite(t *testing.T) {
+	var vm ekuma.VM
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		const GeneratorFunction = Object.getPrototypeOf(function* () {}).constructor;
+		const completed = GeneratorFunction("tag", "yield tag\x60site\x60")(site => new WeakRef(site));
+		const ref = completed.next().value;
+		completed.next();
+	`); err != nil {
+		t.Fatal(err)
+	}
+	runtime.GC()
+	v, err := runScript(t.Context(), &vm, "check", `ref.deref() === undefined`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("the completed generator kept its template site alive")
+	}
+}
+
 func TestWeakMapValueReferencesKey(t *testing.T) {
 	var vm ekuma.VM
 	if _, err := runScript(t.Context(), &vm, "setup", `
