@@ -465,16 +465,21 @@ func (vm *VM) finalizationPending() bool {
 	return q != nil && q.pending.Load()
 }
 
-// runFinalizationCleanups calls the cleanup callbacks for the targets that were collected.
-func (vm *VM) runFinalizationCleanups() {
+// runFinalizationCleanups calls the cleanup callbacks for the targets that were collected,
+// and reports whether any callback ran.
+func (vm *VM) runFinalizationCleanups() bool {
 	if !vm.finalizationPending() {
-		return
+		return false
 	}
 	q := vm.weak.finalization
+	ran := false
 	for {
+		if vm.interrupt.Load() {
+			vm.Poll()
+		}
 		d, ok := q.pop()
 		if !ok {
-			return
+			return ran
 		}
 		r := d.registry.Value()
 		if r == nil {
@@ -485,8 +490,19 @@ func (vm *VM) runFinalizationCleanups() {
 			continue
 		}
 		r.remove(d.id, c)
+		ran = true
 		vm.withJobContext(r.context, func() {
-			vm.Call(r.callback, Undefined, c.held)
+			if !vm.protect(func() {
+				vm.Call(r.callback, Undefined, c.held)
+			}) {
+				thrown := vm.takeThrown()
+				vm.reportUncaughtException(thrown, vm.thrownAt)
+			}
 		})
+		vm.ResumeInterruption()
+		if vm.abortCause != nil {
+			return ran
+		}
+		vm.clearKeptObjects()
 	}
 }

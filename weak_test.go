@@ -130,3 +130,88 @@ func TestFinalizationRegistrySharedToken(t *testing.T) {
 		t.Errorf("got %s, want %s", got, want)
 	}
 }
+
+func TestFinalizationRegistryMicrotasksAndThrow(t *testing.T) {
+	t.Run("drains promise jobs and reports unhandled rejections", func(t *testing.T) {
+		var vm ekuma.VM
+		var rejected string
+		vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+			rejected = reason.String()
+		})
+		if _, err := runScript(t.Context(), &vm, "setup", `
+			var cleanupRan = false, microtaskRan = false;
+			var reg = new FinalizationRegistry(() => {
+				cleanupRan = true;
+				Promise.resolve().then(() => { microtaskRan = true; });
+				Promise.reject("cleanup-rej");
+			});
+			reg.register({}, 1);
+		`); err != nil {
+			t.Fatal(err)
+		}
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			runtime.GC()
+			ok, err := vm.AwaitJobs(t.Context())
+			if err != nil {
+				t.Fatalf("AwaitJobs: %v", err)
+			}
+			if ok {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("AwaitJobs: no cleanup became pending")
+			}
+			time.Sleep(time.Millisecond)
+		}
+		v, err := runScript(t.Context(), &vm, "check", `[cleanupRan, microtaskRan].join()`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, want := v.String(), "true,true"; got != want {
+			t.Errorf("got %s, want %s", got, want)
+		}
+		if rejected != "cleanup-rej" {
+			t.Errorf("unhandled rejection: got %q, want %q", rejected, "cleanup-rej")
+		}
+	})
+
+	t.Run("throwing cleanup does not abort remaining cleanups or fail caller", func(t *testing.T) {
+		var vm ekuma.VM
+		if _, err := runScript(t.Context(), &vm, "setup", `
+			var secondRan = false;
+			var r1 = new FinalizationRegistry(() => { throw new Error("cleanup boom"); });
+			var r2 = new FinalizationRegistry(() => { secondRan = true; });
+			r1.register({}, 1);
+			r2.register({}, 2);
+		`); err != nil {
+			t.Fatal(err)
+		}
+		s, err := vm.ParseScript("eval", `1 + 1`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			runtime.GC()
+			v, err := s.Evaluate(t.Context())
+			if err != nil {
+				t.Fatalf("Evaluate failed due to cleanup throw: %v", err)
+			}
+			if v.Int() != 2 {
+				t.Fatalf("got %d, want 2", v.Int())
+			}
+			done, err := vm.Global().Get("secondRan")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if done.Bool() {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("second cleanup did not run")
+			}
+			time.Sleep(time.Millisecond)
+		}
+	})
+}

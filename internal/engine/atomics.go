@@ -515,7 +515,7 @@ func (vm *VM) AwaitJobs() (bool, error) {
 				Cause: *cause,
 			}
 		}
-		if vm.finalizationPending() || vm.mailbox.count.Load() != 0 {
+		if !vm.jobs.isEmpty() || vm.finalizationPending() || vm.mailbox.count.Load() != 0 {
 			return true, nil
 		}
 		if len(vm.asyncWaiters) == 0 {

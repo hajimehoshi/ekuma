@@ -849,12 +849,15 @@ func (vm *VM) runJobs() {
 			}
 		}
 		// The reports can queue jobs and reject promises.
-		if !vm.notifyRejectedPromises() || vm.abortCause != nil {
+		if vm.notifyRejectedPromises() {
+			if vm.abortCause != nil {
+				return
+			}
+			continue
+		}
+		if vm.abortCause != nil || !vm.runFinalizationCleanups() {
 			break
 		}
-	}
-	if vm.abortCause == nil {
-		vm.runFinalizationCleanups()
 	}
 }
 
