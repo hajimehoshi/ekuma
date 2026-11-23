@@ -25,6 +25,12 @@ type execChecks struct {
 	// top of them can be valid.
 	steps []execStep
 	top   int
+
+	observe func(*funcProto, int)
+}
+
+func (c *execChecks) observeSteps(observe func(*funcProto, int)) {
+	c.observe = observe
 }
 
 // execStep is an instruction that a frame started, and the registers before it.
@@ -97,6 +103,9 @@ func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {
 	s.fp, s.base, s.gen, s.pc = fp, fr.base, fr.gen, pc
 	// The slot after the registers receives the results that the loop discards.
 	s.regs = append(s.regs[:0], regs[:fp.nregs]...)
+	if c.observe != nil {
+		c.observe(fp, pc)
+	}
 }
 
 // checkInstr checks the instruction of s, after which its frame continues at pc with the

@@ -16,3 +16,5 @@ func (ag *agent) enterChecks() {}
 func (ag *agent) leaveChecks() {}
 
 func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {}
+
+func (c *execChecks) observeSteps(func(*funcProto, int)) {}
