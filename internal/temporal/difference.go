@@ -416,7 +416,7 @@ func nudgeToDayOrTime(d InternalDuration, destEpochNs Int128, largestUnit Unit, 
 	diff := rounded.Sub(t)
 	wholeDays, _ := t.QuoRemInt64(NsPerDay)
 	roundedWholeDays, _ := rounded.QuoRemInt64(NsPerDay)
-	didExpandDays := roundedWholeDays.Abs().Cmp(wholeDays.Abs()) > 0
+	didExpandDays := roundedWholeDays.Sub(wholeDays).Sign() == t.Sign()
 	nudged := destEpochNs.Add(diff)
 	var days int64
 	remainder := rounded
