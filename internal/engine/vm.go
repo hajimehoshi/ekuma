@@ -7,6 +7,8 @@ import (
 	"cmp"
 	"math/rand/v2"
 	"slices"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 	"unicode/utf8"
@@ -1003,19 +1005,23 @@ type stackCall struct {
 	isNew bool
 }
 
+const stackFramePrefix = "\n    at "
+
 // formatStack returns a stack trace starting with the WTF-8 name and UTF-8 message,
 // followed by one line per call.
 func formatStack(name wtf8.String, msg string, calls []stackCall) wtf8.String {
-	var b wtf8.Buffer
-	b.WriteString(name)
+	// ASCII punctuation separates the WTF-8 fields, so surrogate pairs cannot span writes.
+	var b strings.Builder
+	b.Grow(len(calls) * len(stackFramePrefix))
+	b.WriteString(string(name))
 	if msg != "" {
 		b.WriteString(": ")
-		b.WriteString(wtf8.FromValidUTF8(msg))
+		b.WriteString(string(wtf8.FromValidUTF8(msg)))
 	}
 	for i := range calls {
 		calls[i].write(&b)
 	}
-	return clip(b.String(), MaxStringLength, "")
+	return clip(wtf8.String(b.String()), MaxStringLength, "")
 }
 
 // maxFrameName is the length in bytes up to which a stack trace shows a name.
@@ -1035,37 +1041,38 @@ func clip[S ~string](s S, max int, suffix S) S {
 }
 
 // write writes the line of the stack trace for c to b.
-func (c *stackCall) write(b *wtf8.Buffer) {
-	b.WriteString("\n    at ")
+func (c *stackCall) write(b *strings.Builder) {
+	b.WriteString(stackFramePrefix)
 	name := clip(c.name, maxFrameName, "...")
-	desc := name
 	switch {
 	case c.isNew:
-		desc = "new " + cmp.Or(name, "<anonymous>")
+		b.WriteString("new ")
+		name = cmp.Or(name, "<anonymous>")
 	case c.recv != "":
-		desc = clip(c.recv, maxFrameName, "...") + "." + cmp.Or(name, "<anonymous>")
+		b.WriteString(string(clip(c.recv, maxFrameName, "...")))
+		b.WriteByte('.')
+		name = cmp.Or(name, "<anonymous>")
 	}
-	// loc is where the function runs, or empty when it is unknown.
-	loc := "<anonymous>"
-	if fp := c.fp; fp != nil {
-		loc = ""
-		if fp.File != "" {
-			loc = fp.File
-			if line, column := fp.Position(max(c.pc-1, 0)); line > 0 {
-				loc += ":" + itoa(line) + ":" + itoa(column)
-			}
+	if name != "" {
+		b.WriteString(string(name))
+		if c.fp != nil && c.fp.File == "" {
+			return
 		}
-	}
-	switch {
-	case desc == "":
-		b.WriteString(wtf8.FromValidUTF8(cmp.Or(loc, "<anonymous>")))
-	case loc == "":
-		b.WriteString(desc)
-	default:
-		b.WriteString(desc)
 		b.WriteString(" (")
-		b.WriteString(wtf8.FromValidUTF8(loc))
-		b.WriteString(")")
+	}
+	if fp := c.fp; fp != nil && fp.File != "" {
+		b.WriteString(string(wtf8.FromValidUTF8(fp.File)))
+		if line, column := fp.Position(max(c.pc-1, 0)); line > 0 {
+			b.WriteByte(':')
+			b.WriteString(strconv.Itoa(line))
+			b.WriteByte(':')
+			b.WriteString(strconv.Itoa(column))
+		}
+	} else {
+		b.WriteString("<anonymous>")
+	}
+	if name != "" {
+		b.WriteByte(')')
 	}
 }
 
