@@ -83,18 +83,23 @@ func (f *formatFixture) functionIn(vm *ekuma.VM, source string) ekuma.Value {
 
 func (f *formatFixture) check(line int, op string, fn ekuma.Value, want string, args ...any) {
 	f.t.Helper()
-	f.executed++
 	got, err := fn.Invoke(f.t.Context(), args...)
 	if err != nil {
+		f.executed++
 		f.t.Errorf("%s:%d: %s(%v): got error %v, want %q", f.path, line, op, args, err, want)
 		return
 	}
+	f.checkValue(line, op, got.String(), want, args...)
+}
+
+func (f *formatFixture) checkValue(line int, op, actual, want string, args ...any) {
+	f.t.Helper()
+	f.executed++
 	known, listed := f.failures[op][line]
 	delete(f.failures[op], line)
 	if known == "web-spaces" {
 		known = strings.ReplaceAll(want, "\u202f", " ")
 	}
-	actual := got.String()
 	switch {
 	case listed && actual == want:
 		f.t.Errorf("%s:%d: %s(%v): got expected %q; remove the %s entry", f.path, line, op, args, want, failuresFile)

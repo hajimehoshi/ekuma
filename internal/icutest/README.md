@@ -33,6 +33,16 @@ the test. [Known results](testdata/icu-failures.txt)
 | `misc/plurals.txt`, ICU4J `format/plurals.txt`, `misc/pluralRanges.txt` | Cardinal, ordinal and range categories. The adapter preserves visible fraction digits and uses ICU's cardinal rules to interpret localized phrase samples. |
 | `calendar.txt`, `caltestdata.h`, `format.txt` | Calendar conversion and arithmetic, leap months, Gregorian/lunar mappings, and localized date strings and parts. |
 
+## Best-fit locale matching
+
+`localeMatcherTest.txt` checks ordered requests, script and region fallback,
+related languages, and default selection. The Intl matcher runs 415 of 929
+rows with the fixture's exact candidates and default. Exclusions cover script
+preference (427), unavailable candidates such as `en-XA` (79), custom thresholds
+(4), and empty candidate sets without a default (4). ECMA-402 leaves best-fit
+matching implementation-defined. The suite tracks 143 differences from ICU.
+[Known results](testdata/icu-failures.txt)
+
 ## Single-date pattern fixtures
 
 `dtptngts.cpp`, `udatpg_test.c`, and `DateTimeGeneratorTest.java` cover

@@ -119,6 +119,9 @@ func Run(t *testing.T) {
 		t.Run("caltestdata.h", func(t *testing.T) {
 			runLunarMapping(t, filepath.Join(cldrDir, "icu4c/source/test/intltest/caltestdata.h"))
 		})
+		t.Run("localeMatcherTest.txt", func(t *testing.T) {
+			runLocaleMatcher(t, filepath.Join(testdata, "localeMatcherTest.txt"), fixtures["localeMatcherTest.txt"])
+		})
 		t.Run("likelySubtags.txt", func(t *testing.T) {
 			runLikelySubtagsTest(t, filepath.Join(localeDir, "likelySubtags.txt"), locales)
 		})
@@ -142,6 +145,7 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		"Intl.getCanonicalLocales": {},
 	}
 	fixtures := map[string]map[int]string{
+		"localeMatcherTest.txt":                 {},
 		"rbbitst.txt":                           {},
 		"format.txt":                            {},
 		"numberformattestspecification.txt":     {},

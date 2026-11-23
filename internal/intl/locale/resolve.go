@@ -40,7 +40,7 @@ func CanonicalizeUValue(key, value string) string {
 
 // ResolveLocale resolves the requested canonical tags and extension keys using best fit or lookup.
 func ResolveLocale(requested []string, defaultLocale string, bestFit bool, keys []ExtensionKey) Resolution {
-	found, request := matchRequested(requested, defaultLocale, bestFit)
+	found, request := allLocales.Match(requested, defaultLocale, bestFit)
 	r := Resolution{
 		DataLocale: found,
 	}

@@ -76,8 +76,40 @@ func CollationParent(s string) (string, bool) {
 // BestAvailableLocale implements BestAvailableLocale of ECMA-402 for the canonical language
 // tag s and the available locales. It reports false when no available locale matches.
 func BestAvailableLocale(s string) (string, bool) {
+	return allLocales.bestAvailableLocale(s)
+}
+
+// Matcher selects from an ordered set of available locales. Its zero value uses all available locales.
+type Matcher struct {
+	available map[string]bool
+	likely    likelyIndex
+}
+
+var allLocales Matcher
+
+// NewMatcher returns a matcher for an ordered subset of the available canonical locale identifiers.
+func NewMatcher(supported []string) Matcher {
+	m := Matcher{
+		available: make(map[string]bool, len(supported)),
+		likely:    likelyIndex{},
+	}
+	for _, name := range supported {
+		m.available[name] = true
+		m.likely.add(name)
+	}
+	return m
+}
+
+func (m Matcher) contains(s string) bool {
+	if m.available != nil {
+		return m.available[s]
+	}
+	return len(s) <= maxAvailableLen() && IsAvailable(s)
+}
+
+func (m Matcher) bestAvailableLocale(s string) (string, bool) {
 	for {
-		if len(s) <= maxAvailableLen() && IsAvailable(s) {
+		if m.contains(s) {
 			return s, true
 		}
 		pos := strings.LastIndexByte(s, '-')
@@ -97,43 +129,50 @@ type localeKey struct {
 	region   string
 }
 
-// likelyLocales indexes available locales by their likely subtags. An empty region
-// selects the first locale with the given language and script in CLDR order.
-var likelyLocales = sync.OnceValue(func() map[localeKey]string {
-	locales := map[localeKey]string{}
-	for i := range cldr.AvailableLocales.Len() {
-		name := cldr.AvailableLocales.At(i)
-		t, ok := Parse(name)
-		if !ok || t.Language == "und" || len(t.Variants) != 0 {
-			continue
+type likelyIndex map[localeKey]string
+
+// An empty region indexes the first candidate with the given language and script.
+func (index likelyIndex) add(name string) {
+	t, ok := Parse(name)
+	if !ok || t.Language == "und" || len(t.Variants) != 0 {
+		return
+	}
+	id, ok := AddLikelySubtags(t.LanguageID)
+	if !ok {
+		return
+	}
+	for _, region := range [...]string{id.Region, ""} {
+		key := localeKey{
+			language: id.Language,
+			script:   id.Script,
+			region:   region,
 		}
-		id, ok := AddLikelySubtags(t.LanguageID)
-		if !ok {
-			continue
-		}
-		for _, region := range [...]string{id.Region, ""} {
-			key := localeKey{
-				language: id.Language,
-				script:   id.Script,
-				region:   region,
-			}
-			if locales[key] == "" {
-				locales[key] = name
-			}
+		if index[key] == "" {
+			index[key] = name
 		}
 	}
-	return locales
+}
+
+var likelyLocales = sync.OnceValue(func() likelyIndex {
+	index := likelyIndex{}
+	for i := range cldr.AvailableLocales.Len() {
+		index.add(cldr.AvailableLocales.At(i))
+	}
+	return index
 })
 
 // matchScriptRegion matches the maximized identifier want, returning prefix on a tie
 // or when no locale matches the script.
-func matchScriptRegion(want LanguageID, prefix string) string {
+func (m Matcher) matchScriptRegion(want LanguageID, prefix string) string {
 	key := localeKey{
 		language: want.Language,
 		script:   want.Script,
 		region:   want.Region,
 	}
-	locales := likelyLocales()
+	locales := m.likely
+	if locales == nil {
+		locales = likelyLocales()
+	}
 	regionMatch := locales[key]
 	if prefix != "" {
 		p, _ := Parse(prefix)
@@ -154,9 +193,9 @@ func matchScriptRegion(want LanguageID, prefix string) string {
 
 // matchingLocale returns an available locale for t, or the empty string.
 // related reports whether the match is in a different language.
-func matchingLocale(t Tag, bestFit bool) (matched string, related bool) {
+func (m Matcher) matchingLocale(t Tag, bestFit bool) (matched string, related bool) {
 	name := t.BaseName()
-	prefix, _ := BestAvailableLocale(name)
+	prefix, _ := m.bestAvailableLocale(name)
 	if !bestFit || prefix == name || t.Language == "und" {
 		return prefix, false
 	}
@@ -168,21 +207,22 @@ func matchingLocale(t Tag, bestFit bool) (matched string, related bool) {
 	if !ok {
 		return prefix, false
 	}
-	if l := matchScriptRegion(want, prefix); l != "" {
+	if l := m.matchScriptRegion(want, prefix); l != "" {
 		return l, false
 	}
 	languages, _ := cldr.LanguageMatches.Lookup(want.Language)
 	for lang := range strings.FieldsSeq(languages) {
 		want.Language = lang
-		if l := matchScriptRegion(want, ""); l != "" {
+		if l := m.matchScriptRegion(want, ""); l != "" {
 			return l, true
 		}
 	}
 	return "", false
 }
 
-// matchRequested returns the matched available locale and its corresponding request.
-func matchRequested(requested []string, defaultLocale string, bestFit bool) (string, Tag) {
+// Match returns the selected locale and corresponding canonical request.
+// When no request matches, both results use defaultLocale.
+func (m Matcher) Match(requested []string, defaultLocale string, bestFit bool) (string, Tag) {
 	var relatedLocale string
 	var relatedRequest Tag
 	for _, r := range requested {
@@ -190,7 +230,7 @@ func matchRequested(requested []string, defaultLocale string, bestFit bool) (str
 		if !ok {
 			continue
 		}
-		l, related := matchingLocale(t, bestFit)
+		l, related := m.matchingLocale(t, bestFit)
 		if l == "" {
 			continue
 		}
@@ -217,7 +257,7 @@ func SupportedLocales(requested []string, bestFit bool) []string {
 		if !ok {
 			continue
 		}
-		if l, _ := matchingLocale(t, bestFit); l != "" {
+		if l, _ := allLocales.matchingLocale(t, bestFit); l != "" {
 			out = append(out, r)
 		}
 	}

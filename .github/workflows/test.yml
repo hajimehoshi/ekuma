@@ -78,6 +78,7 @@ jobs:
           path: .icu-cldr
           sparse-checkout: |
             /LICENSE
+            /icu4c/source/test/testdata/localeMatcherTest.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/likelySubtags.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/localeCanonicalization.txt
             /icu4c/source/test/testdata/cldr/localeIdentifiers/localeDisplayName.txt
