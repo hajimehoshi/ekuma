@@ -174,9 +174,21 @@ func (host *V8) CheckRealm(t *testing.T) {
 		const r = Realm.create();
 		const [entered, current] = Realm.eval(r, "[Realm.current(), Realm.current]");
 		if (entered !== r || current() !== 0) throw Error("wrong entered realm");
-		Promise.resolve().then(current).then(i => {
-			if (i !== r) throw Error("wrong microtask realm");
+		// Realm 0 drains the jobs, enqueueRealm creates them, and r owns the callbacks.
+		const enqueueRealm = Realm.create();
+		const enqueuePromise = Realm.eval(enqueueRealm, "Promise");
+		const then = enqueuePromise.prototype.then;
+		then.call(Promise.resolve(), current).then(i => {
+			if (i !== r) throw Error("reaction entered realm " + i + ", expected " + r);
 		});
+		const thenable = Realm.eval(r, "({then(resolve) { resolve([Realm.current(), resolve]); }})");
+		enqueuePromise.resolve(thenable).then(([entered, resolver]) => {
+			if (entered !== r) throw Error("thenable job entered realm " + entered + ", expected " + r);
+			if (Object.getPrototypeOf(resolver) !== Realm.eval(r, "Function.prototype")) {
+				throw Error("resolver belongs to the wrong realm");
+			}
+		});
+
 		const rejectionRealms = [];
 		const rejected = Promise.reject(42);
 		rejected.constructor = {
@@ -187,10 +199,9 @@ func (host *V8) CheckRealm(t *testing.T) {
 			},
 		};
 		// The absent rejection handler uses the fulfillment handler's realm.
-		rejected.then(current);
+		then.call(rejected, current);
 		// With both handlers absent, the borrowed then method enqueues the job.
-		const enqueueRealm = Realm.create();
-		Realm.eval(enqueueRealm, "Promise.prototype.then").call(rejected);
+		then.call(rejected);
 		Promise.resolve().then(() => {
 			if (rejectionRealms.join() !== [r, enqueueRealm].join()) {
 				throw Error("unexpected entered realms for absent handlers: " + rejectionRealms);
@@ -285,11 +296,6 @@ func (host *V8) CheckRealm(t *testing.T) {
 
 		const afterAwait = Realm.eval(r, "async () => { await 0; return Realm.createAllowCrossRealmAccess(); }");
 		afterAwait().then(checkPeerOfR);
-
-		const thenable = Realm.eval(r, "({then(resolve) { resolve(Object.getPrototypeOf(resolve) === Function.prototype); }})");
-		Promise.resolve(thenable).then(ownResolver => {
-			if (!ownResolver) throw Error("resolver belongs to the wrong realm");
-		});
 	`
 	host.checkRealmScript(t, "test/mjsunit/realm.js", source, fstest.MapFS{
 		"bytes.bin": {

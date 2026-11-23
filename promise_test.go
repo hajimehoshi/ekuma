@@ -253,6 +253,26 @@ func TestPromiseResolverUnhandledRejection(t *testing.T) {
 	}
 }
 
+func TestPromiseJobRestoresEnteredRealm(t *testing.T) {
+	var vm ekuma.VM
+	drainRealm := vm.NewRealm()
+	enqueue, err := runScript(t.Context(), &vm, "enqueue", `() => Promise.resolve().then(() => { throw 42; })`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The host reports the rejection after the job and before leaving drainRealm.
+	var restored bool
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		restored = ekuma.IsEnteredRealm(drainRealm)
+	})
+	if err := ekuma.InvokeInRealm(t.Context(), drainRealm, enqueue); err != nil {
+		t.Fatal(err)
+	}
+	if !restored {
+		t.Error("expected the rejection report in the realm that drained the job")
+	}
+}
+
 func TestUnhandledRejectionRecoveredInterruption(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("stop in rejection handler")
