@@ -66,3 +66,11 @@ cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal 
 # Intl canonicalizes sh to sr-Latn. ICU expects different selections for
 # sr-Latn and sh under the same settings on lines 1392 and 1393.
 localeMatcherTest.txt 1393 sr
+
+# The CLDR generator maps islamic-civil to its deprecated alias islamicc.
+# The supported-calendar filter consequently drops it from regional preferences.
+supplementalData.txt/getCalendars 297,327,431,501 "gregory islamic-umalqura islamic-tbla"
+supplementalData.txt/getCalendars 304,404 "persian gregory islamic-tbla"
+supplementalData.txt/getCalendars 311,316,321,342,348,361,367,381,398,411,421,438,444,450,460,466,471,477,483,489,495,514,524,530,540,545,550,556,566,571,576 "gregory islamic-tbla"
+supplementalData.txt/getCalendars 354 "gregory coptic islamic-tbla"
+supplementalData.txt/getCalendars 387 "gregory hebrew islamic-tbla"

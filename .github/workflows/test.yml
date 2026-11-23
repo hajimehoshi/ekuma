@@ -92,6 +92,17 @@ jobs:
             /icu4c/source/data/zone/en.txt
             /icu4c/source/tools/tzcode/icuzones
             /icu4c/source/data/misc/zoneinfo64.txt
+            /icu4c/source/data/misc/keyTypeData.txt
+            /icu4c/source/data/misc/supplementalData.txt
+            /icu4c/source/data/misc/numberingSystems.txt
+            /icu4c/source/data/misc/timezoneTypes.txt
+            /icu4c/source/data/coll/*.txt
+            /icu4c/source/data/curr/en.txt
+            /icu4c/source/data/unit/en.txt
+            /icu4c/source/data/locales/ar_EG.txt
+            /icu4c/source/data/locales/ar_MA.txt
+            /icu4c/source/data/locales/bn.txt
+            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/util/ULocaleTest.java
             /icu4c/source/test/intltest/tzbdtest.cpp
             /icu4c/source/test/intltest/tzoffloc.cpp
             /icu4c/source/test/intltest/caltest.cpp

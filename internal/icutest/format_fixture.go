@@ -169,15 +169,25 @@ func readResource(t *testing.T, path string) resource {
 	var next string
 	var quoted bool
 	advance := func() {
+	comments:
 		for {
 			n := len(source) - len(strings.TrimLeft(source, " \r\n\t"))
 			line += strings.Count(source[:n], "\n")
 			source = source[n:]
-			if !strings.HasPrefix(source, "//") {
-				break
+			switch {
+			case strings.HasPrefix(source, "//"):
+				_, source, _ = strings.Cut(source, "\n")
+				line++
+			case strings.HasPrefix(source, "/*"):
+				comment, rest, ok := strings.Cut(source[2:], "*/")
+				if !ok {
+					t.Fatalf("%s:%d: unclosed resource comment", path, line)
+				}
+				line += strings.Count(comment, "\n")
+				source = rest
+			default:
+				break comments
 			}
-			_, source, _ = strings.Cut(source, "\n")
-			line++
 		}
 		next = ""
 		quoted = false
@@ -209,36 +219,44 @@ func readResource(t *testing.T, path string) resource {
 		next, source = source[:n], source[n:]
 	}
 	advance()
-	var read func() resource
-	read = func() resource {
+	var read func(string, int) resource
+	read = func(name string, start int) resource {
 		r := resource{
-			line: line,
+			name: name,
+			line: start,
 		}
-		if next != "{" {
-			r.name = next
-			advance()
-		}
-		if next != "{" {
+		if next != "{" || quoted {
 			t.Fatalf("%s:%d: expected resource body for %s, got %q", path, line, r.name, next)
 		}
 		advance()
 		for next != "}" || quoted {
 			switch {
-			case quoted:
-				r.values = append(r.values, next)
+			case !quoted && next == ",":
 				advance()
-			case next == ",":
-				advance()
-			case next == "":
+			case !quoted && next == "":
 				t.Fatalf("%s:%d: unclosed resource %s", path, line, r.name)
+			case !quoted && next == "{":
+				r.children = append(r.children, read("", line))
 			default:
-				r.children = append(r.children, read())
+				token, start := next, line
+				advance()
+				if next == "{" && !quoted {
+					r.children = append(r.children, read(token, start))
+				} else {
+					r.values = append(r.values, token)
+				}
 			}
 		}
 		advance()
 		return r
 	}
-	root := read()
+	var name string
+	start := line
+	if next != "{" || quoted {
+		name = next
+		advance()
+	}
+	root := read(name, start)
 	if next != "" || quoted {
 		t.Fatalf("%s:%d: trailing resource %q", path, line, next)
 	}

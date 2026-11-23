@@ -9,6 +9,9 @@ adapters read fixtures from the external checkouts. [Pins and default cache path
 # Full suite
 go test -count=1 -v -run '^TestICU$' .
 
+# Stage 15 locale information and supported values
+go test -count=1 -v -run '^TestICU$/^locale-info$' .
+
 # One fixture
 go test -count=1 -v -run '^TestICU$/^TimeZoneAliases\.txt$' .
 ```
@@ -42,6 +45,15 @@ preference (427), unavailable candidates such as `en-XA` (79), custom thresholds
 (4), and empty candidate sets without a default (4). ECMA-402 leaves best-fit
 matching implementation-defined. One difference remains for `sh`, which Intl
 canonicalizes to `sr-Latn`. [Known results](testdata/icu-failures.txt)
+
+## Locale information and supported values
+
+The `locale-info` group uses ICU4C and ICU4J fixtures and CLDR supplemental
+data to check week starts and weekends, text direction, calendar preferences,
+collations, hour cycles, numbering systems, and regional time zones. It also
+checks the sorted lists for all six `Intl.supportedValuesOf` keys. Ekuma
+omits `islamic-civil` from 39 regional calendar lists because its generated
+data uses the deprecated alias `islamicc`. [Known results](testdata/icu-failures.txt)
 
 ## Single-date pattern fixtures
 
