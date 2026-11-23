@@ -234,6 +234,10 @@ and selects ICU files from the [upstream path inventory](internal/icutest/upstre
 
 See the [ICU fixture inventory](internal/icutest/README.md) for coverage and focused test commands.
 
+When a fixture and a published specification or data release disagree, record what the fixture
+expects, which revision Ekuma follows, and what change would warrant revisiting the decision.
+Put the note beside the expected failure, or beside the local regression test when the fixture passes.
+
 For V8's Mozilla suite, fetch the data revision pinned by V8 from the Ekuma repository root:
 
 ```sh
