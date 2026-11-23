@@ -405,27 +405,6 @@ var koreaYears = [...]uint32{
 	0x003a05ad, // 2102
 }
 
-// qingStart is the first year of qingYears.
-const qingStart = 1900
-
-// qingYears holds the Chinese calendar years of the late Qing dynasty, from qingStart on. Bits 0 to
-// 12 are set for the months with 30 days, bits 13 to 16 are the ordinal of the leap month or 0, and
-// bits 17 to 22 are the new year in days after January 19 of the year.
-var qingYears = [...]uint32{
-	0x001936d2, // 1900
-	0x003e0752, // 1901
-	0x00280ea5, // 1902
-	0x0014d64a, // 1903
-	0x0038064b, // 1904
-	0x00200a9b, // 1905
-	0x000cb556, // 1906
-	0x0032056a, // 1907
-	0x001c0b59, // 1908
-	0x00067752, // 1909
-	0x002c0752, // 1910
-	0x0016fb25, // 1911
-}
-
 // umalquraStart is the first year of umalquraYears.
 const umalquraStart = 1300
 

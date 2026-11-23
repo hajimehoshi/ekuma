@@ -9,6 +9,9 @@ adapters read fixtures from the external checkouts. [Pins and default cache path
 # Full suite
 go test -count=1 -v -run '^TestICU$' .
 
+# Stage 17 calendar arithmetic and era boundaries
+GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^calendar-arithmetic$' .
+
 # Stage 16 duration and multi-unit formatting
 GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^duration$' .
 
@@ -38,6 +41,16 @@ the test. [Known results](testdata/icu-failures.txt)
 | `localeDisplayName.txt` | Standard and dialect display names for locale identifiers. |
 | `misc/plurals.txt`, ICU4J `format/plurals.txt`, `misc/pluralRanges.txt` | Cardinal, ordinal and range categories. The adapter preserves visible fraction digits and uses ICU's cardinal rules to interpret localized phrase samples. |
 | `calendar.txt`, `caltestdata.h`, `format.txt` | Calendar conversion and arithmetic, leap months, Gregorian/lunar mappings, and localized date strings and parts. |
+
+## Calendar arithmetic and era boundaries
+
+ICU4J and ICU4C fixtures exercise 4,490 Temporal checks covering addition
+across leap months and year boundaries, ordinal months and `monthCode`,
+`inLeapYear`, and dates on either side of era transitions. ICU4C 79.1
+supplies the reference year lengths. Exclusions include ICU field rolls,
+lenient field setting, and observational Islamic calendars. The six known
+differences concern Chinese year lengths in 4645–4646 and the start of
+the Meiji era. [Reference year lengths](testdata/calendar-year-lengths.txt) · [Known results](testdata/icu-failures.txt)
 
 ## Best-fit locale matching
 

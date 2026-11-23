@@ -125,7 +125,17 @@ jobs:
             /icu4c/source/test/cintltst/ulistfmttest.c
             /icu4c/source/test/cintltst/crelativedateformattest.c
             /icu4c/source/i18n/unicode/udat.h
+            /icu4c/source/test/intltest/incaltst.cpp
             /icu4c/source/test/intltest/caltestdata.h
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/CalendarRegressionTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/CopticTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/DangiTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/EthiopicTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/HebrewTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/InTemporalLeapYearTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/IndianTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/OrdinalMonthTest.java
+            /icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/TemporalMonthCodeTest.java
             /icu4c/source/data/misc/plurals.txt
             /icu4c/source/data/misc/pluralRanges.txt
             /icu4j/main/core/src/test/resources/com/ibm/icu/dev/test/format/NumberFormatTestCases.txt

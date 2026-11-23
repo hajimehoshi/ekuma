@@ -113,6 +113,9 @@ func Run(t *testing.T) {
 		t.Run("locale-info", func(t *testing.T) {
 			runLocaleInfo(t, cldrDir)
 		})
+		t.Run("calendar-arithmetic", func(t *testing.T) {
+			runCalendarArithmetic(t, cldrDir, fixtures)
+		})
 		runTimeZones(t, cldrDir, fixtures)
 		runDatePatterns(t, cldrDir, fixtures)
 		runDateIntervals(t, cldrDir, fixtures)
@@ -191,7 +194,8 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		if fixture, _, hasOp := strings.Cut(name, "/"); hasOp && !ok {
 			switch fixture {
 			case "cdateintervalformattest.c", "dtifmtts.cpp", "dtptngts.cpp", "udatpg_test.c", "DateTimeGeneratorTest.java",
-				"dtfmttst.cpp", "tztest.cpp", "TimeZoneFormatTest.java":
+				"dtfmttst.cpp", "tztest.cpp", "TimeZoneFormatTest.java",
+				"OrdinalMonthTest.java", "caltest.cpp", "incaltst.cpp", "supplementalData.txt":
 				entries = map[int]string{}
 				fixtures[name] = entries
 				ok = true
