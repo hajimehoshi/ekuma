@@ -88,13 +88,23 @@ func hasOwnMethod(vm *engine.VM, proto *engine.Object, key engine.PropKey, metho
 }
 
 // reserveProbe is the number of elements of an array after which a collection made from the
-// array makes room for all of them, if they all had different keys.
+// array makes room for up to maxReserve of them, if they all had different keys.
 const reserveProbe = 16
+
+// maxReserve is the number of elements of an array after which a collection made from the array
+// makes room for all of them, if they all had different keys and the array has at least twice as
+// many.
+const maxReserve = 1 << 16
 
 // reserveAfter makes room in t for the entries of an array of n elements after the first i
 // elements were added, when those had different keys.
 func reserveAfter(t *collection.Table, i, n int) {
-	if i == reserveProbe && t.Size() == reserveProbe && n >= 2*reserveProbe {
+	switch {
+	case i == reserveProbe && t.Size() == reserveProbe && n >= 2*reserveProbe:
+		// The keys of the rest may repeat, so a long array gets room for only part of it first.
+		t.Reserve(min(n, maxReserve))
+	case i == maxReserve && t.Size() == maxReserve && n >= 2*maxReserve:
+		// Rebuilding the index for all of them pays off only for a much longer array.
 		t.Reserve(n)
 	}
 }
