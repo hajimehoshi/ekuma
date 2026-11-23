@@ -22,7 +22,7 @@ type promiseData struct {
 
 	// reactions are the pairs of [[PromiseFulfillReactions]] and [[PromiseRejectReactions]]
 	// that PerformPromiseThen appends together, in order.
-	reactions []promiseReaction
+	reactions []pendingReaction
 }
 
 type reactionKind uint8
@@ -44,31 +44,33 @@ const (
 	reactionAsyncGeneratorReturn
 
 	// reactionUnwrap resolves the capability with an iterator result of the value with done,
-	// as AsyncFromSyncIteratorContinuation does. A rejection first closes onRejected when it is
-	// an object, which is the iterator that the reject handler of AsyncFromSyncIteratorContinuation
-	// closes.
+	// as AsyncFromSyncIteratorContinuation does. A rejection first closes iterator if present.
 	reactionUnwrap
 
 	// reactionNative calls native.
 	reactionNative
 )
 
-// promiseReaction is a PromiseReaction Record, or the equivalent of one whose handler is
-// an abstract closure of the specification that is not observable as a function.
-type promiseReaction struct {
+// pendingReaction pairs the fulfill and reject reactions registered by PerformPromiseThen.
+type pendingReaction struct {
+	action                  reactionAction
+	onFulfilled, onRejected *Object
+	continuationData        any
+
+	// builtinRealm is the creation realm of an implicit built-in handler.
+	builtinRealm *realm
+}
+
+// reactionAction describes what the selected reaction does with its argument.
+type reactionAction struct {
 	kind reactionKind
 	done bool
 
 	// capability is the [[Capability]], or nil when it is undefined.
 	capability *PromiseCapability
-
-	// onFulfilled and onRejected are the handlers, whose o is nil when the handler is empty.
-	onFulfilled, onRejected Value
-
-	gen    *generator
-	native AwaitHandler
-
-	context jobContext
+	gen        *generator
+	native     AwaitHandler
+	iterator   *Object
 }
 
 // AwaitHandler continues a built-in async function after an Await: v is the value of
@@ -134,20 +136,20 @@ const (
 type job struct {
 	kind jobKind
 
-	// rejected selects the reject reaction of a reaction job.
+	// rejected is set for a rejection reaction.
 	rejected bool
 
-	// reaction holds the reaction of a reaction job and the context of any job.
-	reaction promiseReaction
+	context  jobContext
+	reaction reactionAction
 
-	// argument is the value of a reaction job, or the thenable of a thenable job.
+	// argument is the settlement value, rejection reason or thenable.
 	argument Value
 
 	// promise is the promise to resolve in a thenable or resolve job.
 	promise *Object
 
-	// callback is the then method of a thenable job or the function of a callback job.
-	callback Value
+	// callback is the selected reaction handler, then method or host callback.
+	callback *Object
 }
 
 // IsPromise implements IsPromise.
@@ -366,15 +368,16 @@ func (vm *VM) resolvePromise(p *Object, resolution Value) {
 
 // enqueueThenableJob enqueues NewPromiseResolveThenableJob with the current continuation data.
 func (vm *VM) enqueueThenableJob(p *Object, thenable, then Value) {
-	vm.enqueueMicrotask(job{
+	vm.enqueuePromiseJob(&job{
 		kind: jobThenable,
-		reaction: promiseReaction{
-			context: vm.captureJobContext(),
+		context: jobContext{
+			continuationData: vm.continuationData,
+			enteredRealm:     vm.promiseJobCallbackRealm(then.o),
 		},
 		argument: thenable,
 		promise:  p,
-		callback: then,
-	})
+		callback: then.o,
+	}, nil)
 }
 
 // fulfillPromise implements FulfillPromise.
@@ -401,29 +404,27 @@ func (vm *VM) rejectPromise(p *Object, reason Value) {
 }
 
 // triggerPromiseReactions implements TriggerPromiseReactions.
-func (vm *VM) triggerPromiseReactions(reactions []promiseReaction, arg Value, rejected bool) {
+func (vm *VM) triggerPromiseReactions(reactions []pendingReaction, arg Value, rejected bool) {
 	for i := range reactions {
-		vm.enqueueMicrotask(job{
-			kind:     jobReaction,
-			rejected: rejected,
-			reaction: reactions[i],
-			argument: arg,
-		})
+		vm.enqueueReactionJob(&reactions[i], arg, rejected)
 	}
 }
 
 // PerformPromiseThen implements PerformPromiseThen for the promise p. c is nil when
 // the result capability is undefined, and the result is then undefined.
 func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *PromiseCapability) Value {
-	r := promiseReaction{
-		kind:       reactionHandlers,
-		capability: c,
+	r := pendingReaction{
+		action: reactionAction{
+			kind:       reactionHandlers,
+			capability: c,
+		},
+		continuationData: vm.continuationData,
 	}
 	if onFulfilled.IsCallable() {
-		r.onFulfilled = onFulfilled
+		r.onFulfilled = onFulfilled.o
 	}
 	if onRejected.IsCallable() {
-		r.onRejected = onRejected
+		r.onRejected = onRejected.o
 	}
 	vm.addReaction(p.o, &r)
 	if c == nil {
@@ -433,31 +434,54 @@ func (vm *VM) PerformPromiseThen(p Value, onFulfilled, onRejected Value, c *Prom
 }
 
 // addReaction is the part of PerformPromiseThen after the reaction records are created.
-// The reaction captures the host context for its job.
-func (vm *VM) addReaction(p *Object, r *promiseReaction) {
-	r.context = vm.captureJobContext()
+func (vm *VM) addReaction(p *Object, r *pendingReaction) {
 	d := promiseOf(p)
 	switch d.state {
 	case PromisePending:
 		d.reactions = append(d.reactions, *r)
 	case PromiseFulfilled:
-		vm.enqueueMicrotask(job{
-			kind:     jobReaction,
-			reaction: *r,
-			argument: d.result,
-		})
+		vm.enqueueReactionJob(r, d.result, false)
 	case PromiseRejected:
 		if !d.isHandled {
 			vm.hostPromiseRejectionTracker(p, true)
 		}
-		vm.enqueueMicrotask(job{
-			kind:     jobReaction,
-			rejected: true,
-			reaction: *r,
-			argument: d.result,
-		})
+		vm.enqueueReactionJob(r, d.result, true)
 	}
 	d.isHandled = true
+}
+
+func (vm *VM) addNativeReaction(p *Object, handler AwaitHandler) {
+	vm.addReaction(p, &pendingReaction{
+		action: reactionAction{
+			kind:   reactionNative,
+			native: handler,
+		},
+		continuationData: vm.continuationData,
+		builtinRealm:     vm.curRealm,
+	})
+}
+
+// enqueueReactionJob implements NewPromiseReactionJob and HostEnqueuePromiseJob.
+func (vm *VM) enqueueReactionJob(r *pendingReaction, arg Value, rejected bool) {
+	handler, other := r.onFulfilled, r.onRejected
+	if rejected {
+		handler, other = other, handler
+	}
+	jobRealm := r.builtinRealm
+	if handler != nil {
+		jobRealm = vm.promiseJobCallbackRealm(handler)
+	}
+	vm.enqueuePromiseJob(&job{
+		kind: jobReaction,
+		context: jobContext{
+			continuationData: r.continuationData,
+			enteredRealm:     jobRealm,
+		},
+		reaction: r.action,
+		rejected: rejected,
+		argument: arg,
+		callback: handler,
+	}, other)
 }
 
 // PromiseResolve implements PromiseResolve for the constructor c.
@@ -476,7 +500,7 @@ func (vm *VM) PromiseResolve(c *Object, x Value) Value {
 // a later job with the value that v settles to. An exception that PromiseResolve throws
 // propagates, and k is not called then.
 func (vm *VM) Await(v Value, k AwaitHandler) {
-	vm.awaitValue(v, &promiseReaction{
+	vm.awaitValue(v, reactionAction{
 		kind:   reactionNative,
 		native: k,
 	})
@@ -484,80 +508,62 @@ func (vm *VM) Await(v Value, k AwaitHandler) {
 
 // tryAwait suspends g on v, or leaves the exception pending if PromiseResolve throws.
 func (vm *VM) tryAwait(g *generator, v Value, kind reactionKind) bool {
-	r := promiseReaction{
+	action := reactionAction{
 		kind: kind,
 		gen:  g,
 	}
 	if !v.IsObject() {
 		// A primitive only queues the fulfill handler created in the activation's realm.
-		r.context = jobContext{
+		vm.enqueueReactionJob(&pendingReaction{
+			action:           action,
 			continuationData: vm.continuationData,
-			enteredRealm:     g.f.fn.code.realm,
-		}
-		vm.enqueueMicrotask(job{
-			kind:     jobReaction,
-			reaction: r,
-			argument: v,
-		})
+			builtinRealm:     g.f.fn.code.realm,
+		}, v, false)
 		return true
 	}
 	return vm.protect(func() {
 		if vm.trackJobRealms && g.f.fn.code.realm != vm.curRealm {
-			vm.InRealm((*Realm)(g.f.fn.code.realm), func() { vm.awaitValue(v, &r) })
+			vm.InRealm((*Realm)(g.f.fn.code.realm), func() { vm.awaitValue(v, action) })
 			return
 		}
-		vm.awaitValue(v, &r)
+		vm.awaitValue(v, action)
 	})
 }
 
-// awaitValue performs PromiseResolve(%Promise%, v) and PerformPromiseThen with the reaction r.
-func (vm *VM) awaitValue(v Value, r *promiseReaction) {
-	// The jobs enqueued here run r without addReaction.
-	r.context = vm.captureJobContext()
-	// The promise that PromiseResolve creates is only needed for a thenable: any other value
-	// would settle it at once, so the reaction job can be enqueued directly.
+// awaitValue performs PromiseResolve and registers the implicit handlers for an await.
+func (vm *VM) awaitValue(v Value, action reactionAction) {
+	var p *Object
+	var rejected bool
 	switch {
 	case IsPromise(v):
 		if ctor := vm.GetV(v, vm.Key(KeyConstructor)); ctor.o == vm.Intrinsic(IntrinsicPromise) {
-			vm.addReaction(v.o, r)
-			return
+			p = v.o
+		} else {
+			p = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+			vm.resolvePromise(p, v)
 		}
-	case !v.IsObject():
-		vm.enqueueMicrotask(job{
-			kind:     jobReaction,
-			reaction: *r,
-			argument: v,
-		})
-		return
-	default:
+	case v.IsObject():
 		var then Value
 		if e, ok := vm.Completion(func() {
 			then = vm.GetV(v, vm.Key(keyThen))
 		}); !ok {
-			vm.enqueueMicrotask(job{
-				kind:     jobReaction,
-				rejected: true,
-				reaction: *r,
-				argument: e,
-			})
-			return
+			v, rejected = e, true
+		} else if then.IsCallable() {
+			p = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
+			vm.enqueueThenableJob(p, v, then)
 		}
-		if !then.IsCallable() {
-			vm.enqueueMicrotask(job{
-				kind:     jobReaction,
-				reaction: *r,
-				argument: v,
-			})
-			return
-		}
-		p := vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
-		vm.enqueueThenableJob(p, v, then)
-		vm.addReaction(p, r)
+	}
+	r := pendingReaction{
+		action:           action,
+		continuationData: vm.continuationData,
+		builtinRealm:     vm.curRealm,
+	}
+	if p != nil {
+		vm.addReaction(p, &r)
 		return
 	}
-	p := vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
-	vm.resolvePromise(p, v)
-	vm.addReaction(p, r)
+	// PromiseResolve would have settled immediately with v.
+	vm.enqueueReactionJob(&r, v, rejected)
 }
 
 // hostPromiseRejectionTracker implements HostPromiseRejectionTracker. handle selects
@@ -684,14 +690,30 @@ func (q *jobQueue) dequeue() job {
 	return j
 }
 
-func (vm *VM) enqueueMicrotask(j job) {
+// promiseJobCallbackRealm implements the GetFunctionRealm step of both promise job constructors.
+func (vm *VM) promiseJobCallbackRealm(callback *Object) *realm {
 	if vm.trackJobRealms {
-		j.reaction.context.enteredRealm = vm.jobRealm(&j)
-		if vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
-			return
+		if r := vm.functionRealmOrNil(callback); r != nil {
+			return r
+		}
+		// A revoked proxy gets its TypeError from the realm creating the job.
+	}
+	return vm.curRealm
+}
+
+func (vm *VM) enqueuePromiseJob(j *job, otherHandler *Object) {
+	if j.context.enteredRealm == nil {
+		// An empty handler leaves the realm to the host. Use the other handler's
+		// microtask queue when available, falling back to the enqueueing realm.
+		j.context.enteredRealm = vm.curRealm
+		if vm.trackJobRealms && otherHandler != nil {
+			j.context.enteredRealm = vm.promiseJobCallbackRealm(otherHandler)
 		}
 	}
-	vm.jobs.enqueue(j)
+	if vm.trackJobRealms && vm.hasDetachedGlobal(j.context.enteredRealm) {
+		return
+	}
+	vm.jobs.enqueue(*j)
 }
 
 // QueueMicrotask queues a call to callback with no arguments and reports an exception
@@ -704,45 +726,21 @@ func (vm *VM) QueueMicrotask(callback Value) {
 	if vm.hasDetachedGlobal(vm.curRealm) {
 		return
 	}
-	context := vm.captureJobContext()
-	context.enteredRealm = (*realm)(callback.o.CreationRealm())
 	vm.jobs.enqueue(job{
 		kind: jobCallback,
-		reaction: promiseReaction{
-			context: context,
+		context: jobContext{
+			continuationData: vm.continuationData,
+			enteredRealm:     (*realm)(callback.o.CreationRealm()),
 		},
-		callback: callback,
+		callback: callback.o,
 	})
-}
-
-// jobRealm returns the realm entered for a job.
-func (vm *VM) jobRealm(j *job) *realm {
-	primary, secondary := j.reaction.onFulfilled, j.reaction.onRejected
-	switch {
-	case j.kind == jobThenable:
-		primary = j.callback
-	case j.kind == jobReaction && j.reaction.kind != reactionHandlers:
-		return j.reaction.context.enteredRealm
-	case j.rejected:
-		primary, secondary = secondary, primary
-	}
-	if !primary.IsCallable() {
-		primary = secondary
-	}
-	if primary.IsCallable() {
-		if r := vm.functionRealmOrNil(primary.o); r != nil {
-			return r
-		}
-		// A revoked handler gets its TypeError from the enqueueing realm.
-	}
-	return vm.curRealm
 }
 
 func (vm *VM) runJob(j *job) {
 	switch j.kind {
 	case jobCallback:
 		if thrown, ok := vm.Completion(func() {
-			vm.Call(j.callback.o, Undefined)
+			vm.Call(j.callback, Undefined)
 		}); !ok {
 			vm.reportUncaughtException(thrown, vm.thrownAt)
 		}
@@ -783,13 +781,14 @@ func (vm *VM) runJob(j *job) {
 		return
 	}
 	vm.protect(func() {
-		vm.promiseReactionJob(r, j.argument, j.rejected)
+		vm.promiseReactionJob(j)
 	})
 	vm.thrown = Undefined
 }
 
 // promiseReactionJob is the job of NewPromiseReactionJob.
-func (vm *VM) promiseReactionJob(r *promiseReaction, arg Value, rejected bool) {
+func (vm *VM) promiseReactionJob(j *job) {
+	r, arg, rejected := &j.reaction, j.argument, j.rejected
 	switch r.kind {
 	case reactionNative:
 		r.native(vm, arg, rejected)
@@ -799,21 +798,17 @@ func (vm *VM) promiseReactionJob(r *promiseReaction, arg Value, rejected bool) {
 			vm.ResolveCapability(r.capability, vm.CreateIterResultObject(arg, r.done))
 			return
 		}
-		if r.onRejected.IsObject() {
-			vm.iteratorClose(r.onRejected, true)
+		if r.iterator != nil {
+			vm.iteratorClose(Value{o: r.iterator}, true)
 		}
 		vm.RejectCapability(r.capability, arg)
 		return
 	}
-	handler := r.onFulfilled
-	if rejected {
-		handler = r.onRejected
-	}
 	result := arg
 	abrupt := rejected
-	if handler.o != nil {
+	if j.callback != nil {
 		abrupt = !vm.protect(func() {
-			result = vm.Call(handler.o, Undefined, arg)
+			result = vm.Call(j.callback, Undefined, arg)
 		})
 		if abrupt {
 			result = vm.thrown
@@ -831,10 +826,10 @@ func (vm *VM) promiseReactionJob(r *promiseReaction, arg Value, rejected bool) {
 }
 
 // promiseResolveThenableJob is the job of NewPromiseResolveThenableJob.
-func (vm *VM) promiseResolveThenableJob(p *Object, thenable, then Value) {
+func (vm *VM) promiseResolveThenableJob(p *Object, thenable Value, then *Object) {
 	c := vm.CreateResolvingFunctions(p)
 	if !vm.protect(func() {
-		vm.Call(then.o, thenable, Value{o: c.resolve}, Value{o: c.reject})
+		vm.Call(then, thenable, Value{o: c.resolve}, Value{o: c.reject})
 	}) {
 		vm.RejectCapability(c, vm.takeThrown())
 	}
@@ -856,8 +851,8 @@ func (vm *VM) runJobs() {
 				}
 				j := vm.jobs.dequeue()
 				// Detachment drops microtasks even if they were already queued.
-				if !vm.trackJobRealms || j.kind == jobResolve || !vm.hasDetachedGlobal(j.reaction.context.enteredRealm) {
-					vm.withJobContext(j.reaction.context, func() {
+				if !vm.trackJobRealms || j.kind == jobResolve || !vm.hasDetachedGlobal(j.context.enteredRealm) {
+					vm.withJobContext(j.context, func() {
 						vm.runJob(&j)
 					})
 				}

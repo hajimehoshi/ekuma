@@ -189,7 +189,7 @@ func (vm *VM) asyncGeneratorDrainQueue(g *generator) {
 func (vm *VM) asyncGeneratorAwaitReturn(g *generator) {
 	v := g.async.queue[0].value
 	if !vm.protect(func() {
-		vm.awaitValue(v, &promiseReaction{
+		vm.awaitValue(v, reactionAction{
 			kind: reactionAsyncGeneratorReturn,
 			gen:  g,
 		})
@@ -392,17 +392,16 @@ func (vm *VM) asyncFromSyncIteratorContinuation(result Value, c *PromiseCapabili
 	}) {
 		return c.Promise()
 	}
-	r := promiseReaction{
+	r := reactionAction{
 		kind:       reactionUnwrap,
 		done:       done,
 		capability: c,
-		onRejected: Undefined,
 	}
 	if !done && closeOnRejection {
-		r.onRejected = it
+		r.iterator = it.o
 	}
 	if !vm.protect(func() {
-		vm.awaitValue(value, &r)
+		vm.awaitValue(value, r)
 	}) {
 		e := vm.takeThrown()
 		if !done && closeOnRejection {

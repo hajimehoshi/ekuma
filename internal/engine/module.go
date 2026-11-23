@@ -1198,15 +1198,12 @@ func (vm *VM) evaluateModuleSync(m *Module) {
 // executeAsyncModule implements ExecuteAsyncModule.
 func (vm *VM) executeAsyncModule(m *Module) {
 	p := vm.Call(m.fn, Undefined)
-	vm.addReaction(p.o, &promiseReaction{
-		kind: reactionNative,
-		native: func(vm *VM, v Value, rejected bool) {
-			if rejected {
-				vm.asyncModuleExecutionRejected(m, v)
-				return
-			}
-			vm.asyncModuleExecutionFulfilled(m)
-		},
+	vm.addNativeReaction(p.o, func(vm *VM, v Value, rejected bool) {
+		if rejected {
+			vm.asyncModuleExecutionRejected(m, v)
+			return
+		}
+		vm.asyncModuleExecutionFulfilled(m)
 	})
 }
 
@@ -1424,38 +1421,32 @@ func (vm *VM) continueDynamicImport(c *PromiseCapability, m *Module, phase bytec
 		return
 	}
 	load := vm.loadRequestedModules(m)
-	vm.addReaction(load.o, &promiseReaction{
-		kind: reactionNative,
-		native: func(vm *VM, v Value, rejected bool) {
+	vm.addNativeReaction(load.o, func(vm *VM, v Value, rejected bool) {
+		if rejected {
+			vm.RejectCapability(c, v)
+			return
+		}
+		if e, ok := vm.linkModule(m); !ok {
+			vm.RejectCapability(c, e)
+			return
+		}
+		var p Value
+		if phase == bytecode.PhaseDefer {
+			p = vm.evaluateAll(m.asyncTransitiveDependencies())
+		} else {
+			p = vm.evaluateModule(m)
+		}
+		vm.addNativeReaction(p.o, func(vm *VM, v Value, rejected bool) {
 			if rejected {
 				vm.RejectCapability(c, v)
 				return
 			}
-			if e, ok := vm.linkModule(m); !ok {
-				vm.RejectCapability(c, e)
-				return
-			}
-			var p Value
+			ns := vm.moduleNamespace(m)
 			if phase == bytecode.PhaseDefer {
-				p = vm.evaluateAll(m.asyncTransitiveDependencies())
-			} else {
-				p = vm.evaluateModule(m)
+				ns = vm.deferredModuleNamespace(m)
 			}
-			vm.addReaction(p.o, &promiseReaction{
-				kind: reactionNative,
-				native: func(vm *VM, v Value, rejected bool) {
-					if rejected {
-						vm.RejectCapability(c, v)
-						return
-					}
-					ns := vm.moduleNamespace(m)
-					if phase == bytecode.PhaseDefer {
-						ns = vm.deferredModuleNamespace(m)
-					}
-					vm.ResolveCapability(c, Value{o: ns})
-				},
-			})
-		},
+			vm.ResolveCapability(c, Value{o: ns})
+		})
 	})
 }
 
@@ -1470,17 +1461,14 @@ func (vm *VM) evaluateAll(modules []*Module) Value {
 	remaining := len(modules)
 	for _, m := range modules {
 		p := vm.evaluateModule(m)
-		vm.addReaction(p.o, &promiseReaction{
-			kind: reactionNative,
-			native: func(vm *VM, v Value, rejected bool) {
-				if rejected {
-					vm.RejectCapability(c, v)
-					return
-				}
-				if remaining--; remaining == 0 {
-					vm.ResolveCapability(c, Undefined)
-				}
-			},
+		vm.addNativeReaction(p.o, func(vm *VM, v Value, rejected bool) {
+			if rejected {
+				vm.RejectCapability(c, v)
+				return
+			}
+			if remaining--; remaining == 0 {
+				vm.ResolveCapability(c, Undefined)
+			}
 		})
 	}
 	return Value{o: c.promise}

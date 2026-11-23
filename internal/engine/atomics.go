@@ -483,10 +483,8 @@ func (vm *VM) resolveWaiter(w *waiter, result wtf8.String) {
 		kind:     jobResolve,
 		promise:  w.promise,
 		argument: vm.NewString(result),
-		reaction: promiseReaction{
-			context: jobContext{
-				enteredRealm: w.promiseRealm,
-			},
+		context: jobContext{
+			enteredRealm: w.promiseRealm,
 		},
 	})
 }
