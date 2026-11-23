@@ -44,3 +44,8 @@ assert.sameValue(significant.format(1.004), "1");
 const plural = new Intl.PluralRules("en", options);
 assert.sameValue(plural.resolvedOptions().trailingZeroDisplay, "stripIfInteger");
 assert.sameValue(plural.select(1), "one");
+
+const slAuto = new Intl.PluralRules("sl", {minimumFractionDigits: 2});
+const slStrip = new Intl.PluralRules("sl", options);
+assert.sameValue(slAuto.selectRange(1, 2), "few");
+assert.sameValue(slStrip.selectRange(1, 2), "two");
