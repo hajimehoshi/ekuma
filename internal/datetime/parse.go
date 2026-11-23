@@ -398,7 +398,13 @@ func parseFormatted(s string, tz TimeZone, poll func()) (float64, bool) {
 
 var fullMonthNames = [12]string{"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
 
-var fullWeekdayNames = [7]string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+var legacyZoneHours = map[string]float64{
+	"ut": 0, "utc": 0, "gmt": 0, "z": 0,
+	"est": -5, "edt": -4,
+	"cst": -6, "cdt": -5,
+	"mst": -7, "mdt": -6,
+	"pst": -8, "pdt": -7,
+}
 
 // matchName reports the index of the name in names that word is, either in full or
 // abbreviated to its first three letters, or -1.
@@ -422,6 +428,51 @@ func legacyYear(y float64, n int) float64 {
 	return y
 }
 
+func (sc *scanner) skipLegacySpace() bool {
+	switch sc.peek() {
+	case ' ', '\t', '\n', '\r':
+		sc.pos++
+		return true
+	}
+	// Localized times can separate AM or PM with a narrow no-break space.
+	if strings.HasPrefix(sc.s[sc.pos:], "\u202f") {
+		sc.pos += len("\u202f")
+		return true
+	}
+	return false
+}
+
+func (sc *scanner) legacyWord() string {
+	start := sc.pos
+	for !sc.done() && isLetter(sc.peek()) {
+		sc.step()
+		sc.pos++
+	}
+	if sc.pos-start > len("september") {
+		return ""
+	}
+	return strings.ToLower(sc.s[start:sc.pos])
+}
+
+// legacyTime reads the fields after the hour and colon.
+func (sc *scanner) legacyTime(f *fields) bool {
+	var ok bool
+	if f.minute, ok = sc.fixed(2); !ok {
+		return false
+	}
+	if sc.accept(':') {
+		if f.second, ok = sc.fixed(2); !ok {
+			return false
+		}
+		if sc.accept('.') {
+			f.millisecond, ok = sc.fraction()
+			return ok
+		}
+	}
+	// Only a zone designator or a numeric offset may directly follow a whole time field.
+	return sc.done() || sc.skipLegacySpace() || strings.ContainsRune("Zz+-", rune(sc.peek()))
+}
+
 // parseLegacy parses the formats of [String] and [UTCString] and some common legacy formats.
 func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 	nan := math.NaN()
@@ -437,27 +488,23 @@ func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 	var numNeg [2]bool
 	numCount := 0
 
-	var hasMonth, hasSlashDate, hasTime, hasZone, hasNumericOffset bool
+	var hasMonth, hasSlashDate, hasTime, hasNumericOffset bool
 	ampm := 0 // 1 for AM and 2 for PM.
 
 	for !sc.done() {
 		sc.step()
+		if sc.skipLegacySpace() {
+			continue
+		}
 		c := sc.peek()
 		switch {
-		case c == ' ' || c == ',' || c == '\t' || c == '\n' || c == '\r':
+		case c == ',':
 			sc.pos++
 
-		case strings.HasPrefix(sc.s[sc.pos:], "\u202f"):
-			// Localized times can separate AM or PM with a narrow no-break space.
-			sc.pos += len("\u202f")
-
 		case c == '(':
-			// A comment, such as the name of the time zone.
-			depth := 0
-			for {
-				if sc.done() {
-					return nan
-				}
+			// A comment ends at its matching parenthesis or at the end of the input.
+			var depth int
+			for !sc.done() {
 				sc.step()
 				switch sc.s[sc.pos] {
 				case '(':
@@ -472,52 +519,39 @@ func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 			}
 
 		case isLetter(c):
-			start := sc.pos
-			for !sc.done() && isLetter(sc.s[sc.pos]) {
-				sc.pos++
-				// No name is longer than "september".
-				if sc.pos-start > len("september") {
+			w := sc.legacyWord()
+			if month := matchName(w, fullMonthNames[:]); month >= 0 {
+				if hasMonth || hasSlashDate {
 					return nan
 				}
+				hasMonth = true
+				f.month = float64(month + 1)
+				sc.accept('.')
+				continue
 			}
-			word := make([]byte, sc.pos-start)
-			for i := range word {
-				word[i] = s[start+i] | 0x20
-			}
-			w := string(word)
+			hasNumber := hasTime || hasSlashDate || numCount > 0
+			zoneHours, isZone := legacyZoneHours[w]
 			switch {
-			case w == "am" || w == "pm":
-				if !hasTime || ampm != 0 {
+			case hasTime && (w == "am" || w == "pm"):
+				if ampm != 0 {
 					return nan
 				}
 				ampm = 1
 				if w == "pm" {
 					ampm = 2
 				}
-			case w == "gmt" || w == "utc" || w == "ut" || w == "z":
-				if hasZone {
+			case hasNumber && isZone:
+				if f.hasOffset {
 					return nan
 				}
-				hasZone = true
+				f.offset = zoneHours * msPerHour
 				f.hasOffset = true
 			default:
-				month := matchName(w, fullMonthNames[:])
-				switch {
-				case month >= 0:
-					if hasMonth || hasSlashDate {
-						return nan
-					}
-					hasMonth = true
-					f.month = float64(month + 1)
-					sc.accept('.')
-				case matchName(w, fullWeekdayNames[:]) >= 0:
-					if hasMonth || hasSlashDate || numCount > 0 {
-						return nan
-					}
-					sc.accept('.')
-				default:
+				// Ignore weekday names and other words before the first number.
+				if hasNumber || isDigit(sc.peek()) {
 					return nan
 				}
+				sc.accept('.')
 			}
 
 		case (c == '+' || c == '-') && hasTime:
@@ -549,7 +583,6 @@ func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 			}
 			f.offset = off
 			f.hasOffset = true
-			hasZone = true
 
 		case c == '-' || isDigit(c):
 			neg := sc.accept('-')
@@ -565,19 +598,8 @@ func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 				hasTime = true
 				f.hour = v
 				sc.pos++
-				var ok bool
-				if f.minute, ok = sc.fixed(2); !ok {
+				if !sc.legacyTime(&f) {
 					return nan
-				}
-				if sc.accept(':') {
-					if f.second, ok = sc.fixed(2); !ok {
-						return nan
-					}
-					if sc.accept('.') {
-						if f.millisecond, ok = sc.fraction(); !ok {
-							return nan
-						}
-					}
 				}
 			case !neg && sc.peek() == '/':
 				if hasSlashDate || hasMonth || numCount > 0 {
@@ -645,7 +667,7 @@ func parseLegacy(s string, tz TimeZone, poll func()) float64 {
 			return nan
 		}
 	default:
-		if f.hour < 1 || f.hour > 12 || f.minute > 59 || f.second > 59 {
+		if f.hour > 12 || f.minute > 59 || f.second > 59 {
 			return nan
 		}
 		f.hour = modulo(f.hour, 12)

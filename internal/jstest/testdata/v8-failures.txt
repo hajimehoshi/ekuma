@@ -1286,11 +1286,6 @@ test/webkit/property-getters-and-setters.js
 test/webkit/regexp-compile-crash.js
 test/webkit/regexp-compile.js
 
-# Date.parse uses implementation-defined fallback parsing for legacy dates.
-# V8 accepts a trailing unmatched opening parenthesis. Comments embedded
-# in a time or zone also produce different results.
-test/webkit/date-parse-comments-test.js
-
 # Ekuma uses the same anonymous %ThrowTypeError% for both accessors of
 # Function.prototype.caller and arguments. V8 expects distinct accessors
 # and prints the caller getter as a named native function.

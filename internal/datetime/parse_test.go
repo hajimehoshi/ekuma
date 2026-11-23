@@ -55,6 +55,10 @@ func TestParseFormattedFallback(t *testing.T) {
 			equivalent: "2020-01-01T18:04:05Z",
 		},
 		{
+			input:      "Thu Jan 02 2020 03:04:05 GMT+0900 (unclosed",
+			equivalent: "2020-01-01T18:04:05Z",
+		},
+		{
 			input:      "Thu Jan 02 2020 03:04:05",
 			equivalent: "2020-01-02T03:04:05",
 		},
@@ -86,7 +90,6 @@ func TestParseFormattedFallback(t *testing.T) {
 	for _, s := range []string{
 		"Thu, 02 Jan 2020 03:04:05 GMT garbage",
 		"Thu Jan 02 2020 03:04:05 GMT+09000",
-		"Thu Jan 02 2020 03:04:05 GMT+0900 (unclosed",
 		"Thu, 02 Jan 2020 24:00:01 GMT",
 		"Thu, 02 Jan 2020 03:60:00 GMT",
 		"Thu, 02 Jan 2020 03:04:60 GMT",

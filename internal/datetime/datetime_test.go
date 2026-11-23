@@ -116,6 +116,10 @@ func TestParseLegacy(t *testing.T) {
 			want: utc(2020, 1, 2, 0, 0, 0) + local,
 		},
 		{
+			in:   "PST Jan 2, 2020",
+			want: utc(2020, 1, 2, 0, 0, 0) + local,
+		},
+		{
 			in:   "January 2, 2020 03:04:05",
 			want: utc(2020, 1, 2, 3, 4, 5) + local,
 		},
@@ -181,7 +185,7 @@ func TestParseLegacy(t *testing.T) {
 		},
 		{
 			in:   "Jan 2 2020 (unclosed",
-			want: nan,
+			want: utc(2020, 1, 2, 0, 0, 0) + local,
 		},
 		{
 			in:   "hello",
