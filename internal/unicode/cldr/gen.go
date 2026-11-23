@@ -945,7 +945,7 @@ func main() {
 
 	// cldr-json omits the ISO 8601 calendar.
 	f = newFile("iso8601.go", "CLDR "+xmlVersion+" (common/main)")
-	f.records("maps locales to the date, time and interval patterns of the ISO 8601 calendar.", "ISO8601Patterns", tree.records(iso8601Patterns(mainXML)))
+	f.records("maps locales to the date, time and interval patterns of the ISO 8601 calendar.", "ISO8601Patterns", tree.records(tree.iso8601Patterns(mainXML, resolved["gregorian"])))
 	f.write()
 
 	// Names of date fields.
@@ -1740,7 +1740,7 @@ func mainData(files map[string][]byte, name string) map[string]any {
 }
 
 // iso8601Patterns reads the ISO calendar patterns using the record keys of calendarFields.
-func iso8601Patterns(files map[string][]byte) map[string]map[string]string {
+func (t *localeTree) iso8601Patterns(files map[string][]byte, gregorian map[string]map[string]string) map[string]map[string]string {
 	type pattern struct {
 		ID    string `xml:"id,attr"`
 		Count string `xml:"count,attr"`
@@ -1754,9 +1754,21 @@ func iso8601Patterns(files map[string][]byte) map[string]map[string]string {
 			Pattern string `xml:"pattern"`
 		} `xml:",any"`
 	}
+	hasAtTime := func(lengths []style) bool {
+		for _, length := range lengths {
+			for _, f := range length.Formats {
+				if f.Type == "atTime" && f.Pattern != "" && f.Pattern != "↑↑↑" {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	var gregorianAtTime []string
+	isoAtTime := map[string]bool{}
 	data := map[string]map[string]string{}
 	for name, b := range files {
-		if !bytes.Contains(b, []byte(`<calendar type="iso8601">`)) {
+		if !bytes.Contains(b, []byte(`<calendar type="iso8601">`)) && !bytes.Contains(b, []byte(`<dateTimeFormat type="atTime">`)) {
 			continue
 		}
 		var doc struct {
@@ -1776,7 +1788,14 @@ func iso8601Patterns(files map[string][]byte) map[string]map[string]string {
 		if err := xml.Unmarshal(b, &doc); err != nil {
 			log.Fatal(err)
 		}
+		l := strings.ReplaceAll(strings.TrimSuffix(name, ".xml"), "_", "-")
+		if l == "root" {
+			l = "und"
+		}
 		for _, cal := range doc.Calendars {
+			if cal.Type == "gregorian" && hasAtTime(cal.DateTime) {
+				gregorianAtTime = append(gregorianAtTime, l)
+			}
 			if cal.Type != "iso8601" {
 				continue
 			}
@@ -1807,11 +1826,31 @@ func iso8601Patterns(files map[string][]byte) map[string]map[string]string {
 					fields["I"+interval.ID+"/"+p.ID] = p.Value
 				}
 			}
-			l := strings.ReplaceAll(strings.TrimSuffix(name, ".xml"), "_", "-")
-			if l == "root" {
-				l = "und"
-			}
+			isoAtTime[l] = hasAtTime(cal.DateTime)
 			data[l] = fields
+		}
+	}
+	// ICU falls back to the nearest Gregorian atTime resource when ISO has
+	// none. Each resource supplies all four styles. CLDR JSON resolves the
+	// widths, while XML distinguishes an explicit resource from an alias
+	// to a locale's standard Gregorian separator.
+gregorianLocales:
+	for _, l := range gregorianAtTime {
+		for p, ok := l, true; ok; p, ok = t.parent(p) {
+			if isoAtTime[p] {
+				continue gregorianLocales
+			}
+		}
+		if data[l] == nil {
+			data[l] = map[string]string{}
+		}
+		for _, width := range styles {
+			key := "A" + width
+			v := gregorian[l][key]
+			if v == "" {
+				log.Fatalf("%s: missing Gregorian atTime pattern %s", l, width)
+			}
+			data[l][key] = v
 		}
 	}
 	return data

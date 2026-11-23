@@ -133,6 +133,28 @@ func TestStylePatterns(t *testing.T) {
 	}
 }
 
+func TestISO8601DateTimeStyle(t *testing.T) {
+	for _, tc := range []struct {
+		locale string
+		want   string
+	}{
+		{
+			locale: "fr",
+			want:   "y MMMM d, EEEE 'à' HH:mm",
+		},
+		// Basque has a standard Gregorian separator and no atTime resource.
+		{
+			locale: "eu",
+			want:   "y MMMM d, EEEE HH:mm",
+		},
+	} {
+		f := date.NewStyleFormat(tc.locale, "iso8601", "h23", "full", "short")
+		if got := f.Pattern(); got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.locale, got, tc.want)
+		}
+	}
+}
+
 func zone(t *testing.T, id string) temporal.TimeZone {
 	t.Helper()
 	z, ok := temporal.GetAvailableNamedTimeZone(id, temporal.UTC)

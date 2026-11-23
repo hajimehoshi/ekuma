@@ -117,7 +117,7 @@ var recordSums = []struct {
 	{
 		name: "ISO8601Patterns",
 		m:    cldr.ISO8601Patterns,
-		sum:  "a21592d27fc156d48ce63e014a6fecaff6cdf60895f04ef83a5495ac8e8e2731",
+		sum:  "ddd5eb1cca5a2ae8d8c1e5676beb0a2f8c03c1fe6d3588880608af7aa52ad084",
 	},
 	{
 		name: "DateFieldNames",

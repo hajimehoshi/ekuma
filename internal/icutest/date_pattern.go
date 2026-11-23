@@ -39,7 +39,9 @@ func runDatePatterns(t *testing.T, root string, failures map[string]map[int]stri
 				if (parts.some(p => !p.value.length) || parts.map(p => p.value).join("") !== text)
 					return "inconsistent parts: " + JSON.stringify(parts) + " for " + text;
 				const resolved = fmt.resolvedOptions();
-				if (resolved.calendar !== options.calendar || resolved.numberingSystem !== options.numberingSystem)
+				// CreateDateTimeFormat resolves the legacy islamic option to islamic-tbla.
+				const calendar = options.calendar === "islamic" ? "islamic-tbla" : options.calendar;
+				if (resolved.calendar !== calendar || resolved.numberingSystem !== options.numberingSystem)
 					return "resolved calendar " + resolved.calendar + ", numbering system " + resolved.numberingSystem + ": " + JSON.stringify(parts);
 				switch (mode) {
 				case "text": return text;
@@ -365,7 +367,9 @@ func (s *datePatternSuite) pattern(line int, id, skeleton, pattern string) {
 	var literal strings.Builder
 	flush := func() {
 		if literal.Len() > 0 {
-			parts = append(parts, "literal "+literal.String())
+			// Intl renders ICU's narrow no-break space as a plain space
+			// for web compatibility. Fixed-output fixtures supply their own text.
+			parts = append(parts, "literal "+strings.ReplaceAll(literal.String(), "\u202f", " "))
 			literal.Reset()
 		}
 	}

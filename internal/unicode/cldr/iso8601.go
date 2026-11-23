@@ -13,58 +13,94 @@ var iSO8601PatternsBlocks string
 // ISO8601Patterns maps locales to the date, time and interval patterns of the ISO 8601 calendar.
 var ISO8601Patterns = Map{
 	keys: Strings{
-		data: "arcvfikokkok-Latnmkshnswteukundzh",
+		data: "afakarasastazbebgbnbrbrxbscacebchrcopcscvcydadedoidsbeleneoesetfaff-Adlmfifilfofrfygagdhahehihi-" +
+			"Latnhrhsbiaidieigisitjvkabkk-Arabkmknkokkok-Latnksks-Devakxvlijlldmaimimkmlmnimrmsnenlnoocomorpc" +
+			"mpsptqurmrorusascscnsd-Devashnsiskslsmnsosusvswsw-KEsyrtatetgthtitkttukundurviwoxhyoyueyue-Hansz" +
+			"h",
 		ends: []uint32{
-			2, 4, 6, 9, 17, 19, 22, 24, 26, 28, 31, 33,
+			2, 4, 6, 8, 11, 13, 15, 17, 19, 21, 24, 26, 28, 31, 34, 37,
+			39, 41, 43, 45, 47, 50, 53, 55, 57, 59, 61, 63, 65, 72, 74, 77,
+			79, 81, 83, 85, 87, 89, 91, 93, 100, 102, 105, 107, 109, 111, 113, 115,
+			117, 119, 122, 129, 131, 133, 136, 144, 146, 153, 156, 159, 162, 165, 167, 169,
+			171, 174, 176, 178, 180, 182, 184, 186, 188, 190, 193, 195, 197, 199, 201, 203,
+			205, 207, 209, 212, 219, 222, 224, 226, 228, 231, 233, 235, 237, 239, 244, 247,
+			249, 251, 253, 255, 257, 259, 261, 263, 266, 268, 270, 272, 274, 276, 279, 287,
+			289,
 		},
 	},
 	values: Strings{
-		data: "\x1eCf\x1f{1} {0}\x1eCl\x1f{1} {0}\x1eCm\x1f{1} {0}\x1eCs\x1f{1} {0}\x1eFf\x1fy MMMM d, EEEE\x1eFl\x1fy MMMM d\x1eFm\x1fy MMM d\x1eFs\x1fy-MM-dd" +
-			"\x1eI\x1f{0}\u2009–\u2009{1}\x1eIBh/B\x1fh B\u2009–\u2009h B\x1eIBh/h\x1fh–h B\x1eIBhm/B\x1fh:mm B\u2009–\u2009h:mm B\x1eIBhm/h\x1fh:mm–" +
-			"h:mm B\x1eIBhm/m\x1fh:mm–h:mm B\x1eIGy/G\x1fG y\u2009–\u2009G y\x1eIGy/y\x1fy–y\x1eIGyM/G\x1fG y-MM\u2009–\u2009G y-MM\x1eIGyM/" +
-			"M\x1fG y-MM\u2009–\u2009y-MM\x1eIGyM/y\x1fG y-MM\u2009–\u2009y-MM\x1eIGyMEd/G\x1fG y-MM-dd, E\u2009–\u2009G y-MM-dd, E\x1eIGyM" +
-			"Ed/M\x1fG y-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIGyMEd/d\x1fG y-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIGyMEd/y\x1fG y-MM-dd" +
-			", E\u2009–\u2009y-MM-dd, E\x1eIGyMMM/G\x1fG y MMM\u2009–\u2009G y MMM\x1eIGyMMM/M\x1fG y MMM–MMM\x1eIGyMMM/y\x1fG y MMM\u2009" +
-			"–\u2009y MMM\x1eIGyMMMEd/G\x1fG y MMM d, E\u2009–\u2009G y MMM d, E\x1eIGyMMMEd/M\x1fG y MMM d, E\u2009–\u2009MMM d, " +
-			"E\x1eIGyMMMEd/d\x1fG y MMM d, E\u2009–\u2009MMM d, E\x1eIGyMMMEd/y\x1fG y MMM d, E\u2009–\u2009y MMM d, E\x1eIGyMMMd/G\x1f" +
-			"G y MMM d\u2009–\u2009G y MMM d\x1eIGyMMMd/M\x1fG y MMM d\u2009–\u2009MMM d\x1eIGyMMMd/d\x1fG y MMM d–d\x1eIGyMMMd/y\x1f" +
-			"G y MMM d\u2009–\u2009y MMM d\x1eIGyMd/G\x1fG y-MM-dd\u2009–\u2009G y-MM-dd\x1eIGyMd/M\x1fG y-MM-dd\u2009–\u2009y-MM-dd\x1e" +
-			"IGyMd/d\x1fG y-MM-dd\u2009–\u2009y-MM-dd\x1eIGyMd/y\x1fG y-MM-dd\u2009–\u2009y-MM-dd\x1eIH/H\x1fHH–HH\x1eIHm/H\x1fHH:mm–H" +
-			"H:mm\x1eIHm/m\x1fHH:mm–HH:mm\x1eIHmv/H\x1fHH:mm–HH:mm v\x1eIHmv/m\x1fHH:mm–HH:mm v\x1eIHv/H\x1fHH–HH v\x1eIM/M\x1fMM–" +
-			"MM\x1eIMEd/M\x1fMM-dd, E\u2009–\u2009MM-dd, E\x1eIMEd/d\x1fMM-dd, E\u2009–\u2009MM-dd, E\x1eIMMM/M\x1fLLL–LLL\x1eIMMMEd/M\x1fM" +
-			"MM d, E\u2009–\u2009MMM d, E\x1eIMMMEd/d\x1fMMM d, E\u2009–\u2009MMM d, E\x1eIMMMd/M\x1fMMM d\u2009–\u2009MMM d\x1eIMMMd/d\x1f" +
-			"MMM d–d\x1eIMd/M\x1fMM-dd\u2009–\u2009MM-dd\x1eIMd/d\x1fMM-dd\u2009–\u2009MM-dd\x1eId/d\x1fd–d\x1eIh/a\x1fh\u202fa\u2009–\u2009h\u202f" +
-			"a\x1eIh/h\x1fh–h\u202fa\x1eIhm/a\x1fh:mm\u202fa\u2009–\u2009h:mm\u202fa\x1eIhm/h\x1fh:mm–h:mm\u202fa\x1eIhm/m\x1fh:mm–h:mm\u202fa\x1eIhm" +
-			"v/a\x1fh:mm\u202fa\u2009–\u2009h:mm\u202fa v\x1eIhmv/h\x1fh:mm–h:mm\u202fa v\x1eIhmv/m\x1fh:mm–h:mm\u202fa v\x1eIhv/a\x1fh\u202fa\u2009" +
-			"–\u2009h\u202fa v\x1eIhv/h\x1fh–h\u202fa v\x1eIy/y\x1fy–y\x1eIyM/M\x1fy-MM\u2009–\u2009y-MM\x1eIyM/y\x1fy-MM\u2009–\u2009y-MM\x1eIyMEd" +
-			"/M\x1fy-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIyMEd/d\x1fy-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIyMEd/y\x1fy-MM-dd, E\u2009–\u2009" +
-			"y-MM-dd, E\x1eIyMMM/M\x1fy MMM–MMM\x1eIyMMM/y\x1fy MMM\u2009–\u2009y MMM\x1eIyMMMEd/M\x1fy MMM d, E\u2009–\u2009MMM d, E" +
-			"\x1eIyMMMEd/d\x1fy MMM d, E\u2009–\u2009MMM d, E\x1eIyMMMEd/y\x1fy MMM d, E\u2009–\u2009y MMM d, E\x1eIyMMMM/M\x1fy MMMM–" +
-			"MMMM\x1eIyMMMM/y\x1fy MMMM\u2009–\u2009y MMMM\x1eIyMMMd/M\x1fy MMM d\u2009–\u2009MMM d\x1eIyMMMd/d\x1fy MMM d–d\x1eIyMMMd/y" +
-			"\x1fy MMM d\u2009–\u2009y MMM d\x1eIyMd/M\x1fy-MM-dd\u2009–\u2009y-MM-dd\x1eIyMd/d\x1fy-MM-dd\u2009–\u2009y-MM-dd\x1eIyMd/y\x1fy-" +
-			"MM-dd\u2009–\u2009y-MM-dd\x1eSBh\x1fh B\x1eSBhm\x1fh:mm B\x1eSBhms\x1fh:mm:ss B\x1eSE\x1fccc\x1eSEBhm\x1fE h:mm B\x1eSEBhms\x1fE h:mm:ss" +
-			" B\x1eSEHm\x1fE HH:mm\x1eSEHms\x1fE HH:mm:ss\x1eSEd\x1fd, E\x1eSEhm\x1fE h:mm\u202fa\x1eSEhms\x1fE h:mm:ss\u202fa\x1eSGy\x1fG y\x1eSGyMMM\x1fG y" +
-			" MMM\x1eSGyMMMEd\x1fG y MMM d, E\x1eSGyMMMd\x1fG y MMM d\x1eSGyMd\x1fG y-MM-dd\x1eSH\x1fHH\x1eSHm\x1fHH:mm\x1eSHms\x1fHH:mm:ss\x1eSHmsv" +
-			"\x1fHH:mm:ss v\x1eSHmv\x1fHH:mm v\x1eSM\x1fL\x1eSMEd\x1fMM-dd, E\x1eSMMM\x1fLLL\x1eSMMMEd\x1fMMM d, E\x1eSMMMMW\x1fMMMM 'week' W\x1eSMMMMd" +
-			"\x1fMMMM d\x1eSMMMd\x1fMMM d\x1eSMd\x1fMM-dd\x1eSd\x1fd\x1eSh\x1fh\u202fa\x1eShm\x1fh:mm\u202fa\x1eShms\x1fh:mm:ss\u202fa\x1eShmsv\x1fh:mm:ss\u202fa v\x1eSh" +
-			"mv\x1fh:mm\u202fa v\x1eSms\x1fmm:ss\x1eSy\x1fy\x1eSyM\x1fy-MM\x1eSyMEd\x1fy-MM-dd, E\x1eSyMMM\x1fy MMM\x1eSyMMMEd\x1fy MMM d, E\x1eSyMMMM\x1fy M" +
-			"MMM\x1eSyMMMd\x1fy MMM d\x1eSyMd\x1fy-MM-dd\x1eSyQQQ\x1fy QQQ\x1eSyQQQQ\x1fy QQQQ\x1eSyw\x1fY 'week' w\x1eTf\x1fHH:mm:ss zzzz\x1eTl\x1fHH:" +
-			"mm:ss z\x1eTm\x1fHH:mm:ss\x1eTs\x1fHH:mm",
+		data: "\x1eAf\x1f{1} 'at' {0}\x1eAl\x1f{1} 'at' {0}\x1eAm\x1f{1}, {0}\x1eAs\x1f{1}, {0}\x1eCf\x1f{1} {0}\x1eCl\x1f{1} {0}\x1eCm\x1f{1} {0}\x1eCs\x1f{1}" +
+			" {0}\x1eFf\x1fy MMMM d, EEEE\x1eFl\x1fy MMMM d\x1eFm\x1fy MMM d\x1eFs\x1fy-MM-dd\x1eI\x1f{0}\u2009–\u2009{1}\x1eIBh/B\x1fh B\u2009–\u2009h B" +
+			"\x1eIBh/h\x1fh–h B\x1eIBhm/B\x1fh:mm B\u2009–\u2009h:mm B\x1eIBhm/h\x1fh:mm–h:mm B\x1eIBhm/m\x1fh:mm–h:mm B\x1eIGy/G\x1fG y\u2009" +
+			"–\u2009G y\x1eIGy/y\x1fy–y\x1eIGyM/G\x1fG y-MM\u2009–\u2009G y-MM\x1eIGyM/M\x1fG y-MM\u2009–\u2009y-MM\x1eIGyM/y\x1fG y-MM\u2009–" +
+			"\u2009y-MM\x1eIGyMEd/G\x1fG y-MM-dd, E\u2009–\u2009G y-MM-dd, E\x1eIGyMEd/M\x1fG y-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIGyM" +
+			"Ed/d\x1fG y-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIGyMEd/y\x1fG y-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIGyMMM/G\x1fG y MMM\u2009" +
+			"–\u2009G y MMM\x1eIGyMMM/M\x1fG y MMM–MMM\x1eIGyMMM/y\x1fG y MMM\u2009–\u2009y MMM\x1eIGyMMMEd/G\x1fG y MMM d, E\u2009–" +
+			"\u2009G y MMM d, E\x1eIGyMMMEd/M\x1fG y MMM d, E\u2009–\u2009MMM d, E\x1eIGyMMMEd/d\x1fG y MMM d, E\u2009–\u2009MMM d, " +
+			"E\x1eIGyMMMEd/y\x1fG y MMM d, E\u2009–\u2009y MMM d, E\x1eIGyMMMd/G\x1fG y MMM d\u2009–\u2009G y MMM d\x1eIGyMMMd/M\x1fG y" +
+			" MMM d\u2009–\u2009MMM d\x1eIGyMMMd/d\x1fG y MMM d–d\x1eIGyMMMd/y\x1fG y MMM d\u2009–\u2009y MMM d\x1eIGyMd/G\x1fG y-MM-" +
+			"dd\u2009–\u2009G y-MM-dd\x1eIGyMd/M\x1fG y-MM-dd\u2009–\u2009y-MM-dd\x1eIGyMd/d\x1fG y-MM-dd\u2009–\u2009y-MM-dd\x1eIGyMd/y" +
+			"\x1fG y-MM-dd\u2009–\u2009y-MM-dd\x1eIH/H\x1fHH–HH\x1eIHm/H\x1fHH:mm–HH:mm\x1eIHm/m\x1fHH:mm–HH:mm\x1eIHmv/H\x1fHH:mm–H" +
+			"H:mm v\x1eIHmv/m\x1fHH:mm–HH:mm v\x1eIHv/H\x1fHH–HH v\x1eIM/M\x1fMM–MM\x1eIMEd/M\x1fMM-dd, E\u2009–\u2009MM-dd, E\x1eIMEd" +
+			"/d\x1fMM-dd, E\u2009–\u2009MM-dd, E\x1eIMMM/M\x1fLLL–LLL\x1eIMMMEd/M\x1fMMM d, E\u2009–\u2009MMM d, E\x1eIMMMEd/d\x1fMMM d," +
+			" E\u2009–\u2009MMM d, E\x1eIMMMd/M\x1fMMM d\u2009–\u2009MMM d\x1eIMMMd/d\x1fMMM d–d\x1eIMd/M\x1fMM-dd\u2009–\u2009MM-dd\x1eIMd/" +
+			"d\x1fMM-dd\u2009–\u2009MM-dd\x1eId/d\x1fd–d\x1eIh/a\x1fh\u202fa\u2009–\u2009h\u202fa\x1eIh/h\x1fh–h\u202fa\x1eIhm/a\x1fh:mm\u202fa\u2009–\u2009" +
+			"h:mm\u202fa\x1eIhm/h\x1fh:mm–h:mm\u202fa\x1eIhm/m\x1fh:mm–h:mm\u202fa\x1eIhmv/a\x1fh:mm\u202fa\u2009–\u2009h:mm\u202fa v\x1eIhmv/h\x1fh" +
+			":mm–h:mm\u202fa v\x1eIhmv/m\x1fh:mm–h:mm\u202fa v\x1eIhv/a\x1fh\u202fa\u2009–\u2009h\u202fa v\x1eIhv/h\x1fh–h\u202fa v\x1eIy/y\x1fy–" +
+			"y\x1eIyM/M\x1fy-MM\u2009–\u2009y-MM\x1eIyM/y\x1fy-MM\u2009–\u2009y-MM\x1eIyMEd/M\x1fy-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIyMEd/d\x1f" +
+			"y-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIyMEd/y\x1fy-MM-dd, E\u2009–\u2009y-MM-dd, E\x1eIyMMM/M\x1fy MMM–MMM\x1eIyMMM/y\x1f" +
+			"y MMM\u2009–\u2009y MMM\x1eIyMMMEd/M\x1fy MMM d, E\u2009–\u2009MMM d, E\x1eIyMMMEd/d\x1fy MMM d, E\u2009–\u2009MMM d, E\x1e" +
+			"IyMMMEd/y\x1fy MMM d, E\u2009–\u2009y MMM d, E\x1eIyMMMM/M\x1fy MMMM–MMMM\x1eIyMMMM/y\x1fy MMMM\u2009–\u2009y MMMM\x1eIy" +
+			"MMMd/M\x1fy MMM d\u2009–\u2009MMM d\x1eIyMMMd/d\x1fy MMM d–d\x1eIyMMMd/y\x1fy MMM d\u2009–\u2009y MMM d\x1eIyMd/M\x1fy-MM-d" +
+			"d\u2009–\u2009y-MM-dd\x1eIyMd/d\x1fy-MM-dd\u2009–\u2009y-MM-dd\x1eIyMd/y\x1fy-MM-dd\u2009–\u2009y-MM-dd\x1eSBh\x1fh B\x1eSBhm\x1fh:m" +
+			"m B\x1eSBhms\x1fh:mm:ss B\x1eSE\x1fccc\x1eSEBhm\x1fE h:mm B\x1eSEBhms\x1fE h:mm:ss B\x1eSEHm\x1fE HH:mm\x1eSEHms\x1fE HH:mm:ss\x1eSEd\x1fd" +
+			", E\x1eSEhm\x1fE h:mm\u202fa\x1eSEhms\x1fE h:mm:ss\u202fa\x1eSGy\x1fG y\x1eSGyMMM\x1fG y MMM\x1eSGyMMMEd\x1fG y MMM d, E\x1eSGyMMMd\x1fG y" +
+			" MMM d\x1eSGyMd\x1fG y-MM-dd\x1eSH\x1fHH\x1eSHm\x1fHH:mm\x1eSHms\x1fHH:mm:ss\x1eSHmsv\x1fHH:mm:ss v\x1eSHmv\x1fHH:mm v\x1eSM\x1fL\x1eSMEd\x1fMM-" +
+			"dd, E\x1eSMMM\x1fLLL\x1eSMMMEd\x1fMMM d, E\x1eSMMMMW\x1fMMMM 'week' W\x1eSMMMMd\x1fMMMM d\x1eSMMMd\x1fMMM d\x1eSMd\x1fMM-dd\x1eSd\x1fd\x1eSh\x1f" +
+			"h\u202fa\x1eShm\x1fh:mm\u202fa\x1eShms\x1fh:mm:ss\u202fa\x1eShmsv\x1fh:mm:ss\u202fa v\x1eShmv\x1fh:mm\u202fa v\x1eSms\x1fmm:ss\x1eSy\x1fy\x1eSyM\x1fy-MM\x1e" +
+			"SyMEd\x1fy-MM-dd, E\x1eSyMMM\x1fy MMM\x1eSyMMMEd\x1fy MMM d, E\x1eSyMMMM\x1fy MMMM\x1eSyMMMd\x1fy MMM d\x1eSyMd\x1fy-MM-dd\x1eSyQQQ\x1f" +
+			"y QQQ\x1eSyQQQQ\x1fy QQQQ\x1eSyw\x1fY 'week' w\x1eTf\x1fHH:mm:ss zzzz\x1eTl\x1fHH:mm:ss z\x1eTm\x1fHH:mm:ss\x1eTs\x1fHH:mm",
 		ends: []uint32{
-			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2916, 2916,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 56, 56, 56, 56, 56, 56, 56, 56,
+			56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
+			56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
+			56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
+			56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
+			56, 56, 56, 56, 56, 56, 56, 56, 2972, 2972, 2972, 2972, 2972, 2972, 2972, 2972,
+			2972,
 		},
 	},
 	blocks: &blocks{
 		data: iSO8601PatternsBlocks,
 		firstKeys: []uint32{
-			0, 1, 2, 3, 5, 6, 7, 8, 9, 11,
+			0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+			16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 29, 30, 31, 32,
+			33, 34, 35, 36, 37, 38, 39, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+			50, 51, 52, 53, 54, 56, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
+			68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
+			84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 95, 96, 97, 98, 99, 100,
+			101, 102, 103, 105, 106, 107, 108, 109, 110, 112,
 		},
 		dataEnds: []uint32{
-			15, 511, 525, 641, 653, 682, 698, 713, 737, 831,
+			19, 36, 72, 84, 105, 118, 133, 159, 176, 191, 224, 242, 267, 282, 305, 311,
+			329, 813, 827, 844, 859, 879, 901, 923, 940, 959, 980, 1007, 1028, 1059, 1077, 1094,
+			1111, 1130, 1144, 1159, 1174, 1197, 1244, 1262, 1280, 1292, 1311, 1330, 1345, 1362, 1385, 1401,
+			1417, 1431, 1468, 1517, 1681, 1732, 1748, 1764, 1783, 1803, 1820, 1853, 1877, 1906, 1948, 1966,
+			1980, 1995, 2012, 2028, 2050, 2083, 2101, 2122, 2139, 2151, 2171, 2186, 2202, 2226, 2246, 2280,
+			2300, 2329, 2353, 2368, 2383, 2402, 2420, 2436, 2457, 2493, 2524, 2554, 2593, 2618, 2648, 2675,
+			2692, 2729, 2766, 2784, 2814, 2835, 2851, 2868, 2891, 2985,
 		},
 		valueEnds: []uint32{
-			24, 2632, 23, 27, 355, 11, 54, 20, 24, 29, 0, 488,
+			54, 58, 82, 46, 65, 46, 56, 68, 54, 56, 80, 60, 67, 56, 66, 56,
+			52, 2632, 56, 58, 56, 60, 60, 64, 0, 55, 57, 62, 65, 54, 91, 60,
+			58, 55, 54, 56, 58, 56, 64, 80, 116, 52, 52, 54, 62, 54, 56, 58,
+			72, 58, 44, 48, 90, 116, 117, 511, 72, 138, 58, 56, 62, 60, 48, 80,
+			62, 74, 88, 60, 48, 56, 58, 44, 58, 72, 60, 54, 58, 46, 66, 56,
+			56, 66, 66, 97, 60, 54, 66, 53, 56, 62, 60, 58, 56, 68, 102, 70,
+			78, 80, 72, 70, 64, 62, 84, 85, 0, 48, 58, 58, 58, 58, 46, 90,
+			488,
 		},
-		inflated: make([]inflatedBlock, 10),
+		inflated: make([]inflatedBlock, 106),
 	},
 }
