@@ -51,9 +51,7 @@ canonicalizes to `sr-Latn`. [Known results](testdata/icu-failures.txt)
 The `locale-info` group uses ICU4C and ICU4J fixtures and CLDR supplemental
 data to check week starts and weekends, text direction, calendar preferences,
 collations, hour cycles, numbering systems, and regional time zones. It also
-checks the sorted lists for all six `Intl.supportedValuesOf` keys. Ekuma
-omits `islamic-civil` from 39 regional calendar lists because its generated
-data uses the deprecated alias `islamicc`. [Known results](testdata/icu-failures.txt)
+checks the sorted lists for all six `Intl.supportedValuesOf` keys.
 
 ## Single-date pattern fixtures
 

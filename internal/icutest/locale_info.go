@@ -14,7 +14,7 @@ import (
 
 const icuData = "icu4c/source/data/"
 
-func runLocaleInfo(t *testing.T, root string, failures map[string]map[int]string) {
+func runLocaleInfo(t *testing.T, root string) {
 	// keyTypeData maps ICU's legacy calendar and collation names to BCP 47.
 	path := filepath.Join(root, icuData, "misc/keyTypeData.txt")
 	types := readResource(t, path).child("typeMap")
@@ -38,7 +38,6 @@ func runLocaleInfo(t *testing.T, root string, failures map[string]map[int]string
 	})
 	run(icuData+"misc/supplementalData.txt", func(f *formatFixture) {
 		data := readResource(f.t, f.path)
-		f.trackOperations(failures)
 		checkWeekInfo(f, data.child("weekData"))
 		checkLanguageHourCycles(f, data.child("timeData"))
 		checkCalendarPreferences(f, data.child("calendarPreferenceData"), calendars)

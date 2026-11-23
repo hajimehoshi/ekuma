@@ -395,8 +395,7 @@ type keyword struct {
 	// aliases maps the aliases of values that are valid values to their names, which is how
 	// a Unicode locale identifier is canonicalized.
 	aliases map[string]string
-	// names maps every alias of a value, such as the names in the other CLDR data, to its
-	// name.
+	// names maps legacy and deprecated names in CLDR data to their preferred BCP 47 values.
 	names map[string]string
 }
 
@@ -437,23 +436,20 @@ func keywords(files map[string][]byte) map[string]*keyword {
 					}
 					kw.values = append(kw.values, value)
 					d := object(d)
+					preferred := value
 					if p, ok := d["_preferred"]; ok {
-						kw.aliases[value] = str(p)
+						preferred = str(p)
+						kw.names[value] = preferred
+						kw.aliases[value] = preferred
 					}
 					a, ok := d["_alias"]
 					if !ok {
 						continue
 					}
 					for alias := range strings.FieldsSeq(str(a)) {
-						kw.names[alias] = value
+						kw.names[alias] = preferred
 						alias = strings.ToLower(alias)
-						if alias == value || !isType(alias) {
-							continue
-						}
-						if _, ok := d["_preferred"]; ok {
-							alias = value
-						}
-						if alias != value {
+						if preferred == value && alias != value && isType(alias) {
 							kw.aliases[alias] = value
 						}
 					}

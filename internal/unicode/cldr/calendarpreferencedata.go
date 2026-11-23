@@ -18,29 +18,31 @@ var CalendarPreferences = Map{
 		},
 	},
 	values: Strings{
-		data: "gregorygregory islamic-umalqura islamic islamicc islamic-tblapersian gregory islamic islamicc is" +
-			"lamic-tblagregory islamicc islamic-tblagregory islamicc islamic-tblagregory islamic islamicc isl" +
-			"amic-tblagregory islamic-umalqura islamic islamicc islamic-tblagregory chinesegregory chinesegre" +
-			"gory islamic islamicc islamic-tblagregory islamic islamicc islamic-tblagregory coptic islamic is" +
-			"lamicc islamic-tblagregory islamic islamicc islamic-tblagregory islamic islamicc islamic-tblagre" +
-			"gory ethiopicgregory chinesegregory islamic islamicc islamic-tblagregory hebrew islamic islamicc" +
-			" islamic-tblagregory indiangregory islamic islamicc islamic-tblapersian gregory islamic islamicc" +
-			" islamic-tblagregory islamic islamicc islamic-tblagregory japanesegregory islamic islamicc islam" +
-			"ic-tblagregory dangigregory islamic-umalqura islamic islamicc islamic-tblagregory islamic islami" +
-			"cc islamic-tblagregory islamic islamicc islamic-tblagregory islamic islamicc islamic-tblagregory" +
-			" chinesegregory islamic islamicc islamic-tblagregory islamicc islamic-tblagregory islamic islami" +
-			"cc islamic-tblagregory islamic islamicc islamic-tblagregory islamic islamicc islamic-tblagregory" +
-			" islamic islamicc islamic-tblagregory islamic islamicc islamic-tblagregory islamic-umalqura isla" +
-			"mic islamicc islamic-tblagregory islamic-umalqura islamic islamic-rgsagregory islamic islamicc i" +
-			"slamic-tblagregory chinesegregory islamic islamicc islamic-tblagregory islamic islamicc islamic-" +
-			"tblabuddhist gregorygregory islamicc islamic-tblagregory islamicc islamic-tblagregory islamic is" +
-			"lamicc islamic-tblagregory islamicc islamic-tblagregory roc chinesegregory islamicc islamic-tbla" +
-			"gregory islamicc islamic-tblagregory islamic islamicc islamic-tbla",
+		data: "gregorygregory islamic-umalqura islamic islamic-civil islamic-tblapersian gregory islamic islami" +
+			"c-civil islamic-tblagregory islamic-civil islamic-tblagregory islamic-civil islamic-tblagregory " +
+			"islamic islamic-civil islamic-tblagregory islamic-umalqura islamic islamic-civil islamic-tblagre" +
+			"gory chinesegregory chinesegregory islamic islamic-civil islamic-tblagregory islamic islamic-civ" +
+			"il islamic-tblagregory coptic islamic islamic-civil islamic-tblagregory islamic islamic-civil is" +
+			"lamic-tblagregory islamic islamic-civil islamic-tblagregory ethiopicgregory chinesegregory islam" +
+			"ic islamic-civil islamic-tblagregory hebrew islamic islamic-civil islamic-tblagregory indiangreg" +
+			"ory islamic islamic-civil islamic-tblapersian gregory islamic islamic-civil islamic-tblagregory " +
+			"islamic islamic-civil islamic-tblagregory japanesegregory islamic islamic-civil islamic-tblagreg" +
+			"ory dangigregory islamic-umalqura islamic islamic-civil islamic-tblagregory islamic islamic-civi" +
+			"l islamic-tblagregory islamic islamic-civil islamic-tblagregory islamic islamic-civil islamic-tb" +
+			"lagregory chinesegregory islamic islamic-civil islamic-tblagregory islamic-civil islamic-tblagre" +
+			"gory islamic islamic-civil islamic-tblagregory islamic islamic-civil islamic-tblagregory islamic" +
+			" islamic-civil islamic-tblagregory islamic islamic-civil islamic-tblagregory islamic islamic-civ" +
+			"il islamic-tblagregory islamic-umalqura islamic islamic-civil islamic-tblagregory islamic-umalqu" +
+			"ra islamic islamic-rgsagregory islamic islamic-civil islamic-tblagregory chinesegregory islamic " +
+			"islamic-civil islamic-tblagregory islamic islamic-civil islamic-tblabuddhist gregorygregory isla" +
+			"mic-civil islamic-tblagregory islamic-civil islamic-tblagregory islamic islamic-civil islamic-tb" +
+			"lagregory islamic-civil islamic-tblagregory roc chinesegregory islamic-civil islamic-tblagregory" +
+			" islamic-civil islamic-tblagregory islamic islamic-civil islamic-tbla",
 		ends: []uint32{
-			7, 61, 106, 135, 164, 201, 255, 270, 285, 322, 359, 403, 440, 477, 493, 508,
-			545, 589, 603, 640, 685, 722, 738, 775, 788, 842, 879, 916, 953, 968, 1005, 1034,
-			1071, 1108, 1145, 1182, 1219, 1273, 1318, 1355, 1370, 1407, 1444, 1460, 1489, 1518, 1555, 1584,
-			1603, 1632, 1661, 1698,
+			7, 66, 116, 150, 184, 226, 285, 300, 315, 357, 399, 448, 490, 532, 548, 563,
+			605, 654, 668, 710, 760, 802, 818, 860, 873, 932, 974, 1016, 1058, 1073, 1115, 1149,
+			1191, 1233, 1275, 1317, 1359, 1418, 1463, 1505, 1520, 1562, 1604, 1620, 1654, 1688, 1730, 1764,
+			1783, 1817, 1851, 1893,
 		},
 	},
 }
