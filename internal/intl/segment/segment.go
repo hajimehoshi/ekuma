@@ -8,6 +8,7 @@ package segment
 
 import (
 	"encoding/binary"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -146,6 +147,16 @@ func Boundaries(g Granularity, rs []rune, locale string, poll func()) []Boundary
 	if len(rs) == 0 {
 		return nil
 	}
+	// Short inputs have at most one boundary per rune plus the initial boundary.
+	// Collect those on the stack and allocate the result at its final size.
+	var small [32]Boundary
+	if len(rs) < len(small) {
+		return slices.Clone(appendBoundaries(small[:0], g, rs, locale, poll))
+	}
+	return appendBoundaries(nil, g, rs, locale, poll)
+}
+
+func appendBoundaries(bs []Boundary, g Granularity, rs []rune, locale string, poll func()) []Boundary {
 	language, _, _ := strings.Cut(locale, "-")
 	greekSentence := g == Sentence && language == "el"
 	var dictionaryWords bool
@@ -176,7 +187,7 @@ func Boundaries(g Granularity, rs []rune, locale string, poll func()) []Boundary
 	dp := dictionaryPoller{
 		poll: poll,
 	}
-	bs := []Boundary{0}
+	bs = append(bs, 0)
 	for i := 1; i < len(rs); i++ {
 		if poll != nil && i%pollSteps == 0 {
 			poll()
