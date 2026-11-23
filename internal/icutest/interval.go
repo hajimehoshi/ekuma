@@ -182,11 +182,7 @@ func newIntervalSuite(t *testing.T, path string, failures map[string]map[int]str
 	if err != nil {
 		t.Fatal(err)
 	}
-	for key, entries := range failures {
-		if op, ok := strings.CutPrefix(key, filepath.Base(path)+"/"); ok {
-			f.track(op, entries)
-		}
-	}
+	f.trackOperations(failures)
 	s.format = f.function(`(method, locale, options, start, end) => {
 		const fmt = new Intl.DateTimeFormat(locale, options);
 		if (method.split("/")[0] === "formatRange") return fmt.formatRange(start, end);

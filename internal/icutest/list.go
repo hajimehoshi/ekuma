@@ -6,10 +6,8 @@ package icutest
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
-	"unicode/utf16"
 
 	"github.com/hajimehoshi/ekuma"
 )
@@ -265,20 +263,7 @@ func (s *listSuite) cLists(src intervalSource) {
 	var input []string
 	for i := range 5 {
 		line := src.from(fmt.Sprintf("UChar str%d[] =", i)).lines[0]
-		_, initializer, _ := strings.Cut(line, "{")
-		values, _, _ := strings.Cut(initializer, "}")
-		var units []uint16
-		for token := range strings.SplitSeq(values, ",") {
-			n, err := strconv.ParseUint(strings.TrimSpace(token), 0, 16)
-			if err != nil {
-				s.t.Fatal(err)
-			}
-			if n == 0 {
-				break
-			}
-			units = append(units, uint16(n))
-		}
-		input = append(input, string(utf16.Decode(units)))
+		input = append(input, fixtureUChars(s.t, line))
 	}
 	for _, row := range src.table("listFmtTestEntries[] =") {
 		if strings.HasPrefix(row.text, "/*") || strings.HasPrefix(row.text, "{ NULL") {

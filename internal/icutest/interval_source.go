@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf16"
 )
 
 // intervalSource is a section of a pinned range fixture with its original line numbers.
@@ -115,4 +116,22 @@ func intervalString(t *testing.T, expr string) string {
 		out.WriteString(s)
 	}
 	return out.String()
+}
+
+func fixtureUChars(t *testing.T, line string) string {
+	t.Helper()
+	_, initializer, _ := strings.Cut(line, "{")
+	values, _, _ := strings.Cut(initializer, "}")
+	var units []uint16
+	for token := range strings.SplitSeq(values, ",") {
+		n, err := strconv.ParseUint(strings.TrimSpace(token), 0, 16)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n == 0 {
+			break
+		}
+		units = append(units, uint16(n))
+	}
+	return string(utf16.Decode(units))
 }

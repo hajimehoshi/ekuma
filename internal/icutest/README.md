@@ -12,6 +12,9 @@ go test -count=1 -v -run '^TestICU$' .
 # Unicode casing and ICU casing regressions
 go test -count=1 -v -run '^TestICU$/^(UnicodeData\.txt|SpecialCasing\.txt|casing\.txt)$' .
 
+# Single-date pattern selection
+go test -count=1 -v -run '^TestICU$/^(dtptngts\.cpp|udatpg_test\.c|DateTimeGeneratorTest\.java)$' .
+
 # List formatting
 go test -count=1 -v -run '^TestICU$/^(listformattertest\.cpp|ulistfmttest\.c|ListFormatterTest\.java)$' .
 
@@ -38,6 +41,15 @@ the test. [Known results](testdata/icu-failures.txt)
 | `localeDisplayName.txt` | Standard and dialect display names for locale identifiers. |
 | `misc/plurals.txt`, ICU4J `format/plurals.txt`, `misc/pluralRanges.txt` | Cardinal, ordinal and range categories. The adapter preserves visible fraction digits and uses ICU's cardinal rules to interpret localized phrase samples. |
 | `calendar.txt`, `caltestdata.h`, `format.txt` | Calendar conversion and arithmetic, leap months, Gregorian/lunar mappings, and localized date strings and parts. |
+
+## Single-date pattern fixtures
+
+`dtptngts.cpp`, `udatpg_test.c`, and `DateTimeGeneratorTest.java` cover
+field widths, hour cycles, fractional seconds, eras, and day periods.
+When ICU supplies formatted text, the adapter checks the exact string and
+the part types and values it identifies. When ICU supplies a pattern, the
+adapter checks field order, literals, and widths through `formatToParts`
+and `resolvedOptions`. [Known results](testdata/icu-failures.txt)
 
 ## Date interval fixtures
 

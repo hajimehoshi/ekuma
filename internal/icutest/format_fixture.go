@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -41,6 +42,15 @@ func newFormatFixture(t *testing.T, path string) *formatFixture {
 		}
 	})
 	return f
+}
+
+func (f *formatFixture) trackOperations(failures map[string]map[int]string) {
+	prefix := filepath.Base(f.path) + "/"
+	for key, entries := range failures {
+		if op, ok := strings.CutPrefix(key, prefix); ok {
+			f.track(op, entries)
+		}
+	}
 }
 
 func (f *formatFixture) track(op string, entries map[int]string) {
@@ -81,6 +91,9 @@ func (f *formatFixture) check(line int, op string, fn ekuma.Value, want string, 
 	}
 	known, listed := f.failures[op][line]
 	delete(f.failures[op], line)
+	if known == "web-spaces" {
+		known = strings.ReplaceAll(want, "\u202f", " ")
+	}
 	actual := got.String()
 	switch {
 	case listed && actual == want:
