@@ -355,8 +355,12 @@ func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object
 			vm.CreateDataPropertyOrThrow(o, PropKey{key: vm.Key(KeySet)}, Value{o: e.setter})
 			value = Value{o: o}
 		}
-		nv := vm.CallValue(d.decorator, d.receiver, value, ctx)
-		state.finished = true
+		nv := func() Value {
+			defer func() {
+				state.finished = true
+			}()
+			return vm.CallValue(d.decorator, d.receiver, value, ctx)
+		}()
 		switch e.kind {
 		case bytecode.ElemField:
 			if nv.IsCallable() {
@@ -407,8 +411,12 @@ func (vm *VM) applyDecoratorsToClassDefinition(st *classDecoration, classDef Val
 	for _, d := range slices.Backward(st.classDecorators) {
 		state := &decorationState{}
 		ctx := vm.createDecoratorContextObject(0, st.name, &st.classInitializers, state, st.metadata, false, true)
-		nd := vm.CallValue(d.decorator, d.receiver, classDef, ctx)
-		state.finished = true
+		nd := func() Value {
+			defer func() {
+				state.finished = true
+			}()
+			return vm.CallValue(d.decorator, d.receiver, classDef, ctx)
+		}()
 		if nd.IsCallable() {
 			classDef = nd
 		} else if !nd.IsUndefined() {

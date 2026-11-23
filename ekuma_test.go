@@ -3539,3 +3539,37 @@ func TestBigIntShiftMinInt64(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestDecoratorAddInitializerAfterThrow(t *testing.T) {
+	var vm ekuma.VM
+	got := run(t, &vm, `
+		let savedClass, classErr = "";
+		try {
+			@((v, ctx) => { savedClass = ctx.addInitializer; throw 1; })
+			class E {}
+		} catch {}
+		try {
+			savedClass(() => {});
+		} catch (e) {
+			classErr = e.name;
+		}
+
+		let savedElem, elemErr = "";
+		try {
+			class F {
+				@((v, ctx) => { savedElem = ctx.addInitializer; throw 1; })
+				m() {}
+			}
+		} catch {}
+		try {
+			savedElem(() => {});
+		} catch (e) {
+			elemErr = e.name;
+		}
+
+		[classErr, elemErr].join(",");
+	`)
+	if want := "TypeError,TypeError"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
