@@ -26,14 +26,16 @@ func initReflect(vm *engine.VM) {
 		return listFromArrayLike(vm, v)
 	}
 
-	method(vm, r, "apply", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	// Reflect.apply and Reflect.construct show no frame, as Function.prototype.call and apply.
+	apply := method(vm, r, "apply", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		f := arg(args, 0)
 		if !f.IsCallable() {
 			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.apply requires a function as the target")
 		}
 		return vm.Call(f.Object(), arg(args, 1), argumentList(vm, arg(args, 2), "apply")...)
 	})
-	method(vm, r, "construct", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+	vm.SetFrameless(apply)
+	construct := method(vm, r, "construct", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		f := arg(args, 0)
 		if !f.IsObject() || !vm.IsConstructor(f.Object()) {
 			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.construct requires a constructor as the target")
@@ -48,6 +50,7 @@ func initReflect(vm *engine.VM) {
 		list := argumentList(vm, arg(args, 1), "construct")
 		return engine.ObjectValue(vm.Construct(f.Object(), list, nt.Object()))
 	})
+	vm.SetFrameless(construct)
 	method(vm, r, "defineProperty", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := target(vm, arg(args, 0), "defineProperty")
 		k := vm.ToPropertyKey(arg(args, 1))

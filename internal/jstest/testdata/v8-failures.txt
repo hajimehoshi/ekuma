@@ -910,11 +910,6 @@ test/mozilla/data/js1_5/decompilation/regress-460870.js
 test/mozilla/data/js1_5/extensions/regress-363258.js
 test/mozilla/data/js1_5/extensions/regress-371636.js
 
-# Ekuma returns null for the legacy Function.caller property when the call
-# goes through Function.prototype.call or apply. These tests read caller.p.
-test/mozilla/data/js1_5/Function/regress-222029-001.js
-test/mozilla/data/js1_5/Function/regress-222029-002.js
-
 # The pinned Mozilla runner counts FAILED! output as a pass for -n tests.
 # These tests print FAILED! when valid JavaScript completes normally.
 # SKIP: expects a TypeError from new RegExp(regexp, flags) with valid flags

@@ -1469,6 +1469,12 @@ func (vm *VM) SetExtremum(f *Object, e Extremum) {
 	f.fn.info.extremum = e
 }
 
+// SetFrameless makes calls of the native function f show no frame: stack traces leave them out,
+// and the caller of a function that f calls is the one that called f.
+func (vm *VM) SetFrameless(f *Object) {
+	f.fn.info.frameless = true
+}
+
 // MethodKernel0, MethodKernel1 and MethodKernel2 compute a function for its this value and no,
 // one or two arguments. They neither throw nor run code, and report false when the function has
 // to be called instead.

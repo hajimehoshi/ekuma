@@ -703,6 +703,9 @@ func initFunction(vm *engine.VM) {
 		return vm.Call(this.Object(), arg(args, 0), args[min(1, len(args)):]...)
 	})
 	vm.SetIntrinsic(engine.IntrinsicFunctionPrototypeCall, call)
+	// The interpreter calls the targets of call and apply directly where it can, so every call
+	// of them is invisible to stack traces and to the caller of the functions they call.
+	vm.SetFrameless(call)
 	apply := method(vm, proto, "apply", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
 			vm.ThrowTypeError(vm.CurrentRealm(), "Function.prototype.apply called on a value that is not a function")
@@ -710,6 +713,7 @@ func initFunction(vm *engine.VM) {
 		return vm.Call(this.Object(), arg(args, 0), listFromArrayLike(vm, arg(args, 1))...)
 	})
 	vm.SetIntrinsic(engine.IntrinsicFunctionPrototypeApply, apply)
+	vm.SetFrameless(apply)
 	method(vm, proto, "bind", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
 			vm.ThrowTypeError(vm.CurrentRealm(), "bind must be called on a function")

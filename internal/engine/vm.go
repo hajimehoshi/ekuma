@@ -78,6 +78,9 @@ type nativeInfo struct {
 	// for two numbers.
 	extremum Extremum
 
+	// frameless says that calls of the function show no frame, as [VM.SetFrameless] describes.
+	frameless bool
+
 	// prototype is the intrinsic of realm that the property prototype of the function holds,
 	// when fixedPrototype is set. The property can then be neither changed nor deleted.
 	prototype      Intrinsic
@@ -133,6 +136,11 @@ func (f *function) nativeName() wtf8.String {
 		return ""
 	}
 	return f.info.name
+}
+
+// frameless reports whether f, which may be nil, is a native function whose calls show no frame.
+func (f *function) frameless() bool {
+	return f != nil && f.info != nil && f.info.frameless
 }
 
 // iteratorStep returns the step function of the next method f of a built-in iterator in realm r, or nil.
@@ -389,7 +397,8 @@ type throwSignal struct{}
 
 var errThrow = &throwSignal{}
 
-// nativeCall is a running call of a native function, which stack traces show.
+// nativeCall is a running call of a native function, which stack traces show unless the function
+// is frameless.
 type nativeCall struct {
 	f       *Object
 	context ExecutionContext
@@ -965,7 +974,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 		// A native function called from the frame i runs inside it.
 		for ; j >= 0 && vm.natives[j].frames > i && len(d.calls) < maxStackFrames; j-- {
 			c := &vm.natives[j]
-			if c.f.class == classProxy {
+			if c.f.class == classProxy || c.f.fn.frameless() {
 				// Calling a proxy calls its target or its trap, which the trace shows instead.
 				continue
 			}

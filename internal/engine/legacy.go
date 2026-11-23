@@ -50,8 +50,9 @@ func (vm *VM) callArguments(i int) *Object {
 }
 
 // callerOf returns the function that made the call of frames[i], or null when the call came
-// from a native function or from script code, or when the caller is strict, a generator or an
-// async function. After a proper tail call, the caller is that of the function that made it.
+// from a native function that shows a frame or from script code, or when the caller is strict, a
+// generator or an async function. After a proper tail call, the caller is that of the function
+// that made it.
 func (vm *VM) callerOf(i int) Value {
 	// Eval code runs on behalf of the code that calls eval.
 	j := i - 1
@@ -61,9 +62,10 @@ func (vm *VM) callerOf(i int) Value {
 	if j < 0 {
 		return Null
 	}
-	// A native function called by the frame j or an eval frame above it made the call.
+	// A native function called by the frame j or an eval frame above it made the call, unless
+	// it shows no frame.
 	for k := len(vm.natives) - 1; k >= 0 && vm.natives[k].frames > j; k-- {
-		if vm.natives[k].frames <= i {
+		if c := &vm.natives[k]; c.frames <= i && !c.f.fn.frameless() {
 			return Null
 		}
 	}
