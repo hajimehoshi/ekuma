@@ -270,44 +270,59 @@ func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
 	}
 }
 
+// ensureResolvingFunctions materializes the deferred functions of an intrinsic capability.
+func (vm *VM) ensureResolvingFunctions(c *PromiseCapability) {
+	if c.resolve == nil {
+		vm.InRealm(c.promise.CreationRealm(), func() { vm.createResolvingFunctions(c) })
+	}
+}
+
 // CapabilityResolve returns the [[Resolve]] function of c.
 func (vm *VM) CapabilityResolve(c *PromiseCapability) Value {
-	if c.resolve == nil {
-		vm.createResolvingFunctions(c)
-	}
+	vm.ensureResolvingFunctions(c)
 	return Value{o: c.resolve}
 }
 
 // CapabilityReject returns the [[Reject]] function of c.
 func (vm *VM) CapabilityReject(c *PromiseCapability) Value {
-	if c.reject == nil {
-		vm.createResolvingFunctions(c)
-	}
+	vm.ensureResolvingFunctions(c)
 	return Value{o: c.reject}
+}
+
+// canSettleDirectly reports whether the intrinsic resolving functions run in the current realm.
+func (c *PromiseCapability) canSettleDirectly(vm *VM) bool {
+	if !c.intrinsic || !vm.trackJobRealms {
+		return c.intrinsic
+	}
+	if c.resolve != nil {
+		// A thenable job creates its own resolving functions in the job's realm.
+		return c.resolve.fn.info.realm == vm.curRealm
+	}
+	return c.promise.shape.realm == vm.curRealm
 }
 
 // ResolveCapability calls the [[Resolve]] function of c with v.
 func (vm *VM) ResolveCapability(c *PromiseCapability, v Value) {
-	if c.intrinsic {
+	if c.canSettleDirectly(vm) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
 			vm.resolvePromise(c.promise, v)
 		}
 		return
 	}
-	vm.Call(c.resolve, Undefined, v)
+	vm.Call(vm.CapabilityResolve(c).o, Undefined, v)
 }
 
 // RejectCapability calls the [[Reject]] function of c with v.
 func (vm *VM) RejectCapability(c *PromiseCapability, v Value) {
-	if c.intrinsic {
+	if c.canSettleDirectly(vm) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
 			vm.rejectPromise(c.promise, v)
 		}
 		return
 	}
-	vm.Call(c.reject, Undefined, v)
+	vm.Call(vm.CapabilityReject(c).o, Undefined, v)
 }
 
 // IfAbruptRejectPromise implements IfAbruptRejectPromise for what f does: when f throws,
