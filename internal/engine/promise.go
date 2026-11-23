@@ -715,8 +715,7 @@ func (vm *VM) QueueMicrotask(callback Value) {
 	})
 }
 
-// jobRealm returns the realm entered for a job. A missing or revoked handler
-// falls back to the other reaction handler and then to the enqueueing realm.
+// jobRealm returns the realm entered for a job.
 func (vm *VM) jobRealm(j *job) *realm {
 	primary, secondary := j.reaction.onFulfilled, j.reaction.onRejected
 	switch {
@@ -727,12 +726,14 @@ func (vm *VM) jobRealm(j *job) *realm {
 	case j.rejected:
 		primary, secondary = secondary, primary
 	}
-	for _, h := range [2]Value{primary, secondary} {
-		if h.IsCallable() {
-			if r := vm.functionRealmOrNil(h.o); r != nil {
-				return r
-			}
+	if !primary.IsCallable() {
+		primary = secondary
+	}
+	if primary.IsCallable() {
+		if r := vm.functionRealmOrNil(primary.o); r != nil {
+			return r
 		}
+		// A revoked handler gets its TypeError from the enqueueing realm.
 	}
 	return vm.curRealm
 }
