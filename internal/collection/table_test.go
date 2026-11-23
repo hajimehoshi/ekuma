@@ -226,7 +226,7 @@ func TestFindAfterDeletes(t *testing.T) {
 		tab.Set(key(i), engine.Number(float64(i)))
 	}
 	check("after growth", &tab, 1000)
-	check("clone", tab.Clone(), 1000)
+	check("clone", tab.Clone(nil), 1000)
 }
 
 // TestGrowthByUnhashedKeys tests that number keys are found and missed when the storage of the
@@ -433,7 +433,7 @@ func TestDeletedUndefinedKey(t *testing.T) {
 		if tab.Has(engine.Undefined) {
 			t.Errorf("filler %d: deleted undefined key is still present", filler)
 		}
-		clone := tab.Clone()
+		clone := tab.Clone(nil)
 		if clone.Has(engine.Undefined) {
 			t.Errorf("filler %d: clone contains deleted undefined key", filler)
 		}

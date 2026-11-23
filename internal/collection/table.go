@@ -722,10 +722,10 @@ func (t *Table) Clear() {
 	}
 }
 
-// Clone returns a new table with the same entries.
-func (t *Table) Clone() *Table {
+// Clone returns a new table with the same entries. poll is as for [Table.CopyFrom].
+func (t *Table) Clone(poll func()) *Table {
 	c := &Table{}
-	c.CopyFrom(t, nil)
+	c.CopyFrom(t, poll)
 	return c
 }
 

@@ -2263,6 +2263,12 @@ func TestCancelBuiltins(t *testing.T) {
 			setup: `var o = {}; for (let i = 0; i < 1 << 20; i++) o["k" + i] = i;`,
 			src:   `Object.assign({}, o)`,
 		},
+		{
+			// The method looks the elements up in the table of its Set argument without calls.
+			name:  "Set method with a Set argument",
+			setup: `var s = new Set(); for (let i = 0; i < 1 << 21; i++) s.add(i);`,
+			src:   `s.isSubsetOf(s)`,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var vm ekuma.VM

@@ -375,6 +375,10 @@ type setRecord struct {
 	// table is the [[SetData]] of obj when obj is a Set and has is %Set.prototype.has%,
 	// so that a lookup in table gives the result of calling has.
 	table *collection.Table
+
+	// pace counts the lookups in table, which run no JavaScript, between checks for an
+	// interruption.
+	pace engine.Pacer
 }
 
 // setLikeKeys are the property keys that the Set methods read from their argument.
@@ -423,6 +427,7 @@ func getSetRecord(cx *engine.ExecutionContext, v engine.Value, k *setLikeKeys) s
 // otherHas returns ToBoolean(Call(r.[[Has]], r.[[SetObject]], « e »)).
 func (r *setRecord) otherHas(cx *engine.ExecutionContext, e engine.Value) bool {
 	if r.table != nil {
+		r.pace.Step(cx)
 		return r.table.Has(e)
 	}
 	return engine.ToBoolean(cx.Call(r.has, engine.ObjectValue(r.obj), e))
@@ -575,7 +580,7 @@ func initSet(cx *engine.ExecutionContext) {
 		t := thisSet(cx, this, "union")
 		r := getSetRecord(cx, arg(args, 0), keys)
 		it, next := r.keysIterator(cx)
-		result := t.Clone()
+		result := t.Clone(cx.Poll)
 		cx.IterateRecord(it, next, func(e engine.Value) bool {
 			if !result.Has(e) {
 				result.Append(e, e)
@@ -612,7 +617,7 @@ func initSet(cx *engine.ExecutionContext) {
 	method(cx, proto, "difference", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		t := thisSet(cx, this, "difference")
 		r := getSetRecord(cx, arg(args, 0), keys)
-		result := t.Clone()
+		result := t.Clone(cx.Poll)
 		if float64(t.Size()) <= r.size {
 			// The result is not visible to JavaScript yet, so its keys can be taken in advance.
 			keys := make([]engine.Value, 0, result.Size())
@@ -641,7 +646,7 @@ func initSet(cx *engine.ExecutionContext) {
 		t := thisSet(cx, this, "symmetricDifference")
 		r := getSetRecord(cx, arg(args, 0), keys)
 		it, next := r.keysIterator(cx)
-		result := t.Clone()
+		result := t.Clone(cx.Poll)
 		cx.IterateRecord(it, next, func(e engine.Value) bool {
 			inResult := result.Has(e)
 			if t.Has(e) {
