@@ -48,7 +48,8 @@ boundaries, ordinal months, `monthCode`, `inLeapYear`, and era transitions.
 ICU4C 79.1 supplies the reference year lengths. Ekuma uses astronomical
 projections for Chinese years 2103–8485 and Gregorian eras for Japanese dates
 through 1872. Exclusions include ICU field rolls, lenient field setting, and
-observational Islamic calendars. All 4,492 checks pass. [Reference year lengths](testdata/calendar-year-lengths.txt)
+observational Islamic calendars. ICU4J’s Persian mapping table adds 43 date
+pairs checked in both directions, including the last day of leap year 1375. [Reference year lengths](testdata/calendar-year-lengths.txt)
 
 ## Best-fit locale matching
 
@@ -202,7 +203,7 @@ case folding, Perl-specific syntax and captures retained across repetitions.
 ## Upstream suite inventory
 
 The inventory maps ICU4C and ICU4J suite registrations and fixtures at both
-pins to Ekuma, Test262, and V8 cases. The next gap is Persian New Year
-conversion in both directions. Each runnable ICU subtest lists its source selections, expected
-differences, and exclusions. The path counts can be verified from the two Git trees.
-[Prioritized gaps and accounting](upstream-inventory.md) · [Upstream paths and test groups](upstream-paths.tsv)
+pins to Ekuma, Test262, and V8 cases. Each runnable ICU subtest lists its
+source selections, expected differences, and exclusions. The path counts
+can be verified from the two Git trees.
+[Inventory scope and accounting](upstream-inventory.md) · [Upstream paths and test groups](upstream-paths.tsv)

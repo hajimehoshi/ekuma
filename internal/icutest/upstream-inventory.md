@@ -1,12 +1,8 @@
 # Upstream ICU suite inventory
 
-At Ekuma `033441f`, the full two-pin `TestICU` run passed all 117 leaf subtests with
-289 expected differences and zero unexpected failures. Issue #9 stays open until
-each applicable gap has a maintained test or a linked issue. [Tracker](https://github.com/hajimehoshi/ekuma/issues/9)
-
-## Proposed follow-ups in priority order
-
-1. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
+All follow-ups identified by the pinned inventory have maintained checks.
+The full two-pin `TestICU` run passed all 129 leaf subtests with 289 expected
+differences and zero unexpected failures. [Tracker](https://github.com/hajimehoshi/ekuma/issues/9)
 
 ## Scope and verification
 
@@ -35,5 +31,3 @@ Ekuma repository root:
 ```sh
 go run internal/icutest/verify_inventory.go "$EKUMA_ICU" "$EKUMA_ICU_CLDR"
 ```
-
-[persian]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java#L24

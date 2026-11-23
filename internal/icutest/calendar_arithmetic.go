@@ -35,6 +35,7 @@ func runCalendarArithmetic(t *testing.T, root string, failures map[string]map[in
 		})
 	}
 	run(calendarJava+"IndianTest.java", checkIndianYearEdge)
+	run(calendarJava+"PersianTest.java", checkPersianMapping)
 	run(calendarJava+"CalendarRegressionTest.java", checkGregorianYearAdd)
 	run("icu4c/source/test/intltest/incaltst.cpp", checkJapaneseEraFields)
 	run("icu4c/source/test/cintltst/ccaltst.c", checkEraYearAdd)
@@ -203,4 +204,18 @@ func checkGregorianYearAdd(f *formatFixture, src intervalSource) {
 	fn := f.function(`(bag, timeZone) => Temporal.ZonedDateTime.from({...bag, timeZone}, {overflow: "reject"})
 		.add({years: 1}).epochMilliseconds.toString()`)
 	f.check(op.line, "TestT8057 ZonedDateTime.add({years: 1})", fn, millis, bag, "America/Los_Angeles")
+}
+
+func checkPersianMapping(f *formatFixture, src intervalSource) {
+	convert := f.function(`(fields, target) => {
+		const d = Temporal.PlainDate.from(fields, {overflow: "reject"}).withCalendar(target);
+		return [d.year, d.monthCode, d.day].join(" ");
+	}`)
+	for _, row := range src.from("void TestMapping()").table("final int[] DATA =") {
+		c := row.columns(f.t, 6)
+		iso := calendarDateBag("iso8601", integer(c[0]), monthCode(integer(c[1]), 0), integer(c[2]))
+		persian := calendarDateBag("persian", integer(c[3]), monthCode(integer(c[4]), 0), integer(c[5]))
+		f.check(row.line, "ISO to Persian", convert, dateResult(persian), iso, "persian")
+		f.check(row.line, "Persian to ISO", convert, dateResult(iso), persian, "iso8601")
+	}
 }

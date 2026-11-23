@@ -1155,7 +1155,7 @@
 1	1	suite source	calendar	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/IslamicTest.java	IslamicTest [TestRoll, TestCivilCases]	-	79.1	TestICU/calendar.txt and TestICU/calendar-arithmetic/TemporalMonthCodeTest.java
 1	1	suite source	calendar	overlap	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/JapaneseTest.java	JapaneseTest [TestCoverage, Test3860]	-	79.1	TestICU/calendar-arithmetic/incaltst.cpp
 1	1	suite source	calendar	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/OrdinalMonthTest.java	OrdinalMonthTest [TestMostCalendarsSet, TestChineseCalendarSet]	calendar-arithmetic/OrdinalMonthTest.java	79.1	-
-1	1	suite source	calendar	proposed	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java	PersianTest [TestMapping, TestCoverage12424]	-	79.1	Proposal 1
+1	1	suite source	calendar	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java	PersianTest [TestMapping, TestCoverage12424]	calendar-arithmetic/PersianTest.java	79.1	-
 1	1	suite source	calendar	adapter	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/TemporalMonthCodeTest.java	TemporalMonthCodeTest [TestChineseCalendarGetTemporalMonthCode, TestDangiCalendarGetTemporalMonthCode]	calendar-arithmetic/TemporalMonthCodeTest.java	79.1	-
 1	1	source	calendar	related source	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/TestCase.java	-	-	79.1	TestICU/calendar.txt and TestICU/calendar-arithmetic/TemporalMonthCodeTest.java
 1	1	suite source	codec	outside	icu4j/main/core/src/test/java/com/ibm/icu/dev/test/charsetdet/TestCharsetDetector.java	TestCharsetDetector [TestConstruction, TestInputFilter]	-	79.1	-

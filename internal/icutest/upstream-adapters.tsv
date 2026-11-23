@@ -72,15 +72,16 @@ locale-info/icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/util/ULoc
 calendar-arithmetic/OrdinalMonthTest.java	checkOrdinalMonths (calendar_months.go:102)	366 cases executed	0	1 TestAdd compares two ICU add fields without an expected date | 1 TestRoll wraps one field without carrying | 18 calendar-wide field limits have no Temporal property | 8 observational Islamic calendar has no matching Temporal calendar
 calendar-arithmetic/InTemporalLeapYearTest.java	checkCalendarLeapYears (calendar_leap.go:17)	3748 cases executed	0	2 observational Islamic calendar has no matching Temporal calendar
 calendar-arithmetic/TemporalMonthCodeTest.java	checkTemporalMonthCodes (calendar_months.go:165)	242 cases executed	0	0 reported
-calendar-arithmetic/HebrewTest.java	checkHebrewAdd (calendar_arithmetic.go:86)	25 cases executed	0	9 lenient set(MONTH) balances the raw field | 17 roll wraps within the current field range
-calendar-arithmetic/DangiTest.java	checkDangiAdd (calendar_arithmetic.go:110)	10 cases executed	0	16 roll wraps within the current field range
-calendar-arithmetic/CopticTest.java	checkThirteenthMonthAdd (calendar_arithmetic.go:122), checkAlexandrianEra (calendar_eras.go:74)	11 cases executed	0	0 reported
-calendar-arithmetic/EthiopicTest.java	checkThirteenthMonthAdd (calendar_arithmetic.go:122), checkAlexandrianEra (calendar_eras.go:74)	11 cases executed	0	0 reported
-calendar-arithmetic/IndianTest.java	checkIndianYearEdge (calendar_arithmetic.go:138)	3 cases executed	0	0 reported
-calendar-arithmetic/CalendarRegressionTest.java	checkGregorianYearAdd (calendar_arithmetic.go:191)	1 cases executed	0	0 reported
+calendar-arithmetic/HebrewTest.java	checkHebrewAdd (calendar_arithmetic.go:87)	25 cases executed	0	9 lenient set(MONTH) balances the raw field | 17 roll wraps within the current field range
+calendar-arithmetic/DangiTest.java	checkDangiAdd (calendar_arithmetic.go:111)	10 cases executed	0	16 roll wraps within the current field range
+calendar-arithmetic/CopticTest.java	checkThirteenthMonthAdd (calendar_arithmetic.go:123), checkAlexandrianEra (calendar_eras.go:74)	11 cases executed	0	0 reported
+calendar-arithmetic/EthiopicTest.java	checkThirteenthMonthAdd (calendar_arithmetic.go:123), checkAlexandrianEra (calendar_eras.go:74)	11 cases executed	0	0 reported
+calendar-arithmetic/IndianTest.java	checkIndianYearEdge (calendar_arithmetic.go:139)	3 cases executed	0	0 reported
+calendar-arithmetic/PersianTest.java	checkPersianMapping (calendar_arithmetic.go:209)	86 cases executed	0	0 reported
+calendar-arithmetic/CalendarRegressionTest.java	checkGregorianYearAdd (calendar_arithmetic.go:192)	1 cases executed	0	0 reported
 calendar-arithmetic/incaltst.cpp	checkJapaneseEraFields (calendar_eras.go:126)	22 cases executed	0	0 reported
 calendar-arithmetic/ccaltst.c	checkEraYearAdd (calendar_eras.go:151)	13 cases executed	0	1 ICU's Chinese ERA is a sexagenary cycle | 1 ccaltst.c skips the Japanese row for ICU-23108 | 1 observational Islamic calendar has no matching Temporal calendar
-calendar-arithmetic/caltest.cpp	checkChineseSpecialYears (calendar_arithmetic.go:171)	16 cases executed	0	0 reported
+calendar-arithmetic/caltest.cpp	checkChineseSpecialYears (calendar_arithmetic.go:172)	16 cases executed	0	0 reported
 calendar-arithmetic/era-boundaries	checkCalendarEras (calendar_eras.go:32)	24 cases executed	0	0 reported
 TimeZoneAliases.txt	aliases (timezone.go:120)	146 rows executed / 584 cases executed	0	0 reported
 ccaltst.c	ianaIDs (timezone.go:129)	20 cases executed	0	1 null C pointer
