@@ -115,7 +115,8 @@ methods, and additional `Temporal` calendars in every VM.
 import _ "github.com/hajimehoshi/ekuma/intl"
 ```
 
-The import adds about 8 MiB to a hello-world binary on macOS arm64 and with `GOOS=js`.
+With Go 1.27.4 and default build flags, the import increases the hello-world binary
+from 9.1 to 18.0 MiB on macOS arm64 and from 12.0 to 21.2 MiB on `js/wasm`.
 `VM.SetLocale` overrides the host default locale. iOS builds with `intl` require `CGO_ENABLED=1`.
 See the [intl package documentation](https://pkg.go.dev/github.com/hajimehoshi/ekuma/intl)
 for host locale selection and [License](#license) for distribution notices.
