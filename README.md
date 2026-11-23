@@ -217,7 +217,8 @@ external suites. Add `-tags=ekumavalidate` to check bytecode generation and exec
 
 `go test .` runs the external suites when their checkouts are available. Set the environment
 variables below or place the checkouts at the listed paths under the user cache directory.
-The [CI workflow](.github/workflows/test.yml) lists the sparse checkout paths.
+The [CI workflow](.github/workflows/test.yml) checks out Test262 in full, lists the V8 paths,
+and selects ICU files from the [upstream path inventory](internal/icutest/upstream-paths.tsv).
 
 | Suite | Environment variable | Default cache path | CI revision | Expectations |
 |---|---|---|---|---|
