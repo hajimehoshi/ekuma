@@ -556,7 +556,7 @@ func (vm *VM) Running() bool {
 // called while [VM.Running] reports true.
 func (vm *VM) RunJobs() error {
 	// enter drains the pending jobs after this empty callback returns.
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		return Undefined
 	})
 	return err

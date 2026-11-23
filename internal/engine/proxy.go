@@ -181,7 +181,7 @@ func (vm *VM) functionRealmOrNil(f *Object) *Realm {
 			}
 			f = st.target
 		case f.fn != nil && f.fn.code != nil:
-			return f.fn.code.realm
+			return f.fn.code.context.realm
 		case f.fn != nil && f.fn.info != nil:
 			return f.fn.info.realm
 		default:

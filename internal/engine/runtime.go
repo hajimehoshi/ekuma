@@ -63,7 +63,7 @@ func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
-	vm.ThrowTypeError(fp.realm, name+" is not a function")
+	fp.context.ThrowTypeError(name + " is not a function")
 }
 
 // throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
@@ -74,7 +74,7 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
-	vm.ThrowTypeError(fp.realm, name+" is not a constructor")
+	fp.context.ThrowTypeError(name + " is not a constructor")
 }
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
@@ -1135,7 +1135,7 @@ func (vm *VM) IsConstructor(f *Object) bool {
 
 // closurePrototype returns the prototype of the closures of p, which is a generator or async function.
 func (p *funcProto) closurePrototype() *Object {
-	realm := p.realm
+	realm := p.context.realm
 	switch {
 	case p.isGenerator && p.isAsync:
 		return realm.Intrinsic(IntrinsicAsyncGeneratorFunctionPrototype)
@@ -1301,7 +1301,7 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		vm.ThrowTypeError(c.realm, "class constructor "+wtf8.ToValidUTF8(c.name)+" cannot be invoked without 'new'")
+		c.context.ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return vm.callCoroutine(f, this, args)
@@ -1345,9 +1345,9 @@ func (vm *VM) callBound(f *Object, args []Value) Value {
 // callNativeInRealm calls the native function f, whose realm is not the current one, in its realm.
 // newTarget is nil for a call and the new.target of a construction otherwise.
 func (vm *VM) callNativeInRealm(f *Object, this Value, args []Value, newTarget *Object) Value {
-	saved := vm.curRealm
+	saved := vm.executionContext()
 	vm.switchRealm(f.fn.info.realm)
-	defer vm.switchRealm(saved)
+	defer saved.activate()
 	return vm.callNative(f, this, args, newTarget)
 }
 
@@ -1382,7 +1382,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	this := tdz
 	if !fn.derived {
 		proto := vm.GetPrototypeFromConstructor(newTarget, IntrinsicObjectPrototype)
-		this = Value{o: newInstance(vm.shapeForRealm(proto, fn.code.realm))}
+		this = Value{o: newInstance(vm.shapeForRealm(proto, fn.code.context.realm))}
 	}
 	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {

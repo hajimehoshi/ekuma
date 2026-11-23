@@ -391,7 +391,8 @@ var errThrow = &throwSignal{}
 
 // nativeCall is a running call of a native function, which stack traces show.
 type nativeCall struct {
-	f *Object
+	f       *Object
+	context ExecutionContext
 
 	// receiver supplies the type name of the receiver in stack traces.
 	receiver Value
@@ -414,6 +415,7 @@ func (vm *VM) pushNative(f *Object, this Value, newTarget *Object) {
 	vm.natives = vm.natives[:n+1]
 	c := &vm.natives[n]
 	c.f, c.receiver, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
+	c.context = vm.executionContext()
 }
 
 // growNatives makes room for one more call of a native function, or throws a RangeError when
@@ -441,6 +443,7 @@ func (vm *VM) callNative(f *Object, this Value, args []Value, newTarget *Object)
 	vm.natives = vm.natives[:n+1]
 	c := &vm.natives[n]
 	c.f, c.receiver, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
+	c.context = vm.executionContext()
 	r := f.fn.native(vm, this, args)
 	vm.popNative()
 	return r

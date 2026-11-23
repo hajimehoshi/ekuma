@@ -17,7 +17,7 @@ import (
 //
 // A Go panic restores each boundary it escapes. The outermost boundary discards pending
 // jobs and rejects unfinished module evaluations, including after a recovered inner panic.
-func (vm *VM) enter(f func() Value) (result Value, err error) {
+func (vm *VM) enter(f func(ExecutionContext) Value) (result Value, err error) {
 	if vm.entered > 0 {
 		return vm.enterBoundary(f)
 	}
@@ -37,13 +37,13 @@ func (vm *VM) enter(f func() Value) (result Value, err error) {
 }
 
 // enterBoundary implements [VM.enter].
-func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
+func (vm *VM) enterBoundary(f func(ExecutionContext) Value) (result Value, err error) {
 	// A host callback that recovered an interruption runs no more JavaScript.
 	vm.ResumeInterruption()
 	frames, natives, sp, depth := len(vm.frames), len(vm.natives), vm.sp, vm.depth
-	curRealm, callerRealm := vm.curRealm, vm.callerRealm
+	cx, callerRealm := vm.executionContext(), vm.callerRealm
 	thrown, site := vm.thrown, vm.thrownAt
-	context := vm.jobContext
+	jobContext := vm.jobContext
 	outermost := vm.entered == 0
 	vm.entered++
 	defer func() {
@@ -68,14 +68,9 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 		if r := recover(); r != nil {
 			sig, interrupted := r.(*interruptSignal)
 			internal, failed := r.(*xerrors.InternalError)
-			if interrupted && !outermost {
-				panic(r)
-			}
-			vm.jobContext = context
+			vm.jobContext = jobContext
 			// Only activations belonging to this boundary have lost their Go callers.
-			if vm.curRealm != curRealm {
-				vm.switchRealm(curRealm)
-			}
+			cx.activate()
 			for i := frames; i < len(vm.frames); i++ {
 				if g := vm.frames[i].gen; g != nil {
 					g.abort()
@@ -88,6 +83,9 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 			vm.thrown, vm.thrownAt = thrown, site
 			var cause error
 			if interrupted {
+				if !outermost {
+					panic(r)
+				}
 				result, err = Undefined, &InterruptedError{
 					Cause: sig.cause,
 				}
@@ -114,7 +112,7 @@ func (vm *VM) enterBoundary(f func() Value) (result Value, err error) {
 	}()
 	if !vm.protect(func() {
 		ok := vm.protect(func() {
-			result = f()
+			result = f(cx)
 		})
 		vm.ResumeInterruption()
 		thrown := vm.takeThrown()

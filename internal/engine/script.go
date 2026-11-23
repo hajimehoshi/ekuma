@@ -66,12 +66,12 @@ func (vm *VM) ParseScript(file string, src wtf8.String) (*Script, error) {
 // the script returned normally before the job checkpoint.
 func (vm *VM) ScriptEvaluation(s *Script) (Value, bool, error) {
 	saved := vm.curRealm
-	if r := s.code.realm; r != saved {
+	if r := s.code.context.realm; r != saved {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
 	var completed bool
-	value, err := vm.enter(func() Value {
+	value, err := vm.enter(func(ExecutionContext) Value {
 		v := vm.CallScript(s)
 		completed = true
 		return v
@@ -82,12 +82,12 @@ func (vm *VM) ScriptEvaluation(s *Script) (Value, bool, error) {
 // CallScript evaluates s from a running host function and propagates its exception.
 func (vm *VM) CallScript(s *Script) Value {
 	saved := vm.curRealm
-	if r := s.code.realm; r != saved {
+	if r := s.code.context.realm; r != saved {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
 	previous := vm.enteredRealm
-	vm.enteredRealm = s.code.realm
+	vm.enteredRealm = s.code.context.realm
 	defer func() { vm.enteredRealm = previous }()
 	return vm.Call(vm.newScriptFunction(s.code), Value{o: vm.curRealm.globalThis})
 }

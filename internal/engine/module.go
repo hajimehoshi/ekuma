@@ -312,7 +312,7 @@ func (vm *VM) LoadRequestedModules(m *Module) error {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		if e, ok := vm.loadModuleGraph(m); !ok {
 			vm.Throw(e)
 		}
@@ -329,7 +329,7 @@ func (vm *VM) Link(m *Module) error {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		vm.loadAndLink(m)
 		return Undefined
 	})
@@ -354,7 +354,7 @@ func (vm *VM) Evaluate(m *Module) (Value, error) {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
-	return vm.enter(func() Value {
+	return vm.enter(func(ExecutionContext) Value {
 		vm.loadAndLink(m)
 		return vm.evaluateModule(m)
 	})
@@ -368,7 +368,7 @@ func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
 		vm.switchRealm(r)
 		defer vm.switchRealm(saved)
 	}
-	return vm.enter(func() Value {
+	return vm.enter(func(ExecutionContext) Value {
 		vm.loadAndLink(m)
 		return Value{o: vm.moduleNamespace(m)}
 	})
@@ -378,7 +378,7 @@ func (vm *VM) GetModuleNamespace(m *Module) (Value, error) {
 // [[HostDefined]]. A src that is not JSON is reported as an [*Error] holding the JavaScript
 // SyntaxError.
 func (vm *VM) ParseJSONModule(src string, hostDefined any) (*Module, error) {
-	v, err := vm.enter(func() Value {
+	v, err := vm.enter(func(ExecutionContext) Value {
 		return vm.Call(vm.CurrentRealm().Intrinsic(IntrinsicJSONParse), Undefined, vm.StringFromGo(src))
 	})
 	if err != nil {

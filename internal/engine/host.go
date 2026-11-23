@@ -142,7 +142,7 @@ func GoString(v Value) string {
 
 // HostGet returns v[key].
 func (vm *VM) HostGet(v, key Value) (Value, error) {
-	return vm.enter(func() Value {
+	return vm.enter(func(ExecutionContext) Value {
 		val, getter := vm.getValue(v, key)
 		if getter != nil {
 			return vm.Call(getter, v)
@@ -153,7 +153,7 @@ func (vm *VM) HostGet(v, key Value) (Value, error) {
 
 // HostSet stores v[key] = val the way strict mode code does.
 func (vm *VM) HostSet(v, key, val Value) error {
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		if setter := vm.setValue(v, key, val, true); setter != nil {
 			vm.Call(setter, v, val)
 		}
@@ -164,7 +164,7 @@ func (vm *VM) HostSet(v, key, val Value) error {
 
 // HostDelete deletes v[key] the way strict mode code does.
 func (vm *VM) HostDelete(v, key Value) error {
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		return vm.deleteValue(v, key, true)
 	})
 	return err
@@ -172,20 +172,20 @@ func (vm *VM) HostDelete(v, key Value) error {
 
 // HostCall calls f with the given this value and arguments.
 func (vm *VM) HostCall(f, this Value, args []Value) (Value, error) {
-	return vm.enter(func() Value {
+	return vm.enter(func(ExecutionContext) Value {
 		return vm.CallValue(f, this, args...)
 	})
 }
 
 // HostCallMethod calls the method v[key] with v as this.
 func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
-	return vm.enter(func() Value {
+	return vm.enter(func(cx ExecutionContext) Value {
 		f, getter := vm.getValue(v, key)
 		if getter != nil {
 			f = vm.Call(getter, v)
 		}
 		if !f.IsCallable() {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(key)+" is not a function")
+			cx.ThrowTypeError(vm.DisplayString(key) + " is not a function")
 		}
 		return vm.CallValue(f, v, args...)
 	})
@@ -193,9 +193,9 @@ func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
 
 // HostConstruct implements new f(...args).
 func (vm *VM) HostConstruct(f Value, args []Value) (Value, error) {
-	return vm.enter(func() Value {
+	return vm.enter(func(cx ExecutionContext) Value {
 		if !f.IsCallable() || !vm.IsConstructor(f.o) {
-			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(f)+" is not a constructor")
+			cx.ThrowTypeError(vm.DisplayString(f) + " is not a constructor")
 		}
 		return Value{o: vm.Construct(f.o, args, f.o)}
 	})
@@ -203,7 +203,7 @@ func (vm *VM) HostConstruct(f Value, args []Value) (Value, error) {
 
 // HostResolve resolves the promise of c with v, as the [[Resolve]] function of c does.
 func (vm *VM) HostResolve(c *PromiseCapability, v Value) error {
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		vm.ResolveCapability(c, v)
 		return Undefined
 	})
@@ -212,7 +212,7 @@ func (vm *VM) HostResolve(c *PromiseCapability, v Value) error {
 
 // HostReject rejects the promise of c with v, as the [[Reject]] function of c does.
 func (vm *VM) HostReject(c *PromiseCapability, v Value) error {
-	_, err := vm.enter(func() Value {
+	_, err := vm.enter(func(ExecutionContext) Value {
 		vm.RejectCapability(c, v)
 		return Undefined
 	})
@@ -221,7 +221,7 @@ func (vm *VM) HostReject(c *PromiseCapability, v Value) error {
 
 // HostInstanceOf implements v instanceof t.
 func (vm *VM) HostInstanceOf(v, t Value) (bool, error) {
-	r, err := vm.enter(func() Value {
+	r, err := vm.enter(func(ExecutionContext) Value {
 		return Bool(vm.instanceOf(v, t, nil))
 	})
 	return ToBoolean(r), err

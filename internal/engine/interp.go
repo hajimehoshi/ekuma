@@ -185,7 +185,7 @@ func (vm *VM) pushFrame(f *Object, this Value, base, argc int, ret int32, isNew 
 	fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = fp, f, this, newTarget, nil, nil
 	fr.pc, fr.base, fr.ret, fr.isNew, fr.argc, fr.extraBase = 0, base, ret, isNew, argc, extraBase
 	n := len(vm.frames) - 1
-	fr.plainReturn = n > 0 && vm.frames[n-1].fp.realm == fp.realm
+	fr.plainReturn = n > 0 && vm.frames[n-1].fp.context.realm == fp.context.realm
 	vm.sp = base + fp.nregs + 1
 	return base
 }
@@ -334,8 +334,8 @@ func (vm *VM) runFrame(stop int) (Value, bool) {
 	}
 	vm.depth++
 	// The frames may belong to other realms than the code that started the loop.
-	saved, outer := vm.curRealm, vm.callerRealm
-	vm.callerRealm = saved
+	saved, outer := vm.executionContext(), vm.callerRealm
+	vm.callerRealm = saved.realm
 	for {
 		v, st := vm.exec(stop)
 		if validateExec {
@@ -345,9 +345,7 @@ func (vm *VM) runFrame(stop int) (Value, bool) {
 		case execReturn, execYield:
 			vm.depth--
 			vm.callerRealm = outer
-			if vm.curRealm != saved {
-				vm.switchRealm(saved)
-			}
+			saved.activate()
 			return v, true
 		case execPanic:
 			if vm.unwind(stop) {
@@ -356,9 +354,7 @@ func (vm *VM) runFrame(stop int) (Value, bool) {
 		}
 		vm.depth--
 		vm.callerRealm = outer
-		if vm.curRealm != saved {
-			vm.switchRealm(saved)
-		}
+		saved.activate()
 		return Undefined, false
 	}
 }
@@ -367,7 +363,7 @@ func (vm *VM) runFrame(stop int) (Value, bool) {
 func (vm *VM) throwReturnError(stop, n, pc int, kind ErrorKind, msg string) {
 	r := vm.callerRealm
 	if n > stop {
-		r = vm.frames[n-1].fp.realm
+		r = vm.frames[n-1].fp.context.realm
 	}
 	vm.frames[n].pc = pc
 	vm.recordThrow(vm.NewError(r, kind, msg))
@@ -406,9 +402,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 	fr := &vm.frames[len(vm.frames)-1]
 	fp := fr.fp
 	pc := fr.pc
-	if fp.realm != vm.curRealm {
-		vm.switchRealm(fp.realm)
-	}
+	fp.context.activate()
 	if validateExec {
 		vm.enterChecks()
 	}
@@ -1299,7 +1293,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			if !fp.heapRegs && f != nil && f.fn != nil {
-				if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
+				if c := f.fn.code; c != nil && c.inlineFrames && c.context.realm == vm.curRealm {
 					n := len(vm.frames)
 					argBase := vm.frames[n-1].base + first
 					end := argBase + max(argc, c.nregs+1)
@@ -1630,21 +1624,21 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			v := *vm.frames[len(vm.frames)-1].cl.fn.upvals[i.B].p
 			if v.o == tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwTDZ(fp.realm, fp.keys[i.C])
+				vm.throwTDZ(fp.context.realm, fp.keys[i.C])
 			}
 			regs[i.A] = v
 		case bytecode.OpCheckTDZ:
 			if regs[i.A].o == tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwTDZ(fp.realm, fp.keys[i.B])
+				vm.throwTDZ(fp.context.realm, fp.keys[i.B])
 			}
 		case bytecode.OpThrowConstAssign:
 			vm.frames[len(vm.frames)-1].pc = pc
-			vm.ThrowTypeError(fp.realm, "assignment to constant variable '"+wtf8.ToValidUTF8(fp.keys[i.A].str)+"'")
+			fp.context.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(fp.keys[i.A].str) + "'")
 		case bytecode.OpThrowError:
 			vm.frames[len(vm.frames)-1].pc = pc
 			// Error text is an interned constant.
-			vm.throwError(fp.realm, thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
+			vm.throwError(fp.context.realm, thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.globals[i.C]
@@ -1855,7 +1849,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				setter, ok = vm.setNamed(v, fp.keys[i.B], regs[i.C], c)
 				regs = vm.reload(regs, vm.frameBase(), fp)
 				if !ok && i.Op == bytecode.OpSetPropStrict {
-					vm.throwReadOnly(fp.realm, v, PropKey{key: fp.keys[i.B]})
+					vm.throwReadOnly(fp.context.realm, v, PropKey{key: fp.keys[i.B]})
 				}
 			}
 			if setter != nil {
@@ -1960,7 +1954,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
-				vm.ThrowTypeError(fp.realm, "cannot use 'in' operator to search for a key in a non-object")
+				fp.context.ThrowTypeError("cannot use 'in' operator to search for a key in a non-object")
 			}
 			r := vm.HasProperty(o.o, vm.QueryKey(regs[i.C]))
 			regs = vm.reload(regs, vm.frameBase(), fp)
@@ -1976,7 +1970,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			o := regs[i.B]
 			if !o.IsObject() {
-				vm.ThrowTypeError(fp.realm, "cannot use 'in' operator to search for a private field in a non-object")
+				fp.context.ThrowTypeError("cannot use 'in' operator to search for a private field in a non-object")
 			}
 			_, ok := vm.privateStorage(o.o).shape.lookup(regs[i.C].o)
 			regs[i.A] = Bool(ok)
@@ -2010,7 +2004,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			if i.C >= 0 {
 				if b := regs[i.C]; b.IsNullish() {
-					vm.ThrowTypeError(fp.realm, "cannot read properties of "+vm.DisplayString(b)+" (reading '"+vm.DisplayString(v)+"')")
+					fp.context.ThrowTypeError("cannot read properties of " + vm.DisplayString(b) + " (reading '" + vm.DisplayString(v) + "')")
 				}
 			}
 			k := vm.KeyValue(vm.ToPropertyKey(v))
@@ -2367,7 +2361,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				// registers its tests take there made the loop store the values it carries
 				// before every instruction where registers are few, as on amd64.
 				if f := regs[b+1].o; !fp.heapRegs && f != nil && f.fn != nil && !vm.interrupt.Load() {
-					if c := f.fn.code; c != nil && c.inlineFrames && c.realm == vm.curRealm {
+					if c := f.fn.code; c != nil && c.inlineFrames && c.context.realm == vm.curRealm {
 						n := len(vm.frames)
 						cur := &vm.frames[n-1]
 						argc := cur.argc
@@ -2504,13 +2498,13 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 					proto, _ = vm.getNamed(Value{o: f}, vm.Key(KeyPrototype), c)
 				}
 				if proto.o == nil || proto.o.kind < kindFirstObject {
-					proto = Value{o: f.fn.code.realm.intrinsics[IntrinsicObjectPrototype]}
+					proto = Value{o: f.fn.code.context.realm.intrinsics[IntrinsicObjectPrototype]}
 				}
 				var shape *shape
-				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.realm {
+				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.context.realm {
 					shape = c.next
 				} else {
-					shape = vm.shapeForRealm(proto.o, f.fn.code.realm)
+					shape = vm.shapeForRealm(proto.o, f.fn.code.context.realm)
 					if c.kind == cacheOwn {
 						c.holder, c.next = proto.o, shape
 					}
@@ -2569,9 +2563,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			fr := &vm.frames[n-1]
 			fp = fr.fp
-			if fp.realm != vm.curRealm {
-				vm.switchRealm(fp.realm)
-			}
+			fp.context.activate()
 			pc = fr.pc
 			if fp.heapRegs {
 				regs = fr.gen.regs
@@ -2614,9 +2606,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			}
 			fr := &vm.frames[n-1]
 			fp = fr.fp
-			if fp.realm != vm.curRealm {
-				vm.switchRealm(fp.realm)
-			}
+			fp.context.activate()
 			pc = fr.pc
 			if fp.heapRegs {
 				regs = fr.gen.regs
@@ -2649,7 +2639,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			r := regs[i.B]
 			if !r.IsObject() {
-				vm.ThrowTypeError(fp.realm, "iterator result "+vm.DisplayString(r)+" is not an object")
+				fp.context.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
 			}
 			done := ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 			regs = vm.reload(regs, vm.frameBase(), fp)
@@ -2789,12 +2779,12 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCheckThisUninit:
 			if regs[i.A].o != tdzObject {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.ThrowReferenceError(fp.realm, "super constructor may only be called once")
+				vm.ThrowReferenceError(fp.context.realm, "super constructor may only be called once")
 			}
 		case bytecode.OpRequireCoercible:
 			if regs[i.A].IsNullish() {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.ThrowTypeError(fp.realm, "cannot destructure '"+vm.DisplayString(regs[i.A])+"' as it is "+vm.DisplayString(regs[i.A]))
+				fp.context.ThrowTypeError("cannot destructure '" + vm.DisplayString(regs[i.A]) + "' as it is " + vm.DisplayString(regs[i.A]))
 			}
 
 		case bytecode.OpForIn:
@@ -2978,7 +2968,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpIterCheckResult:
 			if !regs[i.A].IsObject() {
 				vm.frames[len(vm.frames)-1].pc = pc
-				vm.throwNotIterResult(fp.realm, regs[i.A])
+				vm.throwNotIterResult(fp.context.realm, regs[i.A])
 			}
 		case bytecode.OpIterResultValue:
 			vm.frames[len(vm.frames)-1].pc = pc
@@ -3013,7 +3003,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = v
 			}
 		case bytecode.OpDisposeError:
-			vm.disposeError(fp.realm, regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
+			vm.disposeError(fp.context.realm, regs[i.A].o.ext.(*DisposeCapability), regs[i.B])
 		case bytecode.OpDisposeEnd:
 			if v, thrown := endDisposeOp(regs[i.A]); thrown {
 				regs[i.A] = Undefined
@@ -3179,9 +3169,9 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if c := fn.code; c != nil && !c.isGenerator && !c.isAsync && (!fn.classConstructor || isNew || newTarget != nil) {
 				if len(vm.frames) >= maxFrames {
 					vm.frames[len(vm.frames)-1].pc = pc
-					vm.ThrowRangeError(fp.realm, "maximum call stack size exceeded")
+					vm.ThrowRangeError(fp.context.realm, "maximum call stack size exceeded")
 				}
-				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.realm == vm.curRealm && callThis.IsObject() {
+				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.context.realm == vm.curRealm && callThis.IsObject() {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
 						// Preparing the arguments may have grown the stack.
 						regs = vm.reload(regs, vm.frameBase(), fp)
@@ -3191,9 +3181,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				}
 				vm.frames[len(vm.frames)-1].pc = pc
 				base := vm.pushFrame(f, callThis, argBase, argc, ret, isNew, newTarget)
-				if c.realm != vm.curRealm {
-					vm.switchRealm(c.realm)
-				}
+				c.context.activate()
 				fp = c
 				regs = vm.stack[base : base+c.nregs+1]
 				pc = 0
@@ -3254,9 +3242,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			if c := fn.code; c != nil && c.isGenerator && !c.isAsync && fn.bound == nil {
 				// Run the generator up to its initial suspension as an ordinary frame.
 				vm.pushGenerator(f, callThis, vm.stack[argBase:argBase+argc], ret)
-				if c.realm != vm.curRealm {
-					vm.switchRealm(c.realm)
-				}
+				c.context.activate()
 				fr := &vm.frames[len(vm.frames)-1]
 				fp = c
 				regs = fr.gen.regs
@@ -3282,9 +3268,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &vm.frames[len(vm.frames)-1]
 			fp = fr.fp
-			if fp.realm != vm.curRealm {
-				vm.switchRealm(fp.realm)
-			}
+			fp.context.activate()
 			regs = vm.stack[fr.base : fr.base+fp.nregs+1]
 			pc = 0
 			continue
@@ -3313,7 +3297,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 			vm.frames[len(vm.frames)-1].pc = pc
 			parent := f
 			if parent == nil || parent.fn == nil || !vm.IsConstructor(parent) {
-				vm.ThrowTypeError(fp.realm, "super constructor is not a constructor")
+				fp.context.ThrowTypeError("super constructor is not a constructor")
 			}
 			vm.ensureStack(argBase + argc)
 			saved := vm.sp
@@ -3333,9 +3317,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 		{
 			fr := &vm.frames[len(vm.frames)-1]
 			fp = fr.fp
-			if fp.realm != vm.curRealm {
-				vm.switchRealm(fp.realm)
-			}
+			fp.context.activate()
 			pc = fr.pc
 			if fp.heapRegs {
 				regs = fr.gen.regs

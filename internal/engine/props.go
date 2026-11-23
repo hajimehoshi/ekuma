@@ -284,20 +284,20 @@ func (vm *VM) materialize(o *Object) {
 		if c.legacyCallerArguments {
 			// Accessors, as the values change while the properties are neither writable nor
 			// configurable.
-			vm.add(o, vm.Key(keyArguments), newAccessor(c.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
-			vm.add(o, vm.Key(keyCaller), newAccessor(c.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
+			vm.add(o, vm.Key(keyArguments), newAccessor(c.context.realm.intrinsics[IntrinsicFunctionArgumentsGetter], nil), FlagAccessor)
+			vm.add(o, vm.Key(keyCaller), newAccessor(c.context.realm.intrinsics[IntrinsicFunctionCallerGetter], nil), FlagAccessor)
 		}
 		switch {
 		case c.isGenerator:
-			proto := c.realm.intrinsics[IntrinsicGeneratorPrototype]
+			proto := c.context.realm.intrinsics[IntrinsicGeneratorPrototype]
 			if c.isAsync {
-				proto = c.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
+				proto = c.context.realm.intrinsics[IntrinsicAsyncGeneratorPrototype]
 			}
-			p := newObject(vm.shapeForRealm(proto, c.realm))
+			p := newObject(vm.shapeForRealm(proto, c.context.realm))
 			vm.add(o, vm.Key(KeyPrototype), Value{o: p}, FlagWritable)
 		case f.constructor:
-			proto := c.realm.intrinsics[IntrinsicObjectPrototype]
-			p := newObject(vm.shapeForRealm(proto, c.realm))
+			proto := c.context.realm.intrinsics[IntrinsicObjectPrototype]
+			p := newObject(vm.shapeForRealm(proto, c.context.realm))
 			vm.add(p, vm.Key(KeyConstructor), Value{o: o}, FlagsHidden)
 			flags := FlagWritable
 			if f.classConstructor {

@@ -157,7 +157,7 @@ func (vm *VM) pushGenerator(f *Object, this Value, args []Value, ret int32) {
 
 // newGeneratorObject creates the generator object of g, whose parameters are instantiated.
 func (vm *VM) newGeneratorObject(g *generator) *Object {
-	r := g.f.fn.code.realm
+	r := g.f.fn.code.context.realm
 	proto := r.intrinsics[IntrinsicGeneratorPrototype]
 	if g.async != nil {
 		proto = r.intrinsics[IntrinsicAsyncGeneratorPrototype]
@@ -310,7 +310,7 @@ func (vm *VM) ResumeGenerator(gen Value, mode ResumeMode, v Value) (Value, bool)
 			return r, true
 		}
 		// Yield creates its result before returning to the resuming method's realm.
-		realm = g.f.fn.code.realm
+		realm = g.f.fn.code.context.realm
 	}
 	return realm.CreateIterResultObject(r, done), true
 }

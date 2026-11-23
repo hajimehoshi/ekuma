@@ -519,13 +519,13 @@ func (vm *VM) tryAwait(g *generator, v Value, kind reactionKind) bool {
 		vm.enqueueReactionJob(&pendingReaction{
 			action:           action,
 			continuationData: vm.continuationData,
-			builtinRealm:     g.f.fn.code.realm,
+			builtinRealm:     g.f.fn.code.context.realm,
 		}, v, false)
 		return true
 	}
 	return vm.protect(func() {
-		if vm.trackJobRealms && g.f.fn.code.realm != vm.curRealm {
-			vm.InRealm(g.f.fn.code.realm, func() { vm.awaitValue(v, action) })
+		if vm.trackJobRealms && g.f.fn.code.context.realm != vm.curRealm {
+			vm.InRealm(g.f.fn.code.context.realm, func() { vm.awaitValue(v, action) })
 			return
 		}
 		vm.awaitValue(v, action)

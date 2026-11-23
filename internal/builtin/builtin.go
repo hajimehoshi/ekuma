@@ -142,10 +142,10 @@ func Install(vm *engine.VM) {
 	constant(vm, g, "NaN", engine.Number(math.NaN()))
 	constant(vm, g, "Infinity", engine.Number(math.Inf(1)))
 
-	throwTypeError := vm.NewNative("", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError(vm.CurrentRealm(), "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
+	throwTypeError := vm.NewNative("", 0, engine.WithExecutionContext(func(cx engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		cx.ThrowTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 		return engine.Undefined
-	})
+	}))
 	setIntegrity(vm, throwTypeError, true)
 	vm.SetIntrinsic(engine.IntrinsicThrowTypeError, throwTypeError)
 
