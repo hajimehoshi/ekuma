@@ -64,6 +64,9 @@ func Run(t *testing.T) {
 				runOrderedCollation(t, filepath.Join(testdata, file), alternate == "SHIFTED", fixtures[file])
 			})
 		}
+		t.Run("locale-collation", func(t *testing.T) {
+			runLocaleCollation(t, dir, fixtures)
+		})
 		const file = "collationtest.txt"
 		t.Run(file, func(t *testing.T) {
 			runCollationTest(t, filepath.Join(testdata, file), fixtures[file])
@@ -199,7 +202,7 @@ func readFailures(t *testing.T) (localeFailures, map[string]map[int]string) {
 		entries, ok := fixtures[name]
 		if fixture, _, hasOp := strings.Cut(name, "/"); hasOp && !ok {
 			switch fixture {
-			case "cdateintervalformattest.c", "dtifmtts.cpp", "dtptngts.cpp", "udatpg_test.c", "DateTimeGeneratorTest.java",
+			case "cmsccoll.c", "cdateintervalformattest.c", "dtifmtts.cpp", "dtptngts.cpp", "udatpg_test.c", "DateTimeGeneratorTest.java",
 				"dtfmttst.cpp", "tztest.cpp", "TimeZoneFormatTest.java",
 				"OrdinalMonthTest.java", "caltest.cpp", "incaltst.cpp", "supplementalData.txt":
 				entries = map[int]string{}

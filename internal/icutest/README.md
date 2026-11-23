@@ -151,3 +151,12 @@ for gaps and overlaps, including Lord Howe's 30-minute overlap and Apia's
 skipped day. The VM uses Go 1.27.4's tzdata 2026c, which agrees with ICU's
 2026e rules for these cases. If the installed Go archive differs, set
 `EKUMA_ICU_ZONEINFO` to a local copy of the [pinned zoneinfo.zip](https://raw.githubusercontent.com/golang/go/go1.27.4/lib/time/zoneinfo.zip).
+
+## Locale-tailored collation
+
+The `locale-collation` group checks Canadian French backwards accents, Czech
+contractions, Danish, Finnish, Turkish and pinyin ordering, and Thai vowel
+reordering. The Thai dictionary in `riwords.txt` permits ties between adjacent
+words. ICU4J supplies numeric comparisons with leading zeros and non-ASCII
+digits. In `cmsccoll.c`, 13 pairs differ because ICU splits runs after 254
+digits and Ekuma compares each run as one number. [Known results](testdata/icu-failures.txt)
