@@ -1739,7 +1739,12 @@ func (vm *VM) setProto(o *Object, proto *Object) {
 		}
 		o.shape = s
 	} else {
-		s := vm.objectRootShape(proto, old.realm, o.class)
+		var s *shape
+		if o.flags&objExotic != 0 && o.class != classArray && o.class != classTypedArray {
+			s = vm.newShape(proto, old.realm)
+		} else {
+			s = vm.objectRootShape(proto, old.realm, o.class)
+		}
 		for _, k := range old.keys() {
 			p, _ := old.lookup(k)
 			s = s.with(k, p.flags)

@@ -3381,3 +3381,42 @@ func TestBigIntSizeLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestExoticSetPrototypeOfShapeIsolation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{
+			name: "unmaterialized function setPrototypeOf isolation",
+			src: `
+				const p = {};
+				function getLen(o) { return o.length; }
+				getLen(Object.create(p));
+				function f(a, b) {}
+				Object.setPrototypeOf(f, p);
+				String(getLen(f));
+			`,
+			want: "2",
+		},
+		{
+			name: "lazy Temporal setPrototypeOf isolation",
+			src: `
+				const p = {};
+				function getInstant(o) { return o.Instant; }
+				getInstant(Object.create(p));
+				Object.setPrototypeOf(Temporal, p);
+				typeof getInstant(Temporal);
+			`,
+			want: "function",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			if got := run(t, &vm, tc.src); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
