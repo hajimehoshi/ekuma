@@ -230,7 +230,8 @@ func (resumer *ExecutionContext) resume(g *generator, mode ResumeMode, v Value) 
 			return v, true
 		}
 	}
-	if len(resumer.frames) >= maxFrames {
+	// The limits are checked while g can still be resumed later.
+	if len(resumer.frames) >= maxFrames || resumer.depth >= maxDepth {
 		resumer.ThrowRangeError("maximum call stack size exceeded")
 	}
 	sp := resumer.sp
