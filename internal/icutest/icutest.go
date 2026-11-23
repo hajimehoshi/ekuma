@@ -119,6 +119,9 @@ func Run(t *testing.T) {
 		runTimeZones(t, cldrDir, fixtures)
 		runDatePatterns(t, cldrDir, fixtures)
 		runDateIntervals(t, cldrDir, fixtures)
+		t.Run("number-parts", func(t *testing.T) {
+			runNumberParts(t, cldrDir)
+		})
 		runNumberRanges(t, cldrDir)
 		runListFormats(t, cldrDir)
 		t.Run("duration", func(t *testing.T) {

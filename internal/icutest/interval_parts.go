@@ -11,18 +11,25 @@ import (
 	"unicode/utf16"
 )
 
-var rangeFields = map[string]string{
-	"UDAT_DATE_FIELD":               "day",
-	"UDAT_MONTH_FIELD":              "month",
-	"UDAT_YEAR_FIELD":               "year",
-	"UDAT_HOUR_OF_DAY0_FIELD":       "hour",
-	"UDAT_MINUTE_FIELD":             "minute",
-	"UDAT_AM_PM_FIELD":              "dayPeriod",
-	"UNUM_INTEGER_FIELD":            "integer",
-	"UNUM_COMPACT_FIELD":            "compact",
-	"UNUM_MEASURE_UNIT_FIELD":       "unit",
-	"UNUM_GROUPING_SEPARATOR_FIELD": "group",
-	"UNUM_APPROXIMATELY_SIGN_FIELD": "approximatelySign",
+var formatFields = map[string]string{
+	"UDAT_DATE_FIELD":                  "day",
+	"UDAT_MONTH_FIELD":                 "month",
+	"UDAT_YEAR_FIELD":                  "year",
+	"UDAT_HOUR_OF_DAY0_FIELD":          "hour",
+	"UDAT_MINUTE_FIELD":                "minute",
+	"UDAT_AM_PM_FIELD":                 "dayPeriod",
+	"UNUM_FRACTION_FIELD":              "fraction",
+	"UNUM_CURRENCY_FIELD":              "currency",
+	"UNUM_DECIMAL_SEPARATOR_FIELD":     "decimal",
+	"UNUM_EXPONENT_SYMBOL_FIELD":       "exponentSeparator",
+	"UNUM_EXPONENT_SIGN_FIELD":         "exponentMinusSign",
+	"UNUM_EXPONENT_FIELD":              "exponentInteger",
+	"DecimalFormat::kMeasureUnitField": "unit",
+	"UNUM_INTEGER_FIELD":               "integer",
+	"UNUM_COMPACT_FIELD":               "compact",
+	"UNUM_MEASURE_UNIT_FIELD":          "unit",
+	"UNUM_GROUPING_SEPARATOR_FIELD":    "group",
+	"UNUM_APPROXIMATELY_SIGN_FIELD":    "approximatelySign",
 }
 
 type intervalPosition struct {
@@ -33,9 +40,6 @@ type intervalPosition struct {
 func rangeParts(t *testing.T, want string, rows []intervalRow) string {
 	t.Helper()
 	units := utf16.Encode([]rune(want))
-	// A field boundary changes the part type. A span boundary changes its source,
-	// including for literals inside the span. Both use UTF-16 offsets.
-	bounds := []int{0, len(units)}
 	var fields, spans []intervalPosition
 	for _, row := range rows {
 		col := row.columns(t, 4)
@@ -46,7 +50,6 @@ func rangeParts(t *testing.T, want string, rows []intervalRow) string {
 		if p.begin < 0 || p.end <= p.begin || p.end > len(units) {
 			t.Fatalf("line %d: invalid UTF-16 range %d..%d for %q", row.line, p.begin, p.end, want)
 		}
-		bounds = append(bounds, p.begin, p.end)
 		switch col[0] {
 		case "UFIELD_CATEGORY_DATE_INTERVAL_SPAN", "UFIELD_CATEGORY_NUMBER_RANGE_SPAN":
 			switch col[1] {
@@ -59,29 +62,48 @@ func rangeParts(t *testing.T, want string, rows []intervalRow) string {
 			}
 			spans = append(spans, p)
 		case "UFIELD_CATEGORY_DATE", "UFIELD_CATEGORY_NUMBER":
-			p.label = rangeFields[col[1]]
-			if col[1] == "UNUM_SIGN_FIELD" {
-				switch string(utf16.Decode(units[p.begin:p.end])) {
-				case "-":
-					p.label = "minusSign"
-				case "+":
-					p.label = "plusSign"
-				}
-			}
-			if p.label == "" {
-				t.Fatalf("line %d: unknown field %s in %q", row.line, col[1], want)
-			}
+			p.label = formatFieldType(t, col[1], units[p.begin:p.end], row.line)
 			fields = append(fields, p)
 		default:
 			t.Fatalf("line %d: unknown field category %s", row.line, col[0])
 		}
+	}
+	return positionedParts(units, fields, spans, "shared")
+}
+
+func formatFieldType(t *testing.T, field string, value []uint16, line int) string {
+	t.Helper()
+	if field == "UNUM_SIGN_FIELD" {
+		switch string(utf16.Decode(value)) {
+		case "-":
+			return "minusSign"
+		case "+":
+			return "plusSign"
+		}
+	}
+	if label := formatFields[field]; label != "" {
+		return label
+	}
+	t.Fatalf("line %d: unknown field %s for %q", line, field, string(utf16.Decode(value)))
+	return ""
+}
+
+// Field boundaries determine part types. Range spans also assign a source to
+// each part, including literals inside the span. Both use UTF-16 offsets.
+func positionedParts(units []uint16, fields, spans []intervalPosition, defaultSource string) string {
+	bounds := []int{0, len(units)}
+	for _, p := range fields {
+		bounds = append(bounds, p.begin, p.end)
+	}
+	for _, p := range spans {
+		bounds = append(bounds, p.begin, p.end)
 	}
 	slices.Sort(bounds)
 	bounds = slices.Compact(bounds)
 	var parts []string
 	for i, begin := range bounds[:len(bounds)-1] {
 		end := bounds[i+1]
-		typ, source := "literal", "shared"
+		typ, source := "literal", defaultSource
 		// Grouping separators are nested inside the ICU integer field.
 		width := len(units) + 1
 		for _, field := range fields {
@@ -95,7 +117,10 @@ func rangeParts(t *testing.T, want string, rows []intervalRow) string {
 				source = span.label
 			}
 		}
-		parts = append(parts, source+" "+typ+" "+string(utf16.Decode(units[begin:end])))
+		if source != "" {
+			typ = source + " " + typ
+		}
+		parts = append(parts, typ+" "+string(utf16.Decode(units[begin:end])))
 	}
 	return strings.Join(parts, "\n")
 }

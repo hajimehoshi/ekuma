@@ -387,7 +387,9 @@ func (f *Formatter) affixParts(tokens []token, compactPattern bool) []Part {
 		switch t.kind {
 		case tokenLiteral:
 			if compactPattern {
-				parts = appendAffixParts(parts, "compact", t.text, unicode.IsSpace)
+				parts = appendAffixParts(parts, "compact", t.text, func(r rune) bool {
+					return unicode.IsSpace(r) || isBidiControl(r)
+				})
 			} else {
 				parts = append(parts, Part{
 					Type:  "literal",

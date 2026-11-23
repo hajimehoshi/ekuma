@@ -78,6 +78,15 @@ part its type. Interval spans identify the start, end, and shared text.
 Known differences include English spacing and the field type of German
 `Uhr`. [Known results](testdata/icu-failures.txt)
 
+## Single-number formatting parts
+
+`unumberformattertst.c` and its ICU4C and ICU4J counterparts check signs,
+exponents, compact notation, currency spacing, accounting, and unit labels.
+UTF-16 field spans split grouped integers and leave gaps as literals. The
+adapter maps ICU skeletons to NumberFormat options for half-even rounding,
+unit width, and accounting, and passes exact decimals as strings. All 41
+checks pass. [Skeleton mappings](number_permutations.go) · [Supplementary ICU 79.1 field positions](testdata/number-fields.txt)
+
 ## Number range fixtures
 
 `NumberRangeFormatterTest.java`, `PluralRangesTest.java`, `numbertest_range.cpp`,

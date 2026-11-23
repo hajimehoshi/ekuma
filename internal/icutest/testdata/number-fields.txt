@@ -1,0 +1,28 @@
+# Supplementary UTF-16 field positions for text-only ICU 79.1 assertions.
+# Each key identifies the external fixture and line. Format its input with
+# unumf_formatDecimal using the case's locale and skeleton, then read
+# unumf_resultGetAllFieldPositions in iterator order.
+unumberformattertst.c:85 currency:1-2 group:5-6 integer:2-9
+unumberformattertst.c:92 currency:1-2 group:3-4 integer:2-7
+unumberformattertst.c:99 currency:0-1 integer:1-4
+numbertest_api.cpp:2172 currency:0-1 integer:1-2 decimal:2-3 fraction:3-5
+numbertest_api.cpp:2181 currency:0-3 integer:3-4 decimal:4-5 fraction:5-7
+numbertest_api.cpp:2300 integer:0-3 decimal:3-4 fraction:4-6 currency:7-10
+numbertest_api.cpp:2310 currency:0-3 minusSign:3-4 integer:4-7 decimal:7-8 fraction:8-10
+numbertest_api.cpp:2320 minusSign:0-1 currency:1-4 integer:5-8 decimal:8-9 fraction:9-11
+numbertest_api.cpp:4529 group:4-5 integer:0-11
+numbertest_api.cpp:4947 currency:1-4 group:8-9 integer:5-12 decimal:12-13 fraction:13-15
+numbertest_api.cpp:4961 minusSign:0-1 group:4-5 integer:1-8 decimal:8-9 fraction:9-11 currency:12-22
+numbertest_api.cpp:5306 group:3-4 group:7-8 group:11-12 group:15-16 group:19-20 integer:0-23
+numbertest_api.cpp:5311 integer:0-1 decimal:1-2 fraction:2-44
+NumberFormatTest.java:5414 currency:0-1 group:2-3 integer:1-6 decimal:6-7 fraction:7-9
+NumberFormatTest.java:5416 currency:1-2 group:3-4 integer:2-7 decimal:7-8 fraction:8-10
+NumberFormatTest.java:5419 currency:0-1 integer:1-2 decimal:2-3 fraction:3-5
+NumberFormatTest.java:5420 currency:1-2 integer:2-3 decimal:3-4 fraction:4-6
+NumberFormatTest.java:5423 currency:0-1 group:3-4 integer:1-7
+NumberFormatTest.java:5424 currency:1-2 group:3-4 integer:2-7
+NumberFormatTest.java:5427 minusSign:0-1 group:3-4 integer:1-7 decimal:7-8 fraction:8-10 currency:11-12
+NumberFormatTest.java:5434 currency:0-2 group:4-5 integer:3-8
+NumberFormatTest.java:5437 currency:1-3 group:5-6 integer:4-9
+NumberFormatTest.java:5440 group:1-2 integer:0-5 decimal:5-6 fraction:6-8 currency:9-10
+NumberFormatTest.java:5443 group:2-3 integer:1-6 decimal:6-7 fraction:7-9 currency:10-11

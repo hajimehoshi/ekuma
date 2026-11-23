@@ -116,6 +116,9 @@ jobs:
             /icu4c/source/test/intltest/dtptngts.cpp
             /icu4c/source/test/cintltst/udatpg_test.c
             /icu4c/source/test/intltest/dtifmtts.cpp
+            /icu4c/source/test/cintltst/unumberformattertst.c
+            /icu4c/source/test/intltest/numfmtst.cpp
+            /icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/NumberFormatTest.java
             /icu4c/source/test/cintltst/unumberrangeformattertst.c
             /icu4c/source/test/intltest/numbertest_range.cpp
             /icu4c/source/test/intltest/listformattertest.cpp

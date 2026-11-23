@@ -135,3 +135,12 @@ func fixtureUChars(t *testing.T, line string) string {
 	}
 	return string(utf16.Decode(units))
 }
+
+func fixtureFloat(src intervalSource, literal string) float64 {
+	src.t.Helper()
+	n, err := strconv.ParseFloat(literal, 64)
+	if err != nil {
+		src.t.Fatalf("%s:%d: %v", src.path, src.line, err)
+	}
+	return n
+}

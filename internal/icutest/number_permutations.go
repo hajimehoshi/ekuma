@@ -13,7 +13,7 @@ import (
 func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 	o := map[string]any{"roundingMode": "halfEven"}
 	divisor := 1
-	var width string
+	var width, perUnit string
 	for _, part := range parts {
 		switch part {
 		case "compact-short", "compact-long":
@@ -35,21 +35,29 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 			}
 		case "%x100":
 			o["style"] = "percent"
-		case "currency/EUR", "currency/GBP", "currency/CHF", "currency/USD", "currency/JPY", "currency/PTE":
+		case "currency/EUR", "currency/GBP", "currency/CHF", "currency/USD", "currency/JPY", "currency/PTE", "currency/IDR", "currency/RON", "currency/CNY":
 			o["style"] = "currency"
 			o["currency"] = strings.TrimPrefix(part, "currency/")
+		case "measure-unit/length-meter", "measure-unit/temperature-fahrenheit", "measure-unit/speed-meter-per-second":
+			_, unit, _ := strings.Cut(strings.TrimPrefix(part, "measure-unit/"), "-")
+			o["style"], o["unit"] = "unit", unit
+		case "per-measure-unit/duration-day":
+			perUnit = "day"
 		case "meter", "fahrenheit", "inch":
 			o["style"], o["unit"] = "unit", part
 		case "measure-unit/length-furlong":
 			return nil, 0, "furlong is not an ECMA-402 sanctioned unit"
-		case "unit-width-narrow", "unit-width-full-name", "unit-width-iso-code":
+		case "unit-width-short", "unit-width-narrow", "unit-width-full-name", "unit-width-iso-code":
 			width = part
 		case "precision-integer":
 			o["maximumFractionDigits"] = 0
 			o["minimumFractionDigits"] = 0
-		case ".000":
-			o["maximumFractionDigits"] = 3
-			o["minimumFractionDigits"] = 3
+		case ".00", ".000":
+			o["maximumFractionDigits"] = len(part) - 1
+			o["minimumFractionDigits"] = len(part) - 1
+		case "precision-unlimited":
+			// The selected exact decimal fits within the ECMA-402 limit.
+			o["maximumFractionDigits"] = 100
 		case ".###":
 			o["maximumFractionDigits"] = 3
 		case ".##/@@@+":
@@ -73,8 +81,12 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 			o["useGrouping"] = "always"
 		case "latin":
 			o["numberingSystem"] = "latn"
-		case "numbering-system/thai", "numbering-system/arab":
+		case "numbering-system/thai", "numbering-system/arab", "numbering-system/mathsanb":
 			o["numberingSystem"] = strings.TrimPrefix(part, "numbering-system/")
+		case "sign-always":
+			o["signDisplay"] = "always"
+		case "sign-accounting":
+			o["currencySign"] = "accounting"
 		case "sign-accounting-except-zero":
 			o["signDisplay"] = "exceptZero"
 			o["currencySign"] = "accounting"
@@ -94,6 +106,9 @@ func numberSkeletonOptions(parts []string) (map[string]any, int, string) {
 			o["currencyDisplay"] = "code"
 		}
 	} else if o["style"] == "unit" {
+		if perUnit != "" {
+			o["unit"] = o["unit"].(string) + "-per-" + perUnit
+		}
 		switch width {
 		case "unit-width-full-name":
 			o["unitDisplay"] = "long"

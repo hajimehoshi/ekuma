@@ -5,21 +5,11 @@ package icutest
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 )
 
 type numberRangePair struct {
 	start, end float64
-}
-
-func javaRangeNumber(src intervalSource, literal string) float64 {
-	src.t.Helper()
-	n, err := strconv.ParseFloat(literal, 64)
-	if err != nil {
-		src.t.Fatalf("%s:%d: %v", src.path, src.line, err)
-	}
-	return n
 }
 
 func javaRangePairs(src intervalSource) []numberRangePair {
@@ -38,8 +28,8 @@ func javaRangePairs(src intervalSource) []numberRangePair {
 			src.t.Fatalf("%s: unexpected helper call %q", src.path, line)
 		}
 		pairs = append(pairs, numberRangePair{
-			start: javaRangeNumber(helper, cols[0]),
-			end:   javaRangeNumber(helper, cols[1]),
+			start: fixtureFloat(helper, cols[0]),
+			end:   fixtureFloat(helper, cols[1]),
 		})
 	}
 	if len(pairs) == 0 {
@@ -274,7 +264,7 @@ func (s *numberRangeSuite) pluralFormatting(src intervalSource) {
 		default:
 			s.t.Fatalf("%s:%d: unknown unit width %s", src.path, row.line, col[3])
 		}
-		s.checkRange(row.line, "TestFormatting", "formatRange", locale, skeleton, javaRangeNumber(src, col[0]), javaRangeNumber(src, col[1]), intervalString(s.t, col[5]))
+		s.checkRange(row.line, "TestFormatting", "formatRange", locale, skeleton, fixtureFloat(src, col[0]), fixtureFloat(src, col[1]), intervalString(s.t, col[5]))
 	}
 	if entry != "" {
 		s.t.Fatalf("%s: incomplete TestFormatting row %q", src.path, entry)
