@@ -820,6 +820,19 @@ func (t *Table) Start() Cursor {
 // Next returns the entry at the cursor c, which must have been created by [Table.Start] of t,
 // and moves c past it. It reports false when there is no entry left.
 func (t *Table) Next(c *Cursor) (key, value engine.Value, ok bool) {
+	if c.gen == t.gen && t.n == t.live {
+		i := c.pos
+		if i >= t.n {
+			return engine.Undefined, engine.Undefined, false
+		}
+		e := t.at(i)
+		c.pos = i + 1
+		return e.key, e.value, true
+	}
+	return t.nextAfterDeletion(c)
+}
+
+func (t *Table) nextAfterDeletion(c *Cursor) (key, value engine.Value, ok bool) {
 	for c.gen.next != nil {
 		g := c.gen
 		if g.cleared {
