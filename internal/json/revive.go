@@ -41,7 +41,7 @@ func Revive(vm *engine.VM, v engine.Value, rec *Record, fn *engine.Object) engin
 func (r *reviver) internalize(holder *engine.Object, name engine.PropKey, rec *Record, depth int) engine.Value {
 	vm := r.vm
 	if depth > maxDepth {
-		vm.ThrowRangeError("maximum call stack size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	val := vm.Get(holder, name)
 	ctx := vm.NewOrdinaryObject()

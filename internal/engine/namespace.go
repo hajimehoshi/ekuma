@@ -142,13 +142,13 @@ func (vm *VM) namespaceGet(o *Object, k PropKey) Value {
 		return Value{o: vm.moduleNamespace(r.module)}
 	case resolutionSource:
 		if r.module.source == nil {
-			vm.ThrowReferenceError("the module source of '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' is not available")
+			vm.ThrowReferenceError(vm.CurrentRealm(), "the module source of '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is not available")
 		}
 		return Value{o: r.module.source}
 	}
 	v := *r.module.env[r.index].p
 	if v.o == tdzObject {
-		vm.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' before initialization")
+		vm.ThrowReferenceError(vm.CurrentRealm(), "cannot access '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' before initialization")
 	}
 	return v
 }

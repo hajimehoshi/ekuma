@@ -14,14 +14,14 @@ func initReflect(vm *engine.VM) {
 
 	target := func(vm *engine.VM, v engine.Value, name string) *engine.Object {
 		if !v.IsObject() {
-			vm.ThrowTypeError("Reflect." + name + " called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect."+name+" called on non-object")
 		}
 		return v.Object()
 	}
 	// argumentList implements CreateListFromArrayLike, which requires an object.
 	argumentList := func(vm *engine.VM, v engine.Value, name string) []engine.Value {
 		if !v.IsObject() {
-			vm.ThrowTypeError("Reflect." + name + " requires an array-like object as the argument list")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect."+name+" requires an array-like object as the argument list")
 		}
 		return listFromArrayLike(vm, v)
 	}
@@ -29,20 +29,20 @@ func initReflect(vm *engine.VM) {
 	method(vm, r, "apply", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		f := arg(args, 0)
 		if !f.IsCallable() {
-			vm.ThrowTypeError("Reflect.apply requires a function as the target")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.apply requires a function as the target")
 		}
 		return vm.Call(f.Object(), arg(args, 1), argumentList(vm, arg(args, 2), "apply")...)
 	})
 	method(vm, r, "construct", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		f := arg(args, 0)
 		if !f.IsObject() || !vm.IsConstructor(f.Object()) {
-			vm.ThrowTypeError("Reflect.construct requires a constructor as the target")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.construct requires a constructor as the target")
 		}
 		nt := f
 		if len(args) > 2 {
 			nt = args[2]
 			if !nt.IsObject() || !vm.IsConstructor(nt.Object()) {
-				vm.ThrowTypeError("Reflect.construct requires a constructor as the new target")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Reflect.construct requires a constructor as the new target")
 			}
 		}
 		list := argumentList(vm, arg(args, 1), "construct")
@@ -113,7 +113,7 @@ func initReflect(vm *engine.VM) {
 		o := target(vm, arg(args, 0), "setPrototypeOf")
 		p := arg(args, 1)
 		if !p.IsObject() && !p.IsNull() {
-			vm.ThrowTypeError("object prototype may only be an Object or null: " + vm.DisplayString(p))
+			vm.ThrowTypeError(vm.CurrentRealm(), "object prototype may only be an Object or null: "+vm.DisplayString(p))
 		}
 		var po *engine.Object
 		if p.IsObject() {

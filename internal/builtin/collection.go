@@ -28,7 +28,7 @@ type setIterator struct {
 func thisMap(vm *engine.VM, this engine.Value, name string) *collection.Table {
 	t, _ := engine.MapData(this).(*collection.Table)
 	if t == nil {
-		vm.ThrowTypeError("Map.prototype." + name + " called on incompatible receiver " + vm.DisplayString(this))
+		vm.ThrowTypeError(vm.CurrentRealm(), "Map.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
 	}
 	return t
 }
@@ -48,7 +48,7 @@ func setOf(this engine.Value) *collection.Table {
 func thisSet(vm *engine.VM, this engine.Value, name string) *collection.Table {
 	t, _ := engine.SetData(this).(*collection.Table)
 	if t == nil {
-		vm.ThrowTypeError("Set.prototype." + name + " called on incompatible receiver " + vm.DisplayString(this))
+		vm.ThrowTypeError(vm.CurrentRealm(), "Set.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
 	}
 	return t
 }
@@ -58,7 +58,7 @@ func thisSet(vm *engine.VM, this engine.Value, name string) *collection.Table {
 func addEntriesFromIterable(vm *engine.VM, target *engine.Object, iterable engine.Value, adder *engine.Object, fast func(k, v engine.Value)) {
 	vm.Iterate(iterable, func(e engine.Value) bool {
 		if !e.IsObject() {
-			vm.ThrowTypeError("iterator value " + vm.DisplayString(e) + " is not an entry object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "iterator value "+vm.DisplayString(e)+" is not an entry object")
 		}
 		k := vm.Index(e, 0)
 		v := vm.Index(e, 1)
@@ -103,7 +103,7 @@ func reserveAfter(t *collection.Table, i, n int) {
 func adderOf(vm *engine.VM, o *engine.Object, name *engine.Object) *engine.Object {
 	adder := vm.Get(o, engine.NamedKey(name))
 	if !adder.IsCallable() {
-		vm.ThrowTypeError("the " + wtf8.ToValidUTF8(name.Str()) + " method of the new collection is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the "+wtf8.ToValidUTF8(name.Str())+" method of the new collection is not a function")
 	}
 	return adder.Object()
 }
@@ -119,7 +119,7 @@ func speciesGetter(vm *engine.VM, c *engine.Object) {
 func groupBy(vm *engine.VM, items, cb engine.Value, add func(k, v engine.Value)) {
 	vm.RequireObjectCoercible(items, "groupBy")
 	if !cb.IsCallable() {
-		vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
 	}
 	k := 0.0
 	vm.Iterate(items, func(v engine.Value) bool {
@@ -153,7 +153,7 @@ func initMap(vm *engine.VM) {
 	ctor := constructor(vm, "Map", 0, engine.IntrinsicMapPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor Map requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor Map requires 'new'")
 		}
 		t := &collection.Table{}
 		targetProto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicMapPrototype)
@@ -258,7 +258,7 @@ func initMap(vm *engine.VM) {
 		t := thisMap(vm, this, "getOrInsertComputed")
 		k, cb := arg(args, 0), arg(args, 1)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
 		}
 		if k.IsNumber() && k.Number() == 0 {
 			k = engine.Number(0)
@@ -274,7 +274,7 @@ func initMap(vm *engine.VM) {
 		t := thisMap(vm, this, "forEach")
 		cb := arg(args, 0)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
 		}
 		thisArg := arg(args, 1)
 		// The callee does not keep its arguments, so one slice serves every call.
@@ -378,24 +378,24 @@ type setLikeKeys struct {
 // getSetRecord implements GetSetRecord.
 func getSetRecord(vm *engine.VM, v engine.Value, k *setLikeKeys) setRecord {
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.DisplayString(v) + " is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not an object")
 	}
 	o := v.Object()
 	n := vm.ToNumber(vm.Get(o, engine.NamedKey(k.size)))
 	if n != n {
-		vm.ThrowTypeError("the size of a set-like object must be a number")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the size of a set-like object must be a number")
 	}
 	size := vm.ToIntegerOrInfinity(engine.Number(n))
 	if size < 0 {
-		vm.ThrowRangeError("the size of a set-like object must not be negative")
+		vm.ThrowRangeError(vm.CurrentRealm(), "the size of a set-like object must not be negative")
 	}
 	has := vm.Get(o, engine.NamedKey(k.has))
 	if !has.IsCallable() {
-		vm.ThrowTypeError("the has method of a set-like object must be a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the has method of a set-like object must be a function")
 	}
 	keys := vm.Get(o, engine.NamedKey(k.keys))
 	if !keys.IsCallable() {
-		vm.ThrowTypeError("the keys method of a set-like object must be a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the keys method of a set-like object must be a function")
 	}
 	r := setRecord{
 		obj:  o,
@@ -422,11 +422,11 @@ func (r *setRecord) otherHas(vm *engine.VM, e engine.Value) bool {
 func (r *setRecord) keysIterator(vm *engine.VM) (it, next engine.Value) {
 	it = vm.Call(r.keys, engine.ObjectValue(r.obj))
 	if !it.IsObject() {
-		vm.ThrowTypeError("the keys method of a set-like object must return an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the keys method of a set-like object must return an object")
 	}
 	next = vm.GetV(it, r.next)
 	if !next.IsCallable() {
-		vm.ThrowTypeError("the iterator of a set-like object must have a next method")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the iterator of a set-like object must have a next method")
 	}
 	return it, next
 }
@@ -452,7 +452,7 @@ func initSet(vm *engine.VM) {
 	ctor := constructor(vm, "Set", 0, engine.IntrinsicSetPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor Set requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor Set requires 'new'")
 		}
 		t := &collection.Table{}
 		targetProto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicSetPrototype)
@@ -537,7 +537,7 @@ func initSet(vm *engine.VM) {
 		t := thisSet(vm, this, "forEach")
 		cb := arg(args, 0)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
 		}
 		thisArg := arg(args, 1)
 		argv := []engine.Value{engine.Undefined, engine.Undefined, this}

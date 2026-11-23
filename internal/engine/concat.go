@@ -77,7 +77,7 @@ func (vm *VM) Concat(a, b Value) Value {
 			return a
 		}
 		if len(y) > MaxStringLength-len(a.o.str) {
-			vm.ThrowRangeError("invalid string length")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 		}
 		// An ASCII suffix cannot join a surrogate pair.
 		sb.WriteString(string(y))
@@ -90,7 +90,7 @@ func (vm *VM) Concat(a, b Value) Value {
 				return b
 			}
 			if len(x) > MaxStringLength-len(b.o.str) {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 			writeReversed(&rb.sb, x)
 			return vm.extendHead(b.o, rb, true)
@@ -147,7 +147,7 @@ func (vm *VM) concat(a Value, x wtf8.String, b Value, y wtf8.String) Value {
 	}
 	n := len(x) + len(y)
 	if n > MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 	if b.IsString() && b.o.flags&objReversed != 0 {
 		return vm.concatReversed(a, x, b, y)
@@ -249,7 +249,7 @@ func (vm *VM) ConcatStrings(parts []Value) Value {
 		}
 		n += nbytes
 		if n > MaxStringLength {
-			vm.ThrowRangeError("invalid string length")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 		}
 		flags |= p.o.flags
 		last = i
@@ -396,7 +396,7 @@ func (vm *VM) prependStrings(parts []Value, b *Object, rb *reversedBuilder) (Val
 		}
 		n += len(p)
 		if n > MaxStringLength {
-			vm.ThrowRangeError("invalid string length")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 		}
 		ascii = ascii && pASCII
 		next, nextReversed, nextASCII = p, false, pASCII

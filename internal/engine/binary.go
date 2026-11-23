@@ -240,7 +240,7 @@ func copyWithin(b *ArrayBuffer, dstOffset, srcOffset, n int) {
 // checkBufferLength throws a RangeError when a data block of n bytes cannot be created.
 func (vm *VM) checkBufferLength(n int64) {
 	if n > MaxBufferLength {
-		vm.ThrowRangeError("array buffer allocation failed")
+		vm.ThrowRangeError(vm.CurrentRealm(), "array buffer allocation failed")
 	}
 }
 

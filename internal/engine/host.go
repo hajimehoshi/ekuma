@@ -185,7 +185,7 @@ func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
 			f = vm.Call(getter, v)
 		}
 		if !f.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(key) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(key)+" is not a function")
 		}
 		return vm.CallValue(f, v, args...)
 	})
@@ -195,7 +195,7 @@ func (vm *VM) HostCallMethod(v, key Value, args []Value) (Value, error) {
 func (vm *VM) HostConstruct(f Value, args []Value) (Value, error) {
 	return vm.enter(func() Value {
 		if !f.IsCallable() || !vm.IsConstructor(f.o) {
-			vm.ThrowTypeError(vm.DisplayString(f) + " is not a constructor")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(f)+" is not a constructor")
 		}
 		return Value{o: vm.Construct(f.o, args, f.o)}
 	})

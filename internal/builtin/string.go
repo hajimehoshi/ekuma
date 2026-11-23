@@ -75,7 +75,7 @@ func initString(vm *engine.VM) {
 		for _, a := range args {
 			n := vm.ToNumber(a)
 			if n != math.Trunc(n) || n < 0 || n > 0x10FFFF {
-				vm.ThrowRangeError("invalid code point " + string(numconv.NumberToString(n)))
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid code point "+string(numconv.NumberToString(n)))
 			}
 			points = append(points, rune(n))
 		}
@@ -102,7 +102,7 @@ func initString(vm *engine.VM) {
 	thisValue := func(vm *engine.VM, this engine.Value, what string) engine.Value {
 		s, ok := engine.ThisStringValue(this)
 		if !ok {
-			vm.ThrowTypeError("String.prototype." + what + " requires that 'this' be a String")
+			vm.ThrowTypeError(vm.CurrentRealm(), "String.prototype."+what+" requires that 'this' be a String")
 		}
 		return s
 	}
@@ -179,7 +179,7 @@ func initString(vm *engine.VM) {
 	})
 	noRegExp := func(vm *engine.VM, v engine.Value, what string) {
 		if isRegExp(vm, v) {
-			vm.ThrowTypeError("first argument to String.prototype." + what + " must not be a regular expression")
+			vm.ThrowTypeError(vm.CurrentRealm(), "first argument to String.prototype."+what+" must not be a regular expression")
 		}
 	}
 	includes := method(vm, proto, "includes", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
@@ -300,7 +300,7 @@ func initString(vm *engine.VM) {
 		s := thisStringValue(vm, this, "repeat")
 		n := vm.ToIntegerOrInfinity(arg(args, 0))
 		if n < 0 || math.IsInf(n, 0) {
-			vm.ThrowRangeError("invalid count value: " + string(numconv.NumberToString(n)))
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid count value: "+string(numconv.NumberToString(n)))
 		}
 		if n == 0 {
 			return vm.NewString("")
@@ -310,7 +310,7 @@ func initString(vm *engine.VM) {
 			return vm.NewString("")
 		}
 		if n*float64(byteLength) > engine.MaxStringLength {
-			vm.ThrowRangeError("invalid string length")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 		}
 		if n == 1 {
 			return s
@@ -342,7 +342,7 @@ func initString(vm *engine.VM) {
 				return s
 			}
 			if target > engine.MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 			need := target - n
 			if padded, ok := vm.PadShort(s, fill, int(target), int(need), atStart); ok {
@@ -404,7 +404,7 @@ func initString(vm *engine.VM) {
 			s.WriteStringTo(&b)
 			b.WriteString("</" + e.tag + ">")
 			if b.Len() > engine.MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 			return vm.NewString(b.String())
 		})
@@ -460,7 +460,7 @@ func initString(vm *engine.VM) {
 			case "NFKD":
 				form, quick = nfkd, unorm.NFKD
 			default:
-				vm.ThrowRangeError("the normalization form should be one of NFC, NFD, NFKC, NFKD")
+				vm.ThrowRangeError(vm.CurrentRealm(), "the normalization form should be one of NFC, NFD, NFKC, NFKD")
 			}
 		}
 		if s.IsASCII() {
@@ -661,7 +661,7 @@ func replacementCapacity(inputBytes, searchBytes, replacementBytes, matches int)
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
 func checkStringLength(vm *engine.VM, n int) {
 	if n > engine.MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 }
 

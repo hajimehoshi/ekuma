@@ -40,7 +40,7 @@ func (vm *VM) CanAccessReceiver(receiver Value) bool {
 // ProxyCreate implements ProxyCreate.
 func (vm *VM) ProxyCreate(target, handler Value) *Object {
 	if !target.IsObject() || !handler.IsObject() {
-		vm.ThrowTypeError("cannot create proxy with a non-object as target or handler")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot create proxy with a non-object as target or handler")
 	}
 	p := (&propertyObject{
 		kind:  kindObject,
@@ -150,7 +150,7 @@ func (vm *VM) IsArray(v Value) bool {
 	for o != nil && o.class == classProxy {
 		st := o.extState().(*proxyState)
 		if st.handler == nil {
-			vm.throwRevoked("IsArray")
+			vm.throwRevoked(vm.CurrentRealm(), "IsArray")
 		}
 		o = st.target
 	}
@@ -171,7 +171,7 @@ func (vm *VM) getFunctionRealm(f *Object) *realm {
 	if r := vm.functionRealmOrNil(f); r != nil {
 		return r
 	}
-	vm.throwRevoked("GetFunctionRealm")
+	vm.throwRevoked(vm.CurrentRealm(), "GetFunctionRealm")
 	return nil
 }
 
@@ -197,8 +197,8 @@ func (vm *VM) functionRealmOrNil(f *Object) *realm {
 	}
 }
 
-func (vm *VM) throwRevoked(op string) {
-	vm.ThrowTypeError("cannot perform '" + op + "' on a proxy that has been revoked")
+func (vm *VM) throwRevoked(errorRealm *Realm, op string) {
+	vm.ThrowTypeError(errorRealm, "cannot perform '"+op+"' on a proxy that has been revoked")
 }
 
 // proxyEnter starts an internal method of the proxy o and returns its target and handler.
@@ -210,19 +210,19 @@ func (vm *VM) throwRevoked(op string) {
 func (vm *VM) proxyEnter(o *Object, op string) (target, handler *Object) {
 	st := o.extState().(*proxyState)
 	if st.handler == nil {
-		vm.throwRevoked(op)
+		vm.throwRevoked(vm.CurrentRealm(), op)
 	}
 	if vm.interrupt.Load() {
 		vm.Poll()
 	}
 	if vm.depth >= maxDepth {
-		vm.ThrowRangeError("maximum call stack size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	target = st.target
 	if st.isGlobal() && !st.allowsGlobalAccess(vm.globalProxyHandler) {
 		target = vm.foreignGlobalView
 		if target == nil {
-			vm.ThrowTypeError("no access")
+			vm.ThrowTypeError(vm.CurrentRealm(), "no access")
 		}
 	}
 	vm.depth++
@@ -243,8 +243,8 @@ func (vm *VM) callTrap(trap, handler *Object, args ...Value) Value {
 	return vm.callOnStack(trap, Value{o: handler}, args)
 }
 
-func (vm *VM) throwTrapError(trap, msg string) {
-	vm.ThrowTypeError("'" + trap + "' on proxy: " + msg)
+func (vm *VM) throwTrapError(errorRealm *Realm, trap, msg string) {
+	vm.ThrowTypeError(errorRealm, "'"+trap+"' on proxy: "+msg)
 }
 
 // proxyGetPrototypeOf implements [[GetPrototypeOf]] of a proxy.
@@ -257,7 +257,7 @@ func (vm *VM) proxyGetPrototypeOf(o *Object) *Object {
 	}
 	r := vm.callTrap(trap, handler, Value{o: target})
 	if !r.IsObject() && !r.IsNull() {
-		vm.throwTrapError("getPrototypeOf", "trap returned neither object nor null")
+		vm.throwTrapError(vm.CurrentRealm(), "getPrototypeOf", "trap returned neither object nor null")
 	}
 	var proto *Object
 	if r.IsObject() {
@@ -267,7 +267,7 @@ func (vm *VM) proxyGetPrototypeOf(o *Object) *Object {
 		return proto
 	}
 	if vm.ProtoOf(target) != proto {
-		vm.throwTrapError("getPrototypeOf", "proxy target is non-extensible but the trap did not return its actual prototype")
+		vm.throwTrapError(vm.CurrentRealm(), "getPrototypeOf", "proxy target is non-extensible but the trap did not return its actual prototype")
 	}
 	return proto
 }
@@ -291,7 +291,7 @@ func (vm *VM) proxySetPrototypeOf(o *Object, proto *Object) bool {
 		return true
 	}
 	if vm.ProtoOf(target) != proto {
-		vm.throwTrapError("setPrototypeOf", "trap returned truish for setting a new prototype on the non-extensible proxy target")
+		vm.throwTrapError(vm.CurrentRealm(), "setPrototypeOf", "trap returned truish for setting a new prototype on the non-extensible proxy target")
 	}
 	return true
 }
@@ -306,7 +306,7 @@ func (vm *VM) proxyIsExtensible(o *Object) bool {
 	}
 	r := ToBoolean(vm.callTrap(trap, handler, Value{o: target}))
 	if r != vm.IsExtensible(target) {
-		vm.throwTrapError("isExtensible", "trap result does not reflect extensibility of proxy target")
+		vm.throwTrapError(vm.CurrentRealm(), "isExtensible", "trap result does not reflect extensibility of proxy target")
 	}
 	return r
 }
@@ -321,7 +321,7 @@ func (vm *VM) proxyPreventExtensions(o *Object) bool {
 	}
 	r := ToBoolean(vm.callTrap(trap, handler, Value{o: target}))
 	if r && vm.IsExtensible(target) {
-		vm.throwTrapError("preventExtensions", "trap returned truish but the proxy target is extensible")
+		vm.throwTrapError(vm.CurrentRealm(), "preventExtensions", "trap returned truish but the proxy target is extensible")
 	}
 	return r
 }
@@ -338,7 +338,7 @@ func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 	const name = "getOwnPropertyDescriptor"
 	r := vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k))
 	if !r.IsObject() && !r.IsUndefined() {
-		vm.throwTrapError(name, "trap returned neither object nor undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned neither object nor undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
 	}
 	targetDesc, targetHas := vm.GetOwnProperty(target, k)
 	if r.IsUndefined() {
@@ -346,10 +346,10 @@ func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 			return PropDesc{}, false
 		}
 		if targetDesc.flags&FlagConfigurable == 0 {
-			vm.throwTrapError(name, "trap returned undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable in the proxy target")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable in the proxy target")
 		}
 		if !vm.IsExtensible(target) {
-			vm.throwTrapError(name, "trap returned undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the non-extensible proxy target")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned undefined for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the non-extensible proxy target")
 		}
 		return PropDesc{}, false
 	}
@@ -357,14 +357,14 @@ func (vm *VM) proxyGetOwnProperty(o *Object, k PropKey) (PropDesc, bool) {
 	d := vm.ToPropertyDescriptor(r)
 	d.complete()
 	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, targetHas) {
-		vm.throwTrapError(name, "trap returned descriptor for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
+		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned descriptor for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
 	if d.flags&FlagConfigurable == 0 {
 		if !targetHas || targetDesc.flags&FlagConfigurable != 0 {
-			vm.throwTrapError(name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap reported non-configurability for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is either non-existent or configurable in the proxy target")
 		}
 		if d.has&HasWritable != 0 && d.flags&FlagWritable == 0 && targetDesc.flags&FlagWritable != 0 {
-			vm.throwTrapError(name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable, writable in the proxy target")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap reported non-configurable and non-writable for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable, writable in the proxy target")
 		}
 	}
 	return d, true
@@ -387,21 +387,21 @@ func (vm *VM) proxyDefineOwnProperty(o *Object, k PropKey, d PropDesc) bool {
 	settingConfigFalse := d.has&HasConfigurable != 0 && d.flags&FlagConfigurable == 0
 	if !targetHas {
 		if !extensible {
-			vm.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' to the non-extensible proxy target")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' to the non-extensible proxy target")
 		}
 		if settingConfigFalse {
-			vm.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-existent in the proxy target")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-existent in the proxy target")
 		}
 		return true
 	}
 	if !isCompatiblePropertyDescriptor(extensible, &d, &targetDesc, true) {
-		vm.throwTrapError(name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
+		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for adding property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' that is incompatible with the existing property in the proxy target")
 	}
 	if settingConfigFalse && targetDesc.flags&FlagConfigurable != 0 {
-		vm.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is configurable in the proxy target")
+		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is configurable in the proxy target")
 	}
 	if targetDesc.flags&(FlagAccessor|FlagConfigurable|FlagWritable) == FlagWritable && d.has&HasWritable != 0 && d.flags&FlagWritable == 0 {
-		vm.throwTrapError(name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
+		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned truish for defining non-configurable property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which cannot be non-writable, unless there exists a corresponding non-configurable, non-writable own property of the target object")
 	}
 	return true
 }
@@ -420,10 +420,10 @@ func (vm *VM) proxyHas(o *Object, k PropKey) bool {
 	}
 	if targetDesc, ok := vm.GetOwnProperty(target, k); ok {
 		if targetDesc.flags&FlagConfigurable == 0 {
-			vm.throwTrapError("has", "trap returned falsish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as non-configurable")
+			vm.throwTrapError(vm.CurrentRealm(), "has", "trap returned falsish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as non-configurable")
 		}
 		if !vm.IsExtensible(target) {
-			vm.throwTrapError("has", "trap returned falsish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' but the proxy target is not extensible")
+			vm.throwTrapError(vm.CurrentRealm(), "has", "trap returned falsish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' but the proxy target is not extensible")
 		}
 	}
 	return false
@@ -441,10 +441,10 @@ func (vm *VM) proxyGet(o *Object, k PropKey, receiver Value) Value {
 	r := vm.callTrap(trap, handler, Value{o: target}, vm.KeyValue(k), receiver)
 	if targetDesc, ok := vm.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
 		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(r, targetDesc.value) {
-			vm.throwTrapError("get", "property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
+			vm.throwTrapError(vm.CurrentRealm(), "get", "property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is a read-only and non-configurable data property on the proxy target but the proxy did not return its actual value")
 		}
 		if targetDesc.flags&FlagAccessor != 0 && targetDesc.getter == nil && !r.IsUndefined() {
-			vm.throwTrapError("get", "property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is a non-configurable accessor property on the proxy target and does not have a getter function, but the trap did not return 'undefined'")
+			vm.throwTrapError(vm.CurrentRealm(), "get", "property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' is a non-configurable accessor property on the proxy target and does not have a getter function, but the trap did not return 'undefined'")
 		}
 	}
 	return r
@@ -463,10 +463,10 @@ func (vm *VM) proxySet(o *Object, k PropKey, val, receiver Value) bool {
 	}
 	if targetDesc, ok := vm.GetOwnProperty(target, k); ok && targetDesc.flags&FlagConfigurable == 0 {
 		if targetDesc.flags&(FlagAccessor|FlagWritable) == 0 && !SameValue(val, targetDesc.value) {
-			vm.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
+			vm.throwTrapError(vm.CurrentRealm(), "set", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable data property with a different value")
 		}
 		if targetDesc.flags&FlagAccessor != 0 && targetDesc.setter == nil {
-			vm.throwTrapError("set", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable accessor property without a setter")
+			vm.throwTrapError(vm.CurrentRealm(), "set", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which exists in the proxy target as a non-configurable and non-writable accessor property without a setter")
 		}
 	}
 	return true
@@ -488,10 +488,10 @@ func (vm *VM) proxyDelete(o *Object, k PropKey) bool {
 		return true
 	}
 	if targetDesc.flags&FlagConfigurable == 0 {
-		vm.throwTrapError("deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable in the proxy target")
+		vm.throwTrapError(vm.CurrentRealm(), "deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' which is non-configurable in the proxy target")
 	}
 	if !vm.IsExtensible(target) {
-		vm.throwTrapError("deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' but the proxy target is non-extensible")
+		vm.throwTrapError(vm.CurrentRealm(), "deleteProperty", "trap returned truish for property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' but the proxy target is non-extensible")
 	}
 	return true
 }
@@ -511,7 +511,7 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 	for _, k := range keys {
 		p.Step(vm)
 		if _, dup := unchecked[k]; dup {
-			vm.throwTrapError(name, "trap returned duplicate entries")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap returned duplicate entries")
 		}
 		unchecked[k] = struct{}{}
 	}
@@ -531,7 +531,7 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 	for _, k := range nonconfigurable {
 		p.Step(vm)
 		if _, ok := unchecked[k]; !ok {
-			vm.throwTrapError(name, "trap result did not include '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap result did not include '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
 		}
 		delete(unchecked, k)
 	}
@@ -541,12 +541,12 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 	for _, k := range configurable {
 		p.Step(vm)
 		if _, ok := unchecked[k]; !ok {
-			vm.throwTrapError(name, "trap result did not include '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
+			vm.throwTrapError(vm.CurrentRealm(), name, "trap result did not include '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
 		}
 		delete(unchecked, k)
 	}
 	if len(unchecked) != 0 {
-		vm.throwTrapError(name, "trap returned extra keys but proxy target is non-extensible")
+		vm.throwTrapError(vm.CurrentRealm(), name, "trap returned extra keys but proxy target is non-extensible")
 	}
 	return keys
 }
@@ -554,7 +554,7 @@ func (vm *VM) proxyOwnKeys(o *Object) []PropKey {
 // propertyKeyList implements CreateListFromArrayLike(v, property-key).
 func (vm *VM) propertyKeyList(v Value) []PropKey {
 	if !v.IsObject() {
-		vm.ThrowTypeError("CreateListFromArrayLike called on non-object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "CreateListFromArrayLike called on non-object")
 	}
 	n := vm.LengthOfArrayLike(v.o)
 	var keys []PropKey
@@ -566,7 +566,7 @@ func (vm *VM) propertyKeyList(v Value) []PropKey {
 		}
 		e := vm.getProp(v.o, k, v)
 		if !e.IsString() && !e.IsSymbol() {
-			vm.ThrowTypeError(vm.DisplayString(e) + " is not a valid property name")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(e)+" is not a valid property name")
 		}
 		keys = append(keys, vm.ToPropertyKey(e))
 	}
@@ -596,7 +596,7 @@ func (vm *VM) proxyConstruct(o *Object, args []Value, newTarget *Object) *Object
 	argArray := vm.NewArray(append([]Value(nil), args...))
 	r := vm.callTrap(trap, handler, Value{o: target}, Value{o: argArray}, Value{o: newTarget})
 	if !r.IsObject() {
-		vm.throwTrapError("construct", "trap returned non-object ('"+vm.DisplayString(r)+"')")
+		vm.throwTrapError(vm.CurrentRealm(), "construct", "trap returned non-object ('"+vm.DisplayString(r)+"')")
 	}
 	return r.o
 }
@@ -668,7 +668,7 @@ func (d *PropDesc) complete() {
 // ToPropertyDescriptor implements ToPropertyDescriptor.
 func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 	if !v.IsObject() {
-		vm.ThrowTypeError("property description must be an object: " + vm.DisplayString(v))
+		vm.ThrowTypeError(vm.CurrentRealm(), "property description must be an object: "+vm.DisplayString(v))
 	}
 	o := v.o
 	var d PropDesc
@@ -693,7 +693,7 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 	}
 	if x, ok := field(KeyGet); ok {
 		if !x.IsUndefined() && !x.IsCallable() {
-			vm.ThrowTypeError("getter must be a function: " + vm.DisplayString(x))
+			vm.ThrowTypeError(vm.CurrentRealm(), "getter must be a function: "+vm.DisplayString(x))
 		}
 		var f *Object
 		if x.IsObject() {
@@ -703,7 +703,7 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 	}
 	if x, ok := field(KeySet); ok {
 		if !x.IsUndefined() && !x.IsCallable() {
-			vm.ThrowTypeError("setter must be a function: " + vm.DisplayString(x))
+			vm.ThrowTypeError(vm.CurrentRealm(), "setter must be a function: "+vm.DisplayString(x))
 		}
 		var f *Object
 		if x.IsObject() {
@@ -712,7 +712,7 @@ func (vm *VM) ToPropertyDescriptor(v Value) PropDesc {
 		d.SetSetter(f)
 	}
 	if d.IsAccessor() && d.IsData() {
-		vm.ThrowTypeError("invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
+		vm.ThrowTypeError(vm.CurrentRealm(), "invalid property descriptor. Cannot both specify accessors and a value or writable attribute")
 	}
 	return d
 }

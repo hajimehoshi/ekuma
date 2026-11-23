@@ -39,9 +39,9 @@ type errorData struct {
 	goErr error
 }
 
-// NewErrorObject returns an Error object without any property, with the prototype proto.
-func (vm *VM) NewErrorObject(proto *Object) *Object {
-	e := vm.NewObject(proto)
+// NewErrorObject returns an Error object in r with prototype proto and no own properties.
+func (vm *VM) NewErrorObject(r *Realm, proto *Object) *Object {
+	e := newObject(vm.shapeForRealm(proto, (*realm)(r)))
 	e.class = classError
 	return e
 }
@@ -69,15 +69,15 @@ func ErrorStack(v Value) (wtf8.String, bool) {
 	return d.stack, true
 }
 
-// NewGoError returns a new Error object whose message is the text of err and that
+// NewGoError returns a new Error object in r whose message is the text of err and that
 // [GoError] maps back to err.
-func (vm *VM) NewGoError(err error) Value {
-	return vm.newGoError(err.Error(), err)
+func (vm *VM) NewGoError(r *Realm, err error) Value {
+	return vm.newGoError(r, err.Error(), err)
 }
 
 // newGoError returns a new Error object whose message is msg and that [GoError] maps to err.
-func (vm *VM) newGoError(msg string, err error) Value {
-	e := vm.newError(ErrorKindError, msg)
+func (vm *VM) newGoError(r *Realm, msg string, err error) Value {
+	e := vm.newError(r, ErrorKindError, msg)
 	e.extState().(*errorData).goErr = err
 	return Value{o: e}
 }

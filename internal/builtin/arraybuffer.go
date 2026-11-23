@@ -52,7 +52,7 @@ func thisArrayBuffer(vm *engine.VM, this engine.Value, shared bool, what string)
 		if shared {
 			name = "SharedArrayBuffer"
 		}
-		vm.ThrowTypeError(name + ".prototype." + what + " called on incompatible receiver " + vm.DisplayString(this))
+		vm.ThrowTypeError(vm.CurrentRealm(), name+".prototype."+what+" called on incompatible receiver "+vm.DisplayString(this))
 	}
 	return b
 }
@@ -60,7 +60,7 @@ func thisArrayBuffer(vm *engine.VM, this engine.Value, shared bool, what string)
 // allocateArrayBuffer implements AllocateArrayBuffer and AllocateSharedArrayBuffer for the constructor newTarget.
 func allocateArrayBuffer(vm *engine.VM, newTarget *engine.Object, byteLength, maxByteLength int64, shared bool) *engine.Object {
 	if maxByteLength >= 0 && byteLength > maxByteLength {
-		vm.ThrowRangeError("byte length exceeds maxByteLength")
+		vm.ThrowRangeError(vm.CurrentRealm(), "byte length exceeds maxByteLength")
 	}
 	defaultProto := engine.IntrinsicArrayBufferPrototype
 	if shared {
@@ -88,7 +88,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	ctor := constructor(vm, "ArrayBuffer", 1, engine.IntrinsicArrayBufferPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor ArrayBuffer requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor ArrayBuffer requires 'new'")
 		}
 		n := toIndex(vm, arg(args, 0))
 		m := maxByteLengthOption(vm, arg(args, 1))
@@ -123,7 +123,7 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "slice", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := thisArrayBuffer(vm, this, false, "slice")
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot perform ArrayBuffer.prototype.slice on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot perform ArrayBuffer.prototype.slice on a detached ArrayBuffer")
 		}
 		first, final := relativeRange(vm, arg(args, 0), arg(args, 1), b.ByteLength())
 		newLen := max(final-first, 0)
@@ -131,23 +131,23 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		r := vm.Construct(c, []engine.Value{engine.Number(float64(newLen))}, c)
 		nb := engine.ArrayBufferData(engine.ObjectValue(r))
 		if nb == nil || nb.IsShared() {
-			vm.ThrowTypeError("species constructor did not return an ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor did not return an ArrayBuffer")
 		}
 		if nb.IsDetached() {
-			vm.ThrowTypeError("species constructor returned a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor returned a detached ArrayBuffer")
 		}
 		if nb.IsImmutable() {
-			vm.ThrowTypeError("species constructor returned an immutable ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor returned an immutable ArrayBuffer")
 		}
 		if r == this.Object() {
-			vm.ThrowTypeError("species constructor returned the same ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor returned the same ArrayBuffer")
 		}
 		if nb.ByteLength() < newLen {
-			vm.ThrowTypeError("species constructor returned a too small ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor returned a too small ArrayBuffer")
 		}
 		// The constructor may have detached or shrunk the buffer.
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot perform ArrayBuffer.prototype.slice on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot perform ArrayBuffer.prototype.slice on a detached ArrayBuffer")
 		}
 		if cur := b.ByteLength(); first < cur {
 			copy(nb.Bytes()[:min(newLen, cur-first)], b.Bytes()[first:])
@@ -157,16 +157,16 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "sliceToImmutable", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := thisArrayBuffer(vm, this, false, "sliceToImmutable")
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot perform ArrayBuffer.prototype.sliceToImmutable on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot perform ArrayBuffer.prototype.sliceToImmutable on a detached ArrayBuffer")
 		}
 		first, final := relativeRange(vm, arg(args, 0), arg(args, 1), b.ByteLength())
 		newLen := max(final-first, 0)
 		// The conversions may have detached or shrunk the buffer.
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot perform ArrayBuffer.prototype.sliceToImmutable on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot perform ArrayBuffer.prototype.sliceToImmutable on a detached ArrayBuffer")
 		}
 		if b.ByteLength() < final {
-			vm.ThrowRangeError("the ArrayBuffer is too short for the slice")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the ArrayBuffer is too short for the slice")
 		}
 		var data []byte
 		if newLen > 0 {
@@ -182,14 +182,14 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "resize", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ArrayBufferData(this)
 		if b == nil || b.IsShared() || !b.IsResizable() {
-			vm.ThrowTypeError("ArrayBuffer.prototype.resize called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "ArrayBuffer.prototype.resize called on incompatible receiver "+vm.DisplayString(this))
 		}
 		n := toIndex(vm, arg(args, 0))
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot resize a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot resize a detached ArrayBuffer")
 		}
 		if n > int64(b.MaxByteLength()) {
-			vm.ThrowRangeError("new length exceeds maxByteLength")
+			vm.ThrowRangeError(vm.CurrentRealm(), "new length exceeds maxByteLength")
 		}
 		b.Resize(int(n))
 		return engine.Undefined
@@ -206,19 +206,19 @@ func initArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 				n = toIndex(vm, l)
 			}
 			if b.IsDetached() {
-				vm.ThrowTypeError("cannot transfer a detached ArrayBuffer")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot transfer a detached ArrayBuffer")
 			}
 			if b.IsImmutable() {
-				vm.ThrowTypeError("cannot transfer an immutable ArrayBuffer")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot transfer an immutable ArrayBuffer")
 			}
 			if b.HasDetachKey() {
-				vm.ThrowTypeError("cannot transfer an ArrayBuffer that only the host can detach")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot transfer an ArrayBuffer that only the host can detach")
 			}
 			m := int64(-1)
 			if preserve && b.IsResizable() {
 				m = int64(b.MaxByteLength())
 				if n > m {
-					vm.ThrowRangeError("new length exceeds maxByteLength")
+					vm.ThrowRangeError(vm.CurrentRealm(), "new length exceeds maxByteLength")
 				}
 			}
 			return engine.ObjectValue(vm.TransferArrayBuffer(this.Object(), proto, n, m, immutable))
@@ -237,7 +237,7 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	ctor := constructor(vm, "SharedArrayBuffer", 1, engine.IntrinsicSharedArrayBufferPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor SharedArrayBuffer requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor SharedArrayBuffer requires 'new'")
 		}
 		n := toIndex(vm, arg(args, 0))
 		m := maxByteLengthOption(vm, arg(args, 1))
@@ -258,14 +258,14 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "grow", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		b := engine.ArrayBufferData(this)
 		if b == nil || !b.IsShared() || !b.IsResizable() {
-			vm.ThrowTypeError("SharedArrayBuffer.prototype.grow called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "SharedArrayBuffer.prototype.grow called on incompatible receiver "+vm.DisplayString(this))
 		}
 		n := toIndex(vm, arg(args, 0))
 		if n > int64(b.MaxByteLength()) {
-			vm.ThrowRangeError("new length exceeds maxByteLength")
+			vm.ThrowRangeError(vm.CurrentRealm(), "new length exceeds maxByteLength")
 		}
 		if !b.Grow(int(n)) {
-			vm.ThrowRangeError("SharedArrayBuffer cannot shrink")
+			vm.ThrowRangeError(vm.CurrentRealm(), "SharedArrayBuffer cannot shrink")
 		}
 		return engine.Undefined
 	})
@@ -277,13 +277,13 @@ func initSharedArrayBuffer(vm *engine.VM, bi *binaryIntrinsics) {
 		r := vm.Construct(c, []engine.Value{engine.Number(float64(newLen))}, c)
 		nb := engine.ArrayBufferData(engine.ObjectValue(r))
 		if nb == nil || !nb.IsShared() {
-			vm.ThrowTypeError("species constructor did not return a SharedArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor did not return a SharedArrayBuffer")
 		}
 		if b.SameDataBlock(nb) {
-			vm.ThrowTypeError("species constructor returned a SharedArrayBuffer with the same data block")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor returned a SharedArrayBuffer with the same data block")
 		}
 		if nb.ByteLength() < newLen {
-			vm.ThrowTypeError("species constructor returned a too small SharedArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "species constructor returned a too small SharedArrayBuffer")
 		}
 		if cur := b.ByteLength(); first < cur {
 			engine.CopyBufferBytes(nb, 0, b, first, min(newLen, cur-first))

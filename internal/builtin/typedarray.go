@@ -35,14 +35,14 @@ func validateWritableTypedArray(vm *engine.VM, this engine.Value, what string) (
 func validateTypedArrayAccess(vm *engine.VM, this engine.Value, write bool, what string) (*engine.Object, *engine.TypedArray, int) {
 	t := engine.TypedArrayData(this)
 	if t == nil {
-		vm.ThrowTypeError(what + ": this is not a typed array")
+		vm.ThrowTypeError(vm.CurrentRealm(), what+": this is not a typed array")
 	}
 	if write && t.ArrayBuffer().IsImmutable() {
-		vm.ThrowTypeError(what + ": the typed array is backed by an immutable ArrayBuffer")
+		vm.ThrowTypeError(vm.CurrentRealm(), what+": the typed array is backed by an immutable ArrayBuffer")
 	}
 	n, ok := t.Length()
 	if !ok {
-		vm.ThrowTypeError(what + ": the typed array is detached or out of bounds")
+		vm.ThrowTypeError(vm.CurrentRealm(), what+": the typed array is detached or out of bounds")
 	}
 	return this.Object(), t, n
 }
@@ -324,7 +324,7 @@ func createFromConstructor(vm *engine.VM, c *engine.Object, args []engine.Value,
 	r := engine.ObjectValue(vm.Construct(c, args, c))
 	o, t, n := validateTypedArrayAccess(vm, r, write, "typed array constructor")
 	if len(args) == 1 && args[0].IsNumber() && float64(n) < args[0].Number() {
-		vm.ThrowTypeError("typed array constructor returned a too short typed array")
+		vm.ThrowTypeError(vm.CurrentRealm(), "typed array constructor returned a too short typed array")
 	}
 	return o, t
 }
@@ -334,7 +334,7 @@ func (bi *binaryIntrinsics) speciesCreate(vm *engine.VM, exemplar *engine.Object
 	c := speciesConstructor(vm, exemplar, bi.ctors[t.ElementType()])
 	o, r := createFromConstructor(vm, c, args, write)
 	if r.ElementType().IsBigInt() != t.ElementType().IsBigInt() {
-		vm.ThrowTypeError("typed array species constructor returned a typed array of a different content type")
+		vm.ThrowTypeError(vm.CurrentRealm(), "typed array species constructor returned a typed array of a different content type")
 	}
 	return o, r
 }
@@ -364,7 +364,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 	nt := vm.GetNewTarget()
 	name := typedArrayNames[typ]
 	if nt == nil {
-		vm.ThrowTypeError("constructor " + name + " requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor "+name+" requires 'new'")
 	}
 	defaultProto := engine.TypedArrayPrototypeIntrinsic(typ)
 	size := typ.Size()
@@ -381,10 +381,10 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 	if src := engine.TypedArrayData(first); src != nil {
 		n, ok := src.Length()
 		if !ok {
-			vm.ThrowTypeError("cannot construct " + name + " from a detached or out of bounds typed array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot construct "+name+" from a detached or out of bounds typed array")
 		}
 		if src.ElementType().IsBigInt() != typ.IsBigInt() {
-			vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot mix BigInt and other types, use explicit conversions")
 		}
 		o := bi.newTypedArray(vm, proto, typ, int64(n))
 		storeConverted(vm, engine.TypedArrayData(engine.ObjectValue(o)), 0, elementsOf(src), src.ElementType(), n)
@@ -393,7 +393,7 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 	if b := engine.ArrayBufferData(first); b != nil {
 		offset := toIndex(vm, arg(args, 1))
 		if offset%int64(size) != 0 {
-			vm.ThrowRangeError("start offset of " + name + " should be a multiple of " + itoa(int64(size)))
+			vm.ThrowRangeError(vm.CurrentRealm(), "start offset of "+name+" should be a multiple of "+itoa(int64(size)))
 		}
 		fixed := !b.IsResizable()
 		length := arg(args, 2)
@@ -402,28 +402,28 @@ func (bi *binaryIntrinsics) construct(vm *engine.VM, typ engine.ElementType, arg
 			newLength = toIndex(vm, length)
 		}
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot construct " + name + " on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot construct "+name+" on a detached ArrayBuffer")
 		}
 		bl := int64(b.ByteLength())
 		if length.IsUndefined() && !fixed {
 			if offset > bl {
-				vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
+				vm.ThrowRangeError(vm.CurrentRealm(), "start offset "+itoa(offset)+" is outside the bounds of the buffer")
 			}
 			return engine.ObjectValue(vm.NewTypedArrayObject(proto, typ, first.Object(), int(offset), -1))
 		}
 		var newByteLength int64
 		if length.IsUndefined() {
 			if bl%int64(size) != 0 {
-				vm.ThrowRangeError("byte length of " + name + " should be a multiple of " + itoa(int64(size)))
+				vm.ThrowRangeError(vm.CurrentRealm(), "byte length of "+name+" should be a multiple of "+itoa(int64(size)))
 			}
 			newByteLength = bl - offset
 			if newByteLength < 0 {
-				vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
+				vm.ThrowRangeError(vm.CurrentRealm(), "start offset "+itoa(offset)+" is outside the bounds of the buffer")
 			}
 		} else {
 			newByteLength = newLength * int64(size)
 			if offset+newByteLength > bl {
-				vm.ThrowRangeError("invalid typed array length: " + itoa(newLength))
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid typed array length: "+itoa(newLength))
 			}
 		}
 		return engine.ObjectValue(vm.NewTypedArrayObject(proto, typ, first.Object(), int(offset), int(newByteLength/int64(size))))
@@ -584,7 +584,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	proto := vm.NewOrdinaryObject()
 	bi.typedArrayProto = proto
 	ctor := vm.NewNativeConstructor("TypedArray", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError("abstract class TypedArray not directly constructable")
+		vm.ThrowTypeError(vm.CurrentRealm(), "abstract class TypedArray not directly constructable")
 		return engine.Undefined
 	})
 	bi.typedArrayCtor = ctor
@@ -594,12 +594,12 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 
 	method(vm, ctor, "from", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() || !vm.IsConstructor(this.Object()) {
-			vm.ThrowTypeError(vm.DisplayString(this) + " is not a constructor")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(this)+" is not a constructor")
 		}
 		c := this.Object()
 		source, mapFn, thisArg := arg(args, 0), arg(args, 1), arg(args, 2)
 		if !mapFn.IsUndefined() && !mapFn.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(mapFn) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(mapFn)+" is not a function")
 		}
 		mapped := func(v engine.Value, i int) engine.Value {
 			if mapFn.IsUndefined() {
@@ -629,7 +629,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	})
 	method(vm, ctor, "of", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() || !vm.IsConstructor(this.Object()) {
-			vm.ThrowTypeError(vm.DisplayString(this) + " is not a constructor")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(this)+" is not a constructor")
 		}
 		o, t := createFromConstructor(vm, this.Object(), []engine.Value{engine.Number(float64(len(args)))}, true)
 		for i, v := range args {
@@ -641,7 +641,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	thisTypedArray := func(vm *engine.VM, this engine.Value, what string) *engine.TypedArray {
 		t := engine.TypedArrayData(this)
 		if t == nil {
-			vm.ThrowTypeError("%TypedArray%.prototype." + what + ": this is not a typed array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype."+what+": this is not a typed array")
 		}
 		return t
 	}
@@ -693,7 +693,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		if count > 0 {
 			n, ok := t.Length()
 			if !ok {
-				vm.ThrowTypeError("%TypedArray%.prototype.copyWithin: the typed array is detached or out of bounds")
+				vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.copyWithin: the typed array is detached or out of bounds")
 			}
 			size := t.ElementType().Size()
 			limit := n * size
@@ -778,7 +778,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		start, end := relativeRange(vm, arg(args, 1), arg(args, 2), n)
 		cur, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError("%TypedArray%.prototype.fill: the typed array is detached or out of bounds")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.fill: the typed array is detached or out of bounds")
 		}
 		end = min(end, cur)
 		if start < end {
@@ -872,7 +872,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 				writeString(vm, &b, e)
 			}
 			if b.Len() > engine.MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 		}
 		return vm.NewString(b.String())
@@ -904,7 +904,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 				acc = args[1]
 			} else {
 				if n == 0 {
-					vm.ThrowTypeError("reduce of empty array with no initial value")
+					vm.ThrowTypeError(vm.CurrentRealm(), "reduce of empty array with no initial value")
 				}
 				acc = getAt(vm, o, int64(index(0)))
 				j = 1
@@ -926,14 +926,14 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "set", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := engine.TypedArrayData(this)
 		if t == nil {
-			vm.ThrowTypeError("%TypedArray%.prototype.set: this is not a typed array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.set: this is not a typed array")
 		}
 		if t.ArrayBuffer().IsImmutable() {
-			vm.ThrowTypeError("%TypedArray%.prototype.set: the typed array is backed by an immutable ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.set: the typed array is backed by an immutable ArrayBuffer")
 		}
 		offset := vm.ToIntegerOrInfinity(arg(args, 1))
 		if offset < 0 {
-			vm.ThrowRangeError("offset is out of bounds")
+			vm.ThrowRangeError(vm.CurrentRealm(), "offset is out of bounds")
 		}
 		bi.setFrom(vm, this.Object(), t, offset, arg(args, 0))
 		return engine.Undefined
@@ -948,7 +948,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		}
 		cur, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError("%TypedArray%.prototype.slice: the typed array is detached or out of bounds")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.slice: the typed array is detached or out of bounds")
 		}
 		end = min(end, cur)
 		count = max(end-start, 0)
@@ -972,7 +972,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "sort", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cmp := arg(args, 0)
 		if !cmp.IsUndefined() && !cmp.IsCallable() {
-			vm.ThrowTypeError("the comparison function must be either a function or undefined")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the comparison function must be either a function or undefined")
 		}
 		o, t, n := validateWritableTypedArray(vm, this, "%TypedArray%.prototype.sort")
 		if cmp.IsUndefined() {
@@ -992,7 +992,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "subarray", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		t := engine.TypedArrayData(this)
 		if t == nil {
-			vm.ThrowTypeError("%TypedArray%.prototype.subarray: this is not a typed array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.subarray: this is not a typed array")
 		}
 		n, _ := t.Length()
 		start := engine.RelativeIndex(vm.ToIntegerOrInfinity(arg(args, 0)), n)
@@ -1023,7 +1023,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 				b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, toLocaleStringKey), e)))
 			}
 			if b.Len() > engine.MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 		}
 		return vm.NewString(b.String())
@@ -1038,7 +1038,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 	method(vm, proto, "toSorted", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		cmp := arg(args, 0)
 		if !cmp.IsUndefined() && !cmp.IsCallable() {
-			vm.ThrowTypeError("the comparison function must be either a function or undefined")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the comparison function must be either a function or undefined")
 		}
 		o, t, n := validateTypedArray(vm, this, "%TypedArray%.prototype.toSorted")
 		a, at := bi.createSameType(vm, t, n)
@@ -1068,7 +1068,7 @@ func initTypedArrays(vm *engine.VM, bi *binaryIntrinsics) {
 		v := vm.ToElementValue(typ, arg(args, 1))
 		cur, _ := t.Length()
 		if idx < 0 || idx >= float64(cur) {
-			vm.ThrowRangeError("invalid typed array index")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid typed array index")
 		}
 		a, at := bi.createSameType(vm, t, n)
 		copied := min(n, cur)
@@ -1108,18 +1108,18 @@ func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *eng
 	if src := engine.TypedArrayData(source); src != nil {
 		targetLen, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError("%TypedArray%.prototype.set: the typed array is detached or out of bounds")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.set: the typed array is detached or out of bounds")
 		}
 		srcLen, ok := src.Length()
 		if !ok {
-			vm.ThrowTypeError("%TypedArray%.prototype.set: the source typed array is detached or out of bounds")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.set: the source typed array is detached or out of bounds")
 		}
 		if math.IsInf(offset, 1) || float64(srcLen)+offset > float64(targetLen) {
-			vm.ThrowRangeError("offset is out of bounds")
+			vm.ThrowRangeError(vm.CurrentRealm(), "offset is out of bounds")
 		}
 		srcType := src.ElementType()
 		if typ.IsBigInt() != srcType.IsBigInt() {
-			vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot mix BigInt and other types, use explicit conversions")
 		}
 		if srcType == typ && src.ArrayBuffer().SameDataBlock(t.ArrayBuffer()) {
 			copyElements(t, int(offset), src, srcLen)
@@ -1135,12 +1135,12 @@ func (bi *binaryIntrinsics) setFrom(vm *engine.VM, target *engine.Object, t *eng
 	}
 	targetLen, ok := t.Length()
 	if !ok {
-		vm.ThrowTypeError("%TypedArray%.prototype.set: the typed array is detached or out of bounds")
+		vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.set: the typed array is detached or out of bounds")
 	}
 	src := vm.ToObject(source)
 	srcLen := vm.LengthOfArrayLike(src)
 	if math.IsInf(offset, 1) || float64(srcLen)+offset > float64(targetLen) {
-		vm.ThrowRangeError("offset is out of bounds")
+		vm.ThrowRangeError(vm.CurrentRealm(), "offset is out of bounds")
 	}
 	off := int(offset)
 	if !typ.IsBigInt() {

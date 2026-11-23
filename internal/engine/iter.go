@@ -22,11 +22,11 @@ func (vm *VM) getIterator(v Value, async bool) (it, next Value) {
 		m = vm.GetMethod(v, vm.WellKnownSymbol(SymbolIterator))
 	}
 	if m == nil {
-		vm.ThrowTypeError(vm.DisplayString(v) + " is not iterable")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not iterable")
 	}
 	it = vm.Call(m, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
 	}
 	next = vm.GetV(it, vm.Key(keyNext))
 	if next.o == numberObject {
@@ -120,7 +120,7 @@ func NewPlainIteratorNext[T any](vm *VM, yieldRealm IteratorYieldRealm, receiver
 	next := vm.newIteratorNext(yieldRealm, func(vm *VM, this Value) (Value, bool) {
 		state, ok := IteratorState(this).(T)
 		if !ok {
-			vm.ThrowTypeError(receiverError)
+			vm.ThrowTypeError(vm.CurrentRealm(), receiverError)
 		}
 		return step(vm, this.o, state)
 	})
@@ -221,7 +221,7 @@ func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st Pai
 		if !allowCalls {
 			return Undefined, Undefined, PairDeclined
 		}
-		vm.ThrowTypeError("next method called on an object that is not an array iterator")
+		vm.ThrowTypeError(vm.CurrentRealm(), "next method called on an object that is not an array iterator")
 	}
 	o := it.object
 	if o == nil {
@@ -248,7 +248,7 @@ func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st Pai
 			if !allowCalls {
 				return Undefined, Undefined, PairDeclined
 			}
-			vm.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot iterate a detached or out of bounds typed array")
 		}
 		length = int64(n)
 	default:
@@ -334,7 +334,7 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 	var done bool
 	if !vm.protect(func() {
 		if !r.IsObject() {
-			vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
 		}
 		done = ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 		if !done {
@@ -369,7 +369,7 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 	}
 	r := vm.CallValue(next, it)
 	if !r.IsObject() {
-		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
 	}
 	return !ToBoolean(vm.GetV(r, vm.Key(keyDone)))
 }
@@ -401,7 +401,7 @@ func (vm *VM) iteratorClose(it Value, pending bool) {
 		return
 	}
 	if r := vm.Call(m, it); !r.IsObject() {
-		vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
 	}
 }
 
@@ -487,7 +487,7 @@ func (vm *VM) IterateFromMethod(v Value, method *Object, f func(Value) bool) {
 	}
 	it := vm.Call(method, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
 	}
 	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), f)
 }
@@ -825,14 +825,14 @@ func (vm *VM) iterReturn(it Value) (Value, bool) {
 	return vm.Call(m, it), true
 }
 
-func (vm *VM) throwNotIterResult(r Value) {
-	vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+func (vm *VM) throwNotIterResult(errorRealm *Realm, r Value) {
+	vm.ThrowTypeError(errorRealm, "iterator result "+vm.DisplayString(r)+" is not an object")
 }
 
 // iterResultValue returns the value of the iterator result r, or reports true when it is done.
 func (vm *VM) iterResultValue(r Value) (Value, bool) {
 	if !r.IsObject() {
-		vm.throwNotIterResult(r)
+		vm.throwNotIterResult(vm.CurrentRealm(), r)
 	}
 	if ToBoolean(vm.GetV(r, vm.Key(keyDone))) {
 		return Undefined, true
@@ -856,7 +856,7 @@ func (vm *VM) IteratorToList(v Value, method *Object) []Value {
 	}
 	it := vm.Call(method, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
 	}
 	var vals []Value
 	vm.IterateRecord(it, vm.GetV(it, vm.Key(keyNext)), func(e Value) bool {

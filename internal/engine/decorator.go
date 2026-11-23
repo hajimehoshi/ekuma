@@ -148,7 +148,7 @@ func (vm *VM) addDecoratedElement(st *classDecoration, elem int, k Value, v *Obj
 func (vm *VM) makeAutoAccessor(k Value) (storage, getter, setter *Object) {
 	name := vm.funcNameOfKey(k)
 	if len("get ")+len(name) > MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 	storage = &Object{
 		kind:  kindSymbol,
@@ -366,7 +366,7 @@ func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object
 			if nv.IsCallable() {
 				e.dec.initializers = append(e.dec.initializers, nv.o)
 			} else if !nv.IsUndefined() {
-				vm.ThrowTypeError("a field decorator must return a function or undefined")
+				vm.ThrowTypeError(vm.CurrentRealm(), "a field decorator must return a function or undefined")
 			}
 		case bytecode.ElemAccessor:
 			if nv.IsObject() {
@@ -380,13 +380,13 @@ func (vm *VM) applyDecoratorsToElementDefinition(e *elementDef, extra *[]*Object
 					e.dec.initializers = append(e.dec.initializers, init)
 				}
 			} else if !nv.IsUndefined() {
-				vm.ThrowTypeError("an accessor decorator must return an object or undefined")
+				vm.ThrowTypeError(vm.CurrentRealm(), "an accessor decorator must return an object or undefined")
 			}
 		default:
 			if nv.IsCallable() {
 				e.value = nv.o
 			} else if !nv.IsUndefined() {
-				vm.ThrowTypeError("a method decorator must return a function or undefined")
+				vm.ThrowTypeError(vm.CurrentRealm(), "a method decorator must return a function or undefined")
 			}
 		}
 	}
@@ -401,7 +401,7 @@ func (vm *VM) decoratorResultFunction(o Value, key *Object) *Object {
 		return v.o
 	}
 	if !v.IsUndefined() {
-		vm.ThrowTypeError("the " + wtf8.ToValidUTF8(key.str) + " property that an accessor decorator returned must be a function or undefined")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the "+wtf8.ToValidUTF8(key.str)+" property that an accessor decorator returned must be a function or undefined")
 	}
 	return nil
 }
@@ -420,7 +420,7 @@ func (vm *VM) applyDecoratorsToClassDefinition(st *classDecoration, classDef Val
 		if nd.IsCallable() {
 			classDef = nd
 		} else if !nd.IsUndefined() {
-			vm.ThrowTypeError("a class decorator must return a function or undefined")
+			vm.ThrowTypeError(vm.CurrentRealm(), "a class decorator must return a function or undefined")
 		}
 	}
 	st.classDecorators = nil
@@ -491,11 +491,11 @@ func (vm *VM) createDecoratorContextObject(kind int, name Value, initializers *[
 	}
 	def("addInitializer", Value{o: vm.NewNative("addInitializer", 1, func(vm *VM, this Value, args []Value) Value {
 		if state.finished {
-			vm.ThrowTypeError("addInitializer cannot be called after the decorator returned")
+			vm.ThrowTypeError(vm.CurrentRealm(), "addInitializer cannot be called after the decorator returned")
 		}
 		init := argAt(args, 0)
 		if !init.IsCallable() {
-			vm.ThrowTypeError("an initializer must be a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), "an initializer must be a function")
 		}
 		*initializers = append(*initializers, init.o)
 		return Undefined
@@ -510,7 +510,7 @@ func (vm *VM) createDecoratorAccessObject(kind int, name Value) Value {
 	private := name.o != nil && name.o.class == classPrivateName
 	checkObject := func(vm *VM, o Value) {
 		if !o.IsObject() {
-			vm.ThrowTypeError("the object of a decorator access must be an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the object of a decorator access must be an object")
 		}
 	}
 	if kind != bytecode.ElemSetter {

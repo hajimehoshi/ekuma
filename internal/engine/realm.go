@@ -265,11 +265,11 @@ func (e *SyntaxError) messageWithPosition() string {
 }
 
 // throwCompileError throws a SyntaxError for err, an error of the parser or the compiler for the source file.
-func (vm *VM) throwCompileError(file string, err error) {
+func (vm *VM) throwCompileError(errorRealm *Realm, file string, err error) {
 	if se, ok := errors.AsType[*SyntaxError](toSyntaxError(file, err)); ok {
-		vm.throwSyntaxError(se.messageWithPosition())
+		vm.ThrowSyntaxError(errorRealm, se.messageWithPosition())
 	}
-	vm.throwSyntaxError(err.Error())
+	vm.ThrowSyntaxError(errorRealm, err.Error())
 }
 
 func itoa(n int) string {
@@ -594,7 +594,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 			}
 			p := vm.ToString(a)
 			if len(sb)+len(p) > MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 			sb = append(sb, p...)
 		}
@@ -617,7 +617,7 @@ func (vm *VM) CreateDynamicFunction(ctor, newTarget *Object, kind FunctionKind, 
 	}
 	fp, err := vm.compileFunction("<anonymous>", params, body, pkind)
 	if err != nil {
-		vm.throwCompileError("<anonymous>", err)
+		vm.throwCompileError(vm.CurrentRealm(), "<anonymous>", err)
 	}
 	proto := vm.GetPrototypeFromConstructor(newTarget, fallback)
 	f := vm.Call(vm.newScriptFunction(fp), Value{o: vm.globalThis})

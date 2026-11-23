@@ -153,7 +153,7 @@ func (r *realm) newCollator(vm *engine.VM, this engine.Value, args []engine.Valu
 func thisCollator(vm *engine.VM, this engine.Value, name string) *collatorData {
 	cd, ok := engine.IntlData(this).(*collatorData)
 	if !ok {
-		vm.ThrowTypeError("Intl.Collator.prototype." + name + " called on an object that is not an Intl.Collator")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.Collator.prototype."+name+" called on an object that is not an Intl.Collator")
 	}
 	return cd
 }
@@ -205,7 +205,7 @@ func initLocaleCompare(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicStringPrototype)
 	method(vm, proto, "localeCompare", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if this.IsNullish() {
-			vm.ThrowTypeError("String.prototype.localeCompare called on null or undefined")
+			vm.ThrowTypeError(vm.CurrentRealm(), "String.prototype.localeCompare called on null or undefined")
 		}
 		s := vm.ToString(this)
 		that := vm.ToString(arg(args, 0))
@@ -243,7 +243,7 @@ func initLocaleCase(vm *engine.VM) {
 		base := vm.Get(proto, engine.NamedKey(vm.Intern(wtf8.String(m.name))))
 		method(vm, proto, m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if this.IsNullish() {
-				vm.ThrowTypeError("String.prototype." + m.name + " called on null or undefined")
+				vm.ThrowTypeError(vm.CurrentRealm(), "String.prototype."+m.name+" called on null or undefined")
 			}
 			value := vm.ToStringValue(this)
 			// TransformCase.
@@ -502,7 +502,7 @@ func initArrayToLocaleString(vm *engine.VM) {
 				b.WriteString(vm.ToString(vm.CallValue(vm.GetV(e, key), e, locales, options)))
 			}
 			if b.Len() > engine.MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 		}
 		return vm.NewString(b.String())
@@ -516,11 +516,11 @@ func initArrayToLocaleString(vm *engine.VM) {
 		// ValidateTypedArray.
 		t := engine.TypedArrayData(this)
 		if t == nil {
-			vm.ThrowTypeError("%TypedArray%.prototype.toLocaleString: this is not a typed array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.toLocaleString: this is not a typed array")
 		}
 		n, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError("%TypedArray%.prototype.toLocaleString: the typed array is detached or out of bounds")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%TypedArray%.prototype.toLocaleString: the typed array is detached or out of bounds")
 		}
 		return join(vm, this.Object(), int64(n), args)
 	})

@@ -15,22 +15,22 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 	constructor(vm, "DataView", 1, engine.IntrinsicDataViewPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor DataView requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor DataView requires 'new'")
 		}
 		buf := arg(args, 0)
 		b := engine.ArrayBufferData(buf)
 		if b == nil {
-			vm.ThrowTypeError("first argument to DataView constructor must be an ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "first argument to DataView constructor must be an ArrayBuffer")
 		}
 		offset := toIndex(vm, arg(args, 1))
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot construct a DataView on a detached ArrayBuffer")
 		}
 		// The length of the buffer is taken before converting the view length, which can run
 		// JavaScript.
 		bufferLength := int64(b.ByteLength())
 		if offset > bufferLength {
-			vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
+			vm.ThrowRangeError(vm.CurrentRealm(), "start offset "+itoa(offset)+" is outside the bounds of the buffer")
 		}
 		length := arg(args, 2)
 		viewLength := int64(-1)
@@ -41,19 +41,19 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		} else {
 			viewLength = toIndex(vm, length)
 			if offset+viewLength > bufferLength {
-				vm.ThrowRangeError("invalid DataView length " + itoa(viewLength))
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid DataView length "+itoa(viewLength))
 			}
 		}
 		p := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicDataViewPrototype)
 		// Getting the prototype may have detached or shrunk the buffer.
 		if b.IsDetached() {
-			vm.ThrowTypeError("cannot construct a DataView on a detached ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot construct a DataView on a detached ArrayBuffer")
 		}
 		if offset > int64(b.ByteLength()) {
-			vm.ThrowRangeError("start offset " + itoa(offset) + " is outside the bounds of the buffer")
+			vm.ThrowRangeError(vm.CurrentRealm(), "start offset "+itoa(offset)+" is outside the bounds of the buffer")
 		}
 		if !length.IsUndefined() && offset+viewLength > int64(b.ByteLength()) {
-			vm.ThrowRangeError("invalid DataView length " + itoa(viewLength))
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid DataView length "+itoa(viewLength))
 		}
 		return engine.ObjectValue(vm.NewDataViewObject(p, buf.Object(), int(offset), int(viewLength)))
 	})
@@ -61,7 +61,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 	thisView := func(vm *engine.VM, this engine.Value, what string) *engine.DataView {
 		d := engine.DataViewData(this)
 		if d == nil {
-			vm.ThrowTypeError("DataView.prototype." + what + " called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "DataView.prototype."+what+" called on incompatible receiver "+vm.DisplayString(this))
 		}
 		return d
 	}
@@ -102,10 +102,10 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		// check it, from the bytes b of the view.
 		view := func(vm *engine.VM, b []byte, inBounds bool, i int64, what string) []byte {
 			if !inBounds {
-				vm.ThrowTypeError("DataView.prototype." + what + ": the view is detached or out of bounds")
+				vm.ThrowTypeError(vm.CurrentRealm(), "DataView.prototype."+what+": the view is detached or out of bounds")
 			}
 			if i+int64(typ.Size()) > int64(len(b)) {
-				vm.ThrowRangeError("offset is outside the bounds of the DataView")
+				vm.ThrowRangeError(vm.CurrentRealm(), "offset is outside the bounds of the DataView")
 			}
 			return b[i:]
 		}
@@ -131,7 +131,7 @@ func initDataView(vm *engine.VM, bi *binaryIntrinsics) {
 		method(vm, proto, wtf8.String(set), 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			d := thisView(vm, this, set)
 			if engine.ArrayBufferData(engine.ObjectValue(d.Buffer())).IsImmutable() {
-				vm.ThrowTypeError("DataView.prototype." + set + ": the DataView is backed by an immutable ArrayBuffer")
+				vm.ThrowTypeError(vm.CurrentRealm(), "DataView.prototype."+set+": the DataView is backed by an immutable ArrayBuffer")
 			}
 			i := toIndex(vm, arg(args, 0))
 			v := vm.ToElementValue(typ, arg(args, 1))

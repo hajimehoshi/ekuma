@@ -19,7 +19,7 @@ func invoke(vm *engine.VM, v engine.Value, key *engine.Object, args ...engine.Va
 func getPromiseResolve(vm *engine.VM, c engine.Value) engine.Value {
 	r := vm.GetV(c, vm.Intern("resolve"))
 	if !r.IsCallable() {
-		vm.ThrowTypeError("the resolve method of the promise constructor is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the resolve method of the promise constructor is not a function")
 	}
 	return r
 }
@@ -100,7 +100,7 @@ func promiseKeyedCombinator(vm *engine.VM, c, promises engine.Value, settled boo
 		return pc.Promise()
 	}
 	if !promises.IsObject() {
-		vm.RejectCapability(pc, vm.NewError(engine.ErrorKindType, name+" called on non-object"))
+		vm.RejectCapability(pc, vm.NewError(vm.CurrentRealm(), engine.ErrorKindType, name+" called on non-object"))
 		return pc.Promise()
 	}
 	vm.IfAbruptRejectPromise(pc, func() {
@@ -170,11 +170,11 @@ func initPromise(vm *engine.VM) {
 	ctor := constructor(vm, "Promise", 1, engine.IntrinsicPromisePrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("Promise constructor cannot be invoked without 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Promise constructor cannot be invoked without 'new'")
 		}
 		executor := arg(args, 0)
 		if !executor.IsCallable() {
-			vm.ThrowTypeError("Promise resolver " + vm.DisplayString(executor) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Promise resolver "+vm.DisplayString(executor)+" is not a function")
 		}
 		p := vm.NewPromiseObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicPromisePrototype))
 		rf := vm.CreateResolvingFunctions(p)
@@ -271,7 +271,7 @@ func initPromise(vm *engine.VM) {
 			remaining: 1,
 		}
 		aggregate := func() engine.Value {
-			err := vm.NewError(engine.ErrorKindAggregate, "all promises were rejected")
+			err := vm.NewError(vm.CurrentRealm(), engine.ErrorKindAggregate, "all promises were rejected")
 			vm.Define(err.Object(), vm.Key(engine.KeyErrors), engine.ObjectValue(vm.NewArray(slices.Clone(e.values))), engine.FlagsHidden)
 			return err
 		}
@@ -315,14 +315,14 @@ func initPromise(vm *engine.VM) {
 
 	method(vm, ctor, "resolve", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError("Promise.resolve called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.resolve called on non-object")
 		}
 		return vm.PromiseResolve(this.Object(), arg(args, 0))
 	})
 
 	method(vm, ctor, "try", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError("Promise.try called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.try called on non-object")
 		}
 		var status engine.Value
 		e, ok := vm.Completion(func() {
@@ -355,7 +355,7 @@ func initPromise(vm *engine.VM) {
 
 	method(vm, proto, "finally", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError("Promise.prototype.finally called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.prototype.finally called on non-object")
 		}
 		c := speciesConstructor(vm, this.Object(), vm.Intrinsic(engine.IntrinsicPromise))
 		onFinally := arg(args, 0)
@@ -386,7 +386,7 @@ func initPromise(vm *engine.VM) {
 
 	method(vm, proto, "then", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !engine.IsPromise(this) {
-			vm.ThrowTypeError("Promise.prototype.then called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "Promise.prototype.then called on incompatible receiver "+vm.DisplayString(this))
 		}
 		c := speciesConstructor(vm, this.Object(), vm.Intrinsic(engine.IntrinsicPromise))
 		pc := vm.NewPromiseCapability(engine.ObjectValue(c))

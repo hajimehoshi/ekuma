@@ -10,7 +10,7 @@ import (
 func initProxy(vm *engine.VM) {
 	ctor := vm.NewNativeConstructor("Proxy", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if vm.GetNewTarget() == nil {
-			vm.ThrowTypeError("constructor Proxy requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor Proxy requires 'new'")
 		}
 		return engine.ObjectValue(vm.ProxyCreate(arg(args, 0), arg(args, 1)))
 	})

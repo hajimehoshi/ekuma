@@ -217,7 +217,7 @@ func (vm *VM) createResolvingFunctions(c *PromiseCapability) {
 	c.resolve = vm.NewNative("", 1, func(vm *VM, this Value, args []Value) Value {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
-			vm.resolvePromise(c.promise, argAt(args, 0))
+			vm.resolvePromise(c.resolvingRealm(), c.promise, argAt(args, 0))
 		}
 		return Undefined
 	})
@@ -240,7 +240,7 @@ func argAt(args []Value, i int) Value {
 // NewPromiseCapability implements NewPromiseCapability.
 func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
 	if !c.IsObject() || !vm.IsConstructor(c.o) {
-		vm.ThrowTypeError(vm.DisplayString(c) + " is not a constructor")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(c)+" is not a constructor")
 	}
 	if c.o == vm.Intrinsic(IntrinsicPromise) {
 		// Constructing %Promise% with an executor observes nothing that this does not.
@@ -250,20 +250,20 @@ func (vm *VM) NewPromiseCapability(c Value) *PromiseCapability {
 	resolve, reject = Undefined, Undefined
 	executor := vm.NewNative("", 2, func(vm *VM, this Value, args []Value) Value {
 		if !resolve.IsUndefined() {
-			vm.ThrowTypeError("promise capability resolve function is already set")
+			vm.ThrowTypeError(vm.CurrentRealm(), "promise capability resolve function is already set")
 		}
 		if !reject.IsUndefined() {
-			vm.ThrowTypeError("promise capability reject function is already set")
+			vm.ThrowTypeError(vm.CurrentRealm(), "promise capability reject function is already set")
 		}
 		resolve, reject = argAt(args, 0), argAt(args, 1)
 		return Undefined
 	})
 	p := vm.Construct(c.o, []Value{{o: executor}}, c.o)
 	if !resolve.IsCallable() {
-		vm.ThrowTypeError("promise capability resolve function is not callable")
+		vm.ThrowTypeError(vm.CurrentRealm(), "promise capability resolve function is not callable")
 	}
 	if !reject.IsCallable() {
-		vm.ThrowTypeError("promise capability reject function is not callable")
+		vm.ThrowTypeError(vm.CurrentRealm(), "promise capability reject function is not callable")
 	}
 	return &PromiseCapability{
 		promise: p,
@@ -291,16 +291,18 @@ func (vm *VM) CapabilityReject(c *PromiseCapability) Value {
 	return Value{o: c.reject}
 }
 
-// canSettleDirectly reports whether the intrinsic resolving functions run in the current realm.
-func (c *PromiseCapability) canSettleDirectly(vm *VM) bool {
-	if !c.intrinsic || !vm.trackJobRealms {
-		return c.intrinsic
-	}
+// resolvingRealm returns the realm of an intrinsic capability's resolving functions.
+func (c *PromiseCapability) resolvingRealm() *Realm {
 	if c.resolve != nil {
 		// A thenable job creates its own resolving functions in the job's realm.
-		return c.resolve.fn.info.realm == vm.curRealm
+		return (*Realm)(c.resolve.fn.info.realm)
 	}
-	return c.promise.shape.realm == vm.curRealm
+	return c.promise.CreationRealm()
+}
+
+// canSettleDirectly reports whether the intrinsic resolving functions run in the current realm.
+func (c *PromiseCapability) canSettleDirectly(vm *VM) bool {
+	return c.intrinsic && (!vm.trackJobRealms || c.resolvingRealm() == vm.CurrentRealm())
 }
 
 // ResolveCapability calls the [[Resolve]] function of c with v.
@@ -308,7 +310,7 @@ func (vm *VM) ResolveCapability(c *PromiseCapability, v Value) {
 	if c.canSettleDirectly(vm) {
 		if !c.alreadyResolved {
 			c.alreadyResolved = true
-			vm.resolvePromise(c.promise, v)
+			vm.resolvePromise(c.resolvingRealm(), c.promise, v)
 		}
 		return
 	}
@@ -341,9 +343,9 @@ func (vm *VM) IfAbruptRejectPromise(c *PromiseCapability, f func()) bool {
 
 // resolvePromise is what a promise resolve function does with resolution once it was not
 // already resolved: the promise resolution procedure.
-func (vm *VM) resolvePromise(p *Object, resolution Value) {
+func (vm *VM) resolvePromise(resolverRealm *Realm, p *Object, resolution Value) {
 	if resolution.o == p {
-		vm.rejectPromise(p, vm.NewError(ErrorKindType, "chaining cycle detected for promise"))
+		vm.rejectPromise(p, vm.NewError(resolverRealm, ErrorKindType, "chaining cycle detected for promise"))
 		return
 	}
 	if !resolution.IsObject() {
@@ -540,7 +542,7 @@ func (vm *VM) awaitValue(v Value, action reactionAction) {
 			p = v.o
 		} else {
 			p = vm.NewPromiseObject(vm.Intrinsic(IntrinsicPromisePrototype))
-			vm.resolvePromise(p, v)
+			vm.resolvePromise(vm.CurrentRealm(), p, v)
 		}
 	case v.IsObject():
 		var then Value
@@ -721,7 +723,7 @@ func (vm *VM) enqueuePromiseJob(j *job, otherHandler *Object) {
 // It throws a TypeError if callback is not callable.
 func (vm *VM) QueueMicrotask(callback Value) {
 	if !callback.IsCallable() {
-		vm.ThrowTypeError(vm.DisplayString(callback) + " is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(callback)+" is not a function")
 	}
 	if vm.hasDetachedGlobal(vm.curRealm) {
 		return
@@ -746,7 +748,7 @@ func (vm *VM) runJob(j *job) {
 		}
 		return
 	case jobResolve:
-		vm.resolvePromise(j.promise, j.argument)
+		vm.resolvePromise((*Realm)(j.context.enteredRealm), j.promise, j.argument)
 		return
 	case jobThenable:
 		vm.protect(func() {

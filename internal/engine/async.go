@@ -94,7 +94,7 @@ func (vm *VM) asyncFunctionResume(g *generator, mode ResumeMode, v Value) {
 			return
 		}
 		if done {
-			vm.resolvePromise(g.object, r)
+			vm.resolvePromise((*Realm)(g.f.fn.code.realm), g.object, r)
 			return
 		}
 		if vm.tryAwait(g, r, reactionAwait) {
@@ -209,7 +209,7 @@ func (vm *VM) ResumeAsyncGenerator(gen Value, mode ResumeMode, v Value) Value {
 		g, _ = gen.o.extState().(*generator)
 	}
 	if g == nil || g.async == nil || g.async == asyncFunction {
-		vm.RejectCapability(c, vm.NewError(ErrorKindType, "method called on an object that is not an async generator"))
+		vm.RejectCapability(c, vm.NewError(vm.CurrentRealm(), ErrorKindType, "method called on an object that is not an async generator"))
 		return c.Promise()
 	}
 	defer g.abortOnPanic()
@@ -295,7 +295,7 @@ func (vm *VM) thisAsyncFromSyncIterator(this Value) *asyncFromSyncIterator {
 		s, _ = this.o.extState().(*asyncFromSyncIterator)
 	}
 	if s == nil {
-		vm.ThrowTypeError("method called on an object that is not an async-from-sync iterator")
+		vm.ThrowTypeError(vm.CurrentRealm(), "method called on an object that is not an async-from-sync iterator")
 	}
 	return s
 }
@@ -315,7 +315,7 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 				result = vm.CallValue(s.next, s.iterator)
 			}
 			if !result.IsObject() {
-				vm.ThrowTypeError("iterator result " + vm.DisplayString(result) + " is not an object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(result)+" is not an object")
 			}
 		}) {
 			return c.Promise()
@@ -346,7 +346,7 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 			return c.Promise()
 		}
 		if !result.IsObject() {
-			vm.RejectCapability(c, vm.NewError(ErrorKindType, "iterator result "+vm.DisplayString(result)+" is not an object"))
+			vm.RejectCapability(c, vm.NewError(vm.CurrentRealm(), ErrorKindType, "iterator result "+vm.DisplayString(result)+" is not an object"))
 			return c.Promise()
 		}
 		return vm.asyncFromSyncIteratorContinuation(result, c, s.iterator, false)
@@ -372,11 +372,11 @@ func (vm *VM) initAsyncFromSyncIteratorPrototype() {
 			return c.Promise()
 		}
 		if !hasThrow {
-			vm.RejectCapability(c, vm.NewError(ErrorKindType, "the iterator does not provide a 'throw' method"))
+			vm.RejectCapability(c, vm.NewError(vm.CurrentRealm(), ErrorKindType, "the iterator does not provide a 'throw' method"))
 			return c.Promise()
 		}
 		if !result.IsObject() {
-			vm.RejectCapability(c, vm.NewError(ErrorKindType, "iterator result "+vm.DisplayString(result)+" is not an object"))
+			vm.RejectCapability(c, vm.NewError(vm.CurrentRealm(), ErrorKindType, "iterator result "+vm.DisplayString(result)+" is not an object"))
 			return c.Promise()
 		}
 		return vm.asyncFromSyncIteratorContinuation(result, c, s.iterator, true)
@@ -459,7 +459,7 @@ func (vm *VM) AsyncIteratorClose(it Value, v Value, thrown bool, k AwaitHandler)
 			case rejected:
 				k(vm, r, true)
 			case !r.IsObject():
-				k(vm, vm.NewError(ErrorKindType, "iterator result "+vm.DisplayString(r)+" is not an object"), true)
+				k(vm, vm.NewError(vm.CurrentRealm(), ErrorKindType, "iterator result "+vm.DisplayString(r)+" is not an object"), true)
 			default:
 				k(vm, v, false)
 			}

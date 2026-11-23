@@ -25,7 +25,7 @@ func newDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.V
 // createDuration implements CreateTemporalDuration.
 func createDuration(vm *engine.VM, d temporal.Duration, nt *engine.Object) engine.Value {
 	if !temporal.IsValidDuration(&d) {
-		vm.ThrowRangeError("duration is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
 	}
 	return newDuration(vm, d, nt)
 }
@@ -44,7 +44,7 @@ func toPartialDuration(vm *engine.VM, v engine.Value) ([10]float64, [10]bool) {
 	var f [10]float64
 	var has [10]bool
 	if !v.IsObject() {
-		vm.ThrowTypeError("duration-like must be an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "duration-like must be an object")
 	}
 	o := v.Object()
 	any := false
@@ -59,7 +59,7 @@ func toPartialDuration(vm *engine.VM, v engine.Value) ([10]float64, [10]bool) {
 		any = true
 	}
 	if !any {
-		vm.ThrowTypeError("duration-like has no duration fields")
+		vm.ThrowTypeError(vm.CurrentRealm(), "duration-like has no duration fields")
 	}
 	return f, has
 }
@@ -73,14 +73,14 @@ func toTemporalDuration(vm *engine.VM, item engine.Value) temporal.Duration {
 		str := requireString(vm, item, "duration")
 		d := must(temporal.ParseTemporalDurationString(str, vm.Poll))
 		if !temporal.IsValidDuration(&d) {
-			vm.ThrowRangeError("duration is out of range")
+			vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
 		}
 		return d
 	}
 	f, _ := toPartialDuration(vm, item)
 	d := temporal.DurationFromFields(f)
 	if !temporal.IsValidDuration(&d) {
-		vm.ThrowRangeError("duration is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
 	}
 	return d
 }
@@ -151,7 +151,7 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 				match = temporal.MatchExactly
 			}
 		} else if p.Z {
-			vm.ThrowRangeError("a UTC designator needs a time zone annotation in relativeTo")
+			vm.ThrowRangeError(vm.CurrentRealm(), "a UTC designator needs a time zone annotation in relativeTo")
 		}
 		cal = canonicalizeParsedCalendar(vm, p.Calendar)
 		date = temporal.ISODate{Year: p.Year, Month: p.Month, Day: p.Day}
@@ -161,7 +161,7 @@ func getRelativeToOption(vm *engine.VM, opts *engine.Object) relativeTo {
 	}
 	if !hasTZ {
 		if !temporal.ISODateWithinLimits(date) {
-			vm.ThrowRangeError("relativeTo is out of range")
+			vm.ThrowRangeError(vm.CurrentRealm(), "relativeTo is out of range")
 		}
 		return relativeTo{
 			plain: &plainDateSlots{
@@ -192,7 +192,7 @@ func addDurations(vm *engine.VM, d temporal.Duration, otherV engine.Value, subtr
 	}
 	largest := temporal.LargerOfTwoTemporalUnits(temporal.DefaultTemporalLargestUnit(&d), temporal.DefaultTemporalLargestUnit(&other))
 	if largest.IsCalendarUnit() {
-		vm.ThrowRangeError("durations with years, months or weeks need a relativeTo to be added")
+		vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be added")
 	}
 	d1 := temporal.ToInternalDurationRecordWith24HourDays(&d)
 	d2 := temporal.ToInternalDurationRecordWith24HourDays(&other)
@@ -257,7 +257,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 		days1, days2 := d1.Date.Days, d2.Date.Days
 		if lu1.IsCalendarUnit() || lu2.IsCalendarUnit() {
 			if rel.plain == nil {
-				vm.ThrowRangeError("durations with years, months or weeks need a relativeTo to be compared")
+				vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be compared")
 			}
 			days1 = must(temporal.DateDurationDays(d1.Date, rel.plain.date, rel.plain.cal))
 			days2 = must(temporal.DateDurationDays(d2.Date, rel.plain.date, rel.plain.cal))
@@ -327,15 +327,15 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 			largest = defaultLargest
 		}
 		if !smallestPresent && !largestPresent {
-			vm.ThrowRangeError("smallestUnit or largestUnit is required")
+			vm.ThrowRangeError(vm.CurrentRealm(), "smallestUnit or largestUnit is required")
 		}
 		validateUnit(vm, largest, unitGroupDateTime)
 		if temporal.LargerOfTwoTemporalUnits(largest, smallest) != largest {
-			vm.ThrowRangeError("largestUnit must not be smaller than smallestUnit")
+			vm.ThrowRangeError(vm.CurrentRealm(), "largestUnit must not be smaller than smallestUnit")
 		}
 		validateDifferenceIncrement(vm, smallest, increment)
 		if increment > 1 && smallest.IsDateUnit() && largest != smallest {
-			vm.ThrowRangeError("a roundingIncrement of a date unit needs the same largestUnit")
+			vm.ThrowRangeError(vm.CurrentRealm(), "a roundingIncrement of a date unit needs the same largestUnit")
 		}
 		if z := rel.zoned; z != nil {
 			id := temporal.ToInternalDurationRecord(&d)
@@ -352,7 +352,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 			return newDuration(vm, must(temporal.TemporalDurationFromInternal(id, largest)), nil)
 		}
 		if existingLargest.IsCalendarUnit() || largest.IsCalendarUnit() {
-			vm.ThrowRangeError("durations with years, months or weeks need a relativeTo to be rounded")
+			vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be rounded")
 		}
 		id := temporal.ToInternalDurationRecordWith24HourDays(&d)
 		if smallest == temporal.UnitDay {
@@ -386,7 +386,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 		}
 		largest := temporal.DefaultTemporalLargestUnit(&d)
 		if largest.IsCalendarUnit() || unit.IsCalendarUnit() {
-			vm.ThrowRangeError("durations with years, months or weeks need a relativeTo to be totaled")
+			vm.ThrowRangeError(vm.CurrentRealm(), "durations with years, months or weeks need a relativeTo to be totaled")
 		}
 		id := temporal.ToInternalDurationRecordWith24HourDays(&d)
 		return engine.Number(temporal.TotalTimeDuration(id.Time, unit))
@@ -400,7 +400,7 @@ func initTemporalDuration(vm *engine.VM, ns *engine.Object) {
 		unit := getUnitOption(vm, opts, "smallestUnit", false)
 		validateUnit(vm, unit, unitGroupTime)
 		if unit == temporal.UnitHour || unit == temporal.UnitMinute {
-			vm.ThrowRangeError("smallestUnit must not be hour or minute")
+			vm.ThrowRangeError(vm.CurrentRealm(), "smallestUnit must not be hour or minute")
 		}
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		if p.Unit == temporal.UnitNanosecond && p.Increment == 1 {

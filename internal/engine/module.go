@@ -293,7 +293,7 @@ func (m *Module) SetModuleSource(source *Object) {
 // the result is the error to throw then.
 func (vm *VM) getModuleSource(m *Module) (Value, bool) {
 	if m.source == nil {
-		return vm.NewError(ErrorKindSyntax, "a source phase import is not available for this module"), false
+		return vm.NewError(vm.CurrentRealm(), ErrorKindSyntax, "a source phase import is not available for this module"), false
 	}
 	return Value{o: m.source}, true
 }
@@ -398,14 +398,14 @@ func (vm *VM) activeScriptOrModule() *scriptOrModule {
 }
 
 // errorValue returns the value to throw for an error of the host.
-func (vm *VM) errorValue(err error) Value {
+func (vm *VM) errorValue(r *Realm, err error) Value {
 	if e, ok := errors.AsType[*Error](err); ok {
 		return e.Value
 	}
 	if e, ok := errors.AsType[*SyntaxError](err); ok {
-		return vm.NewError(ErrorKindSyntax, e.messageWithPosition())
+		return vm.NewError(r, ErrorKindSyntax, e.messageWithPosition())
 	}
-	return vm.NewGoError(err)
+	return vm.NewGoError(r, err)
 }
 
 // loadImportedModule returns the module of the request req of the referrer ref from its
@@ -416,16 +416,17 @@ func (vm *VM) loadImportedModule(ref *scriptOrModule, req ModuleRequest) (m *Mod
 	if m := ref.loaded[k]; m != nil {
 		return m, Undefined, true
 	}
+	r := (*Realm)(ref.realm)
 	if vm.modules.load == nil {
-		return nil, vm.NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
+		return nil, vm.NewError(r, ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"': there is no module loader"), false
 	}
-	m, err := vm.modules.load(vm, ref.module, ref.file, (*Realm)(ref.realm), req)
+	m, err := vm.modules.load(vm, ref.module, ref.file, r, req)
 	vm.ResumeInterruption()
 	if err != nil {
-		return nil, vm.errorValue(err), false
+		return nil, vm.errorValue(r, err), false
 	}
 	if m == nil {
-		return nil, vm.NewError(ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"'"), false
+		return nil, vm.NewError(r, ErrorKindType, "cannot import '"+wtf8.ToValidUTF8(req.Specifier)+"'"), false
 	}
 	if ref.loaded == nil {
 		ref.loaded = map[string]*Module{}
@@ -488,7 +489,7 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		return true
 	}
 	if !visit(root) {
-		return vm.loadingError(root), false
+		return vm.loadingError((*Realm)(root.ref.realm), root), false
 	}
 	for len(stack) > 0 {
 		top := &stack[len(stack)-1]
@@ -500,7 +501,7 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		top.i++
 		req := moduleRequest(m.code.Requests[i])
 		if !allImportAttributesSupported(req.Attributes) {
-			return vm.NewError(ErrorKindSyntax, "unsupported import attribute"), false
+			return vm.NewError((*Realm)(m.ref.realm), ErrorKindSyntax, "unsupported import attribute"), false
 		}
 		dep, e, ok := vm.loadImportedModule(&m.ref, req)
 		if !ok {
@@ -508,7 +509,7 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 		}
 		m.requested[i] = dep
 		if !visit(dep) {
-			return vm.loadingError(dep), false
+			return vm.loadingError((*Realm)(m.ref.realm), dep), false
 		}
 	}
 	for _, m := range order {
@@ -520,8 +521,8 @@ func (vm *VM) loadModuleGraph(root *Module) (Value, bool) {
 }
 
 // loadingError returns the TypeError of loading m while an unfinished call is loading it.
-func (vm *VM) loadingError(m *Module) Value {
-	return vm.NewError(ErrorKindType, "cannot load '"+m.ref.file+"' while it is being loaded")
+func (vm *VM) loadingError(r *Realm, m *Module) Value {
+	return vm.NewError(r, ErrorKindType, "cannot load '"+m.ref.file+"' while it is being loaded")
 }
 
 // loadRequestedModules implements LoadRequestedModules: it returns its promise.
@@ -870,9 +871,9 @@ func (vm *VM) initializeEnvironment(m *Module) (Value, bool) {
 // resolve to r.
 func (vm *VM) resolutionError(m *Module, n string, r resolution) Value {
 	if r.kind == resolutionAmbiguous {
-		return vm.NewError(ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
+		return vm.NewError((*Realm)(m.ref.realm), ErrorKindSyntax, "the export '"+n+"' is ambiguous ("+m.ref.file+")")
 	}
-	return vm.NewError(ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
+	return vm.NewError((*Realm)(m.ref.realm), ErrorKindSyntax, "the export '"+n+"' cannot be resolved ("+m.ref.file+")")
 }
 
 // newClosure returns a closure of p whose enclosing function has the upvalues upvals. p must
@@ -1183,7 +1184,7 @@ func (m *Module) readyForSyncExecution() bool {
 // evaluateModuleSync implements EvaluateModuleSync.
 func (vm *VM) evaluateModuleSync(m *Module) {
 	if m.isCyclic() && m.status != moduleEvaluated && !m.readyForSyncExecution() {
-		vm.ThrowTypeError("the deferred module cannot be evaluated synchronously")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the deferred module cannot be evaluated synchronously")
 	}
 	p := vm.evaluateModule(m).o
 	if d := promiseOf(p); d.state == PromiseRejected {
@@ -1322,7 +1323,7 @@ func (vm *VM) rejectModuleEvaluations(modules []*Module, cause error) {
 		}
 		if !hasError {
 			// The message is fixed, so that scripts do not see the text of cause.
-			e = vm.newGoError("ekuma: interrupted", cause)
+			e = vm.newGoError(vm.CurrentRealm(), "ekuma: interrupted", cause)
 			hasError = true
 		}
 		vm.asyncModuleExecutionRejected(m, e)
@@ -1341,14 +1342,14 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 			return
 		}
 		if !options.IsObject() {
-			vm.ThrowTypeError("the options of import() must be an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the options of import() must be an object")
 		}
 		attrs := vm.Get(options.o, PropKey{key: vm.Intern("with")})
 		if attrs.IsUndefined() {
 			return
 		}
 		if !attrs.IsObject() {
-			vm.ThrowTypeError("the attributes of import() must be an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the attributes of import() must be an object")
 		}
 		req.Attributes = vm.dynamicImportAttributes(attrs.o)
 	})
@@ -1356,7 +1357,7 @@ func (vm *VM) importCall(specifier, options Value, phase bytecode.Phase) Value {
 		return Value{o: c.promise}
 	}
 	if vm.hasDetachedGlobal(vm.curRealm) {
-		vm.RejectCapability(c, vm.NewError(ErrorKindError, "Cannot import module from an inactive context"))
+		vm.RejectCapability(c, vm.NewError(vm.CurrentRealm(), ErrorKindError, "Cannot import module from an inactive context"))
 		return Value{o: c.promise}
 	}
 	m, e, ok := vm.loadImportedModule(ref, req)
@@ -1394,7 +1395,7 @@ func (vm *VM) dynamicImportAttributes(o *Object) []ImportAttribute {
 	for i, e := range entries {
 		vm.pollAt(i)
 		if !e.value.IsString() {
-			vm.ThrowTypeError("the value of the import attribute '" + wtf8.ToValidUTF8(e.key) + "' must be a string")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the value of the import attribute '"+wtf8.ToValidUTF8(e.key)+"' must be a string")
 		}
 		attrs = append(attrs, ImportAttribute{
 			Key:   e.key,
@@ -1402,7 +1403,7 @@ func (vm *VM) dynamicImportAttributes(o *Object) []ImportAttribute {
 		})
 	}
 	if !allImportAttributesSupported(attrs) {
-		vm.ThrowTypeError("unsupported import attribute")
+		vm.ThrowTypeError(vm.CurrentRealm(), "unsupported import attribute")
 	}
 	slices.SortFunc(attrs, func(a, b ImportAttribute) int {
 		return wtf8.Compare(a.Key, b.Key)

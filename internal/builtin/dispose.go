@@ -61,7 +61,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 	ctor = constructor(vm, wtf8.String(name), 0, protoID, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor " + name + " requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor "+name+" requires 'new'")
 		}
 		return newStack(nt, engine.NewDisposeCapability())
 	})
@@ -70,7 +70,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 	thisStack := func(vm *engine.VM, this engine.Value, method string) *disposableStack {
 		s, _ := engine.DisposableStackState(this, async).(*disposableStack)
 		if s == nil {
-			vm.ThrowTypeError(name + ".prototype." + method + " called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), name+".prototype."+method+" called on incompatible receiver "+vm.DisplayString(this))
 		}
 		return s
 	}
@@ -78,7 +78,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 	pendingStack := func(vm *engine.VM, this engine.Value, method string) *disposableStack {
 		s := thisStack(vm, this, method)
 		if s.disposed {
-			vm.ThrowReferenceError(name + " is already disposed")
+			vm.ThrowReferenceError(vm.CurrentRealm(), name+" is already disposed")
 		}
 		return s
 	}
@@ -87,7 +87,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		s := pendingStack(vm, this, "adopt")
 		v, onDispose := arg(args, 0), arg(args, 1)
 		if !onDispose.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(onDispose) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(onDispose)+" is not a function")
 		}
 		f := vm.NewNative("", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			return vm.Call(onDispose.Object(), engine.Undefined, v)
@@ -99,7 +99,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 		s := pendingStack(vm, this, "defer")
 		onDispose := arg(args, 0)
 		if !onDispose.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(onDispose) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(onDispose)+" is not a function")
 		}
 		vm.AddDisposableResource(s.dc, engine.Undefined, hint, onDispose.Object())
 		return engine.Undefined
@@ -111,7 +111,7 @@ func initDisposableStack(vm *engine.VM, async bool) {
 			s, _ := engine.DisposableStackState(this, async).(*disposableStack)
 			switch {
 			case s == nil:
-				vm.RejectCapability(pc, vm.NewError(engine.ErrorKindType, "AsyncDisposableStack.prototype.disposeAsync called on incompatible receiver "+vm.DisplayString(this)))
+				vm.RejectCapability(pc, vm.NewError(vm.CurrentRealm(), engine.ErrorKindType, "AsyncDisposableStack.prototype.disposeAsync called on incompatible receiver "+vm.DisplayString(this)))
 			case s.disposed:
 				vm.ResolveCapability(pc, engine.Undefined)
 			default:

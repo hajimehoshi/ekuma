@@ -50,7 +50,7 @@ func toTemporalInstant(vm *engine.VM, item engine.Value) temporal.Int128 {
 	check(temporal.CheckISODaysRange(balanced.Date))
 	ns := balanced.UTCEpochNanoseconds()
 	if !temporal.IsValidEpochNanoseconds(ns) {
-		vm.ThrowRangeError("instant is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "instant is out of range")
 	}
 	return ns
 }
@@ -76,10 +76,10 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object) {
 	tmethod(vm, ctor, "fromEpochMilliseconds", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		n := vm.ToNumber(arg(args, 0))
 		if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
-			vm.ThrowRangeError("epoch milliseconds must be an integer")
+			vm.ThrowRangeError(vm.CurrentRealm(), "epoch milliseconds must be an integer")
 		}
 		if math.Abs(n) > 8.64e15 {
-			vm.ThrowRangeError("epoch milliseconds are out of range")
+			vm.ThrowRangeError(vm.CurrentRealm(), "epoch milliseconds are out of range")
 		}
 		return newInstant(vm, temporal.Mul64(int64(n), 1_000_000), nil)
 	})
@@ -106,7 +106,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object) {
 				d = d.Negated()
 			}
 			if temporal.DefaultTemporalLargestUnit(&d).IsDateUnit() {
-				vm.ThrowRangeError("years, months, weeks and days cannot be added to an instant")
+				vm.ThrowRangeError(vm.CurrentRealm(), "years, months, weeks and days cannot be added to an instant")
 			}
 			id := temporal.ToInternalDurationRecordWith24HourDays(&d)
 			return newInstant(vm, must(temporal.AddInstant(s.ns, id.Time)), nil)
@@ -149,7 +149,7 @@ func initTemporalInstant(vm *engine.VM, ns *engine.Object) {
 		tzv := get(vm, opts, "timeZone")
 		validateUnit(vm, unit, unitGroupTime)
 		if unit == temporal.UnitHour {
-			vm.ThrowRangeError("smallestUnit must not be hour")
+			vm.ThrowRangeError(vm.CurrentRealm(), "smallestUnit must not be hour")
 		}
 		var tz *temporal.TimeZone
 		if !tzv.IsUndefined() {

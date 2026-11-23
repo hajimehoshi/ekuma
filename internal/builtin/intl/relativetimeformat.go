@@ -44,7 +44,7 @@ func defaultDigits() number.Digits {
 func (r *realm) newRelativeTimeFormat(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.RelativeTimeFormat requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.RelativeTimeFormat requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.relativeTimeFormatProto })
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
@@ -81,7 +81,7 @@ func (r *realm) newRelativeTimeFormat(vm *engine.VM, this engine.Value, args []e
 func thisRelativeTimeFormat(vm *engine.VM, this engine.Value, name string) *relativeTimeFormatData {
 	rtf, ok := engine.IntlData(this).(*relativeTimeFormatData)
 	if !ok {
-		vm.ThrowTypeError("Intl.RelativeTimeFormat.prototype." + name + " called on an object that is not an Intl.RelativeTimeFormat")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.RelativeTimeFormat.prototype."+name+" called on an object that is not an Intl.RelativeTimeFormat")
 	}
 	return rtf
 }
@@ -96,7 +96,7 @@ type relativeTimePart struct {
 // partition implements PartitionRelativeTimePattern after the conversion of the arguments.
 func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit string) []relativeTimePart {
 	if math.IsNaN(value) || math.IsInf(value, 0) {
-		vm.ThrowRangeError("the value of a relative time must be finite")
+		vm.ThrowRangeError(vm.CurrentRealm(), "the value of a relative time must be finite")
 	}
 	// SingularRelativeTimeUnit.
 	switch unit {
@@ -104,7 +104,7 @@ func (rtf *relativeTimeFormatData) partition(vm *engine.VM, value float64, unit 
 		unit = strings.TrimSuffix(unit, "s")
 	case "second", "minute", "hour", "day", "week", "month", "quarter", "year":
 	default:
-		vm.ThrowRangeError("invalid unit of a relative time: " + vm.DisplayString(vm.NewString(wtf8.String(unit))))
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid unit of a relative time: "+vm.DisplayString(vm.NewString(wtf8.String(unit))))
 	}
 	patterns := reltime.PatternsOf(rtf.dataLocale, unit, rtf.style)
 	if rtf.numeric == "auto" {

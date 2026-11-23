@@ -12,7 +12,7 @@ import (
 // createPlainDate implements CreateTemporalDate.
 func createPlainDate(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
 	if !temporal.ISODateWithinLimits(d) {
-		vm.ThrowRangeError("date is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "date is out of range")
 	}
 	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainDatePrototype)
 	return engine.ObjectValue(vm.NewTemporalObject(proto, &plainDateSlots{
@@ -24,7 +24,7 @@ func createPlainDate(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.O
 // createPlainDateTime implements CreateTemporalDateTime.
 func createPlainDateTime(vm *engine.VM, dt temporal.ISODateTime, cal string, nt *engine.Object) engine.Value {
 	if !temporal.ISODateTimeWithinLimits(dt) {
-		vm.ThrowRangeError("date-time is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "date-time is out of range")
 	}
 	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainDateTimePrototype)
 	return engine.ObjectValue(vm.NewTemporalObject(proto, &plainDateTimeSlots{
@@ -102,7 +102,7 @@ func toTemporalDate(vm *engine.VM, item, options engine.Value) plainDateSlots {
 	getOverflowOption(vm, getOptionsObject(vm, options))
 	d := temporal.ISODate{Year: p.Year, Month: p.Month, Day: p.Day}
 	if !temporal.ISODateWithinLimits(d) {
-		vm.ThrowRangeError("date is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "date is out of range")
 	}
 	return plainDateSlots{
 		date: d,
@@ -139,7 +139,7 @@ func toTemporalDateTime(vm *engine.VM, item, options engine.Value) plainDateTime
 		overflow := getOverflowOption(vm, getOptionsObject(vm, options))
 		dt := interpretDateTimeFields(vm, cal, f, overflow)
 		if !temporal.ISODateTimeWithinLimits(dt) {
-			vm.ThrowRangeError("date-time is out of range")
+			vm.ThrowRangeError(vm.CurrentRealm(), "date-time is out of range")
 		}
 		return plainDateTimeSlots{
 			dt:  dt,
@@ -155,7 +155,7 @@ func toTemporalDateTime(vm *engine.VM, item, options engine.Value) plainDateTime
 		Time: p.Time,
 	}
 	if !temporal.ISODateTimeWithinLimits(dt) {
-		vm.ThrowRangeError("date-time is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "date-time is out of range")
 	}
 	return plainDateTimeSlots{
 		dt:  dt,
@@ -287,7 +287,7 @@ func calendarEquals(a, b string) bool {
 // checkSameCalendar throws a RangeError when the calendars of a difference are not equal.
 func checkSameCalendar(vm *engine.VM, a, b string) {
 	if !calendarEquals(a, b) {
-		vm.ThrowRangeError("the calendars " + a + " and " + b + " differ")
+		vm.ThrowRangeError(vm.CurrentRealm(), "the calendars "+a+" and "+b+" differ")
 	}
 }
 
@@ -465,7 +465,7 @@ func toStringRounding(vm *engine.VM, opts *engine.Object) (temporal.Precision, t
 func checkToStringUnit(vm *engine.VM, unit temporal.Unit) {
 	validateUnit(vm, unit, unitGroupTime)
 	if unit == temporal.UnitHour {
-		vm.ThrowRangeError("smallestUnit must not be hour")
+		vm.ThrowRangeError(vm.CurrentRealm(), "smallestUnit must not be hour")
 	}
 }
 
@@ -700,7 +700,7 @@ func initTemporalPlainDateTime(vm *engine.VM, ns *engine.Object) {
 		p := temporal.ToSecondsStringPrecisionRecord(unit, digits)
 		dt := temporal.RoundISODateTime(s.dt, p.Increment, p.Unit, mode)
 		if !temporal.ISODateTimeWithinLimits(dt) {
-			vm.ThrowRangeError("date-time is out of range")
+			vm.ThrowRangeError(vm.CurrentRealm(), "date-time is out of range")
 		}
 		return vm.NewString(wtf8.String(temporal.ISODateTimeToString(dt, s.cal, p.Precision, show)))
 	})

@@ -43,7 +43,7 @@ const MaxBigIntBits = numconv.MaxBigIntBits
 // checkBigIntBits throws a RangeError when a BigInt result of n bits exceeds the limit.
 func (vm *VM) checkBigIntBits(n int64) {
 	if n > vm.maxBigIntResultBits {
-		vm.ThrowRangeError("maximum BigInt size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
 	}
 }
 
@@ -144,14 +144,14 @@ func (vm *VM) BigIntToString(v Value, radix int) wtf8.String {
 			sign = 1
 		}
 		if sign+(n+k-1)/k > MaxStringLength {
-			vm.ThrowRangeError("invalid string length")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 		}
 	} else if float64(n-1)/math.Log2(float64(radix)) > MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 	s := numconv.FormatBigInt(x, radix, vm.Poll)
 	if len(s) > MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 	return s
 }

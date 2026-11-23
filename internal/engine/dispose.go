@@ -39,7 +39,7 @@ func NewDisposeCapability() *DisposeCapability {
 func (vm *VM) AddDisposableResource(dc *DisposeCapability, v Value, hint DisposeHint, method *Object) {
 	if method != nil {
 		if !(Value{o: method}).IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(Value{o: method}) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(Value{o: method})+" is not a function")
 		}
 		dc.stack = append(dc.stack, disposableResource{
 			value:  Undefined,
@@ -59,11 +59,11 @@ func (vm *VM) AddDisposableResource(dc *DisposeCapability, v Value, hint Dispose
 		return
 	}
 	if !v.IsObject() {
-		vm.ThrowTypeError(vm.DisplayString(v) + " is not an object and cannot be disposed")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not an object and cannot be disposed")
 	}
 	method = vm.getDisposeMethod(v, hint)
 	if method == nil {
-		vm.ThrowTypeError(vm.DisplayString(v) + " is not disposable")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not disposable")
 	}
 	dc.stack = append(dc.stack, disposableResource{
 		value:  v,
@@ -125,7 +125,7 @@ func (vm *VM) disposeStep(dc *DisposeCapability) (Value, bool) {
 		if e, ok := vm.Completion(func() {
 			result = vm.Call(r.method, r.value)
 		}); !ok {
-			vm.disposeError(dc, e)
+			vm.disposeError(vm.CurrentRealm(), dc, e)
 			continue
 		}
 		if r.hint == AsyncDispose {
@@ -142,13 +142,13 @@ func (vm *VM) disposeStep(dc *DisposeCapability) (Value, bool) {
 }
 
 // disposeError records that disposing a resource of dc threw e.
-func (vm *VM) disposeError(dc *DisposeCapability, e Value) {
+func (vm *VM) disposeError(errorRealm *Realm, dc *DisposeCapability, e Value) {
 	if !dc.thrown {
 		dc.completion = e
 		dc.thrown = true
 		return
 	}
-	s := vm.NewErrorObject(vm.Intrinsic(ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
+	s := vm.NewErrorObject(errorRealm, vm.realmIntrinsic((*realm)(errorRealm), ErrorPrototypeIntrinsic(ErrorKindSuppressed)))
 	vm.Define(s, vm.Key(KeyError), e, FlagsHidden)
 	suppressed, _ := unpackException(dc.completion)
 	vm.Define(s, vm.Key(KeySuppressed), suppressed, FlagsHidden)
@@ -182,7 +182,7 @@ func (vm *VM) continueDispose(dc *DisposeCapability, k AwaitHandler) {
 		e, ok := vm.Completion(func() {
 			vm.Await(v, func(vm *VM, v Value, rejected bool) {
 				if rejected {
-					vm.disposeError(dc, v)
+					vm.disposeError(vm.CurrentRealm(), dc, v)
 				}
 				vm.continueDispose(dc, k)
 			})
@@ -190,7 +190,7 @@ func (vm *VM) continueDispose(dc *DisposeCapability, k AwaitHandler) {
 		if ok {
 			return
 		}
-		vm.disposeError(dc, e)
+		vm.disposeError(vm.CurrentRealm(), dc, e)
 	}
 }
 

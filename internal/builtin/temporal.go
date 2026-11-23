@@ -50,9 +50,9 @@ type (
 // throwTemporal throws err, an error of the temporal package, as the error it stands for.
 func throwTemporal(vm *engine.VM, err error) {
 	if te, ok := errors.AsType[*temporal.Error](err); ok && te.Kind == temporal.TypeError {
-		vm.ThrowTypeError(te.Message)
+		vm.ThrowTypeError(vm.CurrentRealm(), te.Message)
 	}
-	vm.ThrowRangeError(err.Error())
+	vm.ThrowRangeError(vm.CurrentRealm(), err.Error())
 }
 
 // temporalFailure carries an error of the temporal package out of a Temporal function to
@@ -123,7 +123,7 @@ func get(vm *engine.VM, o *engine.Object, name string) engine.Value {
 // requireString returns v as a Go string, or throws a TypeError when it is not a String.
 func requireString(vm *engine.VM, v engine.Value, what string) string {
 	if !v.IsString() {
-		vm.ThrowTypeError(what + " must be a string, not " + vm.DisplayString(v))
+		vm.ThrowTypeError(vm.CurrentRealm(), what+" must be a string, not "+vm.DisplayString(v))
 	}
 	return wtf8.ToValidUTF8(vm.ToString(v))
 }
@@ -132,7 +132,7 @@ func requireString(vm *engine.VM, v engine.Value, what string) string {
 func toIntegerWithTruncation(vm *engine.VM, v engine.Value, what string) float64 {
 	n := vm.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError(what + " must be a finite number")
+		vm.ThrowRangeError(vm.CurrentRealm(), what+" must be a finite number")
 	}
 	return math.Trunc(n) + 0
 }
@@ -141,7 +141,7 @@ func toIntegerWithTruncation(vm *engine.VM, v engine.Value, what string) float64
 func toPositiveIntegerWithTruncation(vm *engine.VM, v engine.Value, what string) float64 {
 	n := toIntegerWithTruncation(vm, v, what)
 	if n <= 0 {
-		vm.ThrowRangeError(what + " must be positive")
+		vm.ThrowRangeError(vm.CurrentRealm(), what+" must be positive")
 	}
 	return n
 }
@@ -150,7 +150,7 @@ func toPositiveIntegerWithTruncation(vm *engine.VM, v engine.Value, what string)
 func toIntegerIfIntegral(vm *engine.VM, v engine.Value, what string) float64 {
 	n := vm.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
-		vm.ThrowRangeError(what + " must be an integer")
+		vm.ThrowRangeError(vm.CurrentRealm(), what+" must be an integer")
 	}
 	return n + 0
 }
@@ -163,7 +163,7 @@ func getOptionsObject(vm *engine.VM, v engine.Value) *engine.Object {
 	if v.IsObject() {
 		return v.Object()
 	}
-	vm.ThrowTypeError("options must be an object, not " + vm.DisplayString(v))
+	vm.ThrowTypeError(vm.CurrentRealm(), "options must be an object, not "+vm.DisplayString(v))
 	return nil
 }
 
@@ -174,7 +174,7 @@ func temporalOption(vm *engine.VM, opts *engine.Object, name string, values []st
 	v := get(vm, opts, name)
 	if v.IsUndefined() {
 		if fallback < 0 {
-			vm.ThrowRangeError(name + " is required")
+			vm.ThrowRangeError(vm.CurrentRealm(), name+" is required")
 		}
 		return fallback
 	}
@@ -182,7 +182,7 @@ func temporalOption(vm *engine.VM, opts *engine.Object, name string, values []st
 	if i := slices.Index(values, s); i >= 0 {
 		return i
 	}
-	vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
+	vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
 	return 0
 }
 
@@ -223,7 +223,7 @@ func getRoundingIncrementOption(vm *engine.VM, opts *engine.Object) int64 {
 	}
 	n := toIntegerWithTruncation(vm, v, "roundingIncrement")
 	if n < 1 || n > 1e9 {
-		vm.ThrowRangeError("roundingIncrement must be from 1 to 1e9")
+		vm.ThrowRangeError(vm.CurrentRealm(), "roundingIncrement must be from 1 to 1e9")
 	}
 	return int64(n)
 }
@@ -236,17 +236,17 @@ func getFractionalSecondDigitsOption(vm *engine.VM, opts *engine.Object) tempora
 	}
 	if !v.IsNumber() {
 		if vm.ToString(v) != "auto" {
-			vm.ThrowRangeError("fractionalSecondDigits must be 'auto' or from 0 to 9")
+			vm.ThrowRangeError(vm.CurrentRealm(), "fractionalSecondDigits must be 'auto' or from 0 to 9")
 		}
 		return temporal.PrecisionAuto
 	}
 	n := v.Number()
 	if math.IsNaN(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError("fractionalSecondDigits must be 'auto' or from 0 to 9")
+		vm.ThrowRangeError(vm.CurrentRealm(), "fractionalSecondDigits must be 'auto' or from 0 to 9")
 	}
 	d := math.Floor(n)
 	if d < 0 || d > 9 {
-		vm.ThrowRangeError("fractionalSecondDigits must be 'auto' or from 0 to 9")
+		vm.ThrowRangeError(vm.CurrentRealm(), "fractionalSecondDigits must be 'auto' or from 0 to 9")
 	}
 	return temporal.Precision(d)
 }
@@ -257,14 +257,14 @@ func getUnitOption(vm *engine.VM, opts *engine.Object, key string, required bool
 	v := get(vm, opts, key)
 	if v.IsUndefined() {
 		if required {
-			vm.ThrowRangeError(key + " is required")
+			vm.ThrowRangeError(vm.CurrentRealm(), key+" is required")
 		}
 		return temporal.UnitUnset
 	}
 	s := wtf8.ToValidUTF8(vm.ToString(v))
 	u, ok := temporal.UnitFromString(s)
 	if !ok {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + key)
+		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+key)
 	}
 	return u
 }
@@ -290,7 +290,7 @@ func validateUnit(vm *engine.VM, u temporal.Unit, group unitGroup, extra ...temp
 	case u.IsTimeUnit() && group != unitGroupDate:
 		return
 	}
-	vm.ThrowRangeError(u.String() + " is not a valid unit here")
+	vm.ThrowRangeError(vm.CurrentRealm(), u.String()+" is not a valid unit here")
 }
 
 // differenceSettings is the result of GetDifferenceSettings.
@@ -312,21 +312,21 @@ func getDifferenceSettings(vm *engine.VM, since bool, opts *engine.Object, group
 		largest = temporal.UnitAuto
 	}
 	if slices.Contains(disallowed, largest) {
-		vm.ThrowRangeError(largest.String() + " is not a valid value for largestUnit")
+		vm.ThrowRangeError(vm.CurrentRealm(), largest.String()+" is not a valid value for largestUnit")
 	}
 	validateUnit(vm, smallest, group)
 	if smallest == temporal.UnitUnset {
 		smallest = fallbackSmallest
 	}
 	if slices.Contains(disallowed, smallest) {
-		vm.ThrowRangeError(smallest.String() + " is not a valid value for smallestUnit")
+		vm.ThrowRangeError(vm.CurrentRealm(), smallest.String()+" is not a valid value for smallestUnit")
 	}
 	defaultLargest := temporal.LargerOfTwoTemporalUnits(smallestLargestDefault, smallest)
 	if largest == temporal.UnitAuto {
 		largest = defaultLargest
 	}
 	if temporal.LargerOfTwoTemporalUnits(largest, smallest) != largest {
-		vm.ThrowRangeError("largestUnit must not be smaller than smallestUnit")
+		vm.ThrowRangeError(vm.CurrentRealm(), "largestUnit must not be smaller than smallestUnit")
 	}
 	if maximum, ok := temporal.MaximumTemporalDurationRoundingIncrement(smallest); ok {
 		check(temporal.ValidateTemporalRoundingIncrement(increment, maximum, false))
@@ -346,7 +346,7 @@ func getDifferenceSettings(vm *engine.VM, since bool, opts *engine.Object, group
 // smallestUnit option (or the key option).
 func roundToOptions(vm *engine.VM, v engine.Value, key string) *engine.Object {
 	if v.IsUndefined() {
-		vm.ThrowTypeError("options are required")
+		vm.ThrowTypeError(vm.CurrentRealm(), "options are required")
 	}
 	if v.IsString() {
 		o := vm.NewObject(nil)
@@ -418,7 +418,7 @@ func parseCalendarString(vm *engine.VM, s string) string {
 		return r.Calendar
 	}
 	if !temporal.IsAnnotationValue(s, vm.Poll) {
-		vm.ThrowRangeError("invalid calendar: " + vm.DisplayString(vm.NewString(wtf8.String(s))))
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid calendar: "+vm.DisplayString(vm.NewString(wtf8.String(s))))
 	}
 	return s
 }
@@ -477,7 +477,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 		v := get(vm, bag, name)
 		if v.IsUndefined() {
 			if req == fieldsTimeZoneRequired && name == "timeZone" {
-				vm.ThrowTypeError("timeZone is required")
+				vm.ThrowTypeError(vm.CurrentRealm(), "timeZone is required")
 			}
 			continue
 		}
@@ -496,7 +496,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 		case "monthCode":
 			p := vm.ToPrimitive(v, engine.HintString)
 			if !p.IsString() {
-				vm.ThrowTypeError("monthCode must be a string")
+				vm.ThrowTypeError(vm.CurrentRealm(), "monthCode must be a string")
 			}
 			s := wtf8.ToValidUTF8(vm.ToString(p))
 			n, leap := must2(temporal.ParseMonthCode(s))
@@ -516,7 +516,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 		case "offset":
 			p := vm.ToPrimitive(v, engine.HintString)
 			if !p.IsString() {
-				vm.ThrowTypeError("offset must be a string")
+				vm.ThrowTypeError(vm.CurrentRealm(), "offset must be a string")
 			}
 			s := wtf8.ToValidUTF8(vm.ToString(p))
 			must(temporal.ParseDateTimeUTCOffset(s))
@@ -526,7 +526,7 @@ func prepareCalendarFields(vm *engine.VM, cal string, bag *engine.Object, names 
 		}
 	}
 	if req == fieldsPartial && !any {
-		vm.ThrowTypeError("no fields are given")
+		vm.ThrowTypeError(vm.CurrentRealm(), "no fields are given")
 	}
 	return f
 }
@@ -555,7 +555,7 @@ func toTemporalTimeRecord(vm *engine.VM, bag *engine.Object, partial bool) timeR
 		any = true
 	}
 	if !any {
-		vm.ThrowTypeError("no time fields are given")
+		vm.ThrowTypeError(vm.CurrentRealm(), "no time fields are given")
 	}
 	if !partial {
 		r.has = [6]bool{true, true, true, true, true, true}
@@ -576,18 +576,18 @@ func interpretDateTimeFields(vm *engine.VM, cal string, f temporal.CalendarField
 // rejectTemporalLikeObject implements IsPartialTemporalObject's rejections.
 func rejectTemporalLikeObject(vm *engine.VM, v engine.Value) *engine.Object {
 	if !v.IsObject() {
-		vm.ThrowTypeError("argument must be an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "argument must be an object")
 	}
 	switch engine.TemporalData(v).(type) {
 	case *plainDateSlots, *plainDateTimeSlots, *plainMonthDaySlots, *plainTimeSlots, *plainYearMonthSlots, *zonedDateTimeSlots:
-		vm.ThrowTypeError("argument must be a partial object, not a Temporal object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "argument must be a partial object, not a Temporal object")
 	}
 	o := v.Object()
 	if !get(vm, o, "calendar").IsUndefined() {
-		vm.ThrowTypeError("calendar is not allowed")
+		vm.ThrowTypeError(vm.CurrentRealm(), "calendar is not allowed")
 	}
 	if !get(vm, o, "timeZone").IsUndefined() {
-		vm.ThrowTypeError("timeZone is not allowed")
+		vm.ThrowTypeError(vm.CurrentRealm(), "timeZone is not allowed")
 	}
 	return o
 }
@@ -596,7 +596,7 @@ func rejectTemporalLikeObject(vm *engine.VM, v engine.Value) *engine.Object {
 func newTarget(vm *engine.VM, name string) *engine.Object {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor " + name + " requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor "+name+" requires 'new'")
 	}
 	return nt
 }
@@ -616,14 +616,14 @@ func temporalConstructor(vm *engine.VM, ns *engine.Object, name wtf8.String, len
 // valueOfThrows defines the valueOf method of the prototype of the type name, which throws.
 func valueOfThrows(vm *engine.VM, proto *engine.Object, name string) {
 	tmethod(vm, proto, "valueOf", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError("use Temporal." + name + ".compare or equals to compare Temporal." + name + " values, and toString to convert them")
+		vm.ThrowTypeError(vm.CurrentRealm(), "use Temporal."+name+".compare or equals to compare Temporal."+name+" values, and toString to convert them")
 		return engine.Undefined
 	})
 }
 
 // incompatible throws the TypeError of a method called on a receiver of a wrong type.
 func incompatible(vm *engine.VM, what string, this engine.Value) {
-	vm.ThrowTypeError(what + " called on incompatible receiver " + vm.DisplayString(this))
+	vm.ThrowTypeError(vm.CurrentRealm(), what+" called on incompatible receiver "+vm.DisplayString(this))
 }
 
 // bigIntToEpochNs returns the BigInt v as epoch nanoseconds, or throws a RangeError when they
@@ -632,7 +632,7 @@ func bigIntToEpochNs(vm *engine.VM, v engine.Value) temporal.Int128 {
 	b := vm.ToBigInt(v).BigInt()
 	ns, ok := temporal.Int128FromBig(b)
 	if !ok || !temporal.IsValidEpochNanoseconds(ns) {
-		vm.ThrowRangeError("epoch nanoseconds are out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "epoch nanoseconds are out of range")
 	}
 	return ns
 }
@@ -674,7 +674,7 @@ func initTemporal(vm *engine.VM) {
 	tmethod(vm, vm.Intrinsic(engine.IntrinsicDatePrototype), "toTemporalInstant", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tv := thisDate(vm, this, "toTemporalInstant")
 		if math.IsNaN(tv) {
-			vm.ThrowRangeError("invalid time value")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time value")
 		}
 		return newInstant(vm, temporal.Mul64(int64(tv), 1_000_000), nil)
 	})

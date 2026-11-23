@@ -27,14 +27,14 @@ type displayNamesData struct {
 func (r *realm) newDisplayNames(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.DisplayNames requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.DisplayNames requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.displayNamesProto })
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
 	// GetOptionsObject, with the options required.
 	o := arg(args, 1)
 	if !o.IsObject() {
-		vm.ThrowTypeError("the options of Intl.DisplayNames must be an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the options of Intl.DisplayNames must be an object")
 	}
 	options := o.Object()
 	bestFit := localeMatcher(vm, options)
@@ -44,7 +44,7 @@ func (r *realm) newDisplayNames(vm *engine.VM, this engine.Value, args []engine.
 	}
 	typ, ok := getOption(vm, options, "type", "language", "region", "script", "currency", "calendar", "dateTimeField")
 	if !ok {
-		vm.ThrowTypeError("the type option of Intl.DisplayNames is required")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the type option of Intl.DisplayNames is required")
 	}
 	dn.typ = typ
 	dn.fallback = getStringOption(vm, options, "fallback", "code", "code", "none")
@@ -61,7 +61,7 @@ func (r *realm) newDisplayNames(vm *engine.VM, this engine.Value, args []engine.
 func thisDisplayNames(vm *engine.VM, this engine.Value, name string) *displayNamesData {
 	dn, ok := engine.IntlData(this).(*displayNamesData)
 	if !ok {
-		vm.ThrowTypeError("Intl.DisplayNames.prototype." + name + " called on an object that is not an Intl.DisplayNames")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DisplayNames.prototype."+name+" called on an object that is not an Intl.DisplayNames")
 	}
 	return dn
 }
@@ -69,7 +69,7 @@ func thisDisplayNames(vm *engine.VM, this engine.Value, name string) *displayNam
 // of implements Intl.DisplayNames.prototype.of after the conversion of code to a String.
 func (dn *displayNamesData) of(vm *engine.VM, code string) engine.Value {
 	invalid := func() {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(code))) + " is not a valid code for the type " + dn.typ)
+		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(code)))+" is not a valid code for the type "+dn.typ)
 	}
 	var name string
 	var ok bool

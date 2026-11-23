@@ -133,7 +133,7 @@ type segmentIteratorData struct {
 func (r *realm) newSegmenter(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.Segmenter requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.Segmenter requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.segmenterProto })
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
@@ -145,7 +145,7 @@ func (r *realm) newSegmenter(vm *engine.VM, this engine.Value, args []engine.Val
 	case o.IsObject():
 		options = o.Object()
 	default:
-		vm.ThrowTypeError("the options of Intl.Segmenter must be an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the options of Intl.Segmenter must be an object")
 	}
 	bestFit := localeMatcher(vm, options)
 	res := locale.ResolveLocale(requested, defaultLocale(vm), bestFit, nil)
@@ -174,7 +174,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 	thisSegmenter := func(vm *engine.VM, this engine.Value, name string) *segmenterData {
 		sd, ok := engine.IntlData(this).(*segmenterData)
 		if !ok {
-			vm.ThrowTypeError("Intl.Segmenter.prototype." + name + " called on an object that is not an Intl.Segmenter")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Intl.Segmenter.prototype."+name+" called on an object that is not an Intl.Segmenter")
 		}
 		return sd
 	}
@@ -197,7 +197,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 	thisSegments := func(vm *engine.VM, this engine.Value, name string) *segmentsData {
 		d, ok := engine.IntlData(this).(*segmentsData)
 		if !ok {
-			vm.ThrowTypeError("%Segments.prototype%." + name + " called on an object that is not a Segments object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%Segments.prototype%."+name+" called on an object that is not a Segments object")
 		}
 		return d
 	}
@@ -220,7 +220,7 @@ func (r *realm) initSegmenter(vm *engine.VM) {
 	method(vm, iterProto, "next", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		it, ok := engine.IntlData(this).(*segmentIteratorData)
 		if !ok {
-			vm.ThrowTypeError("%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%SegmentIteratorPrototype%.next called on an object that is not a Segment Iterator")
 		}
 		d := it.segments
 		if it.pos >= len(d.runes) {

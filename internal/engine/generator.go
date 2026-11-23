@@ -209,7 +209,7 @@ func (vm *VM) callCoroutine(f *Object, this Value, args []Value) Value {
 func (vm *VM) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 	switch g.state {
 	case genRunning:
-		vm.ThrowTypeError("generator is already running")
+		vm.ThrowTypeError(vm.CurrentRealm(), "generator is already running")
 	case genCompleted:
 		switch mode {
 		case ResumeThrow:
@@ -231,7 +231,7 @@ func (vm *VM) resume(g *generator, mode ResumeMode, v Value) (Value, bool) {
 		}
 	}
 	if len(vm.frames) >= maxFrames {
-		vm.ThrowRangeError("maximum call stack size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	sp := vm.sp
 	started := g.state == genSuspendedYield

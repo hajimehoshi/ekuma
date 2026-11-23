@@ -54,7 +54,7 @@ func defaultNumberOption(vm *engine.VM, v engine.Value, name string, minimum, ma
 	}
 	n := vm.ToNumber(v)
 	if math.IsNaN(n) || math.IsInf(n, 0) || n < float64(minimum) || n > float64(maximum) {
-		vm.ThrowRangeError(name + " value is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), name+" value is out of range")
 	}
 	return int(math.Trunc(n))
 }
@@ -91,7 +91,7 @@ func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options
 	maxSD := get("maximumSignificantDigits")
 	inc := getNumberOption(vm, options, "roundingIncrement", 1, 5000, 1)
 	if !slices.Contains([]int{1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000}, inc) {
-		vm.ThrowRangeError("invalid roundingIncrement")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid roundingIncrement")
 	}
 	mode := getStringOption(vm, options, "roundingMode", "halfExpand", "ceil", "floor", "expand", "trunc", "halfCeil", "halfFloor", "halfExpand", "halfTrunc", "halfEven")
 	priority := getStringOption(vm, options, "roundingPriority", "auto", "auto", "morePrecision", "lessPrecision")
@@ -129,7 +129,7 @@ func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options
 			case hi < 0:
 				hi = max(maxFDDefault, lo)
 			case lo > hi:
-				vm.ThrowRangeError("minimumFractionDigits is greater than maximumFractionDigits")
+				vm.ThrowRangeError(vm.CurrentRealm(), "minimumFractionDigits is greater than maximumFractionDigits")
 			}
 			d.MinimumFractionDigits = lo
 			d.MaximumFractionDigits = hi
@@ -165,10 +165,10 @@ func setDigitOptions(vm *engine.VM, d *number.Digits, slots *digitSlots, options
 	}
 	if inc != 1 {
 		if d.RoundingType != number.FractionDigits {
-			vm.ThrowTypeError("roundingIncrement requires fraction digits rounding")
+			vm.ThrowTypeError(vm.CurrentRealm(), "roundingIncrement requires fraction digits rounding")
 		}
 		if d.MaximumFractionDigits != d.MinimumFractionDigits {
-			vm.ThrowRangeError("roundingIncrement requires equal minimumFractionDigits and maximumFractionDigits")
+			vm.ThrowRangeError(vm.CurrentRealm(), "roundingIncrement requires equal minimumFractionDigits and maximumFractionDigits")
 		}
 	}
 }
@@ -212,12 +212,12 @@ func numberingSystemsOf(l string) []string {
 func numberingSystemOption(vm *engine.VM, options *engine.Object) (string, bool) {
 	s, ok := getOption(vm, options, "numberingSystem")
 	if ok && !localetag.IsType(strings.ToLower(s)) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for numberingSystem")
+		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for numberingSystem")
 	}
 	if ok {
 		for i := range len(s) {
 			if s[i] >= 0x80 {
-				vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for numberingSystem")
+				vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for numberingSystem")
 			}
 		}
 	}
@@ -249,20 +249,20 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 	currency, hasCurrency := getOption(vm, options, "currency")
 	if !hasCurrency {
 		if o.Style == "currency" {
-			vm.ThrowTypeError("currency is required with the currency style")
+			vm.ThrowTypeError(vm.CurrentRealm(), "currency is required with the currency style")
 		}
 	} else if !isWellFormedCurrencyCode(currency) {
-		vm.ThrowRangeError("invalid currency code: " + vm.DisplayString(vm.NewString(wtf8.String(currency))))
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid currency code: "+vm.DisplayString(vm.NewString(wtf8.String(currency))))
 	}
 	currencyDisplay := getStringOption(vm, options, "currencyDisplay", "symbol", "code", "symbol", "narrowSymbol", "name")
 	currencySign := getStringOption(vm, options, "currencySign", "standard", "standard", "accounting")
 	unit, hasUnit := getOption(vm, options, "unit")
 	if !hasUnit {
 		if o.Style == "unit" {
-			vm.ThrowTypeError("unit is required with the unit style")
+			vm.ThrowTypeError(vm.CurrentRealm(), "unit is required with the unit style")
 		}
 	} else if !isWellFormedUnitIdentifier(unit) {
-		vm.ThrowRangeError("invalid unit: " + vm.DisplayString(vm.NewString(wtf8.String(unit))))
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid unit: "+vm.DisplayString(vm.NewString(wtf8.String(unit))))
 	}
 	unitDisplay := getStringOption(vm, options, "unitDisplay", "short", "short", "narrow", "long")
 	if o.Style == "currency" {
@@ -303,7 +303,7 @@ func createNumberFormat(vm *engine.VM, locales, opts engine.Value) *numberFormat
 		default:
 			s := wtf8.ToValidUTF8(vm.ToString(v))
 			if !slices.Contains([]string{"min2", "auto", "always", "true", "false"}, s) {
-				vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for useGrouping")
+				vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for useGrouping")
 			}
 			if s != "true" && s != "false" {
 				o.UseGrouping = s
@@ -353,7 +353,7 @@ func (r *realm) newNumberFormat(vm *engine.VM, this engine.Value, args []engine.
 // slot.
 func (r *realm) unwrapNumberFormat(vm *engine.VM, this engine.Value, name string) *numberFormatData {
 	if !this.IsObject() {
-		vm.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on a value that is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.NumberFormat.prototype."+name+" called on a value that is not an object")
 	}
 	if nf, ok := engine.IntlData(this).(*numberFormatData); ok {
 		return nf
@@ -363,7 +363,7 @@ func (r *realm) unwrapNumberFormat(vm *engine.VM, this engine.Value, name string
 			return nf
 		}
 	}
-	vm.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on an object that is not an Intl.NumberFormat")
+	vm.ThrowTypeError(vm.CurrentRealm(), "Intl.NumberFormat.prototype."+name+" called on an object that is not an Intl.NumberFormat")
 	return nil
 }
 
@@ -371,7 +371,7 @@ func (r *realm) unwrapNumberFormat(vm *engine.VM, this engine.Value, name string
 func thisNumberFormat(vm *engine.VM, this engine.Value, name string) *numberFormatData {
 	nf, ok := engine.IntlData(this).(*numberFormatData)
 	if !ok {
-		vm.ThrowTypeError("Intl.NumberFormat.prototype." + name + " called on an object that is not an Intl.NumberFormat")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.NumberFormat.prototype."+name+" called on an object that is not an Intl.NumberFormat")
 	}
 	return nf
 }
@@ -405,12 +405,12 @@ func partsArray(vm *engine.VM, n int, part func(i int) (typ, value, source strin
 func (nf *numberFormatData) formatRange(vm *engine.VM, args []engine.Value) []number.RangePart {
 	start, end := arg(args, 0), arg(args, 1)
 	if start.IsUndefined() || end.IsUndefined() {
-		vm.ThrowTypeError("formatRange requires a start and an end")
+		vm.ThrowTypeError(vm.CurrentRealm(), "formatRange requires a start and an end")
 	}
 	x := toIntlMathematicalValue(vm, start)
 	y := toIntlMathematicalValue(vm, end)
 	if x.IsNaN() || y.IsNaN() {
-		vm.ThrowRangeError("the start or the end of a range is NaN")
+		vm.ThrowRangeError(vm.CurrentRealm(), "the start or the end of a range is NaN")
 	}
 	return nf.f.FormatRange(x, y, vm.Poll)
 }
@@ -537,14 +537,14 @@ func initToLocaleString(vm *engine.VM) {
 	method(vm, vm.Intrinsic(engine.IntrinsicNumberPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisNumberValue(this)
 		if !ok {
-			vm.ThrowTypeError("Number.prototype.toLocaleString requires that 'this' be a Number")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Number.prototype.toLocaleString requires that 'this' be a Number")
 		}
 		return format(vm, args, number.FromFloat(x))
 	})
 	method(vm, vm.Intrinsic(engine.IntrinsicBigIntPrototype), "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		x, ok := engine.ThisBigIntValue(this)
 		if !ok {
-			vm.ThrowTypeError("BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
+			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt.prototype.toLocaleString requires that 'this' be a BigInt")
 		}
 		return format(vm, args, number.FromInteger(string(vm.BigIntToString(x, 10))))
 	})

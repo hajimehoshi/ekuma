@@ -6,6 +6,7 @@ package engine_test
 import (
 	"testing"
 
+	"github.com/hajimehoshi/ekuma/internal/builtin"
 	"github.com/hajimehoshi/ekuma/internal/engine"
 )
 
@@ -34,5 +35,42 @@ func TestNativeCallLimit(t *testing.T) {
 	}
 	if deepest != engine.MaxNatives {
 		t.Errorf("got %d nested calls, want %d", deepest, engine.MaxNatives)
+	}
+}
+
+func TestDerivedReturnErrorLocation(t *testing.T) {
+	vm := newVM(t)
+	var ctor engine.Value
+	vm.CreateRealm(func() {
+		builtin.Install(vm)
+		var err error
+		ctor, err = runScript(vm, "ctor.js", `(class extends Object {
+	constructor() {
+		return 1;
+	}
+})`)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := vm.HostSet(vm.GlobalObject(), vm.StringFromGo("Ctor"), ctor); err != nil {
+		t.Fatal(err)
+	}
+	callerRealm := vm.CurrentRealm()
+	var loc engine.ExceptionLocation
+	vm.SetExceptionReporter(func(thrown engine.Value, site engine.ExceptionLocation) {
+		loc = site
+		if thrown.Object().CreationRealm() != callerRealm {
+			t.Error("derived constructor return error was created outside the caller's realm")
+		}
+		if got := vm.ProtoOf(thrown.Object()); got != vm.Intrinsic(engine.IntrinsicTypeErrorPrototype) {
+			t.Error("derived constructor return error has the wrong prototype")
+		}
+	})
+	if _, err := runScript(vm, "caller.js", "new Ctor()"); err == nil {
+		t.Error("expected the derived constructor to throw")
+	}
+	if loc.File != "ctor.js" || loc.Line != 3 || loc.Column != 3 || loc.SourceLine != "\t\treturn 1;" {
+		t.Errorf("got throw site %+v, want the return at ctor.js:3:3", loc)
 	}
 }

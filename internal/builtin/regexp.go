@@ -292,12 +292,12 @@ func (e *regexpEnv) regExpExecWith(vm *engine.VM, r *engine.Object, s engine.Val
 	if exec.IsCallable() {
 		res := vm.Call(exec.Object(), engine.ObjectValue(r), s)
 		if !res.IsObject() && !res.IsNull() {
-			vm.ThrowTypeError("the result of a RegExp exec method must be an object or null")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the result of a RegExp exec method must be an object or null")
 		}
 		return res
 	}
 	if r.RegExpMatcher() == nil {
-		vm.ThrowTypeError("RegExp exec method called on an incompatible receiver")
+		vm.ThrowTypeError(vm.CurrentRealm(), "RegExp exec method called on an incompatible receiver")
 	}
 	return e.builtinExec(vm, r, s)
 }
@@ -334,7 +334,7 @@ func requireGlobalRegExp(vm *engine.VM, o *engine.Object, name string) {
 		global = strings.Contains(string(vm.ToString(flags)), "g")
 	}
 	if !global {
-		vm.ThrowTypeError(name + " must be called with a global RegExp")
+		vm.ThrowTypeError(vm.CurrentRealm(), name+" must be called with a global RegExp")
 	}
 }
 
@@ -350,7 +350,7 @@ func speciesConstructor(vm *engine.VM, o *engine.Object, def *engine.Object) *en
 		return def
 	}
 	if !c.IsObject() {
-		vm.ThrowTypeError("object.constructor is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "object.constructor is not an object")
 	}
 	s := vm.GetV(c, vm.WellKnownSymbol(engine.SymbolSpecies))
 	if s.IsNullish() {
@@ -359,7 +359,7 @@ func speciesConstructor(vm *engine.VM, o *engine.Object, def *engine.Object) *en
 	if s.IsObject() && vm.IsConstructor(s.Object()) {
 		return s.Object()
 	}
-	vm.ThrowTypeError("object.constructor[Symbol.species] is not a constructor")
+	vm.ThrowTypeError(vm.CurrentRealm(), "object.constructor[Symbol.species] is not a constructor")
 	return nil
 }
 
@@ -519,7 +519,7 @@ func initRegExp(vm *engine.VM) {
 
 	thisRegExp := func(vm *engine.VM, this engine.Value, what string) *engine.Object {
 		if !this.IsObject() || this.Object().RegExpMatcher() == nil {
-			vm.ThrowTypeError("RegExp.prototype." + what + " requires that 'this' be a RegExp object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype."+what+" requires that 'this' be a RegExp object")
 		}
 		return this.Object()
 	}
@@ -554,16 +554,16 @@ func initRegExp(vm *engine.VM) {
 	method(vm, proto, "compile", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := thisRegExp(vm, this, "compile")
 		if !vm.IsRegExpOfCurrentRealm(o) {
-			vm.ThrowTypeError("RegExp.prototype.compile cannot be used on a RegExp object of another realm")
+			vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype.compile cannot be used on a RegExp object of another realm")
 		}
 		if !o.RegExpLegacyFeaturesEnabled() {
-			vm.ThrowTypeError("RegExp.prototype.compile cannot be used on a subclass instance")
+			vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype.compile cannot be used on a subclass instance")
 		}
 		pattern, flags := arg(args, 0), arg(args, 1)
 		p, f := pattern, flags
 		if pattern.IsObject() && pattern.Object().IsRegExpObject() {
 			if !flags.IsUndefined() {
-				vm.ThrowTypeError("cannot supply flags when constructing one RegExp from another")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot supply flags when constructing one RegExp from another")
 			}
 			src, fl := pattern.Object().RegExpOriginal()
 			p, f = vm.NewString(src), vm.NewString(fl)
@@ -573,14 +573,14 @@ func initRegExp(vm *engine.VM) {
 	for _, fp := range flagProps {
 		getter(vm, proto, vm.Intern(wtf8.String(fp.name)), wtf8.String(fp.name), func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
-				vm.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype."+fp.name+" getter called on non-object")
 			}
 			re := this.Object().RegExpMatcher()
 			if re == nil {
 				if this.Object() == vm.Intrinsic(engine.IntrinsicRegExpPrototype) {
 					return engine.Undefined
 				}
-				vm.ThrowTypeError("RegExp.prototype." + fp.name + " getter called on non-RegExp object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype."+fp.name+" getter called on non-RegExp object")
 			}
 			return engine.Bool(re.Flags()&fp.flag != 0)
 		})
@@ -604,14 +604,14 @@ func initRegExp(vm *engine.VM) {
 	})
 	getter(vm, proto, env.source, "source", func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsObject() {
-			vm.ThrowTypeError("RegExp.prototype.source getter called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype.source getter called on non-object")
 		}
 		o := this.Object()
 		if o.RegExpMatcher() == nil {
 			if o == vm.Intrinsic(engine.IntrinsicRegExpPrototype) {
 				return vm.NewString("(?:)")
 			}
-			vm.ThrowTypeError("RegExp.prototype.source getter called on non-RegExp object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.prototype.source getter called on non-RegExp object")
 		}
 		src, _ := o.RegExpOriginal()
 		escaped := escapeRegExpPattern(src)
@@ -655,7 +655,7 @@ func initRegExp(vm *engine.VM) {
 	iteratorNext(vm, iterProto, engine.IteratorMethodRealm, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
 		st, ok := engine.IteratorState(this).(*regexpStringIterator)
 		if !ok {
-			vm.ThrowTypeError("%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%RegExpStringIteratorPrototype%.next requires that 'this' be a RegExp String Iterator")
 		}
 		if st.done {
 			return engine.Undefined, false
@@ -741,7 +741,7 @@ func initRegExp(vm *engine.VM) {
 	method(vm, ctor, "escape", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v := arg(args, 0)
 		if !v.IsString() {
-			vm.ThrowTypeError("RegExp.escape requires a string")
+			vm.ThrowTypeError(vm.CurrentRealm(), "RegExp.escape requires a string")
 		}
 		return vm.NewString(regExpEscape(vm, v.Str()))
 	})
@@ -1096,7 +1096,7 @@ func (c *substCaptures) get(i int) (wtf8.String, bool) {
 // MaxStringLength.
 func writeLimited(vm *engine.VM, b *wtf8.Builder, s wtf8.String) {
 	if b.Len()+len(s) > engine.MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 	b.WriteString(s)
 }
@@ -1242,13 +1242,13 @@ func initLegacyStatics(vm *engine.VM, ctor *engine.Object, env *regexpEnv) {
 		for _, name := range names {
 			check := func(vm *engine.VM, this engine.Value, what string) {
 				if !this.IsObject() || this.Object() != ctor {
-					vm.ThrowTypeError("RegExp." + name + " " + what + " called on an incompatible receiver")
+					vm.ThrowTypeError(vm.CurrentRealm(), "RegExp."+name+" "+what+" called on an incompatible receiver")
 				}
 			}
 			get := vm.NewNative(wtf8.String("get "+name), 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				check(vm, this, "getter")
 				if slot.IsUndefined() {
-					vm.ThrowTypeError("RegExp." + name + " is not available after a match of a subclass instance")
+					vm.ThrowTypeError(vm.CurrentRealm(), "RegExp."+name+" is not available after a match of a subclass instance")
 				}
 				if matchResult != nil && len(l.caps) > 0 {
 					return matchResult()

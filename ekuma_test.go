@@ -2693,6 +2693,28 @@ func TestModuleLoaderErrors(t *testing.T) {
 	}
 }
 
+func TestModuleLoaderErrorRealm(t *testing.T) {
+	var vm ekuma.VM
+	r := vm.NewRealm()
+	dep, err := r.ParseModule("dep", `import "missing";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vm.SetModuleLoader(func(req ekuma.ModuleRequest) (*ekuma.Module, error) {
+		if req.Specifier == "dep" {
+			return dep, nil
+		}
+		return nil, errors.New("missing module")
+	})
+	if err := vm.Global().Set("other", r.Global()); err != nil {
+		t.Fatal(err)
+	}
+	run(t, &vm, `var reason; import("dep").catch(e => { reason = e; });`)
+	if got := run(t, &vm, `Object.getPrototypeOf(reason) === other.Error.prototype`); got != "true" {
+		t.Error("the loader error did not inherit from the importing module's Error.prototype")
+	}
+}
+
 // TestModuleLinkRetry checks that a Link that failed can be taken again, and that an import
 // that does not resolve is an error of Link.
 func TestModuleLinkRetry(t *testing.T) {

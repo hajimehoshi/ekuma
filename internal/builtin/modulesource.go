@@ -11,7 +11,7 @@ import (
 func initAbstractModuleSource(vm *engine.VM) {
 	proto := vm.NewObject(vm.Intrinsic(engine.IntrinsicObjectPrototype))
 	c := vm.NewNativeConstructor("AbstractModuleSource", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError("AbstractModuleSource cannot be constructed")
+		vm.ThrowTypeError(vm.CurrentRealm(), "AbstractModuleSource cannot be constructed")
 		return engine.Undefined
 	})
 	vm.Define(c, vm.Key(engine.KeyPrototype), engine.ObjectValue(proto), 0)

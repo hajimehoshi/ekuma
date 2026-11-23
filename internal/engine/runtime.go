@@ -16,15 +16,15 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
-func (vm *VM) throwTDZ(name *Object) {
+func (vm *VM) throwTDZ(errorRealm *Realm, name *Object) {
 	if name.str == "this" {
-		vm.ThrowReferenceError("must call super constructor in derived class before accessing 'this' or returning from derived constructor")
+		vm.ThrowReferenceError(errorRealm, "must call super constructor in derived class before accessing 'this' or returning from derived constructor")
 	}
-	vm.ThrowReferenceError("cannot access '" + wtf8.ToValidUTF8(name.str) + "' before initialization")
+	vm.ThrowReferenceError(errorRealm, "cannot access '"+wtf8.ToValidUTF8(name.str)+"' before initialization")
 }
 
-func (vm *VM) throwReadOnly(v Value, k PropKey) {
-	vm.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "' of " + vm.DisplayString(v))
+func (vm *VM) throwReadOnly(errorRealm *Realm, v Value, k PropKey) {
+	vm.ThrowTypeError(errorRealm, "cannot assign to read only property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"' of "+vm.DisplayString(v))
 }
 
 // callAt returns the index of the call instruction of fp that ends before pc, past its extra.
@@ -63,7 +63,7 @@ func (vm *VM) throwNotCallable(fp *funcProto, pc int, regs []Value) {
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
-	vm.ThrowTypeError(name + " is not a function")
+	vm.ThrowTypeError((*Realm)(fp.realm), name+" is not a function")
 }
 
 // throwNotConstructor throws the TypeError for the call instruction of fp that ends before pc,
@@ -74,7 +74,7 @@ func (vm *VM) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 	if name == "" {
 		name = vm.DisplayString(regs[fp.code[pc].B])
 	}
-	vm.ThrowTypeError(name + " is not a constructor")
+	vm.ThrowTypeError((*Realm)(fp.realm), name+" is not a constructor")
 }
 
 // getGlobal reads the global variable key, as strict code does when strict is set. When it does
@@ -84,7 +84,7 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 	if p, ok := vm.globalLex.shape.lookup(key); ok {
 		v := vm.globalLex.slots[p.slot]
 		if v.o == tdzObject {
-			vm.throwTDZ(key)
+			vm.throwTDZ(vm.CurrentRealm(), key)
 		}
 		// c refers only to initialized bindings, which stay initialized, so a hit needs no
 		// check.
@@ -104,12 +104,12 @@ func (vm *VM) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value
 		if orUndef {
 			return Undefined
 		}
-		vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
 	}
 	// GetBindingValue checks for the property again, which only a proxy can observe.
 	if proxyOnChain(g) != nil && !vm.HasProperty(g, k) {
 		if strict {
-			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
 		}
 		return Undefined
 	}
@@ -133,10 +133,10 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 	g := vm.global
 	if p, ok := vm.globalLex.shape.lookup(key); ok {
 		if vm.globalLex.slots[p.slot].o == tdzObject {
-			vm.throwTDZ(key)
+			vm.throwTDZ(vm.CurrentRealm(), key)
 		}
 		if p.flags&FlagWritable == 0 {
-			vm.ThrowTypeError("assignment to constant variable '" + wtf8.ToValidUTF8(key.str) + "'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "assignment to constant variable '"+wtf8.ToValidUTF8(key.str)+"'")
 		}
 		vm.globalLex.slots[p.slot] = val
 		// As in getGlobal, c refers only to initialized bindings.
@@ -161,11 +161,11 @@ func (vm *VM) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 			found = vm.HasProperty(g, k)
 		}
 		if !found && strict {
-			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
 		}
 	}
 	if !vm.setProp(g, k, val, Value{o: vm.globalThis}) && strict {
-		vm.throwReadOnly(Value{o: g}, k)
+		vm.throwReadOnly(vm.CurrentRealm(), Value{o: g}, k)
 	}
 }
 
@@ -176,32 +176,32 @@ func (vm *VM) checkGlobalDecl(key *Object, what int) {
 	switch what {
 	case bytecode.DeclVar:
 		if lex {
-			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
 		if !vm.HasOwnProperty(vm.global, PropKey{key: key}) && !vm.IsExtensible(vm.global) {
-			vm.ThrowTypeError("cannot declare global variable '" + wtf8.ToValidUTF8(key.str) + "'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global variable '"+wtf8.ToValidUTF8(key.str)+"'")
 		}
 	case bytecode.DeclLexical:
 		if lex {
-			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
 		// A lexical declaration may not hide a global property that cannot be reconfigured.
 		if d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key}); ok && d.flags&FlagConfigurable == 0 {
-			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
 	case bytecode.DeclFunction:
 		if lex {
-			vm.throwSyntaxError("identifier '" + wtf8.ToValidUTF8(key.str) + "' has already been declared")
+			vm.ThrowSyntaxError(vm.CurrentRealm(), "identifier '"+wtf8.ToValidUTF8(key.str)+"' has already been declared")
 		}
 		d, ok := vm.GetOwnProperty(vm.global, PropKey{key: key})
 		switch {
 		case !ok:
 			if !vm.IsExtensible(vm.global) {
-				vm.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global function '"+wtf8.ToValidUTF8(key.str)+"'")
 			}
 		case d.flags&FlagConfigurable != 0:
 		case d.flags&FlagAccessor != 0 || d.flags&(FlagWritable|FlagEnumerable) != FlagWritable|FlagEnumerable:
-			vm.ThrowTypeError("cannot declare global function '" + wtf8.ToValidUTF8(key.str) + "'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot declare global function '"+wtf8.ToValidUTF8(key.str)+"'")
 		}
 	}
 }
@@ -285,7 +285,7 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 	}
 	// The receiver is checked before the key is converted.
 	if v.IsNullish() {
-		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + vm.DisplayString(k) + "')")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of "+vm.DisplayString(v)+" (reading '"+vm.DisplayString(k)+"')")
 	}
 	key := vm.QueryKey(k)
 	if key.key == nil {
@@ -299,7 +299,7 @@ func (vm *VM) getValue(v, k Value) (Value, *Object) {
 func (vm *VM) setValue(v, k, val Value, strict bool) *Object {
 	setter, ok, key := vm.storeValue(v, k, val)
 	if !ok && strict {
-		vm.throwReadOnly(v, key)
+		vm.throwReadOnly(vm.CurrentRealm(), v, key)
 	}
 	return setter
 }
@@ -325,7 +325,7 @@ func (vm *VM) storeValue(v, k, val Value) (*Object, bool, PropKey) {
 		}
 	}
 	if v.IsNullish() {
-		vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + vm.DisplayString(k) + "')")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot set properties of "+vm.DisplayString(v)+" (setting '"+vm.DisplayString(k)+"')")
 	}
 	key := vm.ToPropertyKey(k)
 	if key.key == nil {
@@ -339,13 +339,13 @@ func (vm *VM) storeValue(v, k, val Value) (*Object, bool, PropKey) {
 // deleteValue implements the delete operator on a property.
 func (vm *VM) deleteValue(v, k Value, strict bool) Value {
 	if v.IsNullish() {
-		vm.ThrowTypeError("cannot convert undefined or null to object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
 	}
 	key := vm.ToPropertyKey(k)
 	o := vm.ToObject(v)
 	ok := vm.DeleteProp(o, key)
 	if !ok && strict {
-		vm.ThrowTypeError("cannot delete property '" + wtf8.ToValidUTF8(vm.KeyString(key)) + "' of " + vm.DisplayString(v))
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot delete property '"+wtf8.ToValidUTF8(vm.KeyString(key))+"' of "+vm.DisplayString(v))
 	}
 	return Bool(ok)
 }
@@ -353,7 +353,7 @@ func (vm *VM) deleteValue(v, k Value, strict bool) Value {
 // superBase implements GetSuperBase for the home object home.
 func (vm *VM) superBase(home Value) Value {
 	if !home.IsObject() {
-		vm.throwSyntaxError("'super' keyword unexpected here")
+		vm.ThrowSyntaxError(vm.CurrentRealm(), "'super' keyword unexpected here")
 	}
 	if p := vm.ProtoOf(home.o); p != nil {
 		return ObjectValue(p)
@@ -364,7 +364,7 @@ func (vm *VM) superBase(home Value) Value {
 // superObject returns the object that a super property access with the super base base starts from.
 func (vm *VM) superObject(base Value) *Object {
 	if base.IsNull() {
-		vm.ThrowTypeError("cannot access a property of a null prototype through 'super'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot access a property of a null prototype through 'super'")
 	}
 	return base.o
 }
@@ -381,7 +381,7 @@ func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
 	o := vm.superObject(base)
 	key := vm.ToPropertyKey(k)
 	if !vm.setProp(o, key, val, this) && strict {
-		vm.throwReadOnly(this, key)
+		vm.throwReadOnly(vm.CurrentRealm(), this, key)
 	}
 }
 
@@ -390,7 +390,7 @@ func (vm *VM) setSuper(base, k, val, this Value, strict bool) {
 func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
 	for {
 		if !c.IsObject() {
-			vm.ThrowTypeError("right-hand side of 'instanceof' is not an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "right-hand side of 'instanceof' is not an object")
 		}
 		if !vm.inheritsHasInstance(c.o) {
 			site = nil
@@ -399,7 +399,7 @@ func (vm *VM) instanceOf(v, c Value, site *propCache) bool {
 					return ToBoolean(vm.Call(m, c, v))
 				}
 			} else if !c.IsCallable() {
-				vm.ThrowTypeError("right-hand side of 'instanceof' is not callable")
+				vm.ThrowTypeError(vm.CurrentRealm(), "right-hand side of 'instanceof' is not callable")
 			}
 		}
 		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
@@ -462,7 +462,7 @@ func (vm *VM) ordinaryHasInstance(c, v Value, site *propCache) bool {
 	}
 	p := vm.functionPrototype(c.o)
 	if !p.IsObject() {
-		vm.ThrowTypeError("function has non-object prototype in instanceof check")
+		vm.ThrowTypeError(vm.CurrentRealm(), "function has non-object prototype in instanceof check")
 	}
 	if site != nil && c.o.class == classFunction && c.o.flags&objExotic == 0 {
 		if s, ok := c.o.shape.lookup(vm.Key(KeyPrototype)); ok && s.flags&FlagAccessor == 0 {
@@ -485,7 +485,7 @@ func (vm *VM) privateStorage(o *Object) *Object {
 		st := o.extState().(*proxyState)
 		if st.isGlobal() {
 			if !st.allowsGlobalAccess(vm.globalProxyHandler) {
-				vm.ThrowTypeError("no access")
+				vm.ThrowTypeError(vm.CurrentRealm(), "no access")
 			}
 			return st.target
 		}
@@ -502,14 +502,14 @@ func (vm *VM) getPrivate(v Value, name *Object) (Value, *Object) {
 			if p.flags&FlagAccessor != 0 {
 				g := val.accessor().getter
 				if g == nil {
-					vm.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a getter")
+					vm.ThrowTypeError(vm.CurrentRealm(), "'#"+wtf8.ToValidUTF8(name.str)+"' was defined without a getter")
 				}
 				return Undefined, g
 			}
 			return val, nil
 		}
 	}
-	vm.ThrowTypeError("cannot read private member #" + wtf8.ToValidUTF8(name.str) + " from an object whose class did not declare it")
+	vm.ThrowTypeError(vm.CurrentRealm(), "cannot read private member #"+wtf8.ToValidUTF8(name.str)+" from an object whose class did not declare it")
 	return Undefined, nil
 }
 
@@ -521,29 +521,29 @@ func (vm *VM) setPrivate(v Value, name *Object, val Value) *Object {
 			if p.flags&FlagAccessor != 0 {
 				s := o.slots[p.slot].accessor().setter
 				if s == nil {
-					vm.ThrowTypeError("'#" + wtf8.ToValidUTF8(name.str) + "' was defined without a setter")
+					vm.ThrowTypeError(vm.CurrentRealm(), "'#"+wtf8.ToValidUTF8(name.str)+"' was defined without a setter")
 				}
 				return s
 			}
 			if p.flags&FlagWritable == 0 {
-				vm.ThrowTypeError("private method '#" + wtf8.ToValidUTF8(name.str) + "' is not writable")
+				vm.ThrowTypeError(vm.CurrentRealm(), "private method '#"+wtf8.ToValidUTF8(name.str)+"' is not writable")
 			}
 			o.slots[p.slot] = val
 			return nil
 		}
 	}
-	vm.ThrowTypeError("cannot write private member #" + wtf8.ToValidUTF8(name.str) + " to an object whose class did not declare it")
+	vm.ThrowTypeError(vm.CurrentRealm(), "cannot write private member #"+wtf8.ToValidUTF8(name.str)+" to an object whose class did not declare it")
 	return nil
 }
 
 // definePrivate adds the private element name to v. val is the field value, a method, or an accessor.
 func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 	if !v.IsObject() {
-		vm.ThrowTypeError("cannot define a private member on a non-object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot define a private member on a non-object")
 	}
 	o := vm.privateStorage(v.o)
 	if _, ok := o.shape.lookup(name); ok {
-		vm.ThrowTypeError("cannot initialize #" + wtf8.ToValidUTF8(name.str) + " twice on the same object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot initialize #"+wtf8.ToValidUTF8(name.str)+" twice on the same object")
 	}
 	flags := FlagWritable
 	switch {
@@ -560,7 +560,7 @@ func (vm *VM) definePrivate(v Value, name *Object, val Value) {
 // because v is not extensible.
 func (vm *VM) ensureCanAddPrivate(v Value, name *Object) {
 	if v.IsObject() && !vm.IsExtensible(vm.privateStorage(v.o)) {
-		vm.ThrowTypeError("cannot define private member #" + wtf8.ToValidUTF8(name.str) + " on an object that is not extensible")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot define private member #"+wtf8.ToValidUTF8(name.str)+" on an object that is not extensible")
 	}
 }
 
@@ -604,7 +604,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
 	if x.o == numberObject || y.o == numberObject {
-		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot mix BigInt and other types, use explicit conversions")
 	}
 	// Subtraction, the bitwise operations and the shifts on huge BigInts cannot stop once they
 	// start, so a pending interruption is taken before them.
@@ -621,17 +621,17 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		return vm.multiplyBigInts(a, b)
 	case bytecode.OpDiv:
 		if b.Sign() == 0 {
-			vm.ThrowRangeError("division by zero")
+			vm.ThrowRangeError(vm.CurrentRealm(), "division by zero")
 		}
 		r, _ = numconv.QuoRemBigInt(a, b, vm.Poll)
 	case bytecode.OpMod:
 		if b.Sign() == 0 {
-			vm.ThrowRangeError("division by zero")
+			vm.ThrowRangeError(vm.CurrentRealm(), "division by zero")
 		}
 		_, r = numconv.QuoRemBigInt(a, b, vm.Poll)
 	case bytecode.OpExp:
 		if b.Sign() < 0 {
-			vm.ThrowRangeError("exponent must be non-negative")
+			vm.ThrowRangeError(vm.CurrentRealm(), "exponent must be non-negative")
 		}
 		if a.CmpAbs(big.NewInt(1)) <= 0 {
 			r.Exp(a, b, nil)
@@ -639,7 +639,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		}
 		// The result of a base other than 0, 1 and -1 has more bits than the exponent.
 		if !b.IsInt64() || b.Int64() >= MaxBigIntBits {
-			vm.ThrowRangeError("maximum BigInt size exceeded")
+			vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
 		}
 		n := b.Int64()
 		size := powBitLen(a, n)
@@ -667,7 +667,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 		switch {
 		case !n.IsInt64() || n.Int64() > 1<<30:
 			if n.Sign() > 0 && a.Sign() != 0 {
-				vm.ThrowRangeError("maximum BigInt size exceeded")
+				vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
 			}
 			if a.Sign() < 0 && n.Sign() < 0 {
 				r.SetInt64(-1)
@@ -685,7 +685,7 @@ func (vm *VM) arith(op bytecode.Opcode, x, y Value) Value {
 			r.Rsh(a, uint(-n.Int64()))
 		}
 	case bytecode.OpUShr:
-		vm.ThrowTypeError("BigInts have no unsigned right shift, use >> instead")
+		vm.ThrowTypeError(vm.CurrentRealm(), "BigInts have no unsigned right shift, use >> instead")
 	default:
 		panic("ekuma: not an arithmetic bytecode.Opcode")
 	}
@@ -919,7 +919,7 @@ func (vm *VM) funcNameOfKey(k Value) wtf8.String {
 		}
 		if k.o.extState() != nil {
 			if len(k.o.str)+2 > MaxStringLength {
-				vm.ThrowRangeError("invalid string length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 			}
 			return "[" + k.o.str + "]"
 		}
@@ -943,7 +943,7 @@ func (vm *VM) setFuncName(f, k Value, prefix int) {
 		name = "set " + name
 	}
 	if len(name) > MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 	o := f.o
 	if o.fn.materialized {
@@ -1088,7 +1088,7 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 		case parent.IsNull():
 			protoParent = nil
 		case !parent.IsCallable() || !vm.IsConstructor(parent.o):
-			vm.ThrowTypeError("class extends value " + vm.DisplayString(parent) + " is not a constructor or null")
+			vm.ThrowTypeError(vm.CurrentRealm(), "class extends value "+vm.DisplayString(parent)+" is not a constructor or null")
 		default:
 			p := vm.GetV(parent, vm.Key(KeyPrototype))
 			switch {
@@ -1097,7 +1097,7 @@ func (vm *VM) setupClass(ctor *Object, parent Value) *Object {
 			case p.IsNull():
 				protoParent = nil
 			default:
-				vm.ThrowTypeError("class extends value does not have valid prototype property")
+				vm.ThrowTypeError(vm.CurrentRealm(), "class extends value does not have valid prototype property")
 			}
 			ctorParent = parent.o
 		}
@@ -1238,7 +1238,7 @@ func (vm *VM) Call(f *Object, this Value, args ...Value) Value {
 // CallValue calls f, which must be callable, or throws a TypeError.
 func (vm *VM) CallValue(f, this Value, args ...Value) Value {
 	if !f.IsCallable() {
-		vm.ThrowTypeError(vm.DisplayString(f) + " is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(f)+" is not a function")
 	}
 	return vm.callOnStack(f.o, this, args)
 }
@@ -1279,7 +1279,7 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	}
 	fn := f.fn
 	if fn == nil {
-		vm.ThrowTypeError(vm.DisplayString(Value{o: f}) + " is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(Value{o: f})+" is not a function")
 	}
 	if fn.bound != nil {
 		return vm.callBound(f, args)
@@ -1292,17 +1292,13 @@ func (vm *VM) callSlow(f *Object, this Value, args []Value, isNew bool, newTarge
 	}
 	c := fn.code
 	if fn.classConstructor && !isNew && newTarget == nil {
-		// The error belongs to the realm of the constructor.
-		if c.realm != vm.curRealm {
-			vm.switchRealm(c.realm)
-		}
-		vm.ThrowTypeError("class constructor " + wtf8.ToValidUTF8(c.name) + " cannot be invoked without 'new'")
+		vm.ThrowTypeError((*Realm)(c.realm), "class constructor "+wtf8.ToValidUTF8(c.name)+" cannot be invoked without 'new'")
 	}
 	if c.isGenerator || c.isAsync {
 		return vm.callCoroutine(f, this, args)
 	}
 	if len(vm.frames) >= maxFrames {
-		vm.ThrowRangeError("maximum call stack size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	base := vm.sp
 	vm.ensureStack(base + len(args) + c.nregs + 1)
@@ -1370,7 +1366,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 			r = vm.callNative(f, Undefined, args, newTarget)
 		}
 		if !r.IsObject() {
-			vm.ThrowTypeError("constructor did not return an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor did not return an object")
 		}
 		return r.o
 	}
@@ -1381,7 +1377,7 @@ func (vm *VM) Construct(f *Object, args []Value, newTarget *Object) *Object {
 	}
 	r := vm.callSlow(f, this, args, !fn.derived, newTarget)
 	if !r.IsObject() {
-		vm.ThrowTypeError("constructor did not return an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor did not return an object")
 	}
 	return r.o
 }
@@ -1569,7 +1565,7 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 	k := PropKey{key: key}
 	if !vm.HasProperty(o, k) {
 		if strict {
-			vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
 		}
 		return Undefined
 	}
@@ -1580,10 +1576,10 @@ func (vm *VM) getScoped(o *Object, key *Object, strict bool) Value {
 func (vm *VM) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
 	if !vm.HasProperty(o, k) && strict {
-		vm.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		vm.ThrowReferenceError(vm.CurrentRealm(), wtf8.ToValidUTF8(key.str)+" is not defined")
 	}
 	if !vm.setProp(o, k, val, Value{o: o}) && strict {
-		vm.throwReadOnly(Value{o: o}, k)
+		vm.throwReadOnly(vm.CurrentRealm(), Value{o: o}, k)
 	}
 }
 

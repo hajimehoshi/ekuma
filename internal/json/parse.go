@@ -14,10 +14,6 @@ import (
 // maxRetainedBuffer is the largest string buffer that a [Parser] keeps for the next call.
 const maxRetainedBuffer = 1 << 23
 
-func throwSyntaxError(vm *engine.VM, msg string) {
-	vm.Throw(vm.NewError(engine.ErrorKindSyntax, msg))
-}
-
 // Record is a JSON Parse Record: what a part of the text produced, for [Revive].
 type Record struct {
 	value engine.Value
@@ -141,13 +137,13 @@ func (p *Parser) fail() {
 	vm := p.vm
 	pos := wtf8.Len(p.src[:p.pos])
 	if p.pos >= len(p.src) {
-		throwSyntaxError(vm, "unexpected end of JSON input")
+		vm.ThrowSyntaxError(vm.CurrentRealm(), "unexpected end of JSON input")
 	}
 	c := p.src[p.pos]
 	if c >= 0x20 && c < 0x7f {
-		throwSyntaxError(vm, "unexpected character '"+string(rune(c))+"' in JSON at position "+strconv.Itoa(pos))
+		vm.ThrowSyntaxError(vm.CurrentRealm(), "unexpected character '"+string(rune(c))+"' in JSON at position "+strconv.Itoa(pos))
 	}
-	throwSyntaxError(vm, "unexpected character in JSON at position "+strconv.Itoa(pos))
+	vm.ThrowSyntaxError(vm.CurrentRealm(), "unexpected character in JSON at position "+strconv.Itoa(pos))
 }
 
 func (p *Parser) skipSpace() {

@@ -82,7 +82,7 @@ func typeOption(vm *engine.VM, options *engine.Object, name string) (string, boo
 		return "", false
 	}
 	if !localetag.IsType(wtf8.ToLowerASCII(s)) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
+		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
 	}
 	return s, true
 }
@@ -169,19 +169,19 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 		dtf.tz = builtin.SystemTimeZone(vm)
 	default:
 		if toLocaleStringTZ != nil {
-			vm.ThrowTypeError("the timeZone option is not allowed in Temporal.ZonedDateTime.prototype.toLocaleString")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the timeZone option is not allowed in Temporal.ZonedDateTime.prototype.toLocaleString")
 		}
 		name := wtf8.ToValidUTF8(vm.ToString(tzv))
 		id, offset, isOffset, err := temporal.ParseTimeZoneIdentifier(name, vm.Poll)
 		switch {
 		case err != nil:
-			vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(wtf8.String(name))))
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time zone: "+vm.DisplayString(vm.NewString(wtf8.String(name))))
 		case isOffset:
 			dtf.tz = temporal.OffsetTimeZone(offset)
 		default:
 			z, ok := temporal.GetAvailableNamedTimeZone(id, builtin.SystemTimeZone(vm))
 			if !ok {
-				vm.ThrowRangeError("invalid time zone: " + vm.DisplayString(vm.NewString(wtf8.String(name))))
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid time zone: "+vm.DisplayString(vm.NewString(wtf8.String(name))))
 			}
 			dtf.tz = z
 		}
@@ -213,13 +213,13 @@ func createDateTimeFormat(vm *engine.VM, locales, opts engine.Value, required, d
 	l, c := dtf.locale, dtf.calendar
 	if dtf.dateStyle != "" || dtf.timeStyle != "" {
 		if hasExplicit {
-			vm.ThrowTypeError("dateStyle and timeStyle cannot be used with date and time components")
+			vm.ThrowTypeError(vm.CurrentRealm(), "dateStyle and timeStyle cannot be used with date and time components")
 		}
 		if required == date.Date && dtf.timeStyle != "" {
-			vm.ThrowTypeError("timeStyle is not allowed for a date")
+			vm.ThrowTypeError(vm.CurrentRealm(), "timeStyle is not allowed for a date")
 		}
 		if required == date.Time && dtf.dateStyle != "" {
-			vm.ThrowTypeError("dateStyle is not allowed for a time")
+			vm.ThrowTypeError(vm.CurrentRealm(), "dateStyle is not allowed for a time")
 		}
 		best := date.NewStyleFormat(l, c, hc, dtf.dateStyle, dtf.timeStyle)
 		if dtf.dateStyle != "" {
@@ -432,7 +432,7 @@ func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable)
 	if !x.isTemporal {
 		t := datetime.TimeClip(x.t)
 		if math.IsNaN(t) {
-			vm.ThrowRangeError("invalid time value")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time value")
 		}
 		return dtf.format, int64(t), false
 	}
@@ -441,19 +441,19 @@ func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable)
 	switch tv.kind {
 	case temporalPlainDate:
 		if tv.calendar != dtf.calendar && tv.calendar != temporal.ISO8601 {
-			vm.ThrowRangeError("the calendar of the Temporal.PlainDate differs from that of the DateTimeFormat")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the calendar of the Temporal.PlainDate differs from that of the DateTimeFormat")
 		}
 		tv.dateTime.Time = temporal.Time{Hour: 12}
 		f = dtf.plainDate
 	case temporalPlainYearMonth:
 		if tv.calendar != dtf.calendar {
-			vm.ThrowRangeError("the calendar of the Temporal.PlainYearMonth differs from that of the DateTimeFormat")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the calendar of the Temporal.PlainYearMonth differs from that of the DateTimeFormat")
 		}
 		tv.dateTime.Time = temporal.Time{Hour: 12}
 		f = dtf.plainYearMonth
 	case temporalPlainMonthDay:
 		if tv.calendar != dtf.calendar {
-			vm.ThrowRangeError("the calendar of the Temporal.PlainMonthDay differs from that of the DateTimeFormat")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the calendar of the Temporal.PlainMonthDay differs from that of the DateTimeFormat")
 		}
 		tv.dateTime.Time = temporal.Time{Hour: 12}
 		f = dtf.plainMonthDay
@@ -461,16 +461,16 @@ func (dtf *dateTimeFormatData) handleDateTimeValue(vm *engine.VM, x formattable)
 		f = dtf.plainTime
 	case temporalPlainDateTime:
 		if tv.calendar != dtf.calendar && tv.calendar != temporal.ISO8601 {
-			vm.ThrowRangeError("the calendar of the Temporal.PlainDateTime differs from that of the DateTimeFormat")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the calendar of the Temporal.PlainDateTime differs from that of the DateTimeFormat")
 		}
 		f = dtf.plainDateTime
 	case temporalInstant:
 		return dtf.instant, epochMilliseconds(tv.epochNs), false
 	default:
-		vm.ThrowTypeError("Intl.DateTimeFormat cannot format a Temporal.ZonedDateTime")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DateTimeFormat cannot format a Temporal.ZonedDateTime")
 	}
 	if f == nil {
-		vm.ThrowTypeError("the DateTimeFormat has no format for the Temporal object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the DateTimeFormat has no format for the Temporal object")
 	}
 	return f, epochMilliseconds(tv.dateTime.UTCEpochNanoseconds()), true
 }
@@ -494,7 +494,7 @@ func (dtf *dateTimeFormatData) formatDateTime(vm *engine.VM, x formattable) engi
 func (dtf *dateTimeFormatData) partitionDateTimeRangePattern(vm *engine.VM, x, y formattable) []date.RangePart {
 	if x.isTemporal || y.isTemporal {
 		if !x.isTemporal || !y.isTemporal || x.temporal.kind != y.temporal.kind {
-			vm.ThrowTypeError("formatRange requires two Temporal objects of the same type")
+			vm.ThrowTypeError(vm.CurrentRealm(), "formatRange requires two Temporal objects of the same type")
 		}
 	}
 	f, tx, plain := dtf.handleDateTimeValue(vm, x)
@@ -528,7 +528,7 @@ func (r *realm) newDateTimeFormat(vm *engine.VM, this engine.Value, args []engin
 // slot.
 func (r *realm) unwrapDateTimeFormat(vm *engine.VM, this engine.Value, name string) *dateTimeFormatData {
 	if !this.IsObject() {
-		vm.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on a value that is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DateTimeFormat.prototype."+name+" called on a value that is not an object")
 	}
 	if dtf, ok := engine.IntlData(this).(*dateTimeFormatData); ok {
 		return dtf
@@ -538,7 +538,7 @@ func (r *realm) unwrapDateTimeFormat(vm *engine.VM, this engine.Value, name stri
 			return dtf
 		}
 	}
-	vm.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on an object that is not an Intl.DateTimeFormat")
+	vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DateTimeFormat.prototype."+name+" called on an object that is not an Intl.DateTimeFormat")
 	return nil
 }
 
@@ -546,7 +546,7 @@ func (r *realm) unwrapDateTimeFormat(vm *engine.VM, this engine.Value, name stri
 func thisDateTimeFormat(vm *engine.VM, this engine.Value, name string) *dateTimeFormatData {
 	dtf, ok := engine.IntlData(this).(*dateTimeFormatData)
 	if !ok {
-		vm.ThrowTypeError("Intl.DateTimeFormat.prototype." + name + " called on an object that is not an Intl.DateTimeFormat")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DateTimeFormat.prototype."+name+" called on an object that is not an Intl.DateTimeFormat")
 	}
 	return dtf
 }
@@ -556,7 +556,7 @@ func thisDateTimeFormat(vm *engine.VM, this engine.Value, name string) *dateTime
 func rangeArgs(vm *engine.VM, args []engine.Value) (formattable, formattable) {
 	start, end := arg(args, 0), arg(args, 1)
 	if start.IsUndefined() || end.IsUndefined() {
-		vm.ThrowTypeError("formatRange requires a start and an end")
+		vm.ThrowTypeError(vm.CurrentRealm(), "formatRange requires a start and an end")
 	}
 	return toDateTimeFormattable(vm, start), toDateTimeFormattable(vm, end)
 }
@@ -683,7 +683,7 @@ func initTemporalToLocaleString(vm *engine.VM) {
 			method(vm, proto, "toLocaleString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 				tv, ok := temporalValueOf(this)
 				if !ok || tv.kind != c.kind {
-					vm.ThrowTypeError("Temporal." + c.name + ".prototype.toLocaleString called on an object that is not a Temporal." + c.name)
+					vm.ThrowTypeError(vm.CurrentRealm(), "Temporal."+c.name+".prototype.toLocaleString called on an object that is not a Temporal."+c.name)
 				}
 				return formatTemporalLocaleString(vm, tv, arg(args, 0), arg(args, 1))
 			})
@@ -709,7 +709,7 @@ func formatTemporalLocaleString(vm *engine.VM, tv temporalValue, locales, option
 		tz := tv.timeZone
 		dtf := createDateTimeFormat(vm, locales, options, date.Any, date.All, &tz)
 		if tv.calendar != temporal.ISO8601 && tv.calendar != dtf.calendar {
-			vm.ThrowRangeError("the calendar of the Temporal.ZonedDateTime differs from that of the DateTimeFormat")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the calendar of the Temporal.ZonedDateTime differs from that of the DateTimeFormat")
 		}
 		return dtf.formatDateTime(vm, formattable{
 			temporal: temporalValue{
@@ -737,7 +737,7 @@ func initDateToLocaleString(vm *engine.VM) {
 		method(vm, vm.Intrinsic(engine.IntrinsicDatePrototype), m.name, 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			t, ok := engine.ThisTimeValue(this)
 			if !ok {
-				vm.ThrowTypeError("Date.prototype." + m.name + " requires that 'this' be a Date")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Date.prototype."+m.name+" requires that 'this' be a Date")
 			}
 			if math.IsNaN(t) {
 				return vm.NewString("Invalid Date")

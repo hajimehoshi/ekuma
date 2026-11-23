@@ -91,7 +91,7 @@ func (r *realm) init(vm *engine.VM) {
 		case "unit":
 			values = sanctionedUnits
 		default:
-			vm.ThrowRangeError("invalid key for Intl.supportedValuesOf")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid key for Intl.supportedValuesOf")
 		}
 		return stringArray(vm, values)
 	})
@@ -156,7 +156,7 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 		}
 		v := vm.Get(o, pk)
 		if !v.IsString() && !v.IsObject() {
-			vm.ThrowTypeError("a locale must be a string or an object, not " + vm.DisplayString(v))
+			vm.ThrowTypeError(vm.CurrentRealm(), "a locale must be a string or an object, not "+vm.DisplayString(v))
 		}
 		var tag string
 		if l, ok := engine.IntlData(v).(*localeData); ok {
@@ -166,7 +166,7 @@ func canonicalizeLocaleList(vm *engine.VM, locales engine.Value) []string {
 		}
 		c, ok := locale.Canonicalize(tag, vm.Poll)
 		if !ok {
-			vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(wtf8.String(tag))))
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid language tag: "+vm.DisplayString(vm.NewString(wtf8.String(tag))))
 		}
 		if !localetag.HasDuplicate(&seenSet, seen, c) {
 			seen = append(seen, c)
@@ -186,7 +186,7 @@ func arg(args []engine.Value, i int) engine.Value {
 // checkStringLength throws a RangeError when n is more bytes than a string may have.
 func checkStringLength(vm *engine.VM, n int) {
 	if n > engine.MaxStringLength {
-		vm.ThrowRangeError("invalid string length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid string length")
 	}
 }
 
@@ -227,7 +227,7 @@ func getOption(vm *engine.VM, options *engine.Object, name string, values ...str
 	}
 	s := wtf8.ToValidUTF8(vm.ToString(v))
 	if len(values) > 0 && !slices.Contains(values, s) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
+		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
 	}
 	return s, true
 }

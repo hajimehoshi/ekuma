@@ -47,7 +47,7 @@ func initAsync(vm *engine.VM) {
 func getIteratorFromMethod(vm *engine.VM, v engine.Value, m *engine.Object) (it, next engine.Value) {
 	it = vm.Call(m, v)
 	if !it.IsObject() {
-		vm.ThrowTypeError("result of the iterator method is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "result of the iterator method is not an object")
 	}
 	return it, vm.GetV(it, vm.Intern("next"))
 }
@@ -79,7 +79,7 @@ func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engin
 	custom := this.IsCallable() && vm.IsConstructor(this.Object())
 	vm.IfAbruptRejectPromise(pc, func() {
 		if !s.mapper.IsUndefined() && !s.mapper.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(s.mapper) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(s.mapper)+" is not a function")
 		}
 		if m := vm.GetMethod(items, vm.WellKnownSymbol(engine.SymbolAsyncIterator)); m != nil {
 			s.it, s.next = getIteratorFromMethod(vm, items, m)
@@ -101,7 +101,7 @@ func arrayFromAsync(vm *engine.VM, this engine.Value, args []engine.Value) engin
 			s.array = vm.Construct(this.Object(), []engine.Value{engine.Number(float64(s.length))}, this.Object())
 		} else {
 			if s.length > engine.MaxArrayIndex+1 {
-				vm.ThrowRangeError("invalid array length")
+				vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
 			}
 			s.array = vm.ArrayCreate(uint32(s.length), vm.Intrinsic(engine.IntrinsicArrayPrototype))
 		}
@@ -126,7 +126,7 @@ func (s *fromAsync) closeAndReject(vm *engine.VM, e engine.Value) {
 // step calls the next method of the iterator and awaits the result. It throws when that fails.
 func (s *fromAsync) step(vm *engine.VM) {
 	if s.k >= numconv.MaxSafeInteger {
-		s.closeAndReject(vm, vm.NewError(engine.ErrorKindType, "too many elements for Array.fromAsync"))
+		s.closeAndReject(vm, vm.NewError(vm.CurrentRealm(), engine.ErrorKindType, "too many elements for Array.fromAsync"))
 		return
 	}
 	r := vm.CallValue(s.next, s.it)
@@ -142,7 +142,7 @@ func (s *fromAsync) onNext(vm *engine.VM, r engine.Value, rejected bool) {
 	var v engine.Value
 	if e, ok := vm.Completion(func() {
 		if !r.IsObject() {
-			vm.ThrowTypeError("iterator result " + vm.DisplayString(r) + " is not an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "iterator result "+vm.DisplayString(r)+" is not an object")
 		}
 		done = engine.ToBoolean(vm.GetV(r, vm.Intern("done")))
 		if done {

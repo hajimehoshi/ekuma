@@ -386,7 +386,7 @@ func (vm *VM) pushNative(f *Object, this Value, newTarget *Object) {
 //go:noinline
 func (vm *VM) growNatives() {
 	if len(vm.natives) >= maxNatives {
-		vm.ThrowRangeError("maximum call stack size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	// The capacity never exceeds maxNatives, so that a push checks only for a full slice.
 	s := slices.Grow(vm.natives, 1)
@@ -805,6 +805,11 @@ func (e *Error) Error() string {
 
 // Throw throws v as a JavaScript exception. It does not return.
 func (vm *VM) Throw(v Value) {
+	vm.recordThrow(v)
+	panic(errThrow)
+}
+
+func (vm *VM) recordThrow(v Value) {
 	if vm.captureThrowSites {
 		vm.thrownAt = throwSite{}
 		if n := len(vm.frames); n > 0 {
@@ -816,7 +821,6 @@ func (vm *VM) Throw(v Value) {
 		}
 	}
 	vm.thrown = v
-	panic(errThrow)
 }
 
 type throwSite struct {
@@ -869,37 +873,37 @@ func (vm *VM) restoreException(v Value) {
 	}
 }
 
-// newError returns a new error object of the given type.
-func (vm *VM) newError(kind ErrorKind, msg string) *Object {
-	e := vm.NewObject(vm.Intrinsic(ErrorPrototypeIntrinsic(kind)))
-	e.class = classError
+// newError returns a new error object of the given type in r.
+func (vm *VM) newError(r *Realm, kind ErrorKind, msg string) *Object {
+	e := vm.NewErrorObject(r, vm.realmIntrinsic((*realm)(r), ErrorPrototypeIntrinsic(kind)))
 	// A message that quotes a value of the script can be longer than a string may be.
 	vm.Define(e, vm.Key(KeyMessage), vm.NewString(clip(wtf8.FromValidUTF8(msg), MaxStringLength, "")), FlagsHidden)
 	e.setExtState(vm.newErrorData(e, msg, len(vm.frames), len(vm.natives)))
 	return e
 }
 
-func (vm *VM) throwError(kind ErrorKind, msg string) {
-	vm.Throw(Value{o: vm.newError(kind, msg)})
+func (vm *VM) throwError(r *Realm, kind ErrorKind, msg string) {
+	vm.Throw(Value{o: vm.newError(r, kind, msg)})
 }
 
-// ThrowTypeError throws a TypeError with the given message. It does not return.
-func (vm *VM) ThrowTypeError(msg string) {
-	vm.throwError(ErrorKindType, msg)
+// ThrowTypeError throws a TypeError of r with the given message. It does not return.
+func (vm *VM) ThrowTypeError(r *Realm, msg string) {
+	vm.throwError(r, ErrorKindType, msg)
 }
 
-// ThrowRangeError throws a RangeError with the given message. It does not return.
-func (vm *VM) ThrowRangeError(msg string) {
-	vm.throwError(ErrorKindRange, msg)
+// ThrowRangeError throws a RangeError of r with the given message. It does not return.
+func (vm *VM) ThrowRangeError(r *Realm, msg string) {
+	vm.throwError(r, ErrorKindRange, msg)
 }
 
-// ThrowReferenceError throws a ReferenceError with the given message. It does not return.
-func (vm *VM) ThrowReferenceError(msg string) {
-	vm.throwError(ErrorKindReference, msg)
+// ThrowReferenceError throws a ReferenceError of r with the given message. It does not return.
+func (vm *VM) ThrowReferenceError(r *Realm, msg string) {
+	vm.throwError(r, ErrorKindReference, msg)
 }
 
-func (vm *VM) throwSyntaxError(msg string) {
-	vm.throwError(ErrorKindSyntax, msg)
+// ThrowSyntaxError throws a SyntaxError of r with the given message. It does not return.
+func (vm *VM) ThrowSyntaxError(r *Realm, msg string) {
+	vm.throwError(r, ErrorKindSyntax, msg)
 }
 
 // RecordStack records the stack trace of the new error object e, whose message is msg in UTF-8,
@@ -937,6 +941,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 	if n := min(frames+natives, maxStackFrames); n > 0 {
 		d.calls = make([]stackCall, 0, n)
 	}
+	globalThis := vm.realmData(e.CreationRealm()).globalThis
 	j := natives - 1
 	for i := frames - 1; len(d.calls) < maxStackFrames; i-- {
 		// A native function called from the frame i runs inside it.
@@ -948,7 +953,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 			}
 			d.calls = append(d.calls, stackCall{
 				name:  c.f.fn.nativeName(),
-				recv:  vm.receiverName(c.newTarget != nil, c.receiver),
+				recv:  vm.receiverName(globalThis, c.newTarget != nil, c.receiver),
 				isNew: c.newTarget != nil,
 			})
 		}
@@ -965,7 +970,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 		if fr.fp.IsEval {
 			c.name = "eval"
 		} else {
-			c.recv = vm.receiverName(c.isNew, fr.this)
+			c.recv = vm.receiverName(globalThis, c.isNew, fr.this)
 		}
 		d.calls = append(d.calls, c)
 	}
@@ -974,8 +979,8 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 
 // receiverName returns the type name that a stack trace shows for a call with this, or an
 // empty string when the call shows no receiver.
-func (vm *VM) receiverName(isNew bool, this Value) wtf8.String {
-	if isNew || this.IsObject() && this.o == vm.globalThis || this.IsNullish() {
+func (vm *VM) receiverName(globalThis *Object, isNew bool, this Value) wtf8.String {
+	if isNew || this.IsObject() && this.o == globalThis || this.IsNullish() {
 		return ""
 	}
 	return vm.typeName(this)
@@ -1135,9 +1140,9 @@ func (vm *VM) errorOf(v Value) *Error {
 	}
 }
 
-// NewError returns a new error object of the given type with the message msg, which is UTF-8.
-func (vm *VM) NewError(kind ErrorKind, msg string) Value {
-	return Value{o: vm.newError(kind, msg)}
+// NewError returns a new error object of the given type in r with the message msg, which is UTF-8.
+func (vm *VM) NewError(r *Realm, kind ErrorKind, msg string) Value {
+	return Value{o: vm.newError(r, kind, msg)}
 }
 
 // maxDisplayString is the length in bytes up to which a message shows a string.

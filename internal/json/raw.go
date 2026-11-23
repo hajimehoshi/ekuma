@@ -15,13 +15,13 @@ func RawJSON(vm *engine.VM, text engine.Value) engine.Value {
 	s := vm.ToStringValue(text)
 	str := s.Str()
 	if str == "" || IsSpace(str[0]) || IsSpace(str[len(str)-1]) {
-		throwSyntaxError(vm, "JSON.rawJSON: the text must not be empty or start or end with whitespace")
+		vm.ThrowSyntaxError(vm.CurrentRealm(), "JSON.rawJSON: the text must not be empty or start or end with whitespace")
 	}
 	if str[0] == '{' || str[0] == '[' {
-		throwSyntaxError(vm, "JSON.rawJSON: the text must be a primitive value")
+		vm.ThrowSyntaxError(vm.CurrentRealm(), "JSON.rawJSON: the text must be a primitive value")
 	}
 	if pos, ok := Valid(str, vm.Poll); !ok {
-		throwSyntaxError(vm, "JSON.rawJSON: unexpected character in JSON at position "+strconv.Itoa(wtf8.Len(str[:pos])))
+		vm.ThrowSyntaxError(vm.CurrentRealm(), "JSON.rawJSON: unexpected character in JSON at position "+strconv.Itoa(wtf8.Len(str[:pos])))
 	}
 	// The object is frozen: its only property is read-only and it accepts no others.
 	o := vm.NewRawJSONObject()

@@ -68,7 +68,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	thisNumber := func(vm *engine.VM, this engine.Value, what string) float64 {
 		n, ok := engine.ThisNumberValue(this)
 		if !ok {
-			vm.ThrowTypeError("Number.prototype." + what + " requires that 'this' be a Number")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Number.prototype."+what+" requires that 'this' be a Number")
 		}
 		return n
 	}
@@ -82,7 +82,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			radix = vm.ToIntegerOrInfinity(r)
 		}
 		if radix < 2 || radix > 36 {
-			vm.ThrowRangeError("toString() radix must be between 2 and 36")
+			vm.ThrowRangeError(vm.CurrentRealm(), "toString() radix must be between 2 and 36")
 		}
 		if radix == 10 {
 			return vm.ToStringValue(engine.Number(n))
@@ -96,7 +96,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 		n := thisNumber(vm, this, "toFixed")
 		d := vm.ToIntegerOrInfinity(arg(args, 0))
 		if d < 0 || d > 100 {
-			vm.ThrowRangeError("toFixed() digits argument must be between 0 and 100")
+			vm.ThrowRangeError(vm.CurrentRealm(), "toFixed() digits argument must be between 0 and 100")
 		}
 		if n != n || math.IsInf(n, 0) || math.Abs(n) >= 1e21 {
 			return vm.ToStringValue(engine.Number(n))
@@ -119,7 +119,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			return vm.ToStringValue(engine.Number(n))
 		}
 		if p < 1 || p > 100 {
-			vm.ThrowRangeError("toPrecision() argument must be between 1 and 100")
+			vm.ThrowRangeError(vm.CurrentRealm(), "toPrecision() argument must be between 1 and 100")
 		}
 		if n == 0 {
 			// -0 is formatted as 0.
@@ -146,7 +146,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 			return vm.ToStringValue(engine.Number(n))
 		}
 		if d < 0 || d > 100 {
-			vm.ThrowRangeError("toExponential() argument must be between 0 and 100")
+			vm.ThrowRangeError(vm.CurrentRealm(), "toExponential() argument must be between 0 and 100")
 		}
 		if n == 0 {
 			// -0 is formatted as 0.
@@ -173,7 +173,7 @@ func initNumber(vm *engine.VM, parseFloat, parseInt *engine.Object) {
 	thisBool := func(vm *engine.VM, this engine.Value, what string) bool {
 		b, ok := engine.ThisBooleanValue(this)
 		if !ok {
-			vm.ThrowTypeError("Boolean.prototype." + what + " requires that 'this' be a Boolean")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Boolean.prototype."+what+" requires that 'this' be a Boolean")
 		}
 		return b
 	}
@@ -609,7 +609,7 @@ func initSymbol(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicSymbolPrototype)
 	ctor := constructor(vm, "Symbol", 0, engine.IntrinsicSymbolPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if vm.GetNewTarget() != nil {
-			vm.ThrowTypeError("Symbol is not a constructor")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Symbol is not a constructor")
 		}
 		d := arg(args, 0)
 		if d.IsUndefined() {
@@ -634,7 +634,7 @@ func initSymbol(vm *engine.VM) {
 	method(vm, ctor, "keyFor", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		s := arg(args, 0)
 		if !s.IsSymbol() {
-			vm.ThrowTypeError(vm.DisplayString(s) + " is not a symbol")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(s)+" is not a symbol")
 		}
 		key, ok := vm.KeyForSymbol(s.Object())
 		if !ok {
@@ -645,7 +645,7 @@ func initSymbol(vm *engine.VM) {
 	thisSymbol := func(vm *engine.VM, this engine.Value, what string) *engine.Object {
 		s, ok := engine.ThisSymbolValue(this)
 		if !ok {
-			vm.ThrowTypeError("Symbol.prototype." + what + " requires that 'this' be a Symbol")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Symbol.prototype."+what+" requires that 'this' be a Symbol")
 		}
 		return s
 	}
@@ -873,7 +873,7 @@ func initIterators(vm *engine.VM) {
 		return method(vm, gp, wtf8.String(name), 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			r, ok := vm.ResumeGenerator(this, mode, arg(args, 0))
 			if !ok {
-				vm.ThrowTypeError(name + " method called on an object that is not a generator")
+				vm.ThrowTypeError(vm.CurrentRealm(), name+" method called on an object that is not a generator")
 			}
 			return r
 		})
@@ -1028,10 +1028,10 @@ func sumPrecise(vm *engine.VM, items engine.Value) float64 {
 	vm.IterateRecord(it, next, func(v engine.Value) bool {
 		count++
 		if count >= 1<<53 {
-			vm.ThrowRangeError("Math.sumPrecise: too many values")
+			vm.ThrowRangeError(vm.CurrentRealm(), "Math.sumPrecise: too many values")
 		}
 		if !v.IsNumber() {
-			vm.ThrowTypeError("Math.sumPrecise: " + vm.DisplayString(v) + " is not a number")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Math.sumPrecise: "+vm.DisplayString(v)+" is not a number")
 		}
 		n := v.Number()
 		switch {

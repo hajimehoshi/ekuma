@@ -41,7 +41,7 @@ func (pr *pluralRulesData) resolvePlural(n number.Decimal) (string, string) {
 func (r *realm) newPluralRules(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.PluralRules requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.PluralRules requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.pluralRulesProto })
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
@@ -66,7 +66,7 @@ func (r *realm) newPluralRules(vm *engine.VM, this engine.Value, args []engine.V
 func thisPluralRules(vm *engine.VM, this engine.Value, name string) *pluralRulesData {
 	pr, ok := engine.IntlData(this).(*pluralRulesData)
 	if !ok {
-		vm.ThrowTypeError("Intl.PluralRules.prototype." + name + " called on an object that is not an Intl.PluralRules")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.PluralRules.prototype."+name+" called on an object that is not an Intl.PluralRules")
 	}
 	return pr
 }
@@ -132,12 +132,12 @@ func (r *realm) initPluralRules(vm *engine.VM) {
 		pr := thisPluralRules(vm, this, "selectRange")
 		start, end := arg(args, 0), arg(args, 1)
 		if start.IsUndefined() || end.IsUndefined() {
-			vm.ThrowTypeError("selectRange requires a start and an end")
+			vm.ThrowTypeError(vm.CurrentRealm(), "selectRange requires a start and an end")
 		}
 		x := toIntlMathematicalValue(vm, start)
 		y := toIntlMathematicalValue(vm, end)
 		if x.IsNaN() || y.IsNaN() {
-			vm.ThrowRangeError("the start or the end of a range is NaN")
+			vm.ThrowRangeError(vm.CurrentRealm(), "the start or the end of a range is NaN")
 		}
 		xc, xs := pr.resolvePlural(x)
 		yc, ys := pr.resolvePlural(y)

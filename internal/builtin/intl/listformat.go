@@ -26,7 +26,7 @@ func getOptionsObject(vm *engine.VM, v engine.Value, name string) *engine.Object
 	case v.IsObject():
 		return v.Object()
 	}
-	vm.ThrowTypeError("the options of " + name + " must be an object")
+	vm.ThrowTypeError(vm.CurrentRealm(), "the options of "+name+" must be an object")
 	return nil
 }
 
@@ -34,7 +34,7 @@ func getOptionsObject(vm *engine.VM, v engine.Value, name string) *engine.Object
 func (r *realm) newListFormat(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.ListFormat requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.ListFormat requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.listFormatProto })
 	requested := canonicalizeLocaleList(vm, arg(args, 0))
@@ -54,7 +54,7 @@ func (r *realm) newListFormat(vm *engine.VM, this engine.Value, args []engine.Va
 func thisListFormat(vm *engine.VM, this engine.Value, name string) *listFormatData {
 	lf, ok := engine.IntlData(this).(*listFormatData)
 	if !ok {
-		vm.ThrowTypeError("Intl.ListFormat.prototype." + name + " called on an object that is not an Intl.ListFormat")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.ListFormat.prototype."+name+" called on an object that is not an Intl.ListFormat")
 	}
 	return lf
 }
@@ -73,7 +73,7 @@ func stringListFromIterable(vm *engine.VM, v engine.Value) []string {
 		}
 		if !e.IsString() {
 			vm.IfAbruptCloseIterator(it, func() {
-				vm.ThrowTypeError("an element of the list is not a string: " + vm.DisplayString(e))
+				vm.ThrowTypeError(vm.CurrentRealm(), "an element of the list is not a string: "+vm.DisplayString(e))
 			})
 		}
 		// The formatter copies the elements into its parts as they are, lone surrogates included.

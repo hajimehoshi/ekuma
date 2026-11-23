@@ -304,10 +304,10 @@ func (vm *VM) funcOf(r *Realm, name string, f Func) engine.Value {
 		res, err := f(fromEngine(this), vm.args[n:len(vm.args):len(vm.args)])
 		vm.e.ResumeInterruption()
 		if err != nil {
-			vm.e.Throw(vm.thrownValue(err))
+			vm.e.Throw(vm.thrownValue(r, err))
 		}
 		if b, ok := res.(*big.Int); ok && b != nil && b.BitLen() > engine.MaxBigIntBits {
-			vm.e.ThrowRangeError("maximum BigInt size exceeded")
+			vm.e.ThrowRangeError(r.r, "maximum BigInt size exceeded")
 		}
 		return vm.valueOf(r, res)
 	})

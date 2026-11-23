@@ -38,7 +38,7 @@ func (l *localeData) String() string {
 func thisLocale(vm *engine.VM, this engine.Value, name string) *localeData {
 	l, ok := engine.IntlData(this).(*localeData)
 	if !ok {
-		vm.ThrowTypeError("Intl.Locale.prototype." + name + " called on an object that is not an Intl.Locale")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.Locale.prototype."+name+" called on an object that is not an Intl.Locale")
 	}
 	return l
 }
@@ -61,7 +61,7 @@ func subtagOption(vm *engine.VM, options *engine.Object, name string, valid func
 	}
 	l, ok := asciiLower(s)
 	if !ok || !valid(l) {
-		vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
+		vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
 	}
 	return l
 }
@@ -104,12 +104,12 @@ func weekdayToString(s string) string {
 func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.Locale requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.Locale requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.localeProto })
 	tagV := arg(args, 0)
 	if !tagV.IsString() && !tagV.IsObject() {
-		vm.ThrowTypeError("the tag of Intl.Locale must be a string or an object, not " + vm.DisplayString(tagV))
+		vm.ThrowTypeError(vm.CurrentRealm(), "the tag of Intl.Locale must be a string or an object, not "+vm.DisplayString(tagV))
 	}
 	var tag string
 	if l, ok := engine.IntlData(tagV).(*localeData); ok {
@@ -125,7 +125,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 	}
 	t, ok := locale.Parse(tag)
 	if !ok {
-		vm.ThrowRangeError("invalid language tag: " + vm.DisplayString(vm.NewString(wtf8.String(tag))))
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid language tag: "+vm.DisplayString(vm.NewString(wtf8.String(tag))))
 	}
 	t = t.CanonicalizePolled(vm.Poll)
 
@@ -151,7 +151,7 @@ func (r *realm) newLocale(vm *engine.VM, this engine.Value, args []engine.Value)
 		}
 		l, ok := asciiLower(s)
 		if !ok || !localetag.IsType(l) {
-			vm.ThrowRangeError(vm.DisplayString(vm.NewString(wtf8.String(s))) + " is not a valid value for " + name)
+			vm.ThrowRangeError(vm.CurrentRealm(), vm.DisplayString(vm.NewString(wtf8.String(s)))+" is not a valid value for "+name)
 		}
 		kws = append(kws, locale.Keyword{
 			Key:   key,

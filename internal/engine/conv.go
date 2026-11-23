@@ -38,7 +38,7 @@ func (vm *VM) ToPrimitive(v Value, h Hint) Value {
 		}
 		r := vm.Call(m, v, vm.NewString(name))
 		if r.IsObject() {
-			vm.ThrowTypeError("cannot convert object to primitive value")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert object to primitive value")
 		}
 		return r
 	}
@@ -59,7 +59,7 @@ func (vm *VM) OrdinaryToPrimitive(o *Object, h Hint) Value {
 			}
 		}
 	}
-	vm.ThrowTypeError("cannot convert object to primitive value")
+	vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert object to primitive value")
 	return Undefined
 }
 
@@ -70,7 +70,7 @@ func (vm *VM) GetMethod(v Value, key *Object) *Object {
 		return nil
 	}
 	if !m.IsCallable() {
-		vm.ThrowTypeError(wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key})) + " is not a function")
+		vm.ThrowTypeError(vm.CurrentRealm(), wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key}))+" is not a function")
 	}
 	return m.o
 }
@@ -97,9 +97,9 @@ func (vm *VM) ToNumber(v Value) float64 {
 		}
 		return numconv.StringToNumber(v.Str(), vm.Poll)
 	case kindSymbol:
-		vm.ThrowTypeError("cannot convert a Symbol value to a number")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a Symbol value to a number")
 	case kindBigInt:
-		vm.ThrowTypeError("cannot convert a BigInt value to a number")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a BigInt value to a number")
 	}
 	return vm.ToNumber(vm.ToPrimitive(v, HintNumber))
 }
@@ -161,7 +161,7 @@ func (vm *VM) ToString(v Value) wtf8.String {
 	case kindTrue:
 		return "true"
 	case kindSymbol:
-		vm.ThrowTypeError("cannot convert a Symbol value to a string")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a Symbol value to a string")
 	case kindBigInt:
 		return vm.BigIntToString(v, 10)
 	}
@@ -201,7 +201,7 @@ func (vm *VM) ToObject(v Value) *Object {
 		return o
 	}
 	if o == nil {
-		vm.ThrowTypeError("cannot convert undefined or null to object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
 	}
 	if o == numberObject {
 		w := vm.NewObject(vm.Intrinsic(IntrinsicNumberPrototype))
@@ -211,7 +211,7 @@ func (vm *VM) ToObject(v Value) *Object {
 	}
 	switch o.kind {
 	case kindNull:
-		vm.ThrowTypeError("cannot convert undefined or null to object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined or null to object")
 	case kindFalse, kindTrue:
 		w := vm.NewObject(vm.Intrinsic(IntrinsicBooleanPrototype))
 		w.class = classBoolean
@@ -245,7 +245,7 @@ func (vm *VM) NewStringObject(s *Object, proto *Object) *Object {
 // RequireObjectCoercible throws a TypeError when v is undefined or null.
 func (vm *VM) RequireObjectCoercible(v Value, what string) {
 	if v.IsNullish() {
-		vm.ThrowTypeError(what + " called on null or undefined")
+		vm.ThrowTypeError(vm.CurrentRealm(), what+" called on null or undefined")
 	}
 }
 
@@ -253,16 +253,16 @@ func (vm *VM) RequireObjectCoercible(v Value, what string) {
 func (vm *VM) ToBigInt(v Value) Value {
 	p := vm.ToPrimitive(v, HintNumber)
 	if p.o == numberObject {
-		vm.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(numconv.NumberToString(p.n)) + " to a BigInt")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert "+wtf8.ToValidUTF8(numconv.NumberToString(p.n))+" to a BigInt")
 	}
 	if p.IsUndefined() {
-		vm.ThrowTypeError("cannot convert undefined to a BigInt")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert undefined to a BigInt")
 	}
 	switch p.o.kind {
 	case kindBigInt:
 		return p
 	case kindNull:
-		vm.ThrowTypeError("cannot convert " + wtf8.ToValidUTF8(vm.ToString(p)) + " to a BigInt")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert "+wtf8.ToValidUTF8(vm.ToString(p))+" to a BigInt")
 	case kindFalse:
 		return BigIntFromInt64(0)
 	case kindTrue:
@@ -271,13 +271,13 @@ func (vm *VM) ToBigInt(v Value) Value {
 		i, err := numconv.StringToBigInt(p.Str(), MaxBigIntBits, vm.Poll)
 		switch {
 		case errors.Is(err, numconv.ErrNotBigInt):
-			vm.throwSyntaxError("cannot convert " + vm.DisplayString(p) + " to a BigInt")
+			vm.ThrowSyntaxError(vm.CurrentRealm(), "cannot convert "+vm.DisplayString(p)+" to a BigInt")
 		case errors.Is(err, numconv.ErrBigIntTooLarge):
-			vm.ThrowRangeError("maximum BigInt size exceeded")
+			vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
 		}
 		return vm.NewBigInt(i)
 	case kindSymbol:
-		vm.ThrowTypeError("cannot convert a Symbol value to a BigInt")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot convert a Symbol value to a BigInt")
 	}
 	panic("ekuma: internal value reached ToBigInt")
 }
@@ -495,7 +495,7 @@ func (vm *VM) addValues(a, b Value) Value {
 		return Number(a.n + b.n)
 	}
 	if a.o == numberObject || b.o == numberObject {
-		vm.ThrowTypeError("cannot mix BigInt and other types, use explicit conversions")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot mix BigInt and other types, use explicit conversions")
 	}
 	return vm.addBigInts(a, b)
 }

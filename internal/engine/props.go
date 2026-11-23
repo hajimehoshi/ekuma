@@ -401,7 +401,7 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 		return vm.Intrinsic(IntrinsicNumberPrototype)
 	}
 	if o == nil {
-		vm.ThrowTypeError("cannot read properties of undefined (reading '" + wtf8.ToValidUTF8(vm.KeyString(key)) + "')")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of undefined (reading '"+wtf8.ToValidUTF8(vm.KeyString(key))+"')")
 	}
 	switch o.kind {
 	case kindFalse, kindTrue:
@@ -411,7 +411,7 @@ func (vm *VM) protoStart(v Value, key PropKey) *Object {
 	case kindBigInt:
 		return vm.Intrinsic(IntrinsicBigIntPrototype)
 	case kindNull:
-		vm.ThrowTypeError("cannot read properties of " + vm.DisplayString(v) + " (reading '" + wtf8.ToValidUTF8(vm.KeyString(key)) + "')")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot read properties of "+vm.DisplayString(v)+" (reading '"+wtf8.ToValidUTF8(vm.KeyString(key))+"')")
 	case kindString:
 		if v.isShortString() && o.flags&objInterned == 0 {
 			o = v.stringObject()
@@ -1076,7 +1076,7 @@ func (vm *VM) setNamed(v Value, key *Object, val Value, c *propCache) (setter *O
 	o := v.o
 	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
-			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key})) + "')")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot set properties of "+vm.DisplayString(v)+" (setting '"+wtf8.ToValidUTF8(vm.KeyString(PropKey{key: key}))+"')")
 		}
 		// A store to a primitive only has an effect when a setter is inherited.
 		start := vm.protoStart(v, PropKey{key: key})
@@ -1183,7 +1183,7 @@ func (vm *VM) toArrayLength(val Value) uint32 {
 		n = vm.ToNumber(val)
 	}
 	if float64(u) != n {
-		vm.ThrowRangeError("invalid array length")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid array length")
 	}
 	return u
 }
@@ -1194,7 +1194,7 @@ func (vm *VM) setIndex(v Value, i uint32, val Value) (setter *Object, ok bool) {
 	o := v.o
 	if o == nil || o.kind < kindFirstObject {
 		if v.IsNullish() {
-			vm.ThrowTypeError("cannot set properties of " + vm.DisplayString(v) + " (setting '" + wtf8.ToValidUTF8(vm.KeyString(PropKey{idx: i})) + "')")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot set properties of "+vm.DisplayString(v)+" (setting '"+wtf8.ToValidUTF8(vm.KeyString(PropKey{idx: i}))+"')")
 		}
 		if o != nil && o.kind == kindString && int64(i) < int64(v.StringLength()) {
 			return nil, false
@@ -1289,7 +1289,7 @@ func (vm *VM) setProp(o *Object, k PropKey, val Value, receiver Value) bool {
 // Set stores val as the property k of o and throws a TypeError when the store is refused.
 func (vm *VM) Set(o *Object, k PropKey, val Value) {
 	if !vm.setProp(o, k, val, Value{o: o}) {
-		vm.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot assign to read only property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
 	}
 }
 
@@ -1679,7 +1679,7 @@ func (vm *VM) SetPrototypeOf(o *Object, proto *Object) bool {
 // CreateDataPropertyOrThrow implements CreateDataPropertyOrThrow.
 func (vm *VM) CreateDataPropertyOrThrow(o *Object, k PropKey, val Value) {
 	if !vm.CreateDataProperty(o, k, val) {
-		vm.ThrowTypeError("cannot define property '" + wtf8.ToValidUTF8(vm.KeyString(k)) + "'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot define property '"+wtf8.ToValidUTF8(vm.KeyString(k))+"'")
 	}
 }
 
@@ -1696,7 +1696,7 @@ func (vm *VM) CreateDataProperty(o *Object, k PropKey, val Value) bool {
 // DefinePropertyOrThrow implements DefinePropertyOrThrow.
 func (vm *VM) DefinePropertyOrThrow(o *Object, k PropKey, d PropDesc) {
 	if !vm.defineOwnProperty(o, k, d) {
-		vm.ThrowTypeError("cannot redefine property: " + wtf8.ToValidUTF8(vm.KeyString(k)))
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot redefine property: "+wtf8.ToValidUTF8(vm.KeyString(k)))
 	}
 }
 

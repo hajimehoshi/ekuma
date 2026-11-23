@@ -65,7 +65,7 @@ func initURIFunctions(vm *engine.VM) {
 }
 
 func throwURIError(vm *engine.VM, msg string) {
-	vm.Throw(vm.NewError(engine.ErrorKindURI, msg))
+	vm.Throw(vm.NewError(vm.CurrentRealm(), engine.ErrorKindURI, msg))
 }
 
 // uriEncode implements Encode. The ASCII characters in extraUnescaped are not escaped.

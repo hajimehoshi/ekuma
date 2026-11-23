@@ -234,7 +234,7 @@ func initTemporalZonedDateTime(vm *engine.VM, ns *engine.Object) {
 				d = must(temporal.TemporalDurationFromInternal(id, settings.largestUnit))
 			} else {
 				if !temporal.TimeZoneEquals(s.tz, other.tz) {
-					vm.ThrowRangeError("the time zones differ, so the largestUnit must be hours or smaller")
+					vm.ThrowRangeError(vm.CurrentRealm(), "the time zones differ, so the largestUnit must be hours or smaller")
 				}
 				if s.ns.Cmp(other.ns) == 0 {
 					return newDuration(vm, temporal.Duration{}, nil)

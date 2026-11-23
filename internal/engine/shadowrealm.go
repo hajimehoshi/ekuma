@@ -21,7 +21,7 @@ func (vm *VM) NewShadowRealmObject(proto *Object, r *Realm) *Object {
 // [[ShadowRealm]] of o.
 func (vm *VM) ValidateShadowRealmObject(o Value) *Realm {
 	if !o.IsObject() || o.o.class != classShadowRealm {
-		vm.ThrowTypeError("the receiver is not a ShadowRealm")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the receiver is not a ShadowRealm")
 	}
 	return o.o.extState().(*Realm)
 }

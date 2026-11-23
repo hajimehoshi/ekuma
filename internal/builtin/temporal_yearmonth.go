@@ -12,7 +12,7 @@ import (
 // createPlainYearMonth implements CreateTemporalYearMonth.
 func createPlainYearMonth(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
 	if !temporal.ISOYearMonthWithinLimits(d) {
-		vm.ThrowRangeError("year and month are out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "year and month are out of range")
 	}
 	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainYearMonthPrototype)
 	return engine.ObjectValue(vm.NewTemporalObject(proto, &plainYearMonthSlots{
@@ -24,7 +24,7 @@ func createPlainYearMonth(vm *engine.VM, d temporal.ISODate, cal string, nt *eng
 // createPlainMonthDay implements CreateTemporalMonthDay.
 func createPlainMonthDay(vm *engine.VM, d temporal.ISODate, cal string, nt *engine.Object) engine.Value {
 	if !temporal.ISODateWithinLimits(d) {
-		vm.ThrowRangeError("date is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "date is out of range")
 	}
 	proto := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicTemporalPlainMonthDayPrototype)
 	return engine.ObjectValue(vm.NewTemporalObject(proto, &plainMonthDaySlots{
@@ -108,7 +108,7 @@ func toTemporalMonthDay(vm *engine.VM, item, options engine.Value) plainMonthDay
 	}
 	d := temporal.ISODate{Year: p.Year, Month: p.Month, Day: p.Day}
 	if !temporal.ISODateWithinLimits(d) {
-		vm.ThrowRangeError("date is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "date is out of range")
 	}
 	f := temporal.ISODateToFields(cal, d, temporal.FieldsMonthDay)
 	return plainMonthDaySlots{
@@ -166,7 +166,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object) {
 			id := temporal.ToInternalDurationRecord(&d)
 			overflow := getOverflowOption(vm, getOptionsObject(vm, arg(args, 1)))
 			if id.Date.Weeks != 0 || id.Date.Days != 0 || !id.Time.IsZero() {
-				vm.ThrowRangeError("only years and months can be added to a PlainYearMonth")
+				vm.ThrowRangeError(vm.CurrentRealm(), "only years and months can be added to a PlainYearMonth")
 			}
 			f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
 			f.Day, f.HasDay = 1, true
@@ -235,7 +235,7 @@ func initTemporalPlainYearMonth(vm *engine.VM, ns *engine.Object) {
 		s := thisPlainYearMonth(vm, this, "toPlainDate")
 		item := arg(args, 0)
 		if !item.IsObject() {
-			vm.ThrowTypeError("argument must be an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "argument must be an object")
 		}
 		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsYearMonth)
 		in := prepareCalendarFields(vm, s.cal, item.Object(), []string{"day"}, fieldsNoneRequired)
@@ -298,7 +298,7 @@ func initTemporalPlainMonthDay(vm *engine.VM, ns *engine.Object) {
 		s := thisPlainMonthDay(vm, this, "toPlainDate")
 		item := arg(args, 0)
 		if !item.IsObject() {
-			vm.ThrowTypeError("argument must be an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "argument must be an object")
 		}
 		f := temporal.ISODateToFields(s.cal, s.date, temporal.FieldsMonthDay)
 		in := prepareCalendarFields(vm, s.cal, item.Object(), []string{"year"}, fieldsNoneRequired)

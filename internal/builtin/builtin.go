@@ -75,7 +75,7 @@ func constructor(vm *engine.VM, name wtf8.String, length int, protoID engine.Int
 // thisObject returns this as an object, or throws a TypeError naming the method.
 func thisObject(vm *engine.VM, this engine.Value, what string) *engine.Object {
 	if !this.IsObject() {
-		vm.ThrowTypeError(what + " called on non-object")
+		vm.ThrowTypeError(vm.CurrentRealm(), what+" called on non-object")
 	}
 	return this.Object()
 }
@@ -84,11 +84,11 @@ func thisObject(vm *engine.VM, this engine.Value, what string) *engine.Object {
 // it sets the property key of this to v unless this is home. what names the setter in errors.
 func setterThatIgnoresPrototypeProperties(vm *engine.VM, this engine.Value, home *engine.Object, key engine.PropKey, v engine.Value, what string) {
 	if !this.IsObject() {
-		vm.ThrowTypeError(what + " called on non-object")
+		vm.ThrowTypeError(vm.CurrentRealm(), what+" called on non-object")
 	}
 	o := this.Object()
 	if o == home {
-		vm.ThrowTypeError("cannot assign to read only property '" + wtf8.ToValidUTF8(vm.KeyString(key)) + "'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot assign to read only property '"+wtf8.ToValidUTF8(vm.KeyString(key))+"'")
 	}
 	if _, ok := vm.GetOwnProperty(o, key); !ok {
 		vm.CreateDataPropertyOrThrow(o, key, v)
@@ -142,7 +142,7 @@ func Install(vm *engine.VM) {
 	constant(vm, g, "Infinity", engine.Number(math.Inf(1)))
 
 	throwTypeError := vm.NewNative("", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError("'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
+		vm.ThrowTypeError(vm.CurrentRealm(), "'caller', 'callee', and 'arguments' properties may not be accessed on strict mode functions or the arguments objects for calls to them")
 		return engine.Undefined
 	})
 	setIntegrity(vm, throwTypeError, true)
@@ -247,7 +247,7 @@ func (s *objectStrings) objectToString(vm *engine.VM, o *engine.Object) engine.V
 // setIntegrity implements SetIntegrityLevel. frozen selects frozen over sealed.
 func setIntegrity(vm *engine.VM, o *engine.Object, frozen bool) {
 	if !vm.PreventExtensions(o) {
-		vm.ThrowTypeError("cannot prevent extensions")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot prevent extensions")
 	}
 	var pacer engine.Pacer
 	for _, k := range vm.OwnKeys(o) {
@@ -390,7 +390,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 				po = p.Object()
 			}
 			if !vm.SetPrototypeOf(this.Object(), po) {
-				vm.ThrowTypeError("cannot set prototype")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot set prototype")
 			}
 			return engine.Undefined
 		}),
@@ -401,7 +401,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 			o := vm.ToObject(this)
 			f := arg(args, 1)
 			if !f.IsCallable() {
-				vm.ThrowTypeError("Object.prototype." + name + ": expecting function")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Object.prototype."+name+": expecting function")
 			}
 			var d engine.PropDesc
 			d.SetEnumerable(true)
@@ -451,7 +451,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 		o, p := arg(args, 0), arg(args, 1)
 		vm.RequireObjectCoercible(o, "Object.setPrototypeOf")
 		if !p.IsObject() && !p.IsNull() {
-			vm.ThrowTypeError("object prototype may only be an Object or null: " + vm.DisplayString(p))
+			vm.ThrowTypeError(vm.CurrentRealm(), "object prototype may only be an Object or null: "+vm.DisplayString(p))
 		}
 		if !o.IsObject() {
 			return o
@@ -461,7 +461,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 			po = p.Object()
 		}
 		if !vm.SetPrototypeOf(o.Object(), po) {
-			vm.ThrowTypeError("cannot set prototype")
+			vm.ThrowTypeError(vm.CurrentRealm(), "cannot set prototype")
 		}
 		return o
 	})
@@ -492,7 +492,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	method(vm, ctor, "create", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		p := arg(args, 0)
 		if !p.IsObject() && !p.IsNull() {
-			vm.ThrowTypeError("object prototype may only be an Object or null: " + vm.DisplayString(p))
+			vm.ThrowTypeError(vm.CurrentRealm(), "object prototype may only be an Object or null: "+vm.DisplayString(p))
 		}
 		var po *engine.Object
 		if p.IsObject() {
@@ -507,7 +507,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	method(vm, ctor, "defineProperty", 3, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := arg(args, 0)
 		if !o.IsObject() {
-			vm.ThrowTypeError("Object.defineProperty called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Object.defineProperty called on non-object")
 		}
 		k := vm.ToPropertyKey(arg(args, 1))
 		vm.DefinePropertyOrThrow(o.Object(), k, vm.ToPropertyDescriptor(arg(args, 2)))
@@ -516,7 +516,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	method(vm, ctor, "defineProperties", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		o := arg(args, 0)
 		if !o.IsObject() {
-			vm.ThrowTypeError("Object.defineProperties called on non-object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Object.defineProperties called on non-object")
 		}
 		defineProperties(vm, o.Object(), arg(args, 1))
 		return o
@@ -616,7 +616,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 	method(vm, ctor, "preventExtensions", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if o := arg(args, 0); o.IsObject() {
 			if !vm.PreventExtensions(o.Object()) {
-				vm.ThrowTypeError("cannot prevent extensions")
+				vm.ThrowTypeError(vm.CurrentRealm(), "cannot prevent extensions")
 			}
 		}
 		return arg(args, 0)
@@ -640,7 +640,7 @@ func initObject(vm *engine.VM, strs *objectStrings) {
 		o := vm.NewOrdinaryObject()
 		vm.Iterate(arg(args, 0), func(e engine.Value) bool {
 			if !e.IsObject() {
-				vm.ThrowTypeError("iterator value " + vm.DisplayString(e) + " is not an entry object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "iterator value "+vm.DisplayString(e)+" is not an entry object")
 			}
 			k := vm.Index(e, 0)
 			v := vm.Index(e, 1)
@@ -661,14 +661,14 @@ func listFromArrayLike(vm *engine.VM, v engine.Value) []engine.Value {
 		return nil
 	}
 	if !v.IsObject() {
-		vm.ThrowTypeError("CreateListFromArrayLike called on non-object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "CreateListFromArrayLike called on non-object")
 	}
 	if list, ok := v.Object().ElementList(); ok {
 		return list
 	}
 	n := numconv.ToLength(vm.ToNumber(vm.GetV(v, vm.Key(engine.KeyLength))))
 	if n > 1<<24 {
-		vm.ThrowRangeError("too many arguments")
+		vm.ThrowRangeError(vm.CurrentRealm(), "too many arguments")
 	}
 	list := make([]engine.Value, n)
 	for i := 0; i < len(list); i += engine.PollInterval {
@@ -697,21 +697,21 @@ func initFunction(vm *engine.VM) {
 
 	call := method(vm, proto, "call", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
-			vm.ThrowTypeError("Function.prototype.call called on a value that is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Function.prototype.call called on a value that is not a function")
 		}
 		return vm.Call(this.Object(), arg(args, 0), args[min(1, len(args)):]...)
 	})
 	vm.SetIntrinsic(engine.IntrinsicFunctionPrototypeCall, call)
 	apply := method(vm, proto, "apply", 2, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
-			vm.ThrowTypeError("Function.prototype.apply called on a value that is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Function.prototype.apply called on a value that is not a function")
 		}
 		return vm.Call(this.Object(), arg(args, 0), listFromArrayLike(vm, arg(args, 1))...)
 	})
 	vm.SetIntrinsic(engine.IntrinsicFunctionPrototypeApply, apply)
 	method(vm, proto, "bind", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
-			vm.ThrowTypeError("bind must be called on a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), "bind must be called on a function")
 		}
 		target := this.Object()
 		b := vm.BoundFunctionCreate(target, arg(args, 0), args[min(1, len(args)):])
@@ -720,7 +720,7 @@ func initFunction(vm *engine.VM) {
 	})
 	method(vm, proto, "toString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if !this.IsCallable() {
-			vm.ThrowTypeError("Function.prototype.toString requires that 'this' be a Function")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Function.prototype.toString requires that 'this' be a Function")
 		}
 		src := this.Object().SourceText()
 		checkStringLength(vm, len(src))
@@ -795,7 +795,7 @@ func initError(vm *engine.VM) {
 		}
 		ctor := constructor(vm, wtf8.String(name), length, protoID, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			nt := vm.GetNewTarget()
-			e := vm.NewErrorObject(vm.GetPrototypeFromConstructor(nt, protoID))
+			e := vm.NewErrorObject(vm.CurrentRealm(), vm.GetPrototypeFromConstructor(nt, protoID))
 			msgArg, optArg := arg(args, 0), arg(args, 1)
 			switch kind {
 			case engine.ErrorKindAggregate:
@@ -841,7 +841,7 @@ func initError(vm *engine.VM) {
 	vm.DefineAccessor(vm.Intrinsic(engine.IntrinsicErrorPrototype), vm.Key(engine.KeyStack),
 		vm.NewNative("get stack", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
-				vm.ThrowTypeError("Error.prototype.stack getter called on non-object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Error.prototype.stack getter called on non-object")
 			}
 			if s, ok := engine.ErrorStack(this); ok {
 				return vm.NewString(s)
@@ -850,11 +850,11 @@ func initError(vm *engine.VM) {
 		}),
 		vm.NewNative("set stack", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 			if !this.IsObject() {
-				vm.ThrowTypeError("Error.prototype.stack setter called on non-object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Error.prototype.stack setter called on non-object")
 			}
 			v := arg(args, 0)
 			if !v.IsString() {
-				vm.ThrowTypeError("Error.prototype.stack setter requires a string")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Error.prototype.stack setter requires a string")
 			}
 			setterThatIgnoresPrototypeProperties(vm, this, vm.Intrinsic(engine.IntrinsicErrorPrototype), stackKey, v, "Error.prototype.stack setter")
 			return engine.Undefined

@@ -14,7 +14,7 @@ func initShadowRealm(vm *engine.VM) {
 	constructor(vm, "ShadowRealm", 0, engine.IntrinsicShadowRealmPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor ShadowRealm requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor ShadowRealm requires 'new'")
 		}
 		p := vm.GetPrototypeFromConstructor(nt, engine.IntrinsicShadowRealmPrototype)
 		r := vm.CreateRealm(func() {
@@ -26,7 +26,7 @@ func initShadowRealm(vm *engine.VM) {
 		r := vm.ValidateShadowRealmObject(this)
 		src := arg(args, 0)
 		if !src.IsString() {
-			vm.ThrowTypeError("ShadowRealm.prototype.evaluate requires a string")
+			vm.ThrowTypeError(vm.CurrentRealm(), "ShadowRealm.prototype.evaluate requires a string")
 		}
 		return performShadowRealmEval(vm, src.Str(), r)
 	})
@@ -35,7 +35,7 @@ func initShadowRealm(vm *engine.VM) {
 		specifier := vm.ToString(arg(args, 0))
 		exportName := arg(args, 1)
 		if !exportName.IsString() {
-			vm.ThrowTypeError("the export name of ShadowRealm.prototype.importValue must be a string")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the export name of ShadowRealm.prototype.importValue must be a string")
 		}
 		return shadowRealmImportValue(vm, specifier, exportName, r)
 	})
@@ -47,7 +47,7 @@ func initShadowRealm(vm *engine.VM) {
 func performShadowRealmEval(vm *engine.VM, src wtf8.String, evalRealm *engine.Realm) engine.Value {
 	v, ok := vm.EvalInRealm(evalRealm, src)
 	if !ok {
-		vm.ThrowTypeError("the evaluation in the ShadowRealm threw")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the evaluation in the ShadowRealm threw")
 	}
 	return getWrappedValue(vm, v)
 }
@@ -60,12 +60,12 @@ func shadowRealmImportValue(vm *engine.VM, specifier wtf8.String, exportName eng
 		exports := arg(args, 0).Object()
 		k := vm.ToPropertyKey(exportName)
 		if !vm.HasOwnProperty(exports, k) {
-			vm.ThrowTypeError("the module '" + wtf8.ToValidUTF8(specifier) + "' has no export named '" + wtf8.ToValidUTF8(exportName.Str()) + "'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the module '"+wtf8.ToValidUTF8(specifier)+"' has no export named '"+wtf8.ToValidUTF8(exportName.Str())+"'")
 		}
 		return getWrappedValue(vm, vm.Get(exports, k))
 	})
 	onRejected := vm.NewNative("", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-		vm.ThrowTypeError("cannot import '" + wtf8.ToValidUTF8(specifier) + "' in the ShadowRealm")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot import '"+wtf8.ToValidUTF8(specifier)+"' in the ShadowRealm")
 		return engine.Undefined
 	})
 	c := vm.NewPromiseCapability(engine.ObjectValue(vm.Intrinsic(engine.IntrinsicPromise)))
@@ -78,7 +78,7 @@ func getWrappedValue(vm *engine.VM, v engine.Value) engine.Value {
 		return v
 	}
 	if !v.IsCallable() {
-		vm.ThrowTypeError("only primitives and callable objects can cross the boundary of a ShadowRealm")
+		vm.ThrowTypeError(vm.CurrentRealm(), "only primitives and callable objects can cross the boundary of a ShadowRealm")
 	}
 	return engine.ObjectValue(wrappedFunctionCreate(vm, v.Object()))
 }
@@ -91,14 +91,14 @@ func wrappedFunctionCreate(vm *engine.VM, target *engine.Object) *engine.Object 
 		if _, ok := vm.Completion(func() {
 			result = ordinaryWrappedFunctionCall(vm, target, this, args)
 		}); !ok {
-			vm.ThrowTypeError("the wrapped function threw")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the wrapped function threw")
 		}
 		return result
 	})
 	if _, ok := vm.Completion(func() {
 		copyNameAndLength(vm, f, target, "", 0)
 	}); !ok {
-		vm.ThrowTypeError("cannot wrap the function for the ShadowRealm")
+		vm.ThrowTypeError(vm.CurrentRealm(), "cannot wrap the function for the ShadowRealm")
 	}
 	return f
 }

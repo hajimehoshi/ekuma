@@ -101,11 +101,11 @@ func getDurationUnitOptions(vm *engine.VM, unit string, options *engine.Object, 
 	// ValidateDurationUnitStyle.
 	switch {
 	case display == "always" && style == "fractional":
-		vm.ThrowRangeError(unit + " cannot be displayed always with a fractional style")
+		vm.ThrowRangeError(vm.CurrentRealm(), unit+" cannot be displayed always with a fractional style")
 	case prevStyle == "fractional" && style != "fractional":
-		vm.ThrowRangeError(unit + " must be fractional after a fractional unit")
+		vm.ThrowRangeError(vm.CurrentRealm(), unit+" must be fractional after a fractional unit")
 	case (prevStyle == "numeric" || prevStyle == "2-digit") && style != "fractional" && style != "numeric" && style != "2-digit":
-		vm.ThrowRangeError(unit + " must be numeric after a numeric unit")
+		vm.ThrowRangeError(vm.CurrentRealm(), unit+" must be numeric after a numeric unit")
 	}
 	if unit == "hours" && twoDigitHours {
 		style = "2-digit"
@@ -127,14 +127,14 @@ func toDurationRecord(vm *engine.VM, v engine.Value) duration.Duration {
 	}
 	if !v.IsObject() {
 		if !v.IsString() {
-			vm.ThrowTypeError("a duration must be an object or a string")
+			vm.ThrowTypeError(vm.CurrentRealm(), "a duration must be an object or a string")
 		}
 		d, err := temporal.ParseTemporalDurationString(wtf8.ToValidUTF8(vm.ToString(v)), vm.Poll)
 		if err != nil {
-			vm.ThrowRangeError("invalid duration: " + vm.DisplayString(v))
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid duration: "+vm.DisplayString(v))
 		}
 		if !temporal.IsValidDuration(&d) {
-			vm.ThrowRangeError("duration is out of range")
+			vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
 		}
 		return d.Fields()
 	}
@@ -151,15 +151,15 @@ func toDurationRecord(vm *engine.VM, v engine.Value) duration.Duration {
 		// ToIntegerIfIntegral.
 		n := vm.ToNumber(x)
 		if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) {
-			vm.ThrowRangeError(duration.Units[i] + " must be an integer")
+			vm.ThrowRangeError(vm.CurrentRealm(), duration.Units[i]+" must be an integer")
 		}
 		d[i] = n + 0
 	}
 	if !any {
-		vm.ThrowTypeError("a duration must have a duration field")
+		vm.ThrowTypeError(vm.CurrentRealm(), "a duration must have a duration field")
 	}
 	if !d.IsValid() {
-		vm.ThrowRangeError("duration is out of range")
+		vm.ThrowRangeError(vm.CurrentRealm(), "duration is out of range")
 	}
 	return d
 }
@@ -168,7 +168,7 @@ func toDurationRecord(vm *engine.VM, v engine.Value) duration.Duration {
 func (r *realm) newDurationFormat(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	nt := vm.GetNewTarget()
 	if nt == nil {
-		vm.ThrowTypeError("constructor Intl.DurationFormat requires 'new'")
+		vm.ThrowTypeError(vm.CurrentRealm(), "constructor Intl.DurationFormat requires 'new'")
 	}
 	proto := protoFor(vm, nt, func(r *realm) *engine.Object { return r.durationFormatProto })
 	return engine.ObjectValue(vm.NewIntlObject(proto, createDurationFormat(vm, arg(args, 0), arg(args, 1))))
@@ -178,7 +178,7 @@ func (r *realm) newDurationFormat(vm *engine.VM, this engine.Value, args []engin
 func thisDurationFormat(vm *engine.VM, this engine.Value, name string) *durationFormatData {
 	df, ok := engine.IntlData(this).(*durationFormatData)
 	if !ok {
-		vm.ThrowTypeError("Intl.DurationFormat.prototype." + name + " called on an object that is not an Intl.DurationFormat")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Intl.DurationFormat.prototype."+name+" called on an object that is not an Intl.DurationFormat")
 	}
 	return df
 }
@@ -240,7 +240,7 @@ func (r *realm) initDurationFormat(vm *engine.VM) {
 func durationToLocaleString(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 	d, ok := builtin.TemporalDurationOf(this)
 	if !ok {
-		vm.ThrowTypeError("Temporal.Duration.prototype.toLocaleString called on an object that is not a Temporal.Duration")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Temporal.Duration.prototype.toLocaleString called on an object that is not a Temporal.Duration")
 	}
 	df := createDurationFormat(vm, arg(args, 0), arg(args, 1))
 	return vm.NewString(wtf8.String(df.format(d.Fields())))

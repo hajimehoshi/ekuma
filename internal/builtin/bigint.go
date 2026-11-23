@@ -34,7 +34,7 @@ func initBigInt(vm *engine.VM) {
 	proto := vm.Intrinsic(engine.IntrinsicBigIntPrototype)
 	ctor := constructor(vm, "BigInt", 1, engine.IntrinsicBigIntPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if vm.GetNewTarget() != nil {
-			vm.ThrowTypeError("BigInt is not a constructor")
+			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt is not a constructor")
 		}
 		p := vm.ToPrimitive(arg(args, 0), engine.HintNumber)
 		if p.IsNumber() {
@@ -110,7 +110,7 @@ func initBigInt(vm *engine.VM) {
 			return vm.NewBigInt(new(big.Int).SetUint64(u))
 		}
 		if bits > engine.MaxBigIntBits {
-			vm.ThrowRangeError("maximum BigInt size exceeded")
+			vm.ThrowRangeError(vm.CurrentRealm(), "maximum BigInt size exceeded")
 		}
 		// The low bits of the two's complement of i.
 		m := new(big.Int).Lsh(big.NewInt(1), uint(bits))
@@ -120,7 +120,7 @@ func initBigInt(vm *engine.VM) {
 	thisBigInt := func(vm *engine.VM, this engine.Value, what string) engine.Value {
 		v, ok := engine.ThisBigIntValue(this)
 		if !ok {
-			vm.ThrowTypeError("BigInt.prototype." + what + " requires that 'this' be a BigInt")
+			vm.ThrowTypeError(vm.CurrentRealm(), "BigInt.prototype."+what+" requires that 'this' be a BigInt")
 		}
 		return v
 	}
@@ -131,7 +131,7 @@ func initBigInt(vm *engine.VM) {
 			radix = vm.ToIntegerOrInfinity(r)
 		}
 		if radix < 2 || radix > 36 {
-			vm.ThrowRangeError("toString() radix must be between 2 and 36")
+			vm.ThrowRangeError(vm.CurrentRealm(), "toString() radix must be between 2 and 36")
 		}
 		return vm.NewString(vm.BigIntToString(x, int(radix)))
 	})
@@ -148,7 +148,7 @@ func initBigInt(vm *engine.VM) {
 // numberToBigInt implements NumberToBigInt.
 func numberToBigInt(vm *engine.VM, n float64) engine.Value {
 	if n != math.Trunc(n) || math.IsInf(n, 0) {
-		vm.ThrowRangeError("the number " + wtf8.ToValidUTF8(numconv.NumberToString(n)) + " cannot be converted to a BigInt because it is not an integer")
+		vm.ThrowRangeError(vm.CurrentRealm(), "the number "+wtf8.ToValidUTF8(numconv.NumberToString(n))+" cannot be converted to a BigInt because it is not an integer")
 	}
 	if n >= -1<<63 && n < 1<<63 {
 		return engine.BigIntFromInt64(int64(n))
@@ -161,7 +161,7 @@ func numberToBigInt(vm *engine.VM, n float64) engine.Value {
 func toIndex(vm *engine.VM, v engine.Value) int64 {
 	i := vm.ToIntegerOrInfinity(v)
 	if i < 0 || i > numconv.MaxSafeInteger {
-		vm.ThrowRangeError("invalid index " + vm.DisplayString(v))
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid index "+vm.DisplayString(v))
 	}
 	return int64(i)
 }

@@ -40,14 +40,14 @@ func (k *iteratorKeys) getIteratorDirect(vm *engine.VM, it engine.Value) iterRec
 // iterateStrings is set, and other primitives are rejected.
 func (k *iteratorKeys) getIteratorFlattenable(vm *engine.VM, v engine.Value, iterateStrings bool) iterRecord {
 	if !v.IsObject() && (!iterateStrings || !v.IsString()) {
-		vm.ThrowTypeError(vm.DisplayString(v) + " is not an iterator or an iterable object")
+		vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(v)+" is not an iterator or an iterable object")
 	}
 	it := v
 	if m := vm.GetMethod(v, vm.WellKnownSymbol(engine.SymbolIterator)); m != nil {
 		it = vm.Call(m, v)
 	}
 	if !it.IsObject() {
-		vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
 	}
 	return k.getIteratorDirect(vm, it)
 }
@@ -80,10 +80,10 @@ type iteratorHelper struct {
 func thisIteratorHelper(vm *engine.VM, this engine.Value, what string) *iteratorHelper {
 	h, _ := engine.IteratorState(this).(*iteratorHelper)
 	if h == nil {
-		vm.ThrowTypeError("Iterator Helper.prototype." + what + " requires that 'this' be an Iterator Helper")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Iterator Helper.prototype."+what+" requires that 'this' be an Iterator Helper")
 	}
 	if h.state == helperExecuting {
-		vm.ThrowTypeError("generator is already running")
+		vm.ThrowTypeError(vm.CurrentRealm(), "generator is already running")
 	}
 	return h
 }
@@ -138,7 +138,7 @@ func initIteratorHelpers(vm *engine.VM) {
 	ctor = vm.NewNativeConstructor("Iterator", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil || nt == ctor {
-			vm.ThrowTypeError("Iterator cannot be constructed directly")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Iterator cannot be constructed directly")
 		}
 		return engine.ObjectValue(vm.NewInstance(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicIteratorPrototype)))
 	})
@@ -192,7 +192,7 @@ func initIteratorFrom(vm *engine.VM, k *iteratorKeys, ctor *engine.Object) {
 	thisWrapped := func(vm *engine.VM, this engine.Value, what string) *wrappedIterator {
 		w, _ := engine.IteratorState(this).(*wrappedIterator)
 		if w == nil {
-			vm.ThrowTypeError("%WrapForValidIteratorPrototype%." + what + " called on an incompatible receiver")
+			vm.ThrowTypeError(vm.CurrentRealm(), "%WrapForValidIteratorPrototype%."+what+" called on an incompatible receiver")
 		}
 		return w
 	}
@@ -242,7 +242,7 @@ func (h *concatHelper) step(vm *engine.VM) (engine.Value, bool) {
 		h.iterables[h.pos] = engine.Undefined
 		h.pos++
 		if !it.IsObject() {
-			vm.ThrowTypeError("result of the Symbol.iterator method is not an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "result of the Symbol.iterator method is not an object")
 		}
 		h.inner = h.k.getIteratorDirect(vm, it)
 		h.active = true
@@ -264,11 +264,11 @@ func initIteratorConcat(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, new
 		}
 		for i, item := range args {
 			if !item.IsObject() {
-				vm.ThrowTypeError(vm.DisplayString(item) + " is not an object")
+				vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(item)+" is not an object")
 			}
 			m := vm.GetMethod(item, vm.WellKnownSymbol(engine.SymbolIterator))
 			if m == nil {
-				vm.ThrowTypeError(vm.DisplayString(item) + " is not iterable")
+				vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(item)+" is not iterable")
 			}
 			h.iterables[i] = item
 			h.methods[i] = m
@@ -342,7 +342,7 @@ func (h *zipHelper) nextRow(vm *engine.VM) []engine.Value {
 			if i == 0 && h.remainingDone(vm) {
 				return nil
 			}
-			vm.ThrowTypeError("Iterator.zip: an iterator finished before the others in strict mode")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Iterator.zip: an iterator finished before the others in strict mode")
 		}
 		results[i] = h.padding[i]
 	}
@@ -376,14 +376,14 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 	// the padding option.
 	options := func(vm *engine.VM, iterables, opts engine.Value) (zipMode, engine.Value) {
 		if !iterables.IsObject() {
-			vm.ThrowTypeError(vm.DisplayString(iterables) + " is not an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(iterables)+" is not an object")
 		}
 		// GetOptionsObject.
 		if opts.IsUndefined() {
 			return zipShortest, engine.Undefined
 		}
 		if !opts.IsObject() {
-			vm.ThrowTypeError("the options must be an object")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the options must be an object")
 		}
 		mode := zipShortest
 		switch m := vm.GetV(opts, modeKey); {
@@ -394,13 +394,13 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 		case m.IsString() && m.Str() == "strict":
 			mode = zipStrict
 		default:
-			vm.ThrowTypeError("the mode must be \"shortest\", \"longest\" or \"strict\"")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the mode must be \"shortest\", \"longest\" or \"strict\"")
 		}
 		pad := engine.Undefined
 		if mode == zipLongest {
 			pad = vm.GetV(opts, paddingKey)
 			if !pad.IsUndefined() && !pad.IsObject() {
-				vm.ThrowTypeError("the padding must be an object")
+				vm.ThrowTypeError(vm.CurrentRealm(), "the padding must be an object")
 			}
 		}
 		return mode, pad
@@ -513,7 +513,7 @@ func initIteratorZip(vm *engine.VM, k *iteratorKeys, ctor *engine.Object, newHel
 // receiver returns this as the iterator of an Iterator.prototype method.
 func receiver(vm *engine.VM, this engine.Value, name string) engine.Value {
 	if !this.IsObject() {
-		vm.ThrowTypeError("Iterator.prototype." + name + " called on non-object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Iterator.prototype."+name+" called on non-object")
 	}
 	return this
 }
@@ -522,14 +522,14 @@ func receiver(vm *engine.VM, this engine.Value, name string) engine.Value {
 // of Iterator.prototype do for an invalid argument.
 func closeAndThrowTypeError(vm *engine.VM, it engine.Value, msg string) {
 	vm.IfAbruptCloseIterator(it, func() {
-		vm.ThrowTypeError(msg)
+		vm.ThrowTypeError(vm.CurrentRealm(), msg)
 	})
 }
 
 // closeAndThrowRangeError is closeAndThrowTypeError for a RangeError.
 func closeAndThrowRangeError(vm *engine.VM, it engine.Value, msg string) {
 	vm.IfAbruptCloseIterator(it, func() {
-		vm.ThrowRangeError(msg)
+		vm.ThrowRangeError(vm.CurrentRealm(), msg)
 	})
 }
 
@@ -843,7 +843,7 @@ func initEagerIteratorMethods(vm *engine.VM, k *iteratorKeys) {
 		if len(args) < 2 {
 			v, ok := r.stepValue(vm)
 			if !ok {
-				vm.ThrowTypeError("reduce of empty iterator with no initial value")
+				vm.ThrowTypeError(vm.CurrentRealm(), "reduce of empty iterator with no initial value")
 			}
 			acc = v
 			counter = 1

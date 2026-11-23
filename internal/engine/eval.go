@@ -196,11 +196,11 @@ func (vm *VM) compileEval(fp *funcProto, site int, src wtf8.String) *bytecode.Fu
 	}
 	prog, err := parser.ParseScript(src, opts)
 	if err != nil {
-		vm.throwCompileError("<eval>", err)
+		vm.throwCompileError(vm.CurrentRealm(), "<eval>", err)
 	}
 	bc, err := compiler.CompileEval(prog, "<eval>", es, vm.Poll)
 	if err != nil {
-		vm.throwCompileError("<eval>", err)
+		vm.throwCompileError(vm.CurrentRealm(), "<eval>", err)
 	}
 	return bc
 }

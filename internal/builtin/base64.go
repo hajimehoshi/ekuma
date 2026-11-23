@@ -269,7 +269,7 @@ func optionsObject(vm *engine.VM, options engine.Value) engine.Value {
 		return engine.ObjectValue(vm.NewObject(nil))
 	}
 	if !options.IsObject() {
-		vm.ThrowTypeError("options must be an object")
+		vm.ThrowTypeError(vm.CurrentRealm(), "options must be an object")
 	}
 	return options
 }
@@ -286,7 +286,7 @@ func stringOption(vm *engine.VM, opts engine.Value, name string, choices ...wtf8
 			return s
 		}
 	}
-	vm.ThrowTypeError("invalid value of the option " + name + ": " + vm.DisplayString(v))
+	vm.ThrowTypeError(vm.CurrentRealm(), "invalid value of the option "+name+": "+vm.DisplayString(v))
 	return ""
 }
 
@@ -298,17 +298,17 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	thisUint8Array := func(vm *engine.VM, this engine.Value, write bool, what string) *engine.TypedArray {
 		t := engine.TypedArrayData(this)
 		if t == nil || t.ElementType() != engine.ElementUint8 {
-			vm.ThrowTypeError("Uint8Array.prototype." + what + ": this is not a Uint8Array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Uint8Array.prototype."+what+": this is not a Uint8Array")
 		}
 		if write && t.ArrayBuffer().IsImmutable() {
-			vm.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is backed by an immutable ArrayBuffer")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Uint8Array.prototype."+what+": the typed array is backed by an immutable ArrayBuffer")
 		}
 		return t
 	}
 	lengthOf := func(vm *engine.VM, t *engine.TypedArray, what string) int {
 		n, ok := t.Length()
 		if !ok {
-			vm.ThrowTypeError("Uint8Array.prototype." + what + ": the typed array is detached or out of bounds")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Uint8Array.prototype."+what+": the typed array is detached or out of bounds")
 		}
 		return n
 	}
@@ -320,7 +320,7 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	stringArg := func(vm *engine.VM, args []engine.Value) wtf8.String {
 		s := arg(args, 0)
 		if !s.IsString() {
-			vm.ThrowTypeError("the argument must be a string")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the argument must be a string")
 		}
 		return s.Str()
 	}
@@ -329,9 +329,6 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		alphabet := stringOption(vm, opts, "alphabet", "base64", "base64url")
 		last := stringOption(vm, opts, "lastChunkHandling", "loose", "strict", "stop-before-partial")
 		return alphabet == "base64url", last
-	}
-	throwSyntaxError := func(vm *engine.VM, msg string) {
-		vm.Throw(vm.NewError(engine.ErrorKindSyntax, msg))
 	}
 	newUint8Array := func(vm *engine.VM, b []byte) engine.Value {
 		o := bi.newTypedArray(vm, proto, engine.ElementUint8, int64(len(b)))
@@ -342,7 +339,7 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 	setResult := func(vm *engine.VM, t *engine.TypedArray, r decodeResult) engine.Value {
 		writeElements(t, 0, r.bytes)
 		if r.err != "" {
-			throwSyntaxError(vm, r.err)
+			vm.ThrowSyntaxError(vm.CurrentRealm(), r.err)
 		}
 		o := vm.NewObjectFromProperties(
 			[]engine.PropKey{engine.NamedKey(vm.Intern("read")), engine.NamedKey(vm.Intern("written"))},
@@ -356,14 +353,14 @@ func initUint8ArrayBase64(vm *engine.VM, bi *binaryIntrinsics) {
 		url, last := base64Options(vm, arg(args, 1))
 		r := fromBase64(vm, s, url, last, math.MaxInt)
 		if r.err != "" {
-			throwSyntaxError(vm, r.err)
+			vm.ThrowSyntaxError(vm.CurrentRealm(), r.err)
 		}
 		return newUint8Array(vm, r.bytes)
 	})
 	method(vm, ctor, "fromHex", 1, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		r := fromHex(vm, stringArg(vm, args), math.MaxInt)
 		if r.err != "" {
-			throwSyntaxError(vm, r.err)
+			vm.ThrowSyntaxError(vm.CurrentRealm(), r.err)
 		}
 		return newUint8Array(vm, r.bytes)
 	})

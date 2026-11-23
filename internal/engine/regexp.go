@@ -111,11 +111,11 @@ func (vm *VM) compileRegExp(r bytecode.RegExp) *regexp.Regexp {
 	}
 	flags, err := regexp.ParseFlags(r.Flags)
 	if err != nil {
-		vm.throwSyntaxError(err.Error())
+		vm.ThrowSyntaxError(vm.CurrentRealm(), err.Error())
 	}
 	re, err := regexp.Compile(r.Pattern, flags, vm)
 	if err != nil {
-		vm.throwSyntaxError(err.Error())
+		vm.ThrowSyntaxError(vm.CurrentRealm(), err.Error())
 	}
 	if vm.regExps == nil || len(vm.regExps) >= regExpCacheLimit {
 		vm.regExps = map[bytecode.RegExp]*regexp.Regexp{}

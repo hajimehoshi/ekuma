@@ -17,7 +17,7 @@ func initWeak(vm *engine.VM) {
 // requireHoldable throws a TypeError when v cannot be held weakly.
 func requireHoldable(vm *engine.VM, v engine.Value, what string) {
 	if !vm.CanBeHeldWeakly(v) {
-		vm.ThrowTypeError("invalid value used " + what + ": " + vm.DisplayString(v))
+		vm.ThrowTypeError(vm.CurrentRealm(), "invalid value used "+what+": "+vm.DisplayString(v))
 	}
 }
 
@@ -29,7 +29,7 @@ func initWeakMap(vm *engine.VM) {
 	constructor(vm, "WeakMap", 0, engine.IntrinsicWeakMapPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor WeakMap requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor WeakMap requires 'new'")
 		}
 		m := vm.NewWeakMapObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakMapPrototype))
 		iterable := arg(args, 0)
@@ -52,7 +52,7 @@ func initWeakMap(vm *engine.VM) {
 	thisWeakMap := func(vm *engine.VM, this engine.Value, name string) *engine.WeakTable {
 		t := engine.WeakMapData(this)
 		if t == nil {
-			vm.ThrowTypeError("WeakMap.prototype." + name + " called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "WeakMap.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
 		}
 		return t
 	}
@@ -96,7 +96,7 @@ func initWeakMap(vm *engine.VM) {
 		t := thisWeakMap(vm, this, "getOrInsertComputed")
 		k, cb := arg(args, 0), arg(args, 1)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
 		}
 		requireHoldable(vm, k, "as weak map key")
 		if old, ok := t.Get(k); ok {
@@ -117,7 +117,7 @@ func initWeakSet(vm *engine.VM) {
 	constructor(vm, "WeakSet", 0, engine.IntrinsicWeakSetPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor WeakSet requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor WeakSet requires 'new'")
 		}
 		s := vm.NewWeakSetObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicWeakSetPrototype))
 		iterable := arg(args, 0)
@@ -141,7 +141,7 @@ func initWeakSet(vm *engine.VM) {
 	thisWeakSet := func(vm *engine.VM, this engine.Value, name string) *engine.WeakTable {
 		t := engine.WeakSetData(this)
 		if t == nil {
-			vm.ThrowTypeError("WeakSet.prototype." + name + " called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "WeakSet.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
 		}
 		return t
 	}
@@ -171,7 +171,7 @@ func initWeakRef(vm *engine.VM) {
 	constructor(vm, "WeakRef", 1, engine.IntrinsicWeakRefPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor WeakRef requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor WeakRef requires 'new'")
 		}
 		target := arg(args, 0)
 		requireHoldable(vm, target, "as WeakRef target")
@@ -182,7 +182,7 @@ func initWeakRef(vm *engine.VM) {
 	method(vm, proto, "deref", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		v, ok := vm.WeakRefDeref(this)
 		if !ok {
-			vm.ThrowTypeError("WeakRef.prototype.deref called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "WeakRef.prototype.deref called on incompatible receiver "+vm.DisplayString(this))
 		}
 		return v
 	})
@@ -195,11 +195,11 @@ func initFinalizationRegistry(vm *engine.VM) {
 	constructor(vm, "FinalizationRegistry", 1, engine.IntrinsicFinalizationRegistryPrototype, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		nt := vm.GetNewTarget()
 		if nt == nil {
-			vm.ThrowTypeError("constructor FinalizationRegistry requires 'new'")
+			vm.ThrowTypeError(vm.CurrentRealm(), "constructor FinalizationRegistry requires 'new'")
 		}
 		cb := arg(args, 0)
 		if !cb.IsCallable() {
-			vm.ThrowTypeError(vm.DisplayString(cb) + " is not a function")
+			vm.ThrowTypeError(vm.CurrentRealm(), vm.DisplayString(cb)+" is not a function")
 		}
 		return engine.ObjectValue(vm.NewFinalizationRegistryObject(vm.GetPrototypeFromConstructor(nt, engine.IntrinsicFinalizationRegistryPrototype), cb.Object()))
 	})
@@ -207,7 +207,7 @@ func initFinalizationRegistry(vm *engine.VM) {
 	thisRegistry := func(vm *engine.VM, this engine.Value, name string) *engine.FinalizationRegistry {
 		r := engine.FinalizationRegistryData(this)
 		if r == nil {
-			vm.ThrowTypeError("FinalizationRegistry.prototype." + name + " called on incompatible receiver " + vm.DisplayString(this))
+			vm.ThrowTypeError(vm.CurrentRealm(), "FinalizationRegistry.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
 		}
 		return r
 	}
@@ -216,11 +216,11 @@ func initFinalizationRegistry(vm *engine.VM) {
 		target, held, token := arg(args, 0), arg(args, 1), arg(args, 2)
 		requireHoldable(vm, target, "as FinalizationRegistry target")
 		if engine.SameValue(target, held) {
-			vm.ThrowTypeError("the target and the held value of a FinalizationRegistry registration must differ")
+			vm.ThrowTypeError(vm.CurrentRealm(), "the target and the held value of a FinalizationRegistry registration must differ")
 		}
 		if !vm.CanBeHeldWeakly(token) {
 			if !token.IsUndefined() {
-				vm.ThrowTypeError("invalid value used as unregister token: " + vm.DisplayString(token))
+				vm.ThrowTypeError(vm.CurrentRealm(), "invalid value used as unregister token: "+vm.DisplayString(token))
 			}
 		}
 		r.Register(target, held, token)

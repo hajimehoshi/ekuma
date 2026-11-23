@@ -19,10 +19,10 @@ func validateIntegerTypedArray(vm *engine.VM, v engine.Value, waitable, write bo
 	typ := t.ElementType()
 	if waitable {
 		if typ != engine.ElementInt32 && typ != engine.ElementBigInt64 {
-			vm.ThrowTypeError("Atomics." + what + ": the typed array must be an Int32Array or a BigInt64Array")
+			vm.ThrowTypeError(vm.CurrentRealm(), "Atomics."+what+": the typed array must be an Int32Array or a BigInt64Array")
 		}
 	} else if !typ.IsInteger() {
-		vm.ThrowTypeError("Atomics." + what + ": the typed array must be an integer typed array")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Atomics."+what+": the typed array must be an integer typed array")
 	}
 	return t, n
 }
@@ -31,7 +31,7 @@ func validateIntegerTypedArray(vm *engine.VM, v engine.Value, waitable, write bo
 func validateAtomicAccess(vm *engine.VM, n int, index engine.Value) int {
 	i := toIndex(vm, index)
 	if i >= int64(n) {
-		vm.ThrowRangeError("invalid atomic access index")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid atomic access index")
 	}
 	return int(i)
 }
@@ -40,10 +40,10 @@ func validateAtomicAccess(vm *engine.VM, n int, index engine.Value) int {
 func revalidateAtomicAccess(vm *engine.VM, t *engine.TypedArray, i int) {
 	n, ok := t.Length()
 	if !ok {
-		vm.ThrowTypeError("the typed array is detached or out of bounds")
+		vm.ThrowTypeError(vm.CurrentRealm(), "the typed array is detached or out of bounds")
 	}
 	if i >= n {
-		vm.ThrowRangeError("invalid atomic access index")
+		vm.ThrowRangeError(vm.CurrentRealm(), "invalid atomic access index")
 	}
 }
 
@@ -63,7 +63,7 @@ func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 	}
 	t, n := validateIntegerTypedArray(vm, arg(args, 0), true, false, what)
 	if !t.ArrayBuffer().IsShared() {
-		vm.ThrowTypeError("Atomics." + what + ": the typed array must be backed by a SharedArrayBuffer")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Atomics."+what+": the typed array must be backed by a SharedArrayBuffer")
 	}
 	i := validateAtomicAccess(vm, n, arg(args, 1))
 	typ := t.ElementType()
@@ -79,7 +79,7 @@ func doWait(vm *engine.VM, async bool, args []engine.Value) engine.Value {
 		timeout = max(q, 0)
 	}
 	if !async && !vm.AgentCanSuspend() {
-		vm.ThrowTypeError("Atomics.wait cannot be called in this context")
+		vm.ThrowTypeError(vm.CurrentRealm(), "Atomics.wait cannot be called in this context")
 	}
 	revalidateAtomicAccess(vm, t, i)
 	r, isPromise := vm.Wait(t, i, engine.ElementBits(typ, v), timeout, async)
@@ -176,7 +176,7 @@ func initAtomics(vm *engine.VM) {
 	method(vm, atomics, "pause", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		if v := arg(args, 0); !v.IsUndefined() {
 			if !v.IsNumber() || v.Number() != math.Trunc(v.Number()) || math.IsInf(v.Number(), 0) {
-				vm.ThrowTypeError("Atomics.pause: the argument must be an integral number")
+				vm.ThrowTypeError(vm.CurrentRealm(), "Atomics.pause: the argument must be an integral number")
 			}
 		}
 		return engine.Undefined

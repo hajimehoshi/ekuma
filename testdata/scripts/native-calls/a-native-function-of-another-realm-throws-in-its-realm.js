@@ -6,13 +6,15 @@ description: "a native function of another realm throws in its realm, whether sc
 ---*/
 
 const foreign = $262.createRealm().global;
+const callerPrototype = Object.prototype;
 let fromScript;
 try {
 	foreign.JSON.parse("{");
 } catch (e) {
 	fromScript = e;
+	assert.sameValue(Object.getPrototypeOf({}), callerPrototype);
 }
-assert.sameValue(fromScript instanceof foreign.SyntaxError, true);
+assert.sameValue(Object.getPrototypeOf(fromScript), foreign.SyntaxError.prototype);
 
 let fromNative;
 try {
@@ -20,4 +22,4 @@ try {
 } catch (e) {
 	fromNative = e;
 }
-assert.sameValue(fromNative instanceof foreign.SyntaxError, true);
+assert.sameValue(Object.getPrototypeOf(fromNative), foreign.SyntaxError.prototype);

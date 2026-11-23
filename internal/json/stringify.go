@@ -169,7 +169,7 @@ func (s *Stringifier) Stringify(vm *engine.VM, value, replacer, space engine.Val
 
 func (w *writer) checkLength() {
 	if len(w.buf) > engine.MaxStringLength {
-		w.vm.ThrowRangeError("invalid string length")
+		w.vm.ThrowRangeError(w.vm.CurrentRealm(), "invalid string length")
 	}
 }
 
@@ -251,7 +251,7 @@ func (w *writer) serialize(holder *engine.Object, key engine.PropKey, value engi
 			w.buf = numconv.AppendNumber(w.buf, n)
 		}
 	case value.IsBigInt():
-		vm.ThrowTypeError("do not know how to serialize a BigInt")
+		vm.ThrowTypeError(vm.CurrentRealm(), "do not know how to serialize a BigInt")
 	case value.IsObject() && !value.IsCallable():
 		o := value.Object()
 		w.enter(o)
@@ -280,11 +280,11 @@ func (w *writer) enter(o *engine.Object) {
 	}
 	for _, s := range w.stack {
 		if s == o {
-			vm.ThrowTypeError("converting circular structure to JSON")
+			vm.ThrowTypeError(vm.CurrentRealm(), "converting circular structure to JSON")
 		}
 	}
 	if len(w.stack) >= maxDepth {
-		vm.ThrowRangeError("maximum call stack size exceeded")
+		vm.ThrowRangeError(vm.CurrentRealm(), "maximum call stack size exceeded")
 	}
 	w.stack = append(w.stack, o)
 	w.checkLength()

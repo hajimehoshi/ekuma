@@ -27,7 +27,7 @@ const (
 func thisDate(vm *engine.VM, this engine.Value, name string) float64 {
 	tv, ok := engine.ThisTimeValue(this)
 	if !ok {
-		vm.ThrowTypeError("Date.prototype." + name + " called on incompatible receiver " + vm.DisplayString(this))
+		vm.ThrowTypeError(vm.CurrentRealm(), "Date.prototype."+name+" called on incompatible receiver "+vm.DisplayString(this))
 	}
 	return tv
 }
@@ -328,7 +328,7 @@ func initDate(vm *engine.VM) {
 	method(vm, proto, "toISOString", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
 		tv := thisDate(vm, this, "toISOString")
 		if math.IsNaN(tv) {
-			vm.ThrowRangeError("invalid time value")
+			vm.ThrowRangeError(vm.CurrentRealm(), "invalid time value")
 		}
 		return vm.NewString(wtf8.String(datetime.ISOString(tv)))
 	})
@@ -355,7 +355,7 @@ func initDate(vm *engine.VM) {
 				return vm.OrdinaryToPrimitive(o, engine.HintNumber)
 			}
 		}
-		vm.ThrowTypeError("invalid hint: " + vm.DisplayString(h))
+		vm.ThrowTypeError(vm.CurrentRealm(), "invalid hint: "+vm.DisplayString(h))
 		return engine.Undefined
 	})
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToPrimitive), engine.ObjectValue(toPrimitive), engine.FlagConfigurable)

@@ -31,7 +31,7 @@ func (vm *VM) FunctionArguments(f Value) Value {
 func (vm *VM) innermostCall(f Value) int {
 	o := f.o
 	if o == nil || o.fn == nil || o.fn.code == nil || !o.fn.code.legacyCallerArguments {
-		vm.ThrowTypeError("'caller' and 'arguments' are only available on non-strict functions")
+		vm.ThrowTypeError(vm.CurrentRealm(), "'caller' and 'arguments' are only available on non-strict functions")
 	}
 	i := len(vm.frames) - 1
 	for i >= 0 && vm.frames[i].cl != o {
