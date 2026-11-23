@@ -124,14 +124,23 @@ func TestMovedStorageReleasesValues(t *testing.T) {
 			`},
 		},
 		{
-			// The elements and the properties of a match result with many groups share storage.
+			// The elements and named properties of a small match result share inline storage.
 			name: "match result",
 			scripts: []string{`
-				var m = /(a)(b)(c)(d)(e)/.exec("abcde");
+				var m = /a(b)/.exec("ab");
 				m[1] = {};
 				var wr = new WeakRef(m[1]);
 				m.push(0);
 				m[1] = null;
+			`},
+		},
+		{
+			name: "shrunken match result",
+			scripts: []string{`
+				var m = new RegExp("()".repeat(80)).exec("");
+				m[80] = {};
+				var wr = new WeakRef(m[80]);
+				m.length = 1;
 			`},
 		},
 	} {

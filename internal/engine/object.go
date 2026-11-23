@@ -68,8 +68,7 @@ const objKept = objIsProto
 // [Object] pinned bits, which mark storage that stays reachable after the slots or the elements
 // of the object move out of it.
 const (
-	// pinnedSlots and pinnedElems mark slots and elements that may be in the allocation of the
-	// object, or in storage that the other of them keeps using.
+	// pinnedSlots and pinnedElems mark slots and elements that may be in the object's allocation.
 	pinnedSlots uint8 = 1 << iota
 	pinnedElems
 
@@ -1073,6 +1072,8 @@ func newClosureObject(n, ncopied int) (*Object, []upvalue) {
 	return c.init(), copies
 }
 
+const maxInlineObjectValues = 8
+
 // newObjectWithStorage returns an object and storage for n values. The object is zero but for
 // its pinned bits. For a small n, both are a single allocation.
 func newObjectWithStorage(n int) (*Object, []Value) {
@@ -1102,8 +1103,8 @@ func newObjectWithStorage(n int) (*Object, []Value) {
 	case 7:
 		w := &objectWith[[7]Value]{}
 		o, storage = w.init(), w.storage[:]
-	case 8:
-		w := &objectWith[[8]Value]{}
+	case maxInlineObjectValues:
+		w := &objectWith[[maxInlineObjectValues]Value]{}
 		o, storage = w.init(), w.storage[:]
 	default:
 		return (&propertyObject{}).init(), make([]Value, n)
@@ -1170,15 +1171,24 @@ func (cx *ExecutionContext) NewArrayPair(a, b Value) *Object {
 
 // NewArrayWithRoom returns an array of length undefined elements with room for n named properties.
 func (cx *ExecutionContext) NewArrayWithRoom(length, n int) *Object {
-	a, storage := newObjectWithStorage(length + n)
+	var a *Object
+	var storage []Value
+	if length+n <= maxInlineObjectValues {
+		a, storage = newObjectWithStorage(length + n)
+		a.elems = storage[:length:length]
+		storage = storage[length:]
+	} else {
+		// Keep the named properties with the object so they cannot retain the elements
+		// after the array shrinks.
+		a, storage = newObjectWithStorage(n)
+		a.elems = make([]Value, length)
+		a.pinned &^= pinnedElems
+	}
 	a.kind = kindArray
 	a.class = classArray
 	a.shape = cx.realm.shapes.array
-	// Appending elements must not overwrite the named properties.
-	a.elems = storage[:length:length]
 	a.length = uint32(length)
-	a.slots = storage[length:length]
-	a.pinned = pinnedSlots | pinnedElems
+	a.slots = storage[:0]
 	return a
 }
 
