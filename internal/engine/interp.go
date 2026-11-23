@@ -418,16 +418,6 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	} else {
 		regs = ag.stack[fr.base : fr.base+fp.nregs+1]
 	}
-	// The state of a call in preparation, shared by every instruction that ends in a call.
-	var (
-		f         *Object
-		callThis  Value
-		argBase   int
-		argc      int
-		ret       int32
-		isNew     bool
-		newTarget *Object
-	)
 
 	for {
 		if validateExec {
@@ -1622,6 +1612,22 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				continue
 			}
 		}
+		// The state of a call in preparation, shared by every instruction that ends in a call.
+		var (
+			f         *Object
+			callThis  Value
+			argBase   int
+			argc      int
+			ret       int32
+			isNew     bool
+			newTarget *Object
+		)
+
+		// Slow property operations take their operands by value across reentry.
+		var receiver, key, rhs Value
+		var setter, name *Object
+		var site *propCache
+
 		// Every instruction that the fast paths above leave, in full.
 		switch i.Op {
 		case bytecode.OpGetUpvalChecked:
@@ -1645,28 +1651,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fp.context.throwError(thrownErrorKinds[i.A], wtf8.ToValidUTF8(fp.consts[i.B].o.str))
 
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
-			c := &fp.globals[i.C]
-			ag.frames[len(ag.frames)-1].pc = pc
-			orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
-			strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
-			v := fp.context.getGlobal(fp.keys[i.B], c, orUndef, strict)
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = v
+			goto readProperty
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
-			c := &fp.globals[i.C]
-			ag.frames[len(ag.frames)-1].pc = pc
-			fp.context.setGlobal(fp.keys[i.B], regs[i.A], c, i.Op == bytecode.OpSetGlobalStrict)
-			regs = ag.reload(regs, ag.frameBase(), fp)
+			rhs = regs[i.A]
+			goto writeProperty
 		case bytecode.OpResolveGlobal:
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
 				regs[i.A] = True
 				continue
 			}
-			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.resolveGlobal(fp.keys[i.B], c)
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			regs[i.A] = v
+			goto readProperty
 		case bytecode.OpDeclareGlobalVar:
 			ag.frames[len(ag.frames)-1].pc = pc
 			var fn Value
@@ -1759,28 +1754,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				rest = fp.context.NewArray(nil)
 			}
 			regs[i.A] = Value{o: rest}
-		case bytecode.OpGetArgsLength:
+		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex:
+			// A prototype getter must see the arguments object shared by later reads.
 			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.forwardedArguments(slices.Clip(regs), i.B)
-			val, getter := fp.context.getNamed(v, ag.Key(KeyLength), nil)
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
-				goto callAbove
+			receiver = fp.context.forwardedArguments(slices.Clip(regs), i.B)
+			if i.Op == bytecode.OpGetArgsLength {
+				name = ag.Key(KeyLength)
+			} else {
+				key = regs[i.C]
 			}
-			regs[i.A] = val
-		case bytecode.OpGetArgsIndex:
-			// Any other key materializes the arguments object, so that a getter of a prototype
-			// sees the object that later reads use.
-			ag.frames[len(ag.frames)-1].pc = pc
-			v := fp.context.forwardedArguments(slices.Clip(regs), i.B)
-			val, getter := fp.context.getValue(v, regs[i.C])
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
-				goto callAbove
-			}
-			regs[i.A] = val
+			goto readProperty
 
 		case bytecode.OpGetMethod:
 			// The this value is in place before a getter runs.
@@ -1802,11 +1785,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 			}
 			if o != nil {
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
-				}
-				if o.shape == e.shape {
+				if e := c.entry(o.shape); e != nil {
 					if e.kind == cacheGetter && e.epoch == ag.protoEpoch {
 						f, callThis, argc, ret = e.holder, v, 0, i.A
 						goto callAbove
@@ -1822,17 +1801,13 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 			}
-			goto getNamed
+			receiver, name, site = v, fp.keys[i.C], c
+			goto readProperty
 		case bytecode.OpSetProp, bytecode.OpSetPropStrict:
 			v := regs[i.A]
 			c := &fp.caches[i.B]
-			var setter *Object
 			if o := v.o; o != nil {
-				e := &c.cacheEntry
-				if o.shape != e.shape {
-					e = &c.second
-				}
-				if o.shape == e.shape {
+				if e := c.entry(o.shape); e != nil {
 					switch e.kind {
 					case cacheAdd:
 						if o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
@@ -1842,62 +1817,28 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						}
 					case cacheSetter:
 						if e.epoch == ag.protoEpoch {
-							setter = e.holder
+							setter, receiver, rhs = e.holder, v, regs[i.C]
+							goto writeProperty
 						}
 					}
 				}
 			}
-			if setter == nil {
-				ag.frames[len(ag.frames)-1].pc = pc
-				var ok bool
-				setter, ok = fp.context.setNamed(v, fp.keys[i.B], regs[i.C], c)
-				regs = ag.reload(regs, ag.frameBase(), fp)
-				if !ok && i.Op == bytecode.OpSetPropStrict {
-					fp.context.throwReadOnly(v, PropKey{key: fp.keys[i.B]})
-				}
-			}
-			if setter != nil {
-				val := regs[i.C]
-				argBase = ag.frames[len(ag.frames)-1].top()
-				ag.ensureStack(argBase + 1)
-				ag.stack[argBase] = val
-				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.nregs), false, nil
-				goto call
-			}
+			receiver, name, rhs, site = v, fp.keys[i.B], regs[i.C], c
+			goto writeProperty
 		case bytecode.OpGetLength:
 			v := regs[i.B]
 			if v.IsString() {
 				setNumber(&regs[i.A], float64(v.StringLength()))
 				continue
 			}
-			ag.frames[len(ag.frames)-1].pc = pc
-			val, getter := fp.context.getNamedAtSite(v, ag.Key(KeyLength), &fp.caches[i.C])
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
-				goto callAbove
-			}
-			regs[i.A] = val
+			receiver, name, site = v, ag.Key(KeyLength), &fp.caches[i.C]
+			goto readProperty
 		case bytecode.OpGetIndex:
-			v, k := regs[i.B], regs[i.C]
-			ag.frames[len(ag.frames)-1].pc = pc
-			val, getter := fp.context.getValue(v, k)
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
-				goto callAbove
-			}
-			regs[i.A] = val
+			receiver, key = regs[i.B], regs[i.C]
+			goto readProperty
 		case bytecode.OpGetIndexInt:
-			v := regs[i.B]
-			ag.frames[len(ag.frames)-1].pc = pc
-			val, getter := fp.context.getIndex(v, uint32(i.C))
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
-				goto callAbove
-			}
-			regs[i.A] = val
+			receiver = regs[i.B]
+			goto readProperty
 		case bytecode.OpSetIndex, bytecode.OpSetIndexStrict, bytecode.OpSetIndexInt, bytecode.OpSetIndexIntStrict:
 			// OpSetIndexInt and OpSetIndexIntStrict follow OpSetIndex and OpSetIndexStrict.
 			v, k := regs[i.A], Value{}
@@ -1914,18 +1855,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					continue
 				}
 			}
-			ag.frames[len(ag.frames)-1].pc = pc
-			// Converting the key can run code that changes the register of the value.
-			val := regs[i.C]
-			setter := fp.context.setValue(v, k, val, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
-			regs = ag.reload(regs, ag.frameBase(), fp)
-			if setter != nil {
-				argBase = ag.frames[len(ag.frames)-1].top()
-				ag.ensureStack(argBase + 1)
-				ag.stack[argBase] = val
-				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.nregs), false, nil
-				goto call
-			}
+			receiver, key, rhs = v, k, regs[i.C]
+			goto writeProperty
 		case bytecode.OpSuperBase:
 			ag.frames[len(ag.frames)-1].pc = pc
 			regs[i.A] = fp.context.superBase(regs[i.B])
@@ -3112,18 +3043,68 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			continue
 		}
 
-	getNamed:
-		// The generic path of OpGetProp and OpGetPropChain.
+	readProperty:
 		{
-			v := regs[i.B]
-			ag.frames[len(ag.frames)-1].pc = pc
-			val, getter := fp.context.getNamedAtSite(v, fp.keys[i.C], &fp.caches[i.C])
-			regs = ag.reload(regs, ag.frameBase(), fp)
+			fr := &ag.frames[len(ag.frames)-1]
+			base, dst := fr.base, i.A
+			fr.pc = pc
+			var val Value
+			var getter *Object
+			switch {
+			case site != nil:
+				val, getter = fp.context.getNamedAtSite(receiver, name, site)
+			case name != nil:
+				val, getter = fp.context.getNamed(receiver, name, nil)
+			case i.Op == bytecode.OpGetIndex || i.Op == bytecode.OpGetArgsIndex:
+				val, getter = fp.context.getValue(receiver, key)
+			case i.Op == bytecode.OpGetIndexInt:
+				val, getter = fp.context.getIndex(receiver, uint32(i.C))
+			case i.Op == bytecode.OpResolveGlobal:
+				val = fp.context.resolveGlobal(fp.keys[i.B], &fp.globals[i.C])
+			default:
+				orUndef := i.Op == bytecode.OpGetGlobalOrUndef || i.Op == bytecode.OpGetGlobalOrUndefStrict
+				strict := i.Op == bytecode.OpGetGlobalStrict || i.Op == bytecode.OpGetGlobalOrUndefStrict
+				val = fp.context.getGlobal(fp.keys[i.B], &fp.globals[i.C], orUndef, strict)
+			}
+			regs = ag.reload(regs, base, fp)
 			if getter != nil {
-				f, callThis, argc, ret = getter, v, 0, i.A
+				f, callThis, argc, ret = getter, receiver, 0, dst
 				goto callAbove
 			}
-			regs[i.A] = val
+			regs[dst] = val
+			continue
+		}
+
+	writeProperty:
+		{
+			fr := &ag.frames[len(ag.frames)-1]
+			base := fr.base
+			if setter == nil {
+				fr.pc = pc
+				switch {
+				case name != nil:
+					var ok bool
+					setter, ok = fp.context.setNamed(receiver, name, rhs, site)
+					if !ok && i.Op == bytecode.OpSetPropStrict {
+						fp.context.throwReadOnly(receiver, PropKey{key: name})
+					}
+				case i.Op == bytecode.OpSetGlobal || i.Op == bytecode.OpSetGlobalStrict:
+					fp.context.setGlobal(fp.keys[i.B], rhs, &fp.globals[i.C], i.Op == bytecode.OpSetGlobalStrict)
+				default:
+					setter = fp.context.setValue(receiver, key, rhs, i.Op == bytecode.OpSetIndexStrict || i.Op == bytecode.OpSetIndexIntStrict)
+				}
+			}
+			if setter != nil {
+				argBase = ag.frames[len(ag.frames)-1].top()
+				ag.ensureStack(argBase + 1)
+				ag.stack[argBase] = rhs
+			}
+			// Both the lookup and making room for a setter argument can move the stack.
+			regs = ag.reload(regs, base, fp)
+			if setter != nil {
+				f, callThis, argc, ret, isNew, newTarget = setter, receiver, 1, int32(fp.nregs), false, nil
+				goto call
+			}
 			continue
 		}
 
@@ -3454,7 +3435,7 @@ func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
 	if fp.heapRegs {
 		return regs
 	}
-	return ag.stack[base : base+fp.nregs+1]
+	return ag.stack[base : base+len(regs)]
 }
 
 // NumberPow implements Number::exponentiate.

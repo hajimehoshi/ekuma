@@ -871,6 +871,16 @@ func (cx *ExecutionContext) ProtoOf(o *Object) *Object {
 // getProp implements [[Get]] with a receiver.
 func (cx *ExecutionContext) getProp(o *Object, k PropKey, receiver Value) Value {
 	for h := o; h != nil; h = h.shape.proto {
+		if k.key != nil && h.shape.family == ordinaryRoot {
+			if p, ok := h.shape.lookup(k.key); ok {
+				v, getter := cx.readNamedSlot(o, h, p, nil)
+				if getter != nil {
+					return cx.Call(getter, receiver)
+				}
+				return v
+			}
+			continue
+		}
 		if h.class == classLazy && k.key != nil {
 			k.key = cx.resolveForKey(h, k.key)
 		}
