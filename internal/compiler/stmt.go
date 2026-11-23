@@ -498,9 +498,10 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 			if awaits {
 				v = f.newReg()
 				f.expr(s.Arg, v)
+			} else if f.closesIterators() {
+				v = f.heldOperand(s.Arg, f.otherCodeAssigns)
 			} else {
-				// Closing an iterator on the way out runs other code before the return.
-				v = f.heldOperand(s.Arg, f.closesIterators())
+				v = f.immediateOperand(s.Arg)
 			}
 			f.tails = f.tails[:0]
 			if awaits {
@@ -516,7 +517,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 	case *ast.ContinueStmt:
 		f.exit(exitContinue, f.findTarget(s, s.Label, true), 0)
 	case *ast.ThrowStmt:
-		v := f.exprAny(s.Arg)
+		v := f.immediateOperand(s.Arg)
 		f.setPos(s.Start())
 		f.emit(bytecode.OpThrow, v, 0, 0)
 	case *ast.TryStmt:
@@ -538,7 +539,7 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 			f.popLoop(c)
 		}
 	case *ast.WithStmt:
-		v := f.exprAny(s.Object)
+		v := f.immediateOperand(s.Object)
 		f.emit(bytecode.OpWith, v, 0, 0)
 		f.withDepth++
 		f.control = append(f.control, &ctl{kind: ctlWith})
@@ -830,7 +831,7 @@ func (f *fn) forIn(s *ast.ForInStmt, labels []string) {
 		if s.Decl != nil && s.Decl.Kind == ast.DeclVar && s.Decl.Decls[0].Init != nil {
 			f.varDecl(s.Decl)
 		}
-		src := f.exprAny(s.Right)
+		src := f.immediateOperand(s.Right)
 		f.emit(bytecode.OpForIn, it, src, 0)
 		if scoped {
 			f.leaveScope()
@@ -856,7 +857,7 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	it := f.newRegs(2)
 	{
 		scoped := f.enterScope(s.Scope, false)
-		src := f.exprAny(s.Right)
+		src := f.immediateOperand(s.Right)
 		kind := int32(bytecode.IterSync)
 		if s.Await {
 			kind = bytecode.IterAsync
@@ -989,15 +990,14 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 }
 
 func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {
-	// The discriminant must survive every case test, including when an assignment
-	// leaves its result in a local variable.
-	tests := make([]ast.Expr, 0, len(s.Cases))
-	for i := range s.Cases {
-		if t := s.Cases[i].Test; t != nil {
-			tests = append(tests, t)
+	d := f.heldOperand(s.Discriminant, func(name string) bool {
+		for i := range s.Cases {
+			if f.clobbers(name, s.Cases[i].Test) {
+				return true
+			}
 		}
-	}
-	d := f.operand(s.Discriminant, tests...)
+		return false
+	})
 	c := &ctl{
 		kind:     ctlLoop,
 		labels:   labels,
@@ -1018,7 +1018,7 @@ func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {
 		if k, isNum := numberLit(cs.Test); isNum {
 			jumps[i] = f.emit(bytecode.OpJumpNotSNeK, 0, d, f.constNum(k))
 		} else {
-			jumps[i] = f.emit(bytecode.OpJumpNotSNe, 0, d, f.exprAny(cs.Test))
+			jumps[i] = f.emit(bytecode.OpJumpNotSNe, 0, d, f.immediateOperand(cs.Test))
 		}
 		f.free(mark)
 	}

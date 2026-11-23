@@ -29,6 +29,10 @@ func TestAssignedLocalRegister(t *testing.T) {
 			name: "destructuring",
 			body: `let x; return ({ x } = i);`,
 		},
+		{
+			name: "destructuring an assignment",
+			body: `let x; return ({ x } = (i = o));`,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
