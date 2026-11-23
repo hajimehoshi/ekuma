@@ -36,10 +36,16 @@ func runIncrementTrailingZeros(t *testing.T, path string) {
 	}
 }
 
-func runPrecisionTrailingZeros(t *testing.T, path string) {
+func runNumberFormatterPrecision(t *testing.T, path string) {
 	f := newFormatFixture(t, path)
-	factory := f.function(numberFormatFactory)
 	src := readIntervalSource(t, path)
+	checkPrecisionTrailingZeros(f, src)
+	checkRoundingPriority(f, src)
+}
+
+func checkPrecisionTrailingZeros(f *formatFixture, src intervalSource) {
+	t := f.t
+	factory := f.function(numberFormatFactory)
 	for _, name := range []string{
 		"Hide If Whole A",
 		"Hide If Whole B",
@@ -79,5 +85,24 @@ func runPrecisionTrailingZeros(t *testing.T, path string) {
 		value := strings.TrimSuffix(strings.TrimPrefix(input.lines[0], ".format("), ")")
 		result := input.from("assertEquals(")
 		f.check(result.line, name, format, listStrings(t, result.lines[0])[1], fixtureFloat(input, value))
+	}
+}
+
+func checkRoundingPriority(f *formatFixture, src intervalSource) {
+	block := src.from("void roundingPriorityCoverageTest()")
+	format := f.function(`(value, minimumFractionDigits, minimumSignificantDigits, roundingPriority) =>
+		new Intl.NumberFormat("en", {
+			minimumFractionDigits, maximumFractionDigits: 1,
+			minimumSignificantDigits, maximumSignificantDigits: 3,
+			roundingPriority, roundingMode: "halfEven", useGrouping: false,
+		}).format(value)`)
+	for _, row := range block.table("new String[][] {") {
+		col := row.columns(f.t, 5)
+		input := fixtureFloat(block, intervalString(f.t, col[0]))
+		f.check(row.line, "roundingPriority", format, intervalString(f.t, col[1]), input, 0, 1, "morePrecision")
+		f.check(row.line, "roundingPriority", format, intervalString(f.t, col[2]), input, 0, 1, "lessPrecision")
+		f.check(row.line, "roundingPriority", format, intervalString(f.t, col[3]), input, 1, 3, "morePrecision")
+		f.check(row.line, "roundingPriority", format, intervalString(f.t, col[4]), input, 1, 3, "lessPrecision")
+		f.excluded["matching ICU4C formatter case"] += 4
 	}
 }

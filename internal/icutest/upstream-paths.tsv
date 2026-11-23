@@ -400,7 +400,7 @@
 1	1	support	native-header	input	icu4c/source/test/intltest/numberformattesttuple.h	-	-	79.1	-
 1	1	suite source	harness	input	icu4c/source/test/intltest/numbertest.h	NumberTest [AffixUtilsTest, NumberFormatterApiTest]	-	79.1	-
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_affixutils.cpp	AffixUtilsTest [testEscape, testUnescape]	-	79.1	-
-1	1	suite source	number	adapter	icu4c/source/test/intltest/numbertest_api.cpp	NumberFormatterApiTest [notationSimple, notationScientific]	number-parts/numbertest_api.cpp, duration/numbertest_api.cpp	79.1	Trailing-zero formatting cases match TestICU/NumberFormatterApiTest.java
+1	1	suite source	number	adapter	icu4c/source/test/intltest/numbertest_api.cpp	NumberFormatterApiTest [notationSimple, notationScientific]	number-parts/numbertest_api.cpp, duration/numbertest_api.cpp	79.1	Trailing-zero and rounding-priority cases match TestICU/NumberFormatterApiTest.java
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_decimalquantity.cpp	DecimalQuantityTest [testDecimalQuantityBehaviorStandalone, testSwitchStorage]	-	79.1	-
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_doubleconversion.cpp	DoubleConversionTest [testDoubleConversionApi]	-	79.1	-
 1	1	suite source	number-private	outside	icu4c/source/test/intltest/numbertest_modifiers.cpp	ModifiersTest [testConstantAffixModifier, testConstantMultiFieldModifier]	-	79.1	-
@@ -1077,7 +1077,7 @@
 1	1	suite source	message	outside	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/message2/Mf2FeaturesTest.java	Mf2FeaturesTest [testEmptyMessage, testPlainText]	-	79.1	-
 1	1	suite source	normalize	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/normalizer/BasicTest.java	BasicTest [TestHangulCompose, TestHangulDecomp]	-	78.3	TestICU/NormalizationTest.txt
 1	1	suite source	number-private	outside	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/ModifierTest.java	ModifierTest [testConstantAffixModifier, testConstantMultiFieldModifier]	-	79.1	-
-1	1	suite source	number	adapter	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberFormatterApiTest.java	NumberFormatterApiTest [roundingFraction, roundingFractionFigures, roundingOther, testCurrencyPrecisionCacheMutation]	NumberFormatterApiTest.java	79.1	-
+1	1	suite source	number	adapter	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberFormatterApiTest.java	NumberFormatterApiTest [roundingFraction, roundingFractionFigures, roundingOther, roundingPriorityCoverageTest, testCurrencyPrecisionCacheMutation]	NumberFormatterApiTest.java	79.1	-
 1	1	suite source	number-private	outside	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberParserTest.java	NumberParserTest [testBasic, testLocaleFi]	-	79.1	-
 1	1	suite source	data-number	overlap	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberPermutationTest.java	NumberPermutationTest [testPermutations]	-	79.1	TestICU/numberpermutationtest.txt
 1	1	suite source	number-range	adapter	icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberRangeFormatterTest.java	NumberRangeFormatterTest [testSanity, testBasic]	NumberRangeFormatterTest.java	79.1	-

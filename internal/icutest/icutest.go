@@ -103,7 +103,7 @@ func Run(t *testing.T) {
 			runIncrementTrailingZeros(t, filepath.Join(cldrDir, "icu4c/source/test/cintltst/unumberformattertst.c"))
 		})
 		t.Run("NumberFormatterApiTest.java", func(t *testing.T) {
-			runPrecisionTrailingZeros(t, filepath.Join(cldrDir, "icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberFormatterApiTest.java"))
+			runNumberFormatterPrecision(t, filepath.Join(cldrDir, "icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/number/NumberFormatterApiTest.java"))
 		})
 		t.Run("CompactDecimalFormatTest.java", func(t *testing.T) {
 			runCompactSerbian(t, filepath.Join(cldrDir, "icu4j/main/common_tests/src/test/java/com/ibm/icu/dev/test/format/CompactDecimalFormatTest.java"))

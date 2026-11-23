@@ -30,8 +30,8 @@ locale-collation/cmsccoll.c	longNumbers (locale_collation.go:192)	45 cases execu
 locale-collation/CollationMiscTest.java	javaCases (locale_collation.go:231)	1121 cases executed	0	0 reported
 collationtest.txt	runCollationTest (collation_cases.go:274)	1457 input rows, 470 comparisons executed (pairs)	0	6 Ekuma shifts through punctuation; ICU maxVariable=currency also shifts symbols and currency | 3 ICU locale keywords select backwards secondary and shift through currency | 5 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8 | 8 ICU shifts only spaces and disables normalization with this locale's keywords | 6 ICU shifts only spaces; Ekuma also shifts punctuation | 912 custom ICU tailoring requires a run-time rule builder | 47 explicit ICU script reordering is unavailable
 numberpermutationtest.txt	runNumberPermutations (number_permutations.go:135)	2484 cases executed	0	747 Intl cannot force a decimal separator after an integer | 990 Intl cannot pad or force the sign of the exponent | 873 Intl cannot truncate the integer part to four digits | 756 furlong is not an ECMA-402 sanctioned unit
-unumberformattertst.c	runIncrementTrailingZeros (number_trailing_zeros.go:28)	3 cases executed	0	0 reported
-NumberFormatterApiTest.java	runPrecisionTrailingZeros (number_trailing_zeros.go:39)	17 cases executed	0	14 matching ICU4C formatter case
+unumberformattertst.c	runIncrementTrailingZeros (number_precision.go:28)	3 cases executed	0	0 reported
+NumberFormatterApiTest.java	runNumberFormatterPrecision (number_precision.go:39)	45 cases executed	0	42 matching ICU4C formatter case
 CompactDecimalFormatTest.java	runCompactSerbian (number.go:224)	20 cases executed	0	0 reported
 currtest.c	runCurrencyFractionDigits (number.go:243)	3 cases executed	0	0 reported
 NumberFormatTestCases.txt	runNumberCases (number.go:173)	38 cases executed	0	4 ICU overrides the locale's primary or secondary grouping width | 3 ICU pattern syntax rejection | 14 Intl does not serialize ICU patterns | 2 Intl.NumberFormat has no parsing operation | 7 parse side of the currency round trip | 35 parse side of the format/parse round trip
