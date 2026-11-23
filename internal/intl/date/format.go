@@ -193,7 +193,7 @@ func NewFormatter(f *Format, nu string, tz temporal.TimeZone) *Formatter {
 // matching and the locale's original spacing.
 func FormatSkeleton(l, cal, nu, skeleton string, tz temporal.TimeZone, t int64) string {
 	l = withKeyword(l, "nu", nu)
-	p := generatorFor(l, cal).bestPattern(skeleton, matchOptions{})
+	p := PatternForSkeleton(l, cal, skeleton)
 	f := newFormat(l, cal, p)
 	fm := NewFormatter(f, nu, tz)
 	var b strings.Builder

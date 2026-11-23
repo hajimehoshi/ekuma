@@ -19,15 +19,29 @@ func (s *datePatternSuite) strings(row intervalRow, count int) []string {
 
 func (s *datePatternSuite) cppDatePatterns(src intervalSource) {
 	s.fixedDateTables(src)
+	for _, row := range src.table("DTPtnGenOptionsData testData[]") {
+		v := s.strings(row, 3)
+		c := row.columns(s.t, 4)
+		switch c[3] {
+		case "UDATPG_MATCH_NO_OPTIONS":
+			s.pattern(row.line, v[0], v[1], v[2], localeHourWidth)
+		case "UDATPG_MATCH_HOUR_FIELD_LENGTH":
+			s.pattern(row.line, v[0], v[1], v[2], requestedHourWidth)
+		default:
+			s.t.Fatalf("%s:%d: unknown match option %s", s.path, row.line, c[3])
+		}
+	}
+	for _, row := range src.table("tests[][3]") {
+		v := s.strings(row, 3)
+		s.pattern(row.line, v[0], v[1], v[2], requestedHourWidth)
+	}
 	for _, rows := range [][]intervalRow{
-		src.table("DTPtnGenOptionsData testData[]"),
-		src.table("tests[][3]"),
 		src.from("::testBestPattern() {").table("} testCases[]"),
 		src.table("DTPtnGenTwoDigitYearData testData[]"),
 	} {
 		for _, row := range rows {
 			v := s.strings(row, 3)
-			s.pattern(row.line, v[0], v[1], v[2])
+			s.pattern(row.line, v[0], v[1], v[2], localeHourWidth)
 		}
 	}
 	s.allDateFields(src)
@@ -49,17 +63,17 @@ func (s *datePatternSuite) cppDatePatterns(src intervalSource) {
 		if len(v) != 1 || i >= len(skel) {
 			s.t.Fatalf("%s:%d: invalid combining-pattern row %s", s.path, row.line, row.text)
 		}
-		s.pattern(row.line, loc, skel[i], v[0])
+		s.pattern(row.line, loc, skel[i], v[0], localeHourWidth)
 		i++
 	}
 
 	for _, row := range src.from("::test20640_HourCyclArsEnNH() {").table("} cases[]") {
 		v := s.strings(row, 3)
-		s.pattern(row.line, v[0], "j", v[1])
+		s.pattern(row.line, v[0], "j", v[1], localeHourWidth)
 	}
 	for _, row := range src.from("::testRegionOverride() {").table("} testCases[]") {
 		v := s.strings(row, 2)
-		s.pattern(row.line, v[0], "jmm", v[1])
+		s.pattern(row.line, v[0], "jmm", v[1], localeHourWidth)
 	}
 	for _, row := range src.from("::testISO8601() {").table("localeIDs[]") {
 		id := intervalString(s.t, row.text)
@@ -69,7 +83,7 @@ func (s *datePatternSuite) cppDatePatterns(src intervalSource) {
 
 	block := src.from(`pattern = UnicodeString("hmv")`)
 	want := block.from("UnicodeString expR =")
-	s.pattern(want.line, "en", intervalString(s.t, block.lines[0]), intervalString(s.t, want.lines[0]))
+	s.pattern(want.line, "en", intervalString(s.t, block.lines[0]), intervalString(s.t, want.lines[0]), localeHourWidth)
 	block = src.from(`const char* testLocaleID = "de_US"`)
 	s.clock(block.line, intervalString(s.t, block.lines[0]), "h12")
 
@@ -223,7 +237,7 @@ func (s *datePatternSuite) cDatePatterns(src intervalSource) {
 	instant := time.UnixMilli(intervalMillis(s.t, strings.TrimSuffix(ms, ";"))).UTC()
 	s.fixed(row.line, "fr", uchar("skeleton"), instant, "UTC", uchar("sampleFormatted"))
 	row = src.from("expectingBestPattern[]")
-	s.pattern(row.line, "fi", uchar("testSkeleton1"), uchar("expectingBestPattern"))
+	s.pattern(row.line, "fi", uchar("testSkeleton1"), uchar("expectingBestPattern"), localeHourWidth)
 	for _, row := range src.from("void TestEras(void) {").table("localeIDs[] =") {
 		loc, opts, _ := datePatternOptions(intervalString(s.t, row.text), "y", "UTC")
 		s.check(row.line, "formatToParts/era", s.observe, "present", loc, opts, patternInstant.UnixMilli(), "y", "includes", []any{"era"})
@@ -242,7 +256,7 @@ func (s *datePatternSuite) javaDatePatterns(src intervalSource) {
 
 	for _, row := range src.from("void testISO8601More()").table("testCases =") {
 		v := s.strings(row, 3)
-		s.pattern(row.line, v[0], v[1], v[2])
+		s.pattern(row.line, v[0], v[1], v[2], localeHourWidth)
 	}
 
 	// The Taiwan options rows follow the shared C++ option cases. Some Java
@@ -259,14 +273,21 @@ func (s *datePatternSuite) javaDatePatterns(src intervalSource) {
 		}
 		v := s.strings(item, 3)
 		if strings.HasPrefix(v[0], "zh_TW") {
-			s.pattern(item.line, v[0], v[1], v[2])
+			switch {
+			case strings.Contains(item.text, ".MATCH_NO_OPTIONS"):
+				s.pattern(item.line, v[0], v[1], v[2], localeHourWidth)
+			case strings.Contains(item.text, ".MATCH_ALL_FIELDS_LENGTH"):
+				s.pattern(item.line, v[0], v[1], v[2], requestedHourWidth)
+			default:
+				s.t.Fatalf("%s:%d: unknown match option in %s", s.path, item.line, item.text)
+			}
 		}
 	}
 	// Java alone checks fallback for the observational Islamic calendar.
 	for _, row := range src.from("void testBestPattern()").table("String[] testCases") {
 		v := s.strings(row, 3)
 		if strings.Contains(v[0], "@calendar=islamic") {
-			s.pattern(row.line, v[0], v[1], v[2])
+			s.pattern(row.line, v[0], v[1], v[2], localeHourWidth)
 		}
 	}
 }

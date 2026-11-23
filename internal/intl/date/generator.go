@@ -291,6 +291,11 @@ func (g *generator) mapHourLetters(s string) (string, bool) {
 	return b.String(), usesJ
 }
 
+// PatternForSkeleton returns the locale's pattern for an ICU skeleton with default matching.
+func PatternForSkeleton(l, cal, skeleton string) string {
+	return generatorFor(l, cal).bestPattern(skeleton, matchOptions{})
+}
+
 // matchOptions are the options of the adjustment of field lengths.
 type matchOptions struct {
 	// hourLength keeps the length of the requested hour field.

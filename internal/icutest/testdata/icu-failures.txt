@@ -63,34 +63,6 @@ cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal 
 
 # Single-date pattern selection.
 
-# Intl requests the skeleton hour width. ICU MATCH_NO_OPTIONS uses the
-# width of the locale pattern, including in date/time combinations.
-dtptngts.cpp/format 385 "Oct 14, 1999, 06:58:59 AM"
-dtptngts.cpp/formatToParts/fields 385 "day 14\ndayPeriod AM\nhour 06\nminute 58\nmonth Oct\nsecond 59\nyear 1999"
-dtptngts.cpp/format 386 "Thu, Oct 14, 1999, 06:58:59 AM"
-dtptngts.cpp/formatToParts/fields 386 "day 14\ndayPeriod AM\nhour 06\nminute 58\nmonth Oct\nsecond 59\nweekday Thu\nyear 1999"
-dtptngts.cpp/format 388 "06:58 AM"
-dtptngts.cpp/formatToParts/fields 388 "dayPeriod AM\nhour 06\nminute 58"
-dtptngts.cpp/format 499 "14. Okt., 8:58"
-dtptngts.cpp/formatToParts/fields 499 "day 14\nhour 8\nminute 58\nmonth"
-dtptngts.cpp/formatToParts/pattern 912 "hour 01 h12\nliteral :\nminute 05\nliteral  \ndayPeriod AM"
-dtptngts.cpp/formatToParts/pattern 916 "hour 1 h23\nliteral .\nminute 05"
-dtptngts.cpp/formatToParts/pattern 918 "hour 01 h12\nliteral .\nminute 05\nliteral  \ndayPeriod *"
-dtptngts.cpp/formatToParts/pattern 1665 "weekday long\nliteral  \nday 4\nliteral  \nmonth long\nliteral  \nyear 2006\nliteral  à \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1666 "day 4\nliteral  \nmonth long\nliteral  \nyear 2006\nliteral  à \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1667 "day 4\nliteral  \nmonth short\nliteral  \nyear 2006\nliteral , \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1668 "day 04\nliteral /\nmonth 03\nliteral /\nyear 2006\nliteral  \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1669 "weekday long\nliteral  \nday 4\nliteral  \nmonth long\nliteral , \nyear 2006\nliteral  da \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1670 "year 2006\nliteral , \nmonth long\nliteral  \nday 4\nliteral  da \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1671 "day 4\nliteral  \nmonth short\nliteral , \nyear 2006\nliteral , \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1672 "year 2006\nliteral -\nmonth 03\nliteral -\nday 04\nliteral , \nhour 1 h23\nliteral :\nminute 05"
-dtptngts.cpp/formatToParts/pattern 1811 "hour 1 h23\nliteral :\nminute 05"
-udatpg_test.c/formatToParts/pattern 79 "hour 01 h23\nliteral .\nminute 05"
-DateTimeGeneratorTest.java/formatToParts/pattern 1678 "dayPeriod *\nhour 01 h12\nliteral :\nminute 05"
-DateTimeGeneratorTest.java/formatToParts/pattern 1681 "dayPeriod *\nhour 01 h12\nliteral :\nminute 05\nliteral :\nsecond 07"
-DateTimeGeneratorTest.java/formatToParts/pattern 2566 "year 2006\nliteral  \nmonth March\nliteral  \nday 4\nliteral , \nweekday Saturday\nliteral  at \nhour 1 h23\nliteral :\nminute 05"
-DateTimeGeneratorTest.java/formatToParts/pattern 2568 "day 4\nliteral , \nweekday Sat\nliteral , \nhour 1 h23\nliteral :\nminute 05"
-
 # An era-only Intl request adds default date fields. The Chinese date
 # includes a related year and has no era part.
 dtptngts.cpp/includes/en@calendar=chinese/G 1006 "month literal day literal relatedYear"

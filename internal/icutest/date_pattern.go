@@ -14,6 +14,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma"
 	"github.com/hajimehoshi/ekuma/internal/intl/date"
+	"github.com/hajimehoshi/ekuma/internal/intl/locale"
 	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
 
@@ -92,6 +93,13 @@ func runDatePatterns(t *testing.T, root string, failures map[string]map[int]stri
 	}
 }
 
+func dateNumericWidth(n int) string {
+	if n == 2 {
+		return "2-digit"
+	}
+	return "numeric"
+}
+
 func dateNameWidth(n int) string {
 	switch n {
 	case 4:
@@ -143,10 +151,7 @@ func datePatternOptions(id, skeleton, zone string) (string, map[string]any, stri
 		ch := rest[0]
 		n := len(rest) - len(strings.TrimLeft(rest, string(ch)))
 		rest = rest[n:]
-		width := "numeric"
-		if n == 2 {
-			width = "2-digit"
-		}
+		width := dateNumericWidth(n)
 		name := dateNameWidth(n)
 		switch ch {
 		case 'y':
@@ -253,7 +258,6 @@ func (s *datePatternSuite) fixed(line int, id, skeleton string, instant time.Tim
 		s.t.Errorf("%s:%d: skeleton %q (%s %v, %s): got %q, want %q", s.path, line, skeleton, loc, opts, instant, got, want)
 	}
 	want = strings.ReplaceAll(want, "\u202f", " ")
-	s.check(line, "format", s.observe, want, loc, opts, instant.UnixMilli(), skeleton, "text")
 	numbers := dateDigits.FindAllString(want, -1)
 	var values []any
 	var fields []string
@@ -261,14 +265,15 @@ func (s *datePatternSuite) fixed(line int, id, skeleton string, instant time.Tim
 		fields = append(fields, key+" "+value)
 		values = append(values, key)
 	}
-	addNumber := func(key string, n int) {
+	addNumber := func(key string, n int) string {
 		for _, v := range numbers {
 			if integer(v) == n {
 				addValue(key, v)
-				return
+				return v
 			}
 		}
 		s.t.Fatalf("%s:%d: %s %s: missing %s %d in %q", s.path, line, id, skeleton, key, n, want)
+		return ""
 	}
 	cal := opts["calendar"]
 	english := loc == "en" || strings.HasPrefix(loc, "en-")
@@ -319,7 +324,11 @@ func (s *datePatternSuite) fixed(line int, id, skeleton string, instant time.Tim
 				h = (h+11)%12 + 1
 				addValue("dayPeriod", outerName(strings.HasPrefix(loc, "zh") || strings.HasPrefix(loc, "ja")))
 			}
-			addNumber(key, h)
+			v := addNumber(key, h)
+			// A single-digit hour reveals whether the ICU pattern pads it.
+			if h < 10 {
+				opts["hour"] = dateNumericWidth(len(v))
+			}
 		case "month":
 			if english && (opts[key] == "short" || opts[key] == "long" || opts[key] == "narrow") {
 				addValue(key, englishDateName(instant.Month().String(), opts[key].(string)))
@@ -347,6 +356,7 @@ func (s *datePatternSuite) fixed(line int, id, skeleton string, instant time.Tim
 		}
 	}
 	slices.Sort(fields)
+	s.check(line, "format", s.observe, want, loc, opts, instant.UnixMilli(), skeleton, "text")
 	s.check(line, "formatToParts/fields", s.observe, strings.Join(fields, "\n"), loc, opts, instant.UnixMilli(), skeleton, "fields", values)
 }
 
@@ -368,11 +378,46 @@ func patternFraction(n int) string {
 	return fmt.Sprintf("%03d", patternInstant.Nanosecond()/1e6)[:n]
 }
 
-func (s *datePatternSuite) pattern(line int, id, skeleton, pattern string) {
+func (s *datePatternSuite) checkDefaultHourPattern(line int, loc string, opts map[string]any, skeleton, pattern string) {
+	tag, ok := locale.Parse(loc)
+	if !ok {
+		s.t.Fatalf("%s:%d: invalid fixture locale %q", s.path, line, loc)
+	}
+	tag.HasUnicode = true
+	tag.Keywords = append(tag.Keywords, locale.Keyword{
+		Key:   "nu",
+		Value: opts["numberingSystem"].(string),
+	})
+	if cycle, ok := opts["hourCycle"].(string); ok {
+		tag.Keywords = append(tag.Keywords, locale.Keyword{
+			Key:   "hc",
+			Value: cycle,
+		})
+	}
+	patternLocale := tag.Canonicalize().String()
+	s.executed++
+	got := date.PatternForSkeleton(patternLocale, opts["calendar"].(string), skeleton)
+	if got != pattern {
+		s.t.Errorf("%s:%d: default pattern for %s %q (%v): got %q, want %q", s.path, line, patternLocale, skeleton, opts, got, pattern)
+	}
+}
+
+type hourWidthMode bool
+
+const (
+	localeHourWidth    hourWidthMode = false
+	requestedHourWidth hourWidthMode = true
+)
+
+func (s *datePatternSuite) pattern(line int, id, skeleton, pattern string, mode hourWidthMode) {
 	loc, opts, reason := datePatternOptions(id, skeleton, "UTC")
 	if reason != "" {
 		s.excluded[reason]++
 		return
+	}
+	defaultHour := opts["hour"] != nil && mode == localeHourWidth
+	if defaultHour {
+		s.checkDefaultHourPattern(line, loc, opts, skeleton, pattern)
 	}
 	var names []any
 	var parts []string
@@ -407,6 +452,9 @@ func (s *datePatternSuite) pattern(line int, id, skeleton, pattern string) {
 		n := len(p) - len(strings.TrimLeft(p, string(ch)))
 		p = p[n:]
 		key, value, widthOnly := patternField(ch, n, loc, opts)
+		if defaultHour && key == "hour" {
+			opts["hour"] = dateNumericWidth(n)
+		}
 		if widthOnly {
 			names = append(names, key)
 		}
