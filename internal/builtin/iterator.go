@@ -76,67 +76,57 @@ type iteratorHelper struct {
 	body  helperBody
 }
 
-// thisIteratorHelper implements GeneratorValidate for an iterator helper object.
-func thisIteratorHelper(vm *engine.VM, this engine.Value, what string) (*iteratorHelper, *engine.Realm) {
+// resumeHelper runs a next or return resumption and reports whether the helper yielded.
+func resumeHelper(vm *engine.VM, this engine.Value, mode engine.ResumeMode) (engine.Value, bool) {
 	state, realm := engine.IteratorStateAndRealm(this)
 	h, _ := state.(*iteratorHelper)
 	if h == nil {
-		vm.ThrowTypeError(vm.CurrentRealm(), "Iterator Helper.prototype."+what+" requires that 'this' be an Iterator Helper")
+		method := "next"
+		if mode == engine.ResumeReturn {
+			method = "return"
+		}
+		vm.ThrowTypeError(vm.CurrentRealm(), "Iterator Helper.prototype."+method+" requires that 'this' be an Iterator Helper")
 	}
-	if h.state == helperExecuting {
+	switch h.state {
+	case helperExecuting:
 		vm.ThrowTypeError(vm.CurrentRealm(), "generator is already running")
+	case helperCompleted:
+		return engine.Undefined, false
+	case helperSuspendedStart:
+		if mode == engine.ResumeReturn {
+			// Before the first yield, the return method closes the underlying iterators itself.
+			h.state = helperCompleted
+			h.body.close(vm)
+			return engine.Undefined, false
+		}
 	}
-	return h, realm
+
+	if realm == vm.CurrentRealm() {
+		return h.resumeBody(vm, mode)
+	}
+	var v engine.Value
+	var yielded bool
+	vm.InRealm(realm, func() {
+		v, yielded = h.resumeBody(vm, mode)
+	})
+	return v, yielded
 }
 
-// helperNext is the next method of the iterator helper objects without the iterator result.
-func helperNext(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-	h, realm := thisIteratorHelper(vm, this, "next")
-	if h.state == helperCompleted {
-		return engine.Undefined, false
-	}
+// resumeBody runs in the helper's creation realm.
+func (h *iteratorHelper) resumeBody(vm *engine.VM, mode engine.ResumeMode) (v engine.Value, yielded bool) {
 	h.state = helperExecuting
-	// An exception completes the helper.
-	completed := true
 	defer func() {
-		if completed {
+		if yielded {
+			h.state = helperSuspendedYield
+		} else {
 			h.state = helperCompleted
 		}
 	}()
-	var v engine.Value
-	var ok bool
-	if realm == vm.CurrentRealm() {
-		v, ok = h.body.step(vm)
-	} else {
-		vm.InRealm(realm, func() {
-			v, ok = h.body.step(vm)
-		})
-	}
-	if ok {
-		completed = false
-		h.state = helperSuspendedYield
-	}
-	return v, ok
-}
-
-// helperReturn is the return method of the iterator helper objects.
-func helperReturn(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
-	h, realm := thisIteratorHelper(vm, this, "return")
-	switch h.state {
-	case helperSuspendedStart:
-		// Before the first yield, the return method closes the underlying iterators itself.
-		h.state = helperCompleted
+	if mode == engine.ResumeReturn {
 		h.body.close(vm)
-	case helperSuspendedYield:
-		h.state = helperExecuting
-		defer func() {
-			h.state = helperCompleted
-		}()
-		vm.InRealm(realm, func() {
-			h.body.close(vm)
-		})
+		return engine.Undefined, false
 	}
-	return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
+	return h.body.step(vm)
 }
 
 // initIteratorHelpers defines Iterator and the iterator helpers.
@@ -180,8 +170,13 @@ func initIteratorHelpers(vm *engine.VM) {
 	})
 
 	helperProto := vm.NewObject(proto)
-	iteratorNext(vm, helperProto, engine.IteratorClosureRealm, helperNext)
-	method(vm, helperProto, "return", 0, helperReturn)
+	iteratorNext(vm, helperProto, engine.IteratorClosureRealm, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
+		return resumeHelper(vm, this, engine.ResumeNext)
+	})
+	method(vm, helperProto, "return", 0, func(vm *engine.VM, this engine.Value, args []engine.Value) engine.Value {
+		resumeHelper(vm, this, engine.ResumeReturn)
+		return vm.CurrentRealm().CreateIterResultObject(engine.Undefined, true)
+	})
 	vm.Define(helperProto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Iterator Helper"), engine.FlagConfigurable)
 	newHelper := func(body helperBody) engine.Value {
 		return engine.ObjectValue(vm.NewIteratorObject(helperProto, &iteratorHelper{body: body}))
