@@ -71,31 +71,16 @@ func runRBBITest(t *testing.T, path, unicodeData string, failures map[int]string
 func applyBreakChanges(boundaries []breakBoundary, changes string) ([]breakBoundary, error) {
 	boundaries = slices.Clone(boundaries)
 	for field := range strings.SplitSeq(changes, ",") {
-		offsetText, value, changeStatus := strings.Cut(field, "=")
-		if !changeStatus {
-			if len(field) < 2 || field[0] != '+' && field[0] != '-' {
-				return nil, fmt.Errorf("invalid break change %q", field)
-			}
-			offsetText = field[1:]
+		if len(field) < 2 || field[0] != '+' && field[0] != '-' {
+			return nil, fmt.Errorf("invalid break change %q", field)
 		}
-		offset, err := strconv.Atoi(offsetText)
+		offset, err := strconv.Atoi(field[1:])
 		if err != nil || offset < 0 {
 			return nil, fmt.Errorf("invalid break offset in %q", field)
 		}
 		i, found := slices.BinarySearchFunc(boundaries, offset, func(b breakBoundary, offset int) int {
 			return cmp.Compare(b.offset, offset)
 		})
-		if changeStatus {
-			if !found || i == 0 || boundaries[i].wordLike == nil || value != "true" && value != "false" {
-				return nil, fmt.Errorf("invalid word status change %q", field)
-			}
-			like := value == "true"
-			if *boundaries[i].wordLike == like {
-				return nil, fmt.Errorf("word status change %q already matches the fixture", field)
-			}
-			boundaries[i].wordLike = &like
-			continue
-		}
 		if found != (field[0] == '-') {
 			return nil, fmt.Errorf("change %s does not apply to the fixture boundaries", field)
 		}

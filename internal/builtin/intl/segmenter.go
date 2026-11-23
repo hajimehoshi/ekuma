@@ -116,7 +116,7 @@ func (d *segmentsData) segmentData(cx *engine.ExecutionContext, start, end int) 
 	propertyCount := 3
 	if d.segmenter.granularity == "word" {
 		keys[3] = engine.NamedKey(cx.Intern("isWordLike"))
-		vals[3] = engine.Bool(isWordLike(cx, d.runes[start:end]))
+		vals[3] = engine.Bool(segment.IsWordLike(d.runes[start:end], cx.Poll))
 		propertyCount++
 	}
 	return engine.ObjectValue(cx.NewObjectFromProperties(keys[:propertyCount], vals[:propertyCount]))
@@ -238,17 +238,4 @@ func (r *realm) initSegmenter(cx *engine.ExecutionContext) {
 		return cx.CreateIterResultObject(d.segmentData(cx, start, end), false)
 	})
 	cx.Define(iterProto, cx.WellKnownSymbol(engine.SymbolToStringTag), cx.SharedString("Segmenter String Iterator"), engine.FlagConfigurable)
-}
-
-// isWordLike is [segment.IsWordLike], checking for an interruption between the parts of a long
-// segment. A segment is word-like when any part of it is.
-func isWordLike(cx *engine.ExecutionContext, rs []rune) bool {
-	for len(rs) > engine.PollInterval {
-		if segment.IsWordLike(rs[:engine.PollInterval]) {
-			return true
-		}
-		rs = rs[engine.PollInterval:]
-		cx.Poll()
-	}
-	return segment.IsWordLike(rs)
 }

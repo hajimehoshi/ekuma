@@ -3,16 +3,11 @@
 # relation (previous vs. current). All listed cases run.
 
 # rbbitst.txt entries give the opening <data> line and the exact changes
-# from its expected UTF-16 break offsets (+extra, -missing). An entry of
-# end=true or end=false sets isWordLike for the segment ending at end.
+# from its expected UTF-16 break offsets (+extra, -missing).
 
 # POSIX English word breaks around punctuation. Intl.Segmenter has no
 # relevant Unicode extension keys, so en-US-u-va-posix resolves to en-US.
 rbbitst.txt 1584 -23,-24,-36,-37
-
-# ICU gives U+C799 followed by U+FFFA word status 0. Ekuma counts the
-# Hangul syllable as a letter in both the Japanese and POSIX English cases.
-rbbitst.txt 748,1586 3=true
 
 # Ekuma uses a web-compatible space before AM/PM.
 format.txt 35 "8/8/07, 6:54 PM"

@@ -8,6 +8,7 @@ package segment
 
 import (
 	"encoding/binary"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -490,17 +491,31 @@ func sentenceBreak(ps []propertyIndex, i int, s *sentenceState) bool {
 	return true
 }
 
-// IsWordLike reports whether a word segment is word-like: whether it has letters, digits or
-// ideographs.
-func IsWordLike(rs []rune) bool {
-	for _, r := range rs {
+// IsWordLike reports whether a word segment is word-like.
+// A non-nil poll may interrupt the operation by panicking.
+func IsWordLike(rs []rune, poll func()) bool {
+	for i, r := range slices.Backward(rs) {
+		if poll != nil && (len(rs)-i)%pollSteps == 0 {
+			poll()
+		}
 		p := props(r)
 		switch wordOf(p) {
+		case wHangul:
+			// The Hangul rule assigns word status only at the end of a syllable.
+			return i == len(rs)-1
+		case wSingleQuote, wExtendNumLet:
+			// The rules for a Hebrew apostrophe and a joined connector
+			// require the boundary immediately after that character.
+			return i > 0 && i == len(rs)-1
 		case wALetter, wHebrewLetter, wNumeric, wKatakana:
 			return true
-		}
-		if letterOrNumber(p) {
-			return true
+		case wExtend, wFormat, wZWJ:
+			// An ideographic extending mark has word status of its own.
+			if unicode.Is(unicode.Ideographic, r) {
+				return true
+			}
+		default:
+			return letterOrNumber(p)
 		}
 	}
 	return false

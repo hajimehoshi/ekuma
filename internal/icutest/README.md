@@ -176,5 +176,5 @@ The three Unicode break files and `rbbitst.txt` supply 3,668 cases. Fixture
 text and UTF-16 boundaries determine each iterator record and up to five
 `containing` lookups per case, including low surrogates. ICU word rule status
 supplies `isWordLike` for matching spans. Exclusions cover line and title
-breaking, sentence suppression, and custom rules. Three rows differ on POSIX
-English boundaries or the word status of a Hangul syllable followed by U+FFFA. [Known results](testdata/icu-failures.txt) · [Ekuma dictionary and surrogate regressions](../../intl/intl_test.go#L228-L242) · [Test262 index coercion](https://github.com/tc39/test262/blob/2e58f87d8350ad51224617a041c6e041d52f8444/test/intl402/Segmenter/prototype/segment/containing/one-index.js) · [V8 word lookup](https://github.com/v8/v8/blob/31a217159f038ccf8306f6da561bae54c0c0bb86/test/intl/segmenter/word-containing.js)
+breaking, sentence suppression, and custom rules. One POSIX English row
+differs on word boundaries around punctuation. [Known results](testdata/icu-failures.txt) · [Ekuma dictionary and surrogate regressions](../../intl/intl_test.go#L228-L242) · [Test262 index coercion](https://github.com/tc39/test262/blob/2e58f87d8350ad51224617a041c6e041d52f8444/test/intl402/Segmenter/prototype/segment/containing/one-index.js) · [V8 word lookup](https://github.com/v8/v8/blob/31a217159f038ccf8306f6da561bae54c0c0bb86/test/intl/segmenter/word-containing.js)

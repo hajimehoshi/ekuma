@@ -103,6 +103,23 @@ func TestIsWordLike(t *testing.T) {
 			want: true,
 		},
 		{
+			in:   "__",
+			want: true,
+		},
+		{
+			in:   "א'\u0300",
+			want: false,
+		},
+		{
+			// The Khitan filler is both Ideographic and Word_Break=Extend.
+			in:   "\U00016fe4",
+			want: true,
+		},
+		{
+			in:   "a\u200d😀",
+			want: false,
+		},
+		{
 			in:   " ",
 			want: false,
 		},
@@ -111,7 +128,7 @@ func TestIsWordLike(t *testing.T) {
 			want: false,
 		},
 	} {
-		if got := segment.IsWordLike([]rune(tc.in)); got != tc.want {
+		if got := segment.IsWordLike([]rune(tc.in), nil); got != tc.want {
 			t.Errorf("IsWordLike(%q): got %t, want %t", tc.in, got, tc.want)
 		}
 	}
