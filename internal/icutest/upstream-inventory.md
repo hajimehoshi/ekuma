@@ -1,7 +1,7 @@
 # Upstream ICU suite inventory
 
 All follow-ups identified by the pinned inventory have maintained checks.
-The full two-pin `TestICU` run passed all 131 leaf subtests with 289 expected
+The full two-pin `TestICU` run passed all 131 leaf subtests with 300 expected
 differences and zero unexpected failures. [Tracker](https://github.com/hajimehoshi/ekuma/issues/9)
 
 ## Scope and verification

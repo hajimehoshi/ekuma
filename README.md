@@ -139,8 +139,8 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 
 Ekuma checks its pure Go implementation of `Intl` (ECMA-402) against ICU’s own tests for
 collation, segmentation, and locale-aware formatting. The suite also checks Unicode normalization
-and `Temporal` calendars. In 123 of 129 subtests, Ekuma matched the pinned ICU 78.3 and 79.1
-fixtures on every case it ran. The other six recorded 289 expected differences, including 281
+and `Temporal` calendars. In 122 of 131 subtests, Ekuma matched the pinned ICU 78.3 and 79.1
+fixtures on every case it ran. The other nine recorded 300 expected differences, including 281
 where only the spacing in a formatted date range differed. The run had no unexpected failures.
 See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
 
@@ -175,6 +175,8 @@ See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
   canonical language code, or `undefined` with `fallback: "none"`
 - `Intl.DurationFormat` separates the fields of the `digital` style as CLDR's duration patterns
   do, such as `1.02.03` in Serbian, where ICU uses the time separator
+- `Intl.DateTimeFormat` uses the names that CLDR's root locale gives a metazone through
+  another one, such as `Greenwich Mean Time` for London in winter, where ICU uses the offset
 - A BigInt has at most 2^30 bits, as in V8: an operation or a conversion whose result would be
   larger throws a RangeError, and a larger literal is a SyntaxError. `ValueOf` panics for a
   larger `*big.Int`, and a `Func` that returns one throws a RangeError

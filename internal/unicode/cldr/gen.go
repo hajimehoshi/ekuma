@@ -1110,7 +1110,6 @@ func main() {
 		}
 		zoneNames[l] = timeZoneFields(object(object(mainData(dates, name)["dates"])["timeZoneNames"]))
 	}
-	tree.removeAliasedZoneNames(zoneNames, mainXML)
 	// The resolved JSON omits names whose inheritance CLDR blocks. Store an
 	// empty field wherever walking to the parent would restore such a name.
 	for l, names := range zoneNames {
@@ -1120,7 +1119,7 @@ func main() {
 			}
 		}
 	}
-	f = newFile("timezonenames.go", datesSource+" and CLDR "+xmlVersion+" (common/main)")
+	f = newFile("timezonenames.go", datesSource)
 	f.records(`maps locales to the names of time zones and their formats, as records in the form of [Field]. "h" is the hour format, "g" the GMT format, "r", "r+" and "r-" the generic, daylight and standard region formats, and "f" the fallback format. "z<zone>|<name>" is a name of a zone and "m<metazone>|<name>" a name of a metazone, where <name> is "e" for the exemplar city, or "l" or "s" for long or short followed by "g", "s" or "d" for generic, standard or daylight. A record that a locale shares with its parent is left out.`, "TimeZoneNames", tree.records(zoneNames))
 	f.write()
 
@@ -2277,62 +2276,6 @@ func timeZoneFields(tz map[string]any) map[string]string {
 		}
 	}
 	return out
-}
-
-// ICU uses a localized offset when neither the locale nor its parents name
-// the metazone. CLDR JSON can also supply names through cross-metazone aliases
-// in root.xml. The XML declarations distinguish those two sources.
-func (t *localeTree) removeAliasedZoneNames(data map[string]map[string]string, files map[string][]byte) {
-	explicit := map[string]map[string]bool{}
-	for file, b := range files {
-		if !bytes.Contains(b, []byte("<metazone ")) {
-			continue
-		}
-		var doc struct {
-			Zones []struct {
-				ID     string `xml:"type,attr"`
-				Widths []struct {
-					XMLName xml.Name
-					Names   []struct {
-						XMLName xml.Name
-						Alt     string `xml:"alt,attr"`
-						Value   string `xml:",chardata"`
-					} `xml:",any"`
-				} `xml:",any"`
-			} `xml:"dates>timeZoneNames>metazone"`
-		}
-		if err := xml.Unmarshal(b, &doc); err != nil {
-			log.Fatal(err)
-		}
-		l := strings.ReplaceAll(strings.TrimSuffix(file, ".xml"), "_", "-")
-		if l == "root" {
-			l = "und"
-		}
-		keys := map[string]bool{}
-		for _, z := range doc.Zones {
-			for _, w := range z.Widths {
-				for _, n := range w.Names {
-					if n.Alt == "" && n.Value != "" && n.Value != "↑↑↑" && n.Value != "∅∅∅" {
-						keys["m"+z.ID+"|"+w.XMLName.Local[:1]+n.XMLName.Local[:1]] = true
-					}
-				}
-			}
-		}
-		explicit[l] = keys
-	}
-	for l, names := range data {
-		maps.DeleteFunc(names, func(key, _ string) bool {
-			if !strings.HasPrefix(key, "m") {
-				return false
-			}
-			for p, ok := l, true; ok; p, ok = t.parent(p) {
-				if explicit[p][key] {
-					return false
-				}
-			}
-			return true
-		})
-	}
 }
 
 // metazoneTime returns the time s of the use of a metazone, "yyyy-MM-dd HH:mm" with optional
