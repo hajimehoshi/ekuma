@@ -42,6 +42,13 @@ func iteratorNext(vm *engine.VM, proto *engine.Object, step engine.IteratorStepF
 	return fn
 }
 
+// plainIteratorNext defines a next method whose step runs no JavaScript and cannot throw.
+func plainIteratorNext[T any](vm *engine.VM, proto *engine.Object, receiverError string, step func(*engine.VM, T) (engine.Value, bool)) *engine.Object {
+	fn := engine.NewPlainIteratorNext(vm, receiverError, step)
+	vm.Define(proto, vm.Intern("next"), engine.ObjectValue(fn), engine.FlagsHidden)
+	return fn
+}
+
 // getter defines the accessor property key on o with the getter f, named "get " + name, and
 // returns the getter.
 func getter(vm *engine.VM, o *engine.Object, key *engine.Object, name wtf8.String, f engine.NativeFunc) *engine.Object {

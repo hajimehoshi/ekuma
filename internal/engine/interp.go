@@ -2850,7 +2850,7 @@ func (vm *VM) exec(stop int) (result Value, status execStatus) {
 				vm.frames[len(vm.frames)-1].pc = pc
 				// A getter that throws finishes the iterator.
 				regs[i.B] = Undefined
-				v := vm.Index(Value{o: o}, j)
+				v := vm.plainArrayIteratorIndex(o, j)
 				regs = vm.reload(regs, vm.frameBase(), fp)
 				regs[i.B] = Value{o: o}
 				regs[i.A] = v

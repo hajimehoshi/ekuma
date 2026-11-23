@@ -76,20 +76,52 @@ func (vm *VM) SetIteratorPairStep(next *Object, step IteratorPairStepFunc) {
 	next.fn.info.fast.pairStep = step
 }
 
-// NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
-// result for what step returns.
-func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
-	o := vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
+// newIteratorNext creates the result-returning form of an iterator's next method.
+func (vm *VM) newIteratorNext(step IteratorStepFunc) *Object {
+	return vm.NewNative("next", 0, func(vm *VM, this Value, args []Value) Value {
 		v, ok := step(vm, this)
 		if !ok {
 			return vm.CreateIterResultObject(Undefined, true)
 		}
 		return vm.CreateIterResultObject(v, false)
 	})
+}
+
+// NewIteratorNext returns the next method of a built-in iterator, which returns the iterator
+// result for what step returns.
+func (vm *VM) NewIteratorNext(step IteratorStepFunc) *Object {
+	o := vm.newIteratorNext(step)
 	o.fn.info.fast = &nativeFast{
-		step: step,
+		step: func(vm *VM, this Value) (Value, bool) {
+			vm.pushNative(o, this, nil)
+			v, ok := step(vm, this)
+			vm.popNative()
+			return v, ok
+		},
 	}
 	return o
+}
+
+// NewPlainIteratorNext returns a next method for iterators with state T.
+// For a compatible receiver, step must neither throw nor run JavaScript.
+func NewPlainIteratorNext[T any](vm *VM, receiverError string, step func(*VM, T) (Value, bool)) *Object {
+	next := vm.newIteratorNext(func(vm *VM, this Value) (Value, bool) {
+		state, ok := IteratorState(this).(T)
+		if !ok {
+			vm.ThrowTypeError(receiverError)
+		}
+		return step(vm, state)
+	})
+	next.fn.info.fast = &nativeFast{
+		step: func(vm *VM, this Value) (Value, bool) {
+			if state, ok := IteratorState(this).(T); ok {
+				return step(vm, state)
+			}
+			// The receiver error belongs to the native next call.
+			return vm.Call(next, this), false
+		},
+	}
+	return next
 }
 
 // IterationKind identifies what an iterator yields.
@@ -120,77 +152,113 @@ func (vm *VM) newArrayIterator(o *Object, kind IterationKind, nextIndex int64) *
 	})
 }
 
-// ArrayIteratorStep advances the array iterator this and reports whether it yielded a value.
-func (vm *VM) ArrayIteratorStep(this Value) (Value, bool) {
-	it, _ := IteratorState(this).(*arrayIterator)
+// NewArrayIteratorNext returns the next method of array iterators.
+func (vm *VM) NewArrayIteratorNext() *Object {
+	next := vm.newIteratorNext(func(vm *VM, this Value) (Value, bool) {
+		it, _ := IteratorState(this).(*arrayIterator)
+		v, st := it.valueStep(vm, true)
+		return v, st == PairYielded
+	})
+	next.fn.info.fast = &nativeFast{
+		step: func(vm *VM, this Value) (Value, bool) {
+			it, _ := IteratorState(this).(*arrayIterator)
+			v, st := it.valueStep(vm, false)
+			if st == PairDeclined {
+				vm.pushNative(next, this, nil)
+				v, st = it.valueStep(vm, true)
+				vm.popNative()
+			}
+			return v, st == PairYielded
+		},
+		pairStep: func(vm *VM, this Value) (Value, Value, PairStep) {
+			it, _ := IteratorState(this).(*arrayIterator)
+			if it == nil || it.kind != IterateEntries {
+				return Undefined, Undefined, PairDeclined
+			}
+			return it.step(vm, false)
+		},
+	}
+	return next
+}
+
+func (it *arrayIterator) valueStep(vm *VM, allowCalls bool) (Value, PairStep) {
+	key, value, st := it.step(vm, allowCalls)
+	if st != PairYielded {
+		return Undefined, st
+	}
+	switch it.kind {
+	case IterateKeys:
+		return key, st
+	case IterateValues:
+		return value, st
+	default:
+		return Value{o: vm.NewArrayPair(key, value)}, st
+	}
+}
+
+// step advances the iterator, declining before any observable operation when allowCalls is false.
+func (it *arrayIterator) step(vm *VM, allowCalls bool) (key, value Value, st PairStep) {
 	if it == nil {
+		if !allowCalls {
+			return Undefined, Undefined, PairDeclined
+		}
 		vm.ThrowTypeError("next method called on an object that is not an array iterator")
 	}
 	o := it.object
 	if o == nil {
-		return Undefined, false
+		return Undefined, Undefined, PairDone
 	}
 	// Reading length can call next on this iterator again.
 	i := it.nextIndex
 	var length int64
-	if t := TypedArrayData(Value{o: o}); t != nil {
+	switch {
+	case o.kind == kindArray:
+		length = int64(o.length)
+	case o.class == classTypedArray:
+		t := o.extState().(*TypedArray)
+		if it.kind != IterateKeys && i <= MaxArrayIndex {
+			if b, ok := t.element(uint32(i)); ok {
+				value = vm.loadElement(t.typ, b)
+				it.nextIndex = i + 1
+				vm.PollAt(i)
+				return Number(float64(i)), value, PairYielded
+			}
+		}
 		n, ok := t.Length()
 		if !ok {
+			if !allowCalls {
+				return Undefined, Undefined, PairDeclined
+			}
 			vm.ThrowTypeError("cannot iterate a detached or out of bounds typed array")
 		}
 		length = int64(n)
-	} else {
+	default:
+		if !allowCalls {
+			return Undefined, Undefined, PairDeclined
+		}
 		length = vm.LengthOfArrayLike(o)
 	}
 	if i >= length {
 		it.object = nil
-		return Undefined, false
+		return Undefined, Undefined, PairDone
 	}
-	it.nextIndex = i + 1
-	key := Number(float64(i))
+	key = Number(float64(i))
 	if it.kind == IterateKeys {
-		return key, true
+		it.nextIndex = i + 1
+		return key, Undefined, PairYielded
 	}
-	v, ok := o.Element(i)
-	if ok {
+	if i < int64(len(o.elems)) && !o.elems[i].isHole() {
+		value = o.elems[i]
+		it.nextIndex = i + 1
 		vm.PollAt(i)
-	} else {
-		vm.Poll()
-		v = vm.Get(o, vm.ToPropertyKey(key))
+		return key, value, PairYielded
 	}
-	if it.kind == IterateValues {
-		return v, true
-	}
-	return Value{o: vm.NewArrayPair(key, v)}, true
-}
-
-// ArrayIteratorPairStep is the pair step of array iterators, which yield arrays of two elements
-// as entries.
-func (vm *VM) ArrayIteratorPairStep(this Value) (a, b Value, st PairStep) {
-	it, _ := IteratorState(this).(*arrayIterator)
-	if it == nil || it.kind != IterateEntries {
-		return Undefined, Undefined, PairDeclined
-	}
-	o := it.object
-	if o == nil {
-		return Undefined, Undefined, PairDone
-	}
-	// Only the length and the elements of an array are read without running anything.
-	if o.kind != kindArray {
-		return Undefined, Undefined, PairDeclined
-	}
-	i := it.nextIndex
-	if i >= int64(o.length) {
-		it.object = nil
-		return Undefined, Undefined, PairDone
-	}
-	v, ok := o.Element(i)
-	if !ok {
+	if !allowCalls {
 		return Undefined, Undefined, PairDeclined
 	}
 	it.nextIndex = i + 1
-	vm.PollAt(i)
-	return Number(float64(i)), v, PairYielded
+	vm.Poll()
+	return key, vm.Get(o, vm.ToPropertyKey(key)), PairYielded
 }
 
 // Outcomes of iterNext.
@@ -229,7 +297,9 @@ func (vm *VM) iterNext(it, next Value) (Value, int) {
 			vm.Poll()
 		}
 		g := it.o.extState().(*generator)
+		vm.pushNative(f, it, nil)
 		v, done := vm.resume(g, ResumeNext, Undefined)
+		vm.popNative()
 		if done {
 			return Undefined, iterDone
 		}
@@ -274,9 +344,7 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 			if vm.interrupt.Load() {
 				vm.Poll()
 			}
-			vm.pushNative(f, it, nil)
 			_, ok := step(vm, it)
-			vm.popNative()
 			return ok
 		}
 	}
@@ -288,19 +356,8 @@ func (vm *VM) IteratorStep(it, next Value) bool {
 }
 
 // iteratorStep calls next and returns the value of the result, or false when the iterator is done.
-//
-// The step function of a built-in iterator, which counts as a native call here, may step
-// another iterator in turn.
 func (vm *VM) iteratorStep(it, next Value) (Value, bool) {
-	var v Value
-	var st int
-	if f := next.o; f != nil && f.fn != nil && f.fn.iteratorStep(vm.curRealm) != nil {
-		vm.pushNative(f, it, nil)
-		v, st = vm.iterNext(it, next)
-		vm.popNative()
-	} else {
-		v, st = vm.iterNext(it, next)
-	}
+	v, st := vm.iterNext(it, next)
 	if st == iterFailed {
 		panic(errThrow)
 	}
@@ -431,10 +488,26 @@ func (vm *VM) iteratePlainArray(o *Object, f func(Value) bool) {
 		if uint(i) < uint(len(o.elems)) && !o.elems[i].isHole() {
 			return o.elems[i], true
 		}
-		return vm.Index(Value{o: o}, i), true
+		return vm.plainArrayIteratorIndex(o, i), true
 	}, func(pending bool) {
 		vm.closePlainArrayIterator(o, nextIndex, pending)
 	}, f)
+}
+
+// plainArrayIteratorIndex reads an element outside dense storage with the native next frame
+// that a getter or proxy can observe.
+func (vm *VM) plainArrayIteratorIndex(o *Object, i uint32) Value {
+	if o.flags&objSparse == 0 && vm.holesAreAbsent(o) {
+		return Undefined
+	}
+	array := Value{o: o}
+	// A native frame uses its receiver only to name it in a stack trace. An indexed
+	// iterator has no own properties, so its prototype supplies the same name.
+	proto := vm.Intrinsic(IntrinsicArrayIteratorPrototype)
+	vm.pushNative(vm.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
+	v := vm.Index(array, i)
+	vm.popNative()
+	return v
 }
 
 // IterateRecord is [VM.Iterate] for the iterator record of the iterator it and its next method

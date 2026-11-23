@@ -852,16 +852,12 @@ func initIterators(vm *engine.VM) {
 		return this
 	})
 
-	arrayIterNext := iteratorNext(vm, vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), (*engine.VM).ArrayIteratorStep)
-	vm.SetIteratorPairStep(arrayIterNext, (*engine.VM).ArrayIteratorPairStep)
+	arrayIterNext := vm.NewArrayIteratorNext()
+	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.Intern("next"), engine.ObjectValue(arrayIterNext), engine.FlagsHidden)
 	vm.SetIntrinsic(engine.IntrinsicArrayIteratorPrototypeNext, arrayIterNext)
 	vm.Define(vm.Intrinsic(engine.IntrinsicArrayIteratorPrototype), vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Array Iterator"), engine.FlagConfigurable)
 
-	iteratorNext(vm, vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-		it, _ := engine.IteratorState(this).(*stringIterator)
-		if it == nil {
-			vm.ThrowTypeError("next method called on an object that is not a string iterator")
-		}
+	plainIteratorNext(vm, vm.Intrinsic(engine.IntrinsicStringIteratorPrototype), "next method called on an object that is not a string iterator", func(vm *engine.VM, it *stringIterator) (engine.Value, bool) {
 		if it.pos >= len(it.str) {
 			return engine.Undefined, false
 		}

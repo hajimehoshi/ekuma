@@ -355,8 +355,10 @@ var errThrow = &throwSignal{}
 
 // nativeCall is a running call of a native function, which stack traces show.
 type nativeCall struct {
-	f    *Object
-	this Value
+	f *Object
+
+	// receiver supplies the type name of the receiver in stack traces.
+	receiver Value
 
 	// frames is the number of frames when the call started.
 	frames int
@@ -375,7 +377,7 @@ func (vm *VM) pushNative(f *Object, this Value, newTarget *Object) {
 	}
 	vm.natives = vm.natives[:n+1]
 	c := &vm.natives[n]
-	c.f, c.this, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
+	c.f, c.receiver, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
 }
 
 // growNatives makes room for one more call of a native function, or throws a RangeError when
@@ -402,7 +404,7 @@ func (vm *VM) callNative(f *Object, this Value, args []Value, newTarget *Object)
 	}
 	vm.natives = vm.natives[:n+1]
 	c := &vm.natives[n]
-	c.f, c.this, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
+	c.f, c.receiver, c.frames, c.newTarget = f, this, len(vm.frames), newTarget
 	r := f.fn.native(vm, this, args)
 	vm.popNative()
 	return r
@@ -946,7 +948,7 @@ func (vm *VM) newErrorData(e *Object, msg string, frames, natives int) *errorDat
 			}
 			d.calls = append(d.calls, stackCall{
 				name:  c.f.fn.nativeName(),
-				recv:  vm.receiverName(c.newTarget != nil, c.this),
+				recv:  vm.receiverName(c.newTarget != nil, c.receiver),
 				isNew: c.newTarget != nil,
 			})
 		}

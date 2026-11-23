@@ -317,11 +317,7 @@ func initMap(vm *engine.VM) {
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(mapEntries), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Map"), engine.FlagConfigurable)
 
-	mapIterNext = iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-		it, _ := engine.IteratorState(this).(*mapIterator)
-		if it == nil {
-			vm.ThrowTypeError("next method called on an object that is not a Map Iterator")
-		}
+	mapIterNext = plainIteratorNext(vm, iterProto, "next method called on an object that is not a Map Iterator", func(vm *engine.VM, it *mapIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
@@ -720,11 +716,7 @@ func initSet(vm *engine.VM) {
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolIterator), engine.ObjectValue(setValues), engine.FlagsHidden)
 	vm.Define(proto, vm.WellKnownSymbol(engine.SymbolToStringTag), vm.SharedString("Set"), engine.FlagConfigurable)
 
-	setIterNext = iteratorNext(vm, iterProto, func(vm *engine.VM, this engine.Value) (engine.Value, bool) {
-		it, _ := engine.IteratorState(this).(*setIterator)
-		if it == nil {
-			vm.ThrowTypeError("next method called on an object that is not a Set Iterator")
-		}
+	setIterNext = plainIteratorNext(vm, iterProto, "next method called on an object that is not a Set Iterator", func(vm *engine.VM, it *setIterator) (engine.Value, bool) {
 		if it.table == nil {
 			return engine.Undefined, false
 		}
