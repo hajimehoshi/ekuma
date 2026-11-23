@@ -210,6 +210,23 @@ func TestValidate(t *testing.T) {
 			pc:  3,
 		},
 		{
+			name: "negative inline cache count",
+			breakFunc: func(f *bytecode.Func) {
+				f.Protos[0].NumCaches = -1
+			},
+			err:    bytecode.ErrIndex,
+			pc:     -1,
+			nested: true,
+		},
+		{
+			name: "negative global cache count",
+			breakFunc: func(f *bytecode.Func) {
+				f.NumGlobalCaches = -1
+			},
+			err: bytecode.ErrIndex,
+			pc:  -1,
+		},
+		{
 			name: "shared global cache",
 			breakFunc: func(f *bytecode.Func) {
 				f.NumGlobalCaches = 1

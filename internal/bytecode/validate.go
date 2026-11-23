@@ -167,8 +167,11 @@ func (v *validator) funcFields(parent *Func) error {
 	if f.NumClear < 0 || f.NumClear > f.NumRegs {
 		return v.errorf(-1, ErrRegister, "%d registers to clear with %d registers", f.NumClear, f.NumRegs)
 	}
-	if f.NumCaches > len(f.Keys) {
+	if f.NumCaches < 0 || f.NumCaches > len(f.Keys) {
 		return v.errorf(-1, ErrIndex, "%d inline caches with %d keys", f.NumCaches, len(f.Keys))
+	}
+	if f.NumGlobalCaches < 0 {
+		return v.errorf(-1, ErrIndex, "negative global cache count %d", f.NumGlobalCaches)
 	}
 	if parent == nil {
 		return nil
