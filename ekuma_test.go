@@ -3731,3 +3731,32 @@ func TestPromiseTrySpec(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestGeneratorAndAsyncForwardedArgumentsIndex(t *testing.T) {
+	var vm ekuma.VM
+	run(t, &vm, `
+		function* g0() { return [arguments[0], arguments[1], arguments[2]].join(":"); }
+		function* g1(a) { return [a, arguments[0], arguments[1], arguments[2]].join(":"); }
+		async function a0() { return [arguments[0], arguments[1]].join(":"); }
+		async function a1(a) { return [a, arguments[0], arguments[1]].join(":"); }
+		async function* ag0() { yield arguments[0]; yield arguments[1]; }
+
+		let out = [];
+		out.push(g0(10, 20).next().value);
+		out.push(g1(1, 2, 3).next().value);
+		a0(30, 40).then(v => out.push(v));
+		a1(5, 6).then(v => out.push(v));
+		(async () => {
+			const it = ag0(70, 80);
+			out.push((await it.next()).value + ":" + (await it.next()).value);
+		})();
+		globalThis.__out = out;
+	`)
+	if _, err := vm.AwaitJobs(t.Context()); err != nil {
+		t.Fatalf("AwaitJobs: %v", err)
+	}
+	res := run(t, &vm, `globalThis.__out.join("|")`)
+	if want := "10:20:|1:1:2:3|30:40|5:5:6|70:80"; res != want {
+		t.Errorf("got %q, want %q", res, want)
+	}
+}
