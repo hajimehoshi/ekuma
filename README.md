@@ -163,9 +163,9 @@ See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
 - Native builds load named time zones from system zoneinfo and Go's `time.LoadLocation` sources.
   With `GOOS=js`, the host's `Intl.DateTimeFormat` must also recognize the zone. Local `Date`
   operations use the JavaScript host's `Date` by default.
-- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar, `toLocale*String`
-  uses a fixed English format, `localeCompare` compares normalized code units, and case
-  conversion ignores the locale.
+- Without [Intl](#intl), `Temporal` supports only the `iso8601` calendar, the `toLocale*String`
+  methods of `Date` use a fixed English format and those of numbers ignore the locale,
+  `localeCompare` compares normalized code units, and case conversion ignores the locale.
 - `Intl.Collator` follows the CLDR root collation, in which Han characters sort by code point,
   and the tailorings of CLDR; ICU sorts Han by radical and stroke in the root
 - `Intl.Segmenter` uses dictionary word boundaries for Chinese, Japanese, Thai, Khmer and
