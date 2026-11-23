@@ -10,8 +10,8 @@ import (
 
 // The errors that [Func.Validate] reports in a [ValidationError].
 var (
-	// ErrOpcode is an instruction whose opcode does not exist.
-	ErrOpcode = errors.New("bytecode: unknown opcode")
+	// ErrOpcode is an opcode that is unknown or invalid for the function.
+	ErrOpcode = errors.New("bytecode: invalid opcode")
 
 	// ErrRegister is a register outside the registers of the function.
 	ErrRegister = errors.New("bytecode: register out of range")
@@ -395,6 +395,10 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 func (v *validator) special(pc int, in Instr) error {
 	code := v.f.Code
 	switch in.Op {
+	case OpGetArgsIndex:
+		if v.f.IsGenerator || v.f.IsAsync {
+			return v.errorf(pc, ErrOpcode, "indexed arguments read requires a stack frame with the surplus arguments")
+		}
 	case OpGetPropChain:
 		// The instruction may run the next one.
 		if pc+1 >= len(code) || code[pc+1].Op != OpGetProp && code[pc+1].Op != OpGetPropChain || code[pc+1].B != in.A {

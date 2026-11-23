@@ -91,6 +91,24 @@ func TestValidate(t *testing.T) {
 			pc:  3,
 		},
 		{
+			name: "indexed arguments read in a generator",
+			breakFunc: func(f *bytecode.Func) {
+				f.IsGenerator = true
+				f.Code[0].Op = bytecode.OpGetArgsIndex
+			},
+			err: bytecode.ErrOpcode,
+			pc:  0,
+		},
+		{
+			name: "indexed arguments read in an async function",
+			breakFunc: func(f *bytecode.Func) {
+				f.IsAsync = true
+				f.Code[0].Op = bytecode.OpGetArgsIndex
+			},
+			err: bytecode.ErrOpcode,
+			pc:  0,
+		},
+		{
 			name: "call arguments past the registers",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[6].C = 2
