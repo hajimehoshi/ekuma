@@ -79,3 +79,7 @@ dtfmttst.cpp/timeZoneName 3387 "GMT"
 # Intl canonicalizes sh to sr-Latn. ICU expects different selections for
 # sr-Latn and sh under the same settings on lines 1392 and 1393.
 localeMatcherTest.txt 1393 sr
+# A request whose script is too far from every candidate still takes its
+# lookup match, where ICU returns the default.
+localeMatcherTest.txt 1396 nl
+localeMatcherTest.txt 1910 he

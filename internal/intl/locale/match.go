@@ -322,6 +322,7 @@ func (m Matcher) matchingLocale(t Tag, bestFit bool) (string, int) {
 	if !bestFit || prefix == name {
 		return prefix, 0
 	}
+	lookup := prefix
 	if t.Language == "und" {
 		if t.Script == "" && t.Region == "" {
 			return prefix, 0
@@ -335,6 +336,9 @@ func (m Matcher) matchingLocale(t Tag, bestFit bool) (string, int) {
 		want, ok = lookupLikelySubtags(t.LanguageID, "und-"+t.Script)
 	}
 	if !ok {
+		if prefix == "" && lookup != "" {
+			return lookup, lookupDistance
+		}
 		return prefix, 0
 	}
 	index := m.likely
@@ -356,8 +360,16 @@ func (m Matcher) matchingLocale(t Tag, bestFit bool) (string, int) {
 			best, bestDistance = l, distance
 		}
 	}
+	if best == "" && lookup != "" {
+		return lookup, lookupDistance
+	}
 	return best, bestDistance
 }
+
+// lookupDistance is the distance of a lookup match that best-fit matching rejects.
+// ECMA-402 expects a best-fit result to be at least as good as the lookup result,
+// so such a match stays acceptable, as the farthest one.
+const lookupDistance = cldr.DefaultScriptDistance - 1
 
 // ICU uses the distance between US and British English as the cost of moving
 // one position down the requested locale list.

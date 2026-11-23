@@ -59,8 +59,9 @@ related languages, and default selection. The Intl matcher runs 415 of 929
 rows with the fixture's exact candidates and default. Exclusions cover script
 preference (427), unavailable candidates such as `en-XA` (79), custom thresholds
 (4), and empty candidate sets without a default (4). ECMA-402 leaves best-fit
-matching implementation-defined. One difference remains for `sh`, which Intl
-canonicalizes to `sr-Latn`. [Known results](testdata/icu-failures.txt)
+matching implementation-defined. Three differences remain: one for `sh`, which
+Intl canonicalizes to `sr-Latn`, and two requests whose script matches no
+candidate, which keep their lookup match. [Known results](testdata/icu-failures.txt)
 
 ## Locale information and supported values
 

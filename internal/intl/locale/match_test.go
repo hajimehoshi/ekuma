@@ -104,3 +104,37 @@ func TestBestFitRegionAmongRelatedLanguages(t *testing.T) {
 		t.Errorf("matched %q, want nb-SJ", got)
 	}
 }
+
+func TestBestFitLookupFallback(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		available []string
+		requested []string
+		want      string
+	}{
+		{
+			name:      "script beyond the threshold",
+			available: []string{"en", "ha"},
+			requested: []string{"ha-Arab"},
+			want:      "ha",
+		},
+		{
+			name:      "undetermined language with an unknown script",
+			available: []string{"en", "und"},
+			requested: []string{"und-Zzzz"},
+			want:      "und",
+		},
+		{
+			name:      "later close match",
+			available: []string{"en", "ha", "fr"},
+			requested: []string{"ha-Arab", "fr"},
+			want:      "fr",
+		},
+	} {
+		m := locale.NewMatcher(tc.available)
+		got, _ := m.Match(tc.requested, "en", true)
+		if got != tc.want {
+			t.Errorf("%s: matched %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}

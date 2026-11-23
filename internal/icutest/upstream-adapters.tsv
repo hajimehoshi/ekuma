@@ -127,6 +127,6 @@ reldatefmttest.cpp	cppRelative (relative.go:83)	379 cases executed	0	4 custom fr
 crelativedateformattest.c	cRelative (relative_parts.go:84)	266 cases executed	0	22 custom fraction digits | 22 standalone capitalization context | 45 weekday unit
 RelativeDateTimeFormatterTest.java	javaRelative (relative.go:157)	30 cases executed	0	0 reported
 caltestdata.h	runLunarMapping (calendar.go:149)	14610 cases executed	0	60 mapping disabled in ICU's table
-localeMatcherTest.txt	runLocaleMatcher (locale_matcher.go:19)	110 groups / 415 cases executed	1	4 custom threshold | 4 empty candidate set without a default | 427 script preference | 79 unsupported candidate set
+localeMatcherTest.txt	runLocaleMatcher (locale_matcher.go:19)	110 groups / 415 cases executed	3	4 custom threshold | 4 empty candidate set without a default | 427 script preference | 79 unsupported candidate set
 likelySubtags.txt	runLikelySubtagsTest (locale.go:16)	1856 rows executed	0	0 reported
 localeCanonicalization.txt	runLocaleCanonicalizationTest (locale.go:33)	1777 rows executed	0	0 reported
