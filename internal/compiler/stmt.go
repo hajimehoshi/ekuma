@@ -1056,7 +1056,7 @@ func (f *fn) try(s *ast.TryStmt) {
 				_, simple := s.Param.(*ast.Identifier)
 				for _, d := range s.CatchScope.Decls {
 					b := f.declare(d.Name, bindLet)
-					b.catch = true
+					b.catch = simple
 					if !simple {
 						b.tdz = true
 						f.emit(bytecode.OpLoadTDZ, b.reg, 0, 0)

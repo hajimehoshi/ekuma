@@ -3573,3 +3573,19 @@ func TestDecoratorAddInitializerAfterThrow(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestDirectEvalDestructuredCatch(t *testing.T) {
+	var vm ekuma.VM
+	got := run(t, &vm, `
+		let catchErr = "";
+		try {
+			try { throw { e: 1 }; } catch ({ e }) { eval("var e = 2"); }
+		} catch (e) {
+			catchErr = e.name;
+		}
+		catchErr;
+	`)
+	if want := "SyntaxError"; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
