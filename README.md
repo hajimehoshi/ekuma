@@ -136,6 +136,11 @@ jobs that the waiting VM runs at the end of its current or next outermost call f
 53,791 of the 53,795 tests of [test262](https://github.com/tc39/test262) pass (99.99%). The other
 4 fail for known reasons, which [`test262-failures.txt`](internal/jstest/testdata/test262-failures.txt) lists.
 
+Ekuma checks its pure Go implementation of `Intl` (ECMA-402) against ICU’s own tests for
+collation, segmentation, and locale-aware formatting. The suite also checks Unicode normalization
+and `Temporal` calendars. Across the pinned ICU 78.3 and 79.1 fixtures, all 129 subtests passed
+with 289 expected differences and zero unexpected failures. See the [ICU coverage inventory](internal/icutest/upstream-inventory.md).
+
 ### Implemented
 
 - Nearly all of the syntax and standard library up to ES2026 and Annex B, with `RegExp` on its own
