@@ -63,11 +63,6 @@ cdateintervalformattest.c/formatRangeToParts 396 "shared day 27\nshared literal 
 
 # Single-date pattern selection.
 
-# The web-compatible formatter replaces U+202F with U+0020.
-dtptngts.cpp/format 111,113,118,132,134,139,153,174,195,293,295,300 web-spaces
-dtptngts.cpp/format 304,381,382,383,384,387 web-spaces
-dtptngts.cpp/formatToParts/fields 195 web-spaces
-
 # Intl requests the skeleton hour width. ICU MATCH_NO_OPTIONS uses the
 # width of the locale pattern, including in date/time combinations.
 dtptngts.cpp/format 385 "Oct 14, 1999, 06:58:59 AM"

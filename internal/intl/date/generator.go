@@ -203,6 +203,11 @@ func (g *generator) bestRaw(req *skeleton, mask int, info *distanceInfo) *genPat
 	var best *genPattern
 	var tmp distanceInfo
 	for _, e := range g.patterns {
+		// A two-digit year pattern can include a literal marking an abbreviated year.
+		numericYears := req.types[fieldYear] > 0 && e.skel.types[fieldYear] > 0
+		if numericYears && req.lens[fieldYear] != 2 && e.skel.lens[fieldYear] == 2 {
+			continue
+		}
 		d := req.distance(e.skel, mask, &tmp)
 		if d < bestDistance || d == bestDistance && bestMissing < tmp.missing {
 			bestDistance = d

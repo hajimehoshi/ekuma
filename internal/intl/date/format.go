@@ -189,10 +189,28 @@ func NewFormatter(f *Format, nu string, tz temporal.TimeZone) *Formatter {
 	}
 }
 
+// FormatSkeleton formats t (Unix milliseconds) with ICU's default skeleton
+// matching and the locale's original spacing.
+func FormatSkeleton(l, cal, nu, skeleton string, tz temporal.TimeZone, t int64) string {
+	l = withKeyword(l, "nu", nu)
+	p := generatorFor(l, cal).bestPattern(skeleton, matchOptions{})
+	f := newFormat(l, cal, p)
+	fm := NewFormatter(f, nu, tz)
+	var b strings.Builder
+	for _, part := range fm.formatItems(f.items, t, false, f.patternNumbers(p)) {
+		b.WriteString(part.Value)
+	}
+	return b.String()
+}
+
 // Format returns the parts of the date t milliseconds since the epoch. A plain date is
 // formatted as wall-clock time, without a time zone.
 func (fm *Formatter) Format(t int64, plain bool) []Part {
-	return fm.formatItems(fm.f.items, t, plain, fm.f.numbers)
+	parts := fm.formatItems(fm.f.items, t, plain, fm.f.numbers)
+	for i := range parts {
+		parts[i].Value = webCompatible(parts[i].Value)
+	}
+	return parts
 }
 
 // zoneAt returns the time zone at t, which is UTC for a plain date.
@@ -239,9 +257,6 @@ func (fm *Formatter) formatItems(items []item, t int64, plain bool, numbers stri
 			continue
 		}
 		parts = append(parts, Part{Type: typ, Value: v})
-	}
-	for i := range parts {
-		parts[i].Value = webCompatible(parts[i].Value)
 	}
 	return parts
 }

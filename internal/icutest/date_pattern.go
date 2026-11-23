@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ekuma"
+	"github.com/hajimehoshi/ekuma/internal/intl/date"
+	"github.com/hajimehoshi/ekuma/internal/temporal"
 )
 
 type datePatternSuite struct {
@@ -241,6 +243,16 @@ func (s *datePatternSuite) fixed(line int, id, skeleton string, instant time.Tim
 		s.excluded[reason]++
 		return
 	}
+	tz, ok := temporal.GetAvailableNamedTimeZone(zone, temporal.UTC)
+	if !ok {
+		s.t.Fatalf("%s:%d: unknown time zone %q", s.path, line, zone)
+	}
+	s.executed++
+	got := date.FormatSkeleton(loc, opts["calendar"].(string), opts["numberingSystem"].(string), skeleton, tz, instant.UnixMilli())
+	if got != want {
+		s.t.Errorf("%s:%d: skeleton %q (%s %v, %s): got %q, want %q", s.path, line, skeleton, loc, opts, instant, got, want)
+	}
+	want = strings.ReplaceAll(want, "\u202f", " ")
 	s.check(line, "format", s.observe, want, loc, opts, instant.UnixMilli(), skeleton, "text")
 	numbers := dateDigits.FindAllString(want, -1)
 	var values []any

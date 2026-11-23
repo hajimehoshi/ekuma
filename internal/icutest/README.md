@@ -46,8 +46,9 @@ the test. [Known results](testdata/icu-failures.txt)
 
 `dtptngts.cpp`, `udatpg_test.c`, and `DateTimeGeneratorTest.java` cover
 field widths, hour cycles, fractional seconds, eras, and day periods.
-When ICU supplies formatted text, the adapter checks the exact string and
-the part types and values it identifies. For pattern-only rows, the adapter
+When ICU supplies formatted text, the adapter checks the exact Unicode
+string for the ICU skeleton, then checks JavaScript text and parts with
+web-compatible spacing. For pattern-only rows, the adapter
 checks field order, widths, and rendered literals, including web-compatible
 spacing. [Known results](testdata/icu-failures.txt)
 
