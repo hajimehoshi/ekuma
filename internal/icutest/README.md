@@ -178,3 +178,12 @@ text and UTF-16 boundaries determine each iterator record and up to five
 supplies `isWordLike` for matching spans. Exclusions cover line and title
 breaking, sentence suppression, and custom rules. One POSIX English row
 differs on word boundaries around punctuation. [Known results](testdata/icu-failures.txt) · [Ekuma dictionary and surrogate regressions](../../intl/intl_test.go#L228-L242) · [Test262 index coercion](https://github.com/tc39/test262/blob/2e58f87d8350ad51224617a041c6e041d52f8444/test/intl402/Segmenter/prototype/segment/containing/one-index.js) · [V8 word lookup](https://github.com/v8/v8/blob/31a217159f038ccf8306f6da561bae54c0c0bb86/test/intl/segmenter/word-containing.js)
+
+## Upstream suite inventory
+
+The inventory maps ICU4C and ICU4J suite registrations and fixtures at both
+pins to Ekuma, Test262, and V8 cases. It records an Eastern Armenian casing
+difference and prioritizes gaps in emoji segmentation and regex captures.
+Each runnable ICU subtest lists its source selections, expected differences,
+and exclusions. The path counts can be verified from the two Git trees.
+[Prioritized gaps and accounting](upstream-inventory.md) · [Upstream paths and test groups](upstream-paths.tsv)
