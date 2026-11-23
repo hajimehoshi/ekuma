@@ -9,20 +9,11 @@ adapters read fixtures from the external checkouts. [Pins and default cache path
 # Full suite
 go test -count=1 -v -run '^TestICU$' .
 
-# Stage 17 calendar arithmetic and era boundaries
-GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^calendar-arithmetic$' .
-
-# Stage 16 duration and multi-unit formatting
-GOMAXPROCS=2 go test -p=1 -parallel=2 -count=1 -v -run '^TestICU$/^duration$' .
-
-# Stage 15 locale information and supported values
-go test -count=1 -v -run '^TestICU$/^locale-info$' .
-
 # One fixture
 go test -count=1 -v -run '^TestICU$/^TimeZoneAliases\.txt$' .
 ```
 
-Use a fixture name after `^TestICU$/` to run one subtest. Verbose output
+Use a fixture or group name after `^TestICU$/` to run one subtest. Verbose output
 reports executed cases, exclusions by reason, and known differences.
 Listed differences still run. A changed result or an unexpected pass fails
 the test. [Known results](testdata/icu-failures.txt)
