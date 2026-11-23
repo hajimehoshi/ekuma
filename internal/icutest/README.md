@@ -167,7 +167,8 @@ contractions, Danish, Finnish, Turkish and pinyin ordering, and Thai vowel
 reordering. The Thai dictionary in `riwords.txt` permits ties between adjacent
 words. ICU4J supplies numeric comparisons with leading zeros and non-ASCII
 digits. The 45 long-number comparisons in `cmsccoll.c` cover the 254-digit
-segment boundary. All 34,804 comparisons pass.
+segment boundary. Japanese primary and secondary comparisons check kana
+and voicing marks. The Korean tertiary pair checks Hangul syllable order.
 
 ## Unicode property and identifier boundaries
 

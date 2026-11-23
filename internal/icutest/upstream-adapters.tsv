@@ -18,14 +18,16 @@ NormalizationTest.txt	runNormalizationTest (normalization.go:40)	20034 rows	0	0 
 NormalizationTest-3.2.0.txt	runNormalizationTest (normalization.go:40)	246 rows	0	16746 duplicate rows
 CollationTest_NON_IGNORABLE_SHORT.txt	runOrderedCollation (collation.go:69)	206298 input rows, 206266 comparisons executed (pairs)	0	31 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8
 CollationTest_SHIFTED_SHORT.txt	runOrderedCollation (collation.go:69)	227809 input rows, 227777 comparisons executed (pairs)	0	31 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8
-locale-collation/regcoll.cpp	regressions (locale_collation.go:92)	7 cases executed	0	0 reported
-locale-collation/frcoll.cpp	french (locale_collation.go:118)	682 cases executed	0	0 reported
-locale-collation/ficoll.cpp	pairTables (locale_collation.go:138)	5 cases executed	0	0 reported
-locale-collation/trcoll.cpp	pairTables (locale_collation.go:138)	11 cases executed	0	0 reported
-locale-collation/thcoll.cpp	thai (locale_collation.go:160)	39 cases executed	0	1 TestReordering/testcontraction uses the custom rule & c < ab
-locale-collation/riwords.txt	thaiDictionary (locale_collation.go:173)	32894 cases executed	0	0 reported
-locale-collation/cmsccoll.c	longNumbers (locale_collation.go:188)	45 cases executed	0	0 reported
-locale-collation/CollationMiscTest.java	javaCases (locale_collation.go:227)	1121 cases executed	0	0 reported
+locale-collation/regcoll.cpp	regressions (locale_collation.go:96)	7 cases executed	0	0 reported
+locale-collation/frcoll.cpp	french (locale_collation.go:122)	682 cases executed	0	0 reported
+locale-collation/ficoll.cpp	pairTables (locale_collation.go:142)	5 cases executed	0	0 reported
+locale-collation/trcoll.cpp	pairTables (locale_collation.go:142)	11 cases executed	0	0 reported
+locale-collation/thcoll.cpp	thai (locale_collation.go:164)	39 cases executed	0	1 TestReordering/testcontraction uses the custom rule & c < ab
+locale-collation/jacoll.cpp	kana (locale_collation.go:265)	6 cases executed	0	0 reported
+locale-collation/lcukocol.cpp	pairTables (locale_collation.go:142)	1 cases executed	0	0 reported
+locale-collation/riwords.txt	thaiDictionary (locale_collation.go:177)	32894 cases executed	0	0 reported
+locale-collation/cmsccoll.c	longNumbers (locale_collation.go:192)	45 cases executed	0	0 reported
+locale-collation/CollationMiscTest.java	javaCases (locale_collation.go:231)	1121 cases executed	0	0 reported
 collationtest.txt	runCollationTest (collation_cases.go:274)	1457 input rows, 470 comparisons executed (pairs)	0	6 Ekuma shifts through punctuation; ICU maxVariable=currency also shifts symbols and currency | 3 ICU locale keywords select backwards secondary and shift through currency | 5 ICU orders unpaired UTF-16 surrogates separately; Ekuma compares well-formed UTF-8 | 8 ICU shifts only spaces and disables normalization with this locale's keywords | 6 ICU shifts only spaces; Ekuma also shifts punctuation | 912 custom ICU tailoring requires a run-time rule builder | 47 explicit ICU script reordering is unavailable
 numberpermutationtest.txt	runNumberPermutations (number_permutations.go:125)	2484 cases executed	0	747 Intl cannot force a decimal separator after an integer | 990 Intl cannot pad or force the sign of the exponent | 873 Intl cannot truncate the integer part to four digits | 756 furlong is not an ECMA-402 sanctioned unit
 CompactDecimalFormatTest.java	runCompactSerbian (number.go:224)	20 cases executed	0	0 reported

@@ -104,7 +104,7 @@
 1	1	support	build	input	icu4c/source/test/cintltst/cintltst.vcxproj.filters	-	-	79.1	-
 1	1	suite source	collator-api	outside	icu4c/source/test/cintltst/citertst.c	addCollIterTest [TestPrevious, TestOffset]	-	78.3	-
 1	1	support	native-header	input	icu4c/source/test/cintltst/citertst.h	-	-	79.1	-
-1	1	suite source	collation	proposed	icu4c/source/test/cintltst/cjaptst.c	addKannaCollTest [TestTertiary, TestBase]	-	78.3	Proposal 2
+1	1	suite source	collation	overlap	icu4c/source/test/cintltst/cjaptst.c	addKannaCollTest [TestTertiary, TestBase]	-	78.3	TestICU/locale-collation/jacoll.cpp
 1	1	support	native-header	input	icu4c/source/test/cintltst/cjaptst.h	-	-	79.1	-
 1	1	suite source	locale	overlap	icu4c/source/test/cintltst/cldrtest.c	addCLDRTest [TestLocaleStructure, TestCurrencyList]	-	79.1	TestICU/locale-info/icu4c/source/data/curr/en.txt (currency enumeration)
 1	1	suite source	locale	adapter	icu4c/source/test/cintltst/cloctst.c	addLocaleTest [TestObsoleteNames, TestBasicGetters]	display-names/cloctst.c	79.1	-
@@ -358,11 +358,11 @@
 1	1	support	native-header	input	icu4c/source/test/intltest/ittrans.h	-	-	79.1	-
 1	1	suite source	harness	input	icu4c/source/test/intltest/itutil.cpp	IntlTestUtilities, ErrorCodeTest, LocalPointerTest, EnumSetTest, UHashTest [TestErrorCode, TestSubclass]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/itutil.h	-	-	79.1	-
-1	1	suite source	collation	proposed	icu4c/source/test/intltest/jacoll.cpp	CollationKanaTest [TestTertiary, TestBase]	-	78.3	Proposal 2
+1	1	suite source	collation	adapter	icu4c/source/test/intltest/jacoll.cpp	CollationKanaTest [TestTertiary, TestBase]	locale-collation/jacoll.cpp	78.3	-
 1	1	support	native-header	input	icu4c/source/test/intltest/jacoll.h	-	-	79.1	-
 1	1	suite source	translit	outside	icu4c/source/test/intltest/jamotest.cpp	JamoTest [TestJamo, TestRealText]	-	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/jamotest.h	-	-	79.1	-
-1	1	suite source	collation	proposed	icu4c/source/test/intltest/lcukocol.cpp	LotusCollationKoreanTest [TestTertiary]	-	78.3	Proposal 2
+1	1	suite source	collation	adapter	icu4c/source/test/intltest/lcukocol.cpp	LotusCollationKoreanTest [TestTertiary]	locale-collation/lcukocol.cpp	78.3	-
 1	1	support	native-header	input	icu4c/source/test/intltest/lcukocol.h	-	-	79.1	-
 1	1	suite source	list	adapter	icu4c/source/test/intltest/listformattertest.cpp	ListFormatterTest [TestRoot, TestBogus]	listformattertest.cpp, duration/listformattertest.cpp	79.1	-
 1	1	support	native-header	input	icu4c/source/test/intltest/listformattertest.h	-	-	79.1	-
@@ -1026,7 +1026,7 @@
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationFrozenMonkeyTest.java	CollationFrozenMonkeyTest [TestCollationKey, TestCompare]	-	78.3	TestLocaleSensitiveMethods/localeCompare and TestICU/collationtest.txt
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationGermanTest.java	CollationGermanTest [TestTertiary, TestSecondary]	-	78.3	V8 test/intl/collator/de-sort.js
 1	1	suite source	collator-api	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationIteratorTest.java	CollationIteratorTest [TestClearBuffers, TestMaxExpansion]	-	78.3	-
-1	1	suite source	collation	proposed	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationKanaTest.java	CollationKanaTest [TestTertiary, TestBase]	-	78.3	Proposal 2
+1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationKanaTest.java	CollationKanaTest [TestTertiary, TestBase]	-	78.3	TestICU/locale-collation/jacoll.cpp
 1	1	suite source	collation	adapter	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationMiscTest.java	CollationMiscTest [TestComposeDecompose, TestRuleOptions]	locale-collation/CollationMiscTest.java	78.3	-
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationMonkeyTest.java	CollationMonkeyTest [TestCollationKey, TestCompare]	-	78.3	TestLocaleSensitiveMethods/localeCompare and TestICU/collationtest.txt
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationRegressionTest.java	CollationRegressionTest [Test4048446, Test4051866]	-	78.3	TestICU/locale-collation/regcoll.cpp
@@ -1038,7 +1038,7 @@
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationTurkishTest.java	CollationTurkishTest [TestTertiary, TestPrimary]	-	78.3	TestICU/locale-collation/trcoll.cpp
 1	1	source	collator-api	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/Counter.java	-	-	78.3	-
 1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/G7CollationTest.java	G7CollationTest [TestDemo1, TestDemo2]	-	78.3	TestLocaleSensitiveMethods/localeCompare and TestICU/collationtest.txt
-1	1	suite source	collation	proposed	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/LotusCollationKoreanTest.java	LotusCollationKoreanTest [TestTertiary]	-	78.3	Proposal 2
+1	1	suite source	collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/LotusCollationKoreanTest.java	LotusCollationKoreanTest [TestTertiary]	-	78.3	TestICU/locale-collation/lcukocol.cpp
 1	1	suite source	data-collation	overlap	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/UCAConformanceTest.java	UCAConformanceTest [TestTableNonIgnorable, TestTableShifted]	-	78.3	TestICU/CollationTest_NON_IGNORABLE_SHORT.txt, TestICU/CollationTest_SHIFTED_SHORT.txt
 1	1	suite source	locale-api	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/format/GlobalizationPreferencesTest.java	GlobalizationPreferencesTest [TestDefault, TestFreezable]	-	79.1	-
 1	1	suite source	rbnf	outside	icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/format/RbnfLenientScannerTest.java	RbnfLenientScannerTest [TestDefaultProvider, TestEnglishSpellout]	-	79.1	-

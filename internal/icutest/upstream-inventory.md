@@ -7,7 +7,6 @@ each applicable gap has a maintained test or a linked issue. [Tracker](https://g
 ## Proposed follow-ups in priority order
 
 1. **Persian New Year.** Check both conversion directions across ISO 1997-03-20 and 1997-03-21, corresponding to Persian 1375-12-30 and 1376-01-01. [TestMapping][persian]
-2. **Japanese and Korean collation.** Check Japanese base sensitivity against `カ < カキ < キ < キキ`, and Korean variant sensitivity against `가 < 각`. [Japanese table][kana] · [Korean pair][korean]
 
 ## Scope and verification
 
@@ -38,5 +37,3 @@ go run internal/icutest/verify_inventory.go "$EKUMA_ICU" "$EKUMA_ICU_CLDR"
 ```
 
 [persian]: https://github.com/unicode-org/icu/blob/ddc6b66926bfac6036144ca9902992a0d6d50af9/icu4j/main/core/src/test/java/com/ibm/icu/dev/test/calendar/PersianTest.java#L24
-[kana]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/intltest/jacoll.cpp#L67
-[korean]: https://github.com/unicode-org/icu/blob/21d1eb0f306e1141c10931e914dfc038c06121da/icu4c/source/test/intltest/lcukocol.cpp#L53

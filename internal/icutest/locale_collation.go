@@ -52,6 +52,10 @@ func runLocaleCollation(t *testing.T, dir string, failures map[string]map[int]st
 		s.pairTables(src, "tr", 8, false)
 	})
 	runSource(intltest+"thcoll.cpp", (*tailoredCollation).thai)
+	runSource(intltest+"jacoll.cpp", (*tailoredCollation).kana)
+	runSource(intltest+"lcukocol.cpp", func(s *tailoredCollation, src intervalSource) {
+		s.pairTables(src, "ko-KR", 1, false)
+	})
 	run("icu4c/source/test/testdata/riwords.txt", (*tailoredCollation).thaiDictionary)
 	runSource("icu4c/source/test/cintltst/cmsccoll.c", (*tailoredCollation).longNumbers)
 	runSource("icu4j/main/collate/src/test/java/com/ibm/icu/dev/test/collator/CollationMiscTest.java", (*tailoredCollation).javaCases)
@@ -255,5 +259,26 @@ func (s *tailoredCollation) javaCases(src intervalSource) {
 	check = s.comparator("TestNumericCollation/lastDigitDifferent", "en", options)
 	for i := 0; i < len(values); i += 2 {
 		check(line, values[i], values[i+1], "<")
+	}
+}
+
+func (s *tailoredCollation) kana(src intervalSource) {
+	for _, tc := range []struct {
+		table, sensitivity string
+	}{
+		{
+			table:       "testBaseCases",
+			sensitivity: "base",
+		},
+		{
+			table:       "testPlainDakutenHandakutenCases",
+			sensitivity: "accent",
+		},
+	} {
+		check := s.comparator(tc.table, "ja-JP", map[string]any{"sensitivity": tc.sensitivity})
+		words := collationWords(src, "::"+tc.table+"[][")
+		for i := 1; i < len(words); i++ {
+			check(words[i].line, words[i-1].text, words[i].text, "<")
+		}
 	}
 }
