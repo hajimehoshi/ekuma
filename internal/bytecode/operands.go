@@ -1448,6 +1448,17 @@ var opcodes = [...]struct {
 		flow:     FlowNext,
 	},
 
+	OpGenFinally: {
+		name: "OpGenFinally",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandInt,
+			Reads:  []Regs{{At: FieldA, Offset: 1, Len: 1}},
+			Writes: regPairA,
+		},
+		flow: FlowNext,
+	},
+
 	OpNewObject: {
 		name: "OpNewObject",
 		operands: Operands{

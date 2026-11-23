@@ -2632,6 +2632,15 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			ag.frames = ag.frames[:n]
 			// A generator only ever runs as the frame its loop was started for.
 			return v, execYield
+		case bytecode.OpGenFinally:
+			if regs[i.A+1].o == closeSignal {
+				g := ag.frames[len(ag.frames)-1].gen
+				regs[i.A+1] = g.closeValue
+				g.closeValue = Undefined
+				regs[i.A] = Number(float64(i.B))
+			} else {
+				regs[i.A] = Number(1)
+			}
 		case bytecode.OpGenResumeMode:
 			g := ag.frames[len(ag.frames)-1].gen
 			regs[i.A] = Number(float64(g.mode))

@@ -190,6 +190,7 @@ type ctl struct {
 	valueReg int32
 	toFinal  []int
 	pending  []pendingExit
+	returnID int32 // The pending return shared by all exits that return through this finally.
 
 	// For ctlFinally: the scope whose using declarations it disposes, or nil for a try statement.
 	disposes *scope

@@ -29,7 +29,7 @@ const (
 )
 
 // closeSignal is thrown through a suspended generator to make it return:
-// only finally blocks intercept it. The value to return is generator.closeValue.
+// only finally handlers intercept it. A JavaScript finally block saves the return value in its frame.
 var closeSignal = &Object{kind: kindHole}
 
 // generator is the suspended activation of a generator or async function.

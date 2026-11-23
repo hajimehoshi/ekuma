@@ -261,6 +261,7 @@ const (
 	OpAwait               // suspend until the value b, as a promise, settles; a receives its value
 	OpYieldDelegateResult // a = the value of the iterator result b; jump to c when it is not done, yielding b as it is
 	OpGenResumeMode       // a = the Resume kind with which the generator was resumed
+	OpGenFinally          // enter a finally handler with the exception in a+1: a = 1 for a throw, or a = b and a+1 = the returned value for a generator return
 
 	// Literals.
 	OpNewObject       // a = {}, with room for c properties

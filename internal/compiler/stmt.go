@@ -234,12 +234,7 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 			}
 		case ctlFinally:
 			// Continue the jump after the finally block.
-			id := int32(len(c.pending) + 2)
-			c.pending = append(c.pending, pendingExit{
-				id:     id,
-				kind:   kind,
-				target: target,
-			})
+			id := c.addPendingExit(kind, target)
 			if kind == exitReturn && value != c.valueReg {
 				f.emit(bytecode.OpMove, c.valueReg, value, 0)
 			}
@@ -264,6 +259,22 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 		}
 		f.emit(bytecode.OpReturn, value, 0, 0)
 	}
+}
+
+func (c *ctl) addPendingExit(kind exitKind, target *ctl) int32 {
+	id := int32(len(c.pending) + 2)
+	if kind == exitReturn {
+		if c.returnID != 0 {
+			return c.returnID
+		}
+		c.returnID = id
+	}
+	c.pending = append(c.pending, pendingExit{
+		id:     id,
+		kind:   kind,
+		target: target,
+	})
+	return id
 }
 
 // iterClose closes the iterator of the for-of or for-await loop c that is left normally.
@@ -313,12 +324,8 @@ func (f *fn) disposing(async bool, body func()) {
 	sc.dispose = f.newReg()
 	sc.hasDispose = true
 	f.emit(bytecode.OpLoadUndef, sc.dispose, 0, 0)
-	fin := &ctl{
-		kind:     ctlFinally,
-		kindReg:  f.newReg(),
-		valueReg: f.newReg(),
-		disposes: sc,
-	}
+	fin := f.newFinally()
+	fin.disposes = sc
 	v := f.newReg()
 	f.control = append(f.control, fin)
 	start := f.pc()
@@ -344,6 +351,15 @@ func (f *fn) disposing(async bool, body func()) {
 	f.leaveFinally(fin)
 }
 
+func (f *fn) newFinally() *ctl {
+	kind := f.newRegs(2)
+	return &ctl{
+		kind:     ctlFinally,
+		kindReg:  kind,
+		valueReg: kind + 1,
+	}
+}
+
 // enterFinally ends the region that the finally block of fin covers, which starts at start, and
 // starts the code that runs for every completion of the region. The registers of the region
 // come after those of fin. done lists the jumps that complete the region normally.
@@ -356,7 +372,13 @@ func (f *fn) enterFinally(fin *ctl, start int32, done []int) {
 	// An exception from the region: remember it and run the finally block. Unwinding to the
 	// handler detaches the upvalues from fin.valueReg on, which include those of the region.
 	f.addHandler(start, covered, f.pc(), fin.valueReg, true)
-	f.emit(bytecode.OpLoadInt, fin.kindReg, 1, 0)
+	if f.f.IsGenerator {
+		// A finalizer can yield and receive another return before it finishes.
+		id := fin.addPendingExit(exitReturn, nil)
+		f.emit(bytecode.OpGenFinally, fin.kindReg, id, 0)
+	} else {
+		f.emit(bytecode.OpLoadInt, fin.kindReg, 1, 0)
+	}
 
 	f.patch(normal)
 	f.patchAll(fin.toFinal)
@@ -1022,11 +1044,7 @@ func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {
 func (f *fn) try(s *ast.TryStmt) {
 	var fin *ctl
 	if s.Finalizer != nil {
-		fin = &ctl{
-			kind:     ctlFinally,
-			kindReg:  f.newReg(),
-			valueReg: f.newReg(),
-		}
+		fin = f.newFinally()
 		f.control = append(f.control, fin)
 	}
 	base := f.top
