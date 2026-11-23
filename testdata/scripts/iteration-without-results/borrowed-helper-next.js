@@ -3,13 +3,17 @@
 
 /*---
 description: "A borrowed next method creates each zip row in the helper's realm"
+includes: [realm-assertions.js]
 ---*/
 
-const other = $262.createRealm();
-const local = Iterator.zip([]);
-const zip = other.evalScript("Iterator.zip([[1, 2], [3, 4]])");
-assert.sameValue(Object.getPrototypeOf(local.next.call(zip).value), other.global.Array.prototype);
+const B = $262.createRealm();
+const C = $262.createRealm();
+const check = realmAssertions({ A: $262, B, C });
+const next = B.evalScript("Iterator.zip([]).next");
+const zip = C.evalScript("Iterator.zip([[1, 2], [3, 4]])");
+check.prototype(next.call(zip).value, "C", "Array", "borrowed next: zip row");
 
-zip.next = local.next;
+// The optimized step requires a next method from the realm running destructuring.
+zip.next = Iterator.zip([]).next;
 const [row] = zip;
-assert.sameValue(Object.getPrototypeOf(row), other.global.Array.prototype);
+check.prototype(row, "C", "Array", "destructuring with A's next: zip row");
