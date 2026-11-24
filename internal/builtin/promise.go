@@ -55,36 +55,51 @@ func promiseCombinator(cx *engine.ExecutionContext, c, iterable engine.Value, pe
 	return pc.Promise()
 }
 
-// promiseElements are the values of Promise.all and the like with the count of
-// the elements that are not settled yet.
+// promiseElements collects promise combinator results in input order.
 type promiseElements struct {
 	values    []engine.Value
 	remaining int
 }
 
-// take returns the values once every element is settled, and gives them up, since the functions
-// that settle the elements may stay reachable.
+func newPromiseElements() promiseElements {
+	// The iteration itself counts as pending until it is exhausted.
+	return promiseElements{
+		remaining: 1,
+	}
+}
+
+func (e *promiseElements) reserve() int {
+	index := len(e.values)
+	e.values = append(e.values, engine.Undefined)
+	e.remaining++
+	return index
+}
+
+// complete counts one pending contribution as done and reports whether it was the last.
+func (e *promiseElements) complete() bool {
+	e.remaining--
+	return e.remaining == 0
+}
+
+// take transfers the collected values to the caller.
 func (e *promiseElements) take() []engine.Value {
 	vals := e.values
+	// Element callbacks can stay reachable after settlement.
 	e.values = nil
 	return vals
 }
 
-// keyedPromiseElements are the keys and values of Promise.allKeyed and
-// Promise.allSettledKeyed with the count of the elements that are not settled yet.
+// keyedPromiseElements pairs each reserved slot with its property key.
 type keyedPromiseElements struct {
-	keys      []engine.PropKey
-	values    []engine.Value
-	remaining int
+	promiseElements
+	keys []engine.PropKey
 }
 
 // resolveIfDone resolves pc with the result object when no element is left unsettled.
 func (e *keyedPromiseElements) resolveIfDone(cx *engine.ExecutionContext, pc *engine.PromiseCapability) {
-	e.remaining--
-	if e.remaining == 0 {
-		keys, vals := e.keys, e.values
-		// The functions that settle the elements may stay reachable.
-		e.keys, e.values = nil, nil
+	if e.complete() {
+		keys, vals := e.keys, e.take()
+		e.keys = nil
 		cx.ResolveCapability(pc, engine.ObjectValue(createKeyedPromiseCombinatorResultObject(cx, keys, vals)))
 	}
 }
@@ -124,7 +139,7 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 	keyStatus := cx.Intern("status")
 	keyReason := cx.Intern("reason")
 	e := &keyedPromiseElements{
-		remaining: 1,
+		promiseElements: newPromiseElements(),
 	}
 	for _, k := range cx.OwnKeys(promises) {
 		d, ok := cx.GetOwnProperty(promises, k)
@@ -132,9 +147,8 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 			continue
 		}
 		v := cx.Get(promises, k)
-		i := len(e.values)
+		i := e.reserve()
 		e.keys = append(e.keys, k)
-		e.values = append(e.values, engine.Undefined)
 		next := cx.CallValue(resolve, c, v)
 		called := false
 		var onFulfilled, onRejected engine.Value
@@ -168,7 +182,6 @@ func performPromiseAllKeyed(cx *engine.ExecutionContext, settled bool, promises 
 			}))
 			onRejected = cx.CapabilityReject(pc)
 		}
-		e.remaining++
 		invoke(cx, next, keyThen, onFulfilled, onRejected)
 	}
 	e.resolveIfDone(cx, pc)
@@ -200,12 +213,9 @@ func initPromise(cx *engine.ExecutionContext) {
 	keyReason := cx.Intern("reason")
 
 	method(cx, ctor, "all", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		e := &promiseElements{
-			remaining: 1,
-		}
+		e := newPromiseElements()
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			i := len(e.values)
-			e.values = append(e.values, engine.Undefined)
+			i := e.reserve()
 			called := false
 			onFulfilled := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				if called {
@@ -213,29 +223,23 @@ func initPromise(cx *engine.ExecutionContext) {
 				}
 				called = true
 				e.values[i] = arg(args, 0)
-				e.remaining--
-				if e.remaining == 0 {
+				if e.complete() {
 					cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
 				}
 				return engine.Undefined
 			})
-			e.remaining++
 			invoke(cx, next, keyThen, engine.ObjectValue(onFulfilled), cx.CapabilityReject(pc))
 		}, func(pc *engine.PromiseCapability) {
-			e.remaining--
-			if e.remaining == 0 {
+			if e.complete() {
 				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
 			}
 		})
 	})
 
 	method(cx, ctor, "allSettled", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		e := &promiseElements{
-			remaining: 1,
-		}
+		e := newPromiseElements()
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			i := len(e.values)
-			e.values = append(e.values, engine.Undefined)
+			i := e.reserve()
 			called := false
 			element := func(status string, key *engine.Object) *engine.Object {
 				return cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
@@ -248,8 +252,7 @@ func initPromise(cx *engine.ExecutionContext) {
 						[]engine.Value{cx.NewString(wtf8.String(status)), arg(args, 0)},
 					)
 					e.values[i] = engine.ObjectValue(o)
-					e.remaining--
-					if e.remaining == 0 {
+					if e.complete() {
 						cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
 					}
 					return engine.Undefined
@@ -257,11 +260,9 @@ func initPromise(cx *engine.ExecutionContext) {
 			}
 			onFulfilled := element("fulfilled", cx.Key(engine.KeyValue))
 			onRejected := element("rejected", keyReason)
-			e.remaining++
 			invoke(cx, next, keyThen, engine.ObjectValue(onFulfilled), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
-			e.remaining--
-			if e.remaining == 0 {
+			if e.complete() {
 				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
 			}
 		})
@@ -276,17 +277,14 @@ func initPromise(cx *engine.ExecutionContext) {
 	})
 
 	method(cx, ctor, "any", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
-		e := &promiseElements{
-			remaining: 1,
-		}
+		e := newPromiseElements()
 		aggregate := func(cx *engine.ExecutionContext) engine.Value {
 			err := cx.NewError(engine.ErrorKindAggregate, "all promises were rejected")
 			cx.Define(err.Object(), cx.Key(engine.KeyErrors), engine.ObjectValue(cx.NewArray(e.take())), engine.FlagsHidden)
 			return err
 		}
 		return promiseCombinator(cx, this, arg(args, 0), func(pc *engine.PromiseCapability, next engine.Value) {
-			i := len(e.values)
-			e.values = append(e.values, engine.Undefined)
+			i := e.reserve()
 			called := false
 			onRejected := cx.NewNative("", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 				if called {
@@ -294,17 +292,14 @@ func initPromise(cx *engine.ExecutionContext) {
 				}
 				called = true
 				e.values[i] = arg(args, 0)
-				e.remaining--
-				if e.remaining == 0 {
+				if e.complete() {
 					cx.RejectCapability(pc, aggregate(cx))
 				}
 				return engine.Undefined
 			})
-			e.remaining++
 			invoke(cx, next, keyThen, cx.CapabilityResolve(pc), engine.ObjectValue(onRejected))
 		}, func(pc *engine.PromiseCapability) {
-			e.remaining--
-			if e.remaining == 0 {
+			if e.complete() {
 				cx.Throw(aggregate(cx))
 			}
 		})
