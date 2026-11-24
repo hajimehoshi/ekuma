@@ -82,16 +82,7 @@ func (ag *agent) throwNotConstructor(fp *funcProto, pc int, regs []Value) {
 func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, strict bool) Value {
 	r := cx.realm
 	g := r.global
-	if p, ok := r.globalLex.shape.lookup(key); ok {
-		v := r.globalLex.slots[p.slot]
-		if v.o == tdzObject {
-			cx.throwTDZ(key)
-		}
-		// c refers only to initialized bindings, which stay initialized, so a hit needs no
-		// check.
-		c.holder = g
-		c.shape = g.shape
-		c.ref = &r.globalLex.slots[p.slot]
+	if v, ok := cx.getGlobalLexical(key, c); ok {
 		return v
 	}
 	if p, ok := g.shape.lookup(key); ok && p.flags&FlagAccessor == 0 {
@@ -101,20 +92,44 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		return g.slots[p.slot]
 	}
 	k := PropKey{key: key}
+	canRunCode := proxyOnChain(g) != nil
 	if !cx.HasProperty(g, k) {
 		if orUndef {
 			return Undefined
 		}
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
-	// GetBindingValue checks for the property again, which only a proxy can observe.
-	if proxyOnChain(g) != nil && !cx.HasProperty(g, k) {
-		if strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+	if canRunCode {
+		// HasBinding can create a lexical binding or remove the property or its prototype.
+		// GetBindingValue selects the binding again in the same global environment.
+		if v, ok := cx.getGlobalLexical(key, c); ok {
+			return v
 		}
-		return Undefined
+		if !cx.HasProperty(g, k) {
+			if strict {
+				cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+			}
+			return Undefined
+		}
 	}
 	return cx.getProp(g, k, Value{o: r.globalThis})
+}
+
+func (cx *ExecutionContext) getGlobalLexical(key *Object, c *globalCache) (Value, bool) {
+	r := cx.realm
+	p, ok := r.globalLex.shape.lookup(key)
+	if !ok {
+		return Undefined, false
+	}
+	slot := &r.globalLex.slots[p.slot]
+	if slot.o == tdzObject {
+		cx.throwTDZ(key)
+	}
+	// Only initialized bindings enter the cache, and they stay initialized.
+	c.holder = r.global
+	c.shape = r.global.shape
+	c.ref = slot
+	return *slot, true
 }
 
 // resolveGlobal returns undefined for a global binding and null for an unresolvable name.

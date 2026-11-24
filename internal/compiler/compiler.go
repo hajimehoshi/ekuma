@@ -314,6 +314,9 @@ type compiler struct {
 	prog *ast.Program
 	file string
 
+	// conservativeAssignments compiles assignment tests with separate operand and destination registers.
+	conservativeAssignments bool
+
 	// lines converts the offsets of prog into lines and columns, for the compiled code and for
 	// errors.
 	lines *srcpos.Table
@@ -588,7 +591,7 @@ func releasePlainBuf[T any](bufs *[][]T, work []T) []T {
 
 // CompileScript compiles the script prog. file names the source in stack traces.
 func CompileScript(prog *ast.Program, file string) (*bytecode.Func, error) {
-	return compile(prog, file, nil, nil)
+	return newCompiler(prog, file).compile(nil, nil)
 }
 
 // CompileFunction compiles the program prog from parser.ParseFunction. The returned script
@@ -596,11 +599,10 @@ func CompileScript(prog *ast.Program, file string) (*bytecode.Func, error) {
 // poll, when not nil, is called now and then during a long compilation, and may stop it by
 // panicking.
 func CompileFunction(prog *ast.Program, file string, poll func()) (*bytecode.Func, error) {
-	return compile(prog, file, prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function), poll)
+	return newCompiler(prog, file).compile(prog.Body[0].(*ast.ExprStmt).Expr.(*ast.Function), poll)
 }
 
-func compile(prog *ast.Program, file string, dynamic *ast.Function, poll func()) (f *bytecode.Func, err error) {
-	c := newCompiler(prog, file)
+func (c *compiler) compile(dynamic *ast.Function, poll func()) (f *bytecode.Func, err error) {
 	defer c.release()
 	c.dynamic = dynamic
 	c.poll = poll
@@ -1518,6 +1520,13 @@ func (f *fn) assignmentScope(n ast.Node, name string) int32 {
 	found := f.emit(bytecode.OpJumpIfNotUndef, 0, scope, 0)
 	f.emit(bytecode.OpResolveGlobal, scope, key, f.globalCache())
 	f.patch(found)
+	return scope
+}
+
+// readAssignment reads name into dst and returns its scope for the matching store.
+func (f *fn) readAssignment(name string, dst int32) int32 {
+	scope := f.resolveName(name)
+	f.loadVarFrom(name, f.resolve(name), dst, false, scope)
 	return scope
 }
 

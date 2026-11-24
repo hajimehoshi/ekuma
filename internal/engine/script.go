@@ -53,13 +53,21 @@ type Script struct {
 // ParseScript implements ParseScript for the current realm. file names the script in error
 // messages. The error is a [*SyntaxError] when src is not a valid script.
 func (cx *ExecutionContext) ParseScript(file string, src wtf8.String) (*Script, error) {
-	fp, err := cx.compileScript(file, src)
+	bc, err := compileScriptCode(file, src)
 	if err != nil {
 		return nil, err
 	}
+	return cx.NewScript(bc), nil
+}
+
+// NewScript binds a compiled script to the current realm and takes ownership of its bytecode.
+func (cx *ExecutionContext) NewScript(code *bytecode.Func) *Script {
 	return &Script{
-		code: fp,
-	}, nil
+		code: cx.link(code, &scriptOrModule{
+			file:  code.File,
+			realm: cx.realm,
+		}),
+	}
 }
 
 // ScriptEvaluation evaluates s and runs pending jobs. completed reports whether
@@ -82,17 +90,6 @@ func (s *Script) CallScript() Value {
 	cx.enteredRealm = s.code.context.realm
 	defer func() { cx.enteredRealm = previous }()
 	return cx.Call(cx.newScriptFunction(s.code), Value{o: cx.realm.globalThis})
-}
-
-func (cx *ExecutionContext) compileScript(file string, src wtf8.String) (*funcProto, error) {
-	bc, err := compileScriptCode(file, src)
-	if err != nil {
-		return nil, err
-	}
-	return cx.link(bc, &scriptOrModule{
-		file:  file,
-		realm: cx.realm,
-	}), nil
 }
 
 // compileScriptCode parses and compiles the script src. The error is a [*SyntaxError] when src is

@@ -5,6 +5,7 @@ package compiler
 
 import (
 	"github.com/hajimehoshi/ekuma/internal/ast"
+	"github.com/hajimehoshi/ekuma/internal/bytecode"
 )
 
 const (
@@ -15,6 +16,13 @@ const (
 	MaxFreeChunks   = maxFreeChunks
 	MaxSearches     = maxSearches
 )
+
+// CompileConservativeScript compiles a script with assignment shortcuts disabled.
+func CompileConservativeScript(prog *ast.Program, file string) (*bytecode.Func, error) {
+	c := newCompiler(prog, file)
+	c.conservativeAssignments = true
+	return c.compile(nil, nil)
+}
 
 // KeptScratch compiles the scripts progs in turn with one scratch set and returns the total
 // capacity of the code buffers and counts of retained function states, symbol and binding

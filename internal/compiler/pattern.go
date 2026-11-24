@@ -137,6 +137,9 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 
 // copyPropertyToGlobal compiles a named property assigned to a global whose binding needs a lookup.
 func (f *fn) copyPropertyToGlobal(prop *ast.PatternProperty, src int32, key wtf8.String) bool {
+	if f.c.conservativeAssignments {
+		return false
+	}
 	id, ok := prop.Value.(*ast.Identifier)
 	if !ok || f.dynDepth(id.Name) != 0 || f.resolve(id.Name).kind != refGlobal || f.c.globalLexical(id.Name) {
 		return false
@@ -172,9 +175,9 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 			continue
 		}
 		// A reference as the target is evaluated before the iterator steps.
-		ref, member := f.elementRef(e, mode)
+		ref, prepared := f.elementRef(e, mode)
 		v := f.newReg()
-		if rest, ok := e.(*ast.RestElement); ok {
+		if _, rest := e.(*ast.RestElement); rest {
 			f.emit(bytecode.OpNewArray, v, 0, 0)
 			t := f.newReg()
 			loop := f.pc()
@@ -182,22 +185,16 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 			f.emit(bytecode.OpArrayPush, v, t, 0)
 			f.jumpTo(loop)
 			f.patchC(done)
-			if member {
-				f.storeElement(ref, v)
-			} else {
-				f.destructure(rest.Target, v, mode)
+		} else {
+			if !prepared {
+				if r := f.targetReg(e, mode); r >= 0 {
+					v = r
+				}
 			}
-			f.free(mark)
-			continue
+			// The step stores undefined when the iterator is done.
+			f.emit(bytecode.OpIterNext, v, it, f.pc()+1)
 		}
-		if !member {
-			if r := f.targetReg(e, mode); r >= 0 {
-				v = r
-			}
-		}
-		// The step stores undefined when the iterator is done.
-		f.emit(bytecode.OpIterNext, v, it, f.pc()+1)
-		if member {
+		if prepared {
 			f.storeElement(ref, v)
 		} else {
 			f.destructure(e, v, mode)
@@ -223,6 +220,9 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 // targetReg returns the register that destructuring stores to for the target e when that
 // store is a plain register write, or -1.
 func (f *fn) targetReg(e ast.Pattern, mode patMode) int32 {
+	if f.c.conservativeAssignments {
+		return -1
+	}
 	id, ok := e.(*ast.Identifier)
 	if !ok {
 		return -1
@@ -239,6 +239,9 @@ func (f *fn) targetReg(e ast.Pattern, mode patMode) int32 {
 // assignableReg returns the register of the local variable name when an assignment to it is a
 // plain register write, or -1.
 func (f *fn) assignableReg(name string) int32 {
+	if f.c.conservativeAssignments {
+		return -1
+	}
 	if b := f.uncheckedLocal(name); b != nil && (b.kind == bindVar || b.kind == bindLet) {
 		return b.reg
 	}

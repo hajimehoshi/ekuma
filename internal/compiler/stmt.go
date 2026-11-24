@@ -99,13 +99,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				break
 			}
 			if r := f.localReg(id.Name); r >= 0 {
-				if f.singleWrite(d.Init) {
-					f.named(d.Init, r, wtf8.String(id.Name))
-				} else {
-					t := f.newReg()
-					f.named(d.Init, t, wtf8.String(id.Name))
-					f.emit(bytecode.OpMove, r, t, 0)
-				}
+				f.assignLocal(d.Init, r, wtf8.String(id.Name))
 				break
 			}
 			scope := f.assignmentScope(id, id.Name)
@@ -132,14 +126,8 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				f.emit(bytecode.OpLoadUndef, b.reg, 0, 0)
 				b.tdz = false
 				b.initialized = true
-			case f.singleWrite(d.Init):
-				f.named(d.Init, b.reg, wtf8.String(id.Name))
-				b.tdz = false
-				b.initialized = true
 			default:
-				t := f.newReg()
-				f.named(d.Init, t, wtf8.String(id.Name))
-				f.emit(bytecode.OpMove, b.reg, t, 0)
+				f.assignLocal(d.Init, b.reg, wtf8.String(id.Name))
 				b.tdz = false
 				b.initialized = true
 			}

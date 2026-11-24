@@ -455,6 +455,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpMove:
 			regs[i.A] = regs[i.B]
 			continue
+		case bytecode.OpRequireCoercible:
+			if !regs[i.A].IsNullish() {
+				continue
+			}
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
@@ -2767,10 +2771,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				fp.context.ThrowReferenceError("super constructor may only be called once")
 			}
 		case bytecode.OpRequireCoercible:
-			if regs[i.A].IsNullish() {
-				ag.frames[len(ag.frames)-1].pc = pc
-				fp.context.ThrowTypeError("cannot destructure '" + ag.DisplayString(regs[i.A]) + "' as it is " + ag.DisplayString(regs[i.A]))
+			ag.frames[len(ag.frames)-1].pc = pc
+			if regs[i.A].IsUndefined() {
+				fp.context.ThrowTypeError("cannot destructure 'undefined' as it is undefined")
 			}
+			fp.context.ThrowTypeError("cannot destructure 'null' as it is null")
 
 		case bytecode.OpForIn:
 			ag.frames[len(ag.frames)-1].pc = pc

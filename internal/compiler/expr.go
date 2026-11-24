@@ -100,6 +100,9 @@ func (f *fn) pure(e ast.Expr) bool {
 // singleWrite reports whether compiling e into a register writes that register only
 // after everything e reads was read, so that the register may be one that e reads.
 func (f *fn) singleWrite(e ast.Expr) bool {
+	if f.c.conservativeAssignments {
+		return false
+	}
 	switch e := e.(type) {
 	case *ast.NumberLit, *ast.StringLit, *ast.BoolLit, *ast.NullLit, *ast.Identifier, *ast.ThisExpr,
 		*ast.BigIntLit, *ast.BinaryExpr, *ast.CallExpr, *ast.NewExpr, *ast.Function, *ast.RegExpLit,
@@ -152,6 +155,9 @@ func (f *fn) otherCodeAssigns(name string) bool {
 // bindingOperand evaluates e in a local binding when possible. A negative register
 // means e still needs to be evaluated. An empty name marks an immutable value.
 func (f *fn) bindingOperand(e ast.Expr) (reg int32, name string) {
+	if f.c.conservativeAssignments {
+		return -1, ""
+	}
 	switch e := e.(type) {
 	case *ast.ThisExpr:
 		// localReg excludes the uninitialized this of a derived constructor.
@@ -920,9 +926,8 @@ func (f *fn) update(n *ast.UpdateExpr, dst int32) {
 			}
 			return
 		}
-		scope := f.resolveName(arg.Name)
 		old := f.newReg()
-		f.loadVarFrom(arg.Name, f.resolve(arg.Name), old, false, scope)
+		scope := f.readAssignment(arg.Name, old)
 		res := f.newReg()
 		if n.Prefix || dst < 0 {
 			f.emit(op, res, old, 0)
@@ -1852,6 +1857,18 @@ func isAnonymousFunction(e ast.Expr) bool {
 	return false
 }
 
+// assignLocal publishes the value of e to local after evaluation succeeds.
+func (f *fn) assignLocal(e ast.Expr, local int32, name wtf8.String) {
+	if f.singleWrite(e) {
+		f.named(e, local, name)
+		return
+	}
+	t := f.newReg()
+	f.named(e, t, name)
+	f.emit(bytecode.OpMove, local, t, 0)
+	f.free(t)
+}
+
 // named compiles e into dst. When e is an anonymous function or class, it gets the name name.
 func (f *fn) named(e ast.Expr, dst int32, name wtf8.String) {
 	switch e := e.(type) {
@@ -2051,16 +2068,8 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 					}
 					return
 				}
-				if f.singleWrite(n.Value) {
-					f.named(n.Value, local, wtf8.String(inferred))
-				} else {
-					t := f.newReg()
-					f.named(n.Value, t, wtf8.String(inferred))
-					f.emit(bytecode.OpMove, local, t, 0)
-				}
-				if dst >= 0 && dst != local {
-					f.emit(bytecode.OpMove, dst, local, 0)
-				}
+				f.assignLocal(n.Value, local, wtf8.String(inferred))
+				f.result(dst, local)
 				return
 			}
 			scope := f.assignmentScope(target, name)
@@ -2071,12 +2080,11 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 			f.named(n.Value, t, wtf8.String(inferred))
 			f.storeVarTo(n, name, t, false, scope)
 		case logical:
-			scope := f.resolveName(name)
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
-			f.loadVarFrom(name, f.resolve(name), t, false, scope)
+			scope := f.readAssignment(name, t)
 			skip := shortCircuit(t)
 			f.named(n.Value, t, wtf8.String(inferred))
 			f.storeVarTo(n, name, t, false, scope)
@@ -2099,9 +2107,8 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				}
 				return
 			}
-			scope := f.resolveName(name)
 			old := f.newReg()
-			f.loadVarFrom(name, f.resolve(name), old, false, scope)
+			scope := f.readAssignment(name, old)
 			r := f.immediateOperand(n.Value)
 			t := dst
 			if t < 0 {
