@@ -292,6 +292,40 @@ func (cx *ExecutionContext) ResolveCapability(c *PromiseCapability, v Value) {
 	cx.Call(cx.CapabilityResolve(c).o, Undefined, v)
 }
 
+// CallCapabilityResolve calls the [[Resolve]] function of c with v, as [ExecutionContext.ResolveCapability]
+// does, and shows the frame of the function where the call can be observed.
+func (cx *ExecutionContext) CallCapabilityResolve(c *PromiseCapability, v Value) {
+	if v.IsObject() && !cx.readsPlainly(v.o, cx.Key(keyThen)) {
+		cx.Call(cx.CapabilityResolve(c).o, Undefined, v)
+		return
+	}
+	cx.ResolveCapability(c, v)
+}
+
+// readsPlainly reports whether reading the property key of o is known to run no code. A false
+// result does not mean the opposite.
+func (ag *agent) readsPlainly(o, key *Object) bool {
+	_, ok := ag.plainRead(o, key)
+	return ok
+}
+
+// plainRead returns the value of the property key of o when reading it is known to run no code,
+// and false otherwise.
+func (ag *agent) plainRead(o, key *Object) (Value, bool) {
+	for h := o; h != nil; h = h.shape.proto {
+		if h.class != classObject && h.class != classArray && h.class != classPromise || h.flags&objExotic != 0 {
+			return Undefined, false
+		}
+		if p, ok := h.shape.lookup(key); ok {
+			if p.flags&FlagAccessor != 0 {
+				return Undefined, false
+			}
+			return h.slots[p.slot], true
+		}
+	}
+	return Undefined, true
+}
+
 // RejectCapability calls the [[Reject]] function of c with v.
 func (cx *ExecutionContext) RejectCapability(c *PromiseCapability, v Value) {
 	if c.canSettleDirectly(cx) {

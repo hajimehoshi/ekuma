@@ -41,7 +41,11 @@ func initWeakMap(cx *engine.ExecutionContext) {
 		if adder == weakMapSet {
 			t := engine.WeakMapData(engine.ObjectValue(m))
 			fast = func(k, v engine.Value) {
-				requireHoldable(cx, k, "as weak map key")
+				if !cx.CanBeHeldWeakly(k) {
+					// The TypeError belongs to the native set call.
+					cx.Call(adder, engine.ObjectValue(m), k, v)
+					return
+				}
 				t.Set(k, v)
 			}
 		}
@@ -127,10 +131,10 @@ func initWeakSet(cx *engine.ExecutionContext) {
 		adder := adderOf(cx, s, addKey)
 		t := engine.WeakSetData(engine.ObjectValue(s))
 		cx.Iterate(iterable, func(e engine.Value) bool {
-			if adder == weakSetAdd {
-				requireHoldable(cx, e, "in weak set")
+			if adder == weakSetAdd && cx.CanBeHeldWeakly(e) {
 				t.Set(e, engine.True)
 			} else {
+				// This includes the TypeError of the original method.
 				cx.Call(adder, engine.ObjectValue(s), e)
 			}
 			return true

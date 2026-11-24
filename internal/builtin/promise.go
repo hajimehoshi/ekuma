@@ -224,7 +224,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
+				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
 			}
 		})
 	})
@@ -262,7 +262,7 @@ func initPromise(cx *engine.ExecutionContext) {
 		}, func(pc *engine.PromiseCapability) {
 			e.remaining--
 			if e.remaining == 0 {
-				cx.ResolveCapability(pc, engine.ObjectValue(cx.NewArray(e.take())))
+				cx.CallCapabilityResolve(pc, engine.ObjectValue(cx.NewArray(e.take())))
 			}
 		})
 	})
