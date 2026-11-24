@@ -701,7 +701,7 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 		case bytecode.OpMod:
 			return Number(math.Mod(a, b))
 		case bytecode.OpExp:
-			return Number(NumberPow(a, b))
+			return Number(numconv.NumberPow(a, b))
 		case bytecode.OpBitOr:
 			return Number(float64(numconv.ToInt32(a) | numconv.ToInt32(b)))
 		case bytecode.OpBitAnd:

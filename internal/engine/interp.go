@@ -11,7 +11,6 @@ import (
 	"github.com/hajimehoshi/ekuma/internal/bytecode"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
-	"github.com/hajimehoshi/ekuma/internal/xmath"
 )
 
 // frame is the activation of a function written in JavaScript.
@@ -2156,7 +2155,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpExp:
 			x, y := regs[i.B], regs[i.C]
 			if x.o == numberObject && y.o == numberObject {
-				regs[i.A] = Number(NumberPow(x.n, y.n))
+				regs[i.A] = Number(numconv.NumberPow(x.n, y.n))
 				continue
 			}
 			goto arith
@@ -3629,19 +3628,6 @@ func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
 		ag.holdStack()
 	}
 	return ag.stack[base : base+len(regs)]
-}
-
-// NumberPow implements Number::exponentiate.
-func NumberPow(x, y float64) float64 {
-	// The exponents NaN and ±Infinity with a base of ±1 give NaN, unlike in IEEE 754.
-	if y != y || (math.IsInf(y, 0) && (x == 1 || x == -1)) {
-		return math.NaN()
-	}
-	// math.Pow is off by a unit in the last place for some powers of ten.
-	if x == 10 && y == math.Trunc(y) && math.Abs(y) <= 400 {
-		return numconv.Pow10(int(y))
-	}
-	return xmath.Pow(x, y)
 }
 
 // loopHolds reports whether the comparison of the loop jump op, one of [bytecode.OpLoopLt]

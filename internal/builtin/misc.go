@@ -761,7 +761,7 @@ func initMath(cx *engine.ExecutionContext) {
 		return float64(bits.LeadingZeros32(numconv.ToUint32(x)))
 	})
 	binary("atan2", atan2)
-	binary("pow", engine.NumberPow)
+	binary("pow", numconv.NumberPow)
 	binary("imul", func(x, y float64) float64 {
 		return float64(numconv.ToInt32(x) * numconv.ToInt32(y))
 	})

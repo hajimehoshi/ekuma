@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Hajime Hoshi
 
 // Package numconv implements the conversions between JavaScript numbers and strings,
-// and the integer and binary16 conversions of numbers.
+// the integer and binary16 conversions of numbers, and arithmetic of numbers and BigInts.
 package numconv
 
 import (
