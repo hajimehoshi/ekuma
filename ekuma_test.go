@@ -1771,6 +1771,36 @@ func TestCancelFillGeneric(t *testing.T) {
 	}
 }
 
+// TestCancelSetMethod checks that a Set method that looks the elements up in the table of its Set
+// argument, without calls, stops when its context is done.
+func TestCancelSetMethod(t *testing.T) {
+	var vm ekuma.VM
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+		cancel()
+		// The cancellation is requested on another goroutine.
+		time.Sleep(50 * time.Millisecond)
+		return nil, nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	// The set is small enough for the method to end quickly when it does not stop.
+	_, err := runScript(ctx, &vm, "set", `
+		var s = new Set();
+		for (let i = 0; i < 2 * 65536; i++) s.add(i);
+		Object.defineProperty(s, "size", { get() { cancel(); return 2 * 65536; } });
+		var after = false;
+		s.isSubsetOf(s);
+		after = true;`)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("got %v, want context.Canceled", err)
+	}
+	if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+		t.Errorf("after = %v, %v: the script continued after isSubsetOf", v, err)
+	}
+}
+
 func TestInternalError(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")
@@ -2262,12 +2292,6 @@ func TestCancelBuiltins(t *testing.T) {
 			name:  "property enumeration",
 			setup: `var o = {}; for (let i = 0; i < 1 << 20; i++) o["k" + i] = i;`,
 			src:   `Object.assign({}, o)`,
-		},
-		{
-			// The method looks the elements up in the table of its Set argument without calls.
-			name:  "Set method with a Set argument",
-			setup: `var s = new Set(); for (let i = 0; i < 1 << 21; i++) s.add(i);`,
-			src:   `s.isSubsetOf(s)`,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
