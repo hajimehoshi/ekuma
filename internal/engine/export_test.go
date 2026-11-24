@@ -70,6 +70,11 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 		if fp.code[site+1].Op != bytecode.OpGetProp {
 			t.Fatal("expected a second named read after OpGetPropChain")
 		}
+	case bytecode.OpGetMethod:
+		call := fp.code[site+1]
+		if call.Op != bytecode.OpCall || call.B != fp.code[site].A {
+			t.Fatal("expected a call of the loaded method after OpGetMethod")
+		}
 	case bytecode.OpIterNextPair:
 		if fp.code[site+1].Op != bytecode.OpExtra || fp.code[site+2].Op != bytecode.OpIterNext {
 			t.Fatal("expected the extra word and ordinary iterator step after OpIterNextPair")
@@ -96,8 +101,8 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 			*distances = append(*distances, pc-site)
 		}
 		stepping = pc == site
-		if stepping && bypass && op == bytecode.OpGetPropChain {
-			// A cold first read does the full named lookup. The second read keeps its cache.
+		if stepping && bypass && (op == bytecode.OpGetPropChain || op == bytecode.OpGetMethod) {
+			// A cold lookup dispatches the following read or call separately.
 			fp.caches[fp.code[site].C] = propCache{}
 		}
 	})

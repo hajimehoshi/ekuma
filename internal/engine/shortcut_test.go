@@ -66,6 +66,34 @@ func TestNamedReadDifferential(t *testing.T) {
 		[]int{1, 2, 1, 1}, []int{1, 1, 1, 1})
 }
 
+func TestGeneratorMethodDifferential(t *testing.T) {
+	const setup = `
+		function step(it) { return it.next(); }
+		step;
+	`
+	const scenario = `
+		let events = "";
+		const token = {};
+		const it = (function* () {
+			try { yield 1; yield 2; }
+			finally { events += "finally "; yield 3; events += "resume "; }
+		})();
+		const next = it.next;
+		const first = step(it), second = step(it);
+		Object.defineProperty(it, "next", {get() {
+			events += "get ";
+			const r = this.return(token);
+			events += r.value + " " + r.done + " ";
+			return next;
+		}});
+		const end = step(it);
+		JSON.stringify([first.value, second.value, events, end.value === token, end.done]);
+	`
+	// The warm lookup consumes the call (+2). The getter dispatches it separately (+1).
+	compareShortcut(t, bytecode.OpGetMethod, setup, scenario,
+		`[1,2,"get finally 3 false resume ",true,true]`, []int{1, 2, 1}, []int{1, 1, 1})
+}
+
 func TestIteratorPairDifferential(t *testing.T) {
 	const setup = `
 		const marker = {};
