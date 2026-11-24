@@ -2598,10 +2598,6 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argBase = ag.sp
 			ag.ensureStack(argBase + argc)
 			copy(ag.stack[argBase:], args)
-			if validateExec {
-				// The old registers still hold these values in other builds.
-				regs = ag.reload(regs, ag.frameBase(), fp)
-			}
 			goto tailCall
 		case bytecode.OpNew:
 			b := int(i.B)
