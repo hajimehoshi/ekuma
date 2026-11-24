@@ -1281,8 +1281,10 @@ func (ag *agent) arrayIterationUnmodified(r *realm) bool {
 	if c.epoch != ag.protoEpoch || !c.checked {
 		c.checked = true
 		c.epoch = ag.protoEpoch
-		c.found = c.iter.findData(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator)) &&
-			c.next.findData(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(keyNext))
+		q := r.context.Quiet()
+		c.iter = q.lookupDataSlot(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator))
+		c.next = q.lookupDataSlot(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(keyNext))
+		c.found = c.iter.holder != nil && c.next.holder != nil
 		c.noReturn = ag.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
 	}
 	if validateExec {
@@ -1335,21 +1337,20 @@ type dataSlot struct {
 	slot   int32
 }
 
-// findData looks key up on o and its prototypes, and reports whether it names a data property.
-func (d *dataSlot) findData(o *Object, key *Object) bool {
-	h, p, ok := find(o, key)
-	if !ok || p.flags&FlagAccessor != 0 || p.slot < 0 {
-		*d = dataSlot{}
-		return false
+// lookupDataSlot returns the named data slot on o or its prototypes, or a zero slot
+// if the lookup cannot establish one without running code.
+func (q QuietContext) lookupDataSlot(o, key *Object) dataSlot {
+	r := q.lookupNamed(o, key)
+	if r.kind != lookupSlot || r.prop.flags&FlagAccessor != 0 {
+		return dataSlot{}
 	}
-	*d = dataSlot{
-		holder: h,
-		slot:   p.slot,
+	return dataSlot{
+		holder: r.holder,
+		slot:   r.prop.slot,
 	}
-	return true
 }
 
-// value returns the current value of the property that findData found.
+// value returns the current value of the slot.
 func (d *dataSlot) value() Value {
 	return d.holder.slots[d.slot]
 }

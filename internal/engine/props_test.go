@@ -132,6 +132,28 @@ func TestLazyPropertyOperations(t *testing.T) {
 			script: `delete subject[0]; Reflect.ownKeys(subject).includes("0");`,
 		},
 		{
+			name: "array species constructor",
+			script: `
+				const proto = Object.getPrototypeOf(subject);
+				proto.constructor = Array;
+				delete Array.prototype.constructor;
+				Object.setPrototypeOf(Array.prototype, subject);
+				[].slice();
+				Object.hasOwn(proto, "installedByInit");
+			`,
+		},
+		{
+			name: "array iterator",
+			script: `
+				const proto = Object.getPrototypeOf(subject);
+				proto[Symbol.iterator] = Array.prototype.values;
+				delete Array.prototype[Symbol.iterator];
+				Object.setPrototypeOf(Array.prototype, subject);
+				for (const value of []) {}
+				Object.hasOwn(proto, "installedByInit");
+			`,
+		},
+		{
 			name:   "enumerate",
 			script: `Reflect.ownKeys(subject).join();`,
 		},

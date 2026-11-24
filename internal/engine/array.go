@@ -149,8 +149,8 @@ func (cx *ExecutionContext) arrayCtorPlain(o *Object) bool {
 		return false
 	}
 	ctor := cx.Intrinsic(IntrinsicArray)
-	c, ok := cx.lookupData(cx.Intrinsic(IntrinsicArrayPrototype), cx.Key(KeyConstructor))
-	if !ok || c.o != ctor {
+	c := cx.Quiet().lookupDataSlot(cx.Intrinsic(IntrinsicArrayPrototype), cx.Key(KeyConstructor))
+	if c.holder == nil || c.value().o != ctor {
 		return false
 	}
 	p, found := ctor.getOwn(cx.WellKnownSymbol(SymbolSpecies))
