@@ -11,8 +11,8 @@ import (
 	"testing"
 )
 
-// TestQuietContextBoundary requires that no function with a QuietContext can run script or host
-// code, and that built-ins cannot get around that.
+// TestQuietContextBoundary requires that no function with a QuietContext, and no listed function,
+// can run script or host code, and that built-ins cannot get around that.
 func TestQuietContextBoundary(t *testing.T) {
 	const enginePath = "github.com/hajimehoshi/ekuma/internal/engine"
 	// The functions that run script or host code. Reading a field that holds a function counts too.
@@ -26,11 +26,29 @@ func TestQuietContextBoundary(t *testing.T) {
 	// An interruption unwinds to the host, which runs nothing in between.
 	poll := "(*" + enginePath + ".agent).Poll"
 
+	// Functions without a QuietContext that the interpreter and the built-ins rely on not to run
+	// code: they tell that arrays and reads are plain, or read, store or take values in one step.
+	quiet := []string{
+		"(*" + enginePath + ".ExecutionContext).arrayIterationPlain",
+		"(*" + enginePath + ".ExecutionContext).arrayProtoPlain",
+		"(*" + enginePath + ".Object).Element",
+		"(*" + enginePath + ".Object).ElementList",
+		"(*" + enginePath + ".Object).RemoveFirstElement",
+		"(*" + enginePath + ".Object).RemoveLastElement",
+		"(*" + enginePath + ".Object).SetElement",
+		"(*" + enginePath + ".Object).plainElems",
+		"(*" + enginePath + ".agent).pairDestructuringPlain",
+		"(*" + enginePath + ".agent).plainRead",
+		"(*" + enginePath + ".agent).readsPlainly",
+		enginePath + ".IsArrayPlain",
+		enginePath + ".takeDataProperties",
+	}
+	listed := len(quiet)
+
 	// uses holds what a declared function mentions, by the full name of the function.
 	uses := map[string][]string{}
 	methods := map[string][]string{}
 	interfaceUses := map[string][]string{}
-	var quiet []string
 	pos := map[string]token.Position{}
 	for _, p := range checkPackages(t, "../...", "../../intl/...") {
 		info := p.info
@@ -195,7 +213,12 @@ func TestQuietContextBoundary(t *testing.T) {
 	if pos[poll].Line == 0 {
 		t.Errorf("no function %s", poll)
 	}
-	if len(quiet) == 0 {
+	for _, name := range quiet[:listed] {
+		if pos[name].Line == 0 {
+			t.Errorf("no function %s", name)
+		}
+	}
+	if len(quiet) == listed {
 		t.Error("no function with a QuietContext")
 	}
 	for name, ms := range interfaceUses {
