@@ -13,6 +13,7 @@ import (
 
 	"github.com/hajimehoshi/ekuma/internal/element"
 	"github.com/hajimehoshi/ekuma/internal/numconv"
+	"github.com/hajimehoshi/ekuma/internal/waiterlist"
 )
 
 // This file holds ArrayBuffer, SharedArrayBuffer, the typed arrays and DataView objects.
@@ -192,7 +193,7 @@ type SharedDataBlock struct {
 
 	// waiterLists are the waiter lists by byte index. A waiter is held by its agent: by the
 	// suspended call of a synchronous wait, and by the agent of an asynchronous one.
-	waiterLists map[int]*waiterList
+	waiterLists waiterlist.Lists[waiterData]
 }
 
 func (blk *SharedDataBlock) byteLength() int {

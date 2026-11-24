@@ -9,9 +9,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"weak"
 
 	"github.com/hajimehoshi/ekuma/internal/element"
+	"github.com/hajimehoshi/ekuma/internal/waiterlist"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -36,8 +36,11 @@ import (
 // The agent has no timers. A timeout job runs when the jobs run after its time: whenever the
 // promise jobs are drained, the waiters whose time has passed are notified with "timed-out".
 
-// waiter is a Waiter Record.
-type waiter struct {
+// waiter is a Waiter Record. The mutex of its block guards its place in the waiter lists.
+type waiter = waiterlist.Waiter[waiterData]
+
+// waiterData is what the engine keeps in a waiter. The mutex of block does not guard it.
+type waiterData struct {
 	agent *agent
 
 	// promise is the promise of [[PromiseCapability]] of an asynchronous wait.
@@ -49,14 +52,8 @@ type waiter struct {
 	// done is closed when a synchronous wait is notified.
 	done chan struct{}
 
-	// block and byteIndex are the place of the waiter list.
-	block     *SharedDataBlock
-	byteIndex int
-
-	// listed reports whether the waiter is in its waiter list, and pos is its position there.
-	// They are guarded by block.mu.
-	listed bool
-	pos    int
+	// block is the data block whose waiter lists the waiter is added to.
+	block *SharedDataBlock
 
 	// deadline is [[TimeoutTime]] of a waiter with a finite timeout.
 	deadline time.Time
@@ -76,21 +73,21 @@ func (h waiterHeap) Len() int {
 }
 
 func (h waiterHeap) Less(i, j int) bool {
-	if !h[i].deadline.Equal(h[j].deadline) {
-		return h[i].deadline.Before(h[j].deadline)
+	if !h[i].Data.deadline.Equal(h[j].Data.deadline) {
+		return h[i].Data.deadline.Before(h[j].Data.deadline)
 	}
-	return h[i].seq < h[j].seq
+	return h[i].Data.seq < h[j].Data.seq
 }
 
 func (h waiterHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
-	h[i].timedIndex = i
-	h[j].timedIndex = j
+	h[i].Data.timedIndex = i
+	h[j].Data.timedIndex = j
 }
 
 func (h *waiterHeap) Push(x any) {
 	w := x.(*waiter)
-	w.timedIndex = len(*h)
+	w.Data.timedIndex = len(*h)
 	*h = append(*h, w)
 }
 
@@ -99,7 +96,7 @@ func (h *waiterHeap) Pop() any {
 	w := old[len(old)-1]
 	old[len(old)-1] = nil
 	*h = old[:len(old)-1]
-	w.timedIndex = -1
+	w.Data.timedIndex = -1
 	return w
 }
 
@@ -238,23 +235,25 @@ func (t *TypedArray) AtomicStore(i int, x uint64) {
 // An interruption ends a synchronous wait.
 func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64, async bool) (Value, bool) {
 	blk := t.data.block
+	byteIndex := t.offset + i*t.typ.Size()
 	w := &waiter{
-		agent:      cx.agent,
-		block:      blk,
-		byteIndex:  t.offset + i*t.typ.Size(),
-		timedIndex: -1,
+		Data: waiterData{
+			agent:      cx.agent,
+			block:      blk,
+			timedIndex: -1,
+		},
 	}
 	if async {
-		w.promise = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
-		w.promiseContext = cx
+		w.Data.promise = cx.NewPromiseObject(cx.Intrinsic(IntrinsicPromisePrototype))
+		w.Data.promiseContext = cx
 	} else {
-		w.done = make(chan struct{})
+		w.Data.done = make(chan struct{})
 		if cx.interrupt.Load() {
 			cx.Poll()
 		}
 	}
 	add := timeout > 0
-	if !blk.compareAndAdd(w, t.typ, v, add) {
+	if !blk.compareAndAdd(w, byteIndex, t.typ, v, add) {
 		return cx.NewString("not-equal"), false
 	}
 	if !add {
@@ -268,27 +267,19 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
 		cx.asyncWaiters.setDeadline(w, cx.Now().Add(time.Duration(ns)))
 	}
-	return Value{o: w.promise}, true
+	return Value{o: w.Data.promise}, true
 }
 
-// compareAndAdd reports whether the element of the type t at w.byteIndex has the encoding v,
-// and then adds w to its waiter list when add is set.
-func (blk *SharedDataBlock) compareAndAdd(w *waiter, t element.Type, v uint64, add bool) bool {
+// compareAndAdd reports whether the element of the type t at byteIndex has the encoding v,
+// and then adds w to the waiter list of byteIndex when add is set.
+func (blk *SharedDataBlock) compareAndAdd(w *waiter, byteIndex int, t element.Type, v uint64, add bool) bool {
 	blk.mu.Lock()
 	defer blk.mu.Unlock()
-	if !element.Equal(t, element.Load(blk.data[w.byteIndex:], t), v) {
+	if !element.Equal(t, element.Load(blk.data[byteIndex:], t), v) {
 		return false
 	}
 	if add {
-		if blk.waiterLists == nil {
-			blk.waiterLists = map[int]*waiterList{}
-		}
-		l := blk.waiterLists[w.byteIndex]
-		if l == nil {
-			l = &waiterList{}
-			blk.waiterLists[w.byteIndex] = l
-		}
-		l.add(w)
+		blk.waiterLists.Add(byteIndex, w)
 	}
 	return true
 }
@@ -297,15 +288,7 @@ func (blk *SharedDataBlock) compareAndAdd(w *waiter, t element.Type, v uint64, a
 func (blk *SharedDataBlock) unlist(w *waiter) bool {
 	blk.mu.Lock()
 	defer blk.mu.Unlock()
-	if !w.listed {
-		return false
-	}
-	l := blk.waiterLists[w.byteIndex]
-	l.remove(w)
-	if l.listed == 0 {
-		delete(blk.waiterLists, w.byteIndex)
-	}
-	return true
+	return blk.waiterLists.Remove(w)
 }
 
 // removeWaiters implements RemoveWaiters: it removes and returns the first count waiters of
@@ -313,101 +296,14 @@ func (blk *SharedDataBlock) unlist(w *waiter) bool {
 func (blk *SharedDataBlock) removeWaiters(byteIndex int, count float64) []*waiter {
 	blk.mu.Lock()
 	defer blk.mu.Unlock()
-	l := blk.waiterLists[byteIndex]
-	if l == nil {
-		return nil
-	}
-	ws := l.removeFirst(count)
-	if l.listed == 0 {
-		delete(blk.waiterLists, byteIndex)
-	}
-	return ws
-}
-
-// minWaiterSweep is the length of a waiter list from which adding to it may sweep it.
-const minWaiterSweep = 16
-
-// waiterList is a waiter list, in the order in which the waiters were added. A removed or
-// collected waiter leaves an empty entry until a sweep, which runs when the list has doubled
-// since the last one.
-type waiterList struct {
-	// entries holds the waiters from the position base on.
-	entries []weak.Pointer[waiter]
-	base    int
-
-	// listed is the number of the waiters in entries that are listed, collected ones included.
-	listed int
-
-	// swept is the length of entries after the last sweep.
-	swept int
-}
-
-// add adds w at the end of l.
-func (l *waiterList) add(w *waiter) {
-	if len(l.entries) >= 2*max(l.swept, minWaiterSweep) {
-		l.sweep()
-	}
-	w.listed = true
-	w.pos = l.base + len(l.entries)
-	l.entries = append(l.entries, weak.Make(w))
-	l.listed++
-}
-
-// remove removes the listed waiter w from l.
-func (l *waiterList) remove(w *waiter) {
-	w.listed = false
-	l.entries[w.pos-l.base] = weak.Pointer[waiter]{}
-	l.listed--
-}
-
-// removeFirst removes and returns the first count waiters of l that are not collected. count
-// must not be negative and may be +Inf.
-func (l *waiterList) removeFirst(count float64) []*waiter {
-	var ws []*waiter
-	n := 0
-	for ; n < len(l.entries) && float64(len(ws)) < count; n++ {
-		e := l.entries[n]
-		if e == (weak.Pointer[waiter]{}) {
-			continue
-		}
-		l.listed--
-		if w := e.Value(); w != nil {
-			w.listed = false
-			ws = append(ws, w)
-		}
-	}
-	clear(l.entries[:n])
-	l.entries = l.entries[n:]
-	l.base += n
-	return ws
-}
-
-// sweep removes the empty entries and those of the collected waiters from l.
-func (l *waiterList) sweep() {
-	n := 0
-	for _, e := range l.entries {
-		if e == (weak.Pointer[waiter]{}) {
-			continue
-		}
-		w := e.Value()
-		if w == nil {
-			l.listed--
-			continue
-		}
-		w.pos = l.base + n
-		l.entries[n] = e
-		n++
-	}
-	clear(l.entries[n:])
-	l.entries = l.entries[:n]
-	l.swept = n
+	return blk.waiterLists.RemoveFirst(byteIndex, count)
 }
 
 // suspend implements SuspendThisAgent for the synchronous waiter w, which is in its list,
 // and returns the result of the wait.
 func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 	// An interruption leaves the list.
-	defer w.block.unlist(w)
+	defer w.Data.block.unlist(w)
 	var deadline time.Time
 	var timer *time.Timer
 	var expired <-chan time.Time
@@ -419,7 +315,7 @@ func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 	}
 	for {
 		select {
-		case <-w.done:
+		case <-w.Data.done:
 			return cx.NewString("ok")
 		case <-expired:
 			// The timer measures real time, which the clock may run behind.
@@ -427,7 +323,7 @@ func (cx *ExecutionContext) suspend(w *waiter, timeout float64) Value {
 				timer.Reset(d)
 				continue
 			}
-			if w.block.unlist(w) {
+			if w.Data.block.unlist(w) {
 				return cx.NewString("timed-out")
 			}
 			// A notification came first.
@@ -448,12 +344,12 @@ func (cx *ExecutionContext) NotifyWaiters(b *ArrayBuffer, byteIndex int, count f
 	ws := b.block.removeWaiters(byteIndex, count)
 	for _, w := range ws {
 		switch {
-		case w.done != nil:
-			close(w.done)
-		case w.agent == cx.agent:
+		case w.Data.done != nil:
+			close(w.Data.done)
+		case w.Data.agent == cx.agent:
 			cx.resolveWaiter(w, "ok")
 		default:
-			w.agent.post(w)
+			w.Data.agent.post(w)
 		}
 	}
 	return len(ws)
@@ -475,9 +371,9 @@ func (ag *agent) resolveWaiter(w *waiter, result wtf8.String) {
 	// realms' microtask queues.
 	ag.jobs.enqueue(job{
 		kind:     jobResolve,
-		promise:  w.promise,
-		argument: w.promiseContext.NewString(result),
-		context:  w.promiseContext,
+		promise:  w.Data.promise,
+		argument: w.Data.promiseContext.NewString(result),
+		context:  w.Data.promiseContext,
 	})
 }
 
@@ -566,7 +462,7 @@ func (cx *ExecutionContext) expireWaiters() bool {
 			break
 		}
 		// A waiter that another agent notified first is in the mailbox.
-		if w.block.unlist(w) {
+		if w.Data.block.unlist(w) {
 			cx.resolveWaiter(w, "timed-out")
 			expired = true
 		}
@@ -607,8 +503,8 @@ func (s *asyncWaiters) add(w *waiter) {
 
 // setDeadline gives the added waiter w, which has no deadline, the given deadline.
 func (s *asyncWaiters) setDeadline(w *waiter, deadline time.Time) {
-	w.deadline = deadline
-	w.seq = s.seq
+	w.Data.deadline = deadline
+	w.Data.seq = s.seq
 	s.seq++
 	heap.Push(&s.timed, w)
 }
@@ -616,8 +512,8 @@ func (s *asyncWaiters) setDeadline(w *waiter, deadline time.Time) {
 // remove removes w and its deadline, if it has one.
 func (s *asyncWaiters) remove(w *waiter) {
 	delete(s.all, w)
-	if w.timedIndex >= 0 {
-		heap.Remove(&s.timed, w.timedIndex)
+	if w.Data.timedIndex >= 0 {
+		heap.Remove(&s.timed, w.Data.timedIndex)
 	}
 }
 
@@ -626,13 +522,13 @@ func (s *asyncWaiters) earliestDeadline() (time.Time, bool) {
 	if len(s.timed) == 0 {
 		return time.Time{}, false
 	}
-	return s.timed[0].deadline, true
+	return s.timed[0].Data.deadline, true
 }
 
 // popExpired returns the waiter with the earliest deadline, if that is not after now. It removes
 // the deadline but not the waiter.
 func (s *asyncWaiters) popExpired(now time.Time) (*waiter, bool) {
-	if len(s.timed) == 0 || s.timed[0].deadline.After(now) {
+	if len(s.timed) == 0 || s.timed[0].Data.deadline.After(now) {
 		return nil, false
 	}
 	return heap.Pop(&s.timed).(*waiter), true
