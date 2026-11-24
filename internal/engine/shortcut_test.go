@@ -278,3 +278,90 @@ func TestValidationRejectsWrongCacheEntry(t *testing.T) {
 		})
 	}
 }
+
+// TestValidationRejectsStaleRegisters tests that a frame that misses reloading its registers
+// after a call fails, though the stack has room and would not grow.
+func TestValidationRejectsStaleRegisters(t *testing.T) {
+	f := &bytecode.Func{
+		NumRegs: 2,
+		Code: []bytecode.Instr{
+			{
+				Op: bytecode.OpLoadUndef,
+			},
+			{
+				Op: bytecode.OpMove,
+				B:  1,
+			},
+			{
+				Op: bytecode.OpReturn,
+			},
+		},
+	}
+	if err := f.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name string
+		use  func(r *engine.Registers)
+		want bool
+	}{
+		{
+			name: "reload",
+			use: func(r *engine.Registers) {
+				r.EnsureStack()
+				r.Reload()
+				r.Set(0, r.Get(1))
+			},
+			want: true,
+		},
+		{
+			name: "no reload",
+			use: func(r *engine.Registers) {
+				r.EnsureStack()
+			},
+		},
+		{
+			name: "read before the reload",
+			use: func(r *engine.Registers) {
+				r.EnsureStack()
+				v := r.Get(1)
+				r.Reload()
+				r.Set(0, v)
+			},
+		},
+		{
+			name: "write before the reload",
+			use: func(r *engine.Registers) {
+				r.EnsureStack()
+				r.Set(0, engine.True)
+				r.Reload()
+			},
+		},
+		{
+			name: "write after a reload and two more moves",
+			use: func(r *engine.Registers) {
+				r.EnsureStack()
+				r.Reload()
+				r.EnsureStack()
+				r.EnsureStack()
+				r.Set(0, engine.True)
+				r.Reload()
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := engine.NewRegisters(f)
+			r.Step(0)
+			r.Step(1)
+			defer func() {
+				p := recover()
+				if accepted := p == nil; accepted != tt.want {
+					t.Errorf("accepted = %t, want %t (panic: %v)", accepted, tt.want, p)
+				}
+			}()
+			tt.use(r)
+			r.Step(2)
+		})
+	}
+}

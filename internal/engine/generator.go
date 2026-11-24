@@ -183,6 +183,10 @@ func (cx *ExecutionContext) newGeneratorObject(g *generator) *Object {
 
 // pushGenFrame pushes the frame that continues g at g.pc.
 func (ag *agent) pushGenFrame(g *generator, ret int32) {
+	if validateExec {
+		// The body can move the stack before its frame ends.
+		ag.moveStack()
+	}
 	base := ag.sp
 	fr := ag.appendFrame()
 	fr.fp = g.fp

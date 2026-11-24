@@ -116,6 +116,61 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 	})
 }
 
+// ValidateExec reports whether the interpreter checks the code that it runs.
+const ValidateExec = validateExec
+
+// Registers is the registers of a running frame, loaded when it was created or last reloaded.
+type Registers struct {
+	ag   *agent
+	fp   *funcProto
+	regs []Value
+}
+
+// NewRegisters starts a frame of f and loads its registers.
+func NewRegisters(f *bytecode.Func) *Registers {
+	fp := &funcProto{
+		Func:  f,
+		code:  f.Code,
+		nregs: f.NumRegs,
+	}
+	ag := &agent{
+		frames: []frame{{
+			fp: fp,
+		}},
+	}
+	ag.ensureStack(fp.nregs + 1)
+	return &Registers{
+		ag:   ag,
+		fp:   fp,
+		regs: ag.stack[:fp.nregs+1],
+	}
+}
+
+// Step checks the instruction at pc as the interpreter loop does before running it.
+func (r *Registers) Step(pc int) {
+	r.ag.checkStep(r.fp, pc, r.regs)
+}
+
+// EnsureStack makes room on the stack as a call does, without reloading the registers.
+func (r *Registers) EnsureStack() {
+	r.ag.ensureStack(r.fp.nregs + 1)
+}
+
+// Reload loads the registers as the interpreter loop does after a call.
+func (r *Registers) Reload() {
+	r.regs = r.ag.reload(r.regs, 0, r.fp)
+}
+
+// Set stores v in the register i of the registers loaded last.
+func (r *Registers) Set(i int, v Value) {
+	r.regs[i] = v
+}
+
+// Get returns the register i of the registers loaded last.
+func (r *Registers) Get(i int) Value {
+	return r.regs[i]
+}
+
 // CheckDispatchSequence checks successive instruction offsets in a frame of f.
 func CheckDispatchSequence(f *bytecode.Func, pcs ...int) {
 	fp := &funcProto{

@@ -1303,6 +1303,9 @@ func (cx *ExecutionContext) callOnStack(f *Object, this Value, args []Value) Val
 
 // callSlow calls f with any kind of callee. With isNew set, this is the object under construction.
 func (cx *ExecutionContext) callSlow(f *Object, this Value, args []Value, isNew bool, newTarget *Object) Value {
+	if validateExec {
+		defer cx.releaseArgs(cx.holdArgs(args))
+	}
 	if cx.interrupt.Load() {
 		cx.Poll()
 	}
@@ -1351,6 +1354,9 @@ func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
 			copy(s, b.args)
 			cx.sp = top + n
 			args = s
+			if validateExec {
+				defer cx.releaseArgs(cx.holdArgs(args))
+			}
 		}
 		f, this = b.target, b.this
 	}
@@ -1361,6 +1367,9 @@ func (cx *ExecutionContext) callBound(f *Object, args []Value) Value {
 
 // Construct implements Construct: new f(...args) with the given new.target.
 func (cx *ExecutionContext) Construct(f *Object, args []Value, newTarget *Object) *Object {
+	if validateExec {
+		defer cx.releaseArgs(cx.holdArgs(args))
+	}
 	if cx.interrupt.Load() {
 		cx.Poll()
 	}

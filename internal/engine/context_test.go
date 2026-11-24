@@ -113,6 +113,9 @@ func TestExecutionContextHostReentry(t *testing.T) {
 }
 
 func TestSameRealmContextCallAllocations(t *testing.T) {
+	if engine.ValidateExec {
+		t.Skip("the checks of the interpreter allocate")
+	}
 	cx, _ := engine.NewExecutionContext(nil)
 	f := cx.NewNative("noop", 0, func(*engine.ExecutionContext, engine.Value, []engine.Value) engine.Value {
 		return engine.Undefined

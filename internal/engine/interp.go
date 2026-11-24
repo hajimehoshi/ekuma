@@ -100,10 +100,16 @@ const stackHeadroom = 64
 func (ag *agent) ensureStack(n int) {
 	ag.stackHigh = max(ag.stackHigh, n)
 	if n+stackHeadroom <= len(ag.stack) {
+		if validateExec {
+			ag.moveStack()
+		}
 		return
 	}
 	s := make([]Value, max(n+stackHeadroom, len(ag.stack)*2))
 	copy(s, ag.stack)
+	if validateExec {
+		ag.abandonStack()
+	}
 	ag.stack = s
 	// The open upvalues point into the old stack.
 	for _, u := range ag.openUpvals {
@@ -117,6 +123,9 @@ const maxIdleStack = 1 << 16
 // releaseStack moves the values in use to a smaller stack when the stack is larger than
 // maxIdleStack.
 func (ag *agent) releaseStack() {
+	if validateExec {
+		ag.checkIdleStack()
+	}
 	if len(ag.stack) <= maxIdleStack || ag.sp+stackHeadroom > maxIdleStack {
 		return
 	}
@@ -124,6 +133,9 @@ func (ag *agent) releaseStack() {
 	if ag.sp > 0 {
 		s = make([]Value, ag.sp+stackHeadroom)
 		copy(s, ag.stack[:ag.sp])
+	}
+	if validateExec {
+		ag.abandonStack()
 	}
 	ag.stack = s
 	ag.stackHigh = ag.sp
@@ -2490,6 +2502,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
 			copy(ag.stack[argBase:], args)
+			if validateExec {
+				// The old registers still hold these values in other builds.
+				regs = ag.reload(regs, ag.frameBase(), fp)
+			}
 			switch i.Op {
 			case bytecode.OpNewSpread:
 				goto construct
@@ -2538,6 +2554,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argBase = ag.sp
 			ag.ensureStack(argBase + argc)
 			copy(ag.stack[argBase:], args)
+			if validateExec {
+				// The old registers still hold these values in other builds.
+				regs = ag.reload(regs, ag.frameBase(), fp)
+			}
 			goto tailCall
 		case bytecode.OpNew:
 			b := int(i.B)
@@ -3280,6 +3300,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argc, ret, isNew, newTarget = cur.argc, i.A, false, nil
 			argBase = cur.top()
 			ag.ensureStack(argBase + argc)
+			if validateExec {
+				// The old registers still hold these values in other builds.
+				regs = ag.reload(regs, ag.frameBase(), fp)
+			}
 			n := min(argc, fp.nparams)
 			copy(ag.stack[argBase:], slices.Clip(regs)[:n])
 			copy(ag.stack[argBase+n:], ag.extraArgs(&ag.frames[len(ag.frames)-1]))
@@ -3588,6 +3612,9 @@ func (ag *agent) frameBase() int {
 func (ag *agent) reload(regs []Value, base int, fp *funcProto) []Value {
 	if fp.heapRegs {
 		return regs
+	}
+	if validateExec {
+		ag.holdStack()
 	}
 	return ag.stack[base : base+len(regs)]
 }

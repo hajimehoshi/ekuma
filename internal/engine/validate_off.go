@@ -17,6 +17,22 @@ func (ag *agent) leaveChecks() {}
 
 func (ag *agent) checkStep(fp *funcProto, pc int, regs []Value) {}
 
+func (ag *agent) moveStack() {}
+
+func (ag *agent) abandonStack() {}
+
+func (ag *agent) checkIdleStack() {}
+
+func (ag *agent) holdStack() {}
+
+func (ag *agent) checkValue(v Value) {}
+
+func (ag *agent) holdArgs(args []Value) int {
+	return 0
+}
+
+func (ag *agent) releaseArgs(n int) {}
+
 func (c *execChecks) observeSteps(func(*funcProto, int)) {}
 
 func (cx *ExecutionContext) checkReadHit(*funcProto, int, Value, *Object, *Value) {}

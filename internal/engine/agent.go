@@ -451,6 +451,9 @@ func (cx *ExecutionContext) callNative(f *Object, this Value, args []Value, newT
 
 // invokeNative runs f with the already active context.
 func (cx *ExecutionContext) invokeNative(f *Object, this Value, args []Value, newTarget *Object) Value {
+	if validateExec {
+		defer cx.releaseArgs(cx.holdArgs(args))
+	}
 	// This is pushNative written out, since pushNative does not inline. A change there belongs
 	// here too.
 	n := len(cx.natives)
@@ -1196,6 +1199,9 @@ const maxDisplayString = 1 << 10
 // DisplayString describes v for messages, without running any JavaScript. A long string is
 // shortened.
 func (ag *agent) DisplayString(v Value) string {
+	if validateExec {
+		ag.checkValue(v)
+	}
 	o := v.o
 	if o == nil {
 		return "undefined"

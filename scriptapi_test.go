@@ -36,6 +36,9 @@ func TestAllocationsPerOperation(t *testing.T) {
 	if raceEnabled {
 		t.Skip("the race detector changes the number of allocations")
 	}
+	if validateEnabled {
+		t.Skip("the checks of the interpreter change the number of allocations")
+	}
 	tests := []struct {
 		name  string
 		setup string
