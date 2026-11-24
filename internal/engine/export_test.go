@@ -133,3 +133,29 @@ func CheckDispatchSequence(f *bytecode.Func, pcs ...int) {
 		ag.checkStep(fp, pc, ag.stack)
 	}
 }
+
+// CorruptCaches makes every filled cache of the function f answer wrongly for the receivers that
+// it already answers for.
+func CorruptCaches(f Value) {
+	fp := f.o.fn.code
+	for i := range fp.caches {
+		e := &fp.caches[i].cacheEntry
+		switch e.kind {
+		case cacheOwn:
+			e.slot ^= 1
+		case cacheProto:
+			v := *e.ref
+			e.ref = &v
+		case cacheGetter, cacheSetter:
+			e.holder = f.o
+		case cacheAdd:
+			e.next = e.shape
+		}
+	}
+	for i := range fp.globals {
+		if c := &fp.globals[i]; c.ref != nil {
+			v := *c.ref
+			c.ref = &v
+		}
+	}
+}

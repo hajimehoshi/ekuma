@@ -568,6 +568,9 @@ func (s *shape) hasEnumerableString() bool {
 			s.enumerable = enumerableSome
 		}
 	}
+	if validateExec {
+		s.checkEnumerable()
+	}
 	return s.enumerable == enumerableSome
 }
 

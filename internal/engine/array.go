@@ -688,6 +688,9 @@ type sparseIndexCache struct {
 func (c *sparseIndexCache) list(o *Object) []uint32 {
 	s := o.shape
 	if c.shape == s && c.count == s.count {
+		if validateExec {
+			c.checkSparseIndices(s)
+		}
 		return c.indices
 	}
 	// addedKeys appends at most maxSparseIndexInserts keys, so buf holds them all.

@@ -462,6 +462,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
+				if validateExec {
+					fp.context.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, false)
+				}
 				regs[i.A] = *c.ref
 				continue
 			}
@@ -469,6 +472,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// Only setGlobal fills the cache of an assignment.
 			c := &fp.globals[i.C]
 			if h := c.holder; h != nil && h.shape == c.shape {
+				if validateExec {
+					fp.context.checkGlobalHit(fp, pc-1, fp.keys[i.B], c, true)
+				}
 				*c.ref = regs[i.A]
 				continue
 			}
@@ -482,6 +488,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			g := &fp.globals[fp.code[i.C-1].C]
 			if h := g.holder; h == nil || h.shape != g.shape {
 				break
+			}
+			if validateExec {
+				fp.context.checkGlobalHit(fp, int(i.C-1), fp.keys[fp.code[i.C-1].B], g, true)
 			}
 			regs[i.A] = Value{}
 			c := &fp.caches[fp.code[pc].C]
@@ -507,6 +516,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			default:
 				continue
 			}
+			if validateExec {
+				fp.context.checkEntryRead(fp, pc, regs[i.B], o, fp.keys[fp.code[pc].C], &c.cacheEntry)
+			}
 			regs[i.A+1] = v
 			*g.ref = v
 			pc = int(i.C)
@@ -516,11 +528,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if h := c.holder; h == nil || h.shape != c.shape {
 				break
 			}
+			if validateExec {
+				fp.context.checkGlobalExists(fp, pc-1, fp.keys[i.B], c)
+			}
 			regs[i.A] = Value{}
 			// A named read may supply the value of the assignment.
 			if n := &fp.code[pc]; n.Op == bytecode.OpGetProp {
 				c := &fp.caches[n.C]
 				if o := regs[n.B].o; o != nil && c.kind == cacheOwn && c.shape == o.shape {
+					if validateExec {
+						fp.context.checkEntryRead(fp, pc, regs[n.B], o, fp.keys[n.C], &c.cacheEntry)
+					}
 					regs[n.A] = o.slots[c.slot]
 					pc++
 				}
@@ -542,8 +560,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					if e.kind != cacheProto || e.epoch != ag.protoEpoch {
 						break
 					}
+					if validateExec {
+						fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+					}
 					regs[a] = *e.ref
 					continue
+				}
+				if validateExec {
+					fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
 				}
 				regs[a] = o.slots[e.slot]
 				continue
@@ -567,6 +591,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				} else {
 					w = o.slots[e.slot]
 				}
+				if validateExec {
+					fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, fp.keys[i.C], e)
+				}
 				regs[a] = w
 				// Consume the next named read of w if its cache supplies a data property.
 				if o := w.o; o != nil {
@@ -583,8 +610,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						if e.kind != cacheProto || e.epoch != ag.protoEpoch {
 							continue
 						}
+						if validateExec {
+							fp.context.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
+						}
 						regs[n.A] = *e.ref
 					} else {
+						if validateExec {
+							fp.context.checkEntryRead(fp, pc, w, o, fp.keys[n.C], e)
+						}
 						regs[n.A] = o.slots[e.slot]
 					}
 					pc++
@@ -602,11 +635,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					}
 				}
 				if e.kind == cacheOwn {
+					if validateExec {
+						fp.context.checkStoreHit(fp, pc-1, regs[i.A], fp.keys[i.B], &o.slots[e.slot])
+					}
 					o.slots[e.slot] = regs[i.C]
 					continue
 				}
 				if e.kind == cacheAdd && o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
 					if n := len(o.slots); n < cap(o.slots) {
+						if validateExec {
+							fp.context.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
+						}
 						o.shape = e.next
 						o.slots = o.slots[:n+1]
 						o.slots[n] = regs[i.C]
@@ -616,6 +655,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpGetLength:
 			if o := regs[i.B].o; o != nil && o.kind == kindArray {
+				if validateExec {
+					fp.context.checkLengthHit(fp, pc-1, regs[i.B], float64(o.length))
+				}
 				setNumber(&regs[i.A], float64(o.length))
 				continue
 			}
@@ -624,6 +666,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if a, c, o := i.A, &fp.caches[i.C], regs[i.B].o; o != nil {
 				// The length of a string known to be ASCII, as in Value.StringLength.
 				if o.kind == kindString && o.flags&(objASCIIKnown|objASCII) == objASCIIKnown|objASCII {
+					if validateExec {
+						fp.context.checkLengthHit(fp, pc-1, regs[i.B], float64(len(o.str)))
+					}
 					setNumber(&regs[a], float64(len(o.str)))
 					continue
 				}
@@ -633,6 +678,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// bounds check.
 				if t, ok := o.ext.(*TypedArray); ok && !t.tracking && t.offset+t.length*t.typ.Size() <= len(t.data.data) {
 					if o.shape == c.shape && c.kind == cacheGetter && c.epoch == ag.protoEpoch && c.holder == fp.context.realm.intrinsics[IntrinsicTypedArrayPrototypeLengthGetter] {
+						if validateExec {
+							fp.context.checkTypedArrayLengthHit(fp, pc-1, regs[i.B], float64(t.length))
+						}
 						setNumber(&regs[a], float64(t.length))
 						continue
 					}
@@ -644,10 +692,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				if o.shape == e.shape {
 					if e.kind == cacheOwn {
+						if validateExec {
+							fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
+						}
 						regs[a] = o.slots[e.slot]
 						continue
 					}
 					if e.kind == cacheProto && e.epoch == ag.protoEpoch {
+						if validateExec {
+							fp.context.checkEntryRead(fp, pc-1, regs[i.B], o, ag.Key(KeyLength), e)
+						}
 						regs[a] = *e.ref
 						continue
 					}
@@ -1259,6 +1313,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 							}
 						}
 						if known {
+							if validateExec {
+								fp.context.checkInstanceofHit(fp, pc-1, regs[i.B], co, &co.slots[c.slot], r)
+							}
 							regs[i.A] = Bool(r)
 							pc++
 							continue
@@ -1278,6 +1335,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			o := regs[i.A].o
 			if c := &fp.caches[i.B]; o.shape == c.shape && c.kind == cacheAdd {
 				if n := len(o.slots); n < cap(o.slots) {
+					if validateExec {
+						fp.context.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
+					}
 					o.shape = c.next
 					o.slots = o.slots[:n+1]
 					o.slots[n] = regs[i.C]
@@ -1313,6 +1373,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					m = *e.ref
 				} else {
 					m = o.slots[e.slot]
+				}
+				if validateExec {
+					fp.context.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], e)
 				}
 				n := &fp.code[pc]
 				regs[a] = m
@@ -1350,6 +1413,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						}
 						if site := c.returnedProperty; site != nil && this.IsObject() {
 							if e := site.entry(this.o.shape); e != nil && e.kind == cacheOwn {
+								if validateExec {
+									c.checkReturnedProperty(this, e)
+								}
 								regs[i.A] = this.o.slots[e.slot]
 								continue
 							}
@@ -1826,6 +1892,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// stays valid for its shape, and the method receives v as this.
 				o = fp.context.realm.intrinsics[IntrinsicNumberPrototype]
 				if c.kind == cacheOwn && c.shape == o.shape {
+					if validateExec {
+						fp.context.checkEntryRead(fp, pc-1, v, o, fp.keys[i.C], &c.cacheEntry)
+					}
 					regs[i.A] = o.slots[c.slot]
 					continue
 				}
@@ -1833,10 +1902,16 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if o != nil {
 				if e := c.entry(o.shape); e != nil {
 					if e.kind == cacheGetter && e.epoch == ag.protoEpoch {
+						if validateExec {
+							fp.context.checkGetterHit(fp, pc-1, v, fp.keys[i.C], e.holder)
+						}
 						f, callThis, argc, ret = e.holder, v, 0, i.A
 						goto callAbove
 					}
 					if e.kind == cacheOwnGetter {
+						if validateExec {
+							fp.context.checkOwnGetterHit(fp, pc-1, v, fp.keys[i.C], &o.slots[e.slot])
+						}
 						g := o.slots[e.slot].accessor().getter
 						if g == nil {
 							regs[i.A] = Undefined
@@ -1857,12 +1932,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					switch e.kind {
 					case cacheAdd:
 						if o.objectProperties != nil && e.epoch == ag.protoEpoch && o.flags&objIsProto == 0 {
+							if validateExec {
+								fp.context.checkAddHit(fp, pc-1, o, fp.keys[i.B], e.next)
+							}
 							o.shape = e.next
 							o.appendSlot(regs[i.C])
 							continue
 						}
 					case cacheSetter:
 						if e.epoch == ag.protoEpoch {
+							if validateExec {
+								fp.context.checkSetterHit(fp, pc-1, v, fp.keys[i.B], e.holder)
+							}
 							setter, receiver, rhs = e.holder, v, regs[i.C]
 							goto writeProperty
 						}
@@ -1874,6 +1955,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetLength:
 			v := regs[i.B]
 			if v.IsString() {
+				if validateExec {
+					fp.context.checkLengthHit(fp, pc-1, v, float64(v.StringLength()))
+				}
 				setNumber(&regs[i.A], float64(v.StringLength()))
 				continue
 			}
@@ -2473,6 +2557,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				c := &fp.caches[site]
 				var proto Value
 				if f.shape == c.shape && c.kind == cacheOwn {
+					if validateExec {
+						fp.context.checkEntryRead(fp, pc-2, Value{o: f}, f, ag.Key(KeyPrototype), &c.cacheEntry)
+					}
 					proto = f.slots[c.slot]
 				} else {
 					ag.frames[len(ag.frames)-1].pc = pc
@@ -2483,6 +2570,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				var shape *shape
 				if proto.o == c.holder && c.next != nil && c.next.realm == f.fn.code.context.realm {
+					if validateExec {
+						fp.context.checkInstanceShape(fp, pc-2, proto.o, f.fn.code.context.realm, c.next)
+					}
 					shape = c.next
 				} else {
 					shape = fp.context.shapeForRealm(proto.o, f.fn.code.context.realm)
@@ -2694,6 +2784,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			o := regs[i.A].o
 			c := &fp.caches[i.B]
 			if o.shape == c.shape && c.kind == cacheAdd {
+				if validateExec {
+					fp.context.checkDefineHit(fp, pc-1, o, fp.keys[i.B], c.next)
+				}
 				o.shape = c.next
 				o.appendSlot(regs[i.C])
 				continue
@@ -3228,6 +3321,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
 						// Preparing the arguments may have grown the stack.
 						regs = ag.reload(regs, ag.frameBase(), fp)
+						if validateExec {
+							c.checkReturnedProperty(callThis, e)
+						}
 						regs[ret] = callThis.o.slots[e.slot]
 						continue
 					}

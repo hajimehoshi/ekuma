@@ -481,6 +481,9 @@ func (cx *ExecutionContext) iteratorCloseAll(its []Value, pending bool) {
 // can expose it to JavaScript.
 func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
 	if c := &cx.realm.arrayIter; c.epoch == cx.protoEpoch && c.noReturn {
+		if validateExec {
+			cx.checkNoIteratorReturn(cx.realm)
+		}
 		return
 	}
 	if cx.noArrayIteratorReturn(cx.Intrinsic(IntrinsicArrayIteratorPrototype)) {

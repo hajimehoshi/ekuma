@@ -893,6 +893,9 @@ func (cx *ExecutionContext) defineFieldK(o *Object, key *Object, val Value, c *p
 // c caches the shape transition of the field, whose key is always k.
 func (cx *ExecutionContext) definePublicField(o *Object, k, val Value, c *propCache) {
 	if o.class == classObject && o.flags&(objNotExtensible|objIsProto|objExotic) == 0 && o.shape == c.shape && c.kind == cacheAdd {
+		if validateExec {
+			cx.checkDefineHit(nil, 0, o, cx.ToPropertyKey(k).key, c.next)
+		}
 		o.shape = c.next
 		o.appendSlot(val)
 		return
@@ -1171,6 +1174,9 @@ func (cx *ExecutionContext) arrayProtoPlain() bool {
 // arrayIterationPlain reports whether o uses the original array values and next methods.
 // Reading an element can still invoke a getter.
 func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
+	if validateExec {
+		cx.checkPlainArray(o)
+	}
 	return o.shape == cx.realm.shapes.array && cx.arrayIterationUnmodified(cx.realm)
 }
 
@@ -1184,6 +1190,9 @@ func (ag *agent) arrayIterationUnmodified(r *realm) bool {
 		c.found = c.iter.findData(r.intrinsics[IntrinsicArrayPrototype], ag.WellKnownSymbol(SymbolIterator)) &&
 			c.next.findData(r.intrinsics[IntrinsicArrayIteratorPrototype], ag.Key(keyNext))
 		c.noReturn = ag.noArrayIteratorReturn(r.intrinsics[IntrinsicArrayIteratorPrototype])
+	}
+	if validateExec {
+		ag.checkArrayIteration(r)
 	}
 	// Assigning to an existing data property does not move protoEpoch, so the values are
 	// compared on every call.

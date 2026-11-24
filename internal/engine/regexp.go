@@ -218,6 +218,9 @@ func (cx *ExecutionContext) regExpLiteralMethod(site *regExpSite, key *Object, c
 		e = &c.second
 	}
 	if o.shape == e.shape && e.kind == cacheProto && e.epoch == cx.protoEpoch {
+		if validateExec {
+			cx.checkEntryRead(nil, 0, Value{o: o}, o, key, e)
+		}
 		return *e.ref, o
 	}
 	if _, ok := cx.GetVWithoutCall(Value{o: o}, key); ok {
@@ -394,12 +397,18 @@ func (cx *ExecutionContext) IsUnmodifiedRegExp(o *Object) bool {
 			return false
 		}
 	}
+	if validateExec {
+		cx.checkUnmodifiedRegExp(o)
+	}
 	return true
 }
 
 // hasRegExpShape reports whether o has the shape of a new RegExp object whose prototype is
 // %RegExp.prototype%, so that its only own property is a writable lastIndex in slot 0.
 func (cx *ExecutionContext) hasRegExpShape(o *Object) bool {
+	if validateExec {
+		cx.checkRegExpShape(o)
+	}
 	s := cx.realm.shapes.regExp
 	return s != nil && o.shape == s
 }

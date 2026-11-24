@@ -491,6 +491,9 @@ func (cx *ExecutionContext) getNamedAtSite(v Value, key *Object, c *propCache) (
 				for range e.depth {
 					h = h.shape.proto
 				}
+				if validateExec {
+					cx.checkRememberedRead(v, key, h, e.prop)
+				}
 				c.keep(o.shape)
 				return cx.readNamedSlot(o, h, e.prop, c)
 			}
@@ -547,6 +550,9 @@ func (cx *ExecutionContext) getNamed(v Value, key *Object, c *propCache) (val Va
 			e = &c.second
 		}
 		if e.shape == start.shape && e.kind == cacheGetter && e.epoch == cx.protoEpoch && e.holder == cx.Intrinsic(IntrinsicTypedArrayPrototypeLengthGetter) {
+			if validateExec {
+				cx.checkTypedArrayLengthHit(nil, 0, v, float64(cx.typedArrayLength(start)))
+			}
 			return Number(float64(cx.typedArrayLength(start))), nil
 		}
 	}
@@ -674,17 +680,29 @@ func (cx *ExecutionContext) GetVCached(v Value, k PropKey, c *PropertyCache) Val
 		}
 		if o.shape == e.shape {
 			if e.kind == cacheOwn {
+				if validateExec {
+					cx.checkEntryRead(nil, 0, v, o, k.key, e)
+				}
 				return o.slots[e.slot]
 			}
 			if e.epoch == cx.protoEpoch {
 				switch e.kind {
 				case cacheProto:
+					if validateExec {
+						cx.checkEntryRead(nil, 0, v, o, k.key, e)
+					}
 					return *e.ref
 				case cacheGetter:
+					if validateExec {
+						cx.checkGetterHit(nil, 0, v, k.key, e.holder)
+					}
 					return cx.Call(e.holder, v)
 				}
 			}
 			if e.kind == cacheOwnGetter {
+				if validateExec {
+					cx.checkOwnGetterHit(nil, 0, v, k.key, &o.slots[e.slot])
+				}
 				if g := o.slots[e.slot].accessor().getter; g != nil {
 					return cx.Call(g, v)
 				}

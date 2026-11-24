@@ -200,3 +200,81 @@ func TestValidationRejectsSkippedLoad(t *testing.T) {
 	}()
 	engine.CheckDispatchSequence(f, 0, 2)
 }
+
+func TestValidationRejectsWrongCacheEntry(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "own read",
+			src:  `function f(o) { return o.b; } f;`,
+		},
+		{
+			name: "inherited read",
+			src:  `function f(o) { return o.c; } f;`,
+		},
+		{
+			name: "missing read",
+			src:  `function f(o) { return o.missing; } f;`,
+		},
+		{
+			name: "getter",
+			src:  `function f(o) { return o.d; } f;`,
+		},
+		{
+			name: "store",
+			src:  `function f(o) { o.b = 3; } f;`,
+		},
+		{
+			name: "add",
+			src:  `function f(o) { o.e = 3; } f;`,
+		},
+		{
+			name: "setter",
+			src:  `function f(o) { o.d = 3; } f;`,
+		},
+		{
+			name: "global read",
+			src:  `function f() { return value; } f;`,
+		},
+		{
+			name: "global store",
+			src:  `function f() { value = 2; } f;`,
+		},
+		{
+			name: "method",
+			src:  `function f(o) { return o.m(); } f;`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cx := newTestContext(t)
+			if _, err := runScript(cx, "setup", `
+				var value = 1;
+				const proto = {c: 1, get d() {}, set d(v) {}, m() {}};
+				const make = () => Object.assign(Object.create(proto), {a: 1, b: 2});
+			`); err != nil {
+				t.Fatal(err)
+			}
+			f, err := runScript(cx, "function", tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				if _, err := runScript(cx, "warm", `f(make());`); err != nil {
+					t.Fatal(err)
+				}
+			}
+			engine.CorruptCaches(f)
+			defer func() {
+				// The checks panic with a string, and a failed array access with an error.
+				if _, ok := recover().(string); !ok {
+					t.Error("validation accepted the wrong entry")
+				}
+			}()
+			if _, err := runScript(cx, "hit", `f(make());`); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}

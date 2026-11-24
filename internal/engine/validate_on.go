@@ -16,7 +16,8 @@ import (
 
 // validateExec enables the interpreter's frame and bytecode checks. The registers must belong
 // to the running frame. Each instruction must write only the registers in [bytecode.Opcode.Operands]
-// and continue where [bytecode.Opcode.Flow] or a jump target allows.
+// and continue where [bytecode.Opcode.Flow] or a jump target allows. A cache that answers for a
+// property lookup must answer as the lookup does (see validate_cache_on.go).
 const validateExec = true
 
 // execChecks is the state of the checks of the instructions.
