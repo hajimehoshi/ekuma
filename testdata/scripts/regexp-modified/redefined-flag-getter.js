@@ -3,7 +3,8 @@
 
 /*---
 description: "redefined flag getter"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it starts with the original RegExp.prototype.global"
 ---*/
 
 // Warm the built-ins before modifying the RegExp objects.

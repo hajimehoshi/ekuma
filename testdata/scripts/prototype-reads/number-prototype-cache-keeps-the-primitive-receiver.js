@@ -3,6 +3,8 @@
 
 /*---
 description: "a cached number prototype method and its replacement getter receive the primitive"
+flags: [noRepeat]
+noRepeatReason: "it leaves an accessor without a setter on Number.prototype"
 ---*/
 
 function callMethod(n) { return n.method(); }

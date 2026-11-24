@@ -6,7 +6,10 @@ package ekuma
 import (
 	"context"
 
+	"github.com/hajimehoshi/ekuma/internal/compiler"
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/parser"
+	"github.com/hajimehoshi/ekuma/internal/wtf8"
 	"github.com/hajimehoshi/ekuma/internal/xerrors"
 )
 
@@ -100,6 +103,26 @@ func ObjectCreationRealm(v Value) *Realm {
 // ParseScriptValue parses the JavaScript string src as a script of r.
 func ParseScriptValue(r *Realm, name string, src Value) (*Script, error) {
 	return r.parseScript(name, src.value.Str())
+}
+
+// ParseConservativeScript is [Realm.ParseScript] without the compiler's assignment shortcuts.
+func ParseConservativeScript(r *Realm, name, src string) (*Script, error) {
+	// The ordinary path makes the errors of an invalid script.
+	if _, err := r.ParseScript(name, src); err != nil {
+		return nil, err
+	}
+	prog, err := parser.ParseScript(wtf8.FromValidUTF8(src), parser.Options{})
+	if err != nil {
+		return nil, err
+	}
+	code, err := compiler.CompileConservativeScript(prog, name)
+	if err != nil {
+		return nil, err
+	}
+	return &Script{
+		vm: r.vm,
+		s:  r.context().NewScript(code),
+	}, nil
 }
 
 // InstallGlobalProxy installs a d8 global proxy in r, reusing the proxy of previous if supplied.

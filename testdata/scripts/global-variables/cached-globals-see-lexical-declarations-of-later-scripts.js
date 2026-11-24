@@ -3,6 +3,8 @@
 
 /*---
 description: "reads and assignments of global variables that ran before a later script declared global lexical bindings see the bindings afterwards"
+flags: [noRepeat]
+noRepeatReason: "a realm accepts the global lexical declarations only once"
 ---*/
 
 globalThis.shadowed = "property";

@@ -594,6 +594,14 @@ func CompileScript(prog *ast.Program, file string) (*bytecode.Func, error) {
 	return newCompiler(prog, file).compile(nil, nil)
 }
 
+// CompileConservativeScript compiles a script with assignment shortcuts disabled, for tests that compare
+// the result with that of [CompileScript].
+func CompileConservativeScript(prog *ast.Program, file string) (*bytecode.Func, error) {
+	c := newCompiler(prog, file)
+	c.conservativeAssignments = true
+	return c.compile(nil, nil)
+}
+
 // CompileFunction compiles the program prog from parser.ParseFunction. The returned script
 // evaluates to the function, which runs in the global scope and does not see its own name.
 // poll, when not nil, is called now and then during a long compilation, and may stop it by

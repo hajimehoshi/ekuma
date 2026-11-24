@@ -3,7 +3,8 @@
 
 /*---
 description: "species getter of RegExp"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it starts with the original RegExp[Symbol.species]"
 ---*/
 
 // Warm the built-ins before modifying the RegExp objects.

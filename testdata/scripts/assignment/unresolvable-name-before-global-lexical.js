@@ -3,7 +3,8 @@
 
 /*---
 description: "A sloppy assignment to an unresolvable name sets a global property even if the value creates a lexical binding"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "a realm accepts the global lexical declaration only once"
 ---*/
 
 function value() {

@@ -3,6 +3,8 @@
 
 /*---
 description: A caller reads its updated local after a global setter grows the stack
+flags: [noRepeat]
+noRepeatReason: "it defines a global property that is not configurable"
 ---*/
 
 function noop() {}

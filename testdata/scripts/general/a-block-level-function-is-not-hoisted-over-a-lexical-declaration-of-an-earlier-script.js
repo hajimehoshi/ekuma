@@ -3,7 +3,8 @@
 
 /*---
 description: "a block-level function of sloppy code gets no global variable over a lexical declaration of an earlier script"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "a script of $262.evalScript needs the global lexical declaration"
 ---*/
 
 let f = 1;

@@ -30,7 +30,13 @@ type Test262 struct {
 	NewHTMLDDA           func(*ekuma.Realm) ekuma.Value
 	AbstractModuleSource func(*ekuma.Realm) ekuma.Value
 	NewSourceModule      func(*ekuma.Realm, string, string) *ekuma.Module
+
+	// ParseConservativeScript is [ekuma.Realm.ParseScript] without the compiler's assignment shortcuts.
+	ParseConservativeScript parseFunc
 }
+
+// parseFunc parses a script of a realm with a name and a source text.
+type parseFunc func(*ekuma.Realm, string, string) (*ekuma.Script, error)
 
 var test262Flags = registerSuiteFlags("test262")
 
@@ -60,6 +66,9 @@ type metadata struct {
 	// negativePhase is "parse", "resolution" or "runtime" for a test that must fail, and empty otherwise.
 	negativePhase string
 	negativeType  string
+
+	// noRepeatReason says why a test with the flag noRepeat cannot be evaluated repeatedly in one VM.
+	noRepeatReason string
 }
 
 // parseMetadata reads the YAML front matter of a test. It understands the subset of YAML
@@ -102,6 +111,8 @@ func parseMetadata(src string) metadata {
 				for _, f := range list(v) {
 					m.flags[f] = true
 				}
+			case "noRepeatReason":
+				m.noRepeatReason = strings.Trim(strings.TrimSpace(v), `"`)
 			}
 			continue
 		}
@@ -140,6 +151,9 @@ type harness struct {
 	// scripts are the files parsed as unbound scripts, by name. Every VM of the run binds the
 	// same harness scripts instead of parsing them again.
 	scripts map[string]*ekuma.UnboundScript
+
+	// recordAssertions records the actual values of the assertions of each test.
+	recordAssertions bool
 }
 
 func (suite *Test262) newHarness(files fs.FS) *harness {
@@ -238,7 +252,46 @@ func (m metadata) checkError(phase string, err error) suiteResult {
 	return suiteResult{}
 }
 
-func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time.Duration) (result suiteResult) {
+// testVM is a VM in which the harness of a test is set up.
+type testVM struct {
+	vm     *ekuma.VM
+	path   string
+	m      metadata
+	loader *moduleLoader
+
+	// parse parses the test and the scripts of $262.evalScript.
+	parse parseFunc
+
+	// printed holds what the test printed. An async test reports its outcome by printing it.
+	printed []string
+
+	// asserted describes the actual values of the harness's assertions, if they are recorded.
+	asserted []string
+}
+
+func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time.Duration) suiteResult {
+	return runInVM(h, path, m, (*ekuma.Realm).ParseScript, timeout, func(ctx context.Context, tv *testVM) suiteResult {
+		if m.flags["module"] {
+			return tv.runModule(ctx, src)
+		}
+		s, err := tv.parse(tv.vm.InitialRealm(), path, scriptSource(src, strict))
+		if err == nil {
+			_, err = s.Evaluate(ctx)
+		}
+		return tv.check(ctx, err)
+	})
+}
+
+// scriptSource returns the source text of a script in sloppy or strict mode.
+func scriptSource(src string, strict bool) string {
+	if strict {
+		return "\"use strict\";\n" + src
+	}
+	return src
+}
+
+// runInVM calls f with a new VM for the test at path, which parses scripts with parse.
+func runInVM(h *harness, path string, m metadata, parse parseFunc, timeout time.Duration, f func(context.Context, *testVM) suiteResult) (result suiteResult) {
 	defer func() {
 		if r := recover(); r != nil {
 			result = suiteBroken.result(fmt.Sprintf("engine panic: %v", r))
@@ -249,12 +302,16 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	if err := vm.SetLocale("en-US"); err != nil {
 		return suiteBroken.result("harness: " + err.Error())
 	}
-	loader := h.suite.setModuleLoader(&vm, filepath.Dir(path))
-	// An async test reports its outcome by printing it.
-	printed := new([]string)
+	tv := &testVM{
+		vm:     &vm,
+		path:   path,
+		m:      m,
+		loader: h.suite.setModuleLoader(&vm, filepath.Dir(path)),
+		parse:  parse,
+	}
 	print := vm.FuncOf("print", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		if len(args) > 0 {
-			*printed = append(*printed, args[0].String())
+			tv.printed = append(tv.printed, args[0].String())
 		}
 		return ekuma.Undefined, nil
 	})
@@ -267,7 +324,7 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 	defer agents.close()
 	// The main agent can block, as in a shell, unless the test says otherwise.
 	vm.SetCanBlock(!m.flags["CanBlockIsFalse"])
-	if err := h.suite.define262(&vm, agents); err != nil {
+	if err := h.suite.define262(&vm, agents, parse); err != nil {
 		return suiteBroken.result("harness: " + err.Error())
 	}
 
@@ -288,23 +345,26 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 				return suiteBroken.result("harness " + name + ": " + firstLine(err.Error()))
 			}
 		}
+		if h.recordAssertions {
+			if err := tv.recordAssertions(); err != nil {
+				return suiteBroken.result("harness: " + err.Error())
+			}
+		}
 	}
-	if m.flags["module"] {
-		return runModule(ctx, &vm, loader, path, src, m, printed)
-	}
-	if strict {
-		src = "\"use strict\";\n" + src
-	}
-	_, err := runScript(ctx, &vm, path, src)
-	if err != nil || m.negativePhase != "" {
+	return f(ctx, tv)
+}
+
+// check judges a test script that completed with err.
+func (tv *testVM) check(ctx context.Context, err error) suiteResult {
+	if err != nil || tv.m.negativePhase != "" {
 		phase := "runtime"
 		if _, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			phase = "parse"
 		}
-		return m.checkError(phase, err)
+		return tv.m.checkError(phase, err)
 	}
-	if m.flags["async"] {
-		return awaitAgents(ctx, &vm, printed)
+	if tv.m.flags["async"] {
+		return tv.awaitAgents(ctx)
 	}
 	return suiteResult{}
 }
@@ -405,12 +465,13 @@ func (l *moduleLoader) call(fn string, arg any) (ekuma.Value, error) {
 	return f.Invoke(context.Background(), arg)
 }
 
-func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, src string, m metadata, printed *[]string) suiteResult {
-	mod, err := loader.realm.ParseModule(path, src)
+func (tv *testVM) runModule(ctx context.Context, src string) suiteResult {
+	m := tv.m
+	mod, err := tv.loader.realm.ParseModule(tv.path, src)
 	if err != nil {
 		return m.checkError("parse", err)
 	}
-	loader.modules[path+"\x00"] = mod
+	tv.loader.modules[tv.path+"\x00"] = mod
 	p, err := mod.Evaluate(ctx)
 	if err != nil {
 		return m.checkError("resolution", err)
@@ -419,7 +480,7 @@ func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, sr
 		switch state, reason := p.PromiseState(); state {
 		case ekuma.PromiseFulfilled:
 			if m.flags["async"] && m.negativePhase == "" {
-				return awaitAgents(ctx, vm, printed)
+				return tv.awaitAgents(ctx)
 			}
 			return m.checkError("runtime", nil)
 		case ekuma.PromiseRejected:
@@ -427,7 +488,7 @@ func runModule(ctx context.Context, vm *ekuma.VM, loader *moduleLoader, path, sr
 				Value: reason,
 			})
 		}
-		ran, err := vm.AwaitJobs(ctx)
+		ran, err := tv.vm.AwaitJobs(ctx)
 		if err != nil {
 			return scriptErrorResult(err)
 		}
@@ -451,9 +512,9 @@ func asyncOutcome(printed []string) (suiteResult, bool) {
 }
 
 // define262 defines the host object $262 of the harness, with the members that the engine supports.
-// agents implements $262.agent.
-func (suite *Test262) define262(vm *ekuma.VM, agents *agentCluster) error {
-	o, err := suite.new262(vm, vm.InitialRealm())
+// agents implements $262.agent, and parse parses the scripts of $262.evalScript.
+func (suite *Test262) define262(vm *ekuma.VM, agents *agentCluster, parse parseFunc) error {
+	o, err := suite.new262(vm, vm.InitialRealm(), parse)
 	if err != nil {
 		return err
 	}
@@ -464,7 +525,7 @@ func (suite *Test262) define262(vm *ekuma.VM, agents *agentCluster) error {
 }
 
 // new262 returns the object $262 for the realm r of vm, without $262.agent.
-func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) {
+func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm, parse parseFunc) (ekuma.Value, error) {
 	ctx := context.Background()
 	s, err := r.ParseScript("$262", "({})")
 	if err != nil {
@@ -476,7 +537,7 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) 
 	}
 	createRealm := r.FuncOf("createRealm", func(this ekuma.Value, args []ekuma.Value) (any, error) {
 		nr := vm.NewRealm()
-		o, err := suite.new262(vm, nr)
+		o, err := suite.new262(vm, nr, parse)
 		if err != nil {
 			return nil, err
 		}
@@ -518,7 +579,7 @@ func (suite *Test262) new262(vm *ekuma.VM, r *ekuma.Realm) (ekuma.Value, error) 
 		if len(args) > 0 {
 			src = args[0].String()
 		}
-		s, err := r.ParseScript("evalScript", src)
+		s, err := parse(r, "evalScript", src)
 		if se, ok := errors.AsType[*ekuma.SyntaxError](err); ok {
 			// An early error of the script is a SyntaxError thrown to the caller.
 			c, err := r.Global().Get("SyntaxError")
@@ -596,20 +657,27 @@ func (t *test262Test) waitsForAgents() bool {
 	return slices.Contains(t.m.includes, "atomicsHelper.js")
 }
 
+// strictModes returns whether each evaluation that the flags of the test ask for is in strict mode.
+func (t *test262Test) strictModes() []bool {
+	switch {
+	case t.m.flags["module"]:
+		// Module code is always strict.
+		return []bool{false}
+	case t.m.flags["onlyStrict"]:
+		return []bool{true}
+	case t.m.flags["noStrict"], t.m.flags["raw"]:
+		return []bool{false}
+	}
+	return []bool{false, true}
+}
+
 // run runs the test in every mode that its flags ask for.
 func (t *test262Test) run(h *harness, timeout time.Duration) suiteResult {
-	if t.m.flags["module"] {
-		// Module code is always strict.
-		return runOnce(h, t.path, t.src, t.m, false, timeout)
-	}
-	if !t.m.flags["onlyStrict"] {
-		if result := runOnce(h, t.path, t.src, t.m, false, timeout); result.outcome != suitePassed {
-			return result
-		}
-	}
-	if !t.m.flags["noStrict"] && !t.m.flags["raw"] {
-		if result := runOnce(h, t.path, t.src, t.m, true, timeout); result.outcome != suitePassed {
-			result.reason = "strict mode: " + result.reason
+	for _, strict := range t.strictModes() {
+		if result := runOnce(h, t.path, t.src, t.m, strict, timeout); result.outcome != suitePassed {
+			if strict {
+				result.reason = "strict mode: " + result.reason
+			}
 			return result
 		}
 	}
@@ -1062,15 +1130,15 @@ func (c *agentCluster) run(a *testAgent, src string) {
 }
 
 // awaitAgents lets an async test whose promises wait for other agents complete: it runs the jobs
-// whenever a waiter of Atomics.waitAsync of vm is notified or times out, until the test has
+// whenever a waiter of Atomics.waitAsync is notified or times out, until the test has
 // printed its outcome or nothing is left to wait for.
-func awaitAgents(ctx context.Context, vm *ekuma.VM, printed *[]string) suiteResult {
+func (tv *testVM) awaitAgents(ctx context.Context) suiteResult {
 	for {
-		result, done := asyncOutcome(*printed)
+		result, done := asyncOutcome(tv.printed)
 		if done {
 			return result
 		}
-		ok, err := vm.AwaitJobs(ctx)
+		ok, err := tv.vm.AwaitJobs(ctx)
 		if err != nil {
 			return scriptErrorResult(err)
 		}

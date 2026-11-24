@@ -3,7 +3,8 @@
 
 /*---
 description: "groupBy with an index accessor on Array.prototype"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it adds an accessor to Array.prototype for good"
 ---*/
 
 Object.defineProperty(Array.prototype, "0", { get() { throw 1; }, set(v) { throw 2; } });

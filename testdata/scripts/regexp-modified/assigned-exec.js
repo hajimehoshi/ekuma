@@ -3,7 +3,8 @@
 
 /*---
 description: "assigned exec"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it starts with the original RegExp.prototype.exec"
 ---*/
 
 // Warm the built-ins before modifying the RegExp objects.

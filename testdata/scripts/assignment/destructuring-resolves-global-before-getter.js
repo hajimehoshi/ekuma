@@ -3,7 +3,8 @@
 
 /*---
 description: "A destructuring target resolves before the source getter creates the global"
-flags: [onlyStrict]
+flags: [onlyStrict, noRepeat]
+noRepeatReason: "a script of $262.evalScript reads a global lexical declaration"
 ---*/
 
 const source = {

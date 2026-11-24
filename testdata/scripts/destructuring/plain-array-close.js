@@ -3,6 +3,8 @@
 
 /*---
 description: "Partial array destructuring propagates an exception from the return getter"
+flags: [noRepeat]
+noRepeatReason: "it adds an accessor to a built-in prototype for good"
 ---*/
 
 const prototype = Object.getPrototypeOf([][Symbol.iterator]());

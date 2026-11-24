@@ -3,7 +3,8 @@
 
 /*---
 description: "a stack trace shows the names as they were when the error was created"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it starts with the original Error.prototype.name"
 ---*/
 
 function Thing() {}

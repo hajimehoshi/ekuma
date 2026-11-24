@@ -3,7 +3,8 @@
 
 /*---
 description: "join and includes across runs of holes"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "each evaluation builds a string up to the length limit"
 ---*/
 
 var r = [];

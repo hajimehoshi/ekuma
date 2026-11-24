@@ -3,7 +3,8 @@
 
 /*---
 description: "slice uses the species getter inherited by Array"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it adds an accessor to Function.prototype for good"
 ---*/
 
 class Other extends Array {}

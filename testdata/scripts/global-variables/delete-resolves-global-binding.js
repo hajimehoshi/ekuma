@@ -3,7 +3,8 @@
 
 /*---
 description: "Deleting a global identifier respects the binding resolved by a prototype proxy"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "the global bindings must not exist at the start"
 ---*/
 
 function noop() {}

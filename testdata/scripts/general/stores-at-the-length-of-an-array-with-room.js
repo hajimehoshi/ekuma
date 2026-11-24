@@ -3,6 +3,8 @@
 
 /*---
 description: "stores at the length of an array that has room for more elements"
+flags: [noRepeat]
+noRepeatReason: "it leaves a setter on Array.prototype"
 ---*/
 
 var strict = (function () { return this === undefined; })();

@@ -3,7 +3,8 @@
 
 /*---
 description: "properties added to built-in objects"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it counts the properties that it adds to built-in objects"
 ---*/
 
 var out = [], before = Object.getOwnPropertyNames(Math).length;

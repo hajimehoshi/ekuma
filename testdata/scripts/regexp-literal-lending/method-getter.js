@@ -3,7 +3,8 @@
 
 /*---
 description: "method getter"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it replaces RegExp.prototype.test for good"
 ---*/
 
 var seen = [];

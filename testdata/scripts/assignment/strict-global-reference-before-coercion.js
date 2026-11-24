@@ -3,7 +3,8 @@
 
 /*---
 description: "Strict assignment resolves its target before unary coercion creates a global"
-flags: [onlyStrict]
+flags: [onlyStrict, noRepeat]
+noRepeatReason: "the global variable must not exist at the start"
 ---*/
 
 const o = { valueOf() { globalThis.createdDuringCoercion = 12; return 3; } };

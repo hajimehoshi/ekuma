@@ -3,7 +3,8 @@
 
 /*---
 description: "an assignment to a global variable that ran before the property became read-only does not write it"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it makes a global property read-only for good"
 ---*/
 
 var frozen = 1;

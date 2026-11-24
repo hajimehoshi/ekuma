@@ -15,9 +15,10 @@ import (
 )
 
 var test262Runner = jstest.Test262{
-	NewHTMLDDA:           ekuma.NewHTMLDDA,
-	AbstractModuleSource: ekuma.AbstractModuleSource,
-	NewSourceModule:      ekuma.NewSourceModule,
+	NewHTMLDDA:              ekuma.NewHTMLDDA,
+	AbstractModuleSource:    ekuma.AbstractModuleSource,
+	NewSourceModule:         ekuma.NewSourceModule,
+	ParseConservativeScript: ekuma.ParseConservativeScript,
 }
 
 var v8Runner = jstest.V8{
@@ -52,6 +53,10 @@ func TestScripts(t *testing.T) {
 
 func TestLocalScriptHarness(t *testing.T) {
 	test262Runner.CheckLocalScriptHarness(t)
+}
+
+func TestLocalScriptModes(t *testing.T) {
+	test262Runner.CheckScriptModes(t)
 }
 
 func TestExpectationDirectories(t *testing.T) {

@@ -3,7 +3,8 @@
 
 /*---
 description: "exec assigned after a new prototype property"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it starts with the original RegExp.prototype.exec"
 ---*/
 
 // The built-ins see an exec assigned after RegExp.prototype got new properties, which may move

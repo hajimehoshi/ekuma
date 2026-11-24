@@ -3,6 +3,8 @@
 
 /*---
 description: "a read of a global variable that ran before the property was redefined as an accessor or deleted sees the change"
+flags: [noRepeat]
+noRepeatReason: "it leaves an accessor without a setter on the global object"
 ---*/
 
 globalThis.redefined = "data";

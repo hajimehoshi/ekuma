@@ -3,7 +3,8 @@
 
 /*---
 description: "length"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it starts with the original length getter of typed arrays"
 ---*/
 
 // The lengths read at warm sites follow the buffers and the properties: a fixed-length view

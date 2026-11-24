@@ -119,7 +119,7 @@ func TestAssignmentOrderFixtures(t *testing.T) {
 		}
 		src := string(b)
 		for _, strict := range []bool{false, true} {
-			if strict && strings.Contains(src, "flags: [noStrict]") || !strict && strings.Contains(src, "flags: [onlyStrict]") {
+			if strict && strings.Contains(src, "flags: [noStrict") || !strict && strings.Contains(src, "flags: [onlyStrict") {
 				continue
 			}
 			t.Run(fmt.Sprintf("%s/strict=%t", path, strict), func(t *testing.T) {

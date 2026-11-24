@@ -3,7 +3,8 @@
 
 /*---
 description: "Object.prototype.toString passes a wrapper of a primitive to a getter"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it adds accessors to built-in prototypes for good"
 ---*/
 
 Object.defineProperty(Number.prototype, Symbol.toStringTag, {

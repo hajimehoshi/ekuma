@@ -3,7 +3,8 @@
 
 /*---
 description: "method found through a proxy"
-flags: [noStrict]
+flags: [noStrict, noRepeat]
+noRepeatReason: "it deletes RegExp.prototype.exec"
 ---*/
 
 var seen = [];

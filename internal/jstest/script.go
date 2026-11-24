@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // localTest262HarnessFS resolves upstream Test262 include names to Ekuma's local helpers.
@@ -21,19 +22,25 @@ func (localTest262HarnessFS) Open(name string) (fs.File, error) {
 	return os.DirFS(testdataDir + "/harness").Open("test262-" + name)
 }
 
-// RunScripts runs the JavaScript tests under scriptsDir.
+// RunScripts runs the JavaScript tests under scriptsDir, in several execution modes without -short.
 func (suite *Test262) RunScripts(t *testing.T, scriptsDir string) {
-	suite.newHarness(localTest262HarnessFS{}).runScripts(t, scriptsDir)
+	h := suite.newHarness(localTest262HarnessFS{})
+	run := (*test262Test).run
+	if !testing.Short() {
+		h.recordAssertions = true
+		run = (*test262Test).runModes
+	}
+	h.runScripts(t, scriptsDir, run)
 }
 
 // RunV8LocalTests runs V8's local Test262 cases with the official Test262 harness.
 func (suite *Test262) RunV8LocalTests(t *testing.T) {
 	v8Dir := v8Flags.checkoutDir(t)
 	h := suite.checkoutHarness(t, test262Flags.checkoutDir(t))
-	h.runScripts(t, filepath.Join(v8Dir, "test/test262/local-tests/test"))
+	h.runScripts(t, filepath.Join(v8Dir, "test/test262/local-tests/test"), (*test262Test).run)
 }
 
-func (h *harness) runScripts(t *testing.T, scriptsDir string) {
+func (h *harness) runScripts(t *testing.T, scriptsDir string, run func(*test262Test, *harness, time.Duration) suiteResult) {
 	err := fs.WalkDir(os.DirFS(scriptsDir), ".", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -46,9 +53,9 @@ func (h *harness) runScripts(t *testing.T, scriptsDir string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			result := test.run(h, testTimeout)
+			result := run(test, h, testTimeout)
 			if result.retry {
-				result = test.run(h, retryTimeout)
+				result = run(test, h, retryTimeout)
 			}
 			if result.outcome != suitePassed {
 				t.Error(result.reason)
