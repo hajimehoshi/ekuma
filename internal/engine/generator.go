@@ -104,6 +104,12 @@ func (g *generator) complete() Value {
 	return v
 }
 
+// completeAt is complete for a return, and keeps the position after it.
+func (g *generator) completeAt(pc int) {
+	g.complete()
+	g.pc = pc
+}
+
 func (g *generator) findUpval(index int) *upvalue {
 	i := len(g.openUpvals)
 	if i > 0 && g.openUpvals[i-1].index > index {

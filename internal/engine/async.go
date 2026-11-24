@@ -88,6 +88,7 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 	defer g.abortOnPanic()
 	cx := g.fp.context
 	promise := g.object
+	f, fp, this := g.f, g.fp, g.this
 	for {
 		var r Value
 		var done bool
@@ -98,7 +99,21 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 			return
 		}
 		if done {
-			cx.resolvePromise(cx.realm, promise, r)
+			if !r.IsObject() {
+				cx.fulfillPromise(promise, r)
+				return
+			}
+			if then, ok := cx.plainRead(r.o, cx.Key(keyThen)); ok && r.o != promise {
+				cx.resolvePromiseWithThen(promise, r, then)
+				return
+			}
+			// The code that reading then runs sees the function at its return, as does the error
+			// for a promise that resolves to itself.
+			g.f, g.fp, g.this = f, fp, this
+			g.underFrame(func() {
+				cx.resolvePromise(cx.realm, promise, r)
+			})
+			g.complete()
 			return
 		}
 		if g.tryAwait(r, reactionAwait) {
@@ -106,6 +121,17 @@ func (g *generator) asyncFunctionResume(mode ResumeMode, v Value) {
 		}
 		mode, v = ResumeThrow, cx.takeThrown()
 	}
+}
+
+// underFrame calls f, which must not throw, with the frame of g at its suspension or return.
+func (g *generator) underFrame(f func()) {
+	cx := g.fp.context
+	n := len(cx.frames)
+	state := g.state
+	cx.pushGenFrame(g, 0)
+	f()
+	cx.unwindTo(n)
+	g.state = state
 }
 
 // asyncGeneratorResume runs the async generator g from its suspension until it awaits,

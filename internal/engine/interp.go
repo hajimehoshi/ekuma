@@ -2654,7 +2654,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				r = done.this
 			}
 			if g := done.gen; g != nil {
-				g.complete()
+				g.completeAt(pc)
 			} else if len(ag.openUpvals) > 0 {
 				ag.closeUpvals(done.base)
 			}

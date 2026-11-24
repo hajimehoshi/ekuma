@@ -370,6 +370,11 @@ func (cx *ExecutionContext) resolvePromise(resolverRealm *realm, p *Object, reso
 		cx.rejectPromise(p, e)
 		return
 	}
+	cx.resolvePromiseWithThen(p, resolution, then)
+}
+
+// resolvePromiseWithThen is the part of resolvePromise after the read of then from resolution.
+func (cx *ExecutionContext) resolvePromiseWithThen(p *Object, resolution, then Value) {
 	if !then.IsCallable() {
 		cx.fulfillPromise(p, resolution)
 		return
@@ -535,9 +540,27 @@ func (g *generator) tryAwait(v Value, kind reactionKind) bool {
 		}, v, false)
 		return true
 	}
-	return cx.protect(func() {
+	read := keyThen
+	if IsPromise(v) {
+		read = KeyConstructor
+	}
+	if cx.readsPlainly(v.o, cx.Key(read)) {
 		cx.awaitValue(v, action)
+		return true
+	}
+	if kind != reactionAwait {
+		return cx.protect(func() {
+			cx.awaitValue(v, action)
+		})
+	}
+	// The code that the read runs sees the function at its await.
+	var ok bool
+	g.underFrame(func() {
+		ok = cx.protect(func() {
+			cx.awaitValue(v, action)
+		})
 	})
+	return ok
 }
 
 // awaitValue performs PromiseResolve and registers the implicit handlers for an await.
