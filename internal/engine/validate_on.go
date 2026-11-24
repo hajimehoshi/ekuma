@@ -352,7 +352,7 @@ func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 	if reached && bad < 0 {
 		return
 	}
-	if second := nextPC(code, s.pc); second < len(code) && canFuse(code[s.pc], code[second]) {
+	if second := bytecode.NextPC(code, s.pc); second < len(code) && canFuse(code[s.pc], code[second]) {
 		b, r := ag.fits(s, regs, pc, s.pc, second)
 		if r && b < 0 {
 			return
@@ -362,7 +362,7 @@ func (ag *agent) checkInstr(s *execStep, pc int, regs []Value) {
 		}
 	}
 	switch {
-	case !reached && isTailCall(code[s.pc].Op):
+	case !reached && code[s.pc].Op.IsTailCall():
 		// The callee took the place of the frame.
 	case !reached:
 		panic(validationFailure(s.fp, s.pc, fmt.Sprintf("continued at %d", pc)))
@@ -394,17 +394,17 @@ func (ag *agent) fits(s *execStep, regs []Value, to, first, second int) (bad int
 	var continues bool
 	last := first
 	if second < 0 {
-		continues = follows(code, first, to)
+		continues = bytecode.CanContinueAt(code, first, to)
 	} else {
 		last = second
-		continues = to == nextPC(code, second)
+		continues = to == bytecode.NextPC(code, second)
 	}
 	handlerReg := -1
 	if !continues {
 		// A throw continues at a handler, which receives the thrown value.
 		found := false
 		for _, h := range s.fp.Handlers {
-			if int(h.Target) == to && covers(h, last) {
+			if int(h.Target) == to && h.Covers(last) {
 				handlerReg = int(h.Reg)
 				found = true
 				break
@@ -415,112 +415,12 @@ func (ag *agent) fits(s *execStep, regs []Value, to, first, second int) (bad int
 		}
 	}
 	for r := range regs {
-		if sameBits(s.regs[r], regs[r]) || r == handlerReg || writesAt(code, first, r) || second >= 0 && writesAt(code, second, r) || ag.hasOpenUpval(s, r) {
+		if sameBits(s.regs[r], regs[r]) || r == handlerReg || bytecode.MayWrite(code, first, r) || second >= 0 && bytecode.MayWrite(code, second, r) || ag.hasOpenUpval(s, r) {
 			continue
 		}
 		return r, true
 	}
 	return -1, true
-}
-
-func covers(h bytecode.Handler, pc int) bool {
-	return int(h.Start) <= pc && pc < int(h.End)
-}
-
-// nextPC returns the index of the instruction after the one at pc of code.
-func nextPC(code []bytecode.Instr, pc int) int {
-	if code[pc].Op.Operands().Extra {
-		return pc + 2
-	}
-	return pc + 1
-}
-
-// follows reports whether the instruction at pc can continue at to on its own.
-func follows(code []bytecode.Instr, pc, to int) bool {
-	in := &code[pc]
-	ops := in.Op.Operands()
-	var x *bytecode.Instr
-	if ops.Extra {
-		x = &code[pc+1]
-	}
-	switch in.Op.Flow() {
-	case bytecode.FlowNext, bytecode.FlowNextOrSkip:
-		if to == nextPC(code, pc) {
-			return true
-		}
-	}
-	for f, k := range [...]bytecode.OperandKind{ops.A, ops.B, ops.C, ops.XA, ops.XB} {
-		if k == bytecode.OperandTarget && int(operandOf(in, x, bytecode.Field(f))) == to {
-			return true
-		}
-	}
-	return false
-}
-
-// writesAt reports whether the instruction at pc of code may write the register r.
-func writesAt(code []bytecode.Instr, pc, r int) bool {
-	in := &code[pc]
-	ops := in.Op.Operands()
-	var x *bytecode.Instr
-	if ops.Extra {
-		x = &code[pc+1]
-	}
-	return writes(in, x, ops, int32(r))
-}
-
-// writes reports whether the instruction in, whose OpExtra is x, may write the register r by
-// ops.
-func writes(in, x *bytecode.Instr, ops bytecode.Operands, r int32) bool {
-	for _, w := range ops.Writes {
-		start := operandOf(in, x, w.At)
-		if start < 0 {
-			continue
-		}
-		first := start + int32(w.Offset)
-		if r < first {
-			continue
-		}
-		if w.Len == bytecode.RegsToEnd {
-			return true
-		}
-		end := first + int32(w.Len)
-		if w.Counted {
-			for f, k := range [...]bytecode.OperandKind{ops.A, ops.B, ops.C, ops.XA, ops.XB} {
-				if k == bytecode.OperandCount {
-					end += operandOf(in, x, bytecode.Field(f))
-				}
-			}
-		}
-		if r < end {
-			return true
-		}
-	}
-	return false
-}
-
-// operandOf returns the operand fd of the instruction in, whose OpExtra is x.
-func operandOf(in, x *bytecode.Instr, fd bytecode.Field) int32 {
-	switch fd {
-	case bytecode.FieldA:
-		return in.A
-	case bytecode.FieldB:
-		return in.B
-	case bytecode.FieldC:
-		return in.C
-	case bytecode.FieldXA:
-		return x.A
-	default:
-		return x.B
-	}
-}
-
-func isTailCall(op bytecode.Opcode) bool {
-	switch op {
-	case bytecode.OpTailCall, bytecode.OpTailCallUndef, bytecode.OpTailCallSpread, bytecode.OpTailCallEval,
-		bytecode.OpTailCallEvalSpread, bytecode.OpTailApplyFwd, bytecode.OpTailCallFwd:
-		return true
-	}
-	return false
 }
 
 // hasOpenUpval reports whether a closure or an arguments object shares the register r of the

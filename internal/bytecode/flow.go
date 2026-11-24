@@ -1,0 +1,95 @@
+// SPDX-License-Identifier: 0BSD
+// SPDX-FileCopyrightText: 2026 Hajime Hoshi
+
+package bytecode
+
+// IsTailCall reports whether an instruction of op can replace the running frame with the frame
+// of a callee.
+func (op Opcode) IsTailCall() bool {
+	switch op {
+	case OpTailCall, OpTailCallUndef, OpTailCallSpread, OpTailCallEval, OpTailCallEvalSpread,
+		OpTailApplyFwd, OpTailCallFwd:
+		return true
+	}
+	return false
+}
+
+// Covers reports whether h catches the exceptions of the instruction at pc.
+func (h Handler) Covers(pc int) bool {
+	return int(h.Start) <= pc && pc < int(h.End)
+}
+
+// NextPC returns the index of the instruction after the one at pc of code, which must be valid.
+func NextPC(code []Instr, pc int) int {
+	if opcodes[code[pc].Op].operands.Extra {
+		return pc + 2
+	}
+	return pc + 1
+}
+
+// CanContinueAt reports whether the instruction at pc of code, which must be valid, can continue
+// at to by itself, without throwing.
+func CanContinueAt(code []Instr, pc, to int) bool {
+	in, x, ops := instrAt(code, pc)
+	switch opcodes[in.Op].flow {
+	case FlowNext, FlowNextOrSkip:
+		if to == NextPC(code, pc) {
+			return true
+		}
+	}
+	for field := FieldA; field <= FieldXB; field++ {
+		if ops.kind(field) == OperandTarget && int(operand(in, x, field)) == to {
+			return true
+		}
+	}
+	return false
+}
+
+// MayWrite reports whether the instruction at pc of code, which must be valid, may write the
+// register r as [Operands.Writes] describes.
+func MayWrite(code []Instr, pc, r int) bool {
+	in, x, ops := instrAt(code, pc)
+	for _, w := range ops.Writes {
+		start := operand(in, x, w.At)
+		if start < 0 {
+			continue
+		}
+		first := int(start) + w.Offset
+		if r < first {
+			continue
+		}
+		if w.Len == RegsToEnd {
+			return true
+		}
+		n := w.Len
+		if w.Counted {
+			n += ops.count(in, x)
+		}
+		if r < first+n {
+			return true
+		}
+	}
+	return false
+}
+
+// instrAt returns the instruction at pc of code, its OpExtra if it takes one, and the
+// description of its operands.
+func instrAt(code []Instr, pc int) (in, x Instr, ops *Operands) {
+	in = code[pc]
+	ops = &opcodes[in.Op].operands
+	if ops.Extra {
+		x = code[pc+1]
+	}
+	return in, x, ops
+}
+
+// count returns the count operand of the instruction in, followed by x when it takes an OpExtra,
+// or 0 when it has none.
+func (ops *Operands) count(in, x Instr) int {
+	for field := FieldA; field <= FieldXB; field++ {
+		if ops.kind(field) == OperandCount {
+			return int(operand(in, x, field))
+		}
+	}
+	return 0
+}

@@ -382,11 +382,7 @@ func (v *validator) regs(pc int, in, x Instr, ops *Operands, r Regs) error {
 	case r.Len == RegsToEnd:
 		n = v.f.NumRegs - first
 	case r.Counted:
-		for field := FieldA; field <= FieldXB; field++ {
-			if ops.kind(field) == OperandCount {
-				n += int(operand(in, x, field))
-			}
-		}
+		n += ops.count(in, x)
 	}
 	if n < 0 || first < 0 || first+n > v.f.NumRegs {
 		return v.errorf(pc, ErrRegister, "%d registers from %d with %d registers", n, first, v.f.NumRegs)
