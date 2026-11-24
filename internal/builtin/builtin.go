@@ -223,7 +223,7 @@ func (s *objectStrings) toString(cx *engine.ExecutionContext, v engine.Value) en
 	if !v.IsObject() {
 		// A wrapper object from ToObject is observable only by code that the lookup of
 		// @@toStringTag runs.
-		if t, ok := cx.GetVWithoutCall(v, cx.WellKnownSymbol(engine.SymbolToStringTag)); ok {
+		if t, ok := cx.Quiet().GetVWithoutCall(v, cx.WellKnownSymbol(engine.SymbolToStringTag)); ok {
 			if t.IsString() {
 				return s.forTag(cx, t.Str())
 			}

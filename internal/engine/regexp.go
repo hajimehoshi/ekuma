@@ -223,8 +223,7 @@ func (cx *ExecutionContext) regExpLiteralMethod(site *regExpSite, key *Object, c
 		}
 		return *e.ref, o
 	}
-	if _, ok := cx.GetVWithoutCall(Value{o: o}, key); ok {
-		v, _ := cx.getNamed(Value{o: o}, key, c)
+	if v, ok := cx.Quiet().getVWithoutCall(Value{o: o}, key, c); ok {
 		return v, o
 	}
 	o = cx.newRegExpLiteral(site)

@@ -121,3 +121,53 @@ func (q QuietContext) delegates(o *Object) bool {
 	}
 	return false
 }
+
+// GetVWithoutCall is GetV(v, key) when that runs no code and does not throw. ok is false
+// otherwise.
+func (q QuietContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
+	return q.getVWithoutCall(v, key, nil)
+}
+
+// getVWithoutCall is GetVWithoutCall, which fills c, which may be nil, when the lookup can be
+// repeated from the cache.
+func (q QuietContext) getVWithoutCall(v Value, key *Object, c *propCache) (val Value, ok bool) {
+	cx := q.cx
+	start := v.o
+	switch {
+	case v.IsObject():
+	case v.IsNumber():
+		start = cx.Intrinsic(IntrinsicNumberPrototype)
+	case v.IsBool():
+		start = cx.Intrinsic(IntrinsicBooleanPrototype)
+	case v.IsSymbol():
+		start = cx.Intrinsic(IntrinsicSymbolPrototype)
+	case v.IsBigInt():
+		start = cx.Intrinsic(IntrinsicBigIntPrototype)
+	case v.IsString() && key != cx.Key(KeyLength):
+		start = cx.Intrinsic(IntrinsicStringPrototype)
+	default:
+		return Undefined, false
+	}
+	r := cx.lookup(start, key)
+	switch r.kind {
+	case lookupAbsent, lookupNumericMiss:
+		if c != nil {
+			// Both misses are stable for this shape and prototype epoch.
+			c.keep(start.shape)
+			c.setInherited(start.shape, cacheProto, cx.protoEpoch)
+			c.ref = &cx.missHolder.slots[0]
+		}
+		return Undefined, true
+	case lookupLength:
+		return r.length(v), true
+	case lookupSlot:
+		if r.prop.flags&FlagAccessor == 0 {
+			if c != nil {
+				c.keep(start.shape)
+			}
+			val, _ = cx.readNamedSlot(start, r.holder, r.prop, c)
+			return val, true
+		}
+	}
+	return Undefined, false
+}

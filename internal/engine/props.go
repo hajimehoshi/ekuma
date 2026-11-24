@@ -683,22 +683,6 @@ func (cx *ExecutionContext) GetV(v Value, key *Object) Value {
 	return val
 }
 
-// GetVWithoutCall returns GetV(v, key) when the lookup reaches a value without running code.
-func (cx *ExecutionContext) GetVWithoutCall(v Value, key *Object) (val Value, ok bool) {
-	r := cx.lookup(cx.protoStart(v, PropKey{key: key}), key)
-	switch r.kind {
-	case lookupAbsent, lookupNumericMiss:
-		return Undefined, true
-	case lookupLength:
-		return r.length(v), true
-	case lookupSlot:
-		if r.prop.flags&FlagAccessor == 0 {
-			return r.holder.slots[r.prop.slot], true
-		}
-	}
-	return Undefined, false
-}
-
 // PropertyCache remembers where [ExecutionContext.GetVCached] found a property, so that looking up the same key
 // again on values with the same layout is fast. The zero value is empty.
 type PropertyCache struct {
