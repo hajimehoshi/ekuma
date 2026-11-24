@@ -266,7 +266,7 @@ type testVM struct {
 	printed []string
 
 	// asserted describes the actual values of the harness's assertions, if they are recorded.
-	asserted []string
+	asserted []observedValue
 }
 
 func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time.Duration) suiteResult {
@@ -285,6 +285,10 @@ func runOnce(h *harness, path, src string, m metadata, strict bool, timeout time
 // scriptSource returns the source text of a script in sloppy or strict mode.
 func scriptSource(src string, strict bool) string {
 	if strict {
+		// A hashbang is a line comment at the start of the original source.
+		if rest, ok := strings.CutPrefix(src, "#!"); ok {
+			src = "//" + rest
+		}
 		return "\"use strict\";\n" + src
 	}
 	return src

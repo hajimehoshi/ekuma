@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -23,21 +22,18 @@ import (
 // of the code, the second one meets the state that the first one left, and the third one runs warm.
 const warmEvaluations = 3
 
-// maxAssertionText is the length in bytes to which the description of an asserted value is cut.
-const maxAssertionText = 200
-
 // observation is what one evaluation of a test script shows to its host.
 type observation struct {
 	result suiteResult
 
 	// completion describes the completion value or the type of the uncaught error.
-	completion string
+	completion observedValue
 
 	// frames are the lines of the stack trace of the uncaught error.
 	frames []string
 
 	printed  []string
-	asserted []string
+	asserted []observedValue
 }
 
 // difference describes the first difference of got from the observation o of the normal mode,
@@ -46,44 +42,29 @@ func (o *observation) difference(got *observation) string {
 	if o.result.outcome != got.result.outcome {
 		return fmt.Sprintf("failed: %s", got.result.reason)
 	}
-	if o.completion != got.completion {
+	if !o.completion.equal(got.completion) {
 		return fmt.Sprintf("completion: got %s, want %s", got.completion, o.completion)
 	}
-	for _, list := range []struct {
-		name string
-		got  []string
-		want []string
-	}{
-		{
-			name: "assertion",
-			got:  got.asserted,
-			want: o.asserted,
-		},
-		{
-			name: "printed line",
-			got:  got.printed,
-			want: o.printed,
-		},
-		{
-			name: "stack frame",
-			got:  got.frames,
-			want: o.frames,
-		},
-	} {
-		if slices.Equal(list.got, list.want) {
-			continue
+	if diff := listDifference("assertion", got.asserted, o.asserted, observedValue.equal); diff != "" {
+		return diff
+	}
+	sameText := func(a, b string) bool { return a == b }
+	if diff := listDifference("printed line", got.printed, o.printed, sameText); diff != "" {
+		return diff
+	}
+	return listDifference("stack frame", got.frames, o.frames, sameText)
+}
+
+func listDifference[T string | observedValue](name string, got, want []T, equal func(T, T) bool) string {
+	for i := range max(len(got), len(want)) {
+		switch {
+		case i == len(got):
+			return fmt.Sprintf("%s %d: got nothing, want %q", name, i+1, want[i])
+		case i == len(want):
+			return fmt.Sprintf("%s %d: got %q, want nothing", name, i+1, got[i])
+		case !equal(got[i], want[i]):
+			return fmt.Sprintf("%s %d: got %q, want %q", name, i+1, got[i], want[i])
 		}
-		at := func(list []string, i int) string {
-			if i < len(list) {
-				return fmt.Sprintf("%q", list[i])
-			}
-			return "nothing"
-		}
-		i := 0
-		for i < len(list.got) && i < len(list.want) && list.got[i] == list.want[i] {
-			i++
-		}
-		return fmt.Sprintf("%s %d: got %s, want %s", list.name, i+1, at(list.got, i), at(list.want, i))
 	}
 	return ""
 }
@@ -103,7 +84,7 @@ func (tv *testVM) recordAssertions() error {
 		if len(args) > 0 {
 			actual = args[0]
 		}
-		tv.asserted = append(tv.asserted, describeValue(actual))
+		tv.asserted = append(tv.asserted, observeValue(actual))
 		rest := make([]any, len(args))
 		for i, a := range args {
 			rest[i] = a
@@ -113,21 +94,56 @@ func (tv *testVM) recordAssertions() error {
 	return assert.Set("sameValue", record)
 }
 
-// describeValue describes a primitive value by its text and an object by its type.
-func describeValue(v ekuma.Value) string {
+// observedValue keeps strings and BigInts for exact comparison across VMs. Other values are
+// represented by their descriptions, so recording an object does not keep it alive.
+type observedValue struct {
+	text  string
+	value ekuma.Value
+}
+
+func observeValue(v ekuma.Value) observedValue {
+	var text string
 	switch v.Type() {
-	case ekuma.TypeNumber:
-		if f := v.Float(); f == 0 && math.Signbit(f) {
-			return "-0"
+	case ekuma.TypeString, ekuma.TypeBigInt:
+		return observedValue{
+			value: v,
 		}
-		return v.String()
-	case ekuma.TypeString:
-		s := v.String()
-		return fmt.Sprintf("%.*q", maxAssertionText, s)
+	case ekuma.TypeNumber:
+		text = v.String()
+		if f := v.Float(); f == 0 && math.Signbit(f) {
+			text = "-0"
+		}
 	case ekuma.TypeBoolean:
-		return v.String()
+		text = v.String()
+	default:
+		text = v.Type().String()
 	}
-	return fmt.Sprint(v.Type())
+	return observedValue{
+		text: text,
+	}
+}
+
+func (v observedValue) equal(w observedValue) bool {
+	return v.text == w.text && v.value.Equal(w.value)
+}
+
+func (v observedValue) String() string {
+	switch v.value.Type() {
+	case ekuma.TypeString:
+		s := v.value.String()
+		if len(s) > maxDiagnosticLineBytes {
+			const half = maxDiagnosticLineBytes / 2
+			return fmt.Sprintf("%q…%q (%d bytes)", s[:half], s[len(s)-half:], len(s))
+		}
+		return fmt.Sprintf("%q", s)
+	case ekuma.TypeBigInt:
+		n := v.value.BigInt()
+		if n.BitLen() > 256 {
+			return fmt.Sprintf("BigInt (%d bits)", n.BitLen())
+		}
+		return n.String() + "n"
+	}
+	return v.text
 }
 
 // evaluate evaluates s and returns what it shows.
@@ -137,9 +153,9 @@ func (tv *testVM) evaluate(ctx context.Context, s *ekuma.Script) *observation {
 	v, err := s.Evaluate(ctx)
 	var o observation
 	if err == nil {
-		o.completion = describeValue(v)
+		o.completion = observeValue(v)
 	} else {
-		o.completion = "throw " + errorName(err)
+		o.completion.text = "throw " + errorName(err)
 		if _, ok := errors.AsType[*ekuma.ScriptError](err); ok {
 			for line := range strings.SplitSeq(err.Error(), "\n") {
 				if strings.HasPrefix(line, "    at ") {
@@ -161,7 +177,13 @@ func (t *test262Test) observe(h *harness, src string, parse parseFunc, evaluatio
 	result := runInVM(h, t.path, t.m, parse, time.Duration(evaluations)*timeout, func(ctx context.Context, tv *testVM) suiteResult {
 		s, err := tv.parse(tv.vm.InitialRealm(), t.path, src)
 		if err != nil {
-			return tv.check(ctx, err)
+			observations = append(observations, &observation{
+				completion: observedValue{
+					text: "throw " + errorName(err),
+				},
+				result: tv.check(ctx, err),
+			})
+			return suiteResult{}
 		}
 		for range evaluations {
 			o := tv.evaluate(ctx, s)
@@ -247,7 +269,15 @@ func repeatable(src string) string {
 	if err != nil {
 		return src
 	}
+	var start int32
+	if strings.HasPrefix(src, "#!") && len(prog.Body) > 0 {
+		start = prog.Body[0].Start()
+	}
 	for _, s := range prog.Body {
+		if e, ok := s.(*ast.ExprStmt); ok && e.Directive {
+			start = e.End()
+			continue
+		}
 		lexical := false
 		switch s := s.(type) {
 		case *ast.VarDecl:
@@ -256,7 +286,8 @@ func repeatable(src string) string {
 			lexical = true
 		}
 		if lexical {
-			return "{" + src + "\n}"
+			// The last directive can end with an implicit semicolon.
+			return string(prog.Source[:start]) + ";{" + string(prog.Source[start:]) + "\n}"
 		}
 	}
 	return src
@@ -264,6 +295,11 @@ func repeatable(src string) string {
 
 // CheckScriptModes checks that a divergence of a mode from the normal run fails a local script.
 func (suite *Test262) CheckScriptModes(t *testing.T) {
+	const parseNegative = "/*---\nnegative:\n  phase: parse\n  type: SyntaxError\n---*/\nlet = ;"
+	const strictDirective = `#!/usr/bin/env js
+		"use strict"
+		let receiver = (function () { return this; })();
+		assert.sameValue(receiver, undefined);`
 	for _, tt := range []struct {
 		name string
 		src  string
@@ -278,6 +314,28 @@ func (suite *Test262) CheckScriptModes(t *testing.T) {
 			name:         "no divergence",
 			src:          `let a = 1; assert.sameValue(a, 1); a;`,
 			conservative: `let a = 1; assert.sameValue(a, 1); a;`,
+		},
+		{
+			name:         "expected parse error",
+			src:          parseNegative,
+			conservative: parseNegative,
+		},
+		{
+			name:         "strict directive in warm mode",
+			src:          strictDirective,
+			conservative: strictDirective,
+		},
+		{
+			name:         "bigint completion",
+			src:          `1n;`,
+			conservative: `2n;`,
+			want:         `conservative mode: completion: `,
+		},
+		{
+			name:         "asserted string beyond the displayed prefix",
+			src:          `let s = "x".repeat(200) + "a"; assert.sameValue(s, s);`,
+			conservative: `let s = "x".repeat(200) + "b"; assert.sameValue(s, s);`,
+			want:         `conservative mode: assertion 1: `,
 		},
 		{
 			name:         "completion",

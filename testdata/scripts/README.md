@@ -9,12 +9,12 @@ for expected uncaught errors. Cross-realm tests can include `realm-assertions.js
 Scripts run in both sloppy and strict mode by default. Set `noStrict`, `onlyStrict`, or
 `module` in `flags` to select a mode. Async tests add `async` and finish with `$DONE`.
 
-Without `-short`, each script also runs compiled without the compiler's assignment shortcuts, and
-three times in one VM. Both runs must show what the normal run shows: the completion, the values
-of the assertions, the printed lines, and the stack frames of an uncaught error. A script with
-top-level lexical declarations is put in a block to repeat it. A script that cannot run twice in
-a realm sets `noRepeat` in `flags` and gives the reason in `noRepeatReason`. Module tests run
-only normally.
+Without `-short`, the runner also compiles scripts with assignment shortcuts disabled and evaluates
+each normally compiled script three times in one VM. It compares completion values, assertions,
+printed lines, and uncaught stack frames across runs. Objects, functions, and symbols are compared
+by type. For repeated evaluation, the runner wraps top-level lexical declarations and their
+surrounding statements in a block after any directives. A script that requires a fresh realm sets
+`noRepeat` in `flags` and gives a `noRepeatReason`. Module tests run once.
 
 For example, run the local proxy tests with:
 
