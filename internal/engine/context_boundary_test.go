@@ -206,14 +206,14 @@ func TestFrameRegisterBoundary(t *testing.T) {
 	}
 	allowed := map[types.Object][]string{
 		member("agent", "stack"): {
-			"agent.frameRegs", "agent.extraArgs", "agent.reload", "agent.findUpval",
+			"agent.frameRegs", "agent.placeCallArgs", "agent.extraArgs", "agent.reload", "agent.findUpval",
 			"NewExecutionContext", "agent.ensureStack", "agent.releaseStack", "agent.clearStale", "agent.pushFrame", "agent.exec",
 			"ExecutionContext.callOnStack", "ExecutionContext.callSlow", "ExecutionContext.callBound",
 			"ExecutionContext.replaceFrame", "ExecutionContext.unbind",
 			"agent.checkStep", "agent.moveStack", "agent.stackUsed", "agent.abandonStack", "agent.holdArgs", "agent.checkIdleStack",
 		},
 		member("generator", "regs"): {
-			"frame.registers", "agent.exec", "agent.checkStep",
+			"frame.registers", "agent.placeCallArgs", "agent.exec", "agent.checkStep",
 			"newGenerator", "generator.findUpval", "ExecutionContext.resume",
 		},
 		member("frame", "registers"):     {"agent.frameRegs", "agent.exec"},

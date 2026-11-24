@@ -201,7 +201,7 @@ func (ag *agent) pushFrame(f *Object, this Value, base, argc int, ret int32, isN
 		}
 		base = newBase
 	} else {
-		ag.ensureStack(base + max(argc, fp.nregs+1))
+		ag.ensureStack(base + fp.nregs + 1)
 	}
 	if from, to := fp.firstCleared(argc), fp.nclear; from < to {
 		clearFrameRegs(ag.stack[base:], from, to)
@@ -235,6 +235,19 @@ func clearFrameRegs(regs []Value, first, end int) {
 // The slice is only valid until stack growth or reentry.
 func (ag *agent) frameRegs(fr *frame) []Value {
 	return slices.Clip(fr.registers(ag.stack))
+}
+
+// placeCallArgs returns the stack index of the argc outgoing arguments starting at firstReg.
+// The caller's register slice stays valid.
+func (ag *agent) placeCallArgs(firstReg, argc int) int {
+	fr := &ag.frames[len(ag.frames)-1]
+	if fr.gen == nil {
+		return fr.base + firstReg
+	}
+	base := fr.base
+	ag.ensureStack(base + argc)
+	copy(ag.stack[base:], slices.Clip(fr.gen.regs)[firstReg:firstReg+argc])
+	return base
 }
 
 // registers returns the registers of fr given its agent's stack.
@@ -1447,7 +1460,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if c := f.fn.code; c != nil && c.inlineFrames && c.context == fp.context {
 					n := len(ag.frames)
 					argBase := ag.frames[n-1].base + first
-					end := argBase + max(argc, c.nregs+1)
+					// The caller's registers already cover all the arguments.
+					end := argBase + c.nregs + 1
 					// The frames have room for at most maxFrames.
 					if (argc <= c.nparams || !c.needsExtra) && end+stackHeadroom <= len(ag.stack) && n < cap(ag.frames) {
 						var this Value
@@ -1478,9 +1492,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 						fr.fp, fr.cl, fr.this, fr.newTarget, fr.gen, fr.scopes = c, f, this, nil, nil, nil
 						// The callee belongs to the current realm, which is that of the running frame.
 						fr.pc, fr.base, fr.ret, fr.isNew, fr.plainReturn, fr.argc, fr.extraBase = 0, argBase, i.A, false, true, argc, -1
-						ag.sp = argBase + c.nregs + 1
+						ag.sp = end
 						fp, pc = c, 0
-						regs = ag.stack[argBase:ag.sp]
+						regs = ag.stack[argBase:end]
 						if r := c.thisReg; r >= 0 && (!c.thisSloppy || this.o != nil && this.o.kind >= kindFirstObject) {
 							// Do what the first instruction does, and start after it.
 							regs[r] = this
@@ -1774,13 +1788,14 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		}
 		// The state of a call in preparation, shared by every instruction that ends in a call.
 		var (
-			f         *Object
-			callThis  Value
-			argBase   int
-			argc      int
-			ret       int32
-			isNew     bool
-			newTarget *Object
+			f           *Object
+			callThis    Value
+			firstArgReg int
+			argBase     int
+			argc        int
+			ret         int32
+			isNew       bool
+			newTarget   *Object
 		)
 
 		// Slow property operations take their operands by value across reentry.
@@ -2099,6 +2114,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				argBase = ag.frames[len(ag.frames)-1].top()
 				ag.ensureStack(argBase + 1)
 				ag.stack[argBase] = val
+				regs = ag.reload(regs, ag.frameBase(), fp)
 				f, callThis, argc, ret, isNew, newTarget = setter, v, 1, int32(fp.nregs), false, nil
 				goto call
 			}
@@ -2434,17 +2450,17 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpCall:
 			// Calls of ordinary functions that fit take the inline frame of the fast path above.
 			b := int(i.B)
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
+			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
 			goto callRegs
 		case bytecode.OpCallCall:
 			b := int(i.B)
 			if regs[b].o == fp.context.realm.intrinsics[IntrinsicFunctionPrototypeCall] {
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b+1].o, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
+				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b+1].o, regs[b+2], b+3, int(i.C)-1, i.A, false, nil
 				if argc < 0 {
 					callThis, argc = Undefined, 0
 				}
 			} else {
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
+				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
 			}
 			goto callRegs
 		case bytecode.OpApplyFwd, bytecode.OpTailApplyFwd:
@@ -2455,9 +2471,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				// Once exposed, the arguments object's length and indexed properties can change.
 				regs[b+2] = regs[i.C]
 				regs[b+3] = fp.context.forwardedArguments(argsReg)
-				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
+				f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
-					argBase += ag.frameBase()
+					argBase = ag.frameBase() + firstArgReg
 					goto tailCall
 				}
 				goto callRegs
@@ -2533,10 +2549,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
 			copy(ag.stack[argBase:], args)
-			if validateExec {
-				// The old registers still hold these values in other builds.
-				regs = ag.reload(regs, ag.frameBase(), fp)
-			}
+			regs = ag.reload(regs, ag.frameBase(), fp)
 			switch i.Op {
 			case bytecode.OpNewSpread:
 				goto construct
@@ -2554,9 +2567,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				regs[i.A] = v
 				continue
 			}
-			f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
+			f, callThis, firstArgReg, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, int(i.C), i.A, false, nil
 			if i.Op == bytecode.OpTailCallEval {
-				argBase += ag.frameBase()
+				argBase = ag.frameBase() + firstArgReg
 				goto tailCall
 			}
 			goto callRegs
@@ -2594,15 +2607,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			b := int(i.B)
 			site := fp.code[pc].A
 			pc++
-			f, argBase, argc, ret = regs[b].o, b+2, int(i.C), i.A
-			if fp.heapRegs {
-				top := ag.frames[len(ag.frames)-1].top()
-				ag.ensureStack(top + argc)
-				copy(ag.stack[top:], slices.Clip(regs)[argBase:argBase+argc])
-				argBase = top
-			} else {
-				argBase += ag.frameBase()
-			}
+			f, argc, ret = regs[b].o, int(i.C), i.A
+			argBase = ag.placeCallArgs(b+2, argc)
 			if f != nil && f.fn != nil && f.fn.code != nil && f.fn.constructor && !f.fn.derived {
 				// The common case: a plain constructor function, whose prototype property is cached.
 				c := &fp.caches[site]
@@ -2615,6 +2621,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				} else {
 					ag.frames[len(ag.frames)-1].pc = pc
 					proto, _ = fp.context.getNamed(Value{o: f}, ag.Key(KeyPrototype), c)
+					regs = ag.reload(regs, ag.frameBase(), fp)
 				}
 				if proto.o == nil || proto.o.kind < kindFirstObject {
 					proto = Value{o: f.fn.code.context.realm.intrinsics[IntrinsicObjectPrototype]}
@@ -2638,16 +2645,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			goto construct
 		case bytecode.OpSuperCall:
 			b := int(i.B)
-			argBase, argc, ret = b+2, int(i.C), i.A
-			if fp.heapRegs {
-				top := ag.frames[len(ag.frames)-1].top()
-				ag.ensureStack(top + argc)
-				copy(ag.stack[top:], slices.Clip(regs)[argBase:argBase+argc])
-				argBase = top
-			} else {
-				argBase += ag.frameBase()
-			}
-			f, newTarget = regs[b].o, regs[b+1].o
+			f, newTarget, argc, ret = regs[b].o, regs[b+1].o, int(i.C), i.A
+			argBase = ag.placeCallArgs(b+2, argc)
 			goto superCall
 
 		case bytecode.OpReturn, bytecode.OpReturnUndef, bytecode.OpReturnDerived:
@@ -3337,22 +3336,15 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		goto call
 
 	callRegs:
-		// The arguments are in the registers from argBase on.
-		if fp.heapRegs {
-			top := ag.frames[len(ag.frames)-1].top()
-			ag.ensureStack(top + argc)
-			copy(ag.stack[top:], slices.Clip(regs)[argBase:argBase+argc])
-			argBase = top
-		} else {
-			argBase += ag.frameBase()
-		}
+		argBase = ag.placeCallArgs(firstArgReg, argc)
 
 	call:
-		// The arguments are on the stack from argBase on.
+		// regs is current and the arguments are on the stack from argBase on.
 		{
 			if ag.interrupt.Load() {
 				ag.frames[len(ag.frames)-1].pc = pc
 				ag.Poll()
+				regs = ag.reload(regs, ag.frameBase(), fp)
 			}
 			if f == nil || f.fn == nil {
 				ag.frames[len(ag.frames)-1].pc = pc
@@ -3366,8 +3358,6 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				if site := c.returnedProperty; site != nil && !isNew && newTarget == nil && c.context == fp.context && callThis.IsObject() {
 					if e := site.entry(callThis.o.shape); e != nil && e.kind == cacheOwn {
-						// Preparing the arguments may have grown the stack.
-						regs = ag.reload(regs, ag.frameBase(), fp)
 						if validateExec {
 							c.checkReturnedProperty(callThis, e)
 						}
@@ -3390,32 +3380,32 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				}
 				continue
 			}
-			ag.frames[len(ag.frames)-1].pc = pc
 			if fn.native != nil {
 				info := fn.info
-				// A native function with a kernel, which needs none of the bookkeeping of a call.
-				// The registers are reloaded, since a path to here may have grown the stack.
-				if info != nil && info.fast != nil && !isNew && newTarget == nil {
-					k, a := info.fast, ag.stack[argBase:argBase+argc:argBase+argc]
+				var k *nativeFast
+				if info != nil && !isNew && newTarget == nil {
+					k = info.fast
+				}
+				if k != nil {
+					a := ag.stack[argBase : argBase+argc : argBase+argc]
 					if argc == 1 && k.number1 != nil && a[0].o == numberObject {
 						x := k.number1(a[0].n)
-						regs = ag.reload(regs, ag.frameBase(), fp)
 						setNumber(&regs[ret], x)
 						continue
 					}
 					if argc == 2 && k.number2 != nil && a[0].o == numberObject && a[1].o == numberObject {
 						x := k.number2(a[0].n, a[1].n)
-						regs = ag.reload(regs, ag.frameBase(), fp)
 						setNumber(&regs[ret], x)
 						continue
 					}
-					// Cross-realm native calls install the callee's context before a host hook can reenter.
-					if info.realm == fp.context.realm {
-						if v, ok := k.callMethod(fp.context, callThis, a); ok {
-							regs = ag.reload(regs, ag.frameBase(), fp)
-							regs[ret] = v
-							continue
-						}
+				}
+				// Numeric kernels cannot observe the frame. Record the call for the other paths.
+				ag.frames[len(ag.frames)-1].pc = pc
+				if k != nil && info.realm == fp.context.realm {
+					if v, ok := k.callMethod(fp.context, callThis, ag.stack[argBase:argBase+argc:argBase+argc]); ok {
+						regs = ag.reload(regs, ag.frameBase(), fp)
+						regs[ret] = v
+						continue
 					}
 				}
 				// A native function of the current realm is called directly.
@@ -3429,6 +3419,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 					regs[ret] = r
 					continue
 				}
+			} else {
+				ag.frames[len(ag.frames)-1].pc = pc
 			}
 			if fn.bound != nil && !isNew && newTarget == nil && len(fn.bound.args) == 0 {
 				f, callThis = ag.unbindPlain(f)
@@ -3458,6 +3450,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		// A call in tail position, whose arguments are on the stack from argBase on.
 		ag.frames[len(ag.frames)-1].pc = pc
 		if f, callThis, argBase, argc = fp.context.unbind(f, callThis, argBase, argc); !fp.context.replaceFrame(f, callThis, argBase, argc) {
+			regs = ag.reload(regs, ag.frameBase(), fp)
 			goto call
 		}
 		{
