@@ -295,22 +295,38 @@ func storeNumbers(cx *engine.ExecutionContext, t *engine.TypedArray, offset int,
 
 // storeNumberValues stores the leading numbers of vals in the elements of t from 0 on, as far as
 // they reach, and returns how many it stored. It stores nothing in a typed array of BigInts.
-func storeNumberValues(t *engine.TypedArray, vals []engine.Value) int {
+// It checks for an interruption while it stores many numbers.
+func storeNumberValues(cx *engine.ExecutionContext, t *engine.TypedArray, vals []engine.Value) int {
+	var i int
+	for {
+		end := min(i+engine.PollInterval, len(vals))
+		stored := storeNumberRange(t, vals, i, end)
+		if stored < end || end == len(vals) {
+			return stored
+		}
+		i = end
+		cx.Poll()
+	}
+}
+
+// storeNumberRange is [storeNumberValues] for the values from start up to end, whose indices in t
+// are those in vals. It returns the index of the first value that it did not store.
+func storeNumberRange(t *engine.TypedArray, vals []engine.Value, start, end int) int {
 	typ := t.ElementType()
 	if typ.IsBigInt() {
-		return 0
+		return start
 	}
 	b := t.Lock()
 	defer t.Unlock()
 	size := typ.Size()
-	n := min(len(vals), len(b)/size)
-	for i, v := range vals[:n] {
+	end = max(start, min(end, len(b)/size))
+	for i, v := range vals[start:end] {
 		if !v.IsNumber() {
-			return i
+			return start + i
 		}
-		engine.StoreElementBits(b[i*size:], typ, engine.ElementBits(typ, v))
+		engine.StoreElementBits(b[(start+i)*size:], typ, engine.ElementBits(typ, v))
 	}
-	return n
+	return end
 }
 
 // newTypedArray returns a new typed array of n elements of the type typ on a new ArrayBuffer.
@@ -432,7 +448,7 @@ func (bi *binaryIntrinsics) construct(cx *engine.ExecutionContext, typ engine.El
 		vals := cx.IteratorToList(first, m)
 		o := bi.newTypedArray(cx, proto, typ, int64(len(vals)))
 		t := engine.TypedArrayData(engine.ObjectValue(o))
-		for i := storeNumberValues(t, vals); i < len(vals); i++ {
+		for i := storeNumberValues(cx, t, vals); i < len(vals); i++ {
 			storeAt(cx, o, t, i, vals[i])
 		}
 		return engine.ObjectValue(o)
@@ -612,7 +628,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 			o, t := createFromConstructor(cx, c, []engine.Value{engine.Number(float64(len(vals)))}, true)
 			var i int
 			if mapFn.IsUndefined() {
-				i = storeNumberValues(t, vals)
+				i = storeNumberValues(cx, t, vals)
 			}
 			for ; i < len(vals); i++ {
 				storeAt(cx, o, t, i, mapped(vals[i], i))

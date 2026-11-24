@@ -264,6 +264,9 @@ func (cx *ExecutionContext) PrependElements(o *Object, vals []Value) (uint32, bo
 		return 0, false
 	}
 	n, k := len(o.elems), len(vals)
+	if n > pollChunk {
+		cx.Poll()
+	}
 	if cap(o.elems)-n >= k {
 		o.elems = o.elems[:n+k]
 		copy(o.elems[k:], o.elems[:n])

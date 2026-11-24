@@ -880,7 +880,7 @@ func (cx *ExecutionContext) iterResultValue(r Value) (Value, bool) {
 func (cx *ExecutionContext) IteratorToList(v Value, method *Object) []Value {
 	if method == cx.Intrinsic(IntrinsicArrayPrototypeValues) && v.o != nil && v.o.kind == kindArray && cx.arrayIterationPlain(v.o) {
 		if n := v.o.length; uint64(n) <= uint64(len(v.o.elems)) && !slices.ContainsFunc(v.o.elems[:n], Value.isHole) {
-			return slices.Clone(v.o.elems[:n])
+			return appendPolled(cx, nil, v.o.elems[:n])
 		}
 		// The length of a sparse array says nothing about the memory it holds.
 		vals := make([]Value, 0, len(v.o.elems))
