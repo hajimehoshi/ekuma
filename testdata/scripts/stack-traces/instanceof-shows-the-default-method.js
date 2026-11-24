@@ -64,5 +64,14 @@ const boundD = D.bind();
 assert.sameValue(outcome(() => object instanceof boundD), outcome(() => Function.prototype[Symbol.hasInstance].call(boundD, object)));
 assert.sameValue(outcome(() => object instanceof boundD) === outcome(() => object instanceof D), false);
 
+// A missing method falls back to OrdinaryHasInstance without a call.
+const fallback = () => {};
+Object.defineProperty(fallback, Symbol.hasInstance, {value: null});
+assert.sameValue(outcome(() => object instanceof fallback), "");
+
+// The target still calls its own method when the bound function has none.
+Object.defineProperty(boundD, Symbol.hasInstance, {value: undefined});
+assert.sameValue(outcome(() => object instanceof boundD), outcome(() => object instanceof D));
+
 // The frames end with the operation.
 assert.sameValue(frames(new Error()), "");
