@@ -1153,8 +1153,8 @@ func (cx *ExecutionContext) arrayProtoPlain() bool {
 	return len(a.elems) == 0 && len(o.elems) == 0 && (a.flags|o.flags)&objSparse == 0 && a.shape.proto == o
 }
 
-// arrayIterationPlain reports whether iterating the array o visits its elements by index
-// without any observable call.
+// arrayIterationPlain reports whether o uses the original array values and next methods.
+// Reading an element can still invoke a getter.
 func (cx *ExecutionContext) arrayIterationPlain(o *Object) bool {
 	return o.shape == cx.realm.shapes.array && cx.arrayIterationUnmodified(cx.realm)
 }

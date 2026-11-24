@@ -227,7 +227,7 @@ const (
 	OpCallSpread     // a = b(this b+1, ...the array b+2)
 	OpCallEval       // like [OpCall]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]
 	OpCallEvalSpread // like [OpCallSpread]; a direct eval when b is the eval function. x.a indexes [Func.EvalScopes]
-	OpSpreadArgs     // a = an array of the elements of the iterable b, which is b itself when iterating b runs no JavaScript; only the spread call that follows reads it
+	OpSpreadArgs     // a = an array of the values from iterable b, possibly b itself for a dense array with ordinary iteration; only the following spread call reads it
 
 	// The calls in tail position of strict functions. When the callee is a function written in
 	// JavaScript and the running frame can be replaced, the callee's frame replaces it, and the
