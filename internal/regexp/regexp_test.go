@@ -384,6 +384,152 @@ func TestPoll(t *testing.T) {
 	}
 }
 
+type tickPoller struct {
+	n int
+}
+
+func (p *tickPoller) Poll() {
+	p.n++
+}
+
+// TestPollLongScans checks that matches that take few steps but read many characters poll.
+func TestPollLongScans(t *testing.T) {
+	x := strings.Repeat("x", 1000)
+	for _, tc := range []struct {
+		name    string
+		pattern string
+		flags   string
+		input   string
+	}{
+		{
+			name:    "literal prefix",
+			pattern: "abc",
+			input:   strings.Repeat(x+"abc", 300),
+		},
+		{
+			name:    "required literal without an attempt",
+			pattern: "[xy]" + x + "a",
+			input:   strings.Repeat("y"+x+"z"+x+"a", 300),
+		},
+		{
+			name:    "first characters",
+			pattern: "[abc]",
+			input:   strings.Repeat(x+"b", 250),
+		},
+		{
+			name:    "first characters of a long rest",
+			pattern: "[abc]",
+			input:   strings.Repeat(x, 1200),
+		},
+		{
+			name:    "greedy loop",
+			pattern: "[w-y]+",
+			input:   strings.Repeat(x+"!", 250),
+		},
+		{
+			name:    "one greedy loop",
+			pattern: "[w-y]+",
+			input:   strings.Repeat(x, 1200),
+		},
+		{
+			name:    "failing count",
+			pattern: "[xy]{1000}[zy]",
+			input:   x + x,
+		},
+		{
+			name:    "large count",
+			pattern: "[xy]{300000}",
+			input:   strings.Repeat(x, 300),
+		},
+		{
+			name:    "backreference",
+			pattern: `(?=([xy]{50}))\1\1[zy]`,
+			input:   x + x,
+		},
+		{
+			name:    "case-insensitive backreference",
+			pattern: `(?=([xy]{50}))\1\1[zy]`,
+			flags:   "i",
+			input:   x + x,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			re := mustCompile(t, wtf8.String(tc.pattern), wtf8.String(tc.flags))
+			s := wtf8.String(tc.input)
+			var m regexp.Matcher
+			var p tickPoller
+			// The first attempt of a Matcher polls.
+			mustCompile(t, ".", "").Match(&m, "x", 0, &p)
+			p.n = 0
+			for pos := 0; ; {
+				match := re.Match(&m, s, pos, &p)
+				if match == nil {
+					break
+				}
+				pos = match[1]
+			}
+			if p.n < 3 {
+				t.Errorf("got %d polls, want at least 3", p.n)
+			}
+		})
+	}
+}
+
+// TestLongScans checks the matches of loops over many characters.
+func TestLongScans(t *testing.T) {
+	const n = 600000
+	for _, c := range []string{"x", "\u00e9", "\U0001f600"} {
+		for _, tc := range []struct {
+			pattern string
+			input   string
+			want    string
+		}{
+			{
+				pattern: "C+",
+				input:   "!" + strings.Repeat(c, n) + "!",
+				want:    strings.Repeat(c, n),
+			},
+			{
+				// The loop gives back most of its characters.
+				pattern: "^[C!]+!",
+				input:   c + "!" + strings.Repeat(c, n),
+				want:    c + "!",
+			},
+			{
+				pattern: "^[C!]{2,500000}!",
+				input:   strings.Repeat(c, 2) + "!" + strings.Repeat(c, n),
+				want:    strings.Repeat(c, 2) + "!",
+			},
+			{
+				pattern: "[C]{500000}",
+				input:   strings.Repeat(c, n),
+				want:    strings.Repeat(c, 500000),
+			},
+			{
+				pattern: "^[C]{500000,}?!",
+				input:   strings.Repeat(c, n) + "!",
+				want:    strings.Repeat(c, n) + "!",
+			},
+			{
+				pattern: "[!]",
+				input:   strings.Repeat(c, n) + "!",
+				want:    "!",
+			},
+		} {
+			re := mustCompile(t, wtf8.String(strings.ReplaceAll(tc.pattern, "C", c)), "u")
+			var m regexp.Matcher
+			if re.Match(&m, wtf8.String(tc.input), 0, nil) == nil {
+				t.Errorf("/%s/ with %s: no match", tc.pattern, c)
+				continue
+			}
+			start, end := m.Span(0)
+			if got := tc.input[start.Byte:end.Byte]; got != tc.want {
+				t.Errorf("/%s/ with %s: matched %d bytes at %d, want %d bytes", tc.pattern, c, len(got), start.Byte, len(tc.want))
+			}
+		}
+	}
+}
+
 // FuzzRequiredLiteral compares matching with the same pattern in an alternation, where no
 // literal is required.
 func FuzzRequiredLiteral(f *testing.F) {

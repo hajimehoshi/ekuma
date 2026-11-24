@@ -58,6 +58,14 @@ type Matcher struct {
 
 const pollInterval = 1 << 14
 
+// scanChunk is the number of bytes that a loop over the characters of the subject reads between
+// two checks for an interruption.
+const scanChunk = 1 << 18
+
+// quickScan is the number of bytes up to which a loop over the characters of the subject counts
+// as one step.
+const quickScan = 1 << 6
+
 // SetASCII records whether s, the subject of the matches that follow, consists of ASCII
 // characters only.
 func (m *Matcher) SetASCII(s wtf8.String, ascii bool) {
@@ -125,6 +133,10 @@ func (re *Regexp) match(m *Matcher, s wtf8.String, start int, sticky bool, polle
 			if i < 0 {
 				return nil
 			}
+			// The search can go on for long without an attempt to match, which checks the steps.
+			if m.steps -= i; m.steps <= 0 {
+				m.poll()
+			}
 			need = from + i
 			// In an ASCII subject, a character spans exactly one byte.
 			if !sticky && m.ascii && prog.needMax != unbounded && need-prog.needMax > pos {
@@ -150,28 +162,60 @@ func (m *Matcher) skip(prog *program, pos int) int {
 		if i < 0 {
 			return -1
 		}
+		m.steps -= i
 		return pos + i
 	}
 	t := prog.first
 	if t == nil {
 		return pos
 	}
+	if len(s)-pos > scanChunk {
+		return m.skipLong(prog, pos)
+	}
+	start := pos
 	if m.ascii {
 		for pos < len(s) && !t[s[pos]] {
 			pos++
 		}
-		if pos >= len(s) {
-			return -1
+	} else {
+		for pos < len(s) && !t[s[pos]] {
+			pos = m.advance(pos, prog.unicode)
 		}
-		return pos
-	}
-	for pos < len(s) && !t[s[pos]] {
-		pos = m.advance(pos, prog.unicode)
 	}
 	if pos >= len(s) {
 		return -1
 	}
+	if pos-start > quickScan {
+		m.steps -= pos - start
+	}
 	return pos
+}
+
+// skipLong is skip for the first characters of prog in a long rest of the subject.
+func (m *Matcher) skipLong(prog *program, pos int) int {
+	s := m.s
+	t := prog.first
+	for {
+		start := pos
+		stop := min(len(s), pos+scanChunk)
+		if m.ascii {
+			for pos < stop && !t[s[pos]] {
+				pos++
+			}
+		} else {
+			for pos < stop && !t[s[pos]] {
+				pos = m.advance(pos, prog.unicode)
+			}
+		}
+		if pos >= len(s) {
+			return -1
+		}
+		if pos < stop || t[s[pos]] {
+			m.steps -= pos - start
+			return pos
+		}
+		m.poll()
+	}
 }
 
 // advance returns the position of the next code unit, or of the next code point in unicode mode.
@@ -559,7 +603,16 @@ func (m *Matcher) run(prog *program, pos int) bool {
 			m.setReg(in.n, c+1)
 			pc = in.x
 		case iStar:
-			pos2, ok := m.star(in, pc, pos, uni)
+			var pos2 int
+			var ok bool
+			if len(s)-pos > scanChunk {
+				pos2, ok = m.starLong(in, pc, pos, uni)
+			} else {
+				pos2, ok = m.star(in, pc, s, pos, uni)
+			}
+			if pos2-pos > quickScan {
+				m.steps -= pos2 - pos
+			}
 			if !ok {
 				goto fail
 			}
@@ -681,12 +734,14 @@ func (m *Matcher) oneChar(in *inst, pos int, uni bool) (int, bool) {
 	return p, true
 }
 
-// star runs the iStar in at pc from pos.
-func (m *Matcher) star(in *inst, pc, pos int, uni bool) (int, bool) {
+// star runs the iStar in at pc from pos. It returns the position that it reached, also when it
+// fails. s is the subject, or a part from its start that the characters that in can give back
+// must start in.
+func (m *Matcher) star(in *inst, pc int, s wtf8.String, pos int, uni bool) (int, bool) {
 	for range in.min {
 		p, ok := m.oneChar(in, pos, uni)
 		if !ok {
-			return 0, false
+			return pos, false
 		}
 		pos = p
 	}
@@ -699,7 +754,6 @@ func (m *Matcher) star(in *inst, pc, pos int, uni bool) (int, bool) {
 	}
 	minPos := pos
 	n := in.min
-	s := m.s
 	if m.ascii && in.n == 1 {
 		cls := in.cls
 		for pos < len(s) && (in.max == unbounded || n < in.max) && cls.has(rune(s[pos])) {
@@ -745,7 +799,7 @@ func (m *Matcher) star(in *inst, pc, pos int, uni bool) (int, bool) {
 			n++
 		}
 	} else {
-		for in.max == unbounded || n < in.max {
+		for pos < len(s) && (in.max == unbounded || n < in.max) {
 			p, ok := m.oneChar(in, pos, uni)
 			if !ok {
 				break
@@ -761,6 +815,57 @@ func (m *Matcher) star(in *inst, pc, pos int, uni bool) (int, bool) {
 }
 
 // backref matches the backreference in at pos.
+// starLong is star for a long rest of the subject. It checks for an interruption now and then.
+func (m *Matcher) starLong(in *inst, pc, pos int, uni bool) (int, bool) {
+	s := m.s
+	if in.min > scanChunk || in.max != unbounded && in.max > scanChunk {
+		return m.starCounted(in, pc, pos, uni)
+	}
+	if in.max != unbounded || !in.greedy {
+		return m.star(in, pc, s, pos, uni)
+	}
+	stop := min(len(s), pos+scanChunk)
+	pos, ok := m.star(in, pc, s[:stop], pos, uni)
+	// Each part has a frame of its own, which gives back the characters of the part.
+	rest := *in
+	rest.min = 0
+	for ok && pos >= stop && pos < len(s) {
+		m.poll()
+		stop = min(len(s), pos+scanChunk)
+		pos, ok = m.star(&rest, pc, s[:stop], pos, uni)
+	}
+	return pos, ok
+}
+
+// starCounted is star for large bounds. It counts each character as a step.
+func (m *Matcher) starCounted(in *inst, pc, pos int, uni bool) (int, bool) {
+	minPos := pos
+	for n := 0; in.max == unbounded || n < in.max; n++ {
+		if n == in.min {
+			minPos = pos
+			if !in.greedy {
+				m.push(frame{kind: fLazyStar, pc: int32(pc), pos: pos, n: n})
+				return pos, true
+			}
+		}
+		if m.steps--; m.steps <= 0 {
+			m.poll()
+		}
+		p, ok := m.oneChar(in, pos, uni)
+		if !ok {
+			if n < in.min {
+				return pos, false
+			}
+			break
+		}
+		pos = p
+	}
+	if in.max != in.min && pos > minPos {
+		m.push(frame{kind: fStar, pc: int32(pc), pos: pos, n: minPos})
+	}
+	return pos, true
+}
+
 func (m *Matcher) backref(in *inst, pos int, uni bool) (int, bool) {
 	start, end := -1, -1
 	for _, g := range in.refs {
@@ -776,6 +881,7 @@ func (m *Matcher) backref(in *inst, pos int, uni bool) (int, bool) {
 	if !in.fold && !in.back && !m.isMiddle(start) && !m.isMiddle(end) && !m.isMiddle(pos) &&
 		!endsWithHighSurrogate(s[start:end]) && !startsWithLowSurrogate(s[start:end]) {
 		// Whole characters compare equal exactly when their bytes do.
+		m.steps -= end - start
 		if strings.HasPrefix(string(s[pos:]), string(s[start:end])) {
 			return pos + end - start, true
 		}
@@ -788,6 +894,9 @@ func (m *Matcher) backref(in *inst, pos int, uni bool) (int, bool) {
 	if in.back {
 		q := end
 		for q > start {
+			if m.steps--; m.steps <= 0 {
+				m.poll()
+			}
 			a, qa := m.prev(q, uni)
 			b, pb := m.prev(pos, uni)
 			if pb < 0 || a != b && (!in.fold || canon(a) != canon(b)) {
@@ -799,6 +908,9 @@ func (m *Matcher) backref(in *inst, pos int, uni bool) (int, bool) {
 	}
 	q := start
 	for q < end {
+		if m.steps--; m.steps <= 0 {
+			m.poll()
+		}
 		a, qa := m.next(q, uni)
 		b, pb := m.next(pos, uni)
 		if pb < 0 || a != b && (!in.fold || canon(a) != canon(b)) {
