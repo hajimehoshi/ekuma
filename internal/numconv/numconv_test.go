@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math"
 	"math/big"
+	"math/bits"
 	"math/rand/v2"
 	"strings"
 	"testing"
@@ -239,6 +240,23 @@ func TestBigIntArithmetic(t *testing.T) {
 		}
 		if y, ok := numconv.ParseBigInt(string(s), 10, nil); !ok || y.Cmp(x) != 0 {
 			t.Errorf("ParseBigInt of %d bits: got %t, want the integer", n, ok)
+		}
+	}
+}
+
+func TestExpBigInt(t *testing.T) {
+	for _, a := range []int64{3, -7, -8} {
+		for _, n := range []int64{0, 1000, 1001} {
+			var polls int
+			var got big.Int
+			numconv.ExpBigInt(&got, big.NewInt(a), n, func() { polls++ })
+			if want := new(big.Int).Exp(big.NewInt(a), big.NewInt(n), nil); got.Cmp(want) != 0 {
+				t.Errorf("ExpBigInt(%d, %d) = %v, want %v", a, n, &got, want)
+			}
+			// A power of a power of two is a shift, which has no steps.
+			if steps := bits.Len64(uint64(n)); a != -8 && polls < steps {
+				t.Errorf("ExpBigInt(%d, %d): got %d polls, want at least %d", a, n, polls, steps)
+			}
 		}
 	}
 }

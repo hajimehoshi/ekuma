@@ -2501,6 +2501,7 @@ func TestBigIntInterrupt(t *testing.T) {
 		`x * x`,
 		`z / y`,
 		`z % y`,
+		`y ** 4n`,
 		// The lexer converts the digits to decimal.
 		`eval("0x" + "f".repeat(2 ** 23) + "n")`,
 	} {

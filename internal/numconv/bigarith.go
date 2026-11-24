@@ -71,6 +71,48 @@ func QuoRemBigInt(x, y *big.Int, poll func()) (*big.Int, *big.Int) {
 	return q, r
 }
 
+// PowBitLen returns the bit length of a to the power of n, for |a| > 1 and n ≥ 0, or a number
+// at most two below it. It is exact when a is a power of two.
+func PowBitLen(a *big.Int, n int64) int64 {
+	l := int64(a.BitLen())
+	if int64(a.TrailingZeroBits()) == l-1 {
+		return (l-1)*n + 1
+	}
+	// log2|a| from its leading words is off by far less than a bit times n, so the floor of the
+	// product is the exact one or one off.
+	w := a.Bits()
+	k := max(0, len(w)-3)
+	var top float64
+	for i := len(w) - 1; i >= k; i-- {
+		top = top*(1<<bits.UintSize) + float64(w[i])
+	}
+	lg := math.Log2(top) + float64(k*bits.UintSize)
+	return int64(math.Floor(float64(n) * lg))
+}
+
+// ExpBigInt sets r, which is not a, to a to the power of the non-negative n. poll, which may be
+// nil, is called between the steps of a long exponentiation and may stop it by panicking.
+func ExpBigInt(r, a *big.Int, n int64, poll func()) {
+	if k := a.TrailingZeroBits(); a.BitLen() == int(k)+1 {
+		// A power of two is a shift.
+		r.Lsh(big.NewInt(1), k*uint(n))
+		if a.Sign() < 0 && n&1 != 0 {
+			r.Neg(r)
+		}
+		return
+	}
+	r.SetInt64(1)
+	for i := bits.Len64(uint64(n)) - 1; i >= 0; i-- {
+		if poll != nil {
+			poll()
+		}
+		r.Set(MulBigInt(r, r, poll))
+		if n>>i&1 != 0 {
+			r.Set(MulBigInt(r, a, poll))
+		}
+	}
+}
+
 // absOf returns the absolute value of x, which shares the magnitude of x.
 func absOf(x *big.Int) *big.Int {
 	return new(big.Int).SetBits(x.Bits())

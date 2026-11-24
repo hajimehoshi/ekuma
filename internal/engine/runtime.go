@@ -756,10 +756,10 @@ func (cx *ExecutionContext) arith(op bytecode.Opcode, x, y Value) Value {
 			cx.ThrowRangeError("maximum BigInt size exceeded")
 		}
 		n := b.Int64()
-		size := powBitLen(a, n)
+		size := numconv.PowBitLen(a, n)
 		cx.checkBigIntBits(size)
 		if size > bigExpStepBits {
-			cx.bigExp(r, a, n)
+			numconv.ExpBigInt(r, a, n, cx.Poll)
 		} else {
 			r.Exp(a, b, nil)
 		}
