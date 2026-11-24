@@ -223,6 +223,8 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 			if c.hasIter {
 				f.iterClose(c)
 			}
+		case ctlArrayPattern:
+			f.emit(bytecode.OpIterClose, c.reg, -1, 0)
 		case ctlScope:
 			f.emit(bytecode.OpCloseUpvals, c.reg, 0, 0)
 		case ctlWith:

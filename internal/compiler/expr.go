@@ -2276,16 +2276,11 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 
 	// recv holds the value that was sent in, and recv+1 whether the called method exists.
 	recv := f.newRegs(2)
-	mode := f.newReg()
 	res := f.newReg()
 	f.emit(bytecode.OpLoadUndef, recv, 0, 0)
-	f.emit(bytecode.OpLoadInt, mode, bytecode.ResumeNext, 0)
-
-	loop := f.pc()
-	onThrow := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeThrow)
-	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
 
 	// next: res = next.call(it, recv)
+	onNext := f.pc()
 	callBase := f.newRegs(3)
 	f.emit(bytecode.OpMove, callBase, it+1, 0)
 	f.emit(bytecode.OpMove, callBase+1, it, 0)
@@ -2294,8 +2289,14 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.free(callBase)
 	step := f.jump()
 
+	resume := f.pc()
+	mode := f.newReg()
+	f.emit(bytecode.OpGenResumeMode, mode, 0, 0)
+	f.emit(bytecode.OpJumpIfInt, onNext, mode, bytecode.ResumeNext)
+	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
+	f.free(mode)
+
 	// throw: res = it.throw(recv), or close the iterator and fail when there is no throw method.
-	f.patch(onThrow)
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
 	f.emit(bytecode.OpIterClose, it, -1, 0)
@@ -2325,8 +2326,7 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.patchC(done)
 	f.patchC(notDone)
 	f.emit(bytecode.OpYield, recv, res, 1)
-	f.emit(bytecode.OpGenResumeMode, mode, 0, 0)
-	f.jumpTo(loop)
+	f.jumpTo(resume)
 	f.patch(end)
 }
 
@@ -2339,16 +2339,11 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 
 	// recv holds the value that was sent in, and recv+1 whether the called method exists.
 	recv := f.newRegs(2)
-	mode := f.newReg()
 	res := f.newReg()
 	f.emit(bytecode.OpLoadUndef, recv, 0, 0)
-	f.emit(bytecode.OpLoadInt, mode, bytecode.ResumeNext, 0)
-
-	loop := f.pc()
-	onThrow := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeThrow)
-	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
 
 	// next: res = await next.call(it, recv)
+	onNext := f.pc()
 	callBase := f.newRegs(3)
 	f.emit(bytecode.OpMove, callBase, it+1, 0)
 	f.emit(bytecode.OpMove, callBase+1, it, 0)
@@ -2358,8 +2353,14 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.free(callBase)
 	step := f.jump()
 
+	resume := f.pc()
+	mode := f.newReg()
+	f.emit(bytecode.OpGenResumeMode, mode, 0, 0)
+	f.emit(bytecode.OpJumpIfInt, onNext, mode, bytecode.ResumeNext)
+	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
+	f.free(mode)
+
 	// throw: res = await it.throw(recv), or close the iterator and fail when there is no throw method.
-	f.patch(onThrow)
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
 	f.asyncIterClose(it)
@@ -2391,7 +2392,6 @@ func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
 	f.patchC(notDone)
 	f.emitGetProp(recv, res, f.site("value"))
 	f.emit(bytecode.OpYield, recv, recv, 1)
-	f.emit(bytecode.OpGenResumeMode, mode, 0, 0)
-	f.jumpTo(loop)
+	f.jumpTo(resume)
 	f.patch(end)
 }

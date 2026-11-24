@@ -480,14 +480,14 @@ func (cx *ExecutionContext) iteratorCloseAll(its []Value, pending bool) {
 // closePlainArrayIterator materializes an array iterator at nextIndex if looking up return
 // can expose it to JavaScript.
 func (cx *ExecutionContext) closePlainArrayIterator(o *Object, nextIndex uint32, pending bool) {
-	key := cx.Key(keyReturn)
-	for p := cx.Intrinsic(IntrinsicArrayIteratorPrototype); p != nil; p = p.shape.proto {
-		if _, ok := p.getOwn(key); ok || p.flags&objExotic != 0 {
-			it := cx.newArrayIterator(o, IterateValues, int64(nextIndex))
-			cx.iteratorClose(Value{o: it}, pending)
-			return
-		}
+	if c := &cx.realm.arrayIter; c.epoch == cx.protoEpoch && c.noReturn {
+		return
 	}
+	if cx.noArrayIteratorReturn(cx.Intrinsic(IntrinsicArrayIteratorPrototype)) {
+		return
+	}
+	it := cx.newArrayIterator(o, IterateValues, int64(nextIndex))
+	cx.iteratorClose(Value{o: it}, pending)
 }
 
 // Iterate calls f for every value that iterating v yields. When f returns false,

@@ -156,6 +156,9 @@ const (
 
 	// ctlFinalizer is the finally block of a try statement in code that has a completion value.
 	ctlFinalizer
+
+	// ctlArrayPattern holds a destructuring iterator while its elements are evaluated.
+	ctlArrayPattern
 )
 
 type exitKind uint8
@@ -196,7 +199,7 @@ type ctl struct {
 	disposes *scope
 
 	// For ctlScope: the first register of the scope.
-	// For ctlLoop with hasIter: the register holding the iterator.
+	// For ctlArrayPattern or ctlLoop with hasIter: the register holding the iterator.
 	// For ctlFinalizer: the register of the completion value of the finally block, and
 	// valueReg is the register of the completion value of the code around the try statement.
 	reg int32

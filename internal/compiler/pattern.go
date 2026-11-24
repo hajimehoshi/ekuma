@@ -134,6 +134,13 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 	it := f.newRegs(2)
 	f.emit(bytecode.OpGetIterator, it, src, bytecode.IterSync)
+	if f.f.IsGenerator {
+		// A yield* in the pattern can return from the generator.
+		f.control = append(f.control, &ctl{
+			kind: ctlArrayPattern,
+			reg:  it,
+		})
+	}
 	base := f.top
 	start := f.pc()
 	for _, e := range p.Elements {
@@ -177,6 +184,9 @@ func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
 		f.free(mark)
 	}
 	end := f.pc()
+	if f.f.IsGenerator {
+		f.control = f.control[:len(f.control)-1]
+	}
 	f.emit(bytecode.OpIterClose, it, -1, 0)
 	skip := f.jump()
 
