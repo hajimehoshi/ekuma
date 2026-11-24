@@ -47,10 +47,10 @@ func (cx *ExecutionContext) builtString(b *shortstrings.Builder) Value {
 		return cx.NewString(b.String())
 	}
 	if n == 0 {
-		return cx.emptyString
+		return cx.strings.empty
 	}
 	if n == 1 && byte(data) < 0x80 {
-		return cx.strings.ascii[byte(data)]
+		return cx.strings.character(byte(data))
 	}
 	return Value{
 		n: math.Float64frombits(data),

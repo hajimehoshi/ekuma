@@ -563,8 +563,7 @@ type agent struct {
 
 	keys keys
 
-	strings     stringTable
-	emptyString Value
+	strings stringTable
 
 	// missHolder holds undefined in its one slot, where the cache entries of properties that
 	// were not found point.
@@ -671,19 +670,8 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 	}
 	cx.initRealmPrototypes()
 
-	cx.emptyString = Value{
-		o: &Object{
-			kind:  kindString,
-			flags: objInterned | objKept,
-			shape: r.shapes.string,
-		},
-	}
-	cx.strings.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
-	cx.strings.keepNew = true
-	cx.strings.interned.put("", cx.emptyString.o, internedMinSweep, isKept)
-	for i := range cx.strings.ascii {
-		cx.strings.ascii[i] = ObjectValue(cx.Intern(wtf8.String(rune(i))))
-	}
+	cx.strings.startKeeping()
+	cx.strings.init(r.shapes.string)
 	cx.initKeys()
 	for t, name := range typeofNames {
 		cx.typeofs[t] = ObjectValue(cx.Intern(name))
@@ -694,7 +682,7 @@ func NewExecutionContext(hostDefined any) (*ExecutionContext, *Host) {
 		slots: []Value{Undefined},
 	}).init()
 	cx.initRealmGlobals()
-	cx.strings.keepNew = false
+	cx.strings.endKeeping()
 	return cx, host
 }
 

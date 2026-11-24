@@ -151,11 +151,11 @@ func (cx *ExecutionContext) Substring(s Value, start, end int) Value {
 		return cx.NewString(s.o.Substring(start, end))
 	}
 	if start == end {
-		return cx.emptyString
+		return cx.strings.empty
 	}
 	data, n := shortstrings.Slice(math.Float64bits(s.n), start, end)
 	if n == 1 && byte(data) < 0x80 {
-		return cx.strings.ascii[byte(data)]
+		return cx.strings.character(byte(data))
 	}
 	return Value{
 		n: math.Float64frombits(data),
@@ -296,7 +296,7 @@ func (cx *ExecutionContext) mapASCII(s Value, upper bool) (Value, bool) {
 		return s, true
 	}
 	if n == 1 {
-		return cx.strings.ascii[byte(mapped)], true
+		return cx.strings.character(byte(mapped)), true
 	}
 	return Value{
 		n: math.Float64frombits(mapped),
@@ -337,10 +337,10 @@ func (cx *ExecutionContext) trimShortString(s Value, start, end bool) Value {
 		return s
 	}
 	if trimmedN == 0 {
-		return cx.emptyString
+		return cx.strings.empty
 	}
 	if trimmedN == 1 && byte(trimmed) < 0x80 {
-		return cx.strings.ascii[byte(trimmed)]
+		return cx.strings.character(byte(trimmed))
 	}
 	return Value{
 		n: math.Float64frombits(trimmed),
@@ -360,11 +360,11 @@ func (cx *ExecutionContext) RepeatShort(s Value, count int) (repeated Value, ok 
 
 func (cx *ExecutionContext) repeatShort(s Value, count int) (Value, bool) {
 	if count == 0 {
-		return cx.emptyString, true
+		return cx.strings.empty, true
 	}
 	n := s.StringByteLength()
 	if n == 0 {
-		return cx.emptyString, true
+		return cx.strings.empty, true
 	}
 	if count > shortstrings.MaxBytes/n {
 		return Value{}, false
@@ -445,7 +445,7 @@ func (cx *ExecutionContext) padShort(s, fill Value, need int, atStart bool) (Val
 		return Value{}, false
 	}
 	if n == 1 && byte(data) < 0x80 {
-		return cx.strings.ascii[byte(data)], true
+		return cx.strings.character(byte(data)), true
 	}
 	return Value{
 		n: math.Float64frombits(data),
@@ -466,10 +466,10 @@ func CompareStrings(a, b Value) int {
 // NewStringBytes returns a string value containing the canonical WTF-8 bytes s.
 func (cx *ExecutionContext) NewStringBytes(s []byte) Value {
 	if len(s) == 0 {
-		return cx.emptyString
+		return cx.strings.empty
 	}
 	if len(s) == 1 && s[0] < 0x80 {
-		return cx.strings.ascii[s[0]]
+		return cx.strings.character(s[0])
 	}
 	if len(s) <= shortstrings.MaxBytes {
 		return cx.shortString(wtf8.String(s))

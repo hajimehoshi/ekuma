@@ -192,7 +192,7 @@ func (q QuietContext) NumberToString(n float64) Value {
 	var buf [32]byte
 	text := numconv.AppendNumber(buf[:0], n)
 	if len(text) == 1 {
-		return cx.strings.ascii[text[0]]
+		return cx.strings.character(text[0])
 	}
 	if len(text) <= shortstrings.MaxBytes {
 		return cx.shortString(wtf8.String(text))

@@ -258,7 +258,7 @@ func (cx *ExecutionContext) ConcatStrings(parts []Value) Value {
 	}
 	switch nonEmpty {
 	case 0:
-		return cx.emptyString
+		return cx.strings.empty
 	case 1:
 		return parts[last]
 	}

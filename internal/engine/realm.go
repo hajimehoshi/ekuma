@@ -133,7 +133,7 @@ func (cx *ExecutionContext) initRealmGlobals() {
 	r := cx.realm
 	stringProto := r.intrinsics[IntrinsicStringPrototype]
 	stringProto.class = classString
-	stringProto.setExtState(cx.emptyString.o)
+	stringProto.setExtState(cx.strings.empty.o)
 	cx.add(stringProto, cx.Key(KeyLength), Number(0), 0)
 	r.shapes.iterResult = r.shapes.object.with(cx.Key(KeyValue), FlagsData).with(cx.Key(keyDone), FlagsData)
 	r.shapes.arguments = r.shapes.object.with(cx.Key(KeyLength), FlagsHidden).with(cx.WellKnownSymbol(SymbolIterator), FlagsHidden)

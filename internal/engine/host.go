@@ -73,7 +73,7 @@ func (cx *ExecutionContext) ExceptionDescription(v, objectToString, errorToStrin
 		name, _ := diagnosticDataProperty(o, cx.Key(KeyName))
 		message, _ := diagnosticDataProperty(o, cx.Key(KeyMessage))
 		if !message.IsString() {
-			message = cx.emptyString
+			message = cx.strings.empty
 		}
 		if !name.IsString() || name.StringLength() == 0 {
 			return message

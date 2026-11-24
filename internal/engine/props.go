@@ -35,7 +35,7 @@ func (cx *ExecutionContext) KeyOfString(s wtf8.String) PropKey {
 	if i, ok := stringIndex(s); ok {
 		return PropKey{idx: i}
 	}
-	if o := cx.strings.interned.get(s); o != nil {
+	if o := cx.strings.lookup(s); o != nil {
 		return PropKey{key: o}
 	}
 	return PropKey{key: cx.Intern(wtf8.String(strings.Clone(string(s))))}
@@ -50,10 +50,10 @@ func (cx *ExecutionContext) indexName(i uint32) *Object {
 // in which case no object has a property with that key.
 func (ag *agent) indexKey(i uint32) *Object {
 	if i < 10 {
-		return ag.strings.ascii['0'+i].o
+		return ag.strings.character(byte('0' + i)).o
 	}
 	var buf [10]byte
-	return ag.strings.interned.get(wtf8.String(strconv.AppendUint(buf[:0], uint64(i), 10)))
+	return ag.strings.lookup(wtf8.String(strconv.AppendUint(buf[:0], uint64(i), 10)))
 }
 
 // KeyValue returns the key k as a string or symbol value.
@@ -140,7 +140,7 @@ func (ag *agent) shortQueryKey(v Value) QueryKey {
 	if i, ok := stringIndex(s); ok {
 		return QueryKey{idx: i}
 	}
-	if o := ag.strings.interned.get(s); o != nil {
+	if o := ag.strings.lookup(s); o != nil {
 		return QueryKey{key: o}
 	}
 	return QueryKey{
@@ -163,7 +163,7 @@ func (ag *agent) queryStringKey(o *Object) QueryKey {
 	if k, ok := o.extObject(); ok {
 		return QueryKey{key: k}
 	}
-	if k := ag.strings.interned.get(c); k != nil {
+	if k := ag.strings.lookup(c); k != nil {
 		o.setExtState(k)
 		return QueryKey{key: k}
 	}

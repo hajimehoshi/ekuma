@@ -1222,6 +1222,55 @@ type stringTable struct {
 
 	// ascii are the strings of one ASCII character.
 	ascii [128]Value
+
+	// empty is the empty string.
+	empty Value
+}
+
+// init creates the empty string and the strings of one ASCII character with the shape
+// stringShape. The table must be keeping new strings alive.
+func (t *stringTable) init(stringShape *shape) {
+	t.interned.entries = make(map[wtf8.String]sweptRef[Object], internedInitialSize)
+	t.empty = ObjectValue(t.add("", stringShape))
+	for i := range t.ascii {
+		t.ascii[i] = ObjectValue(t.add(wtf8.String(rune(i)), stringShape))
+	}
+}
+
+// startKeeping starts keeping newly interned strings alive with the agent, which endKeeping ends.
+func (t *stringTable) startKeeping() {
+	t.keepNew = true
+}
+
+// endKeeping ends what startKeeping started. The strings interned in between stay alive.
+func (t *stringTable) endKeeping() {
+	t.keepNew = false
+}
+
+// character returns the string of the ASCII character c.
+func (t *stringTable) character(c byte) Value {
+	return t.ascii[c]
+}
+
+// lookup returns the property key of the string s, or nil if s is not interned.
+func (t *stringTable) lookup(s wtf8.String) *Object {
+	return t.interned.get(s)
+}
+
+// add creates the property key of the string s, which must not be interned, with the shape
+// stringShape.
+func (t *stringTable) add(s wtf8.String, stringShape *shape) *Object {
+	o := &Object{
+		kind:  kindString,
+		flags: objInterned,
+		shape: stringShape,
+		str:   s,
+	}
+	if t.keepNew {
+		o.flags |= objKept
+	}
+	t.interned.put(s, o, internedMinSweep, isKept)
+	return o
 }
 
 // indexStringCount is the number of the smallest array indices whose strings are shared.
@@ -1230,7 +1279,7 @@ const indexStringCount = 1024
 // indexString returns the string of the array index i.
 func (cx *ExecutionContext) indexString(i uint32) Value {
 	if i < 10 {
-		return cx.strings.ascii['0'+i]
+		return cx.strings.character(byte('0' + i))
 	}
 	if i >= indexStringCount {
 		return cx.newIndexString(i)
@@ -1272,10 +1321,10 @@ const internedInitialSize = 896
 func (cx *ExecutionContext) NewString(s wtf8.String) Value {
 	switch len(s) {
 	case 0:
-		return cx.emptyString
+		return cx.strings.empty
 	case 1:
 		if s[0] < 0x80 {
-			return cx.strings.ascii[s[0]]
+			return cx.strings.character(s[0])
 		}
 	}
 	if len(s) <= shortstrings.MaxBytes {
@@ -1293,7 +1342,7 @@ func (cx *ExecutionContext) NewString(s wtf8.String) Value {
 // SharedString returns the string s as a value that may be the same object as a property key
 // with the same contents.
 func (cx *ExecutionContext) SharedString(s wtf8.String) Value {
-	if o := cx.strings.interned.get(s); o != nil {
+	if o := cx.strings.lookup(s); o != nil {
 		return ObjectValue(o)
 	}
 	return cx.NewString(s)
@@ -1301,20 +1350,10 @@ func (cx *ExecutionContext) SharedString(s wtf8.String) Value {
 
 // Intern returns the string s as a property key.
 func (cx *ExecutionContext) Intern(s wtf8.String) *Object {
-	if o := cx.strings.interned.get(s); o != nil {
+	if o := cx.strings.lookup(s); o != nil {
 		return o
 	}
-	o := &Object{
-		kind:  kindString,
-		flags: objInterned,
-		shape: cx.realm.shapes.string,
-		str:   s,
-	}
-	if cx.strings.keepNew {
-		o.flags |= objKept
-	}
-	cx.strings.interned.put(s, o, internedMinSweep, isKept)
-	return o
+	return cx.strings.add(s, cx.realm.shapes.string)
 }
 
 // isKept reports whether the interned string o is kept alive with its agent.
@@ -1521,7 +1560,7 @@ func (o *Object) Substring(start, end int) wtf8.String {
 // UnitString returns the string that consists of the code unit u.
 func (cx *ExecutionContext) UnitString(u uint16) Value {
 	if u < 0x80 {
-		return cx.strings.ascii[u]
+		return cx.strings.character(byte(u))
 	}
 	var buf [utf8.UTFMax]byte
 	return cx.shortString(wtf8.String(wtf8.AppendRune(buf[:0], rune(u))))
@@ -1583,7 +1622,7 @@ type builtinLayout struct {
 // In between, objects should only get their initial properties.
 func (ag *agent) StartBuiltins() {
 	ag.builtins.building = true
-	ag.strings.keepNew = true
+	ag.strings.startKeeping()
 }
 
 // FinishBuiltins ends the creation of the built-in objects.
@@ -1592,7 +1631,7 @@ func (ag *agent) FinishBuiltins() {
 		o.shareShape()
 	}
 	ag.builtins = builtinLayout{}
-	ag.strings.keepNew = false
+	ag.strings.endKeeping()
 }
 
 // shareShape turns the private shape of o into a shared shape without parent that holds all
