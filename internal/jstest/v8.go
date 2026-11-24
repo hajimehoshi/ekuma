@@ -247,9 +247,10 @@ func (host *V8) CheckFixedTime(t *testing.T) {
 }
 
 type v8TestEnvironment struct {
-	Comment   string     `json:"comment"`
-	FixedTime *time.Time `json:"fixedTime"`
-	TimeZone  string     `json:"timeZone"`
+	Comment           string     `json:"comment"`
+	FixedTime         *time.Time `json:"fixedTime"`
+	TimeZone          string     `json:"timeZone"`
+	TimeoutMultiplier int        `json:"timeoutMultiplier"`
 }
 
 // CheckFilesOrder checks the execution order of helpers named by V8 Files directives.
@@ -694,6 +695,7 @@ func (v *v8Test) executeScripts(ctx context.Context, host *V8, checkout fs.FS, t
 			return suiteSkipped.result(unsupported), ""
 		}
 	}
+	timeout *= time.Duration(max(1, v.environment.TimeoutMultiplier))
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var vm ekuma.VM

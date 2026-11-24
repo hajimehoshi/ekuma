@@ -57,5 +57,9 @@
   "test/mozilla/data/ecma/Date/15.9.5.35-1.js": {
     "comment": "The shell applies US daylight saving time to the expected local time in June 1970.",
     "timeZone": "America/Los_Angeles"
+  },
+  "test/webkit/dfg-int-overflow-in-loop.js": {
+    "comment": "V8 marks this test SLOW. Checking each bytecode instruction in its 160,097,152-iteration loop can exceed the ordinary retry deadline.",
+    "timeoutMultiplier": 12
   }
 }
