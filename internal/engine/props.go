@@ -609,15 +609,14 @@ func (ag *agent) readNamedSlot(start, holder *Object, p prop, c *propCache) (val
 	return val, nil
 }
 
-// proxyOnChain returns the first proxy or module namespace object on the prototype chain of o,
-// which shape lookups stop at.
-func proxyOnChain(o *Object) *Object {
-	for h := o; h != nil; h = h.shape.proto {
-		if h.class == classProxy || h.class == classModuleNamespace {
-			return h
+// hasDelegatedPrototype reports whether a prototype can run code during HasProperty.
+func hasDelegatedPrototype(o *Object) bool {
+	for h := o.shape.proto; h != nil; h = h.shape.proto {
+		if h.delegatesPropertyAccess() {
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 // GetV returns the named property key of v, calling a getter.

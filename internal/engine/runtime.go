@@ -92,7 +92,7 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 		return g.slots[p.slot]
 	}
 	k := PropKey{key: key}
-	canRunCode := proxyOnChain(g) != nil
+	canRunCode := hasDelegatedPrototype(g)
 	if !cx.HasProperty(g, k) {
 		if orUndef {
 			return Undefined

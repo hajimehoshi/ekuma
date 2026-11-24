@@ -177,6 +177,27 @@ func runLazyPropertyOperation(t *testing.T, script string, lazy bool) string {
 	return string(cx.ToString(v))
 }
 
+func TestGlobalReadThroughLazyPrototype(t *testing.T) {
+	cx, _ := engine.NewExecutionContext(nil)
+	declare, err := cx.ParseScript("declare", "let fromLazy = 2;")
+	if err != nil {
+		t.Fatal(err)
+	}
+	global := cx.GlobalObject().Object()
+	proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *engine.Object) {
+		cx.Define(o, cx.Intern("fromLazy"), engine.Number(1), engine.FlagsData)
+		declare.CallScript()
+	})
+	cx.SetPrototypeOf(global, proto)
+	v, err := runScript(cx, "read", "fromLazy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.IsNumber() || v.Number() != 2 {
+		t.Errorf("global read returned %v, want 2", v)
+	}
+}
+
 func TestPlainOwnPropertyQueryDefersLazyInitialization(t *testing.T) {
 	cx, _ := engine.NewExecutionContext(nil)
 	o := cx.NewLazyObject(nil, func(*engine.ExecutionContext, *engine.Object) {
