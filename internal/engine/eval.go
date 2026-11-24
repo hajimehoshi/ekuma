@@ -139,9 +139,11 @@ func (cx *ExecutionContext) createLazyArguments(fr *frame, es *bytecode.EvalScop
 		if !d.Local || d.Index != reg {
 			continue
 		}
-		regs := cx.stack[fr.base : fr.base+fr.fp.nregs+1]
+		var regs []Value
 		if fr.gen != nil {
 			regs = fr.gen.regs
+		} else {
+			regs = cx.stack[fr.base : fr.base+fr.fp.nregs+1]
 		}
 		if regs[reg].o == tdzObject {
 			regs[reg] = Value{o: cx.newArguments(fr, regs, true)}
