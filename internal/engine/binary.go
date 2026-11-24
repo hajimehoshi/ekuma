@@ -752,22 +752,12 @@ func (t *TypedArray) IsLengthTracking() bool {
 func (t *TypedArray) Length() (int, bool) {
 	n := len(t.data.data)
 	if t.data.state != bufferPlain {
-		// A detached buffer has a negative length.
 		n = int(t.data.slowLength.Load())
 	}
-	if t.tracking {
-		if t.offset > n {
-			return 0, false
-		}
-		return (n - t.offset) / t.typ.Size(), true
-	}
-	if t.offset+t.length*t.typ.Size() > n {
-		return 0, false
-	}
-	return t.length, true
+	return t.lengthOf(n)
 }
 
-// lengthOf implements TypedArrayLength for a buffer of n bytes that is not detached.
+// lengthOf implements TypedArrayLength given the buffer byte length, or -1 for a detached buffer.
 func (t *TypedArray) lengthOf(n int) (int, bool) {
 	if t.tracking {
 		if t.offset > n {
