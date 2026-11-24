@@ -126,6 +126,11 @@ func newMailbox() *mailbox {
 	}
 }
 
+// isEmpty reports whether there are no notified waiters.
+func (m *mailbox) isEmpty() bool {
+	return m.count.Load() == 0
+}
+
 // poke wakes the agent if it is blocked.
 func (m *mailbox) poke() {
 	select {
@@ -258,13 +263,10 @@ func (cx *ExecutionContext) Wait(t *TypedArray, i int, v uint64, timeout float64
 	if !async {
 		return cx.suspend(w, timeout), false
 	}
-	if cx.asyncWaiters == nil {
-		cx.asyncWaiters = map[*waiter]struct{}{}
-	}
-	cx.asyncWaiters[w] = struct{}{}
+	cx.asyncWaiters.add(w)
 	// A timeout that a time.Duration cannot hold, about 292 years, never expires.
 	if ns := timeout * float64(time.Millisecond); ns < math.MaxInt64 {
-		cx.timedWaiters.add(w, cx.Now().Add(time.Duration(ns)))
+		cx.asyncWaiters.setDeadline(w, cx.Now().Add(time.Duration(ns)))
 	}
 	return Value{o: w.promise}, true
 }
@@ -449,7 +451,6 @@ func (cx *ExecutionContext) NotifyWaiters(b *ArrayBuffer, byteIndex int, count f
 		case w.done != nil:
 			close(w.done)
 		case w.agent == cx.agent:
-			cx.timedWaiters.remove(w)
 			cx.resolveWaiter(w, "ok")
 		default:
 			w.agent.post(w)
@@ -469,7 +470,7 @@ func (ag *agent) post(w *waiter) {
 // resolveWaiter implements EnqueueResolveInAgentJob for the asynchronous waiter w of ag, which is
 // no longer in its list.
 func (ag *agent) resolveWaiter(w *waiter, result wtf8.String) {
-	delete(ag.asyncWaiters, w)
+	ag.asyncWaiters.remove(w)
 	// Settling a waiter is an agent task. Its promise reactions use their own
 	// realms' microtask queues.
 	ag.jobs.enqueue(job{
@@ -483,11 +484,10 @@ func (ag *agent) resolveWaiter(w *waiter, result wtf8.String) {
 // receiveNotifications queues the resolve jobs of the waiters that other agents notified,
 // and reports whether there were any.
 func (ag *agent) receiveNotifications() bool {
-	if ag.mailbox.count.Load() == 0 {
+	if ag.mailbox.isEmpty() {
 		return false
 	}
 	for _, w := range ag.mailbox.take() {
-		ag.timedWaiters.remove(w)
 		ag.resolveWaiter(w, "ok")
 	}
 	return true
@@ -502,10 +502,10 @@ func (ag *agent) AwaitJobs() (bool, error) {
 				Cause: *cause,
 			}
 		}
-		if !ag.jobs.isEmpty() || ag.finalizationPending() || ag.mailbox.count.Load() != 0 {
+		if !ag.jobs.isEmpty() || ag.finalizationPending() || !ag.mailbox.isEmpty() {
 			return true, nil
 		}
-		if len(ag.asyncWaiters) == 0 {
+		if ag.asyncWaiters.isEmpty() {
 			return false, nil
 		}
 		if ag.awaitWake() {
@@ -517,10 +517,9 @@ func (ag *agent) AwaitJobs() (bool, error) {
 // awaitWake blocks until the mailbox of ag is poked or the earliest timeout of its waiters
 // passes, and reports whether the timeout passed.
 func (ag *agent) awaitWake() bool {
-	var deadline time.Time
 	var expired <-chan time.Time
-	if !ag.timedWaiters.isEmpty() {
-		deadline = ag.timedWaiters.heap[0].deadline
+	deadline, ok := ag.asyncWaiters.earliestDeadline()
+	if ok {
 		d := deadline.Sub(ag.Now())
 		if d <= 0 {
 			return true
@@ -556,13 +555,13 @@ func (cx *ExecutionContext) RunJobs() error {
 // expireWaiters runs the timeout jobs of the waiters whose deadline has passed, and reports
 // whether there were any.
 func (cx *ExecutionContext) expireWaiters() bool {
-	if cx.timedWaiters.isEmpty() {
+	if !cx.asyncWaiters.hasDeadline() {
 		return false
 	}
 	now := cx.Now()
 	var expired bool
 	for {
-		w, ok := cx.timedWaiters.popExpired(now)
+		w, ok := cx.asyncWaiters.popExpired(now)
 		if !ok {
 			break
 		}
@@ -575,37 +574,66 @@ func (cx *ExecutionContext) expireWaiters() bool {
 	return expired
 }
 
-// timedWaiters holds the waiters with a finite timeout.
-type timedWaiters struct {
-	heap waiterHeap
+// asyncWaiters holds the waiters of Atomics.waitAsync of an agent whose promise is not resolved.
+// The waiter lists of the data blocks refer to them weakly, so that an agent that is dropped while
+// waiting is collected.
+type asyncWaiters struct {
+	// timed holds the waiters with a deadline. Each of them is also in all.
+	timed waiterHeap
 
-	// seq numbers the waiters by their creation.
+	// seq numbers the waiters of timed by their creation.
 	seq uint64
+
+	// all holds all the waiters. A waiter that popExpired returned stays in it until its promise is
+	// resolved, which waits for the mailbox when another agent notified the waiter first.
+	all map[*waiter]struct{}
 }
 
-func (t *timedWaiters) isEmpty() bool {
-	return len(t.heap) == 0
+func (s *asyncWaiters) isEmpty() bool {
+	return len(s.all) == 0
 }
 
-// add adds w with the given deadline.
-func (t *timedWaiters) add(w *waiter, deadline time.Time) {
+func (s *asyncWaiters) hasDeadline() bool {
+	return len(s.timed) != 0
+}
+
+// add adds w without a deadline.
+func (s *asyncWaiters) add(w *waiter) {
+	if s.all == nil {
+		s.all = map[*waiter]struct{}{}
+	}
+	s.all[w] = struct{}{}
+}
+
+// setDeadline gives the added waiter w, which has no deadline, the given deadline.
+func (s *asyncWaiters) setDeadline(w *waiter, deadline time.Time) {
 	w.deadline = deadline
-	w.seq = t.seq
-	t.seq++
-	heap.Push(&t.heap, w)
+	w.seq = s.seq
+	s.seq++
+	heap.Push(&s.timed, w)
 }
 
-// remove removes w, if it is there.
-func (t *timedWaiters) remove(w *waiter) {
+// remove removes w and its deadline, if it has one.
+func (s *asyncWaiters) remove(w *waiter) {
+	delete(s.all, w)
 	if w.timedIndex >= 0 {
-		heap.Remove(&t.heap, w.timedIndex)
+		heap.Remove(&s.timed, w.timedIndex)
 	}
 }
 
-// popExpired removes and returns the waiter with the earliest deadline, if that is not after now.
-func (t *timedWaiters) popExpired(now time.Time) (*waiter, bool) {
-	if len(t.heap) == 0 || t.heap[0].deadline.After(now) {
+// earliestDeadline returns the earliest deadline, or reports false when there is none.
+func (s *asyncWaiters) earliestDeadline() (time.Time, bool) {
+	if len(s.timed) == 0 {
+		return time.Time{}, false
+	}
+	return s.timed[0].deadline, true
+}
+
+// popExpired returns the waiter with the earliest deadline, if that is not after now. It removes
+// the deadline but not the waiter.
+func (s *asyncWaiters) popExpired(now time.Time) (*waiter, bool) {
+	if len(s.timed) == 0 || s.timed[0].deadline.After(now) {
 		return nil, false
 	}
-	return heap.Pop(&t.heap).(*waiter), true
+	return heap.Pop(&s.timed).(*waiter), true
 }

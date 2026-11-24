@@ -583,13 +583,8 @@ type agent struct {
 	// rejections are the unhandled rejections, for HostPromiseRejectionTracker.
 	rejections rejectionTracker
 
-	// timedWaiters are the waiters of Atomics.waitAsync with a finite timeout.
-	timedWaiters timedWaiters
-
-	// asyncWaiters are the waiters of Atomics.waitAsync whose promise is not resolved. The waiter
-	// lists of the data blocks refer to them weakly, so that an agent that is dropped while waiting
-	// is collected.
-	asyncWaiters map[*waiter]struct{}
+	// asyncWaiters are the waiters of Atomics.waitAsync.
+	asyncWaiters asyncWaiters
 
 	// mailbox receives the notifications of other agents.
 	mailbox *mailbox

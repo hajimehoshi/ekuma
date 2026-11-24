@@ -916,7 +916,7 @@ func (cx *ExecutionContext) runJobs() {
 				cx.clearKeptObjects()
 				// A timeout job runs as soon as its time has passed, even while promise jobs keep
 				// queuing more.
-				if !cx.timedWaiters.isEmpty() {
+				if cx.asyncWaiters.hasDeadline() {
 					cx.expireWaiters()
 				}
 			}

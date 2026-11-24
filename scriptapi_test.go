@@ -554,6 +554,25 @@ func TestAwaitJobsCanceled(t *testing.T) {
 	})
 }
 
+// TestAwaitJobsNotifiedBeforeTimeout checks that the timeout of a notified waiter does not end
+// the wait for another waiter.
+func TestAwaitJobsNotifiedBeforeTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var vm ekuma.VM
+		run(t, &vm, `
+			var ia = new Int32Array(new SharedArrayBuffer(8));
+			Atomics.waitAsync(ia, 0, 0, 1);
+			Atomics.waitAsync(ia, 1, 0);
+			Atomics.notify(ia, 0);
+		`)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if _, err := vm.AwaitJobs(ctx); !errors.Is(err, context.DeadlineExceeded) {
+			t.Errorf("AwaitJobs: got %v, want %v", err, context.DeadlineExceeded)
+		}
+	})
+}
+
 func TestAwaitJobsCancellationAfterLastJob(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		var vm ekuma.VM
