@@ -1554,10 +1554,14 @@ func (cx *ExecutionContext) DeleteProp(o *Object, k PropKey) bool {
 	if !ok {
 		return true
 	}
+	return cx.deleteOwnSlot(o, k.key, p)
+}
+
+func (cx *ExecutionContext) deleteOwnSlot(o *Object, key *Object, p prop) bool {
 	if p.flags&FlagConfigurable == 0 {
 		return false
 	}
-	cx.remove(o, k.key)
+	cx.remove(o, key)
 	return true
 }
 

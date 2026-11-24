@@ -3037,7 +3037,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(ok)
 		case bytecode.OpDeleteName:
 			ag.frames[len(ag.frames)-1].pc = pc
-			regs[i.A] = Bool(fp.context.deleteName(fp.keys[i.B]))
+			ok := fp.context.deleteName(fp.keys[i.B])
+			regs = ag.reload(regs, ag.frameBase(), fp)
+			regs[i.A] = Bool(ok)
 		case bytecode.OpCaptureScopes:
 			regs[i.A].o.ownFunction().scopes = ag.openScopes(ag.frames[len(ag.frames)-1].cl)
 		case bytecode.OpEvalScope:

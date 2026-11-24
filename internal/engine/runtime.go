@@ -1606,7 +1606,19 @@ func (cx *ExecutionContext) deleteName(key *Object) bool {
 	if _, ok := r.globalLex.shape.lookup(key); ok {
 		return false
 	}
-	return cx.DeleteProp(r.global, PropKey{key: key})
+	g := r.global
+	if p, ok := g.shape.lookup(key); ok {
+		return cx.deleteOwnSlot(g, key, p)
+	}
+	// An inherited HasBinding check can create a lexical binding or an own global property.
+	k := PropKey{key: key}
+	if !hasDelegatedPrototype(g) || !cx.HasProperty(g.shape.proto, k) {
+		return true
+	}
+	if _, ok := r.globalLex.shape.lookup(key); ok {
+		return false
+	}
+	return cx.DeleteProp(g, k)
 }
 
 // BoundFunctionCreate implements BoundFunctionCreate. It copies args.
