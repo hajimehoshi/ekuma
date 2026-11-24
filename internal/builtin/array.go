@@ -1254,19 +1254,31 @@ func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Val
 	}
 	if cmp.IsUndefined() {
 		allStrings := true
+		// The bits of lengths are those of all the lengths of the keys in bytes.
+		lengths := 0
 		for i, v := range vals {
 			cx.PollAt(int64(i))
 			if v.IsObject() || v.IsSymbol() {
 				// Object conversion can run code and symbol conversion throws.
+				var pacer engine.Pacer
 				mergeSortPolled(cx, vals, func(a, b engine.Value) int {
-					return wtf8.Compare(cx.ToString(a), cx.ToString(b))
+					x, y := cx.ToString(a), cx.ToString(b)
+					pacer.Steps(cx, min(len(x), len(y)))
+					return wtf8.Compare(x, y)
 				})
 				return
 			}
 			allStrings = allStrings && v.IsString()
+			if allStrings {
+				lengths |= v.StringByteLength()
+			}
 		}
 		if allStrings {
-			mergeSortPolled(cx, vals, compareStringValues)
+			if lengths < longSortKey {
+				mergeSortPolled(cx, vals, compareStringValues)
+			} else {
+				mergeSortLong(cx, vals, engine.Value.StringByteLength, compareStringValues)
+			}
 			return
 		}
 		keyed := make([]keyedValue, len(vals))
@@ -1274,9 +1286,13 @@ func sortValues(cx *engine.ExecutionContext, vals []engine.Value, cmp engine.Val
 			if i > 0 {
 				cx.Poll()
 			}
-			keyValues(cx, keyed[i:], vals[i:min(i+engine.PollInterval, len(vals))])
+			lengths |= keyValues(cx, keyed[i:], vals[i:min(i+engine.PollInterval, len(vals))])
 		}
-		mergeSortPolled(cx, keyed, compareKeyedValues)
+		if lengths < longSortKey {
+			mergeSortPolled(cx, keyed, compareKeyedValues)
+		} else {
+			mergeSortLong(cx, keyed, keyedValue.keyLength, compareKeyedValues)
+		}
 		for i := range vals {
 			vals[i] = keyed[i].v
 		}
@@ -1294,6 +1310,20 @@ func mergeSortPolled[E any](cx *engine.ExecutionContext, s []E, compare func(a, 
 	sortPolled(cx, s, sortRunLength, func(run []E) {
 		mergeSort(run, compare)
 	}, compare)
+}
+
+// longSortKey is the length in bytes from which the comparisons of a key count as more than one
+// step. It is a power of two.
+const longSortKey = 1 << 8
+
+// mergeSortLong is mergeSortPolled for elements with long keys, whose lengths in bytes length
+// returns.
+func mergeSortLong[E any](cx *engine.ExecutionContext, s []E, length func(e E) int, compare func(a, b E) int) {
+	var pacer engine.Pacer
+	mergeSortPolled(cx, s, func(a, b E) int {
+		pacer.Steps(cx, min(length(a), length(b)))
+		return compare(a, b)
+	})
 }
 
 // insertionSortLength is the length up to which mergeSort sorts by insertion.
@@ -1372,19 +1402,29 @@ type keyedValue struct {
 	key wtf8.String
 }
 
+// keyLength returns the length of the key of v in bytes.
+func (v keyedValue) keyLength() int {
+	return len(v.key)
+}
+
 // compareKeyedValues compares the keys of a and b by their code units.
 func compareKeyedValues(a, b keyedValue) int {
 	return wtf8.Compare(a.key, b.key)
 }
 
-// keyValues sets the elements of keyed to vals with their strings.
-func keyValues(cx *engine.ExecutionContext, keyed []keyedValue, vals []engine.Value) {
+// keyValues sets the elements of keyed to vals with their strings, and returns the bitwise OR of
+// the lengths of the strings in bytes.
+func keyValues(cx *engine.ExecutionContext, keyed []keyedValue, vals []engine.Value) int {
+	lengths := 0
 	for i, v := range vals {
+		key := cx.ToString(v)
+		lengths |= len(key)
 		keyed[i] = keyedValue{
 			v:   v,
-			key: cx.ToString(v),
+			key: key,
 		}
 	}
+	return lengths
 }
 
 // Run lengths of sortPolled.

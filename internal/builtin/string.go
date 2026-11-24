@@ -533,13 +533,14 @@ func initString(cx *engine.ExecutionContext) {
 		var start int
 		var pacer engine.Pacer
 		for uint32(len(out)) < limit {
-			pacer.Step(cx)
 			pos := s.UnitIndexOf(sep, start, cx.Poll)
 			if pos < 0 {
 				out = append(out, cx.Substring(s, start, s.StringLength()))
 				break
 			}
 			out = append(out, cx.Substring(s, start, pos))
+			// The search read what precedes the separator.
+			pacer.Steps(cx, pos+sepLen-start)
 			start = pos + sepLen
 		}
 		return engine.ObjectValue(cx.NewArray(out))
@@ -575,13 +576,16 @@ func initString(cx *engine.ExecutionContext) {
 				positions = firstPosition[:0]
 			}
 			var pacer engine.Pacer
+			from := 0
 			for pos := s.UnitIndexOf(search, 0, cx.Poll); pos >= 0; {
-				pacer.Step(cx)
+				// The search read what precedes the match.
+				pacer.Steps(cx, pos+advance-from)
+				from = pos + advance
 				positions = append(positions, pos)
-				if !all || pos+advance > n {
+				if !all || from > n {
 					break
 				}
-				pos = s.UnitIndexOf(search, pos+advance, cx.Poll)
+				pos = s.UnitIndexOf(search, from, cx.Poll)
 			}
 			if len(positions) == 0 {
 				return s

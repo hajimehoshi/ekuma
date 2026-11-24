@@ -1801,6 +1801,107 @@ func TestCancelSetMethod(t *testing.T) {
 	}
 }
 
+// TestCancelSearches checks that a search or a sort stops when its context is done, also when it
+// looks at few elements or finds few matches but reads many bytes.
+func TestCancelSearches(t *testing.T) {
+	// The inputs are small enough for the searches to end quickly when they do not stop.
+	for _, tc := range []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "long strings",
+			src: `
+				var x = "x".repeat(1 << 12), a = new Array(1 << 12).fill(x + "a");
+				a.indexOf(x + "b", { valueOf() { cancel(); return 0; } });`,
+		},
+		{
+			name: "long strings backward",
+			src: `
+				var x = "x".repeat(1 << 12), a = new Array(1 << 12).fill(x + "a");
+				a.lastIndexOf(x + "b", { valueOf() { cancel(); return a.length - 1; } });`,
+		},
+		{
+			name: "long strings between holes",
+			src: `
+				var x = "x".repeat(1 << 12), s = x + "a", a = [];
+				for (let i = 0; i < 1 << 13; i += 2) a[i] = s;
+				a.indexOf(x + "b", { valueOf() { cancel(); return 0; } });`,
+		},
+		{
+			name: "long strings between holes backward",
+			src: `
+				var x = "x".repeat(1 << 12), s = x + "a", a = [];
+				for (let i = 0; i < 1 << 13; i += 2) a[i] = s;
+				a.lastIndexOf(x + "b", { valueOf() { cancel(); return a.length - 1; } });`,
+		},
+		{
+			name: "large BigInts",
+			src: `
+				var x = 1n << 32768n, a = new Array(1 << 12).fill(x + 1n);
+				a.indexOf(x + 2n, { valueOf() { cancel(); return 0; } });`,
+		},
+		{
+			name: "split",
+			src: `
+				var s = ("x".repeat(1 << 12) + ",").repeat(64);
+				s.split(",", { valueOf() { cancel(); return 100; } });`,
+		},
+		{
+			name: "replaceAll",
+			src: `
+				var s = ("x".repeat(1 << 12) + ",").repeat(64);
+				s.replaceAll(",", { toString() { cancel(); return ";"; } });`,
+		},
+		{
+			name: "sort of long strings",
+			src: `
+				var x = "x".repeat(1 << 12), a = [x + "b", x + "a"];
+				var o = { length: 1 << 10 };
+				for (let i = 0; i < o.length; i++) o[i] = a[i % 2];
+				// The last element is read right before the sort.
+				Object.defineProperty(o, o.length - 1, { get() { cancel(); return x; } });
+				Array.prototype.toSorted.call(o);`,
+		},
+		{
+			name: "sort of long strings and numbers",
+			src: `
+				var x = "x".repeat(1 << 12), a = [x + "b", x + "a"];
+				var o = { length: 1 << 10 };
+				for (let i = 0; i < o.length; i++) o[i] = a[i % 2];
+				// The last element is read right before the sort.
+				Object.defineProperty(o, o.length - 1, { get() { cancel(); return 1; } });
+				Array.prototype.toSorted.call(o);`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var vm ekuma.VM
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			var canceled bool
+			if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+				canceled = true
+				cancel()
+				// The cancellation is requested on another goroutine.
+				time.Sleep(50 * time.Millisecond)
+				return nil, nil
+			})); err != nil {
+				t.Fatal(err)
+			}
+			_, err := runScript(ctx, &vm, "search", tc.src+"\nvar after = true;")
+			if !canceled {
+				t.Fatal("the script did not cancel the context")
+			}
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("got %v, want context.Canceled", err)
+			}
+			if v, err := vm.Global().Get("after"); err != nil || v.Truthy() {
+				t.Errorf("after = %v, %v: the script continued after the search", v, err)
+			}
+		})
+	}
+}
+
 func TestInternalError(t *testing.T) {
 	var vm ekuma.VM
 	cause := errors.New("broken data")

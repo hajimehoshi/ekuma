@@ -2003,14 +2003,28 @@ func mayMatchInsidePair(sub wtf8.String) bool {
 	return wtf8.IsLowSurrogate(first) || wtf8.IsHighSurrogate(last)
 }
 
-// findUnitsPollSteps is the number of code units that findUnits reads between two calls of its
-// poll function.
+// findUnitsPollSteps is the number of code units or bytes that findUnits reads between two calls
+// of its poll function.
 const findUnitsPollSteps = 1 << 16
 
 // findUnits returns the start of the match of sub nearest to from in the given direction, or -1,
 // comparing code units by the Knuth-Morris-Pratt algorithm.
 func (o *Object) findUnits(sub wtf8.String, from int, backward bool, poll func()) int {
-	units := wtf8.AppendUTF16(nil, sub)
+	var units []uint16
+	rest := sub
+	for len(rest) > findUnitsPollSteps {
+		// A part ends before the first byte of a character.
+		n := findUnitsPollSteps
+		for n < len(rest) && rest[n]&0xC0 == 0x80 {
+			n++
+		}
+		units = wtf8.AppendUTF16(units, rest[:n])
+		rest = rest[n:]
+		if poll != nil {
+			poll()
+		}
+	}
+	units = wtf8.AppendUTF16(units, rest)
 	m := len(units)
 	if backward {
 		slices.Reverse(units)
@@ -2018,6 +2032,9 @@ func (o *Object) findUnits(sub wtf8.String, from int, backward bool, poll func()
 	// border[j] is the length of the longest proper border of units[:j+1].
 	border := make([]int32, m)
 	for j, k := 1, 0; j < m; j++ {
+		if j%findUnitsPollSteps == 0 && poll != nil {
+			poll()
+		}
 		for k > 0 && units[k] != units[j] {
 			k = int(border[k-1])
 		}

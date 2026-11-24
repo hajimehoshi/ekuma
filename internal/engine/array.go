@@ -388,6 +388,10 @@ func (q QuietContext) SearchArray(v, target Value, sameValueZero bool) (int64, b
 // that reading runs no JavaScript for, and returns -1 and the index after the run when the run
 // has no such element.
 func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, sameValueZero bool) (found, next int64) {
+	// Only strings and BigInts can take long to compare.
+	if t := target.o; t != nil && (len(t.str) > maxQuickCompare || t.kind == kindBigInt) {
+		return q.searchElementsSlow(o, i, end, target)
+	}
 	cx := q.cx
 	eq := IsStrictlyEqual
 	if sameValueZero {
@@ -426,6 +430,36 @@ func (q QuietContext) SearchElements(o *Object, i, end int64, target Value, same
 			}
 		}
 		if i < end && i&(PollInterval-1) == 0 {
+			cx.Poll()
+		}
+	}
+	return -1, i
+}
+
+// searchElementsSlow is [QuietContext.SearchElements] for a target that can take long to
+// compare. The target is not a number, so both comparisons are IsStrictlyEqual.
+func (q QuietContext) searchElementsSlow(o *Object, i, end int64, target Value) (found, next int64) {
+	cx := q.cx
+	step := int64(1)
+	if end < i {
+		step = -1
+	}
+	elems := o.elems
+	// Each comparison also counts as reading the element.
+	n := max(comparedBytes(target), maxQuickCompare)
+	var read int
+	for ; i != end && i < int64(len(elems)); i += step {
+		e := elems[i]
+		if e.isHole() {
+			// A caller that resumes after the hole does not count what was read before it.
+			cx.Poll()
+			return -1, i
+		}
+		if IsStrictlyEqual(e, target) {
+			return i, i
+		}
+		if read += n; read >= compareBudget {
+			read = 0
 			cx.Poll()
 		}
 	}
