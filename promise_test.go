@@ -317,3 +317,84 @@ func TestUnhandledRejectionRecoveredInterruption(t *testing.T) {
 		t.Errorf("callback calls: got %d, want 1", calls)
 	}
 }
+
+func TestUnhandledRejectionChangesByReports(t *testing.T) {
+	var vm ekuma.VM
+	var got []string
+	run(t, &vm, `Promise.reject("without a callback")`)
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		got = append(got, reason.String())
+		switch reason.String() {
+		case "a":
+			run(t, &vm, `b.catch(() => {}); Promise.reject("d")`)
+		case "e":
+			vm.SetUnhandledRejection(nil)
+		}
+	})
+
+	// The promise that the first report handles is skipped, and the one that it rejects is last.
+	run(t, &vm, `var b; Promise.reject("a"); b = Promise.reject("b"); Promise.reject("c")`)
+	if want := []string{"a", "c", "d"}; !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+
+	// A report that removes the callback discards the rest.
+	got = nil
+	run(t, &vm, `Promise.reject("e"); Promise.reject("f")`)
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		got = append(got, reason.String())
+	})
+	run(t, &vm, `Promise.reject("g")`)
+	if want := []string{"e", "g"}; !slices.Equal(got, want) {
+		t.Errorf("after the removal: got %q, want %q", got, want)
+	}
+}
+
+// TestUnhandledRejectionInterrupted checks that an interruption discards the pending rejections,
+// and keeps the callback and the deferral of the reports.
+func TestUnhandledRejectionInterrupted(t *testing.T) {
+	var vm ekuma.VM
+	var got []string
+	vm.SetUnhandledRejection(func(promise, reason ekuma.Value) {
+		got = append(got, reason.String())
+	})
+	interrupt := func() {
+		t.Helper()
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		stop := vm.FuncOf("stop", func(this ekuma.Value, args []ekuma.Value) (any, error) {
+			cancel()
+			return nil, nil
+		})
+		if err := vm.Global().Set("stop", stop); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := runScript(ctx, &vm, "test", `Promise.reject("discarded"); stop(); for (;;) {}`); !errors.Is(err, context.Canceled) {
+			t.Fatalf("got %v, want %v", err, context.Canceled)
+		}
+	}
+
+	interrupt()
+	run(t, &vm, `Promise.reject("a")`)
+	if want := []string{"a"}; !slices.Equal(got, want) {
+		t.Errorf("got %q, want %q", got, want)
+	}
+
+	got = nil
+	ekuma.DeferUnhandledRejections(&vm)
+	interrupt()
+	run(t, &vm, `Promise.reject("b"); Promise.reject("c")`)
+	if got != nil {
+		t.Errorf("while deferred: got %q, want none", got)
+	}
+	var ex *ekuma.ScriptError
+	if err := ekuma.TakeUnhandledRejection(&vm); !errors.As(err, &ex) || ex.Value.String() != "b" {
+		t.Errorf("TakeUnhandledRejection: got %v, want b", err)
+	}
+
+	// The deferral ended, and the other deferred rejections are not reported.
+	run(t, &vm, `Promise.reject("d")`)
+	if want := []string{"d"}; !slices.Equal(got, want) {
+		t.Errorf("after the deferral: got %q, want %q", got, want)
+	}
+}

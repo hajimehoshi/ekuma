@@ -654,24 +654,21 @@ type UnhandledRejectionFunc func(cx *ExecutionContext, promise, reason Value)
 // rejections, in the order of rejection, after the jobs ran. f may call into ag. Without
 // one, the unhandled rejections are discarded.
 func (ag *agent) SetHostUnhandledRejection(f UnhandledRejectionFunc) {
-	ag.rejections.notify = f
+	ag.rejections.setNotify(f)
 }
 
 // DeferUnhandledRejections postpones rejection reports across job checkpoints.
 func (ag *agent) DeferUnhandledRejections() {
-	ag.rejections.deferred = true
+	ag.rejections.deferReports()
 }
 
 // TakeUnhandledRejection ends deferral, returning the first unhandled reason and clearing all reports.
 func (ag *agent) TakeUnhandledRejection() (Value, bool) {
-	t := &ag.rejections
-	t.deferred = false
-	if len(t.promises) == 0 {
+	p := ag.rejections.endDeferral()
+	if p == nil {
 		return Undefined, false
 	}
-	reason := promiseOf(t.promises[0]).result
-	t.reset()
-	return reason, true
+	return promiseOf(p).result, true
 }
 
 // rejectionTracker holds the rejected promises without a handler.
@@ -684,6 +681,10 @@ type rejectionTracker struct {
 
 	// deferred keeps pending rejections across job checkpoints.
 	deferred bool
+}
+
+func (t *rejectionTracker) setNotify(f UnhandledRejectionFunc) {
+	t.notify = f
 }
 
 func (t *rejectionTracker) add(p *Object) {
@@ -704,6 +705,38 @@ func (t *rejectionTracker) remove(p *Object) {
 // reset removes all the promises.
 func (t *rejectionTracker) reset() {
 	t.promises = truncated(t.promises, 0)
+}
+
+// deferReports keeps the promises from takeForReport until endDeferral.
+func (t *rejectionTracker) deferReports() {
+	t.deferred = true
+}
+
+// endDeferral ends the deferral of the reports and removes all the promises. It returns the first
+// one, or nil when there is none.
+func (t *rejectionTracker) endDeferral() *Object {
+	t.deferred = false
+	if len(t.promises) == 0 {
+		return nil
+	}
+	p := t.promises[0]
+	t.reset()
+	return p
+}
+
+// takeForReport removes and returns the promises to report, in the order of rejection. There is
+// none while the reports are deferred. Without a function to tell, the promises are discarded.
+func (t *rejectionTracker) takeForReport() []*Object {
+	if len(t.promises) == 0 || t.deferred {
+		return nil
+	}
+	if t.notify == nil {
+		t.reset()
+		return nil
+	}
+	promises := t.promises
+	t.promises = nil
+	return promises
 }
 
 // maxIdleJobs is the number of jobs that the storage of the job queue keeps room for when the
@@ -943,16 +976,8 @@ func (cx *ExecutionContext) runJobs() {
 // report.
 func (cx *ExecutionContext) notifyRejectedPromises() bool {
 	t := &cx.rejections
-	if len(t.promises) == 0 || t.deferred {
-		return false
-	}
-	if t.notify == nil {
-		t.reset()
-		return false
-	}
 	// Promises rejected by the reports are added to a new list, and reported next.
-	promises := t.promises
-	t.promises = nil
+	promises := t.takeForReport()
 	for _, p := range promises {
 		// An earlier report can handle p.
 		d := promiseOf(p)
@@ -969,7 +994,7 @@ func (cx *ExecutionContext) notifyRejectedPromises() bool {
 			break
 		}
 	}
-	return true
+	return len(promises) != 0
 }
 
 // dropJobs discards the pending jobs.
