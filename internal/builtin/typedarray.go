@@ -703,7 +703,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 	})
 	method(cx, proto, "copyWithin", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		o, t, n := validateWritableTypedArray(cx, this, "%TypedArray%.prototype.copyWithin")
-		target := engine.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
+		target := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
 		start, end := relativeRange(cx, arg(args, 1), arg(args, 2), n)
 		count := min(end-start, n-target)
 		if count > 0 {
@@ -850,7 +850,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 				if math.IsInf(f, 1) {
 					return notFound
 				}
-				from = engine.RelativeIndex(f, n)
+				from = numconv.RelativeIndex(f, n)
 				to = n
 			}
 			// The conversion of the index may have shrunk the buffer: the elements beyond its end are undefined.
@@ -1011,7 +1011,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 			cx.ThrowTypeError("%TypedArray%.prototype.subarray: this is not a typed array")
 		}
 		n, _ := t.Length()
-		start := engine.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
+		start := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
 		size := t.ElementType().Size()
 		begin := engine.Number(float64(t.ByteOffset() + start*size))
 		buf := engine.ObjectValue(t.Buffer())
@@ -1021,7 +1021,7 @@ func initTypedArrays(cx *engine.ExecutionContext, bi *binaryIntrinsics) {
 		} else {
 			e := n
 			if !end.IsUndefined() {
-				e = engine.RelativeIndex(cx.ToIntegerOrInfinity(end), n)
+				e = numconv.RelativeIndex(cx.ToIntegerOrInfinity(end), n)
 			}
 			a, _ = bi.speciesCreate(cx, this.Object(), t, []engine.Value{buf, begin, engine.Number(float64(max(e-start, 0)))}, false)
 		}

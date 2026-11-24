@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
+	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
 
@@ -73,10 +74,10 @@ func allocateArrayBuffer(cx *engine.ExecutionContext, newTarget *engine.Object, 
 // relativeRange resolves the start and end arguments of a slice-like method against length.
 // An undefined end stands for length.
 func relativeRange(cx *engine.ExecutionContext, start, end engine.Value, length int) (int, int) {
-	first := engine.RelativeIndex(cx.ToIntegerOrInfinity(start), length)
+	first := numconv.RelativeIndex(cx.ToIntegerOrInfinity(start), length)
 	final := length
 	if !end.IsUndefined() {
-		final = engine.RelativeIndex(cx.ToIntegerOrInfinity(end), length)
+		final = numconv.RelativeIndex(cx.ToIntegerOrInfinity(end), length)
 	}
 	return first, final
 }

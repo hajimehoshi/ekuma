@@ -353,6 +353,21 @@ func toUint32Slow(f float64) uint32 {
 	return uint32(int64(math.Mod(math.Trunc(f), 4294967296)))
 }
 
+// ToUint8Clamp implements ToUint8Clamp for a number.
+func ToUint8Clamp(f float64) byte {
+	if f >= 0 && f <= 255 {
+		if i := byte(f); float64(i) == f {
+			return i
+		}
+		return byte(math.RoundToEven(f))
+	}
+	if f > 255 {
+		return 255
+	}
+	// Negative numbers and NaN.
+	return 0
+}
+
 // ToIntegerOrInfinity implements ToIntegerOrInfinity for a number.
 func ToIntegerOrInfinity(f float64) float64 {
 	if f != f {
@@ -360,6 +375,23 @@ func ToIntegerOrInfinity(f float64) float64 {
 	}
 	// Adding zero turns -0 into +0.
 	return math.Trunc(f) + 0
+}
+
+// RelativeIndex resolves an index argument that counts from the end when negative
+// against a length, clamping the result to the range from 0 to length.
+func RelativeIndex(f float64, length int) int {
+	f = ToIntegerOrInfinity(f)
+	if f < 0 {
+		f += float64(length)
+		if f < 0 {
+			return 0
+		}
+		return int(f)
+	}
+	if f > float64(length) {
+		return length
+	}
+	return int(f)
 }
 
 // ToLength implements ToLength for a number.

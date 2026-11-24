@@ -161,7 +161,7 @@ func initString(cx *engine.ExecutionContext) {
 	indexOf := method(cx, proto, "indexOf", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "indexOf")
 		sub := cx.ToStringValue(arg(args, 0))
-		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
+		from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Number(float64(s.UnitIndexOf(sub, from, cx.Poll)))
 	})
 	cx.SetMethodKernels(indexOf, polledContract, nil, func(q engine.QuietContext, this, sub engine.Value) (engine.Value, bool) {
@@ -176,7 +176,7 @@ func initString(cx *engine.ExecutionContext) {
 		n := s.StringLength()
 		from := n
 		if p := cx.ToNumber(arg(args, 1)); p == p {
-			from = engine.RelativeIndex(math.Max(numconv.ToIntegerOrInfinity(p), 0), n)
+			from = numconv.RelativeIndex(math.Max(numconv.ToIntegerOrInfinity(p), 0), n)
 		}
 		return engine.Number(float64(s.UnitLastIndexOf(sub, from, cx.Poll)))
 	})
@@ -189,7 +189,7 @@ func initString(cx *engine.ExecutionContext) {
 		s := thisStringValue(cx, this, "includes")
 		noRegExp(cx, arg(args, 0), "includes")
 		sub := cx.ToStringValue(arg(args, 0))
-		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
+		from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), s.StringLength())
 		return engine.Bool(s.UnitIndexOf(sub, from, cx.Poll) >= 0)
 	})
 	cx.SetMethodKernels(includes, polledContract, nil, func(q engine.QuietContext, this, sub engine.Value) (engine.Value, bool) {
@@ -203,7 +203,7 @@ func initString(cx *engine.ExecutionContext) {
 		noRegExp(cx, arg(args, 0), "startsWith")
 		sub := cx.ToStringValue(arg(args, 0))
 		n := s.StringLength()
-		from := engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), n)
+		from := numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(arg(args, 1)), 0), n)
 		end := from + sub.StringLength()
 		return engine.Bool(end <= n && s.SubstringEquals(from, end, sub))
 	})
@@ -214,7 +214,7 @@ func initString(cx *engine.ExecutionContext) {
 		n := s.StringLength()
 		end := n
 		if e := arg(args, 1); !e.IsUndefined() {
-			end = engine.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(e), 0), n)
+			end = numconv.RelativeIndex(math.Max(cx.ToIntegerOrInfinity(e), 0), n)
 		}
 		start := end - sub.StringLength()
 		return engine.Bool(start >= 0 && s.SubstringEquals(start, end, sub))
@@ -260,7 +260,7 @@ func initString(cx *engine.ExecutionContext) {
 	method(cx, proto, "substr", 2, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
 		s := thisStringValue(cx, this, "substr")
 		n := s.StringLength()
-		start := engine.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
+		start := numconv.RelativeIndex(cx.ToIntegerOrInfinity(arg(args, 0)), n)
 		length := float64(n)
 		if l := arg(args, 1); !l.IsUndefined() {
 			length = cx.ToIntegerOrInfinity(l)
@@ -889,7 +889,7 @@ func unitStringAt(q engine.QuietContext, s engine.Value, i float64) engine.Value
 // arguments start and end.
 func sliceString(q engine.QuietContext, s engine.Value, start, end float64) engine.Value {
 	n := s.StringLength()
-	from, to := engine.RelativeIndex(start, n), engine.RelativeIndex(end, n)
+	from, to := numconv.RelativeIndex(start, n), numconv.RelativeIndex(end, n)
 	if from >= to {
 		return q.NewString("")
 	}
@@ -900,7 +900,7 @@ func sliceString(q engine.QuietContext, s engine.Value, start, end float64) engi
 // arguments start and end.
 func substringOf(q engine.QuietContext, s engine.Value, start, end float64) engine.Value {
 	n := s.StringLength()
-	from, to := engine.RelativeIndex(max(start, 0), n), engine.RelativeIndex(max(end, 0), n)
+	from, to := numconv.RelativeIndex(max(start, 0), n), numconv.RelativeIndex(max(end, 0), n)
 	if from > to {
 		from, to = to, from
 	}

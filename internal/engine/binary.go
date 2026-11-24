@@ -467,21 +467,6 @@ func float16FromBits(h uint16) float64 {
 	return f
 }
 
-// clampUint8 implements ToUint8Clamp for a number.
-func clampUint8(f float64) byte {
-	if f >= 0 && f <= 255 {
-		if i := byte(f); float64(i) == f {
-			return i
-		}
-		return byte(math.RoundToEven(f))
-	}
-	if f > 255 {
-		return 255
-	}
-	// Negative numbers and NaN.
-	return 0
-}
-
 // loadBits returns the n bytes at the start of b as an unsigned integer in the given byte order.
 func loadBits(b []byte, n int, littleEndian bool) uint64 {
 	if littleEndian {
@@ -542,7 +527,7 @@ func numberBits(t ElementType, f float64) uint64 {
 		}
 		return uint64(numconv.ToUint32(f))
 	case ElementUint8C:
-		return uint64(clampUint8(f))
+		return uint64(numconv.ToUint8Clamp(f))
 	case ElementFloat16:
 		return uint64(float16Bits(f))
 	case ElementFloat32:
@@ -871,7 +856,7 @@ func storeNumber(t ElementType, b []byte, f float64) {
 		}
 		b[0] = byte(numconv.ToUint32(f))
 	case ElementUint8C:
-		b[0] = clampUint8(f)
+		b[0] = numconv.ToUint8Clamp(f)
 	case ElementInt16, ElementUint16:
 		if f >= -2147483648 && f <= 2147483647 {
 			binary.LittleEndian.PutUint16(b, uint16(int32(f)))

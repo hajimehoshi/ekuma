@@ -9,7 +9,6 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/hajimehoshi/ekuma/internal/numconv"
 	"github.com/hajimehoshi/ekuma/internal/shortstrings"
 	"github.com/hajimehoshi/ekuma/internal/wtf8"
 )
@@ -324,23 +323,6 @@ func SameValue(a, b Value) bool {
 		return a.n == b.n && math.Signbit(a.n) == math.Signbit(b.n)
 	}
 	return IsStrictlyEqual(a, b)
-}
-
-// RelativeIndex resolves an index argument that counts from the end when negative
-// against a length, clamping the result to the range from 0 to length.
-func RelativeIndex(f float64, length int) int {
-	f = numconv.ToIntegerOrInfinity(f)
-	if f < 0 {
-		f += float64(length)
-		if f < 0 {
-			return 0
-		}
-		return int(f)
-	}
-	if f > float64(length) {
-		return length
-	}
-	return int(f)
 }
 
 // MaxArrayIndex is the largest array index, 2**32 - 2.
