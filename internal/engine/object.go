@@ -1847,8 +1847,7 @@ const (
 	// cacheOwn: the property is in slot of the receiver.
 	cacheOwn
 
-	// cacheProto: ref points at the property, which is in the slots of an object on the
-	// prototype chain.
+	// cacheProto: ref points to an inherited data slot or the undefined slot for a cached miss.
 	cacheProto
 
 	// cacheGetter and cacheSetter: holder is the function to call.
@@ -1925,12 +1924,12 @@ type namedRead struct {
 }
 
 // globalCache is the inline cache of an instruction that accesses a global variable. holder is
-// the global object of the realm, or nil. While holder has the shape shape, ref points at the
-// value of the variable, which is initialized and, for an instruction that assigns, writable.
+// the global object of the realm, or nil. While its shape matches, the binding exists.
+// A resolution caches existence alone. Reads and writes also cache the initialized slot
+// in ref, and writes only cache writable bindings.
 //
-// The global object gets another shape whenever a global lexical binding is declared, and
-// whenever its own properties or the storage of their values change (see [agent.add] and
-// [ExecutionContext.densify]).
+// Declaring a global lexical binding or invalidating a cached global slot changes the
+// global object's shape.
 type globalCache struct {
 	shape  *shape
 	ref    *Value
