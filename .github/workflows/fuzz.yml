@@ -1,0 +1,103 @@
+name: Fuzz
+
+on:
+  schedule:
+    # 17:00 UTC is 02:00 in Japan, so that the results are ready in the morning there. The minute is arbitrary, but away
+    # from the start of an hour, when GitHub is the most likely to delay or drop scheduled runs.
+    - cron: "23 17 * * *"
+  workflow_dispatch:
+    inputs:
+      fuzztime:
+        description: Time to run each fuzz function for, at most 45m
+        default: 5m
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    name: List the fuzz functions
+    # The schedule is for this repository only, not for its forks.
+    if: github.event_name != 'schedule' || github.repository == 'hajimehoshi/ekuma'
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: List
+        id: list
+        run: |
+          targets=$(git grep -E '^func Fuzz[A-Z0-9_][A-Za-z0-9_]*\(' -- '*_test.go' |
+            sed -E 's|^([^/:]*):|./\1:|; s|^(.*)/[^/]*:func (Fuzz[A-Za-z0-9_]*).*|\1 \2|' |
+            jq -cRn '[inputs | split(" ") | {package: .[0], func: .[1]}]')
+          echo "$targets"
+          if [ "$(jq length <<< "$targets")" -eq 0 ]; then
+            echo "No fuzz function was found"
+            exit 1
+          fi
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+
+  fuzz:
+    name: ${{ matrix.package }} ${{ matrix.func }}
+    needs: list
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.list.outputs.targets) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      FUZZTIME: ${{ inputs.fuzztime || '5m' }}
+      PACKAGE: ${{ matrix.package }}
+      FUNC: ${{ matrix.func }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          # The cache of the corpus is separate.
+          cache: false
+
+      - name: Find the corpus and its cache key
+        id: corpus
+        run: |
+          echo "path=$(go env GOCACHE)/fuzz/$(go list -m)/$PACKAGE/$FUNC" >> "$GITHUB_OUTPUT"
+          echo "key=fuzz-${PACKAGE//\//-}-$FUNC-" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the corpus
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.corpus.outputs.path }}
+          key: ${{ steps.corpus.outputs.key }}${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ${{ steps.corpus.outputs.key }}
+
+      - name: Build
+        run: go test -c -o /dev/null "./$PACKAGE"
+
+      - name: Fuzz
+        run: |
+          # The kernel kills a worker that reaches the memory limit, which fails the run without recording the input.
+          # With another OOMPolicy, systemd would stop the whole run before it reports anything.
+          sudo systemd-run --scope --quiet --uid="$(id -u)" --gid="$(id -g)" \
+            -p MemoryMax=6G -p MemorySwapMax=0 -p OOMPolicy=continue \
+            env HOME="$HOME" PATH="$PATH" go test -run='^$' -fuzz="^$FUNC\$" -fuzztime="$FUZZTIME" "./$PACKAGE"
+
+      - name: Save the corpus
+        if: always() && steps.corpus.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.corpus.outputs.path }}
+          key: ${{ steps.corpus.outputs.key }}${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload the failing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.func }}
+          path: ${{ matrix.package }}/testdata/fuzz/
+          if-no-files-found: ignore
