@@ -573,11 +573,11 @@ func (q QuietContext) tryAwait(v Value, action reactionAction) bool {
 		builtinContext:   cx,
 	}
 	if IsPromise(v) {
-		ctor, ok := q.GetVWithoutCall(v, cx.Key(KeyConstructor))
-		if !ok {
+		ctor := q.lookupDataSlot(v.o, cx.Key(KeyConstructor))
+		if ctor.holder == nil {
 			return false
 		}
-		if ctor.o == cx.Intrinsic(IntrinsicPromise) {
+		if ctor.value().o == cx.Intrinsic(IntrinsicPromise) {
 			cx.addReaction(v.o, &r)
 			return true
 		}
