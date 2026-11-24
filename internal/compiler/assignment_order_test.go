@@ -44,8 +44,19 @@ func runAssignment(file, src string, conservative bool) (string, error) {
 		}
 		return s.CallScript()
 	})
+	lazy := cx.NewNative("setLazyPrototype", 1, func(cx *engine.ExecutionContext, this engine.Value, args []engine.Value) engine.Value {
+		init := args[0].Object()
+		global := cx.GlobalObject().Object()
+		proto := cx.NewLazyObject(cx.ProtoOf(global), func(cx *engine.ExecutionContext, o *engine.Object) {
+			cx.Call(init, engine.Undefined, engine.ObjectValue(o))
+		})
+		return engine.Bool(cx.SetPrototypeOf(global, proto))
+	})
 	host := engine.ObjectValue(cx.NewOrdinaryObject())
 	if err := cx.HostSet(host, cx.NewString("evalScript"), engine.ObjectValue(eval)); err != nil {
+		return "", err
+	}
+	if err := cx.HostSet(host, cx.NewString("setLazyPrototype"), engine.ObjectValue(lazy)); err != nil {
 		return "", err
 	}
 	if err := cx.HostSet(cx.GlobalObject(), cx.NewString("$262"), host); err != nil {
