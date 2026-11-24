@@ -201,28 +201,25 @@ func (f *fn) findTarget(n ast.Node, label *ast.Identifier, isContinue bool) *ctl
 	return nil
 }
 
-// closesIterators reports whether a return from the current position closes an iterator.
-func (f *fn) closesIterators() bool {
-	for _, c := range f.control {
-		if c.kind == ctlLoop && c.hasIter {
-			return true
-		}
-	}
-	return false
-}
-
 // exit emits the jump out of the constructs above target on the control stack.
 // For exitReturn, target is nil and value is the register of the result.
 func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 	for _, c := range slices.Backward(f.control) {
+		if c.hasIter && (c != target || kind == exitBreak) {
+			if kind == exitReturn && value != c.valueReg {
+				f.emit(bytecode.OpMove, c.valueReg, value, 0)
+			}
+			c.pending = append(c.pending, pendingExit{
+				jump:   f.jump(),
+				kind:   kind,
+				target: target,
+			})
+			return
+		}
 		if c == target {
 			break
 		}
 		switch c.kind {
-		case ctlLoop:
-			if c.hasIter {
-				f.iterClose(c)
-			}
 		case ctlArrayPattern:
 			f.emit(bytecode.OpIterClose, c.reg, -1, 0)
 		case ctlScope:
@@ -247,9 +244,6 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 	}
 	switch kind {
 	case exitBreak:
-		if target.hasIter {
-			f.iterClose(target)
-		}
 		target.breaks = append(target.breaks, f.jump())
 	case exitContinue:
 		target.continues = append(target.continues, f.jump())
@@ -263,8 +257,11 @@ func (f *fn) exit(kind exitKind, target *ctl, value int32) {
 	}
 }
 
+// A finally block reserves completion kinds 0 and 1 for normal completion and throw.
+const firstPendingExit = 2
+
 func (c *ctl) addPendingExit(kind exitKind, target *ctl) int32 {
-	id := int32(len(c.pending) + 2)
+	id := int32(len(c.pending)) + firstPendingExit
 	if kind == exitReturn {
 		if c.returnID != 0 {
 			return c.returnID
@@ -272,7 +269,6 @@ func (c *ctl) addPendingExit(kind exitKind, target *ctl) int32 {
 		c.returnID = id
 	}
 	c.pending = append(c.pending, pendingExit{
-		id:     id,
 		kind:   kind,
 		target: target,
 	})
@@ -286,6 +282,26 @@ func (f *fn) iterClose(c *ctl) {
 		return
 	}
 	f.emit(bytecode.OpIterClose, c.reg, -1, 0)
+}
+
+// endForOf closes the iterator outside the body's exception handlers on every jump
+// that leaves the loop. The exhausted step at done skips these exits.
+func (f *fn) endForOf(c *ctl, done int) {
+	f.control = f.control[:len(f.control)-1]
+	pos := f.currentPos()
+	for _, exit := range c.pending {
+		f.patch(exit.jump)
+		f.setPos(f.f.SourceOffset(exit.jump))
+		f.iterClose(c)
+		if exit.target == c {
+			c.breaks = append(c.breaks, f.jump())
+		} else {
+			f.exit(exit.kind, exit.target, c.valueReg)
+		}
+	}
+	f.setPos(pos)
+	f.patchAll(c.breaks)
+	f.patchC(done)
 }
 
 // asyncIterClose closes the async iterator it, it+1 for a normal completion, as
@@ -390,8 +406,8 @@ func (f *fn) enterFinally(fin *ctl, start int32, done []int) {
 func (f *fn) leaveFinally(fin *ctl) {
 	completed := f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, 0)
 	dispatch := make([]int, len(fin.pending))
-	for i, p := range fin.pending {
-		dispatch[i] = f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, p.id)
+	for i := range fin.pending {
+		dispatch[i] = f.emit(bytecode.OpJumpIfInt, 0, fin.kindReg, int32(i)+firstPendingExit)
 	}
 	f.emit(bytecode.OpRethrow, fin.valueReg, -1, 0)
 	for i, p := range fin.pending {
@@ -500,8 +516,6 @@ func (f *fn) stmt(s ast.Stmt, labels []string) {
 			if awaits {
 				v = f.newReg()
 				f.expr(s.Arg, v)
-			} else if f.closesIterators() {
-				v = f.heldOperand(s.Arg, f.otherCodeAssigns)
 			} else {
 				v = f.immediateOperand(s.Arg)
 			}
@@ -876,10 +890,11 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	c := f.pushLoop(labels)
 	c.hasIter = true
 	c.reg = it
+	c.valueReg = f.newReg()
 	top := f.pc()
 	base := f.top
 	scoped := f.enterScope(s.Scope, false)
-	v := f.newReg()
+	v := f.forOfValueReg(s.Decl, c.valueReg)
 	pair := -1
 	if a, b, ok := f.pairTargets(s); ok {
 		// The step for the binding [a, b] skips the value and its destructuring below when it can.
@@ -905,8 +920,18 @@ func (f *fn) forOf(s *ast.ForOfStmt, labels []string) {
 	f.emit(bytecode.OpIterClose, it, exc, 0)
 	f.emit(bytecode.OpRethrow, exc, -1, 0)
 
-	f.patchC(next)
-	f.popLoop(c)
+	f.endForOf(c, next)
+}
+
+// forOfValueReg selects the destination of the iterator step. An exhausted
+// step can write directly to a binding whose scope ends with the iteration.
+func (f *fn) forOfValueReg(decl *ast.VarDecl, scratch int32) int32 {
+	if decl != nil && (decl.Kind == ast.DeclLet || decl.Kind == ast.DeclConst) {
+		if r := f.targetReg(decl.Decls[0].Target, patInit); r >= 0 {
+			return r
+		}
+	}
+	return scratch
 }
 
 // loopBody compiles one iteration of the for-of or for-await statement s for the value v, and
@@ -954,10 +979,11 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 	c.hasIter = true
 	c.asyncIter = true
 	c.reg = it
+	c.valueReg = f.newReg()
 	top := f.pc()
 	base := f.top
 	scoped := f.enterScope(s.Scope, false)
-	v := f.newReg()
+	v := f.forOfValueReg(s.Decl, c.valueReg)
 	call := f.newRegs(2)
 	f.emit(bytecode.OpMove, call, it+1, 0)
 	f.emit(bytecode.OpMove, call+1, it, 0)
@@ -987,8 +1013,7 @@ func (f *fn) forAwaitOf(s *ast.ForOfStmt, labels []string, it int32) {
 	f.addHandler(closeStart, closeEnd, f.pc(), closeExc, false)
 	f.emit(bytecode.OpRethrow, exc, closeExc, 0)
 
-	f.patchC(next)
-	f.popLoop(c)
+	f.endForOf(c, next)
 }
 
 func (f *fn) switchStmt(s *ast.SwitchStmt, labels []string) {

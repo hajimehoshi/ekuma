@@ -169,11 +169,12 @@ const (
 	exitReturn
 )
 
-// pendingExit is a jump that left a try statement and continues after its finally block.
+// pendingExit continues a jump or return after a finally block or iterator close.
 type pendingExit struct {
-	id     int32
 	kind   exitKind
 	target *ctl
+	// For a for-of loop, jump is the instruction that branches to the close.
+	jump int
 }
 
 // ctl is an entry of the stack of constructs that a jump can target or has to unwind.
@@ -192,14 +193,17 @@ type ctl struct {
 	kindReg  int32
 	valueReg int32
 	toFinal  []int
-	pending  []pendingExit
 	returnID int32 // The pending return shared by all exits that return through this finally.
+
+	// Exits that leave a finally region or a for-of loop.
+	pending []pendingExit
 
 	// For ctlFinally: the scope whose using declarations it disposes, or nil for a try statement.
 	disposes *scope
 
 	// For ctlScope: the first register of the scope.
 	// For ctlArrayPattern or ctlLoop with hasIter: the register holding the iterator.
+	// The loop's valueReg holds temporary step results and return values carried out of it.
 	// For ctlFinalizer: the register of the completion value of the finally block, and
 	// valueReg is the register of the completion value of the code around the try statement.
 	reg int32
