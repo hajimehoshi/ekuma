@@ -79,8 +79,9 @@ describes cancellation, host panics, and pending jobs.
 
 ### Scripts
 
-A parsed `Script` can be evaluated repeatedly. To share one parse across VMs, use
-`ParseUnboundScript` and bind the result in each VM with `VM.BindScript`.
+A parsed `Script` can be evaluated repeatedly. A second evaluation in the same realm throws
+a `SyntaxError` if the script declares a top-level `let`, `const`, or `class`. To share one parse
+across VMs, use `ParseUnboundScript` and bind the result in each VM with `VM.BindScript`.
 
 ### Modules
 
