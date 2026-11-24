@@ -117,19 +117,24 @@ func (cx *ExecutionContext) getGlobal(key *Object, c *globalCache, orUndef, stri
 	return cx.getProp(g, k, Value{o: r.globalThis})
 }
 
-// resolveGlobal returns whether the global variable key exists.
+// resolveGlobal returns undefined for a global binding and null for an unresolvable name.
 func (cx *ExecutionContext) resolveGlobal(key *Object, c *globalCache) Value {
 	g := cx.realm.global
 	_, lex := cx.realm.globalLex.shape.lookup(key)
 	if _, own := g.shape.lookup(key); lex || own {
-		c.holder = g
-		c.shape = g.shape
-		return True
+		if c != nil {
+			c.holder = g
+			c.shape = g.shape
+		}
+		return Undefined
 	}
-	return Bool(cx.HasProperty(g, PropKey{key: key}))
+	if cx.HasProperty(g, PropKey{key: key}) {
+		return Undefined
+	}
+	return Null
 }
 
-// setGlobal assigns to the global variable key.
+// setGlobal writes a resolved binding in the global environment.
 func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, strict bool) {
 	r := cx.realm
 	g := r.global
@@ -155,16 +160,10 @@ func (cx *ExecutionContext) setGlobal(key *Object, val Value, c *globalCache, st
 		return
 	}
 	k := PropKey{key: key}
-	// Resolving the name and SetMutableBinding both check for the property, which only matters
-	// in strict code or to a proxy.
-	if proxied := proxyOnChain(g) != nil; strict || proxied {
-		found := cx.HasProperty(g, k)
-		if found && proxied {
-			found = cx.HasProperty(g, k)
-		}
-		if !found && strict {
-			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
-		}
+	// SetMutableBinding checks whether the binding still exists. A proxy can observe
+	// the check even in sloppy code.
+	if !cx.HasProperty(g, k) && strict {
+		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}
 	if !cx.setProp(g, k, val, Value{o: r.globalThis}) && strict {
 		cx.throwReadOnly(Value{o: g}, k)
@@ -1567,9 +1566,17 @@ func (cx *ExecutionContext) getScoped(o *Object, key *Object, strict bool) Value
 	return cx.getProp(o, k, Value{o: o})
 }
 
-// setScoped implements SetMutableBinding of the object environment record of the dynamic scope o.
+// setScoped writes to a dynamic scope or performs PutValue on an unresolvable reference.
 func (cx *ExecutionContext) setScoped(o *Object, key *Object, val Value, strict bool) {
 	k := PropKey{key: key}
+	if o == nullObject {
+		if strict {
+			cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
+		}
+		r := cx.realm
+		cx.setProp(r.global, k, val, Value{o: r.globalThis})
+		return
+	}
 	if !cx.HasProperty(o, k) && strict {
 		cx.ThrowReferenceError(wtf8.ToValidUTF8(key.str) + " is not defined")
 	}

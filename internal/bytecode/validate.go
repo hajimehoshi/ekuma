@@ -407,6 +407,15 @@ func (v *validator) special(pc int, in Instr) error {
 		if pc+1 >= len(code) || code[pc+1].Op != OpGetProp && code[pc+1].Op != OpGetPropChain || code[pc+1].B != in.A {
 			return v.errorf(pc, ErrSequence, "not followed by an OpGetProp of a")
 		}
+	case OpCopyPropToGlobal:
+		if int(in.C) < pc+3 {
+			return v.errorf(pc, ErrSequence, "missing global property assignment")
+		}
+		get, set := code[pc+1], code[in.C-1]
+		if in.A == in.B || get.Op != OpGetProp || get.A != in.A+1 || get.B != in.B ||
+			(set.Op != OpSetGlobal && set.Op != OpSetGlobalStrict) || set.A != get.A {
+			return v.errorf(pc, ErrSequence, "fallback must read the source property and store it to the global")
+		}
 	case OpIterNextPair:
 		if pc+2 >= len(code) || code[pc+2].Op != OpIterNext || code[pc+2].B != in.B {
 			return v.errorf(pc, ErrSequence, "not followed by an OpIterNext of b")

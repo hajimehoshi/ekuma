@@ -66,6 +66,43 @@ func TestNamedReadDifferential(t *testing.T) {
 		[]int{1, 2, 1, 1}, []int{1, 1, 1, 1})
 }
 
+func TestGlobalDestructuringDifferential(t *testing.T) {
+	const setup = `
+		globalThis.target = 0;
+		function assign(o) { "use strict"; ({field: target} = o); }
+		assign;
+	`
+	const scenario = `
+		const events = [];
+		const a = {field: 1}, b = {field: 2};
+		assign(a);
+		assign(b);
+		events.push(target);
+
+		const child = Object.create(a);
+		assign(child);
+		a.field = 3;
+		assign(child);
+		events.push(target);
+		Object.defineProperty(a, "field", {get() {
+			events.push(this === child ? "get" : "wrong receiver");
+			return 4;
+		}});
+		assign(child);
+		assign(child);
+		events.push(target);
+
+		assign(b);
+		Object.defineProperty(globalThis, "target", {set(v) { events.push(v); }});
+		assign(b);
+		JSON.stringify(events);
+	`
+	// Cached data skips the full assignment (+6). A cached getter dispatches
+	// the read (+2), and a cache miss continues at the read (+1).
+	compareShortcut(t, bytecode.OpCopyPropToGlobal, setup, scenario, `[2,3,"get","get",4,2]`,
+		[]int{1, 6, 1, 6, 1, 2, 1, 1}, []int{1, 1, 1, 1, 1, 1, 1, 1})
+}
+
 func TestGeneratorMethodDifferential(t *testing.T) {
 	const setup = `
 		function step(it) { return it.next(); }

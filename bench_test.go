@@ -1296,6 +1296,33 @@ func BenchmarkMethodAfterDelete(b *testing.B) {
 	}
 }
 
+// BenchmarkGlobalDestructuring assigns an own property to a global binding.
+func BenchmarkGlobalDestructuring(b *testing.B) {
+	const src = `
+		globalThis.target = 0;
+		function run(n) {
+			"use strict";
+			const object = {item: 1};
+			for (let i = 0; i < n; i++) ({item: target} = object);
+			return target;
+		}
+	`
+	var vm ekuma.VM
+	ctx := b.Context()
+	if _, err := runScript(ctx, &vm, "setup", src); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	v, err := vm.Global().Call(ctx, "run", b.N)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if got := v.Int(); got != 1 {
+		b.Errorf("target: got %d, want 1", got)
+	}
+}
+
 // BenchmarkReturnProperty calls a method or getter that returns a field of its receiver.
 func BenchmarkReturnProperty(b *testing.B) {
 	const setup = `

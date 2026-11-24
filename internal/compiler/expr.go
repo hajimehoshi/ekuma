@@ -2063,24 +2063,12 @@ func (f *fn) assign(n *ast.AssignExpr, dst int32) {
 				}
 				return
 			}
-			scope := f.resolveName(name)
-			// A strict assignment to a global that does not exist yet throws even when the
-			// value creates the global.
-			resolved := int32(-1)
-			if scope < 0 && f.strict() && !f.pure(n.Value) && f.undeclaredGlobal(name) {
-				resolved = f.newReg()
-				f.emit(bytecode.OpResolveGlobal, resolved, f.key(wtf8.String(name)), f.globalCache())
-			}
+			scope := f.assignmentScope(target, name)
 			t := dst
 			if t < 0 {
 				t = f.newReg()
 			}
 			f.named(n.Value, t, wtf8.String(inferred))
-			if resolved >= 0 {
-				ok := f.emit(bytecode.OpJumpIf, 0, resolved, 0)
-				f.emit(bytecode.OpThrowError, bytecode.ThrowReferenceError, f.constStr(wtf8.String(name+" is not defined")), 0)
-				f.patch(ok)
-			}
 			f.storeVarTo(n, name, t, false, scope)
 		case logical:
 			scope := f.resolveName(name)

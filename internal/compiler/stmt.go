@@ -108,7 +108,7 @@ func (f *fn) varDecl(n *ast.VarDecl) {
 				}
 				break
 			}
-			scope := f.resolveName(id.Name)
+			scope := f.assignmentScope(id, id.Name)
 			t := f.newReg()
 			f.named(d.Init, t, wtf8.String(id.Name))
 			f.storeVarTo(d, id.Name, t, false, scope)

@@ -194,6 +194,18 @@ func TestValidate(t *testing.T) {
 			pc:  4,
 		},
 		{
+			name: "property copy without its global store",
+			breakFunc: func(f *bytecode.Func) {
+				f.Code[2] = bytecode.Instr{
+					Op: bytecode.OpCopyPropToGlobal,
+					B:  1,
+					C:  7,
+				}
+			},
+			err: bytecode.ErrSequence,
+			pc:  2,
+		},
+		{
 			name: "chain without its next read",
 			breakFunc: func(f *bytecode.Func) {
 				f.Code[3].B = 0

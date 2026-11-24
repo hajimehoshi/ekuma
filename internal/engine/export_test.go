@@ -66,6 +66,10 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 	}
 
 	switch op {
+	case bytecode.OpCopyPropToGlobal:
+		if fp.code[site+1].Op != bytecode.OpGetProp {
+			t.Fatal("expected the source property read after OpCopyPropToGlobal")
+		}
 	case bytecode.OpGetPropChain:
 		if fp.code[site+1].Op != bytecode.OpGetProp {
 			t.Fatal("expected a second named read after OpGetPropChain")
@@ -101,6 +105,10 @@ func TraceShortcut(t *testing.T, f Value, op bytecode.Opcode, bypass bool, dista
 			*distances = append(*distances, pc-site)
 		}
 		stepping = pc == site
+		if stepping && bypass && op == bytecode.OpCopyPropToGlobal {
+			store := fp.code[fp.code[site].C-1]
+			fp.globals[store.C] = globalCache{}
+		}
 		if stepping && bypass && (op == bytecode.OpGetPropChain || op == bytecode.OpGetMethod) {
 			// A cold lookup dispatches the following read or call separately.
 			fp.caches[fp.code[site].C] = propCache{}

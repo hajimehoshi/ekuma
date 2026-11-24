@@ -340,56 +340,13 @@ type compiler struct {
 	// lastSym is the most recent result of symbol.
 	lastSym *symbol
 
-	// topDecls maps the names that the top level of a program with many declarations
-	// declares to what their declarations are, once a lookup needed it.
-	topDecls map[string]topDecl
+	// topLexicals indexes top-level lexical declarations in programs with many declarations.
+	topLexicals map[string]bool
 
 	// poll, when not nil, is called every pollNodes nodes, and may stop the compilation by
 	// panicking. nodes counts the nodes toward the next call.
 	poll  func()
 	nodes int
-}
-
-// topDecl tells what the declarations of a name at the top level of a program are.
-type topDecl struct {
-	// lexical reports a let, const or class declaration.
-	lexical bool
-
-	// plain reports a declaration that is not an Annex B var.
-	plain bool
-}
-
-// lookupTopDecl returns what the declarations of name at the top level of the program are.
-func (c *compiler) lookupTopDecl(name string) topDecl {
-	decls := c.prog.Scope.Decls
-	if len(decls) > 16 {
-		if c.topDecls == nil {
-			c.topDecls = make(map[string]topDecl, len(decls))
-			for _, d := range decls {
-				c.topDecls[d.Name] = c.topDecls[d.Name].with(d.Kind)
-			}
-		}
-		return c.topDecls[name]
-	}
-	var t topDecl
-	for _, d := range decls {
-		if d.Name == name {
-			t = t.with(d.Kind)
-		}
-	}
-	return t
-}
-
-// with returns t with a declaration of the kind k added.
-func (t topDecl) with(k ast.DeclKind) topDecl {
-	switch k {
-	case ast.DeclLet, ast.DeclConst, ast.DeclClass:
-		t.lexical = true
-	}
-	if k != ast.DeclAnnexBVar {
-		t.plain = true
-	}
-	return t
 }
 
 // pollNodes is the number of statements and expressions between two calls of the poll function
@@ -1543,19 +1500,40 @@ func (f *fn) loadStatic(name string, r ref, dst int32, orUndef bool) {
 	}
 }
 
+// assignmentScope resolves the target before evaluation of the assigned value.
+// Even a var declaration can refer to a configurable global property.
+func (f *fn) assignmentScope(n ast.Node, name string) int32 {
+	scope := f.resolveName(name)
+	if f.resolve(name).kind != refGlobal || f.c.globalLexical(name) {
+		return scope
+	}
+	f.setPos(n.Start())
+	key := f.key(wtf8.String(name))
+	if scope < 0 {
+		scope = f.newReg()
+		f.emit(bytecode.OpResolveGlobal, scope, key, f.globalCache())
+		return scope
+	}
+	// A with or eval scope takes precedence over the global environment.
+	found := f.emit(bytecode.OpJumpIfNotUndef, 0, scope, 0)
+	f.emit(bytecode.OpResolveGlobal, scope, key, f.globalCache())
+	f.patch(found)
+	return scope
+}
+
 // storeVar emits the assignment of the register src to the variable name.
 // init marks the store that initializes a declaration, which is allowed for a constant.
 func (f *fn) storeVar(n ast.Node, name string, src int32, init bool) {
 	mark := f.top
 	scope := int32(-1)
 	if !init {
-		scope = f.resolveName(name)
+		scope = f.assignmentScope(n, name)
 	}
 	f.storeVarTo(n, name, src, init, scope)
 	f.free(mark)
 }
 
-// storeVarTo is storeVar for the variable whose dynamic scope resolveName put in the register scope.
+// storeVarTo writes to the reference resolved by assignmentScope or a preceding read.
 func (f *fn) storeVarTo(n ast.Node, name string, src int32, init bool, scope int32) {
 	r := f.resolve(name)
 	if !init {
@@ -1638,18 +1616,29 @@ func (f *fn) checkTDZ(r ref, name string) {
 	}
 }
 
-// undeclaredGlobal reports whether name refers to a global variable that the top level of
-// the program does not declare.
-func (f *fn) undeclaredGlobal(name string) bool {
-	if f.resolve(name).kind != refGlobal {
-		return false
-	}
-	return !f.c.lookupTopDecl(name).plain
-}
-
-// globalLexical reports whether name is a let, const or class declaration of the top level of the script.
+// globalLexical reports whether the top level of the program declares name with let, const or class.
 func (c *compiler) globalLexical(name string) bool {
-	return c.lookupTopDecl(name).lexical
+	lexical := func(kind ast.DeclKind) bool {
+		return kind == ast.DeclLet || kind == ast.DeclConst || kind == ast.DeclClass
+	}
+	decls := c.prog.Scope.Decls
+	if len(decls) > 16 {
+		if c.topLexicals == nil {
+			c.topLexicals = make(map[string]bool)
+			for _, d := range decls {
+				if lexical(d.Kind) {
+					c.topLexicals[d.Name] = true
+				}
+			}
+		}
+		return c.topLexicals[name]
+	}
+	for _, d := range decls {
+		if d.Name == name && lexical(d.Kind) {
+			return true
+		}
+	}
+	return false
 }
 
 // localReg returns the register of the variable name when it is a local of f that can be

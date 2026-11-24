@@ -518,6 +518,17 @@ var opcodes = [...]struct {
 		operands: setGlobalOperands,
 		flow:     FlowNext,
 	},
+	OpCopyPropToGlobal: {
+		name: "OpCopyPropToGlobal",
+		operands: Operands{
+			A:      OperandReg,
+			B:      OperandReg,
+			C:      OperandTarget,
+			Reads:  regB,
+			Writes: regPairA,
+		},
+		flow: FlowNext,
+	},
 	OpResolveGlobal: {
 		name:     "OpResolveGlobal",
 		operands: getGlobalOperands,

@@ -474,6 +474,54 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetUpval:
 			*ag.frames[len(ag.frames)-1].cl.fn.upvals[i.B].p = regs[i.A]
 			continue
+		case bytecode.OpCopyPropToGlobal:
+			g := &fp.globals[fp.code[i.C-1].C]
+			if h := g.holder; h == nil || h.shape != g.shape {
+				break
+			}
+			regs[i.A] = Value{}
+			c := &fp.caches[fp.code[pc].C]
+			o := regs[i.B].o
+			if o == nil || c.shape != o.shape {
+				continue
+			}
+			if c.kind == cacheOwnGetter || c.kind == cacheGetter {
+				// The binding is resolved. Dispatch the read with its own call site.
+				i = &fp.code[pc]
+				pc++
+				break
+			}
+			var v Value
+			switch c.kind {
+			case cacheOwn:
+				v = o.slots[c.slot]
+			case cacheProto:
+				if c.epoch != ag.protoEpoch {
+					continue
+				}
+				v = *c.ref
+			default:
+				continue
+			}
+			regs[i.A+1] = v
+			*g.ref = v
+			pc = int(i.C)
+			continue
+		case bytecode.OpResolveGlobal:
+			c := &fp.globals[i.C]
+			if h := c.holder; h == nil || h.shape != c.shape {
+				break
+			}
+			regs[i.A] = Value{}
+			// A named read may supply the value of the assignment.
+			if n := &fp.code[pc]; n.Op == bytecode.OpGetProp {
+				c := &fp.caches[n.C]
+				if o := regs[n.B].o; o != nil && c.kind == cacheOwn && c.shape == o.shape {
+					regs[n.A] = o.slots[c.slot]
+					pc++
+				}
+			}
+			continue
 		case bytecode.OpGetProp:
 			// The destination is read first, so that the instruction need not stay in
 			// registers across the tests of the cache.
@@ -1654,12 +1702,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpSetGlobal, bytecode.OpSetGlobalStrict:
 			rhs = regs[i.A]
 			goto writeProperty
-		case bytecode.OpResolveGlobal:
-			c := &fp.globals[i.C]
-			if h := c.holder; h != nil && h.shape == c.shape {
-				regs[i.A] = True
-				continue
-			}
+		case bytecode.OpCopyPropToGlobal, bytecode.OpResolveGlobal:
 			goto readProperty
 		case bytecode.OpDeclareGlobalVar:
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -3058,6 +3101,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				val, getter = fp.context.getValue(receiver, key)
 			case bytecode.OpGetIndexInt:
 				val, getter = fp.context.getIndex(receiver, uint32(i.C))
+			case bytecode.OpCopyPropToGlobal:
+				// The following global store owns the cache and fills it only for writable bindings.
+				val = fp.context.resolveGlobal(fp.keys[fp.code[i.C-1].B], nil)
 			case bytecode.OpResolveGlobal:
 				val = fp.context.resolveGlobal(fp.keys[i.B], &fp.globals[i.C])
 			case bytecode.OpGetGlobal, bytecode.OpGetGlobalStrict, bytecode.OpGetGlobalOrUndef, bytecode.OpGetGlobalOrUndefStrict:

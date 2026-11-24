@@ -95,6 +95,10 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 			f.expr(prop.Key, k)
 			f.emit(bytecode.OpToPropertyKey, k, k, -1)
 		}
+		if static && mode == patAssign && f.copyPropertyToGlobal(prop, src, name) {
+			f.free(mark)
+			continue
+		}
 		// A reference as the target is evaluated after the key and before the get.
 		ref, ok := f.elementRef(prop.Value, mode)
 		v := int32(-1)
@@ -129,6 +133,23 @@ func (f *fn) objectPattern(p *ast.ObjectPattern, src int32, mode patMode) {
 			f.destructure(p.Rest, v, mode)
 		}
 	}
+}
+
+// copyPropertyToGlobal compiles a named property assigned to a global whose binding needs a lookup.
+func (f *fn) copyPropertyToGlobal(prop *ast.PatternProperty, src int32, key wtf8.String) bool {
+	id, ok := prop.Value.(*ast.Identifier)
+	if !ok || f.dynDepth(id.Name) != 0 || f.resolve(id.Name).kind != refGlobal || f.c.globalLexical(id.Name) {
+		return false
+	}
+	scope := f.newRegs(2)
+	f.setPos(id.Start())
+	copyProp := f.emit(bytecode.OpCopyPropToGlobal, scope, src, 0)
+	// On a cache miss the scope is resolved and the ordinary read and store follow.
+	f.setPos(prop.Key.Start())
+	f.emitGetProp(scope+1, src, f.site(key))
+	f.storeVarTo(id, id.Name, scope+1, false, scope)
+	f.patchC(copyProp)
+	return true
 }
 
 func (f *fn) arrayPattern(p *ast.ArrayPattern, src int32, mode patMode) {
@@ -261,7 +282,7 @@ type elementRef struct {
 	member   memberTarget
 	isMember bool
 
-	// id is the variable, and scope the register of its dynamic scope from resolveName.
+	// id is the identifier whose assignmentScope result is in scope.
 	id    *ast.Identifier
 	scope int32
 
@@ -270,8 +291,7 @@ type elementRef struct {
 }
 
 // elementRef evaluates the reference that is the target of the assignment element e when
-// the reference is a property reference or a variable in a dynamic scope. ok reports whether
-// it is one of these.
+// its evaluation must precede the property read, iterator step or initializer.
 func (f *fn) elementRef(e ast.Pattern, mode patMode) (ref elementRef, ok bool) {
 	if mode != patAssign {
 		return elementRef{}, false
@@ -289,7 +309,7 @@ func (f *fn) elementRef(e ast.Pattern, mode patMode) (ref elementRef, ok bool) {
 		ref.isMember = true
 		return ref, true
 	case *ast.Identifier:
-		ref.scope = f.resolveName(t.Name)
+		ref.scope = f.assignmentScope(t, t.Name)
 		if ref.scope < 0 {
 			return elementRef{}, false
 		}

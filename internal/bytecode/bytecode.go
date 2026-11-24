@@ -34,8 +34,9 @@ type Opcode uint8
 //     [OpLoadThis] for non-strict functions.
 //   - An instruction whose operands do not fit in a, b and c is followed by an [OpExtra] with
 //     the rest, written x.a and x.b.
-//   - Some instructions work together with the next instruction. [OpGetPropChain] may run
-//     the next named read, and [OpGetMethod] may run the following [OpCall]. [OpIterNextPair]
+//   - Some instructions work together with the next instruction. [OpResolveGlobal] and
+//     [OpCopyPropToGlobal] may run a following [OpGetProp]. [OpGetPropChain] may run the
+//     next named read and [OpGetMethod] may run the following [OpCall]. [OpIterNextPair]
 //     may supply the value of the following [OpIterNext]. [OpRegExpArg] and [OpSpreadArgs]
 //     prepare the call that follows them.
 const (
@@ -62,7 +63,8 @@ const (
 	OpGetGlobalOrUndefStrict // like [OpGetGlobalOrUndef], in strict code
 	OpSetGlobal              // the global variable Keys[b] = a, creating it when it does not exist; c is a global cache
 	OpSetGlobalStrict        // like [OpSetGlobal], but a ReferenceError when the global does not exist
-	OpResolveGlobal          // a = whether the global variable Keys[b] exists; c is a global cache
+	OpResolveGlobal          // a = undefined if the global variable Keys[b] exists, null otherwise; c is a global cache
+	OpCopyPropToGlobal       // a = resolution of the global store at c-1. Cached data slots copy the following named read of b through a+1 to the global and jump to c
 	OpDeleteName             // a = delete the global variable Keys[b]
 	OpDeclareGlobalVar       // declare the global variable Keys[a]; b is a set of GlobalVar flags, and c holds the function with GlobalVarFunc and is -1 otherwise
 	OpDeclareGlobalLex       // declare the global lexical binding Keys[a], constant with the flag b
@@ -326,7 +328,7 @@ const (
 	OpResolveName     // a = the innermost of the c innermost dynamic scopes that has the variable Keys[b], or undefined
 	OpGetScoped       // a = the variable Keys[c] of the dynamic scope b
 	OpGetScopedStrict // like [OpGetScoped], in strict code
-	OpSetScoped       // the variable Keys[c] of the dynamic scope b = a
+	OpSetScoped       // assign a to Keys[c] of dynamic scope b, or to an unresolvable name if b is null
 	OpSetScopedStrict // like [OpSetScoped], in strict code
 	OpDeleteScoped    // a = delete the variable Keys[c] of the dynamic scope b
 	OpCaptureScopes   // the closure a sees the dynamic scopes that are open
