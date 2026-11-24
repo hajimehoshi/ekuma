@@ -7,12 +7,13 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"slices"
 	"strings"
 	"testing"
 )
 
-// TestQuietContextBoundary requires that no function with a QuietContext, and no listed function,
-// can run script or host code, and that built-ins cannot get around that.
+// TestQuietContextBoundary requires that no function with a QuietContext, no listed function and no
+// pair step of an iterator can run script or host code, and that built-ins cannot get around that.
 func TestQuietContextBoundary(t *testing.T) {
 	const enginePath = "github.com/hajimehoshi/ekuma/internal/engine"
 	// The functions that run script or host code. Reading a field that holds a function counts too.
@@ -44,6 +45,23 @@ func TestQuietContextBoundary(t *testing.T) {
 		enginePath + ".takeDataProperties",
 	}
 	listed := len(quiet)
+	pairSteps := 0
+
+	// The functions that may look named properties up in storage alone. Such a lookup passes over
+	// objects that answer for themselves, such as a lazy prototype.
+	storageLookups := map[string]map[string]bool{
+		enginePath + ".find": {
+			"(*" + enginePath + ".agent).lookupData":                 true,
+			"(" + enginePath + ".QuietContext).AssignDataProperties": true,
+		},
+		// What these find only describes values and errors.
+		"(*" + enginePath + ".agent).lookupData": {
+			"(*" + enginePath + ".ExecutionContext).ExceptionDescription": true,
+			"(*" + enginePath + ".agent).errorOf":                         true,
+			"(*" + enginePath + ".agent).newErrorData":                    true,
+			"(*" + enginePath + ".agent).typeName":                        true,
+		},
+	}
 
 	// uses holds what a declared function mentions, by the full name of the function.
 	uses := map[string][]string{}
@@ -149,13 +167,15 @@ func TestQuietContextBoundary(t *testing.T) {
 					checkBuiltin(fn.Body, hasQuiet(sig))
 				}
 				written := map[*ast.Ident]bool{}
+				// pairStep holds the literals that are pair steps, which have no context.
+				pairStep := map[*ast.FuncLit]bool{}
 				// record adds what body mentions to uses[name].
 				var record func(name string, body ast.Node)
 				record = func(name string, body ast.Node) {
 					ast.Inspect(body, func(n ast.Node) bool {
 						switch n := n.(type) {
 						case *ast.FuncLit:
-							if n.Body == body || !hasQuiet(info.TypeOf(n).(*types.Signature)) {
+							if n.Body == body || !pairStep[n] && !hasQuiet(info.TypeOf(n).(*types.Signature)) {
 								break
 							}
 							// The literal runs when the engine calls it, not in the function around it.
@@ -164,6 +184,23 @@ func TestQuietContextBoundary(t *testing.T) {
 							quiet = append(quiet, lit)
 							record(lit, n.Body)
 							return false
+						case *ast.CallExpr:
+							sig, ok := info.TypeOf(n.Fun).Underlying().(*types.Signature)
+							if !ok || info.Types[n.Fun].IsType() {
+								break
+							}
+							for i := range min(sig.Params().Len(), len(n.Args)) {
+								if !engineType(sig.Params().At(i).Type(), "IteratorPairStepFunc") {
+									continue
+								}
+								lit, ok := ast.Unparen(n.Args[i]).(*ast.FuncLit)
+								if !ok {
+									t.Errorf("%v: pair step is not a function literal", p.fset.Position(n.Args[i].Pos()))
+									continue
+								}
+								pairStep[lit] = true
+								pairSteps++
+							}
 						case *ast.AssignStmt:
 							for _, l := range n.Lhs {
 								if sel, ok := l.(*ast.SelectorExpr); ok {
@@ -217,6 +254,29 @@ func TestQuietContextBoundary(t *testing.T) {
 		if pos[name].Line == 0 {
 			t.Errorf("no function %s", name)
 		}
+	}
+	for lookup, callers := range storageLookups {
+		if pos[lookup].Line == 0 {
+			t.Errorf("no function %s", lookup)
+		}
+		called := map[string]bool{}
+		for name, us := range uses {
+			if !slices.Contains(us, lookup) {
+				continue
+			}
+			called[name] = true
+			if !callers[name] {
+				t.Errorf("%v: %s looks properties up with %s", pos[name], name, lookup)
+			}
+		}
+		for name := range callers {
+			if !called[name] {
+				t.Errorf("%s does not use %s", name, lookup)
+			}
+		}
+	}
+	if pairSteps == 0 {
+		t.Error("no pair step")
 	}
 	if len(quiet) == listed {
 		t.Error("no function with a QuietContext")
