@@ -247,30 +247,33 @@ func (ag *agent) WeakRefDeref(v Value) (Value, bool) {
 	return Value{o: t}, true
 }
 
-// weakState is the state of an agent for WeakRef and FinalizationRegistry objects.
-type weakState struct {
-	// keptAlive is the [[KeptAlive]] list: the targets of WeakRef objects that must stay alive
-	// until the current job ends.
-	keptAlive map[*Object]struct{}
+// keptObjects is a [[KeptAlive]] list: the objects and symbols that must stay alive until the
+// current job ends.
+type keptObjects struct {
+	objects map[*Object]struct{}
+}
 
-	// finalization receives the cells of FinalizationRegistry objects whose target was collected,
-	// or is nil until the first registry is created.
-	finalization *finalizationQueue
+func (k *keptObjects) add(o *Object) {
+	if k.objects == nil {
+		k.objects = map[*Object]struct{}{}
+	}
+	k.objects[o] = struct{}{}
+}
+
+func (k *keptObjects) clear() {
+	clear(k.objects)
 }
 
 // AddToKeptObjects implements AddToKeptObjects: o stays alive until the current job ends.
 func (ag *agent) AddToKeptObjects(o *Object) {
-	if ag.weak.keptAlive == nil {
-		ag.weak.keptAlive = map[*Object]struct{}{}
-	}
-	ag.weak.keptAlive[o] = struct{}{}
+	ag.keptObjects.add(o)
 }
 
 // clearKeptObjects implements ClearKeptObjects.
 // It must be called when a job ends: after each promise job, and when the outermost call into
 // the engine returns.
 func (ag *agent) clearKeptObjects() {
-	clear(ag.weak.keptAlive)
+	ag.keptObjects.clear()
 }
 
 // FinalizationRegistry is the state of a FinalizationRegistry object.
@@ -359,14 +362,14 @@ func (q *finalizationQueue) pop() (deadCell, bool) {
 // NewFinalizationRegistryObject returns a FinalizationRegistry object with the prototype proto
 // and the cleanup callback callback.
 func (cx *ExecutionContext) NewFinalizationRegistryObject(proto *Object, callback *Object) *Object {
-	if cx.weak.finalization == nil {
-		cx.weak.finalization = &finalizationQueue{}
+	if cx.finalization == nil {
+		cx.finalization = &finalizationQueue{}
 	}
 	r := &FinalizationRegistry{
 		callback:         callback,
 		context:          cx,
 		continuationData: cx.continuationData,
-		queue:            cx.weak.finalization,
+		queue:            cx.finalization,
 		cells:            map[uint64]*finalizationCell{},
 		cleanups: &cellCleanups{
 			m: map[uint64]runtime.Cleanup{},
@@ -463,7 +466,7 @@ func (r *FinalizationRegistry) remove(id uint64, c *finalizationCell) {
 // finalizationPending reports whether a target of a FinalizationRegistry was collected and its
 // cleanup callback has not run yet.
 func (ag *agent) finalizationPending() bool {
-	q := ag.weak.finalization
+	q := ag.finalization
 	return q != nil && q.pending.Load()
 }
 
@@ -473,7 +476,7 @@ func (cx *ExecutionContext) runFinalizationCleanups() bool {
 	if !cx.finalizationPending() {
 		return false
 	}
-	q := cx.weak.finalization
+	q := cx.finalization
 	ran := false
 	for {
 		if cx.interrupt.Load() {

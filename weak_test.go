@@ -412,6 +412,34 @@ func TestWeakMapValueReferencesKey(t *testing.T) {
 	}
 }
 
+func TestWeakRefTargetKeptDuringJob(t *testing.T) {
+	var vm ekuma.VM
+	gc := vm.FuncOf("gc", func(ekuma.Value, []ekuma.Value) (any, error) {
+		runtime.GC()
+		return nil, nil
+	})
+	if err := vm.Global().Set("gc", gc); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runScript(t.Context(), &vm, "setup", `
+		var target = {};
+		var ref = new WeakRef(target);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	v, err := runScript(t.Context(), &vm, "job", `
+		(() => { ref.deref(); target = undefined; })();
+		gc();
+		ref.deref() !== undefined;
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !v.Bool() {
+		t.Error("the target was collected during the job that dereferenced it")
+	}
+}
+
 // TestFinalizationRegistrySharedToken checks the cleanup of many cells that share an unregister
 // token, and that unregistering the token then removes the cells that are left.
 func TestFinalizationRegistrySharedToken(t *testing.T) {

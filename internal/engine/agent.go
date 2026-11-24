@@ -591,7 +591,12 @@ type agent struct {
 	// canSuspend is AgentCanSuspend.
 	canSuspend bool
 
-	weak weakState
+	// keptObjects is the [[KeptAlive]] list.
+	keptObjects keptObjects
+
+	// finalization receives the cells of FinalizationRegistry objects whose target was collected,
+	// or is nil until the first registry is created.
+	finalization *finalizationQueue
 
 	// symbolRegistry is the GlobalSymbolRegistry List, by key.
 	symbolRegistry map[wtf8.String]*Object
