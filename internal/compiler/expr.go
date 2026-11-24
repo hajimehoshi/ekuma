@@ -2243,10 +2243,6 @@ func (f *fn) yield(n *ast.YieldExpr, dst int32) {
 	mark := f.top
 	defer f.free(mark)
 	if n.Delegate {
-		if f.f.IsAsync {
-			f.asyncYieldDelegate(n, dst)
-			return
-		}
 		f.yieldDelegate(n, dst)
 		return
 	}
@@ -2267,22 +2263,31 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	// it and it+1 hold the iterator and its next method.
 	it := f.newRegs(2)
 	src := f.immediateOperand(n.Arg)
-	f.emit(bytecode.OpGetIterator, it, src, bytecode.IterSyncNext)
+	kind := int32(bytecode.IterSyncNext)
+	if f.f.IsAsync {
+		kind = bytecode.IterAsync
+	}
+	f.emit(bytecode.OpGetIterator, it, src, kind)
 
 	// recv holds the value that was sent in, and recv+1 whether the called method exists.
 	recv := f.newRegs(2)
 	res := f.newReg()
 	f.emit(bytecode.OpLoadUndef, recv, 0, 0)
 
-	// next: res = next.call(it, recv)
+	// The first next call receives undefined. Later calls receive the value sent to yield.
 	onNext := f.pc()
 	callBase := f.newRegs(3)
 	f.emit(bytecode.OpMove, callBase, it+1, 0)
 	f.emit(bytecode.OpMove, callBase+1, it, 0)
 	f.emit(bytecode.OpMove, callBase+2, recv, 0)
-	f.emit(bytecode.OpCall, res, callBase, 1)
+	if f.f.IsAsync {
+		f.emit(bytecode.OpCall, callBase, callBase, 1)
+		f.emit(bytecode.OpAwait, res, callBase, 0)
+	} else {
+		f.emit(bytecode.OpCall, res, callBase, 1)
+	}
 	f.free(callBase)
-	step := f.jump()
+	afterNext := f.jump()
 
 	resume := f.pc()
 	mode := f.newReg()
@@ -2291,102 +2296,52 @@ func (f *fn) yieldDelegate(n *ast.YieldExpr, dst int32) {
 	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
 	f.free(mode)
 
-	// throw: res = it.throw(recv), or close the iterator and fail when there is no throw method.
+	// A missing throw method closes the iterator before raising a TypeError.
 	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
 	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
-	f.emit(bytecode.OpIterClose, it, -1, 0)
+	if f.f.IsAsync {
+		f.asyncIterClose(it)
+	} else {
+		f.emit(bytecode.OpIterClose, it, -1, 0)
+	}
 	f.emit(bytecode.OpThrowError, bytecode.ThrowTypeError, f.constStr("the iterator does not provide a 'throw' method"), 0)
 	f.patch(hasThrow)
-	f.emit(bytecode.OpMove, res, recv, 0)
-	step2 := f.jump()
+	resultOp := bytecode.OpMove
+	if f.f.IsAsync {
+		resultOp = bytecode.OpAwait
+	}
+	f.emit(resultOp, res, recv, 0)
+	afterThrow := f.jump()
 
-	// return: res = it.return(recv), or return recv when there is no return method.
+	// Save the received value for the return if the iterator has no return method.
 	f.patch(onReturn)
 	ret := f.newReg()
 	f.emit(bytecode.OpMove, ret, recv, 0)
 	f.emit(bytecode.OpIterCall, recv, it, f.key("return"))
 	hasReturn := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
+	if f.f.IsAsync {
+		f.emit(bytecode.OpAwait, ret, ret, 0)
+	}
 	f.exit(exitReturn, nil, ret)
 	f.patch(hasReturn)
-	f.emit(bytecode.OpMove, res, recv, 0)
+	f.emit(resultOp, res, recv, 0)
 	// A finished inner iterator makes the generator return its value.
-	notDone := f.emit(bytecode.OpYieldDelegateResult, ret, res, 0)
+	returnNotDone := f.emit(bytecode.OpYieldDelegateResult, ret, res, 0)
 	f.exit(exitReturn, nil, ret)
 	f.free(ret)
 
-	f.patch(step)
-	f.patch(step2)
-	done := f.emit(bytecode.OpYieldDelegateResult, dst, res, 0)
+	f.patch(afterNext)
+	f.patch(afterThrow)
+	notDone := f.emit(bytecode.OpYieldDelegateResult, dst, res, 0)
 	end := f.jump()
-	f.patchC(done)
 	f.patchC(notDone)
-	f.emit(bytecode.OpYield, recv, res, 1)
-	f.jumpTo(resume)
-	f.patch(end)
-}
-
-// asyncYieldDelegate compiles yield* in an async generator.
-func (f *fn) asyncYieldDelegate(n *ast.YieldExpr, dst int32) {
-	// it and it+1 hold the iterator and its next method.
-	it := f.newRegs(2)
-	src := f.immediateOperand(n.Arg)
-	f.emit(bytecode.OpGetIterator, it, src, bytecode.IterAsync)
-
-	// recv holds the value that was sent in, and recv+1 whether the called method exists.
-	recv := f.newRegs(2)
-	res := f.newReg()
-	f.emit(bytecode.OpLoadUndef, recv, 0, 0)
-
-	// next: res = await next.call(it, recv)
-	onNext := f.pc()
-	callBase := f.newRegs(3)
-	f.emit(bytecode.OpMove, callBase, it+1, 0)
-	f.emit(bytecode.OpMove, callBase+1, it, 0)
-	f.emit(bytecode.OpMove, callBase+2, recv, 0)
-	f.emit(bytecode.OpCall, callBase, callBase, 1)
-	f.emit(bytecode.OpAwait, res, callBase, 0)
-	f.free(callBase)
-	step := f.jump()
-
-	resume := f.pc()
-	mode := f.newReg()
-	f.emit(bytecode.OpGenResumeMode, mode, 0, 0)
-	f.emit(bytecode.OpJumpIfInt, onNext, mode, bytecode.ResumeNext)
-	onReturn := f.emit(bytecode.OpJumpIfInt, 0, mode, bytecode.ResumeReturn)
-	f.free(mode)
-
-	// throw: res = await it.throw(recv), or close the iterator and fail when there is no throw method.
-	f.emit(bytecode.OpIterCall, recv, it, f.key("throw"))
-	hasThrow := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
-	f.asyncIterClose(it)
-	f.emit(bytecode.OpThrowError, bytecode.ThrowTypeError, f.constStr("the iterator does not provide a 'throw' method"), 0)
-	f.patch(hasThrow)
-	f.emit(bytecode.OpAwait, res, recv, 0)
-	step2 := f.jump()
-
-	// return: res = await it.return(recv), or return await recv when there is no return method.
-	f.patch(onReturn)
-	ret := f.newReg()
-	f.emit(bytecode.OpMove, ret, recv, 0)
-	f.emit(bytecode.OpIterCall, recv, it, f.key("return"))
-	hasReturn := f.emit(bytecode.OpJumpIf, 0, recv+1, 0)
-	f.emit(bytecode.OpAwait, ret, ret, 0)
-	f.exit(exitReturn, nil, ret)
-	f.patch(hasReturn)
-	f.emit(bytecode.OpAwait, res, recv, 0)
-	// A finished inner iterator makes the generator return its value.
-	notDone := f.emit(bytecode.OpYieldDelegateResult, ret, res, 0)
-	f.exit(exitReturn, nil, ret)
-	f.free(ret)
-
-	f.patch(step)
-	f.patch(step2)
-	done := f.emit(bytecode.OpYieldDelegateResult, dst, res, 0)
-	end := f.jump()
-	f.patchC(done)
-	f.patchC(notDone)
-	f.emitGetProp(recv, res, f.site("value"))
-	f.emit(bytecode.OpYield, recv, recv, 1)
+	f.patchC(returnNotDone)
+	yielded := res
+	if f.f.IsAsync {
+		f.emitGetProp(recv, res, f.site("value"))
+		yielded = recv
+	}
+	f.emit(bytecode.OpYield, recv, yielded, 1)
 	f.jumpTo(resume)
 	f.patch(end)
 }
