@@ -2292,31 +2292,38 @@ func TestCancelBuiltins(t *testing.T) {
 // TestCancelJobs checks that a context stops a script whose jobs never run out, and that
 // the jobs that were pending then are dropped without affecting later calls.
 func TestCancelJobs(t *testing.T) {
+	// The scripts cancel the context once their jobs are running.
 	tests := []struct {
 		name string
 		src  string
 	}{
 		{
 			name: "then",
-			src:  `var count = 0; function f() { count++; Promise.resolve().then(f); } f();`,
+			src:  `var count = 0; function f() { if (++count === 10) cancel(); Promise.resolve().then(f); } f();`,
 		},
 		{
 			name: "await",
-			src:  `var count = 0; (async () => { for (;;) { count++; await null; } })();`,
+			src:  `var count = 0; (async () => { for (;;) { if (++count === 10) cancel(); await null; } })();`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var vm ekuma.VM
-			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			if _, err := runScript(ctx, &vm, "endless", tt.src); !errors.Is(err, context.DeadlineExceeded) {
-				t.Errorf("got %v, want context.DeadlineExceeded", err)
+			if err := vm.Global().Set("cancel", vm.FuncOf("cancel", func(ekuma.Value, []ekuma.Value) (any, error) {
+				cancel()
+				return nil, nil
+			})); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := runScript(ctx, &vm, "endless", tt.src); !errors.Is(err, context.Canceled) {
+				t.Errorf("got %v, want context.Canceled", err)
 			}
 			if _, err := runScript(t.Context(), &vm, "after", `var before = count; var r = 0; Promise.resolve(5).then(v => { r = v; });`); err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
-			v, err := runScript(t.Context(), &vm, "check", `[count > 0, count === before, r].join()`)
+			v, err := runScript(t.Context(), &vm, "check", `[count >= 10, count === before, r].join()`)
 			if err != nil {
 				t.Fatalf("runScript: %v", err)
 			}
