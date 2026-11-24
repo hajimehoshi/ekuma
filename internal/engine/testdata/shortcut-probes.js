@@ -755,6 +755,14 @@ function raising(raise, it) {
 }
 
 var pending = {
+  "cached instanceof": raise => {
+    function F() {}
+    for (let i = 0; i < 2; i++) {
+      if (i) raise();
+      ({}) instanceof F;
+      if (i) started = true;
+    }
+  },
   call: raise => ran.call((raise(), null)),
   "call of no this value": raise => (raise(), ran).call(),
   "call of a native function": raise => Array.prototype.forEach.call((raise(), [1]), ran),

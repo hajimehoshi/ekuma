@@ -49,6 +49,9 @@ func (cx *ExecutionContext) indexName(i uint32) *Object {
 // indexKey returns the interned key for the index i, or nil when the key is not interned,
 // in which case no object has a property with that key.
 func (ag *agent) indexKey(i uint32) *Object {
+	if i < 10 {
+		return ag.strings.ascii['0'+i].o
+	}
 	var buf [10]byte
 	return ag.strings.interned.get(wtf8.String(strconv.AppendUint(buf[:0], uint64(i), 10)))
 }

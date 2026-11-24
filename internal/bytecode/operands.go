@@ -1754,7 +1754,7 @@ var opcodes = [...]struct {
 			A:      OperandReg,
 			B:      OperandOptReg,
 			Reads:  []Regs{{At: FieldA, Len: 2}, {At: FieldB, Len: 1}},
-			Writes: regA,
+			Writes: regPairA,
 		},
 		flow: FlowNext,
 	},

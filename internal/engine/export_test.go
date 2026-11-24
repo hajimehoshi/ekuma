@@ -355,6 +355,13 @@ func (s *Shortcut) wrap(t *testing.T, observe func(s *Shortcut, form, event stri
 				ended(form, true)
 				return v, ok
 			}
+		case "arrayIndex":
+			wrapped.arrayIndex = func(cx *ExecutionContext, o *Object, i uint32) Value {
+				observe(s, form, "start")
+				v := fast.arrayIndex(cx, o, i)
+				ended(form, true)
+				return v
+			}
 		case "pairStep":
 			wrapped.pairStep = func(state any) (Value, Value, PairStep) {
 				observe(s, form, "start")

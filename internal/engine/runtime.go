@@ -418,45 +418,92 @@ func (cx *ExecutionContext) setSuper(base, k, val, this Value, strict bool) {
 	}
 }
 
-// instanceOf implements InstanceofOperator. site is the inline cache of the OpInstanceof that
-// evaluates it, or nil.
+// instanceOf implements InstanceofOperator with cx active. site is the inline cache of the
+// OpInstanceof that evaluates it, or nil.
 func (cx *ExecutionContext) instanceOf(v, c Value, site *propCache) bool {
 	if !c.IsObject() {
 		cx.ThrowTypeError("right-hand side of 'instanceof' is not an object")
 	}
-	ctor := c.o
-	var outer *Object
+	defaultMethod := cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance)
 	for {
-		if cx.inheritsHasInstance(ctor) {
-			if outer == nil {
-				outer = ctor
-			}
-		} else {
-			if outer != nil {
-				// Looking the method up can be observed in the method of the bound function.
-				return cx.recordedHasInstance(outer, v)
-			}
+		method := defaultMethod
+		if !cx.inheritsHasInstance(c.o) {
 			site = nil
-			this := Value{o: ctor}
-			if m := cx.GetMethod(this, cx.WellKnownSymbol(SymbolHasInstance)); m != nil {
-				if m != cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance) {
-					return ToBoolean(cx.Call(m, this, v))
-				}
-				outer = ctor
-			} else if ctor.fn == nil {
+			method = cx.GetMethod(c, cx.WellKnownSymbol(SymbolHasInstance))
+		}
+		if method == nil {
+			if !c.IsCallable() {
 				cx.ThrowTypeError("right-hand side of 'instanceof' is not callable")
 			}
+			// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
+			if b := c.o.fn.bound; b != nil {
+				c = Value{o: b.target}
+				continue
+			}
+			return cx.OrdinaryHasInstance(c, v)
 		}
-		if ctor.fn == nil {
-			return false
+		if method == defaultMethod && !cx.interrupt.Load() {
+			call := defaultHasInstanceCall{
+				method:   method,
+				receiver: c.o,
+			}
+			return call.run(cx, v, site)
 		}
-		// OrdinaryHasInstance of a bound function is InstanceofOperator of its target.
-		if b := ctor.fn.bound; b != nil {
-			ctor, site = b.target, nil
-			continue
-		}
-		return cx.hasInstancePrototype(ctor, v, site, outer)
+		return ToBoolean(cx.Call(method, c, v))
 	}
+}
+
+// defaultHasInstanceCall is a selected call of the current realm's default @@hasInstance.
+type defaultHasInstanceCall struct {
+	method   *Object
+	receiver *Object
+}
+
+// enterThrough records the selected calls from the receiver through last. Each intervening
+// bound target was proved to inherit the same method before any observable operation.
+func (call defaultHasInstanceCall) enterThrough(cx *ExecutionContext, last *Object) int {
+	depth := len(cx.natives)
+	for ctor := call.receiver; ; ctor = ctor.fn.bound.target {
+		cx.pushNative(call.method, Value{o: ctor}, nil)
+		if ctor == last {
+			return depth
+		}
+	}
+}
+
+func (call defaultHasInstanceCall) run(cx *ExecutionContext, v Value, site *propCache) bool {
+	ctor := call.receiver
+	for ctor.fn != nil && ctor.fn.bound != nil {
+		target := ctor.fn.bound.target
+		if cx.interrupt.Load() || !cx.inheritsHasInstance(target) {
+			// Looking up the target's method can observe the enclosing calls.
+			depth := call.enterThrough(cx, ctor)
+			result := cx.instanceOf(v, Value{o: target}, nil)
+			cx.truncateNatives(depth)
+			return result
+		}
+		ctor, site = target, nil
+	}
+	if ctor.fn == nil || !v.IsObject() {
+		return false
+	}
+	slot := cx.ownFunctionPrototypeSlot(ctor, site)
+	h := v.o
+	if slot != nil && slot.IsObject() {
+		for h.class != classProxy {
+			h = h.shape.proto
+			if h == slot.o {
+				return true
+			}
+			if h == nil {
+				return false
+			}
+		}
+	}
+	depth := call.enterThrough(cx, ctor)
+	result := cx.hasPrototype(h, cx.readInstancePrototype(ctor, slot))
+	cx.truncateNatives(depth)
+	return result
 }
 
 // inheritsHasInstance reports whether the @@hasInstance property of c is the one that it
@@ -479,8 +526,8 @@ func (cx *ExecutionContext) inheritsHasInstance(c *Object) bool {
 	return true
 }
 
-// ownFunctionPrototype returns the object in ctor's own prototype data property, or nil.
-func (cx *ExecutionContext) ownFunctionPrototype(ctor *Object, site *propCache) *Object {
+// ownFunctionPrototypeSlot returns the own prototype slot of an ordinary function, or nil.
+func (cx *ExecutionContext) ownFunctionPrototypeSlot(ctor *Object, site *propCache) *Value {
 	if ctor.class != classFunction {
 		return nil
 	}
@@ -488,19 +535,16 @@ func (cx *ExecutionContext) ownFunctionPrototype(ctor *Object, site *propCache) 
 		cx.resolve(ctor)
 	}
 	p, ok := ctor.shape.lookup(cx.Key(KeyPrototype))
-	if !ok || p.flags&FlagAccessor != 0 {
+	if !ok {
 		return nil
 	}
-	v := ctor.slots[p.slot]
-	if !v.IsObject() {
-		return nil
-	}
-	if site != nil && ctor.flags&objExotic == 0 {
+	slot := &ctor.slots[p.slot]
+	if site != nil && ctor.flags&objExotic == 0 && slot.IsObject() {
 		// Caching the constructor's own prototype slot also relies on @@hasInstance staying inherited.
 		site.setInherited(ctor.shape, cacheOwn, cx.protoEpoch)
 		site.slot = p.slot
 	}
-	return v.o
+	return slot
 }
 
 // OrdinaryHasInstance implements OrdinaryHasInstance.
@@ -509,57 +553,44 @@ func (cx *ExecutionContext) OrdinaryHasInstance(c, v Value) bool {
 		return false
 	}
 	if b := c.o.fn.bound; b != nil {
-		return cx.instanceOf(v, Value{o: b.target}, nil)
+		var result bool
+		cx.Run(func() {
+			result = cx.instanceOf(v, Value{o: b.target}, nil)
+		})
+		return result
 	}
-	return cx.hasInstancePrototype(c.o, v, nil, nil)
-}
-
-// recordedHasInstance is OrdinaryHasInstance of f and v with the frame of the default @@hasInstance
-// method of f.
-//
-//go:noinline
-func (cx *ExecutionContext) recordedHasInstance(f *Object, v Value) bool {
-	c := Value{o: f}
-	cx.pushNative(cx.Intrinsic(IntrinsicFunctionPrototypeHasInstance), c, nil)
-	r := cx.OrdinaryHasInstance(c, v)
-	cx.popNative()
-	return r
-}
-
-// hasInstancePrototype checks the prototype chain of v for the prototype of the unbound
-// callable ctor. outer is the receiver of the first skipped default @@hasInstance call.
-func (cx *ExecutionContext) hasInstancePrototype(ctor *Object, v Value, site *propCache, outer *Object) bool {
 	if !v.IsObject() {
 		return false
 	}
-	proto := cx.ownFunctionPrototype(ctor, site)
-	if proto == nil {
-		if outer != nil {
-			return cx.recordedHasInstance(outer, v)
-		}
-		p := cx.GetV(Value{o: ctor}, cx.Key(KeyPrototype))
-		if !p.IsObject() {
-			cx.ThrowTypeError("function has non-object prototype in instanceof check")
-		}
-		proto = p.o
-	}
-	for o := v.o; ; {
-		h := o.shape.proto
-		if o.class == classProxy {
-			if outer != nil {
-				// Nothing has been observable so far.
-				return cx.recordedHasInstance(outer, v)
+	slot := cx.ownFunctionPrototypeSlot(c.o, nil)
+	return cx.hasPrototype(v.o, cx.readInstancePrototype(c.o, slot))
+}
+
+func (cx *ExecutionContext) readInstancePrototype(ctor *Object, slot *Value) *Object {
+	var p Value
+	if slot == nil {
+		p = cx.GetV(Value{o: ctor}, cx.Key(KeyPrototype))
+	} else {
+		p = *slot
+		if p.o != nil && p.o.kind == kindAccessor {
+			if getter := p.accessor().getter; getter != nil {
+				p = cx.Call(getter, Value{o: ctor})
 			}
-			h = cx.proxyGetPrototypeOf(o)
 		}
-		if h == nil {
-			return false
-		}
+	}
+	if !p.IsObject() {
+		cx.ThrowTypeError("function has non-object prototype in instanceof check")
+	}
+	return p.o
+}
+
+func (cx *ExecutionContext) hasPrototype(o, proto *Object) bool {
+	for h := cx.ProtoOf(o); h != nil; h = cx.ProtoOf(h) {
 		if h == proto {
 			return true
 		}
-		o = h
 	}
+	return false
 }
 
 // privateStorage returns the object holding o's private elements.
@@ -1522,7 +1553,7 @@ const (
 	// neither throws nor runs JavaScript or host code, and declines where the function may.
 	FrameUnobservable
 
-	// FrameRecorded says that the shortcut records the frame around what can observe it.
+	// FrameRecorded says that the selected method records its frame around what can observe it.
 	FrameRecorded
 )
 

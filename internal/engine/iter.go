@@ -24,20 +24,7 @@ func (cx *ExecutionContext) getIterator(v Value, async bool) (it, next Value) {
 	if m == nil {
 		cx.ThrowTypeError(cx.DisplayString(v) + " is not iterable")
 	}
-	it = cx.Call(m, v)
-	if !it.IsObject() {
-		cx.ThrowTypeError("result of the Symbol.iterator method is not an object")
-	}
-	next = cx.GetV(it, cx.Key(keyNext))
-	if next.o == numberObject {
-		// A number in the next method slot of the bytecode marks a plain array iterated by
-		// index, so a numeric next method is held by a function that throws as calling it does.
-		n := next
-		next = Value{o: cx.NewNative("next", 0, func(cx *ExecutionContext, this Value, args []Value) Value {
-			return cx.CallValue(n, this, args...)
-		})}
-	}
-	return it, next
+	return cx.iteratorRecord(cx.Call(m, v))
 }
 
 // GetIterator implements GetIterator for a sync iterator and returns the iterator and its next method.
@@ -213,6 +200,16 @@ func (cx *ExecutionContext) NewArrayIteratorNext() *Object {
 				cx.popNative()
 			}
 			return v, st == PairYielded
+		},
+		arrayIndex: func(cx *ExecutionContext, o *Object, i uint32) Value {
+			// Only the receiver's type name is visible on a native frame. The
+			// unmaterialized iterator inherits that name from its prototype.
+			proto := cx.Intrinsic(IntrinsicArrayIteratorPrototype)
+			cx.pushNative(next, Value{o: proto}, nil)
+			cx.Poll()
+			v := cx.Index(Value{o: o}, i)
+			cx.popNative()
+			return v
 		},
 		contract: ShortcutContract{
 			Frame: FrameRecorded,
@@ -558,14 +555,12 @@ func (cx *ExecutionContext) plainArrayIteratorIndex(o *Object, i uint32) Value {
 	if o.flags&objSparse == 0 && cx.holesAreAbsent(o) {
 		return Undefined
 	}
-	array := Value{o: o}
-	// A native frame uses its receiver only to name it in a stack trace. An indexed
-	// iterator has no own properties, so its prototype supplies the same name.
-	proto := cx.Intrinsic(IntrinsicArrayIteratorPrototype)
-	cx.pushNative(cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext), Value{o: proto}, nil)
-	v := cx.Index(array, i)
-	cx.popNative()
-	return v
+	// arrayIterationPlain proved this method was selected when iteration started.
+	next := cx.Intrinsic(IntrinsicArrayIteratorPrototypeNext)
+	if cx.interrupt.Load() {
+		cx.Poll()
+	}
+	return next.fn.info.fast.arrayIndex(cx, o, i)
 }
 
 // IterateRecord is [ExecutionContext.Iterate] for the iterator record of the iterator it and its next method

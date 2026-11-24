@@ -1335,7 +1335,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			// An ordinary function whose prototype property the cache holds, with the
 			// @@hasInstance of %Function.prototype%: OrdinaryHasInstance walks the prototype
 			// chain of b, unless a proxy is on it.
-			if co := regs[i.C].o; co != nil {
+			if co := regs[i.C].o; co != nil && !ag.interrupt.Load() {
 				c := &fp.caches[fp.code[pc].A]
 				if co.shape == c.shape && c.kind == cacheOwn && c.epoch == ag.protoEpoch && co.class == classFunction && co.fn != nil && co.fn.bound == nil {
 					if p := co.slots[c.slot].o; p != nil && p.kind >= kindFirstObject {
@@ -2928,9 +2928,9 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetIterator:
 			v := regs[i.B]
 			if i.C == bytecode.IterSync && v.o != nil && v.o.kind == kindArray && fp.context.arrayIterationPlain(v.o) {
-				// Iterate a plain array by index: the next method slot holds the index.
-				regs[i.A] = v
-				regs[i.A+1] = Number(0)
+				// A numeric iterator slot identifies an indexed array with the original next method.
+				regs[i.A] = Number(0)
+				regs[i.A+1] = v
 				continue
 			}
 			ag.frames[len(ag.frames)-1].pc = pc
@@ -2945,17 +2945,18 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				pc = int(i.C)
 				continue
 			}
-			if idx := regs[i.B+1]; idx.o == numberObject {
-				o := regs[i.B].o
+			if idx := regs[i.B]; idx.o == numberObject {
+				o := regs[i.B+1].o
 				j := uint32(idx.n)
 				if j >= o.length {
 					// Mark the iterator as finished, so that closing it does nothing.
 					regs[i.B] = Undefined
+					regs[i.B+1] = Undefined
 					regs[i.A] = Undefined
 					pc = int(i.C)
 					continue
 				}
-				regs[i.B+1].n = idx.n + 1
+				regs[i.B].n = idx.n + 1
 				if uint(j) < uint(len(o.elems)) && o.elems[j].o != holeObject {
 					regs[i.A] = o.elems[j]
 					continue
@@ -2963,9 +2964,11 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				ag.frames[len(ag.frames)-1].pc = pc
 				// A getter that throws finishes the iterator.
 				regs[i.B] = Undefined
+				regs[i.B+1] = Undefined
 				v := fp.context.plainArrayIteratorIndex(o, j)
 				regs = ag.reload(regs, ag.frameBase(), fp)
-				regs[i.B] = Value{o: o}
+				regs[i.B] = Number(idx.n + 1)
+				regs[i.B+1] = Value{o: o}
 				regs[i.A] = v
 				continue
 			}
@@ -2998,10 +3001,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if it.o == nil {
 				continue
 			}
-			if next.o == numberObject {
+			if it.o == numberObject {
 				// A plain array iterated by index, whose element is itself a plain array of at
 				// least two elements.
-				o, j := it.o, uint32(next.n)
+				o, j := next.o, uint32(it.n)
 				if j >= o.length || uint(j) >= uint(len(o.elems)) {
 					continue
 				}
@@ -3009,7 +3012,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 				if e == nil || e.shape != fp.context.realm.shapes.array || e.length < 2 || len(e.elems) < 2 || e.elems[0].isHole() || e.elems[1].isHole() || !ag.pairDestructuringPlain(fp.context.realm) {
 					continue
 				}
-				regs[i.B+1].n = next.n + 1
+				regs[i.B].n = it.n + 1
 				regs[i.A] = e.elems[0]
 				regs[b] = e.elems[1]
 				pc = int(i.C)
@@ -3059,8 +3062,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Undefined
 			ag.frames[len(ag.frames)-1].pc = pc
 			pending := i.B >= 0 && regs[i.B].o != closeSignal
-			if index := regs[i.A+1]; index.o == numberObject {
-				fp.context.closePlainArrayIterator(it.o, uint32(index.n), pending)
+			if it.o == numberObject {
+				o := regs[i.A+1].o
+				regs[i.A+1] = Undefined
+				fp.context.closePlainArrayIterator(o, uint32(it.n), pending)
 			} else {
 				fp.context.iteratorClose(it, pending)
 			}

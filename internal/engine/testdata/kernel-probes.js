@@ -313,3 +313,21 @@ function pairSite(it) {
   for (var [a, b] of it) if (out.push(a, b) >= 6) break;
   return out;
 }
+
+// The array first selects its iterator, then acquires an observable index.
+function indexedArraySite(iterable, array) {
+  var value;
+  for (value of iterable) {
+    if (value === 1) Object.defineProperty(array, 1, {get: hook("index", 2)});
+  }
+  return value;
+}
+
+function probeIndexedArray(site, next, generic) {
+  var array = [1, ,];
+  log = [];
+  running = site;
+  var value = site(generic ? stepped(array.values(), next, true) : array, array);
+  running = null;
+  return value + "\n" + log.join("\n");
+}

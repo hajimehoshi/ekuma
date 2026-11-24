@@ -104,6 +104,9 @@ type nativeFast struct {
 	// what the function does without creating the iterator result or the pair.
 	pairStep IteratorPairStepFunc
 
+	// arrayIndex is the indexed element read of the original array iterator next method.
+	arrayIndex func(cx *ExecutionContext, o *Object, i uint32) Value
+
 	// number1 and number2 compute the function for exactly one or two arguments that are
 	// numbers.
 	number1 NumberKernel1
@@ -418,7 +421,8 @@ type nativeCall struct {
 }
 
 // pushNative records the start of the call of the native function f for newTarget, which is nil
-// in a call. It throws a RangeError when maxNatives calls of native functions are running.
+// in a call. A shortcut records the callee selected by method lookup. It throws a RangeError
+// when maxNatives calls of native functions are running.
 func (cx *ExecutionContext) pushNative(f *Object, this Value, newTarget *Object) {
 	n := len(cx.natives)
 	if n == cap(cx.natives) {

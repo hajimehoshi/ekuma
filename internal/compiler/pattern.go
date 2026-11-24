@@ -252,7 +252,7 @@ func (f *fn) assignableReg(name string) int32 {
 // IteratorStep does for an Elision.
 func (f *fn) elision(it int32) {
 	t := f.newRegs(3)
-	f.emit(bytecode.OpTypeof, t, it+1, 0)
+	f.emit(bytecode.OpTypeof, t, it, 0)
 	f.emit(bytecode.OpLoadK, t+1, f.constStr("number"), 0)
 	generic := f.emit(bytecode.OpJumpNotSEq, 0, t, t+1)
 	// A plain array iterated by index has no iterator result to skip.

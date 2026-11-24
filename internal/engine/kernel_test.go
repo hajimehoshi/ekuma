@@ -441,6 +441,21 @@ func (k *kernelTest) testPace(t *testing.T, s *engine.Shortcut, form string, sho
 func (k *kernelTest) testSteps(t *testing.T, s *engine.Shortcut, form string) {
 	var site engine.Value
 	switch form {
+	case "arrayIndex":
+		site = k.eval(t, "indexedArraySite")
+		probe := k.eval(t, "probeIndexedArray")
+		got := k.probe(t, s, probe, site, engine.False)
+		if !k.took(form) {
+			t.Errorf("indexed array getter did not take %s: %v", form, k.events)
+		}
+		want := k.probe(t, s, probe, site, engine.True)
+		if !k.declined(form) || got != want {
+			t.Errorf("indexed array getter gave %s, generic call gave %s with %v", got, want, k.events)
+		}
+		if !k.interrupted(t, s, probe, site, engine.False) || !k.interrupted(t, s, probe, site, engine.True) {
+			t.Error("indexed array getter did not honor the interruption")
+		}
+		return
 	case "step":
 		site = k.eval(t, "stepSite")
 	case "pairStep":
