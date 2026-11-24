@@ -12,19 +12,20 @@ type argumentsMap struct {
 }
 
 // forwardedArguments returns the arguments object shared by forwarding calls in the running frame.
-func (cx *ExecutionContext) forwardedArguments(regs []Value, argsReg int32) Value {
+func (cx *ExecutionContext) forwardedArguments(argsReg int32) Value {
+	fr := &cx.frames[len(cx.frames)-1]
+	regs := cx.frameRegs(fr)
 	if regs[argsReg].IsUndefined() {
-		fr := &cx.frames[len(cx.frames)-1]
 		// Only functions with a simple parameter list forward their arguments.
-		regs[argsReg] = Value{o: cx.newArguments(fr, regs, !fr.fp.strict)}
+		regs[argsReg] = Value{o: cx.newArguments(fr, !fr.fp.strict)}
 	}
 	return regs[argsReg]
 }
 
-// newArguments returns the arguments object of the frame fr, whose registers are regs.
+// newArguments returns the arguments object of the frame fr.
 // A mapped object links the indices below both the argument count and the parameter count to the parameters.
-func (cx *ExecutionContext) newArguments(fr *frame, regs []Value, mapped bool) *Object {
-	o := cx.newArgumentsObject(fr, regs)
+func (cx *ExecutionContext) newArguments(fr *frame, mapped bool) *Object {
+	o := cx.newArgumentsObject(fr)
 	if !mapped {
 		if cx.realm.strictCallee.o == nil {
 			// An accessor pair is never changed in place, so the objects share it.
@@ -43,11 +44,7 @@ func (cx *ExecutionContext) newArguments(fr *frame, regs []Value, mapped bool) *
 			if i < len(shadowed) && shadowed[i] {
 				continue
 			}
-			if fr.gen != nil {
-				m.params[i] = fr.gen.findUpval(i)
-			} else {
-				m.params[i] = cx.findUpval(fr.base + i)
-			}
+			m.params[i] = cx.captureRegister(fr, i)
 			// A mapped property stays out of elems, so that every access to it takes a path that consults the map.
 			cx.add(o, cx.indexName(uint32(i)), Undefined, FlagsData)
 			o.elems[i] = hole
@@ -60,8 +57,8 @@ func (cx *ExecutionContext) newArguments(fr *frame, regs []Value, mapped bool) *
 }
 
 // newArgumentsObject returns an arguments object without callee whose elements are the arguments
-// of the frame fr, whose registers are regs.
-func (cx *ExecutionContext) newArgumentsObject(fr *frame, regs []Value) *Object {
+// of the frame fr.
+func (cx *ExecutionContext) newArgumentsObject(fr *frame) *Object {
 	var a *argumentsObject
 	var elems []Value
 	switch fr.argc {
@@ -83,7 +80,7 @@ func (cx *ExecutionContext) newArgumentsObject(fr *frame, regs []Value) *Object 
 		a, elems = &argumentsObject{}, make([]Value, 0, fr.argc)
 	}
 	n := min(fr.argc, fr.fp.nparams)
-	elems = append(elems, regs[:n]...)
+	elems = append(elems, cx.frameRegs(fr)[:n]...)
 	elems = append(elems, cx.extraArgs(fr)...)
 	a.kind = kindObject
 	a.class = classArguments

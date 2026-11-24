@@ -231,6 +231,38 @@ func clearFrameRegs(regs []Value, first, end int) {
 	}
 }
 
+// frameRegs returns fr's registers, including the slot for discarded results.
+// The slice is only valid until stack growth or reentry.
+func (ag *agent) frameRegs(fr *frame) []Value {
+	return slices.Clip(fr.registers(ag.stack))
+}
+
+// registers returns the registers of fr given its agent's stack.
+func (fr *frame) registers(stack []Value) []Value {
+	// Keep the storage selection small enough to inline in exec.
+	if fr.gen != nil {
+		return fr.gen.regs
+	}
+	return stack[fr.base:][:fr.fp.nregs+1]
+}
+
+// captureRegister returns the shared upvalue for a register of fr.
+func (ag *agent) captureRegister(fr *frame, index int) *upvalue {
+	if fr.gen != nil {
+		return fr.gen.findUpval(index)
+	}
+	return ag.findUpval(fr.base + index)
+}
+
+// closeFrameUpvals detaches captured registers of fr starting at from.
+func (ag *agent) closeFrameUpvals(fr *frame, from int) {
+	if fr.gen != nil {
+		fr.gen.closeUpvals(from)
+	} else if len(ag.openUpvals) > 0 {
+		ag.closeUpvals(fr.base + from)
+	}
+}
+
 // extraArgs returns the arguments of the frame fr beyond its parameters.
 // The result is only valid until the stack grows.
 func (ag *agent) extraArgs(fr *frame) []Value {
@@ -297,16 +329,8 @@ func (ag *agent) unwind(stop int) (Value, execStatus) {
 			}
 			// The registers from h.Reg on belong to the scopes the handler leaves,
 			// so their captured variables are detached before h.Reg is overwritten.
-			var regs []Value
-			if fr.gen != nil {
-				regs = fr.gen.regs
-				fr.gen.closeUpvals(int(h.Reg))
-			} else {
-				regs = ag.stack[fr.base:]
-				if len(ag.openUpvals) > 0 {
-					ag.closeUpvals(fr.base + int(h.Reg))
-				}
-			}
+			ag.closeFrameUpvals(fr, int(h.Reg))
+			regs := ag.frameRegs(fr)
 			regs[h.Reg] = ag.thrown
 			if h.Finally && !closing && ag.captureThrowSites {
 				regs[h.Reg] = ag.saveException()
@@ -401,14 +425,14 @@ func (cx *ExecutionContext) throwReturnError(stop, n, pc int, kind ErrorKind, ms
 }
 
 // restArray returns the arguments of fr starting at index start as a fresh array.
-func (cx *ExecutionContext) restArray(fr *frame, regs []Value, start int) *Object {
+func (cx *ExecutionContext) restArray(fr *frame, start int) *Object {
 	n := min(fr.argc, fr.fp.nparams)
 	extra := cx.extraArgs(fr)
 	if start >= n {
 		return cx.NewArrayCopy(extra[start-n:])
 	}
 	args := make([]Value, 0, fr.argc-start)
-	args = append(args, regs[start:n]...)
+	args = append(args, cx.frameRegs(fr)[start:n]...)
 	args = append(args, extra...)
 	return cx.NewArray(args)
 }
@@ -436,12 +460,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 	}
 	// The capacity of regs is never read: it is sliced and passed on only through slices.Clip,
 	// so that the loop does not carry it from one instruction to the next.
-	var regs []Value
-	if fp.heapRegs {
-		regs = fr.gen.regs
-	} else {
-		regs = ag.stack[fr.base : fr.base+fp.nregs+1]
-	}
+	regs := fr.registers(ag.stack)
 
 	for {
 		if validateExec {
@@ -1818,11 +1837,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			regs[i.A] = Bool(fp.context.declareGlobalAnnexB(fp.keys[i.B], int(i.C)))
 
 		case bytecode.OpCloseUpvals:
-			if fp.heapRegs {
-				ag.frames[len(ag.frames)-1].gen.closeUpvals(int(i.A))
-			} else if len(ag.openUpvals) > 0 {
-				ag.closeUpvals(ag.frameBase() + int(i.A))
-			}
+			ag.closeFrameUpvals(&ag.frames[len(ag.frames)-1], int(i.A))
 		case bytecode.OpClosure:
 			p := fp.protos[i.B]
 			o, copies := newClosure(p)
@@ -1834,20 +1849,19 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if p.isGenerator || p.isAsync {
 				o.shape = fp.context.functionShapeFor(p.closurePrototype())
 			}
+			cur := &ag.frames[len(ag.frames)-1]
 			for j, d := range p.Upvals {
 				switch {
 				case !d.Local:
-					fn.upvals[j] = ag.frames[len(ag.frames)-1].cl.fn.upvals[d.Index]
+					fn.upvals[j] = cur.cl.fn.upvals[d.Index]
 				case d.ByValue:
 					u := &copies[0]
 					copies = copies[1:]
 					u.val = regs[d.Index]
 					u.p = &u.val
 					fn.upvals[j] = u
-				case fp.heapRegs:
-					fn.upvals[j] = ag.frames[len(ag.frames)-1].gen.findUpval(int(d.Index))
 				default:
-					fn.upvals[j] = ag.findUpval(ag.frameBase() + int(d.Index))
+					fn.upvals[j] = ag.captureRegister(cur, int(d.Index))
 				}
 			}
 			regs[i.A] = Value{o: o}
@@ -1880,12 +1894,12 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			}
 		case bytecode.OpArguments:
 			cur := &ag.frames[len(ag.frames)-1]
-			regs[i.A] = Value{o: fp.context.newArguments(cur, slices.Clip(regs), i.B != 0)}
+			regs[i.A] = Value{o: fp.context.newArguments(cur, i.B != 0)}
 		case bytecode.OpRestArgs:
 			cur := &ag.frames[len(ag.frames)-1]
 			var rest *Object
 			if int(i.B) < cur.argc {
-				rest = fp.context.restArray(cur, slices.Clip(regs), int(i.B))
+				rest = fp.context.restArray(cur, int(i.B))
 			} else {
 				rest = fp.context.NewArray(nil)
 			}
@@ -1893,7 +1907,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		case bytecode.OpGetArgsLength, bytecode.OpGetArgsIndex:
 			// A prototype getter must see the arguments object shared by later reads.
 			ag.frames[len(ag.frames)-1].pc = pc
-			receiver = fp.context.forwardedArguments(slices.Clip(regs), i.B)
+			receiver = fp.context.forwardedArguments(i.B)
 			if i.Op == bytecode.OpGetArgsLength {
 				name = ag.Key(KeyLength)
 			} else {
@@ -2435,7 +2449,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			if !regs[argsReg].IsUndefined() || regs[b].o != fp.context.realm.intrinsics[IntrinsicFunctionPrototypeApply] {
 				// Once exposed, the arguments object's length and indexed properties can change.
 				regs[b+2] = regs[i.C]
-				regs[b+3] = fp.context.forwardedArguments(slices.Clip(regs), argsReg)
+				regs[b+3] = fp.context.forwardedArguments(argsReg)
 				f, callThis, argBase, argc, ret, isNew, newTarget = regs[b].o, regs[b+1], b+2, 2, i.A, false, nil
 				if i.Op == bytecode.OpTailApplyFwd {
 					argBase += ag.frameBase()
@@ -2667,13 +2681,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fp = fr.fp
 			fp.context.activate()
 			pc = fr.pc
-			if fp.heapRegs {
-				regs = fr.gen.regs
-				ag.sp = fr.base
-			} else {
-				regs = ag.stack[fr.base : fr.base+fp.nregs+1]
-				ag.sp = fr.base + fp.nregs + 1
-			}
+			regs = fr.registers(ag.stack)
+			ag.sp = fr.top()
 			regs[ret] = r
 		case bytecode.OpThrow:
 			if ag.captureThrowSites {
@@ -2710,13 +2719,8 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fp = fr.fp
 			fp.context.activate()
 			pc = fr.pc
-			if fp.heapRegs {
-				regs = fr.gen.regs
-				ag.sp = fr.base
-			} else {
-				regs = ag.stack[fr.base : fr.base+fp.nregs+1]
-				ag.sp = fr.base + fp.nregs + 1
-			}
+			regs = fr.registers(ag.stack)
+			ag.sp = fr.top()
 			regs[ret] = Value{o: o}
 		case bytecode.OpYield, bytecode.OpAwait:
 			n := len(ag.frames) - 1
@@ -3301,7 +3305,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 		// A call with the arguments of the running function.
 		if (i.Op == bytecode.OpCallFwd || i.Op == bytecode.OpTailCallFwd) && (!regs[i.C].IsUndefined() || !ag.arrayIterationUnmodified(fp.context.realm)) {
 			ag.frames[len(ag.frames)-1].pc = pc
-			args := fp.context.spreadArgs(fp.context.forwardedArguments(slices.Clip(regs), i.C)).elems
+			args := fp.context.spreadArgs(fp.context.forwardedArguments(i.C)).elems
 			argc, ret, isNew, newTarget = len(args), i.A, false, nil
 			argBase = ag.frames[len(ag.frames)-1].top()
 			ag.ensureStack(argBase + argc)
@@ -3312,13 +3316,10 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			argc, ret, isNew, newTarget = cur.argc, i.A, false, nil
 			argBase = cur.top()
 			ag.ensureStack(argBase + argc)
-			if validateExec {
-				// The old registers still hold these values in other builds.
-				regs = ag.reload(regs, ag.frameBase(), fp)
-			}
+			regs = ag.reload(regs, cur.base, fp)
 			n := min(argc, fp.nparams)
 			copy(ag.stack[argBase:], slices.Clip(regs)[:n])
-			copy(ag.stack[argBase+n:], ag.extraArgs(&ag.frames[len(ag.frames)-1]))
+			copy(ag.stack[argBase+n:], ag.extraArgs(cur))
 		}
 		if i.Op == bytecode.OpTailApplyFwd || i.Op == bytecode.OpTailCallFwd {
 			goto tailCall
@@ -3503,11 +3504,7 @@ func (ag *agent) exec(stop int) (result Value, status execStatus) {
 			fp = fr.fp
 			fp.context.activate()
 			pc = fr.pc
-			if fp.heapRegs {
-				regs = fr.gen.regs
-			} else {
-				regs = ag.stack[fr.base : fr.base+fp.nregs+1]
-			}
+			regs = fr.registers(ag.stack)
 		}
 	}
 }

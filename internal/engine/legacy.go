@@ -44,7 +44,7 @@ func (cx *ExecutionContext) innermostCall(f Value) int {
 // frames[i], which are not mapped to its parameters.
 func (cx *ExecutionContext) callArguments(i int) *Object {
 	fr := &cx.frames[i]
-	o := cx.newArgumentsObject(fr, cx.stack[fr.base:])
+	o := cx.newArgumentsObject(fr)
 	cx.add(o, cx.Key(keyCallee), Value{o: fr.cl}, FlagsHidden)
 	return o
 }

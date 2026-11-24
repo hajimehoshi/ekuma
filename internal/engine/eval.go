@@ -97,13 +97,10 @@ func (cx *ExecutionContext) directEval(x Value, site int) Value {
 	if n := len(p.Upvals); n > 0 {
 		fn.upvals = make([]*upvalue, n)
 		for j, d := range p.Upvals {
-			switch {
-			case !d.Local:
+			if d.Local {
+				fn.upvals[j] = cx.captureRegister(fr, int(d.Index))
+			} else {
 				fn.upvals[j] = fr.cl.fn.upvals[d.Index]
-			case fr.gen != nil:
-				fn.upvals[j] = fr.gen.findUpval(int(d.Index))
-			default:
-				fn.upvals[j] = cx.findUpval(fr.base + int(d.Index))
 			}
 		}
 	}
@@ -139,14 +136,9 @@ func (cx *ExecutionContext) createLazyArguments(fr *frame, es *bytecode.EvalScop
 		if !d.Local || d.Index != reg {
 			continue
 		}
-		var regs []Value
-		if fr.gen != nil {
-			regs = fr.gen.regs
-		} else {
-			regs = cx.stack[fr.base : fr.base+fr.fp.nregs+1]
-		}
+		regs := cx.frameRegs(fr)
 		if regs[reg].o == tdzObject {
-			regs[reg] = Value{o: cx.newArguments(fr, regs, true)}
+			regs[reg] = Value{o: cx.newArguments(fr, true)}
 		}
 		return
 	}

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/hajimehoshi/ekuma/internal/engine"
@@ -188,4 +189,47 @@ func engineType(typ types.Type, name string) bool {
 	}
 	named, ok := typ.(*types.Named)
 	return ok && named.Obj().Pkg() != nil && named.Obj().Pkg().Path() == "github.com/hajimehoshi/ekuma/internal/engine" && named.Obj().Name() == name
+}
+
+// TestFrameRegisterBoundary confines raw register storage to frame operations,
+// interpreter fast paths, call setup and the independent runtime checks.
+func TestFrameRegisterBoundary(t *testing.T) {
+	p := checkPackages(t, ".")[0]
+	member := func(typ, name string) types.Object {
+		t.Helper()
+		obj, _, _ := types.LookupFieldOrMethod(p.pkg.Scope().Lookup(typ).Type(), true, p.pkg, name)
+		if obj == nil {
+			t.Fatalf("missing %s.%s", typ, name)
+		}
+		return obj
+	}
+	allowed := map[types.Object][]string{
+		member("agent", "stack"): {
+			"agent.frameRegs", "agent.extraArgs", "agent.reload", "agent.findUpval",
+			"NewExecutionContext", "agent.ensureStack", "agent.releaseStack", "agent.clearStale", "agent.pushFrame", "agent.exec",
+			"ExecutionContext.callOnStack", "ExecutionContext.callSlow", "ExecutionContext.callBound",
+			"ExecutionContext.replaceFrame", "ExecutionContext.unbind",
+			"agent.checkStep", "agent.moveStack", "agent.stackUsed", "agent.abandonStack", "agent.holdArgs", "agent.checkIdleStack",
+		},
+		member("generator", "regs"): {
+			"frame.registers", "agent.exec", "agent.checkStep",
+			"newGenerator", "generator.findUpval", "ExecutionContext.resume",
+		},
+		member("frame", "registers"):     {"agent.frameRegs", "agent.exec"},
+		member("agent", "findUpval"):     {"agent.captureRegister"},
+		member("generator", "findUpval"): {"agent.captureRegister"},
+	}
+	for _, file := range p.files {
+		for _, decl := range file.Decls {
+			owner := funcName(decl)
+			ast.Inspect(decl, func(n ast.Node) bool {
+				if id, ok := n.(*ast.Ident); ok {
+					if owners, ok := allowed[p.info.Uses[id]]; ok && !slices.Contains(owners, owner) {
+						t.Errorf("%v: direct %s access in %s", p.fset.Position(id.Pos()), id.Name, owner)
+					}
+				}
+				return true
+			})
+		}
+	}
 }
