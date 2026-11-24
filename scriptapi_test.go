@@ -1452,8 +1452,11 @@ func TestStringLengthLimits(t *testing.T) {
 				]) {
 					try { f(); r.push("no error"); } catch (e) { r.push(e instanceof RangeError); }
 				}
+				// The matches after the one whose replacement is too long are found first.
+				var re = /x/g;
+				try { "axbx".replace(re, s); } catch (e) { r.push(e instanceof RangeError, re.lastIndex, RegExp.leftContext); }
 				r.join()`,
-			want: "true,true,true,true,true,true,true,true,true,true",
+			want: "true,true,true,true,true,true,true,true,true,true,true,0,axb",
 		},
 		{
 			name: "BigInt strings longer than the string length limit",

@@ -802,6 +802,7 @@ func (e *regexpEnv) replace(cx *engine.ExecutionContext, rx *engine.Object, s en
 	}
 	length := s.StringLength()
 	var b wtf8.Builder
+	// next is the index after the last replaced match, or -1 once the result is too long.
 	next := 0
 	found := false
 	// results holds the matches whose replacements are computed after the last match.
@@ -824,7 +825,11 @@ func (e *regexpEnv) replace(cx *engine.ExecutionContext, rx *engine.Object, s en
 				if b.Len() == 0 {
 					b.Grow(len(s.Str()))
 				}
-				next = substituteMatch(cx, &b, re, s, caps, template, next)
+				// When the result gets too long, the remaining matches are found before the
+				// error is thrown, as they can be observed.
+				if next >= 0 {
+					next = substituteMatch(cx, &b, re, s, caps, template, next)
+				}
 			} else {
 				start := len(capsBuf)
 				capsBuf = append(capsBuf, caps...)
@@ -850,6 +855,9 @@ func (e *regexpEnv) replace(cx *engine.ExecutionContext, rx *engine.Object, s en
 	}
 	if !found {
 		return s
+	}
+	if next < 0 {
+		cx.ThrowRangeError("invalid string length")
 	}
 	for _, r := range results {
 		var matched wtf8.String
@@ -922,23 +930,30 @@ func (e *regexpEnv) replace(cx *engine.ExecutionContext, rx *engine.Object, s en
 }
 
 // substituteMatch writes to b the part of s from next up to a match of re with the capture
-// indices caps, followed by its replacement by template. It returns the index after the match.
+// indices caps, followed by its replacement by template. It returns the index after the match,
+// or -1 when b would get longer than MaxStringLength.
 func substituteMatch(cx *engine.ExecutionContext, b *wtf8.Builder, re *regexp.Regexp, s engine.Value, caps []int, template wtf8.String, next int) int {
 	position := caps[0]
 	if position < next {
 		return next
 	}
-	writeLimited(cx, b, s.Substring(next, position))
+	if !tryWrite(b, s.Substring(next, position)) {
+		return -1
+	}
 	matched := s.Substring(caps[0], caps[1])
 	if !strings.Contains(string(template), "$") {
-		writeLimited(cx, b, template)
+		if !tryWrite(b, template) {
+			return -1
+		}
 		return caps[1]
 	}
 	named := engine.Undefined
 	if len(re.Names()) > 0 && strings.Contains(string(template), "$<") {
 		named = groupsObject(cx, re, func(i int) engine.Value { return capture(cx, s, caps, i) })
 	}
-	writeSubstitution(cx, b, matched, s, position, substCaptures{str: s, caps: caps}, named, template)
+	if !tryWriteSubstitution(cx, b, matched, s, position, substCaptures{str: s, caps: caps}, named, template) {
+		return -1
+	}
 	return caps[1]
 }
 
@@ -1102,8 +1117,26 @@ func writeLimited(cx *engine.ExecutionContext, b *wtf8.Builder, s wtf8.String) {
 	b.WriteString(s)
 }
 
-// writeSubstitution implements GetSubstitution, writing the result to b.
+// tryWrite writes s to b, or reports false when b would get longer than MaxStringLength.
+func tryWrite(b *wtf8.Builder, s wtf8.String) bool {
+	if b.Len()+len(s) > engine.MaxStringLength {
+		return false
+	}
+	b.WriteString(s)
+	return true
+}
+
+// writeSubstitution implements GetSubstitution, writing the result to b. It throws a RangeError
+// when b would get longer than MaxStringLength.
 func writeSubstitution(cx *engine.ExecutionContext, b *wtf8.Builder, matched wtf8.String, str engine.Value, position int, captures substCaptures, named engine.Value, template wtf8.String) {
+	if !tryWriteSubstitution(cx, b, matched, str, position, captures, named, template) {
+		cx.ThrowRangeError("invalid string length")
+	}
+}
+
+// tryWriteSubstitution is writeSubstitution, but reports false instead of throwing when b would
+// get longer than MaxStringLength.
+func tryWriteSubstitution(cx *engine.ExecutionContext, b *wtf8.Builder, matched wtf8.String, str engine.Value, position int, captures substCaptures, named engine.Value, template wtf8.String) bool {
 	length := str.StringLength()
 	ncaps := captures.count()
 	for i := 0; i < len(template); {
@@ -1111,26 +1144,38 @@ func writeSubstitution(cx *engine.ExecutionContext, b *wtf8.Builder, matched wtf
 		if c != '$' || i+1 >= len(template) {
 			j := strings.IndexByte(string(template[i+1:]), '$')
 			if j < 0 {
-				writeLimited(cx, b, template[i:])
+				if !tryWrite(b, template[i:]) {
+					return false
+				}
 				break
 			}
-			writeLimited(cx, b, template[i:i+1+j])
+			if !tryWrite(b, template[i:i+1+j]) {
+				return false
+			}
 			i += 1 + j
 			continue
 		}
 		switch next := template[i+1]; {
 		case next == '$':
-			writeLimited(cx, b, "$")
+			if !tryWrite(b, "$") {
+				return false
+			}
 			i += 2
 		case next == '&':
-			writeLimited(cx, b, matched)
+			if !tryWrite(b, matched) {
+				return false
+			}
 			i += 2
 		case next == '`':
-			writeLimited(cx, b, str.Substring(0, position))
+			if !tryWrite(b, str.Substring(0, position)) {
+				return false
+			}
 			i += 2
 		case next == '\'':
 			if tail := position + wtf8.Len(matched); tail < length {
-				writeLimited(cx, b, str.Substring(tail, length))
+				if !tryWrite(b, str.Substring(tail, length)) {
+					return false
+				}
 			}
 			i += 2
 		case next >= '0' && next <= '9':
@@ -1146,30 +1191,41 @@ func writeSubstitution(cx *engine.ExecutionContext, b *wtf8.Builder, matched wtf
 			ref := template[i : i+1+digits]
 			if index >= 1 && index <= ncaps {
 				if c, ok := captures.get(index); ok {
-					writeLimited(cx, b, c)
+					if !tryWrite(b, c) {
+						return false
+					}
 				}
 			} else {
-				writeLimited(cx, b, ref)
+				if !tryWrite(b, ref) {
+					return false
+				}
 			}
 			i += len(ref)
 		case next == '<':
 			gt := strings.IndexByte(string(template[i:]), '>')
 			if gt < 0 || named.IsUndefined() {
-				writeLimited(cx, b, "$<")
+				if !tryWrite(b, "$<") {
+					return false
+				}
 				i += 2
 				continue
 			}
 			name := template[i+2 : i+gt]
 			v := cx.Get(named.Object(), cx.ToPropertyKey(cx.NewString(name)))
 			if !v.IsUndefined() {
-				writeLimited(cx, b, cx.ToString(v))
+				if !tryWrite(b, cx.ToString(v)) {
+					return false
+				}
 			}
 			i += gt + 1
 		default:
-			writeLimited(cx, b, "$")
+			if !tryWrite(b, "$") {
+				return false
+			}
 			i++
 		}
 	}
+	return true
 }
 
 // regExpEscape implements RegExp.escape, checking for an interruption while it escapes a long
