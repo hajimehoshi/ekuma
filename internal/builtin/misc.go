@@ -724,7 +724,7 @@ func initMath(cx *engine.ExecutionContext) {
 	unary("fround", func(x float64) float64 {
 		return float64(float32(x))
 	})
-	unary("f16round", f16round)
+	unary("f16round", numconv.RoundFloat16)
 	unary("log", math.Log)
 	unary("log1p", math.Log1p)
 	unary("log10", log10)
@@ -988,23 +988,6 @@ func log2(x float64) float64 {
 		return math.Log(x) * (1 / math.Ln2)
 	}
 	return math.Log2(x)
-}
-
-// f16round returns x rounded to the nearest binary16 value, ties to even.
-func f16round(x float64) float64 {
-	if x != x || math.IsInf(x, 0) || x == 0 {
-		return x
-	}
-	a := math.Abs(x)
-	// 65520 is halfway between the largest binary16 value and 2^16, and rounds to infinity.
-	if a >= 65520 {
-		return math.Copysign(math.Inf(1), x)
-	}
-	_, exp := math.Frexp(a)
-	// The unit in the last place of binary16 at a, with the subnormals below 2^-14.
-	e := max(exp-1, -14)
-	ulp := math.Ldexp(1, e-10)
-	return math.Copysign(math.RoundToEven(a/ulp)*ulp, x)
 }
 
 // sumPreciseBits is the precision that holds the exact sum of up to 2^53 finite numbers.
